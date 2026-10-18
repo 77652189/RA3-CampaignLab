@@ -2,13 +2,12 @@
 
 ## 当前目标
 
-收尾搬迁（两条线已搬到 `Documents\RA3Modding\`），然后做**测试专用地图**：开局直接进游戏、单位摆在固定屏幕位置，去掉每轮约 70 秒的加载和简报。
+测试台提速已完成（按画面导航 + 坐标标定），下一片待用户选：游隼协同演示、游隼外观细节或第二个新单位。
 
 ## 下一步
 
-1. 配音会话搬完并验证后：在 RA3-ChineseVoice 里删 `experimental/`、清 `.gitignore` 相关行、把 HANDOFF 那一节换成指向本仓库的一行（配音会话已同意）。
-2. 本仓库推到 GitHub（公开，77652189/RA3-CampaignLab）。
-3. 测试专用地图 → 坐标标定 → 游隼协同演示。顺序和门控见 [docs/plan.md](docs/plan.md)「待启动 / 进行中」。
+1. 新测试一律用 `run_bench.ps1 -Nav`：时间从进入关卡算起，点击位置用 `experimental/testbench/calib.py` 的 `world_to_screen` 从世界坐标算（标定只对从 CampNew18 岛派生、开局镜头相同的地图有效；换了开局镜头要重新标定：`CNV_CALIB=base/grid` 各编一次、各跑一次，再 `calib.py fit`）。
+2. 待办与门控见 [docs/plan.md](docs/plan.md)「待启动 / 进行中」。
 
 ## 必读
 
@@ -20,8 +19,8 @@
 ## 验证方式
 
 - 文档守卫：`python -I -m pytest -q tests`
-- 编一张图并上测试台：`python -I -X utf8 experimental/campaign/make_campnew28.py`，再 `pwsh -NoProfile -File experimental/testbench/run_bench.ps1 -Mod "$env:USERPROFILE\Documents\Red Alert 3\Mods\CampNew28\CampNew28_1.0.skudef" -Seconds 80 -Shots 74 -Clicks '36:330,258;38:370,313;41:637,315;43:875,676;52:715,672;60:1040,676;64:877,675;70:877,675' -Keys '47:27;56:27'`，应得到 `RESULT alive 80 s` 和一张截图
-- 锁：`python -I -m ra3voice.reslock status`
+- 编一张图并上测试台：`python -I -X utf8 experimental/campaign/make_campnew28.py`，再 `pwsh -NoProfile -File experimental/testbench/run_bench.ps1 -Nav -Mod "$env:USERPROFILE\Documents\Red Alert 3\Mods\CampNew28\CampNew28_1.0.skudef" -Seconds 5 -Shots 3`，应得到 `NAV in game at ~23 s`、`RESULT alive 5 s` 和一张截图（导航模板第一次要从参考截图生成：`python -I experimental/testbench/nav.py build <截图目录>`）
+- 锁：`python -I ra3voice/reslock.py status`
 
 ## 硬约束（用户原话）
 
@@ -35,7 +34,7 @@
 ## 状态
 
 ```yaml
-slice: post-migration
+slice: bench-speedup-done
 blocked_on: none        # none | voice-session | user
-next_gate: test-map     # test-map | coordinate-calibration | demo
+next_gate: demo         # test-map | coordinate-calibration | demo
 ```

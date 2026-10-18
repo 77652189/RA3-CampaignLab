@@ -32,6 +32,10 @@ A = (G[0] - 190, G[1] - 310)                     # first 游隼 (screen ~(560, 5
 SECOND = (A[0] + 45, A[1])
 CRYO = (A[0] - 70, A[1] - 10)
 HAMMERS = [(A[0] + dx, A[1] + int(os.environ.get('CNV_HAMMER_DIST', 460))) for dx in (-60, 0, 60)]
+# CNV_CALIB=grid / base: screen calibration (testbench/calib.py) -- a 5 x 5 grid of Guardians around A, or nothing;
+# the two frames' difference gives each grid point's place on screen
+CALIB = os.environ.get('CNV_CALIB')
+CALIB_GRID = [(A[0] + dx, A[1] + dy) for dy in (-150, 0, 150, 300, 450) for dx in (-300, -150, 0, 150, 300)]
 
 
 def generate(m):
@@ -44,9 +48,12 @@ def generate(m):
                     and not (b'CNV_LightTank' in head(k) and b'CNV_LightTank2' not in head(k))]
     objs.kids[:] = [k for k in objs.kids if b'CNV_LightTank2' not in head(k)]       # re-placed at A below
     # CNV_NO_HAMMERS / CNV_NO_CRYO: control runs for why the 游隼 drove ~270 north before any order
-    hammers = [] if os.environ.get('CNV_NO_HAMMERS') == '1' else HAMMERS
-    cryo = [] if os.environ.get('CNV_NO_CRYO') == '1' else [CRYO]
-    for src, template, (x, y), angle in ([(p1, c26.UNIT, at, math.pi / 2) for at in (A, SECOND)] +
+    hammers = [] if os.environ.get('CNV_NO_HAMMERS') == '1' or CALIB else HAMMERS
+    cryo = [] if os.environ.get('CNV_NO_CRYO') == '1' or CALIB else [CRYO]
+    tanks = [] if CALIB else [A, SECOND]
+    markers = CALIB_GRID if CALIB == 'grid' else []
+    for src, template, (x, y), angle in ([(p1, c26.UNIT, at, math.pi / 2) for at in tanks] +
+                                         [(p1, 'AlliedAntiVehicleVehicleTech1', at, 0.0) for at in markers] +
                                          [(p1, 'AlliedSupportAircraft', at, 0.0) for at in cryo]
                                          + [(s1, os.environ.get('CNV_ENEMY', 'SovietAntiVehicleVehicleTech1'), at,
                                              -math.pi / 2) for at in hammers]):

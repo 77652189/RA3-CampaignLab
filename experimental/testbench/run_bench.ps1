@@ -12,6 +12,8 @@ param([string]$Mod, [string]$Shots = '20,40', [int]$Seconds = 60, [string]$Res =
                                 #   drag:x1,y1,x2,y2 (box select)  key:vk
       [switch]$Visible,         # leave the window on screen (default: parked off the desktop, still rendering)
       [switch]$Sound,           # leave the game's audio on (default: its own audio sessions muted)
+      [switch]$Nav,             # menus screen by screen into the CNV mission (nav.py); the times above then count
+                                #   from the mission start, and -Seconds is the time spent in the mission
       [string]$Bench = (Join-Path $PSScriptRoot '..\..\work\testbench\RA3'))
 $ErrorActionPreference = 'Stop'
 $shotAt = @($Shots.Split(',') | ForEach-Object { [int]$_ })   # a string: pwsh -File does not parse arrays
@@ -160,8 +162,47 @@ $psi.UseShellExecute = $false
 $psi.WorkingDirectory = $Bench
 $p = [Diagnostics.Process]::Start($psi)
 $crash = $null; $box = $null; $parked = $false; $muted = 0
-foreach ($s in 1..$Seconds) {
+function Invoke-Act($hw, $kind, $v) {
+    switch ($kind) {
+        'click'  { [Bench]::Click($hw, $v[0], $v[1]) }
+        'rclick' { [Bench]::RClick($hw, $v[0], $v[1]) }
+        'drag'   { [Bench]::Drag($hw, $v[0], $v[1], $v[2], $v[3]) }
+        'key'    { [Bench]::Key($hw, $v[0]); Set-Content (Join-Path $shotDir 'key.req') $v[0] -Encoding ascii }
+        'wait'   { Start-Sleep -Milliseconds ([int]([double]$v[0] * 1000)) }
+    }
+}
+# -Nav: walk the menus screen by screen (nav.py), then count -Shots / -Clicks / -Keys / -Actions / -Seconds from
+# the moment the mission is on screen ($start); without it they count from the launch, as before
+$navSteps = @(); $navAt = 0; $start = $null; $navStuck = $null
+if ($Nav) {
+    $navPy = Join-Path $PSScriptRoot 'nav.py'
+    $navSteps = @(Get-Content (Join-Path $PSScriptRoot '..\..\work\testbench\nav\nav.json') -Raw | ConvertFrom-Json)
+}
+$s = 0
+while ($true) {
+    $s++
+    if ($Nav) { if ($null -ne $start -and $s - $start -gt $Seconds) { break } } elseif ($s -gt $Seconds) { break }
     Start-Sleep 1
+    if ($Nav -and $null -eq $start -and [Bench]::MainWindow([uint32]$p.Id) -ne [IntPtr]::Zero) {
+        $frame = Join-Path $shotDir 'nav.bmp'
+        Set-Content (Join-Path $shotDir 'shot.req') 'nav' -Encoding ascii
+        foreach ($k in 1..15) { if (Test-Path $frame) { break }; Start-Sleep -Milliseconds 100 }
+        if (Test-Path $frame) {
+            Start-Sleep -Milliseconds 100
+            $step = $navSteps[$navAt]
+            $res = (& python -I $navPy check $frame $navAt) -join ' '
+            Remove-Item $frame -ErrorAction SilentlyContinue
+            if ($res -like 'match*') {
+                "NAV $navAt '$($step.name)' at $s s ($res)"
+                $hw = [Bench]::MainWindow([uint32]$p.Id)
+                foreach ($a in $step.actions) { Invoke-Act $hw $a[0] @($a | Select-Object -Skip 1) ; Start-Sleep -Milliseconds 250 }
+                $navAt++
+                if ($navAt -ge $navSteps.Count) { $start = $s; "NAV in game at $s s" }
+            }
+        }
+        if ($null -eq $start -and $s -gt 150) { $navStuck = $navSteps[$navAt].name; break }
+    }
+    $r = if ($Nav) { if ($null -ne $start) { $s - $start } else { 0 } } else { $s }
     if (-not $Visible -and -not $parked) {
         $hw = [Bench]::MainWindow([uint32]$p.Id)
         if ($hw -ne [IntPtr]::Zero) { [Bench]::Park($hw); $parked = $true; "PARKED window $hw off screen at $s s" }
@@ -171,36 +212,31 @@ foreach ($s in 1..$Seconds) {
     }
     $box = [Bench]::CrashBox([uint32]$p.Id)
     if ($box) { break }
-    if ($clickAt.ContainsKey($s)) {
-        $hw = [Bench]::MainWindow([uint32]$p.Id); $x, $y = $clickAt[$s].Split(',')
-        "CLICK at $s s: ($x,$y) window $hw"; if ($hw -ne [IntPtr]::Zero) { [Bench]::Click($hw, [int]$x, [int]$y) }
+    if ($r -gt 0 -and $clickAt.ContainsKey($r)) {
+        $hw = [Bench]::MainWindow([uint32]$p.Id); $x, $y = $clickAt[$r].Split(',')
+        "CLICK at $r s: ($x,$y) window $hw"; if ($hw -ne [IntPtr]::Zero) { [Bench]::Click($hw, [int]$x, [int]$y) }
     }
-    if ($keyAt.ContainsKey($s)) {
-        $hw = [Bench]::MainWindow([uint32]$p.Id); "KEY at $s s: vk $($keyAt[$s])"
-        if ($hw -ne [IntPtr]::Zero) { [Bench]::Key($hw, $keyAt[$s]) }
+    if ($r -gt 0 -and $keyAt.ContainsKey($r)) {
+        $hw = [Bench]::MainWindow([uint32]$p.Id); "KEY at $r s: vk $($keyAt[$r])"
+        if ($hw -ne [IntPtr]::Zero) { [Bench]::Key($hw, $keyAt[$r]) }
         # the game polls the keyboard (GetAsyncKeyState): the capture shim makes the key read as held for 300 ms
-        Set-Content (Join-Path $shotDir 'key.req') $keyAt[$s] -Encoding ascii
+        Set-Content (Join-Path $shotDir 'key.req') $keyAt[$r] -Encoding ascii
     }
-    if ($actAt.ContainsKey($s)) {
+    if ($r -gt 0 -and $actAt.ContainsKey($r)) {
         $hw = [Bench]::MainWindow([uint32]$p.Id)
-        foreach ($a in $actAt[$s]) {
-            $kind, $arg = $a; $v = @($arg.Split(',') | ForEach-Object { [int]$_ }); "ACT at $s s: $kind $arg"
+        foreach ($a in $actAt[$r]) {
+            $kind, $arg = $a; $v = @($arg.Split(',') | ForEach-Object { [double]$_ }); "ACT at $r s: $kind $arg"
             if ($hw -eq [IntPtr]::Zero) { continue }
-            switch ($kind) {
-                'click'  { [Bench]::Click($hw, $v[0], $v[1]) }
-                'rclick' { [Bench]::RClick($hw, $v[0], $v[1]) }
-                'drag'   { [Bench]::Drag($hw, $v[0], $v[1], $v[2], $v[3]) }
-                'key'    { [Bench]::Key($hw, $v[0]); Set-Content (Join-Path $shotDir 'key.req') $v[0] -Encoding ascii }
-            }
+            Invoke-Act $hw $kind $v
             Start-Sleep -Milliseconds 250
         }
     }
-    if ($shotAt -contains $s) { "REQ shot at $s s"; Set-Content (Join-Path $shotDir 'shot.req') ('{0:D3}s' -f $s) -Encoding ascii }
+    if ($r -gt 0 -and $shotAt -contains $r) { "REQ shot at $r s"; Set-Content (Join-Path $shotDir 'shot.req') ('{0:D3}s' -f $r) -Encoding ascii }
     $crash = Get-WinEvent -FilterHashtable @{LogName = 'Application'; Id = 1000; StartTime = $t0} -ErrorAction SilentlyContinue |
              Where-Object { $_.Message -match 'RA3_1\.1\d\.game' } | Select-Object -First 1
     if ($crash -or $p.HasExited) { break }
 }
-$state = if ($box) { "CRASH BOX: $box" } elseif ($crash) { 'CRASH' } elseif ($p.HasExited) { "EXITED code $($p.ExitCode)" } else { "alive $Seconds s" }
+$state = if ($navStuck) { "NAV STUCK at '$navStuck' after $s s" } elseif ($box) { "CRASH BOX: $box" } elseif ($crash) { 'CRASH' } elseif ($p.HasExited) { "EXITED code $($p.ExitCode)" } else { "alive $Seconds s" }
 if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force }
 Remove-Item $lockFile -ErrorAction SilentlyContinue
 Start-Sleep 1
