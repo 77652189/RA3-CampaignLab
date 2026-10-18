@@ -20,10 +20,11 @@ sys.path.insert(0, ROOT)
 sys.path.insert(0, HERE)
 import splice_assets                                     # noqa: E402
 from ra3voice import big                                  # noqa: E402
+import labpaths                                           # noqa: E402
 
-# Mod SDK v3.0 (patch 1.12 layouts, AllTypesHash 1424942948 like the game). C:\RA3ModSDK is a 1.10-era SDK: its
+# Mod SDK v3.0 (patch 1.12 layouts, AllTypesHash 1424942948 like the game). sdk\RA3ModSDK is a 1.10-era SDK: its
 # GameObjects load but corrupt the heap once the unit is active (CampNew19 bisect, 2026-10-16) -- don't use it.
-SDK = os.environ.get('CNV_SDK', r'C:\RA3ModSDK3')
+SDK = labpaths.SDK3
 NAME = 'CampNew2'
 SRC_DIR = os.path.join(SDK, 'Mods', NAME, 'data')
 BUILT = os.path.join(SDK, 'BuiltMods', 'mods', NAME.lower(), 'data')

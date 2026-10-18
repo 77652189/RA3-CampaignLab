@@ -1,6 +1,6 @@
 """pack_shaders.py <fxo_dir> <out.big>: compiled shaders whose names exist in the game's Shaders.big -> override BIG."""
 import os, sys
-sys.path.insert(0, r'C:\Users\63097\Desktop\RA3-ChineseVoice')
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))   # repo root
 from ra3voice import big
 
 src, out = sys.argv[1:3]

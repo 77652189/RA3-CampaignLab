@@ -7,8 +7,10 @@ new Allied campaign starting on Heidelberg proves both a new instance and a long
 """
 import os
 import re
+import sys
 
-SDK = r'C:\RA3ModSDK'
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from labpaths import SDK_OLD as SDK              # noqa: E402  the 1.10-era SDK this first probe used
 SRC = os.path.join(SDK, 'SageXML', 'GlobalData', 'CampaignTemplates.xml')
 OUT = os.path.join(SDK, 'Mods', 'CampNew', 'data')
 

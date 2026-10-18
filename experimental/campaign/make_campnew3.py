@@ -19,8 +19,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, ROOT)
 from ra3voice import big, csf, refpack                   # noqa: E402
-
-SDK = r'C:\RA3ModSDK'
+sys.path.insert(0, HERE)
+from labpaths import SDK_OLD as SDK                      # noqa: E402  the 1.10-era SDK this probe used
 NAME = 'CampNew3'
 GAME = r'C:\Program Files (x86)\Steam\steamapps\common\Command and Conquer Red Alert 3'
 SRC_DIR = os.path.join(SDK, 'Mods', NAME, 'data', 'additionalmaps')
@@ -91,7 +91,7 @@ def sources():
 
 def compile_stream():
     r = subprocess.run([os.path.join(SDK, 'tools', 'BinaryAssetBuilder.exe'), os.path.join(SRC_DIR, 'mapmetadata_mod.xml'),
-                        r'/od:C:\RA3ModSDK\BuiltMods', r'/iod:C:\RA3ModSDK\BuiltMods', '/ls:true', '/gui:false',
+                        f'/od:{SDK}\\BuiltMods', f'/iod:{SDK}\\BuiltMods', '/ls:true', '/gui:false',
                         '/pc:true', '/vf:false', '/el:0'], cwd=SDK, capture_output=True, text=True, errors='replace')
     log = os.path.join(SDK, f'_build_{NAME}.log')
     open(log, 'w', encoding='utf-8').write(r.stdout + r.stderr)

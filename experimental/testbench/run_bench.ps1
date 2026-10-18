@@ -135,6 +135,19 @@ Add-Type -AssemblyName System.Drawing
 $Bench = [IO.Path]::GetFullPath($Bench)
 $shotDir = Join-Path $Bench 'shots'
 if (Get-Process | Where-Object { $_.ProcessName -match '^ra3' }) { Write-Output 'ABORT: an RA3 process is already running'; exit 3 }
+# the shared bench lock (ra3voice/reslock.py format: <LAB>\shared\locks\bench.json, LAB = the repository's parent)
+$lockFile = Join-Path ([IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..'))) 'shared\locks\bench.json'
+if ($env:RA3_SHARED) { $lockFile = Join-Path $env:RA3_SHARED 'locks\bench.json' }
+if (Test-Path $lockFile) {
+    $held = Get-Content $lockFile -Raw | ConvertFrom-Json
+    $live = Get-Process -Id $held.pid -ErrorAction SilentlyContinue
+    if ($live -and (-not $held.until -or [datetime]$held.until -gt (Get-Date))) {
+        Write-Output "ABORT: bench locked by $($held.owner) (pid $($held.pid), since $($held.since)) $($held.note)"; exit 4
+    }
+}
+New-Item -ItemType Directory -Force (Split-Path $lockFile) | Out-Null
+@{ owner = 'RA3-CampaignLab run_bench'; pid = $PID; since = (Get-Date).ToString('s'); until = $null; note = "$Mod" } |
+    ConvertTo-Json -Compress | Set-Content $lockFile -Encoding utf8
 Get-ChildItem $shotDir -File -ErrorAction SilentlyContinue | Remove-Item -Force
 $w, $h = $Res.Split('x')
 $gameArgs = @('-config', "`"$Bench\RA3_chinese_t_1.13.SkuDef`"", '-runver', '1.13', '-win', '-xres', $w, '-yres', $h)
@@ -189,6 +202,7 @@ foreach ($s in 1..$Seconds) {
 }
 $state = if ($box) { "CRASH BOX: $box" } elseif ($crash) { 'CRASH' } elseif ($p.HasExited) { "EXITED code $($p.ExitCode)" } else { "alive $Seconds s" }
 if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force }
+Remove-Item $lockFile -ErrorAction SilentlyContinue
 Start-Sleep 1
 Get-ChildItem $shotDir -Filter *.bmp | ForEach-Object {
     $img = [Drawing.Image]::FromFile($_.FullName); $png = [IO.Path]::ChangeExtension($_.FullName, '.png')

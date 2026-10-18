@@ -1,8 +1,8 @@
 """splice_static.py <mod.big with BAB-compiled Texture assets> <out.big>
 Retail RA3 static stream with every Texture instance found in the mod's data\\mod.* spliced in (same asset id),
 written as data\\static.{manifest,bin,relo,imp}. Proven to load through -modConfig (probe B, 2026-10-14)."""
-import struct, sys
-sys.path.insert(0, r'C:\Users\63097\Desktop\RA3-ChineseVoice')
+import os, struct, sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))   # repo root
 from ra3voice import big, refpack
 
 src, out = sys.argv[1:3]

@@ -10,8 +10,12 @@ reason for preferring pwsh elsewhere is the encoding of Chinese scripts). Result
 import json
 import os
 import subprocess
+import sys
 
-DLL = os.path.join(os.environ.get('CNV_SDK', r'C:\RA3ModSDK3'), 'tools', 'EALA.Hash.dll')
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import labpaths                                  # noqa: E402
+
+DLL = os.path.join(labpaths.SDK3, 'tools', 'EALA.Hash.dll')
 PS32 = r'C:\Windows\SysWOW64\WindowsPowerShell\v1.0\powershell.exe'
 CACHE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'work',
                      'fasthash_cache.json')

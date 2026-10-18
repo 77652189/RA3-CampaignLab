@@ -1,0 +1,12 @@
+# code, configuration and documents only: game files, SDK output, downloads, renders and the test bench copy of
+# the game stay out (work/ is the local data folder, see experimental/campaign/labpaths.py)
+/work/
+__pycache__/
+*.pyc
+
+# build outputs of the experimental shims
+/experimental/**/*.dll
+/experimental/**/*.obj
+/experimental/**/*.lib
+/experimental/**/*.exp
+!/experimental/**/exports.def

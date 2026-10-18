@@ -9,8 +9,12 @@ model under C:\\RA3ModSDK\\Art\\<first two letters of the name>\\.
 import math
 import os
 import struct
+import sys
 
-ART = os.path.join(os.environ.get('CNV_SDK', r'C:\RA3ModSDK3'), 'Art')
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import labpaths                                  # noqa: E402
+
+ART = os.path.join(labpaths.SDK3, 'Art')
 FIXUP = ('\t\t\t<FixupMatrix M00="1.000000" M10="0.000000" M20="0.000000" M30="0.000000" M01="0.000000" '
          'M11="1.000000" M21="0.000000" M31="0.000000" M02="0.000000" M12="0.000000" M22="1.000000" M32="0.000000"/>')
 
