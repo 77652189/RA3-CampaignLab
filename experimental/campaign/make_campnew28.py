@@ -49,6 +49,8 @@ def generate(m):
     objs.kids[:] = [k for k in objs.kids if b'CNV_LightTank2' not in head(k)]       # re-placed at A below
     # CNV_NO_HAMMERS / CNV_NO_CRYO: control runs for why the 游隼 drove ~270 north before any order
     hammers = [] if os.environ.get('CNV_NO_HAMMERS') == '1' or CALIB else HAMMERS
+    if os.environ.get('CNV_ONE_HAMMER') == '1':          # combo tests (make_campnew29): only the middle one
+        hammers = hammers[1:2]
     cryo = [] if os.environ.get('CNV_NO_CRYO') == '1' or CALIB else [CRYO]
     tanks = [] if CALIB else [A, SECOND]
     markers = CALIB_GRID if CALIB == 'grid' else []
