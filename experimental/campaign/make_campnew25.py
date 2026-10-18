@@ -25,6 +25,7 @@ c24.AI_SRC = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'units
 c7.EXTRA_TEMPLATES[c24.AI_UNIT] = {'file': 'DATA:CNVUnits/Data/' + c24.AI_UNIT + '.xml', 'EditorSorting': 'UNIT'}
 c4.c3.STRINGS['Name:' + c24.AI_UNIT] = 'CNV 轻型坦克 v2'
 c24.AI_PARTS = dict(c23.PARTS)                  # HULL, TREADS, TURRET, BARREL like v1
+c24.AI_PARTS.update(HULL_D='BODY', TURRET_D='Bone_Turret', BARREL_D='Bone_Turret_Pitch')   # detail meshes
 # zoomed next to a retail Guardian (CNV_CLOSEUP), 游隼 at v1's scale covered 1.6x its screen area and read 50 %
 # brighter (mean 120 vs 78): a light tank smaller than the main battle tank, a darker diffuse
 c24.AI_SCALE = c23.SCALE * 0.8

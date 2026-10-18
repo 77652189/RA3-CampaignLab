@@ -108,8 +108,6 @@ def build(mats):
           (1.0, -5.3)], 3.4)
     box(bm, -12.2, -4.2, 0.4, -9.4, 4.2, 2.9, mat=0, taper_top=0.6)                                 # bustle
     box(bm, 4.9, -2.4, 1.2, 6.5, 2.4, 1.9, mat=1)                                                    # visor slit
-    for s in (-1, 1):
-        box(bm, -7.6, 6.0 * s - 0.45, 0.4, 1.6, 6.0 * s + 0.45, 2.6, mat=2)                          # team panel
     cylinder(bm, 'x', (-1.6, -2.4, 4.4), 1.0, 3.2, segments=8, mat=0)                              # sensor pod
     cylinder(bm, 'x', (0.1, -2.4, 4.4), 0.65, 0.3, segments=8, mat=3)                               # lens
     box(bm, -4.6, 1.6, 3.3, -2.2, 3.6, 4.2, mat=0)                                                   # top box
@@ -128,7 +126,60 @@ def build(mats):
     ob = base.obj_from_bm('BARREL', bm, mats)
     base.bevel_and_finish(ob, width=0.25, segments=1)
     parts['BARREL'] = ob
+    details(parts, mats)
     return parts
+
+
+def details(parts, mats):
+    """Small parts on their own meshes with a light bevel (the hull's 0.6 bevel would melt them), each on its
+    parent's bone (zoomed next to the retail Guardian, CampNew25 close-up, the main gap was detail density; the
+    Guardian's team colour sits on raised parts, not on flat panels)."""
+    # hull (BODY): tow hooks and headlight housings on the nose, exhausts, spare track links on the glacis, mud
+    # flaps. (Rivet rows along the fenders were tried: 1-2 px each at game zoom for ~800 triangles -- dropped.)
+    bm = bmesh.new()
+    for s in (-1, 1):
+        box(bm, 17.4, 3.4 * s - 0.5, 3.6, 18.6, 3.4 * s + 0.5, 4.4, mat=1)                            # tow hook
+        cylinder(bm, 'x', (18.1, 4.6 * s, 6.0), 0.55, 0.7, segments=8, mat=0)                         # lamp housing
+        cylinder(bm, 'x', (18.5, 4.6 * s, 6.0), 0.38, 0.12, segments=8, mat=3)                        # lamp
+        cylinder(bm, 'z', (-17.2, 5.6 * s, 10.6), 0.55, 2.2, segments=8, mat=0)                       # exhaust
+        cylinder(bm, 'z', (-17.2, 5.6 * s, 11.75), 0.45, 0.15, segments=8, mat=1)                     # exhaust cap
+        box(bm, -18.9, 7.6 * s - 2.0, 3.6, -18.5, 7.6 * s + 2.0, 6.0, mat=1)                          # mud flap
+    for k in range(3):                                                                              # spare links
+        box(bm, 14.0, -3.6 + 2.6 * k, 7.75, 15.6, -1.8 + 2.6 * k, 8.2, mat=1)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    ob = base.obj_from_bm('HULL_D', bm, mats)
+    base.bevel_and_finish(ob, width=0.1, segments=1)
+    parts['HULL_D'] = ob
+
+    # turret (Bone_Turret, turret-local): raised applique plates carrying the team colour, smoke launchers at the
+    # front corners, commander's cupola with periscopes, rails round the bustle
+    bm = bmesh.new()
+    for s in (-1, 1):
+        box(bm, -7.2, 6.3 * s - 0.5, 0.6, 1.2, 6.3 * s + 0.5, 2.7, mat=2, taper_top=0.25)             # applique
+        for k in range(3):                                                                          # smoke tubes
+            cylinder(bm, 'x', (3.6 - 0.8 * k, 5.0 * s, 2.9), 0.32, 1.2, segments=6, mat=1)
+    cylinder(bm, 'z', (-4.4, -2.6, 3.75), 1.5, 0.7, segments=10, mat=0)                            # cupola
+    for a in range(4):
+        ang = math.radians(45 + 90 * a)
+        box(bm, -4.4 + 1.25 * math.cos(ang) - 0.25, -2.6 + 1.25 * math.sin(ang) - 0.25, 4.0,
+            -4.4 + 1.25 * math.cos(ang) + 0.25, -2.6 + 1.25 * math.sin(ang) + 0.25, 4.45, mat=1)       # periscope
+    for s in (-1, 1):
+        box(bm, -12.6, 4.4 * s - 0.15, 1.0, -9.0, 4.4 * s + 0.15, 3.4, mat=0)                         # rail post
+    box(bm, -12.6, -4.4, 3.1, -12.3, 4.4, 3.4, mat=0)                                                # rail
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    ob = base.obj_from_bm('TURRET_D', bm, mats)
+    base.bevel_and_finish(ob, width=0.12, segments=1)
+    parts['TURRET_D'] = ob
+
+    # barrel (Bone_Turret_Pitch): bore evacuator band, muzzle brake slots
+    bm = bmesh.new()
+    cylinder(bm, 'x', (14.0, 0, 0), 1.0, 1.6, segments=10, mat=0)
+    for s in (-1, 1):
+        box(bm, 22.4, 1.05 * s - 0.12, -0.45, 23.6, 1.05 * s + 0.12, 0.45, mat=1)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    ob = base.obj_from_bm('BARREL_D', bm, mats)
+    base.bevel_and_finish(ob, width=0.08, segments=1)
+    parts['BARREL_D'] = ob
 
 
 TURRET_AT = Vector((1.5, 0.0, 9.6))
@@ -143,6 +194,8 @@ def main():
             base.material('glow', GLOW, emit=4.0)]
     parts = build(mats)
     base.place(parts)
+    parts['TURRET_D'].location = TURRET_AT
+    parts['BARREL_D'].location = TURRET_AT + PITCH_AT
     color = base.bake(parts, sc)
     base.textured_materials(color)
     base.previews(sc)
