@@ -29,6 +29,7 @@ c24.AI_PARTS = dict(c23.PARTS)                  # HULL, TREADS, TURRET, BARREL l
 # brighter (mean 120 vs 78): a light tank smaller than the main battle tank, a darker diffuse
 c24.AI_SCALE = c23.SCALE * 0.8
 c24.AI_LEVEL = 50
+c24.AI_RETAIL_MAPS = os.environ.get('CNV_RETAIL_MAPS', '1') == '1'
 T, P, M = (1.5, 0.0, 9.6), (6.0, 0.0, 1.7), (24.2, 0.0, 0.0)      # cnv_lighttank2.py TURRET_AT / PITCH_AT / MUZZLE_AT
 c24.ai_pivots = lambda: [
     ('BODY', None, (0, 0, 0)),

@@ -34,7 +34,8 @@ def tint(m):
     return pts[-1][1:]
 
 
-def convert(src, model, pivots, part_bones, src_name='CNTankL', spec=0.45, scale=1.0, level=72, grade=True):
+def convert(src, model, pivots, part_bones, src_name='CNTankL', spec=0.45, scale=1.0, level=72, grade=True,
+            retail_maps=False):
     """spec: specular (SPM red) as a fraction of the diffuse luminance -- retail Allied SPM red averages ~21;
     a flat 110 made the whole tank mirror the warm environment map (tan / pink in game, CampNew23 first run).
     scale: uniform size factor for vertices and pivots (the first in-game run read ~0.6 of a Guardian).
@@ -85,14 +86,46 @@ def convert(src, model, pivots, part_bones, src_name='CNTankL', spec=0.45, scale
             r = 3 * m / (1 + gr + br)
             r, g, b = r, r * gr, r * br
         return min(255, int(r)), min(255, int(g)), min(255, int(b)), 255
-    w3x.write_texture(model, w, h, diffuse_px)
 
-    def spm(x, y):
-        r, g, b, _ = dp[x, y]
-        if glow(r, g, b):
-            return 0, 255, 0, 255
-        return int(spec * k * lum(r, g, b)), 0, 255 if mp[x, y] > 127 else 0, 255
-    w3x.write_texture(model + '_SPM', w, h, spm)
+    if retail_maps:
+        # ObjectsAllied.fx (SDK Max plugin, disassembled with fx_disasm.py): colour = diffuse * (1 + mask * (2 *
+        # RecolorColor - 1)) -- a fully masked texel shows 2 x diffuse x house colour; specular = SPM.r * 0.8 *
+        # (N.H)^50, white. So team areas are neutral grey (no tint: the house colour does the tinting) keeping the
+        # body's own shading -- AO, seams, edges -- and soft mask edges (half the retail Guardian's mask texels are
+        # partial); our uniform hard-edged blue panels read as stickers, and a 2x grey went pale lavender. The
+        # retail specular is two-level: 70 % of the body texels ~0, 17 % at 64-128 (edges, raised plates).
+        import numpy as np
+        from PIL import ImageFilter
+        src_rgb = np.asarray(diffuse.convert('RGB'), float)
+        out = np.array([[diffuse_px(x, y)[:3] for x in range(w)] for y in range(h)], float)
+        lb = src_rgb @ (0.3, 0.59, 0.11)
+        is_glow = (src_rgb[..., 1] > src_rgb[..., 0] + 60) & (src_rgb[..., 2] > src_rgb[..., 0] + 60)
+        soft = np.asarray(mask.filter(ImageFilter.GaussianBlur(1.5)), float) / 255
+        used = lb > 10
+        body = used & ~is_glow & (soft < 0.05)
+        med = np.median(lb[body]) if body.any() else 1.0
+        team_grey = np.clip(lb * k, 0, 235)[..., None].repeat(3, 2)            # keeps AO, seams, edges
+        a = soft[..., None]
+        out = np.where(is_glow[..., None], out, out * (1 - a) + team_grey * a)
+        dark = lb < 0.55 * med
+        edge = lb > np.percentile(lb[body], 88) if body.any() else np.zeros_like(dark)
+        spec_r = np.where(dark, 4, np.where(edge, 110, 18)).astype(float)
+        spec_r = np.where(is_glow, 0, spec_r)
+        spm_rgb = np.stack([spec_r, np.where(is_glow, 255, 0), np.clip(soft * 255, 0, 255)], 2)
+        out8, spm8 = np.clip(out, 0, 255).astype(np.uint8), spm_rgb.astype(np.uint8)
+        w3x.write_texture(model, w, h, lambda x, y: (*map(int, out8[y, x]), 255))
+        w3x.write_texture(model + '_SPM', w, h, lambda x, y: (*map(int, spm8[y, x]), 255))
+        print(f'{model}: retail-style maps: team texels {(soft > 0.05).mean():.3f}, shiny {edge.mean():.3f}, '
+              f'matte {dark.mean():.3f}')
+    else:
+        w3x.write_texture(model, w, h, diffuse_px)
+
+        def spm(x, y):
+            r, g, b, _ = dp[x, y]
+            if glow(r, g, b):
+                return 0, 255, 0, 255
+            return int(spec * k * lum(r, g, b)), 0, 255 if mp[x, y] > 127 else 0, 255
+        w3x.write_texture(model + '_SPM', w, h, spm)
     nrm_png = os.path.join(src, src_name + '_nrm.png')
     if os.path.exists(nrm_png) and all('tangents' in parts[pt] for pt in part_bones):
         # baked tangent-space normal map (panel seams as grooves). Green as Blender bakes it (+v up): the retail
