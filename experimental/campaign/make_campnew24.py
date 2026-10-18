@@ -28,6 +28,8 @@ c7.EXTRA_TEMPLATES[AI_UNIT] = {'file': 'DATA:CNVUnits/Data/' + AI_UNIT + '.xml',
 c4.c3.STRINGS['Name:' + AI_UNIT] = 'CNV 轻型坦克（AI）'
 AI_AT = (c23.TANK_AT[0], c23.TANK_AT[1] - 45)          # just south of the parametric tank
 AI_PARTS = {'HULL': 'BODY', 'TURRET': 'Bone_Turret'}
+AI_SCALE = None                                         # None: the same as v1 (c23.SCALE)
+AI_LEVEL = 72                                           # to_w3x diffuse median
 
 
 def ai_pivots():
@@ -72,7 +74,8 @@ def generate(m):
     c23._generate(m)
     print('model', c23.MODEL, to_w3x.convert(c23.SRC, c23.MODEL, c23.PIVOTS, c23.PARTS, scale=c23.SCALE), 'triangles')
     print('model', AI_MODEL, to_w3x.convert(AI_SRC, AI_MODEL, ai_pivots(), AI_PARTS,
-                                            src_name='CNTankL', scale=c23.SCALE), 'triangles')
+                                            src_name='CNTankL', scale=AI_SCALE or c23.SCALE, level=AI_LEVEL),
+          'triangles')
     unit_xml(c23.UNIT, c23.MODEL)
     unit_xml(AI_UNIT, AI_MODEL)
     objs = next(n for _, n in m.walk() if n.name == 'ObjectsList')

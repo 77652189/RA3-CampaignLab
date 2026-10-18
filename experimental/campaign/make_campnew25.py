@@ -25,6 +25,10 @@ c24.AI_SRC = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'units
 c7.EXTRA_TEMPLATES[c24.AI_UNIT] = {'file': 'DATA:CNVUnits/Data/' + c24.AI_UNIT + '.xml', 'EditorSorting': 'UNIT'}
 c4.c3.STRINGS['Name:' + c24.AI_UNIT] = 'CNV 轻型坦克 v2'
 c24.AI_PARTS = dict(c23.PARTS)                  # HULL, TREADS, TURRET, BARREL like v1
+# zoomed next to a retail Guardian (CNV_CLOSEUP), 游隼 at v1's scale covered 1.6x its screen area and read 50 %
+# brighter (mean 120 vs 78): a light tank smaller than the main battle tank, a darker diffuse
+c24.AI_SCALE = c23.SCALE * 0.8
+c24.AI_LEVEL = 50
 T, P, M = (1.5, 0.0, 9.6), (6.0, 0.0, 1.7), (24.2, 0.0, 0.0)      # cnv_lighttank2.py TURRET_AT / PITCH_AT / MUZZLE_AT
 c24.ai_pivots = lambda: [
     ('BODY', None, (0, 0, 0)),
@@ -41,6 +45,16 @@ if os.environ.get('CNV_CLOSEUP') == '1':
     c23.TANK_AT = (1222.0, 2470.0)
     c24.AI_AT = (1222.0, 2425.0)
     c23.ENEMY_AT = (c23.TANK_AT[0] + 1500, c23.TANK_AT[1])
+    _gen = c24.c6.edit
+
+    def _with_guardian(m):                      # a retail Guardian just south, as the look to match
+        _gen(m)
+        objs = next(n for _, n in m.walk() if n.name == 'ObjectsList')
+        p1 = next(k for k in objs.kids if b'AlliedAntiVehicleVehicleTech1' in k.head[:60])
+        pr, flags = c24.newmap.typed_props_of(m, p1)
+        objs.kids.append(c24.newmap.object_node(m, pr, flags, 'AlliedAntiVehicleVehicleTech1', 1222.0, 2380.0,
+                                                angle=0.0, uniqueID=f'Guardian closeup {len(objs.kids)}'))
+    c24.c6.edit = _with_guardian
 
 if __name__ == '__main__':
     if c23.game_running():
