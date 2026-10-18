@@ -35,7 +35,7 @@ def tint(m):
 
 
 def convert(src, model, pivots, part_bones, src_name='CNTankL', spec=0.45, scale=1.0, level=72, grade=True,
-            retail_maps=False):
+            retail_maps=False, edge_gain=1.0, edge_spec=110, plate_spec=18, plate_share=12, body_spec=18, contrast=1.0):
     """spec: specular (SPM red) as a fraction of the diffuse luminance -- retail Allied SPM red averages ~21;
     a flat 110 made the whole tank mirror the warm environment map (tan / pink in game, CampNew23 first run).
     scale: uniform size factor for vertices and pivots (the first in-game run read ~0.6 of a Guardian).
@@ -108,14 +108,38 @@ def convert(src, model, pivots, part_bones, src_name='CNTankL', spec=0.45, scale
         a = soft[..., None]
         out = np.where(is_glow[..., None], out, out * (1 - a) + team_grey * a)
         dark = lb < 0.55 * med
-        edge = lb > np.percentile(lb[body], 88) if body.any() else np.zeros_like(dark)
-        spec_r = np.where(dark, 4, np.where(edge, 110, 18)).astype(float)
+        # edges = thin bright lines (the bake's pointiness highlight), not the brightest texels overall -- those were
+        # whole upward faces (grime gradient, AO) and boosting them washed the tank out (close-up median 79 -> 88)
+        # (local mean over baked texels only: with the black background in the blur every UV island border read
+        # as an edge -- 26 % of the texels)
+        def blur(v):
+            return np.asarray(Image.fromarray(np.clip(v, 0, 255).astype(np.uint8)).filter(
+                ImageFilter.GaussianBlur(4)), float)
+        local = blur(np.where(used, lb, 0)) / np.maximum(blur(used * 255.0) / 255.0, 1e-3)
+        edge = used & ~is_glow & (lb > local * 1.2 + 10)
+        # contrast like the Guardian's on screen (CampNew25 close-up: median 66, p90 170, p10 6 vs our 79 / 143 /
+        # 13): edge highlights x edge_gain, dark parts x 0.7 (team texels too: the house colour is a multiply)
+        gain = np.where(edge, edge_gain, np.where(dark, 0.7, 1.0))[..., None]
+        out = np.where(is_glow[..., None], out, out * gain)
+        if contrast != 1.0:
+            # spread around the body median: the game's specular (exponent 50) barely lifts the RTS view, the
+            # Guardian's highlights are in its diffuse (texture p90 152 at median 69)
+            lo = out.mean(axis=2, keepdims=True)
+            m = np.median(lo[body]) if body.any() else 1.0
+            r = np.maximum(lo, 1e-3) / m
+            curve = np.where(r > 1, r ** contrast, r ** (0.5 + 0.5 * contrast))
+            out = np.where(is_glow[..., None], out, np.clip(out * (curve / r), 0, 240))
+        # plates: the brightest body texels (upward faces) shine without being brightened -- the retail Guardian's
+        # highlights are mostly specular on broad plates (17 % of its SPM at 64-128); thin edges alone left the
+        # close-up dull (p90 114 vs the Guardian's 170)
+        plate = body & ~edge & (lb > np.percentile(lb[body], 100 - plate_share)) if body.any() else np.zeros_like(edge)
+        spec_r = np.where(dark, 4, np.where(edge, edge_spec, np.where(plate, plate_spec, body_spec))).astype(float)
         spec_r = np.where(is_glow, 0, spec_r)
         spm_rgb = np.stack([spec_r, np.where(is_glow, 255, 0), np.clip(soft * 255, 0, 255)], 2)
         out8, spm8 = np.clip(out, 0, 255).astype(np.uint8), spm_rgb.astype(np.uint8)
         w3x.write_texture(model, w, h, lambda x, y: (*map(int, out8[y, x]), 255))
         w3x.write_texture(model + '_SPM', w, h, lambda x, y: (*map(int, spm8[y, x]), 255))
-        print(f'{model}: retail-style maps: team texels {(soft > 0.05).mean():.3f}, shiny {edge.mean():.3f}, '
+        print(f'{model}: retail-style maps: team texels {(soft > 0.05).mean():.3f}, edges {edge.mean():.3f}, plates {plate.mean():.3f}, '
               f'matte {dark.mean():.3f}')
     else:
         w3x.write_texture(model, w, h, diffuse_px)

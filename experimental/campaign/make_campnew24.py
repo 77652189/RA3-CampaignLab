@@ -31,6 +31,7 @@ AI_PARTS = {'HULL': 'BODY', 'TURRET': 'Bone_Turret'}
 AI_SCALE = None                                         # None: the same as v1 (c23.SCALE)
 AI_LEVEL = 72                                           # to_w3x diffuse median
 AI_RETAIL_MAPS = False                                  # to_w3x retail-style team colour and specular
+AI_TONE = {}                                            # to_w3x edge_gain / edge_spec
 
 
 def ai_pivots():
@@ -76,7 +77,7 @@ def generate(m):
     print('model', c23.MODEL, to_w3x.convert(c23.SRC, c23.MODEL, c23.PIVOTS, c23.PARTS, scale=c23.SCALE), 'triangles')
     print('model', AI_MODEL, to_w3x.convert(AI_SRC, AI_MODEL, ai_pivots(), AI_PARTS,
                                             src_name='CNTankL', scale=AI_SCALE or c23.SCALE, level=AI_LEVEL,
-                                            retail_maps=AI_RETAIL_MAPS),
+                                            retail_maps=AI_RETAIL_MAPS, **AI_TONE),
           'triangles')
     unit_xml(c23.UNIT, c23.MODEL)
     unit_xml(AI_UNIT, AI_MODEL)
