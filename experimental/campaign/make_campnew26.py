@@ -31,7 +31,7 @@ BUTTON = f'Button_{UNIT}_on'
 FACTORY, COMMANDS = 'CNV_WarFactory', 'CNV_WarFactoryCommandSet'
 DATA = os.path.join(c2.SDK, 'Mods', 'CNVUnits', 'Data')
 PORTRAIT = f'Portrait_{UNIT}'
-ART = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'units', 'lighttank2')     # button_icon.py output
+ART = c25.c24.AI_SRC                            # the model's folder: button_icon.py writes the button / portrait there
 c7.EXTRA_OWN += [b'LogicCommandSet:' + COMMANDS.encode(), b'LogicCommand:Command_Construct' + UNIT.encode()] + \
     [p + n.encode() for n in (BUTTON, PORTRAIT) for p in (b'PackedTextureImage:', b'Texture:')]
 c7.EXTRA_TEMPLATES[FACTORY] = {'file': 'DATA:CNVUnits/Data/' + FACTORY + '.xml', 'EditorSorting': 'STRUCTURE'}

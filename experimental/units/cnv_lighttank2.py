@@ -203,4 +203,5 @@ def main():
     base.export(parts)
 
 
-main()
+if __name__ == "__main__":         # cnv_lighttank3.py imports prism / loft
+    main()

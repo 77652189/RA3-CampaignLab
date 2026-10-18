@@ -27,7 +27,8 @@ import torch                                     # noqa: E402
 from ra3voice import throttle                    # noqa: E402
 
 # HunyuanDiT keeps only the first 60 characters of a prompt and appends ",白色背景,3D风格,最佳质量" itself
-PROMPT = '未来盟军轻型坦克,银白色金属装甲,宽大分段履带,低矮圆润炮塔,单根长炮管,青色发光灯,前侧方视角,完整车身'
+PROMPT = os.environ.get('CNV_PROMPT') or '未来盟军轻型坦克,银白色金属装甲,宽大分段履带,低矮圆润炮塔,单根长炮管,青色发光灯,前侧方视角,完整车身'
+OUT = os.path.join(OUT, os.environ['CNV_CONCEPT_DIR']) if os.environ.get('CNV_CONCEPT_DIR') else OUT
 
 
 class Pace:
