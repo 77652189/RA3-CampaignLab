@@ -36,8 +36,8 @@ c24.AI_SCALE = c23.SCALE * 0.8
 c24.AI_LEVEL = 50
 # gunmetal and bright edges like the Guardian (close-up v3 vs Guardian: median 79 / 66, p90 143 / 170, p10 13 / 6)
 if os.environ.get('CNV_TONE', '1') == '1':
-    c24.AI_LEVEL = 35
-    c24.AI_TONE = dict(edge_gain=1.8, edge_spec=200, plate_spec=110, plate_share=30, body_spec=30, contrast=1.45)
+    c24.AI_LEVEL = 30
+    c24.AI_TONE = dict(edge_gain=1.8, edge_spec=200, plate_spec=70, plate_share=30, body_spec=18, contrast=1.6)
 c24.AI_RETAIL_MAPS = os.environ.get('CNV_RETAIL_MAPS', '1') == '1'
 # TURRET_AT / PITCH_AT / MUZZLE_AT of cnv_lighttank2.py / cnv_lighttank3.py, and the sensor lens (FX_Laser)
 T, P, M, LENS = {'2': ((1.5, 0.0, 9.6), (6.0, 0.0, 1.7), (24.2, 0.0, 0.0), (0.1, -2.4, 4.4)),

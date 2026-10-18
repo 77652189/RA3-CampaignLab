@@ -29,15 +29,20 @@ from cnv_lighttank2 import STEEL, DARK, GLOW, prism, loft      # noqa: E402
 
 box, cylinder = base.box, base.cylinder
 POD_IN, POD_OUT = 7.0, 13.0                        # track pod inner / outer y
+BODY_W = 6.3                                       # centre body half width (a dark gap up to POD_IN)
 TRACK_IN, TRACK_OUT = 7.6, 12.4
 
 
 def build(mats):
     parts = {}
 
-    # hull: centre body (between the pods, a little below their tops), the nose wedge, the two track pods
+    # hull: centre body (between the pods, below their tops, a dark gap each side), the nose wedge, the two
+    # track pods (layered: top plates with a dark seam, separate skirt segments on a dark backing)
     bm = bmesh.new()
-    prism(bm, [(-17.6, 3.2), (10.0, 3.2), (12.5, 8.2), (-15.0, 8.6), (-17.6, 8.0)], -POD_IN, POD_IN)   # body
+    prism(bm, [(-17.6, 3.2), (10.0, 3.2), (12.5, 8.2), (-15.0, 8.6), (-17.6, 8.0)], -BODY_W, BODY_W)   # body
+    for s in (-1, 1):                                                                              # gap
+        g0, g1 = sorted((s * BODY_W, s * POD_IN))
+        prism(bm, [(-17.4, 3.2), (10.0, 3.2), (12.0, 7.2), (-15.0, 7.6), (-17.4, 7.0)], g0, g1, mat=1)
     prism(bm, [(9.0, 3.0), (18.6, 3.4), (19.8, 4.6), (19.8, 6.0), (13.0, 8.2), (9.0, 8.4)], -5.0, 5.0)  # nose
     for s in (-1, 1):
         y0, y1 = (POD_IN, POD_OUT) if s > 0 else (-POD_OUT, -POD_IN)
@@ -46,29 +51,38 @@ def build(mats):
         out = y1 if s > 0 else y0
         r0, r1 = sorted((s * (POD_OUT - 1.6), s * POD_OUT))
         prism(bm, [(-16.0, 9.9), (6.0, 9.9), (5.0, 10.5), (-15.0, 10.5)], r0, r1)            # raised outer rim
-        for x0, x1 in ((-14.5, -3.5), (-2.5, 8.5)):                                               # team skirts
-            box(bm, x0, out - 0.3, 5.0, x1, out + 0.3, 7.6, mat=2)
+        b0, b1 = sorted((out - 0.05 * s, out + 0.1 * s))
+        box(bm, -15.6, b0, 4.4, 13.0, b1, 8.4, mat=1)                                            # dark backing
+        for x0, x1 in ((-15.0, -6.4), (-5.6, 3.0), (3.8, 12.4)):                                 # skirt segments
+            k0, k1 = sorted((out + 0.05 * s, out + 0.45 * s))
+            box(bm, x0, k0, 4.6, x1, k1, 8.2, mat=0)
+            t0, t1 = sorted((out + 0.4 * s, out + 0.58 * s))
+            box(bm, x0 + 0.6, t0, 6.7, x1 - 0.6, t1, 7.7, mat=2)                              # team strip
         # raised team plate lying on the pod's front slope, (6, 9.9) -> (18.4, 6.4): from the RTS camera the
         # skirt panels alone hardly showed any team colour (4 % of the texture, all on the sides)
         zs = lambda x: 9.9 - 0.2823 * (x - 6.0)                                        # noqa: E731
         p0, p1 = sorted((s * (POD_IN + 0.9), s * (POD_OUT - 1.9)))
         prism(bm, [(8.0, zs(8.0) - 0.05), (16.0, zs(16.0) - 0.05), (16.0, zs(16.0) + 0.3), (8.0, zs(8.0) + 0.3)],
               p0, p1, mat=2)
-        yc = (POD_IN + 1.2) * s
-        box(bm, -9.0, yc - 1.1, 9.85, -3.0, yc + 1.1, 10.2, mat=1)                                 # hatch frame
+        q0, q1 = sorted((s * (POD_IN + 0.3), s * (POD_OUT - 1.9)))
+        for x0, x1 in ((-15.4, -5.6), (-4.6, 5.0)):                                              # top plates
+            box(bm, x0, q0, 9.9, x1, q1, 10.35, mat=0, taper_top=0.15)
+        box(bm, -5.6, q0, 9.9, -4.6, q1, 10.02, mat=1)                                           # dark seam
+        yc = (POD_IN + 1.6) * s
+        box(bm, -13.0, yc - 1.0, 10.35, -7.8, yc + 1.0, 10.6, mat=1)                              # hatch frame
         for k in range(3):                                                                         # vent slats
-            box(bm, 1.0 + 1.3 * k, (POD_IN + 2.6) * s - 1.2, 9.85, 1.6 + 1.3 * k, (POD_IN + 2.6) * s + 1.2,
-                10.15, mat=1)
+            box(bm, -0.4 + 1.3 * k, yc - 1.0, 10.35, 0.2 + 1.3 * k, yc + 1.0, 10.55, mat=1)
     box(bm, 19.7, -1.8, 5.0, 20.0, 1.8, 5.7, mat=3)                                               # nose light
     for s in (-1, 1):
         box(bm, 19.2, 4.3 * s - 0.35, 3.8, 19.95, 4.3 * s + 0.35, 6.0, mat=2)                     # nose strips
     for k in range(4):                                                                             # glacis grille
         zt = 8.2 - 0.324 * (14.65 + 0.9 * k - 13.0)                  # on the glacis line (13, 8.2)-(19.8, 6.0)
         box(bm, 14.4 + 0.9 * k, -2.6, zt - 0.3, 14.9 + 0.9 * k, 2.6, zt + 0.08, mat=1)
-    for k in range(5):                                                                             # engine vents
-        box(bm, -16.5 + 1.6 * k, -4.0, 8.35, -15.7 + 1.6 * k, 4.0, 8.85, mat=1)
+    box(bm, -16.4, -4.4, 8.3, -9.0, 4.4, 8.68, mat=1)                                             # engine well
+    for k in range(5):                                                                             # slats
+        box(bm, -16.0 + 1.45 * k, -4.0, 8.68, -15.3 + 1.45 * k, 4.0, 8.92, mat=0)
     ob = base.obj_from_bm('HULL', bm, mats)
-    base.bevel_and_finish(ob, width=0.55)
+    base.bevel_and_finish(ob, width=0.5, segments=1)       # one segment: the layered plates doubled the hull
     parts['HULL'] = ob
 
     # tracks: rounded loops, top-run cleats, five big road wheels with cyan hubs, drive sprocket, idler
@@ -94,19 +108,25 @@ def build(mats):
 
     # turret (local to the ring): wide low hexagon, mantlet with lamps, cyan flank strips, rear bustle
     bm = bmesh.new()
+    collar = [(6.2, -2.4), (6.2, 2.4), (2.9, 5.8), (-6.1, 5.8), (-8.2, 3.7), (-8.2, -3.7), (-6.1, -5.8),
+              (2.9, -5.8)]
+    loft(bm, collar, -0.2, collar, 0.7, mat=1)                                                   # dark collar
     loft(bm, [(7.6, -3.0), (7.6, 3.0), (3.6, 7.2), (-7.6, 7.2), (-10.2, 4.6), (-10.2, -4.6), (-7.6, -7.2),
-              (3.6, -7.2)], 0.0,
+              (3.6, -7.2)], 0.6,
          [(5.8, -2.4), (5.8, 2.4), (2.8, 6.0), (-6.8, 6.0), (-9.0, 3.8), (-9.0, -3.8), (-6.8, -6.0),
           (2.8, -6.0)], 4.6)
     box(bm, 6.4, -3.0, 0.4, 9.6, 3.0, 3.8, mat=0, taper_front=0.6)                                # mantlet
     for s in (-1, 1):
         cylinder(bm, 'x', (9.62, 2.2 * s, 2.9), 0.4, 0.2, segments=8, mat=3)                    # lamps
         box(bm, -4.2, 6.6 * s - 0.25, 2.0, 1.8, 6.6 * s + 0.25, 2.6, mat=3)                      # cyan strip
-        box(bm, -7.2, 6.75 * s - 0.35, 0.4, -1.0, 6.75 * s + 0.35, 1.3, mat=2)                   # team plate
-    box(bm, 2.4, -2.1, 4.55, 5.4, 2.1, 4.85, mat=2, taper_front=0.4)                             # team top plate
+        box(bm, -7.2, 6.85 * s - 0.35, 1.0, -1.0, 6.85 * s + 0.35, 1.8, mat=2)                   # team plate
+        box(bm, -8.4, 5.95 * s - 0.3, 2.7, -6.6, 5.95 * s + 0.3, 3.7, mat=1)                     # rear vent
+        cylinder(bm, 'x', (7.6, 3.25 * s, 1.3), 0.35, 3.4, segments=8, mat=1)                   # recoil cyl.
+    box(bm, 0.4, -2.1, 4.55, 3.4, 2.1, 4.85, mat=2, taper_front=0.4)                             # team top plate
+    box(bm, 3.8, -2.7, 3.9, 6.2, 2.7, 4.75, mat=0, taper_front=0.5)                              # brow plate
     box(bm, -12.4, -4.0, 0.6, -10.0, 4.0, 3.6, mat=0, taper_top=0.5)                              # bustle
     ob = base.obj_from_bm('TURRET', bm, mats)
-    base.bevel_and_finish(ob, width=0.4)
+    base.bevel_and_finish(ob, width=0.35, segments=1)
     parts['TURRET'] = ob
 
     # barrel (origin = pitch pivot in the mantlet): thick sleeve, tube, muzzle
