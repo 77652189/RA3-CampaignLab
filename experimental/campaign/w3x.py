@@ -158,7 +158,8 @@ def write_model(name, text):
 
 
 # ------------------------------------------------------------------ rigid multi-part models and animations
-def _mesh_xml(mesh_id, verts, normals, uvs, tris, textures, shader='ObjectsAllied.fx', shadow=True):
+def _mesh_xml(mesh_id, verts, normals, uvs, tris, textures, shader='ObjectsAllied.fx', shadow=True, tangents=None,
+              binormals=None):
     lo = [min(v[k] for v in verts) for k in range(3)]
     hi = [max(v[k] for v in verts) for k in range(3)]
     center = [(a + b) / 2 for a, b in zip(lo, hi)]
@@ -170,7 +171,13 @@ def _mesh_xml(mesh_id, verts, normals, uvs, tris, textures, shader='ObjectsAllie
            f'\t\t\t<Center X="{_f(center[0])}" Y="{_f(center[1])}" Z="{_f(center[2])}"/>', '\t\t</BoundingSphere>',
            '\t\t<Vertices>'] + [f'\t\t\t<V X="{_f(x)}" Y="{_f(y)}" Z="{_f(z)}"/>' for x, y, z in verts]
     out += ['\t\t</Vertices>', '\t\t<Normals>'] + [f'\t\t\t<N X="{_f(x)}" Y="{_f(y)}" Z="{_f(z)}"/>' for x, y, z in normals]
-    out += ['\t\t</Normals>', '\t\t<TexCoords>'] + [f'\t\t\t<T X="{_f(u)}" Y="{_f(v)}"/>' for u, v in uvs]
+    out.append('\t\t</Normals>')
+    if tangents and binormals:      # schema order: Normals, Tangents, Binormals, VertexColors, TexCoords
+        out += ['\t\t<Tangents>'] + [f'\t\t\t<T X="{_f(x)}" Y="{_f(y)}" Z="{_f(z)}"/>' for x, y, z in tangents]
+        out += ['\t\t</Tangents>', '\t\t<Binormals>'] + [f'\t\t\t<B X="{_f(x)}" Y="{_f(y)}" Z="{_f(z)}"/>'
+                                                         for x, y, z in binormals]
+        out.append('\t\t</Binormals>')
+    out += ['\t\t<TexCoords>'] + [f'\t\t\t<T X="{_f(u)}" Y="{_f(v)}"/>' for u, v in uvs]
     out += ['\t\t</TexCoords>', '\t\t<ShadeIndices>'] + [f'\t\t\t<I>{k}</I>' for k in range(len(verts))]
     out += ['\t\t</ShadeIndices>', '\t\t<Triangles>']
     for a, b, c in tris:
@@ -193,7 +200,8 @@ def _mesh_xml(mesh_id, verts, normals, uvs, tris, textures, shader='ObjectsAllie
 def rig_model(name, pivots, parts, textures):
     """W3X text of a rigid model: `pivots` = [(pivot name, parent index, (x, y, z))] after ROOTTRANSFORM (index 0;
     parents refer to these indices, translations are relative to the parent), `parts` = [(mesh name, pivot index,
-    (verts, normals, uvs, tris))] in that pivot's space. Container id NAME, hierarchy NAME_SKL."""
+    (verts, normals, uvs, tris[, tangents, binormals]))] in that pivot's space (tangents and binormals: the frame
+    of a tangent-space normal map). Container id NAME, hierarchy NAME_SKL."""
     up = name.upper()
     out = ['<?xml version="1.0" encoding="UTF-8"?>',
            '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
@@ -205,7 +213,9 @@ def rig_model(name, pivots, parts, textures):
                 '\t\t\t<Rotation X="0.000000" Y="0.000000" Z="0.000000" W="1.000000"/>', FIXUP, '\t\t</Pivot>']
     out.append('\t</W3DHierarchy>')
     for mesh, _, geo in parts:
-        out += _mesh_xml(f'{up}.{mesh.upper()}', *geo, textures)
+        verts, normals, uvs, tris = geo[:4]
+        tb = dict(tangents=geo[4], binormals=geo[5]) if len(geo) >= 6 else {}
+        out += _mesh_xml(f'{up}.{mesh.upper()}', verts, normals, uvs, tris, textures, **tb)
     out.append(f'\t<W3DContainer id="{up}" Hierarchy="{up}_SKL">')
     for mesh, bone, _ in parts:
         out += [f'\t\t<SubObject SubObjectID="{mesh.upper()}" BoneIndex="{bone}">',

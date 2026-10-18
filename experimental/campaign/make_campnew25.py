@@ -35,6 +35,13 @@ c24.ai_pivots = lambda: [
     [(f'Bone_{kind}_{fr}_{side}', None, (9 if fr == 'Front' else -9, 10.0 if side == 'Left' else -10.0, 2.4))
      for kind in ('Tread', 'Tracks') for fr in ('Front', 'Rear') for side in ('Left', 'Right')]
 
+# CNV_CLOSEUP=1: both tanks side by side at the screen centre of the start camera (testbench/calib.py), the Soviet
+# tank far away, for zoomed-in looks (run_bench.ps1 -Actions wheel); the start camera zooms towards the centre
+if os.environ.get('CNV_CLOSEUP') == '1':
+    c23.TANK_AT = (1222.0, 2470.0)
+    c24.AI_AT = (1222.0, 2425.0)
+    c23.ENEMY_AT = (c23.TANK_AT[0] + 1500, c23.TANK_AT[1])
+
 if __name__ == '__main__':
     if c23.game_running():
         c2.OUT = c4.OUT = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'staging', NAME)

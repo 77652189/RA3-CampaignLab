@@ -64,6 +64,18 @@ public static class Bench {
         }
         PostMessage(h, 0x0202, IntPtr.Zero, (IntPtr)((y2 << 16) | (x2 & 0xFFFF)));
     }
+    // mouse wheel at a client point (WM_MOUSEWHEEL takes screen coordinates); clicks > 0 = away from the user
+    [StructLayout(LayoutKind.Sequential)] struct POINT { public int X, Y; }
+    [DllImport("user32.dll")] static extern bool ClientToScreen(IntPtr h, ref POINT p);
+    public static void Wheel(IntPtr h, int x, int y, int clicks) {
+        PostMessage(h, 0x0200, IntPtr.Zero, (IntPtr)((y << 16) | (x & 0xFFFF))); System.Threading.Thread.Sleep(40);
+        var pt = new POINT { X = x, Y = y }; ClientToScreen(h, ref pt);
+        int step = clicks > 0 ? 120 : -120;
+        for (int k = 0; k < Math.Abs(clicks); k++) {
+            PostMessage(h, 0x020A, (IntPtr)(step << 16), (IntPtr)((pt.Y << 16) | (pt.X & 0xFFFF)));
+            System.Threading.Thread.Sleep(60);
+        }
+    }
     [DllImport("user32.dll")] static extern uint MapVirtualKey(uint code, uint type);
     public static void Key(IntPtr h, int vk) {     // WM_KEYDOWN / WM_KEYUP with the scan code in lParam bits 16-23
         int sc = (int)MapVirtualKey((uint)vk, 0) << 16;
@@ -168,6 +180,7 @@ function Invoke-Act($hw, $kind, $v) {
         'rclick' { [Bench]::RClick($hw, $v[0], $v[1]) }
         'drag'   { [Bench]::Drag($hw, $v[0], $v[1], $v[2], $v[3]) }
         'key'    { [Bench]::Key($hw, $v[0]); Set-Content (Join-Path $shotDir 'key.req') $v[0] -Encoding ascii }
+        'wheel'  { [Bench]::Wheel($hw, $v[0], $v[1], $v[2]) }
         'wait'   { Start-Sleep -Milliseconds ([int]([double]$v[0] * 1000)) }
     }
 }

@@ -51,7 +51,10 @@ def convert(src, model, pivots, part_bones, src_name='CNTankL', spec=0.45, scale
     for part, bone in part_bones.items():
         p = parts[part]
         verts = [tuple(c * scale for c in v) for v in p['vertices']]
-        geo.append((part, index[bone], (verts, p['normals'], p['uvs'], p['triangles'])))
+        g = (verts, p['normals'], p['uvs'], p['triangles'])
+        if 'tangents' in p:             # frame of the baked normal map (cnv_lighttank.export)
+            g += (p['tangents'], p['binormals'])
+        geo.append((part, index[bone], g))
     diffuse = Image.open(os.path.join(src, src_name + '.png')).convert('RGBA')
     mask = Image.open(os.path.join(src, src_name + '_mask.png')).convert('L').resize(diffuse.size)
     w, h = diffuse.size
@@ -90,7 +93,33 @@ def convert(src, model, pivots, part_bones, src_name='CNTankL', spec=0.45, scale
             return 0, 255, 0, 255
         return int(spec * k * lum(r, g, b)), 0, 255 if mp[x, y] > 127 else 0, 255
     w3x.write_texture(model + '_SPM', w, h, spm)
-    w3x.write_texture(model + '_NRM', 16, 16, lambda x, y: (128, 128, 255, 255))
+    nrm_png = os.path.join(src, src_name + '_nrm.png')
+    if os.path.exists(nrm_png) and all('tangents' in parts[pt] for pt in part_bones):
+        # baked tangent-space normal map (panel seams as grooves). Green as Blender bakes it (+v up): the retail
+        # Guardian NRM has the same convention (curl test on its R / G gradients, +0.22 over 34k texels).
+        # CNV_NRM_FLIP_G=1 flips it for an in-game A/B. Unbaked texels (black) become flat.
+        import numpy as np
+        flip = os.environ.get('CNV_NRM_FLIP_G') == '1'
+
+        def vec(path):
+            return np.asarray(Image.open(path).convert('RGB').resize((w, h)), float) / 127.5 - 1.0
+        n1 = vec(nrm_png)
+        n0_png = os.path.join(src, src_name + '_nrm0.png')
+        n0 = vec(n0_png) if os.path.exists(n0_png) else np.zeros_like(n1) + (0.0, 0.0, 1.0)
+        # seams relative to the unbumped bake (its bevel patches are tangent-frame mismatch, not relief)
+        n = n1 - n0 + (0.0, 0.0, 1.0)
+        n /= np.linalg.norm(n, axis=2, keepdims=True)
+        rgb = np.clip((n + 1.0) * 127.5, 0, 255).astype(np.uint8)
+        rgb[np.asarray(Image.open(nrm_png).convert('L').resize((w, h))) < 10] = (128, 128, 255)   # unbaked texels
+        if flip:
+            rgb[..., 1] = 255 - rgb[..., 1]
+
+        def nrm(x, y):
+            r, g, b = rgb[y, x]
+            return int(r), int(g), int(b), 255
+        w3x.write_texture(model + '_NRM', w, h, nrm)
+    else:
+        w3x.write_texture(model + '_NRM', 16, 16, lambda x, y: (128, 128, 255, 255))
     print(f'{model}: diffuse x{k:.2f} to median {level}')
     w3x.write_model(model, w3x.rig_model(model, piv, geo, (model, model + '_NRM', model + '_SPM')))
     w3x.write_model(model + '_IDLE', w3x.spin_animation(model + '_IDLE', model, 1, frames=1, turns=0.0))

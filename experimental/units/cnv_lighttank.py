@@ -207,6 +207,59 @@ def place(parts):
 
 
 # ------------------------------------------------------------------ texture: UVs, bake colour and team mask
+SEAMS = (('X', 11.0), ('Y', 8.0), ('Z', 5.5))     # panel size along each axis (game units)
+SEAM_DEPTH = 0.3                                  # groove depth for the normal bake (game units)
+
+
+def seam_lines(nt, xyz, geo):
+    """Panel seams: axis-aligned grid lines (every SEAMS units), each axis only on faces it crosses (weighted by
+    1 - |normal component|), so panels read as machined plates, not cracks. Returns a 0..1 socket (1 on a line);
+    the colour bake darkens with it, the normal bake turns it into a groove."""
+    nrm = nt.nodes.new('ShaderNodeSeparateXYZ')
+    nt.links.new(geo.outputs['Normal'], nrm.inputs['Vector'])
+    seam_prev = None
+    for axis, size in SEAMS:
+        fr = nt.nodes.new('ShaderNodeMath')            # distance to the nearest grid line, 0..0.5
+        fr.operation = 'PINGPONG'
+        fr.inputs[1].default_value = 0.5
+        sc_ = nt.nodes.new('ShaderNodeMath')
+        sc_.operation = 'DIVIDE'
+        sc_.inputs[1].default_value = size
+        nt.links.new(xyz.outputs[axis], sc_.inputs[0])
+        nt.links.new(sc_.outputs[0], fr.inputs[0])
+        line = nt.nodes.new('ShaderNodeMapRange')       # 1 on the line, 0 elsewhere
+        line.inputs['From Min'].default_value = 0.02
+        line.inputs['From Max'].default_value = 0.035
+        line.inputs['To Min'].default_value = 1.0
+        line.inputs['To Max'].default_value = 0.0
+        nt.links.new(fr.outputs[0], line.inputs['Value'])
+        an = nt.nodes.new('ShaderNodeMath')
+        an.operation = 'ABSOLUTE'
+        nt.links.new(nrm.outputs[axis], an.inputs[0])
+        # only where the axis lies in the face (|normal component| < 0.2, fading out by 0.45): on faces at a
+        # grazing angle the coordinate changes slowly, the line's soft edge covered whole narrow faces and the
+        # normal bake turned it into solid sloped patches
+        w = nt.nodes.new('ShaderNodeMapRange')
+        w.inputs['From Min'].default_value = 0.2
+        w.inputs['From Max'].default_value = 0.45
+        w.inputs['To Min'].default_value = 1.0
+        w.inputs['To Max'].default_value = 0.0
+        nt.links.new(an.outputs[0], w.inputs['Value'])
+        lw = nt.nodes.new('ShaderNodeMath')
+        lw.operation = 'MULTIPLY'
+        nt.links.new(line.outputs[0], lw.inputs[0])
+        nt.links.new(w.outputs[0], lw.inputs[1])
+        if seam_prev is None:
+            seam_prev = lw.outputs[0]
+        else:
+            mx = nt.nodes.new('ShaderNodeMath')
+            mx.operation = 'MAXIMUM'
+            nt.links.new(seam_prev, mx.inputs[0])
+            nt.links.new(lw.outputs[0], mx.inputs[1])
+            seam_prev = mx.outputs[0]
+    return seam_prev
+
+
 def bake(parts, sc):
     obs = list(parts.values())
     for ob in obs:
@@ -214,6 +267,9 @@ def bake(parts, sc):
     bpy.context.view_layer.objects.active = obs[0]
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.mesh.select_all(action='SELECT')
+    # triangles before UVs and bakes: the NORMAL bake and export()'s tangents must use the same triangles
+    # (calc_tangents refuses n-gons; the game draws triangles anyway)
+    bpy.ops.mesh.quads_convert_to_tris(quad_method='BEAUTY', ngon_method='BEAUTY')
     bpy.ops.uv.smart_project(angle_limit=math.radians(55), island_margin=0.02, scale_to_bounds=True)
     bpy.ops.object.mode_set(mode='OBJECT')
 
@@ -262,6 +318,34 @@ def bake(parts, sc):
             elif kind == 'mask':
                 v = float(m['team'])
                 em.inputs['Color'].default_value = (v, v, v, 1)
+            elif kind == 'seam':                       # the seam pattern itself: where to_w3x keeps normal relief
+                coord = nt.nodes.new('ShaderNodeTexCoord')
+                geo = nt.nodes.new('ShaderNodeNewGeometry')
+                xyz = nt.nodes.new('ShaderNodeSeparateXYZ')
+                nt.links.new(coord.outputs['Object'], xyz.inputs['Vector'])
+                nt.links.new(seam_lines(nt, xyz, geo), em.inputs['Strength'])
+                em.inputs['Color'].default_value = (1, 1, 1, 1)
+            elif kind == 'normal':
+                # the same seams as the colour bake, as grooves: height 1 - line through a Bump node, baked as a
+                # tangent-space normal map (export() writes the matching MikkTSpace tangents)
+                coord = nt.nodes.new('ShaderNodeTexCoord')
+                geo = nt.nodes.new('ShaderNodeNewGeometry')
+                xyz = nt.nodes.new('ShaderNodeSeparateXYZ')
+                nt.links.new(coord.outputs['Object'], xyz.inputs['Vector'])
+                inv = nt.nodes.new('ShaderNodeMath')
+                inv.operation = 'SUBTRACT'
+                inv.inputs[0].default_value = 1.0
+                bump = nt.nodes.new('ShaderNodeBump')
+                bump.inputs['Strength'].default_value = 1.0
+                bump.inputs['Distance'].default_value = SEAM_DEPTH
+                if kind_flat[0]:                       # same Bump, constant height: only its faceting error
+                    bump.inputs['Height'].default_value = 1.0
+                else:
+                    nt.links.new(seam_lines(nt, xyz, geo), inv.inputs[1])
+                    nt.links.new(inv.outputs[0], bump.inputs['Height'])
+                bsdf = nt.nodes.new('ShaderNodeBsdfPrincipled')
+                nt.links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
+                nt.links.new(bsdf.outputs[0], out.inputs[0])
             else:
                 base = nt.nodes.new('ShaderNodeRGB')
                 base.outputs[0].default_value = (*m['color'], 1)
@@ -279,49 +363,11 @@ def bake(parts, sc):
                 mul.inputs['Factor'].default_value = 0.85
                 nt.links.new(base.outputs[0], mul.inputs['A'])
                 nt.links.new(ao.outputs['AO'], mul.inputs['B'])
-                # panel seams: axis-aligned grid lines (every PANEL units), each axis only on faces it crosses
-                # (weighted by 1 - |normal component|), so panels read as machined plates, not cracks
                 coord = nt.nodes.new('ShaderNodeTexCoord')
                 xyz = nt.nodes.new('ShaderNodeSeparateXYZ')
                 nt.links.new(coord.outputs['Object'], xyz.inputs['Vector'])
-                nrm = nt.nodes.new('ShaderNodeSeparateXYZ')
-                nt.links.new(geo.outputs['Normal'], nrm.inputs['Vector'])
-                seam_prev = None
-                for axis, size in (('X', 11.0), ('Y', 8.0), ('Z', 5.5)):
-                    fr = nt.nodes.new('ShaderNodeMath')            # distance to the nearest grid line, 0..0.5
-                    fr.operation = 'PINGPONG'
-                    fr.inputs[1].default_value = 0.5
-                    sc_ = nt.nodes.new('ShaderNodeMath')
-                    sc_.operation = 'DIVIDE'
-                    sc_.inputs[1].default_value = size
-                    nt.links.new(xyz.outputs[axis], sc_.inputs[0])
-                    nt.links.new(sc_.outputs[0], fr.inputs[0])
-                    line = nt.nodes.new('ShaderNodeMapRange')       # 1 on the line, 0 elsewhere
-                    line.inputs['From Min'].default_value = 0.02
-                    line.inputs['From Max'].default_value = 0.035
-                    line.inputs['To Min'].default_value = 1.0
-                    line.inputs['To Max'].default_value = 0.0
-                    nt.links.new(fr.outputs[0], line.inputs['Value'])
-                    an = nt.nodes.new('ShaderNodeMath')
-                    an.operation = 'ABSOLUTE'
-                    nt.links.new(nrm.outputs[axis], an.inputs[0])
-                    w = nt.nodes.new('ShaderNodeMath')
-                    w.operation = 'SUBTRACT'
-                    w.inputs[0].default_value = 1.0
-                    nt.links.new(an.outputs[0], w.inputs[1])
-                    lw = nt.nodes.new('ShaderNodeMath')
-                    lw.operation = 'MULTIPLY'
-                    nt.links.new(line.outputs[0], lw.inputs[0])
-                    nt.links.new(w.outputs[0], lw.inputs[1])
-                    if seam_prev is None:
-                        seam_prev = lw.outputs[0]
-                    else:
-                        mx = nt.nodes.new('ShaderNodeMath')
-                        mx.operation = 'MAXIMUM'
-                        nt.links.new(seam_prev, mx.inputs[0])
-                        nt.links.new(lw.outputs[0], mx.inputs[1])
-                        seam_prev = mx.outputs[0]
-                seam = nt.nodes.new('ShaderNodeMapRange')            # line -> darken to 0.45
+                seam_prev = seam_lines(nt, xyz, geo)
+                seam = nt.nodes.new('ShaderNodeMapRange')            # line -> darken to 0.6
                 seam.inputs['To Min'].default_value = 1.0
                 seam.inputs['To Max'].default_value = 0.6
                 nt.links.new(seam_prev, seam.inputs['Value'])
@@ -359,10 +405,25 @@ def bake(parts, sc):
             img = nt.nodes.new('ShaderNodeTexImage')
             img.image = target
             nt.nodes.active = img
+    # two normal bakes: the seams, and the same Bump node on a constant height. Cycles' Bump works from surface
+    # derivatives, so on smooth-shaded bevels and cylinders it returns each triangle's facet normal (solid triangles
+    # in the bake, ~5 % of texels) -- the constant-height bake holds exactly that error, and the seams alone are
+    # (seams - constant) around flat; to_w3x combines them, relative to the normals export() writes
+    normal_img = bpy.data.images.new('CNTankL_nrm', TEX, TEX)
+    flat_img = bpy.data.images.new('CNTankL_nrm0', TEX, TEX)
+    seam_img = bpy.data.images.new('CNTankL_seam', TEX, TEX)
+    for im in (normal_img, flat_img, seam_img):
+        im.colorspace_settings.name = 'Non-Color'
+    kind_flat = [False]
     sc.cycles.samples = 32
-    for target, kind in ((color_img, 'color'), (mask_img, 'mask')):
+    for target, kind in ((color_img, 'color'), (mask_img, 'mask'), (normal_img, 'normal'), (flat_img, 'normal'),
+                         (seam_img, 'seam')):
+        kind_flat[0] = target is flat_img
         setup(target, kind)
-        bpy.ops.object.bake(type='EMIT', margin=4)
+        if kind == 'normal':
+            bpy.ops.object.bake(type='NORMAL', normal_space='TANGENT', margin=4)
+        else:
+            bpy.ops.object.bake(type='EMIT', margin=4)
         target.filepath_raw = os.path.join(OUT, target.name + '.png')
         target.file_format = 'PNG'
         target.save()
@@ -447,8 +508,12 @@ def export(parts):
         # per-corner normals as Blender shades them (bevel's hardened normals); MeshLoop.normal is not filled in
         # Blender 4.1+ and came out zero / vertex-averaged (black and blotchy faces in game, CampNew23 run 2)
         corner = [c.vector.copy() for c in me.corner_normals]
+        # MikkTSpace tangents, the basis the NORMAL bake used: the game must light the baked normal map in the same
+        # frame (binormal = sign * normal x tangent, along Blender's +v)
+        me.calc_tangents()
         origin = ob.location.copy()
         verts, normals, uvs, tris, index = [], [], [], [], {}
+        tangents, binormals = [], []
         for lt in me.loop_triangles:
             tri = []
             for li in lt.loops:
@@ -456,17 +521,24 @@ def export(parts):
                 co = me.vertices[loop.vertex_index].co
                 n = corner[li] if corner[li].length > 1e-6 else lt.normal       # degenerate corners
                 u = uv[li].uv
-                key = (tuple(round(c, 4) for c in co), tuple(round(c, 3) for c in n), (round(u[0], 4), round(u[1], 4)))
+                t = loop.tangent.copy()
+                b = loop.bitangent_sign * n.cross(t)
+                key = (tuple(round(c, 4) for c in co), tuple(round(c, 3) for c in n), (round(u[0], 4), round(u[1], 4)),
+                       tuple(round(c, 3) for c in t), round(loop.bitangent_sign))
                 if key not in index:
                     index[key] = len(verts)
                     verts.append(tuple(co))
                     normals.append(tuple(n))
+                    tangents.append(tuple(t))
+                    binormals.append(tuple(b))
                     # Blender's v as is: with 1 - v most faces sampled the unbaked background in game
                     # (CNV_UV_DEBUG magenta run) -- the textures w3x.tga writes end up read bottom-up
                     uvs.append((u[0], u[1]))
                 tri.append(index[key])
             tris.append(tri)
-        out[name] = dict(origin=tuple(origin), vertices=verts, normals=normals, uvs=uvs, triangles=tris)
+        me.free_tangents()
+        out[name] = dict(origin=tuple(origin), vertices=verts, normals=normals, uvs=uvs, triangles=tris,
+                         tangents=tangents, binormals=binormals)
     out['_pivots'] = dict(turret=tuple(TURRET_AT), pitch=tuple(PITCH_AT))
     with open(os.path.join(OUT, 'parts.json'), 'w', encoding='utf-8') as f:
         json.dump(out, f)
