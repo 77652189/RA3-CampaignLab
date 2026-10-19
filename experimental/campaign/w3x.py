@@ -216,11 +216,24 @@ def rig_model(name, pivots, parts, textures):
         verts, normals, uvs, tris = geo[:4]
         tb = dict(tangents=geo[4], binormals=geo[5]) if len(geo) >= 6 else {}
         out += _mesh_xml(f'{up}.{mesh.upper()}', verts, normals, uvs, tris, textures, **tb)
+    # a click selects a unit through its model's W3DCollisionBox sub-objects (retail AUGunship_SKN: five OBBOXnn on
+    # bone 1); without one, our units were box-selectable only (CampNew30 bench). One box around every part, in
+    # ROOTTRANSFORM space (rigid pivots: translations only)
+    at = [(0.0, 0.0, 0.0)]
+    for _, parent, t in pivots:
+        at.append(tuple(a + b for a, b in zip(at[parent], t)))
+    pts = [tuple(c + o for c, o in zip(v, at[bone])) for _, bone, geo in parts for v in geo[0]]
+    lo, hi = [min(p[i] for p in pts) for i in range(3)], [max(p[i] for p in pts) for i in range(3)]
+    c, e = [(a + b) / 2 for a, b in zip(lo, hi)], [(b - a) / 2 for a, b in zip(lo, hi)]
+    out += [f'\t<W3DCollisionBox id="{up}.OBBOX01">', f'\t\t<Center X="{_f(c[0])}" Y="{_f(c[1])}" Z="{_f(c[2])}"/>',
+            f'\t\t<Extent X="{_f(e[0])}" Y="{_f(e[1])}" Z="{_f(e[2])}"/>', '\t</W3DCollisionBox>']
     out.append(f'\t<W3DContainer id="{up}" Hierarchy="{up}_SKL">')
     for mesh, bone, _ in parts:
         out += [f'\t\t<SubObject SubObjectID="{mesh.upper()}" BoneIndex="{bone}">',
                 f'\t\t\t<RenderObject><Mesh>{up}.{mesh.upper()}</Mesh></RenderObject>', '\t\t</SubObject>']
-    out += ['\t</W3DContainer>', '</AssetDeclaration>']
+    out += ['\t\t<SubObject SubObjectID="OBBOX01" BoneIndex="0">',
+            f'\t\t\t<RenderObject><CollisionBox>{up}.OBBOX01</CollisionBox></RenderObject>', '\t\t</SubObject>',
+            '\t</W3DContainer>', '</AssetDeclaration>']
     return '\n'.join(out) + '\n'
 
 
