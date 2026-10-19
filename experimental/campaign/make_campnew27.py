@@ -129,6 +129,7 @@ EVADE_UI = f'''	<ButtonSingleStateData id="ButtonState_{EVADE}On">
 		<Data>
 			<ToggleSpecialPower>
 				<StateData>ButtonState_{EVADE}On</StateData>
+				<StateData>ButtonState_CNV_RamOn</StateData>
 				<StateData>ButtonState_{EVADE}Off</StateData>
 			</ToggleSpecialPower>
 		</Data>
@@ -159,8 +160,8 @@ c4.c3.STRINGS.update({
     f'NAME:{EVADE}On': '规避近战：开启',
     f'DESC:{EVADE}On': '切换为远射模式：主炮射程提升到 250，移速和视野提高。在铁锤等近战坦克够不着的距离开火，'
                        '靠机动拉开距离。',
-    f'NAME:{EVADE}Off': '规避近战：关闭',
-    f'DESC:{EVADE}Off': '恢复常规射程与速度。',
+    f'NAME:{EVADE}Off': '恢复常规模式',
+    f'DESC:{EVADE}Off': '恢复常规火炮射程与速度。',
 })
 c7.EXTRA_OWN += [b'LogicCommand:Command_CNV_ToggleEvadeMelee', b'UnitAbilityButtonTemplate:Button_' + EVADE.encode(),
                  b'ButtonSingleStateData:ButtonState_' + EVADE.encode(), b'AttributeModifier:AttributeModifier_' +
@@ -168,11 +169,39 @@ c7.EXTRA_OWN += [b'LogicCommand:Command_CNV_ToggleEvadeMelee', b'UnitAbilityButt
                  b'WeaponTemplate:' + KITE.encode()]
 c7.EXTRA_ALL.append('DATA:CNVUnits/Data/' + EVADE_UI_FILE)
 
+# 冲撞模式 (ram), the third state of the same toggle (RA3's selection panel shows one ability per unit: a second
+# toggle command never got a button, CampNew29 bench): normal -> 规避近战 -> 冲撞 -> normal. Guns off (both cannons forbidden under TRANSFORMATION_TOGGLE_STATE, a free status bit --
+# SWITCHED_WEAPONS is 规避近战, GENERIC_TOGGLE_STATE would wake the dormant painter weapon) and SPEED 140%. With no
+# usable weapon, an attack order on a crushable target (a vehicle shrunk by the shrink ray / Cryocopter: CrushableLevel
+# 1 under SHRINK_EFFECT) becomes a crush attack (CrusherInfo UseCrushAttack, default true): 游隼 drives into it.
+# Without the mode, a shrunk target (200 % damage taken) was shot dead before 游隼 got there (CampNew29 bench).
+RAM = 'CNV_Ram'
+RAM_DECL = f'''	<AttributeModifier id="AttributeModifier_{RAM}" Category="NONE">
+		<Modifier Type="SPEED" Value="140%"/>
+	</AttributeModifier>
+'''
+RAM_UI = f'''	<ButtonSingleStateData id="ButtonState_{RAM}On">
+		<State Image="AUA_Dolphin_Jump" Title="NAME:{RAM}On" Description="DESC:{RAM}On" />
+	</ButtonSingleStateData>
+'''
+RAM_STATE = f'''				<ToggleState
+					ObjectStatus="TRANSFORMATION_TOGGLE_STATE"
+					AttributeModifier="AttributeModifier_{RAM}">
+					<SkirmishAiInfo ToggleHint="TOGGLE_DEFAULT"/>
+				</ToggleState>
+'''
+c4.c3.STRINGS.update({
+    f'NAME:{RAM}On': '冲撞模式',
+    f'DESC:{RAM}On': '停火并加速冲刺，专门碾压被缩小的敌方载具（对其下达攻击命令即冲上去碾压）。',
+})
+c7.EXTRA_OWN += [b'ButtonSingleStateData:ButtonState_' + RAM.encode(),
+                 b'AttributeModifier:AttributeModifier_' + RAM.encode()]
+
 
 def write_evade_ui():
     with open(os.path.join(c26.DATA, EVADE_UI_FILE), 'w', encoding='utf-8', newline='\r\n') as f:
         f.write('<?xml version="1.0" encoding="UTF-8"?>\n<AssetDeclaration xmlns="uri:ea.com:eala:asset" '
-                'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">\n' + EVADE_UI + '</AssetDeclaration>\n')
+                'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">\n' + EVADE_UI + RAM_UI + '</AssetDeclaration>\n')
 
 
 def kite_weapon():
@@ -211,11 +240,16 @@ def patch_unit():
     # 规避近战: cannon only outside the toggle, the kite cannon inside it; the toggle modules before the painter's
     x, n = re.subn(r'(<Weapon\s+Ordering="PRIMARY_WEAPON"\s+Template="' + CANNON + r'")\s+'
                    r'ForbiddenObjectStatus="GENERIC_TOGGLE_STATE"\s*/>',
-                   r'\1 ForbiddenObjectStatus="SWITCHED_WEAPONS"/>\n\t\t\t\t\t<Weapon Ordering="PRIMARY_WEAPON" '
-                   f'Template="{KITE}" ObjectStatus="SWITCHED_WEAPONS"/>', x, count=1)
+                   r'\1 ForbiddenObjectStatus="SWITCHED_WEAPONS TRANSFORMATION_TOGGLE_STATE"/>\n'
+                   r'\t\t\t\t\t<Weapon Ordering="PRIMARY_WEAPON" '
+                   f'Template="{KITE}" ObjectStatus="SWITCHED_WEAPONS" '
+                   'ForbiddenObjectStatus="TRANSFORMATION_TOGGLE_STATE"/>', x, count=1)
     assert n == 1
-    x = sub1(x, '\t\t\t<!-- the target painter trigger -->', EVADE_MODULES)
-    x = sub1(x, '</AssetDeclaration>', WEAPONS + kite_weapon() + EVADE_DECL + '</AssetDeclaration>')
+    x = sub1(x, '\t\t\t<!-- the target painter trigger -->',
+             EVADE_MODULES.replace('\t\t\t</ToggleStatusSpecialAbilityUpdate>', RAM_STATE +
+                                   '\t\t\t</ToggleStatusSpecialAbilityUpdate>', 1))
+    assert 'AttributeModifier_' + RAM in x
+    x = sub1(x, '</AssetDeclaration>', WEAPONS + kite_weapon() + EVADE_DECL + RAM_DECL + '</AssetDeclaration>')
     with open(path, 'w', encoding='utf-8', newline='\r\n') as f:
         f.write(x.replace('\r\n', '\n'))
     write_evade_ui()
