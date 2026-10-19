@@ -2,12 +2,13 @@
 
 ## 当前目标
 
-测试台提速已完成（按画面导航 + 坐标标定），下一片待用户选：游隼协同演示、游隼外观细节或第二个新单位。
+测试台提速和镜头移动已完成，小关卡 CNV03 完整版能在测试台上自动打完；下一片待用户选（见 docs/plan.md）。
 
 ## 下一步
 
-1. 新测试一律用 `run_bench.ps1 -Nav`：时间从进入关卡算起，点击位置用 `experimental/testbench/calib.py` 的 `world_to_screen` 从世界坐标算（标定只对从 CampNew18 岛派生、开局镜头相同的地图有效；换了开局镜头要重新标定：`CNV_CALIB=base/grid` 各编一次、各跑一次，再 `calib.py fit`）。
-2. 待办与门控见 [docs/plan.md](docs/plan.md)「待启动 / 进行中」。
+1. 新测试一律用 `run_bench.ps1 -Nav`：时间从进入关卡算起，点击位置用 `experimental/testbench/calib.py` 的 `world_to_screen` 从世界坐标算（标定只对从 CampNew18 岛派生、开局镜头相同的地图有效；换了开局镜头要重新标定：`CNV_CALIB=base/grid` 各编一次、各跑一次，再 `calib.py fit`）。要看镜头外的地方：左键点 `calib.world_to_minimap(x, y)` 移镜头，再用 `calib.world_to_screen_at(x, y, 镜头中心)` 算点击位置；要打人就右键点敌人本身，右键点小地图只是移动。
+2. Bash 工具有 PreToolUse hook（`.claude/hooks/guard_inline_edits.py`）：拦下带反斜杠的 heredoc / `python -c` 写文件、带反斜杠的 `sed -i`、双引号 `python -c` 里的反引号。被拦就改用 Edit / Write，或把脚本写成 .py 文件再跑。只有在本仓库目录里打开的会话才会加载它。
+3. 待办与门控见 [docs/plan.md](docs/plan.md)「待启动 / 进行中」。
 
 ## 必读
 

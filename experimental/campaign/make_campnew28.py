@@ -36,6 +36,9 @@ HAMMERS = [(A[0] + dx, A[1] + int(os.environ.get('CNV_HAMMER_DIST', 460))) for d
 # the two frames' difference gives each grid point's place on screen
 CALIB = os.environ.get('CNV_CALIB')
 CALIB_GRID = [(A[0] + dx, A[1] + dy) for dy in (-150, 0, 150, 300, 450) for dx in (-300, -150, 0, 150, 300)]
+# CNV_CALIB=minimap: four of our Guardians far apart on the island (testbench/calib.py minimap fit reads their blue
+# dots off the minimap; enemy Hammers in the fog were not drawn); our tanks and the Cryocopter left out
+MINIMAP_MARKS = [(1700.0, 1500.0), (3500.0, 1700.0), (3300.0, 3500.0), (1600.0, 3300.0)]
 
 
 def generate(m):
@@ -53,7 +56,7 @@ def generate(m):
         hammers = hammers[1:2]
     cryo = [] if os.environ.get('CNV_NO_CRYO') == '1' or CALIB else [CRYO]
     tanks = [] if CALIB else [A, SECOND]
-    markers = CALIB_GRID if CALIB == 'grid' else []
+    markers = CALIB_GRID if CALIB == 'grid' else MINIMAP_MARKS if CALIB == 'minimap' else []
     for src, template, (x, y), angle in ([(p1, c26.UNIT, at, math.pi / 2) for at in tanks] +
                                          [(p1, 'AlliedAntiVehicleVehicleTech1', at, 0.0) for at in markers] +
                                          [(p1, 'AlliedSupportAircraft', at, 0.0) for at in cryo]

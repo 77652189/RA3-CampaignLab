@@ -107,6 +107,38 @@ def _H():
         return np.asarray(json.load(f)['H'])
 
 
+# minimap (1280x720 bench, maps built on CampNew18's island): our four Guardians at MINIMAP_MARKS of
+# make_campnew28 (CNV_CALIB=minimap) read off the minimap as 3x3 blue squares (enemy units in the fog are not drawn).
+# Clicking a minimap point centres the camera there (bench: the yellow view box jumps to the click; arrow keys
+# barely moved it).
+MINIMAP_POINTS = [((1700.0, 1500.0), (1145.0, 141.0)), ((3500.0, 1700.0), (1211.0, 134.0)),
+                  ((3300.0, 3500.0), (1204.0, 68.0)), ((1600.0, 3300.0), (1141.0, 75.0))]
+
+
+def _minimap_affine():
+    A = np.array([[x, y, 1.0] for (x, y), _ in MINIMAP_POINTS])
+    B = np.array([s for _, s in MINIMAP_POINTS])
+    M, *_ = np.linalg.lstsq(A, B, rcond=None)
+    return M                                          # 3 x 2: [x y 1] @ M = (u, v)
+
+
+def world_to_minimap(x, y):
+    u, v = np.array([x, y, 1.0]) @ _minimap_affine()
+    return round(float(u)), round(float(v))
+
+
+# what the start camera looks at, in minimap-click terms: not the InitialCameraPosition waypoint (1250, 2500) --
+# with that the three Hammers of CampNew30's second group landed (+71, +35) px off after a minimap click; solved
+# from them (1293.8..1297.7, 2462.7..2469.1)
+START_VIEW = (1296.0, 2466.0)
+
+
+def world_to_screen_at(x, y, view):
+    """Screen point of world (x, y) once a minimap click at world_to_minimap(*view) has moved the camera there
+    (same zoom and angle, so the start camera's mapping shifted by view - START_VIEW)."""
+    return world_to_screen(x - view[0] + START_VIEW[0], y - view[1] + START_VIEW[1])
+
+
 def world_to_screen(x, y):
     u, v = _apply(_H(), x, y)
     return round(u), round(v)
