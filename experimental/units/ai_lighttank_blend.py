@@ -36,6 +36,7 @@ VOXEL = float(OPT.get('voxel', 0.25))              # remesh size: closes the AI 
 SMOOTH = int(OPT.get('smooth', 3))
 TURRET = float(OPT.get('turret', 0.62))            # cut height as a fraction of the hull-and-turret height
 SHARP = math.radians(float(OPT.get('sharp', 32)))
+TURRET_W = float(OPT.get('turret_w', 0.8))         # turret faces lie within this fraction of the half width
 
 
 ALIGN = [Matrix.Identity(4)]                     # every transform load() puts on the mesh, for high=
@@ -147,7 +148,7 @@ def split(ob, mats):
     bm.from_mesh(me)
     bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], plane_co=(0, 0, cut),
                            plane_no=(0, 0, 1))
-    up = [f.calc_center_median().z > cut and abs(f.calc_center_median().y) < 0.8 * half for f in bm.faces]
+    up = [f.calc_center_median().z > cut and abs(f.calc_center_median().y) < TURRET_W * half for f in bm.faces]
     turret = bm.copy()                              # same face order as bm
     bmesh.ops.delete(turret, geom=[f for f, u in zip(turret.faces, up) if not u], context='FACES')
     bmesh.ops.delete(bm, geom=[f for f, u in zip(bm.faces, up) if u], context='FACES')
@@ -156,19 +157,31 @@ def split(ob, mats):
         bmesh.ops.remove_doubles(b, verts=b.verts[:], dist=1e-4)
         edges = [e for e in b.edges if e.is_boundary]
         if edges:
-            caps = bmesh.ops.holes_fill(b, edges=edges, sides=0)['faces']
             uv = b.loops.layers.uv.active
-            if uv is not None:      # a source atlas (keep=1): caps sit inside the turret ring, a zero-area UV
-                for f in caps:      # keeps them from overwriting real islands in every bake
+            # a source atlas (keep=1): caps get a zero-area UV on one texel of an upward face, so they never
+            # overwrite real islands in a bake and show deck colour (a texel no island covers came out as a black
+            # hole under the turret once it turned, CampTripo1 2026-10-20)
+            deck = None
+            if uv is not None:
+                top = max((f for f in b.faces if f.normal.z > 0.8), key=lambda f: f.calc_area(), default=None)
+                deck = tuple(top.loops[0][uv].uv) if top else (0.999, 0.999)
+            caps = bmesh.ops.holes_fill(b, edges=edges, sides=0)['faces']
+            if deck is not None:
+                for f in caps:
                     for lp in f.loops:
-                        lp[uv].uv = (0.999, 0.999)
+                        lp[uv].uv = deck
         bmesh.ops.triangulate(b, faces=b.faces[:])
         bmesh.ops.recalc_face_normals(b, faces=b.faces[:])
         parts[name] = base.obj_from_bm(name, b, mats)
     bpy.data.objects.remove(ob)
-    # turret ring at the turret's footprint centre on the cut plane; mesh data relative to it
-    tv = [v.co for v in parts['TURRET'].data.vertices]
-    ring = Vector((0.5 * (min(v.x for v in tv) + max(v.x for v in tv)), 0.0, cut))
+    # turret ring at the centre of the turret's base (its lowest third, 5-95 % in x): the whole turret's x range
+    # holds the barrel and put the ring ahead of the body, so the turret swung round a point in front of it
+    # (CampTripo1 bench, 2026-10-20). Copies: v.co follows the transform below (the pitch height read the
+    # already-moved tip and came out 10 below the ring: muzzle flashes under the hull)
+    tv = [v.co.copy() for v in parts['TURRET'].data.vertices]
+    z0, z1 = min(v.z for v in tv), max(v.z for v in tv)
+    low = sorted(v.x for v in tv if v.z < z0 + 0.35 * (z1 - z0))
+    ring = Vector((0.5 * (low[int(0.05 * len(low))] + low[int(0.95 * len(low))]), 0.0, cut))
     # muzzle: the most forward turret vertex; pitch pivot where the barrel leaves the turret body
     tip = max(tv, key=lambda v: v.x)
     body = sorted(v.x for v in tv)[int(0.8 * len(tv))]            # 80th percentile x: front of the turret body

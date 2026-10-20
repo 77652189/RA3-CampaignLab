@@ -35,6 +35,8 @@ c24.AI_RETAIL_MAPS = True
 c23.TANK_AT = (1222.0, 2470.0)
 c24.AI_AT = (1222.0, 2425.0)
 c23.ENEMY_AT = (c23.TANK_AT[0] + 1500, c23.TANK_AT[1])
+if os.environ.get('CNV_TRIPO_TARGET') == '1':   # a Hammer in range to the north-east: the tanks fire and swing
+    c23.ENEMY_AT = (c24.AI_AT[0] + 220, c24.AI_AT[1] + 160)     # their turrets (muzzle flash / turret pivot check)
 _gen = c24.c6.edit
 
 
