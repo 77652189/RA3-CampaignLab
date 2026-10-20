@@ -25,7 +25,10 @@ from PIL import Image                           # noqa: E402
 # kind: (size, retail name prefix, suffix, inset of the inner area, fill, contrast, agreement for a clean pixel)
 # (portraits: the unit fills nearly the whole plate, so a quarter of them agreeing already marks background)
 KINDS = {'button': ((106, 106), b'packedtextureimage:button_', b'_on', 7, 1.18, 1.12, 0.5),
-         'portrait': ((101, 76), b'packedtextureimage:portrait_allied', b'', 4, 0.9, 1.12, 0.25)}  # Allied plates only
+         'portrait': ((101, 76), b'packedtextureimage:portrait_allied', b'', 4, 0.9, 1.12, 0.25),  # Allied plates only
+         # Empire plates (鸣神, make_campnew32): the selection panel showed the Imperial Warrior on an orange plate
+         'button_japan': ((106, 106), b'packedtextureimage:button_japan', b'', 7, 1.18, 1.12, 0.5),   # no _on
+         'portrait_japan': ((101, 76), b'packedtextureimage:portrait_japan', b'', 4, 0.9, 1.12, 0.25)}
 STATIC = [('StaticStream.big', 'data\\static.')] + [(f'Core{v}.big', f'data\\static.{v}.') for v in (5, 6, 8, 9, 10, 11, 12)]
 
 

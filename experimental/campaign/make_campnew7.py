@@ -37,6 +37,7 @@ OWN_ATLAS = os.environ.get('CNV_OWN_ATLAS') == '1'     # compile the terrain atl
 # the GameMap never reaches them (make_campnew26: production button, build command, factory command set)
 EXTRA_OWN = []
 EXTRA_ALL = []                  # our XML files nothing references, included type="all" (make_campnew27 button UI)
+OVERRIDE = []                   # retail GameObject ids we recompile with changes (make_campnew33: 复仇 death module)
 
 
 def compile_map(m):
@@ -88,6 +89,14 @@ def map_files():
         extra = [v for v in new.values() if v.name.startswith(tuple(EXTRA_OWN))]
         own += extra
         print('  linked by name:', sorted(v.name.decode() for v in extra))
+    if OVERRIDE:        # retail GameObjects we recompiled (EXTRA_TEMPLATES under the retail id): ours, linked always
+        ov = {(e[0], e[1]): mapxml.Inst(list(e), c, mapxml.sa.refs(bB, e), mapxml.sa.cstr(bB[2], e[6]),
+                                        mapxml.sa.cstr(bB[3], e[7]), 'sdk')
+              for e, c in zip(bE, bC) if mapxml.sa.cstr(bB[2], e[6]) in {b'GameObject:' + n.encode() for n in OVERRIDE}}
+        assert len(ov) == len(OVERRIDE), ('BAB did not build every override', len(ov), OVERRIDE)
+        library.update(ov)
+        own = [x for x in own if (x.entry[0], x.entry[1]) not in ov] + list(ov.values())
+        print('  retail GameObjects overridden:', sorted(v.name.decode() for v in ov.values()))
     if SDK_OBJECTS:     # test: BAB's own GameObjects (SDK layout) in place of the retail 1.12 ones
         sdk = {(e[0], e[1]): mapxml.Inst(list(e), c, mapxml.sa.refs(bB, e), mapxml.sa.cstr(bB[2], e[6]),
                                          mapxml.sa.cstr(bB[3], e[7]), 'sdk')

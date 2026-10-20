@@ -60,6 +60,12 @@ LEVEL = 60
 for t in (c31.SIGNAL, c31.NARUKAMI):
     c7.EXTRA_TEMPLATES.pop(t, None)
 c7.EXTRA_TEMPLATES[UNIT] = {'file': f'DATA:CNVUnits/Data/{UNIT}.xml', 'EditorSorting': 'UNIT'}
+# producible: button / portrait on the Empire's orange plates (button_icon.py button_japan / portrait_japan), built
+# from CNV_JWarFactory (a copy of the Empire war factory)
+BUTTON, PORTRAIT, JFACTORY = f'Button_{UNIT}', f'Portrait_{UNIT}', 'CNV_JWarFactory'
+c7.EXTRA_TEMPLATES[JFACTORY] = {'file': f'DATA:CNVUnits/Data/{JFACTORY}.xml', 'EditorSorting': 'STRUCTURE'}
+c7.EXTRA_OWN += [b'LogicCommand:Command_Construct' + UNIT.encode(), b'LogicCommandSet:' + JFACTORY.encode()] + \
+    [p + n.encode() for n in (BUTTON, PORTRAIT) for p in (b'PackedTextureImage:', b'Texture:')]
 EMPIRE = c31.EMPIRE.replace(f'<IncludeThing>{c31.NARUKAMI}</IncludeThing>', f'<IncludeThing>{UNIT}</IncludeThing>')
 DECL = c31.DECL.replace(c31.EMPIRE, EMPIRE).replace(f'Radius="{c31.PULSE_RADIUS}"', f'Radius="{PULSE_RADIUS}"')
 AURA = c31.AURA.replace(c31.EMPIRE, EMPIRE).replace(f'Range="{c31.AURA_RANGE}"', f'Range="{AURA_RANGE}"').replace(
@@ -128,7 +134,17 @@ def unit_xml():
     x = sub1(x, '<!-- Damage States -->', signal_states().lstrip() + '\t\t\t\t<!-- Damage States -->')
     x = sub1(x, '\t\t\t<!-- the target painter trigger -->',
              TOGGLE + c31.DEATH + AURA + '\t\t\t<!-- the target painter trigger -->')
-    x = sub1(x, '</AssetDeclaration>', NARUKAMI_DECL + '</AssetDeclaration>')
+    x = sub1(x, 'ButtonImage="Button_AlliedAntiVehicleVehicleTech1_on"', f'ButtonImage="{BUTTON}"')
+    x = sub1(x, 'SelectPortrait="Portrait_AlliedAntiVehicleVehicleTech1"', f'SelectPortrait="{PORTRAIT}"')
+    c26.ART, saved = SRC[FAST], c26.ART               # button_icon.py compose button_japan / portrait_japan
+    try:
+        images = c26.image_assets(BUTTON) + c26.image_assets(PORTRAIT)
+    finally:
+        c26.ART = saved
+    build = (f'\t<LogicCommand Type="UNIT_BUILD" id="Command_Construct{UNIT}">\n\t\t<Object>{UNIT}</Object>\n'
+             '\t</LogicCommand>\n')
+    # the 复仇 modifiers and pulse weapon live here, once (the death module on other units refers to them)
+    x = sub1(x, '</AssetDeclaration>', NARUKAMI_DECL + DECL + images + build + '</AssetDeclaration>')
     with open(path, 'w', encoding='utf-8', newline='\r\n') as f:
         f.write(x.replace('\r\n', '\n'))
     with open(os.path.join(c26.DATA, c31.NARUKAMI_UI_FILE), 'w', encoding='utf-8', newline='\r\n') as f:
@@ -137,6 +153,43 @@ def unit_xml():
     for model in (FAST, SIGNAL):
         print('model', model, to_w3x.convert(SRC[model], model, pivots(model), c23.PARTS, scale=SCALE, level=LEVEL, grade=False,
                                              retail_maps=True, **c24.AI_TONE), 'triangles')
+
+
+def override_units():
+    """Every retail Empire unit with the 复仇 death module, under its retail id (make_campnew7.OVERRIDE): the
+    unit's SDK file with the module added at the end of that GameObject's Behaviors."""
+    for t in OVERRIDE:
+        name = next(n for n in os.listdir(c31.SAGE) if f'id="{t}"' in
+                    open(os.path.join(c31.SAGE, n), encoding='utf-8', errors='replace').read())
+        x = open(os.path.join(c31.SAGE, name), encoding='utf-8', errors='replace').read()
+        start = c31.re.search(r'<GameObject\b[^>]*?\bid="' + t + '"', x).start()
+        end = x.index('</Behaviors>', start)
+        x = x[:end] + c31.DEATH.lstrip() + '\t\t' + x[end:]
+        with open(os.path.join(c26.DATA, t + '.xml'), 'w', encoding='utf-8', newline='\r\n') as f:
+            f.write(x.replace('\r\n', '\n'))
+
+
+def jfactory_xml():
+    """CNV_JWarFactory: the retail Empire war factory with 鸣神 after the Tsunami in both command sets (the
+    tech-2 upgrade swaps the set: ours too)."""
+    src = open(os.path.join(c2.SDK, 'SageXML', 'Japan', 'Structures', 'JapanWarFactory.xml'), encoding='utf-8').read()
+    x = c31.sub1(src, 'id="JapanWarFactory"', f'id="{JFACTORY}"')
+    x = c31.sub1(x, 'EditorName="JapanWarFactory"', f'EditorName="{JFACTORY}"')
+    x = c31.sub1(x, 'CommandSet="JapanWarFactoryCommandSet"', f'CommandSet="{JFACTORY}CommandSet"')
+    x = c31.sub1(x, 'CommandSet="JapanWarFactoryCommandSetTech2"', f'CommandSet="{JFACTORY}CommandSetTech2"')
+    sets = open(os.path.join(c2.SDK, 'SageXML', 'GlobalData', 'LogicCommandSet.xml'), encoding='utf-8').read()
+    body = c31.re.search(r'id="JapanWarFactoryCommandSetBase">(.*?)</LogicCommandSet>', sets, c31.re.S).group(1)
+    cmds = c31.re.findall(r'<Cmd>([^<]+)</Cmd>', body)
+    cmds.insert(cmds.index('Command_ConstructJapanAntiVehicleVehicleTech1') + 1, f'Command_Construct{UNIT}')
+    decl = ''
+    for suffix, extra in (('', 'Command_PurchaseJapanWarFactoryTech2'), ('Tech2', 'Command_PurchaseJapanWarFactoryTech3')):
+        decl += (f'\t<LogicCommandSet id="{JFACTORY}CommandSet{suffix}">\n' +
+                 ''.join(f'\t\t<Cmd>{c}</Cmd>\n' for c in cmds + [extra]) + '\t</LogicCommandSet>\n')
+    x = c31.sub1(x, '</AssetDeclaration>', decl + '</AssetDeclaration>')
+    x = x.replace('<Includes>', f'<Includes>\n\t\t<Include type="all" source="DATA:CNVUnits/Data/{UNIT}.xml" />', 1)
+    with open(os.path.join(c26.DATA, JFACTORY + '.xml'), 'w', encoding='utf-8', newline='\r\n') as f:
+        f.write(x.replace('\r\n', '\n'))
+    print('Empire factory commands:', cmds)
 
 
 A = c28.A
@@ -149,17 +202,31 @@ HAMMERS = [(A[0] + dx, A[1] + 460) for dx in (-60, 0, 60)]
 LINEUP = ['JapanAntiInfantryVehicle', 'JapanAntiAirVehicleTech1', 'JapanAntiVehicleVehicleTech3',
           'JapanAntiVehicleVehicleTech1', UNIT, UNIT] if os.environ.get('CNV_LINEUP') == '1' else []
 LINEUP_X0, LINEUP_Y = 1100.0, 2500.0
+# every retail Empire unit gets the 复仇 death module (make_campnew7.OVERRIDE: our recompiled GameObject under the
+# retail id in the map stream; bench: retail Imperial Warriors dying in the zone gave 复仇) and the scene uses
+# retail warriors; CNV_OVERRIDE=0: our warrior copies instead (CampNew31's way)
+OVERRIDE = [] if os.environ.get('CNV_OVERRIDE') == '0' else \
+    [t for t in c31.empire_units() if t not in (c31.WARRIOR, c31.SIGNAL, c31.NARUKAMI)]
+WARRIOR = 'JapanAntiInfantryInfantry' if OVERRIDE else c31.WARRIOR
+for t in OVERRIDE:               # included type="all": map_xml leaves out templates the static stream already has
+    c7.EXTRA_ALL.append(f'DATA:CNVUnits/Data/{t}.xml')
+c7.OVERRIDE += OVERRIDE
 
 
 def generate(m):
     unit_xml()
-    c31.copy_unit('JapanAntiInfantryInfantry', c31.WARRIOR, c31.DEATH, DECL)
+    jfactory_xml()
+    if OVERRIDE:
+        override_units()
+    else:
+        c31.copy_unit('JapanAntiInfantryInfantry', WARRIOR, c31.DEATH)
     c31._generate(m)                             # CampNew29's scene: factory, power plant, our tanks, Hammers
     objs = next(n for _, n in m.walk() if n.name == 'ObjectsList')
     head = lambda k: k.head[:60]                 # noqa: E731
     p1 = next(k for k in objs.kids if b'CNV_LightTank2' in head(k))
     s1 = next(k for k in objs.kids if b'SovietAntiVehicleVehicleTech1' in head(k))
-    units = (b'CNV_LightTank2', b'CNV_ShrinkVehicle', b'AlliedSupportAircraft', b'SovietAntiVehicleVehicleTech1')
+    units = (b'CNV_LightTank2', b'CNV_ShrinkVehicle', b'AlliedSupportAircraft', b'SovietAntiVehicleVehicleTech1',
+             b'CNV_WarFactory')          # the Empire's factory goes where CampNew26's Allied copy stood
     if LINEUP:                                   # the base's own units too (its MCV stood in the line)
         units += (b'Allied',)
     objs.kids[:] = [k for k in objs.kids if not any(u in head(k) for u in units)]
@@ -168,8 +235,9 @@ def generate(m):
     else:
         place = [(p1, UNIT, N1, math.pi / 2), (p1, UNIT, N2, math.pi / 2),
                  (p1, 'JapanAntiVehicleVehicleTech1', TSUNAMI, math.pi / 2)]
-        place += [(p1, c31.WARRIOR, at, math.pi / 2) for at in WARRIORS]
+        place += [(p1, WARRIOR, at, math.pi / 2) for at in WARRIORS]
         place += [(s1, 'SovietAntiVehicleVehicleTech1', at, -math.pi / 2) for at in HAMMERS]
+        place.append((p1, JFACTORY, c26.FACTORY_AT, math.pi))
     for src, template, (x, y), angle in place:
         pr, flags = newmap.typed_props_of(m, src)
         objs.kids.append(newmap.object_node(m, pr, flags, template, x, y, angle=angle,
