@@ -54,9 +54,15 @@ c7.EXTRA_OWN += [b'AttributeModifier:AttributeModifier_CNV_MagLock', b'WeaponTem
 # in 10 s (4 s after a release).
 # C&C3 bits no RA3 XML uses. CARRYING_FLAG for the hold let go after ~1 s (bench; the engine's capture-the-flag
 # logic clears it?); HAS_TIBERIUM_GROWTH_MOD held as 鸣神's link bit (also used there: not both units in one mod yet)
-HOLD_BIT, HOLD_TIME, HOOK_RELOAD = os.environ.get('CNV_HOLD_BIT', 'HAS_TIBERIUM_GROWTH_MOD'), '6s', '10s'
+HOLD_BIT, HOLD_TIME, HOOK_RELOAD = os.environ.get('CNV_HOLD_BIT', 'HAS_TIBERIUM_GROWTH_MOD'), '6s', '18s'
 COOLDOWN_BIT = 'DOES_CONTAIN_TIBERIUM'
 COIL_DAMAGE = 12          # x 2 shots per 2.2 s: ~11 per s on a tank, ~110 on infantry
+# v3 (user, 2026-10-20: between T1 and T2, no stronger than the Guardian or the Hammer; retail Guardian 950 / 480 hp,
+# Hammer 1000 / 550, Sickle 900 / 450): 850, 450 hp, the coil only as self-defence (60 range), the hook 6 s out of
+# every 18 s (a third of the time) and 磁化: +25 % damage taken while held -- half the Guardian's painter (+50 %, kept
+# on any target in range for as long as it likes). CNV_NO_MAG=1: the control without 磁化
+PRICE, HEALTH, COIL_RANGE = 850, 450, 60
+MAGNETIZE = '' if os.environ.get('CNV_NO_MAG') == '1' else '\t\t<Modifier Type="ARMOR" Value="125%"/>\n'
 LOCK = f'''			<AttributeModifierNugget Radius="10" PartitionFilterTestType="SPHERE"
 				AttributeModifierName="AttributeModifier_CNV_MagLock">
 				<SpecialObjectFilter Rule="ANY" Relationship="ENEMIES NEUTRAL" Include="VEHICLE"/>
@@ -68,7 +74,7 @@ LOCK = f'''			<AttributeModifierNugget Radius="10" PartitionFilterTestType="SPHE
 HOLD = LOCK + LOCK.replace('AttributeModifier_CNV_MagLock', 'AttributeModifier_CNV_HookHold')
 DECL = f'''	<AttributeModifier id="AttributeModifier_CNV_MagLock" Category="NONE" Duration="{LOCK_TIME}"
 		StartFX="FX_None" ObjectStatusToSet="NO_ATTACK SCRAMBLED" Shader="ShaderOverride_ObjectsTeslaSingularity">
-	</AttributeModifier>
+{MAGNETIZE}	</AttributeModifier>
 	<AttributeModifier id="AttributeModifier_CNV_HookHold" Category="NONE" Duration="{HOLD_TIME}"
 		StackingLimit="1" ObjectStatusToSet="{HOLD_BIT}">
 	</AttributeModifier>
@@ -114,7 +120,7 @@ def coil_weapon():
     w = open(os.path.join(c2.SDK, 'SageXML', 'GlobalData', 'Weapon.xml'), encoding='utf-8').read()
     m = re.search(r'\t<WeaponTemplate\s+id="SovietAntiVehicleVehicleTech2TeslaGun".*?</WeaponTemplate>\n', w, re.S)
     x = m.group(0).replace('id="SovietAntiVehicleVehicleTech2TeslaGun"', 'id="CNV_MagCoil"')
-    x = sub1(x, 'AttackRange="150.0"', 'AttackRange="125.0"')
+    x = sub1(x, 'AttackRange="150.0"', f'AttackRange="{COIL_RANGE}.0"')
     return sub1(x, 'Damage="100.0"', f'Damage="{COIL_DAMAGE}.0"')
 
 
@@ -123,8 +129,8 @@ def unit_xml():
     x = sub1(x, 'id="SovietAntiVehicleVehicleTech3"', f'id="{UNIT}"')
     x = sub1(x, 'EditorName="SovietAntiVehicleVehicleTech3"', f'EditorName="{UNIT}"')
     x = re.sub(r'\s*<GameDependency>\s*<RequiredObject>SovietTechStructure</RequiredObject>\s*</GameDependency>', '', x)
-    x = sub1(x, 'Amount="2000"', 'Amount="1000"')
-    x = sub1(x, 'MaxHealth="3000"', 'MaxHealth="700"')
+    x = sub1(x, 'Amount="2000"', f'Amount="{PRICE}"')
+    x = sub1(x, 'MaxHealth="3000"', f'MaxHealth="{HEALTH}"')
     # the Hammer's armour, no self-repair: a T1~T2 tank (with the Apocalypse's, a Guardian hardly scratched it)
     x = sub1(x, 'Armor="SovietAntiVehicleVehicleTech3Armor"', 'Armor="SovietAntiVehicleVehicleTech1Armor"')
     x, n = re.subn(r'\s*<AutoHealBehavior\s+id="Upgrade_PassiveHeal".*?</AutoHealBehavior>', '', x, flags=re.S)
