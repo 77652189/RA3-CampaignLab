@@ -176,14 +176,16 @@ assert 'JAIV' not in NARUKAMI_UI
 c7.EXTRA_OWN += [b'ButtonSingleStateData:ButtonState_CNV_Narukami']
 c4.c3.STRINGS.update({
     'NAME:CNV_NarukamiDeploy': '信号形态',
+    # 同一瞬间阵亡只算一层 is a property of the build (pulses checked in a fixed order): kept as lore (user, 2026-10-19)
     'DESC:CNV_NarukamiDeploy': '原地展开，升起雷鼓光环。信号区内阵亡的帝国单位，会把复仇意志传给周围的帝国单位'
-                               '（伤害、速度提升，最多三层，脚下光纹越大层数越多）。展开时不能移动、不能开火。',
+                               '（伤害、速度提升，最多三层，脚下光纹越大层数越多）。雷鼓每一刻只能传出一道信号：'
+                               '同一刻牺牲的战友，意志汇成一层。展开时不能移动、不能开火。',
     'NAME:CNV_NarukamiRetract': '疾行形态',
     'DESC:CNV_NarukamiRetract': '收起光环，冲刺约 2 秒后恢复高速机动。',
     'Name:' + UNIT: '鸣神突击机甲',
     'Type:' + UNIT: '信号突击机甲',
-    'Desc:' + UNIT: '疾行形态高速骚扰；展开成信号形态时，信号区内阵亡的帝国单位把复仇意志传给周围的帝国单位。'
-                    '收回形态时短暂冲刺。',
+    'Desc:' + UNIT: '疾行形态高速骚扰；展开成信号形态时，信号区内阵亡的帝国单位把复仇意志传给周围的帝国单位，'
+                    '战友一个接一个倒下，复仇一层层叠起；同一刻牺牲的战友只汇成一层。收回形态时短暂冲刺。',
 })
 
 TOGGLE = '''			<SpecialPower id="ModuleTag_CNV_NarukamiTransform" SpecialPowerTemplate="SpecialPower_CNV_NarukamiTransform"
