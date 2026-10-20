@@ -36,17 +36,25 @@ c7.MAP_MOD = NAME + 'Map'
 UNIT, FAST, SIGNAL = 'CNV_Narukami', 'CNNaruF', 'CNNaruS'
 WORK = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'units')
 SRC = {FAST: os.path.join(WORK, 'narukami_fast'), SIGNAL: os.path.join(WORK, 'narukami_signal')}
-T, P, TIP = (3.0, 0.0, 8.0), (2.4, 0.0, 1.6), (7.0, 0.0, 0.0)     # cnv_narukami.py TURRET_AT / PITCH_AT / TIP_AT
+# cnv_narukami.py TURRET_AT / PITCH_AT per form, TIP_AT (v2: the turret is the head in the signal form)
+TURRET = {FAST: ((4.0, 0.0, 10.4), (1.0, 0.0, 1.2)), SIGNAL: ((0.0, 0.0, 6.0 + 18.6 * 1.3), (0.52, 0.0, 2.08))}
+TIP = (8.0, 0.0, 0.0)
 SCALE = c23.SCALE * 0.8
-PIVOTS = [('BODY', None, (0, 0, 0)),
-          ('Bone_Turret', None, T), ('Bone_Turret_Pitch', 'Bone_Turret', P),
-          ('BONE_GUN_MUZZLE', 'Bone_Turret_Pitch', TIP), ('FXBone_Muzzle', 'Bone_Turret_Pitch', TIP),
-          ('FX_Laser', 'Bone_Turret_Pitch', TIP), ('FX_Damage01', None, (-6, 0, 8)),
-          ('FXTracksL', None, (-12, 8.8, 0)), ('FXTracksR', None, (-12, -8.8, 0))] + \
-    [(f'Bone_{kind}_{fr}_{side}', None, (8 if fr == 'Front' else -8, 8.8 if side == 'Left' else -8.8, 1.6))
-     for kind in ('Tread', 'Tracks') for fr in ('Front', 'Rear') for side in ('Left', 'Right')]
+
+
+def pivots(model):
+    t, p = TURRET[model]
+    return [('BODY', None, (0, 0, 0)),
+            ('Bone_Turret', None, t), ('Bone_Turret_Pitch', 'Bone_Turret', p),
+            ('BONE_GUN_MUZZLE', 'Bone_Turret_Pitch', TIP), ('FXBone_Muzzle', 'Bone_Turret_Pitch', TIP),
+            ('FX_Laser', 'Bone_Turret_Pitch', TIP), ('FX_Damage01', None, (-6, 0, 8)),
+            ('FXTracksL', None, (-12, 8.8, 0)), ('FXTracksR', None, (-12, -8.8, 0))] + \
+        [(f'Bone_{kind}_{fr}_{side}', None, (8 if fr == 'Front' else -8, 8.8 if side == 'Left' else -8.8, 1.6))
+         for kind in ('Tread', 'Tracks') for fr in ('Front', 'Rear') for side in ('Left', 'Right')]
 AURA_RANGE, PULSE_RADIUS = 250, 200
-LEVEL = 70                  # median diffuse luminance: the shrink vehicle's 30 read near black on this hull
+# median diffuse luminance, no retail Allied grading (it turned the red drums grey): Empire armour is grey-white with
+# gunmetal parts in the retail line-up; 120 and 85 read paper-white next to it
+LEVEL = 60
 
 # the probe units stay out (their XML declares the same transform power); 鸣神 joins the Empire list
 for t in (c31.SIGNAL, c31.NARUKAMI):
@@ -127,7 +135,7 @@ def unit_xml():
         f.write('<?xml version="1.0" encoding="UTF-8"?>\n<AssetDeclaration xmlns="uri:ea.com:eala:asset" '
                 'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">\n' + c31.NARUKAMI_UI + '</AssetDeclaration>\n')
     for model in (FAST, SIGNAL):
-        print('model', model, to_w3x.convert(SRC[model], model, PIVOTS, c23.PARTS, scale=SCALE, level=LEVEL,
+        print('model', model, to_w3x.convert(SRC[model], model, pivots(model), c23.PARTS, scale=SCALE, level=LEVEL, grade=False,
                                              retail_maps=True, **c24.AI_TONE), 'triangles')
 
 
@@ -136,6 +144,11 @@ N1, N2 = (A[0] - 60, A[1] + 100), (A[0] + 150, A[1] + 60)
 WARRIORS = [(A[0] - 140 + 50 * k, A[1] + 200) for k in range(4)]
 TSUNAMI = (A[0] + 30, A[1] + 140)
 HAMMERS = [(A[0] + dx, A[1] + 460) for dx in (-60, 0, 60)]
+# CNV_LINEUP=1: Mecha Tengu, Striker-VX, King Oni, Tsunami, 鸣神 x2 side by side at the start camera's screen centre
+# (calib: ~(1241, 2499)), no enemies, for zoomed comparisons (run_bench.ps1 -Actions wheel)
+LINEUP = ['JapanAntiInfantryVehicle', 'JapanAntiAirVehicleTech1', 'JapanAntiVehicleVehicleTech3',
+          'JapanAntiVehicleVehicleTech1', UNIT, UNIT] if os.environ.get('CNV_LINEUP') == '1' else []
+LINEUP_X0, LINEUP_Y = 1100.0, 2500.0
 
 
 def generate(m):
@@ -147,11 +160,16 @@ def generate(m):
     p1 = next(k for k in objs.kids if b'CNV_LightTank2' in head(k))
     s1 = next(k for k in objs.kids if b'SovietAntiVehicleVehicleTech1' in head(k))
     units = (b'CNV_LightTank2', b'CNV_ShrinkVehicle', b'AlliedSupportAircraft', b'SovietAntiVehicleVehicleTech1')
+    if LINEUP:                                   # the base's own units too (its MCV stood in the line)
+        units += (b'Allied',)
     objs.kids[:] = [k for k in objs.kids if not any(u in head(k) for u in units)]
-    place = [(p1, UNIT, N1, math.pi / 2), (p1, UNIT, N2, math.pi / 2),
-             (p1, 'JapanAntiVehicleVehicleTech1', TSUNAMI, math.pi / 2)]
-    place += [(p1, c31.WARRIOR, at, math.pi / 2) for at in WARRIORS]
-    place += [(s1, 'SovietAntiVehicleVehicleTech1', at, -math.pi / 2) for at in HAMMERS]
+    if LINEUP:                                   # the look to match: retail Empire units in a row at the screen centre
+        place = [(p1, t, (LINEUP_X0 + 55 * k, LINEUP_Y), math.pi * 0.75) for k, t in enumerate(LINEUP)]
+    else:
+        place = [(p1, UNIT, N1, math.pi / 2), (p1, UNIT, N2, math.pi / 2),
+                 (p1, 'JapanAntiVehicleVehicleTech1', TSUNAMI, math.pi / 2)]
+        place += [(p1, c31.WARRIOR, at, math.pi / 2) for at in WARRIORS]
+        place += [(s1, 'SovietAntiVehicleVehicleTech1', at, -math.pi / 2) for at in HAMMERS]
     for src, template, (x, y), angle in place:
         pr, flags = newmap.typed_props_of(m, src)
         objs.kids.append(newmap.object_node(m, pr, flags, template, x, y, angle=angle,

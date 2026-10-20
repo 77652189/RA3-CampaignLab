@@ -54,7 +54,8 @@ def concept(seeds):
         enable_pag=True, pag_applied_layers=['blocks.(16|17|18|19)'])
     pipe.enable_model_cpu_offload()             # text encoders and DiT take turns on the GPU (VRAM cap)
     pos = ',白色背景,3D风格,最佳质量'
-    neg = '文本,特写,裁剪,出框,最差质量,低质量,JPEG伪影,重复,残缺,变异,畸形,模糊,糟糕的比例,卡通,玩具,人物'
+    # CNV_NEG: replaces the negative prompt (humanoid mechs: without 人物 in it)
+    neg = os.environ.get('CNV_NEG') or '文本,特写,裁剪,出框,最差质量,低质量,JPEG伪影,重复,残缺,变异,畸形,模糊,糟糕的比例,卡通,玩具,人物'
     os.makedirs(OUT, exist_ok=True)
     for seed in seeds:
         pace = Pace()
