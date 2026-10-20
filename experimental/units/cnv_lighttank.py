@@ -260,6 +260,9 @@ def seam_lines(nt, xyz, geo):
     return seam_prev
 
 
+KEEP_UV = False         # ai_lighttank_blend.py keep=1: bake into the source's UVs (mesh in thousands of islands)
+
+
 def bake(parts, sc):
     obs = list(parts.values())
     for ob in obs:
@@ -270,7 +273,8 @@ def bake(parts, sc):
     # triangles before UVs and bakes: the NORMAL bake and export()'s tangents must use the same triangles
     # (calc_tangents refuses n-gons; the game draws triangles anyway)
     bpy.ops.mesh.quads_convert_to_tris(quad_method='BEAUTY', ngon_method='BEAUTY')
-    bpy.ops.uv.smart_project(angle_limit=math.radians(55), island_margin=0.02, scale_to_bounds=True)
+    if not KEEP_UV:     # a source with its own packed atlas (Tripo) keeps it: smart project cut its irregular
+        bpy.ops.uv.smart_project(angle_limit=math.radians(55), island_margin=0.02, scale_to_bounds=True)
     bpy.ops.object.mode_set(mode='OBJECT')
 
     color_img = bpy.data.images.new('CNTankL', TEX, TEX)

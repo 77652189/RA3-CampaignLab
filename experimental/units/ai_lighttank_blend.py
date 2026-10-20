@@ -9,6 +9,10 @@ y), cap both cut openings so a rotating turret never shows the inside, sharpen b
 (dark: low outer faces = tracks; team: turret side band) and cnv_lighttank.py's bake, previews and parts.json, so
 both tanks share one look and one exporter. Pivots (turret ring, barrel pitch, muzzle) land in parts.json
 '_pivots' for make_campnew24.py.
+
+A textured source (a Tripo GLB, 2026-10-20) with keep=1 voxel=0 smooth=0: no remesh, and after the bake its own
+base-colour texture is baked from the full-detail mesh onto the low parts in place of the procedural colour (the
+mask, normals and seams stay ours).
 """
 import math
 import os
@@ -35,8 +39,25 @@ SHARP = math.radians(float(OPT.get('sharp', 32)))
 
 
 def load():
-    bpy.ops.wm.obj_import(filepath=SRC)             # OBJ is Y-up; the importer turns it Z-up
-    ob = bpy.context.selected_objects[0]
+    if SRC.lower().endswith('.glb'):                # Tripo export (glTF is Y-up; the importer turns it Z-up)
+        bpy.ops.import_scene.gltf(filepath=SRC)
+        meshes = [o for o in bpy.context.scene.objects if o.type == 'MESH']
+        for o in bpy.context.scene.objects:
+            o.select_set(o in meshes)
+        bpy.context.view_layer.objects.active = meshes[0]
+        if len(meshes) > 1:
+            bpy.ops.object.join()
+        ob = bpy.context.view_layer.objects.active
+        bpy.ops.object.parent_clear(type='CLEAR_KEEP_TRANSFORM')
+        # glTF splits every vertex on a UV seam: welded first, or the decimate stalls at ~5 % (25574 of 502480)
+        bm = bmesh.new()
+        bm.from_mesh(ob.data)
+        bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=1e-5)
+        bm.to_mesh(ob.data)
+        bm.free()
+    else:
+        bpy.ops.wm.obj_import(filepath=SRC)         # OBJ is Y-up; the importer turns it Z-up
+        ob = bpy.context.selected_objects[0]
     bpy.context.view_layer.objects.active = ob
     me = ob.data
     me.transform(ob.matrix_world)                    # the importer's axis turn sits in the object matrix
@@ -116,7 +137,12 @@ def split(ob, mats):
         bmesh.ops.remove_doubles(b, verts=b.verts[:], dist=1e-4)
         edges = [e for e in b.edges if e.is_boundary]
         if edges:
-            bmesh.ops.holes_fill(b, edges=edges, sides=0)
+            caps = bmesh.ops.holes_fill(b, edges=edges, sides=0)['faces']
+            uv = b.loops.layers.uv.active
+            if uv is not None:      # a source atlas (keep=1): caps sit inside the turret ring, a zero-area UV
+                for f in caps:      # keeps them from overwriting real islands in every bake
+                    for lp in f.loops:
+                        lp[uv].uv = (0.999, 0.999)
         bmesh.ops.triangulate(b, faces=b.faces[:])
         bmesh.ops.recalc_face_normals(b, faces=b.faces[:])
         parts[name] = base.obj_from_bm(name, b, mats)
@@ -163,17 +189,91 @@ def sharpen(parts):
             p.use_smooth = True
 
 
+def keep_high(ob):
+    """keep=1 (a textured source such as a Tripo GLB): a copy of the aligned full-detail mesh, its material turned
+    into an emission of its own base-colour texture, for bake_source_color()."""
+    high = ob.copy()
+    high.data = ob.data.copy()
+    high.name = 'HIGH'
+    bpy.context.collection.objects.link(high)
+    nt = high.material_slots[0].material.node_tree
+    tex = next((n for n in nt.nodes if n.type == 'TEX_IMAGE' and n.image and
+                any(lk.to_socket.name == 'Base Color' for lk in n.outputs['Color'].links)), None)
+    tex = tex or next(n for n in nt.nodes if n.type == 'TEX_IMAGE')
+    high['source_image'] = tex.image.name          # base.bake() rebuilds every material, this one too
+    high.hide_render = True
+    high.select_set(False)                          # a selected, unrendered object makes base.bake() refuse
+    return high
+
+
+def foreign_defaults():
+    """The source's own materials (and HIGH_emit): the custom properties cnv_lighttank's bake() and
+    textured_materials() read on every material."""
+    for m in bpy.data.materials:
+        for k, v in (('team', 0.0), ('emit', 0.0), ('color', (1.0, 1.0, 1.0))):
+            if k not in m:
+                m[k] = v
+
+
+def bake_source_color(parts, high, sc):
+    """Overwrite the procedural CNTankL.png with the source's own colour, baked high -> each low part (selected to
+    active, rays from just outside the low surface)."""
+    src = bpy.data.images[high['source_image']]
+    m = bpy.data.materials.new('HIGH_emit')
+    m.use_nodes = True
+    nt = m.node_tree
+    for nd in list(nt.nodes):
+        nt.nodes.remove(nd)
+    tex = nt.nodes.new('ShaderNodeTexImage')
+    tex.image = src
+    em = nt.nodes.new('ShaderNodeEmission')
+    out = nt.nodes.new('ShaderNodeOutputMaterial')
+    nt.links.new(tex.outputs['Color'], em.inputs['Color'])
+    nt.links.new(em.outputs[0], out.inputs['Surface'])
+    high.data.materials.clear()
+    high.data.materials.append(m)
+    img = bpy.data.images['CNTankL']
+    for ob in parts.values():
+        for slot in ob.material_slots:
+            nt = slot.material.node_tree
+            node = nt.nodes.new('ShaderNodeTexImage')
+            node.image = img
+            nt.nodes.active = node
+    high.hide_render = False
+    sc.cycles.samples = 8
+    first = True
+    for ob in parts.values():
+        for o in bpy.context.scene.objects:
+            o.select_set(o in (ob, high))
+        bpy.context.view_layer.objects.active = ob
+        bpy.ops.object.bake(type='EMIT', use_selected_to_active=True, cage_extrusion=0.6,
+                            max_ray_distance=3.0, margin=4, use_clear=first)
+        first = False
+    high.hide_render = True
+    img.filepath_raw = os.path.join(OUT_DIR, 'CNTankL.png')
+    img.file_format = 'PNG'
+    img.save()
+    foreign_defaults()
+    print('CNV AI source colour baked onto', list(parts), flush=True)
+    return img
+
+
 def main():
     sc = base.reset()
     mats = [base.material('steel', base.STEEL), base.material('dark', base.DARK),
             base.material('team', base.STEEL, team=1.0), base.material('turret', base.STEEL)]
     ob = load()
+    high = keep_high(ob) if OPT.get('keep') == '1' else None
+    base.KEEP_UV = high is not None
     clean(ob)
     decimate(ob)
     parts, h = split(ob, mats)
     paint(parts, h, mats)
     sharpen(parts)
+    foreign_defaults()
     color = base.bake(parts, sc)
+    if high is not None:
+        color = bake_source_color(parts, high, sc)
     base.textured_materials(color)
     base.previews(sc)
     base.export(parts)
