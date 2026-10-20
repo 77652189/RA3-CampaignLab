@@ -67,7 +67,93 @@ c7.EXTRA_TEMPLATES[JFACTORY] = {'file': f'DATA:CNVUnits/Data/{JFACTORY}.xml', 'E
 c7.EXTRA_OWN += [b'LogicCommand:Command_Construct' + UNIT.encode(), b'LogicCommandSet:' + JFACTORY.encode()] + \
     [p + n.encode() for n in (BUTTON, PORTRAIT) for p in (b'PackedTextureImage:', b'Texture:')]
 EMPIRE = c31.EMPIRE.replace(f'<IncludeThing>{c31.NARUKAMI}</IncludeThing>', f'<IncludeThing>{UNIT}</IncludeThing>')
-DECL = c31.DECL.replace(c31.EMPIRE, EMPIRE).replace(f'Radius="{c31.PULSE_RADIUS}"', f'Radius="{PULSE_RADIUS}"')
+# 复仇 tiers you can see (user, 2026-10-19: the zone's reach and a unit's stacks were not readable; take the Empire
+# protocols' look). One modifier per stack instead of StackingLimit 3: tier k sets a free status bit (the next pulse's
+# filter) and a free model condition, under which every Empire unit (override_units) draws Emperor's Rage's ground
+# glow (FXEmperorsRage, the protocol's own decal) bigger per tier. A pulse applies tier 3 to units holding tier 2,
+# tier 2 to units holding tier 1, then tier 1 -- in that order, so one death adds one tier, and refreshes the ones
+# below. One death fires one pulse (the dying unit's module), however many 鸣神 zones cover it: two 鸣神 never
+# double a death. No shader any more (the Iron Curtain red was for the bench and read as an Iron Curtain).
+# C&C3 status bits no RA3 XML uses, one per tier: tier k needs tier k-1's bit and skips units that hold its own (a
+# tier applied again to a unit holding it dropped that unit's glow on the bench). The pulses fire highest tier first
+# with delays (PULSE_DELAY), so each sees only earlier deaths' bits: the death modules' run order was not the listed
+# one (bench: one death climbed two tiers in either listing)
+TIER_BITS = ['HAS_TIBERIUM_UPGRADE', 'STEAL_NEXT_UNIT_TRAPPED', 'IS_HIDEOUT']
+PULSE_DELAY = ['0.6s', '0.3s', '0s']
+# model conditions no retail XML uses (SPECIAL_DAMAGED for tier 3 never showed: the engine runs that one itself)
+TIER_CONDS = ['SPECIAL_WEAPON_TWO', 'SPECIAL_WEAPON_THREE', 'SPECIAL_WEAPON_FOUR']
+TIER_DECAL = [40, 60, 80]          # glow size per tier (30 / 46 / 62: tier 1 hid under a vehicle at game zoom)
+
+
+def vengeance_decl():
+    mods = ''.join(
+        f'\t<AttributeModifier id="AttributeModifier_CNV_Vengeance{k + 1}" Category="NONE" Duration="20s" '
+        'StackingLimit="1"\n\t\t' + (f'ObjectStatusToSet="{TIER_BITS[k]}" ' if TIER_BITS[k] else '') +
+        f'ModelConditionsSet="{TIER_CONDS[k]}">\n'
+        '\t\t<Modifier Type="DAMAGE_MULT" Value="120%"/>\n\t\t<Modifier Type="SPEED" Value="115%"/>\n'
+        '\t</AttributeModifier>\n' for k in range(3))
+    # one weapon per tier (PULSES), fired by one death module each (DEATH), highest tier first
+    weapons = ''
+    for k in (2, 1, 0):
+        need = (f' StatusBitFlags="{TIER_BITS[k - 1]}"' if k else '') + f' StatusBitFlagsExclude="{TIER_BITS[k]}"'
+        weapons += (f'\t<WeaponTemplate id="{PULSES[k]}" Flags="NOT_ATTRACTED_BY_MAGNETS" AttackRange="999999.0"\n'
+                    '\t\tRequiredAntiMask="ANTI_GROUND ANTI_STRUCTURE ANTI_WATER" RadiusDamageAffects="ALLIES">\n'
+                    '\t\t<Nuggets>\n'
+                    f'\t\t\t<AttributeModifierNugget Radius="{PULSE_RADIUS}" PartitionFilterTestType="SPHERE"\n'
+                    f'\t\t\t\tAttributeModifierName="AttributeModifier_CNV_Vengeance{k + 1}">\n'
+                    f'\t\t\t\t<SpecialObjectFilter Rule="NONE"{need}>{EMPIRE}\n\t\t\t\t</SpecialObjectFilter>\n'
+                    '\t\t\t</AttributeModifierNugget>\n\t\t</Nuggets>\n\t</WeaponTemplate>\n')
+    link = c31.DECL[:c31.DECL.index('\t<AttributeModifier id="AttributeModifier_CNV_Vengeance"')]
+    return link + mods + weapons
+
+
+PULSES = ['CNV_VengeancePulse', 'CNV_VengeancePulse2', 'CNV_VengeancePulse3']
+DEATH = ''.join(c31.DEATH.replace('ModuleTag_CNV_Vengeance"', f'ModuleTag_CNV_Vengeance{k + 1}"')
+                .replace('DeathWeapon="CNV_VengeancePulse"', f'DeathWeapon="{PULSES[k]}" DelayTime="{PULSE_DELAY[k]}"')
+                for k in (2, 1, 0))
+assert DEATH.count('<FireWeaponWhenDead') == 3 and 'CNV_VengeancePulse3' in DEATH
+
+
+def tier_draw():
+    """The 复仇 ground glow, a second draw module like the Allied engineer's heal-radius decal (an invisible model
+    carrying an additive decal); the highest tier's state first."""
+    out = ('\t\t\t<ScriptedModelDraw id="ModuleTag_CNV_VengeanceGlow" OkToChangeModelColor="true">\n'
+           '\t\t\t\t<ModelConditionState ParseCondStateType="PARSE_DEFAULT">\n\t\t\t\t\t<Model Name="" />\n'
+           '\t\t\t\t</ModelConditionState>\n')
+    # every combination of the three flags, drawn at its highest tier: the engine picks the state matching the most
+    # flags and RA3 has no ConditionsNo, so with one state per flag all three tied once a unit held them all (bench:
+    # the third tier did not show); tiers also expire in any order, so all seven subsets are listed
+    for mask in sorted(range(1, 8), key=lambda m: -bin(m).count('1')):
+        k = mask.bit_length() - 1
+        conds = ' '.join(TIER_CONDS[j] for j in range(3) if mask >> j & 1)
+        out += (f'\t\t\t\t<ModelConditionState ParseCondStateType="PARSE_NORMAL" ConditionsYes="{conds}">\n'
+                '\t\t\t\t\t<Model Name="FXInvisBone" />\n'
+                f'\t\t\t\t\t<ShadowInfo Type="ADDITIVE_DECAL" SizeX="{TIER_DECAL[k]}" SizeY="{TIER_DECAL[k]}" '
+                'Texture="FXEmperorsRage" OverrideLODVisibility="true" MaxHeight="200" />\n'
+                '\t\t\t\t</ModelConditionState>\n')
+    return out + '\t\t\t</ScriptedModelDraw>\n'
+
+
+def zone_draw():
+    """The signal zone's edge while deployed (USER_2): the engineer's heal-radius ring (Decal_Heal_CO, house
+    colour, size = 2 x radius), shown to every player -- the enemy should see where not to kill."""
+    return ('\t\t\t<ScriptedModelDraw id="ModuleTag_CNV_SignalZoneRing" OkToChangeModelColor="true">\n'
+            '\t\t\t\t<ModelConditionState ParseCondStateType="PARSE_DEFAULT">\n\t\t\t\t\t<Model Name="" />\n'
+            '\t\t\t\t</ModelConditionState>\n'
+            '\t\t\t\t<ModelConditionState ParseCondStateType="PARSE_NORMAL" ConditionsYes="USER_2">\n'
+            '\t\t\t\t\t<Model Name="FXInvisBone" />\n'
+            f'\t\t\t\t\t<ShadowInfo Type="ADDITIVE_DECAL" SizeX="{2 * AURA_RANGE}" SizeY="{2 * AURA_RANGE}" '
+            'OverrideLODVisibility="true" MaxHeight="200" UseHouseColor="true" Texture="Decal_Heal_CO" />\n'
+            '\t\t\t\t</ModelConditionState>\n\t\t\t</ScriptedModelDraw>\n')
+
+
+def add_draw(x, start, draw):
+    """`draw` before the </Draws> of the GameObject whose tag begins at `start`."""
+    end = x.index('</Draws>', start)
+    return x[:end] + draw.lstrip() + '\t\t' + x[end:]
+
+
+DECL = vengeance_decl()
 AURA = c31.AURA.replace(c31.EMPIRE, EMPIRE).replace(f'Range="{c31.AURA_RANGE}"', f'Range="{AURA_RANGE}"').replace(
     'InitiallyActive="true"', 'InitiallyActive="true" RequiredObjectStatusFlags="TRANSFORMATION_TOGGLE_STATE"')
 assert f'Radius="{PULSE_RADIUS}"' in DECL and f'Range="{AURA_RANGE}"' in AURA and UNIT in AURA
@@ -77,7 +163,23 @@ assert 'RequiredObjectStatusFlags' in AURA       # the zone only while deployed 
 NARUKAMI_DECL = c31.NARUKAMI_DECL.replace('ObjectStatusToSet="IMMOBILE">', 'ObjectStatusToSet="IMMOBILE" '
                                           'ModelConditionsSet="USER_2">')
 assert 'ModelConditionsSet="USER_2"' in NARUKAMI_DECL
+# own button states: the Tengu's showed its own tooltip (机甲模式 / 天狗机甲模式, user in game); the Tengu's icons stay
+NARUKAMI_UI = '''	<ButtonSingleStateData id="ButtonState_CNV_NarukamiDeploy">
+		<State Image="JUA_Tengu_MechaMode" Title="NAME:CNV_NarukamiDeploy" Description="DESC:CNV_NarukamiDeploy" />
+	</ButtonSingleStateData>
+	<ButtonSingleStateData id="ButtonState_CNV_NarukamiRetract">
+		<State Image="JUA_Tengu_JetMode" Title="NAME:CNV_NarukamiRetract" Description="DESC:CNV_NarukamiRetract" />
+	</ButtonSingleStateData>
+''' + c31.NARUKAMI_UI.replace('ButtonStateJAIV_TransformOff', 'ButtonState_CNV_NarukamiRetract').replace(
+    'ButtonStateJAIV_Transform', 'ButtonState_CNV_NarukamiDeploy')
+assert 'JAIV' not in NARUKAMI_UI
+c7.EXTRA_OWN += [b'ButtonSingleStateData:ButtonState_CNV_Narukami']
 c4.c3.STRINGS.update({
+    'NAME:CNV_NarukamiDeploy': '信号形态',
+    'DESC:CNV_NarukamiDeploy': '原地展开，升起雷鼓光环。信号区内阵亡的帝国单位，会把复仇意志传给周围的帝国单位'
+                               '（伤害、速度提升，最多三层，脚下光纹越大层数越多）。展开时不能移动、不能开火。',
+    'NAME:CNV_NarukamiRetract': '疾行形态',
+    'DESC:CNV_NarukamiRetract': '收起光环，冲刺约 2 秒后恢复高速机动。',
     'Name:' + UNIT: '鸣神突击机甲',
     'Type:' + UNIT: '信号突击机甲',
     'Desc:' + UNIT: '疾行形态高速骚扰；展开成信号形态时，信号区内阵亡的帝国单位把复仇意志传给周围的帝国单位。'
@@ -133,7 +235,8 @@ def unit_xml():
     assert n == 1
     x = sub1(x, '<!-- Damage States -->', signal_states().lstrip() + '\t\t\t\t<!-- Damage States -->')
     x = sub1(x, '\t\t\t<!-- the target painter trigger -->',
-             TOGGLE + c31.DEATH + AURA + '\t\t\t<!-- the target painter trigger -->')
+             TOGGLE + DEATH + AURA + '\t\t\t<!-- the target painter trigger -->')
+    x = add_draw(x, x.index('<GameObject'), zone_draw() + tier_draw())
     x = sub1(x, 'ButtonImage="Button_AlliedAntiVehicleVehicleTech1_on"', f'ButtonImage="{BUTTON}"')
     x = sub1(x, 'SelectPortrait="Portrait_AlliedAntiVehicleVehicleTech1"', f'SelectPortrait="{PORTRAIT}"')
     c26.ART, saved = SRC[FAST], c26.ART               # button_icon.py compose button_japan / portrait_japan
@@ -149,7 +252,7 @@ def unit_xml():
         f.write(x.replace('\r\n', '\n'))
     with open(os.path.join(c26.DATA, c31.NARUKAMI_UI_FILE), 'w', encoding='utf-8', newline='\r\n') as f:
         f.write('<?xml version="1.0" encoding="UTF-8"?>\n<AssetDeclaration xmlns="uri:ea.com:eala:asset" '
-                'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">\n' + c31.NARUKAMI_UI + '</AssetDeclaration>\n')
+                'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">\n' + NARUKAMI_UI + '</AssetDeclaration>\n')
     for model in (FAST, SIGNAL):
         print('model', model, to_w3x.convert(SRC[model], model, pivots(model), c23.PARTS, scale=SCALE, level=LEVEL, grade=False,
                                              retail_maps=True, **c24.AI_TONE), 'triangles')
@@ -164,7 +267,9 @@ def override_units():
         x = open(os.path.join(c31.SAGE, name), encoding='utf-8', errors='replace').read()
         start = c31.re.search(r'<GameObject\b[^>]*?\bid="' + t + '"', x).start()
         end = x.index('</Behaviors>', start)
-        x = x[:end] + c31.DEATH.lstrip() + '\t\t' + x[end:]
+        x = x[:end] + DEATH.lstrip() + '\t\t' + x[end:]
+        if '</Draws>' in x[start:]:
+            x = add_draw(x, start, tier_draw())
         with open(os.path.join(c26.DATA, t + '.xml'), 'w', encoding='utf-8', newline='\r\n') as f:
             f.write(x.replace('\r\n', '\n'))
 
@@ -238,6 +343,22 @@ EMP_DECL = f'''	<WeaponTemplate id="CNV_ProbeEMP" Flags="NOT_ATTRACTED_BY_MAGNET
 '''
 if EMP:
     c7.EXTRA_TEMPLATES[EMP_HELPER] = {'file': f'DATA:CNVUnits/Data/{EMP_HELPER}.xml', 'EditorSorting': 'UNIT'}
+# CNV_COUNTER=tiers: the tier glow and no doubling. Group S: one zone, a Tsunami, warriors dying at 6, 10 and 14 s
+# (glow should grow 1 -> 2 -> 3). Group D: two zones over a Tsunami, one warrior dying at 6 s (tier 1, not 2).
+# A 鸣神 to deploy by hand for the zone ring.
+TIERS = os.environ.get('CNV_COUNTER') == 'tiers'
+TIER_WARRIORS = [6, 10, 14]
+if TIERS:                        # 鸣神 is placed, so its XML carries the 复仇 declarations
+    for t in [f'{c31.WARRIOR}T{s}' for s in TIER_WARRIORS] + [f'{c31.SIGNAL}T']:
+        c7.EXTRA_TEMPLATES[t] = {'file': f'DATA:CNVUnits/Data/{t}.xml', 'EditorSorting': 'UNIT'}
+
+
+def tier_units():
+    names = ''.join(f'\n\t\t\t\t\t<IncludeThing>{c31.WARRIOR}T{s}</IncludeThing>' for s in TIER_WARRIORS)
+    for s in TIER_WARRIORS:
+        c31.copy_unit('JapanAntiInfantryInfantry', f'{c31.WARRIOR}T{s}', DEATH +
+                      f'\t\t\t<LifetimeUpdate id="ModuleTag_CNV_ProbeLifetime" MinLifetime="{s}s" MaxLifetime="{s}s"/>\n')
+    c31.copy_unit('JapanLightTransportVehicle', f'{c31.SIGNAL}T', c31.AURA.replace(c31.EMPIRE, c31.EMPIRE + names))
 if COUNTER:
     c7.EXTRA_TEMPLATES[c31.SIGNAL] = {'file': f'DATA:CNVUnits/Data/{c31.SIGNAL}.xml', 'EditorSorting': 'UNIT'}
 if PROBE:
@@ -249,7 +370,7 @@ if PROBE:
 def probe_units():
     names = ''.join(f'\n\t\t\t\t\t<IncludeThing>{c31.WARRIOR}{k}</IncludeThing>' for k, _, _ in PROBE_KINDS)
     for k, death, frozen in PROBE_KINDS:
-        c31.copy_unit('JapanAntiInfantryInfantry', f'{c31.WARRIOR}{k}', c31.DEATH +
+        c31.copy_unit('JapanAntiInfantryInfantry', f'{c31.WARRIOR}{k}', DEATH +
                       f'\t\t\t<LifetimeUpdate id="ModuleTag_CNV_ProbeLifetime" MinLifetime="6s" MaxLifetime="6s" '
                       f'DeathType="{death}"/>\n')
         aura = c31.AURA.replace(c31.EMPIRE, c31.EMPIRE + names).replace('ModuleTag_CNV_SignalAura',
@@ -286,7 +407,7 @@ def generate(m):
     if OVERRIDE:
         override_units()
     else:
-        c31.copy_unit('JapanAntiInfantryInfantry', WARRIOR, c31.DEATH)
+        c31.copy_unit('JapanAntiInfantryInfantry', WARRIOR, DEATH)
     c31._generate(m)                             # CampNew29's scene: factory, power plant, our tanks, Hammers
     objs = next(n for _, n in m.walk() if n.name == 'ObjectsList')
     head = lambda k: k.head[:60]                 # noqa: E731
@@ -294,11 +415,22 @@ def generate(m):
     s1 = next(k for k in objs.kids if b'SovietAntiVehicleVehicleTech1' in head(k))
     units = (b'CNV_LightTank2', b'CNV_ShrinkVehicle', b'AlliedSupportAircraft', b'SovietAntiVehicleVehicleTech1',
              b'CNV_WarFactory')          # the Empire's factory goes where CampNew26's Allied copy stood
-    if LINEUP or COUNTER:                        # the base's own units too (MCV in the line; Guardians shot killers)
+    if LINEUP or COUNTER or TIERS:               # the base's own units too (MCV in the line; Guardians shot killers)
         units += (b'Allied',)
     objs.kids[:] = [k for k in objs.kids if not any(u in head(k) for u in units)]
     if LINEUP:                                   # the look to match: retail Empire units in a row at the screen centre
         place = [(p1, t, (LINEUP_X0 + 55 * k, LINEUP_Y), math.pi * 0.75) for k, t in enumerate(LINEUP)]
+    elif TIERS:
+        tier_units()
+        sx, dx, y = 1120.0, 1360.0, 2375.0 + 150    # group S off the shore (at 1000 its warriors swam out of range)
+        place = [(p1, f'{c31.WARRIOR}T{s}', (sx - 40 + 40 * k, y), math.pi / 2) for k, s in enumerate(TIER_WARRIORS)]
+        place += [(p1, 'JapanAntiVehicleVehicleTech1', (sx, y - 110), math.pi / 2),
+                  (p1, f'{c31.SIGNAL}T', (sx, y + 90), math.pi / 2)]
+        place += [(p1, f'{c31.WARRIOR}T6', (dx, y), math.pi / 2),
+                  (p1, 'JapanAntiVehicleVehicleTech1', (dx, y - 110), math.pi / 2),
+                  (p1, f'{c31.SIGNAL}T', (dx - 60, y + 90), math.pi / 2),
+                  (p1, f'{c31.SIGNAL}T', (dx + 60, y + 90), math.pi / 2),
+                  (p1, UNIT, (1550.0, 2375.0 + 20), math.pi / 2)]
     elif PROBE:
         probe_units()
         place = []
