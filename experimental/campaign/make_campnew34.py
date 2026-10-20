@@ -43,15 +43,37 @@ UNIT = 'CNV_MagHookProbe'
 LOCK_TIME = os.environ.get('CNV_LOCK', '1.5s')     # refreshed by the grind every 0.5 s while held
 c7.EXTRA_TEMPLATES[UNIT] = {'file': f'DATA:CNVUnits/Data/{UNIT}.xml', 'EditorSorting': 'UNIT'}
 c7.EXTRA_OWN += [b'AttributeModifier:AttributeModifier_CNV_MagLock', b'WeaponTemplate:CNV_MagHook',
-                 b'WeaponTemplate:CNV_MagGrind']
+                 b'WeaponTemplate:CNV_MagGrind', b'AttributeModifier:AttributeModifier_CNV_HookHold',
+                 b'AttributeModifier:AttributeModifier_CNV_HookCooldown',
+                 b'WeaponTemplate:CNV_MagCoil']
 
+# v2 (user, 2026-10-20: the Hammer's gun and armour made it a better Hammer): no anti-tank gun -- a short Tesla coil,
+# TESLA damage (infantry armour takes 1000 %, tank armour 100 %) and DeathType ELECTROCUTED (an Empire unit it kills
+# hands on no 复仇, make_campnew31.DEATH); 1000 (the Hammer's price), 700 health, speed 60. It cannot kill a caught
+# tank alone. A hold lasts 6 s: the hook gives its owner HOLD_BIT for 6 s and the grapple needs it; the hook reloads
+# in 10 s (4 s after a release).
+# C&C3 bits no RA3 XML uses. CARRYING_FLAG for the hold let go after ~1 s (bench; the engine's capture-the-flag
+# logic clears it?); HAS_TIBERIUM_GROWTH_MOD held as 鸣神's link bit (also used there: not both units in one mod yet)
+HOLD_BIT, HOLD_TIME, HOOK_RELOAD = os.environ.get('CNV_HOLD_BIT', 'HAS_TIBERIUM_GROWTH_MOD'), '6s', '10s'
+COOLDOWN_BIT = 'DOES_CONTAIN_TIBERIUM'
+COIL_DAMAGE = 12          # x 2 shots per 2.2 s: ~11 per s on a tank, ~110 on infantry
 LOCK = f'''			<AttributeModifierNugget Radius="10" PartitionFilterTestType="SPHERE"
 				AttributeModifierName="AttributeModifier_CNV_MagLock">
 				<SpecialObjectFilter Rule="ANY" Relationship="ENEMIES NEUTRAL" Include="VEHICLE"/>
 			</AttributeModifierNugget>
 '''
+# the hold timer sits on the target: the hook marks it with HOLD_BIT for 6 s (the grind does not renew it) and the
+# grapple keeps only targets with the bit (KeepAliveObjectFilter). On the hooker instead (AttributeModifierOwnerName,
+# grapple RequiredStatus) the hook never held at all (bench: no pull, the tank died to the Apocalypse in 7 s)
+HOLD = LOCK + LOCK.replace('AttributeModifier_CNV_MagLock', 'AttributeModifier_CNV_HookHold')
 DECL = f'''	<AttributeModifier id="AttributeModifier_CNV_MagLock" Category="NONE" Duration="{LOCK_TIME}"
 		StartFX="FX_None" ObjectStatusToSet="NO_ATTACK SCRAMBLED" Shader="ShaderOverride_ObjectsTeslaSingularity">
+	</AttributeModifier>
+	<AttributeModifier id="AttributeModifier_CNV_HookHold" Category="NONE" Duration="{HOLD_TIME}"
+		StackingLimit="1" ObjectStatusToSet="{HOLD_BIT}">
+	</AttributeModifier>
+	<AttributeModifier id="AttributeModifier_CNV_HookCooldown" Category="NONE" Duration="{HOOK_RELOAD}"
+		StackingLimit="1" ObjectStatusToSet="{COOLDOWN_BIT}">
 	</AttributeModifier>
 	<WeaponTemplate id="CNV_MagGrind" AttackRange="1.0" WeaponSpeed="999999.0" ClipSize="1"
 		Flags="NOT_ATTRACTED_BY_MAGNETS" RequiredAntiMask="ANTI_GROUND ANTI_WATER ANTI_STRUCTURE"
@@ -77,9 +99,23 @@ def hook_weapon():
     w = open(os.path.join(c2.SDK, 'SageXML', 'GlobalData', 'Weapon.xml'), encoding='utf-8').read()
     m = re.search(r'\t<WeaponTemplate\s+id="SovietAntiVehicleVehicleTech3Harpoon".*?</WeaponTemplate>\n', w, re.S)
     x = m.group(0).replace('id="SovietAntiVehicleVehicleTech3Harpoon"', 'id="CNV_MagHook"')
-    if os.environ.get('CNV_NO_LOCK') == '1':      # control: a held target did not fire without the lock either
-        return x
-    return sub1(x, '\t\t</Nuggets>', LOCK + '\t\t</Nuggets>')
+    # cooldown: the hook gives its owner COOLDOWN_BIT for HOOK_RELOAD and does not fire under it. A 10 s clip reload
+    # instead also ran from the start (bench: no hook in the first 10 s, the tank died first)
+    x = sub1(x, 'RequiredFiringObjectStatus="GENERIC_TOGGLE_STATE"',
+             f'RequiredFiringObjectStatus="GENERIC_TOGGLE_STATE"\n\t\tForbiddenFiringObjectStatus="{COOLDOWN_BIT}"')
+    cooldown = LOCK.replace('AttributeModifierName="AttributeModifier_CNV_MagLock">',
+                            'AttributeModifierName="AttributeModifier_CNV_MagLock"\n'
+                            '\t\t\t\tAttributeModifierOwnerName="AttributeModifier_CNV_HookCooldown">')
+    return sub1(x, '\t\t</Nuggets>', HOLD.replace(LOCK, cooldown, 1) + '\t\t</Nuggets>')
+
+
+def coil_weapon():
+    """The Tesla tank's gun (its own fire FX, two shots a clip) at 125 range and COIL_DAMAGE."""
+    w = open(os.path.join(c2.SDK, 'SageXML', 'GlobalData', 'Weapon.xml'), encoding='utf-8').read()
+    m = re.search(r'\t<WeaponTemplate\s+id="SovietAntiVehicleVehicleTech2TeslaGun".*?</WeaponTemplate>\n', w, re.S)
+    x = m.group(0).replace('id="SovietAntiVehicleVehicleTech2TeslaGun"', 'id="CNV_MagCoil"')
+    x = sub1(x, 'AttackRange="150.0"', 'AttackRange="125.0"')
+    return sub1(x, 'Damage="100.0"', f'Damage="{COIL_DAMAGE}.0"')
 
 
 def unit_xml():
@@ -87,8 +123,8 @@ def unit_xml():
     x = sub1(x, 'id="SovietAntiVehicleVehicleTech3"', f'id="{UNIT}"')
     x = sub1(x, 'EditorName="SovietAntiVehicleVehicleTech3"', f'EditorName="{UNIT}"')
     x = re.sub(r'\s*<GameDependency>\s*<RequiredObject>SovietTechStructure</RequiredObject>\s*</GameDependency>', '', x)
-    x = sub1(x, 'Amount="2000"', 'Amount="1100"')
-    x = sub1(x, 'MaxHealth="3000"', 'MaxHealth="900"')
+    x = sub1(x, 'Amount="2000"', 'Amount="1000"')
+    x = sub1(x, 'MaxHealth="3000"', 'MaxHealth="700"')
     # the Hammer's armour, no self-repair: a T1~T2 tank (with the Apocalypse's, a Guardian hardly scratched it)
     x = sub1(x, 'Armor="SovietAntiVehicleVehicleTech3Armor"', 'Armor="SovietAntiVehicleVehicleTech1Armor"')
     x, n = re.subn(r'\s*<AutoHealBehavior\s+id="Upgrade_PassiveHeal".*?</AutoHealBehavior>', '', x, flags=re.S)
@@ -97,14 +133,16 @@ def unit_xml():
                    r'Speed=")50\.0(")', r'\g<1>60.0\2', x)
     assert n == 1
     x = sub1(x, 'Template="SovietAntiVehicleVehicleTech3Harpoon"', 'Template="CNV_MagHook"')
-    x = sub1(x, 'Template="SovietAntiVehicleVehicleTech3Cannon"\n', 'Template="SovietAntiVehicleVehicleTech1CannonWeapon"\n')
-    x = sub1(x, 'Template="SovietAntiVehicleVehicleTech3Cannon_Veteran"', 'Template="SovietAntiVehicleVehicleTech1CannonWeapon"')
+    x = sub1(x, 'Template="SovietAntiVehicleVehicleTech3Cannon"\n', 'Template="CNV_MagCoil"\n')
+    x = sub1(x, 'Template="SovietAntiVehicleVehicleTech3Cannon_Veteran"', 'Template="CNV_MagCoil"')
+    x = sub1(x, '<KeepAliveObjectFilter\n\t\t\t\t\tRule="ANY"\n',
+             f'<KeepAliveObjectFilter\n\t\t\t\t\tRule="ANY"\n\t\t\t\t\tStatusBitFlags="{HOLD_BIT}"\n')
     x = sub1(x, 'SingleFireWeapon="SovietHarpoonCrushWeapon"', 'SingleFireWeapon="CNV_MagGrind"')
     x = sub1(x, 'ContinuousFireWeapon="SovietHarpoonGrindWeapon"', 'ContinuousFireWeapon="CNV_MagGrind"')
     # the Apocalypse crushes vehicles (CrusherLevel 30 > their 20): a pulled target died on arrival (first bench
     # runs, both Guardians). The Hammer's levels: it holds a pulled vehicle instead
     x = sub1(x, 'CrusherLevel="30"\n\t\t\tCrushableLevel="31"', 'CrusherLevel="20"\n\t\t\tCrushableLevel="20"')
-    x = sub1(x, '</AssetDeclaration>', DECL + hook_weapon() + '</AssetDeclaration>')
+    x = sub1(x, '</AssetDeclaration>', DECL + hook_weapon() + coil_weapon() + '</AssetDeclaration>')
     assert 'SovietHarpoonCrushWeapon' not in x
     with open(os.path.join(c26.DATA, UNIT + '.xml'), 'w', encoding='utf-8', newline='\r\n') as f:
         f.write(x.replace('\r\n', '\n'))
@@ -117,6 +155,14 @@ SCENE = [(UNIT, (A[0] - 120, A[1] + 60), True), (UNIT, (A[0] + 160, A[1] + 60), 
          ('SovietAntiVehicleVehicleTech1', (A[0] - 40, A[1] - 20), True),
          # the control: an enemy Apocalypse (a Guardian hardly marked B's health bar, so firing or not was unreadable)
          ('SovietAntiVehicleVehicleTech3', (A[0] + 160, A[1] + 180), False)]
+# CNV_SCENE=hold: B and the enemy Apocalypse only (does a hold end after 6 s, and come back after the reload?)
+if os.environ.get('CNV_SCENE') == 'hold':       # a Guardian 200 out: an Apocalypse killed B after the first release
+    SCENE = [SCENE[1], ('AlliedAntiVehicleVehicleTech1', (A[0] + 160, A[1] + 260), False)]
+# CNV_SCENE=coil: the coil alone -- A against four Imperial Warriors 100 north, B against a Guardian 100 north
+if os.environ.get('CNV_SCENE') == 'coil':
+    SCENE = [(UNIT, (A[0] - 120, A[1] + 60), True), (UNIT, (A[0] + 160, A[1] + 60), True),
+             ('AlliedAntiVehicleVehicleTech1', (A[0] + 160, A[1] + 160), False)] + \
+        [('JapanAntiInfantryInfantry', (A[0] - 180 + 40 * k, A[1] + 160), False) for k in range(4)]
 
 _generate = c6.edit
 
