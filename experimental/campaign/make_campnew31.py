@@ -17,6 +17,7 @@ receiver turns red when a warrior dies, group B's does not. The player's retail 
 """
 import math
 import os
+import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -39,25 +40,52 @@ LINK = 'HAS_TIBERIUM_GROWTH_MOD'
 # probe radii, smaller than the design's 250 / 200 so both groups fit the bench view apart
 AURA_RANGE, PULSE_RADIUS = 200, 150
 SHOW_LINK = os.environ.get('CNV_SHOW_LINK') == '1'
+PROBE = os.environ.get('CNV_PROBE', '')
 A = c28.A
 GROUPS = {'A': A[0] - 120, 'B': A[0] + 260}       # x of each group; group A has the signal unit
 W_Y, R_Y, S_Y, K_Y = A[1] + 280, A[1] + 400, A[1] + 340, A[1] + 120
+NARUKAMI = 'CNV_NarukamiProbe'
+
+
+def empire_units():
+    """Every Empire unit of the SDK's Japan/Units (infantry, vehicles, aircraft, ships; no projectiles) and ours.
+    There is no faction filter in an ObjectFilter: Rule="NONE" with IncludeThing = these only (retail: the
+    construction yard's naval-yard filter). Retail units missing from the SDK (Rocket Angel, ...) are not in it."""
+    out = []
+    for name in sorted(os.listdir(SAGE)):
+        x = open(os.path.join(SAGE, name), encoding='utf-8', errors='replace').read()
+        for m in re.finditer(r'<GameObject\b[^>]*?\bid="([^"]+)"[^>]*?KindOf="([^"]*)"', x, re.S):
+            if re.search(r'\b(INFANTRY|VEHICLE|HUGE_VEHICLE|AIRCRAFT|SHIP)\b', m.group(2)) and \
+                    'PROJECTILE' not in m.group(2):
+                out.append(m.group(1))
+    return out + [WARRIOR, SIGNAL, NARUKAMI]
+
+
+EMPIRE = ''.join(f'\n\t\t\t\t\t<IncludeThing>{t}</IncludeThing>' for t in empire_units())
+# CNV_PROBE=stack: 复仇 stacks and the Empire-only filter. The warriors die by themselves after 6 s (LifetimeUpdate);
+# receivers next to 3 / 1 / 0 deaths then drive north, SPEED 150 % per stack so the stacks show as speed; an Allied
+# Guardian beside the three deaths must stay unchanged
+STACK = PROBE == 'stack'
+SPEED = '150%' if STACK else '115%'
+STACK_Y, STACK_GROUPS = A[1] - 60, [(A[0] - 110, 3), (A[0] + 110, 1), (A[0] + 250, 0)]   # (x, warriors dying)
 
 DECL = f'''	<AttributeModifier id="AttributeModifier_CNV_SignalLink" Category="NONE" ObjectStatusToSet="{LINK}"
 		Duration="1s"{' Shader="ShaderOverride_ObjectsChronoRift"' if SHOW_LINK else ''}>
 		<Modifier Type="VISION" Value="100%"/>
 	</AttributeModifier>
-	<AttributeModifier id="AttributeModifier_CNV_Vengeance" Category="NONE" Duration="20s" StackingLimit="3"
+	<AttributeModifier id="AttributeModifier_CNV_Vengeance" Category="NONE" Duration="20s"
+		StackingLimit="{os.environ.get('CNV_STACK_LIMIT', '3')}"
 		Shader="ShaderOverride_ObjectsIronCurtain">
 		<Modifier Type="DAMAGE_MULT" Value="120%"/>
-		<Modifier Type="SPEED" Value="115%"/>
+		<Modifier Type="SPEED" Value="{SPEED}"/>
 	</AttributeModifier>
 	<WeaponTemplate id="CNV_VengeancePulse" Flags="NOT_ATTRACTED_BY_MAGNETS" AttackRange="999999.0"
 		RequiredAntiMask="ANTI_GROUND ANTI_STRUCTURE ANTI_WATER" RadiusDamageAffects="ALLIES">
 		<Nuggets>
 			<AttributeModifierNugget Radius="{PULSE_RADIUS}" PartitionFilterTestType="SPHERE"
 				AttributeModifierName="AttributeModifier_CNV_Vengeance">
-				<SpecialObjectFilter Rule="ANY" Include="VEHICLE INFANTRY"/>
+				<SpecialObjectFilter Rule="NONE">{EMPIRE}
+				</SpecialObjectFilter>
 			</AttributeModifierNugget>
 		</Nuggets>
 	</WeaponTemplate>
@@ -65,18 +93,18 @@ DECL = f'''	<AttributeModifier id="AttributeModifier_CNV_SignalLink" Category="N
 DEATH = f'''			<FireWeaponWhenDead id="ModuleTag_CNV_Vengeance" DeathWeapon="CNV_VengeancePulse" InitiallyActive="true">
 				<DieMuxData DeathTypes="ALL" RequiredStatus="{LINK}"/>
 			</FireWeaponWhenDead>
-'''
+''' + ('			<LifetimeUpdate id="ModuleTag_CNV_ProbeLifetime" MinLifetime="6s" MaxLifetime="6s"/>\n' if STACK else '')
 AURA = f'''			<AttributeModifierAuraUpdate id="ModuleTag_CNV_SignalAura" AttributeModifierName="AttributeModifier_CNV_SignalLink"
 				RefreshDelay="0.5s" Range="{AURA_RANGE}" InitiallyActive="true" AllowSelf="true">
-				<ObjectFilter Rule="ANY" Relationship="ALLIES SAME_PLAYER" Include="VEHICLE INFANTRY"/>
+				<ObjectFilter Rule="NONE" Relationship="ALLIES SAME_PLAYER">{EMPIRE}
+				</ObjectFilter>
 			</AttributeModifierAuraUpdate>
 '''
 # CNV_PROBE=transform: the transform on a copy of the Mecha Tengu (its ToggleStatusSpecialAbilityUpdate, one button).
 # Second state = 信号形态: no jet (normal locomotor, no airborne armour / model), IMMOBILE, the aura on only then
 # (RequiredObjectStatusFlags). The toggle's TriggerAttributeModifier (retail: the 1.5 s transform animation) becomes
 # the 突进: SPEED 250 % for 2 s on every toggle -- deploying is immobile anyway, so it shows on the way out.
-TRANSFORM = os.environ.get('CNV_PROBE') == 'transform'
-NARUKAMI = 'CNV_NarukamiProbe'
+TRANSFORM = PROBE == 'transform'
 NARUKAMI_DECL = '''	<AttributeModifier id="AttributeModifier_CNV_SignalDeploy" Category="NONE" ObjectStatusToSet="IMMOBILE">
 		<Modifier Type="VISION" Value="100%"/>
 	</AttributeModifier>
@@ -183,7 +211,13 @@ def generate(m):
                   (p1, NARUKAMI, (A[0] + 200, A[1] + 100), math.pi / 2)]
         place += [(p1, WARRIOR, (A[0] - 100 + dx, A[1] + 100 + dy), math.pi / 2)
                   for dx, dy in ((-90, 0), (90, 0), (0, 90))]
-    for g, x in ({} if TRANSFORM else GROUPS).items():
+    if STACK:                                    # receivers north of 3 / 1 / 0 timed warriors, signal units south
+        for x, n in STACK_GROUPS:
+            place += [(p1, WARRIOR, (x + dx, STACK_Y), math.pi / 2) for dx in (-40, 0, 40)[:n]]
+            place += [(p1, 'JapanLightTransportVehicle', (x, STACK_Y + 90), math.pi / 2),
+                      (p1, SIGNAL, (x, STACK_Y - 90), math.pi / 2)]
+        place.append((p1, 'AlliedAntiVehicleVehicleTech1', (STACK_GROUPS[0][0] + 90, STACK_Y), math.pi / 2))
+    for g, x in ({} if TRANSFORM or STACK else GROUPS).items():
         place += [(p1, WARRIOR, (x + dx, W_Y), math.pi / 2) for dx in (-40, 0, 40)]
         place += [(p1, 'JapanLightTransportVehicle', (x, R_Y), math.pi / 2),
                   (s1, 'SovietAntiInfantryVehicle', (x, K_Y), math.pi / 2)]

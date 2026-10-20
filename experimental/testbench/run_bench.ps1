@@ -186,7 +186,7 @@ function Invoke-Act($hw, $kind, $v) {
 }
 # -Nav: walk the menus screen by screen (nav.py), then count -Shots / -Clicks / -Keys / -Actions / -Seconds from
 # the moment the mission is on screen ($start); without it they count from the launch, as before
-$navSteps = @(); $navAt = 0; $start = $null; $navStuck = $null
+$navSteps = @(); $navAt = 0; $navDoneAt = 0; $start = $null; $navStuck = $null
 if ($Nav) {
     $navPy = Join-Path $PSScriptRoot 'nav.py'
     $navSteps = @(Get-Content (Join-Path $PSScriptRoot '..\..\work\testbench\nav\nav.json') -Raw | ConvertFrom-Json)
@@ -204,13 +204,25 @@ while ($true) {
             Start-Sleep -Milliseconds 100
             $step = $navSteps[$navAt]
             $res = (& python -I $navPy check $frame $navAt) -join ' '
+            # still on the previous screen 3 s after its actions: they were lost (a main menu recognised 2 s early
+            # swallowed its click, 2026-10-19), so do them again
+            $prev = $null
+            if ($res -notlike 'match*' -and $navAt -gt 0 -and $s - $navDoneAt -ge 3 -and
+                $navSteps[$navAt - 1].how -eq 'tpl' -and ((& python -I $navPy check $frame ($navAt - 1)) -join ' ') -like 'match*') {
+                $prev = $navSteps[$navAt - 1]
+            }
             Remove-Item $frame -ErrorAction SilentlyContinue
             if ($res -like 'match*') {
                 "NAV $navAt '$($step.name)' at $s s ($res)"
                 $hw = [Bench]::MainWindow([uint32]$p.Id)
                 foreach ($a in $step.actions) { Invoke-Act $hw $a[0] @($a | Select-Object -Skip 1) ; Start-Sleep -Milliseconds 250 }
-                $navAt++
+                $navAt++; $navDoneAt = $s
                 if ($navAt -ge $navSteps.Count) { $start = $s; "NAV in game at $s s" }
+            } elseif ($prev) {
+                "NAV retry $($navAt - 1) '$($prev.name)' at $s s"
+                $hw = [Bench]::MainWindow([uint32]$p.Id)
+                foreach ($a in $prev.actions) { Invoke-Act $hw $a[0] @($a | Select-Object -Skip 1) ; Start-Sleep -Milliseconds 250 }
+                $navDoneAt = $s
             }
         }
         if ($null -eq $start -and $s -gt 150) { $navStuck = $navSteps[$navAt].name; break }
