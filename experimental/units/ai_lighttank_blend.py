@@ -38,23 +38,41 @@ TURRET = float(OPT.get('turret', 0.62))            # cut height as a fraction of
 SHARP = math.radians(float(OPT.get('sharp', 32)))
 
 
-def load():
-    if SRC.lower().endswith('.glb'):                # Tripo export (glTF is Y-up; the importer turns it Z-up)
-        bpy.ops.import_scene.gltf(filepath=SRC)
-        meshes = [o for o in bpy.context.scene.objects if o.type == 'MESH']
-        for o in bpy.context.scene.objects:
-            o.select_set(o in meshes)
-        bpy.context.view_layer.objects.active = meshes[0]
-        if len(meshes) > 1:
-            bpy.ops.object.join()
-        ob = bpy.context.view_layer.objects.active
-        bpy.ops.object.parent_clear(type='CLEAR_KEEP_TRANSFORM')
+ALIGN = [Matrix.Identity(4)]                     # every transform load() puts on the mesh, for high=
+
+
+def _xf(me, x):
+    me.transform(x)
+    ALIGN[0] = x @ ALIGN[0]
+
+
+def import_glb(path, weld=True):
+    """A Tripo export as one mesh object (glTF is Y-up; the importer turns it Z-up), its axis turn applied."""
+    before = set(bpy.context.scene.objects)
+    bpy.ops.import_scene.gltf(filepath=path)
+    meshes = [o for o in bpy.context.scene.objects if o not in before and o.type == 'MESH']
+    for o in bpy.context.scene.objects:
+        o.select_set(o in meshes)
+    bpy.context.view_layer.objects.active = meshes[0]
+    if len(meshes) > 1:
+        bpy.ops.object.join()
+    ob = bpy.context.view_layer.objects.active
+    bpy.ops.object.parent_clear(type='CLEAR_KEEP_TRANSFORM')
+    if weld:
         # glTF splits every vertex on a UV seam: welded first, or the decimate stalls at ~5 % (25574 of 502480)
         bm = bmesh.new()
         bm.from_mesh(ob.data)
         bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=1e-5)
         bm.to_mesh(ob.data)
         bm.free()
+    ob.data.transform(ob.matrix_world)
+    ob.matrix_world = Matrix.Identity(4)
+    return ob
+
+
+def load():
+    if SRC.lower().endswith('.glb'):                # Tripo export
+        ob = import_glb(SRC)
     else:
         bpy.ops.wm.obj_import(filepath=SRC)         # OBJ is Y-up; the importer turns it Z-up
         ob = bpy.context.selected_objects[0]
@@ -62,6 +80,7 @@ def load():
     me = ob.data
     me.transform(ob.matrix_world)                    # the importer's axis turn sits in the object matrix
     ob.matrix_world = Matrix.Identity(4)
+    ALIGN[0] = Matrix.Identity(4)
     pts = [v.co.copy() for v in me.vertices]
     # ground-plane PCA: long axis -> X
     cx = sum(p.x for p in pts) / len(pts)
@@ -70,8 +89,8 @@ def load():
     syy = sum((p.y - cy) ** 2 for p in pts)
     sxy = sum((p.x - cx) * (p.y - cy) for p in pts)
     yaw = math.radians(float(OPT['yaw'])) if 'yaw' in OPT else -0.5 * math.atan2(2 * sxy, sxx - syy)
-    me.transform(Matrix.Translation((-cx, -cy, 0)))
-    me.transform(Matrix.Rotation(yaw, 4, 'Z'))
+    _xf(me, Matrix.Translation((-cx, -cy, 0)))
+    _xf(me, Matrix.Rotation(yaw, 4, 'Z'))
     lo = Vector([min(v.co[i] for v in me.vertices) for i in range(3)])
     hi = Vector([max(v.co[i] for v in me.vertices) for i in range(3)])
     if 'yaw' not in OPT:
@@ -80,12 +99,12 @@ def load():
         upper = [v.co.x for v in me.vertices if v.co.z > top]
         mid = 0.5 * (lo.x + hi.x)
         if upper and max(upper) - mid < mid - min(upper):
-            me.transform(Matrix.Rotation(math.pi, 4, 'Z'))
+            _xf(me, Matrix.Rotation(math.pi, 4, 'Z'))
     lo = Vector([min(v.co[i] for v in me.vertices) for i in range(3)])
     hi = Vector([max(v.co[i] for v in me.vertices) for i in range(3)])
     s = WIDTH / (hi.y - lo.y)
-    me.transform(Matrix.Translation((-0.5 * (lo.x + hi.x), -0.5 * (lo.y + hi.y), -lo.z)))
-    me.transform(Matrix.Scale(s, 4))
+    _xf(me, Matrix.Translation((-0.5 * (lo.x + hi.x), -0.5 * (lo.y + hi.y), -lo.z)))
+    _xf(me, Matrix.Scale(s, 4))
     print('CNV AI align: yaw', round(math.degrees(yaw), 1), 'scale', round(s, 2), 'size',
           tuple(round((b - a) * s, 1) for a, b in zip(lo, hi)), flush=True)
     return ob
@@ -169,6 +188,8 @@ def paint(parts, h, mats):
     ht = h - parts['TURRET'].location.z
     mats[3]['band'] = (0.2 * ht, 0.5 * ht)          # turret-local z
     half = 0.5 * WIDTH
+    hx = [v.co.x + parts['HULL'].location.x for v in parts['HULL'].data.vertices]
+    span = 0.5 * (max(hx) - min(hx))                # half the hull length
     for name, ob in parts.items():
         off = ob.location
         for p in ob.data.polygons:
@@ -176,6 +197,11 @@ def paint(parts, h, mats):
             n = p.normal
             if name == 'HULL' and c.z < 0.33 * h and abs(c.y) > 0.62 * half:
                 p.material_index = 1
+            elif (OPT.get('team') == 'pods' and name == 'HULL' and n.z > 0.9 and c.z > 0.4 * h
+                  and 0.62 * half < abs(c.y) < 0.9 * half and abs(c.x) < 0.3 * span):
+                # a team strip along the middle of each pod top (the whole pod tops read as one blue hull from the
+                # RTS camera, CampTripo1 2026-10-20)
+                p.material_index = 2
             elif name == 'TURRET':
                 p.material_index = 3
             else:
@@ -192,10 +218,14 @@ def sharpen(parts):
 def keep_high(ob):
     """keep=1 (a textured source such as a Tripo GLB): a copy of the aligned full-detail mesh, its material turned
     into an emission of its own base-colour texture, for bake_source_color()."""
-    high = ob.copy()
-    high.data = ob.data.copy()
+    if 'high' in OPT:   # Tripo's HD model of the same generation: its retopology (SRC) shares its frame
+        high = import_glb(OPT['high'], weld=False)
+        high.data.transform(ALIGN[0])
+    else:
+        high = ob.copy()
+        high.data = ob.data.copy()
+        bpy.context.collection.objects.link(high)
     high.name = 'HIGH'
-    bpy.context.collection.objects.link(high)
     nt = high.material_slots[0].material.node_tree
     tex = next((n for n in nt.nodes if n.type == 'TEX_IMAGE' and n.image and
                 any(lk.to_socket.name == 'Base Color' for lk in n.outputs['Color'].links)), None)
@@ -249,10 +279,37 @@ def bake_source_color(parts, high, sc):
         bpy.ops.object.bake(type='EMIT', use_selected_to_active=True, cage_extrusion=0.6,
                             max_ray_distance=3.0, margin=4, use_clear=first)
         first = False
-    high.hide_render = True
     img.filepath_raw = os.path.join(OUT_DIR, 'CNTankL.png')
     img.file_format = 'PNG'
     img.save()
+    if 'high' in OPT:
+        # the HD surface's relief as a tangent-space normal map in place of our procedural seams; nrm0 flat, so
+        # to_w3x's (nrm - nrm0 + z) keeps it as it is
+        nimg = bpy.data.images['CNTankL_nrm']
+        for ob in parts.values():
+            for slot in ob.material_slots:
+                nt = slot.material.node_tree
+                node = nt.nodes.new('ShaderNodeTexImage')
+                node.image = nimg
+                nt.nodes.active = node
+        first = True
+        for ob in parts.values():
+            for o in bpy.context.scene.objects:
+                o.select_set(o in (ob, high))
+            bpy.context.view_layer.objects.active = ob
+            bpy.ops.object.bake(type='NORMAL', normal_space='TANGENT', use_selected_to_active=True,
+                                cage_extrusion=0.6, max_ray_distance=3.0, margin=4, use_clear=first)
+            first = False
+        nimg.filepath_raw = os.path.join(OUT_DIR, 'CNTankL_nrm.png')
+        nimg.file_format = 'PNG'
+        nimg.save()
+        flat = bpy.data.images.new('CNTankL_nrm0_flat', base.TEX, base.TEX)
+        flat.pixels = [0.5, 0.5, 1.0, 1.0] * (base.TEX * base.TEX)
+        flat.filepath_raw = os.path.join(OUT_DIR, 'CNTankL_nrm0.png')
+        flat.file_format = 'PNG'
+        flat.save()
+        print('CNV AI normal map baked from the HD mesh', flush=True)
+    high.hide_render = True
     foreign_defaults()
     print('CNV AI source colour baked onto', list(parts), flush=True)
     return img

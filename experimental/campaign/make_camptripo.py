@@ -26,7 +26,8 @@ c7.MAP_MOD = NAME + 'Map'
 c24.AI_SRC = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'units', 'tripo',
                           os.environ.get('CNV_TRIPO', 'blend5k'))
 c4.c3.STRINGS['Name:' + c24.AI_UNIT] = 'CNV 轻型坦克（Tripo）'
-c24.AI_SCALE = c23.SCALE * 0.8                  # 游隼's close-up scale (CampNew25)
+# 游隼's close-up scale (CampNew25) unless CNV_TRIPO_SCALE (1.0 = v1's size, about the Guardian's: details readable)
+c24.AI_SCALE = c23.SCALE * float(os.environ.get('CNV_TRIPO_SCALE', 0.8))
 c24.AI_LEVEL = int(os.environ.get('CNV_TRIPO_LEVEL', 50))
 if os.environ.get('CNV_TRIPO_TONE') == '1':     # 游隼 v3's tone (CampNew25 CNV_TONE): edges, plate / body specular
     c24.AI_TONE = dict(edge_gain=1.8, edge_spec=200, plate_spec=70, plate_share=30, body_spec=18, contrast=1.6)
