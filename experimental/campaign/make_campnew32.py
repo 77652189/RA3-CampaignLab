@@ -202,6 +202,73 @@ HAMMERS = [(A[0] + dx, A[1] + 460) for dx in (-60, 0, 60)]
 LINEUP = ['JapanAntiInfantryVehicle', 'JapanAntiAirVehicleTech1', 'JapanAntiVehicleVehicleTech3',
           'JapanAntiVehicleVehicleTech1', UNIT, UNIT] if os.environ.get('CNV_LINEUP') == '1' else []
 LINEUP_X0, LINEUP_Y = 1100.0, 2500.0
+# CNV_COUNTER=1: the two counters side by side -- three warriors + a Tsunami (the receiver) in a signal zone (CampNew31's
+# always-on probe), killed by a Sickle (normal death: 复仇), a Cryocopter + Sickle (frozen: none) or Tesla troopers
+# (electrocuted: none). CNV_NO_COUNTER=1 (make_campnew31) for the control without the exemptions.
+COUNTER = os.environ.get('CNV_COUNTER') == '1'
+COUNTER_Y = 2375.0 + 300
+COUNTER_GROUPS = [(1000.0, ['SovietAntiInfantryVehicle']),
+                  (1240.0, ['AlliedSupportAircraft', 'SovietAntiInfantryVehicle']),
+                  (1480.0, ['SovietHeavyAntiVehicleInfantry'] * 3)]
+# CNV_COUNTER=probe: the same three cases without combat (the fight above was too cluttered to read: frozen and
+# 复仇 shaders mixed). Warrior copies die by LifetimeUpdate after 6 s: DeathType NORMAL, ELECTROCUTED, or NORMAL
+# while frozen (their zone's probe also gives them the retail cryo-beam modifier, status UNDER_FROZEN). Each group
+# 300 apart with its own zone (range 200) and a Tsunami 120 south as the receiver.
+# CNV_COUNTER=emp: does an EMP on the signal unit switch its zone off (a counter without any change)? Group P's
+# zone unit is paralysed (ParalyzeType EMP, as the Tesla trooper's short circuit) from 3 s to 9 s by a helper that
+# dies at 3 s; its warriors die at 6 s. Group N beside it: the control.
+EMP = os.environ.get('CNV_COUNTER') == 'emp'
+PROBE = os.environ.get('CNV_COUNTER') == 'probe' or EMP
+COUNTER = COUNTER or PROBE
+PROBE_KINDS = [('N', 'NORMAL', False), ('E', 'ELECTROCUTED', False), ('F', 'NORMAL', True)]
+PROBE_X, PROBE_Y = [950.0, 1250.0, 1550.0], 2375.0 + 150
+if EMP:
+    PROBE_KINDS, PROBE_X = [('N', 'NORMAL', False), ('P', 'NORMAL', False)], [1250.0, 1550.0]
+EMP_HELPER = 'CNV_ProbeEMPHelper'
+EMP_DECL = f'''	<WeaponTemplate id="CNV_ProbeEMP" Flags="NOT_ATTRACTED_BY_MAGNETS" AttackRange="999999.0"
+		RequiredAntiMask="ANTI_GROUND ANTI_STRUCTURE ANTI_WATER" RadiusDamageAffects="ALLIES SELF">
+		<Nuggets>
+			<ParalyzeNugget Radius="120.0" DurationSeconds="6s" ParalyzeType="EMP" ParalyzeFX="FX_None">
+				<SpecialObjectFilter Rule="NONE" Relationship="ALLIES SAME_PLAYER">
+					<IncludeThing>{c31.SIGNAL}P</IncludeThing>
+				</SpecialObjectFilter>
+			</ParalyzeNugget>
+		</Nuggets>
+	</WeaponTemplate>
+'''
+if EMP:
+    c7.EXTRA_TEMPLATES[EMP_HELPER] = {'file': f'DATA:CNVUnits/Data/{EMP_HELPER}.xml', 'EditorSorting': 'UNIT'}
+if COUNTER:
+    c7.EXTRA_TEMPLATES[c31.SIGNAL] = {'file': f'DATA:CNVUnits/Data/{c31.SIGNAL}.xml', 'EditorSorting': 'UNIT'}
+if PROBE:
+    for k, _, _ in PROBE_KINDS:
+        for t in (f'{c31.WARRIOR}{k}', f'{c31.SIGNAL}{k}'):
+            c7.EXTRA_TEMPLATES[t] = {'file': f'DATA:CNVUnits/Data/{t}.xml', 'EditorSorting': 'UNIT'}
+
+
+def probe_units():
+    names = ''.join(f'\n\t\t\t\t\t<IncludeThing>{c31.WARRIOR}{k}</IncludeThing>' for k, _, _ in PROBE_KINDS)
+    for k, death, frozen in PROBE_KINDS:
+        c31.copy_unit('JapanAntiInfantryInfantry', f'{c31.WARRIOR}{k}', c31.DEATH +
+                      f'\t\t\t<LifetimeUpdate id="ModuleTag_CNV_ProbeLifetime" MinLifetime="6s" MaxLifetime="6s" '
+                      f'DeathType="{death}"/>\n')
+        aura = c31.AURA.replace(c31.EMPIRE, c31.EMPIRE + names).replace('ModuleTag_CNV_SignalAura',
+                                                                        f'ModuleTag_CNV_SignalAura{k}')
+        if frozen:
+            aura += (f'\t\t\t<AttributeModifierAuraUpdate id="ModuleTag_CNV_ProbeFreeze" '
+                     'AttributeModifierName="AttributeModifer_CryoBeam_10" RefreshDelay="0.5s" Range="120" '
+                     f'InitiallyActive="true">\n\t\t\t\t<ObjectFilter Rule="NONE" Relationship="ALLIES SAME_PLAYER">'
+                     f'\n\t\t\t\t\t<IncludeThing>{c31.WARRIOR}{k}</IncludeThing>\n\t\t\t\t</ObjectFilter>\n'
+                     '\t\t\t</AttributeModifierAuraUpdate>\n')
+        # the 复仇 declarations live in 鸣神's file, which this scene does not place (first runs: the modifiers and
+        # the pulse weapon were unresolved, nothing fired in either run): the first probe carries them
+        c31.copy_unit('JapanLightTransportVehicle', f'{c31.SIGNAL}{k}', aura, DECL if k == PROBE_KINDS[0][0] else '')
+    if EMP:                                      # a warrior copy outside every filter: dies at 3 s, EMPs zone unit P
+        c31.copy_unit('JapanAntiInfantryInfantry', EMP_HELPER,
+                      '\t\t\t<FireWeaponWhenDead id="ModuleTag_CNV_ProbeEMP" DeathWeapon="CNV_ProbeEMP" '
+                      'InitiallyActive="true">\n\t\t\t\t<DieMuxData DeathTypes="ALL"/>\n\t\t\t</FireWeaponWhenDead>\n'
+                      '\t\t\t<LifetimeUpdate id="ModuleTag_CNV_ProbeLifetime" MinLifetime="3s" MaxLifetime="3s"/>\n',
+                      EMP_DECL)
 # every retail Empire unit gets the 复仇 death module (make_campnew7.OVERRIDE: our recompiled GameObject under the
 # retail id in the map stream; bench: retail Imperial Warriors dying in the zone gave 复仇) and the scene uses
 # retail warriors; CNV_OVERRIDE=0: our warrior copies instead (CampNew31's way)
@@ -227,11 +294,29 @@ def generate(m):
     s1 = next(k for k in objs.kids if b'SovietAntiVehicleVehicleTech1' in head(k))
     units = (b'CNV_LightTank2', b'CNV_ShrinkVehicle', b'AlliedSupportAircraft', b'SovietAntiVehicleVehicleTech1',
              b'CNV_WarFactory')          # the Empire's factory goes where CampNew26's Allied copy stood
-    if LINEUP:                                   # the base's own units too (its MCV stood in the line)
+    if LINEUP or COUNTER:                        # the base's own units too (MCV in the line; Guardians shot killers)
         units += (b'Allied',)
     objs.kids[:] = [k for k in objs.kids if not any(u in head(k) for u in units)]
     if LINEUP:                                   # the look to match: retail Empire units in a row at the screen centre
         place = [(p1, t, (LINEUP_X0 + 55 * k, LINEUP_Y), math.pi * 0.75) for k, t in enumerate(LINEUP)]
+    elif PROBE:
+        probe_units()
+        place = []
+        for x, (k, _, _) in zip(PROBE_X, PROBE_KINDS):
+            place += [(p1, f'{c31.WARRIOR}{k}', (x + dx, PROBE_Y), math.pi / 2) for dx in (-35, 0, 35)]
+            place += [(p1, 'JapanAntiVehicleVehicleTech1', (x, PROBE_Y - 120), math.pi / 2),
+                      (p1, f'{c31.SIGNAL}{k}', (x, PROBE_Y + 90), math.pi / 2)]
+            if k == 'P':
+                place.append((p1, EMP_HELPER, (x + 40, PROBE_Y + 90), math.pi / 2))
+    elif COUNTER:                                # the counters: one group per kind of killer, each in its own zone
+        c31.copy_unit('JapanLightTransportVehicle', c31.SIGNAL, c31.AURA, DECL)     # 复仇 declarations: see probe
+        place = []
+        for x, killers in COUNTER_GROUPS:
+            place += [(p1, WARRIOR, (x + dx, COUNTER_Y), math.pi / 2) for dx in (-35, 0, 35)]
+            place += [(p1, 'JapanAntiVehicleVehicleTech1', (x, COUNTER_Y - 80), math.pi / 2),
+                      (p1, c31.SIGNAL, (x, COUNTER_Y - 150), math.pi / 2)]
+            place += [(s1, t, (x + 30 * k - 15 * (len(killers) - 1), COUNTER_Y + 140), -math.pi / 2)
+                      for k, t in enumerate(killers)]
     else:
         place = [(p1, UNIT, N1, math.pi / 2), (p1, UNIT, N2, math.pi / 2),
                  (p1, 'JapanAntiVehicleVehicleTech1', TSUNAMI, math.pi / 2)]

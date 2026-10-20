@@ -90,10 +90,16 @@ DECL = f'''	<AttributeModifier id="AttributeModifier_CNV_SignalLink" Category="N
 		</Nuggets>
 	</WeaponTemplate>
 '''
+# counters (user, 2026-10-19: late game, smallest change): dying frozen (Allied cryo) or electrocuted (Soviet Tesla
+# weapons, DeathType ELECTROCUTED) hands no 复仇 on
 DEATH = f'''			<FireWeaponWhenDead id="ModuleTag_CNV_Vengeance" DeathWeapon="CNV_VengeancePulse" InitiallyActive="true">
-				<DieMuxData DeathTypes="ALL" RequiredStatus="{LINK}"/>
+				<DieMuxData DeathTypes="ALL" RequiredStatus="{LINK}" ExemptStatus="UNDER_FROZEN"
+					DeathTypesForbidden="ELECTROCUTED"/>
 			</FireWeaponWhenDead>
 ''' + ('			<LifetimeUpdate id="ModuleTag_CNV_ProbeLifetime" MinLifetime="6s" MaxLifetime="6s"/>\n' if STACK else '')
+if os.environ.get('CNV_NO_COUNTER') == '1':     # control runs: 复仇 on every death in the zone, as before
+    DEATH = DEATH.replace(' ExemptStatus="UNDER_FROZEN"\n\t\t\t\t\tDeathTypesForbidden="ELECTROCUTED"', '')
+    assert 'ExemptStatus' not in DEATH
 AURA = f'''			<AttributeModifierAuraUpdate id="ModuleTag_CNV_SignalAura" AttributeModifierName="AttributeModifier_CNV_SignalLink"
 				RefreshDelay="0.5s" Range="{AURA_RANGE}" InitiallyActive="true" AllowSelf="true">
 				<ObjectFilter Rule="NONE" Relationship="ALLIES SAME_PLAYER">{EMPIRE}
