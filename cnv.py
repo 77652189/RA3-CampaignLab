@@ -11,6 +11,7 @@ script each time (inline scripts are where backslashes got eaten and files got g
   python -I -X utf8 cnv.py where X Y [--view VX VY]     world point -> bench screen (start camera, or after the
                                                          camera was moved to VX VY by a minimap click) + minimap
   python -I -X utf8 cnv.py launcher CampNew30           (re)write Mods\CampNew30\Play_CampNew30.bat
+  python -I -X utf8 cnv.py install CampNew30            a build staged while RA3 ran (work\staging) -> Mods
   python -I -X utf8 cnv.py status                       is RA3 running, who holds the bench / GPU locks
 
 Bench actions ('sec:kind:args;...'): click:x,y  rclick:x,y  drag:x0,y0,x1,y1  key:vk  wheel:n  (run_bench.ps1).
@@ -136,6 +137,21 @@ def cmd_launcher(a):
     print(make_campnew4.write_launcher(mod_dir(a.mod), a.mod))
 
 
+def cmd_install(a):
+    """A build staged while RA3 ran (work\\staging\\<mod>) goes into the Mods folder (its files replace the older
+    build's files of the same names)."""
+    if game_running():
+        raise SystemExit('RA3 is running: not writing into the Mods folder')
+    src = os.path.join(labpaths.WORK, 'staging', a.mod)
+    if not os.path.isdir(src):
+        raise SystemExit(f'nothing staged for {a.mod}')
+    dst = os.path.join(MODS, a.mod)
+    os.makedirs(dst, exist_ok=True)
+    for f in os.listdir(src):
+        shutil.copy2(os.path.join(src, f), os.path.join(dst, f))
+        print('->', os.path.join(dst, f))
+
+
 def cmd_status(a):
     print("RA3 running" if game_running() else "RA3 not running", flush=True)
     subprocess.run([sys.executable, '-I', os.path.join(ROOT, 'ra3voice', 'reslock.py'), 'status'])
@@ -174,6 +190,9 @@ def main():
     p = sub.add_parser('launcher')
     p.add_argument('mod')
     p.set_defaults(fn=cmd_launcher)
+    p = sub.add_parser('install')
+    p.add_argument('mod')
+    p.set_defaults(fn=cmd_install)
     p = sub.add_parser('status')
     p.set_defaults(fn=cmd_status)
     a = ap.parse_args()

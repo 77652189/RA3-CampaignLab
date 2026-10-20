@@ -32,6 +32,7 @@ OVERPASS_ALL = ['https://overpass-api.de/api/interpreter', 'https://overpass.kum
                 'https://overpass.private.coffee/api/interpreter']
 AGENT = {'User-Agent': 'RA3-CampaignLab realmap (https://github.com/77652189/RA3-CampaignLab)'}
 RASTER = 500                       # playable cells per side on our 560 x 560 maps (border 30)
+DECK = 100                         # bridge deck height above WATERLINE
 WATERLINE = 285.7                  # newmap.WATERLINE (kept here so this file runs without the map modules)
 
 
@@ -123,6 +124,19 @@ TOWN = ('residential', 'commercial', 'industrial', 'retail', 'railway')
 GREEN = ('forest', 'wood', 'park', 'golf_course', 'grass', 'meadow', 'scrub', 'grassland', 'pitch')
 
 
+def _grow(mask, cells):
+    """mask dilated by `cells` (4-neighbour steps)."""
+    out = mask.copy()
+    for _ in range(cells):
+        g = out.copy()
+        g[1:] |= out[:-1]
+        g[:-1] |= out[1:]
+        g[:, 1:] |= out[:, :-1]
+        g[:, :-1] |= out[:, 1:]
+        out = g
+    return out
+
+
 def _blur(a, sigma):
     """Separable Gaussian blur of a float array (edges repeat)."""
     r = int(3 * sigma) + 1
@@ -202,6 +216,21 @@ class Real:
         elev = np.where(land, WATERLINE + 12 + np.clip(self.dem, 0, None) / top * land_band * exaggerate,
                         WATERLINE - floor)
         elev = _blur(elev, 1.2)
+        # bridges (CampBridge1 bench, 2026-10-20): a 3-4 cell causeway at +12 stopped every ground unit at the
+        # bridge head, and a 9-cell deck at +14 still looked awash on screen (the real water surface sits higher
+        # than WATERLINE). The deck: ~9 cells, flat, DECK above the waterline; the land near it ramps towards the
+        # deck height (at most 5 a cell, cut down or built up) so it never meets a cliff or a step.
+        if self.bridge.any():
+            deck = _grow(self.bridge, 2)
+            self.road |= deck
+            self.bridge = deck
+            elev[deck] = WATERLINE + DECK
+            near = deck.copy()
+            for k in range(1, 41):
+                ring = _grow(near, 1) & ~near & ~self.sea
+                near |= ring
+                lo, hi = WATERLINE + DECK - 5 * k, WATERLINE + DECK + 5 * k
+                elev[ring] = np.clip(elev[ring], lo, hi)
         out = {}
         for j in range(hm.height):
             for i in range(hm.width):
