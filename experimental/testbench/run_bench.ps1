@@ -154,8 +154,11 @@ $lockFile = Join-Path ([IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..
 if ($env:RA3_SHARED) { $lockFile = Join-Path $env:RA3_SHARED 'locks\bench.json' }
 if (Test-Path $lockFile) {
     $held = Get-Content $lockFile -Raw | ConvertFrom-Json
-    $live = Get-Process -Id $held.pid -ErrorAction SilentlyContinue
-    if ($live -and (-not $held.until -or [datetime]$held.until -gt (Get-Date))) {
+    # reslock's rule: a timed lock holds until it expires (a CLI acquire's process exits at once), an open-ended one
+    # while its process lives
+    $holds = if ($held.until) { [datetime]$held.until -gt (Get-Date) }
+             else { [bool](Get-Process -Id $held.pid -ErrorAction SilentlyContinue) }
+    if ($holds) {
         Write-Output "ABORT: bench locked by $($held.owner) (pid $($held.pid), since $($held.since)) $($held.note)"; exit 4
     }
 }
