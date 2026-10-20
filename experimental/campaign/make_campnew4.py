@@ -52,7 +52,20 @@ def main():
     big.write(os.path.join(OUT, f'{NAME}.big'), files)
     with open(os.path.join(OUT, f'{NAME}_1.0.skudef'), 'w', encoding='ascii', newline='') as f:
         f.write(f'mod-game 1.12\r\nadd-big {NAME}.big\r\n')
+    write_launcher(OUT, NAME)
     print('->', OUT, [n.split('\\')[-1] for n, _ in files if 'static' not in n])
+
+
+def write_launcher(out, name):
+    """Play_<name>.bat next to the skudef: double-click starts RA3 1.13 with this mod (what the Steam launch option
+    '-runver 1.13 -modConfig <skudef>' did; the same RA3.exe -modConfig route as launch_arsenal.bat). Extra
+    arguments pass through (e.g. -win for a windowed test)."""
+    import labpaths
+    bat = os.path.join(out, f'Play_{name}.bat')
+    with open(bat, 'w', encoding='ascii', newline='') as f:
+        f.write(f'@echo off\r\nstart "" "{os.path.join(labpaths.GAME, "RA3.exe")}" -runver 1.13 '
+                f'-modConfig "%~dp0{name}_1.0.skudef" %*\r\n')
+    return bat
 
 
 if __name__ == '__main__':

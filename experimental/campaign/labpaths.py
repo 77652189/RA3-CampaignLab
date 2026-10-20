@@ -17,3 +17,5 @@ SHARED = os.path.join(LAB, 'shared')
 ENVS = os.path.join(LAB, 'envs')
 SDK3 = os.environ.get('CNV_SDK', os.path.join(LAB, 'sdk', 'RA3ModSDK3'))
 SDK_OLD = os.path.join(LAB, 'sdk', 'RA3ModSDK')
+# the Steam game (read only: never write into it); CNV_GAME overrides it
+GAME = os.environ.get('CNV_GAME', r'C:\Program Files (x86)\Steam\steamapps\common\Command and Conquer Red Alert 3')

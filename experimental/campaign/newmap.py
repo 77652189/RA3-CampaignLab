@@ -88,6 +88,14 @@ def paint_terrain(m, hm, tiles, seed=11):
             grid[(i, j)] = texture_for(e, slope, (i - b) * 10.0, (j - b) * 10.0, patch)
             # passability: steep dry ground is impassable (field 0, as on retail maps)
             tiles.set_bit(0, i, j, slope > 9 and e > WATERLINE)
+    return paint_grid(tiles, grid)
+
+
+def paint_grid(tiles, grid, rank=None):
+    """Paint {(i, j): texture} and blend each cell's edge with the highest-ranked neighbouring texture above its
+    own (RANK order; textures not in it rank last). Returns ({texture: cells}, cells blended)."""
+    rank = rank or RANK
+    order = lambda t: rank.index(t) if t in rank else len(rank)      # noqa: E731
     by_tex = {}
     for c, t in grid.items():
         by_tex.setdefault(t, []).append(c)
@@ -98,11 +106,11 @@ def paint_terrain(m, hm, tiles, seed=11):
         near = {}
         for d, (di, dj) in tiles.STEP.items():
             t = grid.get((i + di, j + dj))
-            if t and RANK.index(t) < RANK.index(own):
+            if t and order(t) < order(own):
                 near.setdefault(t, set()).add(d)
         if not near:
             continue
-        top = min(near, key=RANK.index)
+        top = min(near, key=order)
         for need, (byte, flags, two) in tiles.SIDES:
             if set(need) <= near[top]:
                 direction = [0, 0, 0, 0]
