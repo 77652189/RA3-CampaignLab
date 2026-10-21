@@ -17,6 +17,8 @@ Bench (2026-10-21): the raid loses 1 Vindicator of 4, the truck is still bombed 
 troopers walk after the aircraft. Cloud or follow is not settled: a lone 400 pulse 2 s after the shot killed only 1 of
 4 planes flying past (as if it stayed) but that one fell ~200 beyond the troopers (as if it followed). For a real
 cloud: a WeaponOCLNugget object at the burst (the carrier's drones), hurting aircraft around itself for a while.
+v2 (the cloud, below): the pulse flashes sit on the ground under where each plane was hit and go on there after the
+plane has flown on -- the cloud stays. 2 of 4 Vindicators went down (on the way home), the truck was still bombed.
 
   python -I -X utf8 experimental/campaign/make_campnew37.py            -> Documents\\Red Alert 3\\Mods\\CampNew37
 """
@@ -47,14 +49,67 @@ c7.EXTRA_OWN += [b'WeaponTemplate:CNV_Hanabi']
 RANGE = int(os.environ.get('CNV_HANABI_RANGE', '250'))
 PULSE = os.environ.get('CNV_HANABI_PULSE', '15')
 PULSES = int(os.environ.get('CNV_HANABI_PULSES', '5'))
-RADIUS = os.environ.get('CNV_HANABI_RADIUS', '60')
+RADIUS = os.environ.get('CNV_HANABI_RADIUS', '80')       # v1's delayed pulses had 60; the cloud's bench run 80
 TROOPERS = int(os.environ.get('CNV_HANABI_N', '3'))
 # the probe for "cloud or follow": CNV_HANABI_PULSES=1 CNV_HANABI_DELAY0=2.0 CNV_HANABI_PULSE=400 -- a killing pulse 2 s
 # after the shot: if it follows the target, the hit aircraft die where they are; if it stays, they are long gone
 DELAY0 = float(os.environ.get('CNV_HANABI_DELAY0', '0.3'))
 
 
+# v2 (2026-10-21, cloud or follow unsettled with delayed pulses): CNV_HANABI_CLOUD=1 (default) -- each shot leaves a
+# CNV_HanabiCloud on the ground under the target (an OCL with CREATE_AT_TARGET, as the vacuum bomb's seed), living
+# CLOUD_TIME and firing CNV_HanabiPulse every 0.5 s (FireWeaponUpdate, as the Cryo Satellite's beam object): FLAK, a
+# flat CIRCLE radius so the altitude does not matter, aircraft only. The pulse's fire FX marks where the cloud sits.
+# The shot itself keeps one 10 hit. CNV_HANABI_CLOUD=0: v1's delayed pulses
+CLOUD = os.environ.get('CNV_HANABI_CLOUD', '1') == '1'
+CLOUD_TIME = os.environ.get('CNV_HANABI_TIME', '2.5s')
+if CLOUD:
+    c7.EXTRA_OWN += [b'GameObject:CNV_HanabiCloud', b'WeaponTemplate:CNV_HanabiPulse',
+                     b'ObjectCreationList:OCL_CNV_HanabiCloud']
+CLOUD_DECL = f'''	<WeaponTemplate id="CNV_HanabiPulse" RadiusDamageAffects="ENEMIES" AttackRange="10000"
+		FireFX="FX_SovBatteryFire" Flags="NOT_ATTRACTED_BY_MAGNETS"
+		RequiredAntiMask="ANTI_AIRBORNE_VEHICLE ANTI_AIRBORNE_INFANTRY ANTI_GROUND">
+		<FiringDuration MinSeconds="0.25s" MaxSeconds="0.25s"/>
+		<Nuggets>
+			<DamageNugget Damage="{PULSE}.0" Radius="{RADIUS}.0" DamageTaperOff="0" PartitionFilterTestType="CIRCLE"
+				DamageType="FLAK" DamageFXType="SOVIET_FLAK" DeathType="EXPLODED">
+				<SpecialObjectFilter Rule="ANY" Include="AIRCRAFT"/>
+			</DamageNugget>
+		</Nuggets>
+	</WeaponTemplate>
+	<ObjectCreationList id="OCL_CNV_HanabiCloud">
+		<CreateObject Disposition="ON_GROUND_ALIGNED" Options="CREATE_AT_TARGET IGNORE_ALL_OBJECTS">
+			<CreateObject>CNV_HanabiCloud</CreateObject>
+		</CreateObject>
+	</ObjectCreationList>
+	<GameObject id="CNV_HanabiCloud" TransportSlotCount="0" IsTrainable="false" Side="Japan" EditorSorting="SYSTEM"
+		KindOf="UNATTACKABLE NOT_AUTOACQUIRABLE INERT">
+		<DisplayName>CNV_HanabiCloud</DisplayName>
+		<ArmorSet Armor="NoArmor"/>
+		<Behaviors>
+			<LifetimeUpdate id="ModuleTag_LifetimeUpdate" MinLifetime="{CLOUD_TIME}" MaxLifetime="{CLOUD_TIME}"/>
+			<FireWeaponUpdate id="ModuleTag_FireWeaponUpdate" FireInterval="0.5s">
+				<FireWeaponNugget WeaponName="CNV_HanabiPulse" FireDelay="0s"/>
+			</FireWeaponUpdate>
+			<DestroyDie id="ModuleTag_Die">
+				<DieMuxData DeathTypes="ALL"/>
+			</DestroyDie>
+		</Behaviors>
+		<Body>
+			<PropBody id="ModuleTag_Body"/>
+		</Body>
+		<Geometry IsSmall="true">
+			<Shape Type="CYLINDER" MajorRadius="20.0" Height="20.0"/>
+		</Geometry>
+	</GameObject>
+'''
+
+
 def nuggets():
+    if CLOUD:
+        return ('''			<DamageNugget Damage="10.0" DamageType="FLAK" DamageFXType="SOVIET_FLAK" DeathType="EXPLODED"/>
+			<WeaponOCLNugget WeaponOCL="OCL_CNV_HanabiCloud"/>
+''')
     return ''.join(f'''			<DamageNugget Damage="{PULSE}.0" Radius="{RADIUS}.0" DamageTaperOff="0"
 				DelayTimeSeconds="{DELAY0 + 0.5 * k:.1f}s" PartitionFilterTestType="CIRCLE"
 				DamageType="FLAK" DamageFXType="SOVIET_FLAK" DeathType="EXPLODED"/>
@@ -86,7 +141,7 @@ def unit_xml():
     x = sub1(x, 'id="JapanAntiVehicleInfantry"', f'id="{UNIT}"')
     x = sub1(x, 'EditorName="JapanAntiVehicleInfantry"', f'EditorName="{UNIT}"')
     x = sub1(x, 'Template="JapanAntiVehicleInfantryPlasmaBazooka"', 'Template="CNV_Hanabi"')
-    x = sub1(x, '</AssetDeclaration>', hanabi_weapon() + '</AssetDeclaration>')
+    x = sub1(x, '</AssetDeclaration>', (CLOUD_DECL if CLOUD else '') + hanabi_weapon() + '</AssetDeclaration>')
     with open(os.path.join(c26.DATA, UNIT + '.xml'), 'w', encoding='utf-8', newline='\r\n') as f:
         f.write(x.replace('\r\n', '\n'))
 
