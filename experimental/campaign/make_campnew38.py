@@ -14,6 +14,9 @@ The catch on both: vision. The Kirov sees 150 and would neither launch nor close
 lesson again; CheckVisionRange off did not help). At vision 650 (_020052): drones out from 6 s, the middle Hammer
 dies at ~13 s, a second by 25 s; the carrier stays put. Open: the drones do not go home -- they gather in a line
 beside the carrier (a dozen by 25 s).
+Chrono deck 2a (bench _020745: select, the ability slot, a point ~300 east): it turns at 3 s, vanishes and reappears
+there at 4 s, then launches drones from its new place. Carrying ground units needs a TransportContain and an unload,
+and the panel has one ability slot, taken by the jump.
 
 Scene: our carrier south, three enemy Hammers 450 north. Bench: box-select the carrier, right-click a Hammer.
 
@@ -43,6 +46,37 @@ UNIT = 'CNV_LibertyProbe'
 c7.EXTRA_TEMPLATES[UNIT] = {'file': f'DATA:CNVUnits/Data/{UNIT}.xml', 'EditorSorting': 'UNIT'}
 c7.EXTRA_OWN += [b'WeaponTemplate:CNV_LibertyDrones']
 DRONE_RANGE = 600
+# slice 2, 超时空甲板 (CNV_CHRONO=1, default): a targeted ability (the Sickle's leap button and command style, one
+# ability slot) driving TeleportSpecialAbilityUpdate -- in the schema, no retail unit uses it. Probe 2a: does the
+# carrier jump to the clicked point? (2b: carrying a group of ground units with it.) The Kirov's afterburner goes.
+CHRONO = os.environ.get('CNV_CHRONO', '1') == '1'
+CHRONO_RELOAD = os.environ.get('CNV_CHRONO_RELOAD', '20s')       # design: every few minutes; short for the bench
+UI_FILE = 'CNV_Liberty_UI.xml'
+CHRONO_DECL = f'''	<SpecialPowerTemplate id="SpecialPower_CNV_ChronoDeck" ReloadTime="{CHRONO_RELOAD}" TargetType="LOCATION"
+		Flags="FOGGED_SHROUDED_CELLS_OK CAN_NOT_BE_SCRAMBLED" WaypointModeTerminal="false"/>
+	<LogicCommand Type="SPECIAL_POWER" id="Command_CNV_ChronoDeck">
+		<SpecialPower>SpecialPower_CNV_ChronoDeck</SpecialPower>
+	</LogicCommand>
+	<LogicCommandSet id="CNV_LibertyCommandSet">
+		<Cmd>Command_CNV_ChronoDeck</Cmd>
+		<Cmd>Command_AttackMove</Cmd>
+	</LogicCommandSet>
+'''
+CHRONO_UI = '''	<UnitAbilityButtonTemplate id="Button_CNV_ChronoDeck" LogicCommand="Command_CNV_ChronoDeck">
+		<Data>
+			<TargetedSpecialPower StateData="ButtonStateAbilityLeap" ValidTargetCursor="TargetAbility"/>
+		</Data>
+	</UnitAbilityButtonTemplate>
+'''
+CHRONO_MODULES = '''			<SpecialPower id="ModuleTag_CNV_ChronoDeck" SpecialPowerTemplate="SpecialPower_CNV_ChronoDeck"
+				UpdateModuleStartsAttack="true"/>
+			<TeleportSpecialAbilityUpdate id="ModuleTag_CNV_ChronoDeckUpdate" SpecialPowerTemplate="SpecialPower_CNV_ChronoDeck"
+				StartAbilityRange="99999.0" UnpackTime="0.5s" PackTime="0s" MaxDistance="2000" FadeInTime="1s"/>
+'''
+if CHRONO:
+    c7.EXTRA_OWN += [b'SpecialPowerTemplate:SpecialPower_CNV_ChronoDeck', b'LogicCommand:Command_CNV_ChronoDeck',
+                     b'LogicCommandSet:CNV_LibertyCommandSet', b'UnitAbilityButtonTemplate:Button_CNV_ChronoDeck']
+    c7.EXTRA_ALL.append('DATA:CNVUnits/Data/' + UI_FILE)
 
 
 def sub1(x, old, new):
@@ -78,7 +112,13 @@ def unit_xml():
     x = sub1(x, 'VisionRange="150"', 'VisionRange="650"')
     assert x.count('CheckVisionRange="true"') == 2           # the turret's and the AI's target choosers
     x = x.replace('CheckVisionRange="true"', 'CheckVisionRange="false"')
-    x = sub1(x, '</AssetDeclaration>', drone_weapon() + '</AssetDeclaration>')
+    if CHRONO:
+        x = sub1(x, 'CommandSet="SovietBomberAircraftCommandSet"', 'CommandSet="CNV_LibertyCommandSet"')
+        x = sub1(x, '\t\t</Behaviors>', CHRONO_MODULES + '\t\t</Behaviors>')
+        with open(os.path.join(c26.DATA, UI_FILE), 'w', encoding='utf-8', newline='\r\n') as f:
+            f.write('<?xml version="1.0" encoding="UTF-8"?>\n<AssetDeclaration xmlns="uri:ea.com:eala:asset" '
+                    'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">\n' + CHRONO_UI + '</AssetDeclaration>\n')
+    x = sub1(x, '</AssetDeclaration>', (CHRONO_DECL if CHRONO else '') + drone_weapon() + '</AssetDeclaration>')
     with open(os.path.join(c26.DATA, UNIT + '.xml'), 'w', encoding='utf-8', newline='\r\n') as f:
         f.write(x.replace('\r\n', '\n'))
 
