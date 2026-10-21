@@ -37,7 +37,7 @@ SHOTS = os.path.join(labpaths.WORK, 'testbench', 'RA3', 'shots')
 
 def game_running():
     out = subprocess.run(['tasklist'], capture_output=True, text=True, errors='replace').stdout.lower()
-    return 'ra3_1.' in out or 'ra3.exe' in out
+    return 'ra3_1.' in out or 'ra3.exe' in out or 'ra3ep1' in out      # Uprising too
 
 
 def mod_dir(mod):

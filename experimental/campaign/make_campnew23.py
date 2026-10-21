@@ -81,7 +81,7 @@ c6.edit = generate
 def game_running():
     import subprocess
     out = subprocess.run(['tasklist'], capture_output=True, text=True, errors='replace').stdout.lower()
-    return 'ra3_1.' in out or 'ra3.exe' in out
+    return 'ra3_1.' in out or 'ra3.exe' in out or 'ra3ep1' in out      # Uprising too
 
 
 if __name__ == '__main__':
