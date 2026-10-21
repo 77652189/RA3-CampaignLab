@@ -1,0 +1,133 @@
+"""帝国「烟花兵」机制验证 (CampNew37): anti-air bursts that linger a few seconds where they went off, no new model yet.
+
+Design (docs/story/units.md, user 2026-10-20): the Empire has no anti-air infantry and weak early ground anti-air (the
+Archer Maiden tried and failed: poor against aircraft, too strong against armour). The firework trooper does not chase
+aircraft; it closes air space: a burst hangs in the air for a few seconds and every aircraft passing through it is
+hurt. Good over ore fields and base entrances, poor at hunting. No ground attack; shorter range than the IFV (300).
+
+Stand-in: a copy of the Tank Buster (its instant plasma shot and laser) with the weapon cut to CNV_Hanabi: anti-air
+only, range 250, the damage split into PULSES delayed pulses (FLAK, radius 60, CIRCLE: the aircraft's altitude does
+not matter) over ~2.5 s. Question for the bench: do delayed pulses stay where the shot landed (an air-denial cloud) or
+follow the target (plain damage over time)?
+
+Scene: CampNew36's raid -- a Soviet ore truck, four of our Vindicators south of it, our airfield to fly home to -- with
+three firework troopers beside the truck instead of the balloon (CampNew36's CNV_NO_BALLOON run is the control).
+
+Bench (2026-10-21): the raid loses 1 Vindicator of 4, the truck is still bombed (about the balloon's result); the
+troopers walk after the aircraft. Cloud or follow is not settled: a lone 400 pulse 2 s after the shot killed only 1 of
+4 planes flying past (as if it stayed) but that one fell ~200 beyond the troopers (as if it followed). For a real
+cloud: a WeaponOCLNugget object at the burst (the carrier's drones), hurting aircraft around itself for a while.
+
+  python -I -X utf8 experimental/campaign/make_campnew37.py            -> Documents\\Red Alert 3\\Mods\\CampNew37
+"""
+import math
+import os
+import re
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import make_campnew29 as c29                    # noqa: E402
+
+c28, c23 = c29.c28, c29.c23
+c26, c7, c6, c4, c2 = c28.c26, c23.c7, c23.c6, c23.c4, c23.c2
+newmap = c23.newmap
+NAME = 'CampNew37'
+c4.NAME = c2.NAME = NAME
+c2.SRC_DIR = os.path.join(c2.SDK, 'Mods', NAME, 'data')
+c2.BUILT = os.path.join(c2.SDK, 'BuiltMods', 'mods', NAME.lower(), 'data')
+c2.OUT = c4.OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods', NAME)
+c7.MAP_MOD = NAME + 'Map'
+
+SAGE = os.path.join(c2.SDK, 'SageXML', 'Japan', 'Units')
+UNIT = 'CNV_HanabiProbe'
+c7.EXTRA_TEMPLATES[UNIT] = {'file': f'DATA:CNVUnits/Data/{UNIT}.xml', 'EditorSorting': 'UNIT'}
+c7.EXTRA_OWN += [b'WeaponTemplate:CNV_Hanabi']
+
+RANGE = int(os.environ.get('CNV_HANABI_RANGE', '250'))
+PULSE = os.environ.get('CNV_HANABI_PULSE', '15')
+PULSES = int(os.environ.get('CNV_HANABI_PULSES', '5'))
+RADIUS = os.environ.get('CNV_HANABI_RADIUS', '60')
+TROOPERS = int(os.environ.get('CNV_HANABI_N', '3'))
+# the probe for "cloud or follow": CNV_HANABI_PULSES=1 CNV_HANABI_DELAY0=2.0 CNV_HANABI_PULSE=400 -- a killing pulse 2 s
+# after the shot: if it follows the target, the hit aircraft die where they are; if it stays, they are long gone
+DELAY0 = float(os.environ.get('CNV_HANABI_DELAY0', '0.3'))
+
+
+def nuggets():
+    return ''.join(f'''			<DamageNugget Damage="{PULSE}.0" Radius="{RADIUS}.0" DamageTaperOff="0"
+				DelayTimeSeconds="{DELAY0 + 0.5 * k:.1f}s" PartitionFilterTestType="CIRCLE"
+				DamageType="FLAK" DamageFXType="SOVIET_FLAK" DeathType="EXPLODED"/>
+''' for k in range(PULSES))
+
+
+def sub1(x, old, new):
+    assert x.count(old) == 1, (old[:60], x.count(old))
+    return x.replace(old, new, 1)
+
+
+def hanabi_weapon():
+    w = open(os.path.join(c2.SDK, 'SageXML', 'GlobalData', 'Weapon.xml'), encoding='utf-8').read()
+    m = re.search(r'\t*<WeaponTemplate\s+id="JapanAntiVehicleInfantryPlasmaBazooka".*?</WeaponTemplate>\n', w, re.S)
+    x = m.group(0).replace('id="JapanAntiVehicleInfantryPlasmaBazooka"', 'id="CNV_Hanabi"')
+    x = sub1(x, 'AttackRange="175.0"', f'AttackRange="{RANGE}.0"')
+    x = sub1(x, 'RequiredAntiMask="ANTI_GROUND ANTI_STRUCTURE ANTI_WATER"',
+             'RequiredAntiMask="ANTI_AIRBORNE_VEHICLE ANTI_AIRBORNE_INFANTRY"')
+    x, n = re.subn(r'\s*<DamageNugget\s+id="DefaultDamageNugget".*?/>', '\n' + nuggets().rstrip('\n'), x, flags=re.S)
+    assert n == 1
+    return x
+
+
+def unit_xml():
+    x = open(os.path.join(SAGE, 'JapanAntiVehicleInfantry.xml'), encoding='utf-8').read()
+    # the file's second object (the Ambush power's Tank Buster) inherits from the first: gone with the rename
+    x, n = re.subn(r'\s*<GameObject\s+id="JapanAntiVehicleInfantry_Ambush".*?</GameObject>', '', x, flags=re.S)
+    assert n == 1
+    x = sub1(x, 'id="JapanAntiVehicleInfantry"', f'id="{UNIT}"')
+    x = sub1(x, 'EditorName="JapanAntiVehicleInfantry"', f'EditorName="{UNIT}"')
+    x = sub1(x, 'Template="JapanAntiVehicleInfantryPlasmaBazooka"', 'Template="CNV_Hanabi"')
+    x = sub1(x, '</AssetDeclaration>', hanabi_weapon() + '</AssetDeclaration>')
+    with open(os.path.join(c26.DATA, UNIT + '.xml'), 'w', encoding='utf-8', newline='\r\n') as f:
+        f.write(x.replace('\r\n', '\n'))
+
+
+TRUCK = (1180, 2635)                             # screen ~(558, 229) at the start camera
+SCENE = [('SovietMiner', TRUCK, False)]
+# CNV_HANABI_AT=x,y moves the troopers (the cloud-or-follow run: 1000,2400, west of the hovering Vindicators, which are
+# then sent east across the middle of the view)
+AT = tuple(float(v) for v in os.environ.get('CNV_HANABI_AT', f'{TRUCK[0]},{TRUCK[1] - 40}').split(','))
+SCENE += [(UNIT, (AT[0] + dx, AT[1]), False) for dx in (-40, 0, 40)[:TROOPERS]]
+# hovering: drawn around screen y 410, not at their ground point's 586 (box-select there)
+X0 = float(os.environ.get('CNV_PLANES_X0', '1105'))     # the fly-past run: 950 (out of range of troopers at 1400)
+SCENE += [('AlliedAntiGroundAircraft', (X0 + 50 * k, 2335), True) for k in range(4)]
+SCENE.append(('AlliedAirfield', (1180, 2060), True))
+
+_generate = c6.edit
+
+
+def generate(m):
+    unit_xml()
+    _generate(m)                                 # CampNew29's scene: factory, power plant, our tanks, Hammers
+    objs = next(n for _, n in m.walk() if n.name == 'ObjectsList')
+    head = lambda k: k.head[:60]                 # noqa: E731
+    p1 = next(k for k in objs.kids if b'CNV_LightTank2' in head(k))
+    s1 = next(k for k in objs.kids if b'SovietAntiVehicleVehicleTech1' in head(k))
+    gone = [k for k in objs.kids if any(u in head(k) for u in (b'CNV_LightTank2', b'CNV_ShrinkVehicle', b'Allied',
+                                                                 b'SovietAntiVehicleVehicleTech1'))
+            and b'AlliedWarFactory' not in head(k) and b'AlliedPowerPlant' not in head(k)
+            and b'AlliedConstructionYard' not in head(k)]
+    objs.kids[:] = [k for k in objs.kids if k not in gone]
+    for template, (x, y), ours in SCENE:
+        pr, flags = newmap.typed_props_of(m, p1 if ours else s1)
+        objs.kids.append(newmap.object_node(m, pr, flags, template, x, y, angle=math.pi / 2 if ours else -math.pi / 2,
+                                            uniqueID=f'{template} {len(objs.kids)}'))
+    print('CNV37: removed', len(gone), 'units;', len(SCENE), 'placed')
+
+
+c6.edit = generate
+
+if __name__ == '__main__':
+    if c23.game_running():
+        c2.OUT = c4.OUT = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'staging', NAME)
+        print('RA3 is running -> staging at', c4.OUT)
+    c4.main()
