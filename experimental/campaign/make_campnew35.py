@@ -20,6 +20,8 @@ Second round: UNATTACKABLE alone already keeps it from being targeted (CNV_SCENE
 the Guardians never aimed at the blue Hammer; the control's Hammer died at 5-7 s, the phased one lived past 12 s); a
 sentry gun stays out for 15 s (CNV_SCENE=tower); deployed (box select, the ability slot at 1135, 628) it fires and
 ignores a move order, packed it drives off and does not fire.
+Siege (CNV_SCENE=siege, 2026-10-21): the middle coil fell at ~20 s with 3 of 6 Guardians left without the phase,
+before 17 s with 5 left with it (both outer coils blue from 5 s).
 
   python -I -X utf8 experimental/campaign/make_campnew35.py            -> Documents\\Red Alert 3\\Mods\\CampNew35
 """
@@ -52,7 +54,9 @@ c7.EXTRA_OWN += [b'AttributeModifier:AttributeModifier_CNV_PhaseUnit', b'Attribu
                  b'WeaponTemplate:CNV_PhaseShell', b'WeaponTemplate:CNV_PhaseWarhead']
 
 UNIT_TIME, STRUCTURE_TIME = os.environ.get('CNV_PHASE_UNIT', '8s'), os.environ.get('CNV_PHASE_STRUCTURE', '15s')
-RELOAD, RANGE = os.environ.get('CNV_PHASE_RELOAD', '30s'), 350
+# range 400, just outside the defences' 350 (Tesla coil, Spectrum tower, Wave-force tower; the design had 350): at
+# 350 it would stand inside a coil's range to fire. It deals no damage, so outranging towers is safe
+RELOAD, RANGE = os.environ.get('CNV_PHASE_RELOAD', '30s'), 400
 COOLDOWN_BIT = 'DOES_CONTAIN_TIBERIUM'           # a C&C3 bit no RA3 XML uses (as in CampNew34)
 PHASE_STATUS = os.environ.get('CNV_PHASE_STATUS', 'UNATTACKABLE NO_ATTACK NON_AUTOACQUIRABLE IN_STASIS')
 NO_PHASE = os.environ.get('CNV_NO_PHASE') == '1'
@@ -126,7 +130,7 @@ def unit_xml():
     x = sub1(x, 'EditorName="AlliedAntiVehicleVehicleTech1"', f'EditorName="{UNIT}"')
     x = sub1(x, 'Template="AlliedAntiVehicleVehicleTech1Cannon"', 'Template="CNV_PhaseShell"')
     # the Guardian sees 200: at 300 the tank turned to the Apocalypse and never fired (bench). The Athena sees 500
-    x = sub1(x, 'VisionRange="200"', 'VisionRange="400"')
+    x = sub1(x, 'VisionRange="200"', 'VisionRange="450"')
     if DEPLOY:
         x, n = re.subn(r'Template="CNV_PhaseShell"\s*ForbiddenObjectStatus="GENERIC_TOGGLE_STATE"/>\s*<Weapon\s*'
                        r'Ordering="SECONDARY_WEAPON"\s*Template="AlliedAntiVehicleVehicleTech1TargetPainter"\s*'
@@ -147,6 +151,15 @@ SCENE = [(UNIT, (A[0], A[1] - 100), True),
          ('SovietAntiVehicleVehicleTech3', (A[0], A[1] + 200), False)]
 if SCENE_KIND == 'hammer':
     SCENE[3] = ('SovietAntiVehicleVehicleTech1', (A[0], A[1] + 200), False)
+# siege: three Tesla coils in a row (2000 hp, range 350, -75 power each; three power plants out of view north), six
+# Guardians 400 south of the middle one, a phase tank on each flank 375-390 from an outer coil and 425+ from the
+# middle one (so each auto-picks its outer coil). Bench actions: deploy each tank, send the Guardians at the middle
+# coil. Baseline: CNV_NO_PHASE=1 (same clicks, the shells do nothing)
+if SCENE_KIND == 'siege':
+    SCENE = [(UNIT, (1000, 2330), True), (UNIT, (1380, 2315), True)]
+    SCENE += [('AlliedAntiVehicleVehicleTech1', (x, y), True) for y in (2315, 2275) for x in (1120, 1180, 1240)]
+    SCENE += [('SovietBaseDefenseAdvanced', p, False) for p in ((1010, 2705), (1180, 2715), (1350, 2705))]
+    SCENE += [('SovietPowerPlant', (x, 2900), False) for x in (1000, 1180, 1360)]
 if SCENE_KIND == 'tower':
     SCENE[3] = ('SovietBaseDefenseGround', (A[0], A[1] + 200), False)
     SCENE.append(('SovietPowerPlant', (A[0] + 220, A[1] + 330), False))
