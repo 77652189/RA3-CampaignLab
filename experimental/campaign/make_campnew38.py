@@ -73,10 +73,98 @@ CHRONO_MODULES = '''			<SpecialPower id="ModuleTag_CNV_ChronoDeck" SpecialPowerT
 			<TeleportSpecialAbilityUpdate id="ModuleTag_CNV_ChronoDeckUpdate" SpecialPowerTemplate="SpecialPower_CNV_ChronoDeck"
 				StartAbilityRange="99999.0" UnpackTime="0.5s" PackTime="0s" MaxDistance="2000" FadeInTime="1s"/>
 '''
+# v2 甲板跃迁 (user 2026-10-21: the Griffin's way -- the big unit hides the effect, the Chronosphere's code underneath).
+# CNV_CHRONO_MODE=jump (default, below the deck block): works -- bench _152425, the carrier and the three Guardians
+# under it arrive together at 4 s in their formation, the one outside the deck stays.
+# CNV_CHRONO_MODE=deck (first try): every 0.5 s a FireWeaponUpdate fires CNV_DeckStoreTrigger, whose SpecialPowerNugget
+# fires SpecialPower_CNV_DeckStore = the Chronosphere's StoreObjectsSpecialPower (select) at the carrier's own spot,
+# radius DECK; the one button is its TeleportStoredObjectsSpecialPower (send) with GetObjectsCurrentlyAtStorePosition.
+# The filter takes our ground units and the carrier itself (the Chronosphere's leaves aircraft out).
+# CNV_CHRONO_MODE=self: 2a, the carrier alone (TeleportSpecialAbilityUpdate).
+CHRONO_MODE = os.environ.get('CNV_CHRONO_MODE', 'jump')
+DECK = int(os.environ.get('CNV_DECK_RADIUS', '150'))
+# CNV_DECK_SHOW=1: each select drops the Chronosphere's lasting marker (does the timer select at all?)
+STORE_OCL = ' OCL="OCL_ChronospherePersistent"' if os.environ.get('CNV_DECK_SHOW') == '1' else ''
+# first deck run (_150502 / _150716): the select ran every 0.5 s (marker seen) and the button fired (it went into
+# cooldown), nothing moved, with the Chronosphere's send filter (none) and GetObjectsCurrentlyAtStorePosition true
+SEND_FILTER = os.environ.get('CNV_SEND_FILTER', 'CNV_DeckFilter')
+AT_STORE = os.environ.get('CNV_AT_STORE', 'true')
+STORE_EVERY = os.environ.get('CNV_STORE_EVERY', '0.5s')
+SEND_OCL = ' OCL="OCL_Chronosphere"' if os.environ.get('CNV_DECK_SHOW') == '1' else ''   # does the send fire?
+# the Chronosphere's power templates carry their own ObjectFilter (who gets picked up); without one nothing moved
+TEMPLATE_FILTER = f'''		<ObjectFilter Rule="ANY" Include="INFANTRY VEHICLE" StatusBitFlagsExclude="SUBMERGED NOT_IN_WORLD">
+			<IncludeThing>{UNIT}</IncludeThing>
+		</ObjectFilter>
+'''
+DECK_DECL = f'''	<SpecialPowerTemplate id="SpecialPower_CNV_DeckStore" ReloadTime="0s" TargetType="LOCATION"
+		Flags="WATER_OK CAN_NOT_BE_SCRAMBLED" WaypointModeTerminal="false">
+{TEMPLATE_FILTER}	</SpecialPowerTemplate>
+	<ObjectFilterAsset id="CNV_DeckFilter">
+		<Filter Rule="ANY" Include="INFANTRY VEHICLE" Relationship="SAME_PLAYER ALLIES"
+			StatusBitFlagsExclude="SUBMERGED NOT_IN_WORLD">
+			<IncludeThing>{UNIT}</IncludeThing>
+		</Filter>
+	</ObjectFilterAsset>
+	<WeaponTemplate id="CNV_DeckStoreTrigger" RadiusDamageAffects="SELF ALLIES" AttackRange="10000"
+		Flags="NOT_ATTRACTED_BY_MAGNETS">
+		<FiringDuration MinSeconds="0.1s" MaxSeconds="0.1s"/>
+		<Nuggets>
+			<SpecialPowerNugget SpecialPowerTemplate="SpecialPower_CNV_DeckStore"/>
+		</Nuggets>
+	</WeaponTemplate>
+'''
+DECK_MODULES = f'''			<StoreObjectsSpecialPower id="ModuleTag_CNV_DeckStore" SpecialPowerTemplate="SpecialPower_CNV_DeckStore"
+				Radius="{DECK}" TeleportLinkID="7" CanAffectObjectFilter="CNV_DeckFilter"{STORE_OCL}/>
+			<TeleportStoredObjectsSpecialPower id="ModuleTag_CNV_DeckSend" SpecialPowerTemplate="SpecialPower_CNV_ChronoDeck"
+				StoreObjectsLinkID="7" CanAffectObjectFilter="{SEND_FILTER}"{SEND_OCL}/>
+			<TeleportStoredObjectsUpdate id="ModuleTag_CNV_DeckSendUpdate" SpecialPowerTemplate="SpecialPower_CNV_ChronoDeck"
+				GetObjectsCurrentlyAtStorePosition="{AT_STORE}" Telefrag="INSTANT_DEATH_TELEPORTER_ONLY" TargetFX="FX_None"
+				FadeInTime="1s" DelayTime="0s"
+				DisabledTypesToProcess="USER_PARALYZED EMP HELD PARALYZED UNDERPOWERED TEMPORARILY_BUSY">
+				<CollidesWithOnTeleport Rule="ANY" Include="INFANTRY STRUCTURE VEHICLE"
+					Exclude="BRIDGE BRIDGE_SEGMENT BRIDGE_ENDCAP"/>
+			</TeleportStoredObjectsUpdate>
+			<FireWeaponUpdate id="ModuleTag_CNV_DeckStoreTimer" FireInterval="{STORE_EVERY}">
+				<FireWeaponNugget WeaponName="CNV_DeckStoreTrigger" FireDelay="0s"/>
+			</FireWeaponUpdate>
+'''
+# deck runs: with the templates' ObjectFilter the Guardians under the deck went to the target (_152020), the one outside
+# stayed, the carrier did not come (the Chronosphere's send seems to leave aircraft out). So CNV_CHRONO_MODE=jump
+# (default): the button is 2a's self-jump; its SourceWeapon selects what is under the deck as it leaves and its
+# DestinationWeapon sends that to where it arrives (SpecialPowerNuggets) -- no timer.
+JUMP_DECL = f'''	<SpecialPowerTemplate id="SpecialPower_CNV_DeckSend" ReloadTime="0s" TargetType="LOCATION"
+		Flags="WATER_OK CAN_NOT_BE_SCRAMBLED" WaypointModeTerminal="false">
+{TEMPLATE_FILTER}	</SpecialPowerTemplate>
+	<WeaponTemplate id="CNV_DeckSendTrigger" RadiusDamageAffects="SELF ALLIES" AttackRange="10000"
+		Flags="NOT_ATTRACTED_BY_MAGNETS">
+		<FiringDuration MinSeconds="0.1s" MaxSeconds="0.1s"/>
+		<Nuggets>
+			<SpecialPowerNugget SpecialPowerTemplate="SpecialPower_CNV_DeckSend"/>
+		</Nuggets>
+	</WeaponTemplate>
+'''
+JUMP_MODULES = (CHRONO_MODULES.replace('FadeInTime="1s"/>', 'FadeInTime="1s"\n\t\t\t\tSourceWeapon="CNV_DeckStoreTrigger" '
+                                       'DestinationWeapon="CNV_DeckSendTrigger"/>')
+                + DECK_MODULES.split('\t\t\t<FireWeaponUpdate')[0]
+                .replace('SpecialPowerTemplate="SpecialPower_CNV_ChronoDeck"', 'SpecialPowerTemplate="SpecialPower_CNV_DeckSend"'))
+if CHRONO_MODE == 'jump':
+    assert 'DestinationWeapon' in JUMP_MODULES and JUMP_MODULES.count('SpecialPower_CNV_DeckSend') == 2
 if CHRONO:
     c7.EXTRA_OWN += [b'SpecialPowerTemplate:SpecialPower_CNV_ChronoDeck', b'LogicCommand:Command_CNV_ChronoDeck',
                      b'LogicCommandSet:CNV_LibertyCommandSet', b'UnitAbilityButtonTemplate:Button_CNV_ChronoDeck']
     c7.EXTRA_ALL.append('DATA:CNVUnits/Data/' + UI_FILE)
+    if CHRONO_MODE == 'deck':
+        CHRONO_DECL = CHRONO_DECL.replace('WaypointModeTerminal="false"/>', 'WaypointModeTerminal="false">\n'
+                                          + TEMPLATE_FILTER + '\t</SpecialPowerTemplate>', 1) + DECK_DECL
+        CHRONO_MODULES = DECK_MODULES
+        c7.EXTRA_OWN += [b'SpecialPowerTemplate:SpecialPower_CNV_DeckStore', b'ObjectFilterAsset:CNV_DeckFilter',
+                         b'WeaponTemplate:CNV_DeckStoreTrigger']
+    elif CHRONO_MODE == 'jump':
+        CHRONO_DECL += DECK_DECL + JUMP_DECL
+        CHRONO_MODULES = JUMP_MODULES
+        c7.EXTRA_OWN += [b'SpecialPowerTemplate:SpecialPower_CNV_DeckStore', b'ObjectFilterAsset:CNV_DeckFilter',
+                         b'WeaponTemplate:CNV_DeckStoreTrigger', b'SpecialPowerTemplate:SpecialPower_CNV_DeckSend',
+                         b'WeaponTemplate:CNV_DeckSendTrigger']
 
 
 def sub1(x, old, new):
@@ -126,6 +214,10 @@ def unit_xml():
 A = c28.A
 SCENE = [(UNIT, (A[0], A[1] - 60), True)]
 SCENE += [('SovietAntiVehicleVehicleTech1', (A[0] + dx, A[1] + 390), False) for dx in (-80, 0, 80)]
+# the deck jump: three of our Guardians under the carrier (inside DECK) and one outside it (should stay behind)
+if CHRONO and CHRONO_MODE in ('deck', 'jump'):
+    SCENE += [('AlliedAntiVehicleVehicleTech1', (A[0] + dx, A[1] - 60 + dy), True)
+              for dx, dy in ((-60, 0), (60, 0), (0, -60), (-330, -60))]
 
 _generate = c6.edit
 
