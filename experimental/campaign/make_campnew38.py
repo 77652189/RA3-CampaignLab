@@ -168,6 +168,27 @@ TURRET_SLAVE = '''			<SlavedUpdate id="ModuleTag_CNV_DeckSlave" LeashRange="60" 
 if TURRETS:
     c7.EXTRA_TEMPLATES[TURRET] = {'file': f'DATA:CNVUnits/Data/{TURRET}.xml', 'EditorSorting': 'UNIT'}
 
+# v2 甲板工厂 (CNV_FACTORY=1, default off until it works): the war factory's ProductionUpdate + QueueProductionExitUpdate
+# on the carrier, its factory KindOf flags, a Guardian build command in the carrier's command set. CNV_SCENE=factory:
+# the base's war factory left out, so the carrier is the only vehicle producer.
+FACTORY = os.environ.get('CNV_FACTORY', '0') == '1'
+# ... the sidebar did not take it (_155228: every tab greyed, the carrier not offered as a producer). CNV_FACTORY=auto:
+# the deck builds on its own -- a SpawnBehavior of Guardians (budding off under the carrier), up to 2, one every 20 s.
+AUTO_FACTORY = os.environ.get('CNV_FACTORY') == 'auto'
+AUTO_FACTORY_MODULE = '''			<SpawnBehavior id="ModuleTag_CNV_DeckFactory" SpawnNumberData="2" InitialBurst="0"
+				SpawnReplaceDelayData="20s" SpawnedRequireSpawner="false" ExitByBudding="true">
+				<Die DeathTypes="ALL"/>
+				<SpawnTemplate>AlliedAntiVehicleVehicleTech1</SpawnTemplate>
+			</SpawnBehavior>
+'''
+FACTORY_MODULES = '''			<ProductionUpdate id="ModuleTag_CNV_DeckProduction" GiveNoXP="true" Type="VEHICLE"
+				NumDoorAnimations="0" NewObjectFadeInTime="0.5s"/>
+			<QueueProductionExitUpdate id="ModuleTag_CNV_DeckExit" ExitDelaySeconds="0.07s">
+				<UnitCreatePoint x="0.0" y="0.0" z="0.0" />
+				<NaturalRallyPoint x="80.0" y="0.0" z="0.0" />
+			</QueueProductionExitUpdate>
+'''
+
 
 TURRET_DRONE = f'''<?xml version="1.0" encoding="UTF-8"?>
 <AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
@@ -306,6 +327,15 @@ def unit_xml():
     if TURRETS:
         x = sub1(x, '\t\t</Behaviors>', TURRET_SPAWN + '\t\t</Behaviors>')
         turret_xml()
+    if AUTO_FACTORY:
+        x = sub1(x, '\t\t</Behaviors>', AUTO_FACTORY_MODULE + '\t\t</Behaviors>')
+    if FACTORY:
+        global CHRONO_DECL
+        CHRONO_DECL = sub1(CHRONO_DECL, '\t\t<Cmd>Command_AttackMove</Cmd>\n\t</LogicCommandSet>',
+                           '\t\t<Cmd>Command_AttackMove</Cmd>\n\t\t<Cmd>Command_ConstructAlliedAntiVehicleVehicleTech1</Cmd>\n'
+                           '\t</LogicCommandSet>')
+        x = sub1(x, '\t\t</Behaviors>', FACTORY_MODULES + '\t\t</Behaviors>')
+        x = sub1(x, 'KindOf="CAN_CAST_REFLECTIONS', 'KindOf="FS_FACTORY AUTO_RALLYPOINT FS_WAR_FACTORY CAN_CAST_REFLECTIONS')
     x = sub1(x, '</AssetDeclaration>', (CHRONO_DECL if CHRONO else '') + drone_weapon() + '</AssetDeclaration>')
     with open(os.path.join(c26.DATA, UNIT + '.xml'), 'w', encoding='utf-8', newline='\r\n') as f:
         f.write(x.replace('\r\n', '\n'))
@@ -349,6 +379,8 @@ def generate(m):
                                                                  b'SovietAntiVehicleVehicleTech1'))
             and b'AlliedWarFactory' not in head(k) and b'AlliedPowerPlant' not in head(k)
             and b'AlliedConstructionYard' not in head(k)]
+    if SCENE_KIND == 'factory':                  # the carrier as the only vehicle producer
+        gone += [k for k in objs.kids if b'WarFactory' in head(k)]
     objs.kids[:] = [k for k in objs.kids if k not in gone]
     for template, (x, y), ours in SCENE:
         pr, flags = newmap.typed_props_of(m, p1 if ours else s1)
