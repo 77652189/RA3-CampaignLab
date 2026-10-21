@@ -37,6 +37,27 @@ STEPS = [
 ]
 
 
+# Popups over the menus that eat the steps' clicks: (name, template, box, threshold, click). The Tacitus update
+# dialog (C&C:Online's game patch, Data\dsound.dll) comes up on every start, even after updating (2026-10-20):
+# answer No, which changes nothing (Never ask again would write the user's Tacitus.ini in the game folder).
+POPUPS = [('tacitus update', 'popup_tacitus.png', (390, 132, 890, 152), 18, (553, 561))]
+
+
+def cut_popups(frame):
+    for name, tpl, box, _, _ in POPUPS:
+        Image.open(frame).convert('L').crop(box).save(os.path.join(OUT, tpl))
+        print(name, '->', os.path.join(OUT, tpl))
+
+
+def popup(frame):
+    """The click that dismisses a popup on this frame, or None."""
+    for name, tpl, box, thr, click in POPUPS:
+        path = os.path.join(OUT, tpl)
+        if os.path.exists(path) and metric(frame, dict(how='tpl', box=box, template=tpl)) < thr:
+            return name, click
+    return None
+
+
 def build(ref):
     os.makedirs(OUT, exist_ok=True)
     steps = []
@@ -67,6 +88,11 @@ def matches(step, m):
 if __name__ == '__main__':
     if sys.argv[1] == 'build':
         build(sys.argv[2])
+    elif sys.argv[1] == 'cutpopups':          # nav.py cutpopups <frame with the popups up>
+        cut_popups(sys.argv[2])
+    elif sys.argv[1] == 'popup':              # nav.py popup <frame> -> "popup <name> <x> <y>" | "none"
+        p = popup(sys.argv[2])
+        print(f'popup {p[0].replace(" ", "_")} {p[1][0]} {p[1][1]}' if p else 'none')
     else:
         with open(os.path.join(OUT, 'nav.json'), encoding='utf-8') as f:
             step = json.load(f)[int(sys.argv[3])]

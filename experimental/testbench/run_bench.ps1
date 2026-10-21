@@ -205,6 +205,13 @@ while ($true) {
         foreach ($k in 1..15) { if (Test-Path $frame) { break }; Start-Sleep -Milliseconds 100 }
         if (Test-Path $frame) {
             Start-Sleep -Milliseconds 100
+            # a popup over the menus (nav.py POPUPS, e.g. the Tacitus update dialog) eats the clicks: try to dismiss
+            # it (an ImGui popup ignores our posted clicks: the stuck check below still ends the run at 150 s)
+            $pop = ((& python -I $navPy popup $frame) -join ' ').Split(' ')
+            if ($pop[0] -eq 'popup') {
+                "NAV popup '$($pop[1])' at $s s: click $($pop[2]),$($pop[3])"
+                Invoke-Act ([Bench]::MainWindow([uint32]$p.Id)) 'click' @([double]$pop[2], [double]$pop[3])
+            }
             $step = $navSteps[$navAt]
             $res = (& python -I $navPy check $frame $navAt) -join ' '
             # still on the previous screen 3 s after its actions: they were lost (a main menu recognised 2 s early
@@ -214,7 +221,8 @@ while ($true) {
                 $navSteps[$navAt - 1].how -eq 'tpl' -and ((& python -I $navPy check $frame ($navAt - 1)) -join ' ') -like 'match*') {
                 $prev = $navSteps[$navAt - 1]
             }
-            Remove-Item $frame -ErrorAction SilentlyContinue
+            # keep the last menu frame (saved as nav_last.png at the end): what a stuck run was looking at
+            Move-Item $frame (Join-Path $shotDir 'nav_last.bmp') -Force -ErrorAction SilentlyContinue
             if ($res -like 'match*') {
                 "NAV $navAt '$($step.name)' at $s s ($res)"
                 $hw = [Bench]::MainWindow([uint32]$p.Id)

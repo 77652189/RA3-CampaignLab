@@ -13,6 +13,10 @@ from the start).
 Scene: two of our Guardians 140 south of an enemy Apocalypse (it beats them alone), the phase tank 300 south of it.
 CNV_NO_PHASE=1: the same shell without the phase (the control).
 
+Bench (2026-10-20): the Apocalypse turns blue at 1 s, stops moving and firing, is back before 8 s; our Guardians hold
+fire meanwhile and shoot again as soon as it returns; the second shot at 29 s. Two Guardians still lose, dying at
+10 / 15 s instead of 3 / 10 s. It only fired once its own vision reached the target (see VisionRange below).
+
   python -I -X utf8 experimental/campaign/make_campnew35.py            -> Documents\\Red Alert 3\\Mods\\CampNew35
 """
 import math
@@ -76,9 +80,12 @@ DECL = f'''	<AttributeModifier id="AttributeModifier_CNV_PhaseUnit" Category="NO
 	<WeaponTemplate id="CNV_PhaseWarhead" RadiusDamageAffects="ENEMIES"
 		RequiredAntiMask="ANTI_GROUND ANTI_STRUCTURE ANTI_WATER" Flags="NOT_ATTRACTED_BY_MAGNETS">
 		<Nuggets>
+			<DamageNugget Damage="1.0" DamageType="CANNON" DamageFXType="ALLIED_CANNON" DeathType="EXPLODED"/>
 {PHASE}		</Nuggets>
 	</WeaponTemplate>
 '''
+# the 1 damage: with the phase modifiers only, the tank turned to the Apocalypse and never fired (bench 2026-10-20;
+# auto-targeting seems to skip a weapon that cannot hurt its target)
 
 
 def sub1(x, old, new):
@@ -104,6 +111,8 @@ def unit_xml():
     x = sub1(x, 'id="AlliedAntiVehicleVehicleTech1"', f'id="{UNIT}"')
     x = sub1(x, 'EditorName="AlliedAntiVehicleVehicleTech1"', f'EditorName="{UNIT}"')
     x = sub1(x, 'Template="AlliedAntiVehicleVehicleTech1Cannon"', 'Template="CNV_PhaseShell"')
+    # the Guardian sees 200: at 300 the tank turned to the Apocalypse and never fired (bench). The Athena sees 500
+    x = sub1(x, 'VisionRange="200"', 'VisionRange="400"')
     x = sub1(x, '</AssetDeclaration>', DECL + shell_weapon() + '</AssetDeclaration>')
     with open(os.path.join(c26.DATA, UNIT + '.xml'), 'w', encoding='utf-8', newline='\r\n') as f:
         f.write(x.replace('\r\n', '\n'))
