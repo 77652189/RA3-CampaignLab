@@ -16,6 +16,9 @@ Vindicators, right-click the truck. CNV_NO_BALLOON=1: the truck alone (the contr
 Bench (2026-10-21, with an airfield to fly home to): the control's four bomb the truck at ~7 s and all go home; with
 the balloon they turn white (slowed) and smoke on the way in, one is shot down, three go home hurt, the truck is still
 bombed. A raid costs a Vindicator; it does not stop the drop.
+Deploy (CNV_SCENE=deploy): packed it drives up to two hovering Vindicators and holds fire; deployed it fires at once
+(one turns white and falls) and ignores a move order. The raid scene's balloon is the enemy's: run it with
+CNV_DEPLOY=0.
 
   python -I -X utf8 experimental/campaign/make_campnew36.py            -> Documents\\Red Alert 3\\Mods\\CampNew36
 """
@@ -48,6 +51,34 @@ CABLE_DAMAGE = os.environ.get('CNV_CABLE_DAMAGE', '10')
 SLOW = os.environ.get('CNV_CABLE_SLOW', '50%')
 VISION = os.environ.get('CNV_BALLOON_VISION', '600')
 NO_BALLOON = os.environ.get('CNV_NO_BALLOON') == '1'
+# 展开 (CNV_DEPLOY=1, default): the Guardian's whole painter toggle (its SpecialPower, command and button) on the
+# Bullfrog. Packed: drives, no cable, normal vision. Deployed (GENERIC_TOGGLE_STATE): IMMOBILE, vision x2 (650), the
+# cable gun and the slow aura on. CNV_DEPLOY=0: always up, speed 1 (the first probe)
+DEPLOY = os.environ.get('CNV_DEPLOY', '1') == '1'
+# CNV_SCENE: raid (default: the ore-truck raid, the balloon is the enemy's) | deploy (our balloon truck, two enemy
+# Vindicators hovering 165 north: drive up packed -> no fire; deploy -> fire and slow; move order -> stays)
+SCENE_KIND = os.environ.get('CNV_SCENE', 'raid')
+TOGGLE = '''			<SpecialPower id="ModuleTag_CNV_BalloonTrigger" SpecialPowerTemplate="SpecialPower_ToggleTargetPainter"/>
+			<ToggleStatusSpecialAbilityUpdate id="ModuleTag_CNV_BalloonToggle" Options="RECONSTITUTE_STORED_COMMAND"
+				SpecialPowerTemplate="SpecialPower_ToggleTargetPainter">
+				<ToggleState>
+					<SkirmishAiInfo ToggleHint="TOGGLE_DEFAULT"/>
+				</ToggleState>
+				<ToggleState ObjectStatus="GENERIC_TOGGLE_STATE" AttributeModifier="AttributeModifier_CNV_BalloonUp">
+					<SkirmishAiInfo ToggleHint="TOGGLE_DEFAULT"/>
+				</ToggleState>
+			</ToggleStatusSpecialAbilityUpdate>
+'''
+DEPLOY_DECL = '''	<AttributeModifier id="AttributeModifier_CNV_BalloonUp" Category="NONE" ObjectStatusToSet="IMMOBILE">
+		<Modifier Type="VISION" Value="200%"/>
+	</AttributeModifier>
+	<LogicCommandSet id="CNV_BalloonCommandSet">
+		<Cmd>Command_ToggleTargetPainter</Cmd>
+		<Cmd>Command_AttackMove</Cmd>
+	</LogicCommandSet>
+'''
+if DEPLOY:
+    c7.EXTRA_OWN += [b'AttributeModifier:AttributeModifier_CNV_BalloonUp', b'LogicCommandSet:CNV_BalloonCommandSet']
 
 DECL = f'''	<AttributeModifier id="AttributeModifier_CNV_Cable" Category="NONE" Duration="1s"
 		Shader="ShaderOverride_ObjectsFrozen">
@@ -81,13 +112,19 @@ def unit_xml():
     x = sub1(x, 'id="SovietAntiAirShip"', f'id="{UNIT}"')
     x = sub1(x, 'EditorName="SovietAntiAirShip"', f'EditorName="{UNIT}"')
     x = sub1(x, 'Template="SovietAntiAirShipFlakCannon"', 'Template="CNV_BalloonCable"')
-    x = sub1(x, 'VisionRange="325"', f'VisionRange="{VISION}"')
-    # a balloon stays put (the deploy toggle will make it IMMOBILE): the first bench run's mobile Bullfrog drove at
-    # our parked Vindicators and shot them on the ground
-    assert x.count('Condition="NORMAL"\n\t\t\tSpeed="100.0"') == 2
-    x = x.replace('Condition="NORMAL"\n\t\t\tSpeed="100.0"', 'Condition="NORMAL"\n\t\t\tSpeed="1.0"')
-    x = sub1(x, '</Behaviors>', AURA + '\t\t</Behaviors>')
-    x = sub1(x, '</AssetDeclaration>', DECL + cable_weapon() + '</AssetDeclaration>')
+    if DEPLOY:
+        x = sub1(x, 'Template="CNV_BalloonCable" />', 'Template="CNV_BalloonCable"\n\t\t\t\t\t\tObjectStatus="GENERIC_TOGGLE_STATE" />')
+        x = sub1(x, 'CommandSet="SovietAntiAirShipCommandSet"', 'CommandSet="CNV_BalloonCommandSet"')
+        x = sub1(x, '</Behaviors>', TOGGLE + AURA.replace('InitiallyActive="true"', 'InitiallyActive="true" '
+                                                          'RequiredObjectStatusFlags="GENERIC_TOGGLE_STATE"')
+                 + '\t\t</Behaviors>')
+    else:
+        x = sub1(x, 'VisionRange="325"', f'VisionRange="{VISION}"')
+        # a balloon stays put: the first bench run's mobile Bullfrog drove at our parked Vindicators and shot them
+        assert x.count('Condition="NORMAL"\n\t\t\tSpeed="100.0"') == 2
+        x = x.replace('Condition="NORMAL"\n\t\t\tSpeed="100.0"', 'Condition="NORMAL"\n\t\t\tSpeed="1.0"')
+        x = sub1(x, '</Behaviors>', AURA + '\t\t</Behaviors>')
+    x = sub1(x, '</AssetDeclaration>', DECL + (DEPLOY_DECL if DEPLOY else '') + cable_weapon() + '</AssetDeclaration>')
     with open(os.path.join(c26.DATA, UNIT + '.xml'), 'w', encoding='utf-8', newline='\r\n') as f:
         f.write(x.replace('\r\n', '\n'))
 
@@ -100,6 +137,8 @@ if not NO_BALLOON:
 SCENE += [('AlliedAntiGroundAircraft', (x, 2335), True) for x in (1105, 1155, 1205, 1255)]
 # an airfield to fly home to after the drop, as in a real raid (without one they circled over the truck: first runs)
 SCENE.append(('AlliedAirfield', (1180, 2060), True))
+if SCENE_KIND == 'deploy':                       # ours: the balloon truck (screen ~(536, 586)); theirs: two Vindicators
+    SCENE = [(UNIT, (1180, 2335), True)] + [('AlliedAntiGroundAircraft', (x, 2500), False) for x in (1150, 1210)]
 
 _generate = c6.edit
 
