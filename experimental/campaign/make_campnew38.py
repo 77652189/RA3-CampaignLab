@@ -149,6 +149,103 @@ JUMP_MODULES = (CHRONO_MODULES.replace('FadeInTime="1s"/>', 'FadeInTime="1s"\n\t
                 .replace('SpecialPowerTemplate="SpecialPower_CNV_ChronoDeck"', 'SpecialPowerTemplate="SpecialPower_CNV_DeckSend"'))
 if CHRONO_MODE == 'jump':
     assert 'DestinationWeapon' in JUMP_MODULES and JUMP_MODULES.count('SpecialPower_CNV_DeckSend') == 2
+# v2 炮塔 (CNV_TURRETS=1, default): the carrier spawns TURRETS deck turrets that stay glued to it and can be shot off one
+# by one -- the war factory's repair-drone wiring: SpawnBehavior on the master, SlavedUpdate on each turret. A turret
+# is a copy of the Twinblade (hovers, rockets + autocannon at ground targets) without its transport bay, with a short
+# leash, dying with the carrier. No respawn in the probe (SpawnReplaceDelay very long).
+TURRETS = int(os.environ.get('CNV_TURRETS', '4'))
+TURRET = 'CNV_LibertyTurret'
+TURRET_SPAWN = f'''			<SpawnBehavior id="ModuleTag_CNV_DeckTurrets" SpawnNumberData="{TURRETS}" InitialBurst="{TURRETS}"
+				SpawnReplaceDelayData="9999s" SpawnedRequireSpawner="true" KillSpawnsOnCaptured="true"
+				ExitByBudding="true">
+				<Die DeathTypes="ALL"/>
+				<SpawnTemplate>{os.environ.get('CNV_SPAWN_TEMPLATE', TURRET)}</SpawnTemplate>
+			</SpawnBehavior>
+'''
+TURRET_SLAVE = '''			<SlavedUpdate id="ModuleTag_CNV_DeckSlave" LeashRange="60" GuardMaxRange="40" GuardWanderRange="10"
+				AttackRange="250" AttackWanderRange="20" DieOnMastersDeath="true" StayOnSameLayerAsMaster="true"/>
+'''
+if TURRETS:
+    c7.EXTRA_TEMPLATES[TURRET] = {'file': f'DATA:CNVUnits/Data/{TURRET}.xml', 'EditorSorting': 'UNIT'}
+
+
+TURRET_DRONE = f'''<?xml version="1.0" encoding="UTF-8"?>
+<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<Includes>
+		<Include type="all" source="DATA:GlobalData/GlobalDefines.xml" />
+		<Include type="all" source="ART:AURepairDrone_SKN.w3x" />
+		<Include type="all" source="ART:AURepairDrone_IDLA.w3x" />
+		<Include type="instance" source="DATA:BaseObjects/BaseObject.xml" />
+	</Includes>
+	<GameObject id="{TURRET}" inheritFrom="BaseObject" Side="Allies" EditorSorting="UNIT" EditorName="{TURRET}"
+		KindOf="DRONE AIRCRAFT NO_COLLIDE CAN_ATTACK SCORE VEHICLE" ShockwaveResistance="120.0">
+		<DisplayName>NAME:RepairDrone</DisplayName>
+		<LocomotorSet Locomotor="BaseRepairDroneLocomotor" Condition="NORMAL" Speed="150.0" />
+		<ArmorSet Armor="SovietAntiGroundAircraftArmor" />
+		<Draws>
+			<ScriptedModelDraw id="ModuleTag_Draw" OkToChangeModelColor="true">
+				<ModelConditionState ParseCondStateType="PARSE_DEFAULT">
+					<Model Name="AURepairDrone_SKN" />
+				</ModelConditionState>
+				<AnimationState ParseCondStateType="PARSE_DEFAULT" StateName="STATE_bored">
+					<Animation AnimationName="AURepairDrone_IDLA" AnimationMode="LOOP" />
+				</AnimationState>
+			</ScriptedModelDraw>
+		</Draws>
+		<Behaviors>
+			<WeaponSetUpdate id="ModuleTag_WeaponSetUpdate">
+				<WeaponSlotHardpoint ID="1">
+					<Weapon Ordering="PRIMARY_WEAPON" Template="{os.environ.get('CNV_TURRET_GUN', 'SovietAntiGroundAircraftAutoCannon')}" />
+				</WeaponSlotHardpoint>
+				<WeaponSlotHardpoint ID="2">
+					<Weapon Ordering="PRIMARY_WEAPON" Template="SovietAntiAirShipFlakCannon" />
+				</WeaponSlotHardpoint>
+			</WeaponSetUpdate>
+{TURRET_SLAVE}			<SlowDeath id="ModuleTag_Death" DestructionDelay="1s" Fade="true" FadeTime="1s">
+				<DieMuxData DeathTypes="ALL" />
+			</SlowDeath>
+			<Physics id="ModuleTag_Physics" />
+		</Behaviors>
+		<AI>
+			<AIUpdate id="ModuleTag_AIUpdate" AutoAcquireEnemiesWhenIdle="YES" StateMachine="UnitAIStateMachine" />
+		</AI>
+		<Body>
+			<ActiveBody id="ModuleTag_Body" MaxHealth="400.0" />
+		</Body>
+		<Geometry IsSmall="true">
+			<Shape Type="CYLINDER" MajorRadius="8.0" Height="8.0" />
+		</Geometry>
+		<VisionInfo VisionRange="300" ShroudClearingRange="100" />
+	</GameObject>
+</AssetDeclaration>
+'''
+
+
+def turret_xml():
+    """v2 (CNV_TURRET_BASE=drone, default): the repair drone (spawns and follows: _153352) armed with the Twinblade's
+    autocannon and the Bullfrog's flak, 400 health, attackable. v1 (=twinblade): never spawned."""
+    if os.environ.get('CNV_TURRET_BASE', 'drone') == 'drone':
+        with open(os.path.join(c26.DATA, TURRET + '.xml'), 'w', encoding='utf-8', newline='\r\n') as f:
+            f.write(TURRET_DRONE)
+        return
+    x = open(os.path.join(SAGE, 'SovietAntiGroundAircraft.xml'), encoding='utf-8').read()
+    x = sub1(x, 'id="SovietAntiGroundAircraft"', f'id="{TURRET}"')
+    x = sub1(x, 'EditorName="SovietAntiGroundAircraft"', f'EditorName="{TURRET}"')
+    x, n = re.subn(r'\s*<TransportContain\b.*?</TransportContain>', '', x, flags=re.S)
+    assert n == 1
+    x = sub1(x, ' TRANSPORT LEAVE_PARKING_ON_BUILD_COMPLETE PRODUCED_AT_HELIPAD"', '"')
+    x = sub1(x, 'CommandSet="SovietAntiGroundAircraftCommandSet"', 'CommandSet="SovietBomberAircraftCommandSet"')
+    x = sub1(x, '\t\t</Behaviors>', TURRET_SLAVE + '\t\t</Behaviors>')
+    x = sub1(x, 'VisionRange="200"', 'VisionRange="300"')
+    # spawned Twinblade copies never showed up (_152920, _153139) while the war factory's repair drones spawned and
+    # followed the carrier (_153352): the drones run a plain AIUpdate, the Twinblade a JetAIUpdate (airfield logic)
+    x, n = re.subn(r'<JetAIUpdate(.*?)StateMachine="TransportHelicopterAIStateMachine">(.*?)</JetAIUpdate>',
+                   r'<AIUpdate\1StateMachine="UnitAIStateMachine">\2</AIUpdate>', x, flags=re.S)
+    assert n == 1
+    with open(os.path.join(c26.DATA, TURRET + '.xml'), 'w', encoding='utf-8', newline='\r\n') as f:
+        f.write(x.replace('\r\n', '\n'))
+
+
 if CHRONO:
     c7.EXTRA_OWN += [b'SpecialPowerTemplate:SpecialPower_CNV_ChronoDeck', b'LogicCommand:Command_CNV_ChronoDeck',
                      b'LogicCommandSet:CNV_LibertyCommandSet', b'UnitAbilityButtonTemplate:Button_CNV_ChronoDeck']
@@ -206,6 +303,9 @@ def unit_xml():
         with open(os.path.join(c26.DATA, UI_FILE), 'w', encoding='utf-8', newline='\r\n') as f:
             f.write('<?xml version="1.0" encoding="UTF-8"?>\n<AssetDeclaration xmlns="uri:ea.com:eala:asset" '
                     'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">\n' + CHRONO_UI + '</AssetDeclaration>\n')
+    if TURRETS:
+        x = sub1(x, '\t\t</Behaviors>', TURRET_SPAWN + '\t\t</Behaviors>')
+        turret_xml()
     x = sub1(x, '</AssetDeclaration>', (CHRONO_DECL if CHRONO else '') + drone_weapon() + '</AssetDeclaration>')
     with open(os.path.join(c26.DATA, UNIT + '.xml'), 'w', encoding='utf-8', newline='\r\n') as f:
         f.write(x.replace('\r\n', '\n'))
@@ -214,8 +314,24 @@ def unit_xml():
 A = c28.A
 SCENE = [(UNIT, (A[0], A[1] - 60), True)]
 SCENE += [('SovietAntiVehicleVehicleTech1', (A[0] + dx, A[1] + 390), False) for dx in (-80, 0, 80)]
+# CNV_SCENE=turrets: the Hammers 170 north (inside the turrets' leash-and-attack reach) and an enemy Bullfrog
+# (anti-air) with them, to shoot turrets down
+SCENE_KIND = os.environ.get('CNV_SCENE', '')
+if SCENE_KIND == 'turrets':
+    SCENE = [SCENE[0]] + [('SovietAntiVehicleVehicleTech1', (A[0] + dx, A[1] + 170), False) for dx in (-80, 0, 80)]
+    SCENE.append(('SovietAntiAirShip_Ground', (A[0] + 140, A[1] + 200), False))
+    # turrets fight: two Hammers 120 north (inside the autocannon's 150), an enemy Twinblade (flak target)
+    if os.environ.get('CNV_TURRET_FIGHT') == '1':
+        SCENE = [SCENE[0], ('SovietAntiVehicleVehicleTech1', (A[0] - 40, A[1] + 60), False),
+                 ('SovietAntiVehicleVehicleTech1', (A[0] + 40, A[1] + 60), False),
+                 ('SovietAntiGroundAircraft', (A[0] + 120, A[1] + 40), False),
+                 ('SovietAntiAirShip_Ground', (A[0] + 140, A[1] + 200), False)]
+# a spawned template of ours only loads when one is also placed on the map (spawning failed until then, _154143):
+# one turret parked out of the way, south-west (CNV_PLACE_TURRET=0 to leave it out)
+if TURRETS and os.environ.get('CNV_PLACE_TURRET', '1') == '1':
+    SCENE.append((TURRET, (A[0] - 330, A[1] - 300), True))
 # the deck jump: three of our Guardians under the carrier (inside DECK) and one outside it (should stay behind)
-if CHRONO and CHRONO_MODE in ('deck', 'jump'):
+if CHRONO and CHRONO_MODE in ('deck', 'jump') and SCENE_KIND != 'turrets':
     SCENE += [('AlliedAntiVehicleVehicleTech1', (A[0] + dx, A[1] - 60 + dy), True)
               for dx, dy in ((-60, 0), (60, 0), (0, -60), (-330, -60))]
 
