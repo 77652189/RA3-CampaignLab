@@ -16,6 +16,10 @@ CNV_NO_PHASE=1: the same shell without the phase (the control).
 Bench (2026-10-20): the Apocalypse turns blue at 1 s, stops moving and firing, is back before 8 s; our Guardians hold
 fire meanwhile and shoot again as soon as it returns; the second shot at 29 s. Two Guardians still lose, dying at
 10 / 15 s instead of 3 / 10 s. It only fired once its own vision reached the target (see VisionRange below).
+Second round: UNATTACKABLE alone already keeps it from being targeted (CNV_SCENE=hammer without NON_AUTOACQUIRABLE:
+the Guardians never aimed at the blue Hammer; the control's Hammer died at 5-7 s, the phased one lived past 12 s); a
+sentry gun stays out for 15 s (CNV_SCENE=tower); deployed (box select, the ability slot at 1135, 628) it fires and
+ignores a move order, packed it drives off and does not fire.
 
   python -I -X utf8 experimental/campaign/make_campnew35.py            -> Documents\\Red Alert 3\\Mods\\CampNew35
 """
@@ -41,7 +45,7 @@ c7.MAP_MOD = NAME + 'Map'
 SAGE = os.path.join(c2.SDK, 'SageXML', 'Allied', 'Units')
 UNIT = 'CNV_PhaseProbe'
 c7.EXTRA_TEMPLATES[UNIT] = {'file': f'DATA:CNVUnits/Data/{UNIT}.xml', 'EditorSorting': 'UNIT'}
-c7.EXTRA_OWN += [b'AttributeModifier:AttributeModifier_CNV_PhaseUnit',
+c7.EXTRA_OWN += [b'AttributeModifier:AttributeModifier_CNV_PhaseUnit', b'AttributeModifier:AttributeModifier_CNV_PhaseDeploy',
                  b'AttributeModifier:AttributeModifier_CNV_PhaseStructure',
                  b'AttributeModifier:AttributeModifier_CNV_PhaseTag',
                  b'AttributeModifier:AttributeModifier_CNV_PhaseCooldown',
@@ -52,6 +56,13 @@ RELOAD, RANGE = os.environ.get('CNV_PHASE_RELOAD', '30s'), 350
 COOLDOWN_BIT = 'DOES_CONTAIN_TIBERIUM'           # a C&C3 bit no RA3 XML uses (as in CampNew34)
 PHASE_STATUS = os.environ.get('CNV_PHASE_STATUS', 'UNATTACKABLE NO_ATTACK NON_AUTOACQUIRABLE IN_STASIS')
 NO_PHASE = os.environ.get('CNV_NO_PHASE') == '1'
+# 展开: the Guardian's painter toggle becomes deploy / pack up. Deployed (GENERIC_TOGGLE_STATE): IMMOBILE (鸣神's
+# signal form) and the shell is its only weapon; packed: it drives and cannot fire. CNV_DEPLOY=0: always armed
+DEPLOY = os.environ.get('CNV_DEPLOY', '1') == '1'
+# CNV_SCENE: apoc (default) | hammer (a Hammer: do the Guardians' shells hurt it while it is out of time? run with
+# CNV_PHASE_STATUS without NON_AUTOACQUIRABLE so they aim at it) | tower (a Soviet sentry gun and a power plant:
+# the 15 s structure phase)
+SCENE_KIND = os.environ.get('CNV_SCENE', 'apoc')
 
 
 def nugget(modifier, include, owner=None):
@@ -73,6 +84,9 @@ DECL = f'''	<AttributeModifier id="AttributeModifier_CNV_PhaseUnit" Category="NO
 		StackingLimit="1" ObjectStatusToSet="{PHASE_STATUS}" Shader="ShaderOverride_ObjectsChronoRift">
 	</AttributeModifier>
 	<AttributeModifier id="AttributeModifier_CNV_PhaseTag" Category="NONE" Duration="0.1s">
+	</AttributeModifier>
+	<AttributeModifier id="AttributeModifier_CNV_PhaseDeploy" Category="NONE" ObjectStatusToSet="IMMOBILE">
+		<Modifier Type="VISION" Value="100%"/>
 	</AttributeModifier>
 	<AttributeModifier id="AttributeModifier_CNV_PhaseCooldown" Category="NONE" Duration="{RELOAD}"
 		StackingLimit="1" ObjectStatusToSet="{COOLDOWN_BIT}">
@@ -113,6 +127,14 @@ def unit_xml():
     x = sub1(x, 'Template="AlliedAntiVehicleVehicleTech1Cannon"', 'Template="CNV_PhaseShell"')
     # the Guardian sees 200: at 300 the tank turned to the Apocalypse and never fired (bench). The Athena sees 500
     x = sub1(x, 'VisionRange="200"', 'VisionRange="400"')
+    if DEPLOY:
+        x, n = re.subn(r'Template="CNV_PhaseShell"\s*ForbiddenObjectStatus="GENERIC_TOGGLE_STATE"/>\s*<Weapon\s*'
+                       r'Ordering="SECONDARY_WEAPON"\s*Template="AlliedAntiVehicleVehicleTech1TargetPainter"\s*'
+                       r'ObjectStatus="GENERIC_TOGGLE_STATE"/>',
+                       'Template="CNV_PhaseShell"\n\t\t\t\t\t\tObjectStatus="GENERIC_TOGGLE_STATE"/>', x)
+        assert n == 1
+        x = sub1(x, 'AttributeModifier="AttributeModifier_TargetPaintVisionBonus"',
+                 'AttributeModifier="AttributeModifier_CNV_PhaseDeploy"')
     x = sub1(x, '</AssetDeclaration>', DECL + shell_weapon() + '</AssetDeclaration>')
     with open(os.path.join(c26.DATA, UNIT + '.xml'), 'w', encoding='utf-8', newline='\r\n') as f:
         f.write(x.replace('\r\n', '\n'))
@@ -123,6 +145,11 @@ SCENE = [(UNIT, (A[0], A[1] - 100), True),
          ('AlliedAntiVehicleVehicleTech1', (A[0] - 60, A[1] + 60), True),
          ('AlliedAntiVehicleVehicleTech1', (A[0] + 60, A[1] + 60), True),
          ('SovietAntiVehicleVehicleTech3', (A[0], A[1] + 200), False)]
+if SCENE_KIND == 'hammer':
+    SCENE[3] = ('SovietAntiVehicleVehicleTech1', (A[0], A[1] + 200), False)
+if SCENE_KIND == 'tower':
+    SCENE[3] = ('SovietBaseDefenseGround', (A[0], A[1] + 200), False)
+    SCENE.append(('SovietPowerPlant', (A[0] + 220, A[1] + 330), False))
 
 _generate = c6.edit
 
