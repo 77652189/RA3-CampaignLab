@@ -13,6 +13,9 @@ script each time (inline scripts are where backslashes got eaten and files got g
   python -I -X utf8 cnv.py launcher CampNew30           (re)write Mods\CampNew30\Play_CampNew30.bat
   python -I -X utf8 cnv.py install CampNew30            a build staged while RA3 ran (work\staging) -> Mods
   python -I -X utf8 cnv.py status                       is RA3 running, who holds the bench / GPU locks
+  python -I -X utf8 cnv.py make a8 [--check jump] [--no-build]   the decoupled builds (experimental/cnv/build.py:
+                                                         units / maps / missions / checks declared apart); with
+                                                         --check, a bench run judged on its counters: PASS / FAIL
 
 Bench actions ('sec:kind:args;...'): click:x,y  rclick:x,y  drag:x0,y0,x1,y1  key:vk  wheel:n  (run_bench.ps1).
 """
@@ -195,6 +198,10 @@ def main():
     p.set_defaults(fn=cmd_install)
     p = sub.add_parser('status')
     p.set_defaults(fn=cmd_status)
+    p = sub.add_parser('make')
+    p.add_argument('rest', nargs=argparse.REMAINDER, help='build.py arguments: <name> [--check c] [--no-build]')
+    p.set_defaults(fn=lambda a: sys.exit(subprocess.run([sys.executable, '-I', '-X', 'utf8', os.path.join(
+        ROOT, 'experimental', 'cnv', 'build.py')] + a.rest).returncode))
     a = ap.parse_args()
     a.fn(a)
 

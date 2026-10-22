@@ -38,8 +38,8 @@ async def run(steps, out):
                                 f.write(base64.b64decode(c.data))
                             texts.append(f'[image -> {p}]')
                     print(f'{k} {name} {json.dumps(args)} => ' + ' | '.join(texts), flush=True)
-                    if texts and texts[0].startswith('BENCH:'):
-                        break
+                    if name == 'bench_start' and texts and texts[0].startswith('BENCH:'):
+                        break                   # later steps can still read the frames archived so far
             finally:
                 if not steps or steps[-1][0] != 'bench_stop':
                     print('bench_stop =>', (await s.call_tool('bench_stop', {})).content[0].text, flush=True)

@@ -26,7 +26,9 @@ server = MCPServer('ra3bench', instructions=(
     'bench_ability / bench_camera, advance with bench_wait, look with bench_look, zoom into any archived frame with '
     'bench_inspect, read script signals with bench_caption. With hold=true (default) the mission is paused between '
     'calls and runs only while a tool acts or waits; bench_status gives the mission seconds run so far. '
-    'Hovering aircraft: pass air=true to click where they are drawn. bench_stop when done (it frees the bench lock).'))
+    'Hovering aircraft: pass air=true to click where they are drawn. bench_stop when done (it frees the bench lock). '
+    'Fewest clicks and pictures: let the map\'s scripts act (experimental/cnv checks) and count (DISPLAY_COUNTER), '
+    'then bench_watch(sheet=false) and bench_counters -- numbers as text; bench_strip / bench_inspect only to look.'))
 S = harness.Session()
 
 
@@ -232,7 +234,11 @@ def bench_watch(seconds: float, every: float = 3.0, x0: float = 0, y0: float = 0
     go()
     end, rows, cuts, prev, prev_cap = time.monotonic() + max(0.0, min(120.0, seconds)), [], [], None, None
     while True:
-        fid, img = S.frame(f'watch {every} s')
+        try:
+            fid, img = S.frame(f'watch {every} s')
+        except harness.BenchError as e:         # the game went (a crash): what was seen so far still counts
+            rows.append(f'stopped: {e}')
+            break
         box = box_of(S.view, x0, y0, x1, y1, world, img.size)
         if air:
             box = (box[0], max(0, box[1] - harness.AIR_LIFT), box[2], box[3])
@@ -246,7 +252,10 @@ def bench_watch(seconds: float, every: float = 3.0, x0: float = 0, y0: float = 0
         if time.monotonic() + every > end:
             break
         time.sleep(every)
-    S.pause()
+    try:
+        S.pause()
+    except harness.BenchError:                  # no mission menu: the mission has ended (won / lost screen)
+        rows.append('could not pause: the mission has ended?')
     out = [f'box {box}; ' + ' | '.join(rows)]
     if sheet and cuts:
         w, h = round(cuts[0][2].width * scale), round(cuts[0][2].height * scale)
@@ -259,6 +268,25 @@ def bench_watch(seconds: float, every: float = 3.0, x0: float = 0, y0: float = 0
             d.text((at[0] + 4, at[1] + 4), f'#{fid} s{s}', fill=(255, 255, 0))
         out.append(view(page, 1, 'JPEG'))
     return out
+
+
+@server.tool(structured_output=False)
+@guard
+def bench_counters(lines: int, frames: str = 'all') -> str:
+    """The mission's on-screen counters (DISPLAY_COUNTER, bottom left) read as numbers from archived frames -- text,
+    no image, the game untouched. lines: how many counters the map shows (top to bottom). frames as bench_strip.
+    '?' = nothing read there (no digit templates yet: counters.py calibrate)."""
+    import counters
+    ids = [f['id'] for f in S.frames]
+    if frames.startswith('last'):
+        ids = ids[-int(frames[4:] or 5):]
+    elif frames != 'all':
+        ids = [int(v) for v in frames.split(',')]
+    rows = []
+    for fid in ids:
+        vals = counters.read(S.archived(fid), lines)
+        rows.append(f's{S.frames[fid - 1]["second"]:.0f}: ' + ' '.join('?' if v is None else str(v) for v in vals))
+    return ' | '.join(rows) or 'BENCH: no frames'
 
 
 @server.tool(structured_output=False)
