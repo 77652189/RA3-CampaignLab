@@ -10,18 +10,18 @@ from parts import Script, Test, counted, square, status
 BURROW_AT, GO_AT = 3.0, 6.0
 GOAL = 100.0                                    # half-side of the area around each goal
 UNLOAD_AFTER = 2.0                              # deliver: seconds between surfacing and unloading
-SURFACE_BY = 10.0                               # A reaches its goal (and surfaces) between s10 and s12
+SURFACE_BY = GO_AT + 4.0                        # A reaches its goal and surfaces after this (bench: s12)
 
 
 def orders(m, t, burrow=('A',)):
     """Scripts: burrow the listed ones at BURROW_AT, send both to their goals at GO_AT; a goal area each."""
     t.scripts.append(Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1')),
-                                                 ('SET_MILLISECOND_TIMER', 'Test - burrow', BURROW_AT),
-                                                 ('SET_MILLISECOND_TIMER', 'Test - go', GO_AT)]))
-    t.scripts.append(Script('Test - burrow', [('TIMER_EXPIRED', 'Test - burrow')],
+                                                 ('SET_MILLISECOND_TIMER', 'Test - burrow timer', BURROW_AT),
+                                                 ('SET_MILLISECOND_TIMER', 'Test - go timer', GO_AT)]))
+    t.scripts.append(Script('Test - burrow', [('TIMER_EXPIRED', 'Test - burrow timer')],
                             [('NAMED_USE_COMMANDBUTTON_ABILITY', m.role(f'burrower {k}').name,
                               m.ability(f'burrower {k}', 'burrow')) for k in burrow]))
-    t.scripts.append(Script('Test - go', [('TIMER_EXPIRED', 'Test - go')],
+    t.scripts.append(Script('Test - go', [('TIMER_EXPIRED', 'Test - go timer')],
                             [('MOVE_NAMED_UNIT_TO', m.role(f'burrower {k}').name, m.mark(f'goal {k}')) for k in 'AB']))
     for k in 'AB':
         t.areas[f'Test Goal {k}'] = square(*m.point(f'goal {k}'), GOAL)
@@ -45,8 +45,8 @@ def deliver(m):
     a = m.role('burrower A').name
     t.scripts += [Script('Test - surface', [('NAMED_INSIDE_AREA', a, 'Test Goal A')],
                          [('NAMED_USE_COMMANDBUTTON_ABILITY', a, m.ability('burrower A', 'burrow')),
-                          ('SET_MILLISECOND_TIMER', 'Test - unload', UNLOAD_AFTER)]),
-                  Script('Test - unload', [('TIMER_EXPIRED', 'Test - unload')],
+                          ('SET_MILLISECOND_TIMER', 'Test - unload timer', UNLOAD_AFTER)]),
+                  Script('Test - unload', [('TIMER_EXPIRED', 'Test - unload timer')],
                          [('NAMED_USE_COMMANDBUTTON_ABILITY', a, m.ability('burrower A', 'unload'))])]
     counted('Test A Health', 'A 血量', t, health=a)
     counted('Test A There', 'A 到达', t, named=a, area='Test Goal A')
@@ -59,5 +59,5 @@ def deliver(m):
     t.expect += [('A 血量', 0, '==', 100, SURFACE_BY), ('车上步兵', 0, '>=', 3, GO_AT), ('车上步兵', GO_AT, 'ever==', 0),
                  ('区域步兵', GO_AT, 'ever==', 3), ('A 血量', SURFACE_BY, 'ever<', 100)]
     # no early stop: the frames after the unload show where the conscripts went
-    t.bench = [('bench_watch', dict(seconds=22, every=2, sheet=False, lines=len(t.counters)))]
+    t.bench = [('bench_watch', dict(seconds=SURFACE_BY + 14, every=2, sheet=False, lines=len(t.counters)))]
     return t

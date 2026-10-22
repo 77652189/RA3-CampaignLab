@@ -22,9 +22,10 @@ sys.path.insert(0, HERE)
 import parts                                    # noqa: E402  (puts experimental/campaign on the path)
 from checks import a7 as check_a7               # noqa: E402
 from checks import a8 as check_a8               # noqa: E402
+from checks import beacon as check_bea          # noqa: E402
 from checks import burrower as check_bur        # noqa: E402
 from checks import liberty as check_lib         # noqa: E402
-from missions import a7, a8, burrow_bench, liberty_bench   # noqa: E402
+from missions import a7, a8, beacon_bench, burrow_bench, liberty_bench   # noqa: E402
 
 BENCH_PY = os.path.join(os.path.dirname(ROOT), 'envs', 'bench_mcp', 'Scripts', 'python.exe')
 CLIENT = os.path.join(ROOT, 'experimental', 'testbench', 'bench_client.py')
@@ -49,6 +50,7 @@ MISSIONS = {
     'liberty': (lambda: liberty_bench.mission(), {'jump': check_lib.jump, 'open': check_lib.jump_open}),
     'liberty_riders': (lambda: liberty_bench.mission(riders=True, name='CampLibR'), {'jump': check_lib.jump}),
     'burrower': (lambda: burrow_bench.mission(), {'pass': check_bur.burrow_pass, 'drop': check_bur.deliver}),
+    'beacon': (lambda: beacon_bench.mission(), {'pull': check_bea.pull, 'still': check_bea.still}),
 }
 LEVELS = ('a7', 'a8')                           # campaign levels: each has a card in docs/story/levels.md (the rest:
                                                 # A/B controls and bench scenes)
