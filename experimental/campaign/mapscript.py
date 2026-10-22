@@ -302,6 +302,34 @@ class MapFile:
             body += _pstr(o['name']) + _pstr(o['title']) + _pstr(o['desc']) + struct.pack('<BI', o['bonus'], o['flags'])
         self._objectives_node().head = body
 
+    # ------------------------------------------------------------- trigger areas
+    def _areas_node(self):
+        return next(n for _, n in self.walk() if n.name == 'TriggerAreas')
+
+    def trigger_areas(self):
+        """TriggerAreas (v1, a leaf): u32 count, then per area: name, layer (retail: always ''), u32 id, u32 point
+        count, points as f32 x, y (world units), u32 0. -> {name: [(x, y), ...]}"""
+        node = next((n for _, n in self.walk() if n.name == 'TriggerAreas'), None)
+        if node is None:
+            return {}
+        d, out, p = node.head, {}, 4
+        for _ in range(struct.unpack_from('<I', d, 0)[0]):
+            name, p = self.string(d, p)
+            _, p = self.string(d, p)
+            _, n = struct.unpack_from('<II', d, p)
+            out[name] = [struct.unpack_from('<ff', d, p + 8 + 8 * k) for k in range(n)]
+            p += 8 + 8 * n + 4
+        assert p == len(d), 'TriggerAreas: trailing bytes'
+        return out
+
+    def set_trigger_areas(self, areas):
+        """Replace the map's trigger areas with {name: [(x, y), ...]} (polygons in world units; ids from 1)."""
+        body = struct.pack('<I', len(areas))
+        for k, (name, pts) in enumerate(areas.items(), 1):
+            body += _pstr(name) + _pstr('') + struct.pack('<II', k, len(pts))
+            body += b''.join(struct.pack('<ff', x, y) for x, y in pts) + struct.pack('<I', 0)
+        self._areas_node().head = body
+
     def script_text(self):
         lines = []
         for depth, n in self.walk():

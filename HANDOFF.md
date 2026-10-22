@@ -10,13 +10,12 @@
 - 两关粗模：A7「鹰派」（`make_campa7.py`，敌方自由号靠脚本跃迁，炸电站停跳）、A8「海上发布会」（`make_campa8.py`，自由号归玩家，丢了就输）。
 - 给用户试玩的图形启动器 `launcher.pyw` + 桌面快捷方式（下面 1b）。
 
-**恢复时先做**（2026-10-21 深夜更新）：先看下面"下一步"第 0、0a、0b、0c 条（ra3bench MCP、编图前 lint、少操作少截图的测法、解耦后的组装命令）。用户 2026-10-21 定：甲板乘员先接受叠放，先做解耦和效率改进——都已做完（0c）：自由号和 A8 已迁到 `experimental/cnv/`，4 个检查在测试台上全部 PASS。新内容一律按 0c 的结构写；没加载 MCP 的会话用 `cnv.py make <名> --check <检查>` 或 `experimental/testbench/bench_client.py`。
-**等用户回答**（2026-10-21 深夜问过）：① 要不要用新版 `cnv.py make a8` 覆盖现在装着的 CampA8（新版是原版战车工厂，造不了 CNV 轻坦）；② 排查崩溃留下的测试 mod（Mods 里的 CampBis*、CampLibertyRidersJump、CampLibRidersJump）能不能删。
+**恢复时先做**（2026-10-21 深夜更新）：先看下面"下一步"第 0、0a、0b、0c、0d 条（ra3bench MCP、编图前 lint、少操作少截图的测法、解耦后的组装命令、触发区域和一次调用测完的 `cnv_check`）。测试首选 MCP 的 `cnv_check(name, check)`。用户 2026-10-21 定：甲板乘员先接受叠放，先做解耦和效率改进——都已做完（0c）：自由号和 A8 已迁到 `experimental/cnv/`，4 个检查在测试台上全部 PASS。新内容一律按 0c 的结构写；没加载 MCP 的会话用 `cnv.py make <名> --check <检查>` 或 `experimental/testbench/bench_client.py`。
+用户 2026-10-21 深夜答复：新版 CampA8 覆盖旧版（已做）；排查用的测试 mod 删掉（已删 9 个）；下一步做触发区域 + 完善 MCP、让大模型直接和 MCP 交流（已做，见 0d）。
 **下一步候选**（推荐 1）：
-1. 地图生成器写触发区域，这样计数器能数"区域里有几辆"，A8 jump 才算真正验证到守护者跟着跳到了平台边。
-2. A8 有/没有自由号的难度对照，两边各写一个检查自动跑数。
-3. A7 迁到 `experimental/cnv/`。
-4. 小问题：liberty jump 里第 14 秒少了一辆守护者，原因没查。
+1. A8 有/没有自由号的难度对照，两边各写一个检查自动跑数（现在能数"区域里有几辆"了，可以数"平台附近我方剩几辆"）。
+2. A7 迁到 `experimental/cnv/`。
+3. 小问题：liberty jump 里第 14 秒少了一辆守护者，原因没查。
 
 其余旧项：
 1. 自由号 v2 空中平台（`make_campnew38.py`，用户 2026-10-21 的设计，units.md 5.2.1）探路结果（详见 plan.md 自由号那行）：甲板跃迁**做通**（起跳时圈选、落地时传送，航母带着脚下部队一起到）；甲板工厂**做通**（自动生产：SpawnBehavior 每 20 秒出一辆守护者，能正常指挥；走生产队列那条路侧栏不认）；可拆炮塔**没做通**（能刷出、会跟着航母，但不开火）。自制模板要在地图上也摆一个才会被 SpawnBehavior 加载。还差：炮塔不开火、刷出的单位叠在一个点。
@@ -67,7 +66,7 @@
      - `build.py`：一条命令编图、跑测试台、按计数器判 PASS / FAIL，失败时退出码 1。
    - 命令：
      - `cnv.py make list`：列出能编的图和检查。
-     - `cnv.py make a8`：编 A8 本身。**还没执行**：现在装着的 CampA8 仍是旧 `make_campa8.py` 的产物；新版把 CNV 装甲工厂换成了原版战车工厂（造不了 CNV 轻坦），用户确认后再覆盖。
+     - `cnv.py make a8`：编 A8 本身。2026-10-21 深夜经用户同意已覆盖装着的 CampA8（新版是原版战车工厂，造不了 CNV 轻坦）。
      - `cnv.py make a8 --check jump|lose`、`cnv.py make liberty_riders --check jump`、`cnv.py make liberty_ride_ab`（同图 A/B）。
      - `--no-build`：只跑测试台，用已经编好的图。
    - 2026-10-21 测试台结果，全部零点击：
@@ -80,9 +79,23 @@
      - `(标签, 从第几秒起, 比较符, 值)`：从那一秒起每帧都要满足。
      - 比较符写成 `ever==` 之类：至少有一帧满足就算。
      - 标签写 `ENDED`：计数器先出现、后来全没了，就算任务已经结束。
+     - 可加第 5 项"到第几秒为止"：`(标签, 起, 比较符, 值, 止)`，比如"跃迁前落点里是 0"。任务计时器比测试台的秒数早约 1 秒（测试台从看到关卡画面才开始数），写截止时间时留 `checks/liberty.EARLY`（2 秒）余量。
+0d. **触发区域 + MCP 一次调用测完**（2026-10-21 深夜，用户："地图生成器写触发区域，完善 MCP 工具，尽可能让大模型直接和 MCP 交流，避免直接操作"）：
+   - **触发区域**：`mapscript.MapFile.trigger_areas()` / `set_trigger_areas({名: [(x, y), ...]})`（格式见那里的注释，按原版地图核对过）。任务和检查写 `t.areas['名'] = parts.square(x, y, 半边长)`；`parts.counted(..., template=..., area='名')` 用 `PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA` 数区域里我方某种单位有几辆。底图（海德堡）原有的区域随它的脚本一起被替换掉；脚本里引用了没声明的区域，`assemble` 编图前就报错。`maprender` 会画出区域（青色框）。
+   - **MCP 新工具**（`bench_mcp.py`）：
+     - `cnv_list()`：列出所有任务、检查、计数器和期望值。
+     - `cnv_check(name, check)`：编图 → 进关 → 看 → 读计数器 → 判 PASS / FAIL，一次调用全做完，返回文字，不点击、不看图。编图在单独进程里跑（每次都用最新代码）。`build=false` 用已编好的图，`keep=true` 留着游戏好接着查。
+     - `cnv_map(mod, x, y, r)`：不开游戏看编好的地图俯视图（摆放、路点、触发区域）。
+   - 本机已在 `.claude/settings.local.json` 批准 ra3bench（不进 git），**下个会话开始就能直接调这些工具**；没加载 MCP 时，用 `bench_client.py '[["cnv_check", {"name": "a8", "check": "jump"}]]'` 走同一条 MCP 路径。
+   - `build.py` 给 MCP 用的两个模式：`--plan`（编图后打印测试台步骤）、`--judge "<计数器文字>"`（离线判定，改了期望值不用重跑游戏）。
+   - 计数器读数修了一个 bug：数字右边地面上 1 个像素的亮点被当成一组字，0 读成了 8（`counters.MIN_HEIGHT`）。
+   - 2026-10-21 深夜三个检查全部走 MCP 的 `cnv_check` 跑，都 PASS：
+     - A8 jump：守护者到平台，第 1 秒 0 辆，第 6 秒起 6 辆。**守护者确实跟着跳到了平台边**，之前证明不了的这一点现在证明了。
+     - liberty_riders jump：落点里跃迁前 0 辆、跃迁后 5 辆，在甲板 5、存活 6。
+     - liberty jump：落点里跃迁后 4 辆；存活在跃迁那一刻从 6 变 5（老问题，候选 3）。
    - 已知缺口：
-     - 计数只能按"玩家拥有的某种单位"或"带某状态的单位"数，数不了"某个区域里的单位"。触发区域我们的地图生成器还不会写。所以 A8 jump 证明不了守护者真的跟着跳到了平台边。
-     - 测试台建的 CampBis*、CampLibertyRidersJump、CampLibRidersJump 是排查崩溃留下的 mod，在 Mods 里，等用户同意再删。
+     - 区域只能按"某种单位"数（`UNIT_TYPE`）；按类别数（`PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA`，参数类型 27）还没接。
+     - `cnv_check` 一次约 2～3 分钟，MCP 客户端要等这么久（Claude Code 默认不会超时）。
 0a. **编图前自动静态检查**：`experimental/campaign/lint.py`，每次编图在编译前跑（`make_campnew7.compile_map`），有 ERROR 就停（`CNV_LINT=warn` 只打印）。规则对应下面"踩过的坑"：视野和射程（超过 1.5 倍只警告）、步兵 IMMOBILE、超时空模板缺 ObjectFilter、ToggleState 缺 SkirmishAiInfo、复制件里留着原版 id、SpawnBehavior 刷的自制模板没摆在地图上。`python -I -X utf8 experimental/campaign/lint.py` 单独查全部单位文件；`tests/test_lint.py` 每条规则一个正反例。新坑出现时先加一条规则和测试。
 1. 日常操作先用根目录的 `cnv.py`（`python -I -X utf8 cnv.py -h`）：build / map / bench / sheet / where / launcher / status，不再临时写脚本。新测试一律用 `run_bench.ps1 -Nav`（`cnv.py bench` 就是它）：时间从进入关卡算起，点击位置用 `experimental/testbench/calib.py` 的 `world_to_screen` 从世界坐标算（标定只对从 CampNew18 岛派生、开局镜头相同的地图有效；换了开局镜头要重新标定：`CNV_CALIB=base/grid` 各编一次、各跑一次，再 `calib.py fit`）。要看镜头外的地方：左键点 `calib.world_to_minimap(x, y)` 移镜头，再用 `calib.world_to_screen_at(x, y, 镜头中心)` 算点击位置；要打人就右键点敌人本身，右键点小地图只是移动。
 1b. 给用户自己试玩用的图形启动器：根目录 `launcher.pyw`（桌面快捷方式"红警3 测试启动器"，2026-10-21）。它列出 Mods 里所有编好的 mod，按"关卡 / 单位测试图 / 其他"分组，双击就启动，游戏在运行时拒绝启动。新关卡或新单位测试图要在 `launcher.pyw` 的 KNOWN 里加一行中文说明，否则会落进"其他"组。

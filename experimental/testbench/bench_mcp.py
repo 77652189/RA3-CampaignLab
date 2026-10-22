@@ -21,7 +21,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import harness  # noqa: E402
 
 server = MCPServer('ra3bench', instructions=(
-    'Red Alert 3 test bench: one game at a time. bench_start(mod) walks the menus into the mod\'s test mission '
+    'Red Alert 3 test bench: one game at a time. First choice for a test: cnv_check(name, check) -- builds the '
+    'mission with its check (experimental/cnv; cnv_list shows them), runs it and returns PASS / FAIL from the map\'s '
+    'own counters, no clicks or pictures; cnv_map(mod) shows a built map from above without the game (placement, '
+    'trigger areas). New checks are written in experimental/cnv/checks (counters, trigger areas, expectations). '
+    'By hand: bench_start(mod) walks the menus into the mod\'s test mission '
     '(~40 s). Then act in world coordinates (map units, as the builders place objects): bench_click / bench_box / '
     'bench_ability / bench_camera, advance with bench_wait, look with bench_look, zoom into any archived frame with '
     'bench_inspect, read script signals with bench_caption. With hold=true (default) the mission is paused between '
@@ -341,6 +345,86 @@ def bench_stop() -> str:
     """Close the bench game and free the bench lock (frames stay in the run folder)."""
     r = S.stop()
     return f'stopped {r["mod"]}: {r["frames"]} frames in {r["run_dir"]}'
+
+
+# ------------------------------------------------------------- the decoupled builds (experimental/cnv), one call each
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+BUILD = os.path.join(ROOT, 'experimental', 'cnv', 'build.py')
+MAPRENDER = os.path.join(ROOT, 'experimental', 'campaign', 'maprender.py')
+# the builds run in the base interpreter, in their own process: fresh code on every call (a check just edited), and
+# the pipeline's module state (templates, strings) starts empty each time
+BASE_PY = getattr(sys, '_base_executable', sys.executable)
+
+
+def lab(*args, timeout=900):
+    import subprocess
+    r = subprocess.run([BASE_PY, '-I', '-X', 'utf8', *args], capture_output=True, text=True, encoding='utf-8',
+                       errors='replace', cwd=ROOT, timeout=timeout)
+    return r.returncode, r.stdout + (('\n' + r.stderr) if r.stderr.strip() else '')
+
+
+def tail(text, n=12):
+    return '\n'.join(text.strip().splitlines()[-n:])
+
+
+@server.tool(structured_output=False)
+def cnv_list() -> str:
+    """Every decoupled build (experimental/cnv/build.py): mission, its checks, the mod each builds to, the counters a
+    check shows and what it expects of them."""
+    code, out = lab(BUILD, 'list', timeout=120)
+    return out.strip() if code == 0 else 'BUILD: ' + tail(out)
+
+
+@server.tool(structured_output=False)
+@guard
+def cnv_check(name: str, check: str = '', build: bool = True, keep: bool = False) -> str:
+    """Build a mission with one of its checks (cnv_list), run it on the bench and judge it -- one call, no clicks, no
+    pictures: the map's scripts act, its counters report, the counters are read as numbers and held against the
+    check's expectations. Returns the build summary, the watch rows, the readings and PASS / FAIL per expectation.
+    build=false: the mod already built. keep=true: the game stays up (inspect frames, bench_stop when done). Takes
+    ~2-3 min (build ~70 s, menus ~40 s, the check's own run)."""
+    import json
+    args = [BUILD, name] + (['--check', check] if check else [])
+    code, out = lab(*args, '--plan', *([] if build else ['--no-build']))
+    plan = next((json.loads(x[5:]) for x in out.splitlines() if x.startswith('PLAN ')), None)
+    if code or plan is None:
+        return 'BUILD FAILED:\n' + tail(out, 25)
+    built = [x for x in out.splitlines() if x.startswith(('lint:', '-> ', plan['mod'] + ':'))]
+    if plan.get('staged'):
+        return '\n'.join(built + ['RA3 is running: built to work/staging, no bench run'])
+    if not plan['steps']:
+        return '\n'.join(built + ['built (no check: nothing to run)'])
+    lines, counted = built, ''
+    try:
+        for tool, a in plan['steps']:
+            got = globals()[tool](**a)
+            text = ' '.join(x for x in (got if isinstance(got, list) else [got]) if isinstance(x, str))
+            lines.append(f'{tool}: {text[:600]}')
+            if text.startswith('BENCH:') and tool == 'bench_start':
+                return '\n'.join(lines)
+            if tool == 'bench_counters':
+                counted = text
+    finally:
+        if not keep and S.p is not None:
+            lines.append(bench_stop())
+    code, out = lab(*args, '--judge', counted, timeout=120)
+    return '\n'.join(lines + [out.strip()])
+
+
+@server.tool(structured_output=False)
+def cnv_map(mod: str, x: float = 0, y: float = 0, r: float = 0, px: int = 2) -> list:
+    """A built mod's map from above, without the game (maprender): terrain, objects coloured by owner, waypoints,
+    trigger areas, a world grid -- to check where a mission placed things. x, y, r (world units): only that square
+    around (x, y). px: pixels per map cell."""
+    out_png = os.path.join(ROOT, 'work', 'maps', f'{mod}_mcp.png')
+    code, out = lab(MAPRENDER, mod, '-o', out_png, '--px', str(px), *(['--around', str(x), str(y), str(r)] if r else []),
+                    timeout=300)
+    if code or not os.path.exists(out_png):
+        return ['MAP: ' + tail(out)]
+    from PIL import Image as PImage
+    img = PImage.open(out_png).convert('RGB')
+    scale = min(1.0, 1280 / max(img.size))
+    return [f'{mod}: {img.width}x{img.height} (full size: {out_png})', view(img, scale)]
 
 
 if __name__ == '__main__':

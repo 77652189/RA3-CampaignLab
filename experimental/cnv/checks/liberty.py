@@ -1,16 +1,20 @@
 """Liberty tests: the mission does the clicking (scripts), counters report what is checked, the bench only watches.
 
 jump: at JUMP_AT the carrier jumps (NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT) to open grass east of the start; counters
-  count the crew alive and, with riders, the riders on the deck (ATTACHED). Before the fix (2026-10-21) the deck's
-  store / send detached the riders on the jump; after it, 6 alive / 5 on deck before and after.
+  count the crew alive, the crew inside the landing area (a trigger area: none before the jump, the carried ones
+  after) and, with riders, the riders on the deck (ATTACHED). Before the fix (2026-10-21) the deck's store / send
+  detached the riders on the jump; after it, 6 alive / 5 on deck before and after.
 ride_ab: two carriers side by side, riders that stick to the carrier (A) and riders that do not (B), one jump each.
 """
-from parts import Script, Test, counted, side_by_side, status
+from parts import Script, Test, counted, side_by_side, square, status
 from missions import liberty_bench
 from units import liberty as lib
 
 JUMP_AT = 15.0
 JUMP_TO = (1480.0, 2315.0)              # open grass 300 east of the carrier, away from the Hammers
+LANDING = 150.0                         # half-side of the landing area around JUMP_TO (the start is 300 west)
+EARLY = 2.0                             # mission timers run ahead of the bench's seconds (counted from when the bench
+                                        # sees the mission; bench 2026-10-21: the s15 jump had landed by s14.2)
 
 
 def jumps(t, carrier, power, wp, to, at=JUMP_AT, tag=''):
@@ -28,10 +32,13 @@ def jump(m):
     t = Test()
     jumps(t, liberty_bench.CARRIER, m.names['power'], 'Test Jump Target', JUMP_TO)
     counted('Test Crew', '乘员存活', t, template=m.names['crew'])
+    t.areas['Test Landing'] = square(*JUMP_TO, LANDING)
+    counted('Test Landed', '乘员到落点', t, template=m.names['crew'], area='Test Landing')
     if m.names['crew'] != 'AlliedAntiVehicleVehicleTech1':
         counted('Test Deck', '乘员在甲板', t, status=lib.ATTACHED)
         t.expect += [('乘员在甲板', 5, '>=', 3), ('乘员在甲板', JUMP_AT + 4, '>=', 3)]
-    t.expect += [('乘员存活', JUMP_AT + 4, '>=', 4)]
+    t.expect += [('乘员存活', JUMP_AT + 4, '>=', 4), ('乘员到落点', 0, '==', 0, JUMP_AT - EARLY),
+                 ('乘员到落点', JUMP_AT + 4, '>=', 3)]
     t.bench = [('bench_watch', dict(seconds=JUMP_AT + 12, every=3, sheet=False))]
     return t
 

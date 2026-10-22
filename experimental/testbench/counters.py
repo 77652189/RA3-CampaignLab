@@ -24,6 +24,8 @@ TEXT = 170                                      # text pixels (yellow or white):
 GAP = 4                                         # columns of no text between the label and the value
 END_GAP = 12                                    # a wider gap: the line's text has ended
 START_BY = 30                                   # a counter line's text starts left of this
+MIN_HEIGHT = 6                                  # text columns shorter than this are specks (digits are 13 tall; a
+                                                # 1-px sparkle 6 px right of a 0 read as 8, bench 2026-10-21)
 SIZE = (8, 12)                                  # a glyph is compared at this size
 CALIBRATION = [1234, 5678, 90]
 
@@ -45,7 +47,9 @@ def glyphs(img, box):
             s = x
             while x < len(cols) and cols[x]:
                 x += 1
-            runs.append([s, x])
+            ys = np.where(a[:, s:x].any(1))[0]
+            if ys[-1] - ys[0] + 1 >= MIN_HEIGHT:    # a sparkle on the ground next to the value is no glyph
+                runs.append([s, x])
         x += 1
     if not runs:
         return []

@@ -59,20 +59,62 @@ def resolve(name, check):
     return m, checks[check](m), m.name + check.title()
 
 
-def bench(mod, t):
-    """Run the check on the bench (bench_client: start, the check's steps, the counters) -> (readings, log)."""
-    steps = [['bench_start', {'mod': mod, 'look': False}]] + [[n, a] for n, a in t.bench]
+def listing():
+    """Every build: its mod name, and per check the counters it shows and what it expects of them."""
+    out = []
+    builds = [(n, c) for n, (_, checks) in MISSIONS.items() for c in [''] + list(checks)] + [(p, '') for p in PAIRS]
+    for n, c in builds:
+        _, t, mod = resolve(n, c)
+        head = f'{n}' + (f' --check {c}' if c else '') + f' -> {mod}'
+        if t is None:
+            out.append(head + ' (the mission as played)')
+            continue
+        exp = '; '.join(describe(e) for e in t.expect) or 'nothing'
+        out.append(f'{head}: counters {[label for _, label in t.counters]}; expects {exp}')
+    return '\n'.join(out)
+
+
+def describe(e):
+    label, since, op, want, *until = e
+    return (f'{label} {op} {want}'.replace(' None', '') + f' from s{since:g}' +
+            (f' until s{until[0]:g}' if until else ''))
+
+
+def steps(mod, t):
+    """The ra3bench calls that run the check: start, the check's own steps, the counters read as text."""
+    out = [['bench_start', {'mod': mod, 'look': False}]] + [[n, a] for n, a in t.bench]
     if t.counters:
-        steps.append(['bench_counters', {'lines': len(t.counters)}])
-    out = subprocess.run([BENCH_PY, '-I', '-X', 'utf8', CLIENT, json.dumps(steps)], capture_output=True, text=True,
-                         encoding='utf-8', errors='replace', cwd=ROOT).stdout
+        out.append(['bench_counters', {'lines': len(t.counters)}])
+    return out
+
+
+def parse_counters(text):
+    """bench_counters' text ('s3: 6 0 5 | s6: ...') -> [(second, [value or None, ...])]."""
     readings = []
-    line = next((x for x in out.splitlines() if ' bench_counters ' in x), '')
-    for part in line.split('=> ', 1)[-1].split(' | '):
+    for part in text.split(' | '):
         mm = re.match(r's(\d+): (.*)', part.strip())
         if mm:
             readings.append((int(mm.group(1)), [None if v == '?' else int(v) for v in mm.group(2).split()]))
-    return readings, out
+    return readings
+
+
+def bench(mod, t):
+    """Run the check on the bench (bench_client: start, the check's steps, the counters) -> (readings, log)."""
+    out = subprocess.run([BENCH_PY, '-I', '-X', 'utf8', CLIENT, json.dumps(steps(mod, t))], capture_output=True,
+                         text=True, encoding='utf-8', errors='replace', cwd=ROOT).stdout
+    line = next((x for x in out.splitlines() if ' bench_counters ' in x), '')
+    return parse_counters(line.split('=> ', 1)[-1]), out
+
+
+def report(t, readings):
+    """The readings and the verdicts as lines; exit status 0 = all pass (or nothing expected), 1 = a FAIL."""
+    lines = ['counters: ' + ' | '.join(f's{s}: ' + ' '.join(map(str, v)) for s, v in readings) +
+             ' (' + ', '.join(label for _, label in t.counters) + ')']
+    verdicts = judge(t, readings)
+    lines += [('PASS ' if ok else 'FAIL ') + text for ok, text in verdicts]
+    passed = bool(verdicts) and all(ok for ok, _ in verdicts)
+    lines.append('RESULT ' + ('PASS' if passed else 'FAIL' if verdicts else 'NO EXPECTATIONS'))
+    return lines, 0 if passed or not verdicts else 1
 
 
 ENDED = 'ENDED'
@@ -81,27 +123,27 @@ OPS = {'==': lambda a, b: a == b, '>=': lambda a, b: a >= b, '<=': lambda a, b: 
 
 
 def judge(t, readings):
-    """Each expectation (label, from second, op, value) must hold on every reading from that second on; an op
-    written 'ever==' (ever>=, ...) on at least one -- for a mission that ends (its counters go with it). Label
-    ENDED: from that second some frame shows no counter at all after one that did -- the mission ended (won or
-    lost: the check's scripts make it the one they test)."""
+    """Each expectation (label, from second, op, value[, until second]) must hold on every reading from that second
+    on (and before `until`); an op written 'ever==' (ever>=, ...) on at least one -- for a mission that ends (its
+    counters go with it). Label ENDED: from that second some frame shows no counter at all after one that did -- the
+    mission ended (won or lost: the check's scripts make it the one they test)."""
     labels = [label for _, label in t.counters]
     verdicts = []
-    for label, since, op, want in t.expect:
+    for e in t.expect:
+        label, since, op, want, *until = e
         if label == ENDED:
             seen = [s for s, v in readings if any(x is not None for x in v)]
             gone = [s for s, v in readings if s >= since and seen and s > seen[0] and all(x is None for x in v)]
             verdicts.append((bool(gone), f'mission ended from s{since:.0f}: ' + (f'counters gone at s{gone[0]}' if gone
                                                                                  else 'counters still up')))
             continue
-        k = labels.index(label)
-        got = [(s, v[k]) for s, v in readings if s >= since and k < len(v)]
+        k, end = labels.index(label), until[0] if until else float('inf')
+        got = [(s, v[k]) for s, v in readings if since <= s < end and k < len(v)]
         if op.startswith('ever'):
             ok = any(v is not None and OPS[op[4:]](v, want) for _, v in got)
         else:
             ok = bool(got) and all(v is not None and OPS[op](v, want) for _, v in got)
-        verdicts.append((ok, f'{label} {op} {want} from s{since:.0f}: ' + (' '.join(f's{s}={v}' for s, v in got) or
-                                                                          'no reading')))
+        verdicts.append((ok, describe(e) + ': ' + (' '.join(f's{s}={v}' for s, v in got) or 'no reading')))
     return verdicts
 
 
@@ -111,18 +153,28 @@ def main():
     ap.add_argument('--check', default='')
     ap.add_argument('--no-build', action='store_true')
     ap.add_argument('--calibrate', action='store_true')
+    ap.add_argument('--plan', action='store_true', help='(ra3bench cnv_check) build, then print the bench steps as '
+                                                         'one JSON line instead of running them')
+    ap.add_argument('--judge', metavar='COUNTERS', help="(ra3bench cnv_check) judge bench_counters' text")
     a = ap.parse_args()
     if a.name == 'list':
-        for n, (_, checks) in MISSIONS.items():
-            print(n, 'checks:', ', '.join(checks) or '-')
-        print('pairs:', ', '.join(PAIRS))
+        print(listing())
         return
     m, t, mod = resolve(a.name, a.check)
+    if a.judge is not None:
+        lines, status = report(t, parse_counters(a.judge))
+        print('\n'.join(lines))
+        sys.exit(status)
     if not a.no_build:
         out = parts.assemble(m, t, name=mod)
         if 'staging' in out:
             print('built to staging (RA3 is running): no bench run')
+            if a.plan:
+                print('PLAN ' + json.dumps({'mod': mod, 'staged': True}))
             return
+    if a.plan:
+        print('PLAN ' + json.dumps({'mod': mod, 'steps': steps(mod, t) if t else []}, ensure_ascii=False))
+        return
     if not (a.check or a.calibrate or a.name in PAIRS) or t is None:
         return
     readings, log = bench(mod, t)
@@ -135,14 +187,9 @@ def main():
         import counters
         print('digits read back:', counters.calibrate(Image.open(os.path.join(run, last)).convert('RGB')))
         return
-    print('counters:', ' | '.join(f's{s}: ' + ' '.join(map(str, v)) for s, v in readings),
-          '(' + ', '.join(label for _, label in t.counters) + ')')
-    verdicts = judge(t, readings)
-    for ok, text in verdicts:
-        print('PASS' if ok else 'FAIL', text)
-    passed = bool(verdicts) and all(ok for ok, _ in verdicts)
-    print('RESULT', 'PASS' if passed else 'FAIL' if verdicts else 'NO EXPECTATIONS')
-    sys.exit(0 if passed or not verdicts else 1)
+    lines, status = report(t, readings)
+    print('\n'.join(lines))
+    sys.exit(status)
 
 
 if __name__ == '__main__':

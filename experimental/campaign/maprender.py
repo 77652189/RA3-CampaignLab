@@ -10,10 +10,7 @@ A mod name is looked up in Documents\Red Alert 3\Mods, then in work\staging (bui
 From code: maprender.render(MapFile, out_png, ...). World (0, 0) is the south-west corner of the playable area;
 y grows north (up in the picture). --bench-view draws what the bench camera sees at the mission start (calib.py;
 only for maps derived from CampNew18's island). --water: terrain below this height is drawn as water
-(default newmap.WATERLINE, measured on our generated island).
-
-TriggerAreas (v1), read here first: u32 count; each area: u16 + name, u16 + layer, u32 id, u32 point count,
-points as f32 x, y, u32 0.
+(default newmap.WATERLINE, measured on our generated island). Trigger areas: mapscript.MapFile.trigger_areas.
 """
 import argparse
 import os
@@ -53,23 +50,7 @@ def _font(size):
 
 
 def trigger_areas(m):
-    node = next((n for _, n in m.walk() if n.name == 'TriggerAreas'), None)
-    if node is None:
-        return []
-    d, out = node.head, []
-    count = struct.unpack_from('<I', d, 0)[0]
-    p = 4
-    for _ in range(count):
-        ln = struct.unpack_from('<H', d, p)[0]
-        name = d[p + 2:p + 2 + ln].decode('latin-1')
-        p += 2 + ln
-        p += 2 + struct.unpack_from('<H', d, p)[0]                  # layer
-        _, n = struct.unpack_from('<II', d, p)
-        p += 8
-        pts = [struct.unpack_from('<ff', d, p + 8 * k) for k in range(n)]
-        p += 8 * n + 4
-        out.append((name, pts))
-    return out
+    return list(m.trigger_areas().items())
 
 
 class _Textures:

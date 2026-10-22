@@ -35,9 +35,34 @@ def test_check_merges_into_its_mission():
     mm = parts.merged(m, t)
     assert len(mm.objects) == len(m.objects) and 'Test Jump Target' in mm.waypoints
     shown = [s for s in mm.scripts if s.name == 'Test - counters'][0]
-    assert [a[1] for a in shown.do] == ['Test Crew', 'Test Deck']
-    assert mm.strings['SCRIPT:CNVTEST_COUNTER1'] == '乘员在甲板'
+    assert [a[1] for a in shown.do] == ['Test Crew', 'Test Landed', 'Test Deck']
+    assert mm.strings['SCRIPT:CNVTEST_COUNTER2'] == '乘员在甲板'
     assert len(m.scripts) == 0                                   # the mission itself untouched
+
+
+def test_areas_count_and_merge():
+    m = liberty_bench.mission(riders=True)
+    t = build.MISSIONS['liberty_riders'][1]['jump'](m)
+    mm = parts.merged(m, t)
+    assert list(mm.areas) == ['Test Landing'] and not m.areas
+    assert parts.missing_areas(mm) == []
+    landed = [s for s in mm.scripts if s.name.startswith('Test - count Test Landed')]
+    assert len(landed) == 8 and landed[3].when[0][1:] == ('Player_1', 2, 3, m.names['crew'], 'Test Landing')
+    del mm.areas['Test Landing']
+    assert len(parts.missing_areas(mm)) == 8                     # assemble refuses to build that
+    ab, _ = build.PAIRS['liberty_ride_ab']()
+    b = parts.side_by_side(parts.Mission(areas={'X': parts.square(0, 0, 10)}), parts.Mission(areas={'Y': [(1, 2)]}), 5)
+    assert b.areas == {'X': [(-10, -10), (10, -10), (10, 10), (-10, 10)], 'Y': [(6, 2)]}
+
+
+def test_trigger_areas_round_trip():
+    import mapscript
+    m = object.__new__(mapscript.MapFile)
+    m.nodes = [mapscript.Node('TriggerAreas', 1, b'\0\0\0\0', [])]
+    areas = {'Test Landing': parts.square(1480, 2315, 150), 'B': [(1.5, 2.5), (3, 4), (5, 6)]}
+    m.set_trigger_areas(areas)
+    assert m.trigger_areas() == {k: [(float(x), float(y)) for x, y in v] for k, v in areas.items()}
+    assert len(m.nodes[0].head) == 4 + sum(2 + len(k) + 2 + 8 + 8 * len(v) + 4 for k, v in areas.items())
 
 
 def test_a8_lose_moves_the_carrier():
@@ -67,6 +92,17 @@ def test_judge():
     assert build.judge(parts.Test(counters=[('a', 'A')], expect=[('A', 6, 'ever==', 0)]), ended)[0][0] is True
 
 
+def test_judge_until_and_the_bench_round_trip():
+    t = parts.Test(counters=[('a', 'A')], expect=[('A', 0, '==', 0, 15), ('A', 19, '>=', 3)])
+    lines, status = build.report(t, build.parse_counters('s3: 0 | s12: 0 | s18: 2 | s21: 4'))
+    assert status == 0 and lines[-1] == 'RESULT PASS'           # s18's 2 is in neither window
+    assert lines[1] == 'PASS A == 0 from s0 until s15: s3=0 s12=0'
+    assert build.report(t, build.parse_counters('s3: 0 | s14: 1 | s21: 4'))[1] == 1
+    plan = build.steps('CampX', build.resolve('liberty_riders', 'jump')[1])
+    assert plan[0] == ['bench_start', {'mod': 'CampX', 'look': False}] and plan[-1] == ['bench_counters', {'lines': 3}]
+    assert 'liberty_riders --check jump -> CampLibRJump' in build.listing()
+
+
 def test_every_build_name_fits():
     """Mod names over 15 characters crash the game before the main menu (bench 2026-10-21)."""
     names = [build.resolve(n, c)[2] for n, (_, checks) in build.MISSIONS.items() for c in [''] + list(checks)]
@@ -92,3 +128,6 @@ def test_counter_reader_reads_its_calibration():
     im = Image.open(os.path.join(frames, shots[-1], '0001.png')).convert('RGB')
     assert counters.read(im, 3) == counters.CALIBRATION
     assert counters.read_line(im, counters.line_box(4)) is None   # under the bottom bar: nothing to read
+    x1 = counters.glyphs(im, counters.line_box(2))[-1][1]         # a sparkle 6 px right of the 90's 0
+    im.putpixel((x1 + 6, counters.line_box(2)[1] + 7), (255, 255, 120))
+    assert counters.read_line(im, counters.line_box(2)) == 90

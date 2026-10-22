@@ -10,3 +10,6 @@ __pycache__/
 /experimental/**/*.lib
 /experimental/**/*.exp
 !/experimental/**/exports.def
+
+# per-machine Claude Code settings (the ra3bench MCP approval)
+.claude/settings.local.json

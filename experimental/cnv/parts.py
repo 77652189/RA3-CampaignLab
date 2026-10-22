@@ -53,10 +53,12 @@ class Script:
 
 @dataclasses.dataclass
 class Part:
-    """What a mission or a test adds: units, objects, waypoints {name: (x, y)}, scripts, strings."""
+    """What a mission or a test adds: units, objects, waypoints {name: (x, y)}, trigger areas {name: [(x, y) ...]}
+    (polygons; square() for the usual one), scripts, strings."""
     units: list = dataclasses.field(default_factory=list)
     objects: list = dataclasses.field(default_factory=list)
     waypoints: dict = dataclasses.field(default_factory=dict)
+    areas: dict = dataclasses.field(default_factory=dict)
     scripts: list = dataclasses.field(default_factory=list)
     strings: dict = dataclasses.field(default_factory=dict)
 
@@ -79,12 +81,21 @@ class Test(Part):
     expect: list = dataclasses.field(default_factory=list)      # [(label text, from second, op, value)]
 
 
-def counted(counter, label, test, template=None, status=None, player='Player_1', most=8):
-    """A test readout: how many `template`s the player owns, or how many of their objects carry `status`
-    ((index, 0.0, name) as in ObjectStatus.xsd's order), shown as a game counter -- read as a number by
-    bench_counters instead of counting units in a frame."""
+def square(x, y, r):
+    """A trigger area: the square of half-side r around (x, y), corners counter-clockwise."""
+    return [(x - r, y - r), (x + r, y - r), (x + r, y + r), (x - r, y + r)]
+
+
+def counted(counter, label, test, template=None, status=None, area=None, player='Player_1', most=8):
+    """A test readout: how many `template`s the player owns (with `area`: how many of them stand in that trigger
+    area), or how many of their objects carry `status` ((index, 0.0, name) as in ObjectStatus.xsd's order), shown as
+    a game counter -- read as a number by bench_counters instead of counting units in a frame."""
     test.counters.append((counter, label))
-    if template:
+    if area:
+        test.scripts += [Script(f'Test - count {counter} {n}',
+                                [('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', player, 2, n, template, area)],
+                                [('SET_COUNTER', counter, n)], once=False) for n in range(most)]
+    elif template:
         test.scripts.append(Script(f'Test - count {counter}', [],
                                    [('SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER', template, player, counter)], once=False))
     else:
@@ -113,6 +124,7 @@ def side_by_side(a, b, dx):
     out.units = a.units + b.units
     out.objects = a.objects + [dataclasses.replace(o, x=o.x + dx) for o in b.objects]
     out.waypoints = {**a.waypoints, **{k: (x + dx, y) for k, (x, y) in b.waypoints.items()}}
+    out.areas = {**a.areas, **{k: [(x + dx, y) for x, y in pts] for k, pts in b.areas.items()}}
     out.scripts, out.strings = a.scripts + b.scripts, {**a.strings, **b.strings}
     return out
 
@@ -124,6 +136,7 @@ def merged(mission, test=None):
     for f in ('units', 'objects', 'scripts'):
         setattr(m, f, getattr(mission, f) + getattr(test, f))
     m.waypoints = {**mission.waypoints, **test.waypoints}
+    m.areas = {**mission.areas, **test.areas}
     m.strings = {**mission.strings, **test.strings}
     assert len(test.counters) <= 4, 'only four counter lines fit above the bottom bar (counters.MAX_LINES)'
     keys = [f'SCRIPT:CNVTEST_COUNTER{k}' for k in range(len(test.counters))]
@@ -132,6 +145,20 @@ def merged(mission, test=None):
         m.scripts = m.scripts + [Script('Test - counters', [], [('DISPLAY_COUNTER', c, k)
                                                                 for k, (c, _) in zip(keys, test.counters)])]
     return m
+
+
+AREA_ARG = 9                            # script argument type of a trigger area name (script_catalog.json)
+
+
+def missing_areas(mission):
+    """Trigger areas the scripts name but nobody declared (the map's own areas are replaced by the mission's)."""
+    import mapscript
+    cat, out = mapscript.catalog(), []
+    for s in mission.scripts:
+        for name, *args in s.when + s.do:
+            out += [f'{s.name}: {name} -> {v!r}' for t, v in zip(cat[name]['args'], args)
+                    if t == AREA_ARG and v not in mission.areas]
+    return out
 
 
 def assemble(mission, test=None, name=None):
@@ -144,6 +171,7 @@ def assemble(mission, test=None, name=None):
     # bench 2026-10-21: the same build as CampLibRidersJump (17) and CampBisjcdXXXXXXX (17) crashed before the main
     # menu (exit 0xC000000D), as CampBisjcd (10) / CampBisjcdXXXX (14) / CampLibertyJump (15) it ran
     assert len(name) <= MAX_NAME, f'mod name {name!r} is {len(name)} characters: the game crashes above {MAX_NAME}'
+    assert not missing_areas(mm), f'scripts name undeclared trigger areas: {missing_areas(mm)}'
     c4.NAME = c2.NAME = name
     c2.SRC_DIR = os.path.join(c2.SDK, 'Mods', name, 'data')
     c2.BUILT = os.path.join(c2.SDK, 'BuiltMods', 'mods', name.lower(), 'data')
@@ -189,9 +217,10 @@ def assemble(mission, test=None, name=None):
                              [m.new_content('ScriptAction', *a) for a in s.do], one_shot=s.once)
                 for s in mm.scripts]            # before clearing: chunk versions are read off existing nodes
         newmap.clear_scripts(m)[2].kids += ours
+        m.set_trigger_areas(mm.areas)           # the base map's areas went with its scripts
         m.set_objectives([dict(name=n, title=t, desc=d, bonus=0, flags=1) for n, t, d in mm.objectives])
-        print(f'{name}: {len(mm.objects)} objects, {len(mm.waypoints)} waypoints, {len(mm.scripts)} scripts, '
-              f'units {sorted(seen)}')
+        print(f'{name}: {len(mm.objects)} objects, {len(mm.waypoints)} waypoints, {len(mm.areas)} areas, '
+              f'{len(mm.scripts)} scripts, units {sorted(seen)}')
 
     c6.edit = edit
     c4.main()
