@@ -40,7 +40,15 @@ EXTRA_ALL = []                  # our XML files nothing references, included typ
 OVERRIDE = []                   # retail GameObject ids we recompile with changes (make_campnew33: 复仇 death module)
 
 
+def placed_templates(m):
+    """The template names of every object on the map (an object node's head: u16 length at 20, the name at 22)."""
+    objs = next(n for _, n in m.walk() if n.name == 'ObjectsList')
+    return {k.head[22:22 + int.from_bytes(k.head[20:22], 'little')].decode('latin-1') for k in objs.kids}
+
+
 def compile_map(m):
+    import lint                 # the bench pitfalls, from the files alone, before the compile (lint.py)
+    lint.run(EXTRA_TEMPLATES, EXTRA_ALL, placed=placed_templates(m), overrides=OVERRIDE)
     text, unknown = mapxml.map_xml(m, GAME_MAP_ID, EXTRA_TEMPLATES, atlas=OWN_ATLAS, also=EXTRA_ALL)
     print('map.xml:', text.count('type="instance"'), 'object files; no definition (roads, waypoints):', unknown)
     rel = os.path.join('data', 'maps', 'official', c2.NEW_STEM)
