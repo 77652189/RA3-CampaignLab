@@ -105,6 +105,16 @@ def test_every_build_keeps_the_contract():
     assert build.show('a8', 'assault').endswith('contract: ok')
 
 
+def test_a7_publishes_marks_facts_and_counts_by_name():
+    m, t, mod = build.resolve('a7', 'jumps')
+    assert m.marks == {'strike': 'CNV A7 Strike', 'home': 'CNV A7 Home'} and m.point('strike') == m.site('base edge')
+    assert set(m.facts) == {'first jump', 'jump every'} and m.role('carrier').side == 's1' and mod == 'CampA7Jumps'
+    home = [s for s in t.scripts if s.name.startswith('Test - count Test At home')]
+    assert [s.when[0][0] for s in home] == ['NAMED_INSIDE_AREA', 'NAMED_OUTSIDE_AREA']
+    assert any(a[0] == 'UNIT_SET_HEALTH' for s in t.scripts for a in s.do)       # pacing, not the fight
+    assert a8.mission().role('hammer').sites == ['east 1', 'east 2', 'east 3']    # one part, every site it stands on
+
+
 def test_contract_catches_what_nobody_published():
     from maps import island
     m = a8.mission()

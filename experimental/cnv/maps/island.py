@@ -17,9 +17,12 @@ SITES = {
     'base power': Site(START[0] + 300, START[1] - 140, 0.0, "a power plant's pad by the factory's"),
     'west field': Site(1180.0, 2375.0, 450.0, 'open grass in the start camera\'s view: bench scenes'),
     'west shore': Site(1300.0, 2300.0, 200.0, 'a staging ground south-east of the start'),
-    'east 1': Site(3400.0, 2200.0, 300.0, 'the east end, north: room for a base or a platform'),
+    'base edge': Site(1450.0, 2450.0, 150.0, "open ground at the east edge of the player's base, ~250 from an army "
+                                             'on the west field (first try (1550, 2600) was on the war factory)'),
+    'east field': Site(3000.0, 2600.0, 250.0, 'open ground in the middle of the east end, between east 1 and 2'),
+    'east 1': Site(3400.0, 2200.0, 300.0, 'the east end, south (+y is north): room for a base or a platform'),
     'east 2': Site(3500.0, 2900.0, 300.0, 'the east end, middle'),
-    'east 3': Site(3200.0, 3500.0, 300.0, 'the east end, south'),
+    'east 3': Site(3200.0, 3500.0, 300.0, 'the east end, north'),
 }
 PLAYERS = {'p1': 'Player_1', 's1': 'Soviet_1'}
 TEAMS = {'p1': 'Player_1/teamPlayer_1'}           # the player's default team: everything placed for them, built too

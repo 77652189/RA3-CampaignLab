@@ -8,8 +8,8 @@ the old make_camp*.py chain stays as it was (user 2026-10-21: only new work is w
 
 Each layer talks to the next only through what that one publishes (user 2026-10-22: interface to interface, no
 reaching in): a map its SITES (named places) and PLAYERS / TEAMS; a unit its abilities; a mission its cast (who
-plays which part), its endings and the sites it placed on. A check asks the mission (m.site, m.role, m.ability,
-m.player), never a mission module's constants or a coordinate of its own; contract() says, before any build, which
+plays which part, on which sites), its endings, its marks (waypoints by part) and facts (timings). A check asks the
+mission (m.site, m.role, m.ability, m.point, m.player), never a mission module's constants or a coordinate of its own; contract() says, before any build, which
 script argument names something nobody published.
 
   python -I -X utf8 experimental/cnv/build.py a8 [--test liberty_jump] [--name CampX]
@@ -56,11 +56,15 @@ class Site:
 @dataclasses.dataclass
 class Role:
     """A part a mission publishes: who plays it (template), the placed object's name if scripts refer to it, the
-    side, the site it stands on."""
+    side, the sites it stands on (an unnamed part placed on several: every one)."""
     template: str
     name: str = ''
     side: str = 'p1'
-    site: str = ''
+    sites: list = dataclasses.field(default_factory=list)
+
+    @property
+    def site(self):
+        return self.sites[0]
 
 
 @dataclasses.dataclass
@@ -102,6 +106,8 @@ class Mission(Part):
     objectives: list = dataclasses.field(default_factory=list)  # [(name, title key, description key)]
     cast: dict = dataclasses.field(default_factory=dict)        # published: {part: Role}; a group as 'platform 1' ...
     endings: list = dataclasses.field(default_factory=list)     # published: the names of its win / lose scripts
+    marks: dict = dataclasses.field(default_factory=dict)       # published: {part: waypoint name} ('strike' ...)
+    facts: dict = dataclasses.field(default_factory=dict)       # published: numbers a check may hold it to (seconds)
 
     def find(self, name):
         return next(o for o in self.objects if o.name == name)
@@ -121,8 +127,23 @@ class Mission(Part):
         o = Obj(template, *self.site(site, dx, dy), side=side, name=name, site=site, **kw)
         self.objects.append(o)
         if role:
-            self.cast.setdefault(role, Role(template, name, side, site))
+            r = self.cast.setdefault(role, Role(template, name, side))
+            assert (r.template, r.name, r.side) == (template, name, side), f'cast {role} is already {r}'
+            if site not in r.sites:
+                r.sites.append(site)
         return o
+
+    def waypoint(self, part, name, site, dx=0.0, dy=0.0):
+        """A waypoint by a map site, published as a mark (scripts aim at it; checks ask m.mark / m.point)."""
+        self.waypoints[name] = self.site(site, dx, dy)
+        self.marks[part] = name
+
+    def mark(self, part):
+        assert part in self.marks, f'mission {self.name} marks no {part!r}: {sorted(self.marks)}'
+        return self.marks[part]
+
+    def point(self, part):
+        return self.waypoints[self.mark(part)]
 
     def role(self, part):
         assert part in self.cast, f'mission {self.name} casts no {part!r}: {sorted(self.cast)}'
@@ -166,14 +187,22 @@ def square(x, y, r):
     return [(x - r, y - r), (x + r, y - r), (x + r, y + r), (x - r, y + r)]
 
 
-def counted(counter, label, test, template=None, status=None, area=None, kind=None, player='Player_1', most=8):
+def counted(counter, label, test, template=None, status=None, area=None, kind=None, player='Player_1', most=8,
+            named=None):
     """A test readout: how many `template`s the player owns (with `area`: how many of them stand in that trigger
     area; with `kind` instead of a template -- kindof('VEHICLE') -- how many of that KindOf), or how many of their
     objects carry `status` ((index, 0.0, name) as in ObjectStatus.xsd's order), shown as a game counter -- read as a
     number by bench_counters instead of counting units in a frame. Counted per value 0 .. most - 1: at `most` or
-    more the counter shows `most`."""
+    more the counter shows `most`. named + area: 1 while that named object is inside the area, else 0 -- for a
+    unit that teleports (bench 2026-10-22: after the A7 carrier's jump the type-in-area count of the area it left
+    stayed 1 for 35 s; the area it landed in counted it at once)."""
     test.counters.append((counter, label))
-    if area:
+    if named:
+        test.scripts += [Script(f'Test - count {counter} in', [('NAMED_INSIDE_AREA', named, area)],
+                                [('SET_COUNTER', counter, 1)], once=False),
+                         Script(f'Test - count {counter} out', [('NAMED_OUTSIDE_AREA', named, area)],
+                                [('SET_COUNTER', counter, 0)], once=False)]
+    elif area:
         cond = (('PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA', kind) if kind else
                 ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', template))
         test.scripts += [Script(f'Test - count {counter} {n}', [(cond[0], player, 2, n, cond[1], area)],
@@ -270,6 +299,7 @@ def contract(mission):
             for o in m.objects if not o.site]
     out += [f'object {o.template}: map has no site {o.site!r}' for o in m.objects if o.site and o.site not in sites]
     out += [f'cast {k}: no object named {r.name!r}' for k, r in m.cast.items() if r.name and r.name not in named]
+    out += [f'mark {k}: no waypoint {w!r}' for k, w in m.marks.items() if w not in m.waypoints]
     powers = {p: u for u in m.units for p in u.abilities.values()}
     known = {AREA_ARG: ('area', m.areas), TEAM_ARG: ('team', set(getattr(m.map, 'TEAMS', {}).values())),
              WAYPOINT_ARG: ('waypoint', m.waypoints), PLAYER_ARG: ('player', set(getattr(m.map, 'PLAYERS', {}).values())),

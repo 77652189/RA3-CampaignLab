@@ -8,7 +8,7 @@ The carrier down: Mission Lost (5.6 rule 2: one copy, lose it and you lose).
 carrier=False: the A/B control -- no carrier, eight Guardians and four IFVs instead.
 
 Published (the cast): carrier, guardian, ifv (control only), platform 1-3, hammer, bullfrog, factory, power;
-endings: the win and lose scripts. Placed on the island's sites west shore / west field / base * / east 1-3.
+endings: the win and lose scripts; mark: near platform 1. Placed on the island's sites west shore / west field / base * / east 1-3.
 """
 from maps import island
 from parts import Mission, Script
@@ -26,7 +26,7 @@ def mission(carrier=True, name='CampA8'):
     unit = lib.liberty('CNV_Liberty', reload='45s', factory=GUARDIAN)
     m = Mission(name=name, map=island, units=[unit] if carrier else [],
                 objectives=[(OBJ, 'MISSIONOBJ:CNVA8_1', 'MISSIONOBJ:CNVA8_1_DESC')])
-    m.waypoints[WP_P1] = m.site('east 1', -250, -50)
+    m.waypoint('near platform 1', WP_P1, 'east 1', -250, -50)
     m.put('AlliedWarFactory', 'base factory', angle=3.1416, role='factory')
     m.put('AlliedPowerPlant', 'base power', angle=0.0, role='power')
     if carrier:

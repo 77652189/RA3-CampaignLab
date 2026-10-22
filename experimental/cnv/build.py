@@ -20,9 +20,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 import parts                                    # noqa: E402  (puts experimental/campaign on the path)
+from checks import a7 as check_a7               # noqa: E402
 from checks import a8 as check_a8               # noqa: E402
 from checks import liberty as check_lib         # noqa: E402
-from missions import a8, liberty_bench          # noqa: E402
+from missions import a7, a8, liberty_bench      # noqa: E402
 
 BENCH_PY = os.path.join(os.path.dirname(ROOT), 'envs', 'bench_mcp', 'Scripts', 'python.exe')
 CLIENT = os.path.join(ROOT, 'experimental', 'testbench', 'bench_client.py')
@@ -41,11 +42,16 @@ def digits():
 
 # name -> mission(); checks: name -> check(mission) -> Test; or a build that is a (mission, test) pair outright
 MISSIONS = {
+    'a7': (lambda: a7.mission(), {'jumps': check_a7.jumps, 'power': check_a7.power, 'win': check_a7.win}),
     'a8': (lambda: a8.mission(), {'jump': check_a8.jump, 'lose': check_a8.lose, 'assault': check_a8.assault}),
     'a8_control': (lambda: a8.mission(carrier=False, name='CampA8C'), {'assault': check_a8.assault}),
     'liberty': (lambda: liberty_bench.mission(), {'jump': check_lib.jump, 'open': check_lib.jump_open}),
     'liberty_riders': (lambda: liberty_bench.mission(riders=True, name='CampLibR'), {'jump': check_lib.jump}),
 }
+LEVELS = ('a7', 'a8')                           # campaign levels: each has a card in docs/story/levels.md (the rest:
+                                                # A/B controls and bench scenes)
+
+
 def kinds():
     """A probe of the counting itself: 3 Guardians and 2 buildings of ours, counted four ways at once -- by KindOf
     in an area (VEHICLE, STRUCTURE), by template in an area, by template owned. Should read 3 2 3 3 (the a8 assault's
@@ -115,7 +121,12 @@ def show(name, check=''):
                    (f'; params {u.params}' if u.params else ''))
     if m.cast:
         out.append('cast: ' + '; '.join(f'{k} = {r.template}' + (f' "{r.name}"' if r.name else '') +
-                                        f' ({r.side}, {r.site or "?"})' for k, r in m.cast.items()))
+                                        f' ({r.side}, {", ".join(r.sites) or "?"})' for k, r in m.cast.items()))
+    if m.marks:
+        out.append('marks: ' + '; '.join(f'{k} = "{w}" ({m.waypoints[w][0]:g}, {m.waypoints[w][1]:g})'
+                                         for k, w in m.marks.items()))
+    if m.facts:
+        out.append('facts: ' + '; '.join(f'{k} = {v:g}' for k, v in m.facts.items()))
     if m.endings:
         out.append('endings: ' + ', '.join(m.endings))
     if m.objectives:
