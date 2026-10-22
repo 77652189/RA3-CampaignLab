@@ -13,7 +13,7 @@
 **恢复时先做**（2026-10-21 深夜更新）：先看下面"下一步"第 0、0a、0b、0c、0d 条（ra3bench MCP、编图前 lint、少操作少截图的测法、解耦后的组装命令、触发区域和一次调用测完的 `cnv_check`），以及 0e（A8 难度对照结果）。测试首选 MCP 的 `cnv_check(name, check)`。用户 2026-10-21 定：甲板乘员先接受叠放，先做解耦和效率改进——都已做完（0c）：自由号和 A8 已迁到 `experimental/cnv/`，4 个检查在测试台上全部 PASS。新内容一律按 0c 的结构写；没加载 MCP 的会话用 `cnv.py make <名> --check <检查>` 或 `experimental/testbench/bench_client.py`。
 用户 2026-10-21 深夜答复：新版 CampA8 覆盖旧版（已做）；排查用的测试 mod 删掉（已删 9 个）；下一步做触发区域 + 完善 MCP、让大模型直接和 MCP 交流（已做，见 0d）。
 用户 2026-10-21 深夜又要："做 A8 有/没有自由号的难度对照，重点看 MCP 运作是否正常、有没有要改进的，然后查跃迁时少一辆守护者"——都做完了，见 0e。
-**2026-10-21 收工**。下个会话第一件事：确认 ra3bench 的工具已直接加载（本机已在 `.claude/settings.local.json` 批准，新会话才生效）。先调 `cnv_list` 试一下，能用就不再走 `bench_client.py`；不能用就记下原因。然后等用户回答下面候选 1 的难度目标和候选 2。
+2026-10-22：ra3bench 工具已在新会话里直接加载（`cnv_list`、`cnv_check` 直接调通），不再走 `bench_client.py`。用户说候选 1、2 不急，先做了 0f：各层之间只走接口。新关卡、新检查按 0f 写：放东西用 `m.put` 按地点放，检查只问关卡；动手前和写完后都先 `cnv_show`。
 **下一步候选**（推荐 1）：
 1. A8 难度：两边都太容易（敌人只站着挨打，牛蛙没打掉自由号）。按 units.md 5.6 第 3、7 条让敌人主动反击、盯着自由号打，再用 `a8 --check assault` / `a8_control --check assault` 对照。要用户定"难到什么程度"。
 2. 超时空甲板落到自家建筑上会弄死被传的车（`Telefrag="INSTANT_DEATH_TELEPORTER_ONLY"`，照原版超时空传送仪）。要不要改成 `NONE` 或 `SWAP` 再测，是玩法决定，等用户定。
@@ -109,6 +109,19 @@
      - 检查可以先 `bench_camera` 把镜头对准要看的地方：数字说不通时，翻一帧就知道发生了什么。
      - 修了一个隐患：`a8_control` 原来也叫 CampA8，一编就会覆盖正式 A8，现在叫 CampA8C。
    - **liberty jump 少一辆守护者的原因**：落点 (1480, 2315) 紧挨我方电站 (1550, 2360)。航母东边 60 那辆被传过去正好压在电站上，超时空的 Telefrag 把它弄死了。对照 `liberty --check open`（落点往南挪 165，离电站 210 以上，其余不变）：6 辆全活、5 辆到落点，坐实。带乘员的版本不丢，是因为乘员挂在航母上，不单独传送。
+0f. **地图 / 单位 / 关卡 / 检查之间只走接口**（2026-10-22，用户："先把关卡设计，单位设计，地图设计解耦"、"让整个流程尽可能变成接口对接口的对话，不进行直接操作"）：
+   - 每层只公开给下一层用的东西（`experimental/cnv/parts.py` 开头）：
+     - **地图**公开 `SITES`（命名地点：坐标、范围、用途，如 `west shore`、`east 1`）和 `PLAYERS` / `TEAMS`。
+     - **单位**公开 `abilities`（如 `jump` → 特殊能力 id）、`what`（一句话用途）、`params`（造它用的选项）。
+     - **关卡**用 `m.put(模板, 地点, dx, dy, role=...)` 按地点放东西，公开 `cast`（谁演哪个角色、站在哪个地点）和 `endings`（输赢脚本）。
+     - **检查**只问关卡：`m.role('carrier').name`、`m.ability('carrier', 'jump')`、`m.site(...)`、`m.roles('platform')`、`m.player('s1')`、`m.drop_endings()`；不再 import 关卡模块的常量，也不写自己的坐标。
+   - **接口检查** `parts.contract()`：编图前查一遍，`assemble` 有问题就停。查的是：物体有没有按地图地点放；脚本参数里的物体名、路点、触发区域、队伍、玩家、字符串、特殊能力、模板有没有人公开过；点名放技能的那个物体，它的单位有没有公开这个技能。`tests/test_cnv_parts.py` 有正反例。
+   - **看接口**：`build.py <名> [--check <检查>] --show`，以及 MCP 的 `cnv_show(name, check)`。不编图，把地图地点、单位能力、关卡角色表、检查的计数和期望、接口检查结果打成文字。写新关卡、新检查之前先看一眼，写完再看一眼。`cnv_show` 是新工具，MCP 服务进程重启（新会话）后才有。
+   - **验证**：
+     - 14 个构建改造前后逐项比对，物体、脚本、字符串、单位 XML 全部一致。
+     - 每个构建 `--show` 都是 contract ok。
+     - 测试 29 过 1 跳过。
+     - 测试台 `cnv_check a8 jump`：第一次截帧组件在 s11.6 掉线，后面没读数（FAIL "no reading"）；`build=false` 重跑 4/4 PASS。`cnv_check` 现在遇到这种情况会加一行 `BENCH DROPOUT`，提示重跑，不再像关卡坏了。
 0a. **编图前自动静态检查**：`experimental/campaign/lint.py`，每次编图在编译前跑（`make_campnew7.compile_map`），有 ERROR 就停（`CNV_LINT=warn` 只打印）。规则对应下面"踩过的坑"：视野和射程（超过 1.5 倍只警告）、步兵 IMMOBILE、超时空模板缺 ObjectFilter、ToggleState 缺 SkirmishAiInfo、复制件里留着原版 id、SpawnBehavior 刷的自制模板没摆在地图上。`python -I -X utf8 experimental/campaign/lint.py` 单独查全部单位文件；`tests/test_lint.py` 每条规则一个正反例。新坑出现时先加一条规则和测试。
 1. 日常操作先用根目录的 `cnv.py`（`python -I -X utf8 cnv.py -h`）：build / map / bench / sheet / where / launcher / status，不再临时写脚本。新测试一律用 `run_bench.ps1 -Nav`（`cnv.py bench` 就是它）：时间从进入关卡算起，点击位置用 `experimental/testbench/calib.py` 的 `world_to_screen` 从世界坐标算（标定只对从 CampNew18 岛派生、开局镜头相同的地图有效；换了开局镜头要重新标定：`CNV_CALIB=base/grid` 各编一次、各跑一次，再 `calib.py fit`）。要看镜头外的地方：左键点 `calib.world_to_minimap(x, y)` 移镜头，再用 `calib.world_to_screen_at(x, y, 镜头中心)` 算点击位置；要打人就右键点敌人本身，右键点小地图只是移动。
 1b. 给用户自己试玩用的图形启动器：根目录 `launcher.pyw`（桌面快捷方式"红警3 测试启动器"，2026-10-21）。它列出 Mods 里所有编好的 mod，按"关卡 / 单位测试图 / 其他"分组，双击就启动，游戏在运行时拒绝启动。新关卡或新单位测试图要在 `launcher.pyw` 的 KNOWN 里加一行中文说明，否则会落进"其他"组。

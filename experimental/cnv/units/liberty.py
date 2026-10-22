@@ -132,7 +132,12 @@ def liberty(id='CNV_Liberty', tag='', reload='20s', drone_range=600, drones_home
             f'LogicCommandSet:{ids["commandset"]}', f'UnitAbilityButtonTemplate:{ids["button"]}',
             f'SpecialPowerTemplate:{ids["store"]}', f'SpecialPowerTemplate:{ids["send"]}',
             f'ObjectFilterAsset:{ids["filter"]}', f'WeaponTemplate:{ids["store_w"]}', f'WeaponTemplate:{ids["send_w"]}']
-    return Unit(id, x, files={ui_file: ui}, also=[ui_file], link=link, names=dict(ids, unit=id))
+    return Unit(id, x, files={ui_file: ui}, also=[ui_file], link=link, names=dict(ids, unit=id),
+                abilities={'jump': ids['power']},
+                what='自由号：发射无人机的空天航母；jump 把自己和甲板下的地面部队一起跃迁到一个点'
+                     + (f'；甲板每 20 秒造一辆 {factory}' if factory else ''),
+                params=dict(reload=reload, drone_range=drone_range, deck_radius=deck_radius, factory=factory,
+                            riders=riders))
 
 
 def drone_weapon(wid, rng):
@@ -169,7 +174,8 @@ def rider(id='CNV_LibRider', parent='CNV_Liberty', ride_range=150, flags=RIDE_FL
 				</ObjectFilter>
 			</AttachUpdate>
 		</Behaviors>''')
-    return Unit(id, x, names=dict(unit=id))
+    return Unit(id, x, names=dict(unit=id), what=f'甲板乘员：闲着时自己登上 {parent}，跟着它跃迁；在甲板上时状态 ATTACHED',
+                params=dict(parent=parent, ride_range=ride_range, flags=flags))
 
 
 ATTACHED = (102, 0.0, 'ATTACHED')       # the ObjectStatus script argument (index in ObjectStatus.xsd's order)

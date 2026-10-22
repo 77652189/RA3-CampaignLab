@@ -21,7 +21,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import harness  # noqa: E402
 
 server = MCPServer('ra3bench', instructions=(
-    'Red Alert 3 test bench: one game at a time. First choice for a test: cnv_check(name, check) -- builds the '
+    'Red Alert 3 test bench: one game at a time. Design through interfaces: cnv_show(name, check) tells, without '
+    'building, what the map publishes (named sites, players), what the units publish (abilities), the mission\'s cast '
+    'and endings, and whether everything the scripts use was published (contract) -- missions place by site and '
+    'checks ask the mission, never raw coordinates or another module\'s constants. '
+    'First choice for a test: cnv_check(name, check) -- builds the '
     'mission with its check (experimental/cnv; cnv_list shows them), runs it and returns PASS / FAIL from the map\'s '
     'own counters, no clicks or pictures; cnv_map(mod) shows a built map from above without the game (placement, '
     'trigger areas). New checks are written in experimental/cnv/checks (counters, trigger areas, expectations). '
@@ -422,6 +426,17 @@ def cnv_list() -> str:
 
 
 @server.tool(structured_output=False)
+def cnv_show(name: str, check: str = '') -> str:
+    """What each layer of a build publishes to the next, as text, without building or the game: the map's sites
+    (named places, what each is for) and players, each unit's abilities and options, the mission's cast (who plays
+    which part, on which site) and endings, the check's counters and expectations -- then the contract check: every
+    object placed by a site, every name a script uses published by someone. Read this before writing a mission or a
+    check, and after: 'contract: ok' or the list of what is used but not published."""
+    code, out = lab(BUILD, name, *(['--check', check] if check else []), '--show', timeout=120)
+    return out.strip() if code in (0, 1) and 'contract:' in out else 'BUILD: ' + tail(out)
+
+
+@server.tool(structured_output=False)
 @guard
 def cnv_check(name: str, check: str = '', build: bool = True, keep: bool = False) -> str:
     """Build a mission with one of its checks (cnv_list), run it on the bench and judge it -- one call, no clicks, no
@@ -459,6 +474,9 @@ def cnv_check(name: str, check: str = '', build: bool = True, keep: bool = False
         if not keep and S.p is not None:
             lines.append(bench_stop())
     code, out = lab(*args, '--judge', counted, timeout=120)
+    if done == 'stopped:' and 'RESULT FAIL' in out:     # bench 2026-10-22: the shim went quiet at s11.6, the rerun passed
+        out += ('\nBENCH DROPOUT: the capture stopped before the check was over -- "no reading" FAILs say nothing '
+                'about the mission; run again with build=false')
     return '\n'.join(lines + [out.strip()])
 
 

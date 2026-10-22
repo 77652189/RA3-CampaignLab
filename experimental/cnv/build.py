@@ -2,6 +2,7 @@
 --check also run on the bench through ra3bench and judged on the counters it reads -- PASS / FAIL as text.
 
   python -I -X utf8 experimental/cnv/build.py list
+  python -I -X utf8 experimental/cnv/build.py a8 --check assault --show   (interfaces + contract, nothing built)
   python -I -X utf8 experimental/cnv/build.py a8                      -> Mods/CampA8 (the mission as played)
   python -I -X utf8 experimental/cnv/build.py a8 --check jump         -> Mods/CampA8Jump, bench run, verdict
   python -I -X utf8 experimental/cnv/build.py liberty_ride_ab --check    (two variants on one map)
@@ -51,13 +52,14 @@ def kinds():
     KindOf counts read 20 for 12 vehicles, 2026-10-21)."""
     from maps import island
     guardian = 'AlliedAntiVehicleVehicleTech1'
-    x, y = 1180.0, 2315.0
     m = parts.Mission(name='CampKinds', map=island)
-    m.objects += [parts.Obj(guardian, x + dx, y) for dx in (-60, 0, 60)]
-    m.objects += [parts.Obj('AlliedWarFactory', island.START[0] + 300, island.START[1] + 60, angle=3.1416),
-                  parts.Obj('AlliedPowerPlant', island.START[0] + 300, island.START[1] - 140, angle=0.0)]
+    for dx in (-60, 0, 60):
+        m.put(guardian, 'west field', dx, -60, role='guardian')
+    m.put('AlliedWarFactory', 'base factory', angle=3.1416, role='factory')
+    m.put('AlliedPowerPlant', 'base power', angle=0.0, role='power')
     t = parts.Test()
-    t.areas['Test Whole Island'] = parts.square(*island.CENTER, island.RADIUS + 300)
+    whole = m.where('island')
+    t.areas['Test Whole Island'] = parts.square(whole.x, whole.y, whole.r + 300)
     parts.counted('Test Kind V', '类别车辆', t, kind=parts.kindof('VEHICLE'), area='Test Whole Island')
     parts.counted('Test Kind S', '类别建筑', t, kind=parts.kindof('STRUCTURE'), area='Test Whole Island')
     parts.counted('Test Type A', '型号区域', t, template=guardian, area='Test Whole Island')
@@ -93,6 +95,38 @@ def listing():
             continue
         exp = '; '.join(describe(e) for e in t.expect) or 'nothing'
         out.append(f'{head}: counters {[label for _, label in t.counters]}; expects {exp}')
+    return '\n'.join(out)
+
+
+def show(name, check=''):
+    """A build's interfaces as text -- what each layer publishes to the next, and whether the build keeps to it:
+    the map's sites and players, each unit's abilities, the mission's cast and endings, the check's counters and
+    expectations, then contract() over the whole (offline, nothing built)."""
+    m, t, mod = resolve(name, check)
+    mp = m.map
+    out = [f'{name}' + (f' --check {check}' if check else '') + f' -> {mod}, on map {mp.__name__.split(".")[-1]}']
+    out.append('map sites: ' + '; '.join(f'{k} ({s.x:g}, {s.y:g}' + (f', r {s.r:g}' if s.r else '') + f'): {s.what}'
+                                         for k, s in mp.SITES.items()))
+    out.append('map players: ' + ', '.join(f'{k} {v}' for k, v in mp.PLAYERS.items()) +
+               '; teams: ' + ', '.join(f'{k} {v}' for k, v in mp.TEAMS.items()))
+    for u in m.units:
+        out.append(f'unit {u.id}: {u.what or "?"}; abilities ' +
+                   (', '.join(f'{k} = {v}' for k, v in u.abilities.items()) or 'none') +
+                   (f'; params {u.params}' if u.params else ''))
+    if m.cast:
+        out.append('cast: ' + '; '.join(f'{k} = {r.template}' + (f' "{r.name}"' if r.name else '') +
+                                        f' ({r.side}, {r.site or "?"})' for k, r in m.cast.items()))
+    if m.endings:
+        out.append('endings: ' + ', '.join(m.endings))
+    if m.objectives:
+        out.append('objectives: ' + ', '.join(m.strings.get(title, title) for _, title, _ in m.objectives))
+    if name in MISSIONS:
+        out.append('checks: ' + (', '.join(MISSIONS[name][1]) or 'none'))
+    if t is not None:
+        out.append(f'check: counters {[label for _, label in t.counters]}; expects ' +
+                   ('; '.join(describe(e) for e in t.expect) or 'nothing'))
+    broken = parts.contract(parts.merged(m, t))
+    out.append('contract: ' + ('ok' if not broken else f'{len(broken)} problems\n  ' + '\n  '.join(broken)))
     return '\n'.join(out)
 
 
@@ -190,10 +224,15 @@ def main():
     ap.add_argument('--plan', action='store_true', help='(ra3bench cnv_check) build, then print the bench steps as '
                                                          'one JSON line instead of running them')
     ap.add_argument('--judge', metavar='COUNTERS', help="(ra3bench cnv_check) judge bench_counters' text")
+    ap.add_argument('--show', action='store_true', help="the build's interfaces and the contract check, nothing built")
     a = ap.parse_args()
     if a.name == 'list':
         print(listing())
         return
+    if a.show:
+        text = show(a.name, a.check)
+        print(text)
+        sys.exit(0 if text.endswith('contract: ok') else 1)
     m, t, mod = resolve(a.name, a.check)
     if a.judge is not None:
         lines, status = report(t, parse_counters(a.judge))

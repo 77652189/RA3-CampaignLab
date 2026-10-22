@@ -6,6 +6,12 @@ objects, scripts, on-screen counters, the bench steps that run it and the readin
 them through the CampNew7 pipeline (experimental/campaign: mission slot, map cache, linked map stream, lint) --
 the old make_camp*.py chain stays as it was (user 2026-10-21: only new work is written this way).
 
+Each layer talks to the next only through what that one publishes (user 2026-10-22: interface to interface, no
+reaching in): a map its SITES (named places) and PLAYERS / TEAMS; a unit its abilities; a mission its cast (who
+plays which part), its endings and the sites it placed on. A check asks the mission (m.site, m.role, m.ability,
+m.player), never a mission module's constants or a coordinate of its own; contract() says, before any build, which
+script argument names something nobody published.
+
   python -I -X utf8 experimental/cnv/build.py a8 [--test liberty_jump] [--name CampX]
 """
 import dataclasses
@@ -29,7 +35,32 @@ class Unit:
     also: list = dataclasses.field(default_factory=list)        # of those, included type="all" (UI nothing refers to)
     link: list = dataclasses.field(default_factory=list)        # instance names to link though nothing refers to them
     strings: dict = dataclasses.field(default_factory=dict)
-    names: dict = dataclasses.field(default_factory=dict)       # ids a mission or test refers to (power, ...)
+    names: dict = dataclasses.field(default_factory=dict)       # the unit's own ids (its XML's insides)
+    abilities: dict = dataclasses.field(default_factory=dict)   # published: {what: special power id} ('jump': ...)
+    what: str = ''                                              # published: one line on what it is for
+    params: dict = dataclasses.field(default_factory=dict)      # published: the options it was made with
+
+
+@dataclasses.dataclass
+class Site:
+    """A place a map publishes: where, how far it reaches, what it is good for. Missions place by site name."""
+    x: float
+    y: float
+    r: float = 0.0
+    what: str = ''
+
+    def at(self, dx=0.0, dy=0.0):
+        return (self.x + dx, self.y + dy)
+
+
+@dataclasses.dataclass
+class Role:
+    """A part a mission publishes: who plays it (template), the placed object's name if scripts refer to it, the
+    side, the site it stands on."""
+    template: str
+    name: str = ''
+    side: str = 'p1'
+    site: str = ''
 
 
 @dataclasses.dataclass
@@ -41,6 +72,7 @@ class Obj:
     name: str = ''                      # objectName, for scripts
     angle: float = None                 # default: p1 faces north, s1 south
     props: dict = dataclasses.field(default_factory=dict)       # more object properties (objectInitialHealth ...)
+    site: str = ''                      # the map site it was placed by (Mission.put); '' = raw coordinates
 
 
 @dataclasses.dataclass
@@ -66,12 +98,60 @@ class Part:
 @dataclasses.dataclass
 class Mission(Part):
     name: str = ''                      # the mod folder (Documents/Red Alert 3/Mods/<name>)
-    map: object = None                  # a maps.* module: terrain(m), START
+    map: object = None                  # a maps.* module: terrain(m), like(...), SITES, PLAYERS, TEAMS
     objectives: list = dataclasses.field(default_factory=list)  # [(name, title key, description key)]
-    names: dict = dataclasses.field(default_factory=dict)       # ids tests refer to (the carrier's power ...)
+    cast: dict = dataclasses.field(default_factory=dict)        # published: {part: Role}; a group as 'platform 1' ...
+    endings: list = dataclasses.field(default_factory=list)     # published: the names of its win / lose scripts
 
     def find(self, name):
         return next(o for o in self.objects if o.name == name)
+
+    def where(self, name):
+        """One of the map's sites (a Site: x, y, r, what)."""
+        sites = self.map.SITES
+        assert name in sites, f'map {self.map.__name__} has no site {name!r}: {sorted(sites)}'
+        return sites[name]
+
+    def site(self, name, dx=0.0, dy=0.0):
+        """A point by one of the map's sites (offset dx, dy)."""
+        return self.where(name).at(dx, dy)
+
+    def put(self, template, site, dx=0.0, dy=0.0, role='', side='p1', name='', **kw):
+        """Place an object by a map site; with role, publish it in the cast (a named object: scripts refer to it)."""
+        o = Obj(template, *self.site(site, dx, dy), side=side, name=name, site=site, **kw)
+        self.objects.append(o)
+        if role:
+            self.cast.setdefault(role, Role(template, name, side, site))
+        return o
+
+    def role(self, part):
+        assert part in self.cast, f'mission {self.name} casts no {part!r}: {sorted(self.cast)}'
+        return self.cast[part]
+
+    def roles(self, group):
+        """A group's parts in order: roles('platform') -> cast 'platform 1', 'platform 2', ..."""
+        out, k = [], 1
+        while f'{group} {k}' in self.cast:
+            out.append(self.cast[f'{group} {k}'])
+            k += 1
+        return out
+
+    def ability(self, part, what):
+        """The special power behind a cast part's published ability ('carrier', 'jump')."""
+        t = self.role(part).template
+        u = next((u for u in self.units if u.id == t), None)
+        assert u and what in u.abilities, f'{part} ({t}) publishes no ability {what!r}: {u and sorted(u.abilities)}'
+        return u.abilities[what]
+
+    def player(self, side='p1'):
+        return self.map.PLAYERS[side]
+
+    def team(self, side='p1'):
+        return self.map.TEAMS[side]
+
+    def drop_endings(self):
+        """The mission without its win / lose scripts (a check that keeps the counters up)."""
+        self.scripts = [s for s in self.scripts if s.name not in self.endings]
 
 
 @dataclasses.dataclass
@@ -133,12 +213,15 @@ def kindof(name):
     return (names.index(name), 0.0, name)
 
 
-def side_by_side(a, b, dx):
+def side_by_side(a, b, dx, suffix=''):
     """Mission b's objects and waypoints moved dx east and added to a (an A/B pair on one map: give the two
-    variants different unit tags so their ids differ)."""
+    variants different unit tags so their ids differ). suffix: appended to b's object names and cast parts, so
+    both carriers can be named ('carrier' and 'carrier B')."""
     out = dataclasses.replace(a)
     out.units = a.units + b.units
-    out.objects = a.objects + [dataclasses.replace(o, x=o.x + dx) for o in b.objects]
+    out.objects = a.objects + [dataclasses.replace(o, x=o.x + dx, name=o.name and o.name + suffix) for o in b.objects]
+    out.cast = {**a.cast, **{k + suffix: dataclasses.replace(r, name=r.name and r.name + suffix)
+                             for k, r in b.cast.items()}}
     out.waypoints = {**a.waypoints, **{k: (x + dx, y) for k, (x, y) in b.waypoints.items()}}
     out.areas = {**a.areas, **{k: [(x + dx, y) for x, y in pts] for k, pts in b.areas.items()}}
     out.scripts, out.strings = a.scripts + b.scripts, {**a.strings, **b.strings}
@@ -164,16 +247,44 @@ def merged(mission, test=None):
 
 
 AREA_ARG = 9                            # script argument type of a trigger area name (script_catalog.json)
+# the other argument types contract() holds against what was published
+TEAM_ARG, WAYPOINT_ARG, PLAYER_ARG, OBJECT_ARG, STRING_ARG, POWER_ARG, TEMPLATE_ARG = 3, 7, 11, 14, 25, 31, 61
 
 
 def missing_areas(mission):
     """Trigger areas the scripts name but nobody declared (the map's own areas are replaced by the mission's)."""
+    return [p for p in contract(mission) if ' area ' in p]
+
+
+def contract(mission):
+    """What the mission (merged with its check) uses that nobody published -- checked before any build:
+    objects placed by raw coordinates or on a site the map lacks; cast parts naming no object; script arguments
+    naming an object, waypoint, trigger area, team, player, string or special power nobody declared, a template
+    that is neither cast nor one of the mission's units; a named object fired with a power its unit does not
+    publish."""
     import mapscript
-    cat, out = mapscript.catalog(), []
-    for s in mission.scripts:
+    m, cat, out = mission, mapscript.catalog(), []
+    sites = getattr(m.map, 'SITES', {})
+    named = {o.name: o for o in m.objects if o.name}
+    out += [f'object {o.template} at ({o.x:g}, {o.y:g}): placed by raw coordinates, not by a map site'
+            for o in m.objects if not o.site]
+    out += [f'object {o.template}: map has no site {o.site!r}' for o in m.objects if o.site and o.site not in sites]
+    out += [f'cast {k}: no object named {r.name!r}' for k, r in m.cast.items() if r.name and r.name not in named]
+    powers = {p: u for u in m.units for p in u.abilities.values()}
+    known = {AREA_ARG: ('area', m.areas), TEAM_ARG: ('team', set(getattr(m.map, 'TEAMS', {}).values())),
+             WAYPOINT_ARG: ('waypoint', m.waypoints), PLAYER_ARG: ('player', set(getattr(m.map, 'PLAYERS', {}).values())),
+             OBJECT_ARG: ('object', named), STRING_ARG: ('string', m.strings), POWER_ARG: ('power', powers),
+             TEMPLATE_ARG: ('template', {r.template for r in m.cast.values()} | {u.id for u in m.units})}
+    for s in m.scripts:
         for name, *args in s.when + s.do:
-            out += [f'{s.name}: {name} -> {v!r}' for t, v in zip(cat[name]['args'], args)
-                    if t == AREA_ARG and v not in mission.areas]
+            types = cat[name]['args']
+            for t, v in zip(types, args):
+                if t in known and v not in known[t][1]:
+                    out.append(f'{s.name}: {name} {known[t][0]} {v!r} not published')
+            if OBJECT_ARG in types and POWER_ARG in types:          # NAMED_FIRE_SPECIAL_POWER_* : its own power
+                who, power = args[types.index(OBJECT_ARG)], args[types.index(POWER_ARG)]
+                if who in named and power in powers and powers[power].id != named[who].template:
+                    out.append(f'{s.name}: {who} ({named[who].template}) fired {power}, an ability of {powers[power].id}')
     return out
 
 
@@ -187,7 +298,8 @@ def assemble(mission, test=None, name=None):
     # bench 2026-10-21: the same build as CampLibRidersJump (17) and CampBisjcdXXXXXXX (17) crashed before the main
     # menu (exit 0xC000000D), as CampBisjcd (10) / CampBisjcdXXXX (14) / CampLibertyJump (15) it ran
     assert len(name) <= MAX_NAME, f'mod name {name!r} is {len(name)} characters: the game crashes above {MAX_NAME}'
-    assert not missing_areas(mm), f'scripts name undeclared trigger areas: {missing_areas(mm)}'
+    broken = contract(mm)
+    assert not broken, 'uses what nobody published:\n  ' + '\n  '.join(broken)
     c4.NAME = c2.NAME = name
     c2.SRC_DIR = os.path.join(c2.SDK, 'Mods', name, 'data')
     c2.BUILT = os.path.join(c2.SDK, 'BuiltMods', 'mods', name.lower(), 'data')

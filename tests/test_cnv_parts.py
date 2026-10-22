@@ -47,7 +47,7 @@ def test_areas_count_and_merge():
     assert list(mm.areas) == ['Test Landing'] and not m.areas
     assert parts.missing_areas(mm) == []
     landed = [s for s in mm.scripts if s.name.startswith('Test - count Test Landed')]
-    assert len(landed) == 9 and landed[3].when[0][1:] == ('Player_1', 2, 3, m.names['crew'], 'Test Landing')
+    assert len(landed) == 9 and landed[3].when[0][1:] == ('Player_1', 2, 3, m.role('crew').template, 'Test Landing')
     assert landed[8].when[0][1:3] == ('Player_1', 3) and landed[8].do == [('SET_COUNTER', 'Test Landed', 8)]
     del mm.areas['Test Landing']
     assert len(parts.missing_areas(mm)) == 9                     # assemble refuses to build that
@@ -88,9 +88,48 @@ def test_a8_assault_same_for_both():
 def test_a8_lose_moves_the_carrier():
     m = a8.mission()
     build.MISSIONS['a8'][1]['lose'](m)
-    c = m.find(a8.CARRIER)
-    assert (c.x, c.y) == a8.CARRIER_AT and c.props == {'objectInitialHealth': 1}
+    c = m.find(m.role('carrier').name)
+    assert (c.x, c.y) == m.site('west shore') and c.props == {'objectInitialHealth': 1}
     assert a8.mission().find(a8.CARRIER).props == {}
+
+
+def test_every_build_keeps_the_contract():
+    """Every object placed by a map site, every name a script uses published (offline: what assemble asserts)."""
+    for n, (_, checks) in build.MISSIONS.items():
+        for c in [''] + list(checks):
+            m, t, _ = build.resolve(n, c)
+            assert parts.contract(parts.merged(m, t)) == [], (n, c)
+    for n in build.PAIRS:
+        m, t, _ = build.resolve(n, '')
+        assert parts.contract(parts.merged(m, t)) == [], n
+    assert build.show('a8', 'assault').endswith('contract: ok')
+
+
+def test_contract_catches_what_nobody_published():
+    from maps import island
+    m = a8.mission()
+    m.objects.append(parts.Obj('AlliedWarFactory', 100, 100))                          # raw coordinates
+    m.scripts.append(parts.Script('X', [('NAMED_DESTROYED', 'UNIT - Nobody')],          # no such object
+                                  [('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', a8.CARRIER, 'SpecialPower_X', 'WP X'),
+                                   ('SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER', 'JapanNavalYard', 'Player_9', 'c'),
+                                   ('SHOW_MILITARY_CAPTION', 'SCRIPT:NONE', 1.0)]))
+    got = parts.contract(m)
+    assert len(got) == 7, got
+    assert any('raw coordinates' in p for p in got) and any("object 'UNIT - Nobody'" in p for p in got)
+    assert any("power 'SpecialPower_X'" in p for p in got) and any("waypoint 'WP X'" in p for p in got)
+    assert any("template 'JapanNavalYard'" in p for p in got) and any("player 'Player_9'" in p for p in got)
+    assert any("string 'SCRIPT:NONE'" in p for p in got)
+    other = lib.liberty('CNV_Other', tag='O')                                           # someone else's ability
+    m2 = parts.Mission(name='X', map=island, units=[a8.mission().units[0], other])
+    m2.put(m2.units[0].id, 'west shore', name='C', role='carrier')
+    m2.scripts.append(parts.Script('Y', [], [('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'C', other.abilities['jump'], 'W')]))
+    m2.waypoints['W'] = m2.site('east 1')
+    assert parts.contract(m2) == [f"Y: C (CNV_Liberty) fired {other.abilities['jump']}, an ability of CNV_Other"]
+    import pytest
+    with pytest.raises(AssertionError, match='no site'):
+        m2.put('AlliedWarFactory', 'the moon')
+    with pytest.raises(AssertionError, match='publishes no ability'):
+        m2.ability('carrier', 'fly')
 
 
 def test_ab_pair():
