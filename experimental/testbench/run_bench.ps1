@@ -211,6 +211,10 @@ while ($true) {
             if ($pop[0] -eq 'popup') {
                 "NAV popup '$($pop[1])' at $s s: click $($pop[2]),$($pop[3])"
                 Invoke-Act ([Bench]::MainWindow([uint32]$p.Id)) 'click' @([double]$pop[2], [double]$pop[3])
+                # the game's "connection lost" box (no Tacitus in the bench copy) also drops it back to the main menu:
+                # walk the menus again from the first step
+                # (no `continue` here: a popup that never goes away must still reach the 150 s stuck check below)
+                if ($pop[1] -eq 'connection_lost') { $navAt = 0; $navDoneAt = $s; "NAV back to step 0" }
             }
             $step = $navSteps[$navAt]
             $res = (& python -I $navPy check $frame $navAt) -join ' '

@@ -200,6 +200,36 @@ AUTO_FACTORY_MODULE = '''			<SpawnBehavior id="ModuleTag_CNV_DeckFactory" SpawnN
 				<SpawnTemplate>AlliedAntiVehicleVehicleTech1</SpawnTemplate>
 			</SpawnBehavior>
 '''
+# v2 甲板乘员 (CNV_RIDERS=1, probe; user 2026-10-21: "no platform of its own to hold ground units"). The engine has no
+# walkable moving deck (retail's Floating Fortress is a map -- Civilian/Floating_Island: terrain plus FI_ buildings), but
+# AttachUpdate makes one object ride another: the Empire's point-defense drone sits on its vehicle, the repair drones
+# scan for a parent and stick to it. CNV_DeckGuardian = a Guardian with an AttachUpdate that looks for our carrier
+# within RIDE_RANGE while idle, sticks to it (moving and jumping with it), and a move order takes it off the deck.
+# The deck factory then builds these. Questions: do they get on, show on top, come along on the jump, fire from there?
+RIDERS = os.environ.get('CNV_RIDERS', '0') == '1'
+RIDER = 'CNV_DeckGuardian'
+RIDE_RANGE = int(os.environ.get('CNV_RIDE_RANGE', '150'))
+RIDER_ATTACH = f'''			<AttachUpdate id="ModuleTag_CNV_Deck" Range="{RIDE_RANGE}" IdleScanDelay="0.5s"
+				Flags="{os.environ.get('CNV_RIDE_FLAGS', 'SAME_PLAYER_ONLY STICK_TO_PARENT TELEPORT INSTANT_TELEPORT_ON_PARENT_TELEPORT USE_GEOMETRY MOVE_ORDER_FORCES_DETACH SCAN_FOR_NEW_PARENT_WHEN_DETACHED')}"
+				AttachedObjectStatus="NO_COLLISIONS">
+				<ObjectFilter Rule="NONE" Relationship="SAME_PLAYER">
+					<IncludeThing>{UNIT}</IncludeThing>
+				</ObjectFilter>
+			</AttachUpdate>
+'''
+if RIDERS:
+    c7.EXTRA_TEMPLATES[RIDER] = {'file': f'DATA:CNVUnits/Data/{RIDER}.xml', 'EditorSorting': 'UNIT'}
+
+
+def rider_xml():
+    x = open(os.path.join(c2.SDK, 'SageXML', 'Allied', 'Units', 'AlliedAntiVehicleVehicleTech1.xml'), encoding='utf-8').read()
+    x = sub1(x, 'id="AlliedAntiVehicleVehicleTech1"', f'id="{RIDER}"')
+    x = sub1(x, 'EditorName="AlliedAntiVehicleVehicleTech1"', f'EditorName="{RIDER}"')
+    x = sub1(x, '\t\t</Behaviors>', RIDER_ATTACH + '\t\t</Behaviors>')
+    with open(os.path.join(c26.DATA, RIDER + '.xml'), 'w', encoding='utf-8', newline='\r\n') as f:
+        f.write(x.replace('\r\n', '\n'))
+
+
 FACTORY_MODULES = '''			<ProductionUpdate id="ModuleTag_CNV_DeckProduction" GiveNoXP="true" Type="VEHICLE"
 				NumDoorAnimations="0" NewObjectFadeInTime="0.5s"/>
 			<QueueProductionExitUpdate id="ModuleTag_CNV_DeckExit" ExitDelaySeconds="0.07s">
@@ -350,7 +380,10 @@ def unit_xml():
         x = sub1(x, '\t\t</Behaviors>', TURRET_SPAWN + '\t\t</Behaviors>')
         turret_xml()
     if AUTO_FACTORY:
-        x = sub1(x, '\t\t</Behaviors>', AUTO_FACTORY_MODULE + '\t\t</Behaviors>')
+        x = sub1(x, '\t\t</Behaviors>', (AUTO_FACTORY_MODULE.replace('AlliedAntiVehicleVehicleTech1', RIDER) if RIDERS
+                                         else AUTO_FACTORY_MODULE) + '\t\t</Behaviors>')
+    if RIDERS:
+        rider_xml()
     if FACTORY:
         global CHRONO_DECL
         CHRONO_DECL = sub1(CHRONO_DECL, '\t\t<Cmd>Command_AttackMove</Cmd>\n\t</LogicCommandSet>',
@@ -384,7 +417,7 @@ if TURRETS and os.environ.get('CNV_PLACE_TURRET', '1') == '1':
     SCENE.append((TURRET, (A[0] - 330, A[1] - 300), True))
 # the deck jump: three of our Guardians under the carrier (inside DECK) and one outside it (should stay behind)
 if CHRONO and CHRONO_MODE in ('deck', 'jump') and SCENE_KIND != 'turrets':
-    SCENE += [('AlliedAntiVehicleVehicleTech1', (A[0] + dx, A[1] - 60 + dy), True)
+    SCENE += [(RIDER if RIDERS else 'AlliedAntiVehicleVehicleTech1', (A[0] + dx, A[1] - 60 + dy), True)
               for dx, dy in ((-60, 0), (60, 0), (0, -60), (-330, -60))]
 
 _generate = c6.edit

@@ -40,11 +40,17 @@ STEPS = [
 # Popups over the menus that eat the steps' clicks: (name, template, box, threshold, click). The Tacitus update
 # dialog (C&C:Online's game patch, Data\dsound.dll) comes up on every start, even after updating (2026-10-20):
 # answer No, which changes nothing (Never ask again would write the user's Tacitus.ini in the game folder).
-POPUPS = [('tacitus update', 'popup_tacitus.png', (390, 132, 890, 152), 18, (553, 561))]
+# Tacitus 1.1.1 (2026-10-21) put its update dialog up again and the bench copy's dsound.dll was renamed off
+# (dsound.dll.tacitus110.off: the bench plays offline and needs no C&C:Online). Without it the game's own "connection
+# lost" box (连接中断通知, no backend server) comes up over the menus instead: OK.
+POPUPS = [('tacitus update', 'popup_tacitus.png', (390, 132, 890, 152), 18, (553, 561)),
+          ('connection lost', 'popup_offline.png', (540, 155, 740, 190), 18, (633, 430))]
 
 
-def cut_popups(frame):
+def cut_popups(frame, only=None):
     for name, tpl, box, _, _ in POPUPS:
+        if only and name != only:
+            continue
         Image.open(frame).convert('L').crop(box).save(os.path.join(OUT, tpl))
         print(name, '->', os.path.join(OUT, tpl))
 
@@ -88,8 +94,8 @@ def matches(step, m):
 if __name__ == '__main__':
     if sys.argv[1] == 'build':
         build(sys.argv[2])
-    elif sys.argv[1] == 'cutpopups':          # nav.py cutpopups <frame with the popups up>
-        cut_popups(sys.argv[2])
+    elif sys.argv[1] == 'cutpopups':          # nav.py cutpopups <frame with the popups up> [popup name]
+        cut_popups(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else None)
     elif sys.argv[1] == 'popup':              # nav.py popup <frame> -> "popup <name> <x> <y>" | "none"
         p = popup(sys.argv[2])
         print(f'popup {p[0].replace(" ", "_")} {p[1][0]} {p[1][1]}' if p else 'none')
