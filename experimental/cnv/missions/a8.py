@@ -22,9 +22,9 @@ GUARDIAN = 'AlliedAntiVehicleVehicleTech1'
 START = island.START
 
 
-def mission(carrier=True):
+def mission(carrier=True, name='CampA8'):
     unit = lib.liberty('CNV_Liberty', reload='45s', factory=GUARDIAN)
-    m = Mission(name='CampA8', map=island, units=[unit] if carrier else [],
+    m = Mission(name=name, map=island, units=[unit] if carrier else [],
                 objectives=[(OBJ, 'MISSIONOBJ:CNVA8_1', 'MISSIONOBJ:CNVA8_1_DESC')],
                 waypoints={WP_P1: NEAR_P1}, names=unit.names)
     m.objects += [Obj('AlliedWarFactory', START[0] + 300, START[1] + 60, angle=3.1416),

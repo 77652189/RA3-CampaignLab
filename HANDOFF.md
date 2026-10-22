@@ -10,12 +10,13 @@
 - 两关粗模：A7「鹰派」（`make_campa7.py`，敌方自由号靠脚本跃迁，炸电站停跳）、A8「海上发布会」（`make_campa8.py`，自由号归玩家，丢了就输）。
 - 给用户试玩的图形启动器 `launcher.pyw` + 桌面快捷方式（下面 1b）。
 
-**恢复时先做**（2026-10-21 深夜更新）：先看下面"下一步"第 0、0a、0b、0c、0d 条（ra3bench MCP、编图前 lint、少操作少截图的测法、解耦后的组装命令、触发区域和一次调用测完的 `cnv_check`）。测试首选 MCP 的 `cnv_check(name, check)`。用户 2026-10-21 定：甲板乘员先接受叠放，先做解耦和效率改进——都已做完（0c）：自由号和 A8 已迁到 `experimental/cnv/`，4 个检查在测试台上全部 PASS。新内容一律按 0c 的结构写；没加载 MCP 的会话用 `cnv.py make <名> --check <检查>` 或 `experimental/testbench/bench_client.py`。
+**恢复时先做**（2026-10-21 深夜更新）：先看下面"下一步"第 0、0a、0b、0c、0d 条（ra3bench MCP、编图前 lint、少操作少截图的测法、解耦后的组装命令、触发区域和一次调用测完的 `cnv_check`），以及 0e（A8 难度对照结果）。测试首选 MCP 的 `cnv_check(name, check)`。用户 2026-10-21 定：甲板乘员先接受叠放，先做解耦和效率改进——都已做完（0c）：自由号和 A8 已迁到 `experimental/cnv/`，4 个检查在测试台上全部 PASS。新内容一律按 0c 的结构写；没加载 MCP 的会话用 `cnv.py make <名> --check <检查>` 或 `experimental/testbench/bench_client.py`。
 用户 2026-10-21 深夜答复：新版 CampA8 覆盖旧版（已做）；排查用的测试 mod 删掉（已删 9 个）；下一步做触发区域 + 完善 MCP、让大模型直接和 MCP 交流（已做，见 0d）。
+用户 2026-10-21 深夜又要："做 A8 有/没有自由号的难度对照，重点看 MCP 运作是否正常、有没有要改进的，然后查跃迁时少一辆守护者"——都做完了，见 0e。
 **下一步候选**（推荐 1）：
-1. A8 有/没有自由号的难度对照，两边各写一个检查自动跑数（现在能数"区域里有几辆"了，可以数"平台附近我方剩几辆"）。
-2. A7 迁到 `experimental/cnv/`。
-3. 小问题：liberty jump 里第 14 秒少了一辆守护者，原因没查。
+1. A8 难度：两边都太容易（敌人只站着挨打，牛蛙没打掉自由号）。按 units.md 5.6 第 3、7 条让敌人主动反击、盯着自由号打，再用 `a8 --check assault` / `a8_control --check assault` 对照。要用户定"难到什么程度"。
+2. 超时空甲板落到自家建筑上会弄死被传的车（`Telefrag="INSTANT_DEATH_TELEPORTER_ONLY"`，照原版超时空传送仪）。要不要改成 `NONE` 或 `SWAP` 再测，是玩法决定，等用户定。
+3. A7 迁到 `experimental/cnv/`。
 
 其余旧项：
 1. 自由号 v2 空中平台（`make_campnew38.py`，用户 2026-10-21 的设计，units.md 5.2.1）探路结果（详见 plan.md 自由号那行）：甲板跃迁**做通**（起跳时圈选、落地时传送，航母带着脚下部队一起到）；甲板工厂**做通**（自动生产：SpawnBehavior 每 20 秒出一辆守护者，能正常指挥；走生产队列那条路侧栏不认）；可拆炮塔**没做通**（能刷出、会跟着航母，但不开火）。自制模板要在地图上也摆一个才会被 SpawnBehavior 加载。还差：炮塔不开火、刷出的单位叠在一个点。
@@ -34,6 +35,8 @@
 - **超时空**：自己写的 SpecialPowerTemplate 必须带 ObjectFilter，否则什么都传不走；超时空传送不带飞机，航母自己要用 TeleportSpecialAbilityUpdate 自跳；落点压到建筑会互相撞毁。
 - **SpawnBehavior**：只能刷原版单位，或者地图上也摆了一个的自制单位（否则模板不加载、刷不出来）；刷出的单位叠在一个点。单位身上的生产队列侧栏不认，要"甲板工厂"就用自动刷。
 - **任务脚本计时器**：SET_MILLISECOND_TIMER 到点后一直算"已到期"，交替触发的脚本每次都要把自己的计时器重新推远，否则每帧都触发。AI 不会自己按跃迁之类的技能，用 NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT 由脚本按。
+- **攻击移动不打建筑**：`ATTACK_MOVE_TEAM_TO` 只打路上的单位，到了路点就停；要拆建筑得 `TEAM_ATTACK_NAMED` 点名（A8 对照第一轮因此打了 290 秒一座平台都没拆）。
+- **超时空甲板落点挨着自家建筑**：被传的车落到建筑上会被弄死（Telefrag），自家的也一样（liberty jump 少一辆守护者就是这个）。
 - **落点 / 突击点**：别放在对方建筑上（A7 第一次把突击点放在我方战车工厂上，跳来的自由号压在工厂上、防空车够不着）。
 - **mod 名最多 15 个字符**：同一份内容，叫 CampLibRidersJump / CampBisjcdXXXXXXX（17 个字符）时游戏在主菜单前就崩（退出码 0xC000000D，日志里什么都没有）；叫 CampBisjcd、CampBisjcdXXXX（14）、CampLibertyJump（15）都正常。`experimental/cnv/parts.assemble` 超长直接报错，`tests/test_cnv_parts.py` 检查所有登记的编图名。
 - **检查游戏在不在跑**：进程名要同时匹配 `ra3_1.xx.game`、`RA3.exe` 和起义时刻的 `ra3ep1`（之前漏了起义时刻）。
@@ -94,8 +97,17 @@
      - liberty_riders jump：落点里跃迁前 0 辆、跃迁后 5 辆，在甲板 5、存活 6。
      - liberty jump：落点里跃迁后 4 辆；存活在跃迁那一刻从 6 变 5（老问题，候选 3）。
    - 已知缺口：
-     - 区域只能按"某种单位"数（`UNIT_TYPE`）；按类别数（`PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA`，参数类型 27）还没接。
+     - 按类别数（`parts.counted(kind=parts.kindof('VEHICLE'), area=...)`，0e 接上了）会多算：A8 对照里 12 辆车读成 20、敌方 9 辆读成 12，大概是多功能车、牛蛙带着附属对象；探针图 `cnv.py make kinds`（3 辆守护者 + 2 座建筑）四种数法都对。对照、判定用按型号数。
      - `cnv_check` 一次约 2～3 分钟，MCP 客户端要等这么久（Claude Code 默认不会超时）。
+0e. **A8 难度对照、MCP 第二轮改进、少一辆守护者**（2026-10-21 深夜）：
+   - **难度对照** `a8 --check assault` / `a8_control --check assault`（同一套脚本，两边都 PASS）：每 8 秒全队攻向第一座还在的平台，平台周围区域里没有铁锤了就改成点名攻击平台；有自由号时冷却一好就跃迁过去。去掉了任务自己的输赢脚本，计数器一直在。结果：有自由号第 60 秒三座全灭，丢 1 辆守护者，自由号活着；没自由号第 82 秒，12 辆里丢 4 辆（守护者 1、多功能车 3）。符合 5.6"有招牌不能无伤、没招牌能打但更难"，但两边都太容易，见候选 1。
+   - **第一轮对照两边都 FAIL，是测试脚本的错**：攻击移动只打单位、不打建筑，护卫死光后全队停在路点发呆（看了相机对准平台 1 的那几帧才看出来）。坑已记在下面。
+   - **MCP 改进**：
+     - `bench_watch(lines=n, until='c1==0')`：每帧读计数器，条件满足就提前停；`cnv_check` 随后跳过剩下的等待。这次两个对照分别 60、82 秒停，不用等满 290 秒。
+     - `cnv_check` 的返回只留一遍计数器，相同读数合并（`s18-s50: 2 4 6 1`），菜单日志、逐帧行都省掉：两个检查一共约 3 KB，以前一个就约 9 KB。完整逐帧行仍在 `bench_watch` 自己的返回和帧存档里。
+     - 检查可以先 `bench_camera` 把镜头对准要看的地方：数字说不通时，翻一帧就知道发生了什么。
+     - 修了一个隐患：`a8_control` 原来也叫 CampA8，一编就会覆盖正式 A8，现在叫 CampA8C。
+   - **liberty jump 少一辆守护者的原因**：落点 (1480, 2315) 紧挨我方电站 (1550, 2360)。航母东边 60 那辆被传过去正好压在电站上，超时空的 Telefrag 把它弄死了。对照 `liberty --check open`（落点往南挪 165，离电站 210 以上，其余不变）：6 辆全活、5 辆到落点，坐实。带乘员的版本不丢，是因为乘员挂在航母上，不单独传送。
 0a. **编图前自动静态检查**：`experimental/campaign/lint.py`，每次编图在编译前跑（`make_campnew7.compile_map`），有 ERROR 就停（`CNV_LINT=warn` 只打印）。规则对应下面"踩过的坑"：视野和射程（超过 1.5 倍只警告）、步兵 IMMOBILE、超时空模板缺 ObjectFilter、ToggleState 缺 SkirmishAiInfo、复制件里留着原版 id、SpawnBehavior 刷的自制模板没摆在地图上。`python -I -X utf8 experimental/campaign/lint.py` 单独查全部单位文件；`tests/test_lint.py` 每条规则一个正反例。新坑出现时先加一条规则和测试。
 1. 日常操作先用根目录的 `cnv.py`（`python -I -X utf8 cnv.py -h`）：build / map / bench / sheet / where / launcher / status，不再临时写脚本。新测试一律用 `run_bench.ps1 -Nav`（`cnv.py bench` 就是它）：时间从进入关卡算起，点击位置用 `experimental/testbench/calib.py` 的 `world_to_screen` 从世界坐标算（标定只对从 CampNew18 岛派生、开局镜头相同的地图有效；换了开局镜头要重新标定：`CNV_CALIB=base/grid` 各编一次、各跑一次，再 `calib.py fit`）。要看镜头外的地方：左键点 `calib.world_to_minimap(x, y)` 移镜头，再用 `calib.world_to_screen_at(x, y, 镜头中心)` 算点击位置；要打人就右键点敌人本身，右键点小地图只是移动。
 1b. 给用户自己试玩用的图形启动器：根目录 `launcher.pyw`（桌面快捷方式"红警3 测试启动器"，2026-10-21）。它列出 Mods 里所有编好的 mod，按"关卡 / 单位测试图 / 其他"分组，双击就启动，游戏在运行时拒绝启动。新关卡或新单位测试图要在 `launcher.pyw` 的 KNOWN 里加一行中文说明，否则会落进"其他"组。

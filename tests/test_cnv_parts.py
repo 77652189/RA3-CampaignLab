@@ -47,9 +47,10 @@ def test_areas_count_and_merge():
     assert list(mm.areas) == ['Test Landing'] and not m.areas
     assert parts.missing_areas(mm) == []
     landed = [s for s in mm.scripts if s.name.startswith('Test - count Test Landed')]
-    assert len(landed) == 8 and landed[3].when[0][1:] == ('Player_1', 2, 3, m.names['crew'], 'Test Landing')
+    assert len(landed) == 9 and landed[3].when[0][1:] == ('Player_1', 2, 3, m.names['crew'], 'Test Landing')
+    assert landed[8].when[0][1:3] == ('Player_1', 3) and landed[8].do == [('SET_COUNTER', 'Test Landed', 8)]
     del mm.areas['Test Landing']
-    assert len(parts.missing_areas(mm)) == 8                     # assemble refuses to build that
+    assert len(parts.missing_areas(mm)) == 9                     # assemble refuses to build that
     ab, _ = build.PAIRS['liberty_ride_ab']()
     b = parts.side_by_side(parts.Mission(areas={'X': parts.square(0, 0, 10)}), parts.Mission(areas={'Y': [(1, 2)]}), 5)
     assert b.areas == {'X': [(-10, -10), (10, -10), (10, 10), (-10, 10)], 'Y': [(6, 2)]}
@@ -63,6 +64,25 @@ def test_trigger_areas_round_trip():
     m.set_trigger_areas(areas)
     assert m.trigger_areas() == {k: [(float(x), float(y)) for x, y in v] for k, v in areas.items()}
     assert len(m.nodes[0].head) == 4 + sum(2 + len(k) + 2 + 8 + 8 * len(v) + 4 for k, v in areas.items())
+
+
+def test_a8_assault_same_for_both():
+    names = {}
+    for build_name in ('a8', 'a8_control'):
+        m, t, mod = build.resolve(build_name, 'assault')
+        names[build_name] = mod
+        mm = parts.merged(m, t)
+        assert not [s for s in mm.scripts if s.name in ('CNV A8 - Win', 'CNV A8 - Lost')]
+        assert parts.missing_areas(mm) == []
+        labels = [label for _, label in t.counters]
+        assert labels[:3] == ['平台剩余', '敌方铁锤', '守护者']
+        jumps = [s for s in t.scripts if s.name.startswith('Test - jump ')]
+        assert len(jumps) == (3 if build_name == 'a8' else 0) and labels[3:] == (['自由号'] if jumps else ['多功能车'])
+        assert t.bench[0][0] == 'bench_camera'
+        order = [s.name for s in t.scripts]
+        assert order.index('Test - order again') > order.index('Test - attack 3')   # the tick resets after the orders
+    assert names == {'a8': 'CampA8Assault', 'a8_control': 'CampA8CAssault'}
+    assert parts.kindof('VEHICLE')[2] == 'VEHICLE'
 
 
 def test_a8_lose_moves_the_carrier():
@@ -96,7 +116,8 @@ def test_judge_until_and_the_bench_round_trip():
     t = parts.Test(counters=[('a', 'A')], expect=[('A', 0, '==', 0, 15), ('A', 19, '>=', 3)])
     lines, status = build.report(t, build.parse_counters('s3: 0 | s12: 0 | s18: 2 | s21: 4'))
     assert status == 0 and lines[-1] == 'RESULT PASS'           # s18's 2 is in neither window
-    assert lines[1] == 'PASS A == 0 from s0 until s15: s3=0 s12=0'
+    assert lines[1] == 'PASS A == 0 from s0 until s15: s3-s12: 0'
+    assert lines[0] == 'counters (A): s3-s12: 0 | s18: 2 | s21: 4'
     assert build.report(t, build.parse_counters('s3: 0 | s14: 1 | s21: 4'))[1] == 1
     plan = build.steps('CampX', build.resolve('liberty_riders', 'jump')[1])
     assert plan[0] == ['bench_start', {'mod': 'CampX', 'look': False}] and plan[-1] == ['bench_counters', {'lines': 3}]

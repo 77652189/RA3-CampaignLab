@@ -28,11 +28,11 @@ def jumps(t, carrier, power, wp, to, at=JUMP_AT, tag=''):
     t.strings['SCRIPT:CNVTEST_JUMP'] = 'TEST：自由号跃迁'
 
 
-def jump(m):
+def jump(m, to=JUMP_TO):
     t = Test()
-    jumps(t, liberty_bench.CARRIER, m.names['power'], 'Test Jump Target', JUMP_TO)
+    jumps(t, liberty_bench.CARRIER, m.names['power'], 'Test Jump Target', to)
     counted('Test Crew', '乘员存活', t, template=m.names['crew'])
-    t.areas['Test Landing'] = square(*JUMP_TO, LANDING)
+    t.areas['Test Landing'] = square(*to, LANDING)
     counted('Test Landed', '乘员到落点', t, template=m.names['crew'], area='Test Landing')
     if m.names['crew'] != 'AlliedAntiVehicleVehicleTech1':
         counted('Test Deck', '乘员在甲板', t, status=lib.ATTACHED)
@@ -40,6 +40,18 @@ def jump(m):
     t.expect += [('乘员存活', JUMP_AT + 4, '>=', 4), ('乘员到落点', 0, '==', 0, JUMP_AT - EARLY),
                  ('乘员到落点', JUMP_AT + 4, '>=', 3)]
     t.bench = [('bench_watch', dict(seconds=JUMP_AT + 12, every=3, sheet=False))]
+    return t
+
+
+OPEN_TO = (1480.0, 2150.0)              # JUMP_TO moved 165 south: 210+ from our power plant at (1550, 2360)
+
+
+def jump_open(m):
+    """jump with the landing point clear of our own buildings. JUMP_TO is ~46 from the power plant for the Guardian
+    carried 60 east of the carrier; the deck's Telefrag (INSTANT_DEATH_TELEPORTER_ONLY, collides with STRUCTURE)
+    would kill it there -- the suspect for the one Guardian liberty jump loses at the jump (2026-10-21)."""
+    t = jump(m, OPEN_TO)
+    t.expect.append(('乘员存活', JUMP_AT + 4, '==', 6))
     return t
 
 

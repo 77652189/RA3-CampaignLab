@@ -40,12 +40,34 @@ def digits():
 
 # name -> mission(); checks: name -> check(mission) -> Test; or a build that is a (mission, test) pair outright
 MISSIONS = {
-    'a8': (lambda: a8.mission(), {'jump': check_a8.jump, 'lose': check_a8.lose}),
-    'a8_control': (lambda: a8.mission(carrier=False), {}),
-    'liberty': (lambda: liberty_bench.mission(), {'jump': check_lib.jump}),
+    'a8': (lambda: a8.mission(), {'jump': check_a8.jump, 'lose': check_a8.lose, 'assault': check_a8.assault}),
+    'a8_control': (lambda: a8.mission(carrier=False, name='CampA8C'), {'assault': check_a8.assault}),
+    'liberty': (lambda: liberty_bench.mission(), {'jump': check_lib.jump, 'open': check_lib.jump_open}),
     'liberty_riders': (lambda: liberty_bench.mission(riders=True, name='CampLibR'), {'jump': check_lib.jump}),
 }
-PAIRS = {'liberty_ride_ab': check_lib.ride_ab, 'digits': digits}
+def kinds():
+    """A probe of the counting itself: 3 Guardians and 2 buildings of ours, counted four ways at once -- by KindOf
+    in an area (VEHICLE, STRUCTURE), by template in an area, by template owned. Should read 3 2 3 3 (the a8 assault's
+    KindOf counts read 20 for 12 vehicles, 2026-10-21)."""
+    from maps import island
+    guardian = 'AlliedAntiVehicleVehicleTech1'
+    x, y = 1180.0, 2315.0
+    m = parts.Mission(name='CampKinds', map=island)
+    m.objects += [parts.Obj(guardian, x + dx, y) for dx in (-60, 0, 60)]
+    m.objects += [parts.Obj('AlliedWarFactory', island.START[0] + 300, island.START[1] + 60, angle=3.1416),
+                  parts.Obj('AlliedPowerPlant', island.START[0] + 300, island.START[1] - 140, angle=0.0)]
+    t = parts.Test()
+    t.areas['Test Whole Island'] = parts.square(*island.CENTER, island.RADIUS + 300)
+    parts.counted('Test Kind V', '类别车辆', t, kind=parts.kindof('VEHICLE'), area='Test Whole Island')
+    parts.counted('Test Kind S', '类别建筑', t, kind=parts.kindof('STRUCTURE'), area='Test Whole Island')
+    parts.counted('Test Type A', '型号区域', t, template=guardian, area='Test Whole Island')
+    parts.counted('Test Type O', '型号拥有', t, template=guardian)
+    t.expect += [('类别车辆', 3, '==', 3), ('类别建筑', 3, '==', 2), ('型号区域', 3, '==', 3), ('型号拥有', 3, '==', 3)]
+    t.bench = [('bench_watch', dict(seconds=6, every=3, sheet=False))]
+    return m, t
+
+
+PAIRS = {'liberty_ride_ab': check_lib.ride_ab, 'digits': digits, 'kinds': kinds}
 
 
 def resolve(name, check):
@@ -106,10 +128,22 @@ def bench(mod, t):
     return parse_counters(line.split('=> ', 1)[-1]), out
 
 
+def runs(pairs, show=str):
+    """[(second, value)] with repeats folded: 's1-s6: a | s12: b | s17-s290: c' (a long run of the same reading is
+    one entry, not fifty)."""
+    out = []
+    for s, v in pairs:
+        if out and out[-1][2] == v:
+            out[-1][1] = s
+        else:
+            out.append([s, s, v])
+    return ' | '.join((f's{a}' if a == b else f's{a}-s{b}') + f': {show(v)}' for a, b, v in out)
+
+
 def report(t, readings):
     """The readings and the verdicts as lines; exit status 0 = all pass (or nothing expected), 1 = a FAIL."""
-    lines = ['counters: ' + ' | '.join(f's{s}: ' + ' '.join(map(str, v)) for s, v in readings) +
-             ' (' + ', '.join(label for _, label in t.counters) + ')']
+    lines = ['counters (' + ', '.join(label for _, label in t.counters) + '): ' +
+             runs(readings, lambda v: ' '.join('?' if x is None else str(x) for x in v))]
     verdicts = judge(t, readings)
     lines += [('PASS ' if ok else 'FAIL ') + text for ok, text in verdicts]
     passed = bool(verdicts) and all(ok for ok, _ in verdicts)
@@ -143,7 +177,7 @@ def judge(t, readings):
             ok = any(v is not None and OPS[op[4:]](v, want) for _, v in got)
         else:
             ok = bool(got) and all(v is not None and OPS[op](v, want) for _, v in got)
-        verdicts.append((ok, describe(e) + ': ' + (' '.join(f's{s}={v}' for s, v in got) or 'no reading')))
+        verdicts.append((ok, describe(e) + ': ' + (runs(got) or 'no reading')))
     return verdicts
 
 

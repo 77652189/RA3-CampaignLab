@@ -86,15 +86,20 @@ def square(x, y, r):
     return [(x - r, y - r), (x + r, y - r), (x + r, y + r), (x - r, y + r)]
 
 
-def counted(counter, label, test, template=None, status=None, area=None, player='Player_1', most=8):
+def counted(counter, label, test, template=None, status=None, area=None, kind=None, player='Player_1', most=8):
     """A test readout: how many `template`s the player owns (with `area`: how many of them stand in that trigger
-    area), or how many of their objects carry `status` ((index, 0.0, name) as in ObjectStatus.xsd's order), shown as
-    a game counter -- read as a number by bench_counters instead of counting units in a frame."""
+    area; with `kind` instead of a template -- kindof('VEHICLE') -- how many of that KindOf), or how many of their
+    objects carry `status` ((index, 0.0, name) as in ObjectStatus.xsd's order), shown as a game counter -- read as a
+    number by bench_counters instead of counting units in a frame. Counted per value 0 .. most - 1: at `most` or
+    more the counter shows `most`."""
     test.counters.append((counter, label))
     if area:
-        test.scripts += [Script(f'Test - count {counter} {n}',
-                                [('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', player, 2, n, template, area)],
+        cond = (('PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA', kind) if kind else
+                ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', template))
+        test.scripts += [Script(f'Test - count {counter} {n}', [(cond[0], player, 2, n, cond[1], area)],
                                 [('SET_COUNTER', counter, n)], once=False) for n in range(most)]
+        test.scripts.append(Script(f'Test - count {counter} {most}+', [(cond[0], player, 3, most, cond[1], area)],
+                                   [('SET_COUNTER', counter, most)], once=False))
     elif template:
         test.scripts.append(Script(f'Test - count {counter}', [],
                                    [('SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER', template, player, counter)], once=False))
@@ -104,16 +109,27 @@ def counted(counter, label, test, template=None, status=None, area=None, player=
                                 [('SET_COUNTER', counter, n)], once=False) for n in range(most)]
 
 
+def _enum(xsd, type_name):
+    import re
+    import labpaths
+    p = os.path.join(labpaths.WORK, 'downloads', 'ra3sdk_v3', 'sdk3', 'Schemas', 'xsd', 'Includes', xsd)
+    x = open(p, encoding='utf-8').read()
+    x = x[x.index(f'name="{type_name}"'):]
+    return re.findall(r'value="([A-Z_0-9]+)"', x[:x.index('</xs:simpleType>')])
+
+
 def status(name):
     """An ObjectStatus as a script argument: (its index in ObjectStatus.xsd's order, 0.0, name) -- retail's
     UNPACKING is 162, its place in that list."""
-    import re
-    import labpaths
-    p = os.path.join(labpaths.WORK, 'downloads', 'ra3sdk_v3', 'sdk3', 'Schemas', 'xsd', 'Includes', 'ObjectStatus.xsd')
-    x = open(p, encoding='utf-8').read()
-    x = x[x.index('name="ObjectStatusType"'):]
-    names = re.findall(r'value="([A-Z_0-9]+)"', x[:x.index('</xs:simpleType>')])
+    names = _enum('ObjectStatus.xsd', 'ObjectStatusType')
     assert names.index('UNPACKING') == 162
+    return (names.index(name), 0.0, name)
+
+
+def kindof(name):
+    """A KindOf as a script argument, the same way (retail: STRUCTURE 9, OUTPOST 246)."""
+    names = _enum('KindOf.xsd', 'KindOfType')
+    assert names.index('STRUCTURE') == 9 and names.index('OUTPOST') == 246
     return (names.index(name), 0.0, name)
 
 

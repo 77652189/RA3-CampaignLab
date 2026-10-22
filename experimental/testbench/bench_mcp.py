@@ -224,17 +224,36 @@ def change(a, b):
     return round(sum(abs(x - y) for x, y in zip(pa, pb)) / max(1, len(pa)), 1)
 
 
+UNTIL_OPS = {'==': lambda a, b: a == b, '>=': lambda a, b: a >= b, '<=': lambda a, b: a <= b, '>': lambda a, b: a > b,
+             '<': lambda a, b: a < b}
+
+
+def until_met(until, vals):
+    """'c1==0|c4==0' (counter lines from 1, any of them) against one frame's counter values."""
+    import re
+    for part in filter(None, until.replace(' ', '').split('|')):
+        k, op, want = re.fullmatch(r'c(\d+)(==|>=|<=|>|<)(-?\d+)', part).groups()
+        v = vals[int(k) - 1] if int(k) <= len(vals) else None
+        if v is not None and UNTIL_OPS[op](v, int(want)):
+            return part
+    return None
+
+
 @server.tool(structured_output=False)
 @guard
 def bench_watch(seconds: float, every: float = 3.0, x0: float = 0, y0: float = 0, x1: float = 1280, y1: float = 720,
-                world: bool = False, air: bool = False, scale: float = 0.5, sheet: bool = True) -> list:
+                world: bool = False, air: bool = False, scale: float = 0.5, sheet: bool = True, lines: int = 0,
+                until: str = '') -> list:
     """Let the game run for some seconds (max 120) and archive a frame every `every` seconds -- one call instead of a
     wait/look per step. Returns, per frame: mission second, how much the box changed since the previous frame (mean
     pixel difference; water and idle animation alone give ~8) and whether the military caption changed; plus ONE
     contact sheet of the box cut from each frame (sheet=false: numbers only, look later with bench_inspect). Box in
     screen pixels, or world units with world=true (the current camera); air=true also takes in the ~170 px above it
-    where hovering aircraft over that ground are drawn."""
+    where hovering aircraft over that ground are drawn. lines=n: also each frame's n counters as numbers; until
+    (with lines): stop as soon as a frame meets it, e.g. 'c1==0' or 'c1==0|c4==0' (counter lines from 1) -- the
+    row then says UNTIL met."""
     from PIL import Image as PImage, ImageDraw
+    import counters
     go()
     end, rows, cuts, prev, prev_cap = time.monotonic() + max(0.0, min(120.0, seconds)), [], [], None, None
     while True:
@@ -250,9 +269,16 @@ def bench_watch(seconds: float, every: float = 3.0, x0: float = 0, y0: float = 0
         moved = '-' if prev is None else change(prev, cut)
         d = 0 if prev_cap is None else change(prev_cap, cap)
         text = f' CAPTION CHANGED ({d})' if d >= CAPTION_DIFF else ''
+        vals = counters.read(img, lines) if lines else []
+        if vals:
+            text += ' [' + ' '.join('?' if v is None else str(v) for v in vals) + ']'
         rows.append(f'#{fid} s{S.second()} change {moved}{text}')
         prev, prev_cap = cut, cap
         cuts.append((fid, S.second(), cut))
+        met = until_met(until, vals) if until and vals else None
+        if met:
+            rows.append(f'UNTIL met: {met}')
+            break
         if time.monotonic() + every > end:
             break
         time.sleep(every)
@@ -367,6 +393,26 @@ def tail(text, n=12):
     return '\n'.join(text.strip().splitlines()[-n:])
 
 
+def brief(tool, text):
+    """A step's text inside cnv_check, without what the verdict repeats: the counters come once, folded, in the
+    judge's report, so a watch keeps only its frame span and its events (captions, the stop) and bench_counters
+    nothing; bench_start drops the menu-by-menu log. The full rows stay in bench_watch itself and the run folder."""
+    import re
+    if tool == 'bench_counters':
+        return 'read' if not text.startswith('BENCH') else text
+    if tool == 'bench_start':
+        return re.sub(r'; menu \d+ [^;]*', '', text)
+    if tool != 'bench_watch':
+        return text[:600]
+    rows = text.split(' | ')
+    frames = [(m.group(0), r) for r in rows for m in [re.search(r'#\d+ s[\d.]+', r)] if m]
+    seconds = [f.split()[1] for f, _ in frames]
+    events = [f + ' caption changed' for f, r in frames if 'CAPTION CHANGED' in r]
+    events += [r for r in rows if r.startswith(('UNTIL met', 'stopped:', 'could not pause'))]
+    span = f'{len(seconds)} frames {seconds[0]}..{seconds[-1]}' if seconds else 'no frames'
+    return span + ('; ' + '; '.join(events) if events else '')
+
+
 @server.tool(structured_output=False)
 def cnv_list() -> str:
     """Every decoupled build (experimental/cnv/build.py): mission, its checks, the mod each builds to, the counters a
@@ -394,16 +440,21 @@ def cnv_check(name: str, check: str = '', build: bool = True, keep: bool = False
         return '\n'.join(built + ['RA3 is running: built to work/staging, no bench run'])
     if not plan['steps']:
         return '\n'.join(built + ['built (no check: nothing to run)'])
-    lines, counted = built, ''
+    lines, counted, done = built, '', ''
     try:
         for tool, a in plan['steps']:
+            if done and tool == 'bench_watch':
+                lines.append(f'bench_watch: skipped ({done})')
+                continue
             got = globals()[tool](**a)
             text = ' '.join(x for x in (got if isinstance(got, list) else [got]) if isinstance(x, str))
-            lines.append(f'{tool}: {text[:600]}')
+            lines.append(f'{tool}: {brief(tool, text)}')
             if text.startswith('BENCH:') and tool == 'bench_start':
                 return '\n'.join(lines)
             if tool == 'bench_counters':
                 counted = text
+            if tool == 'bench_watch':           # nothing more to wait for: the condition came, or the game ended
+                done = next((w for w in ('UNTIL met', 'mission has ended', 'stopped:') if w in text), '')
     finally:
         if not keep and S.p is not None:
             lines.append(bench_stop())
