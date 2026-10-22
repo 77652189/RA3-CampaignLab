@@ -46,6 +46,22 @@ UNIT = 'CNV_LibertyProbe'
 c7.EXTRA_TEMPLATES[UNIT] = {'file': f'DATA:CNVUnits/Data/{UNIT}.xml', 'EditorSorting': 'UNIT'}
 c7.EXTRA_OWN += [b'WeaponTemplate:CNV_LibertyDrones']
 DRONE_RANGE = 600
+# drones go home (CNV_DRONE_HOME=1, default; user 2026-10-21): they gathered beside the carrier. The aircraft carrier
+# (AlliedAntiStructureShip.xml) takes them back with three things: KindOf AIRFIELD, a ParkingPlaceBehavior that lets
+# only AlliedAttackDrone park, and a SlaughterHordeContain that swallows them (the OCL's RETURN_TO_SOURCE sends them).
+DRONE_HOME = os.environ.get('CNV_DRONE_HOME', '1') == '1'
+DRONE_HOME_MODULES = '''			<SlaughterHordeContain id="ModuleTag_CNV_DroneHome" CashBackPercent="0" ResetInitialTeamOnCapture="true">
+				<CanAlwaysEnterObjectFilter Rule="NONE">
+					<IncludeThing>AlliedAttackDrone</IncludeThing>
+				</CanAlwaysEnterObjectFilter>
+			</SlaughterHordeContain>
+			<ParkingPlaceBehavior id="ModuleTag_CNV_DroneParking" NumRows="2" NumCols="2" ApproachHeight="10"
+				ParkInHangars="true" DoorOpenTime="0.5s">
+				<CanParkHereFilter Rule="NONE" Relationship="ALLIES">
+					<IncludeThing>AlliedAttackDrone</IncludeThing>
+				</CanParkHereFilter>
+			</ParkingPlaceBehavior>
+'''
 # slice 2, 超时空甲板 (CNV_CHRONO=1, default): a targeted ability (the Sickle's leap button and command style, one
 # ability slot) driving TeleportSpecialAbilityUpdate -- in the schema, no retail unit uses it. Probe 2a: does the
 # carrier jump to the clicked point? (2b: carrying a group of ground units with it.) The Kirov's afterburner goes.
@@ -83,14 +99,17 @@ CHRONO_MODULES = '''			<SpecialPower id="ModuleTag_CNV_ChronoDeck" SpecialPowerT
 # CNV_CHRONO_MODE=self: 2a, the carrier alone (TeleportSpecialAbilityUpdate).
 CHRONO_MODE = os.environ.get('CNV_CHRONO_MODE', 'jump')
 DECK = int(os.environ.get('CNV_DECK_RADIUS', '150'))
-# CNV_DECK_SHOW=1: each select drops the Chronosphere's lasting marker (does the timer select at all?)
-STORE_OCL = ' OCL="OCL_ChronospherePersistent"' if os.environ.get('CNV_DECK_SHOW') == '1' else ''
+# CNV_DECK_SHOW=1: each select drops the Chronosphere's lasting marker (does the timer select at all?). In jump mode it
+# is on by default (user 2026-10-21: the jump had no visuals): the Chronosphere's own pair, the marker where it leaves
+# and the sphere where it lands (AlliedSuperWeapon.xml's StoreObjects / TeleportStoredObjects OCLs). CNV_DECK_SHOW=0 off.
+SHOW = os.environ.get('CNV_DECK_SHOW', '1' if CHRONO_MODE == 'jump' else '0') == '1'
+STORE_OCL = ' OCL="OCL_ChronospherePersistent"' if SHOW else ''
 # first deck run (_150502 / _150716): the select ran every 0.5 s (marker seen) and the button fired (it went into
 # cooldown), nothing moved, with the Chronosphere's send filter (none) and GetObjectsCurrentlyAtStorePosition true
 SEND_FILTER = os.environ.get('CNV_SEND_FILTER', 'CNV_DeckFilter')
 AT_STORE = os.environ.get('CNV_AT_STORE', 'true')
 STORE_EVERY = os.environ.get('CNV_STORE_EVERY', '0.5s')
-SEND_OCL = ' OCL="OCL_Chronosphere"' if os.environ.get('CNV_DECK_SHOW') == '1' else ''   # does the send fire?
+SEND_OCL = ' OCL="OCL_Chronosphere"' if SHOW else ''   # does the send fire?
 # the Chronosphere's power templates carry their own ObjectFilter (who gets picked up); without one nothing moved
 TEMPLATE_FILTER = f'''		<ObjectFilter Rule="ANY" Include="INFANTRY VEHICLE" StatusBitFlagsExclude="SUBMERGED NOT_IN_WORLD">
 			<IncludeThing>{UNIT}</IncludeThing>
@@ -316,6 +335,9 @@ def unit_xml():
     # the Kirov sees 150 (it bombs what is under it): nothing fired at 450 until it could see that far -- CampNew35's
     # lesson (CheckVisionRange off did not help)
     x = sub1(x, 'VisionRange="150"', 'VisionRange="650"')
+    if DRONE_HOME:
+        x = sub1(x, 'KindOf="CAN_CAST_REFLECTIONS', 'KindOf="AIRFIELD CAN_CAST_REFLECTIONS')
+        x = sub1(x, '\t\t</Behaviors>', DRONE_HOME_MODULES + '\t\t</Behaviors>')
     assert x.count('CheckVisionRange="true"') == 2           # the turret's and the AI's target choosers
     x = x.replace('CheckVisionRange="true"', 'CheckVisionRange="false"')
     if CHRONO:
