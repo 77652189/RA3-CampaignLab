@@ -67,14 +67,15 @@ def guard(fn):
 
 @server.tool(structured_output=False)
 @guard
-def bench_start(mod: str, visible: bool = False, hold: bool = True) -> list:
+def bench_start(mod: str, visible: bool = False, hold: bool = True, look: bool = True) -> list:
     """Start the bench game with a built mod (a folder name under Documents/Red Alert 3/Mods, e.g. CampNew38) and
     walk the menus into its mission. Refuses while RA3 runs (the user may be playing) or the bench lock is held.
     visible=true leaves the window on the desktop (default: parked off screen, muted). hold=true (default): the
-    mission is paused (its Esc menu) between tool calls and only runs while a tool acts or waits."""
+    mission is paused (its Esc menu) between tool calls and only runs while a tool acts or waits. look=false: no
+    first frame (a scripted test that only needs bench_watch)."""
     r = S.start(mod, visible=visible, hold=hold)
-    return [f'started {r["mod"]} (pid {r["pid"]}); frames archived in {r["run_dir"]}; ' + '; '.join(r['log'])] + \
-        looked('start', settle=1.0)
+    msg = f'started {r["mod"]} (pid {r["pid"]}); frames archived in {r["run_dir"]}; ' + '; '.join(r['log'])
+    return [msg] + looked('start', settle=1.0) if look else after(msg, False)
 
 
 @server.tool(structured_output=False)
@@ -194,6 +195,98 @@ def bench_wait(seconds: float, look: bool = True) -> list:
         return [f'ran {seconds} s'] + looked(f'after {seconds} s', settle=0)
     S.pause()
     return f'ran {seconds} s; mission second {S.second()}'
+
+
+def box_of(frame_view, x0, y0, x1, y1, world, size):
+    """A box in screen pixels, clamped; world corners converted with the given camera."""
+    if world:
+        keep = S.view
+        S.view = frame_view
+        (u0, v0), (u1, v1) = S.to_screen(x0, y0), S.to_screen(x1, y1)
+        S.view = keep
+        x0, y0, x1, y1 = min(u0, u1), min(v0, v1), max(u0, u1), max(v0, v1)
+    return tuple(int(max(0, min(lim, c))) for c, lim in zip((x0, y0, x1, y1), size * 2))
+
+
+CAPTION_DIFF = 20           # the caption strip changed this much: a caption came, went or changed (first run: a
+                            # caption staying up drifts 8-10, one coming or going 29-40)
+
+
+def change(a, b):
+    """Mean absolute difference of two same-size images, 0..255 (a cheap 'did anything move' number)."""
+    pa, pb = a.convert('L').tobytes(), b.convert('L').tobytes()
+    return round(sum(abs(x - y) for x, y in zip(pa, pb)) / max(1, len(pa)), 1)
+
+
+@server.tool(structured_output=False)
+@guard
+def bench_watch(seconds: float, every: float = 3.0, x0: float = 0, y0: float = 0, x1: float = 1280, y1: float = 720,
+                world: bool = False, air: bool = False, scale: float = 0.5, sheet: bool = True) -> list:
+    """Let the game run for some seconds (max 120) and archive a frame every `every` seconds -- one call instead of a
+    wait/look per step. Returns, per frame: mission second, how much the box changed since the previous frame (mean
+    pixel difference; water and idle animation alone give ~8) and whether the military caption changed; plus ONE
+    contact sheet of the box cut from each frame (sheet=false: numbers only, look later with bench_inspect). Box in
+    screen pixels, or world units with world=true (the current camera); air=true also takes in the ~170 px above it
+    where hovering aircraft over that ground are drawn."""
+    from PIL import Image as PImage, ImageDraw
+    go()
+    end, rows, cuts, prev, prev_cap = time.monotonic() + max(0.0, min(120.0, seconds)), [], [], None, None
+    while True:
+        fid, img = S.frame(f'watch {every} s')
+        box = box_of(S.view, x0, y0, x1, y1, world, img.size)
+        if air:
+            box = (box[0], max(0, box[1] - harness.AIR_LIFT), box[2], box[3])
+        cut, cap = img.crop(box), img.crop(harness.CAPTION_BOX)
+        moved = '-' if prev is None else change(prev, cut)
+        d = 0 if prev_cap is None else change(prev_cap, cap)
+        text = f' CAPTION CHANGED ({d})' if d >= CAPTION_DIFF else ''
+        rows.append(f'#{fid} s{S.second()} change {moved}{text}')
+        prev, prev_cap = cut, cap
+        cuts.append((fid, S.second(), cut))
+        if time.monotonic() + every > end:
+            break
+        time.sleep(every)
+    S.pause()
+    out = [f'box {box}; ' + ' | '.join(rows)]
+    if sheet and cuts:
+        w, h = round(cuts[0][2].width * scale), round(cuts[0][2].height * scale)
+        cols = min(len(cuts), max(1, 1280 // max(1, w)))
+        page = PImage.new('RGB', (cols * w, -(-len(cuts) // cols) * h))
+        d = ImageDraw.Draw(page)
+        for k, (fid, s, cut) in enumerate(cuts):
+            at = (k % cols * w, k // cols * h)
+            page.paste(cut.resize((w, h)), at)
+            d.text((at[0] + 4, at[1] + 4), f'#{fid} s{s}', fill=(255, 255, 0))
+        out.append(view(page, 1, 'JPEG'))
+    return out
+
+
+@server.tool(structured_output=False)
+@guard
+def bench_strip(x0: float = harness.COUNTER_BOX[0], y0: float = harness.COUNTER_BOX[1],
+                x1: float = harness.COUNTER_BOX[2], y1: float = harness.COUNTER_BOX[3], frames: str = 'all',
+                zoom: float = 1.5) -> list:
+    """The same screen box (pixels) cut from several archived frames, side by side with their mission seconds --
+    a timeline in one small image, the game untouched. Default box: the script counters (DISPLAY_COUNTER, bottom
+    left), so a test map that counts what it checks reads as numbers over time. frames: 'all', 'last5' or '3,7,10'."""
+    from PIL import Image as PImage, ImageDraw
+    ids = [f['id'] for f in S.frames]
+    if frames.startswith('last'):
+        ids = ids[-int(frames[4:] or 5):]
+    elif frames != 'all':
+        ids = [int(v) for v in frames.split(',')]
+    if not ids:
+        return 'BENCH: no frames'
+    box = tuple(int(v) for v in (x0, y0, x1, y1))
+    w, h, tag = box[2] - box[0], box[3] - box[1], 44
+    cols = max(1, min(len(ids), 1280 // (w + tag)))
+    page = PImage.new('RGB', (cols * (w + tag), -(-len(ids) // cols) * h))
+    d = ImageDraw.Draw(page)
+    for k, fid in enumerate(ids):
+        x, y = k % cols * (w + tag), k // cols * h
+        page.paste(S.archived(fid).crop(box), (x + tag, y))
+        d.text((x + 2, y + h // 2 - 6), f's{S.frames[fid - 1]["second"]:.0f}', fill=(255, 255, 0))
+    return [f'box {box}, frames {ids[0]}..{ids[-1]}', view(page, zoom, 'PNG')]
 
 
 @server.tool(structured_output=False)

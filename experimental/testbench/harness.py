@@ -42,6 +42,7 @@ MODS = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods')
 W, H = 1280, 720
 AIR_LIFT = 170              # a hovering aircraft is drawn ~170 px above its ground point (select it there)
 CAPTION_BOX = (340, 125, 840, 185)     # the military caption (SHOW_MILITARY_CAPTION): where scripts report signals
+COUNTER_BOX = (0, 560, 150, 615)       # DISPLAY_COUNTER lines, bottom left (two counters; more grow upwards?)
 # hold mode: Esc opens the mission menu (任务菜单) and the mission stands still (bench 2026-10-21: two frames 4 s apart
 # identical), Esc again goes on -- so the game only moves while a tool acts or waits, not while the agent thinks.
 # The menu is recognised by its title (template cut from that run, work/testbench/nav/pause_menu.png).

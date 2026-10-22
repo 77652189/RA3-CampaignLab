@@ -10,10 +10,10 @@
 - 两关粗模：A7「鹰派」（`make_campa7.py`，敌方自由号靠脚本跃迁，炸电站停跳）、A8「海上发布会」（`make_campa8.py`，自由号归玩家，丢了就输）。
 - 给用户试玩的图形启动器 `launcher.pyw` + 桌面快捷方式（下面 1b）。
 
-**恢复时先做**（2026-10-21 晚更新）：先看下面"下一步"第 0、0a 条（ra3bench MCP、编图前 lint）。用户选了推荐路线：用 MCP 修自由号甲板乘员（落地被拆下来、叠在一点），再做解耦（plan.md「开发方式改成 AI 原生」）。本会话压缩后没有加载 MCP 工具，就用 `harness.Session` 写小脚本驱动（scratchpad 里 `mcp_client_test.py` 是 stdio 客户端示例），或开新会话批准 MCP。其余旧项：
+**恢复时先做**（2026-10-21 夜更新）：先看下面"下一步"第 0、0a、0b 条（ra3bench MCP、编图前 lint、脚本化测试 + 计数器读数）。甲板乘员"被拆下来"已修好（第 3 条）；还剩"叠在一点"，下一步要用户选：给航母模型加骨骼走 `TransportContain` 的 `PassengerData BonePrefix`（载员画在骨骼上，双刃直升机吊车就是这个），还是先接受叠放去做解耦（plan.md「开发方式改成 AI 原生」）。没加载 MCP 的会话用 `experimental/testbench/bench_client.py` 跑一串调用。其余旧项：
 1. 自由号 v2 空中平台（`make_campnew38.py`，用户 2026-10-21 的设计，units.md 5.2.1）探路结果（详见 plan.md 自由号那行）：甲板跃迁**做通**（起跳时圈选、落地时传送，航母带着脚下部队一起到）；甲板工厂**做通**（自动生产：SpawnBehavior 每 20 秒出一辆守护者，能正常指挥；走生产队列那条路侧栏不认）；可拆炮塔**没做通**（能刷出、会跟着航母，但不开火）。自制模板要在地图上也摆一个才会被 SpawnBehavior 加载。还差：炮塔不开火、刷出的单位叠在一个点。
 2. A7、A8 粗模都能玩（`make_campa7.py`、`make_campa8.py`，见 plan.md 两行）；还差 5.6 的"有招牌 / 没招牌"难度对照（A8 有 `CNV_NO_CARRIER=1` 对照版，要自动操作部队才有可比的数），按 units.md 5.6 的难度规矩做"有招牌 / 没招牌"对照。
-3. 用户 2026-10-21 晚试玩：A7、A8 流程通；无人机回收、跃迁画面已补（plan.md 自由号行）；最大差距是"没有独立平台容纳地面单位"（像浮岛要塞那样）。甲板乘员探路（`CNV_RIDERS=1`）：守护者能自己上甲板、跟着跃迁，但叠在一点、落地开打后全灭原因没查清；下一步等用户选方向。MCP 测试时看到：落地后守护者站在地上而不在甲板上——甲板跃迁的"圈选 + 传送"把骑着的守护者也单独传了一次、把它们从航母上拆了下来，修法是让甲板筛选（CNV_DeckFilter）排除乘员，乘员靠 INSTANT_TELEPORT_ON_PARENT_TELEPORT 跟着航母走。
+3. 用户 2026-10-21 晚试玩：A7、A8 流程通；无人机回收、跃迁画面已补（plan.md 自由号行）；最大差距是"没有独立平台容纳地面单位"（像浮岛要塞那样）。甲板乘员探路（`CNV_RIDERS=1`）：守护者能自己上甲板、跟着跃迁，但叠在一点、落地开打后全灭原因没查清；下一步等用户选方向。MCP 测试时看到：落地后守护者站在地上而不在甲板上——甲板跃迁的"圈选 + 传送"把骑着的守护者也单独传了一次、把它们从航母上拆了下来。**已修**（2026-10-21 夜）：开 `CNV_RIDERS=1` 时甲板筛选和两个超时空模板都 `ExcludeThing` 乘员，乘员靠 INSTANT_TELEPORT_ON_PARENT_TELEPORT 跟着航母走；`CNV_TEST=jump` 三轮零点击测试，计数器跃迁前后都是"存活 6、在甲板 5"（runs/CampNew38_mcp_1021_212900）。"落地后全灭"是以前手点的落点 (1180, 2600) 就在敌方铁锤旁边，打起来了。**叠在一点没解决**：AttachUpdate 没有偏移参数；去掉 STICK_TO_PARENT（`CNV_RIDE_FLAGS`）时乘员在地上各站各的、也算挂着，但跃迁一落地还是全叠到航母正中（_213229）。候选：`TransportContain` 的 `PassengerData BonePrefix`（原版 15 处，双刃直升机 `SlingUnderBone` 吊一辆车），要给航母模型加几根甲板骨骼。
 4. 大纲第六节"待用户决定"里还没定的：三个结局、三条背叛、关卡地点和关名。
 
 **这两天测试台上反复踩的坑**（写新单位时先查）：
@@ -37,6 +37,15 @@
 ## 下一步
 
 0. **测试台改用 MCP（2026-10-21 晚起）**：仓库根 `.mcp.json` 注册了 `ra3bench`（`experimental/testbench/bench_mcp.py`，核心在 `harness.py`，Python 用 `../envs/bench_mcp`：mcp 2.x + Pillow + NumPy + pycaw）。新会话第一次要批准这个项目 MCP。用法：`bench_start(mod)` 自己走菜单进关（约 40 秒），之后用世界坐标 `bench_click / bench_box / bench_ability / bench_camera`，`bench_wait` 推进，`bench_look` 看，`bench_inspect` 放大任意存档帧，`bench_caption` 读任务脚本在字幕里报的信号，`bench_stop` 收尾放锁。默认 hold 模式：任务菜单（Esc）暂停游戏，只有工具在动作或等待时游戏才走（实测思考 5 秒游戏时间不变）。帧全尺寸存在 `work/testbench/runs/<mod>_mcp_<时间>/`（index.json 记每帧的任务秒数和镜头）。暂停菜单模板 `work/testbench/nav/pause_menu.png`（work 不进 git，丢了要从一帧任务菜单画面重切：`harness.MENU_BOX`）。旧的 `cnv.py bench`（run_bench.ps1 开环时间线）还在，批量回归可以继续用。思路来源：VISTA（arXiv 2610.02200）的机械控制器 + 无损帧存档 + 按需细看。
+0b. **少操作、少截图的测法**（2026-10-21 夜）：
+   - **让任务脚本自己动手**：`make_campnew38.py` 的 `CNV_TEST=jump` 由脚本在第 `CNV_JUMP_AT`（默认 15）秒用 `NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT` 让航母跳到 `CNV_JUMP_TO`，测试时一次点击都不用。
+   - **让任务脚本报数**：用 `DISPLAY_COUNTER` 把要检查的数显示在左下角（`harness.COUNTER_BOX`），每帧更新。例子：`SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER` 数存活单位；`PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS` 按状态数单位，比较符 2 是"等于"，状态参数写成 `(序号, 0.0, 名字)`，序号按 ObjectStatus.xsd 的顺序从 0 数（ATTACHED = 102）。
+   - **MCP 新工具**：
+     - `bench_watch(seconds, every, box)`：一次调用跑一段时间、定时存帧。返回每帧的变化量（水面和待机动画本身约 8）、字幕有没有变（超过 20），最多再加一张拼图。
+     - `bench_strip()`：把多帧里的同一块区域（默认计数器）拼成一条，只读存档、不碰游戏。
+     - `bench_start(look=false)`：开局不截图。
+   - **飞行单位画在地面点上方约 170 像素**：框飞行单位时，`bench_watch` 要传 `air=true`。
+   - 一次完整测试的流程：start → watch（sheet=false）→ strip，只看一张小图。
 0a. **编图前自动静态检查**：`experimental/campaign/lint.py`，每次编图在编译前跑（`make_campnew7.compile_map`），有 ERROR 就停（`CNV_LINT=warn` 只打印）。规则对应下面"踩过的坑"：视野和射程（超过 1.5 倍只警告）、步兵 IMMOBILE、超时空模板缺 ObjectFilter、ToggleState 缺 SkirmishAiInfo、复制件里留着原版 id、SpawnBehavior 刷的自制模板没摆在地图上。`python -I -X utf8 experimental/campaign/lint.py` 单独查全部单位文件；`tests/test_lint.py` 每条规则一个正反例。新坑出现时先加一条规则和测试。
 1. 日常操作先用根目录的 `cnv.py`（`python -I -X utf8 cnv.py -h`）：build / map / bench / sheet / where / launcher / status，不再临时写脚本。新测试一律用 `run_bench.ps1 -Nav`（`cnv.py bench` 就是它）：时间从进入关卡算起，点击位置用 `experimental/testbench/calib.py` 的 `world_to_screen` 从世界坐标算（标定只对从 CampNew18 岛派生、开局镜头相同的地图有效；换了开局镜头要重新标定：`CNV_CALIB=base/grid` 各编一次、各跑一次，再 `calib.py fit`）。要看镜头外的地方：左键点 `calib.world_to_minimap(x, y)` 移镜头，再用 `calib.world_to_screen_at(x, y, 镜头中心)` 算点击位置；要打人就右键点敌人本身，右键点小地图只是移动。
 1b. 给用户自己试玩用的图形启动器：根目录 `launcher.pyw`（桌面快捷方式"红警3 测试启动器"，2026-10-21）。它列出 Mods 里所有编好的 mod，按"关卡 / 单位测试图 / 其他"分组，双击就启动，游戏在运行时拒绝启动。新关卡或新单位测试图要在 `launcher.pyw` 的 KNOWN 里加一行中文说明，否则会落进"其他"组。

@@ -110,9 +110,14 @@ SEND_FILTER = os.environ.get('CNV_SEND_FILTER', 'CNV_DeckFilter')
 AT_STORE = os.environ.get('CNV_AT_STORE', 'true')
 STORE_EVERY = os.environ.get('CNV_STORE_EVERY', '0.5s')
 SEND_OCL = ' OCL="OCL_Chronosphere"' if SHOW else ''   # does the send fire?
-# the Chronosphere's power templates carry their own ObjectFilter (who gets picked up); without one nothing moved
+# the Chronosphere's power templates carry their own ObjectFilter (who gets picked up); without one nothing moved.
+# Riders (CNV_RIDERS=1) are left out: they ride the carrier's own jump (INSTANT_TELEPORT_ON_PARENT_TELEPORT), and the
+# deck's store/send moved them separately, which detached them (MCP run _1021)
+RIDERS = os.environ.get('CNV_RIDERS', '0') == '1'
+RIDER = 'CNV_DeckGuardian'
+NOT_RIDER = f'\n\t\t\t<ExcludeThing>{RIDER}</ExcludeThing>' if RIDERS else ''
 TEMPLATE_FILTER = f'''		<ObjectFilter Rule="ANY" Include="INFANTRY VEHICLE" StatusBitFlagsExclude="SUBMERGED NOT_IN_WORLD">
-			<IncludeThing>{UNIT}</IncludeThing>
+			<IncludeThing>{UNIT}</IncludeThing>{NOT_RIDER}
 		</ObjectFilter>
 '''
 DECK_DECL = f'''	<SpecialPowerTemplate id="SpecialPower_CNV_DeckStore" ReloadTime="0s" TargetType="LOCATION"
@@ -121,7 +126,7 @@ DECK_DECL = f'''	<SpecialPowerTemplate id="SpecialPower_CNV_DeckStore" ReloadTim
 	<ObjectFilterAsset id="CNV_DeckFilter">
 		<Filter Rule="ANY" Include="INFANTRY VEHICLE" Relationship="SAME_PLAYER ALLIES"
 			StatusBitFlagsExclude="SUBMERGED NOT_IN_WORLD">
-			<IncludeThing>{UNIT}</IncludeThing>
+			<IncludeThing>{UNIT}</IncludeThing>{NOT_RIDER.replace(chr(9) * 3, chr(9) * 4)}
 		</Filter>
 	</ObjectFilterAsset>
 	<WeaponTemplate id="CNV_DeckStoreTrigger" RadiusDamageAffects="SELF ALLIES" AttackRange="10000"
@@ -206,12 +211,10 @@ AUTO_FACTORY_MODULE = '''			<SpawnBehavior id="ModuleTag_CNV_DeckFactory" SpawnN
 # scan for a parent and stick to it. CNV_DeckGuardian = a Guardian with an AttachUpdate that looks for our carrier
 # within RIDE_RANGE while idle, sticks to it (moving and jumping with it), and a move order takes it off the deck.
 # The deck factory then builds these. Questions: do they get on, show on top, come along on the jump, fire from there?
-RIDERS = os.environ.get('CNV_RIDERS', '0') == '1'
-RIDER = 'CNV_DeckGuardian'
 RIDE_RANGE = int(os.environ.get('CNV_RIDE_RANGE', '150'))
 RIDER_ATTACH = f'''			<AttachUpdate id="ModuleTag_CNV_Deck" Range="{RIDE_RANGE}" IdleScanDelay="0.5s"
 				Flags="{os.environ.get('CNV_RIDE_FLAGS', 'SAME_PLAYER_ONLY STICK_TO_PARENT TELEPORT INSTANT_TELEPORT_ON_PARENT_TELEPORT USE_GEOMETRY MOVE_ORDER_FORCES_DETACH SCAN_FOR_NEW_PARENT_WHEN_DETACHED')}"
-				AttachedObjectStatus="NO_COLLISIONS">
+				AttachedObjectStatus="NO_COLLISIONS ATTACHED">
 				<ObjectFilter Rule="NONE" Relationship="SAME_PLAYER">
 					<IncludeThing>{UNIT}</IncludeThing>
 				</ObjectFilter>
@@ -439,9 +442,59 @@ def generate(m):
     objs.kids[:] = [k for k in objs.kids if k not in gone]
     for template, (x, y), ours in SCENE:
         pr, flags = newmap.typed_props_of(m, p1 if ours else s1)
+        named = {'objectName': CARRIER} if TEST and template == UNIT else {}
         objs.kids.append(newmap.object_node(m, pr, flags, template, x, y, angle=math.pi / 2 if ours else -math.pi / 2,
-                                            uniqueID=f'{template} {len(objs.kids)}'))
+                                            uniqueID=f'{template} {len(objs.kids)}', **named))
+    if TEST == 'jump':
+        test_jump(m, objs)
     print('CNV38: removed', len(gone), 'units;', len(SCENE), 'placed')
+
+
+# CNV_TEST=jump: the mission jumps the carrier itself (A7/A8's NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT) -- a bench run with
+# no clicks: start, wait, look. Map revealed; a caption at the jump marks the moment in the frames.
+TEST = os.environ.get('CNV_TEST', '')
+CARRIER = 'UNIT - CNV38 Liberty'
+JUMP_AT = float(os.environ.get('CNV_JUMP_AT', '15'))
+# east of the start on open grass, away from the Hammers (the hand-clicked (1180, 2600) of the earlier runs lands
+# next to them: the riders "lost after landing" may have been that fight). CNV_JUMP_TO=x,y
+JUMP_TO = tuple(float(v) for v in os.environ.get('CNV_JUMP_TO', f'{A[0] + 300},{A[1] - 60}').split(','))
+WP_JUMP = 'CNV38 Jump Target'
+ATTACHED = (102, 0.0, 'ATTACHED')                 # ObjectStatus index (the xsd's order; retail: UNPACKING = 162)
+if TEST:
+    c4.c3.STRINGS.update({'SCRIPT:CNV38_JUMP': 'TEST：自由号跃迁', 'SCRIPT:CNV38_RIDERS': '乘员存活',
+                          'SCRIPT:CNV38_DECK': '乘员在甲板'})
+
+
+def test_jump(m, objs):
+    tmpl = lambda k: k.head[22:22 + int.from_bytes(k.head[20:22], 'little')].decode('latin-1')   # noqa: E731
+    wps = [k for k in objs.kids if tmpl(k) == '*Waypoints/Waypoint']
+    wpr, wfl = newmap.typed_props_of(m, wps[0])
+    wid = 1 + max(newmap.typed_props_of(m, k)[0].get('waypointID', (1, 0))[1] for k in wps)
+    objs.kids.append(newmap.object_node(m, wpr, wfl, '*Waypoints/Waypoint', *JUMP_TO, waypointName=WP_JUMP,
+                                        waypointID=wid, uniqueID=f'Waypoint {wid}'))
+    act = lambda *a: m.new_content('ScriptAction', *a)                      # noqa: E731
+    psl = next(n for _, n in m.walk() if n.name == 'PlayerScriptsList')
+    psl.kids[2].kids += [
+        m.new_script('CNV38 - Test Start', [m.new_content('Condition', 'CONDITION_TRUE')],
+                     [act('MAP_REVEAL_ALL_PERM', 'Player_1'), act('SET_MILLISECOND_TIMER', 'CNV38 TestJump', JUMP_AT)]),
+        m.new_script('CNV38 - Test Jump', [m.new_content('Condition', 'TIMER_EXPIRED', 'CNV38 TestJump')],
+                     [act('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', CARRIER, 'SpecialPower_CNV_ChronoDeck', WP_JUMP),
+                      act('SHOW_MILITARY_CAPTION', 'SCRIPT:CNV38_JUMP', 5.0),
+                      act('SET_MILLISECOND_TIMER', 'CNV38 TestJump', 9999.0)])]
+    # readouts instead of counting units in frames: the game's own counters on screen, kept current every frame --
+    # riders alive (owned) and riders on the deck (ATTACHED status: AttachedObjectStatus sets it)
+    if RIDERS:
+        psl.kids[2].kids += [
+            m.new_script('CNV38 - Probe Show', [m.new_content('Condition', 'CONDITION_TRUE')],
+                         [act('DISPLAY_COUNTER', 'CNV38 Riders', 'SCRIPT:CNV38_RIDERS'),
+                          act('DISPLAY_COUNTER', 'CNV38 Deck', 'SCRIPT:CNV38_DECK')]),
+            m.new_script('CNV38 - Probe Riders', [m.new_content('Condition', 'CONDITION_TRUE')],
+                         [act('SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER', RIDER, 'Player_1', 'CNV38 Riders')], one_shot=False)]
+        psl.kids[2].kids += [
+            m.new_script(f'CNV38 - Probe Deck {n}',
+                         [m.new_content('Condition', 'PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS', 'Player_1', 2, n,
+                                        ATTACHED)],
+                         [act('SET_COUNTER', 'CNV38 Deck', n)], one_shot=False) for n in range(8)]
 
 
 c6.edit = generate
