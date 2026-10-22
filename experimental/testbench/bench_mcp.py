@@ -458,7 +458,8 @@ def cnv_check(name: str, check: str = '', build: bool = True, keep: bool = False
     lines, counted, done = built, '', ''
     try:
         for tool, a in plan['steps']:
-            if done and tool == 'bench_watch':
+            # the condition came: the waits for it go; a watch without one (a look after it) still runs
+            if done and tool == 'bench_watch' and (done != 'UNTIL met' or a.get('until')):
                 lines.append(f'bench_watch: skipped ({done})')
                 continue
             got = globals()[tool](**a)

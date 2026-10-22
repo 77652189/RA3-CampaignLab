@@ -188,16 +188,19 @@ def square(x, y, r):
 
 
 def counted(counter, label, test, template=None, status=None, area=None, kind=None, player='Player_1', most=8,
-            named=None):
+            named=None, health=None):
     """A test readout: how many `template`s the player owns (with `area`: how many of them stand in that trigger
     area; with `kind` instead of a template -- kindof('VEHICLE') -- how many of that KindOf), or how many of their
     objects carry `status` ((index, 0.0, name) as in ObjectStatus.xsd's order), shown as a game counter -- read as a
     number by bench_counters instead of counting units in a frame. Counted per value 0 .. most - 1: at `most` or
     more the counter shows `most`. named + area: 1 while that named object is inside the area, else 0 -- for a
     unit that teleports (bench 2026-10-22: after the A7 carrier's jump the type-in-area count of the area it left
-    stayed 1 for 35 s; the area it landed in counted it at once)."""
+    stayed 1 for 35 s; the area it landed in counted it at once). health: that named object's health in percent."""
     test.counters.append((counter, label))
-    if named:
+    if health:
+        test.scripts.append(Script(f'Test - count {counter}', [],
+                                   [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', health, counter)], once=False))
+    elif named:
         test.scripts += [Script(f'Test - count {counter} in', [('NAMED_INSIDE_AREA', named, area)],
                                 [('SET_COUNTER', counter, 1)], once=False),
                          Script(f'Test - count {counter} out', [('NAMED_OUTSIDE_AREA', named, area)],
@@ -278,6 +281,7 @@ def merged(mission, test=None):
 AREA_ARG = 9                            # script argument type of a trigger area name (script_catalog.json)
 # the other argument types contract() holds against what was published
 TEAM_ARG, WAYPOINT_ARG, PLAYER_ARG, OBJECT_ARG, STRING_ARG, POWER_ARG, TEMPLATE_ARG = 3, 7, 11, 14, 25, 31, 61
+COMMAND_ARG = 34                        # a command button (NAMED_USE_COMMANDBUTTON_ABILITY)
 
 
 def missing_areas(mission):
@@ -304,6 +308,7 @@ def contract(mission):
     known = {AREA_ARG: ('area', m.areas), TEAM_ARG: ('team', set(getattr(m.map, 'TEAMS', {}).values())),
              WAYPOINT_ARG: ('waypoint', m.waypoints), PLAYER_ARG: ('player', set(getattr(m.map, 'PLAYERS', {}).values())),
              OBJECT_ARG: ('object', named), STRING_ARG: ('string', m.strings), POWER_ARG: ('power', powers),
+             COMMAND_ARG: ('command button', powers),
              TEMPLATE_ARG: ('template', {r.template for r in m.cast.values()} | {u.id for u in m.units})}
     for s in m.scripts:
         for name, *args in s.when + s.do:
@@ -311,8 +316,9 @@ def contract(mission):
             for t, v in zip(types, args):
                 if t in known and v not in known[t][1]:
                     out.append(f'{s.name}: {name} {known[t][0]} {v!r} not published')
-            if OBJECT_ARG in types and POWER_ARG in types:          # NAMED_FIRE_SPECIAL_POWER_* : its own power
-                who, power = args[types.index(OBJECT_ARG)], args[types.index(POWER_ARG)]
+            own = POWER_ARG if POWER_ARG in types else COMMAND_ARG
+            if OBJECT_ARG in types and own in types:                # NAMED_FIRE_SPECIAL_POWER_* / _USE_COMMANDBUTTON_*
+                who, power = args[types.index(OBJECT_ARG)], args[types.index(own)]
                 if who in named and power in powers and powers[power].id != named[who].template:
                     out.append(f'{s.name}: {who} ({named[who].template}) fired {power}, an ability of {powers[power].id}')
     return out

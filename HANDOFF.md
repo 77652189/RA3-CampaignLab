@@ -13,7 +13,7 @@
 **恢复时先做**（2026-10-21 深夜更新）：先看下面"下一步"第 0、0a、0b、0c、0d 条（ra3bench MCP、编图前 lint、少操作少截图的测法、解耦后的组装命令、触发区域和一次调用测完的 `cnv_check`），以及 0e（A8 难度对照结果）。测试首选 MCP 的 `cnv_check(name, check)`。用户 2026-10-21 定：甲板乘员先接受叠放，先做解耦和效率改进——都已做完（0c）：自由号和 A8 已迁到 `experimental/cnv/`，4 个检查在测试台上全部 PASS。新内容一律按 0c 的结构写；没加载 MCP 的会话用 `cnv.py make <名> --check <检查>` 或 `experimental/testbench/bench_client.py`。
 用户 2026-10-21 深夜答复：新版 CampA8 覆盖旧版（已做）；排查用的测试 mod 删掉（已删 9 个）；下一步做触发区域 + 完善 MCP、让大模型直接和 MCP 交流（已做，见 0d）。
 用户 2026-10-21 深夜又要："做 A8 有/没有自由号的难度对照，重点看 MCP 运作是否正常、有没有要改进的，然后查跃迁时少一辆守护者"——都做完了，见 0e。
-2026-10-22：ra3bench 工具已在新会话里直接加载（`cnv_list`、`cnv_check` 直接调通），不再走 `bench_client.py`。用户说候选 1、2 不急，先做了 0f：各层之间只走接口；接着用户要"把 A7 搬进来，设计文档也改"，已做（0g）。新关卡、新检查按 0f 写：放东西用 `m.put` 按地点放，检查只问关卡；动手前和写完后都先 `cnv_show`。改关卡设计先改 [docs/story/levels.md](docs/story/levels.md) 的卡片。
+2026-10-22：ra3bench 工具已在新会话里直接加载（`cnv_list`、`cnv_check` 直接调通），不再走 `bench_client.py`。用户说候选 1、2 不急，先做了 0f：各层之间只走接口；接着用户要"把 A7 搬进来，设计文档也改"，已做（0g）。新关卡、新检查按 0f 写：放东西用 `m.put` 按地点放，检查只问关卡；动手前和写完后都先 `cnv_show`。改关卡设计先改 [docs/story/levels.md](docs/story/levels.md) 的卡片。**用户 2026-10-22 又定：关卡设计往后放，先把单位验证做完**。顺序和进度见 docs/plan.md「进度」一段和 units.md 开头的验证进度表。
 **下一步候选**（推荐 1）：
 1. A7 / A8 难度。A7 按现在的数值，玩家什么都不做，4 辆多功能车也会在自由号第一次跳过来约 35 秒后把它打下来，任务就赢了（plan.md A7 行）。可以缩短停留时间、把突击点挪出防空射程、加厚自由号，或者让它带的兵先去猎防空车。A8 两边都太容易（敌人只站着挨打，牛蛙没打掉自由号）。按 units.md 5.6 第 3、7 条让敌人主动反击、盯着自由号打，再用 `a8 --check assault` / `a8_control --check assault` 对照。要用户定"难到什么程度"。
 2. 超时空甲板落到自家建筑上会弄死被传的车（`Telefrag="INSTANT_DEATH_TELEPORTER_ONLY"`，照原版超时空传送仪）。要不要改成 `NONE` 或 `SWAP` 再测，是玩法决定，等用户定。
@@ -37,6 +37,10 @@
 - **任务脚本计时器**：SET_MILLISECOND_TIMER 到点后一直算"已到期"，交替触发的脚本每次都要把自己的计时器重新推远，否则每帧都触发。AI 不会自己按跃迁之类的技能，用 NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT 由脚本按。
 - **攻击移动不打建筑**：`ATTACK_MOVE_TEAM_TO` 只打路上的单位，到了路点就停；要拆建筑得 `TEAM_ATTACK_NAMED` 点名（A8 对照第一轮因此打了 290 秒一座平台都没拆）。
 - **超时空甲板落点挨着自家建筑**：被传的车落到建筑上会被弄死（Telefrag），自家的也一样（liberty jump 少一辆守护者就是这个）。
+- **运兵车的计数三个坑**（钻地运兵车，2026-10-22）：
+  - 按模板数"区域里有几个"时，车里的乘客也算在车所在的区域里。数"车上还有几个"用状态 `ENCLOSED`。
+  - `NAMED_EXIT_BUILDING` 不会让运兵车卸兵。用单位指令集里的 `Command_Evacuate`（`NAMED_USE_COMMANDBUTTON_ABILITY`）。
+  - 单位死后，血量计数器停在最后一次读数，不会归零。
 - **跃迁后，按模板数的区域计数不会把它减掉**：`PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA` 在它离开的区域里还算着它（A7 自由号跳走后 35 秒不变），到达的区域则马上算进去。要知道跃迁单位在哪，用 `counted(named=..., area=...)`（`NAMED_INSIDE_AREA` / `NAMED_OUTSIDE_AREA`）。
 - **落点 / 突击点**：别放在对方建筑上（A7 第一次把突击点放在我方战车工厂上，跳来的自由号压在工厂上、防空车够不着）。
 - **mod 名最多 15 个字符**：同一份内容，叫 CampLibRidersJump / CampBisjcdXXXXXXX（17 个字符）时游戏在主菜单前就崩（退出码 0xC000000D，日志里什么都没有）；叫 CampBisjcd、CampBisjcdXXXX（14）、CampLibertyJump（15）都正常。`experimental/cnv/parts.assemble` 超长直接报错，`tests/test_cnv_parts.py` 检查所有登记的编图名。
