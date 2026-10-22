@@ -55,6 +55,8 @@ MISSIONS = {
     'beacon': (lambda: beacon_bench.mission(), {'pull': check_bea.pull, 'still': check_bea.still}),
     'combo': (lambda: combo_bench.mission(), {'join': check_com.join}),
     'tesla': (lambda: tesla_bench.mission(), {'fight': check_tes.fight}),
+    'tesla_surge': (lambda: tesla_bench.surge(), {'surge': check_tes.surge}),
+    'tesla_surge_retail': (lambda: tesla_bench.surge(name='CampTslR', fire=False), {'surge': check_tes.surge}),
 }
 LEVELS = ('a7', 'a8')                           # campaign levels: each has a card in docs/story/levels.md (the rest:
                                                 # A/B controls and bench scenes)
