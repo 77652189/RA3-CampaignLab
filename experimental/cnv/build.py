@@ -25,8 +25,9 @@ from checks import a8 as check_a8               # noqa: E402
 from checks import beacon as check_bea          # noqa: E402
 from checks import burrower as check_bur        # noqa: E402
 from checks import combo as check_com           # noqa: E402
+from checks import tesla as check_tes           # noqa: E402
 from checks import liberty as check_lib         # noqa: E402
-from missions import a7, a8, beacon_bench, burrow_bench, combo_bench, liberty_bench   # noqa: E402
+from missions import a7, a8, beacon_bench, burrow_bench, combo_bench, liberty_bench, tesla_bench   # noqa: E402
 
 BENCH_PY = os.path.join(os.path.dirname(ROOT), 'envs', 'bench_mcp', 'Scripts', 'python.exe')
 CLIENT = os.path.join(ROOT, 'experimental', 'testbench', 'bench_client.py')
@@ -53,6 +54,7 @@ MISSIONS = {
     'burrower': (lambda: burrow_bench.mission(), {'pass': check_bur.burrow_pass, 'drop': check_bur.deliver}),
     'beacon': (lambda: beacon_bench.mission(), {'pull': check_bea.pull, 'still': check_bea.still}),
     'combo': (lambda: combo_bench.mission(), {'join': check_com.join}),
+    'tesla': (lambda: tesla_bench.mission(), {'fight': check_tes.fight}),
 }
 LEVELS = ('a7', 'a8')                           # campaign levels: each has a card in docs/story/levels.md (the rest:
                                                 # A/B controls and bench scenes)
