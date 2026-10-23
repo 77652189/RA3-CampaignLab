@@ -62,6 +62,7 @@ MISSIONS = {
     'burrower': (lambda: burrow_bench.mission(), {'pass': check_bur.burrow_pass, 'drop': check_bur.deliver}),
     'beacon': (lambda: beacon_bench.mission(), {'pull': check_bea.pull, 'still': check_bea.still}),
     'combo': (lambda: combo_bench.mission(), {'join': check_com.join}),
+    'combo_breach': (lambda: combo_bench.breach(), {'breach': check_com.breach}),
     'tesla': (lambda: tesla_bench.mission(), {'fight': check_tes.fight}),
     'tesla_surge': (lambda: tesla_bench.surge(), {'surge': check_tes.surge}),
     'tesla_surge_retail': (lambda: tesla_bench.surge(name='CampTslR', fire=False), {'surge': check_tes.surge}),

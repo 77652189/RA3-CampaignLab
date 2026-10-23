@@ -10,6 +10,41 @@ from units.combo import JOINED
 JOIN_AT, PART_AT = 10.0, 30.0                   # well past the bench's uncertain start (see checks.beacon)
 
 
+ATTACK_AT = 16.0
+
+
+def breach(m):
+    """At JOIN_AT pair A joins; at ATTACK_AT A's parent and both of B's are ordered at their walls. The map counts
+    each wall's seconds standing from ATTACK_AT (ticks while it stands). A's wall falls; B's seconds tell how much
+    slower the two apart are."""
+    t = Test()
+    t.scripts += [Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1')),
+                                              ('SET_MILLISECOND_TIMER', 'Test - join timer', JOIN_AT),
+                                              ('SET_MILLISECOND_TIMER', 'Test - attack timer', ATTACK_AT)]),
+                  Script('Test - join', [('TIMER_EXPIRED', 'Test - join timer')],
+                         [('NAMED_GARRISON_SPECIFIC_BUILDING', m.role('child A').name, m.role('parent A').name)]),
+                  Script('Test - attack', [('TIMER_EXPIRED', 'Test - attack timer')],
+                         [('NAMED_ATTACK_NAMED', m.role(p).name, m.role(f'wall {p[-1]}').name)
+                          for p in ('parent A', 'parent B', 'child B')] +
+                         [('SET_MILLISECOND_TIMER', 'Test - tick timer', 1.0)])]
+    for k in 'AB':
+        t.counters.append((f'Test Stand {k}', f'{k} 墙撑了几秒'))
+        t.scripts.append(Script(f'Test - tick {k}', [('TIMER_EXPIRED', 'Test - tick timer'),
+                                                     ('NAMED_NOT_DESTROYED', m.role(f'wall {k}').name)],
+                                [('INCREMENT_COUNTER', 1, f'Test Stand {k}')], once=False))
+    t.scripts.append(Script('Test - tick again', [('TIMER_EXPIRED', 'Test - tick timer')],
+                            [('SET_MILLISECOND_TIMER', 'Test - tick timer', 1.0)], once=False))
+    counted('Test Joined', '合体', t, status=status(JOINED))
+    t.counters.append(('Test Fell A', 'A 墙倒了'))
+    t.scripts.append(Script('Test - fell A', [('NAMED_DESTROYED', m.role('wall A').name)],
+                            [('SET_COUNTER', 'Test Fell A', 1)]))
+    # bench 2026-10-22: joined 5 s, the two apart 12 s
+    t.expect += [('合体', JOIN_AT + 2, 'ever==', 1), ('A 墙倒了', ATTACK_AT, 'ever==', 1),
+                 ('A 墙撑了几秒', ATTACK_AT + 12, '<=', 7), ('B 墙撑了几秒', ATTACK_AT, 'ever>=', 10)]
+    t.bench = [('bench_watch', dict(seconds=75, every=3, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 def join(m):
     t = Test()
     c, p = m.role('child'), m.role('parent')

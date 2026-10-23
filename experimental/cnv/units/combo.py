@@ -8,9 +8,8 @@ map's corner, and nothing ever carries COMBINED_PARENT / COMBINED_CHILD.
 
 So the join is retail's IFV way: the parent has one seat that only the child fits (TransportContain), the child
 drives in, and while it is aboard the parent carries CONTAINER_OCCUPIED and switches weapons by it (as the IFV does).
-Everyone out (Command_Evacuate on the parent) parts them. The switch here is to the King Oni's veteran beam, which
-has the same range and damage: a placeholder until the design says what joining buys (bench 2026-10-22: joined at
-s10, parted at s29, both alive).
+Everyone out (Command_Evacuate on the parent) parts them (bench 2026-10-22: joined at s10, parted at s29, both
+alive). Joined, the parent's beam is a breaker: at buildings only, `damage` a shot (docs/story/units.md 6).
 
 Published: parent: abilities part (the parent's unload button: NAMED_USE_COMMANDBUTTON_ABILITY). The join is the
 child entering the parent (NAMED_GARRISON_SPECIFIC_BUILDING).
@@ -31,8 +30,20 @@ def sub1(x, old, new):
     return x.replace(old, new, 1)
 
 
-def parent(id='CNV_ComboParent', child_id='CNV_ComboChild'):
-    commands = f'{id}CommandSet'
+def breaker(id, damage):
+    """The joined form's weapon: the King Oni's veteran beam, at buildings only (ANTI_STRUCTURE), `damage` a shot."""
+    w = open(os.path.join(c2.SDK, 'SageXML', 'GlobalData', 'Weapon.xml'), encoding='utf-8').read()
+    m = re.search(r'<WeaponTemplate\s+id="JapanAntiVehicleVehicleTech3BeamWeapon_Veteran".*?</WeaponTemplate>', w,
+                  flags=re.S)
+    g = sub1(m.group(0), 'id="JapanAntiVehicleVehicleTech3BeamWeapon_Veteran"', f'id="{id}"')
+    g = sub1(g, 'RequiredAntiMask="ANTI_GROUND ANTI_STRUCTURE ANTI_WATER"', 'RequiredAntiMask="ANTI_STRUCTURE"')
+    return sub1(g, 'Damage="175.0"', f'Damage="{damage}.0"')
+
+
+def parent(id='CNV_ComboParent', child_id='CNV_ComboChild', damage=700):
+    """Joined (the user's decision, 2026-10-22): a breaker of buildings -- ice walls and statues in J4 -- that shoots
+    nothing else meanwhile; parted, two quick machines that can be in two places."""
+    commands, weapon = f'{id}CommandSet', f'{id}_Breaker'
     x = open(os.path.join(SAGE, 'JapanAntiVehicleVehicleTech3.xml'), encoding='utf-8').read()
     x = sub1(x, 'id="JapanAntiVehicleVehicleTech3"', f'id="{id}"')
     x = sub1(x, 'EditorName="JapanAntiVehicleVehicleTech3"', f'EditorName="{id}"')
@@ -40,14 +51,15 @@ def parent(id='CNV_ComboParent', child_id='CNV_ComboChild'):
     # bench 2026-10-22: with one seat neither a script nor a right click put the child in -- a vehicle takes five
     # (BaseVehicle TransportSlotCount, the Twinblade's ContainMax); retail's transports also carry KindOf TRANSPORT
     x = sub1(x, 'CAN_BE_FAVORITE_UNIT T3_UNIT"', 'CAN_BE_FAVORITE_UNIT T3_UNIT TRANSPORT"')
-    # joined: the veteran beam instead of the plain one
+    # joined: the breaker instead of the plain beam
     x = sub1(x, 'Template="JapanAntiVehicleVehicleTech3BeamWeapon"\n\t\t\t\t\t\tForbiddenObjectStatus="SPECIALABILITY_ACTIVE '
                 'GENERIC_TOGGLE_STATE WEAPON_UPGRADED_01"/>',
              'Template="JapanAntiVehicleVehicleTech3BeamWeapon"\n\t\t\t\t\t\tForbiddenObjectStatus="SPECIALABILITY_ACTIVE '
              f'GENERIC_TOGGLE_STATE WEAPON_UPGRADED_01 {JOINED}"/>\n'
              '\t\t\t\t\t<Weapon\n\t\t\t\t\t\tOrdering="PRIMARY_WEAPON"\n'
-             '\t\t\t\t\t\tTemplate="JapanAntiVehicleVehicleTech3BeamWeapon_Veteran"\n'
+             f'\t\t\t\t\t\tTemplate="{weapon}"\n'
              f'\t\t\t\t\t\tForbiddenObjectStatus="SPECIALABILITY_ACTIVE GENERIC_TOGGLE_STATE"\n\t\t\t\t\t\tObjectStatus="{JOINED}"/>')
+    x = sub1(x, '</AssetDeclaration>', f'\t{breaker(weapon, damage)}\n</AssetDeclaration>')
     # as the Twinblade's (it carries one vehicle): CONTAINER_OCCUPIED is set by ObjectStatusWhileContaining, not by
     # being occupied; ConditionForEntry INVALID and a vehicle's PassengerData as it has them
     x = sub1(x, '</Behaviors>', f'''	<TransportContain id="ModuleTag_CNV_Seat" ObjectStatusOfContained="UNSELECTABLE ENCLOSED"
@@ -70,9 +82,9 @@ def parent(id='CNV_ComboParent', child_id='CNV_ComboChild'):
 		<Cmd>Command_TriggerRushAttackSpecialPower</Cmd>
 	</LogicCommandSet>
 </AssetDeclaration>''')
-    return Unit(id, x, link=[f'LogicCommandSet:{commands}'], abilities={'part': PART_COMMAND},
-                what=f'合体机甲母体（鬼王底）：{child_id} 开进来就合体（换成更强的光束），part 拆开',
-                params=dict(child=child_id))
+    return Unit(id, x, link=[f'LogicCommandSet:{commands}', f'WeaponTemplate:{weapon}'], abilities={'part': PART_COMMAND},
+                what=f'合体机甲母体（鬼王底）：{child_id} 开进来就合体（换成只打建筑的破城光束，一发 {damage}），part 拆开',
+                params=dict(child=child_id, damage=damage))
 
 
 def child(id='CNV_ComboChild'):
