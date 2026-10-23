@@ -34,7 +34,7 @@ def freeze(name='CampIceF', builder=False, spawn=None, extra=(), **wall):
     """builder: retail's Soviet engineer walks there and builds our wall instead. spawn: the engineer's power
     creates this template instead of the wall (extra: more units of ours the mission carries, placed nowhere)."""
     w = iw.wall(**wall)
-    e = iw.retail_engineer(structure=w.id) if builder else iw.engineer(wall_id=spawn or w.id)
+    e = iw.retail_engineer(structure=w.id) if builder else iw.engineer(wall_id=spawn or w.id, build=not spawn)
     m = Mission(name=name, map=island, units=[e, w, *extra])
     m.cast['wall'] = Role(spawn or e.params['wall'])
     m.put(e.id, 'west field', MIDDLE, -100, name='UNIT - CNV Ice Engineer', role='engineer')

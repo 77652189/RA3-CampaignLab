@@ -64,8 +64,8 @@ def freeze(m):
     counted('Test Walls', '冰墙', t, template=m.role('wall').template)
     life = m.param('wall', 'lifetime')
     t.expect += [('冰墙', 0, '==', 0, FREEZE_AT - 2), ('冰墙', FREEZE_AT, 'ever==', 1),
-                 ('冰墙', FREEZE_AT + life + 5, 'ever==', 0)]
-    t.bench = [('bench_watch', dict(seconds=FREEZE_AT + life + 15, every=3, sheet=False, lines=len(t.counters)))]
+                 ('冰墙', FREEZE_AT + life + 12, 'ever==', 0)]      # he walks there and builds first
+    t.bench = [('bench_watch', dict(seconds=FREEZE_AT + life + 22, every=3, sheet=False, lines=len(t.counters)))]
     return t
 
 

@@ -109,6 +109,7 @@
   - "克隆体活着才控制"靠关卡：每个克隆体站在自己的一方（底图 Heidelberg 自带闲着的 Soviet_2 到 Soviet_6，`maps/island.py` 的 `SPARE`），死了就用 `PLAYER_TRANSFER_OWNERSHIP_PLAYER` 把那一方的东西全还给玩家（`missions/clone_bench.release`）。只是换主人，血量和等级都在。
   - 换了主人以后，按模板数"玩家有几个"（`SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER`）要等收买的间谍死了才算进来。要问归谁，用 `counted(owner=...)`（`NAMED_OWNED_BY_PLAYER`）。
 - **"没武器"的目标先查**：帝国矿车带机枪，苏联矿车会自己开动、碾死步兵（克隆体第一轮全死在矿车手里，看着像单位没刷出来）。要找打不还手的靶子，用工程师。
+- **测试台的暂停会取消选位置**（冰幕工兵，2026-10-22）：`hold=true` 时每次工具调用之间按 Esc 暂停，正在选目标的技能（点了按钮、还没点地面）会被取消。要分几步做的手动操作（选中 → 按钮 → 点地面）用 `bench_start(hold=false)`。`bench_box` 的拖动太快，放建筑时游戏不当成旋转。
 - **计数器的内部名字只能用英文**（地图字符串按 latin-1 编码），中文只能放在显示的标签里。
 - **mod 名最多 15 个字符**：同一份内容，叫 CampLibRidersJump / CampBisjcdXXXXXXX（17 个字符）时游戏在主菜单前就崩（退出码 0xC000000D，日志里什么都没有）；叫 CampBisjcd、CampBisjcdXXXX（14）、CampLibertyJump（15）都正常。`experimental/cnv/parts.assemble` 超长直接报错，`tests/test_cnv_parts.py` 检查所有登记的编图名。
 - **检查游戏在不在跑**：进程名要同时匹配 `ra3_1.xx.game`、`RA3.exe` 和起义时刻的 `ra3ep1`（之前漏了起义时刻）。
