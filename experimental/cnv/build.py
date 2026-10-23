@@ -25,13 +25,14 @@ from checks import a8 as check_a8               # noqa: E402
 from checks import beacon as check_bea          # noqa: E402
 from checks import burrower as check_bur        # noqa: E402
 from checks import combo as check_com           # noqa: E402
+from checks import crane as check_cra           # noqa: E402
 from checks import icewall as check_ice         # noqa: E402
 from checks import tesla as check_tes           # noqa: E402
 from checks import jammer as check_jam          # noqa: E402
 from checks import liberty as check_lib         # noqa: E402
 from checks import shikigami as check_shi       # noqa: E402
 from units import tesla as units_tesla          # noqa: E402
-from missions import a7, a8, beacon_bench, burrow_bench, combo_bench, icewall_bench, jammer_bench, liberty_bench, shikigami_bench, \
+from missions import a7, a8, beacon_bench, burrow_bench, combo_bench, crane_bench, icewall_bench, jammer_bench, liberty_bench, shikigami_bench, \
     tesla_bench                                 # noqa: E402
 
 BENCH_PY = os.path.join(os.path.dirname(ROOT), 'envs', 'bench_mcp', 'Scripts', 'python.exe')
@@ -69,6 +70,8 @@ MISSIONS = {
                   {'built': check_ice.built}),
     'jammer': (lambda: jammer_bench.mission(), {'jam': check_jam.jam, 'free': check_jam.free}),
     'shikigami': (lambda: shikigami_bench.mission(), {'cover': check_shi.cover}),
+    'crane': (lambda: crane_bench.mission(), {'spot': check_cra.spot}),
+    'crane_retail': (lambda: crane_bench.mission(name='CampCraneR', retail=True), {'blind': check_cra.blind}),
     'ice_smash': (lambda: icewall_bench.smash(), {'smash': check_ice.smash}),
 }
 LEVELS = ('a7', 'a8')                           # campaign levels: each has a card in docs/story/levels.md (the rest:
