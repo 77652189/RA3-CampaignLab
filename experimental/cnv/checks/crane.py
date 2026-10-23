@@ -27,6 +27,21 @@ def trip(m, seen):
     return t
 
 
+def hide(m):
+    """At GO_AT both cranes are sent over their IFVs: A (no detector there) comes through untouched, B (a war bear
+    with its IFVs) is hit."""
+    t = Test()
+    t.scripts.append(Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1')),
+                                                 ('SET_MILLISECOND_TIMER', 'Test - go timer', GO_AT)]))
+    t.scripts.append(Script('Test - go', [('TIMER_EXPIRED', 'Test - go timer')],
+                            [('MOVE_NAMED_UNIT_TO', m.role(f'crane {k}').name, m.mark(f'over {k}')) for k in 'AB']))
+    for k in 'AB':
+        counted(f'Test Crane {k}', f'{k} 纸鹤血量', t, health=m.role(f'crane {k}').name)
+    t.expect += [('A 纸鹤血量', 0, '==', 100), ('B 纸鹤血量', GO_AT, 'ever<', 100)]
+    t.bench = [('bench_watch', dict(seconds=40, every=3, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 def spot(m):
     return trip(m, True)
 

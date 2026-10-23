@@ -12,10 +12,11 @@ X = 100.0
 MECH = 'JapanAntiInfantryVehicle'               # the Mecha Tengu
 
 
-def mission(name='CampJam', **unit):
+def mission(name='CampJam', side='s1', **unit):
+    """side: whose the mech is -- s1 (the enemy) or p1 (ours: the jammer slows friends too)."""
     u = ja.jammer(**unit)
     m = Mission(name=name, map=island, units=[u])
     m.put(u.id, 'west field', X + 100, 0, name='UNIT - CNV Jammer', role='jammer')
-    m.put(MECH, 'west field', X, -350, side='s1', name='UNIT - CNV Mech', role='mech', angle=1.5708)
+    m.put(MECH, 'west field', X, -350, side=side, name='UNIT - CNV Mech', role='mech', angle=1.5708)
     m.waypoint('goal', 'CNV Jam Goal', 'west field', X, 400)
     return m
