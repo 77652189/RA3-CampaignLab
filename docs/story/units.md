@@ -19,6 +19,7 @@
 | 超时空信标兵 | `experimental/cnv/units/beacon.py`（`beacon --check pull / still`） | 原版没用过的 TeleportToCasterSpecialPower 能用：对 500 外的小队放技能，4 辆守护者全部落到他身边一圈，一辆不少；不放就不动。距离上限对玩家手动操作有效（上限 300 时点 500 外没反应），脚本放技能不受限 | 外观、对战平衡 |
 | 合体机甲 | `experimental/cnv/units/combo.py`（`combo --check join`） | C&C3 留下的合体模块（Combine / Uncombine）不能用：母体缺对接骨骼就崩溃，有了骨骼子体也只会往地图角落开。改用多功能车的做法：母体带一个只装子体的乘员舱，子体开进去就是合体（母体带 CONTAINER_OCCUPIED，可按它换武器），卸下就是拆开。第 10 秒合体、第 29 秒拆开，两个都活着 | 合体后加强什么（现在换的老兵光束数值和普通光束一样，只是占位）、外观 |
 | 磁暴坦克 | `experimental/cnv/units/tesla.py`（`tesla --check fight`，`tesla_surge` / `tesla_surge_retail --check surge`） | 原版删除单位换我们的 id 能加载、能开火（对 3 辆守护者打掉 1 辆，约 10 秒后被打爆）。原版的电涌只让坦克原地停火，并不放电：磁暴步兵靠 FireWeaponUpdate 放电，坦克没有这个模块（原版照搬时开电涌的一辆被贴脸守护者打到 4 血）。补上磁暴步兵的模块后，开电涌的一辆全程 100 血，贴脸的守护者一枪没开 | 对战平衡、外观（原版模型） |
+| 冰幕工兵 | `experimental/cnv/units/icewall.py`（`ice_freeze --check freeze`、`ice_block --check block`、`ice_smash --check smash`） | 盟军工程师放技能，在 300 以内的一点刷出一道冰墙（长 200 的建筑，1500 血），30 秒后化掉。挡路成立：同样的路线，有墙的一辆绕开了墙后正中那一片，照样到达；没墙的直穿过去。3 辆铁锤点名攻击约 13 秒打碎。原版苏联工程师"走过去造"的写法也能造我们的墙（`ice_build`），要让工兵造墙时暴露在火力下可以换成这种 | 墙的朝向（现在固定东西向，要不要让玩家拖方向）、走过去造还是远处刷、外观（借地堡模型） |
 | 自由号空天航母 | `make_campnew38.py` | 悬停、放无人机打地面；超时空甲板能让航母自己跃迁 | v2 空中平台（5.2.1）：甲板跃迁做通；甲板工厂改成自动生产（每 20 秒出一辆，能正常指挥）；可拆炮塔能刷出、会跟随但不开火；无人机不回收 |
 
 ## 一、先看缺口

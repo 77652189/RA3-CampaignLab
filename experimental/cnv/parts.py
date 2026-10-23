@@ -164,6 +164,13 @@ class Mission(Part):
         assert u and what in u.abilities, f'{part} ({t}) publishes no ability {what!r}: {u and sorted(u.abilities)}'
         return u.abilities[what]
 
+    def param(self, part, what):
+        """One of the options a cast part's unit publishes it was made with ('wall', 'lifetime')."""
+        t = self.role(part).template
+        u = next((u for u in self.units if u.id == t), None)
+        assert u and what in u.params, f'{part} ({t}) publishes no param {what!r}: {u and sorted(u.params)}'
+        return u.params[what]
+
     def player(self, side='p1'):
         return self.map.PLAYERS[side]
 
@@ -356,6 +363,13 @@ def assemble(mission, test=None, name=None):
             with open(os.path.join(data, fname), 'w', encoding='utf-8', newline='\r\n') as f:
                 f.write(text.replace('\r\n', '\n'))
         c7.EXTRA_TEMPLATES[u.id] = {'file': f'DATA:CNVUnits/Data/{u.id}.xml', 'EditorSorting': 'UNIT'}
+        # every unit compiled and linked, placed or not: map.xml includes only the object files the map places, and an
+        # object creation list or a builder names its template at run time, which the reference walk from the map
+        # never reaches (bench 2026-10-22: an OCL made retail's Guardian but nothing of ours the map did not place;
+        # the Soviet engineer building one of ours crashed the game)
+        if u.id not in {o.template for o in mm.objects}:
+            c7.EXTRA_ALL.append(f'DATA:CNVUnits/Data/{u.id}.xml')
+        c7.EXTRA_OWN += [f'GameObject:{u.id}'.encode()]
         c7.EXTRA_OWN += [n if isinstance(n, bytes) else n.encode() for n in u.link]
         c7.EXTRA_ALL += [f'DATA:CNVUnits/Data/{f}' for f in u.also]
         c4.c3.STRINGS.update(u.strings)
