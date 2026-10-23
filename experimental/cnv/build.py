@@ -58,6 +58,8 @@ MISSIONS = {
     'a8': (lambda: a8.mission(), {'jump': check_a8.jump, 'lose': check_a8.lose, 'assault': check_a8.assault}),
     'a8_control': (lambda: a8.mission(carrier=False, name='CampA8C'), {'assault': check_a8.assault}),
     'liberty': (lambda: liberty_bench.mission(), {'jump': check_lib.jump, 'open': check_lib.jump_open}),
+    'liberty_turrets': (lambda: liberty_bench.turrets(), {'fire': check_lib.deck_turrets}),
+    'liberty_loose': (lambda: liberty_bench.loose(), {'fire': check_lib.loose_turrets}),
     'liberty_riders': (lambda: liberty_bench.mission(riders=True, name='CampLibR'), {'jump': check_lib.jump}),
     'burrower': (lambda: burrow_bench.mission(), {'pass': check_bur.burrow_pass, 'drop': check_bur.deliver}),
     'beacon': (lambda: beacon_bench.mission(), {'pull': check_bea.pull, 'still': check_bea.still}),

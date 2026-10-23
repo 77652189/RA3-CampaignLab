@@ -48,7 +48,11 @@ def placed_templates(m):
 
 def compile_map(m):
     import lint                 # the bench pitfalls, from the files alone, before the compile (lint.py)
-    lint.run(EXTRA_TEMPLATES, EXTRA_ALL, placed=placed_templates(m), overrides=OVERRIDE)
+    # an object linked by name (experimental/cnv parts.assemble links every unit) loads though the map places none
+    # (bench 2026-10-22: ice_spawn's OCL made one), so it counts as placed for the spawn rule
+    linked = {e.decode('latin-1').split(':', 1)[1] for e in EXTRA_OWN
+              if isinstance(e, bytes) and e.startswith(b'GameObject:')}
+    lint.run(EXTRA_TEMPLATES, EXTRA_ALL, placed=placed_templates(m) | linked, overrides=OVERRIDE)
     text, unknown = mapxml.map_xml(m, GAME_MAP_ID, EXTRA_TEMPLATES, atlas=OWN_ATLAS, also=EXTRA_ALL)
     print('map.xml:', text.count('type="instance"'), 'object files; no definition (roads, waypoints):', unknown)
     rel = os.path.join('data', 'maps', 'official', c2.NEW_STEM)

@@ -71,3 +71,21 @@ def test_spawn_needs_placement(tmp_path):
     assert run(tmp_path, gun + unit(extra=spawn) + turret, placed={'CNV_Probe', 'CNV_Turret'}) == []
     retail = '<SpawnBehavior id="S"><SpawnTemplate>AlliedAntiVehicleVehicleTech1</SpawnTemplate></SpawnBehavior>'
     assert run(tmp_path, gun + unit(extra=retail), placed=set()) == []
+
+
+def mounted(base='BaseObject', slot='WeaponSlotHardpoint', ai=''):
+    return (f'<GameObject id="CNV_Probe" inheritFrom="{base}" KindOf="VEHICLE"><Behaviors>'
+            f'<WeaponSetUpdate id="W"><{slot} ID="1"><Weapon Ordering="PRIMARY_WEAPON" Template="CNV_Gun"/>'
+            f'</{slot}></WeaponSetUpdate></Behaviors><AI><AIUpdate id="A">{ai}</AIUpdate></AI>'
+            f'<VisionInfo VisionRange="200" ShroudClearingRange="100"/></GameObject>\n')
+
+
+def test_chooser(tmp_path):
+    gun = '<WeaponTemplate id="CNV_Gun" AttackRange="100"/>\n'
+    picks = '<UnitAITargetChooserData CanPickDynamicTargets="true"/>'
+    never = '<UnitAITargetChooserData CanPickDynamicTargets="false"/>'
+    assert run(tmp_path, gun + mounted()) == [('WARN', 'chooser')]                       # 自由号炮塔
+    assert run(tmp_path, gun + mounted(ai=picks)) == []
+    assert run(tmp_path, gun + mounted(base='BaseVehicle', ai=never)) == [('WARN', 'chooser')]   # 装甲列车
+    assert run(tmp_path, gun + mounted(base='BaseVehicle', slot='WeaponSlotTurret', ai=never)) == []  # 磁暴坦克
+    assert run(tmp_path, gun + mounted(base='BaseInfantry')) == []                       # 原版步兵的复制件

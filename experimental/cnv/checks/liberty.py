@@ -6,6 +6,8 @@ jump: at JUMP_AT the carrier jumps (NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT) to ope
   after) and, with riders, the riders on the deck (ATTACHED). Before the fix (2026-10-21) the deck's store / send
   detached the riders on the jump; after it, 6 alive / 5 on deck before and after.
 ride_ab: two carriers side by side, riders that stick to the carrier (A) and riders that do not (B), one jump each.
+turrets (liberty_bench.turrets): nothing ordered -- each carrier's deck turrets are left to find the Hammer below:
+  counters are the two Hammers' health. B's (fixed) hurt theirs; A's (retail weapons) are shown as they come.
 """
 from parts import Script, Test, counted, side_by_side, square, status
 from missions import liberty_bench
@@ -79,3 +81,27 @@ def ride_ab():
     counted('Test B Deck', 'B 在甲板', t, status=status(marker))
     t.bench = [('bench_watch', dict(seconds=JUMP_AT + 12, every=3, sheet=False))]
     return m, t
+
+
+def deck_turrets(m):
+    t = Test()
+    t.scripts.append(Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    # (the turrets are not counted: the owner's type count does not see spawned ones -- bench 2026-10-22, 0 while
+    # both carriers' turrets were in the frame)
+    for k in 'AB':
+        counted(f'Test Hammer {k}', f'{k} 铁锤血量', t, health=m.role(f'hammer {k}').name)
+    t.expect += [('B 铁锤血量', 3, 'ever<', 100)]
+    t.bench = [('bench_watch', dict(seconds=40, every=3, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+def loose_turrets(m):
+    """Turrets on their own: does either fire at the Hammer by it (its health), does either die (turret health)."""
+    t = Test()
+    t.scripts.append(Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    for k in 'CD':
+        counted(f'Test Hammer {k}', f'{k} 铁锤血量', t, health=m.role(f'hammer {k}').name)
+        counted(f'Test Turret {k}', f'{k} 炮塔血量', t, health=m.role(f'turret {k}').name)
+    t.expect += [('C 铁锤血量', 3, 'ever<', 100)]
+    t.bench = [('bench_watch', dict(seconds=30, every=3, sheet=False, lines=len(t.counters)))]
+    return t

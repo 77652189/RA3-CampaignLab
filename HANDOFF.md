@@ -12,7 +12,6 @@
 5. **下一阶段**：进关卡设计（[docs/story/levels.md](docs/story/levels.md) 已有 A7、A8 两张卡片），还是先清遗留。
 
 **不用等用户、可以自己做的遗留**：
-- 自由号可拆炮塔不开火（`experimental/campaign/make_campnew38.py` 的 CNV_LibertyTurret）。两个没测过的嫌疑：两把武器都没写 `AcceptableAimDelta`，挂点无人机不会转身对准；自动炮射程 150，跟着高空的航母可能够不着地面。修法可照装甲列车（`experimental/cnv/units/train.py`）：自己的炮 360d、`CanPickDynamicTargets`。
 - 阻塞气球车分不清低空 / 高空。
 - 冰墙拖动转方向没验证成：测试台缺一个慢速拖动工具（`bench_box` 太快），要在 `experimental/testbench/bench_mcp.py` 加，MCP 服务重启（新会话）才生效。
 - 心灵巫女现在能收任何敌方步兵、载具，J8 要限定成只拿回被控的（比如按阵营的模板）；装甲列车刹车时能不能开火没测。

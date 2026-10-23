@@ -11,7 +11,10 @@ an ERROR stops the build (CNV_LINT=warn: print only). Rules:
   toggle     a ToggleState without SkirmishAiInfo: the build's XML check fails (阻塞气球车)
   retail-id  a GameObject of ours under a retail id (an inheriting variant left in a copied retail file, e.g. the
              Tank Buster's _Ambush): the build fails
-  spawn      a SpawnBehavior spawns our own template that is not placed on the map: it never loads (自由号炮塔)
+  spawn      a SpawnBehavior spawns our own template that is not placed on the map: it never loads (自由号炮塔);
+             one linked by name (experimental/cnv links every unit) counts as placed
+  chooser    (WARN) armed, but its target chooser picks no targets (CanPickDynamicTargets false, or an AIUpdate
+             written on BaseObject without one): ours never fired on their own (装甲列车, 自由号炮塔)
 """
 import glob
 import json
@@ -112,6 +115,16 @@ def check(files, placed=None, overrides=()):
                 if vis and r and r < TRIGGER_RANGE and r > VISION_RATIO * float(vis.group(1)):
                     out.append(('WARN', name, f'vision: {oid} weapon {w} reaches {r:g} past its VisionRange '
                                               f'{vis.group(1)}: ours have turned and never fired like this'))
+            # WARN: weapons on fixed mounts only, and a target chooser that picks none -- it says not to (retail's
+            # prop train: 装甲列车), or an AIUpdate written from scratch on BaseObject without one (自由号炮塔).
+            # Left alone: a turret slot (the Tesla tank fires with CanPickDynamicTargets false) and copies of retail
+            # units with no chooser written (the Imperial Warrior)
+            armed = '<WeaponSlotHardpoint' in body and '<WeaponSlotTurret' not in body
+            scratch = (attr(a, 'inheritFrom') == 'BaseObject' and re.search(r'<AIUpdate\b', body)
+                       and 'CanPickDynamicTargets="true"' not in body)
+            if armed and ('CanPickDynamicTargets="false"' in body or scratch):
+                out.append(('WARN', name, f'chooser: {oid} is armed but picks no targets (UnitAITargetChooserData '
+                                          'CanPickDynamicTargets): ours like this never fired on their own'))
             if 'INFANTRY' in kinds and re.search(r'ObjectStatusToSet="[^"]*\bIMMOBILE\b(?!_)', text):
                 out.append(('ERROR', name, f'immobile: {oid} is infantry and the file sets IMMOBILE: use '
                                            'IMMOBILE_ALLOW_ROTATE (infantry turn to aim)'))
