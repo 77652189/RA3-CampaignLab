@@ -45,6 +45,28 @@ def breach(m):
     return t
 
 
+SEND_AT = 16.0
+
+
+def spare(m):
+    """At JOIN_AT pair A joins; at SEND_AT both enemy engineers walk up to 100 from their parent: A's (joined: a
+    breaker, buildings only) is spared, B's (the parent alone, its plain beam) is shot."""
+    t = Test()
+    t.scripts += [Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1')),
+                                              ('SET_MILLISECOND_TIMER', 'Test - join timer', JOIN_AT),
+                                              ('SET_MILLISECOND_TIMER', 'Test - send timer', SEND_AT)]),
+                  Script('Test - join', [('TIMER_EXPIRED', 'Test - join timer')],
+                         [('NAMED_GARRISON_SPECIFIC_BUILDING', m.role('child A').name, m.role('parent A').name)]),
+                  Script('Test - send', [('TIMER_EXPIRED', 'Test - send timer')],
+                         [('MOVE_NAMED_UNIT_TO', m.role(f'enemy {k}').name, m.mark(f'near {k}')) for k in 'AB'])]
+    counted('Test Joined', '合体', t, status=status(JOINED))
+    for k in 'AB':
+        counted(f'Test Enemy {k}', f'{k} 敌人血量', t, health=m.role(f'enemy {k}').name)
+    t.expect += [('合体', JOIN_AT + 2, 'ever==', 1), ('A 敌人血量', 0, '==', 100), ('B 敌人血量', SEND_AT, 'ever<', 100)]
+    t.bench = [('bench_watch', dict(seconds=45, every=3, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 def join(m):
     t = Test()
     c, p = m.role('child'), m.role('parent')

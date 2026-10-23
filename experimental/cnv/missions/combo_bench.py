@@ -25,6 +25,21 @@ def breach(name='CampCmbB', **parent):
     return m
 
 
+def spare(name='CampCmbS', **parent):
+    """Joined, it shoots at buildings only: pair A (to join) and a parent alone (B, its child far off, never joining)
+    350 apart; an unarmed enemy engineer 400 north of each (out of sight until sent in), and a point 100 north of each
+    parent to send it to. Published (the cast): parent A / B, child A / B, enemy A / B; marks near A / B."""
+    c = combo.child()
+    p = combo.parent(child_id=c.id, **parent)
+    m = Mission(name=name, map=island, units=[p, c])
+    for k, dx in (('A', 50.0), ('B', 400.0)):
+        m.put(p.id, 'west field', dx, -150, name=f'UNIT - CNV Combo Parent {k}', role=f'parent {k}')
+        m.put(c.id, 'west field', dx, -210 if k == 'A' else -440, name=f'UNIT - CNV Combo Child {k}', role=f'child {k}')
+        m.put('SovietEngineer', 'west field', dx, 250, side='s1', name=f'UNIT - CNV Enemy {k}', role=f'enemy {k}')
+        m.waypoint(f'near {k}', f'CNV Combo Near {k}', 'west field', dx, -50)
+    return m
+
+
 def mission(name='CampCombo'):
     c = combo.child()
     p = combo.parent(child_id=c.id)

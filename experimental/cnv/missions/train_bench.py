@@ -24,3 +24,16 @@ def mission(name='CampTrain', enemies=False, **unit):
         for dy in (160, 200, 240):
             m.put('SovietAntiInfantryInfantry', 'west field', X + 150, dy, side='s1', role='enemy')
     return m
+
+
+def braked(name='CampTrainB', **unit):
+    """The brake, and fire: three conscripts far off north-east (600 from the train) and a point 150 east of its start
+    to send them to; the start is a mark too. Published (the cast): train, enemy 1 .. 3; marks stop 1 .. 3, start,
+    by start."""
+    m = mission(name=name, **unit)
+    for k, dy in enumerate((-40, 0, 40)):
+        m.put('SovietAntiInfantryInfantry', 'west field', X + 300, 200 + dy, side='s1',
+              name=f'UNIT - CNV Enemy {k + 1}', role=f'enemy {k + 1}')
+    m.waypoint('start', 'CNV Train Start', 'west field', X, -300)
+    m.waypoint('by start', 'CNV Train By Start', 'west field', X + 150, -300)
+    return m

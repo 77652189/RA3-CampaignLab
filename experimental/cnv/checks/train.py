@@ -85,3 +85,25 @@ def astray(m):
     if RUN_TRIP:
         t.expect.append(('行驶秒数', GO_AT + 4, '<=', RUN_TRIP + 3))
     return t
+
+
+def braked_fire(m):
+    """Braked at BRAKE_AT; at SEND_AT the conscripts walk up to 150 from it and it is sent to stop 1: it stays
+    where it is (inside its start's area) and shoots them all."""
+    t = Test()
+    train = m.role('train').name
+    send = BRAKE_AT + 3
+    t.scripts += [Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1')),
+                                              ('SET_MILLISECOND_TIMER', 'Test - brake timer', BRAKE_AT),
+                                              ('SET_MILLISECOND_TIMER', 'Test - send timer', send)]),
+                  Script('Test - brake', [('TIMER_EXPIRED', 'Test - brake timer')],
+                         [('NAMED_USE_COMMANDBUTTON_ABILITY', train, m.ability('train', 'brake'))]),
+                  Script('Test - send', [('TIMER_EXPIRED', 'Test - send timer')],
+                         [('MOVE_NAMED_UNIT_TO', e.name, m.mark('by start')) for e in m.roles('enemy')] +
+                         [('MOVE_NAMED_UNIT_TO', train, m.mark('stop 1'))])]
+    t.areas['Test Start'] = square(*m.point('start'), STOP)
+    counted('Test Home', '还在起点', t, named=train, area='Test Start')
+    counted('Test Enemies', '敌方步兵', t, template=m.role('enemy 1').template, player=m.player('s1'))
+    t.expect += [('还在起点', 0, '==', 1), ('敌方步兵', send, 'ever==', 0)]
+    t.bench = [('bench_watch', dict(seconds=45, every=3, sheet=False, lines=len(t.counters)))]
+    return t
