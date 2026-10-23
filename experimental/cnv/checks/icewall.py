@@ -49,7 +49,7 @@ def built(m):
                                                   m.ability('engineer', 'freeze'), m.mark('spot'))]))
     counted('Test Walls', '建筑', t, template=m.role('wall').template)
     t.expect += [('建筑', 0, 'ever==', 1)]
-    t.bench = [('bench_watch', dict(seconds=30, every=3, sheet=False, lines=len(t.counters), until='c0==1'))]
+    t.bench = [('bench_watch', dict(seconds=30, every=3, sheet=False, lines=len(t.counters), until='c1==1'))]
     return t
 
 
@@ -81,5 +81,5 @@ def smash(m):
     counted('Test Wall Health', '冰墙血量', t, health=wall)
     t.expect += [('冰墙血量', 0, '==', 100, ATTACK_AT - 2), ('冰墙血量', ATTACK_AT, 'ever<', 100),
                  ('冰墙', ATTACK_AT, 'ever==', 0)]
-    t.bench = [('bench_watch', dict(seconds=70, every=3, sheet=False, lines=len(t.counters), until='c0==0'))]
+    t.bench = [('bench_watch', dict(seconds=70, every=3, sheet=False, lines=len(t.counters), until='c1==0'))]
     return t

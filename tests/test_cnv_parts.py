@@ -180,6 +180,21 @@ def test_every_build_name_fits():
     assert all(len(n) <= parts.MAX_NAME for n in names), [n for n in names if len(n) > parts.MAX_NAME]
 
 
+def test_every_until_names_a_counter_shown():
+    """bench_watch's until counts counter lines from 1: c0 silently read the last one (Python's [-1]) -- the ice-wall
+    smash watch ran its full 70 s on the health line (bench 2026-10-22)."""
+    import re
+    seen = 0
+    for n, (_, checks) in build.MISSIONS.items():
+        for c in checks:
+            _, t, _ = build.resolve(n, c)
+            for tool, kw in t.bench:
+                for k in re.findall(r'c(\d+)', kw.get('until', '')):
+                    seen += 1
+                    assert 1 <= int(k) <= kw.get('lines', 0), (n, c, kw['until'], kw.get('lines'))
+    assert seen, 'no until found: the walk over the checks is empty'
+
+
 def test_judge_mission_ended():
     t = parts.Test(counters=[('a', 'A')], expect=[(build.ENDED, 5, '', None)])
     assert build.judge(t, [(1, [1]), (4, [1]), (6, [None])])[0][0] is True
