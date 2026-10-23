@@ -14,7 +14,7 @@ stands); facts: convoy leaves, tick; endings: the win and lose scripts.
 """
 from maps import festival
 from missions import festival_parts as fp
-from parts import Mission, Script
+from parts import Goal, Mission, Script
 from units import combo
 from units import festival as fest
 from units import icewall as iw
@@ -24,7 +24,7 @@ TROOPS = ('JapanAntiVehicleInfantry', 'JapanAntiVehicleInfantry', 'JapanAntiInfa
 SPOTS = ((-45, 20), (45, 20), (-45, 70), (45, 70))  # a plaza's troops, by its middle (y: away from the gate)
 LEAVE, TICK = 90.0, 3.0                         # the mechs walk ~700 round to the gates first
 ICE_LENGTH, ICE_HEALTH = 260.0, 3000            # over both side banks' outer faces (+-122); ~4 breaker shots
-OBJ = 'Objective01 - CNV J4'
+FREE, OBJ, BONUS = 'Objective01 - CNV J4', 'Objective02 - CNV J4', 'Bonus01 - CNV J4'
 WIN, LOST = 'CNV J4 - Win', 'CNV J4 - Lost'
 
 
@@ -35,7 +35,10 @@ def mission(name='CampJ4'):
     child = combo.child()
     parent = combo.parent(child_id=child.id)
     m = Mission(name=name, map=festival, units=[parent, child, ice, bank],
-                objectives=[(OBJ, 'MISSIONOBJ:CNVJ4_1', 'MISSIONOBJ:CNVJ4_1_DESC')],
+                objectives=[Goal(FREE, 'MISSIONOBJ:CNVJ4_0', 'MISSIONOBJ:CNVJ4_0_DESC', show=('ice 1', 'ice 2', 'ice 3')),
+                            Goal(OBJ, 'MISSIONOBJ:CNVJ4_1', 'MISSIONOBJ:CNVJ4_1_DESC',
+                                 show=('truck 1', 'truck 2', 'truck 3')),
+                            Goal(BONUS, 'MISSIONOBJ:CNVJ4_B1', 'MISSIONOBJ:CNVJ4_B1_DESC', bonus=True)],
                 facts={'convoy leaves': LEAVE, 'tick': TICK})
     convoy = fp.Convoy(m, 'J4', 's1', LEAVE, TICK)
     for j, dx in enumerate((-80, 80), 1):
@@ -53,22 +56,28 @@ def mission(name='CampJ4'):
 
     m.strings.update({
         'SCRIPT:CNVJ4_INTRO': 'J4 冰雕里的兵：盟军识破了冰雕，把三个广场的出口都冻住了。用合体机甲砸开冰，放兵出来劫车队。',
-        'MISSIONOBJ:CNVJ4_1': 'J4 目标：劫下克隆体车队',
-        'MISSIONOBJ:CNVJ4_1_DESC': '三辆车里打掉两辆。车队一分半后出发。合体机甲合体后能砸开冰，分开时能打车。',
+        'MISSIONOBJ:CNVJ4_0': '砸开广场出口的冰',
+        'MISSIONOBJ:CNVJ4_0_DESC': '兵被冻在三个广场里。合体机甲合体后能砸开冰，放他们出来。',
+        'MISSIONOBJ:CNVJ4_1': '劫下克隆体车队',
+        'MISSIONOBJ:CNVJ4_1_DESC': '三辆车里打掉两辆。车队一分半后出发。合体机甲分开时能打车。',
+        'MISSIONOBJ:CNVJ4_B1': '三辆车全部截下',
+        'MISSIONOBJ:CNVJ4_B1_DESC': '一辆车都不让它跑掉。',
         'SCRIPT:CNVJ4_GO': 'J4：车队出发了！',
         'SCRIPT:CNVJ4_SAFE': 'J4：一辆车逃到了东岸。',
         'SCRIPT:CNVJ4_WIN': 'J4：车队被截下了。',
         'SCRIPT:CNVJ4_LOST': 'J4：车队跑掉了……',
     })
     m.scripts += [
-        Script('CNV J4 - Intro', [], [('SHOW_MILITARY_CAPTION', 'SCRIPT:CNVJ4_INTRO', 15.0),
-                                      ('SET_MISSION_OBJECTIVE_STATUS', OBJ, 0), convoy.start()]),
+        Script('CNV J4 - Intro', [], [('SHOW_MILITARY_CAPTION', 'SCRIPT:CNVJ4_INTRO', 15.0), convoy.start()]),
         *convoy.go(), *convoy.roll(), *convoy.tail(),
+        # the first gate broken opens the way: that objective is done (the other gates' markers go with it)
+        *[Script(f'CNV J4 - Freed {k}', [('NAMED_DESTROYED', m.role(f'ice {k}').name), ('FLAG', 'CNV_J4_Freed', 0)],
+                 [('SET_FLAG', 'CNV_J4_Freed', 1)] + m.done(FREE)) for k in (1, 2, 3)],
+        Script('CNV J4 - Bonus Done', [('COUNTER', convoy.losses, 2, 3)], m.done(BONUS)),
+        Script('CNV J4 - Bonus Failed', [('COUNTER', convoy.arrived, 3, 1)], m.failed(BONUS)),
         Script(WIN, [('COUNTER', convoy.losses, 3, 2)],
-               [('SET_MISSION_OBJECTIVE_STATUS', OBJ, 2), ('SHOW_MILITARY_CAPTION', 'SCRIPT:CNVJ4_WIN', 10.0),
-                ('SET_FLAG', 'Mission Won', 1)]),
+               m.done(OBJ) + [('SHOW_MILITARY_CAPTION', 'SCRIPT:CNVJ4_WIN', 10.0), ('SET_FLAG', 'Mission Won', 1)]),
         Script(LOST, [('COUNTER', convoy.arrived, 3, 2)],
-               [('SET_MISSION_OBJECTIVE_STATUS', OBJ, 3), ('SHOW_MILITARY_CAPTION', 'SCRIPT:CNVJ4_LOST', 10.0),
-                ('SET_FLAG', 'Mission Lost', 1)])]
+               m.failed(OBJ) + [('SHOW_MILITARY_CAPTION', 'SCRIPT:CNVJ4_LOST', 10.0), ('SET_FLAG', 'Mission Lost', 1)])]
     m.endings += [WIN, LOST]
     return m

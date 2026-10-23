@@ -4,9 +4,17 @@
 
 **推进关卡**（用户 2026-10-23："A7 A8 难度可以先不考虑，我们先看看单位有没有做完，做完了就开始推进关卡"）：新单位都已验证（[docs/story/units.md](docs/story/units.md) 进度表）；后半段才用的招牌、老面孔、终局球塔做到那一关再做（plan.md「待启动」）。关卡卡片在 [docs/story/levels.md](docs/story/levels.md)，现有 A4、J4、A7、A8。A4 第一版已做完、七个检查全过；J4 写完，`breach` 已过（plan.md A4、J4 行）。A4 冰墙的改动（长条墙转不了向 → 方冰块；封门靠关卡脚本）用户 2026-10-23 回"可以，按你的推荐做 J4"时一并认了。用户定的大顺序：战役设定 → 粗模玩法验证 → 关卡 → 美术最后。剧情大纲 [docs/story/outline.md](docs/story/outline.md)（v5）。
 
-**下一步**（2026-10-23 用户"今天先做到这里"时停在这）：
-1. 测试台跑 J4 的 `play` 和 `lose`（`cnv_check j4 play` / `lose`），不过就按读数修 `missions/j4.py` / `checks/j4.py`。
-2. 之后接着做前半段别的关（A1～A3、S1～S5、J1～J3、J5），按用户顺序给 2～3 个选项。
+**按原版设计语言返工**（用户 2026-10-23 试玩后提了六个问题，要求先学原版后几关和起义时刻的共同做法，"考虑玩家体验而不是合理性"）：规则和数字在 [docs/story/map-language.md](docs/story/map-language.md)，进度在 plan.md「关卡按原版设计语言返工」一行。问题 1、2（目标提示、奖励目标）已做完并上测试台看过。
+
+**下一步**：
+1. 问题 3～6：地形、矿、桥、中立建筑。写一个"平台地"地图生成器，替换海岛的噪声地形：
+   - 平台高度用 220 / 300 / 380 三档，层与层之间是窄悬崖 + 少数坡道；
+   - 放 `OreNode`、科技建筑；
+   - 过河用桥梁对象。
+   - 先用 `mapstudy.py --ours` 量，再上测试台。
+   - 具体走哪条路先问用户（见最后一次汇报给的选项）。
+2. J4 的 `play` / `lose` 还没上测试台（`cnv_check j4 play` / `lose`）。
+3. 之后接着做前半段别的关（A1～A3、S1～S5、J1～J3、J5）。
 
 **等用户定的**：
 - 搁置中：A7 / A8 难度、超时空落点压到自家建筑会弄死被传的车（plan.md A7、A8 行）。
@@ -53,7 +61,7 @@
 ## 状态
 
 ```yaml
-slice: levels-a4-j4-2026-10-23
+slice: retail-design-language-2026-10-23
 blocked_on: none        # none | voice-session | user
 next_gate: demo         # test-map | coordinate-calibration | demo
 ```

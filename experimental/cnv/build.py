@@ -178,7 +178,9 @@ def show(name, check=''):
     if m.endings:
         out.append('endings: ' + ', '.join(m.endings))
     if m.objectives:
-        out.append('objectives: ' + ', '.join(m.strings.get(title, title) for _, title, _ in m.objectives))
+        out.append('objectives: ' + '; '.join(('bonus ' if g.bonus else '') + m.strings.get(g.title, g.title) +
+                                              (f' (markers: {", ".join(g.show)})' if g.show else '')
+                                              for g in m.objectives))
     if name in MISSIONS:
         out.append('checks: ' + (', '.join(MISSIONS[name][1]) or 'none'))
     if t is not None:

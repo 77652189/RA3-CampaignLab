@@ -88,6 +88,20 @@ class Script:
 
 
 @dataclasses.dataclass
+class Goal:
+    """A mission objective as the player sees it (the retail way, experimental/campaign/mapstudy.py): announced on
+    screen and listed in the pause menu once revealed (status 1; 0 is hidden, 2 done, 3 failed), a green marker on
+    each cast part / mark it is about; bonus goals are the yellow optional ones. Revealed `at` seconds into the
+    mission, one after another like retail; at=None: the mission reveals it itself (m.reveal)."""
+    name: str
+    title: str                          # string keys
+    desc: str
+    bonus: bool = False
+    show: tuple = ()                    # cast parts and marks the marker points at ('truck 1', 'exit' ...)
+    at: float = 2.0
+
+
+@dataclasses.dataclass
 class Part:
     """What a mission or a test adds: units, objects, waypoints {name: (x, y)}, trigger areas {name: [(x, y) ...]}
     (polygons; square() for the usual one), scripts, strings."""
@@ -103,7 +117,7 @@ class Part:
 class Mission(Part):
     name: str = ''                      # the mod folder (Documents/Red Alert 3/Mods/<name>)
     map: object = None                  # a maps.* module: terrain(m), like(...), SITES, PLAYERS, TEAMS
-    objectives: list = dataclasses.field(default_factory=list)  # [(name, title key, description key)]
+    objectives: list = dataclasses.field(default_factory=list)  # [Goal]
     cast: dict = dataclasses.field(default_factory=dict)        # published: {part: Role}; a group as 'platform 1' ...
     endings: list = dataclasses.field(default_factory=list)     # published: the names of its win / lose scripts
     marks: dict = dataclasses.field(default_factory=dict)       # published: {part: waypoint name} ('strike' ...)
@@ -180,6 +194,45 @@ class Mission(Part):
     def drop_endings(self):
         """The mission without its win / lose scripts (a check that keeps the counters up)."""
         self.scripts = [s for s in self.scripts if s.name not in self.endings]
+
+    # ---- objectives: actions for the mission's scripts, and the reveal scripts assemble() adds
+    def goal(self, name):
+        hit = [g for g in self.objectives if g.name == name]
+        assert hit, f'no objective {name!r}: {[g.name for g in self.objectives]}'
+        return hit[0]
+
+    def markers(self, name, on=True):
+        """Green markers of objective `name` on its cast parts (named objects) and marks (waypoints)."""
+        out = []
+        for part in self.goal(name).show:
+            if part in self.marks:
+                out.append(('LINK_MISSION_OBJECTIVE_TO_WAYPOINT', name, self.marks[part], int(on)))
+            else:
+                r = self.role(part)
+                assert r.name, f'objective {name}: cast part {part!r} is unnamed, a marker needs a named object'
+                out.append(('LINK_MISSION_OBJECTIVE_TO_OBJECT', name, r.name, int(on)))
+        return out
+
+    def reveal(self, name):
+        return self.markers(name) + [('SET_MISSION_OBJECTIVE_STATUS', name, 1)]
+
+    def done(self, name):
+        return [('SET_MISSION_OBJECTIVE_STATUS', name, 2)] + self.markers(name, on=False)
+
+    def failed(self, name):
+        return [('SET_MISSION_OBJECTIVE_STATUS', name, 3)] + self.markers(name, on=False)
+
+    def goal_scripts(self, gap=4.0):
+        """One timer from the start; each objective with an `at` revealed then, retail-like a few seconds apart so
+        each gets its own announcement."""
+        timed = sorted((g for g in self.objectives if g.at is not None), key=lambda g: g.at)
+        timers, reveals, last = [], [], None
+        for k, g in enumerate(timed, 1):
+            last = g.at if last is None else max(g.at, last + gap)
+            timers.append(('SET_MILLISECOND_TIMER', f'CNV Goal Timer {k}', last))
+            reveals.append(Script(f'CNV Goals - Reveal {k}', [('TIMER_EXPIRED', f'CNV Goal Timer {k}')],
+                                  self.reveal(g.name)))
+        return [Script('CNV Goals - Start', [], timers)] + reveals if timed else []
 
 
 @dataclasses.dataclass
@@ -273,11 +326,12 @@ def side_by_side(a, b, dx, suffix=''):
 
 
 def merged(mission, test=None):
+    """The mission as built: its objectives' reveal scripts first, then (with a test) the test's parts added."""
+    m = dataclasses.replace(mission, scripts=mission.goal_scripts() + mission.scripts)
     if test is None:
-        return mission
-    m = dataclasses.replace(mission)
+        return m
     for f in ('units', 'objects', 'scripts'):
-        setattr(m, f, getattr(mission, f) + getattr(test, f))
+        setattr(m, f, getattr(m, f) + getattr(test, f))
     m.waypoints = {**mission.waypoints, **test.waypoints}
     m.areas = {**mission.areas, **test.areas}
     m.strings = {**mission.strings, **test.strings}
@@ -294,6 +348,7 @@ AREA_ARG = 9                            # script argument type of a trigger area
 # the other argument types contract() holds against what was published
 TEAM_ARG, WAYPOINT_ARG, PLAYER_ARG, OBJECT_ARG, STRING_ARG, POWER_ARG, TEMPLATE_ARG = 3, 7, 11, 14, 25, 31, 61
 COMMAND_ARG = 34                        # a command button (NAMED_USE_COMMANDBUTTON_ABILITY)
+OBJECTIVE_ARG = 91                      # a mission objective's name (SET_MISSION_OBJECTIVE_STATUS ...)
 CREATES_NAMED = ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION',
                  'UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION')
 
@@ -325,7 +380,7 @@ def contract(mission):
     known = {AREA_ARG: ('area', m.areas), TEAM_ARG: ('team', set(getattr(m.map, 'TEAMS', {}).values())),
              WAYPOINT_ARG: ('waypoint', m.waypoints), PLAYER_ARG: ('player', set(getattr(m.map, 'PLAYERS', {}).values())),
              OBJECT_ARG: ('object', set(named) | created), STRING_ARG: ('string', m.strings), POWER_ARG: ('power', powers),
-             COMMAND_ARG: ('command button', powers),
+             COMMAND_ARG: ('command button', powers), OBJECTIVE_ARG: ('objective', {g.name for g in m.objectives}),
              TEMPLATE_ARG: ('template', {r.template for r in m.cast.values()} | {u.id for u in m.units})}
     for s in m.scripts:
         for name, *args in s.when + s.do:
@@ -406,7 +461,8 @@ def assemble(mission, test=None, name=None):
                 for s in mm.scripts]            # before clearing: chunk versions are read off existing nodes
         newmap.clear_scripts(m)[2].kids += ours
         m.set_trigger_areas(mm.areas)           # the base map's areas went with its scripts
-        m.set_objectives([dict(name=n, title=t, desc=d, bonus=0, flags=1) for n, t, d in mm.objectives])
+        m.set_objectives([dict(name=g.name, title=g.title, desc=g.desc, bonus=int(g.bonus), flags=1)
+                          for g in mm.objectives])
         print(f'{name}: {len(mm.objects)} objects, {len(mm.waypoints)} waypoints, {len(mm.areas)} areas, '
               f'{len(mm.scripts)} scripts, units {sorted(seen)}')
 

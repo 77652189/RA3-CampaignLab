@@ -1,5 +1,5 @@
 """docs/story/levels.md and the code's interfaces say the same thing: a card per level (build.LEVELS), and in each the
-map, the cast (part, side, sites), the marks, the facts, the abilities and the checks the code publishes -- the
+map, the cast (part, side, sites), the marks, the facts, the abilities, the objectives and the checks the code publishes -- the
 design written in the names the code exposes, so neither drifts from the other."""
 import re
 import sys
@@ -49,6 +49,12 @@ def test_cards_match_the_published_interfaces():
         for ability in ticks(item(card, '能力')):
             part, what = ability.split('.')
             assert m.ability(part, what), (key, ability)
+        # objectives: each one's on-screen title and the parts / marks its marker points at; bonus ones say 奖励
+        goals = item(card, '目标')
+        assert set(ticks(goals)) == ({m.strings[g.title] for g in m.objectives} |
+                                     {p for g in m.objectives for p in g.show}), key
+        assert {t for t in re.findall(r'奖励 `([^`]+)`', goals)} == \
+            {m.strings[g.title] for g in m.objectives if g.bonus}, key
         checks = re.search(r'^- 检查：\n((?:  - .*\n?)+)', card, re.M)
         assert checks, f'{key}: no 检查 list'
         named = [ticks(line)[0] for line in checks.group(1).splitlines()]

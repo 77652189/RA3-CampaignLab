@@ -17,7 +17,7 @@ Marks: exit, seal 1-3 (where ice in a gate stands); facts: convoy leaves, tick; 
 """
 from maps import festival
 from missions import festival_parts as fp
-from parts import Mission, Role, Script, square
+from parts import Goal, Mission, Role, Script, square
 from units import festival as fest
 from units import icewall as iw
 
@@ -26,7 +26,7 @@ LEAVE, TICK = 60.0, 3.0
 GATE_AREA = 90.0                                # half-side of the area a wall must stand in to hold a gate
 WALL_SIDE = 240.0                               # the A4 engineer's block: square or turned 45 degrees, it reaches
                                                 # into both side banks (inner faces +-98, outer +-122)
-OBJ = 'Objective01 - CNV A4'
+OBJ, BONUS = 'Objective01 - CNV A4', 'Bonus01 - CNV A4'
 WIN, LOST = 'CNV A4 - Win', 'CNV A4 - Lost'
 
 
@@ -42,7 +42,9 @@ def mission(name='CampA4'):
     eng = iw.engineer(wall_id=core.id)
     sculpt, bank = fest.sculpture(), fest.bank(length=fp.GATE)
     m = Mission(name=name, map=festival, units=[eng, core, wall, sculpt, bank],
-                objectives=[(OBJ, 'MISSIONOBJ:CNVA4_1', 'MISSIONOBJ:CNVA4_1_DESC')],
+                objectives=[Goal(OBJ, 'MISSIONOBJ:CNVA4_1', 'MISSIONOBJ:CNVA4_1_DESC',
+                                 show=('truck 1', 'truck 2', 'truck 3', 'exit')),
+                            Goal(BONUS, 'MISSIONOBJ:CNVA4_B1', 'MISSIONOBJ:CNVA4_B1_DESC', bonus=True)],
                 facts={'convoy leaves': LEAVE, 'tick': TICK})
     convoy = fp.Convoy(m, 'A4', 'p1', LEAVE, TICK)
     for j, dx in enumerate((-30, 30), 1):
@@ -93,22 +95,23 @@ def mission(name='CampA4'):
 
     m.strings.update({
         'SCRIPT:CNVA4_INTRO': 'A4 冰雕里的兵：帝国残部把兵藏进了雪祭的冰雕。运送克隆体的车队一分钟后出发，护送它穿过会场。',
-        'MISSIONOBJ:CNVA4_1': 'A4 目标：护送车队穿过雪祭会场',
+        'MISSIONOBJ:CNVA4_1': '护送车队穿过雪祭会场',
         'MISSIONOBJ:CNVA4_1_DESC': '三辆车里至少两辆到达东岸。冰幕工兵能在广场出口冻一道冰墙，把冰雕里的兵封在里面，墙过一会儿会化。',
+        'MISSIONOBJ:CNVA4_B1': '三辆车全部送到',
+        'MISSIONOBJ:CNVA4_B1_DESC': '一辆车都不丢。',
         'SCRIPT:CNVA4_GO': 'A4：车队出发了。',
         'SCRIPT:CNVA4_SAFE': 'A4：一辆车到达东岸。',
         'SCRIPT:CNVA4_WIN': 'A4：车队安全通过会场。',
         'SCRIPT:CNVA4_LOST': 'A4：车队被劫走了……',
     })
     m.scripts += [
-        Script('CNV A4 - Intro', [], [('SHOW_MILITARY_CAPTION', 'SCRIPT:CNVA4_INTRO', 15.0),
-                                      ('SET_MISSION_OBJECTIVE_STATUS', OBJ, 0), convoy.start()]),
+        Script('CNV A4 - Intro', [], [('SHOW_MILITARY_CAPTION', 'SCRIPT:CNVA4_INTRO', 15.0), convoy.start()]),
         *convoy.go(), *reveal, *chase, *convoy.roll(), *convoy.tail(),     # the roll after the chases: it resets the tick
+        Script('CNV A4 - Bonus Done', [('COUNTER', convoy.arrived, 2, 3)], m.done(BONUS)),
+        Script('CNV A4 - Bonus Failed', [('COUNTER', convoy.losses, 3, 1)], m.failed(BONUS)),
         Script(WIN, [('COUNTER', convoy.arrived, 3, 2)],
-               [('SET_MISSION_OBJECTIVE_STATUS', OBJ, 2), ('SHOW_MILITARY_CAPTION', 'SCRIPT:CNVA4_WIN', 10.0),
-                ('SET_FLAG', 'Mission Won', 1)]),
+               m.done(OBJ) + [('SHOW_MILITARY_CAPTION', 'SCRIPT:CNVA4_WIN', 10.0), ('SET_FLAG', 'Mission Won', 1)]),
         Script(LOST, [('COUNTER', convoy.losses, 3, 2)],
-               [('SET_MISSION_OBJECTIVE_STATUS', OBJ, 3), ('SHOW_MILITARY_CAPTION', 'SCRIPT:CNVA4_LOST', 10.0),
-                ('SET_FLAG', 'Mission Lost', 1)])]
+               m.failed(OBJ) + [('SHOW_MILITARY_CAPTION', 'SCRIPT:CNVA4_LOST', 10.0), ('SET_FLAG', 'Mission Lost', 1)])]
     m.endings += [WIN, LOST]
     return m
