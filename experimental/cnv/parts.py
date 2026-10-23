@@ -188,7 +188,6 @@ class Test(Part):
     bench: list = dataclasses.field(default_factory=list)       # ra3bench calls after bench_start
     expect: list = dataclasses.field(default_factory=list)      # [(label text, from second, op, value)]
 
-
 def square(x, y, r):
     """A trigger area: the square of half-side r around (x, y), corners counter-clockwise."""
     return [(x - r, y - r), (x + r, y - r), (x + r, y + r), (x - r, y + r)]
@@ -295,6 +294,8 @@ AREA_ARG = 9                            # script argument type of a trigger area
 # the other argument types contract() holds against what was published
 TEAM_ARG, WAYPOINT_ARG, PLAYER_ARG, OBJECT_ARG, STRING_ARG, POWER_ARG, TEMPLATE_ARG = 3, 7, 11, 14, 25, 31, 61
 COMMAND_ARG = 34                        # a command button (NAMED_USE_COMMANDBUTTON_ABILITY)
+CREATES_NAMED = ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION',
+                 'UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION')
 
 
 def missing_areas(mission):
@@ -315,12 +316,15 @@ def contract(mission):
     out += [f'object {o.template} at ({o.x:g}, {o.y:g}): placed by raw coordinates, not by a map site'
             for o in m.objects if not o.site]
     out += [f'object {o.template}: map has no site {o.site!r}' for o in m.objects if o.site and o.site not in sites]
-    out += [f'cast {k}: no object named {r.name!r}' for k, r in m.cast.items() if r.name and r.name not in named]
+    # an object a script creates by name is declared by that script (the first argument of the CREATE_NAMED_* ones)
+    created = {args[0] for s in m.scripts for name, *args in s.do if name in CREATES_NAMED}
+    out += [f'cast {k}: no object named {r.name!r}' for k, r in m.cast.items()
+            if r.name and r.name not in named and r.name not in created]
     out += [f'mark {k}: no waypoint {w!r}' for k, w in m.marks.items() if w not in m.waypoints]
     powers = {p: u for u in m.units for p in u.abilities.values()}
     known = {AREA_ARG: ('area', m.areas), TEAM_ARG: ('team', set(getattr(m.map, 'TEAMS', {}).values())),
              WAYPOINT_ARG: ('waypoint', m.waypoints), PLAYER_ARG: ('player', set(getattr(m.map, 'PLAYERS', {}).values())),
-             OBJECT_ARG: ('object', named), STRING_ARG: ('string', m.strings), POWER_ARG: ('power', powers),
+             OBJECT_ARG: ('object', set(named) | created), STRING_ARG: ('string', m.strings), POWER_ARG: ('power', powers),
              COMMAND_ARG: ('command button', powers),
              TEMPLATE_ARG: ('template', {r.template for r in m.cast.values()} | {u.id for u in m.units})}
     for s in m.scripts:

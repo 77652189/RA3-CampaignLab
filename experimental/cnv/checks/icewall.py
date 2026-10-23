@@ -9,6 +9,8 @@ smash: enemy Hammers next to a wall, ordered to attack it, shoot it down before 
 from parts import Script, Test, counted, square
 
 GO_AT = 10.0
+BUILT_LATER = 10.0                              # turns: a core's wall goes up as a building does (bench 2026-10-23:
+                                                # scaffolding at s11, whole at s14)
 FREEZE_AT = 10.0
 ATTACK_AT = 10.0
 STRIP = 50.0                                    # half-side of the strip area behind the wall's middle
@@ -24,8 +26,9 @@ def latched(t, counter, label, who, area):
 
 def block(m):
     t = Test()
+    go = GO_AT
     t.scripts.append(Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1')),
-                                                 ('SET_MILLISECOND_TIMER', 'Test - go timer', GO_AT)]))
+                                                 ('SET_MILLISECOND_TIMER', 'Test - go timer', go)]))
     t.scripts.append(Script('Test - go', [('TIMER_EXPIRED', 'Test - go timer')],
                             [('MOVE_NAMED_UNIT_TO', m.role(f'runner {k}').name, m.mark(f'goal {k}')) for k in 'AB']))
     for k in 'AB':
@@ -34,9 +37,29 @@ def block(m):
         t.areas[f'Test Goal {k}'] = square(*m.point(f'goal {k}'), GOAL)
         latched(t, f'Test {k} Crossed', f'{k} 穿过', who, f'Test Strip {k}')
         counted(f'Test {k} There', f'{k} 到达', t, named=who, area=f'Test Goal {k}')
-    t.expect += [('A 穿过', 0, '==', 0), ('B 穿过', GO_AT, 'ever==', 1), ('A 到达', GO_AT, 'ever==', 1),
-                 ('B 到达', GO_AT, 'ever==', 1)]
+    t.expect += [('A 穿过', 0, '==', 0), ('B 穿过', go, 'ever==', 1), ('A 到达', go, 'ever==', 1),
+                 ('B 到达', go, 'ever==', 1)]
     t.bench = [('bench_watch', dict(seconds=40, every=3, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+def turns(m):
+    """Which built wall holds a lane: each engineer builds at his spot at once, the runners go GO_AT + BUILT_LATER
+    later; a runner that never crosses the strip behind its spot was held. Bench 2026-10-23: the square held, both
+    bars (asked for 0 and for 90 degrees) let theirs by -- the core's angle does nothing (units/icewall.py seed)."""
+    t = Test()
+    go = GO_AT + BUILT_LATER
+    t.scripts.append(Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1')),
+                                                 ('SET_MILLISECOND_TIMER', 'Test - go timer', go)] +
+                            [('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', m.role(f'engineer {k}').name,
+                              m.ability(f'engineer {k}', 'freeze'), m.mark(f'spot {k}')) for k in 'ABC']))
+    t.scripts.append(Script('Test - go', [('TIMER_EXPIRED', 'Test - go timer')],
+                            [('MOVE_NAMED_UNIT_TO', m.role(f'runner {k}').name, m.mark(f'goal {k}')) for k in 'ABC']))
+    for k in 'ABC':
+        t.areas[f'Test Strip {k}'] = square(*m.point(f'behind {k}'), STRIP)
+        latched(t, f'Test {k} Crossed', f'{k} 穿过', m.role(f'runner {k}').name, f'Test Strip {k}')
+    t.expect += [('C 穿过', 0, '==', 0), ('A 穿过', go, 'ever==', 1), ('B 穿过', go, 'ever==', 1)]
+    t.bench = [('bench_watch', dict(seconds=go + 20, every=3, sheet=False, lines=len(t.counters)))]
     return t
 
 

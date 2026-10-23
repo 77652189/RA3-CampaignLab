@@ -30,6 +30,29 @@ def block(name='CampIceB'):
     return m
 
 
+TURNS = {'A': dict(angle=0), 'B': dict(angle=90), 'C': dict(angle=0, shape='square')}
+
+
+def turns(name='CampIceT'):
+    """Three lanes 200 apart, each with a runner at its south end, a goal 500 north, and an engineer by a spot on
+    its line who builds a core there: A's leaves the bar at absolute 0, B's at 90, C's a square (blocks whichever
+    way). Cast: runner A-C, engineer A-C; marks goal A-C, spot A-C, behind A-C."""
+    m = Mission(name=name, map=island)
+    for k, (tag, opts) in enumerate(TURNS.items()):
+        dx = MIDDLE + (k - 1) * 200
+        shape = opts.get('shape', 'bar')
+        w = iw.wall(f'CNV_IceWallT{tag}', length=160, shape=shape)
+        core = iw.seed(f'CNV_IceSeedT{tag}', w.id, angle=opts['angle'])
+        e = iw.engineer(f'CNV_IceEngT{tag}', wall_id=core.id)
+        m.units += [w, core, e]
+        m.put(RUNNER, 'west field', dx, -150, name=f'UNIT - CNV Runner {tag}', role=f'runner {tag}', angle=1.5708)
+        m.put(e.id, 'west field', dx - 60, WALL_Y - 50, name=f'UNIT - CNV Ice Engineer {tag}', role=f'engineer {tag}')
+        m.waypoint(f'goal {tag}', f'CNV Ice Goal {tag}', 'west field', dx, 350)
+        m.waypoint(f'spot {tag}', f'CNV Ice Spot {tag}', 'west field', dx, WALL_Y)
+        m.waypoint(f'behind {tag}', f'CNV Ice Behind {tag}', 'west field', dx, WALL_Y + BEHIND)
+    return m
+
+
 def freeze(name='CampIceF', builder=False, spawn=None, extra=(), **wall):
     """builder: retail's Soviet engineer walks there and builds our wall instead. spawn: the engineer's power
     creates this template instead of the wall (extra: more units of ours the mission carries, placed nowhere)."""

@@ -33,7 +33,17 @@ def cut(x, tag, id):
     return y
 
 
-def wall(id='CNV_IceWall', length=200, thick=24, lifetime=30, health=1500):
+def wall(id='CNV_IceWall', length=200, thick=24, lifetime=30, health=1500, what='', shape='bar', spot=False):
+    """lifetime None: it never melts (the festival's sculptures and snow banks, units/festival.py).
+
+    shape: 'bar' (length x thick), 'disc' (a cylinder `length` across) or 'square' (length x length) -- the last two
+    block about the same whichever way they are turned. spot: placing judged by a small circle at the middle only,
+    so it goes in snug between other buildings. Bench 2026-10-23: built by the engineer the bar comes out at 45
+    degrees (the default placing angle), both when a script fires the power and when it is placed by hand; a drag on
+    the bench did not turn the placing (posted mouse messages), and a second button for the other direction cannot
+    show (one ability slot per unit). The 45-degree bar left plaza gates open; a disc, and a square with a spot,
+    placed by the map, did not hold them either (a cylinder does not block the way; a placing spot seems to stand in
+    for the shape in pathfinding). A square without a spot, left by a seed() core, holds."""
     x = open(os.path.join(SAGE, 'Soviet', 'Structures', 'SovietBunker.xml'), encoding='utf-8').read()
     x = sub1(x, 'id="SovietBunker"', f'id="{id}"')
     x = sub1(x, 'EditorName="SovietBunker"', f'EditorName="{id}"')
@@ -44,17 +54,50 @@ def wall(id='CNV_IceWall', length=200, thick=24, lifetime=30, health=1500):
     x = cut(x, 'AttributeModifierAuraUpdate', 'ModuleTag_AttributeModifierAura')
     x = re.sub(r'\s*<InvisibilityBehavior\s+id="ModuleTag_Invisibility"\s*/>', '', x, count=1)
     x = sub1(x, 'MaxHealth="1500"', f'MaxHealth="{health}"')
+    body = {'bar': f'Type="BOX" MajorRadius="{length / 2}" MinorRadius="{thick / 2}"',
+            'square': f'Type="BOX" MajorRadius="{length / 2}" MinorRadius="{length / 2}"',
+            'disc': f'Type="CYLINDER" MajorRadius="{length / 2}"'}[shape]
+    place = f'<PlacementShape Type="CYLINDER" MajorRadius="{thick}" Height="20.0"/>\n\t\t\t' if spot else ''
     x = re.sub(r'<Geometry>.*?</Geometry>', f'''<Geometry>
-			<Shape Type="BOX" MajorRadius="{length / 2}" MinorRadius="{thick / 2}" Height="20.0"
-				ContactPointGeneration="STRUCTURE">
+			{place}<Shape {body} Height="20.0" ContactPointGeneration="STRUCTURE">
 				<Offset x="0.0" y="0.0" z="0.0"/>
 			</Shape>
 		</Geometry>''', x, count=1, flags=re.S)
-    x = sub1(x, '</Behaviors>', f'''	<LifetimeUpdate id="ModuleTag_CNV_Melt" DeathType="FADED" MinLifetime="{lifetime}s"
+    if lifetime is not None:
+        x = sub1(x, '</Behaviors>', f'''	<LifetimeUpdate id="ModuleTag_CNV_Melt" DeathType="FADED" MinLifetime="{lifetime}s"
 				MaxLifetime="{lifetime}s"/>
 		</Behaviors>''')
-    return Unit(id, x, what=f'冰墙：长 {length}、厚 {thick} 的建筑，挡路、能打碎（{health} 血），{lifetime} 秒后化掉',
-                params=dict(length=length, thick=thick, lifetime=lifetime, health=health))
+    form = {'bar': f'长 {length}、厚 {thick}', 'disc': f'直径 {length} 的圆冰堆', 'square': f'{length} 见方的冰块'}[shape]
+    return Unit(id, x, what=what or f'冰墙：{form}的建筑，挡路、能打碎（{health} 血），{lifetime} 秒后化掉',
+                params=dict(length=length, thick=thick, lifetime=lifetime, health=health, shape=shape, spot=spot))
+
+
+def seed(id='CNV_IceSeed', wall_id='CNV_IceWall', angle=0, assembly=5, size=40):
+    """What the engineer builds when the wall must go where a whole wall could not be placed: a small core (placed
+    anywhere a `size` square fits) that melts as his building ends and leaves the wall `wall_id` where it stood --
+    created by an object creation list that ignores other objects, so the wall may lie over its neighbours' edges.
+    Shot down while he builds, it leaves nothing (only its melting makes the wall).
+
+    angle: asked of the creation list as an ABSOLUTE_ANGLE (retail's time bomb way) -- bench 2026-10-23
+    (ice_turns): it does not turn the wall; bars left at 0 and at 90 both let a runner by where a square held. Give
+    it a square (wall(shape='square')), which blocks whichever way it comes out."""
+    ocl = f'OCL_{id}_Wall'
+    u = wall(id, length=size, thick=size, lifetime=assembly + 0.5, health=400,
+             what=f'冰核：工兵造的 {size} 见方小块，造好时化掉，原地按绝对 {angle} 度留下 {wall_id}；造的时候被打掉就没有墙')
+    u.xml = sub1(u.xml, '</Behaviors>', f'''	<CreateObjectDie id="ModuleTag_CNV_Wall" CreationList="{ocl}">
+				<DieMuxData DeathTypes="FADED"/>
+			</CreateObjectDie>
+		</Behaviors>''')
+    u.xml = sub1(u.xml, '</AssetDeclaration>', f'''	<ObjectCreationList id="{ocl}">
+		<CreateObject Options="IGNORE_ALL_OBJECTS" Disposition="ON_GROUND_ALIGNED ABSOLUTE_ANGLE"
+			DispositionAngle="{angle}d" Count="1">
+			<CreateObject>{wall_id}</CreateObject>
+		</CreateObject>
+	</ObjectCreationList>
+</AssetDeclaration>''')
+    u.link = [f'ObjectCreationList:{ocl}']
+    u.params.update(wall=wall_id, angle=angle)
+    return u
 
 
 def retail_engineer(id='CNV_SovEngineer', structure='SovietBunker'):
@@ -78,6 +121,8 @@ def engineer(id='CNV_IceEngineer', wall_id='CNV_IceWall', reach=300, reload='20s
     x = sub1(x, 'id="AlliedEngineer"', f'id="{id}"')
     x = sub1(x, 'EditorName="AlliedEngineer"', f'EditorName="{id}"')
     x = sub1(x, 'CommandSet="AlliedEngineerCommandSet"', f'CommandSet="{ids["commandset"]}"')
+    # retail's define, renamed: two engineers of ours in one build would define it twice (BinaryAssetBuilder: Critical)
+    x = x.replace('ALLIED_HEALTH_TENT_RADIUS', f'{id.upper()}_TENT_RADIUS')
     if build:
         x = sub1(x, '</Behaviors>', f'''	<SpecialPower id="ModuleTag_CNV_FreezeTrigger" SpecialPowerTemplate="{ids['power']}"
 				UpdateModuleStartsAttack="true"/>

@@ -41,7 +41,8 @@ def test_cards_match_the_published_interfaces():
         m, _, _ = build.resolve(key, '')
         assert ticks(item(card, '地图')) == [m.map.__name__.split('.')[-1]], key
         rows = [[c.strip() for c in line.strip('|').split('|')] for line in card.splitlines() if line.startswith('| `')]
-        cast = {ticks(r[0])[0]: (SIDES[r[2]], set(ticks(r[3]))) for r in rows}
+        # a row may list several parts that play alike (`truck 1` `truck 2` ...)
+        cast = {part: (SIDES[r[2]], set(ticks(r[3]))) for r in rows for part in ticks(r[0])}
         assert cast == {k: (r.side, set(r.sites)) for k, r in m.cast.items()}, key
         assert set(ticks(item(card, '路点'))) == set(m.marks), key
         assert set(ticks(item(card, '时间'))) == set(m.facts), key
