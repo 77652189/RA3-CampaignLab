@@ -2,12 +2,13 @@
 
 ## 当前目标
 
-**推进关卡**（用户 2026-10-23："A7 A8 难度可以先不考虑，我们先看看单位有没有做完，做完了就开始推进关卡"）：新单位都已验证（[docs/story/units.md](docs/story/units.md) 进度表）；后半段才用的招牌、老面孔、终局球塔做到那一关再做（plan.md「待启动」）。关卡卡片在 [docs/story/levels.md](docs/story/levels.md)，现有 A4、A7、A8。A4 第一版已做完、七个检查全过（plan.md A4 行）。用户定的大顺序：战役设定 → 粗模玩法验证 → 关卡 → 美术最后。剧情大纲 [docs/story/outline.md](docs/story/outline.md)（v5）。
+**推进关卡**（用户 2026-10-23："A7 A8 难度可以先不考虑，我们先看看单位有没有做完，做完了就开始推进关卡"）：新单位都已验证（[docs/story/units.md](docs/story/units.md) 进度表）；后半段才用的招牌、老面孔、终局球塔做到那一关再做（plan.md「待启动」）。关卡卡片在 [docs/story/levels.md](docs/story/levels.md)，现有 A4、J4、A7、A8。A4 第一版已做完、七个检查全过；J4 写完，`breach` 已过（plan.md A4、J4 行）。A4 冰墙的改动（长条墙转不了向 → 方冰块；封门靠关卡脚本）用户 2026-10-23 回"可以，按你的推荐做 J4"时一并认了。用户定的大顺序：战役设定 → 粗模玩法验证 → 关卡 → 美术最后。剧情大纲 [docs/story/outline.md](docs/story/outline.md)（v5）。
 
-**下一步候选**：J4（同一张雪祭地图的攻方，合体机甲破冰墙、冰雕；冰墙要改成同样的方冰块）；或接着做前半段别的关（A1～A3、S1～S5、J1～J3、J5）。
+**下一步**（2026-10-23 用户"今天先做到这里"时停在这）：
+1. 测试台跑 J4 的 `play` 和 `lose`（`cnv_check j4 play` / `lose`），不过就按读数修 `missions/j4.py` / `checks/j4.py`。
+2. 之后接着做前半段别的关（A1～A3、S1～S5、J1～J3、J5），按用户顺序给 2～3 个选项。
 
 **等用户定的**：
-- A4 冰墙的改动（长条墙转不了向 → 方冰块；封门靠关卡脚本），要用户点头。
 - 搁置中：A7 / A8 难度、超时空落点压到自家建筑会弄死被传的车（plan.md A7、A8 行）。
 - 剧情：大纲第六节"待用户决定"里还没定的（三个结局、三条背叛、关卡地点和关名）。
 
@@ -52,7 +53,7 @@
 ## 状态
 
 ```yaml
-slice: levels-a4-2026-10-23
+slice: levels-a4-j4-2026-10-23
 blocked_on: none        # none | voice-session | user
 next_gate: demo         # test-map | coordinate-calibration | demo
 ```

@@ -22,6 +22,7 @@ sys.path.insert(0, HERE)
 import parts                                    # noqa: E402  (puts experimental/campaign on the path)
 from checks import a4 as check_a4               # noqa: E402
 from checks import a7 as check_a7               # noqa: E402
+from checks import j4 as check_j4               # noqa: E402
 from checks import a8 as check_a8               # noqa: E402
 from checks import beacon as check_bea          # noqa: E402
 from checks import burrower as check_bur        # noqa: E402
@@ -35,7 +36,7 @@ from checks import liberty as check_lib         # noqa: E402
 from checks import shikigami as check_shi       # noqa: E402
 from checks import train as check_tra           # noqa: E402
 from units import tesla as units_tesla          # noqa: E402
-from missions import a4, a7, a8, beacon_bench, burrow_bench, clone_bench, combo_bench, crane_bench, icewall_bench, jammer_bench, liberty_bench, shikigami_bench, \
+from missions import a4, a7, a8, j4, beacon_bench, burrow_bench, clone_bench, combo_bench, crane_bench, icewall_bench, jammer_bench, liberty_bench, shikigami_bench, \
     tesla_bench, train_bench                                # noqa: E402
 
 BENCH_PY = os.path.join(os.path.dirname(ROOT), 'envs', 'bench_mcp', 'Scripts', 'python.exe')
@@ -58,6 +59,7 @@ MISSIONS = {
     'a4': (lambda: a4.mission(), {'seal': check_a4.seal, 'placed': check_a4.placed, 'smash': check_a4.smash,
                                   'ambush': check_a4.ambush, 'win': check_a4.win, 'lose': check_a4.lose,
                                   'idle': check_a4.idle}),
+    'j4': (lambda: j4.mission(), {'breach': check_j4.breach, 'play': check_j4.play, 'lose': check_j4.lose}),
     'a7': (lambda: a7.mission(), {'jumps': check_a7.jumps, 'power': check_a7.power, 'win': check_a7.win}),
     'a8': (lambda: a8.mission(), {'jump': check_a8.jump, 'lose': check_a8.lose, 'assault': check_a8.assault}),
     'a8_control': (lambda: a8.mission(carrier=False, name='CampA8C'), {'assault': check_a8.assault}),
@@ -94,7 +96,7 @@ MISSIONS = {
     'clone': (lambda: clone_bench.mission(), {'hold': check_clo.hold, 'free': check_clo.free}),
     'clone_any': (lambda: clone_bench.mission(name='CampCloneA', picky=False), {'free': check_clo.free_any}),
 }
-LEVELS = ('a4', 'a7', 'a8')                          # campaign levels: each has a card in docs/story/levels.md (the rest:
+LEVELS = ('a4', 'a7', 'a8', 'j4')                          # campaign levels: each has a card in docs/story/levels.md (the rest:
                                                 # A/B controls and bench scenes)
 
 

@@ -18,6 +18,8 @@ SITES = {k: island.SITES[k] for k in ('island', 'start', 'base factory', 'base p
 SITES.update({
     'convoy start': Site(1700.0, ROAD_Y, 100.0, "the road's west end by the player's base: the convoy forms up here"),
     'road exit': Site(3900.0, ROAD_Y, 150.0, "the road's east end on the east shore: the convoy is safe here"),
+    'north camp': Site(2900.0, 3250.0, 200.0, 'open ground north of the plazas, off the road: a force that comes '
+                                               'round to the gates (J4)'),
 })
 for k, (x, north) in enumerate(zip(PLAZA_X, NORTH), 1):
     s = 1 if north else -1
