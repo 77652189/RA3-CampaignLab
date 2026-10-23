@@ -195,16 +195,22 @@ def square(x, y, r):
 
 
 def counted(counter, label, test, template=None, status=None, area=None, kind=None, player='Player_1', most=8,
-            named=None, health=None):
+            named=None, health=None, owner=None):
     """A test readout: how many `template`s the player owns (with `area`: how many of them stand in that trigger
     area; with `kind` instead of a template -- kindof('VEHICLE') -- how many of that KindOf), or how many of their
     objects carry `status` ((index, 0.0, name) as in ObjectStatus.xsd's order), shown as a game counter -- read as a
     number by bench_counters instead of counting units in a frame. Counted per value 0 .. most - 1: at `most` or
     more the counter shows `most`. named + area: 1 while that named object is inside the area, else 0 -- for a
     unit that teleports (bench 2026-10-22: after the A7 carrier's jump the type-in-area count of the area it left
-    stayed 1 for 35 s; the area it landed in counted it at once). health: that named object's health in percent."""
+    stayed 1 for 35 s; the area it landed in counted it at once). health: that named object's health in percent.
+    owner: 1 while that named object belongs to `player`, else 0 -- for a unit that changes hands (bench 2026-10-22:
+    a unit the spy's bribe took was counted by its new owner's type count only once the spy died)."""
     test.counters.append((counter, label))
-    if health:
+    if owner:                                   # 0 every frame, then 1 if ours (scripts run in order)
+        test.scripts += [Script(f'Test - count {counter} zero', [], [('SET_COUNTER', counter, 0)], once=False),
+                         Script(f'Test - count {counter} ours', [('NAMED_OWNED_BY_PLAYER', player, owner)],
+                                [('SET_COUNTER', counter, 1)], once=False)]
+    elif health:
         test.scripts.append(Script(f'Test - count {counter}', [],
                                    [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', health, counter)], once=False))
     elif named:

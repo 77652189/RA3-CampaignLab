@@ -104,6 +104,12 @@
   - 单位死后，血量计数器停在最后一次读数，不会归零。
 - **跃迁后，按模板数的区域计数不会把它减掉**：`PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA` 在它离开的区域里还算着它（A7 自由号跳走后 35 秒不变），到达的区域则马上算进去。要知道跃迁单位在哪，用 `counted(named=..., area=...)`（`NAMED_INSIDE_AREA` / `NAMED_OUTSIDE_AREA`）。
 - **落点 / 突击点**：别放在对方建筑上（A7 第一次把突击点放在我方战车工厂上，跳来的自由号压在工厂上、防空车够不着）。
+- **心灵控制 / 换主人**（克隆体，2026-10-22）：
+  - 能用的只有间谍收买 `DominateEnemySpecialPower` 的 `PermanentlyConvert="true"`：按下几秒内就换主人，克隆体死了也不还。`false` 什么都收不走；schema 里的 `TemporaryOwnerSpecialPower`（C&C3 留下的）会在 4 秒内弄死带着它的单位。
+  - "克隆体活着才控制"靠关卡：每个克隆体站在自己的一方（底图 Heidelberg 自带闲着的 Soviet_2 到 Soviet_6，`maps/island.py` 的 `SPARE`），死了就用 `PLAYER_TRANSFER_OWNERSHIP_PLAYER` 把那一方的东西全还给玩家（`missions/clone_bench.release`）。只是换主人，血量和等级都在。
+  - 换了主人以后，按模板数"玩家有几个"（`SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER`）要等收买的间谍死了才算进来。要问归谁，用 `counted(owner=...)`（`NAMED_OWNED_BY_PLAYER`）。
+- **"没武器"的目标先查**：帝国矿车带机枪，苏联矿车会自己开动、碾死步兵（克隆体第一轮全死在矿车手里，看着像单位没刷出来）。要找打不还手的靶子，用工程师。
+- **计数器的内部名字只能用英文**（地图字符串按 latin-1 编码），中文只能放在显示的标签里。
 - **mod 名最多 15 个字符**：同一份内容，叫 CampLibRidersJump / CampBisjcdXXXXXXX（17 个字符）时游戏在主菜单前就崩（退出码 0xC000000D，日志里什么都没有）；叫 CampBisjcd、CampBisjcdXXXX（14）、CampLibertyJump（15）都正常。`experimental/cnv/parts.assemble` 超长直接报错，`tests/test_cnv_parts.py` 检查所有登记的编图名。
 - **检查游戏在不在跑**：进程名要同时匹配 `ra3_1.xx.game`、`RA3.exe` 和起义时刻的 `ra3ep1`（之前漏了起义时刻）。
 - **截图隐私**：给启动器之类的窗口截图只用 PrintWindow 截那个窗口，别用 CopyFromScreen 截整屏（会截到用户的其他窗口）。

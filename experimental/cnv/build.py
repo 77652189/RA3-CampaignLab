@@ -24,6 +24,7 @@ from checks import a7 as check_a7               # noqa: E402
 from checks import a8 as check_a8               # noqa: E402
 from checks import beacon as check_bea          # noqa: E402
 from checks import burrower as check_bur        # noqa: E402
+from checks import clone as check_clo           # noqa: E402
 from checks import combo as check_com           # noqa: E402
 from checks import crane as check_cra           # noqa: E402
 from checks import icewall as check_ice         # noqa: E402
@@ -33,7 +34,7 @@ from checks import liberty as check_lib         # noqa: E402
 from checks import shikigami as check_shi       # noqa: E402
 from checks import train as check_tra           # noqa: E402
 from units import tesla as units_tesla          # noqa: E402
-from missions import a7, a8, beacon_bench, burrow_bench, combo_bench, crane_bench, icewall_bench, jammer_bench, liberty_bench, shikigami_bench, \
+from missions import a7, a8, beacon_bench, burrow_bench, clone_bench, combo_bench, crane_bench, icewall_bench, jammer_bench, liberty_bench, shikigami_bench, \
     tesla_bench, train_bench                                # noqa: E402
 
 BENCH_PY = os.path.join(os.path.dirname(ROOT), 'envs', 'bench_mcp', 'Scripts', 'python.exe')
@@ -76,6 +77,7 @@ MISSIONS = {
     'train': (lambda: train_bench.mission(), {'run': check_tra.run}),
     'train_fight': (lambda: train_bench.mission(name='CampTrainF', enemies=True), {'fight': check_tra.fight}),
     'ice_smash': (lambda: icewall_bench.smash(), {'smash': check_ice.smash}),
+    'clone': (lambda: clone_bench.mission(), {'hold': check_clo.hold, 'free': check_clo.free}),
 }
 LEVELS = ('a7', 'a8')                           # campaign levels: each has a card in docs/story/levels.md (the rest:
                                                 # A/B controls and bench scenes)
