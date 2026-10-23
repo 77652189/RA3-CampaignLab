@@ -5,9 +5,10 @@ a Tesla gun on a fixed mount that fires all round and on the move (the Tesla tan
 the train has no turret -- and `reach`; retail's coil gun cannot fire while moving). The track is the mission's: a
 route of waypoints it is sent along one after another (missions/train_bench.py).
 
-Not settled: the player aiming its guns but never steering it; cars that come off.
+The player's to aim and to brake, never to steer (docs/story/units.md 6). Cars that come off wait for S2's design.
 
-Published: what and params; no ability (it is sent: MOVE_NAMED_UNIT_TO).
+Published: abilities brake = the toggle's command button (NAMED_USE_COMMANDBUTTON_ABILITY presses it); it is sent
+along by MOVE_NAMED_UNIT_TO.
 """
 import os
 import re
@@ -31,11 +32,36 @@ def gun(id, reach):
     return sub1(g, 'AcceptableAimDelta="20d"', 'AcceptableAimDelta="360d"')
 
 
+TOGGLE_POWER, TOGGLE_COMMAND = 'SpecialPower_ToggleTargetPainter', 'Command_ToggleTargetPainter'   # the Guardian's
+
+
 def train(id='CNV_Train', health=3000, reach=250):
-    weapon = f'{id}_TeslaGun'
+    """The player's (the user's decision, 2026-10-22): they pick its targets and work the brake; the route is the
+    mission's -- its scripts send it on to the next stop every second, so a move order of the player's lasts a
+    second at most."""
+    weapon, brake, commands = f'{id}_TeslaGun', f'AttributeModifier_{id}_Brake', f'{id}CommandSet'
     x = open(os.path.join(SAGE, 'Soviet', 'Units_Campaign', 'RussianTrain.xml'), encoding='utf-8').read()
     x = sub1(x, 'id="RussianTrain"', f'id="{id}"')
     x = sub1(x, 'EditorName="RussianTrain"', f'EditorName="{id}"')
+    x = sub1(x, 'CommandSet="RussianTrainCommandSet"', f'CommandSet="{commands}"')
+    # the brake: a toggle that holds it where it stands (IMMOBILE, as the jammer's); firing while braked not tested
+    x = sub1(x, '</Behaviors>', f'''	<SpecialPower id="ModuleTag_CNV_BrakeTrigger" SpecialPowerTemplate="{TOGGLE_POWER}"/>
+			<ToggleStatusSpecialAbilityUpdate id="ModuleTag_CNV_Brake" Options="RECONSTITUTE_STORED_COMMAND"
+				SpecialPowerTemplate="{TOGGLE_POWER}">
+				<ToggleState>
+					<SkirmishAiInfo ToggleHint="TOGGLE_DEFAULT"/>
+				</ToggleState>
+				<ToggleState ObjectStatus="GENERIC_TOGGLE_STATE" AttributeModifier="{brake}">
+					<SkirmishAiInfo ToggleHint="TOGGLE_DEFAULT"/>
+				</ToggleState>
+			</ToggleStatusSpecialAbilityUpdate>
+		</Behaviors>''')
+    x = sub1(x, '</AssetDeclaration>', f'''	<AttributeModifier id="{brake}" Category="NONE" ObjectStatusToSet="IMMOBILE"/>
+	<LogicCommandSet id="{commands}">
+		<Cmd>{TOGGLE_COMMAND}</Cmd>
+		<Cmd>Command_AttackMove</Cmd>
+	</LogicCommandSet>
+</AssetDeclaration>''')
     x = sub1(x, 'MaxHealth="300"', f'MaxHealth="{health}"')
     x = re.sub(r'\s*<GameDependency>.*?</GameDependency>', '', x, count=1, flags=re.S)
     # retail's prop train picks no targets of its own; ours must, on the move (bench 2026-10-22: with false it never
@@ -50,6 +76,8 @@ def train(id='CNV_Train', health=3000, reach=250):
 				</WeaponSlotHardpoint>
 			</WeaponSetUpdate>''')
     x = sub1(x, '</AssetDeclaration>', f'\t{gun(weapon, reach)}\n</AssetDeclaration>')
-    return Unit(id, x, link=[f'WeaponTemplate:{weapon}'],
-                what=f'装甲列车：原版战役火车，{health} 血，固定挂点磁暴炮（射程 {reach}，全向、边走边打）；由任务脚本沿路点开',
+    return Unit(id, x, link=[f'WeaponTemplate:{weapon}', f'AttributeModifier:{brake}', f'LogicCommandSet:{commands}'],
+                abilities={'brake': TOGGLE_COMMAND},
+                what=f'装甲列车：原版战役火车，{health} 血，固定挂点磁暴炮（射程 {reach}，全向、边走边打）；由任务脚本沿路点开，'
+                     'brake 切换刹车（停住）',
                 params=dict(health=health, reach=reach))

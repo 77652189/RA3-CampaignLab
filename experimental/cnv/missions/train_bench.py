@@ -2,7 +2,8 @@
 the train's start, and -- with enemies=True -- three enemy conscripts 150 east of the first leg's far end, 500 from
 the start: out of reach until it drives past.
 
-Published (the cast): train, enemy (with enemies); marks stop 1 .. 3 (the track's waypoints, in order).
+Published (the cast): train, enemy (with enemies); marks stop 1 .. 3 (the track's waypoints, in order), astray (a
+point off the track, where a player might send it).
 """
 from maps import island
 from parts import Mission
@@ -18,6 +19,7 @@ def mission(name='CampTrain', enemies=False, **unit):
     m.put(u.id, 'west field', X, -300, name='UNIT - CNV Train', role='train', angle=1.5708)
     for k, (dx, dy) in enumerate(TRACK):
         m.waypoint(f'stop {k + 1}', f'CNV Train Stop {k + 1}', 'west field', X + dx, dy)
+    m.waypoint('astray', 'CNV Train Astray', 'west field', X - 300, -100)      # off the track, west of the first leg
     if enemies:
         for dy in (160, 200, 240):
             m.put('SovietAntiInfantryInfantry', 'west field', X + 150, dy, side='s1', role='enemy')
