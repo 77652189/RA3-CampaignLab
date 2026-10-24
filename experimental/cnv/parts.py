@@ -124,6 +124,8 @@ class Mission(Part):
     endings: list = dataclasses.field(default_factory=list)     # published: the names of its win / lose scripts
     marks: dict = dataclasses.field(default_factory=dict)       # published: {part: waypoint name} ('strike' ...)
     facts: dict = dataclasses.field(default_factory=dict)       # published: numbers a check may hold it to (seconds)
+    later: set = dataclasses.field(default_factory=set)         # cast parts a script creates in play: their objective
+                                                                # markers wait for made(), not the reveal
 
     def find(self, name):
         return next(o for o in self.objects if o.name == name)
@@ -203,10 +205,13 @@ class Mission(Part):
         assert hit, f'no objective {name!r}: {[g.name for g in self.objectives]}'
         return hit[0]
 
-    def markers(self, name, on=True):
-        """Green markers of objective `name` on its cast parts (named objects) and marks (waypoints)."""
+    def markers(self, name, on=True, only=None):
+        """Green markers of objective `name` on its cast parts (named objects) and marks (waypoints); only: just
+        these parts."""
         out = []
         for part in self.goal(name).show:
+            if only is not None and part not in only:
+                continue
             if part in self.marks:
                 out.append(('LINK_MISSION_OBJECTIVE_TO_WAYPOINT', name, self.marks[part], int(on)))
             else:
@@ -216,7 +221,12 @@ class Mission(Part):
         return out
 
     def reveal(self, name):
-        return self.markers(name) + [('SET_MISSION_OBJECTIVE_STATUS', name, 1)]
+        now = [p for p in self.goal(name).show if p not in self.later]
+        return self.markers(name, only=now) + [('SET_MISSION_OBJECTIVE_STATUS', name, 1)]
+
+    def made(self, parts):
+        """The markers every objective shows on `parts` (in later), for the script that creates them."""
+        return [a for g in self.objectives for a in self.markers(g.name, only=parts)]
 
     def done(self, name):
         return [('SET_MISSION_OBJECTIVE_STATUS', name, 2)] + self.markers(name, on=False)

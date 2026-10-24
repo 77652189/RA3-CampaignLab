@@ -4,8 +4,10 @@ breach: at JOIN_AT pair 1 joins; at ATTACK_AT parent 1 is ordered at ice 1, and 
   plaza 2 are ordered out onto the road. Ice 1 falls and plaza 1's comes out; plaza 2's ice stands and its man
   stays in (the map-placed ice bars a player's infantry ordered through it).
 play: the level as meant (by test script): both pairs join and break ice 1 and 2; the freed troops go for the
-  leading truck; the convoy is taken and the mission ends before it could have reached the exit.
-lose: the player does nothing: the convoy drives the road, reaches the exit, and only then does the mission end.
+  leading truck; no truck is on the map before the convoy sets off (bench 2026-10-23: parked trucks were taken at
+  s64, before the departure); the convoy is taken and the mission ends before it could have reached the exit.
+lose: the player does nothing: the convoy appears at its departure, drives the road untouched, reaches the exit,
+  and only then does the mission end.
 """
 from checks.a4 import DRIVE, on_road, start
 from parts import Script, Test, counted
@@ -61,10 +63,9 @@ def play(m):
                                     [('NAMED_ATTACK_NAMED', u, target) for u in them], once=False))
         t.scripts.append(Script(f'Test - go again {k}', [('TIMER_EXPIRED', f'Test - go timer {k}')],
                                 [('SET_MILLISECOND_TIMER', f'Test - go timer {k}', 3.0)], once=False))
-    for j in (1, 2):
-        counted(f'Test Truck {j}', f'{j} 号车血量', t, health=m.role(f'truck {j}').name)
+    counted('Test Trucks', '路上车辆数量', t, template=m.role('truck 1').template, player=m.player('s1'))
     leave = m.facts['convoy leaves']
-    t.expect += [('1 号车血量', 0, '==', 100, leave - 3), ('ENDED', leave, '', None)]
+    t.expect += [('路上车辆数量', 0, '==', 0, leave - 5), ('路上车辆数量', leave, 'ever==', 3), ('ENDED', leave, '', None)]
     t.bench = [('bench_watch', dict(seconds=leave + DRIVE - 8, every=3, sheet=False, lines=len(t.counters)))]
     return t
 
@@ -75,6 +76,6 @@ def lose(m):
     for j in (1, 2):
         counted(f'Test Truck {j}', f'{j} 号车血量', t, health=m.role(f'truck {j}').name)
     leave = m.facts['convoy leaves']
-    t.expect += [('1 号车血量', 0, '==', 100, leave + DRIVE - 10), ('ENDED', leave + DRIVE - 10, '', None)]
+    t.expect += [('1 号车血量', leave, '==', 100, leave + DRIVE - 10), ('ENDED', leave + DRIVE - 10, '', None)]
     t.bench = [('bench_watch', dict(seconds=leave + DRIVE + 20, every=3, sheet=False, lines=len(t.counters)))]
     return t

@@ -5,7 +5,7 @@ clones, but the Allies saw through it and froze every plaza's gate shut (ice pla
 for real, where ice made in play does not -- see A4). The player's troops stand trapped in the three plazas; the
 player's combining mechs, camped north of the plazas, must come round to the gates, join, and break the ice with
 the joined form's breaker beam (units/combo.py) to let them out before the convoy (the enemy's three trucks) has
-rolled past. Allied Guardians guard the road by plazas 2 and 3. Two trucks destroyed: Mission Won; two trucks at
+rolled past. The trucks come onto the road only when the convoy sets off (LEAVE): the time to free the troops. Allied Guardians guard the road by plazas 2 and 3. Two trucks destroyed: Mission Won; two trucks at
 the exit: Mission Lost.
 
 Published (the cast): truck 1-3, ice 1-3 (the gate ice), escort (the enemy's); parent 1-2, child 1-2, troop
@@ -38,7 +38,7 @@ def mission(name='CampJ4'):
                                  show=('truck 1', 'truck 2', 'truck 3')),
                             Goal(BONUS, 'MISSIONOBJ:CNVJ4_B1', 'MISSIONOBJ:CNVJ4_B1_DESC', bonus=True)],
                 facts={'convoy leaves': LEAVE, 'tick': TICK})
-    convoy = fp.Convoy(m, 'J4', 's1', LEAVE, TICK)
+    convoy = fp.Convoy(m, 'J4', 's1', LEAVE, TICK, enter=True)     # no convoy to hit before it sets off
     for j, dx in enumerate((-80, 80), 1):
         m.put(parent.id, 'north camp', dx, 0, name=f'UNIT - CNV J4 Parent {j}', role=f'parent {j}', angle=-1.5708)
         m.put(child.id, 'north camp', dx, 70, name=f'UNIT - CNV J4 Child {j}', role=f'child {j}', angle=-1.5708)
