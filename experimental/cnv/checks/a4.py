@@ -87,14 +87,14 @@ def walk_to(t, m):
 
 
 def placed(m):
-    """The control behind the mission's held-gate rule: a bar of the same length placed by the map (angle 0, lasting
-    the whole run) across plaza 1's gate, plaza 2's open. Bench 2026-10-23: it held plaza 1's tank buster in its
+    """The control behind the mission's held-gate rule: a bar placed by the map (angle 0, lasting the whole run)
+    across plaza 1's gate -- the gap in its cliff --, plaza 2's open. Bench 2026-10-23: it held plaza 1's tank buster in its
     plaza 37 s; the wall built in play did not (see missions/a4.py, units/icewall.py)."""
     t = Test()
     start(t, m)
-    w = iw.wall('CNV_A4TestWall', length=ice_wall(m).params['length'], lifetime=300)
+    w = iw.wall('CNV_A4TestWall', length=200, lifetime=300)     # across the gate's gap, as the map's description says
     t.units.append(w)
-    t.objects.append(Obj(w.id, *m.point('seal 1'), name='UNIT - Test Wall', angle=0.0, site='gate 1'))
+    t.objects.append(Obj(w.id, *m.site('gate 1'), name='UNIT - Test Wall', angle=0.0, site='gate 1'))
     on_road(t, m, 'troop 1-1-1', '1 号的兵上路')
     on_road(t, m, 'troop 2-1-1', '2 号的兵上路')
     in_plaza(t, m, 1, 'troop 1-1-1', '1 号的兵在广场')     # held, not never there

@@ -302,6 +302,34 @@ def row(i):
             f"{main}+{bonus} ({marked} marked) |")
 
 
+COMMANDO = ('y01', 'y02', 'y03', 's01_romania')       # no base building: left out of the ranges
+MEASURES = [('land', lambda i: i['terrain']['land'], '{:.0%}'),
+            ('flat of land', lambda i: i['terrain']['flat_of_land'], '{:.0%}'),
+            ('cliff', lambda i: i['terrain']['cliff'], '{:.1%}'),
+            ('height tiers', lambda i: len(i['terrain']['tiers']), '{:.0f}'),
+            ('ore nodes', lambda i: i['counts'].get('ore', 0), '{:.0f}'),
+            ('tech buildings', lambda i: i['counts'].get('tech', 0), '{:.0f}'),
+            ('bridges (objects, 2 each)', lambda i: i['counts'].get('bridge', 0), '{:.0f}'),
+            ('objectives', lambda i: len(i['goals']), '{:.0f}'),
+            ('bonus objectives', lambda i: sum(g['bonus'] for g in i['goals']), '{:.0f}')]
+
+
+def compare(info):
+    """Each measure of `info` against the retail maps' range (min / median / max, commando maps left out)."""
+    rows = [json.load(open(p, encoding='utf-8')) for p in glob.glob(os.path.join(OUT, 'camp_*.json'))]
+    rows = [r for r in rows if not any(c in r['map'] for c in COMMANDO)]
+    if not rows:
+        return ['(no retail maps studied yet: run mapstudy.py with no arguments)']
+    out = []
+    for label, f, fmt in MEASURES:
+        v = sorted(f(r) for r in rows)
+        mine, lo, hi, mid = f(info), v[0], v[-1], v[len(v) // 2]
+        flag = 'ok' if lo <= mine <= hi else 'OUTSIDE'
+        out.append(f'{label}: {fmt.format(mine)} (retail {fmt.format(lo)}..{fmt.format(hi)}, median '
+                   f'{fmt.format(mid)}) {flag}')
+    return out
+
+
 HEAD = ('| map | size | land | flat of land | cliff | tiers | ore (near start) | tech | bridge | civ bldg | props '
         '| goals main+bonus |\n|---|---|---|---|---|---|---|---|---|---|---|---|')
 
@@ -321,7 +349,8 @@ def main():
     jobs = []
     if a.ours:
         import maprender
-        jobs = [(name, lambda name=name: maprender.load(name)) for name in a.ours]
+        jobs = [(os.path.splitext(os.path.basename(name))[0], lambda name=name: maprender.load(name))
+                for name in a.ours]
     else:
         jobs = [(short, lambda arc=arc, n=n: mapscript.MapFile(big.read_files(arc, [n])[n]))
                 for _, arc, n, short in retail_maps(a.parts)]
@@ -331,6 +360,9 @@ def main():
             json.dump(info, fh, ensure_ascii=False, indent=1)
         picture(os.path.join(OUT, name + '.png'), info, grids, where, marks)
         print(row(info), flush=True)
+        if a.ours:
+            print('\n'.join(compare(info)))
+            print('PICTURE ' + os.path.join(OUT, name + '.png'))
 
 
 if __name__ == '__main__':

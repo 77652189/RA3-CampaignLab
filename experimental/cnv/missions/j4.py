@@ -8,7 +8,7 @@ the joined form's breaker beam (units/combo.py) to let them out before the convo
 rolled past. Allied Guardians guard the road by plazas 2 and 3. Two trucks destroyed: Mission Won; two trucks at
 the exit: Mission Lost.
 
-Published (the cast): truck 1-3, ice 1-3 (the gate ice), escort, bank (the enemy's); parent 1-2, child 1-2, troop
+Published (the cast): truck 1-3, ice 1-3 (the gate ice), escort (the enemy's); parent 1-2, child 1-2, troop
 k-n (plaza k's n-th: two tank busters, two warriors) (the player's). Marks: exit, seal 1-3 (where the gate ice
 stands); facts: convoy leaves, tick; endings: the win and lose scripts.
 """
@@ -16,25 +16,23 @@ from maps import festival
 from missions import festival_parts as fp
 from parts import Goal, Mission, Script
 from units import combo
-from units import festival as fest
 from units import icewall as iw
 
 TROOPS = ('JapanAntiVehicleInfantry', 'JapanAntiVehicleInfantry', 'JapanAntiInfantryInfantry',
           'JapanAntiInfantryInfantry')
 SPOTS = ((-45, 20), (45, 20), (-45, 70), (45, 70))  # a plaza's troops, by its middle (y: away from the gate)
 LEAVE, TICK = 90.0, 3.0                         # the mechs walk ~700 round to the gates first
-ICE_LENGTH, ICE_HEALTH = 260.0, 3000            # over both side banks' outer faces (+-122); ~4 breaker shots
+ICE_LENGTH, ICE_HEALTH = 200.0, 3000            # across the head of the gate's ramp (120 wide); ~4 breaker shots
 FREE, OBJ, BONUS = 'Objective01 - CNV J4', 'Objective02 - CNV J4', 'Bonus01 - CNV J4'
 WIN, LOST = 'CNV J4 - Win', 'CNV J4 - Lost'
 
 
 def mission(name='CampJ4'):
-    bank = fest.bank(length=fp.GATE)
-    ice = iw.wall('CNV_J4GateIce', length=ICE_LENGTH, lifetime=None, health=ICE_HEALTH,
+    ice =iw.wall('CNV_J4GateIce', length=ICE_LENGTH, lifetime=None, health=ICE_HEALTH,
                   what=f'封门冰：盟军冻住广场出口的长条冰，长 {ICE_LENGTH:g}，{ICE_HEALTH} 血，不化（随地图摆放，真挡步兵）')
     child = combo.child()
     parent = combo.parent(child_id=child.id)
-    m = Mission(name=name, map=festival, units=[parent, child, ice, bank],
+    m = Mission(name=name, map=festival, units=[parent, child, ice],
                 objectives=[Goal(FREE, 'MISSIONOBJ:CNVJ4_0', 'MISSIONOBJ:CNVJ4_0_DESC', show=('ice 1', 'ice 2', 'ice 3')),
                             Goal(OBJ, 'MISSIONOBJ:CNVJ4_1', 'MISSIONOBJ:CNVJ4_1_DESC',
                                  show=('truck 1', 'truck 2', 'truck 3')),
@@ -44,7 +42,7 @@ def mission(name='CampJ4'):
     for j, dx in enumerate((-80, 80), 1):
         m.put(parent.id, 'north camp', dx, 0, name=f'UNIT - CNV J4 Parent {j}', role=f'parent {j}', angle=-1.5708)
         m.put(child.id, 'north camp', dx, 70, name=f'UNIT - CNV J4 Child {j}', role=f'child {j}', angle=-1.5708)
-    for k in fp.plazas(m, bank, 'J4'):
+    for k in fp.plazas(m, 'J4'):
         s = fp.north(m, k)
         m.put(ice.id, f'gate {k}', 0, -s * fp.SEAL_IN, side='s1', name=f'UNIT - CNV J4 Ice {k}', role=f'ice {k}',
               angle=0.0)

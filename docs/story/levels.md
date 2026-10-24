@@ -24,11 +24,10 @@
 
 | 角色 | 谁 | 阵营 | 地点 | 设计意图 |
 |---|---|---|---|---|
-| `truck 1` `truck 2` `truck 3` | 运克隆体的车队（粗模：矿车） | 我 | `convoy start` | 要保护的对象：两辆到东岸就赢，丢两辆就输 |
+| `truck 1` `truck 2` `truck 3` | 运克隆体的车队（粗模：去掉采矿、两栖的矿车） | 我 | `convoy start` | 要保护的对象：两辆到东岸就赢，丢两辆就输 |
 | `engineer 1` `engineer 2` | 冰幕工兵 | 我 | `west field` | 本关解锁的单位：封广场出口 |
 | `guardian` | 守护者坦克 | 我 | `west field` | 护送 |
 | `riptide` | 激流 ZX | 我 | `west field` | 护送，打步兵 |
-| `bank` | 雪堆（广场的三面墙） | 敌 | `gate 1` `gate 2` `gate 3` | 地形：广场只有朝路的一个出口 |
 | `sculpture 1-1` `sculpture 1-2` | 冰雕 | 敌 | `plaza 1` | 地标玩法：打碎会露出藏着的兵（outline A4） |
 | `sculpture 2-1` `sculpture 2-2` | 冰雕 | 敌 | `plaza 2` | 同上 |
 | `sculpture 3-1` `sculpture 3-2` | 冰雕 | 敌 | `plaza 3` | 同上 |
@@ -36,7 +35,8 @@
 | `troop 2-1-1` `troop 2-1-2` `troop 2-2-1` `troop 2-2-2` | 同上 | 敌 | `plaza 2` | 同上 |
 | `troop 3-1-1` `troop 3-1-2` `troop 3-2-1` `troop 3-2-2` | 同上 | 敌 | `plaza 3` | 同上 |
 
-- 路点：`exit`（东岸，车队的终点）、`seal 1` `seal 2` `seal 3`（各广场出口，冰墙放这里）
+- 地形（地图自带）：三个广场是抬高一层的台地，四面悬崖，只有一条坡道通到大路；大路尽头过一座桥进港区。
+- 路点：`exit`（港区，车队的终点）、`seal 1` `seal 2` `seal 3`（各广场门里面的平地，冰墙造在这；坡道上造不了）
 - 能力：`engineer 1.freeze`（走到一点站着造 5 秒）
 - 时间：`convoy leaves`（车队出发）、`tick`（每隔多久重新给车队和伏兵下一次命令）
 - 目标：主 `护送车队穿过雪祭会场`（标记 `truck 1` `truck 2` `truck 3` `exit`）；奖励 `三辆车全部送到`（丢一辆就失败）
@@ -59,19 +59,18 @@
 
 | 角色 | 谁 | 阵营 | 地点 | 设计意图 |
 |---|---|---|---|---|
-| `truck 1` `truck 2` `truck 3` | 运克隆体的车队（粗模：矿车） | 敌 | `convoy start` | 目标：打掉两辆就赢，两辆逃到东岸就输 |
-| `ice 1` | 封门冰 | 敌 | `gate 1` | 盟军冻住的出口。随地图摆放，真能挡步兵 |
+| `truck 1` `truck 2` `truck 3` | 运克隆体的车队（粗模：去掉采矿、两栖的矿车） | 敌 | `convoy start` | 目标：打掉两辆就赢，两辆逃到港区就输 |
+| `ice 1` | 封门冰 | 敌 | `gate 1` | 盟军冻住的出口：横在坡道口、两头搭在悬崖上。随地图摆放，真能挡步兵 |
 | `ice 2` | 封门冰 | 敌 | `gate 2` | 同上 |
 | `ice 3` | 封门冰 | 敌 | `gate 3` | 同上 |
 | `escort` | 守护者坦克 | 敌 | `approach 2` `approach 3` | 守在 2、3 号广场门前的路上 |
-| `bank` | 雪堆（广场的三面墙） | 敌 | `gate 1` `gate 2` `gate 3` | 地形 |
 | `parent 1` `parent 2` | 合体机甲母体 | 我 | `north camp` | 本关解锁的单位：合体后砸冰 |
 | `child 1` `child 2` | 合体机甲子体 | 我 | `north camp` | 开进母体就合体 |
 | `troop 1-1` `troop 1-2` `troop 1-3` `troop 1-4` | 困在广场里的兵（两个坦克杀手、两个帝国武士） | 我 | `plaza 1` | 冰一破就能出来劫车 |
 | `troop 2-1` `troop 2-2` `troop 2-3` `troop 2-4` | 同上 | 我 | `plaza 2` | 同上 |
 | `troop 3-1` `troop 3-2` `troop 3-3` `troop 3-4` | 同上 | 我 | `plaza 3` | 同上 |
 
-- 路点：`exit`（东岸，车队的终点）、`seal 1` `seal 2` `seal 3`（各广场出口，封门冰所在）
+- 路点：`exit`（港区，车队的终点）、`seal 1` `seal 2` `seal 3`（各广场的坡道口，封门冰所在）
 - 能力：`parent 1.part`（拆开；合体是子体开进母体）
 - 时间：`convoy leaves`（车队出发）、`tick`（每隔多久重新给车队下一次命令）
 - 目标：主 `砸开广场出口的冰`（标记 `ice 1` `ice 2` `ice 3`，砸开第一块就完成）；主 `劫下克隆体车队`（标记 `truck 1` `truck 2` `truck 3`）；奖励 `三辆车全部截下`（跑掉一辆就失败）

@@ -90,7 +90,7 @@
 
 ## 6. 落到我们的地图上（检查单）
 
-每张关卡地图做完，`mapstudy.py --ours <mod>` 量一遍，对照上面的范围：
+地图用 `experimental/campaign/platmap.py` 按"台地 + 坡道 + 水道 + 桥"声明（例子：`experimental/cnv/maps/festival.py`）。每次改完先跑 MCP 的 `cnv_preview(<关>)`，10 秒出结果。设计检查（`platmap.lint`，`tests/test_maps.py` 守着）和下面几条里能量化的，它都会对照原版范围报出来：
 
 - [ ] 建基地的关：开局 1000 以内有一组矿，全图 6～20 个，敌方基地旁和争夺区也有。
 - [ ] 平地占陆地 75% 以上；高差用 80 一级的台地 + 窄悬崖 + 少数坡道做，不用连续缓坡。

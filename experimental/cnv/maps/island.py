@@ -49,6 +49,10 @@ def like(m, objs, tmpl):
     assert set(out) == {'wp', 'p1', 's1'}, out.keys()
     props, flags = out['s1']
     assert props['originalOwner'][1] == 'Soviet_1/teamSoviet_1', props['originalOwner']
-    for side, player in SPARE.items():
+    for side, player in {**SPARE, **NEUTRAL}.items():
         out[side] = (dict(props, originalOwner=(props['originalOwner'][0], f'{player}/team{player}')), flags)
     return out
+
+
+# the container's own neutral players: ore nodes, tech buildings, bridges (retail: PlyrNeutral), city buildings
+NEUTRAL = {'neutral': 'PlyrNeutral', 'civ': 'PlyrCivilian'}

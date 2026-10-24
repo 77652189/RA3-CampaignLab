@@ -197,9 +197,18 @@ def describe(e):
             (f' until s{until[0]:g}' if until else ''))
 
 
+WATCH_MAX = 120.0                       # bench_watch's longest single run
+
+
 def steps(mod, t):
     """The ra3bench calls that run the check: start, the check's own steps, the counters read as text."""
-    out = [['bench_start', {'mod': mod, 'look': False}]] + [[n, a] for n, a in t.bench]
+    out = [['bench_start', {'mod': mod, 'look': False}]]
+    for n, a in t.bench:
+        left = a.get('seconds', 0) if n == 'bench_watch' else 0
+        while left > WATCH_MAX:             # one watch runs at most 120 s (bench 2026-10-23: j4 lose asked 153)
+            out.append([n, dict(a, seconds=WATCH_MAX)])
+            left -= WATCH_MAX
+        out.append([n, dict(a, seconds=left) if n == 'bench_watch' else a])
     if t.counters:
         out.append(['bench_counters', {'lines': len(t.counters)}])
     return out
@@ -286,6 +295,8 @@ def main():
                                                          'one JSON line instead of running them')
     ap.add_argument('--judge', metavar='COUNTERS', help="(ra3bench cnv_check) judge bench_counters' text")
     ap.add_argument('--show', action='store_true', help="the build's interfaces and the contract check, nothing built")
+    ap.add_argument('--preview', action='store_true', help='only the map, written to work/maps/<mod>.map in seconds '
+                                                           '(no compile, no game): for mapstudy / maprender')
     a = ap.parse_args()
     if a.name == 'list':
         print(listing())
@@ -295,6 +306,14 @@ def main():
         print(text)
         sys.exit(0 if text.endswith('contract: ok') else 1)
     m, t, mod = resolve(a.name, a.check)
+    if a.preview:
+        if hasattr(m.map, 'LAYOUT'):            # the map's own design lint first: it needs no map file
+            import platmap
+            problems = platmap.lint(m.map.LAYOUT, m.map.SITES, getattr(m.map, 'OBJECTS', []))
+            print('LINT ' + ('ok' if not problems else '; '.join(problems)))
+        path = parts.preview(m, t, out=os.path.join(ROOT, 'work', 'maps', mod + '.map'))
+        print('PREVIEW ' + path)
+        return
     if a.judge is not None:
         lines, status = report(t, parse_counters(a.judge))
         print('\n'.join(lines))

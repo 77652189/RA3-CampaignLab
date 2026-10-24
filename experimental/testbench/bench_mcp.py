@@ -29,6 +29,11 @@ server = MCPServer('ra3bench', instructions=(
     'mission with its check (experimental/cnv; cnv_list shows them), runs it and returns PASS / FAIL from the map\'s '
     'own counters, no clicks or pictures; cnv_map(mod) shows a built map from above without the game (placement, '
     'trigger areas). New checks are written in experimental/cnv/checks (counters, trigger areas, expectations). '
+    'Maps: after any map or placement change run cnv_preview(name) first (~10 s, no compile, no game): the map\'s '
+    'design lint, its measures against the retail campaign maps, a picture. The retail maps are the design '
+    'reference (docs/story/map-language.md): map_study(target) measures one, retail_scripts(pattern) shows how their '
+    'scripts use an action, retail_objects(pattern) where and how a template is placed, retail_goals() their '
+    'objectives. bench_menu() shows the mission menu (objectives list) in a running game. '
     'By hand: bench_start(mod) walks the menus into the mod\'s test mission '
     '(~40 s). Then act in world coordinates (map units, as the builders place objects): bench_click / bench_box / '
     'bench_ability / bench_camera, advance with bench_wait, look with bench_look, zoom into any archived frame with '
@@ -381,6 +386,8 @@ def bench_stop() -> str:
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 BUILD = os.path.join(ROOT, 'experimental', 'cnv', 'build.py')
 MAPRENDER = os.path.join(ROOT, 'experimental', 'campaign', 'maprender.py')
+MAPSTUDY = os.path.join(ROOT, 'experimental', 'campaign', 'mapstudy.py')
+RETAILREF = os.path.join(ROOT, 'experimental', 'campaign', 'retailref.py')
 # the builds run in the base interpreter, in their own process: fresh code on every call (a check just edited), and
 # the pipeline's module state (templates, strings) starts empty each time
 BASE_PY = getattr(sys, '_base_executable', sys.executable)
@@ -438,12 +445,21 @@ def cnv_show(name: str, check: str = '') -> str:
 
 @server.tool(structured_output=False)
 @guard
-def cnv_check(name: str, check: str = '', build: bool = True, keep: bool = False) -> str:
+def cnv_check(name: str, check: str = '', build: bool = True, keep: bool = False, retry: bool = True) -> str:
     """Build a mission with one of its checks (cnv_list), run it on the bench and judge it -- one call, no clicks, no
     pictures: the map's scripts act, its counters report, the counters are read as numbers and held against the
     check's expectations. Returns the build summary, the watch rows, the readings and PASS / FAIL per expectation.
     build=false: the mod already built. keep=true: the game stays up (inspect frames, bench_stop when done). Takes
-    ~2-3 min (build ~70 s, menus ~40 s, the check's own run)."""
+    ~2-3 min (build ~70 s, menus ~40 s, the check's own run). retry=true: a run the capture dropped out of
+    (BENCH DROPOUT) is run once more by itself, without building again."""
+    out = _cnv_check(name, check, build, keep)
+    if retry and 'BENCH DROPOUT' in out:
+        # bench 2026-10-23: 3 of 14 runs dropped out, every rerun read through
+        out = out + '\n\n--- run again (dropout) ---\n' + _cnv_check(name, check, False, keep)
+    return out
+
+
+def _cnv_check(name, check, build, keep):
     import json
     args = [BUILD, name] + (['--check', check] if check else [])
     code, out = lab(*args, '--plan', *([] if build else ['--no-build']))
@@ -495,6 +511,94 @@ def cnv_map(mod: str, x: float = 0, y: float = 0, r: float = 0, px: int = 2) -> 
     img = PImage.open(out_png).convert('RGB')
     scale = min(1.0, 1280 / max(img.size))
     return [f'{mod}: {img.width}x{img.height} (full size: {out_png})', view(img, scale)]
+
+
+def picture(path, note):
+    from PIL import Image as PImage
+    img = PImage.open(path).convert('RGB')
+    return [note, view(img, min(1.0, 1000 / max(img.size)))]
+
+
+@server.tool(structured_output=False)
+def cnv_preview(name: str, check: str = '') -> list:
+    """A build's map in ~10 s, without compiling or the game: the map module's design lint (ramps, building sites,
+    structures on flat ground, bridges bank to bank), the map written as the build would write it, measured against
+    the retail campaign maps' ranges (flat ground, cliffs, height tiers, ore, tech, bridges, objectives), and a
+    picture from above: height bands, cliffs dark, flat land light, ore gold, tech cyan, bridges white, the player's
+    objects green, enemies red, objective markers yellow. Use it after every map or placement change, before
+    cnv_check (docs/story/map-language.md)."""
+    code, out = lab(BUILD, name, *(['--check', check] if check else []), '--preview', timeout=300)
+    lint = next((x for x in out.splitlines() if x.startswith('LINT ')), 'LINT (map has no platform layout)')
+    path = next((x[8:] for x in out.splitlines() if x.startswith('PREVIEW ')), None)
+    if code or not path:
+        return ['PREVIEW FAILED:\n' + tail(out, 20)]
+    code, study = lab(MAPSTUDY, '--ours', path, timeout=300)
+    pic = next((x[8:] for x in study.splitlines() if x.startswith('PICTURE ')), None)
+    text = '\n'.join([lint] + [x for x in study.splitlines() if not x.startswith('PICTURE ')])
+    return picture(pic, text) if pic and os.path.exists(pic) else [text]
+
+
+@server.tool(structured_output=False)
+def map_study(target: str) -> list:
+    """How a retail campaign map is built (target: part of its name, e.g. 's09_newyork', 'ep01_a02') or a built mod
+    of ours (its name, or a .map path): the same measures and picture as cnv_preview, ours set against the retail
+    ranges. The retail maps are RA3's 27 and Uprising's 13; their late missions are the design reference."""
+    ours = os.path.exists(target) or os.path.isdir(os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3',
+                                                                 'Mods', target))
+    code, out = lab(MAPSTUDY, *(['--ours', target] if ours else [target]), timeout=600)
+    if code:
+        return ['STUDY: ' + tail(out)]
+    rows = [x for x in out.splitlines() if x.startswith('|')]
+    if not ours and len(rows) == 1:
+        short = rows[0].split('|')[1].strip()
+        path = os.path.join(ROOT, 'work', 'mapstudy', short + '.png')
+        return picture(path, out.strip()) if os.path.exists(path) else [out.strip()]
+    pic = next((x[8:] for x in out.splitlines() if x.startswith('PICTURE ')), None)
+    text = '\n'.join(x for x in out.splitlines() if not x.startswith('PICTURE '))
+    return picture(pic, text) if pic else [text]
+
+
+@server.tool(structured_output=False)
+def retail_scripts(pattern: str, maps: str = '', limit: int = 8) -> str:
+    """Retail campaign scripts using a condition or action (pattern: a regex on the script lines, e.g.
+    'LINK_MISSION_OBJECTIVE', "OBJECTIVE_STATUS\\('Bonus"), each whole with its map -- how the original missions do
+    it. maps: comma-separated name parts (e.g. 's09,ep01') to search only those."""
+    code, out = lab(RETAILREF, 'scripts', pattern, '--maps', maps, '--limit', str(limit), timeout=600)
+    return out.strip() if code == 0 else 'RETAIL: ' + tail(out)
+
+
+@server.tool(structured_output=False)
+def retail_objects(pattern: str, maps: str = '', limit: int = 20) -> str:
+    """Placements of retail map objects whose template matches pattern (regex, e.g. 'Bridge', 'OreNode',
+    'OilDerrick'): map, position in the object list, position, angle, flags (a bridge's start 16 / end 32), owner,
+    name, ground height under it (world units; water at 200)."""
+    code, out = lab(RETAILREF, 'objects', pattern, '--maps', maps, '--limit', str(limit), timeout=600)
+    return out.strip() if code == 0 else 'RETAIL: ' + tail(out)
+
+
+@server.tool(structured_output=False)
+def retail_goals(maps: str = '') -> str:
+    """The retail campaign maps' objectives (English titles, main / bonus); maps: name parts to show only those."""
+    code, out = lab(RETAILREF, 'goals', '--maps', maps, timeout=600)
+    return out.strip() if code == 0 else 'RETAIL: ' + tail(out)
+
+
+@server.tool(structured_output=False)
+@guard
+def bench_menu(scale: float = 0.5) -> list:
+    """The mission menu (what Esc opens) as the player sees it: the objectives list (green main, yellow bonus, done
+    / failed marks), the selected one's description, the battlefield map with the objective markers. Hold mode: the
+    pause is that menu; otherwise Esc opens it for the picture and closes it again."""
+    h = S.window()
+    if S.hold:
+        S.pause()
+        fid, img = S.frame('mission menu')
+    else:
+        harness.key(h, 0x1B)
+        time.sleep(0.8)
+        fid, img = S.frame('mission menu')
+        harness.key(h, 0x1B)
+    return [f'frame {fid} at mission second {S.second()}: the mission menu', view(img, scale)]
 
 
 if __name__ == '__main__':

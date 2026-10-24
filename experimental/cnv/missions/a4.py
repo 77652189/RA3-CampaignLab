@@ -3,8 +3,8 @@
 Imperial remnants hide troops in the snow festival's ice sculptures to seize a convoy carrying clones. The convoy
 (three trucks; rough: ore collectors -- unarmed, 500 health) leaves `convoy leaves` seconds in and rolls east along
 the road to the exit on its own; every `tick` seconds the mission sends it on again, so the player escorts it but
-does not drive it. Three plazas beside the road, each walled by snow banks on three sides and open onto the road by
-a gate, hold two sculptures each, each sculpture two troops. A truck on a plaza's approach breaks that plaza's
+does not drive it. Three plazas beside the road, each raised ground with cliffs round it and one ramp down to the
+road (its gate; the map's terrain), hold two sculptures each, each sculpture two troops. A truck on a plaza's approach breaks that plaza's
 sculptures and its troops come out (a sculpture the player breaks earlier lets its own out then); from then on every
 `tick` they are ordered at the leading truck still on the road. The player's ice engineers can freeze a block of ice
 in a gate (it melts after a while: the wall's lifetime param) -- while one stands there the plaza's troops guard
@@ -12,7 +12,7 @@ their plaza instead -- or the player can break the sculptures early and fight th
 Two trucks at the exit: Mission Won; two trucks lost: Mission Lost.
 
 Published (the cast): truck 1-3, engineer 1-2, guardian, riptide (the player's); sculpture k-i (plaza k's i-th),
-bank (every plaza), troop k-i-n (sculpture k-i's n-th, created where it stood when it breaks) -- the enemy's.
+troop k-i-n (sculpture k-i's n-th, created where it stood when it breaks) -- the enemy's.
 Marks: exit, seal 1-3 (where ice in a gate stands); facts: convoy leaves, tick; endings: the win and lose scripts.
 """
 from maps import festival
@@ -24,8 +24,8 @@ from units import icewall as iw
 TROOPS = ('JapanAntiVehicleInfantry', 'JapanAntiInfantryInfantry')     # each sculpture hides a tank buster and a warrior
 LEAVE, TICK = 60.0, 3.0
 GATE_AREA = 90.0                                # half-side of the area a wall must stand in to hold a gate
-WALL_SIDE = 240.0                               # the A4 engineer's block: square or turned 45 degrees, it reaches
-                                                # into both side banks (inner faces +-98, outer +-122)
+WALL_SIDE = 160.0                               # the A4 engineer's block: square or turned 45 degrees, it spans
+                                                # the head of the gate's ramp (120 wide, maps/festival.py)
 OBJ, BONUS = 'Objective01 - CNV A4', 'Bonus01 - CNV A4'
 WIN, LOST = 'CNV A4 - Win', 'CNV A4 - Lost'
 
@@ -35,13 +35,13 @@ def troop(k, i, n):
 
 
 def mission(name='CampA4'):
-    # the engineer builds a small core that leaves a square block of ice over the gate and the banks' ends
+    # the engineer builds a small core that leaves a square block of ice across the gate's ramp
     # (units/icewall.py seed: a bar comes out at 45 degrees whatever is asked, and the gates stayed open)
     wall = iw.wall('CNV_A4IceWall', length=WALL_SIDE, shape='square')
     core = iw.seed('CNV_A4IceSeed', wall.id)
     eng = iw.engineer(wall_id=core.id)
-    sculpt, bank = fest.sculpture(), fest.bank(length=fp.GATE)
-    m = Mission(name=name, map=festival, units=[eng, core, wall, sculpt, bank],
+    sculpt = fest.sculpture()
+    m = Mission(name=name, map=festival, units=[eng, core, wall, sculpt],
                 objectives=[Goal(OBJ, 'MISSIONOBJ:CNVA4_1', 'MISSIONOBJ:CNVA4_1_DESC',
                                  show=('truck 1', 'truck 2', 'truck 3', 'exit')),
                             Goal(BONUS, 'MISSIONOBJ:CNVA4_B1', 'MISSIONOBJ:CNVA4_B1_DESC', bonus=True)],
@@ -55,7 +55,7 @@ def mission(name='CampA4'):
         m.put('AlliedAntiInfantryVehicle', 'west field', 250 + dx, -40, role='riptide')
 
     reveal, chase = [], []
-    for k in fp.plazas(m, bank, 'A4'):
+    for k in fp.plazas(m, 'A4', at='inside'):
         s = fp.north(m, k)
         approach = f'CNV A4 Approach {k}'
         m.areas[approach] = square(*m.site(f'approach {k}'), m.where(f'approach {k}').r)

@@ -48,6 +48,7 @@ class Site:
     y: float
     r: float = 0.0
     what: str = ''
+    build: float = 0.0                  # > 0: a square this wide here must be flat enough to build on (platmap.lint)
 
     def at(self, dx=0.0, dy=0.0):
         return (self.x + dx, self.y + dy)
@@ -77,6 +78,7 @@ class Obj:
     angle: float = None                 # default: p1 faces north, s1 south
     props: dict = dataclasses.field(default_factory=dict)       # more object properties (objectInitialHealth ...)
     site: str = ''                      # the map site it was placed by (Mission.put); '' = raw coordinates
+    flags: int = None                   # object flags (a bridge's start 16 / end 32); None: those of its side's template
 
 
 @dataclasses.dataclass
@@ -396,6 +398,53 @@ def contract(mission):
     return out
 
 
+def write_map(m, mm):
+    """The mission (merged) written into the container map: the map's terrain and its own objects (ore, tech,
+    bridges: map.OBJECTS), then the mission's waypoints, objects, scripts, trigger areas and objectives."""
+    import newmap
+    mm.map.terrain(m)
+    objs = next(n for _, n in m.walk() if n.name == 'ObjectsList')
+    tmpl = lambda k: k.head[22:22 + int.from_bytes(k.head[20:22], 'little')].decode('latin-1')   # noqa: E731
+    like = mm.map.like(m, objs, tmpl)
+    objs.kids = [k for k in objs.kids if tmpl(k) == '*Waypoints/Waypoint']        # the map's starts stay
+    wid = 1 + max(newmap.typed_props_of(m, k)[0].get('waypointID', (1, 0))[1] for k in objs.kids)
+    for k, (wname, (x, y)) in enumerate(mm.waypoints.items()):
+        objs.kids.append(newmap.object_node(m, *like['wp'], '*Waypoints/Waypoint', x, y, waypointName=wname,
+                                            waypointID=wid + k, uniqueID=f'Waypoint {wid + k}'))
+    for o in list(getattr(mm.map, 'OBJECTS', [])) + mm.objects:       # a bridge's two ends stay next to each other
+        angle = o.angle if o.angle is not None else (1.5708 if o.side == 'p1' else -1.5708)
+        extra = dict(o.props, **({'objectName': o.name} if o.name else {}))
+        props, flags = like[o.side]
+        objs.kids.append(newmap.object_node(m, props, flags if o.flags is None else o.flags, o.template, o.x, o.y,
+                                            angle=angle, uniqueID=o.name or f'{o.template} {len(objs.kids)}', **extra))
+    ours = [m.new_script(s.name, [m.new_content('Condition', *c) for c in s.when]
+                         or [m.new_content('Condition', 'CONDITION_TRUE')],
+                         [m.new_content('ScriptAction', *a) for a in s.do], one_shot=s.once)
+            for s in mm.scripts]            # before clearing: chunk versions are read off existing nodes
+    newmap.clear_scripts(m)[2].kids += ours
+    m.set_trigger_areas(mm.areas)           # the base map's areas went with its scripts
+    m.set_objectives([dict(name=g.name, title=g.title, desc=g.desc, bonus=int(g.bonus), flags=1)
+                      for g in mm.objectives])
+
+
+def preview(mission, test=None, out=None):
+    """The map a build would make, without compiling or the game (seconds, not the 70 s build): write_map on the
+    container map, saved as a .map (default work/maps/<name>.map) for maprender / mapstudy. Returns the path."""
+    import make_campnew18 as c18
+    from mapscript import MapFile
+    mm = merged(mission, test)
+    broken = contract(mm)
+    assert not broken, 'uses what nobody published:\n  ' + '\n  '.join(broken)
+    path, data = next((p, d) for p, d in c18.c6._map_files() if p.lower().endswith('.map'))
+    m = MapFile(data)
+    write_map(m, mm)
+    out = out or os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'maps', mm.name + '.map')
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    with open(out, 'wb') as f:
+        f.write(m.map_file())
+    return out
+
+
 def assemble(mission, test=None, name=None):
     """Write the units, set the pipeline up for this mission (+ test) and build the mod; returns the mod folder."""
     import make_campnew18 as c18                # the pipeline (c7 ... c2) and the generated island's start
@@ -441,28 +490,7 @@ def assemble(mission, test=None, name=None):
     c4.c3.STRINGS.update(mm.strings)
 
     def edit(m):
-        mm.map.terrain(m)
-        objs = next(n for _, n in m.walk() if n.name == 'ObjectsList')
-        tmpl = lambda k: k.head[22:22 + int.from_bytes(k.head[20:22], 'little')].decode('latin-1')   # noqa: E731
-        like = mm.map.like(m, objs, tmpl)
-        objs.kids = [k for k in objs.kids if tmpl(k) == '*Waypoints/Waypoint']        # the map's starts stay
-        wid = 1 + max(newmap.typed_props_of(m, k)[0].get('waypointID', (1, 0))[1] for k in objs.kids)
-        for k, (wname, (x, y)) in enumerate(mm.waypoints.items()):
-            objs.kids.append(newmap.object_node(m, *like['wp'], '*Waypoints/Waypoint', x, y, waypointName=wname,
-                                                waypointID=wid + k, uniqueID=f'Waypoint {wid + k}'))
-        for o in mm.objects:
-            angle = o.angle if o.angle is not None else (1.5708 if o.side == 'p1' else -1.5708)
-            extra = dict(o.props, **({'objectName': o.name} if o.name else {}))
-            objs.kids.append(newmap.object_node(m, *like[o.side], o.template, o.x, o.y, angle=angle,
-                                                uniqueID=o.name or f'{o.template} {len(objs.kids)}', **extra))
-        ours = [m.new_script(s.name, [m.new_content('Condition', *c) for c in s.when]
-                             or [m.new_content('Condition', 'CONDITION_TRUE')],
-                             [m.new_content('ScriptAction', *a) for a in s.do], one_shot=s.once)
-                for s in mm.scripts]            # before clearing: chunk versions are read off existing nodes
-        newmap.clear_scripts(m)[2].kids += ours
-        m.set_trigger_areas(mm.areas)           # the base map's areas went with its scripts
-        m.set_objectives([dict(name=g.name, title=g.title, desc=g.desc, bonus=int(g.bonus), flags=1)
-                          for g in mm.objectives])
+        write_map(m, mm)
         print(f'{name}: {len(mm.objects)} objects, {len(mm.waypoints)} waypoints, {len(mm.areas)} areas, '
               f'{len(mm.scripts)} scripts, units {sorted(seen)}')
 
