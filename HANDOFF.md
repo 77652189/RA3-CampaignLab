@@ -2,11 +2,14 @@
 
 ## 当前目标
 
-**推进关卡**（用户 2026-10-23："A7 A8 难度可以先不考虑，我们先看看单位有没有做完，做完了就开始推进关卡"）：新单位都已验证（[docs/story/units.md](docs/story/units.md) 进度表）；后半段才用的招牌、老面孔、终局球塔做到那一关再做（plan.md「待启动」）。关卡卡片在 [docs/story/levels.md](docs/story/levels.md)，现有 A4、J4、A7、A8。A4 第一版已做完、七个检查全过；J4 写完，`breach` 已过（plan.md A4、J4 行）。A4 冰墙的改动（长条墙转不了向 → 方冰块；封门靠关卡脚本）用户 2026-10-23 回"可以，按你的推荐做 J4"时一并认了。用户定的大顺序：战役设定 → 粗模玩法验证 → 关卡 → 美术最后。剧情大纲 [docs/story/outline.md](docs/story/outline.md)（v5）。
+**推进关卡**（用户 2026-10-23："A7 A8 难度可以先不考虑，我们先看看单位有没有做完，做完了就开始推进关卡"）：新单位都已验证（[docs/story/units.md](docs/story/units.md) 进度表）；后半段才用的招牌、老面孔、终局球塔做到那一关再做（plan.md「待启动」）。关卡卡片在 [docs/story/levels.md](docs/story/levels.md)，现有 A4、J4、A7、A8。A4 七个检查、J4 三个检查都过（2026-10-24，plan.md A4、J4 行）；四关本体都按最新代码编好了，用户可以从启动器"战役关卡"组直接试玩。A4 冰墙的改动（长条墙转不了向 → 方冰块；封门靠关卡脚本）用户 2026-10-23 回"可以，按你的推荐做 J4"时一并认了。用户定的大顺序：战役设定 → 粗模玩法验证 → 关卡 → 美术最后。剧情大纲 [docs/story/outline.md](docs/story/outline.md)（v5）。
 
-**按原版设计语言返工**（用户 2026-10-23 试玩后提了六个问题，要求先学原版后几关和起义时刻的共同做法，"考虑玩家体验而不是合理性"）：规则和数字在 [docs/story/map-language.md](docs/story/map-language.md)，进度在 plan.md「关卡按原版设计语言返工」一行。问题 1、2（目标提示、奖励目标）已做完并上测试台看过。
+**按原版设计语言返工**（用户 2026-10-23 试玩后提了六个问题，要求先学原版后几关和起义时刻的共同做法，"考虑玩家体验而不是合理性"）：规则和数字在 [docs/story/map-language.md](docs/story/map-language.md)，进度在 plan.md「关卡按原版设计语言返工」一行。
+- 问题 1、2（目标提示、奖励目标）已做完并上测试台看过；2026-10-24 起目标分阶段（上一段完成才亮下一段，期限带倒计时），A4、J4 已换上。
+- 问题 3～6 在雪祭图（A4、J4）上用平台地生成器做完了（`experimental/campaign/platmap.py`），A7、A8 还是旧海岛图。
+- J4 的车队到出发时间才出现（2026-10-24）。
 
-问题 3～6 在雪祭图（A4、J4）上用平台地生成器做完了（`experimental/campaign/platmap.py`，用户 2026-10-23"按推荐做平台地生成器"）。地图工具也进了 MCP，用法见 plan.md「测试工具用法」0h；新工具要新会话才加载。
+地图工具在 MCP 里，用法见 plan.md「测试工具用法」0h。启动器（`launcher.pyw`）的分组从代码推出来，见 plan.md 第 1b 条。
 
 **下一步**：
 1. A7 / A8 的海岛图改成平台地；中立民用建筑（驻军、挡路）。
@@ -20,7 +23,7 @@
 
 **写新单位**照钻地运兵车的样子：`units/<名>.py`（公开 abilities）+ `missions/<名>_bench.py`（按地点放、公开 cast / marks）+ `checks/<名>.py`（计数器 + 期望），在 `build.py` 的 MISSIONS 里登记；先 `cnv_show` 看接口，再 `cnv_check`。必要时用 A/B 对照（同图两个、一个用技能一个不用）和不放技能的对照检查。
 
-**工具现状**：测试首选 MCP `cnv_check(name, check)`（编图 + 进关 + 读计数器 + 判定，一次调用）；`cnv_show(name, check)` 看各层公开的接口和接口检查（不编图）；`cnv_list` 列出所有构建。各层只走接口，关卡卡片由测试和代码对齐（plan.md「测试工具用法」0f、0g）。本会话改过的 `bench_mcp.py`（截帧掉线提示 BENCH DROPOUT、条件满足后照跑不带条件的观察）要 MCP 服务重启（新会话）才生效。
+**工具现状**：测试首选 MCP `cnv_check(name, check)`（编图 + 进关 + 读计数器 + 判定，一次调用）；`cnv_show(name, check)` 看各层公开的接口和接口检查（不编图）；`cnv_list` 列出所有构建。各层只走接口，关卡卡片由测试和代码对齐（plan.md「测试工具用法」0f、0g）。MCP 服务进程只在会话开始时加载一次代码：改了 `bench_mcp.py`、`harness.py`、`counters.py` 之后，本会话要验证就用 stdio 客户端另起一个服务进程（2026-10-24 用过，脚本没进仓库：照 `experimental/testbench/bench_client.py` 的写法），新会话会自动加载。
 
 **已定、以后再做**：甲板乘员叠在航母正中一个点，用户 2026-10-21 定先接受叠放（候选做法：TransportContain 的 PassengerData BonePrefix，要给航母模型加甲板骨骼）。
 
@@ -57,7 +60,7 @@
 ## 状态
 
 ```yaml
-slice: platform-maps-2026-10-23
+slice: staged-objectives-2026-10-24
 blocked_on: none        # none | voice-session | user
 next_gate: demo         # test-map | coordinate-calibration | demo
 ```

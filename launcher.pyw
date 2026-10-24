@@ -2,6 +2,12 @@ r"""红警3 测试启动器: a small window listing the built CNV mods (Document
 grouped, with a line on what each one is; double-click or "启动" starts RA3 1.13 with it (the same command as the
 Play_<mod>.bat files: RA3.exe -runver 1.13 -modConfig <skudef>). Refuses to start while RA3 / Uprising runs.
 
+The groups come from the code, not a hand-kept list (the old list went stale: A4 and every check build fell into
+其他, user 2026-10-24): experimental/cnv/build.py registers every build -- the campaign levels (LEVELS) as played,
+their checks (scripted runs), the unit test maps -- and docs/story/levels.md has each level's title, pitch and
+check descriptions (tests/test_level_cards.py keeps the cards and the code in step). Only mods outside the
+registry (the early make_campnew*.py builds) still need a line in LEGACY.
+
   pythonw launcher.pyw            the window (the desktop shortcut runs this)
   python -I -X utf8 launcher.pyw --list    print what the window would list, then exit (a check without a window)
 """
@@ -17,38 +23,86 @@ import labpaths  # noqa: E402
 
 MODS = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods')
 RA3 = os.path.join(labpaths.GAME, 'RA3.exe')
+CARDS = os.path.join(ROOT, 'docs', 'story', 'levels.md')
 
-# group, title -- the missions first, then the unit test maps; anything else is listed under 其他
-KNOWN = {
-    'CampA7': ('关卡', 'A7 鹰派：自由号当首领。先炸东北的电站，它就不能跃迁了'),
-    'CampA8': ('关卡', 'A8 海上发布会：自由号归你，打掉东边三座供电平台；自由号被击落就输'),
-    'CampBridge1': ('关卡', 'CNV05 金门抢桥：先拿南桥头，再顶住北岸的反扑'),
-    'CampNew33': ('关卡', 'CNV04 鸣神小关卡'),
-    'CampNew30': ('关卡', 'CNV03 小关卡：冷冻 + 缩小 + 游隼'),
-    'CampNew35': ('单位测试图', '时滞炮车（最后一次编的场景）'),
-    'CampNew36': ('单位测试图', '阻塞气球车（最后一次编的场景）'),
-    'CampNew37': ('单位测试图', '烟花兵（最后一次编的场景）'),
-    'CampNew38': ('单位测试图', '自由号空天航母（最后一次编的场景）'),
-    'CampNew34': ('单位测试图', '磁钩坦克'),
-    'CampNew31': ('单位测试图', '鸣神机制'),
-    'CampNew29': ('单位测试图', '收缩射线车 + 游隼'),
+LEVEL, LEVEL_CHECK, UNIT, EARLY, OTHER = '战役关卡', '关卡检查（脚本代玩）', '单位测试图', '早期原型（旧编图脚本）', '其他'
+GROUPS = [LEVEL, LEVEL_CHECK, UNIT, EARLY, OTHER]
+OPEN = {LEVEL, EARLY}                   # groups shown unfolded
+
+# mods the registry does not build (the early make_campnew*.py scripts): group, title
+LEGACY = {
+    'CampBridge1': (EARLY, 'CNV05 金门抢桥：先拿南桥头，再顶住北岸的反扑'),
+    'CampNew33': (EARLY, 'CNV04 鸣神小关卡'),
+    'CampNew30': (EARLY, 'CNV03 小关卡：冷冻 + 缩小 + 游隼'),
+    'CampNew35': (EARLY, '时滞炮车（最后一次编的场景）'),
+    'CampNew36': (EARLY, '阻塞气球车（最后一次编的场景）'),
+    'CampNew37': (EARLY, '烟花兵（最后一次编的场景）'),
+    'CampNew38': (EARLY, '自由号空天航母（最后一次编的场景）'),
+    'CampNew34': (EARLY, '磁钩坦克'),
+    'CampNew31': (EARLY, '鸣神机制'),
+    'CampNew29': (EARLY, '收缩射线车 + 游隼'),
+    'CNVChaos': (OTHER, '联机不同步测试图：遭遇战 CNV_Chaos，观战 + 4 个凶残 AI，会存录像'),
 }
-GROUPS = ['关卡', '单位测试图', '其他']
+
+
+def cards():
+    """{level key: (title, {check: what})} from docs/story/levels.md: "A4 冰雕里的兵：守" (the heading and the first
+    sentence of its 一句话玩法) and its 检查 list."""
+    with open(CARDS, encoding='utf-8') as f:
+        text = f.read()
+    heads = list(re.finditer(r'^## (.+?) · `(\w+)`$', text, re.M))
+    out = {}
+    for k, h in enumerate(heads):
+        body = text[h.end():heads[k + 1].start() if k + 1 < len(heads) else len(text)]
+        pitch = re.search(r'^一句话玩法：([^。\n]*)', body, re.M)
+        checks = dict(re.findall(r'^  - `(\w+)`：(.*)$', body, re.M))
+        out[h.group(2)] = (h.group(1) + (f'：{pitch.group(1)}' if pitch else ''), checks)
+    return out
+
+
+def catalog():
+    """{mod: (group, title, order)} for every build the code registers; order: the cards' order for the levels."""
+    sys.path[:0] = [os.path.join(ROOT, 'experimental', 'cnv')]
+    import build
+    known = cards()
+    order = {key: k for k, key in enumerate(known)}
+    out = {}
+    for key, (make, checks) in build.MISSIONS.items():
+        for check in [''] + list(checks):
+            _, _, mod = build.resolve(key, check)
+            if key in build.LEVELS:
+                title, what = known.get(key, (key, {}))
+                if check:
+                    out[mod] = (LEVEL_CHECK, f'{title.split("：")[0]} · {check}：{what.get(check, "")}', order.get(key, 99))
+                else:
+                    out[mod] = (LEVEL, title, order.get(key, 99))
+            else:
+                m = make()
+                names = list(dict.fromkeys(re.split('[：（(]', u.what)[0] for u in m.units if getattr(u, 'what', '')))
+                title = '、'.join(names) or f'对照（{key}）'
+                out[mod] = (UNIT, title + (f' · {check}' if check else ''), 99)
+    return out
 
 
 def mods():
-    """[(group, mod, title, built time)] for every mod folder with its skudef, missions first, newest first."""
+    """[(group, mod, title, built time)] for every mod folder with its skudef: levels in the cards' order, the rest
+    newest first."""
     out = []
     if not os.path.isdir(MODS):
         return out
+    try:
+        known = catalog()
+    except Exception as e:                  # the code mid-edit: still list the mods, flat
+        known = {}
+        print('catalog failed:', e, file=sys.stderr)
     for name in os.listdir(MODS):
         sku = os.path.join(MODS, name, f'{name}_1.0.skudef')
         if not os.path.exists(sku):
             continue
-        group, title = KNOWN.get(name, ('其他', ''))
-        out.append((group, name, title, os.path.getmtime(sku)))
-    out.sort(key=lambda r: (GROUPS.index(r[0]), -r[3]))
-    return out
+        group, title, rank = known.get(name) or (*LEGACY.get(name, (OTHER, '')), 99)
+        out.append((group, name, title, os.path.getmtime(sku), rank))
+    out.sort(key=lambda r: (GROUPS.index(r[0]), r[4], -r[3]))
+    return [r[:4] for r in out]
 
 
 def game_running():
@@ -101,7 +155,7 @@ def main():
         parents = {}
         for group, name, title, built in mods():
             if group not in parents:
-                parents[group] = tree.insert('', 'end', text=group, open=group != '其他')
+                parents[group] = tree.insert('', 'end', text=group, open=group in OPEN)
             tree.insert(parents[group], 'end', iid=name, text=name,
                         values=(title, datetime.datetime.fromtimestamp(built).strftime('%m-%d %H:%M')))
         first = next((i for p in tree.get_children() for i in tree.get_children(p)), None)
