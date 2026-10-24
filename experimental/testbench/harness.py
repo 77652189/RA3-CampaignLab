@@ -193,11 +193,13 @@ class Session:
         self.run_from = None        # when the current running stretch began (time.monotonic), None while paused
 
     # -- life cycle -------------------------------------------------------------------------------------------
-    def start(self, mod, visible=False, timeout=150, hold=True):
+    def start(self, mod, visible=False, timeout=150, hold=True, steps=None):
+        """mod None: the plain game (no -modConfig). steps: nav steps to walk instead of nav.json's way into the CNV
+        mission, e.g. nav.json's first step without its click to stop on the main menu (skirmish by hand)."""
         if self.p and self.p.poll() is None:
             raise BenchError(f'a session is running ({self.mod}): stop it first')
-        sku = skudef(mod)
-        if not os.path.exists(sku):
+        sku = skudef(mod) if mod else 'RA3'
+        if mod and not os.path.exists(sku):
             raise BenchError(f'no such mod: {sku}')
         if game_running():
             raise BenchError('an RA3 process is already running (the user playing, or another bench): not starting')
@@ -218,10 +220,10 @@ class Session:
         self.frames, self.view, self.log, self.muted, self.t0 = [], None, [], 0, None
         self.hold, self.paused, self.game_s, self.run_from = hold, False, 0.0, None
         args = [os.path.join(BENCH, 'Data', 'RA3_1.13.game'), '-config', os.path.join(BENCH, 'RA3_chinese_t_1.13.SkuDef'),
-                '-runver', '1.13', '-win', '-xres', str(W), '-yres', str(H), '-modConfig', sku]
+                '-runver', '1.13', '-win', '-xres', str(W), '-yres', str(H)] + (['-modConfig', sku] if mod else [])
         self.p = subprocess.Popen(args, cwd=BENCH)
         try:
-            self._walk_menus(visible, timeout)
+            self._walk_menus(visible, timeout, steps)
         except BaseException:
             self.stop()
             raise
@@ -230,9 +232,10 @@ class Session:
     def _say(self, s):
         self.log.append(s)
 
-    def _walk_menus(self, visible, timeout):
-        with open(os.path.join(nav.OUT, 'nav.json'), encoding='utf-8') as f:
-            steps = json.load(f)
+    def _walk_menus(self, visible, timeout, steps=None):
+        if steps is None:
+            with open(os.path.join(nav.OUT, 'nav.json'), encoding='utf-8') as f:
+                steps = json.load(f)
         at, done_at, parked, t = 0, 0, False, time.monotonic()
         while True:
             time.sleep(1)
