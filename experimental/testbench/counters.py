@@ -103,8 +103,12 @@ def read_line(img, box):
 
 
 def read(img, n):
-    """The n counters' values, top to bottom."""
-    return [read_line(img, line_box(k, n)) for k in range(n)]
+    """The n counters' values, top to bottom. A countdown the mission shows (DISPLAY_COUNTDOWN_TIMER, "车队出发
+    0:50") stands in the same list above the counters (bench 2026-10-24: it pushed them a line down and the top
+    counter read 253): the lines with text beyond the n counters are taken as such and skipped."""
+    lines = [k for k in range(MAX_LINES) if glyphs(img, line_box(k))]
+    skip = max(0, len(lines) - n)
+    return [read_line(img, line_box(k + skip, n)) for k in range(n)]
 
 
 def calibrate(img):

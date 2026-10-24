@@ -24,6 +24,7 @@ sys.path.insert(0, CAMPAIGN)
 
 
 MAX_NAME = 15                           # mod folder names longer than this crash the game at start (see assemble)
+COUNTER_LINES = 4                       # counter / countdown lines that fit on the bench's screen (counters.MAX_LINES)
 
 
 @dataclasses.dataclass
@@ -126,6 +127,8 @@ class Mission(Part):
     facts: dict = dataclasses.field(default_factory=dict)       # published: numbers a check may hold it to (seconds)
     later: set = dataclasses.field(default_factory=set)         # cast parts a script creates in play: their objective
                                                                 # markers wait for made(), not the reveal
+    countdowns: list = dataclasses.field(default_factory=list)  # published: the timers it shows on screen (countdowns
+                                                                # stand above the counters, in the same 4 lines)
 
     def find(self, name):
         return next(o for o in self.objects if o.name == name)
@@ -235,8 +238,10 @@ class Mission(Part):
         return [('SET_MISSION_OBJECTIVE_STATUS', name, 3)] + self.markers(name, on=False)
 
     def goal_scripts(self, gap=4.0):
-        """One timer from the start; each objective with an `at` revealed then, retail-like a few seconds apart so
-        each gets its own announcement."""
+        """At the start every objective hidden (status 0: written in the map they are listed from the start --
+        bench 2026-10-24: stages not yet reached already showed in the mission menu), then one timer; each objective
+        with an `at` revealed then, retail-like a few seconds apart so each gets its own announcement. The others
+        are revealed by the mission's own scripts (m.reveal)."""
         timed = sorted((g for g in self.objectives if g.at is not None), key=lambda g: g.at)
         timers, reveals, last = [], [], None
         for k, g in enumerate(timed, 1):
@@ -244,7 +249,8 @@ class Mission(Part):
             timers.append(('SET_MILLISECOND_TIMER', f'CNV Goal Timer {k}', last))
             reveals.append(Script(f'CNV Goals - Reveal {k}', [('TIMER_EXPIRED', f'CNV Goal Timer {k}')],
                                   self.reveal(g.name)))
-        return [Script('CNV Goals - Start', [], timers)] + reveals if timed else []
+        hidden = [('SET_MISSION_OBJECTIVE_STATUS', g.name, 0) for g in self.objectives]
+        return [Script('CNV Goals - Start', [], hidden + timers)] + reveals if self.objectives else []
 
 
 @dataclasses.dataclass
@@ -344,6 +350,10 @@ def merged(mission, test=None):
         return m
     for f in ('units', 'objects', 'scripts'):
         setattr(m, f, getattr(m, f) + getattr(test, f))
+    if m.countdowns and len(test.counters) + len(m.countdowns) > COUNTER_LINES:
+        # the counters must stay readable: a countdown would push the last one off the screen (bench 2026-10-24)
+        m.scripts = m.scripts + [Script('Test - countdowns off', [], [('HIDE_COUNTDOWN_TIMER', c) for c in m.countdowns],
+                                        once=False)]
     m.waypoints = {**mission.waypoints, **test.waypoints}
     m.areas = {**mission.areas, **test.areas}
     m.strings = {**mission.strings, **test.strings}

@@ -27,9 +27,10 @@ def ticks(s):
 
 
 def item(card, label):
-    m = re.search(rf'^- {label}：(.*)$', card, re.M)
+    """A card's "- label：..." line, with the indented "  - ..." lines under it (objectives in stages)."""
+    m = re.search(rf'^- {label}：(.*)$((?:\n  - .*)*)', card, re.M)
     assert m, f'card has no "{label}" line'
-    return m.group(1)
+    return m.group(1) + m.group(2)
 
 
 def test_a_card_per_level():

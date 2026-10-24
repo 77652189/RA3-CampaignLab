@@ -59,11 +59,20 @@ class Convoy:
         """The action that sets the convoy's departure (for the mission's intro script)."""
         return ('SET_MILLISECOND_TIMER', self.go_timer, self.leave)
 
+    def countdown(self, label):
+        """The action that shows the time to the departure on screen (retail: DISPLAY_COUNTDOWN_TIMER with a
+        SCRIPT: label, as A01's waves); go hides it. For the intro script, after start()."""
+        self.shown = True
+        self.m.countdowns.append(self.go_timer)
+        return ('DISPLAY_COUNTDOWN_TIMER', self.go_timer, label)
+
     def go(self):
         made = [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION', t, self.truck.id, self.m.team(self.side), w, 0.0)
                 for t, w in zip(self.trucks, self.spawns)]
         if made:
             made += self.m.made([f'truck {j}' for j in (1, 2, 3)])
+        if getattr(self, 'shown', False):
+            made.append(('HIDE_COUNTDOWN_TIMER', self.go_timer))
         return [Script(f'CNV {self.tag} - Go', [('TIMER_EXPIRED', self.go_timer)],
                        made + [('SHOW_MILITARY_CAPTION', f'SCRIPT:{self.code}_GO', 5.0), ('SET_FLAG', self.rolling, 1),
                                ('SET_MILLISECOND_TIMER', self.timer, 0.0)])]
@@ -83,6 +92,11 @@ class Convoy:
                            ([('FLAG', self.rolling, 1)] if self.enter else []),     # not "destroyed" before it exists
                            [('INCREMENT_COUNTER', 1, self.losses)])]
         return out
+
+    def reached(self, area, flag, actions):
+        """Scripts that do `actions` once, when the first truck gets into `area` (and `flag` is still 0)."""
+        return [Script(f'CNV {self.tag} - Reached {area} by {j}', [('NAMED_INSIDE_AREA', t, area), ('FLAG', flag, 0)],
+                       [('SET_FLAG', flag, 1)] + actions) for j, t in enumerate(self.trucks, 1)]
 
     def chase(self, j):
         """Conditions true while truck j is the leading one still on the road (those before it gone)."""

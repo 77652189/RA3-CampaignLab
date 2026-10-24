@@ -11,9 +11,16 @@ in a gate (it melts after a while: the wall's lifetime param) -- while one stand
 their plaza instead -- or the player can break the sculptures early and fight the troops before the convoy comes.
 Two trucks at the exit: Mission Won; two trucks lost: Mission Lost.
 
+Objectives in stages, retail-like (A01: the next stage shows when the last is done, a countdown to a deadline): the
+escort (trucks and exit marked) and a countdown to the departure from the start; bonus: all three gates sealed
+before the departure (each seal's marker goes when its gate is walled; failed if the convoy leaves first); bonus:
+all three trucks through. At the departure "through plaza 1" (marked where the road passes it), done when the
+first truck reaches plaza 2's approach, which shows "through plaza 2"; past that the escort's exit is next.
+
 Published (the cast): truck 1-3, engineer 1-2, guardian, riptide (the player's); sculpture k-i (plaza k's i-th),
 troop k-i-n (sculpture k-i's n-th, created where it stood when it breaks) -- the enemy's.
-Marks: exit, seal 1-3 (where ice in a gate stands); facts: convoy leaves, tick; endings: the win and lose scripts.
+Marks: exit, seal 1-3 (where ice in a gate stands), pass 1-2 (the road past plaza 1 / 2: plaza 2's / 3's approach);
+facts: convoy leaves, tick; endings: the win and lose scripts.
 """
 from maps import festival
 from missions import festival_parts as fp
@@ -27,7 +34,10 @@ GATE_AREA = 90.0                                # half-side of the area a wall m
 WALL_SIDE = 160.0                               # the A4 engineer's block: square or turned 45 degrees, it spans
                                                 # the head of the gate's ramp (120 wide, maps/festival.py)
 OBJ, BONUS = 'Objective01 - CNV A4', 'Bonus01 - CNV A4'
+SEAL = 'Bonus02 - CNV A4'
+LEGS = ['Objective02 - CNV A4', 'Objective03 - CNV A4']    # through plaza 1, through plaza 2
 WIN, LOST = 'CNV A4 - Win', 'CNV A4 - Lost'
+SEALED = 'CNV_A4_Sealed'                        # gates walled before the departure
 
 
 def troop(k, i, n):
@@ -44,7 +54,11 @@ def mission(name='CampA4'):
     m = Mission(name=name, map=festival, units=[eng, core, wall, sculpt],
                 objectives=[Goal(OBJ, 'MISSIONOBJ:CNVA4_1', 'MISSIONOBJ:CNVA4_1_DESC',
                                  show=('truck 1', 'truck 2', 'truck 3', 'exit')),
-                            Goal(BONUS, 'MISSIONOBJ:CNVA4_B1', 'MISSIONOBJ:CNVA4_B1_DESC', bonus=True)],
+                            Goal(SEAL, 'MISSIONOBJ:CNVA4_B2', 'MISSIONOBJ:CNVA4_B2_DESC', bonus=True,
+                                 show=('seal 1', 'seal 2', 'seal 3')),
+                            Goal(BONUS, 'MISSIONOBJ:CNVA4_B1', 'MISSIONOBJ:CNVA4_B1_DESC', bonus=True),
+                            *[Goal(g, f'MISSIONOBJ:CNVA4_{k + 2}', f'MISSIONOBJ:CNVA4_{k + 2}_DESC', show=(f'pass {k}',),
+                                   at=None) for k, g in enumerate(LEGS, 1)]],
                 facts={'convoy leaves': LEAVE, 'tick': TICK})
     convoy = fp.Convoy(m, 'A4', 'p1', LEAVE, TICK)
     for j, dx in enumerate((-30, 30), 1):
@@ -54,7 +68,9 @@ def mission(name='CampA4'):
     for dx in (-30, 30):
         m.put('AlliedAntiInfantryVehicle', 'west field', 250 + dx, -40, role='riptide')
 
-    reveal, chase = [], []
+    reveal, chase, seals = [], [], []
+    for k, site in ((1, 'approach 2'), (2, 'approach 3')):
+        m.waypoint(f'pass {k}', f'CNV A4 Pass {k}', site)
     for k in fp.plazas(m, 'A4', at='inside'):
         s = fp.north(m, k)
         approach = f'CNV A4 Approach {k}'
@@ -92,6 +108,9 @@ def mission(name='CampA4'):
                   for j, target in enumerate(convoy.trucks)]
         chase += [Script(f'CNV A4 - Held {k}', [('FLAG', f'CNV_A4_Out_{k}', 1), ('TIMER_EXPIRED', convoy.timer), walled],
                          [('UNIT_GUARD_AREA', t, plaza_area) for t in them], once=False)]
+        # the seal bonus: a gate walled before the departure loses its marker and counts
+        seals.append(Script(f'CNV A4 - Sealed {k}', [walled, ('FLAG', convoy.rolling, 0)],
+                            m.markers(SEAL, on=False, only=[f'seal {k}']) + [('INCREMENT_COUNTER', 1, SEALED)]))
 
     m.strings.update({
         'SCRIPT:CNVA4_INTRO': 'A4 冰雕里的兵：帝国残部把兵藏进了雪祭的冰雕。运送克隆体的车队一分钟后出发，护送它穿过会场。',
@@ -99,14 +118,28 @@ def mission(name='CampA4'):
         'MISSIONOBJ:CNVA4_1_DESC': '三辆车里至少两辆到达东岸。冰幕工兵能在广场出口冻一道冰墙，把冰雕里的兵封在里面，墙过一会儿会化。',
         'MISSIONOBJ:CNVA4_B1': '三辆车全部送到',
         'MISSIONOBJ:CNVA4_B1_DESC': '一辆车都不丢。',
+        'MISSIONOBJ:CNVA4_B2': '出发前封住三个广场的出口',
+        'MISSIONOBJ:CNVA4_B2_DESC': '车队出发前，用冰幕工兵在三个广场的出口各冻一块冰，冰雕里的兵就出不来。',
+        'MISSIONOBJ:CNVA4_3': '护送车队通过 1 号广场',
+        'MISSIONOBJ:CNVA4_3_DESC': '车到 1 号广场前，那里冰雕里的兵会冲出来。',
+        'MISSIONOBJ:CNVA4_4': '护送车队通过 2 号广场',
+        'MISSIONOBJ:CNVA4_4_DESC': '过了 2 号广场，还有 3 号广场，然后就是东岸。',
+        'SCRIPT:CNVA4_TIMER': '车队出发',
         'SCRIPT:CNVA4_GO': 'A4：车队出发了。',
         'SCRIPT:CNVA4_SAFE': 'A4：一辆车到达东岸。',
         'SCRIPT:CNVA4_WIN': 'A4：车队安全通过会场。',
         'SCRIPT:CNVA4_LOST': 'A4：车队被劫走了……',
     })
     m.scripts += [
-        Script('CNV A4 - Intro', [], [('SHOW_MILITARY_CAPTION', 'SCRIPT:CNVA4_INTRO', 15.0), convoy.start()]),
+        Script('CNV A4 - Intro', [], [('SHOW_MILITARY_CAPTION', 'SCRIPT:CNVA4_INTRO', 15.0), convoy.start(),
+                                      convoy.countdown('SCRIPT:CNVA4_TIMER')]),
         *convoy.go(), *reveal, *chase, *convoy.roll(), *convoy.tail(),     # the roll after the chases: it resets the tick
+        *seals,
+        Script('CNV A4 - Seal Done', [('COUNTER', SEALED, 3, 3)], m.done(SEAL)),
+        Script('CNV A4 - Seal Failed', [('FLAG', convoy.rolling, 1), ('COUNTER', SEALED, 0, 3)], m.failed(SEAL)),
+        Script('CNV A4 - Leg 1', [('FLAG', convoy.rolling, 1)], m.reveal(LEGS[0])),
+        *convoy.reached('CNV A4 Approach 2', 'CNV_A4_Pass_1', m.done(LEGS[0]) + m.reveal(LEGS[1])),
+        *convoy.reached('CNV A4 Approach 3', 'CNV_A4_Pass_2', m.done(LEGS[1])),
         Script('CNV A4 - Bonus Done', [('COUNTER', convoy.arrived, 2, 3)], m.done(BONUS)),
         Script('CNV A4 - Bonus Failed', [('COUNTER', convoy.losses, 3, 1)], m.failed(BONUS)),
         Script(WIN, [('COUNTER', convoy.arrived, 3, 2)],
