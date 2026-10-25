@@ -74,10 +74,17 @@ def main_window(pid):
     return next((h for h, _, vis in windows(pid) if vis), None)
 
 
+CRASH_TITLES = ('Game crash', 'DirectX错误', 'DirectX Error')
+DEVICE_HINT = ('the game could not make its Direct3D device (D3DERR_DEVICELOST in shots/cnv_testbench.log): '
+               'another program holds the screen in exclusive fullscreen -- bench 2026-10-24: the user playing '
+               'another game -- or the display is off / locked; try again once it is free')
+
+
 def crash_box(pid):
-    """The game's own fatal-error box ("Game crash"): its texts, or None."""
+    """The game's own fatal-error box ("Game crash", or the DirectX one it shows when it gets no Direct3D device):
+    its texts, or None."""
     for h, title, _ in windows(pid):
-        if title == 'Game crash':
+        if title in CRASH_TITLES:
             texts = []
 
             def each(c, _):
@@ -86,7 +93,8 @@ def crash_box(pid):
                 texts.append(buf.value)
                 return True
             user32.EnumChildWindows(h, EnumProc(each), 0)
-            return ' | '.join(t for t in texts if t)
+            text = ' | '.join(t for t in texts if t)
+            return f'{title}: {text}' + (f' -- {DEVICE_HINT}' if title != 'Game crash' else '')
     return None
 
 
@@ -241,6 +249,8 @@ class Session:
             time.sleep(1)
             s = round(time.monotonic() - t)
             self._alive()
+            if s > timeout:             # here, not only after a frame: with no frames at all it never got there
+                raise BenchError(f'menus stuck at "{steps[at]["name"]}" after {s} s (see {self.run_dir}\\nav_last.bmp)')
             h = main_window(self.p.pid)
             if h is None:
                 continue
@@ -273,8 +283,6 @@ class Session:
                 self._do(h, steps[at - 1]['actions'])
                 done_at = s
             os.replace(frame, os.path.join(self.run_dir, 'nav_last.bmp'))
-            if s > timeout:
-                raise BenchError(f'menus stuck at "{steps[at]["name"]}" after {s} s (see {self.run_dir}\\nav_last.bmp)')
 
     def _do(self, h, actions):
         for a in actions:

@@ -47,13 +47,20 @@ LEGACY = {
 
 def cards():
     """{level key: (title, {check: what})} from docs/story/levels.md: "A4 冰雕里的兵：守" (the heading and the first
-    sentence of its 一句话玩法) and its 检查 list."""
+    sentence of its 一句话玩法) and its 检查 list -- for a level with a plan (docs/story/plans), its 一句话 and 检查."""
     with open(CARDS, encoding='utf-8') as f:
         text = f.read()
     heads = list(re.finditer(r'^## (.+?) · `(\w+)`$', text, re.M))
     out = {}
     for k, h in enumerate(heads):
         body = text[h.end():heads[k + 1].start() if k + 1 < len(heads) else len(text)]
+        if f'(plans/{h.group(2)}.md)' in body:
+            sys.path[:0] = [os.path.join(ROOT, 'experimental', 'cnv')]
+            import plan
+            d = plan.load(h.group(2))
+            pitch = str(d.get('一句话', '')).split('。')[0]
+            out[h.group(2)] = (h.group(1) + (f'：{pitch}' if pitch else ''), dict(d.get('检查') or {}))
+            continue
         pitch = re.search(r'^一句话玩法：([^。\n]*)', body, re.M)
         checks = dict(re.findall(r'^  - `(\w+)`：(.*)$', body, re.M))
         out[h.group(2)] = (h.group(1) + (f'：{pitch.group(1)}' if pitch else ''), checks)

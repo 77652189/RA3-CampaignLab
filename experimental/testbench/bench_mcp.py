@@ -385,6 +385,7 @@ def bench_stop() -> str:
 # ------------------------------------------------------------- the decoupled builds (experimental/cnv), one call each
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 BUILD = os.path.join(ROOT, 'experimental', 'cnv', 'build.py')
+PLANCHECK = os.path.join(ROOT, 'experimental', 'cnv', 'plancheck.py')
 MAPRENDER = os.path.join(ROOT, 'experimental', 'campaign', 'maprender.py')
 MAPSTUDY = os.path.join(ROOT, 'experimental', 'campaign', 'mapstudy.py')
 RETAILREF = os.path.join(ROOT, 'experimental', 'campaign', 'retailref.py')
@@ -441,6 +442,28 @@ def cnv_show(name: str, check: str = '') -> str:
     check, and after: 'contract: ok' or the list of what is used but not published."""
     code, out = lab(BUILD, name, *(['--check', check] if check else []), '--show', timeout=120)
     return out.strip() if code in (0, 1) and 'contract:' in out else 'BUILD: ' + tail(out)
+
+
+@server.tool(structured_output=False)
+def plan_show(level: str) -> str:
+    """A level's plan (docs/story/plans/<level>.md -- the level itself: edit it, build, the game plays the change)
+    read back without the game, in seconds: the beat sheet it makes (phases with their objectives, border, opening
+    actions and end; the attack waves, when they start at normal difficulty, their sources and caps), its design
+    check against what the retail missions do (docs/story/map-language.md 7: phase count, a mid-mission twist,
+    first threat and first real attack times, every repeating wave with a source or cap, objectives, autosaves,
+    difficulty direction, hints), and the compile with its contract. Run it after every edit to a plan, before
+    cnv_check."""
+    code, out = lab(PLANCHECK, level, timeout=120)
+    return out.strip() if code == 0 else 'PLAN: ' + tail(out)
+
+
+@server.tool(structured_output=False)
+def plan_vocab(map: str = '') -> str:
+    """The words a level plan may write: its sections, the conditions and actions, the devices (each level
+    mechanic's parameters, events, actions), the unit names; with map (e.g. 'festival') that map's sites and
+    borders too."""
+    code, out = lab(PLANCHECK, '--vocab', *([map] if map else []), timeout=120)
+    return out.strip() if code == 0 else 'PLAN: ' + tail(out)
 
 
 @server.tool(structured_output=False)

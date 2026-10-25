@@ -14,6 +14,7 @@ script argument names something nobody published.
 
   python -I -X utf8 experimental/cnv/build.py a8 [--test liberty_jump] [--name CampX]
 """
+import collections
 import dataclasses
 import os
 import sys
@@ -88,6 +89,8 @@ class Script:
     when: list                          # conditions, ANDed: ('TIMER_EXPIRED', 'x') ...; [] = every frame
     do: list                            # actions: ('SHOW_MILITARY_CAPTION', 'SCRIPT:X', 5.0) ...
     once: bool = True
+    levels: tuple = (True, True, True)  # the difficulties it runs on (easy, normal, hard): the script header's bits,
+                                        # retail's only difficulty switch (no map uses a difficulty condition)
 
 
 @dataclasses.dataclass
@@ -129,6 +132,8 @@ class Mission(Part):
                                                                 # markers wait for made(), not the reveal
     countdowns: list = dataclasses.field(default_factory=list)  # published: the timers it shows on screen (countdowns
                                                                 # stand above the counters, in the same 4 lines)
+    spawns: set = dataclasses.field(default_factory=set)        # templates its scripts name that nobody casts (a
+                                                                # plan's waves and reinforcements, what it counts)
 
     def find(self, name):
         return next(o for o in self.objects if o.name == name)
@@ -403,7 +408,22 @@ def contract(mission):
              WAYPOINT_ARG: ('waypoint', m.waypoints), PLAYER_ARG: ('player', set(getattr(m.map, 'PLAYERS', {}).values())),
              OBJECT_ARG: ('object', set(named) | created), STRING_ARG: ('string', m.strings), POWER_ARG: ('power', powers),
              COMMAND_ARG: ('command button', powers), OBJECTIVE_ARG: ('objective', {g.name for g in m.objectives}),
-             TEMPLATE_ARG: ('template', {r.template for r in m.cast.values()} | {u.id for u in m.units})}
+             TEMPLATE_ARG: ('template', {r.template for r in m.cast.values()} | {u.id for u in m.units} | m.spawns)}
+    def latin(v):
+        try:
+            v.encode('latin-1')
+            return True
+        except UnicodeEncodeError:
+            return False
+    # the map stores names and script arguments as Latin-1 (only the string table's texts are Unicode): a plan's
+    # Chinese in a script name would crash the build (2026-10-24)
+    out += [f'script name {s.name!r}: not Latin-1' for s in m.scripts if not latin(s.name)]
+    seen = collections.Counter(s.name for s in m.scripts)
+    out += [f'script name {k!r}: {n} scripts have it' for k, n in seen.items() if n > 1]
+    out += [f'{kind} {v!r}: not Latin-1' for kind, vs in (('object', named), ('waypoint', m.waypoints),
+                                                          ('area', m.areas)) for v in vs if not latin(v)]
+    out += [f'{s.name}: {name} argument {v!r}: not Latin-1' for s in m.scripts for name, *args in s.when + s.do
+            for v in args if isinstance(v, str) and not latin(v)]
     for s in m.scripts:
         for name, *args in s.when + s.do:
             types = cat[name]['args']
@@ -423,6 +443,12 @@ def write_map(m, mm):
     bridges: map.OBJECTS), then the mission's waypoints, objects, scripts, trigger areas and objectives."""
     import newmap
     mm.map.terrain(m)
+    borders = getattr(mm.map, 'BORDERS', None)
+    if borders:                             # MAP_SWITCH_BORDER(k) switches to the k-th; the first is the whole map
+        import mapterrain
+        hm = mapterrain.HeightMap(m)
+        hm.set_borders([tuple(round(v / mapterrain.CELL) for v in r) for r in borders.values()])
+        hm.store()
     objs = next(n for _, n in m.walk() if n.name == 'ObjectsList')
     tmpl = lambda k: k.head[22:22 + int.from_bytes(k.head[20:22], 'little')].decode('latin-1')   # noqa: E731
     like = mm.map.like(m, objs, tmpl)
@@ -439,7 +465,8 @@ def write_map(m, mm):
                                             angle=angle, uniqueID=o.name or f'{o.template} {len(objs.kids)}', **extra))
     ours = [m.new_script(s.name, [m.new_content('Condition', *c) for c in s.when]
                          or [m.new_content('Condition', 'CONDITION_TRUE')],
-                         [m.new_content('ScriptAction', *a) for a in s.do], one_shot=s.once)
+                         [m.new_content('ScriptAction', *a) for a in s.do], one_shot=s.once,
+                         difficulties=tuple(s.levels))
             for s in mm.scripts]            # before clearing: chunk versions are read off existing nodes
     newmap.clear_scripts(m)[2].kids += ours
     m.set_trigger_areas(mm.areas)           # the base map's areas went with its scripts

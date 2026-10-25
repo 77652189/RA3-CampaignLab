@@ -1,0 +1,665 @@
+"""Level plans: a level's gameplay written as a plan a designer (or a player) edits -- docs/story/plans/<level>.md,
+prose with ```yaml blocks -- and compiled into the mission (parts.Mission) the build makes. Change the plan, build,
+and the game plays the change; nothing in the plan is a coordinate or a script. For a level with a plan the plan is
+its card (docs/story/levels.md points to it).
+
+The plan's language -- its sections, conditions, actions, the difficulty notation -- is written for the people who
+edit plans, in Chinese, in docs/story/plans/README.md (plan_vocab reads its word list from there, with the devices,
+unit names and a map's sites). Numbers that change with the difficulty change only those (retail: the phase
+structure never does); the scripts get the header's difficulty bits, retail's only switch (map-language.md 7).
+
+A condition compiles to alternatives, [[script condition, ...], ...]: any one alternative, all of its conditions;
+`X + t` is a timer started once X first holds. What happens once is latched in a flag.
+
+  python -I -X utf8 experimental/cnv/plan.py a4        the plan as a beat sheet, its design check and contract
+"""
+import dataclasses
+import importlib
+import os
+import re
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(os.path.dirname(HERE))
+sys.path.insert(0, HERE)
+import glossary                                 # noqa: E402
+from parts import Goal, Mission, Script, kindof, square   # noqa: E402
+
+PLANS = os.path.join(ROOT, 'docs', 'story', 'plans')
+LEVELS = ('简单', '普通', '困难')
+TAGS = ('easy', 'normal', 'hard')          # in script names: the map stores names as Latin-1
+ALL = (True, True, True)
+ONE = ((True, False, False), (False, True, False), (False, False, True))
+SPACING = 60.0                                  # between units placed together
+DEFAULT_AREA = 150.0                            # half-side of a site's trigger area when the site has no radius
+CAPTION = 6.0                                   # seconds a caption stays
+REVEAL_FIRST, REVEAL_GAP = 2.0, 4.0             # a phase's objectives: the first this long after it starts, then apart
+AUTOSAVE = 'AUTOSAVE:CNVCAMPAIGN'
+
+
+class PlanError(ValueError):
+    pass
+
+
+# ---------------------------------------------------------------- reading
+def path(level):
+    return os.path.join(PLANS, f'{level}.md')
+
+
+def levels():
+    """The levels that have a plan: the files here with a ```yaml block (a draft in prose only is not one yet)."""
+    return sorted(f[:-3] for f in os.listdir(PLANS) if f.endswith('.md') and '\n```yaml\n' in open(
+        os.path.join(PLANS, f), encoding='utf-8').read())
+
+
+def load(level_or_path):
+    """The plan's data: every ```yaml block of the file, merged (a key in two blocks is an error)."""
+    import yaml
+    p = level_or_path if level_or_path.endswith('.md') else path(level_or_path)
+    with open(p, encoding='utf-8') as f:
+        text = f.read()
+    out = {}
+    for block in re.findall(r'^```yaml\n(.*?)^```', text, re.M | re.S):
+        data = yaml.safe_load(block) or {}
+        if not isinstance(data, dict):
+            raise PlanError(f'{p}: a yaml block must be a mapping, got {type(data).__name__}')
+        for k, v in data.items():
+            if k in out:
+                raise PlanError(f'{p}: {k!r} written twice')
+            out[k] = v
+    return out
+
+
+def per(v):
+    """A value easy/normal/hard: '3000/2000/1500' or [3000, 2000, 1500] -> its three; one value -> three times."""
+    if isinstance(v, (list, tuple)):
+        vs = list(v)
+    elif isinstance(v, str) and '/' in v:
+        vs = [x.strip() for x in v.split('/')]
+    else:
+        vs = [v]
+    if len(vs) == 1:
+        vs = vs * 3
+    if len(vs) != 3:
+        raise PlanError(f'{v!r}: one value, or three (简单/普通/困难)')
+    return tuple(vs)
+
+
+def seconds(v):
+    """'3:00' 180, '90' 90, '90秒' 90, '4分钟' 240, 1.5 1.5."""
+    if isinstance(v, (int, float)):
+        return float(v)
+    s = str(v).strip().replace('秒', '')
+    if s.endswith('分钟'):
+        return float(s[:-2]) * 60
+    if ':' in s:
+        mi, sec = s.split(':')
+        return int(mi) * 60 + float(sec)
+    return float(s)
+
+
+def number(v):
+    return float(str(v).strip().lstrip('+'))
+
+
+def counts(v):
+    return tuple(int(number(x)) for x in per(v))
+
+
+def times(v):
+    return tuple(seconds(x) for x in per(v))
+
+
+def by_level(values):
+    """[(difficulty bits, value)]: one entry when the three are the same, else one per difficulty."""
+    if values[0] == values[1] == values[2]:
+        return [(ALL, values[0])]
+    return [(ONE[k], v) for k, v in enumerate(values)]
+
+
+def start_time(c):
+    """The three times when a condition is `开局 + t`, else None."""
+    if isinstance(c, str):
+        mm = re.match(r'^开局\s*\+\s*(.+)$', c.strip())
+        if mm:
+            return times(mm.group(1))
+    return None
+
+
+# ---------------------------------------------------------------- compiling
+@dataclasses.dataclass
+class Phase:
+    name: str
+    k: int
+    flag: str
+    spec: dict
+
+
+class Compiler:
+    """One plan -> one Mission. A condition compiles to alternatives, [[script condition, ...], ...]: any one
+    alternative, all of its conditions; what happens once something held is latched in a flag."""
+
+    def __init__(self, data, name=None):
+        self.d = data
+        self.level = str(data.get('关卡', 'x'))
+        self.tag = re.sub(r'[^A-Za-z0-9]', '', self.level).upper()
+        mapmod = importlib.import_module(f'maps.{data["地图"]}')
+        sides = data.get('阵营', {})
+        self.faction = {'p1': sides.get('我', '盟军'), 's1': sides.get('敌', '苏联')}
+        self.side = {'我': 'p1', '敌': 's1'}
+        # more sides (其他: {name: faction}): the map's idle players s2, s3 ..., neutral to both at the start
+        for k, (who, faction) in enumerate((sides.get('其他') or {}).items(), 2):
+            self.side[who], self.faction[f's{k}'] = f's{k}', faction
+        self.m = Mission(name=name or f'Camp{self.tag}', map=mapmod)
+        self.n = 0
+        self.conds = {}             # condition text -> alternatives
+        self.timers = {}            # condition text with a time -> (timer, its started flag)
+        self.shown = {}             # timer -> countdown label key
+        self.devices = {}
+        self.dev_units = {}         # unit name a device publishes -> its Unit
+        self.phases, self.waves, self.goals = [], {}, {}
+        self.last = []              # the scripts the last when() made
+
+    # ---- names
+    def uid(self, what=''):
+        self.n += 1
+        return f'{what}{self.n}'
+
+    def text(self, kind, s):
+        key = f'{kind}:CNV{self.tag}_{self.uid("T")}'
+        self.m.strings[key] = str(s)
+        return key
+
+    def area(self, site):
+        name = f'CNV {self.tag} Area {site}'
+        if name not in self.m.areas:
+            w = self.m.where(site)
+            self.m.areas[name] = square(w.x, w.y, w.r or DEFAULT_AREA)
+        return name
+
+    def mark(self, site):
+        """A waypoint at a site, published as a mark under the site's name (unless a mark of that name is)."""
+        if site in self.m.marks:
+            return self.m.marks[site]
+        name = f'CNV {self.tag} At {site}'
+        self.m.waypoint(site, name, site)
+        return name
+
+    def unit(self, name, side='p1'):
+        if name in self.dev_units:
+            return self.dev_units[name].id
+        return glossary.template(name, self.faction[side])
+
+    def part_names(self, part):
+        """The named objects of a cast part or a group of them ('engineer' -> engineer 1, engineer 2 ...)."""
+        m = self.m
+        if part in m.cast and m.cast[part].name:
+            return [m.cast[part].name]
+        group = [r.name for r in m.roles(part) if r.name]
+        if not group:
+            raise PlanError(f'no named part {part!r}: the cast is {sorted(m.cast)}')
+        return group
+
+    def parts(self, part):
+        """Cast parts a name stands for: itself, or the group's parts."""
+        if part in self.m.cast:
+            return [part]
+        return [k for k in self.m.cast if re.fullmatch(re.escape(part) + r' \d+', k)]
+
+    # ---- conditions
+    def cond(self, c):
+        """Alternatives for a condition: a string, a list (all of them), {任一: [...]} (any)."""
+        if isinstance(c, dict):
+            if set(c) != {'任一'}:
+                raise PlanError(f'condition {c!r}: a mapping must be {{任一: [...]}}')
+            return [alt for x in c['任一'] for alt in self.cond(x)]
+        if isinstance(c, list):
+            alts = [[]]
+            for x in c:
+                alts = [a + b for a in alts for b in self.cond(x)]
+            return alts
+        s = str(c).strip()
+        if s not in self.conds:
+            self.conds[s] = self._cond(s)
+        return self.conds[s]
+
+    def _cond(self, s):
+        mm = re.match(r'^(.*?)\s*\+\s*([^+]+)$', s)
+        if mm and not s.startswith('还没'):        # `还没 X + t` is 还没 (X + t), not (还没 X) + t
+            return self.wait(mm.group(1), mm.group(2), s)
+        w = s.split()
+        head, rest = w[0], ' '.join(w[1:])
+        p1, s1 = self.m.player('p1'), self.m.player('s1')
+        if head == '开局':
+            if rest:
+                raise PlanError(f'{s!r}: 开局 takes nothing after it (a time is `开局 + 0:30`)')
+            return [[]]
+        if not rest and '.' not in head:
+            raise PlanError(f'{s!r}: {head} needs what it is about (plan.py, README.md 条件)')
+        if head == '段':
+            name, what = (rest[:-2].strip(), rest[-2:]) if rest.endswith(('开始', '结束')) else (rest, '开始')
+            ph = self.phase(name)
+            if what == '结束':
+                if ph.k + 1 >= len(self.phases):
+                    raise PlanError(f'段 {name} 结束: it is the last phase')
+                return [[('FLAG', self.phases[ph.k + 1].flag, 1)]]
+            return [[('FLAG', ph.flag, 1)]]
+        if head == '进入':
+            return [[('SKIRMISH_PLAYER_HAS_UNITS_IN_AREA', p1, self.area(rest))]]
+        if head == '敌人清空':
+            return [[('PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA', s1, 2, 0, kindof('SELECTABLE'),
+                      self.area(rest))]]
+        if head == '摧毁':
+            return [[('NAMED_DESTROYED', n) for n in self.part_names(rest)]]
+        if head == '攻击':
+            return [[('NAMED_ATTACKED_BY_PLAYER', n, p1)] for n in self.part_names(rest)]
+        if head == '占领':
+            return [[('NAMED_OWNED_BY_PLAYER', p1, n) for n in self.part_names(rest)]]
+        if head == '血量':
+            hm = re.match(r'^(.+?)\s*<\s*(\d+)%?$', rest)
+            if not hm:
+                raise PlanError(f'{s!r}: write 血量 <part> < <percent>')
+            return [[('UNIT_HEALTH', n, 0, int(hm.group(2)))] for n in self.part_names(hm.group(1))]
+        if head in ('建成', '没有'):
+            tmpl = self.unit(rest).lower()          # retail writes the type in lower case here
+            self.m.spawns.add(tmpl)
+            return [[('PLAYER_HAS_OBJECT_COMPARISON', p1, 3, 1, tmpl) if head == '建成' else
+                     ('PLAYER_HAS_OBJECT_COMPARISON', p1, 2, 0, tmpl)]]
+        if head == '还没':
+            # the opposite of something that, once it happened, stays happened (a phase begun, a goal done, a
+            # device's latched event): its one flag still 0
+            alts = self.cond(rest)
+            if len(alts) != 1 or not alts[0] or any(c[0] != 'FLAG' or c[2] != 1 for c in alts[0]):
+                raise PlanError(f'{s!r}: 还没 works on what latches once (段 …, 目标 … 完成, 进攻 … 开始, a device '
+                                f'event that stays): {rest!r} is not one')
+            return [[('FLAG', c[1], 0)] for c in alts[0]]
+        if head == '目标':
+            title, _, what = rest.rpartition(' ')
+            if what not in ('完成', '失败'):
+                raise PlanError(f'{s!r}: 目标 <title> 完成 / 失败')
+            return [[('FLAG', self.goal_flag(self.goal(title), what), 1)]]
+        if head == '进攻':
+            name = rest[:-2].strip() if rest.endswith('开始') else rest
+            if name not in self.waves:
+                raise PlanError(f'{s!r}: no wave {name!r}: {sorted(self.waves)}')
+            return [[('FLAG', self.waves[name]['on'], 1)]]
+        if '.' in head:
+            dev, event = head.split('.', 1)
+            if dev not in self.devices:
+                raise PlanError(f'{s!r}: no device {dev!r}: {sorted(self.devices)}')
+            return self.devices[dev].cond(event, w[1:])
+        raise PlanError(f'{s!r}: no such condition (plan.py lists them)')
+
+    def wait(self, base, t, s):
+        """`base + t`: a timer started once base first holds; true once it has run out."""
+        k = self.uid()
+        timer, started = f'CNV {self.tag} Wait {k}', f'CNV_{self.tag}_Wait_{k}'
+        self.timers[s] = (timer, started)
+        for a, alt in enumerate(self.cond(base)):
+            for levels, v in by_level(times(t)):
+                self.m.scripts.append(Script(f'CNV {self.tag} - Wait {k}.{a + 1}' + ('' if levels == ALL else
+                                                                                       f' {TAGS[levels.index(True)]}'),
+                                             alt + [('FLAG', started, 0)],
+                                             [('SET_MILLISECOND_TIMER', timer, v), ('SET_FLAG', started, 1)],
+                                             levels=levels))
+        return [[('FLAG', started, 1), ('TIMER_EXPIRED', timer)]]
+
+    def when(self, label, c, actions, once=True, gate=()):
+        """Scripts doing `actions` when c holds (and the `gate` conditions): once -- the first time only."""
+        alts = self.cond(c)
+        done = f'CNV_{self.tag}_Did_{self.uid()}'
+        self.last = []
+        for k, alt in enumerate(alts):
+            latch = [('FLAG', done, 0)] if once and len(alts) > 1 else []
+            self.last.append(Script(f'CNV {self.tag} - {label}' + (f' ({k + 1})' if len(alts) > 1 else ''),
+                                    list(gate) + alt + latch,
+                                    actions + ([('SET_FLAG', done, 1)] if once and len(alts) > 1 else []),
+                                    once=once))
+        self.m.scripts += self.last
+        return self.last
+
+    # ---- actions
+    def actions(self, acts):
+        out = []
+        for a in acts or []:
+            out += self.action(a)
+        return out
+
+    def action(self, a):
+        m, p1 = self.m, self.m.player('p1')
+        if isinstance(a, str):
+            head, _, rest = a.strip().partition(' ')
+            if head == '通报':
+                return [('SHOW_MILITARY_CAPTION', self.text('SCRIPT', rest.strip()), CAPTION)]
+            if head == '存档':
+                m.strings.setdefault(AUTOSAVE, '新战役（自动存档）')
+                return [('CAMPAIGN_CREATE_AUTO_SAVE', AUTOSAVE)]
+            if head == '胜利':
+                return [('SET_FLAG', 'Mission Won', 1)]
+            if '.' in head:
+                dev, what = head.split('.', 1)
+                if dev not in self.devices:
+                    raise PlanError(f'action {a!r}: no device {dev!r}: {sorted(self.devices)}')
+                return self.devices[dev].action(what, rest.split())
+            raise PlanError(f'action {a!r}: no such action (plan.py lists them)')
+        if not isinstance(a, dict):
+            raise PlanError(f'action {a!r}: a string or a mapping')
+        if '通报' in a:
+            return [('SHOW_MILITARY_CAPTION', self.text('SCRIPT', a['通报']), float(a.get('秒', CAPTION)))]
+        if '镜头' in a:
+            return [('MOVE_CAMERA_TO', self.mark(a['镜头']), float(a.get('秒', 3.0)), 0.0, 1.0, 1.0)]
+        if '给' in a:
+            return self.give(a['给'], a['在'])
+        if '资金' in a:
+            return [('PLAYER_GIVE_MONEY', p1, int(number(a['资金'])))]
+        if '边界' in a:
+            borders = list(getattr(m.map, 'BORDERS', {}))
+            if a['边界'] not in borders:
+                raise PlanError(f'边界 {a["边界"]!r}: map {m.map.__name__} has {borders}')
+            return [('MAP_SWITCH_BORDER', borders.index(a['边界']))]
+        if '倒计时' in a:
+            key = str(a['倒计时']).strip()
+            self.cond(key)
+            if key not in self.timers:
+                raise PlanError(f'倒计时 {key!r}: a condition with a time (… + 3:00)')
+            self.shown[self.timers[key][0]] = self.text('SCRIPT', a.get('文字', ''))
+            return []
+        if '摧毁' in a:
+            return [('NAMED_KILL', n) for n in self.part_names(a['摧毁'])]
+        if '转给我' in a:
+            return [('NAMED_TRANSFER_OWNERSHIP_PLAYER', n, p1) for n in self.part_names(a['转给我'])]
+        if '翻脸' in a:                             # a side of 其他 turns on the player (and the player on it)
+            x = self.side.get(a['翻脸'])
+            if x in (None, 'p1', 's1'):
+                raise PlanError(f'翻脸 {a["翻脸"]!r}: a side of 阵营 其他 ({sorted(self.side)})')
+            return [('PLAYER_RELATES_PLAYER', m.player(x), p1, 'Enemy'), ('PLAYER_RELATES_PLAYER', p1, m.player(x), 'Enemy')]
+        if '失败' in a:
+            return [('SHOW_MILITARY_CAPTION', self.text('SCRIPT', a['失败']), 10.0), ('SET_FLAG', 'Mission Lost', 1)]
+        raise PlanError(f'action {a!r}: no such action (plan.py lists them)')
+
+    def give(self, units, site):
+        """Units created for the player at a site (reinforcements)."""
+        out, k = [], self.uid()
+        for name, n in units.items():
+            tmpl = self.unit(name)
+            self.m.spawns.add(tmpl)
+            for j in range(int(n)):
+                out.append(('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', f'UNIT - CNV {self.tag} Give {k}-{tmpl}-{j + 1}', tmpl,
+                            self.m.team('p1'), self.mark(site)))
+        return out
+
+    # ---- the plan's sections
+    def phase(self, name):
+        hit = [p for p in self.phases if p.name == name]
+        if not hit:
+            raise PlanError(f'no phase {name!r}: {[p.name for p in self.phases]}')
+        return hit[0]
+
+    def goal(self, title):
+        if title not in self.goals:
+            raise PlanError(f'no objective {title!r}: {sorted(self.goals)}')
+        return self.goals[title]
+
+    def goal_flag(self, g, what):
+        return f'CNV_{self.tag}_{g.name.split(" ")[0]}_{"Done" if what == "完成" else "Failed"}'
+
+    def place(self):
+        m, start = self.m, self.d.get('开局') or {}
+        if '资金' in start:
+            for levels, v in by_level(counts(start['资金'])):
+                m.scripts.append(Script(f'CNV {self.tag} - Money' + ('' if levels == ALL else
+                                                                     f' {TAGS[levels.index(True)]}'),
+                                        [], [('PLAYER_SET_MONEY', m.player('p1'), v)], levels=levels))
+        extra = [s for s in self.side.values() if s not in ('p1', 's1')]
+        if extra:
+            rel = [('PLAYER_RELATES_PLAYER', m.player(a), m.player(b), 'Neutral')
+                   for x in extra for a, b in ((x, 'p1'), ('p1', x), (x, 's1'), ('s1', x))]
+            m.scripts.append(Script(f'CNV {self.tag} - Sides', [], rel))
+        for spec in start.get('部队') or []:
+            who = spec.get('阵营', '我')
+            if who not in self.side:
+                raise PlanError(f'部队 {spec}: 阵营 {who!r} is none of {sorted(self.side)} (more sides: 阵营: 其他)')
+            side = self.side[who]
+            tmpl = self.unit(spec['单位'], side)
+            ns = counts(spec.get('数量', 1))
+            n = max(ns)
+            dx0, dy0 = spec.get('偏移', (0, 0))
+            role = spec.get('角色', '')
+            if not role and (spec.get('守') or len(set(ns)) > 1):
+                role = f'{tmpl} {self.uid()}'           # named: a script orders or deletes them
+            base = role if role.isascii() else f'Part {self.uid()}'
+            parts = [f'{role} {j + 1}' if role and n > 1 else role for j in range(n)]
+            objs = [f'UNIT - CNV {self.tag} {base} {j + 1}' if n > 1 else f'UNIT - CNV {self.tag} {base}'
+                    for j in range(n)] if role else [''] * n
+            for j, part in enumerate(parts):
+                dx = dx0 + ((j % 4) - (min(n, 4) - 1) / 2) * SPACING
+                dy = dy0 - (j // 4) * SPACING
+                m.put(tmpl, spec['在'], dx, dy, side=side, name=objs[j],
+                      role=part, angle=spec.get('朝向'))
+            for lv, k in enumerate(ns):                 # retail: placed for the hardest, deleted on the easier
+                if k < n:
+                    gone = objs[k:]
+                    m.scripts.append(Script(f'CNV {self.tag} - Fewer {base} {TAGS[lv]}', [],
+                                            [('NAMED_DELETE', g) for g in gone], levels=ONE[lv]))
+            if spec.get('守') and role:
+                for nm in self.part_names(role):
+                    m.scripts.append(Script(f'CNV {self.tag} - Guard {nm}', [],
+                                            [('UNIT_GUARD_AREA', nm, self.area(spec['守']))]))
+
+    def setup_devices(self):
+        from devices import registry
+        DEVICES = registry()
+        for name, spec in (self.d.get('机关') or {}).items():
+            kind = spec.get('类型')
+            if kind not in DEVICES:
+                raise PlanError(f'机关 {name}: no device type {kind!r}: {sorted(DEVICES)}')
+            dev = DEVICES[kind](self, name, spec)
+            self.devices[name] = dev
+            self.m.units += [u for u in dev.units if u not in self.m.units]
+            self.dev_units.update(dev.names)
+
+    def setup_goals(self):
+        mains = bonuses = 0
+        for title, spec in (self.d.get('目标') or {}).items():
+            bonus = bool(spec.get('奖励'))
+            if bonus:
+                bonuses += 1
+                name = f'Bonus{bonuses:02d} - CNV {self.tag}'
+            else:
+                mains += 1
+                name = f'Objective{mains:02d} - CNV {self.tag}'
+            g = Goal(name, self.text('MISSIONOBJ', title), self.text('MISSIONOBJ', spec.get('说明', title)),
+                     bonus=bonus, at=None)
+            g.spec, g.title_text = spec, title
+            g.revealed = f'CNV_{self.tag}_{name.split(" ")[0]}_Shown'
+            self.goals[title] = g
+            self.m.objectives.append(g)
+
+    def compile_goals(self):
+        for g in self.m.objectives:
+            offs, show = [], []
+            for item in g.spec.get('标记') or []:
+                part, off = next(iter(item.items())) if isinstance(item, dict) else (item, None)
+                ps = self.parts(part)
+                if not ps:
+                    self.mark(part)                 # a site: a waypoint marks it
+                    ps = [part]
+                show += ps
+                offs.append((ps, off))
+            g.show = tuple(show)
+            gate = [('FLAG', g.revealed, 1), ('FLAG', self.goal_flag(g, '完成'), 0),
+                    ('FLAG', self.goal_flag(g, '失败'), 0)]
+            if g.spec.get('完成'):
+                self.when(f'Goal {g.name.split()[0]} done', g.spec['完成'],
+                          self.m.done(g.name) + [('SET_FLAG', self.goal_flag(g, '完成'), 1)], gate=gate)
+            if g.spec.get('失败'):
+                self.when(f'Goal {g.name.split()[0]} failed', g.spec['失败'],
+                          self.m.failed(g.name) + [('SET_FLAG', self.goal_flag(g, '失败'), 1)], gate=gate)
+            for j, (ps, off) in enumerate(offs):
+                if off:
+                    self.when(f'Goal {g.name.split()[0]} marker {j + 1}', off, self.m.markers(g.name, on=False, only=ps),
+                              gate=gate)
+
+    def setup_phases(self):
+        for k, spec in enumerate(self.d.get('段') or []):
+            self.phases.append(Phase(spec['名字'], k, f'CNV_{self.tag}_Phase_{k + 1}', spec))
+
+    def compile_phases(self):
+        for ph in self.phases:
+            spec = ph.spec
+            acts = [('SET_FLAG', ph.flag, 1)]
+            if spec.get('边界'):
+                acts += self.action({'边界': spec['边界']})
+            for i, title in enumerate(spec.get('目标') or []):
+                # retail: one at a time, a few seconds apart, each with its own announcement (map-language.md 1)
+                g = self.goal(title)
+                self.when(f'Phase {ph.k + 1} goal {i + 1}', f'段 {ph.name} + {REVEAL_FIRST + REVEAL_GAP * i:g}',
+                          self.m.reveal(g.name) + [('SET_FLAG', g.revealed, 1)])
+            acts += self.actions(spec.get('开场'))
+            if spec.get('存档'):
+                acts += self.action('存档')
+            if ph.k == 0:
+                if self.d.get('边界'):                  # the playable area the mission starts with
+                    acts = self.action({'边界': self.d['边界']}) + acts
+                self.m.scripts.append(Script(f'CNV {self.tag} - Phase 1', [], acts))
+            else:
+                prev = self.phases[ph.k - 1]
+                if not prev.spec.get('结束'):
+                    raise PlanError(f'段 {prev.name}: no 结束 -- how does 段 {ph.name} start?')
+                self.when(f'Phase {ph.k + 1}', prev.spec['结束'], acts, gate=[('FLAG', prev.flag, 1)])
+
+    def setup_waves(self):
+        for k, spec in enumerate(self.d.get('进攻') or []):
+            self.waves[spec['名字']] = dict(spec=spec, k=k + 1, on=f'CNV_{self.tag}_Wave_{k + 1}_On', names=[])
+
+    def wave(self, name, w):
+        """Wave by wave: each sends its troops (a script per wave and difficulty), then sets the timer for the next;
+        a counter keeps them in order and stops them at 最多; with 来源 only while one of those still stands."""
+        spec, k, m = w['spec'], w['k'], self.m
+        sent, timer = f'CNV_{self.tag}_Wave_{k}_Sent', f'CNV {self.tag} Wave {k}'
+        every = spec.get('每隔')
+        most = int(spec.get('最多', 99 if every else 1))
+        self.when(f'Wave {k} start', spec['开始'],
+                  [('SET_FLAG', w['on'], 1), ('SET_COUNTER', sent, 0), ('SET_MILLISECOND_TIMER', timer, 0.0)])
+        troops = {u: counts(n) for u, n in (spec.get('兵') or {}).items()}
+        extra = spec.get('加码') or {}
+        more = {u: counts(n) for u, n in (extra.get('兵') or {}).items()}
+        more_flag = f'CNV_{self.tag}_Wave_{k}_More'
+        if more:
+            self.when(f'Wave {k} more', extra['当'], [('SET_FLAG', more_flag, 1)])
+        alive = [[('NAMED_NOT_DESTROYED', n)] for p in spec.get('来源') or [] for n in self.part_names(p)] or [[]]
+        wp = self.mark(spec['从'])
+        gaps = times(every) if every else (0.0,) * 3
+        warn = [('SHOW_MILITARY_CAPTION', self.text('SCRIPT', spec['预警']), CAPTION)] if spec.get('预警') else []
+        for i in range(1, most + 1):
+            for lv, levels in enumerate(ONE):
+                for bonus in ([False, True] if more else [False]):
+                    names, acts = [], []
+                    for group, tag in ((troops, ''), (more if bonus else {}, 'x')):
+                        for u, ns in group.items():
+                            tmpl = self.unit(u, 's1')
+                            m.spawns.add(tmpl)
+                            for j in range(ns[lv]):
+                                obj = f'UNIT - CNV {self.tag} W{k}-{i} {tmpl} {tag}{j + 1}'
+                                names.append(obj)
+                                acts.append(('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', obj, tmpl, m.team('s1'), wp))
+                    if not names:
+                        continue
+                    acts += self.orders(spec, names, w) + [('INCREMENT_COUNTER', 1, sent)] + warn
+                    if every:
+                        acts.append(('SET_MILLISECOND_TIMER', timer, gaps[lv]))
+                    gate = [('FLAG', w['on'], 1), ('TIMER_EXPIRED', timer), ('COUNTER', sent, 2, i - 1)]
+                    if more:
+                        gate.append(('FLAG', more_flag, int(bonus)))
+                    for a, alt in enumerate(alive):
+                        m.scripts.append(Script(f'CNV {self.tag} - Wave {k} {i}{"+" if bonus else ""} {TAGS[lv]}'
+                                                + (f' ({a + 1})' if len(alive) > 1 else ''),
+                                                gate + alt, acts, levels=levels))
+        target = spec.get('打')
+        if target in self.devices and not spec.get('守'):
+            m.scripts += self.devices[target].attack(sorted(set(w['names'])))
+
+    def orders(self, spec, names, w):
+        w['names'] += names
+        target = spec.get('打')
+        if spec.get('守'):
+            return [('UNIT_GUARD_AREA', n, self.area(spec['守'])) for n in names]
+        if not target or target == '猎杀':
+            return [('NAMED_HUNT', n) for n in names]
+        if target in self.devices:
+            return []                               # the device's attack scripts (after all the waves are made)
+        if self.parts(target):
+            group = self.parts(target)
+            if len(group) == 1:
+                t = self.part_names(target)[0]
+                return [('NAMED_ATTACK_NAMED', n, t) for n in names]
+            # a group: attack-move to where it stands (one named target would leave them idle once it fell)
+            return [('ATTACK_MOVE_NAMED_UNIT_TO', n, self.mark(self.m.cast[group[0]].site)) for n in names]
+        return [('ATTACK_MOVE_NAMED_UNIT_TO', n, self.mark(target)) for n in names]
+
+    def compile_rules(self):
+        for k, r in enumerate(self.d.get('规则') or []):
+            # once only: a script not done once runs every frame its condition holds (review 2026-10-24: a 给 made
+            # the same named unit frame after frame), and "each time it holds again" needs its opposite
+            if r.get('次数', 1) != 1:
+                raise PlanError(f'规则 {k + 1}: 次数 {r["次数"]!r} -- a rule happens once (for "again later", write '
+                                f'another rule)')
+            self.when(f'Rule {k + 1}', r['当'], self.actions(r.get('做')))
+
+    def compile_endings(self):
+        m = self.m
+        if self.d.get('胜利'):
+            m.endings += [s.name for s in self.when('Win', self.d['胜利'], [('SET_FLAG', 'Mission Won', 1)])]
+        for k, lose in enumerate(self.d.get('失败') or []):
+            m.endings += [s.name for s in self.when(f'Lose {k + 1}', lose['当'],
+                                                    self.action({'失败': lose.get('原因', '任务失败')}))]
+
+    def compile_countdowns(self):
+        for timer, label in self.shown.items():
+            started = next(st for t, st in self.timers.values() if t == timer)
+            self.m.scripts += [Script(f'CNV {self.tag} - Countdown {timer}', [('FLAG', started, 1)],
+                                      [('DISPLAY_COUNTDOWN_TIMER', timer, label)]),
+                               Script(f'CNV {self.tag} - Countdown {timer} off',
+                                      [('FLAG', started, 1), ('TIMER_EXPIRED', timer)],
+                                      [('HIDE_COUNTDOWN_TIMER', timer)])]
+            self.m.countdowns.append(timer)
+
+    def compile(self):
+        self.setup_phases()
+        self.setup_waves()
+        self.setup_devices()
+        self.place()
+        for dev in self.devices.values():
+            dev.place()
+        self.setup_goals()
+        self.compile_goals()
+        self.compile_phases()
+        for name, w in self.waves.items():
+            self.wave(name, w)
+        self.compile_rules()
+        self.compile_endings()
+        for dev in self.devices.values():
+            self.m.scripts += dev.scripts()
+        for dev in self.devices.values():
+            self.m.scripts += dev.last()
+        self.compile_countdowns()
+        for ph in self.phases[1:]:                  # facts: a phase's start, when it is a time from the start
+            t = start_time(self.phases[ph.k - 1].spec.get('结束'))
+            if t:
+                self.m.facts[f'段 {ph.name}'] = t[1]
+        for dev in self.devices.values():
+            self.m.facts.update(dev.facts())
+        return self.m
+
+
+def mission(level, name=None):
+    """The level's mission, compiled from its plan."""
+    return Compiler(load(level), name).compile()
+
+
+if __name__ == '__main__':
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument('level')
+    import plancheck
+    print(plancheck.report(ap.parse_args().level))

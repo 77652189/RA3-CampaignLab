@@ -2,24 +2,24 @@
 
 ## 当前目标
 
-**推进关卡**（用户 2026-10-23："A7 A8 难度可以先不考虑，我们先看看单位有没有做完，做完了就开始推进关卡"）：新单位都已验证（[docs/story/units.md](docs/story/units.md) 进度表）；后半段才用的招牌、老面孔、终局球塔做到那一关再做（plan.md「待启动」）。关卡卡片在 [docs/story/levels.md](docs/story/levels.md)，现有 A4、J4、A7、A8。A4 七个检查、J4 三个检查都过（2026-10-24，plan.md A4、J4 行）；四关本体都按最新代码编好了，用户可以从启动器"战役关卡"组直接试玩。A4 冰墙的改动（长条墙转不了向 → 方冰块；封门靠关卡脚本）用户 2026-10-23 回"可以，按你的推荐做 J4"时一并认了。用户定的大顺序：战役设定 → 粗模玩法验证 → 关卡 → 美术最后。剧情大纲 [docs/story/outline.md](docs/story/outline.md)（v5）。
+**推进关卡**（用户 2026-10-23："A7 A8 难度可以先不考虑，我们先看看单位有没有做完，做完了就开始推进关卡"）：新单位都已验证（[docs/story/units.md](docs/story/units.md) 进度表）；后半段才用的招牌、老面孔、终局球塔做到那一关再做（plan.md「待启动」）。关卡卡片在 [docs/story/levels.md](docs/story/levels.md)，现有 A4、J4、A7、A8。J4 三个检查都过（2026-10-24，plan.md J4 行）；A4、A7 改成策划案驱动后还没上测试台，启动器里的 A4、A7 要重新编过才是新版。A4 冰墙的改动（长条墙转不了向 → 方冰块；封门靠关卡脚本）用户 2026-10-23 回"可以，按你的推荐做 J4"时一并认了。用户定的大顺序：战役设定 → 粗模玩法验证 → 关卡 → 美术最后。剧情大纲 [docs/story/outline.md](docs/story/outline.md)（v5）。
 
-**按原版设计语言返工**（用户 2026-10-23 试玩后提了六个问题，要求先学原版后几关和起义时刻的共同做法，"考虑玩家体验而不是合理性"）：规则和数字在 [docs/story/map-language.md](docs/story/map-language.md)，进度在 plan.md「关卡按原版设计语言返工」一行。
-- 问题 1、2（目标提示、奖励目标）已做完并上测试台看过；2026-10-24 起目标分阶段（上一段完成才亮下一段，期限带倒计时），A4、J4 已换上。
-- 问题 3～6 在雪祭图（A4、J4）上用平台地生成器做完了（`experimental/campaign/platmap.py`），A7、A8 还是旧海岛图。
-- J4 的车队到出发时间才出现（2026-10-24）。
+**策划案驱动关卡**（用户 2026-10-24："先写好策划案，写好之后对照你说的这些条件看看是否成立，再和原版战役对比是否接近，最后再把策划案中提到的操作都做成标准化的方法接入MCP，尽可能做成只需要更改策划案就能直接改变玩法，这样我们可以让玩家自己去修改"）：
+- 策划案就是关卡：[docs/story/plans/](docs/story/plans/)（现在 A4、A7），写法和词表在 `plans/README.md`；编译器 `experimental/cnv/plan.py`，机关 `experimental/cnv/devices/`，检查器 `experimental/cnv/plancheck.py`（MCP `plan_show` / `plan_vocab`）。原版节奏规则在 [map-language.md](docs/story/map-language.md) 第 7 节。
+- 离线部分做完、测试都绿；**测试台还没跑**（进度和没验证的引擎用法在 plan.md「关卡策划：策划案驱动关卡」一行）。
+- 之前"按原版设计语言返工"的六个问题见 plan.md 对应一行；J4、A8 还是手写的任务，没有策划案。
 
-地图工具在 MCP 里，用法见 plan.md「测试工具用法」0h。启动器（`launcher.pyw`）的分组从代码推出来，见 plan.md 第 1b 条。
+地图工具在 MCP 里，用法见 plan.md「测试工具用法」0h。启动器（`launcher.pyw`）的分组从代码推出来，有策划案的关从策划案读一句话和检查。
 
 **下一步**：
-1. A7 / A8 的海岛图改成平台地；中立民用建筑（驻军、挡路）。
-2. 之后接着做前半段别的关（A1～A3、S1～S5、J1～J3、J5），目标照 A4 / J4 分阶段写。
+1. 没有别的全屏游戏时（星露谷全屏会让测试台弹"DirectX错误"），先跑探针 `cnv_check(probe_nosave, engine)`、`cnv_check(probe, engine)`，确认难度开关、边界切换、设资金、自动存档在游戏里生效；再跑 A4 七个检查、A7 五个检查，修失败的。
+2. 测试台过了再交用户试玩、改策划案；然后把 J4、A8 也改成策划案，接着做前半段别的关。
 
 **等用户定的**：
 - 搁置中：A7 / A8 难度、超时空落点压到自家建筑会弄死被传的车（plan.md A7、A8 行）。
 - 剧情：大纲第六节"待用户决定"里还没定的（三个结局、三条背叛、关卡地点和关名）。
 
-**动手前**：要编图或用测试台，先**单独**检查红警3有没有在运行（用户可能在玩），在运行就停下问。
+**动手前**：要编图或用测试台，先**单独**检查红警3有没有在运行（用户可能在玩），在运行就停下问；也看一眼有没有别的全屏游戏（`Get-Process | ? MainWindowTitle`），有就只做离线的活。
 
 **写新单位**照钻地运兵车的样子：`units/<名>.py`（公开 abilities）+ `missions/<名>_bench.py`（按地点放、公开 cast / marks）+ `checks/<名>.py`（计数器 + 期望），在 `build.py` 的 MISSIONS 里登记；先 `cnv_show` 看接口，再 `cnv_check`。必要时用 A/B 对照（同图两个、一个用技能一个不用）和不放技能的对照检查。
 
@@ -60,7 +60,7 @@
 ## 状态
 
 ```yaml
-slice: staged-objectives-2026-10-24
+slice: plan-driven-levels-2026-10-24
 blocked_on: none        # none | voice-session | user
 next_gate: demo         # test-map | coordinate-calibration | demo
 ```

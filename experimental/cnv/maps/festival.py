@@ -42,7 +42,17 @@ SITES.update({
                                              'is safe here'),
     'north camp': Site(2900.0, 3250.0, 200.0, 'open low ground north of the plazas, off the road: a force that comes '
                                                'round to the gates (J4)'),
+    'base yard': Site(1250.0, 2500.0, 0.0, "the construction yard's pad on the player's start", build=200.0),
+    'base barracks': Site(1250.0, 2780.0, 0.0, "a barracks' pad north of the yard", build=160.0),
+    'base refinery': Site(1150.0, 2150.0, 0.0, "a refinery's pad by the player's own ore", build=200.0),
+    'harbour': Site(4030.0, 2500.0, 180.0, 'the harbour ground at the east end of the canal bridge: the convoy '
+                                           'crosses it to the exit'),
+    'north base': Site(3050.0, 4100.0, 250.0, 'the north plateau past its ore: room for a small camp', build=160.0),
+    'halt': Site(2860.0, 2500.0, 40.0, "the road at plaza 2's gate: a convoy stopped here is past plaza 2 and short "
+                                       "of plaza 3's approach (from 3000)"),
 })
+# MAP_SWITCH_BORDER(k) makes the k-th the playable area (world units, x0 y0 x1 y1; the first is the whole map)
+BORDERS = {'whole': (0.0, 0.0, 5000.0, 5000.0), 'west of the canal': (0.0, 0.0, CANAL[0] - 20.0, 5000.0)}
 for k, (x, north) in enumerate(zip(PLAZA_X, NORTH), 1):
     s = 1 if north else -1
     side = 'north' if north else 'south'

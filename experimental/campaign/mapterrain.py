@@ -54,6 +54,21 @@ class HeightMap:
                     changed += 1
         return changed
 
+    def borders(self):
+        """The map's borders, each (x0, y0, x1, y1) in cells from the playable corner (cell (border, border)); the
+        script action MAP_SWITCH_BORDER(k) makes the k-th the playable area (retail: 0 the whole map, s06 Iceland
+        lists 5, ep01 Osaka 7)."""
+        nb = struct.unpack_from('<I', self.head, 12)[0]
+        return [struct.unpack_from('<4I', self.head, 16 + 16 * k) for k in range(nb)]
+
+    def set_borders(self, rects):
+        """Replace the borders (call store() after)."""
+        rects = [tuple(int(v) for v in r) for r in rects]
+        w, h, b, _ = struct.unpack_from('<4I', self.head, 0)
+        self.head = (struct.pack('<4I', w, h, b, len(rects)) + b''.join(struct.pack('<4I', *r) for r in rects) +
+                     struct.pack('<I', w * h))
+        self.at = len(self.head)
+
     def store(self):
         self.node.head = self.head + struct.pack(f'<{len(self.elev)}H', *self.elev)
 

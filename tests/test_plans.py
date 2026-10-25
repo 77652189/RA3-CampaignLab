@@ -1,0 +1,140 @@
+"""The plan language (experimental/cnv/plan.py, docs/story/plans/README.md) compiles to the scripts it says: values by
+difficulty land in scripts with that difficulty's header bit only, a repeating wave stops at its cap and while none
+of its sources stands, `X + t` waits on X, phases start in order, an unknown word is an error that names it, and
+every plan passes its design check without a 问题 (against what the retail missions do)."""
+import sys
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / 'experimental' / 'cnv'))
+import plan  # noqa: E402
+import plancheck  # noqa: E402
+
+EASY, NORMAL, HARD = plan.ONE
+
+
+def small(**more):
+    """A plan on the festival map: one phase, one enemy barracks, plus `more`."""
+    d = {'关卡': 'zz', '地图': 'festival', '阵营': {'我': '盟军', '敌': '帝国'},
+         '开局': {'资金': '5000/3000/2000', '部队': [{'单位': '兵营', '在': 'north base', '阵营': '敌', '角色': 'camp'}]},
+         '段': [{'名字': '一'}]}
+    d.update(more)
+    return plan.Compiler(d).compile()
+
+
+def named(m, start):
+    return [s for s in m.scripts if s.name.startswith(start)]
+
+
+def test_values_by_difficulty():
+    assert plan.per('5000/3000/2000') == ('5000', '3000', '2000') and plan.per(7) == (7, 7, 7)
+    assert plan.times('4:00/3:00/2:30') == (240.0, 180.0, 150.0) and plan.seconds('4分钟') == 240.0
+    with pytest.raises(plan.PlanError):
+        plan.per('1/2')
+    money = named(small(), 'CNV ZZ - Money')
+    assert {(tuple(s.levels), s.do[0][2]) for s in money} == {(EASY, 5000), (NORMAL, 3000), (HARD, 2000)}
+
+
+def test_a_repeating_wave_has_its_cap_and_its_source():
+    m = small(进攻=[{'名字': 'w', '开始': '开局 + 1:00', '兵': {'帝国武士': '1/2/3'}, '从': 'north base',
+                    '打': 'west field', '每隔': 30, '最多': 3, '来源': ['camp']}])
+    sends = [s for s in named(m, 'CNV ZZ - Wave 1 ') if not s.name.endswith(('start', 'more'))]
+    assert len(sends) == 3 * 3                          # 3 waves x 3 difficulties
+    for s in sends:
+        i = int(s.name.split()[5])                      # CNV ZZ - Wave 1 <i> <difficulty>
+        assert ('COUNTER', 'CNV_ZZ_Wave_1_Sent', 2, i - 1) in s.when
+        assert ('NAMED_NOT_DESTROYED', 'UNIT - CNV ZZ camp') in s.when
+        made = [a for a in s.do if a[0] == 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT']
+        assert len(made) == {EASY: 1, NORMAL: 2, HARD: 3}[tuple(s.levels)]
+    start = named(m, 'CNV ZZ - Wave 1 start')[0]
+    assert any(c[0] == 'TIMER_EXPIRED' for c in start.when)          # waits for 开局 + 1:00
+
+
+def test_any_of_makes_one_script_per_alternative_latched_once():
+    m = small(规则=[{'当': {'任一': ['开局 + 2:00', '攻击 camp']}, '做': ['通报 来了']}])
+    rule = named(m, 'CNV ZZ - Rule 1')
+    assert len(rule) == 2
+    latch = {c for s in rule for c in s.when if c[0] == 'FLAG' and c[2] == 0}
+    assert len(latch) == 1                              # the same flag stops the second from running too
+
+
+def test_phases_start_in_order_and_reveal_their_objectives():
+    m = small(段=[{'名字': '一', '目标': ['甲'], '结束': '开局 + 1:00'}, {'名字': '二', '目标': ['乙']}],
+              目标={'甲': {'标记': ['camp']}, '乙': {'奖励': True}})
+    second = next(s for s in m.scripts if s.name == 'CNV ZZ - Phase 2')
+    assert ('FLAG', 'CNV_ZZ_Phase_1', 1) in second.when
+    reveal = [s for s in m.scripts if any(a == ('SET_MISSION_OBJECTIVE_STATUS', 'Bonus01 - CNV ZZ', 1) for a in s.do)]
+    assert reveal and any(c == ('FLAG', 'CNV_ZZ_Wait_' + c[1].split('_')[-1], 1) for c in reveal[0].when
+                          if c[0] == 'FLAG')
+
+
+def test_chinese_names_stay_out_of_the_map():
+    """Phases, waves, rules and roles named in Chinese: the scripts and objects get ASCII names (the map stores
+    them as Latin-1), the cast keeps the plan's names."""
+    import parts
+    m = small(开局={'部队': [{'单位': '兵营', '在': 'north base', '阵营': '敌', '角色': '北营兵营'}]},
+              段=[{'名字': '布防', '目标': ['拆掉北营'], '结束': '开局 + 1:00'}, {'名字': '进攻'}],
+              目标={'拆掉北营': {'标记': ['北营兵营'], '完成': '摧毁 北营兵营'}},
+              进攻=[{'名字': '小队', '开始': '段 进攻', '兵': {'帝国武士': 2}, '从': 'north base', '打': '北营兵营'}],
+              规则=[{'当': '攻击 北营兵营', '做': ['通报 打起来了']}])
+    assert '北营兵营' in m.cast
+    assert not parts.contract(parts.merged(m))
+
+
+@pytest.mark.parametrize('bad', [{'规则': [{'当': '开局 后', '做': []}]},
+                                 {'规则': [{'当': '开局', '做': ['跳舞']}]},
+                                 {'规则': [{'当': '摧毁 nobody', '做': []}]},
+                                 {'规则': [{'当': '段 三', '做': []}]},
+                                 # 还没 (X + t) does not latch: an error, not (还没 X) + t (review 2026-10-24)
+                                 {'规则': [{'当': '还没 段 一 + 4:00', '做': []}]},
+                                 # a rule not done once ran every frame its condition held
+                                 {'规则': [{'当': '开局', '做': [], '次数': '每次'}]},
+                                 {'规则': [{'当': '开局', '做': [], '次数': 3}]}])
+def test_an_unknown_word_is_an_error(bad):
+    with pytest.raises((plan.PlanError, AssertionError)):
+        small(**bad)
+
+
+def test_two_waves_on_the_convoy_keep_the_contract():
+    """Each wave on a device gets its own chase scripts (names cut from the troops' collided), and the convoy's tick
+    runs before it sets off, so troops sent at it early have orders."""
+    import parts
+    wave = {'开始': '开局 + 0:30', '兵': {'帝国武士': 1}, '从': 'north base', '打': '车队'}
+    m = small(机关={'车队': {'类型': '车队', '出发': '开局 + 3:00'}},
+              进攻=[dict(wave, 名字='甲'), dict(wave, 名字='乙')])
+    assert not parts.contract(parts.merged(m))
+    before = next(s for s in m.scripts if s.name == 'CNV ZZ - Tick before')
+    assert before.do[0][0] == 'SET_MILLISECOND_TIMER' and not before.when
+    assert any(s.name == 'CNV ZZ - Roll parked' for s in m.scripts)
+    import dataclasses
+    m.scripts.append(dataclasses.replace(m.scripts[0]))
+    assert any('scripts have it' in b for b in parts.contract(parts.merged(m)))
+
+
+def test_the_carrier_defends_only_a_station_still_the_enemys():
+    """A7's 回防 is a request: the jump waits on the station still the enemy's and the carrier not flying off."""
+    m = plan.mission('a7')
+    rule = next(s for s in m.scripts if any(a[0] == 'SET_FLAG' and a[1].endswith('Defend_Asked') for a in s.do))
+    assert not any(a[0] == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT' for a in rule.do)
+    jump = next(s for s in m.scripts if s.name.endswith('Carrier defends'))
+    assert {c[0] for c in jump.when} >= {'NAMED_OWNED_BY_PLAYER', 'FLAG'}
+    assert ('HIDE_COUNTDOWN_TIMER', 'CNV A7 Jump') in jump.do
+
+
+def test_every_plan_passes_its_design_check():
+    levels = plan.levels()
+    assert levels, f'no plans in {plan.PLANS}'
+    for level in levels:
+        problems = [t for lv, t in plancheck.design_check(plan.load(level)) if lv == '问题']
+        assert not problems, (level, problems)
+
+
+def test_a_time_the_player_can_bring_forward_is_only_the_latest():
+    """An any-of with the player's doing in it, or waiting on a phase the player starts sooner: the report says
+    "最晚" (it is not when the attack comes, only when it comes at the latest)."""
+    d = {'段': [{'名字': '一', '结束': {'任一': ['开局 + 6:00', '进入 harbour']}}, {'名字': '二'}],
+         '进攻': [{'名字': 'w', '开始': '段 二 + 1:30', '兵': {}}, {'名字': 'v', '开始': '开局 + 2:00', '兵': {}}]}
+    sheet = plancheck.beat_sheet(d)
+    assert '第 2 段 二（最晚 6:00 起）' in sheet and 'w：最晚 7:30 起' in sheet and 'v：2:00 起' in sheet

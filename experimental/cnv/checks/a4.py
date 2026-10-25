@@ -20,6 +20,8 @@ SMASH_AT = 10.0
 INSIDE = 95.0                                   # half-side of the area counted as inside a plaza
 ROAD_MARGIN = 30.0                              # the road area stops this far short of the gates' lines
 DRIVE = 43.0                                    # convoy start to exit at the ore collector's speed 50 (2140 / 50)
+HALT = 15.0                                     # win: the stop at the halt and the start again, when nothing holds it
+HARBOUR = ('harbour ambush', 'harbour guard')   # the plan's parts waiting at the harbour (docs/story/plans/a4.md)
 
 
 def ice_wall(m):
@@ -141,10 +143,13 @@ def win(m):
     start(t, m)
     t.scripts.append(Script('Test - keep the trucks up', [], [('UNIT_SET_HEALTH', r.name, 100.0)
                                                              for r in m.roles('truck')], once=False))
+    # the harbour's ambush gone from the start: the convoy's stop there (phase 3) ends as soon as it begins
+    t.scripts.append(Script('Test - clear the harbour', [], [('NAMED_KILL', r.name) for g in HARBOUR
+                                                             for r in m.roles(g)]))
     trucks(t, m)
     leave = m.facts['convoy leaves']
     t.expect += [('1 号车血量', 0, '==', 100, leave), ('ENDED', leave + DRIVE - 10, '', None)]
-    t.bench = [('bench_watch', dict(seconds=leave + DRIVE + 20, every=3, sheet=False, lines=len(t.counters)))]
+    t.bench = [('bench_watch', dict(seconds=leave + DRIVE + HALT + 20, every=3, sheet=False, lines=len(t.counters)))]
     return t
 
 
