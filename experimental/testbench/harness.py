@@ -370,8 +370,18 @@ class Session:
         path = os.path.join(SHOTS, name + '.bmp')
         if os.path.exists(path):
             os.remove(path)
-        with open(os.path.join(SHOTS, 'shot.req'), 'w', encoding='ascii') as f:
+        # written aside, then renamed in whole: the shim reads the request any frame, and a file it caught created but
+        # not yet written was an empty name -- saved as shot_<ms>.bmp, this wait ran out (bench 2026-10-25: the
+        # "dropouts" of A4 win at s118 and s125)
+        tmp = os.path.join(SHOTS, 'shot.req.tmp')
+        with open(tmp, 'w', encoding='ascii') as f:
             f.write(name)
+        for _ in range(20):
+            try:
+                os.replace(tmp, os.path.join(SHOTS, 'shot.req'))
+                break
+            except PermissionError:             # the shim has the last request open
+                time.sleep(0.02)
         end = time.monotonic() + timeout
         while not os.path.exists(path):
             if time.monotonic() > end:

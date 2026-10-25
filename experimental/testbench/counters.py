@@ -26,7 +26,9 @@ END_GAP = 12                                    # a wider gap: the line's text h
 START_BY = 30                                   # a counter line's text starts left of this
 MIN_HEIGHT = 6                                  # text columns shorter than this are specks (digits are 13 tall; a
                                                 # 1-px sparkle 6 px right of a 0 read as 8, bench 2026-10-21)
-SIZE = (8, 12)                                  # a glyph is compared at this size
+BOX_DARK, BOX_END = 90, 4                       # the counters' backing box: darker than this; ends after so many
+                                                # columns without it
+SIZE = (8, 12)                                # a glyph is compared at this size
 CALIBRATION = [1234, 5678, 90]
 
 
@@ -40,6 +42,16 @@ def glyphs(img, box):
     """The value's glyphs on one line: [(x0, x1, mask)] left to right, from the text columns after the last gap."""
     rgb = np.asarray(img.crop(box).convert('RGB')).astype(int)
     a = np.minimum(rgb[:, :, 0], rgb[:, :, 1]) > TEXT
+    # the text stands on a dark box, which ends a few px after the value: bright ground beyond it (sand) read as
+    # more digits, "0" as 47 (bench 2026-10-25, A4 smash). A box column has some dark pixels (between glyphs:
+    # few, 2 columns at most) or, a glyph's stroke filling it, its few other pixels dark; the ground has neither
+    # (shadow in spots). The box ends at the first BOX_END columns in a row that are not the box
+    rest, deep = ~a, rgb.max(2) < BOX_DARK
+    dark = (deep.mean(0) > 0.15) | (rest.any(0) & ((rest & deep).sum(0) > 0.5 * rest.sum(0)))
+    for x in range(START_BY, len(dark) - BOX_END):
+        if not dark[x:x + BOX_END].any():
+            a[:, x:] = False
+            break
     cols = a.any(0)
     runs, x = [], 0
     while x < len(cols):
@@ -105,9 +117,13 @@ def read_line(img, box):
 def read(img, n):
     """The n counters' values, top to bottom. A countdown the mission shows (DISPLAY_COUNTDOWN_TIMER, "车队出发
     0:50") stands in the same list above the counters (bench 2026-10-24: it pushed them a line down and the top
-    counter read 253): the lines with text beyond the n counters are taken as such and skipped."""
-    lines = [k for k in range(MAX_LINES) if glyphs(img, line_box(k))]
-    skip = max(0, len(lines) - n)
+    counter read 253): the lines with text beyond the n counters are taken as such and skipped. Only the lines
+    from the top without a break count: a speck on the ground below the counters (bench 2026-10-25, A4 at s59: a
+    1-px column on line 3) slid every reading a line down."""
+    lines = 0
+    while lines < MAX_LINES and glyphs(img, line_box(lines)):
+        lines += 1
+    skip = max(0, lines - n)
     return [read_line(img, line_box(k + skip, n)) for k in range(n)]
 
 

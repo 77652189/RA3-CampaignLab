@@ -10,8 +10,9 @@ ambush: the convoy, as played, breaks plaza 1's sculptures as it passes the appr
 win: the trucks kept at full health: they reach the exit and the mission ends after the drive.
 lose: the trucks at 1 % health: the first ambush kills two and the mission ends well before the drive's time.
 idle: as played, the player doing nothing: the convoy is lost (bench 2026-10-23: ended at s78, 18 s after leaving).
+harbour: what "enemies cleared" counts at the harbour: armed ones, not its bridge.
 """
-from parts import Obj, Script, Test, counted, square
+from parts import Obj, Script, Test, counted, kindof, square
 from units import icewall as iw
 
 BUILD_BEFORE = 10.0                             # seal: the power is fired this long before the convoy leaves
@@ -20,6 +21,8 @@ SMASH_AT = 10.0
 INSIDE = 95.0                                   # half-side of the area counted as inside a plaza
 ROAD_MARGIN = 30.0                              # the road area stops this far short of the gates' lines
 DRIVE = 43.0                                    # convoy start to exit at the ore collector's speed 50 (2140 / 50)
+LEAD = 4.0                                      # the mission runs ~3 s ahead of the bench's clock (bench 2026-10-25:
+                                                # "车队出发了" on screen at bench s177, leaving at 180), margin
 HALT = 15.0                                     # win: the stop at the halt and the start again, when nothing holds it
 HARBOUR = ('harbour ambush', 'harbour guard')   # the plan's parts waiting at the harbour (docs/story/plans/a4.md)
 
@@ -92,6 +95,7 @@ def placed(m):
     """The control behind the mission's held-gate rule: a bar placed by the map (angle 0, lasting the whole run)
     across plaza 1's gate -- the gap in its cliff --, plaza 2's open. Bench 2026-10-23: it held plaza 1's tank buster in its
     plaza 37 s; the wall built in play did not (see missions/a4.py, units/icewall.py)."""
+    m.drop_endings()                            # unescorted, the convoy is lost (2026-10-25: at s207): keep counting
     t = Test()
     start(t, m)
     w = iw.wall('CNV_A4TestWall', length=200, lifetime=300)     # across the gate's gap, as the map's description says
@@ -102,7 +106,7 @@ def placed(m):
     in_plaza(t, m, 1, 'troop 1-1-1', '1 号的兵在广场')     # held, not never there
     leave = m.facts['convoy leaves']
     t.expect += [('2 号的兵上路', leave, 'ever==', 1), ('1 号的兵上路', 0, '==', 0, leave + 35),
-                 ('1 号的兵在广场', leave, 'ever==', 1)]
+                 ('1 号的兵在广场', leave - LEAD, 'ever==', 1)]      # out, they leave the plaza within seconds
     t.bench = [('bench_watch', dict(seconds=leave + 45, every=3, sheet=False, lines=len(t.counters)))]
     return t
 
@@ -115,7 +119,9 @@ def smash(m):
                          [('NAMED_KILL', m.role('sculpture 2-1').name)])]
     in_plaza(t, m, 2, 'troop 2-1-1', '2-1 的兵')
     counted('Test Sculpture', '2-2 冰雕血量', t, health=m.role('sculpture 2-2').name)
-    t.expect += [('2-1 的兵', SMASH_AT + 2, 'ever==', 1, SMASH_AT + 10), ('2-2 冰雕血量', 0, '==', 100)]
+    # out, they make for the parked trucks at once (the convoy's tick runs before it leaves): seen in the plaza only
+    # for a few seconds
+    t.expect += [('2-1 的兵', SMASH_AT - LEAD, 'ever==', 1, SMASH_AT + 10), ('2-2 冰雕血量', 0, '==', 100)]
     t.bench = [('bench_watch', dict(seconds=SMASH_AT + 12, every=2, sheet=False, lines=len(t.counters)))]
     return t
 
@@ -126,9 +132,8 @@ def ambush(m):
     leave = m.facts['convoy leaves']
     in_plaza(t, m, 1, 'troop 1-1-1', '1 号广场的兵')
     counted('Test Sculpture', '1-1 冰雕血量', t, health=m.role('sculpture 1-1').name)
-    # bench 2026-10-23: broken at bench s59 -- the bench's seconds run a second or two ahead of the mission's
-    t.expect += [('1 号广场的兵', 0, '==', 0, leave - 3), ('1-1 冰雕血量', 0, '==', 100, leave - 3),
-                 ('1 号广场的兵', leave, 'ever==', 1, leave + 10)]
+    t.expect += [('1 号广场的兵', 0, '==', 0, leave - LEAD), ('1-1 冰雕血量', 0, '==', 100, leave - LEAD),
+                 ('1 号广场的兵', leave - LEAD, 'ever==', 1, leave + 10)]
     t.bench = [('bench_watch', dict(seconds=leave + 12, every=2, sheet=False, lines=len(t.counters)))]
     return t
 
@@ -150,6 +155,23 @@ def win(m):
     leave = m.facts['convoy leaves']
     t.expect += [('1 号车血量', 0, '==', 100, leave), ('ENDED', leave + DRIVE - 10, '', None)]
     t.bench = [('bench_watch', dict(seconds=leave + DRIVE + HALT + 20, every=3, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+def harbour(m):
+    """What `敌人清空 harbour` counts: the enemy's armed (CAN_ATTACK) in the harbour area while its troops stand, and
+    none once they are killed (10 s). Bench 2026-10-25: counted as SELECTABLE it never held in win, every troop
+    dead -- the harbour's bridge is the enemy's (2 selectable, 3 structures, shown beside)."""
+    t = Test()
+    start(t, m)
+    t.scripts += [Script('Test - clear set', [], [('SET_MILLISECOND_TIMER', 'Test - clear timer', 10.0)]),
+                  Script('Test - clear the harbour', [('TIMER_EXPIRED', 'Test - clear timer')],
+                         [('NAMED_KILL', r.name) for g in HARBOUR for r in m.roles(g)])]
+    area = next(k for k in m.areas if k.endswith('Area harbour'))
+    for kind, label in (('SELECTABLE', '港口可选'), ('CAN_ATTACK', '港口能打的'), ('STRUCTURE', '港口建筑')):
+        counted(f'Test Harbour {kind}', label, t, area=area, kind=kindof(kind), player=m.player('s1'))
+    t.expect += [('港口能打的', 3, '>=', 1, 8), ('港口能打的', 13, '==', 0)]
+    t.bench = [('bench_watch', dict(seconds=20, every=3, sheet=False, lines=len(t.counters)))]
     return t
 
 

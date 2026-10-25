@@ -247,7 +247,9 @@ class Compiler:
         if head == '进入':
             return [[('SKIRMISH_PLAYER_HAS_UNITS_IN_AREA', p1, self.area(rest))]]
         if head == '敌人清空':
-            return [[('PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA', s1, 2, 0, kindof('SELECTABLE'),
+            # what can fight (troops, defences): bench 2026-10-25, the festival harbour counted 2 of the enemy's
+            # SELECTABLE and 3 STRUCTURE there with every troop dead -- its bridge -- and never held
+            return [[('PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA', s1, 2, 0, kindof('CAN_ATTACK'),
                       self.area(rest))]]
         if head == '摧毁':
             return [[('NAMED_DESTROYED', n) for n in self.part_names(rest)]]
