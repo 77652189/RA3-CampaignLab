@@ -8,7 +8,8 @@ smash: the player breaks sculpture 2-1 early (by test script, long before the co
   plaza 2 at once, while sculpture 2-2 is whole.
 ambush: the convoy, as played, breaks plaza 1's sculptures as it passes the approach: the troops appear.
 win: the trucks kept at full health: they reach the exit and the mission ends after the drive.
-lose: the trucks at 1 % health: the first ambush kills two and the mission ends well before the drive's time.
+lose: the trucks at 1 % health as they set off (the war factory's drones mend them while parked): the first
+  ambush kills two and the mission ends well before the drive's time.
 idle: as played, the player doing nothing: the convoy is lost (bench 2026-10-23: ended at s78, 18 s after leaving).
 harbour: what "enemies cleared" counts at the harbour: armed ones, not its bridge.
 """
@@ -24,6 +25,7 @@ DRIVE = 43.0                                    # convoy start to exit at the or
 LEAD = 4.0                                      # the mission runs ~3 s ahead of the bench's clock (bench 2026-10-25:
                                                 # "车队出发了" on screen at bench s177, leaving at 180), margin
 HALT = 15.0                                     # win: the stop at the halt and the start again, when nothing holds it
+OUT_OF_REACH = 6.0                              # lose: the last truck past the war factory's drones (108 + 200, speed 50)
 HARBOUR = ('harbour ambush', 'harbour guard')   # the plan's parts waiting at the harbour (docs/story/plans/a4.md)
 
 
@@ -188,12 +190,19 @@ def idle(m):
 
 
 def lose(m):
+    """The trucks to 1 % as they set off, and once more when out of the war factory's reach: its repair drones (200
+    from it, 20 a second: bench 2026-10-25) mend what stands at the convoy's start, set at the start they were whole
+    again before leaving."""
     t = Test()
     start(t, m)
-    for r in m.roles('truck'):
-        m.find(r.name).props['objectInitialHealth'] = 1
     trucks(t, m)
     leave = m.facts['convoy leaves']
-    t.expect += [('ENDED', leave, '', None)]
+    for k, at in enumerate((leave, leave + OUT_OF_REACH)):
+        timer = f'Test - weaken timer {k + 1}'
+        t.scripts += [Script(f'Test - weaken set {k + 1}', [], [('SET_MILLISECOND_TIMER', timer, at)]),
+                      Script(f'Test - weaken {k + 1}', [('TIMER_EXPIRED', timer)],
+                             [('UNIT_SET_HEALTH', r.name, 1.0) for r in m.roles('truck')])]
+    # weakened indeed: in the drones' reach a few seconds at most (1 % + 4 % a second)
+    t.expect += [('2 号车血量', leave + 2, '<=', 30, leave + OUT_OF_REACH), ('ENDED', leave, '', None)]
     t.bench = [('bench_watch', dict(seconds=leave + DRIVE - 12, every=2, sheet=False, lines=len(t.counters)))]
     return t
