@@ -13,13 +13,14 @@ lose: the trucks at 1 % health as they set off (the war factory's drones mend th
 idle: as played, the player doing nothing: the convoy is lost (bench 2026-10-23: ended at s78, 18 s after leaving).
 harbour: what "enemies cleared" counts at the harbour: armed ones, not its bridge.
 """
-from parts import Obj, Script, Test, counted, kindof, square
+from parts import Obj, Script, Test, counted, square
 from units import icewall as iw
 
 BUILD_BEFORE = 10.0                             # seal: the power is fired this long before the convoy leaves
 WALK_BUILD = 9.0                                # seal: from the road in front of the gate: 70 at speed 40, 5 s, margin
 SMASH_AT = 10.0
 INSIDE = 95.0                                   # half-side of the area counted as inside a plaza
+GUARDIAN = 'AlliedAntiVehicleVehicleTech1'
 ROAD_MARGIN = 30.0                              # the road area stops this far short of the gates' lines
 DRIVE = 43.0                                    # convoy start to exit at the ore collector's speed 50 (2140 / 50)
 LEAD = 4.0                                      # the mission runs ~3 s ahead of the bench's clock (bench 2026-10-25:
@@ -161,18 +162,27 @@ def win(m):
 
 
 def harbour(m):
-    """What `敌人清空 harbour` counts: the enemy's armed (CAN_ATTACK) in the harbour area while its troops stand, and
-    none once they are killed (10 s). Bench 2026-10-25: counted as SELECTABLE it never held in win, every troop
-    dead -- the harbour's bridge is the enemy's (2 selectable, 3 structures, shown beside)."""
+    """What `敌人清空 harbour` tests, with the player's own army standing in the harbour (as it does when it clears
+    it): enemy there while its troops stand, none once they are killed (10 s), the player's tanks there throughout.
+    Bench 2026-10-25: the condition first counted the enemy's CAN_ATTACK in the area, which the engine counts for
+    every player (probe/count) -- the player's army there would have kept it from ever holding."""
     t = Test()
     start(t, m)
-    t.scripts += [Script('Test - clear set', [], [('SET_MILLISECOND_TIMER', 'Test - clear timer', 10.0)]),
+    for k in range(3):                              # unattackable: they stay while the enemy is killed
+        t.objects.append(Obj(GUARDIAN, *m.site('harbour', -60 + 60 * k, -120), name=f'UNIT - Test Harbour Tank {k}',
+                             site='harbour'))
+    t.scripts += [Script('Test - our tanks stay', [], [('UNIT_CHANGE_OBJECT_STATUS', f'UNIT - Test Harbour Tank {k}',
+                                                         'UNATTACKABLE', 1) for k in range(3)]),
+                  Script('Test - clear set', [], [('SET_MILLISECOND_TIMER', 'Test - clear timer', 10.0)]),
                   Script('Test - clear the harbour', [('TIMER_EXPIRED', 'Test - clear timer')],
                          [('NAMED_KILL', r.name) for g in HARBOUR for r in m.roles(g)])]
     area = next(k for k in m.areas if k.endswith('Area harbour'))
-    for kind, label in (('SELECTABLE', '港口可选'), ('CAN_ATTACK', '港口能打的'), ('STRUCTURE', '港口建筑')):
-        counted(f'Test Harbour {kind}', label, t, area=area, kind=kindof(kind), player=m.player('s1'))
-    t.expect += [('港口能打的', 3, '>=', 1, 8), ('港口能打的', 13, '==', 0)]
+    clear = next(c for s in m.scripts for c in s.when if c[0] == 'SKIRMISH_PLAYER_HAS_UNITS_IN_AREA' and c[2] == area)
+    t.counters.append(('Test Harbour clear', '港口清空'))
+    t.scripts += [Script('Test - clear zero', [], [('SET_COUNTER', 'Test Harbour clear', 0)], once=False),
+                  Script('Test - clear one', [clear], [('SET_COUNTER', 'Test Harbour clear', 1)], once=False)]
+    counted('Test Harbour ours', '我方在港口', t, template=GUARDIAN, area=area)
+    t.expect += [('港口清空', 3, '==', 0, 8), ('港口清空', 13, '==', 1), ('我方在港口', 3, '==', 3)]
     t.bench = [('bench_watch', dict(seconds=20, every=3, sheet=False, lines=len(t.counters)))]
     return t
 

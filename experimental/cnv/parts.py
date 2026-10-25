@@ -83,10 +83,14 @@ class Obj:
     flags: int = None                   # object flags (a bridge's start 16 / end 32); None: those of its side's template
 
 
+NOT = 'NOT'                             # a condition's last item: it is written inverted ('...', NOT)
+
+
 @dataclasses.dataclass
 class Script:
     name: str
-    when: list                          # conditions, ANDed: ('TIMER_EXPIRED', 'x') ...; [] = every frame
+    when: list                          # conditions, ANDed: ('TIMER_EXPIRED', 'x') ...; [] = every frame; one
+                                        # ending in NOT holds when its test does not
     do: list                            # actions: ('SHOW_MILITARY_CAPTION', 'SCRIPT:X', 5.0) ...
     once: bool = True
     levels: tuple = (True, True, True)  # the difficulties it runs on (easy, normal, hard): the script header's bits,
@@ -134,6 +138,11 @@ class Mission(Part):
                                                                 # stand above the counters, in the same 4 lines)
     spawns: set = dataclasses.field(default_factory=set)        # templates its scripts name that nobody casts (a
                                                                 # plan's waves and reinforcements, what it counts)
+    sides: dict = dataclasses.field(default_factory=dict)       # {side: {player property: value}} changed in the
+                                                                # map's player list (a skirmish AI's faction, its
+                                                                # personality: mapxml.set_player)
+    assets: list = dataclasses.field(default_factory=list)      # more XML compiled in: [(file name, text, instance
+                                                                # to link, 'AIPersonalityDefinition:X')]
 
     def find(self, name):
         return next(o for o in self.objects if o.name == name)
@@ -272,7 +281,8 @@ def square(x, y, r):
 def counted(counter, label, test, template=None, status=None, area=None, kind=None, player='Player_1', most=8,
             named=None, health=None, owner=None):
     """A test readout: how many `template`s the player owns (with `area`: how many of them stand in that trigger
-    area; with `kind` instead of a template -- kindof('VEHICLE') -- how many of that KindOf), or how many of their
+    area; with `kind` instead of a template -- kindof('VEHICLE') -- how many of that KindOf, but every player's: the
+    engine ignores the player in that one, bench 2026-10-25 probe/count), or how many of their
     objects carry `status` ((index, 0.0, name) as in ObjectStatus.xsd's order), shown as a game counter -- read as a
     number by bench_counters instead of counting units in a frame. Counted per value 0 .. most - 1: at `most` or
     more the counter shows `most`. named + area: 1 while that named object is inside the area, else 0 -- for a
@@ -441,8 +451,11 @@ def contract(mission):
 def write_map(m, mm):
     """The mission (merged) written into the container map: the map's terrain and its own objects (ore, tech,
     bridges: map.OBJECTS), then the mission's waypoints, objects, scripts, trigger areas and objectives."""
+    import mapxml
     import newmap
     mm.map.terrain(m)
+    for side, props in mm.sides.items():
+        mapxml.set_player(m, mm.player(side), **props)
     borders = getattr(mm.map, 'BORDERS', None)
     if borders:                             # MAP_SWITCH_BORDER(k) switches to the k-th; the first is the whole map
         import mapterrain
@@ -463,7 +476,8 @@ def write_map(m, mm):
         props, flags = like[o.side]
         objs.kids.append(newmap.object_node(m, props, flags if o.flags is None else o.flags, o.template, o.x, o.y,
                                             angle=angle, uniqueID=o.name or f'{o.template} {len(objs.kids)}', **extra))
-    ours = [m.new_script(s.name, [m.new_content('Condition', *c) for c in s.when]
+    ours = [m.new_script(s.name, [m.new_content('Condition', *c[:-1], inverted=True) if c[-1] == NOT else
+                                  m.new_content('Condition', *c) for c in s.when]
                          or [m.new_content('Condition', 'CONDITION_TRUE')],
                          [m.new_content('ScriptAction', *a) for a in s.do], one_shot=s.once,
                          difficulties=tuple(s.levels))
@@ -534,6 +548,11 @@ def assemble(mission, test=None, name=None):
         c7.EXTRA_OWN += [n if isinstance(n, bytes) else n.encode() for n in u.link]
         c7.EXTRA_ALL += [f'DATA:CNVUnits/Data/{f}' for f in u.also]
         c4.c3.STRINGS.update(u.strings)
+    for fname, text, link in mm.assets:         # nothing in the map refers to them by file: included and linked
+        with open(os.path.join(data, fname), 'w', encoding='utf-8', newline='\r\n') as f:
+            f.write(text.replace('\r\n', '\n'))
+        c7.EXTRA_ALL.append(f'DATA:CNVUnits/Data/{fname}')
+        c7.EXTRA_OWN.append(link.encode())
     c4.c3.STRINGS.update(mm.strings)
 
     def edit(m):

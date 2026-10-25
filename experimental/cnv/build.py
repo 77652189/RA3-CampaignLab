@@ -37,9 +37,10 @@ from checks import shikigami as check_shi       # noqa: E402
 from checks import train as check_tra           # noqa: E402
 from checks import probe as check_pro           # noqa: E402
 from checks import plan_words as check_pw       # noqa: E402
+from checks import ai as check_ai               # noqa: E402
 from units import tesla as units_tesla          # noqa: E402
 from missions import a4, a7, a8, j4, beacon_bench, burrow_bench, clone_bench, combo_bench, crane_bench, icewall_bench, jammer_bench, liberty_bench, shikigami_bench, \
-    tesla_bench, train_bench, probe_bench, plan_words_bench  # noqa: E402
+    tesla_bench, train_bench, probe_bench, plan_words_bench, ai_bench, ai_plan_bench  # noqa: E402
 
 BENCH_PY = os.path.join(os.path.dirname(ROOT), 'envs', 'bench_mcp', 'Scripts', 'python.exe')
 CLIENT = os.path.join(ROOT, 'experimental', 'testbench', 'bench_client.py')
@@ -98,9 +99,12 @@ MISSIONS = {
     'ice_smash': (lambda: icewall_bench.smash(), {'smash': check_ice.smash}),
     'clone': (lambda: clone_bench.mission(), {'hold': check_clo.hold, 'free': check_clo.free}),
     'clone_any': (lambda: clone_bench.mission(name='CampCloneA', picky=False), {'free': check_clo.free_any}),
-    'probe': (lambda: probe_bench.mission(), {'engine': check_pro.engine}),
+    'probe': (lambda: probe_bench.mission(), {'engine': check_pro.engine, 'count': check_pro.count}),
     'probe_nosave': (lambda: probe_bench.mission(name='CampPrbN', save=False), {'engine': check_pro.engine}),
     'plan_words': (lambda: plan_words_bench.mission(), {'words': check_pw.words}),
+    'ai': (lambda: ai_bench.mission(), {'wake': check_ai.wake}),
+    'ai_asleep': (lambda: ai_bench.mission(name='CampAIS', wake=False), {'asleep': check_ai.asleep}),
+    'ai_plan': (lambda: ai_plan_bench.mission(), {'capped': check_ai.capped}),
 }
 LEVELS = ('a4', 'a7', 'a8', 'j4')                          # campaign levels: each has a card in docs/story/levels.md (the rest:
                                                 # A/B controls and bench scenes)
@@ -286,7 +290,10 @@ def judge(t, readings):
         if op.startswith('ever'):
             ok = any(v is not None and OPS[op[4:]](v, want) for _, v in got)
         else:
-            ok = bool(got) and all(v is not None and OPS[op](v, want) for _, v in got)
+            # a reading missing between two that are there was covered for a moment (bench 2026-10-25: the rank-up
+            # chevrons over the counters at s323 of two AI runs); missing to the end is the mission gone -- a fail
+            last = max((j for j, (_, v) in enumerate(got) if v is not None), default=-1)
+            ok = bool(got) and last == len(got) - 1 and all(v is None or OPS[op](v, want) for _, v in got)
         verdicts.append((ok, describe(e) + ': ' + (runs(got) or 'no reading')))
     return verdicts
 

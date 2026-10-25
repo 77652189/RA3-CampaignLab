@@ -41,6 +41,11 @@ def _props(m, d, p):
 def _typed_props(m, d, p):
     """Property dictionary (objects, WorldInfo): u16 count, then u8 type, u24 key (name table index), value
     (0 bool u8, 1 int, 2 real, 3 ascii u16-prefixed, 4 unicode u16-prefixed UTF-16, 5 asset id 'Type:name')."""
+    return _typed_props_end(m, d, p)[0]
+
+
+def _typed_props_end(m, d, p):
+    """_typed_props and the offset just past the dictionary."""
     out, count = {}, struct.unpack_from('<H', d, p)[0]
     p += 2
     for _ in range(count):
@@ -55,7 +60,28 @@ def _typed_props(m, d, p):
             v = d[p + 2:p + 2 + ln].decode('utf-16-le' if t == 4 else 'latin-1')
             p += 2 + ln
         out[key] = (t, v)
-    return out
+    return out, p
+
+
+def set_player(m, name, **props):
+    """Change a player's properties in SidesList (playerFaction='PlayerTemplate:Allies', aiPersonality=
+    'AIPersonalityDefinition:...'): its dictionary found the way mapstudy.players finds it -- the longest one with
+    that playerName -- decoded, changed (string values; a new key is added as an asset id, type 5) and spliced back."""
+    node = next(x for _, x in m.walk() if x.name == 'SidesList')
+    d, best = node.head, None
+    for p in range(len(d) - 6):
+        try:
+            pr, end = _typed_props_end(m, d, p)
+        except Exception:
+            continue
+        if pr.get('playerName', (0, None))[1] == name and (best is None or len(pr) > len(best[1])):
+            best = (p, pr, end)
+    if best is None:
+        raise KeyError(f'no player {name!r} in SidesList')
+    p, pr, end = best
+    for k, v in props.items():
+        pr[k] = (pr[k][0] if k in pr else 5, v)
+    node.head = d[:p] + encode_props(m, pr) + d[end:]
 
 
 def environment(m):

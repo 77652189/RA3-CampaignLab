@@ -23,7 +23,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 import glossary                                 # noqa: E402
-from parts import Goal, Mission, Script, kindof, square   # noqa: E402
+from parts import NOT, Goal, Mission, Script, square   # noqa: E402
 
 PLANS = os.path.join(ROOT, 'docs', 'story', 'plans')
 LEVELS = ('简单', '普通', '困难')
@@ -174,6 +174,7 @@ class Compiler:
         self.dev_units = {}         # unit name a device publishes -> its Unit
         self.phases, self.waves, self.goals = [], {}, {}
         self.last = []              # the scripts the last when() made
+        self.guarded = {}           # side -> named forces the plan keeps on guard (守)
 
     # ---- names
     def uid(self, what=''):
@@ -262,10 +263,11 @@ class Compiler:
         if head == '进入':
             return [[('SKIRMISH_PLAYER_HAS_UNITS_IN_AREA', p1, self.area(rest))]]
         if head == '敌人清空':
-            # what can fight (troops, defences): bench 2026-10-25, the festival harbour counted 2 of the enemy's
-            # SELECTABLE and 3 STRUCTURE there with every troop dead -- its bridge -- and never held
-            return [[('PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA', s1, 2, 0, kindof('CAN_ATTACK'),
-                      self.area(rest))]]
+            # none of the enemy's left there. Not a kind-in-area count: the engine counts every player's with it
+            # (bench 2026-10-25, probe/count: the enemy's CAN_ATTACK in a field held only the player's three came
+            # out 3 -- the festival harbour's "enemy" bridge was the neutral bridge), so the player's own army in the
+            # harbour kept it from ever holding; the has-units test is the enemy's alone
+            return [[('SKIRMISH_PLAYER_HAS_UNITS_IN_AREA', s1, self.area(rest), NOT)]]
         if head == '摧毁':
             return [[('NAMED_DESTROYED', n) for n in self.part_names(rest)]]
         if head == '攻击':
@@ -477,6 +479,7 @@ class Compiler:
                 for nm in self.part_names(role):
                     m.scripts.append(Script(f'CNV {self.tag} - Guard {nm}', [],
                                             [('UNIT_GUARD_AREA', nm, self.area(spec['守']))]))
+                    self.guarded.setdefault(side, []).append(nm)
 
     def setup_devices(self):
         from devices import registry
@@ -667,6 +670,57 @@ class Compiler:
             raise PlanError(f'{what}: 难度 {d!r} -- one or more of {LEVELS}')
         return tuple(x in names for x in LEVELS)
 
+    def compile_ai(self):
+        """敌方AI: the enemy (敌) given to the game's skirmish AI with a personality of the level's own (enemy_ai.py),
+        the retail way (Miyako "enable naomi ai", "give units to tatsu"): asleep with no money until 唤醒, then its
+        units and base handed to the AI, with money; its army sent off only from 进攻. Forces placed with 守 stay the
+        plan's (UNIT_AI_TRANSFER off): the AI would take them along."""
+        spec = self.d.get('敌方AI')
+        if not spec:
+            return
+        import enemy_ai
+        m, s1, faction = self.m, self.m.player('s1'), self.faction['s1']
+        known = {'性格', '偏好', '上限', '基地', '资金', '唤醒', '进攻', '修理', '重建'}
+        if set(spec) - known:
+            raise PlanError(f'敌方AI: {sorted(set(spec) - known)} -- it takes {sorted(known)}')
+        for need in ('基地', '唤醒'):
+            if not spec.get(need):
+                raise PlanError(f'敌方AI: no {need}')
+        pid = f'CNV_AIP_{self.tag}'
+        try:
+            xml = enemy_ai.personality(pid, faction, spec.get('性格', '平衡'),
+                                       {self.unit(u, 's1'): number(k) for u, k in (spec.get('偏好') or {}).items()})
+        except ValueError as e:
+            raise PlanError(f'敌方AI: {e}')
+        for u, n in (spec.get('上限') or {}).items():
+            # retail ("tatsu has limited barracks"): not buildable while it has that many, again when fewer; a
+            # personality's SpecificUnitCap did not hold for a power plant (bench 2026-10-25)
+            tmpl = self.unit(u, 's1')
+            n, low = int(number(n)), tmpl.lower()       # retail writes the type in lower case here
+            m.spawns.add(low)
+            m.scripts += [Script(f'CNV {self.tag} - AI cap {tmpl}', [('PLAYER_HAS_OBJECT_COMPARISON', s1, 3, n, low)],
+                                 [('ALLOW_DISALLOW_ONE_BUILDING', s1, low, 0)], once=False),
+                          Script(f'CNV {self.tag} - AI cap {tmpl} off', [('PLAYER_HAS_OBJECT_COMPARISON', s1, 0, n, low)],
+                                 [('ALLOW_DISALLOW_ONE_BUILDING', s1, low, 1)], once=False)]
+        m.sides['s1'] = {'playerFaction': enemy_ai.PLAYER_TEMPLATE[faction],
+                         'aiPersonality': f'AIPersonalityDefinition:{pid}'}
+        m.assets.append((f'{pid}.xml', xml, f'AIPersonalityDefinition:{pid}'))
+        awake = f'CNV_{self.tag}_AI_Awake'
+        m.scripts.append(Script(f'CNV {self.tag} - AI asleep', [], [('PLAYER_SET_MONEY', s1, 0)]))
+        keep = [('UNIT_AI_TRANSFER', n, 0) for n in self.guarded.get('s1', [])]
+        yes = lambda k, default: int(str(spec.get(k, default)) in ('是', 'True', '1'))     # noqa: E731
+        self.when('AI wake', spec['唤醒'],
+                  [('UNIT_AI_TRANSFER_ALL', s1, 1), ('SKIRMISH_AI_MAKE_BASE', s1, self.mark(spec['基地'])),
+                   ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', s1, 20),
+                   ('SKIRMISH_AI_USE_REPAIRS', s1, yes('修理', '否')),
+                   ('SKIRMISH_AI_USE_REBUILD_SYSTEM', s1, yes('重建', '否'))] + keep + [('SET_FLAG', awake, 1)])
+        for levels, v in by_level(counts(spec.get('资金', 0))):
+            m.scripts.append(Script(f'CNV {self.tag} - AI money' + ('' if levels == ALL else
+                                                                   f' {TAGS[levels.index(True)]}'),
+                                    [('FLAG', awake, 1)], [('PLAYER_SET_MONEY', s1, v)], levels=levels))
+        if spec.get('进攻'):
+            self.when('AI attack', spec['进攻'], [('SKIRMISH_AI_TRANSFER_ALL', s1, 1)], gate=[('FLAG', awake, 1)])
+
     def compile_endings(self):
         m = self.m
         if self.d.get('胜利'):
@@ -698,6 +752,7 @@ class Compiler:
         for name, w in self.waves.items():
             self.wave(name, w)
         self.compile_rules()
+        self.compile_ai()
         self.compile_endings()
         for dev in self.devices.values():
             self.m.scripts += dev.scripts()
