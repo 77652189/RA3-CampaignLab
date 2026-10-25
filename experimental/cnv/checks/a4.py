@@ -202,7 +202,8 @@ def lose(m):
         t.scripts += [Script(f'Test - weaken set {k + 1}', [], [('SET_MILLISECOND_TIMER', timer, at)]),
                       Script(f'Test - weaken {k + 1}', [('TIMER_EXPIRED', timer)],
                              [('UNIT_SET_HEALTH', r.name, 1.0) for r in m.roles('truck')])]
-    # weakened indeed: in the drones' reach a few seconds at most (1 % + 4 % a second)
-    t.expect += [('2 号车血量', leave + 2, '<=', 30, leave + OUT_OF_REACH), ('ENDED', leave, '', None)]
+    # weakened indeed: in the drones' reach a few seconds at most (1 % + 4 % a second); read early, the demo's
+    # troop at the first approach kills them within seconds (2026-10-25: ended at bench s181)
+    t.expect += [('2 号车血量', leave - LEAD, 'ever<=', 30, leave + OUT_OF_REACH), ('ENDED', leave, '', None)]
     t.bench = [('bench_watch', dict(seconds=leave + DRIVE - 12, every=2, sheet=False, lines=len(t.counters)))]
     return t
