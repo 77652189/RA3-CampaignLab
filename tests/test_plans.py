@@ -91,7 +91,12 @@ def test_chinese_names_stay_out_of_the_map():
                                  {'规则': [{'当': '还没 段 一 + 4:00', '做': []}]},
                                  # a rule not done once ran every frame its condition held
                                  {'规则': [{'当': '开局', '做': [], '次数': '每次'}]},
-                                 {'规则': [{'当': '开局', '做': [], '次数': 3}]}])
+                                 {'规则': [{'当': '开局', '做': [], '次数': 3}]},
+                                 {'规则': [{'当': '开局', '做': [], '难度': '地狱'}]},
+                                 {'规则': [{'当': '开局 + 0:30~0:10', '做': []}]},
+                                 {'规则': [{'当': '开局', '做': [{'出动': 'camp'}]}]},
+                                 {'进攻': [{'名字': 'w', '开始': '开局', '兵': {'帝国武士': 1}, '从': 'north base',
+                                           '每隔': '0:30~1:00'}]}])
 def test_an_unknown_word_is_an_error(bad):
     with pytest.raises((plan.PlanError, AssertionError)):
         small(**bad)
@@ -138,3 +143,49 @@ def test_a_time_the_player_can_bring_forward_is_only_the_latest():
          '进攻': [{'名字': 'w', '开始': '段 二 + 1:30', '兵': {}}, {'名字': 'v', '开始': '开局 + 2:00', '兵': {}}]}
     sheet = plancheck.beat_sheet(d)
     assert '第 2 段 二（最晚 6:00 起）' in sheet and 'w：最晚 7:30 起' in sheet and 'v：2:00 起' in sheet
+
+
+def test_a_random_time_waits_between_its_two():
+    m = small(规则=[{'当': '开局 + 0:15~0:30/0:10~0:20/5', '做': ['通报 来了']}])
+    starts = {tuple(s.levels): s.do[0] for s in named(m, 'CNV ZZ - Wait')}
+    timer = starts[HARD][1]
+    assert starts == {EASY: ('SET_RANDOM_MSEC_TIMER', timer, 15.0, 30.0),
+                      NORMAL: ('SET_RANDOM_MSEC_TIMER', timer, 10.0, 20.0),
+                      HARD: ('SET_MILLISECOND_TIMER', timer, 5.0)}
+    # the beat sheet takes its latest
+    assert plancheck.times_of('开局 + 0:15~0:30', {}) == 30.0
+
+
+def test_a_rule_again_every_so_often_while_it_holds():
+    """每隔: not once, gated on its own timer, which it sets again; the timer starts run out, so the first is at once."""
+    m = small(规则=[{'当': '进入 north base', '每隔': '0:30/0:20/0:20', '做': ['通报 快走']}])
+    clock = named(m, 'CNV ZZ - Rule 1 clock')[0]
+    assert clock.do == [('SET_MILLISECOND_TIMER', 'CNV ZZ Rule 1', 0.0)] and clock.once
+    again = named(m, 'CNV ZZ - Rule 1 again')
+    assert {tuple(s.levels) for s in again} == {EASY, NORMAL, HARD}
+    for s in again:
+        assert not s.once and ('TIMER_EXPIRED', 'CNV ZZ Rule 1') in s.when
+        assert s.do[-1] == ('SET_MILLISECOND_TIMER', 'CNV ZZ Rule 1', 30.0 if tuple(s.levels) == EASY else 20.0)
+
+
+def test_a_rule_or_a_force_for_some_difficulties_only():
+    m = small(规则=[{'当': '开局', '难度': '困难', '做': ['通报 难']},
+                   {'当': '开局', '难度': ['普通', '困难'], '每隔': 30, '做': ['通报 又来']}],
+              开局={'部队': [{'单位': '帝国武士', '数量': 2, '在': 'north base', '阵营': '敌', '难度': '困难'}]})
+    assert tuple(named(m, 'CNV ZZ - Rule 1')[0].levels) == HARD
+    assert [tuple(s.levels) for s in named(m, 'CNV ZZ - Rule 2 again')] == [(False, True, True)]
+    gone = {tuple(s.levels): len(s.do) for s in named(m, 'CNV ZZ - Fewer')}
+    assert gone == {EASY: 2, NORMAL: 2}                 # placed for hard, both deleted on the others
+
+
+def test_unattackable_and_sent_off():
+    m = small(开局={'部队': [{'单位': '帝国武士', '数量': 2, '在': 'north base', '阵营': '敌', '角色': 'guard',
+                          '无敌': '是'}]},
+              规则=[{'当': '开局 + 1:00', '做': [{'出动': 'guard', '打': 'west field'}, {'取消无敌': 'guard 1'}]}])
+    made = named(m, 'CNV ZZ - Unattackable')[0].do
+    assert made == [('UNIT_CHANGE_OBJECT_STATUS', f'UNIT - CNV ZZ guard {j}', 'UNATTACKABLE', 1) for j in (1, 2)]
+    rule = named(m, 'CNV ZZ - Rule 1')[0].do
+    assert [a[0] for a in rule] == ['ATTACK_MOVE_NAMED_UNIT_TO'] * 2 + ['UNIT_CHANGE_OBJECT_STATUS']
+    assert rule[-1] == ('UNIT_CHANGE_OBJECT_STATUS', 'UNIT - CNV ZZ guard 1', 'UNATTACKABLE', 0)
+    import parts
+    assert not parts.contract(parts.merged(m))

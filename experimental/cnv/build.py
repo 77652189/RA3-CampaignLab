@@ -36,9 +36,10 @@ from checks import liberty as check_lib         # noqa: E402
 from checks import shikigami as check_shi       # noqa: E402
 from checks import train as check_tra           # noqa: E402
 from checks import probe as check_pro           # noqa: E402
+from checks import plan_words as check_pw       # noqa: E402
 from units import tesla as units_tesla          # noqa: E402
 from missions import a4, a7, a8, j4, beacon_bench, burrow_bench, clone_bench, combo_bench, crane_bench, icewall_bench, jammer_bench, liberty_bench, shikigami_bench, \
-    tesla_bench, train_bench, probe_bench                   # noqa: E402
+    tesla_bench, train_bench, probe_bench, plan_words_bench  # noqa: E402
 
 BENCH_PY = os.path.join(os.path.dirname(ROOT), 'envs', 'bench_mcp', 'Scripts', 'python.exe')
 CLIENT = os.path.join(ROOT, 'experimental', 'testbench', 'bench_client.py')
@@ -99,6 +100,7 @@ MISSIONS = {
     'clone_any': (lambda: clone_bench.mission(name='CampCloneA', picky=False), {'free': check_clo.free_any}),
     'probe': (lambda: probe_bench.mission(), {'engine': check_pro.engine}),
     'probe_nosave': (lambda: probe_bench.mission(name='CampPrbN', save=False), {'engine': check_pro.engine}),
+    'plan_words': (lambda: plan_words_bench.mission(), {'words': check_pw.words}),
 }
 LEVELS = ('a4', 'a7', 'a8', 'j4')                          # campaign levels: each has a card in docs/story/levels.md (the rest:
                                                 # A/B controls and bench scenes)

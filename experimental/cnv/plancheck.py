@@ -37,7 +37,7 @@ def times_of(c, starts, devices=None):
     m = re.match(r'^(.*?)\s*\+\s*([^+]+)$', s)
     if m:
         base = times_of(m.group(1), starts, devices)
-        return None if base is None else base + plan.times(m.group(2))[1]
+        return None if base is None else base + plan.spans(m.group(2))[1][1]     # a random time: its latest
     m = re.match(r'^段\s+(.+?)(\s+开始)?$', s)
     if m:
         return starts.get(m.group(1))

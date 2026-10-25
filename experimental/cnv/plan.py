@@ -90,6 +90,8 @@ def seconds(v):
     if isinstance(v, (int, float)):
         return float(v)
     s = str(v).strip().replace('秒', '')
+    if '~' in s:
+        raise PlanError(f'{v!r}: a random time (a~b) only after a condition, `X + 0:15~0:30`')
     if s.endswith('分钟'):
         return float(s[:-2]) * 60
     if ':' in s:
@@ -108,6 +110,19 @@ def counts(v):
 
 def times(v):
     return tuple(seconds(x) for x in per(v))
+
+
+def spans(v):
+    """Per difficulty (earliest, latest): '0:15~0:30' a random time between (retail SET_RANDOM_MSEC_TIMER), a plain
+    time both the same. '0:15~0:30/0:10~0:20/5' by difficulty."""
+    out = []
+    for x in per(v):
+        lo, _, hi = str(x).partition('~')
+        a, b = seconds(lo), seconds(hi) if hi else seconds(lo)
+        if b < a:
+            raise PlanError(f'{v!r}: a random time is earliest~latest')
+        out.append((a, b))
+    return tuple(out)
 
 
 def by_level(values):
@@ -298,15 +313,15 @@ class Compiler:
         timer, started = f'CNV {self.tag} Wait {k}', f'CNV_{self.tag}_Wait_{k}'
         self.timers[s] = (timer, started)
         for a, alt in enumerate(self.cond(base)):
-            for levels, v in by_level(times(t)):
+            for levels, (lo, hi) in by_level(spans(t)):
+                start = ('SET_MILLISECOND_TIMER', timer, lo) if lo == hi else ('SET_RANDOM_MSEC_TIMER', timer, lo, hi)
                 self.m.scripts.append(Script(f'CNV {self.tag} - Wait {k}.{a + 1}' + ('' if levels == ALL else
                                                                                        f' {TAGS[levels.index(True)]}'),
-                                             alt + [('FLAG', started, 0)],
-                                             [('SET_MILLISECOND_TIMER', timer, v), ('SET_FLAG', started, 1)],
+                                             alt + [('FLAG', started, 0)], [start, ('SET_FLAG', started, 1)],
                                              levels=levels))
         return [[('FLAG', started, 1), ('TIMER_EXPIRED', timer)]]
 
-    def when(self, label, c, actions, once=True, gate=()):
+    def when(self, label, c, actions, once=True, gate=(), levels=ALL):
         """Scripts doing `actions` when c holds (and the `gate` conditions): once -- the first time only."""
         alts = self.cond(c)
         done = f'CNV_{self.tag}_Did_{self.uid()}'
@@ -316,7 +331,7 @@ class Compiler:
             self.last.append(Script(f'CNV {self.tag} - {label}' + (f' ({k + 1})' if len(alts) > 1 else ''),
                                     list(gate) + alt + latch,
                                     actions + ([('SET_FLAG', done, 1)] if once and len(alts) > 1 else []),
-                                    once=once))
+                                    once=once, levels=levels))
         self.m.scripts += self.last
         return self.last
 
@@ -368,6 +383,16 @@ class Compiler:
             return []
         if '摧毁' in a:
             return [('NAMED_KILL', n) for n in self.part_names(a['摧毁'])]
+        if '无敌' in a or '取消无敌' in a:           # retail: UNATTACKABLE, nothing can aim at it
+            on = '无敌' in a
+            return [('UNIT_CHANGE_OBJECT_STATUS', n, 'UNATTACKABLE', int(on))
+                    for n in self.part_names(a['无敌' if on else '取消无敌'])]
+        if '出动' in a:                             # placed troops sent off (retail: an ambush set out on time)
+            if not (a.get('打') or a.get('守')):
+                raise PlanError(f'action {a!r}: 出动 <role> with 打 <site / role / 猎杀> or 守 <site>')
+            if a.get('打') in self.devices:
+                raise PlanError(f'action {a!r}: 出动 can not 打 a device (a wave can)')
+            return self.orders(a, self.part_names(a['出动']), dict(names=[]))
         if '转给我' in a:
             return [('NAMED_TRANSFER_OWNERSHIP_PLAYER', n, p1) for n in self.part_names(a['转给我'])]
         if '翻脸' in a:                             # a side of 其他 turns on the player (and the player on it)
@@ -427,7 +452,8 @@ class Compiler:
             n = max(ns)
             dx0, dy0 = spec.get('偏移', (0, 0))
             role = spec.get('角色', '')
-            if not role and (spec.get('守') or len(set(ns)) > 1):
+            levels = self.difficulty(spec, f'部队 {spec}')
+            if not role and (spec.get('守') or len(set(ns)) > 1 or levels != ALL or spec.get('无敌')):
                 role = f'{tmpl} {self.uid()}'           # named: a script orders or deletes them
             base = role if role.isascii() else f'Part {self.uid()}'
             parts = [f'{role} {j + 1}' if role and n > 1 else role for j in range(n)]
@@ -439,10 +465,14 @@ class Compiler:
                 m.put(tmpl, spec['在'], dx, dy, side=side, name=objs[j],
                       role=part, angle=spec.get('朝向'))
             for lv, k in enumerate(ns):                 # retail: placed for the hardest, deleted on the easier
+                k = k if levels[lv] else 0              # 难度: on the others, none at all
                 if k < n:
                     gone = objs[k:]
                     m.scripts.append(Script(f'CNV {self.tag} - Fewer {base} {TAGS[lv]}', [],
                                             [('NAMED_DELETE', g) for g in gone], levels=ONE[lv]))
+            if spec.get('无敌'):
+                m.scripts.append(Script(f'CNV {self.tag} - Unattackable {base}', [],
+                                        [('UNIT_CHANGE_OBJECT_STATUS', g, 'UNATTACKABLE', 1) for g in objs]))
             if spec.get('守') and role:
                 for nm in self.part_names(role):
                     m.scripts.append(Script(f'CNV {self.tag} - Guard {nm}', [],
@@ -602,11 +632,40 @@ class Compiler:
     def compile_rules(self):
         for k, r in enumerate(self.d.get('规则') or []):
             # once only: a script not done once runs every frame its condition holds (review 2026-10-24: a 给 made
-            # the same named unit frame after frame), and "each time it holds again" needs its opposite
+            # the same named unit frame after frame), and "each time it holds again" needs its opposite; again and
+            # again is `每隔`: while it holds, then once every so often (retail: a nag every 9 s, Iga)
             if r.get('次数', 1) != 1:
-                raise PlanError(f'规则 {k + 1}: 次数 {r["次数"]!r} -- a rule happens once (for "again later", write '
-                                f'another rule)')
-            self.when(f'Rule {k + 1}', r['当'], self.actions(r.get('做')))
+                raise PlanError(f'规则 {k + 1}: 次数 {r["次数"]!r} -- a rule happens once, or again every so often '
+                                f'while it holds (每隔)')
+            levels = self.difficulty(r, f'规则 {k + 1}')
+            if r.get('每隔') is None:
+                self.when(f'Rule {k + 1}', r['当'], self.actions(r.get('做')), levels=levels)
+                continue
+            timer, acts = f'CNV {self.tag} Rule {k + 1}', self.actions(r.get('做'))
+            self.m.scripts.append(Script(f'CNV {self.tag} - Rule {k + 1} clock', [],
+                                         [('SET_MILLISECOND_TIMER', timer, 0.0)]))     # run out: the first is now
+            for lv, gap in by_level(times(r['每隔'])):
+                on = tuple(a and b for a, b in zip(lv, levels))
+                if not any(on):
+                    continue
+                for a, alt in enumerate(self.cond(r['当'])):
+                    self.m.scripts.append(Script(
+                        f'CNV {self.tag} - Rule {k + 1} again' + ('' if lv == ALL else f' {TAGS[lv.index(True)]}')
+                        + (f' ({a + 1})' if len(self.cond(r['当'])) > 1 else ''),
+                        alt + [('TIMER_EXPIRED', timer)], acts + [('SET_MILLISECOND_TIMER', timer, gap)],
+                        once=False, levels=on))
+
+    def difficulty(self, spec, what):
+        """The difficulties a rule or a placed force is for: `难度: 困难` / `难度: [普通, 困难]`; all if not written
+        (retail: a script's three header switches)."""
+        d = spec.get('难度')
+        if d is None:
+            return ALL
+        names = [d] if isinstance(d, str) else list(d)
+        bad = [x for x in names if x not in LEVELS]
+        if bad or not names:
+            raise PlanError(f'{what}: 难度 {d!r} -- one or more of {LEVELS}')
+        return tuple(x in names for x in LEVELS)
 
     def compile_endings(self):
         m = self.m
