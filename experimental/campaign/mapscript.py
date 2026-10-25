@@ -336,7 +336,7 @@ class MapFile:
             pad = '  ' * depth
             if n.name in ('ScriptGroup', 'Script'):
                 title, _ = self.string(n.head, 0)
-                lines.append(f'{pad}{n.name}: {title}')
+                lines.append(f'{pad}{n.name}: {title}' + (self._script_marks(n) if n.name == 'Script' else ''))
             elif n.name in CONTENT:
                 name, args, rest = self.content(n)
                 kind = {'Condition': 'IF', 'ScriptAction': 'DO', 'ScriptActionFalse': 'ELSE'}[n.name]
@@ -345,6 +345,20 @@ class MapFile:
             elif n.name == 'OrCondition' and depth:
                 lines.append(f'{pad}OR')
         return '\n'.join(lines)
+
+    def _script_marks(self, n):
+        """A Script header's switches where they differ from a plain script (active, once, every difficulty):
+        '  [off]', '[repeat]', '[sub]', '[E-H]' for the difficulties it runs on (new_script's header layout)."""
+        p = 0
+        for _ in range(4):
+            _, p = self.string(n.head, p)
+        if len(n.head) < p + 6:                 # an older header without the switches
+            return ''
+        active, once, easy, normal, hard, sub = n.head[p:p + 6]
+        marks = [m for m, on in (('off', not active), ('repeat', not once), ('sub', sub)) if on]
+        if not (easy and normal and hard):
+            marks.append(''.join(c if on else '-' for c, on in zip('ENH', (easy, normal, hard))))
+        return '  ' + ' '.join(f'[{m}]' for m in marks) if marks else ''
 
 
 def _replace_arg(d, old, new):

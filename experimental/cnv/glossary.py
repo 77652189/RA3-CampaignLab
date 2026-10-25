@@ -39,7 +39,7 @@ OWN = {
     # 帝国
     '帝国武士': 'JapanAntiInfantryInfantry', '坦克杀手': 'JapanAntiVehicleInfantry',
     '忍者': 'JapanInfiltrationInfantry', '百合子': 'JapanCommandoTech1', '火箭天使': 'JapanAntiVehicleInfantryTech3',
-    '爆裂无人机': 'JapanScoutInfantry', '天狗': 'JapanAntiAirVehicleTech1', '打击者': 'JapanAntiInfantryVehicle',
+    '爆裂无人机': 'JapanScoutInfantry', '天狗': 'JapanAntiInfantryVehicle', '打击者': 'JapanAntiAirVehicleTech1',
     '海啸坦克': 'JapanAntiVehicleVehicleTech1', '鬼王': 'JapanAntiVehicleVehicleTech3',
     '波能炮': 'JapanAntiStructureVehicle', '突击运输车': 'JapanLightTransportVehicle', '波能塔': 'JapanBaseDefenseAdvanced',
     '守卫塔': 'JapanBaseDefense',
