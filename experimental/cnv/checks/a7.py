@@ -23,7 +23,9 @@ HURT_AT = 15.0                                  # defend: the station's health d
 
 
 def settle(t, m):
-    """The outposts settled at once by test script: the loyal ones the player's, the traitor's gone."""
+    """The outposts settled at once by test script: the loyal ones the player's, the traitor's gone. No endings:
+    nobody deploys the MCV, and the opening raid kills it (bench 2026-10-25: lost at s90, "no yard, no MCV")."""
+    m.drop_endings()
     p1 = m.player('p1')
     t.scripts.append(Script('Test - outposts', [], [('NAMED_TRANSFER_OWNERSHIP_PLAYER', r.name, p1)
                                                     for g in ('loyal 1', 'loyal 1 troops', 'loyal 2', 'loyal 2 troops')
@@ -98,7 +100,7 @@ def power(m):
     t.scripts += [Script('Test - kill set', [], [('SET_MILLISECOND_TIMER', timer, first + KILL_AFTER)]),
                   Script('Test - kill station', [('TIMER_EXPIRED', timer)], [('NAMED_KILL', m.role('station').name)])]
     t.expect += [('电站', 0, '==', 1, first + KILL_AFTER - EARLY), ('电站', first + KILL_AFTER + 2, '==', 0),
-                 ('在基地边', first + 4, 'ever==', 1, first + KILL_AFTER),
+                 ('在基地边', first, 'ever==', 1, first + KILL_AFTER),       # wide enough for a reading every 4 s
                  ('在家', first + KILL_AFTER, '==', 0),                                  # no jump home, ever
                  ('在基地边', first + stay + 30, '==', 0)]                               # flown off its point
     t.bench = [('bench_watch', dict(seconds=first + stay + 35, every=4, sheet=False, lines=len(t.counters)))]
