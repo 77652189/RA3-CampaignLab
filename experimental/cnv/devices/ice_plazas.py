@@ -31,6 +31,7 @@ class IcePlazas(Device):
     PARAMS = {'车队': '哪个车队机关', '每座兵': '冰雕里依次藏的兵', '每座几个': '每座冰雕藏几个（简单/普通/困难）',
               '遇伏': '停下：伏兵出来、出口没封时车队停在原地挨打，伏兵清光或出口冻上才走（原版伊贺）；不写就不停'}
     EVENTS = {'封住 <k>': 'k 号广场出口现在有冰', '全部封住': '三个出口都冻过冰（每个算一次）',
+              '封过 <n>': '已有 n 个出口冻过冰（每个算一次，冰化了也算）',
               '伏兵出来 <k>': 'k 号广场的冰雕碎了，兵出来了',
               '拦住 <k>': 'k 号广场的伏兵现在拦着车队（遇伏: 停下 时；车队停着）'}
     ACTIONS = {}
@@ -86,6 +87,8 @@ class IcePlazas(Device):
             return [[self.walls[int(args[0])][0]]]
         if event == '全部封住':
             return [[('COUNTER', self.sealed, 3, len(self.plazas))]]
+        if event == '封过':
+            return [[('COUNTER', self.sealed, 3, int(args[0]))]]
         if event == '伏兵出来':
             return [[('FLAG', f'CNV_{self.c.tag}_Out_{int(args[0])}', 1)]]
         if event == '拦住':

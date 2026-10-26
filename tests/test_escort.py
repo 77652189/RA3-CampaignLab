@@ -58,3 +58,27 @@ def test_no_ambush_stop_unless_asked():
     m = escort()
     assert not named(m, 'CNV ZZ - Blocked') and not named(m, 'CNV ZZ - Down')
     assert named(m, 'CNV ZZ - Roll')[0].when[-1] == ('FLAG', 'CNV_ZZ_Halted', 0)
+
+
+def test_the_convoy_leaves_early_once_a_gate_is_iced():
+    """Retail sets off on time or when the player moves first: 布防 ends at its time or 10 s after the first gate is
+    iced, both countdowns put away once the convoy is off (never shown after)."""
+    d = {'关卡': 'zz', '地图': 'festival', '阵营': {'我': '盟军', '敌': '帝国'},
+         '段': [{'名字': '一', '开场': [{'倒计时': '开局 + 1:30/1:00/0:45', '文字': '车队出发', '直到': '段 二'},
+                                    {'倒计时': '广场.封过 1 + 0:10', '文字': '提前', '直到': '段 二'}],
+                 '结束': {'任一': ['开局 + 1:30/1:00/0:45', '广场.封过 1 + 0:10']}},
+                {'名字': '二'}],
+         '机关': {'车队': {'类型': '车队', '出发': '段 二'},
+                 '广场': {'类型': '冰雕广场', '车队': '车队', '每座兵': ['坦克杀手'], '每座几个': 1}}}
+    m = plan.Compiler(d).compile()
+    assert m.facts['convoy leaves'] == 60.0                               # the time, at the latest
+    waits = [s for s in m.scripts if ('COUNTER', 'CNV_ZZ_Sealed', 3, 1) in s.when]
+    assert waits and waits[0].do[0] == ('SET_MILLISECOND_TIMER', waits[0].do[0][1], 10.0)
+    shows = named(m, 'CNV ZZ - Countdown')
+    shown = [s for s in shows if s.do[0][0] == 'DISPLAY_COUNTDOWN_TIMER']
+    away = [s for s in shows if 'put away' in s.name]
+    assert len(shown) == 2 and len(away) == 2
+    phase2 = away[0].when[-1]
+    assert phase2[0] == 'FLAG' and phase2[2] == 1 and all(s.when[-1] == phase2 for s in away)
+    assert all(('FLAG', phase2[1], 0) in s.when for s in shown)           # not shown once the convoy is off
+    assert not parts.contract(parts.merged(m))

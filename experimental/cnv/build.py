@@ -61,7 +61,8 @@ def digits():
 MISSIONS = {
     'a4': (lambda: a4.mission(), {'seal': check_a4.seal, 'placed': check_a4.placed, 'smash': check_a4.smash,
                                   'ambush': check_a4.ambush, 'win': check_a4.win, 'lose': check_a4.lose,
-                                  'idle': check_a4.idle, 'harbour': check_a4.harbour, 'stop': check_a4.stop}),
+                                  'idle': check_a4.idle, 'harbour': check_a4.harbour, 'stop': check_a4.stop,
+                                  'early': check_a4.early}),
     'j4': (lambda: j4.mission(), {'breach': check_j4.breach, 'play': check_j4.play, 'lose': check_j4.lose}),
     'a7': (lambda: a7.mission(), {'jumps': check_a7.jumps, 'pick': check_a7.pick, 'defend': check_a7.defend,
                                   'power': check_a7.power, 'win': check_a7.win, 'east': check_a7.east}),

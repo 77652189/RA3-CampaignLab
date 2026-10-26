@@ -10,6 +10,7 @@ smash: the player breaks sculpture 2-1 early (by test script, long before the co
 ambush: the convoy, as played, breaks plaza 1's sculptures as it passes the approach: the troops appear.
 stop: 遇伏 停下 -- the convoy reaches plaza 1, its troops out and the gate open: it stands there; the troops killed
   (by test script, 30 s after leaving), it goes on past plaza 2's approach.
+early: the player ices plaza 1's gate first (engineer 1, 30 s in): the convoy leaves 10 s after, before its time.
 win: the trucks kept at full health, each plaza's troops killed as soon as they hold the convoy: it reaches the
   exit and the mission ends after the drive.
 lose: the trucks at 1 % health as they set off (the war factory's drones mend them while parked): the first
@@ -36,6 +37,9 @@ HARBOUR = ('harbour ambush', 'harbour guard')   # the plan's parts waiting at th
 STOP_KILL = 30.0                                # stop: plaza 1's troops die this long after the convoy leaves
 STOP_SEEN = 12.0                                # stop: by then it is held (the ambush check: troops out by leave + 10)
 APPROACH = 150.0                                # stop: half-side of the area counted as plaza 2's approach
+EARLY_FIRE = 30.0                               # early: the power fired then (walked from the start: ~1000 at 40)
+EARLY_AFTER = 10.0                              # early: the convoy leaves this long after the first gate is iced
+                                                # (docs/story/plans/a4.md 布防 结束)
 
 
 def ice_wall(m):
@@ -196,6 +200,35 @@ def stop(m):
                  ('被拦', killed + 4, 'ever==', 0, killed + 10),
                  ('车到2号路口', killed, 'ever==', 1)]
     t.bench = [('bench_watch', dict(seconds=killed + 45, every=3, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+def rolling(m):
+    """The flag that is 1 once the convoy has set off: the one its departure sets."""
+    go = next(s for s in m.scripts if ' - Convoy go' in s.name)
+    return next(a[1] for a in go.do if a[0] == 'SET_FLAG' and a[2] == 1)
+
+
+def early(m):
+    """The player ices a gate first: the convoy leaves EARLY_AFTER later, before its time."""
+    m.drop_endings()
+    t = Test()
+    start(t, m)
+    walk_to(t, m)
+    leave, wall = m.facts['convoy leaves'], ice_wall(m)
+    t.scripts += [Script('Test - seal set', [], [('SET_MILLISECOND_TIMER', 'Test - seal timer', EARLY_FIRE)]),
+                  Script('Test - seal', [('TIMER_EXPIRED', 'Test - seal timer')],
+                         [('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', m.role('engineer 1').name,
+                           m.ability('engineer 1', 'freeze'), m.mark('seal 1'))])]
+    counted('Test Walls', '冰墙', t, template=wall.id)
+    t.counters.append(('Test Left', '出发'))
+    t.scripts += [Script('Test - left zero', [], [('SET_COUNTER', 'Test Left', 0)], once=False),
+                  Script('Test - left one', [('FLAG', rolling(m), 1)], [('SET_COUNTER', 'Test Left', 1)], once=False)]
+    built = EARLY_FIRE + WALK_BUILD
+    t.expect += [('冰墙', EARLY_FIRE, 'ever==', 1, built),
+                 ('出发', 0, '==', 0, EARLY_FIRE + EARLY_AFTER - LEAD),          # not before the wall's 10 s
+                 ('出发', EARLY_FIRE, 'ever==', 1, leave - LEAD)]                # well before its time
+    t.bench = [('bench_watch', dict(seconds=leave + 5, every=2, sheet=False, lines=len(t.counters)))]
     return t
 
 
