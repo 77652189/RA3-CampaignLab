@@ -40,6 +40,11 @@ SITES.update({
     'east barracks': Site(3600.0, 3250.0, 0.0, "the hawks' barracks", build=160.0),
     'east factory': Site(3950.0, 3150.0, 0.0, "the hawks' war factory", build=200.0),
     'east airfield': Site(4050.0, 3700.0, 0.0, "the hawks' airfield", build=250.0),
+    'east yard': Site(3550.0, 3650.0, 0.0, "the hawks' construction yard (the skirmish AI's: without one it sinks its "
+                                           'money into an MCV, then sells its buildings)', build=220.0),
+    'east power': Site(4250.0, 3450.0, 0.0, "the hawks' own power plant", build=100.0),
+    'east refinery': Site(4450.0, 2800.0, 0.0, "the hawks' refinery, by their ore (the skirmish AI's income: with "
+                                               'money and no refinery it was broke in a minute)', build=250.0),
     'east gate': Site(3150.0, 3300.0, 200.0, "open ground between the hawks' base and the bridges: their army forms "
                                              'up here'),
     'carrier home': Site(3700.0, 2400.0, 250.0, 'over the east bank south of the base: where the carrier waits'),

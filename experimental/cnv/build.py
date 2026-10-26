@@ -64,7 +64,7 @@ MISSIONS = {
                                   'idle': check_a4.idle, 'harbour': check_a4.harbour}),
     'j4': (lambda: j4.mission(), {'breach': check_j4.breach, 'play': check_j4.play, 'lose': check_j4.lose}),
     'a7': (lambda: a7.mission(), {'jumps': check_a7.jumps, 'pick': check_a7.pick, 'defend': check_a7.defend,
-                                  'power': check_a7.power, 'win': check_a7.win}),
+                                  'power': check_a7.power, 'win': check_a7.win, 'east': check_a7.east}),
     'a8': (lambda: a8.mission(), {'jump': check_a8.jump, 'lose': check_a8.lose, 'assault': check_a8.assault}),
     'a8_control': (lambda: a8.mission(carrier=False, name='CampA8C'), {'assault': check_a8.assault}),
     'liberty': (lambda: liberty_bench.mission(), {'jump': check_lib.jump, 'open': check_lib.jump_open}),

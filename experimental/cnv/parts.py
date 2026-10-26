@@ -209,6 +209,11 @@ class Mission(Part):
     def player(self, side='p1'):
         return self.map.PLAYERS[side]
 
+    def ai_player(self):
+        """The player a skirmish AI runs (the side given an aiPersonality: plan.py 敌方AI), or None."""
+        side = next((s for s, p in self.sides.items() if 'aiPersonality' in p), None)
+        return side and self.player(side)
+
     def team(self, side='p1'):
         return self.map.TEAMS[side]
 
@@ -516,6 +521,7 @@ def assemble(mission, test=None, name=None):
     # bench 2026-10-21: the same build as CampLibRidersJump (17) and CampBisjcdXXXXXXX (17) crashed before the main
     # menu (exit 0xC000000D), as CampBisjcd (10) / CampBisjcdXXXX (14) / CampLibertyJump (15) it ran
     assert len(name) <= MAX_NAME, f'mod name {name!r} is {len(name)} characters: the game crashes above {MAX_NAME}'
+    assert '_' not in name, f'mod name {name!r}: with an underscore the game crashes at start (CampA7East_What)'
     broken = contract(mm)
     assert not broken, 'uses what nobody published:\n  ' + '\n  '.join(broken)
     c4.NAME = c2.NAME = name

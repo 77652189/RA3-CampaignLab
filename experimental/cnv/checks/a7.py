@@ -107,6 +107,36 @@ def power(m):
     return t
 
 
+def east(m):
+    """The east bank given to the skirmish AI (敌方AI, a player of its own beside the enemy): asleep and broke
+    through phase 1; woken (phase 2 + its time, normal difficulty) it is given the east bank's construction yard,
+    power plant, barracks, factory and airfield and spends its money on troops from them; the carrier stays home till its first jump (the enemy's, not
+    the AI's -- bench 2026-10-25: with the enemy itself the AI, it left home at 18 s). Its barracks stand the whole
+    run: bench 2026-10-25, with no construction yard it sank its money into an MCV it never finished, sold its
+    buildings when broke -- and the bonus objective (destroy them) was done for the player."""
+    t = Test()
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    t.areas['Test carrier home'] = square(*m.point('carrier home'), AREA)
+    counted('Test At carrier home', '在家', t, named=m.role('carrier').name, area='Test carrier home')
+    settle(t, m)
+    keep_up(m, t)
+    ai = m.ai_player()
+    counted('Test AI Barracks', 'AI的兵营', t, template=m.role('east barracks').template, player=ai)
+    t.counters.append(('Test AI Money', '敌方资金'))
+    t.scripts.append(Script('Test - AI money', [], [('SET_PLAYER_MONEY_TO_COUNTER', ai, 'Test AI Money')], once=False))
+    counted('Test AI Guardians', 'AI的守护者', t, template='AlliedAntiVehicleVehicleTech1', player=ai)
+    wake = READY + plan.spans(plan.load('a7')['敌方AI']['唤醒']['任一'][0].split('+')[1])[1][0]
+    money = plan.counts(plan.load('a7')['敌方AI']['资金'])[1]
+    # bench 2026-10-25: woken at s36 it had spent 1000 of its 5000 by s44 -- the money is read rising, not as given
+    t.expect += [('敌方资金', 1, '==', 0, wake - 4), ('敌方资金', wake - 4, 'ever>', 0, wake + 12),
+                 ('敌方资金', wake, 'ever<', money - 1000, wake + 150),
+                 ('AI的守护者', 1, '==', 0, wake - 4), ('AI的守护者', wake, 'ever>', 0, wake + 180),
+                 ('AI的兵营', wake + 8, '>=', 1),
+                 ('在家', 0, '==', 1, READY + m.facts['jump delay'] - EARLY)]
+    t.bench = [('bench_watch', dict(seconds=wake + 180, every=4, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 def win(m):
     m.find(m.role('carrier').name).props['objectInitialHealth'] = 1
     t = where(m)

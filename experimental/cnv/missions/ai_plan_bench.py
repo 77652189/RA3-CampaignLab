@@ -18,7 +18,8 @@ PLAN = {
         {'单位': '建造厂', '在': 'base yard', '角色': 'player yard'},
         {'单位': '守护者坦克', '数量': 3, '在': 'base edge', '角色': 'guardian'}]},
     '段': [{'名字': '一'}],
-    '敌方AI': {'性格': '平衡', '基地': 'east base', '资金': MONEY, '唤醒': f'开局 + {WAKE_AT:g}', '上限': dict(CAPS)},
+    '敌方AI': {'性格': '平衡', '基地': 'east base', '资金': MONEY, '唤醒': f'开局 + {WAKE_AT:g}', '上限': dict(CAPS),
+             '接管': ['ai yard']},
 }
 
 

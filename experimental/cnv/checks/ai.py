@@ -53,9 +53,9 @@ def capped(m):
     SKIRMISH_AI_TRANSFER_ALL (once the plan's 进攻) alike second for second, so the plan has no such word."""
     t = Test()
     t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
-    f, s1 = m.facts, m.player('s1')
-    counted('CNV_AI_Power', '敌方电厂', t, template='AlliedPowerPlant', player=s1)
-    counted('CNV_AI_Barracks', '敌方兵营', t, template='AlliedBarracks', player=s1)
+    f, ai = m.facts, m.ai_player()
+    counted('CNV_AI_Power', '敌方电厂', t, template='AlliedPowerPlant', player=ai)
+    counted('CNV_AI_Barracks', '敌方兵营', t, template='AlliedBarracks', player=ai)
     counted('CNV_AI_Yard', '我方建造厂血量', t, health=m.role('player yard').name)
     counted('CNV_AI_Guards', '我方守护者', t, template='AlliedAntiVehicleVehicleTech1')
     w, run = f['wake at'], f['watch']

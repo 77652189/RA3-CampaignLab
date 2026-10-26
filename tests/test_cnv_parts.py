@@ -178,10 +178,12 @@ def test_judge_until_and_the_bench_round_trip():
 
 
 def test_every_build_name_fits():
-    """Mod names over 15 characters crash the game before the main menu (bench 2026-10-21)."""
+    """Mod names over 15 characters crash the game before the main menu (bench 2026-10-21), and so does one with an
+    underscore (bench 2026-10-25: CampA7East_What, from a check named east_what)."""
     names = [build.resolve(n, c)[2] for n, (_, checks) in build.MISSIONS.items() for c in [''] + list(checks)]
     names += [build.resolve(n, '')[2] for n in build.PAIRS]
     assert all(len(n) <= parts.MAX_NAME for n in names), [n for n in names if len(n) > parts.MAX_NAME]
+    assert not [n for n in names if '_' in n]
 
 
 def test_every_until_names_a_counter_shown():

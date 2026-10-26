@@ -174,7 +174,7 @@ class Compiler:
         self.dev_units = {}         # unit name a device publishes -> its Unit
         self.phases, self.waves, self.goals = [], {}, {}
         self.last = []              # the scripts the last when() made
-        self.guarded = {}           # side -> named forces the plan keeps on guard (守)
+        self.counted = {}           # group -> the counter of its losses (摧毁 <group> <n> 个)
 
     # ---- names
     def uid(self, what=''):
@@ -252,6 +252,11 @@ class Compiler:
             return [[]]
         if not rest and '.' not in head:
             raise PlanError(f'{s!r}: {head} needs what it is about (plan.py, README.md 条件)')
+        if ' 进入 ' in s and head not in ('还没', '段', '目标'):
+            # one of the plan's own (a role, or any of a group) in a site -- retail: the Shogun Executioner on a
+            # bridge (Odessa), a scout at a village (Iga); 进入 <site> alone is any of the player's
+            part, site = s.split(' 进入 ', 1)
+            return [[('NAMED_INSIDE_AREA', n, self.area(site.strip()))] for n in self.part_names(part.strip())]
         if head == '段':
             name, what = (rest[:-2].strip(), rest[-2:]) if rest.endswith(('开始', '结束')) else (rest, '开始')
             ph = self.phase(name)
@@ -269,7 +274,12 @@ class Compiler:
             # harbour kept it from ever holding; the has-units test is the enemy's alone
             return [[('SKIRMISH_PLAYER_HAS_UNITS_IN_AREA', s1, self.area(rest), NOT)]]
         if head == '摧毁':
+            mm = re.match(r'^(.+?)\s+(\d+)\s*个$', rest)
+            if mm:                                  # n of a group, whichever (retail: Havana's launch sites)
+                return [[('COUNTER', self.losses(mm.group(1)), 3, int(mm.group(2)))]]
             return [[('NAMED_DESTROYED', n) for n in self.part_names(rest)]]
+        if head == '冻住':                           # frozen now (retail: Iga's objectives, freeze, never kill)
+            return [[('UNIT_HAS_OBJECT_STATUS', n, 'UNDER_FROZEN')] for n in self.part_names(rest)]
         if head == '攻击':
             return [[('NAMED_ATTACKED_BY_PLAYER', n, p1)] for n in self.part_names(rest)]
         if head == '占领':
@@ -308,6 +318,19 @@ class Compiler:
                 raise PlanError(f'{s!r}: no device {dev!r}: {sorted(self.devices)}')
             return self.devices[dev].cond(event, w[1:])
         raise PlanError(f'{s!r}: no such condition (plan.py lists them)')
+
+    def losses(self, part):
+        """A counter of how many of a group (or of parts listed with 、) are destroyed: one script per member adds 1
+        when it falls."""
+        counter = self.counted.get(part)
+        if not counter:                             # numbered: names written in Chinese would all come out alike
+            counter = self.counted[part] = f'CNV_{self.tag}_Lost_{len(self.counted) + 1}'
+            names = [n for p in re.split(r'[、,，]', part) for n in self.part_names(p.strip())]
+            if len(names) < 2:
+                raise PlanError(f'摧毁 {part} <n> 个: {part!r} is one part -- a group, or parts listed with 、')
+            self.m.scripts += [Script(f'CNV {self.tag} - Lost {n}', [('NAMED_DESTROYED', n)],
+                                      [('INCREMENT_COUNTER', 1, counter)]) for n in names]
+        return counter
 
     def wait(self, base, t, s):
         """`base + t`: a timer started once base first holds; true once it has run out."""
@@ -479,7 +502,6 @@ class Compiler:
                 for nm in self.part_names(role):
                     m.scripts.append(Script(f'CNV {self.tag} - Guard {nm}', [],
                                             [('UNIT_GUARD_AREA', nm, self.area(spec['守']))]))
-                    self.guarded.setdefault(side, []).append(nm)
 
     def setup_devices(self):
         from devices import registry
@@ -580,15 +602,20 @@ class Compiler:
         extra = spec.get('加码') or {}
         more = {u: counts(n) for u, n in (extra.get('兵') or {}).items()}
         more_flag = f'CNV_{self.tag}_Wave_{k}_More'
-        if more:
+        # stepped up: more troops a wave, and / or waves sooner (retail: Havana's launches, Miyako's recharge)
+        stepped = bool(more) or extra.get('每隔') is not None
+        if stepped:
             self.when(f'Wave {k} more', extra['当'], [('SET_FLAG', more_flag, 1)])
         alive = [[('NAMED_NOT_DESTROYED', n)] for p in spec.get('来源') or [] for n in self.part_names(p)] or [[]]
         wp = self.mark(spec['从'])
         gaps = times(every) if every else (0.0,) * 3
+        sooner = times(extra['每隔']) if extra.get('每隔') is not None else gaps
+        if extra.get('每隔') is not None and not every:
+            raise PlanError(f'进攻 {spec["名字"]}: 加码 每隔 on a wave without 每隔')
         warn = [('SHOW_MILITARY_CAPTION', self.text('SCRIPT', spec['预警']), CAPTION)] if spec.get('预警') else []
         for i in range(1, most + 1):
             for lv, levels in enumerate(ONE):
-                for bonus in ([False, True] if more else [False]):
+                for bonus in ([False, True] if stepped else [False]):
                     names, acts = [], []
                     for group, tag in ((troops, ''), (more if bonus else {}, 'x')):
                         for u, ns in group.items():
@@ -602,9 +629,9 @@ class Compiler:
                         continue
                     acts += self.orders(spec, names, w) + [('INCREMENT_COUNTER', 1, sent)] + warn
                     if every:
-                        acts.append(('SET_MILLISECOND_TIMER', timer, gaps[lv]))
+                        acts.append(('SET_MILLISECOND_TIMER', timer, (sooner if bonus else gaps)[lv]))
                     gate = [('FLAG', w['on'], 1), ('TIMER_EXPIRED', timer), ('COUNTER', sent, 2, i - 1)]
-                    if more:
+                    if stepped:
                         gate.append(('FLAG', more_flag, int(bonus)))
                     for a, alt in enumerate(alive):
                         m.scripts.append(Script(f'CNV {self.tag} - Wave {k} {i}{"+" if bonus else ""} {TAGS[lv]}'
@@ -671,23 +698,31 @@ class Compiler:
         return tuple(x in names for x in LEVELS)
 
     def compile_ai(self):
-        """敌方AI: the enemy (敌) given to the game's skirmish AI with a personality of the level's own (enemy_ai.py),
-        the retail way (Miyako "enable naomi ai"): asleep with no money until 唤醒, then its units and base handed to
-        the AI, with money. Woken, it fights on its own: bench 2026-10-25 (ai_plan/capped), first contact ~60 s
-        after, its army ~150 s; SKIRMISH_AI_TRANSFER_ALL (retail "give units to tatsu") changed nothing -- the same
-        run without it went second for second alike -- so when it wakes is the plan's one lever. Forces placed with
-        守 stay the plan's (UNIT_AI_TRANSFER off): the AI would take them along."""
+        """敌方AI: a skirmish AI of the enemy's faction with a personality of the level's own (enemy_ai.py), on a
+        player of its own beside 敌 -- the retail way (Miyako: Takara's AI on Japan_1, her scripted turrets and
+        guards on Japan_3, allies): what the plan moves (the carrier, guards) stays 敌's, out of the AI's reach --
+        bench 2026-10-25, a7/jumps: with 敌 itself the AI, the carrier left home at 18 s, the AI asleep, and
+        UNIT_AI_TRANSFER off did not keep it. Asleep with no money until 唤醒; then 接管 (敌's buildings and
+        troops it is to run: the east bank's barracks, factory, airfield) passes to it, with its base and money.
+        Woken, it fights on its own (bench 2026-10-25, ai_plan/capped: first contact ~60 s after, its army ~150 s;
+        SKIRMISH_AI_TRANSFER_ALL changed nothing), so when it wakes is the plan's one lever."""
         spec = self.d.get('敌方AI')
         if not spec:
             return
         import enemy_ai
-        m, s1, faction = self.m, self.m.player('s1'), self.faction['s1']
-        known = {'性格', '偏好', '上限', '基地', '资金', '唤醒', '修理', '重建', '技能'}
+        m, faction = self.m, self.faction['s1']
+        known = {'性格', '偏好', '上限', '基地', '资金', '唤醒', '接管', '修理', '重建', '技能'}
         if set(spec) - known:
             raise PlanError(f'敌方AI: {sorted(set(spec) - known)} -- it takes {sorted(known)}')
         for need in ('基地', '唤醒'):
             if not spec.get(need):
                 raise PlanError(f'敌方AI: no {need}')
+        free = [k for k in m.map.PLAYERS if k not in self.side.values() and k != 'p1']
+        if not free:
+            raise PlanError(f'敌方AI: no player left on map {m.map.__name__} (阵营 其他 took them)')
+        side = free[0]
+        self.side['敌AI'] = side                    # published as the side in m.sides with an aiPersonality
+        ai, s1, p1 = m.player(side), m.player('s1'), m.player('p1')
         pid = f'CNV_AIP_{self.tag}'
         try:
             xml = enemy_ai.personality(pid, faction, spec.get('性格', '平衡'),
@@ -700,30 +735,35 @@ class Compiler:
             tmpl = self.unit(u, 's1')
             n, low = int(number(n)), tmpl.lower()       # retail writes the type in lower case here
             m.spawns.add(low)
-            m.scripts += [Script(f'CNV {self.tag} - AI cap {tmpl}', [('PLAYER_HAS_OBJECT_COMPARISON', s1, 3, n, low)],
-                                 [('ALLOW_DISALLOW_ONE_BUILDING', s1, low, 0)], once=False),
-                          Script(f'CNV {self.tag} - AI cap {tmpl} off', [('PLAYER_HAS_OBJECT_COMPARISON', s1, 0, n, low)],
-                                 [('ALLOW_DISALLOW_ONE_BUILDING', s1, low, 1)], once=False)]
-        m.sides['s1'] = {'playerFaction': enemy_ai.PLAYER_TEMPLATE[faction],
+            m.scripts += [Script(f'CNV {self.tag} - AI cap {tmpl}', [('PLAYER_HAS_OBJECT_COMPARISON', ai, 3, n, low)],
+                                 [('ALLOW_DISALLOW_ONE_BUILDING', ai, low, 0)], once=False),
+                          Script(f'CNV {self.tag} - AI cap {tmpl} off', [('PLAYER_HAS_OBJECT_COMPARISON', ai, 0, n, low)],
+                                 [('ALLOW_DISALLOW_ONE_BUILDING', ai, low, 1)], once=False)]
+        m.sides[side] = {'playerFaction': enemy_ai.PLAYER_TEMPLATE[faction],
                          'aiPersonality': f'AIPersonalityDefinition:{pid}'}
         m.assets.append((f'{pid}.xml', xml, f'AIPersonalityDefinition:{pid}'))
         awake = f'CNV_{self.tag}_AI_Awake'
-        m.scripts.append(Script(f'CNV {self.tag} - AI asleep', [], [('PLAYER_SET_MONEY', s1, 0)]))
-        keep = [('UNIT_AI_TRANSFER', n, 0) for n in self.guarded.get('s1', [])]
+        # 敌's ally, the player's enemy, whatever the container map said; no money till it wakes
+        m.scripts.append(Script(f'CNV {self.tag} - AI asleep', [], [
+            ('PLAYER_RELATES_PLAYER', ai, s1, 'Friend'), ('PLAYER_RELATES_PLAYER', s1, ai, 'Friend'),
+            ('PLAYER_RELATES_PLAYER', ai, p1, 'Enemy'), ('PLAYER_RELATES_PLAYER', p1, ai, 'Enemy'),
+            ('PLAYER_SET_MONEY', ai, 0)]))
+        given = [('NAMED_TRANSFER_OWNERSHIP_PLAYER', n, ai) for part in spec.get('接管') or []
+                 for n in self.part_names(part)]
         yes = lambda k, default: int(str(spec.get(k, default)) in ('是', 'True', '1'))     # noqa: E731
         self.when('AI wake', spec['唤醒'],
-                  [('UNIT_AI_TRANSFER_ALL', s1, 1), ('SKIRMISH_AI_MAKE_BASE', s1, self.mark(spec['基地'])),
-                   ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', s1, 20),
-                   ('SKIRMISH_AI_USE_REPAIRS', s1, yes('修理', '否')),
-                   ('SKIRMISH_AI_USE_REBUILD_SYSTEM', s1, yes('重建', '否'))] + keep + [('SET_FLAG', awake, 1)]
+                  given + [('UNIT_AI_TRANSFER_ALL', ai, 1), ('SKIRMISH_AI_MAKE_BASE', ai, self.mark(spec['基地'])),
+                           ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', ai, 20),
+                           ('SKIRMISH_AI_USE_REPAIRS', ai, yes('修理', '否')),
+                           ('SKIRMISH_AI_USE_REBUILD_SYSTEM', ai, yes('重建', '否')), ('SET_FLAG', awake, 1)]
                   # no secret protocols unless 技能 (retail "prevent naomi from buying specials"; bench 2026-10-25:
-                  # with them its first blow at the player's base was a power, before its army was let go)
-                  + ([] if yes('技能', '否') else [('PLAYER_SET_MAX_PLAYER_POWER_POINTS', s1, 0),
-                                                  ('PLAYER_SET_PLAYER_POWER_POINTS', s1, 0)]))
+                  # with them its first blow at the player's base was a power)
+                  + ([] if yes('技能', '否') else [('PLAYER_SET_MAX_PLAYER_POWER_POINTS', ai, 0),
+                                                  ('PLAYER_SET_PLAYER_POWER_POINTS', ai, 0)]))
         for levels, v in by_level(counts(spec.get('资金', 0))):
             m.scripts.append(Script(f'CNV {self.tag} - AI money' + ('' if levels == ALL else
                                                                    f' {TAGS[levels.index(True)]}'),
-                                    [('FLAG', awake, 1)], [('PLAYER_SET_MONEY', s1, v)], levels=levels))
+                                    [('FLAG', awake, 1)], [('PLAYER_SET_MONEY', ai, v)], levels=levels))
 
     def compile_endings(self):
         m = self.m

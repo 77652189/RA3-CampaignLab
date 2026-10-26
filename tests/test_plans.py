@@ -192,16 +192,18 @@ def test_unattackable_and_sent_off():
 
 
 def test_an_enemy_ai_of_the_levels_own():
-    """敌方AI: the enemy player made the enemy's faction with a generated personality (the co-op skirmish base, the
-    style's moves and states, no taunts), asleep with no money until woken, then given its base, money and no
-    secret protocols; the plan's guards kept out of the AI's hands."""
+    """敌方AI: a player of its own beside 敌 (the first the plan leaves free), the enemy's faction with a generated
+    personality (the co-op skirmish base, the style's moves and states, no taunts), 敌's ally and the player's
+    enemy, asleep with no money until woken, then given 接管, its base, money and no secret protocols; what the plan
+    moves stays 敌's (bench 2026-10-25, a7/jumps)."""
     import enemy_ai
     m = small(开局={'部队': [{'单位': '兵营', '在': 'north base', '阵营': '敌', '角色': 'camp'},
                           {'单位': '帝国武士', '数量': 2, '在': 'north base', '阵营': '敌', '角色': 'guard',
                            '守': 'north base'}]},
               敌方AI={'性格': '机甲', '基地': 'north base', '资金': '2000/4000/6000', '唤醒': '开局 + 1:00',
-                    '偏好': {'海啸坦克': 2}, '上限': {'兵营': 1}})
-    assert m.sides['s1'] == {'playerFaction': 'PlayerTemplate:Japan',
+                    '偏好': {'海啸坦克': 2}, '上限': {'兵营': 1}, '接管': ['camp']})
+    assert m.ai_player() == 'Soviet_2' and 's1' not in m.sides
+    assert m.sides['s2'] == {'playerFaction': 'PlayerTemplate:Japan',
                              'aiPersonality': 'AIPersonalityDefinition:CNV_AIP_ZZ'}
     (fname, xml, link), = m.assets
     assert fname == 'CNV_AIP_ZZ.xml' and link == 'AIPersonalityDefinition:CNV_AIP_ZZ'
@@ -210,18 +212,22 @@ def test_an_enemy_ai_of_the_levels_own():
                                                  if x.startswith('<StrategicState')]) > 0
     assert '<UnitModifier Unit="JapanAntiVehicleVehicleTech1" OffensiveModifier="2"' in xml
     cap, off = named(m, 'CNV ZZ - AI cap JapanBarracks')
-    assert cap.when == [('PLAYER_HAS_OBJECT_COMPARISON', 'Soviet_1', 3, 1, 'japanbarracks')] and not cap.once
-    assert cap.do == [('ALLOW_DISALLOW_ONE_BUILDING', 'Soviet_1', 'japanbarracks', 0)]
-    assert off.do == [('ALLOW_DISALLOW_ONE_BUILDING', 'Soviet_1', 'japanbarracks', 1)] and not off.once
-    assert named(m, 'CNV ZZ - AI asleep')[0].do == [('PLAYER_SET_MONEY', 'Soviet_1', 0)]
+    assert cap.when == [('PLAYER_HAS_OBJECT_COMPARISON', 'Soviet_2', 3, 1, 'japanbarracks')] and not cap.once
+    assert cap.do == [('ALLOW_DISALLOW_ONE_BUILDING', 'Soviet_2', 'japanbarracks', 0)]
+    assert off.do == [('ALLOW_DISALLOW_ONE_BUILDING', 'Soviet_2', 'japanbarracks', 1)] and not off.once
+    asleep = named(m, 'CNV ZZ - AI asleep')[0].do
+    assert ('PLAYER_RELATES_PLAYER', 'Soviet_2', 'Soviet_1', 'Friend') in asleep
+    assert ('PLAYER_RELATES_PLAYER', 'Soviet_2', 'Player_1', 'Enemy') in asleep
+    assert asleep[-1] == ('PLAYER_SET_MONEY', 'Soviet_2', 0)
     wake = named(m, 'CNV ZZ - AI wake')[0]
     assert any(c[0] == 'TIMER_EXPIRED' for c in wake.when)
-    assert [a[0] for a in wake.do][:2] == ['UNIT_AI_TRANSFER_ALL', 'SKIRMISH_AI_MAKE_BASE']
-    assert [a for a in wake.do if a[0] == 'UNIT_AI_TRANSFER'] == [
-        ('UNIT_AI_TRANSFER', f'UNIT - CNV ZZ guard {j}', 0) for j in (1, 2)]
+    assert [a[0] for a in wake.do][:3] == ['NAMED_TRANSFER_OWNERSHIP_PLAYER', 'UNIT_AI_TRANSFER_ALL',
+                                           'SKIRMISH_AI_MAKE_BASE']
+    assert wake.do[0] == ('NAMED_TRANSFER_OWNERSHIP_PLAYER', 'UNIT - CNV ZZ camp', 'Soviet_2')
+    assert not any('guard' in str(a) for a in wake.do)                  # the guards stay 敌's
     assert {tuple(s.levels): s.do[0][2] for s in named(m, 'CNV ZZ - AI money')} == {EASY: 2000, NORMAL: 4000,
                                                                                     HARD: 6000}
-    assert ('PLAYER_SET_MAX_PLAYER_POWER_POINTS', 'Soviet_1', 0) in wake.do
+    assert ('PLAYER_SET_MAX_PLAYER_POWER_POINTS', 'Soviet_2', 0) in wake.do
     import parts
     assert not parts.contract(parts.merged(m))
     with pytest.raises(plan.PlanError):
@@ -239,3 +245,47 @@ def test_the_design_check_counts_the_enemy_ai_as_pressure():
     texts = [t for _, t in plancheck.design_check(d)]
     assert any(t.startswith('持续压力来自遭遇战 AI') for t in texts)
     assert any(t.startswith('第一波真正的进攻：3:30 敌方AI') for t in texts)
+
+
+def test_how_many_of_a_group_are_down():
+    """摧毁 <group> <n> 个: each member adds one to a counter as it falls (once), the condition holds at n or more;
+    parts listed with 、 count together."""
+    m = small(开局={'部队': [{'单位': '兵营', '数量': 3, '在': 'north base', '阵营': '敌', '角色': 'camp'},
+                          {'单位': '电厂', '在': 'north base', '偏移': [300, 0], '阵营': '敌', '角色': 'power'}]},
+              规则=[{'当': '摧毁 camp 2 个', '做': ['通报 两座了']},
+                   {'当': '摧毁 camp 1、power 2 个', '做': ['通报 也是两座']}])
+    lost = named(m, 'CNV ZZ - Lost ')
+    assert [s.when for s in lost[:3]] == [[('NAMED_DESTROYED', f'UNIT - CNV ZZ camp {j}')] for j in (1, 2, 3)]
+    assert all(s.once and s.do == [('INCREMENT_COUNTER', 1, 'CNV_ZZ_Lost_1')] for s in lost[:3])
+    assert ('COUNTER', 'CNV_ZZ_Lost_1', 3, 2) in named(m, 'CNV ZZ - Rule 1')[0].when
+    both = [s for s in lost if s.do[0][2] != 'CNV_ZZ_Lost_1']
+    assert [s.when[0][1] for s in both] == ['UNIT - CNV ZZ camp 1', 'UNIT - CNV ZZ power']
+    cn = small(开局={'部队': [{'单位': '兵营', '数量': 2, '在': 'north base', '阵营': '敌', '角色': r}
+                           for r in ('兵营甲', '兵营乙')]},
+               规则=[{'当': f'摧毁 {r} 2 个', '做': []} for r in ('兵营甲', '兵营乙')])
+    assert len(named(cn, 'CNV ZZ - Lost ')) == 4                       # two groups named in Chinese, counted apart
+    with pytest.raises(plan.PlanError):
+        small(开局={'部队': [{'单位': '电厂', '在': 'north base', '阵营': '敌', '角色': 'power'}]},
+              规则=[{'当': '摧毁 power 1 个', '做': []}])              # one part is not a group
+
+
+def test_one_of_the_plans_own_in_a_site_and_frozen():
+    m = small(开局={'部队': [{'单位': '帝国武士', '数量': 2, '在': 'north base', '阵营': '敌', '角色': 'guard'}]},
+              规则=[{'当': 'guard 进入 west field', '做': ['通报 来了']}, {'当': '冻住 guard 1', '做': ['通报 冻住了']}])
+    enter = named(m, 'CNV ZZ - Rule 1')
+    assert [s.when[0] for s in enter] == [('NAMED_INSIDE_AREA', f'UNIT - CNV ZZ guard {j}', 'CNV ZZ Area west field')
+                                          for j in (1, 2)]              # either of them
+    assert named(m, 'CNV ZZ - Rule 2')[0].when == [('UNIT_HAS_OBJECT_STATUS', 'UNIT - CNV ZZ guard 1', 'UNDER_FROZEN')]
+    plain = small(规则=[{'当': '进入 west field', '做': []}])                 # 进入 alone: any of the player's
+    assert named(plain, 'CNV ZZ - Rule 1')[0].when[0][0] == 'SKIRMISH_PLAYER_HAS_UNITS_IN_AREA'
+
+
+def test_a_wave_stepped_up_comes_sooner():
+    """加码 每隔: once its condition holds, each wave sets the shorter gap for the next."""
+    m = small(进攻=[{'名字': 'w', '开始': '开局 + 1:00', '兵': {'帝国武士': 1}, '从': 'north base', '打': 'west field',
+                    '每隔': '2:00', '最多': 2, '加码': {'当': '摧毁 camp', '每隔': '1:00/0:45/0:30'}}])
+    sends = [s for s in named(m, 'CNV ZZ - Wave 1 ') if s.do[-1][0] == 'SET_MILLISECOND_TIMER' and 'start' not in s.name]
+    gap = {('+' in s.name.split()[5], tuple(s.levels)): s.do[-1][2] for s in sends}     # Wave 1 <i>[+] <difficulty>
+    assert gap[(False, NORMAL)] == 120.0 and gap[(True, EASY)] == 60.0 and gap[(True, HARD)] == 30.0
+    with pytest.raises(plan.PlanError):
+        small(进攻=[{'名字': 'w', '开始': '开局', '兵': {'帝国武士': 1}, '从': 'north base', '加码': {'当': '开局', '每隔': 30}}])
