@@ -41,6 +41,22 @@ class PlanError(ValueError):
     pass
 
 
+MUSIC = os.path.join(ROOT, 'experimental', 'music')
+
+
+def music_names():
+    """The level music a plan may name (音乐: <名字>): the modules of experimental/music that publish CUES (the
+    plan's words for their events) and pack() (the build's music pack). Read from the sources, nothing imported."""
+    out = []
+    for f in sorted(os.listdir(MUSIC)):
+        if f.endswith('.py'):
+            with open(os.path.join(MUSIC, f), encoding='utf-8') as fh:
+                src = fh.read()
+            if '\nCUES = ' in src and '\ndef pack(' in src:
+                out.append(f[:-3])
+    return out
+
+
 # ---------------------------------------------------------------- reading
 def path(level):
     return os.path.join(PLANS, f'{level}.md')
@@ -175,6 +191,30 @@ class Compiler:
         self.phases, self.waves, self.goals = [], {}, {}
         self.last = []              # the scripts the last when() made
         self.counted = {}           # group -> the counter of its losses (摧毁 <group> <n> 个)
+        self.music = self.load_music(data.get('音乐'))
+
+    def load_music(self, name):
+        """音乐: <名字> -> the music module (experimental/music/<名字>.py), its pack made only when built."""
+        if name is None:
+            return None
+        names = music_names()
+        if str(name) not in names:
+            raise PlanError(f'音乐 {name!r}: no such music; experimental/music has {names}')
+        if ROOT not in sys.path:
+            sys.path.insert(0, ROOT)
+        mod = importlib.import_module(f'experimental.music.{name}')
+        from experimental.music import pack
+        self.m.music = pack.Later(mod.pack, {mod.EVENTS[key][0] for key in mod.CUES.values()})
+        return mod
+
+    def cue(self, word):
+        """音乐 <提示词>: play that event of the level's music."""
+        if not self.music:
+            raise PlanError(f'音乐 {word}: the plan names no music (音乐: <名字> at the top; {music_names()})')
+        cues = self.music.CUES
+        if word not in cues:
+            raise PlanError(f'音乐 {word!r}: {self.d["音乐"]} has {list(cues)}')
+        return [('PATH_MUSIC_PLAY_EVENT', self.music.EVENTS[cues[word]][0])]
 
     # ---- names
     def uid(self, what=''):
@@ -376,8 +416,16 @@ class Compiler:
             if head == '存档':
                 m.strings.setdefault(AUTOSAVE, '新战役（自动存档）')
                 return [('CAMPAIGN_CREATE_AUTO_SAVE', AUTOSAVE)]
-            if head == '胜利':
-                return [('SET_FLAG', 'Mission Won', 1)]
+            if head == '胜利':                       # with the level's music, its win music first
+                return (self.cue('胜利') if self.music else []) + [('SET_FLAG', 'Mission Won', 1)]
+            if head == '音乐':
+                return self.cue(rest.strip())
+            if head == '战况音乐':                   # the game's own combat music states (sdk SageXML/PathMusic)
+                if rest.strip() != '开':
+                    raise PlanError(f'action {a!r}: 战况音乐 开 (there is no off: the game has no such action)')
+                if not self.music:
+                    raise PlanError(f'action {a!r}: the plan names no music (音乐: <名字> at the top)')
+                return [('PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM', self.music.DYNAMIC_SYSTEM)]
             if '.' in head:
                 dev, what = head.split('.', 1)
                 if dev not in self.devices:
@@ -426,7 +474,8 @@ class Compiler:
                 raise PlanError(f'翻脸 {a["翻脸"]!r}: a side of 阵营 其他 ({sorted(self.side)})')
             return [('PLAYER_RELATES_PLAYER', m.player(x), p1, 'Enemy'), ('PLAYER_RELATES_PLAYER', p1, m.player(x), 'Enemy')]
         if '失败' in a:
-            return [('SHOW_MILITARY_CAPTION', self.text('SCRIPT', a['失败']), 10.0), ('SET_FLAG', 'Mission Lost', 1)]
+            return (self.cue('失败') if self.music else []) + [
+                ('SHOW_MILITARY_CAPTION', self.text('SCRIPT', a['失败']), 10.0), ('SET_FLAG', 'Mission Lost', 1)]
         raise PlanError(f'action {a!r}: no such action (plan.py lists them)')
 
     def give(self, units, site):
@@ -772,7 +821,7 @@ class Compiler:
     def compile_endings(self):
         m = self.m
         if self.d.get('胜利'):
-            m.endings += [s.name for s in self.when('Win', self.d['胜利'], [('SET_FLAG', 'Mission Won', 1)])]
+            m.endings += [s.name for s in self.when('Win', self.d['胜利'], self.action('胜利'))]
         for k, lose in enumerate(self.d.get('失败') or []):
             m.endings += [s.name for s in self.when(f'Lose {k + 1}', lose['当'],
                                                     self.action({'失败': lose.get('原因', '任务失败')}))]

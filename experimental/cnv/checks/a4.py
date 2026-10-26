@@ -3,11 +3,15 @@
 seal (A against B on one map): engineer 1 freezes a wall across plaza 1's gate shortly before the convoy leaves,
   plaza 2's gate stays open. The convoy breaks both plazas' sculptures on its way; plaza 2's tank buster is out on
   the road within seconds, plaza 1's stays off it while the wall stands and comes out after it melts.
-placed: the control for seal's rule -- a map-placed bar holds the gate as well.
+placed: the control for seal's rule -- a map-placed bar holds the gate as well (plaza 2 broken by test script:
+  held by plaza 1's troops, the convoy never gets there).
 smash: the player breaks sculpture 2-1 early (by test script, long before the convoy): its tank buster stands in
   plaza 2 at once, while sculpture 2-2 is whole.
 ambush: the convoy, as played, breaks plaza 1's sculptures as it passes the approach: the troops appear.
-win: the trucks kept at full health: they reach the exit and the mission ends after the drive.
+stop: 遇伏 停下 -- the convoy reaches plaza 1, its troops out and the gate open: it stands there; the troops killed
+  (by test script, 30 s after leaving), it goes on past plaza 2's approach.
+win: the trucks kept at full health, each plaza's troops killed as soon as they hold the convoy: it reaches the
+  exit and the mission ends after the drive.
 lose: the trucks at 1 % health as they set off (the war factory's drones mend them while parked): the first
   ambush kills two and the mission ends well before the drive's time.
 idle: as played, the player doing nothing: the convoy is lost (bench 2026-10-23: ended at s78, 18 s after leaving).
@@ -26,8 +30,12 @@ DRIVE = 43.0                                    # convoy start to exit at the or
 LEAD = 4.0                                      # the mission runs ~3 s ahead of the bench's clock (bench 2026-10-25:
                                                 # "车队出发了" on screen at bench s177, leaving at 180), margin
 HALT = 15.0                                     # win: the stop at the halt and the start again, when nothing holds it
+STOPS = 20.0                                    # win: three ambush stops, a tick or two each
 OUT_OF_REACH = 6.0                              # lose: the last truck past the war factory's drones (108 + 200, speed 50)
 HARBOUR = ('harbour ambush', 'harbour guard')   # the plan's parts waiting at the harbour (docs/story/plans/a4.md)
+STOP_KILL = 30.0                                # stop: plaza 1's troops die this long after the convoy leaves
+STOP_SEEN = 12.0                                # stop: by then it is held (the ambush check: troops out by leave + 10)
+APPROACH = 150.0                                # stop: half-side of the area counted as plaza 2's approach
 
 
 def ice_wall(m):
@@ -108,7 +116,12 @@ def placed(m):
     on_road(t, m, 'troop 2-1-1', '2 号的兵上路')
     in_plaza(t, m, 1, 'troop 1-1-1', '1 号的兵在广场')     # held, not never there
     leave = m.facts['convoy leaves']
-    t.expect += [('2 号的兵上路', leave, 'ever==', 1), ('1 号的兵上路', 0, '==', 0, leave + 35),
+    # 遇伏 停下: plaza 1's troops, behind a wall the plazas do not know, hold the convoy there for good -- plaza 2's
+    # sculptures broken by test script when it leaves instead (bench 2026-10-26: never reached, never out)
+    t.scripts += [Script('Test - break 2 set', [], [('SET_MILLISECOND_TIMER', 'Test - break 2 timer', leave)]),
+                  Script('Test - break 2', [('TIMER_EXPIRED', 'Test - break 2 timer')],
+                         [('NAMED_KILL', m.role(f'sculpture 2-{i}').name) for i in (1, 2)])]
+    t.expect +=[('2 号的兵上路', leave, 'ever==', 1), ('1 号的兵上路', 0, '==', 0, leave + 35),
                  ('1 号的兵在广场', leave - LEAD, 'ever==', 1)]      # out, they leave the plaza within seconds
     t.bench = [('bench_watch', dict(seconds=leave + 45, every=3, sheet=False, lines=len(t.counters)))]
     return t
@@ -146,18 +159,61 @@ def trucks(t, m):
         counted(f'Test Truck {j}', f'{j} 号车血量', t, health=m.role(f'truck {j}').name)
 
 
+def keep_up(t, m):
+    t.scripts.append(Script('Test - keep the trucks up', [], [('UNIT_SET_HEALTH', r.name, 100.0)
+                                                             for r in m.roles('truck')], once=False))
+
+
+def blocking(m, k):
+    """The flag that is 1 while plaza k's troops hold the convoy (the plazas' 拦住 k): the one their Blocked script
+    sets."""
+    return next(s.do[0][1] for s in m.scripts if s.name.endswith(f' - Blocked {k}'))
+
+
+def troops(m, k):
+    return [r.name for part, r in m.cast.items() if part.startswith(f'troop {k}-')]
+
+
+def stop(m):
+    m.drop_endings()
+    t = Test()
+    start(t, m)
+    keep_up(t, m)
+    leave = m.facts['convoy leaves']
+    held = blocking(m, 1)
+    t.counters.append(('Test Held', '被拦'))
+    t.scripts += [Script('Test - held zero', [], [('SET_COUNTER', 'Test Held', 0)], once=False),
+                  Script('Test - held one', [('FLAG', held, 1)], [('SET_COUNTER', 'Test Held', 1)], once=False),
+                  Script('Test - kill set', [], [('SET_MILLISECOND_TIMER', 'Test - kill timer', leave + STOP_KILL)]),
+                  Script('Test - kill plaza 1', [('TIMER_EXPIRED', 'Test - kill timer')],
+                         [('NAMED_KILL', n) for n in troops(m, 1)])]
+    t.areas['Test Approach 2'] = square(*m.site('approach 2'), APPROACH)
+    counted('Test Past 1', '车到2号路口', t, named=m.role('truck 1').name, area='Test Approach 2')
+    killed = leave + STOP_KILL
+    t.expect += [('被拦', 0, '==', 0, leave - LEAD), ('被拦', leave, 'ever==', 1, leave + STOP_SEEN),
+                 ('被拦', leave + STOP_SEEN + 2, '==', 1, killed - LEAD),        # still held, troops alive
+                 ('车到2号路口', 0, '==', 0, killed - LEAD),
+                 ('被拦', killed + 4, 'ever==', 0, killed + 10),
+                 ('车到2号路口', killed, 'ever==', 1)]
+    t.bench = [('bench_watch', dict(seconds=killed + 45, every=3, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 def win(m):
     t = Test()
     start(t, m)
-    t.scripts.append(Script('Test - keep the trucks up', [], [('UNIT_SET_HEALTH', r.name, 100.0)
-                                                             for r in m.roles('truck')], once=False))
+    keep_up(t, m)
+    # a plaza's troops die as soon as they hold the convoy: it goes on (遇伏 停下)
+    t.scripts += [Script(f'Test - clear plaza {k}', [('FLAG', blocking(m, k), 1)],
+                         [('NAMED_KILL', n) for n in troops(m, k)], once=False) for k in (1, 2, 3)]
     # the harbour's ambush gone from the start: the convoy's stop there (phase 3) ends as soon as it begins
     t.scripts.append(Script('Test - clear the harbour', [], [('NAMED_KILL', r.name) for g in HARBOUR
                                                              for r in m.roles(g)]))
     trucks(t, m)
     leave = m.facts['convoy leaves']
     t.expect += [('1 号车血量', 0, '==', 100, leave), ('ENDED', leave + DRIVE - 10, '', None)]
-    t.bench = [('bench_watch', dict(seconds=leave + DRIVE + HALT + 20, every=3, sheet=False, lines=len(t.counters)))]
+    t.bench = [('bench_watch', dict(seconds=leave + DRIVE + HALT + STOPS + 20, every=3, sheet=False,
+                                    lines=len(t.counters)))]
     return t
 
 

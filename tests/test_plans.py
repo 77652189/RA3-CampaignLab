@@ -292,3 +292,35 @@ def test_a_wave_stepped_up_comes_sooner():
     assert gap[(False, NORMAL)] == 120.0 and gap[(True, EASY)] == 60.0 and gap[(True, HARD)] == 30.0
     with pytest.raises(plan.PlanError):
         small(进攻=[{'名字': 'w', '开始': '开局', '兵': {'帝国武士': 1}, '从': 'north base', '加码': {'当': '开局', '每隔': 30}}])
+
+
+def test_the_levels_own_music():
+    """音乐: a4 sets the mission's music (made only when built); 音乐 <提示词> plays its event, 战况音乐 开 turns on the
+    game's combat music; the endings play the win / lose music before they end the mission."""
+    sys.path.insert(0, str(ROOT))
+    from experimental.music import a4
+    m = small(音乐='a4', 规则=[{'当': '开局', '做': ['音乐 行进', '战况音乐 开']}],
+              胜利='开局 + 9:00', 失败=[{'当': '摧毁 camp', '原因': '输了'}])
+    assert m.music is not None and a4.EVENTS['escort'][0] in m.music.events
+    assert named(m, 'CNV ZZ - Rule 1')[0].do[:2] == [('PATH_MUSIC_PLAY_EVENT', a4.EVENTS['escort'][0]),
+                                                     ('PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM', a4.DYNAMIC_SYSTEM)]
+    win = [s for s in m.scripts if s.name in m.endings and 'Win' in s.name][0]
+    lose = [s for s in m.scripts if s.name in m.endings and 'Lose' in s.name][0]
+    assert win.do[0] == ('PATH_MUSIC_PLAY_EVENT', a4.EVENTS['win'][0]) and win.do[-1] == ('SET_FLAG', 'Mission Won', 1)
+    assert lose.do[0] == ('PATH_MUSIC_PLAY_EVENT', a4.EVENTS['lose'][0]) and lose.do[-1][1] == 'Mission Lost'
+    assert small().music is None                                              # no 音乐: retail's music
+    ruled = small(音乐='a4', 规则=[{'当': '开局 + 1:00', '做': ['胜利']}, {'当': '开局 + 2:00', '做': [{'失败': '输了'}]}])
+    assert named(ruled, 'CNV ZZ - Rule 1')[0].do == [('PATH_MUSIC_PLAY_EVENT', a4.EVENTS['win'][0]),
+                                                     ('SET_FLAG', 'Mission Won', 1)]      # a rule's 胜利 too
+    assert named(ruled, 'CNV ZZ - Rule 2')[0].do[0] == ('PATH_MUSIC_PLAY_EVENT', a4.EVENTS['lose'][0])
+    assert named(small(规则=[{'当': '开局', '做': ['胜利']}]), 'CNV ZZ - Rule 1')[0].do == [('SET_FLAG', 'Mission Won', 1)]
+
+
+@pytest.mark.parametrize('bad', [{'音乐': 'nope'},
+                                 {'规则': [{'当': '开局', '做': ['音乐 行进']}]},
+                                 {'音乐': 'a4', '规则': [{'当': '开局', '做': ['音乐 跳舞']}]},
+                                 {'音乐': 'a4', '规则': [{'当': '开局', '做': ['战况音乐 关']}]}])
+def test_music_words_are_checked(bad):
+    """A music that is not there, a cue without 音乐, a cue the music has not: errors that list what there is."""
+    with pytest.raises(plan.PlanError):
+        small(**bad)
