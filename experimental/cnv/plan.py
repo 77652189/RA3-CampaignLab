@@ -743,7 +743,10 @@ class Compiler:
                          'aiPersonality': f'AIPersonalityDefinition:{pid}'}
         m.assets.append((f'{pid}.xml', xml, f'AIPersonalityDefinition:{pid}'))
         awake = f'CNV_{self.tag}_AI_Awake'
-        # 敌's ally, the player's enemy, whatever the container map said; no money till it wakes
+        # 敌's ally, the player's enemy, whatever the container map said; no money till it wakes. The Friend did not
+        # keep 敌's guards (守 east gate) off the AI's barracks, nor did playerAllies both ways in the map's player list
+        # (bench 2026-10-26, a7/east: lost at s100 either way; with the guards deleted it stood) -- why is open, so a
+        # plan hands the base's troops to the AI with 接管 too (retail Miyako "give units to tatsu")
         m.scripts.append(Script(f'CNV {self.tag} - AI asleep', [], [
             ('PLAYER_RELATES_PLAYER', ai, s1, 'Friend'), ('PLAYER_RELATES_PLAYER', s1, ai, 'Friend'),
             ('PLAYER_RELATES_PLAYER', ai, p1, 'Enemy'), ('PLAYER_RELATES_PLAYER', p1, ai, 'Enemy'),
@@ -760,6 +763,7 @@ class Compiler:
                   # with them its first blow at the player's base was a power)
                   + ([] if yes('技能', '否') else [('PLAYER_SET_MAX_PLAYER_POWER_POINTS', ai, 0),
                                                   ('PLAYER_SET_PLAYER_POWER_POINTS', ai, 0)]))
+        m.ai_wake = [s.name for s in self.last]
         for levels, v in by_level(counts(spec.get('资金', 0))):
             m.scripts.append(Script(f'CNV {self.tag} - AI money' + ('' if levels == ALL else
                                                                    f' {TAGS[levels.index(True)]}'),

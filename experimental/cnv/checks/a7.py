@@ -9,6 +9,8 @@ jumps: home, warned, at the base edge (the first landing point: the player's arm
 pick: four of the player's tanks at the base edge: it lands at the second point, the ore, instead.
 defend: the station down to 40 % before any jump: the carrier jumps to it at once.
 power: the station killed after the first jump: no jump home; grounded, the next phase sends it off its point.
+east: the east bank's skirmish AI asleep and broke, then woken: it spends, keeps its barracks, its army crosses
+  to the player's bank; the carrier stays home meanwhile.
 win: the carrier at 1 % health jumps (by test script) to the base edge at 5 s, the player's IFVs shoot it down,
   Mission Won ends the mission.
 """
@@ -18,7 +20,9 @@ from checks.liberty import EARLY, jumps as fire_jump
 
 AREA = 300.0                                    # half-side of the areas counted around the carrier's places
 READY = plan.REVEAL_FIRST + plan.REVEAL_GAP + 3.0   # the outposts' objective shows (2nd of phase 1), then done
-KILL_AFTER = 8.0                                # power: the station dies this long after the first jump
+EAST_RUN = 300.0        # east: how long after waking its army has to reach the player's bank
+WEST_HALF = 950.0      # east: half-side of a square on the player's start, over their bank, short of the river
+KILL_AFTER = 8.0                               # power: the station dies this long after the first jump
 HURT_AT = 15.0                                  # defend: the station's health drops then
 
 
@@ -34,6 +38,7 @@ def settle(t, m):
 
 
 def where(m, places=('carrier home', 'base edge')):
+    m.keep_ai_asleep()                          # these are about the carrier: the east bank's AI stays out
     t = Test()
     t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
     enemy, carrier = m.player('s1'), m.role('carrier')
@@ -41,7 +46,9 @@ def where(m, places=('carrier home', 'base edge')):
     for part in places:
         t.areas[f'Test {part}'] = square(*m.point(part), AREA)
         counted(f'Test At {part}', labels[part], t, named=carrier.name, area=f'Test {part}')
-    counted('Test Station', '电站', t, template=m.role('station').template, player=enemy)
+    # the one on its pad: the east bank has a power plant of the enemy's too
+    t.areas['Test station pad'] = square(*m.point('station'), 150.0)
+    counted('Test Station', '电站', t, template=m.role('station').template, player=enemy, area='Test station pad')
     return t
 
 
@@ -109,11 +116,12 @@ def power(m):
 
 def east(m):
     """The east bank given to the skirmish AI (敌方AI, a player of its own beside the enemy): asleep and broke
-    through phase 1; woken (phase 2 + its time, normal difficulty) it is given the east bank's construction yard,
-    power plant, barracks, factory and airfield and spends its money on troops from them; the carrier stays home till its first jump (the enemy's, not
-    the AI's -- bench 2026-10-25: with the enemy itself the AI, it left home at 18 s). Its barracks stand the whole
-    run: bench 2026-10-25, with no construction yard it sank its money into an MCV it never finished, sold its
-    buildings when broke -- and the bonus objective (destroy them) was done for the player."""
+    through phase 1; woken (phase 2 + its time, normal difficulty) it is given the east bank's buildings and troops,
+    builds troops only (its caps) and its army crosses to the player's bank; the carrier stays home till its first
+    jump (the enemy's, not the AI's -- bench 2026-10-25: with the enemy itself the AI, it left home at 18 s). Its
+    barracks stand the whole run (bench 2026-10-25/26: free to build anything it sank its money into an MCV or a new
+    base and sold buildings; with 敌's guards left on the gate they shot it -- the bonus objective was done for the
+    player either way). Bench 2026-10-26: first over the river ~35 s after waking, then a wave every ~40 s."""
     t = Test()
     t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
     t.areas['Test carrier home'] = square(*m.point('carrier home'), AREA)
@@ -124,16 +132,24 @@ def east(m):
     counted('Test AI Barracks', 'AI的兵营', t, template=m.role('east barracks').template, player=ai)
     t.counters.append(('Test AI Money', '敌方资金'))
     t.scripts.append(Script('Test - AI money', [], [('SET_PLAYER_MONEY_TO_COUNTER', ai, 'Test AI Money')], once=False))
-    counted('Test AI Guardians', 'AI的守护者', t, template='AlliedAntiVehicleVehicleTech1', player=ai)
+    # its army over on the player's bank, whatever it built (bench 2026-10-25: Riptides, no guardians); the
+    # has-units test is the AI's alone (a kind-in-area count is every player's)
+    t.areas['Test west bank'] = square(*m.site('start'), WEST_HALF)
+    t.counters.append(('Test AI West', 'AI在西岸'))
+    t.scripts += [Script('Test - AI west zero', [], [('SET_COUNTER', 'Test AI West', 0)], once=False),
+                  Script('Test - AI west', [('SKIRMISH_PLAYER_HAS_UNITS_IN_AREA', ai, 'Test west bank')],
+                         [('SET_COUNTER', 'Test AI West', 1)], once=False)]
     wake = READY + plan.spans(plan.load('a7')['敌方AI']['唤醒']['任一'][0].split('+')[1])[1][0]
     money = plan.counts(plan.load('a7')['敌方AI']['资金'])[1]
     # bench 2026-10-25: woken at s36 it had spent 1000 of its 5000 by s44 -- the money is read rising, not as given
     t.expect += [('敌方资金', 1, '==', 0, wake - 4), ('敌方资金', wake - 4, 'ever>', 0, wake + 12),
                  ('敌方资金', wake, 'ever<', money - 1000, wake + 150),
-                 ('AI的守护者', 1, '==', 0, wake - 4), ('AI的守护者', wake, 'ever>', 0, wake + 180),
+                 ('AI在西岸', 1, '==', 0, wake + 20), ('AI在西岸', wake, 'ever==', 1, wake + EAST_RUN),
                  ('AI的兵营', wake + 8, '>=', 1),
                  ('在家', 0, '==', 1, READY + m.facts['jump delay'] - EARLY)]
-    t.bench = [('bench_watch', dict(seconds=wake + 180, every=4, sheet=False, lines=len(t.counters)))]
+    x, y = m.site('east barracks')              # the frames show what happens to it
+    t.bench = [('bench_camera', dict(x=x, y=y, look=False)),
+               ('bench_watch', dict(seconds=wake + EAST_RUN, every=4, sheet=False, lines=len(t.counters)))]
     return t
 
 

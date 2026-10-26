@@ -143,6 +143,8 @@ class Mission(Part):
                                                                 # personality: mapxml.set_player)
     assets: list = dataclasses.field(default_factory=list)      # more XML compiled in: [(file name, text, instance
                                                                 # to link, 'AIPersonalityDefinition:X')]
+    ai_wake: list = dataclasses.field(default_factory=list)     # the scripts that wake its skirmish AI (plan.py
+                                                                # 敌方AI): keep_ai_asleep() drops them
     music: object = None                # our Pathfinder map and tracks (experimental/music/pack.Pack: include,
                                         # files, events, check), compiled into the static stream; published: the
                                         # events it plays (PATH_MUSIC_PLAY_EVENT may name only those). None: retail's
@@ -223,6 +225,11 @@ class Mission(Part):
     def drop_endings(self):
         """The mission without its win / lose scripts (a check that keeps the counters up)."""
         self.scripts = [s for s in self.scripts if s.name not in self.endings]
+
+    def keep_ai_asleep(self):
+        """The mission with its skirmish AI never woken (a check about something else: bench 2026-10-26, a7/pick --
+        woken, its army over the river drew the player's tanks off the carrier's landing point)."""
+        self.scripts = [s for s in self.scripts if s.name not in self.ai_wake]
 
     # ---- objectives: actions for the mission's scripts, and the reveal scripts assemble() adds
     def goal(self, name):

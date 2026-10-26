@@ -145,7 +145,7 @@ def beat_sheet(d):
             t = times_of(c, starts) if c else None
             return '不放开' if not c else at(t, c, starts, early) if t is not None else '看玩家'
         out.append(f'  敌方AI（{ai.get("性格", "平衡")}）：{when(ai.get("唤醒"))} 醒来、在 {ai.get("基地")} 建基地并自己进攻'
-                   f'（测试台上醒来约 1 分钟第一次交火），资金 {ai.get("资金", 0)}'
+                   f'（测试台上：交给它守军时醒来约半分钟就过来，只给建筑约 1 分钟），资金 {ai.get("资金", 0)}'
                    + (f'；上限 {"、".join(f"{u} {n}" for u, n in ai["上限"].items())}' if ai.get('上限') else ''))
     return '\n'.join(out)
 

@@ -230,6 +230,9 @@ def test_an_enemy_ai_of_the_levels_own():
     assert ('PLAYER_SET_MAX_PLAYER_POWER_POINTS', 'Soviet_2', 0) in wake.do
     import parts
     assert not parts.contract(parts.merged(m))
+    assert m.ai_wake == [wake.name]
+    m.keep_ai_asleep()                                                  # a check about something else
+    assert not named(m, 'CNV ZZ - AI wake') and named(m, 'CNV ZZ - AI asleep')
     with pytest.raises(plan.PlanError):
         small(敌方AI={'性格': '空军', '基地': 'north base', '唤醒': '开局'})          # 帝国 has no 空军 commander
     with pytest.raises(plan.PlanError):     # it fights from waking (bench 2026-10-25): no word to hold it back
