@@ -136,9 +136,10 @@ def beat_sheet(d):
         troops = '、'.join(f'{u} {n}' for u, n in (w.get('兵') or {}).items())
         rep = f'，每隔 {w["每隔"]}，最多 {w.get("最多", "不限")} 波' if w.get('每隔') else '，一次'
         src = f'，来源 {"、".join(w["来源"])}（没了就停）' if w.get('来源') else ''
+        until = f'，{w["直到"]} 以后不再来' if w.get('直到') else ''
         when = at(t, w['开始'], starts, early) if t is not None else '看玩家'
         out.append(f'  {w["名字"]}：{when} 起（{w["开始"]}）；{troops}；从 {w.get("从")} 打 {w.get("打") or w.get("守")}'
-                   f'{rep}{src}')
+                   f'{rep}{src}{until}')
     ai = d.get('敌方AI')
     if ai:
         def when(c):

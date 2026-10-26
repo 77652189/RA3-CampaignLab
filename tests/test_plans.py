@@ -128,6 +128,37 @@ def test_the_carrier_defends_only_a_station_still_the_enemys():
     assert ('HIDE_COUNTDOWN_TIMER', 'CNV A7 Jump') in jump.do
 
 
+def test_the_carrier_jumps_sooner_the_more_it_lost():
+    """A7's 加快 (retail Miyako: the fewer of Tatsu's key buildings left, the faster the recharge): a jump home waits
+    the latest step that held -- one script per step and difficulty, each step's flag latched by its condition."""
+    m = plan.mission('a7')
+    home = [s for s in m.scripts if s.name.startswith('CNV A7 - Carrier home')]
+    assert len(home) == 4 * 3
+    gaps = {s.name: s.do[-1][2] for s in home}
+    assert gaps['CNV A7 - Carrier home normal'] == 90.0 and gaps['CNV A7 - Carrier home 2 normal'] == 50.0
+    assert gaps['CNV A7 - Carrier home 3 hard'] == 30.0
+    two = next(s for s in home if s.name == 'CNV A7 - Carrier home 2 normal')
+    assert ('FLAG', 'CNV_A7_Faster_2', 1) in two.when and ('FLAG', 'CNV_A7_Faster_3', 0) in two.when
+    assert ('FLAG', 'CNV_A7_Faster_1', 0) in next(s for s in home if s.name == 'CNV A7 - Carrier home normal').when
+    latch = next(s for s in m.scripts if ('SET_FLAG', 'CNV_A7_Faster_2', 1) in s.do)
+    assert any(c[0] == 'COUNTER' and c[2:] == (3, 2) for c in latch.when)        # 摧毁 … 2 个
+    assert m.facts['jump every 2'] == 50.0
+    with pytest.raises(plan.PlanError):
+        small(开局={'部队': [{'单位': '电厂', '在': 'north base', '阵营': '敌', '角色': 'station'}]},
+              机关={'自由号': {'类型': '自由号', '电站': 'station', '开始': '开局', '落点': ['harbour'],
+                           '家': 'north base', '加快': [{'当': '开局', '间隔': '1:00'}]}})
+
+
+def test_a_wave_can_wait_on_the_carriers_warning():
+    """自由号.预警 <n>: the n-th warning has been given (a counter its warn script adds to) -- A7's pincer waves."""
+    m = plan.mission('a7')
+    warn = next(s for s in m.scripts if s.name == 'CNV A7 - Carrier warn')
+    assert ('INCREMENT_COUNTER', 1, 'CNV_A7_Jump_Warned') in warn.do
+    start = [s for s in m.scripts if s.name.startswith('CNV A7 - Wave') and 'start' in s.name
+             and ('COUNTER', 'CNV_A7_Jump_Warned', 3, 2) in s.when]
+    assert len(start) == 1
+
+
 def test_every_plan_passes_its_design_check():
     levels = plan.levels()
     assert levels, f'no plans in {plan.PLANS}'
@@ -237,6 +268,21 @@ def test_an_enemy_ai_of_the_levels_own():
         small(敌方AI={'性格': '空军', '基地': 'north base', '唤醒': '开局'})          # 帝国 has no 空军 commander
     with pytest.raises(plan.PlanError):     # it fights from waking (bench 2026-10-25): no word to hold it back
         small(敌方AI={'基地': 'north base', '唤醒': '开局', '进攻': '开局 + 3:00'})
+
+
+def test_waves_stop_once_the_enemy_ai_took_over():
+    """A camp's scripted waves until the skirmish AI is handed the camp (retail: lasting pressure is the AI's): 直到
+    gates every wave on what latches, here 敌方AI 醒来."""
+    m = small(开局={'部队': [{'单位': '兵营', '在': 'north base', '阵营': '敌', '角色': 'camp'}]},
+              敌方AI={'基地': 'north base', '唤醒': '开局 + 2:00', '接管': ['camp']},
+              进攻=[{'名字': 'w', '开始': '开局 + 0:30', '兵': {'帝国武士': 1}, '从': 'north base', '打': 'camp',
+                    '每隔': '0:30', '最多': 3, '来源': ['camp'], '直到': '敌方AI 醒来'}])
+    sends = [s for s in m.scripts if s.name.startswith('CNV ZZ - Wave 1 ') and 'start' not in s.name]
+    assert len(sends) == 9 and all(('FLAG', 'CNV_ZZ_AI_Awake', 0) in s.when for s in sends)
+    assert all(('NAMED_NOT_DESTROYED', 'UNIT - CNV ZZ camp') in s.when for s in sends)
+    assert ('SET_FLAG', 'CNV_ZZ_AI_Awake', 1) in named(m, 'CNV ZZ - AI wake')[0].do
+    with pytest.raises(plan.PlanError):
+        small(规则=[{'当': '敌方AI 醒来', '做': ['通报 醒了']}])                   # no 敌方AI to wake
 
 
 def test_the_design_check_counts_the_enemy_ai_as_pressure():

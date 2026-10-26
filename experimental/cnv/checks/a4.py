@@ -13,6 +13,8 @@ ambush: the convoy, as played, breaks plaza 1's sculptures as it passes the appr
 stop: 遇伏 停下 -- the convoy reaches plaza 1, its troops out and the gate open: it stands there; the troops killed
   (by test script, 30 s after leaving), it goes on past plaza 2's approach.
 early: the player ices plaza 1's gate first (engineer 1, 30 s in): the convoy leaves 10 s after, before its time.
+north: played the quick way (win's), the harbour turns: the north camp's skirmish AI, asleep and broke till then,
+  wakes 30 s after with the camp's buildings and guards, spends its money and its troops come down the plateau.
 win: the trucks kept at full health, plaza 1's and 3's troops killed as soon as they hold the convoy, engineer 2
   icing plaza 2's gate 5 s after it leaves: it reaches the exit and the mission ends after the drive.
 lose: the trucks at 1 % health as they set off (the war factory's drones mend them while parked): the first
@@ -20,6 +22,7 @@ lose: the trucks at 1 % health as they set off (the war factory's drones mend th
 idle: as played, the player doing nothing: the convoy is lost (bench 2026-10-23: ended at s78, 18 s after leaving).
 harbour: what "enemies cleared" counts at the harbour: armed ones, not its bridge.
 """
+import plan
 from parts import Obj, Script, Test, counted, square
 from units import icewall as iw
 
@@ -48,6 +51,12 @@ TOUGH_EVERY = 6.0                               # tough: killed again this often
 TOUGH_ICE = 60.0                                # tough: engineer 2 ices plaza 2's gate then
 WIN_ICE = 5.0                                   # win: ... this long after leaving: up before a truck gets there
 HALT_AREA = 100.0                               # tough: half-side of the area counted as at the halt
+NORTH_HALT = (20.0, 45.0)                       # north: played the quick way, the convoy at the halt this long after
+                                                # leaving (soonest, latest; win: ~25 s), the harbour turning then
+NORTH_WAKE = 30.0                               # north: the AI wakes this long after (docs/story/plans/a4.md 敌方AI)
+NORTH_RUN = 420.0                               # north: watched this long after the latest it wakes (bench
+                                                # 2026-10-26: woken s111, first down s339; with no refinery it
+                                                # stopped spending at 1400 and had not come down by s326)
 
 
 def ice_wall(m):
@@ -303,22 +312,59 @@ def tough(m):
     return t
 
 
+def escorted(t, m):
+    """Played the quick way (win's): trucks kept up, plaza 1's and 3's troops killed as they hold the convoy, plaza
+    2's gate iced before it gets there, the harbour's ambush gone from the start."""
+    keep_up(t, m)
+    t.scripts += [Script(f'Test - clear plaza {k}', [('FLAG', blocking(m, k), 1)],
+                         [('NAMED_KILL', n) for n in troops(m, k)], once=False) for k in (1, 3)]
+    t.scripts.append(Script('Test - clear the harbour', [], [('NAMED_KILL', r.name) for g in HARBOUR
+                                                             for r in m.roles(g)]))
+    gate_spot(t, m, 2, 'engineer 2')
+    t.scripts.append(Script('Test - ice set', [], [('SET_MILLISECOND_TIMER', 'Test - ice timer',
+                                                    m.facts['convoy leaves'] + WIN_ICE)]))
+    freeze(t, m, 2, 'engineer 2', [('TIMER_EXPIRED', 'Test - ice timer')])
+
+
+def north(m):
+    """The north camp given to the skirmish AI (敌方AI) once the harbour turns (段 港口生变 + 0:30): asleep and broke
+    until then, it is handed the barracks, factory, power plant and guards, gets its money and spends it on troops,
+    which come down off the plateau."""
+    m.drop_endings()                            # the convoy gets through: keep counting
+    t = Test()
+    start(t, m)
+    escorted(t, m)
+    ai, leave = m.ai_player(), m.facts['convoy leaves']
+    for part, label in (('north barracks', 'AI的兵营'), ('north factory', 'AI的工厂')):
+        counted(f'Test AI {part}', label, t, template=m.role(part).template, player=ai)
+    t.counters.append(('Test AI Money', '敌方资金'))
+    t.scripts.append(Script('Test - AI money', [], [('SET_PLAYER_MONEY_TO_COUNTER', ai, 'Test AI Money')], once=False))
+    # the low ground between the plateau and the road (the has-units test is the AI's alone)
+    (x0, y0), (x1, _) = m.site('convoy start'), m.site('road exit')
+    top = m.site('north camp')[1]               # the low ground north of the plazas, below the plateau's ramps
+    t.areas['Test Below'] = [(x0, y0), (x1, y0), (x1, top), (x0, top)]
+    t.counters.append(('Test AI Below', 'AI下山'))
+    t.scripts += [Script('Test - AI below zero', [], [('SET_COUNTER', 'Test AI Below', 0)], once=False),
+                  Script('Test - AI below', [('SKIRMISH_PLAYER_HAS_UNITS_IN_AREA', ai, 'Test Below')],
+                         [('SET_COUNTER', 'Test AI Below', 1)], once=False)]
+    money = plan.counts(plan.load('a4')['敌方AI']['资金'])[1]
+    asleep, woken = leave + NORTH_HALT[0] + NORTH_WAKE, leave + NORTH_HALT[1] + NORTH_WAKE
+    t.expect += [('敌方资金', 1, '==', 0, asleep - LEAD), ('敌方资金', asleep - LEAD, 'ever>', 0, woken + 12),
+                 ('敌方资金', asleep, 'ever<', money - 1000, woken + NORTH_RUN),
+                 ('AI下山', 1, '==', 0, asleep), ('AI下山', asleep, 'ever==', 1, woken + NORTH_RUN),
+                 ('AI的兵营', woken + 8, '>=', 1), ('AI的工厂', woken + 8, '>=', 1)]
+    t.bench = [('bench_watch', dict(seconds=woken + NORTH_RUN, every=4, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 def win(m):
     t = Test()
     start(t, m)
-    keep_up(t, m)
     # a plaza's troops die as soon as they hold the convoy: it goes on (遇伏 停下); plaza 2's come back -- iced
-    # before the convoy gets there instead
-    t.scripts += [Script(f'Test - clear plaza {k}', [('FLAG', blocking(m, k), 1)],
-                         [('NAMED_KILL', n) for n in troops(m, k)], once=False) for k in (1, 3)]
-    # the harbour's ambush gone from the start: the convoy's stop there (phase 3) ends as soon as it begins
-    t.scripts.append(Script('Test - clear the harbour', [], [('NAMED_KILL', r.name) for g in HARBOUR
-                                                             for r in m.roles(g)]))
+    # before the convoy gets there instead; the harbour's stop (phase 3) ends as soon as it begins
+    escorted(t, m)
     trucks(t, m)
     leave = m.facts['convoy leaves']
-    gate_spot(t, m, 2, 'engineer 2')
-    t.scripts.append(Script('Test - ice set', [], [('SET_MILLISECOND_TIMER', 'Test - ice timer', leave + WIN_ICE)]))
-    freeze(t, m, 2, 'engineer 2', [('TIMER_EXPIRED', 'Test - ice timer')])
     t.expect += [('1 号车血量', 0, '==', 100, leave), ('ENDED', leave + DRIVE - 10, '', None)]
     t.bench = [('bench_watch', dict(seconds=leave + DRIVE + HALT + STOPS + 20, every=3, sheet=False,
                                     lines=len(t.counters)))]
