@@ -41,10 +41,31 @@ def tracer_tracks(m, lengths):
     Track_Mem (unused, the game may expect the track), 22.05 kHz mono EA-XAS, our ids; the map's track entries
     follow them and its sample table is replaced. Returns {asset name: .mus bytes}."""
     per_track = [list(enumerate(lengths)), [(len(lengths), 1000)]]
-    out, table = {}, []
-    for t, ((name, _), streams) in enumerate(zip(TRACKS, per_track)):
+    encoded = []
+    for streams in per_track:
         with ProcessPoolExecutor() as ex:
-            raw = list(ex.map(tracer_stream, [(k, ms, tracer.RATE, 1) for k, ms in streams]))
+            encoded.append(list(ex.map(tracer_stream, [(k, ms, tracer.RATE, 1) for k, ms in streams])))
+    return _tracks(m, encoded)
+
+
+def _encode(args):
+    pcm, rate = args
+    return mus.encode(pcm, rate)
+
+
+def music_tracks(m, streams, rate):
+    """Our music for track 0: streams [(n,) or (n, 2) int16] at `rate`, EA-XAS (stream k of the map plays
+    streams[k]); Track_Mem gets one second of silence. The map's track entries and sample table follow them."""
+    with ProcessPoolExecutor() as ex:
+        main = list(ex.map(_encode, [(x, rate) for x in streams]))
+    silence = np.zeros((rate, 2) if streams[0].ndim == 2 else rate, np.int16)
+    return _tracks(m, [main, [mus.encode(silence, rate)]])
+
+
+def _tracks(m, encoded):
+    """encoded: per map track, [(SNR, SNS)]; -> {asset name: .mus bytes}, the map patched to them."""
+    out, table = {}, []
+    for t, ((name, _), raw) in enumerate(zip(TRACKS, encoded)):
         checksum = b'CNV' + bytes([t])
         data, header_end, tab = mus.pack(raw, checksum)
         entry = bytearray(m.tracks[t])
@@ -54,7 +75,7 @@ def tracer_tracks(m, lengths):
         m.tracks[t] = bytes(entry)
         table += tab
         out[name] = data
-        print(f'{name}: {len(raw)} tracer streams, {len(data) / 1e6:.1f} MB')
+        print(f'{name}: {len(raw)} streams, {len(data) / 1e6:.1f} MB')
     m.samples = table
     return out
 

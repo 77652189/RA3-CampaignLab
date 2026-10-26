@@ -43,6 +43,7 @@ MUSIC_DOCS = {'handoff.md'}
 MUSIC_HARD_CONSTRAINTS = [
     '靠自己做出来的才是可靠的',
     '符合剧情和情景',
+    '紧张（处于劣势）和激烈（处于优势）',
 ]
 
 

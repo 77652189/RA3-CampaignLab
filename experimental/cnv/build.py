@@ -107,13 +107,18 @@ MISSIONS = {
     'ai_plan': (lambda: ai_plan_bench.mission(), {'capped': check_ai.capped}),
     # our own music map (experimental/music): heard, not counted -- experimental/music/timing.py reads the recording
     'music': (lambda: _music_bench().mission(), {}),
+    # the game's dynamic music system driving a4's music: listen.identify against experimental/music/a4.STREAMS
+    'musicdyn': (lambda: _music_bench('music_dyn').mission(), {}),
+    'musicdynspy': (lambda: _music_bench('music_dyn').mission(name='CampMusDynS', spy=True), {}),   # tracers
+    'musicdyntr': (lambda: _music_bench('music_dyn').mission(name='CampMusDynT', tracer=True), {}),
+    'musicroute': (lambda: _music_bench('music_route').mission(), {}),    # how routers take a pending jump
 }
 
 
-def _music_bench():
+def _music_bench(name='music_bench'):
     """Imported only when asked for: it pulls in experimental/music, which no other build needs."""
-    from missions import music_bench
-    return music_bench
+    import importlib
+    return importlib.import_module(f'missions.{name}')
 LEVELS = ('a4', 'a7', 'a8', 'j4')                          # campaign levels: each has a card in docs/story/levels.md (the rest:
                                                 # A/B controls and bench scenes)
 

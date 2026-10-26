@@ -2,7 +2,8 @@
 track entries and event heads: the game looks events up by name hash, so every retail event stays, with our actions.
 
 A section here is: entry node -> segment nodes (one stream each) -> exit node, the exit going on to another
-section's entry (or its own: a loop). Events jump with the retail pair PREP + GOTO <section entry>.
+section's entry (or its own: a loop; or nowhere: stop). Events jump with the retail pair PREP + GOTO <section entry>,
+or a GOTO alone. timeline(m, node, fires, seconds) says offline what the game plays when events fire.
 
   spy(m): every event jumps to a looping section of its own whose stream is the event's index, so a tracer
   recording says which event fired when. The section MenuTrack goes to also carries a router to every other
@@ -16,7 +17,53 @@ from experimental.music import pfdx
 
 TRACK = 0x11000001          # action word 0: the handle of PathMusicTrack:Track (pfdx docstring)
 PREP, GOTO = 0x000F0400, 0x00030400
+SET, IF, ELIF, ELSE, ENDIF = 0x000E0800, 0x009E0100, 0x00AE0100, 0x00300100, 0x00400100
 ALWAYS = (0, 127)
+
+
+def goto(sec, prep=False):
+    """Actions: jump to `sec` (prep: PREP first, a cut at once)."""
+    return [(TRACK, PREP, 0x01FFFFFF)] * prep + [(TRACK, GOTO, 0x00FF0000 | sec.entry)]
+
+
+def set_var(var, value):
+    """Actions: map variable `var` = value (retail: SetPlayerAllied sets variable 0, 'player', to 1)."""
+    return [(TRACK, SET, value | var << 16)]
+
+
+def switch(var, cases, default):
+    """Actions: the first of cases {value: actions} whose value variable `var` holds, else `default` (retail's
+    IF / ELIF / ELSE / ENDIF, as Combat picks the player's side)."""
+    out = []
+    for k, (value, acts) in enumerate(cases.items()):
+        out += [(TRACK, ELIF if k else IF, var | value << 16)] + list(acts)
+    return out + [(TRACK, ELSE, 0)] + list(default) + [(0xFFFFFFFF, ENDIF, 0)]
+
+
+def run(actions, variables):
+    """What an event's actions do (only == comparisons): sets `variables` in place, -> (jump target node or None,
+    PREP or not)."""
+    target, prep, stack = None, False, []           # stack: [this branch taken, one branch already taken]
+    for _, op, arg in actions:
+        holds = variables.get(arg & 0xFFFF, 0) == arg >> 16
+        if op == IF:
+            stack.append([holds, holds])
+        elif op == ELIF:
+            taken = not stack[-1][1] and holds
+            stack[-1] = [taken, stack[-1][1] or taken]
+        elif op == ELSE:
+            stack[-1] = [not stack[-1][1], True]
+        elif op == ENDIF:
+            stack.pop()
+        elif not all(s[0] for s in stack):
+            continue
+        elif op == SET:
+            variables[arg >> 16] = arg & 0xFFFF
+        elif op == PREP:
+            prep = True
+        elif op == GOTO:
+            target = arg & 0xFFFF
+    return target, prep
 
 
 @dataclass
@@ -59,12 +106,20 @@ class Builder:
     def loop(self, sec):
         self.link(sec, sec)
 
+    def stop(self, sec):
+        """The music stops when `sec` ends."""
+        self.m.nodes[sec.exit].branches = [(*ALWAYS, 0xFFFF)]
+
     def on(self, event, sec, prep=True):
         """The event (retail name, or index for the few whose name is not known) jumps to `sec`; prep: with the
         retail PREP before the GOTO, a cut at once without the routers' transition; without it the jump waits for
         the playing segment's end and goes through the transition (CampMusic 2026-10-25, pfdx docstring)."""
+        self.act(event, goto(sec, prep))
+
+    def act(self, event, actions):
+        """The event's actions, as written (goto / set_var / switch)."""
         e = self.m.events[event] if isinstance(event, int) else next(e for e in self.m.events if e.name == event)
-        e.actions = [(TRACK, PREP, 0x01FFFFFF)] * prep + [(TRACK, GOTO, 0x00FF0000 | sec.entry)]
+        e.actions = list(actions)
 
     def build(self, samples):
         """samples: [(SNS offset / 0x80, ms)] for every stream, track 0's first (mus.pack tables)."""
@@ -72,7 +127,59 @@ class Builder:
         return self.m
 
 
-SPY_SECONDS = 4.0           # each event's section: one stream this long, looping
+def timeline(m, node, fires, seconds):
+    """What the game plays from `node` on when events fire, by the rules measured in game (pfdx docstring, PREP):
+    PREP + GOTO cuts over at once; a GOTO alone waits for the playing segment's end, then goes through the
+    segment's router pair for its target if there is one. Branches: the last one (as pfdx.walk).
+      fires: [(seconds, event name)]  ->  [(start s, end s, stream)], a cut segment ending early."""
+    events = {e.name: e for e in m.events if e.name}
+    fires = sorted(fires)
+    variables = {}
+
+    def jump(name):                     # the event's actions run when it fires (its SETs too)
+        return run(events[name].actions, variables)
+
+    def segment(i):                     # the first segment from node i on, or None (stop)
+        while i != 0xFFFF:
+            n = m.nodes[i]
+            if n.is_segment:
+                return i
+            if not n.branches:
+                return None
+            i = n.branches[-1][2]
+        return None
+
+    out, t, k, pending = [], 0.0, 0, None
+    seg = segment(node)
+    while seg is not None and t < seconds:
+        n = m.nodes[seg]
+        end = t + m.samples[n.stream][1] / 1000
+        cut = None
+        while k < len(fires) and fires[k][0] < end:
+            target, prep = jump(fires[k][1])
+            k += 1
+            if target is None:
+                continue
+            if prep:
+                cut = (max(fires[k - 1][0], t), target)
+                break
+            pending = target
+        if cut:
+            out.append((t, cut[0], n.stream))
+            t, seg, pending = cut[0], segment(cut[1]), None
+            continue
+        out.append((t, end, n.stream))
+        t = end
+        if pending is not None:
+            pairs = m.routers[n.router - 1] if n.router else []
+            seg = segment(next((a for a, b in pairs if b == pending), pending))
+            pending = None
+        else:
+            seg = segment(n.branches[-1][2]) if n.branches else None
+    return out
+
+
+SPY_SECONDS = 4.0          # each event's section: one stream this long, looping
 SPY_MENU_SECONDS = 6.0      # MenuTrack's: longer, so a jump that waits for its end is told from one at once
 SPY_TRANSITION_SECONDS = 1.0
 
