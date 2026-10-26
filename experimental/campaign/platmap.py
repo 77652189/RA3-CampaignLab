@@ -75,6 +75,33 @@ def circle(x, y, r, tier, what=''):
     return Shape('circle', (x, y, r), tier, what)
 
 
+def wobble(points, amp, seed, step=90.0, keep=(), closed=True):
+    """A polygon's (or a polyline's) edges made irregular, the way retail shores and cliff lines run: each edge cut
+    every `step` and its inner points pushed across it by smooth noise of the place (two octaves: about `amp`,
+    twice that at most),
+    so two shapes sharing an edge with one seed share its bends. The given points stay; so does everything within
+    a `keep` circle (x, y, r) -- a bridge's end, a ramp's foot -- easing back to straight over r."""
+    big, small = newmap.value_noise(seed, 420.0), newmap.value_noise(seed + 1, 110.0)
+    pts = list(points)
+    out = []
+    for k in range(len(pts) if closed else len(pts) - 1):
+        (x0, y0), (x1, y1) = pts[k], pts[(k + 1) % len(pts)]
+        length = math.hypot(x1 - x0, y1 - y0)
+        n = max(1, int(length // step))
+        nx, ny = (y1 - y0) / max(length, 1e-9), -(x1 - x0) / max(length, 1e-9)
+        out.append((x0, y0))
+        for s in range(1, n):
+            t = s / n
+            x, y = x0 + (x1 - x0) * t, y0 + (y1 - y0) * t
+            d = amp * (1.2 * (2 * big(x, y) - 1) + 0.8 * (2 * small(x, y) - 1)) * min(1.0, 8 * t * (1 - t))
+            for kx, ky, kr in keep:
+                d *= min(1.0, max(0.0, math.hypot(x - kx, y - ky) / kr - 1.0))
+            out.append((x + nx * d, y + ny * d))
+    if not closed:
+        out.append(pts[-1])
+    return out
+
+
 def _mask(shape, w, h, b):
     img = Image.new('L', (w, h), 0)
     d = ImageDraw.Draw(img)
@@ -182,10 +209,11 @@ def relief(e, x, y, side, b=CONTAINER[2]):
     return float(win.max() - win.min())
 
 
-def lint(layout, sites=None, objects=(), dims=CONTAINER):
+def lint(layout, sites=None, objects=(), scenery=(), dims=CONTAINER):
     """A map's design checked without the game (docs/story/map-language.md): ramps gentle enough, sites meant for
     building (Site.build) flat, the map's own structures (ore, tech) on flat dry ground, every bridge from bank to bank
-    of one level with water under its middle. Returns the problems (empty: fine)."""
+    of one level with water under its middle, the scenery (platprops) clear of all that. Returns the problems (empty:
+    fine)."""
     w, h, b = dims
     e, out = heights(layout, w, h, b)
     dry = lambda x, y: e[int(round(y / CELL)) + b, int(round(x / CELL)) + b] > newmap.WATERLINE + 10   # noqa: E731
@@ -213,6 +241,9 @@ def lint(layout, sites=None, objects=(), dims=CONTAINER):
         if not dry(o.x, o.y) or relief(e, o.x, o.y, 60.0, b) > FLAT:
             out.append(f'{o.template} at ({o.x:g}, {o.y:g}): not on flat dry ground')
         k += 1
+    if scenery:
+        import platprops
+        out += platprops.lint(layout, sites, objects, scenery, dims)
     return out
 
 

@@ -330,7 +330,13 @@ def main():
     if a.preview:
         if hasattr(m.map, 'LAYOUT'):            # the map's own design lint first: it needs no map file
             import platmap
-            problems = platmap.lint(m.map.LAYOUT, m.map.SITES, getattr(m.map, 'OBJECTS', []))
+            problems = platmap.lint(m.map.LAYOUT, m.map.SITES, getattr(m.map, 'OBJECTS', []),
+                                    getattr(m.map, 'SCENERY', []))
+            print('LINT ' + ('ok' if not problems else '; '.join(problems)))
+        elif hasattr(m.map, 'ground'):          # no layout (the noise island): its scenery checked on its heights
+            import platprops
+            problems = platprops.lint(None, m.map.SITES, getattr(m.map, 'OBJECTS', []), m.map.SCENERY,
+                                      ground=m.map.ground())
             print('LINT ' + ('ok' if not problems else '; '.join(problems)))
         path = parts.preview(m, t, out=os.path.join(ROOT, 'work', 'maps', mod + '.map'))
         print('PREVIEW ' + path)

@@ -1,11 +1,23 @@
 """The generated island (CampNew18's terrain: an island in open sea, morning light, the player's start on its west
 end). The bench calibration (experimental/testbench/calib.py) is for this map's start camera.
 
-Published: SITES (where a mission may place things, by name), PLAYERS and TEAMS (the map's own player list).
+The terrain stays as it is: A8 and the unit benches (most on the west field, A8 across to the east sites) are
+measured on it. The scenery (retail trees, bushes, small rocks: platprops) dresses only its coasts north and south
+and its east tip -- off the west field and its benches, off the way east, off every site -- and has nothing that
+counts as a STRUCTURE or a VEHICLE (no buildings, fences, lamps or big rocks: CampKinds counts those kinds over the
+whole island, every player's).
+
+Published: SITES (where a mission may place things, by name), PLAYERS and TEAMS (the map's own player list),
+SCENERY (computed on first use).
 """
+import numpy as np
+
 import make_campnew18 as c18
+import mapterrain
 import newmap
-from parts import Site
+import platprops
+from platprops import area, clumps, scatter, shore
+from parts import Obj, Site
 
 START = c18.START                                # (1250, 2500): the start and the camera
 CENTER, RADIUS = c18.CENTER, c18.RADIUS
@@ -56,3 +68,42 @@ def like(m, objs, tmpl):
 
 # the container's own neutral players: ore nodes, tech buildings, bridges (retail: PlyrNeutral), city buildings
 NEUTRAL = {'neutral': 'PlyrNeutral', 'civ': 'PlyrCivilian'}
+
+WOODS = {'HB_Tree03': 3, 'HB_Tree04': 2, 'HB_Tree05': 2, 'CC_Tree03': 2, 'OK_Tree01': 1}
+UNDER = {'CC_Bush01': 3, 'CC_BUSH02': 3, 'HB_GRASS02': 3, 'YU_BUSH05': 2, 'YU_SMALLROCKS01': 1, 'YU_SMALLROCKS02': 1}
+# kept open: the west field and everything the benches put round it (offsets to ~600), and the way from there to
+# the east sites (A8's assault)
+AVOID = [(1180.0, 2375.0, 1150.0), ((1100.0, 2600.0), (3700.0, 2700.0), 1400.0)]
+
+
+def ground():
+    """The island's heights as platprops asks them: CampNew18's noise (generate), computed without the map."""
+    w, h, b = platprops.platmap.CONTAINER
+    dims = type('Dims', (), {'width': w, 'height': h, 'border': b})
+    e = np.zeros((h, w), np.float32)
+    for (i, j), v in newmap.island_heights(dims, center=CENTER, radius=RADIUS).items():
+        e[j, i] = v
+    assert mapterrain.CELL == platprops.CELL
+    return platprops.Ground(e=e)
+
+
+def _scenery():
+    g = ground()
+    picks = []
+
+    def put(cands):
+        picks.extend(platprops.place(cands, None, SITES, keep=picks, avoid=AVOID, ground=g))
+    whole = area('rect', (0, 0, 5000, 5000))
+    put(scatter(whole, WOODS, 55, 71, density=0.85, patches=0.5))
+    put(shore(g, {**WOODS, 'CC_BUSH02': 3}, 60, 72))
+    put(clumps(whole, 25, 50, 3, {'YP_LOG01': 1, 'YP_LOG02': 1}, 73))
+    put(scatter(whole, UNDER, 95, 74, density=0.45, patches=0.35))
+    return [Obj(t, round(x, 1), round(y, 1), side='civ', angle=round(a, 3), site='map') for t, x, y, a in picks]
+
+
+def __getattr__(name):
+    """SCENERY on first use: a second or two of noise, not paid by every import of the map."""
+    if name == 'SCENERY':
+        globals()['SCENERY'] = _scenery()
+        return globals()['SCENERY']
+    raise AttributeError(name)

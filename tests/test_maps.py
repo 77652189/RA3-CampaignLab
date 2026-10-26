@@ -28,8 +28,54 @@ def platform_maps():
 
 def test_platform_maps_pass_their_lint():
     for mod in platform_maps():
-        problems = platmap.lint(mod.LAYOUT, mod.SITES, getattr(mod, 'OBJECTS', []))
+        problems = platmap.lint(mod.LAYOUT, mod.SITES, getattr(mod, 'OBJECTS', []), getattr(mod, 'SCENERY', []))
         assert not problems, f'{mod.__name__}: ' + '; '.join(problems)
+
+
+def test_island_scenery_keeps_off_and_counts_as_nothing():
+    """The noise island (no layout) dresses its coasts only: its scenery clear of every site on its own heights, and
+    none of it a STRUCTURE (CampKinds counts that kind over the whole island, every player's)."""
+    import platprops
+    isl = importlib.import_module('maps.island')
+    assert isl.SCENERY
+    assert platprops.lint(None, isl.SITES, [], isl.SCENERY, ground=isl.ground()) == []
+    assert not {o.template for o in isl.SCENERY} & platprops.STRUCTURE
+
+
+def test_scenery_lint_catches_a_prop_on_the_way():
+    from parts import Obj
+    fest = importlib.import_module('maps.festival')
+    on_road = [Obj('HB_Tree03', 3000.0, fest.ROAD_Y, side='civ', site='map'),
+               Obj('TH_Fish_Market02', fest.SITES['inside 1'].x, fest.SITES['inside 1'].y, side='civ', site='map')]
+    problems = platmap.lint(fest.LAYOUT, fest.SITES, fest.OBJECTS, on_road)
+    assert len(problems) == 2 and all(p.startswith('scenery ') for p in problems), problems
+
+
+def test_nothing_a_build_places_stands_on_scenery():
+    """Every build's objects and waypoints (missions, their checks, the benches) keep clear of its map's scenery:
+    a unit is not made inside a tree or a house, a waypoint is not inside a rock."""
+    import build
+    import parts
+    import platprops
+    bad = []
+    names = [(n, c) for n, (_, checks) in build.MISSIONS.items() for c in [''] + list(checks)]
+    for n, c in names + [(p, '') for p in build.PAIRS]:
+        m, t, _ = build.resolve(n, c)
+        scenery = getattr(m.map, 'SCENERY', [])
+        if not scenery:
+            continue
+        mm = parts.merged(m, t)
+        grid = {}
+        for o in scenery:
+            grid.setdefault((int(o.x // 200), int(o.y // 200)), []).append(o)
+        points = [(o.template, o.x, o.y) for o in mm.objects] + [(w, x, y) for w, (x, y) in mm.waypoints.items()]
+        for what, x, y in points:
+            for i in range(int(x // 200) - 1, int(x // 200) + 2):
+                for j in range(int(y // 200) - 1, int(y // 200) + 2):
+                    for o in grid.get((i, j), ()):
+                        if ((o.x - x) ** 2 + (o.y - y) ** 2) ** 0.5 < platprops.radius(o.template) + 20:
+                            bad.append(f'{n} {c}: {what} at ({x:.0f}, {y:.0f}) on {o.template} ({o.x:.0f}, {o.y:.0f})')
+    assert not bad, '\n'.join(sorted(set(bad))[:20])
 
 
 def test_lint_catches_what_the_bench_caught():
