@@ -37,6 +37,9 @@ NEW_DIR = f'data\\maps\\official\\{NEW_STEM}\\'
 # a user map is only a .map the game reads at run time, so ship the renamed .map and pictures, no map.* streams
 SHIP_STREAMS = False
 MAP_ARCHIVES = ['MapsCampaign.big', 'Maps10.big', 'Maps11.big', 'Maps12.big']   # later archives win
+# more XML compiled into the static stream, type="all" (a music pack's PathMusicMap: experimental/music/pack.py;
+# the game wants it from the start, before any map stream loads)
+EXTRA_STATIC = []
 STRINGS = [
     ('MissionName:CNV01', 'CNV01 新关卡测试：海德堡'),
     ('MissionName:CNV01_Short', 'CNV01 新关卡'),
@@ -74,6 +77,7 @@ def sources():
                 '\t\t<Include type="reference" source="DATA:global.xml" />\n'
                 '\t\t<Include type="reference" source="DATA:audio.xml" />\n'
                 f'\t\t<Include type="all" source="DATA:{NAME}/Data/{NAME}.xml" />\n'
+                + ''.join(f'\t\t<Include type="all" source="{x}" />\n' for x in EXTRA_STATIC) +
                 '\t</Includes>\n</AssetDeclaration>\n')
     print('mission:', re.search(r'MapName="([^"]+)"', new).group(1), '| objectives', len(objectives), '-> 2')
 

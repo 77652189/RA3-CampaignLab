@@ -143,6 +143,9 @@ class Mission(Part):
                                                                 # personality: mapxml.set_player)
     assets: list = dataclasses.field(default_factory=list)      # more XML compiled in: [(file name, text, instance
                                                                 # to link, 'AIPersonalityDefinition:X')]
+    music: object = None                # our Pathfinder map and tracks (experimental/music/pack.Pack: include,
+                                        # files, events, check), compiled into the static stream; published: the
+                                        # events it plays (PATH_MUSIC_PLAY_EVENT may name only those). None: retail's
 
     def find(self, name):
         return next(o for o in self.objects if o.name == name)
@@ -391,6 +394,7 @@ AREA_ARG = 9                            # script argument type of a trigger area
 TEAM_ARG, WAYPOINT_ARG, PLAYER_ARG, OBJECT_ARG, STRING_ARG, POWER_ARG, TEMPLATE_ARG = 3, 7, 11, 14, 25, 31, 61
 COMMAND_ARG = 34                        # a command button (NAMED_USE_COMMANDBUTTON_ABILITY)
 OBJECTIVE_ARG = 91                      # a mission objective's name (SET_MISSION_OBJECTIVE_STATUS ...)
+MUSIC_EVENT_ARG = 96                    # a Pathfinder event's name (PATH_MUSIC_PLAY_EVENT): held to Mission.music
 CREATES_NAMED = ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION',
                  'UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION')
 
@@ -424,6 +428,9 @@ def contract(mission):
              OBJECT_ARG: ('object', set(named) | created), STRING_ARG: ('string', m.strings), POWER_ARG: ('power', powers),
              COMMAND_ARG: ('command button', powers), OBJECTIVE_ARG: ('objective', {g.name for g in m.objectives}),
              TEMPLATE_ARG: ('template', {r.template for r in m.cast.values()} | {u.id for u in m.units} | m.spawns)}
+    if m.music:
+        known[MUSIC_EVENT_ARG] = ('music event', m.music.events)
+
     def latin(v):
         try:
             v.encode('latin-1')
@@ -560,6 +567,10 @@ def assemble(mission, test=None, name=None):
         c7.EXTRA_ALL.append(f'DATA:CNVUnits/Data/{fname}')
         c7.EXTRA_OWN.append(link.encode())
     c4.c3.STRINGS.update(mm.strings)
+    # our music: its map into the static stream, its .mus files into the big, then checked in the spliced stream
+    c2.EXTRA_STATIC = [mm.music.include] if mm.music else []
+    c4.EXTRA_FILES = list(mm.music.files) if mm.music else []
+    c4.CHECKS = [mm.music.check] if mm.music else []
 
     def edit(m):
         write_map(m, mm)

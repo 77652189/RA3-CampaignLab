@@ -39,6 +39,23 @@ def test_docs_folder_is_the_reviewed_set():
     assert _md(DOCS) == ACTIVE_DOCS
 
 
+MUSIC_DOCS = {'handoff.md'}
+MUSIC_HARD_CONSTRAINTS = [
+    '靠自己做出来的才是可靠的',
+    '符合剧情和情景',
+]
+
+
+def test_music_docs_are_the_reviewed_set():
+    assert _md(DOCS / 'music') == MUSIC_DOCS
+
+
+def test_music_hard_constraints_present_in_its_handoff():
+    text = (DOCS / 'music' / 'handoff.md').read_text(encoding='utf-8')
+    for phrase in MUSIC_HARD_CONSTRAINTS:
+        assert phrase in text, phrase
+
+
 def test_adr_files_match_the_index():
     files = _md(ADR) - {'README.md'}
     assert files, 'no ADR files'

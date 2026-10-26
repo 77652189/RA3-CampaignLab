@@ -32,6 +32,8 @@ NEW_MAP = c2.NEW_DIR + c2.NEW_STEM + '.map'
 # was missing, not because of the streams). CNV_MAP_STREAMS=0 goes back to the bare map.
 c2.SHIP_STREAMS = os.environ.get('CNV_MAP_STREAMS', '1') != '0'
 assert c3.STRINGS and NEW_MAP == c3.NEW_DIR + c3.NEW_STEM + '.map'
+EXTRA_FILES = []        # more (big path, bytes) for the mod's big (a music pack's .mus: experimental/music/pack.py)
+CHECKS = []             # f(files) run on the finished file list before it is written (pack.check)
 
 
 def cache_entry():
@@ -47,7 +49,9 @@ def main():
     files = splice_assets.spliced_files(c2.BUILT)
     entry = cache_entry()
     print('map cache entry:', {k: v for k, v in entry.items() if k != 'starts'}, len(entry['starts']), 'starts')
-    files += mapcache.with_maps([entry]) + c2.map_files() + c3.strings()
+    files += mapcache.with_maps([entry]) + c2.map_files() + c3.strings() + EXTRA_FILES
+    for check in CHECKS:
+        check(files)
     os.makedirs(OUT, exist_ok=True)
     big.write(os.path.join(OUT, f'{NAME}.big'), files)
     with open(os.path.join(OUT, f'{NAME}_1.0.skudef'), 'w', encoding='ascii', newline='') as f:

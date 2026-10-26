@@ -105,7 +105,15 @@ MISSIONS = {
     'ai': (lambda: ai_bench.mission(), {'wake': check_ai.wake}),
     'ai_asleep': (lambda: ai_bench.mission(name='CampAIS', wake=False), {'asleep': check_ai.asleep}),
     'ai_plan': (lambda: ai_plan_bench.mission(), {'capped': check_ai.capped}),
+    # our own music map (experimental/music): heard, not counted -- experimental/music/timing.py reads the recording
+    'music': (lambda: _music_bench().mission(), {}),
 }
+
+
+def _music_bench():
+    """Imported only when asked for: it pulls in experimental/music, which no other build needs."""
+    from missions import music_bench
+    return music_bench
 LEVELS = ('a4', 'a7', 'a8', 'j4')                          # campaign levels: each has a card in docs/story/levels.md (the rest:
                                                 # A/B controls and bench scenes)
 
