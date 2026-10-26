@@ -3,16 +3,18 @@
 seal (A against B on one map): engineer 1 freezes a wall across plaza 1's gate shortly before the convoy leaves,
   plaza 2's gate stays open. The convoy breaks both plazas' sculptures on its way; plaza 2's tank buster is out on
   the road within seconds, plaza 1's stays off it while the wall stands and comes out after it melts.
-placed: the control for seal's rule -- a map-placed bar holds the gate as well (plaza 2 broken by test script:
+placed: the control for seal's rule -- a map-placed bar holds the gate as well (plaza 3 broken by test script:
   held by plaza 1's troops, the convoy never gets there).
-smash: the player breaks sculpture 2-1 early (by test script, long before the convoy): its tank buster stands in
-  plaza 2 at once, while sculpture 2-2 is whole.
+smash: the player breaks sculpture 3-1 early (by test script, long before the convoy): its tank buster stands in
+  plaza 3 at once, while sculpture 3-2 is whole (plaza 2's can not be broken: 广场 2 无敌).
+tough: plaza 2 (无敌, 补兵): the player's tanks do not hurt its sculptures; the convoy held there stays held while
+  its troops are killed again and again -- they come back --, and goes on once engineer 2 ices its gate.
 ambush: the convoy, as played, breaks plaza 1's sculptures as it passes the approach: the troops appear.
 stop: 遇伏 停下 -- the convoy reaches plaza 1, its troops out and the gate open: it stands there; the troops killed
   (by test script, 30 s after leaving), it goes on past plaza 2's approach.
 early: the player ices plaza 1's gate first (engineer 1, 30 s in): the convoy leaves 10 s after, before its time.
-win: the trucks kept at full health, each plaza's troops killed as soon as they hold the convoy: it reaches the
-  exit and the mission ends after the drive.
+win: the trucks kept at full health, plaza 1's and 3's troops killed as soon as they hold the convoy, engineer 2
+  icing plaza 2's gate 5 s after it leaves: it reaches the exit and the mission ends after the drive.
 lose: the trucks at 1 % health as they set off (the war factory's drones mend them while parked): the first
   ambush kills two and the mission ends well before the drive's time.
 idle: as played, the player doing nothing: the convoy is lost (bench 2026-10-23: ended at s78, 18 s after leaving).
@@ -40,6 +42,12 @@ APPROACH = 150.0                                # stop: half-side of the area co
 EARLY_FIRE = 30.0                               # early: the power fired then (walked from the start: ~1000 at 40)
 EARLY_AFTER = 10.0                              # early: the convoy leaves this long after the first gate is iced
                                                 # (docs/story/plans/a4.md 布防 结束)
+TOUGH_FIRST = 25.0                              # tough: plaza 2's troops first killed this long after leaving (held
+                                                # there from ~18 s: start to approach 2, 700 at 50, and plaza 1)
+TOUGH_EVERY = 6.0                               # tough: killed again this often while they hold it (back every 15 s)
+TOUGH_ICE = 60.0                                # tough: engineer 2 ices plaza 2's gate then
+WIN_ICE = 5.0                                   # win: ... this long after leaving: up before a truck gets there
+HALT_AREA = 100.0                               # tough: half-side of the area counted as at the halt
 
 
 def ice_wall(m):
@@ -108,7 +116,7 @@ def walk_to(t, m):
 
 def placed(m):
     """The control behind the mission's held-gate rule: a bar placed by the map (angle 0, lasting the whole run)
-    across plaza 1's gate -- the gap in its cliff --, plaza 2's open. Bench 2026-10-23: it held plaza 1's tank buster in its
+    across plaza 1's gate -- the gap in its cliff --, plaza 3's open. Bench 2026-10-23: it held plaza 1's tank buster in its
     plaza 37 s; the wall built in play did not (see missions/a4.py, units/icewall.py)."""
     m.drop_endings()                            # unescorted, the convoy is lost (2026-10-25: at s207): keep counting
     t = Test()
@@ -117,15 +125,16 @@ def placed(m):
     t.units.append(w)
     t.objects.append(Obj(w.id, *m.site('gate 1'), name='UNIT - Test Wall', angle=0.0, site='gate 1'))
     on_road(t, m, 'troop 1-1-1', '1 号的兵上路')
-    on_road(t, m, 'troop 2-1-1', '2 号的兵上路')
+    on_road(t, m, 'troop 3-1-1', '3 号的兵上路')
     in_plaza(t, m, 1, 'troop 1-1-1', '1 号的兵在广场')     # held, not never there
     leave = m.facts['convoy leaves']
-    # 遇伏 停下: plaza 1's troops, behind a wall the plazas do not know, hold the convoy there for good -- plaza 2's
-    # sculptures broken by test script when it leaves instead (bench 2026-10-26: never reached, never out)
-    t.scripts += [Script('Test - break 2 set', [], [('SET_MILLISECOND_TIMER', 'Test - break 2 timer', leave)]),
-                  Script('Test - break 2', [('TIMER_EXPIRED', 'Test - break 2 timer')],
-                         [('NAMED_KILL', m.role(f'sculpture 2-{i}').name) for i in (1, 2)])]
-    t.expect +=[('2 号的兵上路', leave, 'ever==', 1), ('1 号的兵上路', 0, '==', 0, leave + 35),
+    # 遇伏 停下: plaza 1's troops, behind a wall the plazas do not know, hold the convoy there for good -- the open
+    # plaza's sculptures broken by test script when it leaves instead (bench 2026-10-26: never reached, never out);
+    # plaza 3, as plaza 2's let their troops out only when a truck gets there (广场 2: 无敌)
+    t.scripts += [Script('Test - break 3 set', [], [('SET_MILLISECOND_TIMER', 'Test - break 3 timer', leave)]),
+                  Script('Test - break 3', [('TIMER_EXPIRED', 'Test - break 3 timer')],
+                         [('NAMED_KILL', m.role(f'sculpture 3-{i}').name) for i in (1, 2)])]
+    t.expect +=[('3 号的兵上路', leave, 'ever==', 1), ('1 号的兵上路', 0, '==', 0, leave + 35),
                  ('1 号的兵在广场', leave - LEAD, 'ever==', 1)]      # out, they leave the plaza within seconds
     t.bench = [('bench_watch', dict(seconds=leave + 45, every=3, sheet=False, lines=len(t.counters)))]
     return t
@@ -136,12 +145,12 @@ def smash(m):
     start(t, m)
     t.scripts += [Script('Test - smash set', [], [('SET_MILLISECOND_TIMER', 'Test - smash timer', SMASH_AT)]),
                   Script('Test - smash', [('TIMER_EXPIRED', 'Test - smash timer')],
-                         [('NAMED_KILL', m.role('sculpture 2-1').name)])]
-    in_plaza(t, m, 2, 'troop 2-1-1', '2-1 的兵')
-    counted('Test Sculpture', '2-2 冰雕血量', t, health=m.role('sculpture 2-2').name)
+                         [('NAMED_KILL', m.role('sculpture 3-1').name)])]
+    in_plaza(t, m, 3, 'troop 3-1-1', '3-1 的兵')
+    counted('Test Sculpture', '3-2 冰雕血量', t, health=m.role('sculpture 3-2').name)
     # out, they make for the parked trucks at once (the convoy's tick runs before it leaves): seen in the plaza only
     # for a few seconds
-    t.expect += [('2-1 的兵', SMASH_AT - LEAD, 'ever==', 1, SMASH_AT + 10), ('2-2 冰雕血量', 0, '==', 100)]
+    t.expect += [('3-1 的兵', SMASH_AT - LEAD, 'ever==', 1, SMASH_AT + 10), ('3-2 冰雕血量', 0, '==', 100)]
     t.bench = [('bench_watch', dict(seconds=SMASH_AT + 12, every=2, sheet=False, lines=len(t.counters)))]
     return t
 
@@ -232,18 +241,84 @@ def early(m):
     return t
 
 
+def gate_spot(t, m, k, part):
+    """Engineer `part` walked (by test script, at once) to the road in front of plaza k's gate, kept unhurt (the
+    plaza's troops come out past him: the check is the ice, not his luck); returns where."""
+    x, y = m.point(f'seal {k}')
+    road = m.site('convoy start')[1]
+    spot = f'Test Engineer Spot {k}'
+    t.waypoints[spot] = (x, y + (70 if road > y else -70))
+    name = m.role(part).name
+    t.scripts.append(Script(f'Test - walk {part}', [], [('MOVE_NAMED_UNIT_TO', name, spot),
+                                                        ('UNIT_CHANGE_OBJECT_STATUS', name, 'UNATTACKABLE', 1)]))
+    return t.waypoints[spot]
+
+
+def freeze(t, m, k, part, when):
+    """Engineer `part` freezes plaza k's gate when `when` (script conditions) first holds."""
+    t.scripts.append(Script(f'Test - freeze {k}', when, [('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', m.role(part).name,
+                                                          m.ability(part, 'freeze'), m.mark(f'seal {k}'))]))
+
+
+def left(m, k):
+    """The counter of plaza k's troops out and alive (the device's: what its sculptures' breaking adds to)."""
+    return next(a[2] for s in m.scripts if f' - Out {k}-1' in s.name for a in s.do if a[0] == 'INCREMENT_COUNTER')
+
+
+def tough(m):
+    """Plaza 2 (广场 2: 无敌, 补兵): the player's tanks can not hurt its sculptures; the convoy held there stays held
+    however often its troops are killed -- they come back --, and goes on once engineer 2 ices the gate."""
+    m.drop_endings()
+    t = Test()
+    start(t, m)
+    keep_up(t, m)
+    leave = m.facts['convoy leaves']
+    held = blocking(m, 2)
+    gate_spot(t, m, 2, 'engineer 2')
+    t.scripts += [Script('Test - shoot sculpture', [], [('NAMED_ATTACK_NAMED', r.name, m.role('sculpture 2-1').name)
+                                                         for r in m.roles('guardian')]),
+                  Script('Test - clear plaza 1', [('FLAG', blocking(m, 1), 1)],
+                         [('NAMED_KILL', n) for n in troops(m, 1)], once=False),
+                  Script('Test - kill 2 set', [], [('SET_MILLISECOND_TIMER', 'Test - kill 2 timer', leave + TOUGH_FIRST)]),
+                  Script('Test - kill plaza 2', [('FLAG', held, 1), ('TIMER_EXPIRED', 'Test - kill 2 timer')],
+                         [('NAMED_KILL', n) for n in troops(m, 2)] +
+                         [('SET_MILLISECOND_TIMER', 'Test - kill 2 timer', TOUGH_EVERY)], once=False),
+                  Script('Test - ice set', [], [('SET_MILLISECOND_TIMER', 'Test - ice timer', leave + TOUGH_ICE)])]
+    freeze(t, m, 2, 'engineer 2', [('TIMER_EXPIRED', 'Test - ice timer')])
+    counted('Test Sculpture', '2-1 冰雕血量', t, health=m.role('sculpture 2-1').name)
+    t.counters.append(('Test Held 2', '被拦'))
+    t.scripts += [Script('Test - held zero', [], [('SET_COUNTER', 'Test Held 2', 0)], once=False),
+                  Script('Test - held one', [('FLAG', held, 1)], [('SET_COUNTER', 'Test Held 2', 1)], once=False)]
+    t.counters.append((left(m, 2), '2 号伏兵'))
+    t.areas['Test Halt'] = square(*m.site('halt'), HALT_AREA)
+    counted('Test At Halt', '车到停车点', t, named=m.role('truck 1').name, area='Test Halt')
+    ice = leave + TOUGH_ICE
+    t.expect += [('2-1 冰雕血量', 0, '==', 100, ice),
+                 ('被拦', leave + TOUGH_FIRST, '==', 1, ice - LEAD),          # held all along, troops killed or not
+                 ('2 号伏兵', leave + TOUGH_FIRST + 2, 'ever==', 0, ice - LEAD),            # killed ...
+                 ('2 号伏兵', leave + TOUGH_FIRST + TOUGH_EVERY, 'ever>=', 1, ice - LEAD),  # ... and back
+                 ('车到停车点', 0, '==', 0, ice - LEAD),
+                 ('车到停车点', ice, 'ever==', 1, ice + 30)]
+    t.bench = [('bench_watch', dict(seconds=ice + 35, every=2, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 def win(m):
     t = Test()
     start(t, m)
     keep_up(t, m)
-    # a plaza's troops die as soon as they hold the convoy: it goes on (遇伏 停下)
+    # a plaza's troops die as soon as they hold the convoy: it goes on (遇伏 停下); plaza 2's come back -- iced
+    # before the convoy gets there instead
     t.scripts += [Script(f'Test - clear plaza {k}', [('FLAG', blocking(m, k), 1)],
-                         [('NAMED_KILL', n) for n in troops(m, k)], once=False) for k in (1, 2, 3)]
+                         [('NAMED_KILL', n) for n in troops(m, k)], once=False) for k in (1, 3)]
     # the harbour's ambush gone from the start: the convoy's stop there (phase 3) ends as soon as it begins
     t.scripts.append(Script('Test - clear the harbour', [], [('NAMED_KILL', r.name) for g in HARBOUR
                                                              for r in m.roles(g)]))
     trucks(t, m)
     leave = m.facts['convoy leaves']
+    gate_spot(t, m, 2, 'engineer 2')
+    t.scripts.append(Script('Test - ice set', [], [('SET_MILLISECOND_TIMER', 'Test - ice timer', leave + WIN_ICE)]))
+    freeze(t, m, 2, 'engineer 2', [('TIMER_EXPIRED', 'Test - ice timer')])
     t.expect += [('1 号车血量', 0, '==', 100, leave), ('ENDED', leave + DRIVE - 10, '', None)]
     t.bench = [('bench_watch', dict(seconds=leave + DRIVE + HALT + STOPS + 20, every=3, sheet=False,
                                     lines=len(t.counters)))]
