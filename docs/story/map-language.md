@@ -87,6 +87,34 @@
   - 地图检查（`platmap.lint`）和测试守着：布景不压路、不压地点；任何关卡或测试摆的单位、路点都不落在布景上。
   - 岛图有按"类别数建筑"的检查（CampKinds 对全岛数 STRUCTURE），所以岛上只放树、灌木、小石头，不放房子、栅栏、路灯、大石头（这些在引擎里算 STRUCTURE）。
 
+### 4.1 新地图怎么画轮廓、加布景（做法）
+
+例子：`experimental/cnv/maps/niagara.py`、`festival.py`；岛图（没有 LAYOUT 的噪声地形）见 `island.py`。
+
+1. **轮廓。** 形状用 `platmap.poly(platmap.wobble(点列, 幅度, 种子, keep=[(x, y, r)…]), 层)`。
+   - `wobble` 把边切成约 90 一段，按位置的平滑噪声左右推（平均约等于幅度，最多两倍）；原来的顶点不动，`keep` 圈里不弯。
+   - 桥头、坡道脚、建筑位旁边的边一定要放进 `keep`，否则桥头可能落水、坡道可能对不上崖口。
+   - 两个形状要共用一条边（例如崖壁直接落进河里）：同一段点、同一个方向、同一个种子，用 `closed=False` 各弯一段再拼起来（`niagara._bank`）。方向反了会往反方向弯。
+   - 幅度参考：海岸 100～120，山脊 70～110，玩法台地 35～60，河岸 55，港口/运河这种人工岸 0～15。
+2. **布景。** 地图模块发布 `SCENERY`（`Obj` 列表，`side='civ'`，`site='map'`），写法照 `niagara._scenery()`：
+   - 先建 `ground = platprops.Ground(LAYOUT)`，再一轮轮 `put(platprops.place(候选, LAYOUT, SITES, OBJECTS, keep=已放的, avoid=AVOID, ground=ground))`。
+   - 候选来自生成器：`scatter`（成片撒，`patches` 越大空地越多）、`clumps`（小簇）、`along`（沿线成排，`face=True` 让房子/栅栏朝向街道）、`cliff_feet`（崖脚）、`shore`（水边）。
+   - 先放手摆的地标和房子，再放沿路的东西，最后撒林子和灌木：先放的占位，后放的自动让开。
+   - `AVOID` 放玩法上要整块留空的地方：基地建造区（圆）、广场整块（条带）。
+   - 模板只能用 `platprops.CATALOG` 里的。新模板先确认原版地图真用过（`retail_objects`），从 SageXML 的 Geometry 量半径，再加进目录。
+3. **避让规则**（`platprops.clearance`，也是检查用的规则）：
+   - 道路、坡道（两头各多 60）、桥面和桥头、矿、科技建筑都避开。
+   - 每个地点避开它的圈；有建筑位的避开整块建筑位。树、灌木、灯这类能压倒或穿过的东西（`CRUSHABLE`）可以进圈的外半圈。
+   - 半径 ≥ 1000 的"全图地点"（`island`）不算。
+   - 摆放时再按种类多留余量（`MARGIN`）：林子、石头多留，路灯、栅栏贴路。
+4. **检查。**
+   - `cnv_preview` 的 LINT 会报布景压到路或地点。
+   - `tests/test_maps.py` 守着：布景不压路、不压地点；每个构建（关卡、检查、单位测试台）摆的单位和路点都不在布景上；岛图布景里没有 STRUCTURE。
+   - `mapstudy` 多报"民用建筑""装饰物"两项，对照原版范围（原版中位数约 78 栋、2300 个）。
+5. **小心。**
+   - 按类别数单位的计数（`parts.counted(kind=…)`）会把所有玩家的都算进去，平民的也算。所以哪张图有这种计数，就别在计数范围里放会被算进去的布景：房子、栅栏、路灯、大石头都算 STRUCTURE，见 `platprops.STRUCTURE`。
+   - 地点只能新增，不能删、不能改义。要挪地点或新增地点，先告诉关卡线和总控。
+
 ## 5. 桥
 
 - 原版的桥是专门的桥梁对象（`BaseBridge`，SDK 里有 15 种：`HB_Bridge_01`、`HV_Bridge_01` 等）。桥会被打断，工程师能修，起义时刻大阪就有"修好桥"这个奖励目标。
