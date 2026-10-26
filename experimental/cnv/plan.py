@@ -672,15 +672,17 @@ class Compiler:
 
     def compile_ai(self):
         """敌方AI: the enemy (敌) given to the game's skirmish AI with a personality of the level's own (enemy_ai.py),
-        the retail way (Miyako "enable naomi ai", "give units to tatsu"): asleep with no money until 唤醒, then its
-        units and base handed to the AI, with money; its army sent off only from 进攻. Forces placed with 守 stay the
-        plan's (UNIT_AI_TRANSFER off): the AI would take them along."""
+        the retail way (Miyako "enable naomi ai"): asleep with no money until 唤醒, then its units and base handed to
+        the AI, with money. Woken, it fights on its own: bench 2026-10-25 (ai_plan/capped), first contact ~60 s
+        after, its army ~150 s; SKIRMISH_AI_TRANSFER_ALL (retail "give units to tatsu") changed nothing -- the same
+        run without it went second for second alike -- so when it wakes is the plan's one lever. Forces placed with
+        守 stay the plan's (UNIT_AI_TRANSFER off): the AI would take them along."""
         spec = self.d.get('敌方AI')
         if not spec:
             return
         import enemy_ai
         m, s1, faction = self.m, self.m.player('s1'), self.faction['s1']
-        known = {'性格', '偏好', '上限', '基地', '资金', '唤醒', '进攻', '修理', '重建'}
+        known = {'性格', '偏好', '上限', '基地', '资金', '唤醒', '修理', '重建', '技能'}
         if set(spec) - known:
             raise PlanError(f'敌方AI: {sorted(set(spec) - known)} -- it takes {sorted(known)}')
         for need in ('基地', '唤醒'):
@@ -713,13 +715,15 @@ class Compiler:
                   [('UNIT_AI_TRANSFER_ALL', s1, 1), ('SKIRMISH_AI_MAKE_BASE', s1, self.mark(spec['基地'])),
                    ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', s1, 20),
                    ('SKIRMISH_AI_USE_REPAIRS', s1, yes('修理', '否')),
-                   ('SKIRMISH_AI_USE_REBUILD_SYSTEM', s1, yes('重建', '否'))] + keep + [('SET_FLAG', awake, 1)])
+                   ('SKIRMISH_AI_USE_REBUILD_SYSTEM', s1, yes('重建', '否'))] + keep + [('SET_FLAG', awake, 1)]
+                  # no secret protocols unless 技能 (retail "prevent naomi from buying specials"; bench 2026-10-25:
+                  # with them its first blow at the player's base was a power, before its army was let go)
+                  + ([] if yes('技能', '否') else [('PLAYER_SET_MAX_PLAYER_POWER_POINTS', s1, 0),
+                                                  ('PLAYER_SET_PLAYER_POWER_POINTS', s1, 0)]))
         for levels, v in by_level(counts(spec.get('资金', 0))):
             m.scripts.append(Script(f'CNV {self.tag} - AI money' + ('' if levels == ALL else
                                                                    f' {TAGS[levels.index(True)]}'),
                                     [('FLAG', awake, 1)], [('PLAYER_SET_MONEY', s1, v)], levels=levels))
-        if spec.get('进攻'):
-            self.when('AI attack', spec['进攻'], [('SKIRMISH_AI_TRANSFER_ALL', s1, 1)], gate=[('FLAG', awake, 1)])
 
     def compile_endings(self):
         m = self.m

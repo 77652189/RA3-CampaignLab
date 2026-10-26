@@ -193,14 +193,14 @@ def test_unattackable_and_sent_off():
 
 def test_an_enemy_ai_of_the_levels_own():
     """敌方AI: the enemy player made the enemy's faction with a generated personality (the co-op skirmish base, the
-    style's moves and states, no taunts), asleep with no money until woken, its army sent only from 进攻, the
-    plan's guards kept out of the AI's hands."""
+    style's moves and states, no taunts), asleep with no money until woken, then given its base, money and no
+    secret protocols; the plan's guards kept out of the AI's hands."""
     import enemy_ai
     m = small(开局={'部队': [{'单位': '兵营', '在': 'north base', '阵营': '敌', '角色': 'camp'},
                           {'单位': '帝国武士', '数量': 2, '在': 'north base', '阵营': '敌', '角色': 'guard',
                            '守': 'north base'}]},
               敌方AI={'性格': '机甲', '基地': 'north base', '资金': '2000/4000/6000', '唤醒': '开局 + 1:00',
-                    '进攻': '开局 + 3:00', '偏好': {'海啸坦克': 2}, '上限': {'兵营': 1}})
+                    '偏好': {'海啸坦克': 2}, '上限': {'兵营': 1}})
     assert m.sides['s1'] == {'playerFaction': 'PlayerTemplate:Japan',
                              'aiPersonality': 'AIPersonalityDefinition:CNV_AIP_ZZ'}
     (fname, xml, link), = m.assets
@@ -221,9 +221,21 @@ def test_an_enemy_ai_of_the_levels_own():
         ('UNIT_AI_TRANSFER', f'UNIT - CNV ZZ guard {j}', 0) for j in (1, 2)]
     assert {tuple(s.levels): s.do[0][2] for s in named(m, 'CNV ZZ - AI money')} == {EASY: 2000, NORMAL: 4000,
                                                                                     HARD: 6000}
-    attack = named(m, 'CNV ZZ - AI attack')[0]
-    assert attack.do == [('SKIRMISH_AI_TRANSFER_ALL', 'Soviet_1', 1)] and ('FLAG', 'CNV_ZZ_AI_Awake', 1) in attack.when
+    assert ('PLAYER_SET_MAX_PLAYER_POWER_POINTS', 'Soviet_1', 0) in wake.do
     import parts
     assert not parts.contract(parts.merged(m))
     with pytest.raises(plan.PlanError):
         small(敌方AI={'性格': '空军', '基地': 'north base', '唤醒': '开局'})          # 帝国 has no 空军 commander
+    with pytest.raises(plan.PlanError):     # it fights from waking (bench 2026-10-25): no word to hold it back
+        small(敌方AI={'基地': 'north base', '唤醒': '开局', '进攻': '开局 + 3:00'})
+
+
+def test_the_design_check_counts_the_enemy_ai_as_pressure():
+    """敌方AI is a real attack in the beat sheet and the design check (retail's lasting pressure), from waking."""
+    d = {'关卡': 'zz', '地图': 'niagara', '阵营': {'我': '盟军', '敌': '盟军'},
+         '段': [{'名字': '一', '结束': '开局 + 2:00'}, {'名字': '二'}],
+         '敌方AI': {'基地': 'east base', '唤醒': '段 二 + 1:30'}}
+    assert '敌方AI（平衡）：3:30 醒来' in plancheck.beat_sheet(d)
+    texts = [t for _, t in plancheck.design_check(d)]
+    assert any(t.startswith('持续压力来自遭遇战 AI') for t in texts)
+    assert any(t.startswith('第一波真正的进攻：3:30 敌方AI') for t in texts)

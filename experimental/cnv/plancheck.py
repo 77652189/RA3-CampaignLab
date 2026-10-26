@@ -139,6 +139,14 @@ def beat_sheet(d):
         when = at(t, w['开始'], starts, early) if t is not None else '看玩家'
         out.append(f'  {w["名字"]}：{when} 起（{w["开始"]}）；{troops}；从 {w.get("从")} 打 {w.get("打") or w.get("守")}'
                    f'{rep}{src}')
+    ai = d.get('敌方AI')
+    if ai:
+        def when(c):
+            t = times_of(c, starts) if c else None
+            return '不放开' if not c else at(t, c, starts, early) if t is not None else '看玩家'
+        out.append(f'  敌方AI（{ai.get("性格", "平衡")}）：{when(ai.get("唤醒"))} 醒来、在 {ai.get("基地")} 建基地并自己进攻'
+                   f'（测试台上醒来约 1 分钟第一次交火），资金 {ai.get("资金", 0)}'
+                   + (f'；上限 {"、".join(f"{u} {n}" for u, n in ai["上限"].items())}' if ai.get('上限') else ''))
     return '\n'.join(out)
 
 
@@ -165,7 +173,11 @@ def design_check(d):
                        ('注意', f'{p["名字"]} 段只靠玩家推进才结束（{end}）：卡住了有没有提示或时间兜底？'))
     base = any(u.get('单位') in ('建造厂', '基地车') and u.get('阵营', '我') == '我'
                for u in (d.get('开局') or {}).get('部队') or [])
-    waves = d.get('进攻') or []
+    waves = list(d.get('进攻') or [])
+    ai = d.get('敌方AI')
+    if ai and ai.get('唤醒'):       # the skirmish AI's army: retail's lasting pressure (retail/README.md 1); it
+        waves.append({'名字': '敌方AI', '开始': ai['唤醒']})        # fights from waking (plan.py compile_ai)
+        out.append(('符合', '持续压力来自遭遇战 AI（敌方AI）：拆掉它的生产建筑就停（原版的做法）'))
     first = sorted((t, w['名字']) for w in waves if (t := times_of(w['开始'], starts)) is not None)
     if base:
         token = [x for x in first if x[0] <= TOKEN + 30]
