@@ -78,24 +78,31 @@ PLAYERS = island.PLAYERS
 TEAMS = dict(island.TEAMS, s1='Soviet_1/teamSoviet_1')
 
 
-CHAMFER = 45.0                                  # a plaza's corners cut off (its front's middle, the gate, stays)
+CHAMFER = 45.0                                  # a plaza's front corners cut off (its front's middle, the gate, stays)
+BACK_CHAMFER = 110.0                            # its back corners cut deeper: a knoll's back, not a box's
+PLAZA_BEND = 30.0                               # its cliff line bent (wobble); straight round the gate
+PLAZA_KEEP = 150.0                              # the middle of a plaza kept open (its width): its sculptures, the
+                                                # gate and the flat inside it; the top's edge beyond it is dressed
 
 
 def _plazas():
-    shapes, ramps, roads, footprints = [], [], [], []
+    shapes, ramps, roads, footprints, outlines = [], [], [], [], []
     for k, (x, north) in enumerate(zip(PLAZA_X, NORTH), 1):
         s = 1 if north else -1
-        y0, y1 = sorted((ROAD_Y + s * PLAZA_FRONT, ROAD_Y + s * PLAZA_BACK))
-        x0, x1, c = x - PLAZA_HALF, x + PLAZA_HALF, CHAMFER
-        shapes.append(poly([(x0 + c, y0), (x1 - c, y0), (x1, y0 + c), (x1, y1 - c), (x1 - c, y1), (x0 + c, y1),
-                            (x0, y1 - c), (x0, y0 + c)], 2, f'plaza {k}'))
+        front, back = ROAD_Y + s * PLAZA_FRONT, ROAD_Y + s * PLAZA_BACK
+        x0, x1, c, b = x - PLAZA_HALF, x + PLAZA_HALF, CHAMFER, BACK_CHAMFER
+        pts = [(x0 + c, front), (x1 - c, front), (x1, front + s * c), (x1, back - s * b), (x1 - b, back),
+               (x0 + b, back), (x0, back - s * b), (x0, front + s * c)]
+        outline = wobble(pts, PLAZA_BEND, 70 + k, keep=[(x, front, RAMP_WIDTH)])
+        shapes.append(poly(outline, 2, f'plaza {k}'))
+        outlines.append(outline)
         ramps.append(Ramp((x, ROAD_Y + s * RAMP_FOOT), (x, ROAD_Y + s * RAMP_HEAD), RAMP_WIDTH, f'gate {k}'))
         roads.append(Road(((x, ROAD_Y), (x, ROAD_Y + s * (PLAZA_FRONT + 20))), RAMP_WIDTH - 30))
-        footprints.append(((x, y0), (x, y1), 2 * PLAZA_HALF + 20))
-    return shapes, ramps, roads, footprints
+        footprints.append(((x, front), (x, back - s * b / 2), PLAZA_KEEP))
+    return shapes, ramps, roads, footprints, outlines
 
 
-_ps, _pr, _proads, PLAZA_FOOTPRINTS = _plazas()
+_ps, _pr, _proads, PLAZA_FOOTPRINTS, PLAZA_OUTLINES = _plazas()
 # the coast: rocky and bent to the west, north and south, a straight quay along the harbour (east of the canal)
 COAST = (wobble([(4150, 600), (3100, 430), (2000, 520), (900, 420), (250, 600), (260, 2000), (420, 2900),
                  (300, 3800), (600, 4600), (1800, 4500), (3000, 4620), (4100, 4550)], 110.0, 51, closed=False) +
@@ -168,8 +175,21 @@ UNDER = {'OK_Shrub01': 3, 'OK_Shrub04': 2, 'GC_Bush01': 2, 'HB_GRASS02': 3, 'ST_
 ROCKS = {'YU_LARGEROCKS02': 1, 'YU_SMALLROCKS01': 2, 'HA_GardenRock01': 2, 'OK_GARDENROCK03': 1}
 HOUSES = {'MJ_Structure_02': 3, 'MJ_Structure_04': 2, 'HA_Building16_02': 3, 'HA_Building16_03': 2,
           'TH_SushiBar_01': 2, 'TH_PHpagoda_04': 1, 'TH_PHpagoda_02': 1}
-# kept open: the player's base round the start, the plazas whole (raised ground the level fights over)
-AVOID = [(1300.0, 2500.0, 600.0)] + PLAZA_FOOTPRINTS
+# kept open: the player's base round the start, the harbour ground whole (a level's ambush and guard stand round
+# it, placed off the site), the plazas' middles (raised ground the level fights over)
+AVOID = [(1300.0, 2500.0, 600.0), (SITES['harbour'].x, SITES['harbour'].y, SITES['harbour'].r + 80.0)] + \
+    PLAZA_FOOTPRINTS
+RIM = {'OK_Shrub01': 3, 'OK_Shrub04': 2, 'GC_Bush01': 2, 'HB_GRASS02': 2, 'YU_SMALLROCKS01': 2}
+FOOT = {'YU_LARGEROCKS02': 2, 'YU_SMALLROCKS01': 2, 'HA_GardenRock01': 1, 'OK_Tree01': 2, 'OK_Tree02': 1,
+        'OK_Shrub01': 2, 'GC_Bush01': 2}
+
+
+def _ring(outline, offset, every, templates, seed):
+    """Candidates along a plaza's cliff line, `offset` outside it (its foot) or, negative, inside (its top's edge)."""
+    turn = sum(x0 * y1 - x1 * y0 for (x0, y0), (x1, y1) in zip(outline, outline[1:] + outline[:1]))
+    inward = 1 if turn > 0 else -1                  # along()'s side 1 is left of the line: inside a ring run ccw
+    side = -inward if offset > 0 else inward
+    return along(outline + outline[:1], templates, every, abs(offset), seed, sides=(side,), jitter=0.3)
 # landmarks by hand (template, x, y, angle), placed first and every one of them (place(must=True) raises if one
 # may not stand where it is): the shrine on its knoll and its torii, a pagoda by the canal, cranes on the quay
 LANDMARKS = [('OK_Pagoda01', 2230, 4150, 0.0), ('OK_ARCH01', 2230, 4040, 0.0), ('TH_PHpagoda_01', 3360, 3840, 1.57),
@@ -181,8 +201,8 @@ def _scenery():
     ground = platprops.Ground(LAYOUT)
     picks = []
 
-    def put(cands, must=False):
-        picks.extend(platprops.place(cands, LAYOUT, SITES, OBJECTS, keep=picks, avoid=AVOID, ground=ground,
+    def put(cands, must=False, avoid=AVOID):
+        picks.extend(platprops.place(cands, LAYOUT, SITES, OBJECTS, keep=picks, avoid=avoid, ground=ground,
                                      must=must))
     put(LANDMARKS, must=True)
     # the avenue as a park: trees in rows outside lanterns and banners, both sides, all the way
@@ -206,6 +226,13 @@ def _scenery():
     put(along([(2560, 1800), (2560, 2280)], 'TH_JAPANFENCE01', 32, 0, 33, sides=(1,), face=True, jitter=0.0))
     # a town round the base side of the avenue, west of plaza 1, both sides of it
     put(scatter(area('rect', (1700, 1700, 2150, 3300)), HOUSES, 140, 34, density=0.8))
+    # the plazas dressed as knolls in the town, not boxes: rocks and scrub at the cliffs' feet, a tree or two;
+    # along the top's edge scrub and pebbles only, all of it crushable (off the plaza's sites, not its whole middle:
+    # its sculptures, gate and inside keep their own circles)
+    for k, outline in enumerate(PLAZA_OUTLINES):
+        put(_ring(outline, 45, 38, FOOT, 90 + k))
+        put(_ring(outline, 95, 60, FOOT, 93 + k))
+        put(_ring(outline, -55, 30, RIM, 96 + k), avoid=AVOID[:2])
     # woods in stands on the hills and the ridge, the plateaus' edges, the coast; rocks at the cliffs' feet
     for k, region in enumerate((WEST_RIDGE, SW_HILLS, KNOLL, *ISLETS)):
         put(scatter(area('poly', region), WOODS, 50, 40 + k, density=0.85, patches=0.4))
