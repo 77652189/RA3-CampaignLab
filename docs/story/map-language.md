@@ -100,6 +100,7 @@
    - 先建 `ground = platprops.Ground(LAYOUT)`，再一轮轮 `put(platprops.place(候选, LAYOUT, SITES, OBJECTS, keep=已放的, avoid=AVOID, ground=ground))`。
    - 候选来自生成器：`scatter`（成片撒，`patches` 越大空地越多）、`clumps`（小簇）、`along`（沿线成排，`face=True` 让房子/栅栏朝向街道）、`cliff_feet`（崖脚）、`shore`（水边）。
    - 先放手摆的地标和房子，再放沿路的东西，最后撒林子和灌木：先放的占位，后放的自动让开。
+   - 手摆的写成模块常量 `LANDMARKS`，用 `put(LANDMARKS, must=True)`：放不下就报错，并列出每一件的原因（压到哪条路、哪个地点，或者不平）。生成器的候选放不下就悄悄丢掉，这是正常的，但手摆的不能丢。`tests/test_maps.py` 会检查每一件都出现在 `SCENERY` 里。
    - `AVOID` 放玩法上要整块留空的地方：基地建造区（圆）、广场整块（条带）。
    - 模板只能用 `platprops.CATALOG` 里的。新模板先确认原版地图真用过（`retail_objects`），从 SageXML 的 Geometry 量半径，再加进目录。
 3. **避让规则**（`platprops.clearance`，也是检查用的规则）：
@@ -114,6 +115,7 @@
 5. **小心。**
    - 按类别数单位的计数（`parts.counted(kind=…)`）会把所有玩家的都算进去，平民的也算。所以哪张图有这种计数，就别在计数范围里放会被算进去的布景：房子、栅栏、路灯、大石头都算 STRUCTURE，见 `platprops.STRUCTURE`。
    - 地点只能新增，不能删、不能改义。要挪地点或新增地点，先告诉关卡线和总控。
+   - 目前避让没管到的两处（现在都无害，记在这里）：一是策划案按偏移量放出来的建筑（关卡里的，不是地图的），布景生成时看不到，只靠构建测试查单位和路点有没有压到布景；二是 LINT 只按 `clearance` 查，不查各图自己的 `AVOID`，所以基地区、广场里有没有布景要看摆放，检查不会报。
 
 ## 5. 桥
 

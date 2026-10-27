@@ -339,33 +339,42 @@ def problem(ground, zones, template, x, y, margin=0.0):
     return f'{template} at ({x:.0f}, {y:.0f}): on {hit}' if hit else ''
 
 
-def place(candidates, layout, sites=None, objects=(), keep=(), avoid=(), ground=None):
+def place(candidates, layout, sites=None, objects=(), keep=(), avoid=(), ground=None, must=False):
     """The candidates that may stand where they are (problem() with MARGIN to spare, off the `avoid` circles too),
     thinned so no two footprints overlap; `keep` (already placed) counts for the thinning. Returns
-    [(template, x, y, angle)]."""
+    [(template, x, y, angle)]. must: every candidate is a landmark placed by hand -- one that may not stand where
+    it is raises (ValueError, every one and why), not dropped unseen as a generator's are."""
     ground = ground or Ground(layout)
     zones = clearance(layout, sites, objects, avoid)
-    grid, out = {}, []
+    grid, out, refused = {}, [], []
+    widest = [0.0]
 
     def free(x, y, r):
+        n = int(math.ceil((r + widest[0]) * 0.9 / 100))            # as far as two footprints can reach
         gx, gy = int(x // 100), int(y // 100)
-        for i in range(gx - 1, gx + 2):
-            for j in range(gy - 1, gy + 2):
+        for i in range(gx - n, gx + n + 1):
+            for j in range(gy - n, gy + n + 1):
                 for ox, oy, orr in grid.get((i, j), ()):
                     if math.hypot(x - ox, y - oy) < (r + orr) * 0.9:
                         return False
         return True
 
     def take(x, y, r):
+        widest[0] = max(widest[0], r)
         grid.setdefault((int(x // 100), int(y // 100)), []).append((x, y, r))
     for t, x, y, _ in keep:
         take(x, y, radius(t))
     for t, x, y, a in candidates:
         r = radius(t)
-        if problem(ground, zones, t, x, y, MARGIN[kind(t)]) or not free(x, y, r):
+        why = problem(ground, zones, t, x, y, MARGIN[kind(t)]) or (
+            '' if free(x, y, r) else f'{t} at ({x:.0f}, {y:.0f}): on another prop')
+        if why:
+            refused.append(why)
             continue
         take(x, y, r)
         out.append((t, x, y, a))
+    if must and refused:
+        raise ValueError('landmarks that may not stand where they are placed: ' + '; '.join(refused))
     return out
 
 

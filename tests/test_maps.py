@@ -51,6 +51,40 @@ def test_scenery_lint_catches_a_prop_on_the_way():
     assert len(problems) == 2 and all(p.startswith('scenery ') for p in problems), problems
 
 
+def test_every_landmark_placed_by_hand_is_in_the_scenery():
+    """A landmark is placed by hand where the map wants it (a torii before the shrine, a lookout over the falls):
+    each one is in SCENERY where its list puts it, and place(must=True) raises for one that may not stand there
+    rather than dropping it unseen (2026-10-26: six were dropped by the keep-off margins, none in the built map)."""
+    import platprops
+    for name in ('festival', 'niagara'):
+        mod = importlib.import_module(f'maps.{name}')
+        have = {(o.template, o.x, o.y) for o in mod.SCENERY}
+        missing = [(t, x, y) for t, x, y, _ in mod.LANDMARKS if (t, float(x), float(y)) not in have]
+        assert not missing, f'{name}: {missing}'
+    fest = importlib.import_module('maps.festival')
+    on_plaza = [('TH_PHpagoda_01', fest.SITES['plaza 3'].x, fest.SITES['plaza 3'].y, 0.0)]
+    try:
+        platprops.place(on_plaza, fest.LAYOUT, fest.SITES, fest.OBJECTS, must=True)
+    except ValueError as e:
+        assert 'TH_PHpagoda_01' in str(e)
+    else:
+        raise AssertionError('a landmark on a plaza was dropped, not refused')
+
+
+def test_place_keeps_wide_footprints_apart():
+    """The thinning looks as far as the widest footprint reaches: two houses of radius ~77 130 apart overlap,
+    though their 100-wide grid cells are two apart."""
+    import platprops
+    wide = max(platprops.CATALOG, key=platprops.radius)
+    r = platprops.radius(wide)
+    assert r > 60
+    x, y, d = 1099.0, 1000.0, 1.6 * r
+    assert int((x + d) // 100) - int(x // 100) >= 2
+    ground = platprops.Ground(None, e=__import__('numpy').full((platmap.CONTAINER[1], platmap.CONTAINER[0]), 300.0))
+    out = platprops.place([(wide, x, y, 0.0), (wide, x + d, y, 0.0)], None, ground=ground)
+    assert len(out) == 1, out
+
+
 def test_nothing_a_build_places_stands_on_scenery():
     """Every build's objects and waypoints (missions, their checks, the benches) keep clear of its map's scenery:
     a unit is not made inside a tree or a house, a waypoint is not inside a rock."""

@@ -156,21 +156,25 @@ UNDER = {'CC_Bush01': 3, 'CC_BUSH02': 3, 'OK_Shrub01': 2, 'YP_Fern01': 3, 'CC_GR
 ROCKS = {'YU_LARGEROCKS02': 1, 'YU_SMALLROCKS01': 2, 'YU_SMALLROCKS02': 2}
 # building ground kept open: the player's base round the start, the hawks' round theirs
 AVOID = [(1250.0, 2500.0, 700.0), (3850.0, 3400.0, 650.0)]
+# buildings by hand (template, x, y, angle), placed first and every one of them (place(must=True) raises if one may
+# not stand where it is): a ranger station and lookouts over the falls on the west bank, cabins in the south-west
+# woods, a few houses on the east bank south of the hawks' base
+LANDMARKS = [('YP_RSTATION', 2020, 2240, 0.5), ('YP_WatchTower', 2190, 2640, 0.0),
+             ('YP_WatchTower', 2240, 3240, 0.0),
+             ('YP_Cabin', 700, 1480, 0.3), ('YP_Cabin', 860, 1330, -0.4), ('YP_Cabin', 1040, 1460, 1.2),
+             ('YP_Cabin', 560, 1250, 2.0), ('YP_Cabin', 1400, 4780, 0.2),
+             ('CCHOUSE02D', 3300, 2420, 1.0), ('CCHOUSE02D', 3330, 2610, 1.0), ('HV_Shop01', 3180, 2760, 0.9),
+             ('CCHOUSE02D', 3420, 2150, 2.6), ('YP_Cabin', 4300, 2350, 1.6), ('YP_Cabin', 4450, 2150, 0.1)]
 
 
 def _scenery():
     ground = platprops.Ground(LAYOUT)
     picks = []
 
-    def put(cands):
-        picks.extend(platprops.place(cands, LAYOUT, SITES, OBJECTS, keep=picks, avoid=AVOID, ground=ground))
-    # buildings first, by hand: a ranger station and a lookout over the falls on the west bank, cabins in the
-    # south-west woods, a small town on the east bank south of the hawks' base
-    put([('YP_RSTATION', 1940, 2240, 0.5), ('YP_WatchTower', 2190, 2640, 0.0), ('YP_WatchTower', 2190, 3240, 0.0),
-         ('YP_Cabin', 700, 1480, 0.3), ('YP_Cabin', 860, 1330, -0.4), ('YP_Cabin', 1040, 1460, 1.2),
-         ('YP_Cabin', 560, 1250, 2.0), ('YP_Cabin', 1400, 4780, 0.2),
-         ('CCHOUSE02D', 3300, 2420, 1.0), ('CCHOUSE02D', 3330, 2610, 1.0), ('HV_Shop01', 3180, 2760, 0.9),
-         ('CCHOUSE02D', 3500, 2160, 2.6), ('YP_Cabin', 4300, 2350, 1.6), ('YP_Cabin', 4450, 2150, 0.1)])
+    def put(cands, must=False):
+        picks.extend(platprops.place(cands, LAYOUT, SITES, OBJECTS, keep=picks, avoid=AVOID, ground=ground,
+                                     must=must))
+    put(LANDMARKS, must=True)
     put(along([(2620, 2410), (2740, 2520), (2750, 2780)], 'YP_PICNIC01', 90, 0, 3, sides=(1,)))
     # the town on the bluff (the Canadian side): houses facing its streets, lamps and garden trees between
     for k, street in enumerate(TOWN):

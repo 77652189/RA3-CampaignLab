@@ -169,18 +169,21 @@ HOUSES = {'MJ_Structure_02': 3, 'MJ_Structure_04': 2, 'HA_Building16_02': 3, 'HA
           'TH_SushiBar_01': 2, 'TH_PHpagoda_04': 1, 'TH_PHpagoda_02': 1}
 # kept open: the player's base round the start, the plazas whole (raised ground the level fights over)
 AVOID = [(1300.0, 2500.0, 600.0)] + PLAZA_FOOTPRINTS
+# landmarks by hand (template, x, y, angle), placed first and every one of them (place(must=True) raises if one
+# may not stand where it is): the shrine on its knoll and its torii, a pagoda by the canal, cranes on the quay
+LANDMARKS = [('OK_Pagoda01', 2230, 4150, 0.0), ('OK_ARCH01', 2230, 4040, 0.0), ('TH_PHpagoda_01', 3360, 3840, 1.57),
+             ('TH_harbor_crane01', 4130, 1300, 0.0), ('TH_harbor_crane01', 4120, 3300, 0.0),
+             ('TH_harbor_crane01', 4180, 3900, 0.0)]
 
 
 def _scenery():
     ground = platprops.Ground(LAYOUT)
     picks = []
 
-    def put(cands):
-        picks.extend(platprops.place(cands, LAYOUT, SITES, OBJECTS, keep=picks, avoid=AVOID, ground=ground))
-    # landmarks by hand: the shrine on its knoll and its torii, a pagoda by the canal, cranes on the harbour quay
-    put([('OK_Pagoda01', 2230, 4150, 0.0), ('OK_ARCH01', 2230, 3990, 0.0), ('TH_PHpagoda_01', 3420, 3420, 1.57),
-         ('TH_harbor_crane01', 4150, 1300, 0.0), ('TH_harbor_crane01', 4120, 3300, 0.0),
-         ('TH_harbor_crane01', 4180, 3900, 0.0)])
+    def put(cands, must=False):
+        picks.extend(platprops.place(cands, LAYOUT, SITES, OBJECTS, keep=picks, avoid=AVOID, ground=ground,
+                                     must=must))
+    put(LANDMARKS, must=True)
     # the avenue as a park: trees in rows outside lanterns and banners, both sides, all the way
     avenue = [(1500, ROAD_Y), (4050, ROAD_Y)]
     put(along(avenue, ['OK_LANTERN01', 'MJ_BANNER01', 'MJ_BANNER02', 'TH_LAMPDECO03'], 70, 85, 1, jitter=0.0))
