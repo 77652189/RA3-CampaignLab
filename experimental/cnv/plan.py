@@ -251,6 +251,13 @@ class Compiler:
     def unit(self, name, side='p1'):
         if name in self.dev_units:
             return self.dev_units[name].id
+        from units import roster
+        if name in roster.NAMES:                    # one of ours a plan names like retail's (units/roster.py)
+            made = roster.make(name)
+            have = {u.id for u in self.m.units}
+            self.m.units += [u for u in made if u.id not in have]
+            t = made[0].id
+            return self.made.get(t, t) if side == 'p1' else t
         t = glossary.template(name, self.faction[side])
         return self.made.get(t, t) if side == 'p1' else t
 

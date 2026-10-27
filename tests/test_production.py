@@ -62,6 +62,24 @@ def test_without_it_the_player_has_retails():
     assert ('AlliedBarracks', 'p1') in placed and not any(t.startswith('CNVZZ') for t, _ in placed)
 
 
+def test_every_unit_of_ours_by_name():
+    from units import roster
+    for name in roster.NAMES:
+        made = roster.make(name)
+        assert made and all(u.id.startswith('CNV_') for u in made), name
+
+
+def test_a_plan_places_and_builds_ours_by_name():
+    m = small(可造={'兵营': ['超时空信标兵']},
+              开局={'部队': [{'单位': '兵营', '在': 'base barracks'},
+                             {'单位': '超时空信标兵', '在': 'west field', '角色': 'beacon'},
+                             {'单位': '钻地运兵车', '在': 'north base', '阵营': '敌', '角色': 'digger'}]})
+    assert m.cast['beacon'].template == 'CNV_Beacon' and m.cast['digger'].template == 'CNV_Burrower'
+    assert {'CNV_Beacon', 'CNV_Burrower', 'CNVZZAlliedBarracks'} <= {u.id for u in m.units}
+    barracks = next(u for u in m.units if u.id == 'CNVZZAlliedBarracks')
+    assert 'Command_ConstructCNV_Beacon' in cmds(barracks.xml, 'CNVZZAlliedBarracksCommandSet')
+
+
 @pytest.mark.parametrize('bad', [{'兵营': ['工程师']}, {'兵营': ['没这个兵']}])
 def test_only_ours(bad):
     with pytest.raises((plan.PlanError, AssertionError)):

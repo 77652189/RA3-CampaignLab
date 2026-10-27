@@ -261,9 +261,11 @@ def vocab(map_name=None):
                 out.append(f'    {group} {k}：{v}')
         if cls.TARGET:
             out.append(f'    进攻的"打"写它：{cls.TARGET}')
+    from units import roster
     n = glossary.names()
-    out += ['', '单位（各阵营通用，按阵营换成对应的）：' + '、'.join(n['shared']),
-            '单位（某一阵营自己的）：' + '、'.join(n['own'])]
+    out += ['','单位（各阵营通用，按阵营换成对应的）：' + '、'.join(n['shared']),
+            '单位（某一阵营自己的）：' + '、'.join(n['own']),
+            '我们的新单位（units/roster.py）：' + '；'.join(f'{k}（{v}）' for k, v in roster.NAMES.items())]
     if map_name:
         import importlib
         mm = importlib.import_module(f'maps.{map_name}')

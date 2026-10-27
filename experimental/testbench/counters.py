@@ -28,6 +28,7 @@ MIN_HEIGHT = 6                                  # text columns shorter than this
                                                 # 1-px sparkle 6 px right of a 0 read as 8, bench 2026-10-21)
 BOX_DARK, BOX_END = 90, 4                       # the counters' backing box: darker than this; ends after so many
                                                 # columns without it
+LABEL, MIN_BOX = (8, 40), 0.3                   # a label's columns; at least so many of them are its dark box
 SIZE = (8, 12)                                # a glyph is compared at this size
 CALIBRATION = [1234, 5678, 90]
 
@@ -69,6 +70,11 @@ def glyphs(img, box):
     if not runs:
         return []
     if runs[0][0] > START_BY:                   # no text where the counters start: terrain, not a counter line
+        return []
+    # a counter's label stands on its dark box: bright specks on open ground below the counters, with no box under
+    # them, are no line (bench 2026-10-27, CampLock: sand under line 3 read as one, two counters slid a line down and
+    # read "100 7"). Looked at where labels are (LABEL): left of the box, at the screen's edge, sand shows bright
+    if dark[LABEL[0]:LABEL[1]].mean() < MIN_BOX:
         return []
     groups = [[runs[0]]]
     for r in runs[1:]:

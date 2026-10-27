@@ -41,7 +41,20 @@ def test_the_value_ends_with_its_box():
 
 def test_a_speck_below_the_counters_does_not_slide_them(monkeypatch):
     img = frame([(24, 32), (24, 40)], speck_line=3)
-    assert counters.glyphs(img, counters.line_box(3))          # the specks look like a line of their own
+    # the specks would look like a line of their own; with no box under them (since 2026-10-27) they are none
+    assert not counters.glyphs(img, counters.line_box(3))
     # which lines read() reads (the digits themselves need the templates in work/, not in git)
     monkeypatch.setattr(counters, 'read_line', lambda img, box: box[1])
     assert counters.read(img, 2) == [counters.line_box(0)[1], counters.line_box(1)[1]]
+
+
+def test_bright_ground_under_the_counters_is_no_line():
+    """Bench 2026-10-27 (CampLock): sand under the last counter, bright as text and with no box under it, read as
+    a line of its own -- the two counters slid a line down and read "100 7"."""
+    img = frame([(24, 32), (24, 40)])
+    a = np.asarray(img).copy()
+    x, y, *_ = counters.line_box(2)
+    for s in (0, 6, 12, 20, 26):                # sand patches where a third line's label and value would be
+        a[y + 2:y + 13, s:s + 4] = SAND
+    img = Image.fromarray(a)
+    assert counters.glyphs(img, counters.line_box(0)) and not counters.glyphs(img, counters.line_box(2))
