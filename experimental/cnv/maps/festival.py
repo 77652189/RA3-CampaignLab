@@ -51,7 +51,8 @@ SITES.update({
                                                'round to the gates (J4)'),
     'base yard': Site(1250.0, 2500.0, 0.0, "the construction yard's pad on the player's start", build=200.0),
     'base barracks': Site(1250.0, 2780.0, 0.0, "a barracks' pad north of the yard", build=160.0),
-    'base refinery': Site(1150.0, 2150.0, 0.0, "a refinery's pad by the player's own ore", build=200.0),
+    'base refinery': Site(1130.0, 2060.0, 0.0, "a refinery's pad by the player's own ore (~180 from the nearer "
+                                               'node, as retail)', build=200.0),
     'harbour': Site(4030.0, 2500.0, 180.0, 'the harbour ground at the east end of the canal bridge: the convoy '
                                            'crosses it to the exit'),
     'north base': Site(3050.0, 4100.0, 250.0, 'the north plateau past its ore: room for a small camp', build=160.0),

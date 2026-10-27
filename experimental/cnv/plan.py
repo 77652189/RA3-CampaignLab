@@ -194,6 +194,7 @@ class Compiler:
         self.ai_awake = f'CNV_{self.tag}_AI_Awake'                  # 1 once 敌方AI woke (敌方AI 醒来)
         self.devices = {}
         self.dev_units = {}         # unit name a device publishes -> its Unit
+        self.made = {}              # retail template -> the player's copy that builds ours too (可造)
         self.phases, self.waves, self.goals = [], {}, {}
         self.last = []              # the scripts the last when() made
         self.counted = {}           # group -> the counter of its losses (摧毁 <group> <n> 个)
@@ -250,7 +251,31 @@ class Compiler:
     def unit(self, name, side='p1'):
         if name in self.dev_units:
             return self.dev_units[name].id
-        return glossary.template(name, self.faction[side])
+        t = glossary.template(name, self.faction[side])
+        return self.made.get(t, t) if side == 'p1' else t
+
+    def setup_production(self):
+        """可造: {兵营: [冰幕工兵, ...]}: the player's buildings of that kind are copies that build ours too, and so
+        is the construction yard (it builds the copies): placed, given or built later (units/production.py)."""
+        from units import production
+        wants = self.d.get('可造') or {}
+        if not wants:
+            return
+        copies = {}
+        for where, names in wants.items():
+            retail = glossary.template(where, self.faction['p1'])
+            ours = [self.unit(n) for n in names]
+            plain = [n for n, u in zip(names, ours) if u not in {x.id for x in self.m.units}]
+            if plain:
+                raise PlanError(f'可造 {where}: {plain} are retail units (retail already builds them) or no unit '
+                                'of ours a device or 开局 publishes')
+            u = production.building(retail, ours, f'CNV{self.tag}{retail}')
+            self.m.units.append(u)
+            copies[retail] = u.id
+        cy = glossary.template('建造厂', self.faction['p1'])
+        y = production.yard(cy, copies, f'CNV{self.tag}{cy}')
+        self.m.units.append(y)
+        self.made = {**copies, cy: y.id}
 
     def part_names(self, part):
         """The named objects of a cast part or a group of them ('engineer' -> engineer 1, engineer 2 ...)."""
@@ -861,6 +886,7 @@ class Compiler:
         self.setup_phases()
         self.setup_waves()
         self.setup_devices()
+        self.setup_production()
         self.place()
         for dev in self.devices.values():
             dev.place()

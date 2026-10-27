@@ -347,6 +347,7 @@ def main():
             import platmap
             problems = platmap.lint(m.map.LAYOUT, m.map.SITES, getattr(m.map, 'OBJECTS', []),
                                     getattr(m.map, 'SCENERY', []))
+            problems += platmap.ore_lint(list(getattr(m.map, 'OBJECTS', [])) + list(m.objects))
             print('LINT ' + ('ok' if not problems else '; '.join(problems)))
         elif hasattr(m.map, 'ground'):          # no layout (the noise island): its scenery checked on its heights
             import platprops

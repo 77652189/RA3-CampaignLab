@@ -85,6 +85,21 @@ def test_place_keeps_wide_footprints_apart():
     assert len(out) == 1, out
 
 
+def test_every_refinery_by_its_ore():
+    """Every build's refineries (the map's, the mission's, any side) stand by an ore node, as retail (~180; user
+    2026-10-27: ore and its refinery belong together)."""
+    import build
+    import parts
+    bad = []
+    for n, (_, checks) in build.MISSIONS.items():
+        m, t, _ = build.resolve(n, '')
+        bad += [f'{n}: {p}' for p in platmap.ore_lint(list(getattr(m.map, 'OBJECTS', [])) + parts.merged(m, t).objects)]
+    assert not bad, '\n'.join(bad)
+    from parts import Obj
+    far = [Obj('OreNode', 0, 0), Obj('AlliedRefinery', 300, 0)]
+    assert platmap.ore_lint(far) and not platmap.ore_lint([far[0], Obj('AlliedRefinery', 180, 0)])
+
+
 def test_nothing_a_build_places_stands_on_scenery():
     """Every build's objects and waypoints (missions, their checks, the benches) keep clear of its map's scenery:
     a unit is not made inside a tree or a house, a waypoint is not inside a rock."""

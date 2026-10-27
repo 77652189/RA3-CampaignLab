@@ -48,7 +48,8 @@ SITES.update({
     'east factory': Site(3950.0, 3150.0, 0.0, "the hawks' war factory", build=200.0),
     'east airfield': Site(4050.0, 3700.0, 0.0, "the hawks' airfield", build=250.0),
     'east power': Site(4250.0, 3450.0, 0.0, "the hawks' own power plant", build=100.0),
-    'east refinery': Site(4450.0, 2800.0, 0.0, "the hawks' refinery, by their ore (the skirmish AI's income)",
+    'east refinery': Site(4300.0, 2860.0, 0.0, "the hawks' refinery, by their ore (the skirmish AI's income; "
+                                               '~180 from the nearer node, as retail)',
                          build=250.0),
     'east gate': Site(3150.0, 3300.0, 200.0, "open ground between the hawks' base and the bridges: their army forms "
                                              'up here'),

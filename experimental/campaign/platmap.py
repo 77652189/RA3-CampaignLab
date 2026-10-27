@@ -247,6 +247,23 @@ def lint(layout, sites=None, objects=(), scenery=(), dims=CONTAINER):
     return out
 
 
+REFINERY_REACH = 250.0      # retail (Tokyo Harbor, Heidelberg, Havana): each refinery ~180 from the ore node it faces
+
+
+def ore_lint(objects):
+    """Every refinery placed (the map's or a mission's, any side) by an ore node: retail stands each one ~180 from
+    the node it mines (user 2026-10-27: ore and its refinery belong together). Returns the problems."""
+    ore = [o for o in objects if o.template == 'OreNode']
+    out = []
+    for o in objects:
+        if o.template.endswith('Refinery'):
+            near = min((math.hypot(o.x - n.x, o.y - n.y) for n in ore), default=None)
+            if near is None or near > REFINERY_REACH:
+                out.append(f'{o.template} at ({o.x:g}, {o.y:g}): no ore node within {REFINERY_REACH:g}'
+                           + ('' if near is None else f' (nearest {near:.0f})'))
+    return out
+
+
 def bridge(p, q, template='HB_Bridge_02'):
     """A bridge from p to q (world points on the two banks, the same tier): (x, y, angle, flags) of its start and
     its end object, to be placed one right after the other (retail: start, then end, in the object list; their
