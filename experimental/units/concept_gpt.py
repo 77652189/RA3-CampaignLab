@@ -135,21 +135,34 @@ York harbour and lifted into the sky by Allied anti-gravity -- a flying monument
 the Empire's floating island fortress and to Mount Rushmore's laser heads. Grand, oppressive, a little absurd.
 Original design (no copy of any game or film ship); not a vehicle, a piece of land and monument turned into a
 weapon.
-- Base: the island's eleven-pointed STAR FORT (Fort Wood) as a huge armoured platform. Under it NO rock, NO soil,
-  NO rubble (the user 2026-10-26: once it has flown, nothing of the ground is left): a fully MECHANICAL armoured
-  underside, a deep stepped keel of armour plates tapering downward under the fort, like the belly of an Allied
-  dreadnought.
-- On top: the Statue of Liberty on her pedestal at the centre, kept recognisable but militarised -- armour
-  plates on the pedestal, her raised torch is a glowing cyan chronosphere beacon (the deck jump), antenna masts
-  around her crown rays.
-- Around her, on the star fort's walls and bastions: Allied fortress works -- armoured blocks with rows of tiny lit
-  windows, a hangar-door drop bay that lowers ground vehicles, launch slots with small arrow-shaped drone fighters
-  in them, and three EMPTY round armoured turret sockets (ring mounts, no guns) on three of the star's points.
-- Lift: gravity-repulsor emitters like a sci-fi dreadnought's -- big round recessed discs set flush into the
-  armoured belly, concentric rings glowing cyan-white, one under each star point plus a ring of them around the
-  keel; no fans, no propellers, no jets. The largest emitter, at the keel's lowest point, is the chronosphere.
-- Proportions: a super-unit about 10 times a Guardian tank across, roughly round from above (the star fort), the
-  statue the tallest thing; the armoured keel below about half as deep as the fort is wide. From the high RTS camera: the
+DESIGN RULES (from the big air fortresses of RTS games, 2026-10-26: the boxy v1/v2 base read as a pile of equal
+blocks -- Soviet-looking, no focus, no threat):
+- ONE focal point and a radial hierarchy: everything is smaller than and leads the eye to the statue and the
+  chrono core under her; no field of equal-sized boxes.
+- The threat points DOWN at the ground (like a mothership's belly beam): the underside ends in one huge chrono
+  aperture, an armoured iris ringed with cyan light, aimed at whatever is beneath.
+- Technology shown by FLOATING, rotating parts (the Allied chronosphere's gyroscope): rings that hover around
+  the core without visible supports.
+- Allied design language, not Soviet: sleek sloped and rounded armour, smooth curved bastions, glass domes and
+  strips, white-silver and gunmetal with blue team colour; clean large surfaces, detail concentrated in bands.
+- Weak points readable as separate modules: three turret bastions, the drop bay, the conduits feeding the torch.
+
+THE DESIGN:
+- Platform: the island's STAR FORT redrawn as a sleek Allied platform -- eleven smooth, rounded, sloped
+  bastion points around a raised round centre. Three of the points carry EMPTY round armoured turret sockets
+  (ring mounts, no guns); one carries a large drop-bay door that lowers ground vehicles; the others carry low
+  launch rails with small arrow-shaped drone fighters. Under it NO rock, NO soil (the user 2026-10-26: once it
+  has flown nothing of the ground is left).
+- Core: at the centre a tall tapered chronosphere core column as her pedestal, sleek armour with vertical glowing
+  cyan slots, thick power conduits climbing it; around the core TWO OR THREE huge gyroscope rings hover at
+  different tilts (thin, bright-edged, glowing inner track), not touching anything. From above they frame the
+  statue like a target reticle.
+- On the core: the Statue of Liberty (kept recognisable), her torch a blazing cyan chrono beacon, conduits from
+  the core up her back to the torch.
+- Underside: a smooth stepped inverted cone of armour plates under the platform, gravity-repulsor discs (flush,
+  concentric cyan rings) under the bastion points, and at the cone's tip the big downward chrono aperture.
+- Proportions: a super-unit about 10 times a Guardian tank across, round from above, the statue the tallest
+  thing; the cone below about half as deep as the platform is wide. From the high RTS camera: the
   star outline, the statue, three ring sockets, blue team-colour on the fortress roofs.'''),
     'icesculpture': ('ice', ['glacier06', 'snowman'], '''PROP: "Festival Ice Sculpture" for a snow festival plaza (the Sapporo snow festival). Enemy soldiers hide
 inside it; it shatters when the convoy comes close. Read it as a carved festival showpiece, not a natural glacier.
