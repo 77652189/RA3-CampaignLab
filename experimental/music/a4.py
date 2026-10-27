@@ -54,12 +54,15 @@ SECTIONS = {
     'battle>escort': (1, False, -19.0), 'battle>final': (1, False, -17.0),
 }
 # what the mission fires: (retail event, section, PREP = cut at once)
+#   a script can fire only the events of the sdk's script set (SageXML/PathMusic/ScriptPathMusicEvents.xml,
+#   PathMusicEventSet ScriptEvents): S_A04GibraltarExplore, S_A04Threat1, BigReveal, S_A04Threat1_1 are not in it and
+#   did nothing (bench 2026-10-26, CampA4Win), so the cues borrow other missions' script events (our map, our actions)
 EVENTS = {
     'start': ('S_A04GibraltarIntro', 'prep', True),
-    'escort': ('S_A04GibraltarExplore', 'escort', False),
-    'ambush': ('S_A04Threat1', 'ambush', True),
-    'harbour': ('BigReveal', 'harbour', True),
-    'final': ('S_A04Threat1_1', 'final', False),
+    'escort': ('S_A05NorthSeaExplore', 'escort', False),
+    'ambush': ('S_A05Threat1', 'ambush', True),
+    'harbour': ('S_A05Incoming', 'harbour', True),
+    'final': ('S_A06RushmoreChase', 'final', False),
     'win': ('S_EndMissionWin', 'victory', True),
     'lose': ('S_EndMissionLose', 'defeat', True),
     # fired by the game's dynamic system while it is on (Standard_NoLeadIn): fighting is fierce, losing is tense

@@ -96,6 +96,21 @@ def test_victory_stops_the_music(music):
     assert rows[-1][2] == 'victory' and rows[-1][1] < 20
 
 
+SCRIPT_EVENTS = ROOT.parent / 'sdk' / 'RA3ModSDK3' / 'SageXML' / 'PathMusic' / 'ScriptPathMusicEvents.xml'
+
+
+def test_every_cue_is_an_event_a_script_can_fire():
+    """PATH_MUSIC_PLAY_EVENT plays only the events of the sdk's script set (bench 2026-10-26, CampA4Win: four cues
+    on events outside it did nothing, the win cue on S_EndMissionWin played)."""
+    if not SCRIPT_EVENTS.exists():
+        pytest.skip('needs the mod SDK (sdk/RA3ModSDK3)')
+    import re
+    script = set(re.findall(r'<Event>([^<]+)</Event>', SCRIPT_EVENTS.read_text(encoding='utf-8')))
+    assert {a4.EVENTS[key][0] for key in a4.CUES.values()} <= script
+    fired_by_the_game = {a4.EVENTS[k][0] for k in ('combat', 'losing', 'even', 'winning', 'calm')}
+    assert not fired_by_the_game & {a4.EVENTS[key][0] for key in a4.CUES.values()}
+
+
 def test_streams_are_as_long_as_the_map_says():
     x = a4.render('ambush')
     assert len(x) * 1000 // synth.RATE == dict(a4.stream_ms())['ambush']
