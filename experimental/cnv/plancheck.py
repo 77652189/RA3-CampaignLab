@@ -225,6 +225,40 @@ def design_check(d):
                 out.append(('问题', f'进攻 {w["名字"]} 的 {u} {"/".join(map(str, c3))}：难度越高应该越多'))
     hints = sum(1 for r in d.get('规则') or [] for a in r.get('做') or [] if isinstance(a, str) and a.startswith('通报'))
     out.append(('符合' if hints else '注意', f'提示：规则里有 {hints} 条通报（原版快输了不送援军，只给提示）'))
+    out += [('问题', p) for p in never_clear(d)]
+    return out
+
+
+BUILDINGS = {'建造厂', '兵营', '战车工厂', '电厂', '矿厂', '机场', '船坞', '科技中心', '多功能炮塔', '光谱塔', '哨戒炮',
+             '防空炮', '磁暴线圈', '波能塔', '守卫塔'}
+
+
+def never_clear(d):
+    """'敌人清空 <site>' with an enemy building placed in that site: it counts buildings too, so it never holds
+    (bench 2026-10-27, A5: the control room stood in the yard its guards were cleared from)."""
+    import importlib
+    sites = importlib.import_module(f'maps.{d["地图"]}').SITES
+    def texts(x):
+        if isinstance(x, dict):
+            return [t for v in x.values() for t in texts(v)]
+        if isinstance(x, list):
+            return [t for v in x for t in texts(v)]
+        return [str(x)]
+    used = {mm.group(1).split(' + ')[0].strip() for t in texts(d) for mm in [re.match(r'^敌人清空 (.+)$', t)] if mm}
+    out = []
+    for site in sorted(used):
+        if site not in sites:
+            continue
+        s = sites[site]
+        r = s.r or plan.DEFAULT_AREA
+        for spec in (d.get('开局') or {}).get('部队') or []:
+            if spec.get('阵营') != '敌' or spec.get('单位') not in BUILDINGS or spec.get('在') not in sites:
+                continue
+            w = sites[spec['在']]
+            dx, dy = spec.get('偏移', (0, 0))
+            if abs(w.x + dx - s.x) <= r and abs(w.y + dy - s.y) <= r:
+                out.append(f'"敌人清空 {site}" 永远不成立：{spec["单位"]}（{spec.get("角色", "")}）摆在那里面，'
+                           '建筑也算敌人。改成"摧毁"它的守军，或者把建筑移出去')
     return out
 
 

@@ -15,7 +15,13 @@ _MAKE = {
     '纸鹤侦察机': (lambda: [crane.crane()], '帝国：没有武器，驱雾 900，一直隐身（J3）'),
     '合体机甲': (lambda: [combo.parent(), combo.child()], '帝国：子机开进母机就是合体，合体后只拆建筑（J4）'),
     '心灵巫女': (lambda: [clone.maiden()], '帝国：收回被克隆体控制的单位（J8）'),
+    '船闸闸门': (lambda: [_gate()], '摆设：横在水道上的闸门（挡不住船：闸关着时用"锁住"留住舰队；A5 / S5）'),
 }
+
+
+def _gate():
+    from missions import lock_bench
+    return lock_bench.gate_unit()
 NAMES = {k: what for k, (_, what) in _MAKE.items()}
 
 

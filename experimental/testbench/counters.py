@@ -129,11 +129,21 @@ def read(img, n):
     counter read 253): the lines with text beyond the n counters are taken as such and skipped. Only the lines
     from the top without a break count: a speck on the ground below the counters (bench 2026-10-25, A4 at s59: a
     1-px column on line 3) slid every reading a line down."""
-    lines = 0
-    while lines < MAX_LINES and glyphs(img, line_box(lines)):
-        lines += 1
-    skip = max(0, lines - n)
-    return [read_line(img, line_box(k + skip, n)) for k in range(n)]
+    lines = []
+    while len(lines) < MAX_LINES and glyphs(img, line_box(len(lines))):
+        lines.append(len(lines))
+    # a countdown's value has a colon ("4:13"): skipped wherever it stands -- a countdown shown after the counters
+    # stands below them (bench 2026-10-27, S5 trap: "援军到达 4:13" under the one counter read as 4213)
+    lines = [k for k in lines if not countdown(glyphs(img, line_box(k)))] or lines
+    skip = max(0, len(lines) - n)
+    keep = lines[skip:] + list(range(len(lines) and lines[-1] + 1, MAX_LINES))
+    return [read_line(img, line_box(keep[k], n)) if k < len(keep) else None for k in range(n)]
+
+
+def countdown(gs):
+    """A line's value glyphs hold a colon: a glyph with an empty row inside it (two dots one above the other; no
+    digit has a gap across its whole width)."""
+    return any(len(m) > 2 and not m[1:-1].any(1).all() for _, _, m in gs)
 
 
 def calibrate(img):

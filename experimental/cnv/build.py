@@ -21,6 +21,10 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 import parts                                    # noqa: E402  (puts experimental/campaign on the path)
 from checks import a4 as check_a4               # noqa: E402
+from checks import a5 as check_a5               # noqa: E402
+from checks import s5 as check_s5               # noqa: E402
+from checks import s6 as check_s6               # noqa: E402
+from checks import j7 as check_j7               # noqa: E402
 from checks import a7 as check_a7               # noqa: E402
 from checks import j4 as check_j4               # noqa: E402
 from checks import a8 as check_a8               # noqa: E402
@@ -40,7 +44,7 @@ from checks import plan_words as check_pw       # noqa: E402
 from checks import ai as check_ai               # noqa: E402
 from checks import lock as check_lock           # noqa: E402
 from units import tesla as units_tesla          # noqa: E402
-from missions import a4, a7, a8, j4, beacon_bench, burrow_bench, clone_bench, combo_bench, crane_bench, icewall_bench, jammer_bench, liberty_bench, shikigami_bench, \
+from missions import a4, a5, a7, a8, j4, j7, s5, s6, beacon_bench, burrow_bench, clone_bench, combo_bench, crane_bench, icewall_bench, jammer_bench, liberty_bench, shikigami_bench, \
     tesla_bench, train_bench, probe_bench, plan_words_bench, ai_bench, ai_plan_bench, lock_bench  # noqa: E402
 
 BENCH_PY = os.path.join(os.path.dirname(ROOT), 'envs', 'bench_mcp', 'Scripts', 'python.exe')
@@ -65,6 +69,10 @@ MISSIONS = {
                                   'idle': check_a4.idle, 'harbour': check_a4.harbour, 'stop': check_a4.stop,
                                   'early': check_a4.early, 'tough': check_a4.tough,
                                   'north': check_a4.north, 'camp': check_a4.camp, 'free': check_a4.free}),
+    'a5': (lambda: a5.mission(), {'hold': check_a5.hold, 'win': check_a5.win}),
+    's5': (lambda: s5.mission(), {'trap': check_s5.trap, 'escape': check_s5.escape}),
+    's6': (lambda: s6.mission(), {'hold': check_s6.hold, 'lose': check_s6.lose}),
+    'j7': (lambda: j7.mission(), {'win': check_j7.win, 'late': check_j7.late}),
     'j4': (lambda: j4.mission(), {'breach': check_j4.breach, 'play': check_j4.play, 'lose': check_j4.lose}),
     'a7': (lambda: a7.mission(), {'jumps': check_a7.jumps, 'pick': check_a7.pick, 'defend': check_a7.defend,
                                   'power': check_a7.power, 'win': check_a7.win, 'east': check_a7.east,
@@ -127,7 +135,7 @@ def _music_bench(name='music_bench'):
     """Imported only when asked for: it pulls in experimental/music, which no other build needs."""
     import importlib
     return importlib.import_module(f'missions.{name}')
-LEVELS = ('a4', 'a7', 'a8', 'j4')                          # campaign levels: each has a card in docs/story/levels.md (the rest:
+LEVELS = ('a4', 'a5', 'a7', 'a8', 'j4', 'j7', 's5', 's6')                          # campaign levels: each has a card in docs/story/levels.md (the rest:
                                                 # A/B controls and bench scenes)
 
 

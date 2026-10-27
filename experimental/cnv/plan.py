@@ -506,7 +506,17 @@ class Compiler:
             on = '无敌' in a
             return [('UNIT_CHANGE_OBJECT_STATUS', n, 'UNATTACKABLE', int(on))
                     for n in self.part_names(a['无敌' if on else '取消无敌'])]
-        if '出动' in a:                             # placed troops sent off (retail: an ambush set out on time)
+        if '技能' in a:                             # a button of ours pressed (the jammer's jam, the burrower's
+            parts = self.parts(a.get('角色', ''))     # burrow): what the unit publishes as an ability
+            if not parts:
+                raise PlanError(f'action {a!r}: {{技能: <ability>, 角色: <role>}}')
+            return [('NAMED_USE_COMMANDBUTTON_ABILITY', self.m.cast[p].name, self.m.ability(p, a['技能']))
+                    for p in parts]
+        if '锁住' in a or '放开' in a:              # IMMOBILE: it does not move, whatever it is ordered (a lock's
+            on = '锁住' in a                         # fleet: a structure on the water bars no ship, bench 2026-10-27)
+            return [('UNIT_CHANGE_OBJECT_STATUS', n, 'IMMOBILE', int(on))
+                    for n in self.part_names(a['锁住' if on else '放开'])]
+        if '出动' in a:                            # placed troops sent off (retail: an ambush set out on time)
             if not (a.get('打') or a.get('守')):
                 raise PlanError(f'action {a!r}: 出动 <role> with 打 <site / role / 猎杀> or 守 <site>')
             if a.get('打') in self.devices:

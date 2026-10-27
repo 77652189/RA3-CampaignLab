@@ -58,3 +58,19 @@ def test_bright_ground_under_the_counters_is_no_line():
         a[y + 2:y + 13, s:s + 4] = SAND
     img = Image.fromarray(a)
     assert counters.glyphs(img, counters.line_box(0)) and not counters.glyphs(img, counters.line_box(2))
+
+
+def test_a_countdown_under_the_counters_is_skipped(monkeypatch):
+    """Bench 2026-10-27 (S5 trap): a countdown shown after the counters stands below them ("援军到达 4:13"); its
+    colon (two dots, a gap between) marks it, wherever it stands."""
+    img = frame([(24, 32), (24, 30)])
+    a = np.asarray(img).copy()
+    x, y, *_ = counters.line_box(1)
+    a[y:y + counters.HEIGHT, 30:52] = BOX       # the second line's value: "4" (24-30), ":" (32-34), "1" (36-40)
+    a[y + 3:y + 6, 32:34] = a[y + 9:y + 12, 32:34] = TEXT
+    a[y + 1:y + 14, 36:40] = TEXT
+    img = Image.fromarray(a)
+    assert counters.countdown(counters.glyphs(img, counters.line_box(1)))
+    assert not counters.countdown(counters.glyphs(img, counters.line_box(0)))
+    monkeypatch.setattr(counters, 'read_line', lambda img, box: box[1])
+    assert counters.read(img, 1) == [counters.line_box(0)[1]]
