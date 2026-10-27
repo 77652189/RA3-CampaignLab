@@ -61,6 +61,31 @@ LAYOUT = '''- one square image, a 2 x 2 grid of four equal panels, plain flat li
 - the SAME unit with the SAME design in all four panels, same scale in the three orthographic panels, whole unit
   visible with margin, centred, even soft studio lighting, no cast shadow on the background.'''
 
+# A hero shot finds a big unit's design before its sheet (user 2026-10-26: the Liberty sheets lacked grandeur --
+# orthographic panels, a high camera and vehicle-sized references make anything read small). The sheet is then
+# drawn with the chosen hero shot as a reference (--from).
+HERO = '''- one wide cinematic concept painting (16:9), NOT a sheet, no panels, no text, no labels, no logos.
+- low camera near the ground, looking up at the ship as it passes overhead above a snowy battlefield; the ship
+  fills most of the frame and runs out past one edge, so it feels too big for the picture.
+- scale: a few tiny Allied tanks and a small base building on the ground below, and soldiers, so the ship reads
+  as hundreds of metres long; atmospheric haze between the camera and the far end of the hull.
+- its anti-gravity emitters cast cyan light onto the ground and the haze below; a squadron of its small drone
+  fighters dropping out of the flank bays.
+- dramatic but clear light: overcast sky with a break of sun; the design must still read clearly.'''
+HERO_STYLE = '''- Red Alert 3 world and design language (Allied: cool silver-grey gunmetal armour, saturated blue team-colour
+  panels, cyan-white lights), painted as a high-end cinematic concept art frame, more realistic than the game
+  asset but the same design; not anime, not photoreal CGI render.'''
+GRAND = {'liberty': '''GRANDEUR (the earlier designs read like a squat toy; fix that):
+- long and massive: length about 2 to 2.5 times its width, a heavy overhanging prow, a deep armoured keel below
+  the hull, many stacked tiers rising toward the citadel; strong long horizontal lines plus a few tall verticals
+  (the citadel, antenna masts).
+- extreme detail density against huge clean armour masses: hundreds of tiny lit windows in bands, small hatches,
+  gun ports, ribbing, deck lights; nothing on it looks bigger than a building's window.
+- the anti-gravity emitters are huge glowing rings and discs along the keel, the size of buildings.''',
+         'libertyisle': '''GRANDEUR: it must feel like a piece of land and a national monument hanging in the sky -- heavy raw rock
+mass below, dense fortress detail (hundreds of tiny lit windows, hatches, deck lights) against huge masses above,
+the statue towering over everything; nothing on it looks bigger than a building's window except the statue.'''}
+
 # unit: faction, retail reference sheets (REF/<name>_grid.png), what it is
 BRIEFS = {
     'chronolag': ('allied', ['guardian', 'athena'], '''UNIT: "Chrono-Lag Artillery" (Allied faction, tier 2 support artillery). It does no damage: it fires a
@@ -75,21 +100,55 @@ field gun.
 - Rear: a squat cylindrical chrono reactor / capacitor drum on the back deck with a cyan glowing window strip.
 - Silhouette must read clearly from a high top-down RTS camera: big simple shapes first (track pods, hull, turret,
   barrel with rings, rear drum), small details second.'''),
-    'liberty': ('allied', ['carrier', 'guardian'], '''UNIT: "Liberty Sky Carrier" (Allied signature super-unit, docs/story/units.md 5.2.1). A huge FLYING
-PLATFORM, not a ship and not a troop transport: read it as a small floating fortress -- a piece of Allied base
-that flies. It hovers; under it a chronosphere ring can jump the whole deck, with the ground units below, across
-the map.
-- Deck: a broad, nearly square flight deck (width about 0.9 x its length), thick armoured hull under it, like the
-  retail Allied aircraft carrier's deck and island cut loose from the sea; deck markings as plain stripes only.
-- On the deck: a deck factory -- a boxy hangar block at the rear with a big door and a ramp edge -- that builds
-  ground units; a control island tower with radar and antennas on one side; a drone launch strip along the other
-  side; three EMPTY round turret mounts (armoured ring sockets) near three deck corners -- turrets are separate.
-- Lift: four large ducted-fan engines in armoured nacelles at the four corners, fans facing down.
-- Underside: a large chronosphere ring set in the hull's belly, glowing cyan-white, visible in the side, back and
+    # v1 (a flying aircraft-carrier deck with corner fans) was turned down 2026-10-26: not a carrier, a grand
+    # sci-fi sky battleship (the user's touchstones: Mental Omega's Paradox Engine, Ultraman Gaia's anti-gravity
+    # warships launching modular fighters, retail's Giga Fortress as the idea -- none of them copied)
+    'liberty': ('allied', ['guardian', 'athena'], '''UNIT: "Liberty" (Allied signature super-unit, docs/story/units.md 5.2.1): a colossal ANTI-GRAVITY SKY
+BATTLESHIP -- a flying fortress, the Allies' answer to a floating island. NOT an aircraft carrier, NOT a sea ship
+with fans, NOT a troop transport. It should feel as grand as a cinematic CG capital ship, yet stay a chunky,
+readable Red Alert 3 game asset. Original design: do not copy any existing game or film ship.
+- Hull: one massive armoured hull, broad and heavy, layered in stepped tiers like a fortress (thick lower keel,
+  middle gun decks, upper citadel); big clean armour masses with fine detail on top. Wide enough to hide what is
+  under it: from above, its outline is a broad shape (about 0.4 to 0.5 as wide as it is long), not a thin needle.
+- Command citadel: a tall stepped bridge tower rising from the middle-rear, the highest point, with a band of
+  lit bridge windows and a radar / chrono antenna crown.
+- Anti-gravity: no fans, no propellers, no rocket jets. It floats on glowing anti-gravity emitters: several big
+  round cyan-white emitter discs or rings set into the underside and the flanks, with a faint cyan glow; plus one
+  larger chronosphere ring in the centre of the belly. The glow must be visible in the side, back and
   three-quarter views.
-- Proportions: a big super-unit (about 10 times a Guardian tank across), but flat: hull plus deck about 1/5 of its
-  width high, the island tower the tallest thing. Silhouette from the high RTS camera: square deck, four corner
-  fans, tower, hangar block, three ring sockets.'''),
+- Modular fighters: launch bays along both flanks -- rows of open hangar slots with small arrow-shaped drone
+  fighters docked in them, ready to drop out (they read as plug-in modules of the ship).
+- Deck factory: a large armoured drop-bay door in the belly or the rear, where ground vehicles are lowered.
+- Turrets: three EMPTY round armoured turret sockets (ring mounts, no guns in them) on the upper decks, two
+  forward and one aft -- the turrets are separate models.
+- Scale cues so it reads as huge: rows of tiny lit windows, small hatches and deck lights, hangar doors with tiny
+  fighters in them -- tiny details against very large masses.
+- Proportions: a super-unit about 10 times a Guardian tank in length; hull with keel about 1/2 of its width
+  high, the citadel the tallest thing. Silhouette from the high RTS camera: the broad armoured hull, the citadel, the flank
+  fighter bays, three ring sockets; team-colour blue on the big upper armour plates.'''),
+    # the user 2026-10-26: what felt oppressive in RA3 were its story set pieces -- Mount Rushmore's laser heads, the
+    # Emperor's floating island fortress, Uprising's Giga Fortress in its sky form: a landmark or a piece of land
+    # turned into a weapon, far bigger than a vehicle. Liberty Island lifted into the sky is the Allies' own.
+    'libertyisle': ('allied', ['guardian', 'athena'], '''UNIT: "Liberty" (Allied signature super-unit, docs/story/units.md 5.2.1), in Red Alert 3's
+tongue-in-cheek alternate history: a hawkish US commander's flagship that is LIBERTY ISLAND ITSELF torn out of New
+York harbour and lifted into the sky by Allied anti-gravity -- a flying monument-fortress, the Allies' answer to
+the Empire's floating island fortress and to Mount Rushmore's laser heads. Grand, oppressive, a little absurd.
+Original design (no copy of any game or film ship); not a vehicle, a piece of land and monument turned into a
+weapon.
+- Base: the island's eleven-pointed STAR FORT (Fort Wood) as a huge armoured platform; under it a massive
+  inverted cone of raw bedrock and harbour rubble, bound with steel bands and riveted armour, hanging below like
+  a floating mountain.
+- On top: the Statue of Liberty on her pedestal at the centre, kept recognisable but militarised -- armour
+  plates on the pedestal, her raised torch is a glowing cyan chronosphere beacon (the deck jump), antenna masts
+  around her crown rays.
+- Around her, on the star fort's walls and bastions: Allied fortress works -- armoured blocks with rows of tiny lit
+  windows, a hangar-door drop bay that lowers ground vehicles, launch slots with small arrow-shaped drone fighters
+  in them, and three EMPTY round armoured turret sockets (ring mounts, no guns) on three of the star's points.
+- Lift: huge glowing cyan-white anti-gravity rings clamped around the rock cone and under the bastions; no fans,
+  no propellers, no jets. A big chronosphere ring around the cone's tip.
+- Proportions: a super-unit about 10 times a Guardian tank across, roughly round from above (the star fort), the
+  statue the tallest thing; the rock cone below about as deep as the fort is wide. From the high RTS camera: the
+  star outline, the statue, three ring sockets, blue team-colour on the fortress roofs.'''),
     'icesculpture': ('ice', ['glacier06', 'snowman'], '''PROP: "Festival Ice Sculpture" for a snow festival plaza (the Sapporo snow festival). Enemy soldiers hide
 inside it; it shatters when the convoy comes close. Read it as a carved festival showpiece, not a natural glacier.
 - Subject: an Eastern (Japanese) dragon coiled around itself, head raised and turned forward, mouth open, long
@@ -102,12 +161,30 @@ inside it; it shatters when the convoy comes close. Read it as a carved festival
 }
 
 
-def prompt(unit, note=''):
+def prompt(unit, note='', hero=False, source=False):
     faction, refs, brief = BRIEFS[unit]
     names = ', '.join(refs)
     kind = KIND.get(faction, 'unit')
     what = f'{faction} {kind}' if kind == 'unit' else f'{faction} {kind} (a map object, not a vehicle)'
-    return f'''Generate ONE image with your image generation tool. Do not write code, do not run commands, do not edit files. Just generate the image and reply with one short sentence.
+    head = 'Generate ONE image with your image generation tool. Do not write code, do not run commands, do not edit files. Just generate the image and reply with one short sentence.'
+    if hero:
+        return f'''{head}
+
+The attached images are reference sheets rendered from the retail game Command & Conquer: Red Alert 3 ({faction} {kind}s: {names}). They show the faction's design language and how small its ordinary units are. Design a NEW {what} in that design language and show it in a cinematic hero shot.
+
+{brief}
+{GRAND.get(unit, '')}
+{note}
+STYLE:
+{HERO_STYLE}
+
+SHOT (strict):
+{HERO}
+'''
+    if source:
+        note = ('The LAST attached image is the chosen design (a cinematic hero shot): draw exactly that ship -- '
+                'same silhouette, tiers, citadel, bays and emitters -- as the game asset on the sheet.\n' + note)
+    return f'''{head}
 
 The attached images are reference sheets rendered from the retail game Command & Conquer: Red Alert 3 ({faction} {kind}s: {names}). They define the ART STYLE, the SCALE and the SHEET LAYOUT. Design a NEW {what} in exactly that style and lay it out exactly like the reference sheet.
 
@@ -133,19 +210,23 @@ def codex():
     return exe
 
 
-def generate(unit, note=''):
+def generate(unit, note='', hero=False, source=None):
+    """hero: a cinematic shot (h<N>.png) instead of a sheet; source: an image the sheet must follow"""
     _, refs, _ = BRIEFS[unit]
     out = os.path.join(UNITS, unit, 'gpt')
     os.makedirs(out, exist_ok=True)
-    n = 1 + sum(1 for f in os.listdir(out) if f.startswith('v') and f.endswith('.png'))
-    run = os.path.join(out, f'v{n}_run')
+    p = 'h' if hero else 'v'
+    n = 1 + sum(1 for f in os.listdir(out) if f.startswith(p) and f.endswith('.png'))
+    run = os.path.join(out, f'{p}{n}_run')
     os.makedirs(run, exist_ok=True)
-    text = prompt(unit, note)
+    text = prompt(unit, note, hero, bool(source))
     open(os.path.join(run, 'prompt.txt'), 'w', encoding='utf-8').write(text)
     cmd = [codex(), 'exec', '--skip-git-repo-check', '-s', 'read-only', '-C', run, '--json',
            '-o', os.path.join(run, 'last.txt')]
     for r in refs:
         cmd += ['-i', os.path.join(REF, r + '_grid.png')]
+    if source:
+        cmd += ['-i', os.path.abspath(source)]
     cmd.append('-')
     with open(os.path.join(run, 'events.jsonl'), 'w', encoding='utf-8') as ev, \
             open(os.path.join(run, 'stderr.txt'), 'w', encoding='utf-8') as err:
@@ -158,10 +239,11 @@ def generate(unit, note=''):
     images = sorted(glob.glob(os.path.join(CODEX_IMAGES, thread or '-', '*.png')), key=os.path.getmtime)
     if not images:
         raise SystemExit(f'no image from thread {thread}; see {run}')
-    sheet = os.path.join(out, f'v{n}.png')
+    sheet = os.path.join(out, f'{p}{n}.png')
     shutil.copy(images[-1], sheet)
     print(sheet)
-    views(sheet, os.path.join(out, f'v{n}_views'))
+    if not hero:
+        views(sheet, os.path.join(out, f'v{n}_views'))
     return sheet
 
 
@@ -210,7 +292,11 @@ def views(sheet, out, size=1024):
 
 
 if __name__ == '__main__':
-    if sys.argv[1] == '--views':
-        views(sys.argv[2], sys.argv[3])
+    args = sys.argv[1:]
+    if args[0] == '--views':
+        views(args[1], args[2])
     else:
-        generate(sys.argv[1], ' '.join(sys.argv[2:]))
+        hero = '--hero' in args
+        src = args[args.index('--from') + 1] if '--from' in args else None
+        rest = [a for i, a in enumerate(args) if a != '--hero' and a != '--from' and (i == 0 or args[i - 1] != '--from')]
+        generate(rest[0], ' '.join(rest[1:]), hero=hero, source=src)
