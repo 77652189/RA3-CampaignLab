@@ -15,6 +15,8 @@
 接入规矩（总控定的，`docs/plan.md` 分工表）：单位线只换外观（模型、贴图、残骸、死亡特效），尺寸、血量、速度、机制归关卡线。每个外观函数都能用 `model=None` / `texture=None` / `cargo=None` 关掉。
 
 **构建依赖**：这些模型写在 SDK 共享的 `Art/` 里，不进 git。换机器或清过 SDK，先跑 `ice_kit.py` 和 `convoy_kit.py`（时滞炮车由 `make_campchrono.py` 写）。
+- 只靠原版就能重建的：冰墙、长条冰墙、冰核、两种碎冰、工兵贴图（`ice_kit.py`）、货柜（`convoy_kit.py`）。
+- 只能从 `work/` 里的 Tripo 原件重建的（gitignore，丢了要从 Tripo 账号重新导出）：冰雕 `CNIceSculpt`（`work/units/icesculpture/tripo/icesculpture_v1.glb` → Blender 跑 `tripo_unit.py icesculpture` → `ice_kit.py CNIceSculpt`）、时滞炮车 `CNChrono`（`tripo_unit.py chronolag` → `make_campchrono.py`）。`ice_kit.py` 缺冰雕原件时跳过它、照做其余，并打印缺哪个文件、怎么补。
 
 花费：GPT 出图 5 张（订阅额度内）；Tripo 用了 130 积分（时滞炮车 80、冰雕 50），剩 3075。
 

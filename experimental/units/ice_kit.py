@@ -109,6 +109,14 @@ def textures():
     return os.path.join(retail_texture.OUT, 'IL_Glacier01.png')
 
 
+def missing(model):
+    """The files prop() reads that are not there: the props are rebuilt only from tripo_unit.py's bake of a Tripo
+    download under work/ (gitignored), not from retail like the kits."""
+    src = os.path.join(labpaths.WORK, 'units', PROPS[model], 'game')
+    return [p for p in (os.path.join(src, f) for f in (model + '.png', model + '_nrm.png', 'parts.json'))
+            if not os.path.exists(p)]
+
+
 def prop(model):
     """A Tripo prop baked by tripo_unit.py written as a W3X in the kits' ice: its bake scaled per channel so its
     median colour is CNIce's (a de-lit Tripo bake is near white, as the glacier was), little specular, no glow, no
@@ -167,7 +175,11 @@ def main(models):
     by = retail_mesh.library()
     tex = textures()
     print('engineer texture ->', engineer_texture())
+    skipped = []
     for model in [m for m in models or sorted(PROPS) if m in PROPS]:
+        if missing(model):
+            skipped.append(model)
+            continue
         prop(model)
     for model in [m for m in models or sorted(KITS) if m in KITS]:
         obj, n = build(by, model)
@@ -179,6 +191,14 @@ def main(models):
             grid.paste(Image.open(f'{prefix}_{v}.png').convert('RGB').resize((768, 768)), ((k % 2) * 768, (k // 2) * 768))
         grid.resize((1024, 1024), Image.LANCZOS).save(prefix + '_grid.png')
         print(model, n, 'triangles ->', prefix + '_grid.png')
+    for model in skipped:
+        unit = PROPS[model]
+        print(f'SKIPPED {model}: missing ' + ', '.join(missing(model)) + '\n  it is rebuilt only from the Tripo '
+              f'download (tripo_unit.py UNITS["{unit}"]["glb"], under work/; re-export it from the Tripo account if '
+              f'lost): blender -b --factory-startup -P experimental/units/tripo_unit.py -- {unit}, then '
+              f'ice_kit.py {model}')
+    if skipped and models:
+        raise SystemExit(1)
 
 
 if __name__ == '__main__':
