@@ -72,8 +72,14 @@
 
 ## 下一步
 
-1. 用户看调亮后的时滞炮车、冰幕工兵和冰雕截图。
-2. 接着做：车队运输车（原版矿车藏掉矿斗 `ORE_BUCKET`，加第二个绘制模块挂原版雪地货柜 `AP_SNOWYCARGOCONTAINER01`）、自由号（平台主体用 Tripo 或代码，炮塔和建筑件取原版）。
+1. 用户看调亮后的时滞炮车、冰幕工兵、冰雕、车队运输车截图。
+2. 接着做自由号（平台主体用 Tripo 或代码，炮塔和建筑件取原版）。它现在套的是基洛夫 `SUBomberAircraft_SKN`，XML 点名的骨骼有 `B_Bombs`、`B_Prop05`、`FX_Fire_02/03`、`FX_WEAPON`，新模型要带上这些骨骼，或者改 XML。
+
+## 车队运输车（2026-10-26 测试台通过）
+
+- 矿车的矿石绘制模块 `ModuleTag_Draw_Ore` 换成货柜 `CNConvoyCargo`（`convoy_look.dress`）。货柜是原版雪地货柜 `AP_SNOWYCARGOCONTAINER01` 缩到 0.72 倍、放进车斗（`convoy_kit.py`，位置写在模型里，按车的原点画）。行驶中跟车走。截图 `work/units/convoy/review/bench_1026.png`。
+- 坑：Blender 预览里的位置和游戏里差约 3 个单位（游戏里偏后），以测试台为准。
+- 同样还没接进 `experimental/cnv/units/convoy.py`，等总控答复。
 3. 改 `experimental/cnv/units/*.py` 里的模型引用之前先问总控（关卡线在用这些单位跑测试）。新体系 `experimental/cnv` 还不支持挂自制模型，接入方式要和总控商量。
 
 ## 坑
