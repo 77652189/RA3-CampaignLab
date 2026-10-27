@@ -11,7 +11,7 @@
 | 总控 | 路线和优先级、各线接口、审查与合并、测试台排队、本文件和需求 / 架构 / ADR | `docs/plan.md`、`requirements.md`、`architecture.md`、`docs/adr/` |
 | 关卡 | 策划案语言和编译器、机关、关卡检查、各关玩法；这轮地图重做合并以后，地图也归关卡线（新关卡的地图跟着关卡一起设计） | `docs/story/plans/`、`experimental/cnv/plan.py`、`plancheck.py`、`devices/`、`checks/`、`missions/` |
 | 地图（这一轮） | 三张地图的轮廓、地形、原版布景；地点名一个都不删、不改义。在自己的分支上做，合并后这条线结束 | `experimental/cnv/maps/`、`experimental/campaign/platmap.py`、`platprops.py` |
-| 单位 | 新单位建模（先出一个样品给用户定风格，再批量），在自己的分支上做 | `experimental/units/` |
+| 单位 | 新单位建模（先出一个样品给用户定风格，再批量），在自己的分支上做 | `experimental/units/`；`experimental/cnv/units/` 里只改外观（模型、贴图、残骸、死亡特效的接线），尺寸、血量和机制归关卡线 |
 | 音乐 | 自制配乐、曲谱图、战况音乐 | `experimental/music/`、`docs/music/` |
 | 配音 | AI 中文配音 mod（另一个仓库 RA3-ChineseVoice） | — |
 
