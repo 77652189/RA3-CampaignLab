@@ -20,8 +20,9 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 
 
 async def run(steps, out):
+    # the whole environment: mcp passes only a few system variables by default, and RA3_BENCH_SLOTS / RA3_SHARED went
     params = StdioServerParameters(command=sys.executable, args=['-I', '-X', 'utf8', os.path.join(HERE, 'bench_mcp.py')],
-                                   cwd=ROOT)
+                                   cwd=ROOT, env=dict(os.environ))
     async with stdio_client(params) as (r, w):
         async with ClientSession(r, w) as s:
             await s.initialize()
