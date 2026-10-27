@@ -198,7 +198,7 @@ SHOT (strict):
 '''
     if source:
         # the user 2026-10-26: for modelling keep only the main elements, the rest confuses Tripo
-        note = ('The LAST attached image is the chosen design (a cinematic hero shot): draw that design -- same '
+        note = ('The LAST attached image(s) are the chosen design (cinematic hero shots): draw that design -- same '
                 'silhouette and main parts -- as the game asset on the sheet. This sheet feeds an image-to-3D '
                 'model generator, so SIMPLIFY: keep only the main forms as big clean shapes; drop small clutter '
                 '(little buildings, pipes, masts, tiny windows beyond a few bands, flying fighters, snow, smoke, '
@@ -230,7 +230,7 @@ def codex():
 
 
 def generate(unit, note='', hero=False, source=None):
-    """hero: a cinematic shot (h<N>.png) instead of a sheet; source: an image the sheet must follow"""
+    """hero: a cinematic shot (h<N>.png) instead of a sheet; source: images the sheet must follow"""
     _, refs, _ = BRIEFS[unit]
     out = os.path.join(UNITS, unit, 'gpt')
     os.makedirs(out, exist_ok=True)
@@ -244,8 +244,8 @@ def generate(unit, note='', hero=False, source=None):
            '-o', os.path.join(run, 'last.txt')]
     for r in refs:
         cmd += ['-i', os.path.join(REF, r + '_grid.png')]
-    if source:
-        cmd += ['-i', os.path.abspath(source)]
+    for s in source or []:
+        cmd += ['-i', os.path.abspath(s)]
     cmd.append('-')
     with open(os.path.join(run, 'events.jsonl'), 'w', encoding='utf-8') as ev, \
             open(os.path.join(run, 'stderr.txt'), 'w', encoding='utf-8') as err:
@@ -316,6 +316,6 @@ if __name__ == '__main__':
         views(args[1], args[2])
     else:
         hero = '--hero' in args
-        src = args[args.index('--from') + 1] if '--from' in args else None
+        src = [args[i + 1] for i, a in enumerate(args) if a == '--from']
         rest = [a for i, a in enumerate(args) if a != '--hero' and a != '--from' and (i == 0 or args[i - 1] != '--from')]
         generate(rest[0], ' '.join(rest[1:]), hero=hero, source=src)
