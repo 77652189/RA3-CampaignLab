@@ -82,8 +82,8 @@ GRAND = {'liberty': '''GRANDEUR (the earlier designs read like a squat toy; fix 
 - extreme detail density against huge clean armour masses: hundreds of tiny lit windows in bands, small hatches,
   gun ports, ribbing, deck lights; nothing on it looks bigger than a building's window.
 - the anti-gravity emitters are huge glowing rings and discs along the keel, the size of buildings.''',
-         'libertyisle': '''GRANDEUR: it must feel like a piece of land and a national monument hanging in the sky -- heavy raw rock
-mass below, dense fortress detail (hundreds of tiny lit windows, hatches, deck lights) against huge masses above,
+         'libertyisle': '''GRANDEUR: it must feel like a national monument turned into a flying fortress -- a heavy armoured
+mechanical mass below, dense fortress detail (hundreds of tiny lit windows, hatches, deck lights) against huge masses above,
 the statue towering over everything; nothing on it looks bigger than a building's window except the statue.'''}
 
 # unit: faction, retail reference sheets (REF/<name>_grid.png), what it is
@@ -135,19 +135,21 @@ York harbour and lifted into the sky by Allied anti-gravity -- a flying monument
 the Empire's floating island fortress and to Mount Rushmore's laser heads. Grand, oppressive, a little absurd.
 Original design (no copy of any game or film ship); not a vehicle, a piece of land and monument turned into a
 weapon.
-- Base: the island's eleven-pointed STAR FORT (Fort Wood) as a huge armoured platform; under it a massive
-  inverted cone of raw bedrock and harbour rubble, bound with steel bands and riveted armour, hanging below like
-  a floating mountain.
+- Base: the island's eleven-pointed STAR FORT (Fort Wood) as a huge armoured platform. Under it NO rock, NO soil,
+  NO rubble (the user 2026-10-26: once it has flown, nothing of the ground is left): a fully MECHANICAL armoured
+  underside, a deep stepped keel of armour plates tapering downward under the fort, like the belly of an Allied
+  dreadnought.
 - On top: the Statue of Liberty on her pedestal at the centre, kept recognisable but militarised -- armour
   plates on the pedestal, her raised torch is a glowing cyan chronosphere beacon (the deck jump), antenna masts
   around her crown rays.
 - Around her, on the star fort's walls and bastions: Allied fortress works -- armoured blocks with rows of tiny lit
   windows, a hangar-door drop bay that lowers ground vehicles, launch slots with small arrow-shaped drone fighters
   in them, and three EMPTY round armoured turret sockets (ring mounts, no guns) on three of the star's points.
-- Lift: huge glowing cyan-white anti-gravity rings clamped around the rock cone and under the bastions; no fans,
-  no propellers, no jets. A big chronosphere ring around the cone's tip.
+- Lift: gravity-repulsor emitters like a sci-fi dreadnought's -- big round recessed discs set flush into the
+  armoured belly, concentric rings glowing cyan-white, one under each star point plus a ring of them around the
+  keel; no fans, no propellers, no jets. The largest emitter, at the keel's lowest point, is the chronosphere.
 - Proportions: a super-unit about 10 times a Guardian tank across, roughly round from above (the star fort), the
-  statue the tallest thing; the rock cone below about as deep as the fort is wide. From the high RTS camera: the
+  statue the tallest thing; the armoured keel below about half as deep as the fort is wide. From the high RTS camera: the
   star outline, the statue, three ring sockets, blue team-colour on the fortress roofs.'''),
     'icesculpture': ('ice', ['glacier06', 'snowman'], '''PROP: "Festival Ice Sculpture" for a snow festival plaza (the Sapporo snow festival). Enemy soldiers hide
 inside it; it shatters when the convoy comes close. Read it as a carved festival showpiece, not a natural glacier.
@@ -182,8 +184,12 @@ SHOT (strict):
 {HERO}
 '''
     if source:
-        note = ('The LAST attached image is the chosen design (a cinematic hero shot): draw exactly that ship -- '
-                'same silhouette, tiers, citadel, bays and emitters -- as the game asset on the sheet.\n' + note)
+        # the user 2026-10-26: for modelling keep only the main elements, the rest confuses Tripo
+        note = ('The LAST attached image is the chosen design (a cinematic hero shot): draw that design -- same '
+                'silhouette and main parts -- as the game asset on the sheet. This sheet feeds an image-to-3D '
+                'model generator, so SIMPLIFY: keep only the main forms as big clean shapes; drop small clutter '
+                '(little buildings, pipes, masts, tiny windows beyond a few bands, flying fighters, snow, smoke, '
+                'ground, sky).\n' + note)
     return f'''{head}
 
 The attached images are reference sheets rendered from the retail game Command & Conquer: Red Alert 3 ({faction} {kind}s: {names}). They define the ART STYLE, the SCALE and the SHEET LAYOUT. Design a NEW {what} in exactly that style and lay it out exactly like the reference sheet.
