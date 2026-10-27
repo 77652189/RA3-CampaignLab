@@ -63,6 +63,9 @@ NORTH_RUN = 420.0                               # north: watched this long after
 CAMP_FIRST = 5.0                                # camp: the barracks down this long after the harbour turns
 CAMP_LAST = 45.0                                # camp: ... the factory
 CAMP_GO = 20.0                                  # camp: the lead truck off the halt within this after
+FREE_AWAY = 300.0                               # free: the engineer sent this far down the road from the gate
+FREE_MARGIN = 15.0                              # free: the block's square, a little wider (his own size)
+FREE_OUT = 10.0                                 # free: out of it within this after it stands (~2 s orders, 180 at 40)
 TSUNAMI = 'JapanAntiVehicleVehicleTech1'        # camp: the revenge wave's tank (北营报复), the enemy's only ones
 
 
@@ -254,6 +257,36 @@ def early(m):
                  ('出发', 0, '==', 0, EARLY_FIRE + EARLY_AFTER - LEAD),          # not before the wall's 10 s
                  ('出发', EARLY_FIRE, 'ever==', 1, leave - LEAD)]                # well before its time
     t.bench = [('bench_watch', dict(seconds=leave + 5, every=2, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+def free(m):
+    """The engineer who iced plaza 1's gate as a player would (walked up from the road, the power aimed at the
+    gate) is not shut inside his own block: he stood 70 from the gate, nearer than he stops to build (units/icewall.py
+    stand), so the block comes out round him -- the plazas put him outside it, on the road side, at once (devices/
+    ice_plazas.py Clear); sent off down the road then, he walks away."""
+    m.drop_endings()
+    t = Test()
+    start(t, m)
+    walk_to(t, m)
+    x, y = m.point('seal 1')
+    away = -1 if m.site('convoy start')[1] < y else 1
+    t.waypoints['Test Engineer Away'] = (x, y + away * FREE_AWAY)
+    who, wall = m.role('engineer 1').name, ice_wall(m)
+    built = EARLY_FIRE + WALK_BUILD
+    t.scripts += [Script('Test - seal set', [], [('SET_MILLISECOND_TIMER', 'Test - seal timer', EARLY_FIRE)]),
+                  Script('Test - seal', [('TIMER_EXPIRED', 'Test - seal timer')],
+                         [('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', who, m.ability('engineer 1', 'freeze'),
+                           m.mark('seal 1')), ('SET_MILLISECOND_TIMER', 'Test - away timer', WALK_BUILD + 2)]),
+                  Script('Test - away', [('TIMER_EXPIRED', 'Test - away timer')],
+                         [('MOVE_NAMED_UNIT_TO', who, 'Test Engineer Away'),
+                          ('UNIT_CHANGE_OBJECT_STATUS', who, 'UNATTACKABLE', 1)])]
+    counted('Test Walls', '冰墙', t, template=wall.id)
+    t.areas['Test Block'] = square(x, y, wall.params['length'] / 2 + FREE_MARGIN)
+    counted('Test In Block', '工兵在冰块里', t, named=who, area='Test Block')
+    t.expect += [('冰墙', EARLY_FIRE, 'ever==', 1, built),
+                 ('工兵在冰块里', built, '==', 0, built + FREE_OUT + 6)]       # out before he is told to go
+    t.bench = [('bench_watch', dict(seconds=built + FREE_OUT + 8, every=2, sheet=False, lines=len(t.counters)))]
     return t
 
 

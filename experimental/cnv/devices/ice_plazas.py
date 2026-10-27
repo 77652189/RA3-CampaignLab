@@ -30,6 +30,7 @@ from units import festival as fest
 from units import icewall as iw
 
 GATE_AREA = 90.0                                # half-side of the area a wall must stand in to hold a gate
+CLEAR_MARGIN = 5.0                              # an engineer this near the gate's block counts as shut in it
 WALL_SIDE = 160.0                               # the block spans the head of the gate's ramp (120 wide)
 OWN = ('每座兵', '每座几个', '无敌', '补兵')     # what 广场 <k> may set for its plaza
 
@@ -52,7 +53,7 @@ class IcePlazas(Device):
         # (units/icewall.py seed: a bar comes out at 45 degrees whatever is asked, and the gates stayed open)
         self.wall = iw.wall(f'CNV_{c.tag}IceWall', length=WALL_SIDE, shape='square')
         self.core = iw.seed(f'CNV_{c.tag}IceSeed', self.wall.id)
-        self.eng = iw.engineer(wall_id=self.core.id)
+        self.eng = iw.engineer(wall_id=self.core.id, stand=iw.clear_of(self.wall))   # not shut in his own block
         self.sculpt = fest.sculpture()
         self.units = [self.eng, self.core, self.wall, self.sculpt]
         self.names = {'冰幕工兵': self.eng, '冰雕': self.sculpt}
@@ -116,6 +117,12 @@ class IcePlazas(Device):
                     m.cast[f'troop {k}-{i}-{n}'] = Role(kinds[n - 1], self.troop(k, i, n), 's1', [f'plaza {k}'])
             gate = f'CNV {tag} Gate {k}'
             m.areas[gate] = square(*m.point(f'seal {k}'), GATE_AREA)
+            # an engineer the gate's block comes out round (he stood closer than `stand` when told): put outside it,
+            # away from the plaza (bench 2026-10-26, ice_turns clear: shut in, he could not walk out)
+            (sx, sy), (px, py) = m.point(f'seal {k}'), m.site(f'plaza {k}')
+            far = iw.clear_of(self.wall) / max(1.0, ((sx - px) ** 2 + (sy - py) ** 2) ** 0.5)
+            m.areas[f'CNV {tag} Block {k}'] = square(sx, sy, WALL_SIDE / 2 + CLEAR_MARGIN)
+            m.waypoints[f'CNV {tag} Clear {k}'] = (sx + (sx - px) * far, sy + (sy - py) * far)
             m.areas[f'CNV {tag} Plaza {k}'] = square(*m.site(f'plaza {k}'), m.where(f'plaza {k}').r)
             p1 = m.player('p1')
             self.walls[k] = (('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', p1, 3, 1, self.wall.id, gate),
@@ -223,6 +230,9 @@ class IcePlazas(Device):
                                       [('SET_FLAG', block, 0)], once=False))
             # each gate counts once the first time it is walled; while a wall stands its time left shows
             out.append(Script(f'CNV {tag} - Sealed {k}', [walled], [('INCREMENT_COUNTER', 1, self.sealed)]))
+            out += [Script(f'CNV {tag} - Clear {k} of {j + 1}', [walled, ('NAMED_INSIDE_AREA', e, f'CNV {tag} Block {k}')],
+                           [('UNIT_TELEPORT_TO_WAYPOINT', e, f'CNV {tag} Clear {k}')], once=False)
+                    for j, e in enumerate(self.engineers())]
             timer, up = f'CNV {tag} Ice {k}', f'CNV_{tag}_Ice_{k}'
             label = f'SCRIPT:CNV{tag}_ICE{k}'
             m.strings[label] = f'{k} 号冰墙'
@@ -233,6 +243,13 @@ class IcePlazas(Device):
                            [('SET_FLAG', up, 0), ('HIDE_COUNTDOWN_TIMER', timer)], once=False)]
             m.countdowns.append(timer)
         return out
+
+    def engineers(self):
+        """Every engineer of the mission by name: the cast's, and those the plan's scripts create (给; scripts() runs
+        after the plan's own are compiled)."""
+        names = [r.name for r in self.m.cast.values() if r.template == self.eng.id]
+        return list(dict.fromkeys(names + [a[1] for s in self.m.scripts for a in s.do
+                                           if a[0] == 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT' and a[2] == self.eng.id]))
 
     def alive(self, k, i, n):
         return f'CNV_{self.c.tag}_Alive_{k}_{i}_{n}'

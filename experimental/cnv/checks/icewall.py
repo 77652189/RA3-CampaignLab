@@ -15,6 +15,11 @@ FREEZE_AT = 10.0
 ATTACK_AT = 10.0
 STRIP = 50.0                                    # half-side of the strip area behind the wall's middle
 GOAL = 100.0
+CLEAR_FIRE = 8.0                                # clear: told to freeze then, from the away point (~220 off at 40)
+CLEAR_STANDS = 20.0                             # clear: the block whole by then (172 back at 40, 5.5 s building)
+CLEAR_SIZE = 10.0                               # clear: the engineer's own radius, round the block's square
+CLEAR_AWAY = 300.0                              # clear: sent this far south of the spot
+CLEAR_OUT = 12.0                                # clear: out within this
 
 
 def latched(t, counter, label, who, area):
@@ -60,6 +65,37 @@ def turns(m):
         latched(t, f'Test {k} Crossed', f'{k} 穿过', m.role(f'runner {k}').name, f'Test Strip {k}')
     t.expect += [('C 穿过', 0, '==', 0), ('A 穿过', go, 'ever==', 1), ('B 穿过', go, 'ever==', 1)]
     t.bench = [('bench_watch', dict(seconds=go + 20, every=3, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+def clear(m):
+    """The engineer is not shut in his own block (A4's: a core that leaves a 160 square): walked up from afar, he
+    stops to build far enough off (units/icewall.py stand) that once it stands he is clear of its square, and sent
+    off he walks away. Bench 2026-10-26: at stand 30 it came out round him and he could not walk out of it."""
+    t = Test()
+    who, k = m.role('engineer C').name, 'C'
+    x, y = m.point(f'spot {k}')
+    t.waypoints['Test Away'] = (x, y - CLEAR_AWAY)
+    t.scripts += [Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1')),
+                                              ('MOVE_NAMED_UNIT_TO', who, 'Test Away'),
+                                              ('SET_MILLISECOND_TIMER', 'Test - freeze timer', CLEAR_FIRE),
+                                              ('SET_MILLISECOND_TIMER', 'Test - away timer', CLEAR_STANDS + 4)]),
+                  Script('Test - freeze', [('TIMER_EXPIRED', 'Test - freeze timer')],
+                         [('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', who, m.ability(f'engineer {k}', 'freeze'),
+                           m.mark(f'spot {k}'))]),
+                  Script('Test - away', [('TIMER_EXPIRED', 'Test - away timer')],
+                         [('MOVE_NAMED_UNIT_TO', who, 'Test Away')])]
+    core = next(u for u in m.units if u.id == m.param(f'engineer {k}', 'wall'))
+    side = core.params['wall']                  # the block the core leaves
+    half = next(u for u in m.units if u.id == side).params['length'] / 2
+    t.areas['Test Block'] = square(x, y, half + CLEAR_SIZE)
+    counted('Test In Block', '工兵在冰块里', t, named=who, area='Test Block')
+    counted('Test Walls', '冰墙', t, template=side)
+    t.expect += [('冰墙', 0, 'ever==', 1, CLEAR_STANDS),
+                 ('工兵在冰块里', CLEAR_STANDS, '==', 0, CLEAR_STANDS + 4),               # not inside it at all
+                 ('工兵在冰块里', CLEAR_STANDS + 4, 'ever==', 0, CLEAR_STANDS + 4 + CLEAR_OUT)]
+    t.bench = [('bench_watch', dict(seconds=CLEAR_STANDS + 6 + CLEAR_OUT, every=2, sheet=False,
+                                    lines=len(t.counters)))]
     return t
 
 

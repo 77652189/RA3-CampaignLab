@@ -100,6 +100,14 @@ def seed(id='CNV_IceSeed', wall_id='CNV_IceWall', angle=0, assembly=5, size=40):
     return u
 
 
+def clear_of(w, size=15):
+    """An engineer's `stand` that keeps him (`size` across) out of wall w however it lies about the spot: its
+    half-diagonal and his size."""
+    p = w.params
+    side = p['length'] if p['shape'] in ('square', 'disc') else p['thick']
+    return round(((p['length'] / 2) ** 2 + (side / 2) ** 2) ** 0.5 + size)
+
+
 def retail_engineer(id='CNV_SovEngineer', structure='SovietBunker'):
     """Retail's Soviet engineer under our id, his bunker power as it is, building `structure` (the walk-and-build
     way, kept as a check)."""
@@ -111,10 +119,15 @@ def retail_engineer(id='CNV_SovEngineer', structure='SovietBunker'):
                 what=f'对照：原版苏联工程师，freeze = 原版造地堡的技能，造 {structure}', params=dict(wall=structure))
 
 
-def engineer(id='CNV_IceEngineer', wall_id='CNV_IceWall', reach=300, reload='20s', build=True, assembly='5s'):
+def engineer(id='CNV_IceEngineer', wall_id='CNV_IceWall', reach=300, reload='20s', build=True, assembly='5s',
+             stand=30):
     """build (the user's decision, 2026-10-22): he walks to the spot and stands building for `assembly` -- exposed
     meanwhile -- the Soviet engineer's bunker way (AssembleStructure), its LOCATION_AND_ANGLE target: placing, a drag
-    turns the wall. build=False: the wall appears at a point within `reach` (an OCL; ice_spawn's linking check)."""
+    turns the wall. build=False: the wall appears at a point within `reach` (an OCL; ice_spawn's linking check).
+
+    stand: how far from the spot he stops to build. A core's wall comes out bigger than the core, over whatever stands
+    there (seed: it ignores other objects): bench 2026-10-26 (ice_turns clear), at 30 a 160 square came out round
+    him and he could not walk out of it -- give him the wall's half-diagonal and his own size."""
     ids = dict(power=f'SpecialPower_{id}_Freeze', command=f'Command_{id}_Freeze', commandset=f'{id}CommandSet',
                button=f'Button_{id}_Freeze', ocl=f'OCL_{id}_Wall')
     x = open(os.path.join(SAGE, 'Allied', 'Units', 'AlliedEngineer.xml'), encoding='utf-8').read()
@@ -127,7 +140,7 @@ def engineer(id='CNV_IceEngineer', wall_id='CNV_IceWall', reach=300, reload='20s
         x = sub1(x, '</Behaviors>', f'''	<SpecialPower id="ModuleTag_CNV_FreezeTrigger" SpecialPowerTemplate="{ids['power']}"
 				UpdateModuleStartsAttack="true"/>
 			<AssembleStructureSpecialAbilityUpdate id="ModuleTag_CNV_Freeze" SpecialPowerTemplate="{ids['power']}"
-				StartAbilityRange="30" BusyDuringAssembly="true" NewObjectAssemblyTime="{assembly}"
+				StartAbilityRange="{stand}" BusyDuringAssembly="true" NewObjectAssemblyTime="{assembly}"
 				ModelConditionsOnAssembly="BUILD_VARIATION_ONE">
 				<StructureTemplate>{wall_id}</StructureTemplate>
 			</AssembleStructureSpecialAbilityUpdate>
@@ -175,4 +188,4 @@ def engineer(id='CNV_IceEngineer', wall_id='CNV_IceWall', reach=300, reload='20s
                 names=ids, abilities={'freeze': ids['power']},
                 what=(f'冰幕工兵（盟军工程师底）：freeze 走到一点站着造 {assembly}，造出一道 {wall_id}（放置时拖动可转方向）'
                       if build else f'冰幕工兵（盟军工程师底）：freeze 在 {reach} 以内的一点冻出一道 {wall_id}'),
-                params=dict(wall=wall_id, reach=reach, reload=reload, build=build, assembly=assembly))
+                params=dict(wall=wall_id, reach=reach, reload=reload, build=build, assembly=assembly, stand=stand))

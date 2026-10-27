@@ -43,7 +43,7 @@ def turns(name='CampIceT'):
         shape = opts.get('shape', 'bar')
         w = iw.wall(f'CNV_IceWallT{tag}', length=160, shape=shape)
         core = iw.seed(f'CNV_IceSeedT{tag}', w.id, angle=opts['angle'])
-        e = iw.engineer(f'CNV_IceEngT{tag}', wall_id=core.id)
+        e = iw.engineer(f'CNV_IceEngT{tag}', wall_id=core.id, stand=iw.clear_of(w))
         m.units += [w, core, e]
         m.put(RUNNER, 'west field', dx, -150, name=f'UNIT - CNV Runner {tag}', role=f'runner {tag}', angle=1.5708)
         m.put(e.id, 'west field', dx - 60, WALL_Y - 50, name=f'UNIT - CNV Ice Engineer {tag}', role=f'engineer {tag}')
