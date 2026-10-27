@@ -9,8 +9,8 @@ the session reads and checks -- agy's word is a draft, never the proof (run the 
   --edit     let agy change files there (accept-edits); without it agy only reads and answers (plan mode)
   --minutes  hard limit; agy's print mode can hang without a terminal (antigravity-cli issue 318), so it is killed
   --out      where the answer goes (default: next to the brief, <brief>.answer.md)
-  --model    default Gemini 3.8 Flash; claude-opus-4-6-thinking for reviews and harder code (also the Google
-             quota); `agy models` lists them
+  --model    default Gemini 3.8 Flash (a blind review of the map branch found the real problem in full); the Claude
+             models in agy have a tiny quota (one review ran it out for ~5 h); `agy models` lists them
 
 Every call is logged to <LAB>\shared\outsource\log.jsonl (who, where, how long, how it ended) so the coordinator
 sees what went out and what came back.
