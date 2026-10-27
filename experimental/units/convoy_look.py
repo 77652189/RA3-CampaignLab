@@ -7,12 +7,9 @@ ore (convoy_kit.py's CNConvoyCargo), on a bench scene to look at -- CampConvoyLo
   python -I -X utf8 experimental/units/convoy_look.py         -> Documents\Red Alert 3\Mods\CampConvoyLook
 (from a worktree set CNV_SDK to the shared SDK; run convoy_kit.py first)
 
-dress(unit) is the whole change the unit module needs: the collector's ore draw (ModuleTag_Draw_Ore, the gold
-filling its bin as it mines) becomes one of the container, drawn at the truck's origin (the model carries its place
-in the bin).
+convoy.truck() wears it by default since 2026-10-26 (convoy.dress).
 """
 import os
-import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -22,28 +19,11 @@ from maps import island                         # noqa: E402
 from units import convoy                        # noqa: E402
 
 NAME = 'CampConvoyLook'                         # <= 15 characters, no underscore
-CARGO = 'CNConvoyCargo'
 GUARDIAN = 'AlliedAntiVehicleVehicleTech1'
 
 
-def dress(unit, model=CARGO):
-    x, n = re.subn(r'<ScriptedModelDraw\s+id="ModuleTag_Draw_Ore".*?</ScriptedModelDraw>', f'''<ScriptedModelDraw id="ModuleTag_Draw_Cargo" OkToChangeModelColor="false">
-				<ModelConditionState ParseCondStateType="PARSE_DEFAULT">
-					<Model Name="{model.upper()}" />
-				</ModelConditionState>
-				<AnimationState ParseCondStateType="PARSE_DEFAULT">
-				</AnimationState>
-			</ScriptedModelDraw>''', unit.xml, count=1, flags=re.S)
-    assert n == 1, n
-    x, n = re.subn(r'<Includes>', f'<Includes>\n\t\t<Include type="all" source="ART:{model}.w3x" />', x, count=1)
-    assert n == 1, n
-    unit.xml = x
-    unit.params['model'] = model
-    return unit
-
-
 def mission():
-    truck = dress(convoy.truck('CNV_ConvoyTruckL'))
+    truck = convoy.truck('CNV_ConvoyTruckL')
     m = parts.Mission(name=NAME, map=island, units=[truck])
     m.put(truck.id, 'west field', 60, 60, name='UNIT - CNV Look Truck', role='truck', angle=0.0)
     m.put(truck.id, 'west field', 250, -200, name='UNIT - CNV Look Truck B', role='truck moving')
