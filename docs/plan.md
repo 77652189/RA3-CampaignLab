@@ -15,6 +15,11 @@
 | 音乐 | 自制配乐、曲谱图、战况音乐 | `experimental/music/`、`docs/music/` |
 | 配音 | AI 中文配音 mod（另一个仓库 RA3-ChineseVoice） | — |
 
+**外包给谷歌（用户 2026-10-26，省 Claude 额度）**：用户的谷歌 AI Pro 额度通过反重力命令行（`agy`，装在 `%LOCALAPPDATA%\agy\bin`）调用，各线用 [`experimental/outsource/agy_task.py`](../experimental/outsource/agy_task.py)：写一份任务说明，脚本跑一次 agy，回答落到文件，每次记进 `<LAB>\shared\outsource\log.jsonl`。
+- **该外包**：读得多、判断少、有明确完成标准的活——原版脚本 / 地图 / 数据的批量调研，独立审查的第二意见（代替开 Claude 子 Agent），测试、文档、字幕和文案的初稿，有测试兜底的机械改动。
+- **不外包**：测试台（共享锁）、提交和推送、本文件和 ADR、架构和玩法决定、要用户拍板的事。
+- **怎么用**：默认只读（任何目录都行，改了文件即判失败）；`--edit` 只在自己的工作树或临时副本里用。默认模型 Gemini 3.8 Flash；审查和较难的代码加 `--model claude-opus-4-6-thinking`（同样走谷歌额度）。回答只是草稿：看改动、跑测试之后才算数。额度用尽或报错时自己做，并告诉总控。
+
 内容线已从 RA3-ChineseVoice 拆成独立仓库，并随两条线整体搬到 `Documents\RA3Modding\`（2026-10-18）。从零做战役地图、新单位（建模 → 贴图 → 骨骼 → 逻辑 → 生产按钮/头像 → 玩法）、编地图流、测试台自动化都已在游戏里跑通。测试台提速已完成：按画面导航（`run_bench.ps1 -Nav`，23 秒进关卡，原来约 66 秒，3/3 稳定）和世界坐标→屏幕坐标标定（`experimental/testbench/calib.py`，平均误差 12 像素）。测试台能移动镜头：左键点小地图把镜头中心移到该点，`calib.world_to_minimap` 给出世界坐标对应的小地图点，`calib.world_to_screen_at` 给出移动后的屏幕坐标（小地图标定：`make_campnew28.py CNV_CALIB=minimap`，四辆我方守护者的蓝点；雾里的敌人不画在小地图上；方向键几乎不动镜头）。
 
 ## 待启动 / 进行中
