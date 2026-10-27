@@ -10,22 +10,23 @@
 | 冰幕工兵：冰墙 `CNIceWall` / 长条 `CNIceBar`、冰核 `CNIceSeed`、碎冰 `CNIceRubble`、工兵贴图 `CNIceEngineer` | 原版冰岛冰川 `IL_GLACIER*` 拼装（`ice_kit.py`），工兵只换贴图 | 通过（`work/units/ice/review/bench_1026.png`）；`ice_block`、`ice_build` PASS | 已接：`icewall.py` 默认穿冰的外观（提交 0af20c1） |
 | 冰雕 `CNIceSculpt`（冰龙） | GPT 四格图 → Tripo 多视图 → `tripo_unit.py` 道具分支 → `ice_kit.prop` | 通过（同上截图） | 已接：`festival.py`（雪堆仍是地堡外观） |
 | 车队运输车 `CNConvoyCargo` | 原版矿车，矿石模块换成原版雪地货柜（`convoy_kit.py`） | 通过（`work/units/convoy/review/bench_1026.png`）；A4 `stop`、`win` PASS | 已接：`convoy.py`（提交 27f8b9a） |
-| 自由号 | 概念图 v1 已出（`work/units/liberty/gpt/v1.png`）：方形飞行甲板、四角风扇、塔楼、甲板机库、三个空炮塔底座、底部青色超时空环 | — | — |
+| 自由号 `CNLiberty` + 女神像 `CNLibStatue` | 用户否了航母版（v1），定为"飞起来的自由岛"：场景图 `work/units/libertyisle/gpt/h6.png` 定设计 → 三视图 v4 → Tripo（整块，没分部件）→ `tripo_unit.py libertyisle`（`kind='platform'`）→ `liberty_kit.py`（平台按时滞炮车的调色写；原版纽约 `NY_LIBERTY` 女神像去掉基座、转向前方、火炬改青色发光，站在核心柱顶 `STATUE` 骨骼上）；测试关 `liberty_look.py`（`CampLibLook`） | 看过两次：宽 400 太大、女神像顶到镜头；按用户选的缩到宽 280（`liberty_kit.SCALE`），女神像约等于核心柱高（`work/units/libertyisle/review/bench280_*.png`） | 没有（`liberty_look.dress` 只在测试关里换外观；接进 `liberty.py` 要总控同意） |
 
 接入规矩（总控定的，`docs/plan.md` 分工表）：单位线只换外观（模型、贴图、残骸、死亡特效），尺寸、血量、速度、机制归关卡线。每个外观函数都能用 `model=None` / `texture=None` / `cargo=None` 关掉。
 
 **构建依赖**：这些模型写在 SDK 共享的 `Art/` 里，不进 git。换机器或清过 SDK，先跑 `ice_kit.py` 和 `convoy_kit.py`（时滞炮车由 `make_campchrono.py` 写）。
 - 只靠原版就能重建的：冰墙、长条冰墙、冰核、两种碎冰、工兵贴图（`ice_kit.py`）、货柜（`convoy_kit.py`）。
-- 只能从 `work/` 里的 Tripo 原件重建的（gitignore，丢了要从 Tripo 账号重新导出）：冰雕 `CNIceSculpt`（`work/units/icesculpture/tripo/icesculpture_v1.glb` → Blender 跑 `tripo_unit.py icesculpture` → `ice_kit.py CNIceSculpt`）、时滞炮车 `CNChrono`（`tripo_unit.py chronolag` → `make_campchrono.py`）。`ice_kit.py` 缺冰雕原件时跳过它、照做其余，并打印缺哪个文件、怎么补。
+- 只能从 `work/` 里的 Tripo 原件重建的（gitignore，丢了要从 Tripo 账号重新导出）：冰雕 `CNIceSculpt`（`work/units/icesculpture/tripo/icesculpture_v1.glb` → Blender 跑 `tripo_unit.py icesculpture` → `ice_kit.py CNIceSculpt`）、时滞炮车 `CNChrono`（`tripo_unit.py chronolag` → `make_campchrono.py`）、自由号 `CNLiberty`（`work/units/libertyisle/tripo/libertyisle_v1.glb` → `tripo_unit.py libertyisle` → `liberty_kit.py`，女神像从原版重建）。`ice_kit.py` 缺冰雕原件时跳过它、照做其余，并打印缺哪个文件、怎么补。
 
-花费：GPT 出图 5 张（订阅额度内）；Tripo 用了 130 积分（时滞炮车 80、冰雕 50），剩 3075。
+花费：GPT 出图约 20 张（订阅额度内）；Tripo 用了 180 积分（时滞炮车 80、冰雕 50、自由号 50），剩 3025。
 
 ## 下一步
 
-1. **自由号**：等用户看概念图 v1 的方向。认可后：`concept_gpt.py --views` 已切好四张视图（`work/units/liberty/gpt/v1_views/`）→ 请用户把四张图拖进 Tripo 多视图 → 生成（是否分部件要先想好：风扇、塔楼、机库可以分开，便于以后做动画、拆炮塔）→ Blender。
-   - 它现在套的是基洛夫 `SUBomberAircraft_SKN`。`liberty.py` 的 XML 点名的骨骼有 `B_Bombs`、`B_Prop05`、`FX_Fire_02`、`FX_Fire_03`、`FX_WEAPON`，新模型要带上这些，或者改 XML。
-   - 甲板半径是 150（`deck_radius`），模型要做到 250 到 300 宽，才能把跃迁特效盖住（`docs/story/units.md` 5.2.1）。
-   - 改 `liberty.py` 前先问总控。
+1. **自由号**：外观已过测试台（宽 280）。剩下的：
+   - 接进 `liberty.py`（要总控同意）：把 `liberty_look.dress` 搬过去，默认穿新外观。模型已带基洛夫 XML 点名的骨骼（`B_Bombs`、`B_Prop05`、`FX_Fire_02/03`、`FX_WEAPON`，位置是估的）。
+   - 要关卡线一起定的：跃迁半径（现在 150，平台宽 280 正好盖住）；炮塔装到六个炮塔座上（现在的炮塔是跟着飘的无人机，`turret()`），座的位置要从模型里量出来做成骨骼。
+   - 还没做：陀螺环（单独的会转的模型）、底部光圈跃迁时张开、头冠七根光芒做跃迁倒计时（设计见 `concept_gpt.py` 的 `libertyisle` 说明和这次对话：剧情说法"她本来就是灯塔 + 埃菲尔铁骨是超时空天线"等用户定）。
+   - 设计规律（大型空中要塞，参考各家即时战略游戏）：一个视觉中心、威胁朝下、悬浮旋转部件显科技、盟军流线型而不是方块、弱点是看得出的独立模块。写在 `concept_gpt.py` 的 `libertyisle` 说明里。
 2. 时滞炮车接进新体系：新体系里还没有它的单位模块，要和总控商量放哪。
 3. 雪堆（`festival.bank`）还没有自己的外观。
 4. 时滞炮车可以改进：UV 小块太多、概念图没画展开支腿、履带没有滚动贴图。
@@ -50,7 +51,10 @@
 - 面板窄时开关在可视区外：先 `resize_window` 到 1280×800。打开"去光处理"。
 - 打开"分部件生成"会自动关掉"贴图生成"，生成完再用"贴图生成"补。
 - 面板隐藏时截图里看不到对话框，但页面脚本能读、能点。导出先变成 `.tmp`，写完才改名成 `.glb`；核对 glTF 头里的长度。
-- 全自动的办法：装 Claude in Chrome 扩展（有上传工具），或者开 Tripo API key（单独计费）。
+- 全自动的办法：Claude in Chrome 扩展——用户的学校账号没有这个权限，用不了；开 Tripo API key（单独计费）；或者用 Playwright 驱动本机的 Edge（没做）。内置浏览器拦截网页访问 127.0.0.1（`ERR_BLOCKED_BY_CLIENT`），本机起服务器喂图的路走不通。DCC Bridge 只能把做好的模型推进 Blender，帮不了上传。
+- 网址是 `studio.tripo3d.com`（`.ai` 是另一个版本）。新版多视图是上传方式的第二个图标（四格），第三个是"最多 10 张"。
+- 生成后进"贴图生成"页，参考图会自动带过来（刷新生成页反而会丢）；贴图 20 积分。分部件开关点"生成"后会被页面复位，这次实际没分部件（扣 30）。
+- 导出对话框在截图里看不见，用页面脚本读、改文件名、点"导出"；按钮变灰就是在打包，两百万面的模型大约一分钟，落到 `Downloads`。模型太大时视口可能加载失败（QUIC 报错），刷新再点一次资产卡片。
 
 ## 坑
 
@@ -59,6 +63,9 @@
   - 时滞炮车的亮度系数封顶在 1，设的值低于烘焙贴图的中位亮度时只会压暗。
   - 原版碎冰物体是中立方，会染成红色。
   - Blender 预览里货柜的位置和游戏里差约 3 个单位，以测试台为准。
+  - 几百单位宽的模型，`tripo_unit.renders` 的相机要加大裁剪距离（默认 100 会渲出空图）。
+  - 大单位先看在 RTS 镜头里的尺寸：宽 400 时一屏只装得下一角，女神像顶到镜头。
+  - 原版地图道具在游戏阳光下偏黄（女神像的铜绿）：每通道压一点红、低高光（`liberty_kit.COPPER`）。
 - **XML**：`FXListBehavior` 不能变空（编译器报内容不完整），要换特效而不是删掉。
 - **测试台**：
   - 场景别放在 `west field` 西边（x < −100 是浅水，工兵会骑水上摩托过去）。
