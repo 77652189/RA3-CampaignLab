@@ -6,6 +6,7 @@ two models written to the SDK's Art folder --
                 chrono-lag's look (cool silver, cyan glow lifted, retail Allied maps)
   CNLibStatue   retail New York's Statue of Liberty (NY_LIBERTY, World Builder's stream) without her pedestal (the
                 core is her pedestal), stood on STATUE, her torch a cyan chrono beacon (glow)
+  CNLibRings    three glowing gyroscope rings around her, tilted, each turning on its own pivot (CNLibRings_IDLE)
 
   python -I -X utf8 experimental/units/liberty_kit.py        (from a worktree set CNV_SDK; run tripo_unit.py first)
 
@@ -104,6 +105,59 @@ def statue(top, width):
 
 OUT = os.path.join(labpaths.WORK, 'units', 'libertyisle')
 
+# the gyroscope rings hovering around her (concept h4..h6: technology shown by floating, turning parts): each its own
+# pivot over the core, its band tilted on that pivot and the pivot turning about Z, so a tilted ring sweeps round
+# like an armillary sphere; (radius, tilt, phase, turns per loop) as fractions of the width / degrees
+RINGS = MODEL[:2] + 'LibRings'
+RING_SET = [(0.18, 22, 0, 1), (0.22, 48, 60, -1), (0.26, 70, 120, 2)]
+RING_LOOP = 240                                 # frames at 30 fps: the slowest ring turns once in 8 s
+
+
+def rings(top, statue_tall, width):
+    """CNLibRings (+ _IDLE, the looping turn): three thin bands, metal outside and on top, a cyan glowing track on
+    the inner wall and underneath (SPM green), centred at her waist."""
+    import math
+    zc = top + 0.45 * statue_tall
+    # half the band's radial thickness and height (0.008 / 0.011 read as chunky toy hoops on the bench)
+    t, h = 0.005 * width, 0.0065 * width
+    parts, pivots = [], []
+    for k, (r, tilt, phase, _) in enumerate(RING_SET):
+        rr = r * width
+        geo = w3x.lathe([(rr + t, h), (rr + t, -h), (rr - t, -h), (rr - t, h), (rr + t, h)], segments=48)
+        a, p = math.radians(tilt), math.radians(phase)
+        tilt_x = ((1, 0, 0), (0, math.cos(a), -math.sin(a)), (0, math.sin(a), math.cos(a)))
+        turn_z = ((math.cos(p), -math.sin(p), 0), (math.sin(p), math.cos(p), 0), (0, 0, 1))
+        geo = w3x.transform(w3x.transform(geo, tilt_x), turn_z)
+        pivots.append((f'RING{k + 1}', 0, (0.0, 0.0, zc)))
+        parts.append((f'RING{k + 1}', k + 1, geo))
+
+    # v along the profile: 0..0.25 outer wall, ..0.5 bottom, ..0.75 inner wall, ..1 top; the middle half glows,
+    # whichever way the rows run
+    def glow(y):
+        return 0.25 <= y / 63 <= 0.75
+
+    w3x.write_texture(RINGS, 64, 64, lambda x, y: (70, 230, 255, 255) if glow(y) else
+                      (150 + 12 * (x % 8 == 0), 156, 168, 255))
+    w3x.write_texture(RINGS + '_NRM', 16, 16, lambda x, y: (128, 128, 255, 255))
+    w3x.write_texture(RINGS + '_SPM', 64, 64, lambda x, y: (40, 255, 0, 255) if glow(y) else (60, 0, 0, 255))
+    w3x.write_model(RINGS, w3x.rig_model(RINGS, pivots, parts, (RINGS, RINGS + '_NRM', RINGS + '_SPM')))
+    # the turn: every ring's pivot about Z at its own whole number of turns per loop, so the loop is seamless
+    up = RINGS.upper()
+    ch = []
+    for k, (_, _, _, turns) in enumerate(RING_SET):
+        ch.append(f'\t\t\t<ChannelQuaternion Pivot="{k + 1}" Type="Orientation" FirstFrame="0">')
+        for f in range(RING_LOOP):
+            a = 2 * math.pi * turns * f / RING_LOOP
+            ch.append(f'\t\t\t\t<Frame X="0.000000" Y="0.000000" Z="{math.sin(a / 2):.6f}" W="{math.cos(a / 2):.6f}"/>')
+        ch.append('\t\t\t</ChannelQuaternion>')
+    w3x.write_model(RINGS + '_IDLE', '\n'.join([
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+        '\t<Includes>', f'\t\t<Include type="all" source="ART:{RINGS}.w3x"/>', '\t</Includes>',
+        f'\t<W3DAnimation id="{up}_IDLE" Hierarchy="{up}_SKL" NumFrames="{RING_LOOP}" FrameRate="30">',
+        '\t\t<Channels>'] + ch + ['\t\t</Channels>', '\t</W3DAnimation>', '</AssetDeclaration>']) + '\n')
+    print(RINGS, sum(len(g[3]) for _, _, g in parts), 'triangles, centred at', f'{zc:.0f}')
+
 
 def preview(statue_obj, statue_tex):
     """The two together rendered as retail_sheet's four views -> work/units/libertyisle/liberty_grid.png."""
@@ -132,6 +186,7 @@ def main():
     width = SCALE * max(max(v[0] for v in verts) - min(v[0] for v in verts),
                         max(v[1] for v in verts) - min(v[1] for v in verts))
     preview(*statue(pv['STATUE'][2], width))
+    rings(pv['STATUE'][2], STATUE_TALL * width, width)
 
 
 if __name__ == '__main__':

@@ -25,9 +25,10 @@ GUARDIAN = 'AlliedAntiVehicleVehicleTech1'
 FACTORY = 'AlliedWarFactory'
 
 
-def dress(unit, model='CNLiberty', statue='CNLibStatue'):
-    """The carrier drawing `model` and `statue` (both at its origin, the statue carrying its place on the core) in
-    place of the Kirov; the drones still launch from FX_WEAPON (CNLiberty carries the Kirov's bone names)."""
+def dress(unit, model='CNLiberty', statue='CNLibStatue', rings='CNLibRings'):
+    """The carrier drawing `model`, `statue` and `rings` (all at its origin, each carrying its place over the core;
+    the rings looping their turn, <rings>_IDLE) in place of the Kirov; the drones still launch from FX_WEAPON
+    (CNLiberty carries the Kirov's bone names)."""
     x, n = re.subn(r'<Draws>.*?</Draws>', f'''<Draws>
 			<ScriptedModelDraw id="ModuleTag_Draw" OkToChangeModelColor="true">
 				<ModelConditionState ParseCondStateType="PARSE_DEFAULT">
@@ -44,11 +45,21 @@ def dress(unit, model='CNLiberty', statue='CNLibStatue'):
 				<AnimationState ParseCondStateType="PARSE_DEFAULT">
 				</AnimationState>
 			</ScriptedModelDraw>
+			<ScriptedModelDraw id="ModuleTag_Draw_Rings" OkToChangeModelColor="false">
+				<ModelConditionState ParseCondStateType="PARSE_DEFAULT">
+					<Model Name="{rings.upper()}" />
+				</ModelConditionState>
+				<AnimationState ParseCondStateType="PARSE_DEFAULT">
+					<Animation AnimationName="{rings.upper()}_IDLE" AnimationMode="LOOP" />
+				</AnimationState>
+			</ScriptedModelDraw>
 		</Draws>''', unit.xml, count=1, flags=re.S)
     assert n == 1, n
     unit.xml = sub1(x, '<Includes>', f'<Includes>\n\t\t<Include type="all" source="ART:{model}.w3x" />'
-                                     f'\n\t\t<Include type="all" source="ART:{statue}.w3x" />')
-    unit.params['look'] = (model, statue)
+                                     f'\n\t\t<Include type="all" source="ART:{statue}.w3x" />'
+                                     f'\n\t\t<Include type="all" source="ART:{rings}.w3x" />'
+                                     f'\n\t\t<Include type="all" source="ART:{rings}_IDLE.w3x" />')
+    unit.params['look'] = (model, statue, rings)
     return unit
 
 
