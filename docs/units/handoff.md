@@ -79,7 +79,7 @@
 
 - 矿车的矿石绘制模块 `ModuleTag_Draw_Ore` 换成货柜 `CNConvoyCargo`（`convoy_look.dress`）。货柜是原版雪地货柜 `AP_SNOWYCARGOCONTAINER01` 缩到 0.72 倍、放进车斗（`convoy_kit.py`，位置写在模型里，按车的原点画）。行驶中跟车走。截图 `work/units/convoy/review/bench_1026.png`。
 - 坑：Blender 预览里的位置和游戏里差约 3 个单位（游戏里偏后），以测试台为准。
-- 同样还没接进 `experimental/cnv/units/convoy.py`，等总控答复。
+- 已接进 `experimental/cnv/units/convoy.py`（总控批准，只换外观：`truck()` 默认带货柜，`cargo=None` 保留矿石）。合并 main 后 pytest 119 过；测试台 A4 `stop`、`win` 都 PASS。
 3. 改 `experimental/cnv/units/*.py` 里的模型引用之前先问总控（关卡线在用这些单位跑测试）。新体系 `experimental/cnv` 还不支持挂自制模型，接入方式要和总控商量。
 
 ## 坑
