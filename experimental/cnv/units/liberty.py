@@ -28,10 +28,16 @@ def sub1(x, old, new):
     return x.replace(old, new, 1)
 
 
-def charging(name, seconds):
-    """The script action that shows the named carrier charging its jump for `seconds` (its crown's rays lighting one
-    by one, the aperture opening: liberty_kit.charge, timed for 15 s); nothing on a carrier not dressed."""
+def charging(name, seconds=0.0):
+    """The script action that shows the named carrier charging its jump (its crown's rays lighting one by one, rings
+    opening round her feet: liberty_kit.charge, timed for 15 s); nothing on a carrier not dressed. seconds: how long,
+    counted in real time (the bench's pauses ran it out early, 2026-10-27); 0 (retail's way): until discharged()."""
     return ('UNIT_SET_MODELCONDITION_GENERIC', name, CHARGING, float(seconds))
+
+
+def discharged(name):
+    """The script action that ends charging(name)."""
+    return ('UNIT_CLEAR_MODELCONDITION', name, CHARGING)
 
 
 def dress(unit, model=LOOK[0], statue=LOOK[1], rings=LOOK[2], charge=LOOK[3]):

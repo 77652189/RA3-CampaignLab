@@ -24,7 +24,11 @@
 
 1. **自由号**：外观已接进 `liberty.py`。模型带基洛夫 XML 点名的骨骼（`B_Bombs`、`B_Prop05`、`FX_Fire_02/03`、`FX_WEAPON`，位置是估的）和炮塔座骨骼 `TURRET01..05`（`liberty_kit.sockets` 从模型量出来：四角加西侧，东侧是升降井）。剩下的：
    - 陀螺环：第一次太粗（`bench_rings_a/b.png`），调细后在测试台上看过，转动、发光正常（`bench_rings_thin_a/b.png`）。
-   - 跃迁充能 `CNLibCharge`（提交 6eee3a9）：报警 15 秒里头冠七根青色光芒每 2 秒亮一根，底部三道光环在第 5、9、12 秒由内向外亮起，像光圈张开。做法：模型状态 `USER_1` 时才画这个模型，动画 `CNLibCharge_CHARGE` 播一次，没亮的部件先藏在地图下面 5000。敌方自由号的报警脚本（`devices/carrier.py`）用 `liberty.charging(名字, 秒数)` 设这个状态（原版脚本动作 `UNIT_SET_MODELCONDITION_GENERIC`）。动画按 15 秒写死；报警时长改了，要同时改 `liberty_kit.CHARGE_SECONDS`。玩家自己的自由号（A8）跃迁没有报警，所以不显示。
+   - 跃迁充能 `CNLibCharge`：报警 15 秒里头冠七根青色光芒每 2 秒亮一根，女神像脚下（核心柱顶）三道光环在第 5、9、12 秒由内向外亮起。测试台看过（`bench_charge_a/b.png`）。
+     - 做法：模型状态 `USER_1` 时才画这个模型，动画 `CNLibCharge_CHARGE` 播一次，没亮的部件先藏在地图下面 5000。
+     - 敌方自由号的报警脚本（`devices/carrier.py`，关卡线的文件，总控已放行）用 `liberty.charging(名字, 秒数)` 设这个状态（原版脚本动作 `UNIT_SET_MODELCONDITION_GENERIC`）。秒数给 0 就一直保持，到时用 `liberty.discharged(名字)` 清掉（原版 A05 反应堆的写法；想让跃迁取消时立刻熄灭可以换成这种）。
+     - 动画按 15 秒写死；报警时长改了，要同时改 `liberty_kit.CHARGE_SECONDS`。玩家自己的自由号（A8）跃迁没有报警，所以不显示。
+     - 光环原来放在龙骨下面（概念图里的"底部光圈"），RTS 镜头下被平台整个挡住，挪到了脚下。光芒最初太细，在正常缩放下像头发丝，加粗了。
    - 还没做：剧情说法（设计见 `concept_gpt.py` 的 `libertyisle` 说明和这次对话：剧情说法"她本来就是灯塔 + 埃菲尔铁骨是超时空天线"等用户定）。
    - 设计规律（大型空中要塞，参考各家即时战略游戏）：一个视觉中心、威胁朝下、悬浮旋转部件显科技、盟军流线型而不是方块、弱点是看得出的独立模块。写在 `concept_gpt.py` 的 `libertyisle` 说明里。
 2. 时滞炮车接进新体系：新体系里还没有它的单位模块，要和总控商量放哪。
@@ -70,6 +74,7 @@
 - **测试台**：
   - 场景别放在 `west field` 西边（x < −100 是浅水，工兵会骑水上摩托过去）。
   - 暂停状态下 `bench_look` 可能拍到菜单，先 `bench_wait 0.5`。
+  - 暂停模式（`hold=true`）下脚本计时器和带时长的模型状态照样按真实时间走，两次调用之间的空档也会算进去。要按秒对时间的效果，用 `bench_start(hold=false)` 连续跑。
   - `cnv_check` 编译的是主仓库的代码。要测本分支的改动，先在本工作目录跑 `build.py <名> --check <项> --plan`（它会编译并装进 Mods），再 `cnv_check(build=false)`。
 - **环境**：
   - 查游戏进程用 PowerShell `Get-Process | ? ProcessName -match ra3`（Git Bash 的 tasklist 会漏）。上测试台前单独查一次，再看 `python -I ra3voice/reslock.py status`（在主仓库目录跑）。

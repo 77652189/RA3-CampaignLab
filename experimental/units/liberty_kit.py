@@ -7,7 +7,7 @@ two models written to the SDK's Art folder --
   CNLibStatue   retail New York's Statue of Liberty (NY_LIBERTY, World Builder's stream) without her pedestal (the
                 core is her pedestal), stood on STATUE, her torch a cyan chrono beacon (glow)
   CNLibRings    three glowing gyroscope rings around her, tilted, each turning on its own pivot (CNLibRings_IDLE)
-  CNLibCharge   the jump's charge-up: her crown's seven rays lighting one by one, the aperture under the keel opening
+  CNLibCharge   the jump's charge-up: her crown's seven rays lighting one by one, rings opening out round her feet
                 (CNLibCharge_CHARGE, 15 s; drawn under USER_1, which the jump warning sets)
 
   python -I -X utf8 experimental/units/liberty_kit.py        (from a worktree set CNV_SDK; run tripo_unit.py first)
@@ -199,7 +199,7 @@ def rings(top, statue_tall, width):
 
 
 # the jump's charge-up (the 15 s warning, devices/carrier.py): her crown's seven rays light one by one as the countdown
-# and the chrono aperture under the keel opens ring by ring; drawn only under USER_1 (liberty.dress), which the warning
+# and rings open out round her feet one by one; drawn only under USER_1 (liberty.dress), which the warning
 # sets for its length, the animation played once from its start
 CHARGE = MODEL[:2] + 'LibCharge'
 CHARGE_SECONDS = 15                             # carrier.py's 预警 default
@@ -208,12 +208,14 @@ APERTURE = [(0.05, 5), (0.085, 9), (0.12, 12)]  # (radius over the width, second
 HIDDEN = -5000.0                                # a part not lit yet waits this far under the map
 
 
-def charge(crown, statue_tall, width):
+def charge(top, crown, statue_tall, width):
     """CNLibCharge (+ _CHARGE): seven glowing cones fanned forward from her crown (each its own pivot) and three
-    glowing rings just under the keel; the animation keeps each part HIDDEN below until its second comes."""
+    glowing rings round her feet over the core's top (`top`); the animation keeps each part HIDDEN below until its
+    second comes. (The rings were first under the keel, as the concept's aperture: the platform hid them from the
+    RTS camera, bench 2026-10-27.)"""
     import math
     parts, pivots, at = [], [], []
-    ray, base = 0.30 * statue_tall, 0.012 * statue_tall
+    ray, base = 0.30 * statue_tall, 0.02 * statue_tall     # 0.012 read as hairlines at the RTS camera's zoom
     for k in range(7):
         az, el = math.radians(-75 + 25 * k), math.radians(15)
         d = (math.cos(el) * math.cos(az), math.cos(el) * math.sin(az), math.sin(el))
@@ -229,7 +231,7 @@ def charge(crown, statue_tall, width):
     for k, (r, s) in enumerate(APERTURE):
         rr = r * width
         geo = w3x.lathe([(rr + t, h), (rr + t, -h), (rr - t, -h), (rr - t, h), (rr + t, h)], segments=48)
-        pivots.append((f'IRIS{k + 1}', 0, (0.0, 0.0, -0.004 * width)))
+        pivots.append((f'IRIS{k + 1}', 0, (0.0, 0.0, top + 0.01 * width)))
         parts.append((f'IRIS{k + 1}', len(pivots), geo))
         at.append(s)
     w3x.write_texture(CHARGE, 8, 8, lambda x, y: (150, 245, 255, 255))
@@ -281,7 +283,7 @@ def main():
     obj, tex, crown = statue(pv['STATUE'][2], width)
     preview(obj, tex)
     rings(pv['STATUE'][2], STATUE_TALL * width, width)
-    charge(crown, STATUE_TALL * width, width)
+    charge(pv['STATUE'][2], crown, STATUE_TALL * width, width)
 
 
 if __name__ == '__main__':

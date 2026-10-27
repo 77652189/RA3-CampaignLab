@@ -36,10 +36,11 @@ def mission():
     m.waypoint('goal', 'CNV Look Goal', 'west field', 150, 500)
     m.scripts += [
         parts.Script('Look - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1')),
-                                          lib.charging(m.role('carrier').name, CHARGE),
-                                          ('SET_MILLISECOND_TIMER', 'Look - go timer', CHARGE + 2.0)]),
+                                          lib.charging(m.role('carrier').name),
+                                          ('SET_MILLISECOND_TIMER', 'Look - go timer', CHARGE)]),
         parts.Script('Look - go', [('TIMER_EXPIRED', 'Look - go timer')],
-                     [('MOVE_NAMED_UNIT_TO', m.role('carrier').name, m.mark('goal'))]),
+                     [lib.discharged(m.role('carrier').name),
+                      ('MOVE_NAMED_UNIT_TO', m.role('carrier').name, m.mark('goal'))]),
     ]
     return m
 
