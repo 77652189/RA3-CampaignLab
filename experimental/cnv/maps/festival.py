@@ -8,14 +8,21 @@ Sapporo's real streets (snow is art, art last).
   - A canal cuts the harbour district off the east end: three bridges (bridge objects, as retail) are the only ground
     way across; the avenue's is the convoy's last stretch before the exit.
   - North and south, a raised plateau each with ramps, ore and an oil derrick: ground worth taking. The player's base
-    has its own pair of ore nodes ~550 off, as retail starts do.
+    has its own pair of ore nodes ~550 off, as retail starts do. A ridge behind the base, wooded hills in the
+    south-west, a shrine on a knoll (tier 3) over the north plateau: backdrop.
+  - The look (retail objects only, platprops): the avenue lined as a park (Odori: trees, lanterns, banners), side
+    streets of Japanese houses up to the plateaus' ramps, the harbour's fish markets and cranes on its quay, the
+    canal walked along on both banks; woods in stands on the hills, rocks at the cliffs' feet, islets off the coast.
 
 Published: SITES (the island's start, base and field sites, and the festival's), PLAYERS, TEAMS, OBJECTS (the map's
-own: ore nodes, tech buildings, bridges -- placed with the terrain, not by a mission), LAYOUT (the terrain).
+own: ore nodes, tech buildings, bridges -- placed with the terrain, not by a mission), SCENERY (kept off every way
+and place, the plazas whole), LAYOUT (the terrain).
 """
 import make_campnew18 as c18
 import platmap
-from platmap import Layout, Ramp, Road, poly, rect
+import platprops
+from platmap import Layout, Ramp, Road, circle, poly, rect, wobble
+from platprops import along, area, cliff_feet, clumps, scatter, shore
 from maps import island
 from parts import Obj, Site
 
@@ -70,26 +77,56 @@ PLAYERS = island.PLAYERS
 TEAMS = dict(island.TEAMS, s1='Soviet_1/teamSoviet_1')
 
 
+CHAMFER = 45.0                                  # a plaza's corners cut off (its front's middle, the gate, stays)
+
+
 def _plazas():
-    shapes, ramps, roads = [], [], []
+    shapes, ramps, roads, footprints = [], [], [], []
     for k, (x, north) in enumerate(zip(PLAZA_X, NORTH), 1):
         s = 1 if north else -1
         y0, y1 = sorted((ROAD_Y + s * PLAZA_FRONT, ROAD_Y + s * PLAZA_BACK))
-        shapes.append(rect(x - PLAZA_HALF, y0, x + PLAZA_HALF, y1, 2, f'plaza {k}'))
+        x0, x1, c = x - PLAZA_HALF, x + PLAZA_HALF, CHAMFER
+        shapes.append(poly([(x0 + c, y0), (x1 - c, y0), (x1, y0 + c), (x1, y1 - c), (x1 - c, y1), (x0 + c, y1),
+                            (x0, y1 - c), (x0, y0 + c)], 2, f'plaza {k}'))
         ramps.append(Ramp((x, ROAD_Y + s * RAMP_FOOT), (x, ROAD_Y + s * RAMP_HEAD), RAMP_WIDTH, f'gate {k}'))
         roads.append(Road(((x, ROAD_Y), (x, ROAD_Y + s * (PLAZA_FRONT + 20))), RAMP_WIDTH - 30))
-    return shapes, ramps, roads
+        footprints.append(((x, y0), (x, y1), 2 * PLAZA_HALF + 20))
+    return shapes, ramps, roads, footprints
 
 
-_ps, _pr, _proads = _plazas()
+_ps, _pr, _proads, PLAZA_FOOTPRINTS = _plazas()
+# the coast: rocky and bent to the west, north and south, a straight quay along the harbour (east of the canal)
+COAST = (wobble([(4150, 600), (3100, 430), (2000, 520), (900, 420), (250, 600), (260, 2000), (420, 2900),
+                 (300, 3800), (600, 4600), (1800, 4500), (3000, 4620), (4100, 4550)], 110.0, 51, closed=False) +
+         wobble([(4100, 4550), (4300, 3700), (4180, 2900), (4150, 2300), (4250, 1600), (4150, 600)], 12.0, 52,
+                closed=False))
+NORTH_PLATEAU = wobble([(2000, 3560), (2650, 3550), (3150, 3550), (3450, 3580), (3530, 3900), (3430, 4300),
+                        (3000, 4420), (2500, 4390), (2050, 4310), (1940, 3900)], 60.0, 53,
+                       keep=[(2650, 3550, 160.0), (3150, 3550, 160.0)])
+KNOLL = wobble([(2080, 4020), (2300, 3990), (2420, 4130), (2350, 4300), (2130, 4300), (2040, 4170)], 30.0, 54)
+SOUTH_PLATEAU = wobble([(2000, 1490), (2350, 1500), (2800, 1510), (3400, 1480), (3480, 1100), (3380, 760),
+                        (2700, 700), (2050, 760), (1930, 1100)], 60.0, 55, keep=[(2350, 1500, 160.0)])
+WEST_RIDGE = wobble([(350, 3200), (1100, 3200), (1150, 3700), (1060, 4300), (600, 4380), (330, 3900)], 70.0, 56,
+                    keep=[(1100, 3200, 230.0)])
+SW_HILLS = wobble([(330, 700), (1100, 590), (1520, 720), (1470, 1130), (1000, 1260), (480, 1170)], 80.0, 57)
+ISLETS = [wobble([(x + r * c, y + r * s) for c, s in ((1, 0), (.7, .7), (0, 1), (-.7, .7), (-1, 0), (-.7, -.7),
+                                                     (0, -1), (.7, -.7))], r * 0.3, 60 + k)
+          for k, (x, y, r) in enumerate(((150, 250, 170), (4650, 1150, 190), (4700, 4100, 150), (1300, 4950, 160),
+                                         (2800, 120, 130)))]
+# streets (ground texture only): up to the plateaus' ramps, along the canal's west bank (round plaza 3), the
+# harbour's street, the way up the west ridge
+STREETS = [((2650, ROAD_Y + 60), (2650, 3330)), ((3150, ROAD_Y + 60), (3150, 3330)),
+           ((2350, ROAD_Y - 60), (2350, 1720)), ((3580, 700), (3580, 2440)), ((3580, 3320), (3580, 4300)),
+           ((3900, 900), (3900, 4250)), ((1300, 2880), (1300, 3000))]
 LAYOUT = Layout(
     shapes=[
-        poly([(250, 600), (900, 420), (2000, 520), (3100, 430), (4150, 600), (4250, 1600), (4150, 2300),
-              (4180, 2900), (4300, 3700), (4100, 4550), (3000, 4620), (1800, 4500), (600, 4600), (300, 3800),
-              (420, 2900), (260, 2000)], 1, 'the island: low ground'),
-        rect(2000, 3550, 3450, 4350, 2, 'north plateau'),
-        rect(2000, 750, 3400, 1500, 2, 'south plateau'),
-        rect(350, 3200, 1100, 4300, 2, 'west ridge behind the base'),
+        poly(COAST, 1, 'the island: low ground'),
+        *[poly(p, 1, 'an islet') for p in ISLETS],
+        poly(NORTH_PLATEAU, 2, 'north plateau'),
+        poly(KNOLL, 3, 'the shrine knoll'),
+        poly(SOUTH_PLATEAU, 2, 'south plateau'),
+        poly(WEST_RIDGE, 2, 'west ridge behind the base'),
+        poly(SW_HILLS, 2, 'the south-west hills'),
         *_ps,
         rect(CANAL[0], 200, CANAL[1], 4800, 0, 'the canal'),
     ],
@@ -100,7 +137,7 @@ LAYOUT = Layout(
         Ramp((2350, 1720), (2350, 1350), 200.0, 'south plateau'),
         Ramp((1300, 3000), (1000, 3400), 180.0, 'west ridge'),
     ],
-    roads=[Road(((1500, ROAD_Y), (4050, ROAD_Y)), 120.0), *_proads])
+    roads=[Road(((1500, ROAD_Y), (4050, ROAD_Y)), 120.0), *_proads, *[Road(s, 90.0) for s in STREETS]])
 
 BRIDGES = [((3590, 2500), (3890, 2500)), ((3590, 3420), (3890, 3420)), ((3590, 1850), (3890, 1850))]
 
@@ -123,6 +160,64 @@ def _objects():
 
 
 OBJECTS = _objects()
+
+WOODS = {'HB_Tree03': 3, 'HB_Tree04': 2, 'HB_Tree05': 2, 'OK_Tree01': 3, 'OK_Tree02': 2, 'TH_Tree01': 1}
+PARK = {'OK_Tree01': 3, 'OK_Tree02': 2, 'TH_Tree02': 2, 'HB_TREE09': 1}
+UNDER = {'OK_Shrub01': 3, 'OK_Shrub04': 2, 'GC_Bush01': 2, 'HB_GRASS02': 3, 'ST_PLANT09': 2}
+ROCKS = {'YU_LARGEROCKS02': 1, 'YU_SMALLROCKS01': 2, 'HA_GardenRock01': 2, 'OK_GARDENROCK03': 1}
+HOUSES = {'MJ_Structure_02': 3, 'MJ_Structure_04': 2, 'HA_Building16_02': 3, 'HA_Building16_03': 2,
+          'TH_SushiBar_01': 2, 'TH_PHpagoda_04': 1, 'TH_PHpagoda_02': 1}
+# kept open: the player's base round the start, the plazas whole (raised ground the level fights over)
+AVOID = [(1300.0, 2500.0, 600.0)] + PLAZA_FOOTPRINTS
+# landmarks by hand (template, x, y, angle), placed first and every one of them (place(must=True) raises if one
+# may not stand where it is): the shrine on its knoll and its torii, a pagoda by the canal, cranes on the quay
+LANDMARKS = [('OK_Pagoda01', 2230, 4150, 0.0), ('OK_ARCH01', 2230, 4040, 0.0), ('TH_PHpagoda_01', 3360, 3840, 1.57),
+             ('TH_harbor_crane01', 4130, 1300, 0.0), ('TH_harbor_crane01', 4120, 3300, 0.0),
+             ('TH_harbor_crane01', 4180, 3900, 0.0)]
+
+
+def _scenery():
+    ground = platprops.Ground(LAYOUT)
+    picks = []
+
+    def put(cands, must=False):
+        picks.extend(platprops.place(cands, LAYOUT, SITES, OBJECTS, keep=picks, avoid=AVOID, ground=ground,
+                                     must=must))
+    put(LANDMARKS, must=True)
+    # the avenue as a park: trees in rows outside lanterns and banners, both sides, all the way
+    avenue = [(1500, ROAD_Y), (4050, ROAD_Y)]
+    put(along(avenue, ['OK_LANTERN01', 'MJ_BANNER01', 'MJ_BANNER02', 'TH_LAMPDECO03'], 70, 85, 1, jitter=0.0))
+    put(along(avenue, PARK, 55, 150, 2))
+    put(along(avenue, PARK, 70, 205, 3))
+    put(along(avenue, ['GE_BENCH', 'TH_PLANTER01'], 160, 105, 4, face=True, jitter=0.0))
+    # the side streets: houses facing them, lamps; the canal's banks walked along, the harbour's markets
+    for k, street in enumerate(STREETS[:3]):
+        put(along(street, HOUSES, 120, 150, 10 + k, face=True))
+        put(along(street, 'TH_LAMPPOST04', 120, 62, 20 + k))
+    for k, street in enumerate(STREETS[3:5]):
+        put(along(street, 'TH_LAMPPOST04', 120, 62, 25 + k, sides=(1,)))
+        put(along(street, HOUSES, 120, 150, 27 + k, face=True, sides=(1,)))
+    put(along(STREETS[5], {'TH_Fish_Market02': 2, 'TH_Fish_Market03': 2, 'TH_FISH_MARKET04': 2}, 95, 125, 30,
+              face=True, sides=(-1,)))
+    put(along(STREETS[5], 'TH_LAMPPOST04', 120, 62, 31))
+    put(clumps(area('rect', (3950, 700, 4300, 4300)), 14, 40, 6,
+               {'TH_JAPANCRATE01': 2, 'TH_JAPANOILDRUM01': 1}, 32))
+    put(along([(2560, 1800), (2560, 2280)], 'TH_JAPANFENCE01', 32, 0, 33, sides=(1,), face=True, jitter=0.0))
+    # a town round the base side of the avenue, west of plaza 1, both sides of it
+    put(scatter(area('rect', (1700, 1700, 2150, 3300)), HOUSES, 140, 34, density=0.8))
+    # woods in stands on the hills and the ridge, the plateaus' edges, the coast; rocks at the cliffs' feet
+    for k, region in enumerate((WEST_RIDGE, SW_HILLS, KNOLL, *ISLETS)):
+        put(scatter(area('poly', region), WOODS, 50, 40 + k, density=0.85, patches=0.4))
+    for k, region in enumerate((NORTH_PLATEAU, SOUTH_PLATEAU)):
+        put(scatter(area('poly', region), WOODS, 60, 50 + k, density=0.8, patches=0.55))
+    put(scatter(area('poly', COAST), WOODS, 60, 52, density=0.75, patches=0.62))
+    put(shore(ground, {**WOODS, **ROCKS}, 70, 53))
+    put(cliff_feet(ground, ROCKS, 90, 54))
+    put(scatter(area('rect', (0, 0, 5000, 5000)), UNDER, 100, 55, density=0.4, patches=0.35))
+    return [Obj(t, round(x, 1), round(y, 1), side='civ', angle=round(a, 3), site='map') for t, x, y, a in picks]
+
+
+SCENERY = _scenery()
 
 
 def terrain(m):

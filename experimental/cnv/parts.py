@@ -489,7 +489,8 @@ def write_map(m, mm):
     for k, (wname, (x, y)) in enumerate(mm.waypoints.items()):
         objs.kids.append(newmap.object_node(m, *like['wp'], '*Waypoints/Waypoint', x, y, waypointName=wname,
                                             waypointID=wid + k, uniqueID=f'Waypoint {wid + k}'))
-    for o in list(getattr(mm.map, 'OBJECTS', [])) + mm.objects:       # a bridge's two ends stay next to each other
+    # the map's own objects (a bridge's two ends stay next to each other), its scenery (civilian props), the mission's
+    for o in list(getattr(mm.map, 'OBJECTS', [])) + list(getattr(mm.map, 'SCENERY', [])) + mm.objects:
         angle = o.angle if o.angle is not None else (1.5708 if o.side == 'p1' else -1.5708)
         extra = dict(o.props, **({'objectName': o.name} if o.name else {}))
         props, flags = like[o.side]

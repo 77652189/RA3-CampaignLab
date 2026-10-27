@@ -272,10 +272,10 @@ def picture(path, info, grids, where, marks, px=2):
 
     def at(x, y):
         return x * s, (h * CELL - y) * s
-    style = {'civ_building': ((150, 150, 150, 200), 1.2), 'tech': ((60, 230, 230, 255), 3),
-             'ore': ((255, 200, 40, 255), 3), 'bridge': ((255, 255, 255, 255), 3),
+    style = {'prop': ((25, 60, 25, 150), 0.5), 'civ_building': ((150, 150, 150, 200), 1.2),
+             'tech': ((60, 230, 230, 255), 3), 'ore': ((255, 200, 40, 255), 3), 'bridge': ((255, 255, 255, 255), 3),
              'enemy': ((230, 50, 50, 200), 1.4), 'mine': ((60, 230, 60, 230), 1.6)}
-    for k in ('civ_building', 'enemy', 'mine', 'tech', 'bridge', 'ore'):
+    for k in ('prop', 'civ_building', 'enemy', 'mine', 'tech', 'bridge', 'ore'):
         col, r = style[k]
         for x, y, _, _ in where.get(k, []):
             X, Y = at(x, y)
@@ -310,6 +310,8 @@ MEASURES = [('land', lambda i: i['terrain']['land'], '{:.0%}'),
             ('ore nodes', lambda i: i['counts'].get('ore', 0), '{:.0f}'),
             ('tech buildings', lambda i: i['counts'].get('tech', 0), '{:.0f}'),
             ('bridges (objects, 2 each)', lambda i: i['counts'].get('bridge', 0), '{:.0f}'),
+            ('civilian buildings', lambda i: i['counts'].get('civ_building', 0), '{:.0f}'),
+            ('props (trees, rocks, fences ...)', lambda i: i['counts'].get('prop', 0), '{:.0f}'),
             ('objectives', lambda i: len(i['goals']), '{:.0f}'),
             ('bonus objectives', lambda i: sum(g['bonus'] for g in i['goals']), '{:.0f}')]
 
