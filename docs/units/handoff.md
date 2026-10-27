@@ -46,7 +46,7 @@
 - 冰雕 `CNIceSculpt`：GPT 四格图 → Tripo 多视图（50 积分）→ `tripo_unit.py` 的道具分支（1599 面）→ `ice_kit.prop`（颜色对齐冰墙）。
 - 换装函数在 `ice_look.py`：`dress(unit, model, leaves)` 换掉地堡的模型、残骸、小爆炸（改成原版解冻音效）；`dress_engineer(unit)`；`rubble()` 碎冰物体。测试关 `CampIceLook`，截图 `work/units/ice/review/bench_1026.png`。
 - 坑：原版冰冻步兵的碎块（`InfantryShatter_Collapse`）是中立方，染成了红色，不能用；冰墙被打碎留碎冰，化掉（FADED）不留。
-- **还没接进正式关卡**：要在 `experimental/cnv/units/icewall.py`、`festival.py` 里调用这几个函数，先问总控。
+- **已接进正式单位**（总控批准，只换外观）：`icewall.py` 的 `wall()` / `seed()` / `engineer()` 默认穿冰的外观（`dress` / `dress_engineer` / `rubble` 挪进了 `icewall.py`；长条墙用 `CNIceBar`，方块用 `CNIceWall`，`model=None` 保留地堡）；`festival.py` 的冰雕是冰龙，雪堆保留地堡外观。pytest 109 过；测试台 `ice_block`、`ice_build` 都 PASS。构建依赖 SDK Art 里的模型：换机器先跑 `ice_kit.py`。
 - 发现（不归单位线）：工兵站在冰核旁边造，160 见方的墙长出来会把他包在里面。
 - 已知可以改进的地方：
   - UV 切成了很多小块，贴图利用率低。可以试更大的合并角度，或者手工展 UV。

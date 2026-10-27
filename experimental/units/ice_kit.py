@@ -34,6 +34,10 @@ KITS = {
     # a tall middle, lower shards at the corners so it reads as frozen up from the ground, not a mountain
     'CNIceWall': (160, 55, [('02', 0, (0.0, 0.0), 1.0), ('05', 40, (-0.55, 0.45), 0.75), ('06', 200, (0.6, -0.4), 0.7),
                             ('06A', 110, (0.55, 0.55), 0.65), ('03', 70, (-0.5, -0.5), 0.6)]),
+    # the bar wall (icewall.wall shape 'bar', 200 x 24: ice_block, J4's gate ice): a row of shards along it, a little
+    # thicker than its 24 so it does not read as a sheet; (length, depth) instead of a square's side
+    'CNIceBar': ((200, 34), 45, [('05', 30, (-0.8, 0.1), 0.24), ('06', 110, (-0.42, -0.2), 0.26), ('02', 0, (0.0, 0.0), 0.32),
+                                 ('06A', 200, (0.42, 0.2), 0.26), ('03', 300, (0.8, -0.1), 0.24)]),
     # the core the engineer stands building for 5 s (icewall.seed: a 40 square)
     'CNIceSeed': (40, 30, [('06A', 0, (0.0, 0.0), 1.0), ('05', 150, (0.35, -0.3), 0.55)]),
     # what a shot-down wall leaves (ice_look.rubble): low broken chunks over its square, sinking away
@@ -65,16 +69,17 @@ def _piece(by, glacier, turn, at, size, unit):
 
 def build(by, model):
     side, height, recipe = KITS[model]
+    sx, sy = side if isinstance(side, tuple) else (side, side)
     verts, normals, uvs, tris = [], [], [], []
     for glacier, turn, (x, y), size in recipe:
-        v, n, u, t = _piece(by, glacier, turn, (x * side / 2, y * side / 2), size, side)
+        v, n, u, t = _piece(by, glacier, turn, (x * sx / 2, y * sy / 2), size, max(sx, sy))
         tris += [tuple(i + len(verts) for i in tri) for tri in t]
         verts, normals, uvs = verts + v, normals + n, uvs + u
     # fit: the footprint within the side (a little inside, so it does not hang over its building's edges), the top
     # at `height`; a non-uniform scale, so the normals by the inverse
     lo = [min(p[i] for p in verts) for i in range(3)]
     hi = [max(p[i] for p in verts) for i in range(3)]
-    k = [0.96 * side / (hi[0] - lo[0]), 0.96 * side / (hi[1] - lo[1]), height / hi[2]]
+    k = [0.96 * sx / (hi[0] - lo[0]), 0.96 * sy / (hi[1] - lo[1]), height / hi[2]]
     mid = [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, 0.0]
     verts = [tuple((p[i] - mid[i]) * k[i] for i in range(3)) for p in verts]
     normals = [tuple(n[i] / k[i] for i in range(3)) for n in normals]

@@ -75,6 +75,21 @@ field gun.
 - Rear: a squat cylindrical chrono reactor / capacitor drum on the back deck with a cyan glowing window strip.
 - Silhouette must read clearly from a high top-down RTS camera: big simple shapes first (track pods, hull, turret,
   barrel with rings, rear drum), small details second.'''),
+    'liberty': ('allied', ['carrier', 'guardian'], '''UNIT: "Liberty Sky Carrier" (Allied signature super-unit, docs/story/units.md 5.2.1). A huge FLYING
+PLATFORM, not a ship and not a troop transport: read it as a small floating fortress -- a piece of Allied base
+that flies. It hovers; under it a chronosphere ring can jump the whole deck, with the ground units below, across
+the map.
+- Deck: a broad, nearly square flight deck (width about 0.9 x its length), thick armoured hull under it, like the
+  retail Allied aircraft carrier's deck and island cut loose from the sea; deck markings as plain stripes only.
+- On the deck: a deck factory -- a boxy hangar block at the rear with a big door and a ramp edge -- that builds
+  ground units; a control island tower with radar and antennas on one side; a drone launch strip along the other
+  side; three EMPTY round turret mounts (armoured ring sockets) near three deck corners -- turrets are separate.
+- Lift: four large ducted-fan engines in armoured nacelles at the four corners, fans facing down.
+- Underside: a large chronosphere ring set in the hull's belly, glowing cyan-white, visible in the side, back and
+  three-quarter views.
+- Proportions: a big super-unit (about 10 times a Guardian tank across), but flat: hull plus deck about 1/5 of its
+  width high, the island tower the tallest thing. Silhouette from the high RTS camera: square deck, four corner
+  fans, tower, hangar block, three ring sockets.'''),
     'icesculpture': ('ice', ['glacier06', 'snowman'], '''PROP: "Festival Ice Sculpture" for a snow festival plaza (the Sapporo snow festival). Enemy soldiers hide
 inside it; it shatters when the convoy comes close. Read it as a carved festival showpiece, not a natural glacier.
 - Subject: an Eastern (Japanese) dragon coiled around itself, head raised and turned forward, mouth open, long
