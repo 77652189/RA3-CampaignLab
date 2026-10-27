@@ -37,6 +37,9 @@ UNITS = {
     'chronolag': dict(glb='units/chronolag/tripo/chronolag_v2_hd.glb', width=25.3,
                       TURRET=[0, 8, 15, 16, 18], BARREL=[5],
                       budget=dict(HULL=2500, TURRET=1100, BARREL=400), tex=1024, model='CNChrono'),
+    # a map prop (prop_main): one piece, width = its larger side on the ground; no team colour, no bones
+    'icesculpture': dict(glb='units/icesculpture/tripo/icesculpture_v1.glb', kind='prop', width=38,
+                         budget=dict(PROP=1600), tex=512, model='CNIceSculpt'),
 }
 SHARP = math.radians(35)
 
@@ -44,12 +47,13 @@ SHARP = math.radians(35)
 def import_parts(path):
     bpy.ops.import_scene.gltf(filepath=path)
     parts = {}
-    for o in list(bpy.context.scene.objects):
-        if o.type == 'MESH' and o.name.startswith('tripo_part_'):
-            o.data.transform(o.matrix_world)
-            o.parent = None
-            o.matrix_world.identity()
-            parts[int(o.name.rsplit('_', 1)[1])] = o
+    meshes = [o for o in bpy.context.scene.objects if o.type == 'MESH']
+    named = all(o.name.startswith('tripo_part_') for o in meshes)     # generated without parts: other names
+    for k, o in enumerate(meshes):
+        o.data.transform(o.matrix_world)
+        o.parent = None
+        o.matrix_world.identity()
+        parts[int(o.name.rsplit('_', 1)[1]) if named else k] = o
     for o in list(bpy.context.scene.objects):
         if o.type != 'MESH':
             bpy.data.objects.remove(o)
@@ -216,7 +220,7 @@ def export(parts, pivots, out_dir):
     print('export:', {k: len(v['triangles']) for k, v in out.items() if not k.startswith('_')})
 
 
-def renders(lows, mat, out_dir, size):
+def renders(lows, mat, out_dir, size, height=8):
     sc = bpy.context.scene
     sc.render.engine = 'BLENDER_EEVEE' if 'BLENDER_EEVEE' in [
         e.identifier for e in bpy.types.RenderSettings.bl_rna.properties['engine'].enum_items] else 'BLENDER_EEVEE_NEXT'
@@ -233,7 +237,7 @@ def renders(lows, mat, out_dir, size):
     cam = bpy.data.objects.new('cam', bpy.data.cameras.new('cam'))
     sc.collection.objects.link(cam)
     sc.camera = cam
-    target = Vector((0, 0, 8))
+    target = Vector((0, 0, height))
     # icon: the camera off the front-right, so the nose points to the lower left as on the retail Guardian button
     for name, az, el, transparent in (('preview.png', 35, 35, False), ('icon.png', 30, 40, True),
                                       ('preview_top.png', -90, 89, False)):
@@ -250,11 +254,35 @@ def renders(lows, mat, out_dir, size):
         bpy.ops.render.render(write_still=True)
 
 
+def prop_main(unit, cfg, out_dir):
+    """A map prop: every part one piece, its larger side on the ground `width`, centred, ground at 0; collapsed to
+    its budget, baked (colour, tangent normals), exported as one part PROP with no pivots (ice_kit.prop writes it)."""
+    parts = import_parts(os.path.join(WORK, cfg['glb']))
+    lo_all, hi_all = bbox(list(parts.values()))
+    s = cfg['width'] / max(hi_all.x - lo_all.x, hi_all.y - lo_all.y)
+    shift = Vector((-(lo_all.x + hi_all.x) / 2, -(lo_all.y + hi_all.y) / 2, -lo_all.z))
+    for o in parts.values():
+        o.data.transform(Matrix.Translation(shift))
+        o.data.transform(Matrix.Scale(s, 4))
+    hi = join(list(parts.values()), 'HI_PROP')
+    lo = low_copy(hi, 'PROP', cfg['budget']['PROP'], 1e-4 * cfg['width'])
+    uv_atlas([lo])
+    images, mat = bake([(hi, lo)], cfg['tex'], out_dir, cfg['model'])
+    height = hi.dimensions.z
+    bpy.data.objects.remove(hi)
+    export({'PROP': lo}, [], out_dir)
+    renders([lo], mat, out_dir, cfg['width'], height=height / 2)
+    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(out_dir, unit + '.blend'))
+    print('done', out_dir, f'height {height:.1f}')
+
+
 def main(unit):
     cfg = UNITS[unit]
     out_dir = os.path.join(WORK, 'units', unit, 'game')
     os.makedirs(out_dir, exist_ok=True)
     bpy.ops.wm.read_factory_settings(use_empty=True)
+    if cfg.get('kind') == 'prop':
+        return prop_main(unit, cfg, out_dir)
     parts = import_parts(os.path.join(WORK, cfg['glb']))
     picked = {g: [parts[i] for i in cfg[g]] for g in ('TURRET', 'BARREL')}
     used = {i for g in ('TURRET', 'BARREL') for i in cfg[g]}

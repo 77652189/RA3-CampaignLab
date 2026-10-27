@@ -20,7 +20,7 @@ OUT = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'reference')
 
 def main(names):
     import mapxml
-    lib = mapxml.layered(button_icon.STATIC)
+    lib = mapxml.layered(button_icon.WORLDBUILDER + button_icon.STATIC)
     by = {i.name.lower(): i for i in lib.values()}
     os.makedirs(OUT, exist_ok=True)
     for n in names:

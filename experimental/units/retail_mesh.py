@@ -64,17 +64,23 @@ def hierarchy(d):
 
 
 def mesh(d, skeleton=None):
-    """{'vertices', 'uvs', 'bones' (hierarchy pivot of each vertex's first bone), 'triangles', 'layout'} in model
-    space; skeleton (hierarchy()) None leaves the vertices in their bones' space."""
+    """{'vertices', 'uvs', 'bones' (hierarchy pivot of each vertex's first bone), 'triangles', 'layout', 'normals',
+    'colors' (the last two empty when the layout has none)} in model space; skeleton (hierarchy()) None leaves the
+    vertices in their bones' space."""
     ntri, tptr = struct.unpack_from('<2I', d, 52)
     n, stride, data, ln, lp, npal, pp = struct.unpack_from('<7I', d, struct.unpack_from('<I', d, 4)[0])
     layout = d[lp:lp + ln].decode()
     palette = struct.unpack_from(f'<{npal}H', d, pp)
     f = {name: int(off, 16) for name, off, _ in (e.split(':') for e in layout.split())}
-    verts, uvs, bones = [], [], []
+    verts, uvs, bones, normals, colors = [], [], [], [], []
     for k in range(n):
         b = data + k * stride
-        i0, i1 = (palette[d[b + f['i0'] + j]] for j in (0, 1))
+        if 'n0' in f:                   # model space for a prop (no bone); a skinned mesh's are left in bone space
+            normals.append(struct.unpack_from('<3f', d, b + f['n0']))
+        if 'c0' in f:                   # 4u8n: r g b a
+            colors.append(tuple(d[b + f['c0'] + j] for j in range(4)))
+        # a prop's mesh (IL_GLACIER01) carries no bone index: all of it on the first palette entry
+        i0, i1 = (palette[d[b + f['i0'] + j]] for j in (0, 1)) if 'i0' in f else (palette[0] if npal else 0,) * 2
         p = list(struct.unpack_from('<3f', d, b + f['p0']))
         if skeleton is not None:
             w0, w1 = (d[b + f['w0']] / 255, d[b + f['w0'] + 1] / 255) if 'w0' in f else (1, 0)
@@ -90,14 +96,15 @@ def mesh(d, skeleton=None):
         assert cnt == 3, (k, cnt)
         tris.append(struct.unpack_from('<3I', d, ip))
     assert max(max(t) for t in tris) < n
-    return dict(vertices=verts, uvs=uvs, bones=bones, triangles=tris, layout=layout)
+    return dict(vertices=verts, uvs=uvs, bones=bones, triangles=tris, layout=layout, normals=normals, colors=colors)
 
 
 def load(by, mesh_id, skl=None):
-    """mesh() of a library() entry in model space, through skl or the hierarchy named after its model."""
+    """mesh() of a library() entry in model space, through skl or the hierarchy named after its model (a prop's
+    lone mesh, IL_GLACIER01, has none: its vertices are already in model space)."""
     skl = skl or mesh_id.split('.')[0].upper().replace('_SKN', '_SKL')
-    return mesh(bytes(by['w3dmesh:' + mesh_id.lower()].chunks[0]),
-                hierarchy(bytes(by['w3dhierarchy:' + skl.lower()].chunks[0])))
+    h = by.get('w3dhierarchy:' + skl.lower())
+    return mesh(bytes(by['w3dmesh:' + mesh_id.lower()].chunks[0]), h and hierarchy(bytes(h.chunks[0])))
 
 
 def write_obj(m, path):
@@ -113,7 +120,7 @@ def write_obj(m, path):
 
 def library():
     import mapxml
-    lib = mapxml.layered(button_icon.STATIC)
+    lib = mapxml.layered(button_icon.WORLDBUILDER + button_icon.STATIC)
     return {i.name.decode(errors='replace').lower(): i for i in lib.values()}
 
 

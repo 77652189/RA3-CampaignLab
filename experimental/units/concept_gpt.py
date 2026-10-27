@@ -41,7 +41,14 @@ STYLE = {
   top, so it is visible from above; about 20 to 30 percent of the top surface.
 - lights: small cyan / white glowing lights and lenses, as on the Guardian.
 - no weathering mud, no camouflage, no text, no numbers, no emblems.''',
+    # map props of ice (the 冰幕工兵's festival, A4): retail's Iceland glaciers are the look
+    'ice': '''- stylised-realistic RTS game prop like the Red Alert 3 retail glacier and snowman props in the references:
+  clean FACETED ice -- large flat planes with crisp edges, not smooth glass, not noisy.
+- colour: pale white-cyan ice, brightest on the upper faces, slightly deeper cyan-grey in the recesses and toward
+  the base; a few faint inner cracks; opaque-looking (no see-through refraction, no rainbow caustics).
+- no team colour, no lights, no snow-covered ground, no people, no text.''',
 }
+KIND = {'ice': 'prop'}                          # what the sheet shows: a unit (default) or a map prop
 
 LAYOUT = '''- one square image, a 2 x 2 grid of four equal panels, plain flat light-grey background (#D0D0D0) everywhere,
   no panel borders, no labels, no text.
@@ -68,15 +75,26 @@ field gun.
 - Rear: a squat cylindrical chrono reactor / capacitor drum on the back deck with a cyan glowing window strip.
 - Silhouette must read clearly from a high top-down RTS camera: big simple shapes first (track pods, hull, turret,
   barrel with rings, rear drum), small details second.'''),
+    'icesculpture': ('ice', ['glacier06', 'snowman'], '''PROP: "Festival Ice Sculpture" for a snow festival plaza (the Sapporo snow festival). Enemy soldiers hide
+inside it; it shatters when the convoy comes close. Read it as a carved festival showpiece, not a natural glacier.
+- Subject: an Eastern (Japanese) dragon coiled around itself, head raised and turned forward, mouth open, long
+  whiskers and a spiky back ridge, two front claws gripping the plinth.
+- Plinth: a thick, roughly square faceted ice block as the base, about one third of the total height, its top
+  edge slightly chipped, so the whole sculpture stands square on the ground.
+- Proportions: footprint square, total height about 1.3 times the footprint width (a bit taller than a tank);
+  big simple masses first (plinth, coiled body, raised head), carved detail second.
+- The FRONT view looks at the dragon's face.'''),
 }
 
 
 def prompt(unit, note=''):
     faction, refs, brief = BRIEFS[unit]
     names = ', '.join(refs)
+    kind = KIND.get(faction, 'unit')
+    what = f'{faction} {kind}' if kind == 'unit' else f'{faction} {kind} (a map object, not a vehicle)'
     return f'''Generate ONE image with your image generation tool. Do not write code, do not run commands, do not edit files. Just generate the image and reply with one short sentence.
 
-The attached images are reference sheets rendered from the retail game Command & Conquer: Red Alert 3 ({faction} {names}). They define the ART STYLE, the SCALE and the SHEET LAYOUT. Design a NEW {faction} unit in exactly that style and lay it out exactly like the reference sheet.
+The attached images are reference sheets rendered from the retail game Command & Conquer: Red Alert 3 ({faction} {kind}s: {names}). They define the ART STYLE, the SCALE and the SHEET LAYOUT. Design a NEW {what} in exactly that style and lay it out exactly like the reference sheet.
 
 {brief}
 {note}
