@@ -125,9 +125,10 @@ def _tell_active(pid):
     return len(found)
 
 
-def record_game(seconds, out, wait=90, volume=0.03):
+def record_game(seconds, out, wait=90, volume=1e-4, level=0.25):
     """Wait for the game process (RA3_*.game, as run_bench.ps1 starts it), then record only what it plays, its
-    sessions at `volume` (a whisper on the user's speakers; the tracer tones survive it)."""
+    sessions at `volume` (-80 dB: nothing the user hears on their speakers, user 2026-10-26), captured as float and
+    written at `level` (the game at full volume would peak near `level` of full scale)."""
     import subprocess
     import time
     _tool(CAPTURE_SRC, CAPTURE_EXE)
@@ -142,9 +143,9 @@ def record_game(seconds, out, wait=90, volume=0.03):
             sys.exit('no game process appeared')
         time.sleep(0.5)
     print('game pid', pids[0], 'after', round(time.time() - t0, 1), 's')
-    cap = subprocess.Popen([CAPTURE_EXE, str(pids[0]), str(seconds), out])
+    cap = subprocess.Popen([CAPTURE_EXE, str(pids[0]), str(seconds), out, repr(level / volume)])
     # the loopback hears the game only through its sessions' mute and volume (and Windows keeps those per program:
-    # the bench mutes them): unmute at a whisper while recording, then leave them as the bench does (muted)
+    # the bench mutes them): unmute at -80 dB while recording, then leave them as the bench does (muted)
     # every 2 s the peak meter of each of its sessions (one per output device): shows where the game sends sound,
     # which the process loopback may not hear (a game controller is a speaker too)
     shown, meters, t_cap = False, [], time.time()

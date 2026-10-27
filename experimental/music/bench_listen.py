@@ -4,7 +4,7 @@ played: retail streams by fingerprint (listen.py) and tracer streams by their to
   python -I -X utf8 experimental/music/bench_listen.py [--nav <mission s>] <seconds> <skudef | retail> [...]
 --nav: the bench walks the menus into a mission (run_bench.ps1 -Nav) and stays <mission s> in it; the report then
 lists the menu steps with their bench times (seconds from the game's start, as the recording) next to the music.
-The bench lock is taken by run_bench.ps1 itself; the game is heard at a whisper (listen.record_game).
+The bench lock is taken by run_bench.ps1 itself; the game is turned down to -80 dB, nothing anyone hears, and brought back up in the recording (listen.record_game).
 """
 import os
 import subprocess

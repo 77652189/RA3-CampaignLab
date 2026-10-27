@@ -116,6 +116,8 @@ MISSIONS = {
     'musicdynspy': (lambda: _music_bench('music_dyn').mission(name='CampMusDynS', spy=True), {}),   # tracers
     'musicdyntr': (lambda: _music_bench('music_dyn').mission(name='CampMusDynT', tracer=True), {}),
     'musicroute': (lambda: _music_bench('music_route').mission(), {}),    # how routers take a pending jump
+    'musicrouteswap': (lambda: _music_bench('music_route').mission(name='CampMusRouteW', swap=True), {}),
+    'musicroutecover': (lambda: _music_bench('music_route').mission(name='CampMusRouteC', cover=True), {}),
 }
 
 

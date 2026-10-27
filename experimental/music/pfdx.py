@@ -35,7 +35,10 @@ Layout, little endian, offsets from the magic. A "word offset" is stored divided
                  ELIF  0x00AE0100  arg as IF       ELSE 0x00300100       ENDIF 0x00400100 (w0 0xFFFFFFFF)
                  and a few rare ones (0x000C0500 / 0x000C0200 carry milliseconds: fades)
   variables    20 bytes each: name (12 bytes, NUL terminated, rest left as found), u32, u32
-  routers      u32 word offset per router, then per router a list of (u16 a, u16 b) pairs: when an event jumps
+  routers      u32 word offset per router and one more, the end (retail: 131 routers, the 132nd offset is where
+               the last one ends, used by no node; a map that leaves it out loses its last router -- in game,
+               CampMusRoute 2026-10-26: the section on it replayed its first segment, a4's fierce jumped to final),
+               then per router a list of (u16 a, u16 b) pairs: when an event jumps
                (GOTO without PREP) to section entry b from a segment that uses the router, section a plays
                instead at that segment's end (a transition written for that pair); it goes on by a's own exit
                branches (in retail those do not lead to b; ours do: in game a then b, MusSpy / CampMusic
@@ -154,8 +157,8 @@ def parse(blob, names=None):
 
     first = u32(sec[5]) * 4
     starts = [u32(sec[5] + 4 * i) * 4 for i in range((first - sec[5]) // 4)]
-    for i, o in enumerate(starts):
-        end = starts[i + 1] if i + 1 < len(starts) else sec[6]
+    assert starts[-1] == sec[6], 'the last router offset is the end of the routers'
+    for o, end in zip(starts, starts[1:]):
         m.routers.append([struct.unpack_from('<2H', d, p) for p in range(o, end, 4)])
 
     m.tracks = [d[u32(sec[6] + 4 * i) * 4:u32(sec[6] + 4 * i) * 4 + 20] for i in range(num_tracks)]
@@ -205,11 +208,12 @@ def build(m):
 
     sec.append(here())
     table = here()
-    body += bytes(4 * len(m.routers))
+    body += bytes(4 * (len(m.routers) + 1))
     for i, r in enumerate(m.routers):
         struct.pack_into('<I', body, table + 4 * i, word(here()))
         for a, b in r:
             body += struct.pack('<2H', a, b)
+    struct.pack_into('<I', body, table + 4 * len(m.routers), word(here()))       # the end
 
     sec.append(here())
     body += bytes(4 * len(m.tracks))
