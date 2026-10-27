@@ -7,6 +7,8 @@ two models written to the SDK's Art folder --
   CNLibStatue   retail New York's Statue of Liberty (NY_LIBERTY, World Builder's stream) without her pedestal (the
                 core is her pedestal), stood on STATUE, her torch a cyan chrono beacon (glow)
   CNLibRings    three glowing gyroscope rings around her, tilted, each turning on its own pivot (CNLibRings_IDLE)
+  CNLibCharge   the jump's charge-up: her crown's seven rays lighting one by one, the aperture under the keel opening
+                (CNLibCharge_CHARGE, 15 s; drawn under USER_1, which the jump warning sets)
 
   python -I -X utf8 experimental/units/liberty_kit.py        (from a worktree set CNV_SDK; run tripo_unit.py first)
 
@@ -128,11 +130,16 @@ def statue(top, width):
     w3x.write_texture(STATUE + '_SPM', w, h, lambda x, y: (40, 255, 0, 255) if _flame(px[x, y]) else (8, 0, 0, 255))
     w3x.write_model(STATUE, w3x.rig_model(STATUE, [], [('STATUE', 0, (verts, normals, uvs, tris))],
                                           (STATUE, STATUE + '_NRM', STATUE + '_SPM')))
-    print(STATUE, len(tris), 'triangles,', f'{(max(zs) - feet) * k:.0f} tall on {top:.0f}, scale {k:.2f}')
+    tall = (max(zs) - feet) * k
+    print(STATUE, len(tris), 'triangles,', f'{tall:.0f} tall on {top:.0f}, scale {k:.2f}')
     obj = os.path.join(OUT, STATUE + '.obj')
     retail_mesh.write_obj(dict(vertices=verts, uvs=[(u, 1 - v) for u, v in uvs], triangles=tris, layout='liberty_kit'),
                           obj)
-    return obj, os.path.join(retail_texture.OUT, 'NY_Liberty.png')
+    # her head: 0.72..0.82 of her height, off the raised arm (her right, -Y, 0.07 out); the crown at 0.79
+    head = [verts[i] for t in tris[:len(keep)] for i in t
+            if 0.72 <= (verts[i][2] - top) / tall < 0.82 and verts[i][1] > -0.04 * tall]
+    crown = (sum(p[0] for p in head) / len(head), sum(p[1] for p in head) / len(head), top + 0.79 * tall)
+    return obj, os.path.join(retail_texture.OUT, 'NY_Liberty.png'), crown
 
 
 OUT = os.path.join(labpaths.WORK, 'units', 'libertyisle')
@@ -191,6 +198,60 @@ def rings(top, statue_tall, width):
     print(RINGS, sum(len(g[3]) for _, _, g in parts), 'triangles, centred at', f'{zc:.0f}')
 
 
+# the jump's charge-up (the 15 s warning, devices/carrier.py): her crown's seven rays light one by one as the countdown
+# and the chrono aperture under the keel opens ring by ring; drawn only under USER_1 (liberty.dress), which the warning
+# sets for its length, the animation played once from its start
+CHARGE = MODEL[:2] + 'LibCharge'
+CHARGE_SECONDS = 15                             # carrier.py's 预警 default
+RAY_AT = [1 + 2 * k for k in range(7)]          # seconds: a ray every 2 s, the last 2 s before the jump
+APERTURE = [(0.05, 5), (0.085, 9), (0.12, 12)]  # (radius over the width, seconds): inner to outer
+HIDDEN = -5000.0                                # a part not lit yet waits this far under the map
+
+
+def charge(crown, statue_tall, width):
+    """CNLibCharge (+ _CHARGE): seven glowing cones fanned forward from her crown (each its own pivot) and three
+    glowing rings just under the keel; the animation keeps each part HIDDEN below until its second comes."""
+    import math
+    parts, pivots, at = [], [], []
+    ray, base = 0.30 * statue_tall, 0.012 * statue_tall
+    for k in range(7):
+        az, el = math.radians(-75 + 25 * k), math.radians(15)
+        d = (math.cos(el) * math.cos(az), math.cos(el) * math.sin(az), math.sin(el))
+        e1 = (-math.sin(az), math.cos(az), 0.0)
+        e2 = (d[1] * e1[2] - d[2] * e1[1], d[2] * e1[0] - d[0] * e1[2], d[0] * e1[1] - d[1] * e1[0])
+        # a cone; its tip and cap a hair off the axis (a lathe row at radius 0 gives zero-area triangles)
+        geo = w3x.lathe([(0.1 * base, ray), (base, 0.0), (0.1 * base, 0.0)], segments=6)
+        geo = w3x.transform(geo, tuple((e1[i], e2[i], d[i]) for i in range(3)))   # +Z onto d
+        pivots.append((f'RAY{k + 1}', 0, tuple(c + 0.035 * statue_tall * dc for c, dc in zip(crown, d))))
+        parts.append((f'RAY{k + 1}', k + 1, geo))
+        at.append(RAY_AT[k])
+    t, h = 0.006 * width, 0.003 * width
+    for k, (r, s) in enumerate(APERTURE):
+        rr = r * width
+        geo = w3x.lathe([(rr + t, h), (rr + t, -h), (rr - t, -h), (rr - t, h), (rr + t, h)], segments=48)
+        pivots.append((f'IRIS{k + 1}', 0, (0.0, 0.0, -0.004 * width)))
+        parts.append((f'IRIS{k + 1}', len(pivots), geo))
+        at.append(s)
+    w3x.write_texture(CHARGE, 8, 8, lambda x, y: (150, 245, 255, 255))
+    w3x.write_texture(CHARGE + '_NRM', 16, 16, lambda x, y: (128, 128, 255, 255))
+    w3x.write_texture(CHARGE + '_SPM', 8, 8, lambda x, y: (40, 255, 0, 255))
+    w3x.write_model(CHARGE, w3x.rig_model(CHARGE, pivots, parts, (CHARGE, CHARGE + '_NRM', CHARGE + '_SPM')))
+    frames = CHARGE_SECONDS * 30
+    up = CHARGE.upper()
+    ch = []
+    for k, s in enumerate(at):
+        ch.append(f'\t\t\t<ChannelScalar Pivot="{k + 1}" Type="ZTranslation" FirstFrame="0">')
+        ch += [f'\t\t\t\t<Frame>{HIDDEN if f < s * 30 else 0.0:.6f}</Frame>' for f in range(frames)]
+        ch.append('\t\t\t</ChannelScalar>')
+    w3x.write_model(CHARGE + '_CHARGE', '\n'.join([
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+        '\t<Includes>', f'\t\t<Include type="all" source="ART:{CHARGE}.w3x"/>', '\t</Includes>',
+        f'\t<W3DAnimation id="{up}_CHARGE" Hierarchy="{up}_SKL" NumFrames="{frames}" FrameRate="30">',
+        '\t\t<Channels>'] + ch + ['\t\t</Channels>', '\t</W3DAnimation>', '</AssetDeclaration>']) + '\n')
+    print(CHARGE, sum(len(g[3]) for _, _, g in parts), 'triangles, crown at', ' '.join(f'{c:.0f}' for c in crown))
+
+
 def preview(statue_obj, statue_tex):
     """The two together rendered as retail_sheet's four views -> work/units/libertyisle/liberty_grid.png."""
     import subprocess
@@ -217,8 +278,10 @@ def main():
         verts = json.load(f)['BODY']['vertices']
     width = SCALE * max(max(v[0] for v in verts) - min(v[0] for v in verts),
                         max(v[1] for v in verts) - min(v[1] for v in verts))
-    preview(*statue(pv['STATUE'][2], width))
+    obj, tex, crown = statue(pv['STATUE'][2], width)
+    preview(obj, tex)
     rings(pv['STATUE'][2], STATUE_TALL * width, width)
+    charge(crown, STATUE_TALL * width, width)
 
 
 if __name__ == '__main__':

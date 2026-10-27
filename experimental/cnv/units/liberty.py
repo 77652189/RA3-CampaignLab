@@ -19,7 +19,8 @@ from parts import Unit
 
 SAGE = os.path.join(c2.SDK, 'SageXML')
 RETAIL_RIDER = 'AlliedAntiVehicleVehicleTech1'      # the Guardian
-LOOK = ('CNLiberty', 'CNLibStatue', 'CNLibRings')    # liberty_kit.py's models: platform, statue, rings
+LOOK = ('CNLiberty', 'CNLibStatue', 'CNLibRings', 'CNLibCharge')   # liberty_kit.py's: platform, statue, rings, charge
+CHARGING = 'USER_1'     # the model condition the jump warning sets for its length (devices/carrier.py): charge drawn
 
 
 def sub1(x, old, new):
@@ -27,10 +28,17 @@ def sub1(x, old, new):
     return x.replace(old, new, 1)
 
 
-def dress(unit, model=LOOK[0], statue=LOOK[1], rings=LOOK[2]):
+def charging(name, seconds):
+    """The script action that shows the named carrier charging its jump for `seconds` (its crown's rays lighting one
+    by one, the aperture opening: liberty_kit.charge, timed for 15 s); nothing on a carrier not dressed."""
+    return ('UNIT_SET_MODELCONDITION_GENERIC', name, CHARGING, float(seconds))
+
+
+def dress(unit, model=LOOK[0], statue=LOOK[1], rings=LOOK[2], charge=LOOK[3]):
     """The carrier drawing `model`, `statue` and `rings` in place of the Kirov (all at its origin, each carrying its
-    place over the core; the rings looping their turn, <rings>_IDLE); the drones still launch from FX_WEAPON. Look
-    only: geometry, health, locomotor and every behaviour stay the Kirov's."""
+    place over the core; the rings looping their turn, <rings>_IDLE), and `charge` while CHARGING (its <charge>_CHARGE
+    played once); the drones still launch from FX_WEAPON. Look only: geometry, health, locomotor and every behaviour
+    stay the Kirov's."""
     x, n = re.subn(r'<Draws>.*?</Draws>', f'''<Draws>
 			<ScriptedModelDraw id="ModuleTag_Draw" OkToChangeModelColor="true">
 				<ModelConditionState ParseCondStateType="PARSE_DEFAULT">
@@ -55,12 +63,27 @@ def dress(unit, model=LOOK[0], statue=LOOK[1], rings=LOOK[2]):
 					<Animation AnimationName="{rings.upper()}_IDLE" AnimationMode="LOOP" />
 				</AnimationState>
 			</ScriptedModelDraw>
+			<ScriptedModelDraw id="ModuleTag_Draw_Charge" OkToChangeModelColor="false">
+				<ModelConditionState ParseCondStateType="PARSE_DEFAULT">
+					<Model Name="" />
+				</ModelConditionState>
+				<ModelConditionState ParseCondStateType="PARSE_NORMAL" ConditionsYes="{CHARGING}">
+					<Model Name="{charge.upper()}" />
+				</ModelConditionState>
+				<AnimationState ParseCondStateType="PARSE_DEFAULT">
+				</AnimationState>
+				<AnimationState ParseCondStateType="PARSE_NORMAL" ConditionsYes="{CHARGING}">
+					<Animation AnimationName="{charge.upper()}_CHARGE" AnimationMode="ONCE" />
+				</AnimationState>
+			</ScriptedModelDraw>
 		</Draws>''', unit.xml, count=1, flags=re.S)
     assert n == 1, n
     unit.xml = sub1(x, '<Includes>', f'<Includes>\n\t\t<Include type="all" source="ART:{model}.w3x" />'
                                      f'\n\t\t<Include type="all" source="ART:{statue}.w3x" />'
                                      f'\n\t\t<Include type="all" source="ART:{rings}.w3x" />'
-                                     f'\n\t\t<Include type="all" source="ART:{rings}_IDLE.w3x" />')
+                                     f'\n\t\t<Include type="all" source="ART:{rings}_IDLE.w3x" />'
+                                     f'\n\t\t<Include type="all" source="ART:{charge}.w3x" />'
+                                     f'\n\t\t<Include type="all" source="ART:{charge}_CHARGE.w3x" />')
     unit.params['look'] = model
     return unit
 

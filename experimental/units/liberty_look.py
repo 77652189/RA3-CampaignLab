@@ -2,8 +2,9 @@ r"""The Liberty (experimental/cnv/units/liberty.py, a copy of the Kirov) in libe
 Liberty Island fortress CNLiberty, retail's statue CNLibStatue on its core, the turning rings CNLibRings -- on a
 bench scene, CampLibLook:
 
-  west field: one Liberty hovering, sent 500 north at 3 s (does it read from the RTS camera, do the statue and the
-  rings ride with it), Guardians and a war factory for scale.
+  west field: one Liberty hovering, charging its jump from the start for CHARGE seconds (the crown's rays a ray every
+  2 s, the aperture under the keel opening), then sent 500 north (does it read from the RTS camera, do the statue and
+  the rings ride with it), Guardians and a war factory for scale.
 
   python -I -X utf8 experimental/units/liberty_look.py        -> Documents\Red Alert 3\Mods\CampLibLook
 (from a worktree set CNV_SDK to the shared SDK; run tripo_unit.py libertyisle and liberty_kit.py first)
@@ -22,6 +23,7 @@ from units import liberty as lib                # noqa: E402
 NAME = 'CampLibLook'                            # <= 15 characters, no underscore
 GUARDIAN = 'AlliedAntiVehicleVehicleTech1'
 FACTORY = 'AlliedWarFactory'
+CHARGE = 15.0                                   # seconds: the warning's length (liberty_kit.CHARGE_SECONDS)
 
 
 def mission():
@@ -34,7 +36,8 @@ def mission():
     m.waypoint('goal', 'CNV Look Goal', 'west field', 150, 500)
     m.scripts += [
         parts.Script('Look - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1')),
-                                          ('SET_MILLISECOND_TIMER', 'Look - go timer', 3.0)]),
+                                          lib.charging(m.role('carrier').name, CHARGE),
+                                          ('SET_MILLISECOND_TIMER', 'Look - go timer', CHARGE + 2.0)]),
         parts.Script('Look - go', [('TIMER_EXPIRED', 'Look - go timer')],
                      [('MOVE_NAMED_UNIT_TO', m.role('carrier').name, m.mark('goal'))]),
     ]
