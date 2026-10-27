@@ -37,9 +37,41 @@ STATUE_TALL = 0.21                              # her height (feet to torch) ove
 COPPER = (0.85, 0.97, 1.06)                     # her diffuse per channel: the game's sun read her yellow
 
 
+def sockets(verts):
+    """The rim's turret sockets (raised rings standing above the rampart): per 5-degree sector of the outer ring the
+    highest vertex; runs of sectors standing 6 above the rampart (the median sector) are one socket, its bone at
+    their highest points' centre. The v1 bake has five (four corners and the west side; the east side is the elevator)."""
+    import math
+    w = max(max(v[0] for v in verts) - min(v[0] for v in verts), max(v[1] for v in verts) - min(v[1] for v in verts))
+    top = {}
+    for x, y, z in verts:
+        if math.hypot(x, y) > 0.42 * w:             # past the elevator's frame (0.36..0.40), which stands higher
+            b = int(math.degrees(math.atan2(y, x)) % 360 // 5)
+            if z > top.get(b, (-1e9,))[0]:
+                top[b] = (z, x, y)
+    wall = sorted(z for z, _, _ in top.values())[len(top) // 2]       # the rampart's top, most sectors
+    high = sorted(b for b, (z, _, _) in top.items() if z > wall + 6)
+    runs = []
+    for b in high:
+        if runs and b - runs[-1][-1] <= 2:
+            runs[-1].append(b)
+        else:
+            runs.append([b])
+    if len(runs) > 1 and runs[0][0] == 0 and runs[-1][-1] >= 70:      # a run across 0 degrees
+        runs[0] = runs.pop() + runs[0]
+    out = []
+    for run in runs:
+        pts = [top[b] for b in run]
+        out.append((sum(p[1] for p in pts) / len(pts), sum(p[2] for p in pts) / len(pts), max(p[0] for p in pts)))
+    return sorted(out, key=lambda p: math.atan2(p[1], p[0]) % (2 * math.pi))
+
+
 def body():
     with open(os.path.join(SRC, 'parts.json'), encoding='utf-8') as f:
-        pivots = [tuple(p) for p in json.load(f)['_pivots']]
+        data = json.load(f)
+    pivots = [tuple(p) for p in data['_pivots']]
+    # the turret sockets as bones TURRET01.. (not wired: liberty.py's turrets still follow as drones, 总控 2026-10-27)
+    pivots += [(f'TURRET{k + 1:02d}', None, s) for k, s in enumerate(sockets(data['BODY']['vertices']))]
     n = to_w3x.convert(SRC, MODEL, pivots, {'BODY': 'BODY'}, src_name=MODEL, level=make_campchrono.LEVEL,
                        retail_maps=True, scale=SCALE, **make_campchrono.LOOK)
     print(MODEL, n, 'triangles')
