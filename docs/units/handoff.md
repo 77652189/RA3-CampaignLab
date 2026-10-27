@@ -24,7 +24,8 @@
 
 1. **自由号**：外观已接进 `liberty.py`。模型带基洛夫 XML 点名的骨骼（`B_Bombs`、`B_Prop05`、`FX_Fire_02/03`、`FX_WEAPON`，位置是估的）和炮塔座骨骼 `TURRET01..05`（`liberty_kit.sockets` 从模型量出来：四角加西侧，东侧是升降井）。剩下的：
    - 陀螺环：第一次太粗（`bench_rings_a/b.png`），调细后在测试台上看过，转动、发光正常（`bench_rings_thin_a/b.png`）。
-   - 还没做：底部光圈跃迁时张开、头冠七根光芒做跃迁倒计时（设计见 `concept_gpt.py` 的 `libertyisle` 说明和这次对话：剧情说法"她本来就是灯塔 + 埃菲尔铁骨是超时空天线"等用户定）。
+   - 跃迁充能 `CNLibCharge`（提交 6eee3a9）：报警 15 秒里头冠七根青色光芒每 2 秒亮一根，底部三道光环在第 5、9、12 秒由内向外亮起，像光圈张开。做法：模型状态 `USER_1` 时才画这个模型，动画 `CNLibCharge_CHARGE` 播一次，没亮的部件先藏在地图下面 5000。敌方自由号的报警脚本（`devices/carrier.py`）用 `liberty.charging(名字, 秒数)` 设这个状态（原版脚本动作 `UNIT_SET_MODELCONDITION_GENERIC`）。动画按 15 秒写死；报警时长改了，要同时改 `liberty_kit.CHARGE_SECONDS`。玩家自己的自由号（A8）跃迁没有报警，所以不显示。
+   - 还没做：剧情说法（设计见 `concept_gpt.py` 的 `libertyisle` 说明和这次对话：剧情说法"她本来就是灯塔 + 埃菲尔铁骨是超时空天线"等用户定）。
    - 设计规律（大型空中要塞，参考各家即时战略游戏）：一个视觉中心、威胁朝下、悬浮旋转部件显科技、盟军流线型而不是方块、弱点是看得出的独立模块。写在 `concept_gpt.py` 的 `libertyisle` 说明里。
 2. 时滞炮车接进新体系：新体系里还没有它的单位模块，要和总控商量放哪。
 3. 雪堆（`festival.bank`）还没有自己的外观。
