@@ -145,14 +145,21 @@ blocks -- Soviet-looking, no focus, no threat):
   the core without visible supports.
 - Allied design language, not Soviet: sleek sloped and rounded armour, smooth curved bastions, glass domes and
   strips, white-silver and gunmetal with blue team colour; clean large surfaces, detail concentrated in bands.
-- Weak points readable as separate modules: three turret bastions, the drop bay, the conduits feeding the torch.
+- Weak points readable as separate modules: the turret bastions, the war factory, the conduits feeding the torch.
 
-THE DESIGN:
-- Platform: the island's STAR FORT redrawn as a sleek Allied platform -- eleven smooth, rounded, sloped
-  bastion points around a raised round centre. Three of the points carry EMPTY round armoured turret sockets
-  (ring mounts, no guns); one carries a large drop-bay door that lowers ground vehicles; the others carry low
-  launch rails with small arrow-shaped drone fighters. Under it NO rock, NO soil (the user 2026-10-26: once it
-  has flown nothing of the ground is left).
+THE DESIGN (the user 2026-10-26 on the h4/h5 + v3 sheet: too small, where are the factory, the units and the
+turrets? -- so it is a flying BASE in three concentric tiers, its size told by the base buildings on it):
+- Outer tier, the rampart: a ring of rounded, domed Allied armour bastions (glass domes, blue bands) on the
+  rim. FOUR of them are turret bastions, each a raised round EMPTY turret socket (ring mount, no gun -- the
+  turrets are retail Allied defences mounted later); the bastions between carry drone launch rails with small
+  arrow-shaped drone fighters.
+- Middle tier, the base deck: a broad flat deck ring carrying real Allied base buildings at the same scale as on
+  the ground -- a WAR FACTORY (big sleek hangar with an arched door and a gantry crane) whose door opens onto a
+  large square ELEVATOR PLATFORM that lowers finished tanks through a shaft in the hull to the ground; a vehicle
+  park beside it with a few Allied tanks standing on the deck waiting to drop; an airfield strip with hangars for
+  the drones; reactor domes feeding the core. Each building as big as a ground base building: the deck is about
+  six war factories across.
+- Under it NO rock, NO soil (the user 2026-10-26: once it has flown nothing of the ground is left).
 - Core: at the centre a tall tapered chronosphere core column as her pedestal, sleek armour with vertical glowing
   cyan slots, thick power conduits climbing it; around the core TWO OR THREE huge gyroscope rings hover at
   different tilts (thin, bright-edged, glowing inner track), not touching anything. From above they frame the
@@ -161,9 +168,10 @@ THE DESIGN:
   the core up her back to the torch.
 - Underside: a smooth stepped inverted cone of armour plates under the platform, gravity-repulsor discs (flush,
   concentric cyan rings) under the bastion points, and at the cone's tip the big downward chrono aperture.
-- Proportions: a super-unit about 10 times a Guardian tank across, round from above, the statue the tallest
-  thing; the cone below about half as deep as the platform is wide. From the high RTS camera: the
-  star outline, the statue, three ring sockets, blue team-colour on the fortress roofs.'''),
+- Proportions: a flying base about 15 Guardian tanks (six war factories) across, round from above, the statue
+  the tallest thing; the cone below about a third as deep as the platform is wide. From the high RTS camera:
+  the round rampart with four turret sockets, the base deck with the war factory and its elevator, the core with
+  the statue framed by the rings, blue team colour on the roofs.'''),
     'icesculpture': ('ice', ['glacier06', 'snowman'], '''PROP: "Festival Ice Sculpture" for a snow festival plaza (the Sapporo snow festival). Enemy soldiers hide
 inside it; it shatters when the convoy comes close. Read it as a carved festival showpiece, not a natural glacier.
 - Subject: an Eastern (Japanese) dragon coiled around itself, head raised and turned forward, mouth open, long
