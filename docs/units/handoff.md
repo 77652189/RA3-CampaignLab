@@ -23,7 +23,7 @@
 ## 下一步
 
 1. **自由号**：外观已接进 `liberty.py`。模型带基洛夫 XML 点名的骨骼（`B_Bombs`、`B_Prop05`、`FX_Fire_02/03`、`FX_WEAPON`，位置是估的）和炮塔座骨骼 `TURRET01..05`（`liberty_kit.sockets` 从模型量出来：四角加西侧，东侧是升降井）。剩下的：
-   - 陀螺环调细后还没上测试台看（第一次看太粗，`work/units/libertyisle/review/bench_rings_*.png`）。
+   - 陀螺环：第一次太粗（`bench_rings_a/b.png`），调细后在测试台上看过，转动、发光正常（`bench_rings_thin_a/b.png`）。
    - 还没做：底部光圈跃迁时张开、头冠七根光芒做跃迁倒计时（设计见 `concept_gpt.py` 的 `libertyisle` 说明和这次对话：剧情说法"她本来就是灯塔 + 埃菲尔铁骨是超时空天线"等用户定）。
    - 设计规律（大型空中要塞，参考各家即时战略游戏）：一个视觉中心、威胁朝下、悬浮旋转部件显科技、盟军流线型而不是方块、弱点是看得出的独立模块。写在 `concept_gpt.py` 的 `libertyisle` 说明里。
 2. 时滞炮车接进新体系：新体系里还没有它的单位模块，要和总控商量放哪。
