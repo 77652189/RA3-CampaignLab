@@ -544,9 +544,10 @@ def assemble(mission, test=None, name=None):
     c2.BUILT = os.path.join(c2.SDK, 'BuiltMods', 'mods', name.lower(), 'data')
     c2.OUT = c4.OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods', name)
     c7.MAP_MOD = name + 'Map'
-    if game_running():
+    why = mod_busy(name)
+    if why:
         c2.OUT = c4.OUT = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'staging', name)
-        print('RA3 is running -> staging at', c4.OUT)
+        print(f'{why} -> staging at', c4.OUT)
 
     data = os.path.join(c2.SDK, 'Mods', 'CNVUnits', 'Data')
     os.makedirs(data, exist_ok=True)
@@ -588,6 +589,14 @@ def assemble(mission, test=None, name=None):
     c6.edit = edit
     c4.main()
     return c4.OUT
+
+
+def mod_busy(name):
+    """Why the mod must not be written into Mods now ('' if it may): the user's game is up, or a bench game has this
+    mod open. Bench games with other mods do not stop it (several run at once: testbench/slots.py)."""
+    sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'testbench'))
+    import slots
+    return slots.busy(name)
 
 
 def game_running():

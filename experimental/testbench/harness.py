@@ -10,8 +10,8 @@ inspects on demand, notes outside the context). The pieces are run_bench.ps1's, 
   - frames: the shim saves shots\<name>.bmp when shots\shot.req names it; each frame is archived as a PNG
   - world <-> screen: calib.py (maps built on CampNew18's island, start camera; after a minimap jump the mapping
     shifts with the view)
-  - the window is parked off the desktop and the game's own audio sessions are muted; the shared bench lock is held
-    (shared\locks\bench.json, the reslock format) while the game runs
+  - the window is parked off the desktop and the game's own audio sessions are muted; a bench slot is held while
+    the game runs (slots.py: several games at once, each with its own lock in shared\locks and its own shot folder)
 
   python -I -X utf8 experimental/testbench/harness.py smoke <mod>     start, one frame, stop (a check without MCP)
 """
@@ -32,6 +32,7 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 import calib  # noqa: E402
 import nav  # noqa: E402
+import slots  # noqa: E402
 
 BENCH = os.path.join(ROOT, 'work', 'testbench', 'RA3')
 SHOTS = os.path.join(BENCH, 'shots')
@@ -188,6 +189,7 @@ class Session:
 
     def __init__(self):
         self.p = None
+        self.slot = None            # the bench slot held (slots.py) while a game runs
         self.mod = None
         self.run_dir = None
         self.frames = []
@@ -209,15 +211,17 @@ class Session:
         sku = skudef(mod) if mod else 'RA3'
         if mod and not os.path.exists(sku):
             raise BenchError(f'no such mod: {sku}')
-        if game_running():
-            raise BenchError('an RA3 process is already running (the user playing, or another bench): not starting')
-        held = lock_holder()
-        if held:
-            raise BenchError(f'bench locked by {held.get("owner")} (pid {held.get("pid")}) {held.get("note", "")}')
-        os.makedirs(os.path.dirname(LOCK), exist_ok=True)
-        with open(LOCK, 'w', encoding='utf-8') as f:
-            json.dump(dict(owner='RA3-CampaignLab ra3bench', pid=os.getpid(),
-                           since=datetime.datetime.now().isoformat(timespec='seconds'), until=None, note=sku), f)
+        foreign = slots.foreign_games()
+        if foreign:
+            raise BenchError(f'an RA3 process the bench did not start is running (pid {", ".join(map(str, foreign))}: '
+                             'the user playing, or an older tool): not starting')
+        slot = slots.take('RA3-CampaignLab ra3bench', sku)
+        if slot is None:
+            held = slots.holders()
+            raise BenchError('bench locked by ' + '; '.join(f'{h.get("owner")} (pid {h.get("pid")}) {h.get("note", "")}'
+                                                            for h in held.values()) + f' -- all {slots.SLOTS} slots')
+        global LOCK, SHOTS          # one session per process: the slot's lock and shot folder for this game
+        self.slot, LOCK, SHOTS = slot, slots.lock_path(slot), slots.shots_dir(slot)
         os.makedirs(SHOTS, exist_ok=True)
         for n in os.listdir(SHOTS):
             if os.path.isfile(os.path.join(SHOTS, n)):
@@ -229,13 +233,34 @@ class Session:
         self.hold, self.paused, self.game_s, self.run_from = hold, False, 0.0, None
         args = [os.path.join(BENCH, 'Data', 'RA3_1.13.game'), '-config', os.path.join(BENCH, 'RA3_chinese_t_1.13.SkuDef'),
                 '-runver', '1.13', '-win', '-xres', str(W), '-yres', str(H)] + (['-modConfig', sku] if mod else [])
-        self.p = subprocess.Popen(args, cwd=BENCH)
         try:
+            self._launch(args)
             self._walk_menus(visible, timeout, steps)
         except BaseException:
             self.stop()
             raise
         return dict(mod=self.mod, pid=self.p.pid, run_dir=self.run_dir, log=self.log[-12:])
+
+    def _launch(self, args, tries=5):
+        """Start the game in this slot and close its one-copy mutex, so the next copy can start. A copy that exits
+        at once found another one's mutex (a game still starting): wait a little and start again."""
+        env = dict(os.environ, CNV_SHOT_DIR=SHOTS)
+        for _ in range(tries):
+            self.p = subprocess.Popen(args, cwd=BENCH, env=env)
+            slots.note_game(self.slot, self.p.pid)
+            for _ in range(60):
+                time.sleep(0.5)
+                if self.p.poll() is not None:
+                    break
+                if slots.free_instance(self.p.pid):
+                    self._say(f'slot {self.slot}: game {self.p.pid} up, its one-copy mutex closed')
+                    return
+            else:
+                self._say(f'slot {self.slot}: game {self.p.pid} up, no one-copy mutex found in 30 s')
+                return
+            self._say(f'slot {self.slot}: game exited at once (code {self.p.returncode}): another copy starting')
+            time.sleep(3)
+        raise BenchError(f'the game would not start next to the other bench games ({tries} tries)')
 
     def _say(self, s):
         self.log.append(s)
@@ -298,9 +323,9 @@ class Session:
         if self.p and self.p.poll() is None:
             self.p.kill()
             self.p.wait(10)
-        held = lock_holder()
-        if held and held.get('pid') == os.getpid() and os.path.exists(LOCK):
-            os.remove(LOCK)
+        if self.slot:
+            slots.release(self.slot)
+            self.slot = None
         return dict(mod=self.mod, frames=len(self.frames), run_dir=self.run_dir)
 
     def _alive(self):
