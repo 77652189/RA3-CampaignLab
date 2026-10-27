@@ -10,7 +10,7 @@
 | 冰幕工兵：冰墙 `CNIceWall` / 长条 `CNIceBar`、冰核 `CNIceSeed`、碎冰 `CNIceRubble`、工兵贴图 `CNIceEngineer` | 原版冰岛冰川 `IL_GLACIER*` 拼装（`ice_kit.py`），工兵只换贴图 | 通过（`work/units/ice/review/bench_1026.png`）；`ice_block`、`ice_build` PASS | 已接：`icewall.py` 默认穿冰的外观（提交 0af20c1） |
 | 冰雕 `CNIceSculpt`（冰龙） | GPT 四格图 → Tripo 多视图 → `tripo_unit.py` 道具分支 → `ice_kit.prop` | 通过（同上截图） | 已接：`festival.py`（雪堆仍是地堡外观） |
 | 车队运输车 `CNConvoyCargo` | 原版矿车，矿石模块换成原版雪地货柜（`convoy_kit.py`） | 通过（`work/units/convoy/review/bench_1026.png`）；A4 `stop`、`win` PASS | 已接：`convoy.py`（提交 27f8b9a） |
-| 自由号 `CNLiberty` + 女神像 `CNLibStatue` | 用户否了航母版（v1），定为"飞起来的自由岛"：场景图 `work/units/libertyisle/gpt/h6.png` 定设计 → 三视图 v4 → Tripo（整块，没分部件）→ `tripo_unit.py libertyisle`（`kind='platform'`）→ `liberty_kit.py`（平台按时滞炮车的调色写；原版纽约 `NY_LIBERTY` 女神像去掉基座、转向前方、火炬改青色发光，站在核心柱顶 `STATUE` 骨骼上）；测试关 `liberty_look.py`（`CampLibLook`） | 看过两次：宽 400 太大、女神像顶到镜头；按用户选的缩到宽 280（`liberty_kit.SCALE`），女神像约等于核心柱高（`work/units/libertyisle/review/bench280_*.png`） | 没有（`liberty_look.dress` 只在测试关里换外观；接进 `liberty.py` 要总控同意） |
+| 自由号 `CNLiberty` + 女神像 `CNLibStatue` | 用户否了航母版（v1），定为"飞起来的自由岛"：场景图 `work/units/libertyisle/gpt/h6.png` 定设计 → 三视图 v4 → Tripo（整块，没分部件）→ `tripo_unit.py libertyisle`（`kind='platform'`）→ `liberty_kit.py`（平台按时滞炮车的调色写；原版纽约 `NY_LIBERTY` 女神像去掉基座、转向前方、火炬改青色发光，站在核心柱顶 `STATUE` 骨骼上）；测试关 `liberty_look.py`（`CampLibLook`） | 看过两次：宽 400 太大、女神像顶到镜头；按用户选的缩到宽 280（`liberty_kit.SCALE`），女神像约等于核心柱高（`work/units/libertyisle/review/bench280_*.png`） | 已接：`liberty.py` 默认穿（`liberty.dress`，平台 + 女神像 + 会转的陀螺环 `CNLibRings`；`model=None` 关掉）；五个炮塔座做成骨骼 `TURRET01..05`，没接线（总控 2026-10-27：跃迁半径保持 150，炮塔仍是跟着飘的无人机） |
 
 接入规矩（总控定的，`docs/plan.md` 分工表）：单位线只换外观（模型、贴图、残骸、死亡特效），尺寸、血量、速度、机制归关卡线。每个外观函数都能用 `model=None` / `texture=None` / `cargo=None` 关掉。
 
@@ -22,10 +22,9 @@
 
 ## 下一步
 
-1. **自由号**：外观已过测试台（宽 280）。剩下的：
-   - 接进 `liberty.py`（要总控同意）：把 `liberty_look.dress` 搬过去，默认穿新外观。模型已带基洛夫 XML 点名的骨骼（`B_Bombs`、`B_Prop05`、`FX_Fire_02/03`、`FX_WEAPON`，位置是估的）。
-   - 要关卡线一起定的：跃迁半径（现在 150，平台宽 280 正好盖住）；炮塔装到六个炮塔座上（现在的炮塔是跟着飘的无人机，`turret()`），座的位置要从模型里量出来做成骨骼。
-   - 还没做：陀螺环（单独的会转的模型）、底部光圈跃迁时张开、头冠七根光芒做跃迁倒计时（设计见 `concept_gpt.py` 的 `libertyisle` 说明和这次对话：剧情说法"她本来就是灯塔 + 埃菲尔铁骨是超时空天线"等用户定）。
+1. **自由号**：外观已接进 `liberty.py`。模型带基洛夫 XML 点名的骨骼（`B_Bombs`、`B_Prop05`、`FX_Fire_02/03`、`FX_WEAPON`，位置是估的）和炮塔座骨骼 `TURRET01..05`（`liberty_kit.sockets` 从模型量出来：四角加西侧，东侧是升降井）。剩下的：
+   - 陀螺环调细后还没上测试台看（第一次看太粗，`work/units/libertyisle/review/bench_rings_*.png`）。
+   - 还没做：底部光圈跃迁时张开、头冠七根光芒做跃迁倒计时（设计见 `concept_gpt.py` 的 `libertyisle` 说明和这次对话：剧情说法"她本来就是灯塔 + 埃菲尔铁骨是超时空天线"等用户定）。
    - 设计规律（大型空中要塞，参考各家即时战略游戏）：一个视觉中心、威胁朝下、悬浮旋转部件显科技、盟军流线型而不是方块、弱点是看得出的独立模块。写在 `concept_gpt.py` 的 `libertyisle` 说明里。
 2. 时滞炮车接进新体系：新体系里还没有它的单位模块，要和总控商量放哪。
 3. 雪堆（`festival.bank`）还没有自己的外观。
