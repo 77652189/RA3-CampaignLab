@@ -40,6 +40,10 @@ UNITS = {
     # a map prop (prop_main): one piece, width = its larger side on the ground; no team colour, no bones
     'icesculpture': dict(glb='units/icesculpture/tripo/icesculpture_v1.glb', kind='prop', width=38,
                          budget=dict(PROP=1600), tex=512, model='CNIceSculpt'),
+    # a flying platform (platform_main): one piece with team colour and the bones its XML names; width 400 is a
+    # first guess (the deck jump's radius is 150; the final size is the levels line's call)
+    'libertyisle': dict(glb='units/libertyisle/tripo/libertyisle_v1.glb', kind='platform', width=400,
+                        budget=dict(BODY=12000), tex=2048, model='CNLiberty'),
 }
 SHARP = math.radians(35)
 
@@ -247,6 +251,7 @@ def renders(lows, mat, out_dir, size, height=8):
                                         dist * math.sin(e)))
         cam.rotation_euler = (target - cam.location).to_track_quat('-Z', 'Y').to_euler()
         cam.data.lens = 50
+        cam.data.clip_end = dist * 3            # the default 100 clips a platform hundreds of units across
         sc.render.film_transparent = transparent
         sc.render.resolution_x = sc.render.resolution_y = 512
         sc.render.image_settings.color_mode = 'RGBA' if transparent else 'RGB'
@@ -276,6 +281,39 @@ def prop_main(unit, cfg, out_dir):
     print('done', out_dir, f'height {height:.1f}')
 
 
+def platform_main(unit, cfg, out_dir):
+    """A flying platform (the Liberty): one piece BODY, `width` across, centred, its lowest point at z = 0 (the
+    locomotor sets the hover height); collapsed, baked, team mask from the blue paint; pivots for the bones the
+    Kirov-based XML names (liberty.py) plus STATUE, the top of the core where the retail statue stands."""
+    parts = import_parts(os.path.join(WORK, cfg['glb']))
+    lo_all, hi_all = bbox(list(parts.values()))
+    s = cfg['width'] / max(hi_all.x - lo_all.x, hi_all.y - lo_all.y)
+    shift = Vector((-(lo_all.x + hi_all.x) / 2, -(lo_all.y + hi_all.y) / 2, -lo_all.z))
+    for o in parts.values():
+        o.data.transform(Matrix.Translation(shift))
+        o.data.transform(Matrix.Scale(s, 4))
+    hi = join(list(parts.values()), 'HI_BODY')
+    lo = low_copy(hi, 'BODY', cfg['budget']['BODY'], 1e-4 * cfg['width'])
+    uv_atlas([lo])
+    name = cfg['model']
+    images, mat = bake([(hi, lo)], cfg['tex'], out_dir, name)
+    team_mask(os.path.join(out_dir, name + '.png'), os.path.join(out_dir, name + '_mask.png'))
+    # the core's top: the highest vertex near the centre
+    r = 0.08 * cfg['width']
+    top = max((v.co.z for v in hi.data.vertices if v.co.x * v.co.x + v.co.y * v.co.y < r * r), default=hi.dimensions.z)
+    height = hi.dimensions.z
+    bpy.data.objects.remove(hi)
+    w = cfg['width'] / 2
+    pv = [('BODY', None, (0, 0, 0)), ('STATUE', None, (0.0, 0.0, top)),
+          ('B_Bombs', None, (0.0, 0.0, 0.0)), ('FX_WEAPON', None, (0.0, 0.0, 0.0)),
+          ('B_Prop05', None, (0.0, 0.0, 0.3 * height)),
+          ('FX_Fire_02', None, (0.3 * w, 0.5 * w, 0.4 * height)), ('FX_Fire_03', None, (-0.4 * w, -0.4 * w, 0.4 * height))]
+    export({'BODY': lo}, pv, out_dir)
+    renders([lo], mat, out_dir, cfg['width'], height=height / 2)
+    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(out_dir, unit + '.blend'))
+    print('done', out_dir, f'height {height:.1f}, core top {top:.1f}')
+
+
 def main(unit):
     cfg = UNITS[unit]
     out_dir = os.path.join(WORK, 'units', unit, 'game')
@@ -283,6 +321,8 @@ def main(unit):
     bpy.ops.wm.read_factory_settings(use_empty=True)
     if cfg.get('kind') == 'prop':
         return prop_main(unit, cfg, out_dir)
+    if cfg.get('kind') == 'platform':
+        return platform_main(unit, cfg, out_dir)
     parts = import_parts(os.path.join(WORK, cfg['glb']))
     picked = {g: [parts[i] for i in cfg[g]] for g in ('TURRET', 'BARREL')}
     used = {i for g in ('TURRET', 'BARREL') for i in cfg[g]}
