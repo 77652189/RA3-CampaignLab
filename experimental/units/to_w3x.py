@@ -35,7 +35,8 @@ def tint(m):
 
 
 def convert(src, model, pivots, part_bones, src_name='CNTankL', spec=0.45, scale=1.0, level=72, grade=True,
-            retail_maps=False, edge_gain=1.0, edge_spec=110, plate_spec=18, plate_share=12, body_spec=18, contrast=1.0):
+            retail_maps=False, edge_gain=1.0, edge_spec=110, plate_spec=18, plate_share=12, body_spec=18, contrast=1.0,
+            glow_margin=60, glow_floor=0, glow_lift=False, cool=1.0):
     """spec: specular (SPM red) as a fraction of the diffuse luminance -- retail Allied SPM red averages ~21;
     a flat 110 made the whole tank mirror the warm environment map (tan / pink in game, CampNew23 first run).
     scale: uniform size factor for vertices and pivots (the first in-game run read ~0.6 of a Guardian).
@@ -43,7 +44,12 @@ def convert(src, model, pivots, part_bones, src_name='CNTankL', spec=0.45, scale
     out at 107..143 and read white in game, CampNew25). Cyan light pixels keep their colour and go into SPM green
     (glow), as on retail units. None keeps the bake as is.
     grade: recolour to the retail cool-silver curve (RETAIL_TINT); our bakes came out near neutral (B/R ~1.07) and
-    read warm under the game's sun."""
+    read warm under the game's sun.
+    glow_margin / glow_floor: a texel glows (SPM green) when its green and blue both exceed red by the margin and both
+    reach the floor -- 60 / 0 caught 0.9 % of the chrono-lag's bake, its pale cyan rings were left out and in game
+    the lights could not be seen (user 2026-10-26: "青色光要看得见"; 30 / 120 catch 1.3 %). glow_lift: glowing texels
+    recoloured a saturated bright cyan at their own hue's strength. cool: the non-glow, non-team body's blue x cool,
+    red / cool (the chrono-lag read brown beside the Guardian)."""
     with open(os.path.join(src, 'parts.json'), encoding='utf-8') as f:
         parts = json.load(f)
     index = {name: k + 1 for k, (name, _, _) in enumerate(pivots)}          # ROOTTRANSFORM is 0
@@ -66,7 +72,7 @@ def convert(src, model, pivots, part_bones, src_name='CNTankL', spec=0.45, scale
         return 0.3 * r + 0.59 * g + 0.11 * b
 
     def glow(r, g, b):
-        return g > r + 60 and b > r + 60
+        return g > r + glow_margin and b > r + glow_margin and min(g, b) >= glow_floor
     k = 1.0
     if level:
         ls = sorted(lum(*dp[x, y][:3]) for x in range(0, w, 2) for y in range(0, h, 2)
@@ -99,7 +105,8 @@ def convert(src, model, pivots, part_bones, src_name='CNTankL', spec=0.45, scale
         src_rgb = np.asarray(diffuse.convert('RGB'), float)
         out = np.array([[diffuse_px(x, y)[:3] for x in range(w)] for y in range(h)], float)
         lb = src_rgb @ (0.3, 0.59, 0.11)
-        is_glow = (src_rgb[..., 1] > src_rgb[..., 0] + 60) & (src_rgb[..., 2] > src_rgb[..., 0] + 60)
+        is_glow = ((src_rgb[..., 1] > src_rgb[..., 0] + glow_margin) & (src_rgb[..., 2] > src_rgb[..., 0] + glow_margin)
+                   & (np.minimum(src_rgb[..., 1], src_rgb[..., 2]) >= glow_floor))
         soft = np.asarray(mask.filter(ImageFilter.GaussianBlur(1.5)), float) / 255
         used = lb > 10
         body = used & ~is_glow & (soft < 0.05)
@@ -129,6 +136,13 @@ def convert(src, model, pivots, part_bones, src_name='CNTankL', spec=0.45, scale
             r = np.maximum(lo, 1e-3) / m
             curve = np.where(r > 1, r ** contrast, r ** (0.5 + 0.5 * contrast))
             out = np.where(is_glow[..., None], out, np.clip(out * (curve / r), 0, 240))
+        if cool != 1.0:
+            out = np.where(body[..., None], out * (1 / cool, 1.0, cool), out)
+        if glow_lift:
+            # the lights a saturated cyan as bright as their own green / blue allow (never below 3/4): pale baked
+            # cyan (110, 181, 205) went grey in game
+            strength = np.clip(np.maximum(src_rgb[..., 1], src_rgb[..., 2]) / 255 * 1.15, 0.75, 1.0)[..., None]
+            out = np.where(is_glow[..., None], np.array((70.0, 230.0, 255.0)) * strength, out)
         # plates: the brightest body texels (upward faces) shine without being brightened -- the retail Guardian's
         # highlights are mostly specular on broad plates (17 % of its SPM at 64-128); thin edges alone left the
         # close-up dull (p90 114 vs the Guardian's 170)
@@ -139,7 +153,8 @@ def convert(src, model, pivots, part_bones, src_name='CNTankL', spec=0.45, scale
         out8, spm8 = np.clip(out, 0, 255).astype(np.uint8), spm_rgb.astype(np.uint8)
         w3x.write_texture(model, w, h, lambda x, y: (*map(int, out8[y, x]), 255))
         w3x.write_texture(model + '_SPM', w, h, lambda x, y: (*map(int, spm8[y, x]), 255))
-        print(f'{model}: retail-style maps: team texels {(soft > 0.05).mean():.3f}, edges {edge.mean():.3f}, plates {plate.mean():.3f}, '
+        print(f'{model}: retail-style maps: team texels {(soft > 0.05).mean():.3f}, glow {is_glow.mean():.4f}, '
+              f'edges {edge.mean():.3f}, plates {plate.mean():.3f}, '
               f'matte {dark.mean():.3f}')
     else:
         w3x.write_texture(model, w, h, diffuse_px)

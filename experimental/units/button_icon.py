@@ -30,6 +30,8 @@ KINDS = {'button': ((106, 106), b'packedtextureimage:button_', b'_on', 7, 1.18, 
          'button_japan': ((106, 106), b'packedtextureimage:button_japan', b'', 7, 1.18, 1.12, 0.5),   # no _on
          'portrait_japan': ((101, 76), b'packedtextureimage:portrait_japan', b'', 4, 0.9, 1.12, 0.25)}
 STATIC = [('StaticStream.big', 'data\\static.')] + [(f'Core{v}.big', f'data\\static.{v}.') for v in (5, 6, 8, 9, 10, 11, 12)]
+# World Builder's stream: every map prop too (IL_Glacier01 .. 09a, SV_Snowman), which the static stream lacks
+WORLDBUILDER = [('WBData.big', 'data\\worldbuilder.')]
 
 
 def frame_path(kind):

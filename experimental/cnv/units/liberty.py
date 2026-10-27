@@ -6,6 +6,10 @@ Chronosphere's store / send). Optional: a deck factory (a SpawnBehavior budding 
 (units with an AttachUpdate that sit on the carrier and ride the jump with it; they stack on one spot).
 
 liberty(tag=...) gives every id of its own a suffix, so two variants can stand on one map for an A/B run.
+
+It wears the units line's look by default (2026-10-27, dress): the flying Liberty Island fortress CNLiberty (280
+across, the Kirov's bone names, turret sockets TURRET01..05 as bones, not wired), retail's statue CNLibStatue on its
+core and the turning gyroscope rings CNLibRings -- written into the SDK's Art by experimental/units/liberty_kit.py.
 """
 import os
 import re
@@ -15,6 +19,7 @@ from parts import Unit
 
 SAGE = os.path.join(c2.SDK, 'SageXML')
 RETAIL_RIDER = 'AlliedAntiVehicleVehicleTech1'      # the Guardian
+LOOK = ('CNLiberty', 'CNLibStatue', 'CNLibRings')    # liberty_kit.py's models: platform, statue, rings
 
 
 def sub1(x, old, new):
@@ -22,11 +27,50 @@ def sub1(x, old, new):
     return x.replace(old, new, 1)
 
 
+def dress(unit, model=LOOK[0], statue=LOOK[1], rings=LOOK[2]):
+    """The carrier drawing `model`, `statue` and `rings` in place of the Kirov (all at its origin, each carrying its
+    place over the core; the rings looping their turn, <rings>_IDLE); the drones still launch from FX_WEAPON. Look
+    only: geometry, health, locomotor and every behaviour stay the Kirov's."""
+    x, n = re.subn(r'<Draws>.*?</Draws>', f'''<Draws>
+			<ScriptedModelDraw id="ModuleTag_Draw" OkToChangeModelColor="true">
+				<ModelConditionState ParseCondStateType="PARSE_DEFAULT">
+					<Model Name="{model.upper()}" />
+					<WeaponLaunchBone WeaponSlotType="PRIMARY_WEAPON" BoneName="FX_WEAPON" />
+				</ModelConditionState>
+				<AnimationState ParseCondStateType="PARSE_DEFAULT">
+				</AnimationState>
+			</ScriptedModelDraw>
+			<ScriptedModelDraw id="ModuleTag_Draw_Statue" OkToChangeModelColor="false">
+				<ModelConditionState ParseCondStateType="PARSE_DEFAULT">
+					<Model Name="{statue.upper()}" />
+				</ModelConditionState>
+				<AnimationState ParseCondStateType="PARSE_DEFAULT">
+				</AnimationState>
+			</ScriptedModelDraw>
+			<ScriptedModelDraw id="ModuleTag_Draw_Rings" OkToChangeModelColor="false">
+				<ModelConditionState ParseCondStateType="PARSE_DEFAULT">
+					<Model Name="{rings.upper()}" />
+				</ModelConditionState>
+				<AnimationState ParseCondStateType="PARSE_DEFAULT">
+					<Animation AnimationName="{rings.upper()}_IDLE" AnimationMode="LOOP" />
+				</AnimationState>
+			</ScriptedModelDraw>
+		</Draws>''', unit.xml, count=1, flags=re.S)
+    assert n == 1, n
+    unit.xml = sub1(x, '<Includes>', f'<Includes>\n\t\t<Include type="all" source="ART:{model}.w3x" />'
+                                     f'\n\t\t<Include type="all" source="ART:{statue}.w3x" />'
+                                     f'\n\t\t<Include type="all" source="ART:{rings}.w3x" />'
+                                     f'\n\t\t<Include type="all" source="ART:{rings}_IDLE.w3x" />')
+    unit.params['look'] = model
+    return unit
+
+
 def liberty(id='CNV_Liberty', tag='', reload='20s', drone_range=600, drones_home=True, factory=None, riders=None,
-            show_jump=True, deck_radius=150, turrets=0, turret_id='CNV_LibertyTurret'):
+            show_jump=True, deck_radius=150, turrets=0, turret_id='CNV_LibertyTurret', model=LOOK[0]):
     """factory: the template the deck builds (None: no factory). riders: the rider template (left out of the deck's
     store / send, which would detach them). turrets: how many deck turrets (turret_id, see turret()) it carries from
-    the start, not replaced once shot off. Returns the carrier's Unit; .names: power, unit."""
+    the start, not replaced once shot off. model: its look (dress); None keeps the Kirov's. Returns the carrier's
+    Unit; .names: power, unit."""
     s = f'_{tag}' if tag else ''
     ids = dict(power=f'SpecialPower_CNV_ChronoDeck{s}', command=f'Command_CNV_ChronoDeck{s}',
                commandset=f'CNV_LibertyCommandSet{s}', button=f'Button_CNV_ChronoDeck{s}',
@@ -141,13 +185,14 @@ def liberty(id='CNV_Liberty', tag='', reload='20s', drone_range=600, drones_home
             f'LogicCommandSet:{ids["commandset"]}', f'UnitAbilityButtonTemplate:{ids["button"]}',
             f'SpecialPowerTemplate:{ids["store"]}', f'SpecialPowerTemplate:{ids["send"]}',
             f'ObjectFilterAsset:{ids["filter"]}', f'WeaponTemplate:{ids["store_w"]}', f'WeaponTemplate:{ids["send_w"]}']
-    return Unit(id, x, files={ui_file: ui}, also=[ui_file], link=link, names=dict(ids, unit=id),
-                abilities={'jump': ids['power']},
-                what='自由号：发射无人机的空天航母；jump 把自己和甲板下的地面部队一起跃迁到一个点'
-                     + (f'；甲板每 20 秒造一辆 {factory}' if factory else '')
-                     + (f'；带 {turrets} 座 {turret_id}' if turrets else ''),
-                params=dict(reload=reload, drone_range=drone_range, deck_radius=deck_radius, factory=factory,
-                            riders=riders, turrets=turrets, turret=turret_id if turrets else None))
+    u = Unit(id, x, files={ui_file: ui}, also=[ui_file], link=link, names=dict(ids, unit=id),
+             abilities={'jump': ids['power']},
+             what='自由号：发射无人机的空天航母；jump 把自己和甲板下的地面部队一起跃迁到一个点'
+                  + (f'；甲板每 20 秒造一辆 {factory}' if factory else '')
+                  + (f'；带 {turrets} 座 {turret_id}' if turrets else ''),
+             params=dict(reload=reload, drone_range=drone_range, deck_radius=deck_radius, factory=factory,
+                         riders=riders, turrets=turrets, turret=turret_id if turrets else None))
+    return dress(u, model) if model else u
 
 
 def drone_weapon(wid, rng):
