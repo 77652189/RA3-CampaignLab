@@ -1,5 +1,7 @@
 // Record what one process (and its children) plays, nothing else: WASAPI process loopback (Windows 10 2004+).
-//   proc_capture.exe <pid> <seconds> <out.wav>       44.1 kHz 16-bit stereo; silent stretches kept in place
+//   proc_capture.exe <pid> <seconds> <out.wav> [gain]     44.1 kHz 16-bit stereo; silent stretches kept in place
+// Captured as float, times gain, then to 16 bits: the loopback hears the game after its sessions' volume, so a game
+// turned down to nothing anyone hears (-80 dB) is brought back up here with no loss to 16-bit steps.
 // Built by listen.py with the .NET Framework csc.exe (C# 5), no packages.
 using System;
 using System.IO;
@@ -60,13 +62,14 @@ static class Program {
         [MarshalAs(UnmanagedType.LPStruct)] Guid riid, IntPtr activationParams,
         IActivateAudioInterfaceCompletionHandler handler, out IActivateAudioInterfaceAsyncOperation op);
 
-    const int RATE = 44100, CH = 2, BYTES = 4;
+    const int RATE = 44100, CH = 2, BYTES = 4, IN_BYTES = 8;     // out: 16-bit frames; in: float frames
 
     [MTAThread]
     static int Main(string[] args) {
         uint pid = uint.Parse(args[0]);
         double seconds = double.Parse(args[1], System.Globalization.CultureInfo.InvariantCulture);
         string outPath = args[2];
+        double gain = args.Length > 3 ? double.Parse(args[3], System.Globalization.CultureInfo.InvariantCulture) : 1.0;
 
         IntPtr p = Marshal.AllocHGlobal(12);                   // AUDIOCLIENT_ACTIVATION_PARAMS
         Marshal.WriteInt32(p, 0, 1);                           // AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK
@@ -84,9 +87,9 @@ static class Program {
         if (!h.Done.WaitOne(5000) || h.Hr != 0) { Console.Error.WriteLine("activate failed 0x" + h.Hr.ToString("x")); return 2; }
         IAudioClient client = (IAudioClient)h.Client;
 
-        IntPtr fmt = Marshal.AllocHGlobal(18);                 // WAVEFORMATEX, PCM 16-bit stereo
-        Marshal.WriteInt16(fmt, 0, 1); Marshal.WriteInt16(fmt, 2, CH); Marshal.WriteInt32(fmt, 4, RATE);
-        Marshal.WriteInt32(fmt, 8, RATE * BYTES); Marshal.WriteInt16(fmt, 12, BYTES); Marshal.WriteInt16(fmt, 14, 16);
+        IntPtr fmt = Marshal.AllocHGlobal(18);                 // WAVEFORMATEX, IEEE float 32-bit stereo
+        Marshal.WriteInt16(fmt, 0, 3); Marshal.WriteInt16(fmt, 2, CH); Marshal.WriteInt32(fmt, 4, RATE);
+        Marshal.WriteInt32(fmt, 8, RATE * IN_BYTES); Marshal.WriteInt16(fmt, 12, IN_BYTES); Marshal.WriteInt16(fmt, 14, 32);
         Marshal.WriteInt16(fmt, 16, 0);
         // LOOPBACK | AUTOCONVERTPCM | SRC_DEFAULT_QUALITY
         client.Initialize(0, 0x00020000 | unchecked((int)0x80000000) | 0x08000000, 2000000, 0, fmt, IntPtr.Zero);
@@ -100,6 +103,7 @@ static class Program {
         long got = 0;
         client.Start();
         byte[] buf = new byte[0];
+        float[] fl = new float[0];
         while (got < want) {
             Thread.Sleep(10);
             uint n;
@@ -107,9 +111,17 @@ static class Program {
             while (n > 0) {
                 IntPtr data; uint frames, flags; ulong dp, qp;
                 cap.GetBuffer(out data, out frames, out flags, out dp, out qp);
-                int len = (int)frames * BYTES;
-                if (buf.Length < len) buf = new byte[len];
-                if ((flags & 2) != 0) Array.Clear(buf, 0, len); else Marshal.Copy(data, buf, 0, len);
+                int k = (int)frames * CH, len = (int)frames * BYTES;
+                if (buf.Length < len) { buf = new byte[len]; fl = new float[k]; }
+                if ((flags & 2) != 0) Array.Clear(buf, 0, len);
+                else {
+                    Marshal.Copy(data, fl, 0, k);
+                    for (int i = 0; i < k; i++) {
+                        double v = Math.Max(-1.0, Math.Min(1.0, fl[i] * gain));
+                        short s = (short)Math.Round(v * 32767);
+                        buf[2 * i] = (byte)s; buf[2 * i + 1] = (byte)(s >> 8);
+                    }
+                }
                 pcm.Write(buf, 0, len);
                 got += frames;
                 cap.ReleaseBuffer(frames);

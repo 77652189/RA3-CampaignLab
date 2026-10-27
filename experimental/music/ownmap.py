@@ -8,7 +8,8 @@ or a GOTO alone. timeline(m, node, fires, seconds) says offline what the game pl
   spy(m): every event jumps to a looping section of its own whose stream is the event's index, so a tracer
   recording says which event fired when. The section MenuTrack goes to also carries a router to every other
   section: through transition A if the node's router value v names routers[v - 1], through transition B if it names
-  routers[v] (which of the two the engine reads is not known yet). See SPY_* for the streams.
+  routers[v] (MusSpy 2026-10-25: A, v - 1; B sat in the last router, which maps then lost: pfdx docstring, routers).
+  See SPY_* for the streams.
 """
 import copy
 from dataclasses import dataclass

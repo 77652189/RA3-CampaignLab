@@ -38,7 +38,17 @@ def streams():
     return out + [(t, T_MS) for routes in ROUTES.values() for _, t in routes]
 
 
-def music_map(base):
+def events(swap=False):
+    """swap: F and G trade events (bench 2026-10-26: G, jumped to from P1, kept replaying its first segment while F
+    did not -- the event or the section?)."""
+    if not swap:
+        return EVENTS
+    return {**EVENTS, 'F': EVENTS['G'], 'G': EVENTS['F']}
+
+
+def music_map(base, swap=False, cover=False):
+    """cover: every router also gets a pair straight to each plain jump's target it lacks (b, b): no jump is left
+    without a pair (does that cure G?)."""
     b = ownmap.Builder(base)
     secs, k = {}, 0
     route_of = {s: i + 1 for i, s in enumerate(ROUTES)}
@@ -54,16 +64,20 @@ def music_map(base):
         for target, t in routes:
             b.link(secs[t], secs[target])
     b.m.routers = [[(secs[t].entry, secs[target].entry) for target, t in routes] for routes in ROUTES.values()]
-    for key, (event, prep) in EVENTS.items():
+    if cover:
+        plain = [secs[key].entry for key, (_, prep) in EVENTS.items() if not prep]
+        for pairs in b.m.routers:
+            pairs += [(e, e) for e in plain if e not in {to for _, to in pairs}]
+    for key, (event, prep) in events(swap).items():
         b.on(event, secs[key], prep=prep)
     for shell in ('MenuTrack', 'BriefingTrack'):
         b.on(shell, secs['E'], prep=True)
     return b, [ms for _, ms in streams()]
 
 
-def _pack():
+def _pack(swap=False, cover=False):
     from experimental.music import extract
-    b, lengths = music_map(extract.retail_map())
+    b, lengths = music_map(extract.retail_map(), swap, cover)
     return pack.make(b.m, pack.tracer_tracks(b.m, lengths))
 
 
@@ -75,11 +89,13 @@ def facts():
     return out
 
 
-def mission(name='CampMusRoute'):
-    m = Mission(name=name, map=island, facts=facts(), music=pack.Later(_pack, {e for e, _ in EVENTS.values()}))
+def mission(name='CampMusRoute', swap=False, cover=False):
+    ev = events(swap)
+    m = Mission(name=name, map=island, facts=facts(),
+                music=pack.Later(lambda: _pack(swap, cover), {e for e, _ in ev.values()}))
     m.put('AlliedAntiVehicleVehicleTech1', 'west field', 0, 0, name='UNIT - CNV Music Route Guardian', role='listener')
     m.scripts.append(Script('CNV Music Route - Start', [], [('SET_MILLISECOND_TIMER', f'CNV Music Route {k}', t)
                                                             for k, (t, _) in enumerate(SCHEDULE)]))
     m.scripts += [Script(f'CNV Music Route - {k} {key}', [('TIMER_EXPIRED', f'CNV Music Route {k}')],
-                         [('PATH_MUSIC_PLAY_EVENT', EVENTS[key][0])]) for k, (_, key) in enumerate(SCHEDULE)]
+                         [('PATH_MUSIC_PLAY_EVENT', ev[key][0])]) for k, (_, key) in enumerate(SCHEDULE)]
     return m

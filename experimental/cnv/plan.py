@@ -149,7 +149,11 @@ def by_level(values):
 
 
 def start_time(c):
-    """The three times when a condition is `开局 + t`, else None."""
+    """The three times when a condition is `开局 + t` (or any of several with one such: then the latest, the player
+    may bring it forward), else None."""
+    if isinstance(c, dict):
+        ts = [t for t in map(start_time, c.get('任一', [])) if t]
+        return ts[0] if len(ts) == 1 else None
     if isinstance(c, str):
         mm = re.match(r'^开局\s*\+\s*(.+)$', c.strip())
         if mm:
@@ -186,6 +190,8 @@ class Compiler:
         self.conds = {}             # condition text -> alternatives
         self.timers = {}            # condition text with a time -> (timer, its started flag)
         self.shown = {}             # timer -> countdown label key
+        self.until = {}             # timer -> the condition that puts its countdown away sooner (直到)
+        self.ai_awake = f'CNV_{self.tag}_AI_Awake'                  # 1 once 敌方AI woke (敌方AI 醒来)
         self.devices = {}
         self.dev_units = {}         # unit name a device publishes -> its Unit
         self.phases, self.waves, self.goals = [], {}, {}
@@ -290,6 +296,10 @@ class Compiler:
             if rest:
                 raise PlanError(f'{s!r}: 开局 takes nothing after it (a time is `开局 + 0:30`)')
             return [[]]
+        if s == '敌方AI 醒来':                      # latched by its wake (compile_ai)
+            if not self.d.get('敌方AI'):
+                raise PlanError(f'{s!r}: the plan has no 敌方AI')
+            return [[('FLAG', self.ai_awake, 1)]]
         if not rest and '.' not in head:
             raise PlanError(f'{s!r}: {head} needs what it is about (plan.py, README.md 条件)')
         if ' 进入 ' in s and head not in ('还没', '段', '目标'):
@@ -452,7 +462,11 @@ class Compiler:
             self.cond(key)
             if key not in self.timers:
                 raise PlanError(f'倒计时 {key!r}: a condition with a time (… + 3:00)')
-            self.shown[self.timers[key][0]] = self.text('SCRIPT', a.get('文字', ''))
+            timer = self.timers[key][0]
+            self.shown[timer] = self.text('SCRIPT', a.get('文字', ''))
+            if a.get('直到') is not None:            # put away sooner (what it counts to came early): never shown after
+                self.cond('还没 ' + str(a['直到']).strip())         # one that latches: its flag still 0
+                self.until[timer] = str(a['直到']).strip()
             return []
         if '摧毁' in a:
             return [('NAMED_KILL', n) for n in self.part_names(a['摧毁'])]
@@ -656,6 +670,8 @@ class Compiler:
         if stepped:
             self.when(f'Wave {k} more', extra['当'], [('SET_FLAG', more_flag, 1)])
         alive = [[('NAMED_NOT_DESTROYED', n)] for p in spec.get('来源') or [] for n in self.part_names(p)] or [[]]
+        if spec.get('直到') is not None:            # no more waves once it holds (one that latches: the AI took over)
+            alive = [alt + self.cond('还没 ' + str(spec['直到']).strip())[0] for alt in alive]
         wp = self.mark(spec['从'])
         gaps = times(every) if every else (0.0,) * 3
         sooner = times(extra['每隔']) if extra.get('每隔') is not None else gaps
@@ -791,7 +807,7 @@ class Compiler:
         m.sides[side] = {'playerFaction': enemy_ai.PLAYER_TEMPLATE[faction],
                          'aiPersonality': f'AIPersonalityDefinition:{pid}'}
         m.assets.append((f'{pid}.xml', xml, f'AIPersonalityDefinition:{pid}'))
-        awake = f'CNV_{self.tag}_AI_Awake'
+        awake = self.ai_awake
         # 敌's ally, the player's enemy, whatever the container map said; no money till it wakes. The Friend did not
         # keep 敌's guards (守 east gate) off the AI's barracks, nor did playerAllies both ways in the map's player list
         # (bench 2026-10-26, a7/east: lost at s100 either way; with the guards deleted it stood) -- why is open, so a
@@ -829,11 +845,16 @@ class Compiler:
     def compile_countdowns(self):
         for timer, label in self.shown.items():
             started = next(st for t, st in self.timers.values() if t == timer)
-            self.m.scripts += [Script(f'CNV {self.tag} - Countdown {timer}', [('FLAG', started, 1)],
+            until = self.until.get(timer)
+            not_yet = self.cond('还没 ' + until)[0] if until else []
+            self.m.scripts += [Script(f'CNV {self.tag} - Countdown {timer}', [('FLAG', started, 1)] + not_yet,
                                       [('DISPLAY_COUNTDOWN_TIMER', timer, label)]),
                                Script(f'CNV {self.tag} - Countdown {timer} off',
                                       [('FLAG', started, 1), ('TIMER_EXPIRED', timer)],
                                       [('HIDE_COUNTDOWN_TIMER', timer)])]
+            self.m.scripts += [Script(f'CNV {self.tag} - Countdown {timer} put away' + (f' ({k + 1})' if k else ''),
+                                      [('FLAG', started, 1)] + alt, [('HIDE_COUNTDOWN_TIMER', timer)])
+                               for k, alt in enumerate(self.cond(until) if until else [])]
             self.m.countdowns.append(timer)
 
     def compile(self):

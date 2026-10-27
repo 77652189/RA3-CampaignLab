@@ -61,10 +61,14 @@ def digits():
 MISSIONS = {
     'a4': (lambda: a4.mission(), {'seal': check_a4.seal, 'placed': check_a4.placed, 'smash': check_a4.smash,
                                   'ambush': check_a4.ambush, 'win': check_a4.win, 'lose': check_a4.lose,
-                                  'idle': check_a4.idle, 'harbour': check_a4.harbour}),
+                                  'idle': check_a4.idle, 'harbour': check_a4.harbour, 'stop': check_a4.stop,
+                                  'early': check_a4.early, 'tough': check_a4.tough,
+                                  'north': check_a4.north, 'camp': check_a4.camp}),
     'j4': (lambda: j4.mission(), {'breach': check_j4.breach, 'play': check_j4.play, 'lose': check_j4.lose}),
     'a7': (lambda: a7.mission(), {'jumps': check_a7.jumps, 'pick': check_a7.pick, 'defend': check_a7.defend,
-                                  'power': check_a7.power, 'win': check_a7.win, 'east': check_a7.east}),
+                                  'power': check_a7.power, 'win': check_a7.win, 'east': check_a7.east,
+                                  'nag': check_a7.nag, 'faster': check_a7.faster, 'revenge': check_a7.revenge,
+                                  'pincer': check_a7.pincer}),
     'a8': (lambda: a8.mission(), {'jump': check_a8.jump, 'lose': check_a8.lose, 'assault': check_a8.assault}),
     'a8_control': (lambda: a8.mission(carrier=False, name='CampA8C'), {'assault': check_a8.assault}),
     'liberty': (lambda: liberty_bench.mission(), {'jump': check_lib.jump, 'open': check_lib.jump_open}),
@@ -112,6 +116,8 @@ MISSIONS = {
     'musicdynspy': (lambda: _music_bench('music_dyn').mission(name='CampMusDynS', spy=True), {}),   # tracers
     'musicdyntr': (lambda: _music_bench('music_dyn').mission(name='CampMusDynT', tracer=True), {}),
     'musicroute': (lambda: _music_bench('music_route').mission(), {}),    # how routers take a pending jump
+    'musicrouteswap': (lambda: _music_bench('music_route').mission(name='CampMusRouteW', swap=True), {}),
+    'musicroutecover': (lambda: _music_bench('music_route').mission(name='CampMusRouteC', cover=True), {}),
 }
 
 

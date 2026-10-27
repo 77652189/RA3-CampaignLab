@@ -1,0 +1,132 @@
+"""The escort devices (experimental/cnv/devices/convoy.py, ice_plazas.py) compile to what they say: trucks' health
+by difficulty set the retail way, and with 遇伏: 停下 a plaza's troops out, alive and ungated stop the convoy --
+counted only once made, from the moment a truck reaches that plaza -- until they are down or the gate is iced."""
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / 'experimental' / 'cnv'))
+import parts  # noqa: E402
+import plan  # noqa: E402
+
+EASY, NORMAL, HARD = plan.ONE
+
+
+def escort(convoy=None, plazas=None):
+    d = {'关卡': 'zz', '地图': 'festival', '阵营': {'我': '盟军', '敌': '帝国'}, '段': [{'名字': '一'}],
+         '机关': {'车队': {'类型': '车队', '出发': '开局 + 0:10', **(convoy or {})},
+                 '广场': {'类型': '冰雕广场', '车队': '车队', '每座兵': ['坦克杀手', '帝国武士'], '每座几个': '1/2/2',
+                        **(plazas or {})}}}
+    return plan.Compiler(d).compile()
+
+
+def named(m, start):
+    return [s for s in m.scripts if s.name.startswith(start)]
+
+
+def test_trucks_health_by_difficulty():
+    m = escort({'血量': '700/500/350'})
+    health = {tuple(s.levels): s.do for s in named(m, 'CNV ZZ - Truck health')}
+    assert health[HARD] == [('NAMED_SET_MAX_HEALTH', f'UNIT - CNV ZZ Truck {j}', 350, 1) for j in (1, 2, 3)]
+    assert health[EASY][0][2] == 700 and health[NORMAL][0][2] == 500
+    assert not named(escort(), 'CNV ZZ - Truck health')                # left out: the truck's own 500
+
+
+def test_an_ambush_stops_the_convoy_till_its_troops_are_down():
+    m = escort(plazas={'遇伏': '停下'})
+    roll = named(m, 'CNV ZZ - Roll')[0]
+    assert roll.name == 'CNV ZZ - Roll' and ('FLAG', 'CNV_ZZ_Blocking_2', 0) in roll.when
+    assert ('FLAG', 'CNV_ZZ_Halted', 0) in roll.when                      # 停下 / 继续 still hold it too
+    held = [s for s in named(m, 'CNV ZZ - Roll held') if ('FLAG', 'CNV_ZZ_Blocking_2', 1) in s.when]
+    assert len(held) == 1 and not held[0].once                            # the tick runs on while parked
+    blocked, = named(m, 'CNV ZZ - Blocked 2')
+    assert ('FLAG', 'CNV_ZZ_Here_2', 1) in blocked.when                   # only while a truck is there
+    assert ('COUNTER', 'CNV_ZZ_Left_2', 3, 1) in blocked.when
+    # a truck there now: 0 every frame, then 1 if one is in the approach (before Blocked reads it)
+    here = named(m, 'CNV ZZ - Here 2')
+    assert here[0].do == [('SET_FLAG', 'CNV_ZZ_Here_2', 0)] and not here[0].when and len(here) == 4
+    assert m.scripts.index(here[-1]) < m.scripts.index(blocked)
+    # the truck that was there gone, the rest short of the approach: they come up (and are held again there)
+    nobody, = named(m, 'CNV ZZ - Nobody at 2')
+    assert nobody.when == [('FLAG', 'CNV_ZZ_Blocking_2', 1), ('FLAG', 'CNV_ZZ_Here_2', 0)]
+    assert blocked.do[0] == ('SET_FLAG', 'CNV_ZZ_Blocking_2', 1) and blocked.do[1][0] == 'NAMED_STOP'
+    assert named(m, 'CNV ZZ - Cleared 2')[0].when[1] == ('COUNTER', 'CNV_ZZ_Left_2', 1, 0)
+    assert any(c[0] == 'PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA' for c in named(m, 'CNV ZZ - Iced past 2')[0].when)
+    # the troops made on easy: one a sculpture, counted up when it breaks and down as each falls, once made
+    out = [s for s in named(m, 'CNV ZZ - Out 2-1') if tuple(s.levels) == EASY][0]
+    assert ('INCREMENT_COUNTER', 1, 'CNV_ZZ_Left_2') in out.do
+    down = [s for s in named(m, 'CNV ZZ - Down 2-1-') if tuple(s.levels) == EASY]
+    assert [s.when for s in down] == [[('FLAG', 'CNV_ZZ_Out_2_1', 1), ('NAMED_DESTROYED', 'UNIT - CNV ZZ Troop 2-1-1')]]
+    assert down[0].do == [('DECREMENT_COUNTER', 1, 'CNV_ZZ_Left_2')]
+    assert not parts.contract(parts.merged(m))
+
+
+def test_no_ambush_stop_unless_asked():
+    m = escort()
+    assert not named(m, 'CNV ZZ - Blocked') and not named(m, 'CNV ZZ - Down') and not named(m, 'CNV ZZ - Here')
+    assert named(m, 'CNV ZZ - Roll')[0].when[-1] == ('FLAG', 'CNV_ZZ_Halted', 0)
+
+
+def test_a_plaza_of_its_own_only_ice_gets_past():
+    """广场 2: {无敌, 补兵} -- retail Iga's freeze: nothing can aim at its sculptures (they let their troops out when a
+    truck gets there), a troop down comes back every so often while a truck is there, and with 遇伏 停下 it holds
+    the convoy however many fall: only ice lets it on. The other plazas keep the device's own settings."""
+    m = escort(plazas={'遇伏': '停下', '广场 2': {'无敌': '是', '补兵': '0:20/0:15/0:10', '每座几个': 1}})
+    tough, = named(m, 'CNV ZZ - Tough 2')
+    assert tough.do == [('UNIT_CHANGE_OBJECT_STATUS', f'UNIT - CNV ZZ Sculpture 2-{i}', 'UNATTACKABLE', 1)
+                        for i in (1, 2)]
+    assert not named(m, 'CNV ZZ - Tough 1')
+    out, = named(m, 'CNV ZZ - Out 2-1')                                   # 每座几个 1 on every level: one script
+    assert out.when == [('FLAG', 'CNV_ZZ_Near_2', 1)]                     # not broken: out when a truck gets there
+    assert ('SET_FLAG', 'CNV_ZZ_Alive_2_1_1', 1) in out.do
+    ambush = named(m, 'CNV ZZ - Ambush 2 by')
+    assert all(a[0] != 'NAMED_KILL' for s in ambush for a in s.do)
+    assert any(a[0] == 'NAMED_KILL' for a in named(m, 'CNV ZZ - Ambush 1 by')[0].do)
+    back, = named(m, 'CNV ZZ - Back 2-1-1')
+    assert {('FLAG', 'CNV_ZZ_Alive_2_1_1', 0), ('FLAG', 'CNV_ZZ_Here_2', 1),
+            ('TIMER_EXPIRED', 'CNV ZZ Refill 2')} <= set(back.when) and not back.once
+    assert back.do[0][:2] == ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', 'UNIT - CNV ZZ Troop 2-1-1')
+    down, = named(m, 'CNV ZZ - Down 2-1-1')
+    assert not down.once and ('SET_FLAG', 'CNV_ZZ_Alive_2_1_1', 0) in down.do
+    again = {tuple(s.levels): s.do for s in named(m, 'CNV ZZ - Refill 2 again')}
+    assert again[HARD] == [('SET_MILLISECOND_TIMER', 'CNV ZZ Refill 2', 10.0)]
+    assert m.scripts.index(back) < m.scripts.index(named(m, 'CNV ZZ - Refill 2 again')[0])
+    blocked, = named(m, 'CNV ZZ - Blocked 2')                              # killing them all does not let it on
+    assert ('FLAG', 'CNV_ZZ_Out_2', 1) in blocked.when and not any(c[0] == 'COUNTER' for c in blocked.when)
+    assert not named(m, 'CNV ZZ - Cleared 2') and named(m, 'CNV ZZ - Iced past 2') and named(m, 'CNV ZZ - Cleared 1')
+    hard1 = [s for s in named(m, 'CNV ZZ - Out 1-1') if tuple(s.levels) == HARD][0]
+    assert ('INCREMENT_COUNTER', 2, 'CNV_ZZ_Left_1') in hard1.do          # plaza 1: the device's 1/2/2
+    assert 'troop 2-1-2' not in m.cast and 'troop 1-1-2' in m.cast
+    assert not parts.contract(parts.merged(m))
+
+
+def test_a_plaza_setting_is_checked():
+    import pytest
+    with pytest.raises(AssertionError, match='only'):
+        escort(plazas={'广场 2': {'无敌': '是', '血量': 3}})
+    with pytest.raises(AssertionError, match='plazas'):
+        escort(plazas={'广场 7': {'无敌': '是'}})
+
+
+def test_the_convoy_leaves_early_once_a_gate_is_iced():
+    """Retail sets off on time or when the player moves first: 布防 ends at its time or 10 s after the first gate is
+    iced, both countdowns put away once the convoy is off (never shown after)."""
+    d = {'关卡': 'zz', '地图': 'festival', '阵营': {'我': '盟军', '敌': '帝国'},
+         '段': [{'名字': '一', '开场': [{'倒计时': '开局 + 1:30/1:00/0:45', '文字': '车队出发', '直到': '段 二'},
+                                    {'倒计时': '广场.封过 1 + 0:10', '文字': '提前', '直到': '段 二'}],
+                 '结束': {'任一': ['开局 + 1:30/1:00/0:45', '广场.封过 1 + 0:10']}},
+                {'名字': '二'}],
+         '机关': {'车队': {'类型': '车队', '出发': '段 二'},
+                 '广场': {'类型': '冰雕广场', '车队': '车队', '每座兵': ['坦克杀手'], '每座几个': 1}}}
+    m = plan.Compiler(d).compile()
+    assert m.facts['convoy leaves'] == 60.0                               # the time, at the latest
+    waits = [s for s in m.scripts if ('COUNTER', 'CNV_ZZ_Sealed', 3, 1) in s.when]
+    assert waits and waits[0].do[0] == ('SET_MILLISECOND_TIMER', waits[0].do[0][1], 10.0)
+    shows = named(m, 'CNV ZZ - Countdown')
+    shown = [s for s in shows if s.do[0][0] == 'DISPLAY_COUNTDOWN_TIMER']
+    away = [s for s in shows if 'put away' in s.name]
+    assert len(shown) == 2 and len(away) == 2
+    phase2 = away[0].when[-1]
+    assert phase2[0] == 'FLAG' and phase2[2] == 1 and all(s.when[-1] == phase2 for s in away)
+    assert all(('FLAG', phase2[1], 0) in s.when for s in shown)           # not shown once the convoy is off
+    assert not parts.contract(parts.merged(m))

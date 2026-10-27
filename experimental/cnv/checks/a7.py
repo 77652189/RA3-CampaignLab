@@ -11,6 +11,11 @@ defend: the station down to 40 % before any jump: the carrier jumps to it at onc
 power: the station killed after the first jump: no jump home; grounded, the next phase sends it off its point.
 east: the east bank's skirmish AI asleep and broke, then woken: it spends, keeps its barracks, its army crosses
   to the player's bank; the carrier stays home meanwhile.
+faster: two of the east bank's production buildings down early: the second jump comes 0:50 after the first home,
+  not 1:30 (加快).
+revenge: the east barracks down: a revenge wave of guardians out of the east gate at once.
+pincer: the carrier's first warning: a pincer wave of guardians out of the east gate then.
+nag: the station nag said 3:00 into phase 2 and again 3:00 later, the carrier still powered.
 win: the carrier at 1 % health jumps (by test script) to the base edge at 5 s, the player's IFVs shoot it down,
   Mission Won ends the mission.
 """
@@ -24,6 +29,11 @@ EAST_RUN = 300.0        # east: how long after waking its army has to reach the 
 WEST_HALF = 950.0      # east: half-side of a square on the player's start, over their bank, short of the river
 KILL_AFTER = 8.0                               # power: the station dies this long after the first jump
 HURT_AT = 15.0                                  # defend: the station's health drops then
+GATE_EARLY = 6.0                                # revenge / pincer: looked for from this long before (the bench's
+                                                # clock behind the mission's)
+REVENGE_AT = 10.0                              # revenge: the barracks dies this long after phase 2 starts
+NAG_DRIFT = 30.0                                # nag: the second looked for from this long before its time
+NAG_FIRST = 180.0                             # nag: its first time, into phase 2 (docs/story/plans/a7.md 规则)
 
 
 def settle(t, m):
@@ -95,6 +105,85 @@ def defend(m):
                          [('UNIT_SET_HEALTH', m.role('station').name, 40.0)])]
     t.expect += [('在电站', 0, '==', 0, HURT_AT - EARLY), ('在电站', HURT_AT + 4, 'ever==', 1, HURT_AT + 15)]
     t.bench = [('bench_watch', dict(seconds=HURT_AT + 18, every=2, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+def nag(m):
+    """The station nag (the plan's one rule with 每隔): said first 3:00 into phase 2, again every 3:00 while the
+    carrier has power -- counted by a test counter its again-scripts add to."""
+    k = next(i + 1 for i, r in enumerate(plan.load('a7')['规则']) if r.get('每隔'))
+    t = where(m)
+    settle(t, m)
+    keep_up(m, t)
+    t.counters.append(('Test Nags', '提示次数'))
+    said = [s for s in m.scripts if s.name.startswith(f'CNV A7 - Rule {k} again')]
+    assert said
+    for s in said:
+        s.do = s.do + [('INCREMENT_COUNTER', 1, 'Test Nags')]
+    gap = plan.times(plan.load('a7')['规则'][k - 1]['每隔'])[1]
+    first, second = READY + NAG_FIRST, READY + NAG_FIRST + gap
+    # bench 2026-10-26: read once by bench s182 (for s189) and twice by s359 (for s369) -- the bench's clock runs
+    # behind the mission's, ten seconds and more over six minutes: both looked for in wide windows
+    t.expect += [('提示次数', 0, '==', 0, first - 10), ('提示次数', first + 3, 'ever==', 1, second - NAG_DRIFT),
+                 ('提示次数', 0, '<=', 1, second - NAG_DRIFT), ('提示次数', second - NAG_DRIFT, 'ever==', 2)]
+    t.bench = [('bench_watch', dict(seconds=second + 25, every=5, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+def kill_at(t, parts, at, tag):
+    t.scripts += [Script(f'Test - {tag} set', [], [('SET_MILLISECOND_TIMER', f'Test - {tag} timer', at)]),
+                  Script(f'Test - {tag}', [('TIMER_EXPIRED', f'Test - {tag} timer')],
+                         [('NAMED_KILL', p) for p in parts])]
+
+
+def faster(m):
+    """Two of the east bank's production buildings down before the first jump (加快's second step): after the first
+    jump home it jumps again `jump every 2` later instead of `jump every`."""
+    first, stay, warn = first_jump(m), m.facts['stay'], m.facts['warning']
+    t = where(m)
+    settle(t, m)
+    keep_up(m, t)
+    kill_at(t, [m.role(p).name for p in ('east barracks', 'east factory')], READY + 2, 'kill two')
+    second = first + stay + m.facts['jump every 2'] + warn
+    # where it lands the second time is the landing points' business (bench 2026-10-26: the player's army had come
+    # to the base edge, it took another point): it leaves home, sooner than the old gap would let it
+    t.expect += [('在基地边', first + 4, 'ever==', 1, first + stay - EARLY),
+                 ('在家', first + stay + 6, '==', 1, second - EARLY - 8),
+                 ('在家', second - EARLY - 8, 'ever==', 0, second + 12)]   # the old gap: 40 s later still
+    assert second + 12 < first + stay + m.facts['jump every'] + warn
+    t.bench = [('bench_watch', dict(seconds=second + 14, every=3, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+def revenge(m):
+    """The east barracks down: the first revenge wave (报复一) comes out of the east gate at once -- guardians on
+    top of the gate's own guard."""
+    t = where(m)
+    settle(t, m)
+    kill = READY + REVENGE_AT
+    kill_at(t, [m.role('east barracks').name], kill, 'kill barracks')
+    out_of_gate(t, m, kill)
+    return t
+
+
+def out_of_gate(t, m, at):
+    """Expects guardians of the enemy's out of the east gate at `at` (s), none but its own guard before."""
+    t.areas['Test east gate'] = square(*m.point('east gate'), AREA)
+    guards = m.roles('east guard')
+    counted('Test Gate Guardians', '大门守护者', t, template=guards[0].template, player=m.player('s1'),
+            area='Test east gate')
+    own = len(guards)
+    # out at once and off within seconds (bench 2026-10-26, pincer: 5 at bench s36 for s39, back to 3 by s40)
+    t.expect += [('大门守护者', 0, '<=', own, at - GATE_EARLY), ('大门守护者', at - GATE_EARLY, 'ever>', own, at + 10)]
+    t.bench = [('bench_watch', dict(seconds=at + 12, every=2, sheet=False, lines=len(t.counters)))]
+
+
+def pincer(m):
+    """The carrier's first warning (自由号.预警 1): the first pincer wave (夹击一) comes out of the east gate then."""
+    t = where(m)
+    settle(t, m)
+    keep_up(m, t)
+    out_of_gate(t, m, first_jump(m) - m.facts['warning'])
     return t
 
 

@@ -46,3 +46,12 @@ def test_new_map_reads_back():
     assert [n.stream for n in back.nodes] == [None, 0, None]
     assert back.events[0].hash24 == 0x123456 and back.events[0].actions == m.events[0].actions
     assert back.variable_names() == ['player']
+    assert back.routers == [[(1, 0)]]               # the last router too: the table ends with an offset of its own
+
+
+def test_retail_routers_end_with_an_offset(retail):
+    """The router table's last offset is its end, not a router (CampMusRoute 2026-10-26: a map without it lost its
+    last router in game): retail has 131, and its segments use router values 1..131."""
+    m = pfdx.parse(retail)
+    assert len(m.routers) == 131 and all(m.routers)
+    assert max(n.router for n in m.nodes) == len(m.routers)
