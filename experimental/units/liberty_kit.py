@@ -29,16 +29,20 @@ from PIL import Image                           # noqa: E402
 MODEL, STATUE = 'CNLiberty', 'CNLibStatue'
 SRC = os.path.join(labpaths.WORK, 'units', 'libertyisle', 'game')
 STATUE_MESHES = ['NY_LIBERTY.NEWSKIN_STATUE', 'NY_LIBERTY.NEWSKIN_FILL1', 'NY_LIBERTY.NEWSKIN_FILL2']
-STATUE_TALL = 0.35                              # her height (feet to torch) over the platform's width (concept h6)
+# first bench run (2026-10-27, width 400, statue 0.35 of it): a corner filled the screen and the statue rose into the
+# camera; the user picked 250..300 across and the statue about as tall as the core above the deck (~0.21 of the width)
+SCALE = 0.7                                     # the bake is 400 across (tripo_unit's width) -> 280
+STATUE_TALL = 0.21                              # her height (feet to torch) over the platform's width
+COPPER = (0.85, 0.97, 1.06)                     # her diffuse per channel: the game's sun read her yellow
 
 
 def body():
     with open(os.path.join(SRC, 'parts.json'), encoding='utf-8') as f:
         pivots = [tuple(p) for p in json.load(f)['_pivots']]
     n = to_w3x.convert(SRC, MODEL, pivots, {'BODY': 'BODY'}, src_name=MODEL, level=make_campchrono.LEVEL,
-                       retail_maps=True, **make_campchrono.LOOK)
+                       retail_maps=True, scale=SCALE, **make_campchrono.LOOK)
     print(MODEL, n, 'triangles')
-    return dict((name, at) for name, _, at in pivots)
+    return dict((name, tuple(c * SCALE for c in at)) for name, _, at in pivots)
 
 
 def _copper(rgb):
@@ -84,11 +88,11 @@ def statue(top, width):
     # her torch a cyan chrono beacon: the flame recoloured and glowing (SPM green); a little specular on the copper
     def diffuse(x, y):
         c = px[x, y]
-        return (70, 230, 255, 255) if _flame(c) else c + (255,)
+        return (70, 230, 255, 255) if _flame(c) else tuple(min(255, int(v * k)) for v, k in zip(c, COPPER)) + (255,)
 
     w3x.write_texture(STATUE, w, h, diffuse)
     w3x.write_texture(STATUE + '_NRM', 16, 16, lambda x, y: (128, 128, 255, 255))
-    w3x.write_texture(STATUE + '_SPM', w, h, lambda x, y: (40, 255, 0, 255) if _flame(px[x, y]) else (20, 0, 0, 255))
+    w3x.write_texture(STATUE + '_SPM', w, h, lambda x, y: (40, 255, 0, 255) if _flame(px[x, y]) else (8, 0, 0, 255))
     w3x.write_model(STATUE, w3x.rig_model(STATUE, [], [('STATUE', 0, (verts, normals, uvs, tris))],
                                           (STATUE, STATUE + '_NRM', STATUE + '_SPM')))
     print(STATUE, len(tris), 'triangles,', f'{(max(zs) - feet) * k:.0f} tall on {top:.0f}, scale {k:.2f}')
@@ -108,7 +112,7 @@ def preview(statue_obj, statue_tex):
     with open(os.path.join(SRC, 'parts.json'), encoding='utf-8') as f:
         p = json.load(f)['BODY']
     body_obj = os.path.join(OUT, MODEL + '.obj')
-    retail_mesh.write_obj(dict(vertices=p['vertices'], uvs=[(u, 1 - v) for u, v in p['uvs']], triangles=p['triangles'],
+    retail_mesh.write_obj(dict(vertices=[tuple(c * SCALE for c in v) for v in p['vertices']], uvs=[(u, 1 - v) for u, v in p['uvs']], triangles=p['triangles'],
                                layout='liberty_kit'), body_obj)
     prefix = os.path.join(OUT, 'liberty')
     subprocess.run([retail_sheet.BLENDER, '-b', '--factory-startup', '-P', retail_sheet.__file__, '--', prefix,
@@ -125,7 +129,8 @@ def main():
     pv = body()
     with open(os.path.join(SRC, 'parts.json'), encoding='utf-8') as f:
         verts = json.load(f)['BODY']['vertices']
-    width = max(max(v[0] for v in verts) - min(v[0] for v in verts), max(v[1] for v in verts) - min(v[1] for v in verts))
+    width = SCALE * max(max(v[0] for v in verts) - min(v[0] for v in verts),
+                        max(v[1] for v in verts) - min(v[1] for v in verts))
     preview(*statue(pv['STATUE'][2], width))
 
 
