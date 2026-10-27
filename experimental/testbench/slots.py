@@ -10,7 +10,8 @@ Slot i has its own lock (shared\locks\bench.json for slot 1, the old name every 
 ... after it) and its own shot folder (the capture shim's CNV_SHOT_DIR: shots, shots2, ...). A lock records the
 holder's pid, the game's pid and the mod, so a build knows whether a running game has its mod open.
 
-RA3_BENCH_SLOTS (default 2) sets how many games may run at once. No heavy imports: the builders use this too.
+RA3_BENCH_SLOTS (default 2) sets how many games may run at once. No heavy imports: the builders use this too, and
+build_lock keeps their SDK compiles one at a time (shared\locks\sdk-build.json).
 """
 import ctypes
 import ctypes.wintypes as wt
@@ -19,6 +20,7 @@ import json
 import os
 import re
 import subprocess
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -52,7 +54,10 @@ def _tasks():
 def holder(i, tasks=None):
     """Who holds slot i now (reslock's rule: a lock with `until` lives till then, one without while its pid lives),
     or None."""
-    path = lock_path(i)
+    return _held(lock_path(i), tasks)
+
+
+def _held(path, tasks=None):
     if not os.path.exists(path):
         return None
     try:
@@ -133,6 +138,36 @@ def busy(name):
     if mod_in_use(name):
         return f'a bench game has {name} open'
     return ''
+
+
+def build_lock(note='', poll=3.0):
+    """Wait for the one SDK build at a time and hold it; returns the release function (call it once the compile is
+    done; process exit frees it too, by the pid rule). Builds share the SDK (its CNVUnits folder, BinaryAssetBuilder):
+    bench 2026-10-27, two at once and one failed with an empty build log."""
+    path = os.path.join(LOCKS, 'sdk-build.json')
+    os.makedirs(LOCKS, exist_ok=True)
+    while True:
+        try:
+            fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            if _held(path) is None:
+                try:
+                    os.remove(path)     # a dead builder's lock
+                except OSError:
+                    pass
+            else:
+                time.sleep(poll)
+            continue
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+            json.dump(dict(owner='sdk build', pid=os.getpid(), since=datetime.datetime.now().isoformat(timespec='seconds'),
+                           until=None, note=note), f)
+        break
+
+    def release():
+        held = _held(path)
+        if held and held.get('pid') == os.getpid():
+            os.remove(path)
+    return release
 
 
 # -- the one-copy mutex ------------------------------------------------------------------------------------------

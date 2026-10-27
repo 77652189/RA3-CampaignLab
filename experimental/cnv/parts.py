@@ -549,6 +549,9 @@ def assemble(mission, test=None, name=None):
         c2.OUT = c4.OUT = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'staging', name)
         print(f'{why} -> staging at', c4.OUT)
 
+    import atexit
+    release = sdk_build_lock(name)              # one build at a time: the SDK's CNVUnits folder is shared
+    atexit.register(release)
     data = os.path.join(c2.SDK, 'Mods', 'CNVUnits', 'Data')
     os.makedirs(data, exist_ok=True)
     seen = set()
@@ -588,6 +591,7 @@ def assemble(mission, test=None, name=None):
 
     c6.edit = edit
     c4.main()
+    release()
     return c4.OUT
 
 
@@ -597,6 +601,13 @@ def mod_busy(name):
     sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'testbench'))
     import slots
     return slots.busy(name)
+
+
+def sdk_build_lock(name):
+    """Wait for the SDK, hold it for this build; returns the release (testbench/slots.build_lock)."""
+    sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'testbench'))
+    import slots
+    return slots.build_lock(name)
 
 
 def game_running():

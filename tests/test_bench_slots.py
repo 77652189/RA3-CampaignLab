@@ -72,6 +72,33 @@ def test_a_build_stages_only_for_its_own_mod(bench):
     assert slots.busy('campa7')         # Windows names: case does not matter
 
 
+def test_one_build_at_a_time(bench):
+    import threading
+    release = slots.build_lock('first', poll=0.05)
+    got = []
+    t = threading.Thread(target=lambda: got.append(slots.build_lock('second', poll=0.05)))
+    t.start()
+    t.join(0.3)
+    assert not got                      # held: the second build waits
+    release()
+    t.join(2)
+    assert got                          # released: the second one goes
+    got[0]()
+    assert not os.path.exists(os.path.join(slots.LOCKS, 'sdk-build.json'))
+
+
+def test_a_dead_builder_frees_the_sdk(bench):
+    with open(os.path.join(slots.LOCKS, 'sdk-build.json'), 'w', encoding='utf-8') as f:
+        json.dump(dict(owner='sdk build', pid=999999, until=None), f)
+    import threading
+    got = []
+    t = threading.Thread(target=lambda: got.append(slots.build_lock('next', poll=0.05)), daemon=True)
+    t.start()
+    t.join(2)
+    assert got                          # not waiting on a builder that is gone
+    got[0]()
+
+
 def test_note_game_marks_the_game_ours(bench):
     i = slots.take('a')
     bench[300] = 'RA3_1.13.game'
