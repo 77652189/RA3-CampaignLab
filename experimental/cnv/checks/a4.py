@@ -14,9 +14,12 @@ stop: 遇伏 停下 -- the convoy reaches plaza 1, its troops out and the gate o
   (by test script, 30 s after leaving), it goes on past plaza 2's approach.
 early: the player ices plaza 1's gate first (engineer 1, 30 s in): the convoy leaves 10 s after, before its time.
 north: played the quick way (win's), the harbour turns: the north camp's skirmish AI, asleep and broke till then,
-  wakes 30 s after with the camp's buildings and guards, spends its money and its troops come down the plateau.
+  wakes then with the camp's buildings and guards, spends its money and its troops come down the plateau.
+camp: played the quick way, the harbour cleared: the convoy waits at the halt while the camp stands; its barracks
+  down (by test script), a revenge wave (北营报复) leaves the camp at once; the factory down too, the convoy goes on.
 win: the trucks kept at full health, plaza 1's and 3's troops killed as soon as they hold the convoy, engineer 2
-  icing plaza 2's gate 5 s after it leaves: it reaches the exit and the mission ends after the drive.
+  icing plaza 2's gate 5 s after it leaves, the north camp razed as the harbour turns: it reaches the exit and the
+  mission ends after the drive.
 lose: the trucks at 1 % health as they set off (the war factory's drones mend them while parked): the first
   ambush kills two and the mission ends well before the drive's time.
 idle: as played, the player doing nothing: the convoy is lost (bench 2026-10-23: ended at s78, 18 s after leaving).
@@ -53,10 +56,14 @@ WIN_ICE = 5.0                                   # win: ... this long after leavi
 HALT_AREA = 100.0                               # tough: half-side of the area counted as at the halt
 NORTH_HALT = (20.0, 45.0)                       # north: played the quick way, the convoy at the halt this long after
                                                 # leaving (soonest, latest; win: ~25 s), the harbour turning then
-NORTH_WAKE = 30.0                               # north: the AI wakes this long after (docs/story/plans/a4.md 敌方AI)
+NORTH_WAKE = 0.0                                # north: the AI wakes this long after (docs/story/plans/a4.md 敌方AI)
 NORTH_RUN = 420.0                               # north: watched this long after the latest it wakes (bench
                                                 # 2026-10-26: woken s111, first down s339; with no refinery it
                                                 # stopped spending at 1400 and had not come down by s326)
+CAMP_FIRST = 5.0                                # camp: the barracks down this long after the harbour turns
+CAMP_LAST = 45.0                                # camp: ... the factory
+CAMP_GO = 20.0                                  # camp: the lead truck off the halt within this after
+TSUNAMI = 'JapanAntiVehicleVehicleTech1'        # camp: the revenge wave's tank (北营报复), the enemy's only ones
 
 
 def ice_wall(m):
@@ -326,8 +333,45 @@ def escorted(t, m):
     freeze(t, m, 2, 'engineer 2', [('TIMER_EXPIRED', 'Test - ice timer')])
 
 
+def turned(m):
+    """The flag that is 1 once the harbour turns (段 港口生变, the plan's third phase)."""
+    return next(a[1] for s in m.scripts for a in s.do if a[0] == 'SET_FLAG' and a[1].endswith('_Phase_3'))
+
+
+def raze(t, m, parts, after, tag):
+    """The north camp's `parts` killed `after` s once the harbour turns."""
+    t.scripts += [Script(f'Test - {tag} set', [('FLAG', turned(m), 1)],
+                         [('SET_MILLISECOND_TIMER', f'Test - {tag} timer', after)]),
+                  Script(f'Test - {tag}', [('TIMER_EXPIRED', f'Test - {tag} timer')],
+                         [('NAMED_KILL', m.role(p).name) for p in parts])]
+
+
+def camp(m):
+    """段 港口生变 ends only with the camp razed too: the harbour cleared, the convoy waits at the halt while the
+    camp's production stands; the barracks down, the revenge wave (北营报复) comes out at once; the factory down,
+    the convoy goes on."""
+    m.drop_endings()
+    t = Test()
+    start(t, m)
+    escorted(t, m)
+    raze(t, m, ['north barracks'], CAMP_FIRST, 'raze barracks')
+    raze(t, m, ['north factory'], CAMP_LAST, 'raze factory')
+    counted('Test Tsunami', '报复的海啸', t, template=TSUNAMI, player=m.player('s1'))
+    t.areas['Test Halt'] = square(*m.site('halt'), HALT_AREA)
+    counted('Test At Halt', '车到停车点', t, named=m.role('truck 1').name, area='Test Halt')
+    leave = m.facts['convoy leaves']
+    soon, late = leave + NORTH_HALT[0], leave + NORTH_HALT[1]
+    t.expect += [('报复的海啸', 0, '==', 0, soon + CAMP_FIRST - LEAD),
+                 ('报复的海啸', soon + CAMP_FIRST - LEAD, 'ever>=', 1, late + CAMP_FIRST + 10),
+                 ('车到停车点', late + 3, '==', 1, soon + CAMP_LAST - LEAD),
+                 ('车到停车点', soon + CAMP_LAST, 'ever==', 0, late + CAMP_LAST + CAMP_GO)]
+    t.bench = [('bench_watch', dict(seconds=late + CAMP_LAST + CAMP_GO + 5, every=2, sheet=False,
+                                    lines=len(t.counters)))]
+    return t
+
+
 def north(m):
-    """The north camp given to the skirmish AI (敌方AI) once the harbour turns (段 港口生变 + 0:30): asleep and broke
+    """The north camp given to the skirmish AI (敌方AI) once the harbour turns (段 港口生变): asleep and broke
     until then, it is handed the barracks, factory, power plant and guards, gets its money and spends it on troops,
     which come down off the plateau."""
     m.drop_endings()                            # the convoy gets through: keep counting
@@ -361,8 +405,9 @@ def win(m):
     t = Test()
     start(t, m)
     # a plaza's troops die as soon as they hold the convoy: it goes on (遇伏 停下); plaza 2's come back -- iced
-    # before the convoy gets there instead; the harbour's stop (phase 3) ends as soon as it begins
+    # before the convoy gets there instead; the harbour's stop (phase 3) ends as soon as it begins, the camp razed then
     escorted(t, m)
+    raze(t, m, ['north barracks', 'north factory'], 0.5, 'raze the camp')
     trucks(t, m)
     leave = m.facts['convoy leaves']
     t.expect += [('1 号车血量', 0, '==', 100, leave), ('ENDED', leave + DRIVE - 10, '', None)]
