@@ -48,7 +48,10 @@ def glyphs(img, box):
     # (shadow in spots). The box ends at the first BOX_END columns in a row that are not the box
     rest, deep = ~a, rgb.max(2) < BOX_DARK
     dark = (deep.mean(0) > 0.15) | (rest.any(0) & ((rest & deep).sum(0) > 0.5 * rest.sum(0)))
-    for x in range(START_BY, len(dark) - BOX_END):
+    # from the first box column on: the player's rank-up chevrons (bright, over the labels' left, x 15..52) are no
+    # box, and cut every value off from s327 on (bench 2026-10-26, A7 east on the redrawn map)
+    since = next((x for x in range(START_BY, len(dark)) if dark[x]), START_BY)
+    for x in range(since, len(dark) - BOX_END):
         if not dark[x:x + BOX_END].any():
             a[:, x:] = False
             break

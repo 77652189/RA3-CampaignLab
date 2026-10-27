@@ -155,8 +155,11 @@ def test_ab_pair():
 
 def test_judge():
     t = parts.Test(counters=[('a', 'A'), ('b', 'B')], expect=[('A', 10, '>=', 3), ('B', 0, '==', 1)])
+    v = build.judge(t, [(5, [1, 1]), (12, [4, 1]), (15, [None, None])])
+    assert [ok for ok, _ in v] == [False, False]                 # every counter gone at s15: the mission ended
+    # B unread to the end while A still reads: covered (the rank-up chevrons over the short lines), not gone
     v = build.judge(t, [(5, [1, 1]), (12, [4, 1]), (15, [3, None])])
-    assert [ok for ok, _ in v] == [True, False]                  # B unread at s15 fails it
+    assert [ok for ok, _ in v] == [True, True]
     covered = [(5, [1, 1]), (12, [4, None]), (15, [3, 1])]       # unread a moment (the rank-up over the counters)
     assert [ok for ok, _ in build.judge(t, covered)] == [True, True]
     assert build.judge(t, [(5, [1, 1]), (12, [4, None]), (15, [3, 2])])[1][0] is False

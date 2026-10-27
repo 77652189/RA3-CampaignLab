@@ -210,7 +210,8 @@ def east(m):
     jump (the enemy's, not the AI's -- bench 2026-10-25: with the enemy itself the AI, it left home at 18 s). Its
     barracks stand the whole run (bench 2026-10-25/26: free to build anything it sank its money into an MCV or a new
     base and sold buildings; with 敌's guards left on the gate they shot it -- the bonus objective was done for the
-    player either way). Bench 2026-10-26: first over the river ~35 s after waking, then a wave every ~40 s."""
+    player either way). Bench 2026-10-26: first over the river ~35 s after waking, then a wave every ~40 s; on the
+    redrawn map ~80 s after waking (s119), then s284 and s319."""
     t = Test()
     t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
     t.areas['Test carrier home'] = square(*m.point('carrier home'), AREA)

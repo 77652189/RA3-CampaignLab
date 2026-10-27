@@ -310,9 +310,13 @@ def judge(t, readings):
             ok = any(v is not None and OPS[op[4:]](v, want) for _, v in got)
         else:
             # a reading missing between two that are there was covered for a moment (bench 2026-10-25: the rank-up
-            # chevrons over the counters at s323 of two AI runs); missing to the end is the mission gone -- a fail
+            # chevrons over the counters at s323 of two AI runs); missing to the end is the mission gone -- a fail --
+            # unless another counter still reads in those frames: then it is still running, this one covered (bench
+            # 2026-10-26, A7 east on the redrawn map: the chevrons stayed from s327 to the end over the short lines)
+            up = {s for s, v in readings if any(x is not None for x in v)}
             last = max((j for j, (_, v) in enumerate(got) if v is not None), default=-1)
-            ok = bool(got) and last == len(got) - 1 and all(v is None or OPS[op](v, want) for _, v in got)
+            covered = last >= 0 and all(s in up for s, _ in got[last + 1:])
+            ok = bool(got) and covered and all(v is None or OPS[op](v, want) for _, v in got)
         verdicts.append((ok, describe(e) + ': ' + (runs(got) or 'no reading')))
     return verdicts
 
