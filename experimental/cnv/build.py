@@ -51,10 +51,11 @@ from checks import ally as check_ally           # noqa: E402
 from checks import aistep as check_aistep       # noqa: E402
 from checks import fence as check_fence         # noqa: E402
 from checks import reroute as check_reroute     # noqa: E402
+from checks import sight as check_sight         # noqa: E402
 from units import tesla as units_tesla          # noqa: E402
 from missions import a4, a5, a7, a8, j3, j4, j5, j7, s2, s5, s6, beacon_bench, burrow_bench, clone_bench, combo_bench, crane_bench, icewall_bench, jammer_bench, liberty_bench, shikigami_bench, \
     tesla_bench, train_bench, probe_bench, plan_words_bench, ai_bench, ai_plan_bench, lock_bench, scene_bench, \
-    ally_bench, aistep_bench, fence_bench, reroute_bench  # noqa: E402
+    ally_bench, aistep_bench, fence_bench, reroute_bench, sight_bench  # noqa: E402
 
 BENCH_PY = os.path.join(os.path.dirname(ROOT), 'envs', 'bench_mcp', 'Scripts', 'python.exe')
 CLIENT = os.path.join(ROOT, 'experimental', 'testbench', 'bench_client.py')
@@ -118,6 +119,7 @@ MISSIONS = {
     'aistep_free': (lambda: aistep_bench.mission(held=False), {'free': check_aistep.free}),
     'fence': (lambda: fence_bench.mission(), {'bar': check_fence.bar}),
     'reroute': (lambda: reroute_bench.mission(), {'round': check_reroute.round_, 'open': check_reroute.opened}),
+    'sight': (lambda: sight_bench.mission(), {'look': check_sight.look}),
     'jammer': (lambda: jammer_bench.mission(), {'jam': check_jam.jam, 'free': check_jam.free}),
     'jammer_own': (lambda: jammer_bench.mission(name='CampJamOwn', side='p1'), {'jam': check_jam.jam}),
     'shikigami': (lambda: shikigami_bench.mission(), {'cover': check_shi.cover}),
@@ -219,6 +221,9 @@ def show(name, check=''):
     out = [f'{name}' + (f' --check {check}' if check else '') + f' -> {mod}, on map {mp.__name__.split(".")[-1]}']
     out.append('map sites: ' + '; '.join(f'{k} ({s.x:g}, {s.y:g}' + (f', r {s.r:g}' if s.r else '') + f'): {s.what}'
                                          for k, s in mp.SITES.items()))
+    if getattr(mp, 'STRONGPOINTS', None):
+        out.append('map strongpoints: ' + '; '.join(f'{k} = {o.template} "{o.name}" ({o.x:g}, {o.y:g})'
+                                                    for k, o in mp.STRONGPOINTS.items()))
     out.append('map players: ' + ', '.join(f'{k} {v}' for k, v in mp.PLAYERS.items()) +
                '; teams: ' + ', '.join(f'{k} {v}' for k, v in mp.TEAMS.items()))
     for u in m.units:

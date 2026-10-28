@@ -388,6 +388,7 @@ BUILD = os.path.join(ROOT, 'experimental', 'cnv', 'build.py')
 PLANCHECK = os.path.join(ROOT, 'experimental', 'cnv', 'plancheck.py')
 MAPRENDER = os.path.join(ROOT, 'experimental', 'campaign', 'maprender.py')
 MAPSTUDY = os.path.join(ROOT, 'experimental', 'campaign', 'mapstudy.py')
+TERRAINREF = os.path.join(ROOT, 'experimental', 'campaign', 'terrainref.py')
 RETAILREF = os.path.join(ROOT, 'experimental', 'campaign', 'retailref.py')
 # the builds run in the base interpreter, in their own process: fresh code on every call (a check just edited), and
 # the pipeline's module state (templates, strings) starts empty each time
@@ -545,8 +546,10 @@ def picture(path, note):
 @server.tool(structured_output=False)
 def cnv_preview(name: str, check: str = '') -> list:
     """A build's map in ~10 s, without compiling or the game: the map module's design lint (ramps, building sites,
-    structures on flat ground, bridges bank to bank), the map written as the build would write it, measured against
-    the retail campaign maps' ranges (flat ground, cliffs, height tiers, ore, tech, bridges, objectives), and a
+    structures on flat ground, bridges bank to bank, blocks' use, gaps' width), the map written as the build would
+    write it, measured against the retail campaign maps' ranges (flat ground, cliffs, height tiers, ore, tech,
+    bridges, objectives; TERRAIN lines: chokes on the main way, high ground beside it, ramps, strongpoints, walls,
+    how much of the walkable ground the mission uses -- docs/design/principles.md P24-P27), and a
     picture from above: height bands, cliffs dark, flat land light, ore gold, tech cyan, bridges white, the player's
     objects green, enemies red, objective markers yellow. Use it after every map or placement change, before
     cnv_check (docs/story/map-language.md)."""
@@ -557,7 +560,10 @@ def cnv_preview(name: str, check: str = '') -> list:
         return ['PREVIEW FAILED:\n' + tail(out, 20)]
     code, study = lab(MAPSTUDY, '--ours', path, timeout=300)
     pic = next((x[8:] for x in study.splitlines() if x.startswith('PICTURE ')), None)
-    text = '\n'.join([lint] + [x for x in study.splitlines() if not x.startswith('PICTURE ')])
+    # the terrain rules (P24-P27): chokes on the main way, high ground beside it, how much of the ground is used
+    tcode, terrain = lab(TERRAINREF, path, timeout=300)
+    terrain = [x for x in terrain.splitlines() if x.startswith('TERRAIN ')] or ['TERRAIN FAILED: ' + tail(terrain, 5)]
+    text = '\n'.join([lint] + [x for x in study.splitlines() if not x.startswith('PICTURE ')] + terrain)
     return picture(pic, text) if pic and os.path.exists(pic) else [text]
 
 

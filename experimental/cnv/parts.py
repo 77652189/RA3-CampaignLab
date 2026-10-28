@@ -162,6 +162,13 @@ class Mission(Part):
         """A point by one of the map's sites (offset dx, dy)."""
         return self.where(name).at(dx, dy)
 
+    def strongpoint(self, name):
+        """One of the map's strongpoints (its STRONGPOINTS: a building a squad can garrison, placed with the map's
+        OBJECTS, platmap.strongpoint): the object's name, for scripts."""
+        sp = getattr(self.map, 'STRONGPOINTS', {})
+        assert name in sp, f'map {self.map.__name__} has no strongpoint {name!r}: {sorted(sp)}'
+        return sp[name].name
+
     def put(self, template, site, dx=0.0, dy=0.0, role='', side='p1', name='', **kw):
         """Place an object by a map site; with role, publish it in the cast (a named object: scripts refer to it)."""
         o = Obj(template, *self.site(site, dx, dy), side=side, name=name, site=site, **kw)
@@ -425,6 +432,7 @@ def contract(mission):
     m, cat, out = mission, mapscript.catalog(), []
     sites = getattr(m.map, 'SITES', {})
     named = {o.name: o for o in m.objects if o.name}
+    named.update({o.name: o for o in getattr(m.map, 'STRONGPOINTS', {}).values()})     # the map's, published
     out += [f'object {o.template} at ({o.x:g}, {o.y:g}): placed by raw coordinates, not by a map site'
             for o in m.objects if not o.site]
     out += [f'object {o.template}: map has no site {o.site!r}' for o in m.objects if o.site and o.site not in sites]

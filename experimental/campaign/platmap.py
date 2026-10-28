@@ -54,6 +54,32 @@ class Road:
     texture: str = 'Pavement_Heidel02'
 
 
+USES = ('前线', '支线', '通道', '后方', '远景')
+EMPTY_MOST = 0.25               # of the ground the player can walk to, at most this much in no block (P24; retail 17 %)
+BACKDROP_MOST = 0.01            # km2 of a 远景 block the player may still walk to (a cliff foot's sliver)
+
+
+@dataclasses.dataclass
+class Block:
+    """A part of the playable area and what it is for (docs/design/principles.md P24): use 前线 (the enemy or the
+    main objective), 支线 (a bonus, a tech building, a strongpoint), 通道 (the way between), 后方 (the base), 远景
+    (backdrop: nobody can walk there). at: a Shape, or a rectangle (x0, y0, x1, y1)."""
+    at: object
+    use: str
+    what: str = ''
+
+
+@dataclasses.dataclass
+class Gap:
+    """A way through -- a gate, a street's mouth, a wall's opening -- and how wide it is meant to be: lint measures
+    the walkable width across (x, y) (cliffs, water and the map's wall pieces close it), e.g. a plaza's gate 120 wide
+    so an ice wall 200 long shuts it."""
+    x: float
+    y: float
+    width: float
+    what: str = ''
+
+
 @dataclasses.dataclass
 class Layout:
     shapes: list
@@ -61,6 +87,8 @@ class Layout:
     roads: list = dataclasses.field(default_factory=list)
     base: int = 0                       # the tier everywhere no shape covers (0: sea)
     cliff: int = 2                      # smoothing passes (3 x 3 box): a tier step becomes a cliff ~2 * cliff cells wide
+    blocks: list = dataclasses.field(default_factory=list)     # [Block]: lint holds the map to them (P24)
+    gaps: list = dataclasses.field(default_factory=list)       # [Gap]: lint measures each
 
 
 def rect(x0, y0, x1, y1, tier, what=''):
@@ -241,9 +269,192 @@ def lint(layout, sites=None, objects=(), scenery=(), dims=CONTAINER):
         if not dry(o.x, o.y) or relief(e, o.x, o.y, 60.0, b) > FLAT:
             out.append(f'{o.template} at ({o.x:g}, {o.y:g}): not on flat dry ground')
         k += 1
+    walk = walkable(layout, objs, dims, e)
+    out += block_lint(layout, sites, walk, dims) + gap_lint(layout, walk, dims)
     if scenery:
         import platprops
         out += platprops.lint(layout, sites, objects, scenery, dims)
+    return out
+
+
+# ---- what the player can walk to, the blocks' use, the gaps' width
+WALLS = {'MJ_PalaceWall01': (60.0, 20.0)}       # wall pieces that bar the way (bench 2026-10-27 fence bar: the palace
+                                                # wall held infantry, retail's fences did not): length, thickness
+BRIDGE_DECK = 120.0                             # a bridge's walkable width laid over the water
+
+
+def _cells(dims):
+    w, h, b = dims
+    jj, ii = np.mgrid[0:h, 0:w]
+    return (ii - b) * CELL, (jj - b) * CELL
+
+
+def walkable(layout, objects=(), dims=CONTAINER, e=None):
+    """Cells a ground unit can stand on: dry, not steeper than STEEP (the passability apply() writes), bridges laid
+    over the water from start to end, the map's wall pieces (WALLS) taken out."""
+    w, h, b = dims
+    if e is None:
+        e, _ = heights(layout, w, h, b)
+    ok = (e > newmap.WATERLINE + 10) & (slope_of(e) <= STEEP)
+    objs = list(objects)
+    for o, q in zip(objs, objs[1:]):
+        if getattr(o, 'flags', None) == BRIDGE_START and getattr(q, 'flags', None) == BRIDGE_END:
+            near, _ = _strip((o.x, o.y), (q.x, q.y), BRIDGE_DECK, w, h, b)
+            ok |= near
+    x, y = _cells(dims)
+    for o in objs:
+        if o.template in WALLS:
+            length, thick = WALLS[o.template]
+            a = o.angle or 0.0
+            u = (x - o.x) * math.cos(a) + (y - o.y) * math.sin(a)
+            v = -(x - o.x) * math.sin(a) + (y - o.y) * math.cos(a)
+            ok &= ~((abs(u) <= length / 2) & (abs(v) <= thick / 2))
+    return ok
+
+
+def reach(walk, x, y, dims=CONTAINER):
+    """The walkable cells joined by ground to (x, y): what a player starting there can get to."""
+    from scipy import ndimage
+    w, h, b = dims
+    comp, _ = ndimage.label(walk)
+    i, j = int(round(x / CELL)) + b, int(round(y / CELL)) + b
+    k = comp[j, i]
+    if not k:                                   # the start on a cliff's edge: the nearest walkable cell's ground
+        d = ndimage.distance_transform_edt(~walk, return_indices=True)[1]
+        k = comp[d[0][j, i], d[1][j, i]]
+    return comp == k
+
+
+def block_mask(block, dims=CONTAINER):
+    w, h, b = dims
+    at = block.at if isinstance(block.at, Shape) else Shape('rect', tuple(block.at), 0)
+    return _mask(at, w, h, b)
+
+
+def block_use(layout, sites, walk, dims=CONTAINER):
+    """How the ground the player can walk to (from the start site) is used: km2 walkable, the share in each use and
+    in no block (空地), and each 远景 block's walkable km2. None when the layout declares no blocks."""
+    if not layout.blocks or 'start' not in (sites or {}):
+        return None
+    s = sites['start']
+    got = reach(walk, s.x, s.y, dims)
+    n = max(1, int(got.sum()))
+    km2 = CELL * CELL / 1e6
+    covered = np.zeros_like(got)
+    share, backdrop = {}, {}
+    for bl in layout.blocks:
+        mk = block_mask(bl, dims)
+        if bl.use == '远景':
+            backdrop[bl.what or str(bl.at)] = round(float((got & mk).sum()) * km2, 3)
+            continue
+        new = got & mk & ~covered
+        share[bl.use] = share.get(bl.use, 0.0) + float(new.sum()) / n
+        covered |= mk
+    share['空地'] = float((got & ~covered).sum()) / n
+    return dict(walkable=round(n * km2, 2), share={k: round(v, 2) for k, v in share.items()}, backdrop=backdrop)
+
+
+def block_lint(layout, sites, walk, dims=CONTAINER):
+    """P24: every block's use one of USES; of the ground the player can walk to, at most EMPTY_MOST in no block; no
+    远景 block one can walk to."""
+    out = [f'block {bl.what or bl.at}: use {bl.use!r} is none of {"/".join(USES)}' for bl in layout.blocks
+           if bl.use not in USES]
+    use = block_use(layout, sites, walk, dims)
+    if use is None:
+        return out
+    if use['share']['空地'] > EMPTY_MOST:
+        out.append(f'blocks: {use["share"]["空地"]:.0%} of the ground the player can walk to is in no block '
+                   f'(empty; most {EMPTY_MOST:.0%}): give it a use, or make it backdrop (water, cliff, the border)')
+    out += [f'block {k} (远景): {v:g} km2 of it can be walked to (most {BACKDROP_MOST:g})'
+            for k, v in use['backdrop'].items() if v > BACKDROP_MOST]
+    return out
+
+
+GAP_SLACK = 2 * CELL                            # a gap measured within this of what it is meant to be
+
+
+def gap_width(walk, x, y, dims=CONTAINER):
+    """The walkable width across (x, y): the shortest walkable run through it, over directions every 15 degrees
+    (0 when (x, y) itself cannot be walked on)."""
+    w, h, b = dims
+    on = lambda px, py: (0 <= int(round(py / CELL)) + b < h and 0 <= int(round(px / CELL)) + b < w   # noqa: E731
+                         and walk[int(round(py / CELL)) + b, int(round(px / CELL)) + b])
+    if not on(x, y):
+        return 0.0
+    best = math.inf
+    for k in range(12):
+        a = math.pi * k / 12
+        dx, dy = math.cos(a), math.sin(a)
+        run = 0.0
+        for sgn in (1, -1):
+            t = 0.0
+            while t < 2000 and on(x + sgn * dx * (t + CELL / 2), y + sgn * dy * (t + CELL / 2)):
+                t += CELL / 2
+            run += t
+        best = min(best, run)
+    return best
+
+
+def gap_lint(layout, walk, dims=CONTAINER):
+    out = []
+    for g in layout.gaps:
+        got = gap_width(walk, g.x, g.y, dims)
+        if abs(got - g.width) > GAP_SLACK:
+            out.append(f'gap {g.what or (g.x, g.y)}: {got:.0f} wide where it is meant to be {g.width:g}'
+                       + (' (shut: no walkable ground there)' if not got else ''))
+    return out
+
+
+# ---- strongpoints and walls: the map's own objects, (template, x, y, angle) for the map module to place
+GARRISON = 'MJ_Structure_04'    # a retail Japanese house a squad can garrison (BaseCivilianStructureSmall)
+WALL_PIECE = 'MJ_PalaceWall01'
+
+
+def strongpoint(x, y, angle=0.0, template=GARRISON):
+    """A building a squad can garrison at (x, y): the map places it as one of its OBJECTS (named, published in its
+    STRONGPOINTS so a mission refers to it by name)."""
+    return (template, x, y, angle)
+
+
+def wall_line(points, gaps=(), template=WALL_PIECE):
+    """Wall pieces along a polyline (world points), corner to corner, an opening left at each gap ((x, y, width):
+    the point projected onto the line, the opening that wide between the pieces' ends). Each run between openings is
+    filled end to end, the pieces 0.9 of their length apart (they overlap: bench fence bar, the ring that held)."""
+    length = WALLS[template][0]
+    segs, s0 = [], 0.0
+    for p, q in zip(points, points[1:]):
+        d = math.hypot(q[0] - p[0], q[1] - p[1])
+        segs.append((p, q, s0, d))
+        s0 += d
+    total = s0
+
+    def along(x, y):                            # arc length of the nearest point on the line
+        best = (math.inf, 0.0)
+        for p, q, s, d in segs:
+            t = max(0.0, min(1.0, ((x - p[0]) * (q[0] - p[0]) + (y - p[1]) * (q[1] - p[1])) / max(d * d, 1e-9)))
+            px, py = p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t
+            best = min(best, (math.hypot(x - px, y - py), s + t * d))
+        return best[1]
+
+    holes = sorted((along(x, y) - wd / 2, along(x, y) + wd / 2) for x, y, wd in gaps)
+    runs, at = [], 0.0
+    for a, b_ in holes:
+        if a > at:
+            runs.append((at, a))
+        at = max(at, b_)
+    if at < total:
+        runs.append((at, total))
+    out = []
+    for a, b_ in runs:
+        if b_ - a < length / 2:
+            continue                            # too short a stub for a piece
+        n = max(1, math.ceil((b_ - a - length) / (0.9 * length)) + 1)
+        for k in range(n):
+            s = a + length / 2 + (b_ - a - length) * (k / (n - 1) if n > 1 else 0.5)
+            p, q, s_, d = next(sg for sg in segs if sg[2] <= s <= sg[2] + sg[3] + 1e-6) if s <= total else segs[-1]
+            t = (s - s_) / max(d, 1e-9)
+            out.append((template, p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t,
+                        math.atan2(q[1] - p[1], q[0] - p[0])))
     return out
 
 
