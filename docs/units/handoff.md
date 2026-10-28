@@ -6,7 +6,7 @@
 
 | 单位 | 做法 | 测试台 | 接进 `experimental/cnv` |
 |---|---|---|---|
-| 时滞炮车 `CNChrono` | GPT 四格图 → Tripo（分部件）→ `tripo_unit.py` → `to_w3x.py`；mod `CampChrono1`（`make_campchrono.py`） | 通过：生产、开火、炮塔、按钮头像；用户认可风格，按用户意见调亮、青色光可见（`work/units/chronolag/review/bench_1026_bright.png`） | 已接（2026-10-27，总控特许单位线这一次写机制）：新模块 `experimental/cnv/units/chronolag.py`，机制照 `make_campnew35.py` 原样搬（数值、行为没改，原来的环境变量开关改成函数参数），`dress()` 默认穿 CNChrono（`model=None` 关掉）；测试关 `missions/chronolag_bench.py`，检查 `checks/chronolag.py`：`hit`（展开后第 4–10 秒敌方天启停滞，约 8 秒，血量 99–100）和 `packed`（不展开就不开炮）在测试台上都 PASS。合进 main 后机制归关卡线，单位线只管 `dress()`。按钮和头像还是守护者的（旧 mod 里的图在 `work/units/chronolag/game/`，新体系还没有放图的地方）；展开时的粉色光是守护者指示器的占位 |
+| 时滞炮车 `CNChrono` | GPT 四格图 → Tripo（分部件）→ `tripo_unit.py` → `to_w3x.py`；mod `CampChrono1`（`make_campchrono.py`） | 通过：生产、开火、炮塔、按钮头像；用户认可风格，按用户意见调亮、青色光可见（`work/units/chronolag/review/bench_1026_bright.png`） | 已接（2026-10-27，总控特许单位线这一次写机制）：新模块 `experimental/cnv/units/chronolag.py`，机制照 `make_campnew35.py` 原样搬（数值、行为没改，原来的环境变量开关改成函数参数），`dress()` 默认穿 CNChrono（`model=None` 关掉）；测试关 `missions/chronolag_bench.py`，检查 `checks/chronolag.py`：`hit`（展开后第 4–10 秒敌方天启停滞，约 8 秒，血量 99–100）和 `packed`（不展开就不开炮）在测试台上都 PASS。合进 main 后机制归关卡线，单位线只管 `dress()`。按钮和头像是它自己的（`experimental/units/ui_kit.py` 写进 SDK 的 `Art/`，测试台看过：`work/units/chronolag/review/bench_1027_portrait.png`）；展开时的粉色光是守护者指示器的占位 |
 | 冰幕工兵：冰墙 `CNIceWall` / 长条 `CNIceBar`、冰核 `CNIceSeed`、碎冰 `CNIceRubble`、工兵贴图 `CNIceEngineer` | 原版冰岛冰川 `IL_GLACIER*` 拼装（`ice_kit.py`），工兵只换贴图 | 通过（`work/units/ice/review/bench_1026.png`）；`ice_block`、`ice_build` PASS | 已接：`icewall.py` 默认穿冰的外观（提交 0af20c1） |
 | 雪堆 `CNSnowBank` | 原版没有雪堆模型，用高度场直接生成（`ice_kit.bank`）：长 220、底宽 36、高 20 的雪埂，起伏用几种不成倍数的波长叠加；贴图 `CNSnow` 是程序生成的 | 看过（`work/units/ice/review/bench_bank.png`）：第一版一节一节等距鼓起，像白毛毛虫（`bench_bank_caterpillar.png`），也太白；改后不规整了，颜色压暗。仍偏光滑，像枕头，以后可以加脚印、铲痕 | 已接：`festival.bank` 默认穿（`model=None` 关掉），打碎后什么都不留。现在没有任务用雪堆（广场的墙是抬高的地形），只放在 `ice_look.py` 里 |
 | 冰雕 `CNIceSculpt`（冰龙） | GPT 四格图 → Tripo 多视图 → `tripo_unit.py` 道具分支 → `ice_kit.prop` | 通过（同上截图） | 已接：`festival.py`（雪堆仍是地堡外观） |
@@ -15,7 +15,7 @@
 
 接入规矩（总控定的，`docs/plan.md` 分工表）：单位线只换外观（模型、贴图、残骸、死亡特效），尺寸、血量、速度、机制归关卡线。每个外观函数都能用 `model=None` / `texture=None` / `cargo=None` 关掉。
 
-**构建依赖**：这些模型写在 SDK 共享的 `Art/` 里，不进 git。换机器或清过 SDK，先跑 `ice_kit.py` 和 `convoy_kit.py`（时滞炮车由 `make_campchrono.py` 写）。
+**构建依赖**：这些模型写在 SDK 共享的 `Art/` 里，不进 git。换机器或清过 SDK，先跑 `ice_kit.py` 和 `convoy_kit.py`（时滞炮车的模型由 `make_campchrono.py` 写，按钮和头像由 `ui_kit.py` 写，图在 `work/units/chronolag/game/`）。
 - 只靠原版就能重建的：冰墙、长条冰墙、冰核、两种碎冰、工兵贴图（`ice_kit.py`）、货柜（`convoy_kit.py`）。
 - 只能从 `work/` 里的 Tripo 原件重建的（gitignore，丢了要从 Tripo 账号重新导出）：冰雕 `CNIceSculpt`（`work/units/icesculpture/tripo/icesculpture_v1.glb` → Blender 跑 `tripo_unit.py icesculpture` → `ice_kit.py CNIceSculpt`）、时滞炮车 `CNChrono`（`tripo_unit.py chronolag` → `make_campchrono.py`）、自由号 `CNLiberty`（`work/units/libertyisle/tripo/libertyisle_v1.glb` → `tripo_unit.py libertyisle` → `liberty_kit.py`，女神像从原版重建）。`ice_kit.py` 缺冰雕原件时跳过它、照做其余，并打印缺哪个文件、怎么补。
 
@@ -33,7 +33,8 @@
      - 光环原来放在龙骨下面（概念图里的"底部光圈"），RTS 镜头下被平台整个挡住，挪到了脚下。光芒最初太细，在正常缩放下像头发丝，加粗了。
    - 还没做：剧情说法（设计见 `concept_gpt.py` 的 `libertyisle` 说明和这次对话：剧情说法"她本来就是灯塔 + 埃菲尔铁骨是超时空天线"等用户定）。
    - 设计规律（大型空中要塞，参考各家即时战略游戏）：一个视觉中心、威胁朝下、悬浮旋转部件显科技、盟军流线型而不是方块、弱点是看得出的独立模块。写在 `concept_gpt.py` 的 `libertyisle` 说明里。
-2. 时滞炮车已接进新体系（见上表）；还差自己的按钮、头像（新体系要能带图片），展开时的光效换成青色。A3 的时停区机关和它是不是一回事，等策划线定（总控 2026-10-27）。
+2. 时滞炮车已接进新体系（见上表），按钮、头像也有了；还差把展开时的光效换成青色。
+   - 新体系的单位带自己的按钮和头像，不用改共享构建：`ui_kit.py` 把 `button_icon.py` 做的图补成 128 见方，写进 `Art/<XX>/<模型>Button.tga / .xml`（同一个 xml 里声明贴图和 `Button_<模型>` 图块，头像同理）；`dress()` 引用这个 `ART:` 文件，改 `ButtonImage` / `SelectPortrait`，再把两个图块和两张贴图加进 `link`。以后其他单位照这个做，在 `ui_kit.UNITS` 里加一行。A3 的时停区机关和它是不是一回事，等策划线定（总控 2026-10-27）。
 3. 雪堆有了外观（`CNSnowBank`，见上表），还可以再打磨。
 4. 时滞炮车可以改进：UV 小块太多、概念图没画展开支腿、履带没有滚动贴图。
 

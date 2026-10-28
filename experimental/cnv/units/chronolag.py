@@ -48,13 +48,20 @@ def nugget(modifier, include, owner=None):
 
 def dress(unit, model=LOOK):
     """The tank wearing `model` (make_campnew23.unit_xml's swap): every model of the Guardian's, its still idle
-    animation, no tread scrolling (the model has no tread texture of its own); its name and description. Look only:
-    weapons, turret, toggle, locomotor, health stay."""
+    animation, no tread scrolling (the model has no tread texture of its own); its own production button and
+    selection portrait (Button_<model> / Portrait_<model>, written into the SDK's Art by experimental/units/ui_kit.py);
+    its name and description. Look only: weapons, turret, toggle, locomotor, health stay."""
     x = re.sub(r'(<Model\s+Name=")[^"]*(")', lambda m: m.group(1) + model.upper() + m.group(2), unit.xml)
     x = re.sub(r'AnimationName="[^"]*"', f'AnimationName="{model.upper()}_IDLE"', x)
     x = re.sub(r'\s*<TreadScrollingMap\b[^>]*/>', '', x)
     x = sub1(x, '<Includes>', f'<Includes>\n\t\t<Include type="all" source="ART:{model}.w3x" />'
-                              f'\n\t\t<Include type="all" source="ART:{model}_IDLE.w3x" />')
+                              f'\n\t\t<Include type="all" source="ART:{model}_IDLE.w3x" />'
+                              f'\n\t\t<Include type="all" source="ART:{model}Button.xml" />'
+                              f'\n\t\t<Include type="all" source="ART:{model}Portrait.xml" />')
+    x = sub1(x, f'ButtonImage="Button_{RETAIL}_on"', f'ButtonImage="Button_{model}"')
+    x = sub1(x, f'SelectPortrait="Portrait_{RETAIL}"', f'SelectPortrait="Portrait_{model}"')
+    for k in ('Button', 'Portrait'):
+        unit.link += [f'PackedTextureImage:{k}_{model}', f'Texture:{model}{k}_tex']
     x = sub1(x, f'Description="Desc:{RETAIL}"', f'Description="Desc:{unit.id}"')
     x = sub1(x, f'TypeDescription="Type:{RETAIL}"', f'TypeDescription="Type:{unit.id}"')
     x = sub1(x, f'>Name:{RETAIL}<', f'>Name:{unit.id}<')
