@@ -1010,7 +1010,11 @@ class Compiler:
     def compile_endings(self):
         m = self.m
         if self.d.get('胜利'):
-            m.endings += [s.name for s in self.when('Win', self.d['胜利'], self.action('胜利'))]
+            # a main objective with no 完成 of its own (protect someone, hold out) is done by the win itself: ticked
+            # before the mission ends (simstatic: a main objective nothing ticks is a wiring fault, 2026-10-27)
+            held = [g for g in m.objectives if not g.bonus and not g.spec.get('完成')]
+            tick = [a for g in held for a in m.done(g.name) + [('SET_FLAG', self.goal_flag(g, '完成'), 1)]]
+            m.endings += [s.name for s in self.when('Win', self.d['胜利'], tick + self.action('胜利'))]
         for k, lose in enumerate(self.d.get('失败') or []):
             m.endings += [s.name for s in self.when(f'Lose {k + 1}', lose['当'],
                                                     self.action({'失败': lose.get('原因', '任务失败')}))]

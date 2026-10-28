@@ -164,14 +164,14 @@ def report(m, t=None):
         undone = [g for g in mains if g in ticked and 2 not in r.status.get(g, set())]
         unticked = [g for g in mains if g not in ticked]
         lines = []
-        lines.append('能赢' if won else '赢不了：没有一条胜利脚本能触发')
-        lines.append('能输' if lose else '输不了：没有一条失败脚本能触发（没有失败条件，或者接不上）')
+        lines.append('能赢' if won else '问题：赢不了，没有一条胜利脚本能触发')
+        lines.append('能输' if lose else '注意：输不了，没有一条失败脚本能触发（没有失败条件，或者接不上）')
         if lost_phases:
-            lines.append('永远到不了的段：' + '、'.join(lost_phases))
+            lines.append('问题：永远到不了的段：' + '、'.join(lost_phases))
         if undone:
-            lines.append('永远完成不了的主目标：' + '、'.join(undone))
+            lines.append('问题：永远完成不了的主目标：' + '、'.join(undone))
         if unticked:
-            lines.append('没有脚本把它标成完成的主目标（赢的时候也不打勾）：' + '、'.join(unticked))
+            lines.append('问题：没有脚本给它打勾的主目标（赢的时候也不打）：' + '、'.join(unticked))
         if never:
             lines.append(f'永远触发不了的脚本 {len(never)} 条：' + '；'.join(never[:12]) + ('……' if len(never) > 12 else ''))
         key = tuple(lines)

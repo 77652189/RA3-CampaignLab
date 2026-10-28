@@ -134,3 +134,20 @@ def test_won_and_lost_in_one_frame_is_a_warning_and_enable_rearms():
     s = sim.Sim(m).run(60)
     assert s.counters['N'] == 3                                       # the once-script armed again, three times
     assert s.ending[0] == '赢' and s.both and any('同一帧' in x for _, k, x in s.log if k == '警告')
+
+
+def test_no_level_has_a_static_problem():
+    """Every level as built: it can be won, each phase can be reached, each main objective gets its tick (a hold-out
+    objective with no 完成 of its own is ticked by the win: plan.py compile_endings)."""
+    import build
+    bad = []
+    for lv in build.LEVELS:
+        m, t, _ = build.resolve(lv, '')
+        bad += [f'{lv}: {x.strip()}' for x in simstatic.report(m) if '问题' in x]
+    assert not bad, '\n'.join(bad)
+
+
+def test_the_win_ticks_a_hold_out_objective():
+    s = sim.simulate('j5', until=700)
+    held = [g.name for g in s.m.objectives if not g.bonus and not g.spec.get('完成')]
+    assert held and s.ending[0] == '赢' and all(s.objectives.get(g) == 2 for g in held)
