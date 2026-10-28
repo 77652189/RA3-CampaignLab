@@ -4,7 +4,7 @@
 
 ## 硬约束
 
-- 接入规矩（总控定的，`docs/plan.md` 分工表）：单位线只换外观（模型、贴图、残骸、死亡特效），尺寸、血量、速度、机制归关卡线。每个外观函数都能用 `model=None` / `texture=None` / `cargo=None` 关掉。
+- 接入规矩（总控定的，`docs/architecture.md`「各线负责的文件」）：单位线管 `experimental/units/`、`docs/units/` 和 `experimental/cnv/units/` 里的外观接线；只换外观（模型、贴图、按钮头像、残骸、死亡特效），尺寸、血量、速度、机制归关卡线。每个外观函数都能用 `model=None` / `texture=None` / `cargo=None` 关掉。
 - 时滞炮车的 `experimental/cnv/units/chronolag.py` 是总控特许单位线写的一次例外：机制照 `make_campnew35.py` 原样搬；合进 main 以后机制归关卡线，单位线只管 `dress()` 和外观。
 - 要动关卡线的文件（`experimental/cnv/devices/`、`experimental/cnv/missions/`、`experimental/cnv/parts.py`、`experimental/cnv/build.py` 等），先在报告里说或者先问关卡线，不要等合并时才被发现；共用文件只加需要的那几行，用 Edit 改，不顺手重构。
 
@@ -80,7 +80,6 @@
   - 暂停状态下 `bench_look` 可能拍到菜单，先 `bench_wait 0.5`。
   - 暂停模式（`hold=true`）下脚本计时器和带时长的模型状态照样按真实时间走，两次调用之间的空档也会算进去。要按秒对时间的效果，用 `bench_start(hold=false)` 连续跑，或者只用一次 `bench_watch`。
   - 脚本化检查（`build.py --check`、`bench_client`）默认 8 倍速（ADR 0007）；用脚本化检查看动画、特效时设 `RA3_BENCH_SPEED=1`。手动驾驶（`bench_start`）仍是 1 倍。
-  - 构建时只要有红警3在跑，构建脚本有时会认为"不是测试台的游戏"，把新版放进 `work/staging/` 不装（关卡线的测试台游戏就被这样判断过）。看输出里有没有 `staging`；有的话游戏里看到的还是上一版，等没有游戏时再构建。
   - `cnv_check` 用的是主仓库的代码。要测本分支的改动，先在本工作目录跑 `build.py <名> --check <项> --plan`（编译并装进 Mods），再 `cnv_check(build=false)`；主仓库还没有这个检查时，手动 `bench_start` + `bench_watch(lines=n)` + `bench_counters`，再用本分支的 `build.py <名> --check <项> --no-build --judge "<计数文本>"` 判定。
 - **环境**：
   - 查游戏进程用 PowerShell `Get-Process | ? ProcessName -match ra3`（Git Bash 的 tasklist 会漏）。上测试台前单独查一次，再看 `python -I ra3voice/reslock.py status`（在主仓库目录跑）；测试台有两个位置，另一个被占时可以用空的那个。
