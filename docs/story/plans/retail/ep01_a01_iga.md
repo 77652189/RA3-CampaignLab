@@ -97,8 +97,8 @@
 | 1 起步 | 玩家部队**部分走出**起步区，**或** 15 秒到 | 等玩家，最多 15 秒（起算在开场镜头里，玩家拿到控制后实际只等约 10 秒） | `MCV Force Rollout`、`MCV Rollout MCV` |
 | 2 伏击 | 基地车进伏击区：伏兵钻出蜘蛛洞、全体打基地车；基地车**停下** | 5 秒后检查，伏兵**全灭才走，没有超时** | `MCV Ambush01`、`VillageA - MCV Move` |
 | 3 进 A 村 | 伏兵全灭 → 开往 A 村；进村 1 秒后开始 4 波 | 不等 | `VillageA - MCV has entered VillageA`、`Wave Timers E/N/H` |
-| 4 出 A 村 | A 村区域里没有 Japan02 的单位 **且** 玩家有单位在前方的"出发区"；**或** 第 4 波出发后 45 秒强制走 | 等清场 + 等玩家，最多 45 秒 | `Road to VillageB - Set to Go1/Go2`、`MCV Move` |
-| 5 半路停 | 开 20 秒后停下（剧本里是等盟军空投），停 30 秒；**或** 打空投机的那架打击者被打掉就提前走 | 不等玩家，最多停 30 秒 | `Road to VillageB - MCV Move`（`UNIT_IDLE_FOR_SECONDS 20`、30 秒计时）、`VillageB - MCV Move` |
+| 4 出 A 村 | 第 4 波已出发 **且** A 村区域里没有 Japan02 的单位 **且** 玩家有单位在前方的"出发区"；**或** 第 4 波出发后 45 秒强制走 | 等清场 + 等玩家，最多 45 秒 | `Road to VillageB - Set to Go1/Go2`、`MCV Move` |
+| 5 半路停 | 走路径 20，走到头停下（剧本里是等盟军空投）；出发 20 秒后脚本才唤醒空投、开 30 秒计时（`UNIT_IDLE_FOR_SECONDS 20` 是脚本自己等 20 秒，不是让车停），计时到 **或** 打空投机的那架打击者被打掉就接着走 | 不等玩家，出发后最多 50 秒 | `Road to VillageB - MCV Move`（`UNIT_IDLE_FOR_SECONDS 20`、30 秒计时）、`VillageB - MCV Move` |
 | 6 上岛展开 | 进 B 村区域 → 走路径 40，停 6 秒，走 45，原地展开；8 秒后再展开一次（第一次没展开成功的重试） | 不等 | `Hill Top - Move`、`Hill Top - UnPack Failed` |
 
 - **"一直走"的写法**：每段开动后都打开一个 repeat 的"重发"脚本：基地车只要不在 `MOVING` 状态，就把这一段路径再下一次（`MCV Rollout MCV Resend`、`Road to VillageB - MCV Move Resend`、`VillageB - MCV Move Resend`）。所以被挡住、被推开都会接着走。进伏击区那一刻把重发关掉，车才真的停住。
@@ -117,8 +117,8 @@
 
 ### 3.2 盟军空投（`Road to VillageB - Reinforcements …`）
 
-基地车出 A 村时，盟友的世纪轰炸机从北边图外飞来，地上先放一个精确打击信标当标记；飞进空投区就把 2 维和 + 3 标枪弹出去，伞兵落地 5 秒后转给玩家，轰炸机返航。同时 Japan02 那架打击者飞进图、变形、去打轰炸机，再变回去打基地车（`Reinforcements Attacked`）。
-有一处看不懂：`Reinforcements BlownUp` 的条件是"增援开始 且 **不是** 炸机计时已到"，按字面会在增援开始那一刻就把轰炸机炸掉，和"先空投、5 秒后再说"的流程矛盾——**未确定**（可能没启动的计时器读出来算"已到"）。
+基地车出 A 村时，盟友的世纪轰炸机从北边图外飞来，地上先放一个精确打击信标当标记；飞进空投区就把 2 维和 + 3 标枪弹出去；伞兵全部出舱的那一刻就转给玩家，轰炸机掉头，同时开 5 秒的"炸机"计时（`Reinforcements BlownUp TIMER`：条件是取反的"增援里还有人在舱里"）。同时 Japan02 那架打击者飞进图、变形、去打轰炸机，再变回去打基地车（`Reinforcements Attacked`）。
+有一处看不懂：`Reinforcements BlownUp` 的条件是"增援开始 且 **不是** 炸机计时已到"，按字面会在增援开始那一刻就把轰炸机炸掉，和"先空投"的流程矛盾——**未确定**（推断：没启动的计时器读出来算"已到"，于是只在出舱后的 5 秒里成立，轰炸机放完伞兵就被炸掉，像是被打下来；要进游戏看一眼）。
 
 ### 3.3 找出伪装的运输车（`ScriptGroup: Msn Logic - Escape of Shinzo`）
 
@@ -319,7 +319,7 @@
 
 | 什么时候 | 给什么 | 怎么来 | 脚本 |
 |---|---|---|---|
-| 基地车出 A 村 | 2 维和步兵 + 3 标枪兵 | 盟友轰炸机空投，落地 5 秒后转给玩家；敌方打击者会去打轰炸机 | `Road to VillageB - Reinforcements …` |
+| 基地车出 A 村 | 2 维和步兵 + 3 标枪兵 | 盟友轰炸机空投，全部出舱就转给玩家；敌方打击者会去打轰炸机 | `Road to VillageB - Reinforcements …` |
 | 基地车展开 | 先兆炮艇一队（数量未确定） | 直接生成，自己飞去打山顶突击队 | `Hill Top - Reinforcements`、`… OnCreate` |
 | 山顶清空 + 6 秒 | 建造厂（基地车转手，带二、三级科技升级）+ 兵营、4 电厂、矿厂、2 机场、2 多功能炮塔 + 4 冷冻直升机 | 建筑凭空生成；直升机从西边图外飞进两座机场，全部进区后转给玩家；交之前把玩家压在建筑位置下的单位挪开 | `Transfer and Spawn Base`、`Move from Under Buildings`、`Transfer Copter Forces` |
 | T2 + 30 | 5 个帝国工程师 | Tatsu 的突击运输车开进来卸人，运输车对玩家设成中立，6 秒后工程师转给玩家，车开走删掉 | `Tatsu Engineers - Follow Path and Evac` |
