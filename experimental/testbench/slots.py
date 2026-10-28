@@ -25,8 +25,24 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 BENCH = os.environ.get('RA3_BENCH_DIR') or os.path.join(ROOT, 'work', 'testbench', 'RA3')    # the game copy
+def lab(root=ROOT):
+    """The folder the repository sits in (RA3Modding, where shared\\ is). From a git worktree, the main checkout's:
+    the worktree's .git is a file 'gitdir: <main>/.git/worktrees/<name>' (2026-10-27: a build in the units line's
+    worktree looked for locks in .claude/worktrees/shared, missed the levels line's bench game and took it for the
+    user's)."""
+    git = os.path.join(root, '.git')
+    if os.path.isfile(git):
+        with open(git, encoding='utf-8') as f:
+            line = f.read().strip()
+        if line.startswith('gitdir:'):
+            d = os.path.normpath(os.path.join(root, line[len('gitdir:'):].strip()))
+            if os.path.basename(os.path.dirname(d)) == 'worktrees':
+                root = os.path.dirname(os.path.dirname(os.path.dirname(d)))
+    return os.path.dirname(root)
+
+
 LOCKS = os.path.join(os.environ['RA3_SHARED'], 'locks') if os.environ.get('RA3_SHARED') else \
-    os.path.join(os.path.dirname(ROOT), 'shared', 'locks')
+    os.path.join(lab(), 'shared', 'locks')
 SLOTS = int(os.environ.get('RA3_BENCH_SLOTS', '2'))
 INSTANCE_MUTEX = '41DAF790-16F5-4881-8754-59FD8CF3B8D2'
 GAME = re.compile(r'^(ra3_1\.\d+\.game|ra3\.exe|ra3ep1.*\.exe)$', re.I)

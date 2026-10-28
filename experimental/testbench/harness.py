@@ -41,8 +41,7 @@ SHOTS = os.path.join(BENCH, 'shots')
 # walked); mission seconds, waits and watches are all in mission time. 1 (default): the shim hooks no clock.
 SPEED = float(os.environ.get('RA3_BENCH_SPEED') or 1)
 RUNS = os.path.join(ROOT, 'work', 'testbench', 'runs')
-LOCK = os.environ.get('RA3_SHARED') and os.path.join(os.environ['RA3_SHARED'], 'locks', 'bench.json') or \
-    os.path.join(os.path.dirname(ROOT), 'shared', 'locks', 'bench.json')
+LOCK = slots.lock_path(1)
 MODS = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods')
 W, H = 1280, 720
 AIR_LIFT = 170              # a hovering aircraft is drawn ~170 px above its ground point (select it there)
@@ -188,7 +187,9 @@ def map_borders(sku):
     (cnv/parts.write_sidecar); [] for a mod without one (older builds, the campaign makers: the whole map)."""
     try:
         with open(os.path.join(os.path.dirname(sku), 'cnv_map.json'), encoding='utf-8') as f:
-            return [(n, tuple(r)) for n, r in json.load(f)['borders']]
+            # empty ones left out: the island's container keeps retail leftovers like (5010, 5010, 5010, 5010), and
+            # a zero-size area divided the minimap fit by zero (bench 2026-10-27, the units line's bench_camera)
+            return [(n, tuple(r)) for n, r in json.load(f)['borders'] if r[2] > r[0] and r[3] > r[1]]
     except (OSError, ValueError, KeyError):
         return []
 

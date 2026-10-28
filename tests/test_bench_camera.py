@@ -98,6 +98,19 @@ def test_sidecar_round_trip(tmp_path):
     assert harness.map_borders(str(tmp_path / 'nothing' / 'X_1.0.skudef')) == []
 
 
+def test_empty_borders_are_left_out(tmp_path, session):
+    # the island's container keeps retail leftovers of zero size: they once divided the minimap fit by zero
+    parts.write_sidecar(str(tmp_path), 'island', [('0', [0.0, 0.0, 5000.0, 5000.0]), ('1', list(WEST)),
+                                                  ('3', [5010.0, 5010.0, 5010.0, 5010.0]),
+                                                  ('4', [4210.0, 0.0, 4210.0, 0.0])])
+    borders = harness.map_borders(str(tmp_path / 'X_1.0.skudef'))
+    assert [n for n, _ in borders] == ['0', '1']
+    s, _, clicks = session
+    s.borders = borders
+    s.camera(1000, 1000)
+    assert clicks
+
+
 STEPS = [dict(name='main menu', how='tpl', threshold=10), dict(name='submenu', how='tpl', threshold=10),
          dict(name='video', how='bright', threshold=50), dict(name='in game', how='tpl', threshold=10)]
 

@@ -99,6 +99,17 @@ def test_a_dead_builder_frees_the_sdk(bench):
     got[0]()
 
 
+def test_a_worktree_finds_the_main_checkouts_locks(tmp_path):
+    lab_dir = tmp_path / 'RA3Modding'
+    main = lab_dir / 'RA3-CampaignLab'
+    (main / '.git' / 'worktrees' / 'units').mkdir(parents=True)
+    tree = main / '.claude' / 'worktrees' / 'units'
+    tree.mkdir(parents=True)
+    (tree / '.git').write_text(f'gitdir: {main / ".git" / "worktrees" / "units"}\n', encoding='utf-8')
+    assert slots.lab(str(tree)) == str(lab_dir)
+    assert slots.lab(str(main)) == str(lab_dir)        # the main checkout: its .git is a folder
+
+
 def test_note_game_marks_the_game_ours(bench):
     i = slots.take('a')
     bench[300] = 'RA3_1.13.game'
