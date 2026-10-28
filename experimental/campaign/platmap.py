@@ -266,7 +266,9 @@ def lint(layout, sites=None, objects=(), scenery=(), dims=CONTAINER):
                     out.append(f'bridge at ({o.x:g}, {o.y:g}): dry ground under its middle -- a bridge over nothing')
             k += 2
             continue
-        if not dry(o.x, o.y) or relief(e, o.x, o.y, 60.0, b) > FLAT:
+        # a wall piece only on dry ground: it runs up to a cliff's foot to close a courtyard (retail walls follow
+        # the ground), where the rest must stand flat
+        if not dry(o.x, o.y) or (o.template not in WALLS and relief(e, o.x, o.y, 60.0, b) > FLAT):
             out.append(f'{o.template} at ({o.x:g}, {o.y:g}): not on flat dry ground')
         k += 1
     walk = walkable(layout, objs, dims, e)
@@ -455,6 +457,15 @@ def wall_line(points, gaps=(), template=WALL_PIECE):
             t = (s - s_) / max(d, 1e-9)
             out.append((template, p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t,
                         math.atan2(q[1] - p[1], q[0] - p[0])))
+    # a piece on every corner not in an opening: the runs' pieces lie straight along one side each and left a crack
+    # where two sides meet (sapporo plaza 2: ~10 open at a corner, the courtyard reached with its gate shut)
+    closed = math.hypot(points[0][0] - points[-1][0], points[0][1] - points[-1][1]) < 1e-6
+    corners = [(segs[k][0], segs[k][2]) for k in range(1, len(segs))] + ([(points[0], 0.0)] if closed else [])
+    for (cx, cy), s in corners:
+        if any(a <= s <= b_ for a, b_ in holes) or (closed and s == 0.0 and any(a <= total <= b_ for a, b_ in holes)):
+            continue
+        p, q = next((sg[0], sg[1]) for sg in segs if abs(sg[2] - s) < 1e-6)
+        out.append((template, cx, cy, math.atan2(q[1] - p[1], q[0] - p[0])))
     return out
 
 

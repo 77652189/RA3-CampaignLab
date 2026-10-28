@@ -56,7 +56,7 @@ from checks import sight as check_sight         # noqa: E402
 from units import tesla as units_tesla          # noqa: E402
 from missions import a4, a5, a7, a8, j3, j4, j5, j7, s2, s5, s6, beacon_bench, burrow_bench, clone_bench, combo_bench, crane_bench, icewall_bench, jammer_bench, liberty_bench, shikigami_bench, \
     tesla_bench, train_bench, probe_bench, plan_words_bench, ai_bench, ai_plan_bench, lock_bench, scene_bench, \
-    ally_bench, aistep_bench, fence_bench, reroute_bench, sight_bench, chronolag_bench, ban_bench  # noqa: E402
+    ally_bench, aistep_bench, fence_bench, reroute_bench, sight_bench, chronolag_bench, ban_bench, sapporo_bench  # noqa: E402
 
 BENCH_PY = os.path.join(os.path.dirname(ROOT), 'envs', 'bench_mcp', 'Scripts', 'python.exe')
 CLIENT = os.path.join(ROOT, 'experimental', 'testbench', 'bench_client.py')
@@ -120,6 +120,7 @@ MISSIONS = {
     'aistep_free': (lambda: aistep_bench.mission(held=False), {'free': check_aistep.free}),
     'fence': (lambda: fence_bench.mission(), {'bar': check_fence.bar}),
     'ban': (lambda: ban_bench.mission(), {}),                   # looked at by hand: the build tab
+    'sapporo': (lambda: sapporo_bench.mission(), {}),           # the A4 rework's map, to preview and measure
     'reroute': (lambda: reroute_bench.mission(), {'round': check_reroute.round_, 'open': check_reroute.opened}),
     'sight': (lambda: sight_bench.mission(), {'look': check_sight.look}),
     'jammer': (lambda: jammer_bench.mission(), {'jam': check_jam.jam, 'free': check_jam.free}),
