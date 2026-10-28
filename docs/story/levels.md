@@ -11,7 +11,7 @@
   - 路点、时间参数、检查名在代码里都有；
   - 写到的每个能力都有单位公开。
 
-剧情和关名见 [outline.md](outline.md) 第四节，单位设计见 [units.md](units.md)。进度和测试台结果见 [plan.md](../plan.md)。
+剧情和关名见 [outline.md](outline.md) 第四节，单位设计见 [units.md](units.md)。进度见 [plan.md](../plan.md)，测试台的经验和坑见 [know-how.md](../engine/know-how.md)，旧的测试台结果见 [归档](../archive/plan-2026-10-27.md)。
 
 格式：标题写 `## 关号 关名 · \`build 名\``，之后几项按顺序是：地图、角色表、路点、能力、时间、目标、输赢、检查。阵营只写"我"或"敌"。
 
