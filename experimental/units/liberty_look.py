@@ -3,8 +3,8 @@ Liberty Island fortress CNLiberty, retail's statue CNLibStatue on its core, the 
 bench scene, CampLibLook:
 
   west field: one Liberty hovering, charging its jump from the start for CHARGE seconds (the crown's rays a ray every
-  2 s, the aperture under the keel opening), then sent 500 north (does it read from the RTS camera, do the statue and
-  the rings ride with it), Guardians and a war factory for scale.
+  2 s, rings opening round her feet), then jumping 500 north (the charge cleared as it goes, the Chronosphere's
+  bubbles at both ends), Guardians and a war factory for scale.
 
   python -I -X utf8 experimental/units/liberty_look.py        -> Documents\Red Alert 3\Mods\CampLibLook
 (from a worktree set CNV_SDK to the shared SDK; run tripo_unit.py libertyisle and liberty_kit.py first)
@@ -40,7 +40,8 @@ def mission():
                                           ('SET_MILLISECOND_TIMER', 'Look - go timer', CHARGE)]),
         parts.Script('Look - go', [('TIMER_EXPIRED', 'Look - go timer')],
                      [lib.discharged(m.role('carrier').name),
-                      ('MOVE_NAMED_UNIT_TO', m.role('carrier').name, m.mark('goal'))]),
+                      ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', m.role('carrier').name, carrier.abilities['jump'],
+                       m.mark('goal'))]),
     ]
     return m
 
