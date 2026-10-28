@@ -1,0 +1,6099 @@
+{
+ "camp_a01_brightonbeach_smith": {
+  "map": "camp_a01_brightonbeach_smith",
+  "start": null,
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     0,
+     950,
+     2700,
+     3460
+    ],
+    "use": {
+     "used": 0.44,
+     "used_new": null,
+     "tiles": 30,
+     "roles": {
+      "front": 0.23,
+      "side": 0.1,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.67
+     },
+     "new_tiles": 30,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 6.78,
+     "walk_share": 0.91,
+     "tiers": 1,
+     "tier_shares": [
+      0.99
+     ],
+     "tier_heights": [
+      230
+     ],
+     "plateaus": 1,
+     "raised_plateaus": 0,
+     "ramps": 0,
+     "slope_share": 0.02,
+     "cliff_share": 0.0,
+     "cliff_km_per_km2": 0.01,
+     "cliff_runs": 0,
+     "water_share": 0.09,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 0,
+     "tech": 0,
+     "cover": 0,
+     "ore": 1,
+     "garrison_per_km2": 0.0,
+     "tech_per_km2": 0.0,
+     "cover_per_km2": 0.0,
+     "junctions": 0,
+     "junctions_per_km2": 0.0,
+     "chokes": 1,
+     "chokes_per_km2": 0.16,
+     "overlook": null,
+     "chokes_on_main": 0,
+     "backdrop": 0.1
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     4750,
+     4750
+    ],
+    "use": {
+     "used": 0.29,
+     "used_new": 0.17,
+     "tiles": 70,
+     "roles": {
+      "front": 0.16,
+      "side": 0.09,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.76
+     },
+     "new_tiles": 46,
+     "new_roles": {
+      "front": 0.09,
+      "side": 0.07,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.85
+     }
+    },
+    "terrain": {
+     "area_km2": 22.47,
+     "walk_share": 0.65,
+     "tiers": 1,
+     "tier_shares": [
+      0.99
+     ],
+     "tier_heights": [
+      230
+     ],
+     "plateaus": 1,
+     "raised_plateaus": 0,
+     "ramps": 0,
+     "slope_share": 0.06,
+     "cliff_share": 0.003,
+     "cliff_km_per_km2": 0.22,
+     "cliff_runs": 4,
+     "water_share": 0.34,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 0,
+     "tech": 1,
+     "cover": 0,
+     "ore": 2,
+     "garrison_per_km2": 0.0,
+     "tech_per_km2": 0.07,
+     "cover_per_km2": 0.0,
+     "junctions": 5,
+     "junctions_per_km2": 0.34,
+     "chokes": 6,
+     "chokes_per_km2": 0.41,
+     "overlook": null,
+     "chokes_on_main": 0,
+     "backdrop": 0.35
+    }
+   }
+  ]
+ },
+ "camp_a02_cannes_smith": {
+  "map": "camp_a02_cannes_smith",
+  "start": [
+   406,
+   2960
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5250,
+     5750
+    ],
+    "use": {
+     "used": 0.59,
+     "used_new": null,
+     "tiles": 76,
+     "roles": {
+      "front": 0.38,
+      "side": 0.29,
+      "rear": 0.05,
+      "path": 0.08,
+      "empty": 0.2
+     },
+     "new_tiles": 76,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 30.08,
+     "walk_share": 0.51,
+     "tiers": 2,
+     "tier_shares": [
+      0.27,
+      0.7
+     ],
+     "tier_heights": [
+      230,
+      270
+     ],
+     "plateaus": 7,
+     "raised_plateaus": 1,
+     "ramps": 2,
+     "slope_share": 0.1,
+     "cliff_share": 0.01,
+     "cliff_km_per_km2": 0.7,
+     "cliff_runs": 22,
+     "water_share": 0.48,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 27,
+     "tech": 1,
+     "cover": 182,
+     "ore": 8,
+     "garrison_per_km2": 1.77,
+     "tech_per_km2": 0.07,
+     "cover_per_km2": 11.95,
+     "junctions": 21,
+     "junctions_per_km2": 1.38,
+     "chokes": 13,
+     "chokes_per_km2": 0.85,
+     "overlook": 0.15,
+     "chokes_on_main": 1,
+     "backdrop": 0.5
+    }
+   }
+  ]
+ },
+ "camp_a03_heidelberg_smith": {
+  "map": "camp_a03_heidelberg_smith",
+  "start": [
+   3536,
+   -133
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "use": {
+     "used": 0.55,
+     "used_new": null,
+     "tiles": 87,
+     "roles": {
+      "front": 0.26,
+      "side": 0.37,
+      "rear": 0.01,
+      "path": 0.18,
+      "empty": 0.17
+     },
+     "new_tiles": 87,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 25.0,
+     "walk_share": 0.76,
+     "tiers": 2,
+     "tier_shares": [
+      0.17,
+      0.74
+     ],
+     "tier_heights": [
+      230,
+      290
+     ],
+     "plateaus": 4,
+     "raised_plateaus": 2,
+     "ramps": 9,
+     "slope_share": 0.1,
+     "cliff_share": 0.02,
+     "cliff_km_per_km2": 1.27,
+     "cliff_runs": 41,
+     "water_share": 0.15,
+     "water_bodies": 1,
+     "bridges": 1,
+     "garrison": 84,
+     "tech": 1,
+     "cover": 244,
+     "ore": 10,
+     "garrison_per_km2": 4.42,
+     "tech_per_km2": 0.05,
+     "cover_per_km2": 12.85,
+     "junctions": 29,
+     "junctions_per_km2": 1.53,
+     "chokes": 15,
+     "chokes_per_km2": 0.79,
+     "overlook": 0.26,
+     "chokes_on_main": 4,
+     "backdrop": 0.25
+    }
+   }
+  ]
+ },
+ "camp_a04_gibraltar_hayes": {
+  "map": "camp_a04_gibraltar_hayes",
+  "start": [
+   2892,
+   -169
+  ],
+  "stages": [
+   {
+    "border": 4,
+    "rect": [
+     2180,
+     350,
+     5500,
+     5500
+    ],
+    "use": {
+     "used": 0.64,
+     "used_new": null,
+     "tiles": 39,
+     "roles": {
+      "front": 0.44,
+      "side": 0.31,
+      "rear": 0.08,
+      "path": 0.08,
+      "empty": 0.1
+     },
+     "new_tiles": 39,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 17.1,
+     "walk_share": 0.42,
+     "tiers": 1,
+     "tier_shares": [
+      0.85
+     ],
+     "tier_heights": [
+      230
+     ],
+     "plateaus": 2,
+     "raised_plateaus": 0,
+     "ramps": 1,
+     "slope_share": 0.21,
+     "cliff_share": 0.014,
+     "cliff_km_per_km2": 0.94,
+     "cliff_runs": 22,
+     "water_share": 0.43,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 22,
+     "tech": 0,
+     "cover": 80,
+     "ore": 6,
+     "garrison_per_km2": 3.07,
+     "tech_per_km2": 0.0,
+     "cover_per_km2": 11.17,
+     "junctions": 17,
+     "junctions_per_km2": 2.37,
+     "chokes": 8,
+     "chokes_per_km2": 1.12,
+     "overlook": 0.0,
+     "chokes_on_main": 0,
+     "backdrop": 0.59
+    }
+   },
+   {
+    "border": 5,
+    "rect": [
+     280,
+     350,
+     5500,
+     3670
+    ],
+    "use": {
+     "used": 0.24,
+     "used_new": 0.33,
+     "tiles": 50,
+     "roles": {
+      "front": 0.16,
+      "side": 0.4,
+      "rear": 0.06,
+      "path": 0.06,
+      "empty": 0.32
+     },
+     "new_tiles": 24,
+     "new_roles": {
+      "front": 0.17,
+      "side": 0.29,
+      "rear": 0.0,
+      "path": 0.12,
+      "empty": 0.42
+     }
+    },
+    "terrain": {
+     "area_km2": 17.33,
+     "walk_share": 0.44,
+     "tiers": 1,
+     "tier_shares": [
+      0.86
+     ],
+     "tier_heights": [
+      230
+     ],
+     "plateaus": 2,
+     "raised_plateaus": 0,
+     "ramps": 0,
+     "slope_share": 0.21,
+     "cliff_share": 0.011,
+     "cliff_km_per_km2": 0.74,
+     "cliff_runs": 16,
+     "water_share": 0.52,
+     "water_bodies": 1,
+     "bridges": 1,
+     "garrison": 20,
+     "tech": 0,
+     "cover": 87,
+     "ore": 6,
+     "garrison_per_km2": 2.65,
+     "tech_per_km2": 0.0,
+     "cover_per_km2": 11.53,
+     "junctions": 15,
+     "junctions_per_km2": 1.99,
+     "chokes": 10,
+     "chokes_per_km2": 1.33,
+     "overlook": 0.0,
+     "chokes_on_main": 2,
+     "backdrop": 0.57
+    }
+   },
+   {
+    "border": 1,
+    "rect": [
+     280,
+     350,
+     5500,
+     5500
+    ],
+    "use": {
+     "used": 0.69,
+     "used_new": 0.89,
+     "tiles": 75,
+     "roles": {
+      "front": 0.45,
+      "side": 0.25,
+      "rear": 0.04,
+      "path": 0.11,
+      "empty": 0.15
+     },
+     "new_tiles": 32,
+     "new_roles": {
+      "front": 0.84,
+      "side": 0.03,
+      "rear": 0.0,
+      "path": 0.06,
+      "empty": 0.06
+     }
+    },
+    "terrain": {
+     "area_km2": 26.88,
+     "walk_share": 0.51,
+     "tiers": 1,
+     "tier_shares": [
+      0.87
+     ],
+     "tier_heights": [
+      230
+     ],
+     "plateaus": 1,
+     "raised_plateaus": 0,
+     "ramps": 1,
+     "slope_share": 0.18,
+     "cliff_share": 0.012,
+     "cliff_km_per_km2": 0.83,
+     "cliff_runs": 30,
+     "water_share": 0.38,
+     "water_bodies": 1,
+     "bridges": 1,
+     "garrison": 28,
+     "tech": 0,
+     "cover": 142,
+     "ore": 9,
+     "garrison_per_km2": 2.02,
+     "tech_per_km2": 0.0,
+     "cover_per_km2": 10.27,
+     "junctions": 23,
+     "junctions_per_km2": 1.66,
+     "chokes": 13,
+     "chokes_per_km2": 0.94,
+     "overlook": 0.0,
+     "chokes_on_main": 2,
+     "backdrop": 0.49
+    }
+   }
+  ]
+ },
+ "camp_a05_northsea_white": {
+  "map": "camp_a05_northsea_white",
+  "start": [
+   1631,
+   153
+  ],
+  "stages": [
+   {
+    "border": 4,
+    "rect": [
+     850,
+     0,
+     2790,
+     1840
+    ],
+    "use": {
+     "used": 0.0,
+     "used_new": null,
+     "tiles": 0,
+     "roles": {},
+     "new_tiles": 0,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 3.57,
+     "walk_share": 0.0,
+     "tiers": 0,
+     "tier_shares": [],
+     "tier_heights": [],
+     "plateaus": 0,
+     "raised_plateaus": 0,
+     "ramps": 0,
+     "slope_share": 0.0,
+     "cliff_share": 0.0,
+     "cliff_km_per_km2": 0.0,
+     "cliff_runs": 0,
+     "water_share": 1.0,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 0,
+     "tech": 0,
+     "cover": 0,
+     "ore": 4,
+     "garrison_per_km2": 0.0,
+     "tech_per_km2": 0.0,
+     "cover_per_km2": 0.0,
+     "junctions": 0,
+     "junctions_per_km2": 0.0,
+     "chokes": 0,
+     "chokes_per_km2": 0.0,
+     "overlook": null,
+     "chokes_on_main": 0,
+     "backdrop": 1.0
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     6000,
+     6000
+    ],
+    "use": {
+     "used": 0.79,
+     "used_new": 0.79,
+     "tiles": 55,
+     "roles": {
+      "front": 0.82,
+      "side": 0.07,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.11
+     },
+     "new_tiles": 55,
+     "new_roles": {
+      "front": 0.82,
+      "side": 0.07,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.11
+     }
+    },
+    "terrain": {
+     "area_km2": 36.0,
+     "walk_share": 0.29,
+     "tiers": 3,
+     "tier_shares": [
+      0.19,
+      0.55,
+      0.22
+     ],
+     "tier_heights": [
+      250,
+      310,
+      390
+     ],
+     "plateaus": 8,
+     "raised_plateaus": 6,
+     "ramps": 9,
+     "slope_share": 0.18,
+     "cliff_share": 0.02,
+     "cliff_km_per_km2": 1.36,
+     "cliff_runs": 44,
+     "water_share": 0.67,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 14,
+     "tech": 10,
+     "cover": 0,
+     "ore": 9,
+     "garrison_per_km2": 1.34,
+     "tech_per_km2": 0.96,
+     "cover_per_km2": 0.0,
+     "junctions": 35,
+     "junctions_per_km2": 3.34,
+     "chokes": 25,
+     "chokes_per_km2": 2.39,
+     "overlook": null,
+     "chokes_on_main": 0,
+     "backdrop": 0.72
+    }
+   }
+  ]
+ },
+ "camp_a06_mountrushmore_white": {
+  "map": "camp_a06_mountrushmore_white",
+  "start": [
+   1276,
+   241
+  ],
+  "stages": [
+   {
+    "border": 2,
+    "rect": [
+     410,
+     0,
+     2300,
+     2030
+    ],
+    "use": {
+     "used": 0.56,
+     "used_new": null,
+     "tiles": 25,
+     "roles": {
+      "front": 0.28,
+      "side": 0.12,
+      "rear": 0.16,
+      "path": 0.0,
+      "empty": 0.44
+     },
+     "new_tiles": 25,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 3.84,
+     "walk_share": 0.84,
+     "tiers": 2,
+     "tier_shares": [
+      0.69,
+      0.26
+     ],
+     "tier_heights": [
+      70,
+      150
+     ],
+     "plateaus": 3,
+     "raised_plateaus": 2,
+     "ramps": 3,
+     "slope_share": 0.19,
+     "cliff_share": 0.049,
+     "cliff_km_per_km2": 3.04,
+     "cliff_runs": 14,
+     "water_share": 0.0,
+     "water_bodies": 0,
+     "bridges": 0,
+     "garrison": 6,
+     "tech": 1,
+     "cover": 0,
+     "ore": 3,
+     "garrison_per_km2": 1.86,
+     "tech_per_km2": 0.31,
+     "cover_per_km2": 0.0,
+     "junctions": 8,
+     "junctions_per_km2": 2.48,
+     "chokes": 5,
+     "chokes_per_km2": 1.55,
+     "overlook": 0.4,
+     "chokes_on_main": 1,
+     "backdrop": 0.18
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "use": {
+     "used": 0.65,
+     "used_new": 0.61,
+     "tiles": 100,
+     "roles": {
+      "front": 0.24,
+      "side": 0.18,
+      "rear": 0.02,
+      "path": 0.48,
+      "empty": 0.08
+     },
+     "new_tiles": 84,
+     "new_roles": {
+      "front": 0.19,
+      "side": 0.18,
+      "rear": 0.0,
+      "path": 0.54,
+      "empty": 0.1
+     }
+    },
+    "terrain": {
+     "area_km2": 25.0,
+     "walk_share": 0.79,
+     "tiers": 4,
+     "tier_shares": [
+      0.4,
+      0.16,
+      0.24,
+      0.12
+     ],
+     "tier_heights": [
+      70,
+      110,
+      150,
+      230
+     ],
+     "plateaus": 10,
+     "raised_plateaus": 7,
+     "ramps": 19,
+     "slope_share": 0.23,
+     "cliff_share": 0.059,
+     "cliff_km_per_km2": 3.65,
+     "cliff_runs": 75,
+     "water_share": 0.0,
+     "water_bodies": 0,
+     "bridges": 2,
+     "garrison": 21,
+     "tech": 6,
+     "cover": 3,
+     "ore": 13,
+     "garrison_per_km2": 1.07,
+     "tech_per_km2": 0.31,
+     "cover_per_km2": 0.15,
+     "junctions": 45,
+     "junctions_per_km2": 2.29,
+     "chokes": 19,
+     "chokes_per_km2": 0.97,
+     "overlook": 0.2,
+     "chokes_on_main": 8,
+     "backdrop": 0.24
+    }
+   }
+  ]
+ },
+ "camp_a07_tokyoharbor_davis": {
+  "map": "camp_a07_tokyoharbor_davis",
+  "start": [
+   250,
+   1255
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     0,
+     0,
+     3830,
+     2030
+    ],
+    "use": {
+     "used": 0.68,
+     "used_new": null,
+     "tiles": 17,
+     "roles": {
+      "front": 0.65,
+      "side": 0.06,
+      "rear": 0.0,
+      "path": 0.12,
+      "empty": 0.18
+     },
+     "new_tiles": 17,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 7.77,
+     "walk_share": 0.44,
+     "tiers": 1,
+     "tier_shares": [
+      1.0
+     ],
+     "tier_heights": [
+      220
+     ],
+     "plateaus": 2,
+     "raised_plateaus": 0,
+     "ramps": 0,
+     "slope_share": 0.13,
+     "cliff_share": 0.001,
+     "cliff_km_per_km2": 0.09,
+     "cliff_runs": 0,
+     "water_share": 0.56,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 8,
+     "tech": 2,
+     "cover": 8,
+     "ore": 2,
+     "garrison_per_km2": 2.36,
+     "tech_per_km2": 0.59,
+     "cover_per_km2": 2.36,
+     "junctions": 2,
+     "junctions_per_km2": 0.59,
+     "chokes": 0,
+     "chokes_per_km2": 0.0,
+     "overlook": 0.0,
+     "chokes_on_main": 0,
+     "backdrop": 0.57
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     4500
+    ],
+    "use": {
+     "used": 0.72,
+     "used_new": 0.74,
+     "tiles": 57,
+     "roles": {
+      "front": 0.75,
+      "side": 0.09,
+      "rear": 0.0,
+      "path": 0.04,
+      "empty": 0.12
+     },
+     "new_tiles": 42,
+     "new_roles": {
+      "front": 0.76,
+      "side": 0.1,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.14
+     }
+    },
+    "terrain": {
+     "area_km2": 22.5,
+     "walk_share": 0.53,
+     "tiers": 1,
+     "tier_shares": [
+      0.98
+     ],
+     "tier_heights": [
+      230
+     ],
+     "plateaus": 4,
+     "raised_plateaus": 0,
+     "ramps": 0,
+     "slope_share": 0.12,
+     "cliff_share": 0.005,
+     "cliff_km_per_km2": 0.44,
+     "cliff_runs": 9,
+     "water_share": 0.46,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 44,
+     "tech": 2,
+     "cover": 224,
+     "ore": 10,
+     "garrison_per_km2": 3.68,
+     "tech_per_km2": 0.17,
+     "cover_per_km2": 18.74,
+     "junctions": 14,
+     "junctions_per_km2": 1.17,
+     "chokes": 4,
+     "chokes_per_km2": 0.33,
+     "overlook": 0.0,
+     "chokes_on_main": 0,
+     "backdrop": 0.48
+    }
+   }
+  ]
+ },
+ "camp_a08_havana_rao": {
+  "map": "camp_a08_havana_rao",
+  "start": null,
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     210,
+     500,
+     2950,
+     4470
+    ],
+    "use": {
+     "used": 0.74,
+     "used_new": null,
+     "tiles": 17,
+     "roles": {
+      "front": 0.71,
+      "side": 0.18,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.12
+     },
+     "new_tiles": 17,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 10.88,
+     "walk_share": 0.3,
+     "tiers": 1,
+     "tier_shares": [
+      0.94
+     ],
+     "tier_heights": [
+      290
+     ],
+     "plateaus": 1,
+     "raised_plateaus": 0,
+     "ramps": 0,
+     "slope_share": 0.12,
+     "cliff_share": 0.01,
+     "cliff_km_per_km2": 0.68,
+     "cliff_runs": 10,
+     "water_share": 0.67,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 19,
+     "tech": 0,
+     "cover": 76,
+     "ore": 2,
+     "garrison_per_km2": 5.82,
+     "tech_per_km2": 0.0,
+     "cover_per_km2": 23.26,
+     "junctions": 8,
+     "junctions_per_km2": 2.45,
+     "chokes": 7,
+     "chokes_per_km2": 2.14,
+     "overlook": null,
+     "chokes_on_main": 0,
+     "backdrop": 0.71
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     6000,
+     6000
+    ],
+    "use": {
+     "used": 0.58,
+     "used_new": 0.5,
+     "tiles": 49,
+     "roles": {
+      "front": 0.61,
+      "side": 0.16,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.22
+     },
+     "new_tiles": 32,
+     "new_roles": {
+      "front": 0.56,
+      "side": 0.16,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.28
+     }
+    },
+    "terrain": {
+     "area_km2": 36.0,
+     "walk_share": 0.28,
+     "tiers": 1,
+     "tier_shares": [
+      0.97
+     ],
+     "tier_heights": [
+      290
+     ],
+     "plateaus": 2,
+     "raised_plateaus": 0,
+     "ramps": 0,
+     "slope_share": 0.1,
+     "cliff_share": 0.007,
+     "cliff_km_per_km2": 0.53,
+     "cliff_runs": 24,
+     "water_share": 0.68,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 47,
+     "tech": 0,
+     "cover": 213,
+     "ore": 14,
+     "garrison_per_km2": 4.59,
+     "tech_per_km2": 0.0,
+     "cover_per_km2": 20.78,
+     "junctions": 22,
+     "junctions_per_km2": 2.15,
+     "chokes": 12,
+     "chokes_per_km2": 1.17,
+     "overlook": null,
+     "chokes_on_main": 0,
+     "backdrop": 0.72
+    }
+   }
+  ]
+ },
+ "camp_a09_leningrad_rao": {
+  "map": "camp_a09_leningrad_rao",
+  "start": null,
+  "stages": [
+   {
+    "border": 2,
+    "rect": [
+     0,
+     0,
+     3010,
+     2620
+    ],
+    "use": {
+     "used": 0.55,
+     "used_new": null,
+     "tiles": 22,
+     "roles": {
+      "front": 0.55,
+      "side": 0.18,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.27
+     },
+     "new_tiles": 22,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 7.89,
+     "walk_share": 0.55,
+     "tiers": 2,
+     "tier_shares": [
+      0.04,
+      0.94
+     ],
+     "tier_heights": [
+      230,
+      310
+     ],
+     "plateaus": 2,
+     "raised_plateaus": 1,
+     "ramps": 0,
+     "slope_share": 0.08,
+     "cliff_share": 0.009,
+     "cliff_km_per_km2": 0.75,
+     "cliff_runs": 9,
+     "water_share": 0.42,
+     "water_bodies": 1,
+     "bridges": 1,
+     "garrison": 17,
+     "tech": 2,
+     "cover": 107,
+     "ore": 4,
+     "garrison_per_km2": 3.92,
+     "tech_per_km2": 0.46,
+     "cover_per_km2": 24.65,
+     "junctions": 6,
+     "junctions_per_km2": 1.38,
+     "chokes": 3,
+     "chokes_per_km2": 0.69,
+     "overlook": null,
+     "chokes_on_main": 0,
+     "backdrop": 0.45
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5750,
+     5250
+    ],
+    "use": {
+     "used": 0.51,
+     "used_new": 0.49,
+     "tiles": 98,
+     "roles": {
+      "front": 0.42,
+      "side": 0.19,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.39
+     },
+     "new_tiles": 78,
+     "new_roles": {
+      "front": 0.37,
+      "side": 0.19,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.44
+     }
+    },
+    "terrain": {
+     "area_km2": 30.08,
+     "walk_share": 0.63,
+     "tiers": 2,
+     "tier_shares": [
+      0.11,
+      0.85
+     ],
+     "tier_heights": [
+      230,
+      310
+     ],
+     "plateaus": 5,
+     "raised_plateaus": 4,
+     "ramps": 0,
+     "slope_share": 0.09,
+     "cliff_share": 0.014,
+     "cliff_km_per_km2": 1.06,
+     "cliff_runs": 34,
+     "water_share": 0.26,
+     "water_bodies": 1,
+     "bridges": 4,
+     "garrison": 50,
+     "tech": 2,
+     "cover": 402,
+     "ore": 11,
+     "garrison_per_km2": 2.64,
+     "tech_per_km2": 0.11,
+     "cover_per_km2": 21.22,
+     "junctions": 28,
+     "junctions_per_km2": 1.48,
+     "chokes": 13,
+     "chokes_per_km2": 0.69,
+     "overlook": null,
+     "chokes_on_main": 0,
+     "backdrop": 0.38
+    }
+   }
+  ]
+ },
+ "camp_j01_russianvillage_white": {
+  "map": "camp_j01_russianvillage_white",
+  "start": [
+   551,
+   2408
+  ],
+  "stages": [
+   {
+    "border": 2,
+    "rect": [
+     0,
+     0,
+     3890,
+     2050
+    ],
+    "use": {
+     "used": 0.89,
+     "used_new": null,
+     "tiles": 30,
+     "roles": {
+      "front": 0.63,
+      "side": 0.1,
+      "rear": 0.0,
+      "path": 0.17,
+      "empty": 0.1
+     },
+     "new_tiles": 30,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 7.97,
+     "walk_share": 0.69,
+     "tiers": 2,
+     "tier_shares": [
+      0.11,
+      0.82
+     ],
+     "tier_heights": [
+      230,
+      310
+     ],
+     "plateaus": 4,
+     "raised_plateaus": 2,
+     "ramps": 2,
+     "slope_share": 0.16,
+     "cliff_share": 0.029,
+     "cliff_km_per_km2": 1.89,
+     "cliff_runs": 14,
+     "water_share": 0.21,
+     "water_bodies": 2,
+     "bridges": 1,
+     "garrison": 41,
+     "tech": 1,
+     "cover": 51,
+     "ore": 0,
+     "garrison_per_km2": 7.48,
+     "tech_per_km2": 0.18,
+     "cover_per_km2": 9.31,
+     "junctions": 16,
+     "junctions_per_km2": 2.92,
+     "chokes": 10,
+     "chokes_per_km2": 1.82,
+     "overlook": 0.4,
+     "chokes_on_main": 1,
+     "backdrop": 0.32
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     4500,
+     4500
+    ],
+    "use": {
+     "used": 0.8,
+     "used_new": 0.69,
+     "tiles": 50,
+     "roles": {
+      "front": 0.66,
+      "side": 0.08,
+      "rear": 0.0,
+      "path": 0.14,
+      "empty": 0.12
+     },
+     "new_tiles": 22,
+     "new_roles": {
+      "front": 0.64,
+      "side": 0.05,
+      "rear": 0.0,
+      "path": 0.09,
+      "empty": 0.23
+     }
+    },
+    "terrain": {
+     "area_km2": 20.25,
+     "walk_share": 0.48,
+     "tiers": 3,
+     "tier_shares": [
+      0.25,
+      0.64,
+      0.05
+     ],
+     "tier_heights": [
+      230,
+      310,
+      390
+     ],
+     "plateaus": 7,
+     "raised_plateaus": 4,
+     "ramps": 7,
+     "slope_share": 0.18,
+     "cliff_share": 0.026,
+     "cliff_km_per_km2": 1.72,
+     "cliff_runs": 31,
+     "water_share": 0.43,
+     "water_bodies": 1,
+     "bridges": 2,
+     "garrison": 45,
+     "tech": 1,
+     "cover": 119,
+     "ore": 0,
+     "garrison_per_km2": 4.63,
+     "tech_per_km2": 0.1,
+     "cover_per_km2": 12.25,
+     "junctions": 30,
+     "junctions_per_km2": 3.09,
+     "chokes": 28,
+     "chokes_per_km2": 2.88,
+     "overlook": 0.16,
+     "chokes_on_main": 9,
+     "backdrop": 0.53
+    }
+   }
+  ]
+ },
+ "camp_j02_stalingrad_stewart": {
+  "map": "camp_j02_stalingrad_stewart",
+  "start": [
+   483,
+   329
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     4000,
+     5000
+    ],
+    "use": {
+     "used": 0.75,
+     "used_new": null,
+     "tiles": 75,
+     "roles": {
+      "front": 0.44,
+      "side": 0.29,
+      "rear": 0.01,
+      "path": 0.2,
+      "empty": 0.05
+     },
+     "new_tiles": 75,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 20.0,
+     "walk_share": 0.79,
+     "tiers": 2,
+     "tier_shares": [
+      0.7,
+      0.27
+     ],
+     "tier_heights": [
+      230,
+      310
+     ],
+     "plateaus": 5,
+     "raised_plateaus": 3,
+     "ramps": 4,
+     "slope_share": 0.11,
+     "cliff_share": 0.023,
+     "cliff_km_per_km2": 1.45,
+     "cliff_runs": 27,
+     "water_share": 0.15,
+     "water_bodies": 3,
+     "bridges": 3,
+     "garrison": 36,
+     "tech": 2,
+     "cover": 75,
+     "ore": 8,
+     "garrison_per_km2": 2.28,
+     "tech_per_km2": 0.13,
+     "cover_per_km2": 4.74,
+     "junctions": 25,
+     "junctions_per_km2": 1.58,
+     "chokes": 14,
+     "chokes_per_km2": 0.88,
+     "overlook": 0.45,
+     "chokes_on_main": 5,
+     "backdrop": 0.22
+    }
+   }
+  ]
+ },
+ "camp_j03_odessa_stewart": {
+  "map": "camp_j03_odessa_stewart",
+  "start": [
+   4583,
+   1665
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     0,
+     0,
+     5000,
+     2360
+    ],
+    "use": {
+     "used": 0.28,
+     "used_new": null,
+     "tiles": 23,
+     "roles": {
+      "front": 0.3,
+      "side": 0.3,
+      "rear": 0.04,
+      "path": 0.0,
+      "empty": 0.35
+     },
+     "new_tiles": 23,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 11.8,
+     "walk_share": 0.34,
+     "tiers": 1,
+     "tier_shares": [
+      0.96
+     ],
+     "tier_heights": [
+      230
+     ],
+     "plateaus": 3,
+     "raised_plateaus": 0,
+     "ramps": 0,
+     "slope_share": 0.12,
+     "cliff_share": 0.011,
+     "cliff_km_per_km2": 0.68,
+     "cliff_runs": 10,
+     "water_share": 0.6,
+     "water_bodies": 1,
+     "bridges": 1,
+     "garrison": 8,
+     "tech": 5,
+     "cover": 220,
+     "ore": 3,
+     "garrison_per_km2": 1.98,
+     "tech_per_km2": 1.24,
+     "cover_per_km2": 54.5,
+     "junctions": 3,
+     "junctions_per_km2": 0.74,
+     "chokes": 4,
+     "chokes_per_km2": 0.99,
+     "overlook": null,
+     "chokes_on_main": 0,
+     "backdrop": 0.67
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     6000
+    ],
+    "use": {
+     "used": 0.68,
+     "used_new": 0.77,
+     "tiles": 94,
+     "roles": {
+      "front": 0.55,
+      "side": 0.21,
+      "rear": 0.01,
+      "path": 0.15,
+      "empty": 0.07
+     },
+     "new_tiles": 70,
+     "new_roles": {
+      "front": 0.63,
+      "side": 0.19,
+      "rear": 0.0,
+      "path": 0.17,
+      "empty": 0.01
+     }
+    },
+    "terrain": {
+     "area_km2": 30.0,
+     "walk_share": 0.73,
+     "tiers": 3,
+     "tier_shares": [
+      0.38,
+      0.4,
+      0.16
+     ],
+     "tier_heights": [
+      230,
+      310,
+      430
+     ],
+     "plateaus": 7,
+     "raised_plateaus": 4,
+     "ramps": 8,
+     "slope_share": 0.09,
+     "cliff_share": 0.019,
+     "cliff_km_per_km2": 1.16,
+     "cliff_runs": 21,
+     "water_share": 0.23,
+     "water_bodies": 1,
+     "bridges": 6,
+     "garrison": 69,
+     "tech": 5,
+     "cover": 371,
+     "ore": 7,
+     "garrison_per_km2": 3.16,
+     "tech_per_km2": 0.23,
+     "cover_per_km2": 16.99,
+     "junctions": 19,
+     "junctions_per_km2": 0.87,
+     "chokes": 19,
+     "chokes_per_km2": 0.87,
+     "overlook": 0.13,
+     "chokes_on_main": 4,
+     "backdrop": 0.28
+    }
+   }
+  ]
+ },
+ "camp_j04_pearlharbor_davis": {
+  "map": "camp_j04_pearlharbor_davis",
+  "start": [
+   952,
+   665
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5500,
+     5500
+    ],
+    "use": {
+     "used": 0.58,
+     "used_new": null,
+     "tiles": 55,
+     "roles": {
+      "front": 0.07,
+      "side": 0.4,
+      "rear": 0.13,
+      "path": 0.29,
+      "empty": 0.11
+     },
+     "new_tiles": 55,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 30.25,
+     "walk_share": 0.36,
+     "tiers": 1,
+     "tier_shares": [
+      0.98
+     ],
+     "tier_heights": [
+      230
+     ],
+     "plateaus": 1,
+     "raised_plateaus": 0,
+     "ramps": 0,
+     "slope_share": 0.11,
+     "cliff_share": 0.009,
+     "cliff_km_per_km2": 0.66,
+     "cliff_runs": 30,
+     "water_share": 0.58,
+     "water_bodies": 3,
+     "bridges": 0,
+     "garrison": 39,
+     "tech": 4,
+     "cover": 140,
+     "ore": 6,
+     "garrison_per_km2": 3.55,
+     "tech_per_km2": 0.36,
+     "cover_per_km2": 12.74,
+     "junctions": 20,
+     "junctions_per_km2": 1.82,
+     "chokes": 7,
+     "chokes_per_km2": 0.64,
+     "overlook": 0.0,
+     "chokes_on_main": 0,
+     "backdrop": 0.64
+    }
+   }
+  ]
+ },
+ "camp_j05_deepocean_davis": {
+  "map": "camp_j05_deepocean_davis",
+  "start": [
+   2024,
+   756
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     1180,
+     0,
+     5170,
+     2260
+    ],
+    "use": {
+     "used": 0.0,
+     "used_new": null,
+     "tiles": 0,
+     "roles": {},
+     "new_tiles": 0,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 9.02,
+     "walk_share": 0.0,
+     "tiers": 0,
+     "tier_shares": [],
+     "tier_heights": [],
+     "plateaus": 0,
+     "raised_plateaus": 0,
+     "ramps": 0,
+     "slope_share": 0.0,
+     "cliff_share": 0.0,
+     "cliff_km_per_km2": 0.0,
+     "cliff_runs": 0,
+     "water_share": 1.0,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 0,
+     "tech": 0,
+     "cover": 0,
+     "ore": 0,
+     "garrison_per_km2": 0.0,
+     "tech_per_km2": 0.0,
+     "cover_per_km2": 0.0,
+     "junctions": 0,
+     "junctions_per_km2": 0.0,
+     "chokes": 0,
+     "chokes_per_km2": 0.0,
+     "overlook": null,
+     "chokes_on_main": 0,
+     "backdrop": 1.0
+    }
+   },
+   {
+    "border": 2,
+    "rect": [
+     0,
+     1340,
+     4730,
+     6000
+    ],
+    "use": {
+     "used": 0.57,
+     "used_new": 0.57,
+     "tiles": 38,
+     "roles": {
+      "front": 0.26,
+      "side": 0.37,
+      "rear": 0.0,
+      "path": 0.24,
+      "empty": 0.13
+     },
+     "new_tiles": 38,
+     "new_roles": {
+      "front": 0.26,
+      "side": 0.37,
+      "rear": 0.0,
+      "path": 0.24,
+      "empty": 0.13
+     }
+    },
+    "terrain": {
+     "area_km2": 22.04,
+     "walk_share": 0.33,
+     "tiers": 2,
+     "tier_shares": [
+      0.66,
+      0.29
+     ],
+     "tier_heights": [
+      310,
+      390
+     ],
+     "plateaus": 6,
+     "raised_plateaus": 1,
+     "ramps": 6,
+     "slope_share": 0.2,
+     "cliff_share": 0.018,
+     "cliff_km_per_km2": 1.32,
+     "cliff_runs": 28,
+     "water_share": 0.63,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 12,
+     "tech": 0,
+     "cover": 0,
+     "ore": 6,
+     "garrison_per_km2": 1.64,
+     "tech_per_km2": 0.0,
+     "cover_per_km2": 0.0,
+     "junctions": 21,
+     "junctions_per_km2": 2.88,
+     "chokes": 15,
+     "chokes_per_km2": 2.05,
+     "overlook": 0.24,
+     "chokes_on_main": 4,
+     "backdrop": 0.68
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     6000,
+     6000
+    ],
+    "use": {
+     "used": 0.57,
+     "used_new": 0.0,
+     "tiles": 38,
+     "roles": {
+      "front": 0.26,
+      "side": 0.37,
+      "rear": 0.0,
+      "path": 0.24,
+      "empty": 0.13
+     },
+     "new_tiles": 0,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 36.0,
+     "walk_share": 0.2,
+     "tiers": 2,
+     "tier_shares": [
+      0.66,
+      0.29
+     ],
+     "tier_heights": [
+      310,
+      390
+     ],
+     "plateaus": 6,
+     "raised_plateaus": 1,
+     "ramps": 6,
+     "slope_share": 0.2,
+     "cliff_share": 0.011,
+     "cliff_km_per_km2": 0.81,
+     "cliff_runs": 28,
+     "water_share": 0.78,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 12,
+     "tech": 0,
+     "cover": 0,
+     "ore": 10,
+     "garrison_per_km2": 1.64,
+     "tech_per_km2": 0.0,
+     "cover_per_km2": 0.0,
+     "junctions": 21,
+     "junctions_per_km2": 2.88,
+     "chokes": 15,
+     "chokes_per_km2": 2.05,
+     "overlook": 0.24,
+     "chokes_on_main": 4,
+     "backdrop": 0.81
+    }
+   }
+  ]
+ },
+ "camp_j06_losangeles_white": {
+  "map": "camp_j06_losangeles_white",
+  "start": [
+   633,
+   1159
+  ],
+  "stages": [
+   {
+    "border": 3,
+    "rect": [
+     20,
+     10,
+     2360,
+     5480
+    ],
+    "use": {
+     "used": 0.45,
+     "used_new": null,
+     "tiles": 35,
+     "roles": {
+      "front": 0.46,
+      "side": 0.2,
+      "rear": 0.09,
+      "path": 0.0,
+      "empty": 0.26
+     },
+     "new_tiles": 35,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 12.8,
+     "walk_share": 0.53,
+     "tiers": 2,
+     "tier_shares": [
+      0.9,
+      0.07
+     ],
+     "tier_heights": [
+      230,
+      310
+     ],
+     "plateaus": 3,
+     "raised_plateaus": 1,
+     "ramps": 0,
+     "slope_share": 0.1,
+     "cliff_share": 0.008,
+     "cliff_km_per_km2": 0.62,
+     "cliff_runs": 11,
+     "water_share": 0.3,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 38,
+     "tech": 2,
+     "cover": 54,
+     "ore": 5,
+     "garrison_per_km2": 5.64,
+     "tech_per_km2": 0.3,
+     "cover_per_km2": 8.01,
+     "junctions": 9,
+     "junctions_per_km2": 1.34,
+     "chokes": 4,
+     "chokes_per_km2": 0.59,
+     "overlook": null,
+     "chokes_on_main": 0,
+     "backdrop": 0.48
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     4500,
+     5500
+    ],
+    "use": {
+     "used": 0.63,
+     "used_new": 0.72,
+     "tiles": 83,
+     "roles": {
+      "front": 0.49,
+      "side": 0.19,
+      "rear": 0.04,
+      "path": 0.17,
+      "empty": 0.11
+     },
+     "new_tiles": 42,
+     "new_roles": {
+      "front": 0.6,
+      "side": 0.19,
+      "rear": 0.0,
+      "path": 0.19,
+      "empty": 0.02
+     }
+    },
+    "terrain": {
+     "area_km2": 24.75,
+     "walk_share": 0.76,
+     "tiers": 3,
+     "tier_shares": [
+      0.65,
+      0.26,
+      0.05
+     ],
+     "tier_heights": [
+      230,
+      310,
+      390
+     ],
+     "plateaus": 6,
+     "raised_plateaus": 4,
+     "ramps": 12,
+     "slope_share": 0.12,
+     "cliff_share": 0.021,
+     "cliff_km_per_km2": 1.39,
+     "cliff_runs": 27,
+     "water_share": 0.16,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 70,
+     "tech": 9,
+     "cover": 89,
+     "ore": 12,
+     "garrison_per_km2": 3.71,
+     "tech_per_km2": 0.48,
+     "cover_per_km2": 4.71,
+     "junctions": 36,
+     "junctions_per_km2": 1.91,
+     "chokes": 14,
+     "chokes_per_km2": 0.74,
+     "overlook": 0.38,
+     "chokes_on_main": 0,
+     "backdrop": 0.25
+    }
+   }
+  ]
+ },
+ "camp_j07_yokohama_stewart": {
+  "map": "camp_j07_yokohama_stewart",
+  "start": [
+   942,
+   312
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "use": {
+     "used": 0.79,
+     "used_new": null,
+     "tiles": 47,
+     "roles": {
+      "front": 0.7,
+      "side": 0.09,
+      "rear": 0.04,
+      "path": 0.17,
+      "empty": 0.0
+     },
+     "new_tiles": 47,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 25.0,
+     "walk_share": 0.35,
+     "tiers": 2,
+     "tier_shares": [
+      0.59,
+      0.34
+     ],
+     "tier_heights": [
+      310,
+      390
+     ],
+     "plateaus": 9,
+     "raised_plateaus": 4,
+     "ramps": 7,
+     "slope_share": 0.19,
+     "cliff_share": 0.015,
+     "cliff_km_per_km2": 1.02,
+     "cliff_runs": 29,
+     "water_share": 0.58,
+     "water_bodies": 1,
+     "bridges": 2,
+     "garrison": 0,
+     "tech": 5,
+     "cover": 0,
+     "ore": 14,
+     "garrison_per_km2": 0.0,
+     "tech_per_km2": 0.57,
+     "cover_per_km2": 0.0,
+     "junctions": 15,
+     "junctions_per_km2": 1.7,
+     "chokes": 15,
+     "chokes_per_km2": 1.7,
+     "overlook": 0.19,
+     "chokes_on_main": 1,
+     "backdrop": 0.65
+    }
+   }
+  ]
+ },
+ "camp_j08_kremlin_stewart": {
+  "map": "camp_j08_kremlin_stewart",
+  "start": [
+   1884,
+   254
+  ],
+  "stages": [
+   {
+    "border": 2,
+    "rect": [
+     0,
+     0,
+     3400,
+     2400
+    ],
+    "use": {
+     "used": 0.72,
+     "used_new": null,
+     "tiles": 31,
+     "roles": {
+      "front": 0.52,
+      "side": 0.1,
+      "rear": 0.13,
+      "path": 0.19,
+      "empty": 0.06
+     },
+     "new_tiles": 31,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 8.16,
+     "walk_share": 0.85,
+     "tiers": 2,
+     "tier_shares": [
+      0.46,
+      0.51
+     ],
+     "tier_heights": [
+      230,
+      310
+     ],
+     "plateaus": 4,
+     "raised_plateaus": 2,
+     "ramps": 4,
+     "slope_share": 0.12,
+     "cliff_share": 0.022,
+     "cliff_km_per_km2": 1.59,
+     "cliff_runs": 11,
+     "water_share": 0.12,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 0,
+     "tech": 2,
+     "cover": 0,
+     "ore": 6,
+     "garrison_per_km2": 0.0,
+     "tech_per_km2": 0.29,
+     "cover_per_km2": 0.0,
+     "junctions": 10,
+     "junctions_per_km2": 1.44,
+     "chokes": 12,
+     "chokes_per_km2": 1.73,
+     "overlook": 0.33,
+     "chokes_on_main": 2,
+     "backdrop": 0.17
+    }
+   },
+   {
+    "border": 1,
+    "rect": [
+     0,
+     0,
+     3400,
+     3770
+    ],
+    "use": {
+     "used": 0.79,
+     "used_new": 0.9,
+     "tiles": 40,
+     "roles": {
+      "front": 0.57,
+      "side": 0.07,
+      "rear": 0.1,
+      "path": 0.23,
+      "empty": 0.03
+     },
+     "new_tiles": 9,
+     "new_roles": {
+      "front": 0.67,
+      "side": 0.11,
+      "rear": 0.0,
+      "path": 0.22,
+      "empty": 0.0
+     }
+    },
+    "terrain": {
+     "area_km2": 12.82,
+     "walk_share": 0.71,
+     "tiers": 2,
+     "tier_shares": [
+      0.41,
+      0.56
+     ],
+     "tier_heights": [
+      230,
+      310
+     ],
+     "plateaus": 5,
+     "raised_plateaus": 2,
+     "ramps": 7,
+     "slope_share": 0.13,
+     "cliff_share": 0.021,
+     "cliff_km_per_km2": 1.55,
+     "cliff_runs": 18,
+     "water_share": 0.19,
+     "water_bodies": 2,
+     "bridges": 0,
+     "garrison": 0,
+     "tech": 4,
+     "cover": 0,
+     "ore": 8,
+     "garrison_per_km2": 0.0,
+     "tech_per_km2": 0.44,
+     "cover_per_km2": 0.0,
+     "junctions": 14,
+     "junctions_per_km2": 1.54,
+     "chokes": 12,
+     "chokes_per_km2": 1.32,
+     "overlook": 0.37,
+     "chokes_on_main": 4,
+     "backdrop": 0.31
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     3400,
+     6400
+    ],
+    "use": {
+     "used": 0.66,
+     "used_new": 0.55,
+     "tiles": 80,
+     "roles": {
+      "front": 0.54,
+      "side": 0.05,
+      "rear": 0.05,
+      "path": 0.25,
+      "empty": 0.11
+     },
+     "new_tiles": 33,
+     "new_roles": {
+      "front": 0.45,
+      "side": 0.03,
+      "rear": 0.0,
+      "path": 0.3,
+      "empty": 0.21
+     }
+    },
+    "terrain": {
+     "area_km2": 21.76,
+     "walk_share": 0.79,
+     "tiers": 2,
+     "tier_shares": [
+      0.44,
+      0.54
+     ],
+     "tier_heights": [
+      230,
+      310
+     ],
+     "plateaus": 9,
+     "raised_plateaus": 4,
+     "ramps": 8,
+     "slope_share": 0.12,
+     "cliff_share": 0.021,
+     "cliff_km_per_km2": 1.53,
+     "cliff_runs": 29,
+     "water_share": 0.18,
+     "water_bodies": 1,
+     "bridges": 2,
+     "garrison": 0,
+     "tech": 5,
+     "cover": 0,
+     "ore": 11,
+     "garrison_per_km2": 0.0,
+     "tech_per_km2": 0.29,
+     "cover_per_km2": 0.0,
+     "junctions": 22,
+     "junctions_per_km2": 1.28,
+     "chokes": 17,
+     "chokes_per_km2": 0.99,
+     "overlook": 0.31,
+     "chokes_on_main": 6,
+     "backdrop": 0.22
+    }
+   }
+  ]
+ },
+ "camp_j09_amsterdam_bass": {
+  "map": "camp_j09_amsterdam_bass",
+  "start": [
+   246,
+   713
+  ],
+  "stages": [
+   {
+    "border": 2,
+    "rect": [
+     0,
+     0,
+     4980,
+     5250
+    ],
+    "use": {
+     "used": 0.85,
+     "used_new": null,
+     "tiles": 82,
+     "roles": {
+      "front": 0.71,
+      "side": 0.16,
+      "rear": 0.02,
+      "path": 0.1,
+      "empty": 0.01
+     },
+     "new_tiles": 82,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 26.1,
+     "walk_share": 0.6,
+     "tiers": 1,
+     "tier_shares": [
+      0.99
+     ],
+     "tier_heights": [
+      290
+     ],
+     "plateaus": 3,
+     "raised_plateaus": 0,
+     "ramps": 0,
+     "slope_share": 0.08,
+     "cliff_share": 0.008,
+     "cliff_km_per_km2": 0.62,
+     "cliff_runs": 11,
+     "water_share": 0.36,
+     "water_bodies": 7,
+     "bridges": 5,
+     "garrison": 128,
+     "tech": 3,
+     "cover": 376,
+     "ore": 8,
+     "garrison_per_km2": 8.18,
+     "tech_per_km2": 0.19,
+     "cover_per_km2": 24.04,
+     "junctions": 19,
+     "junctions_per_km2": 1.21,
+     "chokes": 12,
+     "chokes_per_km2": 0.77,
+     "overlook": 0.05,
+     "chokes_on_main": 5,
+     "backdrop": 0.4
+    }
+   }
+  ]
+ },
+ "camp_s01_leningradcanals_rao": {
+  "map": "camp_s01_leningradcanals_rao",
+  "start": null,
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     300,
+     530,
+     2160,
+     2610
+    ],
+    "use": {
+     "used": 0.73,
+     "used_new": null,
+     "tiles": 13,
+     "roles": {
+      "front": 0.38,
+      "side": 0.0,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.62
+     },
+     "new_tiles": 13,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 3.87,
+     "walk_share": 0.46,
+     "tiers": 2,
+     "tier_shares": [
+      0.82,
+      0.14
+     ],
+     "tier_heights": [
+      230,
+      310
+     ],
+     "plateaus": 2,
+     "raised_plateaus": 1,
+     "ramps": 0,
+     "slope_share": 0.14,
+     "cliff_share": 0.007,
+     "cliff_km_per_km2": 0.52,
+     "cliff_runs": 2,
+     "water_share": 0.45,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 5,
+     "tech": 0,
+     "cover": 98,
+     "ore": 0,
+     "garrison_per_km2": 2.83,
+     "tech_per_km2": 0.0,
+     "cover_per_km2": 55.4,
+     "junctions": 1,
+     "junctions_per_km2": 0.57,
+     "chokes": 1,
+     "chokes_per_km2": 0.57,
+     "overlook": null,
+     "chokes_on_main": 0,
+     "backdrop": 0.55
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     3500,
+     3500
+    ],
+    "use": {
+     "used": 0.57,
+     "used_new": 0.47,
+     "tiles": 27,
+     "roles": {
+      "front": 0.44,
+      "side": 0.15,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.41
+     },
+     "new_tiles": 18,
+     "new_roles": {
+      "front": 0.5,
+      "side": 0.22,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.28
+     }
+    },
+    "terrain": {
+     "area_km2": 12.25,
+     "walk_share": 0.42,
+     "tiers": 2,
+     "tier_shares": [
+      0.36,
+      0.62
+     ],
+     "tier_heights": [
+      230,
+      310
+     ],
+     "plateaus": 3,
+     "raised_plateaus": 2,
+     "ramps": 0,
+     "slope_share": 0.13,
+     "cliff_share": 0.011,
+     "cliff_km_per_km2": 0.8,
+     "cliff_runs": 11,
+     "water_share": 0.4,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 24,
+     "tech": 0,
+     "cover": 210,
+     "ore": 0,
+     "garrison_per_km2": 4.61,
+     "tech_per_km2": 0.0,
+     "cover_per_km2": 40.34,
+     "junctions": 7,
+     "junctions_per_km2": 1.34,
+     "chokes": 4,
+     "chokes_per_km2": 0.77,
+     "overlook": null,
+     "chokes_on_main": 0,
+     "backdrop": 0.58
+    }
+   }
+  ]
+ },
+ "camp_s02_krasna45_rao": {
+  "map": "camp_s02_krasna45_rao",
+  "start": null,
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     4250,
+     3000
+    ],
+    "use": {
+     "used": 0.57,
+     "used_new": null,
+     "tiles": 34,
+     "roles": {
+      "front": 0.62,
+      "side": 0.09,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.29
+     },
+     "new_tiles": 34,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 12.72,
+     "walk_share": 0.54,
+     "tiers": 2,
+     "tier_shares": [
+      0.68,
+      0.3
+     ],
+     "tier_heights": [
+      220,
+      310
+     ],
+     "plateaus": 8,
+     "raised_plateaus": 3,
+     "ramps": 5,
+     "slope_share": 0.18,
+     "cliff_share": 0.033,
+     "cliff_km_per_km2": 2.03,
+     "cliff_runs": 23,
+     "water_share": 0.3,
+     "water_bodies": 2,
+     "bridges": 2,
+     "garrison": 13,
+     "tech": 0,
+     "cover": 60,
+     "ore": 0,
+     "garrison_per_km2": 1.9,
+     "tech_per_km2": 0.0,
+     "cover_per_km2": 8.77,
+     "junctions": 22,
+     "junctions_per_km2": 3.22,
+     "chokes": 15,
+     "chokes_per_km2": 2.19,
+     "overlook": null,
+     "chokes_on_main": 0,
+     "backdrop": 0.48
+    }
+   }
+  ]
+ },
+ "camp_s03_vladivostok_davis": {
+  "map": "camp_s03_vladivostok_davis",
+  "start": null,
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     0,
+     0,
+     2940,
+     2160
+    ],
+    "use": {
+     "used": 0.99,
+     "used_new": null,
+     "tiles": 5,
+     "roles": {
+      "front": 1.0,
+      "side": 0.0,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.0
+     },
+     "new_tiles": 5,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 6.35,
+     "walk_share": 0.16,
+     "tiers": 1,
+     "tier_shares": [
+      0.98
+     ],
+     "tier_heights": [
+      230
+     ],
+     "plateaus": 1,
+     "raised_plateaus": 0,
+     "ramps": 0,
+     "slope_share": 0.19,
+     "cliff_share": 0.007,
+     "cliff_km_per_km2": 0.54,
+     "cliff_runs": 4,
+     "water_share": 0.83,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 0,
+     "tech": 0,
+     "cover": 0,
+     "ore": 4,
+     "garrison_per_km2": 0.0,
+     "tech_per_km2": 0.0,
+     "cover_per_km2": 0.0,
+     "junctions": 3,
+     "junctions_per_km2": 2.92,
+     "chokes": 3,
+     "chokes_per_km2": 2.92,
+     "overlook": null,
+     "chokes_on_main": 0,
+     "backdrop": 0.85
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "use": {
+     "used": 0.62,
+     "used_new": 0.55,
+     "tiles": 35,
+     "roles": {
+      "front": 0.57,
+      "side": 0.17,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.26
+     },
+     "new_tiles": 30,
+     "new_roles": {
+      "front": 0.5,
+      "side": 0.2,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.3
+     }
+    },
+    "terrain": {
+     "area_km2": 25.0,
+     "walk_share": 0.26,
+     "tiers": 2,
+     "tier_shares": [
+      0.76,
+      0.18
+     ],
+     "tier_heights": [
+      230,
+      310
+     ],
+     "plateaus": 4,
+     "raised_plateaus": 1,
+     "ramps": 2,
+     "slope_share": 0.24,
+     "cliff_share": 0.01,
+     "cliff_km_per_km2": 0.76,
+     "cliff_runs": 23,
+     "water_share": 0.7,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 15,
+     "tech": 2,
+     "cover": 195,
+     "ore": 6,
+     "garrison_per_km2": 2.26,
+     "tech_per_km2": 0.3,
+     "cover_per_km2": 29.44,
+     "junctions": 20,
+     "junctions_per_km2": 3.02,
+     "chokes": 13,
+     "chokes_per_km2": 1.96,
+     "overlook": null,
+     "chokes_on_main": 0,
+     "backdrop": 0.74
+    }
+   }
+  ]
+ },
+ "camp_s04_geneva_bass": {
+  "map": "camp_s04_geneva_bass",
+  "start": [
+   317,
+   2727
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     0,
+     600,
+     3580,
+     4510
+    ],
+    "use": {
+     "used": 0.56,
+     "used_new": null,
+     "tiles": 42,
+     "roles": {
+      "front": 0.4,
+      "side": 0.29,
+      "rear": 0.0,
+      "path": 0.14,
+      "empty": 0.17
+     },
+     "new_tiles": 42,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 13.96,
+     "walk_share": 0.59,
+     "tiers": 3,
+     "tier_shares": [
+      0.7,
+      0.05,
+      0.18
+     ],
+     "tier_heights": [
+      250,
+      290,
+      370
+     ],
+     "plateaus": 5,
+     "raised_plateaus": 3,
+     "ramps": 4,
+     "slope_share": 0.16,
+     "cliff_share": 0.007,
+     "cliff_km_per_km2": 0.5,
+     "cliff_runs": 8,
+     "water_share": 0.4,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 20,
+     "tech": 9,
+     "cover": 89,
+     "ore": 6,
+     "garrison_per_km2": 2.41,
+     "tech_per_km2": 1.08,
+     "cover_per_km2": 10.72,
+     "junctions": 6,
+     "junctions_per_km2": 0.72,
+     "chokes": 5,
+     "chokes_per_km2": 0.6,
+     "overlook": 0.2,
+     "chokes_on_main": 0,
+     "backdrop": 0.41
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     4750,
+     4500
+    ],
+    "use": {
+     "used": 0.55,
+     "used_new": 0.52,
+     "tiles": 70,
+     "roles": {
+      "front": 0.43,
+      "side": 0.34,
+      "rear": 0.0,
+      "path": 0.13,
+      "empty": 0.1
+     },
+     "new_tiles": 34,
+     "new_roles": {
+      "front": 0.41,
+      "side": 0.35,
+      "rear": 0.0,
+      "path": 0.15,
+      "empty": 0.09
+     }
+    },
+    "terrain": {
+     "area_km2": 21.33,
+     "walk_share": 0.72,
+     "tiers": 3,
+     "tier_shares": [
+      0.58,
+      0.04,
+      0.32
+     ],
+     "tier_heights": [
+      250,
+      290,
+      370
+     ],
+     "plateaus": 6,
+     "raised_plateaus": 4,
+     "ramps": 5,
+     "slope_share": 0.14,
+     "cliff_share": 0.006,
+     "cliff_km_per_km2": 0.38,
+     "cliff_runs": 9,
+     "water_share": 0.27,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 42,
+     "tech": 9,
+     "cover": 115,
+     "ore": 10,
+     "garrison_per_km2": 2.72,
+     "tech_per_km2": 0.58,
+     "cover_per_km2": 7.45,
+     "junctions": 7,
+     "junctions_per_km2": 0.45,
+     "chokes": 5,
+     "chokes_per_km2": 0.32,
+     "overlook": 0.18,
+     "chokes_on_main": 0,
+     "backdrop": 0.28
+    }
+   }
+  ]
+ },
+ "camp_s05_mykonos_smith": {
+  "map": "camp_s05_mykonos_smith",
+  "start": [
+   1418,
+   682
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     0,
+     0,
+     4980,
+     4620
+    ],
+    "use": {
+     "used": 0.36,
+     "used_new": null,
+     "tiles": 53,
+     "roles": {
+      "front": 0.38,
+      "side": 0.32,
+      "rear": 0.08,
+      "path": 0.02,
+      "empty": 0.21
+     },
+     "new_tiles": 53,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 23.01,
+     "walk_share": 0.45,
+     "tiers": 1,
+     "tier_shares": [
+      0.95
+     ],
+     "tier_heights": [
+      250
+     ],
+     "plateaus": 5,
+     "raised_plateaus": 0,
+     "ramps": 0,
+     "slope_share": 0.12,
+     "cliff_share": 0.008,
+     "cliff_km_per_km2": 0.6,
+     "cliff_runs": 15,
+     "water_share": 0.53,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 56,
+     "tech": 0,
+     "cover": 548,
+     "ore": 10,
+     "garrison_per_km2": 5.4,
+     "tech_per_km2": 0.0,
+     "cover_per_km2": 52.81,
+     "junctions": 13,
+     "junctions_per_km2": 1.25,
+     "chokes": 3,
+     "chokes_per_km2": 0.29,
+     "overlook": 0.0,
+     "chokes_on_main": 0,
+     "backdrop": 0.56
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     6250,
+     5500
+    ],
+    "use": {
+     "used": 0.26,
+     "used_new": 0.05,
+     "tiles": 77,
+     "roles": {
+      "front": 0.36,
+      "side": 0.29,
+      "rear": 0.05,
+      "path": 0.01,
+      "empty": 0.29
+     },
+     "new_tiles": 27,
+     "new_roles": {
+      "front": 0.3,
+      "side": 0.19,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.52
+     }
+    },
+    "terrain": {
+     "area_km2": 34.32,
+     "walk_share": 0.45,
+     "tiers": 2,
+     "tier_shares": [
+      0.8,
+      0.16
+     ],
+     "tier_heights": [
+      250,
+      330
+     ],
+     "plateaus": 6,
+     "raised_plateaus": 1,
+     "ramps": 2,
+     "slope_share": 0.12,
+     "cliff_share": 0.009,
+     "cliff_km_per_km2": 0.64,
+     "cliff_runs": 23,
+     "water_share": 0.52,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 63,
+     "tech": 0,
+     "cover": 698,
+     "ore": 14,
+     "garrison_per_km2": 4.08,
+     "tech_per_km2": 0.0,
+     "cover_per_km2": 45.15,
+     "junctions": 19,
+     "junctions_per_km2": 1.23,
+     "chokes": 5,
+     "chokes_per_km2": 0.32,
+     "overlook": 0.0,
+     "chokes_on_main": 0,
+     "backdrop": 0.56
+    }
+   }
+  ]
+ },
+ "camp_s06_iceland_bass": {
+  "map": "camp_s06_iceland_bass",
+  "start": [
+   2637,
+   2379
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     0,
+     1680,
+     4750,
+     3850
+    ],
+    "use": {
+     "used": 0.78,
+     "used_new": null,
+     "tiles": 21,
+     "roles": {
+      "front": 0.71,
+      "side": 0.0,
+      "rear": 0.14,
+      "path": 0.0,
+      "empty": 0.14
+     },
+     "new_tiles": 21,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 10.29,
+     "walk_share": 0.32,
+     "tiers": 2,
+     "tier_shares": [
+      0.37,
+      0.55
+     ],
+     "tier_heights": [
+      230,
+      350
+     ],
+     "plateaus": 4,
+     "raised_plateaus": 2,
+     "ramps": 2,
+     "slope_share": 0.27,
+     "cliff_share": 0.013,
+     "cliff_km_per_km2": 0.94,
+     "cliff_runs": 12,
+     "water_share": 0.59,
+     "water_bodies": 2,
+     "bridges": 0,
+     "garrison": 4,
+     "tech": 2,
+     "cover": 0,
+     "ore": 8,
+     "garrison_per_km2": 1.22,
+     "tech_per_km2": 0.61,
+     "cover_per_km2": 0.0,
+     "junctions": 10,
+     "junctions_per_km2": 3.06,
+     "chokes": 3,
+     "chokes_per_km2": 0.92,
+     "overlook": 0.0,
+     "chokes_on_main": 0,
+     "backdrop": 0.69
+    }
+   },
+   {
+    "border": 2,
+    "rect": [
+     0,
+     10,
+     4760,
+     3850
+    ],
+    "use": {
+     "used": 0.5,
+     "used_new": 0.27,
+     "tiles": 40,
+     "roles": {
+      "front": 0.42,
+      "side": 0.15,
+      "rear": 0.07,
+      "path": 0.0,
+      "empty": 0.35
+     },
+     "new_tiles": 17,
+     "new_roles": {
+      "front": 0.12,
+      "side": 0.24,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.65
+     }
+    },
+    "terrain": {
+     "area_km2": 18.2,
+     "walk_share": 0.39,
+     "tiers": 2,
+     "tier_shares": [
+      0.63,
+      0.31
+     ],
+     "tier_heights": [
+      240,
+      350
+     ],
+     "plateaus": 6,
+     "raised_plateaus": 3,
+     "ramps": 6,
+     "slope_share": 0.25,
+     "cliff_share": 0.013,
+     "cliff_km_per_km2": 0.91,
+     "cliff_runs": 16,
+     "water_share": 0.55,
+     "water_bodies": 2,
+     "bridges": 0,
+     "garrison": 8,
+     "tech": 6,
+     "cover": 0,
+     "ore": 11,
+     "garrison_per_km2": 1.13,
+     "tech_per_km2": 0.85,
+     "cover_per_km2": 0.0,
+     "junctions": 19,
+     "junctions_per_km2": 2.68,
+     "chokes": 9,
+     "chokes_per_km2": 1.27,
+     "overlook": 0.0,
+     "chokes_on_main": 0,
+     "backdrop": 0.62
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     4750,
+     5500
+    ],
+    "use": {
+     "used": 0.55,
+     "used_new": 0.68,
+     "tiles": 58,
+     "roles": {
+      "front": 0.48,
+      "side": 0.14,
+      "rear": 0.05,
+      "path": 0.03,
+      "empty": 0.29
+     },
+     "new_tiles": 15,
+     "new_roles": {
+      "front": 0.67,
+      "side": 0.07,
+      "rear": 0.0,
+      "path": 0.13,
+      "empty": 0.13
+     }
+    },
+    "terrain": {
+     "area_km2": 26.07,
+     "walk_share": 0.42,
+     "tiers": 2,
+     "tier_shares": [
+      0.74,
+      0.24
+     ],
+     "tier_heights": [
+      230,
+      350
+     ],
+     "plateaus": 7,
+     "raised_plateaus": 4,
+     "ramps": 11,
+     "slope_share": 0.26,
+     "cliff_share": 0.013,
+     "cliff_km_per_km2": 0.87,
+     "cliff_runs": 21,
+     "water_share": 0.52,
+     "water_bodies": 2,
+     "bridges": 0,
+     "garrison": 11,
+     "tech": 7,
+     "cover": 0,
+     "ore": 14,
+     "garrison_per_km2": 1.01,
+     "tech_per_km2": 0.64,
+     "cover_per_km2": 0.0,
+     "junctions": 27,
+     "junctions_per_km2": 2.47,
+     "chokes": 15,
+     "chokes_per_km2": 1.37,
+     "overlook": 0.0,
+     "chokes_on_main": 0,
+     "backdrop": 0.59
+    }
+   }
+  ]
+ },
+ "camp_s07_mountfuji_white": {
+  "map": "camp_s07_mountfuji_white",
+  "start": [
+   190,
+   3209
+  ],
+  "stages": [
+   {
+    "border": 2,
+    "rect": [
+     160,
+     1730,
+     3710,
+     5500
+    ],
+    "use": {
+     "used": 0.9,
+     "used_new": null,
+     "tiles": 64,
+     "roles": {
+      "front": 0.78,
+      "side": 0.02,
+      "rear": 0.0,
+      "path": 0.2,
+      "empty": 0.0
+     },
+     "new_tiles": 64,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 13.38,
+     "walk_share": 0.94,
+     "tiers": 4,
+     "tier_shares": [
+      0.21,
+      0.39,
+      0.25,
+      0.13
+     ],
+     "tier_heights": [
+      230,
+      310,
+      370,
+      430
+     ],
+     "plateaus": 4,
+     "raised_plateaus": 3,
+     "ramps": 8,
+     "slope_share": 0.09,
+     "cliff_share": 0.028,
+     "cliff_km_per_km2": 1.8,
+     "cliff_runs": 20,
+     "water_share": 0.0,
+     "water_bodies": 2,
+     "bridges": 0,
+     "garrison": 17,
+     "tech": 7,
+     "cover": 298,
+     "ore": 9,
+     "garrison_per_km2": 1.35,
+     "tech_per_km2": 0.55,
+     "cover_per_km2": 23.59,
+     "junctions": 20,
+     "junctions_per_km2": 1.58,
+     "chokes": 16,
+     "chokes_per_km2": 1.27,
+     "overlook": 0.36,
+     "chokes_on_main": 5,
+     "backdrop": 0.07
+    }
+   },
+   {
+    "border": 3,
+    "rect": [
+     0,
+     0,
+     4800,
+     3740
+    ],
+    "use": {
+     "used": 0.72,
+     "used_new": 0.5,
+     "tiles": 61,
+     "roles": {
+      "front": 0.54,
+      "side": 0.25,
+      "rear": 0.0,
+      "path": 0.16,
+      "empty": 0.05
+     },
+     "new_tiles": 26,
+     "new_roles": {
+      "front": 0.15,
+      "side": 0.54,
+      "rear": 0.0,
+      "path": 0.23,
+      "empty": 0.08
+     }
+    },
+    "terrain": {
+     "area_km2": 17.95,
+     "walk_share": 0.72,
+     "tiers": 2,
+     "tier_shares": [
+      0.63,
+      0.31
+     ],
+     "tier_heights": [
+      230,
+      310
+     ],
+     "plateaus": 2,
+     "raised_plateaus": 1,
+     "ramps": 4,
+     "slope_share": 0.08,
+     "cliff_share": 0.016,
+     "cliff_km_per_km2": 1.02,
+     "cliff_runs": 22,
+     "water_share": 0.22,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 26,
+     "tech": 9,
+     "cover": 211,
+     "ore": 15,
+     "garrison_per_km2": 2.0,
+     "tech_per_km2": 0.69,
+     "cover_per_km2": 16.23,
+     "junctions": 19,
+     "junctions_per_km2": 1.46,
+     "chokes": 8,
+     "chokes_per_km2": 0.62,
+     "overlook": 0.36,
+     "chokes_on_main": 2,
+     "backdrop": 0.29
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5500
+    ],
+    "use": {
+     "used": 0.77,
+     "used_new": 0.87,
+     "tiles": 87,
+     "roles": {
+      "front": 0.64,
+      "side": 0.17,
+      "rear": 0.0,
+      "path": 0.16,
+      "empty": 0.02
+     },
+     "new_tiles": 34,
+     "new_roles": {
+      "front": 0.79,
+      "side": 0.03,
+      "rear": 0.0,
+      "path": 0.18,
+      "empty": 0.0
+     }
+    },
+    "terrain": {
+     "area_km2": 27.5,
+     "walk_share": 0.72,
+     "tiers": 4,
+     "tier_shares": [
+      0.45,
+      0.27,
+      0.16,
+      0.09
+     ],
+     "tier_heights": [
+      230,
+      310,
+      370,
+      430
+     ],
+     "plateaus": 5,
+     "raised_plateaus": 3,
+     "ramps": 9,
+     "slope_share": 0.1,
+     "cliff_share": 0.02,
+     "cliff_km_per_km2": 1.29,
+     "cliff_runs": 36,
+     "water_share": 0.21,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 32,
+     "tech": 13,
+     "cover": 327,
+     "ore": 19,
+     "garrison_per_km2": 1.61,
+     "tech_per_km2": 0.65,
+     "cover_per_km2": 16.44,
+     "junctions": 31,
+     "junctions_per_km2": 1.56,
+     "chokes": 19,
+     "chokes_per_km2": 0.96,
+     "overlook": 0.37,
+     "chokes_on_main": 4,
+     "backdrop": 0.29
+    }
+   }
+  ]
+ },
+ "camp_s08_easterisland_stewart": {
+  "map": "camp_s08_easterisland_stewart",
+  "start": [
+   2898,
+   1036
+  ],
+  "stages": [
+   {
+    "border": 2,
+    "rect": [
+     1740,
+     0,
+     5500,
+     2750
+    ],
+    "use": {
+     "used": 0.6,
+     "used_new": null,
+     "tiles": 23,
+     "roles": {
+      "front": 0.0,
+      "side": 0.3,
+      "rear": 0.22,
+      "path": 0.3,
+      "empty": 0.17
+     },
+     "new_tiles": 23,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 10.34,
+     "walk_share": 0.36,
+     "tiers": 2,
+     "tier_shares": [
+      0.66,
+      0.28
+     ],
+     "tier_heights": [
+      230,
+      310
+     ],
+     "plateaus": 2,
+     "raised_plateaus": 1,
+     "ramps": 2,
+     "slope_share": 0.13,
+     "cliff_share": 0.011,
+     "cliff_km_per_km2": 0.76,
+     "cliff_runs": 7,
+     "water_share": 0.61,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 10,
+     "tech": 2,
+     "cover": 28,
+     "ore": 6,
+     "garrison_per_km2": 2.66,
+     "tech_per_km2": 0.53,
+     "cover_per_km2": 7.44,
+     "junctions": 5,
+     "junctions_per_km2": 1.33,
+     "chokes": 4,
+     "chokes_per_km2": 1.06,
+     "overlook": 0.09,
+     "chokes_on_main": 0,
+     "backdrop": 0.65
+    }
+   },
+   {
+    "border": 1,
+    "rect": [
+     0,
+     0,
+     5500,
+     3310
+    ],
+    "use": {
+     "used": 0.35,
+     "used_new": 0.0,
+     "tiles": 34,
+     "roles": {
+      "front": 0.0,
+      "side": 0.47,
+      "rear": 0.15,
+      "path": 0.21,
+      "empty": 0.18
+     },
+     "new_tiles": 12,
+     "new_roles": {
+      "front": 0.0,
+      "side": 0.58,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.42
+     }
+    },
+    "terrain": {
+     "area_km2": 18.2,
+     "walk_share": 0.36,
+     "tiers": 3,
+     "tier_shares": [
+      0.48,
+      0.27,
+      0.18
+     ],
+     "tier_heights": [
+      230,
+      310,
+      390
+     ],
+     "plateaus": 5,
+     "raised_plateaus": 3,
+     "ramps": 6,
+     "slope_share": 0.15,
+     "cliff_share": 0.013,
+     "cliff_km_per_km2": 0.92,
+     "cliff_runs": 12,
+     "water_share": 0.55,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 18,
+     "tech": 5,
+     "cover": 29,
+     "ore": 8,
+     "garrison_per_km2": 2.77,
+     "tech_per_km2": 0.77,
+     "cover_per_km2": 4.46,
+     "junctions": 13,
+     "junctions_per_km2": 2.0,
+     "chokes": 9,
+     "chokes_per_km2": 1.38,
+     "overlook": 0.09,
+     "chokes_on_main": 0,
+     "backdrop": 0.65
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5500,
+     5750
+    ],
+    "use": {
+     "used": 0.63,
+     "used_new": 0.74,
+     "tiles": 73,
+     "roles": {
+      "front": 0.33,
+      "side": 0.23,
+      "rear": 0.07,
+      "path": 0.21,
+      "empty": 0.16
+     },
+     "new_tiles": 39,
+     "new_roles": {
+      "front": 0.54,
+      "side": 0.05,
+      "rear": 0.0,
+      "path": 0.18,
+      "empty": 0.23
+     }
+    },
+    "terrain": {
+     "area_km2": 31.57,
+     "walk_share": 0.45,
+     "tiers": 3,
+     "tier_shares": [
+      0.34,
+      0.25,
+      0.35
+     ],
+     "tier_heights": [
+      230,
+      310,
+      390
+     ],
+     "plateaus": 7,
+     "raised_plateaus": 4,
+     "ramps": 8,
+     "slope_share": 0.15,
+     "cliff_share": 0.018,
+     "cliff_km_per_km2": 1.2,
+     "cliff_runs": 28,
+     "water_share": 0.4,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 20,
+     "tech": 5,
+     "cover": 133,
+     "ore": 10,
+     "garrison_per_km2": 1.42,
+     "tech_per_km2": 0.35,
+     "cover_per_km2": 9.43,
+     "junctions": 27,
+     "junctions_per_km2": 1.91,
+     "chokes": 17,
+     "chokes_per_km2": 1.2,
+     "overlook": 0.14,
+     "chokes_on_main": 5,
+     "backdrop": 0.56
+    }
+   }
+  ]
+ },
+ "camp_s09_newyork_rao": {
+  "map": "camp_s09_newyork_rao",
+  "start": null,
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     30,
+     50,
+     3130,
+     3040
+    ],
+    "use": {
+     "used": 0.56,
+     "used_new": null,
+     "tiles": 30,
+     "roles": {
+      "front": 0.43,
+      "side": 0.2,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.37
+     },
+     "new_tiles": 30,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 9.27,
+     "walk_share": 0.71,
+     "tiers": 1,
+     "tier_shares": [
+      1.0
+     ],
+     "tier_heights": [
+      310
+     ],
+     "plateaus": 1,
+     "raised_plateaus": 0,
+     "ramps": 0,
+     "slope_share": 0.02,
+     "cliff_share": 0.01,
+     "cliff_km_per_km2": 0.64,
+     "cliff_runs": 5,
+     "water_share": 0.26,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 29,
+     "tech": 1,
+     "cover": 78,
+     "ore": 4,
+     "garrison_per_km2": 4.41,
+     "tech_per_km2": 0.15,
+     "cover_per_km2": 11.87,
+     "junctions": 1,
+     "junctions_per_km2": 0.15,
+     "chokes": 1,
+     "chokes_per_km2": 0.15,
+     "overlook": null,
+     "chokes_on_main": 0,
+     "backdrop": 0.29
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5500,
+     5000
+    ],
+    "use": {
+     "used": 0.64,
+     "used_new": 0.94,
+     "tiles": 37,
+     "roles": {
+      "front": 0.54,
+      "side": 0.16,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.3
+     },
+     "new_tiles": 7,
+     "new_roles": {
+      "front": 1.0,
+      "side": 0.0,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.0
+     }
+    },
+    "terrain": {
+     "area_km2": 27.5,
+     "walk_share": 0.31,
+     "tiers": 2,
+     "tier_shares": [
+      0.05,
+      0.93
+     ],
+     "tier_heights": [
+      250,
+      310
+     ],
+     "plateaus": 4,
+     "raised_plateaus": 2,
+     "ramps": 3,
+     "slope_share": 0.08,
+     "cliff_share": 0.007,
+     "cliff_km_per_km2": 0.45,
+     "cliff_runs": 11,
+     "water_share": 0.47,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 44,
+     "tech": 1,
+     "cover": 332,
+     "ore": 12,
+     "garrison_per_km2": 5.22,
+     "tech_per_km2": 0.12,
+     "cover_per_km2": 39.41,
+     "junctions": 5,
+     "junctions_per_km2": 0.59,
+     "chokes": 6,
+     "chokes_per_km2": 0.71,
+     "overlook": null,
+     "chokes_on_main": 0,
+     "backdrop": 0.7
+    }
+   }
+  ]
+ },
+ "camp_ep01_a01_igaprefecture_davis": {
+  "map": "camp_ep01_a01_igaprefecture_davis",
+  "start": [
+   593,
+   280
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     0,
+     0,
+     3130,
+     2270
+    ],
+    "use": {
+     "used": 0.97,
+     "used_new": null,
+     "tiles": 29,
+     "roles": {
+      "front": 0.62,
+      "side": 0.1,
+      "rear": 0.03,
+      "path": 0.17,
+      "empty": 0.07
+     },
+     "new_tiles": 29,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 7.11,
+     "walk_share": 0.78,
+     "tiers": 2,
+     "tier_shares": [
+      0.32,
+      0.63
+     ],
+     "tier_heights": [
+      250,
+      310
+     ],
+     "plateaus": 4,
+     "raised_plateaus": 2,
+     "ramps": 2,
+     "slope_share": 0.12,
+     "cliff_share": 0.018,
+     "cliff_km_per_km2": 1.39,
+     "cliff_runs": 9,
+     "water_share": 0.19,
+     "water_bodies": 1,
+     "bridges": 3,
+     "garrison": 6,
+     "tech": 3,
+     "cover": 79,
+     "ore": 2,
+     "garrison_per_km2": 1.08,
+     "tech_per_km2": 0.54,
+     "cover_per_km2": 14.17,
+     "junctions": 14,
+     "junctions_per_km2": 2.51,
+     "chokes": 6,
+     "chokes_per_km2": 1.08,
+     "overlook": 0.21,
+     "chokes_on_main": 2,
+     "backdrop": 0.21
+    }
+   },
+   {
+    "border": 2,
+    "rect": [
+     0,
+     0,
+     5220,
+     3200
+    ],
+    "use": {
+     "used": 0.88,
+     "used_new": 0.8,
+     "tiles": 76,
+     "roles": {
+      "front": 0.57,
+      "side": 0.08,
+      "rear": 0.01,
+      "path": 0.25,
+      "empty": 0.09
+     },
+     "new_tiles": 47,
+     "new_roles": {
+      "front": 0.47,
+      "side": 0.09,
+      "rear": 0.0,
+      "path": 0.3,
+      "empty": 0.15
+     }
+    },
+    "terrain": {
+     "area_km2": 16.7,
+     "walk_share": 0.83,
+     "tiers": 3,
+     "tier_shares": [
+      0.49,
+      0.38,
+      0.1
+     ],
+     "tier_heights": [
+      240,
+      310,
+      390
+     ],
+     "plateaus": 7,
+     "raised_plateaus": 4,
+     "ramps": 7,
+     "slope_share": 0.12,
+     "cliff_share": 0.017,
+     "cliff_km_per_km2": 1.2,
+     "cliff_runs": 19,
+     "water_share": 0.15,
+     "water_bodies": 1,
+     "bridges": 4,
+     "garrison": 8,
+     "tech": 4,
+     "cover": 106,
+     "ore": 4,
+     "garrison_per_km2": 0.58,
+     "tech_per_km2": 0.29,
+     "cover_per_km2": 7.66,
+     "junctions": 30,
+     "junctions_per_km2": 2.17,
+     "chokes": 14,
+     "chokes_per_km2": 1.01,
+     "overlook": 0.24,
+     "chokes_on_main": 4,
+     "backdrop": 0.18
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     6000,
+     4000
+    ],
+    "use": {
+     "used": 0.72,
+     "used_new": 0.33,
+     "tiles": 94,
+     "roles": {
+      "front": 0.55,
+      "side": 0.11,
+      "rear": 0.01,
+      "path": 0.17,
+      "empty": 0.16
+     },
+     "new_tiles": 35,
+     "new_roles": {
+      "front": 0.31,
+      "side": 0.17,
+      "rear": 0.0,
+      "path": 0.09,
+      "empty": 0.43
+     }
+    },
+    "terrain": {
+     "area_km2": 24.0,
+     "walk_share": 0.84,
+     "tiers": 4,
+     "tier_shares": [
+      0.46,
+      0.32,
+      0.11,
+      0.1
+     ],
+     "tier_heights": [
+      240,
+      310,
+      390,
+      550
+     ],
+     "plateaus": 9,
+     "raised_plateaus": 5,
+     "ramps": 8,
+     "slope_share": 0.12,
+     "cliff_share": 0.017,
+     "cliff_km_per_km2": 1.21,
+     "cliff_runs": 24,
+     "water_share": 0.12,
+     "water_bodies": 1,
+     "bridges": 4,
+     "garrison": 12,
+     "tech": 4,
+     "cover": 176,
+     "ore": 4,
+     "garrison_per_km2": 0.6,
+     "tech_per_km2": 0.2,
+     "cover_per_km2": 8.78,
+     "junctions": 33,
+     "junctions_per_km2": 1.65,
+     "chokes": 14,
+     "chokes_per_km2": 0.7,
+     "overlook": 0.26,
+     "chokes_on_main": 5,
+     "backdrop": 0.18
+    }
+   }
+  ]
+ },
+ "camp_ep01_a02_osaka_white": {
+  "map": "camp_ep01_a02_osaka_white",
+  "start": [
+   312,
+   484
+  ],
+  "stages": [
+   {
+    "border": 2,
+    "rect": [
+     150,
+     370,
+     1400,
+     1700
+    ],
+    "use": {
+     "used": 0.52,
+     "used_new": null,
+     "tiles": 9,
+     "roles": {
+      "front": 0.44,
+      "side": 0.0,
+      "rear": 0.22,
+      "path": 0.0,
+      "empty": 0.33
+     },
+     "new_tiles": 9,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 1.66,
+     "walk_share": 0.57,
+     "tiers": 1,
+     "tier_shares": [
+      0.97
+     ],
+     "tier_heights": [
+      250
+     ],
+     "plateaus": 2,
+     "raised_plateaus": 0,
+     "ramps": 0,
+     "slope_share": 0.12,
+     "cliff_share": 0.017,
+     "cliff_km_per_km2": 1.06,
+     "cliff_runs": 2,
+     "water_share": 0.38,
+     "water_bodies": 1,
+     "bridges": 1,
+     "garrison": 0,
+     "tech": 1,
+     "cover": 28,
+     "ore": 0,
+     "garrison_per_km2": 0.0,
+     "tech_per_km2": 1.06,
+     "cover_per_km2": 29.55,
+     "junctions": 2,
+     "junctions_per_km2": 2.11,
+     "chokes": 2,
+     "chokes_per_km2": 2.11,
+     "overlook": 0.0,
+     "chokes_on_main": 0,
+     "backdrop": 0.41
+    }
+   },
+   {
+    "border": 4,
+    "rect": [
+     0,
+     0,
+     4190,
+     4500
+    ],
+    "use": {
+     "used": 0.58,
+     "used_new": 0.56,
+     "tiles": 56,
+     "roles": {
+      "front": 0.36,
+      "side": 0.3,
+      "rear": 0.04,
+      "path": 0.18,
+      "empty": 0.12
+     },
+     "new_tiles": 51,
+     "new_roles": {
+      "front": 0.33,
+      "side": 0.33,
+      "rear": 0.02,
+      "path": 0.18,
+      "empty": 0.14
+     }
+    },
+    "terrain": {
+     "area_km2": 18.86,
+     "walk_share": 0.52,
+     "tiers": 2,
+     "tier_shares": [
+      0.8,
+      0.17
+     ],
+     "tier_heights": [
+      250,
+      330
+     ],
+     "plateaus": 10,
+     "raised_plateaus": 3,
+     "ramps": 5,
+     "slope_share": 0.14,
+     "cliff_share": 0.022,
+     "cliff_km_per_km2": 1.42,
+     "cliff_runs": 26,
+     "water_share": 0.42,
+     "water_bodies": 2,
+     "bridges": 9,
+     "garrison": 19,
+     "tech": 13,
+     "cover": 335,
+     "ore": 5,
+     "garrison_per_km2": 1.94,
+     "tech_per_km2": 1.33,
+     "cover_per_km2": 34.25,
+     "junctions": 22,
+     "junctions_per_km2": 2.25,
+     "chokes": 16,
+     "chokes_per_km2": 1.64,
+     "overlook": 0.21,
+     "chokes_on_main": 2,
+     "backdrop": 0.49
+    }
+   }
+  ]
+ },
+ "camp_ep01_a03_miyako_stewart": {
+  "map": "camp_ep01_a03_miyako_stewart",
+  "start": [
+   2950,
+   670
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     0,
+     0,
+     2940,
+     5000
+    ],
+    "use": {
+     "used": 0.61,
+     "used_new": null,
+     "tiles": 59,
+     "roles": {
+      "front": 0.36,
+      "side": 0.05,
+      "rear": 0.05,
+      "path": 0.37,
+      "empty": 0.17
+     },
+     "new_tiles": 59,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 14.7,
+     "walk_share": 0.74,
+     "tiers": 3,
+     "tier_shares": [
+      0.26,
+      0.39,
+      0.26
+     ],
+     "tier_heights": [
+      230,
+      310,
+      390
+     ],
+     "plateaus": 9,
+     "raised_plateaus": 5,
+     "ramps": 10,
+     "slope_share": 0.22,
+     "cliff_share": 0.029,
+     "cliff_km_per_km2": 1.92,
+     "cliff_runs": 36,
+     "water_share": 0.19,
+     "water_bodies": 11,
+     "bridges": 2,
+     "garrison": 0,
+     "tech": 2,
+     "cover": 0,
+     "ore": 6,
+     "garrison_per_km2": 0.0,
+     "tech_per_km2": 0.18,
+     "cover_per_km2": 0.0,
+     "junctions": 39,
+     "junctions_per_km2": 3.57,
+     "chokes": 23,
+     "chokes_per_km2": 2.11,
+     "overlook": 0.24,
+     "chokes_on_main": 4,
+     "backdrop": 0.27
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "use": {
+     "used": 0.58,
+     "used_new": 0.6,
+     "tiles": 100,
+     "roles": {
+      "front": 0.39,
+      "side": 0.11,
+      "rear": 0.05,
+      "path": 0.28,
+      "empty": 0.17
+     },
+     "new_tiles": 40,
+     "new_roles": {
+      "front": 0.45,
+      "side": 0.2,
+      "rear": 0.03,
+      "path": 0.2,
+      "empty": 0.12
+     }
+    },
+    "terrain": {
+     "area_km2": 25.0,
+     "walk_share": 0.76,
+     "tiers": 3,
+     "tier_shares": [
+      0.25,
+      0.36,
+      0.31
+     ],
+     "tier_heights": [
+      230,
+      310,
+      390
+     ],
+     "plateaus": 14,
+     "raised_plateaus": 9,
+     "ramps": 20,
+     "slope_share": 0.22,
+     "cliff_share": 0.031,
+     "cliff_km_per_km2": 2.04,
+     "cliff_runs": 53,
+     "water_share": 0.17,
+     "water_bodies": 18,
+     "bridges": 3,
+     "garrison": 16,
+     "tech": 2,
+     "cover": 0,
+     "ore": 10,
+     "garrison_per_km2": 0.84,
+     "tech_per_km2": 0.1,
+     "cover_per_km2": 0.0,
+     "junctions": 69,
+     "junctions_per_km2": 3.62,
+     "chokes": 37,
+     "chokes_per_km2": 1.94,
+     "overlook": 0.38,
+     "chokes_on_main": 4,
+     "backdrop": 0.25
+    }
+   }
+  ]
+ },
+ "camp_ep01_j01_sakhalin_smith": {
+  "map": "camp_ep01_j01_sakhalin_smith",
+  "start": [
+   2478,
+   589
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     6250,
+     6250
+    ],
+    "use": {
+     "used": 0.72,
+     "used_new": null,
+     "tiles": 79,
+     "roles": {
+      "front": 0.46,
+      "side": 0.03,
+      "rear": 0.03,
+      "path": 0.29,
+      "empty": 0.2
+     },
+     "new_tiles": 79,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 38.94,
+     "walk_share": 0.38,
+     "tiers": 4,
+     "tier_shares": [
+      0.32,
+      0.12,
+      0.15,
+      0.38
+     ],
+     "tier_heights": [
+      230,
+      270,
+      350,
+      390
+     ],
+     "plateaus": 6,
+     "raised_plateaus": 4,
+     "ramps": 8,
+     "slope_share": 0.12,
+     "cliff_share": 0.011,
+     "cliff_km_per_km2": 0.72,
+     "cliff_runs": 32,
+     "water_share": 0.56,
+     "water_bodies": 2,
+     "bridges": 1,
+     "garrison": 0,
+     "tech": 6,
+     "cover": 71,
+     "ore": 13,
+     "garrison_per_km2": 0.0,
+     "tech_per_km2": 0.41,
+     "cover_per_km2": 4.8,
+     "junctions": 32,
+     "junctions_per_km2": 2.16,
+     "chokes": 16,
+     "chokes_per_km2": 1.08,
+     "overlook": 0.17,
+     "chokes_on_main": 3,
+     "backdrop": 0.63
+    }
+   }
+  ]
+ },
+ "camp_ep01_j02_okiislands_smith": {
+  "map": "camp_ep01_j02_okiislands_smith",
+  "start": [
+   3438,
+   1130
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     2170,
+     1610,
+     5840,
+     4380
+    ],
+    "use": {
+     "used": 0.56,
+     "used_new": null,
+     "tiles": 26,
+     "roles": {
+      "front": 0.42,
+      "side": 0.04,
+      "rear": 0.0,
+      "path": 0.08,
+      "empty": 0.46
+     },
+     "new_tiles": 26,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 10.17,
+     "walk_share": 0.46,
+     "tiers": 2,
+     "tier_shares": [
+      0.72,
+      0.21
+     ],
+     "tier_heights": [
+      230,
+      310
+     ],
+     "plateaus": 4,
+     "raised_plateaus": 2,
+     "ramps": 6,
+     "slope_share": 0.17,
+     "cliff_share": 0.015,
+     "cliff_km_per_km2": 0.99,
+     "cliff_runs": 17,
+     "water_share": 0.44,
+     "water_bodies": 2,
+     "bridges": 0,
+     "garrison": 0,
+     "tech": 2,
+     "cover": 0,
+     "ore": 1,
+     "garrison_per_km2": 0.0,
+     "tech_per_km2": 0.43,
+     "cover_per_km2": 0.0,
+     "junctions": 11,
+     "junctions_per_km2": 2.36,
+     "chokes": 5,
+     "chokes_per_km2": 1.07,
+     "overlook": 0.15,
+     "chokes_on_main": 0,
+     "backdrop": 0.56
+    }
+   },
+   {
+    "border": 2,
+    "rect": [
+     2020,
+     1570,
+     5990,
+     5030
+    ],
+    "use": {
+     "used": 0.6,
+     "used_new": 0.39,
+     "tiles": 36,
+     "roles": {
+      "front": 0.36,
+      "side": 0.03,
+      "rear": 0.0,
+      "path": 0.19,
+      "empty": 0.42
+     },
+     "new_tiles": 10,
+     "new_roles": {
+      "front": 0.1,
+      "side": 0.0,
+      "rear": 0.0,
+      "path": 0.3,
+      "empty": 0.6
+     }
+    },
+    "terrain": {
+     "area_km2": 13.74,
+     "walk_share": 0.44,
+     "tiers": 2,
+     "tier_shares": [
+      0.64,
+      0.3
+     ],
+     "tier_heights": [
+      230,
+      310
+     ],
+     "plateaus": 5,
+     "raised_plateaus": 2,
+     "ramps": 7,
+     "slope_share": 0.17,
+     "cliff_share": 0.015,
+     "cliff_km_per_km2": 0.98,
+     "cliff_runs": 23,
+     "water_share": 0.46,
+     "water_bodies": 2,
+     "bridges": 0,
+     "garrison": 0,
+     "tech": 3,
+     "cover": 0,
+     "ore": 1,
+     "garrison_per_km2": 0.0,
+     "tech_per_km2": 0.5,
+     "cover_per_km2": 0.0,
+     "junctions": 12,
+     "junctions_per_km2": 2.01,
+     "chokes": 8,
+     "chokes_per_km2": 1.34,
+     "overlook": 0.16,
+     "chokes_on_main": 0,
+     "backdrop": 0.58
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     7000,
+     6000
+    ],
+    "use": {
+     "used": 0.46,
+     "used_new": 0.36,
+     "tiles": 55,
+     "roles": {
+      "front": 0.33,
+      "side": 0.05,
+      "rear": 0.05,
+      "path": 0.0,
+      "empty": 0.56
+     },
+     "new_tiles": 24,
+     "new_roles": {
+      "front": 0.25,
+      "side": 0.08,
+      "rear": 0.12,
+      "path": 0.0,
+      "empty": 0.54
+     }
+    },
+    "terrain": {
+     "area_km2": 42.0,
+     "walk_share": 0.25,
+     "tiers": 2,
+     "tier_shares": [
+      0.65,
+      0.25
+     ],
+     "tier_heights": [
+      230,
+      310
+     ],
+     "plateaus": 7,
+     "raised_plateaus": 2,
+     "ramps": 9,
+     "slope_share": 0.21,
+     "cliff_share": 0.011,
+     "cliff_km_per_km2": 0.7,
+     "cliff_runs": 49,
+     "water_share": 0.64,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 0,
+     "tech": 6,
+     "cover": 0,
+     "ore": 11,
+     "garrison_per_km2": 0.0,
+     "tech_per_km2": 0.58,
+     "cover_per_km2": 0.0,
+     "junctions": 29,
+     "junctions_per_km2": 2.79,
+     "chokes": 19,
+     "chokes_per_km2": 1.83,
+     "overlook": 0.0,
+     "chokes_on_main": 0,
+     "backdrop": 0.76
+    }
+   }
+  ]
+ },
+ "camp_ep01_j03_vladivostok_smith": {
+  "map": "camp_ep01_j03_vladivostok_smith",
+  "start": [
+   2878,
+   366
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     0,
+     0,
+     3260,
+     2750
+    ],
+    "use": {
+     "used": 0.73,
+     "used_new": null,
+     "tiles": 16,
+     "roles": {
+      "front": 0.69,
+      "side": 0.06,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.25
+     },
+     "new_tiles": 16,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 8.96,
+     "walk_share": 0.38,
+     "tiers": 1,
+     "tier_shares": [
+      0.98
+     ],
+     "tier_heights": [
+      230
+     ],
+     "plateaus": 1,
+     "raised_plateaus": 0,
+     "ramps": 0,
+     "slope_share": 0.11,
+     "cliff_share": 0.005,
+     "cliff_km_per_km2": 0.42,
+     "cliff_runs": 5,
+     "water_share": 0.62,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 0,
+     "tech": 0,
+     "cover": 101,
+     "ore": 6,
+     "garrison_per_km2": 0.0,
+     "tech_per_km2": 0.0,
+     "cover_per_km2": 29.88,
+     "junctions": 5,
+     "junctions_per_km2": 1.48,
+     "chokes": 4,
+     "chokes_per_km2": 1.18,
+     "overlook": 0.0,
+     "chokes_on_main": 0,
+     "backdrop": 0.63
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5500,
+     5500
+    ],
+    "use": {
+     "used": 0.57,
+     "used_new": 0.52,
+     "tiles": 60,
+     "roles": {
+      "front": 0.65,
+      "side": 0.1,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.25
+     },
+     "new_tiles": 44,
+     "new_roles": {
+      "front": 0.64,
+      "side": 0.11,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.25
+     }
+    },
+    "terrain": {
+     "area_km2": 30.25,
+     "walk_share": 0.43,
+     "tiers": 2,
+     "tier_shares": [
+      0.78,
+      0.2
+     ],
+     "tier_heights": [
+      230,
+      310
+     ],
+     "plateaus": 6,
+     "raised_plateaus": 1,
+     "ramps": 1,
+     "slope_share": 0.11,
+     "cliff_share": 0.006,
+     "cliff_km_per_km2": 0.48,
+     "cliff_runs": 14,
+     "water_share": 0.55,
+     "water_bodies": 1,
+     "bridges": 1,
+     "garrison": 14,
+     "tech": 0,
+     "cover": 241,
+     "ore": 20,
+     "garrison_per_km2": 1.07,
+     "tech_per_km2": 0.0,
+     "cover_per_km2": 18.44,
+     "junctions": 19,
+     "junctions_per_km2": 1.45,
+     "chokes": 11,
+     "chokes_per_km2": 0.84,
+     "overlook": 0.0,
+     "chokes_on_main": 0,
+     "backdrop": 0.57
+    }
+   }
+  ]
+ },
+ "camp_ep01_s01_romania_stewart": {
+  "map": "camp_ep01_s01_romania_stewart",
+  "start": null,
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     4500,
+     4500
+    ],
+    "use": {
+     "used": 0.48,
+     "used_new": null,
+     "tiles": 75,
+     "roles": {
+      "front": 0.44,
+      "side": 0.08,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.48
+     },
+     "new_tiles": 75,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 20.25,
+     "walk_share": 0.7,
+     "tiers": 4,
+     "tier_shares": [
+      0.13,
+      0.28,
+      0.22,
+      0.24
+     ],
+     "tier_heights": [
+      230,
+      310,
+      390,
+      470
+     ],
+     "plateaus": 18,
+     "raised_plateaus": 13,
+     "ramps": 29,
+     "slope_share": 0.22,
+     "cliff_share": 0.052,
+     "cliff_km_per_km2": 3.3,
+     "cliff_runs": 63,
+     "water_share": 0.09,
+     "water_bodies": 3,
+     "bridges": 10,
+     "garrison": 9,
+     "tech": 0,
+     "cover": 316,
+     "ore": 0,
+     "garrison_per_km2": 0.63,
+     "tech_per_km2": 0.0,
+     "cover_per_km2": 22.25,
+     "junctions": 49,
+     "junctions_per_km2": 3.45,
+     "chokes": 30,
+     "chokes_per_km2": 2.11,
+     "overlook": null,
+     "chokes_on_main": 0,
+     "backdrop": 0.32
+    }
+   }
+  ]
+ },
+ "camp_ep01_s02_murmansk_white": {
+  "map": "camp_ep01_s02_murmansk_white",
+  "start": [
+   1393,
+   155
+  ],
+  "stages": [
+   {
+    "border": 2,
+    "rect": [
+     760,
+     230,
+     3470,
+     3530
+    ],
+    "use": {
+     "used": 0.5,
+     "used_new": null,
+     "tiles": 34,
+     "roles": {
+      "front": 0.29,
+      "side": 0.21,
+      "rear": 0.09,
+      "path": 0.29,
+      "empty": 0.12
+     },
+     "new_tiles": 34,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 8.94,
+     "walk_share": 0.63,
+     "tiers": 2,
+     "tier_shares": [
+      0.78,
+      0.14
+     ],
+     "tier_heights": [
+      310,
+      390
+     ],
+     "plateaus": 3,
+     "raised_plateaus": 1,
+     "ramps": 2,
+     "slope_share": 0.22,
+     "cliff_share": 0.023,
+     "cliff_km_per_km2": 1.57,
+     "cliff_runs": 21,
+     "water_share": 0.24,
+     "water_bodies": 2,
+     "bridges": 1,
+     "garrison": 10,
+     "tech": 3,
+     "cover": 0,
+     "ore": 0,
+     "garrison_per_km2": 1.76,
+     "tech_per_km2": 0.53,
+     "cover_per_km2": 0.0,
+     "junctions": 17,
+     "junctions_per_km2": 3.0,
+     "chokes": 7,
+     "chokes_per_km2": 1.23,
+     "overlook": null,
+     "chokes_on_main": 0,
+     "backdrop": 0.38
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     4800,
+     4300
+    ],
+    "use": {
+     "used": 0.61,
+     "used_new": 0.59,
+     "tiles": 76,
+     "roles": {
+      "front": 0.43,
+      "side": 0.22,
+      "rear": 0.03,
+      "path": 0.14,
+      "empty": 0.17
+     },
+     "new_tiles": 46,
+     "new_roles": {
+      "front": 0.5,
+      "side": 0.24,
+      "rear": 0.0,
+      "path": 0.02,
+      "empty": 0.24
+     }
+    },
+    "terrain": {
+     "area_km2": 20.64,
+     "walk_share": 0.71,
+     "tiers": 2,
+     "tier_shares": [
+      0.8,
+      0.13
+     ],
+     "tier_heights": [
+      310,
+      390
+     ],
+     "plateaus": 7,
+     "raised_plateaus": 4,
+     "ramps": 12,
+     "slope_share": 0.21,
+     "cliff_share": 0.025,
+     "cliff_km_per_km2": 1.64,
+     "cliff_runs": 35,
+     "water_share": 0.25,
+     "water_bodies": 1,
+     "bridges": 3,
+     "garrison": 19,
+     "tech": 12,
+     "cover": 0,
+     "ore": 11,
+     "garrison_per_km2": 1.3,
+     "tech_per_km2": 0.82,
+     "cover_per_km2": 0.0,
+     "junctions": 41,
+     "junctions_per_km2": 2.8,
+     "chokes": 19,
+     "chokes_per_km2": 1.3,
+     "overlook": null,
+     "chokes_on_main": 0,
+     "backdrop": 0.3
+    }
+   }
+  ]
+ },
+ "camp_ep01_s03_yucatan_stewart": {
+  "map": "camp_ep01_s03_yucatan_stewart",
+  "start": [
+   6138,
+   518
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     7000,
+     7000
+    ],
+    "use": {
+     "used": 0.43,
+     "used_new": null,
+     "tiles": 111,
+     "roles": {
+      "front": 0.42,
+      "side": 0.05,
+      "rear": 0.02,
+      "path": 0.05,
+      "empty": 0.47
+     },
+     "new_tiles": 111,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 49.0,
+     "walk_share": 0.43,
+     "tiers": 2,
+     "tier_shares": [
+      0.69,
+      0.26
+     ],
+     "tier_heights": [
+      230,
+      310
+     ],
+     "plateaus": 12,
+     "raised_plateaus": 5,
+     "ramps": 39,
+     "slope_share": 0.17,
+     "cliff_share": 0.022,
+     "cliff_km_per_km2": 1.4,
+     "cliff_runs": 69,
+     "water_share": 0.49,
+     "water_bodies": 3,
+     "bridges": 1,
+     "garrison": 1,
+     "tech": 2,
+     "cover": 86,
+     "ore": 8,
+     "garrison_per_km2": 0.05,
+     "tech_per_km2": 0.09,
+     "cover_per_km2": 4.06,
+     "junctions": 54,
+     "junctions_per_km2": 2.55,
+     "chokes": 34,
+     "chokes_per_km2": 1.61,
+     "overlook": 0.0,
+     "chokes_on_main": 0,
+     "backdrop": 0.58
+    }
+   }
+  ]
+ },
+ "camp_ep01_s04_warbotisland_white": {
+  "map": "camp_ep01_s04_warbotisland_white",
+  "start": [
+   2532,
+   1009
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     2920,
+     0,
+     4990,
+     1300
+    ],
+    "use": {
+     "used": 0.77,
+     "used_new": null,
+     "tiles": 9,
+     "roles": {
+      "front": 0.33,
+      "side": 0.11,
+      "rear": 0.44,
+      "path": 0.11,
+      "empty": 0.0
+     },
+     "new_tiles": 9,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 2.69,
+     "walk_share": 0.5,
+     "tiers": 1,
+     "tier_shares": [
+      0.88
+     ],
+     "tier_heights": [
+      270
+     ],
+     "plateaus": 1,
+     "raised_plateaus": 0,
+     "ramps": 1,
+     "slope_share": 0.16,
+     "cliff_share": 0.019,
+     "cliff_km_per_km2": 1.26,
+     "cliff_runs": 6,
+     "water_share": 0.47,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 2,
+     "tech": 0,
+     "cover": 36,
+     "ore": 2,
+     "garrison_per_km2": 1.5,
+     "tech_per_km2": 0.0,
+     "cover_per_km2": 27.0,
+     "junctions": 2,
+     "junctions_per_km2": 1.5,
+     "chokes": 3,
+     "chokes_per_km2": 2.25,
+     "overlook": null,
+     "chokes_on_main": 0,
+     "backdrop": 0.52
+    }
+   },
+   {
+    "border": 2,
+    "rect": [
+     0,
+     0,
+     5600,
+     5530
+    ],
+    "use": {
+     "used": 0.57,
+     "used_new": 0.54,
+     "tiles": 78,
+     "roles": {
+      "front": 0.36,
+      "side": 0.13,
+      "rear": 0.05,
+      "path": 0.18,
+      "empty": 0.28
+     },
+     "new_tiles": 71,
+     "new_roles": {
+      "front": 0.35,
+      "side": 0.13,
+      "rear": 0.03,
+      "path": 0.18,
+      "empty": 0.31
+     }
+    },
+    "terrain": {
+     "area_km2": 30.97,
+     "walk_share": 0.54,
+     "tiers": 2,
+     "tier_shares": [
+      0.85,
+      0.04
+     ],
+     "tier_heights": [
+      270,
+      350
+     ],
+     "plateaus": 5,
+     "raised_plateaus": 3,
+     "ramps": 12,
+     "slope_share": 0.16,
+     "cliff_share": 0.014,
+     "cliff_km_per_km2": 0.91,
+     "cliff_runs": 35,
+     "water_share": 0.36,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 11,
+     "tech": 9,
+     "cover": 150,
+     "ore": 10,
+     "garrison_per_km2": 0.66,
+     "tech_per_km2": 0.54,
+     "cover_per_km2": 9.03,
+     "junctions": 29,
+     "junctions_per_km2": 1.75,
+     "chokes": 13,
+     "chokes_per_km2": 0.78,
+     "overlook": 0.23,
+     "chokes_on_main": 2,
+     "backdrop": 0.47
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     6100,
+     6100
+    ],
+    "use": {
+     "used": 0.59,
+     "used_new": 0.85,
+     "tiles": 85,
+     "roles": {
+      "front": 0.38,
+      "side": 0.12,
+      "rear": 0.05,
+      "path": 0.16,
+      "empty": 0.29
+     },
+     "new_tiles": 12,
+     "new_roles": {
+      "front": 0.42,
+      "side": 0.0,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.58
+     }
+    },
+    "terrain": {
+     "area_km2": 37.21,
+     "walk_share": 0.48,
+     "tiers": 2,
+     "tier_shares": [
+      0.86,
+      0.04
+     ],
+     "tier_heights": [
+      270,
+      350
+     ],
+     "plateaus": 5,
+     "raised_plateaus": 3,
+     "ramps": 12,
+     "slope_share": 0.16,
+     "cliff_share": 0.012,
+     "cliff_km_per_km2": 0.79,
+     "cliff_runs": 36,
+     "water_share": 0.43,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 11,
+     "tech": 12,
+     "cover": 150,
+     "ore": 12,
+     "garrison_per_km2": 0.61,
+     "tech_per_km2": 0.67,
+     "cover_per_km2": 8.38,
+     "junctions": 29,
+     "junctions_per_km2": 1.62,
+     "chokes": 11,
+     "chokes_per_km2": 0.61,
+     "overlook": 0.23,
+     "chokes_on_main": 2,
+     "backdrop": 0.53
+    }
+   }
+  ]
+ },
+ "camp_ep01_y01_facility_rao": {
+  "map": "camp_ep01_y01_facility_rao",
+  "start": [
+   688,
+   1927
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "use": {
+     "used": 0.49,
+     "used_new": null,
+     "tiles": 65,
+     "roles": {
+      "front": 0.55,
+      "side": 0.0,
+      "rear": 0.0,
+      "path": 0.08,
+      "empty": 0.37
+     },
+     "new_tiles": 65,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 25.0,
+     "walk_share": 0.41,
+     "tiers": 1,
+     "tier_shares": [
+      1.0
+     ],
+     "tier_heights": [
+      230
+     ],
+     "plateaus": 1,
+     "raised_plateaus": 0,
+     "ramps": 0,
+     "slope_share": 0.16,
+     "cliff_share": 0.025,
+     "cliff_km_per_km2": 1.68,
+     "cliff_runs": 24,
+     "water_share": 0.0,
+     "water_bodies": 0,
+     "bridges": 0,
+     "garrison": 0,
+     "tech": 0,
+     "cover": 16,
+     "ore": 0,
+     "garrison_per_km2": 0.0,
+     "tech_per_km2": 0.0,
+     "cover_per_km2": 1.56,
+     "junctions": 20,
+     "junctions_per_km2": 1.95,
+     "chokes": 24,
+     "chokes_per_km2": 2.34,
+     "overlook": 0.0,
+     "chokes_on_main": 9,
+     "backdrop": 0.61
+    }
+   }
+  ]
+ },
+ "camp_ep01_y02_blacksite_davis": {
+  "map": "camp_ep01_y02_blacksite_davis",
+  "start": [
+   557,
+   332
+  ],
+  "stages": [
+   {
+    "border": 2,
+    "rect": [
+     0,
+     0,
+     3140,
+     3000
+    ],
+    "use": {
+     "used": 0.76,
+     "used_new": null,
+     "tiles": 38,
+     "roles": {
+      "front": 0.61,
+      "side": 0.05,
+      "rear": 0.05,
+      "path": 0.16,
+      "empty": 0.13
+     },
+     "new_tiles": 38,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 9.42,
+     "walk_share": 0.8,
+     "tiers": 2,
+     "tier_shares": [
+      0.05,
+      0.88
+     ],
+     "tier_heights": [
+      130,
+      310
+     ],
+     "plateaus": 3,
+     "raised_plateaus": 2,
+     "ramps": 1,
+     "slope_share": 0.15,
+     "cliff_share": 0.027,
+     "cliff_km_per_km2": 1.7,
+     "cliff_runs": 14,
+     "water_share": 0.0,
+     "water_bodies": 0,
+     "bridges": 1,
+     "garrison": 5,
+     "tech": 0,
+     "cover": 37,
+     "ore": 0,
+     "garrison_per_km2": 0.67,
+     "tech_per_km2": 0.0,
+     "cover_per_km2": 4.93,
+     "junctions": 9,
+     "junctions_per_km2": 1.2,
+     "chokes": 5,
+     "chokes_per_km2": 0.67,
+     "overlook": 0.01,
+     "chokes_on_main": 1,
+     "backdrop": 0.22
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     4000,
+     3000
+    ],
+    "use": {
+     "used": 0.69,
+     "used_new": 0.44,
+     "tiles": 44,
+     "roles": {
+      "front": 0.57,
+      "side": 0.05,
+      "rear": 0.05,
+      "path": 0.25,
+      "empty": 0.09
+     },
+     "new_tiles": 12,
+     "new_roles": {
+      "front": 0.25,
+      "side": 0.08,
+      "rear": 0.0,
+      "path": 0.42,
+      "empty": 0.25
+     }
+    },
+    "terrain": {
+     "area_km2": 12.0,
+     "walk_share": 0.82,
+     "tiers": 2,
+     "tier_shares": [
+      0.21,
+      0.73
+     ],
+     "tier_heights": [
+      130,
+      310
+     ],
+     "plateaus": 4,
+     "raised_plateaus": 2,
+     "ramps": 2,
+     "slope_share": 0.26,
+     "cliff_share": 0.031,
+     "cliff_km_per_km2": 2.0,
+     "cliff_runs": 19,
+     "water_share": 0.0,
+     "water_bodies": 0,
+     "bridges": 1,
+     "garrison": 6,
+     "tech": 0,
+     "cover": 55,
+     "ore": 0,
+     "garrison_per_km2": 0.61,
+     "tech_per_km2": 0.0,
+     "cover_per_km2": 5.59,
+     "junctions": 17,
+     "junctions_per_km2": 1.73,
+     "chokes": 8,
+     "chokes_per_km2": 0.81,
+     "overlook": 0.06,
+     "chokes_on_main": 2,
+     "backdrop": 0.2
+    }
+   }
+  ]
+ },
+ "camp_ep01_y03_compound_rao": {
+  "map": "camp_ep01_y03_compound_rao",
+  "start": [
+   2924,
+   3156
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     6000,
+     6000
+    ],
+    "use": {
+     "used": 0.38,
+     "used_new": null,
+     "tiles": 118,
+     "roles": {
+      "front": 0.44,
+      "side": 0.0,
+      "rear": 0.01,
+      "path": 0.09,
+      "empty": 0.46
+     },
+     "new_tiles": 118,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 36.0,
+     "walk_share": 0.66,
+     "tiers": 2,
+     "tier_shares": [
+      0.34,
+      0.66
+     ],
+     "tier_heights": [
+      230,
+      330
+     ],
+     "plateaus": 4,
+     "raised_plateaus": 2,
+     "ramps": 0,
+     "slope_share": 0.11,
+     "cliff_share": 0.033,
+     "cliff_km_per_km2": 2.23,
+     "cliff_runs": 36,
+     "water_share": 0.0,
+     "water_bodies": 0,
+     "bridges": 0,
+     "garrison": 0,
+     "tech": 0,
+     "cover": 22,
+     "ore": 0,
+     "garrison_per_km2": 0.0,
+     "tech_per_km2": 0.0,
+     "cover_per_km2": 0.92,
+     "junctions": 61,
+     "junctions_per_km2": 2.56,
+     "chokes": 54,
+     "chokes_per_km2": 2.27,
+     "overlook": 0.32,
+     "chokes_on_main": 13,
+     "backdrop": 0.36
+    }
+   }
+  ]
+ },
+ "ours_A4_CampA4Idle": {
+  "map": "ours_A4_CampA4Idle",
+  "start": [
+   1460,
+   2440
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     0,
+     0,
+     3640,
+     5000
+    ],
+    "use": {
+     "used": 0.33,
+     "used_new": null,
+     "tiles": 57,
+     "roles": {
+      "front": 0.21,
+      "side": 0.26,
+      "rear": 0.09,
+      "path": 0.05,
+      "empty": 0.39
+     },
+     "new_tiles": 57,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 18.2,
+     "walk_share": 0.63,
+     "tiers": 2,
+     "tier_shares": [
+      0.71,
+      0.26
+     ],
+     "tier_heights": [
+      230,
+      310
+     ],
+     "plateaus": 7,
+     "raised_plateaus": 6,
+     "ramps": 6,
+     "slope_share": 0.13,
+     "cliff_share": 0.037,
+     "cliff_km_per_km2": 2.47,
+     "cliff_runs": 23,
+     "water_share": 0.25,
+     "water_bodies": 1,
+     "bridges": 1,
+     "garrison": 28,
+     "tech": 3,
+     "cover": 0,
+     "ore": 7,
+     "garrison_per_km2": 2.46,
+     "tech_per_km2": 0.26,
+     "cover_per_km2": 0.0,
+     "junctions": 23,
+     "junctions_per_km2": 2.02,
+     "chokes": 15,
+     "chokes_per_km2": 1.32,
+     "overlook": 0.42,
+     "chokes_on_main": 3,
+     "backdrop": 0.39
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "use": {
+     "used": 0.36,
+     "used_new": 0.27,
+     "tiles": 64,
+     "roles": {
+      "front": 0.22,
+      "side": 0.31,
+      "rear": 0.08,
+      "path": 0.06,
+      "empty": 0.33
+     },
+     "new_tiles": 15,
+     "new_roles": {
+      "front": 0.2,
+      "side": 0.4,
+      "rear": 0.0,
+      "path": 0.13,
+      "empty": 0.27
+     }
+    },
+    "terrain": {
+     "area_km2": 25.0,
+     "walk_share": 0.51,
+     "tiers": 2,
+     "tier_shares": [
+      0.74,
+      0.24
+     ],
+     "tier_heights": [
+      230,
+      310
+     ],
+     "plateaus": 8,
+     "raised_plateaus": 6,
+     "ramps": 6,
+     "slope_share": 0.13,
+     "cliff_share": 0.034,
+     "cliff_km_per_km2": 2.13,
+     "cliff_runs": 25,
+     "water_share": 0.39,
+     "water_bodies": 1,
+     "bridges": 3,
+     "garrison": 47,
+     "tech": 3,
+     "cover": 0,
+     "ore": 9,
+     "garrison_per_km2": 3.72,
+     "tech_per_km2": 0.24,
+     "cover_per_km2": 0.0,
+     "junctions": 27,
+     "junctions_per_km2": 2.13,
+     "chokes": 16,
+     "chokes_per_km2": 1.26,
+     "overlook": 0.52,
+     "chokes_on_main": 4,
+     "backdrop": 0.51
+    }
+   }
+  ]
+ },
+ "ours_A5_CampA5Win": {
+  "map": "ours_A5_CampA5Win",
+  "start": [
+   1460,
+   2415
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     0,
+     0,
+     2730,
+     5000
+    ],
+    "use": {
+     "used": 0.25,
+     "used_new": null,
+     "tiles": 43,
+     "roles": {
+      "front": 0.09,
+      "side": 0.05,
+      "rear": 0.23,
+      "path": 0.19,
+      "empty": 0.44
+     },
+     "new_tiles": 43,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 13.65,
+     "walk_share": 0.62,
+     "tiers": 1,
+     "tier_shares": [
+      1.0
+     ],
+     "tier_heights": [
+      230
+     ],
+     "plateaus": 3,
+     "raised_plateaus": 0,
+     "ramps": 0,
+     "slope_share": 0.05,
+     "cliff_share": 0.016,
+     "cliff_km_per_km2": 1.04,
+     "cliff_runs": 6,
+     "water_share": 0.19,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 0,
+     "tech": 1,
+     "cover": 0,
+     "ore": 4,
+     "garrison_per_km2": 0.0,
+     "tech_per_km2": 0.12,
+     "cover_per_km2": 0.0,
+     "junctions": 4,
+     "junctions_per_km2": 0.47,
+     "chokes": 3,
+     "chokes_per_km2": 0.35,
+     "overlook": 0.0,
+     "chokes_on_main": 0,
+     "backdrop": 0.38
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "use": {
+     "used": 0.22,
+     "used_new": 0.19,
+     "tiles": 78,
+     "roles": {
+      "front": 0.13,
+      "side": 0.05,
+      "rear": 0.13,
+      "path": 0.09,
+      "empty": 0.6
+     },
+     "new_tiles": 40,
+     "new_roles": {
+      "front": 0.2,
+      "side": 0.05,
+      "rear": 0.0,
+      "path": 0.0,
+      "empty": 0.75
+     }
+    },
+    "terrain": {
+     "area_km2": 25.0,
+     "walk_share": 0.68,
+     "tiers": 1,
+     "tier_shares": [
+      0.98
+     ],
+     "tier_heights": [
+      230
+     ],
+     "plateaus": 2,
+     "raised_plateaus": 0,
+     "ramps": 1,
+     "slope_share": 0.05,
+     "cliff_share": 0.014,
+     "cliff_km_per_km2": 0.93,
+     "cliff_runs": 12,
+     "water_share": 0.17,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 0,
+     "tech": 1,
+     "cover": 0,
+     "ore": 7,
+     "garrison_per_km2": 0.0,
+     "tech_per_km2": 0.06,
+     "cover_per_km2": 0.0,
+     "junctions": 9,
+     "junctions_per_km2": 0.53,
+     "chokes": 2,
+     "chokes_per_km2": 0.12,
+     "overlook": 0.0,
+     "chokes_on_main": 0,
+     "backdrop": 0.33
+    }
+   }
+  ]
+ },
+ "ours_A7_CampA7Pincer": {
+  "map": "ours_A7_CampA7Pincer",
+  "start": [
+   1210,
+   2415
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     0,
+     0,
+     2270,
+     5000
+    ],
+    "use": {
+     "used": 0.36,
+     "used_new": null,
+     "tiles": 38,
+     "roles": {
+      "front": 0.16,
+      "side": 0.21,
+      "rear": 0.18,
+      "path": 0.16,
+      "empty": 0.29
+     },
+     "new_tiles": 38,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 11.35,
+     "walk_share": 0.67,
+     "tiers": 2,
+     "tier_shares": [
+      0.88,
+      0.11
+     ],
+     "tier_heights": [
+      230,
+      310
+     ],
+     "plateaus": 2,
+     "raised_plateaus": 1,
+     "ramps": 2,
+     "slope_share": 0.07,
+     "cliff_share": 0.021,
+     "cliff_km_per_km2": 1.43,
+     "cliff_runs": 11,
+     "water_share": 0.0,
+     "water_bodies": 0,
+     "bridges": 1,
+     "garrison": 8,
+     "tech": 1,
+     "cover": 0,
+     "ore": 6,
+     "garrison_per_km2": 1.05,
+     "tech_per_km2": 0.13,
+     "cover_per_km2": 0.0,
+     "junctions": 9,
+     "junctions_per_km2": 1.18,
+     "chokes": 4,
+     "chokes_per_km2": 0.53,
+     "overlook": 0.17,
+     "chokes_on_main": 1,
+     "backdrop": 0.34
+    }
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "use": {
+     "used": 0.28,
+     "used_new": 0.21,
+     "tiles": 81,
+     "roles": {
+      "front": 0.15,
+      "side": 0.25,
+      "rear": 0.09,
+      "path": 0.12,
+      "empty": 0.4
+     },
+     "new_tiles": 43,
+     "new_roles": {
+      "front": 0.14,
+      "side": 0.28,
+      "rear": 0.0,
+      "path": 0.09,
+      "empty": 0.49
+     }
+    },
+    "terrain": {
+     "area_km2": 25.0,
+     "walk_share": 0.71,
+     "tiers": 2,
+     "tier_shares": [
+      0.7,
+      0.29
+     ],
+     "tier_heights": [
+      230,
+      310
+     ],
+     "plateaus": 6,
+     "raised_plateaus": 3,
+     "ramps": 3,
+     "slope_share": 0.08,
+     "cliff_share": 0.023,
+     "cliff_km_per_km2": 1.49,
+     "cliff_runs": 18,
+     "water_share": 0.11,
+     "water_bodies": 1,
+     "bridges": 3,
+     "garrison": 27,
+     "tech": 1,
+     "cover": 0,
+     "ore": 9,
+     "garrison_per_km2": 1.52,
+     "tech_per_km2": 0.06,
+     "cover_per_km2": 0.0,
+     "junctions": 19,
+     "junctions_per_km2": 1.07,
+     "chokes": 7,
+     "chokes_per_km2": 0.39,
+     "overlook": 0.18,
+     "chokes_on_main": 2,
+     "backdrop": 0.3
+    }
+   }
+  ]
+ },
+ "ours_A8_CampA8S": {
+  "map": "ours_A8_CampA8S",
+  "start": [
+   1300,
+   2300
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "use": {
+     "used": 0.55,
+     "used_new": null,
+     "tiles": 29,
+     "roles": {
+      "front": 0.17,
+      "side": 0.0,
+      "rear": 0.17,
+      "path": 0.45,
+      "empty": 0.21
+     },
+     "new_tiles": 29,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 25.0,
+     "walk_share": 0.28,
+     "tiers": 1,
+     "tier_shares": [
+      1.0
+     ],
+     "tier_heights": [
+      250
+     ],
+     "plateaus": 1,
+     "raised_plateaus": 0,
+     "ramps": 0,
+     "slope_share": 0.22,
+     "cliff_share": 0.0,
+     "cliff_km_per_km2": 0.0,
+     "cliff_runs": 0,
+     "water_share": 0.72,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 0,
+     "tech": 0,
+     "cover": 0,
+     "ore": 0,
+     "garrison_per_km2": 0.0,
+     "tech_per_km2": 0.0,
+     "cover_per_km2": 0.0,
+     "junctions": 0,
+     "junctions_per_km2": 0.0,
+     "chokes": 0,
+     "chokes_per_km2": 0.0,
+     "overlook": 0.17,
+     "chokes_on_main": 0,
+     "backdrop": 0.72
+    }
+   }
+  ]
+ },
+ "ours_J3_CampJ3Run": {
+  "map": "ours_J3_CampJ3Run",
+  "start": [
+   1430,
+   2400
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "use": {
+     "used": 0.13,
+     "used_new": null,
+     "tiles": 96,
+     "roles": {
+      "front": 0.09,
+      "side": 0.08,
+      "rear": 0.06,
+      "path": 0.01,
+      "empty": 0.75
+     },
+     "new_tiles": 96,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 25.0,
+     "walk_share": 0.94,
+     "tiers": 2,
+     "tier_shares": [
+      0.91,
+      0.08
+     ],
+     "tier_heights": [
+      230,
+      310
+     ],
+     "plateaus": 2,
+     "raised_plateaus": 1,
+     "ramps": 2,
+     "slope_share": 0.04,
+     "cliff_share": 0.01,
+     "cliff_km_per_km2": 0.67,
+     "cliff_runs": 6,
+     "water_share": 0.0,
+     "water_bodies": 0,
+     "bridges": 0,
+     "garrison": 19,
+     "tech": 0,
+     "cover": 0,
+     "ore": 2,
+     "garrison_per_km2": 0.81,
+     "tech_per_km2": 0.0,
+     "cover_per_km2": 0.0,
+     "junctions": 8,
+     "junctions_per_km2": 0.34,
+     "chokes": 4,
+     "chokes_per_km2": 0.17,
+     "overlook": 0.09,
+     "chokes_on_main": 1,
+     "backdrop": 0.07
+    }
+   }
+  ]
+ },
+ "ours_J4_CampJ4": {
+  "map": "ours_J4_CampJ4",
+  "start": [
+   2900,
+   3105
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "use": {
+     "used": 0.13,
+     "used_new": null,
+     "tiles": 67,
+     "roles": {
+      "front": 0.06,
+      "side": 0.13,
+      "rear": 0.12,
+      "path": 0.07,
+      "empty": 0.61
+     },
+     "new_tiles": 67,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 25.0,
+     "walk_share": 0.54,
+     "tiers": 2,
+     "tier_shares": [
+      0.75,
+      0.23
+     ],
+     "tier_heights": [
+      230,
+      310
+     ],
+     "plateaus": 8,
+     "raised_plateaus": 6,
+     "ramps": 6,
+     "slope_share": 0.11,
+     "cliff_share": 0.034,
+     "cliff_km_per_km2": 2.13,
+     "cliff_runs": 22,
+     "water_share": 0.39,
+     "water_bodies": 1,
+     "bridges": 3,
+     "garrison": 0,
+     "tech": 3,
+     "cover": 0,
+     "ore": 9,
+     "garrison_per_km2": 0.0,
+     "tech_per_km2": 0.22,
+     "cover_per_km2": 0.0,
+     "junctions": 21,
+     "junctions_per_km2": 1.55,
+     "chokes": 11,
+     "chokes_per_km2": 0.81,
+     "overlook": 0.51,
+     "chokes_on_main": 3,
+     "backdrop": 0.47
+    }
+   }
+  ]
+ },
+ "ours_J5_CampJ5Lose": {
+  "map": "ours_J5_CampJ5Lose",
+  "start": [
+   2120,
+   2500
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "use": {
+     "used": 0.2,
+     "used_new": null,
+     "tiles": 68,
+     "roles": {
+      "front": 0.12,
+      "side": 0.09,
+      "rear": 0.07,
+      "path": 0.18,
+      "empty": 0.54
+     },
+     "new_tiles": 68,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 25.0,
+     "walk_share": 0.59,
+     "tiers": 1,
+     "tier_shares": [
+      1.0
+     ],
+     "tier_heights": [
+      230
+     ],
+     "plateaus": 1,
+     "raised_plateaus": 0,
+     "ramps": 0,
+     "slope_share": 0.04,
+     "cliff_share": 0.01,
+     "cliff_km_per_km2": 0.64,
+     "cliff_runs": 5,
+     "water_share": 0.0,
+     "water_bodies": 0,
+     "bridges": 0,
+     "garrison": 0,
+     "tech": 1,
+     "cover": 0,
+     "ore": 6,
+     "garrison_per_km2": 0.0,
+     "tech_per_km2": 0.07,
+     "cover_per_km2": 0.0,
+     "junctions": 8,
+     "junctions_per_km2": 0.54,
+     "chokes": 0,
+     "chokes_per_km2": 0.0,
+     "overlook": 0.0,
+     "chokes_on_main": 0,
+     "backdrop": 0.42
+    }
+   }
+  ]
+ },
+ "ours_J7_CampJ7Late": {
+  "map": "ours_J7_CampJ7Late",
+  "start": [
+   4220,
+   2500
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "use": {
+     "used": 0.21,
+     "used_new": null,
+     "tiles": 77,
+     "roles": {
+      "front": 0.13,
+      "side": 0.08,
+      "rear": 0.13,
+      "path": 0.1,
+      "empty": 0.56
+     },
+     "new_tiles": 77,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 25.0,
+     "walk_share": 0.69,
+     "tiers": 1,
+     "tier_shares": [
+      1.0
+     ],
+     "tier_heights": [
+      230
+     ],
+     "plateaus": 1,
+     "raised_plateaus": 0,
+     "ramps": 0,
+     "slope_share": 0.04,
+     "cliff_share": 0.01,
+     "cliff_km_per_km2": 0.65,
+     "cliff_runs": 6,
+     "water_share": 0.0,
+     "water_bodies": 0,
+     "bridges": 0,
+     "garrison": 0,
+     "tech": 1,
+     "cover": 0,
+     "ore": 6,
+     "garrison_per_km2": 0.0,
+     "tech_per_km2": 0.06,
+     "cover_per_km2": 0.0,
+     "junctions": 6,
+     "junctions_per_km2": 0.35,
+     "chokes": 0,
+     "chokes_per_km2": 0.0,
+     "overlook": 0.0,
+     "chokes_on_main": 0,
+     "backdrop": 0.32
+    }
+   }
+  ]
+ },
+ "ours_S2_CampS2Escape": {
+  "map": "ours_S2_CampS2Escape",
+  "start": [
+   950,
+   2255
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "use": {
+     "used": 0.14,
+     "used_new": null,
+     "tiles": 83,
+     "roles": {
+      "front": 0.08,
+      "side": 0.01,
+      "rear": 0.1,
+      "path": 0.12,
+      "empty": 0.69
+     },
+     "new_tiles": 83,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 25.0,
+     "walk_share": 0.7,
+     "tiers": 1,
+     "tier_shares": [
+      1.0
+     ],
+     "tier_heights": [
+      230
+     ],
+     "plateaus": 2,
+     "raised_plateaus": 0,
+     "ramps": 0,
+     "slope_share": 0.06,
+     "cliff_share": 0.017,
+     "cliff_km_per_km2": 1.1,
+     "cliff_runs": 12,
+     "water_share": 0.05,
+     "water_bodies": 1,
+     "bridges": 1,
+     "garrison": 0,
+     "tech": 0,
+     "cover": 0,
+     "ore": 4,
+     "garrison_per_km2": 0.0,
+     "tech_per_km2": 0.0,
+     "cover_per_km2": 0.0,
+     "junctions": 11,
+     "junctions_per_km2": 0.63,
+     "chokes": 4,
+     "chokes_per_km2": 0.23,
+     "overlook": 0.0,
+     "chokes_on_main": 0,
+     "backdrop": 0.3
+    }
+   }
+  ]
+ },
+ "ours_S5_CampS5Trap": {
+  "map": "ours_S5_CampS5Trap",
+  "start": [
+   3730,
+   2825
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "use": {
+     "used": 0.14,
+     "used_new": null,
+     "tiles": 78,
+     "roles": {
+      "front": 0.13,
+      "side": 0.06,
+      "rear": 0.09,
+      "path": 0.05,
+      "empty": 0.67
+     },
+     "new_tiles": 78,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 25.0,
+     "walk_share": 0.68,
+     "tiers": 1,
+     "tier_shares": [
+      0.98
+     ],
+     "tier_heights": [
+      230
+     ],
+     "plateaus": 2,
+     "raised_plateaus": 0,
+     "ramps": 1,
+     "slope_share": 0.05,
+     "cliff_share": 0.014,
+     "cliff_km_per_km2": 0.93,
+     "cliff_runs": 12,
+     "water_share": 0.17,
+     "water_bodies": 1,
+     "bridges": 0,
+     "garrison": 0,
+     "tech": 1,
+     "cover": 0,
+     "ore": 7,
+     "garrison_per_km2": 0.0,
+     "tech_per_km2": 0.06,
+     "cover_per_km2": 0.0,
+     "junctions": 9,
+     "junctions_per_km2": 0.53,
+     "chokes": 2,
+     "chokes_per_km2": 0.12,
+     "overlook": 0.35,
+     "chokes_on_main": 0,
+     "backdrop": 0.33
+    }
+   }
+  ]
+ },
+ "ours_S6_CampS6Lose": {
+  "map": "ours_S6_CampS6Lose",
+  "start": [
+   2470,
+   2500
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "use": {
+     "used": 0.18,
+     "used_new": null,
+     "tiles": 77,
+     "roles": {
+      "front": 0.1,
+      "side": 0.08,
+      "rear": 0.14,
+      "path": 0.12,
+      "empty": 0.56
+     },
+     "new_tiles": 77,
+     "new_roles": {}
+    },
+    "terrain": {
+     "area_km2": 25.0,
+     "walk_share": 0.69,
+     "tiers": 1,
+     "tier_shares": [
+      1.0
+     ],
+     "tier_heights": [
+      230
+     ],
+     "plateaus": 1,
+     "raised_plateaus": 0,
+     "ramps": 0,
+     "slope_share": 0.04,
+     "cliff_share": 0.01,
+     "cliff_km_per_km2": 0.65,
+     "cliff_runs": 6,
+     "water_share": 0.0,
+     "water_bodies": 0,
+     "bridges": 0,
+     "garrison": 0,
+     "tech": 1,
+     "cover": 0,
+     "ore": 6,
+     "garrison_per_km2": 0.0,
+     "tech_per_km2": 0.06,
+     "cover_per_km2": 0.0,
+     "junctions": 6,
+     "junctions_per_km2": 0.35,
+     "chokes": 0,
+     "chokes_per_km2": 0.0,
+     "overlook": 0.0,
+     "chokes_on_main": 0,
+     "backdrop": 0.32
+    }
+   }
+  ]
+ }
+}
