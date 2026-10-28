@@ -100,6 +100,13 @@ def test_a_plaza_of_its_own_only_ice_gets_past():
     assert not parts.contract(parts.merged(m))
 
 
+def test_the_engineers_reload_from_the_plan():
+    """冷却 (docs/design/a4-redesign.md: 40, longer than the ice lasts); left out, the 20 the A4 played now has."""
+    reload = lambda m: next(u for u in m.units if u.id == 'CNV_IceEngineer').params['reload']   # noqa: E731
+    assert reload(escort()) == '20s'
+    assert reload(escort(plazas={'冷却': 40})) == '40s'
+
+
 def test_a_plaza_setting_is_checked():
     import pytest
     with pytest.raises(AssertionError, match='only'):

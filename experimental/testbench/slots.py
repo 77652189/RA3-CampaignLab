@@ -24,7 +24,7 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
-BENCH = os.path.join(ROOT, 'work', 'testbench', 'RA3')
+BENCH = os.environ.get('RA3_BENCH_DIR') or os.path.join(ROOT, 'work', 'testbench', 'RA3')    # the game copy
 LOCKS = os.path.join(os.environ['RA3_SHARED'], 'locks') if os.environ.get('RA3_SHARED') else \
     os.path.join(os.path.dirname(ROOT), 'shared', 'locks')
 SLOTS = int(os.environ.get('RA3_BENCH_SLOTS', '2'))

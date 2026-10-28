@@ -162,6 +162,13 @@ class Mission(Part):
         """A point by one of the map's sites (offset dx, dy)."""
         return self.where(name).at(dx, dy)
 
+    def strongpoint(self, name):
+        """One of the map's strongpoints (its STRONGPOINTS: a building a squad can garrison, placed with the map's
+        OBJECTS, platmap.strongpoint): the object's name, for scripts."""
+        sp = getattr(self.map, 'STRONGPOINTS', {})
+        assert name in sp, f'map {self.map.__name__} has no strongpoint {name!r}: {sorted(sp)}'
+        return sp[name].name
+
     def put(self, template, site, dx=0.0, dy=0.0, role='', side='p1', name='', **kw):
         """Place an object by a map site; with role, publish it in the cast (a named object: scripts refer to it)."""
         o = Obj(template, *self.site(site, dx, dy), side=side, name=name, site=site, **kw)
@@ -220,7 +227,11 @@ class Mission(Part):
         return side and self.player(side)
 
     def team(self, side='p1'):
-        return self.map.TEAMS[side]
+        """A side's team to create units on: the map's, else the player's default team (Soviet_2/teamSoviet_2)."""
+        if side in self.map.TEAMS:
+            return self.map.TEAMS[side]
+        p = self.player(side)
+        return f'{p}/team{p}'
 
     def drop_endings(self):
         """The mission without its win / lose scripts (a check that keeps the counters up)."""
@@ -421,6 +432,7 @@ def contract(mission):
     m, cat, out = mission, mapscript.catalog(), []
     sites = getattr(m.map, 'SITES', {})
     named = {o.name: o for o in m.objects if o.name}
+    named.update({o.name: o for o in getattr(m.map, 'STRONGPOINTS', {}).values()})     # the map's, published
     out += [f'object {o.template} at ({o.x:g}, {o.y:g}): placed by raw coordinates, not by a map site'
             for o in m.objects if not o.site]
     out += [f'object {o.template}: map has no site {o.site!r}' for o in m.objects if o.site and o.site not in sites]
@@ -584,15 +596,33 @@ def assemble(mission, test=None, name=None):
     c4.EXTRA_FILES = list(mm.music.files) if mm.music else []
     c4.CHECKS = [mm.music.check] if mm.music else []
 
+    borders = []
+
     def edit(m):
         write_map(m, mm)
+        import mapterrain
+        names = list(getattr(mm.map, 'BORDERS', {}))
+        borders[:] = [(names[k] if k < len(names) else str(k), [v * mapterrain.CELL for v in r])
+                      for k, r in enumerate(mapterrain.HeightMap(m).borders())]
         print(f'{name}: {len(mm.objects)} objects, {len(mm.waypoints)} waypoints, {len(mm.areas)} areas, '
               f'{len(mm.scripts)} scripts, units {sorted(seen)}')
 
     c6.edit = edit
     c4.main()
     release()
+    write_sidecar(c4.OUT, mm.map.__name__.split('.')[-1], borders)
     return c4.OUT
+
+
+SIDECAR = 'cnv_map.json'
+
+
+def write_sidecar(out, map_name, borders):
+    """What the bench needs of the built map, next to the mod (testbench/harness.py reads it): the map's borders in
+    world units, in MAP_SWITCH_BORDER order -- the minimap draws only the playable one (calib.world_to_minimap)."""
+    import json
+    with open(os.path.join(out, SIDECAR), 'w', encoding='utf-8') as f:
+        json.dump(dict(map=map_name, borders=borders), f, ensure_ascii=False, indent=1)
 
 
 def mod_busy(name):

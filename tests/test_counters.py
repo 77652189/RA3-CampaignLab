@@ -58,3 +58,31 @@ def test_bright_ground_under_the_counters_is_no_line():
         a[y + 2:y + 13, s:s + 4] = SAND
     img = Image.fromarray(a)
     assert counters.glyphs(img, counters.line_box(0)) and not counters.glyphs(img, counters.line_box(2))
+
+
+def test_sand_as_tall_as_the_line_past_the_value_is_no_digit():
+    """Bench 2026-10-27 (CampSceneLook, a short line's "0" read as 6): right past the value, sand as tall as the line
+    with only its top pixel dark (the box of the line above), then shadow: a 5-px island, no stroke."""
+    img = frame([(24, 32)])
+    a = np.asarray(img).copy()
+    x, y, *_ = counters.line_box(0)
+    a[y:y + counters.HEIGHT, 32:60] = BOX       # the box goes on a little, then shadow as dark
+    a[y + 1:y + counters.HEIGHT, 39:44] = SAND
+    img = Image.fromarray(a)
+    assert [(s, e) for s, e, _ in counters.glyphs(img, counters.line_box(0))] == [(24, 32)]
+
+
+def test_a_countdown_under_the_counters_is_skipped(monkeypatch):
+    """Bench 2026-10-27 (S5 trap): a countdown shown after the counters stands below them ("援军到达 4:13"); its
+    colon (two dots, a gap between) marks it, wherever it stands."""
+    img = frame([(24, 32), (24, 30)])
+    a = np.asarray(img).copy()
+    x, y, *_ = counters.line_box(1)
+    a[y:y + counters.HEIGHT, 30:52] = BOX       # the second line's value: "4" (24-30), ":" (32-34), "1" (36-40)
+    a[y + 3:y + 6, 32:34] = a[y + 9:y + 12, 32:34] = TEXT
+    a[y + 1:y + 14, 36:40] = TEXT
+    img = Image.fromarray(a)
+    assert counters.countdown(counters.glyphs(img, counters.line_box(1)))
+    assert not counters.countdown(counters.glyphs(img, counters.line_box(0)))
+    monkeypatch.setattr(counters, 'read_line', lambda img, box: box[1])
+    assert counters.read(img, 1) == [counters.line_box(0)[1]]

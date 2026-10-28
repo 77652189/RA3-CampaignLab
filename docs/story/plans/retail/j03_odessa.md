@@ -163,9 +163,9 @@
 - 配套的提示（都是对话）：
   - 被磁暴类单位攻击时 [f intel 10]；
   - 被 V4 攻击时 [f intel 32]；
-  - 击毁第一辆 V4 时 [f kenji 02]；
+  - 击毁第一辆 V4 时 [f kenji 02，只在健二是 AI 时]；
   - 击毁磁暴线圈时 [monitor shogun health - healed]→intel 22；
-  - 血量 90% [f kenji 03]、66% [intel 23]、50% [TH14，只在健二是 AI 时]、33% [intel 24]。
+  - 血量 90% [f kenji 03，只在健二是 AI 时]、66% [intel 23]、50% [TH14，只在健二是 AI 时]、33% [intel 24]。
 
 ### 3.5 边界外的"休眠敌人" [transfer soviet forces in orange border]
 

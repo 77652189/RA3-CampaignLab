@@ -9,7 +9,8 @@ inspects on demand, notes outside the context). The pieces are run_bench.ps1's, 
   - input: posted window messages only (no focus, no real cursor); keys also through the shim's key.req
   - frames: the shim saves shots\<name>.bmp when shots\shot.req names it; each frame is archived as a PNG
   - world <-> screen: calib.py (maps built on CampNew18's island, start camera; after a minimap jump the mapping
-    shifts with the view)
+    shifts with the view); the minimap draws only the playable area, read off the frame among the borders the cnv
+    build lists in cnv_map.json beside the mod
   - the window is parked off the desktop and the game's own audio sessions are muted; a bench slot is held while
     the game runs (slots.py: several games at once, each with its own lock in shared\locks and its own shot folder)
 
@@ -34,8 +35,11 @@ import calib  # noqa: E402
 import nav  # noqa: E402
 import slots  # noqa: E402
 
-BENCH = os.path.join(ROOT, 'work', 'testbench', 'RA3')
+BENCH = slots.BENCH
 SHOTS = os.path.join(BENCH, 'shots')
+# RA3_BENCH_SPEED=<x>: the mission runs x times as fast (the capture shim scales the game's clocks once the menus are
+# walked); mission seconds, waits and watches are all in mission time. 1 (default): the shim hooks no clock.
+SPEED = float(os.environ.get('RA3_BENCH_SPEED') or 1)
 RUNS = os.path.join(ROOT, 'work', 'testbench', 'runs')
 LOCK = os.environ.get('RA3_SHARED') and os.path.join(os.environ['RA3_SHARED'], 'locks', 'bench.json') or \
     os.path.join(os.path.dirname(ROOT), 'shared', 'locks', 'bench.json')
@@ -179,6 +183,27 @@ def skudef(mod):
     return os.path.join(MODS, mod, f'{mod}_1.0.skudef')
 
 
+def map_borders(sku):
+    """The built map's borders [(name, (x0, y0, x1, y1))] from the sidecar the cnv build leaves next to the mod
+    (cnv/parts.write_sidecar); [] for a mod without one (older builds, the campaign makers: the whole map)."""
+    try:
+        with open(os.path.join(os.path.dirname(sku), 'cnv_map.json'), encoding='utf-8') as f:
+            return [(n, tuple(r)) for n, r in json.load(f)['borders']]
+    except (OSError, ValueError, KeyError):
+        return []
+
+
+def seen_step(steps, frame, at, back=False):
+    """A menu step other than `at` that the frame shows, the furthest first; earlier ones only with back=True (after a
+    "connection lost" box). Template steps only: the video's brightness steps match any bright screen, the mission's
+    too. None if none (bench 2026-10-27: the walk sent back to the main menu waited there with the mission running)."""
+    for j in range(len(steps) - 1, -1, -1):
+        if j != at and (j > at or back) and steps[j]['how'] == 'tpl' and \
+                nav.matches(steps[j], nav.metric(frame, steps[j])):
+            return j
+    return None
+
+
 class BenchError(RuntimeError):
     pass
 
@@ -195,6 +220,8 @@ class Session:
         self.frames = []
         self.t0 = None              # mission start (time.monotonic)
         self.view = None            # None: the start camera; else the world point the last minimap jump centred
+        self.borders = []           # the built map's playable areas (cnv_map.json beside the mod), [] the whole map
+        self.last_border = None
         self.log = []
         self.muted = 0
         self.hold = False           # pause (Esc menu) between steps
@@ -230,6 +257,8 @@ class Session:
         self.run_dir = os.path.join(RUNS, f'{self.mod}_mcp_{datetime.datetime.now():%m%d_%H%M%S}')
         os.makedirs(self.run_dir)
         self.frames, self.view, self.log, self.muted, self.t0 = [], None, [], 0, None
+        self.borders = map_borders(sku) if mod else []
+        self.last_border = self.borders[0] if self.borders else None
         self.hold, self.paused, self.game_s, self.run_from = hold, False, 0.0, None
         args = [os.path.join(BENCH, 'Data', 'RA3_1.13.game'), '-config', os.path.join(BENCH, 'RA3_chinese_t_1.13.SkuDef'),
                 '-runver', '1.13', '-win', '-xres', str(W), '-yres', str(H)] + (['-modConfig', sku] if mod else [])
@@ -245,6 +274,9 @@ class Session:
         """Start the game in this slot and close its one-copy mutex, so the next copy can start. A copy that exits
         at once found another one's mutex (a game still starting): wait a little and start again."""
         env = dict(os.environ, CNV_SHOT_DIR=SHOTS)
+        env.pop('CNV_SPEED', None)
+        if SPEED != 1:
+            env['CNV_SPEED'] = '1'          # clocks hooked, the menus and videos at x1; the mission sped up in game
         for _ in range(tries):
             self.p = subprocess.Popen(args, cwd=BENCH, env=env)
             slots.note_game(self.slot, self.p.pid)
@@ -270,6 +302,7 @@ class Session:
             with open(os.path.join(nav.OUT, 'nav.json'), encoding='utf-8') as f:
                 steps = json.load(f)
         at, done_at, parked, t = 0, 0, False, time.monotonic()
+        lost = False                    # a "connection lost" box was answered: the screen may be any step now
         while True:
             time.sleep(1)
             s = round(time.monotonic() - t)
@@ -291,13 +324,17 @@ class Session:
                 name, (x, y) = pop
                 self._say(f'popup {name} at {s} s: click {x},{y}')
                 click(h, x, y)
-                if name == 'connection lost':        # it also drops the game back to the main menu
-                    at, done_at = 0, s
+                if name == 'connection lost':        # often back to the main menu, but it also came up in the
+                    lost, done_at = True, s          # mission (bench 2026-10-27): walk on from what the screen shows
             elif nav.matches(steps[at], nav.metric(frame, steps[at])):
                 self._say(f'menu {at} {steps[at]["name"]} at {s} s')
                 self._do(h, steps[at]['actions'])
                 at, done_at = at + 1, s
                 if at == len(steps):
+                    if SPEED != 1:
+                        with open(os.path.join(SHOTS, 'speed.req'), 'w', encoding='ascii') as f:
+                            f.write(f'{SPEED:g}')       # the shim reads it within 0.1 s
+                        self._say(f'mission at x{SPEED:g}')
                     self.t0 = self.run_from = time.monotonic()
                     self._say(f'in game at {s} s')
                     os.replace(frame, os.path.join(self.run_dir, 'nav_last.bmp'))
@@ -307,6 +344,11 @@ class Session:
                 self._say(f'menu retry {at - 1} at {s} s')        # its click was swallowed: again
                 self._do(h, steps[at - 1]['actions'])
                 done_at = s
+            else:
+                j = seen_step(steps, frame, at, lost)
+                if j is not None:
+                    self._say(f'menu {j} {steps[j]["name"]} on screen at {s} s (was at {at}): walking on from it')
+                    at, lost = j, False
             os.replace(frame, os.path.join(self.run_dir, 'nav_last.bmp'))
 
     def _do(self, h, actions):
@@ -353,7 +395,11 @@ class Session:
         """Mission seconds the game has run (the paused stretches left out)."""
         if self.t0 is None:
             return None
-        return round(self.game_s + (time.monotonic() - self.run_from if self.run_from else 0), 1)
+        return round(self.game_s + ((time.monotonic() - self.run_from) * SPEED if self.run_from else 0), 1)
+
+    def run_for(self, seconds):
+        """Let the mission run `seconds` of mission time (real time / SPEED)."""
+        time.sleep(max(0.0, seconds) / SPEED)
 
     def menu_open(self, img):
         a = img.convert('L').crop(MENU_BOX).tobytes()
@@ -370,7 +416,7 @@ class Session:
             time.sleep(0.5)
             img = self._capture('hold')
             if img is not None and self.menu_open(img):
-                self.game_s += time.monotonic() - self.run_from - 0.5
+                self.game_s += (time.monotonic() - self.run_from - 0.5) * SPEED
                 self.paused, self.run_from = True, None
                 return
         raise BenchError('Esc did not open the mission menu (a targeting cursor or a dialog in the way?)')
@@ -452,10 +498,25 @@ class Session:
             x, y = x + self.view[0] - calib.START_VIEW[0], y + self.view[1] - calib.START_VIEW[1]
         return round(x, 1), round(y, 1)
 
+    def border(self):
+        """(name, rect) of the playable area now, or None (no sidecar: the whole map). With several, the one whose
+        drawn size matches the minimap on a fresh frame (the mission switches them as it goes)."""
+        if len(self.borders) < 2:
+            return self.borders[0] if self.borders else None
+        img = self._capture('minimap')
+        size = img and calib.minimap_drawn(img)
+        if size:
+            self.last_border = min(self.borders, key=lambda b: sum(abs(p - q) for p, q in
+                                                                   zip(calib.drawn_size(b[1]), size)))
+        return self.last_border
+
     def camera(self, x, y):
-        """Centre the camera on world (x, y): a left click on the minimap."""
+        """Centre the camera on world (x, y): a left click on the minimap (which draws only the playable area)."""
         h = self.window()
-        click(h, *calib.world_to_minimap(x, y))
+        b = self.border()
+        if b and not (b[1][0] <= x <= b[1][2] and b[1][1] <= y <= b[1][3]):
+            raise BenchError(f'({x}, {y}) is outside the playable area now ({b[0]} {b[1]}): the camera cannot go there')
+        click(h, *calib.world_to_minimap(x, y, b and b[1]))
         self.view = (float(x), float(y))
         time.sleep(0.3)
 

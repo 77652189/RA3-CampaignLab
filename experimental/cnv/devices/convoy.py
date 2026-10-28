@@ -4,7 +4,7 @@ send it on again (停下 / 继续: retail's escorts wait for the player and time
 
   机关: {车队: {类型: 车队, 出发: <condition>, 每隔: 3, 血量: 700/500/350}}
 
-Cast truck 1-3 (the player's), mark exit; facts: convoy leaves (when 出发 is a phase that starts at a time), tick.
+Cast truck 1-3 (the 车 side's: the player's by default, or a side of 阵营 其他 allied to them), mark exit; facts: convoy leaves (when 出发 is a phase that starts at a time), tick.
 Other devices may hold the convoy too (hold(flag): it rolls only while every such flag is 0 -- the plazas' ambush).
 """
 import re
@@ -17,7 +17,9 @@ from parts import Script
 class Convoy(Device):
     WHAT = '三辆车按时间表开向终点，玩家护送但指挥不了'
     PARAMS = {'出发': '条件：车队什么时候出发', '每隔': '秒：每隔多久重新给车下一次命令（默认 3）',
-              '车': '谁的车（默认 我）', '血量': '每辆车的血量，可按难度写（原版伊贺 7000/5000/3000；默认 500）'}
+              '车': '谁的车：我、敌，或 阵营 其他 里的一方（写成盟友的，玩家点不了；默认 我）',
+              '血量': '每辆车的血量，可按难度写（原版伊贺 7000/5000/3000；默认 500）',
+              '分批': '每辆车在出发后多少秒才开，例如 [0, 50, 110]（默认一起开；原版敖德萨的船一艘接一艘）'}
     EVENTS = {'出发': '车队出发了', '到达 <地点>': '第一辆车开进这个地点', '到终点 <n>': '已有 n 辆车到达终点',
               '损失 <n>': '已有 n 辆车被毁'}
     ACTIONS = {'停下': '车队停在原地', '继续': '车队接着开'}
@@ -26,8 +28,15 @@ class Convoy(Device):
     def __init__(self, c, name, spec):
         super().__init__(c, name, spec)
         self.tick = float(spec.get('每隔', 3.0))
-        side = 'p1' if spec.get('车', '我') == '我' else 's1'
-        self.cv = fp.Convoy(self.m, c.tag, side, 0.0, self.tick)
+        from plan import PlanError
+        who = spec.get('车', '我')
+        if who not in c.side:
+            raise PlanError(f'{name}: 车 {who!r} is none of {sorted(c.side)}')
+        self.cv = fp.Convoy(self.m, c.tag, c.side[who], 0.0, self.tick)
+        self.batches = [float(x) for x in spec.get('分批') or []]
+        if self.batches and len(self.batches) != len(self.cv.trucks):
+            raise PlanError(f'{name}: 分批 gives one time per truck ({len(self.cv.trucks)})')
+        self.go = [f'CNV_{c.tag}_Go_{j}' for j in range(1, len(self.cv.trucks) + 1)]
         self.halted = f'CNV_{c.tag}_Halted'
         self.holds = [self.halted]                  # flags that keep it parked (停下; hold() adds more)
         self.attacks = 0
@@ -72,6 +81,9 @@ class Convoy(Device):
     def scripts(self):
         import plan
         self.c.when('Convoy go', self.spec['出发'], self.cv.go()[0].do)
+        for j, (after, g) in enumerate(zip(self.batches, self.go)):    # 分批: truck j once its time is up
+            self.c.when(f'Convoy go {j + 1}', f'{self.name}.出发' + (f' + {after:g}' if after else ''),
+                        [('SET_FLAG', g, 1)])
         # the tick runs before the convoy sets off too: what attacks it (a wave the player called early, troops out
         # of a broken sculpture) waits on the tick, and a timer never set never runs out
         out = [Script(f'CNV {self.c.tag} - Tick before', [], [('SET_MILLISECOND_TIMER', self.cv.timer, 0.0)])]
@@ -84,9 +96,18 @@ class Convoy(Device):
         return out
 
     def last(self):
-        """The roll after everything else that waits on the tick timer (it sets the timer again)."""
+        """The roll after everything else that waits on the tick timer (it sets the timer again). In batches (分批)
+        each truck is sent on by a script of its own, once its time after the departure ran out."""
         roll = self.cv.roll()[0]
         roll.when = roll.when + [('FLAG', h, 0) for h in self.holds]
+        if self.batches:
+            sends = [Script(f'CNV {self.c.tag} - Roll {j + 1}', roll.when + [('FLAG', g, 1)],
+                            [('MOVE_NAMED_UNIT_TO', t, self.cv.exit)], once=False)
+                     for j, (t, g) in enumerate(zip(self.cv.trucks, self.go))]
+            roll.do = [a for a in roll.do if a[0] != 'MOVE_NAMED_UNIT_TO']
+            roll = sends + [roll]
+        else:
+            roll = [roll]
         # stopped, the tick still runs (scripts waiting on it would otherwise fire every frame): no moves
         wait = [Script(f'CNV {self.c.tag} - Roll held' + (f' {k}' if k else ''),
                        [('FLAG', self.cv.rolling, 1), ('TIMER_EXPIRED', self.cv.timer), ('FLAG', h, 1)],
@@ -94,7 +115,7 @@ class Convoy(Device):
                 for k, h in enumerate(self.holds)]
         parked = Script(f'CNV {self.c.tag} - Roll parked', [('FLAG', self.cv.rolling, 0), ('TIMER_EXPIRED', self.cv.timer)],
                         [('SET_MILLISECOND_TIMER', self.cv.timer, self.tick)], once=False)
-        return [roll] + wait + [parked] + self.cv.tail()
+        return roll + wait + [parked] + self.cv.tail()
 
     def facts(self):
         out = {'tick': self.tick}

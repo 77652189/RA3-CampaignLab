@@ -10,3 +10,4 @@
 | [0004](0004-no-status-filtered-vision.md) | 不用按状态过滤的索敌视野 | accepted | ObjectVisionRange 不检查状态，"优先打冰冻"改靠射速和快速换目标 |
 | [0005](0005-own-pathfinder-music.md) | 自制配乐走原版的 Pathfinder 动态音乐，格式自己逆向 | accepted | 保留战况状态机，曲谱图和音轨自己生成，拼进 static 流；不绕开 Pathfinder，不等红3OL 开源 |
 | [0006](0006-bench-slots.md) | 测试台同时开几局 | accepted | 游戏靠一个命名互斥锁只许开一份；测试台每局关掉自己的那个，按槽位加锁；用户的游戏不碰 |
+| [0007](0007-bench-game-speed.md) | 测试台的检查按 8 倍速跑 | accepted | 截帧垫片放快游戏读的三个时钟；脚本化检查默认 8 倍，手动驾驶 1 倍；六个检查 1/4/8 倍结果一致 |

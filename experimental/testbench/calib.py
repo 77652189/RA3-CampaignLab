@@ -122,9 +122,41 @@ def _minimap_affine():
     return M                                          # 3 x 2: [x y 1] @ M = (u, v)
 
 
-def world_to_minimap(x, y):
-    u, v = np.array([x, y, 1.0]) @ _minimap_affine()
+FULL = (0.0, 0.0, 5000.0, 5000.0)     # the island's playable area when MINIMAP_POINTS were read: the minimap's box
+
+
+def _fit(x, y, border):
+    """Where (x, y) sits on the minimap in terms of the whole map: the minimap draws only the playable area, fitted
+    into its square box with the aspect kept and centred (bench 2026-10-27: the festival's 'west of the canal',
+    3640 x 5000, was drawn 1108..1242 across of the box's 1083..1268, the full height)."""
+    if not border:
+        return x, y
+    x0, y0, x1, y1 = border
+    k = (FULL[2] - FULL[0]) / max(x1 - x0, y1 - y0)
+    return (FULL[0] + FULL[2]) / 2 + (x - (x0 + x1) / 2) * k, (FULL[1] + FULL[3]) / 2 + (y - (y0 + y1) / 2) * k
+
+
+def world_to_minimap(x, y, border=None):
+    """The minimap pixel of world (x, y); border (x0, y0, x1, y1): the playable area now (None: the whole map)."""
+    u, v = np.array([*_fit(x, y, border), 1.0]) @ _minimap_affine()
     return round(float(u)), round(float(v))
+
+
+def minimap_drawn(img):
+    """(width, height) in pixels of what the minimap draws on a frame: its box less the black bars beside or above a
+    playable area narrower or flatter than square. None when the box is all black (no minimap: a cut scene)."""
+    (u0, v0), (u1, v1) = world_to_minimap(FULL[0], FULL[3]), world_to_minimap(FULL[2], FULL[1])
+    a = np.asarray(img.convert('RGB').crop((u0 + 2, v0 + 2, u1 - 2, v1 - 2)), dtype=np.int16).sum(axis=2) > 30
+    if not a.any():
+        return None
+    return int((a.mean(axis=0) > 0.2).sum()) + 4, int((a.mean(axis=1) > 0.2).sum()) + 4
+
+
+def drawn_size(border):
+    """The (width, height) in pixels the minimap draws a playable area at."""
+    x0, y0, x1, y1 = border
+    (u0, v0), (u1, v1) = world_to_minimap(x0, y1, border), world_to_minimap(x1, y0, border)
+    return u1 - u0, v1 - v0
 
 
 # what the start camera looks at, in minimap-click terms: not the InitialCameraPosition waypoint (1250, 2500) --

@@ -1,0 +1,9694 @@
+{
+ "camp_a01_brightonbeach_smith": {
+  "map": "camp_a01_brightonbeach_smith",
+  "size": [
+   4750.0,
+   4750.0
+  ],
+  "human": "Player_1",
+  "start": [
+   2183,
+   1044
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     0,
+     950,
+     2700,
+     3460
+    ],
+    "area_km2": 6.78,
+    "start_norm": [
+     0.81,
+     0.04
+    ],
+    "start_place": "corner",
+    "start_to_centre": 0.79,
+    "enemy_clusters": [
+     {
+      "at": [
+       1932,
+       1135
+      ],
+      "n": 8,
+      "dir": "西",
+      "dist": 267
+     },
+     {
+      "at": [
+       1034,
+       2849
+      ],
+      "n": 7,
+      "dir": "西北",
+      "dist": 2139
+     },
+     {
+      "at": [
+       1891,
+       2765
+      ],
+      "n": 6,
+      "dir": "北",
+      "dist": 1745
+     },
+     {
+      "at": [
+       2494,
+       1572
+      ],
+      "n": 5,
+      "dir": "东北",
+      "dist": 612
+     }
+    ],
+    "spawn_points": 12,
+    "threat_octants": [
+     "北",
+     "西北",
+     "西"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     4750,
+     4750
+    ],
+    "area_km2": 22.56,
+    "start_norm": [
+     0.46,
+     0.22
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.4,
+    "enemy_clusters": [
+     {
+      "at": [
+       869,
+       458
+      ],
+      "n": 9,
+      "dir": "西南",
+      "dist": 1439
+     },
+     {
+      "at": [
+       1932,
+       1135
+      ],
+      "n": 8,
+      "dir": "西",
+      "dist": 267
+     },
+     {
+      "at": [
+       1034,
+       2849
+      ],
+      "n": 7,
+      "dir": "西北",
+      "dist": 2139
+     },
+     {
+      "at": [
+       2562,
+       1579
+      ],
+      "n": 7,
+      "dir": "东北",
+      "dist": 656
+     },
+     {
+      "at": [
+       1891,
+       2765
+      ],
+      "n": 6,
+      "dir": "北",
+      "dist": 1745
+     }
+    ],
+    "spawn_points": 68,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "西北",
+     "西",
+     "西南",
+     "东南"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective 01 - Destroy Soviets",
+    "title": "Eliminate the Soviets in Brighton",
+    "bonus": false,
+    "markers": 4,
+    "on_done": [
+     "PLAYER_RELATES_PLAYER",
+     "UNIT_AFFECT_OBJECT_PANEL_FLAGS"
+    ],
+    "dist": 743,
+    "dir": "西北",
+    "stage": 0,
+    "dist_norm": 0.2,
+    "routes": 4,
+    "path_len": 500
+   },
+   {
+    "name": "Objective 02 - Hold Out",
+    "title": "Hold Out Against the Incoming Soviets",
+    "bonus": false,
+    "markers": 2,
+    "on_done": [],
+    "dist": 2416,
+    "dir": "北",
+    "stage": 0,
+    "dist_norm": 0.66,
+    "routes": 4,
+    "path_len": 2560
+   },
+   {
+    "name": "Objective 03 - Hold Out Again",
+    "title": "Repel the Soviet Navy",
+    "bonus": false,
+    "markers": 2,
+    "on_done": [
+     "HIDE_COUNTDOWN_TIMER"
+    ],
+    "dist": 2416,
+    "dir": "北",
+    "stage": 0,
+    "dist_norm": 0.66,
+    "routes": 4,
+    "path_len": 2560
+   },
+   {
+    "name": "Objective 04 - Finish Off Soviets",
+    "title": "Eliminate the Remaining Soviets",
+    "bonus": false,
+    "markers": 2,
+    "on_done": [],
+    "dist": 2416,
+    "dir": "北",
+    "stage": 0,
+    "dist_norm": 0.66,
+    "routes": 4,
+    "path_len": 2560
+   },
+   {
+    "name": "Bonus Obj 01 - Capture Gun Towers",
+    "title": "Repair the Coastal Guns",
+    "bonus": true,
+    "markers": 4,
+    "on_done": [],
+    "dist": 1360,
+    "dir": "北",
+    "stage": 0,
+    "dist_norm": 0.37,
+    "detour": 2503,
+    "risk_dist": 757
+   },
+   {
+    "name": "Bonus Obj 02 - Capture Hospital",
+    "title": "Capture the Hospital",
+    "bonus": true,
+    "markers": 1,
+    "on_done": [],
+    "dist": 801,
+    "dir": "西南",
+    "stage": 1,
+    "dist_norm": 0.12,
+    "detour": 941,
+    "risk_dist": 756
+   },
+   {
+    "name": "Bonus Obj 03 - Garrison City",
+    "title": "Garrison Four Civilian Structures",
+    "bonus": true,
+    "markers": 4,
+    "on_done": [],
+    "dist": 1261,
+    "dir": "西北",
+    "stage": 0,
+    "dist_norm": 0.34,
+    "detour": 22,
+    "risk_dist": 961
+   },
+   {
+    "name": "Bonus Obj 04 - Train Javelins",
+    "title": "Train 5 Javelin Soldiers",
+    "bonus": true,
+    "markers": 0,
+    "on_done": [
+     "HIDE_COUNTER"
+    ]
+   },
+   {
+    "name": "Bonus Obj 05 - Construct IFVs",
+    "title": "Build 5 Multigunner IFVs",
+    "bonus": true,
+    "markers": 0,
+    "on_done": [
+     "HIDE_COUNTER"
+    ]
+   }
+  ],
+  "moved": []
+ },
+ "camp_a02_cannes_smith": {
+  "map": "camp_a02_cannes_smith",
+  "size": [
+   5250.0,
+   5750.0
+  ],
+  "human": "Player_1",
+  "start": [
+   406,
+   2960
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5250,
+     5750
+    ],
+    "area_km2": 30.19,
+    "start_norm": [
+     0.08,
+     0.51
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.6,
+    "enemy_clusters": [
+     {
+      "at": [
+       4561,
+       897
+      ],
+      "n": 76,
+      "dir": "东南",
+      "dist": 4639
+     },
+     {
+      "at": [
+       3841,
+       2395
+      ],
+      "n": 67,
+      "dir": "东",
+      "dist": 3482
+     },
+     {
+      "at": [
+       1715,
+       1451
+      ],
+      "n": 43,
+      "dir": "东南",
+      "dist": 1998
+     },
+     {
+      "at": [
+       4355,
+       5021
+      ],
+      "n": 20,
+      "dir": "东北",
+      "dist": 4455
+     },
+     {
+      "at": [
+       1831,
+       4958
+      ],
+      "n": 18,
+      "dir": "东北",
+      "dist": 2454
+     },
+     {
+      "at": [
+       3493,
+       4046
+      ],
+      "n": 12,
+      "dir": "东",
+      "dist": 3272
+     }
+    ],
+    "spawn_points": 5,
+    "threat_octants": [
+     "东",
+     "东北",
+     "东南"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective 01 - Rescue Convention Center",
+    "title": "Save the Allied Leaders",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "UNIT_CHANGE_OBJECT_STATUS"
+    ],
+    "dist": 2733,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.35,
+    "routes": 4,
+    "path_len": 3820
+   },
+   {
+    "name": "Objective 02 - Send in Spies",
+    "title": "Get Spies into the Port Buildings",
+    "bonus": false,
+    "markers": 4,
+    "on_done": [],
+    "dist": 2714,
+    "dir": "东南",
+    "stage": 0,
+    "dist_norm": 0.35,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "Objective 03 - Port Authority",
+    "title": "Get Tanya into the Port Authority Building",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [],
+    "dist": 3188,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.41,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "Objective 04 - Destroy Leviathans",
+    "title": "Sink the Soviet Dreadnoughts",
+    "bonus": false,
+    "markers": 4,
+    "on_done": [],
+    "dist": 3306,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.42,
+    "routes": 3,
+    "path_len": 4600
+   },
+   {
+    "name": "Objective 05 - Destroy Soviet Base",
+    "title": "Wipe Out the Soviet Base",
+    "bonus": false,
+    "markers": 0,
+    "on_done": []
+   },
+   {
+    "name": "BonusObjective - Save Vindicators",
+    "title": "Neutralize the Defenses Guarding the Vindicators",
+    "bonus": true,
+    "markers": 1,
+    "on_done": [
+     "ALLOW_DISALLOW_ONE_BUILDING",
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 4624,
+    "dir": "东南",
+    "stage": 0,
+    "dist_norm": 0.59,
+    "detour": 2213,
+    "risk_dist": 97
+   }
+  ],
+  "moved": []
+ },
+ "camp_a03_heidelberg_smith": {
+  "map": "camp_a03_heidelberg_smith",
+  "size": [
+   5000.0,
+   5000.0
+  ],
+  "human": "Player_1",
+  "start": [
+   3536,
+   -133
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "area_km2": 25.0,
+    "start_norm": [
+     0.71,
+     -0.03
+    ],
+    "start_place": "entering",
+    "start_to_centre": 0.8,
+    "enemy_clusters": [
+     {
+      "at": [
+       3674,
+       3673
+      ],
+      "n": 275,
+      "dir": "北",
+      "dist": 3808
+     },
+     {
+      "at": [
+       755,
+       929
+      ],
+      "n": 11,
+      "dir": "西",
+      "dist": 2977
+     },
+     {
+      "at": [
+       1063,
+       2850
+      ],
+      "n": 8,
+      "dir": "西北",
+      "dist": 3875
+     },
+     {
+      "at": [
+       2220,
+       1140
+      ],
+      "n": 7,
+      "dir": "西北",
+      "dist": 1831
+     },
+     {
+      "at": [
+       1381,
+       1593
+      ],
+      "n": 4,
+      "dir": "西北",
+      "dist": 2761
+     },
+     {
+      "at": [
+       2695,
+       1608
+      ],
+      "n": 4,
+      "dir": "西北",
+      "dist": 1934
+     }
+    ],
+    "spawn_points": 4,
+    "threat_octants": [
+     "北",
+     "西北",
+     "西"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective01 - Escort MCVs",
+    "title": "Escort the MCVs",
+    "bonus": false,
+    "markers": 2,
+    "on_done": [
+     "FLASH_JOYPAD_COMMANDBAR_BUTTON",
+     "FLASH_MOUSE_HUD_FIXED_ELEMENT",
+     "LINK_MISSION_OBJECTIVE_TO_WAYPOINT"
+    ],
+    "dist": 234,
+    "dir": "东南",
+    "stage": null
+   },
+   {
+    "name": "Objective02 - Destroy Advanced Power Plants",
+    "title": "Destroy Four Super-Reactors",
+    "bonus": false,
+    "markers": 6,
+    "on_done": [],
+    "dist": 3683,
+    "dir": "北",
+    "stage": 0,
+    "dist_norm": 0.52,
+    "routes": 3,
+    "path_len": 3260
+   },
+   {
+    "name": "Objective03 - Destroy Soviet Base",
+    "title": "Destroy the Soviet Base",
+    "bonus": false,
+    "markers": 7,
+    "on_done": [],
+    "dist": 3789,
+    "dir": "北",
+    "stage": 0,
+    "dist_norm": 0.54,
+    "routes": 2,
+    "path_len": 3320
+   },
+   {
+    "name": "Objective04 - Destroy Soivet Iron Curtain",
+    "title": "Destroy the Iron Curtain",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM"
+    ],
+    "dist": 3641,
+    "dir": "北",
+    "stage": 0,
+    "dist_norm": 0.51,
+    "routes": 3,
+    "path_len": 3240
+   },
+   {
+    "name": "BonusObjective - Save Tanya",
+    "title": "Assist Agent Tanya",
+    "bonus": true,
+    "markers": 2,
+    "on_done": [
+     "MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT"
+    ],
+    "dist": 3038,
+    "dir": "西",
+    "stage": 0,
+    "dist_norm": 0.43,
+    "detour": 5958,
+    "risk_dist": 98
+   },
+   {
+    "name": "Objective05 - Destroy Soivet Headquarters",
+    "title": "Destroy the Soviet Headquarters",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [],
+    "dist": 4565,
+    "dir": "北",
+    "stage": 0,
+    "dist_norm": 0.65,
+    "routes": 1,
+    "path_len": 5280
+   }
+  ],
+  "moved": []
+ },
+ "camp_a04_gibraltar_hayes": {
+  "map": "camp_a04_gibraltar_hayes",
+  "size": [
+   5500.0,
+   5500.0
+  ],
+  "human": "Player_1",
+  "start": [
+   2892,
+   -169
+  ],
+  "stages": [
+   {
+    "border": 4,
+    "rect": [
+     2180,
+     350,
+     5500,
+     5500
+    ],
+    "area_km2": 17.1,
+    "start_norm": [
+     0.21,
+     -0.1
+    ],
+    "start_place": "entering",
+    "start_to_centre": 0.94,
+    "enemy_clusters": [
+     {
+      "at": [
+       3860,
+       4372
+      ],
+      "n": 245,
+      "dir": "北",
+      "dist": 4643
+     }
+    ],
+    "spawn_points": 6,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北"
+    ]
+   },
+   {
+    "border": 5,
+    "rect": [
+     280,
+     350,
+     5500,
+     3670
+    ],
+    "area_km2": 17.33,
+    "start_norm": [
+     0.5,
+     -0.16
+    ],
+    "start_place": "entering",
+    "start_to_centre": 0.93,
+    "enemy_clusters": [
+     {
+      "at": [
+       4290,
+       2718
+      ],
+      "n": 51,
+      "dir": "东北",
+      "dist": 3207
+     },
+     {
+      "at": [
+       1250,
+       1394
+      ],
+      "n": 14,
+      "dir": "西北",
+      "dist": 2267
+     },
+     {
+      "at": [
+       1882,
+       1994
+      ],
+      "n": 7,
+      "dir": "西北",
+      "dist": 2387
+     }
+    ],
+    "spawn_points": 6,
+    "threat_octants": [
+     "东",
+     "东北",
+     "西北"
+    ]
+   },
+   {
+    "border": 1,
+    "rect": [
+     280,
+     350,
+     5500,
+     5500
+    ],
+    "area_km2": 26.88,
+    "start_norm": [
+     0.5,
+     -0.1
+    ],
+    "start_place": "entering",
+    "start_to_centre": 0.85,
+    "enemy_clusters": [
+     {
+      "at": [
+       3860,
+       4372
+      ],
+      "n": 245,
+      "dir": "北",
+      "dist": 4643
+     },
+     {
+      "at": [
+       1205,
+       4581
+      ],
+      "n": 130,
+      "dir": "北",
+      "dist": 5041
+     },
+     {
+      "at": [
+       1250,
+       1394
+      ],
+      "n": 14,
+      "dir": "西北",
+      "dist": 2267
+     },
+     {
+      "at": [
+       1882,
+       1994
+      ],
+      "n": 7,
+      "dir": "西北",
+      "dist": 2387
+     }
+    ],
+    "spawn_points": 6,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "西北"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "OBJECTIVE 2",
+    "title": "Recover the Assault Destroyers",
+    "bonus": false,
+    "markers": 4,
+    "on_done": [
+     "ALLOW_DISALLOW_ONE_BUILDING",
+     "TEAM_AFFECT_OBJECT_PANEL_FLAGS"
+    ],
+    "dist": 2378,
+    "dir": "西北",
+    "stage": 1,
+    "dist_norm": 0.38,
+    "routes": 1,
+    "path_len": 3020
+   },
+   {
+    "name": "OBJECTIVE 3",
+    "title": "Destroy the Imperial Base",
+    "bonus": false,
+    "markers": 5,
+    "on_done": [],
+    "dist": 5028,
+    "dir": "北",
+    "stage": 2,
+    "dist_norm": 0.69,
+    "routes": 3,
+    "path_len": 6820
+   },
+   {
+    "name": "Objective1a",
+    "title": "Destroy the Hangars",
+    "bonus": false,
+    "markers": 4,
+    "on_done": [],
+    "dist": 5079,
+    "dir": "北",
+    "stage": 0,
+    "dist_norm": 0.83,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "Bonus Objective 1a",
+    "title": "Eliminate the King Oni",
+    "bonus": true,
+    "markers": 1,
+    "on_done": [],
+    "dist": 4613,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.75,
+    "detour": 617,
+    "risk_dist": 872
+   },
+   {
+    "name": "Bonus Objective 2",
+    "title": "Set Up an Expansion Base in the Southwest",
+    "bonus": true,
+    "markers": 1,
+    "on_done": [],
+    "dist": 894,
+    "dir": "西北",
+    "stage": 0,
+    "dist_norm": 0.15,
+    "detour": 28,
+    "risk_dist": 1399
+   }
+  ],
+  "moved": []
+ },
+ "camp_a05_northsea_white": {
+  "map": "camp_a05_northsea_white",
+  "size": [
+   6000.0,
+   6000.0
+  ],
+  "human": "Player_1",
+  "start": [
+   1631,
+   153
+  ],
+  "stages": [
+   {
+    "border": 4,
+    "rect": [
+     850,
+     0,
+     2790,
+     1840
+    ],
+    "area_km2": 3.57,
+    "start_norm": [
+     0.4,
+     0.08
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.61,
+    "enemy_clusters": [],
+    "spawn_points": 27,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "西北",
+     "西",
+     "西南",
+     "东南"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     6000,
+     6000
+    ],
+    "area_km2": 36.0,
+    "start_norm": [
+     0.27,
+     0.03
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.74,
+    "enemy_clusters": [
+     {
+      "at": [
+       4159,
+       5200
+      ],
+      "n": 88,
+      "dir": "东北",
+      "dist": 5645
+     },
+     {
+      "at": [
+       1728,
+       4639
+      ],
+      "n": 45,
+      "dir": "北",
+      "dist": 4488
+     },
+     {
+      "at": [
+       4294,
+       1120
+      ],
+      "n": 38,
+      "dir": "东",
+      "dist": 2833
+     },
+     {
+      "at": [
+       1011,
+       2850
+      ],
+      "n": 27,
+      "dir": "北",
+      "dist": 2768
+     },
+     {
+      "at": [
+       3412,
+       3344
+      ],
+      "n": 19,
+      "dir": "东北",
+      "dist": 3654
+     },
+     {
+      "at": [
+       4878,
+       2973
+      ],
+      "n": 10,
+      "dir": "东北",
+      "dist": 4301
+     },
+     {
+      "at": [
+       5317,
+       5141
+      ],
+      "n": 4,
+      "dir": "东北",
+      "dist": 6202
+     }
+    ],
+    "spawn_points": 40,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "西北",
+     "西",
+     "西南",
+     "东南"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "A05-Obj01-ProtectShip",
+    "title": "Protect the Salvage Ship",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "MOVE_TEAM_TO",
+     "SKIRMISH_AI_SET_FAVORED_ENEMY",
+     "SKIRMISH_AI_TRANSFER_ALL",
+     "TEAM_KILL"
+    ],
+    "dist": 579,
+    "dir": "北",
+    "stage": 0,
+    "dist_norm": 0.22,
+    "routes": null,
+    "path_len": null
+   },
+   {
+    "name": "A05-Obj02-DestroyRadarShips",
+    "title": "Destroy the First Radar Ship",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [],
+    "dist": 2636,
+    "dir": "北",
+    "stage": 1,
+    "dist_norm": 0.31,
+    "routes": null,
+    "path_len": null
+   },
+   {
+    "name": "A05-Obj03-OverloadReactors",
+    "title": "Capture Both Fortress Power Cores",
+    "bonus": false,
+    "markers": 4,
+    "on_done": [],
+    "dist": 4427,
+    "dir": "东北",
+    "stage": 1,
+    "dist_norm": 0.52,
+    "routes": null,
+    "path_len": null
+   },
+   {
+    "name": "A05-BonusObj02A-DestroyPowerGenerators",
+    "title": "Destroy the Generators",
+    "bonus": true,
+    "markers": 3,
+    "on_done": [],
+    "dist": 2846,
+    "dir": "北",
+    "stage": 1,
+    "dist_norm": 0.34,
+    "detour": 502,
+    "risk_dist": 100
+   },
+   {
+    "name": "A05-BonusObj02B-CapturePowerPlants",
+    "title": "Capture the Generators",
+    "bonus": true,
+    "markers": 4,
+    "on_done": [],
+    "dist": 2651,
+    "dir": "东",
+    "stage": 1,
+    "dist_norm": 0.31,
+    "detour": 9,
+    "risk_dist": 208
+   },
+   {
+    "name": "A05-Obj02-DestroyRadarShip2",
+    "title": "Destroy the Second Radar Ship",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 3403,
+    "dir": "东",
+    "stage": 1,
+    "dist_norm": 0.4,
+    "routes": null,
+    "path_len": null
+   }
+  ],
+  "moved": [
+   {
+    "border": 2,
+    "rect": [
+     20,
+     1850,
+     2070,
+     3780
+    ]
+   },
+   {
+    "border": 3,
+    "rect": [
+     2560,
+     0,
+     5730,
+     2490
+    ]
+   }
+  ]
+ },
+ "camp_a06_mountrushmore_white": {
+  "map": "camp_a06_mountrushmore_white",
+  "size": [
+   5000.0,
+   5000.0
+  ],
+  "human": "Player_1",
+  "start": [
+   1276,
+   241
+  ],
+  "stages": [
+   {
+    "border": 2,
+    "rect": [
+     410,
+     0,
+     2300,
+     2030
+    ],
+    "area_km2": 3.84,
+    "start_norm": [
+     0.46,
+     0.12
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.54,
+    "enemy_clusters": [
+     {
+      "at": [
+       1637,
+       1206
+      ],
+      "n": 10,
+      "dir": "北",
+      "dist": 1030
+     },
+     {
+      "at": [
+       863,
+       1517
+      ],
+      "n": 9,
+      "dir": "北",
+      "dist": 1341
+     }
+    ],
+    "spawn_points": 4,
+    "threat_octants": [
+     "东北",
+     "北",
+     "西北"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "area_km2": 25.0,
+    "start_norm": [
+     0.26,
+     0.05
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.73,
+    "enemy_clusters": [
+     {
+      "at": [
+       1754,
+       3282
+      ],
+      "n": 69,
+      "dir": "北",
+      "dist": 3079
+     },
+     {
+      "at": [
+       1637,
+       1206
+      ],
+      "n": 10,
+      "dir": "北",
+      "dist": 1030
+     },
+     {
+      "at": [
+       863,
+       1517
+      ],
+      "n": 9,
+      "dir": "北",
+      "dist": 1341
+     }
+    ],
+    "spawn_points": 13,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "西北"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective01-DestroyComTower",
+    "title": "Destroy the Com Tower",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "NAMED_KILL",
+     "PATH_MUSIC_PLAY_EVENT",
+     "SET_MISSION_HOT_SPOT_VISIBILITY"
+    ],
+    "dist": 1088,
+    "dir": "北",
+    "stage": 0,
+    "dist_norm": 0.39,
+    "routes": 3,
+    "path_len": 1400
+   },
+   {
+    "name": "Objective02-DestroyFiringBase",
+    "title": "Destroy the Rushmore Firebase",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "SET_MISSION_HOT_SPOT_VISIBILITY"
+    ],
+    "dist": 3005,
+    "dir": "北",
+    "stage": 1,
+    "dist_norm": 0.42,
+    "routes": 3,
+    "path_len": 3880
+   },
+   {
+    "name": "Objective03-KillPresident",
+    "title": "Eliminate the President of the United States",
+    "bonus": false,
+    "markers": 3,
+    "on_done": [
+     "UNIT_AFFECT_OBJECT_PANEL_FLAGS"
+    ],
+    "dist": 2647,
+    "dir": "东北",
+    "stage": 1,
+    "dist_norm": 0.37,
+    "routes": 3,
+    "path_len": 3620
+   },
+   {
+    "name": "BonObjective01-CaptureBarracks",
+    "title": "Capture the Boot Camp",
+    "bonus": true,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_HOT_SPOT_TO_OBJECT",
+     "SET_MISSION_HOT_SPOT_VISIBILITY"
+    ],
+    "dist": 1334,
+    "dir": "西北",
+    "stage": 0,
+    "dist_norm": 0.48,
+    "detour": 1182,
+    "risk_dist": 131
+   },
+   {
+    "name": "BonObjective02-CaptureThomasJefferson",
+    "title": "Capture the Jefferson Head Control Center",
+    "bonus": true,
+    "markers": 2,
+    "on_done": [
+     "INCREMENT_COUNTER"
+    ],
+    "dist": 3144,
+    "dir": "东",
+    "stage": 1,
+    "dist_norm": 0.44,
+    "detour": 4410,
+    "risk_dist": 2943
+   },
+   {
+    "name": "BonObjective03-CaptureAbeLincoln",
+    "title": "Capture the Lincoln Head Control Center",
+    "bonus": true,
+    "markers": 2,
+    "on_done": [
+     "INCREMENT_COUNTER"
+    ],
+    "dist": 4717,
+    "dir": "东北",
+    "stage": 1,
+    "dist_norm": 0.67,
+    "detour": 854,
+    "risk_dist": 2800
+   },
+   {
+    "name": "BonObjective04-CaptureGeorgeWashington",
+    "title": "Capture the Washington Head Control Center",
+    "bonus": true,
+    "markers": 2,
+    "on_done": [
+     "INCREMENT_COUNTER"
+    ],
+    "dist": 4267,
+    "dir": "北",
+    "stage": 1,
+    "dist_norm": 0.6,
+    "detour": 3540,
+    "risk_dist": 1682
+   },
+   {
+    "name": "BonusObjective05-DestroyPowerplant",
+    "title": "Destroy the Power Plant",
+    "bonus": true,
+    "markers": 1,
+    "on_done": [
+     "PLAYER_SET_BASE_POWER"
+    ],
+    "dist": 1400,
+    "dir": "北",
+    "stage": 0,
+    "dist_norm": 0.5,
+    "detour": 1182,
+    "risk_dist": 59
+   }
+  ],
+  "moved": []
+ },
+ "camp_a07_tokyoharbor_davis": {
+  "map": "camp_a07_tokyoharbor_davis",
+  "size": [
+   5000.0,
+   4500.0
+  ],
+  "human": "Player_1",
+  "start": [
+   250,
+   1255
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     0,
+     0,
+     3830,
+     2030
+    ],
+    "area_km2": 7.77,
+    "start_norm": [
+     0.07,
+     0.62
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.64,
+    "enemy_clusters": [
+     {
+      "at": [
+       2393,
+       1868
+      ],
+      "n": 7,
+      "dir": "东",
+      "dist": 2229
+     },
+     {
+      "at": [
+       3499,
+       1409
+      ],
+      "n": 6,
+      "dir": "东",
+      "dist": 3253
+     }
+    ],
+    "spawn_points": 38,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "东南"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     4500
+    ],
+    "area_km2": 22.5,
+    "start_norm": [
+     0.05,
+     0.28
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.71,
+    "enemy_clusters": [
+     {
+      "at": [
+       2500,
+       4054
+      ],
+      "n": 75,
+      "dir": "东北",
+      "dist": 3591
+     },
+     {
+      "at": [
+       666,
+       3919
+      ],
+      "n": 38,
+      "dir": "北",
+      "dist": 2696
+     },
+     {
+      "at": [
+       1456,
+       2734
+      ],
+      "n": 32,
+      "dir": "东北",
+      "dist": 1909
+     },
+     {
+      "at": [
+       2568,
+       2098
+      ],
+      "n": 17,
+      "dir": "东",
+      "dist": 2467
+     },
+     {
+      "at": [
+       3476,
+       2913
+      ],
+      "n": 16,
+      "dir": "东北",
+      "dist": 3628
+     },
+     {
+      "at": [
+       3939,
+       1098
+      ],
+      "n": 12,
+      "dir": "东",
+      "dist": 3693
+     },
+     {
+      "at": [
+       4751,
+       1818
+      ],
+      "n": 11,
+      "dir": "东",
+      "dist": 4536
+     }
+    ],
+    "spawn_points": 44,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "东南"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "A07_Objective_1",
+    "title": "Hold out for Soviet Reinforcements",
+    "bonus": false,
+    "markers": 0,
+    "on_done": []
+   },
+   {
+    "name": "A07_Objective_2",
+    "title": "Transport an MCV Across the Harbor",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT",
+     "PLAYER_GIVE_MONEY",
+     "PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT"
+    ],
+    "dist": 5225,
+    "dir": "东北",
+    "stage": 1,
+    "dist_norm": 0.78,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "A07_Objective_3",
+    "title": "Take Out the Imperial Military",
+    "bonus": false,
+    "markers": 15,
+    "on_done": [],
+    "dist": 2682,
+    "dir": "东北",
+    "stage": 1,
+    "dist_norm": 0.4,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "A07_Objective_4",
+    "title": "Sink Prince Tatsu's Fleet",
+    "bonus": false,
+    "markers": 0,
+    "on_done": []
+   },
+   {
+    "name": "A07_Objective_B1",
+    "title": "Destroy the Imperial Blockade",
+    "bonus": true,
+    "markers": 10,
+    "on_done": [
+     "HIDE_COUNTER"
+    ],
+    "dist": 2990,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.69,
+    "detour": 5,
+    "risk_dist": 439
+   }
+  ],
+  "moved": []
+ },
+ "camp_a08_havana_rao": {
+  "map": "camp_a08_havana_rao",
+  "size": [
+   6000.0,
+   6000.0
+  ],
+  "human": "Player_1",
+  "start": [
+   920,
+   999
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     210,
+     500,
+     2950,
+     4470
+    ],
+    "area_km2": 10.88,
+    "start_norm": [
+     0.26,
+     0.13
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.63,
+    "enemy_clusters": [
+     {
+      "at": [
+       2273,
+       2560
+      ],
+      "n": 75,
+      "dir": "东北",
+      "dist": 2066
+     }
+    ],
+    "spawn_points": 21,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     6000,
+     6000
+    ],
+    "area_km2": 36.0,
+    "start_norm": [
+     0.15,
+     0.17
+    ],
+    "start_place": "corner",
+    "start_to_centre": 0.68,
+    "enemy_clusters": [
+     {
+      "at": [
+       4195,
+       3512
+      ],
+      "n": 76,
+      "dir": "东北",
+      "dist": 4128
+     },
+     {
+      "at": [
+       2273,
+       2560
+      ],
+      "n": 75,
+      "dir": "东北",
+      "dist": 2066
+     },
+     {
+      "at": [
+       5075,
+       466
+      ],
+      "n": 11,
+      "dir": "东",
+      "dist": 4189
+     },
+     {
+      "at": [
+       3111,
+       510
+      ],
+      "n": 7,
+      "dir": "东",
+      "dist": 2245
+     },
+     {
+      "at": [
+       4870,
+       4933
+      ],
+      "n": 6,
+      "dir": "东北",
+      "dist": 5575
+     },
+     {
+      "at": [
+       688,
+       4794
+      ],
+      "n": 5,
+      "dir": "北",
+      "dist": 3803
+     }
+    ],
+    "spawn_points": 29,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "A08_Objective_1",
+    "title": "Investigate Havana for Soviet Activity",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "MARK_MISSION_OBJECTIVE_COMPLETED"
+    ],
+    "dist": 1886,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.39,
+    "routes": 2,
+    "path_len": 2360
+   },
+   {
+    "name": "A08_Objective_2",
+    "title": "Locate a Soviet Base",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "MARK_MISSION_OBJECTIVE_COMPLETED"
+    ],
+    "dist": 2686,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.56,
+    "routes": 2,
+    "path_len": 3380
+   },
+   {
+    "name": "A08_Objective_3",
+    "title": "Destroy the Soviet Base",
+    "bonus": false,
+    "markers": 3,
+    "on_done": [],
+    "dist": 2785,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.58,
+    "routes": 2,
+    "path_len": 3440
+   },
+   {
+    "name": "A08_Objective_4",
+    "title": "Destroy the Kirov Launch Facilities",
+    "bonus": false,
+    "markers": 8,
+    "on_done": [],
+    "dist": 3231,
+    "dir": "东北",
+    "stage": 1,
+    "dist_norm": 0.38,
+    "routes": 2,
+    "path_len": 4080
+   },
+   {
+    "name": "A08_Objective_5",
+    "title": "Do Not Let a Kirov Leave Havana",
+    "bonus": false,
+    "markers": 0,
+    "on_done": []
+   },
+   {
+    "name": "A08_BonusObjective_1",
+    "title": "Recruit a Force of 10 Soviets",
+    "bonus": true,
+    "markers": 1,
+    "on_done": [],
+    "dist": 1333,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.28,
+    "detour": 0,
+    "risk_dist": 770
+   }
+  ],
+  "moved": []
+ },
+ "camp_a09_leningrad_rao": {
+  "map": "camp_a09_leningrad_rao",
+  "size": [
+   5750.0,
+   5250.0
+  ],
+  "human": "Player_1",
+  "start": [
+   1164,
+   388
+  ],
+  "stages": [
+   {
+    "border": 2,
+    "rect": [
+     0,
+     0,
+     3010,
+     2620
+    ],
+    "area_km2": 7.89,
+    "start_norm": [
+     0.39,
+     0.15
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.52,
+    "enemy_clusters": [
+     {
+      "at": [
+       1448,
+       1066
+      ],
+      "n": 29,
+      "dir": "东北",
+      "dist": 734
+     }
+    ],
+    "spawn_points": 30,
+    "threat_octants": [
+     "东北",
+     "北"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5750,
+     5250
+    ],
+    "area_km2": 30.19,
+    "start_norm": [
+     0.2,
+     0.07
+    ],
+    "start_place": "corner",
+    "start_to_centre": 0.73,
+    "enemy_clusters": [
+     {
+      "at": [
+       1015,
+       4157
+      ],
+      "n": 166,
+      "dir": "北",
+      "dist": 3771
+     },
+     {
+      "at": [
+       1448,
+       1066
+      ],
+      "n": 29,
+      "dir": "东北",
+      "dist": 734
+     },
+     {
+      "at": [
+       2832,
+       3162
+      ],
+      "n": 21,
+      "dir": "东北",
+      "dist": 3237
+     },
+     {
+      "at": [
+       4218,
+       991
+      ],
+      "n": 19,
+      "dir": "东",
+      "dist": 3113
+     },
+     {
+      "at": [
+       4715,
+       4668
+      ],
+      "n": 18,
+      "dir": "东北",
+      "dist": 5561
+     },
+     {
+      "at": [
+       5110,
+       2824
+      ],
+      "n": 16,
+      "dir": "东北",
+      "dist": 4637
+     }
+    ],
+    "spawn_points": 32,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "A09_Objective_1",
+    "title": "Clear the Plateau of Soviets",
+    "bonus": false,
+    "markers": 0,
+    "on_done": []
+   },
+   {
+    "name": "A09_Objective_2",
+    "title": "Destroy All Seven Iron Curtains",
+    "bonus": false,
+    "markers": 7,
+    "on_done": [
+     "HIDE_COUNTER",
+     "NAMED_DELETE"
+    ],
+    "dist": 3710,
+    "dir": "东北",
+    "stage": 1,
+    "dist_norm": 0.48,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "A09_Objective_3",
+    "title": "Destroy the Premier's Fortress",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "HIDE_COUNTDOWN_TIMER"
+    ],
+    "dist": 3282,
+    "dir": "东北",
+    "stage": 1,
+    "dist_norm": 0.42,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "A09_BonusObjective_1",
+    "title": "Destroy the Vacuum Imploder",
+    "bonus": true,
+    "markers": 0,
+    "on_done": []
+   },
+   {
+    "name": "A09_Objective_0a",
+    "title": "Unpack MCV 1 at Chrono Drop Zone 1",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "DECREMENT_COUNTER"
+    ],
+    "dist": 1036,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.26,
+    "routes": 4,
+    "path_len": 1460
+   },
+   {
+    "name": "A09_Objective_0b",
+    "title": "Unpack MCV 2 at Chrono Drop Zone 2",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "DECREMENT_COUNTER"
+    ],
+    "dist": 1404,
+    "dir": "北",
+    "stage": 0,
+    "dist_norm": 0.35,
+    "routes": 4,
+    "path_len": 1440
+   }
+  ],
+  "moved": []
+ },
+ "camp_j01_russianvillage_white": {
+  "map": "camp_j01_russianvillage_white",
+  "size": [
+   4500.0,
+   4500.0
+  ],
+  "human": "Player_1",
+  "start": [
+   551,
+   2408
+  ],
+  "stages": [
+   {
+    "border": 2,
+    "rect": [
+     0,
+     0,
+     3890,
+     2050
+    ],
+    "area_km2": 7.97,
+    "start_norm": [
+     0.14,
+     1.17
+    ],
+    "start_place": "entering",
+    "start_to_centre": 1.08,
+    "enemy_clusters": [
+     {
+      "at": [
+       3029,
+       1442
+      ],
+      "n": 34,
+      "dir": "东",
+      "dist": 2660
+     },
+     {
+      "at": [
+       678,
+       909
+      ],
+      "n": 17,
+      "dir": "南",
+      "dist": 1504
+     },
+     {
+      "at": [
+       2266,
+       512
+      ],
+      "n": 5,
+      "dir": "东南",
+      "dist": 2556
+     }
+    ],
+    "spawn_points": 13,
+    "threat_octants": [
+     "东",
+     "东北",
+     "西",
+     "西南",
+     "南",
+     "东南"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     4500,
+     4500
+    ],
+    "area_km2": 20.25,
+    "start_norm": [
+     0.12,
+     0.54
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.54,
+    "enemy_clusters": [
+     {
+      "at": [
+       3108,
+       1608
+      ],
+      "n": 45,
+      "dir": "东",
+      "dist": 2679
+     },
+     {
+      "at": [
+       3080,
+       3070
+      ],
+      "n": 45,
+      "dir": "东",
+      "dist": 2615
+     },
+     {
+      "at": [
+       678,
+       909
+      ],
+      "n": 17,
+      "dir": "南",
+      "dist": 1504
+     },
+     {
+      "at": [
+       2266,
+       512
+      ],
+      "n": 5,
+      "dir": "东南",
+      "dist": 2556
+     }
+    ],
+    "spawn_points": 45,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "西北",
+     "西",
+     "西南",
+     "南",
+     "东南"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Obj01-DestroyCoastalGuns",
+    "title": "Destroy the Reactors",
+    "bonus": false,
+    "markers": 2,
+    "on_done": [],
+    "dist": 1482,
+    "dir": "南",
+    "stage": 0,
+    "dist_norm": 0.34,
+    "routes": null,
+    "path_len": null
+   },
+   {
+    "name": "Obj02-DestroyStatues",
+    "title": "Destroy the Statues around the Square",
+    "bonus": false,
+    "markers": 4,
+    "on_done": [
+     "PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM"
+    ],
+    "dist": 2654,
+    "dir": "东南",
+    "stage": 0,
+    "dist_norm": 0.6,
+    "routes": null,
+    "path_len": null
+   },
+   {
+    "name": "Obj03-DestroyShips",
+    "title": "Destroy the Soviet Navy at Harbor",
+    "bonus": false,
+    "markers": 9,
+    "on_done": [
+     "PLAYER_SPECIAL_POWER_AVAILABILITY"
+    ],
+    "dist": 1945,
+    "dir": "东北",
+    "stage": 1,
+    "dist_norm": 0.31,
+    "routes": null,
+    "path_len": null
+   },
+   {
+    "name": "BonusObj01-CaptureBarracks",
+    "title": "Destroy All of the Barracks",
+    "bonus": true,
+    "markers": 4,
+    "on_done": [],
+    "dist": 2033,
+    "dir": "东南",
+    "stage": 0,
+    "dist_norm": 0.46,
+    "detour": 341,
+    "risk_dist": 644
+   },
+   {
+    "name": "BonusObj08-BringDownTeslaCoils",
+    "title": "Bring Down the Tesla Coils",
+    "bonus": false,
+    "markers": 7,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT",
+     "PLAYER_SET_BASE_POWER"
+    ],
+    "dist": 2230,
+    "dir": "东",
+    "stage": 1,
+    "dist_norm": 0.35,
+    "routes": null,
+    "path_len": null
+   },
+   {
+    "name": "BonusObj09-CaptureHospital",
+    "title": "Capture the Hospital",
+    "bonus": true,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT",
+     "SET_MISSION_HOT_SPOT_VISIBILITY"
+    ],
+    "dist": 3008,
+    "dir": "东南",
+    "stage": 0,
+    "dist_norm": 0.68,
+    "detour": 807,
+    "risk_dist": 624
+   }
+  ],
+  "moved": [
+   {
+    "border": 1,
+    "rect": [
+     0,
+     0,
+     1500,
+     1800
+    ]
+   }
+  ]
+ },
+ "camp_j02_stalingrad_stewart": {
+  "map": "camp_j02_stalingrad_stewart",
+  "size": [
+   4000.0,
+   5000.0
+  ],
+  "human": "Player_1",
+  "start": [
+   483,
+   329
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     4000,
+     5000
+    ],
+    "area_km2": 20.0,
+    "start_norm": [
+     0.12,
+     0.07
+    ],
+    "start_place": "corner",
+    "start_to_centre": 0.82,
+    "enemy_clusters": [
+     {
+      "at": [
+       552,
+       4301
+      ],
+      "n": 33,
+      "dir": "北",
+      "dist": 3972
+     },
+     {
+      "at": [
+       1287,
+       621
+      ],
+      "n": 8,
+      "dir": "东",
+      "dist": 856
+     },
+     {
+      "at": [
+       2449,
+       1078
+      ],
+      "n": 6,
+      "dir": "东",
+      "dist": 2104
+     },
+     {
+      "at": [
+       3693,
+       1295
+      ],
+      "n": 6,
+      "dir": "东",
+      "dist": 3352
+     },
+     {
+      "at": [
+       1310,
+       151
+      ],
+      "n": 4,
+      "dir": "东",
+      "dist": 846
+     }
+    ],
+    "spawn_points": 20,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "西北",
+     "西",
+     "西南",
+     "东南"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective_1_Beachhead",
+    "title": "Establish a Base",
+    "bonus": false,
+    "markers": 2,
+    "on_done": [],
+    "dist": 2715,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.42,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "Objective_2_Statue",
+    "title": "Destroy the Mother Russia Statue",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [],
+    "dist": 3929,
+    "dir": "北",
+    "stage": 0,
+    "dist_norm": 0.61,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "Objective_3_Transports",
+    "title": "Defend the Transports",
+    "bonus": false,
+    "markers": 7,
+    "on_done": [],
+    "dist": 2566,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.4,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "Bonus_Kill_Monuments",
+    "title": "Destroy All Soviet Monuments",
+    "bonus": true,
+    "markers": 8,
+    "on_done": [],
+    "dist": 3795,
+    "dir": "北",
+    "stage": 0,
+    "dist_norm": 0.59,
+    "detour": 1366,
+    "risk_dist": 1416
+   }
+  ],
+  "moved": []
+ },
+ "camp_j03_odessa_stewart": {
+  "map": "camp_j03_odessa_stewart",
+  "size": [
+   5000.0,
+   6000.0
+  ],
+  "human": "Player_1",
+  "start": [
+   4583,
+   1665
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     0,
+     0,
+     5000,
+     2360
+    ],
+    "area_km2": 11.8,
+    "start_norm": [
+     0.92,
+     0.71
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.66,
+    "enemy_clusters": [
+     {
+      "at": [
+       1038,
+       1875
+      ],
+      "n": 6,
+      "dir": "西",
+      "dist": 3551
+     },
+     {
+      "at": [
+       4292,
+       957
+      ],
+      "n": 4,
+      "dir": "南",
+      "dist": 766
+     },
+     {
+      "at": [
+       2277,
+       1929
+      ],
+      "n": 4,
+      "dir": "西",
+      "dist": 2321
+     }
+    ],
+    "spawn_points": 9,
+    "threat_octants": [
+     "东北",
+     "西北",
+     "西",
+     "西南"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     6000
+    ],
+    "area_km2": 30.0,
+    "start_norm": [
+     0.92,
+     0.28
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.67,
+    "enemy_clusters": [
+     {
+      "at": [
+       3863,
+       4987
+      ],
+      "n": 126,
+      "dir": "北",
+      "dist": 3399
+     },
+     {
+      "at": [
+       677,
+       4770
+      ],
+      "n": 26,
+      "dir": "西北",
+      "dist": 4989
+     },
+     {
+      "at": [
+       1532,
+       2858
+      ],
+      "n": 26,
+      "dir": "西",
+      "dist": 3276
+     },
+     {
+      "at": [
+       4145,
+       2861
+      ],
+      "n": 26,
+      "dir": "北",
+      "dist": 1274
+     },
+     {
+      "at": [
+       2582,
+       4149
+      ],
+      "n": 22,
+      "dir": "西北",
+      "dist": 3190
+     },
+     {
+      "at": [
+       1038,
+       1875
+      ],
+      "n": 6,
+      "dir": "西",
+      "dist": 3551
+     },
+     {
+      "at": [
+       4292,
+       957
+      ],
+      "n": 4,
+      "dir": "南",
+      "dist": 766
+     },
+     {
+      "at": [
+       2277,
+       1929
+      ],
+      "n": 4,
+      "dir": "西",
+      "dist": 2321
+     }
+    ],
+    "spawn_points": 39,
+    "threat_octants": [
+     "东北",
+     "北",
+     "西北",
+     "西",
+     "西南"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective_1_Escort_Parts",
+    "title": "Escort the Transports",
+    "bonus": false,
+    "markers": 0,
+    "on_done": []
+   },
+   {
+    "name": "Bonus_Culture_Killer",
+    "title": "Destroy the Landmarks",
+    "bonus": true,
+    "markers": 3,
+    "on_done": [],
+    "dist": 3199,
+    "dir": "西北",
+    "stage": 1,
+    "dist_norm": 0.41,
+    "detour": 618,
+    "risk_dist": 707
+   },
+   {
+    "name": "Objective_2_Destroy_Artillery",
+    "title": "Destroy the Artillery Batteries",
+    "bonus": false,
+    "markers": 4,
+    "on_done": [],
+    "dist": 3117,
+    "dir": "西北",
+    "stage": 1,
+    "dist_norm": 0.4,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "Objective_3_Destroy_Krukov",
+    "title": "Destroy the Soviet Bases",
+    "bonus": false,
+    "markers": 6,
+    "on_done": [],
+    "dist": 3507,
+    "dir": "北",
+    "stage": 1,
+    "dist_norm": 0.45,
+    "routes": 0,
+    "path_len": null
+   }
+  ],
+  "moved": []
+ },
+ "camp_j04_pearlharbor_davis": {
+  "map": "camp_j04_pearlharbor_davis",
+  "size": [
+   5500.0,
+   5500.0
+  ],
+  "human": "Player_1",
+  "start": [
+   952,
+   665
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5500,
+     5500
+    ],
+    "area_km2": 30.25,
+    "start_norm": [
+     0.17,
+     0.12
+    ],
+    "start_place": "corner",
+    "start_to_centre": 0.71,
+    "enemy_clusters": [
+     {
+      "at": [
+       4483,
+       4345
+      ],
+      "n": 84,
+      "dir": "东北",
+      "dist": 5100
+     }
+    ],
+    "spawn_points": 12,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "西北"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "J04_Objective_2",
+    "title": "Deploy Base Defenses Around the Harbor",
+    "bonus": false,
+    "markers": 0,
+    "on_done": []
+   },
+   {
+    "name": "J04_Objective_3",
+    "title": "Defend Pearl Harbor",
+    "bonus": false,
+    "markers": 5,
+    "on_done": [
+     "HIDE_COUNTDOWN_TIMER",
+     "HIDE_COUNTER",
+     "UNIT_AFFECT_OBJECT_PANEL_FLAGS",
+     "UNIT_CHANGE_OBJECT_STATUS"
+    ],
+    "dist": 2189,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.28,
+    "routes": 3,
+    "path_len": 3080
+   },
+   {
+    "name": "J04_Objective_4",
+    "title": "Defend the Harbors",
+    "bonus": false,
+    "markers": 0,
+    "on_done": [
+     "HIDE_COUNTDOWN_TIMER"
+    ]
+   },
+   {
+    "name": "J04_Objective_5",
+    "title": "Destroy the Allies' Assault Base",
+    "bonus": false,
+    "markers": 0,
+    "on_done": []
+   },
+   {
+    "name": "J04_Objective_B1",
+    "title": "Defend the Long Range Radars",
+    "bonus": true,
+    "markers": 3,
+    "on_done": [],
+    "dist": 2562,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.33,
+    "detour": 245,
+    "risk_dist": 2550
+   },
+   {
+    "name": "J04_Objective_B3",
+    "title": "Capture the Long Range Radar Towers",
+    "bonus": true,
+    "markers": 3,
+    "on_done": [
+     "PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT"
+    ],
+    "dist": 2562,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.33,
+    "detour": 245,
+    "risk_dist": 2550
+   }
+  ],
+  "moved": []
+ },
+ "camp_j05_deepocean_davis": {
+  "map": "camp_j05_deepocean_davis",
+  "size": [
+   6000.0,
+   6000.0
+  ],
+  "human": "Player_1",
+  "start": [
+   2024,
+   756
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     1180,
+     0,
+     5170,
+     2260
+    ],
+    "area_km2": 9.02,
+    "start_norm": [
+     0.21,
+     0.33
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.47,
+    "enemy_clusters": [
+     {
+      "at": [
+       3864,
+       1370
+      ],
+      "n": 6,
+      "dir": "东",
+      "dist": 1939
+     }
+    ],
+    "spawn_points": 20,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "西北",
+     "西南",
+     "南",
+     "东南"
+    ]
+   },
+   {
+    "border": 2,
+    "rect": [
+     0,
+     1340,
+     4730,
+     6000
+    ],
+    "area_km2": 22.04,
+    "start_norm": [
+     0.43,
+     -0.13
+    ],
+    "start_place": "entering",
+    "start_to_centre": 0.89,
+    "enemy_clusters": [],
+    "spawn_points": 28,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "西北",
+     "西"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     6000,
+     6000
+    ],
+    "area_km2": 36.0,
+    "start_norm": [
+     0.34,
+     0.13
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.58,
+    "enemy_clusters": [
+     {
+      "at": [
+       5380,
+       5377
+      ],
+      "n": 25,
+      "dir": "东北",
+      "dist": 5710
+     },
+     {
+      "at": [
+       5519,
+       2399
+      ],
+      "n": 16,
+      "dir": "东北",
+      "dist": 3861
+     },
+     {
+      "at": [
+       152,
+       72
+      ],
+      "n": 11,
+      "dir": "西",
+      "dist": 1993
+     },
+     {
+      "at": [
+       3864,
+       1370
+      ],
+      "n": 6,
+      "dir": "东",
+      "dist": 1939
+     }
+    ],
+    "spawn_points": 40,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "西北",
+     "西",
+     "西南",
+     "南",
+     "东南"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "J05_Objective_1",
+    "title": "Stop the Allied MCVs",
+    "bonus": false,
+    "markers": 0,
+    "on_done": [
+     "HIDE_COUNTER"
+    ]
+   },
+   {
+    "name": "J05_Objective_2",
+    "title": "Escort the Engineers to the Power Cores in 3 Minutes",
+    "bonus": true,
+    "markers": 0,
+    "on_done": []
+   },
+   {
+    "name": "J05_Objective_3",
+    "title": "Repair the Fortress Power Cores",
+    "bonus": false,
+    "markers": 2,
+    "on_done": [],
+    "dist": 3630,
+    "dir": "北",
+    "stage": 1,
+    "dist_norm": 0.55,
+    "routes": null,
+    "path_len": null
+   },
+   {
+    "name": "J05_Objective_4",
+    "title": "Protect the Fortress Power Cores",
+    "bonus": false,
+    "markers": 2,
+    "on_done": [],
+    "dist": 3630,
+    "dir": "北",
+    "stage": 1,
+    "dist_norm": 0.55,
+    "routes": null,
+    "path_len": null
+   },
+   {
+    "name": "J05_Objective_5",
+    "title": "Destroy the Allied Assault Forces",
+    "bonus": false,
+    "markers": 0,
+    "on_done": []
+   }
+  ],
+  "moved": []
+ },
+ "camp_j06_losangeles_white": {
+  "map": "camp_j06_losangeles_white",
+  "size": [
+   4500.0,
+   5500.0
+  ],
+  "human": "Player_1",
+  "start": [
+   633,
+   1159
+  ],
+  "stages": [
+   {
+    "border": 3,
+    "rect": [
+     20,
+     10,
+     2360,
+     5480
+    ],
+    "area_km2": 12.8,
+    "start_norm": [
+     0.26,
+     0.21
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.53,
+    "enemy_clusters": [
+     {
+      "at": [
+       1305,
+       4150
+      ],
+      "n": 18,
+      "dir": "北",
+      "dist": 3065
+     },
+     {
+      "at": [
+       1418,
+       1225
+      ],
+      "n": 17,
+      "dir": "东",
+      "dist": 788
+     },
+     {
+      "at": [
+       1767,
+       2224
+      ],
+      "n": 15,
+      "dir": "东北",
+      "dist": 1555
+     }
+    ],
+    "spawn_points": 0,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     4500,
+     5500
+    ],
+    "area_km2": 24.75,
+    "start_norm": [
+     0.14,
+     0.21
+    ],
+    "start_place": "corner",
+    "start_to_centre": 0.65,
+    "enemy_clusters": [
+     {
+      "at": [
+       3350,
+       2820
+      ],
+      "n": 18,
+      "dir": "东北",
+      "dist": 3184
+     },
+     {
+      "at": [
+       1305,
+       4150
+      ],
+      "n": 18,
+      "dir": "北",
+      "dist": 3065
+     },
+     {
+      "at": [
+       1418,
+       1225
+      ],
+      "n": 17,
+      "dir": "东",
+      "dist": 788
+     },
+     {
+      "at": [
+       1767,
+       2224
+      ],
+      "n": 15,
+      "dir": "东北",
+      "dist": 1555
+     },
+     {
+      "at": [
+       3923,
+       395
+      ],
+      "n": 13,
+      "dir": "东",
+      "dist": 3378
+     },
+     {
+      "at": [
+       3712,
+       4794
+      ],
+      "n": 10,
+      "dir": "东北",
+      "dist": 4763
+     },
+     {
+      "at": [
+       4008,
+       3968
+      ],
+      "n": 9,
+      "dir": "东北",
+      "dist": 4390
+     },
+     {
+      "at": [
+       2312,
+       1458
+      ],
+      "n": 4,
+      "dir": "东",
+      "dist": 1705
+     }
+    ],
+    "spawn_points": 3,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "东南"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective01-CaptureMediaCenters",
+    "title": "Capture the Media Centers",
+    "bonus": false,
+    "markers": 6,
+    "on_done": [
+     "HIDE_COUNTER"
+    ],
+    "dist": 3256,
+    "dir": "东北",
+    "stage": 1,
+    "dist_norm": 0.46,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "BonObjective02-CaptureLAX",
+    "title": "Capture the International Airport",
+    "bonus": true,
+    "markers": 1,
+    "on_done": [
+     "SET_MISSION_HOT_SPOT_VISIBILITY",
+     "STOP_TIMER"
+    ],
+    "dist": 3050,
+    "dir": "东",
+    "stage": 1,
+    "dist_norm": 0.43,
+    "detour": 1059,
+    "risk_dist": 328
+   },
+   {
+    "name": "BonObjective03-DestroyGriffithObs",
+    "title": "Destroy the Observatory Cannon",
+    "bonus": true,
+    "markers": 1,
+    "on_done": [],
+    "dist": 4601,
+    "dir": "东北",
+    "stage": 1,
+    "dist_norm": 0.65,
+    "detour": 2338,
+    "risk_dist": 190
+   },
+   {
+    "name": "BonObjective05-DestroySantaMonicaPier",
+    "title": "Destroy the Amusements",
+    "bonus": true,
+    "markers": 6,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 1482,
+    "dir": "北",
+    "stage": 0,
+    "dist_norm": 0.25,
+    "detour": 698,
+    "risk_dist": 1281
+   },
+   {
+    "name": "Objective0-ClearBeach",
+    "title": "Clear a Landing Zone",
+    "bonus": false,
+    "markers": 0,
+    "on_done": []
+   }
+  ],
+  "moved": []
+ },
+ "camp_j07_yokohama_stewart": {
+  "map": "camp_j07_yokohama_stewart",
+  "size": [
+   5000.0,
+   5000.0
+  ],
+  "human": "Player_1",
+  "start": [
+   942,
+   312
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "area_km2": 25.0,
+    "start_norm": [
+     0.19,
+     0.06
+    ],
+    "start_place": "corner",
+    "start_to_centre": 0.76,
+    "enemy_clusters": [
+     {
+      "at": [
+       4459,
+       3445
+      ],
+      "n": 23,
+      "dir": "东北",
+      "dist": 4710
+     },
+     {
+      "at": [
+       879,
+       1597
+      ],
+      "n": 17,
+      "dir": "北",
+      "dist": 1287
+     },
+     {
+      "at": [
+       3005,
+       4564
+      ],
+      "n": 10,
+      "dir": "东北",
+      "dist": 4726
+     },
+     {
+      "at": [
+       2091,
+       310
+      ],
+      "n": 8,
+      "dir": "东",
+      "dist": 1149
+     },
+     {
+      "at": [
+       4038,
+       4694
+      ],
+      "n": 6,
+      "dir": "东北",
+      "dist": 5365
+     },
+     {
+      "at": [
+       3493,
+       3486
+      ],
+      "n": 6,
+      "dir": "东北",
+      "dist": 4072
+     },
+     {
+      "at": [
+       1361,
+       1036
+      ],
+      "n": 4,
+      "dir": "东北",
+      "dist": 836
+     }
+    ],
+    "spawn_points": 73,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "西北",
+     "西",
+     "西南"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "J07_Objective_Capture_Outposts",
+    "title": "Retake the Forward Bases",
+    "bonus": false,
+    "markers": 4,
+    "on_done": [],
+    "dist": 1988,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.28,
+    "routes": 1,
+    "path_len": 3260
+   },
+   {
+    "name": "J07_Objective_Defend_Outposts",
+    "title": "Hold Out for Reinforcements",
+    "bonus": false,
+    "markers": 4,
+    "on_done": [
+     "HIDE_COUNTDOWN_TIMER",
+     "LINK_MISSION_OBJECTIVE_TO_WAYPOINT"
+    ],
+    "dist": 1988,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.28,
+    "routes": 1,
+    "path_len": 3260
+   },
+   {
+    "name": "J07_Objective_Destroy_Relay_Stations",
+    "title": "Destroy the Allied Relay Stations",
+    "bonus": false,
+    "markers": 4,
+    "on_done": [],
+    "dist": 5195,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.73,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "J07_Bonus_Save_Nanoswarm",
+    "title": "Capture the Nanoswarm Hives",
+    "bonus": true,
+    "markers": 2,
+    "on_done": [],
+    "dist": 1997,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.28,
+    "detour": 265,
+    "risk_dist": 1162
+   },
+   {
+    "name": "J07_Bonus_Destroy_Soviets",
+    "title": "Destroy the Soviet Forces",
+    "bonus": true,
+    "markers": 0,
+    "on_done": []
+   }
+  ],
+  "moved": []
+ },
+ "camp_j08_kremlin_stewart": {
+  "map": "camp_j08_kremlin_stewart",
+  "size": [
+   3400.0,
+   6400.0
+  ],
+  "human": "Player_1",
+  "start": [
+   1884,
+   254
+  ],
+  "stages": [
+   {
+    "border": 2,
+    "rect": [
+     0,
+     0,
+     3400,
+     2400
+    ],
+    "area_km2": 8.16,
+    "start_norm": [
+     0.55,
+     0.11
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.56,
+    "enemy_clusters": [
+     {
+      "at": [
+       1921,
+       1505
+      ],
+      "n": 38,
+      "dir": "北",
+      "dist": 1252
+     },
+     {
+      "at": [
+       1143,
+       951
+      ],
+      "n": 11,
+      "dir": "西北",
+      "dist": 1017
+     }
+    ],
+    "spawn_points": 15,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "西北"
+    ]
+   },
+   {
+    "border": 1,
+    "rect": [
+     0,
+     0,
+     3400,
+     3770
+    ],
+    "area_km2": 12.82,
+    "start_norm": [
+     0.55,
+     0.07
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.62,
+    "enemy_clusters": [
+     {
+      "at": [
+       1921,
+       1505
+      ],
+      "n": 38,
+      "dir": "北",
+      "dist": 1252
+     },
+     {
+      "at": [
+       1143,
+       951
+      ],
+      "n": 11,
+      "dir": "西北",
+      "dist": 1017
+     }
+    ],
+    "spawn_points": 20,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "西北"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     3400,
+     6400
+    ],
+    "area_km2": 21.76,
+    "start_norm": [
+     0.55,
+     0.04
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.66,
+    "enemy_clusters": [
+     {
+      "at": [
+       2846,
+       4309
+      ],
+      "n": 82,
+      "dir": "北",
+      "dist": 4168
+     },
+     {
+      "at": [
+       1921,
+       1505
+      ],
+      "n": 38,
+      "dir": "北",
+      "dist": 1252
+     },
+     {
+      "at": [
+       1143,
+       951
+      ],
+      "n": 11,
+      "dir": "西北",
+      "dist": 1017
+     },
+     {
+      "at": [
+       438,
+       4950
+      ],
+      "n": 4,
+      "dir": "北",
+      "dist": 4914
+     }
+    ],
+    "spawn_points": 30,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "西北"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "J08_Wait_For_MechaKing",
+    "title": "Await the Shogun Executioner",
+    "bonus": false,
+    "markers": 2,
+    "on_done": [
+     "HIDE_COUNTER",
+     "PATH_MUSIC_PLAY_EVENT"
+    ],
+    "dist": 719,
+    "dir": "西",
+    "stage": 0,
+    "dist_norm": 0.17,
+    "routes": 4,
+    "path_len": 920
+   },
+   {
+    "name": "J08_Destroy_Everything",
+    "title": "Destroy All Soviet Forces and the Kremlin",
+    "bonus": false,
+    "markers": 15,
+    "on_done": [],
+    "dist": 3094,
+    "dir": "北",
+    "stage": 1,
+    "dist_norm": 0.61,
+    "routes": 2,
+    "path_len": 4140
+   },
+   {
+    "name": "J08_MechaKing_Must_Live",
+    "title": "The Shogun Executioner Must Survive",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [],
+    "dist": 841,
+    "dir": "东南",
+    "stage": null
+   },
+   {
+    "name": "J08_Destroy_Time_Machine",
+    "title": "Destroy the Time Machine",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [],
+    "dist": 5522,
+    "dir": "北",
+    "stage": 2,
+    "dist_norm": 0.76,
+    "routes": 1,
+    "path_len": 7980
+   },
+   {
+    "name": "J08_Capture_VIP_Bunkers",
+    "title": "Capture the Soviet V.I.P. Bunkers",
+    "bonus": true,
+    "markers": 2,
+    "on_done": [
+     "UNIT_CHANGE_OBJECT_STATUS"
+    ],
+    "dist": 2586,
+    "dir": "北",
+    "stage": 1,
+    "dist_norm": 0.51,
+    "detour": 92,
+    "risk_dist": 1372
+   }
+  ],
+  "moved": []
+ },
+ "camp_j09_amsterdam_bass": {
+  "map": "camp_j09_amsterdam_bass",
+  "size": [
+   5000.0,
+   5250.0
+  ],
+  "human": "Player_1",
+  "start": [
+   246,
+   713
+  ],
+  "stages": [
+   {
+    "border": 2,
+    "rect": [
+     0,
+     0,
+     4980,
+     5250
+    ],
+    "area_km2": 26.14,
+    "start_norm": [
+     0.05,
+     0.14
+    ],
+    "start_place": "corner",
+    "start_to_centre": 0.82,
+    "enemy_clusters": [
+     {
+      "at": [
+       1130,
+       2345
+      ],
+      "n": 55,
+      "dir": "东北",
+      "dist": 1856
+     },
+     {
+      "at": [
+       1907,
+       4360
+      ],
+      "n": 35,
+      "dir": "东北",
+      "dist": 4008
+     },
+     {
+      "at": [
+       627,
+       4452
+      ],
+      "n": 35,
+      "dir": "北",
+      "dist": 3759
+     },
+     {
+      "at": [
+       771,
+       706
+      ],
+      "n": 20,
+      "dir": "东",
+      "dist": 525
+     },
+     {
+      "at": [
+       3528,
+       594
+      ],
+      "n": 16,
+      "dir": "东",
+      "dist": 3283
+     },
+     {
+      "at": [
+       4526,
+       4090
+      ],
+      "n": 10,
+      "dir": "东北",
+      "dist": 5452
+     },
+     {
+      "at": [
+       2916,
+       1822
+      ],
+      "n": 8,
+      "dir": "东北",
+      "dist": 2891
+     },
+     {
+      "at": [
+       3467,
+       3741
+      ],
+      "n": 5,
+      "dir": "东北",
+      "dist": 4421
+     }
+    ],
+    "spawn_points": 50,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective 1 - Allied Air Base",
+    "title": "Destroy the Allied Air Base",
+    "bonus": false,
+    "markers": 4,
+    "on_done": [
+     "MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT",
+     "SET_MISSION_HOT_SPOT_VISIBILITY"
+    ],
+    "dist": 1671,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.23,
+    "routes": 1,
+    "path_len": 3580
+   },
+   {
+    "name": "Objective 2 - Allied Main Base",
+    "title": "Destroy the Final Allied Base",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT",
+     "SET_MISSION_HOT_SPOT_VISIBILITY"
+    ],
+    "dist": 4464,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.62,
+    "routes": 1,
+    "path_len": 7240
+   },
+   {
+    "name": "Objective 3 - FutureTech HQ",
+    "title": "Destroy the FutureTech HQ",
+    "bonus": false,
+    "markers": 2,
+    "on_done": [],
+    "dist": 5615,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.78,
+    "routes": 1,
+    "path_len": 8080
+   },
+   {
+    "name": "Objective 4 - Final Victory",
+    "title": "Eliminate the FutureTech HQ Guards",
+    "bonus": false,
+    "markers": 0,
+    "on_done": []
+   },
+   {
+    "name": "Bonus Objective 1 - Particle Cannons",
+    "title": "Neutralize the Proton Colliders",
+    "bonus": true,
+    "markers": 4,
+    "on_done": [
+     "MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT",
+     "SET_MISSION_HOT_SPOT_VISIBILITY"
+    ],
+    "dist": 3747,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.52,
+    "detour": 29,
+    "risk_dist": 595
+   },
+   {
+    "name": "Objective 0 - Clear Base Area",
+    "title": "Destroy the Allied Advance Base",
+    "bonus": false,
+    "markers": 9,
+    "on_done": [],
+    "dist": 1727,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.24,
+    "routes": 3,
+    "path_len": 1760
+   }
+  ],
+  "moved": [
+   {
+    "border": 3,
+    "rect": [
+     3500,
+     2920,
+     4600,
+     4790
+    ]
+   }
+  ]
+ },
+ "camp_s01_leningradcanals_rao": {
+  "map": "camp_s01_leningradcanals_rao",
+  "size": [
+   3500.0,
+   3500.0
+  ],
+  "human": "Player_1",
+  "start": [
+   283,
+   134
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     300,
+     530,
+     2160,
+     2610
+    ],
+    "area_km2": 3.87,
+    "start_norm": [
+     -0.01,
+     -0.19
+    ],
+    "start_place": "entering",
+    "start_to_centre": 1.21,
+    "enemy_clusters": [
+     {
+      "at": [
+       1488,
+       1765
+      ],
+      "n": 22,
+      "dir": "东北",
+      "dist": 2028
+     }
+    ],
+    "spawn_points": 3,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "西"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     3500,
+     3500
+    ],
+    "area_km2": 12.25,
+    "start_norm": [
+     0.08,
+     0.04
+    ],
+    "start_place": "corner",
+    "start_to_centre": 0.88,
+    "enemy_clusters": [
+     {
+      "at": [
+       2638,
+       1226
+      ],
+      "n": 56,
+      "dir": "东北",
+      "dist": 2596
+     },
+     {
+      "at": [
+       1488,
+       1765
+      ],
+      "n": 22,
+      "dir": "东北",
+      "dist": 2028
+     },
+     {
+      "at": [
+       314,
+       319
+      ],
+      "n": 17,
+      "dir": "北",
+      "dist": 188
+     },
+     {
+      "at": [
+       1410,
+       466
+      ],
+      "n": 14,
+      "dir": "东",
+      "dist": 1175
+     },
+     {
+      "at": [
+       597,
+       3060
+      ],
+      "n": 12,
+      "dir": "北",
+      "dist": 2942
+     }
+    ],
+    "spawn_points": 8,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "西",
+     "东南"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "S01_Objective_01",
+    "title": "Secure the Fortress",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "HIDE_COUNTER",
+     "UNIT_AFFECT_OBJECT_PANEL_FLAGS"
+    ],
+    "dist": 2166,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.78,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "S01_Objective_02",
+    "title": "Protect the Fortress",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "HIDE_COUNTDOWN_TIMER",
+     "MAP_REVEAL_PERMANENTLY_AT_WAYPOINT"
+    ],
+    "dist": 2245,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.8,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "S01_Objective_03",
+    "title": "Destroy the Battleships",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "UNIT_AFFECT_OBJECT_PANEL_FLAGS"
+    ],
+    "dist": 1192,
+    "dir": "西北",
+    "stage": null
+   },
+   {
+    "name": "S01_Objective_1B",
+    "title": "Train 5 Flak Troopers",
+    "bonus": false,
+    "markers": 2,
+    "on_done": [
+     "FLASH_UI_BUILD_BUTTON",
+     "HIDE_COUNTER",
+     "PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT"
+    ],
+    "dist": 2538,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.91,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "S01_BonusObjective_01",
+    "title": "Save the Hermitage",
+    "bonus": true,
+    "markers": 1,
+    "on_done": [],
+    "dist": 2649,
+    "dir": "东",
+    "stage": 1,
+    "dist_norm": 0.54,
+    "detour": 1503,
+    "risk_dist": 353
+   }
+  ],
+  "moved": []
+ },
+ "camp_s02_krasna45_rao": {
+  "map": "camp_s02_krasna45_rao",
+  "size": [
+   4250.0,
+   3000.0
+  ],
+  "human": "Player_1",
+  "start": [
+   617,
+   1034
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     4250,
+     3000
+    ],
+    "area_km2": 12.75,
+    "start_norm": [
+     0.15,
+     0.34
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.55,
+    "enemy_clusters": [
+     {
+      "at": [
+       2535,
+       1931
+      ],
+      "n": 50,
+      "dir": "东北",
+      "dist": 2117
+     },
+     {
+      "at": [
+       877,
+       855
+      ],
+      "n": 30,
+      "dir": "东南",
+      "dist": 315
+     },
+     {
+      "at": [
+       2050,
+       737
+      ],
+      "n": 8,
+      "dir": "东",
+      "dist": 1464
+     },
+     {
+      "at": [
+       630,
+       2125
+      ],
+      "n": 6,
+      "dir": "北",
+      "dist": 1091
+     }
+    ],
+    "spawn_points": 25,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "东南"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "S02_Objective_1",
+    "title": "Get Natasha to the K-45 Launch Facility",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "MOVE_CAMERA_TO"
+    ],
+    "dist": 2732,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.53,
+    "routes": 1,
+    "path_len": 3920
+   },
+   {
+    "name": "S02_Objective_2",
+    "title": "Eliminate the Imperial Ambush Division",
+    "bonus": false,
+    "markers": 0,
+    "on_done": []
+   },
+   {
+    "name": "S02_Objective_3",
+    "title": "Eliminate the Imperial Ambush Division",
+    "bonus": false,
+    "markers": 0,
+    "on_done": []
+   },
+   {
+    "name": "S02_BonusObjective_1",
+    "title": "Assist the Tesla Troopers",
+    "bonus": true,
+    "markers": 1,
+    "on_done": [],
+    "dist": 1443,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.28,
+    "detour": 91,
+    "risk_dist": 24
+   },
+   {
+    "name": "S02_BonusObjective_2",
+    "title": "Rescue the Tesla Troopers",
+    "bonus": true,
+    "markers": 1,
+    "on_done": [],
+    "dist": 1166,
+    "dir": "北",
+    "stage": 0,
+    "dist_norm": 0.22,
+    "detour": 1392,
+    "risk_dist": 86
+   }
+  ],
+  "moved": []
+ },
+ "camp_s03_vladivostok_davis": {
+  "map": "camp_s03_vladivostok_davis",
+  "size": [
+   5000.0,
+   5000.0
+  ],
+  "human": "Player_1",
+  "start": [
+   569,
+   213
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     0,
+     0,
+     2940,
+     2160
+    ],
+    "area_km2": 6.35,
+    "start_norm": [
+     0.19,
+     0.1
+    ],
+    "start_place": "corner",
+    "start_to_centre": 0.71,
+    "enemy_clusters": [
+     {
+      "at": [
+       1967,
+       1218
+      ],
+      "n": 20,
+      "dir": "东北",
+      "dist": 1723
+     }
+    ],
+    "spawn_points": 5,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "area_km2": 25.0,
+    "start_norm": [
+     0.11,
+     0.04
+    ],
+    "start_place": "corner",
+    "start_to_centre": 0.85,
+    "enemy_clusters": [
+     {
+      "at": [
+       4131,
+       4533
+      ],
+      "n": 38,
+      "dir": "东北",
+      "dist": 5599
+     },
+     {
+      "at": [
+       1967,
+       1218
+      ],
+      "n": 20,
+      "dir": "东北",
+      "dist": 1723
+     },
+     {
+      "at": [
+       4424,
+       3494
+      ],
+      "n": 8,
+      "dir": "东北",
+      "dist": 5062
+     },
+     {
+      "at": [
+       1191,
+       4087
+      ],
+      "n": 6,
+      "dir": "北",
+      "dist": 3924
+     },
+     {
+      "at": [
+       3068,
+       2486
+      ],
+      "n": 6,
+      "dir": "东北",
+      "dist": 3379
+     },
+     {
+      "at": [
+       3363,
+       1704
+      ],
+      "n": 5,
+      "dir": "东北",
+      "dist": 3167
+     },
+     {
+      "at": [
+       3800,
+       1026
+      ],
+      "n": 4,
+      "dir": "东",
+      "dist": 3332
+     },
+     {
+      "at": [
+       355,
+       4545
+      ],
+      "n": 4,
+      "dir": "北",
+      "dist": 4338
+     }
+    ],
+    "spawn_points": 10,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "S03_Objective_1",
+    "title": "Clear the Island of Enemy Forces",
+    "bonus": false,
+    "markers": 14,
+    "on_done": [],
+    "dist": 2439,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.67,
+    "routes": null,
+    "path_len": null
+   },
+   {
+    "name": "S03_Objective_2",
+    "title": "Construct a Barracks and Naval Yard",
+    "bonus": false,
+    "markers": 8,
+    "on_done": [],
+    "dist": 1255,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.34,
+    "routes": null,
+    "path_len": null
+   },
+   {
+    "name": "S03_Objective_3a",
+    "title": "Destroy the Imperial Scout Base",
+    "bonus": false,
+    "markers": 5,
+    "on_done": [],
+    "dist": 4014,
+    "dir": "东",
+    "stage": 1,
+    "dist_norm": 0.57,
+    "routes": null,
+    "path_len": null
+   },
+   {
+    "name": "S03_Objective_4",
+    "title": "Destroy the Imperial Military Admin",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [],
+    "dist": 6077,
+    "dir": "东北",
+    "stage": 1,
+    "dist_norm": 0.86,
+    "routes": null,
+    "path_len": null
+   },
+   {
+    "name": "S03_Objective_Bonus_2",
+    "title": "Destroy the Generators",
+    "bonus": true,
+    "markers": 3,
+    "on_done": [],
+    "dist": 4228,
+    "dir": "东",
+    "stage": 1,
+    "dist_norm": 0.6,
+    "detour": 429,
+    "risk_dist": 901
+   },
+   {
+    "name": "S03_Objective_Bonus_3",
+    "title": "Set Up Base Defenses",
+    "bonus": true,
+    "markers": 2,
+    "on_done": [],
+    "dist": 2074,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.57,
+    "detour": 443,
+    "risk_dist": 351
+   },
+   {
+    "name": "S03_Objective_3b",
+    "title": "Destroy the Imperial Naval Base",
+    "bonus": false,
+    "markers": 7,
+    "on_done": [],
+    "dist": 4376,
+    "dir": "北",
+    "stage": 1,
+    "dist_norm": 0.62,
+    "routes": null,
+    "path_len": null
+   }
+  ],
+  "moved": []
+ },
+ "camp_s04_geneva_bass": {
+  "map": "camp_s04_geneva_bass",
+  "size": [
+   4750.0,
+   4500.0
+  ],
+  "human": "Player_1",
+  "start": [
+   317,
+   2727
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     0,
+     600,
+     3580,
+     4510
+    ],
+    "area_km2": 14.0,
+    "start_norm": [
+     0.09,
+     0.54
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.59,
+    "enemy_clusters": [
+     {
+      "at": [
+       2981,
+       1231
+      ],
+      "n": 23,
+      "dir": "东南",
+      "dist": 3056
+     },
+     {
+      "at": [
+       2827,
+       3199
+      ],
+      "n": 21,
+      "dir": "东",
+      "dist": 2554
+     },
+     {
+      "at": [
+       2058,
+       2339
+      ],
+      "n": 7,
+      "dir": "东",
+      "dist": 1784
+     },
+     {
+      "at": [
+       1499,
+       2953
+      ],
+      "n": 5,
+      "dir": "东",
+      "dist": 1203
+     }
+    ],
+    "spawn_points": 4,
+    "threat_octants": [
+     "东",
+     "东北",
+     "东南"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     4750,
+     4500
+    ],
+    "area_km2": 21.38,
+    "start_norm": [
+     0.07,
+     0.61
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.63,
+    "enemy_clusters": [
+     {
+      "at": [
+       4324,
+       3811
+      ],
+      "n": 46,
+      "dir": "东",
+      "dist": 4151
+     },
+     {
+      "at": [
+       3033,
+       1262
+      ],
+      "n": 25,
+      "dir": "东南",
+      "dist": 3086
+     },
+     {
+      "at": [
+       2827,
+       3199
+      ],
+      "n": 21,
+      "dir": "东",
+      "dist": 2554
+     },
+     {
+      "at": [
+       4326,
+       1785
+      ],
+      "n": 11,
+      "dir": "东",
+      "dist": 4118
+     },
+     {
+      "at": [
+       2058,
+       2339
+      ],
+      "n": 7,
+      "dir": "东",
+      "dist": 1784
+     },
+     {
+      "at": [
+       1499,
+       2953
+      ],
+      "n": 5,
+      "dir": "东",
+      "dist": 1203
+     }
+    ],
+    "spawn_points": 8,
+    "threat_octants": [
+     "东",
+     "东北",
+     "东南"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective 1 - Destroy Allied Supply Port",
+    "title": "Destroy the Allied Supply Port",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [],
+    "dist": 2720,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.51,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "Objective 2 - Destroy Allied Army Base",
+    "title": "Destroy the Allied Army Base",
+    "bonus": false,
+    "markers": 3,
+    "on_done": [],
+    "dist": 3248,
+    "dir": "东南",
+    "stage": 0,
+    "dist_norm": 0.61,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "Objective 3 - Destroy Allied Command HQ",
+    "title": "Destroy the Allied Command HQ",
+    "bonus": false,
+    "markers": 0,
+    "on_done": []
+   },
+   {
+    "name": "Objective 4 - Defend Krukov's HQ",
+    "title": "General Krukov's HQ Must Survive",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [],
+    "dist": 4086,
+    "dir": "东南",
+    "stage": 1,
+    "dist_norm": 0.62,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "Bonus Objective 1 - Capture Banks",
+    "title": "Capture All Six Swiss Banks",
+    "bonus": true,
+    "markers": 6,
+    "on_done": [],
+    "dist": 1687,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.32,
+    "detour": 262,
+    "risk_dist": 102
+   }
+  ],
+  "moved": []
+ },
+ "camp_s05_mykonos_smith": {
+  "map": "camp_s05_mykonos_smith",
+  "size": [
+   6250.0,
+   5500.0
+  ],
+  "human": "Player_1",
+  "start": [
+   1418,
+   682
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     0,
+     0,
+     4980,
+     4620
+    ],
+    "area_km2": 23.01,
+    "start_norm": [
+     0.28,
+     0.15
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.58,
+    "enemy_clusters": [
+     {
+      "at": [
+       4601,
+       3444
+      ],
+      "n": 38,
+      "dir": "东北",
+      "dist": 4214
+     },
+     {
+      "at": [
+       3231,
+       3374
+      ],
+      "n": 25,
+      "dir": "东北",
+      "dist": 3245
+     },
+     {
+      "at": [
+       3578,
+       1149
+      ],
+      "n": 19,
+      "dir": "东",
+      "dist": 2209
+     },
+     {
+      "at": [
+       1837,
+       3488
+      ],
+      "n": 14,
+      "dir": "北",
+      "dist": 2837
+     },
+     {
+      "at": [
+       2594,
+       2256
+      ],
+      "n": 6,
+      "dir": "东北",
+      "dist": 1965
+     }
+    ],
+    "spawn_points": 7,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     6250,
+     5500
+    ],
+    "area_km2": 34.38,
+    "start_norm": [
+     0.23,
+     0.12
+    ],
+    "start_place": "corner",
+    "start_to_centre": 0.66,
+    "enemy_clusters": [
+     {
+      "at": [
+       4601,
+       3444
+      ],
+      "n": 38,
+      "dir": "东北",
+      "dist": 4214
+     },
+     {
+      "at": [
+       3231,
+       3374
+      ],
+      "n": 25,
+      "dir": "东北",
+      "dist": 3245
+     },
+     {
+      "at": [
+       3578,
+       1149
+      ],
+      "n": 19,
+      "dir": "东",
+      "dist": 2209
+     },
+     {
+      "at": [
+       1837,
+       3488
+      ],
+      "n": 14,
+      "dir": "北",
+      "dist": 2837
+     },
+     {
+      "at": [
+       2594,
+       2256
+      ],
+      "n": 6,
+      "dir": "东北",
+      "dist": 1965
+     },
+     {
+      "at": [
+       6100,
+       5358
+      ],
+      "n": 5,
+      "dir": "东北",
+      "dist": 6617
+     }
+    ],
+    "spawn_points": 28,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective_1",
+    "title": "Expand to the Islands",
+    "bonus": false,
+    "markers": 2,
+    "on_done": [],
+    "dist": 2091,
+    "dir": "北",
+    "stage": 0,
+    "dist_norm": 0.31,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "Objective_3",
+    "title": "Destroy the Allied Naval Base",
+    "bonus": false,
+    "markers": 5,
+    "on_done": [
+     "MOVIE_PLAY_RADAR",
+     "SET_MISSION_HOT_SPOT_VISIBILITY"
+    ],
+    "dist": 3253,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.48,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "Objective_4",
+    "title": "Capture the Allied Science Facility",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "SET_MISSION_HOT_SPOT_VISIBILITY"
+    ],
+    "dist": 4196,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.62,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "Objective_5_EASY",
+    "title": "Hold the Science Facility",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "HIDE_COUNTDOWN_TIMER"
+    ],
+    "dist": 4196,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.62,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "Objective_5_MEDIUM",
+    "title": "Hold the Science Facility",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "HIDE_COUNTDOWN_TIMER"
+    ],
+    "dist": 4196,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.62,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "Objective_5_HARD",
+    "title": "Hold the Science Facility",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "HIDE_COUNTDOWN_TIMER"
+    ],
+    "dist": 4196,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.62,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "Bonus Objective 01",
+    "title": "Destroy the Tech Inhibitor",
+    "bonus": true,
+    "markers": 1,
+    "on_done": [
+     "SET_MISSION_HOT_SPOT_VISIBILITY"
+    ],
+    "dist": 2358,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.35,
+    "detour": 2456,
+    "risk_dist": 250
+   }
+  ],
+  "moved": []
+ },
+ "camp_s06_iceland_bass": {
+  "map": "camp_s06_iceland_bass",
+  "size": [
+   4750.0,
+   5500.0
+  ],
+  "human": "Player_1",
+  "start": [
+   2637,
+   2379
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     0,
+     1680,
+     4750,
+     3850
+    ],
+    "area_km2": 10.31,
+    "start_norm": [
+     0.56,
+     0.32
+    ],
+    "start_place": "centre",
+    "start_to_centre": 0.26,
+    "enemy_clusters": [
+     {
+      "at": [
+       1237,
+       3385
+      ],
+      "n": 26,
+      "dir": "西北",
+      "dist": 1724
+     },
+     {
+      "at": [
+       3923,
+       3087
+      ],
+      "n": 19,
+      "dir": "东北",
+      "dist": 1468
+     }
+    ],
+    "spawn_points": 7,
+    "threat_octants": [
+     "东北",
+     "西北",
+     "西",
+     "西南"
+    ]
+   },
+   {
+    "border": 2,
+    "rect": [
+     0,
+     10,
+     4760,
+     3850
+    ],
+    "area_km2": 18.28,
+    "start_norm": [
+     0.55,
+     0.62
+    ],
+    "start_place": "centre",
+    "start_to_centre": 0.18,
+    "enemy_clusters": [
+     {
+      "at": [
+       1237,
+       3385
+      ],
+      "n": 26,
+      "dir": "西北",
+      "dist": 1724
+     },
+     {
+      "at": [
+       3923,
+       3087
+      ],
+      "n": 19,
+      "dir": "东北",
+      "dist": 1468
+     }
+    ],
+    "spawn_points": 7,
+    "threat_octants": [
+     "东北",
+     "西北",
+     "西",
+     "西南"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     4750,
+     5500
+    ],
+    "area_km2": 26.12,
+    "start_norm": [
+     0.56,
+     0.43
+    ],
+    "start_place": "centre",
+    "start_to_centre": 0.12,
+    "enemy_clusters": [
+     {
+      "at": [
+       1198,
+       3477
+      ],
+      "n": 30,
+      "dir": "西北",
+      "dist": 1811
+     },
+     {
+      "at": [
+       3923,
+       3087
+      ],
+      "n": 19,
+      "dir": "东北",
+      "dist": 1468
+     },
+     {
+      "at": [
+       2316,
+       4865
+      ],
+      "n": 13,
+      "dir": "北",
+      "dist": 2506
+     },
+     {
+      "at": [
+       917,
+       5147
+      ],
+      "n": 8,
+      "dir": "西北",
+      "dist": 3259
+     },
+     {
+      "at": [
+       240,
+       5278
+      ],
+      "n": 8,
+      "dir": "西北",
+      "dist": 3762
+     },
+     {
+      "at": [
+       2778,
+       4263
+      ],
+      "n": 6,
+      "dir": "北",
+      "dist": 1889
+     },
+     {
+      "at": [
+       3352,
+       3940
+      ],
+      "n": 4,
+      "dir": "东北",
+      "dist": 1718
+     }
+    ],
+    "spawn_points": 10,
+    "threat_octants": [
+     "东北",
+     "北",
+     "西北",
+     "西",
+     "西南"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Obj_1 - Sub Bases",
+    "title": "Destroy Both Allied Forward Bases",
+    "bonus": false,
+    "markers": 2,
+    "on_done": [],
+    "dist": 1022,
+    "dir": "北",
+    "stage": 0,
+    "dist_norm": 0.2,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "Obj_2 - Krukov",
+    "title": "Eliminate Krukov",
+    "bonus": false,
+    "markers": 2,
+    "on_done": [],
+    "dist": 2137,
+    "dir": "东南",
+    "stage": 1,
+    "dist_norm": 0.35,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "Obj_3 - Main Base",
+    "title": "Destroy the Allied Strategic Airbase",
+    "bonus": false,
+    "markers": 0,
+    "on_done": []
+   },
+   {
+    "name": "BonusObj_1 - Expansion",
+    "title": "Build an Expansion Base",
+    "bonus": true,
+    "markers": 0,
+    "on_done": []
+   }
+  ],
+  "moved": []
+ },
+ "camp_s07_mountfuji_white": {
+  "map": "camp_s07_mountfuji_white",
+  "size": [
+   5000.0,
+   5500.0
+  ],
+  "human": "Player_1",
+  "start": [
+   190,
+   3209
+  ],
+  "stages": [
+   {
+    "border": 2,
+    "rect": [
+     160,
+     1730,
+     3710,
+     5500
+    ],
+    "area_km2": 13.38,
+    "start_norm": [
+     0.01,
+     0.39
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.71,
+    "enemy_clusters": [
+     {
+      "at": [
+       981,
+       4666
+      ],
+      "n": 68,
+      "dir": "东北",
+      "dist": 1658
+     },
+     {
+      "at": [
+       3149,
+       4908
+      ],
+      "n": 24,
+      "dir": "东北",
+      "dist": 3412
+     },
+     {
+      "at": [
+       2404,
+       2648
+      ],
+      "n": 19,
+      "dir": "东",
+      "dist": 2283
+     },
+     {
+      "at": [
+       855,
+       2681
+      ],
+      "n": 7,
+      "dir": "东南",
+      "dist": 849
+     },
+     {
+      "at": [
+       947,
+       1937
+      ],
+      "n": 4,
+      "dir": "东南",
+      "dist": 1480
+     }
+    ],
+    "spawn_points": 69,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "南",
+     "东南"
+    ]
+   },
+   {
+    "border": 3,
+    "rect": [
+     0,
+     0,
+     4800,
+     3740
+    ],
+    "area_km2": 17.95,
+    "start_norm": [
+     0.04,
+     0.86
+    ],
+    "start_place": "corner",
+    "start_to_centre": 0.82,
+    "enemy_clusters": [
+     {
+      "at": [
+       2404,
+       2648
+      ],
+      "n": 19,
+      "dir": "东",
+      "dist": 2283
+     },
+     {
+      "at": [
+       767,
+       2621
+      ],
+      "n": 8,
+      "dir": "东南",
+      "dist": 824
+     },
+     {
+      "at": [
+       1073,
+       1884
+      ],
+      "n": 5,
+      "dir": "东南",
+      "dist": 1592
+     }
+    ],
+    "spawn_points": 70,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "南",
+     "东南"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5500
+    ],
+    "area_km2": 27.5,
+    "start_norm": [
+     0.04,
+     0.58
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.66,
+    "enemy_clusters": [
+     {
+      "at": [
+       792,
+       4674
+      ],
+      "n": 86,
+      "dir": "北",
+      "dist": 1584
+     },
+     {
+      "at": [
+       3268,
+       4864
+      ],
+      "n": 29,
+      "dir": "东北",
+      "dist": 3495
+     },
+     {
+      "at": [
+       2404,
+       2648
+      ],
+      "n": 19,
+      "dir": "东",
+      "dist": 2283
+     },
+     {
+      "at": [
+       767,
+       2621
+      ],
+      "n": 8,
+      "dir": "东南",
+      "dist": 824
+     },
+     {
+      "at": [
+       4664,
+       5209
+      ],
+      "n": 6,
+      "dir": "东北",
+      "dist": 4901
+     },
+     {
+      "at": [
+       1073,
+       1884
+      ],
+      "n": 5,
+      "dir": "东南",
+      "dist": 1592
+     }
+    ],
+    "spawn_points": 85,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "南",
+     "东南"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective 01-Assassinate the Emperor",
+    "title": "Assassinate the Emperor",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "CAMERA_LETTERBOX_BEGIN_WITH_RADAR",
+     "DISABLE_INPUT",
+     "MOVE_CAMERA_TO",
+     "NAMED_EXIT_BUILDING",
+     "NAMED_STOP"
+    ],
+    "dist": 2095,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.4,
+    "routes": 2,
+    "path_len": 2740
+   },
+   {
+    "name": "Objective 02-Create Diversion",
+    "title": "Create a Diversion",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "NAMED_FOLLOW_WAYPOINTS"
+    ],
+    "dist": 3227,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.62,
+    "routes": 2,
+    "path_len": 3580
+   },
+   {
+    "name": "Objective 03-Defeat Shinzo",
+    "title": "Destroy Shinzo's Base",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "INCREMENT_COUNTER",
+     "LINK_MISSION_OBJECTIVE_TO_WAYPOINT",
+     "SET_MISSION_HOT_SPOT_VISIBILITY",
+     "SKIRMISH_AI_CLEAR_ENEMY_PLAYER_PRIORITY"
+    ],
+    "dist": 1669,
+    "dir": "东南",
+    "stage": 0,
+    "dist_norm": 0.32,
+    "routes": 2,
+    "path_len": 3160
+   },
+   {
+    "name": "Objective 04-Defeat Naomi",
+    "title": "Destroy Naomi's Base",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "INCREMENT_COUNTER",
+     "LINK_MISSION_OBJECTIVE_TO_WAYPOINT",
+     "SET_MISSION_HOT_SPOT_VISIBILITY",
+     "SKIRMISH_AI_CLEAR_ENEMY_PLAYER_PRIORITY"
+    ],
+    "dist": 3217,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.62,
+    "routes": 1,
+    "path_len": 3640
+   },
+   {
+    "name": "Objective 05-Defeat Kenji",
+    "title": "Destroy Kenji's Base",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "INCREMENT_COUNTER",
+     "LINK_MISSION_OBJECTIVE_TO_WAYPOINT",
+     "SET_MISSION_HOT_SPOT_VISIBILITY",
+     "SKIRMISH_AI_CLEAR_ENEMY_PLAYER_PRIORITY"
+    ],
+    "dist": 249,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.05,
+    "routes": 4,
+    "path_len": 320
+   },
+   {
+    "name": "Objective 06-Destroy Emperor's Palace",
+    "title": "Destroy the Emperor's Palace",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION",
+     "NAMED_TRANSFER_OWNERSHIP_PLAYER",
+     "UNIT_AFFECT_OBJECT_PANEL_FLAGS"
+    ],
+    "dist": 2126,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.41,
+    "routes": 1,
+    "path_len": 3000
+   },
+   {
+    "name": "Bonus 01-Destroy Powerplants",
+    "title": "Destroy the Generators",
+    "bonus": true,
+    "markers": 9,
+    "on_done": [
+     "PLAYER_SET_BASE_POWER",
+     "SET_MISSION_HOT_SPOT_VISIBILITY"
+    ],
+    "dist": 4078,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.79,
+    "detour": 4085,
+    "risk_dist": 607
+   },
+   {
+    "name": "Bonus 02-RescueConscript",
+    "title": "Rescue the Captured Conscript and Bear",
+    "bonus": true,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_WAYPOINT",
+     "NAMED_TRANSFER_OWNERSHIP_PLAYER",
+     "PLAYER_GIVE_MONEY"
+    ],
+    "dist": 1489,
+    "dir": "北",
+    "stage": 2,
+    "dist_norm": 0.2,
+    "detour": 2682,
+    "risk_dist": 651
+   },
+   {
+    "name": "Objective 07-Kill Emperor",
+    "title": "Kill the Emperor",
+    "bonus": false,
+    "markers": 0,
+    "on_done": [
+     "CAMERA_LETTERBOX_END",
+     "EVA_SET_ENABLED_DISABLED"
+    ]
+   }
+  ],
+  "moved": []
+ },
+ "camp_s08_easterisland_stewart": {
+  "map": "camp_s08_easterisland_stewart",
+  "size": [
+   5500.0,
+   5750.0
+  ],
+  "human": "Player_1",
+  "start": [
+   2898,
+   1036
+  ],
+  "stages": [
+   {
+    "border": 2,
+    "rect": [
+     1740,
+     0,
+     5500,
+     2750
+    ],
+    "area_km2": 10.34,
+    "start_norm": [
+     0.31,
+     0.38
+    ],
+    "start_place": "centre",
+    "start_to_centre": 0.32,
+    "enemy_clusters": [],
+    "spawn_points": 7,
+    "threat_octants": [
+     "东",
+     "东南"
+    ]
+   },
+   {
+    "border": 1,
+    "rect": [
+     0,
+     0,
+     5500,
+     3310
+    ],
+    "area_km2": 18.2,
+    "start_norm": [
+     0.53,
+     0.31
+    ],
+    "start_place": "centre",
+    "start_to_centre": 0.27,
+    "enemy_clusters": [],
+    "spawn_points": 10,
+    "threat_octants": [
+     "东",
+     "西",
+     "东南"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5500,
+     5750
+    ],
+    "area_km2": 31.62,
+    "start_norm": [
+     0.53,
+     0.18
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.45,
+    "enemy_clusters": [
+     {
+      "at": [
+       1347,
+       5029
+      ],
+      "n": 25,
+      "dir": "北",
+      "dist": 4284
+     },
+     {
+      "at": [
+       339,
+       4153
+      ],
+      "n": 18,
+      "dir": "西北",
+      "dist": 4033
+     },
+     {
+      "at": [
+       3540,
+       5192
+      ],
+      "n": 18,
+      "dir": "北",
+      "dist": 4205
+     },
+     {
+      "at": [
+       4577,
+       4911
+      ],
+      "n": 12,
+      "dir": "东北",
+      "dist": 4223
+     },
+     {
+      "at": [
+       3667,
+       4196
+      ],
+      "n": 8,
+      "dir": "北",
+      "dist": 3253
+     },
+     {
+      "at": [
+       2504,
+       4358
+      ],
+      "n": 5,
+      "dir": "北",
+      "dist": 3345
+     }
+    ],
+    "spawn_points": 13,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "西北",
+     "西",
+     "东南"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "S08_Defeat_the_Premiere",
+    "title": "Destroy the Premier's Volcano Fortress",
+    "bonus": false,
+    "markers": 3,
+    "on_done": [],
+    "dist": 4129,
+    "dir": "北",
+    "stage": 2,
+    "dist_norm": 0.52,
+    "routes": null,
+    "path_len": null
+   },
+   {
+    "name": "S08_Defeat_Allied_Forces",
+    "title": "Stop the Allied Counter-Offensive",
+    "bonus": false,
+    "markers": 0,
+    "on_done": []
+   },
+   {
+    "name": "S08_Ambush_Emissary",
+    "title": "Build an Ambush Force",
+    "bonus": false,
+    "markers": 2,
+    "on_done": [],
+    "dist": 933,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.2,
+    "routes": 4,
+    "path_len": 740
+   },
+   {
+    "name": "S08_Destroy_Superweapon",
+    "title": "Destroy the Vacuum Imploder Before It Fires",
+    "bonus": false,
+    "markers": 0,
+    "on_done": [
+     "HIDE_COUNTDOWN_TIMER",
+     "STOP_TIMER"
+    ]
+   },
+   {
+    "name": "S08_Destroy_Emissary",
+    "title": "Destroy the Allied Emissary and His Escort",
+    "bonus": false,
+    "markers": 0,
+    "on_done": [
+     "HIDE_COUNTDOWN_TIMER"
+    ]
+   }
+  ],
+  "moved": []
+ },
+ "camp_s09_newyork_rao": {
+  "map": "camp_s09_newyork_rao",
+  "size": [
+   5500.0,
+   5000.0
+  ],
+  "human": "Player_1",
+  "start": [
+   1525,
+   1368
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     30,
+     50,
+     3130,
+     3040
+    ],
+    "area_km2": 9.27,
+    "start_norm": [
+     0.48,
+     0.44
+    ],
+    "start_place": "centre",
+    "start_to_centre": 0.09,
+    "enemy_clusters": [
+     {
+      "at": [
+       1491,
+       1332
+      ],
+      "n": 120,
+      "dir": "西南",
+      "dist": 50
+     },
+     {
+      "at": [
+       436,
+       839
+      ],
+      "n": 10,
+      "dir": "西南",
+      "dist": 1211
+     },
+     {
+      "at": [
+       1110,
+       311
+      ],
+      "n": 8,
+      "dir": "南",
+      "dist": 1136
+     }
+    ],
+    "spawn_points": 12,
+    "threat_octants": [
+     "东北",
+     "北",
+     "西",
+     "西南",
+     "南"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5500,
+     5000
+    ],
+    "area_km2": 27.5,
+    "start_norm": [
+     0.28,
+     0.27
+    ],
+    "start_place": "centre",
+    "start_to_centre": 0.45,
+    "enemy_clusters": [
+     {
+      "at": [
+       1491,
+       1332
+      ],
+      "n": 120,
+      "dir": "西南",
+      "dist": 50
+     },
+     {
+      "at": [
+       4277,
+       4000
+      ],
+      "n": 65,
+      "dir": "东北",
+      "dist": 3808
+     },
+     {
+      "at": [
+       436,
+       839
+      ],
+      "n": 10,
+      "dir": "西南",
+      "dist": 1211
+     },
+     {
+      "at": [
+       1110,
+       311
+      ],
+      "n": 8,
+      "dir": "南",
+      "dist": 1136
+     }
+    ],
+    "spawn_points": 32,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "西",
+     "西南",
+     "南",
+     "东南"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective_1",
+    "title": "Eliminate Ft. Bradley's Prospectors",
+    "bonus": false,
+    "markers": 3,
+    "on_done": [],
+    "dist": 52,
+    "dir": "西南",
+    "stage": 0,
+    "dist_norm": 0.01,
+    "routes": 4,
+    "path_len": 60
+   },
+   {
+    "name": "Objective_2",
+    "title": "Destroy Ft. Bradley",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT"
+    ],
+    "dist": 56,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.01,
+    "routes": 4,
+    "path_len": 60
+   },
+   {
+    "name": "Objective_3",
+    "title": "Destroy the Statue of Liberty",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [],
+    "dist": 4178,
+    "dir": "东北",
+    "stage": 1,
+    "dist_norm": 0.56,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "BonusObjective_1",
+    "title": "Capture the New York Stock Exchange",
+    "bonus": true,
+    "markers": 1,
+    "on_done": [
+     "PLAYER_GIVE_MONEY"
+    ],
+    "dist": 637,
+    "dir": "西北",
+    "stage": 0,
+    "dist_norm": 0.15,
+    "detour": 221,
+    "risk_dist": 650
+   },
+   {
+    "name": "BonusObjective_2",
+    "title": "Eliminate Agent Tanya",
+    "bonus": true,
+    "markers": 0,
+    "on_done": [
+     "PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT"
+    ]
+   }
+  ],
+  "moved": []
+ },
+ "camp_ep01_a01_igaprefecture_davis": {
+  "map": "camp_ep01_a01_igaprefecture_davis",
+  "size": [
+   6000.0,
+   4000.0
+  ],
+  "human": "Allied01",
+  "start": [
+   593,
+   280
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     0,
+     0,
+     3130,
+     2270
+    ],
+    "area_km2": 7.11,
+    "start_norm": [
+     0.19,
+     0.12
+    ],
+    "start_place": "corner",
+    "start_to_centre": 0.69,
+    "enemy_clusters": [
+     {
+      "at": [
+       2516,
+       773
+      ],
+      "n": 13,
+      "dir": "东",
+      "dist": 1985
+     },
+     {
+      "at": [
+       492,
+       1793
+      ],
+      "n": 13,
+      "dir": "北",
+      "dist": 1516
+     },
+     {
+      "at": [
+       1516,
+       363
+      ],
+      "n": 13,
+      "dir": "东",
+      "dist": 927
+     },
+     {
+      "at": [
+       1669,
+       1073
+      ],
+      "n": 9,
+      "dir": "东北",
+      "dist": 1337
+     }
+    ],
+    "spawn_points": 18,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北"
+    ]
+   },
+   {
+    "border": 2,
+    "rect": [
+     0,
+     0,
+     5220,
+     3200
+    ],
+    "area_km2": 16.7,
+    "start_norm": [
+     0.11,
+     0.09
+    ],
+    "start_place": "corner",
+    "start_to_centre": 0.8,
+    "enemy_clusters": [
+     {
+      "at": [
+       4070,
+       601
+      ],
+      "n": 104,
+      "dir": "东",
+      "dist": 3492
+     },
+     {
+      "at": [
+       1336,
+       2604
+      ],
+      "n": 27,
+      "dir": "北",
+      "dist": 2441
+     },
+     {
+      "at": [
+       3171,
+       2356
+      ],
+      "n": 16,
+      "dir": "东北",
+      "dist": 3310
+     },
+     {
+      "at": [
+       2516,
+       773
+      ],
+      "n": 13,
+      "dir": "东",
+      "dist": 1985
+     },
+     {
+      "at": [
+       4487,
+       2518
+      ],
+      "n": 13,
+      "dir": "东北",
+      "dist": 4492
+     },
+     {
+      "at": [
+       492,
+       1793
+      ],
+      "n": 13,
+      "dir": "北",
+      "dist": 1516
+     },
+     {
+      "at": [
+       1516,
+       363
+      ],
+      "n": 13,
+      "dir": "东",
+      "dist": 927
+     },
+     {
+      "at": [
+       1669,
+       1073
+      ],
+      "n": 9,
+      "dir": "东北",
+      "dist": 1337
+     }
+    ],
+    "spawn_points": 24,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     6000,
+     4000
+    ],
+    "area_km2": 24.0,
+    "start_norm": [
+     0.1,
+     0.07
+    ],
+    "start_place": "corner",
+    "start_to_centre": 0.83,
+    "enemy_clusters": [
+     {
+      "at": [
+       4070,
+       601
+      ],
+      "n": 104,
+      "dir": "东",
+      "dist": 3492
+     },
+     {
+      "at": [
+       4858,
+       2991
+      ],
+      "n": 44,
+      "dir": "东北",
+      "dist": 5054
+     },
+     {
+      "at": [
+       1336,
+       2604
+      ],
+      "n": 27,
+      "dir": "北",
+      "dist": 2441
+     },
+     {
+      "at": [
+       3171,
+       2356
+      ],
+      "n": 16,
+      "dir": "东北",
+      "dist": 3310
+     },
+     {
+      "at": [
+       2516,
+       773
+      ],
+      "n": 13,
+      "dir": "东",
+      "dist": 1985
+     },
+     {
+      "at": [
+       492,
+       1793
+      ],
+      "n": 13,
+      "dir": "北",
+      "dist": 1516
+     },
+     {
+      "at": [
+       1516,
+       363
+      ],
+      "n": 13,
+      "dir": "东",
+      "dist": 927
+     },
+     {
+      "at": [
+       1669,
+       1073
+      ],
+      "n": 9,
+      "dir": "东北",
+      "dist": 1337
+     }
+    ],
+    "spawn_points": 24,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "EP01_A01_Objective_1",
+    "title": "Escort the MCV to the Staging Area",
+    "bonus": false,
+    "markers": 16,
+    "on_done": [],
+    "dist": 1504,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.39,
+    "routes": 4,
+    "path_len": 1960
+   },
+   {
+    "name": "EP01_A01_Objective_2",
+    "title": "The MCV Must Survive",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [],
+    "dist": 524,
+    "dir": "西",
+    "stage": 0,
+    "dist_norm": 0.14,
+    "routes": 4,
+    "path_len": 540
+   },
+   {
+    "name": "EP01_A01_Objective_B1",
+    "title": "Capture the Nagama Dojos",
+    "bonus": true,
+    "markers": 3,
+    "on_done": [],
+    "dist": 2248,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.58,
+    "detour": 9,
+    "risk_dist": 813
+   },
+   {
+    "name": "EP01_A01_Objective_3",
+    "title": "Freeze the House of Shinzo",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 5776,
+    "dir": "东北",
+    "stage": 2,
+    "dist_norm": 0.8,
+    "routes": 2,
+    "path_len": 8000
+   },
+   {
+    "name": "EP01_A01_Objective_2p5",
+    "title": "Defeat Shinzo's Loyalist Forces",
+    "bonus": false,
+    "markers": 3,
+    "on_done": [],
+    "dist": 2264,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.59,
+    "routes": 2,
+    "path_len": 3220
+   },
+   {
+    "name": "EP01_A01_Objective_4",
+    "title": "Find and Freeze Shinzo's Disguised Transport",
+    "bonus": false,
+    "markers": 0,
+    "on_done": [
+     "HIDE_COUNTDOWN_TIMER",
+     "STOP_TIMER",
+     "UNIT_AFFECT_OBJECT_PANEL_FLAGS"
+    ]
+   }
+  ],
+  "moved": []
+ },
+ "camp_ep01_a02_osaka_white": {
+  "map": "camp_ep01_a02_osaka_white",
+  "size": [
+   5000.0,
+   4500.0
+  ],
+  "human": "Player_1",
+  "start": [
+   312,
+   484
+  ],
+  "stages": [
+   {
+    "border": 2,
+    "rect": [
+     150,
+     370,
+     1400,
+     1700
+    ],
+    "area_km2": 1.66,
+    "start_norm": [
+     0.13,
+     0.09
+    ],
+    "start_place": "corner",
+    "start_to_centre": 0.79,
+    "enemy_clusters": [
+     {
+      "at": [
+       407,
+       1095
+      ],
+      "n": 7,
+      "dir": "北",
+      "dist": 617
+     }
+    ],
+    "spawn_points": 2,
+    "threat_octants": [
+     "西北",
+     "西南"
+    ]
+   },
+   {
+    "border": 4,
+    "rect": [
+     0,
+     0,
+     4190,
+     4500
+    ],
+    "area_km2": 18.86,
+    "start_norm": [
+     0.07,
+     0.11
+    ],
+    "start_place": "corner",
+    "start_to_centre": 0.82,
+    "enemy_clusters": [
+     {
+      "at": [
+       3348,
+       3743
+      ],
+      "n": 101,
+      "dir": "东北",
+      "dist": 4454
+     },
+     {
+      "at": [
+       407,
+       1095
+      ],
+      "n": 7,
+      "dir": "北",
+      "dist": 617
+     },
+     {
+      "at": [
+       1002,
+       3422
+      ],
+      "n": 7,
+      "dir": "北",
+      "dist": 3017
+     },
+     {
+      "at": [
+       2755,
+       2962
+      ],
+      "n": 6,
+      "dir": "东北",
+      "dist": 3479
+     },
+     {
+      "at": [
+       2092,
+       2572
+      ],
+      "n": 5,
+      "dir": "东北",
+      "dist": 2744
+     }
+    ],
+    "spawn_points": 32,
+    "threat_octants": [
+     "东北",
+     "西北",
+     "西南"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective01",
+    "title": "Deactivate the Nanoswarm Shields",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [],
+    "dist": 655,
+    "dir": "北",
+    "stage": 0,
+    "dist_norm": 0.36,
+    "routes": 4,
+    "path_len": 800
+   },
+   {
+    "name": "Objective02",
+    "title": "Destroy Kenji's HQ",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT",
+     "LINK_MISSION_OBJECTIVE_TO_WAYPOINT"
+    ],
+    "dist": 4717,
+    "dir": "东北",
+    "stage": 1,
+    "dist_norm": 0.77,
+    "routes": 1,
+    "path_len": 6660
+   },
+   {
+    "name": "Objective03",
+    "title": "Destroy the Tech Inhibitor and Freeze Kenji",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "DISABLE_INPUT",
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT_WITH_CATEGORY",
+     "NAMED_TRANSFER_OWNERSHIP_PLAYER",
+     "UNIT_AFFECT_OBJECT_PANEL_FLAGS"
+    ],
+    "dist": 5453,
+    "dir": "东北",
+    "stage": null,
+    "in_moved": true
+   },
+   {
+    "name": "BonusObjective01-CaptureBarracks",
+    "title": "Capture the Instant Dojo and Mecha Bay",
+    "bonus": true,
+    "markers": 2,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 3473,
+    "dir": "东北",
+    "stage": 1,
+    "dist_norm": 0.56,
+    "detour": 11,
+    "risk_dist": 12
+   },
+   {
+    "name": "BonusObjective02-RepairBridges",
+    "title": "Repair the Bridges",
+    "bonus": true,
+    "markers": 4,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 2694,
+    "dir": "东",
+    "stage": 1,
+    "dist_norm": 0.44,
+    "detour": 4604,
+    "risk_dist": 2089
+   }
+  ],
+  "moved": [
+   {
+    "border": 3,
+    "rect": [
+     3190,
+     3160,
+     5000,
+     4500
+    ]
+   },
+   {
+    "border": 5,
+    "rect": [
+     260,
+     2650,
+     4130,
+     4370
+    ]
+   },
+   {
+    "border": 6,
+    "rect": [
+     3070,
+     1810,
+     4320,
+     4190
+    ]
+   }
+  ]
+ },
+ "camp_ep01_a03_miyako_stewart": {
+  "map": "camp_ep01_a03_miyako_stewart",
+  "size": [
+   5000.0,
+   5000.0
+  ],
+  "human": "Player_1",
+  "start": [
+   2950,
+   670
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     0,
+     0,
+     2940,
+     5000
+    ],
+    "area_km2": 14.7,
+    "start_norm": [
+     1.0,
+     0.13
+    ],
+    "start_place": "entering",
+    "start_to_centre": 0.88,
+    "enemy_clusters": [
+     {
+      "at": [
+       934,
+       4047
+      ],
+      "n": 97,
+      "dir": "西北",
+      "dist": 3933
+     },
+     {
+      "at": [
+       1223,
+       1098
+      ],
+      "n": 32,
+      "dir": "西",
+      "dist": 1779
+     },
+     {
+      "at": [
+       2443,
+       2354
+      ],
+      "n": 28,
+      "dir": "北",
+      "dist": 1759
+     }
+    ],
+    "spawn_points": 13,
+    "threat_octants": [
+     "北",
+     "西北",
+     "西",
+     "东南"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "area_km2": 25.0,
+    "start_norm": [
+     0.59,
+     0.13
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.53,
+    "enemy_clusters": [
+     {
+      "at": [
+       934,
+       4047
+      ],
+      "n": 97,
+      "dir": "西北",
+      "dist": 3933
+     },
+     {
+      "at": [
+       1223,
+       1098
+      ],
+      "n": 32,
+      "dir": "西",
+      "dist": 1779
+     },
+     {
+      "at": [
+       2443,
+       2354
+      ],
+      "n": 28,
+      "dir": "北",
+      "dist": 1759
+     },
+     {
+      "at": [
+       4071,
+       3921
+      ],
+      "n": 19,
+      "dir": "北",
+      "dist": 3440
+     },
+     {
+      "at": [
+       4583,
+       4673
+      ],
+      "n": 6,
+      "dir": "北",
+      "dist": 4323
+     },
+     {
+      "at": [
+       4354,
+       2574
+      ],
+      "n": 4,
+      "dir": "东北",
+      "dist": 2366
+     }
+    ],
+    "spawn_points": 25,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "西北",
+     "西",
+     "东南"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "MO_Build_Base",
+    "title": "Set Up a Base at Either Breach Point",
+    "bonus": false,
+    "markers": 2,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_WAYPOINT"
+    ],
+    "dist": 1602,
+    "dir": "西北",
+    "stage": 0,
+    "dist_norm": 0.28,
+    "routes": 1,
+    "path_len": 2560
+   },
+   {
+    "name": "MO_Defeat_Naomi",
+    "title": "Defeat Takara",
+    "bonus": false,
+    "markers": 0,
+    "on_done": []
+   },
+   {
+    "name": "MO_Defeat_Tatsu",
+    "title": "Defeat Tatsu",
+    "bonus": false,
+    "markers": 0,
+    "on_done": []
+   },
+   {
+    "name": "MO_Garrison_Structure",
+    "title": "Capture the Abandoned Com Tower",
+    "bonus": true,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 3158,
+    "dir": "西北",
+    "stage": 0,
+    "dist_norm": 0.54,
+    "detour": 2693,
+    "risk_dist": 1491
+   }
+  ],
+  "moved": []
+ },
+ "camp_ep01_j01_sakhalin_smith": {
+  "map": "camp_ep01_j01_sakhalin_smith",
+  "size": [
+   6250.0,
+   6250.0
+  ],
+  "human": "PlyrJapan",
+  "start": [
+   2478,
+   589
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     6250,
+     6250
+    ],
+    "area_km2": 39.06,
+    "start_norm": [
+     0.4,
+     0.09
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.59,
+    "enemy_clusters": [
+     {
+      "at": [
+       3178,
+       5577
+      ],
+      "n": 110,
+      "dir": "北",
+      "dist": 5037
+     },
+     {
+      "at": [
+       4497,
+       4494
+      ],
+      "n": 74,
+      "dir": "东北",
+      "dist": 4397
+     },
+     {
+      "at": [
+       480,
+       5547
+      ],
+      "n": 20,
+      "dir": "北",
+      "dist": 5345
+     },
+     {
+      "at": [
+       5880,
+       4460
+      ],
+      "n": 13,
+      "dir": "东北",
+      "dist": 5153
+     },
+     {
+      "at": [
+       5573,
+       2072
+      ],
+      "n": 12,
+      "dir": "东北",
+      "dist": 3432
+     },
+     {
+      "at": [
+       1283,
+       3933
+      ],
+      "n": 9,
+      "dir": "北",
+      "dist": 3551
+     },
+     {
+      "at": [
+       5517,
+       3210
+      ],
+      "n": 5,
+      "dir": "东北",
+      "dist": 4013
+     }
+    ],
+    "spawn_points": 16,
+    "threat_octants": [
+     "东北",
+     "北",
+     "西北"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective 01 - Rendezvous With Soviets",
+    "title": "Rendezvous with the Soviet Reinforcements",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [],
+    "dist": 5471,
+    "dir": "北",
+    "stage": 0,
+    "dist_norm": 0.62,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "Objective 02 - Capture the Soviet Base",
+    "title": "Capture the Soviet V.I.P. Bunker",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "PLAYER_SET_MONEY",
+     "TEAM_TRANSFER_TO_PLAYER",
+     "UNIT_AFFECT_OBJECT_PANEL_FLAGS"
+    ],
+    "dist": 4984,
+    "dir": "北",
+    "stage": 0,
+    "dist_norm": 0.56,
+    "routes": 2,
+    "path_len": 5840
+   },
+   {
+    "name": "Objective 03 - Destroy the Soviet Forward Base",
+    "title": "Destroy the Soviet Forward Base",
+    "bonus": false,
+    "markers": 9,
+    "on_done": [
+     "PLAYER_SELL_EVERYTHING"
+    ],
+    "dist": 4312,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.49,
+    "routes": 2,
+    "path_len": 5520
+   },
+   {
+    "name": "Objective 04 - Destroy Grinder Tanks",
+    "title": "Destroy the Grinders",
+    "bonus": false,
+    "markers": 5,
+    "on_done": [],
+    "dist": 7158,
+    "dir": "东北",
+    "stage": null
+   },
+   {
+    "name": "Bonus Objective 01 - Destroy Soviet Outpost",
+    "title": "Destroy the Soviet Outpost",
+    "bonus": true,
+    "markers": 3,
+    "on_done": [],
+    "dist": 5566,
+    "dir": "北",
+    "stage": 0,
+    "dist_norm": 0.63,
+    "detour": 202,
+    "risk_dist": 231
+   },
+   {
+    "name": "Objective 05 - Protect Kenji",
+    "title": "Commander Kenji Must Survive",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [],
+    "dist": 820,
+    "dir": "西北",
+    "stage": 0,
+    "dist_norm": 0.09,
+    "routes": 4,
+    "path_len": 700
+   }
+  ],
+  "moved": []
+ },
+ "camp_ep01_j02_okiislands_smith": {
+  "map": "camp_ep01_j02_okiislands_smith",
+  "size": [
+   7000.0,
+   6000.0
+  ],
+  "human": "PlyrJapan",
+  "start": [
+   3438,
+   1130
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     2170,
+     1610,
+     5840,
+     4380
+    ],
+    "area_km2": 10.17,
+    "start_norm": [
+     0.35,
+     -0.17
+    ],
+    "start_place": "entering",
+    "start_to_centre": 0.98,
+    "enemy_clusters": [],
+    "spawn_points": 1,
+    "threat_octants": [
+     "东北"
+    ]
+   },
+   {
+    "border": 2,
+    "rect": [
+     2020,
+     1570,
+     5990,
+     5030
+    ],
+    "area_km2": 13.74,
+    "start_norm": [
+     0.36,
+     -0.13
+    ],
+    "start_place": "entering",
+    "start_to_centre": 0.91,
+    "enemy_clusters": [],
+    "spawn_points": 1,
+    "threat_octants": [
+     "东北"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     7000,
+     6000
+    ],
+    "area_km2": 42.0,
+    "start_norm": [
+     0.49,
+     0.19
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.44,
+    "enemy_clusters": [
+     {
+      "at": [
+       1207,
+       2915
+      ],
+      "n": 21,
+      "dir": "西北",
+      "dist": 2857
+     },
+     {
+      "at": [
+       5349,
+       5256
+      ],
+      "n": 17,
+      "dir": "东北",
+      "dist": 4547
+     },
+     {
+      "at": [
+       4309,
+       5148
+      ],
+      "n": 16,
+      "dir": "北",
+      "dist": 4111
+     },
+     {
+      "at": [
+       6584,
+       5639
+      ],
+      "n": 9,
+      "dir": "东北",
+      "dist": 5498
+     }
+    ],
+    "spawn_points": 1,
+    "threat_octants": [
+     "东北",
+     "北",
+     "西北"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective 6 - Protrect the Emperor's Tomb",
+    "title": "The Emperor's Tomb Must Not Fall",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "UNIT_AFFECT_OBJECT_PANEL_FLAGS"
+    ],
+    "dist": 2030,
+    "dir": "北",
+    "stage": 0,
+    "dist_norm": 0.44,
+    "routes": null,
+    "path_len": null
+   },
+   {
+    "name": "Objective 1 - Steal Allies Stuff",
+    "title": "Steal the Allies' Vehicles",
+    "bonus": false,
+    "markers": 4,
+    "on_done": [],
+    "dist": 2719,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.59,
+    "routes": null,
+    "path_len": null
+   },
+   {
+    "name": "Objective 2 - Awaken the Ronin",
+    "title": "Garrison the Steel Ronins",
+    "bonus": false,
+    "markers": 4,
+    "on_done": [],
+    "dist": 1905,
+    "dir": "北",
+    "stage": 0,
+    "dist_norm": 0.41,
+    "routes": null,
+    "path_len": null
+   },
+   {
+    "name": "Objective 3 - Sink the Soviet Navy",
+    "title": "Sink the Soviet Navy",
+    "bonus": false,
+    "markers": 17,
+    "on_done": [],
+    "dist": 4547,
+    "dir": "东北",
+    "stage": 2,
+    "dist_norm": 0.49,
+    "routes": null,
+    "path_len": null
+   },
+   {
+    "name": "Objective 4 - Control the Islands",
+    "title": "Capture and Hold the Observation Posts",
+    "bonus": false,
+    "markers": 12,
+    "on_done": [],
+    "dist": 2233,
+    "dir": "北",
+    "stage": 0,
+    "dist_norm": 0.49,
+    "routes": null,
+    "path_len": null
+   },
+   {
+    "name": "Objective 5 - Setup Ambush",
+    "title": "Unpack a Pacifier at Each Ambush Point",
+    "bonus": false,
+    "markers": 8,
+    "on_done": [],
+    "dist": 2425,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.53,
+    "routes": null,
+    "path_len": null
+   }
+  ],
+  "moved": []
+ },
+ "camp_ep01_j03_vladivostok_smith": {
+  "map": "camp_ep01_j03_vladivostok_smith",
+  "size": [
+   5500.0,
+   5500.0
+  ],
+  "human": "PlyrJapan",
+  "start": [
+   2878,
+   366
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     0,
+     0,
+     3260,
+     2750
+    ],
+    "area_km2": 8.96,
+    "start_norm": [
+     0.88,
+     0.13
+    ],
+    "start_place": "corner",
+    "start_to_centre": 0.75,
+    "enemy_clusters": [
+     {
+      "at": [
+       790,
+       1461
+      ],
+      "n": 138,
+      "dir": "西北",
+      "dist": 2357
+     }
+    ],
+    "spawn_points": 0,
+    "threat_octants": [
+     "西北"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5500,
+     5500
+    ],
+    "area_km2": 30.25,
+    "start_norm": [
+     0.52,
+     0.07
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.61,
+    "enemy_clusters": [
+     {
+      "at": [
+       4245,
+       4135
+      ],
+      "n": 510,
+      "dir": "北",
+      "dist": 4009
+     },
+     {
+      "at": [
+       790,
+       1461
+      ],
+      "n": 138,
+      "dir": "西北",
+      "dist": 2357
+     },
+     {
+      "at": [
+       472,
+       5051
+      ],
+      "n": 4,
+      "dir": "西北",
+      "dist": 5266
+     }
+    ],
+    "spawn_points": 9,
+    "threat_octants": [
+     "东北",
+     "北",
+     "西北"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective 01 - Destroy the Soviet Base",
+    "title": "Eliminate the Soviet Frontline Base",
+    "bonus": false,
+    "markers": 6,
+    "on_done": [
+     "PLAYER_SELL_EVERYTHING"
+    ],
+    "dist": 2439,
+    "dir": "西北",
+    "stage": 0,
+    "dist_norm": 0.57,
+    "routes": null,
+    "path_len": null
+   },
+   {
+    "name": "Objective 02 - Destroy Oleg's Base",
+    "title": "Defeat Commander Oleg",
+    "bonus": false,
+    "markers": 8,
+    "on_done": [],
+    "dist": 3523,
+    "dir": "北",
+    "stage": 1,
+    "dist_norm": 0.45,
+    "routes": null,
+    "path_len": null
+   },
+   {
+    "name": "Objective 03 - Destroy Moskvin's Base",
+    "title": "Defeat Commander Moskvin",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [],
+    "dist": 4993,
+    "dir": "东北",
+    "stage": 1,
+    "dist_norm": 0.64,
+    "routes": null,
+    "path_len": null
+   },
+   {
+    "name": "Bonus Objective 02 - Destroy the Allies Base",
+    "title": "Eliminate Commander Giles' Base",
+    "bonus": true,
+    "markers": 1,
+    "on_done": [
+     "FOR_EACH_PLAYER_OBJECT_EXECUTE_SCRIPT",
+     "PLAYER_RELATES_PLAYER",
+     "PLAYER_SELL_EVERYTHING",
+     "PLAYER_SET_ALL_UNITS_TO_FLEE",
+     "UNIT_AI_TRANSFER_ALL"
+    ],
+    "dist": 2029,
+    "dir": "东",
+    "stage": 1,
+    "dist_norm": 0.26,
+    "detour": 1037,
+    "risk_dist": 3599
+   }
+  ],
+  "moved": []
+ },
+ "camp_ep01_s01_romania_stewart": {
+  "map": "camp_ep01_s01_romania_stewart",
+  "size": [
+   4500.0,
+   4500.0
+  ],
+  "human": "Player_1",
+  "start": [
+   3718,
+   379
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     4500,
+     4500
+    ],
+    "area_km2": 20.25,
+    "start_norm": [
+     0.83,
+     0.08
+    ],
+    "start_place": "corner",
+    "start_to_centre": 0.75,
+    "enemy_clusters": [
+     {
+      "at": [
+       2506,
+       2891
+      ],
+      "n": 324,
+      "dir": "西北",
+      "dist": 2789
+     },
+     {
+      "at": [
+       2756,
+       667
+      ],
+      "n": 29,
+      "dir": "西",
+      "dist": 1005
+     },
+     {
+      "at": [
+       358,
+       830
+      ],
+      "n": 19,
+      "dir": "西",
+      "dist": 3391
+     },
+     {
+      "at": [
+       3761,
+       966
+      ],
+      "n": 14,
+      "dir": "北",
+      "dist": 588
+     }
+    ],
+    "spawn_points": 18,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "西北",
+     "西",
+     "西南",
+     "南",
+     "东南"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "MO_Gather_Forces",
+    "title": "Rendezvous with the Recon Teams",
+    "bonus": false,
+    "markers": 3,
+    "on_done": [
+     "HIDE_COUNTER",
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 3334,
+    "dir": "西北",
+    "stage": 0,
+    "dist_norm": 0.52,
+    "routes": 1,
+    "path_len": 9360
+   },
+   {
+    "name": "MO_Rescue_Scientists",
+    "title": "Rescue the Chief Scientists",
+    "bonus": false,
+    "markers": 3,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 2454,
+    "dir": "西北",
+    "stage": 0,
+    "dist_norm": 0.39,
+    "routes": 1,
+    "path_len": 4300
+   },
+   {
+    "name": "MO_Escape_Hurry",
+    "title": "Safely Extract At Least One Chief Scientist",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_WAYPOINT"
+    ],
+    "dist": 75,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.01,
+    "routes": 4,
+    "path_len": 120
+   },
+   {
+    "name": "MO_Bonus_Objective",
+    "title": "Safely Extract All Chief Scientists",
+    "bonus": true,
+    "markers": 0,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT_WITH_CATEGORY"
+    ]
+   }
+  ],
+  "moved": []
+ },
+ "camp_ep01_s02_murmansk_white": {
+  "map": "camp_ep01_s02_murmansk_white",
+  "size": [
+   4800.0,
+   4300.0
+  ],
+  "human": "Player_1",
+  "start": [
+   1393,
+   155
+  ],
+  "stages": [
+   {
+    "border": 2,
+    "rect": [
+     760,
+     230,
+     3470,
+     3530
+    ],
+    "area_km2": 8.94,
+    "start_norm": [
+     0.23,
+     -0.02
+    ],
+    "start_place": "entering",
+    "start_to_centre": 0.83,
+    "enemy_clusters": [
+     {
+      "at": [
+       2340,
+       3307
+      ],
+      "n": 16,
+      "dir": "北",
+      "dist": 3291
+     },
+     {
+      "at": [
+       916,
+       2708
+      ],
+      "n": 7,
+      "dir": "北",
+      "dist": 2597
+     },
+     {
+      "at": [
+       936,
+       1793
+      ],
+      "n": 4,
+      "dir": "北",
+      "dist": 1700
+     },
+     {
+      "at": [
+       3143,
+       1985
+      ],
+      "n": 4,
+      "dir": "东北",
+      "dist": 2532
+     },
+     {
+      "at": [
+       1618,
+       2569
+      ],
+      "n": 4,
+      "dir": "北",
+      "dist": 2425
+     },
+     {
+      "at": [
+       3257,
+       515
+      ],
+      "n": 4,
+      "dir": "东",
+      "dist": 1898
+     }
+    ],
+    "spawn_points": 34,
+    "threat_octants": [
+     "东北",
+     "北"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     4800,
+     4300
+    ],
+    "area_km2": 20.64,
+    "start_norm": [
+     0.29,
+     0.04
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.72,
+    "enemy_clusters": [
+     {
+      "at": [
+       4239,
+       695
+      ],
+      "n": 42,
+      "dir": "东",
+      "dist": 2897
+     },
+     {
+      "at": [
+       543,
+       3706
+      ],
+      "n": 36,
+      "dir": "北",
+      "dist": 3651
+     },
+     {
+      "at": [
+       2852,
+       3984
+      ],
+      "n": 23,
+      "dir": "北",
+      "dist": 4097
+     },
+     {
+      "at": [
+       2340,
+       3307
+      ],
+      "n": 16,
+      "dir": "北",
+      "dist": 3291
+     },
+     {
+      "at": [
+       4185,
+       3713
+      ],
+      "n": 13,
+      "dir": "东北",
+      "dist": 4522
+     },
+     {
+      "at": [
+       916,
+       2708
+      ],
+      "n": 7,
+      "dir": "北",
+      "dist": 2597
+     },
+     {
+      "at": [
+       3305,
+       513
+      ],
+      "n": 5,
+      "dir": "东",
+      "dist": 1946
+     },
+     {
+      "at": [
+       936,
+       1793
+      ],
+      "n": 4,
+      "dir": "北",
+      "dist": 1700
+     }
+    ],
+    "spawn_points": 35,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective01",
+    "title": "Scout the FutureTech Research Facility",
+    "bonus": false,
+    "markers": 0,
+    "on_done": []
+   },
+   {
+    "name": "Objective02",
+    "title": "Regroup at the Village",
+    "bonus": false,
+    "markers": 0,
+    "on_done": []
+   },
+   {
+    "name": "Objective03",
+    "title": "Crush the FutureTech Research Facility",
+    "bonus": false,
+    "markers": 0,
+    "on_done": []
+   },
+   {
+    "name": "BonusObjective01",
+    "title": "Liberate the Soviet Forces",
+    "bonus": true,
+    "markers": 0,
+    "on_done": []
+   }
+  ],
+  "moved": []
+ },
+ "camp_ep01_s03_yucatan_stewart": {
+  "map": "camp_ep01_s03_yucatan_stewart",
+  "size": [
+   7000.0,
+   7000.0
+  ],
+  "human": "Player_1",
+  "start": [
+   6138,
+   518
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     7000,
+     7000
+    ],
+    "area_km2": 49.0,
+    "start_norm": [
+     0.88,
+     0.07
+    ],
+    "start_place": "corner",
+    "start_to_centre": 0.8,
+    "enemy_clusters": [
+     {
+      "at": [
+       4236,
+       4547
+      ],
+      "n": 25,
+      "dir": "西北",
+      "dist": 4456
+     },
+     {
+      "at": [
+       1657,
+       2698
+      ],
+      "n": 20,
+      "dir": "西北",
+      "dist": 4984
+     },
+     {
+      "at": [
+       5592,
+       4247
+      ],
+      "n": 9,
+      "dir": "北",
+      "dist": 3769
+     },
+     {
+      "at": [
+       3339,
+       4870
+      ],
+      "n": 9,
+      "dir": "西北",
+      "dist": 5175
+     },
+     {
+      "at": [
+       3762,
+       1251
+      ],
+      "n": 9,
+      "dir": "西",
+      "dist": 2487
+     },
+     {
+      "at": [
+       5730,
+       3355
+      ],
+      "n": 5,
+      "dir": "北",
+      "dist": 2867
+     },
+     {
+      "at": [
+       1431,
+       840
+      ],
+      "n": 5,
+      "dir": "西",
+      "dist": 4718
+     },
+     {
+      "at": [
+       2719,
+       1061
+      ],
+      "n": 5,
+      "dir": "西",
+      "dist": 3462
+     }
+    ],
+    "spawn_points": 38,
+    "threat_octants": [
+     "东北",
+     "北",
+     "西北",
+     "西",
+     "南",
+     "东南"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "MO_Clear_Island_Zones",
+    "title": "Clear Hostile Forces from the Outer Islands",
+    "bonus": false,
+    "markers": 3,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_WAYPOINT"
+    ],
+    "dist": 4409,
+    "dir": "西北",
+    "stage": 0,
+    "dist_norm": 0.45,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "MO_Intercept_Allied_Miners",
+    "title": "Destroy the Prospectors",
+    "bonus": false,
+    "markers": 0,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ]
+   },
+   {
+    "name": "MO_Destroy_Allied_Base",
+    "title": "Crush the FutureTech Military HQ",
+    "bonus": false,
+    "markers": 0,
+    "on_done": []
+   },
+   {
+    "name": "MO_Bonus_Objective",
+    "title": "Crush the FutureTech Facilities",
+    "bonus": true,
+    "markers": 4,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 3806,
+    "dir": "西北",
+    "stage": 0,
+    "dist_norm": 0.38,
+    "detour": 567,
+    "risk_dist": 1653
+   }
+  ],
+  "moved": []
+ },
+ "camp_ep01_s04_warbotisland_white": {
+  "map": "camp_ep01_s04_warbotisland_white",
+  "size": [
+   6100.0,
+   6100.0
+  ],
+  "human": "Player_1",
+  "start": [
+   2532,
+   1009
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     2920,
+     0,
+     4990,
+     1300
+    ],
+    "area_km2": 2.69,
+    "start_norm": [
+     -0.19,
+     0.78
+    ],
+    "start_place": "entering",
+    "start_to_centre": 1.05,
+    "enemy_clusters": [
+     {
+      "at": [
+       4508,
+       580
+      ],
+      "n": 10,
+      "dir": "东",
+      "dist": 2022
+     }
+    ],
+    "spawn_points": 6,
+    "threat_octants": [
+     "东"
+    ]
+   },
+   {
+    "border": 2,
+    "rect": [
+     0,
+     0,
+     5600,
+     5530
+    ],
+    "area_km2": 30.97,
+    "start_norm": [
+     0.45,
+     0.18
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.45,
+    "enemy_clusters": [
+     {
+      "at": [
+       2911,
+       3217
+      ],
+      "n": 58,
+      "dir": "北",
+      "dist": 2240
+     },
+     {
+      "at": [
+       5027,
+       5019
+      ],
+      "n": 11,
+      "dir": "东北",
+      "dist": 4723
+     },
+     {
+      "at": [
+       525,
+       5171
+      ],
+      "n": 10,
+      "dir": "西北",
+      "dist": 4620
+     },
+     {
+      "at": [
+       4508,
+       580
+      ],
+      "n": 10,
+      "dir": "东",
+      "dist": 2022
+     },
+     {
+      "at": [
+       3844,
+       4090
+      ],
+      "n": 10,
+      "dir": "东北",
+      "dist": 3349
+     },
+     {
+      "at": [
+       769,
+       727
+      ],
+      "n": 8,
+      "dir": "西",
+      "dist": 1785
+     },
+     {
+      "at": [
+       614,
+       3092
+      ],
+      "n": 8,
+      "dir": "西北",
+      "dist": 2831
+     },
+     {
+      "at": [
+       4815,
+       3259
+      ],
+      "n": 6,
+      "dir": "东北",
+      "dist": 3206
+     }
+    ],
+    "spawn_points": 14,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "西北",
+     "西"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     6100,
+     6100
+    ],
+    "area_km2": 37.21,
+    "start_norm": [
+     0.42,
+     0.17
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.49,
+    "enemy_clusters": [
+     {
+      "at": [
+       2911,
+       3217
+      ],
+      "n": 58,
+      "dir": "北",
+      "dist": 2240
+     },
+     {
+      "at": [
+       5586,
+       5685
+      ],
+      "n": 25,
+      "dir": "东北",
+      "dist": 5585
+     },
+     {
+      "at": [
+       522,
+       5316
+      ],
+      "n": 13,
+      "dir": "西北",
+      "dist": 4753
+     },
+     {
+      "at": [
+       5027,
+       5019
+      ],
+      "n": 11,
+      "dir": "东北",
+      "dist": 4723
+     },
+     {
+      "at": [
+       4508,
+       580
+      ],
+      "n": 10,
+      "dir": "东",
+      "dist": 2022
+     },
+     {
+      "at": [
+       3844,
+       4090
+      ],
+      "n": 10,
+      "dir": "东北",
+      "dist": 3349
+     },
+     {
+      "at": [
+       769,
+       727
+      ],
+      "n": 8,
+      "dir": "西",
+      "dist": 1785
+     },
+     {
+      "at": [
+       614,
+       3092
+      ],
+      "n": 8,
+      "dir": "西北",
+      "dist": 2831
+     }
+    ],
+    "spawn_points": 14,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "西北",
+     "西"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective01",
+    "title": "Establish a Base on Sigma Island",
+    "bonus": false,
+    "markers": 0,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_WAYPOINT_WITH_CATEGORY",
+     "MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT",
+     "PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM"
+    ]
+   },
+   {
+    "name": "Objective02",
+    "title": "Destroy FutureTech's Production Capability",
+    "bonus": false,
+    "markers": 4,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_WAYPOINT"
+    ],
+    "dist": 1781,
+    "dir": "北",
+    "stage": 1,
+    "dist_norm": 0.23,
+    "routes": 4,
+    "path_len": 1980
+   },
+   {
+    "name": "Objective03",
+    "title": "Stop the Sigma Harmonizer",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT",
+     "LINK_MISSION_OBJECTIVE_TO_WAYPOINT",
+     "STOP_TIMER"
+    ],
+    "dist": 5620,
+    "dir": "东北",
+    "stage": 2,
+    "dist_norm": 0.65,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "BonusObjective01 - CoolingTowers",
+    "title": "Capture the Cooling Towers",
+    "bonus": true,
+    "markers": 3,
+    "on_done": [],
+    "dist": 1949,
+    "dir": "北",
+    "stage": 1,
+    "dist_norm": 0.25,
+    "detour": 22,
+    "risk_dist": 387
+   },
+   {
+    "name": "BonusObjective02 - Airfield",
+    "title": "Destroy the Airbase Controlling the Skies",
+    "bonus": true,
+    "markers": 0,
+    "on_done": [
+     "ALLOW_DISALLOW_ONE_BUILDING",
+     "LINK_MISSION_OBJECTIVE_TO_WAYPOINT_WITH_CATEGORY"
+    ]
+   }
+  ],
+  "moved": []
+ },
+ "camp_ep01_y01_facility_rao": {
+  "map": "camp_ep01_y01_facility_rao",
+  "size": [
+   5000.0,
+   5000.0
+  ],
+  "human": "Yuriko",
+  "start": [
+   688,
+   1927
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "area_km2": 25.0,
+    "start_norm": [
+     0.14,
+     0.39
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.54,
+    "enemy_clusters": [
+     {
+      "at": [
+       1797,
+       2339
+      ],
+      "n": 123,
+      "dir": "东",
+      "dist": 1183
+     },
+     {
+      "at": [
+       3383,
+       1358
+      ],
+      "n": 58,
+      "dir": "东",
+      "dist": 2754
+     },
+     {
+      "at": [
+       4314,
+       2029
+      ],
+      "n": 45,
+      "dir": "东",
+      "dist": 3628
+     },
+     {
+      "at": [
+       3507,
+       3532
+      ],
+      "n": 9,
+      "dir": "东北",
+      "dist": 3244
+     },
+     {
+      "at": [
+       3122,
+       2568
+      ],
+      "n": 8,
+      "dir": "东",
+      "dist": 2517
+     },
+     {
+      "at": [
+       2328,
+       4022
+      ],
+      "n": 4,
+      "dir": "东北",
+      "dist": 2660
+     }
+    ],
+    "spawn_points": 51,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "东南"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Y01_Powers",
+    "title": "Access Secret Files to Become Stronger",
+    "bonus": false,
+    "markers": 4,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 1502,
+    "dir": "东南",
+    "stage": 0,
+    "dist_norm": 0.21,
+    "routes": 1,
+    "path_len": 2800
+   },
+   {
+    "name": "Y01_GetFree",
+    "title": "Escape From Shiro Psychic Research",
+    "bonus": false,
+    "markers": 6,
+    "on_done": [
+     "NAMED_STOP",
+     "UNIT_AFFECT_OBJECT_PANEL_FLAGS"
+    ],
+    "dist": 1856,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.26,
+    "routes": 1,
+    "path_len": 9180
+   }
+  ],
+  "moved": []
+ },
+ "camp_ep01_y02_blacksite_davis": {
+  "map": "camp_ep01_y02_blacksite_davis",
+  "size": [
+   4000.0,
+   3000.0
+  ],
+  "human": "Player_1",
+  "start": [
+   557,
+   332
+  ],
+  "stages": [
+   {
+    "border": 2,
+    "rect": [
+     0,
+     0,
+     3140,
+     3000
+    ],
+    "area_km2": 9.42,
+    "start_norm": [
+     0.18,
+     0.11
+    ],
+    "start_place": "corner",
+    "start_to_centre": 0.72,
+    "enemy_clusters": [
+     {
+      "at": [
+       1313,
+       1218
+      ],
+      "n": 565,
+      "dir": "东北",
+      "dist": 1164
+     }
+    ],
+    "spawn_points": 8,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     4000,
+     3000
+    ],
+    "area_km2": 12.0,
+    "start_norm": [
+     0.14,
+     0.11
+    ],
+    "start_place": "corner",
+    "start_to_centre": 0.75,
+    "enemy_clusters": [
+     {
+      "at": [
+       1452,
+       1266
+      ],
+      "n": 601,
+      "dir": "东北",
+      "dist": 1293
+     }
+    ],
+    "spawn_points": 8,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective_1_Escape",
+    "title": "Escape From Cryo-Stasis",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [],
+    "dist": 160,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.04,
+    "routes": 4,
+    "path_len": 240
+   },
+   {
+    "name": "Objective_2_DestroyFacility",
+    "title": "Utterly Destroy the Detention Camp",
+    "bonus": false,
+    "markers": 16,
+    "on_done": [],
+    "dist": 2075,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.48,
+    "routes": 4,
+    "path_len": 2900
+   },
+   {
+    "name": "Objective_3_DestroyAircraftCarriers",
+    "title": "Sink the Carrier Strike Groups",
+    "bonus": false,
+    "markers": 2,
+    "on_done": [],
+    "dist": 3624,
+    "dir": "东北",
+    "stage": 1,
+    "dist_norm": 0.72,
+    "routes": 1,
+    "path_len": 5060
+   },
+   {
+    "name": "Objective_2A_GetToThePort",
+    "title": "Head Back to the Empire",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [],
+    "dist": 2538,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.58,
+    "routes": 1,
+    "path_len": 3980
+   }
+  ],
+  "moved": [
+   {
+    "border": 1,
+    "rect": [
+     3140,
+     0,
+     4000,
+     3000
+    ]
+   }
+  ]
+ },
+ "camp_ep01_y03_compound_rao": {
+  "map": "camp_ep01_y03_compound_rao",
+  "size": [
+   6000.0,
+   6000.0
+  ],
+  "human": "Player_1",
+  "start": [
+   2924,
+   3156
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     6000,
+     6000
+    ],
+    "area_km2": 36.0,
+    "start_norm": [
+     0.49,
+     0.53
+    ],
+    "start_place": "centre",
+    "start_to_centre": 0.04,
+    "enemy_clusters": [
+     {
+      "at": [
+       1733,
+       2888
+      ],
+      "n": 92,
+      "dir": "西",
+      "dist": 1221
+     },
+     {
+      "at": [
+       1873,
+       1906
+      ],
+      "n": 34,
+      "dir": "西南",
+      "dist": 1633
+     },
+     {
+      "at": [
+       4292,
+       4629
+      ],
+      "n": 31,
+      "dir": "东北",
+      "dist": 2010
+     },
+     {
+      "at": [
+       3726,
+       2234
+      ],
+      "n": 31,
+      "dir": "东南",
+      "dist": 1222
+     },
+     {
+      "at": [
+       3467,
+       3702
+      ],
+      "n": 26,
+      "dir": "东北",
+      "dist": 770
+     },
+     {
+      "at": [
+       1319,
+       4659
+      ],
+      "n": 26,
+      "dir": "西北",
+      "dist": 2199
+     },
+     {
+      "at": [
+       2541,
+       5395
+      ],
+      "n": 22,
+      "dir": "北",
+      "dist": 2272
+     },
+     {
+      "at": [
+       759,
+       5104
+      ],
+      "n": 7,
+      "dir": "西北",
+      "dist": 2913
+     }
+    ],
+    "spawn_points": 26,
+    "threat_octants": [
+     "东",
+     "东北",
+     "北",
+     "西北",
+     "西",
+     "西南",
+     "南",
+     "东南"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Y03_Objective_01",
+    "title": "Gain Access to the Lower Level",
+    "bonus": false,
+    "markers": 4,
+    "on_done": [
+     "UNIT_EXECUTE_SEQUENTIAL_SCRIPT"
+    ],
+    "dist": 601,
+    "dir": "北",
+    "stage": 0,
+    "dist_norm": 0.07,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "Y03_Objective_02",
+    "title": "Kill Dr. Shimada",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [],
+    "dist": 2420,
+    "dir": "北",
+    "stage": 0,
+    "dist_norm": 0.29,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "Y03_Objective_03",
+    "title": "Kill Izumi",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [],
+    "dist": 3096,
+    "dir": "西北",
+    "stage": 0,
+    "dist_norm": 0.36,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "Y03_Objective_00",
+    "title": "Kill Everyone",
+    "bonus": false,
+    "markers": 4,
+    "on_done": [],
+    "dist": 8,
+    "dir": "西南",
+    "stage": 0,
+    "dist_norm": 0.0,
+    "routes": 4,
+    "path_len": 20
+   }
+  ],
+  "moved": []
+ },
+ "ours_A4_CampA4Idle": {
+  "map": "ours_A4_CampA4Idle",
+  "size": [
+   5000.0,
+   5000.0
+  ],
+  "human": "Player_1",
+  "start": [
+   1460,
+   2440
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     0,
+     0,
+     3640,
+     5000
+    ],
+    "area_km2": 18.2,
+    "start_norm": [
+     0.4,
+     0.49
+    ],
+    "start_place": "centre",
+    "start_to_centre": 0.14,
+    "enemy_clusters": [
+     {
+      "at": [
+       3008,
+       3960
+      ],
+      "n": 9,
+      "dir": "东北",
+      "dist": 2169
+     }
+    ],
+    "spawn_points": 10,
+    "threat_octants": [
+     "东",
+     "东北",
+     "西"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "area_km2": 25.0,
+    "start_norm": [
+     0.29,
+     0.49
+    ],
+    "start_place": "centre",
+    "start_to_centre": 0.29,
+    "enemy_clusters": [
+     {
+      "at": [
+       3008,
+       3960
+      ],
+      "n": 9,
+      "dir": "东北",
+      "dist": 2169
+     },
+     {
+      "at": [
+       4030,
+       2560
+      ],
+      "n": 8,
+      "dir": "东",
+      "dist": 2573
+     }
+    ],
+    "spawn_points": 10,
+    "threat_octants": [
+     "东",
+     "东北",
+     "西"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective01 - CNV A4",
+    "title": "MISSIONOBJ:CNVA4_T1",
+    "bonus": false,
+    "markers": 4,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT",
+     "LINK_MISSION_OBJECTIVE_TO_WAYPOINT"
+    ],
+    "dist": 792,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.13,
+    "routes": 4,
+    "path_len": 840
+   },
+   {
+    "name": "Bonus01 - CNV A4",
+    "title": "MISSIONOBJ:CNVA4_T3",
+    "bonus": true,
+    "markers": 3,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_WAYPOINT"
+    ],
+    "dist": 1451,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.23,
+    "detour": 176,
+    "risk_dist": 1132
+   },
+   {
+    "name": "Bonus02 - CNV A4",
+    "title": "MISSIONOBJ:CNVA4_T5",
+    "bonus": true,
+    "markers": 0,
+    "on_done": []
+   },
+   {
+    "name": "Objective02 - CNV A4",
+    "title": "MISSIONOBJ:CNVA4_T7",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_WAYPOINT"
+    ],
+    "dist": 1401,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.23,
+    "routes": 2,
+    "path_len": 1460
+   },
+   {
+    "name": "Objective03 - CNV A4",
+    "title": "MISSIONOBJ:CNVA4_T9",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_WAYPOINT"
+    ],
+    "dist": 1471,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.24,
+    "routes": 2,
+    "path_len": 1740
+   },
+   {
+    "name": "Objective04 - CNV A4",
+    "title": "MISSIONOBJ:CNVA4_T11",
+    "bonus": false,
+    "markers": 2,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 2369,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.38,
+    "routes": 2,
+    "path_len": 3340
+   },
+   {
+    "name": "Objective05 - CNV A4",
+    "title": "MISSIONOBJ:CNVA4_T13",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_WAYPOINT"
+    ],
+    "dist": 2571,
+    "dir": "东",
+    "stage": 1,
+    "dist_norm": 0.36,
+    "routes": 3,
+    "path_len": 2620
+   },
+   {
+    "name": "Objective06 - CNV A4",
+    "title": "MISSIONOBJ:CNVA4_T15",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_WAYPOINT"
+    ],
+    "dist": 2441,
+    "dir": "东",
+    "stage": 1,
+    "dist_norm": 0.35,
+    "routes": 3,
+    "path_len": 2500
+   }
+  ],
+  "moved": []
+ },
+ "ours_A5_CampA5Win": {
+  "map": "ours_A5_CampA5Win",
+  "size": [
+   5000.0,
+   5000.0
+  ],
+  "human": "Player_1",
+  "start": [
+   1460,
+   2415
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     0,
+     0,
+     2730,
+     5000
+    ],
+    "area_km2": 13.65,
+    "start_norm": [
+     0.53,
+     0.48
+    ],
+    "start_place": "centre",
+    "start_to_centre": 0.05,
+    "enemy_clusters": [],
+    "spawn_points": 2,
+    "threat_octants": [
+     "西",
+     "东南"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "area_km2": 25.0,
+    "start_norm": [
+     0.29,
+     0.48
+    ],
+    "start_place": "centre",
+    "start_to_centre": 0.3,
+    "enemy_clusters": [
+     {
+      "at": [
+       3071,
+       2511
+      ],
+      "n": 11,
+      "dir": "东",
+      "dist": 1614
+     },
+     {
+      "at": [
+       2930,
+       920
+      ],
+      "n": 5,
+      "dir": "东南",
+      "dist": 2097
+     }
+    ],
+    "spawn_points": 3,
+    "threat_octants": [
+     "东",
+     "西",
+     "东南"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective01 - CNV A5",
+    "title": "MISSIONOBJ:CNVA5_T1",
+    "bonus": false,
+    "markers": 3,
+    "on_done": [],
+    "dist": 1060,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.19,
+    "routes": 4,
+    "path_len": 1020
+   },
+   {
+    "name": "Objective02 - CNV A5",
+    "title": "MISSIONOBJ:CNVA5_T3",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 1542,
+    "dir": "东",
+    "stage": 1,
+    "dist_norm": 0.22,
+    "routes": 0,
+    "path_len": null
+   },
+   {
+    "name": "Bonus01 - CNV A5",
+    "title": "MISSIONOBJ:CNVA5_T5",
+    "bonus": true,
+    "markers": 2,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 2611,
+    "dir": "东",
+    "stage": 1,
+    "dist_norm": 0.37,
+    "detour": 2275,
+    "risk_dist": 1146
+   },
+   {
+    "name": "Objective03 - CNV A5",
+    "title": "MISSIONOBJ:CNVA5_T7",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_WAYPOINT"
+    ],
+    "dist": 2357,
+    "dir": "东南",
+    "stage": 0,
+    "dist_norm": 0.41,
+    "routes": 3,
+    "path_len": 3040
+   }
+  ],
+  "moved": []
+ },
+ "ours_A7_CampA7Pincer": {
+  "map": "ours_A7_CampA7Pincer",
+  "size": [
+   5000.0,
+   5000.0
+  ],
+  "human": "Player_1",
+  "start": [
+   1210,
+   2415
+  ],
+  "stages": [
+   {
+    "border": 1,
+    "rect": [
+     0,
+     0,
+     2270,
+     5000
+    ],
+    "area_km2": 11.35,
+    "start_norm": [
+     0.53,
+     0.48
+    ],
+    "start_place": "centre",
+    "start_to_centre": 0.05,
+    "enemy_clusters": [
+     {
+      "at": [
+       1900,
+       4070
+      ],
+      "n": 5,
+      "dir": "东北",
+      "dist": 1793
+     },
+     {
+      "at": [
+       1900,
+       1725
+      ],
+      "n": 4,
+      "dir": "东南",
+      "dist": 976
+     }
+    ],
+    "spawn_points": 2,
+    "threat_octants": [
+     "东",
+     "东北"
+    ]
+   },
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "area_km2": 25.0,
+    "start_norm": [
+     0.24,
+     0.48
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.37,
+    "enemy_clusters": [
+     {
+      "at": [
+       3667,
+       3361
+      ],
+      "n": 9,
+      "dir": "东",
+      "dist": 2633
+     },
+     {
+      "at": [
+       1900,
+       4070
+      ],
+      "n": 5,
+      "dir": "东北",
+      "dist": 1793
+     },
+     {
+      "at": [
+       1900,
+       1725
+      ],
+      "n": 4,
+      "dir": "东南",
+      "dist": 976
+     }
+    ],
+    "spawn_points": 3,
+    "threat_octants": [
+     "东",
+     "东北"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective01 - CNV A7",
+    "title": "MISSIONOBJ:CNVA7_T1",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 94,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.02,
+    "routes": 4,
+    "path_len": 140
+   },
+   {
+    "name": "Objective02 - CNV A7",
+    "title": "MISSIONOBJ:CNVA7_T3",
+    "bonus": false,
+    "markers": 3,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 890,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.16,
+    "routes": 3,
+    "path_len": 1260
+   },
+   {
+    "name": "Objective03 - CNV A7",
+    "title": "MISSIONOBJ:CNVA7_T5",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_WAYPOINT"
+    ],
+    "dist": 1410,
+    "dir": "东",
+    "stage": 1,
+    "dist_norm": 0.2,
+    "routes": 1,
+    "path_len": 2080
+   },
+   {
+    "name": "Bonus01 - CNV A7",
+    "title": "MISSIONOBJ:CNVA7_T7",
+    "bonus": true,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_WAYPOINT"
+    ],
+    "dist": 1410,
+    "dir": "东",
+    "stage": 1,
+    "dist_norm": 0.2,
+    "detour": 0,
+    "risk_dist": 1160
+   },
+   {
+    "name": "Bonus02 - CNV A7",
+    "title": "MISSIONOBJ:CNVA7_T9",
+    "bonus": true,
+    "markers": 3,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 2822,
+    "dir": "东",
+    "stage": 1,
+    "dist_norm": 0.4,
+    "detour": 1313,
+    "risk_dist": 200
+   },
+   {
+    "name": "Objective04 - CNV A7",
+    "title": "MISSIONOBJ:CNVA7_T11",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 2490,
+    "dir": "东",
+    "stage": 1,
+    "dist_norm": 0.35,
+    "routes": 1,
+    "path_len": 3420
+   }
+  ],
+  "moved": []
+ },
+ "ours_A8_CampA8S": {
+  "map": "ours_A8_CampA8S",
+  "size": [
+   5000.0,
+   5000.0
+  ],
+  "human": "Player_1",
+  "start": [
+   1300,
+   2300
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "area_km2": 25.0,
+    "start_norm": [
+     0.26,
+     0.46
+    ],
+    "start_place": "centre",
+    "start_to_centre": 0.34,
+    "enemy_clusters": [
+     {
+      "at": [
+       3325,
+       2200
+      ],
+      "n": 4,
+      "dir": "东",
+      "dist": 2027
+     },
+     {
+      "at": [
+       3425,
+       2900
+      ],
+      "n": 4,
+      "dir": "东",
+      "dist": 2208
+     },
+     {
+      "at": [
+       3125,
+       3500
+      ],
+      "n": 4,
+      "dir": "东北",
+      "dist": 2184
+     }
+    ],
+    "spawn_points": 0,
+    "threat_octants": []
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective01 - CNV A8",
+    "title": "MISSIONOBJ:CNVA8_1",
+    "bonus": false,
+    "markers": 3,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT",
+     "SHOW_MILITARY_CAPTION"
+    ],
+    "dist": 2143,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.3,
+    "routes": 4,
+    "path_len": 2620
+   },
+   {
+    "name": "Objective02 - CNV A8",
+    "title": "MISSIONOBJ:CNVA8_2",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT",
+     "SHOW_MILITARY_CAPTION"
+    ],
+    "dist": 0,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.0,
+    "routes": 4,
+    "path_len": null
+   },
+   {
+    "name": "Bonus01 - CNV A8",
+    "title": "MISSIONOBJ:CNVA8_B1",
+    "bonus": true,
+    "markers": 3,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 2085,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.29,
+    "detour": 1,
+    "risk_dist": 123
+   }
+  ],
+  "moved": []
+ },
+ "ours_J3_CampJ3Run": {
+  "map": "ours_J3_CampJ3Run",
+  "size": [
+   5000.0,
+   5000.0
+  ],
+  "human": "Player_1",
+  "start": [
+   1430,
+   2400
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "area_km2": 25.0,
+    "start_norm": [
+     0.29,
+     0.48
+    ],
+    "start_place": "centre",
+    "start_to_centre": 0.3,
+    "enemy_clusters": [
+     {
+      "at": [
+       2900,
+       3060
+      ],
+      "n": 8,
+      "dir": "东北",
+      "dist": 1611
+     },
+     {
+      "at": [
+       2582,
+       2188
+      ],
+      "n": 5,
+      "dir": "东",
+      "dist": 1171
+     },
+     {
+      "at": [
+       3440,
+       3500
+      ],
+      "n": 5,
+      "dir": "东北",
+      "dist": 2291
+     }
+    ],
+    "spawn_points": 1,
+    "threat_octants": [
+     "东",
+     "东北"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective01 - CNV J3",
+    "title": "MISSIONOBJ:CNVJ3_T1",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 2433,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.34,
+    "routes": 2,
+    "path_len": 3280
+   },
+   {
+    "name": "Objective02 - CNV J3",
+    "title": "MISSIONOBJ:CNVJ3_T3",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [],
+    "dist": 70,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.01,
+    "routes": 4,
+    "path_len": 80
+   },
+   {
+    "name": "Objective03 - CNV J3",
+    "title": "MISSIONOBJ:CNVJ3_T5",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_WAYPOINT"
+    ],
+    "dist": 757,
+    "dir": "西",
+    "stage": 0,
+    "dist_norm": 0.11,
+    "routes": 4,
+    "path_len": 920
+   },
+   {
+    "name": "Bonus01 - CNV J3",
+    "title": "MISSIONOBJ:CNVJ3_T7",
+    "bonus": true,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 2433,
+    "dir": "东北",
+    "stage": 0,
+    "dist_norm": 0.34,
+    "detour": 0,
+    "risk_dist": 160
+   }
+  ],
+  "moved": []
+ },
+ "ours_J4_CampJ4": {
+  "map": "ours_J4_CampJ4",
+  "size": [
+   5000.0,
+   5000.0
+  ],
+  "human": "Player_1",
+  "start": [
+   2900,
+   3105
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "area_km2": 25.0,
+    "start_norm": [
+     0.58,
+     0.62
+    ],
+    "start_place": "centre",
+    "start_to_centre": 0.21,
+    "enemy_clusters": [],
+    "spawn_points": 3,
+    "threat_octants": [
+     "西南"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective01 - CNV J4",
+    "title": "MISSIONOBJ:CNVJ4_0",
+    "bonus": false,
+    "markers": 3,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 518,
+    "dir": "南",
+    "stage": 0,
+    "dist_norm": 0.07,
+    "routes": 4,
+    "path_len": 520
+   },
+   {
+    "name": "Bonus01 - CNV J4",
+    "title": "MISSIONOBJ:CNVJ4_B1",
+    "bonus": true,
+    "markers": 0,
+    "on_done": []
+   },
+   {
+    "name": "Bonus02 - CNV J4",
+    "title": "MISSIONOBJ:CNVJ4_B2",
+    "bonus": true,
+    "markers": 3,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 518,
+    "dir": "南",
+    "stage": 0,
+    "dist_norm": 0.07,
+    "detour": 0
+   },
+   {
+    "name": "Objective02 - CNV J4",
+    "title": "MISSIONOBJ:CNVJ4_1",
+    "bonus": false,
+    "markers": 0,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT",
+     "SHOW_MILITARY_CAPTION"
+    ]
+   }
+  ],
+  "moved": []
+ },
+ "ours_J5_CampJ5Lose": {
+  "map": "ours_J5_CampJ5Lose",
+  "size": [
+   5000.0,
+   5000.0
+  ],
+  "human": "Player_1",
+  "start": [
+   2120,
+   2500
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "area_km2": 25.0,
+    "start_norm": [
+     0.42,
+     0.5
+    ],
+    "start_place": "centre",
+    "start_to_centre": 0.11,
+    "enemy_clusters": [
+     {
+      "at": [
+       4293,
+       2536
+      ],
+      "n": 7,
+      "dir": "东",
+      "dist": 2173
+     }
+    ],
+    "spawn_points": 2,
+    "threat_octants": [
+     "东北",
+     "东南"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective01 - CNV J5",
+    "title": "MISSIONOBJ:CNVJ5_T1",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [],
+    "dist": 170,
+    "dir": "西",
+    "stage": 0,
+    "dist_norm": 0.02,
+    "routes": 4,
+    "path_len": 180
+   },
+   {
+    "name": "Objective02 - CNV J5",
+    "title": "MISSIONOBJ:CNVJ5_T3",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [],
+    "dist": 80,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.01,
+    "routes": 4,
+    "path_len": 80
+   },
+   {
+    "name": "Objective03 - CNV J5",
+    "title": "MISSIONOBJ:CNVJ5_T5",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 170,
+    "dir": "西",
+    "stage": 0,
+    "dist_norm": 0.02,
+    "routes": 4,
+    "path_len": 180
+   },
+   {
+    "name": "Bonus01 - CNV J5",
+    "title": "MISSIONOBJ:CNVJ5_T7",
+    "bonus": true,
+    "markers": 2,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 2130,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.3,
+    "detour": 4100,
+    "risk_dist": 56
+   }
+  ],
+  "moved": []
+ },
+ "ours_J7_CampJ7Late": {
+  "map": "ours_J7_CampJ7Late",
+  "size": [
+   5000.0,
+   5000.0
+  ],
+  "human": "Player_1",
+  "start": [
+   4220,
+   2500
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "area_km2": 25.0,
+    "start_norm": [
+     0.84,
+     0.5
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.49,
+    "enemy_clusters": [
+     {
+      "at": [
+       2673,
+       2477
+      ],
+      "n": 11,
+      "dir": "西",
+      "dist": 1547
+     },
+     {
+      "at": [
+       2810,
+       3540
+      ],
+      "n": 6,
+      "dir": "西北",
+      "dist": 1752
+     },
+     {
+      "at": [
+       2838,
+       1450
+      ],
+      "n": 4,
+      "dir": "西南",
+      "dist": 1736
+     },
+     {
+      "at": [
+       1400,
+       2555
+      ],
+      "n": 4,
+      "dir": "西",
+      "dist": 2821
+     }
+    ],
+    "spawn_points": 1,
+    "threat_octants": [
+     "西"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective01 - CNV J7",
+    "title": "MISSIONOBJ:CNVJ7_T1",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 1720,
+    "dir": "西",
+    "stage": 0,
+    "dist_norm": 0.24,
+    "routes": 1,
+    "path_len": 1720
+   },
+   {
+    "name": "Bonus01 - CNV J7",
+    "title": "MISSIONOBJ:CNVJ7_T3",
+    "bonus": true,
+    "markers": 3,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 1270,
+    "dir": "西",
+    "stage": 0,
+    "dist_norm": 0.18,
+    "detour": 0,
+    "risk_dist": 278
+   }
+  ],
+  "moved": []
+ },
+ "ours_S2_CampS2Escape": {
+  "map": "ours_S2_CampS2Escape",
+  "size": [
+   5000.0,
+   5000.0
+  ],
+  "human": "Player_1",
+  "start": [
+   950,
+   2255
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "area_km2": 25.0,
+    "start_norm": [
+     0.19,
+     0.45
+    ],
+    "start_place": "edge",
+    "start_to_centre": 0.44,
+    "enemy_clusters": [
+     {
+      "at": [
+       1850,
+       3610
+      ],
+      "n": 6,
+      "dir": "东北",
+      "dist": 1627
+     },
+     {
+      "at": [
+       3970,
+       3000
+      ],
+      "n": 5,
+      "dir": "东",
+      "dist": 3111
+     },
+     {
+      "at": [
+       4425,
+       2150
+      ],
+      "n": 4,
+      "dir": "东",
+      "dist": 3477
+     }
+    ],
+    "spawn_points": 1,
+    "threat_octants": [
+     "西北"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective01 - CNV S2",
+    "title": "MISSIONOBJ:CNVS2_T1",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 107,
+    "dir": "西北",
+    "stage": 0,
+    "dist_norm": 0.02,
+    "routes": 4,
+    "path_len": 140
+   },
+   {
+    "name": "Bonus01 - CNV S2",
+    "title": "MISSIONOBJ:CNVS2_T3",
+    "bonus": true,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 2994,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.42,
+    "detour": 5907,
+    "risk_dist": 120
+   },
+   {
+    "name": "Objective02 - CNV S2",
+    "title": "MISSIONOBJ:CNVS2_T5",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [],
+    "dist": 587,
+    "dir": "西",
+    "stage": 0,
+    "dist_norm": 0.08,
+    "routes": 4,
+    "path_len": 760
+   }
+  ],
+  "moved": []
+ },
+ "ours_S5_CampS5Trap": {
+  "map": "ours_S5_CampS5Trap",
+  "size": [
+   5000.0,
+   5000.0
+  ],
+  "human": "Player_1",
+  "start": [
+   3730,
+   2825
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "area_km2": 25.0,
+    "start_norm": [
+     0.75,
+     0.56
+    ],
+    "start_place": "centre",
+    "start_to_centre": 0.36,
+    "enemy_clusters": [
+     {
+      "at": [
+       3102,
+       2510
+      ],
+      "n": 12,
+      "dir": "西南",
+      "dist": 702
+     },
+     {
+      "at": [
+       1400,
+       2555
+      ],
+      "n": 4,
+      "dir": "西",
+      "dist": 2346
+     }
+    ],
+    "spawn_points": 1,
+    "threat_octants": [
+     "西南"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective01 - CNV S5",
+    "title": "MISSIONOBJ:CNVS5_T1",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 799,
+    "dir": "西南",
+    "stage": 0,
+    "dist_norm": 0.11,
+    "routes": 4,
+    "path_len": 1040
+   },
+   {
+    "name": "Objective02 - CNV S5",
+    "title": "MISSIONOBJ:CNVS5_T3",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 799,
+    "dir": "西南",
+    "stage": 0,
+    "dist_norm": 0.11,
+    "routes": 4,
+    "path_len": 1040
+   },
+   {
+    "name": "Bonus01 - CNV S5",
+    "title": "MISSIONOBJ:CNVS5_T5",
+    "bonus": true,
+    "markers": 3,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 1858,
+    "dir": "西北",
+    "stage": 0,
+    "dist_norm": 0.26,
+    "detour": 2903,
+    "risk_dist": 1859
+   },
+   {
+    "name": "Bonus02 - CNV S5",
+    "title": "MISSIONOBJ:CNVS5_T7",
+    "bonus": true,
+    "markers": 2,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 2335,
+    "dir": "西",
+    "stage": 0,
+    "dist_norm": 0.33,
+    "detour": 3146,
+    "risk_dist": 125
+   }
+  ],
+  "moved": []
+ },
+ "ours_S6_CampS6Lose": {
+  "map": "ours_S6_CampS6Lose",
+  "size": [
+   5000.0,
+   5000.0
+  ],
+  "human": "Player_1",
+  "start": [
+   2470,
+   2500
+  ],
+  "stages": [
+   {
+    "border": 0,
+    "rect": [
+     0,
+     0,
+     5000,
+     5000
+    ],
+    "area_km2": 25.0,
+    "start_norm": [
+     0.49,
+     0.5
+    ],
+    "start_place": "centre",
+    "start_to_centre": 0.01,
+    "enemy_clusters": [
+     {
+      "at": [
+       4300,
+       2542
+      ],
+      "n": 6,
+      "dir": "东",
+      "dist": 1830
+     }
+    ],
+    "spawn_points": 3,
+    "threat_octants": [
+     "东",
+     "东北",
+     "东南"
+    ]
+   }
+  ],
+  "goals": [
+   {
+    "name": "Objective01 - CNV S6",
+    "title": "MISSIONOBJ:CNVS6_T1",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [],
+    "dist": 30,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.0,
+    "routes": 4,
+    "path_len": 40
+   },
+   {
+    "name": "Objective02 - CNV S6",
+    "title": "MISSIONOBJ:CNVS6_T3",
+    "bonus": false,
+    "markers": 1,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 30,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.0,
+    "routes": 4,
+    "path_len": 40
+   },
+   {
+    "name": "Bonus01 - CNV S6",
+    "title": "MISSIONOBJ:CNVS6_T5",
+    "bonus": true,
+    "markers": 2,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 180,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.03,
+    "detour": 300,
+    "risk_dist": 1651
+   },
+   {
+    "name": "Bonus02 - CNV S6",
+    "title": "MISSIONOBJ:CNVS6_T7",
+    "bonus": true,
+    "markers": 2,
+    "on_done": [
+     "LINK_MISSION_OBJECTIVE_TO_OBJECT"
+    ],
+    "dist": 1780,
+    "dir": "东",
+    "stage": 0,
+    "dist_norm": 0.25,
+    "detour": 3500,
+    "risk_dist": 65
+   }
+  ],
+  "moved": []
+ }
+}

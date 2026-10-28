@@ -211,6 +211,13 @@ def test_judge_mission_ended():
     assert build.judge(t, [(6, [None])])[0][0] is False                  # never up: no counters at all, not an end
 
 
+def test_judge_mission_ended_before():
+    """ENDED with an until: it must end before then (S5 escape: lost soon after the fleet sets out, not won late)."""
+    t = parts.Test(counters=[('a', 'A')], expect=[(build.ENDED, 5, '', None, 20)])
+    assert build.judge(t, [(1, [1]), (10, [1]), (15, [None])])[0][0] is True
+    assert build.judge(t, [(1, [1]), (10, [1]), (25, [None])])[0][0] is False
+
+
 def test_counter_reader_reads_its_calibration():
     import counters
     frames = os.path.join(ROOT, 'work', 'testbench', 'runs')

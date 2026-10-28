@@ -21,6 +21,13 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 import parts                                    # noqa: E402  (puts experimental/campaign on the path)
 from checks import a4 as check_a4               # noqa: E402
+from checks import a5 as check_a5               # noqa: E402
+from checks import s5 as check_s5               # noqa: E402
+from checks import s6 as check_s6               # noqa: E402
+from checks import j7 as check_j7               # noqa: E402
+from checks import s2 as check_s2               # noqa: E402
+from checks import j3 as check_j3               # noqa: E402
+from checks import j5 as check_j5               # noqa: E402
 from checks import a7 as check_a7               # noqa: E402
 from checks import j4 as check_j4               # noqa: E402
 from checks import a8 as check_a8               # noqa: E402
@@ -40,9 +47,16 @@ from checks import probe as check_pro           # noqa: E402
 from checks import plan_words as check_pw       # noqa: E402
 from checks import ai as check_ai               # noqa: E402
 from checks import lock as check_lock           # noqa: E402
+from checks import scene as check_scene         # noqa: E402
+from checks import ally as check_ally           # noqa: E402
+from checks import aistep as check_aistep       # noqa: E402
+from checks import fence as check_fence         # noqa: E402
+from checks import reroute as check_reroute     # noqa: E402
+from checks import sight as check_sight         # noqa: E402
 from units import tesla as units_tesla          # noqa: E402
-from missions import a4, a7, a8, j4, beacon_bench, burrow_bench, clone_bench, combo_bench, crane_bench, icewall_bench, jammer_bench, liberty_bench, shikigami_bench, \
-    tesla_bench, train_bench, probe_bench, plan_words_bench, ai_bench, ai_plan_bench, lock_bench, chronolag_bench  # noqa: E402
+from missions import a4, a5, a7, a8, j3, j4, j5, j7, s2, s5, s6, beacon_bench, burrow_bench, clone_bench, combo_bench, crane_bench, icewall_bench, jammer_bench, liberty_bench, shikigami_bench, \
+    tesla_bench, train_bench, probe_bench, plan_words_bench, ai_bench, ai_plan_bench, lock_bench, scene_bench, \
+    ally_bench, aistep_bench, fence_bench, reroute_bench, sight_bench, chronolag_bench  # noqa: E402
 
 BENCH_PY = os.path.join(os.path.dirname(ROOT), 'envs', 'bench_mcp', 'Scripts', 'python.exe')
 CLIENT = os.path.join(ROOT, 'experimental', 'testbench', 'bench_client.py')
@@ -66,6 +80,13 @@ MISSIONS = {
                                   'idle': check_a4.idle, 'harbour': check_a4.harbour, 'stop': check_a4.stop,
                                   'early': check_a4.early, 'tough': check_a4.tough,
                                   'north': check_a4.north, 'camp': check_a4.camp, 'free': check_a4.free}),
+    'a5': (lambda: a5.mission(), {'hold': check_a5.hold, 'win': check_a5.win}),
+    's5': (lambda: s5.mission(), {'trap': check_s5.trap, 'escape': check_s5.escape}),
+    's6': (lambda: s6.mission(), {'hold': check_s6.hold, 'lose': check_s6.lose}),
+    'j7': (lambda: j7.mission(), {'win': check_j7.win, 'late': check_j7.late}),
+    's2': (lambda: s2.mission(), {'catch': check_s2.catch, 'escape': check_s2.escape}),
+    'j3': (lambda: j3.mission(), {'run': check_j3.run, 'lose': check_j3.lose}),
+    'j5': (lambda: j5.mission(), {'hold': check_j5.hold, 'lose': check_j5.lose}),
     'j4': (lambda: j4.mission(), {'breach': check_j4.breach, 'play': check_j4.play, 'lose': check_j4.lose}),
     'a7': (lambda: a7.mission(), {'jumps': check_a7.jumps, 'pick': check_a7.pick, 'defend': check_a7.defend,
                                   'power': check_a7.power, 'win': check_a7.win, 'east': check_a7.east,
@@ -92,6 +113,14 @@ MISSIONS = {
     'ice_spawn': (lambda: icewall_bench.freeze(name='CampIceO', spawn='CNV_TeslaTank', extra=[units_tesla.tesla()]),
                   {'built': check_ice.built}),
     'lock': (lambda: lock_bench.mission(), {'shut': check_lock.shut, 'open': check_lock.opened}),
+    'scene': (lambda: scene_bench.mission(), {'look': check_scene.look}),
+    'ally': (lambda: ally_bench.mission(), {'mended': check_ally.mended}),
+    'ally_bare': (lambda: ally_bench.mission(name='CampAly', depot=False), {'unmended': check_ally.unmended}),
+    'aistep': (lambda: aistep_bench.mission(), {'stepped': check_aistep.stepped}),
+    'aistep_free': (lambda: aistep_bench.mission(held=False), {'free': check_aistep.free}),
+    'fence': (lambda: fence_bench.mission(), {'bar': check_fence.bar}),
+    'reroute': (lambda: reroute_bench.mission(), {'round': check_reroute.round_, 'open': check_reroute.opened}),
+    'sight': (lambda: sight_bench.mission(), {'look': check_sight.look}),
     'jammer': (lambda: jammer_bench.mission(), {'jam': check_jam.jam, 'free': check_jam.free}),
     'jammer_own': (lambda: jammer_bench.mission(name='CampJamOwn', side='p1'), {'jam': check_jam.jam}),
     'chronolag': (lambda: chronolag_bench.mission(), {'hit': check_lag.hit, 'packed': check_lag.packed}),
@@ -129,7 +158,7 @@ def _music_bench(name='music_bench'):
     """Imported only when asked for: it pulls in experimental/music, which no other build needs."""
     import importlib
     return importlib.import_module(f'missions.{name}')
-LEVELS = ('a4', 'a7', 'a8', 'j4')                          # campaign levels: each has a card in docs/story/levels.md (the rest:
+LEVELS = ('a4', 'a5', 'a7', 'a8', 'j3', 'j4', 'j5', 'j7', 's2', 's5', 's6')                          # campaign levels: each has a card in docs/story/levels.md (the rest:
                                                 # A/B controls and bench scenes)
 
 
@@ -194,6 +223,9 @@ def show(name, check=''):
     out = [f'{name}' + (f' --check {check}' if check else '') + f' -> {mod}, on map {mp.__name__.split(".")[-1]}']
     out.append('map sites: ' + '; '.join(f'{k} ({s.x:g}, {s.y:g}' + (f', r {s.r:g}' if s.r else '') + f'): {s.what}'
                                          for k, s in mp.SITES.items()))
+    if getattr(mp, 'STRONGPOINTS', None):
+        out.append('map strongpoints: ' + '; '.join(f'{k} = {o.template} "{o.name}" ({o.x:g}, {o.y:g})'
+                                                    for k, o in mp.STRONGPOINTS.items()))
     out.append('map players: ' + ', '.join(f'{k} {v}' for k, v in mp.PLAYERS.items()) +
                '; teams: ' + ', '.join(f'{k} {v}' for k, v in mp.TEAMS.items()))
     for u in m.units:
@@ -297,7 +329,7 @@ def judge(t, readings):
     """Each expectation (label, from second, op, value[, until second]) must hold on every reading from that second
     on (and before `until`); an op written 'ever==' (ever>=, ...) on at least one -- for a mission that ends (its
     counters go with it). Label ENDED: from that second some frame shows no counter at all after one that did -- the
-    mission ended (won or lost: the check's scripts make it the one they test)."""
+    mission ended (won or lost: the check's scripts make it the one they test); with `until`, it ended before then."""
     labels = [label for _, label in t.counters]
     verdicts = []
     for e in t.expect:
@@ -305,8 +337,9 @@ def judge(t, readings):
         if label == ENDED:
             seen = [s for s, v in readings if any(x is not None for x in v)]
             gone = [s for s, v in readings if s >= since and seen and s > seen[0] and all(x is None for x in v)]
-            verdicts.append((bool(gone), f'mission ended from s{since:.0f}: ' + (f'counters gone at s{gone[0]}' if gone
-                                                                                 else 'counters still up')))
+            ok = bool(gone) and (not until or gone[0] < until[0])
+            verdicts.append((ok, f'mission ended from s{since:.0f}' + (f' before s{until[0]:.0f}' if until else '')
+                             + ': ' + (f'counters gone at s{gone[0]}' if gone else 'counters still up')))
             continue
         k, end = labels.index(label), until[0] if until else float('inf')
         got = [(s, v[k]) for s, v in readings if since <= s < end and k < len(v)]

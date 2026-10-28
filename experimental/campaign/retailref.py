@@ -68,6 +68,24 @@ def maps(only=''):
     return [n for n in names if not parts or any(p in n for p in parts)]
 
 
+# the export's line suffixes as nearly every line has them: a condition as it reads / inverted; an action
+COMMON = ('+0100000000000000', '+0100000001000000', '+01000000')
+
+
+def condition(line):
+    """A script line without its export suffix. A condition's suffix whose second half is 01000000 inverts it
+    (yokohama and facility, checked against what the mission does: docs/design/teardowns/data/yokohama-facts.md):
+    shown as `IF NOT ...`. The rare suffixes (first half 00000000: 4 conditions, 300 actions in all the campaign;
+    what they mean is not checked) stay on, as they are."""
+    text, sep, suffix = line.partition('  +')
+    if not sep:
+        return line
+    suffix = '+' + suffix
+    if suffix[9:17] == '01000000':
+        text = re.sub(r'^(\s*IF )', r'\1NOT ', text)
+    return text if suffix in COMMON else f'{text}  {suffix}'
+
+
 def scripts(pattern, only='', limit=8):
     """Whole scripts (their indented block) holding a line that matches `pattern`."""
     rx, out = re.compile(pattern, re.I), []
@@ -77,7 +95,7 @@ def scripts(pattern, only='', limit=8):
         for h, nxt in zip(heads, heads[1:] + [len(lines)]):
             block = lines[h:nxt]
             if any(rx.search(x) for x in block[1:]):
-                out.append((name, '\n'.join(x.split('  +')[0] for x in block)))
+                out.append((name, '\n'.join(condition(x) for x in block)))
                 if len(out) >= limit:
                     return out
     return out

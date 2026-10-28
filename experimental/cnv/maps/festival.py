@@ -21,7 +21,7 @@ and place, the plazas whole), LAYOUT (the terrain).
 import make_campnew18 as c18
 import platmap
 import platprops
-from platmap import Layout, Ramp, Road, circle, poly, rect, wobble
+from platmap import Gap, Layout, Ramp, Road, circle, poly, rect, wobble
 from platprops import along, area, cliff_feet, clumps, scatter, shore
 from maps import island
 from parts import Obj, Site
@@ -145,7 +145,9 @@ LAYOUT = Layout(
         Ramp((2350, 1720), (2350, 1350), 200.0, 'south plateau'),
         Ramp((1300, 3000), (1000, 3400), 180.0, 'west ridge'),
     ],
-    roads=[Road(((1500, ROAD_Y), (4050, ROAD_Y)), 120.0), *_proads, *[Road(s, 90.0) for s in STREETS]])
+    roads=[Road(((1500, ROAD_Y), (4050, ROAD_Y)), 120.0), *_proads, *[Road(s, 90.0) for s in STREETS]],
+    # each plaza's one way in as wide as its ramp: an ice bar 200 long shuts it (lint measures it: 130 in 2026-10-27)
+    gaps=[Gap(SITES[f'gate {k}'].x, SITES[f'gate {k}'].y, RAMP_WIDTH, f'gate {k}') for k in (1, 2, 3)])
 
 BRIDGES = [((3590, 2500), (3890, 2500)), ((3590, 3420), (3890, 3420)), ((3590, 1850), (3890, 1850))]
 

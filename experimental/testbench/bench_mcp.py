@@ -204,7 +204,7 @@ def bench_camera(x: float, y: float, look: bool = True) -> list:
 def bench_wait(seconds: float, look: bool = True) -> list:
     """Let the game run for some seconds (max 120), then look."""
     go()
-    time.sleep(max(0.0, min(120.0, seconds)))
+    S.run_for(min(120.0, seconds))
     S.window()
     if look:
         return [f'ran {seconds} s'] + looked(f'after {seconds} s', settle=0)
@@ -264,7 +264,7 @@ def bench_watch(seconds: float, every: float = 3.0, x0: float = 0, y0: float = 0
     from PIL import Image as PImage, ImageDraw
     import counters
     go()
-    end, rows, cuts, prev, prev_cap = time.monotonic() + max(0.0, min(120.0, seconds)), [], [], None, None
+    end, rows, cuts, prev, prev_cap = S.second() + max(0.0, min(120.0, seconds)), [], [], None, None   # mission time
     while True:
         try:
             fid, img = S.frame(f'watch {every} s')
@@ -288,9 +288,9 @@ def bench_watch(seconds: float, every: float = 3.0, x0: float = 0, y0: float = 0
         if met:
             rows.append(f'UNTIL met: {met}')
             break
-        if time.monotonic() + every > end:
+        if S.second() + every > end:
             break
-        time.sleep(every)
+        S.run_for(every)
     try:
         S.pause()
     except harness.BenchError:                  # no mission menu: the mission has ended (won / lost screen)
@@ -386,8 +386,11 @@ def bench_stop() -> str:
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 BUILD = os.path.join(ROOT, 'experimental', 'cnv', 'build.py')
 PLANCHECK = os.path.join(ROOT, 'experimental', 'cnv', 'plancheck.py')
+SIM = os.path.join(ROOT, 'experimental', 'cnv', 'sim.py')
+SIMSTATIC = os.path.join(ROOT, 'experimental', 'cnv', 'simstatic.py')
 MAPRENDER = os.path.join(ROOT, 'experimental', 'campaign', 'maprender.py')
 MAPSTUDY = os.path.join(ROOT, 'experimental', 'campaign', 'mapstudy.py')
+TERRAINREF = os.path.join(ROOT, 'experimental', 'campaign', 'terrainref.py')
 RETAILREF = os.path.join(ROOT, 'experimental', 'campaign', 'retailref.py')
 # the builds run in the base interpreter, in their own process: fresh code on every call (a check just edited), and
 # the pipeline's module state (templates, strings) starts empty each time
@@ -455,6 +458,24 @@ def plan_show(level: str) -> str:
     cnv_check."""
     code, out = lab(PLANCHECK, level, timeout=120)
     return out.strip() if code == 0 else 'PLAN: ' + tail(out)
+
+
+@server.tool(structured_output=False)
+def plan_sim(name: str, script: str = '', check: str = '', level: str = 'normal', until: float = 1800.0) -> str:
+    """A level (or any build: 'a4', 'a4' with check 'stop') played out without the game, in seconds: the timeline
+    (what happens when, what the player is told, what appears and whether the player sees it), the ending (won /
+    lost / stuck and what each ending still waits for), the tension curve, the ground known, how the first enemy
+    came; then every way it could go (simstatic: phases never reached, can it be won and lost, objectives never
+    done, flags waited on that nobody sets). script: the player's part, one event a line or ';' between --
+    '60 派 tank 去 north camp; 120 摧毁 north barracks; 90 血量 yuriko 1; 自动打掉 10' (empty: the player does
+    nothing). Combat is not simulated: losses come from the script. With a check, its counters are judged by the
+    simulator's own expectations where experimental/cnv/simchecks.py has them. Use it after every plan edit, before
+    the bench (docs/story/plans/README.md, 模拟器)."""
+    args = [name] + (['--check', check] if check else []) + (['--script', script] if script else []) + \
+        ['--level', level, '--until', str(until)]
+    code, out = lab(SIM, *args, timeout=300)
+    _, static = lab(SIMSTATIC, name, *(['--check', check] if check else []), timeout=300)
+    return out.strip() + '\n--- 所有可能的走向\n' + static.strip()
 
 
 @server.tool(structured_output=False)
@@ -545,8 +566,10 @@ def picture(path, note):
 @server.tool(structured_output=False)
 def cnv_preview(name: str, check: str = '') -> list:
     """A build's map in ~10 s, without compiling or the game: the map module's design lint (ramps, building sites,
-    structures on flat ground, bridges bank to bank), the map written as the build would write it, measured against
-    the retail campaign maps' ranges (flat ground, cliffs, height tiers, ore, tech, bridges, objectives), and a
+    structures on flat ground, bridges bank to bank, blocks' use, gaps' width), the map written as the build would
+    write it, measured against the retail campaign maps' ranges (flat ground, cliffs, height tiers, ore, tech,
+    bridges, objectives; TERRAIN lines: chokes on the main way, high ground beside it, ramps, strongpoints, walls,
+    how much of the walkable ground the mission uses -- docs/design/principles.md P24-P27), and a
     picture from above: height bands, cliffs dark, flat land light, ore gold, tech cyan, bridges white, the player's
     objects green, enemies red, objective markers yellow. Use it after every map or placement change, before
     cnv_check (docs/story/map-language.md)."""
@@ -557,7 +580,10 @@ def cnv_preview(name: str, check: str = '') -> list:
         return ['PREVIEW FAILED:\n' + tail(out, 20)]
     code, study = lab(MAPSTUDY, '--ours', path, timeout=300)
     pic = next((x[8:] for x in study.splitlines() if x.startswith('PICTURE ')), None)
-    text = '\n'.join([lint] + [x for x in study.splitlines() if not x.startswith('PICTURE ')])
+    # the terrain rules (P24-P27): chokes on the main way, high ground beside it, how much of the ground is used
+    tcode, terrain = lab(TERRAINREF, path, timeout=300)
+    terrain = [x for x in terrain.splitlines() if x.startswith('TERRAIN ')] or ['TERRAIN FAILED: ' + tail(terrain, 5)]
+    text = '\n'.join([lint] + [x for x in study.splitlines() if not x.startswith('PICTURE ')] + terrain)
     return picture(pic, text) if pic and os.path.exists(pic) else [text]
 
 
