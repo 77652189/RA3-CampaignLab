@@ -60,6 +60,18 @@ def test_bright_ground_under_the_counters_is_no_line():
     assert counters.glyphs(img, counters.line_box(0)) and not counters.glyphs(img, counters.line_box(2))
 
 
+def test_sand_as_tall_as_the_line_past_the_value_is_no_digit():
+    """Bench 2026-10-27 (CampSceneLook, a short line's "0" read as 6): right past the value, sand as tall as the line
+    with only its top pixel dark (the box of the line above), then shadow: a 5-px island, no stroke."""
+    img = frame([(24, 32)])
+    a = np.asarray(img).copy()
+    x, y, *_ = counters.line_box(0)
+    a[y:y + counters.HEIGHT, 32:60] = BOX       # the box goes on a little, then shadow as dark
+    a[y + 1:y + counters.HEIGHT, 39:44] = SAND
+    img = Image.fromarray(a)
+    assert [(s, e) for s, e, _ in counters.glyphs(img, counters.line_box(0))] == [(24, 32)]
+
+
 def test_a_countdown_under_the_counters_is_skipped(monkeypatch):
     """Bench 2026-10-27 (S5 trap): a countdown shown after the counters stands below them ("援军到达 4:13"); its
     colon (two dots, a gap between) marks it, wherever it stands."""

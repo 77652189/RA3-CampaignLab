@@ -34,6 +34,11 @@ SPACING = 60.0                                  # between units placed together
 DEFAULT_AREA = 150.0                            # half-side of a site's trigger area when the site has no radius
 CAPTION = 6.0                                   # seconds a caption stays
 REVEAL_FIRST, REVEAL_GAP = 2.0, 4.0             # a phase's objectives: the first this long after it starts, then apart
+RELATIONS = {'盟友': 'Friend', '中立': 'Neutral', '敌人': 'Enemy'}     # 阵营 其他's 对我 / 对敌
+CAMERA_MOVE, FOLLOW = 3.0, 4.0                 # a 镜头's move, a 跟随's hold (seconds) when the plan gives none
+FOLLOW_AT = 300.0                               # CAMERA_FOLLOW_NAMED's distance (retail: 300 behind Yuriko, 13 of 17)
+SIGHT = 300.0                                   # 揭开's radius when the site has none (retail: 100 .. 750, mostly 200 / 300)
+FLASHES = 5                                     # NAMED_FLASH's count (retail: 5 at the hand-back, Stalingrad)
 AUTOSAVE = 'AUTOSAVE:CNVCAMPAIGN'
 
 
@@ -182,9 +187,17 @@ class Compiler:
         sides = data.get('阵营', {})
         self.faction = {'p1': sides.get('我', '盟军'), 's1': sides.get('敌', '苏联')}
         self.side = {'我': 'p1', '敌': 's1'}
-        # more sides (其他: {name: faction}): the map's idle players s2, s3 ..., neutral to both at the start
-        for k, (who, faction) in enumerate((sides.get('其他') or {}).items(), 2):
-            self.side[who], self.faction[f's{k}'] = f's{k}', faction
+        # more sides (其他: {name: faction}, or {name: {阵营, 对我, 对敌}}): the map's idle players s2, s3 ..., neutral
+        # to both at the start unless 对我 / 对敌 say 盟友 or 敌人 (retail Odessa, Stalingrad: the transports a side of
+        # their own, allied, the player can not order them)
+        self.relation = {}          # side -> (to the player, to the enemy): 'Friend' / 'Neutral' / 'Enemy'
+        for k, (who, spec) in enumerate((sides.get('其他') or {}).items(), 2):
+            spec = spec if isinstance(spec, dict) else {'阵营': spec}
+            rel = [RELATIONS.get(str(spec.get(x, '中立'))) for x in ('对我', '对敌')]
+            if None in rel:
+                raise PlanError(f'阵营 其他 {who}: 对我 / 对敌 is one of {sorted(RELATIONS)}')
+            self.side[who], self.faction[f's{k}'] = f's{k}', spec.get('阵营')
+            self.relation[f's{k}'] = tuple(rel)
         self.m = Mission(name=name or f'Camp{self.tag}', map=mapmod)
         self.n = 0
         self.conds = {}             # condition text -> alternatives
@@ -339,6 +352,13 @@ class Compiler:
             # bridge (Odessa), a scout at a village (Iga); 进入 <site> alone is any of the player's
             part, site = s.split(' 进入 ', 1)
             return [[('NAMED_INSIDE_AREA', n, self.area(site.strip()))] for n in self.part_names(part.strip())]
+        if head == '过场':
+            if not rest.endswith('结束'):
+                raise PlanError(f'{s!r}: 过场 <phase> 结束 (the input handed back)')
+            ph = self.phase(rest[:-2].strip())
+            if not ph.spec.get('过场'):
+                raise PlanError(f'{s!r}: 段 {ph.name} has no 过场')
+            return [[('FLAG', self.scene_flag(ph), 1)]]
         if head == '段':
             name, what = (rest[:-2].strip(), rest[-2:]) if rest.endswith(('开始', '结束')) else (rest, '开始')
             ph = self.phase(name)
@@ -478,8 +498,31 @@ class Compiler:
             raise PlanError(f'action {a!r}: a string or a mapping')
         if '通报' in a:
             return [('SHOW_MILITARY_CAPTION', self.text('SCRIPT', a['通报']), float(a.get('秒', CAPTION)))]
-        if '镜头' in a:
-            return [('MOVE_CAMERA_TO', self.mark(a['镜头']), float(a.get('秒', 3.0)), 0.0, 1.0, 1.0)]
+        if '镜头' in a:                             # to a site, or to one of the plan's own (retail: the statue)
+            secs, ps = float(a.get('秒', CAMERA_MOVE)), self.parts(str(a['镜头']))
+            if ps:
+                return [('MOVE_CAMERA_TO_NAMED', self.m.cast[ps[0]].name, secs, 0.0, 1.0, 1.0)]
+            return [('MOVE_CAMERA_TO', self.mark(a['镜头']), secs, 0.0, 1.0, 1.0)]
+        if '跟随' in a:
+            raise PlanError(f'action {a!r}: 跟随 only in a 过场 (it is stopped at the hand-back)')
+        if '闪烁' in a:                             # retail: the hand-back flashes the player's MCV
+            return [('NAMED_FLASH', n, FLASHES) for n in self.part_names(a['闪烁'])]
+        if '揭开' in a:                             # lift the shroud there: for good, or a look that shrouds again
+            site = str(a['揭开'])
+            radius = float(a.get('半径') or self.m.where(site).r or SIGHT)
+            if a.get('永久'):
+                return [('MAP_REVEAL_PERMANENTLY_AT_WAYPOINT', self.mark(site), radius, p1, self.sight(site))]
+            return [('MAP_REVEAL_AT_WAYPOINT', self.mark(site), radius, p1)]
+        if '收回' in a:                             # undo a 揭开 永久, or the whole map's (揭全图 永久)
+            what = str(a['收回'])
+            if what == '全图':
+                return [('MAP_REVEAL_ALL_UNDO_PERM', p1)]
+            return [('MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT', self.sight(what))]
+        if '揭全图' in a:
+            if a['揭全图'] != '永久':
+                raise PlanError(f'action {a!r}: 揭全图 看一眼 only in a 过场 (shrouded again at the hand-back); '
+                                f'elsewhere 揭全图 永久, and 收回 全图 when it should go')
+            return [('MAP_REVEAL_ALL_PERM', p1)]
         if '给' in a:
             return self.give(a['给'], a['在'])
         if '资金' in a:
@@ -534,6 +577,53 @@ class Compiler:
                 ('SHOW_MILITARY_CAPTION', self.text('SCRIPT', a['失败']), 10.0), ('SET_FLAG', 'Mission Lost', 1)]
         raise PlanError(f'action {a!r}: no such action (plan.py lists them)')
 
+    def sight(self, site):
+        """The name a permanent reveal at a site goes by (MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT undoes it)."""
+        self.m.where(site)
+        return f'CNV {self.tag} Sight {site}'
+
+    def scene(self, ph):
+        """A phase's 过场 (retail: 36 of 40 missions open with one): the player's input off and the letterbox on
+        from the phase's start; its steps one after another -- 镜头 (a move: its 秒), 跟随 (the camera on one of the
+        plan's own for 秒), 停 (秒 of nothing), 揭全图 看一眼 (the whole map, shrouded again at the end), any other
+        action at once (a caption, a device's, a 技能: what the camera is to see); then the input back. Returns the
+        phase-start actions and the scene's length; the later steps are timed scripts on `段 <phase> + t`."""
+        at, t, look, follow = {}, 0.0, False, False
+        for step in ph.spec['过场']:
+            if isinstance(step, dict) and '停' in step:
+                t += seconds(step['停'])
+                continue
+            if isinstance(step, dict) and '跟随' in step:
+                ps = self.parts(str(step['跟随']))
+                if not ps:
+                    raise PlanError(f'过场 {step!r}: 跟随 one of the plan\'s own (a role)')
+                at.setdefault(t, []).append(('CAMERA_FOLLOW_NAMED', self.m.cast[ps[0]].name, 0, FOLLOW_AT))
+                t += float(step.get('秒', FOLLOW))
+                at.setdefault(t, []).append(('CAMERA_STOP_FOLLOW',))
+                follow = True
+                continue
+            if isinstance(step, dict) and step.get('揭全图') == '看一眼':
+                at.setdefault(t, []).append(('MAP_REVEAL_ALL_PERM', self.m.player('p1')))
+                look = True
+                continue
+            at.setdefault(t, []).extend(self.action(step))
+            if isinstance(step, dict) and '镜头' in step:
+                t += float(step.get('秒', CAMERA_MOVE))
+        if t <= 0:
+            raise PlanError(f'段 {ph.name} 过场: it takes no time -- a 镜头, 跟随 or 停 gives it its length')
+        end = [('ENABLE_INPUT',), ('CAMERA_LETTERBOX_END',)] + ([('CAMERA_STOP_FOLLOW',)] if follow else []) + \
+            ([('MAP_REVEAL_ALL_UNDO_PERM', self.m.player('p1'))] if look else []) + \
+            [('SET_FLAG', self.scene_flag(ph), 1)]
+        at.setdefault(t, []).extend(end)
+        now = [('DISABLE_INPUT',), ('CAMERA_LETTERBOX_BEGIN',)] + at.pop(0.0, [])
+        for k, (when, acts) in enumerate(sorted(at.items())):
+            self.when(f'Phase {ph.k + 1} scene {k + 1}', f'段 {ph.name} + {when:g}', acts)
+        return now, t
+
+    def scene_flag(self, ph):
+        """1 once the phase's 过场 handed the input back (过场 <phase> 结束)."""
+        return f'CNV_{self.tag}_Scene_{ph.k + 1}'
+
     def give(self, units, site):
         """Units created for the player at a site (reinforcements)."""
         out, k = [], self.uid()
@@ -569,8 +659,8 @@ class Compiler:
                                         [], [('PLAYER_SET_MONEY', m.player('p1'), v)], levels=levels))
         extra = [s for s in self.side.values() if s not in ('p1', 's1')]
         if extra:
-            rel = [('PLAYER_RELATES_PLAYER', m.player(a), m.player(b), 'Neutral')
-                   for x in extra for a, b in ((x, 'p1'), ('p1', x), (x, 's1'), ('s1', x))]
+            rel = [('PLAYER_RELATES_PLAYER', m.player(a), m.player(b), self.relation[x][k // 2])
+                   for x in extra for k, (a, b) in enumerate(((x, 'p1'), ('p1', x), (x, 's1'), ('s1', x)))]
             m.scripts.append(Script(f'CNV {self.tag} - Sides', [], rel))
         for spec in start.get('部队') or []:
             who = spec.get('阵营', '我')
@@ -672,10 +762,18 @@ class Compiler:
             acts = [('SET_FLAG', ph.flag, 1)]
             if spec.get('边界'):
                 acts += self.action({'边界': spec['边界']})
-            for i, title in enumerate(spec.get('目标') or []):
-                # retail: one at a time, a few seconds apart, each with its own announcement (map-language.md 1)
+            scene = 0.0
+            if spec.get('过场'):
+                now, scene = self.scene(ph)
+                acts += now
+                self.m.facts[f'过场 {ph.name}'] = scene
+            timed = [t for t in spec.get('目标') or [] if not self.goal(t).spec.get('亮出')]
+            for i, title in enumerate(timed):
+                # retail: one at a time, a few seconds apart, each with its own announcement (map-language.md 1);
+                # after the 过场, when the player has the input back
                 g = self.goal(title)
-                self.when(f'Phase {ph.k + 1} goal {i + 1}', f'段 {ph.name} + {REVEAL_FIRST + REVEAL_GAP * i:g}',
+                self.when(f'Phase {ph.k + 1} goal {i + 1}',
+                          f'段 {ph.name} + {scene + REVEAL_FIRST + REVEAL_GAP * i:g}',
                           self.m.reveal(g.name) + [('SET_FLAG', g.revealed, 1)])
             acts += self.actions(spec.get('开场'))
             if spec.get('存档'):
@@ -689,6 +787,17 @@ class Compiler:
                 if not prev.spec.get('结束'):
                     raise PlanError(f'段 {prev.name}: no 结束 -- how does 段 {ph.name} start?')
                 self.when(f'Phase {ph.k + 1}', prev.spec['结束'], acts, gate=[('FLAG', prev.flag, 1)])
+
+    def compile_shown(self):
+        """Goals with 亮出 <condition>: revealed when it first holds (in a phase that lists them: once that phase began
+        too) -- retail: 13 of 43 bonus goals only once the player got near (docs/design/teardowns/layout.md 3)."""
+        for title, g in self.goals.items():
+            c = g.spec.get('亮出')
+            if c is None:
+                continue
+            within = [ph for ph in self.phases if title in (ph.spec.get('目标') or [])]
+            self.when(f'Goal {g.name.split()[0]} shown', ([f'段 {within[0].name}'] if within else []) + [c],
+                      self.m.reveal(g.name) + [('SET_FLAG', g.revealed, 1)])
 
     def setup_waves(self):
         for k, spec in enumerate(self.d.get('进攻') or []):
@@ -818,7 +927,7 @@ class Compiler:
             return
         import enemy_ai
         m, faction = self.m, self.faction['s1']
-        known = {'性格', '偏好', '上限', '基地', '资金', '唤醒', '接管', '修理', '重建', '技能'}
+        known = {'性格', '偏好', '上限', '分档', '基地', '资金', '唤醒', '接管', '修理', '重建', '技能'}
         if set(spec) - known:
             raise PlanError(f'敌方AI: {sorted(set(spec) - known)} -- it takes {sorted(known)}')
         for need in ('基地', '唤醒'):
@@ -836,15 +945,37 @@ class Compiler:
                                        {self.unit(u, 's1'): number(k) for u, k in (spec.get('偏好') or {}).items()})
         except ValueError as e:
             raise PlanError(f'敌方AI: {e}')
+        # 分档: kinds held back at the start, let go when a step's condition holds (retail Stalingrad: the Soviet
+        # AI's tanks and aircraft unlocked by time once it woke, faster the harder [S1 - Soviet Unit Restrictions])
+        released = {}                               # template (lower case) -> the flag its step sets
+        steps = spec.get('分档') or []
+        for k, step in enumerate(steps, 1):
+            if not isinstance(step, dict) or set(step) != {'当', '放开'}:
+                raise PlanError(f'敌方AI 分档 {step!r}: each {{当: <condition>, 放开: [单位, ...]}}')
+            for u in step['放开']:
+                low = self.unit(u, 's1').lower()
+                if low in released:
+                    raise PlanError(f'敌方AI 分档: {u} is let go twice')
+                released[low] = f'CNV_{self.tag}_AI_Step_{k}'
+        if released:
+            m.spawns.update(released)
+            m.scripts.append(Script(f'CNV {self.tag} - AI held back', [],
+                                    [('ALLOW_DISALLOW_ONE_BUILDING', ai, low, 0) for low in released]))
+            for k, step in enumerate(steps, 1):
+                lows = [low for low, f in released.items() if f == f'CNV_{self.tag}_AI_Step_{k}']
+                self.when(f'AI step {k}', step['当'], [('ALLOW_DISALLOW_ONE_BUILDING', ai, low, 1) for low in lows]
+                          + [('SET_FLAG', f'CNV_{self.tag}_AI_Step_{k}', 1)])
         for u, n in (spec.get('上限') or {}).items():
             # retail ("tatsu has limited barracks"): not buildable while it has that many, again when fewer; a
             # personality's SpecificUnitCap did not hold for a power plant (bench 2026-10-25)
             tmpl = self.unit(u, 's1')
             n, low = int(number(n)), tmpl.lower()       # retail writes the type in lower case here
             m.spawns.add(low)
+            step = [('FLAG', released[low], 1)] if low in released else []      # not before its step lets it go
             m.scripts += [Script(f'CNV {self.tag} - AI cap {tmpl}', [('PLAYER_HAS_OBJECT_COMPARISON', ai, 3, n, low)],
                                  [('ALLOW_DISALLOW_ONE_BUILDING', ai, low, 0)], once=False),
-                          Script(f'CNV {self.tag} - AI cap {tmpl} off', [('PLAYER_HAS_OBJECT_COMPARISON', ai, 0, n, low)],
+                          Script(f'CNV {self.tag} - AI cap {tmpl} off',
+                                 [('PLAYER_HAS_OBJECT_COMPARISON', ai, 0, n, low)] + step,
                                  [('ALLOW_DISALLOW_ONE_BUILDING', ai, low, 1)], once=False)]
         m.sides[side] = {'playerFaction': enemy_ai.PLAYER_TEMPLATE[faction],
                          'aiPersonality': f'AIPersonalityDefinition:{pid}'}
@@ -910,6 +1041,7 @@ class Compiler:
         self.setup_goals()
         self.compile_goals()
         self.compile_phases()
+        self.compile_shown()
         for name, w in self.waves.items():
             self.wave(name, w)
         self.compile_rules()

@@ -220,7 +220,11 @@ class Mission(Part):
         return side and self.player(side)
 
     def team(self, side='p1'):
-        return self.map.TEAMS[side]
+        """A side's team to create units on: the map's, else the player's default team (Soviet_2/teamSoviet_2)."""
+        if side in self.map.TEAMS:
+            return self.map.TEAMS[side]
+        p = self.player(side)
+        return f'{p}/team{p}'
 
     def drop_endings(self):
         """The mission without its win / lose scripts (a check that keeps the counters up)."""

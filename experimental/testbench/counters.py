@@ -47,8 +47,11 @@ def glyphs(img, box):
     # more digits, "0" as 47 (bench 2026-10-25, A4 smash). A box column has some dark pixels (between glyphs:
     # few, 2 columns at most) or, a glyph's stroke filling it, its few other pixels dark; the ground has neither
     # (shadow in spots). The box ends at the first BOX_END columns in a row that are not the box
+    # A stroke's column keeps the box's row above and below it dark (a glyph is 13 tall in a 15-px line): sand as
+    # tall as the line, with one dark pixel at its top (the box of the line above), is no stroke (bench 2026-10-27,
+    # CampSceneLook: sand right past a short line's value read "0" as 6)
     rest, deep = ~a, rgb.max(2) < BOX_DARK
-    dark = (deep.mean(0) > 0.15) | (rest.any(0) & ((rest & deep).sum(0) > 0.5 * rest.sum(0)))
+    dark = (deep.mean(0) > 0.15) | ((rest.sum(0) >= 2) & ((rest & deep).sum(0) > 0.5 * rest.sum(0)))
     # from the first box column on: the player's rank-up chevrons (bright, over the labels' left, x 15..52) are no
     # box, and cut every value off from s327 on (bench 2026-10-26, A7 east on the redrawn map)
     since = next((x for x in range(START_BY, len(dark)) if dark[x]), START_BY)

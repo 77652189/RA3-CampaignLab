@@ -46,9 +46,15 @@ from checks import probe as check_pro           # noqa: E402
 from checks import plan_words as check_pw       # noqa: E402
 from checks import ai as check_ai               # noqa: E402
 from checks import lock as check_lock           # noqa: E402
+from checks import scene as check_scene         # noqa: E402
+from checks import ally as check_ally           # noqa: E402
+from checks import aistep as check_aistep       # noqa: E402
+from checks import fence as check_fence         # noqa: E402
+from checks import reroute as check_reroute     # noqa: E402
 from units import tesla as units_tesla          # noqa: E402
 from missions import a4, a5, a7, a8, j3, j4, j5, j7, s2, s5, s6, beacon_bench, burrow_bench, clone_bench, combo_bench, crane_bench, icewall_bench, jammer_bench, liberty_bench, shikigami_bench, \
-    tesla_bench, train_bench, probe_bench, plan_words_bench, ai_bench, ai_plan_bench, lock_bench  # noqa: E402
+    tesla_bench, train_bench, probe_bench, plan_words_bench, ai_bench, ai_plan_bench, lock_bench, scene_bench, \
+    ally_bench, aistep_bench, fence_bench, reroute_bench  # noqa: E402
 
 BENCH_PY = os.path.join(os.path.dirname(ROOT), 'envs', 'bench_mcp', 'Scripts', 'python.exe')
 CLIENT = os.path.join(ROOT, 'experimental', 'testbench', 'bench_client.py')
@@ -105,6 +111,13 @@ MISSIONS = {
     'ice_spawn': (lambda: icewall_bench.freeze(name='CampIceO', spawn='CNV_TeslaTank', extra=[units_tesla.tesla()]),
                   {'built': check_ice.built}),
     'lock': (lambda: lock_bench.mission(), {'shut': check_lock.shut, 'open': check_lock.opened}),
+    'scene': (lambda: scene_bench.mission(), {'look': check_scene.look}),
+    'ally': (lambda: ally_bench.mission(), {'mended': check_ally.mended}),
+    'ally_bare': (lambda: ally_bench.mission(name='CampAly', depot=False), {'unmended': check_ally.unmended}),
+    'aistep': (lambda: aistep_bench.mission(), {'stepped': check_aistep.stepped}),
+    'aistep_free': (lambda: aistep_bench.mission(held=False), {'free': check_aistep.free}),
+    'fence': (lambda: fence_bench.mission(), {'bar': check_fence.bar}),
+    'reroute': (lambda: reroute_bench.mission(), {'round': check_reroute.round_, 'open': check_reroute.opened}),
     'jammer': (lambda: jammer_bench.mission(), {'jam': check_jam.jam, 'free': check_jam.free}),
     'jammer_own': (lambda: jammer_bench.mission(name='CampJamOwn', side='p1'), {'jam': check_jam.jam}),
     'shikigami': (lambda: shikigami_bench.mission(), {'cover': check_shi.cover}),

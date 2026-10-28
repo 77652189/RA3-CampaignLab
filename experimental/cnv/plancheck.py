@@ -111,6 +111,20 @@ def phase_starts(d):
     return starts
 
 
+def scene_length(ph):
+    """A phase's 过场 in seconds, as plan.py times it: its 镜头 moves, 跟随 holds and 停s one after another."""
+    t = 0.0
+    for s in ph.get('过场') or []:
+        if isinstance(s, dict):
+            if '停' in s:
+                t += plan.seconds(s['停'])
+            elif '跟随' in s:
+                t += float(s.get('秒', plan.FOLLOW))
+            elif '镜头' in s:
+                t += float(s.get('秒', plan.CAMERA_MOVE))
+    return t
+
+
 def beat_sheet(d):
     starts = phase_starts(d)
     early = early_phases(d, starts)
@@ -120,9 +134,12 @@ def beat_sheet(d):
         t = starts.get(ph['名字'])
         when = '开局' if k == 1 else '?' if t is None else ('最晚 ' if ph['名字'] in early else '') + mmss(t)
         out.append(f'第 {k} 段 {ph["名字"]}（{when} 起）')
+        if ph.get('过场'):
+            out.append(f'  过场：{" → ".join(said(s) for s in ph["过场"])}；{scene_length(ph):g} 秒后交还控制')
         for title in ph.get('目标') or []:
             g = (d.get('目标') or {}).get(title, {})
-            out.append(f'  {"奖励" if g.get("奖励") else "主"}  {title}')
+            shown = f'（亮出：{said(g["亮出"])}）' if g.get('亮出') is not None else ''
+            out.append(f'  {"奖励" if g.get("奖励") else "主"}  {title}{shown}')
         if ph.get('边界'):
             out.append(f'  地图边界 → {ph["边界"]}')
         for a in ph.get('开场') or []:
@@ -147,7 +164,8 @@ def beat_sheet(d):
             return '不放开' if not c else at(t, c, starts, early) if t is not None else '看玩家'
         out.append(f'  敌方AI（{ai.get("性格", "平衡")}）：{when(ai.get("唤醒"))} 醒来、在 {ai.get("基地")} 建基地并自己进攻'
                    f'（测试台上：交给它守军时醒来约半分钟就过来，只给建筑约 1 分钟），资金 {ai.get("资金", 0)}'
-                   + (f'；上限 {"、".join(f"{u} {n}" for u, n in ai["上限"].items())}' if ai.get('上限') else ''))
+                   + (f'；上限 {"、".join(f"{u} {n}" for u, n in ai["上限"].items())}' if ai.get('上限') else '')
+                   + ''.join(f'；{when(s["当"])} 放开 {"、".join(s["放开"])}' for s in ai.get('分档') or []))
     return '\n'.join(out)
 
 
@@ -161,8 +179,12 @@ def design_check(d):
                 f'分段：{n} 段（原版一般 {lo}～{hi} 段，见过 {lo2}～{hi2} 段）'))
     starts = phase_starts(d)
     early = early_phases(d, starts)
-    mids = [p['名字'] for p in phases[1:-1] if p.get('边界') or any(isinstance(a, dict) and '镜头' in a
-                                                                      for a in p.get('开场') or [])]
+    mids = [p['名字'] for p in phases[1:-1] if p.get('边界') or p.get('过场') or
+            any(isinstance(a, dict) and '镜头' in a for a in p.get('开场') or [])]
+    if phases:
+        out.append(('符合' if phases[0].get('过场') else '注意',
+                    f'开场过场：{"有，" + format(scene_length(phases[0]), "g") + " 秒后交还控制" if phases[0].get("过场") else "没有，开局 0 秒就交还控制"}'
+                    '（原版 36/40 关开场先用镜头领着看，17/40 还先揭全图看一眼再收回）'))
     out.append(('符合' if mids else '注意', f'中段反转（过场里扩地图或镜头）：{"、".join(mids) or "没有"}'))
     for p in phases[:-1]:
         end = p.get('结束')
@@ -180,10 +202,20 @@ def design_check(d):
         waves.append({'名字': '敌方AI', '开始': ai['唤醒']})        # fights from waking (plan.py compile_ai)
         out.append(('符合', '持续压力来自遭遇战 AI（敌方AI）：拆掉它的生产建筑就停（原版的做法）'))
     first = sorted((t, w['名字']) for w in waves if (t := times_of(w['开始'], starts)) is not None)
-    if base:
+    if base:                        # the token threat: retail's few missions that hand a base over at the start
         token = [x for x in first if x[0] <= TOKEN + 30]
         out.append(('符合' if token else '注意', f'开局有基地：第一股威胁 {mmss(first[0][0]) + " " + first[0][1] if first else "没有定时的"}'
                     f'（原版 20～30 秒内有一股象征性威胁）'))
+    else:                           # retail, all 40: the first enemy moves as the player pushes on (22), on a clock 3
+        clock = [w['名字'] for w in waves if plan.start_time(w['开始']) and not player_decides(w['开始'])]
+        if clock and first and first[0][1] in clock:
+            out.append(('注意', f'开局没有基地，第一股敌人 {first[0][1]} 按时出动：原版 40 关里 22 关等玩家推进才出动'
+                                f'（`开始: 进入 <地点>`、`攻击 <角色>`），按时的只有 3 关'))
+    bonus_now = [t for t, g in (d.get('目标') or {}).items() if g.get('奖励')]
+    if bonus_now:
+        grown = [t for t in bonus_now if player_decides((d['目标'][t]).get('亮出', ''))]
+        out.append(('符合' if grown else '注意', f'奖励目标随推进冒出来：{"、".join(grown) if grown else "没有，全在段开头亮出"}'
+                                                 '（原版 43 个奖励里 13 个走近才亮，`亮出: 进入 <地点>`）'))
     real = [x for x in first if x[0] > TOKEN + 30]
     if real:
         t, name = real[0]
@@ -209,9 +241,9 @@ def design_check(d):
         if not g.get('奖励') and not g.get('标记'):
             out.append(('注意', f'主目标"{t}"没有标记（原版 95% 的目标挂了标记）'))
     shown = {t for p in phases for t in p.get('目标') or []}
-    for t in goals:
-        if t not in shown:
-            out.append(('问题', f'目标"{t}"不在任何一段里，永远不会亮出来'))
+    for t, g in goals.items():
+        if t not in shown and g.get('亮出') is None:
+            out.append(('问题', f'目标"{t}"不在任何一段里，也没有"亮出"，永远不会亮出来'))
     saves = [p['名字'] for p in phases[1:] if not p.get('存档')]
     out.append(('符合' if not saves else '注意', '每段开头自动存档' + (f'：{"、".join(saves)} 没有' if saves else '')))
     money = (d.get('开局') or {}).get('资金')
