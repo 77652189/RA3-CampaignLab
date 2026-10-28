@@ -108,7 +108,8 @@ class Carrier(Device):
                           [('SET_COUNTER', self.state, 1), ('SET_FLAG', self.choosing, 1),
                            ('INCREMENT_COUNTER', 1, self.warned),
                            ('SET_MILLISECOND_TIMER', self.timer, warn), ('SHOW_MILITARY_CAPTION', warn_key, 5.0),
-                           ('DISPLAY_COUNTDOWN_TIMER', self.timer, count_key)], once=False))
+                           ('DISPLAY_COUNTDOWN_TIMER', self.timer, count_key), lib.charging(self.obj, warn)],
+                          once=False))
         armed = kindof('CAN_ATTACK')
         for k, site in enumerate(self.spec['落点']):
             out.append(Script(f'CNV {t} - Carrier picks {k + 1}',
