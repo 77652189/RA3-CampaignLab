@@ -58,7 +58,7 @@ def looked(note, scale=0.5, settle=0.5):
     time.sleep(settle)
     fid, img = S.frame(note)
     S.pause()
-    return [f'frame {fid} at mission second {S.second()} (camera {"start" if S.view is None else S.view})'
+    return [f'frame {fid} at mission second {S.frames[-1]["second"]} (camera {"start" if S.view is None else S.view})'
             f'{"; paused" if S.paused else ""}', view(img, scale)]
 
 
@@ -264,7 +264,10 @@ def bench_watch(seconds: float, every: float = 3.0, x0: float = 0, y0: float = 0
     from PIL import Image as PImage, ImageDraw
     import counters
     go()
-    end, rows, cuts, prev, prev_cap = S.second() + max(0.0, min(120.0, seconds)), [], [], None, None   # mission time
+    S.speed_up(every)               # no faster than frames can follow
+    start = S.second()              # frames on a schedule in mission time: k * every from here, capture time and all
+    end, rows, cuts, prev, prev_cap = start + max(0.0, min(120.0, seconds)), [], [], None, None
+    k = 0
     while True:
         try:
             fid, img = S.frame(f'watch {every} s')
@@ -281,16 +284,18 @@ def bench_watch(seconds: float, every: float = 3.0, x0: float = 0, y0: float = 0
         vals = counters.read(img, lines) if lines else []
         if vals:
             text += ' [' + ' '.join('?' if v is None else str(v) for v in vals) + ']'
-        rows.append(f'#{fid} s{S.second()} change {moved}{text}')
+        shot_at = S.frames[-1]['second']        # when the shot was asked for, not when it was read back
+        rows.append(f'#{fid} s{shot_at} change {moved}{text}')
         prev, prev_cap = cut, cap
-        cuts.append((fid, S.second(), cut))
+        cuts.append((fid, shot_at, cut))
         met = until_met(until, vals) if until and vals else None
         if met:
             rows.append(f'UNTIL met: {met}')
             break
-        if S.second() + every > end:
+        k += 1
+        if start + k * every > end:
             break
-        S.run_for(every)
+        S.run_for(start + k * every - S.second())
     try:
         S.pause()
     except harness.BenchError:                  # no mission menu: the mission has ended (won / lost screen)

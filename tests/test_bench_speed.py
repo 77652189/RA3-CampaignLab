@@ -19,23 +19,48 @@ def clock(monkeypatch):
     return now, slept
 
 
+@pytest.fixture
+def shots(monkeypatch, tmp_path):
+    monkeypatch.setattr(harness, 'SHOTS', str(tmp_path))
+    return tmp_path
+
+
 @pytest.mark.parametrize('speed', [1.0, 4.0])
-def test_mission_seconds_run_at_the_speed(monkeypatch, clock, speed):
+def test_mission_seconds_run_at_the_speed(monkeypatch, clock, shots, speed):
     now, slept = clock
     monkeypatch.setattr(harness, 'SPEED', speed)
     s = harness.Session()
     s.t0 = s.run_from = now['t']
+    now['t'] += 2                                   # in the mission, before any tool runs it: x1
+    assert s.second() == 2
+    s.resume()                                      # a tool runs it (not paused: no menu to close)
     now['t'] += 10                                  # ten real seconds
-    assert s.second() == 10 * speed
+    assert s.second() == 2 + 10 * speed
     s.run_for(40)
     assert slept[-1] == 40 / speed
+    asked = shots / 'speed.req'
+    assert asked.exists() == (speed != 1) and (speed == 1 or float(asked.read_text()) == speed)
 
 
-def test_the_pause_keeps_mission_time(monkeypatch, clock):
+def test_frames_wanted_often_slow_the_mission(monkeypatch, clock, shots):
+    now, _ = clock
+    monkeypatch.setattr(harness, 'SPEED', 8.0)
+    s = harness.Session()
+    s.t0 = s.run_from = now['t']
+    s.speed_up(every=1.0)                           # a frame costs FRAME_COST real s: x8 would see one every ~2.8 s
+    assert s.rate == pytest.approx(1.0 / harness.FRAME_COST)
+    s.speed_up(every=10.0)
+    assert s.rate == 8.0
+    s.speed_up(every=0.1)
+    assert s.rate == 1.0                            # never slower than the game itself
+
+
+def test_the_pause_keeps_mission_time(monkeypatch, clock, shots):
     now, _ = clock
     monkeypatch.setattr(harness, 'SPEED', 4.0)
     s = harness.Session()
     s.hold, s.t0, s.run_from = True, now['t'], now['t']
+    s.speed_up()
     monkeypatch.setattr(s, 'window', lambda: 1)
     monkeypatch.setattr(harness, 'key', lambda h, vk: None)
     monkeypatch.setattr(s, '_capture', lambda name, **k: 'menu')

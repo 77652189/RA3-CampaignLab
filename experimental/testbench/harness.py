@@ -40,6 +40,7 @@ SHOTS = os.path.join(BENCH, 'shots')
 # RA3_BENCH_SPEED=<x>: the mission runs x times as fast (the capture shim scales the game's clocks once the menus are
 # walked); mission seconds, waits and watches are all in mission time. 1 (default): the shim hooks no clock.
 SPEED = float(os.environ.get('RA3_BENCH_SPEED') or 1)
+FRAME_COST = 0.35           # real seconds a watched frame takes: capture, archive, counters (bench 2026-10-27, x8)
 RUNS = os.path.join(ROOT, 'work', 'testbench', 'runs')
 LOCK = slots.lock_path(1)
 MODS = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods')
@@ -229,6 +230,7 @@ class Session:
         self.paused = False
         self.game_s = 0.0           # mission seconds run before the current running stretch
         self.run_from = None        # when the current running stretch began (time.monotonic), None while paused
+        self.rate = 1.0             # the speed the mission runs at now: x1 till speed_up
 
     # -- life cycle -------------------------------------------------------------------------------------------
     def start(self, mod, visible=False, timeout=150, hold=True, steps=None):
@@ -260,7 +262,7 @@ class Session:
         self.frames, self.view, self.log, self.muted, self.t0 = [], None, [], 0, None
         self.borders = map_borders(sku) if mod else []
         self.last_border = self.borders[0] if self.borders else None
-        self.hold, self.paused, self.game_s, self.run_from = hold, False, 0.0, None
+        self.hold, self.paused, self.game_s, self.run_from, self.rate = hold, False, 0.0, None, 1.0
         args = [os.path.join(BENCH, 'Data', 'RA3_1.13.game'), '-config', os.path.join(BENCH, 'RA3_chinese_t_1.13.SkuDef'),
                 '-runver', '1.13', '-win', '-xres', str(W), '-yres', str(H)] + (['-modConfig', sku] if mod else [])
         try:
@@ -332,11 +334,7 @@ class Session:
                 self._do(h, steps[at]['actions'])
                 at, done_at = at + 1, s
                 if at == len(steps):
-                    if SPEED != 1:
-                        with open(os.path.join(SHOTS, 'speed.req'), 'w', encoding='ascii') as f:
-                            f.write(f'{SPEED:g}')       # the shim reads it within 0.1 s
-                        self._say(f'mission at x{SPEED:g}')
-                    self.t0 = self.run_from = time.monotonic()
+                    self.t0 = self.run_from = time.monotonic()      # at x1 till a tool first runs it (speed_up)
                     self._say(f'in game at {s} s')
                     os.replace(frame, os.path.join(self.run_dir, 'nav_last.bmp'))
                     return              # running: the caller archives a first frame, then pauses (hold mode)
@@ -396,11 +394,26 @@ class Session:
         """Mission seconds the game has run (the paused stretches left out)."""
         if self.t0 is None:
             return None
-        return round(self.game_s + ((time.monotonic() - self.run_from) * SPEED if self.run_from else 0), 1)
+        return round(self.game_s + ((time.monotonic() - self.run_from) * self.rate if self.run_from else 0), 1)
 
     def run_for(self, seconds):
-        """Let the mission run `seconds` of mission time (real time / SPEED)."""
-        time.sleep(max(0.0, seconds) / SPEED)
+        """Let the mission run `seconds` of mission time (real time / the rate it runs at)."""
+        time.sleep(max(0.0, seconds) / self.rate)
+
+    def speed_up(self, every=None):
+        """Run the mission at SPEED from now on -- slower when frames are wanted every `every` mission seconds and a
+        frame and its counters (~FRAME_COST real seconds) would take longer than that at SPEED. Not at once in the
+        mission: the first frame and the hold pause after it take ~1 s of real time, at x8 the first 8 s of the
+        mission went by unseen (bench 2026-10-27: a8 jump and liberty open expect readings from s0)."""
+        rate = SPEED if every is None else max(1.0, min(SPEED, every / FRAME_COST))
+        if self.rate == rate or self.run_from is None:
+            return
+        now = time.monotonic()
+        with open(os.path.join(SHOTS, 'speed.req'), 'w', encoding='ascii') as f:
+            f.write(f'{rate:g}')        # the shim reads it within 0.1 s
+        self.game_s += (now - self.run_from) * self.rate
+        self.run_from, self.rate = now, rate
+        self._say(f'mission at x{rate:g} from second {self.second()}')
 
     def menu_open(self, img):
         a = img.convert('L').crop(MENU_BOX).tobytes()
@@ -417,14 +430,15 @@ class Session:
             time.sleep(0.5)
             img = self._capture('hold')
             if img is not None and self.menu_open(img):
-                self.game_s += (time.monotonic() - self.run_from - 0.5) * SPEED
+                self.game_s += (time.monotonic() - self.run_from - 0.5) * self.rate
                 self.paused, self.run_from = True, None
                 return
         raise BenchError('Esc did not open the mission menu (a targeting cursor or a dialog in the way?)')
 
     def resume(self):
-        """Hold mode: close the mission menu before acting."""
+        """Before acting: close the mission menu (hold mode); the mission runs at SPEED from here."""
         if not self.paused:
+            self.speed_up()
             return
         h = self.window()
         for _ in range(2):
@@ -433,6 +447,7 @@ class Session:
             img = self._capture('hold')
             if img is not None and not self.menu_open(img):
                 self.paused, self.run_from = False, time.monotonic()
+                self.speed_up()
                 return
         raise BenchError('Esc did not close the mission menu')
 
@@ -472,12 +487,15 @@ class Session:
         self.window()
         if self.muted == 0:
             self.muted = mute(self.p.pid)
+        # the mission second when the shot was asked for: the shim saves the next frame drawn (ms later), while
+        # waiting for the file and reading it back take ~0.3 s -- 2-3 mission seconds at x8 (bench 2026-10-27)
+        second = self.second()
         img = self._capture('mcp')
         if img is None:
             raise BenchError('no frame from the capture shim within 3 s')
         fid = len(self.frames) + 1
         img.save(os.path.join(self.run_dir, f'{fid:04d}.png'))
-        self.frames.append(dict(id=fid, second=self.second(), note=note, view=self.view))
+        self.frames.append(dict(id=fid, second=second, note=note, view=self.view))
         with open(os.path.join(self.run_dir, 'index.json'), 'w', encoding='utf-8') as f:
             json.dump(dict(mod=self.mod, frames=self.frames), f, ensure_ascii=False, indent=1)
         return fid, img
