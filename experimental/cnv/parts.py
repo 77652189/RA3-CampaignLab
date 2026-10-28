@@ -584,15 +584,33 @@ def assemble(mission, test=None, name=None):
     c4.EXTRA_FILES = list(mm.music.files) if mm.music else []
     c4.CHECKS = [mm.music.check] if mm.music else []
 
+    borders = []
+
     def edit(m):
         write_map(m, mm)
+        import mapterrain
+        names = list(getattr(mm.map, 'BORDERS', {}))
+        borders[:] = [(names[k] if k < len(names) else str(k), [v * mapterrain.CELL for v in r])
+                      for k, r in enumerate(mapterrain.HeightMap(m).borders())]
         print(f'{name}: {len(mm.objects)} objects, {len(mm.waypoints)} waypoints, {len(mm.areas)} areas, '
               f'{len(mm.scripts)} scripts, units {sorted(seen)}')
 
     c6.edit = edit
     c4.main()
     release()
+    write_sidecar(c4.OUT, mm.map.__name__.split('.')[-1], borders)
     return c4.OUT
+
+
+SIDECAR = 'cnv_map.json'
+
+
+def write_sidecar(out, map_name, borders):
+    """What the bench needs of the built map, next to the mod (testbench/harness.py reads it): the map's borders in
+    world units, in MAP_SWITCH_BORDER order -- the minimap draws only the playable one (calib.world_to_minimap)."""
+    import json
+    with open(os.path.join(out, SIDECAR), 'w', encoding='utf-8') as f:
+        json.dump(dict(map=map_name, borders=borders), f, ensure_ascii=False, indent=1)
 
 
 def mod_busy(name):
