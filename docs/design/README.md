@@ -47,7 +47,7 @@
 | [devils-playground](teardowns/devils-playground.md) | 星际 2 自由之翼 魔鬼的游乐场 | 机关式（环境周期） | A3、J2、S8、A8 |
 | [layout](teardowns/layout.md) | **全部 40 张原版战役图** + 我们 11 关 | 空间布局：出生点、可玩区、目标方向、路线、奖励摆放 | 全部 |
 
-布局卡的原始测量在 [teardowns/data/layout.md](teardowns/data/layout.md)（每关一行），由 [layout_measure.py](teardowns/data/layout_measure.py)（只读原版存档和 Mods 里我们编好的地图）和 [layout_table.py](teardowns/data/layout_table.py) 生成，改了地图可以重跑。
+布局卡的原始测量在 [teardowns/data/layout.md](teardowns/data/layout.md)（每关一行），由 [layout_measure.py](teardowns/data/layout_measure.py)（只读原版存档和 Mods 里我们编好的地图）和 [layout_table.py](teardowns/data/layout_table.py) 生成，改了地图可以重跑。玩家视角的时间线（每个时刻玩家看见什么）在 [teardowns/data/timeline.md](teardowns/data/timeline.md)，由 [timeline_measure.py](teardowns/data/timeline_measure.py) 生成，验收表在它开头。
 
 [teardowns/data/](teardowns/data/) 里另外几份是子 Agent 整理的原始事实（横滨、研究所的脚本时间线，星际 2 和设计理论的公开资料网址），拆解卡引用它们；横滨、研究所的关键几条已对照原版脚本原文核过。
 
