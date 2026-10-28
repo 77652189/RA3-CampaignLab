@@ -22,8 +22,10 @@ HARD_CONSTRAINTS = [
 STATE_FIELDS = {
     'slice': None,                                              # free text
     'blocked_on': {'none', 'voice-session', 'user'},
-    'next_gate': {'test-map', 'coordinate-calibration', 'demo'},
+    'next_gate': {'test-map', 'coordinate-calibration', 'demo', 'playtest'},
 }
+ENGINE_DOCS = {'script-semantics.md', 'know-how.md'}
+PLAN_MAX_KB = 40        # status only (2026-10-28 it was 115 KB of history and know-how: archive/, engine/)
 
 
 def _md(root):
@@ -87,6 +89,16 @@ def test_handoff_state_block_fields_and_values():
 
 def test_plan_is_the_state_authority():
     assert '进度状态的唯一权威' in (DOCS / 'plan.md').read_text(encoding='utf-8')
+
+
+def test_plan_holds_status_not_history():
+    # history goes to docs/archive (not read), what we know of the engine and tools to docs/engine/know-how.md
+    size = (DOCS / 'plan.md').stat().st_size
+    assert size <= PLAN_MAX_KB * 1024, f'plan.md is {size // 1024} KB: move history to archive/, know-how to engine/'
+
+
+def test_engine_docs_are_the_reviewed_set():
+    assert _md(DOCS / 'engine') == ENGINE_DOCS
 
 
 def test_local_data_stays_ignored():
