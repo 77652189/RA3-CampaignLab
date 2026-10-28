@@ -4,8 +4,8 @@ plan edit; the bench versions stay for the engine and for the last alignment.
 
 Each: (level, check) -> what the player does (the simulator's script; the check's own test scripts run too), the
 ending it must come to ('赢' / '输' / None: none within the run), and whether the check's own counter expectations
-hold too (counters: only where they are wiring; their seconds are mission seconds here, the bench reads some
-seconds later). Checks left out lean on the engine (sim.ALIGN lists what the simulator only assumes).
+hold too (counters: only where they are wiring; mission seconds, as the bench's since 4aed60f). Checks left out
+lean on the engine (sim.ALIGN lists what the simulator only assumes).
 
   python -I -X utf8 experimental/cnv/simchecks.py            -> one line each, PASS / FAIL
 """

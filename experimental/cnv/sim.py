@@ -55,10 +55,10 @@ LEVELS = {'easy': 0, 'normal': 1, 'hard': 2}
 NEAR = 800.0                    # an enemy this close to something of the player's is a threat (the tension curve)
 REACH = 300.0                   # 自动打掉: an enemy this close to something of the player's is being fought
 GRID = 20.0                     # routing cells (world units)
-LAG = 0.0                       # the readings' clock: mission seconds. A check's own expectations count the bench's
-                                # seconds, which run behind by no fixed lag (~8 s after the menus, more where the game
-                                # runs slow: j7 win ends at mission 10 and was read at bench 10) -- so the simulator's
-                                # versions of the checks carry their own expectations (simchecks.py)
+LAG = 0.0                       # the readings' clock: mission seconds, as the bench's since 4aed60f (ADR 0007: the
+                                # bench counts mission time, at 8x). Expectations written before that counted wall
+                                # seconds from the menus' end; the simulator's versions of the checks carry their own
+                                # ending (simchecks.py) and judge the counters only where they are wiring
 
 # what the simulator assumes of the engine and the bench has not settled ("待对齐清单"): printed with every run that
 # leans on one of them
@@ -965,7 +965,7 @@ def main():
     if s.test and s.test.expect:
         import build
         lines, _ = build.report(s.test, s.series)
-        print('测试台版的期望（秒数按测试台，和任务秒数差几秒，只作参考；这个检查没有模拟器版）：')
+        print('测试台版的期望（这个检查没有模拟器版，多半靠引擎行为：只作参考）：')
         print('\n'.join(lines))
 
 
