@@ -8,7 +8,7 @@
 |---|---|---|
 | [charter.md](charter.md) | **设计总纲**：四个条件、工作流、问题归层 | 入口 |
 | [campaign.md](campaign.md) | 战役总表草稿：27 关的一句话概念、新花样、类型、出生布局、难度位置，标出重复、撞车、断档；最后是用户 2026-10-27 定下的 6 条 | 第 0 步 |
-| [principles.md](principles.md) | 27 条设计准则（P24～P27 是地形），按四个条件归组，标明在哪一步检查；每条写准则、为什么、出处 | 第 0～5 步的检查清单 |
+| [principles.md](principles.md) | 28 条设计准则（P24～P28 是地形和空军），按四个条件归组，标明在哪一步检查；每条写准则、为什么、出处 | 第 0～5 步的检查清单 |
 | [a4-redesign.md](a4-redesign.md) | A4 试点：走完第 1～3 步（概念、体验设计、纸面原型和推演），写好第 5 步的试玩问题和给关卡线的实现清单 | 第 1～5 步的样板 |
 | [plan-template.md](plan-template.md) | 策划案模板的增补建议，以及 plancheck 能查什么（只是建议，策划案和编译器归关卡线） | 第 3～4 步 |
 | [playtest.md](playtest.md) | 给用户的试玩问题：玩哪两关原版，每关问什么；A4 的问题在试点里 | 第 5 步 |
@@ -52,7 +52,7 @@
 | [layout](teardowns/layout.md) | **全部 40 张原版战役图** + 我们 11 关 | 空间布局：出生点、可玩区、目标方向、路线、奖励摆放 | 全部 |
 | [terrain](teardowns/terrain.md) | **全部 40 张原版战役图** + 我们 11 关 | 地形复杂度（层、坡道、水、驻军楼、墙、隘口、俯瞰）和地图利用率（按阶段，只算走得到的地面）；末尾是给关卡线的生成器缺口 | 全部 |
 
-布局卡的原始测量在 [teardowns/data/layout.md](teardowns/data/layout.md)（每关一行），由 [layout_measure.py](teardowns/data/layout_measure.py)（只读原版存档和 Mods 里我们编好的地图）和 [layout_table.py](teardowns/data/layout_table.py) 生成，改了地图可以重跑。玩家视角的时间线（每个时刻玩家看见什么）在 [teardowns/data/timeline.md](teardowns/data/timeline.md)，由 [timeline_measure.py](teardowns/data/timeline_measure.py) 生成，验收表在它开头。地形和利用率在 [teardowns/data/terrain.md](teardowns/data/terrain.md)，由 [terrain_measure.py](teardowns/data/terrain_measure.py) 生成（每张约 1 秒，`TERRAIN_PNG=<文件夹>` 出核对用的图）。
+布局卡的原始测量在 [teardowns/data/layout.md](teardowns/data/layout.md)（每关一行），由 [layout_measure.py](teardowns/data/layout_measure.py)（只读原版存档和 Mods 里我们编好的地图）和 [layout_table.py](teardowns/data/layout_table.py) 生成，改了地图可以重跑。玩家视角的时间线（每个时刻玩家看见什么）在 [teardowns/data/timeline.md](teardowns/data/timeline.md)，由 [timeline_measure.py](teardowns/data/timeline_measure.py) 生成，验收表在它开头。地形和利用率在 [teardowns/data/terrain.md](teardowns/data/terrain.md)，由 [terrain_measure.py](teardowns/data/terrain_measure.py) 生成（每张约 1 秒，`TERRAIN_PNG=<文件夹>` 出核对用的图）。玩家能不能造飞机、敌方据点有没有防空在 [teardowns/data/air.md](teardowns/data/air.md)，由 [air_measure.py](teardowns/data/air_measure.py) 生成。
 
 [teardowns/data/](teardowns/data/) 里另外几份是子 Agent 整理的原始事实（横滨、研究所的脚本时间线，星际 2 和设计理论的公开资料网址），拆解卡引用它们；横滨、研究所的关键几条已对照原版脚本原文核过。
 

@@ -1,0 +1,810 @@
+{
+ "camp_a01_brightonbeach_smith": {
+  "map": "camp_a01_brightonbeach_smith",
+  "faction": "allied",
+  "attributed": true,
+  "base": false,
+  "air_start": "none",
+  "banned": [
+   "alliedairfield",
+   "alliedantigroundaircraft",
+   "alliedbomberaircraft",
+   "alliedfighteraircraft",
+   "alliedsupportaircraft"
+  ],
+  "allowed": [],
+  "tech_locked": true,
+  "unlocked_later": [],
+  "enemy_aa": 0,
+  "strongholds": 2,
+  "strongholds_with_aa": 0
+ },
+ "camp_a02_cannes_smith": {
+  "map": "camp_a02_cannes_smith",
+  "faction": "allied",
+  "attributed": true,
+  "base": true,
+  "air_start": "none",
+  "banned": [
+   "alliedairfield",
+   "alliedantigroundaircraft",
+   "alliedbomberaircraft",
+   "alliedfighteraircraft",
+   "alliedsupportaircraft"
+  ],
+  "allowed": [],
+  "tech_locked": true,
+  "unlocked_later": [
+   "alliedantigroundaircraft"
+  ],
+  "enemy_aa": 0,
+  "strongholds": 6,
+  "strongholds_with_aa": 0
+ },
+ "camp_a03_heidelberg_smith": {
+  "map": "camp_a03_heidelberg_smith",
+  "faction": "allied",
+  "attributed": true,
+  "base": false,
+  "air_start": "some",
+  "banned": [
+   "alliedbomberaircraft",
+   "alliedfighteraircraft",
+   "alliedsupportaircraft"
+  ],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 28,
+  "strongholds": 3,
+  "strongholds_with_aa": 1
+ },
+ "camp_a04_gibraltar_hayes": {
+  "map": "camp_a04_gibraltar_hayes",
+  "faction": "allied",
+  "attributed": true,
+  "base": true,
+  "air_start": "none",
+  "banned": [
+   "alliedbomberaircraft",
+   "alliedfighteraircraft"
+  ],
+  "allowed": [
+   "alliedairfield",
+   "alliedantigroundaircraft",
+   "alliedsupportaircraft"
+  ],
+  "tech_locked": true,
+  "unlocked_later": [
+   "alliedsupportaircraft"
+  ],
+  "enemy_aa": 7,
+  "strongholds": 4,
+  "strongholds_with_aa": 1
+ },
+ "camp_a05_northsea_white": {
+  "map": "camp_a05_northsea_white",
+  "faction": "allied",
+  "attributed": true,
+  "base": false,
+  "air_start": "none",
+  "banned": [
+   "alliedbomberaircraft"
+  ],
+  "allowed": [
+   "alliedantigroundaircraft",
+   "alliedfighteraircraft"
+  ],
+  "tech_locked": true,
+  "unlocked_later": [
+   "alliedbomberaircraft"
+  ],
+  "enemy_aa": 7,
+  "strongholds": 6,
+  "strongholds_with_aa": 3
+ },
+ "camp_a06_mountrushmore_white": {
+  "map": "camp_a06_mountrushmore_white",
+  "faction": "allied",
+  "attributed": true,
+  "base": false,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 0,
+  "strongholds": 3,
+  "strongholds_with_aa": 0
+ },
+ "camp_a07_tokyoharbor_davis": {
+  "map": "camp_a07_tokyoharbor_davis",
+  "faction": "allied",
+  "attributed": true,
+  "base": true,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [
+   "alliedairfield",
+   "alliedantigroundaircraft",
+   "alliedbomberaircraft",
+   "alliedfighteraircraft",
+   "alliedsupportaircraft"
+  ],
+  "tech_locked": false,
+  "unlocked_later": [
+   "PlayerTech AirPower"
+  ],
+  "enemy_aa": 8,
+  "strongholds": 7,
+  "strongholds_with_aa": 2
+ },
+ "camp_a08_havana_rao": {
+  "map": "camp_a08_havana_rao",
+  "faction": "allied",
+  "attributed": true,
+  "base": false,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 18,
+  "strongholds": 4,
+  "strongholds_with_aa": 4
+ },
+ "camp_a09_leningrad_rao": {
+  "map": "camp_a09_leningrad_rao",
+  "faction": "allied",
+  "attributed": true,
+  "base": false,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 15,
+  "strongholds": 7,
+  "strongholds_with_aa": 3
+ },
+ "camp_j01_russianvillage_white": {
+  "map": "camp_j01_russianvillage_white",
+  "faction": "japan",
+  "attributed": true,
+  "base": false,
+  "air_start": "none",
+  "banned": [
+   "japanantiairship",
+   "japanantiairvehicletech1",
+   "japanantiinfantryvehicle"
+  ],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 11,
+  "strongholds": 4,
+  "strongholds_with_aa": 2
+ },
+ "camp_j02_stalingrad_stewart": {
+  "map": "camp_j02_stalingrad_stewart",
+  "faction": "japan",
+  "attributed": true,
+  "base": true,
+  "air_start": "some",
+  "banned": [
+   "japanantiairvehicletech1"
+  ],
+  "allowed": [
+   "japanantiairship",
+   "japanantiinfantryvehicle"
+  ],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 2,
+  "strongholds": 2,
+  "strongholds_with_aa": 1
+ },
+ "camp_j03_odessa_stewart": {
+  "map": "camp_j03_odessa_stewart",
+  "faction": "japan",
+  "attributed": true,
+  "base": true,
+  "air_start": "some",
+  "banned": [
+   "japanantiairship"
+  ],
+  "allowed": [
+   "japanantiairvehicletech1",
+   "japanantiinfantryvehicle"
+  ],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 6,
+  "strongholds": 5,
+  "strongholds_with_aa": 1
+ },
+ "camp_j04_pearlharbor_davis": {
+  "map": "camp_j04_pearlharbor_davis",
+  "faction": "japan",
+  "attributed": true,
+  "base": true,
+  "air_start": "some",
+  "banned": [
+   "japanantiairship"
+  ],
+  "allowed": [
+   "japanantiairvehicletech1",
+   "japanantiinfantryvehicle"
+  ],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 2,
+  "strongholds": 1,
+  "strongholds_with_aa": 1
+ },
+ "camp_j05_deepocean_davis": {
+  "map": "camp_j05_deepocean_davis",
+  "faction": "japan",
+  "attributed": true,
+  "base": true,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 4,
+  "strongholds": 3,
+  "strongholds_with_aa": 1
+ },
+ "camp_j06_losangeles_white": {
+  "map": "camp_j06_losangeles_white",
+  "faction": "japan",
+  "attributed": true,
+  "base": true,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 2,
+  "strongholds": 7,
+  "strongholds_with_aa": 1
+ },
+ "camp_j07_yokohama_stewart": {
+  "map": "camp_j07_yokohama_stewart",
+  "faction": "japan",
+  "attributed": true,
+  "base": true,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 0,
+  "strongholds": 4,
+  "strongholds_with_aa": 0
+ },
+ "camp_j08_kremlin_stewart": {
+  "map": "camp_j08_kremlin_stewart",
+  "faction": "japan",
+  "attributed": true,
+  "base": true,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 0,
+  "strongholds": 4,
+  "strongholds_with_aa": 0
+ },
+ "camp_j09_amsterdam_bass": {
+  "map": "camp_j09_amsterdam_bass",
+  "faction": "japan",
+  "attributed": true,
+  "base": true,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 18,
+  "strongholds": 10,
+  "strongholds_with_aa": 4
+ },
+ "camp_s01_leningradcanals_rao": {
+  "map": "camp_s01_leningradcanals_rao",
+  "faction": "soviet",
+  "attributed": true,
+  "base": false,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 26,
+  "strongholds": 6,
+  "strongholds_with_aa": 3
+ },
+ "camp_s02_krasna45_rao": {
+  "map": "camp_s02_krasna45_rao",
+  "faction": "soviet",
+  "attributed": true,
+  "base": false,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 7,
+  "strongholds": 4,
+  "strongholds_with_aa": 2
+ },
+ "camp_s03_vladivostok_davis": {
+  "map": "camp_s03_vladivostok_davis",
+  "faction": "soviet",
+  "attributed": true,
+  "base": false,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 0,
+  "strongholds": 3,
+  "strongholds_with_aa": 0
+ },
+ "camp_s04_geneva_bass": {
+  "map": "camp_s04_geneva_bass",
+  "faction": "soviet",
+  "attributed": true,
+  "base": true,
+  "air_start": "none",
+  "banned": [
+   "sovietairfield"
+  ],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 0,
+  "strongholds": 4,
+  "strongholds_with_aa": 0
+ },
+ "camp_s05_mykonos_smith": {
+  "map": "camp_s05_mykonos_smith",
+  "faction": "soviet",
+  "attributed": true,
+  "base": true,
+  "air_start": "some",
+  "banned": [
+   "sovietbomberaircraft",
+   "sovietfighteraircraft"
+  ],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [
+   "sovietfighteraircraft"
+  ],
+  "enemy_aa": 0,
+  "strongholds": 4,
+  "strongholds_with_aa": 0
+ },
+ "camp_s06_iceland_bass": {
+  "map": "camp_s06_iceland_bass",
+  "faction": "soviet",
+  "attributed": true,
+  "base": true,
+  "air_start": "some",
+  "banned": [
+   "sovietbomberaircraft"
+  ],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [
+   "sovietbomberaircraft"
+  ],
+  "enemy_aa": 5,
+  "strongholds": 5,
+  "strongholds_with_aa": 2
+ },
+ "camp_s07_mountfuji_white": {
+  "map": "camp_s07_mountfuji_white",
+  "faction": "soviet",
+  "attributed": true,
+  "base": false,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 6,
+  "strongholds": 5,
+  "strongholds_with_aa": 0
+ },
+ "camp_s08_easterisland_stewart": {
+  "map": "camp_s08_easterisland_stewart",
+  "faction": "soviet",
+  "attributed": true,
+  "base": true,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 38,
+  "strongholds": 5,
+  "strongholds_with_aa": 5
+ },
+ "camp_s09_newyork_rao": {
+  "map": "camp_s09_newyork_rao",
+  "faction": "soviet",
+  "attributed": true,
+  "base": false,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 18,
+  "strongholds": 5,
+  "strongholds_with_aa": 2
+ },
+ "camp_ep01_a01_igaprefecture_davis": {
+  "map": "camp_ep01_a01_igaprefecture_davis",
+  "faction": "allied",
+  "attributed": true,
+  "base": true,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 3,
+  "strongholds": 8,
+  "strongholds_with_aa": 0
+ },
+ "camp_ep01_a02_osaka_white": {
+  "map": "camp_ep01_a02_osaka_white",
+  "faction": "allied",
+  "attributed": true,
+  "base": true,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [
+   "alliedairfield",
+   "alliedantigroundaircraft",
+   "alliedbomberaircraft",
+   "alliedfighteraircraft",
+   "alliedsupportaircraft"
+  ],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 11,
+  "strongholds": 1,
+  "strongholds_with_aa": 1
+ },
+ "camp_ep01_a03_miyako_stewart": {
+  "map": "camp_ep01_a03_miyako_stewart",
+  "faction": "allied",
+  "attributed": true,
+  "base": true,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 5,
+  "strongholds": 4,
+  "strongholds_with_aa": 1
+ },
+ "camp_ep01_j01_sakhalin_smith": {
+  "map": "camp_ep01_j01_sakhalin_smith",
+  "faction": "japan",
+  "attributed": true,
+  "base": false,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 17,
+  "strongholds": 7,
+  "strongholds_with_aa": 3
+ },
+ "camp_ep01_j02_okiislands_smith": {
+  "map": "camp_ep01_j02_okiislands_smith",
+  "faction": "japan",
+  "attributed": true,
+  "base": false,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 8,
+  "strongholds": 5,
+  "strongholds_with_aa": 2
+ },
+ "camp_ep01_j03_vladivostok_smith": {
+  "map": "camp_ep01_j03_vladivostok_smith",
+  "faction": "japan",
+  "attributed": true,
+  "base": true,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 34,
+  "strongholds": 3,
+  "strongholds_with_aa": 3
+ },
+ "camp_ep01_s01_romania_stewart": {
+  "map": "camp_ep01_s01_romania_stewart",
+  "faction": "soviet",
+  "attributed": true,
+  "base": false,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 10,
+  "strongholds": 4,
+  "strongholds_with_aa": 1
+ },
+ "camp_ep01_s02_murmansk_white": {
+  "map": "camp_ep01_s02_murmansk_white",
+  "faction": "soviet",
+  "attributed": true,
+  "base": true,
+  "air_start": "some",
+  "banned": [
+   "sovietbomberaircraft"
+  ],
+  "allowed": [
+   "sovietairfield",
+   "sovietantigroundaircraft",
+   "sovietfighteraircraft"
+  ],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 5,
+  "strongholds": 5,
+  "strongholds_with_aa": 1
+ },
+ "camp_ep01_s03_yucatan_stewart": {
+  "map": "camp_ep01_s03_yucatan_stewart",
+  "faction": "soviet",
+  "attributed": true,
+  "base": false,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 9,
+  "strongholds": 5,
+  "strongholds_with_aa": 2
+ },
+ "camp_ep01_s04_warbotisland_white": {
+  "map": "camp_ep01_s04_warbotisland_white",
+  "faction": "soviet",
+  "attributed": true,
+  "base": true,
+  "air_start": "none",
+  "banned": [
+   "sovietairfield",
+   "sovietantigroundaircraft",
+   "sovietbomberaircraft",
+   "sovietfighteraircraft"
+  ],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [
+   "sovietairfield",
+   "sovietantigroundaircraft",
+   "sovietbomberaircraft",
+   "sovietfighteraircraft"
+  ],
+  "enemy_aa": 2,
+  "strongholds": 8,
+  "strongholds_with_aa": 1
+ },
+ "camp_ep01_y01_facility_rao": {
+  "map": "camp_ep01_y01_facility_rao",
+  "faction": null,
+  "attributed": true,
+  "base": false,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 2,
+  "strongholds": 5,
+  "strongholds_with_aa": 0
+ },
+ "camp_ep01_y02_blacksite_davis": {
+  "map": "camp_ep01_y02_blacksite_davis",
+  "faction": null,
+  "attributed": true,
+  "base": false,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 2,
+  "strongholds": 1,
+  "strongholds_with_aa": 0
+ },
+ "camp_ep01_y03_compound_rao": {
+  "map": "camp_ep01_y03_compound_rao",
+  "faction": null,
+  "attributed": true,
+  "base": false,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 4,
+  "strongholds": 7,
+  "strongholds_with_aa": 0
+ },
+ "ours_A4_CampA4Idle": {
+  "map": "ours_A4_CampA4Idle",
+  "faction": "allied",
+  "attributed": true,
+  "base": true,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 0,
+  "strongholds": 2,
+  "strongholds_with_aa": 0
+ },
+ "ours_A5_CampA5Win": {
+  "map": "ours_A5_CampA5Win",
+  "faction": "allied",
+  "attributed": true,
+  "base": true,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 0,
+  "strongholds": 1,
+  "strongholds_with_aa": 0
+ },
+ "ours_A7_CampA7Pincer": {
+  "map": "ours_A7_CampA7Pincer",
+  "faction": "allied",
+  "attributed": true,
+  "base": true,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 2,
+  "strongholds": 1,
+  "strongholds_with_aa": 1
+ },
+ "ours_A8_CampA8S": {
+  "map": "ours_A8_CampA8S",
+  "faction": "allied",
+  "attributed": true,
+  "base": false,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 3,
+  "strongholds": 0,
+  "strongholds_with_aa": 0
+ },
+ "ours_J3_CampJ3Run": {
+  "map": "ours_J3_CampJ3Run",
+  "faction": "allied",
+  "attributed": true,
+  "base": true,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 0,
+  "strongholds": 1,
+  "strongholds_with_aa": 0
+ },
+ "ours_J4_CampJ4": {
+  "map": "ours_J4_CampJ4",
+  "faction": "allied",
+  "attributed": true,
+  "base": false,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 0,
+  "strongholds": 0,
+  "strongholds_with_aa": 0
+ },
+ "ours_J5_CampJ5Lose": {
+  "map": "ours_J5_CampJ5Lose",
+  "faction": "allied",
+  "attributed": true,
+  "base": true,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 0,
+  "strongholds": 0,
+  "strongholds_with_aa": 0
+ },
+ "ours_J7_CampJ7Late": {
+  "map": "ours_J7_CampJ7Late",
+  "faction": "allied",
+  "attributed": true,
+  "base": true,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 0,
+  "strongholds": 1,
+  "strongholds_with_aa": 0
+ },
+ "ours_S2_CampS2Escape": {
+  "map": "ours_S2_CampS2Escape",
+  "faction": "allied",
+  "attributed": true,
+  "base": false,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 0,
+  "strongholds": 0,
+  "strongholds_with_aa": 0
+ },
+ "ours_S5_CampS5Trap": {
+  "map": "ours_S5_CampS5Trap",
+  "faction": "allied",
+  "attributed": true,
+  "base": true,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 0,
+  "strongholds": 1,
+  "strongholds_with_aa": 0
+ },
+ "ours_S6_CampS6Lose": {
+  "map": "ours_S6_CampS6Lose",
+  "faction": "allied",
+  "attributed": true,
+  "base": true,
+  "air_start": "all",
+  "banned": [],
+  "allowed": [],
+  "tech_locked": false,
+  "unlocked_later": [],
+  "enemy_aa": 0,
+  "strongholds": 0,
+  "strongholds_with_aa": 0
+ }
+}
