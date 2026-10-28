@@ -20,9 +20,13 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 
 
 async def run(steps, out):
-    # the whole environment: mcp passes only a few system variables by default, and RA3_BENCH_SLOTS / RA3_SHARED went
+    # the whole environment: mcp passes only a few system variables by default, and RA3_BENCH_SLOTS / RA3_SHARED went.
+    # Scripted runs (the cnv checks) play the mission at x8 unless told: the same verdicts as x1 on six checks, a
+    # quarter of the time (bench 2026-10-27, ADR 0007); a session driving the bench by hand stays at x1
+    env = dict(os.environ)
+    env.setdefault('RA3_BENCH_SPEED', '8')
     params = StdioServerParameters(command=sys.executable, args=['-I', '-X', 'utf8', os.path.join(HERE, 'bench_mcp.py')],
-                                   cwd=ROOT, env=dict(os.environ))
+                                   cwd=ROOT, env=env)
     async with stdio_client(params) as (r, w):
         async with ClientSession(r, w) as s:
             await s.initialize()

@@ -35,8 +35,11 @@ import calib  # noqa: E402
 import nav  # noqa: E402
 import slots  # noqa: E402
 
-BENCH = os.path.join(ROOT, 'work', 'testbench', 'RA3')
+BENCH = slots.BENCH
 SHOTS = os.path.join(BENCH, 'shots')
+# RA3_BENCH_SPEED=<x>: the mission runs x times as fast (the capture shim scales the game's clocks once the menus are
+# walked); mission seconds, waits and watches are all in mission time. 1 (default): the shim hooks no clock.
+SPEED = float(os.environ.get('RA3_BENCH_SPEED') or 1)
 RUNS = os.path.join(ROOT, 'work', 'testbench', 'runs')
 LOCK = os.environ.get('RA3_SHARED') and os.path.join(os.environ['RA3_SHARED'], 'locks', 'bench.json') or \
     os.path.join(os.path.dirname(ROOT), 'shared', 'locks', 'bench.json')
@@ -271,6 +274,9 @@ class Session:
         """Start the game in this slot and close its one-copy mutex, so the next copy can start. A copy that exits
         at once found another one's mutex (a game still starting): wait a little and start again."""
         env = dict(os.environ, CNV_SHOT_DIR=SHOTS)
+        env.pop('CNV_SPEED', None)
+        if SPEED != 1:
+            env['CNV_SPEED'] = '1'          # clocks hooked, the menus and videos at x1; the mission sped up in game
         for _ in range(tries):
             self.p = subprocess.Popen(args, cwd=BENCH, env=env)
             slots.note_game(self.slot, self.p.pid)
@@ -325,6 +331,10 @@ class Session:
                 self._do(h, steps[at]['actions'])
                 at, done_at = at + 1, s
                 if at == len(steps):
+                    if SPEED != 1:
+                        with open(os.path.join(SHOTS, 'speed.req'), 'w', encoding='ascii') as f:
+                            f.write(f'{SPEED:g}')       # the shim reads it within 0.1 s
+                        self._say(f'mission at x{SPEED:g}')
                     self.t0 = self.run_from = time.monotonic()
                     self._say(f'in game at {s} s')
                     os.replace(frame, os.path.join(self.run_dir, 'nav_last.bmp'))
@@ -385,7 +395,11 @@ class Session:
         """Mission seconds the game has run (the paused stretches left out)."""
         if self.t0 is None:
             return None
-        return round(self.game_s + (time.monotonic() - self.run_from if self.run_from else 0), 1)
+        return round(self.game_s + ((time.monotonic() - self.run_from) * SPEED if self.run_from else 0), 1)
+
+    def run_for(self, seconds):
+        """Let the mission run `seconds` of mission time (real time / SPEED)."""
+        time.sleep(max(0.0, seconds) / SPEED)
 
     def menu_open(self, img):
         a = img.convert('L').crop(MENU_BOX).tobytes()
@@ -402,7 +416,7 @@ class Session:
             time.sleep(0.5)
             img = self._capture('hold')
             if img is not None and self.menu_open(img):
-                self.game_s += time.monotonic() - self.run_from - 0.5
+                self.game_s += (time.monotonic() - self.run_from - 0.5) * SPEED
                 self.paused, self.run_from = True, None
                 return
         raise BenchError('Esc did not open the mission menu (a targeting cursor or a dialog in the way?)')

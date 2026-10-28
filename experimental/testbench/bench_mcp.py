@@ -204,7 +204,7 @@ def bench_camera(x: float, y: float, look: bool = True) -> list:
 def bench_wait(seconds: float, look: bool = True) -> list:
     """Let the game run for some seconds (max 120), then look."""
     go()
-    time.sleep(max(0.0, min(120.0, seconds)))
+    S.run_for(min(120.0, seconds))
     S.window()
     if look:
         return [f'ran {seconds} s'] + looked(f'after {seconds} s', settle=0)
@@ -264,7 +264,7 @@ def bench_watch(seconds: float, every: float = 3.0, x0: float = 0, y0: float = 0
     from PIL import Image as PImage, ImageDraw
     import counters
     go()
-    end, rows, cuts, prev, prev_cap = time.monotonic() + max(0.0, min(120.0, seconds)), [], [], None, None
+    end, rows, cuts, prev, prev_cap = S.second() + max(0.0, min(120.0, seconds)), [], [], None, None   # mission time
     while True:
         try:
             fid, img = S.frame(f'watch {every} s')
@@ -288,9 +288,9 @@ def bench_watch(seconds: float, every: float = 3.0, x0: float = 0, y0: float = 0
         if met:
             rows.append(f'UNTIL met: {met}')
             break
-        if time.monotonic() + every > end:
+        if S.second() + every > end:
             break
-        time.sleep(every)
+        S.run_for(every)
     try:
         S.pause()
     except harness.BenchError:                  # no mission menu: the mission has ended (won / lost screen)

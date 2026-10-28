@@ -198,15 +198,15 @@ static bool faked(int vk)
 static SHORT WINAPI h_GetAsyncKeyState(int vk) { return faked(vk) ? (SHORT)0x8001 : o_GetAsyncKeyState(vk); }
 static SHORT WINAPI h_GetKeyState(int vk) { return faked(vk) ? (SHORT)0xFF80 : o_GetKeyState(vk); }
 
-// replace a function the main module imports from user32.dll
-static void hook_import(const char *fn, void *hook, void **orig)
+// replace a function the main module imports (from user32.dll unless said)
+static bool hook_import(const char *fn, void *hook, void **orig, const char *dll = "user32.dll")
 {
     BYTE *base = (BYTE *)GetModuleHandleW(0);
     IMAGE_NT_HEADERS *nt = (IMAGE_NT_HEADERS *)(base + ((IMAGE_DOS_HEADER *)base)->e_lfanew);
     IMAGE_DATA_DIRECTORY dir = nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
     for (IMAGE_IMPORT_DESCRIPTOR *d = (IMAGE_IMPORT_DESCRIPTOR *)(base + dir.VirtualAddress); d->Name; d++)
     {
-        if (lstrcmpiA((char *)(base + d->Name), "user32.dll")) continue;
+        if (lstrcmpiA((char *)(base + d->Name), dll)) continue;
         IMAGE_THUNK_DATA *names = (IMAGE_THUNK_DATA *)(base + (d->OriginalFirstThunk ? d->OriginalFirstThunk : d->FirstThunk));
         IMAGE_THUNK_DATA *iat = (IMAGE_THUNK_DATA *)(base + d->FirstThunk);
         for (; names->u1.AddressOfData; names++, iat++)
@@ -218,11 +218,110 @@ static void hook_import(const char *fn, void *hook, void **orig)
             *orig = (void *)iat->u1.Function;
             iat->u1.Function = (ULONG_PTR)hook;
             VirtualProtect(&iat->u1.Function, sizeof(void *), old, &old);
-            logf("hooked import %s\n", fn);
-            return;
+            logf("hooked import %s!%s\n", dll, fn);
+            return true;
         }
     }
-    logf("import %s not found\n", fn);
+    logf("import %s!%s not found\n", dll, fn);
+    return false;
+}
+
+// ---------------------------------------------------------------- game speed
+// CNV_SPEED=<x> (or a file "speed.req" in the shot folder holding x, read any time): the game's clocks run x times
+// as fast -- the main module's imports of QueryPerformanceCounter, GetTickCount and timeGetTime -- so its logic, timers
+// and scripts run x times as fast in real time. Without CNV_SPEED nothing is hooked. Each change rebases the clocks, so
+// they never jump back.
+typedef BOOL(WINAPI *Qpc_t)(LARGE_INTEGER *);
+typedef DWORD(WINAPI *Tick_t)();
+static Qpc_t o_QueryPerformanceCounter;
+static Tick_t o_GetTickCount, o_timeGetTime;
+static CRITICAL_SECTION g_speed_cs;
+static double g_speed = 1.0;
+static LONGLONG g_qpc_real0, g_qpc_fake0;
+static LONGLONG g_tick_real0, g_tick_fake0, g_mm_real0, g_mm_fake0;
+static volatile LONG g_qpc_calls, g_tick_calls, g_mm_calls;
+
+static LONGLONG scaled(LONGLONG real, LONGLONG real0, LONGLONG fake0)
+{
+    return fake0 + (LONGLONG)((double)(real - real0) * g_speed);
+}
+static BOOL WINAPI h_QueryPerformanceCounter(LARGE_INTEGER *c)
+{
+    InterlockedIncrement(&g_qpc_calls);
+    LARGE_INTEGER r;
+    BOOL ok = o_QueryPerformanceCounter(&r);
+    EnterCriticalSection(&g_speed_cs);
+    c->QuadPart = scaled(r.QuadPart, g_qpc_real0, g_qpc_fake0);
+    LeaveCriticalSection(&g_speed_cs);
+    return ok;
+}
+static DWORD WINAPI h_GetTickCount()
+{
+    InterlockedIncrement(&g_tick_calls);
+    LONGLONG r = o_GetTickCount();
+    EnterCriticalSection(&g_speed_cs);
+    DWORD v = (DWORD)scaled(r, g_tick_real0, g_tick_fake0);
+    LeaveCriticalSection(&g_speed_cs);
+    return v;
+}
+static DWORD WINAPI h_timeGetTime()
+{
+    InterlockedIncrement(&g_mm_calls);
+    LONGLONG r = o_timeGetTime();
+    EnterCriticalSection(&g_speed_cs);
+    DWORD v = (DWORD)scaled(r, g_mm_real0, g_mm_fake0);
+    LeaveCriticalSection(&g_speed_cs);
+    return v;
+}
+
+static void set_speed(double x)
+{
+    if (x < 0.1 || x > 16) { logf("speed %.2f refused\n", x); return; }
+    LARGE_INTEGER q;
+    o_QueryPerformanceCounter(&q);
+    LONGLONG t = o_GetTickCount(), m = o_timeGetTime ? o_timeGetTime() : 0;
+    EnterCriticalSection(&g_speed_cs);
+    g_qpc_fake0 = scaled(q.QuadPart, g_qpc_real0, g_qpc_fake0), g_qpc_real0 = q.QuadPart;
+    g_tick_fake0 = scaled(t, g_tick_real0, g_tick_fake0), g_tick_real0 = t;
+    g_mm_fake0 = scaled(m, g_mm_real0, g_mm_fake0), g_mm_real0 = m;
+    g_speed = x;
+    LeaveCriticalSection(&g_speed_cs);
+    logf("speed x%.2f\n", x);
+}
+
+static bool g_speed_hooked;
+static void hook_speed()
+{
+    WCHAR v[32];
+    if (!GetEnvironmentVariableW(L"CNV_SPEED", v, 32)) return;
+    InitializeCriticalSection(&g_speed_cs);
+    o_QueryPerformanceCounter = QueryPerformanceCounter;
+    o_GetTickCount = GetTickCount;
+    LARGE_INTEGER q;
+    o_QueryPerformanceCounter(&q);
+    g_qpc_real0 = g_qpc_fake0 = q.QuadPart;
+    g_tick_real0 = g_tick_fake0 = o_GetTickCount();
+    hook_import("QueryPerformanceCounter", (void *)h_QueryPerformanceCounter, (void **)&o_QueryPerformanceCounter,
+                "kernel32.dll");
+    hook_import("GetTickCount", (void *)h_GetTickCount, (void **)&o_GetTickCount, "kernel32.dll");
+    if (hook_import("timeGetTime", (void *)h_timeGetTime, (void **)&o_timeGetTime, "winmm.dll"))
+        g_mm_real0 = g_mm_fake0 = o_timeGetTime();
+    g_speed_hooked = true;
+    set_speed(_wtof(v));
+}
+
+static void poll_speed_request()
+{
+    if (!g_speed_hooked) return;
+    WCHAR req[MAX_PATH];
+    wsprintfW(req, L"%s\\speed.req", g_dir);
+    FILE *f = _wfopen(req, L"r");
+    if (!f) return;
+    double x = 0;
+    fscanf(f, "%lf", &x);
+    fclose(f);
+    DeleteFileW(req);
+    set_speed(x);
 }
 
 // Hot-patch a user32 export in place (Windows' "mov edi,edi" prologue with 5 spare bytes before it), so every caller
@@ -329,9 +428,13 @@ static DWORD WINAPI watch_vtable(LPVOID)
     {
         Sleep(100);
         poll_key_request();
+        poll_speed_request();
         if (tick == 200)
             logf("loaded: dinput8 %p, dinput %p, xinput1_3 %p\n", (void *)GetModuleHandleW(L"dinput8.dll"),
                  (void *)GetModuleHandleW(L"dinput.dll"), (void *)GetModuleHandleW(L"xinput1_3.dll"));
+        if (g_speed_hooked && tick % 300 == 0)
+            logf("clock calls: QueryPerformanceCounter %ld, GetTickCount %ld, timeGetTime %ld (x%.2f)\n",
+                 g_qpc_calls, g_tick_calls, g_mm_calls, g_speed);
         void **vt = *(void ***)g_dev;
         if (vt != seen)
         {
@@ -369,6 +472,7 @@ static HRESULT STDMETHODCALLTYPE h_CreateDevice(IDirect3D9 *d3d, UINT ad, D3DDEV
         hotpatch("BringWindowToTop", (void *)h_BringWindowToTop, (void **)&o_BringWindowToTop);
         hook_import("PeekMessageA", (void *)h_PeekMessageA, (void **)&o_PeekMessageA);
         hook_import("GetMessageA", (void *)h_GetMessageA, (void **)&o_GetMessageA);
+        hook_speed();
         CreateThread(0, 0, watch_vtable, 0, 0, 0);
     }
     return hr;
