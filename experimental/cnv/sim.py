@@ -54,23 +54,43 @@ WON, LOST = 'Mission Won', 'Mission Lost'
 LEVELS = {'easy': 0, 'normal': 1, 'hard': 2}
 NEAR = 800.0                    # an enemy this close to something of the player's is a threat (the tension curve)
 REACH = 300.0                   # 自动打掉: an enemy this close to something of the player's is being fought
+LINGER = 3.0                    # a killed unit's death (its slow death): still in the game's name cache, where it fell
+                                # (docs/engine/script-semantics.md 4.2) -- its length a guess
 GRID = 20.0                     # routing cells (world units)
 LAG = 0.0                       # the readings' clock: mission seconds, as the bench's since 4aed60f (ADR 0007: the
                                 # bench counts mission time, at 8x). Expectations written before that counted wall
                                 # seconds from the menus' end; the simulator's versions of the checks carry their own
                                 # ending (simchecks.py) and judge the counters only where they are wiring
 
-# what the simulator assumes of the engine and the bench has not settled ("待对齐清单"): printed with every run that
-# leans on one of them
+# what the simulator assumes of the engine ("待对齐清单"): printed with every run that leans on one of them. Settled
+# by the Generals / Zero Hour source (docs/engine/script-semantics.md, the section given) unless marked 未对齐: those
+# the source cannot tell for RA3, for the bench to settle last
 ALIGN = {
-    'timer unset': 'TIMER_EXPIRED of a timer never set: taken as false',
-    'destroyed unborn': 'NAMED_DESTROYED / NAMED_NOT_DESTROYED of a named object not (yet) made: both false',
-    'deleted': 'NAMED_DELETE: counted as destroyed by NAMED_DESTROYED (not by the player: no NAMED_ATTACKED)',
-    'kind all players': 'PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA counts every player\'s objects, the '
-                        'scenery\'s buildings and fences too (bench 2026-10-25 probe/count; "清空某地也算建筑")',
-    'units in area': 'SKIRMISH_PLAYER_HAS_UNITS_IN_AREA: any object of that player, buildings too',
-    'discovered': 'NAMED_DISCOVERED: inside the player\'s sight (vision / shroud range) or a reveal; on the bench '
-                  '2026-10-27 (sight look) it read 1 for every target, 400 off too -- unsettled',
+    'timer unset': 'TIMER_EXPIRED of a timer never set: false (源码 3)',
+    'destroyed unborn': 'NAMED_DESTROYED / NAMED_NOT_DESTROYED of a named object never made: both false (源码 4.2)',
+    'deleted': 'NAMED_DELETE: destroyed for NAMED_DESTROYED from the next frame, never "attacked" (源码 4.2)',
+    'kind all players': '未对齐（红警3与《将军》不同）: PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA counts every '
+                        'player\'s objects, the scenery\'s buildings too (bench 2026-10-25 probe/count; the Generals '
+                        'source counts the one player\'s only)',
+    'units in area': 'SKIRMISH_PLAYER_HAS_UNITS_IN_AREA: any object of that player, buildings and the still too (源码 '
+                     '4.1)',
+    'discovered': '未对齐: NAMED_DISCOVERED: inside the player\'s sight (vision / shroud range) or a reveal; on the '
+                  'bench 2026-10-27 (sight look) it read 1 for every target, 400 off too (the source: ALWAYS_VISIBLE '
+                  'objects and ones out of the partition count as clear -- a guess why)',
+    'death linger': '未对齐: a killed unit stays in the name cache while it dies, where it fell -- in areas, counted '
+                    'by PLAYER_HAS_OBJECT_COMPARISON, UNIT_HEALTH 0 % (源码 4.2); how long: LINGER 3 s, a guess',
+    'both endings': '未对齐: won and lost in one frame: Generals runs the frame\'s later scripts and takes the last; '
+                    'RA3\'s "Mission Won" / "Mission Lost" flags are its own (源码 4.5)',
+    'inverted': '未对齐: a NOT condition is the plain negation (RA3\'s inverted bit; the Generals source has none, '
+                'OpenSAGE reads it and never uses it: 源码 2)',
+    'frame rate': '未对齐: a tick is DT 0.5 s; RA3\'s logic frame rate is unknown (Generals 30; a timer runs out '
+                  'ceil(seconds x rate) frames on: 源码 3) -- the timeline is good to about half a second',
+    'difficulty side': '未对齐: a script\'s difficulty bits are taken at the level the run is given; the game takes '
+                       'the difficulty of the side the script list belongs to, that side\'s AI\'s if it has one '
+                       '(源码 1) -- which side our scripts belong to is to check',
+    'border reveal': '未对齐: a permanent reveal made before MAP_SWITCH_BORDER is taken to cover the new ground too '
+                     '(the source says the two go badly together: 源码 4.4)',
+    'ra3 only': '未对齐: actions RA3 has and Generals does not, as we understand them (源码 6): ',
     'special power': 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT / NAMED_USE_COMMANDBUTTON_ABILITY: logged, no effect '
                      '(a jump, a carrier\'s drop: the device\'s own scripts say what follows)',
     'ai': 'a skirmish AI (UNIT_AI_TRANSFER_ALL, SKIRMISH_AI_*): woken and logged; what it builds and when it '
@@ -79,10 +99,23 @@ ALIGN = {
     'guard': 'UNIT_GUARD_AREA: goes to the area\'s middle and stays',
     'bridge deck': 'a bridge is walkable deck from its start to its end object (BRIDGE_DECK wide); bench '
                    '2026-10-27 (reroute): a wall on a deck stops nobody',
-    'health of the dead': 'SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER of a dead object: 0',
+    'health of the dead': '未对齐: SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER of a dead object: 0',
     'no combat': 'nobody fights: an enemy that reaches the player hurts nothing; a level that is won by holding out '
                  'is won by doing nothing -- its losses come only from the script (摧毁 / 血量)',
 }
+# RA3's own actions and conditions (docs/engine/script-semantics.md 6: in neither source): run as we understand them,
+# each run that uses one lists it under 'ra3 only'
+RA3_ONLY = {'ATTACK_MOVE_NAMED_UNIT_TO', 'ATTACK_MOVE_TEAM_TO', 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION',
+            'UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION', 'UNIT_TELEPORT_TO_WAYPOINT', 'UNIT_GUARD_AREA',
+            'UNIT_SET_HEALTH', 'NAMED_SET_MAX_HEALTH', 'UNIT_CHANGE_OBJECT_STATUS',
+            'SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', 'SET_MISSION_OBJECTIVE_STATUS', 'LINK_MISSION_OBJECTIVE_TO_OBJECT',
+            'LINK_MISSION_OBJECTIVE_TO_WAYPOINT', 'CAMPAIGN_CREATE_AUTO_SAVE', 'MOVE_CAMERA_TO_NAMED',
+            'PLAYER_SET_PLAYER_POWER_POINTS', 'PLAYER_SET_MAX_PLAYER_POWER_POINTS', 'SET_PLAYER_MONEY_TO_COUNTER',
+            'SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER', 'ALLOW_DISALLOW_ONE_BUILDING', 'SKIRMISH_AI_MAKE_BASE',
+            'SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', 'SKIRMISH_AI_TRANSFER_ALL', 'SKIRMISH_AI_USE_REBUILD_SYSTEM',
+            'SKIRMISH_AI_USE_REPAIRS', 'UNIT_AI_TRANSFER_ALL', 'PATH_MUSIC_PLAY_EVENT',
+            'PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM', 'CAMERA_ENTERED_AREA',
+            'PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS'}
 
 # actions that change nothing the scripts ask about: logged on the timeline (the player sees or hears them)
 SHOWN = {'SHOW_MILITARY_CAPTION': '通报', 'CAMPAIGN_CREATE_AUTO_SAVE': '存档', 'PATH_MUSIC_PLAY_EVENT': '音乐',
@@ -114,7 +147,6 @@ class Body:
                                                                 # player's (自动打掉)
     made_by: str = ''                                           # the script that created it
     made_at: float = 0.0
-    attacked: set = dataclasses.field(default_factory=set)     # players that attacked it
     scenery: bool = False
     team: str = ''
     guessed: list = dataclasses.field(default_factory=list)    # what of its numbers simunits only guessed
@@ -122,6 +154,9 @@ class Body:
     dest: object = None                                         # where it was sent (rerouted when the way changes)
     status: set = dataclasses.field(default_factory=set)       # IMMOBILE (stays put), UNATTACKABLE (the player
                                                                 # cannot destroy it) ...
+    died_at: float = None                                       # killed or deleted then
+    last_hit: str = None                                        # the player whose damage came last (None: a
+                                                                # script's NAMED_KILL, or never hit)
 
 
 def inside(pts, x, y):
@@ -273,6 +308,8 @@ class Sim:
         self.input = True
         self.countdowns = set()
         self.ending = None
+        self.both = None                    # won and lost in one frame: (first, second)
+        self.ra3_only = set()               # RA3-only action / condition names the run used
         self.last_change = 0.0
         self.ai = {}                        # player -> woken at
         self.money = {}
@@ -394,10 +431,20 @@ class Sim:
         role = next((k for k, r in self.m.cast.items() if r.name == b.name and b.name), '')
         return role or b.name or b.template
 
+    def present(self, b):
+        """Still in the game's name cache: alive, dying (LINGER after its death, where it fell), or deleted this
+        tick (removed at the frame's end: docs/engine/script-semantics.md 4.2)."""
+        if b is None or b.alive:
+            return b is not None
+        if b.deleted:
+            return self.t <= b.died_at
+        self.used.add('death linger')
+        return self.t - b.died_at <= LINGER
+
     def destroy(self, b, why, delete=False):
         if not b.alive:
             return
-        b.alive, b.deleted, b.path = False, delete, []
+        b.alive, b.deleted, b.path, b.died_at = False, delete, [], self.t
         b.health = 0.0 if not delete else b.health
         self.note('删除' if delete else '摧毁', f'{self.label(b)}（{why}）')
         self.change()
@@ -410,6 +457,9 @@ class Sim:
         neg = c and c[-1] == parts.NOT
         if neg:
             c = c[:-1]
+            self.used.add('inverted')
+        if c[0] in RA3_ONLY:
+            self.ra3_only.add(c[0])
         v = self.cond(c[0], c[1:])
         return (not v) if neg else v
 
@@ -431,14 +481,18 @@ class Sim:
             if b is None:
                 self.used.add('destroyed unborn')
                 return False
-            if b.deleted:
-                self.used.add('deleted')
-            return (not b.alive) if name == 'NAMED_DESTROYED' else b.alive
+            # killed: destroyed at once; deleted: only from the next frame (the game's destroy list at the frame's end)
+            dead = not b.alive and not (b.deleted and self.t <= b.died_at)
+            return dead if name == 'NAMED_DESTROYED' else not dead
         if name in ('NAMED_INSIDE_AREA', 'NAMED_OUTSIDE_AREA'):
+            # the game asks no question of life: a dying unit is where it fell; a removed one is outside every area
             b = self.body(a[0])
-            return bool(b and b.alive and inside(self.areas[a[1]], b.x, b.y) == (name == 'NAMED_INSIDE_AREA'))
+            within = bool(self.present(b) and inside(self.areas[a[1]], b.x, b.y))
+            return within if name == 'NAMED_INSIDE_AREA' else not within
         if name == 'PLAYER_HAS_OBJECT_COMPARISON':
-            n = sum(1 for b in self.living() if b.owner == a[0] and b.template.lower() == a[3].lower())
+            # the dying counted too (Team::countObjectsByThingTemplate, ignoreDead false)
+            n = sum(1 for b in self.bodies.values() if self.present(b) and b.owner == a[0]
+                    and b.template.lower() == a[3].lower())
             return CMP[a[1]](n, a[2])
         if name == 'PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA':
             n = sum(1 for b in self.living() if b.owner == a[0] and b.template.lower() == a[3].lower()
@@ -454,13 +508,14 @@ class Sim:
             return any(b.owner == a[0] and not b.scenery and inside(self.areas[a[1]], b.x, b.y) for b in self.living())
         if name == 'NAMED_OWNED_BY_PLAYER':
             b = self.body(a[1])
-            return bool(b and b.alive and b.owner == a[0])
+            return bool(self.present(b) and b.owner == a[0])
         if name == 'NAMED_ATTACKED_BY_PLAYER':
+            # the last damage's player only (ActiveBody's m_lastDamageInfo): a script's kill or another's hit clears it
             b = self.body(a[0])
-            return bool(b and a[1] in b.attacked)
+            return bool(self.present(b) and b.last_hit == a[1])
         if name == 'UNIT_HEALTH':
-            b = self.body(a[0])
-            return bool(b and b.alive and CMP[a[1]](b.health, a[2]))
+            b = self.body(a[0])                 # a dying unit reads 0 %
+            return bool(self.present(b) and CMP[a[1]](b.health if b.alive else 0.0, a[2]))
         if name == 'NAMED_DISCOVERED':
             self.used.add('discovered')
             b = self.body(a[1])
@@ -479,6 +534,8 @@ class Sim:
 
     # ---- actions
     def act(self, name, a, script):
+        if name in RA3_ONLY:
+            self.ra3_only.add(name)
         if name == 'SET_FLAG':
             if int(self.flags.get(a[0], 0)) != int(a[1]):
                 self.flags[a[0]] = int(a[1])
@@ -543,6 +600,8 @@ class Sim:
         elif name in ('NAMED_KILL', 'NAMED_DELETE'):
             b = self.body(a[0])
             if b:
+                if name == 'NAMED_KILL':
+                    b.last_hit = None               # the game's kill damage comes from nobody (INVALID_ID)
                 self.destroy(b, '脚本' if name == 'NAMED_KILL' else '脚本删掉', delete=name == 'NAMED_DELETE')
         elif name == 'UNIT_SET_HEALTH':
             b = self.body(a[0])
@@ -596,6 +655,8 @@ class Sim:
                 self.ai[a[0]] = self.t
                 self.note('AI', f'{self.who(a[0])} 交给遭遇战 AI（造兵、进攻不模拟）')
         elif name == 'MAP_SWITCH_BORDER':
+            if self.reveal_all or self.reveals:
+                self.used.add('border reveal')
             self.border = int(a[0])
             names = list(getattr(self.m.map, 'BORDERS', {}))
             self.note('边界', f'可玩区换成 {names[self.border] if self.border < len(names) else self.border}')
@@ -635,7 +696,12 @@ class Sim:
             self.used.add('special power')
             self.note('技能', f'{a[0]} 用 {a[1]}' + (f' 打 {a[2]}' if len(a) > 2 else ''))
         elif name in ('ENABLE_SCRIPT', 'DISABLE_SCRIPT'):
-            (self.disabled.discard if name == 'ENABLE_SCRIPT' else self.disabled.add)(a[0])
+            # a once-script that fired is only switched off: ENABLE_SCRIPT arms it again (SE enableScript)
+            if name == 'ENABLE_SCRIPT':
+                self.disabled.discard(a[0])
+                self.done.discard(a[0])
+            else:
+                self.disabled.add(a[0])
         elif name in SHOWN:
             text = self.text(a[0]) if isinstance(a[0], str) else str(a[0])
             self.note(SHOWN[name], text)
@@ -654,9 +720,15 @@ class Sim:
         return {'s1': '敌人'}.get(side, side)
 
     def end(self, how, script):
+        """The rest of the frame's scripts still run (Generals' VICTORY: the scripts stop from the next frame; RA3's
+        flag, unknown): a second ending in the same frame is a warning -- the game may take either."""
         if self.ending is None:
             self.ending = (how, self.t, script.name)
             self.note('结局', f'{how}（{script.name}）')
+        elif self.ending[1] == self.t and self.ending[0] != how:
+            self.both = (self.ending, (how, self.t, script.name))
+            self.note('警告', f'同一帧里又{how}了（{script.name}）：赢和输都满足，游戏里算哪个要实测')
+            self.used.add('both endings')
 
     # ---- the player's script
     def pick(self, who):
@@ -692,15 +764,15 @@ class Sim:
                 if verb == '摧毁' and 'UNATTACKABLE' in b.status:
                     self.note('剧本', f'{self.label(b)} 打不动（UNATTACKABLE），没摧毁')
                     continue
-                b.attacked.add(self.human)
+                b.last_hit = self.human
                 self.destroy(b, '剧本', delete=verb == '删除')
         elif verb == '血量':
             for b in self.pick(rest[0]):
                 b.health = float(rest[1])
-                b.attacked.add(self.human)
+                b.last_hit = self.human
         elif verb == '打':
             for b in self.pick(rest[0]):
-                b.attacked.add(self.human)
+                b.last_hit = self.human
         elif verb == '占领':
             for b in self.pick(rest[0]):
                 b.owner = self.human
@@ -732,8 +804,8 @@ class Sim:
                     self.act(name, a, s)
                 if s.once:
                     self.done.add(s.name)
-            if self.ending:
-                return
+        if self.ending:
+            return
         self.move()
 
     def move(self):
@@ -767,7 +839,7 @@ class Sim:
                 close = any(math.hypot(b.x - o.x, b.y - o.y) <= REACH for o in mine)
                 b.close_since = (b.close_since if b.close_since is not None else self.t) if close else None
                 if close and self.t - b.close_since >= self.auto_kill:
-                    b.attacked.add(self.human)
+                    b.last_hit = self.human
                     self.destroy(b, f'自动打掉：在玩家 {REACH:g} 以内 {self.auto_kill:g} 秒')
 
     def sample(self):
@@ -812,6 +884,7 @@ class Sim:
             any(b.path for b in self.living())
 
     def run(self, until=UNTIL):
+        self.used |= {'frame rate', 'difficulty side'}
         while self.t <= until and self.ending is None:
             self.step()
             if abs(self.t - round(self.t)) < 1e-6:
@@ -869,8 +942,11 @@ class Sim:
                 more = f'（又 {len(ts) - 1} 次，到 {mmss(ts[-1])}）' if len(ts) > 1 else ''
                 out.append(f'{mmss(t)} [{k}] {x}{more}')
         out.append(self.metrics())
+        if self.ra3_only:
+            self.used.add('ra3 only')
         if self.used:
-            out.append('待对齐（这次推演用到的假设）：' + '；'.join(ALIGN[k] for k in sorted(self.used)))
+            out.append('待对齐（这次推演用到的假设）：' + '；'.join(
+                ALIGN[k] + (', '.join(sorted(self.ra3_only)) if k == 'ra3 only' else '') for k in sorted(self.used)))
         if self.unknown:
             out.append('不认识的条件 / 动作（当成不成立 / 没效果）：' + ', '.join(f'{k}×{v}' for k, v in self.unknown.items()))
         if self.guessed:

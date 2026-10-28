@@ -104,3 +104,33 @@ def test_the_wiring_checks_in_the_simulator():
         if not ok:
             bad.append(f'{level} {check}: ' + ' | '.join(x for x in lines if x.startswith('FAIL'))[:300])
     assert not bad, '\n'.join(bad)
+
+
+def test_the_engines_semantics_for_the_dead_and_the_gone():
+    """docs/engine/script-semantics.md 4.2 / 7: a killed unit reads 0 % health while it dies and is counted; once
+    gone it is outside every area; a script's kill clears who hit it last."""
+    m = mission([Script('hurt', [('UNIT_HEALTH', 'UNIT - T Tank', 0, 10)], [('SET_FLAG', 'Low', 1)]),
+                 Script('out', [('NAMED_OUTSIDE_AREA', 'UNIT - T Tank', 'Here')], [('SET_FLAG', 'Out', 1)]),
+                 Script('hit', [('NAMED_ATTACKED_BY_PLAYER', 'UNIT - T Tank', 'Player_1')], [('SET_FLAG', 'Hit', 1)]),
+                 Script('kill', [('FLAG', 'Hit', 1)], [('NAMED_KILL', 'UNIT - T Tank')]),
+                 Script('win', [('FLAG', 'Out', 1)], [WON])], ['win'])
+    m.put('AlliedAntiVehicleVehicleTech1', 'start', role='tank', name='UNIT - T Tank')
+    s0 = festival.SITES['start']
+    m.areas = {'Here': square(s0.x, s0.y, 200)}
+    s = sim.Sim(m, script='20 打 tank').run(120)
+    assert s.flags.get('Low') == 1 and s.flags.get('Hit') == 1
+    tank = s.bodies['UNIT - T Tank']
+    assert tank.last_hit is None                                      # the script's kill came from nobody
+    assert s.ending[0] == '赢' and s.ending[1] > 20 + sim.LINGER       # outside only once it is gone
+
+
+def test_won_and_lost_in_one_frame_is_a_warning_and_enable_rearms():
+    m = mission([Script('again', [('FLAG', 'Go', 1)], [('INCREMENT_COUNTER', 1, 'N'), ('SET_FLAG', 'Go', 0)]),
+                 Script('arm', [('COUNTER', 'N', 0, 3)], [('ENABLE_SCRIPT', 'again'), ('SET_FLAG', 'Go', 1)],
+                        once=False),
+                 Script('start', [], [('SET_FLAG', 'Go', 1)]),
+                 Script('win', [('COUNTER', 'N', 3, 3)], [WON]),
+                 Script('lose', [('COUNTER', 'N', 3, 3)], [LOST])], ['win', 'lose'])
+    s = sim.Sim(m).run(60)
+    assert s.counters['N'] == 3                                       # the once-script armed again, three times
+    assert s.ending[0] == '赢' and s.both and any('同一帧' in x for _, k, x in s.log if k == '警告')
