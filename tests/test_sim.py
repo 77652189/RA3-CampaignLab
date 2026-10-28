@@ -185,3 +185,18 @@ def test_a4_can_be_won():
     s = sim.simulate('a4', script=A4_WALKTHROUGH, until=600)
     assert s.ending[0] == '赢' and s.ending[1] < 300
     assert sim.simulate('a4', script='0 派 guardian 去 plaza 1; 0 派 riptide 去 plaza 1', until=600).ending[0] == '输'
+
+
+def test_low_ground_does_not_see_high_ground():
+    """The high-ground rule (未对齐): a guardian below plaza 1's cliff (340 high) does not see the warrior on its edge
+    (455), 120 off and in both guns' range -- the warrior shoots, the guardian cannot; 高地不挡, they trade."""
+    def run(script):
+        m = mission([])
+        m.put('AlliedAntiVehicleVehicleTech1', 'inside 1', -200, 40, role='tank', name='UNIT - T G')   # (2100, 2900)
+        m.put('JapanAntiInfantryInfantry', 'inside 1', -80, 40, role='w', side='s1', name='UNIT - T W')  # (2220, 2900)
+        s = sim.Sim(m, script=script).run(20)
+        return s.bodies['UNIT - T G'].hp, s.bodies['UNIT - T W'].hp
+    g, w = run('')
+    assert w == 160 and g < 480
+    g, w = run('高地不挡')
+    assert w < 160 and g < 480

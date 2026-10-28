@@ -29,6 +29,7 @@ A script (剧本), one event a line (or ';' between them), times in seconds or m
   自动打掉 <秒>             every enemy that has been that long within REACH (300) of something of the player's is
                             destroyed (the player fights back where the enemy comes to them)
   不打                      the fight model off (a check of the wiring alone)
+  高地不挡                  the high-ground rule off: low ground sees high ground (the Generals way)
   <谁>: a cast part ('yuriko'), a group of them ('tank' = tank 1, tank 2 ...), an object's name, 名字含 <text>
   (every object whose name holds it: '名字含 W1-' a plan's first wave), 敌人 在 <地点> (the enemy's there).
 """
@@ -60,6 +61,9 @@ REACH = 300.0                   # 自动打掉: an enemy this close to something
 LINGER = 3.0                    # a killed unit's death (its slow death): still in the game's name cache, where it fell
                                 # (docs/engine/script-semantics.md 4.2) -- its length a guess
 GRID = 20.0                     # routing cells (world units)
+HIGH_STEP = 40.0                # ground this much above a viewer's is high ground it cannot see (the terrain card's
+                                # "高出 40" measure; a guess for the game's own)
+FIRE_SEEN = 3.0                 # a bombarder (a weapon longer than its own vision) that fired this lately is seen
 LAG = 0.0                       # the readings' clock: mission seconds, as the bench's since 4aed60f (ADR 0007: the
                                 # bench counts mission time, at 8x). Expectations written before that counted wall
                                 # seconds from the menus' end; the simulator's versions of the checks carry their own
@@ -109,6 +113,14 @@ ALIGN = {
               'fights, a plain move goes on; nobody chases, no veterancy, no splash, no garrisons, no abilities; '
               'health, damage, range, rate, armour from SageXML (simunits.fight); a script\'s 摧毁 / 自动打掉 '
               'overrides it, 不打 turns it off -- to be tuned on the bench at the end',
+    'high ground': '未对齐: the high-ground rule -- a unit does not see ground HIGH_STEP (40) above its own (aircraft '
+                   'see and are seen anyhow); nobody fires at what its side does not see; a bombarder that fired in '
+                   'the last FIRE_SEEN s is seen by all; 高地不挡 turns it off. Two statements: the design line\'s '
+                   'terrain card (docs/design/teardowns/terrain.md 2, the user 2026-10-27): RA3 has StarCraft 2\'s '
+                   'rule, low ground does not see high ground, a bombarder firing shows itself (high ground seeing '
+                   'farther: not modelled); the Generals source: sight is a plain circle '
+                   '(PartitionManager::doShroudReveal), terrain only stops a direct-fire weapon\'s line '
+                   '(Weapon::isClearFiringLineOfSightTerrain); the bench (2026-10-27, sight look) could not tell',
 }
 # RA3's own actions and conditions (docs/engine/script-semantics.md 6: in neither source): run as we understand them,
 # each run that uses one lists it under 'ra3 only'
@@ -169,6 +181,7 @@ class Body:
                                                                 # script's NAMED_KILL, or never hit)
     mode: str = 'idle'                                          # 'move' (a plain move: fires, does not stop) or
                                                                 # 'attack' (attack-move, attack named: stops to fight)
+    fired_at: float = None                                      # a bombarder's last shot (seen by all a while)
 
     @property
     def health(self):
@@ -223,7 +236,9 @@ class Ground:
         hh, ww = h // d, w // d
         fold = lambda a: a[:hh * d, :ww * d].reshape(hh, d, ww, d)            # noqa: E731
         self.b, self.d = b, d
-        self.grids = {'ground': fold(walk).all(axis=(1, 3)), 'water': fold(water).all(axis=(1, 3))}
+        self.e = e                                                          # ground height (CELL cells)
+        self.zgrid = e[:hh * d:d, :ww * d:d]                                # the same at each GRID cell's corner
+        self.grids ={'ground': fold(walk).all(axis=(1, 3)), 'water': fold(water).all(axis=(1, 3))}
         self.grids['both'] = self.grids['ground'] | self.grids['water'] | fold(walk | water).all(axis=(1, 3))
         self.cache = {}
         self.blocked = np.zeros(self.grids['ground'].shape, bool)
@@ -270,6 +285,13 @@ class Ground:
     def cell(self, x, y):
         import platmap
         return (int(round((y / platmap.CELL + self.b) / self.d)), int(round((x / platmap.CELL + self.b) / self.d)))
+
+    def z(self, x, y):
+        """The ground's height at a world point (the nearest CELL)."""
+        import platmap
+        j = min(max(int(round(y / platmap.CELL + self.b)), 0), self.e.shape[0] - 1)
+        i = min(max(int(round(x / platmap.CELL + self.b)), 0), self.e.shape[1] - 1)
+        return float(self.e[j, i])
 
     def world(self, c):
         import platmap
@@ -362,6 +384,8 @@ class Sim:
         self.script = parse_script(script)
         self.auto_kill = next((e[2] for e in self.script if e[1] == '自动打掉'), None)
         self.combat = not any(e[1] == '不打' for e in self.script)
+        self.high = not any(e[1] == '高地不挡' for e in self.script)
+        self.seen = {}                      # this tick: (side, id(body)) -> whether that side sees it
         self.first_death = None             # (t, body, killer): the fight's first death
         self.events = sorted((e for e in self.script if e[0] is not None), key=lambda e: e[0])
         self.areas = self.mm.areas
@@ -551,18 +575,45 @@ class Sim:
         if name == 'NAMED_DISCOVERED':
             self.used.add('discovered')
             b = self.body(a[1])
-            return bool(b and self.sees(b.x, b.y))
+            return bool(b and self.sees(b.x, b.y, b.surface == 'air'))
         if name == 'CAMERA_ENTERED_AREA':
             return bool(self.camera and inside(self.areas[a[0]], *self.camera))
         self.unknown[name] = self.unknown.get(name, 0) + 1
         return False
 
-    def sees(self, x, y):
+    def sees(self, x, y, air=False):
+        """Whether the player sees a point (a body there, airborne or not)."""
         if self.reveal_all:
             return True
         if any(math.hypot(x - rx, y - ry) <= r for rx, ry, r in list(self.reveals.values()) + self.peeks):
             return True
-        return any(b.owner == self.human and math.hypot(b.x - x, b.y - y) <= b.vision for b in self.living())
+        return any(b.owner == self.human and self.looks(b, x, y, air) for b in self.living())
+
+    def looks(self, v, x, y, air=False):
+        """Whether body v sees the point: within its vision, and (the high-ground rule, 未对齐) not on ground
+        HIGH_STEP above its own -- unless one of the two flies."""
+        sight = v.vision or max((w['range'] for w in v.weapons), default=0.0)     # no vision of its own: its guns'
+        if not sight or math.hypot(v.x - x, v.y - y) > sight:
+            return False
+        if not self.high or air or v.surface == 'air':
+            return True
+        self.used.add('high ground')
+        return self.ground.z(x, y) <= self.ground.z(v.x, v.y) + HIGH_STEP
+
+    def side_sees(self, side, t):
+        """Whether a side (it or a friend of it) sees body t, this tick; the player's reveals count for the player."""
+        key = (side, id(t))
+        if key not in self.seen:
+            air = t.surface == 'air'
+            if t.fired_at is not None and self.t - t.fired_at <= FIRE_SEEN:
+                ok = True
+            elif side == self.human:
+                ok = self.sees(t.x, t.y, air)
+            else:
+                ok = any(not self.enemy(side, v.owner) and v.owner != CIV and self.looks(v, t.x, t.y, air)
+                         for v in self.living())
+            self.seen[key] = ok
+        return self.seen[key]
 
     # ---- actions
     def act(self, name, a, script):
@@ -597,7 +648,7 @@ class Sim:
             if self.blocks(b):
                 self.reblock()
             self.note('出现', f'{self.label(b)}（{a[1]}，{self.who(b.owner)}）在 {a[3]}'
-                      + ('' if b.owner == self.human or self.sees(b.x, b.y) else '，玩家看不见'))
+                      + ('' if b.owner == self.human or self.sees(b.x, b.y, b.surface == 'air') else '，玩家看不见'))
             self.change()
         elif name in ('MOVE_NAMED_UNIT_TO', 'ATTACK_MOVE_NAMED_UNIT_TO'):
             b = self.body(a[0])
@@ -872,6 +923,7 @@ class Sim:
         range); damage = the weapon's damage per second x the target's armour percent for its damage type, all at
         once; an attack-mover with an enemy in range holds while it fights; a plain move goes on firing; nobody
         chases. Bodies at 0 die, the last hit their killer's."""
+        self.seen = {}
         live = [b for b in self.living() if not b.scenery]
         armed = [b for b in live if b.weapons]
         if not armed:
@@ -894,18 +946,21 @@ class Sim:
                 order = np.argsort(d)
                 pick = None
                 if isinstance(a.goal, Body) and a.goal.alive and id(a.goal) in aimable and \
-                        math.hypot(a.goal.x - a.x, a.goal.y - a.y) <= w['range'] and self.can_hit(w, a.goal):
+                        math.hypot(a.goal.x - a.x, a.goal.y - a.y) <= w['range'] and self.can_hit(w, a.goal) and \
+                        self.side_sees(a.owner, a.goal):
                     pick = a.goal
                 else:
                     for j in order:
                         if d[j] > w['range']:
                             break
                         t = targets[idx[j]]
-                        if self.can_hit(w, t):
+                        if self.can_hit(w, t) and self.side_sees(a.owner, t):
                             pick = t
                             break
                 if pick is None:
                     continue
+                if a.vision and w['range'] > a.vision:
+                    a.fired_at = self.t                 # a bombarder firing shows itself
                 dmg = w['dps'] * DT * pick.armor.get(w['type'], simunits.ARMOR_DEFAULT) / 100.0
                 h = hurt.setdefault(id(pick), [pick, 0.0, a])
                 h[1] += dmg
@@ -993,7 +1048,10 @@ class Sim:
             self.known |= (x - rx) ** 2 + (y - ry) ** 2 <= r * r
         for b in self.living():
             if b.owner == self.human and b.vision:
-                self.known |= (x - b.x) ** 2 + (y - b.y) ** 2 <= b.vision ** 2
+                seen = (x - b.x) ** 2 + (y - b.y) ** 2 <= b.vision ** 2
+                if self.high and b.surface != 'air':
+                    seen &= self.ground.zgrid[:seen.shape[0], :seen.shape[1]] <= self.ground.z(b.x, b.y) + HIGH_STEP
+                self.known |= seen
         self.peeks = []
         rect = list(getattr(self.m.map, 'BORDERS', {'': (0, 0, 1e9, 1e9)}).values())
         x0, y0, x1, y1 = rect[self.border] if self.border < len(rect) else rect[0]
@@ -1119,8 +1177,8 @@ def parse_script(text):
         if line.startswith('自动打掉'):
             out.append((None, '自动打掉', seconds(line.split()[1])))
             continue
-        if line == '不打':
-            out.append((None, '不打'))
+        if line in ('不打', '高地不挡'):
+            out.append((None, line))
             continue
         t, rest = line.split(None, 1)
         if rest.startswith('派 '):
