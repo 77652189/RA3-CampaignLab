@@ -24,7 +24,7 @@
 4. **张力曲线**：紧张和喘息怎么交替，按分钟画一条粗线（`█` 0～5 格）。
 5. **信息**：玩家什么时候知道什么；后果看不看得见；失败了知不知道错在哪。
 6. **剧情转折是不是正好就是玩法转折。**
-7. **地图**：哪条路、哪块地在支撑这些决策。
+7. **地图**：哪条路、哪块地在支撑这些决策；出生点在可玩区的什么位置、背后是什么、目标在哪个方向多远、有几条路、奖励摆在哪（实测见布局卡）。
 
 最后一节"可以借的 / 不该照搬的"把卡片连到准则编号上。
 
@@ -45,7 +45,10 @@
 | [facility](teardowns/facility.md) | 起义时刻 百合子 1 研究所 | 突击队 | J3、A5、J7、S5 |
 | [zero-hour](teardowns/zero-hour.md) | 星际 2 自由之翼 零点 | 守点 + 限时 | S6、J5 |
 | [devils-playground](teardowns/devils-playground.md) | 星际 2 自由之翼 魔鬼的游乐场 | 机关式（环境周期） | A3、J2、S8、A8 |
+| [layout](teardowns/layout.md) | **全部 40 张原版战役图** + 我们 11 关 | 空间布局：出生点、可玩区、目标方向、路线、奖励摆放 | 全部 |
 
-[teardowns/data/](teardowns/data/) 是子 Agent 整理的原始事实（横滨、研究所的脚本时间线，星际 2 和设计理论的公开资料网址），拆解卡引用它们；横滨、研究所的关键几条已对照原版脚本原文核过。
+布局卡的原始测量在 [teardowns/data/layout.md](teardowns/data/layout.md)（每关一行），由 [layout_measure.py](teardowns/data/layout_measure.py)（只读原版存档和 Mods 里我们编好的地图）和 [layout_table.py](teardowns/data/layout_table.py) 生成，改了地图可以重跑。
+
+[teardowns/data/](teardowns/data/) 里另外几份是子 Agent 整理的原始事实（横滨、研究所的脚本时间线，星际 2 和设计理论的公开资料网址），拆解卡引用它们；横滨、研究所的关键几条已对照原版脚本原文核过。
 
 读原版导出时注意：`work/retailref/*.txt` 里条件行末的后缀 `+0100000001000000` 表示这个条件**取反**（横滨 56 处、研究所 25 处）。不看后缀会把规则读反。`plans/retail/` 里更早的几份反推策划案有没有读反，还没复查。
