@@ -33,7 +33,7 @@ def mission():
     sculpt = fest.sculpture('CNV_IceSculptL')
     bank = fest.bank('CNV_SnowBankL')
     m = parts.Mission(name=NAME, map=island, units=[placed, wall, core, eng, sculpt, bank])
-    m.put(bank.id, 'west field', 300, 200, name='UNIT - CNV Look Bank', role='bank', angle=0.0)
+    m.put(bank.id, 'west field', 330, 330, name='UNIT - CNV Look Bank', role='bank', angle=0.0)
     m.put(sculpt.id, 'west field', 240, 20, name='UNIT - CNV Look Sculpture', role='sculpture', angle=-1.5708)
     m.put(sculpt.id, 'west field', 470, -20, name='UNIT - CNV Look Sculpture B', role='sculpture target',
           angle=-1.5708)

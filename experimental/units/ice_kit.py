@@ -55,7 +55,8 @@ PROPS = {'CNIceSculpt': 'icesculpture'}
 # little wider at its foot than the 24 it blocks, so it reads as shovelled snow, not a wall
 BANKS = {'CNSnowBank': (220, 36, 20)}
 SNOW = 'CNSnow'
-SNOW_RGB = (176, 188, 202)                      # packed snow, darker than white as the glacier had to be (DARK)
+# packed snow, darker than white as the glacier had to be (DARK); (176, 188, 202) read blown-out white on the bench
+SNOW_RGB = (138, 148, 164)
 
 
 def _piece(by, glacier, turn, at, size, unit):
@@ -126,13 +127,16 @@ def bank(model):
     for i in range(ns + 1):
         s = -1 + 2 * i / ns
         end = math.sqrt(max(0.0, 1 - s ** 8))                       # 1 along it, 0 at its two ends
-        foot = (0.25 + 0.75 * end) * (1 + 0.08 * math.sin(2 * math.pi * 5.3 * s + 0.7))
+        # the foot and the top each a few waves of unrelated lengths (bench 2026-10-27: one foot wave and the top's
+        # in step read as a row of even bulges, a white caterpillar; before that, 3..13 waves at up to 0.18 read as a
+        # jagged ice ridge)
+        foot = (0.25 + 0.75 * end) * (1 + 0.05 * math.sin(2 * math.pi * 1.3 * s + 0.7)
+                                      + 0.04 * math.sin(2 * math.pi * 3.1 * s + 2.3))
         for j in range(nt + 1):
             t = -1 + 2 * j / nt
-            # slow, low swells (the first try, 3..13 waves along it at up to 0.18, read as a jagged ice ridge)
-            lump = (1 + 0.10 * math.sin(2 * math.pi * 1.6 * s + 1.3)
-                    + 0.06 * math.sin(2 * math.pi * 3.7 * s + 0.4) * math.cos(0.5 * math.pi * t)
-                    + 0.03 * math.sin(2 * math.pi * 6.1 * s + 2.1 * t))
+            lump = (1 + 0.10 * math.sin(2 * math.pi * 0.9 * s + 1.3)
+                    + 0.05 * math.sin(2 * math.pi * 2.3 * s + 0.4 + 1.2 * t)
+                    + 0.03 * math.sin(2 * math.pi * 4.7 * s + 2.1 - 0.8 * t))
             z = height * (1 - t * t) ** 0.7 * end * lump / 1.10 - 1.5
             x, y = s * length / 2, t * width / 2 * foot
             verts.append((x, y, z))
@@ -171,7 +175,7 @@ def snow_texture():
         a, b = 2 * math.pi * x / size, 2 * math.pi * y / size
         drift = 0.5 * math.sin(a * 2 + b + 0.3) + 0.3 * math.sin(a * 3 - b * 2 + 1.1) + 0.2 * math.sin(b * 5 + a + 2.0)
         grain = ((x * 73856093) ^ (y * 19349663)) % 1000 / 1000 - 0.5
-        return 0.06 * drift + 0.05 * grain
+        return 0.12 * drift + 0.08 * grain           # 0.06 / 0.05 vanished in the sun
 
     def diffuse(x, y):
         k = 1 + value(x, y)

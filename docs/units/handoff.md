@@ -8,6 +8,7 @@
 |---|---|---|---|
 | 时滞炮车 `CNChrono` | GPT 四格图 → Tripo（分部件）→ `tripo_unit.py` → `to_w3x.py`；mod `CampChrono1`（`make_campchrono.py`） | 通过：生产、开火、炮塔、按钮头像；用户认可风格，按用户意见调亮、青色光可见（`work/units/chronolag/review/bench_1026_bright.png`） | 没有（新体系还没有它的单位模块） |
 | 冰幕工兵：冰墙 `CNIceWall` / 长条 `CNIceBar`、冰核 `CNIceSeed`、碎冰 `CNIceRubble`、工兵贴图 `CNIceEngineer` | 原版冰岛冰川 `IL_GLACIER*` 拼装（`ice_kit.py`），工兵只换贴图 | 通过（`work/units/ice/review/bench_1026.png`）；`ice_block`、`ice_build` PASS | 已接：`icewall.py` 默认穿冰的外观（提交 0af20c1） |
+| 雪堆 `CNSnowBank` | 原版没有雪堆模型，用高度场直接生成（`ice_kit.bank`）：长 220、底宽 36、高 20 的雪埂，起伏用几种不成倍数的波长叠加；贴图 `CNSnow` 是程序生成的 | 看过（`work/units/ice/review/bench_bank.png`）：第一版一节一节等距鼓起，像白毛毛虫（`bench_bank_caterpillar.png`），也太白；改后不规整了，颜色压暗。仍偏光滑，像枕头，以后可以加脚印、铲痕 | 已接：`festival.bank` 默认穿（`model=None` 关掉），打碎后什么都不留。现在没有任务用雪堆（广场的墙是抬高的地形），只放在 `ice_look.py` 里 |
 | 冰雕 `CNIceSculpt`（冰龙） | GPT 四格图 → Tripo 多视图 → `tripo_unit.py` 道具分支 → `ice_kit.prop` | 通过（同上截图） | 已接：`festival.py`（雪堆仍是地堡外观） |
 | 车队运输车 `CNConvoyCargo` | 原版矿车，矿石模块换成原版雪地货柜（`convoy_kit.py`） | 通过（`work/units/convoy/review/bench_1026.png`）；A4 `stop`、`win` PASS | 已接：`convoy.py`（提交 27f8b9a） |
 | 自由号 `CNLiberty` + 女神像 `CNLibStatue` | 用户否了航母版（v1），定为"飞起来的自由岛"：场景图 `work/units/libertyisle/gpt/h6.png` 定设计 → 三视图 v4 → Tripo（整块，没分部件）→ `tripo_unit.py libertyisle`（`kind='platform'`）→ `liberty_kit.py`（平台按时滞炮车的调色写；原版纽约 `NY_LIBERTY` 女神像去掉基座、转向前方、火炬改青色发光，站在核心柱顶 `STATUE` 骨骼上）；测试关 `liberty_look.py`（`CampLibLook`） | 看过两次：宽 400 太大、女神像顶到镜头；按用户选的缩到宽 280（`liberty_kit.SCALE`），女神像约等于核心柱高（`work/units/libertyisle/review/bench280_*.png`） | 已接：`liberty.py` 默认穿（`liberty.dress`，平台 + 女神像 + 会转的陀螺环 `CNLibRings`；`model=None` 关掉）；五个炮塔座做成骨骼 `TURRET01..05`，没接线（总控 2026-10-27：跃迁半径保持 150，炮塔仍是跟着飘的无人机） |
@@ -33,7 +34,7 @@
    - 还没做：剧情说法（设计见 `concept_gpt.py` 的 `libertyisle` 说明和这次对话：剧情说法"她本来就是灯塔 + 埃菲尔铁骨是超时空天线"等用户定）。
    - 设计规律（大型空中要塞，参考各家即时战略游戏）：一个视觉中心、威胁朝下、悬浮旋转部件显科技、盟军流线型而不是方块、弱点是看得出的独立模块。写在 `concept_gpt.py` 的 `libertyisle` 说明里。
 2. 时滞炮车接进新体系：新体系里还没有它的单位模块，要和总控商量放哪。
-3. 雪堆（`festival.bank`）还没有自己的外观。
+3. 雪堆有了外观（`CNSnowBank`，见上表），还可以再打磨。
 4. 时滞炮车可以改进：UV 小块太多、概念图没画展开支腿、履带没有滚动贴图。
 
 ## 流程和工具
@@ -75,6 +76,7 @@
 - **测试台**：
   - 场景别放在 `west field` 西边（x < −100 是浅水，工兵会骑水上摩托过去）。
   - 暂停状态下 `bench_look` 可能拍到菜单，先 `bench_wait 0.5`。
+  - 构建时只要有红警3在跑，构建脚本有时会认为"不是测试台的游戏"，把新版放进 `work/staging/` 不装（2026-10-27 关卡线的测试台游戏就被这样判断）。看输出里有没有 `staging`；有的话，游戏里看到的还是上一版。等没有游戏时再构建一次。
   - 暂停模式（`hold=true`）下脚本计时器和带时长的模型状态照样按真实时间走，两次调用之间的空档也会算进去。要按秒对时间的效果，用 `bench_start(hold=false)` 连续跑。
   - `cnv_check` 编译的是主仓库的代码。要测本分支的改动，先在本工作目录跑 `build.py <名> --check <项> --plan`（它会编译并装进 Mods），再 `cnv_check(build=false)`。
 - **环境**：
