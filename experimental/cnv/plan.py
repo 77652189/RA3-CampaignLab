@@ -565,6 +565,8 @@ class Compiler:
             if a.get('打') in self.devices:
                 raise PlanError(f'action {a!r}: 出动 can not 打 a device (a wave can)')
             return self.orders(a, self.part_names(a['出动']), dict(names=[]))
+        if '禁造' in a or '准造' in a:              # the player may (not) build it (retail Brighton Beach)
+            return self.bans(a['禁造' if '禁造' in a else '准造'], int('准造' in a))
         if '转给我' in a:
             return [('NAMED_TRANSFER_OWNERSHIP_PLAYER', n, p1) for n in self.part_names(a['转给我'])]
         if '翻脸' in a:                             # a side of 其他 turns on the player (and the player on it)
@@ -576,6 +578,27 @@ class Compiler:
             return (self.cue('失败') if self.music else []) + [
                 ('SHOW_MILITARY_CAPTION', self.text('SCRIPT', a['失败']), 10.0), ('SET_FLAG', 'Mission Lost', 1)]
         raise PlanError(f'action {a!r}: no such action (plan.py lists them)')
+
+    def bans(self, names, allow):
+        """ALLOW_DISALLOW_ONE_BUILDING on the player for each (a building or a unit: retail Brighton Beach bans both
+        at the start and lets them go as the story goes; the type in lower case, as retail writes it)."""
+        if not isinstance(names, list) or not names:
+            raise PlanError(f'禁造 / 准造 {names!r}: a list of buildings or units, [机场, ...]')
+        out = []
+        for u in names:
+            try:
+                low = self.unit(str(u)).lower()
+            except (AssertionError, KeyError, ValueError) as e:
+                raise PlanError(f'禁造 / 准造 {u!r}: no such building or unit ({e})')
+            self.m.spawns.add(low)
+            out.append(('ALLOW_DISALLOW_ONE_BUILDING', self.m.player('p1'), low, allow))
+        return out
+
+    def compile_bans(self):
+        """禁造: [机场, ...] -- not to be built from the start (docs/design/a4-redesign.md P28: no airfield in the
+        A4); {准造: [...]} in a rule lets one go."""
+        if self.d.get('禁造') is not None:
+            self.m.scripts.append(Script(f'CNV {self.tag} - Bans', [], self.bans(self.d['禁造'], 0)))
 
     def sight(self, site):
         """The name a permanent reveal at a site goes by (MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT undoes it)."""
@@ -1043,6 +1066,7 @@ class Compiler:
         for dev in self.devices.values():
             dev.place()
         self.setup_goals()
+        self.compile_bans()
         self.compile_goals()
         self.compile_phases()
         self.compile_shown()

@@ -343,6 +343,7 @@ class Sim:
         self.objectives = {}                # name -> status (0 hidden, 1 shown, 2 done, 3 failed)
         self.markers = {}                   # objective -> {object / waypoint}
         self.done, self.disabled = set(), set()
+        self.banned = set()                 # (player, template in lower case): ALLOW_DISALLOW_ONE_BUILDING 0
         self.border = 0
         self.reveal_all = False
         self.reveals = {}                   # name -> (x, y, r)
@@ -736,8 +737,8 @@ class Sim:
         elif name in ('LINK_MISSION_OBJECTIVE_TO_OBJECT', 'LINK_MISSION_OBJECTIVE_TO_WAYPOINT'):
             s = self.markers.setdefault(a[0], set())
             (s.add if a[2] else s.discard)(a[1])
-        elif name == 'ALLOW_DISALLOW_ONE_BUILDING':
-            pass                                        # production: the AI's and the player's, not simulated
+        elif name == 'ALLOW_DISALLOW_ONE_BUILDING':     # the AI's production is not simulated; the player's 造 is
+            (self.banned.discard if a[2] else self.banned.add)((a[0], str(a[1]).lower()))
         elif name == 'PLAYER_RELATES_PLAYER':
             self.relations[(a[0], a[1])] = a[2]
         elif name in ('UNIT_AI_TRANSFER_ALL', 'SKIRMISH_AI_MAKE_BASE'):
@@ -878,7 +879,9 @@ class Sim:
             if p is None and self.point(f'{where} {angle:g}'):    # 'inside 2': the number was the site's
                 where, angle = f'{where} {angle:g}', 0.0
                 p = self.point(where)
-            if p is None:
+            if (self.human, tmpl.lower()) in self.banned:
+                self.note('剧本', f'{tmpl} 现在不许造（禁造），没造出来')
+            elif p is None:
                 self.note('剧本', f'找不到地点 {where}')
             else:
                 b = self.add(f'UNIT - SIM Made {len(self.bodies)}', tmpl, self.human, *p, by='剧本', at=self.t)
