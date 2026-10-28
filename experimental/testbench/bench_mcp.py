@@ -386,6 +386,8 @@ def bench_stop() -> str:
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 BUILD = os.path.join(ROOT, 'experimental', 'cnv', 'build.py')
 PLANCHECK = os.path.join(ROOT, 'experimental', 'cnv', 'plancheck.py')
+SIM = os.path.join(ROOT, 'experimental', 'cnv', 'sim.py')
+SIMSTATIC = os.path.join(ROOT, 'experimental', 'cnv', 'simstatic.py')
 MAPRENDER = os.path.join(ROOT, 'experimental', 'campaign', 'maprender.py')
 MAPSTUDY = os.path.join(ROOT, 'experimental', 'campaign', 'mapstudy.py')
 TERRAINREF = os.path.join(ROOT, 'experimental', 'campaign', 'terrainref.py')
@@ -456,6 +458,24 @@ def plan_show(level: str) -> str:
     cnv_check."""
     code, out = lab(PLANCHECK, level, timeout=120)
     return out.strip() if code == 0 else 'PLAN: ' + tail(out)
+
+
+@server.tool(structured_output=False)
+def plan_sim(name: str, script: str = '', check: str = '', level: str = 'normal', until: float = 1800.0) -> str:
+    """A level (or any build: 'a4', 'a4' with check 'stop') played out without the game, in seconds: the timeline
+    (what happens when, what the player is told, what appears and whether the player sees it), the ending (won /
+    lost / stuck and what each ending still waits for), the tension curve, the ground known, how the first enemy
+    came; then every way it could go (simstatic: phases never reached, can it be won and lost, objectives never
+    done, flags waited on that nobody sets). script: the player's part, one event a line or ';' between --
+    '60 派 tank 去 north camp; 120 摧毁 north barracks; 90 血量 yuriko 1; 自动打掉 10' (empty: the player does
+    nothing). Combat is not simulated: losses come from the script. With a check, its counters are judged by the
+    simulator's own expectations where experimental/cnv/simchecks.py has them. Use it after every plan edit, before
+    the bench (docs/story/plans/README.md, 模拟器)."""
+    args = [name] + (['--check', check] if check else []) + (['--script', script] if script else []) + \
+        ['--level', level, '--until', str(until)]
+    code, out = lab(SIM, *args, timeout=300)
+    _, static = lab(SIMSTATIC, name, *(['--check', check] if check else []), timeout=300)
+    return out.strip() + '\n--- 所有可能的走向\n' + static.strip()
 
 
 @server.tool(structured_output=False)

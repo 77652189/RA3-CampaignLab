@@ -8,7 +8,7 @@ from missions.sight_bench import PAIRS
 from parts import Script, Test
 
 RUN = 20.0
-LABELS = {'up 120': '低看高120', 'up 180': '低看高180', 'flat 180': '平地180', 'flat 260': '平地260'}
+LABELS = {'up 120': '低看高120', 'up 180': '低看高180', 'flat 180': '平地180', 'flat 400': '平地400'}
 
 
 def look(m):
@@ -20,6 +20,6 @@ def look(m):
         t.scripts += [Script(f'{c} zero', [], [('SET_COUNTER', c, 0)]),
                       Script(f'{c} one', [('NAMED_DISCOVERED', p1, m.role(f'target {k}').name)],
                              [('SET_COUNTER', c, 1)])]
-    t.expect += [('平地180', 1, 'ever==', 1), ('平地260', 1, '==', 0)]
+    t.expect += [('平地180', 1, 'ever==', 1), ('平地400', 1, '==', 0)]
     t.bench = [('bench_watch', dict(seconds=RUN, every=2, sheet=False, lines=len(t.counters)))]
     return t
