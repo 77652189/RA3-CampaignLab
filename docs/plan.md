@@ -30,6 +30,9 @@
 | A4 | 兵营里能造冰幕工兵（第 7 个按钮，500） | 名字和头像暂借工程师 | 关卡 |
 | A4 / J4 | 三个广场从方台子改成小山包，看着还突兀吗 | 崖线弯曲，崖脚和台面边有石头灌木 | 地图 |
 | A7 | 东岸开局压力够不够 | 第 2 段一开始 AI 就醒，约 67 秒第一次过河（唤醒不动，第 2 段开头加一路脚本小队） | 关卡 |
+| 原版伊贺（起义时刻盟军第 1 关） | 只能用"冻"完成的目标、车停在火力下等你：基地车被伏击停下时你冲前面清还是守车边；冻错过吗、当时知不知道 | 拆解卡 `docs/design/teardowns/iga.md`，问题全文 `docs/design/playtest.md` | 策划 |
+| 原版斯大林格勒（帝国第 2 关） | 玩家自己决定什么时候开始守船：拆母亲像前有没有先在河边布防；三档敌人来时防线有没有跟着换 | 拆解卡 `teardowns/stalingrad.md` | 策划 |
+| 我们的 A4（返工前） | 核对策划线说的三个问题：开过 1、2 号广场时有没有犹豫现在冻还是等；第二段有没有犹豫去不去打北营；最后一程比前面紧还是松 | 返工样板 `docs/design/a4-redesign.md`（"冰是借来的时间"） | 策划 |
 | 配音（RA3-ChineseVoice） | 8 个原创角色各挑一个音色 | 挑选页 `work/voice_design/refs.html` | 配音 |
 
 **外包给谷歌（用户 2026-10-26，省 Claude 额度）**：用户的谷歌 AI Pro 额度通过反重力命令行（`agy`，装在 `%LOCALAPPDATA%\agy\bin`）调用，各线用 [`experimental/outsource/agy_task.py`](../experimental/outsource/agy_task.py)：写一份任务说明，脚本跑一次 agy，回答落到文件，每次记进 `<LAB>\shared\outsource\log.jsonl`。
