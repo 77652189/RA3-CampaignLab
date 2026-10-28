@@ -344,7 +344,6 @@ class Sim:
         self.series = []                    # (t, counter values) for a check's counters
         self.threat = []                    # (t, enemies near, countdowns) every 10 s
         self.first_threat = None
-        self.hp0 = None                     # the player's health summed at the first sample
         self.known = None                   # cells ever seen (GRID)
         self.known_at = []                  # (t, km2 known)
         self.guessed = set()
@@ -429,8 +428,9 @@ class Sim:
         sites = getattr(self.m.map, 'SITES', {})
         if name in sites:
             return (sites[name].x, sites[name].y)
-        if name in self.bodies:
-            return (self.bodies[name].x, self.bodies[name].y)
+        b = self.bodies.get(self.m.cast[name].name if name in self.m.cast else name)
+        if b:
+            return (b.x, b.y)
         return None
 
     def note(self, kind, text):
@@ -446,6 +446,7 @@ class Sim:
             return
         p = self.point(target) if isinstance(target, str) else target
         if p is None:
+            self.note('卡住', f'{self.label(b)} 找不到要去的地方 {target}')
             return
         path = self.ground.route(b.surface, (b.x, b.y), p)
         b.dest = p
@@ -823,6 +824,9 @@ class Sim:
             tmpl = next((u.id for u in self.mm.units if u.id == what), None) or \
                 next((r.template for k, r in self.m.cast.items() if k == what), what)
             p = self.point(where)
+            if p is None and self.point(f'{where} {angle:g}'):    # 'inside 2': the number was the site's
+                where, angle = f'{where} {angle:g}', 0.0
+                p = self.point(where)
             if p is None:
                 self.note('剧本', f'找不到地点 {where}')
             else:
@@ -958,16 +962,17 @@ class Sim:
             self.series.append((int(round(self.t - LAG)), [self.counters.get(c, 0) for c, _ in self.test.counters]))
         if int(round(self.t)) % 10 == 0:
             # can the player hold: the enemy's fire within NEAR of the player's things against the player's own
-            # there, and how much of the player's health (at the start: hp0) is left
+            # there, and how much of the player's units' health is left (of all they ever had: the dead at 0,
+            # units given later count from then)
             mine = [b for b in self.living() if b.owner == self.human]
             near = [b for b in self.living() if self.enemy(self.human, b.owner) and not b.scenery and b.speed > 0
                     and any(math.hypot(b.x - o.x, b.y - o.y) <= NEAR for o in mine)]
             foe = sum(w['dps'] for b in near for w in b.weapons)
             ours = sum(w['dps'] for b in mine for w in b.weapons
                        if any(math.hypot(b.x - e.x, b.y - e.y) <= NEAR for e in near))
-            if self.hp0 is None:
-                self.hp0 = sum(b.hp for b in mine) or 1.0
-            left = sum(b.hp for b in mine) / self.hp0
+            ever = [b for b in self.bodies.values() if b.owner == self.human and b.speed > 0]
+            alive = {id(b) for b in mine}
+            left = sum(b.hp for b in ever if id(b) in alive) /(sum(b.max_hp for b in ever) or 1.0)
             self.threat.append((self.t, len(near), foe, ours, left))
             if near and self.first_threat is None:
                 b = min(near, key=lambda b: b.made_at)
