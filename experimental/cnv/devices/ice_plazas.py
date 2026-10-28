@@ -32,10 +32,9 @@ from units import icewall as iw
 GATE_AREA = 90.0                                # half-side of the area a wall must stand in to hold a gate
 CLEAR_MARGIN = 5.0                              # an engineer this near the gate's block counts as shut in it
 WALL_SIDE = 160.0                               # the block spans the head of the gate's ramp (120 wide)
-# the engineer's reload when the plan gives no 冷却 (units/icewall.py's). The A4 redesign wants 40, longer than the
-# ice lasts (30 s): one engineer can then not hold a gate shut for good (docs/design/a4-redesign.md, P4) -- set in
-# the plan with the rework; the A4 played now as the before (2026-10-27) keeps 20
-RELOAD = 20.0
+# the engineer's reload when the plan gives no 冷却: 40, longer than the ice lasts (30 s), so one engineer can not hold
+# a gate shut for good (docs/design/a4-redesign.md, P4; the before-rework A4 played with 20, user 2026-10-28)
+RELOAD = 40.0
 OWN = ('每座兵', '每座几个', '无敌', '补兵')     # what 广场 <k> may set for its plaza
 
 
@@ -45,7 +44,7 @@ class IcePlazas(Device):
               '遇伏': '停下：车在广场路口、伏兵出来、出口没封时车队停在原地挨打，伏兵清光或出口冻上才走（原版伊贺）；不写就不停',
               '广场 <k>': 'k 号广场自己的参数：每座兵、每座几个，和 无敌: 是（冰雕谁都瞄不了，车到才放兵）、'
                          '补兵: <时间>（车在路口时，倒下的兵每隔这么久补回来；配 遇伏: 停下 就只能封口才过得去，原版伊贺"冻住"）',
-              '冷却': '冰幕工兵放一次冰后多少秒才能再放（默认 20；冰撑 30 秒，写 40 则一个工兵封不死一道门）'}
+              '冷却': '冰幕工兵放一次冰后多少秒才能再放（默认 40：冰撑 30 秒，一个工兵封不死一道门）'}
     EVENTS = {'封住 <k>': 'k 号广场出口现在有冰', '全部封住': '三个出口都冻过冰（每个算一次）',
               '封过 <n>': '已有 n 个出口冻过冰（每个算一次，冰化了也算）',
               '伏兵出来 <k>': 'k 号广场的冰雕碎了，兵出来了',
