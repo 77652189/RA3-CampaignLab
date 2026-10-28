@@ -8,7 +8,8 @@ fitted to the footprint and height asked. Written to the SDK's Art folder (w3x.w
 ROOTTRANSFORM with the shared textures CNIce / CNIce_NRM / CNIce_SPM (retail IL_Glacier01's diffuse; flat normal map
 -- the glaciers have no tangents, their shader is not normal-mapped; SPM: a little specular, no glow, no house
 colour). A preview sheet (retail_sheet.py's renders) goes to work/units/ice/<model>_grid.png. Also the engineer's
-own texture, CNIceEngineer (engineer_texture).
+own texture, CNIceEngineer (engineer_texture), and the festival's snow bank CNSnowBank (bank: made as a height
+field, retail has no snow drift; texture CNSnow).
 """
 import math
 import os
@@ -49,6 +50,12 @@ KITS = {
 }
 # Tripo props (tripo_unit.py prop_main: work/units/<unit>/game/<model>.png, _nrm.png, parts.json) in the same ice
 PROPS = {'CNIceSculpt': 'icesculpture'}
+# snow banks, made, not kitbashed (retail has no snow drift; its snow is on roofs and props): model -> (length,
+# width at the foot, height). The festival's plaza walls (units/festival.py bank: 220 long, 24 thick): a berm a
+# little wider at its foot than the 24 it blocks, so it reads as shovelled snow, not a wall
+BANKS = {'CNSnowBank': (220, 36, 20)}
+SNOW = 'CNSnow'
+SNOW_RGB = (176, 188, 202)                      # packed snow, darker than white as the glacier had to be (DARK)
 
 
 def _piece(by, glacier, turn, at, size, unit):
@@ -107,6 +114,77 @@ def textures():
     # a little specular (retail Allied bodies ~21): wet ice shines a little, no glow, no team colour
     w3x.write_texture(TEXTURE + '_SPM', w, h, lambda x, y: (sum(px[x, y]) // 30, 0, 0, 255))
     return os.path.join(retail_texture.OUT, 'IL_Glacier01.png')
+
+
+def bank(model):
+    """A snow bank as a height field: a grid along its length and across, the cross-section a rounded berm, both ends
+    rounded off and pinched, lumps along the top (fixed sines, the same every build) and a wobbling foot, the foot
+    sunk a little so uneven ground does not show under it. Normals from the faces; the texture tiles every 64."""
+    length, width, height = BANKS[model]
+    ns, nt = 88, 14
+    verts, uvs = [], []
+    for i in range(ns + 1):
+        s = -1 + 2 * i / ns
+        end = math.sqrt(max(0.0, 1 - s ** 8))                       # 1 along it, 0 at its two ends
+        foot = (0.25 + 0.75 * end) * (1 + 0.08 * math.sin(2 * math.pi * 5.3 * s + 0.7))
+        for j in range(nt + 1):
+            t = -1 + 2 * j / nt
+            # slow, low swells (the first try, 3..13 waves along it at up to 0.18, read as a jagged ice ridge)
+            lump = (1 + 0.10 * math.sin(2 * math.pi * 1.6 * s + 1.3)
+                    + 0.06 * math.sin(2 * math.pi * 3.7 * s + 0.4) * math.cos(0.5 * math.pi * t)
+                    + 0.03 * math.sin(2 * math.pi * 6.1 * s + 2.1 * t))
+            z = height * (1 - t * t) ** 0.7 * end * lump / 1.10 - 1.5
+            x, y = s * length / 2, t * width / 2 * foot
+            verts.append((x, y, z))
+            uvs.append((x / 64, y / 64))
+    row = nt + 1
+    tris = []
+    for i in range(ns):
+        for j in range(nt):
+            a, b, c, d = i * row + j, (i + 1) * row + j, (i + 1) * row + j + 1, i * row + j + 1
+            tris += [(a, b, c), (a, c, d)]
+    acc = [[0.0, 0.0, 0.0] for _ in verts]
+    for tri in tris:
+        p, q, r = (verts[k] for k in tri)
+        u = [q[k] - p[k] for k in range(3)]
+        v = [r[k] - p[k] for k in range(3)]
+        n = (u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0])
+        for k in tri:
+            acc[k] = [acc[k][m] + n[m] for m in range(3)]
+    normals = [tuple(c / (math.sqrt(sum(x * x for x in n)) or 1) for c in n) for n in acc]
+    if any(n[2] < 0 for n in normals):
+        raise SystemExit(f'{model}: a face points down (winding)')
+    w3x.write_model(model, w3x.rig_model(model, [], [('SNOW', 0, (verts, normals, uvs, tris))],
+                                         (SNOW, SNOW + '_NRM', SNOW + '_SPM')))
+    os.makedirs(OUT, exist_ok=True)
+    obj = os.path.join(OUT, model + '.obj')
+    retail_mesh.write_obj(dict(vertices=verts, uvs=uvs, triangles=tris, layout='ice_kit'), obj)
+    return obj, len(tris)
+
+
+def snow_texture():
+    """CNSnow: packed snow, tiling (whole periods of sines over its 128 square), soft drifts and a fine grain, a
+    little bluer where darker; a glint of specular, no glow, no house colour. Also its PNG for the preview."""
+    size = 128
+
+    def value(x, y):
+        a, b = 2 * math.pi * x / size, 2 * math.pi * y / size
+        drift = 0.5 * math.sin(a * 2 + b + 0.3) + 0.3 * math.sin(a * 3 - b * 2 + 1.1) + 0.2 * math.sin(b * 5 + a + 2.0)
+        grain = ((x * 73856093) ^ (y * 19349663)) % 1000 / 1000 - 0.5
+        return 0.06 * drift + 0.05 * grain
+
+    def diffuse(x, y):
+        k = 1 + value(x, y)
+        r, g, b = SNOW_RGB
+        return min(255, int(r * k * (1 - 0.3 * max(0.0, 1 - k)))), min(255, int(g * k)), min(255, int(b * k)), 255
+    w3x.write_texture(SNOW, size, size, diffuse)
+    w3x.write_texture(SNOW + '_NRM', 16, 16, lambda x, y: (128, 128, 255, 255))
+    w3x.write_texture(SNOW + '_SPM', size, size, lambda x, y: (18, 0, 0, 255))
+    out = os.path.join(OUT, SNOW + '.png')
+    os.makedirs(OUT, exist_ok=True)
+    Image.frombytes('RGBA', (size, size), bytes(c for y in range(size) for x in range(size) for c in diffuse(x, y))
+                    ).save(out)
+    return out
 
 
 def missing(model):
@@ -171,6 +249,18 @@ def engineer_texture():
     return out
 
 
+def sheet(model, obj, tex):
+    """retail_sheet.py's four renders of the OBJ in its texture -> work/units/ice/<model>_grid.png."""
+    prefix = os.path.join(OUT, model)
+    subprocess.run([retail_sheet.BLENDER, '-b', '--factory-startup', '-P', retail_sheet.__file__, '--', prefix,
+                    f'{obj}={tex}'], check=True, stdout=subprocess.DEVNULL)
+    grid = Image.new('RGB', (1536, 1536), (208, 208, 208))
+    for k, v in enumerate(retail_sheet.VIEWS):
+        grid.paste(Image.open(f'{prefix}_{v}.png').convert('RGB').resize((768, 768)), ((k % 2) * 768, (k // 2) * 768))
+    grid.resize((1024, 1024), Image.LANCZOS).save(prefix + '_grid.png')
+    return prefix + '_grid.png'
+
+
 def main(models):
     by = retail_mesh.library()
     tex = textures()
@@ -183,14 +273,11 @@ def main(models):
         prop(model)
     for model in [m for m in models or sorted(KITS) if m in KITS]:
         obj, n = build(by, model)
-        prefix = os.path.join(OUT, model)
-        subprocess.run([retail_sheet.BLENDER, '-b', '--factory-startup', '-P', retail_sheet.__file__, '--', prefix,
-                        f'{obj}={tex}'], check=True, stdout=subprocess.DEVNULL)
-        grid = Image.new('RGB', (1536, 1536), (208, 208, 208))
-        for k, v in enumerate(retail_sheet.VIEWS):
-            grid.paste(Image.open(f'{prefix}_{v}.png').convert('RGB').resize((768, 768)), ((k % 2) * 768, (k // 2) * 768))
-        grid.resize((1024, 1024), Image.LANCZOS).save(prefix + '_grid.png')
-        print(model, n, 'triangles ->', prefix + '_grid.png')
+        print(model, n, 'triangles ->', sheet(model, obj, tex))
+    snow = snow_texture() if [m for m in models or BANKS if m in BANKS] else None
+    for model in [m for m in models or sorted(BANKS) if m in BANKS]:
+        obj, n = bank(model)
+        print(model, n, 'triangles ->', sheet(model, obj, snow))
     for model in skipped:
         unit = PROPS[model]
         print(f'SKIPPED {model}: missing ' + ', '.join(missing(model)) + '\n  it is rebuilt only from the Tripo '

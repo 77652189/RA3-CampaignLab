@@ -5,7 +5,7 @@ CampIceLook:
   west field: a wall placed at the start (lasts 120 s) with a retail Guardian beside it for scale; the engineer
   sent at 5 s to build a core 170 north of him (the core melts into a wall, as in A4); a second placed wall 300
   east with two enemy Hammers ordered at it at 8 s (how it breaks); two ice sculptures, the third Hammer ordered
-  at the far one.
+  at the far one; a festival snow bank north of them.
 
   python -I -X utf8 experimental/units/ice_look.py            -> Documents\Red Alert 3\Mods\CampIceLook
 (from a worktree set CNV_SDK to the shared SDK; run ice_kit.py first: it writes the models into the SDK's Art)
@@ -31,7 +31,9 @@ def mission():
     core = iw.seed('CNV_IceSeedL', wall.id)
     eng = iw.engineer('CNV_IceEngL', wall_id=core.id)
     sculpt = fest.sculpture('CNV_IceSculptL')
-    m = parts.Mission(name=NAME, map=island, units=[placed, wall, core, eng, sculpt])
+    bank = fest.bank('CNV_SnowBankL')
+    m = parts.Mission(name=NAME, map=island, units=[placed, wall, core, eng, sculpt, bank])
+    m.put(bank.id, 'west field', 300, 200, name='UNIT - CNV Look Bank', role='bank', angle=0.0)
     m.put(sculpt.id, 'west field', 240, 20, name='UNIT - CNV Look Sculpture', role='sculpture', angle=-1.5708)
     m.put(sculpt.id, 'west field', 470, -20, name='UNIT - CNV Look Sculpture B', role='sculpture target',
           angle=-1.5708)
