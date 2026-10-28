@@ -4,7 +4,8 @@ got through: the mission is lost).
 trap: the control room's guards are killed by test script at RAZE_AT -- what the burrowers' squad does in play --
   and the control room kept at full health; the fleet sets out on time, held, and never gets through; the hold
   runs out and the mission is over.
-escape: nothing is done; the fleet sets out on time, gets through and the mission is lost soon after.
+escape: nothing is done; the fleet sets out on time, gets through and the mission is lost soon after (judged by the
+  end coming within THROUGH of setting out; the counter is only shown).
 """
 import plan
 from parts import Script, Test, counted, square
@@ -44,8 +45,11 @@ def trap(m):
 
 
 def escape(m):
+    """Judged by the end alone: the lose comes as the fleet reaches the south canal, so the counter of it there is
+    seldom caught at 1 between two frames (bench 2026-10-27: 0 at s209, the defeat screen at s214). Ending within
+    THROUGH of setting out is a lose -- the hold, the only win, runs far longer."""
     t = setup(m)
     out = sets_out()
-    t.expect += [('冲过船闸', out, 'ever>', 0, out + THROUGH), ('ENDED', out, '', None)]
+    t.expect += [('ENDED', out, '', None, out + THROUGH)]
     t.bench = [('bench_watch', dict(seconds=out + THROUGH + 30, every=5, sheet=False, lines=len(t.counters)))]
     return t
