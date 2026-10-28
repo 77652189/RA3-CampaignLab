@@ -62,6 +62,61 @@ def dress(unit, model=LOOK):
     x = sub1(x, f'SelectPortrait="Portrait_{RETAIL}"', f'SelectPortrait="Portrait_{model}"')
     for k in ('Button', 'Portrait'):
         unit.link += [f'PackedTextureImage:{k}_{model}', f'Texture:{model}{k}_tex']
+    # deployed (USER_1, the painter toggle's state) the Guardian lights its painter laser: a pink flare, drawn at the
+    # middle of the hull (our model has no FX_Laser bone); the same looping flare in the phase shell's cyan
+    glow = f'{unit.id}_DeployGlow'
+    x, n = re.subn(r'FXParticleSystemTemplate="Allied_Target_Laser"', f'FXParticleSystemTemplate="{glow}"', x)
+    assert n == 3, n
+    x = sub1(x, '<Includes>', '<Includes>\n\t\t<Include type="instance" source="ART:FXLenzFlare03.xml" />')
+    x = sub1(x, '</AssetDeclaration>', f'''	<FXParticleSystemTemplate IsEmitAboveGroundOnly="true" ParticleTexture="FXLenzFlare03"
+		PerParticleAttachedSystem="" Priority="ALWAYS_RENDER" Type="GPU_PARTICLE" id="{glow}">
+		<Lifetime High="5" Low="3"/>
+		<Size High="75" Low="50"/>
+		<BurstCount High="1" Low="1"/>
+		<Colors>
+			<Color Frame="1" RelativeAge="0">
+				<Color b="1" g="0.90" r="0.35"/>
+			</Color>
+			<Color Frame="2" RelativeAge="50">
+				<Color b="1" g="0.75" r="0.15"/>
+			</Color>
+			<Color Frame="3" RelativeAge="100">
+				<Color b="0" g="0" r="0"/>
+			</Color>
+			<ColorScale High="2" Low="1"/>
+		</Colors>
+		<Physics>
+			<Default>
+				<VelocityDamping High="0.95" Low="0.9"/>
+			</Default>
+		</Physics>
+		<Draw>
+			<Gpu RandTex="1" SingleRow="1" SpeedMultiplier="1"/>
+		</Draw>
+		<Volume>
+			<Point/>
+		</Volume>
+		<Velocity>
+			<Ortho>
+				<Position>
+					<x High="0" Low="0"/>
+					<y High="0" Low="0"/>
+					<z High="0" Low="0"/>
+				</Position>
+			</Ortho>
+		</Velocity>
+		<Event/>
+		<Update>
+			<Default>
+				<SizeRateDamping High="0.9" Low="0.85"/>
+				<AngleZ High="7" Low="0"/>
+				<AngularRateZ High="0.05" Low="-0.05"/>
+				<AngularDampingXY High="1" Low="1"/>
+			</Default>
+		</Update>
+	</FXParticleSystemTemplate>
+</AssetDeclaration>''')
+    unit.link.append(f'FXParticleSystemTemplate:{glow}')
     x = sub1(x, f'Description="Desc:{RETAIL}"', f'Description="Desc:{unit.id}"')
     x = sub1(x, f'TypeDescription="Type:{RETAIL}"', f'TypeDescription="Type:{unit.id}"')
     x = sub1(x, f'>Name:{RETAIL}<', f'>Name:{unit.id}<')
