@@ -32,6 +32,7 @@ from checks import crane as check_cra           # noqa: E402
 from checks import icewall as check_ice         # noqa: E402
 from checks import tesla as check_tes           # noqa: E402
 from checks import jammer as check_jam          # noqa: E402
+from checks import chronolag as check_lag       # noqa: E402
 from checks import liberty as check_lib         # noqa: E402
 from checks import shikigami as check_shi       # noqa: E402
 from checks import train as check_tra           # noqa: E402
@@ -41,7 +42,7 @@ from checks import ai as check_ai               # noqa: E402
 from checks import lock as check_lock           # noqa: E402
 from units import tesla as units_tesla          # noqa: E402
 from missions import a4, a7, a8, j4, beacon_bench, burrow_bench, clone_bench, combo_bench, crane_bench, icewall_bench, jammer_bench, liberty_bench, shikigami_bench, \
-    tesla_bench, train_bench, probe_bench, plan_words_bench, ai_bench, ai_plan_bench, lock_bench  # noqa: E402
+    tesla_bench, train_bench, probe_bench, plan_words_bench, ai_bench, ai_plan_bench, lock_bench, chronolag_bench  # noqa: E402
 
 BENCH_PY = os.path.join(os.path.dirname(ROOT), 'envs', 'bench_mcp', 'Scripts', 'python.exe')
 CLIENT = os.path.join(ROOT, 'experimental', 'testbench', 'bench_client.py')
@@ -93,6 +94,7 @@ MISSIONS = {
     'lock': (lambda: lock_bench.mission(), {'shut': check_lock.shut, 'open': check_lock.opened}),
     'jammer': (lambda: jammer_bench.mission(), {'jam': check_jam.jam, 'free': check_jam.free}),
     'jammer_own': (lambda: jammer_bench.mission(name='CampJamOwn', side='p1'), {'jam': check_jam.jam}),
+    'chronolag': (lambda: chronolag_bench.mission(), {'hit': check_lag.hit, 'packed': check_lag.packed}),
     'shikigami': (lambda: shikigami_bench.mission(), {'cover': check_shi.cover}),
     'shikigami_shells': (lambda: shikigami_bench.shells(), {'bend': check_shi.bend}),
     'crane': (lambda: crane_bench.mission(), {'spot': check_cra.spot}),

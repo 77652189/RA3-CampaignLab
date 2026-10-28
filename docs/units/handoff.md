@@ -6,7 +6,7 @@
 
 | 单位 | 做法 | 测试台 | 接进 `experimental/cnv` |
 |---|---|---|---|
-| 时滞炮车 `CNChrono` | GPT 四格图 → Tripo（分部件）→ `tripo_unit.py` → `to_w3x.py`；mod `CampChrono1`（`make_campchrono.py`） | 通过：生产、开火、炮塔、按钮头像；用户认可风格，按用户意见调亮、青色光可见（`work/units/chronolag/review/bench_1026_bright.png`） | 没有（新体系还没有它的单位模块） |
+| 时滞炮车 `CNChrono` | GPT 四格图 → Tripo（分部件）→ `tripo_unit.py` → `to_w3x.py`；mod `CampChrono1`（`make_campchrono.py`） | 通过：生产、开火、炮塔、按钮头像；用户认可风格，按用户意见调亮、青色光可见（`work/units/chronolag/review/bench_1026_bright.png`） | 已接（2026-10-27，总控特许单位线这一次写机制）：新模块 `experimental/cnv/units/chronolag.py`，机制照 `make_campnew35.py` 原样搬（数值、行为没改，原来的环境变量开关改成函数参数），`dress()` 默认穿 CNChrono（`model=None` 关掉）；测试关 `missions/chronolag_bench.py`，检查 `checks/chronolag.py`：`hit`（展开后第 4–10 秒敌方天启停滞，约 8 秒，血量 99–100）和 `packed`（不展开就不开炮）在测试台上都 PASS。合进 main 后机制归关卡线，单位线只管 `dress()`。按钮和头像还是守护者的（旧 mod 里的图在 `work/units/chronolag/game/`，新体系还没有放图的地方）；展开时的粉色光是守护者指示器的占位 |
 | 冰幕工兵：冰墙 `CNIceWall` / 长条 `CNIceBar`、冰核 `CNIceSeed`、碎冰 `CNIceRubble`、工兵贴图 `CNIceEngineer` | 原版冰岛冰川 `IL_GLACIER*` 拼装（`ice_kit.py`），工兵只换贴图 | 通过（`work/units/ice/review/bench_1026.png`）；`ice_block`、`ice_build` PASS | 已接：`icewall.py` 默认穿冰的外观（提交 0af20c1） |
 | 雪堆 `CNSnowBank` | 原版没有雪堆模型，用高度场直接生成（`ice_kit.bank`）：长 220、底宽 36、高 20 的雪埂，起伏用几种不成倍数的波长叠加；贴图 `CNSnow` 是程序生成的 | 看过（`work/units/ice/review/bench_bank.png`）：第一版一节一节等距鼓起，像白毛毛虫（`bench_bank_caterpillar.png`），也太白；改后不规整了，颜色压暗。仍偏光滑，像枕头，以后可以加脚印、铲痕 | 已接：`festival.bank` 默认穿（`model=None` 关掉），打碎后什么都不留。现在没有任务用雪堆（广场的墙是抬高的地形），只放在 `ice_look.py` 里 |
 | 冰雕 `CNIceSculpt`（冰龙） | GPT 四格图 → Tripo 多视图 → `tripo_unit.py` 道具分支 → `ice_kit.prop` | 通过（同上截图） | 已接：`festival.py`（雪堆仍是地堡外观） |
@@ -33,7 +33,7 @@
      - 光环原来放在龙骨下面（概念图里的"底部光圈"），RTS 镜头下被平台整个挡住，挪到了脚下。光芒最初太细，在正常缩放下像头发丝，加粗了。
    - 还没做：剧情说法（设计见 `concept_gpt.py` 的 `libertyisle` 说明和这次对话：剧情说法"她本来就是灯塔 + 埃菲尔铁骨是超时空天线"等用户定）。
    - 设计规律（大型空中要塞，参考各家即时战略游戏）：一个视觉中心、威胁朝下、悬浮旋转部件显科技、盟军流线型而不是方块、弱点是看得出的独立模块。写在 `concept_gpt.py` 的 `libertyisle` 说明里。
-2. 时滞炮车接进新体系：新体系里还没有它的单位模块，要和总控商量放哪。
+2. 时滞炮车已接进新体系（见上表）；还差自己的按钮、头像（新体系要能带图片），展开时的光效换成青色。A3 的时停区机关和它是不是一回事，等策划线定（总控 2026-10-27）。
 3. 雪堆有了外观（`CNSnowBank`，见上表），还可以再打磨。
 4. 时滞炮车可以改进：UV 小块太多、概念图没画展开支腿、履带没有滚动贴图。
 
