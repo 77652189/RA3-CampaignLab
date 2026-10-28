@@ -7,9 +7,11 @@ active script in order, all its conditions true, its actions at once (later scri
 once-script then off. The world is what those scripts ask about: named objects and their owners, health, positions;
 flags, counters, timers; objectives; the border, reveals, the camera. Units move along the map's walkable ground
 (water for ships, both for amphibians, a straight line for aircraft) at their game speed (simunits.py), routed on the
-map's own height field. Combat is not simulated: the player's side of it is a script of events (SCRIPT below) --
-"60 派 tank 去 north camp", "120 摧毁 north barracks", "90 血量 yuriko 1". Whatever the engine does that the
-simulator only guesses at is listed (ALIGN, and each run's 'guessed' lines): the bench settles those last.
+map's own height field. They fight by a deterministic model from the game's data (Sim.fight: the nearest enemy in
+range, damage per second against armour); the player's orders are a script of events (below) -- "60 派 tank 去
+north camp", "120 摧毁 north barracks", "90 血量 yuriko 1" -- which can also overrule the fight. A skirmish AI is
+not simulated (only what the scripts send). Whatever the engine does that the simulator only guesses at is listed
+(ALIGN, and each run's 'guessed' lines): the bench settles those last.
 
   python -I -X utf8 experimental/cnv/sim.py <level> [--check <check>] [--script <file or "t 动作 ...; ...">]
                                              [--level easy|normal|hard] [--until <seconds>]
@@ -26,6 +28,7 @@ A script (剧本), one event a line (or ';' between them), times in seconds or m
                             template): an engineer's ice -- '40 造 CNV_IceWall 在 inside 1 1.57'
   自动打掉 <秒>             every enemy that has been that long within REACH (300) of something of the player's is
                             destroyed (the player fights back where the enemy comes to them)
+  不打                      the fight model off (a check of the wiring alone)
   <谁>: a cast part ('yuriko'), a group of them ('tank' = tank 1, tank 2 ...), an object's name, 名字含 <text>
   (every object whose name holds it: '名字含 W1-' a plan's first wave), 敌人 在 <地点> (the enemy's there).
 """
@@ -100,8 +103,12 @@ ALIGN = {
     'bridge deck': 'a bridge is walkable deck from its start to its end object (BRIDGE_DECK wide); bench '
                    '2026-10-27 (reroute): a wall on a deck stops nobody',
     'health of the dead': '未对齐: SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER of a dead object: 0',
-    'no combat': 'nobody fights: an enemy that reaches the player hurts nothing; a level that is won by holding out '
-                 'is won by doing nothing -- its losses come only from the script (摧毁 / 血量)',
+    'combat': '未对齐: the fight model -- each armed unit fires each weapon (its PRIMARY one a slot) at the nearest '
+              'enemy in that weapon\'s range it can hit, damage per second (one clip, then the reload) x the '
+              'target\'s armour percent (a type its armour does not name: 100 %); an attack-mover holds while it '
+              'fights, a plain move goes on; nobody chases, no veterancy, no splash, no garrisons, no abilities; '
+              'health, damage, range, rate, armour from SageXML (simunits.fight); a script\'s 摧毁 / 自动打掉 '
+              'overrides it, 不打 turns it off -- to be tuned on the bench at the end',
 }
 # RA3's own actions and conditions (docs/engine/script-semantics.md 6: in neither source): run as we understand them,
 # each run that uses one lists it under 'ra3 only'
@@ -122,8 +129,7 @@ SHOWN = {'SHOW_MILITARY_CAPTION': '通报', 'CAMPAIGN_CREATE_AUTO_SAVE': '存档
          'PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM': '战况音乐', 'NAMED_FLASH': '闪烁'}
 IGNORED = {'PLAYER_SET_MAX_PLAYER_POWER_POINTS', 'PLAYER_SET_PLAYER_POWER_POINTS', 'DISPLAY_COUNTER', 'HIDE_COUNTER',
            'SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES',
-           'SKIRMISH_AI_USE_REPAIRS', 'SKIRMISH_AI_USE_REBUILD_SYSTEM', 'CAMERA_LETTERBOX_BEGIN', 'CAMERA_LETTERBOX_END',
-           'NAMED_SET_MAX_HEALTH'}
+           'SKIRMISH_AI_USE_REPAIRS', 'SKIRMISH_AI_USE_REBUILD_SYSTEM', 'CAMERA_LETTERBOX_BEGIN', 'CAMERA_LETTERBOX_END'}
 
 
 @dataclasses.dataclass
@@ -138,7 +144,11 @@ class Body:
     surface: str = 'ground'
     vision: float = 0.0
     kinds: frozenset = frozenset()
-    health: float = 100.0
+    max_hp: float = 100.0
+    hp: float = 100.0
+    armor: dict = dataclasses.field(default_factory=dict)      # damage type -> percent taken (simunits.fight)
+    weapons: list = dataclasses.field(default_factory=list)    # [{range, dps, type, anti}]
+    engaged: bool = False                                       # an attack-mover with an enemy in range: holds
     alive: bool = True
     deleted: bool = False
     path: list = dataclasses.field(default_factory=list)       # world points still to go
@@ -157,6 +167,17 @@ class Body:
     died_at: float = None                                       # killed or deleted then
     last_hit: str = None                                        # the player whose damage came last (None: a
                                                                 # script's NAMED_KILL, or never hit)
+    mode: str = 'idle'                                          # 'move' (a plain move: fires, does not stop) or
+                                                                # 'attack' (attack-move, attack named: stops to fight)
+
+    @property
+    def health(self):
+        """Health in percent of its maximum (what the scripts read)."""
+        return 100.0 * self.hp / self.max_hp if self.max_hp else 0.0
+
+    @health.setter
+    def health(self, pct):
+        self.hp = self.max_hp * float(pct) / 100.0
 
 
 def inside(pts, x, y):
@@ -323,6 +344,7 @@ class Sim:
         self.series = []                    # (t, counter values) for a check's counters
         self.threat = []                    # (t, enemies near, countdowns) every 10 s
         self.first_threat = None
+        self.hp0 = None                     # the player's health summed at the first sample
         self.known = None                   # cells ever seen (GRID)
         self.known_at = []                  # (t, km2 known)
         self.guessed = set()
@@ -340,6 +362,8 @@ class Sim:
                 b.kinds = frozenset(b.kinds | {'STRUCTURE'})
         self.script = parse_script(script)
         self.auto_kill = next((e[2] for e in self.script if e[1] == '自动打掉'), None)
+        self.combat = not any(e[1] == '不打' for e in self.script)
+        self.first_death = None             # (t, body, killer): the fight's first death
         self.events = sorted((e for e in self.script if e[0] is not None), key=lambda e: e[0])
         self.areas = self.mm.areas
         self.waypoints = self.mm.waypoints
@@ -374,6 +398,12 @@ class Sim:
         b = Body(name, template, owner, float(x), float(y), st['speed'], st['surface'],
                  max(st['vision'] or 0.0, st['shroud'] or 0.0), frozenset(st['kinds']), made_by=by, made_at=at)
         b.guessed = st['guessed']
+        f = simunits.fight(template, self.own)
+        if f['hp']:
+            b.max_hp = b.hp = f['hp']
+        else:                                   # no health in the data: a building's or a unit's usual (a guess)
+            b.max_hp = b.hp = 2000.0 if 'STRUCTURE' in b.kinds else 300.0
+        b.armor, b.weapons = f['armor'], f['weapons']
         self.bodies[name] = b
         return b
 
@@ -445,7 +475,8 @@ class Sim:
         if not b.alive:
             return
         b.alive, b.deleted, b.path, b.died_at = False, delete, [], self.t
-        b.health = 0.0 if not delete else b.health
+        if not delete:
+            b.hp = 0.0
         self.note('删除' if delete else '摧毁', f'{self.label(b)}（{why}）')
         self.change()
         if self.blocks(b):
@@ -570,12 +601,13 @@ class Sim:
         elif name in ('MOVE_NAMED_UNIT_TO', 'ATTACK_MOVE_NAMED_UNIT_TO'):
             b = self.body(a[0])
             if b:
+                b.mode = 'attack' if name == 'ATTACK_MOVE_NAMED_UNIT_TO' else 'move'
                 self.send(b, a[1])
         elif name == 'NAMED_ATTACK_NAMED':
             self.used.add('attack')
             b, target = self.body(a[0]), self.body(a[1])
             if b and target and target.alive and b.alive and b.goal is not target:
-                b.goal = target
+                b.goal, b.mode = target, 'attack'
                 self.send(b, (target.x, target.y))
         elif name == 'UNIT_GUARD_AREA':
             self.used.add('guard')
@@ -605,8 +637,14 @@ class Sim:
                 self.destroy(b, '脚本' if name == 'NAMED_KILL' else '脚本删掉', delete=name == 'NAMED_DELETE')
         elif name == 'UNIT_SET_HEALTH':
             b = self.body(a[0])
-            if b:
+            if b and b.alive:
                 b.health = float(a[1])
+        elif name == 'NAMED_SET_MAX_HEALTH':
+            b = self.body(a[0])                 # (name, max, full too): retail Iga's trucks by difficulty
+            if b and b.alive:
+                pct = b.health
+                b.max_hp = float(a[1])
+                b.health = 100.0 if a[2] else pct
         elif name == 'UNIT_CHANGE_OBJECT_STATUS':
             b = self.body(a[0])
             st = a[1][2] if isinstance(a[1], tuple) else a[1]
@@ -633,6 +671,7 @@ class Sim:
         elif name == 'ATTACK_MOVE_TEAM_TO':
             for b in self.living():
                 if b.team == a[0]:
+                    b.mode = 'attack'
                     self.send(b, a[1])
         elif name == 'SET_MISSION_OBJECTIVE_STATUS':
             old = self.objectives.get(a[0], 0)
@@ -758,6 +797,7 @@ class Sim:
         if verb == '派':
             who, where = rest
             for b in self.pick(who):
+                b.mode = 'attack'                   # the player's units go attack-moving, fighting on the way
                 self.send(b, where)
         elif verb in ('摧毁', '删除'):
             for b in self.pick(rest[0]):
@@ -806,7 +846,77 @@ class Sim:
                     self.done.add(s.name)
         if self.ending:
             return
+        if self.combat:
+            self.fight()
         self.move()
+
+    def can_hit(self, w, t):
+        """A weapon's anti mask against a target: aircraft need ANTI_AIRBORNE, buildings ANTI_STRUCTURE (or
+        ground), the rest ground or water."""
+        anti = w['anti']
+        if not anti:
+            return True
+        if t.surface == 'air':
+            return any(a.startswith('ANTI_AIRBORNE') for a in anti)
+        if 'STRUCTURE' in t.kinds:
+            return 'ANTI_STRUCTURE' in anti or 'ANTI_GROUND' in anti
+        return 'ANTI_GROUND' in anti or 'ANTI_WATER' in anti
+
+    def fight(self):
+        """One tick of the fight model (未对齐, docs: the 'combat' align entry): every armed body fires each of its
+        weapons at the nearest enemy in that weapon's range it can hit (its NAMED_ATTACK target first, when in
+        range); damage = the weapon's damage per second x the target's armour percent for its damage type, all at
+        once; an attack-mover with an enemy in range holds while it fights; a plain move goes on firing; nobody
+        chases. Bodies at 0 die, the last hit their killer's."""
+        live = [b for b in self.living() if not b.scenery]
+        armed = [b for b in live if b.weapons]
+        if not armed:
+            return
+        targets = [b for b in live if 'UNATTACKABLE' not in b.status]
+        if not targets:
+            return
+        aimable = {id(t) for t in targets}
+        tx = np.array([b.x for b in targets])
+        ty = np.array([b.y for b in targets])
+        hurt = {}
+        for a in armed:
+            a.engaged = False
+            foes = [k for k, t in enumerate(targets) if t is not a and self.enemy(a.owner, t.owner)]
+            if not foes:
+                continue
+            idx = np.array(foes)
+            d = np.hypot(tx[idx] - a.x, ty[idx] - a.y)
+            for w in a.weapons:
+                order = np.argsort(d)
+                pick = None
+                if isinstance(a.goal, Body) and a.goal.alive and id(a.goal) in aimable and \
+                        math.hypot(a.goal.x - a.x, a.goal.y - a.y) <= w['range'] and self.can_hit(w, a.goal):
+                    pick = a.goal
+                else:
+                    for j in order:
+                        if d[j] > w['range']:
+                            break
+                        t = targets[idx[j]]
+                        if self.can_hit(w, t):
+                            pick = t
+                            break
+                if pick is None:
+                    continue
+                dmg = w['dps'] * DT * pick.armor.get(w['type'], simunits.ARMOR_DEFAULT) / 100.0
+                h = hurt.setdefault(id(pick), [pick, 0.0, a])
+                h[1] += dmg
+                h[2] = a
+                if a.mode == 'attack':
+                    a.engaged = True
+        if hurt:
+            self.used.add('combat')
+        for t, dmg, by in hurt.values():
+            t.hp -= dmg
+            t.last_hit = by.owner
+            if t.hp <= 0 and t.alive:
+                if self.first_death is None:
+                    self.first_death = (self.t, t, by)
+                self.destroy(t, f'被 {self.label(by)} 打掉')
 
     def move(self):
         for b in self.living():
@@ -817,7 +927,7 @@ class Sim:
                 elif not b.path or math.hypot(b.path[-1][0] - g.x, b.path[-1][1] - g.y) > 150:
                     if int(self.t / DT) % 8 == 0:                    # re-aimed every 4 s
                         self.send(b, (g.x, g.y))
-            if not b.path or 'IMMOBILE' in b.status:
+            if not b.path or 'IMMOBILE' in b.status or b.engaged:
                 continue
             left = b.speed * DT
             while left > 0 and b.path:
@@ -847,14 +957,21 @@ class Sim:
         if self.test and self.test.counters and self.t >= LAG:
             self.series.append((int(round(self.t - LAG)), [self.counters.get(c, 0) for c, _ in self.test.counters]))
         if int(round(self.t)) % 10 == 0:
+            # can the player hold: the enemy's fire within NEAR of the player's things against the player's own
+            # there, and how much of the player's health (at the start: hp0) is left
             mine = [b for b in self.living() if b.owner == self.human]
             near = [b for b in self.living() if self.enemy(self.human, b.owner) and not b.scenery and b.speed > 0
                     and any(math.hypot(b.x - o.x, b.y - o.y) <= NEAR for o in mine)]
-            self.threat.append((self.t, len(near), len(self.countdowns)))
+            foe = sum(w['dps'] for b in near for w in b.weapons)
+            ours = sum(w['dps'] for b in mine for w in b.weapons
+                       if any(math.hypot(b.x - e.x, b.y - e.y) <= NEAR for e in near))
+            if self.hp0 is None:
+                self.hp0 = sum(b.hp for b in mine) or 1.0
+            left = sum(b.hp for b in mine) / self.hp0
+            self.threat.append((self.t, len(near), foe, ours, left))
             if near and self.first_threat is None:
                 b = min(near, key=lambda b: b.made_at)
                 self.first_threat = (self.t, b)
-                self.used.add('no combat')
         if int(round(self.t)) % 30 == 0:
             self.see()
 
@@ -954,9 +1071,17 @@ class Sim:
         return out
 
     def metrics(self):
-        peak = max(self.threat, key=lambda x: x[1], default=(0, 0, 0))
-        curve = ' '.join(f'{mmss(t)}:{n}' for t, n, _ in self.threat if int(t) % 60 == 0)
+        def ratio(foe, ours):
+            return '—' if not foe else ('∞' if not ours else f'{foe / ours:.1f}')
+        peak = max(self.threat, key=lambda x: x[2], default=(0, 0, 0, 0, 1))
+        curve = ' '.join(f'{mmss(t)}:{n}个/{ratio(foe, ours)}/{left:.0%}' for t, n, foe, ours, left in self.threat
+                         if int(t) % 60 == 0)
         known = ' '.join(f'{mmss(t)}:{v:g}' for t, v in self.known_at if int(t) % 120 == 0)
+        if self.first_death:
+            t, b, by = self.first_death
+            dead = f'第一次有单位阵亡 {mmss(t)}：{self.label(b)}（{self.who(b.owner)}），{self.label(by)} 打的'
+        else:
+            dead = '没有单位在交战里阵亡' + ('（不打）' if not self.combat else '')
         if self.first_threat:
             t, b = self.first_threat
             s = next((s for s in self.mm.scripts if s.name == b.made_by), None)
@@ -964,8 +1089,9 @@ class Sim:
             first = f'第一股敌人 {mmss(t)} 到玩家 {NEAR:g} 以内：{self.label(b)}，{why}'
         else:
             first = '没有敌人走到玩家附近'
-        return (f'张力（每分钟，玩家 {NEAR:g} 以内的敌人数）：{curve or "—"}；最高 {peak[1]} 个，{mmss(peak[0])}\n'
-                f'已知区域（km²，每 2 分钟）：{known or "—"}\n{first}')
+        return (f'张力（每分钟：玩家 {NEAR:g} 以内的敌人数 / 敌我火力比 / 玩家剩余血量）：{curve or "—"}；'
+                f'敌方火力最猛 {mmss(peak[0])}，{peak[1]} 个、火力比 {ratio(peak[2], peak[3])}\n'
+                f'已知区域（km²，每 2 分钟）：{known or "—"}\n{first}\n{dead}')
 
 
 def describe(c):
@@ -987,6 +1113,9 @@ def parse_script(text):
             continue
         if line.startswith('自动打掉'):
             out.append((None, '自动打掉', seconds(line.split()[1])))
+            continue
+        if line == '不打':
+            out.append((None, '不打'))
             continue
         t, rest = line.split(None, 1)
         if rest.startswith('派 '):

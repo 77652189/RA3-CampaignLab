@@ -71,17 +71,35 @@ def surface_of(surf, kinds):
     return 'ground'
 
 
-def _build():
+def units():
+    """(template lower case, its index entry, its XML file) for every unit and building: the index's file, or --
+    where the index points at a campaign override (Includes/CampaignOverrides: an edit, not the unit) -- the
+    SageXML file of the template's own name."""
     idx = json.load(open(INDEX, encoding='utf-8')) if os.path.exists(INDEX) else {}
-    surfaces = _surfaces()
-    out = {}
+    by_name = {}
+    for root, _, files in os.walk(SAGEXML):
+        for f in files:
+            if f.endswith('.xml'):
+                by_name.setdefault(f[:-4].lower(), os.path.join(root, f))
     for t, e in idx.items():
         f = e.get('file', '')
-        if e.get('EditorSorting') not in ('UNIT', 'STRUCTURE') or not f.startswith('DATA:'):
-            continue
-        path = os.path.join(SAGEXML, *f[5:].split('/'))
-        if not os.path.exists(path):
-            continue
+        path = os.path.join(SAGEXML, *f[5:].split('/')) if f.startswith('DATA:') else ''
+        if 'CampaignOverrides' in f or not e.get('EditorSorting'):
+            own = by_name.get(t)
+            if not own:
+                continue
+            path = own
+            text = open(own, encoding='utf-8', errors='replace').read()
+            sort = re.search(r'\bEditorSorting="([^"]+)"', text)
+            e = dict(e, EditorSorting=sort.group(1) if sort else '')
+        if e.get('EditorSorting') in ('UNIT', 'STRUCTURE') and path and os.path.exists(path):
+            yield t, e, path
+
+
+def _build():
+    surfaces = _surfaces()
+    out = {}
+    for t, e, path in units():
         # the index writes inherited KindOf as +X / -X edits: keep the added ones; a building is sorted STRUCTURE
         kindof = ' '.join([k.lstrip('+') for k in e.get('KindOf', '').split() if not k.startswith('-')]
                           + (['STRUCTURE'] if e.get('EditorSorting') == 'STRUCTURE' else []))
@@ -102,6 +120,153 @@ def table():
             os.makedirs(os.path.dirname(CACHE), exist_ok=True)
             json.dump(_table, open(CACHE, 'w', encoding='utf-8'), indent=0)
     return _table
+
+
+# ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat.json')
+WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
+ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
+ARMOR_DEFAULT = 100.0           # a damage type an armour does not name: taken in full (a guess)
+
+
+def _blocks(text, tag):
+    """(attributes text, inner text) of every <tag ...>...</tag> (or self-closed) element."""
+    for m in re.finditer(rf'<{tag}\b(.*?)(/>|>(.*?)</{tag}>)', text, re.S):
+        yield m.group(1), m.group(3) or ''
+
+
+def _attr(head, name, default=None):
+    m = re.search(rf'\b{name}="([^"]*)"', head)
+    return m.group(1) if m else default
+
+
+def _num(v, default=0.0):
+    """A number attribute; a macro (=$UNLIMITED_CLIP_SIZE ...) or nothing: the default."""
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return default
+
+
+def _secs(v):
+    return _num(v.rstrip('s')) if v else 0.0
+
+
+def _weapon_files():
+    out = []
+    for root, _, files in os.walk(SAGEXML):
+        for f in files:
+            if f.endswith('.xml'):
+                p = os.path.join(root, f)
+                try:
+                    text = open(p, encoding='utf-8', errors='replace').read()
+                except OSError:
+                    continue
+                if '<WeaponTemplate' in text:
+                    out.append(text)
+    return out
+
+
+def _weapons(texts):
+    """Weapon template id -> {range, damage, type, shots, cycle, anti, warhead}; a projectile's damage is its
+    warhead's (filled in by _resolve)."""
+    out = {}
+    for text in texts:
+        for head, body in _blocks(text, 'WeaponTemplate'):
+            wid = _attr(head, 'id')
+            if not wid:
+                continue
+            dmg = [(_num(_attr(h, 'Damage')), _attr(h, 'DamageType', ''))
+                   for h, _ in _blocks(re.sub(r'<!--.*?-->', '', body, flags=re.S), 'DamageNugget')]
+            war = [_attr(h, 'WarheadTemplate') for h, _ in _blocks(re.sub(r'<!--.*?-->', '', body, flags=re.S),
+                                                                     'ProjectileNugget')]
+            fire = re.search(r'<FiringDuration\b[^>]*MinSeconds="([^"]+)"', body)
+            reload_ = re.search(r'<ClipReloadTime\b[^>]*MinSeconds="([^"]+)"', body)
+            delay = re.search(r'<DelayBetweenShots\b[^>]*MinSeconds="([^"]+)"', body)
+            out[wid] = dict(range=_num(_attr(head, 'AttackRange')), damage=sum(d for d, _ in dmg),
+                            type=next((t for d, t in dmg if t), ''),
+                            shots=int(_num(_attr(head, 'ClipSize'), 1.0 if not _attr(head, 'ClipSize') else 0.0)),
+                            fire=_secs(fire.group(1)) if fire else 0.0, reload=_secs(reload_.group(1)) if reload_ else 0.0,
+                            delay=_secs(delay.group(1)) if delay else 0.0,
+                            anti=(_attr(head, 'RequiredAntiMask') or '').split(), warhead=next((w for w in war if w), None))
+    return out
+
+
+def _resolve(w, weapons):
+    """A weapon's damage per second: its own damage, else its warhead's; one clip of `shots` then the reload."""
+    dmg, typ = w['damage'], w['type']
+    if not dmg and w['warhead'] in weapons:
+        h = weapons[w['warhead']]
+        dmg, typ = h['damage'], h['type']
+    if w['shots'] <= 0:                         # an unlimited clip: no reload
+        shots, cycle = 1, max(w['fire'], w['delay'], 0.1)
+    else:
+        shots = w['shots']
+        cycle = shots * max(w['fire'], w['delay'], 0.1) + w['reload']
+    return dict(range=w['range'], dps=round(dmg * shots / cycle, 2) if dmg else 0.0, type=typ, anti=w['anti'])
+
+
+def _armors():
+    text = open(ARMOR, encoding='utf-8', errors='replace').read() if os.path.exists(ARMOR) else ''
+    raw = {}
+    for head, body in _blocks(text, 'ArmorTemplate'):
+        raw[_attr(head, 'id')] = (_attr(head, 'inheritFrom'), {_attr(h, 'Damage'): _num(_attr(h, 'Percent'), 100.0)
+                                                              for h, _ in _blocks(body, 'Armor')})
+    out = {}
+
+    def get(a, depth=0):
+        if a in out:
+            return out[a]
+        if a not in raw or depth > 10:
+            return {}
+        base, own = raw[a]
+        out[a] = {**get(base, depth + 1), **own} if base else dict(own)
+        return out[a]
+    for a in raw:
+        get(a)
+    return out
+
+
+def read_fight(text, weapons, armors):
+    """One unit's fight from its XML: max health, its armour's percents, its weapons (the PRIMARY one of each slot,
+    resolved)."""
+    hp = re.search(r'(?<![A-Za-z])MaxHealth="([\d.]+)"', text)
+    arm = re.search(r'<ArmorSet\b[^>]*\bArmor="([^"]+)"', text) or re.search(r'\bArmor="([^"]+)"', text)
+    guns = []
+    for head, body in _blocks(text, 'WeaponSetUpdate'):
+        for slot in re.finditer(r'<WeaponSlot\w*\b.*?</WeaponSlot\w*>', body, re.S):
+            ws = [(_attr(h, 'Ordering'), _attr(h, 'Template')) for h, _ in _blocks(slot.group(0), 'Weapon')]
+            pick = next((t for o, t in ws if o == 'PRIMARY_WEAPON'), ws[0][1] if ws else None)
+            if pick in weapons:
+                guns.append(_resolve(weapons[pick], weapons))
+    return dict(hp=_num(hp.group(1), None) if hp else None, armor=armors.get(arm.group(1), {}) if arm else {},
+                weapons=[g for g in guns if g['dps'] > 0 and g['range'] > 0])
+
+
+_fight = None
+
+
+def _fight_data():
+    global _fight
+    if _fight is None:
+        if os.path.exists(COMBAT_CACHE):
+            _fight = json.load(open(COMBAT_CACHE, encoding='utf-8'))
+        else:
+            weapons, armors = _weapons(_weapon_files()), _armors()
+            got = {t: read_fight(open(path, encoding='utf-8', errors='replace').read(), weapons, armors)
+                   for t, _, path in units()}
+            _fight = dict(units=got, weapons=weapons, armors=armors)
+            json.dump(_fight, open(COMBAT_CACHE, 'w', encoding='utf-8'), indent=0)
+    return _fight
+
+
+def fight(template, own=None):
+    """{hp, armor {damage type: percent}, weapons [{range, dps, type, anti}]} for a template (own: the mission's
+    units' XML, read with the retail weapons and armours); hp None when the data has none."""
+    d = _fight_data()
+    if own and template in own:
+        return read_fight(own[template], d['weapons'], d['armors'])
+    return d['units'].get(template.lower(), dict(hp=None, armor={}, weapons=[]))
 
 
 def kind_of(kinds):

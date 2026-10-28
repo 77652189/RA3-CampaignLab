@@ -148,6 +148,26 @@ def test_no_level_has_a_static_problem():
 
 
 def test_the_win_ticks_a_hold_out_objective():
-    s = sim.simulate('j5', until=700)
-    held = [g.name for g in s.m.objectives if not g.bonus and not g.spec.get('完成')]
+    s = sim.simulate('j5', script='不打', until=700)       # the wiring: held to the end (the fight loses it)
+    held =[g.name for g in s.m.objectives if not g.bonus and not g.spec.get('完成')]
     assert held and s.ending[0] == '赢' and all(s.objectives.get(g) == 2 for g in held)
+
+
+def test_a_fight_by_the_games_numbers():
+    """The fight model: a guardian (480 hp, cannon 30/s) against an imperial warrior (160 hp, gun 14.3/s; a tank
+    takes GUN at 50 %, infantry CANNON at 20 %): side by side, the warrior falls at 160 / (30 x 0.2) ~ 27 s, the
+    guardian loses 27 x 14.3 x 0.5 ~ 190 hp."""
+    m = mission([Script('lose', [('NAMED_DESTROYED', 'UNIT - T W')], [WON])], ['lose'])
+    m.put('AlliedAntiVehicleVehicleTech1', 'start', role='tank', name='UNIT - T G')
+    m.put('JapanAntiInfantryInfantry', 'start', 100, 0, role='w', side='s1', name='UNIT - T W')
+    s = sim.Sim(m).run(120)
+    g = s.bodies['UNIT - T G']
+    assert s.ending[0] == '赢' and 24 <= s.ending[1] <= 30 and 270 <= g.hp <= 310
+    assert s.first_death[1].name == 'UNIT - T W'
+
+
+def test_a_defence_left_alone_is_lost():
+    """J5 done nothing: the head-hunters reach Yuriko and the level is lost (before the fight model it held to a
+    win); 不打 turns the fight off again."""
+    assert sim.simulate('j5', until=600).ending[0] == '输'
+    assert sim.simulate('j5', script='不打', until=600).ending[0] == '赢'

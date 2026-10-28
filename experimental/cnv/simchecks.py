@@ -20,10 +20,12 @@ UNTIL = 900.0
 CHECKS = {
     # A4: the stops, the harbour cleared, the ambushes out of the sculptures on time (the check's scripts act)
     ('a4', 'stop'): dict(script='', ending=None, counters=True),
-    ('a4', 'harbour'): dict(script='', ending=None, counters=True),
+    # (不打: the fight model off -- these test the scripts' wiring, not who wins a fight; with it the ambush takes
+    # the trucks and the level is lost before the counters are read)
+    ('a4', 'harbour'): dict(script='不打', ending=None, counters=True),
     ('a4', 'placed'): dict(script='', ending=None, counters=True),
-    ('a4', 'smash'): dict(script='', ending=None, counters=True),
-    ('a4', 'ambush'): dict(script='', ending=None, counters=True),
+    ('a4', 'smash'): dict(script='不打', ending=None, counters=True),
+    ('a4', 'ambush'): dict(script='不打', ending=None, counters=True),
     # A5: the gates hold the fleet till the guards are dead, then it sails and two at the sea win
     ('a5', 'hold'): dict(script='', ending=None, counters=True),
     ('a5', 'win'): dict(script='', ending='赢', counters=True),
@@ -37,7 +39,8 @@ CHECKS = {
     # J4: nothing done, the convoy reaches the exit -- lost
     ('j4', 'lose'): dict(script='', ending='输', counters=True),
     # J5: held to the end -- won; Yuriko down -- lost
-    ('j5', 'hold'): dict(script='', ending='赢', counters=False),
+    ('j5', 'hold'): dict(script='不打', ending='赢', counters=False),     # the check heals every frame, a tick
+                                                                         # (0.5 s) of the fight is more
     ('j5', 'lose'): dict(script='60 摧毁 yuriko', ending='输', counters=False),
     # J7: the tower razed -- won at once; nothing done, the countdown out -- lost
     ('j7', 'win'): dict(script='', ending='赢', counters=False),
