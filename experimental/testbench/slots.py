@@ -44,6 +44,7 @@ def lab(root=ROOT):
 LOCKS = os.path.join(os.environ['RA3_SHARED'], 'locks') if os.environ.get('RA3_SHARED') else \
     os.path.join(lab(), 'shared', 'locks')
 SLOTS = int(os.environ.get('RA3_BENCH_SLOTS', '2'))
+WAIT = float(os.environ.get('RA3_BENCH_WAIT') or 600)     # seconds take_waiting queues for a slot
 INSTANCE_MUTEX = '41DAF790-16F5-4881-8754-59FD8CF3B8D2'
 GAME = re.compile(r'^(ra3_1\.\d+\.game|ra3\.exe|ra3ep1.*\.exe)$', re.I)
 
@@ -120,6 +121,19 @@ def take(owner, note=''):
             json.dump(dict(owner=owner, pid=os.getpid(), since=datetime.datetime.now().isoformat(timespec='seconds'),
                            until=None, note=note, slot=i), f)
         return i
+    return None
+
+
+def take_waiting(owner, note='', wait=None, poll=5.0):
+    """take, queueing up to `wait` seconds (WAIT) for a slot to come free -- the bench's own queue, so a line does
+    not poll the locks itself (2026-10-28: some 400 calls of tasklist / reslock / wait loops in three days). None when
+    all are still held, or at once when a game the bench did not start is up (the user playing: no waiting it out)."""
+    end = time.monotonic() + (WAIT if wait is None else wait)
+    while not foreign_games():
+        i = take(owner, note)
+        if i is not None or time.monotonic() >= end:
+            return i
+        time.sleep(poll)
     return None
 
 

@@ -241,15 +241,18 @@ class Session:
         sku = skudef(mod) if mod else 'RA3'
         if mod and not os.path.exists(sku):
             raise BenchError(f'no such mod: {sku}')
+        slot = slots.take_waiting('RA3-CampaignLab ra3bench', sku)     # queues while other bench games hold all
         foreign = slots.foreign_games()
         if foreign:
+            if slot is not None:
+                slots.release(slot)
             raise BenchError(f'an RA3 process the bench did not start is running (pid {", ".join(map(str, foreign))}: '
                              'the user playing, or an older tool): not starting')
-        slot = slots.take('RA3-CampaignLab ra3bench', sku)
         if slot is None:
             held = slots.holders()
             raise BenchError('bench locked by ' + '; '.join(f'{h.get("owner")} (pid {h.get("pid")}) {h.get("note", "")}'
-                                                            for h in held.values()) + f' -- all {slots.SLOTS} slots')
+                                                            for h in held.values())
+                             + f' -- all {slots.SLOTS} slots, still after {slots.WAIT:.0f} s in the queue')
         global LOCK, SHOTS          # one session per process: the slot's lock and shot folder for this game
         self.slot, LOCK, SHOTS = slot, slots.lock_path(slot), slots.shots_dir(slot)
         os.makedirs(SHOTS, exist_ok=True)
