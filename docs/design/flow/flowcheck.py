@@ -13,8 +13,8 @@ import sys
 import yaml
 
 HERE = pathlib.Path(__file__).resolve().parent
-TOP = ('关', '关名', '阵营', '类型', '地点', '新东西', '出场单位', '一句话', '体验目标', '取舍', '张力', '接上一关',
-       '引出下一关', '简报', '段', '胜利', '失败')
+TOP = ('关', '关名', '阵营', '类型', '地点', '新东西', '出场单位', '用到的机制', '一句话', '体验目标', '取舍', '张力',
+       '接上一关', '引出下一关', '简报', '段', '胜利', '失败')
 TYPES = ('护送', '突击', '基地对抗', '守', '潜入', '海战', '限时', '打自己人')
 GOAL_KINDS = ('主', '奖励')
 # voice-script rules (RA3-ChineseVoice lines/GLOSSARY.md): no digits, no Latin letters, no brackets
@@ -56,6 +56,32 @@ def unit_names():
     return {n for n in names if n}
 
 
+MECH_STATES = ('已确认', '待验证', '不能做')
+
+
+def mechanics():
+    """{key: (state, forbidden-phrasing regex or None)} from mechanics.md's table; a cell's '\\|' is a literal pipe."""
+    out = {}
+    for line in (HERE / 'mechanics.md').read_text(encoding='utf-8').splitlines():
+        cells = [c.replace('\\|', '|').strip() for c in re.split(r'(?<!\\)\|', line)[1:-1]]
+        if len(cells) == 5 and cells[1] in MECH_STATES:
+            out[cells[0]] = (cells[1], re.compile(cells[4]) if cells[4] else None)
+    return out
+
+
+def all_text(node):
+    """Every string in the plan, keys included (a 时机 or a shot may promise something too)."""
+    if isinstance(node, dict):
+        for k, v in node.items():
+            yield str(k)
+            yield from all_text(v)
+    elif isinstance(node, list):
+        for v in node:
+            yield from all_text(v)
+    elif node is not None:
+        yield str(node)
+
+
 def plan_of(path):
     m = re.search(r'```yaml\n(.*?)```', path.read_text(encoding='utf-8'), re.S)
     return yaml.safe_load(m.group(1)) if m else None
@@ -79,7 +105,7 @@ def lines_in(node, where):
             yield from lines_in(v, f'{where}[{i}]')
 
 
-def check(path, speak, retail, units=None):
+def check(path, speak, retail, units=None, mech=None):
     p = plan_of(path)
     if not isinstance(p, dict):
         return [f'{path.name}: no yaml block']
@@ -125,18 +151,37 @@ def check(path, speak, retail, units=None):
                 if n not in units:
                     out.append(f'{path.name} 出场单位/{side}: {n} is in neither the voice glossary, outline.md '
                                f'section 3 nor the plan glossary')
+    if mech is not None:
+        for k in p.get('用到的机制') or []:
+            if k not in mech:
+                out.append(f'{path.name} 用到的机制: {k} is not in mechanics.md')
+            elif mech[k][0] == '不能做':
+                out.append(f'{path.name} 用到的机制: {k} is marked 不能做 in mechanics.md')
+        text = '\n'.join(all_text(p))
+        for k, (state, bad) in mech.items():
+            if state == '不能做' and bad and (m := bad.search(text)):
+                out.append(f'{path.name}: "{m.group(0)}" promises {k}, which cannot be done (mechanics.md)')
     return out
+
+
+def unverified(path, mech):
+    """The 待验证 mechanics a flow script promises: what layer 3 has to test first."""
+    p = plan_of(path) or {}
+    return [k for k in p.get('用到的机制') or [] if mech.get(k, ('',))[0] == '待验证']
 
 
 def main(names):
     sys.stdout.reconfigure(encoding='utf-8')
     speak, retail = cast()
     paths = [HERE / f'{n.lower()}.md' for n in names] if names else sorted(
-        q for q in HERE.glob('*.md') if q.name not in ('README.md', 'cast.md'))
-    units = unit_names()
-    problems = [x for q in paths for x in check(q, speak, retail, units)]
+        q for q in HERE.glob('*.md') if q.name not in ('README.md', 'cast.md', 'mechanics.md'))
+    units, mech = unit_names(), mechanics()
+    problems = [x for q in paths for x in check(q, speak, retail, units, mech)]
     for x in problems:
         print(x)
+    for q in paths:
+        if u := unverified(q, mech):
+            print(f'{q.name}: promises mechanics not yet tested (layer 3 tests these first): {", ".join(u)}')
     if units is None:
         print(f'unit names not checked: {VOICE_GLOSSARY} is missing')
     print(f'{len(paths)} flow scripts, {len(problems)} problems')
