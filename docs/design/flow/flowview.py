@@ -57,7 +57,10 @@ def main(names):
         plan = fc.plan_of(q)
         if not isinstance(plan, dict):
             continue
-        levels.append(dict(id=q.stem.upper(), plan=plan, problems=fc.check(q, speak, retail, units, mech),
+        problems = fc.check(q, speak, retail, units, mech)
+        if plan.get('示意图'):
+            plan = dict(plan, 示意图=fc.flowmap.drawn(plan))      # the real map's ground, places and borders
+        levels.append(dict(id=q.stem.upper(), plan=plan, problems=problems,
                            minutes=[minutes(s.get('时长')) for s in plan.get('段') or []]))
     data = json.dumps(dict(levels=levels, cast=cast_rows()), ensure_ascii=False, default=str).replace('</', '<\\/')
     OUT.parent.mkdir(parents=True, exist_ok=True)

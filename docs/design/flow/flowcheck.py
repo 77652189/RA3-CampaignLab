@@ -12,6 +12,8 @@ import sys
 
 import yaml
 
+import flowmap
+
 HERE = pathlib.Path(__file__).resolve().parent
 TOP = ('关', '关名', '阵营', '类型', '地点', '新东西', '出场单位', '用到的机制', '一句话', '体验目标', '取舍', '张力',
        '接上一关', '引出下一关', '简报', '段', '胜利', '失败', '示意图')
@@ -190,10 +192,12 @@ def check_sketch(path, p):
     sk, out = p.get('示意图') or {}, []
     segs = {s.get('名') for s in p.get('段') or []}
     seen = {}
+    out += flowmap.problems(p, path.name)
     for pl in sk.get('地方') or []:
         name = pl.get('名')
         where = f'{path.name} 示意图/{name}'
-        for key, size in (('位', GRID), ('大', GRID)):
+        real = sk.get('地图') and ('块' in pl or '点' in pl)      # placed by the map (flowmap), not the grid
+        for key, size in () if real else (('位', GRID), ('大', GRID)):
             v = pl.get(key)
             if not (isinstance(v, list) and len(v) == 2 and all(isinstance(x, (int, float)) and 0 <= x <= m
                                                                  for x, m in zip(v, size))):
@@ -211,7 +215,7 @@ def check_sketch(path, p):
         for n in road:
             if n not in names:
                 out.append(f'{path.name} 示意图/路[{i}]: {n} is not a place of the sketch')
-    for n in sk.get('路线') or []:
+    for n in [] if sk.get('地图') else sk.get('路线') or []:      # on a real map flowmap checks it (sites too)
         if n not in names:
             out.append(f'{path.name} 示意图/路线: {n} is not a place of the sketch')
     return out
