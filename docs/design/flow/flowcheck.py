@@ -14,7 +14,7 @@ import yaml
 
 HERE = pathlib.Path(__file__).resolve().parent
 TOP = ('关', '关名', '阵营', '类型', '地点', '新东西', '出场单位', '用到的机制', '一句话', '体验目标', '取舍', '张力',
-       '接上一关', '引出下一关', '简报', '段', '胜利', '失败')
+       '接上一关', '引出下一关', '简报', '段', '胜利', '失败', '示意图')
 TYPES = ('护送', '突击', '基地对抗', '守', '潜入', '海战', '限时', '打自己人')
 GOAL_KINDS = ('主', '奖励')
 # voice-script rules (RA3-ChineseVoice lines/GLOSSARY.md): no digits, no Latin letters, no brackets
@@ -151,6 +151,7 @@ def check(path, speak, retail, units=None, mech=None):
                 if n not in units:
                     out.append(f'{path.name} 出场单位/{side}: {n} is in neither the voice glossary, outline.md '
                                f'section 3 nor the plan glossary')
+    out += check_sketch(path, p)
     if mech is not None:
         for k in p.get('用到的机制') or []:
             if k not in mech:
@@ -161,6 +162,74 @@ def check(path, speak, retail, units=None, mech=None):
         for k, (state, bad) in mech.items():
             if state == '不能做' and bad and (m := bad.search(text)):
                 out.append(f'{path.name}: "{m.group(0)}" promises {k}, which cannot be done (mechanics.md)')
+    return out
+
+
+USES = ('前线', '支线', '通道', '后方', '远景')
+GRID = (100, 60)
+
+
+def places(p):
+    """{name or alias: place name} of the sketch map (示意图)."""
+    out = {}
+    for pl in (p.get('示意图') or {}).get('地方') or []:
+        for n in [pl.get('名')] + list(pl.get('又名') or []):
+            out.setdefault(n, pl.get('名'))
+    return out
+
+
+def framed(text, names):
+    """The place a shot or an objective names, as flowview matches it (the longest name or alias it contains)."""
+    hits = [n for n in names if n and n in str(text)]
+    return names[max(hits, key=len)] if hits else None
+
+
+def check_sketch(path, p):
+    """The sketch map: every place well formed and opening in a segment that exists, the roads and the route
+    between places it has, no name or alias given to two places."""
+    sk, out = p.get('示意图') or {}, []
+    segs = {s.get('名') for s in p.get('段') or []}
+    seen = {}
+    for pl in sk.get('地方') or []:
+        name = pl.get('名')
+        where = f'{path.name} 示意图/{name}'
+        for key, size in (('位', GRID), ('大', GRID)):
+            v = pl.get(key)
+            if not (isinstance(v, list) and len(v) == 2 and all(isinstance(x, (int, float)) and 0 <= x <= m
+                                                                 for x, m in zip(v, size))):
+                out.append(f'{where}: {key} must be [x, y] within the {GRID[0]}x{GRID[1]} grid, got {v}')
+        if pl.get('用途') not in USES:
+            out.append(f'{where}: 用途 {pl.get("用途")} is not one of {"/".join(USES)}')
+        if pl.get('开') not in segs:
+            out.append(f'{where}: 开 {pl.get("开")} is not a segment of this level ({"/".join(map(str, segs))})')
+        for n in [name] + list(pl.get('又名') or []):
+            if n in seen and seen[n] != name:
+                out.append(f'{where}: {n} also names {seen[n]} -- the map could not tell which one is meant')
+            seen[n] = name
+    names = {pl.get('名') for pl in sk.get('地方') or []}
+    for i, road in enumerate(sk.get('路') or []):
+        for n in road:
+            if n not in names:
+                out.append(f'{path.name} 示意图/路[{i}]: {n} is not a place of the sketch')
+    for n in sk.get('路线') or []:
+        if n not in names:
+            out.append(f'{path.name} 示意图/路线: {n} is not a place of the sketch')
+    return out
+
+
+def unframed(path):
+    """Shots (看) and objectives (题) that name no place of the sketch: the minimap frames nothing for them. Not a
+    problem by itself (a shot of the convoy, "百合子必须活着"), listed for the writer to look over."""
+    p = plan_of(path) or {}
+    names = places(p)
+    out = []
+    for seg in p.get('段') or []:
+        for shot in seg.get('镜头') or []:
+            if not framed(shot.get('看'), names):
+                out.append(f'镜头 {shot.get("看")}')
+        for g in seg.get('目标') or []:
+            if not framed(g.get('题'), names):
+                out.append(f'目标 {g.get("题")}')
     return out
 
 
@@ -182,6 +251,8 @@ def main(names):
     for q in paths:
         if u := unverified(q, mech):
             print(f'{q.name}: promises mechanics not yet tested (layer 3 tests these first): {", ".join(u)}')
+        if u := unframed(q):
+            print(f'{q.name}: the minimap frames no place for (look over): {"; ".join(u)}')
     if units is None:
         print(f'unit names not checked: {VOICE_GLOSSARY} is missing')
     print(f'{len(paths)} flow scripts, {len(problems)} problems')
