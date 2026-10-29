@@ -18,14 +18,15 @@ sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign'
 UNTIL = 900.0
 
 CHECKS = {
-    # A4: the stops, the harbour cleared, the ambushes out of the sculptures on time (the check's scripts act)
-    ('a4', 'stop'): dict(script='', ending=None, counters=True),
+    # A4 before the rework (missions/a4_before.md, the devices' checks): the stops, the harbour cleared, the ambushes
+    # out of the sculptures on time (the check's scripts act)
+    ('a4_before', 'stop'): dict(script='', ending=None, counters=True),
     # (不打: the fight model off -- these test the scripts' wiring, not who wins a fight; with it the ambush takes
     # the trucks and the level is lost before the counters are read)
-    ('a4', 'harbour'): dict(script='不打', ending=None, counters=True),
-    ('a4', 'placed'): dict(script='', ending=None, counters=True),
-    ('a4', 'smash'): dict(script='不打', ending=None, counters=True),
-    ('a4', 'ambush'): dict(script='不打', ending=None, counters=True),
+    ('a4_before', 'harbour'): dict(script='不打', ending=None, counters=True),
+    ('a4_before', 'placed'): dict(script='', ending=None, counters=True),
+    ('a4_before', 'smash'): dict(script='不打', ending=None, counters=True),
+    ('a4_before', 'ambush'): dict(script='不打', ending=None, counters=True),
     # A5: the gates hold the fleet till the guards are dead, then it sails and two at the sea win
     ('a5', 'hold'): dict(script='', ending=None, counters=True),
     ('a5', 'win'): dict(script='', ending='赢', counters=True),

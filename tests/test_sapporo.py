@@ -67,6 +67,16 @@ def test_the_north_comes_to_the_road_by_its_mouths():
         assert reached(shut(*(w for j, w in enumerate(ways) if j != k)), 'north camp'), k
 
 
+def test_the_convoy_parks_between_two_approaches():
+    """Stopped at the halt (its lead entering the halt's circle, then rolling up to ROLL on), all three trucks (TRAIN
+    from first to last) stand past plaza 2's approach and short of plaza 3's: a truck left on an approach is held
+    there by that plaza's troops for good once the ice melts (bench 2026-10-28, a4 win)."""
+    TRAIN, ROLL = 120.0, 50.0
+    halt, a2, a3 = (sp.SITES[k] for k in ('halt', 'approach 2', 'approach 3'))
+    assert halt.x - halt.r - TRAIN > a2.x + a2.r
+    assert halt.x - halt.r + ROLL < a3.x - a3.r
+
+
 def test_its_own_start():
     assert (sp.SITES['start'].x, sp.SITES['start'].y) == sp.START != island.START
     assert sp.START[0] - sp.BORDERS['corridor'][0] < 200          # the map's edge behind the player (P17)

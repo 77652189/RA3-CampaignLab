@@ -40,6 +40,7 @@ CANAL = (3660.0, 3820.0)
 GATE = 120.0                                    # every way the ice must shut: a gate, the lane, the mouths
 WALL_IN = 15.0                                  # a courtyard's front wall this far off the avenue's edge
 START = (450.0, ROAD_Y)                         # the corridor's west end, the map's edge behind it
+APPROACH = (320.0, 130.0)                       # a plaza's approach: this far west of its gate, this half-side
 
 # the street blocks either side of the avenue's west half (tier 2): x from the sea to WEST_END (north: to the lane's
 # east end), plaza 1 cut into the north one
@@ -75,13 +76,16 @@ SITES.update({
     'road exit': Site(3900.0, ROAD_Y, 150.0, "the road's east end in the harbour, past the canal bridge: the convoy "
                                              'is safe here'),
     'harbour': Site(4030.0, ROAD_Y, 180.0, 'the harbour ground at the east end of the canal bridge'),
-    'halt': Site((P2[0] + P2[1]) / 2, ROAD_Y, 40.0, "the road at plaza 2's gate: past plaza 2, short of plaza 3's "
-                                                    'approach'),
+    # the whole convoy parked between plaza 2's approach and plaza 3's: its last truck (120 behind the lead) past
+    # the one, the lead (it rolls ~50 on) short of the other (bench 2026-10-28, a4 win: the last truck left on plaza
+    # 2's approach, its troops held the convoy for good once the ice melted)
+    'halt': Site(P2[0] + 150.0, ROAD_Y, 40.0, "the road at plaza 2's gate: the whole convoy past plaza 2's "
+                                              "approach, short of plaza 3's"),
     'lane foot': Site(1250.0, ROAD_Y + 40.0, 60.0, "the back lane's way up: the foot of the ramp from the avenue "
                                                    'onto the north street block'),
     'lane mouth': Site(P1[0] + 60.0, (LANE[0] + LANE[1]) / 2, 50.0, "the back lane's west mouth, behind plaza 1: "
                                                                     'its sculptures stand here'),
-    'lane depot': Site(LANE_DOWN, 3120.0, 0.0, "the lane's east end, on the north block: a repair depot's pad",
+    'lane depot': Site(LANE_DOWN, 3120.0, 150.0, "the lane's east end, on the north block: a repair depot's pad",
                        build=160.0),
     'lane end': Site(LANE_DOWN, ROAD_Y + 80.0, 60.0, 'where the back lane comes down to the avenue, between plazas 1 '
                                                     'and 2'),
@@ -102,7 +106,7 @@ SITES.update({
                                                 'retail)', build=200.0),
     'south ramp': Site(2350.0, 1720.0, 80.0, "the foot of the south plateau's ramp, down to the low ground by the "
                                              'avenue'),
-    'tv tower': Site(700.0, 3950.0, 0.0, "the west ridge's top: the TV tower's pad (an observation post)",
+    'tv tower': Site(700.0, 3950.0, 200.0, "the west ridge's top: the TV tower's pad (an observation post)",
                      build=160.0),
     'ridge ramp': Site(1400.0, 3360.0, 60.0, "the foot of the west ridge's ramp"),
     'beach': Site(4120.0, 2900.0, 100.0, "the harbour's sea side: what flies in from the sea comes over here"),
@@ -119,8 +123,8 @@ for _k, (_x, _north) in PLAZAS.items():
                                                           'block of ice 160 across here shuts it', build=160.0)
     SITES[f'plaza {_k}'] = Site(_gx, _gy + _s * 200.0, 120.0, f'plaza {_k}, a walled courtyard {_side} of the road: '
                                                             'its sculptures stand here')
-    SITES[f'approach {_k}'] = Site(_gx - 350.0, ROAD_Y, 150.0, f'the road west of plaza {_k}: a convoy here is '
-                                                             'about to pass it')
+    SITES[f'approach {_k}'] = Site(_gx - APPROACH[0], ROAD_Y, APPROACH[1], f'the road west of plaza {_k}: a convoy '
+                                                                          'here is about to pass it')
 # MAP_SWITCH_BORDER(k) makes the k-th the playable area (x0 y0 x1 y1; the first is the whole map)
 BORDERS = {'whole': (0.0, 0.0, 5000.0, 5000.0), 'corridor': (300.0, 1700.0, 3200.0, 3300.0),
            'west of the canal': (0.0, 0.0, CANAL[0] - 20.0, 5000.0)}

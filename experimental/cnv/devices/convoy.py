@@ -19,9 +19,11 @@ class Convoy(Device):
     PARAMS = {'出发': '条件：车队什么时候出发', '每隔': '秒：每隔多久重新给车下一次命令（默认 3）',
               '车': '谁的车：我、敌，或 阵营 其他 里的一方（写成盟友的，玩家点不了；默认 我）',
               '血量': '每辆车的血量，可按难度写（原版伊贺 7000/5000/3000；默认 500）',
-              '分批': '每辆车在出发后多少秒才开，例如 [0, 50, 110]（默认一起开；原版敖德萨的船一艘接一艘）'}
+              '分批': '每辆车在出发后多少秒才开，例如 [0, 50, 110]（默认一起开；原版敖德萨的船一艘接一艘）',
+              '分批从': '出发（默认）或 继续：写 继续 时出发一起开，停下以后 继续 那一刻起才按 分批 一辆接一辆开'
+                       '（A4 返工：一起开到 2 号广场，最后一程分批走）'}
     EVENTS = {'出发': '车队出发了', '到达 <地点>': '第一辆车开进这个地点', '到终点 <n>': '已有 n 辆车到达终点',
-              '损失 <n>': '已有 n 辆车被毁'}
+              '损失 <n>': '已有 n 辆车被毁', '继续了': '动作 继续 做过了（停下以后又开了）'}
     ACTIONS = {'停下': '车队停在原地', '继续': '车队接着开'}
     TARGET = '最前面那辆还在路上的车'
 
@@ -37,6 +39,12 @@ class Convoy(Device):
         if self.batches and len(self.batches) != len(self.cv.trucks):
             raise PlanError(f'{name}: 分批 gives one time per truck ({len(self.cv.trucks)})')
         self.go = [f'CNV_{c.tag}_Go_{j}' for j in range(1, len(self.cv.trucks) + 1)]
+        self.batch_from = spec.get('分批从', '出发')
+        if self.batch_from not in ('出发', '继续'):
+            raise PlanError(f'{name}: 分批从 {self.batch_from!r} is 出发 or 继续')
+        if self.batch_from == '继续' and not self.batches:
+            raise PlanError(f'{name}: 分批从 继续 without 分批')
+        self.resumed = f'CNV_{c.tag}_Resumed'
         self.halted = f'CNV_{c.tag}_Halted'
         self.holds = [self.halted]                  # flags that keep it parked (停下; hold() adds more)
         self.attacks = 0
@@ -55,13 +63,18 @@ class Convoy(Device):
             return [[('COUNTER', cv.arrived, 3, int(args[0]))]]
         if event == '损失':
             return [[('COUNTER', cv.losses, 3, int(args[0]))]]
+        if event == '继续了':
+            return [[('FLAG', self.resumed, 1)]]
         return super().cond(event, args)
 
     def action(self, what, args):
         if what == '停下':
-            return [('SET_FLAG', self.halted, 1)] + [('NAMED_STOP', t) for t in self.cv.trucks]
+            # 分批从 继续: stopped, the trucks after the first wait for their time after the 继续
+            late = [('SET_FLAG', g, 0) for g, after in zip(self.go, self.batches) if after] \
+                if self.batch_from == '继续' else []
+            return [('SET_FLAG', self.halted, 1)] + late + [('NAMED_STOP', t) for t in self.cv.trucks]
         if what == '继续':
-            return [('SET_FLAG', self.halted, 0)]
+            return [('SET_FLAG', self.halted, 0), ('SET_FLAG', self.resumed, 1)]
         return super().action(what, args)
 
     def hold(self, flag):
@@ -82,6 +95,11 @@ class Convoy(Device):
         import plan
         self.c.when('Convoy go', self.spec['出发'], self.cv.go()[0].do)
         for j, (after, g) in enumerate(zip(self.batches, self.go)):    # 分批: truck j once its time is up
+            if self.batch_from == '继续':                 # all at the departure; in turn after the 继续
+                self.c.when(f'Convoy go {j + 1}', f'{self.name}.出发', [('SET_FLAG', g, 1)])
+                if after:
+                    self.c.when(f'Convoy resume {j + 1}', f'{self.name}.继续了 + {after:g}', [('SET_FLAG', g, 1)])
+                continue
             self.c.when(f'Convoy go {j + 1}', f'{self.name}.出发' + (f' + {after:g}' if after else ''),
                         [('SET_FLAG', g, 1)])
         # the tick runs before the convoy sets off too: what attacks it (a wave the player called early, troops out

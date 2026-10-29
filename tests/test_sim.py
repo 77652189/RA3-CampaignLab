@@ -173,18 +173,19 @@ def test_a_defence_left_alone_is_lost():
     assert sim.simulate('j5', script='不打', until=600).ending[0] == '赢'
 
 
-# A4 played through (the combat untuned): plaza 1 cleared, plaza 2 and 3 frozen, the harbour cleared, both of the
-# north camp's buildings razed at once -- the plan's win, its length and the rework's notes (plans/a4.md)
+# A4 before the rework (missions/a4_before.md) played through (the combat untuned): plaza 1 cleared, plaza 2 and 3
+# frozen, the harbour cleared, both of the north camp's buildings razed at once -- its win, its length and the
+# rework's notes (plans/a4.md)
 A4_WALKTHROUGH = '''0 派 guardian 去 plaza 1; 0 派 riptide 去 plaza 1; 50 造 CNV_A4IceWall 在 inside 2
 85 派 guardian 去 harbour; 85 派 riptide 去 harbour
 165 派 guardian 去 north factory; 165 派 riptide 去 north barracks
 200 造 CNV_A4IceWall 在 inside 3; 210 派 guardian 去 halt; 210 派 riptide 去 halt'''
 
 
-def test_a4_can_be_won():
-    s = sim.simulate('a4', script=A4_WALKTHROUGH, until=600)
+def test_a4_before_the_rework_can_be_won():
+    s = sim.simulate('a4_before', script=A4_WALKTHROUGH, until=600)
     assert s.ending[0] == '赢' and s.ending[1] < 300
-    assert sim.simulate('a4', script='0 派 guardian 去 plaza 1; 0 派 riptide 去 plaza 1', until=600).ending[0] == '输'
+    assert sim.simulate('a4_before', script='0 派 guardian 去 plaza 1; 0 派 riptide 去 plaza 1', until=600).ending[0] == '输'
 
 
 def test_low_ground_does_not_see_high_ground():

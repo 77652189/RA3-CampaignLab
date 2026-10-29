@@ -112,7 +112,9 @@ ALIGN = {
               'target\'s armour percent (a type its armour does not name: 100 %); an attack-mover holds while it '
               'fights, a plain move goes on; nobody chases, no veterancy, no splash, no garrisons, no abilities; '
               'health, damage, range, rate, armour from SageXML (simunits.fight); a script\'s 摧毁 / 自动打掉 '
-              'overrides it, 不打 turns it off -- to be tuned on the bench at the end',
+              'overrides it, 不打 turns it off -- to be tuned on the bench at the end. One rule measured: nobody '
+              'fires at our ice walls unless ordered to (bench 2026-10-28, a4 hold: four tank busters let out '
+              'behind plaza 2\'s ice left the 1500-health wall whole its 30 s; the fight model had it down in 7 s)',
     'high ground': '未对齐: the high-ground rule -- a unit does not see ground HIGH_STEP (40) above its own (aircraft '
                    'see and are seen anyhow); nobody fires at what its side does not see; a bombarder that fired in '
                    'the last FIRE_SEEN s is seen by all; 高地不挡 turns it off. Two statements: the design line\'s '
@@ -386,6 +388,8 @@ class Sim:
         self.auto_kill = next((e[2] for e in self.script if e[1] == '自动打掉'), None)
         self.combat = not any(e[1] == '不打' for e in self.script)
         self.high = not any(e[1] == '高地不挡' for e in self.script)
+        # what nobody shoots unless ordered: our ice walls (units with a lifetime; bench 2026-10-28, a4 hold)
+        self.unshot = {u.id for u in self.mm.units if 'lifetime' in (getattr(u, 'params', None) or {})}
         self.seen = {}                      # this tick: (side, id(body)) -> whether that side sees it
         self.first_death = None             # (t, body, killer): the fight's first death
         self.events = sorted((e for e in self.script if e[0] is not None), key=lambda e: e[0])
@@ -635,6 +639,9 @@ class Sim:
             self.change()
         elif name == 'SET_MILLISECOND_TIMER':
             self.timers[a[0]] = self.t + float(a[1])
+            self.change()
+        elif name == 'SET_RANDOM_MSEC_TIMER':       # [lo, hi] at random (源码): the latest, as the beat sheet counts
+            self.timers[a[0]] = self.t + float(a[2])
             self.change()
         elif name in ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION'):
             p = self.point(a[3])
@@ -959,6 +966,8 @@ class Sim:
                         if d[j] > w['range']:
                             break
                         t = targets[idx[j]]
+                        if t.template in self.unshot:       # our ice: only when ordered (the bench, a4 hold)
+                            continue
                         if self.can_hit(w, t) and self.side_sees(a.owner, t):
                             pick = t
                             break
