@@ -95,6 +95,14 @@ def _route_point(mod, sk, n):
     return None
 
 
+def _border(mod, v):
+    """A 可玩区 value on a real map: the name of one of its BORDERS, or a proposed border [x0, y0, x1, y1] in world
+    units (one the map does not have yet: layer 2 adds it)."""
+    if isinstance(v, list) and len(v) == 4:
+        return tuple(v)
+    return mod.BORDERS.get(v) if isinstance(v, str) else None
+
+
 def _inside(box, border):
     """A box's middle inside a border (both x0, y0, x1, y1)."""
     cx, cy = (box[0] + box[2]) / 2, (box[1] + box[3]) / 2
@@ -129,9 +137,15 @@ def problems(p, where):
     mod = load(sk['地图'])
     if mod is None:
         return out + [f'{where} 示意图/地图: no map module experimental/cnv/maps/{sk["地图"]}.py']
+    x0, y0, x1, y1 = _frame(mod)
     for k, v in zones.items():
-        if v not in mod.BORDERS:
-            out.append(f'{where} 示意图/可玩区/{k}: {v} is not a border of {sk["地图"]} ({"/".join(mod.BORDERS)})')
+        if isinstance(v, list):
+            if not (len(v) == 4 and x0 <= v[0] < v[2] <= x1 and y0 <= v[1] < v[3] <= y1):
+                out.append(f'{where} 示意图/可玩区/{k}: a proposed border is [x0, y0, x1, y1] in world units inside '
+                           f'{_frame(mod)}, got {v}')
+        elif v not in mod.BORDERS:
+            out.append(f'{where} 示意图/可玩区/{k}: {v} is not a border of {sk["地图"]} ({"/".join(mod.BORDERS)}); '
+                       f'a border the map does not have yet is written as [x0, y0, x1, y1] in world units')
     blocks = _blocks(mod)
     for pl in sk.get('地方') or []:
         name = f'{where} 示意图/{pl.get("名")}'
@@ -144,7 +158,7 @@ def problems(p, where):
                 out.append(f'{name}: 点 {n} is not a site of {sk["地图"]}')
         if '块' not in pl and '点' not in pl and not (pl.get('位') and pl.get('大')):
             out.append(f'{name}: on a real map a place needs 块 (a block) or 点 (a site)')
-        box, zone = _world_box(mod, pl), mod.BORDERS.get(zones.get(pl.get('开')))
+        box, zone = _world_box(mod, pl), _border(mod, zones.get(pl.get('开')))
         if box and zone and pl.get('用途') != '远景' and not _inside(box, zone):
             out.append(f'{name}: opens in {pl.get("开")} but lies outside its 可玩区 {zones.get(pl.get("开"))}')
     for n in sk.get('路线') or []:
@@ -179,8 +193,8 @@ def drawn(p):
             pl['大'] = [round(bx - ax, 1), round(by - ay, 1)]
     frames = {}
     for k, v in zones.items():
-        if v in mod.BORDERS:
-            x0, y0, x1, y1 = mod.BORDERS[v]
+        if (b := _border(mod, v)):
+            x0, y0, x1, y1 = b
             (ax, ay), (bx, by) = tf(x0, y1), tf(x1, y0)
             frames[k] = [round(ax, 1), round(ay, 1), round(bx - ax, 1), round(by - ay, 1)]
     sk['可玩区框'] = frames

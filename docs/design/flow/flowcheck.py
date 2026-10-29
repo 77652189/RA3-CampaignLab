@@ -15,8 +15,8 @@ import yaml
 import flowmap
 
 HERE = pathlib.Path(__file__).resolve().parent
-TOP = ('关', '关名', '阵营', '类型', '地点', '新东西', '出场单位', '用到的机制', '一句话', '体验目标', '取舍', '张力',
-       '接上一关', '引出下一关', '简报', '段', '胜利', '失败', '示意图')
+TOP = ('关', '关名', '阵营', '类型', '位置', '基地', '地点', '新东西', '出场单位', '用到的机制', '一句话', '体验目标',
+       '取舍', '张力', '接上一关', '引出下一关', '简报', '段', '胜利', '失败', '示意图')
 TYPES = ('护送', '突击', '基地对抗', '守', '潜入', '海战', '限时', '打自己人')
 GOAL_KINDS = ('主', '奖励')
 # voice-script rules (RA3-ChineseVoice lines/GLOSSARY.md): no digits, no Latin letters, no brackets
@@ -154,6 +154,7 @@ def check(path, speak, retail, units=None, mech=None):
                     out.append(f'{path.name} 出场单位/{side}: {n} is in neither the voice glossary, outline.md '
                                f'section 3 nor the plan glossary')
     out += check_sketch(path, p)
+    out += check_scale(path, p, unlocks())
     if mech is not None:
         for k in p.get('用到的机制') or []:
             if k not in mech:
@@ -169,6 +170,75 @@ def check(path, speak, retail, units=None, mech=None):
 
 USES = ('前线', '支线', '通道', '后方', '远景')
 GRID = (100, 60)
+
+# P31 (principles.md): a level's scale follows its place in its campaign line. The floors are the retail missions'
+# lower quartiles by position (teardowns/data/scale.md): main objectives, waves (segments revealing a main
+# objective), map changes (the 可玩区 changing between segments), turns (waves - 1 + map changes), verbs (distinct
+# 段/动词). A late level gives a base unless it says why not, and combines at least two earlier tools of its line.
+POSITION = {n: pos for pos, ns in (('前期', (1, 2, 3)), ('中期', (4, 5, 6)), ('后期', (7, 8, 9))) for n in ns}
+FLOOR = {'前期': dict(main=3, waves=1, grows=0, turns=0, verbs=2),
+         '中期': dict(main=3, waves=2, grows=1, turns=2, verbs=2),
+         '后期': dict(main=3, waves=2, grows=2, turns=3, verbs=2)}
+MEASURE = {'main': '主目标', 'waves': '段（亮出主目标的段）', 'grows': '地图变化', 'turns': '局面变化',
+           'verbs': '段的动词种数'}
+BASES = ('开局', '中途', '无')
+LINE = {'盟军': 'A', '苏联': 'S', '帝国': 'J'}
+
+
+def unlocks():
+    """{unit or hero: (line letter, level number)} from outline.md section 3, e.g. 纸鹤侦察机 -> ('J', 3)."""
+    out = {}
+    for line in OUTLINE.read_text(encoding='utf-8').splitlines():
+        if line.startswith(('| 盟军 |', '| 苏联 |', '| 帝国 |')):
+            for cell in line.split('|')[2:4]:
+                for w in re.split('、', cell):
+                    m = re.match(r'\s*\**([^*（(]+?)\**\s*[（(]([ASJ])(\d)', w)
+                    if m:
+                        out[m.group(1).strip()] = (m.group(2), int(m.group(3)))
+    return out
+
+
+def scale(p):
+    """The level's measures for P31."""
+    segs = p.get('段') or []
+    zones = (p.get('示意图') or {}).get('可玩区') or {}
+    seq = [str(zones.get(s.get('名'))) for s in segs if s.get('名') in zones]
+    waves = sum(1 for s in segs if any(g.get('种') == '主' for g in s.get('目标') or []))
+    grows = sum(1 for a, b in zip(seq, seq[1:]) if a != b)
+    return dict(main=sum(1 for s in segs for g in s.get('目标') or [] if g.get('种') == '主'), waves=waves,
+                grows=grows, turns=max(waves - 1, 0) + grows,
+                verbs=len({s['动词'] for s in segs if s.get('动词')}))
+
+
+def check_scale(path, p, tools):
+    out, lvl = [], str(p.get('关', ''))
+    m = re.fullmatch(r'([ASJ])(\d)', lvl.upper())
+    if not m:
+        return out
+    pos = POSITION[int(m.group(2))]
+    if p.get('位置') != pos:
+        out.append(f'{path.name}: 位置 is {p.get("位置")}, but {lvl} is {pos} (1-3 前期, 4-6 中期, 7-9 后期)')
+    if p.get('基地') not in BASES:
+        out.append(f'{path.name}: 基地 is one of {"/".join(BASES)}, got {p.get("基地")}')
+    for s in p.get('段') or []:
+        if any(g.get('种') == '主' for g in s.get('目标') or []) and not s.get('动词'):
+            out.append(f'{path.name} 段 {s.get("名")}: a segment with a main objective names its 动词')
+    have = scale(p)
+    for k, floor in FLOOR[pos].items():
+        if have[k] < floor:
+            out.append(f'{path.name}: P31 {pos} needs {MEASURE[k]} >= {floor}, has {have[k]}')
+    if pos == '后期':
+        if p.get('基地') == '无' and not p.get('无基地的理由'):
+            out.append(f'{path.name}: P31 a late level gives a base; without one it says why (无基地的理由)')
+        used = p.get('综合') or []
+        if len(used) < 2:
+            out.append(f'{path.name}: P31 a late level combines at least two earlier tools of its line (综合)')
+        for t in used:
+            u = tools.get(t)
+            if not u or u[0] != m.group(1) or u[1] >= int(m.group(2)):
+                out.append(f'{path.name} 综合: {t} is not a tool an earlier {m.group(1)} level gave (outline.md '
+                           f'section 3)')
+    return out
 
 
 def places(p):
@@ -257,6 +327,10 @@ def main(names):
             print(f'{q.name}: promises mechanics not yet tested (layer 3 tests these first): {", ".join(u)}')
         if u := unframed(q):
             print(f'{q.name}: the minimap frames no place for (look over): {"; ".join(u)}')
+        p = plan_of(q) or {}
+        if p.get('位置') in FLOOR:
+            have, floor = scale(p), FLOOR[p['位置']]
+            print(f'{q.name}: {p["位置"]} scale (P31) ' + ', '.join(f'{MEASURE[k]} {have[k]}/{floor[k]}' for k in floor))
     if units is None:
         print(f'unit names not checked: {VOICE_GLOSSARY} is missing')
     print(f'{len(paths)} flow scripts, {len(problems)} problems')

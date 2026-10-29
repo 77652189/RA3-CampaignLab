@@ -300,10 +300,12 @@ function renderInfo() {
   const tr = (p['取舍'] || []).map(x => `<li>${esc(x)}</li>`).join('');
   document.getElementById('info').innerHTML = `
     <details class="card" ${store.get('flow-info') === 'open' ? 'open' : ''} id="infobox"><summary><b>${esc(p['关'])} · ${esc(p['关名'])}</b>
-      <span style="color:var(--mute)"> · ${esc(p['阵营'])} · ${esc(p['类型'])} · ${esc(p['地点'])}（点开看一句话、体验目标、取舍）</span></summary>
+      <span style="color:var(--mute)"> · ${esc(p['阵营'])} · ${esc(p['类型'])} · ${esc(p['位置'] || '')} · ${esc(p['地点'])}（点开看一句话、体验目标、取舍）</span></summary>
     <div class="meta" style="margin-top:10px">
       <div><b>关</b>${esc(p['关'])} · ${esc(p['关名'])}</div>
       <div><b>阵营 / 类型</b>${esc(p['阵营'])} · ${esc(p['类型'])}</div>
+      <div><b>位置 / 基地</b>${esc(p['位置'] || '—')} · 基地${esc(p['基地'] || '—')}${p['无基地的理由'] ? '（' + esc(p['无基地的理由']) + '）' : ''}</div>
+      ${p['综合'] ? `<div><b>综合用到前面的工具</b>${(p['综合'] || []).map(esc).join('、')}</div>` : ''}
       <div><b>地点</b>${esc(p['地点'])}</div>
       <div><b>新东西</b>${esc(p['新东西'])}</div>
       <div style="grid-column:1/-1"><b>一句话</b>${esc(p['一句话'])}</div>
@@ -475,6 +477,7 @@ function renderSheet() {
       ${p['示意图'] ? `<tr><th>地图</th>${segs.map((sg, i) => `<td class="mapcell">${mapSvg(p, i, placesIn(p, [
         ...(sg['镜头'] || []).map(x => x['看']), ...(sg['事件'] || []).map(x => x['时机']), ...(sg['目标'] || []).map(x => x['题'])]),
         sg['目标'] || [])}</td>`).join('')}</tr>` : ''}
+      ${row('动词', sg => esc(sg['动词'] || ''))}
       ${row('时长', (sg, i) => `${esc(sg['时长'] || '')}<div class="len" style="width:${100 * (lv.minutes[i] || 0) / maxMin}%"></div>`)}
       ${row('台词密度', (sg, i) => { const ls = lines(sg), m = lv.minutes[i];
         return `<div class="dens">${ls.map(k => `<span class="dot" style="background:${who(k).color}" title="${esc(who(k).name)}"></span>`).join('')}</div>
