@@ -244,7 +244,8 @@
   - 敖德萨船血量 60% 就报警、雷达打点，屏幕上一直显示存活数 / 要求数；伊贺冻错一辆假车，它立刻转成敌人开火。
   - 研究所永远只挂一个标记，士兵喊话（"封门"）同时是前方的预告。
   - 伊贺唯一藏起来的是"哪辆是真车"，那正是最后一段的题目。宫古岛靠"拆了电厂他就不跳了"这个看得见的后果教弱点，但完全没有提示，对新手偏难。
-- **出处**：[stalingrad](teardowns/stalingrad.md) [yokohama](teardowns/yokohama.md) [devils-playground](teardowns/devils-playground.md) [odessa](teardowns/odessa.md) [iga](teardowns/iga.md) [facility](teardowns/facility.md) [miyako](teardowns/miyako.md)
+  - **反面**：心灵终结有一关的过场没有预警就消灭了玩家的军队，是玩家批评最多的几处之一（[mental-omega](teardowns/data/mental-omega.md)"批评"）。过场可以拿走玩家的东西，但要先说清、给时间准备，或者让它成为这一段的题目。
+- **出处**：[stalingrad](teardowns/stalingrad.md) [yokohama](teardowns/yokohama.md) [devils-playground](teardowns/devils-playground.md) [odessa](teardowns/odessa.md) [iga](teardowns/iga.md) [facility](teardowns/facility.md) [miyako](teardowns/miyako.md) [mental-omega](teardowns/data/mental-omega.md)
 
 <a id="p11"></a>
 #### P11 失败要说清错在哪
@@ -274,6 +275,7 @@
 
 - **准则**：关中间的每一次过场、每一句关键对话，都同时换掉玩家的工具、目标、对手或地图中的至少一样。只讲故事、不换玩法的转折放到关尾当钩子，或者砍掉。
 - **为什么**：敖德萨"零件运齐"= 护卫被删掉、换成巨人；宫古岛"龙背叛"= 新对手 + 超时空搬家 + 扩到全图，一个过场做五件事；伊贺"慎三必须活捉"= 目标只能冻，"慎三伪装逃跑"= 找车谜题；横滨"基地车从海上来了"= 从守变成攻。研究所的"被抓回去"不改玩法，原版就把它放在胜利判定之后。这和我们已有的共识"剧情服务玩法"是同一件事：剧情给玩法换挡一个理由。
+- **跨关（建议，证据还只有一处）**：关尾的转折也可以改掉下一关玩家手上的东西。心灵终结里苏军将军在一幕结尾被洗脑，下一关他逃出城市、作为英雄单位出现在地图上（[mental-omega](teardowns/data/mental-omega.md)）。我们已经这样用的：A7 把自由号打到迫降，A8 它就归玩家（[campaign.md](campaign.md) 第六节第 4 条）。流程剧本的 `引出下一关` 写明"下一关手上因此多了或少了什么"；有第二个出处以后再升成准则。
 - **出处**：[odessa](teardowns/odessa.md) [miyako](teardowns/miyako.md) [iga](teardowns/iga.md) [yokohama](teardowns/yokohama.md) [stalingrad](teardowns/stalingrad.md) [facility](teardowns/facility.md)
 
 <a id="p17"></a>
@@ -319,6 +321,8 @@
   | 中期 | 3 | 2 | 1 | 2 | 2 | 可以没有 |
   | 后期 | 3 | 2 | 2 | 3 | 2 | 要给，开局给或中途交；不给只限英雄单人关，要写明为什么 |
 
+  这些是**规模的下限，不是难度曲线**：不要求一关比一关大，更不要求一关比一关难。原版的中期和后期在这几项上差不多；心灵终结的开发者说难度起伏是故意的，均匀爬坡会和剧情冲突（[mental-omega](teardowns/data/mental-omega.md)）。难度照 P7 用喘息长度和数字调，可以起伏；下限只管别让后期关缩成小关。
+
   后期关还要把这条线前面给过的工具拿出来**一起考一次**：至少用到前面两样（单位、英雄或机关），而且有一段少了哪一样都过不去。
 
   "突击""护送""守"这些类型只说核心动词，不说规模。后期的突击关也要换动词、长地图、交基地。原版后期的横滨就是突击：英雄开路 → 交基地 → 占点、守倒计时 → 限时拆。
@@ -328,8 +332,9 @@
     - 后期每关地图至少变两次；
     - 有基地的关，前期 13 关里 5 关，中期 14 关里 10 关，后期 13 关里 10 关。后期没有基地的 3 关，是英雄或守点的收官关（盟 7 东京港、起义帝 3 海参崴、百合子 3 大院）。
   - **试玩**：J7 第一版按"突击"写成两段：摸进去拆塔，地图开场就全开，没有基地。用户 2026-10-28："J7以后期关卡的角度来看是不是流程太简单了"。照这张表，它在后期的五项下限里有四项不够。
+  - **玩家的意见**：心灵终结的玩家批评"突击队和护送关太多，后期想要更多建基地的关"（[mental-omega](teardowns/data/mental-omega.md)）。我们面向大众玩家，更该让后期有基地可建；"后期要给基地"就是这一条。
   - 后期"综合考前面的工具"，量不出可靠的数（脚本只看得到给了哪些兵），证据来自横滨的拆解（[yokohama](teardowns/yokohama.md)）：百合子开路、鬼王、纳米蜂巢和基地都在这一关里一起用上。
-- **出处**：[scale](teardowns/data/scale.md) [yokohama](teardowns/yokohama.md)、试玩 2026-10-28
+- **出处**：[scale](teardowns/data/scale.md) [yokohama](teardowns/yokohama.md) [mental-omega](teardowns/data/mental-omega.md)、试玩 2026-10-28
 
 <a id="p7"></a>
 #### P7 张力曲线：高峰在新东西揭示时，喘息在段切换后，结尾最高
