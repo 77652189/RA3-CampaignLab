@@ -49,7 +49,7 @@ def minutes(text):
 def main(names):
     sys.stdout.reconfigure(encoding='utf-8')
     speak, retail = fc.cast()
-    units = fc.unit_names()
+    units, mech = fc.unit_names(), fc.mechanics()
     paths = [fc.HERE / f'{n.lower()}.md' for n in names] if names else sorted(
         q for q in fc.HERE.glob('*.md') if q.name not in ('README.md', 'cast.md'))
     levels = []
@@ -57,7 +57,7 @@ def main(names):
         plan = fc.plan_of(q)
         if not isinstance(plan, dict):
             continue
-        levels.append(dict(id=q.stem.upper(), plan=plan, problems=fc.check(q, speak, retail, units),
+        levels.append(dict(id=q.stem.upper(), plan=plan, problems=fc.check(q, speak, retail, units, mech),
                            minutes=[minutes(s.get('时长')) for s in plan.get('段') or []]))
     data = json.dumps(dict(levels=levels, cast=cast_rows()), ensure_ascii=False, default=str).replace('</', '<\\/')
     OUT.parent.mkdir(parents=True, exist_ok=True)
