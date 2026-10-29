@@ -25,13 +25,36 @@ def test_an_allied_side_and_a_neutral_one():
     m = small()
     sides = next(s for s in m.scripts if s.name == 'CNV ZZ - Sides').do
     ally, post, p1, s1 = m.player('s2'), m.player('s3'), m.player('p1'), m.player('s1')
-    assert ('PLAYER_RELATES_PLAYER', ally, p1, 'Friend') in sides and ('PLAYER_RELATES_PLAYER', p1, ally, 'Friend') in sides
-    assert ('PLAYER_RELATES_PLAYER', ally, s1, 'Enemy') in sides and ('PLAYER_RELATES_PLAYER', s1, ally, 'Enemy') in sides
-    assert ('PLAYER_RELATES_PLAYER', post, p1, 'Neutral') in sides and ('PLAYER_RELATES_PLAYER', s1, post, 'Neutral') in sides
+    rel = plan.relates
+    assert rel(ally, p1, 'Friend') in sides and rel(p1, ally, 'Friend') in sides
+    assert rel(ally, s1, 'Enemy') in sides and rel(s1, ally, 'Enemy') in sides
+    assert rel(post, p1, 'Neutral') in sides and rel(s1, post, 'Neutral') in sides
     assert m.team('s2') == f'{ally}/team{ally}'                   # no team in the map's table: the player's default
     with pytest.raises(plan.PlanError):
         plan.Compiler({'关卡': 'zz', '地图': 'festival', '段': [{'名字': '一'}],
                        '阵营': {'我': '盟军', '敌': '帝国', '其他': {'x': {'阵营': '盟军', '对我': '好朋友'}}}}).compile()
+
+
+def test_a_relation_is_written_with_its_index():
+    """Retail stores a relation as index and name (0 Enemy, 1 Neutral, 2 Friend) and the game reads the index:
+    written by name alone it was 0, every Friend an Enemy (bench 2026-10-28, a4 idle: the player shot the allied
+    convoy). Every PLAYER_RELATES_PLAYER of every plan carries the index of its name, and so does what is encoded."""
+    sys.path.insert(0, str(ROOT / 'experimental' / 'campaign'))
+    import build
+    import mapscript
+    import struct
+    seen = 0
+    for level in plan.levels():
+        m, _, _ = build.resolve(level, '')
+        for s in m.scripts:
+            for a in s.do:
+                if a[0] == 'PLAYER_RELATES_PLAYER':
+                    i, _, name = a[3]
+                    assert plan.RELATION_INDEX[name] == i, (level, s.name, a)
+                    seen += 1
+    assert seen, 'no relation written by any plan: the test checks nothing'
+    raw = mapscript.encode_arg(19, plan.relates('a', 'b', 'Friend')[3])
+    assert struct.unpack_from('<Iif', raw)[:2] == (19, 2) and raw.endswith(b'Friend')
 
 
 def test_the_convoy_is_the_allys_and_sets_off_in_batches():

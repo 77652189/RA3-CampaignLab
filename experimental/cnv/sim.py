@@ -739,8 +739,10 @@ class Sim:
             (s.add if a[2] else s.discard)(a[1])
         elif name == 'ALLOW_DISALLOW_ONE_BUILDING':     # the AI's production is not simulated; the player's 造 is
             (self.banned.discard if a[2] else self.banned.add)((a[0], str(a[1]).lower()))
-        elif name == 'PLAYER_RELATES_PLAYER':
-            self.relations[(a[0], a[1])] = a[2]
+        elif name == 'PLAYER_RELATES_PLAYER':           # (index, 0, name): the game reads the index (plan.relates)
+            r = a[2]
+            self.relations[(a[0], a[1])] = r if isinstance(r, str) else \
+                {0: 'Enemy', 1: 'Neutral', 2: 'Friend'}[r[0]]
         elif name in ('UNIT_AI_TRANSFER_ALL', 'SKIRMISH_AI_MAKE_BASE'):
             self.used.add('ai')
             if a[0] not in self.ai:
