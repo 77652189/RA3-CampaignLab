@@ -125,6 +125,13 @@ button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); 
 .chip { display: inline-block; border-radius: 4px; padding: 0 6px; color: #fff; font-size: 12px; margin-right: 4px; }
 .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--mute); margin: 6px 0 0; }
 .share { display: flex; height: 14px; border-radius: 4px; overflow: hidden; margin: 6px 0; }
+.mm { position: absolute; right: 10px; bottom: 10px; width: 27%; z-index: 3; border: 1px solid rgba(255,255,255,.3);
+  border-radius: 6px; overflow: hidden; }
+.screen.hud .sub { right: 31%; }
+.mini { width: 100%; display: block; border-radius: 8px; background: #0d0f12; }
+.maplegend { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11px; color: var(--mute); margin-top: 6px; }
+.maplegend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 3px; vertical-align: -1px; }
+.sheet td.mapcell { min-width: 220px; }
 </style>
 </head>
 <body>
@@ -184,6 +191,75 @@ function build(p) {
   return S;
 }
 
+// ---- the sketch map (yaml 示意图): place names on a 100x60 grid, the roads, the segment each opens in ----
+const USE = { '前线': '#c0574b', '支线': '#3a7bbf', '通道': '#8c8472', '后方': '#3e8e5e', '远景': '#4a4f56' };
+function placesIn(p, texts) {
+  // the places a piece of text mentions, by name or 又名, longest names first ("三号广场" before "广场")
+  const m = p['示意图'];
+  if (!m) return [];
+  const names = [];
+  (m['地方'] || []).forEach(pl => [pl['名'], ...(pl['又名'] || [])].forEach(n => names.push([String(n), pl['名']])));
+  names.sort((a, b) => b[0].length - a[0].length);
+  const hits = [];
+  texts.filter(Boolean).forEach(t => {
+    let s = String(t);
+    names.forEach(([n, k]) => { if (s.includes(n)) { if (!hits.includes(k)) hits.push(k); s = s.split(n).join('□'); } });
+  });
+  return hits;
+}
+function mapSvg(p, segI, focus, goals, bare) {
+  const m = p['示意图'];
+  if (!m) return '<div class="lbl" style="color:var(--mute);font-size:13px">这一关还没有示意图（剧本 yaml 里的"示意图"）。</div>';
+  const P = {}, segs = p['段'] || [];
+  (m['地方'] || []).forEach(pl => { P[pl['名']] = pl; });
+  const opensAt = pl => { const k = segs.findIndex(s => s['名'] === pl['开']); return k < 0 ? 0 : k; };
+  const isOpen = pl => segI >= 99 || opensAt(pl) <= segI;
+  const c = pl => pl['位'];
+  let s = '<svg viewBox="0 0 100 60" class="mini" xmlns="http://www.w3.org/2000/svg">' +
+    '<defs><pattern id="hatch" width="2" height="2" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">' +
+    '<line x1="0" y1="0" x2="0" y2="2" stroke="#6b7078" stroke-width=".6"/></pattern></defs>';
+  (m['路'] || []).forEach(r => {
+    const a = P[r[0]], b = P[r[1]];
+    if (!a || !b) return;
+    const on = isOpen(a) && isOpen(b);
+    s += `<line x1="${c(a)[0]}" y1="${c(a)[1]}" x2="${c(b)[0]}" y2="${c(b)[1]}" stroke="${on ? '#9a958a' : '#3a3d42'}" stroke-width="${on ? 1.1 : .6}" ${on ? '' : 'stroke-dasharray="1 1"'}/>`;
+  });
+  const route = (m['路线'] || []).map(n => P[n]).filter(Boolean);
+  if (route.length > 1) s += `<polyline points="${route.map(pl => c(pl).join(',')).join(' ')}" fill="none" stroke="#e0b25a" stroke-width=".7" stroke-dasharray="1.6 1" opacity=".9"/>`;
+  Object.values(P).forEach(pl => {
+    const [x, y] = c(pl), [w, h] = pl['大'] || [6, 4], on = isOpen(pl), far = pl['用途'] === '远景';
+    s += `<rect x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" rx="1.2" fill="${far ? 'url(#hatch)' : USE[pl['用途']] || '#777'}" opacity="${on ? .9 : .13}" stroke="${on ? 'rgba(255,255,255,.35)' : 'rgba(255,255,255,.12)'}" stroke-width=".3"/>`;
+    s += `<text x="${x}" y="${y + 1}" font-size="2.5" text-anchor="middle" fill="#f1eee7" opacity="${on ? 1 : .35}">${esc(pl['名'])}</text>`;
+  });
+  (goals || []).forEach((g, gi) => placesIn(p, [g['题']]).forEach(n => {
+    const pl = P[n]; if (!pl) return;
+    const [x, y] = c(pl), [w, h] = pl['大'] || [6, 4], main = g['种'] === '主', locked = !!g['亮出'];
+    const gx = x + w / 2 - 1.2, gy = y - h / 2 + 1.2;
+    s += `<path d="M${gx} ${gy - 1.6} L${gx + 1.6} ${gy} L${gx} ${gy + 1.6} L${gx - 1.6} ${gy} Z" fill="${locked ? 'none' : main ? '#e0b25a' : '#6aa5e0'}" stroke="${main ? '#e0b25a' : '#6aa5e0'}" stroke-width=".5"/>`;
+  }));
+  focus.forEach(n => {
+    const pl = P[n]; if (!pl) return;
+    const [x, y] = c(pl), [w, h] = pl['大'] || [6, 4];
+    s += `<rect x="${x - w / 2 - 1}" y="${y - h / 2 - 1}" width="${w + 2}" height="${h + 2}" rx="1.6" fill="none" stroke="#ffd34d" stroke-width=".7"/>`;
+  });
+  s += '</svg>';
+  if (bare) return s;
+  const used = [...new Set(Object.values(P).map(pl => pl['用途']))];
+  return s + `<div class="maplegend">${used.map(u => `<span><i style="background:${USE[u] || '#777'}"></i>${esc(u)}</span>`).join('')}
+    <span><i style="background:none;border:1px solid #ffd34d"></i>此刻提到的地方</span><span>◆ 主目标 ◇ 还没亮的奖励</span>
+    <span><i style="background:none;border-top:2px dashed #e0b25a;height:0;border-radius:0"></i>路线</span><span>暗的 = 还走不到</span></div>`;
+}
+function focusOf(p, s) {
+  const segs = p['段'] || [], seg = segs[s.seg];
+  let f = [];
+  if (s.kind === 'goals') f = placesIn(p, seg['目标'].map(g => g['题']));
+  else if (s.kind === 'end') f = placesIn(p, [s.line]);
+  else if (s.cine) f = placesIn(p, [s.shot]);
+  else if (s.trigger) f = placesIn(p, [s.trigger, s.text]);
+  if (!f.length && (s.kind === 'line' || s.kind === 'brief')) f = placesIn(p, [s.line]);
+  return f;
+}
+
 function goalsAt(p, i) {
   // the objectives on screen at step i: the latest segment (up to this one) whose objectives were shown already
   const segs = p['段'] || [], s = steps[i];
@@ -241,7 +317,7 @@ function renderPlay() {
         </div>
         <div class="legend">←/→ 键逐句；自动播放按原版一句台词约 3.5 秒。镜头带黑边，游戏中是网格底；左上角是这句台词什么时候说。</div>
       </div>
-      <div class="card side" id="side"></div>
+      <div><div class="card" id="minicard"></div><div class="card side" id="side"></div></div>
     </div>`;
   document.getElementById('prev').onclick = () => go(at - 1);
   document.getElementById('next').onclick = () => go(at + 1);
@@ -272,7 +348,8 @@ function draw() {
   const lv = DATA.levels[L], p = lv.plan, segs = p['段'] || [], s = steps[at];
   const sc = document.getElementById('screen');
   if (!sc) return;
-  sc.className = 'screen' + (s.cine ? ' cine' : '');
+  const hud = !s.cine && p['示意图'] && s.seg >= 0 && s.seg < 99 && s.kind !== 'title';
+  sc.className = 'screen' + (s.cine ? ' cine' : '') + (hud ? ' hud' : '');
   let h = '<div class="field"></div><div class="bar top"></div><div class="bar bottom"></div>';
   const seg = segs[s.seg];
   if (seg && s.kind !== 'title') h += `<div class="hud-seg">第 ${s.seg + 1} 段 · ${esc(seg['名'])}</div>`;
@@ -309,6 +386,7 @@ function draw() {
     const w = who(s.who);
     h += `<div class="sub">${face(s.who)}<div><div class="who">${esc(w.name)}</div><div class="txt">${esc(s.line)}</div></div></div>`;
   }
+  if (hud) h += `<div class="mm">${mapSvg(p, s.seg, focusOf(p, s), G ? G.goals : [], true)}</div>`;
   sc.innerHTML = h;
   const bf = sc.querySelector('.brief'), bc = bf && bf.querySelector('.cur');
   if (bc) bf.scrollTop = bc.offsetTop - bf.clientHeight / 2;
@@ -320,6 +398,9 @@ function draw() {
     const pbar = d.querySelector('.p');
     if (pbar && mine.length) pbar.style.width = cur ? `${100 * (mine.findIndex(([, i]) => i === at) + 1) / mine.length}%` : '0';
   });
+  const mc = document.getElementById('minicard');
+  if (mc) mc.innerHTML = `<h3 style="margin:0 0 6px;font-size:14px">玩家此刻的地图</h3>` +
+    mapSvg(p, Math.max(s.seg, 0), focusOf(p, s), G ? G.goals : []);
   drawSide(p, s);
 }
 
@@ -370,6 +451,9 @@ function renderSheet() {
     <div class="card sheet"><table>
       <thead><tr><th></th>${segs.map((sg, i) => `<td>第 ${i + 1} 段 · ${esc(sg['名'])}</td>`).join('')}</tr></thead>
       <tbody>
+      ${p['示意图'] ? `<tr><th>地图</th>${segs.map((sg, i) => `<td class="mapcell">${mapSvg(p, i, placesIn(p, [
+        ...(sg['镜头'] || []).map(x => x['看']), ...(sg['事件'] || []).map(x => x['时机']), ...(sg['目标'] || []).map(x => x['题'])]),
+        sg['目标'] || [])}</td>`).join('')}</tr>` : ''}
       ${row('时长', (sg, i) => `${esc(sg['时长'] || '')}<div class="len" style="width:${100 * (lv.minutes[i] || 0) / maxMin}%"></div>`)}
       ${row('台词密度', (sg, i) => { const ls = lines(sg), m = lv.minutes[i];
         return `<div class="dens">${ls.map(k => `<span class="dot" style="background:${who(k).color}" title="${esc(who(k).name)}"></span>`).join('')}</div>
