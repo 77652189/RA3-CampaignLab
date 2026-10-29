@@ -326,8 +326,8 @@ class Ground:
         m, cost = self.cache[key]
         if not np.isfinite(cost[a]):
             return None
-        cells = m.traceback(a)[::-1]
-        pts = [self.world(c) for c in cells[::-1]]
+        cells = m.traceback(a)[::-1]                # traceback runs from the goal (the costs' source) to a
+        pts = [self.world(c) for c in cells]
         return pts[1::3] + [q] if len(pts) > 3 else [q]
 
 

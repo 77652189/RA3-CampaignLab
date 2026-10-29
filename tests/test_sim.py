@@ -53,6 +53,19 @@ def test_a_unit_walks_the_map_at_its_speed():
     assert s.ending[0] == '赢' and straight / 50 - 3 <= s.ending[1] <= 1.6 * straight / 50
 
 
+def test_a_route_runs_from_where_the_unit_stands():
+    """The route from the start to the west field begins at the start and is not much longer than the straight line
+    (the first simulator reversed it twice: a unit went straight at its goal, walked the route back to where it set
+    out, then went straight at the goal again -- A4's harbour guard 2026-10-28; the walk test above wins on the first
+    leg)."""
+    a, b = festival.SITES['start'], festival.SITES['west field']
+    path = sim.Ground(festival).route('ground', (a.x, a.y), (b.x, b.y))
+    d = lambda p, q: ((p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2) ** 0.5           # noqa: E731
+    walk = sum(d(p, q) for p, q in zip([(a.x, a.y)] + path, path))
+    assert d(path[0], (a.x, a.y)) < d(path[0], (b.x, b.y)) and path[-1] == (b.x, b.y)
+    assert walk <= 1.6 * d((a.x, a.y), (b.x, b.y))
+
+
 def test_the_players_script_destroys_and_the_level_is_lost():
     m = mission([Script('lose', [('NAMED_DESTROYED', 'UNIT - T Truck')], [LOST])], ['lose'])
     m.put('AlliedAntiVehicleVehicleTech1', 'start', role='truck', name='UNIT - T Truck')
@@ -173,12 +186,14 @@ def test_a_defence_left_alone_is_lost():
     assert sim.simulate('j5', script='不打', until=600).ending[0] == '赢'
 
 
-# A4 before the rework (missions/a4_before.md) played through (the combat untuned): plaza 1 cleared, plaza 2 and 3
-# frozen, the harbour cleared, both of the north camp's buildings razed at once -- its win, its length and the
-# rework's notes (plans/a4.md)
-A4_WALKTHROUGH = '''0 派 guardian 去 plaza 1; 0 派 riptide 去 plaza 1; 50 造 CNV_A4IceWall 在 inside 2
+# A4 before the rework (missions/a4_before.md) played through, its wiring: plaza 1 cleared, plaza 2 and 3 frozen, the
+# harbour cleared, both of the north camp's buildings razed at once -- its win, its length and the rework's notes
+# (plans/a4.md). The fight off, what the player meets fought off (自动打掉), the buildings razed by the script: with the
+# fight on it won only while routes ran backwards; with them right the untuned fight loses it (4:33)
+A4_WALKTHROUGH = '''不打; 自动打掉 5
+0 派 guardian 去 plaza 1; 0 派 riptide 去 plaza 1; 50 造 CNV_A4IceWall 在 inside 2
 85 派 guardian 去 harbour; 85 派 riptide 去 harbour
-165 派 guardian 去 north factory; 165 派 riptide 去 north barracks
+165 派 guardian 去 north factory; 165 派 riptide 去 north barracks; 180 摧毁 north factory; 180 摧毁 north barracks
 200 造 CNV_A4IceWall 在 inside 3; 210 派 guardian 去 halt; 210 派 riptide 去 halt'''
 
 
