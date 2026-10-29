@@ -70,6 +70,7 @@
 | [zero-hour](teardowns/zero-hour.md) | 星际 2 自由之翼 零点 | 守点 + 限时 | S6、J5 |
 | [devils-playground](teardowns/devils-playground.md) | 星际 2 自由之翼 魔鬼的游乐场 | 机关式（环境周期） | A3、J2、S8、A8 |
 | [layout](teardowns/layout.md) | **全部 40 张原版战役图** + 我们 11 关 | 空间布局：出生点、可玩区、目标方向、路线、奖励摆放 | 全部 |
+| [telling](teardowns/telling.md) | **全部 40 张原版战役图** | 怎么告诉玩家现在该做什么：简报、开场、谁说话、目标原文、提醒、反派、胜负台词，各用了多少、多长；流程剧本模板的证据 | 第 1 层 |
 | [terrain](teardowns/terrain.md) | **全部 40 张原版战役图** + 我们 11 关 | 地形复杂度（层、坡道、水、驻军楼、墙、隘口、俯瞰）和地图利用率（按阶段，只算走得到的地面）；末尾是给关卡线的生成器缺口 | 全部 |
 
 布局卡的原始测量在 [teardowns/data/layout.md](teardowns/data/layout.md)（每关一行），由 [layout_measure.py](teardowns/data/layout_measure.py)（只读原版存档和 Mods 里我们编好的地图）和 [layout_table.py](teardowns/data/layout_table.py) 生成，改了地图可以重跑。玩家视角的时间线（每个时刻玩家看见什么）在 [teardowns/data/timeline.md](teardowns/data/timeline.md)，由 [timeline_measure.py](teardowns/data/timeline_measure.py) 生成，验收表在它开头。地形和利用率在 [teardowns/data/terrain.md](teardowns/data/terrain.md)，由 [terrain_measure.py](teardowns/data/terrain_measure.py) 生成（每张约 1 秒，`TERRAIN_PNG=<文件夹>` 出核对用的图）。玩家能不能造飞机、敌方据点有没有防空在 [teardowns/data/air.md](teardowns/data/air.md)，由 [air_measure.py](teardowns/data/air_measure.py) 生成。每段的敌军构成和玩家手里的克制在 [teardowns/data/units.md](teardowns/data/units.md)，由 [units_measure.py](teardowns/data/units_measure.py) 生成。

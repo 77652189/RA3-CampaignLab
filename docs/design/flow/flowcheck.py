@@ -19,6 +19,9 @@ TYPES = ('护送', '突击', '基地对抗', '守', '潜入', '海战', '限时'
 GOAL_KINDS = ('主', '奖励')
 # voice-script rules (RA3-ChineseVoice lines/GLOSSARY.md): no digits, no Latin letters, no brackets
 BAD_IN_LINE = re.compile(r'[0-9A-Za-z()（）\[\]【】]')
+# a retail line is 3.5 s, ~16 characters of the official Chinese; 30 is the 90th percentile (teardowns/telling.md)
+MAX_LINE = 30
+PUNCT = re.compile(r'[\s，。！？、；：…—“”‘’"\'.,!?]')
 
 
 def cast():
@@ -114,6 +117,8 @@ def check(path, speak, retail, units=None):
             out.append(f'{where}: empty line')
         elif BAD_IN_LINE.search(text):
             out.append(f'{where}: digits, Latin letters or brackets in a voice line: {text}')
+        elif len(PUNCT.sub('', text)) > MAX_LINE:
+            out.append(f'{where}: {len(PUNCT.sub("", text))} characters, over {MAX_LINE} (README rule 10): {text}')
     if units is not None:
         for side, names in (p.get('出场单位') or {}).items():
             for n in names or []:
