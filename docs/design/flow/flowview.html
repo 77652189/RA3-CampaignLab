@@ -145,6 +145,7 @@ button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); 
 .rv table { border-collapse: collapse; width: 100%; font-size: 13px; }
 .rv td, .rv th { border-top: 1px solid var(--line); padding: 6px 8px; vertical-align: top; text-align: left; }
 .rv th { color: var(--mute); font-weight: normal; white-space: nowrap; }
+.rv td > b:only-child { white-space: nowrap; }
 .wrapx { overflow-x: auto; }
 .arc { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
 .arc .col { flex: 1 0 130px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font-size: 12px; }
@@ -518,6 +519,7 @@ function renderSheet() {
         ...(sg['镜头'] || []).map(x => x['看']), ...(sg['事件'] || []).map(x => x['时机']), ...(sg['目标'] || []).map(x => x['题'])]),
         sg['目标'] || [], false, ((lv.empty || {})[sg['名']] || {})['格'])}</td>`).join('')}</tr>` : ''}
       ${row('动词', sg => esc(sg['动词'] || ''))}
+      ${row('敌军', sg => typeof sg['敌军'] === 'string' ? esc(sg['敌军']) : cell(sg['敌军'], e => `<div class="item"><b>${esc(e['兵'])}</b><div class="tr">${esc(e['怎么来'])}</div><div style="font-size:12px">克制：${esc(e['克制'])}</div></div>`, '没写'))}
       ${row('时长', (sg, i) => `${esc(sg['时长'] || '')}<div class="len" style="width:${100 * (lv.minutes[i] || 0) / maxMin}%"></div>`)}
       ${row('台词密度', (sg, i) => { const ls = lines(sg), m = lv.minutes[i];
         return `<div class="dens">${ls.map(k => `<span class="dot" style="background:${who(k).color}" title="${esc(who(k).name)}"></span>`).join('')}</div>
@@ -588,6 +590,10 @@ function renderReview() {
   const ways = (p['解法'] || []).map(w => `<tr><th>${esc(w['段'])}</th><td><b>${esc(w['打法'])}</b></td><td>${esc(w['提示'])}</td></tr>`).join('');
   const c3 = `<div class="card">${head(...POINTS[2])}
     <div class="meta"><div><b>开局手上</b>${esc(st0['手上'])}</div><div><b>敌方压力</b>${esc(st0['敌方'])}</div></div>
+    <h3 style="font-size:14px;margin:12px 0 6px">每段的敌军和克制（P29：不能让一种兵打完一段）</h3>
+    <div class="wrapx"><table><tr><th>段</th><th>兵</th><th>怎么来</th><th>玩家拿什么克制</th></tr>${segs.filter(s => s['动词']).map(s => typeof s['敌军'] === 'string'
+      ? `<tr><th>${esc(s['名'])}</th><td colspan="3">${esc(s['敌军'])}</td></tr>`
+      : (s['敌军'] || []).map((e, i) => `<tr>${i ? '<th></th>' : `<th>${esc(s['名'])}</th>`}<td><b>${esc(e['兵'])}</b></td><td>${esc(e['怎么来'])}</td><td>${esc(e['克制'])}</td></tr>`).join('') || `<tr><th>${esc(s['名'])}</th><td colspan="3" class="bad">（没写）</td></tr>`).join('')}</table></div>
     <h3 style="font-size:14px;margin:12px 0 6px">解法（${(p['解法'] || []).length} 种）</h3>
     <div class="wrapx"><table><tr><th>段</th><th>打法</th><th>游戏里怎么提示</th></tr>${ways}</table></div>
     <h3 style="font-size:14px;margin:12px 0 6px">奖励目标和回报</h3>

@@ -179,6 +179,7 @@ REVIEW_KEYS = {'故事': 1, '人物': 1, '开局': 3, '解法': 3, '平推会怎
 TURNS_LEAST = 3                 # 故事/起伏: at least this many turns, both 顺 and 逆 among them
 LINES_FOR_ROLE = 3              # a speaker with this many lines in the level gets an entry in 人物
 WAYS_LEAST = 2                  # 解法: at least two ways through
+ARMY_KINDS = 2                  # 段/敌军: at least two kinds of enemy, and two different counters (P29)
 EMPTY_LAST = 0.15               # the last segment: its largest empty patch, of the ground it lets the player reach
 BACKUP_MECH = '兵少补援'          # the mechanic a 保底 promises (mechanics.md)
 
@@ -261,6 +262,26 @@ def check_review(path, p, cast_keys, mech):
             out.append(f'{n} 解法/{w.get("打法")}: missing {k}{REVIEW[3]}')
         if _seg_index(p, w.get('段')) is None:
             out.append(f'{n} 解法/{w.get("打法")}: 段 {w.get("段")} is not a segment of this level{REVIEW[3]}')
+
+    foes = set((p.get('出场单位') or {}).get('敌') or [])
+    for s in p.get('段') or []:
+        if not s.get('动词'):
+            continue
+        name = f'{n} 段 {s.get("名")} 敌军'
+        army = s.get('敌军')
+        if isinstance(army, str) and army.startswith('无'):
+            continue                    # a breather: 无：why
+        if not isinstance(army, list) or not army:
+            out.append(f'{name}: a playable segment says who it fights (P29), or 无：why{REVIEW[3]}')
+            continue
+        for e in army:
+            for k in _missing(e, ('兵', '怎么来', '克制')):
+                out.append(f'{name}/{e.get("兵")}: missing {k}{REVIEW[3]}')
+            if e.get('兵') and e['兵'] not in foes:
+                out.append(f'{name}/{e["兵"]}: not in 出场单位/敌{REVIEW[3]}')
+        if len({e.get('兵') for e in army}) < ARMY_KINDS or len({e.get('克制') for e in army}) < ARMY_KINDS:
+            out.append(f'{name}: at least {ARMY_KINDS} kinds of enemy, answered by at least {ARMY_KINDS} different '
+                       f'counters -- one kind of unit must not clear the segment (P29){REVIEW[3]}')
 
     backups = {b.get('名'): b for b in p.get('保底') or []}
     for s in p.get('意外') or []:

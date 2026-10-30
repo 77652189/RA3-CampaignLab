@@ -293,7 +293,7 @@
   - 原版：帝国第 5 关深海，目标 1 没完成且玩家单位少于 3 个，就刷一队增援、只送一次；布莱顿海滩玩家步兵少时，下一波前多给一分钟；伊贺、直布罗陀按进度给援军；斯大林格勒、敖德萨的盟友全灭时把东西转给玩家（[retail-review](teardowns/data/retail-review.md) 第 2 节）。
   - 心灵终结的增援多挂在进度上：零信号每夺回一座雷达空投一队（[mental-omega-missions](teardowns/data/mental-omega-missions.md) 第 3 节）。原作最高难度删掉了这些，我们面向大众玩家，默认保留。
   - 用户 2026-10-29 的五条审核标准第 5 条："在玩家可能坏档的位置，检测到玩家兵力不足的时候在合适位置提供援军，避免玩家需要SL 通关"。
-  - 引擎：脚本能数玩家的兵（原版用了 628 处），但我们的编译器还没有"少于若干个"的写法，机制表记作待验证（[flow/mechanics.md](flow/mechanics.md)"兵少补援"）。
+  - 引擎：脚本能数玩家的兵（原版用了 628 处）。深海那种"全部单位"清单我们用不了；关卡线 2026-10-29 改成把玩家几种作战兵按模板各数一遍再加起来，测试台确认只数玩家自己的、打死的下一次就不算（[flow/mechanics.md](flow/mechanics.md)"兵少补援"，已确认）。所以保底的条件要写"哪几种兵加起来少于若干个"。
 - **出处**：[retail-review](teardowns/data/retail-review.md) [mental-omega-missions](teardowns/data/mental-omega-missions.md)
 
 <a id="p21"></a>
