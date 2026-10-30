@@ -51,6 +51,28 @@ def test_a_sixty_second_ice_window_is_longer_than_the_lake_unless_the_lake_is_hu
     assert s1['window_reach']['镰刀机甲'] > s1['map_width']
 
 
+def test_a4_card_a_third_version_grinds_the_escort_in_two_waves():
+    """A4 甲 recheck: at 1050 a street a wave, the card's own trick (three groups a horn, in a column) leaves the escort
+    ~60 % after one horn and wipes it in the second, before the planned top-up after the third; at 900 it takes a
+    top-up every second horn (or one wall a horn); the lump keeps ~90 %, thirds are ground to nothing."""
+    w = facts()['a4_waves']
+    assert w['waves_three'][1] == 2 and 0.5 < w['waves_three'][0][0] < 0.7
+    assert w['waves_two'][1] == 3
+    assert w['waves_three_900'][1] == 3 and w['waves_three_900_twice'][1] is None and w['waves_two_900'][1] is None
+    assert w['max_scale_three'] < 900 / w['group_cost'] < w['max_scale_two']
+    assert w['whole_left'] > 0.8 and w['third_left'] < 0.05
+
+
+def test_j7_card_a_the_counter_must_be_about_three_times_the_army_under_the_tower():
+    """J7 甲 recheck: the best Empire army waiting under the tower eats a counterattack up to ~3x its own cost when the
+    three routes come at once, ~4x when the first route comes 15 s ahead; later gaps add nothing (the first route is
+    eaten in 15 s), so the card's 15 s a jammer is enough."""
+    c = facts()['j7_counter']
+    for rname in ('步兵多', '机甲多'):
+        same, early, late = (c[(rname, t)]['ratio'] for t in ('同时到', '先一路，另两路晚 15 秒', '先一路，另两路晚 45 秒'))
+        assert 2.5 < same < 3.5 and early > 1.2 * same and abs(late - early) < 0.15 * early
+
+
 def test_the_jammer_costs_seconds_not_multiples_and_v4_outranges_the_empire():
     """J7 甲: an aura of 250 slows a full pass by 10-15 s only; 乙: V4's 500 is far over every Empire gun."""
     j = facts()['j7']

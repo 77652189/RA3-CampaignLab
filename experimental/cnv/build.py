@@ -140,6 +140,7 @@ MISSIONS = {
     'jammer_air': (lambda: jammer_bench.mission(name='CampJamAir', mech='SovietAntiGroundAircraft'),
                    {'jam': check_jam.jam_air, 'free': check_jam.free}),
     'thin_ice': (lambda: mech_bench.thin_ice(), {'thin': check_mech.thin}),
+    'thin_unnamed': (lambda: mech_bench.thin_unnamed(), {'kind': check_mech.thin_unnamed}),
     'shown': (lambda: mech_bench.shown(), {'shown': check_mech.shown, 'bar': check_mech.bar}),
     'jammer_jet':(lambda: jammer_bench.mission(name='CampJamJet', mech='SovietFighterAircraft'),
                    {'jam': check_jam.jam_air, 'free': check_jam.free}),

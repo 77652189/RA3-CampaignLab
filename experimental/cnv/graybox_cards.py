@@ -164,10 +164,90 @@ def j7_valleys(s, body):
     return dict(aura_extra=out, ranges=far, v4_range=v4, shield_sequential=seq, shield_together=par)
 
 
+A4_ESCORT = {('守护者坦克', '盟军'): 3, ('维和步兵', '盟军'): 4, ('标枪兵', '盟军'): 2}
+A4_GROUP = {('帝国武士', '帝国'): 3.0, ('坦克杀手', '帝国'): 2.0}      # card 甲, third version: one street's wave, 1050
+
+
+def a4_run(body, per_wave, scale, resupply=(3,), waves=5):
+    """A4 甲, section 1: the escort (no base, no repair) eats `per_wave` street groups one after another each horn
+    (a column: the walls' detours come >= 10 s apart and a group dies in ~3 s), and is topped up to full strength
+    after the waves in `resupply`. Returns (the escort's share left after each wave it survived, the wave that wiped
+    it out or None)."""
+    escort = {T(*k): n for k, n in A4_ESCORT.items()}
+    group = {T(*k): n * scale for k, n in A4_GROUP.items()}
+    start, left, shares = sum(escort.values()), dict(escort), []
+    for w in range(1, waves + 1):
+        for _ in range(per_wave[(w - 1) % len(per_wave)]):
+            left, rest, _ = graybox.fluid(body, left, group)
+            if sum(rest.values()) >= 0.05 or sum(left.values()) < 0.05:
+                return shares, w
+        shares.append(sum(left.values()) / start)
+        if w in resupply:
+            left = dict(escort)
+    return shares, None
+
+
+def a4_waves(s, body):
+    """A4 甲: does the card's own trick (walls turn three streets into one, so the escort eats three groups a horn)
+    also grind the escort down over the ~5 horns of section 1? Per wave the escort fights 3 groups (both walls
+    used: all three streets into one) or 2 (one wall: the frozen street's group joins an open one, the third
+    street's group goes for the trucks, see the card's 取舍)."""
+    def survives(per_wave, resupply=(3,)):
+        return lambda m: a4_run(body, per_wave, m, resupply)[1] is None
+    one, third = {T(*k): n for k, n in A4_ESCORT.items()}, {T(*k): n / 3 for k, n in A4_ESCORT.items()}
+    group = {T(*k): n for k, n in A4_GROUP.items()}
+    whole, _, secs = graybox.fluid(body, one, group)
+    part, _, secs3 = graybox.fluid(body, third, group)
+    cut = 900 / cost_of(group)
+    truck = body('CNV_ConvoyTruck')
+    fire = sum(offline.dps(body.s, body(t), truck) * n for t, n in group.items())
+    return dict(group_cost=cost_of(group), truck_seconds=truck.max_hp / fire,
+                waves_three=a4_run(body, (3,), 1.0), waves_two=a4_run(body, (2,), 1.0),
+                waves_three_900=a4_run(body, (3,), cut), waves_two_900=a4_run(body, (2,), cut),
+                waves_three_900_twice=a4_run(body, (3,), cut, resupply=(2, 4)),
+                max_scale_three=biggest(survives((3,))), max_scale_two=biggest(survives((2,))),
+                max_scale_alternating=biggest(survives((3, 2))),
+                whole_left=sum(whole.values()) / sum(one.values()), whole_secs=secs,
+                third_left=sum(part.values()) / sum(third.values()), third_secs=secs3)
+
+
+J7_ROUTES = {'步兵多': {('动员兵', '苏联'): 10, ('铁锤坦克', '苏联'): 1, ('天启坦克', '苏联'): 0.5},
+             '机甲多': {('动员兵', '苏联'): 4, ('铁锤坦克', '苏联'): 2, ('天启坦克', '苏联'): 1}}
+J7_ARMIES = {'武士+杀手': {('帝国武士', '帝国'): 0.5, ('坦克杀手', '帝国'): 0.5}, '杀手': {('坦克杀手', '帝国'): 1.0},
+             '海啸': {('海啸坦克', '帝国'): 1.0}, '天狗+海啸': {('天狗机甲', '帝国'): 0.5, ('海啸坦克', '帝国'): 0.5},
+             '武士+海啸': {('帝国武士', '帝国'): 0.5, ('海啸坦克', '帝国'): 0.5}}
+J7_TIMINGS = {'同时到': (0, 0, 0), '先一路，另两路晚 15 秒': (0, 15, 15), '三路各差 15 秒': (0, 15, 30),
+              '先一路，另两路晚 45 秒': (0, 45, 45)}
+
+
+def j7_counter(s, body, army_cost=10000.0):
+    """J7 甲: how big must the last counterattack be (three routes, as the card's jammers leave them) for an army
+    waiting under the tower to be unable to eat it? An army of cost `army_cost` of the best Empire mix (the player
+    picks) meets three equal routes arriving `timing` seconds apart; the largest counterattack (total cost, as a
+    multiple of the army's) it still beats with half left, per route mix and timing, and which army it was."""
+    out = {}
+    for rname, route in J7_ROUTES.items():
+        unit = {T(*k): n for k, n in route.items()}
+        for tname, times in J7_TIMINGS.items():
+            best = (0.0, None)
+            for aname, mix in J7_ARMIES.items():
+                army = {T(*k): army_cost * f / (offline.cost(T(*k)) or 500) for k, f in mix.items()}
+
+                def holds(m):
+                    g = {t: n * m for t, n in unit.items()}
+                    a, b, _ = graybox.fluid(body, army, g, later=[(at, g) for at in times[1:]])
+                    return sum(b.values()) < 0.05 and sum(a.values()) / sum(army.values()) >= graybox.HALF
+                m = biggest(holds, lo=0.01, hi=64.0)
+                if m and m > best[0]:
+                    best = (m, aname)
+            out[(rname, tname)] = dict(ratio=3 * best[0] * cost_of(unit) / army_cost, army=best[1])
+    return out
+
+
 def facts():
     s, body = world()
     return dict(a4_streets=a4_streets(s, body), a4_types=a4_street_types(s, body), a4_plaza=a4_plaza(s, body), a4_cold=a4_cold(s, body),
-                s1=s1_lake(s, body), j7=j7_valleys(s, body))
+                s1=s1_lake(s, body), j7=j7_valleys(s, body), a4_waves=a4_waves(s, body), j7_counter=j7_counter(s, body))
 
 
 def lines(f):
@@ -189,7 +269,30 @@ def lines(f):
         'J7 干扰车光环（半径 250）整个穿过多花：' + '，'.join(f'{k} {v["extra"]:.1f} 秒（速度 {v["speed"]:g}）' for k, v in j['aura_extra'].items()),
         'J7 帝国直射武器最大射程：' + '，'.join(f'{k} {v:g}' for k, v in j['ranges'].items()) + f'；V4 火箭车 {j["v4_range"]:g}',
         f'J7丙 护盾：一座座拆要 {j["shield_sequential"]:g} 座的血，一起拆 {j["shield_together"]:g}，比 {j["shield_sequential"] / j["shield_together"]:.2f}',
+    ] + recheck_lines(f)
+
+
+def shares(r):
+    left, died = r
+    return '、'.join(f'{x:.0%}' for x in left) + (f'，第 {died} 波磨光' if died else '，五波都撑住')
+
+
+def recheck_lines(f):
+    w, c = f['a4_waves'], f['j7_counter']
+    g = w['group_cost']
+    out = [
+        f'A4甲复算 每街一组 {g:g}：整队护卫打一条街 {w["whole_secs"]:.1f} 秒、剩 {w["whole_left"]:.0%}；分三份各打一组 '
+        f'{w["third_secs"]:.1f} 秒、剩 {w["third_left"]:.0%}（磨光）；一组打死一辆车 {w["truck_seconds"]:.1f} 秒',
+        f'A4甲复算 巧解每波吃三组（两墙全并）：护卫每波后剩 {shares(w["waves_three"])}；每波吃两组（一墙）：{shares(w["waves_two"])}',
+        f'A4甲复算 每街降到 900：每波三组 {shares(w["waves_three_900"])}；每波两组 {shares(w["waves_two_900"])}；'
+        f'每波三组、第 2、4 波后各补一次 {shares(w["waves_three_900_twice"])}',
+        f'A4甲复算 第 3 波后补一次时，护卫撑满五波的最大一组：每波三组 {w["max_scale_three"] * g:.0f}，每波两组 '
+        f'{w["max_scale_two"] * g:.0f}，三两交替 {w["max_scale_alternating"] * g:.0f}',
     ]
+    for rname in J7_ROUTES:
+        out.append(f'J7甲复算 反扑（{rname}）总造价是塔下大军造价的几倍时，大军刚好还能赢（剩一半）：' + '；'.join(
+            f'{t} {c[(rname, t)]["ratio"]:.1f}（{c[(rname, t)]["army"]}）' for t in J7_TIMINGS))
+    return out
 
 
 def main():

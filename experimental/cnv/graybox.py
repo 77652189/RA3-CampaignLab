@@ -50,14 +50,24 @@ class Bodies:
         return any(w['dps'] for w in self(template).weapons)
 
 
-def fluid(body, mine, theirs):
+def fluid(body, mine, theirs, later=()):
     """Fluid heterogeneous Lanchester, `mine` {template: n} against `theirs`; returns (what is left of each,
-    seconds). A side's fire goes to the enemy types it can hit, in proportion to their numbers."""
+    seconds). A side's fire goes to the enemy types it can hit, in proportion to their numbers. `later`:
+    [(second, {template: n})] more of the enemy that join at those seconds (waves coming apart in time)."""
     a, b = dict(mine), dict(theirs)
+    pending = sorted(((float(at), dict(g)) for at, g in later), key=lambda p: p[0])
     t = 0.0
     while t < HORIZON:
-        if sum(a.values()) < 0.05 or sum(b.values()) < 0.05:
+        while pending and pending[0][0] <= t:
+            for e, n in pending.pop(0)[1].items():
+                b[e] = b.get(e, 0.0) + n
+        if sum(a.values()) < 0.05:
             break
+        if sum(b.values()) < 0.05:
+            if not pending:
+                break
+            t = pending[0][0]                   # nobody left to fight until the next wave arrives
+            continue
         hurt_a = dict.fromkeys(a, 0.0)
         hurt_b = dict.fromkeys(b, 0.0)
         for fire, foe, hurt in ((a, b, hurt_b), (b, a, hurt_a)):
@@ -75,7 +85,9 @@ def fluid(body, mine, theirs):
                 side[e] = max(0.0, side[e] - d)
         t += STEP
         if not moved:
-            break
+            if not pending:
+                break
+            t = max(t, pending[0][0])
     return a, b, t
 
 

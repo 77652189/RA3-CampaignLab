@@ -29,6 +29,20 @@ def thin_ice(name='CampThin'):
     return m
 
 
+def thin_unnamed(name='CampThinU'):
+    """The same thin ice for units nobody named (what the player builds): two Guardians and a Hammer and two Sickles
+    stand in the area, a third Guardian far outside it. Nothing here is named: only the kinds tell them apart."""
+    m = Mission(name=name, map=island)
+    m.waypoint('ice', 'CNV Ice Middle', 'west field', X, 0)
+    m.put(HEAVY_A, 'west field', X - 60, 0, role='guardian')
+    m.put(HEAVY_A, 'west field', X - 60, 60, role='guardian')
+    m.put(HEAVY_B, 'west field', X, 40, role='hammer')
+    m.put(LIGHT, 'west field', X + 60, 0, role='sickle')
+    m.put(LIGHT, 'west field', X + 60, 60, role='sickle')
+    m.put(HEAVY_A, 'west field', X, -350, role='guardian')           # outside the ice: must live
+    return m
+
+
 def shown(name='CampShown'):
     m = Mission(name=name, map=island)
     m.put(LIGHT, 'west field', X, 0, name='UNIT - CNV Near', role='near')

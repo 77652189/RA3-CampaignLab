@@ -8,6 +8,7 @@ shown: at SHOW_AT an info box goes up on the near unit and a radar event on the 
 """
 from parts import Script, Test, counted, square
 
+from missions.mech_bench import HEAVY_A, HEAVY_B, LIGHT
 GO_AT = 10.0
 ICE = 150.0                                     # half-side of the thin-ice square
 GOAL = 150.0
@@ -34,6 +35,32 @@ def thin(m):
                  ('B 重车血量', GO_AT, 'ever==', 0), ('轻车血量', 0, '==', 100), ('轻车到达', GO_AT, 'ever==', 1)]
     t.bench = [('bench_watch', dict(seconds=GO_AT + 40, every=3, sheet=False, lines=len(t.counters),
                                     until='c4==1'))]
+    return t
+
+
+def thin_unnamed(m):
+    """Sinking by kind for units without a name: every frame the nearest unnamed Guardian (then Hammer) of Player_1 is
+    pointed at by a name (SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER, as the retail campaign names a
+    building), and killed if that name is inside the thin-ice area. Read as counts per kind: heavy ones in the area go
+    to 0, the Sickles stay, the Guardian far outside stays."""
+    t = Test()
+    t.scripts.append(Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    t.areas['Test Ice'] = square(*m.point('ice'), ICE)
+    team = m.team('p1')
+    for k, tpl in (('Guardian', HEAVY_A), ('Hammer', HEAVY_B)):
+        ref = f'UNITRef - CNV Sink {k}'
+        t.scripts.append(Script(f'Test - pick {k}', [],
+                                [('SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER', tpl, m.player('p1'), team, ref)],
+                                once=False))
+        t.scripts.append(Script(f'Test - sink {k}', [('NAMED_INSIDE_AREA', ref, 'Test Ice')],
+                                [('NAMED_KILL', ref)], once=False))
+    counted('Test G In', '守护者在冰上', t, template=HEAVY_A, area='Test Ice')
+    counted('Test H In', '铁锤在冰上', t, template=HEAVY_B, area='Test Ice')
+    counted('Test S In', '镰刀在冰上', t, template=LIGHT, area='Test Ice')
+    counted('Test G All', '守护者总数', t, template=HEAVY_A)
+    t.expect += [('守护者在冰上', 2, '==', 0), ('铁锤在冰上', 2, '==', 0), ('镰刀在冰上', 2, '==', 2),
+                 ('守护者总数', 2, '==', 1)]
+    t.bench = [('bench_watch', dict(seconds=14, every=2, sheet=False, lines=len(t.counters)))]
     return t
 
 
