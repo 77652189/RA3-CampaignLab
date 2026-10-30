@@ -246,3 +246,16 @@ def test_not_is_read_off_a_flag_the_scripts_keep_first():
     assert out[2].when == [('FLAG', 'CNV Not 0', 1), ('FLAG', 'Go', 1)] and out[3].when == [('FLAG', 'CNV Not 0', 1)]
     assert all(c[-1] != parts.NOT for s in out for c in s.when)
     assert parts.unnot(out[2:]) == out[2:]                                  # nothing left to unnot
+
+
+def test_a_voice_line_must_be_in_the_voice_pack():
+    """A sound named CNV_* (PLAY_SOUND_EFFECT, HAS_FINISHED_AUDIO) is one of Mission.voice's events; retail's are free."""
+    from types import SimpleNamespace
+    from missions import probe_bench
+    m = probe_bench.mission()
+    m.scripts += [parts.Script('say', [], [('PLAY_SOUND_EFFECT', 'CNV_A4_007')]),
+                  parts.Script('eva', [], [('PLAY_SOUND_EFFECT', 'Aeva_EnemyAircraftDet')])]
+    assert [p for p in parts.contract(m) if 'voice' in p] == ["say: PLAY_SOUND_EFFECT voice line 'CNV_A4_007' not in "
+                                                              "the voice pack"]
+    m.voice = SimpleNamespace(events={'CNV_A4_007'})
+    assert not [p for p in parts.contract(m) if 'voice' in p]

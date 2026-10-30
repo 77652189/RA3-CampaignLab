@@ -16,7 +16,7 @@ win: played the quick way: the trucks kept at full health, plaza 1's troops kill
   least; the simulator, the ice played by its script, has all three in by 4:41).
 """
 from checks.a4_before import blocking, freeze, ice_wall, keep_up, left, on_road, start, troops, trucks
-from parts import Script, Test, counted, square
+from parts import Obj, Script, Test, counted, square
 
 IDLE_RUN = 300.0                                # idle: ended by then (sim 2026-10-28: lost 1:42, normal)
 WIN_RUN = 600.0                                 # win: ended by then (sim 2026-10-28, no combat: won 5:46, normal)
@@ -64,6 +64,36 @@ def idle(m):
     trucks(t, m)
     t.expect += [('ENDED', 30.0, '', None)]
     t.bench = [('bench_watch', dict(seconds=IDLE_RUN, every=5, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+DERRICK_RUN = 45.0
+
+
+def derrick(m):
+    """The new draft's resource point (docs/design/flow/a4.md 摆放要求: an engineer takes the oil derrick at the south
+    ramp's foot; mechanics.md 工程师占油井, to be tested): a neutral derrick by the start, an engineer of the player's
+    ordered at 2 s to capture it (the engineer's own button, retail's NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED):
+    the derrick turns the player's, and the player's money (0 in A4) goes up. Bench 2026-10-29
+    (CampA4Derrick_mcp_1029_202131): the player's from the first reading, 605 then, ~10 a second on (950 at s46)."""
+    t = Test()
+    start(t, m)
+    # both on the avenue (bench 2026-10-29: an engineer 150 north of the start stood on the cliff above the road and
+    # never moved)
+    t.objects += [Obj('OilDerrick', *m.site('start', 330, 80), side='neutral', name='UNIT - Test Derrick',
+                      site='start'),
+                  Obj('AlliedEngineer', *m.site('start', 200, 0), name='UNIT - Test Engineer', site='start')]
+    t.scripts += [Script('Test - capture timer', [], [('SET_MILLISECOND_TIMER', 'Test Capture', 2.0)]),
+                  Script('Test - capture', [('TIMER_EXPIRED', 'Test Capture')],
+                         [('NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED', 'UNIT - Test Engineer',
+                           'Command_CaptureBuilding', 'UNIT - Test Derrick')]),
+                  Script('Test - money', [], [('SET_PLAYER_MONEY_TO_COUNTER', m.player('p1'), 'Test Money')],
+                         once=False)]
+    counted('Test Derrick Ours', '油井归我', t, owner='UNIT - Test Derrick', player=m.player('p1'))
+    t.counters.append(('Test Money', '资金'))
+    t.expect += [('油井归我', DERRICK_RUN - 10, 'ever==', 1),
+                 ('资金', DERRICK_RUN - 10, 'ever>', 0)]
+    t.bench = [('bench_watch', dict(seconds=DERRICK_RUN, every=3, sheet=False, lines=len(t.counters)))]
     return t
 
 

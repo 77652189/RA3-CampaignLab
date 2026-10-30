@@ -163,6 +163,9 @@ class Mission(Part):
     music: object = None                # our Pathfinder map and tracks (experimental/music/pack.Pack: include,
                                         # files, events, check), compiled into the static stream; published: the
                                         # events it plays (PATH_MUSIC_PLAY_EVENT may name only those). None: retail's
+    voice: object = None                # our dubbed lines (experimental/voice/pack.Pack: include, files, events,
+                                        # strings, check), compiled into the static stream the same way; a sound
+                                        # named CNV_* (PLAY_SOUND_EFFECT, HAS_FINISHED_AUDIO) must be one of its events
 
     def find(self, name):
         return next(o for o in self.objects if o.name == name)
@@ -426,8 +429,12 @@ AREA_ARG = 9                            # script argument type of a trigger area
 # the other argument types contract() holds against what was published
 TEAM_ARG, WAYPOINT_ARG, PLAYER_ARG, OBJECT_ARG, STRING_ARG, POWER_ARG, TEMPLATE_ARG = 3, 7, 11, 14, 25, 31, 61
 COMMAND_ARG = 34                        # a command button (NAMED_USE_COMMANDBUTTON_ABILITY)
+# retail units' own command buttons a script may press (SageXML GlobalData/LogicCommandSet.xml): ours publish theirs
+RETAIL_COMMANDS = {'Command_CaptureBuilding'}           # an engineer takes a building (AlliedEngineerCommandSet)
 OBJECTIVE_ARG = 91                      # a mission objective's name (SET_MISSION_OBJECTIVE_STATUS ...)
 MUSIC_EVENT_ARG = 96                    # a Pathfinder event's name (PATH_MUSIC_PLAY_EVENT): held to Mission.music
+SOUND_ARG = 12                          # a sound event (PLAY_SOUND_EFFECT, HAS_FINISHED_AUDIO): ours (CNV_*) held to
+                                        # Mission.voice, retail's free
 CREATES_NAMED = ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION',
                  'UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION')
 
@@ -460,7 +467,7 @@ def contract(mission):
     known = {AREA_ARG: ('area', m.areas), TEAM_ARG: ('team', set(getattr(m.map, 'TEAMS', {}).values())),
              WAYPOINT_ARG: ('waypoint', m.waypoints), PLAYER_ARG: ('player', set(getattr(m.map, 'PLAYERS', {}).values())),
              OBJECT_ARG: ('object', set(named) | created), STRING_ARG: ('string', m.strings), POWER_ARG: ('power', powers),
-             COMMAND_ARG: ('command button', powers), OBJECTIVE_ARG: ('objective', {g.name for g in m.objectives}),
+             COMMAND_ARG: ('command button', set(powers) | RETAIL_COMMANDS), OBJECTIVE_ARG: ('objective', {g.name for g in m.objectives}),
              TEMPLATE_ARG: ('template', {r.template for r in m.cast.values()} | {u.id for u in m.units} | m.spawns)}
     if m.music:
         known[MUSIC_EVENT_ARG] = ('music event', m.music.events)
@@ -486,6 +493,8 @@ def contract(mission):
             for t, v in zip(types, args):
                 if t in known and v not in known[t][1]:
                     out.append(f'{s.name}: {name} {known[t][0]} {v!r} not published')
+                if t == SOUND_ARG and str(v).startswith('CNV_') and v not in (m.voice.events if m.voice else ()):
+                    out.append(f'{s.name}: {name} voice line {v!r} not in the voice pack')
             own = POWER_ARG if POWER_ARG in types else COMMAND_ARG
             if OBJECT_ARG in types and own in types:                # NAMED_FIRE_SPECIAL_POWER_* / _USE_COMMANDBUTTON_*
                 who, power = args[types.index(OBJECT_ARG)], args[types.index(own)]
@@ -609,6 +618,12 @@ def assemble(mission, test=None, name=None):
     c2.EXTRA_STATIC = [mm.music.include] if mm.music else []
     c4.EXTRA_FILES = list(mm.music.files) if mm.music else []
     c4.CHECKS = [mm.music.check] if mm.music else []
+    # our voice lines the same way, their subtitles (DIALOGEVENT:CNV_*) into the string table
+    if mm.voice:
+        c2.EXTRA_STATIC.append(mm.voice.include)
+        c4.EXTRA_FILES += list(mm.voice.files)
+        c4.CHECKS.append(mm.voice.check)
+        c4.c3.STRINGS.update(mm.voice.strings)
 
     borders = []
 

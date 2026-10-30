@@ -43,6 +43,11 @@ OWN = {
     '海啸坦克': 'JapanAntiVehicleVehicleTech1', '鬼王': 'JapanAntiVehicleVehicleTech3',
     '波能炮': 'JapanAntiStructureVehicle', '突击运输车': 'JapanLightTransportVehicle', '波能塔': 'JapanBaseDefenseAdvanced',
     '守卫塔': 'JapanBaseDefense',
+    # the voice line's names (RA3-ChineseVoice lines/GLOSSARY.md, the authority for unit names; the flow scripts
+    # write these): the older ones above stay for the plans written with them
+    '激流气垫船': 'AlliedAntiInfantryVehicle', '阿波罗战斗机': 'AlliedFighterAircraft', '未来坦克X-1': 'AlliedFutureTank',
+    '镰刀机甲': 'SovietAntiInfantryVehicle', 'V4火箭车': 'SovietAntiStructureVehicle', '基洛夫飞艇': 'SovietBomberAircraft',
+    '天狗机甲': 'JapanAntiInfantryVehicle', '鹰击者VX': 'JapanAntiAirVehicleTech1',
 }
 
 
