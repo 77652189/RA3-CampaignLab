@@ -132,7 +132,10 @@ def make(levels=(), test=False, lang='zh', folder=FOLDER):
 def _compile(mod_xml, folder):
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'testbench'))
     import slots
-    release = slots.build_lock(f'voice pack {folder}')     # one SDK build at a time
+    # one SDK build at a time; a mission build calls make() while it holds the lock itself, and waiting for it then
+    # waits for ourselves (bench 2026-10-29: voice_bench sat on the lock for an hour)
+    held = slots._held(os.path.join(slots.LOCKS, 'sdk-build.json'))
+    release = (lambda: None) if held and held.get('pid') == os.getpid() else slots.build_lock(f'voice pack {folder}')
     try:
         shutil.rmtree(os.path.join(BUILT, 'mods', folder.lower()), ignore_errors=True)
         r = subprocess.run([os.path.join(labpaths.SDK3, 'tools', 'BinaryAssetBuilder.exe'), mod_xml,
