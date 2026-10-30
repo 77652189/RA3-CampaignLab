@@ -55,10 +55,11 @@ from checks import fence as check_fence         # noqa: E402
 from checks import reroute as check_reroute     # noqa: E402
 from checks import sight as check_sight         # noqa: E402
 from checks import voice as check_voice         # noqa: E402
+from checks import drive as check_drive         # noqa: E402
 from units import tesla as units_tesla          # noqa: E402
 from missions import a4, a5, a7, a8, j3, j4, j5, j7, s2, s5, s6, beacon_bench, burrow_bench, clone_bench, combo_bench, crane_bench, icewall_bench, jammer_bench, liberty_bench, shikigami_bench, \
     tesla_bench, train_bench, probe_bench, plan_words_bench, ai_bench, ai_plan_bench, lock_bench, scene_bench, \
-    ally_bench, aistep_bench, fence_bench, reroute_bench, sight_bench, chronolag_bench, ban_bench, sapporo_bench, voice_bench  # noqa: E402
+    ally_bench, aistep_bench, fence_bench, reroute_bench, sight_bench, chronolag_bench, ban_bench, sapporo_bench, voice_bench, drive_bench  # noqa: E402
 
 BENCH_PY = os.path.join(os.path.dirname(ROOT), 'envs', 'bench_mcp', 'Scripts', 'python.exe')
 CLIENT = os.path.join(ROOT, 'experimental', 'testbench', 'bench_client.py')
@@ -123,6 +124,12 @@ MISSIONS = {
     'aistep': (lambda: aistep_bench.mission(), {'stepped': check_aistep.stepped}),
     'aistep_free': (lambda: aistep_bench.mission(held=False), {'free': check_aistep.free}),
     'fence': (lambda: fence_bench.mission(), {'bar': check_fence.bar}),
+    'drive_idle': (lambda: drive_bench.mission('CampDrvI'), {'prod': check_drive.production(lambda p1: [])}),
+    'drive_ai': (lambda: drive_bench.mission('CampDrvA'), {'prod': check_drive.production(check_drive.ai_wake)}),
+    'drive_enable': (lambda: drive_bench.mission('CampDrvE'),
+                     {'prod': check_drive.production(check_drive.enable_wake)}),
+    'drive_cmd': (lambda: drive_bench.mission('CampDrvM', hammers=1), {'cmds': check_drive.commands}),
+    'drive_run': (lambda: drive_bench.mission('CampDrvR'), {'run': check_drive.run}),
     'ban': (lambda: ban_bench.mission(), {}),                   # looked at by hand: the build tab
     'sapporo': (lambda: sapporo_bench.mission(), {}),           # the A4 rework's map, to preview and measure
     'reroute': (lambda: reroute_bench.mission(), {'round': check_reroute.round_, 'open': check_reroute.opened}),
