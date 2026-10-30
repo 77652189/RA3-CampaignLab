@@ -23,6 +23,7 @@ import re
 
 import make_campnew2 as c2
 from parts import Unit
+from units import look
 
 SAGE = os.path.join(c2.SDK, 'SageXML')
 RETAIL = 'AlliedAntiVehicleVehicleTech1'        # the Guardian
@@ -128,6 +129,7 @@ def dress(unit, model=LOOK):
     return unit
 
 
+@look.named('chronolag')
 def chronolag(id='CNV_ChronoLag', unit_time='8s', structure_time='15s', reload='30s', reach=400, vision=450,
               status=PHASE_STATUS, phase=True, deploy=True, model=LOOK):
     """make_campnew35's defaults, its environment switches as options: phase False = the same shell without the

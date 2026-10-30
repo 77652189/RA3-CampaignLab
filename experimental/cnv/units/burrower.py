@@ -13,6 +13,7 @@ import re
 
 import make_campnew2 as c2
 from parts import Unit
+from units import look
 
 SAGE = os.path.join(c2.SDK, 'SageXML', 'Soviet', 'Units')
 TOGGLE_POWER, TOGGLE_COMMAND = 'SpecialPower_ToggleTargetPainter', 'Command_ToggleTargetPainter'   # the Guardian's
@@ -26,6 +27,7 @@ def sub1(x, old, new):
     return x.replace(old, new, 1)
 
 
+@look.named('burrower')
 def burrower(id='CNV_Burrower', speed='75%', status='UNATTACKABLE NO_ATTACK', payload=None):
     """speed: underground, of the surface speed. status: what being underground sets. payload: (template, count)
     aboard from the start (TransportContain's InitialPayload, as retail's campaign bombers carry paratroopers)."""

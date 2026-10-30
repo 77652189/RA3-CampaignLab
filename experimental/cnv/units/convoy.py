@@ -15,6 +15,7 @@ import re
 
 import make_campnew2 as c2
 from parts import Unit
+from units import look
 from units.icewall import cut, sub1
 
 SAGE = os.path.join(c2.SDK, 'SageXML')
@@ -37,6 +38,7 @@ def dress(unit, model=CARGO):
     return unit
 
 
+@look.named('truck')
 def truck(id='CNV_ConvoyTruck', cargo=CARGO):
     """cargo: the model it carries (dress); None keeps the collector's ore."""
     x = open(os.path.join(SAGE, 'Allied', 'Units', 'AlliedMiner.xml'), encoding='utf-8').read()

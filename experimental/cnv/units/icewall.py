@@ -20,6 +20,7 @@ import re
 
 import make_campnew2 as c2
 from parts import Unit
+from units import look
 
 SAGE = os.path.join(c2.SDK, 'SageXML')
 
@@ -54,7 +55,7 @@ def rubble(id, model=ICE_RUBBLE, life=6, sink=5):
 	<GameObject id="{id}" Side="Neutral" EditorSorting="MISC_MAN_MADE" TransportSlotCount="0"
 		CommandSet="EmptyCommandSet" KindOf="NO_COLLIDE UNATTACKABLE NOT_AUTOACQUIRABLE CLEARED_BY_BUILD DEBRIS"
 		RadarPriority="NOT_ON_RADAR">
-		<DisplayName>Ice Rubble</DisplayName>
+		<DisplayName>Name:{id}</DisplayName>
 		<ArmorSet Armor="NoArmor" />
 		<Draws>
 			<ScriptedModelDraw id="ModuleTag_Draw" OkToChangeModelColor="false">
@@ -117,51 +118,25 @@ def dress(unit, model, leaves=None):
 </AssetDeclaration>''')
         unit.files[rid + '.xml'] = rubble(rid, leaves)
         unit.also.append(rid + '.xml')
+        unit.strings[f'Name:{rid}'] = '碎冰'
         unit.link += [f'GameObject:{rid}', f'ObjectCreationList:{ocl}']
     unit.xml = x
     unit.params.update(model=model, rubble=leaves)
     return unit
 
 
-FREEZE_IMAGE = 'Button_PlayerPower_CryoSatellite1'     # retail's cryo satellite button: the freeze ability's icon
-
-
 def dress_engineer(unit, texture=ICE_ENGINEER):
     """The engineer (the retail Allied engineer's XML) in `texture` wherever he wears his model -- the bunker's
-    placing-cursor way (<Texture Original New> in a model state); his own production button and selection portrait
-    (Button_<texture> / Portrait_<texture>: ice_kit.engineer_icons, written into the SDK's Art by ui_kit.py; his
-    barracks builds the plain engineer too), his name and description, and his freeze button the cryo satellite's
-    icon with its own title (it showed the Soviet bunker's). Look only."""
+    placing-cursor way (<Texture Original New> in a model state). His name, buttons and portrait: look.py."""
     x, n = re.subn(r'(Name="AUEngineer_SKN"\s*/>)', rf'\1\n\t\t\t\t\t<Texture Original="AUEngineer" New="{texture}" />',
                    unit.xml)
     assert n >= 1, n
-    x = sub1(x, '<Includes>', f'<Includes>\n\t\t<Include type="all" source="ART:{texture}.xml" />'
-                              f'\n\t\t<Include type="all" source="ART:{texture}Button.xml" />'
-                              f'\n\t\t<Include type="all" source="ART:{texture}Portrait.xml" />')
-    x = sub1(x, 'ButtonImage="Button_AlliedEngineer_on"', f'ButtonImage="Button_{texture}"')
-    x = sub1(x, 'SelectPortrait="Portrait_AlliedEngineer"', f'SelectPortrait="Portrait_{texture}"')
-    for k in ('Button', 'Portrait'):
-        unit.link += [f'PackedTextureImage:{k}_{texture}', f'Texture:{texture}{k}_tex']
-    x = sub1(x, 'Description="Desc:AlliedEngineer"', f'Description="Desc:{unit.id}"')
-    x = sub1(x, 'TypeDescription="Type:AlliedEngineer"', f'TypeDescription="Type:{unit.id}"')
-    unit.xml = sub1(x, '>Name:AlliedEngineer<', f'>Name:{unit.id}<')
-    state = f'ButtonState_{unit.id}_Freeze'
-    ui = next(f for f in unit.files if f.endswith('_UI.xml'))
-    y = sub1(unit.files[ui], 'StateData="ButtonStateAbilityConstructSovietBunker"', f'StateData="{state}"')
-    unit.files[ui] = sub1(y, '</AssetDeclaration>', f'''	<ButtonSingleStateData id="{state}">
-		<State Image="{FREEZE_IMAGE}" Title="Name:{unit.id}_Freeze" Description="Desc:{unit.id}_Freeze" />
-	</ButtonSingleStateData>
-</AssetDeclaration>''')
-    unit.link.append(f'ButtonSingleStateData:{state}')
-    unit.strings.update({f'Name:{unit.id}': '冰幕工兵', f'Type:{unit.id}': '冰墙封路工兵',
-                         f'Desc:{unit.id}': '能在路口冻出一道冰墙，挡住敌人的去路；冰墙过一阵就会化。也能占领建筑。',
-                         f'Name:{unit.id}_Freeze': '冻出冰墙',
-                         f'Desc:{unit.id}_Freeze': '走到目标点，站着造一会儿，冻出一道挡路的冰墙（放置时拖动可转方向）。'
-                                                   '造的时候工兵没有掩护；冰墙打得碎，过一阵也会化。'})
+    unit.xml = sub1(x, '<Includes>', f'<Includes>\n\t\t<Include type="all" source="ART:{texture}.xml" />')
     unit.params['texture'] = texture
     return unit
 
 
+@look.named('ice_wall')
 def wall(id='CNV_IceWall', length=200, thick=24, lifetime=30, health=1500, what='', shape='bar', spot=False,
          model='', leaves=ICE_RUBBLE):
     """lifetime None: it never melts (the festival's sculptures and snow banks, units/festival.py). model / leaves:
@@ -206,6 +181,7 @@ def wall(id='CNV_IceWall', length=200, thick=24, lifetime=30, health=1500, what=
     return dress(u, model, leaves) if model else u
 
 
+@look.named('ice_seed')
 def seed(id='CNV_IceSeed', wall_id='CNV_IceWall', angle=0, assembly=5, size=40, model=ICE_SEED):
     """What the engineer builds when the wall must go where a whole wall could not be placed: a small core (placed
     anywhere a `size` square fits) that melts as his building ends and leaves the wall `wall_id` where it stood --
@@ -253,6 +229,7 @@ def retail_engineer(id='CNV_SovEngineer', structure='SovietBunker'):
                 what=f'对照：原版苏联工程师，freeze = 原版造地堡的技能，造 {structure}', params=dict(wall=structure))
 
 
+@look.named('ice_engineer')
 def engineer(id='CNV_IceEngineer', wall_id='CNV_IceWall', reach=300, reload='20s', build=True, assembly='5s',
              stand=30, texture=ICE_ENGINEER):
     """build (the user's decision, 2026-10-22): he walks to the spot and stands building for `assembly` -- exposed

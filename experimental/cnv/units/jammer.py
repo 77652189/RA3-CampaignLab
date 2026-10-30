@@ -9,6 +9,7 @@ import os
 
 import make_campnew2 as c2
 from parts import Unit
+from units import look
 
 SAGE = os.path.join(c2.SDK, 'SageXML', 'Soviet', 'Units')
 TOGGLE_POWER, TOGGLE_COMMAND = 'SpecialPower_ToggleTargetPainter', 'Command_ToggleTargetPainter'   # the Guardian's
@@ -19,6 +20,7 @@ def sub1(x, old, new):
     return x.replace(old, new, 1)
 
 
+@look.named('jammer')
 def jammer(id='CNV_Jammer', radius=250, speed='40%', friends=True):
     """friends: our own units within `radius` are slowed too (the user's decision, 2026-10-22: where it stands becomes
     a choice -- in front of the line, not on our own counter-attack's way); False = enemies only."""

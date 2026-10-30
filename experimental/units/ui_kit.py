@@ -19,7 +19,13 @@ from PIL import Image                           # noqa: E402
 
 # model -> (work/units/<unit>/game, button tga, portrait tga)
 UNITS = {'CNChrono': ('chronolag', 'Button_CNV_PhaseProbe_on.tga', 'Portrait_CNV_PhaseProbe.tga'),
-         'CNIceEngineer': ('iceengineer', 'Button_CNIceEngineer.tga', 'Portrait_CNIceEngineer.tga')}   # ice_kit
+         'CNIceEngineer': ('iceengineer', 'Button_CNIceEngineer.tga', 'Portrait_CNIceEngineer.tga'),   # ice_kit
+         # the Tripo platform's render (tripo_unit.py icon.png) on the Allied plates: button_icon.py compose
+         'CNLiberty': ('libertyisle', 'Button_CNLiberty.tga', 'Portrait_CNLiberty.tga')}
+# our units on retail models: the retail image with their ability icon badged on (ability_icons.py badges)
+UNITS.update({m: (f'badged/{m}', f'Button_{m}.tga', f'Portrait_{m}.tga') for m in
+              ('CNBeacon', 'CNBurrower', 'CNJammer', 'CNTesla', 'CNTrain', 'CNShikigami', 'CNComboParent',
+               'CNComboChild', 'CNMaiden', 'CNCrane')})
 KINDS = ('Button', 'Portrait')
 
 

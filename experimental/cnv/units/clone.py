@@ -22,6 +22,7 @@ import re
 
 import make_campnew2 as c2
 from parts import Unit
+from units import look
 
 SAGE = os.path.join(c2.SDK, 'SageXML', 'Allied', 'Units')
 
@@ -34,15 +35,18 @@ def sub1(x, old, new):
 MARK = 'IS_BEING_HARVESTED'     # a C&C3 status RA3 does nothing with: "a clone holds me"
 
 
+@look.named('maiden')
 def maiden(id='CNV_MindMaiden', radius=80, reload='15s', picky=True):
     """心灵巫女 (J8): ours, the same bribe the other way -- she takes back a unit a clone holds, one at a time (a small
     radius: she walks up to it), and only those: her filters want MARK, which every clone keeps on what it holds.
     picky=False: any enemy (the control)."""
-    u = clone(id=id, radius=radius, reload=reload, needs=MARK if picky else None, marks=False)
+    u = clone(id=id, radius=radius, reload=reload, needs=MARK if picky else None, marks=False,
+              look_as=None)
     u.what = f'心灵巫女（间谍底）：control 把身边 {radius} 内被克隆体控制的单位拿回来（别的敌人不收）'
     return u
 
 
+@look.named('clone')
 def clone(id='CNV_Clone', radius=65, reload='10s', needs=None, marks=True, hold_range=3000):
     """needs: a status the units it takes must carry (the maiden's MARK). marks: keep MARK on every unit of its own
     side within hold_range -- with a side of its own, exactly the units it took (an aura, refreshed every 0.5 s,

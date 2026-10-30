@@ -10,6 +10,7 @@ import os
 
 import make_campnew2 as c2
 from parts import Unit
+from units import look
 
 SAGE = os.path.join(c2.SDK, 'SageXML', 'Japan', 'Units')
 TOGGLE_POWER, TOGGLE_COMMAND = 'SpecialPower_ToggleTargetPainter', 'Command_ToggleTargetPainter'   # the Guardian's
@@ -20,6 +21,7 @@ def sub1(x, old, new):
     return x.replace(old, new, 1)
 
 
+@look.named('shikigami')
 def shikigami(id='CNV_Shikigami', radius=200, armor='65%'):
     on, commands = f'AttributeModifier_{id}_Guard', f'{id}CommandSet'
     x = open(os.path.join(SAGE, 'JapanAntiInfantryInfantry.xml'), encoding='utf-8').read()
