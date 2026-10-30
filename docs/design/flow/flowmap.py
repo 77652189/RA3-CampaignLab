@@ -76,6 +76,13 @@ def _world_box(mod, pl):
                  for s in (mod.SITES[n] for n in sites)]
         return (min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes),
                 max(b[3] for b in boxes))
+    if '块' not in pl and not sites and pl.get('位') and pl.get('大'):
+        # a place the map has no block or site for yet (layer 2 adds one), written in drawing units
+        x0, y0, x1, y1 = _frame(mod)
+        w, h = grid_of(mod)
+        (cx, cy), (sx, sy) = pl['位'], pl['大']
+        return (x0 + (cx - sx / 2) / w * (x1 - x0), y0 + (h - cy - sy / 2) / h * (y1 - y0),
+                x0 + (cx + sx / 2) / w * (x1 - x0), y0 + (h - cy + sy / 2) / h * (y1 - y0))
     return None
 
 
@@ -164,6 +171,95 @@ def problems(p, where):
     for n in sk.get('路线') or []:
         if _route_point(mod, sk, n) is None:
             out.append(f'{where} 示意图/路线: {n} is neither a place of the sketch nor a site of {sk["地图"]}')
+    return out
+
+
+CELL = 2            # drawing units: the empty-ground measure looks at the map in cells this wide
+REACH = 10          # drawing units (500 world units on a 5000-wide map): ground this near a place or the route is used
+
+
+def _inside_poly(x, y, pts):
+    hit = False
+    for (ax, ay), (bx, by) in zip(pts, pts[1:] + pts[:1]):
+        if (ay > y) != (by > y) and x < ax + (y - ay) * (bx - ax) / (by - ay):
+            hit = not hit
+    return hit
+
+
+def _to_box(px, py, x0, y0, x1, y1):
+    return math.hypot(max(x0 - px, 0, px - x1), max(y0 - py, 0, py - y1))
+
+
+def _to_segment(px, py, a, b):
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    t = 0 if dx == dy == 0 else max(0, min(1, ((px - a[0]) * dx + (py - a[1]) * dy) / (dx * dx + dy * dy)))
+    return math.hypot(px - a[0] - t * dx, py - a[1] - t * dy)
+
+
+def empty(p, d=None):
+    """Ground in each segment's playable area that nothing of the level uses (README rule 17, principles P24): cells
+    farther than REACH from every place open by then (远景 not counted) and from the route (or, on the grid, the
+    roads between open places). Water does not count as ground. {segment: {格: [[x, y]...] of the empty cells'
+    corners, 地: ground cells in the area, 空: empty cells, 最大: the largest connected empty patch, 占: 最大 / 地}}."""
+    d = d or drawn(p)
+    segs = [s.get('名') for s in p.get('段') or []]
+    mod = load(d['地图']) if d.get('地图') else None
+    shapes = []
+    if mod is not None:
+        x0, y0, x1, y1 = _frame(mod)
+        w, h = grid_of(mod)
+        back = lambda x, y: (x0 + x / w * (x1 - x0), y0 + (h - y) / h * (y1 - y0))     # noqa: E731
+        shapes = [(s.tier, _points(s)) for s in mod.LAYOUT.shapes]
+        base = getattr(mod.LAYOUT, 'base', 0)
+    places = d.get('地方') or []
+    route = d.get('路线点') or [pl['位'] for n in d.get('路线') or [] for pl in places if pl.get('名') == n]
+    out = {}
+    for i, seg in enumerate(segs):
+        frame = (d.get('可玩区框') or {}).get(seg)
+        if not frame:
+            continue
+        fx, fy, fw, fh = frame
+        open_ = [pl for pl in places if pl.get('用途') != '远景' and pl.get('位') and pl.get('大')
+                 and pl.get('开') in segs and segs.index(pl['开']) <= i]
+        boxes = [(pl['位'][0] - pl['大'][0] / 2, pl['位'][1] - pl['大'][1] / 2,
+                  pl['位'][0] + pl['大'][0] / 2, pl['位'][1] + pl['大'][1] / 2) for pl in open_]
+        names = {pl['名']: pl['位'] for pl in open_}
+        lines = list(zip(route, route[1:])) + [(names[a], names[b]) for a, b in d.get('路') or []
+                                               if a in names and b in names]
+        ground, gaps = 0, set()
+        for gx in range(int(fx // CELL), int(-(-(fx + fw) // CELL))):
+            for gy in range(int(fy // CELL), int(-(-(fy + fh) // CELL))):
+                cx, cy = (gx + .5) * CELL, (gy + .5) * CELL
+                if not (fx <= cx <= fx + fw and fy <= cy <= fy + fh):
+                    continue
+                if mod is not None:
+                    wx, wy = back(cx, cy)
+                    tier = base
+                    for t, pts in shapes:
+                        if _inside_poly(wx, wy, pts):
+                            tier = t
+                    if tier == 0:
+                        continue
+                ground += 1
+                if all(_to_box(cx, cy, *b) > REACH for b in boxes) and all(
+                        _to_segment(cx, cy, a, b) > REACH for a, b in lines):
+                    gaps.add((gx, gy))
+        biggest, seen = 0, set()
+        for c in gaps:
+            if c in seen:
+                continue
+            todo, n = [c], 0
+            seen.add(c)
+            while todo:
+                x, y = todo.pop()
+                n += 1
+                for q in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                    if q in gaps and q not in seen:
+                        seen.add(q)
+                        todo.append(q)
+            biggest = max(biggest, n)
+        out[seg] = {'格': sorted([x * CELL, y * CELL] for x, y in gaps), '地': ground, '空': len(gaps),
+                    '最大': biggest, '占': round(biggest / ground, 3) if ground else 0}
     return out
 
 

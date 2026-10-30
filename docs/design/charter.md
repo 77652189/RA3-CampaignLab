@@ -87,7 +87,7 @@
 
 ## 四、和其他文档的关系
 
-- [principles.md](principles.md)：31 条准则，按四个条件和工作流的步骤归位。
+- [principles.md](principles.md)：35 条准则，按四个条件和工作流的步骤归位。
 - [campaign.md](campaign.md)：第 0 步的战役总表。
 - [a4-redesign.md](a4-redesign.md)：A4 试点，走完第 1～3 步，并写好第 5 步的试玩问题和给关卡线的实现清单。
 - [story-questions.md](story-questions.md)：第 1 层开工前要用户一次定的剧情问题。

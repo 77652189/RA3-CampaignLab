@@ -132,6 +132,37 @@ button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); 
 .maplegend { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11px; color: var(--mute); margin-top: 6px; }
 .maplegend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 3px; vertical-align: -1px; }
 .sheet td.mapcell { min-width: 220px; }
+
+/* ---- the five review points ---- */
+.rv { display: grid; gap: 12px; }
+.rv > .card { min-width: 0; }
+.rv .card h2 { font-size: 16px; margin: 0 0 4px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.rv .card h2 .n { color: var(--accent); }
+.rv .card h2 .st { font-size: 12px; font-weight: normal; }
+.rv .q { color: var(--mute); font-size: 13px; margin: 0 0 10px; }
+.rv .bad { color: var(--bad); font-size: 13px; margin: 4px 0; }
+.rv .lbl { color: var(--mute); font-size: 12px; }
+.rv table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.rv td, .rv th { border-top: 1px solid var(--line); padding: 6px 8px; vertical-align: top; text-align: left; }
+.rv th { color: var(--mute); font-weight: normal; white-space: nowrap; }
+.wrapx { overflow-x: auto; }
+.arc { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+.arc .col { flex: 1 0 130px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font-size: 12px; }
+.arc .col h4 { margin: 0 0 4px; font-size: 12px; color: var(--mute); font-weight: normal; }
+.arc .t { margin: 4px 0; padding-left: 16px; position: relative; }
+.arc .t::before { position: absolute; left: 0; top: 0; font-weight: 700; }
+.arc .t.up::before { content: "▲"; color: var(--ok); }
+.arc .t.down::before { content: "▼"; color: var(--bad); }
+.maps { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.maps .m { border: 1px solid var(--line); border-radius: 8px; padding: 6px; font-size: 12px; }
+.maps .m.last { border: 2px solid var(--accent); }
+.maps .m.over { border-color: var(--bad); }
+.flat { border-left: 3px solid var(--bad); padding: 6px 10px; background: color-mix(in srgb, var(--bad) 8%, transparent); font-size: 14px; }
+.chain { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
+.chain > div { border: 1px solid var(--line); border-radius: 8px; padding: 8px; font-size: 13px; }
+.chain > div b { display: block; font-size: 12px; color: var(--mute); font-weight: normal; margin-bottom: 2px; }
+.bk { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 10px; border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px; }
+@media (max-width: 700px) { .bk { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -141,6 +172,7 @@ button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); 
     <div class="tabs" id="tabs"></div>
     <div class="modes">
       <button id="m-play" class="on">玩家视角</button>
+      <button id="m-review">五条审核</button>
       <button id="m-sheet">整关一张表</button>
     </div>
   </header>
@@ -209,7 +241,7 @@ function placesIn(p, texts) {
 }
 // on a real map (示意图 地图, drawn by flowmap.py): the ground by height tier, the roads, the land-use blocks
 const TIER = ['#1f3a52', '#3b3a33', '#57523f', '#736b55'];
-function mapSvg(p, segI, focus, goals, bare) {
+function mapSvg(p, segI, focus, goals, bare, gaps) {
   const m = p['示意图'];
   if (!m) return '<div class="lbl" style="color:var(--mute);font-size:13px">这一关还没有示意图（剧本 yaml 里的"示意图"）。</div>';
   const P = {}, segs = p['段'] || [];
@@ -250,6 +282,13 @@ function mapSvg(p, segI, focus, goals, bare) {
     s += `<path d="M0 0 H${GW} V${GH} H0 Z M${fx} ${fy} V${fy + fh} H${fx + fw} V${fy} Z" fill="#05070a" fill-opacity=".6" fill-rule="evenodd"/>`;
     s += `<rect x="${fx}" y="${fy}" width="${fw}" height="${fh}" fill="none" stroke="#7fd3ff" stroke-width=".6" stroke-dasharray="1.5 1"/>`;
   }
+  // ground in this segment's playable area that no place or route is near (flowmap.empty, README rule 17)
+  if (gaps && gaps.length) {
+    const C = DATA.cell || 2;
+    s += '<defs><pattern id="gap" width="1.4" height="1.4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">' +
+      '<line x1="0" y1="0" x2="0" y2="1.4" stroke="#ff5a4a" stroke-width=".7"/></pattern></defs>';
+    s += `<path d="${gaps.map(([x, y]) => `M${x} ${y}h${C}v${C}h-${C}z`).join('')}" fill="url(#gap)" fill-opacity=".85"/>`;
+  }
   (goals || []).forEach((g, gi) => placesIn(p, [g['题']]).forEach(n => {
     const pl = P[n]; if (!pl) return;
     const [x, y] = c(pl), [w, h] = pl['大'] || [6, 4], main = g['种'] === '主', locked = !!g['亮出'];
@@ -268,6 +307,7 @@ function mapSvg(p, segI, focus, goals, bare) {
     <span><i style="background:none;border:1px solid #ffd34d"></i>此刻提到的地方</span><span>◆ 主目标 ◇ 还没亮的奖励</span>
     <span><i style="background:none;border-top:2px dashed #e0b25a;height:0;border-radius:0"></i>路线</span>
     ${f ? '<span><i style="background:none;border:1px dashed #7fd3ff"></i>这一段看得见、走得到的范围（框外压暗）</span>' : '<span>暗的 = 还走不到</span>'}
+    ${gaps && gaps.length ? '<span><i style="background:#ff5a4a"></i>红斜线 = 空地：离这一段的每个地方和路线都远</span>' : ''}
     ${ground ? `<span>底图 = 实际地图 ${esc(m['地图'])}：深蓝是水，越亮越高${(ground['块'] || []).length ? '；彩色细框是地图的地块用途表' : '（这张图还没有地块用途表）'}</span>` : '<span>没有实际地图，格子上的设想</span>'}</div>`;
 }
 function focusOf(p, s) {
@@ -476,7 +516,7 @@ function renderSheet() {
       <tbody>
       ${p['示意图'] ? `<tr><th>地图</th>${segs.map((sg, i) => `<td class="mapcell">${mapSvg(p, i, placesIn(p, [
         ...(sg['镜头'] || []).map(x => x['看']), ...(sg['事件'] || []).map(x => x['时机']), ...(sg['目标'] || []).map(x => x['题'])]),
-        sg['目标'] || [])}</td>`).join('')}</tr>` : ''}
+        sg['目标'] || [], false, ((lv.empty || {})[sg['名']] || {})['格'])}</td>`).join('')}</tr>` : ''}
       ${row('动词', sg => esc(sg['动词'] || ''))}
       ${row('时长', (sg, i) => `${esc(sg['时长'] || '')}<div class="len" style="width:${100 * (lv.minutes[i] || 0) / maxMin}%"></div>`)}
       ${row('台词密度', (sg, i) => { const ls = lines(sg), m = lv.minutes[i];
@@ -492,17 +532,94 @@ function renderSheet() {
       </tbody></table></div>`;
 }
 
+// ---- the user's five review points (2026-10-29; flow/README.md rules 16-20): what the level filled in, and
+// flowcheck's problems for that point ----
+const POINTS = [
+  [1, '剧情完整、连贯', '一关有完整的故事，刻画出人物，跌宕起伏'],
+  [2, '分阶段展开，地图不留空地', '战场范围逐步扩张，最后阶段没有大片空地'],
+  [3, '战略：不只是造兵平推', '初始资源、敌方强度、奖励目标和资源点，明示或暗示不同的打法'],
+  [4, '出乎意料的情况', '初见难以应对，有经验后会提前准备'],
+  [5, '保底援军，不用读档', '可能坏档的位置，兵力不足时在合适的位置给援军'],
+];
+function renderReview() {
+  const lv = DATA.levels[L], p = lv.plan, segs = p['段'] || [], E = lv.empty || {};
+  const probs = n => lv.problems.filter(x => x.includes(`审核第 ${n} 条`));
+  const head = (n, title, q) => {
+    const bad = probs(n);
+    return `<h2><span class="n">第 ${n} 条</span>${esc(title)}<span class="st ${bad.length ? '' : 'ok'}" style="${bad.length ? 'color:var(--bad)' : ''}">${bad.length ? `机器查出 ${bad.length} 处` : '机器检查：填了、对得上'}</span></h2>
+      <div class="q">用户的标准：${esc(q)}。好不好由你判断。</div>${bad.map(x => `<div class="bad">⚠ ${esc(x)}</div>`).join('')}`;
+  };
+  const st = p['故事'] || {}, turns = st['起伏'] || [];
+  const cols = ['简报', ...segs.map(s => s['名']), '胜利'].map(n => {
+    const ts = turns.filter(t => t['段'] === n);
+    return `<div class="col"><h4>${esc(n)}</h4>${ts.map(t => `<div class="t ${t['向'] === '顺' ? 'up' : 'down'}">${esc(t['事'])}</div>`).join('') || '<span class="lbl">—</span>'}</div>`;
+  }).join('');
+  const roles = (p['人物'] || []).map(r => `<tr><th>${esc(who(r['谁']).name)}</th><td>${esc(r['想要'])}</td>
+    <td><span class="lbl">${esc((r['转折'] || {})['段'])}</span><br>${esc((r['转折'] || {})['事'])}</td><td>${esc(r['看得出'])}</td></tr>`).join('');
+  const c1 = `<div class="card">${head(...POINTS[0])}
+    <div class="meta"><div><b>开头</b>${esc(st['开头'])}</div><div><b>结尾</b>${esc(st['结尾'])}</div></div>
+    <h3 style="font-size:14px;margin:12px 0 6px">起伏（<span style="color:var(--ok)">▲ 顺</span> 对玩家有利，<span style="color:var(--bad)">▼ 逆</span> 不利）</h3>
+    <div class="arc">${cols}</div>
+    <h3 style="font-size:14px;margin:12px 0 6px">人物</h3>
+    <div class="wrapx"><table><tr><th></th><th>想要什么</th><th>转折</th><th>玩家从哪看出来</th></tr>${roles}</table></div></div>`;
+
+  const maps = segs.map((s, i) => {
+    const e = E[s['名']] || {}, last = i === segs.length - 1, over = last && e['占'] > DATA.emptyLast;
+    return `<div class="m ${last ? 'last' : ''} ${over ? 'over' : ''}"><div><b>第 ${i + 1} 段 · ${esc(s['名'])}</b>${last ? ' <span class="lbl">最后一段</span>' : ''}</div>
+      ${mapSvg(p, i, [], s['目标'] || [], true, e['格'])}
+      <div class="lbl">最大一片空地占能走地面的 <b style="color:${over ? 'var(--bad)' : 'var(--ink)'}">${Math.round(100 * (e['占'] || 0))}%</b>${last ? `（上限 ${Math.round(100 * DATA.emptyLast)}%）` : ''}</div></div>`;
+  }).join('');
+  const c2 = `<div class="card">${head(...POINTS[1])}
+    <div class="lbl" style="margin-bottom:8px">每段的可玩区（蓝虚线框，框外压暗）；红斜线是这一段的空地：离每个已经打开的地方和路线都远（约 500 码），水不算。只有最后一段有上限。</div>
+    <div class="maps">${maps}</div>${mapSvg(p, segs.length - 1, [], [], false, (E[(segs[segs.length - 1] || {})['名']] || {})['格']).replace(/^<svg[\s\S]*?<\/svg>/, '')}</div>`;
+
+  const st0 = p['开局'] || {};
+  const bonus = segs.flatMap(s => (s['目标'] || []).filter(g => g['种'] === '奖励').map(g => ({ s: s['名'], g })));
+  const ways = (p['解法'] || []).map(w => `<tr><th>${esc(w['段'])}</th><td><b>${esc(w['打法'])}</b></td><td>${esc(w['提示'])}</td></tr>`).join('');
+  const c3 = `<div class="card">${head(...POINTS[2])}
+    <div class="meta"><div><b>开局手上</b>${esc(st0['手上'])}</div><div><b>敌方压力</b>${esc(st0['敌方'])}</div></div>
+    <h3 style="font-size:14px;margin:12px 0 6px">解法（${(p['解法'] || []).length} 种）</h3>
+    <div class="wrapx"><table><tr><th>段</th><th>打法</th><th>游戏里怎么提示</th></tr>${ways}</table></div>
+    <h3 style="font-size:14px;margin:12px 0 6px">奖励目标和回报</h3>
+    <div class="wrapx"><table><tr><th>段</th><th>奖励</th><th>回报</th></tr>${bonus.map(({ s, g }) => `<tr><th>${esc(s)}</th><td>${esc(g['题'])}${g['亮出'] ? `<div class="lbl">亮出：${esc(g['亮出'])}</div>` : ''}</td><td>${esc(g['回报'] || '（没写）')}</td></tr>`).join('')}</table></div>
+    <h3 style="font-size:14px;margin:12px 0 6px">只造兵平推会怎样</h3><div class="flat">${esc(p['平推会怎样'])}</div></div>`;
+
+  const backups = {};
+  (p['保底'] || []).forEach(b => { backups[b['名']] = b; });
+  const c4 = `<div class="card">${head(...POINTS[3])}${(p['意外'] || []).map(s => `
+    <h3 style="font-size:14px;margin:10px 0 6px">${esc(s['名'])} <span class="lbl">在「${esc(s['段'])}」撞上</span></h3>
+    <div class="chain">
+      <div><b>伏笔 · ${esc((s['伏笔'] || {})['段'])}</b>${esc((s['伏笔'] || {})['事'])}</div>
+      <div><b>初见</b>${esc(s['初见'])}</div>
+      <div><b>老手提前准备</b>${esc(s['准备'])}</div>
+      <div><b>当场补救 → 保底</b>${esc(s['补救'])}${backups[s['补救']] ? `<div class="lbl">${esc(backups[s['补救']]['援军'])}，从${esc(backups[s['补救']]['从哪来'])}来</div>` : ''}</div>
+    </div>`).join('')}</div>`;
+
+  const c5 = `<div class="card">${head(...POINTS[4])}${(p['保底'] || []).map(b => {
+    const k = segs.findIndex(s => s['名'] === b['段']);
+    return `<div class="bk"><div><h3 style="font-size:14px;margin:0 0 6px">${esc(b['名'])} <span class="lbl">「${esc(b['段'])}」</span></h3>
+      <table><tr><th>会怎么坏档</th><td>${esc(b['坏档'])}</td></tr><tr><th>什么时候送</th><td>${esc(b['条件'])}</td></tr>
+      <tr><th>送什么</th><td>${esc(b['援军'])}</td></tr><tr><th>从哪来</th><td>${esc(b['从哪来'])}</td></tr>
+      <tr><th>谁说</th><td>${(b['台词'] || []).map(l => { const [kk, t] = one(l); return `<b>${esc(who(kk).name)}</b>：${esc(t)}`; }).join('<br>')}</td></tr></table></div>
+      <div>${mapSvg(p, Math.max(k, 0), placesIn(p, [b['从哪来']]), [], true)}<div class="lbl">黄框 = 援军从这里来</div></div></div>`;
+  }).join('')}</div>`;
+
+  document.getElementById('view').innerHTML = `<div class="rv">${c1}${c2}${c3}${c4}${c5}</div>`;
+}
+
 function render() {
   if (timer) toggle();
   document.getElementById('tabs').innerHTML = DATA.levels.map((lv, i) =>
     `<button class="${i === L ? 'on' : ''}" data-i="${i}">${esc(lv.id)} ${esc(lv.plan['关名'])}${lv.problems.length ? ' ⚠' : ''}</button>`).join('');
   document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => { L = +b.dataset.i; at = 0; store.set('flow-level', L); render(); });
   document.getElementById('m-play').classList.toggle('on', mode === 'play');
+  document.getElementById('m-review').classList.toggle('on', mode === 'review');
   document.getElementById('m-sheet').classList.toggle('on', mode === 'sheet');
   renderInfo();
-  mode === 'play' ? renderPlay() : renderSheet();
+  mode === 'play' ? renderPlay() : mode === 'review' ? renderReview() : renderSheet();
 }
 document.getElementById('m-play').onclick = () => { mode = 'play'; store.set('flow-mode', mode); render(); };
+document.getElementById('m-review').onclick = () => { mode = 'review'; store.set('flow-mode', mode); render(); };
 document.getElementById('m-sheet').onclick = () => { mode = 'sheet'; store.set('flow-mode', mode); render(); };
 document.addEventListener('keydown', e => {
   if (mode !== 'play') return;
@@ -510,7 +627,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft') go(at - 1);
 });
 L = Math.min(+(store.get('flow-level') || 0), DATA.levels.length - 1) || 0;
-mode = store.get('flow-mode') === 'sheet' ? 'sheet' : 'play';
+mode = ['sheet', 'review'].includes(store.get('flow-mode')) ? store.get('flow-mode') : 'play';
 render();
 </script>
 </body>

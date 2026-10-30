@@ -33,6 +33,12 @@
 | 无敌到条件 | 已确认 | 一样东西先打不坏，条件满足后变得打得坏（护盾、供能塔一类的说法） | 归档 plan-2026-10-27.md：`plan_words` 探针，无敌 / 取消无敌 | |
 | 冰面承重 | 待验证 | 重型单位压上去冰面会裂、单位沉下去；从没测过 | outline.md S1 | |
 | 倒计时提前 | 待验证 | 脚本把正在走的倒计时一下子改短；倒计时显示已确认，改短没测过 | know-how.md 计数器和倒计时 | |
+| 扩边界 | 已确认 | 任务中途切到地图预设的另一块边界（原版 `MAP_SWITCH_BORDER`，40 关用了 87 次，多半挂在目标完成或计时上）；也能缩回 | [retail-review](../teardowns/data/retail-review.md) 第 1 节；plan.py `{边界: 名}` | |
+| 兵少补援 | 待验证 | 玩家的兵少于若干个时送一队援军，只送一次（原版深海：目标 1 没完成、玩家单位少于 3 个）；编译器还没有"少于若干个"的条件词，深海用的"全部单位"对象列表我们没传过，退路是几种主力兵各数一条；按单位种类数会把敌人也算进去，不能用 | [retail-review](../teardowns/data/retail-review.md) 第 2、5 节 | |
+| 翻脸 | 已确认 | 一方从盟友变成敌人（原版冰岛、宫古岛、哈瓦那；冰岛让玩家先动手） | [retail-review](../teardowns/data/retail-review.md) 第 3 节；plan.py `{翻脸: 一方}`（关系序号的毛病 2026-10-28 修好） | |
+| 禁造和准造 | 已确认 | 锁住或放开玩家的某种建筑、单位，可以中途收回（原版布莱顿海滩先锁后放，哈瓦那中途禁掉超时空传送仪）；按数量封顶也行 | [retail-review](../teardowns/data/retail-review.md) 第 3 节；plan.py `禁造` / `准造` | |
+| 给钱 | 已确认 | 当场给玩家一笔钱（原版直布罗陀、纽约、富士山的奖励） | [retail-review](../teardowns/data/retail-review.md) 第 4 节；plan.py `资金` | |
+| 给兵 | 已确认 | 把一队兵交给玩家（原版宫古岛 4 个鬼王、海参崴 2 艘无畏舰） | [retail-review](../teardowns/data/retail-review.md) 第 4 节；plan.py `给` | |
 | 揭图 | 已确认 | 交还控制前看一眼全图再收回；揭开新的一块 | plan.md 第 3 层引擎探针（揭图覆盖新边界） | |
 | 目标和标记 | 已确认 | 目标的进行中、完成、失败，地图标记挂在物体上 | know-how.md"任务目标状态"；`parts.Goal` | |
 | 信息框 | 待验证 | 单位头上挂一句话（原版 `NAMED_SHOW_INFOBOX`）；我们没用过 | teardowns/telling.md | |

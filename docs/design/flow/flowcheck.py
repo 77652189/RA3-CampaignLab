@@ -127,6 +127,8 @@ def check(path, speak, retail, units=None, mech=None):
         for g in goals:
             if g.get('种') not in GOAL_KINDS or not g.get('题') or not g.get('说明'):
                 out.append(f'{name}: objective {g.get("题")} needs 种 (主/奖励), 题 and 说明')
+            elif g.get('种') == '奖励' and not g.get('回报'):
+                out.append(f'{name}: bonus {g.get("题")} needs 回报, what the player gets for it (P16){REVIEW[3]}')
         if goals and not seg.get('下一步靠什么'):
             out.append(f'{name}: has objectives but no 下一步靠什么')
         if any(g.get('种') == '主' for g in goals) and not seg.get('卡住了'):
@@ -155,6 +157,7 @@ def check(path, speak, retail, units=None, mech=None):
                                f'section 3 nor the plan glossary')
     out += check_sketch(path, p)
     out += check_scale(path, p, unlocks())
+    out += check_review(path, p, speak | retail, mech)
     if mech is not None:
         for k in p.get('用到的机制') or []:
             if k not in mech:
@@ -165,6 +168,129 @@ def check(path, speak, retail, units=None, mech=None):
         for k, (state, bad) in mech.items():
             if state == '不能做' and bad and (m := bad.search(text)):
                 out.append(f'{path.name}: "{m.group(0)}" promises {k}, which cannot be done (mechanics.md)')
+    return out
+
+
+# The user's five review points for layer 1 (2026-10-29, README rules 16-20): each is a part of the template that must
+# be filled and agree with the rest of the script; whether it is good is the user's call. A problem names its point,
+# so the viewer can sort them.
+REVIEW = {n: f' (审核第 {n} 条)' for n in range(1, 6)}
+REVIEW_KEYS = {'故事': 1, '人物': 1, '开局': 3, '解法': 3, '平推会怎样': 3, '意外': 4, '保底': 5}
+TURNS_LEAST = 3                 # 故事/起伏: at least this many turns, both 顺 and 逆 among them
+LINES_FOR_ROLE = 3              # a speaker with this many lines in the level gets an entry in 人物
+WAYS_LEAST = 2                  # 解法: at least two ways through
+EMPTY_LAST = 0.15               # the last segment: its largest empty patch, of the ground it lets the player reach
+BACKUP_MECH = '兵少补援'          # the mechanic a 保底 promises (mechanics.md)
+
+
+def _seg_index(p, name, extra=()):
+    """Where a 段 named by a review entry falls in the level: 简报 before every segment, 胜利 after; None if unknown."""
+    segs = [s.get('名') for s in p.get('段') or []]
+    if name == '简报' and '简报' in extra:
+        return -1
+    if name == '胜利' and '胜利' in extra:
+        return len(segs)
+    return segs.index(name) if name in segs else None
+
+
+def _missing(entry, keys):
+    return [k for k in keys if not (entry or {}).get(k)]
+
+
+def check_review(path, p, cast_keys, mech):
+    """The five review points: 故事 and 人物 (1), the last segment's empty ground (2), 开局, 解法 and 平推会怎样 (3;
+    every bonus's 回报 is checked with the objectives), 意外 (4) and 保底 (5), each surprise paired with a 保底."""
+    out, n = [], path.name
+    for k, point in REVIEW_KEYS.items():
+        if p.get(k) in (None, '', [], {}):
+            out.append(f'{n}: missing {k}{REVIEW[point]}')
+    if out:
+        return out                      # fill the five parts first; the details are checked once they are there
+    story = p.get('故事') or {}
+    for k in _missing(story, ('开头', '结尾')):
+        out.append(f'{n} 故事: missing {k}{REVIEW[1]}')
+    turns = story.get('起伏') or []
+    if len(turns) < TURNS_LEAST:
+        out.append(f'{n} 故事/起伏: {len(turns)} turns, needs at least {TURNS_LEAST}{REVIEW[1]}')
+    if turns and not {'顺', '逆'} <= {t.get('向') for t in turns}:
+        out.append(f'{n} 故事/起伏: the turns go one way only -- both 顺 (for the player) and 逆 are needed{REVIEW[1]}')
+    last = -2
+    for t in turns:
+        i = _seg_index(p, t.get('段'), ('简报', '胜利'))
+        if i is None:
+            out.append(f'{n} 故事/起伏: 段 {t.get("段")} is not a segment of this level{REVIEW[1]}')
+            continue
+        if t.get('向') not in ('顺', '逆') or not t.get('事'):
+            out.append(f'{n} 故事/起伏/{t.get("段")}: needs 向 (顺/逆) and 事{REVIEW[1]}')
+        if i < last:
+            out.append(f'{n} 故事/起伏: {t.get("段")} comes before the turn above it -- write them in order{REVIEW[1]}')
+        last = max(last, i)
+    roles = {}
+    for r in p.get('人物') or []:
+        who = r.get('谁')
+        roles[who] = r
+        if who not in cast_keys:
+            out.append(f'{n} 人物: {who} is not in cast.md{REVIEW[1]}')
+        for k in _missing(r, ('想要', '看得出')):
+            out.append(f'{n} 人物/{who}: missing {k}{REVIEW[1]}')
+        turn = r.get('转折') or {}
+        if not turn.get('事') or _seg_index(p, turn.get('段'), ('简报', '胜利')) is None:
+            out.append(f'{n} 人物/{who}: 转折 needs 段 (a segment of this level) and 事{REVIEW[1]}')
+    said = {}
+    for _, who, _ in lines_in(p, n):
+        said[who] = said.get(who, 0) + 1
+    for who, k in said.items():
+        if k >= LINES_FOR_ROLE and who != '播报' and who not in roles:
+            out.append(f'{n} 人物: {who} has {k} lines in this level but no entry in 人物{REVIEW[1]}')
+
+    segs = [s.get('名') for s in p.get('段') or []]
+    if segs and (p.get('示意图') or {}).get('可玩区'):
+        gap = flowmap.empty(p).get(segs[-1])
+        if gap and gap['占'] > EMPTY_LAST:
+            out.append(f'{n} 示意图: in the last segment ({segs[-1]}) {gap["占"]:.0%} of the ground is one empty patch '
+                       f'(no place or route near it), over {EMPTY_LAST:.0%} -- shrink its 可玩区 or give that ground a '
+                       f'use (P24){REVIEW[2]}')
+
+    for k in _missing(p.get('开局'), ('手上', '敌方')):
+        out.append(f'{n} 开局: missing {k}{REVIEW[3]}')
+    ways = p.get('解法') or []
+    if len(ways) < WAYS_LEAST:
+        out.append(f'{n} 解法: {len(ways)} ways through, needs at least {WAYS_LEAST}{REVIEW[3]}')
+    for w in ways:
+        for k in _missing(w, ('打法', '提示')):
+            out.append(f'{n} 解法/{w.get("打法")}: missing {k}{REVIEW[3]}')
+        if _seg_index(p, w.get('段')) is None:
+            out.append(f'{n} 解法/{w.get("打法")}: 段 {w.get("段")} is not a segment of this level{REVIEW[3]}')
+
+    backups = {b.get('名'): b for b in p.get('保底') or []}
+    for s in p.get('意外') or []:
+        name = f'{n} 意外/{s.get("名")}'
+        for k in _missing(s, ('名', '初见', '准备', '补救')):
+            out.append(f'{name}: missing {k}{REVIEW[4]}')
+        at = _seg_index(p, s.get('段'))
+        if at is None:
+            out.append(f'{name}: 段 {s.get("段")} is not a segment of this level{REVIEW[4]}')
+        hint = s.get('伏笔') or {}
+        before = _seg_index(p, hint.get('段'), ('简报',))
+        if not hint.get('事') or before is None:
+            out.append(f'{name}: 伏笔 needs 段 (简报 or a segment) and 事 -- where a returning player sees it '
+                       f'coming{REVIEW[4]}')
+        elif at is not None and before > at:
+            out.append(f'{name}: 伏笔 in {hint.get("段")} comes after the surprise itself{REVIEW[4]}')
+        if s.get('补救') and s['补救'] not in backups:
+            out.append(f'{name}: 补救 {s["补救"]} is not one of this level\'s 保底 -- every surprise has a way '
+                       f'back{REVIEW[4]}')
+    names = places(p)
+    for b in p.get('保底') or []:
+        name = f'{n} 保底/{b.get("名")}'
+        for k in _missing(b, ('名', '坏档', '条件', '援军', '从哪来')):
+            out.append(f'{name}: missing {k}{REVIEW[5]}')
+        if _seg_index(p, b.get('段')) is None:
+            out.append(f'{name}: 段 {b.get("段")} is not a segment of this level{REVIEW[5]}')
+        if b.get('从哪来') and names and b['从哪来'] not in names:
+            out.append(f'{name}: 从哪来 {b["从哪来"]} is not a place of the sketch (示意图){REVIEW[5]}')
+    if p.get('保底') and mech is not None and BACKUP_MECH not in (p.get('用到的机制') or []):
+        out.append(f'{n} 用到的机制: a 保底 promises {BACKUP_MECH} -- list it{REVIEW[5]}')
     return out
 
 
@@ -263,15 +389,17 @@ def check_sketch(path, p):
     segs = {s.get('名') for s in p.get('段') or []}
     seen = {}
     out += flowmap.problems(p, path.name)
+    mod = flowmap.load(sk['地图']) if sk.get('地图') else None
+    grid = flowmap.grid_of(mod) if mod else GRID      # a real map is drawn 100 wide, as tall as its shape
     for pl in sk.get('地方') or []:
         name = pl.get('名')
         where = f'{path.name} 示意图/{name}'
         real = sk.get('地图') and ('块' in pl or '点' in pl)      # placed by the map (flowmap), not the grid
-        for key, size in () if real else (('位', GRID), ('大', GRID)):
+        for key, size in () if real else (('位', grid), ('大', grid)):
             v = pl.get(key)
             if not (isinstance(v, list) and len(v) == 2 and all(isinstance(x, (int, float)) and 0 <= x <= m
                                                                  for x, m in zip(v, size))):
-                out.append(f'{where}: {key} must be [x, y] within the {GRID[0]}x{GRID[1]} grid, got {v}')
+                out.append(f'{where}: {key} must be [x, y] within the {grid[0]}x{grid[1]} grid, got {v}')
         if pl.get('用途') not in USES:
             out.append(f'{where}: 用途 {pl.get("用途")} is not one of {"/".join(USES)}')
         if pl.get('开') not in segs:

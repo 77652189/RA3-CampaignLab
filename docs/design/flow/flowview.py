@@ -1,6 +1,8 @@
 """Turns the flow scripts into one page to look at, work/flowview/flow.html: each level played through as the player
-meets it (briefing, shots, lines, objectives, the on-screen text, what is said when the player is stuck) and the whole
-level on one sheet, flowcheck's problems on top. Reads only -- the scripts stay the authority (ADR 0008).
+meets it (briefing, shots, lines, objectives, the on-screen text, what is said when the player is stuck), the user's
+five review points one by one (story and people, the map's empty ground by segment, the ways through, the surprise,
+the backup), and the whole level on one sheet, flowcheck's problems on top. Reads only -- the scripts stay the
+authority (ADR 0008).
 
     python docs/design/flow/flowview.py            # every flow script
     python docs/design/flow/flowview.py a4 j7      # some of them
@@ -58,11 +60,15 @@ def main(names):
         if not isinstance(plan, dict):
             continue
         problems = fc.check(q, speak, retail, units, mech)
+        empty = {}
         if plan.get('示意图'):
-            plan = dict(plan, 示意图=fc.flowmap.drawn(plan))      # the real map's ground, places and borders
-        levels.append(dict(id=q.stem.upper(), plan=plan, problems=problems,
+            sketch = fc.flowmap.drawn(plan)                      # the real map's ground, places and borders
+            empty = fc.flowmap.empty(plan, sketch)               # each segment's empty ground (README rule 17)
+            plan = dict(plan, 示意图=sketch)
+        levels.append(dict(id=q.stem.upper(), plan=plan, problems=problems, empty=empty,
                            minutes=[minutes(s.get('时长')) for s in plan.get('段') or []]))
-    data = json.dumps(dict(levels=levels, cast=cast_rows()), ensure_ascii=False, default=str).replace('</', '<\\/')
+    data = json.dumps(dict(levels=levels, cast=cast_rows(), cell=fc.flowmap.CELL, emptyLast=fc.EMPTY_LAST),
+                      ensure_ascii=False, default=str).replace('</', '<\\/')
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(TEMPLATE.read_text(encoding='utf-8').replace('/*DATA*/null', data), encoding='utf-8')
     print(f'{len(levels)} levels -> {OUT}')

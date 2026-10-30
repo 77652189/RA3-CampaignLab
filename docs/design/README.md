@@ -10,7 +10,7 @@
 | [story-questions.md](story-questions.md) | 第 1 层开工前要用户一次定的剧情问题：三个结局、三条背叛、地点和关名、自由号、新角色的名字，各带推荐 | 第 1 层 |
 | [flow/](flow/README.md) | **流程剧本**：模板、角色表、机器检查 `flowcheck.py`，每关一份（简报、镜头、台词原文、目标原文、玩家靠什么知道下一步、胜负台词）；校准用的三关 A4、J7、S1 | 第 1 层 |
 | [campaign.md](campaign.md) | 战役总表草稿：27 关的一句话概念、新花样、类型、出生布局、难度位置，标出重复、撞车、断档；最后是用户 2026-10-27 定下的 6 条，和 2026-10-28 定下的副指挥官（缩小版） | 第 0 步 |
-| [principles.md](principles.md) | 31 条设计准则（P24～P28 是地形和空军，P29、P30 是敌军构成和克制，P31 是关的规模跟着战役位置走），按四个条件归组，标明在哪一步检查；每条写准则、为什么、出处 | 第 0～5 步的检查清单 |
+| [principles.md](principles.md) | 35 条设计准则（P24～P28 是地形和空军，P29、P30 是敌军构成和克制，P31 是关的规模跟着战役位置走，P32～P35 是用户给第 1 层的审核标准：故事和人物、解法、意外、保底），按四个条件归组，标明在哪一步检查；每条写准则、为什么、出处 | 第 0～5 步的检查清单 |
 | [a4-redesign.md](a4-redesign.md) | A4 试点：走完第 1～3 步（概念、体验设计、纸面原型和推演），写好第 5 步的试玩问题和给关卡线的实现清单 | 第 1～5 步的样板 |
 | [skirmish-ai.md](skirmish-ai.md) | 自己写遭遇战 AI：AI 数据能改到哪一层（开局、状态、队伍编成、地图旗标切换、头像、语音），拿来控难度、每段换敌人构成、做副指挥官；第一个要测的检查 | 第 2～4 步 |
 | [plan-template.md](plan-template.md) | 策划案模板的增补建议，以及 plancheck 能查什么（只是建议，策划案和编译器归关卡线） | 第 3～4 步 |
@@ -21,11 +21,11 @@
 - [story/map-language.md](../story/map-language.md)、[story/plans/retail/](../story/plans/retail/)：原版**怎么做**（机制层，从脚本反推，带脚本名作证据）。拆解卡直接引用它们的事实，不重复抄。
 - 这里：原版**为什么这样做**，以及我们该怎么做。
 
-## 现状（2026-10-28）
+## 现状（2026-10-29）
 
-- **现在做的：第 1 层（剧情与流程）**。[story-questions.md](story-questions.md) 的 5 题用户 2026-10-28 全按推荐定了（[campaign.md](campaign.md) 第六节）；流程剧本模板和校准用的三关（A4 护送、J7 突击、S1 基地对抗）写好了，示意图画在实际地图上（有地图的关），等用户校准，点头后批量写其余 24 关。下面"在等别人的"属于第 3 层，按 ADR 0008 冻结，不再催。
+- **现在做的：第 1 层（剧情与流程）**。[story-questions.md](story-questions.md) 的 5 题用户 2026-10-28 全按推荐定了（[campaign.md](campaign.md) 第六节）；流程剧本模板和校准用的三关（A4 护送、J7 突击、S1 基地对抗）写好了，示意图画在实际地图上（有地图的关）。2026-10-29 用户加了五条审核标准（故事和人物、地图不留空地、多种解法、意外、保底援军），模板照它们加了必填项（P32～P35，[flow/README.md](flow/README.md) 第 16～20 条），三关按新模板重写，等用户在查看器的"五条审核"里校准，点头后批量写其余 24 关。下面"在等别人的"属于第 3 层，按 ADR 0008 冻结，不再催。
 - **做完的**：
-  - 31 条准则；
+  - 35 条准则；
   - 8 张拆解卡；
   - 4 份全原版实测：布局、地形、空军、敌军构成（[teardowns/data/](teardowns/data/)）；
   - A4 试点走完第 1～3 步，返工前的试玩已答（用户 2026-10-28："基本上可以平推"）。
@@ -72,6 +72,8 @@
 | [layout](teardowns/layout.md) | **全部 40 张原版战役图** + 我们 11 关 | 空间布局：出生点、可玩区、目标方向、路线、奖励摆放 | 全部 |
 | [scale](teardowns/data/scale.md) | **全部 40 张原版战役图** | 关的规模随战役位置怎么变：主目标、段、地图变化、局面变化、动词、基地、英雄、倒计时，前期 / 中期 / 后期的中位数和下四分位（P31 的证据，由 [scale_measure.py](teardowns/data/scale_measure.py) 生成） | 第 0 步、第 1 层 |
 | [telling](teardowns/telling.md) | **全部 40 张原版战役图** | 怎么告诉玩家现在该做什么：简报、开场、谁说话、目标原文、提醒、反派、胜负台词，各用了多少、多长；流程剧本模板的证据 | 第 1 层 |
+| [retail-review](teardowns/data/retail-review.md) | **全部 40 张原版战役图**的脚本 | 用户五条审核标准在原版里的做法：怎么扩图、兵少时补援（只有深海一处）、背叛和科技兵力限制怎么演、奖励给什么；脚本能不能数玩家的兵（P33～P35 的证据） | 第 1 层 |
+| [mental-omega](teardowns/data/mental-omega.md)、[mental-omega-missions](teardowns/data/mental-omega-missions.md) | 心灵终结（红警 2 mod） | 前一份是总体印象和玩家批评；后一份是关卡级做法：分几步放权、背叛的三层预警、增援挂在进度上、拆源头的奖励、一关里的人物（P31～P35 的证据之一，难度要减） | 第 1 层 |
 | [terrain](teardowns/terrain.md) | **全部 40 张原版战役图** + 我们 11 关 | 地形复杂度（层、坡道、水、驻军楼、墙、隘口、俯瞰）和地图利用率（按阶段，只算走得到的地面）；末尾是给关卡线的生成器缺口 | 全部 |
 
 布局卡的原始测量在 [teardowns/data/layout.md](teardowns/data/layout.md)（每关一行），由 [layout_measure.py](teardowns/data/layout_measure.py)（只读原版存档和 Mods 里我们编好的地图）和 [layout_table.py](teardowns/data/layout_table.py) 生成，改了地图可以重跑。玩家视角的时间线（每个时刻玩家看见什么）在 [teardowns/data/timeline.md](teardowns/data/timeline.md)，由 [timeline_measure.py](teardowns/data/timeline_measure.py) 生成，验收表在它开头。地形和利用率在 [teardowns/data/terrain.md](teardowns/data/terrain.md)，由 [terrain_measure.py](teardowns/data/terrain_measure.py) 生成（每张约 1 秒，`TERRAIN_PNG=<文件夹>` 出核对用的图）。玩家能不能造飞机、敌方据点有没有防空在 [teardowns/data/air.md](teardowns/data/air.md)，由 [air_measure.py](teardowns/data/air_measure.py) 生成。每段的敌军构成和玩家手里的克制在 [teardowns/data/units.md](teardowns/data/units.md)，由 [units_measure.py](teardowns/data/units_measure.py) 生成。
