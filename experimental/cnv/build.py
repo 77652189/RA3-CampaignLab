@@ -167,7 +167,7 @@ MISSIONS = {
     'voice_bench_s': (lambda: voice_bench.mission(name='CampVoiceS', cdata='data\\static\\cdata'),
                       {'play': check_voice.play}),
     'voice_bench_12': (lambda: voice_bench.mission(name='CampVoice12', cdata='data\\static.12\\cdata'),
-                       {'play': check_voice.play}),
+                       {'play': check_voice.play, 'ref': check_voice.ref}),
 }
 
 
