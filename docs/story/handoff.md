@@ -18,7 +18,7 @@
 
 ## 下一步（按顺序）
 
-0. **灰盒校准（ADR 0011，最优先）**：探针做完了（`docs/story/drive-probe.md`，提交 c6e0ac7）；实机打法脚本已被 ADR 0011 取代，不再铺。接着做：在 `experimental/cnv/` 新写 `graybox.py`（借 `offline.py` 的 `walk`、`dps`、`cost`），按该文末"接下来"一节算每段 k\*，先拿现在的 A4 校准（得判出平推轻松），再补 `a4_before` 的走查。过了就写测试 `tests/test_graybox.py` 并提交；判不出就先报告原因。
+0. **灰盒（ADR 0011）已做完（2026-10-30）**：`experimental/cnv/graybox.py`（k\*，A4 三段全判平推轻松，测试 `tests/test_graybox.py`）；九张题卡的结论在 `docs/story/graybox-cards.md`，数字来自 `experimental/cnv/graybox_cards.py`（测试 `tests/test_graybox_cards.py`）。没补 `a4_before` 走查。新题卡出来后，往 `graybox_cards.py` 加函数、往 `graybox-cards.md` 加一节即可；模拟器判断不了的写"留给实机"。
 
 1. **A4 按设计线新稿重做第 3 层。** 读：`docs/design/flow/a4.md`（流程稿，待用户审；第 2 层地图内容稿也还没出来）、`docs/design/flow/mechanics.md`（哪些机制能承诺）、`docs/design/maps/`（第 2 层，地图内容，设计线在做）。现有计划 `docs/story/plans/a4.md`；做法是改生成器和计划，不手改产物。要加的东西：
    不依赖流程稿定稿的三项准备已做（2026-10-30，测试 `tests/test_plan_lines.py`，全量 286 过，已提交；`plan.py` 里音乐线的 `CNV_MUSIC_CAPTIONS` 那段没带进去，还在工作区）：
