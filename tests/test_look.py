@@ -62,3 +62,16 @@ def test_every_icon_and_picture_is_made():
         assert model is None or model in ui_kit.UNITS, (kind, model)
     for model, (_, _, key) in ability_icons.BADGED.items():
         assert key in ability_icons.ICONS and model in ui_kit.UNITS, model
+
+
+def test_every_portrait_is_ours():
+    """The selection portrait too (the lock gate showed the bunker's): every new unit's is one ui_kit writes, but
+    the ones the player only meets, never builds (the convoy's truck, the clone), still retail's (docs/units)."""
+    from missions import lock_bench
+    from units import clone
+    retail = {convoy.truck().id, clone.clone().id}
+    for u in units() + [lock_bench.gate_unit()]:
+        if u.id in retail:
+            continue
+        portrait = re.search(r'\bSelectPortrait="([^"]+)"', u.xml).group(1)
+        assert portrait.removeprefix('Portrait_') in ui_kit.UNITS, (u.id, portrait)

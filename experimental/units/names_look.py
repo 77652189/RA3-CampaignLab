@@ -13,6 +13,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'cnv'))
 import parts                                    # noqa: E402  (puts experimental/campaign on the path)
 from maps import island                         # noqa: E402
+from missions import lock_bench                 # noqa: E402
 from units import chronolag, convoy, festival, icewall, liberty, roster, train  # noqa: E402
 
 NAME = 'CampNamesLook'                          # <= 15 characters, no underscore
@@ -25,7 +26,8 @@ def lineup():
     for name in ('超时空信标兵', '钻地运兵车', '协调器干扰车', '磁暴坦克', '式神护卫', '纸鹤侦察机', '合体机甲', '心灵巫女'):
         out += [(u, u.id) for u in roster.make(name)]
     out += [(u, u.id) for u in (icewall.engineer(), chronolag.chronolag(), convoy.truck(), train.train(),
-                                icewall.wall(), festival.sculpture(), festival.reinforced(), festival.bank())]
+                                icewall.wall(), festival.sculpture(), festival.reinforced(), festival.bank(),
+                                lock_bench.gate_unit())]
     return out
 
 

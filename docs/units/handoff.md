@@ -23,14 +23,16 @@
 **名字、技能按钮、生产按钮和头像**（用户 2026-10-29："新单位至少要把技能图标和名称改掉，模型先不改也可以"）：全部新单位都走 `experimental/cnv/units/look.py`。表 `LOOKS` 按单位写名字、类型、说明，每个技能的名称、说明和图标键；各单位函数上一行 `@look.named('<种类>')`，同一个函数造好几样东西时（冰墙的建筑也是冰雕、雪堆、闸门）调用处传 `look_as=`。RA3 的按钮挂在命令上，所以原版命令要复制成我们自己的 `Command_<单位>_<键>`，单位发布的 abilities 跟着换，脚本照旧按 abilities 按按钮。
 - 技能图标 `CNA_<键>`（82×82）：`ability_icons.py gen` 每个阵营让 GPT 照三张原版技能图标出一张图标格，`write` 切开写进 `Art/CN/`。冰、建筑类道具（冰墙、冰核、冰雕、雪堆、闸门）没有按钮（`EmptyCommandSet`，原来显示地堡的"全部撤出"）。
 - 生产按钮、头像：自由号用 Tripo 模型的渲染图（`button_icon.py compose`）；借原版模型的单位用原版图加自己的技能图标角标（`ability_icons.py badges`），和同一个工厂里的原版单位分得开；都由 `ui_kit.py` 写进 `Art/`。
-- 冰、冰雕的头像：冰雕、加固冰雕用 Tripo 渲染图（`ice_kit.prop_icons`），冰墙、冰核、雪堆用冻冰墙的技能图标放大（雪堆还没有自己的图）。
+- 冰、冰雕的头像：冰雕、加固冰雕用 Tripo 渲染图（`ice_kit.prop_icons`）；雪堆、船闸闸门（它是一道长条冰墙）用自己模型的透明底斜视渲染图（`retail_sheet.py` 多出的 `<模型>_icon.png` → `ice_kit.kit_icons`）；冰墙、冰核用冻冰墙的技能图标放大。
+- 自由号炮塔（无人机，原版无人机都没有头像）用自由号的图；物体上没有 `ButtonImage` / `SelectPortrait` 时 `look.icons` 会补上。
+- 单位面板只有一个技能格，命令集里排第一的技能占它（2026-10-30 测试台：把冲撞排到分离前面，冲撞出来了，子机开进去以后就没有分离按钮）。所以合体机甲母机只显示分离，冲撞看不到；分离是核心玩法，顺序没改。要不要把冲撞从母机上拿掉，归关卡线定。
 - 测试台核对（2026-10-30，`names_look.py` 的 `CampNamesLook` 把全部新单位摆在一起，逐个点选）：名字、头像、生产按钮、技能图标都是我们的；开关类技能按下去，第二个状态的图标和说明也是我们的（干扰车试过）。
-- 还是原版的：船闸闸门的头像（地堡的）；通用的卸载、撤出按钮（钻地运兵车、合体机甲母机的"全部撤出"是分离）；纸鹤侦察机的双刃直升机撤出按钮（它没有技能，要不要这个撤出按钮归关卡线定；它的生产按钮是双刃的图加纸鹤角标）；车队运输车、克隆体的头像（玩家造不了）。
+- 还是原版的：通用的卸载、撤出按钮（钻地运兵车；合体机甲母机的"全部撤出"是我们的分离）；纸鹤侦察机的双刃直升机撤出按钮——纸鹤还留着双刃的运输舱，能隐身载兵，按钮得留着（去掉会把装进去的兵困住），它该不该载人是机制，归关卡线定（生产按钮是双刃的图加纸鹤角标）；车队运输车、克隆体的头像（玩家造不了，`tests/test_look.py` 的头像检查把它俩列为例外）。
 
 各单位外观的写法、参数和测试台上看出来的问题，写在对应脚本的开头说明和注释里（`liberty_kit.py`、`ice_kit.py`、`chronolag.py`、`liberty.py`）。截图在 `work/units/<单位>/review/`。
 
 **构建依赖**：这些模型和图写在 SDK 共享的 `Art/` 里，不进 git。换机器或清过 SDK 要重跑：
-- 只靠原版就能重建：冰墙、长条冰墙、冰核、碎冰、工兵贴图、工兵按钮和头像、雪堆（`ice_kit.py`，按钮头像还要再跑 `ui_kit.py CNIceEngineer`），货柜（`convoy_kit.py`），女神像（`liberty_kit.py` 的一部分）。
+- 只靠原版就能重建：冰墙、长条冰墙、冰核、碎冰、工兵贴图、工兵按钮和头像、雪堆、雪堆和闸门的头像（`ice_kit.py`，按钮头像还要再跑 `ui_kit.py CNIceEngineer CNSnowBank CNLockGate`），货柜（`convoy_kit.py`），女神像（`liberty_kit.py` 的一部分）。
 - 技能图标：`work/units/abilities/<阵营>.png` 在就只跑 `ability_icons.py write`、`badges`，再 `ui_kit.py`；图标格丢了要重新 `gen`（GPT 每次画得不一样）。
 - 只能从 `work/` 里的原件重建（gitignore，丢了要从 Tripo 账号重新导出）：冰雕和加固冰雕（`work/units/icesculpture/tripo/icesculpture_v1.glb` → Blender 跑 `tripo_unit.py icesculpture` → `ice_kit.py CNIceSculpt CNIceSculptHard`），时滞炮车（`tripo_unit.py chronolag` → `make_campchrono.py`；按钮、头像的图在 `work/units/chronolag/game/` → `ui_kit.py`），自由号平台（`work/units/libertyisle/tripo/libertyisle_v1.glb` → `tripo_unit.py libertyisle` → `liberty_kit.py`）。`ice_kit.py` 缺冰雕原件时跳过它、照做其余，并打印怎么补。
 
@@ -45,7 +47,7 @@ Tripo 订阅：用户买的是包月（专业版，推测），2026-10-20 04:00�
 现状（2026-10-30）：A4 的单位外观和全部新单位的名字、技能图标、按钮头像都已合进 main（bb14687），手头没有进行中的活。
 
 0. **等配音线**：它发来冰幕工兵的语音事件名表、语音包进了构建以后，在 `icewall.py` 的 `dress_engineer`（或 `look.py`）里接语音，接法见上面"单位语音"。之前别动。
-0. 名字和图标的尾巴（不急）：船闸闸门的头像还是地堡的；雪堆借冰墙的图；合体机甲母机的"冲撞"按钮在选中面板上没看到（只看到"分离"），要查是不是原版就要条件才出；纸鹤侦察机的双刃撤出按钮要不要留，问关卡线。新单位加进来时，在 `look.py` 的 `LOOKS` 加一行、单位函数上加 `@look.named`，图标在 `ability_icons.ICONS` 加一行再 `gen <阵营>`，`tests/test_look.py` 会查漏。
+0. 名字和图标的尾巴：2026-10-30 收完了（闸门、雪堆有自己的头像，自由号炮塔有头像，冲撞按钮的原因查清，见上面"名字、技能按钮"一节）。等关卡线定的两件：母机的冲撞要不要拿掉；纸鹤要不要载人。新单位加进来时，在 `look.py` 的 `LOOKS` 加一行、单位函数上加 `@look.named`，图标在 `ability_icons.ICONS` 加一行再 `gen <阵营>`，`tests/test_look.py` 会查漏。
 1. 自由号剧情说法，等用户定：提案是"她本来就是灯塔 + 埃菲尔铁骨是超时空天线"（设计规律和说明在 `concept_gpt.py` 的 `libertyisle`）。
 2. 自由号可选：玩家自己跃迁时的闪光要给跃迁加约 1 秒准备时间（机制，归关卡线定）；跃迁取消时让充能立刻熄灭，可以把 `carrier.py` 改用 `liberty.discharged`（要关卡线同意）；五个炮塔座骨骼 `TURRET01..05` 还没接线（总控：炮塔仍是跟着飘的无人机）。
 3. 时滞炮车可以改进：UV 小块太多、概念图没画展开支腿、履带没有滚动贴图。A3 时停区机关和它是不是一回事，等策划线定。

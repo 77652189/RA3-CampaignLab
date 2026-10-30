@@ -329,6 +329,28 @@ def prop_icons():
     return files
 
 
+# portraits (and buttons) from our own 3/4 renders (sheet: <model>_icon.png): icon -> the model rendered. The snow
+# bank's; the canal's lock gate (missions/lock_bench.py) is an ice bar wall, so the bar's render
+KIT_ICONS = {'CNSnowBank': 'CNSnowBank', 'CNLockGate': 'CNIceBar'}
+
+
+def kit_icons(rendered):
+    """The KIT_ICONS whose model was just rendered: its transparent 3/4 view on the Allied plates
+    (button_icon.compose) -> work/units/ice/game/Button_<icon>.tga, Portrait_<icon>.tga (ui_kit)."""
+    import button_icon
+    out = os.path.join(OUT, 'game')
+    os.makedirs(out, exist_ok=True)
+    files = []
+    for icon, model in KIT_ICONS.items():
+        if model not in rendered:
+            continue
+        for kind in ('Button', 'Portrait'):
+            path = os.path.join(out, f'{kind}_{icon}.tga')
+            button_icon.compose(kind.lower(), os.path.join(OUT, f'{model}_icon.png'), path)
+            files.append(path)
+    return files
+
+
 def sheet(model, obj, tex):
     """retail_sheet.py's four renders of the OBJ in its texture -> work/units/ice/<model>_grid.png."""
     prefix = os.path.join(OUT, model)
@@ -347,7 +369,7 @@ def main(models):
     print('engineer texture ->', engineer_texture())
     print('engineer icons ->', *engineer_icons())
     print('sculpture icons ->', *prop_icons())
-    skipped = []
+    skipped, rendered = [], []
     for model in [m for m in models or sorted(PROPS) if m in PROPS]:
         if missing(model):
             skipped.append(model)
@@ -356,10 +378,13 @@ def main(models):
     for model in [m for m in models or sorted(KITS) if m in KITS]:
         obj, n = build(by, model)
         print(model, n, 'triangles ->', sheet(model, obj, tex))
+        rendered.append(model)
     snow = snow_texture() if [m for m in models or BANKS if m in BANKS] else None
     for model in [m for m in models or sorted(BANKS) if m in BANKS]:
         obj, n = bank(model)
         print(model, n, 'triangles ->', sheet(model, obj, snow))
+        rendered.append(model)
+    print('kit icons ->', *kit_icons(rendered))
     for model in skipped:
         unit = PROPS[model]
         print(f'SKIPPED {model}: missing ' + ', '.join(missing(model)) + '\n  it is rebuilt only from the Tripo '

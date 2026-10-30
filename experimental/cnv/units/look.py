@@ -152,10 +152,12 @@ def button(unit, command, key, title, desc, off=None):
 def icons(unit, model):
     _include(unit, f'{model}Button')
     _include(unit, f'{model}Portrait')
-    x, n = re.subn(r'\bButtonImage="[^"]*"', f'ButtonImage="Button_{model}"', unit.xml)
-    assert n >= 1, unit.id
-    x, n = re.subn(r'\bSelectPortrait="[^"]*"', f'SelectPortrait="Portrait_{model}"', x)
-    assert n >= 1, unit.id
+    x = unit.xml
+    for attr, image in (('ButtonImage', f'Button_{model}'), ('SelectPortrait', f'Portrait_{model}')):
+        x, n = re.subn(rf'\b{attr}="[^"]*"', f'{attr}="{image}"', x)
+        if not n:                               # made without one (the Liberty's turret, a drone): on its GameObject
+            x, n = re.subn(r'(<GameObject\b[^>]*?)(\s*>)', rf'\1 {attr}="{image}"\2', x, count=1)
+        assert n >= 1, (unit.id, attr)
     unit.xml = x
     for k in ('Button', 'Portrait'):
         unit.link += [f'PackedTextureImage:{k}_{model}', f'Texture:{model}{k}_tex']
@@ -180,8 +182,8 @@ LOOKS = {
     'sculpture': (('冰雕', '雪祭展品', '雪祭会场的冰雕。帝国往里面藏了兵，打碎了兵就会冲出来。'), [], 'CNIceSculpt', True),
     'reinforced': (('加固冰雕', '帝国加固的展品', '帝国后补的冰雕，加固过，打不碎；里面的兵倒下了还会从地道里补上来。只能冻住它的出口。'),
                    [], 'CNIceSculptHard', True),
-    'bank': (('雪堆', '雪祭会场的雪堆', '铲起来的雪堆，挡路，不会化。'), [], 'CNIceWall', True),    # no snow picture yet
-    'gate': (('船闸闸门', '船闸闸门', '横在水道上的闸门。'), [], None, True),
+    'bank': (('雪堆', '雪祭会场的雪堆', '铲起来的雪堆，挡路，不会化。'), [], 'CNSnowBank', True),
+    'gate': (('船闸闸门', '船闸闸门', '横在水道上的闸门。'), [], 'CNLockGate', True),
     'truck': (('车队运输车', '护送车辆', '车队的运输车，没有武器，归护送队指挥。'), [], None, False),
     'chronolag': (None, [('deploy', 'deploy', '展开', '展开后才能开火：向一个目标打一发时滞弹，把它暂时推出时间。展开时不能移动。',
                           ('pack', '收起', '收起炮架，可以移动，不能开火。'))], None, False),
@@ -190,7 +192,9 @@ LOOKS = {
     'liberty': (('自由号', '盟军空天航母', '悬停的巨型空中平台，放无人机打地面；超时空甲板能带着甲板下的部队一起跃迁。'),
                 [('{command}', 'deck', '超时空跃迁', '把自由号连同甲板下的地面部队，传送到视野里的一点。', None)],
                 'CNLiberty', False),
-    'liberty_turret': (('自由号炮塔', '自由号的防御炮塔', '自由号平台上的炮塔，拆了它，平台就少一处火力。'), [], None, False),
+    'liberty_turret': (('自由号炮塔', '自由号的防御炮塔', '自由号平台上的炮塔，拆了它，平台就少一处火力。'), [], 'CNLiberty',
+                       False),                  # retail's drones have no pictures: the carrier's
+
     'liberty_rider': (None, [], None, False),   # a Guardian riding the deck: retail's name and buttons are right
     'burrower': (('钻地运兵车', '苏联钻地运兵车', '能钻进地下开：在地下打不着，也不能开火。能载五个步兵。'),
                  [('burrow', 'burrow', '钻入地下', '钻进地下：敌人瞄不到它，它也不能开火，开得慢一些。',
@@ -207,6 +211,8 @@ LOOKS = {
                   [('guard', 'guard', '护卫', '附近的敌人改打式神，炮弹也拐到它身上；这时它更耐打。',
                     ('guard_off', '解除护卫', '不再吸引火力。'))], 'CNShikigami', False),
     'crane': (('纸鹤侦察机', '帝国侦察机', '纸折的侦察机，没有武器，看得很远，一直隐身。'), [], 'CNCrane', False),
+    # the rush never shows: a unit's panel has one ability slot, the first ability in its command set (bench
+    # 2026-10-30: rush put before part showed the rush, and joined there was no part button); part comes first
     'combo_parent': (('合体机甲·母机', '帝国合体机甲', '子机开进来就合体；合体后光束只打建筑。'),
                      [('Command_TriggerRushAttackSpecialPower', 'rush', '冲撞', '向前猛冲，撞开挡路的东西。', None),
                       ('part', 'part', '分离', '母机和子机分开。', None)], 'CNComboParent', False),
