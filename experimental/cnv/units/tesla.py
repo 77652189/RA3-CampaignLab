@@ -11,6 +11,7 @@ import os
 
 import make_campnew2 as c2
 from parts import Unit
+from units import look
 
 SAGE = os.path.join(c2.SDK, 'SageXML', 'Soviet', 'Units')
 SURGE_COMMAND = 'Command_ToggleShortCircuitTank'
@@ -34,6 +35,7 @@ def sub1(x, old, new):
     return x.replace(old, new, 1)
 
 
+@look.named('tesla')
 def tesla(id='CNV_TeslaTank', fire=True):
     x = open(os.path.join(SAGE, 'SovietAntiVehicleVehicleTech2.xml'), encoding='utf-8').read()
     x = sub1(x, 'id="SovietAntiVehicleVehicleTech2"', f'id="{id}"')

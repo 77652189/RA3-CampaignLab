@@ -19,6 +19,7 @@ import re
 
 import make_campnew2 as c2
 from parts import Unit
+from units import look
 
 SAGE = os.path.join(c2.SDK, 'SageXML', 'Japan', 'Units')
 JOINED = 'CONTAINER_OCCUPIED'                   # the parent's status while the child is aboard
@@ -40,6 +41,7 @@ def breaker(id, damage):
     return sub1(g, 'Damage="175.0"', f'Damage="{damage}.0"')
 
 
+@look.named('combo_parent')
 def parent(id='CNV_ComboParent', child_id='CNV_ComboChild', damage=700):
     """Joined (the user's decision, 2026-10-22): a breaker of buildings -- ice walls and statues in J4 -- that shoots
     nothing else meanwhile; parted, two quick machines that can be in two places."""
@@ -87,6 +89,7 @@ def parent(id='CNV_ComboParent', child_id='CNV_ComboChild', damage=700):
                 params=dict(child=child_id, damage=damage))
 
 
+@look.named('combo_child')
 def child(id='CNV_ComboChild'):
     x = open(os.path.join(SAGE, 'JapanAntiVehicleVehicleTech1.xml'), encoding='utf-8').read()
     x = re.sub(r'\s*<GameObject\s+id="JapanAntiVehicleVehicleTech1_Naval".*?</GameObject>', '', x, flags=re.S)

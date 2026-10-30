@@ -10,6 +10,7 @@ import re
 
 import make_campnew2 as c2
 from parts import Unit
+from units import look
 
 SAGE = os.path.join(c2.SDK, 'SageXML', 'Soviet', 'Units')
 
@@ -19,6 +20,7 @@ def sub1(x, old, new):
     return x.replace(old, new, 1)
 
 
+@look.named('crane')
 def crane(id='CNV_Crane', sight=900, vision=300, stealth=True):
     """stealth (the user's decision, 2026-10-22): always hidden -- it never fires, and retail's default template
     only drops stealth while firing; enemy detectors (dogs, bears, burst drones: StealthDetectorUpdate, 300) see it."""

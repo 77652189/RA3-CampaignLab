@@ -49,7 +49,12 @@ KITS = {
     'CNIceRubbleS': (40, 8, [('05', 10, (-0.5, -0.4), 0.5), ('06', 130, (0.45, -0.2), 0.45), ('03', 250, (0.0, 0.5), 0.5)]),
 }
 # Tripo props (tripo_unit.py prop_main: work/units/<unit>/game/<model>.png, _nrm.png, parts.json) in the same ice
-PROPS = {'CNIceSculpt': 'icesculpture'}
+PROPS = {'CNIceSculpt': 'icesculpture', 'CNIceSculptHard': 'icesculpture'}
+# a prop made from another's bake: model -> (the bake's model, colour x per channel on top of the ice, size x). The
+# reinforced sculptures of A4's plazas 2 and 3 (docs/design/flow/a4.md: "颜色发暗、比别的厚一圈", nothing breaks
+# them): the same dragon in darker, greyer old ice, a size bigger, so they read apart from plaza 1's. Not bluer:
+# (0.62, 0.7, 0.86) came out a saturated royal blue on the bench (painted plastic, and near the Allied colour)
+VARIANTS = {'CNIceSculptHard': ('CNIceSculpt', (0.6, 0.64, 0.66), 1.15)}
 # snow banks, made, not kitbashed (retail has no snow drift; its snow is on roofs and props): model -> (length,
 # width at the foot, height). The festival's plaza walls (units/festival.py bank: 220 long, 24 thick): a berm a
 # little wider at its foot than the 24 it blocks, so it reads as shovelled snow, not a wall
@@ -195,27 +200,30 @@ def missing(model):
     """The files prop() reads that are not there: the props are rebuilt only from tripo_unit.py's bake of a Tripo
     download under work/ (gitignored), not from retail like the kits."""
     src = os.path.join(labpaths.WORK, 'units', PROPS[model], 'game')
-    return [p for p in (os.path.join(src, f) for f in (model + '.png', model + '_nrm.png', 'parts.json'))
+    bake = VARIANTS.get(model, (model,))[0]
+    return [p for p in (os.path.join(src, f) for f in (bake + '.png', bake + '_nrm.png', 'parts.json'))
             if not os.path.exists(p)]
 
 
 def prop(model):
     """A Tripo prop baked by tripo_unit.py written as a W3X in the kits' ice: its bake scaled per channel so its
     median colour is CNIce's (a de-lit Tripo bake is near white, as the glacier was), little specular, no glow, no
-    house colour; its baked normal map kept (to_w3x.convert, one part on BODY)."""
+    house colour; its baked normal map kept (to_w3x.convert, one part on BODY). A VARIANTS model takes its base's
+    bake, its colour and size changed."""
     import numpy as np
     import to_w3x
     src = os.path.join(labpaths.WORK, 'units', PROPS[model], 'game')
-    bake = np.asarray(Image.open(os.path.join(src, model + '.png')).convert('RGB'), float)
+    base, tint, size = VARIANTS.get(model, (model, (1.0, 1.0, 1.0), 1.0))
+    bake = np.asarray(Image.open(os.path.join(src, base + '.png')).convert('RGB'), float)
     used = bake.max(axis=2) > 10
     ice = np.asarray(Image.open(os.path.join(retail_texture.OUT, 'IL_Glacier01.png')).convert('RGB'), float) * DARK
-    k = np.median(ice.reshape(-1, 3), axis=0) / np.median(bake[used], axis=0)
+    k = np.median(ice.reshape(-1, 3), axis=0) / np.median(bake[used], axis=0) * tint
     out = np.where(used[..., None], np.clip(bake * k, 0, 255), bake).astype(np.uint8)
     Image.fromarray(out).save(os.path.join(src, model + 'Ice.png'))
     Image.new('L', out.shape[1::-1], 0).save(os.path.join(src, model + 'Ice_mask.png'))
-    Image.open(os.path.join(src, model + '_nrm.png')).save(os.path.join(src, model + 'Ice_nrm.png'))
+    Image.open(os.path.join(src, base + '_nrm.png')).save(os.path.join(src, model + 'Ice_nrm.png'))
     n = to_w3x.convert(src, model, [('BODY', None, (0.0, 0.0, 0.0))], {'PROP': 'BODY'}, src_name=model + 'Ice',
-                       level=None, grade=False, spec=0.12)
+                       level=None, grade=False, spec=0.12, scale=size)
     print(model, n, 'triangles; colour x', k.round(2))
     return n
 
@@ -253,6 +261,74 @@ def engineer_texture():
     return out
 
 
+ICONS = 'iceengineer'                           # work/units/<ICONS>/game: the engineer's button and portrait (ui_kit)
+
+
+def engineer_icons():
+    """The 冰幕工兵's production button and selection portrait, from retail's engineer's (button_icon.retail): his
+    dark green apron and trousers the pale blue-grey of his suit (engineer_texture), the yellow tool case in the lower
+    half ice-cyan, and a snowflake at the top right -- the barracks that builds him builds the plain engineer too,
+    their buttons side by side. -> work/units/<ICONS>/game/Button_<ENGINEER>.tga, Portrait_<ENGINEER>.tga (ui_kit)."""
+    import button_icon
+    from PIL import ImageDraw
+    out = os.path.join(labpaths.WORK, 'units', ICONS, 'game')
+    os.makedirs(out, exist_ok=True)
+    files = []
+    for kind, name in (('Button', 'Button_AlliedEngineer_on'), ('Portrait', 'Portrait_AlliedEngineer')):
+        im = button_icon.retail(name)
+        px = im.load()
+        w, h = im.size
+        for y in range(h):
+            for x in range(w):
+                r, g, b, a = px[x, y]
+                lum = 0.3 * r + 0.59 * g + 0.11 * b
+                if g > b + 15 and g > r + 5 and lum < 120:                  # the apron (the teal ground has b ~ g)
+                    base = min(255, 150 + 0.9 * lum)
+                    px[x, y] = int(base * 0.82), int(base * 0.9), int(base), a
+                elif y > h * 0.5 and r > 90 and g > 70 and b < 0.6 * min(r, g):   # the case, not the helmet
+                    px[x, y] = int(lum * 0.45), min(255, int(lum * 1.0)), min(255, int(lum * 1.15)), a
+        d = ImageDraw.Draw(im)
+        cx, cy, rad = w - 8 - round(h * 0.17), 8 + round(h * 0.17), round(h * 0.17)
+        for width, colour in ((6, (10, 30, 45, 255)), (3, (150, 230, 255, 255))):
+            for k in range(3):
+                t = math.radians(90 + 60 * k)
+                dx, dy = rad * math.cos(t), rad * math.sin(t)
+                d.line((cx - dx, cy - dy, cx + dx, cy + dy), fill=colour, width=width)
+        path = os.path.join(out, f'{kind}_{ENGINEER}.tga')
+        im.save(path)
+        im.save(os.path.splitext(path)[0] + '_preview.png')
+        files.append(path)
+    return files
+
+
+def prop_icons():
+    """The sculptures' selection portraits (and buttons): tripo_unit.py's render of the dragon (work/units/
+    icesculpture/game/icon.png) on the Allied plates (button_icon.compose); the reinforced one the render in its
+    VARIANTS colour. -> work/units/icesculpture/game/Button_<model>.tga, Portrait_<model>.tga (ui_kit)."""
+    import button_icon
+    import numpy as np
+    src = os.path.join(labpaths.WORK, 'units', PROPS['CNIceSculpt'], 'game')
+    render = os.path.join(src, 'icon.png')
+    if not os.path.exists(render):
+        print('SKIPPED sculpture icons: no', render)
+        return []
+    files = []
+    for model in ('CNIceSculpt', 'CNIceSculptHard'):
+        im = Image.open(render).convert('RGBA')
+        if model in VARIANTS:
+            tint = np.array(VARIANTS[model][1]) / max(VARIANTS[model][1]) * 0.85
+            a = np.asarray(im, float)
+            a[..., :3] *= tint
+            im = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
+        tinted = os.path.join(src, f'{model}_render.png')
+        im.save(tinted)
+        for kind in ('Button', 'Portrait'):
+            out = os.path.join(src, f'{kind}_{model}.tga')
+            button_icon.compose(kind.lower(), tinted, out)
+            files.append(out)
+    return files
+
+
 def sheet(model, obj, tex):
     """retail_sheet.py's four renders of the OBJ in its texture -> work/units/ice/<model>_grid.png."""
     prefix = os.path.join(OUT, model)
@@ -269,6 +345,8 @@ def main(models):
     by = retail_mesh.library()
     tex = textures()
     print('engineer texture ->', engineer_texture())
+    print('engineer icons ->', *engineer_icons())
+    print('sculpture icons ->', *prop_icons())
     skipped = []
     for model in [m for m in models or sorted(PROPS) if m in PROPS]:
         if missing(model):

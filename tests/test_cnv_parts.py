@@ -17,7 +17,10 @@ def test_liberty_variants_keep_apart():
     a, b = lib.liberty('CNV_Liberty_A', tag='A'), lib.liberty('CNV_Liberty_B', tag='B')
     assert not set(a.names.values()) & set(b.names.values())
     assert 'SpecialPower_CNV_ChronoDeck_B' not in a.xml + a.files['CNV_Liberty_A_UI.xml']
-    assert all(n.split(':')[1] in b.xml + b.files['CNV_Liberty_B_UI.xml'] for n in b.link)
+    # every name it links is its own (in its XML or files: its look's buttons are in <id>_Look.xml); the Art's
+    # textures (Texture:<image>_tex) are in the SDK's Art, not here
+    text = b.xml + ''.join(b.files.values())
+    assert all(n.split(':')[1] in text for n in b.link if not n.startswith('Texture:'))
 
 
 def test_riders_left_out_of_the_deck(tmp_path):

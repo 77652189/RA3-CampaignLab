@@ -11,6 +11,7 @@ import os
 
 import make_campnew2 as c2
 from parts import Unit
+from units import look
 
 SAGE = os.path.join(c2.SDK, 'SageXML', 'Allied', 'Units')
 
@@ -20,6 +21,7 @@ def sub1(x, old, new):
     return x.replace(old, new, 1)
 
 
+@look.named('beacon')
 def beacon(id='CNV_Beacon', radius=150, reach=1500, reload='30s', land=(40, 140)):
     """radius: around the aimed point, who is pulled. reach: how far from him he may aim. land: the ring around
     him (min, max) the pulled ones are put down in."""

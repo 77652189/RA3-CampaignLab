@@ -16,6 +16,7 @@ import re
 
 import make_campnew2 as c2
 from parts import Unit
+from units import look
 
 SAGE = os.path.join(c2.SDK, 'SageXML')
 RETAIL_RIDER = 'AlliedAntiVehicleVehicleTech1'      # the Guardian
@@ -94,6 +95,7 @@ def dress(unit, model=LOOK[0], statue=LOOK[1], rings=LOOK[2], charge=LOOK[3]):
     return unit
 
 
+@look.named('liberty')
 def liberty(id='CNV_Liberty', tag='', reload='20s', drone_range=600, drones_home=True, factory=None, riders=None,
             show_jump=True, deck_radius=150, turrets=0, turret_id='CNV_LibertyTurret', model=LOOK[0]):
     """factory: the template the deck builds (None: no factory). riders: the rider template (left out of the deck's
@@ -255,6 +257,7 @@ def aimed(wid, retail, reach):
 GROUND_GUN, AIR_GUN = 'SovietAntiGroundAircraftAutoCannon', 'SovietAntiAirShipFlakCannon'   # Twinblade's, Bullfrog's
 
 
+@look.named('liberty_turret')
 def turret(id='CNV_LibertyTurret', fixed=False, reach=300, health=400, slaved=True, category=True, base='BaseObject',
            chooser=True):
     """A deck turret: the war factory's repair drone (it spawns and follows the carrier: SlavedUpdate) with a gun at
@@ -334,6 +337,7 @@ RIDE_FLAGS = ('SAME_PLAYER_ONLY STICK_TO_PARENT TELEPORT INSTANT_TELEPORT_ON_PAR
               'MOVE_ORDER_FORCES_DETACH SCAN_FOR_NEW_PARENT_WHEN_DETACHED')
 
 
+@look.named('liberty_rider')
 def rider(id='CNV_LibRider', parent='CNV_Liberty', ride_range=150, flags=RIDE_FLAGS):
     """A Guardian that boards the carrier when idle within ride_range, sits on it (all riders on one spot: the
     AttachUpdate has no offset) and rides its jump; a move order takes it off. While on: status ATTACHED."""

@@ -63,6 +63,25 @@ def retail_images(kind):
     return out
 
 
+_STATIC = {}
+
+
+def retail(name):
+    """One retail PackedTextureImage (e.g. Button_AlliedEngineer_on) from the static stream, as RGBA."""
+    import mapxml
+    if not _STATIC:                             # the stream read once (a minute and more)
+        lib = mapxml.layered(STATIC)
+        _STATIC['ids'] = {k[1]: i for k, i in lib.items()}
+        _STATIC['images'] = {inst.name.lower(): inst for (t, _), inst in lib.items()
+                             if inst.name.lower().startswith(b'packedtextureimage:') and inst.refs}
+    inst = _STATIC['images'].get(b'packedtextureimage:' + name.lower().encode())
+    if inst is None:
+        raise KeyError(name)
+    w, h, x, y = struct.unpack_from('<4I', bytes(inst.chunks[0]), 8)
+    raw = bytes(_STATIC['ids'][inst.refs[0][1]].chunks[0])
+    return Image.open(io.BytesIO(raw[raw.find(b'DDS '):])).convert('RGBA').crop((x, y, x + w, y + h))
+
+
 def background(kind):
     import numpy as np
     (W, H), inset, agree = KINDS[kind][0], KINDS[kind][3] + 2, KINDS[kind][6]

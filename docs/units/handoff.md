@@ -4,7 +4,7 @@
 
 ## 硬约束
 
-- 接入规矩（总控定的，`docs/plan.md` 分工表）：单位线只换外观（模型、贴图、残骸、死亡特效），尺寸、血量、速度、机制归关卡线。每个外观函数都能用 `model=None` / `texture=None` / `cargo=None` 关掉。
+- 接入规矩（总控定的，`docs/architecture.md`「各线负责的文件」）：单位线管 `experimental/units/`、`docs/units/` 和 `experimental/cnv/units/` 里的外观接线；只换外观（模型、贴图、按钮头像、残骸、死亡特效），尺寸、血量、速度、机制归关卡线。每个外观函数都能用 `model=None` / `texture=None` / `cargo=None` 关掉。
 - 时滞炮车的 `experimental/cnv/units/chronolag.py` 是总控特许单位线写的一次例外：机制照 `make_campnew35.py` 原样搬；合进 main 以后机制归关卡线，单位线只管 `dress()` 和外观。
 - 要动关卡线的文件（`experimental/cnv/devices/`、`experimental/cnv/missions/`、`experimental/cnv/parts.py`、`experimental/cnv/build.py` 等），先在报告里说或者先问关卡线，不要等合并时才被发现；共用文件只加需要的那几行，用 Edit 改，不顺手重构。
 
@@ -13,19 +13,32 @@
 | 单位 | 外观从哪来 | 接进 `experimental/cnv` |
 |---|---|---|
 | 时滞炮车 `CNChrono` | GPT 四格图 → Tripo（分部件）→ `tripo_unit.py chronolag` → `make_campchrono.py`；按钮、头像 `ui_kit.py` | `chronolag.py`（`dress()` 默认穿：模型、按钮、头像、名字、展开时的青色光）；检查 `chronolag hit` / `packed` 在测试台上 PASS |
-| 冰幕工兵：冰墙 `CNIceWall` / 长条 `CNIceBar`、冰核 `CNIceSeed`、碎冰 `CNIceRubble`、工兵贴图 `CNIceEngineer` | 原版冰岛冰川 `IL_GLACIER*` 拼装（`ice_kit.py`），工兵只换贴图 | `icewall.py` 默认穿；`ice_block`、`ice_build` PASS |
+| 冰幕工兵：冰墙 `CNIceWall` / 长条 `CNIceBar`、冰核 `CNIceSeed`、碎冰 `CNIceRubble`、工兵贴图 `CNIceEngineer` | 原版冰岛冰川 `IL_GLACIER*` 拼装（`ice_kit.py`），工兵只换贴图；按钮、头像是原版工程师的改色加雪花（`ice_kit.engineer_icons` → `ui_kit.py CNIceEngineer`） | `icewall.py` 默认穿（`dress_engineer` 贴图；名字、按钮、头像、冻冰按钮走 `look.py`）；`ice_block`、`ice_build` PASS，`a4 --check hold` PASS（2026-10-29） |
 | 冰雕 `CNIceSculpt`（冰龙） | GPT 四格图 → Tripo 多视图 → `tripo_unit.py` 道具分支 → `ice_kit.prop` | `festival.sculpture` 默认穿 |
+| 加固冰雕 `CNIceSculptHard`（A4 的 2、3 号广场，打不碎） | 同一条冰龙的烘焙图，压暗偏灰、放大 1.15 倍（`ice_kit.VARIANTS`） | `festival.reinforced`；`devices/ice_plazas.py` 给 `无敌` 的广场摆它（关卡线文件，改了两行）；`a4 --check hold` PASS |
 | 雪堆 `CNSnowBank` | 高度场直接生成（`ice_kit.bank`，原版没有雪堆），贴图 `CNSnow` 程序生成 | `festival.bank` 默认穿；现在没有任务用雪堆（广场的墙是抬高的地形），只在 `ice_look.py` 里 |
 | 车队运输车 `CNConvoyCargo` | 原版矿车，矿石模块换成原版雪地货柜（`convoy_kit.py`） | `convoy.py` 默认穿；A4 `stop`、`win` PASS |
 | 自由号 `CNLiberty` + 女神像 `CNLibStatue` + 陀螺环 `CNLibRings` + 跃迁充能 `CNLibCharge` | 用户定的"飞起来的自由岛"（场景图 `work/units/libertyisle/gpt/h6.png`）→ 三视图 v4 → Tripo（整块）→ `tripo_unit.py libertyisle` → `liberty_kit.py`（女神像用原版纽约 `NY_LIBERTY`）；宽 280 是用户选的 | `liberty.py` 默认穿（`liberty.dress`）；敌方自由号报警时 `devices/carrier.py` 用 `liberty.charging` 点亮充能（总控放行的一行） |
 
+**名字、技能按钮、生产按钮和头像**（用户 2026-10-29："新单位至少要把技能图标和名称改掉，模型先不改也可以"）：全部新单位都走 `experimental/cnv/units/look.py`。表 `LOOKS` 按单位写名字、类型、说明，每个技能的名称、说明和图标键；各单位函数上一行 `@look.named('<种类>')`，同一个函数造好几样东西时（冰墙的建筑也是冰雕、雪堆、闸门）调用处传 `look_as=`。RA3 的按钮挂在命令上，所以原版命令要复制成我们自己的 `Command_<单位>_<键>`，单位发布的 abilities 跟着换，脚本照旧按 abilities 按按钮。
+- 技能图标 `CNA_<键>`（82×82）：`ability_icons.py gen` 每个阵营让 GPT 照三张原版技能图标出一张图标格，`write` 切开写进 `Art/CN/`。冰、建筑类道具（冰墙、冰核、冰雕、雪堆、闸门）没有按钮（`EmptyCommandSet`，原来显示地堡的"全部撤出"）。
+- 生产按钮、头像：自由号用 Tripo 模型的渲染图（`button_icon.py compose`）；借原版模型的单位用原版图加自己的技能图标角标（`ability_icons.py badges`），和同一个工厂里的原版单位分得开；都由 `ui_kit.py` 写进 `Art/`。
+- 冰、冰雕的头像：冰雕、加固冰雕用 Tripo 渲染图（`ice_kit.prop_icons`），冰墙、冰核、雪堆用冻冰墙的技能图标放大（雪堆还没有自己的图）。
+- 测试台核对（2026-10-30，`names_look.py` 的 `CampNamesLook` 把全部新单位摆在一起，逐个点选）：名字、头像、生产按钮、技能图标都是我们的；开关类技能按下去，第二个状态的图标和说明也是我们的（干扰车试过）。
+- 还是原版的：船闸闸门的头像（地堡的）；通用的卸载、撤出按钮（钻地运兵车、合体机甲母机的"全部撤出"是分离）；纸鹤侦察机的双刃直升机撤出按钮（它没有技能，要不要这个撤出按钮归关卡线定；它的生产按钮是双刃的图加纸鹤角标）；车队运输车、克隆体的头像（玩家造不了）。
+
 各单位外观的写法、参数和测试台上看出来的问题，写在对应脚本的开头说明和注释里（`liberty_kit.py`、`ice_kit.py`、`chronolag.py`、`liberty.py`）。截图在 `work/units/<单位>/review/`。
 
 **构建依赖**：这些模型和图写在 SDK 共享的 `Art/` 里，不进 git。换机器或清过 SDK 要重跑：
-- 只靠原版就能重建：冰墙、长条冰墙、冰核、碎冰、工兵贴图、雪堆（`ice_kit.py`），货柜（`convoy_kit.py`），女神像（`liberty_kit.py` 的一部分）。
-- 只能从 `work/` 里的原件重建（gitignore，丢了要从 Tripo 账号重新导出）：冰雕（`work/units/icesculpture/tripo/icesculpture_v1.glb` → Blender 跑 `tripo_unit.py icesculpture` → `ice_kit.py CNIceSculpt`），时滞炮车（`tripo_unit.py chronolag` → `make_campchrono.py`；按钮、头像的图在 `work/units/chronolag/game/` → `ui_kit.py`），自由号平台（`work/units/libertyisle/tripo/libertyisle_v1.glb` → `tripo_unit.py libertyisle` → `liberty_kit.py`）。`ice_kit.py` 缺冰雕原件时跳过它、照做其余，并打印怎么补。
+- 只靠原版就能重建：冰墙、长条冰墙、冰核、碎冰、工兵贴图、工兵按钮和头像、雪堆（`ice_kit.py`，按钮头像还要再跑 `ui_kit.py CNIceEngineer`），货柜（`convoy_kit.py`），女神像（`liberty_kit.py` 的一部分）。
+- 技能图标：`work/units/abilities/<阵营>.png` 在就只跑 `ability_icons.py write`、`badges`，再 `ui_kit.py`；图标格丢了要重新 `gen`（GPT 每次画得不一样）。
+- 只能从 `work/` 里的原件重建（gitignore，丢了要从 Tripo 账号重新导出）：冰雕和加固冰雕（`work/units/icesculpture/tripo/icesculpture_v1.glb` → Blender 跑 `tripo_unit.py icesculpture` → `ice_kit.py CNIceSculpt CNIceSculptHard`），时滞炮车（`tripo_unit.py chronolag` → `make_campchrono.py`；按钮、头像的图在 `work/units/chronolag/game/` → `ui_kit.py`），自由号平台（`work/units/libertyisle/tripo/libertyisle_v1.glb` → `tripo_unit.py libertyisle` → `liberty_kit.py`）。`ice_kit.py` 缺冰雕原件时跳过它、照做其余，并打印怎么补。
 
 花费：GPT 出图约 20 张（订阅额度内）；Tripo 用了 180 积分（时滞炮车 80、冰雕 50、自由号 50），剩 3025。
+
+Tripo 订阅：用户买的是包月（专业版，推测），2026-10-20 04:00（北京时间）开始，月度积分到 2026-11-20 04:00 重置、不累计。用户的计划：策划和关卡线做完再批量做新单位，避免返工；用户购买当天就在支付宝关了自动续费，所以 2026-11-20 04:00 到期后不再续；做新单位之前先问用户订阅还在不在，不在就请用户买一个月（每个单位约 80 积分，一个月 3000 积分够做三十多个），把要做的单位一次做完。
+
+**单位语音**（配音线做，单位线接线）：冰幕工兵现在用原版工程师的语音。配音线的语音包进了构建、发来事件名表以后再换，换之前别动（事件不存在会指向空）。接法照原版：一般的挂 `UnitSpecificSounds` 的 `AudioType`；占领、修理是具名条目 `NamedEntry Name="VoiceCaptureBuilding"` / `"VoiceEngineerRepair"`；冻冰墙在技能上写 `NameOfVoiceNameToUseAsInitiateIntendToDoVoice="VoiceIceWall"`，单位加 `NamedEntry Sound="CNV_IceEngineer_VoiceIceWall" Name="VoiceIceWall"`（原版苏联工程师造地堡就是这样接的）。
 
 ## 下一步
 
@@ -57,7 +70,12 @@
 - 打开"分部件生成"会自动关掉"贴图生成"，生成完再用"贴图生成"补；分部件开关点"生成"后可能被页面复位（自由号那次扣了 30 却没分部件），生成前再看一眼。
 - 生成后进"贴图生成"页，参考图会自动带过来（刷新生成页反而会丢）；贴图 20 积分。
 - 导出对话框在截图里看不见，用页面脚本读、改文件名、点"导出"；按钮变灰就是在打包，两百万面约一分钟，先落成 `.tmp` 再改名 `.glb`，到 `Downloads`；核对 glTF 头里的长度。模型太大时视口可能加载失败（QUIC 报错），刷新再点一次资产卡片。
-- 全自动的办法：Claude in Chrome 扩展（用户的学校账号没有权限，用不了）、Tripo API key（单独计费）、Playwright 驱动本机 Edge（没做）。内置浏览器拦截网页访问 127.0.0.1，本机起服务器喂图走不通；DCC Bridge 只能把模型推进 Blender，帮不了上传。
+- 全自动的办法查过，用户 2026-10-28 定了暂不用，继续走网页：
+  - Claude in Chrome 扩展：用户的学校账号没有权限，用不了。
+  - Tripo 官方终端 `tripo-cli`（`npm install -g tripo-cli`，`tripo login --region cn` 授权）：支持本地多图出模型和 `mesh segment` 分部件，`tripo mcp` 能当 MCP 跑，已在本机装好登录过。但它走 API 积分，**网页订阅积分不能用**（帮助中心原话"网页端积分不等于 API 积分"），API 账户余额是 0。
+  - API 价格（[定价页](https://developers.tripo3d.com/zh/pricing)）：1 积分 = ¥0.07，订阅折下来约 ¥0.0225，贵约 3 倍。四视图出模型 20（带贴图 30），分部件 +20，高清贴图 +10；一个带贴图、分部件的单位约 50 到 60 积分，约 ¥3.5 到 4.2。失败的任务不扣费。
+  - 官方 Blender 插件只做单张图出模型，官方 MCP（`tripo-mcp`，alpha）只做文字或单图加 Blender 操作，都不支持四视图和分部件，没用。
+  - 内置浏览器没有上传文件的工具，也拦截网页访问 127.0.0.1，本机起服务器喂图走不通；DCC Bridge 只能把模型推进 Blender，帮不了上传。
 
 ## 坑
 
@@ -80,7 +98,6 @@
   - 暂停状态下 `bench_look` 可能拍到菜单，先 `bench_wait 0.5`。
   - 暂停模式（`hold=true`）下脚本计时器和带时长的模型状态照样按真实时间走，两次调用之间的空档也会算进去。要按秒对时间的效果，用 `bench_start(hold=false)` 连续跑，或者只用一次 `bench_watch`。
   - 脚本化检查（`build.py --check`、`bench_client`）默认 8 倍速（ADR 0007）；用脚本化检查看动画、特效时设 `RA3_BENCH_SPEED=1`。手动驾驶（`bench_start`）仍是 1 倍。
-  - 构建时只要有红警3在跑，构建脚本有时会认为"不是测试台的游戏"，把新版放进 `work/staging/` 不装（关卡线的测试台游戏就被这样判断过）。看输出里有没有 `staging`；有的话游戏里看到的还是上一版，等没有游戏时再构建。
   - `cnv_check` 用的是主仓库的代码。要测本分支的改动，先在本工作目录跑 `build.py <名> --check <项> --plan`（编译并装进 Mods），再 `cnv_check(build=false)`；主仓库还没有这个检查时，手动 `bench_start` + `bench_watch(lines=n)` + `bench_counters`，再用本分支的 `build.py <名> --check <项> --no-build --judge "<计数文本>"` 判定。
 - **环境**：
   - 查游戏进程用 PowerShell `Get-Process | ? ProcessName -match ra3`（Git Bash 的 tasklist 会漏）。上测试台前单独查一次，再看 `python -I ra3voice/reslock.py status`（在主仓库目录跑）；测试台有两个位置，另一个被占时可以用空的那个。

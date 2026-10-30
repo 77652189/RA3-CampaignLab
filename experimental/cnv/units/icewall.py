@@ -20,6 +20,7 @@ import re
 
 import make_campnew2 as c2
 from parts import Unit
+from units import look
 
 SAGE = os.path.join(c2.SDK, 'SageXML')
 
@@ -54,7 +55,7 @@ def rubble(id, model=ICE_RUBBLE, life=6, sink=5):
 	<GameObject id="{id}" Side="Neutral" EditorSorting="MISC_MAN_MADE" TransportSlotCount="0"
 		CommandSet="EmptyCommandSet" KindOf="NO_COLLIDE UNATTACKABLE NOT_AUTOACQUIRABLE CLEARED_BY_BUILD DEBRIS"
 		RadarPriority="NOT_ON_RADAR">
-		<DisplayName>Ice Rubble</DisplayName>
+		<DisplayName>Name:{id}</DisplayName>
 		<ArmorSet Armor="NoArmor" />
 		<Draws>
 			<ScriptedModelDraw id="ModuleTag_Draw" OkToChangeModelColor="false">
@@ -117,6 +118,7 @@ def dress(unit, model, leaves=None):
 </AssetDeclaration>''')
         unit.files[rid + '.xml'] = rubble(rid, leaves)
         unit.also.append(rid + '.xml')
+        unit.strings[f'Name:{rid}'] = '碎冰'
         unit.link += [f'GameObject:{rid}', f'ObjectCreationList:{ocl}']
     unit.xml = x
     unit.params.update(model=model, rubble=leaves)
@@ -125,7 +127,7 @@ def dress(unit, model, leaves=None):
 
 def dress_engineer(unit, texture=ICE_ENGINEER):
     """The engineer (the retail Allied engineer's XML) in `texture` wherever he wears his model -- the bunker's
-    placing-cursor way (<Texture Original New> in a model state)."""
+    placing-cursor way (<Texture Original New> in a model state). His name, buttons and portrait: look.py."""
     x, n = re.subn(r'(Name="AUEngineer_SKN"\s*/>)', rf'\1\n\t\t\t\t\t<Texture Original="AUEngineer" New="{texture}" />',
                    unit.xml)
     assert n >= 1, n
@@ -134,6 +136,7 @@ def dress_engineer(unit, texture=ICE_ENGINEER):
     return unit
 
 
+@look.named('ice_wall')
 def wall(id='CNV_IceWall', length=200, thick=24, lifetime=30, health=1500, what='', shape='bar', spot=False,
          model='', leaves=ICE_RUBBLE):
     """lifetime None: it never melts (the festival's sculptures and snow banks, units/festival.py). model / leaves:
@@ -178,6 +181,7 @@ def wall(id='CNV_IceWall', length=200, thick=24, lifetime=30, health=1500, what=
     return dress(u, model, leaves) if model else u
 
 
+@look.named('ice_seed')
 def seed(id='CNV_IceSeed', wall_id='CNV_IceWall', angle=0, assembly=5, size=40, model=ICE_SEED):
     """What the engineer builds when the wall must go where a whole wall could not be placed: a small core (placed
     anywhere a `size` square fits) that melts as his building ends and leaves the wall `wall_id` where it stood --
@@ -225,6 +229,7 @@ def retail_engineer(id='CNV_SovEngineer', structure='SovietBunker'):
                 what=f'对照：原版苏联工程师，freeze = 原版造地堡的技能，造 {structure}', params=dict(wall=structure))
 
 
+@look.named('ice_engineer')
 def engineer(id='CNV_IceEngineer', wall_id='CNV_IceWall', reach=300, reload='20s', build=True, assembly='5s',
              stand=30, texture=ICE_ENGINEER):
     """build (the user's decision, 2026-10-22): he walks to the spot and stands building for `assembly` -- exposed

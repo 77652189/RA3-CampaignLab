@@ -15,6 +15,7 @@ import re
 
 import make_campnew2 as c2
 from parts import Unit
+from units import look
 
 SAGE = c2.SDK + '/SageXML'
 
@@ -35,6 +36,7 @@ def gun(id, reach):
 TOGGLE_POWER, TOGGLE_COMMAND = 'SpecialPower_ToggleTargetPainter', 'Command_ToggleTargetPainter'   # the Guardian's
 
 
+@look.named('train')
 def train(id='CNV_Train', health=3000, reach=250):
     """The player's (the user's decision, 2026-10-22): they pick its targets and work the brake; the route is the
     mission's -- its scripts send it on to the next stop every second, so a move order of the player's lasts a

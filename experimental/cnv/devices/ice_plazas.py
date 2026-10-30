@@ -60,7 +60,8 @@ class IcePlazas(Device):
         self.eng = iw.engineer(wall_id=self.core.id, stand=iw.clear_of(self.wall),    # not shut in his own block
                                reload=f'{float(spec.get("冷却", RELOAD)):g}s')
         self.sculpt = fest.sculpture()
-        self.units = [self.eng, self.core, self.wall, self.sculpt]
+        self.hard = fest.reinforced()               # the look of a 无敌 plaza's sculptures (the same building)
+        self.units = [self.eng, self.core, self.wall, self.sculpt, self.hard]
         self.names = {'冰幕工兵': self.eng, '冰雕': self.sculpt}
         self.sealed = f'CNV_{c.tag}_Sealed'
         stop = spec.get('遇伏')
@@ -112,11 +113,11 @@ class IcePlazas(Device):
         assert not stray, f'{self.name}: 广场 {stray} -- the map has plazas {self.plazas}'
         self.walls = {}
         for k in self.plazas:
-            kinds, many, _, _ = self.setting(k)
+            kinds, many, tough, _ = self.setting(k)
             s = fp.north(m, k)
             for i, dx in enumerate((-45, 45), 1):
-                m.put(self.sculpt.id, f'plaza {k}', dx, s * 30, side='s1', name=f'UNIT - CNV {tag} Sculpture {k}-{i}',
-                      role=f'sculpture {k}-{i}')
+                m.put((self.hard if tough else self.sculpt).id, f'plaza {k}', dx, s * 30, side='s1',
+                      name=f'UNIT - CNV {tag} Sculpture {k}-{i}', role=f'sculpture {k}-{i}')
                 m.waypoints[f'CNV {tag} Hide {k}-{i}'] = m.site(f'plaza {k}', dx, -s * 30)
                 for n in range(1, max(many) + 1):  # created when the sculpture breaks (contract: by that script)
                     m.cast[f'troop {k}-{i}-{n}'] = Role(kinds[n - 1], self.troop(k, i, n), 's1', [f'plaza {k}'])
