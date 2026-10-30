@@ -1,12 +1,12 @@
 """A voice pack: our dubbed lines in the shape a mod build takes them (the interface with the mission builds, like
 experimental/music/pack.py; the voice line's side is RA3-ChineseVoice docs/campaign_voice.md).
 
-The voice line delivers RA3-ChineseVoice/work/campaign/<level>/CNV_<id>.wav + manifest.json. Each line becomes an
+The voice line delivers RA3-ChineseVoice/work/campaign/<lang>/<level>/CNV_<id>.wav + manifest.json. Each line becomes an
 AudioFile (the SDK's own encoder makes it XAS) and an AudioEvent of the same name, as retail's mission dialogue does
 (SageXML/Sounds/MissionDialogue.xml): a script plays it with PLAY_SOUND_EFFECT('CNV_A4_007') and waits with
 HAS_FINISHED_AUDIO('CNV_A4_007'); its subtitle is the string DIALOGEVENT:CNV_A4_007.
 
-  pack = make(['a4'])           or make(test=True): the one line CNV_TEST_001, for the bench probe
+  pack = make(['a4'], lang='zh') or make(test=True): the one line CNV_TEST_001, for the bench probe
   pack.include                  'DATA:CNVVoice/Data/voice.xml'   (the static mod.xml, type="all")
   pack.files                    [(big path, bytes)]   the encoded audio (cdata)
   pack.events                   the event names (what PLAY_SOUND_EFFECT / HAS_FINISHED_AUDIO may name)
@@ -75,15 +75,17 @@ class Pack:
         print(f'voice: {len(found)} lines spliced, audio in the big')
 
 
-def lines(levels):
-    """[(event, wav, text)] of the delivered lines of `levels` (their manifest.json; announcer lines that play a
-    retail announcer event have no file of ours and are left out)."""
+def lines(levels, lang='zh'):
+    """[(event, wav, text)] of the delivered lines of `levels` in `lang` (work/campaign/<lang>/<LEVEL>/manifest.json;
+    announcer lines that play a retail announcer event have no file of ours and are left out). An event is named the
+    same in every language: another language is a pack of its own (a patch), its audio and subtitles over ours."""
     out = []
     for lv in levels:
-        with open(os.path.join(DELIVERED, lv.upper(), 'manifest.json'), encoding='utf-8') as f:
+        here = os.path.join(DELIVERED, lang, lv.upper())
+        with open(os.path.join(here, 'manifest.json'), encoding='utf-8') as f:
             for e in json.load(f):
                 if e.get('event'):
-                    out.append((e['event'], os.path.join(DELIVERED, lv.upper(), e['event'] + '.wav'), e['text']))
+                    out.append((e['event'], os.path.join(here, e['event'] + '.wav'), e['text']))
     return out
 
 
@@ -95,10 +97,10 @@ def xml(items, folder=FOLDER):
     return f'<?xml version="1.0" encoding="UTF-8"?>\n<AssetDeclaration xmlns="uri:ea.com:eala:asset">\n{body}</AssetDeclaration>\n'
 
 
-def make(levels=(), test=False, folder=FOLDER):
+def make(levels=(), test=False, lang='zh', folder=FOLDER):
     """Copy the WAVs under <SDK>/Audio/<folder>, write <SDK>/Mods/<folder>/Data/voice.xml, compile it alone (for the
     encoded audio) and return the Pack."""
-    items = ([TEST] if test else []) + lines(levels)
+    items = ([TEST] if test else []) + lines(levels, lang)
     audio = os.path.join(labpaths.SDK3, 'Audio', folder)
     data = os.path.join(labpaths.SDK3, 'Mods', folder, 'Data')
     os.makedirs(audio, exist_ok=True)
