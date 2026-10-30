@@ -99,8 +99,9 @@ class Reach:
         elif name in ('INCREMENT_COUNTER', 'DECREMENT_COUNTER'):
             self.counters.setdefault(a[1], set()).add('+' if (name == 'INCREMENT_COUNTER') == (a[0] > 0) else '-')
         elif name in ('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', 'SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER',
-                      'SET_PLAYER_MONEY_TO_COUNTER'):
-            k = a[1] if name != 'SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER' else a[2]
+                      'SET_PLAYER_MONEY_TO_COUNTER', 'SET_COUNTER_TO_COUNTER', 'COUNTER_MATH_COUNTER'):
+            k = (a[2] if name == 'SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER' else
+                 a[0] if name in ('SET_COUNTER_TO_COUNTER', 'COUNTER_MATH_COUNTER') else a[1])
             self.counters.setdefault(k, set()).update('+-')
         elif name in CREATES:
             self.objects.add(a[0])
@@ -126,6 +127,8 @@ def wiring(mm):
                 set_c.add(a[1])
             elif name == 'SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER':
                 set_c.add(a[2])
+            elif name in ('SET_COUNTER_TO_COUNTER', 'COUNTER_MATH_COUNTER'):
+                set_c.add(a[0])
     out = []
     for s in mm.scripts:
         for c in s.when:

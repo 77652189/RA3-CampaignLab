@@ -18,10 +18,12 @@
 
 ## 下一步（按顺序）
 
-1. **A4 按设计线新稿重做第 3 层。** 读：`docs/design/flow/a4.md`（流程稿，用户 2026-10-29 已过）、`docs/design/flow/mechanics.md`（哪些机制能承诺）、`docs/design/maps/`（第 2 层，地图内容，设计线在做）。现有计划 `docs/story/plans/a4.md`；做法是改生成器和计划，不手改产物。要加的东西：
-   - "兵少于 N"做成计划词（每帧数各兵种的 `SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER`，用 `COUNTER_MATH_COUNTER` 加起来再比；比较码 3 是 `>=`）；模拟器要补 `COUNTER_MATH_COUNTER`；
-   - 计划行带说话人和流程稿原文，供配音按台词查；
-   - 用 `glossary.py` 的标准名。
+1. **A4 按设计线新稿重做第 3 层。** 读：`docs/design/flow/a4.md`（流程稿，待用户审；第 2 层地图内容稿也还没出来）、`docs/design/flow/mechanics.md`（哪些机制能承诺）、`docs/design/maps/`（第 2 层，地图内容，设计线在做）。现有计划 `docs/story/plans/a4.md`；做法是改生成器和计划，不手改产物。要加的东西：
+   不依赖流程稿定稿的三项准备已做（2026-10-30，测试 `tests/test_plan_lines.py`，全量 286 过，已提交；`plan.py` 里音乐线的 `CNV_MUSIC_CAPTIONS` 那段没带进去，还在工作区）：
+   - 计划词 `兵少于 <n> <单位>、<单位>`（`plan.py` 的 `troops()`，比较码 0 是 `<`）；模拟器补了 `COUNTER_MATH_COUNTER`（0 加、1 减）和 `SET_COUNTER_TO_COUNTER`，**测试台还没验这两个动作**（只看过原版怎么用）；
+   - 通报可以写 `{通报: 文字, 说: 说话人, 原文: 流程稿原文}`，任务的 `lines` 里留一张台词表；
+   - `a4.md` 里改成术语表的叫法：天狗机甲、鹰击者VX、多功能步兵车。
+   整体按新流程稿重做 A4 还没开始，要等用户审流程稿、第 2 层地图内容稿出来。
 2. **配音接进 A4。** 卡在配音线还没交 A4 台词（`RA3-ChineseVoice/work/campaign/zh/A4/manifest.json` 还不存在）。到了就用 `experimental/voice/pack.py` 的 `make(levels=('A4',))` 接进 A4 的任务（参考 `missions/voice_bench.py` 的 `LazyPack`）。
 3. **A4 的 `win` 检查**：旧版里后两辆车没到港口；重做后这条会换，先别查旧的。
 4. **输出瘦身**（总控要求）：总控会列出输出最多的脚本，`experimental/cnv` 下的由我改成默认只打摘要，加 `--verbose` 才打全。

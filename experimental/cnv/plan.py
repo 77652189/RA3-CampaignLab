@@ -221,6 +221,7 @@ class Compiler:
         self.phases, self.waves, self.goals = [], {}, {}
         self.last = []              # the scripts the last when() made
         self.counted = {}           # group -> the counter of its losses (摧毁 <group> <n> 个)
+        self.troop_counters = {}    # kinds counted together -> their counter (兵少于 <n> <units>)
         self.music = self.load_music(data.get('音乐'))
 
     def load_music(self, name):
@@ -401,6 +402,11 @@ class Compiler:
             if not hm:
                 raise PlanError(f'{s!r}: write 血量 <part> < <percent>')
             return [[('UNIT_HEALTH', n, 0, int(hm.group(2)))] for n in self.part_names(hm.group(1))]
+        if head == '兵少于':                         # `兵少于 3 标枪兵、多功能步兵车`: the player's, all of them together
+            mm = re.match(r'^(\d+)\s*个?\s+(.+)$', rest)
+            if not mm:
+                raise PlanError(f'{s!r}: write 兵少于 <n> <unit>、<unit> (the kinds counted together)')
+            return [[('COUNTER', self.troops(re.split(r'[、,，]', mm.group(2))), 0, int(mm.group(1)))]]
         if head in ('建成', '没有'):
             tmpl = self.unit(rest).lower()          # retail writes the type in lower case here
             self.m.spawns.add(tmpl)
@@ -443,6 +449,29 @@ class Compiler:
             self.m.scripts += [Script(f'CNV {self.tag} - Lost {n}', [('NAMED_DESTROYED', n)],
                                       [('INCREMENT_COUNTER', 1, counter)]) for n in names]
         return counter
+
+    def troops(self, names):
+        """A counter of how many of the player's units of these kinds live: one script, every frame, counts each kind
+        (SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER counts the player's alone, and what died or was deleted drops out at the
+        next read: bench 2026-10-29, probe death) and adds the counts up (COUNTER_MATH_COUNTER, 0 adds). Retail's
+        `all units` object list is expanded when retail compiles it, ours is read from the .map: not usable
+        (docs/design/flow/mechanics.md, 兵少补援)."""
+        kinds = sorted({self.unit(n.strip()).lower() for n in names if n.strip()})
+        if not kinds:
+            raise PlanError(f'兵少于 {names!r}: no unit named')
+        key = '、'.join(kinds)
+        if key not in self.troop_counters:
+            total = f'CNV_{self.tag}_Troops_{len(self.troop_counters) + 1}'
+            self.troop_counters[key] = total
+            acts = [('SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER', kinds[0], self.m.player('p1'), total)]
+            for i, t in enumerate(kinds[1:], 1):
+                part = f'{total}_{i}'
+                acts += [('SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER', t, self.m.player('p1'), part),
+                         ('COUNTER_MATH_COUNTER', total, 0, part)]
+            self.m.spawns |= set(kinds)
+            self.m.scripts.append(Script(f'CNV {self.tag} - Count troops {len(self.troop_counters)}', [], acts,
+                                         once=False))
+        return self.troop_counters[key]
 
     def wait(self, base, t, s):
         """`base + t`: a timer started once base first holds; true once it has run out."""
@@ -507,7 +536,14 @@ class Compiler:
         if not isinstance(a, dict):
             raise PlanError(f'action {a!r}: a string or a mapping')
         if '通报' in a:
-            return [('SHOW_MILITARY_CAPTION', self.text('SCRIPT', a['通报']), float(a.get('秒', CAPTION)))]
+            words, who = str(a['通报']), a.get('说')
+            if '原文' in a and not who:
+                raise PlanError(f'action {a!r}: 原文 is a speaker\'s words: 说 <who> goes with it')
+            shown = f'{who}：{words}' if who else words
+            key = self.text('SCRIPT', shown)
+            if who:                                 # a flow-script line: the dubbed line is found by who and what
+                self.m.lines.append(dict(说话人=str(who), 原文=str(a.get('原文', words)), 通报=shown, 字串=key))
+            return [('SHOW_MILITARY_CAPTION', key, float(a.get('秒', CAPTION)))]
         if '镜头' in a:                             # to a site, or to one of the plan's own (retail: the statue)
             secs, ps = float(a.get('秒', CAMERA_MOVE)), self.parts(str(a['镜头']))
             if ps:

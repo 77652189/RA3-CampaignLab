@@ -139,7 +139,7 @@ RA3_ONLY = {'ATTACK_MOVE_NAMED_UNIT_TO', 'ATTACK_MOVE_TEAM_TO', 'CREATE_NAMED_ON
             'SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', 'SKIRMISH_AI_TRANSFER_ALL', 'SKIRMISH_AI_USE_REBUILD_SYSTEM',
             'SKIRMISH_AI_USE_REPAIRS', 'UNIT_AI_TRANSFER_ALL', 'PATH_MUSIC_PLAY_EVENT',
             'PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM', 'CAMERA_ENTERED_AREA',
-            'PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS'}
+            'PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS', 'SET_COUNTER_TO_COUNTER', 'COUNTER_MATH_COUNTER'}
 
 # actions that change nothing the scripts ask about: logged on the timeline (the player sees or hears them)
 SHOWN = {'SHOW_MILITARY_CAPTION': '通报', 'CAMPAIGN_CREATE_AUTO_SAVE': '存档', 'PATH_MUSIC_PLAY_EVENT': '音乐',
@@ -637,6 +637,13 @@ class Sim:
                     self.end('输', script)
         elif name == 'SET_COUNTER':
             self.counters[a[0]] = a[1]
+        elif name == 'SET_COUNTER_TO_COUNTER':
+            self.counters[a[0]] = self.counters.get(a[1], 0)
+        elif name == 'COUNTER_MATH_COUNTER':        # retail: 0 adds (a total of per-player kills), 1 takes away (what is
+            dst, op, src = a                        # left of the transports spawned); other codes were never seen used
+            if op not in (0, 1):
+                self.used.add(f'COUNTER_MATH_COUNTER code {op}')
+            self.counters[dst] = self.counters.get(dst, 0) + (-1 if op == 1 else 1) * self.counters.get(src, 0)
         elif name in ('INCREMENT_COUNTER', 'DECREMENT_COUNTER'):
             self.counters[a[1]] = self.counters.get(a[1], 0) + (a[0] if name == 'INCREMENT_COUNTER' else -a[0])
             self.change()

@@ -153,6 +153,10 @@ class Mission(Part):
                                                                 # stand above the counters, in the same 4 lines)
     spawns: set = dataclasses.field(default_factory=set)        # templates its scripts name that nobody casts (a
                                                                 # plan's waves and reinforcements, what it counts)
+    lines: list = dataclasses.field(default_factory=list)       # the plan's spoken captions, in compile order: {说话人,
+                                                                # 原文 (the flow script's words, what a dubbed line
+                                                                # is looked up by), 通报 (what the caption shows),
+                                                                # 字串 (its string key)}
     sides: dict = dataclasses.field(default_factory=dict)       # {side: {player property: value}} changed in the
                                                                 # map's player list (a skirmish AI's faction, its
                                                                 # personality: mapxml.set_player)
