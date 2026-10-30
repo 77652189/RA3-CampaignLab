@@ -87,7 +87,7 @@ def main(names):
     speak, retail = fc.cast()
     units, mech = fc.unit_names(), fc.mechanics()
     paths = [fc.HERE / f'{n.lower()}.md' for n in names] if names else sorted(
-        q for q in fc.HERE.glob('*.md') if q.name not in ('README.md', 'cast.md'))
+        q for q in fc.HERE.glob('*.md') if q.name not in fc.NOT_SCRIPTS)
     levels = []
     for q in paths:
         plan = fc.plan_of(q)

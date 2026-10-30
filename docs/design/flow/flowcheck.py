@@ -15,6 +15,7 @@ import yaml
 import flowmap
 
 HERE = pathlib.Path(__file__).resolve().parent
+NOT_SCRIPTS = ('README.md', 'cast.md', 'mechanics.md', 'style.md')    # the folder's other documents
 TOP = ('关', '关名', '阵营', '类型', '位置', '基地', '地点', '新东西', '出场单位', '用到的机制', '一句话', '体验目标',
        '取舍', '张力', '接上一关', '引出下一关', '简报', '段', '胜利', '失败', '示意图')
 TYPES = ('护送', '突击', '基地对抗', '守', '潜入', '海战', '限时', '打自己人')
@@ -546,7 +547,7 @@ def main(names):
     sys.stdout.reconfigure(encoding='utf-8')
     speak, retail = cast()
     paths = [HERE / f'{n.lower()}.md' for n in names] if names else sorted(
-        q for q in HERE.glob('*.md') if q.name not in ('README.md', 'cast.md', 'mechanics.md'))
+        q for q in HERE.glob('*.md') if q.name not in NOT_SCRIPTS)
     units, mech, eva = unit_names(), mechanics(), retail_eva()
     problems =[x for q in paths for x in check(q, speak, retail, units, mech)]
     for x in problems:
