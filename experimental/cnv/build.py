@@ -21,6 +21,7 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 import parts                                    # noqa: E402  (puts experimental/campaign on the path)
 from checks import a4 as check_a4               # noqa: E402
+from checks import a4_before as check_a4b       # noqa: E402
 from checks import a5 as check_a5               # noqa: E402
 from checks import s5 as check_s5               # noqa: E402
 from checks import s6 as check_s6               # noqa: E402
@@ -56,7 +57,7 @@ from checks import sight as check_sight         # noqa: E402
 from units import tesla as units_tesla          # noqa: E402
 from missions import a4, a5, a7, a8, j3, j4, j5, j7, s2, s5, s6, beacon_bench, burrow_bench, clone_bench, combo_bench, crane_bench, icewall_bench, jammer_bench, liberty_bench, shikigami_bench, \
     tesla_bench, train_bench, probe_bench, plan_words_bench, ai_bench, ai_plan_bench, lock_bench, scene_bench, \
-    ally_bench, aistep_bench, fence_bench, reroute_bench, sight_bench, chronolag_bench  # noqa: E402
+    ally_bench, aistep_bench, fence_bench, reroute_bench, sight_bench, chronolag_bench, ban_bench, sapporo_bench  # noqa: E402
 
 BENCH_PY = os.path.join(os.path.dirname(ROOT), 'envs', 'bench_mcp', 'Scripts', 'python.exe')
 CLIENT = os.path.join(ROOT, 'experimental', 'testbench', 'bench_client.py')
@@ -75,11 +76,12 @@ def digits():
 
 # name -> mission(); checks: name -> check(mission) -> Test; or a build that is a (mission, test) pair outright
 MISSIONS = {
-    'a4': (lambda: a4.mission(), {'seal': check_a4.seal, 'placed': check_a4.placed, 'smash': check_a4.smash,
-                                  'ambush': check_a4.ambush, 'win': check_a4.win, 'lose': check_a4.lose,
-                                  'idle': check_a4.idle, 'harbour': check_a4.harbour, 'stop': check_a4.stop,
-                                  'early': check_a4.early, 'tough': check_a4.tough,
-                                  'north': check_a4.north, 'camp': check_a4.camp, 'free': check_a4.free}),
+    'a4': (lambda: a4.mission(), {'idle': check_a4.idle, 'hold': check_a4.hold, 'win': check_a4.win}),
+    'a4_before': (lambda: a4.before(), {
+        'seal': check_a4b.seal, 'placed': check_a4b.placed, 'smash': check_a4b.smash, 'ambush': check_a4b.ambush,
+        'win': check_a4b.win, 'lose': check_a4b.lose, 'idle': check_a4b.idle, 'harbour': check_a4b.harbour,
+        'stop': check_a4b.stop, 'early': check_a4b.early, 'tough': check_a4b.tough, 'north': check_a4b.north,
+        'camp': check_a4b.camp, 'free': check_a4b.free}),
     'a5': (lambda: a5.mission(), {'hold': check_a5.hold, 'win': check_a5.win}),
     's5': (lambda: s5.mission(), {'trap': check_s5.trap, 'escape': check_s5.escape}),
     's6': (lambda: s6.mission(), {'hold': check_s6.hold, 'lose': check_s6.lose}),
@@ -119,6 +121,8 @@ MISSIONS = {
     'aistep': (lambda: aistep_bench.mission(), {'stepped': check_aistep.stepped}),
     'aistep_free': (lambda: aistep_bench.mission(held=False), {'free': check_aistep.free}),
     'fence': (lambda: fence_bench.mission(), {'bar': check_fence.bar}),
+    'ban': (lambda: ban_bench.mission(), {}),                   # looked at by hand: the build tab
+    'sapporo': (lambda: sapporo_bench.mission(), {}),           # the A4 rework's map, to preview and measure
     'reroute': (lambda: reroute_bench.mission(), {'round': check_reroute.round_, 'open': check_reroute.opened}),
     'sight': (lambda: sight_bench.mission(), {'look': check_sight.look}),
     'jammer': (lambda: jammer_bench.mission(), {'jam': check_jam.jam, 'free': check_jam.free}),
@@ -136,7 +140,11 @@ MISSIONS = {
     'ice_smash': (lambda: icewall_bench.smash(), {'smash': check_ice.smash}),
     'clone': (lambda: clone_bench.mission(), {'hold': check_clo.hold, 'free': check_clo.free}),
     'clone_any': (lambda: clone_bench.mission(name='CampCloneA', picky=False), {'free': check_clo.free_any}),
-    'probe': (lambda: probe_bench.mission(), {'engine': check_pro.engine, 'count': check_pro.count}),
+    'probe': (lambda: probe_bench.mission(), {'engine': check_pro.engine, 'count': check_pro.count,
+                                              'align': check_pro.align, 'death': check_pro.death,
+                                              'reveal': check_pro.reveal,
+                                              'both': check_pro.both,
+                                              'both2': lambda m: check_pro.both(m, 'Mission Lost', 'Mission Won')}),
     'probe_nosave': (lambda: probe_bench.mission(name='CampPrbN', save=False), {'engine': check_pro.engine}),
     'plan_words': (lambda: plan_words_bench.mission(), {'words': check_pw.words}),
     'ai': (lambda: ai_bench.mission(), {'wake': check_ai.wake}),

@@ -1,5 +1,5 @@
 """自由号空天航母 (the Liberty carrier), as worked out in experimental/campaign/make_campnew38.py (its comments and
-docs/plan.md hold the bench history): a copy of the Kirov that launches the aircraft carrier's drones and takes them
+docs/archive/plan-2026-10-27.md hold the bench history): a copy of the Kirov that launches the aircraft carrier's drones and takes them
 home, whose one button is the deck jump -- it jumps itself (TeleportSpecialAbilityUpdate) and its SourceWeapon /
 DestinationWeapon pick up the ground units under the deck as it leaves and put them down where it lands (the
 Chronosphere's store / send). Optional: a deck factory (a SpawnBehavior budding units every 20 s) and deck riders

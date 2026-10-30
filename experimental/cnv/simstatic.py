@@ -92,7 +92,7 @@ class Reach:
     def effect(self, name, a):
         if name == 'SET_FLAG':
             self.flags.setdefault(a[0], {0}).add(int(a[1]))
-        elif name == 'SET_MILLISECOND_TIMER':
+        elif name in ('SET_MILLISECOND_TIMER', 'SET_RANDOM_MSEC_TIMER'):
             self.timers.add(a[0])
         elif name == 'SET_COUNTER':
             self.set_to.setdefault(a[0], set()).add(a[1])
@@ -116,7 +116,7 @@ def wiring(mm):
         for name, *a in s.do:
             if name == 'SET_FLAG':
                 set_f.add(a[0])
-            elif name == 'SET_MILLISECOND_TIMER':
+            elif name in ('SET_MILLISECOND_TIMER', 'SET_RANDOM_MSEC_TIMER'):     # a random time: 'from ~ to'
                 set_t.add(a[0])
             elif name in ('SET_COUNTER',):
                 set_c.add(a[0])

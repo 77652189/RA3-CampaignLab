@@ -101,10 +101,10 @@ def test_a_plaza_of_its_own_only_ice_gets_past():
 
 
 def test_the_engineers_reload_from_the_plan():
-    """冷却 (docs/design/a4-redesign.md: 40, longer than the ice lasts); left out, the 20 the A4 played now has."""
+    """冷却; left out, 40 (docs/design/a4-redesign.md: longer than the ice lasts)."""
     reload = lambda m: next(u for u in m.units if u.id == 'CNV_IceEngineer').params['reload']   # noqa: E731
-    assert reload(escort()) == '20s'
-    assert reload(escort(plazas={'冷却': 40})) == '40s'
+    assert reload(escort()) == '40s'
+    assert reload(escort(plazas={'冷却': 20})) == '20s'
 
 
 def test_a_plaza_setting_is_checked():

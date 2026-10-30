@@ -247,8 +247,8 @@ def test_an_enemy_ai_of_the_levels_own():
     assert cap.do == [('ALLOW_DISALLOW_ONE_BUILDING', 'Soviet_2', 'japanbarracks', 0)]
     assert off.do == [('ALLOW_DISALLOW_ONE_BUILDING', 'Soviet_2', 'japanbarracks', 1)] and not off.once
     asleep = named(m, 'CNV ZZ - AI asleep')[0].do
-    assert ('PLAYER_RELATES_PLAYER', 'Soviet_2', 'Soviet_1', 'Friend') in asleep
-    assert ('PLAYER_RELATES_PLAYER', 'Soviet_2', 'Player_1', 'Enemy') in asleep
+    assert plan.relates('Soviet_2', 'Soviet_1', 'Friend') in asleep
+    assert plan.relates('Soviet_2', 'Player_1', 'Enemy') in asleep
     assert asleep[-1] == ('PLAYER_SET_MONEY', 'Soviet_2', 0)
     wake = named(m, 'CNV ZZ - AI wake')[0]
     assert any(c[0] == 'TIMER_EXPIRED' for c in wake.when)

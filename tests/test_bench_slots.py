@@ -42,6 +42,30 @@ def test_slots_fill_then_refuse(bench):
     assert slots.take('d') == 1
 
 
+def test_a_full_bench_queues_till_a_slot_frees(bench, monkeypatch):
+    assert slots.take('a') == 1 and slots.take('b') == 2
+    naps = []
+    monkeypatch.setattr(slots.time, 'sleep', lambda s: (naps.append(s), len(naps) == 2 and slots.release(1)))
+    assert slots.take_waiting('c', wait=60, poll=5) == 1
+    assert len(naps) == 2
+
+
+def test_the_queue_gives_up_after_its_wait(bench, monkeypatch):
+    assert slots.take('a') == 1 and slots.take('b') == 2
+    clock = [0.0]
+    monkeypatch.setattr(slots.time, 'monotonic', lambda: clock[0])
+    monkeypatch.setattr(slots.time, 'sleep', lambda s: clock.__setitem__(0, clock[0] + s))
+    assert slots.take_waiting('c', wait=30, poll=5) is None
+    assert clock[0] == 30
+
+
+def test_the_users_game_is_not_waited_out(bench, monkeypatch):
+    bench[100] = 'RA3_1.13.game'        # nobody's slot: the user playing
+    monkeypatch.setattr(slots.time, 'sleep', lambda s: pytest.fail('waited on the user'))
+    assert slots.take_waiting('a', wait=600) is None
+    assert slots.holder(1) is None
+
+
 def test_a_dead_holder_frees_its_slot(bench):
     lock(1, 999999)                     # not in the process list
     assert slots.holder(1) is None

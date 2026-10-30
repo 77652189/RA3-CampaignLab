@@ -9,7 +9,7 @@ play: the level as meant (by test script): both pairs join and break ice 1 and 2
 lose: the player does nothing: the convoy appears at its departure, drives the road untouched, reaches the exit,
   and only then does the mission end.
 """
-from checks.a4 import DRIVE, on_road, start
+from checks.a4_before import DRIVE, on_road, start
 from parts import Script, Test, counted
 
 JOIN_AT, ATTACK_AT = 10.0, 16.0                 # past the bench's uncertain start; then a walk round to the gates

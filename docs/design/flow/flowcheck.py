@@ -1,0 +1,341 @@
+"""Checks the level flow scripts (docs/design/flow/<level>.md) for completeness and consistency only -- whether a
+script is good is the user's call (ADR 0008). What it checks is listed in README.md section 4.
+
+    python docs/design/flow/flowcheck.py            # every flow script
+    python docs/design/flow/flowcheck.py a4 j7      # some of them
+
+Prints one line per problem and exits 1 if there is any.
+"""
+import pathlib
+import re
+import sys
+
+import yaml
+
+import flowmap
+
+HERE = pathlib.Path(__file__).resolve().parent
+TOP = ('关', '关名', '阵营', '类型', '位置', '基地', '地点', '新东西', '出场单位', '用到的机制', '一句话', '体验目标',
+       '取舍', '张力', '接上一关', '引出下一关', '简报', '段', '胜利', '失败', '示意图')
+TYPES = ('护送', '突击', '基地对抗', '守', '潜入', '海战', '限时', '打自己人')
+GOAL_KINDS = ('主', '奖励')
+# voice-script rules (RA3-ChineseVoice lines/GLOSSARY.md): no digits, no Latin letters, no brackets
+BAD_IN_LINE = re.compile(r'[0-9A-Za-z()（）\[\]【】]')
+# a retail line is 3.5 s, ~16 characters of the official Chinese; 30 is the 90th percentile (teardowns/telling.md)
+MAX_LINE = 30
+PUNCT = re.compile(r'[\s，。！？、；：…—“”‘’"\'.,!?]')
+
+
+def cast():
+    """(speakers who may say new lines, retail-only characters) from cast.md's two tables."""
+    speak, retail, part = set(), set(), None
+    for line in (HERE / 'cast.md').read_text(encoding='utf-8').splitlines():
+        if line.startswith('## '):
+            part = speak if '新台词' in line else retail if '原版' in line else None
+        elif part is not None and line.startswith('| ') and not line.startswith('| 键') and '---' not in line:
+            part.add(line.split('|')[1].strip())
+    return speak, retail
+
+
+VOICE_GLOSSARY = HERE.parents[3] / 'RA3-ChineseVoice' / 'lines' / 'GLOSSARY.md'
+OUTLINE = HERE.parents[1] / 'story' / 'outline.md'
+PLAN_GLOSSARY = HERE.parents[2] / 'experimental' / 'cnv' / 'glossary.py'
+
+
+def unit_names():
+    """Names 出场单位 may list: the voice line's glossary (RA3-ChineseVoice, the authority for unit names), our own
+    new units (outline.md section 3) and the plan compiler's buildings (experimental/cnv/glossary.py). None when the
+    voice repo is not next to this one."""
+    if not VOICE_GLOSSARY.exists():
+        return None
+    names = set(re.findall(r'([一-鿿A-Z0-9-]+)\([A-Za-z][^)]*\)', VOICE_GLOSSARY.read_text(encoding='utf-8')))
+    for line in OUTLINE.read_text(encoding='utf-8').splitlines():
+        if line.startswith(('| 盟军 |', '| 苏联 |', '| 帝国 |')):
+            for cell in line.split('|')[2:4]:
+                names |= {re.sub(r'[（(].*', '', w).strip('* ') for w in re.split('[、，]', cell)}
+    if PLAN_GLOSSARY.exists():
+        names |= set(re.findall(r"'([一-鿿][^']*)':", PLAN_GLOSSARY.read_text(encoding='utf-8')))
+    return {n for n in names if n}
+
+
+MECH_STATES = ('已确认', '待验证', '不能做')
+
+
+def mechanics():
+    """{key: (state, forbidden-phrasing regex or None)} from mechanics.md's table; a cell's '\\|' is a literal pipe."""
+    out = {}
+    for line in (HERE / 'mechanics.md').read_text(encoding='utf-8').splitlines():
+        cells = [c.replace('\\|', '|').strip() for c in re.split(r'(?<!\\)\|', line)[1:-1]]
+        if len(cells) == 5 and cells[1] in MECH_STATES:
+            out[cells[0]] = (cells[1], re.compile(cells[4]) if cells[4] else None)
+    return out
+
+
+def all_text(node):
+    """Every string in the plan, keys included (a 时机 or a shot may promise something too)."""
+    if isinstance(node, dict):
+        for k, v in node.items():
+            yield str(k)
+            yield from all_text(v)
+    elif isinstance(node, list):
+        for v in node:
+            yield from all_text(v)
+    elif node is not None:
+        yield str(node)
+
+
+def plan_of(path):
+    m = re.search(r'```yaml\n(.*?)```', path.read_text(encoding='utf-8'), re.S)
+    return yaml.safe_load(m.group(1)) if m else None
+
+
+def lines_in(node, where):
+    """Every spoken line under node: (where, speaker, text). Lines are one-key maps under 简报 or 台词."""
+    if isinstance(node, dict):
+        for k, v in node.items():
+            if k in ('简报', '台词') and isinstance(v, list):
+                for i, item in enumerate(v):
+                    if isinstance(item, dict) and len(item) == 1:
+                        (who, text), = item.items()
+                        yield f'{where}/{k}[{i}]', who, text
+                    else:
+                        yield f'{where}/{k}[{i}]', None, item
+            else:
+                yield from lines_in(v, f'{where}/{k}')
+    elif isinstance(node, list):
+        for i, v in enumerate(node):
+            yield from lines_in(v, f'{where}[{i}]')
+
+
+def check(path, speak, retail, units=None, mech=None):
+    p = plan_of(path)
+    if not isinstance(p, dict):
+        return [f'{path.name}: no yaml block']
+    out = []
+    for k in TOP:
+        if p.get(k) in (None, '', [], {}):
+            out.append(f'{path.name}: missing {k}')
+    if str(p.get('关', '')).lower() != path.stem.lower():
+        out.append(f'{path.name}: 关 {p.get("关")} does not match the file name')
+    if p.get('类型') not in TYPES:
+        out.append(f'{path.name}: 类型 {p.get("类型")} is not one of {"/".join(TYPES)}')
+    for i, seg in enumerate(p.get('段') or []):
+        name = f'{path.name} 段[{i}] {seg.get("名", "?")}'
+        if not seg.get('结束'):
+            out.append(f'{name}: missing 结束')
+        goals = seg.get('目标') or []
+        for g in goals:
+            if g.get('种') not in GOAL_KINDS or not g.get('题') or not g.get('说明'):
+                out.append(f'{name}: objective {g.get("题")} needs 种 (主/奖励), 题 and 说明')
+        if goals and not seg.get('下一步靠什么'):
+            out.append(f'{name}: has objectives but no 下一步靠什么')
+        if any(g.get('种') == '主' for g in goals) and not seg.get('卡住了'):
+            out.append(f'{name}: has a main objective but no 卡住了')
+    for f in p.get('失败') or []:
+        if not f.get('原因') or not f.get('台词'):
+            out.append(f'{path.name} 失败: every failure needs 原因 and 台词')
+    for where, who, text in lines_in(p, path.name):
+        if who is None:
+            out.append(f'{where}: a line must be "speaker: text", got {text!r}')
+        elif who in retail:
+            out.append(f'{where}: {who} only says retail lines (cast.md) -- write it as an action in the shot')
+        elif who not in speak:
+            out.append(f'{where}: speaker {who} is not in cast.md')
+        elif not isinstance(text, str) or not text.strip():
+            out.append(f'{where}: empty line')
+        elif BAD_IN_LINE.search(text):
+            out.append(f'{where}: digits, Latin letters or brackets in a voice line: {text}')
+        elif len(PUNCT.sub('', text)) > MAX_LINE:
+            out.append(f'{where}: {len(PUNCT.sub("", text))} characters, over {MAX_LINE} (README rule 10): {text}')
+    if units is not None:
+        for side, names in (p.get('出场单位') or {}).items():
+            for n in names or []:
+                if n not in units:
+                    out.append(f'{path.name} 出场单位/{side}: {n} is in neither the voice glossary, outline.md '
+                               f'section 3 nor the plan glossary')
+    out += check_sketch(path, p)
+    out += check_scale(path, p, unlocks())
+    if mech is not None:
+        for k in p.get('用到的机制') or []:
+            if k not in mech:
+                out.append(f'{path.name} 用到的机制: {k} is not in mechanics.md')
+            elif mech[k][0] == '不能做':
+                out.append(f'{path.name} 用到的机制: {k} is marked 不能做 in mechanics.md')
+        text = '\n'.join(all_text(p))
+        for k, (state, bad) in mech.items():
+            if state == '不能做' and bad and (m := bad.search(text)):
+                out.append(f'{path.name}: "{m.group(0)}" promises {k}, which cannot be done (mechanics.md)')
+    return out
+
+
+USES = ('前线', '支线', '通道', '后方', '远景')
+GRID = (100, 60)
+
+# P31 (principles.md): a level's scale follows its place in its campaign line. The floors are the retail missions'
+# lower quartiles by position (teardowns/data/scale.md): main objectives, waves (segments revealing a main
+# objective), map changes (the 可玩区 changing between segments), turns (waves - 1 + map changes), verbs (distinct
+# 段/动词). A late level gives a base unless it says why not, and combines at least two earlier tools of its line.
+POSITION = {n: pos for pos, ns in (('前期', (1, 2, 3)), ('中期', (4, 5, 6)), ('后期', (7, 8, 9))) for n in ns}
+FLOOR = {'前期': dict(main=3, waves=1, grows=0, turns=0, verbs=2),
+         '中期': dict(main=3, waves=2, grows=1, turns=2, verbs=2),
+         '后期': dict(main=3, waves=2, grows=2, turns=3, verbs=2)}
+MEASURE = {'main': '主目标', 'waves': '段（亮出主目标的段）', 'grows': '地图变化', 'turns': '局面变化',
+           'verbs': '段的动词种数'}
+BASES = ('开局', '中途', '无')
+LINE = {'盟军': 'A', '苏联': 'S', '帝国': 'J'}
+
+
+def unlocks():
+    """{unit or hero: (line letter, level number)} from outline.md section 3, e.g. 纸鹤侦察机 -> ('J', 3)."""
+    out = {}
+    for line in OUTLINE.read_text(encoding='utf-8').splitlines():
+        if line.startswith(('| 盟军 |', '| 苏联 |', '| 帝国 |')):
+            for cell in line.split('|')[2:4]:
+                for w in re.split('、', cell):
+                    m = re.match(r'\s*\**([^*（(]+?)\**\s*[（(]([ASJ])(\d)', w)
+                    if m:
+                        out[m.group(1).strip()] = (m.group(2), int(m.group(3)))
+    return out
+
+
+def scale(p):
+    """The level's measures for P31."""
+    segs = p.get('段') or []
+    zones = (p.get('示意图') or {}).get('可玩区') or {}
+    seq = [str(zones.get(s.get('名'))) for s in segs if s.get('名') in zones]
+    waves = sum(1 for s in segs if any(g.get('种') == '主' for g in s.get('目标') or []))
+    grows = sum(1 for a, b in zip(seq, seq[1:]) if a != b)
+    return dict(main=sum(1 for s in segs for g in s.get('目标') or [] if g.get('种') == '主'), waves=waves,
+                grows=grows, turns=max(waves - 1, 0) + grows,
+                verbs=len({s['动词'] for s in segs if s.get('动词')}))
+
+
+def check_scale(path, p, tools):
+    out, lvl = [], str(p.get('关', ''))
+    m = re.fullmatch(r'([ASJ])(\d)', lvl.upper())
+    if not m:
+        return out
+    pos = POSITION[int(m.group(2))]
+    if p.get('位置') != pos:
+        out.append(f'{path.name}: 位置 is {p.get("位置")}, but {lvl} is {pos} (1-3 前期, 4-6 中期, 7-9 后期)')
+    if p.get('基地') not in BASES:
+        out.append(f'{path.name}: 基地 is one of {"/".join(BASES)}, got {p.get("基地")}')
+    for s in p.get('段') or []:
+        if any(g.get('种') == '主' for g in s.get('目标') or []) and not s.get('动词'):
+            out.append(f'{path.name} 段 {s.get("名")}: a segment with a main objective names its 动词')
+    have = scale(p)
+    for k, floor in FLOOR[pos].items():
+        if have[k] < floor:
+            out.append(f'{path.name}: P31 {pos} needs {MEASURE[k]} >= {floor}, has {have[k]}')
+    if pos == '后期':
+        if p.get('基地') == '无' and not p.get('无基地的理由'):
+            out.append(f'{path.name}: P31 a late level gives a base; without one it says why (无基地的理由)')
+        used = p.get('综合') or []
+        if len(used) < 2:
+            out.append(f'{path.name}: P31 a late level combines at least two earlier tools of its line (综合)')
+        for t in used:
+            u = tools.get(t)
+            if not u or u[0] != m.group(1) or u[1] >= int(m.group(2)):
+                out.append(f'{path.name} 综合: {t} is not a tool an earlier {m.group(1)} level gave (outline.md '
+                           f'section 3)')
+    return out
+
+
+def places(p):
+    """{name or alias: place name} of the sketch map (示意图)."""
+    out = {}
+    for pl in (p.get('示意图') or {}).get('地方') or []:
+        for n in [pl.get('名')] + list(pl.get('又名') or []):
+            out.setdefault(n, pl.get('名'))
+    return out
+
+
+def framed(text, names):
+    """The place a shot or an objective names, as flowview matches it (the longest name or alias it contains)."""
+    hits = [n for n in names if n and n in str(text)]
+    return names[max(hits, key=len)] if hits else None
+
+
+def check_sketch(path, p):
+    """The sketch map: every place well formed and opening in a segment that exists, the roads and the route
+    between places it has, no name or alias given to two places."""
+    sk, out = p.get('示意图') or {}, []
+    segs = {s.get('名') for s in p.get('段') or []}
+    seen = {}
+    out += flowmap.problems(p, path.name)
+    for pl in sk.get('地方') or []:
+        name = pl.get('名')
+        where = f'{path.name} 示意图/{name}'
+        real = sk.get('地图') and ('块' in pl or '点' in pl)      # placed by the map (flowmap), not the grid
+        for key, size in () if real else (('位', GRID), ('大', GRID)):
+            v = pl.get(key)
+            if not (isinstance(v, list) and len(v) == 2 and all(isinstance(x, (int, float)) and 0 <= x <= m
+                                                                 for x, m in zip(v, size))):
+                out.append(f'{where}: {key} must be [x, y] within the {GRID[0]}x{GRID[1]} grid, got {v}')
+        if pl.get('用途') not in USES:
+            out.append(f'{where}: 用途 {pl.get("用途")} is not one of {"/".join(USES)}')
+        if pl.get('开') not in segs:
+            out.append(f'{where}: 开 {pl.get("开")} is not a segment of this level ({"/".join(map(str, segs))})')
+        for n in [name] + list(pl.get('又名') or []):
+            if n in seen and seen[n] != name:
+                out.append(f'{where}: {n} also names {seen[n]} -- the map could not tell which one is meant')
+            seen[n] = name
+    names = {pl.get('名') for pl in sk.get('地方') or []}
+    for i, road in enumerate(sk.get('路') or []):
+        for n in road:
+            if n not in names:
+                out.append(f'{path.name} 示意图/路[{i}]: {n} is not a place of the sketch')
+    for n in [] if sk.get('地图') else sk.get('路线') or []:      # on a real map flowmap checks it (sites too)
+        if n not in names:
+            out.append(f'{path.name} 示意图/路线: {n} is not a place of the sketch')
+    return out
+
+
+def unframed(path):
+    """Shots (看) and objectives (题) that name no place of the sketch: the minimap frames nothing for them. Not a
+    problem by itself (a shot of the convoy, "百合子必须活着"), listed for the writer to look over."""
+    p = plan_of(path) or {}
+    names = places(p)
+    out = []
+    for seg in p.get('段') or []:
+        for shot in seg.get('镜头') or []:
+            if not framed(shot.get('看'), names):
+                out.append(f'镜头 {shot.get("看")}')
+        for g in seg.get('目标') or []:
+            if not framed(g.get('题'), names):
+                out.append(f'目标 {g.get("题")}')
+    return out
+
+
+def unverified(path, mech):
+    """The 待验证 mechanics a flow script promises: what layer 3 has to test first."""
+    p = plan_of(path) or {}
+    return [k for k in p.get('用到的机制') or [] if mech.get(k, ('',))[0] == '待验证']
+
+
+def main(names):
+    sys.stdout.reconfigure(encoding='utf-8')
+    speak, retail = cast()
+    paths = [HERE / f'{n.lower()}.md' for n in names] if names else sorted(
+        q for q in HERE.glob('*.md') if q.name not in ('README.md', 'cast.md', 'mechanics.md'))
+    units, mech = unit_names(), mechanics()
+    problems = [x for q in paths for x in check(q, speak, retail, units, mech)]
+    for x in problems:
+        print(x)
+    for q in paths:
+        if u := unverified(q, mech):
+            print(f'{q.name}: promises mechanics not yet tested (layer 3 tests these first): {", ".join(u)}')
+        if u := unframed(q):
+            print(f'{q.name}: the minimap frames no place for (look over): {"; ".join(u)}')
+        p = plan_of(q) or {}
+        if p.get('位置') in FLOOR:
+            have, floor = scale(p), FLOOR[p['位置']]
+            print(f'{q.name}: {p["位置"]} scale (P31) ' + ', '.join(f'{MEASURE[k]} {have[k]}/{floor[k]}' for k in floor))
+    if units is None:
+        print(f'unit names not checked: {VOICE_GLOSSARY} is missing')
+    print(f'{len(paths)} flow scripts, {len(problems)} problems')
+    return 1 if problems else 0
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))

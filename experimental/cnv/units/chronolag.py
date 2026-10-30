@@ -1,6 +1,6 @@
 """盟军「时滞炮车」 (the phase tank; docs/story/units.md, user 2026-10-20), moved here as it was worked out in
-experimental/campaign/make_campnew35.py (its docstring and docs/plan.md hold the bench history): the Allied ground
-siege piece. It deals no damage; a hit takes the target out of time -- a unit for 8 s, a structure for 15 s: it cannot
+experimental/campaign/make_campnew35.py (its docstring and docs/archive/plan-2026-10-27.md hold the bench history):
+the Allied ground siege piece. It deals no damage; a hit takes the target out of time -- a unit for 8 s, a structure for 15 s: it cannot
 move or fire and cannot be hurt, then comes back as it was. One shot every 30 s. Siege by tempo.
 
 A copy of the Guardian (its turret, painter toggle) with the cannon replaced by its phase shell: the Guardian's shell

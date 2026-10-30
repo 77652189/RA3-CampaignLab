@@ -112,7 +112,9 @@ ALIGN = {
               'target\'s armour percent (a type its armour does not name: 100 %); an attack-mover holds while it '
               'fights, a plain move goes on; nobody chases, no veterancy, no splash, no garrisons, no abilities; '
               'health, damage, range, rate, armour from SageXML (simunits.fight); a script\'s 摧毁 / 自动打掉 '
-              'overrides it, 不打 turns it off -- to be tuned on the bench at the end',
+              'overrides it, 不打 turns it off -- to be tuned on the bench at the end. One rule measured: nobody '
+              'fires at our ice walls unless ordered to (bench 2026-10-28, a4 hold: four tank busters let out '
+              'behind plaza 2\'s ice left the 1500-health wall whole its 30 s; the fight model had it down in 7 s)',
     'high ground': '未对齐: the high-ground rule -- a unit does not see ground HIGH_STEP (40) above its own (aircraft '
                    'see and are seen anyhow); nobody fires at what its side does not see; a bombarder that fired in '
                    'the last FIRE_SEEN s is seen by all; 高地不挡 turns it off. Two statements: the design line\'s '
@@ -324,8 +326,8 @@ class Ground:
         m, cost = self.cache[key]
         if not np.isfinite(cost[a]):
             return None
-        cells = m.traceback(a)[::-1]
-        pts = [self.world(c) for c in cells[::-1]]
+        cells = m.traceback(a)[::-1]                # traceback runs from the goal (the costs' source) to a
+        pts = [self.world(c) for c in cells]
         return pts[1::3] + [q] if len(pts) > 3 else [q]
 
 
@@ -343,6 +345,7 @@ class Sim:
         self.objectives = {}                # name -> status (0 hidden, 1 shown, 2 done, 3 failed)
         self.markers = {}                   # objective -> {object / waypoint}
         self.done, self.disabled = set(), set()
+        self.banned = set()                 # (player, template in lower case): ALLOW_DISALLOW_ONE_BUILDING 0
         self.border = 0
         self.reveal_all = False
         self.reveals = {}                   # name -> (x, y, r)
@@ -385,6 +388,8 @@ class Sim:
         self.auto_kill = next((e[2] for e in self.script if e[1] == '自动打掉'), None)
         self.combat = not any(e[1] == '不打' for e in self.script)
         self.high = not any(e[1] == '高地不挡' for e in self.script)
+        # what nobody shoots unless ordered: our ice walls (units with a lifetime; bench 2026-10-28, a4 hold)
+        self.unshot = {u.id for u in self.mm.units if 'lifetime' in (getattr(u, 'params', None) or {})}
         self.seen = {}                      # this tick: (side, id(body)) -> whether that side sees it
         self.first_death = None             # (t, body, killer): the fight's first death
         self.events = sorted((e for e in self.script if e[0] is not None), key=lambda e: e[0])
@@ -635,6 +640,9 @@ class Sim:
         elif name == 'SET_MILLISECOND_TIMER':
             self.timers[a[0]] = self.t + float(a[1])
             self.change()
+        elif name == 'SET_RANDOM_MSEC_TIMER':       # [lo, hi] at random (源码): the latest, as the beat sheet counts
+            self.timers[a[0]] = self.t + float(a[2])
+            self.change()
         elif name in ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION'):
             p = self.point(a[3])
             if p is None:
@@ -736,10 +744,12 @@ class Sim:
         elif name in ('LINK_MISSION_OBJECTIVE_TO_OBJECT', 'LINK_MISSION_OBJECTIVE_TO_WAYPOINT'):
             s = self.markers.setdefault(a[0], set())
             (s.add if a[2] else s.discard)(a[1])
-        elif name == 'ALLOW_DISALLOW_ONE_BUILDING':
-            pass                                        # production: the AI's and the player's, not simulated
-        elif name == 'PLAYER_RELATES_PLAYER':
-            self.relations[(a[0], a[1])] = a[2]
+        elif name == 'ALLOW_DISALLOW_ONE_BUILDING':     # the AI's production is not simulated; the player's 造 is
+            (self.banned.discard if a[2] else self.banned.add)((a[0], str(a[1]).lower()))
+        elif name == 'PLAYER_RELATES_PLAYER':           # (index, 0, name): the game reads the index (plan.relates)
+            r = a[2]
+            self.relations[(a[0], a[1])] = r if isinstance(r, str) else \
+                {0: 'Enemy', 1: 'Neutral', 2: 'Friend'}[r[0]]
         elif name in ('UNIT_AI_TRANSFER_ALL', 'SKIRMISH_AI_MAKE_BASE'):
             self.used.add('ai')
             if a[0] not in self.ai:
@@ -878,7 +888,9 @@ class Sim:
             if p is None and self.point(f'{where} {angle:g}'):    # 'inside 2': the number was the site's
                 where, angle = f'{where} {angle:g}', 0.0
                 p = self.point(where)
-            if p is None:
+            if (self.human, tmpl.lower()) in self.banned:
+                self.note('剧本', f'{tmpl} 现在不许造（禁造），没造出来')
+            elif p is None:
                 self.note('剧本', f'找不到地点 {where}')
             else:
                 b = self.add(f'UNIT - SIM Made {len(self.bodies)}', tmpl, self.human, *p, by='剧本', at=self.t)
@@ -954,6 +966,8 @@ class Sim:
                         if d[j] > w['range']:
                             break
                         t = targets[idx[j]]
+                        if t.template in self.unshot:       # our ice: only when ordered (the bench, a4 hold)
+                            continue
                         if self.can_hit(w, t) and self.side_sees(a.owner, t):
                             pick = t
                             break

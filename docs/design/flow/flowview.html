@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>流程剧本预览</title>
+<style>
+:root {
+  --bg: #f4f2ee; --panel: #ffffff; --ink: #1d1d1f; --mute: #6b6b70; --line: #dedad3;
+  --accent: #b5802a; --goal: #c8962d; --bonus: #3a7bbf; --bad: #c0392b; --ok: #2e8b57;
+  --allied: #2f6fb3; --soviet: #b8322a; --empire: #c77a12; --ft: #7a4bb3; --eva: #5d6470; --retail: #8a8a8a;
+  --screen: #12151a; --screen-ink: #e9e6df;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15171b; --panel: #1e2126; --ink: #ecebe7; --mute: #9a9aa2; --line: #30343b;
+    --accent: #d9a54a; --goal: #e0b25a; --bonus: #6aa5e0; --bad: #e0645a; --ok: #5cbf86;
+    --allied: #5d9be0; --soviet: #e05a50; --empire: #e89a3a; --ft: #a67de0; --eva: #9aa1ad; --retail: #9a9a9a;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15171b; --panel: #1e2126; --ink: #ecebe7; --mute: #9a9aa2; --line: #30343b;
+  --accent: #d9a54a; --goal: #e0b25a; --bonus: #6aa5e0; --bad: #e0645a; --ok: #5cbf86;
+  --allied: #5d9be0; --soviet: #e05a50; --empire: #e89a3a; --ft: #a67de0; --eva: #9aa1ad; --retail: #9a9a9a;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.6 "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif; }
+.wrap { max-width: 1280px; margin: 0 auto; padding: 16px; }
+header { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin-bottom: 12px; }
+h1 { font-size: 18px; margin: 0 12px 0 0; }
+.tabs, .modes { display: flex; gap: 6px; flex-wrap: wrap; }
+button { font: inherit; cursor: pointer; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  border-radius: 8px; padding: 4px 12px; }
+button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
+.meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 6px 20px; }
+.meta b { color: var(--mute); font-weight: normal; margin-right: 6px; }
+.problems { border-color: var(--bad); }
+.problems li { color: var(--bad); }
+.ok { color: var(--ok); }
+
+/* ---- play-through ---- */
+.play { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 12px; }
+@media (max-width: 860px) { .play { grid-template-columns: 1fr; } }
+.screen { position: relative; aspect-ratio: 16 / 9; background: var(--screen); color: var(--screen-ink);
+  border-radius: 12px; overflow: hidden; }
+.screen .field { position: absolute; inset: 0;
+  background-image: linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
+  background-size: 32px 32px; }
+.screen.cine .bar { position: absolute; left: 0; right: 0; height: 11%; background: #000; z-index: 2; }
+.screen.cine .bar.top { top: 0; } .screen.cine .bar.bottom { bottom: 0; }
+.screen:not(.cine) .bar { display: none; }
+.center { position: absolute; left: 8%; right: 8%; top: 22%; bottom: 34%; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center; z-index: 1; }
+.shot { font-size: clamp(14px, 2.1vw, 21px); line-height: 1.5; }
+.shot .lbl { display: block; font-size: 12px; letter-spacing: .2em; color: #9aa0a8; margin-bottom: 6px; }
+.title-card .n { font-size: 13px; letter-spacing: .3em; color: #9aa0a8; }
+.title-card .t { font-size: clamp(22px, 3.6vw, 36px); font-weight: 600; }
+.title-card .d { color: #b9b4aa; }
+.hud-seg { position: absolute; left: 12px; top: 10px; font-size: 12px; color: #9aa0a8; z-index: 3; }
+.trigger { position: absolute; left: 12px; top: 32px; z-index: 3; font-size: 12px; background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.2); border-radius: 6px; padding: 2px 8px; max-width: 55%; }
+.trigger.stuck { border-color: #e0645a; color: #ffb3ab; }
+.tut { position: absolute; left: 18%; right: 34%; top: 14%; z-index: 3; background: rgba(30,32,20,.92);
+  border: 1px solid #d9b24a; border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #f3e7c4; }
+.goals { position: absolute; right: 10px; top: 10px; width: 31%; z-index: 3; background: rgba(0,0,0,.55);
+  border: 1px solid rgba(255,255,255,.15); border-radius: 8px; padding: 8px 10px; font-size: 12px; }
+.goals h4 { margin: 0 0 4px; font-size: 11px; letter-spacing: .2em; color: #9aa0a8; font-weight: normal; }
+.goals .g { margin: 3px 0; padding-left: 14px; position: relative; }
+.goals .g::before { content: ""; position: absolute; left: 0; top: 6px; width: 8px; height: 8px; border-radius: 2px; }
+.goals .g.main::before { background: var(--goal); }
+.goals .g.bonus::before { background: var(--bonus); }
+.goals .g.locked { opacity: .45; }
+.goals .g small { display: block; color: #9aa0a8; }
+.newgoal { position: absolute; left: 12%; right: 12%; top: 18%; z-index: 4; background: rgba(15,17,22,.95);
+  border: 1px solid var(--goal); border-radius: 10px; padding: 12px 16px; }
+.newgoal .h { color: var(--goal); font-size: 12px; letter-spacing: .3em; }
+.newgoal .it { margin-top: 8px; }
+.newgoal .it b { display: block; }
+.newgoal .it.bonus b { color: var(--bonus); }
+.newgoal .it span { font-size: 13px; color: #c9c4ba; }
+.sub { position: absolute; left: 6%; right: 6%; bottom: 3%; z-index: 3; display: flex; gap: 10px; align-items: flex-start;
+  background: rgba(0,0,0,.6); border-radius: 10px; padding: 8px 12px; min-height: 52px; }
+.screen.cine .sub { bottom: 13%; }
+.face { flex: none; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-weight: 700; color: #fff; font-size: 15px; }
+.sub .who { font-size: 12px; opacity: .8; }
+.sub .txt { font-size: clamp(14px, 1.9vw, 19px); }
+.brief { position: absolute; inset: 6% 8%; overflow: auto; z-index: 1; }
+.brief h3 { margin: 0 0 8px; font-size: 13px; letter-spacing: .3em; color: #9aa0a8; font-weight: normal; }
+.brief .bl { display: flex; gap: 10px; margin: 6px 0; opacity: .35; }
+.brief .bl.cur { opacity: 1; } .brief .bl.past { opacity: .7; }
+.brief .bl .face { width: 30px; height: 30px; font-size: 13px; }
+.endtag { font-size: 13px; letter-spacing: .3em; padding: 2px 10px; border-radius: 6px; margin-bottom: 8px; }
+.endtag.win { background: var(--ok); color: #fff; } .endtag.lose { background: var(--bad); color: #fff; }
+.controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+.controls .pos { color: var(--mute); font-size: 13px; }
+.controls label { font-size: 13px; color: var(--mute); display: flex; gap: 4px; align-items: center; }
+.scrub { display: flex; height: 26px; margin-top: 8px; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); }
+.scrub div { position: relative; border-right: 1px solid var(--line); cursor: pointer; font-size: 11px; color: var(--mute);
+  display: flex; align-items: center; justify-content: center; white-space: nowrap; overflow: hidden; background: var(--panel); }
+.scrub div.cur { background: var(--accent); color: #fff; }
+.scrub div .p { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--ink); opacity: .5; }
+.side h3 { margin: 0 0 6px; font-size: 14px; }
+.side ul { margin: 4px 0 12px; padding-left: 18px; }
+.side .lbl { color: var(--mute); font-size: 13px; }
+.side .stuckline { margin: 6px 0; font-size: 13px; }
+
+/* ---- sheet ---- */
+.sheet { overflow-x: auto; }
+.sheet table { border-collapse: separate; border-spacing: 0; min-width: 100%; }
+.sheet th, .sheet td { border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); vertical-align: top;
+  padding: 8px; font-size: 13px; min-width: 190px; }
+.sheet th { position: sticky; left: 0; background: var(--panel); text-align: left; color: var(--mute); font-weight: normal;
+  min-width: 90px; z-index: 1; }
+.sheet thead td { font-weight: 600; font-size: 14px; }
+.sheet .len { height: 8px; background: var(--accent); border-radius: 4px; margin-top: 4px; }
+.sheet .dens { display: flex; gap: 2px; flex-wrap: wrap; }
+.sheet .dot { width: 10px; height: 10px; border-radius: 50%; }
+.sheet .item { margin: 0 0 6px; }
+.sheet .item .tr { color: var(--mute); font-size: 12px; }
+.sheet .empty { color: var(--bad); font-size: 12px; }
+.chip { display: inline-block; border-radius: 4px; padding: 0 6px; color: #fff; font-size: 12px; margin-right: 4px; }
+.legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--mute); margin: 6px 0 0; }
+.share { display: flex; height: 14px; border-radius: 4px; overflow: hidden; margin: 6px 0; }
+.mm { position: absolute; right: 10px; bottom: 10px; width: 27%; z-index: 3; border: 1px solid rgba(255,255,255,.3);
+  border-radius: 6px; overflow: hidden; }
+.screen.hud .sub { right: 31%; }
+.mini { width: 100%; display: block; border-radius: 8px; background: #0d0f12; }
+.maplegend { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11px; color: var(--mute); margin-top: 6px; }
+.maplegend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 3px; vertical-align: -1px; }
+.sheet td.mapcell { min-width: 220px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>流程剧本预览</h1>
+    <div class="tabs" id="tabs"></div>
+    <div class="modes">
+      <button id="m-play" class="on">玩家视角</button>
+      <button id="m-sheet">整关一张表</button>
+    </div>
+  </header>
+  <div id="info"></div>
+  <div id="view"></div>
+</div>
+<script>
+const DATA = /*DATA*/null;
+const SIDE = { '盟军': 'var(--allied)', '苏联': 'var(--soviet)', '帝国': 'var(--empire)', '未来科技': 'var(--ft)',
+               '各阵营': 'var(--eva)', '原版': 'var(--retail)' };
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const one = l => (l && typeof l === 'object') ? Object.entries(l)[0] : [null, String(l)];
+const who = k => { const r = DATA.cast[k]; return { key: k, name: r && r[0] && r[0] !== '—' ? r[0] : k, color: SIDE[r ? r[1] : ''] || 'var(--retail)' }; };
+const face = k => { const w = who(k); return `<div class="face" style="background:${w.color}">${esc((k || '?')[0])}</div>`; };
+const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+                set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+
+let L = 0, mode = 'play', steps = [], at = 0, timer = null, withStuck = true;
+
+function build(p) {
+  const S = [];
+  (p['简报'] || []).forEach((l, j) => { const [k, t] = one(l); S.push({ kind: 'brief', seg: -1, who: k, line: t, j }); });
+  (p['段'] || []).forEach((seg, i) => {
+    S.push({ kind: 'title', seg: i });
+    (seg['镜头'] || []).forEach(sh => {
+      const ls = sh['台词'] || [];
+      if (!ls.length) S.push({ kind: 'shot', seg: i, shot: sh['看'], cine: true });
+      ls.forEach(l => { const [k, t] = one(l); S.push({ kind: 'line', seg: i, shot: sh['看'], cine: true, who: k, line: t }); });
+    });
+    if ((seg['目标'] || []).length) S.push({ kind: 'goals', seg: i });
+    const ev = (e, stuck) => {
+      const base = { seg: i, trigger: e['时机'], stuck, shot: e['镜头'] || null, cine: !!e['镜头'], text: e['文字'] || null };
+      const ls = e['台词'] || [];
+      if (!ls.length) S.push(Object.assign({ kind: 'event' }, base));
+      ls.forEach(l => { const [k, t] = one(l); S.push(Object.assign({ kind: 'line', who: k, line: t }, base)); });
+    };
+    (seg['事件'] || []).forEach(e => ev(e, false));
+    if (withStuck) (seg['卡住了'] || []).forEach(e => ev(e, true));
+    S.push({ kind: 'end', seg: i, line: seg['结束'] });
+  });
+  const v = p['胜利'] || {};
+  const vl = v['台词'] || [];
+  if (!vl.length) S.push({ kind: 'shot', seg: 99, shot: v['镜头'], cine: true, ending: 'win' });
+  vl.forEach(l => { const [k, t] = one(l); S.push({ kind: 'line', seg: 99, shot: v['镜头'], cine: true, who: k, line: t, ending: 'win' }); });
+  (p['失败'] || []).forEach(f => (f['台词'] || []).forEach(l => {
+    const [k, t] = one(l); S.push({ kind: 'line', seg: 100, shot: '失败：' + f['原因'], cine: true, who: k, line: t, ending: 'lose' });
+  }));
+  return S;
+}
+
+// ---- the sketch map (yaml 示意图): place names on a 100x60 grid, the roads, the segment each opens in ----
+const USE = { '前线': '#c0574b', '支线': '#3a7bbf', '通道': '#8c8472', '后方': '#3e8e5e', '远景': '#4a4f56' };
+function placesIn(p, texts) {
+  // the places a piece of text mentions, by name or 又名, longest names first ("三号广场" before "广场")
+  const m = p['示意图'];
+  if (!m) return [];
+  const names = [];
+  (m['地方'] || []).forEach(pl => [pl['名'], ...(pl['又名'] || [])].forEach(n => names.push([String(n), pl['名']])));
+  names.sort((a, b) => b[0].length - a[0].length);
+  const hits = [];
+  texts.filter(Boolean).forEach(t => {
+    let s = String(t);
+    names.forEach(([n, k]) => { if (s.includes(n)) { if (!hits.includes(k)) hits.push(k); s = s.split(n).join('□'); } });
+  });
+  return hits;
+}
+// on a real map (示意图 地图, drawn by flowmap.py): the ground by height tier, the roads, the land-use blocks
+const TIER = ['#1f3a52', '#3b3a33', '#57523f', '#736b55'];
+function mapSvg(p, segI, focus, goals, bare) {
+  const m = p['示意图'];
+  if (!m) return '<div class="lbl" style="color:var(--mute);font-size:13px">这一关还没有示意图（剧本 yaml 里的"示意图"）。</div>';
+  const P = {}, segs = p['段'] || [];
+  (m['地方'] || []).forEach(pl => { P[pl['名']] = pl; });
+  const [GW, GH] = m['格'] || [100, 60], ground = m['底图'];
+  const opensAt = pl => { const k = segs.findIndex(s => s['名'] === pl['开']); return k < 0 ? 0 : k; };
+  const isOpen = pl => segI >= 99 || opensAt(pl) <= segI;
+  const c = pl => pl['位'] || [GW / 2, GH / 2];
+  let s = `<svg viewBox="0 0 ${GW} ${GH}" class="mini" xmlns="http://www.w3.org/2000/svg">` +
+    '<defs><pattern id="hatch" width="2" height="2" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">' +
+    '<line x1="0" y1="0" x2="0" y2="2" stroke="#6b7078" stroke-width=".6"/></pattern></defs>';
+  if (ground) {
+    s += `<rect x="0" y="0" width="${GW}" height="${GH}" fill="${TIER[ground['底']] || TIER[0]}"/>`;
+    (ground['地'] || []).forEach(g => { s += `<path d="${g.d}" fill="${TIER[g.t] || TIER[1]}"/>`; });
+    (ground['路面'] || []).forEach(r => { s += `<path d="${r.d}" fill="none" stroke="#a39a83" stroke-opacity=".5" stroke-width="${Math.max(r.w, .4)}" stroke-linejoin="round" stroke-linecap="round"/>`; });
+    (ground['块'] || []).forEach(k => { s += `<path d="${k.d}" fill="${USE[k.use] || '#777'}" fill-opacity=".16" stroke="${USE[k.use] || '#777'}" stroke-opacity=".6" stroke-width=".3"/>`; });
+  } else {
+    (m['路'] || []).forEach(r => {
+      const a = P[r[0]], b = P[r[1]];
+      if (!a || !b) return;
+      const on = isOpen(a) && isOpen(b);
+      s += `<line x1="${c(a)[0]}" y1="${c(a)[1]}" x2="${c(b)[0]}" y2="${c(b)[1]}" stroke="${on ? '#9a958a' : '#3a3d42'}" stroke-width="${on ? 1.1 : .6}" ${on ? '' : 'stroke-dasharray="1 1"'}/>`;
+    });
+  }
+  const route = m['路线点'] || (m['路线'] || []).map(n => P[n]).filter(Boolean).map(c);
+  if (route.length > 1) s += `<polyline points="${route.map(q => q.join(',')).join(' ')}" fill="none" stroke="#e0b25a" stroke-width=".7" stroke-dasharray="1.6 1" opacity=".9"/>`;
+  Object.values(P).forEach(pl => {
+    const [x, y] = c(pl), [w, h] = pl['大'] || [6, 4], on = isOpen(pl), far = pl['用途'] === '远景';
+    if (ground) s += `<rect x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" rx="1" fill="${far ? 'url(#hatch)' : 'none'}" stroke="${USE[pl['用途']] || '#777'}" stroke-width=".5" opacity="${on ? .95 : .3}"/>`;
+    else s += `<rect x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" rx="1.2" fill="${far ? 'url(#hatch)' : USE[pl['用途']] || '#777'}" opacity="${on ? .9 : .13}" stroke="${on ? 'rgba(255,255,255,.35)' : 'rgba(255,255,255,.12)'}" stroke-width=".3"/>`;
+    s += `<text x="${x}" y="${y + 1}" font-size="2.5" text-anchor="middle" fill="#f1eee7" opacity="${on ? 1 : .35}" stroke="#0d0f12" stroke-width=".5" paint-order="stroke">${esc(pl['名'])}</text>`;
+  });
+  // what the player can see and reach in this segment (可玩区): everything outside it darkened
+  const segName = (segs[segI >= 99 ? segs.length - 1 : segI] || {})['名'];
+  const f = (m['可玩区框'] || {})[segName];
+  if (f) {
+    const [fx, fy, fw, fh] = f;
+    s += `<path d="M0 0 H${GW} V${GH} H0 Z M${fx} ${fy} V${fy + fh} H${fx + fw} V${fy} Z" fill="#05070a" fill-opacity=".6" fill-rule="evenodd"/>`;
+    s += `<rect x="${fx}" y="${fy}" width="${fw}" height="${fh}" fill="none" stroke="#7fd3ff" stroke-width=".6" stroke-dasharray="1.5 1"/>`;
+  }
+  (goals || []).forEach((g, gi) => placesIn(p, [g['题']]).forEach(n => {
+    const pl = P[n]; if (!pl) return;
+    const [x, y] = c(pl), [w, h] = pl['大'] || [6, 4], main = g['种'] === '主', locked = !!g['亮出'];
+    const gx = x + w / 2 - 1.2, gy = y - h / 2 + 1.2;
+    s += `<path d="M${gx} ${gy - 1.6} L${gx + 1.6} ${gy} L${gx} ${gy + 1.6} L${gx - 1.6} ${gy} Z" fill="${locked ? 'none' : main ? '#e0b25a' : '#6aa5e0'}" stroke="${main ? '#e0b25a' : '#6aa5e0'}" stroke-width=".5"/>`;
+  }));
+  focus.forEach(n => {
+    const pl = P[n]; if (!pl) return;
+    const [x, y] = c(pl), [w, h] = pl['大'] || [6, 4];
+    s += `<rect x="${x - w / 2 - 1}" y="${y - h / 2 - 1}" width="${w + 2}" height="${h + 2}" rx="1.6" fill="none" stroke="#ffd34d" stroke-width=".7"/>`;
+  });
+  s += '</svg>';
+  if (bare) return s;
+  const used = [...new Set(Object.values(P).map(pl => pl['用途']))];
+  return s + `<div class="maplegend">${used.map(u => `<span><i style="background:${USE[u] || '#777'}"></i>${esc(u)}</span>`).join('')}
+    <span><i style="background:none;border:1px solid #ffd34d"></i>此刻提到的地方</span><span>◆ 主目标 ◇ 还没亮的奖励</span>
+    <span><i style="background:none;border-top:2px dashed #e0b25a;height:0;border-radius:0"></i>路线</span>
+    ${f ? '<span><i style="background:none;border:1px dashed #7fd3ff"></i>这一段看得见、走得到的范围（框外压暗）</span>' : '<span>暗的 = 还走不到</span>'}
+    ${ground ? `<span>底图 = 实际地图 ${esc(m['地图'])}：深蓝是水，越亮越高${(ground['块'] || []).length ? '；彩色细框是地图的地块用途表' : '（这张图还没有地块用途表）'}</span>` : '<span>没有实际地图，格子上的设想</span>'}</div>`;
+}
+function focusOf(p, s) {
+  const segs = p['段'] || [], seg = segs[s.seg];
+  let f = [];
+  if (s.kind === 'goals') f = placesIn(p, seg['目标'].map(g => g['题']));
+  else if (s.kind === 'end') f = placesIn(p, [s.line]);
+  else if (s.cine) f = placesIn(p, [s.shot]);
+  else if (s.trigger) f = placesIn(p, [s.trigger, s.text]);
+  if (!f.length && (s.kind === 'line' || s.kind === 'brief')) f = placesIn(p, [s.line]);
+  return f;
+}
+
+function goalsAt(p, i) {
+  // the objectives on screen at step i: the latest segment (up to this one) whose objectives were shown already
+  const segs = p['段'] || [], s = steps[i];
+  if (s.seg < 0 || s.seg >= 99) return null;
+  for (let k = Math.min(s.seg, segs.length - 1); k >= 0; k--) {
+    const g = steps.findIndex(x => x.kind === 'goals' && x.seg === k);
+    if (g >= 0 && g <= i) return { seg: k, goals: segs[k]['目标'] };
+  }
+  return null;
+}
+
+function renderInfo() {
+  const lv = DATA.levels[L], p = lv.plan;
+  const pr = lv.problems.length
+    ? `<div class="card problems"><b>机器检查发现 ${lv.problems.length} 处问题</b><ul>${lv.problems.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`
+    : `<div class="ok" style="margin:-4px 0 8px;font-size:13px">机器检查：完整、一致（好不好由你判断）</div>`;
+  const tr = (p['取舍'] || []).map(x => `<li>${esc(x)}</li>`).join('');
+  document.getElementById('info').innerHTML = `
+    <details class="card" ${store.get('flow-info') === 'open' ? 'open' : ''} id="infobox"><summary><b>${esc(p['关'])} · ${esc(p['关名'])}</b>
+      <span style="color:var(--mute)"> · ${esc(p['阵营'])} · ${esc(p['类型'])} · ${esc(p['位置'] || '')} · ${esc(p['地点'])}（点开看一句话、体验目标、取舍）</span></summary>
+    <div class="meta" style="margin-top:10px">
+      <div><b>关</b>${esc(p['关'])} · ${esc(p['关名'])}</div>
+      <div><b>阵营 / 类型</b>${esc(p['阵营'])} · ${esc(p['类型'])}</div>
+      <div><b>位置 / 基地</b>${esc(p['位置'] || '—')} · 基地${esc(p['基地'] || '—')}${p['无基地的理由'] ? '（' + esc(p['无基地的理由']) + '）' : ''}</div>
+      ${p['综合'] ? `<div><b>综合用到前面的工具</b>${(p['综合'] || []).map(esc).join('、')}</div>` : ''}
+      <div><b>地点</b>${esc(p['地点'])}</div>
+      <div><b>新东西</b>${esc(p['新东西'])}</div>
+      <div style="grid-column:1/-1"><b>一句话</b>${esc(p['一句话'])}</div>
+      <div style="grid-column:1/-1"><b>体验目标</b>${esc(p['体验目标'])}</div>
+      <div><b>张力</b>${esc(p['张力'])}</div>
+      <div><b>取舍</b><ul style="margin:0;padding-left:18px">${tr}</ul></div>
+      <div><b>接上一关</b>${esc(p['接上一关'])}</div>
+      <div><b>引出下一关</b>${esc(p['引出下一关'])}</div>
+    </div></details>${pr}`;
+  document.getElementById('infobox').ontoggle = e => store.set('flow-info', e.target.open ? 'open' : 'closed');
+}
+
+function renderPlay() {
+  const lv = DATA.levels[L], p = lv.plan, segs = p['段'] || [];
+  steps = build(p);
+  at = Math.min(at, steps.length - 1);
+  const scrub = segs.map((s, i) => {
+    const idx = steps.filter(x => x.seg === i).length;
+    return `<div data-seg="${i}" style="flex:${Math.max(idx, 1)}">${esc(s['名'])}<span class="p"></span></div>`;
+  }).join('');
+  document.getElementById('view').innerHTML = `
+    <div class="play">
+      <div>
+        <div class="screen" id="screen"></div>
+        <div class="scrub" id="scrub"><div data-seg="-1" style="flex:${Math.max(steps.filter(x => x.seg < 0).length, 1)}">简报<span class="p"></span></div>${scrub}<div data-seg="99" style="flex:2">结局<span class="p"></span></div></div>
+        <div class="controls">
+          <button id="prev">◀ 上一句</button>
+          <button id="playbtn">▶ 自动播放</button>
+          <button id="next">下一句 ▶</button>
+          <span class="pos" id="pos"></span>
+          <label><input type="checkbox" id="stuck" ${withStuck ? 'checked' : ''}>含"卡住时"的台词</label>
+        </div>
+        <div class="legend">←/→ 键逐句；自动播放按原版一句台词约 3.5 秒。镜头带黑边，游戏中是网格底；左上角是这句台词什么时候说。</div>
+      </div>
+      <div><div class="card" id="minicard"></div><div class="card side" id="side"></div></div>
+    </div>`;
+  document.getElementById('prev').onclick = () => go(at - 1);
+  document.getElementById('next').onclick = () => go(at + 1);
+  document.getElementById('playbtn').onclick = toggle;
+  document.getElementById('stuck').onchange = e => { withStuck = e.target.checked; at = 0; renderPlay(); };
+  document.querySelectorAll('#scrub div').forEach(d => d.onclick = () => {
+    const s = +d.dataset.seg, k = steps.findIndex(x => s === 99 ? x.seg >= 99 : x.seg === s);
+    if (k >= 0) go(k);
+  });
+  draw();
+}
+
+function go(i) { at = Math.max(0, Math.min(steps.length - 1, i)); draw(); }
+function toggle() {
+  const b = document.getElementById('playbtn');
+  if (timer) { clearTimeout(timer); timer = null; b.textContent = '▶ 自动播放'; return; }
+  b.textContent = '❚❚ 暂停';
+  const tick = () => {
+    if (at >= steps.length - 1) { toggle(); return; }
+    go(at + 1);
+    const s = steps[at];
+    timer = setTimeout(tick, s.kind === 'goals' ? 6000 : s.kind === 'title' ? 2000 : 3500);
+  };
+  timer = setTimeout(tick, 3500);
+}
+
+function draw() {
+  const lv = DATA.levels[L], p = lv.plan, segs = p['段'] || [], s = steps[at];
+  const sc = document.getElementById('screen');
+  if (!sc) return;
+  const hud = !s.cine && p['示意图'] && s.seg >= 0 && s.seg < 99 && s.kind !== 'title';
+  sc.className = 'screen' + (s.cine ? ' cine' : '') + (hud ? ' hud' : '');
+  let h = '<div class="field"></div><div class="bar top"></div><div class="bar bottom"></div>';
+  const seg = segs[s.seg];
+  if (seg && s.kind !== 'title') h += `<div class="hud-seg">第 ${s.seg + 1} 段 · ${esc(seg['名'])}</div>`;
+  if (s.kind === 'brief') {
+    const bl = steps.filter(x => x.kind === 'brief');
+    h += `<div class="brief"><h3>任务简报 · ${esc(p['阵营'])}</h3>${bl.map(x => `
+      <div class="bl ${x.j === s.j ? 'cur' : x.j < s.j ? 'past' : ''}">${face(x.who)}
+        <div><div style="font-size:12px;opacity:.7">${esc(who(x.who).name)}</div>${esc(x.line)}</div></div>`).join('')}</div>`;
+  } else if (s.kind === 'title') {
+    h += `<div class="center title-card"><div class="n">第 ${s.seg + 1} 段</div><div class="t">${esc(seg['名'])}</div>
+      <div class="d">${esc(seg['时长'] || '')}</div></div>`;
+  } else if (s.kind === 'end') {
+    h += `<div class="center"><div class="shot"><span class="lbl">这一段结束</span>${esc(s.line)}</div></div>`;
+  } else {
+    if (s.ending) h += `<div class="center"><div class="endtag ${s.ending}">${s.ending === 'win' ? '胜利' : '失败'}</div>
+      <div class="shot">${esc(s.shot || '')}</div></div>`;
+    else if (s.shot) h += `<div class="center"><div class="shot"><span class="lbl">镜头</span>${esc(s.shot)}</div></div>`;
+    else h += `<div class="center"><div class="shot" style="opacity:.5"><span class="lbl">游戏中</span>玩家在操作</div></div>`;
+  }
+  if (s.trigger) h += `<div class="trigger ${s.stuck ? 'stuck' : ''}">${s.stuck ? '卡住时 · ' : '▶ '}${esc(s.trigger)}</div>`;
+  if (s.text) h += `<div class="tut">${esc(s.text)}</div>`;
+  const G = goalsAt(p, at);
+  if (G && s.kind !== 'goals' && !s.cine) {
+    h += `<div class="goals"><h4>任务目标</h4>${G.goals.map(g => `
+      <div class="g ${g['种'] === '主' ? 'main' : 'bonus'} ${g['亮出'] ? 'locked' : ''}">${esc(g['题'])}
+        ${g['亮出'] ? `<small>还没亮：${esc(g['亮出'])}</small>` : ''}</div>`).join('')}</div>`;
+  }
+  if (s.kind === 'goals') {
+    h += `<div class="newgoal"><div class="h">新任务目标</div>${seg['目标'].map(g => `
+      <div class="it ${g['种'] === '主' ? '' : 'bonus'}"><b>${g['种'] === '主' ? '主要' : '奖励'}：${esc(g['题'])}</b>
+        <span>${esc(g['说明'])}</span>${g['亮出'] ? `<div style="font-size:12px;color:#9aa0a8">亮出时机：${esc(g['亮出'])}</div>` : ''}</div>`).join('')}</div>`;
+  }
+  if (s.kind === 'line') {
+    const w = who(s.who);
+    h += `<div class="sub">${face(s.who)}<div><div class="who">${esc(w.name)}</div><div class="txt">${esc(s.line)}</div></div></div>`;
+  }
+  if (hud) h += `<div class="mm">${mapSvg(p, s.seg, focusOf(p, s), G ? G.goals : [], true)}</div>`;
+  sc.innerHTML = h;
+  const bf = sc.querySelector('.brief'), bc = bf && bf.querySelector('.cur');
+  if (bc) bf.scrollTop = bc.offsetTop - bf.clientHeight / 2;
+  document.getElementById('pos').textContent = `${at + 1} / ${steps.length}`;
+  document.querySelectorAll('#scrub div').forEach(d => {
+    const k = +d.dataset.seg, mine = steps.map((x, i) => [x, i]).filter(([x]) => k === 99 ? x.seg >= 99 : x.seg === k);
+    const cur = k === 99 ? s.seg >= 99 : s.seg === k;
+    d.classList.toggle('cur', cur);
+    const pbar = d.querySelector('.p');
+    if (pbar && mine.length) pbar.style.width = cur ? `${100 * (mine.findIndex(([, i]) => i === at) + 1) / mine.length}%` : '0';
+  });
+  const mc = document.getElementById('minicard');
+  if (mc) mc.innerHTML = `<h3 style="margin:0 0 6px;font-size:14px">玩家此刻的地图</h3>` +
+    mapSvg(p, Math.max(s.seg, 0), focusOf(p, s), G ? G.goals : []);
+  drawSide(p, s);
+}
+
+function drawSide(p, s) {
+  const el = document.getElementById('side'), seg = (p['段'] || [])[s.seg];
+  if (s.seg < 0) {
+    el.innerHTML = `<h3>简报</h3><div class="lbl">共 ${(p['简报'] || []).length} 句。玩家进关前听完：要知道我是谁、去做什么、为什么。</div>
+      <h3 style="margin-top:12px">出场单位</h3><div class="lbl">我方</div><div>${esc((p['出场单位'] || {})['我']?.join('、'))}</div>
+      <div class="lbl" style="margin-top:6px">敌方</div><div>${esc((p['出场单位'] || {})['敌']?.join('、'))}</div>`;
+    return;
+  }
+  if (!seg) {
+    el.innerHTML = `<h3>结局</h3><div class="lbl">胜利一种，失败 ${(p['失败'] || []).length} 种：每种失败都说出原因，玩家知道下次怎么改。</div>
+      <ul>${(p['失败'] || []).map(f => `<li>${esc(f['原因'])}</li>`).join('')}</ul>`;
+    return;
+  }
+  const li = a => (a || []).map(x => `<li>${esc(x)}</li>`).join('');
+  const stuck = (seg['卡住了'] || []).map(e => `<div class="stuckline"><span class="lbl">${esc(e['时机'])}</span><br>${
+    (e['台词'] || []).map(l => { const [k, t] = one(l); return `<b>${esc(who(k).name)}</b>：${esc(t)}`; }).join('<br>')}</div>`).join('');
+  el.innerHTML = `<h3>第 ${s.seg + 1} 段 · ${esc(seg['名'])}</h3><div class="lbl">${esc(seg['时长'] || '')}</div>
+    <h3 style="margin-top:12px">玩家靠什么知道下一步</h3><ul>${li(seg['下一步靠什么']) || '<li class="lbl">（这段没写）</li>'}</ul>
+    <h3>卡住了怎么办</h3>${stuck || '<div class="lbl">（这段没写）</div>'}
+    <h3 style="margin-top:12px">这一段怎么结束</h3><div>${esc(seg['结束'])}</div>`;
+}
+
+function renderSheet() {
+  const lv = DATA.levels[L], p = lv.plan, segs = p['段'] || [];
+  const maxMin = Math.max(...lv.minutes.map(m => m || 0), 0.1);
+  const lines = seg => {
+    const out = [];
+    (seg['镜头'] || []).forEach(sh => (sh['台词'] || []).forEach(l => out.push(one(l)[0])));
+    (seg['事件'] || []).forEach(e => (e['台词'] || []).forEach(l => out.push(one(l)[0])));
+    return out;
+  };
+  const allSpeakers = {};
+  (p['简报'] || []).forEach(l => { const k = one(l)[0]; allSpeakers[k] = (allSpeakers[k] || 0) + 1; });
+  segs.forEach(sg => lines(sg).forEach(k => { allSpeakers[k] = (allSpeakers[k] || 0) + 1; }));
+  const total = Object.values(allSpeakers).reduce((a, b) => a + b, 0) || 1;
+  const share = Object.entries(allSpeakers).sort((a, b) => b[1] - a[1]);
+  const cell = (arr, f, none) => arr && arr.length ? arr.map(f).join('') : `<div class="empty">${none}</div>`;
+  const row = (name, f) => `<tr><th>${name}</th>${segs.map((sg, i) => `<td>${f(sg, i)}</td>`).join('')}</tr>`;
+  const lineList = ls => (ls || []).map(l => { const [k, t] = one(l); return `<div><span class="chip" style="background:${who(k).color}">${esc(who(k).name)}</span>${esc(t)}</div>`; }).join('');
+  document.getElementById('view').innerHTML = `
+    <div class="card"><b>谁在说话</b>（简报和正片，不含卡住时、结局）
+      <div class="share">${share.map(([k, n]) => `<div title="${esc(who(k).name)} ${n} 句" style="flex:${n};background:${who(k).color}"></div>`).join('')}</div>
+      <div class="legend">${share.map(([k, n]) => `<span><span class="chip" style="background:${who(k).color}">${esc(who(k).name)}</span>${n} 句 · ${Math.round(100 * n / total)}%</span>`).join('')}</div>
+    </div>
+    <div class="card sheet"><table>
+      <thead><tr><th></th>${segs.map((sg, i) => `<td>第 ${i + 1} 段 · ${esc(sg['名'])}</td>`).join('')}</tr></thead>
+      <tbody>
+      ${p['示意图'] ? `<tr><th>地图</th>${segs.map((sg, i) => `<td class="mapcell">${mapSvg(p, i, placesIn(p, [
+        ...(sg['镜头'] || []).map(x => x['看']), ...(sg['事件'] || []).map(x => x['时机']), ...(sg['目标'] || []).map(x => x['题'])]),
+        sg['目标'] || [])}</td>`).join('')}</tr>` : ''}
+      ${row('动词', sg => esc(sg['动词'] || ''))}
+      ${row('时长', (sg, i) => `${esc(sg['时长'] || '')}<div class="len" style="width:${100 * (lv.minutes[i] || 0) / maxMin}%"></div>`)}
+      ${row('台词密度', (sg, i) => { const ls = lines(sg), m = lv.minutes[i];
+        return `<div class="dens">${ls.map(k => `<span class="dot" style="background:${who(k).color}" title="${esc(who(k).name)}"></span>`).join('')}</div>
+          <div class="lbl" style="font-size:12px;color:var(--mute)">${ls.length} 句${m ? ` · 每分钟 ${(ls.length / m).toFixed(1)} 句` : ''}</div>`; })}
+      ${row('镜头', sg => cell(sg['镜头'], sh => `<div class="item">🎥 ${esc(sh['看'])}${lineList(sh['台词'])}</div>`, '没有镜头'))}
+      ${row('任务目标', sg => cell(sg['目标'], g => `<div class="item"><span class="chip" style="background:${g['种'] === '主' ? 'var(--goal)' : 'var(--bonus)'}">${g['种'] === '主' ? '主' : '奖励'}</span><b>${esc(g['题'])}</b>
+        <div style="font-size:12px">${esc(g['说明'])}</div>${g['亮出'] ? `<div class="tr">亮出：${esc(g['亮出'])}</div>` : ''}</div>`, '没有新目标'))}
+      ${row('事件', sg => cell(sg['事件'], e => `<div class="item"><div class="tr">▶ ${esc(e['时机'])}</div>${e['镜头'] ? `<div>🎥 ${esc(e['镜头'])}</div>` : ''}${e['文字'] ? `<div>📝 ${esc(e['文字'])}</div>` : ''}${lineList(e['台词'])}</div>`, '没有事件'))}
+      ${row('下一步靠什么', sg => cell(sg['下一步靠什么'], x => `<div class="item">· ${esc(x)}</div>`, '没写'))}
+      ${row('卡住了', sg => cell(sg['卡住了'], e => `<div class="item"><div class="tr">${esc(e['时机'])}</div>${lineList(e['台词'])}</div>`, '没写'))}
+      ${row('怎么结束', sg => esc(sg['结束']))}
+      </tbody></table></div>`;
+}
+
+function render() {
+  if (timer) toggle();
+  document.getElementById('tabs').innerHTML = DATA.levels.map((lv, i) =>
+    `<button class="${i === L ? 'on' : ''}" data-i="${i}">${esc(lv.id)} ${esc(lv.plan['关名'])}${lv.problems.length ? ' ⚠' : ''}</button>`).join('');
+  document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => { L = +b.dataset.i; at = 0; store.set('flow-level', L); render(); });
+  document.getElementById('m-play').classList.toggle('on', mode === 'play');
+  document.getElementById('m-sheet').classList.toggle('on', mode === 'sheet');
+  renderInfo();
+  mode === 'play' ? renderPlay() : renderSheet();
+}
+document.getElementById('m-play').onclick = () => { mode = 'play'; store.set('flow-mode', mode); render(); };
+document.getElementById('m-sheet').onclick = () => { mode = 'sheet'; store.set('flow-mode', mode); render(); };
+document.addEventListener('keydown', e => {
+  if (mode !== 'play') return;
+  if (e.key === 'ArrowRight') go(at + 1);
+  if (e.key === 'ArrowLeft') go(at - 1);
+});
+L = Math.min(+(store.get('flow-level') || 0), DATA.levels.length - 1) || 0;
+mode = store.get('flow-mode') === 'sheet' ? 'sheet' : 'play';
+render();
+</script>
+</body>
+</html>

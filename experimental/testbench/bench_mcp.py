@@ -508,7 +508,22 @@ def cnv_check(name: str, check: str = '', build: bool = True, keep: bool = False
     return out
 
 
+# cnv_check plays the mission at x8 like build.py --check (ADR 0007), the server's own driving by hand staying at
+# harness.SPEED (x1): it runs the steps here, not through bench_client, and so ran every check at x1 till 2026-10-28
+# (an a4 win, 600 mission seconds, took 10 minutes)
+CHECK_SPEED = float(os.environ.get('RA3_BENCH_SPEED') or 8)
+
+
 def _cnv_check(name, check, build, keep):
+    was = harness.SPEED
+    harness.SPEED = CHECK_SPEED         # before bench_start: the shim hooks the clocks only when the game starts sped up
+    try:
+        return _cnv_run(name, check, build, keep)
+    finally:
+        harness.SPEED = was
+
+
+def _cnv_run(name, check, build, keep):
     import json
     args = [BUILD, name] + (['--check', check] if check else [])
     code, out = lab(*args, '--plan', *([] if build else ['--no-build']))

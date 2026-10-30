@@ -1,0 +1,1043 @@
+{
+ "rows": [
+  {
+   "map": "camp_j02_stalingrad_stewart",
+   "game": "RA3",
+   "line": "j",
+   "n": 2,
+   "position": "前期",
+   "main": 3,
+   "waves": 3,
+   "grows": 1,
+   "base": "有",
+   "verbs": [
+    "Defend",
+    "Destroy",
+    "Establish"
+   ],
+   "verb_changes": 2,
+   "given": 0,
+   "heroes": [],
+   "kinds": 1,
+   "countdown": true,
+   "transfers": [
+    "Player_2"
+   ],
+   "turns": 3
+  },
+  {
+   "map": "camp_a01_brightonbeach_smith",
+   "game": "RA3",
+   "line": "a",
+   "n": 1,
+   "position": "前期",
+   "main": 4,
+   "waves": 1,
+   "grows": 0,
+   "base": "有",
+   "verbs": [
+    "Eliminate"
+   ],
+   "verb_changes": 0,
+   "given": 0,
+   "heroes": [],
+   "kinds": 2,
+   "countdown": true,
+   "transfers": [],
+   "turns": 0
+  },
+  {
+   "map": "camp_a02_cannes_smith",
+   "game": "RA3",
+   "line": "a",
+   "n": 2,
+   "position": "前期",
+   "main": 5,
+   "waves": 4,
+   "grows": 1,
+   "base": "有",
+   "verbs": [
+    "Get",
+    "Save",
+    "Sink",
+    "Wipe"
+   ],
+   "verb_changes": 4,
+   "given": 0,
+   "heroes": [
+    "AlliedCommandoTech1"
+   ],
+   "kinds": 3,
+   "countdown": false,
+   "transfers": [],
+   "turns": 4
+  },
+  {
+   "map": "camp_a03_heidelberg_smith",
+   "game": "RA3",
+   "line": "a",
+   "n": 3,
+   "position": "前期",
+   "main": 5,
+   "waves": 4,
+   "grows": 1,
+   "base": "有",
+   "verbs": [
+    "Destroy",
+    "Escort"
+   ],
+   "verb_changes": 1,
+   "given": 0,
+   "heroes": [
+    "AlliedCommandoTech1"
+   ],
+   "kinds": 6,
+   "countdown": false,
+   "transfers": [],
+   "turns": 4
+  },
+  {
+   "map": "camp_a04_gibraltar_hayes",
+   "game": "RA3",
+   "line": "a",
+   "n": 4,
+   "position": "中期",
+   "main": 3,
+   "waves": 3,
+   "grows": 3,
+   "base": "有",
+   "verbs": [
+    "Destroy",
+    "Recover"
+   ],
+   "verb_changes": 1,
+   "given": 0,
+   "heroes": [
+    "AlliedCommandoTech1"
+   ],
+   "kinds": 3,
+   "countdown": false,
+   "transfers": [],
+   "turns": 5
+  },
+  {
+   "map": "camp_a05_northsea_white",
+   "game": "RA3",
+   "line": "a",
+   "n": 5,
+   "position": "中期",
+   "main": 4,
+   "waves": 3,
+   "grows": 6,
+   "base": "有",
+   "verbs": [
+    "Capture",
+    "Destroy",
+    "Protect"
+   ],
+   "verb_changes": 2,
+   "given": 5,
+   "heroes": [
+    "alliedcommandotech1"
+   ],
+   "kinds": 3,
+   "countdown": true,
+   "transfers": [],
+   "turns": 8
+  },
+  {
+   "map": "camp_a06_mountrushmore_white",
+   "game": "RA3",
+   "line": "a",
+   "n": 6,
+   "position": "中期",
+   "main": 3,
+   "waves": 3,
+   "grows": 3,
+   "base": "有",
+   "verbs": [
+    "Destroy",
+    "Eliminate"
+   ],
+   "verb_changes": 1,
+   "given": 0,
+   "heroes": [
+    "AlliedCommandoTech1"
+   ],
+   "kinds": 2,
+   "countdown": false,
+   "transfers": [],
+   "turns": 5
+  },
+  {
+   "map": "camp_a07_tokyoharbor_davis",
+   "game": "RA3",
+   "line": "a",
+   "n": 7,
+   "position": "后期",
+   "main": 4,
+   "waves": 2,
+   "grows": 2,
+   "base": "无",
+   "verbs": [
+    "Hold",
+    "Take"
+   ],
+   "verb_changes": 1,
+   "given": 1,
+   "heroes": [],
+   "kinds": 1,
+   "countdown": true,
+   "transfers": [],
+   "turns": 3
+  },
+  {
+   "map": "camp_a08_havana_rao",
+   "game": "RA3",
+   "line": "a",
+   "n": 8,
+   "position": "后期",
+   "main": 5,
+   "waves": 3,
+   "grows": 2,
+   "base": "有",
+   "verbs": [
+    "Destroy",
+    "Do",
+    "Investigate",
+    "Locate"
+   ],
+   "verb_changes": 3,
+   "given": 0,
+   "heroes": [],
+   "kinds": 2,
+   "countdown": true,
+   "transfers": [],
+   "turns": 4
+  },
+  {
+   "map": "camp_a09_leningrad_rao",
+   "game": "RA3",
+   "line": "a",
+   "n": 9,
+   "position": "后期",
+   "main": 5,
+   "waves": 2,
+   "grows": 2,
+   "base": "有",
+   "verbs": [
+    "Clear",
+    "Destroy",
+    "Unpack"
+   ],
+   "verb_changes": 2,
+   "given": 10,
+   "heroes": [],
+   "kinds": 2,
+   "countdown": true,
+   "transfers": [],
+   "turns": 3
+  },
+  {
+   "map": "camp_j01_russianvillage_white",
+   "game": "RA3",
+   "line": "j",
+   "n": 1,
+   "position": "前期",
+   "main": 4,
+   "waves": 3,
+   "grows": 2,
+   "base": "无",
+   "verbs": [
+    "Bring",
+    "Destroy"
+   ],
+   "verb_changes": 1,
+   "given": 5,
+   "heroes": [],
+   "kinds": 5,
+   "countdown": false,
+   "transfers": [],
+   "turns": 4
+  },
+  {
+   "map": "camp_j03_odessa_stewart",
+   "game": "RA3",
+   "line": "j",
+   "n": 3,
+   "position": "前期",
+   "main": 3,
+   "waves": 2,
+   "grows": 1,
+   "base": "有",
+   "verbs": [
+    "Destroy",
+    "Escort"
+   ],
+   "verb_changes": 1,
+   "given": 1,
+   "heroes": [],
+   "kinds": 2,
+   "countdown": false,
+   "transfers": [
+    "Player_2"
+   ],
+   "turns": 2
+  },
+  {
+   "map": "camp_j04_pearlharbor_davis",
+   "game": "RA3",
+   "line": "j",
+   "n": 4,
+   "position": "中期",
+   "main": 4,
+   "waves": 1,
+   "grows": 1,
+   "base": "有",
+   "verbs": [
+    "Defend",
+    "Destroy"
+   ],
+   "verb_changes": 1,
+   "given": 0,
+   "heroes": [],
+   "kinds": 8,
+   "countdown": true,
+   "transfers": [],
+   "turns": 1
+  },
+  {
+   "map": "camp_j05_deepocean_davis",
+   "game": "RA3",
+   "line": "j",
+   "n": 5,
+   "position": "中期",
+   "main": 4,
+   "waves": 2,
+   "grows": 1,
+   "base": "无",
+   "verbs": [
+    "Destroy",
+    "Protect",
+    "Stop"
+   ],
+   "verb_changes": 2,
+   "given": 0,
+   "heroes": [],
+   "kinds": 2,
+   "countdown": true,
+   "transfers": [],
+   "turns": 2
+  },
+  {
+   "map": "camp_j06_losangeles_white",
+   "game": "RA3",
+   "line": "j",
+   "n": 6,
+   "position": "中期",
+   "main": 2,
+   "waves": 2,
+   "grows": 1,
+   "base": "有",
+   "verbs": [
+    "Capture",
+    "Clear"
+   ],
+   "verb_changes": 1,
+   "given": 0,
+   "heroes": [],
+   "kinds": 3,
+   "countdown": false,
+   "transfers": [],
+   "turns": 2
+  },
+  {
+   "map": "camp_j07_yokohama_stewart",
+   "game": "RA3",
+   "line": "j",
+   "n": 7,
+   "position": "后期",
+   "main": 3,
+   "waves": 3,
+   "grows": 2,
+   "base": "有",
+   "verbs": [
+    "Destroy",
+    "Hold",
+    "Retake"
+   ],
+   "verb_changes": 2,
+   "given": 8,
+   "heroes": [
+    "JapanCommandoTech1"
+   ],
+   "kinds": 5,
+   "countdown": true,
+   "transfers": [
+    "Player_2"
+   ],
+   "turns": 4
+  },
+  {
+   "map": "camp_j08_kremlin_stewart",
+   "game": "RA3",
+   "line": "j",
+   "n": 8,
+   "position": "后期",
+   "main": 4,
+   "waves": 2,
+   "grows": 3,
+   "base": "有",
+   "verbs": [
+    "Await",
+    "Destroy",
+    "The"
+   ],
+   "verb_changes": 2,
+   "given": 0,
+   "heroes": [],
+   "kinds": 2,
+   "countdown": true,
+   "transfers": [
+    "Player_2"
+   ],
+   "turns": 4
+  },
+  {
+   "map": "camp_j09_amsterdam_bass",
+   "game": "RA3",
+   "line": "j",
+   "n": 9,
+   "position": "后期",
+   "main": 5,
+   "waves": 3,
+   "grows": 4,
+   "base": "有",
+   "verbs": [
+    "Destroy"
+   ],
+   "verb_changes": 0,
+   "given": 18,
+   "heroes": [
+    "JapanCommandoTech1"
+   ],
+   "kinds": 8,
+   "countdown": false,
+   "transfers": [],
+   "turns": 6
+  },
+  {
+   "map": "camp_s01_leningradcanals_rao",
+   "game": "RA3",
+   "line": "s",
+   "n": 1,
+   "position": "前期",
+   "main": 4,
+   "waves": 1,
+   "grows": 0,
+   "base": "无",
+   "verbs": [
+    "Secure",
+    "Train"
+   ],
+   "verb_changes": 1,
+   "given": 0,
+   "heroes": [
+    "SovietCommandoTech1"
+   ],
+   "kinds": 2,
+   "countdown": true,
+   "transfers": [],
+   "turns": 0
+  },
+  {
+   "map": "camp_s02_krasna45_rao",
+   "game": "RA3",
+   "line": "s",
+   "n": 2,
+   "position": "前期",
+   "main": 3,
+   "waves": 1,
+   "grows": 0,
+   "base": "无",
+   "verbs": [
+    "Get"
+   ],
+   "verb_changes": 0,
+   "given": 4,
+   "heroes": [],
+   "kinds": 1,
+   "countdown": false,
+   "transfers": [],
+   "turns": 0
+  },
+  {
+   "map": "camp_s03_vladivostok_davis",
+   "game": "RA3",
+   "line": "s",
+   "n": 3,
+   "position": "前期",
+   "main": 5,
+   "waves": 3,
+   "grows": 1,
+   "base": "无",
+   "verbs": [
+    "Clear",
+    "Construct",
+    "Destroy"
+   ],
+   "verb_changes": 3,
+   "given": 0,
+   "heroes": [],
+   "kinds": 2,
+   "countdown": false,
+   "transfers": [],
+   "turns": 3
+  },
+  {
+   "map": "camp_s04_geneva_bass",
+   "game": "RA3",
+   "line": "s",
+   "n": 4,
+   "position": "中期",
+   "main": 4,
+   "waves": 2,
+   "grows": 3,
+   "base": "有",
+   "verbs": [
+    "Destroy",
+    "General"
+   ],
+   "verb_changes": 1,
+   "given": 0,
+   "heroes": [],
+   "kinds": 3,
+   "countdown": false,
+   "transfers": [],
+   "turns": 4
+  },
+  {
+   "map": "camp_s05_mykonos_smith",
+   "game": "RA3",
+   "line": "s",
+   "n": 5,
+   "position": "中期",
+   "main": 6,
+   "waves": 4,
+   "grows": 2,
+   "base": "有",
+   "verbs": [
+    "Capture",
+    "Destroy",
+    "Expand",
+    "Hold"
+   ],
+   "verb_changes": 3,
+   "given": 0,
+   "heroes": [],
+   "kinds": 0,
+   "countdown": true,
+   "transfers": [],
+   "turns": 5
+  },
+  {
+   "map": "camp_s06_iceland_bass",
+   "game": "RA3",
+   "line": "s",
+   "n": 6,
+   "position": "中期",
+   "main": 3,
+   "waves": 2,
+   "grows": 4,
+   "base": "有",
+   "verbs": [
+    "Destroy",
+    "Eliminate"
+   ],
+   "verb_changes": 2,
+   "given": 0,
+   "heroes": [],
+   "kinds": 6,
+   "countdown": false,
+   "transfers": [
+    "SovietKrukov",
+    "SovietKrukov",
+    "SovietKrukov",
+    "SovietKrukov",
+    "SovietKrukov"
+   ],
+   "turns": 5
+  },
+  {
+   "map": "camp_s07_mountfuji_white",
+   "game": "RA3",
+   "line": "s",
+   "n": 7,
+   "position": "后期",
+   "main": 7,
+   "waves": 5,
+   "grows": 3,
+   "base": "有",
+   "verbs": [
+    "Assassinate",
+    "Create",
+    "Destroy",
+    "Kill"
+   ],
+   "verb_changes": 3,
+   "given": 4,
+   "heroes": [],
+   "kinds": 5,
+   "countdown": false,
+   "transfers": [],
+   "turns": 7
+  },
+  {
+   "map": "camp_s08_easterisland_stewart",
+   "game": "RA3",
+   "line": "s",
+   "n": 8,
+   "position": "后期",
+   "main": 5,
+   "waves": 4,
+   "grows": 5,
+   "base": "有",
+   "verbs": [
+    "Build",
+    "Destroy",
+    "Stop"
+   ],
+   "verb_changes": 3,
+   "given": 0,
+   "heroes": [],
+   "kinds": 0,
+   "countdown": true,
+   "transfers": [
+    "Player_2"
+   ],
+   "turns": 8
+  },
+  {
+   "map": "camp_s09_newyork_rao",
+   "game": "RA3",
+   "line": "s",
+   "n": 9,
+   "position": "后期",
+   "main": 3,
+   "waves": 3,
+   "grows": 2,
+   "base": "有",
+   "verbs": [
+    "Destroy",
+    "Eliminate"
+   ],
+   "verb_changes": 1,
+   "given": 0,
+   "heroes": [],
+   "kinds": 4,
+   "countdown": false,
+   "transfers": [],
+   "turns": 4
+  },
+  {
+   "map": "camp_ep01_a01_igaprefecture_davis",
+   "game": "Uprising",
+   "line": "a",
+   "n": 1,
+   "position": "前期",
+   "main": 5,
+   "waves": 4,
+   "grows": 2,
+   "base": "无",
+   "verbs": [
+    "Defeat",
+    "Escort",
+    "Find",
+    "Freeze",
+    "The"
+   ],
+   "verb_changes": 4,
+   "given": 0,
+   "heroes": [],
+   "kinds": 0,
+   "countdown": true,
+   "transfers": [],
+   "turns": 5
+  },
+  {
+   "map": "camp_ep01_a02_osaka_white",
+   "game": "Uprising",
+   "line": "a",
+   "n": 2,
+   "position": "中期",
+   "main": 3,
+   "waves": 1,
+   "grows": 4,
+   "base": "有",
+   "verbs": [
+    "Deactivate"
+   ],
+   "verb_changes": 0,
+   "given": 7,
+   "heroes": [
+    "alliedcommandotech1"
+   ],
+   "kinds": 10,
+   "countdown": false,
+   "transfers": [],
+   "turns": 4
+  },
+  {
+   "map": "camp_ep01_a03_miyako_stewart",
+   "game": "Uprising",
+   "line": "a",
+   "n": 3,
+   "position": "后期",
+   "main": 3,
+   "waves": 3,
+   "grows": 2,
+   "base": "有",
+   "verbs": [
+    "Defeat",
+    "Set"
+   ],
+   "verb_changes": 1,
+   "given": 0,
+   "heroes": [],
+   "kinds": 3,
+   "countdown": false,
+   "transfers": [],
+   "turns": 4
+  },
+  {
+   "map": "camp_ep01_j01_sakhalin_smith",
+   "game": "Uprising",
+   "line": "j",
+   "n": 1,
+   "position": "前期",
+   "main": 5,
+   "waves": 4,
+   "grows": 0,
+   "base": "无",
+   "verbs": [
+    "Capture",
+    "Commander",
+    "Destroy",
+    "Rendezvous"
+   ],
+   "verb_changes": 4,
+   "given": 0,
+   "heroes": [],
+   "kinds": 0,
+   "countdown": false,
+   "transfers": [],
+   "turns": 3
+  },
+  {
+   "map": "camp_ep01_j02_okiislands_smith",
+   "game": "Uprising",
+   "line": "j",
+   "n": 2,
+   "position": "中期",
+   "main": 6,
+   "waves": 2,
+   "grows": 0,
+   "base": "无",
+   "verbs": [
+    "Garrison",
+    "Sink",
+    "The",
+    "Unpack"
+   ],
+   "verb_changes": 3,
+   "given": 0,
+   "heroes": [],
+   "kinds": 0,
+   "countdown": false,
+   "transfers": [],
+   "turns": 1
+  },
+  {
+   "map": "camp_ep01_j03_vladivostok_smith",
+   "game": "Uprising",
+   "line": "j",
+   "n": 3,
+   "position": "后期",
+   "main": 3,
+   "waves": 2,
+   "grows": 2,
+   "base": "无",
+   "verbs": [
+    "Defeat",
+    "Eliminate"
+   ],
+   "verb_changes": 1,
+   "given": 0,
+   "heroes": [],
+   "kinds": 0,
+   "countdown": false,
+   "transfers": [],
+   "turns": 3
+  },
+  {
+   "map": "camp_ep01_s01_romania_stewart",
+   "game": "Uprising",
+   "line": "s",
+   "n": 1,
+   "position": "前期",
+   "main": 3,
+   "waves": 1,
+   "grows": 0,
+   "base": "无",
+   "verbs": [
+    "Rendezvous"
+   ],
+   "verb_changes": 0,
+   "given": 0,
+   "heroes": [],
+   "kinds": 4,
+   "countdown": true,
+   "transfers": [],
+   "turns": 0
+  },
+  {
+   "map": "camp_ep01_s02_murmansk_white",
+   "game": "Uprising",
+   "line": "s",
+   "n": 2,
+   "position": "中期",
+   "main": 3,
+   "waves": 3,
+   "grows": 1,
+   "base": "有",
+   "verbs": [
+    "Crush",
+    "Regroup",
+    "Scout"
+   ],
+   "verb_changes": 2,
+   "given": 0,
+   "heroes": [],
+   "kinds": 6,
+   "countdown": true,
+   "transfers": [],
+   "turns": 3
+  },
+  {
+   "map": "camp_ep01_s03_yucatan_stewart",
+   "game": "Uprising",
+   "line": "s",
+   "n": 3,
+   "position": "中期",
+   "main": 3,
+   "waves": 3,
+   "grows": 0,
+   "base": "无",
+   "verbs": [
+    "Clear",
+    "Crush",
+    "Destroy"
+   ],
+   "verb_changes": 2,
+   "given": 0,
+   "heroes": [],
+   "kinds": 1,
+   "countdown": true,
+   "transfers": [],
+   "turns": 2
+  },
+  {
+   "map": "camp_ep01_s04_warbotisland_white",
+   "game": "Uprising",
+   "line": "s",
+   "n": 4,
+   "position": "后期",
+   "main": 3,
+   "waves": 3,
+   "grows": 3,
+   "base": "有",
+   "verbs": [
+    "Destroy",
+    "Establish",
+    "Stop"
+   ],
+   "verb_changes": 2,
+   "given": 0,
+   "heroes": [],
+   "kinds": 6,
+   "countdown": true,
+   "transfers": [],
+   "turns": 5
+  },
+  {
+   "map": "camp_ep01_y01_facility_rao",
+   "game": "Uprising",
+   "line": "y",
+   "n": 1,
+   "position": "前期",
+   "main": 2,
+   "waves": 2,
+   "grows": 0,
+   "base": "无",
+   "verbs": [
+    "Access",
+    "Escape"
+   ],
+   "verb_changes": 1,
+   "given": 0,
+   "heroes": [],
+   "kinds": 0,
+   "countdown": false,
+   "transfers": [],
+   "turns": 1
+  },
+  {
+   "map": "camp_ep01_y02_blacksite_davis",
+   "game": "Uprising",
+   "line": "y",
+   "n": 2,
+   "position": "中期",
+   "main": 4,
+   "waves": 5,
+   "grows": 2,
+   "base": "无",
+   "verbs": [
+    "Escape",
+    "Head",
+    "Objective_B1_FreePrisoners",
+    "Sink",
+    "Utterly"
+   ],
+   "verb_changes": 4,
+   "given": 0,
+   "heroes": [],
+   "kinds": 1,
+   "countdown": false,
+   "transfers": [],
+   "turns": 6
+  },
+  {
+   "map": "camp_ep01_y03_compound_rao",
+   "game": "Uprising",
+   "line": "y",
+   "n": 3,
+   "position": "后期",
+   "main": 4,
+   "waves": 2,
+   "grows": 0,
+   "base": "无",
+   "verbs": [
+    "Gain",
+    "Kill"
+   ],
+   "verb_changes": 1,
+   "given": 0,
+   "heroes": [],
+   "kinds": 1,
+   "countdown": false,
+   "transfers": [],
+   "turns": 1
+  }
+ ],
+ "summary": {
+  "前期": {
+   "n": 13,
+   "main": 4,
+   "main_range": [
+    2,
+    5
+   ],
+   "waves": 3,
+   "waves_range": [
+    1,
+    4
+   ],
+   "grows": 1,
+   "turns": 3,
+   "turns_range": [
+    0,
+    5
+   ],
+   "verbs": 2,
+   "base": 5,
+   "heroes": 3,
+   "countdown": 5,
+   "given": 0,
+   "kinds": 2,
+   "q1": {
+    "main": 3.0,
+    "waves": 1.0,
+    "grows": 0.0,
+    "turns": 0.0,
+    "kinds": 1.0
+   },
+   "verbs_q1": 2.0
+  },
+  "中期": {
+   "n": 14,
+   "main": 3.5,
+   "main_range": [
+    2,
+    6
+   ],
+   "waves": 2.5,
+   "waves_range": [
+    1,
+    5
+   ],
+   "grows": 2.0,
+   "turns": 4.0,
+   "turns_range": [
+    1,
+    8
+   ],
+   "verbs": 2.5,
+   "base": 10,
+   "heroes": 4,
+   "countdown": 6,
+   "given": 0.0,
+   "kinds": 3.0,
+   "q1": {
+    "main": 3.0,
+    "waves": 2.0,
+    "grows": 1.0,
+    "turns": 2.0,
+    "kinds": 1.25
+   },
+   "verbs_q1": 2.0
+  },
+  "后期": {
+   "n": 13,
+   "main": 4,
+   "main_range": [
+    3,
+    7
+   ],
+   "waves": 3,
+   "waves_range": [
+    2,
+    5
+   ],
+   "grows": 2,
+   "turns": 4,
+   "turns_range": [
+    1,
+    8
+   ],
+   "verbs": 3,
+   "base": 10,
+   "heroes": 2,
+   "countdown": 7,
+   "given": 0,
+   "kinds": 2,
+   "q1": {
+    "main": 3.0,
+    "waves": 2.0,
+    "grows": 2.0,
+    "turns": 3.0,
+    "kinds": 1.0
+   },
+   "verbs_q1": 2.0
+  }
+ }
+}
