@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DOCS = ROOT / 'docs'
 ADR = DOCS / 'adr'
 
-ROOT_DOCS = {'README.md', 'HANDOFF.md'}
+ROOT_DOCS = {'README.md', 'HANDOFF.md', 'CLAUDE.md'}   # CLAUDE.md: how every session here spends quota (2026-10-30)
 ACTIVE_DOCS = {'architecture.md', 'plan.md', 'requirements.md'}
 
 HARD_CONSTRAINTS = [
