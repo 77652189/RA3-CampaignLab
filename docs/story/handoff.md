@@ -20,7 +20,7 @@
 
 0. **灰盒（ADR 0011）已做完（2026-10-30）**：`experimental/cnv/graybox.py`（k\*，A4 三段全判平推轻松，测试 `tests/test_graybox.py`）；九张题卡的结论在 `docs/story/graybox-cards.md`，数字来自 `experimental/cnv/graybox_cards.py`（测试 `tests/test_graybox_cards.py`）。没补 `a4_before` 走查。新题卡出来后，往 `graybox_cards.py` 加函数、往 `graybox-cards.md` 加一节即可；模拟器判断不了的写"留给实机"。
 
-0b. **引擎机制最小检查（总控 2026-10-30 派的，一项都还没开始）**：每项上测试台做一个最小检查（`experimental/cnv/checks/` 里照现成的写，如 `jammer.py`、`probe.py`、`icewall.py`；用 `cnv_check` 跑，PASS/FAIL 加读数），结果写进 `docs/design/flow/mechanics.md` 的机制表（"冰面承重"那行 34 行附近，状态改"已确认/不行"并写读数）和 `docs/story/drive-probe.md` 旁。这是引擎事实不是打法测试，ADR 0011 允许。开跑前先查 `bench_status`，用户的游戏在跑就停下问。
+0b. **引擎机制最小检查——四项都做完了（2026-10-30）**：结果在 `docs/story/drive-probe.md` 末节和 `docs/design/flow/mechanics.md`（冰面承重只能脚本做、干扰车对飞机有效、小地图闪点能按物体、信息框能当字符条）。下面是原来的派活说明，留作出处：每项上测试台做一个最小检查（`experimental/cnv/checks/` 里照现成的写，如 `jammer.py`、`probe.py`、`icewall.py`；用 `cnv_check` 跑，PASS/FAIL 加读数），结果写进 `docs/design/flow/mechanics.md` 的机制表（"冰面承重"那行 34 行附近，状态改"已确认/不行"并写读数）和 `docs/story/drive-probe.md` 旁。这是引擎事实不是打法测试，ADR 0011 允许。开跑前先查 `bench_status`，用户的游戏在跑就停下问。
    ① 冰面承重：不同重量的车压上去会不会掉，脚本能不能控制（退路是触发区里删重车 + 沉没效果，S1 甲、丙都依赖）；
    ② 干扰车（协调器）对飞机有没有效（J7 甲）；`checks/jammer.py` 已有，先看它测了什么；
    ③ 小地图能不能按物体闪点（A4 甲暗示、J7 甲）；

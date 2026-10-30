@@ -47,3 +47,9 @@ def jam(m):
 
 def free(m):
     return trip(m, False)
+
+
+def jam_air(m):
+    """The jammer against a flier (J7 card A: do air units fly past it?). Only the reading: no trip-time expectation,
+    the verdict is this run's 行程秒数 against the same flier's free run."""
+    return trip(m, True)

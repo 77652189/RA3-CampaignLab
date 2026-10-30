@@ -56,10 +56,11 @@ from checks import reroute as check_reroute     # noqa: E402
 from checks import sight as check_sight         # noqa: E402
 from checks import voice as check_voice         # noqa: E402
 from checks import drive as check_drive         # noqa: E402
+from checks import mech as check_mech           # noqa: E402
 from units import tesla as units_tesla          # noqa: E402
 from missions import a4, a5, a7, a8, j3, j4, j5, j7, s2, s5, s6, beacon_bench, burrow_bench, clone_bench, combo_bench, crane_bench, icewall_bench, jammer_bench, liberty_bench, shikigami_bench, \
     tesla_bench, train_bench, probe_bench, plan_words_bench, ai_bench, ai_plan_bench, lock_bench, scene_bench, \
-    ally_bench, aistep_bench, fence_bench, reroute_bench, sight_bench, chronolag_bench, ban_bench, sapporo_bench, voice_bench, drive_bench  # noqa: E402
+    ally_bench, aistep_bench, fence_bench, reroute_bench, sight_bench, chronolag_bench, ban_bench, sapporo_bench, voice_bench, drive_bench, mech_bench  # noqa: E402
 
 BENCH_PY = os.path.join(os.path.dirname(ROOT), 'envs', 'bench_mcp', 'Scripts', 'python.exe')
 CLIENT = os.path.join(ROOT, 'experimental', 'testbench', 'bench_client.py')
@@ -136,6 +137,14 @@ MISSIONS = {
     'sight': (lambda: sight_bench.mission(), {'look': check_sight.look}),
     'jammer': (lambda: jammer_bench.mission(), {'jam': check_jam.jam, 'free': check_jam.free}),
     'jammer_own': (lambda: jammer_bench.mission(name='CampJamOwn', side='p1'), {'jam': check_jam.jam}),
+    'jammer_air': (lambda: jammer_bench.mission(name='CampJamAir', mech='SovietAntiGroundAircraft'),
+                   {'jam': check_jam.jam_air, 'free': check_jam.free}),
+    'thin_ice': (lambda: mech_bench.thin_ice(), {'thin': check_mech.thin}),
+    'shown': (lambda: mech_bench.shown(), {'shown': check_mech.shown, 'bar': check_mech.bar}),
+    'jammer_jet':(lambda: jammer_bench.mission(name='CampJamJet', mech='SovietFighterAircraft'),
+                   {'jam': check_jam.jam_air, 'free': check_jam.free}),
+    'jammer_kirov': (lambda: jammer_bench.mission(name='CampJamKir', mech='SovietBomberAircraft'),
+                     {'jam': check_jam.jam_air, 'free': check_jam.free}),
     'chronolag': (lambda: chronolag_bench.mission(), {'hit': check_lag.hit, 'packed': check_lag.packed}),
     'shikigami': (lambda: shikigami_bench.mission(), {'cover': check_shi.cover}),
     'shikigami_shells': (lambda: shikigami_bench.shells(), {'bend': check_shi.bend}),
