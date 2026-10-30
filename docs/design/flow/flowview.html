@@ -542,7 +542,15 @@ const POINTS = [
   [5, '保底援军，不用读档', '可能坏档的位置，兵力不足时在合适的位置给援军'],
 ];
 function renderReview() {
-  const lv = DATA.levels[L], p = lv.plan, segs = p['段'] || [], E = lv.empty || {};
+  const lv = DATA.levels[L], p = lv.plan, segs = p['段'] || [], E = lv.empty || {}, W = p['摆放要求'] || {};
+  // what the level line places (摆放要求, README rule 21): a table, and the places framed on the map
+  const spots = (kinds, label) => {
+    const rows = kinds.flatMap(k => (W[k] || []).map(e => ({ k, e })));
+    if (!rows.length) return '<div class="bad">（没写摆放要求）</div>';
+    return `<div class="bk"><div class="wrapx"><table><tr><th></th><th>段</th><th>在哪（地图地点）</th><th>是什么</th><th>为了</th></tr>${rows.map(({ k, e }) =>
+      `<tr><th>${esc(k)}</th><td>${esc(e['段'])}</td><td>${esc(e['地方'])}${e['点'] ? `<div class="lbl">${esc(e['点'])}</div>` : ''}</td><td>${esc(e['什么'])}</td><td>${esc(e['为了'])}</td></tr>`).join('')}</table></div>
+      <div>${mapSvg(p, 99, [...new Set(rows.map(({ e }) => e['地方']))], [], true)}<div class="lbl">黄框 = ${esc(label)}</div></div></div>`;
+  };
   const probs = n => lv.problems.filter(x => x.includes(`审核第 ${n} 条`));
   const head = (n, title, q) => {
     const bad = probs(n);
@@ -571,7 +579,9 @@ function renderReview() {
   }).join('');
   const c2 = `<div class="card">${head(...POINTS[1])}
     <div class="lbl" style="margin-bottom:8px">每段的可玩区（蓝虚线框，框外压暗）；红斜线是这一段的空地：离每个已经打开的地方和路线都远（约 500 码），水不算。只有最后一段有上限。</div>
-    <div class="maps">${maps}</div>${mapSvg(p, segs.length - 1, [], [], false, (E[(segs[segs.length - 1] || {})['名']] || {})['格']).replace(/^<svg[\s\S]*?<\/svg>/, '')}</div>`;
+    <div class="maps">${maps}</div>
+    <h3 style="font-size:14px;margin:12px 0 6px">给关卡线：边界什么时候切</h3>
+    ${(W['边界'] || []).length ? `<div class="wrapx"><table><tr><th>段</th><th>换成</th><th>什么时候切</th></tr>${(W['边界'] || []).map(b => `<tr><th>${esc(b['段'])}</th><td>${esc(b['换成'])}</td><td>${esc(b['何时'])}</td></tr>`).join('')}</table></div>` : '<div class="bad">（没写摆放要求）</div>'}${mapSvg(p, segs.length - 1, [], [], false, (E[(segs[segs.length - 1] || {})['名']] || {})['格']).replace(/^<svg[\s\S]*?<\/svg>/, '')}</div>`;
 
   const st0 = p['开局'] || {};
   const bonus = segs.flatMap(s => (s['目标'] || []).filter(g => g['种'] === '奖励').map(g => ({ s: s['名'], g })));
@@ -582,7 +592,8 @@ function renderReview() {
     <div class="wrapx"><table><tr><th>段</th><th>打法</th><th>游戏里怎么提示</th></tr>${ways}</table></div>
     <h3 style="font-size:14px;margin:12px 0 6px">奖励目标和回报</h3>
     <div class="wrapx"><table><tr><th>段</th><th>奖励</th><th>回报</th></tr>${bonus.map(({ s, g }) => `<tr><th>${esc(s)}</th><td>${esc(g['题'])}${g['亮出'] ? `<div class="lbl">亮出：${esc(g['亮出'])}</div>` : ''}</td><td>${esc(g['回报'] || '（没写）')}</td></tr>`).join('')}</table></div>
-    <h3 style="font-size:14px;margin:12px 0 6px">只造兵平推会怎样</h3><div class="flat">${esc(p['平推会怎样'])}</div></div>`;
+    <h3 style="font-size:14px;margin:12px 0 6px">只造兵平推会怎样</h3><div class="flat">${esc(p['平推会怎样'])}</div>
+    <h3 style="font-size:14px;margin:12px 0 0">给关卡线：资源点和伏击点摆在哪</h3>${spots(['资源点', '伏击点'], '资源点和伏击点')}</div>`;
 
   const backups = {};
   (p['保底'] || []).forEach(b => { backups[b['名']] = b; });
@@ -599,10 +610,11 @@ function renderReview() {
     const k = segs.findIndex(s => s['名'] === b['段']);
     return `<div class="bk"><div><h3 style="font-size:14px;margin:0 0 6px">${esc(b['名'])} <span class="lbl">「${esc(b['段'])}」</span></h3>
       <table><tr><th>会怎么坏档</th><td>${esc(b['坏档'])}</td></tr><tr><th>什么时候送</th><td>${esc(b['条件'])}</td></tr>
-      <tr><th>送什么</th><td>${esc(b['援军'])}</td></tr><tr><th>从哪来</th><td>${esc(b['从哪来'])}</td></tr>
+      <tr><th>送什么</th><td>${esc(b['援军'])}</td></tr><tr><th>从哪来</th><td>${esc(b['从哪来'])}${b['点'] ? `<span class="lbl">（地图地点 ${esc(b['点'])}）</span>` : ''}</td></tr>
       <tr><th>谁说</th><td>${(b['台词'] || []).map(l => { const [kk, t] = one(l); return `<b>${esc(who(kk).name)}</b>：${esc(t)}`; }).join('<br>')}</td></tr></table></div>
       <div>${mapSvg(p, Math.max(k, 0), placesIn(p, [b['从哪来']]), [], true)}<div class="lbl">黄框 = 援军从这里来</div></div></div>`;
-  }).join('')}</div>`;
+  }).join('')}
+    <h3 style="font-size:14px;margin:12px 0 0">给关卡线：按进度给的援军（保底以外）</h3>${spots(['援军'], '援军出现的地方')}</div>`;
 
   document.getElementById('view').innerHTML = `<div class="rv">${c1}${c2}${c3}${c4}${c5}</div>`;
 }

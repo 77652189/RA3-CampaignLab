@@ -291,6 +291,52 @@ def check_review(path, p, cast_keys, mech):
             out.append(f'{name}: 从哪来 {b["从哪来"]} is not a place of the sketch (示意图){REVIEW[5]}')
     if p.get('保底') and mech is not None and BACKUP_MECH not in (p.get('用到的机制') or []):
         out.append(f'{n} 用到的机制: a 保底 promises {BACKUP_MECH} -- list it{REVIEW[5]}')
+    return out + check_placing(path, p)
+
+
+def check_placing(path, p):
+    """摆放要求 (README rule 21, ADR 0009): points 2, 3 and 5 written as what the level line places -- a 边界 entry
+    for every change of the playable area, at least one 资源点 and one 伏击点, every one on a place of the sketch (and,
+    on a real map, a site of it); every 保底 on a real map names the site its reinforcement comes in at."""
+    out, n = [], path.name
+    want = p.get('摆放要求') or {}
+    if not want:
+        return [f'{n}: missing 摆放要求 -- points 2, 3 and 5 as what the level line places{REVIEW[2]}']
+    sk = p.get('示意图') or {}
+    mod = flowmap.load(sk['地图']) if sk.get('地图') else None
+    names = places(p)
+    zones = sk.get('可玩区') or {}
+    segs = [s.get('名') for s in p.get('段') or []]
+    borders = {b.get('段'): b for b in want.get('边界') or []}
+    for a, b in zip(segs, segs[1:]):
+        if a in zones and b in zones and str(zones[a]) != str(zones[b]):
+            e = borders.get(b)
+            if not e or not e.get('何时'):
+                out.append(f'{n} 摆放要求/边界: the playable area changes at {b} -- say when (何时){REVIEW[2]}')
+            elif str(e.get('换成')) != str(zones[b]):
+                out.append(f'{n} 摆放要求/边界/{b}: 换成 {e.get("换成")} but 示意图 has {zones[b]}{REVIEW[2]}')
+
+    def spot(kind, e, point):
+        where = f'{n} 摆放要求/{kind}/{e.get("地方")}'
+        res = [f'{where}: missing {k}{REVIEW[point]}' for k in _missing(e, ('地方', '什么', '为了'))]
+        if e.get('地方') not in names:
+            res.append(f'{where}: 地方 is not a place of the sketch (示意图){REVIEW[point]}')
+        if _seg_index(p, e.get('段')) is None:
+            res.append(f'{where}: 段 {e.get("段")} is not a segment of this level{REVIEW[point]}')
+        if mod is not None and e.get('点') not in mod.SITES:
+            res.append(f'{where}: 点 {e.get("点")} is not a site of {sk["地图"]}{REVIEW[point]}')
+        return res
+    for kind, point in (('资源点', 3), ('伏击点', 3), ('援军', 5)):
+        entries = want.get(kind) or []
+        if kind != '援军' and not entries:
+            out.append(f'{n} 摆放要求: no {kind} -- name at least one for the level line to place{REVIEW[point]}')
+        for e in entries:
+            out += spot(kind, e, point)
+    if mod is not None:
+        for b in p.get('保底') or []:
+            if b.get('点') not in mod.SITES:
+                out.append(f'{n} 保底/{b.get("名")}: 点 {b.get("点")} is not a site of {sk["地图"]} -- where the '
+                           f'reinforcement comes in{REVIEW[5]}')
     return out
 
 
