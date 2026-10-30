@@ -12,6 +12,7 @@ needs to know in the military caption (bench_caption reads it).
 import functools
 import io
 import os
+import re
 import sys
 import time
 
@@ -413,6 +414,36 @@ def tail(text, n=12):
     return '\n'.join(text.strip().splitlines()[-n:])
 
 
+CAP = 3000  # chars a reading tool returns before the rest goes to its log (CLAUDE.md: output by its conclusion)
+
+
+def capped(text, name, cap=CAP):
+    """A long tool reply shortened to what decides the next step; the whole of it in work/logs/mcp_<name>.log, which
+    the reply names, to Read by line when the detail is needed. Every later call rereads what a call returned."""
+    text = text.strip()
+    if len(text) <= cap:
+        return text
+    log = os.path.join(ROOT, 'work', 'logs', f'mcp_{name}.log')
+    os.makedirs(os.path.dirname(log), exist_ok=True)
+    with open(log, 'w', encoding='utf-8') as f:
+        f.write(text + '\n')
+    lines = text.splitlines()
+    # the head (what was asked, the first finding), the tail (verdicts and contract checks come last), and between
+    # them every section title and every line that decides something; whatever is left over goes to the log
+    key = re.compile(r'PASS|FAIL|RESULT|contract|错误|Error|never|unknown|未对齐|^(---|==|#)')
+    head, tail_ = lines[:15], lines[-15:] if len(lines) > 30 else []
+    middle = [x for x in lines[len(head):len(lines) - len(tail_)] if key.search(x)]
+    keep, size = list(head), sum(len(x) + 1 for x in head + tail_)
+    for x in middle:
+        if size + len(x) > cap:
+            keep.append('...')
+            break
+        keep.append(x)
+        size += len(x) + 1
+    keep += ['...'] + tail_ if tail_ else []
+    return '\n'.join(keep) + f'\n... {len(lines)} lines, {len(text)} chars in all: {os.path.relpath(log, ROOT)}'
+
+
 def brief(tool, text):
     """A step's text inside cnv_check, without what the verdict repeats: the counters come once, folded, in the
     judge's report, so a watch keeps only its frame span and its events (captions, the stop) and bench_counters
@@ -449,7 +480,7 @@ def cnv_show(name: str, check: str = '') -> str:
     object placed by a site, every name a script uses published by someone. Read this before writing a mission or a
     check, and after: 'contract: ok' or the list of what is used but not published."""
     code, out = lab(BUILD, name, *(['--check', check] if check else []), '--show', timeout=120)
-    return out.strip() if code in (0, 1) and 'contract:' in out else 'BUILD: ' + tail(out)
+    return capped(out, f'cnv_show_{name}') if code in (0, 1) and 'contract:' in out else 'BUILD: ' + tail(out)
 
 
 @server.tool(structured_output=False)
@@ -480,7 +511,7 @@ def plan_sim(name: str, script: str = '', check: str = '', level: str = 'normal'
         ['--level', level, '--until', str(until)]
     code, out = lab(SIM, *args, timeout=300)
     _, static = lab(SIMSTATIC, name, *(['--check', check] if check else []), timeout=300)
-    return out.strip() + '\n--- 所有可能的走向\n' + static.strip()
+    return capped(out.strip() + '\n--- 所有可能的走向\n' + static.strip(), f'plan_sim_{name}')
 
 
 @server.tool(structured_output=False)
@@ -489,7 +520,7 @@ def plan_vocab(map: str = '') -> str:
     mechanic's parameters, events, actions), the unit names; with map (e.g. 'festival') that map's sites and
     borders too."""
     code, out = lab(PLANCHECK, '--vocab', *([map] if map else []), timeout=120)
-    return out.strip() if code == 0 else 'PLAN: ' + tail(out)
+    return capped(out, f'plan_vocab_{map or "all"}') if code == 0 else 'PLAN: ' + tail(out)
 
 
 @server.tool(structured_output=False)
@@ -628,12 +659,12 @@ def map_study(target: str) -> list:
 
 
 @server.tool(structured_output=False)
-def retail_scripts(pattern: str, maps: str = '', limit: int = 8) -> str:
+def retail_scripts(pattern: str, maps: str = '', limit: int = 3) -> str:
     """Retail campaign scripts using a condition or action (pattern: a regex on the script lines, e.g.
     'LINK_MISSION_OBJECTIVE', "OBJECTIVE_STATUS\\('Bonus"), each whole with its map -- how the original missions do
     it. maps: comma-separated name parts (e.g. 's09,ep01') to search only those."""
     code, out = lab(RETAILREF, 'scripts', pattern, '--maps', maps, '--limit', str(limit), timeout=600)
-    return out.strip() if code == 0 else 'RETAIL: ' + tail(out)
+    return capped(out, 'retail_scripts') if code == 0 else 'RETAIL: ' + tail(out)
 
 
 @server.tool(structured_output=False)
