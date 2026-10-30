@@ -16,8 +16,9 @@ HAS_FINISHED_AUDIO('CNV_A4_007'); its subtitle is the string DIALOGEVENT:CNV_A4_
 The encoded audio is not part of the spliced streams (splice_assets takes manifest / bin / relo / imp only), so
 make() compiles voice.xml on its own first, under the SDK build lock, and takes the cdata from that build; the
 mission build compiles the same XML into its stream (same input, same instance hashes, so the same cdata names).
-Not yet proven in the game (2026-10-29): which folder the game reads a new AudioFile's cdata from, so the audio goes
-to both candidates until the bench probe (build.py voice_bench) says which one.
+In the game (voice_bench 2026-10-29): a new AudioFile's audio is read from data\\static.12\\cdata (the top patch stream
+splice_assets adds new instances to; with the audio in data\\static\\cdata only, the line "finished" in 4 frames), the
+subtitle shows by itself, HAS_FINISHED_AUDIO fires.
 """
 import json
 import os
@@ -33,7 +34,7 @@ FOLDER = 'CNVVoice'
 VOICE = os.path.join(labpaths.LAB, 'RA3-ChineseVoice')
 DELIVERED = os.path.join(VOICE, 'work', 'campaign')
 BUILT = os.path.join(VOICE, 'work', 'sdkb')     # short: the SDK's audio encoder fails past 260 characters
-CDATA_DIRS = ('data\\static\\cdata', 'data\\static.12\\cdata')
+CDATA_DIRS = ('data\\static.12\\cdata',)
 TEST = ('CNV_TEST_001', os.path.join(VOICE, 'work', 'voice_design', 'allied_eva', 'ref_0.wav'),
         '冰墙已就位。侦测到敌军正在集结。车队即将出发。')
 
@@ -97,6 +98,29 @@ def xml(items, folder=FOLDER):
     return f'<?xml version="1.0" encoding="UTF-8"?>\n<AssetDeclaration xmlns="uri:ea.com:eala:asset">\n{body}</AssetDeclaration>\n'
 
 
+RATE = 48000    # every retail voice and dialogue AudioFile is 48 kHz. A 24 kHz line of ours (its header said 24000,
+                # correctly) took ~3x its length to finish in the game (voice_bench_12 2026-10-29: 212 frames for 4.8 s);
+                # suspected the engine's handling of other rates, so we give it retail's
+
+
+def to_48k(src, dst):
+    """The voice line's 16-bit mono WAV -> 16-bit mono at RATE (what the encoder takes)."""
+    import numpy as np
+    from math import gcd
+    from scipy.signal import resample_poly
+    with wave.open(src) as w:
+        assert (w.getsampwidth(), w.getnchannels()) == (2, 1), f'{src}: not 16-bit mono'
+        sr, x = w.getframerate(), np.frombuffer(w.readframes(w.getnframes()), '<i2').astype(np.float64)
+    if sr != RATE:
+        g = gcd(sr, RATE)
+        x = resample_poly(x, RATE // g, sr // g)
+    with wave.open(dst, 'wb') as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(RATE)
+        w.writeframes(np.clip(np.round(x), -32768, 32767).astype('<i2').tobytes())
+
+
 def make(levels=(), test=False, lang='zh', folder=FOLDER):
     """Copy the WAVs under <SDK>/Audio/<folder>, write <SDK>/Mods/<folder>/Data/voice.xml, compile it alone (for the
     encoded audio) and return the Pack."""
@@ -106,9 +130,7 @@ def make(levels=(), test=False, lang='zh', folder=FOLDER):
     os.makedirs(audio, exist_ok=True)
     os.makedirs(data, exist_ok=True)
     for ev, wav, _ in items:
-        with wave.open(wav) as w:       # the voice line writes 16-bit PCM mono, what the encoder takes
-            assert (w.getsampwidth(), w.getnchannels()) == (2, 1), f'{wav}: not 16-bit mono'
-        shutil.copyfile(wav, os.path.join(audio, ev + '.wav'))
+        to_48k(wav, os.path.join(audio, ev + '.wav'))
     with open(os.path.join(data, 'voice.xml'), 'w', encoding='utf-8', newline='\r\n') as f:
         f.write(xml(items, folder))
     with open(os.path.join(data, 'mod.xml'), 'w', encoding='utf-8', newline='\r\n') as f:
