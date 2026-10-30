@@ -301,6 +301,34 @@ def engineer_icons():
     return files
 
 
+def prop_icons():
+    """The sculptures' selection portraits (and buttons): tripo_unit.py's render of the dragon (work/units/
+    icesculpture/game/icon.png) on the Allied plates (button_icon.compose); the reinforced one the render in its
+    VARIANTS colour. -> work/units/icesculpture/game/Button_<model>.tga, Portrait_<model>.tga (ui_kit)."""
+    import button_icon
+    import numpy as np
+    src = os.path.join(labpaths.WORK, 'units', PROPS['CNIceSculpt'], 'game')
+    render = os.path.join(src, 'icon.png')
+    if not os.path.exists(render):
+        print('SKIPPED sculpture icons: no', render)
+        return []
+    files = []
+    for model in ('CNIceSculpt', 'CNIceSculptHard'):
+        im = Image.open(render).convert('RGBA')
+        if model in VARIANTS:
+            tint = np.array(VARIANTS[model][1]) / max(VARIANTS[model][1]) * 0.85
+            a = np.asarray(im, float)
+            a[..., :3] *= tint
+            im = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
+        tinted = os.path.join(src, f'{model}_render.png')
+        im.save(tinted)
+        for kind in ('Button', 'Portrait'):
+            out = os.path.join(src, f'{kind}_{model}.tga')
+            button_icon.compose(kind.lower(), tinted, out)
+            files.append(out)
+    return files
+
+
 def sheet(model, obj, tex):
     """retail_sheet.py's four renders of the OBJ in its texture -> work/units/ice/<model>_grid.png."""
     prefix = os.path.join(OUT, model)
@@ -318,6 +346,7 @@ def main(models):
     tex = textures()
     print('engineer texture ->', engineer_texture())
     print('engineer icons ->', *engineer_icons())
+    print('sculpture icons ->', *prop_icons())
     skipped = []
     for model in [m for m in models or sorted(PROPS) if m in PROPS]:
         if missing(model):

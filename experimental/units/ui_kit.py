@@ -21,11 +21,13 @@ from PIL import Image                           # noqa: E402
 UNITS = {'CNChrono': ('chronolag', 'Button_CNV_PhaseProbe_on.tga', 'Portrait_CNV_PhaseProbe.tga'),
          'CNIceEngineer': ('iceengineer', 'Button_CNIceEngineer.tga', 'Portrait_CNIceEngineer.tga'),   # ice_kit
          # the Tripo platform's render (tripo_unit.py icon.png) on the Allied plates: button_icon.py compose
-         'CNLiberty': ('libertyisle', 'Button_CNLiberty.tga', 'Portrait_CNLiberty.tga')}
+         'CNLiberty': ('libertyisle', 'Button_CNLiberty.tga', 'Portrait_CNLiberty.tga'),
+         'CNIceSculpt': ('icesculpture', 'Button_CNIceSculpt.tga', 'Portrait_CNIceSculpt.tga'),    # ice_kit
+         'CNIceSculptHard': ('icesculpture', 'Button_CNIceSculptHard.tga', 'Portrait_CNIceSculptHard.tga')}
 # our units on retail models: the retail image with their ability icon badged on (ability_icons.py badges)
 UNITS.update({m: (f'badged/{m}', f'Button_{m}.tga', f'Portrait_{m}.tga') for m in
               ('CNBeacon', 'CNBurrower', 'CNJammer', 'CNTesla', 'CNTrain', 'CNShikigami', 'CNComboParent',
-               'CNComboChild', 'CNMaiden', 'CNCrane')})
+               'CNComboChild', 'CNMaiden', 'CNCrane', 'CNIceWall')})
 KINDS = ('Button', 'Portrait')
 
 

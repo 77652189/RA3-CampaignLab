@@ -180,6 +180,7 @@ BADGED = {
     'CNComboChild': ('Button_JapanAntiVehicleVehicleTech1', 'Portrait_JapanAntiVehicleVehicleTech1', 'part'),
     'CNMaiden': ('Button_AlliedInfiltrationInfantry_on', 'Portrait_AlliedInfiltrationInfantry', 'control'),
     'CNCrane': ('Button_SovietAntiGroundAircraft_small', 'Portrait_SovietAntiGroundAircraft_big', 'crane'),
+    'CNIceWall': (None, None, 'freeze'),       # the ice wall and its core (on the bunker: its pictures were the bunker's)
 }
 
 
