@@ -1,6 +1,6 @@
 """Reference sheets of retail units for the concept step (concept_gpt.py): the retail meshes with their retail
 textures (team colour from the SPM's blue channel painted blue) rendered orthographic front / side / back and a 3/4
-view, laid out 2 x 2 like the sheet GPT is asked for.
+view, laid out 2 x 2 like the sheet GPT is asked for; the 3/4 view also on a transparent ground (<name>_icon.png).
 
   python -I experimental/units/retail_sheet.py <name> <mesh id>=<texture id>[=<spm id>] ...  -> work/reference/sheets/<name>_grid.png
 
@@ -87,6 +87,9 @@ def render(out, specs):
         cam.rotation_euler = (-d).to_track_quat('-Z', 'Y').to_euler()
         s.render.filepath = f'{out}_{name}.png'
         bpy.ops.render.render(write_still=True)
+    s.render.film_transparent = True             # the 3/4 view again, no background: for a portrait (ice_kit.kit_icons)
+    s.render.filepath = f'{out}_icon.png'
+    bpy.ops.render.render(write_still=True)
 
 
 def main(name, specs):

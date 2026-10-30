@@ -23,7 +23,9 @@ UNITS = {'CNChrono': ('chronolag', 'Button_CNV_PhaseProbe_on.tga', 'Portrait_CNV
          # the Tripo platform's render (tripo_unit.py icon.png) on the Allied plates: button_icon.py compose
          'CNLiberty': ('libertyisle', 'Button_CNLiberty.tga', 'Portrait_CNLiberty.tga'),
          'CNIceSculpt': ('icesculpture', 'Button_CNIceSculpt.tga', 'Portrait_CNIceSculpt.tga'),    # ice_kit
-         'CNIceSculptHard': ('icesculpture', 'Button_CNIceSculptHard.tga', 'Portrait_CNIceSculptHard.tga')}
+         'CNIceSculptHard': ('icesculpture', 'Button_CNIceSculptHard.tga', 'Portrait_CNIceSculptHard.tga'),
+         'CNSnowBank': ('ice', 'Button_CNSnowBank.tga', 'Portrait_CNSnowBank.tga'),                # ice_kit.kit_icons
+         'CNLockGate': ('ice', 'Button_CNLockGate.tga', 'Portrait_CNLockGate.tga')}
 # our units on retail models: the retail image with their ability icon badged on (ability_icons.py badges)
 UNITS.update({m: (f'badged/{m}', f'Button_{m}.tga', f'Portrait_{m}.tga') for m in
               ('CNBeacon', 'CNBurrower', 'CNJammer', 'CNTesla', 'CNTrain', 'CNShikigami', 'CNComboParent',
