@@ -123,13 +123,41 @@ def dress(unit, model, leaves=None):
     return unit
 
 
+FREEZE_IMAGE = 'Button_PlayerPower_CryoSatellite1'     # retail's cryo satellite button: the freeze ability's icon
+
+
 def dress_engineer(unit, texture=ICE_ENGINEER):
     """The engineer (the retail Allied engineer's XML) in `texture` wherever he wears his model -- the bunker's
-    placing-cursor way (<Texture Original New> in a model state)."""
+    placing-cursor way (<Texture Original New> in a model state); his own production button and selection portrait
+    (Button_<texture> / Portrait_<texture>: ice_kit.engineer_icons, written into the SDK's Art by ui_kit.py; his
+    barracks builds the plain engineer too), his name and description, and his freeze button the cryo satellite's
+    icon with its own title (it showed the Soviet bunker's). Look only."""
     x, n = re.subn(r'(Name="AUEngineer_SKN"\s*/>)', rf'\1\n\t\t\t\t\t<Texture Original="AUEngineer" New="{texture}" />',
                    unit.xml)
     assert n >= 1, n
-    unit.xml = sub1(x, '<Includes>', f'<Includes>\n\t\t<Include type="all" source="ART:{texture}.xml" />')
+    x = sub1(x, '<Includes>', f'<Includes>\n\t\t<Include type="all" source="ART:{texture}.xml" />'
+                              f'\n\t\t<Include type="all" source="ART:{texture}Button.xml" />'
+                              f'\n\t\t<Include type="all" source="ART:{texture}Portrait.xml" />')
+    x = sub1(x, 'ButtonImage="Button_AlliedEngineer_on"', f'ButtonImage="Button_{texture}"')
+    x = sub1(x, 'SelectPortrait="Portrait_AlliedEngineer"', f'SelectPortrait="Portrait_{texture}"')
+    for k in ('Button', 'Portrait'):
+        unit.link += [f'PackedTextureImage:{k}_{texture}', f'Texture:{texture}{k}_tex']
+    x = sub1(x, 'Description="Desc:AlliedEngineer"', f'Description="Desc:{unit.id}"')
+    x = sub1(x, 'TypeDescription="Type:AlliedEngineer"', f'TypeDescription="Type:{unit.id}"')
+    unit.xml = sub1(x, '>Name:AlliedEngineer<', f'>Name:{unit.id}<')
+    state = f'ButtonState_{unit.id}_Freeze'
+    ui = next(f for f in unit.files if f.endswith('_UI.xml'))
+    y = sub1(unit.files[ui], 'StateData="ButtonStateAbilityConstructSovietBunker"', f'StateData="{state}"')
+    unit.files[ui] = sub1(y, '</AssetDeclaration>', f'''	<ButtonSingleStateData id="{state}">
+		<State Image="{FREEZE_IMAGE}" Title="Name:{unit.id}_Freeze" Description="Desc:{unit.id}_Freeze" />
+	</ButtonSingleStateData>
+</AssetDeclaration>''')
+    unit.link.append(f'ButtonSingleStateData:{state}')
+    unit.strings.update({f'Name:{unit.id}': '冰幕工兵', f'Type:{unit.id}': '冰墙封路工兵',
+                         f'Desc:{unit.id}': '能在路口冻出一道冰墙，挡住敌人的去路；冰墙过一阵就会化。也能占领建筑。',
+                         f'Name:{unit.id}_Freeze': '冻出冰墙',
+                         f'Desc:{unit.id}_Freeze': '走到目标点，站着造一会儿，冻出一道挡路的冰墙（放置时拖动可转方向）。'
+                                                   '造的时候工兵没有掩护；冰墙打得碎，过一阵也会化。'})
     unit.params['texture'] = texture
     return unit
 

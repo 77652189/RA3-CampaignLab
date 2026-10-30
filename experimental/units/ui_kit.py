@@ -18,7 +18,8 @@ import w3x                                      # noqa: E402
 from PIL import Image                           # noqa: E402
 
 # model -> (work/units/<unit>/game, button tga, portrait tga)
-UNITS = {'CNChrono': ('chronolag', 'Button_CNV_PhaseProbe_on.tga', 'Portrait_CNV_PhaseProbe.tga')}
+UNITS = {'CNChrono': ('chronolag', 'Button_CNV_PhaseProbe_on.tga', 'Portrait_CNV_PhaseProbe.tga'),
+         'CNIceEngineer': ('iceengineer', 'Button_CNIceEngineer.tga', 'Portrait_CNIceEngineer.tga')}   # ice_kit
 KINDS = ('Button', 'Portrait')
 
 

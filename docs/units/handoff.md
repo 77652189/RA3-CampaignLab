@@ -13,8 +13,9 @@
 | 单位 | 外观从哪来 | 接进 `experimental/cnv` |
 |---|---|---|
 | 时滞炮车 `CNChrono` | GPT 四格图 → Tripo（分部件）→ `tripo_unit.py chronolag` → `make_campchrono.py`；按钮、头像 `ui_kit.py` | `chronolag.py`（`dress()` 默认穿：模型、按钮、头像、名字、展开时的青色光）；检查 `chronolag hit` / `packed` 在测试台上 PASS |
-| 冰幕工兵：冰墙 `CNIceWall` / 长条 `CNIceBar`、冰核 `CNIceSeed`、碎冰 `CNIceRubble`、工兵贴图 `CNIceEngineer` | 原版冰岛冰川 `IL_GLACIER*` 拼装（`ice_kit.py`），工兵只换贴图 | `icewall.py` 默认穿；`ice_block`、`ice_build` PASS |
+| 冰幕工兵：冰墙 `CNIceWall` / 长条 `CNIceBar`、冰核 `CNIceSeed`、碎冰 `CNIceRubble`、工兵贴图 `CNIceEngineer` | 原版冰岛冰川 `IL_GLACIER*` 拼装（`ice_kit.py`），工兵只换贴图；按钮、头像是原版工程师的改色加雪花（`ice_kit.engineer_icons` → `ui_kit.py CNIceEngineer`），冻冰按钮借原版冷冻卫星的图 | `icewall.py` 默认穿（`dress_engineer`：贴图、按钮、头像、名字和说明、冻冰按钮）；`ice_block`、`ice_build` PASS，`a4 --check hold` PASS（2026-10-29） |
 | 冰雕 `CNIceSculpt`（冰龙） | GPT 四格图 → Tripo 多视图 → `tripo_unit.py` 道具分支 → `ice_kit.prop` | `festival.sculpture` 默认穿 |
+| 加固冰雕 `CNIceSculptHard`（A4 的 2、3 号广场，打不碎） | 同一条冰龙的烘焙图，压暗偏灰、放大 1.15 倍（`ice_kit.VARIANTS`） | `festival.reinforced`；`devices/ice_plazas.py` 给 `无敌` 的广场摆它（关卡线文件，改了两行）；`a4 --check hold` PASS |
 | 雪堆 `CNSnowBank` | 高度场直接生成（`ice_kit.bank`，原版没有雪堆），贴图 `CNSnow` 程序生成 | `festival.bank` 默认穿；现在没有任务用雪堆（广场的墙是抬高的地形），只在 `ice_look.py` 里 |
 | 车队运输车 `CNConvoyCargo` | 原版矿车，矿石模块换成原版雪地货柜（`convoy_kit.py`） | `convoy.py` 默认穿；A4 `stop`、`win` PASS |
 | 自由号 `CNLiberty` + 女神像 `CNLibStatue` + 陀螺环 `CNLibRings` + 跃迁充能 `CNLibCharge` | 用户定的"飞起来的自由岛"（场景图 `work/units/libertyisle/gpt/h6.png`）→ 三视图 v4 → Tripo（整块）→ `tripo_unit.py libertyisle` → `liberty_kit.py`（女神像用原版纽约 `NY_LIBERTY`）；宽 280 是用户选的 | `liberty.py` 默认穿（`liberty.dress`）；敌方自由号报警时 `devices/carrier.py` 用 `liberty.charging` 点亮充能（总控放行的一行） |
@@ -22,8 +23,8 @@
 各单位外观的写法、参数和测试台上看出来的问题，写在对应脚本的开头说明和注释里（`liberty_kit.py`、`ice_kit.py`、`chronolag.py`、`liberty.py`）。截图在 `work/units/<单位>/review/`。
 
 **构建依赖**：这些模型和图写在 SDK 共享的 `Art/` 里，不进 git。换机器或清过 SDK 要重跑：
-- 只靠原版就能重建：冰墙、长条冰墙、冰核、碎冰、工兵贴图、雪堆（`ice_kit.py`），货柜（`convoy_kit.py`），女神像（`liberty_kit.py` 的一部分）。
-- 只能从 `work/` 里的原件重建（gitignore，丢了要从 Tripo 账号重新导出）：冰雕（`work/units/icesculpture/tripo/icesculpture_v1.glb` → Blender 跑 `tripo_unit.py icesculpture` → `ice_kit.py CNIceSculpt`），时滞炮车（`tripo_unit.py chronolag` → `make_campchrono.py`；按钮、头像的图在 `work/units/chronolag/game/` → `ui_kit.py`），自由号平台（`work/units/libertyisle/tripo/libertyisle_v1.glb` → `tripo_unit.py libertyisle` → `liberty_kit.py`）。`ice_kit.py` 缺冰雕原件时跳过它、照做其余，并打印怎么补。
+- 只靠原版就能重建：冰墙、长条冰墙、冰核、碎冰、工兵贴图、工兵按钮和头像、雪堆（`ice_kit.py`，按钮头像还要再跑 `ui_kit.py CNIceEngineer`），货柜（`convoy_kit.py`），女神像（`liberty_kit.py` 的一部分）。
+- 只能从 `work/` 里的原件重建（gitignore，丢了要从 Tripo 账号重新导出）：冰雕和加固冰雕（`work/units/icesculpture/tripo/icesculpture_v1.glb` → Blender 跑 `tripo_unit.py icesculpture` → `ice_kit.py CNIceSculpt CNIceSculptHard`），时滞炮车（`tripo_unit.py chronolag` → `make_campchrono.py`；按钮、头像的图在 `work/units/chronolag/game/` → `ui_kit.py`），自由号平台（`work/units/libertyisle/tripo/libertyisle_v1.glb` → `tripo_unit.py libertyisle` → `liberty_kit.py`）。`ice_kit.py` 缺冰雕原件时跳过它、照做其余，并打印怎么补。
 
 花费：GPT 出图约 20 张（订阅额度内）；Tripo 用了 180 积分（时滞炮车 80、冰雕 50、自由号 50），剩 3025。
 
