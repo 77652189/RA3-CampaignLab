@@ -20,6 +20,12 @@
 
 0. **灰盒（ADR 0011）已做完（2026-10-30）**：`experimental/cnv/graybox.py`（k\*，A4 三段全判平推轻松，测试 `tests/test_graybox.py`）；九张题卡的结论在 `docs/story/graybox-cards.md`，数字来自 `experimental/cnv/graybox_cards.py`（测试 `tests/test_graybox_cards.py`）。没补 `a4_before` 走查。新题卡出来后，往 `graybox_cards.py` 加函数、往 `graybox-cards.md` 加一节即可；模拟器判断不了的写"留给实机"。
 
+0b. **引擎机制最小检查（总控 2026-10-30 派的，一项都还没开始）**：每项上测试台做一个最小检查（`experimental/cnv/checks/` 里照现成的写，如 `jammer.py`、`probe.py`、`icewall.py`；用 `cnv_check` 跑，PASS/FAIL 加读数），结果写进 `docs/design/flow/mechanics.md` 的机制表（"冰面承重"那行 34 行附近，状态改"已确认/不行"并写读数）和 `docs/story/drive-probe.md` 旁。这是引擎事实不是打法测试，ADR 0011 允许。开跑前先查 `bench_status`，用户的游戏在跑就停下问。
+   ① 冰面承重：不同重量的车压上去会不会掉，脚本能不能控制（退路是触发区里删重车 + 沉没效果，S1 甲、丙都依赖）；
+   ② 干扰车（协调器）对飞机有没有效（J7 甲）；`checks/jammer.py` 已有，先看它测了什么；
+   ③ 小地图能不能按物体闪点（A4 甲暗示、J7 甲）；
+   ④ 任务信息框能不能显示（A4 丙的车头解冻条要用）。
+
 1. **A4 按设计线新稿重做第 3 层。** 读：`docs/design/flow/a4.md`（流程稿，待用户审；第 2 层地图内容稿也还没出来）、`docs/design/flow/mechanics.md`（哪些机制能承诺）、`docs/design/maps/`（第 2 层，地图内容，设计线在做）。现有计划 `docs/story/plans/a4.md`；做法是改生成器和计划，不手改产物。要加的东西：
    不依赖流程稿定稿的三项准备已做（2026-10-30，测试 `tests/test_plan_lines.py`，全量 286 过，已提交；`plan.py` 里音乐线的 `CNV_MUSIC_CAPTIONS` 那段没带进去，还在工作区）：
    - 计划词 `兵少于 <n> <单位>、<单位>`（`plan.py` 的 `troops()`，比较码 0 是 `<`）；模拟器补了 `COUNTER_MATH_COUNTER`（0 加、1 减）和 `SET_COUNTER_TO_COUNTER`，**测试台还没验这两个动作**（只看过原版怎么用）；
