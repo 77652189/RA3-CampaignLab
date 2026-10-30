@@ -2,6 +2,7 @@
 rewrites the writer picked back into the script. The answer is a draft; flowcheck runs after.
 
     python docs/design/flow/flowpolish.py brief a4 FOLDER          # FOLDER/brief.md for experimental/outsource/agy_task.py
+    python docs/design/flow/flowpolish.py brief a4 FOLDER 说明     # only the objective texts
     python docs/design/flow/flowpolish.py apply a4 ANSWER PICKED   # PICKED: the chosen line ids, one per line
 
 The answer lists one line per row as `id | 原文 | 改写 | 理由 | 分` (改写 is 不改 when it stays).
@@ -50,10 +51,11 @@ def refs(seed):
     return [re.sub(r'\[[0-9.]+\]', '', r) for r in rows[:REFS]]
 
 
-def brief(level, folder):
+def brief(level, folder, only=None):
+    """only: send just one kind (说明 / 文字 / a speaker); ids stay the whole level's, so apply needs no change."""
     path = fc.HERE / f'{level.lower()}.md'
     p = fc.plan_of(path)
-    todo = lines(p, path.name)
+    todo = [t for t in lines(p, path.name) if not only or t[1] == only]
     speakers = {who for _, who, _, _ in todo}
     cast = [ln for ln in (fc.HERE / 'cast.md').read_text(encoding='utf-8').splitlines()
             if ln.startswith('| ') and ln.split('|')[1].strip() in speakers]
@@ -71,6 +73,7 @@ def brief(level, folder):
         '- 4 分及以下的必须给出改写，并用一句话说明犯了文风规则第几条；5 分的改写写"不改"。',
         '- 不要整关都打 5 分。挑剔一点：四字词、排比、"进行"、完整到啰嗦的句子、说明书式的解释、千篇一律的节奏，都要扣分。',
         '- "说话人"一栏是"说明"的，是任务目标下面那段说明文字；是"文字"的，是屏幕上的提示框。这两种不必像口语，但也要短、直、不啰嗦。',
+        *(['- 这一轮只送目标说明：超过两句的一律打 4 分以下并压到两句以内。'] if only == '说明' else []),
         '硬规矩（违反的改写作废）：',
         '- 台词一句不超过三十个字（不算标点）；不用阿拉伯数字、英文字母、括号；数字写汉字。',
         '- 目标说明最多两句，但"为什么、做什么、在哪、要当心什么"一样都不能丢；不要改成攻略体（获取、掌握、迫退、瘫痪这类词）。',
