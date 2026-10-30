@@ -267,6 +267,53 @@ def _d(pts, tf):
     return 'M' + ' L'.join(f'{x:.1f} {y:.1f}' for x, y in (tf(*q) for q in pts)) + ' Z'
 
 
+RESOURCE = {'OreNode': '矿', 'OilDerrick': '油井'}       # the map's resource objects, by what the scripts call them
+
+
+def resources(mod):
+    """[(矿 or 油井, x, y)] the map places (its OBJECTS): the map line's, the truth the 资源点 are checked against."""
+    return [(RESOURCE[o.template], o.x, o.y) for o in getattr(mod, 'OBJECTS', []) if o.template in RESOURCE]
+
+
+def point(mod, e):
+    """A 摆放要求 entry's world point: its 坐标 [x, y], else its 点 (a site of the map); None if neither."""
+    if isinstance(e.get('坐标'), list) and len(e['坐标']) == 2:
+        return tuple(e['坐标'])
+    s = mod.SITES.get(e.get('点')) if isinstance(e.get('点'), str) else None
+    return (s.x, s.y) if s else None
+
+
+def icons(p, mod, sk):
+    """What the viewer marks on each segment's map, in drawing units: the map's ore and oil (见: the segment the place
+    around them opens), the 摆放要求 buildings (方, 种, 见 when first seen, 没 razed in, 归 the player's from), and the
+    ambush points and reinforcements (段: shown in that segment only). Segments are indices."""
+    tf, segs = _tf(mod), [s.get('名') for s in p.get('段') or []]
+    at = lambda name: segs.index(name) if name in segs else None
+    opens = {pl.get('名'): at(pl.get('开')) or 0 for pl in sk.get('地方') or []}
+
+    def seen(x, y):
+        hits = [opens[pl['名']] for pl in sk.get('地方') or [] if pl.get('位') and pl.get('大')
+                and abs(x - pl['位'][0]) <= pl['大'][0] / 2 and abs(y - pl['位'][1]) <= pl['大'][1] / 2]
+        return min(hits) if hits else 0
+    out = []
+    for kind, wx, wy in resources(mod):
+        x, y = tf(wx, wy)
+        out.append(dict(种=kind, x=round(x, 1), y=round(y, 1), 见=seen(x, y)))
+    want = p.get('摆放要求') or {}
+    for b in want.get('建筑') or []:
+        if (q := point(mod, b)):
+            x, y = tf(*q)
+            out.append(dict(种='建筑', 名=b.get('名'), 方=b.get('方'), 类=b.get('种'), x=round(x, 1), y=round(y, 1),
+                            见=at(b.get('段')) or 0, 没=at(b.get('没')), 归=at(b.get('归'))))
+    marks = [('伏击', e) for e in want.get('伏击点') or []] + [('援军', e) for e in want.get('援军') or []] + \
+            [('援军', b) for b in p.get('保底') or []]
+    for kind, e in marks:
+        if (q := point(mod, e)) and at(e.get('段')) is not None:
+            x, y = tf(*q)
+            out.append(dict(种=kind, 名=e.get('地方') or e.get('名'), x=round(x, 1), y=round(y, 1), 段=at(e.get('段'))))
+    return out
+
+
 def drawn(p):
     """A copy of the sketch in drawing units for flowview: 格 [w, h]; every place's 位 and 大; 可玩区框 {segment:
     [x, y, w, h]}; with 地图 also 底图: the ground (地: tier and path), the land-use blocks (块: use and path), the
@@ -306,4 +353,5 @@ def drawn(p):
                                                                  (tf(*q) for q in r.points))}
                for r in getattr(lay, 'roads', [])],
     }
+    sk['图标'] = icons(p, mod, sk)
     return sk

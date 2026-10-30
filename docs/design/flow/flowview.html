@@ -241,6 +241,38 @@ function placesIn(p, texts) {
   });
   return hits;
 }
+// what stands on a real map (flowmap.icons): the map's ore and oil, the 摆放要求 buildings by side, ambush points and
+// reinforcements. Only inside this segment's playable area; what the player has not seen yet is faint (under the fog);
+// a razed building is gone after its segment; a building taken is the player's colour after its segment.
+const OWNER = { '我': '#4f9be8', '敌': '#e04a3a', '中立': '#c9c4b8', '盟友': '#9b7be0' };
+const KIND1 = { '基地': '基', '指挥': '指', '生产': '产', '防御': '防', '电': '电', '科技': '科' };
+function icon(kind, x, y, side, sort) {
+  const t = (c, sz, fill) => `<text x="${x}" y="${y + sz * .36}" font-size="${sz}" font-weight="700" text-anchor="middle" fill="${fill}">${c}</text>`;
+  if (kind === '矿') return `<path d="M${x} ${y - 1.1} L${x + 1.1} ${y} L${x} ${y + 1.1} L${x - 1.1} ${y} Z" fill="#e8c547" stroke="#0d0f12" stroke-width=".25"/>`;
+  if (kind === '油井') return `<circle cx="${x}" cy="${y}" r="1" fill="#16181b" stroke="#ff9d3a" stroke-width=".5"/>`;
+  if (kind === '伏击') return `<path d="M${x} ${y - 1.6} L${x + 1.5} ${y + 1.1} L${x - 1.5} ${y + 1.1} Z" fill="#2a1a10" stroke="#ff8c42" stroke-width=".45"/>` + t('!', 1.8, '#ff8c42');
+  if (kind === '援军') return `<circle cx="${x}" cy="${y}" r="1.4" fill="#1d4d2e" stroke="#7be09a" stroke-width=".45"/>` + t('+', 2.2, '#7be09a');
+  return `<rect x="${x - 1.4}" y="${y - 1.4}" width="2.8" height="2.8" rx=".35" fill="${OWNER[side] || '#777'}" stroke="#0d0f12" stroke-width=".3"/>` + t(KIND1[sort] || '', 2, '#0d0f12');
+}
+function iconsSvg(m, segI, f) {
+  const inside = q => !f || (q.x >= f[0] && q.x <= f[0] + f[2] && q.y >= f[1] && q.y <= f[1] + f[3]);
+  return (m['图标'] || []).map(q => {
+    const k = q['种'];
+    if (!inside(q) || ((k === '伏击' || k === '援军') && q['段'] !== segI) || (q['没'] != null && segI > q['没'])) return '';
+    const side = q['归'] != null && segI > q['归'] ? '我' : q['方'];
+    const seen = segI >= (q['见'] || 0);
+    const tip = [q['名'] || k, k === '建筑' ? side : '', seen ? '' : '（还在战争迷雾里）'].filter(Boolean).join(' · ');
+    return `<g opacity="${seen ? 1 : .35}"><title>${esc(tip)}</title>${icon(k, q.x, q.y, side, q['类'])}</g>`;
+  }).join('');
+}
+function iconLegend() {
+  const one = (svg, label) => `<span><svg viewBox="-1.8 -1.8 3.6 3.6" width="14" height="14" style="vertical-align:-2px">${svg}</svg>${label}</span>`;
+  return [one(icon('矿', 0, 0), '矿'), one(icon('油井', 0, 0), '油井'),
+    ...Object.keys(OWNER).map(s => one(icon('建筑', 0, 0, s, ''), s + '方建筑')),
+    `<span>建筑上的字：${Object.entries(KIND1).map(([k, c]) => `${c} = ${k}`).join('，')}</span>`,
+    one(icon('伏击', 0, 0), '伏击点（只在那一段）'), one(icon('援军', 0, 0), '援军出现（只在那一段）'),
+    '<span>淡的 = 玩家还没看见（战争迷雾）；拆掉的不再画；占下来的换成我方颜色</span>'].join('');
+}
 // on a real map (示意图 地图, drawn by flowmap.py): the ground by height tier, the roads, the land-use blocks
 const TIER = ['#1f3a52', '#3b3a33', '#57523f', '#736b55'];
 function mapSvg(p, segI, focus, goals, bare, gaps, marks) {
@@ -302,6 +334,7 @@ function mapSvg(p, segI, focus, goals, bare, gaps, marks) {
     s += `<rect x="${x}" y="${y}" width="${Math.max(w, 1.5)}" height="${Math.max(h, 1.5)}" rx=".6" fill="${k.color}" fill-opacity=".25" stroke="${k.color}" stroke-width=".6"/>`;
     s += `<text x="${x + Math.max(w, 1.5) / 2}" y="${y + Math.max(h, 1.5) / 2 + 1}" font-size="3" font-weight="700" text-anchor="middle" fill="#fff" stroke="#0d0f12" stroke-width=".6" paint-order="stroke">${esc(k.n)}</text>`;
   }));
+  if (segI >= 0 && segI < 99) s += iconsSvg(m, segI, f);
   focus.forEach(n => {
     const pl = P[n]; if (!pl) return;
     const [x, y] = c(pl), [w, h] = pl['大'] || [6, 4];
@@ -315,6 +348,7 @@ function mapSvg(p, segI, focus, goals, bare, gaps, marks) {
     <span><i style="background:none;border-top:2px dashed #e0b25a;height:0;border-radius:0"></i>路线</span>
     ${f ? '<span><i style="background:none;border:1px dashed #7fd3ff"></i>这一段看得见、走得到的范围（框外压暗）</span>' : '<span>暗的 = 还走不到</span>'}
     ${gaps && gaps.length ? '<span><i style="background:#ff5a4a"></i>红斜线 = 空地：离这一段的每个地方和路线都远</span>' : ''}
+    ${m['图标'] && segI < 99 ? iconLegend() : ''}
     ${ground ? `<span>底图 = 实际地图 ${esc(m['地图'])}：深蓝是水，越亮越高${(ground['块'] || []).length ? '；彩色细框是地图的地块用途表' : '（这张图还没有地块用途表）'}</span>` : '<span>没有实际地图，格子上的设想</span>'}</div>`;
 }
 function focusOf(p, s) {
@@ -556,7 +590,7 @@ function renderReview() {
     const rows = kinds.flatMap(k => (W[k] || []).map(e => ({ k, e })));
     if (!rows.length) return '<div class="bad">（没写摆放要求）</div>';
     return `<div class="bk"><div class="wrapx"><table><tr><th></th><th>段</th><th>在哪（地图地点）</th><th>是什么</th><th>为了</th></tr>${rows.map(({ k, e }) =>
-      `<tr><th>${esc(k)}</th><td>${esc(e['段'])}</td><td>${esc(e['地方'])}${e['点'] ? `<div class="lbl">${esc(e['点'])}</div>` : ''}</td><td>${esc(e['什么'])}</td><td>${esc(e['为了'])}</td></tr>`).join('')}</table></div>
+      `<tr><th>${esc(k)}</th><td>${esc(e['段'])}</td><td>${esc(e['地方'])}${e['点'] ? `<div class="lbl">${esc(e['点'])}</div>` : ''}</td><td>${esc(e['什么'])}${e['矿'] || e['油井'] ? `<div class="lbl">${[e['矿'] ? `矿 ${e['矿']}` : '', e['油井'] ? `油井 ${e['油井']}` : ''].filter(Boolean).join('、')}</div>` : ''}</td><td>${esc(e['为了'])}</td></tr>`).join('')}</table></div>
       <div>${mapSvg(p, 99, [...new Set(rows.map(({ e }) => e['地方']))], [], true)}<div class="lbl">黄框 = ${esc(label)}</div></div></div>`;
   };
   const probs = n => lv.problems.filter(x => x.includes(`审核第 ${n} 条`));
@@ -605,7 +639,12 @@ function renderReview() {
     <h3 style="font-size:14px;margin:12px 0 6px">奖励目标和回报</h3>
     <div class="wrapx"><table><tr><th>段</th><th>奖励</th><th>回报</th></tr>${bonus.map(({ s, g }) => `<tr><th>${esc(s)}</th><td>${esc(g['题'])}${g['亮出'] ? `<div class="lbl">亮出：${esc(g['亮出'])}</div>` : ''}</td><td>${esc(g['回报'] || '（没写）')}</td></tr>`).join('')}</table></div>
     <h3 style="font-size:14px;margin:12px 0 6px">只造兵平推会怎样</h3><div class="flat">${esc(p['平推会怎样'])}</div>
-    <h3 style="font-size:14px;margin:12px 0 0">给关卡线：资源点和伏击点摆在哪</h3>${spots(['资源点', '伏击点'], '资源点和伏击点')}</div>`;
+    <h3 style="font-size:14px;margin:12px 0 0">给关卡线：资源点和伏击点摆在哪</h3>${spots(['资源点', '伏击点'], '资源点和伏击点')}
+    <h3 style="font-size:14px;margin:12px 0 6px">给关卡线：关键建筑（每段地图上按阵营标出）</h3>
+    ${(W['建筑'] || []).length ? `<div class="wrapx"><table><tr><th>建筑</th><th>哪方</th><th>种</th><th>在哪</th><th>出现 → 拆掉 / 归你</th><th>为了</th></tr>${(W['建筑'] || []).map(b => `<tr><th>${esc(b['名'])}</th>
+      <td><span class="chip" style="background:${OWNER[b['方']] || '#777'};color:#0d0f12">${esc(b['方'])}</span></td><td>${esc(b['种'])}</td>
+      <td class="lbl">${esc(b['点'] || (b['坐标'] || []).join(', '))}</td><td>${esc(b['段'])}${b['没'] ? ` → 「${esc(b['没'])}」拆掉` : ''}${b['归'] ? ` → 「${esc(b['归'])}」归你` : ''}</td><td>${esc(b['为了'])}</td></tr>`).join('')}</table></div>`
+      : '<div class="bad">（没写摆放要求/建筑）</div>'}</div>`;
 
   const backups = {};
   (p['保底'] || []).forEach(b => { backups[b['名']] = b; });
@@ -650,7 +689,8 @@ function renderScene() {
     <div class="bk"><div class="wrapx"><table>${lms.map(({ k, n }) => `<tr><th>${n} · ${esc(k['名'])}</th><td>${esc(k['是什么'])}<div class="lbl">${esc(k['作用'])}</div></td><td>${chip(k['地图'])}</td></tr>`).join('')}</table>
       ${sc.unseen.length ? `<div class="lbl" style="margin-top:6px">流程剧本里没提到的地标（看一下）：${sc.unseen.map(esc).join('、')}</div>` : ''}</div>
       <div>${mapSvg(p, 99, [], [], true, null, lms.map(({ k, n }) => ({ box: k['框'], color: STATE[k['地图']] || '#777', n })))}<div class="lbl">字母 = 地标，颜色 = 状态</div></div></div>
-    <div class="legend">${Object.keys(STATE).map(st => `<span>${chip(st)}${esc(STATE_WHO[st])}</span>`).join('')}</div></div>`;
+    <div class="legend">${Object.keys(STATE).map(st => `<span>${chip(st)}${esc(STATE_WHO[st])}</span>`).join('')}</div>
+    <div class="legend" style="margin-top:6px">每段的地图上还标着（流程剧本的摆放要求和地图上的矿）：${iconLegend()}</div></div>`;
   const cards = (m['段'] || []).map(s => {
     const i = segs.findIndex(x => x['名'] === s['段']);
     const rows = [...(s['布景'] || []).map(e => ({ kind: '布景', e, t: e['什么'], why: e['讲什么'] })), ...(s['地形'] || []).map(e => ({ kind: '地形', e, t: e['要'], why: e['为了'] }))]

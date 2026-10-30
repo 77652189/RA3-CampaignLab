@@ -6,6 +6,7 @@ script is good is the user's call (ADR 0008). What it checks is listed in README
 
 Prints one line per problem and exits 1 if there is any.
 """
+import math
 import pathlib
 import re
 import sys
@@ -354,12 +355,90 @@ def check_placing(path, p):
             out.append(f'{n} 摆放要求: no {kind} -- name at least one for the level line to place{REVIEW[point]}')
         for e in entries:
             out += spot(kind, e, point)
+            if kind == '资源点' and not (e.get('矿') or e.get('油井')):
+                out.append(f'{n} 摆放要求/资源点/{e.get("地方")}: no 矿 or 油井 count -- a 资源点 is ore and oil; a '
+                           f'building to take goes under 建筑{REVIEW[3]}')
     if mod is not None:
         for b in p.get('保底') or []:
             if b.get('点') not in mod.SITES:
                 out.append(f'{n} 保底/{b.get("名")}: 点 {b.get("点")} is not a site of {sk["地图"]} -- where the '
                            f'reinforcement comes in{REVIEW[5]}')
+        out += _check_ore(n, want.get('资源点') or [], mod)
+    return out + _check_buildings(n, p, want.get('建筑') or [], mod)
+
+
+SIDES = ('我', '敌', '中立', '盟友')
+BUILD_KINDS = ('基地', '指挥', '生产', '防御', '电', '科技')
+# words that name a building in a line or an objective: each one said needs a 摆放要求/建筑 entry (名 or 又名)
+BUILD_WORDS = ('指挥所', '发电厂', '电厂', '波能塔', '修理厂', '电视塔', '工厂', '兵营', '基地车', '建造厂', '船坞', '机场',
+               '精炼厂', '矿厂', '炮塔', '碉堡', '雷达', '基地')
+NEAR = 500                      # a map ore or oil belongs to the 资源点 whose point is nearest, within this
+
+
+def _check_ore(n, entries, mod):
+    """Every ore and oil the map places belongs to a 资源点 (the nearest within NEAR), and each 资源点's 矿 / 油井
+    counts are what the map has there: ground with ore nobody planned for is a spare place (point 2)."""
+    out, got = [], [dict(矿=0, 油井=0) for _ in entries]
+    pts = [flowmap.point(mod, e) for e in entries]
+    for kind, x, y in flowmap.resources(mod):
+        d = [(math.dist(q, (x, y)), i) for i, q in enumerate(pts) if q]
+        d = min(d) if d else (NEAR + 1, None)
+        if d[0] > NEAR:
+            out.append(f'{n} 摆放要求/资源点: the map has {kind} at ({x:g}, {y:g}) no 资源点 accounts for -- say what it '
+                       f'is for, or ask the map line to take it out{REVIEW[2]}')
+        else:
+            got[d[1]][kind] += 1
+    for e, g in zip(entries, got):
+        for kind in ('矿', '油井'):
+            if int(e.get(kind) or 0) != g[kind]:
+                out.append(f'{n} 摆放要求/资源点/{e.get("地方")}: {kind} {e.get(kind) or 0} but the map has {g[kind]} '
+                           f'within {NEAR} of {e.get("点")}{REVIEW[3]}')
     return out
+
+
+def _said(p, name):
+    """Every text the player reads or hears: the lines, objective titles and texts, on-screen text."""
+    out = [str(t) for _, _, t in lines_in(p, name)]
+    for seg in p.get('段') or []:
+        out += [str(g.get(k)) for g in seg.get('目标') or [] for k in ('题', '说明') if g.get(k)]
+        out += [str(e['文字']) for e in seg.get('事件') or [] if e.get('文字')]
+    return out
+
+
+def _check_buildings(n, p, entries, mod):
+    """摆放要求/建筑: the buildings that matter -- the ones objectives raze or hold, the enemy's defences and
+    production, the player's base, the neutral ones to take -- each with a side, a kind, a point on the map, the
+    segment it is first seen; every building a line or an objective names has one."""
+    out, R = [], REVIEW[3]
+    if not entries:
+        return [f'{n} 摆放要求: no 建筑 -- the buildings objectives and lines name, the enemy\'s defence and '
+                f'production, the player\'s base, with their points{R}']
+    for b in entries:
+        where = f'{n} 摆放要求/建筑/{b.get("名")}'
+        out += [f'{where}: missing {k}{R}' for k in _missing(b, ('名', '方', '种', '段', '为了'))]
+        if b.get('方') and b['方'] not in SIDES:
+            out.append(f'{where}: 方 {b["方"]} is not one of {"/".join(SIDES)}{R}')
+        if b.get('种') and b['种'] not in BUILD_KINDS:
+            out.append(f'{where}: 种 {b["种"]} is not one of {"/".join(BUILD_KINDS)}{R}')
+        for k in ('段', '没', '归'):
+            if b.get(k) and _seg_index(p, b[k]) is None:
+                out.append(f'{where}: {k} {b[k]} is not a segment of this level{R}')
+        if mod is not None:
+            q = flowmap.point(mod, b)
+            x0, y0, x1, y1 = flowmap._frame(mod)
+            if q is None:
+                out.append(f'{where}: no point -- 点 (a site of the map) or 坐标 [x, y]{R}')
+            elif not (x0 <= q[0] <= x1 and y0 <= q[1] <= y1):
+                out.append(f'{where}: {q} is off the map{R}')
+    names = [str(x) for b in entries for x in [b.get('名'), *(b.get('又名') or [])] if x]
+    for text in _said(p, n):
+        for w in sorted(BUILD_WORDS, key=len, reverse=True):   # 基地车 before 基地, so it is not counted twice
+            if w in text:
+                text = text.replace(w, '□')
+                if not any(w in x for x in names):
+                    out.append(f'{n}: a line or objective names {w}, but no 摆放要求/建筑 has it (名 or 又名) -- '
+                               f'where is it{R}')
+    return sorted(set(out), key=out.index)
 
 
 USES = ('前线', '支线', '通道', '后方', '远景')
