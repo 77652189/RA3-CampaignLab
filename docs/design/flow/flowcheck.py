@@ -502,6 +502,40 @@ def unframed(path):
     return out
 
 
+RETAIL_EVA = VOICE_GLOSSARY.parent / 'eva.csv'
+EVA_PREFIX = {'盟军': 'Aeva_', '苏联': 'Seva_', '帝国': 'Ieva_'}
+
+
+def retail_eva():
+    """{side: {retail EVA line without punctuation: (asset, the line)}} from the voice line's eva.csv; None when the
+    voice repo is not next to this one. The voice tools match a line only word for word (punctuation aside)."""
+    if not RETAIL_EVA.exists():
+        return None
+    import csv
+    out = {side: {} for side in EVA_PREFIX}
+    with RETAIL_EVA.open(encoding='utf-8-sig', newline='') as f:
+        for row in csv.DictReader(f):
+            for side, pre in EVA_PREFIX.items():
+                if row['asset'].startswith(pre) and row.get('zh'):
+                    out[side].setdefault(PUNCT.sub('', row['zh']), (row['asset'], row['zh']))
+    return out
+
+
+def new_eva(path, eva):
+    """播报 lines that are not a retail line of the level's side word for word (README rule 10): each needs a new
+    recording, with the closest retail line to compare. Not a problem by itself (冰墙已就位 has no retail line)."""
+    import difflib
+    p = plan_of(path) or {}
+    lines = (eva or {}).get(p.get('阵营')) or {}
+    out = []
+    for _, who, text in lines_in(p, path.name):
+        if who != '播报' or not isinstance(text, str) or PUNCT.sub('', text) in lines:
+            continue
+        near = difflib.get_close_matches(PUNCT.sub('', text), list(lines), n=1, cutoff=0.5)
+        out.append(text + (f'（最接近的原版：{lines[near[0]][1]}）' if near else ''))
+    return sorted(set(out))
+
+
 def unverified(path, mech):
     """The 待验证 mechanics a flow script promises: what layer 3 has to test first."""
     p = plan_of(path) or {}
@@ -513,13 +547,15 @@ def main(names):
     speak, retail = cast()
     paths = [HERE / f'{n.lower()}.md' for n in names] if names else sorted(
         q for q in HERE.glob('*.md') if q.name not in ('README.md', 'cast.md', 'mechanics.md'))
-    units, mech = unit_names(), mechanics()
-    problems = [x for q in paths for x in check(q, speak, retail, units, mech)]
+    units, mech, eva = unit_names(), mechanics(), retail_eva()
+    problems =[x for q in paths for x in check(q, speak, retail, units, mech)]
     for x in problems:
         print(x)
     for q in paths:
         if u := unverified(q, mech):
             print(f'{q.name}: promises mechanics not yet tested (layer 3 tests these first): {", ".join(u)}')
+        if u := new_eva(q, eva):
+            print(f'{q.name}: 播报 lines the voice line records new (not retail word for word): {"; ".join(u)}')
         if u := unframed(q):
             print(f'{q.name}: the minimap frames no place for (look over): {"; ".join(u)}')
         p = plan_of(q) or {}
