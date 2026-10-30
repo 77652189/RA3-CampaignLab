@@ -83,7 +83,22 @@ class Obj:
     flags: int = None                   # object flags (a bridge's start 16 / end 32); None: those of its side's template
 
 
-NOT = 'NOT'                             # a condition's last item: it is written inverted ('...', NOT)
+NOT = 'NOT'                             # a condition's last item: it holds when its test does not (unnot)
+
+
+def unnot(scripts):
+    """The scripts with every NOT condition read off a flag instead: the game ignores a condition's inverted bit in
+    a map's own scripts (bench 2026-10-29, probe align: an inverted FLAG and an inverted TIMER_EXPIRED both counted
+    only once their test held -- our bytes are retail's, which compiles its scripts into the stream, ours are read
+    off the .map). Per distinct test two scripts first in the list, every frame: one sets the flag, the next clears
+    it while the test holds; the NOT condition becomes FLAG(flag, 1), the same frame."""
+    tests = list(dict.fromkeys(tuple(c[:-1]) for s in scripts for c in s.when if c[-1] == NOT))
+    flag = {c: f'CNV Not {k}' for k, c in enumerate(tests)}
+    first = [x for k, c in enumerate(tests) for x in (
+        Script(f'CNV Not {k} - set', [], [('SET_FLAG', flag[c], 1)], once=False),
+        Script(f'CNV Not {k} - holds', [c], [('SET_FLAG', flag[c], 0)], once=False))]
+    return first + [dataclasses.replace(s, when=[('FLAG', flag[tuple(c[:-1])], 1) if c[-1] == NOT else c
+                                                 for c in s.when]) for s in scripts]
 
 
 @dataclasses.dataclass
@@ -508,12 +523,11 @@ def write_map(m, mm):
         props, flags = like[o.side]
         objs.kids.append(newmap.object_node(m, props, flags if o.flags is None else o.flags, o.template, o.x, o.y,
                                             angle=angle, uniqueID=o.name or f'{o.template} {len(objs.kids)}', **extra))
-    ours = [m.new_script(s.name, [m.new_content('Condition', *c[:-1], inverted=True) if c[-1] == NOT else
-                                  m.new_content('Condition', *c) for c in s.when]
+    ours = [m.new_script(s.name, [m.new_content('Condition', *c) for c in s.when]
                          or [m.new_content('Condition', 'CONDITION_TRUE')],
                          [m.new_content('ScriptAction', *a) for a in s.do], one_shot=s.once,
                          difficulties=tuple(s.levels))
-            for s in mm.scripts]            # before clearing: chunk versions are read off existing nodes
+            for s in unnot(mm.scripts)]     # before clearing: chunk versions are read off existing nodes
     newmap.clear_scripts(m)[2].kids += ours
     m.set_trigger_areas(mm.areas)           # the base map's areas went with its scripts
     m.set_objectives([dict(name=g.name, title=g.title, desc=g.desc, bonus=int(g.bonus), flags=1)

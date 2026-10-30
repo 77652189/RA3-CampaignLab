@@ -58,8 +58,9 @@ WON, LOST = 'Mission Won', 'Mission Lost'
 LEVELS = {'easy': 0, 'normal': 1, 'hard': 2}
 NEAR = 800.0                    # an enemy this close to something of the player's is a threat (the tension curve)
 REACH = 300.0                   # 自动打掉: an enemy this close to something of the player's is being fought
-LINGER = 3.0                    # a killed unit's death (its slow death): still in the game's name cache, where it fell
-                                # (docs/engine/script-semantics.md 4.2) -- its length a guess
+LINGER = 0.0                    # a killed unit's death (its slow death): still in the game's name cache, where it fell
+                                # (docs/engine/script-semantics.md 4.2) -- the bench (2026-10-28, probe death): out of
+                                # the area from the reading the kill shows in; the guess was 3 s
 GRID = 20.0                     # routing cells (world units)
 HIGH_STEP = 40.0                # ground this much above a viewer's is high ground it cannot see (the terrain card's
                                 # "高出 40" measure; a guess for the game's own)
@@ -84,19 +85,21 @@ ALIGN = {
     'discovered': '未对齐: NAMED_DISCOVERED: inside the player\'s sight (vision / shroud range) or a reveal; on the '
                   'bench 2026-10-27 (sight look) it read 1 for every target, 400 off too (the source: ALWAYS_VISIBLE '
                   'objects and ones out of the partition count as clear -- a guess why)',
-    'death linger': '未对齐: a killed unit stays in the name cache while it dies, where it fell -- in areas, counted '
-                    'by PLAYER_HAS_OBJECT_COMPARISON, UNIT_HEALTH 0 % (源码 4.2); how long: LINGER 3 s, a guess',
+    'death linger': 'a killed unit is gone from areas and counts from the next reading: LINGER 0 (bench 2026-10-28, '
+                    'probe death; the Generals source keeps it while it dies, 源码 4.2)',
     'both endings': '未对齐: won and lost in one frame: Generals runs the frame\'s later scripts and takes the last; '
                     'RA3\'s "Mission Won" / "Mission Lost" flags are its own (源码 4.5)',
-    'inverted': '未对齐: a NOT condition is the plain negation (RA3\'s inverted bit; the Generals source has none, '
-                'OpenSAGE reads it and never uses it: 源码 2)',
-    'frame rate': '未对齐: a tick is DT 0.5 s; RA3\'s logic frame rate is unknown (Generals 30; a timer runs out '
-                  'ceil(seconds x rate) frames on: 源码 3) -- the timeline is good to about half a second',
+    'inverted': 'a NOT condition is the plain negation: the compiler reads it off a flag two every-frame scripts '
+                'keep (parts.unnot) -- the game ignores the inverted bit of a .map\'s own scripts (bench 2026-10-29, '
+                'probe align; retail\'s scripts are compiled into the stream)',
+    'frame rate': 'a tick is DT 0.5 s; RA3 runs about 15 script frames a mission second (bench 2026-10-28, probe '
+                  'align; Generals 30; a timer runs out ceil(seconds x rate) frames on: 源码 3) -- the timeline is '
+                  'good to about half a second',
     'difficulty side': '未对齐: a script\'s difficulty bits are taken at the level the run is given; the game takes '
                        'the difficulty of the side the script list belongs to, that side\'s AI\'s if it has one '
                        '(源码 1) -- which side our scripts belong to is to check',
-    'border reveal': '未对齐: a permanent reveal made before MAP_SWITCH_BORDER is taken to cover the new ground too '
-                     '(the source says the two go badly together: 源码 4.4)',
+    'border reveal': 'a permanent reveal made before MAP_SWITCH_BORDER covers the new ground too (bench 2026-10-28, '
+                     'probe reveal; the Generals source says the two go badly together: 源码 4.4)',
     'ra3 only': '未对齐: actions RA3 has and Generals does not, as we understand them (源码 6): ',
     'special power': 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT / NAMED_USE_COMMANDBUTTON_ABILITY: logged, no effect '
                      '(a jump, a carrier\'s drop: the device\'s own scripts say what follows)',
@@ -106,7 +109,7 @@ ALIGN = {
     'guard': 'UNIT_GUARD_AREA: goes to the area\'s middle and stays',
     'bridge deck': 'a bridge is walkable deck from its start to its end object (BRIDGE_DECK wide); bench '
                    '2026-10-27 (reroute): a wall on a deck stops nobody',
-    'health of the dead': '未对齐: SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER of a dead object: 0',
+    'health of the dead': 'SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER of a dead object: 0 (bench 2026-10-28, probe death)',
     'combat': '未对齐: the fight model -- each armed unit fires each weapon (its PRIMARY one a slot) at the nearest '
               'enemy in that weapon\'s range it can hit, damage per second (one clip, then the reload) x the '
               'target\'s armour percent (a type its armour does not name: 100 %); an attack-mover holds while it '

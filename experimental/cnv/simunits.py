@@ -1,7 +1,7 @@
 r"""What the plan simulator (sim.py) needs of a unit, from the game's own data: how fast it goes, on what (ground,
 water, both, air), how far it sees, its KindOf. Retail templates from the SDK's SageXML (the index mapstudy keeps:
 work\sagexml_gameobjects.json gives each template's file and KindOf; the file its LocomotorSet's NORMAL Speed and its
-VisionRange / ShroudClearingRange), cached in work\sim_units.json. Our own units (a mission's Unit: its XML) are read
+VisionRange / ShroudClearingRange, defines resolved), cached in work\sim_units_v2.json. Our own units (a mission's Unit: its XML) are read
 the same way from their XML; a template found nowhere gets its kind's default (DEFAULTS) and is listed as guessed.
 """
 import json
@@ -13,10 +13,34 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'campaign'))
 import labpaths  # noqa: E402
 
-CACHE = os.path.join(labpaths.WORK, 'sim_units.json')
+CACHE = os.path.join(labpaths.WORK, 'sim_units_v2.json')     # v2: defines resolved (2026-10-29)
 INDEX = os.path.join(labpaths.WORK, 'sagexml_gameobjects.json')
 SAGEXML = os.path.join(labpaths.SDK3, 'SageXML')
 LOCOMOTORS = os.path.join(SAGEXML, 'GlobalData', 'Locomotor.xml')
+GLOBAL_DEFINES = os.path.join(SAGEXML, 'GlobalData', 'GlobalDefines.xml')
+DEFINE = re.compile(r'<Define\s+name="([^"]+)"\s+value="([^"]+)"')
+
+_globals = None
+
+
+def number(text, name):
+    """Attribute `name`'s number in an XML text, None when absent: a value written '=$NAME' is the define's (the
+    file's own <Define>s, then GlobalData/GlobalDefines.xml: most retail units see with ShroudClearingRange
+    '=$STANDARD_SHROUD_CLEAR', 500), '=50000' the number."""
+    global _globals
+    m = re.search(r'(?<![A-Za-z])' + name + r'="(=?\$?[A-Za-z_0-9.]+)"', text)
+    if not m:
+        return None
+    v = m.group(1)
+    if v.startswith('=$'):
+        if _globals is None:
+            _globals = dict(DEFINE.findall(open(GLOBAL_DEFINES, encoding='utf-8', errors='replace').read())) \
+                if os.path.exists(GLOBAL_DEFINES) else {}
+        v = {**_globals, **dict(DEFINE.findall(text))}.get(v[2:], '')
+    try:
+        return float(v.lstrip('='))
+    except ValueError:
+        return None
 
 # a kind's guess when the data has nothing (world units per second; vision): retail infantry 40-60, vehicles 60-120
 DEFAULTS = {'INFANTRY': (50.0, 200.0), 'VEHICLE': (90.0, 250.0), 'AIRCRAFT': (150.0, 300.0), 'SHIP': (70.0, 250.0),
@@ -50,14 +74,12 @@ def read_xml(text, kindof='', surfaces=None):
         if sp and speed is None:
             speed = float(sp.group(1))
             surf = surfaces.get(lo.group(1), []) if lo else []
-    vis = re.search(r'(?<![A-Za-z])VisionRange="([\d.]+)"', text)
-    shroud = re.search(r'(?<![A-Za-z])ShroudClearingRange="([\d.]+)"', text)
     kinds = set(kindof.split())
     if not kindof:
         k = re.search(r'\bKindOf="([^"]+)"', text)
         kinds = set(k.group(1).split()) if k else set()
-    return dict(speed=speed, surface=surface_of(surf, kinds), vision=float(vis.group(1)) if vis else None,
-                shroud=float(shroud.group(1)) if shroud else None, kinds=sorted(kinds))
+    return dict(speed=speed, surface=surface_of(surf, kinds), vision=number(text, 'VisionRange'),
+                shroud=number(text, 'ShroudClearingRange'), kinds=sorted(kinds))
 
 
 def surface_of(surf, kinds):
@@ -123,7 +145,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat.json')
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v2.json')     # v2: defines resolved (2026-10-29)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
 ARMOR_DEFAULT = 100.0           # a damage type an armour does not name: taken in full (a guess)
@@ -230,7 +252,6 @@ def _armors():
 def read_fight(text, weapons, armors):
     """One unit's fight from its XML: max health, its armour's percents, its weapons (the PRIMARY one of each slot,
     resolved)."""
-    hp = re.search(r'(?<![A-Za-z])MaxHealth="([\d.]+)"', text)
     arm = re.search(r'<ArmorSet\b[^>]*\bArmor="([^"]+)"', text) or re.search(r'\bArmor="([^"]+)"', text)
     guns = []
     for head, body in _blocks(text, 'WeaponSetUpdate'):
@@ -239,7 +260,7 @@ def read_fight(text, weapons, armors):
             pick = next((t for o, t in ws if o == 'PRIMARY_WEAPON'), ws[0][1] if ws else None)
             if pick in weapons:
                 guns.append(_resolve(weapons[pick], weapons))
-    return dict(hp=_num(hp.group(1), None) if hp else None, armor=armors.get(arm.group(1), {}) if arm else {},
+    return dict(hp=number(text, 'MaxHealth'), armor=armors.get(arm.group(1), {}) if arm else {},
                 weapons=[g for g in guns if g['dps'] > 0 and g['range'] > 0])
 
 

@@ -26,22 +26,26 @@ def engine(m):
 def align(m):
     """The simulator's engine guesses (sim.ALIGN), each as a counter that reads what the simulator assumes -- a FAIL is a
     guess to correct, the readings say the engine's way:
-      frame rate + inverted: 帧数 counts every frame; 取反帧数 counts while flag CNV Probe Stop is NOT set, the flag
-        set at STOP s -- plain negation: it stops near STOP x the logic rate, the inverted bit ignored: it stays 0 till
-        STOP and runs on after; the rate is 帧数 per mission second (bench 2026-10-28: ~15 a second; 取反帧数 0 till
-        the flag was set, then counting -- our inverted bit did not invert: the FAIL stands till the compiler's NOT
-        is fixed);
+      frame rate + inverted: 帧数 counts every frame; 取反帧数 counts while flag CNV Probe Stopped is NOT set, the
+        flag set at STOP s; 取反计时 counts while timer CNV Probe Stop has NOT expired -- plain negation: both stop
+        near STOP x the logic rate, the inverted bit ignored: they stay 0 till STOP and run on after; the rate is 帧数
+        per mission second (bench 2026-10-28: ~15 a second; 2026-10-29, the names split: 取反帧数 and 取反计时 both 0
+        till STOP, then counting -- the game ignores the inverted bit of a .map's scripts, our bytes being retail's;
+        the compiler reads NOT off a flag since, parts.unnot);
       timer unset: TIMER_EXPIRED of a timer nobody sets is false."""
     t = Test()
-    t.counters += [('CNV_Probe_Frames', '帧数'), ('CNV_Probe_NotFrames', '取反帧数'), ('CNV_Probe_Unset', '未设计时器')]
+    t.counters += [('CNV_Probe_Frames', '帧数'), ('CNV_Probe_NotFrames', '取反帧数'),
+                   ('CNV_Probe_NotTimer', '取反计时'), ('CNV_Probe_Unset', '未设计时器')]
     t.scripts += [
         Script('Test - stop timer', [], [('SET_MILLISECOND_TIMER', 'CNV Probe Stop', STOP)]),
         Script('Test - frames', [], [('INCREMENT_COUNTER', 1, 'CNV_Probe_Frames')], once=False),
-        Script('Test - not frames', [('FLAG', 'CNV Probe Stop', 1, NOT)],
+        Script('Test - not frames', [('FLAG', 'CNV Probe Stopped', 1, NOT)],
                [('INCREMENT_COUNTER', 1, 'CNV_Probe_NotFrames')], once=False),
-        Script('Test - stop', [('TIMER_EXPIRED', 'CNV Probe Stop')], [('SET_FLAG', 'CNV Probe Stop', 1)]),
+        Script('Test - not timer', [('TIMER_EXPIRED', 'CNV Probe Stop', NOT)],
+               [('INCREMENT_COUNTER', 1, 'CNV_Probe_NotTimer')], once=False),
+        Script('Test - stop', [('TIMER_EXPIRED', 'CNV Probe Stop')], [('SET_FLAG', 'CNV Probe Stopped', 1)]),
         Script('Test - unset', [('TIMER_EXPIRED', 'CNV Probe Never')], [('SET_COUNTER', 'CNV_Probe_Unset', 1)])]
-    t.expect += [('取反帧数', 2, '>=', 1), ('未设计时器', 2, '==', 0)]
+    t.expect += [('取反帧数', 2, '>=', 1), ('取反计时', 2, '>=', 1), ('未设计时器', 2, '==', 0)]
     t.bench = [('bench_watch', dict(seconds=RUN + 5, every=1, sheet=False, lines=len(t.counters)))]
     return t
 
@@ -67,9 +71,17 @@ def death(m):
     t.scripts += [Script('Test - gone zero', [], [('SET_COUNTER', 'CNV_Probe_GoneDead', 0)], once=False),
                   Script('Test - gone dead', [('NAMED_DESTROYED', 'UNIT - Probe Gone')],
                          [('SET_COUNTER', 'CNV_Probe_GoneDead', 1)], once=False)]
+    # the player's force, the way a "fewer than N" reinforcement would count it (retail Brighton Beach, Havana:
+    # SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER per template, every frame): the map's guardian and the two here, then
+    # the one left once these are killed and deleted; the enemy's guardian-free army does not come into it
+    t.counters.append(('CNV_Probe_OwnGuardians', '我方守护者'))
+    t.scripts.append(Script('Test - own guardians', [], [('SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER',
+                                                          'AlliedAntiVehicleVehicleTech1', m.player('p1'),
+                                                          'CNV_Probe_OwnGuardians')], once=False))
     # bench 2026-10-28: out of the area the reading the kill shows in (no linger; the simulator guessed 3 s)
     t.expect += [('死者在区内', 2, '==', 1, DOOM - 2), ('死者在区内', DOOM + 1, '==', 0),
-                 ('死者血量', DOOM + 1, '==', 0), ('删除算摧毁', DOOM + 1, '==', 1)]
+                 ('死者血量', DOOM + 1, '==', 0), ('删除算摧毁', DOOM + 1, '==', 1),
+                 ('我方守护者', 2, '==', 3, DOOM - 1), ('我方守护者', DOOM + 1, '==', 1)]
     t.bench = [('bench_watch', dict(seconds=RUN + 5, every=1, sheet=False, lines=len(t.counters)))]
     return t
 

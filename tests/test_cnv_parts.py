@@ -232,3 +232,17 @@ def test_counter_reader_reads_its_calibration():
     x1 = counters.glyphs(im, counters.line_box(2))[-1][1]         # a sparkle 6 px right of the 90's 0
     im.putpixel((x1 + 6, counters.line_box(2)[1] + 7), (255, 255, 120))
     assert counters.read_line(im, counters.line_box(2)) == 90
+
+
+def test_not_is_read_off_a_flag_the_scripts_keep_first():
+    """The game ignores a condition's inverted bit in a map's own scripts (bench 2026-10-29, probe align): a NOT
+    condition is compiled to a flag that two every-frame scripts at the head of the list keep, one per test."""
+    area = ('SKIRMISH_PLAYER_HAS_UNITS_IN_AREA', 'Player_2', 'Here')
+    out = parts.unnot([parts.Script('a', [area + (parts.NOT,), ('FLAG', 'Go', 1)], [('SET_FLAG', 'A', 1)]),
+                       parts.Script('b', [area + (parts.NOT,)], [('SET_FLAG', 'B', 1)])])
+    assert [s.name for s in out] == ['CNV Not 0 - set', 'CNV Not 0 - holds', 'a', 'b']
+    assert out[0].when == [] and out[0].do == [('SET_FLAG', 'CNV Not 0', 1)] and not out[0].once
+    assert out[1].when == [area] and out[1].do == [('SET_FLAG', 'CNV Not 0', 0)] and not out[1].once
+    assert out[2].when == [('FLAG', 'CNV Not 0', 1), ('FLAG', 'Go', 1)] and out[3].when == [('FLAG', 'CNV Not 0', 1)]
+    assert all(c[-1] != parts.NOT for s in out for c in s.when)
+    assert parts.unnot(out[2:]) == out[2:]                                  # nothing left to unnot

@@ -120,8 +120,8 @@ def test_the_wiring_checks_in_the_simulator():
 
 
 def test_the_engines_semantics_for_the_dead_and_the_gone():
-    """docs/engine/script-semantics.md 4.2 / 7: a killed unit reads 0 % health while it dies and is counted; once
-    gone it is outside every area; a script's kill clears who hit it last."""
+    """docs/engine/script-semantics.md 4.2 / 7, as the bench has them (2026-10-28, probe death): a killed unit is gone
+    from the next reading, outside every area, no health left to read; a script's kill clears who hit it last."""
     m = mission([Script('hurt', [('UNIT_HEALTH', 'UNIT - T Tank', 0, 10)], [('SET_FLAG', 'Low', 1)]),
                  Script('out', [('NAMED_OUTSIDE_AREA', 'UNIT - T Tank', 'Here')], [('SET_FLAG', 'Out', 1)]),
                  Script('hit', [('NAMED_ATTACKED_BY_PLAYER', 'UNIT - T Tank', 'Player_1')], [('SET_FLAG', 'Hit', 1)]),
@@ -131,10 +131,10 @@ def test_the_engines_semantics_for_the_dead_and_the_gone():
     s0 = festival.SITES['start']
     m.areas = {'Here': square(s0.x, s0.y, 200)}
     s = sim.Sim(m, script='20 打 tank').run(120)
-    assert s.flags.get('Low') == 1 and s.flags.get('Hit') == 1
+    assert s.flags.get('Hit') == 1 and s.flags.get('Low') is None     # no dying moment with 0 % to read
     tank = s.bodies['UNIT - T Tank']
     assert tank.last_hit is None                                      # the script's kill came from nobody
-    assert s.ending[0] == '赢' and s.ending[1] > 20 + sim.LINGER       # outside only once it is gone
+    assert s.ending[0] == '赢' and s.ending[1] > 20                    # outside only once it is gone
 
 
 def test_won_and_lost_in_one_frame_is_a_warning_and_enable_rearms():
