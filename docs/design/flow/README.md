@@ -14,7 +14,7 @@
 | [mechanics.md](mechanics.md) | 剧本能承诺什么：机制和引擎事实，已确认 / 待验证 / 不能做，各带出处 |
 | [flowcheck.py](flowcheck.py) | 机器检查：完整和一致（第四节） |
 | [flowmap.py](flowmap.py) | 示意图对到实际地图：地方的块和点换算成位置，每段的可玩区，地图的地形、路和地块用途表给网页画底图；flowcheck 和 flowview 都用它 |
-| [flowview.py](flowview.py) + `flowview.html` | **给用户看的网页**（总控 2026-10-28 加）：`python docs/design/flow/flowview.py` 生成 `work/flowview/flow.html`，三种看法：玩家视角从简报逐句放到结局；五条审核（用户 2026-10-29 的标准，一条一块）；整关一张表（每段的镜头、目标、事件、提示、卡住，谁说了多少、每分钟几句台词），flowcheck 的问题列在最上面。用户说只读 md 看不出问题，所以交给用户审的剧本都先生成这个网页。改了 yaml 的字段名或结构，`flowview.html` 里的读法要跟着改 |
+| [flowview.py](flowview.py) + `flowview.html` | **给用户看的网页**（总控 2026-10-28 加）：`python docs/design/flow/flowview.py` 生成 `work/flowview/flow.html`，四种看法：玩家视角从简报逐句放到结局；五条审核（用户 2026-10-29 的标准，一条一块）；地图内容（第 2 层，[maps/](../maps/README.md) 有这一关的稿子时）；整关一张表（每段的镜头、目标、事件、提示、卡住，谁说了多少、每分钟几句台词），flowcheck 的问题列在最上面。用户说只读 md 看不出问题，所以交给用户审的剧本都先生成这个网页。改了 yaml 的字段名或结构，`flowview.html` 里的读法要跟着改 |
 | `<关号>.md`（如 `a4.md`） | 每关一份流程剧本 |
 
 ## 二、每关写什么

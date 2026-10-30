@@ -48,6 +48,40 @@ def minutes(text):
     return n / 60 if m.group(2) == '秒' else n
 
 
+MAPS = fc.HERE.parent / 'maps'           # the map content scripts (layer 2), docs/design/maps/<level>.md
+
+
+def content(q, sketch):
+    """The level's map content script (layer 2) with every 在 drawn as boxes on the sketch's map, and mapcheck's
+    problems; None when the level has none yet."""
+    path = MAPS / q.name
+    if not path.exists() or not sketch.get('地图'):
+        return None
+    sys.path.insert(0, str(MAPS))
+    import mapcheck
+    p = mapcheck.plan_of(path) or {}
+    mod = fc.flowmap.load(sketch['地图'])
+    blocks = {b.what for b in getattr(mod.LAYOUT, 'blocks', [])} if mod else set()
+    tf = fc.flowmap._tf(mod) if mod else None
+
+    def boxes(v):
+        out = []
+        for w in mapcheck.wheres(v):
+            box = fc.flowmap._world_box(mod, {'块': w} if w in blocks else {'点': w}) if mod else None
+            if box:
+                (ax, ay), (bx, by) = tf(box[0], box[3]), tf(box[2], box[1])
+                out.append([round(ax, 1), round(ay, 1), round(bx - ax, 1), round(by - ay, 1)])
+        return out
+    for lm in p.get('地标') or []:
+        lm['框'] = boxes(lm.get('在'))
+    for s in p.get('段') or []:
+        for kind in ('布景', '地形'):
+            for e in s.get(kind) or []:
+                e['框'] = boxes(e.get('在'))
+    problems, todo = mapcheck.check(path)
+    return dict(plan=p, problems=problems, todo=todo, unseen=mapcheck.unseen(path))
+
+
 def main(names):
     sys.stdout.reconfigure(encoding='utf-8')
     speak, retail = fc.cast()
@@ -60,12 +94,13 @@ def main(names):
         if not isinstance(plan, dict):
             continue
         problems = fc.check(q, speak, retail, units, mech)
-        empty = {}
+        empty, scene = {}, None
         if plan.get('示意图'):
             sketch = fc.flowmap.drawn(plan)                      # the real map's ground, places and borders
             empty = fc.flowmap.empty(plan, sketch)               # each segment's empty ground (README rule 17)
+            scene = content(q, sketch)                           # layer 2, where it is written
             plan = dict(plan, 示意图=sketch)
-        levels.append(dict(id=q.stem.upper(), plan=plan, problems=problems, empty=empty,
+        levels.append(dict(id=q.stem.upper(), plan=plan, problems=problems, empty=empty, scene=scene,
                            minutes=[minutes(s.get('时长')) for s in plan.get('段') or []]))
     data = json.dumps(dict(levels=levels, cast=cast_rows(), cell=fc.flowmap.CELL, emptyLast=fc.EMPTY_LAST),
                       ensure_ascii=False, default=str).replace('</', '<\\/')

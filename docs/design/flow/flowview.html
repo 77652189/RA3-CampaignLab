@@ -122,7 +122,7 @@ button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); 
 .sheet .item { margin: 0 0 6px; }
 .sheet .item .tr { color: var(--mute); font-size: 12px; }
 .sheet .empty { color: var(--bad); font-size: 12px; }
-.chip { display: inline-block; border-radius: 4px; padding: 0 6px; color: #fff; font-size: 12px; margin-right: 4px; }
+.chip { display: inline-block; border-radius: 4px; padding: 0 6px; color: #fff; font-size: 12px; margin-right: 4px; white-space: nowrap; }
 .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--mute); margin: 6px 0 0; }
 .share { display: flex; height: 14px; border-radius: 4px; overflow: hidden; margin: 6px 0; }
 .mm { position: absolute; right: 10px; bottom: 10px; width: 27%; z-index: 3; border: 1px solid rgba(255,255,255,.3);
@@ -175,6 +175,7 @@ button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); 
       <button id="m-play" class="on">玩家视角</button>
       <button id="m-review">五条审核</button>
       <button id="m-sheet">整关一张表</button>
+      <button id="m-scene">地图内容</button>
     </div>
   </header>
   <div id="info"></div>
@@ -242,7 +243,7 @@ function placesIn(p, texts) {
 }
 // on a real map (示意图 地图, drawn by flowmap.py): the ground by height tier, the roads, the land-use blocks
 const TIER = ['#1f3a52', '#3b3a33', '#57523f', '#736b55'];
-function mapSvg(p, segI, focus, goals, bare, gaps) {
+function mapSvg(p, segI, focus, goals, bare, gaps, marks) {
   const m = p['示意图'];
   if (!m) return '<div class="lbl" style="color:var(--mute);font-size:13px">这一关还没有示意图（剧本 yaml 里的"示意图"）。</div>';
   const P = {}, segs = p['段'] || [];
@@ -295,6 +296,11 @@ function mapSvg(p, segI, focus, goals, bare, gaps) {
     const [x, y] = c(pl), [w, h] = pl['大'] || [6, 4], main = g['种'] === '主', locked = !!g['亮出'];
     const gx = x + w / 2 - 1.2, gy = y - h / 2 + 1.2;
     s += `<path d="M${gx} ${gy - 1.6} L${gx + 1.6} ${gy} L${gx} ${gy + 1.6} L${gx - 1.6} ${gy} Z" fill="${locked ? 'none' : main ? '#e0b25a' : '#6aa5e0'}" stroke="${main ? '#e0b25a' : '#6aa5e0'}" stroke-width=".5"/>`;
+  }));
+  // the map content script's landmarks, set pieces and terrain (layer 2): a box per site or block, numbered
+  (marks || []).forEach(k => (k.box || []).forEach(([x, y, w, h]) => {
+    s += `<rect x="${x}" y="${y}" width="${Math.max(w, 1.5)}" height="${Math.max(h, 1.5)}" rx=".6" fill="${k.color}" fill-opacity=".25" stroke="${k.color}" stroke-width=".6"/>`;
+    s += `<text x="${x + Math.max(w, 1.5) / 2}" y="${y + Math.max(h, 1.5) / 2 + 1}" font-size="3" font-weight="700" text-anchor="middle" fill="#fff" stroke="#0d0f12" stroke-width=".6" paint-order="stroke">${esc(k.n)}</text>`;
   }));
   focus.forEach(n => {
     const pl = P[n]; if (!pl) return;
@@ -625,6 +631,46 @@ function renderReview() {
   document.getElementById('view').innerHTML = `<div class="rv">${c1}${c2}${c3}${c4}${c5}</div>`;
 }
 
+// ---- layer 2: the map content script (docs/design/maps/<level>.md) on the real map, segment by segment ----
+const STATE = { '有': '#5cbf86', '要改': '#e0b25a', '要加': '#e0645a', '关卡摆': '#6aa5e0', '美术': '#a67de0' };
+const STATE_WHO = { '有': '地图上已经有', '要改': '地图线改', '要加': '地图线加', '关卡摆': '关卡线在第 3 层摆', '美术': '美术阶段，先用替代品' };
+function renderScene() {
+  const lv = DATA.levels[L], p = lv.plan, segs = p['段'] || [], sc = lv.scene;
+  if (!sc) {
+    document.getElementById('view').innerHTML = '<div class="card">这一关还没有地图内容稿（docs/design/maps/' + esc(lv.id.toLowerCase()) + '.md）。第 2 层按 ADR 0009 先做 A4。</div>';
+    return;
+  }
+  const m = sc.plan, chip = st => `<span class="chip" style="background:${STATE[st] || '#777'}" title="${esc(STATE_WHO[st] || '')}">${esc(st)}</span>`;
+  const head = sc.problems.length ? `<div class="card problems"><b>地图内容检查发现 ${sc.problems.length} 处问题</b><ul>${sc.problems.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`
+    : '<div class="ok" style="margin:0 0 8px;font-size:13px">地图内容检查：完整、一致（好不好由你判断）</div>';
+  const lms = (m['地标'] || []).map((k, i) => ({ k, n: String.fromCharCode(65 + i) }));
+  const top = `<div class="card"><h2 style="font-size:16px;margin:0 0 6px">${esc(p['关'])} 地图内容 · 实际地图 ${esc(m['地图'])}</h2>
+    <div class="meta"><div><b>场所</b>${esc(m['场所'])}</div><div><b>方向</b>${esc(m['方向'])}</div></div>
+    <h3 style="font-size:14px;margin:12px 0 6px">地标（玩家拿来认路的东西）</h3>
+    <div class="bk"><div class="wrapx"><table>${lms.map(({ k, n }) => `<tr><th>${n} · ${esc(k['名'])}</th><td>${esc(k['是什么'])}<div class="lbl">${esc(k['作用'])}</div></td><td>${chip(k['地图'])}</td></tr>`).join('')}</table>
+      ${sc.unseen.length ? `<div class="lbl" style="margin-top:6px">流程剧本里没提到的地标（看一下）：${sc.unseen.map(esc).join('、')}</div>` : ''}</div>
+      <div>${mapSvg(p, 99, [], [], true, null, lms.map(({ k, n }) => ({ box: k['框'], color: STATE[k['地图']] || '#777', n })))}<div class="lbl">字母 = 地标，颜色 = 状态</div></div></div>
+    <div class="legend">${Object.keys(STATE).map(st => `<span>${chip(st)}${esc(STATE_WHO[st])}</span>`).join('')}</div></div>`;
+  const cards = (m['段'] || []).map(s => {
+    const i = segs.findIndex(x => x['名'] === s['段']);
+    const rows = [...(s['布景'] || []).map(e => ({ kind: '布景', e, t: e['什么'], why: e['讲什么'] })), ...(s['地形'] || []).map(e => ({ kind: '地形', e, t: e['要'], why: e['为了'] }))]
+      .map((r, j) => Object.assign(r, { n: String(j + 1) }));
+    return `<div class="card"><h2 style="font-size:16px;margin:0 0 4px"><span class="n" style="color:var(--accent)">第 ${i + 1} 段</span> ${esc(s['段'])}
+        <span class="lbl">${esc((segs[i] || {})['动词'] || '过场')}</span></h2>
+      <div class="flat" style="border-left-color:var(--accent);background:none;margin:6px 0 10px"><b>第一眼：</b>${esc(s['第一眼'])}</div>
+      <div class="bk"><div class="wrapx"><table><tr><th></th><th></th><th>是什么</th><th>为了 / 讲什么</th><th>在哪</th><th>状态</th></tr>
+        ${rows.map(r => `<tr><th>${r.n}</th><td class="lbl" style="white-space:nowrap">${r.kind}</td><td>${esc(r.t)}</td><td>${esc(r.why)}</td><td class="lbl">${esc([].concat(r.e['在'] || []).join('、'))}</td><td>${chip(r.e['地图'])}</td></tr>`).join('')}</table>
+        <div class="lbl" style="margin-top:6px">场所：${(s['场所'] || []).map(esc).join('、')}</div></div>
+        <div>${mapSvg(p, Math.max(i, 0), s['场所'] || [], [], true, null, rows.map(r => ({ box: r.e['框'], color: STATE[r.e['地图']] || '#777', n: r.n })))}
+          <div class="lbl">黄框 = 这一段的场所；数字 = 左边的布景和地形</div></div></div></div>`;
+  }).join('');
+  const todo = ['地图线', '关卡线', '美术'].map(w => {
+    const mine = sc.todo.filter(t => t[0] === w);
+    return mine.length ? `<div style="margin:6px 0"><b>给${w}</b>（${mine.length}）<ul style="margin:4px 0;padding-left:18px">${mine.map(t => `<li>${esc(t[2])} ${chip(t[1])}</li>`).join('')}</ul></div>` : '';
+  }).join('');
+  document.getElementById('view').innerHTML = `<div class="rv">${head}${top}${cards}<div class="card"><h2 style="font-size:16px;margin:0 0 4px">还缺什么、谁来做</h2>${todo}</div></div>`;
+}
+
 function render() {
   if (timer) toggle();
   document.getElementById('tabs').innerHTML = DATA.levels.map((lv, i) =>
@@ -633,9 +679,11 @@ function render() {
   document.getElementById('m-play').classList.toggle('on', mode === 'play');
   document.getElementById('m-review').classList.toggle('on', mode === 'review');
   document.getElementById('m-sheet').classList.toggle('on', mode === 'sheet');
+  document.getElementById('m-scene').classList.toggle('on', mode === 'scene');
   renderInfo();
-  mode === 'play' ? renderPlay() : mode === 'review' ? renderReview() : renderSheet();
+  ({ play: renderPlay, review: renderReview, sheet: renderSheet, scene: renderScene })[mode]();
 }
+document.getElementById('m-scene').onclick = () => { mode = 'scene'; store.set('flow-mode', mode); render(); };
 document.getElementById('m-play').onclick = () => { mode = 'play'; store.set('flow-mode', mode); render(); };
 document.getElementById('m-review').onclick = () => { mode = 'review'; store.set('flow-mode', mode); render(); };
 document.getElementById('m-sheet').onclick = () => { mode = 'sheet'; store.set('flow-mode', mode); render(); };
@@ -645,7 +693,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft') go(at - 1);
 });
 L = Math.min(+(store.get('flow-level') || 0), DATA.levels.length - 1) || 0;
-mode = ['sheet', 'review'].includes(store.get('flow-mode')) ? store.get('flow-mode') : 'play';
+mode = ['sheet', 'review', 'scene'].includes(store.get('flow-mode')) ? store.get('flow-mode') : 'play';
 render();
 </script>
 </body>
