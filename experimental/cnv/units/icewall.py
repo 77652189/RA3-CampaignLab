@@ -142,8 +142,9 @@ VOICES = {'voiceSelect': 'VoiceSelect', 'voiceSelectUnderFire': 'VoiceSelectUnde
           'voiceMoveLandToWater': 'VoiceMoveLandToWater', 'voiceMoveWaterToLand': 'VoiceMoveWaterToLand',
           'voiceCreated': 'VoiceCreated', 'voiceGarrison': 'VoiceGarrison',
           'VoiceCaptureBuilding': 'VoiceCapture', 'VoiceEngineerRepair': 'VoiceRepair'}
-# off until the voice line's pack is in the build (docs/units/handoff.md: a missing event points at nothing)
-VOICE = None                            # then 'CNV_IceEngineer'
+# the voice line's pack is in A4's build (plan 语音: [A4, ICEENG], levels line 2026-10-31); a build without the pack
+# leaves him silent (a missing event points at nothing): pass voice=None there
+VOICE = 'CNV_IceEngineer'
 
 
 def voice_engineer(unit, prefix):

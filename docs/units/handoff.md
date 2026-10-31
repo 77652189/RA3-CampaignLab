@@ -40,13 +40,13 @@
 
 Tripo 订阅：用户买的是包月（专业版，推测），2026-10-20 04:00（北京时间）开始，月度积分到 2026-11-20 04:00 重置、不累计。用户的计划：策划和关卡线做完再批量做新单位，避免返工；用户购买当天就在支付宝关了自动续费，所以 2026-11-20 04:00 到期后不再续；做新单位之前先问用户订阅还在不在，不在就请用户买一个月（每个单位约 80 积分，一个月 3000 积分够做三十多个），把要做的单位一次做完。
 
-**单位语音**（配音线做，单位线接线）：线已接好，`icewall.py` 的 `voice_engineer`（事件名表 `VOICES`，配音线 2026-10-31 定稿）。但开关 `VOICE` 还是 `None`，所以现在仍是原版工程师的语音：要等语音包进了构建再打开（事件不存在会指向空）。接法照原版：`AudioArrayVoice` 的 `AudioEntry` 按 `AudioType` 换；水上那套覆盖（原版是 Land/Water 两个 Multisound）也指向同一组事件，配音线不用出 Multisound；占领、修理是具名条目 `VoiceCaptureBuilding` / `VoiceEngineerRepair`；冻冰墙在技能上写 `NameOfVoiceNameToUseAsInitiateIntendToDoVoice="VoiceIceWall"`，单位加 `NamedEntry Name="VoiceIceWall"`（原版苏联工程师造地堡就是这样接的）。死亡惨叫和医疗帐篷那条仍用原版。
+**单位语音**（配音线做，单位线接线）：线已接好，`icewall.py` 的 `voice_engineer`（事件名表 `VOICES`，配音线 2026-10-31 定稿），开关 `VOICE` 2026-10-31 已打开（关卡线把包装进了 A4：plan 顶上 `语音: [A4, ICEENG]`）。没装包的构建（`ice_build` 等测试关）照样编得过、没有未解析引用：编译器把不存在的事件引用丢掉，工兵只是不出声。A4 编出来报 10 个未解析引用（`4053c714:…`），用 `sagehash` 算过正好是这 10 个事件：事件在拼进去的语音层（`static.12`）里，地图层的链接检查看不到。游戏里能不能找到，还没上测试台验证。接法照原版：`AudioArrayVoice` 的 `AudioEntry` 按 `AudioType` 换；水上那套覆盖（原版是 Land/Water 两个 Multisound）也指向同一组事件，配音线不用出 Multisound；占领、修理是具名条目 `VoiceCaptureBuilding` / `VoiceEngineerRepair`；冻冰墙在技能上写 `NameOfVoiceNameToUseAsInitiateIntendToDoVoice="VoiceIceWall"`，单位加 `NamedEntry Name="VoiceIceWall"`（原版苏联工程师造地堡就是这样接的）。死亡惨叫和医疗帐篷那条仍用原版。
 
 ## 下一步
 
 现状（2026-10-30）：A4 的单位外观和全部新单位的名字、技能图标、按钮头像都已合进 main（bb14687），手头没有进行中的活。
 
-0. **等关卡线**：配音线的音频和事件已做好（c28a4f3），包由关卡线统一装进构建（`pack.make(['A4', 'ICEENG'])` 这类）。关卡线通知"装好了"以后，把 `icewall.py` 的 `VOICE` 改成 `'CNV_IceEngineer'`，再上测试台听一次（选中、移动、冻墙各一句）。之前别打开。
+0. **上测试台听冰幕工兵**（开关已开，本分支，还没合进 main）：`build.py a4 --check hold --plan` 编出 `CampA4Hold`，后台跑 `listen.record_game` 静音录游戏声音，`bench_start(hold=false)`，工兵在出生点附近（约 570, 2570），选中、右键移动、冻墙各做几次；再把录音和 `RA3-ChineseVoice/work/campaign/zh/ICEENG/CNV_ICEENG_*.wav` 做互相关，能对上就说明播出来了。2026-10-31 凌晨试的时候游戏报 DirectX 建不了设备（屏幕锁了），没听成。听到了就合进 main；没声音就查运行时语音层的事件能不能被地图层的单位引用到（实在不行，把这 10 个事件编进地图层）。
 0. 名字和图标的尾巴：2026-10-30 收完了（闸门、雪堆有自己的头像，自由号炮塔有头像，冲撞按钮的原因查清，见上面"名字、技能按钮"一节）。等关卡线定的两件：母机的冲撞要不要拿掉；纸鹤要不要载人。新单位加进来时，在 `look.py` 的 `LOOKS` 加一行、单位函数上加 `@look.named`，图标在 `ability_icons.ICONS` 加一行再 `gen <阵营>`，`tests/test_look.py` 会查漏。
 1. 自由号剧情说法，等用户定：提案是"她本来就是灯塔 + 埃菲尔铁骨是超时空天线"（设计规律和说明在 `concept_gpt.py` 的 `libertyisle`）。
 2. 自由号可选：玩家自己跃迁时的闪光要给跃迁加约 1 秒准备时间（机制，归关卡线定）；跃迁取消时让充能立刻熄灭，可以把 `carrier.py` 改用 `liberty.discharged`（要关卡线同意）；五个炮塔座骨骼 `TURRET01..05` 还没接线（总控：炮塔仍是跟着飘的无人机）。
@@ -107,6 +107,7 @@ Tripo 订阅：用户买的是包月（专业版，推测），2026-10-20 04:00�
   - `cnv_check` 用的是主仓库的代码。要测本分支的改动，先在本工作目录跑 `build.py <名> --check <项> --plan`（编译并装进 Mods），再 `cnv_check(build=false)`；主仓库还没有这个检查时，手动 `bench_start` + `bench_watch(lines=n)` + `bench_counters`，再用本分支的 `build.py <名> --check <项> --no-build --judge "<计数文本>"` 判定。
 - **环境**：
   - 查游戏进程用 PowerShell `Get-Process | ? ProcessName -match ra3`（Git Bash 的 tasklist 会漏）。上测试台前单独查一次，再看 `python -I ra3voice/reslock.py status`（在主仓库目录跑）；测试台有两个位置，另一个被占时可以用空的那个。
+  - worktree 里找配音仓库靠 `.claude\worktrees\RA3-ChineseVoice`（指向 `Documents\RA3Modding\RA3-ChineseVoice` 的目录链接，2026-10-31 建；没有它 A4 的测试 34 个报 FileNotFoundError）。
   - worktree 里构建要设 `CNV_SDK=C:\Users\63097\Documents\RA3Modding\sdk\RA3ModSDK3`；本分支的 `work` 是指向主仓库 `work/` 的目录链接。跑命令别 `cd` 出工作目录，用绝对路径或子 shell。
   - 编译器报错的详细信息在 `SDK/_build_<mod>Map.log`，"找不到原版美术文件"那几行是正常的。
 - **原版网格**：坐标是相对骨骼的，要按网格自带的骨骼编号对照表套骨架（`retail_mesh.py` 开头）；地图道具没有骨骼编号，整块在模型空间。编译后的 UV 是 V 朝下，写进我们的 W3X 要 `1 - v`。
