@@ -26,7 +26,7 @@ def test_a4_offline():
     the guardian, the peacekeeper the tank buster)."""
     text, problems = offline.report('a4')
     assert '结局：赢' in text
-    assert '段：会场 0:00，北营' in text and '布防' in text and '最后一程' in text
+    assert '段：会场 0:00，港口生变' in text and '北营' in text and '布防' in text and '最后一程' in text
     assert not [p for p in problems if p.startswith('sight')], problems
     assert text.count('\n- 过 ') == 6 and '\n- 不对 ' not in text
     s, starts, enemy, have = offline.walk('a4')

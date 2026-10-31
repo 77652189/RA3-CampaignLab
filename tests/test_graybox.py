@@ -30,12 +30,16 @@ def test_old_a4_can_be_pushed_through_every_stage():
 
 
 def test_one_unit_type_cannot_answer_a_stage_with_air_in_it():
-    """Rocket angels fly: a Peacekeeper army never kills them, so the last stage cannot be pushed with Peacekeepers
-    alone -- the gauge says 'cannot', not 'easy'."""
+    """Rocket angels fly: a Peacekeeper army never kills them, so a stage with them in it cannot be pushed with
+    Peacekeepers alone -- the gauge says 'cannot', not 'easy' (the A4 rework has no air of its own: the stage is
+    made up of what the old A4's last stretch had)."""
     s, rows = stages()
-    last = next(r for r in rows if r[0] == '最后一程')
-    assert last[2][glossary.template('维和步兵', '盟军')] == math.inf
-    assert last[4] is not None and len(last[4]) == 2                # the winning army has a second type in it
+    body = graybox.Bodies(s)
+    peacekeeper, javelin, ifv = (glossary.template(n, '盟军') for n in ('维和步兵', '标枪兵', '多功能步兵车'))
+    stage = {glossary.template(n, '帝国'): k for n, k in (('火箭天使', 3), ('帝国武士', 6), ('坦克杀手', 6))}
+    assert graybox.kstar(body, peacekeeper, stage) == math.inf
+    best, mix = graybox.best_mix(body, [peacekeeper, javelin, ifv], stage)
+    assert best is not None and len(mix) == 2                       # the winning army has a second type in it
 
 
 def test_a_mirror_match_needs_more_than_an_equal_army():

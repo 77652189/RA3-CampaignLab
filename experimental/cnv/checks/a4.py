@@ -1,69 +1,165 @@
-"""A4 tests (the rework, docs/story/plans/a4.md on maps/sapporo.py); everything asked of the mission (its sites, cast,
-marks, flags). The devices' own checks (seal, smash, stop, tough ...) are the frozen before-rework build's,
-checks/a4_before.py; the helpers here are theirs.
+"""A4 tests (docs/story/plans/a4.md on maps/sapporo.py): one small scene each for what the horn device
+(devices/horn.py, named 雪祭 in the plan) does. Everything is asked of the mission (its sites, cast, marks, flags); the
+helpers the frozen before-rework build's checks keep (checks/a4_before.py) are theirs.
 
-idle: as played, the player doing nothing: plaza 1's troops hold the convoy and take two trucks; the mission ends
-  (a level that wins itself is no level).
-hold: plaza 2's tank busters (the rework's P29: 2 号 hides tank busters) against the ice in its gate: engineer 2
-  ices it as the lead truck nears plaza 1, the convoy kept going (trucks kept up, plaza 1's troops killed when they
-  hold it): plaza 2's troops let out while the wall stands, it stands its lifetime and they stay in while it does.
-  Bench 2026-10-28 (CampA4Hold_mcp_1028_172254): the wall up s43-s73, plaza 2 broken by s57, its tank busters never
-  on the road (the simulator's fight model had them break the wall in ~7 s: now it lets our ice be).
-win: played the quick way: the trucks kept at full health, plaza 1's troops killed whenever they hold the convoy,
-  engineer 2 icing plaza 2's gate before the lead truck gets there, the harbour's guard gone from the start, the
-  north command razed as phase 2 begins, plaza 3 iced by the two engineers in turn while the trucks pass it: the
-  convoy parks at plaza 2, leaves in batches after the 布防 countdown and gets to the harbour (counted: two at
-  least; the simulator, the ice played by its script, has all three in by 4:41).
+All of them play the plan as it is on normal difficulty (the first horn 35 s after the countdown starts: the plan's rule
+starts it when the opening scene is over, 14 s in), the trucks kept at full health and the whole map revealed, no
+ending (the troops would take them), and count what the horn made by name (`tally`: how many of a wave stand).
+
+horn: the first horn on the streets: the lane and plaza 1 send their waves (4 each), plaza 2 sends none yet; the
+  second horn: plaza 2 as well.
+detour: engineer 1, brought to plaza 1's street, ices it just before the first horn: the lane's wave is made at once,
+  plaza 1's later and at the lane's foot (its wave detours, 10 s late).
+queue: the mouths' horns started by the test (the plan starts them after the harbour turns), engineer 1 at the north
+  mouth icing it before the first one: the other mouths' waves are made, the north mouth's is kept, and made when the
+  ice has melted.
+smash: the same, the Ghost King's horn the next one (the counter set to 2): a transport comes over the sea, the Ghost
+  King lands, and the ice wall the engineer built at the east mouth loses health with nothing else telling it to.
+derrick: an engineer takes the oil derrick (docs/design/flow/mechanics.md 工程师占油井).
 """
-from checks.a4_before import blocking, freeze, ice_wall, keep_up, left, on_road, start, troops, trucks
+from checks.a4_before import freeze, ice_wall, keep_up, start
 from parts import Obj, Script, Test, counted, square
 
-IDLE_RUN = 300.0                                # idle: ended by then (sim 2026-10-28: lost 1:42, normal)
-WIN_RUN = 600.0                                 # win: ended by then (sim 2026-10-28, no combat: won 5:46, normal)
-RAZE_AFTER = 5.0                                # win: the north command down this long into phase 2
-DETOUR = 100.0                                  # engineer 2 goes by the avenue this far south of its middle
-HOLD_ICE = 46.0                                 # hold: the wall up by then (bench 2026-10-28: s43; the convoy, off
-                                                # at ~31 s, gets to plaza 2 by ~57)
-HOLD_OUT = 61.0                                 # hold: plaza 2's troops out by then, the wall still up (bench:
-                                                # out at s58; s64-s79 the captions hide the counters)
-HOLD_RUN = 140.0
-# win: who ices plaza 3, and when (s after phase k began; normal: 布防 60 s, then the convoy goes on): a block ~9 s
-# after the order, 30 s up -- before truck 1 gets there (+2 s) and while trucks 2 (+52) and 3 (+112) pass
-RELAY = (('engineer 1', 3, 45.0), ('engineer 2', 4, 25.0), ('engineer 1', 4, 55.0), ('engineer 2', 4, 85.0))
+TAG = 'A4'
+OPENING = 14.0                                  # the opening scene ends: the plan starts the street horns
+GAP1 = 35.0                                     # normal: the countdown's first time
+HORN1 = OPENING + GAP1                          # the first horn on the streets
+MOUTHS_AT = 16.0                                # queue, smash: the mouths' horns started (after the plan's rule)
+MOUTH1 = MOUTHS_AT + GAP1                       # ... their first
+BUILD = 17.0                                    # the ice order given this long before the horn (walk 0, build ~9 s)
+LEAD = 4.0                                      # the mission runs ~3 s ahead of the bench's clock
 
 
-def phase(m, k):
-    """The flag that is 1 once the plan's k-th phase began."""
-    return next(a[1] for s in m.scripts for a in s.do if a[0] == 'SET_FLAG' and a[1].endswith(f'_Phase_{k}'))
+def flag(kind, mode):
+    return f'CNV_{TAG}_Horn_{mode}_{kind}'
 
 
-def arrived(m):
-    """The convoy's counter of trucks at the exit (the device's)."""
-    return next(a[2] for s in m.scripts for a in s.do if a[0] == 'INCREMENT_COUNTER' and str(a[2]).endswith('_Arrived'))
+def wave(m, mode, n, wid):
+    """The names the horn device makes for horn n of way `wid` (found in its scripts, as the plan's own)."""
+    head = f'UNIT - CNV {TAG} H{mode}{n} {wid} '
+    out = sorted({a[1] for s in m.scripts for a in s.do if a[0] == 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT'
+                  and a[1].startswith(head)})
+    assert out, f'the mission makes nothing named {head!r}'
+    return out
 
 
-def escort(t, m):
-    """The convoy kept going to plaza 2, iced in time: trucks kept up, plaza 1's (and 3's) troops killed when they
-    hold it, engineer 2 (unhurt) freezing plaza 2's gate before the lead truck gets there: sent at once by the
-    avenue's south side, clear of the lane's foot (walking over it sets the convoy off: the plan's 出发)."""
-    keep_up(t, m)
-    t.scripts += [Script(f'Test - clear plaza {k}', [('FLAG', blocking(m, k), 1)],
-                         [('NAMED_KILL', n) for n in troops(m, k)], once=False) for k in (1, 3)]
-    name = m.role('engineer 2').name
-    foot = m.site('lane foot')
-    t.waypoints['Test Detour'] = (foot[0], m.site('start')[1] - DETOUR)
-    t.areas['Test Detour'] = square(*t.waypoints['Test Detour'], 60.0)
-    t.scripts.append(Script('Test - detour', [], [('MOVE_NAMED_UNIT_TO', name, 'Test Detour'),
-                                                  ('UNIT_CHANGE_OBJECT_STATUS', name, 'UNATTACKABLE', 1)]))
-    freeze(t, m, 2, 'engineer 2', [('NAMED_INSIDE_AREA', name, 'Test Detour')])
+def tally(t, names, counter, label, area=None):
+    """A counter of how many of `names` stand (in `area`, when given): zero every frame, one more for each."""
+    t.counters.append((counter, label))
+    t.scripts.append(Script(f'Test - {counter} zero', [], [('SET_COUNTER', counter, 0)], once=False))
+    cond = (lambda n: [('NAMED_INSIDE_AREA', n, area)]) if area else (lambda n: [('NAMED_NOT_DESTROYED', n)])
+    t.scripts += [Script(f'Test - {counter} {k}', cond(n), [('INCREMENT_COUNTER', 1, counter)], once=False)
+                  for k, n in enumerate(names)]
 
 
-def idle(m):
+def scene(m):
+    """The test every check starts with: no ending, the map revealed, the trucks kept up, the whole map playable."""
+    m.drop_endings()
     t = Test()
     start(t, m)
-    trucks(t, m)
-    t.expect += [('ENDED', 30.0, '', None)]
-    t.bench = [('bench_watch', dict(seconds=IDLE_RUN, every=5, sheet=False, lines=len(t.counters)))]
+    keep_up(t, m)
+    t.scripts.append(Script('Test - whole map', [], [('MAP_SWITCH_BORDER', 0)]))
+    return t
+
+
+def stand(t, m, part, at, label):
+    """Engineer `part` taken to `at` (x, y) at once, out of harm's way, so the ice is ordered from there."""
+    name = m.role(part).name
+    t.waypoints[f'Test Stand {label}'] = at
+    t.scripts.append(Script(f'Test - stand {label}', [], [('UNIT_TELEPORT_TO_WAYPOINT', name, f'Test Stand {label}'),
+                                                          ('UNIT_CHANGE_OBJECT_STATUS', name, 'UNATTACKABLE', 1)]))
+
+
+def ice_at(t, m, part, mark, when, label):
+    """Engineer `part` freezes the way marked `mark` at `when` seconds."""
+    timer = f'Test - ice timer {label}'
+    t.scripts += [Script(f'Test - ice set {label}', [], [('SET_MILLISECOND_TIMER', timer, when)]),
+                  Script(f'Test - ice {label}', [('TIMER_EXPIRED', timer)],
+                         [('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', m.role(part).name, m.ability(part, 'freeze'),
+                           m.mark(mark))])]
+
+
+def mouths_on(t, m, counted_horns=0):
+    """The mouths' horns started by the test at MOUTHS_AT, after `counted_horns` of them are counted (the plan's own
+    start of the street horns is stopped from sounding: its On flag put down every frame)."""
+    t.scripts += [Script('Test - streets off', [], [('SET_FLAG', flag('On', 'V'), 0)], once=False),
+                  Script('Test - mouths timer', [], [('SET_MILLISECOND_TIMER', 'Test - mouths', MOUTHS_AT)]),
+                  Script('Test - mouths on', [('TIMER_EXPIRED', 'Test - mouths')],
+                         [('SET_COUNTER', f'CNV_{TAG}_Horn_L_N', counted_horns), ('SET_FLAG', flag('On', 'L'), 1),
+                          ('SET_FLAG', flag('Start', 'L'), 1)])]
+
+
+def horn(m):
+    t = scene(m)
+    first = wave(m, 'V', 1, 'V1') + wave(m, 'V', 1, 'V2')       # the third street has no wave in the first horn
+    tally(t, first, 'Test Horn 1', '第一声的兵')
+    tally(t, wave(m, 'V', 2, 'V3'), 'Test Plaza 2', '二号的兵（第二声）')
+    t.expect += [('第一声的兵', 0, '==', 0, HORN1 - LEAD - 3),
+                 ('第一声的兵', HORN1 + 5, 'ever>=', 8),              # two streets, four each: plaza 2 is not open yet
+                 ('第一声的兵', 0, '<=', 8),
+                 ('二号的兵（第二声）', 0, '==', 0, HORN1 + 20),
+                 ('二号的兵（第二声）', HORN1 + 50 + 5, 'ever>=', 4)]
+    t.bench = [('bench_watch', dict(seconds=HORN1 + 65, every=4, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+def detour(m):
+    t = scene(m)
+    plaza1 = wave(m, 'V', 1, 'V2')
+    lane = wave(m, 'V', 1, 'V1')
+    foot = m.point('spawn V1')
+    t.areas['Test Lane'] = square(foot[0], foot[1] + 60.0, 160.0)
+    gx, gy = m.point('ice V2')
+    stand(t, m, 'engineer 1', (gx, m.site('start')[1]), 'plaza 1')
+    ice_at(t, m, 'engineer 1', 'ice V2', HORN1 - BUILD, 'plaza 1')
+    counted('Test Walls', '冰墙', t, template=ice_wall(m).id)
+    tally(t, lane, 'Test Lane Wave', '后巷的兵')
+    tally(t, plaza1, 'Test Plaza 1 Wave', '一号的兵')
+    tally(t, plaza1, 'Test At Lane', '一号的兵在后巷口', area='Test Lane')
+    t.expect += [('冰墙', HORN1 - 3, 'ever==', 1),
+                 ('后巷的兵', HORN1 + 6, 'ever>=', 4),
+                 ('一号的兵', 0, '==', 0, HORN1 - LEAD + 2),         # the ice up: plaza 1's wave is not made there
+                 ('一号的兵', HORN1 + 20, 'ever>=', 4),               # but later, ...
+                 ('一号的兵在后巷口', HORN1 + 20, 'ever>=', 1)]       # ... at the lane's foot
+    t.bench = [('bench_watch', dict(seconds=HORN1 + 28, every=2, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+def queue(m):
+    t = scene(m)
+    mouths_on(t, m)
+    north, plaza3, east = (wave(m, 'L', 1, w) for w in ('L1', 'L2', 'L3'))
+    mx, _ = m.point('ice L1')
+    stand(t, m, 'engineer 1', (mx, m.site('start')[1]), 'north mouth')
+    ice_at(t, m, 'engineer 1', 'ice L1', MOUTH1 - BUILD, 'north mouth')
+    counted('Test Walls', '冰墙', t, template=ice_wall(m).id)
+    tally(t, north, 'Test North', '北坡口的兵')
+    tally(t, plaza3 + east, 'Test Others', '另两口的兵')
+    life = ice_wall(m).params['lifetime']
+    t.expect += [('冰墙', MOUTH1 - 3, 'ever==', 1),
+                 ('另两口的兵', MOUTH1 + 6, 'ever>=', 8),               # open mouths: made at once, four each
+                 ('北坡口的兵', 0, '==', 0, MOUTH1 + life - 12),        # kept while the ice stands
+                 ('北坡口的兵', MOUTH1 + life + 20, 'ever>=', 4)]       # made when it is gone
+    t.bench = [('bench_watch', dict(seconds=MOUTH1 + life + 30, every=3, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+GHOST_WAIT = 45.0                               # smash: the wall's health read for this long after the horn
+
+
+def smash(m):
+    t = scene(m)
+    mouths_on(t, m, counted_horns=2)            # the next horn is the third: the Ghost King's
+    horn3 = MOUTH1
+    ex, _ = m.point('ice L3')
+    stand(t, m, 'engineer 1', (ex, m.site('start')[1] + 60.0), 'east mouth')
+    ice_at(t, m, 'engineer 1', 'ice L3', horn3 - 2.0, 'east mouth')
+    t.counters += [(f'CNV_{TAG}_Walls', '冰墙'), (f'CNV_{TAG}_Kings', '鬼王上岸')]
+    ref = f'UNITRef - CNV {TAG} Nearest Wall'
+    counted('Test Ref Health', '目标墙血量', t, health=ref)
+    t.expect += [('冰墙', horn3 + 8, 'ever==', 1), ('鬼王上岸', horn3 + 5, 'ever>=', 1),
+                 ('目标墙血量', horn3 + 8, 'ever<', 100)]            # nobody ordered it: the Ghost King smashes it
+    t.bench = [('bench_watch', dict(seconds=horn3 + GHOST_WAIT + 10, every=3, sheet=False, lines=len(t.counters)))]
     return t
 
 
@@ -94,62 +190,4 @@ def derrick(m):
     t.expect += [('油井归我', DERRICK_RUN - 10, 'ever==', 1),
                  ('资金', DERRICK_RUN - 10, 'ever>', 0)]
     t.bench = [('bench_watch', dict(seconds=DERRICK_RUN, every=3, sheet=False, lines=len(t.counters)))]
-    return t
-
-
-def hold(m):
-    m.drop_endings()
-    t = Test()
-    start(t, m)
-    escort(t, m)
-    wall = ice_wall(m)
-    life = wall.params['lifetime']
-    counted('Test Walls', '冰墙', t, template=wall.id)
-    on_road(t, m, 'troop 2-1-1', '2 号的兵上路')
-    t.counters.append((left(m, 2), '2 号的伏兵'))
-    t.expect += [('冰墙', HOLD_ICE, 'ever==', 1), ('2 号的伏兵', HOLD_OUT, 'ever>=', 1),
-                 ('冰墙', HOLD_ICE + 3, '==', 1, HOLD_OUT + 1),                   # up while they are out
-                 ('2 号的兵上路', 0, '==', 0, HOLD_OUT + 1),                       # and holds them in
-                 ('2 号的兵上路', HOLD_ICE + life + 10, '==', 0, HOLD_RUN)]       # the convoy past: they stay
-    t.bench = [('bench_watch', dict(seconds=HOLD_RUN, every=3, sheet=False, lines=len(t.counters)))]
-    return t
-
-
-def relay(t, m):
-    """Plaza 3 (无敌, 补兵: only the ice gets a truck past it) kept iced while the three trucks pass it, 0 / 50 / 110 s
-    after the convoy goes on: the two engineers in turn (one block lasts 30 s, an engineer's reload 40). Engineer 1
-    goes there from the start, by the detour; engineer 2 once phase 2 begins, plaza 2 iced by then."""
-    one, two = m.role('engineer 1').name, m.role('engineer 2').name
-    gx, _ = m.site('gate 3')
-    t.waypoints['Test Spot 3'] = (gx - 150.0, m.site('start')[1] - 60.0)
-    t.scripts += [Script('Test - engineer 1 out', [], [('MOVE_NAMED_UNIT_TO', one, 'Test Detour'),
-                                                       ('UNIT_CHANGE_OBJECT_STATUS', one, 'UNATTACKABLE', 1)]),
-                  Script('Test - engineer 1 on', [('NAMED_INSIDE_AREA', one, 'Test Detour')],
-                         [('MOVE_NAMED_UNIT_TO', one, 'Test Spot 3')]),
-                  Script('Test - engineer 2 on', [('FLAG', phase(m, 2), 1)], [('MOVE_NAMED_UNIT_TO', two, 'Test Spot 3')])]
-    for j, (part, k, after) in enumerate(RELAY, 1):
-        timer = f'Test - relay timer {j}'
-        t.scripts += [Script(f'Test - relay set {j}', [('FLAG', phase(m, k), 1)],
-                             [('SET_MILLISECOND_TIMER', timer, after)]),
-                      Script(f'Test - relay {j}', [('TIMER_EXPIRED', timer)],
-                             [('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', m.role(part).name, m.ability(part, 'freeze'),
-                               m.mark('seal 3'))])]
-
-
-def win(m):
-    t = Test()
-    start(t, m)
-    escort(t, m)
-    relay(t, m)
-    t.scripts.append(Script('Test - clear the harbour', [], [('NAMED_KILL', r.name) for r in m.roles('harbour guard')]))
-    t.scripts += [Script('Test - raze set', [('FLAG', phase(m, 2), 1)],
-                         [('SET_MILLISECOND_TIMER', 'Test - raze timer', RAZE_AFTER)]),
-                  Script('Test - raze', [('TIMER_EXPIRED', 'Test - raze timer')],
-                         [('NAMED_KILL', m.role('north command').name)])]
-    trucks(t, m)
-    # counted, not 'ENDED': a caption over the counters reads as their end (bench 2026-10-28: s66-s81, the mission
-    # running on to s604)
-    t.counters.append((arrived(m), '到终点'))
-    t.expect += [('1 号车血量', 0, '==', 100, 60), ('到终点', 60, 'ever>=', 2)]
-    t.bench = [('bench_watch', dict(seconds=WIN_RUN, every=5, sheet=False, lines=len(t.counters)))]
     return t
