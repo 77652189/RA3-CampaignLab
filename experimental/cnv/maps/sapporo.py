@@ -44,8 +44,10 @@ APPROACH = (320.0, 130.0)                       # a plaza's approach: this far w
 
 # the street blocks either side of the avenue's west half (tier 2): x from the sea to WEST_END (north: to the lane's
 # east end), plaza 1 cut into the north one
-WEST_END = 2100.0
-P1 = (2150.0, 2460.0, 3030.0)                   # plaza 1's courtyard: x0, x1, its back (y); its front the avenue
+LANE_UP = 1200.0                                # the back lane's ramp up from the avenue (x)
+P1 = (1860.0, 2170.0, 3030.0)                   # plaza 1's courtyard: x0, x1, its back (y); its front the avenue
+WEST_END = P1[0] - 100.0                        # the three street mouths (the lane's ramp, gates 1 and 2) are >= 800
+                                                # apart: 1200, 2015, 2830 (a street's ice shuts one, the troops detour)
 LANE = (3030.0, 3200.0)                         # the back lane behind plaza 1 (y): raised, between two cliffs
 NB_EAST = (2460.0, 2760.0, 3260.0)              # the north block's east end: x0, x1, its back -- the lane comes
 LANE_DOWN = 2610.0                              # down its ramp here (x), between plazas 1 and 2
@@ -58,6 +60,7 @@ WARD = (2760.0, 3250.0, 3060.0)                 # the raised ward between the no
 NORTH_MOUTH_X = 3050.0                          # the gap through it (北坡口)
 EAST_MOUTH = ((P3[1] + CANAL[0]) / 2, ROAD_N + 120.0)     # 东街口: between plaza 3's wall and the canal
 
+PLAZA3_X = (P3[0] + P3[1]) / 2
 PLAZAS = {1: ((P1[0] + P1[1]) / 2, True), 2: ((P2[0] + P2[1]) / 2, False), 3: ((P3[0] + P3[1]) / 2, True)}
 
 
@@ -81,7 +84,7 @@ SITES.update({
     # 2's approach, its troops held the convoy for good once the ice melted)
     'halt': Site(P2[0] + 150.0, ROAD_Y, 40.0, "the road at plaza 2's gate: the whole convoy past plaza 2's "
                                               "approach, short of plaza 3's"),
-    'lane foot': Site(1250.0, ROAD_Y + 40.0, 60.0, "the back lane's way up: the foot of the ramp from the avenue "
+    'lane foot': Site(LANE_UP, ROAD_Y + 40.0, 60.0, "the back lane's way up: the foot of the ramp from the avenue "
                                                    'onto the north street block'),
     'lane mouth': Site(P1[0] + 60.0, (LANE[0] + LANE[1]) / 2, 50.0, "the back lane's west mouth, behind plaza 1: "
                                                                     'its sculptures stand here'),
@@ -89,6 +92,11 @@ SITES.update({
                        build=160.0),
     'lane end': Site(LANE_DOWN, ROAD_Y + 80.0, 60.0, 'where the back lane comes down to the avenue, between plazas 1 '
                                                     'and 2'),
+    # the last leg's gun pads: open ground ~250 behind each mouth (the enemy's side), where a gun can reach the ice in
+    # front of the mouth and the open ground beside it
+    'gun north': Site(NORTH_MOUTH_X, 3110.0, 80.0, 'a gun pad behind the north mouth, in the low ground below the ward'),
+    'gun plaza 3': Site(PLAZA3_X, 2950.0, 80.0, "a gun pad at the back of plaza 3's courtyard, behind its gate"),
+    'gun east': Site(EAST_MOUTH[0], 3040.0, 70.0, 'a gun pad up the east street, behind the east mouth'),
     'north mouth': Site(NORTH_MOUTH_X, (ROAD_N + WARD[2]) / 2, 60.0, '北坡口: the gap through the raised ward, '
                                                                     f'{GATE:g} wide, from the north camp to the road'),
     'east mouth': Site(*EAST_MOUTH, 50.0, f"东街口: the street between plaza 3's wall and the canal, {GATE:g} wide"),
@@ -174,7 +182,7 @@ SHAPES = [
     rect(CANAL[0], 200, CANAL[1], 4800, 0, 'the canal'),
 ]
 RAMPS = [
-    Ramp((1250, ROAD_Y + 40), (1250, ROAD_N + 230), 160.0, 'the back lane up (west)'),
+    Ramp((LANE_UP, ROAD_Y + 40), (LANE_UP, ROAD_N + 230), GATE, 'the back lane up (west)'),
     Ramp((LANE_DOWN, ROAD_Y + 60), (LANE_DOWN, ROAD_N + 300), GATE, 'the back lane down (east)'),
     Ramp((2650, 3330), (2650, 3700), 200.0, 'north plateau west'),
     Ramp((3150, 3330), (3150, 3700), 200.0, 'north plateau east'),
@@ -184,7 +192,7 @@ RAMPS = [
 ]
 # streets (ground texture only): the lane on the north block, up to the plateaus' ramps, the canal's west bank, the
 # harbour's street
-LANE_WAY = ((1250, ROAD_N + 230), (1300, 2980), (P1[0] - 20, 3100), (P1[1] + 40, 3100), (LANE_DOWN, 3020),
+LANE_WAY = ((LANE_UP, ROAD_N + 230), (LANE_UP + 50, 2980), (P1[0] - 20, 3100), (P1[1] + 40, 3100), (LANE_DOWN, 3020),
             (LANE_DOWN, ROAD_N + 300))
 STREETS = [((2650, ROAD_N), (2650, 3330)), ((3150, ROAD_N), (3150, 3330)), ((2350, ROAD_S), (2350, 1720)),
            ((EAST_MOUTH[0], ROAD_N), (EAST_MOUTH[0], 4300)), ((3580, ROAD_S), (3580, 1600)),
