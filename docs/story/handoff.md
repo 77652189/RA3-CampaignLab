@@ -34,7 +34,7 @@
    - 不做：`plan.py` 里"按兵力分档派兵"、S1"湖心按种类杀步兵"的计划词，brief 说新题不一定要。
    - 做完 `pytest tests -q | tail -n 5`，提交（只提交自己的文件）并推送，汇报每处一句结论给设计线（SendMessage to `local_51ff7c05-91d2-4470-98af-6d2fbcbff92a`）和总控。
 
-1. **A4 按设计线新稿重做第 3 层。** 读：`docs/design/flow/a4.md`（流程稿，待用户审；第 2 层地图内容稿也还没出来）、`docs/design/flow/mechanics.md`（哪些机制能承诺）、`docs/design/maps/`（第 2 层，地图内容，设计线在做）。现有计划 `docs/story/plans/a4.md`；做法是改生成器和计划，不手改产物。要加的东西：
+1. **A4 按设计线新稿重做第 3 层。** 第 3 层要什么：`docs/design/cards/a4-layer3.md`（设计线 f4b7635，会场三街接点 ≥ 800、后街绕路差 ≥ 10 秒、口子后炮位、脚本表）。**最后一程灰盒已做（2026-10-31，`graybox-cards.md`"第三轮"，`graybox_cards.py` 的 `a4_last`）**：大军堵三口平推轻松（k\* 0.5～0.6）；鬼王只欺负车、冰墙只多拖 3 秒，转折在数字上不成立；每口一波要对着玩家的钱定。还要做的：地图改（sapporo 接点、后街、炮位）、脚本表照 a4-layer3.md、两项引擎检查（鬼王砸不砸冰墙、脚本能不能数到区域里的冰墙）。读：`docs/design/flow/a4.md`（流程稿，待用户审；第 2 层地图内容稿也还没出来）、`docs/design/flow/mechanics.md`（哪些机制能承诺）、`docs/design/maps/`（第 2 层，地图内容，设计线在做）。现有计划 `docs/story/plans/a4.md`；做法是改生成器和计划，不手改产物。要加的东西：
    不依赖流程稿定稿的三项准备已做（2026-10-30，测试 `tests/test_plan_lines.py`，全量 286 过，已提交；`plan.py` 里音乐线的 `CNV_MUSIC_CAPTIONS` 那段没带进去，还在工作区）：
    - 计划词 `兵少于 <n> <单位>、<单位>`（`plan.py` 的 `troops()`，比较码 0 是 `<`）；模拟器补了 `COUNTER_MATH_COUNTER`（0 加、1 减）和 `SET_COUNTER_TO_COUNTER`，**测试台还没验这两个动作**（只看过原版怎么用）；
    - 通报可以写 `{通报: 文字, 说: 说话人, 原文: 流程稿原文}`，任务的 `lines` 里留一张台词表；

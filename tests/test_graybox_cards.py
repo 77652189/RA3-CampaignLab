@@ -131,3 +131,34 @@ def test_j7_card_a_the_mouth_with_a_base_behind_it_eats_far_more_than_a_head_on_
     h, m = facts()['j7_valley']['head_on'], facts()['j7_valley']['at_mouth']
     assert h[1] > h[3] > h[5] and 2.5 < h[1] < 3.5 and 1.4 < h[3] < 2.0
     assert all(3.0 < x < 4.5 for x in m.values()) and m[3] > 1.8 * h[3]
+
+
+def test_a4_last_a_mass_of_peacekeepers_eats_a_whole_horn_cheaply():
+    """A4 甲 last stretch: three mouths at once plus Ghost Kings is not a wall to a base with a mass of Peacekeepers
+    (k* well under 1: the army costs less than the horn); the push stays easy up to 2500 a mouth with two Kings."""
+    z = facts()['a4_last']
+    assert all(r['k'] < graybox_cards.graybox.EASY for r in z['table'].values())
+    assert z['table'][(2500, 2)]['need'] < 6000
+
+
+def test_a4_last_the_ghost_king_is_a_vehicle_killer_and_infantry_ignores_it():
+    """The King (3000 hp, 20/s on infantry, 100+/s on vehicles) is no turning point for infantry: they kill it with a
+    small loss; only an army of Guardians is in trouble (k* > 2)."""
+    z = facts()['a4_last']
+    assert z['king_alone']['维和步兵'] < 1 and z['king_alone']['标枪兵'] < 1 and z['king_alone']['守护者坦克'] > 2
+    assert z['killed'][4000][1] < 0.1                                # 4000 cost of infantry loses under a tenth
+
+
+def test_a4_last_the_wall_in_front_of_the_guns_buys_only_a_few_seconds():
+    """A 300 hp wall falls to the King in 3 s: a 4000-cost army gets 22% of its health in free fire; useful, not decisive."""
+    z = facts()['a4_last']
+    assert abs(z['smash'] - 3.0) < 0.5
+    assert z['free'][4000] < 0.3 and z['free'][8000] < 0.5
+
+
+def test_a4_last_the_horn_size_the_army_can_take_grows_with_its_cost():
+    """What a horn must weigh is a matter of the economy (kept for 实机): 4000 cost cannot carry even 900 a mouth for six
+    horns with a King each from the third, 16000 carries ~2600."""
+    z = facts()['a4_last']['biggest_w']
+    assert z[4000][1] < 900 < z[8000][1] < z[16000][1]
+    assert z[8000][2] < z[8000][1]

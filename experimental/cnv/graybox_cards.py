@@ -214,6 +214,78 @@ def a4_waves(s, body):
                 third_left=sum(part.values()) / sum(third.values()), third_secs=secs3)
 
 
+A4L_HAVE = [T(n, '盟军') for n in ('守护者坦克', '维和步兵', '标枪兵')]
+A4L_ARMY = {T('维和步兵', '盟军'): 0.7, T('守护者坦克', '盟军'): 0.3}   # what a player with a base most likely masses
+A4L_KING = T('鬼王', '帝国')
+
+
+def a4l_horn(w, mouths=3, kings=0, group=None):
+    """One horn of the last stretch: every mouth sends a street group (the 900 group scaled to cost `w`), plus `kings`
+    Ghost Kings."""
+    e = {T(*k): n * w / 900.0 * mouths for k, n in (group or A4_GROUP_900).items()}
+    if kings:
+        e[A4L_KING] = float(kings)
+    return e
+
+
+A4_GROUP_900 = {('帝国武士', '帝国'): 2.0, ('坦克杀手', '帝国'): 2.0}
+
+
+def a4l_survive(body, army_cost, w, horns=6, kings_from=3, kings=1, mouths=3):
+    """A mass army (repaired to full health at the base between horns, never topped up) meets `horns` horns in a row;
+    from horn `kings_from` each horn also brings `kings` Ghost Kings. Returns (share of its numbers left after each
+    horn, the horn that wiped it out or None)."""
+    n0 = {p: army_cost * f / (offline.cost(p) or 500) for p, f in A4L_ARMY.items()}
+    left, out = dict(n0), []
+    for h in range(1, horns + 1):
+        left, rest, _ = graybox.fluid(body, left, a4l_horn(w, mouths, kings if h >= kings_from else 0))
+        if sum(rest.values()) >= 0.05 or sum(left.values()) < 0.05:
+            return out, h
+        out.append(sum(left.values()) / sum(n0.values()))
+    return out, None
+
+
+def a4_last(s, body):
+    """A4 甲, the last stretch: a base, a mass army and cannons against three mouths and the Ghost King. What does a
+    horn have to weigh before a mass of ordinary units cannot just eat it, and what does the wall in front of the
+    guns buy against the King?"""
+    cost = lambda t: offline.cost(t) or 500
+    table = {}
+    for w in (900, 1500, 2500):
+        for kings in (0, 1, 2):
+            e = a4l_horn(w, 3, kings)
+            k, mix = graybox.best_mix(body, A4L_HAVE, e)
+            table[(w, kings)] = dict(enemy=cost_of(e), k=k, need=None if k in (None, math.inf) else k * cost_of(e),
+                                     mix={glossary_name(t): round(v, 2) for t, v in (mix or {}).items()})
+    third = {(w, kings): graybox.kstar(body, A4L_ARMY, a4l_horn(w, 1, kings)) for w in (900, 1500, 2500) for kings in (0, 1)}
+    king_alone = {glossary_name(p): graybox.kstar(body, p, {A4L_KING: 1.0}) for p in A4L_HAVE}
+    wall = body('CNV_IceWall')
+    smash = wall.max_hp / offline.dps(s, body(A4L_KING), wall)
+    free = {}                                                     # damage the army deals to the King while it smashes
+    for c in (2000, 4000, 8000):
+        n = {p: c * f / cost(p) for p, f in A4L_ARMY.items()}
+        free[c] = sum(offline.dps(s, body(p), body(A4L_KING)) * m for p, m in n.items()) * smash / body(A4L_KING).max_hp
+    killed = {}
+    for c in (2000, 4000, 8000):
+        n = {p: c * f / cost(p) for p, f in A4L_ARMY.items()}
+        a, b, t = graybox.fluid(body, n, {A4L_KING: 1.0})
+        killed[c] = (t, 1 - sum(a.values()) / sum(n.values()))
+    biggest_w = {}
+    for c in (4000, 8000, 16000):
+        biggest_w[c] = {k: biggest(lambda w, c=c, k=k: a4l_survive(body, c, w, kings=k)[1] is None, lo=100, hi=60000) for k in (1, 2)}
+    harder = {}
+    for lab, grp in (('武士+杀手', A4_GROUP_900), ('只有武士', {('帝国武士', '帝国'): 6.0}), ('只有杀手', {('坦克杀手', '帝国'): 3.0}),
+                     ('海啸', {('海啸坦克', '帝国'): 0.9})):
+        e = a4l_horn(900, 3, 0, grp)
+        harder[lab] = (cost_of(e), {glossary_name(p): graybox.kstar(body, p, e) for p in A4L_HAVE})
+    return dict(table=table, third=third, king_alone=king_alone, smash=smash, free=free, killed=killed, biggest_w=biggest_w,
+                harder=harder, king_hp=body(A4L_KING).max_hp)
+
+
+def glossary_name(t):
+    return next((n for n, v in glossary.OWN.items() if v == t), t)
+
+
 J7_ROUTES = {'步兵多': {('动员兵', '苏联'): 10, ('铁锤坦克', '苏联'): 1, ('天启坦克', '苏联'): 0.5},
              '机甲多': {('动员兵', '苏联'): 4, ('铁锤坦克', '苏联'): 2, ('天启坦克', '苏联'): 1}}
 J7_ARMIES = {'武士+杀手': {('帝国武士', '帝国'): 0.5, ('坦克杀手', '帝国'): 0.5}, '杀手': {('坦克杀手', '帝国'): 1.0},
@@ -432,7 +504,7 @@ def facts():
     return dict(a4_streets=a4_streets(s, body), a4_types=a4_street_types(s, body), a4_plaza=a4_plaza(s, body), a4_cold=a4_cold(s, body),
                 s1=s1_lake(s, body), j7=j7_valleys(s, body), a4_waves=a4_waves(s, body), j7_counter=j7_counter(s, body),
                 s1_geometry=s1_geometry(s, body), s1_natural=s1_natural(s, body), s1_ablate=s1_ablate(s, body),
-                s1_capes=s1_capes(s, body), j7_valley=j7_valley_choice(s, body))
+                s1_capes=s1_capes(s, body), j7_valley=j7_valley_choice(s, body), a4_last=a4_last(s, body))
 
 
 def lines(f):
@@ -488,7 +560,24 @@ def new_card_lines(f):
             f'连来{w}波 {x:.1f}' for w, x in v['head_on'].items()) + '；谷口 ' + '、'.join(f'连来{w}波 {x:.1f}' for w, x in v['at_mouth'].items()),
         f'J7甲 消融：干扰车不拖慢苏联，援军永远走近谷：{ "、".join("近中远"[x[0]] for x in v["jam_off"].values()) }',
     ]
-    return out
+    return out + a4_last_lines(f['a4_last'])
+
+
+def a4_last_lines(z):
+    t = z['table']
+    return [
+        'A4甲最后一程 一声号角三个口子各一波（每波 W 造价的 2 武士 : 2 坦克杀手）加鬼王几台，最好的我方兵（挑 守护者/维和/标枪）的 k* 和要多少造价：' +
+        '；'.join(f'W={w} 鬼王{k} k*={graybox.fmt(r["k"])}（{"、".join(r["mix"])}）需 {r["need"]:.0f}' for (w, k), r in t.items() if (w, k) in
+                  ((900, 0), (900, 2), (2500, 0), (2500, 2))),
+        '维和一种兵守一个口子（军队三分之一）打一波加鬼王，剩下的比例：' + '；'.join(f'W={w} 鬼王{k} {v:.0%}' for (w, k), v in z['third'].items()),
+        f'鬼王 {z["king_hp"]:g} 血，一种兵打它的 k*：' + '、'.join(f'{k} {graybox.fmt(v)}' for k, v in z['king_alone'].items()) +
+        f'；它砸冰墙 {z["smash"]:.1f} 秒；砸墙时我方挨炮把它打掉的血：' + '、'.join(f'{c}造价 {v:.0%}' for c, v in z['free'].items()) +
+        '；不靠冰墙硬打的用时/我方损失：' + '、'.join(f'{c}造价 {t:.0f}秒/{l:.0%}' for c, (t, l) in z['killed'].items()),
+        '大军（70% 维和 + 30% 守护者，号角之间满血、不补兵）撑满 6 声号角（第 3 声起每声 1 或 2 台鬼王）的每口最大一波造价：' + '；'.join(
+            f'{c}造价 ' + '、'.join(f'鬼王{k} {"撑不住" if v is None else f"{v:.0f}"}' for k, v in row.items()) for c, row in z['biggest_w'].items()),
+        '三口各一波（2700 造价）按兵种看 k*（守护者/标枪/维和）：' + '；'.join(
+            f'{lab} ' + '、'.join(f'{graybox.fmt(v)}' for v in row.values()) for lab, (_, row) in z['harder'].items()),
+    ]
 
 
 def shares(r):
