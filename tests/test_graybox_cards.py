@@ -79,3 +79,55 @@ def test_the_jammer_costs_seconds_not_multiples_and_v4_outranges_the_empire():
     assert all(5.0 < v['extra'] < 20.0 for v in j['aura_extra'].values())
     assert j['v4_range'] > 2.5 * max(j['ranges'].values())
     assert j['shield_sequential'] / j['shield_together'] > 2.0      # 丙's check (>= 2) holds on paper
+
+
+def test_s1_card_a_the_sickle_leap_is_as_long_as_the_hook_so_no_band_blocks_it():
+    """S1 甲 geometry: the Sickle's leap (its weapon data) is 300, the hook 300; the hook must reach across the band
+    (d + w + g <= 300), so w can never exceed the leap: the jump is blocked by being pointless, not by w. A band
+    of 180+ also keeps shore infantry from shooting a Guardian at the ice edge; 160 does not."""
+    g = facts()['s1_geometry']
+    assert g['leap'] == g['hook'] == 300.0 and g['no_w_blocks_leap']
+    rows = {r['w']: r for r in g['rows']}
+    assert rows[200]['g_max'] == 90.0 and not rows[160]['shore_blocked'] and rows[180]['shore_blocked']
+    assert all(r['hook_safe'] for r in g['rows'])                    # d + w > 150 everywhere in the table
+    assert rows[160]['window'] > rows[200]['window'] > rows[250]['window'] > rows[280]['window']
+    assert 5.0 < rows[200]['window'] < 8.0                           # a few seconds, not a minute
+
+
+def test_s1_card_a_leaping_in_is_pointless_and_chasing_on_foot_costs_nine_times_the_hook():
+    """S1 甲 natural plays: a Guardian shoots a Sickle ~5x harder than it is shot back; infantry walks no faster than
+    the convoy; the whole escort needs ~7650 of troops (k* ~1.4 but at 5550 that is a lot early), the Peacekeepers
+    that can come ashore ~830 -- the ice cuts the bill about nine times."""
+    n, a = facts()['s1_natural'], facts()['s1_ablate']
+    assert n['guard_vs_sickle'] > 4 * n['sickle_vs_guard'] and n['infantry_speed'] <= n['convoy_speed']
+    assert n['whole_need_cost'] > 5 * n['ashore_need_cost']
+    assert a['without_ice_cost'] > 5 * a['with_ice_cost'] and n['best']['lone'] < 0.5
+    assert min(n['hook_tank_seconds'].values()) > 5.0                # even six Peacekeepers need > 5 s for a hook tank's body
+
+
+def test_j7_card_a_a_valley_you_clear_is_the_valley_they_take():
+    """J7 甲: clearing a valley's last jammer always makes it the cheapest (15 s a jammer outweighs the 15 s steps),
+    ties go near, and with two jammers a valley the far valley cannot be made the pick by clearing alone."""
+    t = facts()['j7_valley']['pick']
+    assert t[(3, 3, 3)]['pull'] == {0: (0, 0, 0), 1: (0, 2, 0), 2: (0, 0, 3)}
+    assert t[(2, 2, 2)]['pull'][2] is None and t[(3, 2, 2)]['pull'][2] == (0, 0, 2)
+    assert all(r['all_cleared'] == 0 and r['early_by'] == 15.0 * n0[0] for n0, r in t.items())
+
+
+def test_j7_card_a_the_best_valley_changes_every_wave_but_a_blip_is_enough_to_follow():
+    """J7 甲: when the Soviets move a jammer into your valley after each wave, staying put meets only the first wave
+    and the picks flip every wave; the minimap blip gives time to follow (the way through a valley is long enough to
+    walk between any two mouths less than 1500 apart); with jammers not slowing the Soviets there is nothing to read."""
+    v = facts()['j7_valley']
+    assert all(r['static_meets'] == 1 and r['changes'] == 5 for r in v['follow'].values())
+    assert all(r['static_meets'] == 1 for r in v['pursuit'].values())
+    assert v['reach'][0] >= 1500.0 and all(x == [0] for x in v['jam_off'].values())
+
+
+def test_j7_card_a_the_mouth_with_a_base_behind_it_eats_far_more_than_a_head_on_valley():
+    """J7 甲: an Empire army alone in a cleared valley, wave after wave with no top-up, is ground down: it holds a
+    wave of 2.9x its cost once, 1.7x three times, 1.3x five times; at the valley mouth with the base topping it up
+    and the wave coming out in a column it holds ~3.8x every time. Between them is the card's 'punished' window."""
+    h, m = facts()['j7_valley']['head_on'], facts()['j7_valley']['at_mouth']
+    assert h[1] > h[3] > h[5] and 2.5 < h[1] < 3.5 and 1.4 < h[3] < 2.0
+    assert all(3.0 < x < 4.5 for x in m.values()) and m[3] > 1.8 * h[3]

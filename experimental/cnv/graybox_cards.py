@@ -6,8 +6,10 @@ r"""The numbers behind docs/story/graybox-cards.md (ADR 0011): what the simulato
   python -I -X utf8 experimental/cnv/graybox_cards.py --verbose  the same on screen, with the working
 """
 import argparse
+import itertools
 import math
 import os
+import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -17,6 +19,7 @@ import graybox  # noqa: E402
 import offline  # noqa: E402
 import plan  # noqa: E402
 import sim  # noqa: E402
+import simunits  # noqa: E402
 
 T = glossary.template
 
@@ -244,10 +247,192 @@ def j7_counter(s, body, army_cost=10000.0):
     return out
 
 
+def leap_range():
+    """The Sickle's leap, from the SDK data: its LeapWeapon's AttackRange (the unit's StartAbilityRange says the same)."""
+    text = open(os.path.join(simunits.SAGEXML, 'GlobalData', 'Weapon.xml'), encoding='utf-8').read()
+    at = text.index('id="SovietAntiInfantryVehicleLeapWeapon"')
+    return float(re.search(r'AttackRange="([\d.]+)"', text[at:]).group(1))
+
+
+S1_ESCORT = {('守护者坦克', '盟军'): 5, ('维和步兵', '盟军'): 4}        # 3 tow Guardians + 2 free ones, 4 Peacekeepers (a stand-in size)
+S1_HOOK = 300.0                                                      # the card's number (confirmed)
+S1_CONVOY_SPEED = 50.0                                               # the truck's (the tow is slowed to it)
+
+
+def s1_geometry(s, body):
+    """S1 甲, the geometry table. Hook tank d behind the ice edge, thin band w, tow Guardian g past its outer edge.
+    Hook reaches: d + w + g <= 300. The escort cannot shoot the hook tank: d + w > its range. Shore fire cannot reach
+    a Guardian from the ice edge: w + g > the player's longest range. The Sickle leaps `leap` (its data): a band the
+    hook reaches across is never wider than the leap, so w can never block the jump. `window` = seconds a tow
+    Guardian passing at its closest g_near = g_max / 2 stays in the hook's reach (a chord of the 300 circle)."""
+    guard, peace = body(T('守护者坦克', '盟军')), body(T('维和步兵', '盟军'))
+    enemy = max(w['range'] for b in (guard, peace) for w in b.weapons)
+    mine = max(w['range'] for n in ('防空步兵', '镰刀机甲') for w in body(T(n, '苏联')).weapons)
+    leap, d, rows = leap_range(), 10.0, []
+    for w in (160, 180, 200, 220, 250, 280):
+        gmax = S1_HOOK - d - w
+        near = (d + w + gmax / 2)
+        rows.append(dict(w=w, g_max=gmax, hook_safe=d + w > enemy, shore_blocked=w > mine, leap_blocked=w > leap,
+                         window=2 * math.sqrt(S1_HOOK ** 2 - near ** 2) / S1_CONVOY_SPEED))
+    return dict(rows=rows, d=d, leap=leap, enemy_range=enemy, my_range=mine, hook=S1_HOOK,
+                no_w_blocks_leap=all(not r['leap_blocked'] for r in rows if r['g_max'] >= 0))
+
+
+def s1_natural(s, body):
+    """S1 甲 natural plays. Hooking the truck: the cursor says no (no fight at all); with d + w > 150 the escort
+    cannot answer it either. The Sickle leaps the band and lands on thick ice: one Sickle against a Guardian.
+    Infantry walks the band (thin ice sinks only vehicles) and fights the escort: the k* of the player's best
+    types against the whole escort, against what can actually come to the band (the Guardians cannot cross it:
+    only the Peacekeepers), against a cape's share, and what a chase on foot costs in time; and the hook tank's
+    (stand-in: a Guardian's body, the hook tank has no data) life when Peacekeepers come ashore for it."""
+    escort = {T(*k): n for k, n in S1_ESCORT.items()}
+    guard, peace = T('守护者坦克', '盟军'), T('维和步兵', '盟军')
+    flak, sickle = T('防空步兵', '苏联'), T('镰刀机甲', '苏联')
+    cape = {guard: 3, peace: 2}
+    ashore = {peace: escort[peace]}
+    lone_guard = {guard: 1}
+    armies = {'防空步兵': flak, '镰刀机甲': sickle, '防空步兵 65% + 镰刀 35%': {flak: 0.65, sickle: 0.35}}
+    k = lambda mix, foe: graybox.kstar(body, mix, foe)
+    table = {n: dict(whole=k(m, escort), cape=k(m, cape), ashore=k(m, ashore), lone=k(m, lone_guard))
+             for n, m in armies.items()}
+    truck = body('CNV_ConvoyTruck')
+    hook_tank_hp = body(guard).max_hp
+    peace_on_guard = offline.dps(s, body(peace), body(guard))
+    best = {col: min(row[col] for row in table.values()) for col in ('whole', 'cape', 'ashore', 'lone')}
+    return dict(table=table, best=best, escort_cost=cost_of(escort), ashore_cost=cost_of(ashore),
+                whole_need_cost=best['whole'] * cost_of(escort), ashore_need_cost=best['ashore'] * cost_of(ashore),
+                sickle_vs_guard=offline.dps(s, body(sickle), body(guard)), guard_vs_sickle=offline.dps(s, body(guard), body(sickle)),
+                flak_kills_truck=truck.max_hp / offline.dps(s, body(flak), truck),
+                infantry_speed=body(flak).speed, convoy_speed=S1_CONVOY_SPEED, sickle_speed=body(sickle).speed,
+                hook_tank_seconds={n: hook_tank_hp / (n * peace_on_guard) for n in (2, 4, 6)},
+                walk_to_range={g: (10.0 + 200 + g - body(peace).weapons[0]['range']) / body(peace).speed for g in (0, 50, 100)})
+
+
+def s1_ablate(s, body):
+    """S1 甲, take one thing away. No thin ice: the Guardians come ashore too, so the player fights the whole escort
+    (k* of the best mix); with the ice only the Peacekeepers can come, and the sunk Guardian costs nothing. No cable:
+    the truck drives alone and the hook takes it from any cape (the puzzle is gone)."""
+    n = s1_natural(s, body)
+    return dict(with_ice=n['best']['ashore'], without_ice=n['best']['whole'], lone=n['best']['lone'],
+                with_ice_cost=n['ashore_need_cost'], without_ice_cost=n['whole_need_cost'])
+
+
+def s1_capes(s, body):
+    """S1 甲, cape ambush against staying put. The lane touches `capes` capes and the player has `tanks` hook tanks
+    (the flow gives three). One tank at every cape (static) catches a Guardian wherever the lane goes when
+    tanks >= capes; the optimum can only move round to round when capes > tanks, or when a tank cannot follow the
+    convoy: a hook tank slower than the convoy never gets from one cape to the next in time, one as fast as the
+    Hammer (75) does when the shore way is under 1.5 x the lane. A hook is one at a time: tow Guardians `gap` apart
+    in the column are `gap / speed` seconds apart at a cape."""
+    return dict(tanks=3, capes={'简单': 4, '普通': 3}, trucks=(2, 3), convoy_speed=S1_CONVOY_SPEED,
+                hammer_speed=body(T('铁锤坦克', '苏联')).speed, gap_seconds={g: g / S1_CONVOY_SPEED for g in (150, 300, 450)},
+                relocate_ratio=body(T('铁锤坦克', '苏联')).speed / S1_CONVOY_SPEED)
+
+
+J7_BASE = (0, 15, 30)                                   # near, middle, far valley: seconds more than the near one, jammers aside
+J7_PER = 15.0                                           # seconds a jammer's aura adds to a Soviet pass (infantry, speed 50)
+
+
+def j7_pick(left, base=J7_BASE, per=J7_PER, jam=True):
+    """The valley the reinforcement takes (card 甲): the least 'way seconds + jammers left x 15', a tie to the nearer.
+    `jam=False`: jammers do not slow the Soviets (the ablation)."""
+    score = [base[i] + (per * left[i] if jam else 0.0) for i in range(3)]
+    return min(range(3), key=lambda i: (score[i], i))
+
+
+def j7_table():
+    """For each starting count of jammers per valley (near, middle, far), the fewest jammers to pull, and which, so
+    that the reinforcement takes each valley: None when no amount of pulling there alone (or anywhere) does."""
+    out = {}
+    for n0 in [(3, 3, 3), (3, 2, 2), (3, 3, 2), (2, 2, 2), (2, 2, 3), (2, 3, 3)]:
+        best = {}
+        for r in itertools.product(*[range(x + 1) for x in n0]):
+            v = j7_pick(tuple(a - b for a, b in zip(n0, r)))
+            if v not in best or sum(r) < sum(best[v]):
+                best[v] = r
+        out[n0] = dict(start=j7_pick(n0), pull={v: best.get(v) for v in range(3)},
+                       all_cleared=j7_pick((0, 0, 0)), early_by=J7_PER * n0[0])
+    return out
+
+
+def j7_pursuit(n0, moves=1, waves=6, follow=False):
+    """After each wave the Soviets move `moves` jammers into the valley where your army stands, from the quickest
+    other valley that has one. A static ambusher (stays where the first wave came) meets the waves until the first
+    one that takes another valley (`static_meets`). With `follow` the army goes where the last wave went (the
+    minimap blip shows it) and the picks are what the waves do against that player: the optimum moves whenever the
+    picks change."""
+    n, picks, stand = list(n0), [], j7_pick(n0)
+    for _ in range(waves):
+        picks.append(j7_pick(n))
+        if follow:
+            stand = picks[-1]
+        for _ in range(moves):
+            donors = [i for i in range(3) if i != stand and n[i] > 0]
+            if not donors:
+                break
+            give = min(donors, key=lambda i: (J7_BASE[i] + J7_PER * n[i], i))
+            n[give] -= 1
+            n[stand] += 1
+    first = j7_pick(n0)
+    static = next((i for i, v in enumerate(picks) if v != first), len(picks))
+    return dict(stand=first, picks=picks, static_meets=static,
+                changes=sum(1 for a, b in zip(picks, picks[1:]) if a != b))
+
+
+def j7_grind(body, h, waves, resupply=False, column=False, army_cost=10000.0, route='步兵多'):
+    """An Empire army (half Samurai, half Tank Killers) of `army_cost` meets `waves` Soviet waves, each `h` x the
+    army's cost. Head-on in a cleared valley (no base to top it up): resupply False. At the cleared valley's mouth
+    with the base behind it: resupply True (topped up to full after each wave) and column True (the wave comes
+    out of the valley in three batches 10 s apart). Returns the shares left after each wave, the wave that
+    wiped it out or None."""
+    mine = {T('帝国武士', '帝国'): 0.5, T('坦克杀手', '帝国'): 0.5}
+    army = {t: army_cost * f / (offline.cost(t) or 500) for t, f in mine.items()}
+    unit = {T(*k): n for k, n in J7_ROUTES[route].items()}
+    scale = h * army_cost / cost_of(unit)
+    left, shares = dict(army), []
+    for w in range(1, waves + 1):
+        wave = {t: n * scale for t, n in unit.items()}
+        if column:
+            part = {t: n / 3 for t, n in wave.items()}
+            left, rest, _ = graybox.fluid(body, left, part, later=[(10.0, part), (20.0, part)])
+        else:
+            left, rest, _ = graybox.fluid(body, left, wave)
+        if sum(rest.values()) >= 0.05 or sum(left.values()) < 0.05:
+            return shares, w
+        shares.append(sum(left.values()) / sum(army.values()))
+        if resupply:
+            left = dict(army)
+    return shares, None
+
+
+def j7_valley_choice(s, body):
+    """J7 甲: the route table, the pursuit, the head-on grind against the ambush at the mouth, the ablation."""
+    pick, pursuit, follow = j7_table(), {}, {}
+    for n0 in [(3, 3, 3), (3, 2, 2), (2, 2, 2)]:
+        for moves in (1, 2):
+            pursuit[(n0, moves)] = j7_pursuit(n0, moves)
+            follow[(n0, moves)] = j7_pursuit(n0, moves, follow=True)
+
+    def holds(waves, **kw):
+        def ok(h):
+            shares, dead = j7_grind(body, h, waves, **kw)
+            return dead is None and shares[-1] >= graybox.HALF
+        return ok
+    head = {w: biggest(holds(w), lo=0.05, hi=16.0) for w in (1, 3, 5)}
+    mouth = {w: biggest(holds(w, resupply=True, column=True), lo=0.05, hi=16.0) for w in (1, 3, 5)}
+    mover = body(T('帝国武士', '帝国')).speed
+    valley_seconds = {n: 1500.0 / body(T('动员兵', '苏联')).speed + J7_PER * n for n in (0, 1, 2, 3)}
+    off = {n0: [j7_pick(n0, jam=False)] for n0 in [(3, 3, 3), (2, 2, 2)]}
+    return dict(pick=pick, pursuit=pursuit, follow=follow, head_on=head, at_mouth=mouth, mover_speed=mover,
+                reach={n: mover * t for n, t in valley_seconds.items()}, jam_off=off)
+
+
 def facts():
     s, body = world()
     return dict(a4_streets=a4_streets(s, body), a4_types=a4_street_types(s, body), a4_plaza=a4_plaza(s, body), a4_cold=a4_cold(s, body),
-                s1=s1_lake(s, body), j7=j7_valleys(s, body), a4_waves=a4_waves(s, body), j7_counter=j7_counter(s, body))
+                s1=s1_lake(s, body), j7=j7_valleys(s, body), a4_waves=a4_waves(s, body), j7_counter=j7_counter(s, body),
+                s1_geometry=s1_geometry(s, body), s1_natural=s1_natural(s, body), s1_ablate=s1_ablate(s, body),
+                s1_capes=s1_capes(s, body), j7_valley=j7_valley_choice(s, body))
 
 
 def lines(f):
@@ -269,7 +454,41 @@ def lines(f):
         'J7 干扰车光环（半径 250）整个穿过多花：' + '，'.join(f'{k} {v["extra"]:.1f} 秒（速度 {v["speed"]:g}）' for k, v in j['aura_extra'].items()),
         'J7 帝国直射武器最大射程：' + '，'.join(f'{k} {v:g}' for k, v in j['ranges'].items()) + f'；V4 火箭车 {j["v4_range"]:g}',
         f'J7丙 护盾：一座座拆要 {j["shield_sequential"]:g} 座的血，一起拆 {j["shield_together"]:g}，比 {j["shield_sequential"] / j["shield_together"]:.2f}',
-    ] + recheck_lines(f)
+    ] + recheck_lines(f) + new_card_lines(f)
+
+
+def new_card_lines(f):
+    """The second-round cards (S1 甲 and J7 甲, redrawn 2026-10-30)."""
+    g, n, a, c, v = f['s1_geometry'], f['s1_natural'], f['s1_ablate'], f['s1_capes'], f['j7_valley']
+    out = [
+        f'S1甲几何 钩 {g["hook"]:g}、镰刀跳 {g["leap"]:g}（武器数据）、护卫射程 {g["enemy_range"]:g}、己方最长 {g["my_range"]:g}；'
+        f'磁钩站冰边后 {g["d"]:g}，薄冰带宽 w → 守护者离外沿最多 g：' + '；'.join(
+            f'w={r["w"]} g≤{r["g_max"]:g} 窗口{r["window"]:.1f}秒{"" if r["shore_blocked"] else "（岸边步兵打得到）"}' for r in g['rows']) +
+        f'；w 能不能挡住跳：{"不能（钩得到就跳得过）" if g["no_w_blocks_leap"] else "能"}',
+        f'S1甲自然打法 镰刀 vs 守护者 {n["sickle_vs_guard"]:.1f}/秒，守护者 vs 镰刀 {n["guard_vs_sickle"]:.0f}/秒；步兵 {n["infantry_speed"]:g} = 车队 '
+        f'{n["convoy_speed"]:g}（镰刀 {n["sickle_speed"]:g}）；防空步兵 {n["flak_kills_truck"]:.0f} 秒打死一辆车',
+        'S1甲 k*（整队护卫 5 守护者 + 4 维和 = {0:g}；岬角一组 3+2；只有上得来的 4 个维和；一辆守护者）：'.format(n['escort_cost']) + '；'.join(
+            f'{k} ' + '、'.join(f'{lab} {graybox.fmt(row[col])}' for lab, col in (('整队', 'whole'), ('一组', 'cape'), ('维和', 'ashore'), ('一辆', 'lone')))
+            for k, row in n['table'].items()),
+        f'S1甲 步兵上冰追要 {n["whole_need_cost"]:.0f} 造价的兵（整队，赢了剩一半）；钩守护者拽进薄冰后只要对付上岸的维和约 {n["ashore_need_cost"]:.0f}；'
+        f'没有冰则整队 k* {a["without_ice"]:.2f}，有冰 {a["with_ice"]:.2f}',
+        f'S1甲 磁钩坦克（拿守护者的血当替身）被 2/4/6 个维和围：' + '、'.join(f'{k}个 {t:.0f}秒' for k, t in n['hook_tank_seconds'].items()) +
+        '；维和从守护者那条线走到射程内：' + '、'.join(f'g={k} {t:.1f}秒' for k, t in n['walk_to_range'].items()),
+        f'S1甲 岬角：磁钩 {c["tanks"]} 台，岬角 简单 {c["capes"]["简单"]}、普通 {c["capes"]["普通"]}，卡车 {c["trucks"][0]}～{c["trucks"][1]}；'
+        f'磁钩要追上车队至少得和车队一样快（{c["convoy_speed"]:g}），像铁锤（{c["hammer_speed"]:g}）快 {c["relocate_ratio"]:.1f} 倍；'
+        '两辆拖车守护者相隔 150/300/450 在同一个岬角差 ' + '/'.join(f'{t:.0f}' for t in c['gap_seconds'].values()) + ' 秒',
+        'J7甲 援军选谷 拔掉几辆才走某条（初始每谷几辆 → 走近/中/远；None=拔多少都走不到）：' + '；'.join(
+            f'{n0} 起点走{"近中远"[r["start"]]}，→中 {r["pull"][1]}，→远 {r["pull"][2]}，全拔后走{"近中远"[r["all_cleared"]]}且早到 {r["early_by"]:g} 秒'
+            for n0, r in v['pick'].items()),
+        'J7甲 苏联每波往你那条谷挪干扰车：守一处只碰到第 1 波（之后他们走别的谷）；跟着闪点追，援军选谷依次：' + '；'.join(
+            f'{n0} 挪{m}辆 {"".join("近中远"[i] for i in r["picks"])}' for (n0, m), r in v['follow'].items()),
+        f'J7甲 看到闪点从一条谷口赶到另一条谷口走得起：谷里要 1500/50 + 15×剩余干扰车 秒，我方步兵 {v["mover_speed"]:g} 能走 ' +
+        '、'.join(f'{k}辆 {d:.0f}' for k, d in v['reach'].items()) + '（谷口相隔比这小就追得上）',
+        'J7甲 一条谷直冲（谷拆通、没有基地补兵）和守在谷口（基地补满、援军三批出谷）各能吃下几倍大军造价的援军：直冲 ' + '、'.join(
+            f'连来{w}波 {x:.1f}' for w, x in v['head_on'].items()) + '；谷口 ' + '、'.join(f'连来{w}波 {x:.1f}' for w, x in v['at_mouth'].items()),
+        f'J7甲 消融：干扰车不拖慢苏联，援军永远走近谷：{ "、".join("近中远"[x[0]] for x in v["jam_off"].values()) }',
+    ]
+    return out
 
 
 def shares(r):
