@@ -43,3 +43,14 @@ def test_the_opening_scene_ends_with_the_demonstration_taken_away_and_the_convoy
     assert flags.index('CNV_A4_Demo_On') < flags.index('CNV_A4_Demo_Off')
     truck = next(u for u in m.units if u.id == 'CNV_ConvoyTruck')
     assert truck.params['speed'] == 12.0 and 'Speed="12"' in truck.xml
+
+
+def test_the_delivered_announcer_lines_are_played_and_the_rest_stay_subtitles():
+    """语音: the plan's 播报 lines the voice line delivered play their event (the subtitle comes with it); 沃斯, 司令 and
+    科尔's lines have no dub yet and are still captions."""
+    m = mission()
+    played = {a[1] for s in m.scripts for a in s.do if a[0] == 'PLAY_SOUND_EFFECT'}
+    assert {'CNV_A4_014', 'CNV_A4_026', 'CNV_A4_037'} <= played
+    assert played <= m.voice.events
+    assert any(a[0] == 'SHOW_MILITARY_CAPTION' for s in m.scripts for a in s.do)
+    assert any(e.startswith('CNV_ICEENG_') for e in m.voice.events)           # the engineer's unit voices

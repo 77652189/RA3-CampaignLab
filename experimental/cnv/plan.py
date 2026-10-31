@@ -225,6 +225,16 @@ class Compiler:
         self.counted = {}           # group -> the counter of its losses (摧毁 <group> <n> 个)
         self.troop_counters = {}    # kinds counted together -> their counter (兵少于 <n> <units>)
         self.music = self.load_music(data.get('音乐'))
+        self.voice = self.load_voice(data.get('语音'))
+
+    def load_voice(self, levels):
+        """语音: [A4, ICEENG] -> the delivered dubbed lines of those folders (voice_link.Later): a 通报 with 说 whose
+        speaker and words are one of them plays it instead of showing a caption (the subtitle comes with the line)."""
+        if not levels:
+            return None
+        import voice_link
+        self.m.voice = voice_link.Later(levels if isinstance(levels, list) else [levels])
+        return self.m.voice
 
     def load_music(self, name):
         """音乐: <名字> -> the music module (experimental/music/<名字>.py), its pack made only when built."""
@@ -548,6 +558,10 @@ class Compiler:
             if '原文' in a and not who:
                 raise PlanError(f'action {a!r}: 原文 is a speaker\'s words: 说 <who> goes with it')
             shown = f'{who}：{words}' if who else words
+            dubbed = self.voice.find(who, a.get('原文', words)) if who and self.voice else None
+            if dubbed:                              # the dubbed line: its subtitle comes with it
+                self.m.lines.append(dict(说话人=str(who), 原文=str(a.get('原文', words)), 通报=shown, 字串=dubbed))
+                return [('PLAY_SOUND_EFFECT', dubbed)]
             key = self.text('SCRIPT', shown)
             if who:                                 # a flow-script line: the dubbed line is found by who and what
                 self.m.lines.append(dict(说话人=str(who), 原文=str(a.get('原文', words)), 通报=shown, 字串=key))
