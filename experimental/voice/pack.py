@@ -36,7 +36,7 @@ DELIVERED = os.path.join(VOICE, 'work', 'campaign')
 BUILT = os.path.join(VOICE, 'work', 'sdkb')     # short: the SDK's audio encoder fails past 260 characters
 CDATA_DIRS = ('data\\static.12\\cdata',)
 TEST = ('CNV_TEST_001', os.path.join(VOICE, 'work', 'voice_design', 'allied_eva', 'ref_0.wav'),
-        '冰墙已就位。侦测到敌军正在集结。车队即将出发。')
+        '冰墙已就位。侦测到敌军正在集结。车队即将出发。', None)
 
 # retail's BaseSoundEffect with BaseMissionEvaDialogue over it, written out: a mod stream cannot inherit from an
 # instance it only references (BinaryAssetBuilder: "attempts to inherit from ... non-existing instance")
@@ -44,6 +44,12 @@ DIALOGUE = ('Volume="75" MinVolume="70" ShrunkenPitchModifier="2.0" ShrunkenVolu
             'Limit="1" MinRange="300" MaxRange="1000" PlayPercent="100" Type="UI PLAYER VOICE" ReverbEffectLevel="100" '
             'ZoomedInOffscreenVolumePercent="50" ZoomedInOffscreenMinVolumePercent="100" '
             'ZoomedInOffscreenOcclusionPercent="20" SubmixSlider="VOICE" Control="FADE_ON_KILL"')
+# a unit's voice event: retail's BaseSoundEffect + BaseUnitResponse + ALL_Engineer_VoiceSelect, written out; the lines of
+# one group (CNV_<Unit>_Voice<Kind>) are the <Sound>s of one event, the game plays one of them at random
+UNIT_VOICE = ('Volume="110" MinVolume="105" ShrunkenPitchModifier="1.3" ShrunkenVolumeModifier="95" Priority="HIGH" '
+              'Limit="3" MinRange="300" MaxRange="1000" PlayPercent="100" Type="WORLD PLAYER VOICE" '
+              'ReverbEffectLevel="100" ZoomedInOffscreenVolumePercent="50" ZoomedInOffscreenMinVolumePercent="100" '
+              'ZoomedInOffscreenOcclusionPercent="20" SubmixSlider="VOICE"')
 DIALOGUE_SLIDERS = ''.join(f'\t\t<VolumeSliderMultiplier Slider="{s}" Multiplier="{m}" />\n'
                            for s, m in (('VOICE', '0.4'), ('SOUNDFX', '0.7'), ('MUSIC', '0.7'), ('AMBIENT', '0.7')))
 
@@ -52,8 +58,9 @@ DIALOGUE_SLIDERS = ''.join(f'\t\t<VolumeSliderMultiplier Slider="{s}" Multiplier
 class Pack:
     include: str
     files: list = field(default_factory=list)
-    events: set = field(default_factory=set)
+    events: set = field(default_factory=set)    # what PLAY_SOUND_EFFECT / HAS_FINISHED_AUDIO / a unit's AudioEntry may name
     strings: dict = field(default_factory=dict)
+    audio: set = field(default_factory=set)     # our AudioFile ids (a unit voice event plays several)
 
     def check(self, files):
         """files: the mod's [(big path, bytes)] after splice_assets; exits unless every AudioFile of ours is in a
@@ -70,31 +77,41 @@ class Pack:
                         leaf = f'{a.type_id:08x}.{a.type_hash:08x}.{a.inst_id:08x}.{a.inst_hash:08x}.cdata'
                         if not any(f'{d}\\{leaf}' in got for d in CDATA_DIRS):
                             sys.exit(f'voice: no audio in the big for {a.name}')
-        missing = self.events - found
+        missing = self.audio - found
         if missing:
             sys.exit(f'voice: not in the spliced streams: {sorted(missing)[:5]} ...')
         print(f'voice: {len(found)} lines spliced, audio in the big')
 
 
 def lines(levels, lang='zh'):
-    """[(event, wav, text)] of the delivered lines of `levels` in `lang` (work/campaign/<lang>/<LEVEL>/manifest.json;
-    announcer lines that play a retail announcer event have no file of ours and are left out). An event is named the
-    same in every language: another language is a pack of its own (a patch), its audio and subtitles over ours."""
+    """[(audio id, wav, text, group)] of the delivered lines of `levels` in `lang` (work/campaign/<lang>/<LEVEL>/
+    manifest.json; announcer lines that play a retail announcer event have no file of ours and are left out). group
+    is None for a mission line (its own event, named like the audio) or the name of the unit voice event the line
+    belongs to. An event is named the same in every language: another language is a pack of its own (a patch), its
+    audio and subtitles over ours."""
     out = []
     for lv in levels:
         here = os.path.join(DELIVERED, lang, lv.upper())
         with open(os.path.join(here, 'manifest.json'), encoding='utf-8') as f:
             for e in json.load(f):
                 if e.get('event'):
-                    out.append((e['event'], os.path.join(here, e['event'] + '.wav'), e['text']))
+                    out.append((e['event'], os.path.join(here, e['event'] + '.wav'), e['text'], e.get('group')))
     return out
 
 
 def xml(items, folder=FOLDER):
-    body = ''.join(f'\t<AudioFile id="{ev}" File="AUDIO:{folder}/{ev}.wav" PCCompression="XAS" '
-                   f'SubtitleStringName="DIALOGEVENT:{ev}" />\n'
-                   f'\t<AudioEvent id="{ev}" {DIALOGUE}>\n{DIALOGUE_SLIDERS}\t\t<Sound>{ev}</Sound>\n\t</AudioEvent>\n'
-                   for ev, _, _ in items)
+    groups, body = {}, ''
+    for ev, _, _, group in items:
+        if group:       # a unit voice: no subtitle; the group's event is written after the lines
+            groups.setdefault(group, []).append(ev)
+            body += f'\t<AudioFile id="{ev}" File="AUDIO:{folder}/{ev}.wav" PCCompression="XAS" />\n'
+        else:
+            body += (f'\t<AudioFile id="{ev}" File="AUDIO:{folder}/{ev}.wav" PCCompression="XAS" '
+                     f'SubtitleStringName="DIALOGEVENT:{ev}" />\n'
+                     f'\t<AudioEvent id="{ev}" {DIALOGUE}>\n{DIALOGUE_SLIDERS}\t\t<Sound>{ev}</Sound>\n\t</AudioEvent>\n')
+    for group, evs in groups.items():
+        body += (f'\t<AudioEvent id="{group}" {UNIT_VOICE}>\n\t\t<PitchShift Low="-1" High="1" />\n'
+                 + ''.join(f'\t\t<Sound>{ev}</Sound>\n' for ev in evs) + '\t</AudioEvent>\n')
     return f'<?xml version="1.0" encoding="UTF-8"?>\n<AssetDeclaration xmlns="uri:ea.com:eala:asset">\n{body}</AssetDeclaration>\n'
 
 
@@ -129,7 +146,7 @@ def make(levels=(), test=False, lang='zh', folder=FOLDER):
     data = os.path.join(labpaths.SDK3, 'Mods', folder, 'Data')
     os.makedirs(audio, exist_ok=True)
     os.makedirs(data, exist_ok=True)
-    for ev, wav, _ in items:
+    for ev, wav, _, _ in items:
         to_48k(wav, os.path.join(audio, ev + '.wav'))
     with open(os.path.join(data, 'voice.xml'), 'w', encoding='utf-8', newline='\r\n') as f:
         f.write(xml(items, folder))
@@ -146,9 +163,11 @@ def make(levels=(), test=False, lang='zh', folder=FOLDER):
     cdata = os.path.join(BUILT, 'mods', folder.lower(), 'data', 'mod', 'cdata')
     files = [(f'{d}\\{name}', open(os.path.join(cdata, name), 'rb').read())
              for name in sorted(os.listdir(cdata)) if name.endswith('.cdata') for d in CDATA_DIRS]
-    events = {ev for ev, _, _ in items}
-    assert len(files) == len(events) * len(CDATA_DIRS), f'voice: {len(files)} audio files for {len(events)} lines'
-    return Pack(f'DATA:{folder}/Data/voice.xml', files, events, {f'DIALOGEVENT:{ev}': text for ev, _, text in items})
+    audio = {ev for ev, *_ in items}
+    assert len(files) == len(audio) * len(CDATA_DIRS), f'voice: {len(files)} audio files for {len(audio)} lines'
+    events = {group or ev for ev, _, _, group in items}
+    return Pack(f'DATA:{folder}/Data/voice.xml', files, events,
+                {f'DIALOGEVENT:{ev}': text for ev, _, text, group in items if not group}, audio)
 
 
 def _compile(mod_xml, folder):
