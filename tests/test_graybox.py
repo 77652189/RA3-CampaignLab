@@ -24,7 +24,9 @@ def test_old_a4_can_be_pushed_through_every_stage():
     the gate of ADR 0011 -- a simulator that cannot tell this stops the graybox."""
     s, rows = stages()
     judged = {n: (best, mix) for n, e, ks, best, mix in rows if e}
-    assert set(judged) == {'会场', '北营', '最后一程'}
+    # 港口生变: the festival's last horn has just sounded when the convoy halts (the convoy crawls at 12), so a wave of
+    # it is still on the road in the harbour scene's first seconds
+    assert set(judged) == {'会场', '港口生变', '北营', '最后一程'}
     for n, (best, mix) in judged.items():
         assert best is not None and best <= graybox.EASY, f'{n}: k*={best} for {mix}'
 

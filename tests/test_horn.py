@@ -107,3 +107,56 @@ def test_the_plan_can_start_stop_and_ask_the_horns():
                                                          and s.when and s.when[0][0] == 'COUNTER').when
     with pytest.raises(plan.PlanError):
         level(规则=[{'当': '开局 + 0:01', '做': ['雪祭.开 天']}])
+
+
+def test_every_wave_and_a_landed_ghost_king_blips_on_the_minimap():
+    """Mechanics.md 小地图闪点: OBJECT_CREATE_RADAR_EVENT on the first troop of a wave, and on the Ghost King."""
+    m = level()
+    blips = [a for s in m.scripts for a in s.do if a[0] == 'OBJECT_CREATE_RADAR_EVENT']
+    assert blips and all(a[2] == 0 for a in blips)
+    waves = [s for s in m.scripts if s.name.startswith('CNV ZZ - Out V1')]
+    assert waves and all(any(a[0] == 'OBJECT_CREATE_RADAR_EVENT' for a in s.do) for s in waves)
+    lands = [s for s in m.scripts if s.name.startswith('CNV ZZ - King 3-1 lands')]
+    assert lands and any(a[0] == 'OBJECT_CREATE_RADAR_EVENT' for a in lands[0].do)
+
+
+def test_the_opening_demonstration_ices_a_street_and_the_foes_turn_back_to_the_lane():
+    m = level(机关={'车队': {'类型': '车队', '出发': '开局 + 0:10'},
+                  '雪祭': {'类型': '号角', '车队': '车队', '间隔': [45, 50, 45, 50, 45],
+                         '每街一波': {'帝国武士': 2, '坦克杀手': 2}, '街': STREETS, '绕路': TABLE,
+                         '演示': {'街': '一号', '绕去': '后巷', '等': 4, '兵': 2}}},
+              规则=[{'当': '开局 + 0:01', '做': ['雪祭.演示']}, {'当': '开局 + 0:30', '做': ['雪祭.演示收']}])
+    by = {s.name: s for s in m.scripts}
+    assert ('SET_FLAG', 'CNV_ZZ_Demo_On', 1) in next(s for s in m.scripts if s.name.endswith('Rule 1')).do
+    made = [a for a in by['CNV ZZ - Demo engineer'].do if a[0] == 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT']
+    assert len(made) == 1 and made[0][4] == 'CNV ZZ Clear V2'               # plaza 1 is the second street
+    assert any(a[0] == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT' for a in by['CNV ZZ - Demo ice'].do)
+    assert ('FLAG', 'CNV_ZZ_Frozen_V2', 1) in by['CNV ZZ - Demo foes'].when     # the foes are made once the ice stands
+    foes = [a[1] for a in by['CNV ZZ - Demo foes'].do if a[0] == 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT']
+    turned = by['CNV ZZ - Demo turn'].do
+    assert len(foes) == 2 and [a[1] for a in turned if a[0] == 'NAMED_DELETE'] == foes
+    outs = [a for a in turned if a[0] == 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT']
+    assert len(outs) == 2 and all(a[4] == m.mark('spawn V1') for a in outs)  # ... and a pair at the lane's foot
+    with pytest.raises(plan.PlanError, match='演示'):
+        level(规则=[{'当': '开局 + 0:01', '做': ['雪祭.演示']}])                # a device with no 演示
+    with pytest.raises(plan.PlanError, match='same street'):
+        level(机关={'车队': {'类型': '车队', '出发': '开局 + 0:10'},
+                  '雪祭': {'类型': '号角', '车队': '车队', '间隔': [45], '每街一波': {'帝国武士': 2}, '街': STREETS,
+                         '绕路': TABLE, '演示': {'街': '一号', '绕去': '一号'}}})
+
+
+def test_the_convoy_truck_speed_is_the_plans_and_the_horns_last_as_long_as_the_festival():
+    """A4 车队 速度 12: the festival (2730 along the avenue) takes ~4 minutes, and five horns sound before the convoy
+    halts on every difficulty; the last leg (920, three trucks 0/50/110 s apart) is covered by the same table."""
+    d = plan.load('a4')
+    spec, horn_spec = d['机关']['车队'], d['机关']['雪祭']
+    speed = float(spec['速度'])
+    assert speed == 12.0
+    drive = (2980.0 - 250.0) / speed                                   # convoy start to the halt
+    gaps = [plan.times(g) for g in horn_spec['间隔']]
+    assert len(gaps) == 5
+    for lv in range(3):
+        total = sum(g[lv] for g in gaps)
+        assert 150 <= total <= drive, (lv, total, drive)               # five horns, all before the convoy gets there
+        assert total >= 920.0 / speed + 100.0                          # ... and they run on over the last leg's trucks
+    assert gaps[0][0] >= 45 and all(g[0] >= 45 for g in gaps)          # easy: every gap at least 45 s (the design line's)

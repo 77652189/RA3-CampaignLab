@@ -80,7 +80,8 @@ def digits():
 # name -> mission(); checks: name -> check(mission) -> Test; or a build that is a (mission, test) pair outright
 MISSIONS = {
     'a4': (lambda: a4.mission(), {'horn': check_a4.horn, 'detour': check_a4.detour, 'queue': check_a4.queue,
-                                  'smash': check_a4.smash, 'derrick': check_a4.derrick}),
+                                  'smash': check_a4.smash, 'derrick': check_a4.derrick, 'demo': check_a4.demo,
+                                  'idle': check_a4.idle, 'hold': check_a4.hold, 'win': check_a4.win}),
     'a4_before': (lambda: a4.before(), {
         'seal': check_a4b.seal, 'placed': check_a4b.placed, 'smash': check_a4b.smash, 'ambush': check_a4b.ambush,
         'win': check_a4b.win, 'lose': check_a4b.lose, 'idle': check_a4b.idle, 'harbour': check_a4b.harbour,

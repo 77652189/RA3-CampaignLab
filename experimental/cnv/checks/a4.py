@@ -16,6 +16,15 @@ queue: the mouths' horns started by the test (the plan starts them after the har
 smash: the same, the Ghost King's horn the next one (the counter set to 2): a transport comes over the sea, the Ghost
   King lands, and the ice wall the engineer built at the east mouth loses health with nothing else telling it to.
 derrick: an engineer takes the oil derrick (docs/design/flow/mechanics.md 工程师占油井).
+
+The walk-throughs (the convoy crawls at 12: the festival takes ~4 minutes, the last leg ~3, so they run long):
+idle: the player does nothing: the convoy rolls on its own, the horn waves take it, the mission is lost.
+hold: the trucks kept whole and nothing else: five horns sound on the festival's streets before the convoy halts at
+  plaza 2's gate, and the plan goes on to the harbour scene (its second phase).
+win: the trucks kept whole and the north command razed the moment the north camp phase begins: the mission goes
+  through every phase and is won with the trucks at the harbour.
+demo: the opening scene's demonstration: an engineer ices plaza 1's street, the pair of troops behind it turn back,
+  a pair is made at the lane's foot.
 """
 from checks.a4_before import freeze, ice_wall, keep_up, start
 from parts import Obj, Script, Test, counted, square
@@ -53,23 +62,28 @@ def tally(t, names, counter, label, area=None):
                   for k, n in enumerate(names)]
 
 
-def scene(m):
-    """The test every check starts with: no ending, the map revealed, the trucks kept up, the whole map playable."""
-    m.drop_endings()
+def scene(m, park=True, endings=False, trucks_up=True, long_run=False):
+    """The test every check starts with: no ending (`endings`: the plan's own), the map revealed, the trucks kept up
+    (`trucks_up`), the whole map playable, the convoy parked for good (`park`: the plan's own 停下 flag, set every
+    frame; at the halt the plan goes on to 港口生变, whose scene stops the horns). `long_run`: the camera is sent back
+    to the dark ground every two seconds (the plan's scenes move it away, and the counters are read off that ground)."""
+    if not endings:
+        m.drop_endings()
     t = Test()
     start(t, m)
-    keep_up(t, m)
-    t.scripts += [Script('Test - whole map', [], [('MAP_SWITCH_BORDER', 0)]),
-                  # the convoy parked for good (the plan's 停下 flag, set every frame): at the halt the plan goes on to
-                  # 港口生变, whose scene stops the horns (the trucks cross the festival in ~60 s, the horns need minutes)
-                  Script('Test - hold the convoy', [], [('SET_FLAG', f'CNV_{TAG}_Halted', 1)], once=False)]
+    if trucks_up:
+        keep_up(t, m)
+    t.scripts.append(Script('Test - whole map', [], [('MAP_SWITCH_BORDER', 0)]))
+    if park:
+        t.scripts.append(Script('Test - hold the convoy', [], [('SET_FLAG', f'CNV_{TAG}_Halted', 1)], once=False))
     # the counters are read off the screen against a dark ground (testbench/counters.py): the camera goes, once the
     # opening scene is over, to the map's west edge, where the bottom left is the void beyond it (bench 2026-10-31:
     # on the start view a house stood there and every counter read None)
     t.waypoints['Test Camera'] = (0.0, m.site('start')[1])
     t.scripts += [Script('Test - camera set', [], [('SET_MILLISECOND_TIMER', 'Test - camera', OPENING + 1.0)]),
                   Script('Test - camera', [('TIMER_EXPIRED', 'Test - camera')],
-                         [('MOVE_CAMERA_TO', 'Test Camera', 0.5, 0.0, 1.0, 1.0)])]
+                         [('MOVE_CAMERA_TO', 'Test Camera', 0.5, 0.0, 1.0, 1.0)] +
+                         ([('SET_MILLISECOND_TIMER', 'Test - camera', 2.0)] if long_run else []), once=not long_run)]
     return t
 
 
@@ -121,8 +135,8 @@ def detour(m):
     foot = m.point('spawn V1')
     t.areas['Test Lane'] = square(foot[0], foot[1] + 60.0, 160.0)
     gx, gy = m.point('ice V2')
-    stand(t, m, 'engineer 1', (gx, m.site('start')[1]), 'plaza 1')
-    ice_at(t, m, 'engineer 1', 'ice V2', HORN1 - BUILD, 'plaza 1')
+    stand(t, m, 'engineer', (gx, m.site('start')[1]), 'plaza 1')
+    ice_at(t, m, 'engineer', 'ice V2', HORN1 - BUILD, 'plaza 1')
     counted('Test Walls', '冰墙', t, template=ice_wall(m).id)
     tally(t, lane, 'Test Lane Wave', '后巷的兵')
     tally(t, plaza1, 'Test Plaza 1 Wave', '1号街的兵')
@@ -141,8 +155,8 @@ def queue(m):
     mouths_on(t, m)
     north, plaza3, east = (wave(m, 'L', 1, w) for w in ('L1', 'L2', 'L3'))
     mx, _ = m.point('ice L1')
-    stand(t, m, 'engineer 1', (mx, m.site('start')[1]), 'north mouth')
-    ice_at(t, m, 'engineer 1', 'ice L1', MOUTH1 - BUILD, 'north mouth')
+    stand(t, m, 'engineer', (mx, m.site('start')[1]), 'north mouth')
+    ice_at(t, m, 'engineer', 'ice L1', MOUTH1 - BUILD, 'north mouth')
     counted('Test Walls', '冰墙', t, template=ice_wall(m).id)
     tally(t, north, 'Test North', '北坡口的兵')
     tally(t, plaza3 + east, 'Test Others', '另两口的兵')
@@ -164,8 +178,8 @@ def smash(m):
     mouths_on(t, m, counted_horns=2)            # the next horn is the third: the Ghost King's
     horn3 = MOUTH1
     ex, _ = m.point('ice L3')
-    stand(t, m, 'engineer 1', (ex, m.site('start')[1] + 60.0), 'east mouth')
-    ice_at(t, m, 'engineer 1', 'ice L3', horn3 - 2.0, 'east mouth')
+    stand(t, m, 'engineer', (ex, m.site('start')[1] + 60.0), 'east mouth')
+    ice_at(t, m, 'engineer', 'ice L3', horn3 - 2.0, 'east mouth')
     t.counters += [(f'CNV_{TAG}_Walls', '冰墙'), (f'CNV_{TAG}_Kings', '鬼王上岸')]
     ref = f'UNITRef - CNV {TAG} Nearest Wall'
     counted('Test Ref Health', '目标墙血量', t, health=ref)
@@ -202,4 +216,87 @@ def derrick(m):
     t.expect += [('油井归我', DERRICK_RUN - 10, 'ever==', 1),
                  ('资金', DERRICK_RUN - 10, 'ever>', 0)]
     t.bench = [('bench_watch', dict(seconds=DERRICK_RUN, every=3, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+DEMO_RUN = 45.0                                 # demo: the scene's demonstration starts at its 12th second
+
+
+def made_names(m, part):
+    """The names the plan's scripts create that hold `part` (the demonstration's pairs: ' Demo Foe ', ' Demo Out ')."""
+    return sorted({a[1] for s in m.scripts for a in s.do if a[0] == 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT' and part in a[1]})
+
+
+def demo(m):
+    """The opening scene's demonstration (the bench plays the scene's timed steps, only the camera is its own): the
+    engineer ices plaza 1's street, the pair behind the ice is made and turned back, a pair is made at the lane."""
+    t = scene(m)
+    foes, outs = made_names(m, ' Demo Foe '), made_names(m, ' Demo Out ')
+    assert foes and outs, 'the plan has no 演示'
+    counted('Test Walls', '冰墙', t, template=ice_wall(m).id)
+    tally(t, foes, 'Test Demo Foes', '演示的兵')
+    tally(t, outs, 'Test Demo Outs', '绕路出的兵')
+    # what the demonstration is doing, in one number: 1 started, 10 the street's ice stands, 100 the scene took it away
+    t.counters.append(('Test Demo State', '演示状态'))
+    t.scripts.append(Script('Test - state zero', [], [('SET_COUNTER', 'Test Demo State', 0)], once=False))
+    t.scripts += [Script(f'Test - state {k}', [('FLAG', f, 1)], [('INCREMENT_COUNTER', k, 'Test Demo State')], once=False)
+                  for f, k in ((f'CNV_{TAG}_Demo_Started', 1), (f'CNV_{TAG}_Frozen_V2', 10), (f'CNV_{TAG}_Demo_Off', 100))]
+    t.expect += [('冰墙', 5, 'ever>=', 1), ('演示的兵', 5, 'ever>=', len(foes)), ('绕路出的兵', 5, 'ever>=', len(outs))]
+    t.bench = [('bench_watch', dict(seconds=DEMO_RUN, every=2, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+def phase(m, k):
+    """The flag that is 1 once the plan's phase k begins."""
+    return next(a[1] for s in m.scripts for a in s.do if a[0] == 'SET_FLAG' and a[1].endswith(f'_Phase_{k}'))
+
+
+def mark_phase(t, m, k, counter, label):
+    t.counters.append((counter, label))
+    t.scripts.append(Script(f'Test - {counter}', [('FLAG', phase(m, k), 1)], [('SET_COUNTER', counter, 1)],
+                            once=False))
+
+
+FESTIVAL = 250.0                                # the convoy leaves ~16 s in and crawls ~227 s to the halt
+HARBOUR_SCENE = 40.0                            # the harbour scene's length, with a margin
+LAST_LEG = 420.0                                # win: after the harbour scene: the build-up (to 90 s), the three trucks
+                                                # 0/50/110 s apart, ~77 s each at 12
+
+
+def idle(m):
+    """The player does nothing: the convoy rolls on its own (nobody walks out to it), the horn waves take two trucks
+    and the mission ends in the festival -- a defence level must not win itself."""
+    t = scene(m, park=False, endings=True, trucks_up=False, long_run=True)
+    for j in (1, 2):
+        counted(f'Test Truck {j}', f'{j}号车血量', t, health=m.role(f'truck {j}').name)
+    t.expect += [('ENDED', 60, '', None, FESTIVAL)]
+    t.bench = [('bench_watch', dict(seconds=FESTIVAL, every=3, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+def hold(m):
+    """The trucks kept whole, nobody else doing anything: five horns sound on the streets before the convoy halts, the
+    first truck gets to plaza 2's gate, and the plan goes on to the harbour scene (its second phase)."""
+    t = scene(m, park=False, long_run=True)
+    t.counters.append((f'CNV_{TAG}_Horn_V_N', '街的号角声数'))
+    t.areas['Test Halt'] = square(*m.site('halt'), 80.0)
+    counted('Test At Halt', '车到停车点', t, named=m.role('truck 1').name, area='Test Halt')
+    mark_phase(t, m, 2, 'Test Phase 2', '港口生变')
+    t.expect += [('街的号角声数', 0, '<=', 5), ('街的号角声数', FESTIVAL, 'ever>=', 5),
+                 ('车到停车点', FESTIVAL + 30, 'ever>=', 1), ('港口生变', FESTIVAL + 60, 'ever>=', 1)]
+    t.bench = [('bench_watch', dict(seconds=FESTIVAL + 70, every=4, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+def win(m):
+    """The whole mission with the trucks kept whole: the north command razed when the north camp phase (the third)
+    begins, the build-up counts down, the last leg runs, and the trucks reach the harbour: the mission is won."""
+    t = scene(m, park=False, endings=True, long_run=True)
+    t.counters.append((f'CNV_{TAG}_Arrived', '到港口车数'))
+    mark_phase(t, m, 3, 'Test Phase 3', '北营')
+    t.scripts.append(Script('Test - raze the north command', [('FLAG', phase(m, 3), 1)],
+                            [('NAMED_KILL', m.role('north command').name)]))
+    end = FESTIVAL + HARBOUR_SCENE + LAST_LEG
+    t.expect += [('到港口车数', 0, 'ever>=', 2), ('ENDED', FESTIVAL + HARBOUR_SCENE + 120, '', None, end)]
+    t.bench = [('bench_watch', dict(seconds=end + 20, every=5, sheet=False, lines=len(t.counters)))]
     return t

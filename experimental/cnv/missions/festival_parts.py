@@ -32,7 +32,7 @@ def plazas(m, tag, at='gate'):
 
 
 class Convoy:
-    def __init__(self, m, tag, side, leave, tick, enter=False):
+    def __init__(self, m, tag, side, leave, tick, enter=False, speed=50.0):
         self.m, self.tag, self.code = m, tag, f'CNV{tag}'
         self.trucks = [f'UNIT - CNV {tag} Truck {j}' for j in (1, 2, 3)]
         self.exit, self.exit_area = f'CNV {tag} Exit', f'CNV {tag} Exit Area'
@@ -41,7 +41,7 @@ class Convoy:
         self.leave, self.tick, self.side, self.enter = leave, tick, side, enter
         m.waypoint('exit', self.exit, 'road exit')
         m.areas[self.exit_area] = square(*m.site('road exit'), m.where('road exit').r)
-        self.truck = convoy.truck()
+        self.truck = convoy.truck(speed=speed)
         m.units.append(self.truck)
         self.spawns = []
         for j, t in enumerate(self.trucks):

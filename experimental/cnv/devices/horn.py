@@ -20,6 +20,13 @@ Waves go for the convoy (the convoy device's attack). 鬼王 (last leg, from the
 2026-10-31, checks/icewall.py ghost: it does not do it on its own, an attack order at the wall does it), else it goes
 for the convoy.
 
+演示 (the opening scene's demonstration, an action of its own): an engineer made at the demo street's clear mark ices
+the street, a pair of troops made behind the ice turn back (deleted, "into the tunnel") and a pair is made at the
+detour street instead -- what the horn will do, shown once. `演示收` takes it all away again.
+
+Every wave's first troop (and a landed Ghost King) gets a minimap blip (OBJECT_CREATE_RADAR_EVENT, mechanics.md 小地图
+闪点), so a horn is seen on the minimap where the way is open.
+
 Units: 冰幕工兵 (the engineer). Marks spawn <street or mouth> (where its wave is made), ice <name> (where the ice
 goes); areas hold the ice (GATE_AREA round the ice mark). Events: 号角 <n> (the n-th horn of the streets sounded),
 口号角 <n> (of the mouths), 冻住 <name> (ice stands there now). Actions: 开 街 / 开 口 (the horns start, counting from
@@ -72,10 +79,12 @@ class Horn(Device):
               '街': '会场的街：{名: {点: 冰放的地方, 出: 兵出生的地方, 偏移: [dx, dy], 从: 第几声起开}}',
               '绕路': '冻住的街的兵去开着的街晚多少秒：{冻住的街: {开着的街: 时间}}，每两条街去同一条街的差 ≥ 10 秒',
               '口': '最后一程的口子：{名: {点, 出, 偏移}}，冻住的口子这一波攒着，冰没了一起出',
-              '鬼王': '{从: 第几声起, 数量: 每声几台, 运输车: 单位, 海: 运输车出现的地方, 岸: 靠岸的地方}'}
+              '鬼王': '{从: 第几声起, 数量: 每声几台, 运输车: 单位, 海: 运输车出现的地方, 岸: 靠岸的地方}',
+              '演示': '开场演示：{街: 工兵冻住的街, 绕去: 兵掉头去的街, 等: 冰起后几秒兵掉头（默认 4）, 兵: 冻住前出的人数（默认 2）}'}
     EVENTS = {'号角 <n>': '街的第 n 声号角响了', '口号角 <n>': '口的第 n 声号角响了', '冻住 <名>': '这个口子现在有冰',
               '鬼王上岸': '第一个鬼王上岸了', '放出': '口子后攒着的兵放出来过（冰化了或被砸开）'}
-    ACTIONS = {'开 <街|口>': '号角从头开始响（先显示倒计时）', '停': '号角停（倒计时收起）；已经出的、攒着的照旧'}
+    ACTIONS = {'开 <街|口>': '号角从头开始响（先显示倒计时）', '停': '号角停（倒计时收起）；已经出的、攒着的照旧',
+               '演示': '开场演示开始：工兵冻住演示的街，兵掉头绕去另一条街（只在过场里用）', '演示收': '演示的人都收走'}
 
     def __init__(self, c, name, spec):
         super().__init__(c, name, spec)
@@ -103,6 +112,14 @@ class Horn(Device):
         if self.ways['V']:
             check_delays(self.delay, list(self.ways['V']))
         self.ghost = spec.get('鬼王')
+        self.demo = spec.get('演示')
+        if self.demo:
+            for k in ('街', '绕去'):
+                if str(self.demo.get(k)) not in (spec.get('街') or {}):
+                    raise PlanError(f'{name}: 演示 {k} {self.demo.get(k)!r} is none of the streets '
+                                    f'{list(spec.get("街") or {})}')
+            if self.demo['街'] == self.demo['绕去']:
+                raise PlanError(f'{name}: 演示 街 and 绕去 are the same street')
         if self.ghost and not self.ways['L']:
             raise PlanError(f'{name}: 鬼王 comes with 口')
         self.horns = len(self.gaps)
@@ -116,6 +133,7 @@ class Horn(Device):
         self.c.m.strings[self.alert] = '号角响了！'
         self.kings = f'CNV_{tag}_Kings'              # Ghost Kings landed so far
         self.released = f'CNV_{tag}_Released'        # a kept wave of a mouth was made (its ice went)
+        self.demo_on, self.demo_off = f'CNV_{tag}_Demo_On', f'CNV_{tag}_Demo_Off'
 
     # ---- names
     def ids(self, mode):
@@ -164,6 +182,11 @@ class Horn(Device):
                 raise PlanError(f'{self.name}.开 {args[0]}: the device has no {args[0]}')
             return [('SET_COUNTER', self.count[mode], 0), ('SET_FLAG', self.on[mode], 1),
                     ('SET_FLAG', self.start[mode], 1)]
+        if what in ('演示', '演示收'):
+            if not self.demo:
+                from plan import PlanError
+                raise PlanError(f'{self.name}.{what}: the device has no 演示')
+            return [('SET_FLAG', self.demo_on if what == '演示' else self.demo_off, 1)]
         if what == '停':
             return [('SET_FLAG', self.on['V'], 0), ('SET_FLAG', self.on['L'], 0), ('HIDE_COUNTDOWN_TIMER', self.timer)]
         return super().action(what, args)
@@ -221,7 +244,8 @@ class Horn(Device):
             m.spawns.add(tmpl)
             acts += [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', self.troop(mode, n, origin, tmpl, j), tmpl, m.team('s1'),
                       m.mark(f'spawn {target}')) for j in range(1, ns[lv] + 1)]
-        return acts
+        first = next((a[1] for a in acts), None)
+        return acts + ([('OBJECT_CREATE_RADAR_EVENT', first, 0)] if first else [])
 
     def names_of_waves(self):
         out = []
@@ -247,7 +271,7 @@ class Horn(Device):
         out += self.horn_scripts()
         for n in range(1, self.horns + 1):
             out += self.street_scripts(n) + self.mouth_scripts(n)
-        out += self.ghost_scripts() + self.ice_scripts()
+        out += self.ghost_scripts() + self.ice_scripts() + self.demo_scripts()
         names = self.names_of_waves()
         if names:
             out += self.cdev.attack(names)
@@ -393,7 +417,8 @@ class Horn(Device):
                 out.append(Script(f'CNV {tag} - King {n}-{j} lands',
                                   [('NAMED_INSIDE_AREA', b, f'CNV {tag} Shore'), ('FLAG', landed, 0)],
                                   [('SET_FLAG', landed, 1), ('INCREMENT_COUNTER', 1, kings),
-                                   ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', k, king, m.team('s1'), m.mark('shore'))]))
+                                   ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', k, king, m.team('s1'), m.mark('shore')),
+                                   ('OBJECT_CREATE_RADAR_EVENT', k, 0)]))
                 out.append(Script(f'CNV {tag} - King {n}-{j} smashes',
                                   [('FLAG', landed, 1), ('FLAG', picked, 1), ('NAMED_NOT_DESTROYED', ref),
                                    ('NAMED_NOT_DESTROYED', k)], [('NAMED_ATTACK_NAMED', k, ref)], once=False))
@@ -402,6 +427,49 @@ class Horn(Device):
                                 ('TIMER_EXPIRED', cv.timer)] + cv.chase(t), [('NAMED_ATTACK_NAMED', k, target)],
                                once=False) for t, target in enumerate(cv.trucks)]
         return out
+
+    # ---- the opening scene's demonstration
+    def demo_scripts(self):
+        """The engineer is made and sent to ice the demo street; once the ice stands (the Frozen flag, so it waits as
+        long as the building takes) the pair of troops behind it is made and sent at it; `等` seconds on, they are
+        deleted and a pair is made at the detour street's mark. `演示收` deletes what is left."""
+        d = self.demo
+        if not d:
+            return []
+        m, tag = self.m, self.c.tag
+        ids = self.ids('V')
+        shut, to = ids[str(d['街'])], ids[str(d['绕去'])]
+        eng, foes, outs = f'UNIT - CNV {tag} Demo Engineer', [], []
+        tmpl = self.c.unit('冰幕工兵')
+        m.spawns.add(tmpl)
+        kind = self.c.unit(next(iter(self.troops)), 's1')
+        m.spawns.add(kind)
+        for j in range(1, int(d.get('兵', 2)) + 1):
+            foes.append(f'UNIT - CNV {tag} Demo Foe {j}')
+            outs.append(f'UNIT - CNV {tag} Demo Out {j}')
+        started, iced, turned = (f'CNV_{tag}_Demo_{x}' for x in ('Started', 'Iced', 'Turned'))
+        fire, turn = f'CNV {tag} Demo Fire', f'CNV {tag} Demo Turn'
+        team = m.team('s1')
+        return [
+            Script(f'CNV {tag} - Demo engineer', [('FLAG', self.demo_on, 1), ('FLAG', started, 0)],
+                   [('SET_FLAG', started, 1),
+                    ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', eng, tmpl, m.team('p1'), f'CNV {tag} Clear {shut}'),
+                    ('SET_MILLISECOND_TIMER', fire, 1.0)]),
+            Script(f'CNV {tag} - Demo ice', [('TIMER_EXPIRED', fire)],
+                   [('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', eng, self.eng.abilities['freeze'],
+                     m.mark(f'ice {shut}'))]),
+            Script(f'CNV {tag} - Demo foes', [('FLAG', started, 1), ('FLAG', self.frozen(shut), 1), ('FLAG', iced, 0),
+                                              ('FLAG', self.demo_off, 0)],
+                   [('SET_FLAG', iced, 1), ('SET_MILLISECOND_TIMER', turn, float(d.get('等', 4.0)))] +
+                   [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', f, kind, team, m.mark(f'spawn {shut}')) for f in foes] +
+                   [('MOVE_NAMED_UNIT_TO', f, f'CNV {tag} Clear {shut}') for f in foes]),
+            Script(f'CNV {tag} - Demo turn', [('TIMER_EXPIRED', turn), ('FLAG', turned, 0), ('FLAG', self.demo_off, 0)],
+                   [('SET_FLAG', turned, 1)] + [('NAMED_DELETE', f) for f in foes] +
+                   [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', o, kind, team, m.mark(f'spawn {to}')) for o in outs] +
+                   [('OBJECT_CREATE_RADAR_EVENT', outs[0], 0)]),
+            Script(f'CNV {tag} - Demo over', [('FLAG', self.demo_off, 1), ('FLAG', started, 1)],
+                   [('NAMED_DELETE', eng)] + [('NAMED_DELETE', n) for n in foes + outs]),
+        ]
 
     # ---- the ice: its time left on screen, an engineer shut in the block taken out
     def ice_scripts(self):

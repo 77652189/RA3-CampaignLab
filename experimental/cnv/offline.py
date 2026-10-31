@@ -32,12 +32,13 @@ import simunits  # noqa: E402
 
 ONE = 0.9                                       # P29 (a4-redesign.md): one unit type answers under 90 % of a stage
 # the walkthrough that wins (a4.md 返工: the player's escort with the trucks, plazas 2 and 3 frozen, the north
-# command down at 2:40; 5:53)
+# command down at 5:50). The convoy is slowed to 12 (2026-10-31): it reaches the halt at ~4 minutes (it was one), so
+# everything after the halt is the old time + 190 s
 WALK = {'a4': '不打; 自动打掉 5; 0 派 guardian 去 plaza 1; 0 派 peacekeeper 去 plaza 1; 0 派 javelin 去 plaza 1; '
-              '40 造 CNV_A4IceWall 在 inside 2; 100 派 guardian 去 halt; 100 派 peacekeeper 去 halt; '
-              '100 派 javelin 去 halt; 120 派 peacekeeper 去 north base; 120 派 javelin 去 north base; '
-              '160 摧毁 north command; 200 造 CNV_A4IceWall 在 inside 3; '
-              '210 派 guardian 去 north mouth'}
+              '40 造 CNV_A4IceWall 在 inside 2; 200 派 guardian 去 halt; 200 派 peacekeeper 去 halt; '
+              '200 派 javelin 去 halt; 310 派 peacekeeper 去 north base; 310 派 javelin 去 north base; '
+              '350 摧毁 north command; 390 造 CNV_A4IceWall 在 inside 3; '
+              '400 派 guardian 去 north mouth'}
 # what a base builds that fights on the ground (air and ships: A4 bans the airfield, the fight is ashore)
 ROSTER = {'盟军': ['维和步兵', '标枪兵', '警犬', '谭雅', '守护者坦克', '幻影坦克', '多功能步兵车', '激流气垫船', '雅典娜炮'],
           '苏联': ['动员兵', '防空步兵', '磁暴步兵', '战熊', '娜塔莎', '镰刀机甲', '铁锤坦克', '天启坦克', 'V4火箭车'],

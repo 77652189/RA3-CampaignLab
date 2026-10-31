@@ -49,6 +49,8 @@ CAMERA_MOVE, FOLLOW = 3.0, 4.0                 # a 镜头's move, a 跟随's hol
 FOLLOW_AT = 300.0                               # CAMERA_FOLLOW_NAMED's distance (retail: 300 behind Yuriko, 13 of 17)
 SIGHT = 300.0                                   # 揭开's radius when the site has none (retail: 100 .. 750, mostly 200 / 300)
 FLASHES = 5                                     # NAMED_FLASH's count (retail: 5 at the hand-back, Stalingrad)
+INFO_SECONDS = 20.0                             # an info box stays this long (retail A01: 20)
+INFO_ICON = 'Button_AlliedEngineer_on'          # its picture: a retail build button (A01's hospital box shows this one)
 AUTOSAVE = 'AUTOSAVE:CNVCAMPAIGN'
 
 
@@ -559,6 +561,10 @@ class Compiler:
             raise PlanError(f'action {a!r}: 跟随 only in a 过场 (it is stopped at the hand-back)')
         if '闪烁' in a:                             # retail: the hand-back flashes the player's MCV
             return [('NAMED_FLASH', n, FLASHES) for n in self.part_names(a['闪烁'])]
+        if '信息框' in a:                           # an info box over a unit (retail A01: Peacekeepers, Javelins, Hospital)
+            icon = str(a.get('图标', INFO_ICON))
+            return [('NAMED_SHOW_INFOBOX', n, self.text('SCRIPT', str(a['文字'])), float(a.get('秒', INFO_SECONDS)), icon)
+                    for n in self.part_names(a['信息框'])]
         if '揭开' in a:                             # lift the shroud there: for good, or a look that shrouds again
             site = str(a['揭开'])
             radius = float(a.get('半径') or self.m.where(site).r or SIGHT)
