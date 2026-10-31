@@ -142,3 +142,76 @@ def smash(m):
                  ('冰墙', ATTACK_AT, 'ever==', 0)]
     t.bench = [('bench_watch', dict(seconds=70, every=3, sheet=False, lines=len(t.counters), until='c1==0'))]
     return t
+
+
+GHOST_BORN = 40.0                               # ghost: the Ghost King appears (the walls have stood since ~20)
+GHOST_ORDER = 60.0                              # ghost: from here the script orders it, by the wall nearest to it
+GHOST_AREA = 90.0                               # half-side of the area round a wall's spot
+REF = 'UNITRef - CNV Nearest Wall'
+
+
+def ghost_north(m):
+    """ghost, but the Ghost King is made at the far north of the walls (150, 600), nearest to B: a nearest-first walk
+    from there goes B, A, C, D (300, 640, 900, 985); from the map's origin it would go D, C, A, B."""
+    return ghost(m, start=m.site('west field', 150, 600), first=2, order=(2, 1, 3, 4))
+
+
+def ghost(m, start=None, first=3, order=None):
+    """Three questions of A4's last stretch (docs/design/cards/a4-layer3.md), one scene. Four walls built by four
+    engineers (unnamed objects, as in play); a Ghost King appears by wall C at GHOST_BORN, left alone until GHOST_ORDER:
+    1. does it smash a wall on its own (the wall's health at the nearest one, GHOST_BORN .. GHOST_ORDER)?
+    2. a wall in an area is countable (the player's wall count in each wall's area);
+    3. from GHOST_ORDER, each frame: if the name REF points at no live object and a wall stands, point REF at the
+       nearest unnamed wall to the enemy's team, the Ghost King's (SET_REF_TO_NEREST_...) and order the Ghost King at REF (every frame).
+       Read: which area REF is in, the health of REF -- the visits should go C, A, B, D (nearest first)."""
+    t = Test()
+    p1 = m.player('p1')
+    far = m.role('ghost')                       # placed far off, to give the cast an object; killed, a fresh one is made
+    gk = 'UNIT - CNV Ghost King 2'
+    t.waypoints['Test Ghost Start'] = start or m.point('ghost')
+    wall = m.role('wall').template
+    t.scripts += [Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', p1),
+                                              ('SET_MILLISECOND_TIMER', 'Test - born timer', GHOST_BORN),
+                                              ('SET_MILLISECOND_TIMER', 'Test - order timer', GHOST_ORDER)] +
+                          [('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', m.role(f'engineer {k}').name,
+                            m.ability(f'engineer {k}', 'freeze'), m.mark(f'spot {k}')) for k in 'ABCD']),
+                  Script('Test - born', [('TIMER_EXPIRED', 'Test - born timer')],
+                         [('NAMED_KILL', m.role(f'engineer {k}').name) for k in 'ABCD'] +
+                         [('NAMED_KILL', far.name),
+                          ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', gk, far.template, m.team('s1'), 'Test Ghost Start'),
+                          ('SET_FLAG', 'Test Picking', 1)]),
+                  Script('Test - order on', [('TIMER_EXPIRED', 'Test - order timer')], [('SET_FLAG', 'Test Ordering', 1)])]
+    # a name nobody has had reads as neither destroyed nor standing (sim: destroyed unborn): a flag says whether REF
+    # points at something yet; once what it pointed at is destroyed, the flag drops and the next one is picked
+    t.scripts += [Script('Test - pick', [('FLAG', 'Test Picking', 1), ('FLAG', 'Test Picked', 0),
+                                         ('COUNTER', 'Test Walls', 3, 1)],
+                         [('SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER', wall, p1, m.team('s1'), REF),
+                          ('SET_FLAG', 'Test Picked', 1)], once=False),
+                  Script('Test - dropped', [('FLAG', 'Test Picked', 1), ('NAMED_DESTROYED', REF)],
+                         [('SET_FLAG', 'Test Picked', 0)], once=False),
+                  Script('Test - smash', [('FLAG', 'Test Ordering', 1), ('NAMED_NOT_DESTROYED', REF),
+                                          ('NAMED_NOT_DESTROYED', gk)],
+                         [('NAMED_ATTACK_NAMED', gk, REF)], once=False)]
+    counted('Test Walls', '墙总数', t, template=wall)
+    # only four counter lines fit (the fourth reads wrong in the digit strip: the least needed goes there): areas
+    # holding a wall (0-4), where the pointed wall is (1-4 = A-D, 0 nowhere), the pointed wall's health
+    t.counters += [('Test Areas', '有墙的区域数'), ('Test Where', '选中的墙是')]
+    counted('Test Ref Health', '目标墙血量', t, health=REF)
+    t.scripts += [Script('Test - areas zero', [], [('SET_COUNTER', 'Test Areas', 0)], once=False),
+                  Script('Test - where zero', [], [('SET_COUNTER', 'Test Where', 0)], once=False)]
+    for i, k in enumerate('ABCD', 1):
+        t.areas[f'Test Spot {k}'] = square(*m.point(f'spot {k}'), GHOST_AREA)
+        t.scripts += [Script(f'Test - area {k}', [('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', p1, 3, 1, wall,
+                                                   f'Test Spot {k}')], [('INCREMENT_COUNTER', 1, 'Test Areas')],
+                             once=False),
+                      Script(f'Test - where {k}', [('NAMED_INSIDE_AREA', REF, f'Test Spot {k}')],
+                             [('SET_COUNTER', 'Test Where', i)], once=False)]
+    # bench 2026-10-31: made by wall C it left it (the nearest) at 100 % for the 20 s it stood beside it, then once ordered
+    # smashed C, A, D, B (distance from where it was made: C 150, A 300, D 550, B 620) in ~16-24 s a wall
+    t.expect += [('墙总数', 30, 'ever==', 4), ('有墙的区域数', 30, 'ever==', 4),
+                 ('选中的墙是', GHOST_BORN + 2, '==', first, GHOST_ORDER - 2),
+                 ('目标墙血量', GHOST_BORN + 2, '==', 100, GHOST_ORDER - 2),
+                 ('选中的墙是', GHOST_ORDER, 'ever==', (order or (3, 1, 4, 2))[1], GHOST_ORDER + 60),
+                 ('墙总数', GHOST_ORDER, 'ever==', 0)]
+    t.bench = [('bench_watch', dict(seconds=GHOST_ORDER + 150, every=4, sheet=False, lines=len(t.counters)))]
+    return t

@@ -8,7 +8,7 @@ freeze: the engineer, a spot 150 north of him to raise a wall at. Cast: engineer
   ice_spawn: our Tesla tank, placed nowhere: the check that every unit is compiled and linked).
 smash: a wall of ours, three enemy Hammers 120 south of it. Cast: wall, hammer 1 .. 3.
 """
-from maps import island
+from maps import aso, island
 from parts import Mission, Role
 from units import icewall as iw
 
@@ -72,4 +72,28 @@ def smash(name='CampIceS'):
     for k, dx in enumerate((-60, 0, 60)):
         m.put('SovietAntiVehicleVehicleTech1', 'west field', MIDDLE + dx, -20, side='s1',
               name=f'UNIT - CNV Hammer {k + 1}', role=f'hammer {k + 1}')
+    return m
+
+
+GHOST = 'JapanAntiVehicleVehicleTech3'          # the Ghost King (glossary.py 鬼王)
+# ghost: four spots on the west field; a nearest-first walker visits them from the ghost's start in the order C, A, B, D
+GHOST_SPOTS = {'C': (150, -300), 'A': (150, -40), 'B': (150, 300), 'D': (-250, -300)}
+
+
+def ghost(name='CampIceG'):
+    """Four built ice walls (the A4 device's: a core leaves a 160 square), each by its own engineer; later a Ghost King
+    of the enemy appears by wall C. Asks: does it smash walls on its own, does it when ordered, can a script find the
+    nearest unnamed wall and order it, is a wall in an area countable. Cast: engineer A-D, ghost, wall; marks spot A-D,
+    ghost (where it appears)."""
+    w = iw.wall('CNV_IceWallG', length=160, shape='square', lifetime=300)
+    core = iw.seed('CNV_IceSeedG', w.id)
+    e = iw.engineer('CNV_IceEngG', wall_id=core.id, stand=iw.clear_of(w))
+    m = Mission(name=name, map=aso, units=[e, core, w])
+    m.cast['wall'] = Role(w.id)
+    m.put(GHOST, 'merc camp', 0, 0, side='s1', name='UNIT - CNV Ghost King', role='ghost')   # far off: the check brings it
+    for k, (x, y) in GHOST_SPOTS.items():
+        m.waypoint(f'spot {k}', f'CNV Ice Ghost Spot {k}', 'west field', x, y)
+        m.put(e.id, 'west field', x + 120, y, name=f'UNIT - CNV Ice Engineer {k}',
+              role=f'engineer {k}')
+    m.waypoint('ghost', 'CNV Ice Ghost Start', 'west field', 300, -300)   # where the check teleports it to
     return m

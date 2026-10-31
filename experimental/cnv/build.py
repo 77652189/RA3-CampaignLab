@@ -157,6 +157,7 @@ MISSIONS = {
     'train_braked': (lambda: train_bench.braked(), {'fire': check_tra.braked_fire}),
     'train_fight': (lambda: train_bench.mission(name='CampTrainF', enemies=True), {'fight': check_tra.fight}),
     'ice_smash': (lambda: icewall_bench.smash(), {'smash': check_ice.smash}),
+    'ice_ghost': (lambda: icewall_bench.ghost(), {'ghost': check_ice.ghost, 'north': check_ice.ghost_north}),
     'clone': (lambda: clone_bench.mission(), {'hold': check_clo.hold, 'free': check_clo.free}),
     'clone_any': (lambda: clone_bench.mission(name='CampCloneA', picky=False), {'free': check_clo.free_any}),
     'probe': (lambda: probe_bench.mission(), {'engine': check_pro.engine, 'count': check_pro.count,
