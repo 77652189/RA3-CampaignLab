@@ -136,6 +136,40 @@ def dress_engineer(unit, texture=ICE_ENGINEER):
     return unit
 
 
+# the voice line's events (2026-10-31): retail's AudioType / NamedEntry name -> <prefix>_<ours>; its dying screams
+# (VoiceDie*) and the health tent's line stay retail's
+VOICES = {'voiceSelect': 'VoiceSelect', 'voiceSelectUnderFire': 'VoiceSelectUnderFire', 'voiceMove': 'VoiceMove',
+          'voiceMoveLandToWater': 'VoiceMoveLandToWater', 'voiceMoveWaterToLand': 'VoiceMoveWaterToLand',
+          'voiceCreated': 'VoiceCreated', 'voiceGarrison': 'VoiceGarrison',
+          'VoiceCaptureBuilding': 'VoiceCapture', 'VoiceEngineerRepair': 'VoiceRepair'}
+# off until the voice line's pack is in the build (docs/units/handoff.md: a missing event points at nothing)
+VOICE = None                            # then 'CNV_IceEngineer'
+
+
+def voice_engineer(unit, prefix):
+    """The engineer speaking the voice line's events <prefix>_<VOICES>: his voice array and its over-water override
+    (retail's Land / Water multisounds; ours have one event for both), and the wall's line VoiceIceWall, said as his
+    freeze is ordered (NameOfVoiceNameToUseAsInitiateIntendToDoVoice, the Soviet engineer's bunker way)."""
+    done = []
+
+    def ours(m):
+        if m[3] not in VOICES:          # his move sounds, the health tent's line
+            return m[0]
+        done.append(m[3])
+        return f'{m[1]}{prefix}_{VOICES[m[3]]}{m[2]}'
+    x = re.sub(r'(<AudioEntry Sound=")ALL_Engineer_\w+(" AudioType="(\w+)")', ours, unit.xml)
+    x = re.sub(r'(<NamedEntry Sound=")ALL_Engineer_\w+(" Name="(\w+)" />)', ours, x)
+    assert len(done) == 11 and set(done) == set(VOICES), done      # 7 + 2 over water + 2 named
+    x = sub1(x, f'Name="VoiceEngineerRepair" />\n\t\t</AudioArrayVoice>',
+             f'Name="VoiceEngineerRepair" />\n\t\t\t<NamedEntry Sound="{prefix}_VoiceIceWall" Name="VoiceIceWall" />'
+             '\n\t\t</AudioArrayVoice>')
+    unit.xml = sub1(x, f'<SpecialPowerTemplate id="{unit.names["power"]}"',
+                    f'<SpecialPowerTemplate id="{unit.names["power"]}" '
+                    'NameOfVoiceNameToUseAsInitiateIntendToDoVoice="VoiceIceWall"')
+    unit.params['voice'] = prefix
+    return unit
+
+
 @look.named('ice_wall')
 def wall(id='CNV_IceWall', length=200, thick=24, lifetime=30, health=1500, what='', shape='bar', spot=False,
          model='', leaves=ICE_RUBBLE):
@@ -231,7 +265,7 @@ def retail_engineer(id='CNV_SovEngineer', structure='SovietBunker'):
 
 @look.named('ice_engineer')
 def engineer(id='CNV_IceEngineer', wall_id='CNV_IceWall', reach=300, reload='20s', build=True, assembly='5s',
-             stand=30, texture=ICE_ENGINEER):
+             stand=30, texture=ICE_ENGINEER, voice=VOICE):
     """build (the user's decision, 2026-10-22): he walks to the spot and stands building for `assembly` -- exposed
     meanwhile -- the Soviet engineer's bunker way (AssembleStructure), its LOCATION_AND_ANGLE target: placing, a drag
     turns the wall. build=False: the wall appears at a point within `reach` (an OCL; ice_spawn's linking check).
@@ -239,7 +273,8 @@ def engineer(id='CNV_IceEngineer', wall_id='CNV_IceWall', reach=300, reload='20s
     stand: how far from the spot he stops to build. A core's wall comes out bigger than the core, over whatever stands
     there (seed: it ignores other objects): bench 2026-10-26 (ice_turns clear), at 30 a 160 square came out round
     him and he could not walk out of it -- give him the wall's half-diagonal and his own size.
-    texture: his look (dress_engineer); None keeps the retail engineer's."""
+    texture: his look (dress_engineer); None keeps the retail engineer's. voice: the event prefix he speaks
+    (voice_engineer); None keeps the retail engineer's voice."""
     ids = dict(power=f'SpecialPower_{id}_Freeze', command=f'Command_{id}_Freeze', commandset=f'{id}CommandSet',
                button=f'Button_{id}_Freeze', ocl=f'OCL_{id}_Wall')
     x = open(os.path.join(SAGE, 'Allied', 'Units', 'AlliedEngineer.xml'), encoding='utf-8').read()
@@ -301,4 +336,6 @@ def engineer(id='CNV_IceEngineer', wall_id='CNV_IceWall', reach=300, reload='20s
                 what=(f'冰幕工兵（盟军工程师底）：freeze 走到一点站着造 {assembly}，造出一道 {wall_id}（放置时拖动可转方向）'
                       if build else f'冰幕工兵（盟军工程师底）：freeze 在 {reach} 以内的一点冻出一道 {wall_id}'),
                 params=dict(wall=wall_id, reach=reach, reload=reload, build=build, assembly=assembly, stand=stand))
+    if voice:
+        u = voice_engineer(u, voice)
     return dress_engineer(u, texture) if texture else u

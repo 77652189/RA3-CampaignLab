@@ -40,13 +40,13 @@
 
 Tripo 订阅：用户买的是包月（专业版，推测），2026-10-20 04:00（北京时间）开始，月度积分到 2026-11-20 04:00 重置、不累计。用户的计划：策划和关卡线做完再批量做新单位，避免返工；用户购买当天就在支付宝关了自动续费，所以 2026-11-20 04:00 到期后不再续；做新单位之前先问用户订阅还在不在，不在就请用户买一个月（每个单位约 80 积分，一个月 3000 积分够做三十多个），把要做的单位一次做完。
 
-**单位语音**（配音线做，单位线接线）：冰幕工兵现在用原版工程师的语音。配音线的语音包进了构建、发来事件名表以后再换，换之前别动（事件不存在会指向空）。接法照原版：一般的挂 `UnitSpecificSounds` 的 `AudioType`；占领、修理是具名条目 `NamedEntry Name="VoiceCaptureBuilding"` / `"VoiceEngineerRepair"`；冻冰墙在技能上写 `NameOfVoiceNameToUseAsInitiateIntendToDoVoice="VoiceIceWall"`，单位加 `NamedEntry Sound="CNV_IceEngineer_VoiceIceWall" Name="VoiceIceWall"`（原版苏联工程师造地堡就是这样接的）。
+**单位语音**（配音线做，单位线接线）：线已接好，`icewall.py` 的 `voice_engineer`（事件名表 `VOICES`，配音线 2026-10-31 定稿）。但开关 `VOICE` 还是 `None`，所以现在仍是原版工程师的语音：要等语音包进了构建再打开（事件不存在会指向空）。接法照原版：`AudioArrayVoice` 的 `AudioEntry` 按 `AudioType` 换；水上那套覆盖（原版是 Land/Water 两个 Multisound）也指向同一组事件，配音线不用出 Multisound；占领、修理是具名条目 `VoiceCaptureBuilding` / `VoiceEngineerRepair`；冻冰墙在技能上写 `NameOfVoiceNameToUseAsInitiateIntendToDoVoice="VoiceIceWall"`，单位加 `NamedEntry Name="VoiceIceWall"`（原版苏联工程师造地堡就是这样接的）。死亡惨叫和医疗帐篷那条仍用原版。
 
 ## 下一步
 
 现状（2026-10-30）：A4 的单位外观和全部新单位的名字、技能图标、按钮头像都已合进 main（bb14687），手头没有进行中的活。
 
-0. **等配音线**：它发来冰幕工兵的语音事件名表、语音包进了构建以后，在 `icewall.py` 的 `dress_engineer`（或 `look.py`）里接语音，接法见上面"单位语音"。之前别动。
+0. **等配音线**：它通知"语音包进了构建"以后，把 `icewall.py` 的 `VOICE` 改成 `'CNV_IceEngineer'`，再上测试台听一次（选中、移动、冻墙各一句）。之前别打开。
 0. 名字和图标的尾巴：2026-10-30 收完了（闸门、雪堆有自己的头像，自由号炮塔有头像，冲撞按钮的原因查清，见上面"名字、技能按钮"一节）。等关卡线定的两件：母机的冲撞要不要拿掉；纸鹤要不要载人。新单位加进来时，在 `look.py` 的 `LOOKS` 加一行、单位函数上加 `@look.named`，图标在 `ability_icons.ICONS` 加一行再 `gen <阵营>`，`tests/test_look.py` 会查漏。
 1. 自由号剧情说法，等用户定：提案是"她本来就是灯塔 + 埃菲尔铁骨是超时空天线"（设计规律和说明在 `concept_gpt.py` 的 `libertyisle`）。
 2. 自由号可选：玩家自己跃迁时的闪光要给跃迁加约 1 秒准备时间（机制，归关卡线定）；跃迁取消时让充能立刻熄灭，可以把 `carrier.py` 改用 `liberty.discharged`（要关卡线同意）；五个炮塔座骨骼 `TURRET01..05` 还没接线（总控：炮塔仍是跟着飘的无人机）。

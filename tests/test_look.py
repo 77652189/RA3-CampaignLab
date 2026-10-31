@@ -75,3 +75,16 @@ def test_every_portrait_is_ours():
             continue
         portrait = re.search(r'\bSelectPortrait="([^"]+)"', u.xml).group(1)
         assert portrait.removeprefix('Portrait_') in ui_kit.UNITS, (u.id, portrait)
+
+
+def test_the_ice_engineer_speaks_the_voice_lines_events():
+    u = icewall.engineer(voice='CNV_IceEngineer')
+    voiced = re.findall(r'Sound="(CNV_IceEngineer_\w+)"', u.xml)
+    assert sorted(set(voiced)) == sorted(f'CNV_IceEngineer_{v}' for v in [*icewall.VOICES.values(), 'VoiceIceWall'])
+    assert 'Sound="CNV_IceEngineer_VoiceSelect" AudioType="voiceSelect"' in u.xml     # over water too: one event
+    assert not re.search(r'Sound="ALL_Engineer_\w+" (AudioType="voice|Name="Voice(Capture|Engineer))', u.xml)
+    assert 'ALL_Engineer_VoiceDie"' in u.xml                                         # dying screams stay retail's
+    assert re.search(r'<SpecialPowerTemplate id="SpecialPower_CNV_IceEngineer_Freeze" '
+                     r'NameOfVoiceNameToUseAsInitiateIntendToDoVoice="VoiceIceWall"', u.xml)
+    off = icewall.engineer(voice=None).xml
+    assert 'Sound="CNV_' not in off and 'IntendToDoVoice' not in off
