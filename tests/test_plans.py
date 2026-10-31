@@ -362,6 +362,22 @@ def test_the_levels_own_music():
     assert named(small(规则=[{'当': '开局', '做': ['胜利']}]), 'CNV ZZ - Rule 1')[0].do == [('SET_FLAG', 'Mission Won', 1)]
 
 
+def test_a_build_to_listen_with_shows_the_cue(monkeypatch):
+    """CNV_MUSIC_CAPTIONS set: each cue also puts its word on screen (a counter of its own) and hides the others'."""
+    sys.path.insert(0, str(ROOT))
+    from experimental.music import a4
+    rules = [{'当': '开局', '做': ['音乐 行进']}, {'当': '开局 + 1:00', '做': ['音乐 伏击']}]
+    assert len(named(small(音乐='a4', 规则=rules), 'CNV ZZ - Rule 1')[0].do) == 1
+    monkeypatch.setenv('CNV_MUSIC_CAPTIONS', '1')
+    m = small(音乐='a4', 规则=rules)
+    k = list(a4.CUES).index('伏击')
+    do = named(m, 'CNV ZZ - Rule 2')[0].do
+    assert do[0] == ('PATH_MUSIC_PLAY_EVENT', a4.EVENTS['ambush'][0])
+    assert [a[1] for a in do if a[0] == 'HIDE_COUNTER'] == [f'CNV Music {i}' for i in range(len(a4.CUES)) if i != k]
+    shown = do[-1]
+    assert shown[:2] == ('DISPLAY_COUNTER', f'CNV Music {k}') and m.strings[shown[2]] == '音乐：伏击'
+
+
 @pytest.mark.parametrize('bad', [{'音乐': 'nope'},
                                  {'规则': [{'当': '开局', '做': ['音乐 行进']}]},
                                  {'音乐': 'a4', '规则': [{'当': '开局', '做': ['音乐 跳舞']}]},

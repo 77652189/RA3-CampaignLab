@@ -70,8 +70,9 @@ TSUNAMI = 'JapanAntiVehicleVehicleTech1'        # camp: the revenge wave's tank 
 
 
 def ice_wall(m):
-    """The wall engineer 1's power ends in: what he builds, or what that leaves (a seed's `wall` param)."""
-    u = next(u for u in m.units if u.id == m.param('engineer 1', 'wall'))
+    """The wall engineer 1's power ends in: what he builds, or what that leaves (a seed's `wall` param). A mission with
+    one engineer casts it as just 'engineer' (the A4 rework)."""
+    u = next(u for u in m.units if u.id == m.param('engineer 1' if 'engineer 1' in m.cast else 'engineer', 'wall'))
     while 'wall' in u.params:
         u = next(v for v in m.units if v.id == u.params['wall'])
     return u

@@ -67,6 +67,19 @@ def test_the_north_comes_to_the_road_by_its_mouths():
         assert reached(shut(*(w for j, w in enumerate(ways) if j != k)), 'north camp'), k
 
 
+def test_the_three_street_mouths_are_800_apart():
+    """The back lane's foot, gate 1 and gate 2 (a4-layer3.md): a street's ice shuts one, its troops detour to an open one."""
+    xs = [sp.SITES['lane foot'].x, sp.SITES['gate 1'].x, sp.SITES['gate 2'].x]
+    assert all(b - a >= 800 for a, b in zip(xs, xs[1:])), xs
+
+
+def test_each_last_leg_mouth_has_a_gun_pad_behind_it():
+    for pad, mouth in (('gun north', 'north mouth'), ('gun plaza 3', 'gate 3'), ('gun east', 'east mouth')):
+        a, b = sp.SITES[pad], sp.SITES[mouth]
+        assert 200 <= ((a.x - b.x) ** 2 + (a.y - b.y) ** 2) ** 0.5 <= 320, pad
+        assert reached(WALK, pad), pad
+
+
 def test_the_convoy_parks_between_two_approaches():
     """Stopped at the halt (its lead entering the halt's circle, then rolling up to ROLL on), all three trucks (TRAIN
     from first to last) stand past plaza 2's approach and short of plaza 3's: a truck left on an approach is held

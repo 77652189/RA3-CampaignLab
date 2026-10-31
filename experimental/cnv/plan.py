@@ -49,6 +49,8 @@ CAMERA_MOVE, FOLLOW = 3.0, 4.0                 # a 镜头's move, a 跟随's hol
 FOLLOW_AT = 300.0                               # CAMERA_FOLLOW_NAMED's distance (retail: 300 behind Yuriko, 13 of 17)
 SIGHT = 300.0                                   # 揭开's radius when the site has none (retail: 100 .. 750, mostly 200 / 300)
 FLASHES = 5                                     # NAMED_FLASH's count (retail: 5 at the hand-back, Stalingrad)
+INFO_SECONDS = 20.0                             # an info box stays this long (retail A01: 20)
+INFO_ICON = 'Button_AlliedEngineer_on'          # its picture: a retail build button (A01's hospital box shows this one)
 AUTOSAVE = 'AUTOSAVE:CNVCAMPAIGN'
 
 
@@ -223,6 +225,16 @@ class Compiler:
         self.counted = {}           # group -> the counter of its losses (摧毁 <group> <n> 个)
         self.troop_counters = {}    # kinds counted together -> their counter (兵少于 <n> <units>)
         self.music = self.load_music(data.get('音乐'))
+        self.voice = self.load_voice(data.get('语音'))
+
+    def load_voice(self, levels):
+        """语音: [A4, ICEENG] -> the delivered dubbed lines of those folders (voice_link.Later): a 通报 with 说 whose
+        speaker and words are one of them plays it instead of showing a caption (the subtitle comes with the line)."""
+        if not levels:
+            return None
+        import voice_link
+        self.m.voice = voice_link.Later(levels if isinstance(levels, list) else [levels])
+        return self.m.voice
 
     def load_music(self, name):
         """音乐: <名字> -> the music module (experimental/music/<名字>.py), its pack made only when built."""
@@ -245,7 +257,13 @@ class Compiler:
         cues = self.music.CUES
         if word not in cues:
             raise PlanError(f'音乐 {word!r}: {self.d["音乐"]} has {list(cues)}')
-        return [('PATH_MUSIC_PLAY_EVENT', self.music.EVENTS[cues[word]][0])]
+        acts = [('PATH_MUSIC_PLAY_EVENT', self.music.EVENTS[cues[word]][0])]
+        if os.environ.get('CNV_MUSIC_CAPTIONS'):    # a build to listen with: the cue's word stays on screen (a
+            shown = [f'CNV Music {k}' for k in range(len(cues))]        # counter, captions would hide each other)
+            me = shown[list(cues).index(word)]
+            acts += [('HIDE_COUNTER', c) for c in shown if c != me]
+            acts.append(('DISPLAY_COUNTER', me, self.text('SCRIPT', f'音乐：{word}')))
+        return acts
 
     # ---- names
     def uid(self, what=''):
@@ -540,6 +558,10 @@ class Compiler:
             if '原文' in a and not who:
                 raise PlanError(f'action {a!r}: 原文 is a speaker\'s words: 说 <who> goes with it')
             shown = f'{who}：{words}' if who else words
+            dubbed = self.voice.find(who, a.get('原文', words)) if who and self.voice else None
+            if dubbed:                              # the dubbed line: its subtitle comes with it
+                self.m.lines.append(dict(说话人=str(who), 原文=str(a.get('原文', words)), 通报=shown, 字串=dubbed))
+                return [('PLAY_SOUND_EFFECT', dubbed)]
             key = self.text('SCRIPT', shown)
             if who:                                 # a flow-script line: the dubbed line is found by who and what
                 self.m.lines.append(dict(说话人=str(who), 原文=str(a.get('原文', words)), 通报=shown, 字串=key))
@@ -553,6 +575,10 @@ class Compiler:
             raise PlanError(f'action {a!r}: 跟随 only in a 过场 (it is stopped at the hand-back)')
         if '闪烁' in a:                             # retail: the hand-back flashes the player's MCV
             return [('NAMED_FLASH', n, FLASHES) for n in self.part_names(a['闪烁'])]
+        if '信息框' in a:                           # an info box over a unit (retail A01: Peacekeepers, Javelins, Hospital)
+            icon = str(a.get('图标', INFO_ICON))
+            return [('NAMED_SHOW_INFOBOX', n, self.text('SCRIPT', str(a['文字'])), float(a.get('秒', INFO_SECONDS)), icon)
+                    for n in self.part_names(a['信息框'])]
         if '揭开' in a:                             # lift the shroud there: for good, or a look that shrouds again
             site = str(a['揭开'])
             radius = float(a.get('半径') or self.m.where(site).r or SIGHT)

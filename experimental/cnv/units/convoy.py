@@ -39,8 +39,9 @@ def dress(unit, model=CARGO):
 
 
 @look.named('truck')
-def truck(id='CNV_ConvoyTruck', cargo=CARGO):
-    """cargo: the model it carries (dress); None keeps the collector's ore."""
+def truck(id='CNV_ConvoyTruck', cargo=CARGO, speed=50.0):
+    """cargo: the model it carries (dress); None keeps the collector's ore. speed: its ground speed (the collector's
+    own is 50; A4 slows it so the festival takes minutes, not one: docs/story/plans/a4.md 车队)."""
     x = open(os.path.join(SAGE, 'Allied', 'Units', 'AlliedMiner.xml'), encoding='utf-8').read()
     x = re.sub(r'\s*<GameObject\s+id="AlliedMiner_Naval".*?</GameObject>', '', x, count=1, flags=re.S)
     x = sub1(x, 'source="DATA:BaseObjects/BaseMiner.xml"', 'source="DATA:BaseObjects/BaseVehicle.xml"')
@@ -52,12 +53,15 @@ def truck(id='CNV_ConvoyTruck', cargo=CARGO):
                 'EXPANSION_UNIT UNPACKS_INTO_BUILDING CYCLE_SELECTION SKIRMISH_AI_CAN_BUILD_DURING_EMERGENCY_NO_INCOME"',
              'SCORE VEHICLE T2_UNIT IGNORES_SELECT_ALL"')
     x = re.sub(r'\s*<LocomotorSet\s+Locomotor="AlliedMinerWaterLocomotor".*?/>', '', x, count=1, flags=re.S)
+    x, n = re.subn(r'(Locomotor="TestReactiveLocomotorTANK"\s+Condition="NORMAL"\s+Speed=")[\d.]+(")',
+                   lambda mm: f'{mm.group(1)}{float(speed):g}{mm.group(2)}', x, count=1)
+    assert n == 1, "the collector's ground locomotor line was not found"
     x = cut(x, 'ReplaceSelfSpecialAbility', 'ModuleTag_ReplaceSelf')
     x = re.sub(r'\s*<SkirmishAIInformation\s+BlockIfUnpackTargetBuildingCannotBeRebuilt="false"\s*/>', '', x, count=1)
     # the collector's AI came from BaseMiner (its ore state machine); a plain one, never picking fights
     x = re.sub(r'<!-- AI is implemented in BaseMiner class.*?-->', '<AI>\n\t\t\t<AIUpdate id="ModuleTag_AI" '
                'AutoAcquireEnemiesWhenIdle="NO"/>\n\t\t</AI>', x, count=1, flags=re.S)
     assert 'ModuleTag_AI' in x and 'BaseMiner' not in x and 'AlliedMiner_Naval' not in x
-    u = Unit(id, x, what='车队运输车：原版盟军矿车去掉采矿、两栖和展开，没有武器，500 血，速度 50',
-             params=dict(health=500, speed=50))
+    u = Unit(id, x, what='车队运输车：原版盟军矿车去掉采矿、两栖和展开，没有武器，500 血，速度 ' + f'{float(speed):g}',
+             params=dict(health=500, speed=float(speed)))
     return dress(u, cargo) if cargo else u

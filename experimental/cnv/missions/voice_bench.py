@@ -23,7 +23,7 @@ class LazyPack:
             sys.path.insert(0, ROOT)
         from experimental.voice import pack
         self.pack, self.cdata, self.made = pack, cdata, None
-        line, _, text = pack.TEST
+        line, _, text, *_group = pack.TEST             # (event, wav, subtitle, group): the group is for unit voices
         self.events, self.strings = {line}, {f'DIALOGEVENT:{line}': text}
 
     def _make(self):

@@ -18,6 +18,7 @@ class Convoy(Device):
     WHAT = '三辆车按时间表开向终点，玩家护送但指挥不了'
     PARAMS = {'出发': '条件：车队什么时候出发', '每隔': '秒：每隔多久重新给车下一次命令（默认 3）',
               '车': '谁的车：我、敌，或 阵营 其他 里的一方（写成盟友的，玩家点不了；默认 我）',
+              '速度': '每辆车的地面速度（原版矿车 50；A4 降到 12，会场要开约 4 分钟；默认 50）',
               '血量': '每辆车的血量，可按难度写（原版伊贺 7000/5000/3000；默认 500）',
               '分批': '每辆车在出发后多少秒才开，例如 [0, 50, 110]（默认一起开；原版敖德萨的船一艘接一艘）',
               '分批从': '出发（默认）或 继续：写 继续 时出发一起开，停下以后 继续 那一刻起才按 分批 一辆接一辆开'
@@ -34,7 +35,7 @@ class Convoy(Device):
         who = spec.get('车', '我')
         if who not in c.side:
             raise PlanError(f'{name}: 车 {who!r} is none of {sorted(c.side)}')
-        self.cv = fp.Convoy(self.m, c.tag, c.side[who], 0.0, self.tick)
+        self.cv = fp.Convoy(self.m, c.tag, c.side[who], 0.0, self.tick, speed=float(spec.get('速度', 50.0)))
         self.batches = [float(x) for x in spec.get('分批') or []]
         if self.batches and len(self.batches) != len(self.cv.trucks):
             raise PlanError(f'{name}: 分批 gives one time per truck ({len(self.cv.trucks)})')
