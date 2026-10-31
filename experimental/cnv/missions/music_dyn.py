@@ -50,7 +50,8 @@ def _tracer_pack():
     played when, with no doubt between sections that sound alike."""
     from experimental.music import extract
     b, secs, lengths = a4.music_map(extract.retail_map())
-    return pack.make(b.m, pack.tracer_tracks(b.m, lengths))
+    ours = lengths[:len(lengths) - len(b.kept)]                 # the shell's retail streams stay retail
+    return pack.make(b.m, pack.tracer_tracks(b.m, ours, extract.retail_streams(b.kept)))
 
 
 def mission(name='CampMusDyn', spy=False, tracer=False):

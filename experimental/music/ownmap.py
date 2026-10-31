@@ -1,5 +1,6 @@
-"""Our own Pathfinder maps, built node by node (no retail nodes left), on top of the retail map's header, variables,
-track entries and event heads: the game looks events up by name hash, so every retail event stays, with our actions.
+"""Our own Pathfinder maps, built node by node (no retail nodes left but those keep() brings back), on top of the
+retail map's header, variables, track entries and event heads: the game looks events up by name hash, so every
+retail event stays, with our actions.
 
 A section here is: entry node -> segment nodes (one stream each) -> exit node, the exit going on to another
 section's entry (or its own: a loop; or nowhere: stop). Events jump with the retail pair PREP + GOTO <section entry>,
@@ -76,12 +77,16 @@ class Section:
 
 class Builder:
     def __init__(self, base):
-        """base: a parsed retail map; its nodes, routers, samples and event actions are dropped."""
+        """base: a parsed retail map; its nodes, routers, samples and event actions are dropped (keep() brings back
+        the part a few events play)."""
+        self.base = base
         self.m = copy.deepcopy(base)
         self.m.nodes, self.m.routers, self.m.samples = [], [], []
         for e in self.m.events:
             e.actions = []
         self.sections = []
+        self.ids = 0                # entry / exit nodes carry 2 k / 2 k + 1, k numbering sections (retail's too)
+        self.kept = []              # the retail streams keep() kept, in their order after ours
 
     def _node(self, **kw):
         self.m.nodes.append(pfdx.Node(**{**dict(w0=0, track=0, b3=0, router=0, low=0, kind=0x10, b7=1, ref=0,
@@ -91,7 +96,7 @@ class Builder:
     def section(self, streams, router=0):
         """A section playing `streams` (indexes into the sample table, track 0) in order; its exit leads nowhere
         until link() / loop()."""
-        k = len(self.sections)
+        k, self.ids = self.ids, self.ids + 1
         entry = self._node(w0=0, ref=2 * k)
         segs = [self._node(w0=s + 1, kind=0x40, ref=entry, ref_kind=4, router=router) for s in streams]
         exit_ = self._node(w0=0xFFFF, ref=2 * k + 1)
@@ -121,6 +126,48 @@ class Builder:
         """The event's actions, as written (goto / set_var / switch)."""
         e = self.m.events[event] if isinstance(event, int) else next(e for e in self.m.events if e.name == event)
         e.actions = list(actions)
+
+    def keep(self, events, first_stream):
+        """The retail music `events` play, kept as retail has it (the shell's own: MenuTrack, BriefingTrack ...):
+        the nodes their jumps reach through branches, copied in after ours, the events' actions with their jumps
+        moved to the copies. Routers are not kept: a kept segment takes a pending jump straight to its target.
+        Kept segments play streams first_stream, first_stream + 1 ... -> the retail streams they are, in order
+        (stream first_stream + i plays retail stream kept[i])."""
+        base = self.base
+        reached, todo = set(), [a[2] & 0xFFFF for e in base.events if e.name in events for a in e.actions
+                                if a[1] == GOTO]
+        while todo:
+            i = todo.pop()
+            if i == 0xFFFF or i in reached:
+                continue
+            reached.add(i)
+            n = base.nodes[i]
+            todo += [t for _, _, t in n.branches]
+            if n.is_segment:
+                assert n.ref_kind == 4, (i, n)          # a segment's ref: its section's entry node
+                todo.append(n.ref)
+        at = {i: len(self.m.nodes) + j for j, i in enumerate(sorted(reached))}
+        at[0xFFFF] = 0xFFFF
+        kept, sections = [], {}
+        for i in sorted(reached):
+            n = copy.deepcopy(base.nodes[i])
+            n.branches = [(lo, hi, at[t]) for lo, hi, t in n.branches]
+            n.router = 0
+            if n.is_segment:
+                if n.stream not in kept:
+                    kept.append(n.stream)
+                n.w0, n.ref = first_stream + kept.index(n.stream) + 1, at[n.ref]
+            else:
+                if n.ref // 2 not in sections:
+                    sections[n.ref // 2], self.ids = self.ids, self.ids + 1
+                n.ref = 2 * sections[n.ref // 2] + n.ref % 2
+            self.m.nodes.append(n)
+        for e in base.events:
+            if e.name in events:
+                self.act(e.name, [(h, op, arg & ~0xFFFF | at[arg & 0xFFFF]) if op == GOTO else (h, op, arg)
+                                  for h, op, arg in e.actions])
+        self.kept = kept
+        return kept
 
     def build(self, samples):
         """samples: [(SNS offset / 0x80, ms)] for every stream, track 0's first (mus.pack tables)."""

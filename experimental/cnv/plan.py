@@ -245,7 +245,13 @@ class Compiler:
         cues = self.music.CUES
         if word not in cues:
             raise PlanError(f'音乐 {word!r}: {self.d["音乐"]} has {list(cues)}')
-        return [('PATH_MUSIC_PLAY_EVENT', self.music.EVENTS[cues[word]][0])]
+        acts = [('PATH_MUSIC_PLAY_EVENT', self.music.EVENTS[cues[word]][0])]
+        if os.environ.get('CNV_MUSIC_CAPTIONS'):    # a build to listen with: the cue's word stays on screen (a
+            shown = [f'CNV Music {k}' for k in range(len(cues))]        # counter, captions would hide each other)
+            me = shown[list(cues).index(word)]
+            acts += [('HIDE_COUNTER', c) for c in shown if c != me]
+            acts.append(('DISPLAY_COUNTER', me, self.text('SCRIPT', f'音乐：{word}')))
+        return acts
 
     # ---- names
     def uid(self, what=''):

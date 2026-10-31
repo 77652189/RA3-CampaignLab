@@ -28,6 +28,7 @@ SetAdvantagePlayer when we destroy 5 important buildings in 2 minutes (both -> f
   python -I -X utf8 experimental/music/a4.py heard <recording.wav>    which section the game played when (after
                                                   a build has made STREAMS: pack())
 """
+import functools
 import html
 import os
 import sys
@@ -37,8 +38,19 @@ import numpy as np
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
-from experimental.music import ownmap, synth  # noqa: E402
+from experimental.music import ownmap, sampler, synth  # noqa: E402
 from experimental.music.synth import Mix, hz  # noqa: E402
+
+# the instruments: recorded (sampler.py: VSCO-2's orchestra, the SoundFont's choir, the Empire's koto, shamisen,
+# shakuhachi and taiko, the celesta, music box and guitar) where the libraries are here, else our synthesizer's;
+# the bass, the rock kit, the synth pulse, the pads and the ice are ours either way. The woodwinds and the harp
+# play only in the recorded version (RECORDED)
+ORCH = sampler if sampler.available() else synth
+RECORDED = ORCH is sampler
+CHOIR_GAIN = 18 if RECORDED else 0      # the recorded choir up where it is heard (a few dB under the rest), in the
+                                         # place of the synth's, which only thickened the chords
+FLUTE, OBOE, CLARINET, BASSOON = (functools.partial(sampler.woodwind, n) for n in ('flute', 'oboe', 'clarinet',
+                                                                                   'bassoon'))
 
 BPM = 96
 BEAT = 60 / BPM
@@ -47,7 +59,7 @@ SEG_BARS = 2
 
 # name: (bars, loop, RMS dB)
 SECTIONS = {
-    'prep': (8, True, -23.0), 'escort': (8, True, -19.0), 'tense': (8, True, -18.0), 'fierce': (8, True, -16.0),
+    'prep': (16, True, -23.0), 'escort': (16, True, -19.0), 'tense': (8, True, -18.0), 'fierce': (8, True, -16.0),
     'final': (8, True, -16.5),
     'ambush': (1, False, -16.0), 'harbour': (1, False, -16.5), 'victory': (3, False, -17.5), 'defeat': (3, False, -22.0),
     'prep>escort': (1, False, -20.0), 'tense>fierce': (1, False, -16.5), 'fierce>tense': (1, False, -17.0),
@@ -84,7 +96,9 @@ CUES = {'布防': 'start', '行进': 'escort', '伏击': 'ambush', '港口': 'ha
 # 'a05incoming', only retail A05 sets it), so that calm knows where to go back to
 PHASES = {'escort': 0, 'final': 1}
 PHASE_VAR = 3
-SHELL = {'MenuTrack': True, 'BriefingTrack': False}     # the shell's own events, both to prep (PREP or not)
+# the shell's own events play retail's music, kept in our map (ownmap.Builder.keep): the menus, the briefing, the
+# score screen after a mission are the game's, only the mission is ours
+SHELL = ('MenuTrack', 'BriefingTrack', 'StatsWinTrack', 'StatsLoseTrack')
 LINKS = {'prep>escort': 'escort', 'tense>fierce': 'fierce', 'fierce>tense': 'tense', 'battle>escort': 'escort',
          'battle>final': 'final', 'ambush': 'fierce', 'harbour': 'fierce'}
 ROUTES = {'prep': ['prep>escort'], 'tense': ['battle>escort', 'battle>final', 'tense>fierce'],
@@ -173,22 +187,67 @@ PREP_CELESTA = ['A5:0:1.5 F5:1.5:.5 E5:2:2', 'D5:0:1 E5:1:.5 F5:1.5:.5 A5:2:2', 
 
 
 def prep(w):
+    """Twice through the chords: the ice alone, then (as retail's explore cues do) low strings pulsing, the drums
+    walking and the shakers ticking build to the loop's end, which drops back to the ice."""
+    _prep_ice(w)
+    for bar in range(8, 16):
+        root, voicing = PREP_CHORDS[bar - 8]
+        rise = (bar - 8) / 7
+        w.chord(synth.pad, bar, 0, chord(voicing), 4.4, vel=0.32, gain=-6, verb=0.55)
+        w.line(ORCH.celesta, bar, seq(PREP_CELESTA[bar - 8]), vel=0.5, gain=-6, pan=0.2, verb=0.5)
+        for k in range(8):                                     # the low strings' pulse, swelling
+            w.note(ORCH.strings, bar, k / 2, p(root) + 12, 0.35, vel=(0.75 if k % 4 == 0 else 0.55) * (0.7 + 0.3 * rise),
+                   gain=-4, verb=0.3, bright=0.4, attack=0.01, release=0.15, voices=4)
+        w.note(synth.bass, bar, 0, p(root), 3.8, vel=0.7, gain=-7, verb=0.2)
+        w.drums(ORCH.taiko, bar, 'X..o ..x. X..o .o..', gain=-6 + 4 * rise, verb=0.45, scale=0.9, size=0.7)
+        w.drums(synth.tom, bar, '.... x... .... x.o.', gain=-10 + 4 * rise, pan=-0.3, verb=0.35, f=95)
+        w.drums(synth.hat, bar, 'x.ox x.ox x.ox x.ox' if bar >= 12 else 'x.o. x.o. x.o. x.o.', gain=-15 + 3 * rise,
+                pan=0.35, verb=0.15)
+        if bar in (11, 15):
+            w.drums(ORCH.snare, bar, '.... .... oxox xxXX', gain=-9, pan=0.1, verb=0.3)
+    w.hit(ORCH.timpani, 8, 0, vel=0.6, gain=-9, verb=0.5, f=hz(p('D2')))
+    w.hit(ORCH.cymbal, 8, 0, vel=0.45, gain=-17, verb=0.5)
+    w.mix.add(15 * BAR, ORCH.cymbal(0.5, BAR, swell=True), -16, verb=0.4)
+    w.line(ORCH.koto, 13, seq('D4:3:.25 Eb4:3.25:.25 G4:3.5:.25 A4:3.75:1'), vel=0.5, gain=-8, pan=-0.5, verb=0.55)
+    if RECORDED:
+        _prep_winds(w)
+
+
+def _prep_winds(w):
+    """The recorded orchestra's own colours: the harp rising through each chord, the flute taking the celesta's
+    line, then bassoon and clarinet under the build and the choir's 'oo' at its top."""
+    for bar, (root, voicing) in enumerate(PREP_CHORDS * 2):
+        tones = sorted(chord(voicing))
+        for k, q in enumerate(tones + [tones[0] + 12, tones[1] + 12]):
+            w.note(sampler.harp, bar, k * 0.5, q, 1.0, vel=0.45 if k else 0.55, gain=-10 if bar < 8 else -12,
+                   pan=-0.25, verb=0.5)
+        line = seq(PREP_CELESTA[bar % 8])
+        if 4 <= bar < 8:
+            w.line(FLUTE, bar, line, vel=0.45, gain=-10, pan=0.15, verb=0.5, attack=0.08)
+        if bar >= 8:
+            w.note(BASSOON, bar, 0, p(root) + 12, 3.8, vel=0.5, gain=-11, pan=0.1, verb=0.4, attack=0.1)
+        if bar >= 12:
+            w.line(CLARINET, bar, [(b, d, q - 12) for b, d, q in line], vel=0.5, gain=-10, pan=0.3, verb=0.45)
+            w.chord(ORCH.choir, bar, 0, chord(voicing), 4.2, vel=0.5, gain=8, verb=0.55, vowel='oo', attack=0.8)
+
+
+def _prep_ice(w):
     for bar, (root, voicing) in enumerate(PREP_CHORDS):
-        w.chord(synth.pad, bar, 0, chord(voicing), 4.4, vel=0.32, gain=-5, verb=0.55)
-        w.note(synth.strings, bar, 0, p(root) + 12, 4.2, vel=0.45, gain=-9, verb=0.45, bright=0.2, attack=0.9)
-        w.note(synth.strings, bar, 0, p(root), 4.2, vel=0.4, gain=-11, verb=0.4, bright=0.12, attack=1.0)
-        w.line(synth.celesta, bar, seq(PREP_CELESTA[bar]), vel=0.55, gain=-3, pan=0.2, verb=0.5)
+        w.chord(synth.pad, bar, 0, chord(voicing), 4.4, vel=0.32, gain=-9, verb=0.55)
+        w.note(ORCH.strings, bar, 0, p(root) + 12, 4.2, vel=0.45, gain=-13, verb=0.45, bright=0.2, attack=0.9)
+        w.note(ORCH.strings, bar, 0, p(root), 4.2, vel=0.4, gain=-15, verb=0.4, bright=0.12, attack=1.0)
+        w.line(ORCH.celesta, bar, seq(PREP_CELESTA[bar]), vel=0.55, gain=-7, pan=0.2, verb=0.5)
         if bar >= 4:
-            w.line(synth.musicbox, bar, [(b, d, q + 12) for b, d, q in seq(PREP_CELESTA[bar])], vel=0.4, gain=-15,
+            w.line(ORCH.musicbox, bar, [(b, d, q + 12) for b, d, q in seq(PREP_CELESTA[bar])], vel=0.4, gain=-15,
                    pan=-0.35, verb=0.6)
-        w.hit(synth.taiko, bar, 0, vel=0.32, gain=-13, verb=0.6)
-        w.hit(synth.taiko, bar, 0.45, vel=0.2, gain=-15, verb=0.6)
+        w.hit(ORCH.taiko, bar, 0, vel=0.32, gain=-13, verb=0.6)
+        w.hit(ORCH.taiko, bar, 0.45, vel=0.2, gain=-15, verb=0.6)
     # the hidden enemy, heard in passing
-    w.line(synth.koto, 3, seq('D4:3:.25 Eb4:3.25:.25 G4:3.5:.25 A4:3.75:1'), vel=0.45, gain=-9, pan=-0.5, verb=0.6)
-    w.note(synth.koto, 6, 2, p('D4'), 1.5, vel=0.5, gain=-8, pan=-0.5, verb=0.6, bend=1.0)
-    w.line(synth.koto, 6, seq('G3:3.5:.25 A3:3.75:.25'), vel=0.4, gain=-10, pan=-0.5, verb=0.6)
-    w.hit(synth.timpani, 0, 0, vel=0.5, gain=-11, verb=0.5, f=hz(p('D2')))
-    w.hit(synth.timpani, 4, 0, vel=0.45, gain=-12, verb=0.5, f=hz(p('D2')))
+    w.line(ORCH.koto, 3, seq('D4:3:.25 Eb4:3.25:.25 G4:3.5:.25 A4:3.75:1'), vel=0.45, gain=-9, pan=-0.5, verb=0.6)
+    w.note(ORCH.koto, 6, 2, p('D4'), 1.5, vel=0.5, gain=-8, pan=-0.5, verb=0.6, bend=1.0)
+    w.line(ORCH.koto, 6, seq('G3:3.5:.25 A3:3.75:.25'), vel=0.4, gain=-10, pan=-0.5, verb=0.6)
+    w.hit(ORCH.timpani, 0, 0, vel=0.5, gain=-11, verb=0.5, f=hz(p('D2')))
+    w.hit(ORCH.timpani, 4, 0, vel=0.45, gain=-12, verb=0.5, f=hz(p('D2')))
     seconds = w.mix.n / synth.RATE
     w.mix.add(0, synth.wind(seconds, 0.3), -16, verb=0.1)
     w.mix.add(0, synth.sparkle(seconds, 2.0, 0.25), -15, verb=0.6)
@@ -208,7 +267,7 @@ def _ostinato(w, bar, root, gain_bass=-6, gain_low=-11):
         q = p(root) + 12 + step
         accent = 0.9 if k in (0, 4) else 0.65
         w.note(synth.bass, bar, k / 2, q - 12, 0.4, vel=accent, gain=gain_bass, verb=0.15)
-        w.note(synth.strings, bar, k / 2, q, 0.3, vel=accent, gain=gain_low, verb=0.25, bright=0.45, attack=0.01,
+        w.note(ORCH.strings, bar, k / 2, q, 0.3, vel=accent, gain=gain_low, verb=0.25, bright=0.45, attack=0.01,
                release=0.12, voices=4)
 
 
@@ -216,30 +275,61 @@ def _arpeggio(w, bar, voicing, gain=-13, octave=12):
     tones = chord(voicing)
     for k in range(16):
         q = tones[[0, 1, 2, 1][k % 4]] + (octave if k >= 8 else 0)
-        w.note(synth.strings, bar, k / 4, q, 0.2, vel=0.55 if k % 4 else 0.75, gain=gain, pan=0.35 if k % 2 else
+        w.note(ORCH.strings, bar, k / 4, q, 0.2, vel=0.55 if k % 4 else 0.75, gain=gain, pan=0.35 if k % 2 else
                -0.35, verb=0.3, bright=0.55, attack=0.008, release=0.1, voices=3)
 
 
 def escort(w):
+    """The march twice: as before, then the full band under it, the theme an octave up and the drums doubled."""
+    _march(w)
+    for bar in range(8, 16):
+        root, voicing = MARCH_CHORDS[bar - 8]
+        _ostinato(w, bar, root, -5, -9)
+        _arpeggio(w, bar, voicing, gain=-12)
+        w.chord(ORCH.strings, bar, 0, chord(voicing), 4.1, vel=0.5, gain=-12, verb=0.45, bright=0.4, attack=0.25)
+        w.drums(ORCH.snare, bar, SNARE_FILL if bar in (11, 15) else SNARE_MARCH, gain=-10, pan=0.1, verb=0.25)
+        w.drums(ORCH.taiko, bar, 'X... ..x. X... x...', gain=-7, verb=0.35, scale=0.85)
+        w.drums(synth.kick, bar, 'X... ..x. X... ....', gain=-8, verb=0.05, scale=0.85)
+        w.drums(synth.hat, bar, 'xoxo xoxo xoxo xoxo', gain=-17, pan=0.3, verb=0.05)
+        theme = seq(MARCH_THEME[bar - 8])
+        w.line(ORCH.brass, bar, [(b, d, q + 12) for b, d, q in theme], vel=0.8, gain=-6, pan=0.1, verb=0.35,
+               bright=0.65)
+        w.line(ORCH.brass, bar, theme, vel=0.72, gain=-8, pan=-0.2, verb=0.35, bright=0.45)
+        w.hit(ORCH.timpani, bar, 0, vel=0.55, gain=-11, verb=0.4, f=hz(p(root) + 12))
+    w.hit(ORCH.cymbal, 8, 0, vel=0.75, gain=-12, verb=0.4)
+    w.hit(ORCH.cymbal, 12, 0, vel=0.6, gain=-14, verb=0.4)
+    if RECORDED:
+        for bar in range(16):
+            root, voicing = MARCH_CHORDS[bar % 8]
+            theme = seq(MARCH_THEME[bar % 8])
+            for beat in (0, 2):                                   # the bassoons marking the step
+                w.note(BASSOON, bar, beat, p(root) + 12, 0.3, vel=0.7, gain=-9, pan=0.15, verb=0.3)
+            if bar >= 4:                                          # the woodwinds join the horns' theme, higher
+                w.line(OBOE, bar, [(b, d, q + 12) for b, d, q in theme], vel=0.55, gain=-12, pan=0.25, verb=0.4)
+            if bar >= 8:
+                w.line(FLUTE, bar, [(b, d, q + 24) for b, d, q in theme], vel=0.5, gain=-14, pan=-0.3, verb=0.4)
+
+
+def _march(w):
     for bar, (root, voicing) in enumerate(MARCH_CHORDS):
         _ostinato(w, bar, root)
         _arpeggio(w, bar, voicing)
-        w.chord(synth.strings, bar, 0, chord(voicing), 4.1, vel=0.4, gain=-15, verb=0.45, bright=0.3, attack=0.3)
-        w.drums(synth.snare, bar, SNARE_FILL if bar in (3, 7) else SNARE_MARCH, gain=-11, pan=0.1, verb=0.25,
+        w.chord(ORCH.strings, bar, 0, chord(voicing), 4.1, vel=0.4, gain=-15, verb=0.45, bright=0.3, attack=0.3)
+        w.drums(ORCH.snare, bar, SNARE_FILL if bar in (3, 7) else SNARE_MARCH, gain=-11, pan=0.1, verb=0.25,
                 scale=0.8)
-        w.drums(synth.taiko, bar, 'X... .... x... ....', gain=-9, verb=0.35, scale=0.75)
+        w.drums(ORCH.taiko, bar, 'X... .... x... ....', gain=-9, verb=0.35, scale=0.75)
         w.drums(synth.kick, bar, 'X... .... X... ....', gain=-9, verb=0.05, scale=0.8)
         w.drums(synth.hat, bar, 'x.o. x.o. x.o. x.o.', gain=-19, pan=0.3, verb=0.05)
         _pulse(w, bar, [p(root) + 24, p(root) + 31], every=0.5, gain=-19, decay=0.1)
-        w.line(synth.brass, bar, seq(MARCH_THEME[bar]), vel=0.72, gain=-5, pan=-0.15, verb=0.35, bright=0.45)
+        w.line(ORCH.brass, bar, seq(MARCH_THEME[bar]), vel=0.72, gain=-5, pan=-0.15, verb=0.35, bright=0.45)
         if bar >= 4:
-            w.line(synth.brass, bar, [(b, d, q - 12) for b, d, q in seq(MARCH_THEME[bar])], vel=0.6, gain=-13,
+            w.line(ORCH.brass, bar, [(b, d, q - 12) for b, d, q in seq(MARCH_THEME[bar])], vel=0.6, gain=-13,
                    pan=0.2, verb=0.35, bright=0.3)
             tones = chord(voicing)
             for k in range(8):
-                w.note(synth.celesta, bar, k / 2, tones[k % 3] + 12 + 12 * (k // 3 % 2), 0.5, vel=0.45, gain=-13,
+                w.note(ORCH.celesta, bar, k / 2, tones[k % 3] + 12 + 12 * (k // 3 % 2), 0.5, vel=0.45, gain=-13,
                        pan=0.45, verb=0.45)
-    w.hit(synth.cymbal, 0, 0, vel=0.5, gain=-16, verb=0.4)
+    w.hit(ORCH.cymbal, 0, 0, vel=0.5, gain=-16, verb=0.4)
 
 
 def _riff(w, bar, root, pattern, gain=-9.0, shape=(0, 7, 12)):
@@ -250,7 +340,7 @@ def _riff(w, bar, root, pattern, gain=-9.0, shape=(0, 7, 12)):
     for take, pan in ((0, -0.7), (1, 0.7)):
         for i, k in enumerate(hits):
             beats = ((hits[i + 1] if i + 1 < len(hits) else 16) - k) / 4 * 0.95
-            w.note(synth.guitar, bar, k / 4, p(root), beats, vel=0.85 if k % 4 == 0 else 0.72, gain=gain, pan=pan,
+            w.note(ORCH.guitar, bar, k / 4, p(root), beats, vel=0.85 if k % 4 == 0 else 0.72, gain=gain, pan=pan,
                    verb=0.06, mute=steps[k] == 'm', shape=shape, seed=take)
 
 
@@ -286,26 +376,33 @@ def tense(w):
     for bar, root in enumerate(TENSE_CHORDS):
         _riff(w, bar, root, TENSE_RIFF[root], gain=-10)
         _kit(w, bar, 'X..x ..x. .... ..x.', '.... .... X... ....', 'x.x. x.x. x.x. x.x.', gain=-2)
-        w.drums(synth.taiko, bar, 'X... .... .... x..x', gain=-6, verb=0.35, scale=0.9)
+        w.drums(ORCH.taiko, bar, 'X... .... .... x..x', gain=-6, verb=0.35, scale=0.9)
         _pulse(w, bar, [p('D5')], gain=-21, decay=0.05)
         for k in range(8):
             w.note(synth.bass, bar, k / 2, p(root), 0.42, vel=0.9 if k % 4 == 0 else 0.7, gain=-7, verb=0.1)
-        w.note(synth.strings, bar, 0, p(root) + 12, 4.0, vel=0.55, gain=-13, verb=0.3, bright=0.45, attack=0.3,
+        w.note(ORCH.strings, bar, 0, p(root) + 12, 4.0, vel=0.55, gain=-13, verb=0.3, bright=0.45, attack=0.3,
                tremolo=12.8)
-        w.note(synth.strings, bar, 0, p(root) + 13, 4.0, vel=0.45, gain=-16, verb=0.3, bright=0.45, attack=1.2,
+        w.note(ORCH.strings, bar, 0, p(root) + 13, 4.0, vel=0.45, gain=-16, verb=0.3, bright=0.45, attack=1.2,
                tremolo=12.8)
         if bar < 4:
-            w.line(synth.shamisen, bar, seq(SHAMISEN[bar]), vel=0.8, gain=-7, pan=-0.3, verb=0.25)
+            w.line(ORCH.shamisen, bar, seq(SHAMISEN[bar]), vel=0.8, gain=-7, pan=-0.3, verb=0.25)
         else:
             notes, scoop, fall = SHAKUHACHI[bar - 4]
             seq_ = seq(notes)
             for i, (b, d, q) in enumerate(seq_):
-                w.note(synth.shakuhachi, bar, b, q, d, vel=0.75, gain=-6, pan=-0.2, verb=0.5, scoop=scoop,
+                w.note(ORCH.shakuhachi, bar, b, q, d, vel=0.75, gain=-6, pan=-0.2, verb=0.5, scoop=scoop,
                        fall=fall if i == len(seq_) - 1 else 0.0)
             if bar in ALLIED_FRAGMENT:
-                w.line(synth.brass, bar, seq(ALLIED_FRAGMENT[bar]), vel=0.55, gain=-12, pan=0.35, verb=0.4,
+                w.line(ORCH.brass, bar, seq(ALLIED_FRAGMENT[bar]), vel=0.55, gain=-12, pan=0.35, verb=0.4,
                        bright=0.3)
-    w.hit(synth.cymbal, 0, 0, vel=0.6, gain=-15, verb=0.35)
+    w.hit(ORCH.cymbal, 0, 0, vel=0.6, gain=-15, verb=0.35)
+    if RECORDED:                        # under the shakuhachi, the choir low and close, the bassoons on the pedal
+        for bar, root in enumerate(TENSE_CHORDS):
+            if bar >= 4:
+                w.chord(ORCH.choir, bar, 0, [p(root) + 12, p(root) + 19, p(root) + 25], 4.1, vel=0.55, gain=-5,
+                        verb=0.45, vowel='ah', attack=0.5)
+            for k in range(4):
+                w.note(BASSOON, bar, k, p(root) + 12, 0.3, vel=0.75 if k == 0 else 0.6, gain=-10, verb=0.25)
 
 
 FIERCE_CHORDS = [('D2', 'D4 F4 A4'), ('Bb1', 'D4 F4 Bb4'), ('C2', 'C4 E4 G4'), ('D2', 'D4 F4 A4'),
@@ -329,14 +426,20 @@ def fierce(w):
         tones = chord(voicing)
         _pulse(w, bar, [q + 12 for q in tones + tones[1:2]], gain=-15, decay=0.12)
         theme = seq(FIERCE_THEME[bar])
-        w.line(synth.brass, bar, [(b, d, q + 12) for b, d, q in theme], vel=0.85, gain=-5, pan=0.1, verb=0.3,
+        w.line(ORCH.brass, bar, [(b, d, q + 12) for b, d, q in theme], vel=0.85, gain=-5, pan=0.1, verb=0.3,
                bright=0.75)
-        w.line(synth.brass, bar, theme, vel=0.8, gain=-8, pan=-0.15, verb=0.3, bright=0.5)
-        w.chord(synth.choir, bar, 0, [q - 12 for q in tones], 4.0, vel=0.5, gain=-16, verb=0.45, vowel='ah')
-        w.chord(synth.strings, bar, 0, tones, 4.1, vel=0.5, gain=-16, verb=0.4, bright=0.45, attack=0.2)
-        w.hit(synth.taiko, bar, 0, vel=0.8, gain=-9, verb=0.35)
-    w.hit(synth.cymbal, 0, 0, vel=0.8, gain=-11, verb=0.3)
-    w.hit(synth.cymbal, 4, 0, vel=0.7, gain=-12, verb=0.3)
+        w.line(ORCH.brass, bar, theme, vel=0.8, gain=-8, pan=-0.15, verb=0.3, bright=0.5)
+        w.chord(ORCH.choir, bar, 0, tones if RECORDED else [q - 12 for q in tones], 4.0, vel=0.6,
+                gain=CHOIR_GAIN - 16, verb=0.45, vowel='ah')
+        w.chord(ORCH.strings, bar, 0, tones, 4.1, vel=0.5, gain=-16, verb=0.4, bright=0.45, attack=0.2)
+        w.hit(ORCH.taiko, bar, 0, vel=0.8, gain=-9, verb=0.35)
+    w.hit(ORCH.cymbal, 0, 0, vel=0.8, gain=-11, verb=0.3)
+    w.hit(ORCH.cymbal, 4, 0, vel=0.7, gain=-12, verb=0.3)
+    if RECORDED:                        # flutes and oboes an octave over the trumpets
+        for bar in range(8):
+            theme = seq(FIERCE_THEME[bar])
+            w.line(FLUTE, bar, [(b, d, q + 24) for b, d, q in theme], vel=0.6, gain=-13, pan=-0.3, verb=0.35)
+            w.line(OBOE, bar, [(b, d, q + 12) for b, d, q in theme], vel=0.6, gain=-12, pan=0.3, verb=0.35)
 
 
 FINAL_CHORDS = [('D2', 'D4 F4 A4'), ('Bb1', 'D4 F4 Bb4'), ('F2', 'C4 F4 A4'), ('C2', 'C4 E4 G4'),
@@ -351,65 +454,75 @@ def final(w):
         _ostinato(w, bar, root, -6, -12)
         _arpeggio(w, bar, voicing, gain=-15)
         theme = seq(FINAL_THEME[bar])
-        w.line(synth.brass, bar, [(b, d, q + 12) for b, d, q in theme], vel=0.8, gain=-6, pan=0.1, verb=0.35,
+        w.line(ORCH.brass, bar, [(b, d, q + 12) for b, d, q in theme], vel=0.8, gain=-6, pan=0.1, verb=0.35,
                bright=0.7)
-        w.line(synth.brass, bar, theme, vel=0.75, gain=-8, pan=-0.2, verb=0.35, bright=0.45)
-        w.line(synth.glock, bar, [(b, d, q + 24) for b, d, q in theme], vel=0.35, gain=-17, pan=0.4, verb=0.5)
-        w.chord(synth.choir, bar, 0, [q - 12 for q in chord(voicing)], 4.0, vel=0.5, gain=-14, verb=0.5, vowel='ah')
-        w.chord(synth.strings, bar, 0, chord(voicing), 4.1, vel=0.5, gain=-14, verb=0.45, bright=0.4, attack=0.25)
+        w.line(ORCH.brass, bar, theme, vel=0.75, gain=-8, pan=-0.2, verb=0.35, bright=0.45)
+        w.line(ORCH.glock, bar, [(b, d, q + 24) for b, d, q in theme], vel=0.35, gain=-17, pan=0.4, verb=0.5)
+        w.chord(ORCH.choir, bar, 0, chord(voicing) if RECORDED else [q - 12 for q in chord(voicing)], 4.0,
+                vel=0.6, gain=CHOIR_GAIN - 14, verb=0.5, vowel='ah')
+        w.chord(ORCH.strings, bar, 0, chord(voicing), 4.1, vel=0.5, gain=-14, verb=0.45, bright=0.4, attack=0.25)
         _riff(w, bar, root, 'O.mm O.mm O.mm O.O.', gain=-12)
         _kit(w, bar, 'X... X..x X... X.x.', '.... X... .... X...', 'x.x. x.x. x.x. x.x.', gain=-2)
-        w.drums(synth.taiko, bar, 'X... .... X... ....', gain=-9, verb=0.35, scale=0.85)
-        w.drums(synth.snare, bar, SNARE_FILL if bar in (3, 7) else SNARE_MARCH, gain=-14, pan=0.1, verb=0.25,
+        w.drums(ORCH.taiko, bar, 'X... .... X... ....', gain=-9, verb=0.35, scale=0.85)
+        w.drums(ORCH.snare, bar, SNARE_FILL if bar in (3, 7) else SNARE_MARCH, gain=-14, pan=0.1, verb=0.25,
                 scale=0.85)
-        w.hit(synth.timpani, bar, 0, vel=0.6, gain=-11, verb=0.4, f=hz(p(root) + 12))
-    w.hit(synth.cymbal, 0, 0, vel=0.7, gain=-13, verb=0.35)
-    w.hit(synth.cymbal, 4, 0, vel=0.6, gain=-14, verb=0.35)
+        w.hit(ORCH.timpani, bar, 0, vel=0.6, gain=-11, verb=0.4, f=hz(p(root) + 12))
+    w.hit(ORCH.cymbal, 0, 0, vel=0.7, gain=-13, verb=0.35)
+    w.hit(ORCH.cymbal, 4, 0, vel=0.6, gain=-14, verb=0.35)
+    if RECORDED:                        # the whole orchestra: woodwinds over the theme, the harp sweeping the chords
+        for bar, (root, voicing) in enumerate(FINAL_CHORDS):
+            theme = seq(FINAL_THEME[bar])
+            w.line(FLUTE, bar, [(b, d, q + 24) for b, d, q in theme], vel=0.6, gain=-13, pan=-0.3, verb=0.4)
+            w.line(OBOE, bar, [(b, d, q + 12) for b, d, q in theme], vel=0.6, gain=-12, pan=0.3, verb=0.4)
+            w.line(CLARINET, bar, theme, vel=0.6, gain=-13, pan=0.15, verb=0.4)
+            tones = sorted(chord(voicing))
+            for k, q in enumerate(tones + [t + 12 for t in tones] + [tones[0] + 24]):
+                w.note(sampler.harp, bar, k * 0.25, q, 1.0, vel=0.55, gain=-12, pan=-0.2, verb=0.45)
 
 
 def ambush(w):
     w.mix.add(0, synth.ice_crack(1.0), -2, verb=0.4)
-    w.hit(synth.taiko, 0, 0, vel=1.0, gain=-2, verb=0.45)
-    w.hit(synth.taiko, 0, 0.5, vel=0.7, gain=-6, verb=0.45)
-    w.chord(synth.brass, 0, 0, chord('D3 Eb3 A3 D4 Eb4'), 1.0, vel=1.0, gain=-9, verb=0.4, bright=0.9)
+    w.hit(ORCH.taiko, 0, 0, vel=1.0, gain=-2, verb=0.45)
+    w.hit(ORCH.taiko, 0, 0.5, vel=0.7, gain=-6, verb=0.45)
+    w.chord(ORCH.brass, 0, 0, chord('D3 Eb3 A3 D4 Eb4'), 1.0, vel=1.0, gain=-9, verb=0.4, bright=0.9)
     # then it gathers into combat's downbeat: a tremolo cluster and low brass swelling, the small drums rolling
     for q in chord('D3 Eb3 A3 D4'):
-        w.note(synth.strings, 0, 0.75, q, 3.25, vel=0.75, gain=-8, verb=0.35, bright=0.55, attack=0.8, tremolo=12.8)
-    w.chord(synth.brass, 0, 1, chord('D2 A2 Eb3'), 3.0, vel=0.6, gain=-10, verb=0.35, bright=0.4)
-    w.drums(synth.taiko, 0, '.... oooo xxxx xxXX', gain=-9, pan=0.35, verb=0.3, size=0.45)
-    w.mix.add(BEAT, synth.cymbal(0.6, 3 * BEAT, swell=True), -13, verb=0.3)
-    w.hit(synth.taiko, 0, 3.5, vel=0.85, gain=-5, verb=0.4)
+        w.note(ORCH.strings, 0, 0.75, q, 3.25, vel=0.75, gain=-8, verb=0.35, bright=0.55, attack=0.8, tremolo=12.8)
+    w.chord(ORCH.brass, 0, 1, chord('D2 A2 Eb3'), 3.0, vel=0.6, gain=-10, verb=0.35, bright=0.4)
+    w.drums(ORCH.taiko, 0, '.... oooo xxxx xxXX', gain=-9, pan=0.35, verb=0.3, size=0.45)
+    w.mix.add(BEAT, ORCH.cymbal(0.6, 3 * BEAT, swell=True), -13, verb=0.3)
+    w.hit(ORCH.taiko, 0, 3.5, vel=0.85, gain=-5, verb=0.4)
 
 
 def harbour(w):
-    w.hit(synth.cymbal, 0, 0, vel=0.8, gain=-11, verb=0.4)
-    w.hit(synth.timpani, 0, 0, vel=0.9, gain=-6, verb=0.4, f=hz(p('D2')))
+    w.hit(ORCH.cymbal, 0, 0, vel=0.8, gain=-11, verb=0.4)
+    w.hit(ORCH.timpani, 0, 0, vel=0.9, gain=-6, verb=0.4, f=hz(p('D2')))
     for beat, voicing in ((0, 'A3 D4'), (1, 'A4 D5'), (2, 'A3 D4'), (3, 'Bb4 Eb5')):
-        w.chord(synth.brass, 0, beat, chord(voicing), 0.8, vel=0.95, gain=-7, verb=0.35, bright=0.85)
-    w.drums(synth.taiko, 0, 'X... X... X... XxXx', gain=-4, verb=0.35)
-    w.note(synth.strings, 0, 0, p('D3'), 4.0, vel=0.7, gain=-10, verb=0.3, bright=0.5, tremolo=12.8)
+        w.chord(ORCH.brass, 0, beat, chord(voicing), 0.8, vel=0.95, gain=-7, verb=0.35, bright=0.85)
+    w.drums(ORCH.taiko, 0, 'X... X... X... XxXx', gain=-4, verb=0.35)
+    w.note(ORCH.strings, 0, 0, p('D3'), 4.0, vel=0.7, gain=-10, verb=0.3, bright=0.5, tremolo=12.8)
 
 
 def victory(w):
-    w.hit(synth.cymbal, 0, 0, vel=0.8, gain=-10, verb=0.5)
-    w.hit(synth.taiko, 0, 0, vel=0.95, gain=-4, verb=0.5)
-    w.hit(synth.timpani, 0, 0, vel=0.9, gain=-6, verb=0.5, f=hz(p('D2')))
-    w.chord(synth.brass, 0, 0, chord('D4 F#4 A4 D5'), 7.0, vel=0.85, gain=-9, verb=0.5, bright=0.65, release=1.2)
-    w.note(synth.brass, 0, 0, p('A5'), 7.0, vel=0.7, gain=-12, verb=0.5, bright=0.7, release=1.2)
-    w.chord(synth.strings, 0, 0, chord('D3 A3 D4 F#4 A4'), 7.5, vel=0.6, gain=-12, verb=0.5, bright=0.45, attack=0.1,
+    w.hit(ORCH.cymbal, 0, 0, vel=0.8, gain=-10, verb=0.5)
+    w.hit(ORCH.taiko, 0, 0, vel=0.95, gain=-4, verb=0.5)
+    w.hit(ORCH.timpani, 0, 0, vel=0.9, gain=-6, verb=0.5, f=hz(p('D2')))
+    w.chord(ORCH.brass, 0, 0, chord('D4 F#4 A4 D5'), 7.0, vel=0.85, gain=-9, verb=0.5, bright=0.65, release=1.2)
+    w.note(ORCH.brass, 0, 0, p('A5'), 7.0, vel=0.7, gain=-12, verb=0.5, bright=0.7, release=1.2)
+    w.chord(ORCH.strings, 0, 0, chord('D3 A3 D4 F#4 A4'), 7.5, vel=0.6, gain=-12, verb=0.5, bright=0.45, attack=0.1,
             release=1.5)
-    w.chord(synth.choir, 0, 0, chord('D4 F#4 A4'), 7.0, vel=0.55, gain=-13, verb=0.55, attack=0.3)
-    w.line(synth.glock, 0, seq('D6:0:1 F#6:.5:1 A6:1:1 D7:1.5:2'), vel=0.5, gain=-12, pan=0.3, verb=0.6)
+    w.chord(ORCH.choir, 0, 0, chord('D4 F#4 A4'), 7.0, vel=0.6, gain=CHOIR_GAIN - 13, verb=0.55, attack=0.3)
+    w.line(ORCH.glock, 0, seq('D6:0:1 F#6:.5:1 A6:1:1 D7:1.5:2'), vel=0.5, gain=-12, pan=0.3, verb=0.6)
     w.note(synth.bass, 0, 0, p('D2'), 7.0, vel=0.7, gain=-10, verb=0.3, release=1.0)
 
 
 def defeat(w):
-    w.hit(synth.taiko, 0, 0, vel=0.8, gain=-6, verb=0.6)
-    w.note(synth.strings, 0, 0, p('D2'), 9.0, vel=0.6, gain=-9, verb=0.5, bright=0.2, attack=0.6, release=2.0)
-    w.note(synth.strings, 0, 0, p('A2'), 9.0, vel=0.5, gain=-11, verb=0.5, bright=0.2, attack=0.6, release=2.0)
-    w.note(synth.strings, 0, 1, p('Eb3'), 8.0, vel=0.5, gain=-12, verb=0.5, bright=0.25, attack=2.0, release=2.0)
-    w.line(synth.celesta, 0, seq('D5:1:1 C5:2:1 Bb4:3:1'), vel=0.5, gain=-6, pan=0.2, verb=0.6)
-    w.line(synth.celesta, 1, seq('A4:0:2 Eb4:2:2'), vel=0.45, gain=-7, pan=0.2, verb=0.6)
+    w.hit(ORCH.taiko, 0, 0, vel=0.8, gain=-6, verb=0.6)
+    w.note(ORCH.strings, 0, 0, p('D2'), 9.0, vel=0.6, gain=-9, verb=0.5, bright=0.2, attack=0.6, release=2.0)
+    w.note(ORCH.strings, 0, 0, p('A2'), 9.0, vel=0.5, gain=-11, verb=0.5, bright=0.2, attack=0.6, release=2.0)
+    w.note(ORCH.strings, 0, 1, p('Eb3'), 8.0, vel=0.5, gain=-12, verb=0.5, bright=0.25, attack=2.0, release=2.0)
+    w.line(ORCH.celesta, 0, seq('D5:1:1 C5:2:1 Bb4:3:1'), vel=0.5, gain=-6, pan=0.2, verb=0.6)
+    w.line(ORCH.celesta, 1, seq('A4:0:2 Eb4:2:2'), vel=0.45, gain=-7, pan=0.2, verb=0.6)
     w.mix.add(0, synth.wind(3 * BAR, 0.3), -14, verb=0.1)
 
 
@@ -417,13 +530,13 @@ def prep_escort(w):
     # starts as loud as prep ends (its pad goes on), then the snare and the timpani roll the march in
     w.chord(synth.pad, 0, 0, chord('E3 A3 C#4 E4'), 3.9, vel=0.32, gain=-5, verb=0.55, attack=0.05, release=0.3)
     for k in range(32):
-        w.hit(synth.snare, 0, k / 8, vel=0.2 + 0.65 * (k / 31) ** 1.5, gain=-11, pan=0.1, verb=0.25)
+        w.hit(ORCH.snare, 0, k / 8, vel=0.2 + 0.65 * (k / 31) ** 1.5, gain=-11, pan=0.1, verb=0.25)
     for k in range(16):
-        w.hit(synth.timpani, 0, k / 4, vel=0.25 + 0.55 * k / 15, gain=-13, verb=0.4, f=hz(p('A1')))
-    w.chord(synth.strings, 0, 0, chord('A2 E3 A3 C#4 E4'), 3.9, vel=0.55, gain=-12, verb=0.4, bright=0.35,
+        w.hit(ORCH.timpani, 0, k / 4, vel=0.25 + 0.55 * k / 15, gain=-13, verb=0.4, f=hz(p('A1')))
+    w.chord(ORCH.strings, 0, 0, chord('A2 E3 A3 C#4 E4'), 3.9, vel=0.55, gain=-12, verb=0.4, bright=0.35,
             attack=0.4, release=0.1)
-    w.mix.add(0, synth.cymbal(0.6, BAR, swell=True), -14, verb=0.3)
-    w.hit(synth.taiko, 0, 3.5, vel=0.6, gain=-8, verb=0.35)
+    w.mix.add(0, ORCH.cymbal(0.6, BAR, swell=True), -14, verb=0.3)
+    w.hit(ORCH.taiko, 0, 3.5, vel=0.6, gain=-8, verb=0.35)
 
 
 def tense_fierce(w):
@@ -433,40 +546,40 @@ def tense_fierce(w):
     for k in range(12):
         w.hit(synth.tom, 0, k / 4, vel=0.45 + 0.5 * k / 11, gain=-8, verb=0.2, f=200 - 9 * k)
     _kit(w, 0, '.... .... .... X.X.', '.... .... .... XXXX', 'x.x. x.x. x.x. ....', gain=-1)
-    w.line(synth.brass, 0, seq('A3:0:1 C#4:1:1 E4:2:1 A4:3:1'), vel=0.9, gain=-6, verb=0.3, bright=0.75)
-    w.line(synth.brass, 0, seq('A4:0:1 C#5:1:1 E5:2:1 A5:3:1'), vel=0.8, gain=-11, verb=0.3, bright=0.8)
-    w.mix.add(0, synth.cymbal(0.7, BAR, swell=True), -12, verb=0.3)
+    w.line(ORCH.brass, 0, seq('A3:0:1 C#4:1:1 E4:2:1 A4:3:1'), vel=0.9, gain=-6, verb=0.3, bright=0.75)
+    w.line(ORCH.brass, 0, seq('A4:0:1 C#5:1:1 E5:2:1 A5:3:1'), vel=0.8, gain=-11, verb=0.3, bright=0.8)
+    w.mix.add(0, ORCH.cymbal(0.7, BAR, swell=True), -12, verb=0.3)
     w.note(synth.bass, 0, 0, p('A1'), 4.0, vel=0.8, gain=-7, verb=0.1)
 
 
 def fierce_tense(w):
     """The enemy strikes back: a crash, the guitars left ringing, the shakuhachi rising over them."""
-    w.hit(synth.cymbal, 0, 0, vel=0.8, gain=-11, verb=0.35)
-    w.hit(synth.taiko, 0, 0, vel=1.0, gain=-3, verb=0.45)
+    w.hit(ORCH.cymbal, 0, 0, vel=0.8, gain=-11, verb=0.35)
+    w.hit(ORCH.taiko, 0, 0, vel=1.0, gain=-3, verb=0.45)
     w.hit(synth.kick, 0, 0, vel=0.9, gain=-4, verb=0.05)
     _riff(w, 0, 'D2', 'O... .... .... ..mm', gain=-9)
-    w.hit(synth.timpani, 0, 0, vel=0.8, gain=-8, verb=0.4, f=hz(p('D2')))
-    w.note(synth.shakuhachi, 0, 1, p('Bb4'), 2.5, vel=0.8, gain=-5, pan=-0.2, verb=0.5, scoop=2.0, fall=1.0)
+    w.hit(ORCH.timpani, 0, 0, vel=0.8, gain=-8, verb=0.4, f=hz(p('D2')))
+    w.note(ORCH.shakuhachi, 0, 1, p('Bb4'), 2.5, vel=0.8, gain=-5, pan=-0.2, verb=0.5, scoop=2.0, fall=1.0)
     for q in chord('D3 Eb3'):
-        w.note(synth.strings, 0, 1, q, 3.0, vel=0.6, gain=-12, verb=0.35, bright=0.5, attack=1.5, tremolo=12.8)
-    w.drums(synth.taiko, 0, '.... .... x..x X.XX', gain=-8, verb=0.3, scale=0.8)
+        w.note(ORCH.strings, 0, 1, q, 3.0, vel=0.6, gain=-12, verb=0.35, bright=0.5, attack=1.5, tremolo=12.8)
+    w.drums(ORCH.taiko, 0, '.... .... x..x X.XX', gain=-8, verb=0.3, scale=0.8)
 
 
 def combat_escort(w):
-    w.drums(synth.taiko, 0, 'X... x... o... ....', gain=-5, verb=0.4)
-    w.chord(synth.strings, 0, 0, chord('A2 E3 G3 C#4 A4'), 3.6, vel=0.55, gain=-11, verb=0.45, bright=0.35,
+    w.drums(ORCH.taiko, 0, 'X... x... o... ....', gain=-5, verb=0.4)
+    w.chord(ORCH.strings, 0, 0, chord('A2 E3 G3 C#4 A4'), 3.6, vel=0.55, gain=-11, verb=0.45, bright=0.35,
             release=0.3)
-    w.line(synth.celesta, 0, seq('A5:2:.5 G5:2.5:.5 E5:3:.5 C#5:3.5:.5'), vel=0.55, gain=-6, pan=0.25, verb=0.5)
+    w.line(ORCH.celesta, 0, seq('A5:2:.5 G5:2.5:.5 E5:3:.5 C#5:3.5:.5'), vel=0.55, gain=-6, pan=0.25, verb=0.5)
     w.note(synth.bass, 0, 0, p('A1'), 2.0, vel=0.7, gain=-8, verb=0.2)
 
 
 def combat_final(w):
     for k in range(16):
-        w.hit(synth.taiko, 0, k / 4, vel=0.35 + 0.65 * k / 15, gain=-6, verb=0.35, size=0.8 if k % 4 else 1.0)
+        w.hit(ORCH.taiko, 0, k / 4, vel=0.35 + 0.65 * k / 15, gain=-6, verb=0.35, size=0.8 if k % 4 else 1.0)
     for k in range(32):
-        w.hit(synth.snare, 0, k / 8, vel=0.2 + 0.6 * k / 31, gain=-13, pan=0.1, verb=0.25)
-    w.line(synth.brass, 0, seq('A3:0:1 C#4:1:1 E4:2:1 A4:3:1'), vel=0.85, gain=-6, verb=0.35, bright=0.7)
-    w.mix.add(0, synth.cymbal(0.7, BAR, swell=True), -12, verb=0.3)
+        w.hit(ORCH.snare, 0, k / 8, vel=0.2 + 0.6 * k / 31, gain=-13, pan=0.1, verb=0.25)
+    w.line(ORCH.brass, 0, seq('A3:0:1 C#4:1:1 E4:2:1 A4:3:1'), vel=0.85, gain=-6, verb=0.35, bright=0.7)
+    w.mix.add(0, ORCH.cymbal(0.7, BAR, swell=True), -12, verb=0.3)
     w.note(synth.bass, 0, 0, p('A1'), 4.0, vel=0.8, gain=-7, verb=0.2)
     _riff(w, 0, 'A1', 'O... O... O... OOOO', gain=-12)
 
@@ -477,12 +590,60 @@ WRITERS = {'prep': prep, 'escort': escort, 'tense': tense, 'fierce': fierce, 'fi
            'battle>final': combat_final}
 
 
+# --- the mix, by retail's ------------------------------------------------------------------------------------------
+# each section is mixed to the balance of the retail cues of its kind (synth.match): their long-term third-octave
+# spectrum and stereo width, measured from the decoded retail streams (work/music/retail/wav, decode_retail.py) by
+# `a4.py reference`, kept here as numbers. Retail's is a recorded orchestra and band: far more sub (low strings,
+# drums, bass synth), more bite at 2.5-6 kHz (cymbals, guitars, brass), no side louder than the middle.
+REFERENCE_STREAMS = {
+    'explore': (569, 570),           # A04 Gibraltar's intro and explore (Allied, an Empire mission)
+    'march': (571,),                 # A04's explore, its moving part
+    'losing': (226, 227),            # the Allies' combat, the enemy on top
+    'winning': (229, 230),           # the Allies' combat, on top
+    'combat': (141,),                # the Allies' combat
+}
+REFERENCE_OF = {'prep': 'explore', 'escort': 'march', 'tense': 'losing', 'fierce': 'winning', 'final': 'winning',
+                'ambush': 'combat', 'harbour': 'combat', 'victory': 'winning', 'defeat': 'explore',
+                'prep>escort': 'march', 'tense>fierce': 'winning', 'fierce>tense': 'losing',
+                'battle>escort': 'march', 'battle>final': 'winning'}
+REFERENCE = {
+    'explore': ([-13.8, -17.7, -11.2, -15.1, -14.9, -7.6, -15.0, -10.0, -9.6, -12.5, -12.7, -10.9, -12.7, -14.5, -15.3,
+                 -19.1, -19.2, -19.1, -21.5, -21.9, -21.7, -22.3, -23.8, -25.5, -25.3, -25.9, -28.1, -32.0], -2.6),
+    'march': ([-28.4, -24.6, -15.3, -13.5, -13.2, -13.0, -10.5, -10.7, -9.0, -10.1, -9.9, -10.4, -11.5, -12.0, -15.5,
+               -18.5, -19.9, -20.6, -20.9, -22.5, -22.5, -21.3, -23.8, -25.2, -25.4, -27.1, -30.2, -34.6], -2.4),
+    'losing': ([-7.8, -10.8, -14.3, -13.3, -9.8, -12.9, -9.7, -10.1, -15.7, -12.3, -14.0, -17.1, -18.8, -17.8, -19.9,
+                -14.4, -21.0, -21.3, -20.6, -20.1, -16.1, -22.4, -21.0, -23.2, -22.6, -27.2, -29.4, -33.8], -3.8),
+    'winning': ([-24.2, -16.7, -13.4, -10.9, -10.2, -11.0, -9.4, -10.1, -12.2, -15.7, -14.4, -16.6, -19.0, -15.4, -16.7,
+                 -17.3, -17.6, -17.0, -15.4, -14.2, -13.3, -16.7, -16.7, -18.5, -18.5, -22.0, -24.2, -29.6], -7.3),
+    'combat': ([-7.0, -9.1, -11.9, -12.7, -8.8, -12.0, -9.3, -13.2, -17.7, -13.6, -18.1, -21.1, -22.6, -19.8, -21.8,
+                -13.5, -20.5, -23.7, -21.2, -22.1, -19.5, -26.0, -24.1, -25.4, -26.7, -29.0, -28.8, -32.2], -4.4),
+}
+
+
+def reference():
+    """The retail cues' balance (synth.profile, their energy averaged): -> {kind: (dB per band, side/mid dB)}."""
+    from scipy.io import wavfile
+    out = {}
+    for kind, streams in REFERENCE_STREAMS.items():
+        e, sm = np.zeros(len(synth.BANDS)), []
+        for s in streams:
+            sr, x = wavfile.read(os.path.join(ROOT, 'work', 'music', 'retail', 'wav', f'{s:03d}.wav'))
+            assert sr == synth.RATE
+            bands, side_mid = synth.profile(x.astype(float) / 32768)
+            e += 10 ** (bands / 10)
+            sm.append(side_mid)
+        out[kind] = ([round(float(v), 1) for v in 10 * np.log10(e / e.sum())], round(float(np.mean(sm)), 1))
+    return out
+
+
 def render(name):
     """-> (n, 2) float, the whole section."""
     bars, loop, rms = SECTIONS[name]
     mix = Mix(bars * BAR, loop=loop)
     WRITERS[name](Writer(mix, name))
     x = mix.render(rms)
+    if REFERENCE:
+        x = synth.finish(synth.match(x, *REFERENCE[REFERENCE_OF[name]], loop=loop), rms)
     if not loop and name not in LINKS:          # the music stops after it: ring out, not cut off
         fade = int(1.5 * synth.RATE)
         x[-fade:] *= np.linspace(1, 0, fade)[:, None] ** 2
@@ -503,7 +664,8 @@ def stream_ms():
 # --- the map -------------------------------------------------------------------------------------------------------
 
 def music_map(base):
-    """-> (Builder, {section: ownmap.Section}, [ms] per stream)."""
+    """-> (Builder, {section: ownmap.Section}, [ms] per stream: ours, then the retail ones the shell keeps,
+    Builder.kept)."""
     b = ownmap.Builder(base)
     streams = stream_ms()
     secs, k = {}, 0
@@ -529,9 +691,8 @@ def music_map(base):
             b.act(event, ownmap.set_var(PHASE_VAR, PHASES[section]) + ownmap.goto(secs[section], prep_))
         else:
             b.on(event, secs[section], prep=prep_)
-    for event, prep_ in SHELL.items():
-        b.on(event, secs['prep'], prep=prep_)
-    return b, secs, [ms for _, ms in streams]
+    kept = b.keep(SHELL, len(streams))
+    return b, secs, [ms for _, ms in streams] + [base.samples[s][1] for s in kept]
 
 
 # --- listening -----------------------------------------------------------------------------------------------------
@@ -619,14 +780,14 @@ def pack(folder=None):
     from experimental.music import pack as pk
     audio, owner = streams()
     b, secs, lengths = music_map(extract.retail_map())
-    assert [len(a) * 1000 // synth.RATE for a in audio] == lengths, 'streams and the map disagree'
+    assert [len(a) * 1000 // synth.RATE for a in audio] == lengths[:len(audio)], 'streams and the map disagree'
     pcm = [(np.clip(a, -1, 1) * 32767).astype(np.int16) for a in audio]
     os.makedirs(STREAMS, exist_ok=True)
     for k, x in enumerate(pcm):
         from scipy.io import wavfile
         wavfile.write(os.path.join(STREAMS, f'{k:03d}.wav'), synth.RATE, x)
     listen.build_index(STREAMS, os.path.join(STREAMS, 'index.npz'))
-    tracks = pk.music_tracks(b.m, pcm, synth.RATE)
+    tracks = pk.music_tracks(b.m, pcm, synth.RATE, extract.retail_streams(b.kept))
     return pk.make(b.m, tracks, *([folder] if folder else []))
 
 
@@ -654,6 +815,10 @@ def main():
         for a, b, s in heard(sys.argv[2]):
             print(f'{a:6.1f}-{b:6.1f}  {s}')
         return
+    if sys.argv[1:2] == ['reference']:
+        for kind, (bands, side_mid) in reference().items():
+            print(f'    {kind!r}: ({bands}, {side_mid}),')
+        return
     import json
     from experimental.music import pfdx
     audio, owner = streams(sections_too=True)
@@ -661,7 +826,7 @@ def main():
     names = json.load(open(os.path.join(retail, 'event_hashes.json')))
     base = pfdx.parse(open(os.path.join(retail, 'map.bin'), 'rb').read(), names)
     b, secs, lengths = music_map(base)
-    assert [len(a) * 1000 // synth.RATE for a in audio] == [ms for ms in lengths], 'streams and the map disagree'
+    assert [len(a) * 1000 // synth.RATE for a in audio] == lengths[:len(audio)], 'streams and the map disagree'
     m = b.build([(k, ms) for k, ms in enumerate(lengths)])
     x, rows = playthrough(m, secs['prep'].entry, audio, owner)
     _write(os.path.join(OUT, 'playthrough.wav'), x)

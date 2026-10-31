@@ -111,6 +111,91 @@ def test_every_cue_is_an_event_a_script_can_fire():
     assert not fired_by_the_game & {a4.EVENTS[key][0] for key in a4.CUES.values()}
 
 
+def test_the_shell_plays_retail_music_as_retail_does():
+    """The menus, briefing and score screen keep retail's music (a4.SHELL, ownmap.Builder.keep): each shell event
+    reaches copies of the retail nodes it reached, every one of them, the same graph by branches, playing streams
+    after ours that are the retail streams of the originals; none of our sections is reached, none reaches ours."""
+    if not (RETAIL / 'map.bin').exists():
+        pytest.skip('run experimental/music/extract.py first (needs the game)')
+    base = pfdx.parse((RETAIL / 'map.bin').read_bytes(), json.loads((RETAIL / 'event_hashes.json').read_text()))
+    b, secs, lengths = a4.music_map(base)
+    ours = len(a4.stream_ms())
+    first_kept = max(s.exit for s in b.sections) + 1                       # our nodes come first
+    assert all(n.stream is None or n.stream < ours for n in b.m.nodes[:first_kept])
+    assert all(n.stream is None or n.stream >= ours for n in b.m.nodes[first_kept:])
+
+    def reach(m, start):
+        seen, todo = {}, [start]
+        while todo:
+            i = todo.pop()
+            if i == 0xFFFF or i in seen:
+                continue
+            n = m.nodes[i]
+            seen[i] = n
+            todo += [t for _, _, t in n.branches] + ([n.ref] if n.is_segment else [])
+        return seen
+
+    for name in a4.SHELL:
+        old = [a for a in next(e for e in base.events if e.name == name).actions]
+        new = next(e for e in b.m.events if e.name == name).actions
+        assert [(h, op) for h, op, _ in old] == [(h, op) for h, op, _ in new], name
+        for (_, op, x), (_, _, y) in zip(old, new):
+            if op != ownmap.GOTO:
+                assert x == y
+                continue
+            a, c = reach(base, x & 0xFFFF), reach(b.m, y & 0xFFFF)
+            assert len(a) == len(c) and min(c) >= first_kept, name
+            for i, j in zip(sorted(a), sorted(c)):
+                p, q = a[i], c[j]
+                assert (p.kind, len(p.branches), [(lo, hi) for lo, hi, _ in p.branches]) == \
+                       (q.kind, len(q.branches), [(lo, hi) for lo, hi, _ in q.branches])
+                if p.is_segment:
+                    assert b.kept[q.stream - ours] == p.stream and lengths[q.stream] == base.samples[p.stream][1]
+    assert len(lengths) == ours + len(b.kept)
+
+
+def test_kept_streams_are_the_retail_streams_the_map_names():
+    """extract.retail_streams reads the stream the retail sample table points at (its SNS offset / 0x80)."""
+    from experimental.music import extract, mus
+    if not (RETAIL / 'track.cdata').exists():
+        pytest.skip('run experimental/music/extract.py first (needs the game)')
+    base = pfdx.parse((RETAIL / 'map.bin').read_bytes(), json.loads((RETAIL / 'event_hashes.json').read_text()))
+    rows = mus.read_directory((RETAIL / 'track.cdata').read_bytes())
+    kept = a4.music_map(base)[0].kept
+    for s, (snr, sns) in zip(kept, extract.retail_streams(kept)):
+        assert rows[s]['sns'] // 0x80 == base.samples[s][0]
+        assert mus.duration_ms(snr) == base.samples[s][1] and len(sns) == rows[s]['sns_size']
+
+
+def test_sections_are_mixed_to_the_retail_balance():
+    """synth.match: a section's broad spectrum ends up within a few dB of its retail kind's (a4.REFERENCE) in the
+    bands both have music in, its stereo no wider than the reference's."""
+    tilt = lambda v: np.convolve(np.pad(v, 2, mode='edge'), np.array([1, 2, 3, 2, 1]) / 9, 'valid')
+    for name in ('tense', 'fierce'):
+        bands, side_mid = a4.REFERENCE[a4.REFERENCE_OF[name]]
+        got, sm = synth.profile(a4.render(name))
+        mids = slice(3, 25)                                          # 50 Hz .. 8 kHz
+        assert np.abs(tilt(got)[mids] - tilt(np.array(bands))[mids]).max() < 4.0, name
+        assert sm < side_mid + 1.0, name
+
+
+@pytest.mark.skipif(not a4.RECORDED, reason='the recorded instruments (sampler.available())')
+def test_the_choir_is_heard(monkeypatch):
+    """The user heard no choir at first (2026-10-28: it sat 20-34 dB under the rest): where it sings, its loudest
+    half-second is within 8 dB of everything else."""
+    from experimental.music import sampler
+    real = sampler.choir
+    for name in ('prep', 'tense', 'fierce', 'final'):
+        full = a4.render(name)
+        monkeypatch.setattr(sampler, 'choir', lambda *a, **k: real(*a, **k) * 0.0)
+        rest = a4.render(name)
+        monkeypatch.setattr(sampler, 'choir', real)
+        w = int(0.5 * synth.RATE)
+        db = lambda x: 10 * np.log10((x ** 2).mean() + 1e-20)
+        assert max(db(full[i:i + w] - rest[i:i + w]) - db(rest[i:i + w])
+                   for i in range(0, len(full) - w, w)) > -8, name
+
+
 def test_streams_are_as_long_as_the_map_says():
     x = a4.render('ambush')
     assert len(x) * 1000 // synth.RATE == dict(a4.stream_ms())['ambush']

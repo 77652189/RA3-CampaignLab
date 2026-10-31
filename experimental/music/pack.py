@@ -36,15 +36,17 @@ def tracer_stream(args):
     return mus.encode(np.stack([x] * channels, axis=1) if channels > 1 else x, rate)
 
 
-def tracer_tracks(m, lengths):
+def tracer_tracks(m, lengths, kept=()):
     """Tracer streams of the given lengths (ms) for track 0 (stream k plays tracer k) and one 1 s stream for
-    Track_Mem (unused, the game may expect the track), 22.05 kHz mono EA-XAS, our ids; the map's track entries
-    follow them and its sample table is replaced. Returns {asset name: .mus bytes}."""
-    per_track = [list(enumerate(lengths)), [(len(lengths), 1000)]]
+    Track_Mem (unused, the game may expect the track), 22.05 kHz mono EA-XAS, our ids; then on track 0 the retail
+    streams the map keeps (ownmap.Builder.keep: extract.retail_streams), as stored. The map's track entries follow
+    them and its sample table is replaced. Returns {asset name: .mus bytes}."""
+    per_track = [list(enumerate(lengths)), [(len(lengths) + len(kept), 1000)]]
     encoded = []
     for streams in per_track:
         with ProcessPoolExecutor() as ex:
             encoded.append(list(ex.map(tracer_stream, [(k, ms, tracer.RATE, 1) for k, ms in streams])))
+    encoded[0] += list(kept)
     return _tracks(m, encoded)
 
 
@@ -53,13 +55,14 @@ def _encode(args):
     return mus.encode(pcm, rate)
 
 
-def music_tracks(m, streams, rate):
+def music_tracks(m, streams, rate, kept=()):
     """Our music for track 0: streams [(n,) or (n, 2) int16] at `rate`, EA-XAS (stream k of the map plays
-    streams[k]); Track_Mem gets one second of silence. The map's track entries and sample table follow them."""
+    streams[k]), then the retail streams the map keeps (as tracer_tracks); Track_Mem gets one second of silence.
+    The map's track entries and sample table follow them."""
     with ProcessPoolExecutor() as ex:
         main = list(ex.map(_encode, [(x, rate) for x in streams]))
     silence = np.zeros((rate, 2) if streams[0].ndim == 2 else rate, np.int16)
-    return _tracks(m, [main, [mus.encode(silence, rate)]])
+    return _tracks(m, [main + list(kept), [mus.encode(silence, rate)]])
 
 
 def _tracks(m, encoded):

@@ -465,10 +465,49 @@ class Mix:
             wet = signal.fftconvolve(self.send, ir, axes=0)[:self.n]
         x = self.dry + 1.6 * wet
         x = hp(x, 28)                          # (a 2nd-order filter's settling at a loop's start is far below hearing)
-        rms = np.sqrt((x ** 2).mean()) + 1e-12
-        x *= 10 ** (rms_db / 20) / rms
-        ceil = 10 ** (ceiling_db / 20)
-        knee = 0.6 * ceil
-        over = np.abs(x) > knee
-        x[over] = np.sign(x[over]) * (knee + (ceil - knee) * np.tanh((np.abs(x[over]) - knee) / (ceil - knee)))
-        return x
+        return finish(x, rms_db, ceiling_db)
+
+
+def finish(x, rms_db=-18.0, ceiling_db=-1.0):
+    """Levelled to an RMS, peaks under a soft ceiling."""
+    x = x * 10 ** (rms_db / 20) / (np.sqrt((x ** 2).mean()) + 1e-12)
+    ceil = 10 ** (ceiling_db / 20)
+    knee = 0.6 * ceil
+    over = np.abs(x) > knee
+    x[over] = np.sign(x[over]) * (knee + (ceil - knee) * np.tanh((np.abs(x[over]) - knee) / (ceil - knee)))
+    return x
+
+
+# --- matching a reference's balance --------------------------------------------------------------------------------
+
+BANDS = 31.5 * 2.0 ** (np.arange(28) / 3)                # third-octave centres, 31.5 Hz .. 16 kHz
+
+
+def profile(x):
+    """-> (dB per BANDS, relative to the whole; side over mid dB): a recording's long-term balance."""
+    spec = np.abs(np.fft.rfft(x.mean(axis=1))) ** 2
+    f = np.fft.rfftfreq(len(x), 1 / RATE)
+    edge = BANDS * 2 ** (1 / 6)
+    lo = np.concatenate([[BANDS[0] / 2 ** (1 / 6)], edge[:-1]])
+    e = np.array([spec[(f >= a) & (f < b)].sum() for a, b in zip(lo, edge)]) + 1e-20
+    mid, side = x.mean(axis=1), (x[:, 0] - x[:, 1]) / 2
+    return 10 * np.log10(e / e.sum()), 10 * np.log10(((side ** 2).mean() + 1e-20) / ((mid ** 2).mean() + 1e-20))
+
+
+def match(x, bands, side_mid, limit=9.0, loop=True):
+    """An EQ (and a stereo width) that moves x's balance to a reference's (profile()), at most `limit` dB a band,
+    both balances smoothed over five bands first. Applied in one circular FFT over the whole, so a loop stays
+    seamless; a one-shot is padded with its ring-out room first."""
+    tilt = lambda v: np.convolve(np.pad(v, 2, mode='edge'), np.array([1, 2, 3, 2, 1]) / 9, 'valid')
+    gain = np.clip(tilt(np.asarray(bands)) - tilt(profile(x)[0]), -limit, limit)    # the broad balance, not
+                                                                                     # the notes either one plays
+    n = len(x)
+    pad = 0 if loop else int(0.5 * RATE)
+    y = np.concatenate([x, np.zeros((pad, 2))]) if pad else x
+    f = np.fft.rfftfreq(len(y), 1 / RATE)
+    curve = 10 ** (np.interp(np.log2(np.maximum(f, 1)), np.log2(BANDS), gain) / 20)
+    y = np.fft.irfft(np.fft.rfft(y, axis=0) * curve[:, None], len(y), axis=0)[:n]
+    sm = profile(y)[1]
+    mid, side = y.mean(axis=1), (y[:, 0] - y[:, 1]) / 2
+    side = side * float(np.clip(10 ** ((side_mid - sm) / 20), 0.4, 1.6))
+    return np.stack([mid + side, mid - side], axis=1)

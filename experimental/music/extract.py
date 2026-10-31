@@ -47,6 +47,17 @@ def retail_map():
     return pfdx.parse(open(os.path.join(OUT, 'map.bin'), 'rb').read(), names)
 
 
+def retail_streams(indices):
+    """Retail track 0's streams `indices` as stored, [(SNR header, SNS data)] (mus.pack's input), from the
+    extracted track.cdata (main)."""
+    from experimental.music import mus
+    with open(os.path.join(OUT, 'track.cdata'), 'rb') as f:
+        data = f.read()
+    rows = mus.read_directory(data)
+    return [(data[r['snr']:r['snr'] + r['snr_size']], data[r['sns']:r['sns'] + r['sns_size']])
+            for r in (rows[i] for i in indices)]
+
+
 def event_hashes():
     """{event name: EventNameHash} of every PathMusicEvent in the retail global stream (the instance's u32 at +4;
     the map keeps its low 24 bits). Instances carrying an XferAlternateEvent are bigger than the plain 16 bytes,
