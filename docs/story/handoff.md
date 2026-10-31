@@ -34,6 +34,19 @@
    - 不做：`plan.py` 里"按兵力分档派兵"、S1"湖心按种类杀步兵"的计划词，brief 说新题不一定要。
    - 做完 `pytest tests -q | tail -n 5`，提交（只提交自己的文件）并推送，汇报每处一句结论给设计线（SendMessage to `local_51ff7c05-91d2-4470-98af-6d2fbcbff92a`）和总控。
 
+1a. **（2026-10-31 做完，已提交 e77bae9）A4 第 3 层需求里的三项引擎检查**：`ice_ghost --check ghost` 和 `--check north`（`checks/icewall.py` 的 `ghost`、`ghost_north`，场景 `missions/icewall_bench.py` 的 `ghost`，用 aso 地图因为要敌方队伍）。结论已写进 `docs/design/flow/mechanics.md`（"鬼王砸冰墙""区域里数冰墙""找最近的冰墙并下令"三行），都是 PASS，用不上需求里的退路：
+   - 鬼王**自己不砸**墙（站在墙边 20 秒墙血量 100），脚本 `NAMED_ATTACK_NAMED(鬼王, 墙名)` 下令就砸，一道墙约 16～24 秒（含走位）；
+   - 区域里数冰墙：`PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA(玩家, 比较, 数, 冰墙种类, 区域)`，和老广场机关 `封住` 同一个条件；
+   - 找最近的墙：`SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER(冰墙种类, 玩家, 敌方队伍, 名字)`，按鬼王位置由近到远（C、A、D、B；北头出生则 B、A、C、D）。**写法要点**：一道墙起了名就不再算"没起名的"，所以要拿一面旗记"名字指着东西"，墙毁了才放旗再选；从没起过的名字"已毁""没毁"都是假。样子照抄 `checks/icewall.py` 的 `ghost`（`Test - pick`、`Test - dropped`、`Test - smash` 三条）。
+   - 用传送把鬼王挪过去再选，顺序对不上（原因没查）；A4 的鬼王是运输车卸下来的，等于创建，不受影响。
+
+1b. **接着做：第 2 步，A4 的摆放和脚本按新流程稿重做。** 读 `docs/design/cards/a4-layer3.md`（地图要改、脚本表、要测的）、`docs/design/flow/a4.md`、`docs/design/maps/a4.md`。还没动手，要做的东西和落点：
+   - **地图** `experimental/cnv/maps/sapporo.py`（测试 `tests/test_sapporo.py`，改完先 `cnv_preview(a4)`）：一号广场往西挪到接点约 x 2050，使后巷口（x 1250）、一号广场、二号广场三个街口相距 ≥ 800；三条街之间留后街（后巷当后街用），绕路长短差 ≥ 10 秒；最后一程三个口子（北坡口、三号广场、东街口）后面各一块炮位空地；布景（地道口、舞台、金奖牌）不挡试玩，先用替代品。
+   - **计划** `docs/story/plans/a4.md`（编译器 `plan.py`，`plan_vocab` 查能写的词）：旧的"广场"机关（`devices/ice_plazas.py`，冰雕里藏兵、车到才碎、2/3 号杀不完）和新题对不上，要换成"号角"机关：号角计时器 + 倒计时显示，间隔表按难度（简单都 ≥ 45，普通 30/50 混，困难短的多）；号角响，开着的地道口各出一波（900：2 武士 + 2 坦克杀手，`打: 猎杀` 车队）；会场冻住的街（口子区域里有冰墙）那波改从后街绕路的起点晚 10 秒出；第一声号角只开后巷、一号广场；最后一程三口同号角，冻住的口子这波不出、记账（每口一个计数），墙没了一起放出；第三声号角起鬼王从海上靠岸，按上面 1a 的写法砸最近的墙，没有墙就 `打: 猎杀`。要删的：二号广场杀不完的地道、修理厂奖励、北坡口那路反扑（旧"北坡反扑"进攻）、海上天狗（旧"海上来的"进攻）。
+   - **保留**：车队机关（`devices/convoy.py`）、北营 AI、电视塔/修理厂的"走近就归你"规则、兵少补援、补派冰幕工兵、冰幕工兵封顶两个（禁造/准造）、基地车交付、港口生变后号角停。
+   - **检查** `experimental/cnv/checks/a4.py`：`idle`、`hold`、`win` 都是按旧题写的，要换成新题的几条（号角出兵、冻街改道、冻口攒兵、鬼王砸墙）；`derrick` 不变。
+   - 做完 `cnv_preview` + 相关 `cnv_check` + `pytest tests -q | tail -n 5`，写进 `docs/design/flow/mechanics.md` 的新结论，A4 能不能试玩、缺什么（音乐、单位外观、配音）汇报总控。
+
 1. **A4 按设计线新稿重做第 3 层。** 第 3 层要什么：`docs/design/cards/a4-layer3.md`（设计线 f4b7635，会场三街接点 ≥ 800、后街绕路差 ≥ 10 秒、口子后炮位、脚本表）。**最后一程灰盒已做（2026-10-31，`graybox-cards.md`"第三轮"，`graybox_cards.py` 的 `a4_last`）**：大军堵三口平推轻松（k\* 0.5～0.6）；鬼王只欺负车、冰墙只多拖 3 秒，转折在数字上不成立；每口一波要对着玩家的钱定。还要做的：地图改（sapporo 接点、后街、炮位）、脚本表照 a4-layer3.md、两项引擎检查（鬼王砸不砸冰墙、脚本能不能数到区域里的冰墙）。读：`docs/design/flow/a4.md`（流程稿，待用户审；第 2 层地图内容稿也还没出来）、`docs/design/flow/mechanics.md`（哪些机制能承诺）、`docs/design/maps/`（第 2 层，地图内容，设计线在做）。现有计划 `docs/story/plans/a4.md`；做法是改生成器和计划，不手改产物。要加的东西：
    不依赖流程稿定稿的三项准备已做（2026-10-30，测试 `tests/test_plan_lines.py`，全量 286 过，已提交；`plan.py` 里音乐线的 `CNV_MUSIC_CAPTIONS` 那段没带进去，还在工作区）：
    - 计划词 `兵少于 <n> <单位>、<单位>`（`plan.py` 的 `troops()`，比较码 0 是 `<`）；模拟器补了 `COUNTER_MATH_COUNTER`（0 加、1 减）和 `SET_COUNTER_TO_COUNTER`，**测试台还没验这两个动作**（只看过原版怎么用）；
@@ -59,4 +72,7 @@
 - 实测前先查 `get_status`，用户的游戏在跑就停下问，不要重试。
 - 长检查放后台，输出写 `work/logs/`，屏幕只看 `PASS|FAIL|RESULT`。
 - 配音包会拿 SDK 构建锁，已改成同进程里重入不再卡死（333f09e）。
+- 测试台一个检查最多 4 行读数（`counters.MAX_LINES`）；第 4 行的数读不准（会读出 647 这种固定噪声），要紧的读数放前三行；多个状态可以压成一个数（位置编号、区域数）。标签别用"目标在哪"这类会读错的字，`cnv_list` 输出很长（几百行），别整条调用，用 Grep 查 `build.py`。
+- 钩子 `guard_inline_edits.py` 会拦下带反斜杠的 heredoc / `python -c`（连 `newline='\n'` 也算）：改文件用 Edit/Write，别用内联 python。
+- 检查里需要"脚本才创建的单位"时，基础任务（不带检查）也要有一个放好的对象，否则契约测试 `test_every_build_keeps_the_contract` 失败；做法是 mission 里在远处放一个，检查里杀掉再创建（`ghost`）。
 - 音频的脚本帧数（约 44 帧/音频秒）和计时器帧率（约 15/秒）对不上，原因没查清：别把音频帧数换算成任务秒（`docs/engine/script-semantics.md` 第 11 条）。
