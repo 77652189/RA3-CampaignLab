@@ -21,7 +21,8 @@ from checks.a4_before import freeze, ice_wall, keep_up, start
 from parts import Obj, Script, Test, counted, square
 
 TAG = 'A4'
-OPENING = 14.0                                  # the opening scene ends: the plan starts the street horns
+OPENING = 1.0                                   # the bench skips the opening scene: the street horns start at once
+                                                # (bench 2026-10-31: the first horn between s33 and s37, normal)
 GAP1 = 35.0                                     # normal: the countdown's first time
 HORN1 = OPENING + GAP1                          # the first horn on the streets
 MOUTHS_AT = 16.0                                # queue, smash: the mouths' horns started (after the plan's rule)
@@ -58,7 +59,17 @@ def scene(m):
     t = Test()
     start(t, m)
     keep_up(t, m)
-    t.scripts.append(Script('Test - whole map', [], [('MAP_SWITCH_BORDER', 0)]))
+    t.scripts += [Script('Test - whole map', [], [('MAP_SWITCH_BORDER', 0)]),
+                  # the convoy parked for good (the plan's 停下 flag, set every frame): at the halt the plan goes on to
+                  # 港口生变, whose scene stops the horns (the trucks cross the festival in ~60 s, the horns need minutes)
+                  Script('Test - hold the convoy', [], [('SET_FLAG', f'CNV_{TAG}_Halted', 1)], once=False)]
+    # the counters are read off the screen against a dark ground (testbench/counters.py): the camera goes, once the
+    # opening scene is over, to the map's west edge, where the bottom left is the void beyond it (bench 2026-10-31:
+    # on the start view a house stood there and every counter read None)
+    t.waypoints['Test Camera'] = (0.0, m.site('start')[1])
+    t.scripts += [Script('Test - camera set', [], [('SET_MILLISECOND_TIMER', 'Test - camera', OPENING + 1.0)]),
+                  Script('Test - camera', [('TIMER_EXPIRED', 'Test - camera')],
+                         [('MOVE_CAMERA_TO', 'Test Camera', 0.5, 0.0, 1.0, 1.0)])]
     return t
 
 
@@ -92,13 +103,13 @@ def mouths_on(t, m, counted_horns=0):
 def horn(m):
     t = scene(m)
     first = wave(m, 'V', 1, 'V1') + wave(m, 'V', 1, 'V2')       # the third street has no wave in the first horn
-    tally(t, first, 'Test Horn 1', '第一声的兵')
-    tally(t, wave(m, 'V', 2, 'V3'), 'Test Plaza 2', '二号的兵（第二声）')
-    t.expect += [('第一声的兵', 0, '==', 0, HORN1 - LEAD - 3),
-                 ('第一声的兵', HORN1 + 5, 'ever>=', 8),              # two streets, four each: plaza 2 is not open yet
-                 ('第一声的兵', 0, '<=', 8),
-                 ('二号的兵（第二声）', 0, '==', 0, HORN1 + 20),
-                 ('二号的兵（第二声）', HORN1 + 50 + 5, 'ever>=', 4)]
+    tally(t, first, 'Test Horn 1', '号角1的兵')
+    tally(t, wave(m, 'V', 2, 'V3'), 'Test Plaza 2', '号角2街3的兵')
+    t.expect += [('号角1的兵', 0, '==', 0, HORN1 - LEAD - 3),
+                 ('号角1的兵', HORN1 + 5, 'ever>=', 8),              # two streets, four each: plaza 2 is not open yet
+                 ('号角1的兵', 0, '<=', 8),
+                 ('号角2街3的兵', 0, '==', 0, HORN1 + 20),
+                 ('号角2街3的兵', HORN1 + 50 + 5, 'ever>=', 4)]
     t.bench = [('bench_watch', dict(seconds=HORN1 + 65, every=4, sheet=False, lines=len(t.counters)))]
     return t
 
@@ -114,13 +125,13 @@ def detour(m):
     ice_at(t, m, 'engineer 1', 'ice V2', HORN1 - BUILD, 'plaza 1')
     counted('Test Walls', '冰墙', t, template=ice_wall(m).id)
     tally(t, lane, 'Test Lane Wave', '后巷的兵')
-    tally(t, plaza1, 'Test Plaza 1 Wave', '一号的兵')
-    tally(t, plaza1, 'Test At Lane', '一号的兵在后巷口', area='Test Lane')
+    tally(t, plaza1, 'Test Plaza 1 Wave', '1号街的兵')
+    tally(t, plaza1, 'Test At Lane', '1号街兵在后巷口', area='Test Lane')
     t.expect += [('冰墙', HORN1 - 3, 'ever==', 1),
                  ('后巷的兵', HORN1 + 6, 'ever>=', 4),
-                 ('一号的兵', 0, '==', 0, HORN1 - LEAD + 2),         # the ice up: plaza 1's wave is not made there
-                 ('一号的兵', HORN1 + 20, 'ever>=', 4),               # but later, ...
-                 ('一号的兵在后巷口', HORN1 + 20, 'ever>=', 1)]       # ... at the lane's foot
+                 ('1号街的兵', 0, '==', 0, HORN1 - LEAD + 2),         # the ice up: plaza 1's wave is not made there
+                 ('1号街的兵', HORN1 + 8, 'ever>=', 4),                # but later (bench: s45, the escort kills them soon), ...
+                 ('1号街兵在后巷口', HORN1 + 4, 'ever>=', 1)]        # ... at the lane's foot (bench: s45, 10 s late)
     t.bench = [('bench_watch', dict(seconds=HORN1 + 28, every=2, sheet=False, lines=len(t.counters)))]
     return t
 
@@ -138,8 +149,9 @@ def queue(m):
     life = ice_wall(m).params['lifetime']
     t.expect += [('冰墙', MOUTH1 - 3, 'ever==', 1),
                  ('另两口的兵', MOUTH1 + 6, 'ever>=', 8),               # open mouths: made at once, four each
-                 ('北坡口的兵', 0, '==', 0, MOUTH1 + life - 12),        # kept while the ice stands
-                 ('北坡口的兵', MOUTH1 + life + 20, 'ever>=', 4)]       # made when it is gone
+                 # the ice stands s31-s59 (bench 2026-10-31), the horn at ~s48: kept in between, made at ~s61
+                 ('北坡口的兵', 0, '==', 0, MOUTH1 - LEAD + 6),         # kept while the ice stands
+                 ('北坡口的兵', MOUTH1 + 15, 'ever>=', 4)]              # made when it is gone
     t.bench = [('bench_watch', dict(seconds=MOUTH1 + life + 30, every=3, sheet=False, lines=len(t.counters)))]
     return t
 
