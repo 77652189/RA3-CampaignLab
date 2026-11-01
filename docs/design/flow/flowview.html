@@ -738,7 +738,7 @@ function renderOutline() {
   }).join('');
   document.getElementById('info').innerHTML = '';
   document.getElementById('view').innerHTML = `<div class="card md">${o.html}</div>
-    <div class="card md"><h2 class="olh">每关的题卡（选甲）</h2><div class="olnote">用户对三关都选了甲。</div></div>${cards}`;
+    <div class="card md"><h2 class="olh">每关的题卡</h2><div class="olnote">A4、S1、J7 是用户 10-30 选的甲卡；其余 24 关 11-01 每关只出了一张（docs/design/cards/all.md）。</div></div>${cards}`;
 }
 
 function render() {

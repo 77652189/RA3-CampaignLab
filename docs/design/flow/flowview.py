@@ -166,21 +166,32 @@ def git_date(path):
     return r.stdout.strip()
 
 
-def outline_data(level_ids):
+ALL_LEVELS = [f'{side}{n}' for side in 'ASJ' for n in range(1, 10)]     # campaign order, with a flow script or not
+ALL_CARDS = CARDS / 'all.md'        # one card a level (2026-11-01); A4, S1, J7 keep their own file and pick ## 甲
+
+
+def outline_data():
     cards = []
-    for lid in level_ids:
+    every = ALL_CARDS.read_text(encoding='utf-8') if ALL_CARDS.exists() else ''
+    for lid in ALL_LEVELS:
         card, flow = CARDS / f'{lid.lower()}.md', fc.HERE / f'{lid.lower()}.md'
-        if not card.exists():
+        own = card.exists()
+        if own:
+            txt = card.read_text(encoding='utf-8')
+            title = re.search(r'^# (.+)$', txt, re.M)
+            sec = re.search(r'^## 甲.*?(?=^## |\Z)', txt, re.M | re.S)
+        else:
+            card = ALL_CARDS
+            title = re.search(rf'^### ({lid} .+)$', every, re.M)
+            sec = re.search(rf'^### {lid} .*?\n(.*?)(?=^##|\Z)', every, re.M | re.S)
+        if not sec:
             continue
-        txt = card.read_text(encoding='utf-8')
-        title = re.search(r'^# (.+)$', txt, re.M)
-        sec = re.search(r'^## 甲.*?(?=^## |\Z)', txt, re.M | re.S)
         first = re.search(r'^\*\*(2026-\d\d-\d\d)', flow.read_text(encoding='utf-8'), re.M) if flow.exists() else None
         cd, fd = git_date(card), (git_date(flow) if flow.exists() else '')
         cards.append(dict(id=lid, title=title.group(1) if title else lid,
-                          html=md_html(sec.group(0), 3) if sec else '<p>这张题卡里没有 ## 甲。</p>',
-                          cardDate=cd, flowDate=fd, flowFirst=first.group(1) if first else '',
-                          hasFlow=flow.exists(), stale=bool(flow.exists() and fd and cd and fd < cd)))
+                          html=md_html(sec.group(0) if own else sec.group(1), 3),
+                          cardDate=cd, flowDate=fd, flowFirst=first.group(1) if first else '', hasFlow=flow.exists(),
+                          stale=bool(own and flow.exists() and fd and cd and fd < cd)))
     return dict(html=md_html((ROOT / 'docs' / 'story' / 'outline.md').read_text(encoding='utf-8'), 1), cards=cards)
 
 
@@ -205,7 +216,7 @@ def main(names):
         levels.append(dict(id=q.stem.upper(), plan=plan, problems=problems, empty=empty, scene=scene,
                            minutes=[minutes(s.get('时长')) for s in plan.get('段') or []]))
     data = json.dumps(dict(levels=levels, cast=cast_rows(), cell=fc.flowmap.CELL, emptyLast=fc.EMPTY_LAST,
-                           outline=outline_data([lv['id'] for lv in levels])),
+                           outline=outline_data()),
                       ensure_ascii=False, default=str).replace('</', '<\\/')
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(TEMPLATE.read_text(encoding='utf-8').replace('/*DATA*/null', data), encoding='utf-8')
