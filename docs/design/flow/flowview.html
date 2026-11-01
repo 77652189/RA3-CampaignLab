@@ -164,6 +164,22 @@ button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); 
 .chain > div b { display: block; font-size: 12px; color: var(--mute); font-weight: normal; margin-bottom: 2px; }
 .bk { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 10px; border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px; }
 @media (max-width: 700px) { .bk { grid-template-columns: 1fr; } }
+
+/* ---- the 大纲 tab (markdown rendered by flowview.py) ---- */
+.md h1 { font-size: 20px; margin: 0 0 8px; }
+.md h2 { font-size: 17px; margin: 18px 0 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+.md h2:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.md h3 { font-size: 15px; margin: 14px 0 4px; color: var(--accent); }
+.md h4 { font-size: 14px; margin: 10px 0 4px; }
+.md p { margin: 6px 0; }
+.md ul, .md ol { margin: 4px 0 8px; padding-left: 22px; }
+.md code { background: color-mix(in srgb, var(--mute) 15%, transparent); border-radius: 4px; padding: 0 4px; font-size: 13px; }
+.md .lnk { text-decoration: underline dotted; text-underline-offset: 3px; }
+.md table { border-collapse: collapse; width: 100%; font-size: 13px; margin: 8px 0; }
+.md td, .md th { border: 1px solid var(--line); padding: 6px 8px; vertical-align: top; text-align: left; min-width: 90px; }
+.md th { background: color-mix(in srgb, var(--mute) 10%, transparent); font-weight: 600; }
+.olnote { color: var(--mute); font-size: 13px; margin: 2px 0 8px; }
+.olwarn { color: var(--bad); font-size: 13px; margin: 2px 0 8px; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -711,15 +727,31 @@ function renderScene() {
   document.getElementById('view').innerHTML = `<div class="rv">${head}${top}${cards}<div class="card"><h2 style="font-size:16px;margin:0 0 4px">还缺什么、谁来做</h2>${todo}</div></div>`;
 }
 
+// ---- the 大纲 tab (L = -1): the story outline, then each level's chosen card ----
+function renderOutline() {
+  const o = DATA.outline;
+  const cards = o.cards.map(c => {
+    const flow = !c.hasFlow ? '<div class="olnote">还没有流程稿。</div>'
+      : `<div class="olnote">流程稿 docs/design/flow/${esc(c.id.toLowerCase())}.md：最近提交 ${esc(c.flowDate)}，首条重写记录 ${esc(c.flowFirst || '无')}；题卡最近提交 ${esc(c.cardDate)}。</div>`
+        + (c.stale ? '<div class="olwarn">流程稿早于题卡，还没按甲卡重写</div>' : '');
+    return `<div class="card md"><h2>${esc(c.title)}</h2>${flow}${c.html}</div>`;
+  }).join('');
+  document.getElementById('info').innerHTML = '';
+  document.getElementById('view').innerHTML = `<div class="card md">${o.html}</div>
+    <div class="card md"><h2 class="olh">每关的题卡（选甲）</h2><div class="olnote">用户对三关都选了甲。</div></div>${cards}`;
+}
+
 function render() {
   if (timer) toggle();
-  document.getElementById('tabs').innerHTML = DATA.levels.map((lv, i) =>
+  document.getElementById('tabs').innerHTML = `<button class="${L < 0 ? 'on' : ''}" data-i="-1">大纲</button>` + DATA.levels.map((lv, i) =>
     `<button class="${i === L ? 'on' : ''}" data-i="${i}">${esc(lv.id)} ${esc(lv.plan['关名'])}${lv.problems.length ? ' ⚠' : ''}</button>`).join('');
+  document.querySelector('.modes').style.display = L < 0 ? 'none' : '';
   document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => { L = +b.dataset.i; at = 0; store.set('flow-level', L); render(); });
   document.getElementById('m-play').classList.toggle('on', mode === 'play');
   document.getElementById('m-review').classList.toggle('on', mode === 'review');
   document.getElementById('m-sheet').classList.toggle('on', mode === 'sheet');
   document.getElementById('m-scene').classList.toggle('on', mode === 'scene');
+  if (L < 0) return renderOutline();
   renderInfo();
   ({ play: renderPlay, review: renderReview, sheet: renderSheet, scene: renderScene })[mode]();
 }
@@ -728,11 +760,11 @@ document.getElementById('m-play').onclick = () => { mode = 'play'; store.set('fl
 document.getElementById('m-review').onclick = () => { mode = 'review'; store.set('flow-mode', mode); render(); };
 document.getElementById('m-sheet').onclick = () => { mode = 'sheet'; store.set('flow-mode', mode); render(); };
 document.addEventListener('keydown', e => {
-  if (mode !== 'play') return;
+  if (mode !== 'play' || L < 0) return;
   if (e.key === 'ArrowRight') go(at + 1);
   if (e.key === 'ArrowLeft') go(at - 1);
 });
-L = Math.min(+(store.get('flow-level') || 0), DATA.levels.length - 1) || 0;
+{ const sv = store.get('flow-level'); L = sv === null ? -1 : Math.max(-1, Math.min(+sv || 0, DATA.levels.length - 1)); }
 mode = ['sheet', 'review', 'scene'].includes(store.get('flow-mode')) ? store.get('flow-mode') : 'play';
 render();
 </script>
