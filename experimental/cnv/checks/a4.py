@@ -219,7 +219,8 @@ def derrick(m):
     return t
 
 
-DEMO_RUN = 45.0                                 # demo: the scene's demonstration starts at its 12th second
+DEMO_RUN = 60.0                                 # demo: the scene's demonstration starts at its 12th second
+DEMO_OVER = 30.0                                # demo: the check takes the demonstration away (the bench skips the scene)
 
 
 def made_names(m, part):
@@ -233,15 +234,28 @@ def demo(m):
     t = scene(m)
     foes, outs = made_names(m, ' Demo Foe '), made_names(m, ' Demo Out ')
     assert foes and outs, 'the plan has no 演示'
+    # the bench skips the opening scene and its first frame is already ~40 s into the mission (bench 2026-11-01: the
+    # whole demonstration ran before frame 1, state 111 and no troops to see, the scene's own `演示收` having fired).
+    # So the check reads latched flags (they never go back to 0) and takes the scene's `演示收` out: it takes the
+    # demonstration away itself DEMO_OVER seconds after it started, which also shows `演示收` clears what is left
+    off, started = f'CNV_{TAG}_Demo_Off', f'CNV_{TAG}_Demo_Started'
+    for s in m.scripts:
+        s.do = [a for a in s.do if tuple(a[:3]) != ('SET_FLAG', off, 1)]
+    t.scripts += [Script('Test - demo over set', [('FLAG', started, 1)],
+                         [('SET_MILLISECOND_TIMER', 'Test - demo over', DEMO_OVER)]),
+                  Script('Test - demo over', [('TIMER_EXPIRED', 'Test - demo over')], [('SET_FLAG', off, 1)])]
     counted('Test Walls', '冰墙', t, template=ice_wall(m).id)
     tally(t, foes, 'Test Demo Foes', '演示的兵')
     tally(t, outs, 'Test Demo Outs', '绕路出的兵')
-    # what the demonstration is doing, in one number: 1 started, 10 the street's ice stands, 100 the scene took it away
+    # what the demonstration has done, in one number: 1 started, 20 the pair was made behind the ice (it stood), 300 the
+    # pair was turned and the lane's pair made, 4000 taken away (distinct digits: the counter reader merges a run of
+    # one digit, bench 2026-11-01 read 111 as 1)
     t.counters.append(('Test Demo State', '演示状态'))
     t.scripts.append(Script('Test - state zero', [], [('SET_COUNTER', 'Test Demo State', 0)], once=False))
     t.scripts += [Script(f'Test - state {k}', [('FLAG', f, 1)], [('INCREMENT_COUNTER', k, 'Test Demo State')], once=False)
-                  for f, k in ((f'CNV_{TAG}_Demo_Started', 1), (f'CNV_{TAG}_Frozen_V2', 10), (f'CNV_{TAG}_Demo_Off', 100))]
-    t.expect += [('冰墙', 5, 'ever>=', 1), ('演示的兵', 5, 'ever>=', len(foes)), ('绕路出的兵', 5, 'ever>=', len(outs))]
+                  for f, k in ((started, 1), (f'CNV_{TAG}_Demo_Iced', 20), (f'CNV_{TAG}_Demo_Turned', 300), (off, 4000))]
+    t.expect += [('冰墙', 0, 'ever>=', 1), ('演示状态', 0, 'ever>=', 321), ('演示状态', DEMO_RUN, '==', 4321),
+                 ('演示的兵', DEMO_RUN, '==', 0), ('绕路出的兵', DEMO_RUN, '==', 0)]
     t.bench = [('bench_watch', dict(seconds=DEMO_RUN, every=2, sheet=False, lines=len(t.counters)))]
     return t
 
@@ -284,8 +298,26 @@ def hold(m):
     mark_phase(t, m, 2, 'Test Phase 2', '港口生变')
     t.expect += [('街的号角声数', 0, '<=', 5), ('街的号角声数', FESTIVAL, 'ever>=', 5),
                  ('车到停车点', FESTIVAL + 30, 'ever>=', 1), ('港口生变', FESTIVAL + 60, 'ever>=', 1)]
-    t.bench = [('bench_watch', dict(seconds=FESTIVAL + 70, every=4, sheet=False, lines=len(t.counters)))]
+    t.bench = scene_proof_watch(FESTIVAL + 70, every=4, lines=len(t.counters))
     return t
+
+
+def scene_proof_watch(total, every, lines):
+    """bench_watch calls (each pauses the mission with Esc when it ends, which fails inside a scene: the bench then
+    takes the mission for ended and skips the rest, bench 2026-11-01 hold: s246 in the harbour scene that began at
+    s243; win: s237) whose ends miss the harbour scene: the festival's watches stop at FESTIVAL - 60, one long call covers the
+    scene (~40 s) and the rest."""
+    watch = lambda s: ('bench_watch', dict(seconds=s, every=every, sheet=False, lines=lines))
+    out, left = [], FESTIVAL - 60.0
+    while left > 120.0:
+        out.append(watch(120.0))
+        left -= 120.0
+    out.append(watch(left))
+    left = total - (FESTIVAL - 60.0)
+    while left > 0:                     # the first of these covers the scene (a watch runs at most 120 s)
+        out.append(watch(min(120.0, left)))
+        left -= 120.0
+    return out
 
 
 def win(m):
@@ -298,5 +330,5 @@ def win(m):
                             [('NAMED_KILL', m.role('north command').name)]))
     end = FESTIVAL + HARBOUR_SCENE + LAST_LEG
     t.expect += [('到港口车数', 0, 'ever>=', 2), ('ENDED', FESTIVAL + HARBOUR_SCENE + 120, '', None, end)]
-    t.bench = [('bench_watch', dict(seconds=end + 20, every=5, sheet=False, lines=len(t.counters)))]
+    t.bench = scene_proof_watch(end + 20, every=5, lines=len(t.counters))
     return t
