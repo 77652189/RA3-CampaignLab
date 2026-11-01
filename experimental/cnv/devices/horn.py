@@ -97,8 +97,11 @@ class Horn(Device):
         tag = c.tag
         self.wall = iw.wall(f'CNV_{tag}IceWall', length=WALL_SIDE, shape='square')
         self.core = iw.seed(f'CNV_{tag}IceSeed', self.wall.id)
+        # his own voice events come with the voice pack; a pack that lacks them (an edition whose dub of his lines has
+        # not been delivered, langs.py) leaves him retail's voice rather than naming events that are not there
+        voiced = c.m.voice is None or f'{iw.VOICE}_VoiceSelect' in getattr(c.m.voice, 'groups', {iw.VOICE + '_VoiceSelect'})
         self.eng = iw.engineer(wall_id=self.core.id, stand=iw.clear_of(self.wall),
-                               reload=f'{float(spec.get("冷却", RELOAD)):g}s')
+                               reload=f'{float(spec.get("冷却", RELOAD)):g}s', voice=iw.VOICE if voiced else None)
         self.units = [self.eng, self.core, self.wall]
         self.names = {'冰幕工兵': self.eng}
         self.gaps = [plan.times(g) for g in spec['间隔']]

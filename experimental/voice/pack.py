@@ -138,10 +138,11 @@ def to_48k(src, dst):
         w.writeframes(np.clip(np.round(x), -32768, 32767).astype('<i2').tobytes())
 
 
-def make(levels=(), test=False, lang='zh', folder=FOLDER):
+def make(levels=(), test=False, lang='zh', folder=FOLDER, items=None):
     """Copy the WAVs under <SDK>/Audio/<folder>, write <SDK>/Mods/<folder>/Data/voice.xml, compile it alone (for the
-    encoded audio) and return the Pack."""
-    items = ([TEST] if test else []) + lines(levels, lang)
+    encoded audio) and return the Pack. items: [(audio id, wav, text, group)] already chosen (the level line's
+    experimental/cnv/langs.py: each speaker's dub language, the edition's subtitle language); None: lines(levels, lang)."""
+    items = ([TEST] if test else []) + (lines(levels, lang) if items is None else list(items))
     audio = os.path.join(labpaths.SDK3, 'Audio', folder)
     data = os.path.join(labpaths.SDK3, 'Mods', folder, 'Data')
     os.makedirs(audio, exist_ok=True)

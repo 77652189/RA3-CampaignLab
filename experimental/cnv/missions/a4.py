@@ -15,8 +15,9 @@ import plan
 BEFORE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'a4_before.md')
 
 
-def mission(name='CampA4'):
-    return plan.mission('a4', name)
+def mission(lang='zh', name=None):
+    """lang: the edition (langs.py): zh = CampA4, intl = CampA4En (English subtitles, each side dubbed in its language)."""
+    return plan.mission('a4', name, lang)
 
 
 def before(name='CampA4B'):

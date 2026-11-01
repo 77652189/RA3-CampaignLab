@@ -23,6 +23,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 import glossary                                 # noqa: E402
+import langs                                    # noqa: E402
 from parts import NOT, Goal, Mission, Script, square   # noqa: E402
 
 PLANS = os.path.join(ROOT, 'docs', 'story', 'plans')
@@ -191,8 +192,9 @@ class Compiler:
     """One plan -> one Mission. A condition compiles to alternatives, [[script condition, ...], ...]: any one
     alternative, all of its conditions; what happens once something held is latched in a flag."""
 
-    def __init__(self, data, name=None):
+    def __init__(self, data, name=None, lang='zh'):
         self.d = data
+        self.lang = lang                # the edition (langs.py): zh, or intl (English subtitles, dubbed in each side's language)
         self.level = str(data.get('关卡', 'x'))
         self.tag = re.sub(r'[^A-Za-z0-9]', '', self.level).upper()
         mapmod = importlib.import_module(f'maps.{data["地图"]}')
@@ -210,7 +212,8 @@ class Compiler:
                 raise PlanError(f'阵营 其他 {who}: 对我 / 对敌 is one of {sorted(RELATIONS)}')
             self.side[who], self.faction[f's{k}'] = f's{k}', spec.get('阵营')
             self.relation[f's{k}'] = tuple(rel)
-        self.m = Mission(name=name or f'Camp{self.tag}', map=mapmod)
+        self.m = Mission(name=name or langs.mod_name(self.tag, lang), map=mapmod)
+        self.m.missing = []             # what the edition lacks (audio, subtitle text, translations): the build lists it
         self.n = 0
         self.conds = {}             # condition text -> alternatives
         self.timers = {}            # condition text with a time -> (timer, its started flag)
@@ -233,7 +236,9 @@ class Compiler:
         if not levels:
             return None
         import voice_link
-        self.m.voice = voice_link.Later(levels if isinstance(levels, list) else [levels])
+        self.m.voice = voice_link.Later(levels if isinstance(levels, list) else [levels], self.lang,
+                                        self.faction['p1'])
+        self.m.missing += [f'voice {x}' for x in self.m.voice.missing]
         return self.m.voice
 
     def load_music(self, name):
@@ -1157,12 +1162,14 @@ class Compiler:
                 self.m.facts[f'段 {ph.name}'] = t[1]
         for dev in self.devices.values():
             self.m.facts.update(dev.facts())
+        self.m.strings, left = langs.translate(self.m.strings, self.level, self.lang)
+        self.m.missing += [f'string {x}' for x in left]
         return self.m
 
 
-def mission(level, name=None):
-    """The level's mission, compiled from its plan."""
-    return Compiler(load(level), name).compile()
+def mission(level, name=None, lang='zh'):
+    """The level's mission, compiled from its plan, in edition `lang` (langs.py)."""
+    return Compiler(load(level), name, lang).compile()
 
 
 if __name__ == '__main__':

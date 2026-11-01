@@ -20,6 +20,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 import parts                                    # noqa: E402  (puts experimental/campaign on the path)
+import langs                                    # noqa: E402
 from checks import a4 as check_a4               # noqa: E402
 from checks import a4_before as check_a4b       # noqa: E402
 from checks import a5 as check_a5               # noqa: E402
@@ -77,11 +78,16 @@ def digits():
     return m, t
 
 
-# name -> mission(); checks: name -> check(mission) -> Test; or a build that is a (mission, test) pair outright
+A4_CHECKS = {'horn': check_a4.horn, 'detour': check_a4.detour, 'queue': check_a4.queue, 'smash': check_a4.smash,
+             'derrick': check_a4.derrick, 'demo': check_a4.demo, 'melt': check_a4.melt, 'idle': check_a4.idle,
+             'hold': check_a4.hold, 'win': check_a4.win}
+
+# name -> mission(); checks: name -> check(mission) -> Test; or a build that is a (mission, test) pair outright.
+# An edition of a level (langs.py) is its own name: a4_intl (CampA4En) next to a4 (CampA4); `build.py a4 --lang intl`
+# is that name, and ra3bench's cnv_check takes it as it is
 MISSIONS = {
-    'a4': (lambda: a4.mission(), {'horn': check_a4.horn, 'detour': check_a4.detour, 'queue': check_a4.queue,
-                                  'smash': check_a4.smash, 'derrick': check_a4.derrick, 'demo': check_a4.demo, 'melt': check_a4.melt,
-                                  'idle': check_a4.idle, 'hold': check_a4.hold, 'win': check_a4.win}),
+    'a4': (lambda: a4.mission(), A4_CHECKS),
+    'a4_intl': (lambda: a4.mission('intl'), A4_CHECKS),
     'a4_before': (lambda: a4.before(), {
         'seal': check_a4b.seal, 'placed': check_a4b.placed, 'smash': check_a4b.smash, 'ambush': check_a4b.ambush,
         'win': check_a4b.win, 'lose': check_a4b.lose, 'idle': check_a4b.idle, 'harbour': check_a4b.harbour,
@@ -233,6 +239,13 @@ def resolve(name, check):
     if not check:
         return m, None, m.name
     return m, checks[check](m), m.name + check.title()
+
+
+def missing_report(m):
+    """What the mission's edition lacks (audio, subtitle text, a translation of a plan string), one per line: never
+    silently missing (langs.py). Empty text when nothing is."""
+    gone = getattr(m, 'missing', [])
+    return (f'MISSING in {m.name} ({len(gone)}):\n  ' + '\n  '.join(gone)) if gone else ''
 
 
 def listing():
@@ -398,6 +411,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('name')
     ap.add_argument('--check', default='')
+    ap.add_argument('--lang', default='zh', choices=sorted(langs.EDITIONS),
+                    help='the edition: zh = Chinese subtitles and dub (CampA4), intl = English subtitles, each side '
+                         'dubbed in its language (CampA4En); what it lacks is listed')
     ap.add_argument('--no-build', action='store_true')
     ap.add_argument('--calibrate', action='store_true')
     ap.add_argument('--plan', action='store_true', help='(ra3bench cnv_check) build, then print the bench steps as '
@@ -410,11 +426,17 @@ def main():
     if a.name == 'list':
         print(listing())
         return
+    if a.lang != 'zh':
+        a.name = f'{a.name}_{a.lang}'
+        if a.name not in MISSIONS:
+            sys.exit(f'build: no {a.lang} edition of {a.name.rsplit("_", 1)[0]} (builds: {sorted(MISSIONS)})')
     if a.show:
         text = show(a.name, a.check)
         print(text)
         sys.exit(0 if text.endswith('contract: ok') else 1)
     m, t, mod = resolve(a.name, a.check)
+    if missing_report(m):
+        print(missing_report(m))
     if a.preview:
         if hasattr(m.map, 'LAYOUT'):            # the map's own design lint first: it needs no map file
             import platmap
