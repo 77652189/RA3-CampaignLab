@@ -170,6 +170,31 @@ def queue(m):
     return t
 
 
+MELT_RUN = 72.0
+MELT_ICE_AT = 20.0                              # melt: the ice order (as in detour: the horn's first time less BUILD)
+
+
+def melt(m):
+    """冰快化: the plan's Melting flag (what the announcer rule 冰墙即将融化 waits on) comes up in an ice wall's last
+    seconds and is down again once the walls are gone."""
+    t = scene(m)
+    gx, gy = m.point('ice V3')               # not the demonstration's street (its wall stands there until ~s24)
+    stand(t, m, 'engineer', (gx, m.site('start')[1]), 'plaza 2')
+    ice_at(t, m, 'engineer', 'ice V3', MELT_ICE_AT, 'plaza 2')
+    counted('Test Walls', '冰墙', t, template=ice_wall(m).id)
+    t.counters.append(('Test Melting', '快化旗'))
+    t.scripts += [Script('Test - melting zero', [], [('SET_COUNTER', 'Test Melting', 0)], once=False),
+                  Script('Test - melting up', [('FLAG', f'CNV_{TAG}_Melting', 1)], [('INCREMENT_COUNTER', 1, 'Test Melting')],
+                         once=False)]
+    # not judged on the clock: how far into the mission the bench's first frame is differs from start to start (bench
+    # 2026-11-01: the walls of one run were up s30-s63, of the next gone by s27). The plan's own demonstration leaves
+    # a wall at the start too (its flag showed s7-s25, the last 8 s of its two walls). So: the flag was up at some
+    # frame, and once every wall is gone the flag is down again
+    t.expect += [('快化旗', 0, 'ever>=', 1), ('快化旗', MELT_RUN - 5, '==', 0), ('冰墙', MELT_RUN - 5, '==', 0)]
+    t.bench = [('bench_watch', dict(seconds=MELT_RUN, every=2, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 GHOST_WAIT = 45.0                               # smash: the wall's health read for this long after the horn
 
 

@@ -120,6 +120,22 @@ def test_every_wave_and_a_landed_ghost_king_blips_on_the_minimap():
     assert lands and any(a[0] == 'OBJECT_CREATE_RADAR_EVENT' for a in lands[0].do)
 
 
+def test_the_melt_event_goes_up_in_a_walls_last_seconds_and_down_when_it_is_gone():
+    """冰快化: every wall's up script starts a second timer MELT_WARN short of the lifetime, which raises the flag if the
+    wall still stands; its gone script puts the flag down; the plan's rule waits on that flag."""
+    m = level(规则=[{'当': '雪祭.冰快化', '每隔': '0:20', '做': ['通报 冰快化了']}])
+    life = 30.0
+    ups = [s for s in m.scripts if s.name.startswith('CNV ZZ - Ice ') and s.name.endswith(' up')]
+    assert ups and all(('SET_MILLISECOND_TIMER', f'CNV ZZ Melt {s.name.split()[4]}', life - horn.MELT_WARN) in s.do
+                       for s in ups)
+    melting = [s for s in m.scripts if s.name.endswith(' melting')]
+    assert len(melting) == len(ups) and all(('SET_FLAG', 'CNV_ZZ_Melting', 1) in s.do for s in melting)
+    gone = [s for s in m.scripts if s.name.startswith('CNV ZZ - Ice ') and s.name.endswith(' gone')]
+    assert all(('SET_FLAG', 'CNV_ZZ_Melting', 0) in s.do for s in gone)
+    rule = [s for s in m.scripts if ('FLAG', 'CNV_ZZ_Melting', 1) in s.when and 'Rule' in s.name]
+    assert rule
+
+
 def test_the_opening_demonstration_ices_a_street_and_the_foes_turn_back_to_the_lane():
     m = level(机关={'车队': {'类型': '车队', '出发': '开局 + 0:10'},
                   '雪祭': {'类型': '号角', '车队': '车队', '间隔': [45, 50, 45, 50, 45],

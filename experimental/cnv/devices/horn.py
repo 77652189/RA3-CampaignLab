@@ -29,7 +29,8 @@ Every wave's first troop (and a landed Ghost King) gets a minimap blip (OBJECT_C
 
 Units: 冰幕工兵 (the engineer). Marks spawn <street or mouth> (where its wave is made), ice <name> (where the ice
 goes); areas hold the ice (GATE_AREA round the ice mark). Events: 号角 <n> (the n-th horn of the streets sounded),
-口号角 <n> (of the mouths), 冻住 <name> (ice stands there now). Actions: 开 街 / 开 口 (the horns start, counting from
+口号角 <n> (of the mouths), 冻住 <name> (ice stands there now), 冰快化 (an ice wall has MELT_WARN seconds left; holds
+until it is gone, so a rule with 每隔 speaks once per melt). Actions: 开 街 / 开 口 (the horns start, counting from
 the first), 停 (they stop; what is made or kept goes on).
 """
 import itertools
@@ -43,6 +44,7 @@ CLEAR_MARGIN = ice_plazas.CLEAR_MARGIN
 WALL_SIDE = ice_plazas.WALL_SIDE
 RELOAD = ice_plazas.RELOAD
 MIN_APART = 10.0                                # two waves shut streets send to one open street arrive this far apart
+MELT_WARN = 8.0                                 # 冰快化: this many seconds before an ice wall's lifetime is up
 MODES = {'街': 'V', '口': 'L'}                  # the two sets, and the letter in their names
 
 
@@ -82,7 +84,8 @@ class Horn(Device):
               '鬼王': '{从: 第几声起, 数量: 每声几台, 运输车: 单位, 海: 运输车出现的地方, 岸: 靠岸的地方}',
               '演示': '开场演示：{街: 工兵冻住的街, 绕去: 兵掉头去的街, 等: 冰起后几秒兵掉头（默认 4）, 兵: 冻住前出的人数（默认 2）}'}
     EVENTS = {'号角 <n>': '街的第 n 声号角响了', '口号角 <n>': '口的第 n 声号角响了', '冻住 <名>': '这个口子现在有冰',
-              '鬼王上岸': '第一个鬼王上岸了', '放出': '口子后攒着的兵放出来过（冰化了或被砸开）'}
+              '鬼王上岸': '第一个鬼王上岸了', '放出': '口子后攒着的兵放出来过（冰化了或被砸开）',
+              '冰快化': f'某道冰墙只剩 {MELT_WARN:g} 秒就化了（那道墙没了就不成立；配 每隔 一个融化说一次）'}
     ACTIONS = {'开 <街|口>': '号角从头开始响（先显示倒计时）', '停': '号角停（倒计时收起）；已经出的、攒着的照旧',
                '演示': '开场演示开始：工兵冻住演示的街，兵掉头绕去另一条街（只在过场里用）', '演示收': '演示的人都收走'}
 
@@ -133,6 +136,7 @@ class Horn(Device):
         self.c.m.strings[self.alert] = '号角响了！'
         self.kings = f'CNV_{tag}_Kings'              # Ghost Kings landed so far
         self.released = f'CNV_{tag}_Released'        # a kept wave of a mouth was made (its ice went)
+        self.melting = f'CNV_{tag}_Melting'          # an ice wall is in its last MELT_WARN seconds
         self.demo_on, self.demo_off = f'CNV_{tag}_Demo_On', f'CNV_{tag}_Demo_Off'
 
     # ---- names
@@ -162,6 +166,8 @@ class Horn(Device):
             return [[('COUNTER', self.kings, 3, 1)]]
         if event == '放出':
             return [[('FLAG', self.released, 1)]]
+        if event == '冰快化':
+            return [[('FLAG', self.melting, 1)]]
         return super().cond(event, args)
 
     def ids_by_name(self, name):
@@ -479,14 +485,19 @@ class Horn(Device):
         for mode in 'VL':
             for w, wid in self.ids(mode).items():
                 timer, up = f'CNV {tag} Ice {wid}', f'CNV_{tag}_Ice_{wid}'
+                warn = f'CNV {tag} Melt {wid}'
                 label = f'SCRIPT:CNV{tag}_ICE{wid}'
                 m.strings[label] = f'{w}的冰墙'
                 f = self.frozen(wid)
                 out += [Script(f'CNV {tag} - Ice {wid} up', [('FLAG', f, 1), ('FLAG', up, 0)],
                                [('SET_FLAG', up, 1), ('SET_MILLISECOND_TIMER', timer, float(life)),
+                                ('SET_MILLISECOND_TIMER', warn, max(float(life) - MELT_WARN, 0.0)),
                                 ('DISPLAY_COUNTDOWN_TIMER', timer, label)], once=False),
+                        Script(f'CNV {tag} - Ice {wid} melting', [('TIMER_EXPIRED', warn), ('FLAG', f, 1)],
+                               [('SET_FLAG', self.melting, 1)], once=False),
                         Script(f'CNV {tag} - Ice {wid} gone', [('FLAG', f, 0), ('FLAG', up, 1)],
-                               [('SET_FLAG', up, 0), ('HIDE_COUNTDOWN_TIMER', timer)], once=False)]
+                               [('SET_FLAG', up, 0), ('SET_FLAG', self.melting, 0), ('HIDE_COUNTDOWN_TIMER', timer)],
+                               once=False)]
                 m.countdowns.append(timer)
                 out += [Script(f'CNV {tag} - Clear {wid} of {j + 1}',
                                [('FLAG', f, 1), ('NAMED_INSIDE_AREA', e, f'CNV {tag} Block {wid}')],
