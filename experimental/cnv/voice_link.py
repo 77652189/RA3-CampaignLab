@@ -12,6 +12,7 @@ whose audio or subtitle text is not delivered in that edition is left out and li
 """
 import json
 import os
+import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -31,10 +32,16 @@ class Later:
                 raise FileNotFoundError(f'语音 {lv}: no delivered lines at {path}')
         self.items, self.missing = langs.lines(self.levels, lang, faction)
         self.folder = langs.voice_folder(lang)
-        by_event = {}
+        by_event, self.retail = {}, {}
         for lv in self.levels:
             with open(os.path.join(pack.DELIVERED, 'zh', str(lv).upper(), 'manifest.json'), encoding='utf-8') as f:
-                by_event.update({e['event']: e for e in json.load(f) if e.get('event')})
+                entries = json.load(f)
+            by_event.update({e['event']: e for e in entries if e.get('event')})
+            self.retail.update({(e['who'], e['text']): e['eva'] for e in entries if e.get('eva') and not e.get('event')})
+        known = self._retail_events() if self.retail else None
+        for ev in sorted(set(self.retail.values())):
+            if known is not None and ev not in known:
+                self.missing.append(f'{ev} (retail announcer): not a retail audio event')
         self.groups = {group for _, _, _, group in self.items if group}     # the unit voice events the pack has
         for ev, _, text, group in self.items:
             self.events.add(ev)
@@ -48,6 +55,21 @@ class Later:
 
     def find(self, who, text):
         return self.said.get((str(who), str(text)))
+
+    def eva(self, who, text):
+        """The retail event of an announcer line that is retail's own (a manifest entry with `eva` and no `event`:
+        'Aeva_CritUnitUnderAtt'), or None. It is played as it is in both editions: the international one runs on the
+        English retail game, the Chinese one on the Chinese voice mod, which dubs the same retail event."""
+        return self.retail.get((str(who), str(text)))
+
+    def _retail_events(self):
+        """The retail AudioEvent ids (the SDK's SageXML/Sounds/Voice.xml), the names an eva line may play."""
+        from experimental.campaign import labpaths
+        path = os.path.join(labpaths.SDK3, 'SageXML', 'Sounds', 'Voice.xml')
+        if not os.path.exists(path):
+            return None
+        with open(path, encoding='utf-8', errors='replace') as f:
+            return set(re.findall(r'<AudioEvent id="(\w+)"', f.read()))
 
     def _make(self):
         if self.made is None:

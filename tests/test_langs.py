@@ -97,3 +97,14 @@ def test_a4_plan_has_an_english_edition_that_lists_what_it_lacks():
     # the plan's non-speech strings are all translated (a speaker's line waits for the voice line's English text)
     speakers = ('沃斯', '司令', '科尔', '播报', '冰幕工兵')
     assert not [x for x in en.missing if x.startswith('string ') and not any(f': {w}：' in x for w in speakers)]
+
+
+def test_a_retail_announcer_line_plays_the_retail_event_in_both_editions():
+    """A manifest entry with `eva` and no `event` (retail's own announcer line) is played as that retail event,
+    with no caption; it is checked against the retail audio events and listed if it is not one."""
+    import plan
+    for lang in ('zh', 'intl'):
+        m = plan.mission('a4', lang=lang)
+        rule = next(s for s in m.scripts if ('PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT', 'Aeva_CritUnitLost') in s.do)
+        assert all(a[0] != 'SHOW_MILITARY_CAPTION' for a in rule.do)
+        assert not [x for x in m.missing if 'retail announcer' in x]

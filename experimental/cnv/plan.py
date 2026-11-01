@@ -563,10 +563,15 @@ class Compiler:
             if '原文' in a and not who:
                 raise PlanError(f'action {a!r}: 原文 is a speaker\'s words: 说 <who> goes with it')
             shown = f'{who}：{words}' if who else words
-            dubbed = self.voice.find(who, a.get('原文', words)) if who and self.voice else None
+            said = a.get('原文', words)
+            dubbed = self.voice.find(who, said) if who and self.voice is not None else None
             if dubbed:                              # the dubbed line: its subtitle comes with it
-                self.m.lines.append(dict(说话人=str(who), 原文=str(a.get('原文', words)), 通报=shown, 字串=dubbed))
+                self.m.lines.append(dict(说话人=str(who), 原文=str(said), 通报=shown, 字串=dubbed))
                 return [('PLAY_SOUND_EFFECT', dubbed)]
+            retail = self.voice.eva(who, said) if who and self.voice is not None else None
+            if retail:                              # retail's own announcer line: its event, no caption (as retail)
+                self.m.lines.append(dict(说话人=str(who), 原文=str(said), 通报=shown, 字串=retail))
+                return [('PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT', retail)]
             key = self.text('SCRIPT', shown)
             if who:                                 # a flow-script line: the dubbed line is found by who and what
                 self.m.lines.append(dict(说话人=str(who), 原文=str(a.get('原文', words)), 通报=shown, 字串=key))
