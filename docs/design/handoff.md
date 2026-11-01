@@ -76,7 +76,7 @@
 
 总控转达用户 11-01："按第1条做"：用户通读之前，把 27 关第一遍稿按"先加戏"（[flow/README.md](flow/README.md) 第二节）**从头重写**，题卡不动，待拍板的 9 件事继续按推荐写。
 
-- **做到哪**：盟军 A1～A3、A5～A9 重写完（本节随提交一起进），flowcheck 零问题。**下一步：苏联 S1～S9，再帝国 J1～J9**，每条线提交一次。
+- **做到哪**：盟军 A1～A3、A5～A9、苏联 S1～S9 重写完，flowcheck 零问题。**下一步：帝国 J1～J9**（J9 第三方对 A9、S9），然后整理文档。苏联线的跨关接口说明在本机 `work/beats/soviet_notes.md`，帝国线的在 `empire_notes.md`。
 - **怎么派**：每两三关一个子 Agent（默认继承 Opus，不指定 Sonnet），共用说明在本机 `work/beats/rewrite_brief.md`（`work/` 不进 git；丢了就照它的要点重写：填 [flow/beats_brief.md](flow/beats_brief.md) → `agy_task.py` 出点子到 `work/beats/<关>_beats.md` → 读卡和点子从头写 → flowcheck 零问题，不提交）。子 Agent 交回后主会话跑全量 flowcheck、`flowview.py`，提交。
 - **重写里定下的**：A7 去掉了上一稿自己加的"一成血滑向最空处迫降"和"叛军自动修闸刀"，闸刀谁占着闸房谁说了算；A8 去掉"兵跟平台升"；A9 去掉"塔站起来走路"，K8 换兵改由最后一段苏联人杀进来承担。用户喜欢走路的塔，就要在 A9 题卡上加。A9 的苏联空投挪到最后一段，**写 S9、J9 时第三方要和它对上**。A2 新补"对岸苏联火箭车不打自己人"，第 3 层要确认。
 - **A4 只出点子不重写**，挑出的 6 条（第二遍或关卡线改台词时用；来源 `work/beats/a4_beats.md`）：
