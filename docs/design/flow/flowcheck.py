@@ -360,7 +360,8 @@ def check_placing(path, p):
         return res
     for kind, point in (('资源点', 3), ('伏击点', 3), ('援军', 5)):
         entries = want.get(kind) or []
-        if kind != '援军' and not entries:
+        no_base = kind == '资源点' and str(p.get('基地')).startswith('无')    # no base, nothing to spend money on
+        if kind != '援军' and not entries and not no_base:
             out.append(f'{n} 摆放要求: no {kind} -- name at least one for the level line to place{REVIEW[point]}')
         for e in entries:
             out += spot(kind, e, point)
