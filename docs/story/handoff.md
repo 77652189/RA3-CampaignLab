@@ -16,6 +16,15 @@
 - 配音接线：任务带 `voice` 包，`CNV_` 开头的声音名必须在包里（`parts.py` 的契约）。配音测试台 `build.py voice_bench_12 --check play`（和 `ref` 原版对照）都 PASS：包按自己的长度播完，字幕自动出，音频读 `data\static.12\cdata`。细节在 `experimental/cnv/checks/voice.py` 顶部注释。
 - 工程师占油井：`a4 --check derrick` 过；"兵少于 N"的数法已测准（`mechanics.md` 兵少补援一行）。
 
+## 最新状态（2026-11-01 晚，先读这里；细节都在下面 1f、1g，别在这里重复）
+
+- **A4 两个版本都做完并通过检查**：中文版 `CampA4`、国际版 `CampA4En`（`build.py a4 [--lang intl]`，逻辑在 `experimental/cnv/langs.py`，音频和字幕问配音线的 `route` 命令，ADR 0013），各 111 句进包，测试台 `demo/hold/idle/win/melt` 全 PASS，已装进 `Mods`，启动器认得国际版。详见 **1f**。
+- **缺配音的 7 句**：计划里的台词和配音稿对不上，只有字幕没有声音，两个版本相同；清单每次构建开头的 `MISSING` 里就有（`python -I -X utf8 experimental/cnv/build.py a4 --lang zh` 看），文字和位置见 1f 末尾那几条；要么策划线/配音线改稿对上，要么改 `plans/a4.md` 的台词去对稿。国际版这 7 句的英文是我在 `docs/story/plans/a4.en.json` 补的临时译文。另有两处没接：流程稿"卡住了"的"关键单位遭到攻击"（车队设备没有"被拦/被攻击"事件）、两处原版播报没亲耳听过。
+- **视频试验做完**：任务能播自己做的小窗视频和全屏视频，转码一条命令 `python -I -X utf8 experimental/video/to_vp6.py in.mp4 out.vp6 --size radar|full`（NihAV 的 EA/VP6 编码器，已编好），坑和结论见 **1g**。还没接进计划词。
+- **下一步：等用户试玩 A4 的反馈**（试玩清单在 `work/playtest/a4.md`，不进 git），再按反馈调数字（号角间隔、每街一波兵数、绕路秒数、补兵 45 秒、车速 12）。之后候选：①视频进计划词（`{视频: 名字, 位置: 小窗|全屏}`）；②"车被拦住"事件 + 对应播报；③其他关出国际版（`MISSIONS` 里加 `<关>_intl`，启动器自动认）。
+- **踩过的坑（都在 1f、1g 里有细节）**：测试台首帧已在任务约 40 秒、跳过开场过场；Esc 暂停在过场里失败会被当成"任务结束"；读数器会把连续相同数字并成一个；`cnv_check` 偶发菜单卡住（`build=false` 重试）；`git://` 连不上要用 gitweb 快照；工作目录会漂（一律用绝对路径，不要 cd）。
+- 规矩：装进 Mods 前单独查红警3是否在运行；下载要用户本人在本会话里说；上下文超 15 万写交接（这次已超 50 万）。
+
 ## 下一步（按顺序）
 
 0. **灰盒（ADR 0011）已做完（2026-10-30）**：`experimental/cnv/graybox.py`（k\*，A4 三段全判平推轻松，测试 `tests/test_graybox.py`）；九张题卡的结论在 `docs/story/graybox-cards.md`，数字来自 `experimental/cnv/graybox_cards.py`（测试 `tests/test_graybox_cards.py`）。没补 `a4_before` 走查。新题卡出来后，往 `graybox_cards.py` 加函数、往 `graybox-cards.md` 加一节即可；模拟器判断不了的写"留给实机"。
