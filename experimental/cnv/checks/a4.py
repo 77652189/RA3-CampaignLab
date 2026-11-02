@@ -339,9 +339,11 @@ def scene_proof_watch(total, every, lines):
         left -= 120.0
     out.append(watch(left))
     left = total - (FESTIVAL - 60.0)
-    while left > 0:                     # the first of these covers the scene (a watch runs at most 120 s)
-        out.append(watch(min(120.0, left)))
-        left -= 120.0
+    sizes = [120.0, 90.0]               # the first covers the scene (a watch runs at most 120 s); the second moves the
+    while left > 0:                     # later ends off s430-s520, where win's mission ends (bench 2026-11-01: a watch
+        size = sizes.pop(0) if sizes else 120.0     # ending at s447 found the mission just over, the counters-gone
+        out.append(watch(min(size, left)))          # frames never taken)
+        left -= size
     return out
 
 
