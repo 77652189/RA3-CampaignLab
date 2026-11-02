@@ -1,36 +1,41 @@
-"""Language editions of a level (2026-11-01, the user: one go, both): `build.py a4 --lang zh|intl`.
+"""Language editions of a level (the user 2026-11-01: one go, both; ADR 0013 for who speaks what):
+`build.py a4 --lang zh|intl`.
 
-  zh    the Chinese edition: Chinese subtitles, Chinese dub. Mod CampA4.
-  intl  the international edition: English subtitles, each speaker dubbed in the language of their side (Allies and
-        Futuretech English, Soviets Russian, Empire Japanese). Mod CampA4En (mod names: at most 15 characters, no
-        underscore, memory mod-name-length).
+  zh    the Chinese edition: Chinese subtitles. The announcer, the intelligence officers (沃斯, 卡佳, 千岁) and a new
+        unit's voice speak Chinese; the story roles speak their side's native language (a recording shared with intl).
+        Mod CampA4.
+  intl  the international edition: English subtitles, the same story-role recordings, the announcer / officers / unit
+        voices in their native language too (Allies and Futuretech English, Soviets Russian, Empire Japanese). Mod
+        CampA4En (mod names: at most 15 characters, no underscore, memory mod-name-length).
 
-The voice line's interface (RA3-ChineseVoice docs/campaign_voice.md, "多语言"): one id per line, an event named the same
-in every language (CNV_A4_007), audio per language in work/campaign/<language>/<LEVEL>/<event>.wav, a line's texts in
-lines/campaign/<level>.json under `text` by language. The subtitle language and the dub language are separate: the intl
-edition's subtitle is `en` text, its audio the speaker's own language's folder (the voice line's docs win where they
-say more; a manifest entry's `voice_lang` overrides the side table below).
+Which recording a line plays and which subtitle it shows is the voice line's to say, so it is asked, not worked out here:
+RA3-ChineseVoice `tools/campaign_lines.py route <LEVEL> --version zh|intl` (docs/campaign_voice.md section 7) gives per
+line {event, who, audio_lang, wav, exists, interim, subtitle_lang, subtitle}. An event is named the same in every
+language. A retail announcer line (`audio_lang` None) is the retail event itself, played as it is.
 
-What is not there yet is never silently missing: `lines()` returns what it could not find and the build prints it.
-The plan's own strings (objectives, captions of undubbed lines, labels) come from docs/story/plans/<level>.en.json
-(Chinese string -> English), the same way; a string without a translation stays Chinese and is listed.
+What is not there yet is never silently missing: `resolve()` lists every line whose recording or subtitle is not
+delivered (it is left out, the plan shows its caption) and every one that plays an interim recording. The plan's own
+strings (objectives, captions of undubbed lines, labels) come from docs/story/plans/<level>.en.json (Chinese string ->
+English) in the international edition, the same way; a string without a translation stays Chinese and is listed.
 """
+import functools
 import json
 import os
 import re
+import subprocess
+import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 VOICE = os.path.join(os.path.dirname(ROOT), 'RA3-ChineseVoice')
-DELIVERED = os.path.join(VOICE, 'work', 'campaign')
 LINE_TABLES = os.path.join(VOICE, 'lines', 'campaign')
 PLANS = os.path.join(ROOT, 'docs', 'story', 'plans')
-CAST = os.path.join(ROOT, 'docs', 'design', 'flow', 'cast.md')
 
 EDITIONS = {
-    'zh': dict(suffix='', subtitle='zh', voice_by_side=None),
-    'intl': dict(suffix='En', subtitle='en',
-                 voice_by_side={'盟军': 'en', '未来科技': 'en', '苏联': 'ru', '帝国': 'ja'}),
+    'zh': dict(suffix='', subtitle='zh'),
+    'intl': dict(suffix='En', subtitle='en'),
 }
+# a unit's voice lines (lines/campaign/u_<unit>.json, `where` = the kind): level key -> (table file, the unit's event prefix)
+UNIT_TABLES = {'ICEENG': ('u_ice_engineer', 'CNV_IceEngineer')}
 
 
 def edition(lang):
@@ -51,78 +56,71 @@ def voice_folder(lang='zh'):
     return 'CNVVoice' + edition(lang)['suffix']
 
 
-def cast_sides():
-    """{speaker key: side} from the first table of docs/design/flow/cast.md (键 | 名字 | 阵营 | ...)."""
-    out = {}
-    with open(CAST, encoding='utf-8') as f:
-        for line in f:
-            cells = [c.strip() for c in line.strip().strip('|').split('|')]
-            if len(cells) >= 3 and line.startswith('|') and cells[0] not in ('键', '---') and cells[2] in (
-                    '盟军', '苏联', '帝国', '未来科技'):
-                out[cells[0]] = cells[2]
-    return out
+@functools.lru_cache(maxsize=None)
+def route(level, lang):
+    """The voice line's routing of `level` ('A4', 'ICEENG') in edition `lang`: [{event, who, audio_lang, wav, exists,
+    interim, subtitle_lang, subtitle}] in table order (tools/campaign_lines.py route)."""
+    r = subprocess.run([sys.executable, '-I', '-X', 'utf8', os.path.join(VOICE, 'tools', 'campaign_lines.py'), 'route',
+                        str(level).upper(), '--version', lang], cwd=VOICE, capture_output=True, text=True,
+                       encoding='utf-8')
+    if r.returncode:
+        raise RuntimeError(f'campaign_lines.py route {level} --version {lang} failed: {r.stderr.strip()[-300:]}')
+    return json.loads(r.stdout)
 
 
-def voice_lang(lang, who, faction, entry=None):
-    """The language `who` is dubbed in, in edition `lang`. A speaker with no side in the cast table (the announcer,
-    a unit's voice) speaks the player's `faction`."""
-    by_side = edition(lang)['voice_by_side']
-    if by_side is None:
-        return 'zh'
-    if entry and entry.get('voice_lang'):
-        return entry['voice_lang']
-    side = cast_sides().get(who, faction)
-    return by_side.get(side, by_side['盟军'])
-
-
-def read_json(path):
-    with open(path, encoding='utf-8') as f:
-        return json.load(f)
-
-
-def subtitle_texts(level, sub):
-    """{event: text} of the line table's `sub`-language texts (lines/campaign/<level>.json: id A4_007 -> CNV_A4_007)."""
-    path = os.path.join(LINE_TABLES, level.lower() + '.json')
-    if not os.path.exists(path):
+def unit_groups(level):
+    """{event: the unit voice event the line belongs to} for a unit's lines ('' for a level's), from the table's
+    `where` (iceWall / voiceSelect ... -> CNV_IceEngineer_VoiceIceWall / _VoiceSelect ...)."""
+    if str(level).upper() not in UNIT_TABLES:
         return {}
-    return {'CNV_' + e['id']: e['text'][sub] for e in read_json(path).get('lines', [])
-            if isinstance(e.get('text'), dict) and e['text'].get(sub)}
+    table, prefix = UNIT_TABLES[str(level).upper()]
+    with open(os.path.join(LINE_TABLES, table + '.json'), encoding='utf-8') as f:
+        return {'CNV_' + o['id']: f'{prefix}_' + _kind(o['where']) for o in json.load(f)['lines']}
 
 
-def lines(levels, lang, faction):
-    """([(event, wav, subtitle text, group)], [what is missing]) for `levels` in edition `lang`.
+def _kind(where):
+    """voiceSelect -> VoiceSelect, iceWall -> VoiceIceWall (the unit's voice event kinds all begin with Voice)."""
+    kind = where if where.startswith('voice') else 'voice' + where[0].upper() + where[1:]
+    return kind[0].upper() + kind[1:]
 
-    The events are the Chinese manifest's (work/campaign/zh/<LEVEL>/manifest.json: an event is named the same in every
-    language); an announcer line that plays a retail event (no `event`) has no file of ours. Each line's audio is in
-    its speaker's dub language's folder, its subtitle the table's text in the edition's subtitle language (a unit's
-    voice line, with a group, has no subtitle). Not found: left out and listed, so the plan shows its caption."""
-    ed = edition(lang)
-    items, missing = [], []
-    for lv in levels:
-        LV = str(lv).upper()
-        zh = read_json(os.path.join(DELIVERED, 'zh', LV, 'manifest.json'))
-        texts = subtitle_texts(LV, ed['subtitle'])
-        for e in zh:
-            ev = e.get('event')
-            if not ev:
-                continue
-            vl = voice_lang(lang, e['who'], faction, e)
-            wav = os.path.join(DELIVERED, vl, LV, ev + '.wav')
-            group = e.get('group')
-            text = e['text'] if ed['subtitle'] == 'zh' else texts.get(ev)
-            gone = [what for what, ok in ((f'audio {vl}', os.path.exists(wav)),
-                                          ('subtitle ' + ed['subtitle'], group or text)) if not ok]
-            if gone:
-                missing.append(f'{ev} ({e["who"]}): no ' + ' and no '.join(gone))
-                continue
-            items.append((ev, wav, text or '', group))
-    return items, missing
+
+class Resolved:
+    """What edition `lang` has of `levels`: items [(event, wav, subtitle, group)] to build into the pack; missing
+    [what is not delivered / interim]; said {(who, Chinese words): event} for the plan to find a line by; retail
+    {(who, Chinese words): retail event} for a retail announcer line."""
+
+    def __init__(self, levels, lang):
+        ed = edition(lang)
+        self.items, self.missing, self.said, self.retail = [], [], {}, {}
+        for lv in levels:
+            groups = unit_groups(lv)
+            zh = {e['event']: e for e in route(lv, 'zh')}
+            for e in route(lv, lang):
+                ev, who, key = e['event'], e['who'], None
+                key = (who, zh[ev]['subtitle'] if ev in zh else e['subtitle'])
+                if e['audio_lang'] is None:                     # retail's own announcer line
+                    self.retail[key] = ev
+                    continue
+                group = groups.get(ev)
+                gone = [what for what, ok in ((f'audio {e["audio_lang"]}', e['exists']),
+                                              (f'subtitle {ed["subtitle"]}', group or e['subtitle'])) if not ok]
+                if gone:
+                    self.missing.append(f'{ev} ({who}): no ' + ' and no '.join(gone))
+                    continue
+                if e['interim']:
+                    self.missing.append(f'{ev} ({who}): plays the interim {e["audio_lang"]} recording')
+                self.items.append((ev, e['wav'], e['subtitle'] if not group else '', group))
+                if not group:
+                    self.said[key] = ev
 
 
 def translations(level):
     """{Chinese string: English} of docs/story/plans/<level>.en.json (empty when there is none)."""
     path = os.path.join(PLANS, level.lower() + '.en.json')
-    return read_json(path) if os.path.exists(path) else {}
+    if not os.path.exists(path):
+        return {}
+    with open(path, encoding='utf-8') as f:
+        return json.load(f)
 
 
 def translate(strings, level, lang):

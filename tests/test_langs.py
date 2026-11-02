@@ -1,5 +1,5 @@
-"""Language editions (experimental/cnv/langs.py): mod names, each speaker's dub language by side, the lines an edition
-lacks listed (never silently missing), the plan's strings translated or listed."""
+"""Language editions (experimental/cnv/langs.py): mod names, the voice line's routing of each line (ADR 0013), the lines an
+edition lacks listed (never silently missing), the plan's strings translated or listed."""
 import json
 import re
 import sys
@@ -25,56 +25,53 @@ def test_the_two_editions_are_two_mods_with_legal_names():
             assert len(name) <= 15 and re.fullmatch(r'[A-Za-z0-9]+', name)
 
 
-def test_each_side_is_dubbed_in_its_own_language_in_the_international_edition():
-    assert langs.voice_lang('zh', '沃斯', '盟军') == 'zh'
-    assert langs.voice_lang('intl', '沃斯', '盟军') == 'en'            # Allies
-    assert langs.voice_lang('intl', '科尔', '盟军') == 'en'            # Futuretech
-    assert langs.voice_lang('intl', '施泰因', '苏联') == 'en'          # a German Allied officer, in a Soviet level
-    assert langs.voice_lang('intl', '别列津', '苏联') == 'ru'
-    assert langs.voice_lang('intl', '黑田', '帝国') == 'ja'
-    assert langs.voice_lang('intl', '播报', '苏联') == 'ru'            # the announcer and a unit speak the player's side
-    assert langs.voice_lang('intl', '冰幕工兵', '盟军') == 'en'
-    assert langs.voice_lang('intl', '沃斯', '盟军', {'voice_lang': 'de'}) == 'de'   # the voice line's word wins
+def row(event, who, audio_lang, exists, subtitle, interim=False, lang='zh'):
+    return dict(event=event, who=who, audio_lang=audio_lang, wav=f'C:/w/{audio_lang}/{event}.wav' if audio_lang else None,
+                exists=exists, interim=interim, subtitle_lang=lang, subtitle=subtitle)
 
 
 @pytest.fixture
-def delivered(tmp_path, monkeypatch):
-    """A delivered A4: three Chinese lines (one an announcer's retail event), English audio for the first only, the
-    English subtitle text for the first and the third."""
-    zh = tmp_path / 'work' / 'zh' / 'A4'
-    en = tmp_path / 'work' / 'en' / 'A4'
-    zh.mkdir(parents=True)
-    en.mkdir(parents=True)
-    (zh / 'manifest.json').write_text(json.dumps([
-        {'event': 'CNV_A4_001', 'who': '沃斯', 'text': '一', 'seconds': 1.0},
-        {'event': 'CNV_A4_002', 'who': '沃斯', 'text': '二', 'seconds': 1.0},
-        {'event': 'CNV_A4_003', 'who': '冰幕工兵', 'text': '三', 'seconds': 1.0, 'group': 'CNV_Unit_Select'},
-        {'eva': 'Aeva_Retail', 'who': '播报', 'text': '原版'}], ensure_ascii=False), encoding='utf-8')
-    (en / 'CNV_A4_001.wav').write_bytes(b'x')
-    (en / 'CNV_A4_003.wav').write_bytes(b'x')
-    tables = tmp_path / 'lines'
-    tables.mkdir()
-    (tables / 'a4.json').write_text(json.dumps({'lines': [
-        {'id': 'A4_001', 'text': {'zh': '一', 'en': 'One'}}, {'id': 'A4_002', 'text': {'zh': '二'}},
-        {'id': 'A4_003', 'text': {'zh': '三'}}]}), encoding='utf-8')
-    monkeypatch.setattr(langs, 'DELIVERED', str(tmp_path / 'work'))
-    monkeypatch.setattr(langs, 'LINE_TABLES', str(tables))
-    return tmp_path
+def routed(monkeypatch):
+    """A4 as the voice line routes it: 沃斯 (an intelligence officer) in zh for the Chinese edition and English for the
+    international one, 司令 (a story role) English in both, a retail announcer line, and the engineer's two voice lines."""
+    zh = {'A4': [row('CNV_A4_001', '沃斯', 'zh', True, '一'), row('CNV_A4_002', '司令', 'en', False, '二'),
+                 row('CNV_A4_003', '司令', 'zh', True, '三', interim=True),
+                 row('Aeva_CritUnitLost', '播报', None, True, '关键单位损失。')],
+          'ICEENG': [row('CNV_ICEENG_001', '冰幕工兵', 'zh', True, ''), row('CNV_ICEENG_002', '冰幕工兵', 'zh', True, '')]}
+    intl = {'A4': [row('CNV_A4_001', '沃斯', 'en', True, 'One', lang='en'), row('CNV_A4_002', '司令', 'en', False, 'Two', lang='en'),
+                   row('CNV_A4_003', '司令', 'en', True, '', lang='en'),
+                   row('Aeva_CritUnitLost', '播报', None, True, 'Critical unit lost.', lang='en')],
+            'ICEENG': [row('CNV_ICEENG_001', '冰幕工兵', 'en', True, '', lang='en'),
+                       row('CNV_ICEENG_002', '冰幕工兵', 'en', False, '', lang='en')]}
+    monkeypatch.setattr(langs, 'route', lambda level, lang: (zh if lang == 'zh' else intl)[level])
+    monkeypatch.setattr(langs, 'unit_groups', lambda level: {
+        'CNV_ICEENG_001': 'CNV_Unit_Select', 'CNV_ICEENG_002': 'CNV_Unit_Move'} if level == 'ICEENG' else {})
 
 
-def test_a_line_without_audio_or_subtitle_is_left_out_and_listed(delivered):
-    items, missing = langs.lines(['a4'], 'intl', '盟军')
-    got = {ev: (Path(wav).parent.parent.name, text, group) for ev, wav, text, group in items}
-    assert got == {'CNV_A4_001': ('en', 'One', None),
-                   'CNV_A4_003': ('en', '', 'CNV_Unit_Select')}      # a unit voice has no subtitle to lack
-    assert missing == ['CNV_A4_002 (沃斯): no audio en and no subtitle en']
+def test_the_chinese_edition_builds_what_is_routed_and_lists_what_is_not_there(routed):
+    got = langs.Resolved(['A4', 'ICEENG'], 'zh')
+    assert [(i[0], i[2], i[3]) for i in got.items] == [
+        ('CNV_A4_001', '一', None), ('CNV_A4_003', '三', None),
+        ('CNV_ICEENG_001', '', 'CNV_Unit_Select'), ('CNV_ICEENG_002', '', 'CNV_Unit_Move')]
+    assert got.missing == ['CNV_A4_002 (司令): no audio en', 'CNV_A4_003 (司令): plays the interim zh recording']
+    assert got.said == {('沃斯', '一'): 'CNV_A4_001', ('司令', '三'): 'CNV_A4_003'}
+    assert got.retail == {('播报', '关键单位损失。'): 'Aeva_CritUnitLost'}
 
 
-def test_the_chinese_edition_takes_the_chinese_manifest_as_it_is(delivered):
-    (delivered / 'work' / 'zh' / 'A4' / 'CNV_A4_001.wav').write_bytes(b'x')
-    items, missing = langs.lines(['a4'], 'zh', '盟军')
-    assert [i[0] for i in items] == ['CNV_A4_001'] and items[0][2] == '一'
-    assert len(missing) == 2 and all('audio zh' in x for x in missing)
+def test_the_international_edition_finds_lines_by_their_chinese_words_and_lists_the_missing(routed):
+    got = langs.Resolved(['A4', 'ICEENG'], 'intl')
+    assert [(i[0], i[2]) for i in got.items if not i[3]] == [('CNV_A4_001', 'One')]      # 003: no subtitle, no audio problem
+    assert got.said[('沃斯', '一')] == 'CNV_A4_001'                    # the plan's key is the Chinese text, not the subtitle
+    assert got.missing == ['CNV_A4_002 (司令): no audio en', 'CNV_A4_003 (司令): no subtitle en',
+                           'CNV_ICEENG_002 (冰幕工兵): no audio en']
+    assert got.retail == {('播报', '关键单位损失。'): 'Aeva_CritUnitLost'}
+
+
+def test_the_engineers_voice_events_are_named_from_the_lines_table(monkeypatch):
+    groups = langs.unit_groups('ICEENG')
+    assert groups['CNV_ICEENG_001'] == 'CNV_IceEngineer_VoiceSelect'
+    assert set(groups.values()) >= {'CNV_IceEngineer_VoiceIceWall', 'CNV_IceEngineer_VoiceCapture'}
+    assert langs.unit_groups('A4') == {}
 
 
 def test_the_plans_own_strings_are_translated_or_listed(tmp_path, monkeypatch):
@@ -90,18 +87,18 @@ def test_a4_plan_has_an_english_edition_that_lists_what_it_lacks():
     import plan
     en, zh = plan.mission('a4', lang='intl'), plan.mission('a4')
     assert (en.name, zh.name) == ('CampA4En', 'CampA4')
-    assert zh.missing == []
     assert en.strings['MISSIONOBJ:CNVA4_T1'] == 'Escort the convoy through the Snow Festival grounds'
+    assert zh.missing and all('no audio en' in x or 'caption only' in x for x in zh.missing)   # 司令 / 科尔 not recorded yet
     voiced = [x for x in en.missing if x.startswith('voice ')]
     assert voiced and all('no audio' in x or 'no subtitle' in x for x in voiced)
-    # the plan's non-speech strings are all translated (a speaker's line waits for the voice line's English text)
+    # the plan's non-speech strings are all translated (a speaker's line waits for its recording and English subtitle)
     speakers = ('沃斯', '司令', '科尔', '播报', '冰幕工兵')
     assert not [x for x in en.missing if x.startswith('string ') and not any(f': {w}：' in x for w in speakers)]
 
 
 def test_a_retail_announcer_line_plays_the_retail_event_in_both_editions():
-    """A manifest entry with `eva` and no `event` (retail's own announcer line) is played as that retail event,
-    with no caption; it is checked against the retail audio events and listed if it is not one."""
+    """A routed line with no audio language (retail's own announcer line) is played as that retail event, with no
+    caption; it is checked against the retail audio events and listed if it is not one."""
     import plan
     for lang in ('zh', 'intl'):
         m = plan.mission('a4', lang=lang)

@@ -236,8 +236,7 @@ class Compiler:
         if not levels:
             return None
         import voice_link
-        self.m.voice = voice_link.Later(levels if isinstance(levels, list) else [levels], self.lang,
-                                        self.faction['p1'])
+        self.m.voice = voice_link.Later(levels if isinstance(levels, list) else [levels], self.lang)
         self.m.missing += [f'voice {x}' for x in self.m.voice.missing]
         return self.m.voice
 
@@ -573,6 +572,8 @@ class Compiler:
                 self.m.lines.append(dict(说话人=str(who), 原文=str(said), 通报=shown, 字串=retail))
                 return [('PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT', retail)]
             key = self.text('SCRIPT', shown)
+            if who and self.voice is not None:      # said by someone, but no recording of it: listed (langs.py)
+                self.m.missing.append(f'caption only, no recording of it: {shown}')
             if who:                                 # a flow-script line: the dubbed line is found by who and what
                 self.m.lines.append(dict(说话人=str(who), 原文=str(a.get('原文', words)), 通报=shown, 字串=key))
             return [('SHOW_MILITARY_CAPTION', key, float(a.get('秒', CAPTION)))]
