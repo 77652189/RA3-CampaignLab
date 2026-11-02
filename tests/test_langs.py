@@ -90,9 +90,9 @@ def test_a4_plan_has_an_english_edition_that_lists_what_it_lacks():
     assert en.strings['MISSIONOBJ:CNVA4_T1'] == 'Escort the convoy through the Snow Festival grounds'
     # everything the voice line routes is delivered (2026-11-01, English dub in); what is left is what the plan says that
     # no recording has (a plan line the dub script does not have): captions, listed, in both editions
-    # the lines of flow/a4.md's second pass (A4_089 .. 096) wait for their recordings (2026-11-01, the voice line
-    # has the table); drop PENDING when they are delivered
-    PENDING = tuple(f'voice CNV_A4_0{n}' for n in range(89, 97))
+    # the lines of flow/a4.md's second pass (A4_089 .. 096) and the three whose words changed (022, 058, 070: English
+    # subtitle dropped with the old words) wait for the voice line (2026-11-02); drop PENDING when they are delivered
+    PENDING = tuple(f'voice CNV_A4_0{n}' for n in (22, 58, 70, *range(89, 97)))
     assert zh.missing and all(x.startswith(('caption only',) + PENDING) for x in zh.missing)
     assert all(x.startswith(('caption only', 'string ') + PENDING) for x in en.missing)
     assert not [x for x in en.missing if x.startswith('voice ') and not x.startswith(PENDING)]
