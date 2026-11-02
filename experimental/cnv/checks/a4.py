@@ -327,6 +327,28 @@ def hold(m):
     return t
 
 
+HEADS_AT = 20.0                                 # heads: the convoy halts at once, the harbour scene (the first line with a head)
+
+
+def heads(m):
+    """The talking heads on the harbour scene, for a person to look at (the bench skips the opening scene, so the
+    first heads would be long gone): the convoy is halted HEADS_AT seconds into the mission, not at the start, so
+    a run started with bench_start(hold=false) and waited to ~HEADS_AT shows the scene live. Judges only that the
+    harbour phase begins."""
+    t = scene(m, park=False, long_run=False)
+    t.waypoints['Test Halt Stand'] = m.site('halt')
+    t.scripts += [Script('Test - halt set', [], [('SET_MILLISECOND_TIMER', 'Test - halt', HEADS_AT)]),
+                  Script('Test - halt on', [('TIMER_EXPIRED', 'Test - halt')],
+                         [('SET_FLAG', f'CNV_{TAG}_HeadsOn', 1)] +
+                         [('UNIT_TELEPORT_TO_WAYPOINT', m.role(f'truck {j}').name, 'Test Halt Stand') for j in (1, 2, 3)]),
+                  Script('Test - halt', [('FLAG', f'CNV_{TAG}_HeadsOn', 1)], [('SET_FLAG', f'CNV_{TAG}_Halted', 1)],
+                         once=False)]
+    mark_phase(t, m, 2, 'Test Phase 2', '港口生变')
+    t.expect += [('港口生变', HEADS_AT + 30, 'ever>=', 1)]
+    t.bench = [('bench_watch', dict(seconds=HEADS_AT + 30, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 def scene_proof_watch(total, every, lines):
     """bench_watch calls (each pauses the mission with Esc when it ends, which fails inside a scene: the bench then
     takes the mission for ended and skips the rest, bench 2026-11-01 hold: s246 in the harbour scene that began at

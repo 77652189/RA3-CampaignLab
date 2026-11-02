@@ -228,15 +228,17 @@ class Compiler:
         self.counted = {}           # group -> the counter of its losses (摧毁 <group> <n> 个)
         self.troop_counters = {}    # kinds counted together -> their counter (兵少于 <n> <units>)
         self.music = self.load_music(data.get('音乐'))
-        self.voice = self.load_voice(data.get('语音'))
+        self.voice = self.load_voice(data.get('语音'), data.get('头像'))
 
-    def load_voice(self, levels):
+    def load_voice(self, levels, heads=None):
         """语音: [A4, ICEENG] -> the delivered dubbed lines of those folders (voice_link.Later): a 通报 with 说 whose
-        speaker and words are one of them plays it instead of showing a caption (the subtitle comes with the line)."""
+        speaker and words are one of them plays it instead of showing a caption (the subtitle comes with the line).
+        头像: [CNV_A4_008, ...] -> the lines that also show the speaker's talking head (clips.py); only these, never
+        every line that has an mp4. No list, no heads."""
         if not levels:
             return None
         import voice_link
-        self.m.voice = voice_link.Later(levels if isinstance(levels, list) else [levels], self.lang)
+        self.m.voice = voice_link.Later(levels if isinstance(levels, list) else [levels], self.lang, list(heads or []))
         self.m.video = self.m.voice.clips
         self.m.missing += [f'voice {x}' for x in self.m.voice.missing]
         return self.m.voice

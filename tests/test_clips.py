@@ -41,3 +41,18 @@ def test_an_mp4_that_cannot_be_converted_is_listed_not_a_failed_build(tmp_path):
     missing = []
     c = clips.Clips({'CNV_A4_090': str(wav)}, missing)
     assert c.find('CNV_A4_090') is None and len(missing) == 1 and missing[0].startswith('video of CNV_A4_090')
+
+
+def test_only_the_lines_on_the_heads_list_get_a_clip(tmp_path):
+    (tmp_path / 'video').mkdir()
+    for n in ('CNV_A4_043', 'CNV_A4_050'):
+        (tmp_path / f'{n}.wav').write_bytes(b'')
+        (tmp_path / 'video' / f'{n}.mp4').write_bytes(b'')
+        (tmp_path / 'video' / f'{n}.vp6').write_bytes(b'x')
+        os.utime(tmp_path / 'video' / f'{n}.mp4', (1, 1))
+        os.utime(tmp_path / 'video' / f'{n}.vp6', (2, 2))
+    wavs = {n: str(tmp_path / f'{n}.wav') for n in ('CNV_A4_043', 'CNV_A4_050')}
+    c = clips.Clips(wavs, [], only=['CNV_A4_050'])
+    assert c.find('CNV_A4_043') is None and c.find('CNV_A4_050') == 'CNV_A4_050'
+    assert list(c.clips) == ['CNV_A4_050']
+    assert clips.Clips(wavs, [], only=[]).find('CNV_A4_050') is None

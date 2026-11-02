@@ -80,7 +80,7 @@ def digits():
 
 
 A4_CHECKS = {'horn': check_a4.horn, 'detour': check_a4.detour, 'queue': check_a4.queue, 'smash': check_a4.smash,
-             'derrick': check_a4.derrick, 'demo': check_a4.demo, 'melt': check_a4.melt, 'idle': check_a4.idle,
+             'derrick': check_a4.derrick, 'demo': check_a4.demo, 'heads': check_a4.heads, 'melt': check_a4.melt, 'idle': check_a4.idle,
              'hold': check_a4.hold, 'win': check_a4.win}
 
 # name -> mission(); checks: name -> check(mission) -> Test; or a build that is a (mission, test) pair outright.

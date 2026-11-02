@@ -16,15 +16,20 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 
 
 class Clips:
-    def __init__(self, wavs, missing):
-        """wavs: {event: path of the recording}; missing: the list the build prints."""
+    def __init__(self, wavs, missing, only=None):
+        """wavs: {event: path of the recording}; missing: the list the build prints; only: the events that may show a
+        clip (the plan's 头像 list: a line is on it because the player need not look at the map while it is said); None
+        is every line that has an mp4."""
         self.wavs, self.missing, self.clips, self.made = wavs, missing, {}, None
+        self.only = None if only is None else set(only)
 
     def __bool__(self):
         return bool(self.clips)
 
     def find(self, ev):
         """The movie id (= the line's event) of the line's clip, or None."""
+        if self.only is not None and ev not in self.only:
+            return None
         if ev in self.clips:
             return ev
         wav = self.wavs.get(ev)

@@ -20,7 +20,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 
 
 class Later:
-    def __init__(self, levels, lang='zh'):
+    def __init__(self, levels, lang='zh', heads=None):
         if ROOT not in sys.path:
             sys.path.insert(0, ROOT)
         from experimental.voice import pack
@@ -31,7 +31,7 @@ class Later:
         self.folder = langs.voice_folder(lang)
         self.events = {ev for ev, *_ in self.items}
         import clips
-        self.clips = clips.Clips({ev: wav for ev, wav, _, group in self.items if not group}, self.missing)
+        self.clips = clips.Clips({ev: wav for ev, wav, _, group in self.items if not group}, self.missing, heads)
         self.groups = {group for _, _, _, group in self.items if group}     # the unit voice events the pack has
         self.strings = {f'DIALOGEVENT:{ev}': text for ev, _, text, group in self.items if not group}
         known = self._retail_events() if self.retail else None
