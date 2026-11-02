@@ -44,6 +44,20 @@ def cast():
     return speak, retail
 
 
+VOICED_BEFORE_0013 = {'a4'}       # its Chinese character lines were recorded before ADR 0013 and stay for the trial
+
+
+def prompters():
+    """Who may say lines that carry play information (ADR 0013): 播报 and cast.md's 情报官 rows -- the only voices
+    the Chinese edition speaks in Chinese; story characters talk in their own language with subtitles."""
+    keys = {'播报'}
+    for line in (HERE / 'cast.md').read_text(encoding='utf-8').splitlines():
+        cells = [c.strip() for c in line.split('|')]
+        if len(cells) > 4 and '情报官' in cells[4]:
+            keys.add(cells[1])
+    return keys
+
+
 VOICE_GLOSSARY = HERE.parents[3] / 'RA3-ChineseVoice' / 'lines' / 'GLOSSARY.md'
 OUTLINE = HERE.parents[1] / 'story' / 'outline.md'
 PLAN_GLOSSARY = HERE.parents[2] / 'experimental' / 'cnv' / 'glossary.py'
@@ -143,6 +157,14 @@ def check(path, speak, retail, units=None, mech=None):
             out.append(f'{name}: has objectives but no 下一步靠什么')
         if any(g.get('种') == '主' for g in goals) and not seg.get('卡住了'):
             out.append(f'{name}: has a main objective but no 卡住了')
+        if path.stem.lower() not in VOICED_BEFORE_0013:
+            for st in seg.get('卡住了') or []:
+                for line in st.get('台词') or []:
+                    who = next(iter(line), None) if isinstance(line, dict) else None
+                    if who is not None and who not in prompters():
+                        out.append(f'{name} 卡住了: {who} gives a hint -- only 播报 and the intelligence officers '
+                                   f'({"/".join(sorted(prompters() - {"播报"}))}) speak the player\'s language '
+                                   f'(ADR 0013); story characters keep to story and jokes')
     for f in p.get('失败') or []:
         if not f.get('原因') or not f.get('台词'):
             out.append(f'{path.name} 失败: every failure needs 原因 and 台词')
