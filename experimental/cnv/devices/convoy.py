@@ -14,6 +14,9 @@ from missions import festival_parts as fp
 from parts import Script
 
 
+HIT_SECS = 6.0
+
+
 class Convoy(Device):
     WHAT = '三辆车按时间表开向终点，玩家护送但指挥不了'
     PARAMS = {'出发': '条件：车队什么时候出发', '每隔': '秒：每隔多久重新给车下一次命令（默认 3）',
@@ -24,7 +27,8 @@ class Convoy(Device):
               '分批从': '出发（默认）或 继续：写 继续 时出发一起开，停下以后 继续 那一刻起才按 分批 一辆接一辆开'
                        '（A4 返工：一起开到 2 号广场，最后一程分批走）'}
     EVENTS = {'出发': '车队出发了', '到达 <地点>': '第一辆车开进这个地点', '到终点 <n>': '已有 n 辆车到达终点',
-              '损失 <n>': '已有 n 辆车被毁', '继续了': '动作 继续 做过了（停下以后又开了）'}
+              '损失 <n>': '已有 n 辆车被毁', '继续了': '动作 继续 做过了（停下以后又开了）',
+              '挨打': '有一辆车刚掉了血（血量每掉到 90、80 ……% 以下算一次；之后 6 秒内成立；毁了的车一口气掉到 0 也算）'}
     ACTIONS = {'停下': '车队停在原地', '继续': '车队接着开'}
     TARGET = '最前面那辆还在路上的车'
 
@@ -47,6 +51,8 @@ class Convoy(Device):
             raise PlanError(f'{name}: 分批从 继续 without 分批')
         self.resumed = f'CNV_{c.tag}_Resumed'
         self.halted = f'CNV_{c.tag}_Halted'
+        self.hit = f'CNV_{c.tag}_Hit'
+        self.hit_timer = f'CNV {c.tag} Hit'
         self.holds = [self.halted]                  # flags that keep it parked (停下; hold() adds more)
         self.attacks = 0
         code = self.cv.code
@@ -66,6 +72,8 @@ class Convoy(Device):
             return [[('COUNTER', cv.losses, 3, int(args[0]))]]
         if event == '继续了':
             return [[('FLAG', self.resumed, 1)]]
+        if event == '挨打':
+            return [[('FLAG', self.hit, 1)]]
         return super().cond(event, args)
 
     def action(self, what, args):
@@ -112,6 +120,22 @@ class Convoy(Device):
                 out.append(Script(f'CNV {self.c.tag} - Truck health' + ('' if levels == plan.ALL else
                                                                        f' {plan.TAGS[levels.index(True)]}'),
                                   there, [('NAMED_SET_MAX_HEALTH', t, v, 1) for t in self.cv.trucks], levels=levels))
+        out += self.hit_scripts()
+        return out
+
+    def hit_scripts(self):
+        # 事件 挨打: a truck's health going under 90, 80 ... % sets the flag for HIT_SECS (the engine keeps no pulse
+        # for a hit; health bands it does keep, the checks read health the same way)
+        tag = self.c.tag
+        out = []
+        for j, t in enumerate(self.cv.trucks, 1):
+            for b in range(90, 0, -10):
+                seen = f'CNV_{tag}_HitSeen_{j}_{b}'
+                out.append(Script(f'CNV {tag} - Hit {j} under {b}', [('UNIT_HEALTH', t, 0, b), ('FLAG', seen, 0)],
+                                  [('SET_FLAG', seen, 1), ('SET_FLAG', self.hit, 1),
+                                   ('SET_MILLISECOND_TIMER', self.hit_timer, HIT_SECS)]))
+        out.append(Script(f'CNV {tag} - Hit over', [('FLAG', self.hit, 1), ('TIMER_EXPIRED', self.hit_timer)],
+                          [('SET_FLAG', self.hit, 0)], once=False))
         return out
 
     def last(self):

@@ -84,7 +84,9 @@ class Horn(Device):
               '鬼王': '{从: 第几声起, 数量: 每声几台, 运输车: 单位, 海: 运输车出现的地方, 岸: 靠岸的地方}',
               '演示': '开场演示：{街: 工兵冻住的街, 绕去: 兵掉头去的街, 等: 冰起后几秒兵掉头（默认 4）, 兵: 冻住前出的人数（默认 2）}'}
     EVENTS = {'号角 <n>': '街的第 n 声号角响了', '口号角 <n>': '口的第 n 声号角响了', '冻住 <名>': '这个口子现在有冰',
-              '鬼王上岸': '第一个鬼王上岸了', '放出': '口子后攒着的兵放出来过（冰化了或被砸开）',
+              '绕路': '冻住的街的兵第一次在别的街出生（掉头绕路）', '都在歇': '至少两道冰墙放出去还没满冷却（冰幕工兵都在歇）',
+               '鬼王砸墙': '鬼王被派去砸一道冰墙', '鬼王砸开': '鬼王去砸的那道墙没了',
+               '鬼王上岸': '第一个鬼王上岸了', '放出': '口子后攒着的兵放出来过（冰化了或被砸开）',
               '冰快化': f'某道冰墙只剩 {MELT_WARN:g} 秒就化了（那道墙没了就不成立；配 每隔 一个融化说一次）'}
     ACTIONS = {'开 <街|口>': '号角从头开始响（先显示倒计时）', '停': '号角停（倒计时收起）；已经出的、攒着的照旧',
                '演示': '开场演示开始：工兵冻住演示的街，兵掉头绕去另一条街（只在过场里用）', '演示收': '演示的人都收走'}
@@ -141,11 +143,18 @@ class Horn(Device):
         self.released = f'CNV_{tag}_Released'        # a kept wave of a mouth was made (its ice went)
         self.melting = f'CNV_{tag}_Melting'          # an ice wall is in its last MELT_WARN seconds
         self.demo_on, self.demo_off = f'CNV_{tag}_Demo_On', f'CNV_{tag}_Demo_Off'
+        self.detoured = f'CNV_{tag}_Detoured'        # a shut street's wave was made at another street
+        self.smashing = f'CNV_{tag}_Smashing'        # a Ghost King was sent at an ice wall (until that wall is gone)
+        self.smashed = f'CNV_{tag}_Smashed'          # a wall the Ghost King was sent at is gone
+        self.cool = float(spec.get('冷却', RELOAD))
 
     # ---- names
     def ids(self, mode):
         """{way name: id} -- V1, V2 ... / L1, L2 ... in the order the plan lists them."""
         return {w: f'{mode}{k}' for k, w in enumerate(self.ways[mode], 1)}
+
+    def rest(self, wid):
+        return f'CNV_{self.c.tag}_Rest_{wid}'
 
     def frozen(self, wid):
         return f'CNV_{self.c.tag}_Frozen_{wid}'
@@ -171,6 +180,15 @@ class Horn(Device):
             return [[('FLAG', self.released, 1)]]
         if event == '冰快化':
             return [[('FLAG', self.melting, 1)]]
+        if event == '绕路':
+            return [[('FLAG', self.detoured, 1)]]
+        if event == '鬼王砸墙':
+            return [[('FLAG', self.smashing, 1)]]
+        if event == '鬼王砸开':
+            return [[('FLAG', self.smashed, 1)]]
+        if event == '都在歇':
+            rests = [self.rest(w) for mode in 'VL' for w in self.ids(mode).values()]
+            return [[('FLAG', a, 1), ('FLAG', b, 1)] for a, b in itertools.combinations(rests, 2)]
         return super().cond(event, args)
 
     def ids_by_name(self, name):
@@ -353,7 +371,8 @@ class Horn(Device):
                 for levels, lv in self.variants():
                     out.append(Script(f'CNV {self.c.tag} - Out V{n} {origin} at {target}{self.lvname(levels)}',
                                       [('FLAG', flag, 1), ('TIMER_EXPIRED', timer)],
-                                      self.make_at('V', n, origin, target, lv) + [('SET_FLAG', flag, 0)],
+                                      self.make_at('V', n, origin, target, lv) + [('SET_FLAG', flag, 0)] +
+                                      ([('SET_FLAG', self.detoured, 1)] if origin != target else []),
                                       levels=levels))
         return out
 
@@ -417,6 +436,9 @@ class Horn(Device):
                Script(f'CNV {tag} - Ghost pick', [('COUNTER', kings, 3, 1), ('FLAG', picked, 0), ('COUNTER', walls, 3, 1)],
                       [('SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER', wall, p1, m.team('s1'), ref),
                        ('SET_FLAG', picked, 1)], once=False),
+               Script(f'CNV {tag} - Ghost broke', [('FLAG', picked, 1), ('NAMED_DESTROYED', ref),
+                                                   ('FLAG', self.smashing, 1)],
+                      [('SET_FLAG', self.smashed, 1), ('SET_FLAG', self.smashing, 0)], once=False),
                Script(f'CNV {tag} - Ghost dropped', [('FLAG', picked, 1), ('NAMED_DESTROYED', ref)],
                       [('SET_FLAG', picked, 0)], once=False)]
         for n in range(int(g.get('从', 3)), self.horns + 1):
@@ -430,7 +452,8 @@ class Horn(Device):
                                    ('OBJECT_CREATE_RADAR_EVENT', k, 0)]))
                 out.append(Script(f'CNV {tag} - King {n}-{j} smashes',
                                   [('FLAG', landed, 1), ('FLAG', picked, 1), ('NAMED_NOT_DESTROYED', ref),
-                                   ('NAMED_NOT_DESTROYED', k)], [('NAMED_ATTACK_NAMED', k, ref)], once=False))
+                                   ('NAMED_NOT_DESTROYED', k)],
+                                  [('NAMED_ATTACK_NAMED', k, ref), ('SET_FLAG', self.smashing, 1)], once=False))
                 out += [Script(f'CNV {tag} - King {n}-{j} hunts at {t + 1}',
                                [('FLAG', landed, 1), ('COUNTER', walls, 2, 0), ('NAMED_NOT_DESTROYED', k),
                                 ('TIMER_EXPIRED', cv.timer)] + cv.chase(t), [('NAMED_ATTACK_NAMED', k, target)],
@@ -493,9 +516,14 @@ class Horn(Device):
                 m.strings[label] = f'{w}的冰墙'
                 f = self.frozen(wid)
                 out += [Script(f'CNV {tag} - Ice {wid} up', [('FLAG', f, 1), ('FLAG', up, 0)],
-                               [('SET_FLAG', up, 1), ('SET_MILLISECOND_TIMER', timer, float(life)),
+                               [('SET_FLAG', up, 1), ('SET_FLAG', self.rest(wid), 1),
+                                ('SET_MILLISECOND_TIMER', f'CNV {tag} Rest {wid}', self.cool),
+                                ('SET_MILLISECOND_TIMER', timer, float(life)),
                                 ('SET_MILLISECOND_TIMER', warn, max(float(life) - MELT_WARN, 0.0)),
                                 ('DISPLAY_COUNTDOWN_TIMER', timer, label)], once=False),
+                        Script(f'CNV {tag} - Ice {wid} rested', [('FLAG', self.rest(wid), 1),
+                                                                 ('TIMER_EXPIRED', f'CNV {tag} Rest {wid}')],
+                               [('SET_FLAG', self.rest(wid), 0)], once=False),
                         Script(f'CNV {tag} - Ice {wid} melting', [('TIMER_EXPIRED', warn), ('FLAG', f, 1)],
                                [('SET_FLAG', self.melting, 1)], once=False),
                         Script(f'CNV {tag} - Ice {wid} gone', [('FLAG', f, 0), ('FLAG', up, 1)],

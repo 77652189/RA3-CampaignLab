@@ -30,6 +30,8 @@ class Later:
         self.items, self.missing, self.said, self.retail = got.items, got.missing, got.said, got.retail
         self.folder = langs.voice_folder(lang)
         self.events = {ev for ev, *_ in self.items}
+        import clips
+        self.clips = clips.Clips({ev: wav for ev, wav, _, group in self.items if not group}, self.missing)
         self.groups = {group for _, _, _, group in self.items if group}     # the unit voice events the pack has
         self.strings = {f'DIALOGEVENT:{ev}': text for ev, _, text, group in self.items if not group}
         known = self._retail_events() if self.retail else None

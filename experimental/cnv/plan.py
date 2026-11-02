@@ -237,6 +237,7 @@ class Compiler:
             return None
         import voice_link
         self.m.voice = voice_link.Later(levels if isinstance(levels, list) else [levels], self.lang)
+        self.m.video = self.m.voice.clips
         self.m.missing += [f'voice {x}' for x in self.m.voice.missing]
         return self.m.voice
 
@@ -566,7 +567,8 @@ class Compiler:
             dubbed = self.voice.find(who, said) if who and self.voice is not None else None
             if dubbed:                              # the dubbed line: its subtitle comes with it
                 self.m.lines.append(dict(说话人=str(who), 原文=str(said), 通报=shown, 字串=dubbed))
-                return [('PLAY_SOUND_EFFECT', dubbed)]
+                clip = self.voice.clips.find(dubbed)        # the speaker's talking head, when the voice line made one
+                return [('PLAY_SOUND_EFFECT', dubbed)] + ([('MOVIE_PLAY_RADAR', clip)] if clip else [])
             retail = self.voice.eva(who, said) if who and self.voice is not None else None
             if retail:                              # retail's own announcer line: its event, no caption (as retail)
                 self.m.lines.append(dict(说话人=str(who), 原文=str(said), 通报=shown, 字串=retail))

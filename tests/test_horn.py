@@ -176,3 +176,41 @@ def test_the_convoy_truck_speed_is_the_plans_and_the_horns_last_as_long_as_the_f
         assert 150 <= total <= drive, (lv, total, drive)               # five horns, all before the convoy gets there
         assert total >= 920.0 / speed + 100.0                          # ... and they run on over the last leg's trucks
     assert gaps[0][0] >= 45 and all(g[0] >= 45 for g in gaps)          # easy: every gap at least 45 s (the design line's)
+
+
+def test_the_detour_event_goes_up_when_a_shut_streets_wave_is_made_at_another_street():
+    m = level(规则=[{'当': '雪祭.绕路', '做': ['通报 绕路了']}])
+    outs = [s for s in m.scripts if s.name.startswith('CNV ZZ - Out V')]
+    detour = ('SET_FLAG', 'CNV_ZZ_Detoured', 1)
+    own = [s for s in outs if s.name.split()[5] == s.name.split()[7]]            # 'Out V1 <origin> at <target>'
+    assert own and not any(detour in s.do for s in own)
+    assert any(detour in s.do for s in outs if s not in own)
+    assert [s for s in m.scripts if ('FLAG', 'CNV_ZZ_Detoured', 1) in s.when and 'Rule' in s.name]
+
+
+def test_the_tired_event_is_two_walls_not_yet_rested_and_each_wall_rests_for_the_reload():
+    m = level(规则=[{'当': '雪祭.都在歇', '做': ['通报 都在歇']}])
+    ups = [s for s in m.scripts if s.name.startswith('CNV ZZ - Ice ') and s.name.endswith(' up')]
+    assert all(('SET_FLAG', f'CNV_ZZ_Rest_{s.name.split()[4]}', 1) in s.do and
+               ('SET_MILLISECOND_TIMER', f'CNV ZZ Rest {s.name.split()[4]}', float(horn.RELOAD)) in s.do for s in ups)
+    rested = [s for s in m.scripts if s.name.endswith(' rested')]
+    assert len(rested) == len(ups) and all(('SET_FLAG', s.when[0][1], 0) in s.do for s in rested)
+    rule = [s for s in m.scripts if 'Rule' in s.name and ('FLAG', 'CNV_ZZ_Rest_V1', 1) in s.when]
+    assert rule and all(sum(c[0] == 'FLAG' and c[1].startswith('CNV_ZZ_Rest_') for c in s.when) == 2 for s in rule)
+
+
+def test_the_ghost_king_events_go_up_when_it_is_sent_at_a_wall_and_when_that_wall_is_gone():
+    m = level(规则=[{'当': '雪祭.鬼王砸墙', '做': ['通报 砸']}, {'当': '雪祭.鬼王砸开', '做': ['通报 开']}])
+    smash = [s for s in m.scripts if s.name.endswith('smashes')]
+    assert smash and all(('SET_FLAG', 'CNV_ZZ_Smashing', 1) in s.do for s in smash)
+    broke = [s for s in m.scripts if s.name.endswith('Ghost broke')]
+    assert broke and ('FLAG', 'CNV_ZZ_Smashing', 1) in broke[0].when and ('SET_FLAG', 'CNV_ZZ_Smashed', 1) in broke[0].do
+
+
+def test_the_convoy_hit_event_is_a_truck_health_band_that_lasts_a_few_seconds():
+    m = level(规则=[{'当': '车队.挨打', '每隔': '0:25', '做': ['通报 挨打']}])
+    bands = [s for s in m.scripts if s.name.startswith('CNV ZZ - Hit ') and ' under ' in s.name]
+    assert len(bands) == 3 * 9 and all(('SET_FLAG', 'CNV_ZZ_Hit', 1) in s.do for s in bands)
+    over = [s for s in m.scripts if s.name.endswith('Hit over')]
+    assert over and ('SET_FLAG', 'CNV_ZZ_Hit', 0) in over[0].do
+    assert [s for s in m.scripts if ('FLAG', 'CNV_ZZ_Hit', 1) in s.when and 'Rule' in s.name]

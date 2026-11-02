@@ -90,9 +90,12 @@ def test_a4_plan_has_an_english_edition_that_lists_what_it_lacks():
     assert en.strings['MISSIONOBJ:CNVA4_T1'] == 'Escort the convoy through the Snow Festival grounds'
     # everything the voice line routes is delivered (2026-11-01, English dub in); what is left is what the plan says that
     # no recording has (a plan line the dub script does not have): captions, listed, in both editions
-    assert zh.missing and all(x.startswith('caption only') for x in zh.missing)
-    assert all(x.startswith(('caption only', 'string ')) for x in en.missing)
-    assert not [x for x in en.missing if x.startswith('voice ')]
+    # the five lines of flow/a4.md's second pass (A4_089 .. 093) wait for their recordings (2026-11-01, the voice line
+    # has the table); drop PENDING when they are delivered
+    PENDING = tuple(f'voice CNV_A4_0{n}' for n in range(89, 94))
+    assert zh.missing and all(x.startswith(('caption only',) + PENDING) for x in zh.missing)
+    assert all(x.startswith(('caption only', 'string ') + PENDING) for x in en.missing)
+    assert not [x for x in en.missing if x.startswith('voice ') and not x.startswith(PENDING)]
     # the plan's non-speech strings are all translated (a speaker's line waits for its recording and English subtitle)
     speakers = ('沃斯', '司令', '科尔', '播报', '冰幕工兵')
     assert not [x for x in en.missing if x.startswith('string ') and not any(f': {w}：' in x for w in speakers)]
