@@ -15,6 +15,7 @@
 | [flowcheck.py](flowcheck.py) | 机器检查：完整和一致（第四节） |
 | [style.md](style.md) | 台词文风：什么算 AI 腔（正反例）、原版官方中文的参照、润色怎么做；配音线也引用这一份 |
 | [beats_brief.md](beats_brief.md) | "先加戏"给 Gemini 的说明模板（第二节） |
+| [beats_brief2.md](beats_brief2.md) | 第二遍的点子模板：台词、简报、卡住了（第二节） |
 | [flowpolish.py](flowpolish.py) | 去 AI 腔的润色：写给 Gemini 的任务说明（规则、人物、原版参照、整关台词），再把挑中的改写写回剧本 |
 | [flowmap.py](flowmap.py) | 示意图对到实际地图：地方的块和点换算成位置，每段的可玩区，地图的地形、路和地块用途表给网页画底图；flowcheck 和 flowview 都用它 |
 | [flowview.py](flowview.py) + `flowview.html` | **给用户看的网页**（总控 2026-10-28 加）：`python docs/design/flow/flowview.py` 生成 `work/flowview/flow.html`，四种看法：玩家视角从简报逐句放到结局；五条审核（用户 2026-10-29 的标准，一条一块）；地图内容（第 2 层，[maps/](../maps/README.md) 有这一关的稿子时）；整关一张表（每段的镜头、目标、事件、提示、卡住，谁说了多少、每分钟几句台词），flowcheck 的问题列在最上面。用户说只读 md 看不出问题，所以交给用户审的剧本都先生成这个网页。改了 yaml 的字段名或结构，`flowview.html` 里的读法要跟着改 |

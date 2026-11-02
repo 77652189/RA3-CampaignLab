@@ -16,7 +16,7 @@ import yaml
 import flowmap
 
 HERE = pathlib.Path(__file__).resolve().parent
-NOT_SCRIPTS = ('README.md', 'cast.md', 'mechanics.md', 'style.md', 'beats_brief.md')    # the folder's other documents
+NOT_SCRIPTS = ('README.md', 'cast.md', 'mechanics.md', 'style.md', 'beats_brief.md', 'beats_brief2.md')    # the folder's other documents
 TOP = ('关', '关名', '阵营', '类型', '位置', '基地', '地点', '新东西', '出场单位', '用到的机制', '一句话', '体验目标',
        '取舍', '张力', '接上一关', '引出下一关', '简报', '段', '胜利', '失败', '示意图')
 # A first-pass script (稿: 第一遍, README section 2 "两遍"): the shape of the level for the user to read through --
