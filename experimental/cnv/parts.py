@@ -167,6 +167,7 @@ class Mission(Part):
     music: object = None                # our Pathfinder map and tracks (experimental/music/pack.Pack: include,
                                         # files, events, check), compiled into the static stream; published: the
                                         # events it plays (PATH_MUSIC_PLAY_EVENT may name only those). None: retail's
+    video: object = None                # our movies (experimental/video/pack.Pack: include, files, events, check), the same way
     voice: object = None                # our dubbed lines (experimental/voice/pack.Pack: include, files, events,
                                         # strings, check), compiled into the static stream the same way; a sound
                                         # named CNV_* (PLAY_SOUND_EFFECT, HAS_FINISHED_AUDIO) must be one of its events
@@ -633,6 +634,10 @@ def assemble(mission, test=None, name=None):
         c4.EXTRA_FILES += list(mm.voice.files)
         c4.CHECKS.append(mm.voice.check)
         c4.c3.STRINGS.update(mm.voice.strings)
+    if mm.video:                                # our movies: the Video declarations into the static stream, the clips into the big
+        c2.EXTRA_STATIC.append(mm.video.include)
+        c4.EXTRA_FILES += list(mm.video.files)
+        c4.CHECKS.append(mm.video.check)
 
     borders = []
 

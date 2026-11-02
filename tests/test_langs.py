@@ -88,9 +88,11 @@ def test_a4_plan_has_an_english_edition_that_lists_what_it_lacks():
     en, zh = plan.mission('a4', lang='intl'), plan.mission('a4')
     assert (en.name, zh.name) == ('CampA4En', 'CampA4')
     assert en.strings['MISSIONOBJ:CNVA4_T1'] == 'Escort the convoy through the Snow Festival grounds'
-    assert zh.missing and all('no audio en' in x or 'caption only' in x for x in zh.missing)   # 司令 / 科尔 not recorded yet
-    voiced = [x for x in en.missing if x.startswith('voice ')]
-    assert voiced and all('no audio' in x or 'no subtitle' in x for x in voiced)
+    # everything the voice line routes is delivered (2026-11-01, English dub in); what is left is what the plan says that
+    # no recording has (a plan line the dub script does not have): captions, listed, in both editions
+    assert zh.missing and all(x.startswith('caption only') for x in zh.missing)
+    assert all(x.startswith(('caption only', 'string ')) for x in en.missing)
+    assert not [x for x in en.missing if x.startswith('voice ')]
     # the plan's non-speech strings are all translated (a speaker's line waits for its recording and English subtitle)
     speakers = ('沃斯', '司令', '科尔', '播报', '冰幕工兵')
     assert not [x for x in en.missing if x.startswith('string ') and not any(f': {w}：' in x for w in speakers)]

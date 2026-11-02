@@ -56,12 +56,13 @@ from checks import fence as check_fence         # noqa: E402
 from checks import reroute as check_reroute     # noqa: E402
 from checks import sight as check_sight         # noqa: E402
 from checks import voice as check_voice         # noqa: E402
+from checks import movie as check_movie         # noqa: E402
 from checks import drive as check_drive         # noqa: E402
 from checks import mech as check_mech           # noqa: E402
 from units import tesla as units_tesla          # noqa: E402
 from missions import a4, a5, a7, a8, j3, j4, j5, j7, s2, s5, s6, beacon_bench, burrow_bench, clone_bench, combo_bench, crane_bench, icewall_bench, jammer_bench, liberty_bench, shikigami_bench, \
     tesla_bench, train_bench, probe_bench, plan_words_bench, ai_bench, ai_plan_bench, lock_bench, scene_bench, \
-    ally_bench, aistep_bench, fence_bench, reroute_bench, sight_bench, chronolag_bench, ban_bench, sapporo_bench, voice_bench, drive_bench, mech_bench  # noqa: E402
+    ally_bench, aistep_bench, fence_bench, reroute_bench, sight_bench, chronolag_bench, ban_bench, sapporo_bench, voice_bench, drive_bench, mech_bench, movie_bench  # noqa: E402
 
 BENCH_PY = os.path.join(os.path.dirname(ROOT), 'envs', 'bench_mcp', 'Scripts', 'python.exe')
 CLIENT = os.path.join(ROOT, 'experimental', 'testbench', 'bench_client.py')
@@ -186,6 +187,8 @@ MISSIONS = {
     'musicroute': (lambda: _music_bench('music_route').mission(), {}),    # how routers take a pending jump
     'musicrouteswap': (lambda: _music_bench('music_route').mission(name='CampMusRouteW', swap=True), {}),
     'musicroutecover': (lambda: _music_bench('music_route').mission(name='CampMusRouteC', cover=True), {}),
+    # our own movies (experimental/video): a clip in the radar window and one full screen (MOVIE_PLAY_RADAR / _FULLSCREEN)
+    'movie': (lambda: movie_bench.mission(), {'play': check_movie.play}),
     # the voice line's pack (experimental/voice): one line played, how long till HAS_FINISHED_AUDIO, the subtitle
     # looked at; _s / _12: the audio in one of the two cdata folders only -- the one that still plays is the one read
     'voice_bench': (lambda: voice_bench.mission(), {'play': check_voice.play}),
