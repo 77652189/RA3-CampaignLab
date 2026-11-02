@@ -30,9 +30,9 @@ VOICE = os.path.join(os.path.dirname(ROOT), 'RA3-ChineseVoice')
 LINE_TABLES = os.path.join(VOICE, 'lines', 'campaign')
 PLANS = os.path.join(ROOT, 'docs', 'story', 'plans')
 
-EDITIONS = {
-    'zh': dict(suffix='', subtitle='zh'),
-    'intl': dict(suffix='En', subtitle='en'),
+EDITIONS = {                                    # label: what the launcher calls an edition ('' for the default one)
+    'zh': dict(suffix='', subtitle='zh', label=''),
+    'intl': dict(suffix='En', subtitle='en', label='国际版'),
 }
 # a unit's voice lines (lines/campaign/u_<unit>.json, `where` = the kind): level key -> (table file, the unit's event prefix)
 UNIT_TABLES = {'ICEENG': ('u_ice_engineer', 'CNV_IceEngineer')}

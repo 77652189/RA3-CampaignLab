@@ -67,6 +67,16 @@ def cards():
     return out
 
 
+def edition_of(key, levels):
+    """(level key, label) of a build key: 'a4' -> ('a4', ''); 'a4_intl' -> ('a4', '（国际版）') -- an edition of a campaign
+    level (experimental/cnv/langs.py EDITIONS, its `label`) is recognized for every level, not written out for one."""
+    import langs
+    for lang, ed in langs.EDITIONS.items():
+        if ed['label'] and key.endswith('_' + lang) and key[:-len(lang) - 1] in levels:
+            return key[:-len(lang) - 1], f'（{ed["label"]}）'
+    return key, ''
+
+
 def catalog():
     """{mod: (group, title, order)} for every build the code registers; order: the cards' order for the levels."""
     sys.path[:0] = [os.path.join(ROOT, 'experimental', 'cnv')]
@@ -75,14 +85,16 @@ def catalog():
     order = {key: k for k, key in enumerate(known)}
     out = {}
     for key, (make, checks) in build.MISSIONS.items():
+        base, label = edition_of(key, build.LEVELS)
         for check in [''] + list(checks):
             _, _, mod = build.resolve(key, check)
-            if key in build.LEVELS:
-                title, what = known.get(key, (key, {}))
+            if base in build.LEVELS:
+                title, what = known.get(base, (base, {}))
+                rank = order.get(base, 99) + (0.5 if label else 0)      # an edition right behind the level as played
                 if check:
-                    out[mod] = (LEVEL_CHECK, f'{title.split("：")[0]} · {check}：{what.get(check, "")}', order.get(key, 99))
+                    out[mod] = (LEVEL_CHECK, f'{title.split("：")[0]}{label} · {check}：{what.get(check, "")}', rank)
                 else:
-                    out[mod] = (LEVEL, title, order.get(key, 99))
+                    out[mod] = (LEVEL, title + label, rank)
             else:
                 m = make()
                 names = list(dict.fromkeys(re.split('[：（(]', u.what)[0] for u in m.units if getattr(u, 'what', '')))
