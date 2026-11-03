@@ -40,6 +40,9 @@ MAP_ARCHIVES = ['MapsCampaign.big', 'Maps10.big', 'Maps11.big', 'Maps12.big']   
 # more XML compiled into the static stream, type="all" (a music pack's PathMusicMap: experimental/music/pack.py;
 # the game wants it from the start, before any map stream loads)
 EXTRA_STATIC = []
+# the campaign shell probe (experimental/cnv/shell.py, ADR 0014): the mission takes retail Allies_1's place in the campaign
+# (instead of standing in front of it) and keeps Allies_1's briefing screens; {'attrs': {template attribute: value}} changes fields
+SHELL = None
 STRINGS = [
     ('MissionName:CNV01', 'CNV01 新关卡测试：海德堡'),
     ('MissionName:CNV01_Short', 'CNV01 新关卡'),
@@ -51,8 +54,10 @@ STRINGS = [
 
 def sources():
     xml = open(os.path.join(SDK, 'SageXML', 'GlobalData', 'CampaignTemplates.xml'), encoding='ascii').read()
-    new = re.search(r'<MissionTemplate\s+id="Allies_3".*?</MissionTemplate>', xml, re.S).group(0)
-    new = new.replace('id="Allies_3"', 'id="Allies_New"')
+    base = SHELL.get('base', 'Allies_1') if SHELL else 'Allies_3'
+    replace = SHELL.get('replace', True) if SHELL else False
+    new = re.search(rf'<MissionTemplate\s+id="{base}".*?</MissionTemplate>', xml, re.S).group(0)
+    new = new.replace(f'id="{base}"', 'id="Allies_New"')
     new = re.sub(r'<Prerequisite>\d+</Prerequisite>', '<Prerequisite>0</Prerequisite>', new)
     new = re.sub(r'ShortDisplayName="[^"]*"', 'ShortDisplayName="MissionName:CNV01_Short"', new)
     new = re.sub(r'(?<!Short)DisplayName="[^"]*"', 'DisplayName="MissionName:CNV01"', new)
@@ -62,9 +67,17 @@ def sources():
         new = new.replace(o, f'<Objective>MISSIONOBJ:CNV01_{k + 1}</Objective>' if k < 2 else '', 1)
     old_map = re.search(r'MapName="([^"]+)"', new).group(1)
     new = new.replace(old_map, NEW_DIR + NEW_STEM + '.map')
+    for attr, value in (SHELL or {}).get('attrs', {}).items():      # 'Element:Attr' = inside that element only
+        element, _, attr = attr.rpartition(':')
+        pat = rf'(<{element}\b[^>]*?\s){attr}="[^"]*"' if element else rf'(?<![A-Za-z]){attr}="[^"]*"'
+        new, n = re.subn(pat, (r'\g<1>' if element else '') + f'{attr}="{value}"', new, count=1)
+        assert n == 1, f'shell: no {element or "template"} attribute {attr}'
     camp = re.search(r'<CampaignTemplate\s+id="Allies".*?</CampaignTemplate>', xml, re.S).group(0)
-    camp = camp.replace('<Mission>Allies_1</Mission>', '<Mission>Allies_New</Mission>\n\t<Mission>Allies_1</Mission>', 1)
-    assert camp.count('<Mission>') == 10
+    if replace:
+        camp = camp.replace('<Mission>Allies_1</Mission>', '<Mission>Allies_New</Mission>', 1)
+    else:
+        camp = camp.replace('<Mission>Allies_1</Mission>', '<Mission>Allies_New</Mission>\n\t<Mission>Allies_1</Mission>', 1)
+    assert camp.count('<Mission>') == (9 if replace else 10)
     os.makedirs(SRC_DIR, exist_ok=True)
     with open(os.path.join(SRC_DIR, f'{NAME}.xml'), 'w', encoding='ascii', newline='\r\n') as f:
         f.write('<?xml version="1.0" encoding="us-ascii"?>\n<AssetDeclaration xmlns="uri:ea.com:eala:asset">\n\n')

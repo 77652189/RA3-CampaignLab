@@ -418,6 +418,9 @@ def main():
     ap.add_argument('--lang', default='zh', choices=sorted(langs.EDITIONS),
                     help='the edition: zh = Chinese subtitles and dub (CampA4), intl = English subtitles, each side '
                          'dubbed in its language (CampA4En); what it lacks is listed')
+    ap.add_argument('--shell', action='store_true',
+                    help='the campaign shell probe (shell.py, ADR 0014): the mission in retail Allies_1\'s place with its own '
+                         'campaign front end, as the mod CampShell')
     ap.add_argument('--no-build', action='store_true')
     ap.add_argument('--calibrate', action='store_true')
     ap.add_argument('--plan', action='store_true', help='(ra3bench cnv_check) build, then print the bench steps as '
@@ -439,6 +442,11 @@ def main():
         print(text)
         sys.exit(0 if text.endswith('contract: ok') else 1)
     m, t, mod = resolve(a.name, a.check)
+    if a.shell:
+        if a.check or a.lang != 'zh':
+            sys.exit('build: --shell is the plain mission in the Chinese edition (no --check, no --lang)')
+        import shell
+        mod = shell.NAME
     if missing_report(m):
         print(missing_report(m))
     if a.preview:
@@ -461,7 +469,7 @@ def main():
         print('\n'.join(lines))
         sys.exit(status)
     if not a.no_build:
-        out = parts.assemble(m, t, name=mod)
+        out = parts.assemble(m, t, name=mod, shell=a.shell)
         if 'staging' in out:
             print('built to staging (RA3 is running): no bench run')
             if a.plan:
