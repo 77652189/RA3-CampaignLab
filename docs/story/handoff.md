@@ -31,6 +31,14 @@
   - **测试台检查的计时改了**：会场过场 110 秒后，测试里"从任务开始数秒"的计时器在过场里就跑完了；`checks/a4.py` 新增 `AFTER`（过场结束旗 `CNV_A4_Scene_1`），`stand`/`ice_at`/`mouths_on`/derrick/heads/相机的计时都等它。重跑：`horn`（读数器把第一帧的 0 读成 4，期望从 s4 起判）、`detour`、`queue`、`smoke` PASS；**`smash` 在 x8 下读数全 0 判 FAIL，x1 手动看（bench_start CampA4Smash）冰墙、鬼王上岸都对（s59 冰墙 1、鬼王 1），所以是 x8 下的读数或时序问题，没查清（去掉东街口的标志也一样，不是标志的错）**。`demo/melt/hold/idle/win/heads` 没重跑。
   - **测试台坑**：①首帧就是过场结束那一刻（HUD 回来）；②镜头移动在任务里要 1～7 秒，看有时限的东西（烟）要在检查里让它循环出现（`signs`）；③`bench_wait(look=false)` 之后 `bench_look` 看到的是旧帧。
   - **外壳探针（ADR 0014）还没做**：要求见总控消息：A4 放到盟军第一关位置、任务名和播报文字换成我们的、战前过场用测试视频、局势介绍讲话用沃斯头像、战役卡片占位图、世界地图那页只换两张贴图、副指挥官面板看是整块藏起来还是只变灰、单独启动器并验证原版不受影响、mod 名 ≤15 字符不带下划线；做完截四张图：战役卡片、任务列表、播报页、开局。调研在 `work/research/campaign_frontend.md`、`campaign_add_entry.md`。
+- **下一步（用户第二轮试玩 + 总控追加，2026-11-02 夜；清空后的新会话按这个顺序做，提交 54eeb87 之后）**：
+  1. **按策划线新稿实装**：`docs/design/flow/a4.md`（提交 1d80869、4a0a635、374ebf4）、做法表在 `docs/design/cards/a4-layer3.md` 第二节"冰雕里出兵"。要点：过场瘦身（开场约 30 秒、港口生变约 25 秒、布防开头约 20 秒）；台词挪进游玩（交还控制 6 句顺序播、车队出发后 2 句、基地车展开半分钟后科尔两句、布防倒计时过半或走近三号广场的金奖两句、北营交还控制的几句）；删两句 A4_005、A4_012；六个出兵口各一座"出兵冰雕"（比装饰冰雕大、发暗、带地道口石底座、打不坏、挂标记、150 内不摆别的冰雕），兵出生点放底座，号角前十秒冒烟+闪点，号角响时裂开并保持裂开，第一声号角后二号广场那座裂一道缝；会场和港口路多摆小冰雕、灯笼、彩旗、摊位。**我这轮做的红牌坊 `标志` 只是占位**（`horn.py` 的 `标志`、`units/smoke.py` 的红烟、冒烟脚本可以直接复用，标志物换成出兵冰雕）。
+  2. **冰雕怎么裂开（已查）**：`units/festival.py` 的 `sculpture()`（模型 `CNIceSculpt`、打碎留 `CNIceRubbleS` 碎冰，`hard` 版 `CNIceSculptHard`）就是旧 A4"冰雕里出兵"用的（`devices/ice_plazas.py`、`checks/a4_before.py`）：脚本 `NAMED_KILL` 它就碎；"裂开后保持裂开"要自己做一个碎裂后的物件（可复用 `CNIceRubbleS` 大一号，或碎冰留着不沉）。原版现成物件：`GE_STATUE01`、`HB_Statue02`、`HV_SCULPTURE01`、`KR_STATUE01`、`ST_STATUE01-04`（雕像）；本图已用的：`OK_LANTERN01`、`MJ_BANNER01/02`、`TH_LAMPDECO03`、`TH_LAMPPOST04`、`TH_Fish_Market02/03/04`（摊位）、`TH_JAPANCRATE01`、`OK_ARCH01`（红牌坊）、`OK_Pagoda01`。
+  3. **过场镜头自动给视野**（总控转用户原话："到第二个检查点显示北营营地时看不到帝国的建筑和兵种"）：每个过场镜头开始移动时，在目标点周围临时揭图，过场结束收回；不开全图。先 `retail_scripts` 查原版过场怎么给视野（`MAP_REVEAL_AT_WAYPOINT` / `MAP_UNDO_REVEAL…` 一类，plan.py 已有 `揭开: <点>, 半径, 永久` 和 `看一眼`），做成 `镜头` 步骤的通用行为；测试台截北营镜头的缩小图给总控，要能看见帝国的建筑和兵。
+  4. **头像名单去掉 `CNV_A4_082`**（金奖那句挪进布防倒计时，玩家在看小地图）；剩九句。
+  5. **战役外壳探针**（ADR 0014，要求见上一条"外壳探针"）。
+  - **过场能不能跳（已查，回给总控和策划线）**：原版没有。`retail_scripts` 查 SKIP / cinematic / escape 只有两条调试脚本（`debug skip objective`）；原版过场（如 `camp_a01_brightonbeach_smith` 的 `Intro Cine 01`）就是 `CAMERA_LETTERBOX_BEGIN` + `DISABLE_INPUT` + 镜头脚本，`script_catalog.json` 里没有按键条件和跳过动作；我们实测过场里按 Esc 进游戏时刻不变。
+  - **没解决**：`smash` 检查在 x8 读数全 0（x1 手看正常），见上；`demo/melt/hold/idle/win/heads` 在 AFTER 改动后没重跑。
 - **没做**：流程稿"部队在正坡下一直挨打"用"进入 north camp 45 秒后"近似；头像没有真片子；游戏里的声音测试台听不到，要用户试玩。
 
 ## 最新状态（2026-11-02 头像接完后；本节是 11-01 晚的旧文，只在这行补最新：A4 两个版本各 118 句、10 个说话头像，五条检查两版全 PASS，已装进 `Mods\CampA4`、`CampA4En`，已推送 a156bbf。头像细节见上面"A4 周考"节的"说话头像"一条；下一步是用户试玩后的反馈清单，由总控发给清空后的新会话）
