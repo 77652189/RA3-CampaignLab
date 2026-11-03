@@ -49,13 +49,13 @@ TEXTS = {
                card='盟军战役（占位）：札幌雪祭的雪祭会场里，号角一响，三条街的地道同时出兵。',
                mission='盟军第 {k} 关', pic='占位图', pic_of='（占位图）', intel='情报', goals='目标',
                card_lines=('CNV', '占位卡片'), faction=dict(allies='战役实验室', soviet='苏军战役', empire='帝国战役'),
-               other_card='（占位）：这一战役还没做。', other_name='{side} 第 {k} 关（占位）', other_short='{side} {k}'),
+               notes_title='任务说明', other_card='（占位）：这一战役还没做。', other_name='{side} 第 {k} 关（占位）', other_short='{side} {k}'),
     'intl': dict(title='Sapporo Snow Festival · Horns and Ice Walls', short='Ice Soldiers', file='shell_missions.en.json',
                  intro='Pre-mission movie (placeholder)', colon=': ', semi='; ', note=' (mission notes)', narr='(placeholder narration) ',
                  card='Allied campaign (placeholder): at the Sapporo snow festival, one blast of the horn and the tunnels of three streets send out their troops.',
                  mission='Allied Mission {k}', pic='Placeholder', pic_of=' (placeholder)', intel='Intel', goals='Goals',
                  card_lines=('CNV', 'Placeholder card'), faction=dict(allies='Campaign Lab', soviet='Soviet campaign', empire='Empire campaign'),
-                 other_card=' (placeholder): this campaign is not made yet.', other_name='{side} mission {k} (placeholder)', other_short='{side} {k}'),
+                 notes_title='Mission notes', other_card=' (placeholder): this campaign is not made yet.', other_name='{side} mission {k} (placeholder)', other_short='{side} {k}'),
 }
 T = TEXTS['zh']
 TITLE, SHORT = T['title'], T['short']
@@ -92,6 +92,7 @@ class Shell:
     files: list = field(default_factory=list)       # (big path, bytes): the APT streams with our pictures
     strings: dict = field(default_factory=dict)     # new labels
     overrides: dict = field(default_factory=dict)   # retail labels rewritten
+    prefix_overrides: dict = field(default_factory=dict)    # label prefix -> text, every retail label that starts so
 
 
 def font(size):
@@ -414,7 +415,10 @@ def make(mission_title, mission_name='CampA4', lang='zh'):
     sp.clips[HEAD_ID] = head_clip()
     slots = {k: (m['short'], k == slot) for k, m in info.items()}
     sp.files = apt_files(slots) + thumbnails(slots)
-    sp.overrides = {'APT:ALLIES_FACTION_DESCRIPTION': T['card'], **{f'MONITOR:{k}': ' ' for k in MONITOR}}
+    sp.overrides = {'APT:ALLIES_FACTION_DESCRIPTION': T['card'], **{f'MONITOR:{k}': ' ' for k in MONITOR},
+                    **{f'APT:{k}': T['notes_title'] for k in ('COCOMMANDER_NAME_TITLE', 'COCOMMANDER', 'YOUR_CO_COMMANDER',
+                                                              'SELECT_YOUR_AI_CO_COMMANDER')}}   # the overview tab's head ("副指挥官")
+    sp.prefix_overrides = {'PERSONALITY:': '—'}         # the co-op commanders' names (the briefing's team column)
     for key, side, desc in (('SOVIETS', 'soviet', 'APT:SOVIET_FACTION_DESCRIPTION'), ('JAPAN', 'empire', 'APT:JAPANESE_FACTION_DESCRIPTION')):
         sp.overrides[desc] = T['faction'][side] + T['other_card']        # the other two campaigns: placeholders (names, cards, texts)
         for k in range(1, 10):

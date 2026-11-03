@@ -1,15 +1,18 @@
 """The CampShell launcher, its icon and the desktop shortcut (ADR 0014: the shell is started by its own way, the retail game and
 its shortcuts are never touched).
 
-  python -I -X utf8 experimental/cnv/launcher.py            -> Mods\\CampShell\\Play_CampShell.vbs + CampShell.ico
+  python -I -X utf8 experimental/cnv/launcher.py            -> Mods\\CampShell\\Play_CampShell.hta + CampShell.ico
   python -I -X utf8 experimental/cnv/launcher.py --desktop  ... and the shortcut on the desktop (its own file, created or replaced)
   python -I -X utf8 experimental/cnv/launcher.py --icon-only <png>   the icon's master picture, to look at
 
-The launcher is a .vbs run by wscript (no console window): it asks for the edition (a message box: Yes = Chinese, No =
-international; `zh` / `intl` as an argument answers it) and starts RA3.exe -runver 1.13 -modConfig <the edition's skudef>
-(Mods\\CampShell\\CampShell_1.0.skudef or Mods\\CampShellEn\\CampShellEn_1.0.skudef: `build.py a4 --shell [--lang intl]`), extra
-arguments passed on (-win for a windowed test). To the user it is one mod, one icon, one desktop shortcut. The icon follows retail's and Uprising's: a red star with the cream points between, a disc
-in the middle; ours has the ice-blue disc and a snowflake (the A4 festival), and no lettering.
+The launcher is an HTA (play.hta, run by mshta: a small window, no console) with two buttons, "中文版" and "国际版"; the one chosen
+last time has the focus (last_edition.txt beside it), `zh` / `intl` as an argument answers for the player. It starts RA3.exe
+-runver 1.13 -modConfig <the edition's skudef> (Mods\\CampShell\\CampShell_1.0.skudef or Mods\\CampShellEn\\CampShellEn_1.0.skudef:
+`build.py a4 --shell [--lang intl]`), extra arguments passed on (-win for a windowed test). To the user it is one mod, one icon,
+one desktop shortcut.
+
+The icon follows retail's and Uprising's: a red star with the cream points between, a disc in the middle; ours has the
+ice-blue disc and a snowflake (the A4 festival), and no lettering.
 """
 import math
 import os
@@ -26,51 +29,7 @@ SHORTCUT = '红警3 · 战役实验室'
 OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods', MOD)
 ICON_SIZES = [256, 128, 64, 48, 32, 24, 16]
 
-VBS = '''\' CampShell launcher: RA3 with the CampShell mod, no console window (experimental/cnv/launcher.py).
-\' The edition is asked for (zh = Chinese subtitles and dub; intl = English subtitles, each side in its own language); `zh` or
-\' `intl` among the arguments skips the question, every other argument goes on to RA3.exe (-win for a windowed test).
-Dim sh, fso, here, mods, game, args, edition, skudef, i, a, answer
-Set sh = CreateObject("WScript.Shell")
-Set fso = CreateObject("Scripting.FileSystemObject")
-here = fso.GetParentFolderName(WScript.ScriptFullName)
-mods = fso.GetParentFolderName(here)
-game = "{game}"
-If Not fso.FileExists(game & "\\RA3.exe") Then
-    MsgBox "找不到红警3：" & game, 16, "{shortcut}"
-    WScript.Quit 1
-End If
-args = ""
-edition = ""
-For i = 0 To WScript.Arguments.Count - 1
-    a = WScript.Arguments(i)
-    If LCase(a) = "zh" Or LCase(a) = "intl" Then
-        edition = LCase(a)
-    Else
-        args = args & " " & a
-    End If
-Next
-If edition = "" Then
-    answer = MsgBox("选择版本" & vbCrLf & vbCrLf & "【是】  中文版：中文字幕和配音" & vbCrLf & "【否】  国际版：英文字幕，各阵营说自己的语言" & vbCrLf & "【取消】  退出", 3 + 32, "{shortcut}")
-    If answer = 6 Then
-        edition = "zh"
-    ElseIf answer = 7 Then
-        edition = "intl"
-    Else
-        WScript.Quit 0
-    End If
-End If
-If edition = "intl" Then
-    skudef = mods & "\\{mod}En\\{mod}En_1.0.skudef"
-Else
-    skudef = mods & "\\{mod}\\{mod}_1.0.skudef"
-End If
-If Not fso.FileExists(skudef) Then
-    MsgBox "找不到 mod 配置：" & skudef, 16, "{shortcut}"
-    WScript.Quit 1
-End If
-sh.CurrentDirectory = game
-sh.Run """" & game & "\\RA3.exe"" -runver 1.13 -modConfig """ & skudef & """" & args, 1, False
-'''
+HTA = os.path.join(HERE, 'play.hta')       # the launcher's window (two buttons), a template: @GAME@ @MOD@ @SHORTCUT@ @ICON@
 
 
 # ---- the icon ------------------------------------------------------------------------------------------------------
@@ -155,16 +114,25 @@ def write_icon(path):
 # ---- the launcher and the shortcut -------------------------------------------------------------------------------
 
 def write_launcher(out=OUT):
+    """Mods\\CampShell\\Play_CampShell.hta from play.hta: UTF-8 with a BOM (mshta reads the Chinese in it), the game's folder and
+    the icon's path filled in. An old .vbs launcher of this mod is removed."""
     os.makedirs(out, exist_ok=True)
-    vbs = os.path.join(out, f'Play_{MOD}.vbs')
-    text = VBS.format(game=labpaths.GAME, shortcut=SHORTCUT, mod=MOD)
-    with open(vbs, 'w', encoding='utf-16', newline='') as f:        # UTF-16 with a BOM: wscript reads it, the Chinese in the messages too
+    hta = os.path.join(out, f'Play_{MOD}.hta')
+    with open(HTA, encoding='utf-8') as f:
+        text = f.read()
+    for token, value in (('@GAME@', labpaths.GAME.replace('\\', '\\\\')), ('@MOD@', MOD), ('@SHORTCUT@', SHORTCUT),
+                         ('@ICON@', os.path.join(out, f'{MOD}.ico'))):
+        text = text.replace(token, value)
+    with open(hta, 'w', encoding='utf-8-sig', newline='') as f:
         f.write(text.replace('\r\n', '\n').replace('\n', '\r\n'))
-    return vbs
+    old = os.path.join(out, f'Play_{MOD}.vbs')
+    if os.path.exists(old):
+        os.remove(old)
+    return hta
 
 
 def desktop_shortcut(vbs, ico):
-    """Create (or replace) the shortcut file on the desktop, named SHORTCUT: wscript runs the launcher, the icon is ours.
+    """Create (or replace) the shortcut file on the desktop, named SHORTCUT: mshta shows the launcher, the icon is ours.
     Only this file is written: retail's shortcuts are not read or changed."""
     script = os.path.join(os.environ.get('TEMP', '.'), 'campshell_lnk.ps1')
     with open(script, 'w', encoding='utf-8-sig') as f:
@@ -172,8 +140,8 @@ def desktop_shortcut(vbs, ico):
                 f'$lnk = Join-Path $desk "{SHORTCUT}.lnk"\n'
                 '$sh = New-Object -ComObject WScript.Shell\n'
                 '$s = $sh.CreateShortcut($lnk)\n'
-                '$s.TargetPath = Join-Path $env:SystemRoot "System32\\wscript.exe"\n'
-                f'$s.Arguments = \'//nologo "{vbs}"\'\n'
+                '$s.TargetPath = Join-Path $env:SystemRoot "System32\\mshta.exe"\n'
+                f'$s.Arguments = \'"{vbs}"\'\n'
                 f'$s.WorkingDirectory = "{os.path.dirname(vbs)}"\n'
                 f'$s.IconLocation = "{ico},0"\n'
                 '$s.Description = "红警3 战役实验室：CampShell mod 的专用启动方式，不影响原版"\n'

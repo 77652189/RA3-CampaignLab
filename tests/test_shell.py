@@ -164,11 +164,20 @@ def test_the_chapter_thumbnails_are_a_file_per_slot_in_retail_map_folders_and_ou
     assert not [n for n in files if 'gibraltar' in n]                                        # slot 4 is ours, retail's map is not replaced
 
 
-def test_the_launcher_asks_for_the_edition_and_starts_that_mods_skudef():
+def test_the_launcher_has_two_edition_buttons_remembers_the_last_and_starts_that_mods_skudef(tmp_path):
     import launcher
-    vbs = launcher.VBS.format(game='C:/game', shortcut='x', mod=launcher.MOD)
-    assert 'MsgBox' in vbs and '"intl"' in vbs and 'CampShellEn_1.0.skudef' in vbs and 'CampShell_1.0.skudef' in vbs
+    hta = Path(launcher.write_launcher(str(tmp_path))).read_bytes()
+    assert hta[:3] == b'\xef\xbb\xbf'                                        # the BOM mshta needs for the Chinese
+    text = hta.decode('utf-8-sig')
+    assert '中文版' in text and '国际版' in text and 'last_edition.txt' in text and '"intl"' in text
+    assert 'CampShellEn_1.0.skudef' not in text and 'MOD + "En_1.0.skudef"' in text and '@' not in text.replace('@SHORTCUT', '')
     assert launcher.MOD == shell.NAME
+
+
+def test_the_commander_overview_shows_no_retail_commander_in_either_edition(edition):
+    for lang in ('zh', 'intl'):
+        sp = shell.make('x', 'CampA4', lang)
+        assert sp.prefix_overrides == {'PERSONALITY:': '—'} and sp.overrides['APT:COCOMMANDER_NAME_TITLE'] == shell.T['notes_title']
 
 
 @needs_game

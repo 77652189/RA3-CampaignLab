@@ -627,13 +627,14 @@ def assemble(mission, test=None, name=None, shell=False):
         c7.EXTRA_OWN.append(link.encode())
     c4.c3.STRINGS.update(mm.strings)
     video = mm.video
-    c2.SHELL, c4.c3.OVERRIDES = None, {}
+    c2.SHELL, c4.c3.OVERRIDES, c4.c3.PREFIX_OVERRIDES = None, {}, {}
     if shell:
         import shell as shell_probe
         sp = shell_probe.make(str(getattr(mm, 'title', '') or mm.name), mm.name, shell if isinstance(shell, str) else 'zh')
         c2.SHELL = {'slot': sp.slot, 'attrs': sp.attrs, 'others': sp.others, **sp.template}
         c4.c3.STRINGS.update(sp.strings)
         c4.c3.OVERRIDES.update(sp.overrides)
+        c4.c3.PREFIX_OVERRIDES.update(sp.prefix_overrides)
         from experimental.video import pack as video_pack
         video = video_pack.make({**(mm.video.clips if mm.video else {}), **sp.clips})
     # our music: its map into the static stream, its .mus files into the big, then checked in the spliced stream

@@ -37,6 +37,7 @@ if os.environ.get('CNV_PROBE_MAP') == 'retail':
     SRC_DIR = os.path.join(SDK, 'Mods', NAME, 'data', 'additionalmaps')
     BUILT = os.path.join(SDK, 'BuiltMods', 'mods', NAME.lower(), 'data', 'additionalmaps')
     OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods', NAME)
+PREFIX_OVERRIDES = {}   # label prefix -> text for every retail label that starts with it
 OVERRIDES = {}      # retail labels the mod rewrites (the campaign shell: the faction card's text), label -> text
 GAME_ALL_TYPES_HASH = 1424942948     # manifest header field 4 of static.12 / global.12 ... and of Arsenal's stream
 STRINGS = {
@@ -128,6 +129,8 @@ def strings():
     header, entries = csf.parse_full(data)
     have = {e[0] for e in entries}
     entries = [(e[0], OVERRIDES[e[0]], None, 1) if e[0] in OVERRIDES else e for e in entries]
+    for prefix, text in PREFIX_OVERRIDES.items():            # every retail label starting so (the commanders' names)
+        entries = [(e[0], text, None, 1) if e[0].startswith(prefix) else e for e in entries]
     entries += [(k, v, None, 1) for k, v in STRINGS.items() if k not in have]
     return [(name, refpack.compress_literal(csf.write(header, entries)))]
 

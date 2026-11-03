@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta http-equiv="x-ua-compatible" content="ie=9">
+<title>@SHORTCUT@</title>
+<hta:application id="app" applicationname="CampShell" border="thin" caption="yes" showintaskbar="yes"
+  singleinstance="yes" scroll="no" maximizebutton="no" minimizebutton="no" icon="@ICON@" />
+<style>
+  body { margin: 0; background: #1a0707; color: #f2e3c0; font-family: "Microsoft YaHei", sans-serif; text-align: center; }
+  h1 { font-size: 20px; margin: 18px 0 4px; color: #fff; }
+  p.sub { margin: 0 0 14px; font-size: 13px; color: #d9a77a; }
+  button { display: block; width: 300px; margin: 0 auto 12px; padding: 10px 8px; font-family: inherit; cursor: pointer;
+           background: #5a1010; color: #fff; border: 2px solid #c8742a; }
+  button:hover, button:focus { background: #8a1a14; border-color: #ffd48a; }
+  button b { display: block; font-size: 20px; }
+  button span { display: block; font-size: 12px; color: #f0d6b0; margin-top: 3px; }
+  #last { font-size: 12px; color: #ffd48a; }
+</style>
+<script language="JScript">
+var GAME = "@GAME@", MOD = "@MOD@", TITLE = "@SHORTCUT@";
+var sh = new ActiveXObject("WScript.Shell"), fso = new ActiveXObject("Scripting.FileSystemObject");
+var here = fso.GetParentFolderName(decodeURIComponent(location.pathname).replace(/^\//, "").replace(/\//g, "\\"));
+var mods = fso.GetParentFolderName(here);
+var memory = here + "\\last_edition.txt";      // the edition chosen last time: it is the one that has the focus
+var extra = "";                                // every argument but zh / intl goes on to RA3.exe (-win for a windowed test)
+var preset = "";
+
+function skudef(ed) {
+  return ed == "intl" ? mods + "\\" + MOD + "En\\" + MOD + "En_1.0.skudef" : mods + "\\" + MOD + "\\" + MOD + "_1.0.skudef";
+}
+
+function remembered() {
+  try {
+    if (fso.FileExists(memory)) {
+      var f = fso.OpenTextFile(memory, 1), t = f.ReadLine(); f.Close();
+      return t == "intl" ? "intl" : "zh";
+    }
+  } catch (e) {}
+  return "";
+}
+
+function launch(ed) {
+  if (!fso.FileExists(GAME + "\\RA3.exe")) { alert("找不到红警3：" + GAME); return; }
+  if (!fso.FileExists(skudef(ed))) { alert("找不到 mod 配置：" + skudef(ed)); return; }
+  try { var f = fso.CreateTextFile(memory, true); f.WriteLine(ed); f.Close(); } catch (e) {}
+  sh.CurrentDirectory = GAME;
+  sh.Run('"' + GAME + '\\RA3.exe" -runver 1.13 -modConfig "' + skudef(ed) + '"' + extra, 1, false);
+  window.close();
+}
+
+function start() {
+  var m = /\.hta"?\s*(.*)$/i.exec(app.commandLine), parts = m && m[1] ? m[1].split(/\s+/) : [];
+  for (var i = 0; i < parts.length; i++) {
+    if (parts[i] == "zh" || parts[i] == "intl") preset = parts[i];
+    else if (parts[i]) extra += " " + parts[i];
+  }
+  if (preset) { launch(preset); return; }
+  window.resizeTo(400, 330);
+  window.moveTo((screen.width - 400) / 2, (screen.height - 330) / 2);
+  var last = remembered();
+  var b = document.getElementById(last == "intl" ? "intl" : "zh");
+  if (last) document.getElementById("last").innerText = "上次选择：" + (last == "intl" ? "国际版" : "中文版");
+  b.focus();
+}
+</script>
+</head>
+<body onload="start()">
+  <h1>@SHORTCUT@</h1>
+  <p class="sub">选择版本</p>
+  <button id="zh" onclick="launch('zh')"><b>中文版</b><span>中文字幕和配音</span></button>
+  <button id="intl" onclick="launch('intl')"><b>国际版</b><span>English subtitles, each side in its own language</span></button>
+  <div id="last"></div>
+</body>
+</html>
