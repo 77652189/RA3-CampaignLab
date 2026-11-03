@@ -37,18 +37,39 @@ MAP_PICTURE = os.path.join(ROOT, 'work', 'maps', 'CampA4_mcp.png')       # cnv_p
 FONT = r'C:\Windows\Fonts\msyhbd.ttc'
 B = chr(92)
 APT = 'data' + B + 'aptui' + B
+OWN_STEM = 'camp_cnv01_probe'               # the built mission's map folder and file stem (make_campnew2.NEW_STEM)
 PANEL = 'tacticalhudcoopaiorderpanel'       # the HUD's co-op commander panel (portrait, four buttons, the defence-state bar)
 
-# the built mission's own names (the plan's); the other slots' come from shell_missions.json (docs/design/flow/a<k>.md)
-TITLE = '札幌雪祭 · 号角与冰墙'
-SHORT = '札幌雪祭'
-INTRO_TEXT = '战前全屏视频（占位）'
-CARD_TEXT = '盟军战役（占位）：札幌雪祭的雪祭会场里，号角一响，三条街的地道同时出兵。'
-SLOT_OF = {'CampA4': 4}
+# The words of the shell, by edition (langs.py: zh, intl). The built mission's own names are the plan's; the other slots' come
+# from shell_missions[.en].json (docs/design/flow/a<k>.md, the English a translation of them). `make(.., lang)` picks the
+# edition, the picture functions below read it from T.
+TEXTS = {
+    'zh': dict(title='札幌雪祭 · 号角与冰墙', short='札幌雪祭', file='shell_missions.json',
+               intro='战前全屏视频（占位）', colon='：', semi='；', note='（任务说明）', narr='（占位旁白）',
+               card='盟军战役（占位）：札幌雪祭的雪祭会场里，号角一响，三条街的地道同时出兵。',
+               mission='盟军第 {k} 关', pic='占位图', pic_of='（占位图）', intel='情报', goals='目标',
+               card_lines=('CNV', '占位卡片'), faction=dict(allies='战役实验室', soviet='苏军战役', empire='帝国战役'),
+               other_card='（占位）：这一战役还没做。', other_name='{side} 第 {k} 关（占位）', other_short='{side} {k}'),
+    'intl': dict(title='Sapporo Snow Festival · Horns and Ice Walls', short='Ice Soldiers', file='shell_missions.en.json',
+                 intro='Pre-mission movie (placeholder)', colon=': ', semi='; ', note=' (mission notes)', narr='(placeholder narration) ',
+                 card='Allied campaign (placeholder): at the Sapporo snow festival, one blast of the horn and the tunnels of three streets send out their troops.',
+                 mission='Allied Mission {k}', pic='Placeholder', pic_of=' (placeholder)', intel='Intel', goals='Goals',
+                 card_lines=('CNV', 'Placeholder card'), faction=dict(allies='Campaign Lab', soviet='Soviet campaign', empire='Empire campaign'),
+                 other_card=' (placeholder): this campaign is not made yet.', other_name='{side} mission {k} (placeholder)', other_short='{side} {k}'),
+}
+T = TEXTS['zh']
+TITLE, SHORT = T['title'], T['short']
+SLOT_OF = {'CampA4': 4, 'CampA4En': 4}
+
+
+def use_lang(lang):
+    global T, TITLE, SHORT
+    T = TEXTS[lang]
+    TITLE, SHORT = T['title'], T['short']
 
 
 def missions():
-    with open(os.path.join(HERE, 'shell_missions.json'), encoding='utf-8') as f:
+    with open(os.path.join(HERE, T['file']), encoding='utf-8') as f:
         data = json.load(f)
     return {int(k[1:]): v for k, v in data.items()}
 
@@ -87,11 +108,12 @@ def centered(draw, xy_center, text, size, fill, stroke=0, stroke_fill=(0, 0, 0))
 
 # ---- pictures ----------------------------------------------------------------------------------------------------
 
-def map_picture(size, short=SHORT, real=True):
+def map_picture(size, short=None, real=True, label=True):
     """The briefing's map picture, `size` (w, h) or a square side: the built mission's map from above in the briefing's amber, or
     (a slot with no map of ours) an amber grid with the name and 'placeholder'."""
     from PIL import Image, ImageDraw, ImageOps
     w, h = (size, size) if isinstance(size, int) else size
+    short = short or SHORT
     if real and os.path.exists(MAP_PICTURE):
         img = ImageOps.colorize(Image.open(MAP_PICTURE).convert('L'), black=(14, 6, 0), white=(255, 160, 60))
         img = img.resize((w, h), Image.LANCZOS)
@@ -103,9 +125,10 @@ def map_picture(size, short=SHORT, real=True):
             d.line((x, 0, x, h), fill=(60, 30, 8))
         for y in range(0, h, 64):
             d.line((0, y, w, y), fill=(60, 30, 8))
-        centered(d, (w // 2, h // 2 - 30), short, max(24, w // 12), (255, 190, 100), stroke=3)
+        centered(d, (int(w * 0.32), h // 2 - 30), short, max(20, w // 16), (255, 190, 100), stroke=3)    # (the screen shows the left part)
     d.rectangle((0, 0, w - 1, h - 1), outline=(200, 110, 30), width=3)
-    centered(d, (w // 2, h - 40), short + '（占位图）' if real else '占位图', 40, (255, 220, 160), stroke=3)
+    if label:
+        centered(d, (int(w * 0.32), h - 40), short + T['pic_of'] if real else T['pic'], 40, (255, 220, 160), stroke=3)
     return img
 
 
@@ -149,39 +172,54 @@ def global_pictures(short, real):
         if real:
             m = map_picture(1000).crop((120, 0, 880, 1000)).resize(inner, Image.LANCZOS)
             v = Image.open(VOSS).convert('RGBA').crop((120, 0, 1134, 1254)).resize(inner, Image.LANCZOS)
-            pics = [m, v, name_card(inner, [(short, 56, 110), ('占位图', 34, 190)])]
+            pics = [m, v, name_card(inner, [(short, 56, 110), (T['pic'], 34, 190)])]
         else:
-            pics = [name_card(inner, [(short, 52, 110), ('占位图', 34, 190)]),
-                    name_card(inner, [('情报', 56, 110), ('占位图', 34, 190)]),
-                    name_card(inner, [('目标', 56, 110), ('占位图', 34, 190)])]
+            pics = [name_card(inner, [(short, 52, 110), (T['pic'], 34, 190)]),
+                    name_card(inner, [(T['intel'], 56, 110), (T['pic'], 34, 190)]),
+                    name_card(inner, [(T['goals'], 56, 110), (T['pic'], 34, 190)])]
         for x0, pic in zip((5, 301, 597), pics):
             out.paste(pic, (x0 + 8, 13))
         return out
     return paint
 
 
-CARD_BOXES = [(1652, 0, 1908, 441), (1652, 455, 1908, 894)]     # the Allies card in the faction menu: normal, highlighted
+# The cards of the faction menu, by texture: {faction: [boxes]} (normal first, then highlighted) -- found from the orange outline
+# of the retail cards (2026-11-03): Allies and (a second copy of) the Empire in texture 1, the Empire and the Soviets in texture 3.
+CARD_BOXES = {
+    'apt_fes_m_factionMenu_1': {'allies': [(1652, 0, 1908, 441), (1652, 455, 1908, 894)], 'empire': [(1369, 563, 1625, 1002)]},
+    'apt_fes_m_factionMenu_3': {'empire': [(2, 1, 258, 440)], 'soviet': [(272, 1, 528, 440), (542, 1, 798, 440)]},
+}
+# card colours: the gradient's top and bottom RGB, the lettering's outline
+CARD_COLOURS = {'allies': ((135, 210, 250), (15, 50, 120), (10, 30, 80)), 'soviet': ((230, 60, 40), (70, 8, 8), (70, 10, 10)),
+                'empire': ((200, 200, 215), (60, 60, 85), (30, 30, 55))}
 
 
-def faction_card(orig):
+def faction_cards(orig, boxes):
+    """The texture with each faction's cards repainted as a placeholder card (gradient, 'CNV', the faction's line, 'placeholder')."""
     from PIL import Image, ImageDraw
     out = orig.convert('RGBA').copy()
-    for k, (x0, y0, x1, y1) in enumerate(CARD_BOXES):
-        w, h = x1 - x0, y1 - y0
-        card = Image.new('RGBA', (w, h), (0, 0, 0, 255))
-        d = ImageDraw.Draw(card)
-        lift = 40 * k
-        for y in range(h):
-            t = y / h
-            d.line((0, y, w, y), fill=(min(255, int(15 + 40 * (1 - t)) + lift), min(255, int(50 + 110 * (1 - t)) + lift),
-                                       min(255, int(120 + 120 * (1 - t)) + lift), 255))
-        centered(d, (w // 2, h // 2 - 70), 'CNV', 110, (255, 255, 255), stroke=4, stroke_fill=(10, 30, 80))
-        centered(d, (w // 2, h // 2 + 40), '战役实验室', 50, (235, 245, 255), stroke=3, stroke_fill=(10, 30, 80))
-        centered(d, (w // 2, h // 2 + 120), '占位卡片', 36, (210, 230, 255), stroke=2, stroke_fill=(10, 30, 80))
-        d.rectangle((0, 0, w - 1, h - 1), outline=(240, 170, 100, 255), width=2)
-        out.paste(card, (x0, y0))
+    for faction, where in boxes.items():
+        top, bottom, edge = CARD_COLOURS[faction]
+        for k, (x0, y0, x1, y1) in enumerate(where):
+            w, h = x1 - x0, y1 - y0
+            card = Image.new('RGBA', (w, h), (0, 0, 0, 255))
+            d = ImageDraw.Draw(card)
+            for y in range(h):
+                t = y / h
+                d.line((0, y, w, y), fill=tuple(min(255, int(bottom[c] + (top[c] - bottom[c]) * (1 - t)) + 40 * k) for c in range(3)) + (255,))
+            big, small = T['card_lines']
+            centered(d, (w // 2, h // 2 - 70), big, 110, (255, 255, 255), stroke=4, stroke_fill=edge)
+            centered(d, (w // 2, h // 2 + 40), T['faction'][faction], 50, (245, 245, 245), stroke=3, stroke_fill=edge)
+            centered(d, (w // 2, h // 2 + 120), small, 36, (225, 225, 225), stroke=2, stroke_fill=edge)
+            d.rectangle((0, 0, w - 1, h - 1), outline=(240, 170, 100, 255), width=2)
+            out.paste(card, (x0, y0))
     return out
 
+
+PORTRAIT_CALL = re.compile(rb'RenderImage')     # the panel's script asks the engine to draw the commander's picture; nobody answers 'RenderImagx'
+MONITOR = ['ASSAULT', 'ATTACKING', 'BUILDINGAIRCRAFT', 'BUILDINGFORCES', 'BUILDINGNAVY', 'BUILDINGVEHICLES', 'DEFENDING',
+           'EXPANDING', 'HOLDOBJECT', 'HOLDPOSITION', 'INCOMBAT', 'INDANGER', 'LOWONCREDITS', 'LOWONPOWER', 'NORMAL', 'ONGUARD',
+           'PREPARINGSTRIKE', 'RUSHING', 'SENDINGFORCES', 'TECHINGUP', 'TRAININGINFANTRY']      # the panel's state texts ("防御状态" ...)
 
 EVENT = re.compile(rb'MA(\d\d)_AlliedIntel(\d\d)', re.I)       # the retail briefing narration the objective screens play
 
@@ -202,8 +240,8 @@ def narration_strings(info):
             old = f'MA{mission:02d}_AlliedIntel{line:02d}'.encode()
             new = new_event(old).decode().upper()
             m = info[mission]
-            out[f'DIALOGEVENT:{new}'] = {1: '（占位旁白）' + m['briefing'], 2: '（占位旁白）' + '；'.join(m['objectives'])}.get(
-                line, f'（占位旁白）{m["title"]}')
+            out[f'DIALOGEVENT:{new}'] = {1: T['narr'] + m['briefing'], 2: T['narr'] + T['semi'].join(m['objectives'])}.get(
+                line, f'{T["narr"]}{m["title"]}')
     return out
 
 
@@ -227,9 +265,44 @@ def apt_files(slots):
         add(f'a{k:02d}_objective_briefing', lambda prefix, painted=painted: painted(prefix, renames=(EVENT, new_event)))
         add(f'a{k:02d}_global_briefing', painted)
     add('fes_m_factionmenu', lambda prefix: apt_textures.patch(
-        'Apt.big', prefix, {'apt_fes_m_factionMenu_1': faction_card(apt_textures.originals('Apt.big', prefix)['apt_fes_m_factionMenu_1'])}))
-    add(PANEL, lambda prefix: apt_textures.hollow('Apt.big', prefix))
+        'Apt.big', prefix, {t: faction_cards(apt_textures.originals('Apt.big', prefix)[t], boxes) for t, boxes in CARD_BOXES.items()}))
+    add(PANEL, lambda prefix: apt_textures.hollow('Apt.big', prefix, (PORTRAIT_CALL, lambda old: old[:-1] + b'x')))
     return files
+
+
+# ---- the chapter list's thumbnails ----------------------------------------------------------------------------------------
+
+def retail_map_stems():
+    """{slot: 'camp_a01_...' (the map's folder, which is also the map's file stem)}: retail's Allied missions' maps."""
+    import labpaths
+    with open(os.path.join(labpaths.SDK3, 'SageXML', 'GlobalData', 'CampaignTemplates.xml'), encoding='ascii') as f:
+        xml = f.read()
+    return {k: re.search(rf'<MissionTemplate\s+id="Allies_{k}".*?MapName="[^"]*?([^\\\\]+)\.map"', xml, re.S).group(1).lower()
+            for k in range(1, 10)}
+
+
+def thumbnail(short, real, size=128):
+    """A picture of a map as retail's files are: 128 x 128 uncompressed 32-bit TGA (<map>.tga), or 512 x 512 24-bit (<map>_art.tga)."""
+    import io
+    from PIL import Image
+    img = map_picture(size, short, True, False).convert('RGBA') if real else name_card((size, size), [(short, size // 6, size * 0.4), (T['pic'], size // 9, size * 0.7)])
+    buf = io.BytesIO()
+    img.convert('RGBA' if size == 128 else 'RGB').save(buf, 'TGA')
+    return buf.getvalue()
+
+
+def thumbnails(slots):
+    """[(big path, bytes)]: a mission's map picture is the file <its map folder>\\\\<stem>.tga; the built mission's is in the new
+    folder (the build puts it there: make_campnew2.map_files), the others replace the retail folders' files (this mod's big
+    only: retail's are not touched)."""
+    out = []
+    for k, stem in retail_map_stems().items():
+        short, built = slots[k]
+        if built:
+            stem = OWN_STEM
+        out.append((f'data{B}maps{B}official{B}{stem}{B}{stem}.tga', thumbnail(short, built)))
+        out.append((f'data{B}maps{B}official{B}{stem}{B}{stem}_art.tga', thumbnail(short, built, 512)))
+    return out
 
 
 # ---- videos ------------------------------------------------------------------------------------------------------
@@ -257,7 +330,7 @@ def intro_clip(k, title):
     """4 seconds, 1280 x 720: dark blue, the title, a bar filling up (so a frozen picture is told from a playing one)."""
     from PIL import Image, ImageDraw
     os.makedirs(WORK, exist_ok=True)
-    path = os.path.join(WORK, 'intro.mp4' if k == 4 else f'intro{k}.mp4')
+    path = os.path.join(WORK, f'intro{k}.mp4' if T is TEXTS['zh'] else f'intro_en{k}.mp4')
     seconds = 4
 
     def frame(t, i):
@@ -267,9 +340,9 @@ def intro_clip(k, title):
             c = int(10 + 40 * y / 720)
             d.line((0, y, 1280, y), fill=(c // 3, c // 2, c))
         a = min(1.0, t / 0.8)
-        centered(d, (640, 280), f'盟军第 {k} 关', int(96 * (0.9 + 0.1 * a)), (int(255 * a),) * 3, stroke=4)
+        centered(d, (640, 280), T['mission'].format(k=k), int(96 * (0.9 + 0.1 * a)), (int(255 * a),) * 3, stroke=4)
         centered(d, (640, 400), title, 56, (200, 225, 255))
-        centered(d, (640, 480), INTRO_TEXT, 40, (160, 190, 230))
+        centered(d, (640, 480), T['intro'], 40, (160, 190, 230))
         d.rectangle((240, 600, 1040, 624), outline=(200, 225, 255), width=3)
         d.rectangle((244, 604, 244 + int(792 * t / seconds), 620), fill=(120, 190, 255))
         centered(d, (640, 660), f'{t:4.1f} s', 28, (160, 190, 230))
@@ -311,11 +384,13 @@ def slot_of(mission_name):
 
 def commander_text(k, title, info):
     objectives = '\n'.join(f'{n}. {o}' for n, o in enumerate(info['objectives'], 1))
-    return f'{title}（任务说明）\n{info["briefing"]}\n{objectives}'
+    return f'{title}{T["note"]}\n{info["briefing"]}\n{objectives}'
 
 
-def make(mission_title, mission_name='CampA4'):
-    """Everything the shell adds to the build of `mission_name` (the plan's `名字` / title, in the briefing's mission list)."""
+def make(mission_title, mission_name='CampA4', lang='zh'):
+    """Everything the shell adds to the build of `mission_name` (the plan's `名字` / title, in the briefing's mission list) in the
+    edition `lang` (langs.py: zh, intl; the words of the shell are TEXTS)."""
+    use_lang(lang)
     slot = slot_of(mission_name)
     info = missions()
     info[slot] = dict(info[slot], title=TITLE, short=SHORT)             # the built mission's names are the plan's
@@ -331,12 +406,18 @@ def make(mission_title, mission_name='CampA4'):
             sp.others[k] = attrs
         sp.clips[intro_id(k)] = intro_clip(k, m['title'])
         sp.strings.update({f'MissionName:{label(k)}': m['title'], f'MissionName:{label(k)}_Short': m['short'],
-                           f'MissionDesc:{label(k)}': INTRO_TEXT + '：' + m['title'],
+                           f'MissionDesc:{label(k)}': T['intro'] + T['colon'] + m['title'],
                            f'BriefingSummary:{label(k)}': m['briefing'],
                            f'CommanderDescription:{label(k)}': commander_text(k, m['title'], m),
                            f'MISSIONOBJ:{label(k)}_1': m['objectives'][0], f'MISSIONOBJ:{label(k)}_2': m['objectives'][1]})
     sp.strings.update(narration_strings(info))
     sp.clips[HEAD_ID] = head_clip()
-    sp.files = apt_files({k: (m['short'], k == slot) for k, m in info.items()})
-    sp.overrides = {'APT:ALLIES_FACTION_DESCRIPTION': CARD_TEXT}
+    slots = {k: (m['short'], k == slot) for k, m in info.items()}
+    sp.files = apt_files(slots) + thumbnails(slots)
+    sp.overrides = {'APT:ALLIES_FACTION_DESCRIPTION': T['card'], **{f'MONITOR:{k}': ' ' for k in MONITOR}}
+    for key, side, desc in (('SOVIETS', 'soviet', 'APT:SOVIET_FACTION_DESCRIPTION'), ('JAPAN', 'empire', 'APT:JAPANESE_FACTION_DESCRIPTION')):
+        sp.overrides[desc] = T['faction'][side] + T['other_card']        # the other two campaigns: placeholders (names, cards, texts)
+        for k in range(1, 10):
+            sp.overrides[f'MISSIONNAME:{key}_{k}'] = T['other_name'].format(side=T['faction'][side], k=k)
+            sp.overrides[f'MISSIONNAME:{key}_{k}_SHORT'] = T['other_short'].format(side=T['faction'][side], k=k)
     return sp

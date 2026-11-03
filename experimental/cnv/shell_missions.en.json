@@ -1,0 +1,65 @@
+{
+  "A1": {
+    "name": "Golden Gate Unlocked",
+    "title": "Golden Gate Unlocked · Towers Down in Turn",
+    "short": "Golden Gate",
+    "briefing": "Soviet resistance fighters hijacked the convoy onto the Golden Gate Bridge. The demolition men atop the north and south towers set off their charges the moment they see their own side fall. Retake the convoy without being seen from the towers.",
+    "objectives": ["Disarm the north tower's fuse", "Disarm the south tower's fuse"]
+  },
+  "A2": {
+    "name": "Storm over the Dam",
+    "title": "Storm over the Dam · Counter Each Wave",
+    "short": "Dam Storm",
+    "briefing": "Soviet agents plan to blow up the Hoover Dam tonight. They hug the dam wall, so any shell fired at them hits the dam too. Every wave brings different troops by a different route: read it, then switch your units to hold the line.",
+    "objectives": ["Beat back the first wave of agents on the dam crest", "Hold the dam through the final wave"]
+  },
+  "A3": {
+    "name": "Greenwich Time Lag",
+    "title": "Greenwich Time Lag · Dodge the Stasis Ring",
+    "short": "Greenwich",
+    "briefing": "An accident at Greenwich froze everyone east of the meridian, and the stasis field keeps spreading west while Soviet troops hunt the civilians. Get the living out to the docks.",
+    "objectives": ["Escort the civilians to the Greenwich docks", "Pull out the troops trapped in the riverside district"]
+  },
+  "A4": {
+    "name": "The Soldiers in the Ice",
+    "title": "Sapporo Snow Festival · Horns and Ice Walls",
+    "short": "Ice Soldiers",
+    "briefing": "Hokkaido has impounded a batch of clones Shimada left behind, to hand them over to a containment agency. Imperial remnants have dug tunnels under the snow festival's ice sculptures. Take the convoy through the festival grounds to the harbor.",
+    "objectives": ["Escort the convoy to the gate of Plaza Two", "Deliver the convoy to the harbor"]
+  },
+  "A5": {
+    "name": "Locks of Panama",
+    "title": "Locks of Panama · Seize the Control Room, Free the Fleet",
+    "short": "Panama Locks",
+    "briefing": "The Allied fleet is pinned in the Panama locks by a Soviet Terror Drill, and the water rises and falls with no way out. The control room sits on a plateau on the east bank, reachable by a single ramp. Take it and let the fleet out to sea.",
+    "objectives": ["Capture the lock control room", "Release the fleet to the sea"]
+  },
+  "A6": {
+    "name": "The Ancient Server",
+    "title": "The Ancient Server · Prism Light Through the Stones",
+    "short": "Ancient Server",
+    "briefing": "Selinsky has been missing for three weeks; his last signal came from under Stonehenge. Sentry towers hide behind the standing stones, invisible from outside. Tanya goes in as the eyes, the Prism Tanks stay outside as the guns.",
+    "objectives": ["Take down the outer ring's sentry towers", "Take down the three towers of the inner ring"]
+  },
+  "A7": {
+    "name": "Hawk",
+    "title": "Hawk · Hold the Line, Force It Down",
+    "short": "Hawk",
+    "briefing": "The Liberty flies to the Niagara power station and always jumps to the emptiest stretch of your defenses. Hold your base, open the road to the station, and pin it under your guns without shooting it down.",
+    "objectives": ["Open the road to the power station", "Bring the Liberty down to ten percent health"]
+  },
+  "A8": {
+    "name": "Press Conference at Sea",
+    "title": "Press Conference at Sea · Jump In, Tear Down Platforms",
+    "short": "Sea Conference",
+    "briefing": "Hale is holding a press conference on the open sea; his machine warms up on three power platforms and will be fully charged tonight. In the Liberty he gave you, jump from platform to platform and tear them down to wreck the show.",
+    "objectives": ["Tear down the first power platform", "Tear down the last power platform"]
+  },
+  "A9": {
+    "name": "Brussels, 1927",
+    "title": "Brussels, 1927 · Take Down the Nine Spheres in Turn",
+    "short": "Brussels",
+    "briefing": "Hale has shipped the machine to Brussels. The Atomium is its antenna, its nine spheres charge in turn, and when the countdown ends he goes back to 1927. Destroy every sphere before then.",
+    "objectives": ["Destroy the lit western sphere", "Destroy the last three spheres"]
+  }
+}

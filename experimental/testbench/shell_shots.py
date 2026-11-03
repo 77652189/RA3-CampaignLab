@@ -99,6 +99,10 @@ def tour(mod, out, plain=False, visible=False, parts='cards,overview,chapters'):
                 for k in range(6):
                     time.sleep(1)
                     b.shot(f'briefing_{k:02d}')
+                harness.click(h, 870, 100)                        # the "commander overview" tab: our mission notes
+                for k in range(3):
+                    time.sleep(1)
+                    b.shot(f'commander_{k:02d}')
             elif part == 'chapters':
                 b.start(use, visible=visible, timeout=240, hold=False,
                         steps=[steps[0], dict(steps[1], actions=[['click', 375, 426]])])

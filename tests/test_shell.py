@@ -126,3 +126,55 @@ def test_the_objective_briefing_plays_no_retail_narration_after_the_rename():
     files = dict(apt_textures.patch('Apt.big', prefix, {}, (shell.EVENT, shell.new_event)))
     data = files[prefix + 'bin']
     assert not shell.EVENT.search(data) and b'CNV_SHELL_I_010100' in data and b'$DIALOGEVENT:CNV_SHELL_I_040100' in data.upper()
+
+
+@pytest.fixture
+def edition():
+    """Switch the shell's words to an edition for one test; the Chinese one again afterwards."""
+    yield shell.use_lang
+    shell.use_lang('zh')
+
+
+def test_the_english_missions_are_the_chinese_ones_translated_slot_for_slot(edition):
+    zh = shell.missions()
+    edition('intl')
+    en = shell.missions()
+    assert sorted(en) == sorted(zh) and len(en) == 9
+    for k, m in en.items():
+        assert len(m['objectives']) == len(zh[k]['objectives']) == 2 and m['title'] and m['short'] and m['briefing'], k
+        assert not re.search(r'[\u4e00-\u9fff]', ' '.join([m['title'], m['short'], m['briefing'], *m['objectives']])), k
+
+
+def test_the_shell_made_for_the_international_edition_has_only_english_words(edition):
+    sp = shell.make('x', 'CampA4En', 'intl')
+    assert sp.slot == 4 and shell.TITLE.startswith('Sapporo') and shell.slot_of('CampA4En') == 4
+    words = [v for k, v in sp.strings.items() if not k.startswith('DIALOGEVENT')] + list(sp.overrides.values())
+    assert not [w for w in words if re.search(r'[\u4e00-\u9fff]', w)]
+    assert sp.overrides['MONITOR:ONGUARD'] == ' ' and sp.overrides['MISSIONNAME:SOVIETS_3'].endswith('(placeholder)')
+    assert 'APT:SOVIET_FACTION_DESCRIPTION' in sp.overrides and 'APT:JAPANESE_FACTION_DESCRIPTION' in sp.overrides
+
+
+def test_the_chapter_thumbnails_are_a_file_per_slot_in_retail_map_folders_and_ours():
+    files = dict(shell.thumbnails({k: ('占位', k == 4) for k in range(1, 10)}))
+    small = {n: v for n, v in files.items() if not n.endswith('_art.tga')}
+    assert len(files) == 18 and len(small) == 9 and all(v[:3] == b'\x00\x00\x02' and v[12:16] == b'\x80\x00\x80\x00' for v in small.values())   # 128 x 128
+    assert all(v[12:16] == b'\x00\x02\x00\x02' and v[16] == 24 for n, v in files.items() if n not in small)     # the art: 512 x 512, 24 bits
+    assert B.join(['data', 'maps', 'official', 'camp_cnv01_probe', 'camp_cnv01_probe.tga']) in files
+    assert B.join(['data', 'maps', 'official', 'camp_a01_brightonbeach_smith', 'camp_a01_brightonbeach_smith.tga']) in files
+    assert not [n for n in files if 'gibraltar' in n]                                        # slot 4 is ours, retail's map is not replaced
+
+
+def test_the_launcher_asks_for_the_edition_and_starts_that_mods_skudef():
+    import launcher
+    vbs = launcher.VBS.format(game='C:/game', shortcut='x', mod=launcher.MOD)
+    assert 'MsgBox' in vbs and '"intl"' in vbs and 'CampShellEn_1.0.skudef' in vbs and 'CampShell_1.0.skudef' in vbs
+    assert launcher.MOD == shell.NAME
+
+
+@needs_game
+def test_the_co_op_panel_no_longer_asks_the_engine_to_draw_the_commanders_picture():
+    prefix = 'data' + B + 'aptui' + B + shell.PANEL + '.'
+    files = dict(apt_textures.hollow('Apt.big', prefix, (shell.PORTRAIT_CALL, lambda old: old[:-1] + b'x')))
+    (h, E, chunks, bufs), _ = apt_textures.mapxml.read_stream(prefix, lambda n: files[n])
+    consts = [c[0] for k, c in enumerate(chunks) if apt_textures.mapxml.sa.cstr(bufs[2], E[k][6]).startswith(b'AptConstData:')][0]
+    assert b'RenderImagx' in consts and b'RenderImage\x00' not in consts

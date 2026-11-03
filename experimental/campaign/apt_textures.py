@@ -63,16 +63,20 @@ def _same_length(old, new):
     return new
 
 
-def hollow(archive, prefix):
+def hollow(archive, prefix, renames=None):
     """The stream with nothing to draw: [(big path, bytes)] for its four files. Every AptGeometryData chunk is a 16-byte head
     (0, text offset, text length, ...) and the shape as text ('c' clear, 's' style, 't' triangle); the text is cut to a bare
     'c' and the chunk keeps its size (zero padded), and every texture's pixels are made transparent. The movie, its scripts
-    and its sizes stay, so the engine finds every clip it calls and finds nothing on screen."""
+    and its sizes stay, so the engine finds every clip it calls and finds nothing on screen. renames: as in `patch` (the
+    names a script calls renamed, e.g. the engine-drawn picture's `RenderImage` into a call nobody answers)."""
     (h, E, chunks, bufs), raw = mapxml.read_stream(prefix, mapxml._archive_get(archive))
     chunks = [list(c) for c in chunks]
     for k, e in enumerate(E):
         name = mapxml.sa.cstr(bufs[2], e[6]).decode()
         data = chunks[k][0]
+        if renames and name.startswith('AptConstData:'):            # the scripts' constants only: the movie's own names (AptAptData) stay
+            pattern, rename = renames
+            chunks[k][0] = pattern.sub(lambda m: _same_length(m.group(0), rename(m.group(0))), data)
         if name.startswith('AptGeometryData:'):
             zero, at, length, extra = struct.unpack_from('<4I', data, 0)
             assert zero == 0 and at == 16 and at + length <= len(data), f'{name}: not a shape text chunk'

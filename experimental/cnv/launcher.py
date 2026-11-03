@@ -5,8 +5,10 @@ its shortcuts are never touched).
   python -I -X utf8 experimental/cnv/launcher.py --desktop  ... and the shortcut on the desktop (its own file, created or replaced)
   python -I -X utf8 experimental/cnv/launcher.py --icon-only <png>   the icon's master picture, to look at
 
-The launcher is a .vbs run by wscript (no console window): RA3.exe -runver 1.13 -modConfig <the mod's skudef>, extra arguments
-passed on (-win for a windowed test). The icon follows retail's and Uprising's: a red star with the cream points between, a disc
+The launcher is a .vbs run by wscript (no console window): it asks for the edition (a message box: Yes = Chinese, No =
+international; `zh` / `intl` as an argument answers it) and starts RA3.exe -runver 1.13 -modConfig <the edition's skudef>
+(Mods\\CampShell\\CampShell_1.0.skudef or Mods\\CampShellEn\\CampShellEn_1.0.skudef: `build.py a4 --shell [--lang intl]`), extra
+arguments passed on (-win for a windowed test). To the user it is one mod, one icon, one desktop shortcut. The icon follows retail's and Uprising's: a red star with the cream points between, a disc
 in the middle; ours has the ice-blue disc and a snowflake (the A4 festival), and no lettering.
 """
 import math
@@ -24,26 +26,50 @@ SHORTCUT = '红警3 · 战役实验室'
 OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods', MOD)
 ICON_SIZES = [256, 128, 64, 48, 32, 24, 16]
 
-VBS = '''\' CampShell launcher: RA3 with the CampShell mod, no console window (experimental/cnv/launcher.py)
-Dim sh, fso, here, game, args, i
+VBS = '''\' CampShell launcher: RA3 with the CampShell mod, no console window (experimental/cnv/launcher.py).
+\' The edition is asked for (zh = Chinese subtitles and dub; intl = English subtitles, each side in its own language); `zh` or
+\' `intl` among the arguments skips the question, every other argument goes on to RA3.exe (-win for a windowed test).
+Dim sh, fso, here, mods, game, args, edition, skudef, i, a, answer
 Set sh = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")
 here = fso.GetParentFolderName(WScript.ScriptFullName)
+mods = fso.GetParentFolderName(here)
 game = "{game}"
 If Not fso.FileExists(game & "\\RA3.exe") Then
-    MsgBox "找不到红謭3：" & game, 16, "{shortcut}"
-    WScript.Quit 1
-End If
-If Not fso.FileExists(here & "\\{mod}_1.0.skudef") Then
-    MsgBox "找不到 mod 配置：" & here & "\\{mod}_1.0.skudef", 16, "{shortcut}"
+    MsgBox "找不到红警3：" & game, 16, "{shortcut}"
     WScript.Quit 1
 End If
 args = ""
+edition = ""
 For i = 0 To WScript.Arguments.Count - 1
-    args = args & " " & WScript.Arguments(i)
+    a = WScript.Arguments(i)
+    If LCase(a) = "zh" Or LCase(a) = "intl" Then
+        edition = LCase(a)
+    Else
+        args = args & " " & a
+    End If
 Next
+If edition = "" Then
+    answer = MsgBox("选择版本" & vbCrLf & vbCrLf & "【是】  中文版：中文字幕和配音" & vbCrLf & "【否】  国际版：英文字幕，各阵营说自己的语言" & vbCrLf & "【取消】  退出", 3 + 32, "{shortcut}")
+    If answer = 6 Then
+        edition = "zh"
+    ElseIf answer = 7 Then
+        edition = "intl"
+    Else
+        WScript.Quit 0
+    End If
+End If
+If edition = "intl" Then
+    skudef = mods & "\\{mod}En\\{mod}En_1.0.skudef"
+Else
+    skudef = mods & "\\{mod}\\{mod}_1.0.skudef"
+End If
+If Not fso.FileExists(skudef) Then
+    MsgBox "找不到 mod 配置：" & skudef, 16, "{shortcut}"
+    WScript.Quit 1
+End If
 sh.CurrentDirectory = game
-sh.Run """" & game & "\\RA3.exe"" -runver 1.13 -modConfig """ & here & "\\{mod}_1.0.skudef""" & args, 1, False
+sh.Run """" & game & "\\RA3.exe"" -runver 1.13 -modConfig """ & skudef & """" & args, 1, False
 '''
 
 

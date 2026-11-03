@@ -420,7 +420,8 @@ def main():
                          'dubbed in its language (CampA4En); what it lacks is listed')
     ap.add_argument('--shell', action='store_true',
                     help='the campaign shell (shell.py, ADR 0014): the mission in its slot of the Allied campaign, the other '
-                         'eight slots placeholders, with our own campaign front end, as the mod CampShell')
+                         'eight slots placeholders, with our own campaign front end, as the mod CampShell (CampShellEn with '
+                         '--lang intl; experimental/cnv/launcher.py starts either)')
     ap.add_argument('--no-build', action='store_true')
     ap.add_argument('--calibrate', action='store_true')
     ap.add_argument('--plan', action='store_true', help='(ra3bench cnv_check) build, then print the bench steps as '
@@ -443,10 +444,10 @@ def main():
         sys.exit(0 if text.endswith('contract: ok') else 1)
     m, t, mod = resolve(a.name, a.check)
     if a.shell:
-        if a.check or a.lang != 'zh':
-            sys.exit('build: --shell is the plain mission in the Chinese edition (no --check, no --lang)')
+        if a.check:
+            sys.exit('build: --shell is the plain mission (no --check)')
         import shell
-        mod = shell.NAME
+        mod = shell.NAME + langs.edition(a.lang)['suffix']      # CampShell / CampShellEn
     if missing_report(m):
         print(missing_report(m))
     if a.preview:
@@ -469,7 +470,9 @@ def main():
         print('\n'.join(lines))
         sys.exit(status)
     if not a.no_build:
-        out = parts.assemble(m, t, name=mod, shell=a.shell)
+        out = parts.assemble(m, t, name=mod, shell=a.lang if a.shell else False)
+        if a.shell and os.path.isfile(os.path.join(out, f'Play_{mod}.bat')):    # the shell has its one launcher (launcher.py)
+            os.remove(os.path.join(out, f'Play_{mod}.bat'))
         if 'staging' in out:
             print('built to staging (RA3 is running): no bench run')
             if a.plan:

@@ -50,6 +50,7 @@ def main():
     entry = cache_entry()
     print('map cache entry:', {k: v for k, v in entry.items() if k != 'starts'}, len(entry['starts']), 'starts')
     files += mapcache.with_maps([entry]) + c2.map_files() + c3.strings() + EXTRA_FILES
+    files = list({n.lower(): (n, v) for n, v in files}.values())      # a file named twice: the last one (EXTRA_FILES over the copied map folder)
     for check in CHECKS:
         check(files)
     os.makedirs(OUT, exist_ok=True)
