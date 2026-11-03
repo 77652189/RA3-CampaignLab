@@ -214,3 +214,25 @@ def test_the_convoy_hit_event_is_a_truck_health_band_that_lasts_a_few_seconds():
     over = [s for s in m.scripts if s.name.endswith('Hit over')]
     assert over and ('SET_FLAG', 'CNV_ZZ_Hit', 0) in over[0].do
     assert [s for s in m.scripts if ('FLAG', 'CNV_ZZ_Hit', 1) in s.when and 'Rule' in s.name]
+
+
+def test_a_way_with_a_sign_smokes_ten_seconds_before_the_horn_that_sends_a_wave_there():
+    arch = {'物件': 'OK_ARCH01', '偏移': [60, 20]}
+    streets = {k: {**v, '标志': arch} for k, v in STREETS.items()}
+    mouths = {k: {**v, '标志': arch} for k, v in MOUTHS.items()}
+    m = level(机关={'车队': {'类型': '车队', '出发': '开局 + 0:10'},
+                  '雪祭': {'类型': '号角', '车队': '车队', '间隔': ['0:45/0:30/0:20', 50, 45, 50, 45],
+                         '每街一波': {'帝国武士': 2}, '街': streets, '绕路': TABLE, '口': mouths}})
+    assert {r for r in m.cast if r.startswith('标志 ')} == {f'标志 {k}' for k in (*STREETS, *MOUTHS)}
+    smoke = [s for s in m.scripts if s.name.startswith('CNV ZZ - Smoke ')]
+    # the street plaza 2 opens from horn 2: no smoke for it at horn 1; every mouth smokes at every horn, ice or none
+    assert not [s for s in smoke if s.name.endswith('V1 V3')] and [s for s in smoke if s.name.endswith('V2 V3')]
+    assert all(('FLAG', 'CNV_ZZ_Frozen_' + s.name.split()[-1], 0) in s.when for s in smoke if ' V' in s.name[:20])
+    assert not any(c[0] == 'FLAG' and c[1].startswith('CNV_ZZ_Frozen_') for s in smoke if ' L' in s.name[:20]
+                   for c in s.when)
+    # the warning timer runs out ten seconds short of the horn's, by difficulty
+    starts = [s for s in m.scripts if s.name.startswith('CNV ZZ - Horn V start')]
+    for s in starts:
+        gap = next(a[2] for a in s.do if a[:2] == ('SET_MILLISECOND_TIMER', 'CNV ZZ Horn'))
+        assert ('SET_MILLISECOND_TIMER', 'CNV ZZ Horn Warn', gap - 10.0) in s.do
+    assert [u for u in m.units if u.id == 'CNV_ZZ_SignalSmoke']

@@ -37,8 +37,9 @@ import itertools
 
 from devices import Device, ice_plazas
 from parts import Script, square
-from units import icewall as iw
+from units import icewall as iw, smoke as sg
 
+SIGN_WARN = 10.0                                # 信号烟: the smoke stands this many seconds before the horn
 GATE_AREA = ice_plazas.GATE_AREA                # half-side of the area an ice wall must stand in to hold a way
 CLEAR_MARGIN = ice_plazas.CLEAR_MARGIN
 WALL_SIDE = ice_plazas.WALL_SIDE
@@ -82,7 +83,9 @@ class Horn(Device):
     WHAT = '号角按间隔表一声声响，每响一声开着的地道口各出一波扑车；冰墙把出口封住：街口的兵绕路晚到，最后一程口子的兵攒在墙后'
     PARAMS = {'车队': '哪个车队机关（兵扑它）', '间隔': '每声号角的间隔（秒，可按难度写），一个数一声；开头那个是开始到第一声',
               '每街一波': '每个开着的口一声出多少兵，{兵种: 数量}（可按难度）', '冷却': '冰幕工兵放一次冰后多少秒才能再放（默认 40）',
-              '街': '会场的街：{名: {点: 冰放的地方, 出: 兵出生的地方, 偏移: [dx, dy], 从: 第几声起开}}',
+              '街': '会场的街：{名: {点: 冰放的地方, 出: 兵出生的地方, 偏移: [dx, dy], 从: 第几声起开, '
+                    '标志: {物件: 现成的场景物件, 偏移: [dx, dy], 朝向}}}。写了 标志 的口子立一个有名字的物件（角色 "标志 <名>"，目标的标记可以挂），'
+                    '每声号角前 10 秒这一声要出兵的口子在标志上冒红烟、小地图闪一圈（街：冻着的不冒；口：都冒）',
               '绕路': '冻住的街的兵去开着的街晚多少秒：{冻住的街: {开着的街: 时间}}，每两条街去同一条街的差 ≥ 10 秒',
               '口': '最后一程的口子：{名: {点, 出, 偏移}}，冻住的口子这一波攒着，冰没了一起出',
               '鬼王': '{从: 第几声起, 数量: 每声几台, 运输车: 单位, 海: 运输车出现的地方, 岸: 靠岸的地方}',
@@ -121,6 +124,10 @@ class Horn(Device):
         for k, v in self.ways.items():
             if any(len(str(w)) == 0 for w in v):
                 raise PlanError(f'{name}: empty way name')
+        self.signed = any('标志' in w for v in self.ways.values() for w in v.values())
+        if self.signed:                                 # 标志: a sign at every way, and the smoke the horn warns with
+            self.smoke = sg.smoke(f'CNV_{tag}_SignalSmoke', life=SIGN_WARN + 1.0)
+            self.units.append(self.smoke)
         self.delay = {s: {o: plan.seconds(t) for o, t in row.items()} for s, row in (spec.get('绕路') or {}).items()}
         if self.ways['V']:
             check_delays(self.delay, list(self.ways['V']))
@@ -137,6 +144,7 @@ class Horn(Device):
             raise PlanError(f'{name}: 鬼王 comes with 口')
         self.horns = len(self.gaps)
         self.timer = f'CNV {tag} Horn'
+        self.warn = f'CNV {tag} Horn Warn'               # runs out SIGN_WARN seconds before the horn's timer
         self.on = {m: f'CNV_{tag}_Horn_{m}_On' for m in 'VL'}
         self.start = {m: f'CNV_{tag}_Horn_{m}_Start' for m in 'VL'}
         self.count = {m: f'CNV_{tag}_Horn_{m}_N' for m in 'VL'}
@@ -166,6 +174,9 @@ class Horn(Device):
 
     def blow(self, mode, n):
         return f'CNV_{self.c.tag}_Blow_{mode}{n}'
+
+    def sign(self, wid):
+        return f'UNIT - CNV {self.c.tag} Sign {wid}'
 
     def troop(self, mode, n, wid, u, j):
         return f'UNIT - CNV {self.c.tag} H{mode}{n} {wid} {u}-{j}'
@@ -234,6 +245,12 @@ class Horn(Device):
                 dx, dy = way.get('偏移', (0, 0))
                 m.waypoint(f'spawn {wid}', f'CNV {tag} Spawn {wid}', way['出'], dx, dy)
                 m.waypoint(f'ice {wid}', f'CNV {tag} IceAt {wid}', way['点'])
+                sign = way.get('标志')
+                if sign:                                # the way's sign: a named retail prop beside the ice mark
+                    dx, dy = sign.get('偏移', (0, 0))
+                    m.put(str(sign['物件']), way['点'], dx, dy, role=f'标志 {w}', side='civ',
+                          name=self.sign(wid), angle=sign.get('朝向'))
+                    m.waypoint(f'sign {wid}', f'CNV {tag} Sign {wid}', way['点'], dx, dy)
                 area = f'CNV {tag} Way {wid}'
                 m.areas[area] = square(*m.point(f'ice {wid}'), GATE_AREA)
                 sx, sy = m.point(f'ice {wid}')
@@ -300,7 +317,7 @@ class Horn(Device):
                 out += [Script(f'CNV {self.c.tag} - Frozen {wid} zero', [], [('SET_FLAG', f, 0)], once=False),
                         Script(f'CNV {self.c.tag} - Frozen {wid} holds', [self.walled[wid]], [('SET_FLAG', f, 1)],
                                once=False)]
-        out += self.horn_scripts()
+        out += self.horn_scripts() + self.smoke_scripts()
         for n in range(1, self.horns + 1):
             out += self.street_scripts(n) + self.mouth_scripts(n)
         out += self.ghost_scripts() + self.ice_scripts() + self.demo_scripts()
@@ -321,7 +338,8 @@ class Horn(Device):
             for levels, gap in plan.by_level(self.gaps[0]):
                 out.append(Script(f'CNV {tag} - Horn {mode} start{self.lvname(levels)}', [('FLAG', self.start[mode], 1)],
                                   [('SET_FLAG', self.start[mode], 0), ('SET_MILLISECOND_TIMER', self.timer, gap),
-                                   ('DISPLAY_COUNTDOWN_TIMER', self.timer, self.label)], once=False, levels=levels))
+                                   ('DISPLAY_COUNTDOWN_TIMER', self.timer, self.label)] + self.warns(gap),
+                                  once=False, levels=levels))
             for n in range(1, self.horns + 1):
                 base = [('SET_FLAG', self.blow(mode, n), 1), ('INCREMENT_COUNTER', 1, self.count[mode]),
                         ('SHOW_MILITARY_CAPTION', self.alert, 3.0)]
@@ -332,7 +350,37 @@ class Horn(Device):
                 for levels, gap in plan.by_level(self.gaps[n]):
                     out.append(Script(f'CNV {tag} - Horn {mode}{n}{self.lvname(levels)}', when,
                                       base + [('SET_MILLISECOND_TIMER', self.timer, gap),
-                                              ('DISPLAY_COUNTDOWN_TIMER', self.timer, self.label)], levels=levels))
+                                              ('DISPLAY_COUNTDOWN_TIMER', self.timer, self.label)] + self.warns(gap),
+                                      levels=levels))
+        return out
+
+    def warns(self, gap):
+        """The warning timer set with the horn's: SIGN_WARN short of it (none when no way has a sign)."""
+        return [('SET_MILLISECOND_TIMER', self.warn, max(float(gap) - SIGN_WARN, 0.0))] if self.signed else []
+
+    def smoke_scripts(self):
+        """SIGN_WARN seconds before horn n the ways that send a wave smoke (a signal smoke at the sign, a minimap
+        blip on it): the streets that take part and are not iced just now, every mouth (a shut one keeps its wave,
+        and the ice is no reason to leave it unmarked). The smoke lives to the horn and goes."""
+        if not self.signed:
+            return []
+        m, tag = self.m, self.c.tag
+        out = []
+        for mode in 'VL':
+            for n in range(1, self.horns + 1):
+                for wid in self.opens(mode, n):
+                    if f'sign {wid}' not in m.marks:
+                        continue
+                    name = f'UNIT - CNV {tag} Smoke {mode}{n} {wid}'
+                    when = [('FLAG', self.on[mode], 1), ('COUNTER', self.count[mode], 2, n - 1),
+                            ('TIMER_EXPIRED', self.warn)]
+                    if mode == 'V':
+                        when.append(('FLAG', self.frozen(wid), 0))
+                    out.append(Script(f'CNV {tag} - Smoke {mode}{n} {wid}', when,
+                                      [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', name, self.smoke.id, m.team('s1'),
+                                        m.mark(f'sign {wid}')),
+                                       ('OBJECT_CREATE_RADAR_EVENT', name, 0)]))
+                    m.spawns.add(self.smoke.id)
         return out
 
     def to(self, n, origin, target):

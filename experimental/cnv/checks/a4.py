@@ -40,6 +40,11 @@ BUILD = 17.0                                    # the ice order given this long 
 LEAD = 4.0                                      # the mission runs ~3 s ahead of the bench's clock
 
 
+AFTER = [('FLAG', f'CNV_{TAG}_Scene_1', 1)]     # the opening scene is over (the plan's flag). The bench's first frame is that
+                                                # moment (the HUD is back), so the test timers count from it: a timer from
+                                                # the mission's start ran out during the 110 s scene (bench 2026-11-02)
+
+
 def flag(kind, mode):
     return f'CNV_{TAG}_Horn_{mode}_{kind}'
 
@@ -80,7 +85,7 @@ def scene(m, park=True, endings=False, trucks_up=True, long_run=False):
     # opening scene is over, to the map's west edge, where the bottom left is the void beyond it (bench 2026-10-31:
     # on the start view a house stood there and every counter read None)
     t.waypoints['Test Camera'] = (0.0, m.site('start')[1])
-    t.scripts += [Script('Test - camera set', [], [('SET_MILLISECOND_TIMER', 'Test - camera', OPENING + 1.0)]),
+    t.scripts += [Script('Test - camera set', AFTER,[('SET_MILLISECOND_TIMER', 'Test - camera', OPENING + 1.0)]),
                   Script('Test - camera', [('TIMER_EXPIRED', 'Test - camera')],
                          [('MOVE_CAMERA_TO', 'Test Camera', 0.5, 0.0, 1.0, 1.0)] +
                          ([('SET_MILLISECOND_TIMER', 'Test - camera', 2.0)] if long_run else []), once=not long_run)]
@@ -91,14 +96,14 @@ def stand(t, m, part, at, label):
     """Engineer `part` taken to `at` (x, y) at once, out of harm's way, so the ice is ordered from there."""
     name = m.role(part).name
     t.waypoints[f'Test Stand {label}'] = at
-    t.scripts.append(Script(f'Test - stand {label}', [], [('UNIT_TELEPORT_TO_WAYPOINT', name, f'Test Stand {label}'),
+    t.scripts.append(Script(f'Test - stand {label}', AFTER, [('UNIT_TELEPORT_TO_WAYPOINT', name, f'Test Stand {label}'),
                                                           ('UNIT_CHANGE_OBJECT_STATUS', name, 'UNATTACKABLE', 1)]))
 
 
 def ice_at(t, m, part, mark, when, label):
     """Engineer `part` freezes the way marked `mark` at `when` seconds."""
     timer = f'Test - ice timer {label}'
-    t.scripts += [Script(f'Test - ice set {label}', [], [('SET_MILLISECOND_TIMER', timer, when)]),
+    t.scripts += [Script(f'Test - ice set {label}', AFTER,[('SET_MILLISECOND_TIMER', timer, when)]),
                   Script(f'Test - ice {label}', [('TIMER_EXPIRED', timer)],
                          [('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', m.role(part).name, m.ability(part, 'freeze'),
                            m.mark(mark))])]
@@ -108,7 +113,7 @@ def mouths_on(t, m, counted_horns=0):
     """The mouths' horns started by the test at MOUTHS_AT, after `counted_horns` of them are counted (the plan's own
     start of the street horns is stopped from sounding: its On flag put down every frame)."""
     t.scripts += [Script('Test - streets off', [], [('SET_FLAG', flag('On', 'V'), 0)], once=False),
-                  Script('Test - mouths timer', [], [('SET_MILLISECOND_TIMER', 'Test - mouths', MOUTHS_AT)]),
+                  Script('Test - mouths timer', AFTER,[('SET_MILLISECOND_TIMER', 'Test - mouths', MOUTHS_AT)]),
                   Script('Test - mouths on', [('TIMER_EXPIRED', 'Test - mouths')],
                          [('SET_COUNTER', f'CNV_{TAG}_Horn_L_N', counted_horns), ('SET_FLAG', flag('On', 'L'), 1),
                           ('SET_FLAG', flag('Start', 'L'), 1)])]
@@ -122,7 +127,8 @@ def horn(m):
     t.expect += [('号角1的兵', 0, '==', 0, HORN1 - LEAD - 3),
                  ('号角1的兵', HORN1 + 5, 'ever>=', 8),              # two streets, four each: plaza 2 is not open yet
                  ('号角1的兵', 0, '<=', 8),
-                 ('号角2街3的兵', 0, '==', 0, HORN1 + 20),
+                 # from s4: the counter reader reads the first frame's 0 as a 4 (bench 2026-11-02, the screen says 0)
+                 ('号角2街3的兵', 4, '==', 0, HORN1 + 20),
                  ('号角2街3的兵', HORN1 + 50 + 5, 'ever>=', 4)]
     t.bench = [('bench_watch', dict(seconds=HORN1 + 65, every=4, sheet=False, lines=len(t.counters)))]
     return t
@@ -230,7 +236,7 @@ def derrick(m):
     t.objects += [Obj('OilDerrick', *m.site('start', 330, 80), side='neutral', name='UNIT - Test Derrick',
                       site='start'),
                   Obj('AlliedEngineer', *m.site('start', 200, 0), name='UNIT - Test Engineer', site='start')]
-    t.scripts += [Script('Test - capture timer', [], [('SET_MILLISECOND_TIMER', 'Test Capture', 2.0)]),
+    t.scripts += [Script('Test - capture timer', AFTER,[('SET_MILLISECOND_TIMER', 'Test Capture', 2.0)]),
                   Script('Test - capture', [('TIMER_EXPIRED', 'Test Capture')],
                          [('NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED', 'UNIT - Test Engineer',
                            'Command_CaptureBuilding', 'UNIT - Test Derrick')]),
@@ -244,7 +250,37 @@ def derrick(m):
     return t
 
 
-DEMO_RUN = 60.0                                 # demo: the scene's demonstration starts at its 12th second
+def smoke(m):
+    """The spawn hint of the mouths (docs/design/flow/a4.md 出兵口提示): ten seconds before the first mouth horn a
+    signal smoke stands at each of the three signs, and the horn's wave follows."""
+    t = scene(m)
+    mouths_on(t, m)
+    smokes = sorted({a[1] for s in m.scripts for a in s.do if a[0] == 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT'
+                     and a[1].startswith(f'UNIT - CNV {TAG} Smoke L1 ')})
+    tally(t, wave(m, 'L', 1, 'L1') + wave(m, 'L', 1, 'L2') + wave(m, 'L', 1, 'L3'), 'Test L1', '口号角1的兵')
+    tally(t, smokes, 'Test Smoke', '口子的烟')
+    t.expect += [('口号角1的兵', 0, '==', 0, MOUTH1 - LEAD - 3), ('口子的烟', MOUTH1 - LEAD - 2, 'ever>=', 3),
+                 ('口号角1的兵', MOUTH1 + 6, 'ever>=', 12)]
+    t.bench = [('bench_watch', dict(seconds=MOUTH1 + 8.0, every=2, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+def signs(m):
+    """For a person to look at: a signal smoke made at every sign, and again every 11.5 s (its life is 11), so there is
+    always one to look at whatever the bench's clock says (bench 2026-11-02: it runs ahead of the harness's by up to
+    a minute when the game starts slowly). The game stays up with keep: bench_camera to a sign, bench_look."""
+    t = scene(m)
+    marks = sorted(k for k in m.marks if k.startswith('sign '))
+    t.scripts += [Script('Test - smoke timer', [], [('SET_MILLISECOND_TIMER', 'Test Smoke', 3.0)]),
+                  Script('Test - smoke', [('TIMER_EXPIRED', 'Test Smoke')],
+                         [('SET_MILLISECOND_TIMER', 'Test Smoke', 11.5)] +
+                         [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', f'UNIT - Test Smoke {k}', f'CNV_{TAG}_SignalSmoke',
+                           m.team('s1'), m.mark(k)) for k in marks], once=False)]
+    t.bench = [('bench_watch', dict(seconds=10, every=5, sheet=False, lines=0))]
+    return t
+
+
+DEMO_RUN = 60.0                                # demo: the scene's demonstration starts at its 12th second
 DEMO_OVER = 30.0                                # demo: the check takes the demonstration away (the bench skips the scene)
 
 
@@ -337,7 +373,7 @@ def heads(m):
     harbour phase begins."""
     t = scene(m, park=False, long_run=False)
     t.waypoints['Test Halt Stand'] = m.site('halt')
-    t.scripts += [Script('Test - halt set', [], [('SET_MILLISECOND_TIMER', 'Test - halt', HEADS_AT)]),
+    t.scripts += [Script('Test - halt set', AFTER,[('SET_MILLISECOND_TIMER', 'Test - halt', HEADS_AT)]),
                   Script('Test - halt on', [('TIMER_EXPIRED', 'Test - halt')],
                          [('SET_FLAG', f'CNV_{TAG}_HeadsOn', 1)] +
                          [('UNIT_TELEPORT_TO_WAYPOINT', m.role(f'truck {j}').name, 'Test Halt Stand') for j in (1, 2, 3)]),
