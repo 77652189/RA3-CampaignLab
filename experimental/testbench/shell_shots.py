@@ -1,6 +1,6 @@
 """Walk a game's campaign front end and keep what each screen looks like (the campaign shell probe, ADR 0014).
 
-  python -I -X utf8 experimental/testbench/shell_shots.py CampShell <out dir> [--plain]
+  python -I -X utf8 experimental/testbench/shell_shots.py CampShell <out dir> [--plain] [--slot 4]
 
 nav.json's way into the first mission (main menu -> campaign -> faction card -> Continue -> intro video skipped -> mode ->
 world map -> mission briefing -> in game), with one change: the faction screen is recognised by its title bar
@@ -58,6 +58,14 @@ def settle(b, h, wait=75):
             return
 
 
+def chapter_step(slot):
+    """The chapter list (title bar template cut from a frame of it: work/testbench/nav/step_chapters.png): its `slot`-th row,
+    then Proceed. The rows are 20.7 px apart from y 263 (1280 x 720 frame)."""
+    return {'name': f'chapter list: slot {slot}', 'how': 'tpl', 'box': [190, 28, 360, 68], 'threshold': 18,
+            'template': 'step_chapters.png',
+            'actions': [['click', 640, round(262.7 + 20.7 * (slot - 1))], ['wait', 0.6], ['click', 875, 676]]}
+
+
 def tour(mod, out, plain=False, visible=False, parts='cards,overview,chapters'):
     """The campaign screens, lingered on (the walk passes them in seconds), one game per part: `cards` the faction menu
     and the Allies card clicked, `overview` the world map with the talking head and then the mission briefing, `chapters`
@@ -110,6 +118,7 @@ def main():
     ap.add_argument('--hud-wait', type=int, default=90)
     ap.add_argument('--walk-timeout', type=int, default=240, help='seconds for the walk into the game')
     ap.add_argument('--visible', action='store_true')
+    ap.add_argument('--slot', type=int, help='start the chapter of this slot (1-9) from the chapter list instead of the first one')
     ap.add_argument('--tour', nargs='?', const='cards,overview,chapters', metavar='PARTS',
                     help='linger on screens instead of walking into the mission: cards, overview (+ briefing), chapters')
     a = ap.parse_args()
@@ -120,6 +129,8 @@ def main():
     with open(os.path.join(nav.OUT, 'nav.json'), encoding='utf-8') as f:
         steps = json.load(f)
     steps[2] = dict(steps[2], box=[190, 28, 360, 68], template='step2_shell.png', threshold=18)
+    if a.slot:
+        steps = [steps[0], dict(steps[1], actions=[['click', 375, 426]]), chapter_step(a.slot)] + steps[3:]
     b = Walker()
     b.out, b.t_start = a.out, time.monotonic()
     try:

@@ -419,8 +419,8 @@ def main():
                     help='the edition: zh = Chinese subtitles and dub (CampA4), intl = English subtitles, each side '
                          'dubbed in its language (CampA4En); what it lacks is listed')
     ap.add_argument('--shell', action='store_true',
-                    help='the campaign shell probe (shell.py, ADR 0014): the mission in retail Allies_1\'s place with its own '
-                         'campaign front end, as the mod CampShell')
+                    help='the campaign shell (shell.py, ADR 0014): the mission in its slot of the Allied campaign, the other '
+                         'eight slots placeholders, with our own campaign front end, as the mod CampShell')
     ap.add_argument('--no-build', action='store_true')
     ap.add_argument('--calibrate', action='store_true')
     ap.add_argument('--plan', action='store_true', help='(ra3bench cnv_check) build, then print the bench steps as '

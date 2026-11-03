@@ -573,7 +573,8 @@ def preview(mission, test=None, out=None):
 
 def assemble(mission, test=None, name=None, shell=False):
     """Write the units, set the pipeline up for this mission (+ test) and build the mod; returns the mod folder.
-    shell: the campaign shell probe (shell.py, ADR 0014): the mission in retail Allies_1's place with its own front end."""
+    shell: the campaign shell (shell.py, ADR 0014): the mission in its slot of the Allied campaign, the other eight slots ours
+    too, all with our own front end."""
     import make_campnew18 as c18                # the pipeline (c7 ... c2) and the generated island's start
     c7, c6, c4, c2 = c18.c7, c18.c6, c18.c4, c18.c2
     import newmap
@@ -629,8 +630,8 @@ def assemble(mission, test=None, name=None, shell=False):
     c2.SHELL, c4.c3.OVERRIDES = None, {}
     if shell:
         import shell as shell_probe
-        sp = shell_probe.make(str(getattr(mm, 'title', '') or mm.name))
-        c2.SHELL = {'attrs': sp.attrs, **sp.template}
+        sp = shell_probe.make(str(getattr(mm, 'title', '') or mm.name), mm.name)
+        c2.SHELL = {'slot': sp.slot, 'attrs': sp.attrs, 'others': sp.others, **sp.template}
         c4.c3.STRINGS.update(sp.strings)
         c4.c3.OVERRIDES.update(sp.overrides)
         from experimental.video import pack as video_pack

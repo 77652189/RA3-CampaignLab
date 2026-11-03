@@ -58,10 +58,44 @@ def originals(archive, prefix):
     return out
 
 
-def patch(archive, prefix, images):
-    """images: {texture id: PIL image of the texture's exact size}. The stream's four files with those pictures in."""
+def _same_length(old, new):
+    assert len(new) == len(old), f'{old!r} -> {new!r}: not the same length'
+    return new
+
+
+def hollow(archive, prefix):
+    """The stream with nothing to draw: [(big path, bytes)] for its four files. Every AptGeometryData chunk is a 16-byte head
+    (0, text offset, text length, ...) and the shape as text ('c' clear, 's' style, 't' triangle); the text is cut to a bare
+    'c' and the chunk keeps its size (zero padded), and every texture's pixels are made transparent. The movie, its scripts
+    and its sizes stay, so the engine finds every clip it calls and finds nothing on screen."""
     (h, E, chunks, bufs), raw = mapxml.read_stream(prefix, mapxml._archive_get(archive))
     chunks = [list(c) for c in chunks]
+    for k, e in enumerate(E):
+        name = mapxml.sa.cstr(bufs[2], e[6]).decode()
+        data = chunks[k][0]
+        if name.startswith('AptGeometryData:'):
+            zero, at, length, extra = struct.unpack_from('<4I', data, 0)
+            assert zero == 0 and at == 16 and at + length <= len(data), f'{name}: not a shape text chunk'
+            text = b'c\r\n'
+            chunks[k][0] = struct.pack('<4I', zero, at, len(text), extra) + text + bytes(len(data) - at - len(text))
+        elif name.startswith('Texture:'):
+            _size(data)
+            chunks[k][0] = data[:HEAD + DDS_HEAD] + bytes(len(data) - HEAD - DDS_HEAD)
+    files = mapxml.write_stream(h, E, chunks, bufs, (raw[1][:4], raw[2][:4], raw[3][:4]))
+    return [(prefix + x, v) for x, v in zip(('manifest', 'bin', 'relo', 'imp'), files)]
+
+
+def patch(archive, prefix, images, renames=None):
+    """images: {texture id: PIL image of the texture's exact size}. The stream's four files with those pictures in.
+    renames: (compiled regex over bytes, f(match bytes) -> bytes of the same length): the names in the stream's constants (a
+    script's string table: event names it plays, labels it shows) rewritten, every occurrence the same way."""
+    (h, E, chunks, bufs), raw = mapxml.read_stream(prefix, mapxml._archive_get(archive))
+    chunks = [list(c) for c in chunks]
+    if renames:
+        pattern, rename = renames
+        for k, e in enumerate(E):
+            if mapxml.sa.cstr(bufs[2], e[6]).startswith((b'AptConstData:', b'AptAptData:')):
+                chunks[k][0] = pattern.sub(lambda m: _same_length(m.group(0), rename(m.group(0))), chunks[k][0])
     for tex, img in images.items():
         k = _find(E, bufs, tex)
         w, hh = _size(chunks[k][0])
