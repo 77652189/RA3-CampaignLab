@@ -42,10 +42,12 @@ ICE_BAR = 'CNIceBar'                    # a bar's look (200 x 24: ice_block, J4'
                                         # read far thicker than what blocks the way (bench 2026-10-26)
 
 
-def rubble(id, model=ICE_RUBBLE, life=6, sink=5):
+def rubble(id, model=ICE_RUBBLE, life=6, sink=5, keep=False):
     """The GameObject a shot-down wall leaves: low broken ice (ice_kit's CNIceRubble) lying `life` seconds, then
     sinking into the ground over `sink`; no collision, its house colour off. Not retail's frozen-infantry shards:
-    those are Side Neutral (BaseCollapsingObject) and came out the neutral player's red (bench 2026-10-26)."""
+    those are Side Neutral (BaseCollapsingObject) and came out the neutral player's red (bench 2026-10-26).
+    keep: it lies for good (A4's cracked spawn sculptures)."""
+    life_xml = '' if keep else f'<LifetimeUpdate id="ModuleTag_LifeTime" MinLifetime="{life}s" MaxLifetime="{life}s" />'
     return f'''<?xml version="1.0" encoding="UTF-8"?>
 <AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 	<Tags></Tags>
@@ -67,7 +69,7 @@ def rubble(id, model=ICE_RUBBLE, life=6, sink=5):
 			</ScriptedModelDraw>
 		</Draws>
 		<Behaviors>
-			<LifetimeUpdate id="ModuleTag_LifeTime" MinLifetime="{life}s" MaxLifetime="{life}s" />
+			{life_xml}
 			<SlowDeath id="ModuleTag_Death" SinkDelay="0s" SinkRate="{16 / sink:.2f}" DestructionDelay="{sink}s">
 				<DieMuxData DeathTypes="ALL" />
 			</SlowDeath>
@@ -84,7 +86,7 @@ def rubble(id, model=ICE_RUBBLE, life=6, sink=5):
 '''
 
 
-def dress(unit, model, leaves=None):
+def dress(unit, model, leaves=None, keep=False):
     """The unit (wall's bunker XML) wearing `model`: its two draws one of the model, its model include ours; shot
     down it leaves a rubble() of `leaves` (an ART: model; its own object, <id>_Rubble, carried in the unit's files),
     melting (FADED) leaves nothing -- the bunker's rubble gone -- and its little explosion on every death (melting
@@ -116,7 +118,7 @@ def dress(unit, model, leaves=None):
 		</CreateObject>
 	</ObjectCreationList>
 </AssetDeclaration>''')
-        unit.files[rid + '.xml'] = rubble(rid, leaves)
+        unit.files[rid + '.xml'] = rubble(rid, leaves, keep=keep)
         unit.also.append(rid + '.xml')
         unit.strings[f'Name:{rid}'] = '碎冰'
         unit.link += [f'GameObject:{rid}', f'ObjectCreationList:{ocl}']
@@ -173,7 +175,7 @@ def voice_engineer(unit, prefix):
 
 @look.named('ice_wall')
 def wall(id='CNV_IceWall', length=200, thick=24, lifetime=30, health=1500, what='', shape='bar', spot=False,
-         model='', leaves=ICE_RUBBLE):
+         model='', leaves=ICE_RUBBLE, keep=False):
     """lifetime None: it never melts (the festival's sculptures and snow banks, units/festival.py). model / leaves:
     its look (dress); '' picks by shape (a bar CNIceBar, else CNIceWall), None keeps the bunker's.
 
@@ -213,7 +215,7 @@ def wall(id='CNV_IceWall', length=200, thick=24, lifetime=30, health=1500, what=
              params=dict(length=length, thick=thick, lifetime=lifetime, health=health, shape=shape, spot=spot))
     if model == '':
         model = ICE_BAR if shape == 'bar' else ICE_WALL
-    return dress(u, model, leaves) if model else u
+    return dress(u, model, leaves, keep) if model else u
 
 
 @look.named('ice_seed')

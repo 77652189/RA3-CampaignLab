@@ -53,7 +53,9 @@ def relates(a, b, relation):
     return ('PLAYER_RELATES_PLAYER', a, b, (RELATION_INDEX[relation], 0.0, relation))
 CAMERA_MOVE, FOLLOW = 3.0, 4.0                 # a 镜头's move, a 跟随's hold (seconds) when the plan gives none
 FOLLOW_AT = 300.0                               # CAMERA_FOLLOW_NAMED's distance (retail: 300 behind Yuriko, 13 of 17)
-SIGHT = 300.0                                   # 揭开's radius when the site has none (retail: 100 .. 750, mostly 200 / 300)
+LOOK_MAX = 600.0
+LOOK_MIN = 400.0                               # a 过场 镜头's own reveal at its site: at least this radius (the camera sees ~500)
+SIGHT = 300.0                                  # 揭开's radius when the site has none (retail: 100 .. 750, mostly 200 / 300)
 FLASHES = 5                                     # NAMED_FLASH's count (retail: 5 at the hand-back, Stalingrad)
 INFO_SECONDS = 20.0                             # an info box stays this long (retail A01: 20)
 INFO_ICON = 'Button_AlliedEngineer_on'          # its picture: a retail build button (A01's hospital box shows this one)
@@ -732,6 +734,11 @@ class Compiler:
         if self.d.get('禁造') is not None:
             self.m.scripts.append(Script(f'CNV {self.tag} - Bans', [], self.bans(self.d['禁造'], 0)))
 
+    def look_name(self, site):
+        """The name a 过场 镜头's reveal at a site goes by (undone when the scene ends; not sight()'s, which a plan's own
+        永久 揭开 may hold)."""
+        return f'CNV {self.tag} Look {site}'
+
     def sight(self, site):
         """The name a permanent reveal at a site goes by (MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT undoes it)."""
         self.m.where(site)
@@ -744,6 +751,7 @@ class Compiler:
         action at once (a caption, a device's, a 技能: what the camera is to see); then the input back. Returns the
         phase-start actions and the scene's length; the later steps are timed scripts on `段 <phase> + t`."""
         at, t, look, follow = {}, 0.0, False, False
+        looked = []                                  # sites a 镜头 lifted the shroud at: shrouded again at the hand-back
         steps, prev, joined = list(ph.spec['过场']), None, False
         for i, step in enumerate(steps):
             if isinstance(step, dict) and '停' in step:
@@ -767,6 +775,14 @@ class Compiler:
                 nxt = self.chained(steps[i + 1:])
                 # pans that run into each other are linear at the join: eased only at the first start and last stop
                 at.setdefault(t, []).extend(self.camera(step, secs, 0.0 if joined else EASE, 0.0 if nxt else EASE))
+                site = str(step['镜头'])
+                if not self.parts(site) and site not in looked and step.get('不揭') not in (True, '是'):
+                    # the camera sees what the player has not explored (user 2026-11-02: the north camp showed no
+                    # buildings or troops): a reveal there while the scene runs, not the whole map
+                    looked.append(site)
+                    radius = float(step.get('半径') or 0) or min(max(self.m.where(site).r * 1.6, LOOK_MIN), LOOK_MAX)
+                    at.setdefault(t, []).append(('MAP_REVEAL_PERMANENTLY_AT_WAYPOINT', self.mark(site), radius,
+                                                 self.m.player('p1'), self.look_name(site)))
                 t, prev, joined = t + secs, str(step['镜头']), nxt
                 continue
             at.setdefault(t, []).extend(self.action(step))
@@ -781,7 +797,8 @@ class Compiler:
             guard += [('UNIT_CHANGE_OBJECT_STATUS', n, 'UNATTACKABLE', 1) for n in self.part_names(part)]
             guard_end += [('UNIT_CHANGE_OBJECT_STATUS', n, 'UNATTACKABLE', 0) for n in self.part_names(part)]
         end = [('ENABLE_INPUT',), ('CAMERA_LETTERBOX_END',)] + ([('CAMERA_STOP_FOLLOW',)] if follow else []) + \
-            ([('MAP_REVEAL_ALL_UNDO_PERM', self.m.player('p1'))] if look else []) + fire_end + guard_end + \
+            ([('MAP_REVEAL_ALL_UNDO_PERM', self.m.player('p1'))] if look else []) + \
+            [('MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT', self.look_name(x)) for x in looked] + fire_end + guard_end + \
             [('SET_FLAG', self.scene_flag(ph), 1)]
         at.setdefault(t, []).extend(end)
         now = [('DISABLE_INPUT',), ('CAMERA_LETTERBOX_BEGIN',)] + fire + guard + at.pop(0.0, [])
@@ -879,6 +896,17 @@ class Compiler:
                 for nm in self.part_names(role):
                     m.scripts.append(Script(f'CNV {self.tag} - Guard {nm}', [],
                                             [('UNIT_GUARD_AREA', nm, self.area(spec['守']))]))
+
+    def place_scenery(self):
+        """布景: [{单位, 在: <地点>, 偏移: [[dx, dy], ...], 阵营: 平民, 朝向}] -- unnamed props placed by a site, one per
+        offset (festival decoration: small ice sculptures, stalls). Units a device publishes (小冰雕) or retail templates."""
+        for spec in self.d.get('布景') or []:
+            who = spec.get('阵营', '平民')
+            if who not in self.side:
+                raise PlanError(f'布景 {spec}: 阵营 {who!r} is none of {sorted(self.side)}')
+            tmpl = self.unit(spec['单位'], self.side[who])
+            for dx, dy in spec.get('偏移') or [(0, 0)]:
+                self.m.put(tmpl, spec['在'], float(dx), float(dy), side=self.side[who], angle=spec.get('朝向'))
 
     def setup_devices(self):
         from devices import registry
@@ -1223,6 +1251,7 @@ class Compiler:
         self.place()
         for dev in self.devices.values():
             dev.place()
+        self.place_scenery()
         self.setup_goals()
         self.compile_bans()
         self.compile_goals()

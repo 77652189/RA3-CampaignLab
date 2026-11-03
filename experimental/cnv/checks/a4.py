@@ -357,8 +357,11 @@ def hold(m):
     t.areas['Test Halt'] = square(*m.site('halt'), 80.0)
     counted('Test At Halt', '车到停车点', t, named=m.role('truck 1').name, area='Test Halt')
     mark_phase(t, m, 2, 'Test Phase 2', '港口生变')
-    t.expect += [('街的号角声数', 0, '<=', 5), ('街的号角声数', FESTIVAL, 'ever>=', 5),
-                 ('车到停车点', FESTIVAL + 30, 'ever>=', 1), ('港口生变', FESTIVAL + 60, 'ever>=', 1)]
+    # the first truck is in the halt area a short while only (the scene shuts the counter off, the lead rolls on), and
+    # with the opening scene short (2026-11-02) it gets there ~s212: judged from s150; the first frame's reading is
+    # a misread (4, 7), judged from the second
+    t.expect += [('街的号角声数', 4, '<=', 5), ('街的号角声数', FESTIVAL, 'ever>=', 5),
+                 ('车到停车点', FESTIVAL - 100, 'ever>=', 1), ('港口生变', FESTIVAL + 60, 'ever>=', 1)]
     t.bench = scene_proof_watch(FESTIVAL + 70, every=4, lines=len(t.counters))
     return t
 
@@ -380,8 +383,10 @@ def heads(m):
                   Script('Test - halt', [('FLAG', f'CNV_{TAG}_HeadsOn', 1)], [('SET_FLAG', f'CNV_{TAG}_Halted', 1)],
                          once=False)]
     mark_phase(t, m, 2, 'Test Phase 2', '港口生变')
-    t.expect += [('港口生变', HEADS_AT + 30, 'ever>=', 1)]
-    t.bench = [('bench_watch', dict(seconds=HEADS_AT + 30, every=1, sheet=False, lines=len(t.counters)))]
+    # the counter reads '?' under the scene's letterbox and under the captions of the hand-back lines (4-5 lines, 20-45 s):
+    # judged late (2026-11-02: at s50 a caption still covered it, both editions)
+    t.expect += [('港口生变', HEADS_AT + 80, 'ever>=', 1)]
+    t.bench = [('bench_watch', dict(seconds=HEADS_AT + 80, every=1, sheet=False, lines=len(t.counters)))]
     return t
 
 

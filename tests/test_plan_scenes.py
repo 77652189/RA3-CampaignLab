@@ -48,8 +48,14 @@ def test_a_scene_holds_the_input_and_leads_the_camera():
     assert steps[3.0] == [('MAP_REVEAL_ALL_PERM', m.player('p1')), ('CAMERA_FOLLOW_NAMED', camp, 0, plan.FOLLOW_AT)]
     assert steps[7.0] == [('CAMERA_STOP_FOLLOW',)]
     assert steps[9.0][0][0] == 'SHOW_MILITARY_CAPTION'
+    # a 镜头's own reveal at its site while the scene runs (the camera sees what is not explored), shrouded at the hand-back
+    reveal = next(a for a in first if a[0] == 'MAP_REVEAL_PERMANENTLY_AT_WAYPOINT')
+    assert reveal[1] == 'CNV ZZ At west field' and reveal[3:] == (m.player('p1'), 'CNV ZZ Look west field')
+    assert plan.LOOK_MIN <= reveal[2] <= plan.LOOK_MAX
     assert steps[9.0][1:] == [('ENABLE_INPUT',), ('CAMERA_LETTERBOX_END',), ('CAMERA_STOP_FOLLOW',),
-                              ('MAP_REVEAL_ALL_UNDO_PERM', m.player('p1')), ('SET_FLAG', 'CNV_ZZ_Scene_1', 1)]
+                              ('MAP_REVEAL_ALL_UNDO_PERM', m.player('p1')),
+                              ('MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT', 'CNV ZZ Look west field'),
+                              ('SET_FLAG', 'CNV_ZZ_Scene_1', 1)]
     assert m.facts['过场 一'] == 9.0
     goal = named(m, 'CNV ZZ - Phase 1 goal 1')[0]
     assert waits_for(m, goal) == 9.0 + plan.REVEAL_FIRST         # the goals once the player has the input back

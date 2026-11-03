@@ -236,3 +236,32 @@ def test_a_way_with_a_sign_smokes_ten_seconds_before_the_horn_that_sends_a_wave_
         gap = next(a[2] for a in s.do if a[:2] == ('SET_MILLISECOND_TIMER', 'CNV ZZ Horn'))
         assert ('SET_MILLISECOND_TIMER', 'CNV ZZ Horn Warn', gap - 10.0) in s.do
     assert [u for u in m.units if u.id == 'CNV_ZZ_SignalSmoke']
+
+
+def test_a_way_with_a_sculpture_splits_it_on_its_first_horn_and_the_spawn_sculptures_cannot_be_aimed_at():
+    streets = {k: {**v, '冰雕': {'偏移': [0, 80]}} for k, v in STREETS.items()}
+    mouths = {k: {**v, '冰雕': {'偏移': [0, 100]}} for k, v in MOUTHS.items()}
+    m = level(机关={'车队': {'类型': '车队', '出发': '开局 + 0:10'},
+                  '雪祭': {'类型': '号角', '车队': '车队', '间隔': [45, 50, 45, 50, 45], '每街一波': {'帝国武士': 2},
+                         '街': streets, '绕路': TABLE, '口': mouths}},
+              规则=[{'当': '雪祭.号角 1', '做': ['雪祭.裂 二号']}],
+              阵营={'我': '盟军', '敌': '帝国', '其他': {'平民': '盟军'}},
+              布景=[{'单位': '小冰雕', '在': 'convoy start', '偏移': [[400, -105], [910, 105]]}])
+    # the sculpture stands behind the spot the troops come out at, named, cast as the way's sign (a goal marks it)
+    assert {r for r in m.cast if r.startswith('标志 ')} == {f'标志 {k}' for k in (*STREETS, *MOUTHS)}
+    assert m.cast['标志 后巷'].template == 'CNV_ZZSpawnSculpture' and m.cast['标志 后巷'].side == 's1'
+    names = [m.cast[f'标志 {k}'].name for k in (*STREETS, *MOUTHS)]
+    tough = next(s for s in m.scripts if s.name == 'CNV ZZ - Sculptures tough')
+    assert tough.do == [('UNIT_CHANGE_OBJECT_STATUS', n, 'UNATTACKABLE', 1) for n in names]
+    # it is split by the first horn of its way (plaza 2 opens from horn 2), whether or not the way is iced
+    for wid, n in (('V1', 1), ('V2', 1), ('V3', 2), ('L1', 1), ('L2', 1), ('L3', 1)):
+        s = next(s for s in m.scripts if s.name == f'CNV ZZ - Sculpture {wid} splits')
+        assert s.when == [('FLAG', f'CNV_ZZ_Blow_{wid[0]}{n}', 1)] and s.do[0][0] == 'NAMED_KILL'
+    # the crack: a little ice dropped at its foot, the sculpture stands
+    rule = [s for s in m.scripts if any(a[0] == 'CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT' and a[1] == 'CNV_ZZIceChips'
+                                        for a in s.do)]
+    assert rule
+    # the festival's small sculptures: unnamed props of the device's unit
+    shown = [o for o in m.objects if o.template == 'CNV_ZZIceDisplay']
+    assert len(shown) == 2 and all(not o.name for o in shown)
+    assert {'CNV_ZZSpawnSculpture', 'CNV_ZZIceDisplay', 'CNV_ZZIceChips'} <= {u.id for u in m.units}

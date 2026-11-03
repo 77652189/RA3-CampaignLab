@@ -37,7 +37,7 @@ import itertools
 
 from devices import Device, ice_plazas
 from parts import Script, square
-from units import icewall as iw, smoke as sg
+from units import festival as fest, icewall as iw, smoke as sg
 
 SIGN_WARN = 10.0                                # 信号烟: the smoke stands this many seconds before the horn
 GATE_AREA = ice_plazas.GATE_AREA                # half-side of the area an ice wall must stand in to hold a way
@@ -84,6 +84,8 @@ class Horn(Device):
     PARAMS = {'车队': '哪个车队机关（兵扑它）', '间隔': '每声号角的间隔（秒，可按难度写），一个数一声；开头那个是开始到第一声',
               '每街一波': '每个开着的口一声出多少兵，{兵种: 数量}（可按难度）', '冷却': '冰幕工兵放一次冰后多少秒才能再放（默认 40）',
               '街': '会场的街：{名: {点: 冰放的地方, 出: 兵出生的地方, 偏移: [dx, dy], 从: 第几声起开, '
+                    '冰雕: {偏移: [dx, dy]}（兵出生处往后挪这么多立一座出兵冰雕，当这个口子的标志：打不坏，口子的第一声号角把它震碎、'
+                    '留下裂开的冰雕；写了就多一个单位名 小冰雕 给 布景 用）, '
                     '标志: {物件: 现成的场景物件, 偏移: [dx, dy], 朝向}}}。写了 标志 的口子立一个有名字的物件（角色 "标志 <名>"，目标的标记可以挂），'
                     '每声号角前 10 秒这一声要出兵的口子在标志上冒红烟、小地图闪一圈（街：冻着的不冒；口：都冒）',
               '绕路': '冻住的街的兵去开着的街晚多少秒：{冻住的街: {开着的街: 时间}}，每两条街去同一条街的差 ≥ 10 秒',
@@ -97,7 +99,8 @@ class Horn(Device):
                '鬼王上岸': '第一个鬼王上岸了', '放出': '口子后攒着的兵放出来过（冰化了或被砸开）',
               '冰快化': f'某道冰墙只剩 {MELT_WARN:g} 秒就化了（那道墙没了就不成立；配 每隔 一个融化说一次）'}
     ACTIONS = {'开 <街|口>': '号角从头开始响（先显示倒计时）', '停': '号角停（倒计时收起）；已经出的、攒着的照旧',
-               '演示': '开场演示开始：工兵冻住演示的街，兵掉头绕去另一条街（只在过场里用）', '演示收': '演示的人都收走'}
+               '演示': '开场演示开始：工兵冻住演示的街，兵掉头绕去另一条街（只在过场里用）', '演示收': '演示的人都收走',
+               '裂 <街|口>': '这个口子的冰雕脚下掉一堆碎冰（冰雕没倒，像裂了一道缝）'}
 
     def __init__(self, c, name, spec):
         super().__init__(c, name, spec)
@@ -124,10 +127,17 @@ class Horn(Device):
         for k, v in self.ways.items():
             if any(len(str(w)) == 0 for w in v):
                 raise PlanError(f'{name}: empty way name')
-        self.signed = any('标志' in w for v in self.ways.values() for w in v.values())
+        self.signed = any(k in w for v in self.ways.values() for w in v.values() for k in ('标志', '冰雕'))
         if self.signed:                                 # 标志: a sign at every way, and the smoke the horn warns with
             self.smoke = sg.smoke(f'CNV_{tag}_SignalSmoke', life=SIGN_WARN + 1.0)
             self.units.append(self.smoke)
+        self.sculpted = any('冰雕' in w for v in self.ways.values() for w in v.values())
+        if self.sculpted:                               # 冰雕: the sign is a spawn sculpture the first horn splits
+            self.sculpt = fest.spawn_sculpture(f'CNV_{tag}SpawnSculpture')
+            self.display = fest.display(f'CNV_{tag}IceDisplay')
+            self.chips = fest.chips(f'CNV_{tag}IceChips')
+            self.units += [self.sculpt, self.display, self.chips]
+            self.names['小冰雕'] = self.display
         self.delay = {s: {o: plan.seconds(t) for o, t in row.items()} for s, row in (spec.get('绕路') or {}).items()}
         if self.ways['V']:
             check_delays(self.delay, list(self.ways['V']))
@@ -230,6 +240,13 @@ class Horn(Device):
                 from plan import PlanError
                 raise PlanError(f'{self.name}.{what}: the device has no 演示')
             return [('SET_FLAG', self.demo_on if what == '演示' else self.demo_off, 1)]
+        if what == '裂':
+            if not self.sculpted:
+                from plan import PlanError
+                raise PlanError(f'{self.name}.裂: the device has no 冰雕')
+            wid = self.ids_by_name(' '.join(args))
+            self.m.spawns.add(self.chips.id)
+            return [('CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT', self.chips.id, self.m.team('s1'), self.m.mark(f'chips {wid}'))]
         if what == '停':
             return [('SET_FLAG', self.on['V'], 0), ('SET_FLAG', self.on['L'], 0), ('HIDE_COUNTDOWN_TIMER', self.timer)]
         return super().action(what, args)
@@ -245,6 +262,13 @@ class Horn(Device):
                 dx, dy = way.get('偏移', (0, 0))
                 m.waypoint(f'spawn {wid}', f'CNV {tag} Spawn {wid}', way['出'], dx, dy)
                 m.waypoint(f'ice {wid}', f'CNV {tag} IceAt {wid}', way['点'])
+                sculpt = way.get('冰雕')
+                if sculpt is not None:                  # the way's spawn sculpture, behind the spot the troops come out at
+                    sx0, sy0 = (float(v) for v in sculpt.get('偏移', (0, 0)))
+                    m.put(self.sculpt.id, way['出'], dx + sx0, dy + sy0, role=f'标志 {w}', side='s1',
+                          name=self.sign(wid), angle=sculpt.get('朝向'))
+                    m.waypoint(f'sign {wid}', f'CNV {tag} Sign {wid}', way['出'], dx + sx0, dy + sy0)
+                    m.waypoint(f'chips {wid}', f'CNV {tag} Chips {wid}', way['出'], dx + sx0 + 55.0, dy + sy0)
                 sign = way.get('标志')
                 if sign:                                # the way's sign: a named retail prop beside the ice mark
                     dx, dy = sign.get('偏移', (0, 0))
@@ -317,7 +341,7 @@ class Horn(Device):
                 out += [Script(f'CNV {self.c.tag} - Frozen {wid} zero', [], [('SET_FLAG', f, 0)], once=False),
                         Script(f'CNV {self.c.tag} - Frozen {wid} holds', [self.walled[wid]], [('SET_FLAG', f, 1)],
                                once=False)]
-        out += self.horn_scripts() + self.smoke_scripts()
+        out += self.horn_scripts() + self.smoke_scripts() + self.sculpt_scripts()
         for n in range(1, self.horns + 1):
             out += self.street_scripts(n) + self.mouth_scripts(n)
         out += self.ghost_scripts() + self.ice_scripts() + self.demo_scripts()
@@ -381,6 +405,26 @@ class Horn(Device):
                                         m.mark(f'sign {wid}')),
                                        ('OBJECT_CREATE_RADAR_EVENT', name, 0)]))
                     m.spawns.add(self.smoke.id)
+        return out
+
+    def sculpt_scripts(self):
+        """The spawn sculptures: nothing can aim at them from the first frame (a script can kill them), and the first
+        horn of the way splits its sculpture (NAMED_KILL; it leaves the cracked one, which lies for good) whether or not
+        the way is iced -- the crack is the tunnel opening, not the wave."""
+        if not self.sculpted:
+            return []
+        tag = self.c.tag
+        names = {wid: self.sign(wid) for mode in 'VL' for wid in self.ids(mode).values()
+                 if f'chips {wid}' in self.m.marks}
+        out = [Script(f'CNV {tag} - Sculptures tough', [],
+                      [('UNIT_CHANGE_OBJECT_STATUS', n, 'UNATTACKABLE', 1) for n in names.values()])]
+        for mode in 'VL':
+            for w, wid in self.ids(mode).items():
+                if wid not in names:
+                    continue
+                first = int(self.ways[mode][w].get('从', 1))
+                out.append(Script(f'CNV {tag} - Sculpture {wid} splits', [('FLAG', self.blow(mode, first), 1)],
+                                  [('NAMED_KILL', names[wid])]))
         return out
 
     def to(self, n, origin, target):
@@ -540,9 +584,18 @@ class Horn(Device):
         started, iced, turned = (f'CNV_{tag}_Demo_{x}' for x in ('Started', 'Iced', 'Turned'))
         fire, turn = f'CNV {tag} Demo Fire', f'CNV {tag} Demo Turn'
         team = m.team('s1')
+
+        def fx(wid, smoke=True, crack=True):
+            """The demo street's spawn sculpture smokes and drops a little ice at its foot (it is split by the real
+            horn only: a sculpture cannot be put back)."""
+            if not self.sculpted or f'chips {wid}' not in m.marks:
+                return []
+            m.spawns.update((self.smoke.id, self.chips.id))
+            return ([('CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT', self.smoke.id, team, m.mark(f'sign {wid}'))] if smoke else []) + \
+                ([('CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT', self.chips.id, team, m.mark(f'chips {wid}'))] if crack else [])
         return [
             Script(f'CNV {tag} - Demo engineer', [('FLAG', self.demo_on, 1), ('FLAG', started, 0)],
-                   [('SET_FLAG', started, 1),
+                   fx(shut, crack=False) + [('SET_FLAG', started, 1),
                     (('UNIT_TELEPORT_TO_WAYPOINT', eng, f'CNV {tag} Clear {shut}') if home else
                      ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', eng, tmpl, m.team('p1'), f'CNV {tag} Clear {shut}')),
                     ('SET_MILLISECOND_TIMER', fire, 1.0)]),
@@ -552,10 +605,11 @@ class Horn(Device):
             Script(f'CNV {tag} - Demo foes', [('FLAG', started, 1), ('FLAG', self.frozen(shut), 1), ('FLAG', iced, 0),
                                               ('FLAG', self.demo_off, 0)],
                    [('SET_FLAG', iced, 1), ('SET_MILLISECOND_TIMER', turn, float(d.get('等', 4.0)))] +
+                   fx(shut, smoke=False) +
                    [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', f, kind, team, m.mark(f'spawn {shut}')) for f in foes] +
                    [('MOVE_NAMED_UNIT_TO', f, f'CNV {tag} Clear {shut}') for f in foes]),
             Script(f'CNV {tag} - Demo turn', [('TIMER_EXPIRED', turn), ('FLAG', turned, 0), ('FLAG', self.demo_off, 0)],
-                   [('SET_FLAG', turned, 1)] + [('NAMED_DELETE', f) for f in foes] +
+                   [('SET_FLAG', turned, 1)] + [('NAMED_DELETE', f) for f in foes] + fx(to) +
                    [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', o, kind, team, m.mark(f'spawn {to}')) for o in outs] +
                    [('OBJECT_CREATE_RADAR_EVENT', outs[0], 0)]),
             Script(f'CNV {tag} - Demo over', [('FLAG', self.demo_off, 1), ('FLAG', started, 1)],
