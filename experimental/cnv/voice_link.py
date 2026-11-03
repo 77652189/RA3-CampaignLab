@@ -45,6 +45,20 @@ class Later:
     def find(self, who, text):
         return self.said.get((str(who), str(text)))
 
+    def length(self, who, text):
+        """Seconds the recording of a dubbed line plays (a scene waits for it: the engine queues dialogue events, so
+        ten lines at one moment are heard one after another but their subtitles and the camera do not wait), or None."""
+        ev = self.find(who, text)
+        wav = next((w for e, w, _, g in self.items if e == ev and not g), None) if ev else None
+        if not wav:
+            return None
+        import wave
+        try:
+            with wave.open(wav) as w:
+                return w.getnframes() / w.getframerate()
+        except (wave.Error, OSError, EOFError):
+            return None
+
     def eva(self, who, text):
         """The retail event of an announcer line that is retail's own, or None. It is played as it is in both editions:
         the international one runs on the English retail game, the Chinese one on the Chinese voice mod, which dubs

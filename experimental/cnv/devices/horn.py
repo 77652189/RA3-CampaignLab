@@ -43,7 +43,11 @@ GATE_AREA = ice_plazas.GATE_AREA                # half-side of the area an ice w
 CLEAR_MARGIN = ice_plazas.CLEAR_MARGIN
 WALL_SIDE = ice_plazas.WALL_SIDE
 RELOAD = ice_plazas.RELOAD
-MIN_APART = 10.0                                # two waves shut streets send to one open street arrive this far apart
+# the core the engineer places is this square: the engine refuses a building where the ground rises across it more than
+# platmap.FLAT (8, in elevation / 16), and the lane's ramp rises 7 in 20 units but 14 in 40 (user 2026-11-02: the
+# placement preview was red all over the slope at the street mouth)
+SEED_SIZE = 20
+MIN_APART = 10.0                               # two waves shut streets send to one open street arrive this far apart
 MELT_WARN = 8.0                                 # 冰快化: this many seconds before an ice wall's lifetime is up
 MODES = {'街': 'V', '口': 'L'}                  # the two sets, and the letter in their names
 
@@ -82,7 +86,8 @@ class Horn(Device):
               '绕路': '冻住的街的兵去开着的街晚多少秒：{冻住的街: {开着的街: 时间}}，每两条街去同一条街的差 ≥ 10 秒',
               '口': '最后一程的口子：{名: {点, 出, 偏移}}，冻住的口子这一波攒着，冰没了一起出',
               '鬼王': '{从: 第几声起, 数量: 每声几台, 运输车: 单位, 海: 运输车出现的地方, 岸: 靠岸的地方}',
-              '演示': '开场演示：{街: 工兵冻住的街, 绕去: 兵掉头去的街, 等: 冰起后几秒兵掉头（默认 4）, 兵: 冻住前出的人数（默认 2）}'}
+              '演示': '开场演示：{街: 工兵冻住的街, 绕去: 兵掉头去的街, 等: 冰起后几秒兵掉头（默认 4）, 兵: 冻住前出的人数（默认 2）, '
+                    '工兵: {角色: 玩家自己的工兵演示、不再另造, 回: 演示完他回到的地点, 偏移: [东, 北]}}'}
     EVENTS = {'号角 <n>': '街的第 n 声号角响了', '口号角 <n>': '口的第 n 声号角响了', '冻住 <名>': '这个口子现在有冰',
               '绕路': '冻住的街的兵第一次在别的街出生（掉头绕路）', '都在歇': '至少两道冰墙放出去还没满冷却（冰幕工兵都在歇）',
                '鬼王砸墙': '鬼王被派去砸一道冰墙', '鬼王砸开': '鬼王去砸的那道墙没了',
@@ -98,7 +103,7 @@ class Horn(Device):
         self.plan = plan
         tag = c.tag
         self.wall = iw.wall(f'CNV_{tag}IceWall', length=WALL_SIDE, shape='square')
-        self.core = iw.seed(f'CNV_{tag}IceSeed', self.wall.id)
+        self.core = iw.seed(f'CNV_{tag}IceSeed', self.wall.id, size=SEED_SIZE)
         # his own voice events come with the voice pack; a pack that lacks them (an edition whose dub of his lines has
         # not been delivered, langs.py) leaves him retail's voice rather than naming events that are not there
         voiced = c.m.voice is None or f'{iw.VOICE}_VoiceSelect' in getattr(c.m.voice, 'groups', {iw.VOICE + '_VoiceSelect'})
@@ -474,6 +479,11 @@ class Horn(Device):
         eng, foes, outs = f'UNIT - CNV {tag} Demo Engineer', [], []
         tmpl = self.c.unit('冰幕工兵')
         m.spawns.add(tmpl)
+        home = d.get('工兵')                # the player's own engineer plays the demo, and goes back where he stood
+        if home:
+            eng = self.c.part_names(str(home['角色']))[0]
+            site = str(home['回'])
+            m.waypoint('demo home', f'CNV {tag} Demo Home', site, *[float(x) for x in home.get('偏移', (0, 0))])
         kind = self.c.unit(next(iter(self.troops)), 's1')
         m.spawns.add(kind)
         for j in range(1, int(d.get('兵', 2)) + 1):
@@ -485,7 +495,8 @@ class Horn(Device):
         return [
             Script(f'CNV {tag} - Demo engineer', [('FLAG', self.demo_on, 1), ('FLAG', started, 0)],
                    [('SET_FLAG', started, 1),
-                    ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', eng, tmpl, m.team('p1'), f'CNV {tag} Clear {shut}'),
+                    (('UNIT_TELEPORT_TO_WAYPOINT', eng, f'CNV {tag} Clear {shut}') if home else
+                     ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', eng, tmpl, m.team('p1'), f'CNV {tag} Clear {shut}')),
                     ('SET_MILLISECOND_TIMER', fire, 1.0)]),
             Script(f'CNV {tag} - Demo ice', [('TIMER_EXPIRED', fire)],
                    [('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', eng, self.eng.abilities['freeze'],
@@ -500,7 +511,8 @@ class Horn(Device):
                    [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', o, kind, team, m.mark(f'spawn {to}')) for o in outs] +
                    [('OBJECT_CREATE_RADAR_EVENT', outs[0], 0)]),
             Script(f'CNV {tag} - Demo over', [('FLAG', self.demo_off, 1), ('FLAG', started, 1)],
-                   [('NAMED_DELETE', eng)] + [('NAMED_DELETE', n) for n in foes + outs]),
+                   [('UNIT_TELEPORT_TO_WAYPOINT', eng, f'CNV {tag} Demo Home') if home else ('NAMED_DELETE', eng)] +
+                   [('NAMED_DELETE', n) for n in foes + outs]),
         ]
 
     # ---- the ice: its time left on screen, an engineer shut in the block taken out

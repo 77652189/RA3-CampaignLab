@@ -189,8 +189,10 @@ def slope_of(e):
     return np.maximum.reduce([abs(p[1:-1, 2:] - c), abs(p[1:-1, :-2] - c), abs(p[2:, 1:-1] - c), abs(p[:-2, 1:-1] - c)])
 
 
-def apply(m, layout, seed=11):
+def apply(m, layout, seed=11, swap=None):
     """Write the layout into the container map: heights, textures, passability, water area, radar pictures.
+    swap: {ground texture: another} for the ground the generator picks (a winter map: grass -> snow); the others
+    must be in SDK v3's Terrain.xml and need our own atlas (make_campnew7.OWN_ATLAS, which the caller turns on).
     Returns (previews {'art', 'small'}, problems)."""
     hm = mapterrain.HeightMap(m)
     w, h, b = hm.width, hm.height, hm.border
@@ -202,6 +204,9 @@ def apply(m, layout, seed=11):
     tiles = mapterrain.Tiles(m, w)
     for f in range(8):
         tiles.fill_field(f, f == 4)                         # field 4 is set nearly everywhere on retail maps
+    swap = swap or {}
+    for t in dict.fromkeys(swap.values()):
+        tiles.add_texture(t)
     slope = slope_of(e)
     patch = newmap.value_noise(seed, 150.0)
     road = np.zeros((h, w), object)
@@ -214,10 +219,10 @@ def apply(m, layout, seed=11):
         for i in range(w):
             v, s = float(e[j, i]), float(slope[j, i])
             grid[(i, j)] = road[j, i] if road[j, i] and s <= STEEP and v > newmap.WATERLINE + 10 else \
-                newmap.texture_for(v, s, (i - b) * CELL, (j - b) * CELL, patch)
+                swap.get(*[newmap.texture_for(v, s, (i - b) * CELL, (j - b) * CELL, patch)] * 2)
             if s > STEEP and v > newmap.WATERLINE:
                 tiles.set_bit(0, i, j, True)
-    newmap.paint_grid(tiles, grid, newmap.RANK + sorted({r.texture for r in layout.roads}))
+    newmap.paint_grid(tiles, grid, [swap.get(t, t) for t in newmap.RANK] + sorted({r.texture for r in layout.roads}))
     tiles.store()
     size = (w - 2 * b) * CELL
     newmap.set_water(m, -300.0, -300.0, size + 300.0, size + 300.0)

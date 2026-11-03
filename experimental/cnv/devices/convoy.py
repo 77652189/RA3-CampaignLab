@@ -26,7 +26,8 @@ class Convoy(Device):
               '分批': '每辆车在出发后多少秒才开，例如 [0, 50, 110]（默认一起开；原版敖德萨的船一艘接一艘）',
               '分批从': '出发（默认）或 继续：写 继续 时出发一起开，停下以后 继续 那一刻起才按 分批 一辆接一辆开'
                        '（A4 返工：一起开到 2 号广场，最后一程分批走）'}
-    EVENTS = {'出发': '车队出发了', '到达 <地点>': '第一辆车开进这个地点', '到终点 <n>': '已有 n 辆车到达终点',
+    EVENTS = {'出发': '车队出发了', '到达 <地点>': '第一辆车开进这个地点',
+              '到齐 <地点>': '队尾那辆还活着的车开进这个地点（前面的都已过去：过场不抢在车还在路上时开始）','到终点 <n>': '已有 n 辆车到达终点',
               '损失 <n>': '已有 n 辆车被毁', '继续了': '动作 继续 做过了（停下以后又开了）',
               '挨打': '有一辆车刚掉了血（血量每掉到 90、80 ……% 以下算一次；之后 6 秒内成立；毁了的车一口气掉到 0 也算）'}
     ACTIONS = {'停下': '车队停在原地', '继续': '车队接着开'}
@@ -66,6 +67,11 @@ class Convoy(Device):
         if event == '到达':
             area = self.c.area(' '.join(args))
             return [[('NAMED_INSIDE_AREA', t, area)] for t in cv.trucks]
+        if event == '到齐':                          # the rearmost truck still alive is there: none left behind
+            area = self.c.area(' '.join(args))
+            ts = self.cv.trucks
+            return [[('NAMED_DESTROYED', t) for t in ts[k + 1:]] + [('NAMED_INSIDE_AREA', ts[k], area)]
+                    for k in range(len(ts) - 1, -1, -1)]
         if event == '到终点':
             return [[('COUNTER', cv.arrived, 3, int(args[0]))]]
         if event == '损失':

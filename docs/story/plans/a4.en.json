@@ -37,5 +37,22 @@
   "冰幕工兵：选中工兵，点街口，就地造一道冰墙。冰墙挡得住兵，过一阵会化。": "Ice Engineer: Select an engineer, click a street mouth, and raise an ice wall on the spot. The wall stops troops; it melts after a while.",
   "沃斯：船上是鬼王。冰墙怕是拦不住那东西。": "Voss: The Ghost King is aboard that ship. I doubt an ice wall will stop that thing.",
   "司令：司令部又调来一个冰幕工兵。": "Command: Headquarters has sent another Ice Engineer.",
-  "科尔：车被劫了一辆，科尔借给你两辆守护者和一队维和。": "Cole: You lost a truck. I'll lend you two Guardians and a peacekeeper squad."
+  "科尔：车被劫了一辆，科尔借给你两辆多功能步兵车和一队维和。": "Cole: You lost a truck. I'll lend you two IFVs and a peacekeeper squad.",
+  "车队运输车": "Convoy Truck",
+  "护送车辆": "Escorted Vehicle",
+  "车队的运输车，没有武器，归护送队指挥。": "The convoy's transport truck. Unarmed; the escort side drives it.",
+  "冰幕工兵": "Ice Engineer",
+  "冰墙封路工兵": "Ice Wall Engineer",
+  "能在路口冻出一道冰墙，挡住敌人的去路；冰墙过一阵就会化。也能占领建筑。": "Freezes an ice wall across a street mouth to block the enemy's way; the wall melts after a while. Can also capture buildings.",
+  "冻出冰墙": "Freeze Ice Wall",
+  "走到目标点，站着造一会儿，冻出一道挡路的冰墙（放置时拖动可转方向）。造的时候工兵没有掩护；冰墙打得碎，过一阵也会化。": "Walks to the target point and stands there a moment, freezing a wall that blocks the way (drag while placing to turn it). The engineer has no cover while building; the wall can be shot to pieces and melts after a while.",
+  "冰核": "Ice Core",
+  "正在冻结的冰墙": "Ice Wall Freezing",
+  "冰幕工兵正在冻的冰，冻好就是一道冰墙。": "Ice the Ice Engineer is freezing; once it sets it is an ice wall.",
+  "碎冰": "Broken Ice",
+  "冰墙": "Ice Wall",
+  "冰幕工兵冻出的冰墙": "Wall Frozen by an Ice Engineer",
+  "挡住去路的冰墙，打得碎，过一阵就会化。": "An ice wall that blocks the way. It can be shot to pieces and melts after a while.",
+  "号角与冰墙": "The Horn and the Ice Wall",
+  "护送三辆运输车穿过札幌雪祭会场，开到港口，至少两辆到达才算完成。号角一响，三条街的地道同时出兵抢车：用冰幕工兵在街口冻出冰墙，让敌兵绕路。拆掉北营的指挥所后车队才能走最后一程，那里三个口子的冰墙一化，墙后攒着的兵会一起涌出来。": "Escort three transport trucks through the Sapporo Snow Festival to the harbor; at least two must arrive. When the horn sounds, tunnels under all three streets send troops after the trucks: use Ice Engineers to freeze walls across the street mouths and make them detour. Destroying the North Camp's command center lets the convoy start its last leg, where troops stacked up behind the three mouths' walls pour out together once the ice melts."
 }

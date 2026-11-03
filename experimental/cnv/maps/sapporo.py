@@ -325,14 +325,24 @@ def _scenery():
 SCENERY = _scenery()
 
 
+# Sapporo in winter (the snow festival: the user 2026-11-02, "the ice sculptures belong to winter, the map should not
+# be green grass"): the generator's grass and dirt patches are snow (retail's own Solvang snow, as CampNew22); the
+# roads stay pavement and the rock as it is
+SNOW = {'Grass_Heidelberg01': 'Snow_Solvang01', 'Grass_Heidelberg02': 'Snow_Solvang02',
+        'Dirt_Yucatan04': 'Snow_Solvang03'}
+
+
 def terrain(m):
     """CampNew18's generate with the platform terrain over its island, and the starts moved to this map's own
     (c18 puts them at island.py's, the template's default)."""
+    import newmap
     c18.generate(m)
-    previews, _ = platmap.apply(m, LAYOUT)
+    c18.c7.OWN_ATLAS = True                     # the snow is not in Heidelberg's atlas: ours, from the SDK's sources
+    newmap.COLORS.update({'Snow_Solvang01': (225, 230, 235), 'Snow_Solvang02': (210, 215, 225),
+                          'Snow_Solvang03': (200, 208, 220)})
+    previews, _ = platmap.apply(m, LAYOUT, swap=SNOW)
     c18.PREVIEWS.update(previews)
     objs = next(n for _, n in m.walk() if n.name == 'ObjectsList')
-    import newmap
     for k in objs.kids:
         name = newmap.typed_props_of(m, k)[0].get('waypointName', (0, ''))[1]
         if name in ('Player_1_Start', 'InitialCameraPosition', 'Player_2_Start'):

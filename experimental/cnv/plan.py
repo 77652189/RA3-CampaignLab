@@ -15,6 +15,7 @@ A condition compiles to alternatives, [[script condition, ...], ...]: any one al
 """
 import dataclasses
 import importlib
+import math
 import os
 import re
 import sys
@@ -33,7 +34,11 @@ ALL = (True, True, True)
 ONE = ((True, False, False), (False, True, False), (False, False, True))
 SPACING = 60.0                                  # between units placed together
 DEFAULT_AREA = 150.0                            # half-side of a site's trigger area when the site has no radius
-CAPTION = 6.0                                   # seconds a caption stays
+CHRONO_FLASH = 'fxprop_chronoflash'             # retail's chrono flash prop (its FX plays on create, lives 1 s)
+EASE = 1.0                                     # seconds a pan eases in / out (retail's most used eased pan: 1/1)
+PAN_SPEED = 250.0                               # map units a second at most between two sites of a 过场
+SPEECH_GAP = 0.6                               # seconds of quiet after a dubbed line in a 过场
+CAPTION = 6.0                                  # seconds a caption stays
 REVEAL_FIRST, REVEAL_GAP = 2.0, 4.0             # a phase's objectives: the first this long after it starts, then apart
 RELATIONS = {'盟友': 'Friend', '中立': 'Neutral', '敌人': 'Enemy'}     # 阵营 其他's 对我 / 对敌
 # a relation argument carries its index as well as its name, and the game reads the index (retail's 290
@@ -539,6 +544,10 @@ class Compiler:
             head, _, rest = a.strip().partition(' ')
             if head == '通报':
                 return [('SHOW_MILITARY_CAPTION', self.text('SCRIPT', rest.strip()), CAPTION)]
+            if head == '副指挥官':                   # the co-commander's panel (retail Cannes hides it at the start)
+                if rest.strip() not in ('开', '关'):
+                    raise PlanError(f'action {a!r}: 副指挥官 开 / 关 (the panel at the top left; Player_2 stays)')
+                return [('SET_COOP_AI_COMMAND_UI_ENABLED', int(rest.strip() == '开'))]
             if head == '存档':
                 m.strings.setdefault(AUTOSAVE, '新战役（自动存档）')
                 return [('CAMPAIGN_CREATE_AUTO_SAVE', AUTOSAVE)]
@@ -582,10 +591,7 @@ class Compiler:
                 self.m.lines.append(dict(说话人=str(who), 原文=str(a.get('原文', words)), 通报=shown, 字串=key))
             return [('SHOW_MILITARY_CAPTION', key, float(a.get('秒', CAPTION)))]
         if '镜头' in a:                             # to a site, or to one of the plan's own (retail: the statue)
-            secs, ps = float(a.get('秒', CAMERA_MOVE)), self.parts(str(a['镜头']))
-            if ps:
-                return [('MOVE_CAMERA_TO_NAMED', self.m.cast[ps[0]].name, secs, 0.0, 1.0, 1.0)]
-            return [('MOVE_CAMERA_TO', self.mark(a['镜头']), secs, 0.0, 1.0, 1.0)]
+            return self.camera(a, float(a.get('秒', CAMERA_MOVE)), EASE, EASE)
         if '跟随' in a:
             raise PlanError(f'action {a!r}: 跟随 only in a 过场 (it is stopped at the hand-back)')
         if '闪烁' in a:                             # retail: the hand-back flashes the player's MCV
@@ -610,6 +616,11 @@ class Compiler:
                 raise PlanError(f'action {a!r}: 揭全图 看一眼 only in a 过场 (shrouded again at the hand-back); '
                                 f'elsewhere 揭全图 永久, and 收回 全图 when it should go')
             return [('MAP_REVEAL_ALL_PERM', p1)]
+        if '特效' in a:                             # a retail effect prop at a site (Cannes A02: the chrono flash, then
+            if a['特效'] != '超时空':                #   the reinforcements)
+                raise PlanError(f'action {a!r}: 特效 超时空 (the only effect there is)')
+            self.m.spawns.add(CHRONO_FLASH)
+            return [('CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT', CHRONO_FLASH, self.m.team('p1'), self.mark(a['在']))]
         if '给' in a:
             return self.give(a['给'], a['在'])
         if '资金' in a:
@@ -666,6 +677,40 @@ class Compiler:
                 ('SHOW_MILITARY_CAPTION', self.text('SCRIPT', a['失败']), 10.0), ('SET_FLAG', 'Mission Lost', 1)]
         raise PlanError(f'action {a!r}: no such action (plan.py lists them)')
 
+    def camera(self, a, secs, ease_in, ease_out):
+        """MOVE_CAMERA_TO / _NAMED (waypoint, seconds, stutter 0, ease in, ease out). Retail runs a pan linear or eased
+        only at its ends (retailref: 144 of 240 moves 0/0/0, the rest 1-5 s eases on pans of 3-12 s)."""
+        ps = self.parts(str(a['镜头']))
+        if ps:
+            return [('MOVE_CAMERA_TO_NAMED', self.m.cast[ps[0]].name, secs, 0.0, ease_in, ease_out)]
+        return [('MOVE_CAMERA_TO', self.mark(a['镜头']), secs, 0.0, ease_in, ease_out)]
+
+    def pan_seconds(self, a, prev):
+        """A 镜头's seconds: the plan's own, but never so short that the camera flies from the last site faster than
+        PAN_SPEED map units a second (a 2 s pan across 800 units looked like a jerk)."""
+        secs = float(a.get('秒', CAMERA_MOVE))
+        site = str(a['镜头'])
+        if prev is None or self.parts(site) or self.parts(prev) or site == prev:
+            return secs
+        s0, s1 = self.m.where(prev), self.m.where(site)
+        return max(secs, math.hypot(s1.x - s0.x, s1.y - s0.y) / PAN_SPEED)
+
+    def spoken(self, step):
+        """Seconds a dubbed 通报 of a 过场 takes to say (its recording and a pause), or 0."""
+        if not (isinstance(step, dict) and '通报' in step and step.get('说') and self.voice is not None):
+            return 0.0
+        n = self.voice.length(step['说'], step.get('原文', step['通报']))
+        return n + SPEECH_GAP if n else 0.0
+
+    def chained(self, rest):
+        """True when the next thing in a 过场 that takes time is another 镜头 (the pans run into each other)."""
+        for s in rest:
+            if isinstance(s, dict) and ('停' in s or '跟随' in s or self.spoken(s)):
+                return False
+            if isinstance(s, dict) and '镜头' in s:
+                return True
+        return False
+
     def bans(self, names, allow):
         """ALLOW_DISALLOW_ONE_BUILDING on the player for each (a building or a unit: retail Brighton Beach bans both
         at the start and lets them go as the story goes; the type in lower case, as retail writes it)."""
@@ -699,7 +744,8 @@ class Compiler:
         action at once (a caption, a device's, a 技能: what the camera is to see); then the input back. Returns the
         phase-start actions and the scene's length; the later steps are timed scripts on `段 <phase> + t`."""
         at, t, look, follow = {}, 0.0, False, False
-        for step in ph.spec['过场']:
+        steps, prev, joined = list(ph.spec['过场']), None, False
+        for i, step in enumerate(steps):
             if isinstance(step, dict) and '停' in step:
                 t += seconds(step['停'])
                 continue
@@ -716,19 +762,45 @@ class Compiler:
                 at.setdefault(t, []).append(('MAP_REVEAL_ALL_PERM', self.m.player('p1')))
                 look = True
                 continue
-            at.setdefault(t, []).extend(self.action(step))
             if isinstance(step, dict) and '镜头' in step:
-                t += float(step.get('秒', CAMERA_MOVE))
+                secs = self.pan_seconds(step, prev)
+                nxt = self.chained(steps[i + 1:])
+                # pans that run into each other are linear at the join: eased only at the first start and last stop
+                at.setdefault(t, []).extend(self.camera(step, secs, 0.0 if joined else EASE, 0.0 if nxt else EASE))
+                t, prev, joined = t + secs, str(step['镜头']), nxt
+                continue
+            at.setdefault(t, []).extend(self.action(step))
+            if self.spoken(step):                    # the next step waits for the voice: one line at a time
+                t += self.spoken(step)
+                joined = False
         if t <= 0:
             raise PlanError(f'段 {ph.name} 过场: it takes no time -- a 镜头, 跟随 or 停 gives it its length')
+        fire, fire_end = self.ceasefire(ph) if ph.spec.get('停火') else ([], [])
+        guard, guard_end = [], []
+        for part in ph.spec.get('保护') or []:
+            guard += [('UNIT_CHANGE_OBJECT_STATUS', n, 'UNATTACKABLE', 1) for n in self.part_names(part)]
+            guard_end += [('UNIT_CHANGE_OBJECT_STATUS', n, 'UNATTACKABLE', 0) for n in self.part_names(part)]
         end = [('ENABLE_INPUT',), ('CAMERA_LETTERBOX_END',)] + ([('CAMERA_STOP_FOLLOW',)] if follow else []) + \
-            ([('MAP_REVEAL_ALL_UNDO_PERM', self.m.player('p1'))] if look else []) + \
+            ([('MAP_REVEAL_ALL_UNDO_PERM', self.m.player('p1'))] if look else []) + fire_end + guard_end + \
             [('SET_FLAG', self.scene_flag(ph), 1)]
         at.setdefault(t, []).extend(end)
-        now = [('DISABLE_INPUT',), ('CAMERA_LETTERBOX_BEGIN',)] + at.pop(0.0, [])
+        now = [('DISABLE_INPUT',), ('CAMERA_LETTERBOX_BEGIN',)] + fire + guard + at.pop(0.0, [])
         for k, (when, acts) in enumerate(sorted(at.items())):
             self.when(f'Phase {ph.k + 1} scene {k + 1}', f'段 {ph.name} + {when:g}', acts)
         return now, t
+
+    def ceasefire(self, ph):
+        """A 过场 with 停火: 是 -- the sides at war with each other are neutral for its length (retail does this in 14
+        of its scenes, PLAYER_RELATES_PLAYER 'Neutral'), so nobody is shot while the player cannot act; war again at
+        the hand-back. War is the plan's own at the start: the enemy against the player and against every side of 阵营
+        其他 that is its enemy (a later 翻脸 is not followed; the 敌方AI's side is compiled after the phases, and asleep
+        while a scene runs, so it is left alone)."""
+        m, p1, s1 = self.m, self.m.player('p1'), self.m.player('s1')
+        pairs = [(s1, p1)] + [(s1, m.player(x)) for x, rel in self.relation.items() if rel[1] == 'Enemy'] + \
+            [(m.player(x), p1) for x, rel in self.relation.items() if rel[0] == 'Enemy']
+        pairs = list(dict.fromkeys(pairs))
+        return ([relates(b, a, 'Neutral') for a, b in pairs] + [relates(a, b, 'Neutral') for a, b in pairs],
+                [relates(b, a, 'Enemy') for a, b in pairs] + [relates(a, b, 'Enemy') for a, b in pairs])
 
     def scene_flag(self, ph):
         """1 once the phase's 过场 handed the input back (过场 <phase> 结束)."""
@@ -1172,8 +1244,19 @@ class Compiler:
                 self.m.facts[f'段 {ph.name}'] = t[1]
         for dev in self.devices.values():
             self.m.facts.update(dev.facts())
+        if self.d.get('简报'):                      # the briefing screen's mission name and summary (the container's own
+            name = str(self.d.get('名字', self.level))      # are the pipeline's test texts)
+            self.m.strings.update({'MissionName:CNV01': name, 'MissionName:CNV01_Short': name,
+                                   'BriefingSummary:CNV01': str(self.d['简报'])})
         self.m.strings, left = langs.translate(self.m.strings, self.level, self.lang)
         self.m.missing += [f'string {x}' for x in left]
+        if self.lang != 'zh':                       # our units' names and tips (the ice engineer's) are in the edition's
+            units = []                              # language too; a copy, the unit may be shared with a Chinese build
+            for u in self.m.units:
+                text, left = langs.translate(u.strings, self.level, self.lang)
+                units.append(dataclasses.replace(u, strings=text) if u.strings else u)
+                self.m.missing += [f'unit string {x}' for x in left]
+            self.m.units = units
         return self.m
 
 
