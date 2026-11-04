@@ -52,3 +52,9 @@ def win(m):
     t.expect += [('ENDED', opened(m), '', None)]
     t.bench = [('bench_watch', dict(seconds=opened(m) + SEA, every=4, sheet=False, lines=len(t.counters)))]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'a5': {'hold': hold, 'win': win},
+}

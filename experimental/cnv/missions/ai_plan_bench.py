@@ -29,3 +29,9 @@ def mission(name='CampAP'):
     m.facts.update({'wake at': WAKE_AT, 'money': MONEY, 'power cap': CAPS['电厂'], 'barracks cap': CAPS['兵营'],
                     'watch': WATCH})
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'ai_plan': lambda: mission(),
+}

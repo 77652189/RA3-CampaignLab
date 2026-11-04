@@ -43,3 +43,9 @@ def lose(m):
     t.expect += [('ENDED', 30, '', None)]
     t.bench = [('bench_watch', dict(seconds=end - 60, every=6, sheet=False, lines=len(t.counters)))]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'j5': {'hold': hold, 'lose': lose},
+}

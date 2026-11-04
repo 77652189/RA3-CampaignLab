@@ -73,3 +73,11 @@ def asleep(m):
     t.expect += [('敌方电厂', 1, '==', 0), ('敌方资金', 1, '==', 0), ('在我方', 1, '==', 0)]
     t.bench = [('bench_watch', dict(seconds=f['attack at'] + 30, every=5, sheet=False, lines=len(t.counters)))]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'ai': {'wake': wake},
+    'ai_asleep': {'asleep': asleep},
+    'ai_plan': {'capped': capped},
+}

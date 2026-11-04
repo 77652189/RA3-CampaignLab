@@ -30,3 +30,9 @@ PLAN = {
 
 def mission(name='CampSap'):
     return plan.Compiler(dict(PLAN), name).compile()
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'sapporo': lambda: mission(),
+}

@@ -33,3 +33,9 @@ def mission(name='CampPW'):
     m.facts.update({'money': MONEY, 'bonus': BONUS, 'gap': GAP, 'give from': GIVE[0], 'give until': GIVE[1],
                     'undo at': UNDO_AT})
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'plan_words': lambda: mission(),
+}

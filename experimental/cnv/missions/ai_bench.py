@@ -42,3 +42,10 @@ def mission(name='CampAI', wake=True):
                     ('SKIRMISH_AI_USE_REBUILD_SYSTEM', s1, 0), ('PLAYER_SET_MONEY', s1, MONEY)]),
             Script('CNV AI - Attack', [('TIMER_EXPIRED', 'CNV AI Attack')], [('SKIRMISH_AI_TRANSFER_ALL', s1, 1)])]
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'ai': lambda: mission(),
+    'ai_asleep': lambda: mission(name='CampAIS', wake=False),
+}

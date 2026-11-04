@@ -86,3 +86,11 @@ def join(m):
                  ('母体', 0, '==', 1)]
     t.bench = [('bench_watch', dict(seconds=PART_AT + 12, every=2, sheet=False, lines=len(t.counters)))]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'combo': {'join': join},
+    'combo_breach': {'breach': breach},
+    'combo_spare': {'spare': spare},
+}

@@ -74,3 +74,10 @@ def mission(carrier=True, name='CampA8'):
                                 [('SHOW_MILITARY_CAPTION', 'SCRIPT:CNVA8_LOST', 10.0), ('SET_FLAG', 'Mission Lost', 1)]))
         m.endings.append(LOST)
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'a8': lambda: mission(),
+    'a8_control': lambda: mission(carrier=False, name='CampA8C'),
+}

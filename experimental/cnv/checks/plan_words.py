@@ -35,3 +35,9 @@ def words(m):
         ('无敌的', f['undo at'] + 15, '==', 0)]
     t.bench = [('bench_watch', dict(seconds=f['undo at'] + 20, every=2, sheet=False, lines=len(t.counters)))]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'plan_words': {'words': words},
+}

@@ -38,3 +38,9 @@ def late(m):
     t.expect += [('ENDED', end - 10, '', None)]
     t.bench = [('bench_watch', dict(seconds=end + 30, every=6, sheet=False, lines=len(t.counters)))]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'j7': {'win': win, 'late': late},
+}

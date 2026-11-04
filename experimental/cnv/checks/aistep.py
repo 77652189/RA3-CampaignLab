@@ -41,3 +41,10 @@ def free(m):
     t.expect += [('AI步兵车', 1, 'ever>=', 1)]
     t.bench = [('bench_watch', dict(seconds=run, every=6, sheet=False, lines=len(t.counters)))]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'aistep': {'stepped': stepped},
+    'aistep_free': {'free': free},
+}

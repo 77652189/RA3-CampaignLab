@@ -11,6 +11,7 @@ smash: a wall of ours, three enemy Hammers 120 south of it. Cast: wall, hammer 1
 from maps import aso, island
 from parts import Mission, Role
 from units import icewall as iw
+from units import tesla as units_tesla
 
 MIDDLE = 150.0
 LANE = 150.0
@@ -97,3 +98,15 @@ def ghost(name='CampIceG'):
               role=f'engineer {k}')
     m.waypoint('ghost', 'CNV Ice Ghost Start', 'west field', 300, -300)   # where the check teleports it to
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'ice_block': lambda: block(),
+    'ice_turns': lambda: turns(),
+    'ice_freeze': lambda: freeze(),
+    'ice_build': lambda: freeze(name='CampIceV', builder=True),
+    'ice_spawn': lambda: freeze(name='CampIceO', spawn='CNV_TeslaTank', extra=[units_tesla.tesla()]),
+    'ice_smash': lambda: smash(),
+    'ice_ghost': lambda: ghost(),
+}

@@ -506,3 +506,9 @@ def lose(m):
     t.expect += [('2 号车血量', leave - LEAD, 'ever<=', 30, leave + OUT_OF_REACH), ('ENDED', leave, '', None)]
     t.bench = [('bench_watch', dict(seconds=leave + DRIVE - 12, every=2, sheet=False, lines=len(t.counters)))]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'a4_before': {'seal': seal, 'placed': placed, 'smash': smash, 'ambush': ambush, 'win': win, 'lose': lose, 'idle': idle, 'harbour': harbour, 'stop': stop, 'early': early, 'tough': tough, 'north': north, 'camp': camp, 'free': free},
+}

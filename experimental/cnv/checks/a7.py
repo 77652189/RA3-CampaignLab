@@ -251,3 +251,9 @@ def win(m):
     t.expect += [('ENDED', 5, '', None)]
     t.bench = [('bench_watch', dict(seconds=25, every=1, sheet=False))]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'a7': {'jumps': jumps, 'pick': pick, 'defend': defend, 'power': power, 'win': win, 'east': east, 'nag': nag, 'faster': faster, 'revenge': revenge, 'pincer': pincer},
+}

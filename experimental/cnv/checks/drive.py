@@ -104,3 +104,13 @@ def run(m):
     watch = dict(seconds=120, every=5, sheet=False, lines=len(t.counters), until='c1==0|c2==0')
     t.bench = [('bench_watch', watch)] * 3
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'drive_idle': {'prod': production(lambda p1: [])},
+    'drive_ai': {'prod': production(ai_wake)},
+    'drive_enable': {'prod': production(enable_wake)},
+    'drive_cmd': {'cmds': commands},
+    'drive_run': {'run': run},
+}

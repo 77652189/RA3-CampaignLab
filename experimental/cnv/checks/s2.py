@@ -36,3 +36,9 @@ def escape(m):
     t.expect += [('冷冻列车到站', 5, 'ever>=', 4), ('ENDED', 60, '', None)]
     t.bench = [('bench_watch', dict(seconds=RUN, every=5, sheet=False, lines=len(t.counters)))]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    's2': {'catch': catch, 'escape': escape},
+}

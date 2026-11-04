@@ -17,3 +17,9 @@ def mission(name='CampLag', **unit):
     m.put(u.id, 'west field', X, -150, name='UNIT - CNV Phase Tank', role='tank', angle=1.5708)
     m.put(APOCALYPSE, 'west field', X, 150, side='s1', name='UNIT - CNV Phase Target', role='target', angle=-1.5708)
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'chronolag': lambda: mission(),
+}

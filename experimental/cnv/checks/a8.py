@@ -102,3 +102,10 @@ def lose(m):
     t.expect += [('自由号', 0, 'ever==', 1), ('ENDED', 5, '', None)]
     t.bench = [('bench_watch', dict(seconds=20, every=1, sheet=False))]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'a8': {'jump': jump, 'lose': lose, 'assault': assault},
+    'a8_control': {'assault': assault},
+}

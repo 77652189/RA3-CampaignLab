@@ -28,3 +28,10 @@ def mission(name='CampAly', depot=True):
     m = plan.Compiler(d, name).compile()
     m.facts.update({'leaves': LEAVES, 'batch 2': BATCHES[1], 'batch 3': BATCHES[2]})
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'ally': lambda: mission(),
+    'ally_bare': lambda: mission(name='CampAly', depot=False),
+}

@@ -30,3 +30,11 @@ def surge(name='CampTslS', fire=True):
         m.put('AlliedAntiVehicleVehicleTech1', 'west field', dx, CLOSE, side='s1', name=f'UNIT - CNV Guard {tag}',
               role=f'guard {tag}')
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'tesla': lambda: mission(),
+    'tesla_surge': lambda: surge(),
+    'tesla_surge_retail': lambda: surge(name='CampTslR', fire=False),
+}

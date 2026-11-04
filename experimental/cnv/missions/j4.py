@@ -99,3 +99,9 @@ def mission(name='CampJ4'):
                m.failed(OBJ) + [('SHOW_MILITARY_CAPTION', 'SCRIPT:CNVJ4_LOST', 10.0), ('SET_FLAG', 'Mission Lost', 1)])]
     m.endings += [WIN, LOST]
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'j4': lambda: mission(),
+}

@@ -35,3 +35,11 @@ def mission(name='CampCrane', retail=False, **unit):
     m.put('AlliedAntiVehicleVehicleTech1', 'east field', 0, 0, side='s1', name='UNIT - CNV Target', role='target')
     m.waypoint('stop', 'CNV Crane Stop', 'east field', -SHORT, 0)
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'crane': lambda: mission(),
+    'crane_hide': lambda: hide(),
+    'crane_retail': lambda: mission(name='CampCraneR', retail=True),
+}

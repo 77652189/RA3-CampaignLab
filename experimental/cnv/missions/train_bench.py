@@ -37,3 +37,11 @@ def braked(name='CampTrainB', **unit):
     m.waypoint('start', 'CNV Train Start', 'west field', X, -300)
     m.waypoint('by start', 'CNV Train By Start', 'west field', X + 150, -300)
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'train': lambda: mission(),
+    'train_braked': lambda: braked(),
+    'train_fight': lambda: mission(name='CampTrainF', enemies=True),
+}

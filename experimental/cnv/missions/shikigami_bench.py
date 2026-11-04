@@ -37,3 +37,10 @@ def mission(name='CampShiki', **unit):
             m.put(SHOOTER, 'west field', dx + sx, -200, side='s1', name=f'UNIT - CNV Shooter {tag}{k + 1}',
                   role=f'shooter {tag} {k + 1}')
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'shikigami': lambda: mission(),
+    'shikigami_shells': lambda: shells(),
+}

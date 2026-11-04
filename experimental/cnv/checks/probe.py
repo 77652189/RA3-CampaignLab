@@ -137,3 +137,10 @@ def count(m):
     t.expect += [('我方能打的', 3, '==', 3), ('敌方能打的', 3, '==', 0), ('敌方守护者', 3, '==', 0), ('敌方进入', 3, '==', 0)]
     t.bench = [('bench_watch', dict(seconds=12, every=3, sheet=False, lines=len(t.counters)))]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'probe': {'engine': engine, 'count': count, 'align': align, 'death': death, 'reveal': reveal, 'both': both, 'both2': lambda m: both(m, 'Mission Lost', 'Mission Won')},
+    'probe_nosave': {'engine': engine},
+}

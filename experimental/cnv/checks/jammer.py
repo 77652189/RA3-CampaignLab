@@ -53,3 +53,13 @@ def jam_air(m):
     """The jammer against a flier (J7 card A: do air units fly past it?). Only the reading: no trip-time expectation,
     the verdict is this run's 行程秒数 against the same flier's free run."""
     return trip(m, True)
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'jammer': {'jam': jam, 'free': free},
+    'jammer_own': {'jam': jam},
+    'jammer_air': {'jam': jam_air, 'free': free},
+    'jammer_jet': {'jam': jam_air, 'free': free},
+    'jammer_kirov': {'jam': jam_air, 'free': free},
+}

@@ -43,3 +43,9 @@ def play(m):
                ('bench_look', dict(note='full screen: CNV TEST movie over the whole screen? (the mission runs ~2 s ahead)')),
                ('bench_watch', dict(seconds=RUN - f + 1.3, every=1, sheet=False, lines=len(t.counters)))]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'movie': {'play': play},
+}

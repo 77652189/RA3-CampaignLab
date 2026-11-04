@@ -1,6 +1,8 @@
 """The decoupled build layer (experimental/cnv): unit variants keep apart, a check merges into its mission, the
 verdict follows the counters, the counter reader reads back its calibration -- all without the game."""
+import dataclasses
 import os
+import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -9,6 +11,7 @@ sys.path.insert(1, os.path.join(ROOT, 'experimental', 'testbench'))
 import build  # noqa: E402
 import lint  # noqa: E402  (experimental/campaign, put on the path by parts)
 import parts  # noqa: E402
+import registry  # noqa: E402
 from missions import a8, liberty_bench  # noqa: E402
 from units import liberty as lib  # noqa: E402
 
@@ -262,3 +265,48 @@ def test_a_voice_line_must_be_in_the_voice_pack():
                                                               "the voice pack"]
     m.voice = SimpleNamespace(events={'CNV_A4_007'})
     assert not [p for p in parts.contract(m) if 'voice' in p]
+
+
+# the registry of builds (registry.py): every mission and check module declares its own
+def same_function(a, b):
+    """Two check functions are the same, or are made by the same code (a factory such as drive.production), or two
+    lambdas that carry the same constants (the registry's is written inside the module, the old table's outside)."""
+    if a is b:
+        return True
+    ca, cb = getattr(a, '__code__', None), getattr(b, '__code__', None)
+    if ca is None or cb is None or a.__qualname__ != b.__qualname__:
+        return False
+    return ca.co_name == '<lambda>' and ca.co_consts == cb.co_consts or ca.co_code == cb.co_code and ca.co_names == cb.co_names
+
+
+def alike(a, b):
+    """Two builds are alike: the same missions, field by field; what holds an object that compares by identity (a
+    music cue, a video, a voice pack) by what it prints without the address."""
+    if isinstance(a, tuple):
+        return len(a) == len(b) and all(alike(x, y) for x, y in zip(a, b))
+    if dataclasses.is_dataclass(a):
+        return type(a) is type(b) and all(alike(getattr(a, f.name), getattr(b, f.name)) for f in dataclasses.fields(a))
+    if a == b:
+        return True
+    return re.sub(r' at 0x[0-9A-Fa-f]+', '', repr(a)) == re.sub(r' at 0x[0-9A-Fa-f]+', '', repr(b))
+
+
+def test_registry_equals_the_hand_written_tables():
+    reg = registry.get()
+    assert set(reg.builds) == set(build._MISSIONS_OLD)
+    assert set(reg.pairs) == set(build._PAIRS_OLD)
+    for name, (_, old_checks) in build._MISSIONS_OLD.items():
+        new = reg.checks.get(name, {})
+        assert list(new) == list(old_checks), name
+        for check, fn in old_checks.items():
+            assert same_function(new[check], fn), (name, check)
+    for name, make in build._PAIRS_OLD.items():
+        assert reg.pairs[name].__name__ == make.__name__, name
+
+
+def test_registry_builds_make_the_same_missions():
+    reg = registry.get()
+    for name, (old_make, _) in build._MISSIONS_OLD.items():
+        assert alike(reg.builds[name](), old_make()), name
+    for name, old_make in build._PAIRS_OLD.items():
+        assert alike(reg.pairs[name](), old_make()), name

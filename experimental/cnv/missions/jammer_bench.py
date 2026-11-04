@@ -21,3 +21,13 @@ def mission(name='CampJam', side='s1', mech=MECH, **unit):
     m.put(mech, 'west field', X, -350, side=side, name='UNIT - CNV Mech', role='mech', angle=1.5708)
     m.waypoint('goal', 'CNV Jam Goal', 'west field', X, 400)
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'jammer': lambda: mission(),
+    'jammer_own': lambda: mission(name='CampJamOwn', side='p1'),
+    'jammer_air': lambda: mission(name='CampJamAir', mech='SovietAntiGroundAircraft'),
+    'jammer_jet': lambda: mission(name='CampJamJet', mech='SovietFighterAircraft'),
+    'jammer_kirov': lambda: mission(name='CampJamKir', mech='SovietBomberAircraft'),
+}

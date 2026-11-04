@@ -44,3 +44,9 @@ def mission(name='CampDetour'):
     m.waypoint('goal', 'CNV Reroute Goal', 'west field')
     m.waypoint('wall', 'CNV Reroute Wall', 'harbour', sum(QUAY) / 2 - hx, WALL_Y - hy)
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'reroute': lambda: mission(),
+}

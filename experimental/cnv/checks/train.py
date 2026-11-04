@@ -107,3 +107,11 @@ def braked_fire(m):
     t.expect += [('还在起点', 0, '==', 1), ('敌方步兵', send, 'ever==', 0)]
     t.bench = [('bench_watch', dict(seconds=45, every=3, sheet=False, lines=len(t.counters)))]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'train': {'run': run, 'brake': brake, 'astray': astray},
+    'train_braked': {'fire': braked_fire},
+    'train_fight': {'fight': fight},
+}

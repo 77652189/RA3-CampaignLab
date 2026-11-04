@@ -46,3 +46,9 @@ def mission(name='CampFence'):
         ring(m, k, tmpl, length, dx, dy, open_side)
     m.facts.update({'ring': HALF})
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'fence': lambda: mission(),
+}

@@ -32,3 +32,9 @@ def mission(name='CampSight'):
               role=f'target {k}', angle=-1.5708)
     m.facts.update({'vision': VISION})
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'sight': lambda: mission(),
+}

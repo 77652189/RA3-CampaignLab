@@ -36,3 +36,10 @@ def mission(name='CampClone', picky=True):
     # an enemy no clone holds, within her reach at her spot (63), out of clone B's (140)
     m.put('SovietEngineer', 'west field', 360, 130, side='s1', name='UNIT - CNV Stranger', role='stranger')
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'clone': lambda: mission(),
+    'clone_any': lambda: mission(name='CampCloneA', picky=False),
+}

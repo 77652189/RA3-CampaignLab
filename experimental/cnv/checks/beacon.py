@@ -49,3 +49,9 @@ def still(m):
     t = watch(m, fire=False)
     t.expect += [('到身边', 0, '==', 0), ('小队', 0, '==', 4)]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'beacon': {'pull': pull, 'still': still},
+}

@@ -22,3 +22,11 @@ def mission(lang='zh', name=None):
 
 def before(name='CampA4B'):
     return plan.Compiler(plan.load(BEFORE), name).compile()
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'a4': lambda: mission(),
+    'a4_intl': lambda: mission('intl'),
+    'a4_before': lambda: before(),
+}

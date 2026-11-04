@@ -40,3 +40,9 @@ def mission(name='CampMovie', clips=None):
     m.video = LazyPack(dict(clips or CLIPS))
     m.put('AlliedAntiVehicleVehicleTech1', 'west field', 250, 30, name='UNIT - CNV Movie Guardian', role='guardian')
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'movie': lambda: mission(),
+}

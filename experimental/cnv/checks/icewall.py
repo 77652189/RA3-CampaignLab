@@ -215,3 +215,15 @@ def ghost(m, start=None, first=3, order=None):
                  ('墙总数', GHOST_ORDER, 'ever==', 0)]
     t.bench = [('bench_watch', dict(seconds=GHOST_ORDER + 150, every=4, sheet=False, lines=len(t.counters)))]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'ice_block': {'block': block},
+    'ice_turns': {'turns': turns, 'clear': clear},
+    'ice_freeze': {'freeze': freeze},
+    'ice_build': {'built': built},
+    'ice_spawn': {'built': built},
+    'ice_smash': {'smash': smash},
+    'ice_ghost': {'ghost': ghost, 'north': ghost_north},
+}

@@ -62,3 +62,9 @@ def opened(m):
     t = trip(m, wall=False)
     t.expect += [('走中桥过去', 1, 'ever==', 1), ('到了西边步兵', 1, 'ever>=', 1)]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'reroute': {'round': round_, 'open': opened},
+}

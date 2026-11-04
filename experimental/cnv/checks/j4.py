@@ -79,3 +79,9 @@ def lose(m):
     t.expect += [('1 号车血量', leave, '==', 100, leave + DRIVE - 10), ('ENDED', leave + DRIVE - 10, '', None)]
     t.bench = [('bench_watch', dict(seconds=leave + DRIVE + 20, every=3, sheet=False, lines=len(t.counters)))]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'j4': {'breach': breach, 'play': play, 'lose': lose},
+}

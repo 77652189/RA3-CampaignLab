@@ -79,7 +79,7 @@ def digits():
     return m, t
 
 
-A4_CHECKS = {'horn': check_a4.horn, 'detour': check_a4.detour, 'queue': check_a4.queue, 'smash': check_a4.smash,
+_A4_CHECKS_OLD = {'horn': check_a4.horn, 'detour': check_a4.detour, 'queue': check_a4.queue, 'smash': check_a4.smash,
              'derrick': check_a4.derrick, 'demo': check_a4.demo, 'heads': check_a4.heads, 'melt': check_a4.melt, 'idle': check_a4.idle,
              'hold': check_a4.hold, 'win': check_a4.win, 'signs': check_a4.signs,
              'smoke': check_a4.smoke, 'place': check_a4.place, 'placem': check_a4.place_mouths}
@@ -87,9 +87,9 @@ A4_CHECKS = {'horn': check_a4.horn, 'detour': check_a4.detour, 'queue': check_a4
 # name -> mission(); checks: name -> check(mission) -> Test; or a build that is a (mission, test) pair outright.
 # An edition of a level (langs.py) is its own name: a4_intl (CampA4En) next to a4 (CampA4); `build.py a4 --lang intl`
 # is that name, and ra3bench's cnv_check takes it as it is
-MISSIONS = {
-    'a4': (lambda: a4.mission(), A4_CHECKS),
-    'a4_intl': (lambda: a4.mission('intl'), A4_CHECKS),
+_MISSIONS_OLD = {
+    'a4': (lambda: a4.mission(), _A4_CHECKS_OLD),
+    'a4_intl': (lambda: a4.mission('intl'), _A4_CHECKS_OLD),
     'a4_before': (lambda: a4.before(), {
         'seal': check_a4b.seal, 'placed': check_a4b.placed, 'smash': check_a4b.smash, 'ambush': check_a4b.ambush,
         'win': check_a4b.win, 'lose': check_a4b.lose, 'idle': check_a4b.idle, 'harbour': check_a4b.harbour,
@@ -231,7 +231,14 @@ def kinds():
     return m, t
 
 
-PAIRS = {'liberty_ride_ab': check_lib.ride_ab, 'digits': digits, 'kinds': kinds}
+_PAIRS_OLD = {'liberty_ride_ab': check_lib.ride_ab, 'digits': digits, 'kinds': kinds}
+
+# the registry (registry.py): what each mission and check module declares. The hand-written tables above stay for one
+# step; tests/test_registry.py holds the two equal
+import registry                                # noqa: E402
+_REG = registry.get()
+MISSIONS = {n: (make, _REG.checks.get(n, {})) for n, make in _REG.builds.items()}
+PAIRS = _REG.pairs
 
 
 def resolve(name, check):

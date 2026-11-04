@@ -34,3 +34,13 @@ def mission(name='CampDrive', hammers=3, who='drive'):
         m.put(HAMMER, 'front', 0, -80 + 80 * k, side='s1', name=f'UNIT - CNV {who} Hammer {k + 1}',
               role=f'hammer {k + 1}')
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'drive_idle': lambda: mission('CampDrvI'),
+    'drive_ai': lambda: mission('CampDrvA'),
+    'drive_enable': lambda: mission('CampDrvE'),
+    'drive_cmd': lambda: mission('CampDrvM', hammers=1),
+    'drive_run': lambda: mission('CampDrvR'),
+}

@@ -21,3 +21,10 @@ def mission(name='CampStep', held=True):
     m = plan.Compiler(d, name).compile()
     m.facts.update({'wake at': ap.WAKE_AT, 'step': STEP, 'watch': WATCH})
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'aistep': lambda: mission(),
+    'aistep_free': lambda: mission(held=False),
+}

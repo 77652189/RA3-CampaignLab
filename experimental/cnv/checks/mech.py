@@ -99,3 +99,11 @@ def shown(m):
     t.expect += [('已执行', SHOW_AT + 2, 'ever==', 1)]
     t.bench = [('bench_watch', dict(seconds=SHOW_AT + 8, every=2, sheet=False, lines=len(t.counters)))]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'thin_ice': {'thin': thin},
+    'thin_unnamed': {'kind': thin_unnamed},
+    'shown': {'shown': shown, 'bar': bar},
+}
