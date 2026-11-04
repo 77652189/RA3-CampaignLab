@@ -1,0 +1,450 @@
+<title>__TITLE__</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;900&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: a survey table - the map sheet left with its tool strip, the proposal slip and rule ledger right, the simulator's log under both. */
+:root {
+  --bg: #eef2f4; --panel: #ffffff; --ink: #15212b; --muted: #5f6f7c; --rule: #cfd8de;
+  --allied: #245ea6; --enemy: #c0392b; --ice: #2f9fb8; --amber: #b9800f; --ok: #2f8a57; --prop: #8a3fb0;
+  --display: "Noto Serif SC", "Songti SC", serif;
+  --body: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e151b; --panel: #151f28; --ink: #e2e9ef; --muted: #93a3b0; --rule: #26343f;
+  --allied: #6fa2e6; --enemy: #ff6e60; --ice: #63cfe3; --amber: #f0b43c; --ok: #5cc98a; --prop: #c58ae6; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0e151b; --panel: #151f28; --ink: #e2e9ef; --muted: #93a3b0; --rule: #26343f;
+  --allied: #6fa2e6; --enemy: #ff6e60; --ice: #63cfe3; --amber: #f0b43c; --ok: #5cc98a; --prop: #c58ae6; color-scheme: dark }
+body { background: var(--bg); color: var(--ink); font: 14px/1.6 var(--body); }
+.wrap { max-width: 1320px; margin: 0 auto; padding-block: 24px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 18px; }
+h1, h2 { font-family: var(--display); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(24px, 3.6vw, 34px); font-weight: 900; letter-spacing: .02em; }
+h2 { font-size: 17px; font-weight: 600; }
+p { margin: 0; }
+.eyebrow, .label { font: 500 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.note { font-size: 12.5px; color: var(--muted); }
+.head { display: grid; gap: 6px; }
+.head .lede { max-width: 72ch; }
+.pill { display: inline-flex; align-items: center; gap: 6px; font: 500 12px var(--mono); padding: 2px 10px; border-radius: 99px;
+  border: 1px solid currentColor; font-variant-numeric: tabular-nums; }
+.pill.ok { color: var(--ok); } .pill.bad { color: var(--enemy); }
+.board { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 900px) { .board { grid-template-columns: minmax(0, 1fr); } }
+.sheet { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; min-width: 0; }
+.tools { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px; border-bottom: 1px solid var(--rule); align-items: center; }
+button { font: 500 13px var(--body); color: var(--ink); background: transparent; border: 1px solid var(--rule); border-radius: 4px;
+  padding: 4px 10px; cursor: pointer; }
+button:hover { border-color: var(--muted); }
+button:focus-visible, textarea:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--allied); outline-offset: 1px; }
+button[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+button.primary { background: var(--prop); color: #fff; border-color: var(--prop); }
+button:disabled { opacity: .45; cursor: default; }
+.tools .sep { width: 1px; align-self: stretch; background: var(--rule); margin: 0 4px; }
+.tools label { font-size: 12.5px; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; }
+.mapbox { position: relative; }
+.mapbox svg { display: block; width: 100%; height: auto; touch-action: none; user-select: none; }
+.mapbox svg.mode-block, .mapbox svg.mode-note { cursor: crosshair; }
+.coord { position: absolute; left: 8px; bottom: 8px; font: 500 11px var(--mono); background: rgba(0,0,0,.55); color: #fff;
+  padding: 2px 7px; border-radius: 3px; pointer-events: none; font-variant-numeric: tabular-nums; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 8px 12px; border-top: 1px solid var(--rule); font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+.side { display: grid; gap: 14px; min-width: 0; }
+.side .sheet { padding: 12px 14px; display: grid; gap: 10px; }
+.slip { border: 1px dashed var(--prop); border-radius: 6px; padding: 10px 12px; display: grid; gap: 8px; }
+.slip b { color: var(--prop); }
+textarea { width: 100%; box-sizing: border-box; min-height: 64px; font: 13px/1.5 var(--body); color: var(--ink);
+  background: var(--bg); border: 1px solid var(--rule); border-radius: 4px; padding: 6px 8px; resize: vertical; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; max-height: 360px; overflow: auto; }
+.list li { border-left: 3px solid var(--prop); padding: 4px 8px; display: grid; gap: 2px; font-size: 13px; cursor: pointer; }
+.list li.on { background: color-mix(in srgb, var(--prop) 12%, transparent); }
+.list li .k { font: 500 11px var(--mono); color: var(--muted); }
+.list li .why { color: var(--ink); overflow-wrap: anywhere; }
+.list li .x { justify-self: start; font-size: 12px; padding: 1px 8px; }
+.rules { display: grid; gap: 6px; }
+.rule { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: baseline; }
+.rule .n { font: 500 12px var(--mono); font-variant-numeric: tabular-nums; min-width: 3.2em; }
+.rule .n.ok { color: var(--ok); } .rule .n.bad { color: var(--enemy); }
+.rule .w { font-size: 12px; color: var(--muted); grid-column: 2; }
+.rule ul { grid-column: 2; margin: 2px 0 4px; padding-left: 16px; font-size: 12.5px; color: var(--enemy); }
+.rule li { cursor: pointer; overflow-wrap: anywhere; }
+.status { font-size: 12.5px; color: var(--muted); }
+.status.err { color: var(--enemy); }
+.log { max-height: 420px; overflow: auto; padding: 0 14px 10px; }
+.log table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.log td { padding: 3px 8px 3px 0; vertical-align: top; border-bottom: 1px solid var(--rule); }
+.log td.t { font: 500 12px var(--mono); color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.log td.k { white-space: nowrap; font-size: 12px; color: var(--amber); }
+.log td.x { overflow-wrap: anywhere; }
+.loghead { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; padding: 12px 14px; }
+select { font: 13px var(--body); color: var(--ink); background: var(--panel); border: 1px solid var(--rule); border-radius: 4px; padding: 3px 6px; }
+svg text { font-family: var(--body); paint-order: stroke; stroke: rgba(10,16,22,.75); stroke-width: 3px; fill: #fff; }
+@media (prefers-reduced-motion: no-preference) { .flash { animation: flash 1.2s ease-out 2; } }
+@keyframes flash { 50% { opacity: .2; } }
+</style>
+
+<div class="wrap">
+  <header class="head">
+    <div class="eyebrow" id="eyebrow"></div>
+    <h1 id="title"></h1>
+    <p class="lede">地图、地点、矿和油、规则检查结果、模拟器时间轴，全部在每次生成时从地图模块和关卡代码导出。你可以在图上拖地点、画挡路线、钉批注，页面只把它们记成<b>改动提议</b>，地图文件不会被改；关卡线读取提议后改地图模块，再重新生成这一页。</p>
+    <div class="row" id="summary"></div>
+  </header>
+
+  <section class="board">
+    <div class="sheet">
+      <div class="tools" role="toolbar" aria-label="地图工具">
+        <button id="m-move" aria-pressed="true" data-mode="move">拖地点</button>
+        <button id="m-block" aria-pressed="false" data-mode="block">画挡路线</button>
+        <button id="m-note" aria-pressed="false" data-mode="note">钉批注</button>
+        <span class="sep"></span>
+        <label><input type="checkbox" id="l-labels" checked> 地点名</label>
+        <label><input type="checkbox" id="l-objects" checked> 物体</label>
+        <label><input type="checkbox" id="l-guides" checked> 规则量线</label>
+        <label><input type="checkbox" id="l-areas"> 触发区</label>
+        <label><input type="checkbox" id="l-props" checked> 提议</label>
+      </div>
+      <div class="mapbox">
+        <svg id="map" role="img" aria-label="地图俯视图"></svg>
+        <div class="coord" id="coord">x —, y —</div>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--allied)"></i>地点（可拖）</span>
+        <span><i style="background:var(--ice)"></i>施法点和它的圆</span>
+        <span><i style="background:var(--amber)"></i>矿 / 矿场朝向</span>
+        <span><i style="background:#222;border:1px solid #fff"></i>油井</span>
+        <span><i style="background:var(--enemy)"></i>不合规的地方</span>
+        <span><i style="background:var(--prop)"></i>改动提议</span>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="sheet">
+        <h2>改动提议</h2>
+        <div id="slip"><p class="note" id="hint"></p></div>
+        <p class="status" id="dbstatus">正在连接提议存储…</p>
+        <ul class="list" id="props"></ul>
+      </div>
+      <div class="sheet">
+        <h2>规则检查</h2>
+        <p class="note" id="rulenote"></p>
+        <div class="rules" id="rules"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sheet" aria-label="模拟器时间轴">
+    <div class="loghead">
+      <div><h2>模拟器时间轴</h2><p class="note" id="ending"></p></div>
+      <label class="note">只看 <select id="kind"><option value="">全部</option></select></label>
+    </div>
+    <div class="log"><table><tbody id="log"></tbody></table></div>
+  </section>
+</div>
+
+<script>
+const D = __DATA__;
+const IMG = "__IMG__";
+const $ = (id) => document.getElementById(id);
+const NS = "http://www.w3.org/2000/svg";
+const [X0, Y0, X1, Y1] = D.world;
+const W = X1 - X0, H = Y1 - Y0;
+const sx = (x) => x - X0, sy = (y) => Y1 - y;
+const wx = (px) => px + X0, wy = (py) => Y1 - py;
+const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+const r0 = (v) => Math.round(v);
+function el(tag, attrs, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+
+// ---- header ---------------------------------------------------------------------------------------------------------
+document.title = `${D.level.toUpperCase()} 地图改动台`;
+$("eyebrow").textContent = `${D.mod} · 地图模块 maps/${D.map}.py · 能改的地图页（ADR 0017）`;
+$("title").textContent = `${D.level.toUpperCase()} 地图改动台`;
+const ruleBad = D.rules.rules.reduce((n, r) => n + r.problems.length, 0);
+$("summary").innerHTML = "";
+const pill = (cls, text) => { const s = document.createElement("span"); s.className = `pill ${cls}`; s.textContent = text; $("summary").appendChild(s); };
+pill(D.rules.total.length ? "bad" : "ok", `contract: ${D.rules.show}`);
+pill(ruleBad ? "bad" : "ok", `画在图上的规则问题 ${ruleBad}`);
+pill("", `地点 ${D.sites.length} · 物体 ${D.map_objects.length + D.objects.length} · 布景 ${D.scenery.length}`);
+
+// ---- map ------------------------------------------------------------------------------------------------------------
+const svg = $("map");
+svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+if (IMG) el("image", { href: IMG, x: 0, y: 0, width: W, height: H, preserveAspectRatio: "none" }, svg);
+else el("rect", { x: 0, y: 0, width: W, height: H, fill: "#9fb4c4" }, svg);
+const G = {};
+for (const k of ["areas", "borders", "objects", "guides", "sites", "problems", "props", "draft"]) G[k] = el("g", { "data-layer": k }, svg);
+
+for (const [k, b] of Object.entries(D.borders)) {
+  if (k === "whole") continue;
+  el("rect", { x: sx(b[0]), y: sy(b[3]), width: b[2] - b[0], height: b[3] - b[1], fill: "none", stroke: "#fff",
+    "stroke-width": 6, "stroke-dasharray": "40 24", opacity: .55 }, G.borders);
+}
+for (const a of D.areas) {
+  el("polygon", { points: a.pts.map(([x, y]) => `${sx(x)},${sy(y)}`).join(" "), fill: "rgba(255,200,60,.12)",
+    stroke: "rgba(255,200,60,.8)", "stroke-width": 4 }, G.areas);
+}
+G.areas.style.display = "none";
+
+const OBJ = { ore: ["#e0a91d", 34], oil: ["#1d1d1d", 34], bridge: ["#888", 0], wall: ["#cfc7b8", 10], ice: ["#7fd8ea", 18], thing: ["#ffffff", 12] };
+for (const o of [...D.map_objects, ...D.objects]) {
+  const [c, r] = OBJ[o.kind] || OBJ.thing;
+  if (!r) continue;
+  const fill = o.side === "s1" && o.kind === "thing" ? "var(--enemy)" : o.side === "p1" && o.kind === "thing" ? "var(--allied)" : c;
+  const e = el("circle", { cx: sx(o.x), cy: sy(o.y), r, fill, stroke: "#fff", "stroke-width": o.kind === "oil" ? 6 : 3, opacity: .92 }, G.objects);
+  el("title", {}, e).textContent = `${o.t}${o.name ? ` "${o.name}"` : ""} (${r0(o.x)}, ${r0(o.y)})${o.site ? `，按地点 ${o.site}` : ""}`;
+}
+
+// guides: what the rules measure
+const gd = D.guides;
+for (const b of gd.bases) {
+  el("circle", { cx: sx(b.x), cy: sy(b.y), r: b.ore, fill: "none", stroke: "var(--amber)", "stroke-width": 5, "stroke-dasharray": "18 18", opacity: .6 }, G.guides);
+  if (b.oil) el("circle", { cx: sx(b.x), cy: sy(b.y), r: b.oil, fill: "rgba(192,57,43,.08)", stroke: "var(--enemy)", "stroke-width": 4, opacity: .7 }, G.guides);
+}
+for (const p of gd.pads) {
+  el("line", { x1: sx(p.x), y1: sy(p.y), x2: sx(p.fx), y2: sy(p.fy), stroke: "var(--amber)", "stroke-width": 10, "stroke-linecap": "round" }, G.guides);
+  el("circle", { cx: sx(p.fx), cy: sy(p.fy), r: p.slack, fill: "none", stroke: "var(--amber)", "stroke-width": 5 }, G.guides);
+}
+for (const c of gd.casts) {
+  const e = el("circle", { cx: sx(c.x), cy: sy(c.y), r: c.r, fill: "rgba(99,207,227,.22)", stroke: "var(--ice)", "stroke-width": 6 }, G.guides);
+  el("title", {}, e).textContent = `施法点 ${c.site}（${c.mark}），圆半径 ${c.r}`;
+}
+
+// sites (draggable)
+const siteEls = {};
+const LABEL = 46;
+for (const s of D.sites) {
+  if (s.r >= 1000) continue;
+  const g = el("g", { class: "site", tabindex: 0, "data-k": s.k, style: "cursor:grab" }, G.sites);
+  if (s.r) el("circle", { cx: sx(s.x), cy: sy(s.y), r: s.r, fill: "rgba(36,94,166,.10)", stroke: "var(--allied)", "stroke-width": 3, opacity: .7, "pointer-events": "none" }, g);
+  el("circle", { class: "dot", cx: sx(s.x), cy: sy(s.y), r: 26, fill: s.cast ? "var(--ice)" : "var(--allied)", stroke: "#fff", "stroke-width": 6 }, g);
+  const t = el("text", { class: "lab", x: sx(s.x) + 34, y: sy(s.y) + 14, "font-size": LABEL, "pointer-events": "none" }, g);
+  t.textContent = s.k;
+  el("title", {}, g).textContent = `${s.k} (${r0(s.x)}, ${r0(s.y)})${s.r ? `，半径 ${s.r}` : ""}\n${s.what}`;
+  siteEls[s.k] = g;
+}
+
+// rule problems
+const probEls = [];
+let pn = 0;
+for (const r of D.rules.rules) for (const p of r.problems) {
+  pn++;
+  if (!p.at) { probEls.push(null); continue; }
+  const g = el("g", {}, G.problems);
+  el("circle", { cx: sx(p.at[0]), cy: sy(p.at[1]), r: 70, fill: "none", stroke: "var(--enemy)", "stroke-width": 12 }, g);
+  const t = el("text", { x: sx(p.at[0]) + 80, y: sy(p.at[1]) - 50, "font-size": 56 }, g); t.textContent = `⚠${pn}`;
+  el("title", {}, g).textContent = `${r.label}：${p.text}`;
+  probEls.push(g);
+}
+
+for (const [id, layer] of [["l-labels", null], ["l-objects", "objects"], ["l-guides", "guides"], ["l-areas", "areas"], ["l-props", "props"]]) {
+  $(id).addEventListener("change", (e) => {
+    if (layer) G[layer].style.display = e.target.checked ? "" : "none";
+    else for (const t of svg.querySelectorAll(".lab")) t.style.display = e.target.checked ? "" : "none";
+  });
+}
+
+// ---- interaction ----------------------------------------------------------------------------------------------------
+let mode = "move", draft = null, drag = null;
+const HINT = { move: "按住一个地点拖到新位置，松手后写一句为什么，再保存提议。",
+  block: "在图上依次点下挡路线的各个点，点完按“画完了”。", note: "在图上点一下要批注的位置，然后写批注。" };
+function setMode(m) {
+  mode = m; cancelDraft();
+  for (const b of document.querySelectorAll("[data-mode]")) b.setAttribute("aria-pressed", String(b.dataset.mode === m));
+  svg.setAttribute("class", `mode-${m}`);
+}
+for (const b of document.querySelectorAll("[data-mode]")) b.addEventListener("click", () => setMode(b.dataset.mode));
+function world(ev) {
+  const pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
+  const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+  return [wx(p.x), wy(p.y)];
+}
+svg.addEventListener("pointermove", (ev) => {
+  const [x, y] = world(ev);
+  $("coord").textContent = `x ${r0(x)}, y ${r0(y)}`;
+  if (drag) { drag.to = [x, y]; drawDraft(); }
+});
+svg.addEventListener("pointerdown", (ev) => {
+  const [x, y] = world(ev);
+  if (mode === "move") {
+    const g = ev.target.closest(".site");
+    if (!g) return;
+    const s = D.sites.find((q) => q.k === g.dataset.k);
+    drag = { kind: "move", site: s.k, from: [s.x, s.y], to: [s.x, s.y] };
+    draft = drag; svg.setPointerCapture(ev.pointerId); drawDraft();
+  } else if (mode === "block") {
+    if (!draft) draft = { kind: "block", points: [] };
+    draft.points.push([r0(x), r0(y)]); drawDraft(); showSlip();
+  } else if (mode === "note") {
+    draft = { kind: "note", at_xy: [r0(x), r0(y)] }; drawDraft(); showSlip();
+  }
+});
+svg.addEventListener("pointerup", () => {
+  if (!drag) return;
+  const d = drag; drag = null;
+  if (Math.hypot(d.to[0] - d.from[0], d.to[1] - d.from[1]) < 15) { cancelDraft(); return; }
+  d.to = [r0(d.to[0]), r0(d.to[1])]; drawDraft(); showSlip();
+});
+function nearest(x, y, skip) {
+  let best = null;
+  for (const s of D.sites) {
+    if (s.r >= 1000 || s.k === skip) continue;
+    const d = Math.hypot(s.x - x, s.y - y);
+    if (!best || d < best[1]) best = [s.k, d];
+  }
+  return best;
+}
+function describe(p) {
+  if (p.kind === "move") {
+    const n = nearest(p.to[0], p.to[1], p.site);
+    return `挪地点 ${p.site}：(${r0(p.from[0])}, ${r0(p.from[1])}) → (${p.to[0]}, ${p.to[1]})，挪了 ${r0(Math.hypot(p.to[0] - p.from[0], p.to[1] - p.from[1]))}` +
+      (n ? `；新位置离 ${n[0]} ${r0(n[1])}` : "");
+  }
+  if (p.kind === "block") {
+    let len = 0; for (let i = 1; i < p.points.length; i++) len += Math.hypot(p.points[i][0] - p.points[i - 1][0], p.points[i][1] - p.points[i - 1][1]);
+    return `挡路线 ${p.points.length} 个点，长 ${r0(len)}，从 (${p.points[0]}) 到 (${p.points[p.points.length - 1]})`;
+  }
+  const n = nearest(p.at_xy[0], p.at_xy[1]);
+  return `批注 (${p.at_xy[0]}, ${p.at_xy[1]})` + (n ? `，离 ${n[0]} ${r0(n[1])}` : "");
+}
+function shape(p, layer, color, faint) {
+  const g = el("g", { "data-id": p.id || "" }, layer);
+  const op = faint ? .55 : 1;
+  if (p.kind === "move") {
+    el("line", { x1: sx(p.from[0]), y1: sy(p.from[1]), x2: sx(p.to[0]), y2: sy(p.to[1]), stroke: color, "stroke-width": 10, "stroke-dasharray": "26 14", opacity: op }, g);
+    el("circle", { cx: sx(p.to[0]), cy: sy(p.to[1]), r: 34, fill: "none", stroke: color, "stroke-width": 10, opacity: op }, g);
+    const t = el("text", { x: sx(p.to[0]) + 42, y: sy(p.to[1]) + 16, "font-size": 46 }, g); t.textContent = `→ ${p.site}`;
+  } else if (p.kind === "block") {
+    el("polyline", { points: p.points.map(([x, y]) => `${sx(x)},${sy(y)}`).join(" "), fill: "none", stroke: color, "stroke-width": 22,
+      "stroke-linecap": "round", "stroke-linejoin": "round", opacity: op }, g);
+    for (const [x, y] of p.points) el("circle", { cx: sx(x), cy: sy(y), r: 14, fill: "#fff", stroke: color, "stroke-width": 6 }, g);
+  } else {
+    const [x, y] = p.at_xy;
+    el("path", { d: `M${sx(x)},${sy(y)} l-26,-62 a30,30 0 1 1 52,0 z`, fill: color, stroke: "#fff", "stroke-width": 5, opacity: op }, g);
+    el("circle", { cx: sx(x), cy: sy(y) - 78, r: 11, fill: "#fff" }, g);
+  }
+  if (p.why) el("title", {}, g).textContent = p.why;
+  return g;
+}
+function drawDraft() { G.draft.innerHTML = ""; if (draft) shape(draft, G.draft, "var(--prop)", false); }
+function cancelDraft() { draft = null; drag = null; drawDraft(); showSlip(); }
+function showSlip() {
+  const box = $("slip"); box.innerHTML = "";
+  if (!draft || (draft.kind === "move" && drag)) {
+    const p = document.createElement("p"); p.className = "note"; p.id = "hint"; p.textContent = HINT[mode]; box.appendChild(p); return;
+  }
+  const s = document.createElement("div"); s.className = "slip";
+  const d = document.createElement("div"); d.innerHTML = "<b>新提议</b> "; d.appendChild(document.createTextNode(describe(draft)));
+  const ta = document.createElement("textarea"); ta.id = "why"; ta.placeholder = draft.kind === "note" ? "批注写什么" : "为什么要这样改";
+  const row = document.createElement("div"); row.className = "row";
+  if (draft.kind === "block") {
+    const done = document.createElement("button"); done.textContent = "撤一个点";
+    done.onclick = () => { draft.points.pop(); if (!draft.points.length) cancelDraft(); else { drawDraft(); showSlip(); } };
+    row.appendChild(done);
+  }
+  const save = document.createElement("button"); save.className = "primary"; save.id = "save";
+  save.textContent = draft.kind === "block" ? "画完了，保存提议" : "保存提议";
+  save.disabled = !db || (draft.kind === "block" && draft.points.length < 2);
+  save.onclick = () => submit(ta.value.trim());
+  const no = document.createElement("button"); no.textContent = "取消"; no.onclick = cancelDraft;
+  row.append(save, no);
+  s.append(d, ta, row); box.appendChild(s);
+  if (draft.kind !== "block") ta.focus();
+}
+showSlip();
+
+// ---- proposal store (db) --------------------------------------------------------------------------------------------
+let db = null, me = "", props = [], selected = null;
+function status(text, err) { const s = $("dbstatus"); s.textContent = text; s.className = "status" + (err ? " err" : ""); }
+async function submit(why) {
+  if (!db || !draft) return;
+  const p = { ...draft, why, level: D.level, map: D.map, at: new Date().toISOString(), by: me, status: "open" };
+  if (p.kind === "move") p.from = [r0(p.from[0]), r0(p.from[1])];
+  const btn = $("save"); if (btn) btn.disabled = true;
+  try { await db.collection("proposals").add(p); status("已保存。关卡线用 mappage.py --pull 读取。"); cancelDraft(); }
+  catch (e) { status(`没存上：${e && e.message || e}。你可能只有查看权限。`, true); if (btn) btn.disabled = false; }
+}
+async function remove(id) {
+  try { await db.collection("proposals").doc(id).delete(); }
+  catch (e) { status(`删不掉：${e && e.message || e}`, true); }
+}
+function renderProps() {
+  G.props.innerHTML = "";
+  const ul = $("props"); ul.innerHTML = "";
+  if (!props.length) { const li = document.createElement("li"); li.style.borderLeftColor = "var(--rule)"; li.style.cursor = "default";
+    li.innerHTML = '<span class="why">还没有提议。用上面的工具在图上拖、画、钉，第一条就会出现在这里。</span>'; ul.appendChild(li); return; }
+  props.forEach((p, i) => {
+    shape(p, G.props, "var(--prop)", selected && selected !== p.id);
+    const li = document.createElement("li"); if (selected === p.id) li.className = "on";
+    const k = document.createElement("span"); k.className = "k"; k.textContent = `#${i + 1} · ${(p.at || "").slice(0, 16).replace("T", " ")}`;
+    const w = document.createElement("span"); w.textContent = describe(p);
+    const y = document.createElement("span"); y.className = "why"; y.textContent = p.why ? `“${p.why}”` : "（没写原因）";
+    const x = document.createElement("button"); x.className = "x"; x.textContent = "撤回";
+    x.onclick = (e) => { e.stopPropagation(); remove(p.id); };
+    li.append(k, w, y, x);
+    li.onclick = () => { selected = selected === p.id ? null : p.id; renderProps(); };
+    ul.appendChild(li);
+  });
+}
+renderProps();
+(async () => {
+  const timer = setTimeout(() => status("提议存储没有响应：页面可以看，但存不了提议。", true), 10000);
+  const [d, u] = await Promise.all([window.claude?.use?.("db") ?? null, window.claude?.use?.("user") ?? null]);
+  if (u) { try { me = await u.id() || ""; } catch (e) { me = ""; } }
+  if (!d) { clearTimeout(timer); status("这个视图里不能存提议（未登录或没开放存储），只能看。", true); return; }
+  db = d; showSlip();
+  db.collection("proposals").orderBy("at").onSnapshot((snap) => {
+    clearTimeout(timer);
+    props = snap.docs.map((s) => ({ ...s.data(), id: s.id })).filter((p) => p.level === D.level);
+    status(`${props.length} 条提议。`);
+    renderProps();
+  }, (e) => { clearTimeout(timer); status(`读不到提议：${e && e.message || e}`, true); });
+})();
+
+// ---- rules ----------------------------------------------------------------------------------------------------------
+$("rulenote").textContent = `和 build.py ${D.level} --show 的 contract 同一套检查（${D.rules.total.length ? D.rules.total.length + " 条问题" : "全部通过"}）。图上的施法圆、矿场朝向线和营地圈是这些规则量的东西，合规时也画出来。`;
+let k = 0;
+for (const r of D.rules.rules) {
+  const div = document.createElement("div"); div.className = "rule";
+  const n = document.createElement("span"); n.className = "n " + (r.problems.length ? "bad" : "ok"); n.textContent = r.problems.length ? `✗ ${r.problems.length}` : "✓";
+  const l = document.createElement("span"); l.textContent = r.label;
+  const w = document.createElement("span"); w.className = "w"; w.textContent = `${r.what}（contract.${r.fn}）`;
+  div.append(n, l, w);
+  if (r.problems.length) {
+    const ul = document.createElement("ul");
+    for (const p of r.problems) {
+      const idx = k++;
+      const li = document.createElement("li"); li.textContent = `⚠${idx + 1} ${p.text}` + (p.at ? "" : "（图上没有位置）");
+      li.onclick = () => { const g = probEls[idx]; if (g) { g.classList.remove("flash"); void g.getBBox(); g.classList.add("flash"); } };
+      ul.appendChild(li);
+    }
+    div.appendChild(ul);
+  }
+  $("rules").appendChild(div);
+}
+
+// ---- timeline -------------------------------------------------------------------------------------------------------
+$("ending").textContent = `${D.timeline.ending}。玩家什么都不做时，关卡脚本按模拟器跑出来的事件。`;
+const kinds = [...new Set(D.timeline.rows.map((r) => r.k))];
+for (const kk of kinds) { const o = document.createElement("option"); o.value = kk; o.textContent = kk; $("kind").appendChild(o); }
+function renderLog() {
+  const f = $("kind").value, tb = $("log"); tb.innerHTML = "";
+  for (const r of D.timeline.rows) {
+    if (f && r.k !== f) continue;
+    const tr = document.createElement("tr");
+    for (const [c, v] of [["t", mmss(r.t)], ["k", r.k], ["x", r.x]]) { const td = document.createElement("td"); td.className = c; td.textContent = v; tr.appendChild(td); }
+    tb.appendChild(tr);
+  }
+}
+$("kind").addEventListener("change", renderLog);
+renderLog();
+</script>
