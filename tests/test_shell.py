@@ -13,6 +13,7 @@ sys.path.insert(0, str(ROOT / 'experimental' / 'campaign'))
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'experimental' / 'video'))
 import apt_textures  # noqa: E402
+import package  # noqa: E402  (experimental/cnv)
 import make_campnew2 as c2  # noqa: E402
 import shell  # noqa: E402
 
@@ -222,3 +223,74 @@ def test_the_chapter_lists_faction_icons_are_all_repainted():
 def test_the_talking_head_is_made_at_retails_size():
     import to_vp6  # noqa: F401  (experimental/video)
     assert to_vp6.SIZES['head'] == shell.HEAD_SIZE == (512, 288)
+
+
+# package.build_mod (ADR 0016): the one outlet of packaging pours a ModSpec into the make_campnew pipeline and puts the
+# pipeline's globals back afterwards, so two builds in one process do not carry into each other.
+
+
+def test_with_more_appends_tuples_and_merges_dicts():
+    spec = package.ModSpec(name='CampX', extra_own=(b'a',), strings={'A': '1', 'B': '2'}, slot=None)
+    more = package.with_more(spec, extra_own=[b'b'], strings={'B': '3', 'C': '4'}, slot={'slot': 4})
+    assert more.extra_own == (b'a', b'b') and list(more.strings.items()) == [('A', '1'), ('B', '3'), ('C', '4')]
+    assert more.slot == {'slot': 4} and spec.extra_own == (b'a',) and spec.strings == {'A': '1', 'B': '2'}
+
+
+def test_two_builds_in_one_process_do_not_carry_over(tmp_path, monkeypatch):
+    import importlib
+    chain = [importlib.import_module(n) for n in package.CHAIN]
+    c2, c3, c4, c6, c7, c18 = chain
+    if not os.path.isdir(c2.SDK):
+        pytest.skip('no SDK')
+    seen = []
+    monkeypatch.setattr(package, 'sdk_build_lock', lambda name: (lambda: None))
+
+    def main():                                 # what the pipeline would build from, instead of building it
+        seen.append((c2.NAME, c2.OUT, list(c7.EXTRA_OWN), list(c7.EXTRA_ALL), dict(c3.STRINGS), c2.SHELL,
+                     list(c4.EXTRA_FILES), list(c2.EXTRA_STATIC)))
+        os.makedirs(c4.OUT)
+    monkeypatch.setattr(c4, 'main', main)
+    before = {m: dict(vars(m)) for m in chain}
+    own_before, strings_before = list(c7.EXTRA_OWN), dict(c3.STRINGS)
+    spec = package.ModSpec(name='CampX', extra_own=(b'GameObject:X',), extra_all=('DATA:x.xml',),
+                           strings={'NAME:X': 'x'}, slot={'slot': 4}, big_files=(('data\\x', b'x'),))
+    for k in range(2):
+        package.build_mod(spec, str(tmp_path / f'out{k}'))
+    assert seen[0][2:] == seen[1][2:], 'the second build saw what the first one added'
+    assert seen[0][0] == 'CampX' and seen[0][2][-1] == b'GameObject:X' and seen[0][5] == {'slot': 4}
+    assert seen[0][4]['NAME:X'] == 'x' and ('data\\x', b'x') in seen[0][6]
+    for m in chain:                             # every global back to the object it was, with its contents
+        now = vars(m)
+        assert set(now) == set(before[m]), m.__name__
+        assert all(now[k] is v for k, v in before[m].items() if k != 'main'), m.__name__
+    assert c7.EXTRA_OWN == own_before and c3.STRINGS == strings_before
+
+
+def test_a_spec_without_launcher_leaves_no_bat(tmp_path, monkeypatch):
+    import importlib
+    c2, c4 = importlib.import_module('make_campnew2'), importlib.import_module('make_campnew4')
+    if not os.path.isdir(c2.SDK):
+        pytest.skip('no SDK')
+    monkeypatch.setattr(package, 'sdk_build_lock', lambda name: (lambda: None))
+
+    def main():                                 # the pipeline writes its launcher next to the skudef
+        os.makedirs(c4.OUT)
+        open(os.path.join(c4.OUT, f'Play_{c4.NAME}.bat'), 'w').close()
+    monkeypatch.setattr(c4, 'main', main)
+    for launcher in (True, False):
+        out = str(tmp_path / str(launcher))
+        package.build_mod(package.ModSpec(name='CampX', launcher=launcher), out)
+        assert os.path.isfile(os.path.join(out, 'Play_CampX.bat')) == launcher
+
+
+def test_layers_go_on_in_order_after_the_mission():
+    from missions import liberty_bench
+    seen = []
+
+    def layer(tag):
+        def add(spec):
+            seen.append((tag, len(spec.map_edits)))
+            return package.with_more(spec, map_edits=(tag,))
+        return add
+    spec = package.spec_of(liberty_bench.mission(riders=True), layers=(layer('a'), layer('b')))
+    assert seen == [('a', 1), ('b', 2)] and spec.map_edits[1:] == ('a', 'b')

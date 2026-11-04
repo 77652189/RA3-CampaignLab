@@ -85,7 +85,17 @@ class ModSpec:
     mission (+ test); a layer -- the campaign shell (shell.contribute), later a check -- is a function spec -> spec that
     only adds to it (with_more), and never reaches into another module. build_mod pours it into the CampNew7 pipeline.
     Order is kept everywhere it reaches the mod: strings go into the csf in insertion order, packs into the static
-    stream in tuple order."""
+    stream in tuple order.
+
+    A layer (spec_of's layers, applied in order after the shell's) keeps to this:
+    - it adds through with_more: map_edits / big_files / checks / extra_* get items after the spec's own (so a check's
+      map edit runs after the mission's write_map and sees the mission whole), strings / overrides get new keys;
+    - it rewrites no label, template or file another layer put in (a key it had, a big path twice) -- the shell's own
+      exceptions are the video pack (the mission's clips merged into one pack, clips kept), slot and launcher;
+    - it leaves name, mission, title, map_name, border_names, unit_files and templates as they were;
+    - a check (ADR 0016 phase 2, build.py --shell --check) is one such layer on top of the shell's: its scripts as one
+      more map edit, its counters' labels as strings, its expectations in checks; the mission it rides on is the one
+      the player gets (test edition = release edition + observation)."""
     name: str                       # the mod folder (at most MAX_NAME characters, no underscore)
     mission: str = ''               # the mission it carries (mm.name) and its title (the plan's 名字)
     title: str = ''
@@ -117,9 +127,10 @@ def with_more(spec, **more):
     return replace(spec, **changes)
 
 
-def spec_of(mission, test=None, shell=False, name=None):
+def spec_of(mission, test=None, shell=False, name=None, layers=()):
     """The ModSpec of `mission` (+ `test`): its units, assets, strings, music, voice and movies and the map edit that
-    writes it; shell (an edition's name, langs.py: 'zh', 'intl'; True = zh) adds the campaign shell's layer."""
+    writes it; shell (an edition's name, langs.py: 'zh', 'intl'; True = zh) adds the campaign shell's layer, then each
+    of `layers` (spec -> spec, ModSpec says what a layer may do) in order."""
     mm = merged(mission, test)
     name = name or mm.name
     broken = contract(mm)
@@ -165,14 +176,16 @@ def spec_of(mission, test=None, shell=False, name=None):
     if shell:
         import shell as shell_layer
         spec = shell_layer.contribute(spec, shell if isinstance(shell, str) else 'zh')
+    for layer in layers:
+        spec = layer(spec)
     return spec
 
 
-def assemble(mission, test=None, name=None, shell=False):
+def assemble(mission, test=None, name=None, shell=False, layers=()):
     """Write the units, set the pipeline up for this mission (+ test) and build the mod; returns the mod folder.
     shell: the campaign shell (shell.py, ADR 0014): the mission in its slot of the Allied campaign, the other eight slots ours
     too, all with our own front end; the edition's name (langs.py: 'zh', 'intl') for the words of the shell, True = zh."""
-    spec = spec_of(mission, test, shell, name)
+    spec = spec_of(mission, test, shell, name, layers)
     return build_mod(spec, mod_folder(spec.name))
 
 
