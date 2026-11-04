@@ -366,7 +366,29 @@ def hold(m):
     return t
 
 
-HEADS_AT = 20.0                                 # heads: the convoy halts at once, the harbour scene (the first line with a head)
+LOSE_AT = 30.0                                  # lose: truck 1 is killed this long after the opening scene
+
+
+def lose(m):
+    """I7 (K6): a truck lost on the road, the two left both drive (user 2026-11-03: two trucks left, one drove). Truck 1
+    is killed LOSE_AT s in, with the convoy on the road; trucks 2 and 3 are counted out of the convoy's start area, and
+    both must be out of it a minute later (batched, the last waits till 110 s: one lost, the rest go now). Acts on the
+    trucks, so on the shell it is built with --unit."""
+    t = scene(m, park=False, trucks_up=False, long_run=True)
+    t.areas['Test Start Area'] = square(*m.site('convoy start'), 250.0)
+    left = [m.role(f'truck {j}').name for j in (2, 3)]
+    t.counters.append(('Test Left', '开出去的车'))
+    t.scripts += [Script('Test - left zero', [], [('SET_COUNTER', 'Test Left', 0)], once=False)]
+    t.scripts += [Script(f'Test - left {k}', [('NAMED_OUTSIDE_AREA', n, 'Test Start Area')],
+                         [('INCREMENT_COUNTER', 1, 'Test Left')], once=False) for k, n in enumerate(left)]
+    t.scripts += [Script('Test - lose set', AFTER, [('SET_MILLISECOND_TIMER', 'Test - lose', LOSE_AT)]),
+                  Script('Test - lose', [('TIMER_EXPIRED', 'Test - lose')], [('NAMED_KILL', m.role('truck 1').name)])]
+    t.expect += [('开出去的车', LOSE_AT + 90, 'ever==', 2)]
+    t.bench = [('bench_watch', dict(seconds=LOSE_AT + 100, every=4, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+HEADS_AT = 20.0                                # heads: the convoy halts at once, the harbour scene (the first line with a head)
 
 
 def heads(m):
@@ -482,6 +504,6 @@ def place_mouths(m):
 
 # the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
 CHECKS = {
-    'a4': {'horn': horn, 'detour': detour, 'queue': queue, 'smash': smash, 'derrick': derrick, 'demo': demo, 'heads': heads, 'melt': melt, 'idle': idle, 'hold': hold, 'win': win, 'signs': signs, 'smoke': smoke, 'place': place, 'placem': place_mouths},
-    'a4_intl': {'horn': horn, 'detour': detour, 'queue': queue, 'smash': smash, 'derrick': derrick, 'demo': demo, 'heads': heads, 'melt': melt, 'idle': idle, 'hold': hold, 'win': win, 'signs': signs, 'smoke': smoke, 'place': place, 'placem': place_mouths},
+    'a4': {'lose': lose, 'horn': horn, 'detour': detour, 'queue': queue, 'smash': smash, 'derrick': derrick, 'demo': demo, 'heads': heads, 'melt': melt, 'idle': idle, 'hold': hold, 'win': win, 'signs': signs, 'smoke': smoke, 'place': place, 'placem': place_mouths},
+    'a4_intl': {'lose': lose, 'horn': horn, 'detour': detour, 'queue': queue, 'smash': smash, 'derrick': derrick, 'demo': demo, 'heads': heads, 'melt': melt, 'idle': idle, 'hold': hold, 'win': win, 'signs': signs, 'smoke': smoke, 'place': place, 'placem': place_mouths},
 }

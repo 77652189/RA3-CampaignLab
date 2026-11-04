@@ -61,11 +61,14 @@ def test_the_convoy_is_the_allys_and_sets_off_in_batches():
     m = small(机关={'车队': {'类型': '车队', '出发': '开局 + 0:30', '车': '护送队', '分批': [0, 50, 110]}})
     assert {m.cast[f'truck {j}'].side for j in (1, 2, 3)} == {'s2'}
     rolls = [s for s in m.scripts if s.name.startswith('CNV ZZ - Roll ') and s.name[-1].isdigit()]
-    assert [s.do for s in rolls] == [[('MOVE_NAMED_UNIT_TO', f'UNIT - CNV ZZ Truck {j}', 'CNV ZZ Exit')] for j in (1, 2, 3)]
+    team = m.teams['ConvoyZZ']                                                  # the convoy is one team: ordered as one
+    assert team.startswith(m.player('s2'))
+    assert [s.do for s in rolls] == [[('UNIT_SET_TEAM', f'UNIT - CNV ZZ Truck {j}', team),
+                                      ('MOVE_TEAM_TO', team, 'CNV ZZ Exit')] for j in (1, 2, 3)]
     assert [next(c for c in s.when if c[0] == 'FLAG' and '_Go_' in c[1]) for s in rolls] == \
         [('FLAG', f'CNV_ZZ_Go_{j}', 1) for j in (1, 2, 3)]
     roll = next(s for s in m.scripts if s.name == 'CNV ZZ - Roll')
-    assert not any(a[0] == 'MOVE_NAMED_UNIT_TO' for a in roll.do)               # only the tick again
+    assert not any(a[0] in ('UNIT_SET_TEAM', 'MOVE_TEAM_TO') for a in roll.do)     # only the tick again
     names = [s.name for s in m.scripts]
     assert names.index('CNV ZZ - Roll 3') < names.index('CNV ZZ - Roll')        # the moves before the timer is reset
     go = {s.name: s for s in m.scripts if s.name.startswith('CNV ZZ - Convoy go ')}
@@ -101,7 +104,7 @@ def test_the_enemy_ai_lets_kinds_go_step_by_step():
 def test_the_convoy_together_by_default_and_a_wrong_batch():
     m = small(机关={'车队': {'类型': '车队', '出发': '开局 + 0:30'}})
     roll = next(s for s in m.scripts if s.name == 'CNV ZZ - Roll')
-    assert sum(a[0] == 'MOVE_NAMED_UNIT_TO' for a in roll.do) == 3
+    assert sum(a[0] == 'UNIT_SET_TEAM' for a in roll.do) == 3 and sum(a[0] == 'MOVE_TEAM_TO' for a in roll.do) == 1
     assert m.cast['truck 1'].side == 'p1'
     with pytest.raises(plan.PlanError):
         small(机关={'车队': {'类型': '车队', '出发': '开局 + 0:30', '分批': [0, 50]}})

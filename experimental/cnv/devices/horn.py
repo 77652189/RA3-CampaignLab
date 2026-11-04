@@ -512,9 +512,8 @@ class Horn(Device):
         for levels, lv in self.variants(many):
             names = [f'UNIT - CNV {tag} Boat {n}-{j}' for j in range(1, many[lv] + 1)]
             out.append(Script(f'CNV {tag} - Boats {n}{self.lvname(levels)}', [('FLAG', self.blow('L', n), 1)],
-                              [a for b in names for a in (
-                                  ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', b, boat, ctx.team('s1'), ctx.mark_of('sea')),
-                                  ('MOVE_NAMED_UNIT_TO', b, ctx.mark_of('shore')))], levels=levels))
+                              [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', b, boat, ctx.team('s1'), ctx.mark_of('sea'))
+                               for b in names] + ctx.order('move', names, ctx.mark_of('shore'), 's1'), levels=levels))
         return out
 
     def ghost_scripts(self):
@@ -551,10 +550,10 @@ class Horn(Device):
                 out.append(Script(f'CNV {tag} - King {n}-{j} smashes',
                                   [('FLAG', landed, 1), ('FLAG', picked, 1), ('NAMED_NOT_DESTROYED', ref),
                                    ('NAMED_NOT_DESTROYED', k)],
-                                  ctx.order('attack', [k], ref) + [('SET_FLAG', self.smashing, 1)], once=False))
+                                  ctx.order('attack', [k], ref, 's1') + [('SET_FLAG', self.smashing, 1)], once=False))
                 out += [Script(f'CNV {tag} - King {n}-{j} hunts at {t + 1}',
                                [('FLAG', landed, 1), ('COUNTER', walls, 2, 0), ('NAMED_NOT_DESTROYED', k),
-                                ('TIMER_EXPIRED', cv.timer)] + cv.chase(t), ctx.order('attack', [k], target),
+                                ('TIMER_EXPIRED', cv.timer)] + cv.chase(t), ctx.order('attack', [k], target, 's1'),
                                once=False) for t, target in enumerate(cv.trucks)]
         return out
 
@@ -609,12 +608,12 @@ class Horn(Device):
                    [('SET_FLAG', iced, 1), ('SET_MILLISECOND_TIMER', turn, float(d.get('等', 4.0)))] +
                    fx(shut, smoke=False) +
                    [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', f, kind, team, ctx.mark_of(f'spawn {shut}')) for f in foes] +
-                   [('MOVE_NAMED_UNIT_TO', f, f'CNV {tag} Clear {shut}') for f in foes]),
+                   ctx.order('move', foes, f'CNV {tag} Clear {shut}', 's1')),
             # the foes meet the ice, turn and walk back to the tunnel mouth they came out of (user 2026-11-03: they vanished
             # at the wall); only there do they go down it, and come up at the detour street
             Script(f'CNV {tag} - Demo turn', [('TIMER_EXPIRED', turn), ('FLAG', turned, 0), ('FLAG', self.demo_off, 0)],
                    [('SET_FLAG', turned, 1), ('SET_MILLISECOND_TIMER', gone, DEMO_BACK)] +
-                   [('MOVE_NAMED_UNIT_TO', f, ctx.mark_of(f'spawn {shut}')) for f in foes]),
+                   ctx.order('move', foes, ctx.mark_of(f'spawn {shut}'), 's1')),
             Script(f'CNV {tag} - Demo down', [('TIMER_EXPIRED', gone), ('FLAG', turned, 1), ('FLAG', down, 0),
                                               ('FLAG', self.demo_off, 0)],
                    [('SET_FLAG', down, 1)] + [('NAMED_DELETE', f) for f in foes] + fx(to) +

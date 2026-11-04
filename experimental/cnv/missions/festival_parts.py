@@ -38,6 +38,7 @@ class Convoy:
         self.exit, self.exit_area = f'CNV {tag} Exit', f'CNV {tag} Exit Area'
         self.timer, self.go_timer, self.rolling = f'CNV {tag} Tick', f'CNV {tag} Go', f'CNV_{tag}_Rolling'
         self.arrived, self.losses = f'CNV_{tag}_Arrived', f'CNV_{tag}_Lost'  # ASCII: names go through Latin-1
+        self.crew = 'Convoy' + ''.join(c for c in tag if c.isalnum())      # the key of the trucks' team
         self.leave, self.tick, self.side, self.enter = leave, tick, side, enter
         ctx.waypoint('exit', self.exit, 'road exit')
         ctx.add_area(self.exit_area, square(*ctx.site('road exit'), ctx.where('road exit').r))
@@ -78,8 +79,13 @@ class Convoy:
 
     def roll(self):
         return [Script(f'CNV {self.tag} - Roll', [('FLAG', self.rolling, 1), ('TIMER_EXPIRED', self.timer)],
-                       [('MOVE_NAMED_UNIT_TO', t, self.exit) for t in self.trucks] +
+                       self.order('move', self.trucks, self.exit) +
                        [('SET_MILLISECOND_TIMER', self.timer, self.tick)], once=False)]
+
+    def order(self, kind, trucks, target=None):
+        """The convoy's trucks (or some of them) told what to do: one team for the convoy, so a truck lost leaves the
+        rest all going (I7: two left, one drove) and one let go later joins whoever is driving (ctx.order)."""
+        return self.ctx.order(kind, trucks, target, self.side, crew=self.crew)
 
     def tail(self):
         out = []

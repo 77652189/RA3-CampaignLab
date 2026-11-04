@@ -14,7 +14,9 @@ import os
 
 
 MAX_NAME = 15                           # mod folder names longer than this crash the game at start (see assemble)
-COUNTER_LINES = 4                       # counter / countdown lines that fit on the bench's screen (counters.MAX_LINES)
+TEAM_ORDERS = {'attack': 'TEAM_ATTACK_NAMED', 'guard': 'TEAM_GUARD_AREA', 'hunt': 'TEAM_HUNT', 'move': 'MOVE_TEAM_TO',
+               'attack_move': 'ATTACK_MOVE_TEAM_TO', 'stop': 'TEAM_STOP'}      # Mission.order: kind -> whole-team action
+COUNTER_LINES = 4                      # counter / countdown lines that fit on the bench's screen (counters.MAX_LINES)
 
 
 @dataclasses.dataclass
@@ -258,6 +260,24 @@ class Mission(Part):
             self.teams[key] = f'{owner}/teamCNV{key}'
         return self.teams[key]
 
+    def order(self, kind, names, target=None, side='p1', crew=None):
+        """K6, the one way to tell units what to do (Ctx.order forwards here; ADR 0016): the actions that give the
+        group `names` (of `side`) a whole-team order. The group is a team of the map's own (`crew` names it, else it is
+        named after the set of names), made on first use. Every order first puts each name on the team
+        (UNIT_SET_TEAM), so a member made or released since the last order takes this one as well, and the order is
+        to the team: never one command to one unit (contract.single_orders). kind: attack (target a named unit),
+        guard (target an area), hunt, move / attack_move (target a waypoint), stop (the team's own members: it adds
+        nobody)."""
+        verb = TEAM_ORDERS.get(kind)
+        assert verb, f'order: no kind {kind!r}: {sorted(TEAM_ORDERS)}'
+        names = list(names)
+        if not names:
+            return []
+        team = self.crew(crew or crew_key(names), side)
+        if kind == 'stop':
+            return [(verb, team)]
+        return [('UNIT_SET_TEAM', n, team) for n in names] + [(verb, team) + (() if target is None else (target,))]
+
     def drop_endings(self):
         """The mission without its win / lose scripts (a check that keeps the counters up)."""
         self.scripts = [s for s in self.scripts if s.name not in self.endings]
@@ -323,6 +343,12 @@ class Test(Part):
     counters: list = dataclasses.field(default_factory=list)    # [(counter, label text)] shown bottom left, in order
     bench: list = dataclasses.field(default_factory=list)       # ra3bench calls after bench_start
     expect: list = dataclasses.field(default_factory=list)      # [(label text, from second, op, value)]
+
+def crew_key(names):
+    """The key of the team of a group of named units: 'G' and a digest of the sorted names (letters and digits only)."""
+    import hashlib
+    return 'G' + hashlib.sha1('|'.join(sorted(names)).encode('utf-8')).hexdigest()[:10]
+
 
 def square(x, y, r):
     """A trigger area: the square of half-side r around (x, y), corners counter-clockwise."""

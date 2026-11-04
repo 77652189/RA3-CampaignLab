@@ -69,7 +69,7 @@ class Train(Device):
 
     def action(self, what, args):
         if what == '停下':
-            return [('SET_FLAG', self.halted, 1), ('NAMED_STOP', self.obj)]
+            return [('SET_FLAG', self.halted, 1)] + self.ctx.order('stop', [self.obj], side=self.side)
         if what == '继续':
             return [('SET_FLAG', self.halted, 0)]
         return super().action(what, args)
@@ -77,7 +77,7 @@ class Train(Device):
     def attack(self, names):
         self.attacks += 1
         return [Script(f'CNV {self.ctx.tag} - {self.role} target {self.attacks}', [('TIMER_EXPIRED', self.timer)],
-                       self.ctx.order('attack', names, self.obj), once=False)]
+                       self.ctx.order('attack', names, self.obj, 's1'), once=False)]
 
     def scripts(self):
         import plantime
@@ -92,7 +92,7 @@ class Train(Device):
             out.append(Script(f'CNV {tag} - {self.role} to {k + 1}',
                               [('FLAG', self.rolling, 1), ('FLAG', self.halted, 0), ('FLAG', self.docked, 0),
                                ('TIMER_EXPIRED', self.timer), ('COUNTER', self.stop, 2, k)],
-                              [('MOVE_NAMED_UNIT_TO', train, wp)], once=False))
+                              ctx.order('move', [train], wp, self.side), once=False))
             docks = wait and k + 1 < len(self.route)
             for levels, w in (plantime.by_level(waits) if docks else [(plantime.ALL, 0)]):
                 out.append(Script(f'CNV {tag} - {self.role} at {k + 1}' +
@@ -100,8 +100,8 @@ class Train(Device):
                                   [('FLAG', self.rolling, 1), ('COUNTER', self.stop, 2, k),
                                    ('NAMED_INSIDE_AREA', train, ctx.area(site))],
                                   [('SET_COUNTER', self.stop, k + 1)] +
-                                  ([('SET_FLAG', self.docked, 1), ('NAMED_STOP', train),
-                                    ('SET_MILLISECOND_TIMER', self.dock, w)] if docks else []),
+                                  ([('SET_FLAG', self.docked, 1)] + ctx.order('stop', [train], side=self.side) +
+                                   [('SET_MILLISECOND_TIMER', self.dock, w)] if docks else []),
                                   once=False, levels=levels))
         if wait:
             out.append(Script(f'CNV {tag} - {self.role} leaves', [('FLAG', self.docked, 1),

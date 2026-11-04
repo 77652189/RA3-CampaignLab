@@ -3,7 +3,8 @@ the compiler and the mission, and the three outlets everything a player sees or 
 
   say(key, secs)                 the one way to show a line: the action that puts `key` on the caption strip
   camera(a, secs, in, out)       the camera moves a plan's 镜头 step compiles to (needs the compiler)
-  order(kind, names, target)     the one way to tell named units what to do: 'attack' a named target, 'guard' an area
+  order(kind, names, target)     the one way to tell named units what to do: whole-team orders (attack, guard, hunt,
+                                 move, attack_move, stop), the group made a team of the map's own (K6, G6)
 
 `say` is the one queue (class Talk): a line only raises its flag, and the `CNV <tag> - Say k` script plays it when nobody
 is talking, then holds the floor. The strip stacks lines and clears them all ~5.4 s after the last one came up
@@ -13,12 +14,10 @@ set of things a device used to take from `self.c` (the compiler) and `self.m` (t
 line that forwards, so a device can no longer touch what is not listed. A Ctx made without a compiler (a hand-written
 level has none) answers say / order / tag and the mission's own; a compiler's questions raise PlanError.
 """
-from model import Script
+from model import TEAM_ORDERS, Script
 from plantime import PlanError
 
 CAPTION = 'SHOW_MILITARY_CAPTION'        # the caption action is spelled here and nowhere else (tests/test_architecture G3a)
-ATTACK = 'NAMED_ATTACK_NAMED'
-GUARD = 'UNIT_GUARD_AREA'
 FUNC, CHAT = '功能', '闲话'              # a line's tier (Talk): the plan marks a 功能 line, an unmarked one is 闲话
 NAME = {FUNC: 'func', CHAT: 'chat'}       # a tier in a script's or counter's name (those are Latin-1)
 CHAT_LIFE = 10.0                       # a 闲话 line that waited this long (s) in the queue is dropped
@@ -29,16 +28,6 @@ STRIP_CLEAR = 6.5                       # the caption strip stacks lines and cle
 def caption(key, secs):
     """The action that shows the strip text `key` for `secs` seconds."""
     return (CAPTION, key, secs)
-
-
-def orders(kind, names, target):
-    """The actions that tell each of `names` to attack the named `target` ('attack') or to hold the area `target`
-    ('guard')."""
-    if kind == 'attack':
-        return [(ATTACK, n, target) for n in names]
-    if kind == 'guard':
-        return [(GUARD, n, target) for n in names]
-    raise PlanError(f'order: no kind {kind!r}: attack, guard')
 
 
 class Talk:
@@ -192,8 +181,17 @@ class Ctx:
     def camera(self, a, secs, ease_in, ease_out):
         return self._compiler('camera').camera(a, secs, ease_in, ease_out)
 
-    def order(self, kind, names, target):
-        return orders(kind, names, target)
+    def order(self, kind, names, target=None, side='p1', crew=None):
+        """The one way to tell named units what to do (K6, G6): the actions that give the group `names`, of `side`, a
+        whole-team order (Mission.order: the units join the group's team first, so one made or let go later takes it
+        too). kind: attack (target: a named unit), guard (an area), hunt, move / attack_move (a waypoint), stop (the
+        team's members, no joining). `crew` keys the group's team when several calls must order the same group (a
+        convoy's trucks); else it is named after the set of names."""
+        if kind not in TEAM_ORDERS:
+            raise PlanError(f'order: no kind {kind!r}: {", ".join(TEAM_ORDERS)}')
+        if kind not in ('hunt', 'stop') and target is None:
+            raise PlanError(f'order {kind}: needs a target')
+        return self._m.order(kind, names, target, side, crew)
 
     # ---- the compiler's
     def _compiler(self, what):

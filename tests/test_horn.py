@@ -150,7 +150,8 @@ def test_the_opening_demonstration_ices_a_street_and_the_foes_turn_back_to_the_l
     assert ('FLAG', 'CNV_ZZ_Frozen_V2', 1) in by['CNV ZZ - Demo foes'].when     # the foes are made once the ice stands
     foes = [a[1] for a in by['CNV ZZ - Demo foes'].do if a[0] == 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT']
     walk = by['CNV ZZ - Demo turn'].do                                         # they walk back to the tunnel mouth first
-    assert len(foes) == 2 and [a[1] for a in walk if a[0] == 'MOVE_NAMED_UNIT_TO'] == foes
+    assert len(foes) == 2 and [a[1] for a in walk if a[0] == 'UNIT_SET_TEAM'] == foes       # one team ordered to the mouth
+    assert sum(a[0] == 'MOVE_TEAM_TO' for a in walk) == 1
     assert not any(a[0] == 'NAMED_DELETE' for a in walk)
     turned = by['CNV ZZ - Demo down'].do                                       # ... and go down it
     assert [a[1] for a in turned if a[0] == 'NAMED_DELETE'] == foes

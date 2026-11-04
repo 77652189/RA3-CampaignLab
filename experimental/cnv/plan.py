@@ -626,7 +626,7 @@ class Compiler:
                 raise PlanError(f'action {a!r}: 出动 <role> with 打 <site / role / 猎杀> or 守 <site>')
             if a.get('打') in self.devices:
                 raise PlanError(f'action {a!r}: 出动 can not 打 a device (a wave can)')
-            return self.orders(a, self.part_names(a['出动']), dict(names=[]))
+            return self.orders(a, self.part_names(a['出动']), dict(names=[]), self.m.cast[self.parts(a['出动'])[0]].side)
         if '禁造' in a or '准造' in a:              # the player may (not) build it (retail Brighton Beach)
             return self.bans(a['禁造' if '禁造' in a else '准造'], int('准造' in a))
         if '转给我' in a:
@@ -927,9 +927,8 @@ class Compiler:
                 m.scripts.append(Script(f'CNV {self.tag} - Unattackable {base}', [],
                                         [('UNIT_CHANGE_OBJECT_STATUS', g, 'UNATTACKABLE', 1) for g in objs]))
             if spec.get('守') and role:
-                for nm in self.part_names(role):
-                    m.scripts.append(Script(f'CNV {self.tag} - Guard {nm}', [],
-                                            self.ctx.order('guard', [nm], self.area(spec['守']))))
+                m.scripts.append(Script(f'CNV {self.tag} - Guard {base}', [],
+                                        self.ctx.order('guard', self.part_names(role), self.area(spec['守']), side)))
 
     def place_scenery(self):
         """布景: [{单位, 在: <地点>, 偏移: [[dx, dy], ...], 阵营: 平民, 朝向}] -- unnamed props placed by a site, one per
@@ -1101,23 +1100,23 @@ class Compiler:
         if target in self.devices and not spec.get('守'):
             m.scripts += self.devices[target].attack(sorted(set(w['names'])))
 
-    def orders(self, spec, names, w):
+    def orders(self, spec, names, w, side='s1'):
         w['names'] += names
         target = spec.get('打')
+        order = lambda kind, at=None: self.ctx.order(kind, names, at, side)      # (a wave is the enemy's)
         if spec.get('守'):
-            return self.ctx.order('guard', names, self.area(spec['守'])) if names else []    # (the area is made only for someone)
+            return order('guard', self.area(spec['守'])) if names else []    # (the area is made only for someone)
         if not target or target == '猎杀':
-            return [('NAMED_HUNT', n) for n in names]
+            return order('hunt')
         if target in self.devices:
             return []                               # the device's attack scripts (after all the waves are made)
         if self.parts(target):
             group = self.parts(target)
             if len(group) == 1:
-                t = self.part_names(target)[0]
-                return self.ctx.order('attack', names, t)
+                return order('attack', self.part_names(target)[0])
             # a group: attack-move to where it stands (one named target would leave them idle once it fell)
-            return [('ATTACK_MOVE_NAMED_UNIT_TO', n, self.mark(self.m.cast[group[0]].site)) for n in names]
-        return [('ATTACK_MOVE_NAMED_UNIT_TO', n, self.mark(target)) for n in names]
+            return order('attack_move', self.mark(self.m.cast[group[0]].site))
+        return order('attack_move', self.mark(target))
 
     def compile_rules(self):
         for k, r in enumerate(self.d.get('规则') or []):

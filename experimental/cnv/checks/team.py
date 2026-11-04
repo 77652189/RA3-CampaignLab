@@ -128,5 +128,78 @@ def _control(order):
 named =_control(lambda m, team, names: [('MOVE_NAMED_UNIT_TO', n, m.mark('far')) for n in names])
 attack = _control(lambda m, team, names: [('ATTACK_MOVE_TEAM_TO', team, m.mark('far'))])
 
-CHECKS = {'team': {'once': once, 'tick': tick, 'dead': dead, 'named': named, 'attack': attack},
-          'team_plain': {'named': named}}
+
+def join(m):
+    """The exit's way in (ctx.order): units that were NOT placed on the team join it by UNIT_SET_TEAM in the same script
+    that gives the whole-team order, every 3 s. Run on team_plain (the trucks on the player's default team). The order
+    names late 1 too, which does not exist till 8 s (a name not made yet: no harm?) and is made then on the default
+    team; truck 1 is killed at 12 s (a dead name: no harm?). Do the survivors and late 1 all reach `far`?"""
+    t = Test()
+    team = m.crew('Probe')
+    late = 'UNIT - CNV Probe Late 1'
+    names = [m.role(f'truck {k}').name for k in (1, 2, 3)]
+    _setup(m, t, tick=True, order=[('UNIT_SET_TEAM', n, team) for n in names + [late]] +
+           [('MOVE_TEAM_TO', team, m.mark('far'))])
+    t.scripts += [Script('Test - late', [('TIMER_EXPIRED', 'Test Late Timer')],
+                         [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION', late, m.role('truck 1').template,
+                           m.team('p1'), m.mark('late'), 0.0),
+                          ('SET_MILLISECOND_TIMER', 'Test Kill Timer', KILL_AT - LATE_AT)]),
+                  Script('Test - kill', [('TIMER_EXPIRED', 'Test Kill Timer')], [('NAMED_KILL', names[0])])]
+    _sum(t, 'Test Far', names[1:])
+    _sum(t, 'Test Late', [late])
+    t.counters += [('Test Far', LABELS[0]), ('Test Late', LABELS[1])]
+    t.expect += [(LABELS[0], 0, 'ever==', 2), (LABELS[1], 0, 'ever==', 1)]
+    t.bench = [('bench_watch', dict(seconds=60, every=4, sheet=False, lines=2))]
+    return t
+
+
+def made(m):
+    """A unit made on the team in the SAME script that gives the order, once, at 1 s (a plan's wave: create, then
+    send). Run on team: truck 1-3 are placed on the team, late 1 is made with the order. Does late 1 go?"""
+    t = Test()
+    team = m.teams.get('Probe')
+    late = 'UNIT - CNV Probe Late 1'
+    names = [m.role(f'truck {k}').name for k in (1, 2, 3)]
+    _setup(m, t, tick=False, order=[('CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION', late, m.role('truck 1').template,
+                                     team, m.mark('late'), 0.0), ('MOVE_TEAM_TO', team, m.mark('far'))])
+    _sum(t, 'Test Far', names)
+    _sum(t, 'Test Late', [late])
+    t.counters += [('Test Far', LABELS[0]), ('Test Late', LABELS[1])]
+    t.expect += [(LABELS[0], 0, 'ever==', 3), (LABELS[1], 0, 'ever==', 1)]
+    t.bench = [('bench_watch', dict(seconds=45, every=4, sheet=False, lines=2))]
+    return t
+
+
+def guard(m):
+    """TEAM_GUARD_AREA (the area `far`) at 1 s: do all three go to the area and stay?"""
+    t = Test()
+    team = m.teams.get('Probe')
+    names = [m.role(f'truck {k}').name for k in (1, 2, 3)]
+    _setup(m, t, tick=False, order=[('TEAM_GUARD_AREA', team, FAR)])
+    _sum(t, 'Test Far', names)
+    t.counters += [('Test Far', LABELS[0])]
+    t.expect += [(LABELS[0], 0, 'ever==', 3)]
+    t.bench = [('bench_watch', dict(seconds=45, every=4, sheet=False, lines=2))]
+    return t
+
+
+def stop(m):
+    """MOVE_TEAM_TO at 1 s, TEAM_STOP at 5 s (the trucks have gone about 125 of the 300 at speed 25): none may ever
+    reach `far`."""
+    t = Test()
+    team = m.teams.get('Probe')
+    names = [m.role(f'truck {k}').name for k in (1, 2, 3)]
+    _setup(m, t, tick=False)
+    t.scripts += [Script('Test - stop arm', [('TIMER_EXPIRED', 'Test Order Timer')],
+                         [('SET_MILLISECOND_TIMER', 'Test Stop Timer', 4.0)]),
+                  Script('Test - stop', [('TIMER_EXPIRED', 'Test Stop Timer')], [('TEAM_STOP', team)])]
+    _sum(t, 'Test Far', names)
+    t.counters += [('Test Far', LABELS[0])]
+    t.expect += [(LABELS[0], 0, '==', 0)]
+    t.bench = [('bench_watch', dict(seconds=45, every=4, sheet=False, lines=2))]
+    return t
+
+
+CHECKS = {'team': {'once': once, 'tick': tick, 'dead': dead, 'named': named, 'attack': attack, 'made': made,
+                   'guard': guard, 'stop': stop},
+          'team_plain': {'named': named, 'join': join}}

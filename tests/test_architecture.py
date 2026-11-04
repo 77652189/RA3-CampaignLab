@@ -333,6 +333,43 @@ def test_g10_every_camera_move_aims_at_a_view_point():
     assert 'G10 outside True' in r.stdout and 'G10 raw True' in r.stdout, r.stdout.strip()
 
 
+# G6 (ADR 0016 phase 3, K6): nothing in a built level orders one unit by name. A group is a team of the map's own,
+# ordered as one through ctx.order / Mission.order (the units join the team in the same script). contract.single_orders
+# holds it on the product of every build, and on every check's merged build too (a check's own `Test ...` scripts are
+# exempt). The scripts still allowed one are a list of name patterns, only ever deleted from: this test fixes it empty.
+G6_LEFT = ()
+G6_PROBE = '''
+import sys
+sys.path[:0] = [{cnv!r}, {root!r}]
+import build, contract, model
+from model import Script
+bad, teamed = [], 0
+for n in sorted(build.MISSIONS):
+    m, _, _ = build.resolve(n, '')
+    mm = model.merged(m)
+    teamed += sum(1 for s in mm.scripts for a in s.do if a[0].startswith('TEAM_') or a[0] == 'MOVE_TEAM_TO')
+    bad += [(n, p) for p in contract.single_orders(mm, ())]
+print('G6 builds', len(build.MISSIONS), 'teamed', teamed > 0, 'bad', bad[:3])
+m, _, _ = build.resolve('a4', '')
+mm = model.merged(m)
+mm.scripts.append(Script('CNV A4 - Own order', [], [('MOVE_NAMED_UNIT_TO', 'UNIT - CNV A4 Truck 1', 'CNV A4 Exit')]))
+mm.scripts.append(Script('Test - own order', [], [('NAMED_STOP', 'UNIT - CNV A4 Truck 1')]))
+print('G6 mutation', len(contract.single_orders(mm, ())), len(contract.single_orders(mm, ('CNV A4 - Own',))),
+      len([p for p in contract.contract(mm) if 'orders one unit' in p]))
+print('G6 left', contract.SINGLE_ORDERS_LEFT)
+'''
+
+
+def test_g6_nothing_orders_one_unit_by_name():
+    import sys
+    probe = G6_PROBE.format(cnv=str(ROOT / CNV), root=str(ROOT))
+    r = subprocess.run([sys.executable, '-I', '-X', 'utf8', '-c', probe], cwd=ROOT, capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr[-2000:]
+    assert 'G6 builds' in r.stdout and 'teamed True' in r.stdout and 'bad []' in r.stdout, r.stdout.strip()
+    assert 'G6 mutation 1 0 1' in r.stdout, r.stdout.strip()
+    assert f'G6 left {G6_LEFT!r}' in r.stdout, r.stdout.strip()
+
+
 # G8 (ADR 0016 phase 2): a check builds on the campaign shell too. build.py <level> --shell --check <check> is parsed and
 # reaches packaging as the plain mission with the check as a layer (package.check_layer), under a mod name of its own
 # (CampShellT) so the release CampShell installed stays as it was. Only a check that only observes (contract.observes,

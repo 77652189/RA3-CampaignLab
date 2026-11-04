@@ -10,6 +10,14 @@
 - **K5 已提交**（指纹 p3_k5 对 p3_k1q：三个目标各只有 camp_cnv01_probe 的 map / map.bin / map.imp / map.manifest / map.relo 变了，无视频文件；pytest 397 过 1 跳过；G10 守卫测试已写）。路点名只能用字母数字和空格（带逗号地图校验失败）：`plan.py` 的 `view_point` 把镜头点夹进"当时生效的边界"里再缩进半屏（`VIEW_HALF`=(950, 540)，来自 sapporo 'view start' 的注释"屏幕约 1900 宽"，**这个数还没在游戏里量过**）；过场用所在段的边界（`border_at`），规则里的镜头取全关用过的边界的交集；发布成路点 `CNV <tag> Cam <site> <x>,<y>`，范围登记在 `Mission.views`；产物规则 `contract.camera_outside_the_view`（G10）。G10 守卫测试在 `tests/test_architecture.py`（`test_g10_every_camera_move_aims_at_a_view_point`）。A4 的结果（`cam_probe` 打出来的）：走廊边界下 plaza 2 的镜头点从 (2830,2135) 夹到 (2250,2240)；"西于运河"段的 harbour 镜头（4030,2500）夹到 (2690,2500)，说明那一段本来镜头指向的港口在边界外——要告诉策划线复核这两处。
 - 指纹：p3_k1q 对 p3_k1 只有三个目标的 camp_cnv01_probe.map 变了（脚本），符合预期。
 
+## K6 第二步：出口和 G6 做完（2026-11-04，第十个会话）
+
+- **出口**：`Mission.order(kind, names, target, side, crew)`（`ctx.order` 转给它）只出整队命令：attack→`TEAM_ATTACK_NAMED`、guard→`TEAM_GUARD_AREA`、hunt→`TEAM_HUNT`、move→`MOVE_TEAM_TO`、attack_move→`ATTACK_MOVE_TEAM_TO`、stop→`TEAM_STOP`。队名按名单摘要（`crew_key`），车队用显式 `crew='Convoy<tag>'`。每次下令前先给名单里每个名字发 `UNIT_SET_TEAM`，所以后造出来、后放行的成员下一次命令就入队跟着走（stop 不拉人入队）。`side` 必须是单位的阵营（队的主人）。
+- **测试台新证据**（`checks/team.py`）：`made`（同一脚本里造单位再下令：新单位跟着走）、`guard`、`stop` 过；`team_plain join`：不在队里的单位靠 UNIT_SET_TEAM 入队，点名还没造出来的和已死的单位无害，后造的入队后跟着走；A4 `lose`（`checks/a4.py`，没加 --unit，直接在原关上跑，因为它按原关构建就过了）：打死 1 号车后 2、3 号都开出起点区。**还没做**：在 CampShell 上 `--unit` 版、敌方队（s1）的 TEAM_ATTACK_NAMED 在游戏里的行为（只靠同一机制，没单独探）。
+- **改过的**：plan.py（波次、出动、守卫：一个角色一个 `Guard <role>` 脚本）、festival_parts.Convoy.order、convoy/horn/ice_plazas/train/carrier、music_dyn；sim.py 认 UNIT_SET_TEAM 和 TEAM_*（TEAM_HUNT 和 NAMED_HUNT 一样仍是"不认识"）。
+- **G6**：`contract.single_orders` + `SINGLE_ORDERS_LEFT = ()`（白名单空），`tests/test_architecture.py::test_g6_nothing_orders_one_unit_by_name`（含变异检验、固定白名单为空）。259 个构建（含 172 个检查）产物规则零问题。
+- **留着的**：`Convoy.trucks` 死光后的 `Release … after truck … lost` 脚本还在（整队命令下可删，等 CampShell 上验过再删）。
+
 ## K6 编组命令：探针做完（2026-11-04，第九个会话），队伍这条路走得通，出口还没改
 
 **探针结论**（测试台，任务 `team` / `team_plain`，检查 `checks/team.py` 的 once、tick、dead、attack、named，现在都过，当回归用）：

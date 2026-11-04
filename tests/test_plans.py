@@ -216,7 +216,7 @@ def test_unattackable_and_sent_off():
     made = named(m, 'CNV ZZ - Unattackable')[0].do
     assert made == [('UNIT_CHANGE_OBJECT_STATUS', f'UNIT - CNV ZZ guard {j}', 'UNATTACKABLE', 1) for j in (1, 2)]
     rule = named(m, 'CNV ZZ - Rule 1')[0].do
-    assert [a[0] for a in rule] == ['ATTACK_MOVE_NAMED_UNIT_TO'] * 2 + ['UNIT_CHANGE_OBJECT_STATUS']
+    assert [a[0] for a in rule] == ['UNIT_SET_TEAM'] * 2 + ['ATTACK_MOVE_TEAM_TO', 'UNIT_CHANGE_OBJECT_STATUS']
     assert rule[-1] == ('UNIT_CHANGE_OBJECT_STATUS', 'UNIT - CNV ZZ guard 1', 'UNATTACKABLE', 0)
     import parts
     assert not parts.contract(parts.merged(m))

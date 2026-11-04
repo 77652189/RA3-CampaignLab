@@ -444,6 +444,31 @@ class Sim:
     def living(self):
         return [b for b in self.bodies.values() if b.alive]
 
+    # ---- orders: one unit's, and a team's (the same for each member: ctx.order gives teams only)
+    def members(self, team):
+        return [b for b in self.living() if b.team == team]
+
+    def order_move(self, b, where, attacking):
+        if b:
+            b.mode = 'attack' if attacking else 'move'
+            self.send(b, where)
+
+    def order_attack(self, b, target_name):
+        self.used.add('attack')
+        target = self.body(target_name)
+        if b and target and target.alive and b.alive and b.goal is not target:
+            b.goal, b.mode = target, 'attack'
+            self.send(b, (target.x, target.y))
+
+    def order_guard(self, b, area):
+        self.used.add('guard')
+        if b and not inside(self.areas[area], b.x, b.y):
+            self.send(b, area)
+
+    def order_stop(self, b):
+        if b:
+            b.path, b.goal = [], None
+
     def enemy(self, a, b):
         """Player a takes player b as an enemy."""
         if (a, b) in self.relations:
@@ -672,25 +697,29 @@ class Sim:
                       + ('' if b.owner == self.human or self.sees(b.x, b.y, b.surface == 'air') else '，玩家看不见'))
             self.change()
         elif name in ('MOVE_NAMED_UNIT_TO', 'ATTACK_MOVE_NAMED_UNIT_TO'):
-            b = self.body(a[0])
-            if b:
-                b.mode = 'attack' if name == 'ATTACK_MOVE_NAMED_UNIT_TO' else 'move'
-                self.send(b, a[1])
+            self.order_move(self.body(a[0]), a[1], name == 'ATTACK_MOVE_NAMED_UNIT_TO')
         elif name == 'NAMED_ATTACK_NAMED':
-            self.used.add('attack')
-            b, target = self.body(a[0]), self.body(a[1])
-            if b and target and target.alive and b.alive and b.goal is not target:
-                b.goal, b.mode = target, 'attack'
-                self.send(b, (target.x, target.y))
+            self.order_attack(self.body(a[0]), a[1])
         elif name == 'UNIT_GUARD_AREA':
-            self.used.add('guard')
-            b = self.body(a[0])
-            if b and not inside(self.areas[a[1]], b.x, b.y):
-                self.send(b, a[1])
+            self.order_guard(self.body(a[0]), a[1])
         elif name == 'NAMED_STOP':
+            self.order_stop(self.body(a[0]))
+        elif name == 'UNIT_SET_TEAM':               # the unit joins the team (K6: ctx.order does it before every whole-team order)
             b = self.body(a[0])
-            if b:
-                b.path, b.goal = [], None
+            if b and b.alive:
+                b.team = a[1]
+        elif name in ('MOVE_TEAM_TO', 'ATTACK_MOVE_TEAM_TO'):
+            for b in self.members(a[0]):
+                self.order_move(b, a[1], name == 'ATTACK_MOVE_TEAM_TO')
+        elif name == 'TEAM_ATTACK_NAMED':
+            for b in self.members(a[0]):
+                self.order_attack(b, a[1])
+        elif name == 'TEAM_GUARD_AREA':
+            for b in self.members(a[0]):
+                self.order_guard(b, a[1])
+        elif name == 'TEAM_STOP':
+            for b in self.members(a[0]):
+                self.order_stop(b)
         elif name == 'UNIT_TELEPORT_TO_WAYPOINT':
             b, p = self.body(a[0]), self.point(a[1])
             if b and p:
@@ -741,11 +770,6 @@ class Sim:
             b = self.body(a[0])
             if b and self.body(a[1]):
                 self.send(b, a[1])
-        elif name == 'ATTACK_MOVE_TEAM_TO':
-            for b in self.living():
-                if b.team == a[0]:
-                    b.mode = 'attack'
-                    self.send(b, a[1])
         elif name == 'SET_MISSION_OBJECTIVE_STATUS':
             old = self.objectives.get(a[0], 0)
             self.objectives[a[0]] = a[1]

@@ -89,6 +89,24 @@ def camera_outside_the_view(m):
     return out
 
 
+# G6 (K6): the commands that give one named unit an order. A level never uses them: a group is a team of the map's own
+# and is ordered as one (ctx.order / Mission.order: the units join the team in the same script, so a member lost leaves
+# the rest all going and one made later takes the order too, I7).
+SINGLE_ORDERS = ('NAMED_ATTACK_NAMED', 'UNIT_GUARD_AREA', 'NAMED_HUNT', 'ATTACK_MOVE_NAMED_UNIT_TO',
+                 'MOVE_NAMED_UNIT_TO', 'NAMED_STOP')
+# scripts still allowed one (regexes on the script name, matched from its start): only ever deleted from
+# (tests/test_architecture G6). Empty: every level goes through the outlet.
+SINGLE_ORDERS_LEFT = ()
+
+
+def single_orders(m, allow=SINGLE_ORDERS_LEFT):
+    """G6: no script of the level (a check's `Test ...` own are not) orders one unit by name, except the scripts the
+    list `allow` still holds."""
+    return [f'{s.name}: {name} orders one unit (ctx.order gives the whole team the order)'
+            for s in m.scripts if not s.name.startswith('Test') and not any(re.match(p, s.name) for p in allow)
+            for name, *_ in s.do if name in SINGLE_ORDERS]
+
+
 def missing_areas(mission):
     """Trigger areas the scripts name but nobody declared (the map's own areas are replaced by the mission's)."""
     return [p for p in contract(mission) if ' area ' in p]
@@ -142,6 +160,7 @@ def contract(mission):
     out += said_outside_the_outlet(m, cat)
     out += said_lines_kept(m)
     out += camera_outside_the_view(m)
+    out += single_orders(m)
     for s in m.scripts:
         for name, *args in s.when + s.do:
             types = cat[name]['args']

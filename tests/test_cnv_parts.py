@@ -327,16 +327,29 @@ def test_ctx_outlets_hand_over_the_same_actions():
     from ctx import Ctx
     from plantime import PlanError
     import pytest
-    ctx = Ctx(mission=parts.Mission(name='X', map=None), tag='T')
+    import types
+    m = parts.Mission(name='X', map=types.SimpleNamespace(PLAYERS={'p1': 'Player_1', 's1': 'Soviet_2'}, TEAMS={}))
+    ctx = Ctx(mission=m, tag='T')
     assert ctx.say('SCRIPT:K', 5.0) == ('SET_FLAG', 'CNV_T_Want_0', 1)      # a line only asks; the queue plays it
     said = [s for s in ctx.talk_scripts() if s.name == 'CNV T - Say 0'][0]
     assert ('SHOW_MILITARY_CAPTION', 'SCRIPT:K', 5.0) in said.do
     assert ctx.final('SCRIPT:E', 10.0) == ('SHOW_MILITARY_CAPTION', 'SCRIPT:E', 10.0)
-    assert ctx.order('attack', ['a', 'b'], 't') == [('NAMED_ATTACK_NAMED', 'a', 't'), ('NAMED_ATTACK_NAMED', 'b', 't')]
-    assert ctx.order('guard', ['a'], 'z') == [('UNIT_GUARD_AREA', 'a', 'z')]
-    assert ctx.order('attack', [], 't') == []
+    # K6: a group is a team of the map's own, ordered as one; the units join it in the same script (UNIT_SET_TEAM)
+    acts = ctx.order('attack', ['a', 'b'], 't', 's1')
+    team = acts[-1][1]
+    assert team.startswith('Soviet_2/teamCNVG') and team in m.teams.values()
+    assert acts == [('UNIT_SET_TEAM', 'a', team), ('UNIT_SET_TEAM', 'b', team), ('TEAM_ATTACK_NAMED', team, 't')]
+    assert ctx.order('attack', ['b', 'a'], 't', 's1')[-1] == acts[-1]        # the same group, the same team
+    assert ctx.order('guard', ['a'], 'z', 's1')[-1][:1] == ('TEAM_GUARD_AREA',)
+    assert ctx.order('hunt', ['a', 'b'], side='s1')[-1] == ('TEAM_HUNT', team)
+    assert ctx.order('move', ['a'], 'w', 'p1', crew='Fleet') == [('UNIT_SET_TEAM', 'a', 'Player_1/teamCNVFleet'),
+                                                                 ('MOVE_TEAM_TO', 'Player_1/teamCNVFleet', 'w')]
+    assert ctx.order('stop', ['a'], side='p1', crew='Fleet') == [('TEAM_STOP', 'Player_1/teamCNVFleet')]   # joins nobody
+    assert ctx.order('attack', [], 't', 's1') == []
     with pytest.raises(PlanError, match='no kind'):
         ctx.order('flee', ['a'], 't')
+    with pytest.raises(PlanError, match='needs a target'):
+        ctx.order('attack', ['a'])
     for ask in (lambda: ctx.camera({}, 1.0, 0, 0), lambda: ctx.mark('s'), lambda: ctx.side('我')):
         with pytest.raises(PlanError, match='written by hand'):
             ask()

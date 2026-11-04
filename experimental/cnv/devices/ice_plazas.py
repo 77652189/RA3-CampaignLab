@@ -216,11 +216,11 @@ class IcePlazas(Device):
             # out, they go for the leading truck still on the road; held while ice stands in their gate
             out += [Script(f'CNV {tag} - Chase {k} at {j + 1}',
                            [('FLAG', f'CNV_{tag}_Out_{k}', 1), ('TIMER_EXPIRED', cv.timer), open_] + cv.chase(j),
-                           ctx.order('attack', them, target), once=False)
+                           ctx.order('attack', them, target, 's1'), once=False)
                     for j, target in enumerate(cv.trucks)]
             out.append(Script(f'CNV {tag} - Held {k}', [('FLAG', f'CNV_{tag}_Out_{k}', 1), ('TIMER_EXPIRED', cv.timer),
                                                         walled],
-                              ctx.order('guard', them, f'CNV {tag} Plaza {k}'), once=False))
+                              ctx.order('guard', them, f'CNV {tag} Plaza {k}', 's1'), once=False))
             if self.stops:                          # a truck there, troops out, gate open: the convoy waits under fire
                 block = self.blocking(k)
                 stop = self.cdev.hold(block)

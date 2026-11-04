@@ -82,7 +82,7 @@ class Carrier(Device):
             if not self.route:
                 from plantime import PlanError
                 raise PlanError(f'{self.name}.飞走: no 航线')
-            return [('SET_FLAG', self.flying, 1), ('MOVE_NAMED_UNIT_TO', self.obj, self.route[0])]
+            return [('SET_FLAG', self.flying, 1)] + self.ctx.order('move', [self.obj], self.route[0], 's1')
         return super().action(what, args)
 
     def scripts(self):
@@ -158,7 +158,7 @@ class Carrier(Device):
             nxt = self.route[(k + 1) % len(self.route)]
             out.append(Script(f'CNV {t} - Carrier flies on {k + 1}',
                               [('FLAG', self.flying, 1), ('NAMED_INSIDE_AREA', self.obj, ctx.area(self.spec['航线'][k]))],
-                              [('MOVE_NAMED_UNIT_TO', self.obj, nxt)], once=False))
+                              ctx.order('move', [self.obj], nxt, 's1'), once=False))
         return out
 
     def facts(self):

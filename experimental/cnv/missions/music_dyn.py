@@ -82,9 +82,9 @@ def mission(name='CampMusDyn', spy=False, tracer=False):
                                          ('SET_MILLISECOND_TIMER', 'CNV Music Enemy', ENEMY_AT),
                                          ('SET_MILLISECOND_TIMER', 'CNV Music Help', HELP_AT)]),
         Script('CNV Music - Enemy', [('TIMER_EXPIRED', 'CNV Music Enemy')],
-               [('ATTACK_MOVE_NAMED_UNIT_TO', n, m.mark('fight')) for n in enemy]),
+               m.order('attack_move', enemy, m.mark('fight'), 's1')),
         Script('CNV Music - Help', [('TIMER_EXPIRED', 'CNV Music Help')],
                [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', n, t, m.team('p1'), m.mark('help')) for n, t in help_] +
-               [('ATTACK_MOVE_NAMED_UNIT_TO', n, m.mark('fight')) for n, _ in help_]),
+               m.order('attack_move', [n for n, _ in help_], m.mark('fight'), 'p1')),
     ]
     return m

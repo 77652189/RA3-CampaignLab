@@ -87,7 +87,7 @@ class Convoy(Device):
             # 分批从 继续: stopped, the trucks after the first wait for their time after the 继续
             late = [('SET_FLAG', g, 0) for g, after in zip(self.go, self.batches) if after] \
                 if self.batch_from == '继续' else []
-            return [('SET_FLAG', self.halted, 1)] + late + [('NAMED_STOP', t) for t in self.cv.trucks]
+            return [('SET_FLAG', self.halted, 1)] + late + self.cv.order('stop', self.cv.trucks)
         if what == '继续':
             return [('SET_FLAG', self.halted, 0), ('SET_FLAG', self.resumed, 1)]
         return super().action(what, args)
@@ -95,7 +95,7 @@ class Convoy(Device):
     def hold(self, flag):
         """Keep the convoy parked while `flag` is 1 (as 停下 does); returns the actions that stop the trucks now."""
         self.holds.append(flag)
-        return [('NAMED_STOP', t) for t in self.cv.trucks]
+        return self.cv.order('stop', self.cv.trucks)
 
     def attack(self, names):
         """Every tick, at the leading truck still on the road (bench 2026-10-23: sent toward the exit they ran ahead of
@@ -103,7 +103,7 @@ class Convoy(Device):
         cv, ctx = self.cv, self.ctx
         self.attacks += 1                           # one set per wave (names cut short collided, review 2026-10-24)
         return [Script(f'CNV {self.ctx.tag} - Convoy target {self.attacks} at {j + 1}',
-                       [('TIMER_EXPIRED', cv.timer)] + cv.chase(j), ctx.order('attack', names, t),
+                       [('TIMER_EXPIRED', cv.timer)] + cv.chase(j), ctx.order('attack', names, t, 's1'),
                        once=False) for j, t in enumerate(cv.trucks)]
 
     def scripts(self):
@@ -159,9 +159,9 @@ class Convoy(Device):
         roll.when = roll.when + [('FLAG', h, 0) for h in self.holds]
         if self.batches:
             sends = [Script(f'CNV {self.ctx.tag} - Roll {j + 1}', roll.when + [('FLAG', g, 1)],
-                            [('MOVE_NAMED_UNIT_TO', t, self.cv.exit)], once=False)
+                            self.cv.order('move', [t], self.cv.exit), once=False)
                      for j, (t, g) in enumerate(zip(self.cv.trucks, self.go))]
-            roll.do = [a for a in roll.do if a[0] != 'MOVE_NAMED_UNIT_TO']
+            roll.do = [a for a in roll.do if a[0] not in ('UNIT_SET_TEAM', 'MOVE_TEAM_TO')]
             roll = sends + [roll]
         else:
             roll = [roll]
