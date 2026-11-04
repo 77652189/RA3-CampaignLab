@@ -591,8 +591,11 @@ def assemble(mission, test=None, name=None, shell=False):
     c2.BUILT = os.path.join(c2.SDK, 'BuiltMods', 'mods', name.lower(), 'data')
     c2.OUT = c4.OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods', name)
     c7.MAP_MOD = name + 'Map'
-    why = mod_busy(name)
-    if why:
+    out_dir = os.environ.get('CNV_OUT_DIR')     # testbench/fingerprint.py: build into this folder, never into Mods
+    why = '' if out_dir else mod_busy(name)
+    if out_dir:
+        c2.OUT = c4.OUT = os.path.join(out_dir, name)
+    elif why:
         c2.OUT = c4.OUT = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'staging', name)
         print(f'{why} -> staging at', c4.OUT)
 
