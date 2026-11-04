@@ -262,7 +262,7 @@ class Horn(Device):
                 way = self.ways[mode][w]
                 dx, dy = way.get('偏移', (0, 0))
                 ctx.waypoint(f'spawn {wid}', f'CNV {tag} Spawn {wid}', way['出'], dx, dy)
-                ctx.waypoint(f'ice {wid}', f'CNV {tag} IceAt {wid}', way['点'])
+                ctx.waypoint(f'ice {wid}', f'CNV {tag} IceAt {wid}', way['点'], cast=True)
                 sculpt = way.get('冰雕')
                 if sculpt is not None:                  # the way's spawn sculpture, behind the spot the troops come out at
                     sx0, sy0 = (float(v) for v in sculpt.get('偏移', (0, 0)))

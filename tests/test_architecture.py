@@ -489,3 +489,77 @@ def test_g12_ore_and_oil_come_from_relations():
     got = re.search(r'G12 mutation (\d+) (\d+) (\d+) (\d+) (\d+) (\d+)', r.stdout)
     assert got and all(int(x) >= 1 for x in got.groups()), r.stdout.strip()
     assert f'G12 left {G12_LEFT!r}' in r.stdout, r.stdout.strip()
+
+
+# G13 (ADR 0016 phase 4, K3): a place the player casts a spell is a map site made for it. The device marks it
+# (ctx.waypoint(..., cast=True) -> Mission.spells), the map gives that site Site.cast = platmap.CAST_CLEAR, and
+# the maps' design lint (platmap.cast_lint) holds the circle level, walkable and empty of map objects while
+# contract.cast_points_clear holds the mission's own objects off it. CAST_CLEAR is the power's ForbiddenObjectRange plus
+# the seed the engineer drops (the bench had the back lane's ice never go down on a ramp, I3). A device that marks an ice
+# point without cast=True escapes all of it, so no source may.
+G13_PROBE = '''
+import sys
+sys.path[:0] = [{cnv!r}, {root!r}]
+import build, contract, model, platmap
+from model import Obj, Site
+bad, spells = [], 0
+for n in sorted(build.MISSIONS):
+    m, _, _ = build.resolve(n, '')
+    mm = model.merged(m)
+    spells += len(mm.spells)
+    bad += [(n, p) for p in contract.contract(mm) if 'spell mark' in p or 'cast circle' in p or 'cast on rises' in p]
+print('G13 builds', len(build.MISSIONS), 'spells', spells, 'bad', bad[:3])
+m, _, _ = build.resolve('a4', '')
+mm = model.merged(m)
+sites = dict(mm.map.SITES)
+foot = sites['lane foot']
+
+
+def lint(site, objects=()):
+    layout = mm.map.LAYOUT
+    return [p for p in platmap.lint(layout, {{'t': site}}, list(objects)) if "site t" in p]
+
+
+def marked(site):
+    x = model.merged(m)
+    x.spells = dict(x.spells, probe=site)
+    x.waypoints = dict(x.waypoints, probe=(sites[site].x, sites[site].y))
+    return sum('spell mark' in p for p in contract.contract(x))
+
+
+crowd = model.merged(m)
+crowd.objects = list(crowd.objects) + [Obj('OilDerrick', foot.x + 20.0, foot.y, side='neutral', site='lane foot')]
+print('G13 clear', platmap.CAST_CLEAR)
+print('G13 mutation',
+      marked('start'),
+      sum('stands inside the cast circle' in p for p in contract.contract(crowd)),
+      len(lint(Site(foot.x, 2540.0, 0.0, cast=platmap.CAST_CLEAR))),
+      len(lint(Site(3640.0, 2770.0, 0.0, cast=platmap.CAST_CLEAR))),
+      len(lint(Site(foot.x, foot.y, 0.0, cast=platmap.CAST_CLEAR), [Obj('MJ_PalaceWall01', foot.x + 40.0, foot.y, angle=0.0)])),
+      len(lint(Site(foot.x, foot.y, 0.0, cast=platmap.CAST_CLEAR))))
+'''
+
+
+def test_g13_a_cast_point_is_level_open_ground():
+    import re
+    import sys
+    files = _tracked()
+    horn = _read(f'{CNV}/devices/horn.py')
+    forbid = int(re.search(r'ForbiddenObjectRange="(\d+)"', _read(f'{CNV}/units/icewall.py')).group(1))
+    seed = int(re.search(r'^SEED_SIZE = (\d+)', horn, re.M).group(1))
+    probe = G13_PROBE.format(cnv=str(ROOT / CNV), root=str(ROOT))
+    r = subprocess.run([sys.executable, '-I', '-X', 'utf8', '-c', probe], cwd=ROOT, capture_output=True, text=True,
+                       encoding='utf-8')
+    assert r.returncode == 0, (r.stdout + r.stderr)[-2000:]
+    assert f'G13 builds' in r.stdout and 'spells' in r.stdout and 'bad []' in r.stdout, r.stdout.strip()
+    assert not re.search(r'spells 0 ', r.stdout), r.stdout.strip()
+    got = re.search(r'G13 mutation (\d+) (\d+) (\d+) (\d+) (\d+) (\d+)', r.stdout)
+    assert got, r.stdout.strip()
+    marked, crowded, slope, off, wall, fine = (int(x) for x in got.groups())
+    assert marked >= 1 and crowded >= 1 and slope >= 1 and off >= 1 and wall >= 1 and fine == 0, r.stdout.strip()
+    clear = float(re.search(r'G13 clear ([\d.]+)', r.stdout).group(1))
+    assert clear == forbid + seed, f'CAST_CLEAR {clear} != ForbiddenObjectRange {forbid} + seed {seed}'
+    for rel in _under(files, f'{CNV}/devices', '.py'):
+        for ln in _read(rel).splitlines():
+            if 'IceAt' in ln and 'waypoint(' in ln:
+                assert 'cast=True' in ln, f'{rel}: an ice mark that is not a cast point: {ln.strip()}'

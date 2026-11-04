@@ -277,6 +277,7 @@ def lint(layout, sites=None, objects=(), scenery=(), dims=CONTAINER):
             out.append(f'{o.template} at ({o.x:g}, {o.y:g}): not on flat dry ground')
         k += 1
     walk = walkable(layout, objs, dims, e)
+    out += cast_lint(sites, e, walk, objs, dims)
     out += block_lint(layout, sites, walk, dims) + gap_lint(layout, walk, dims)
     if scenery:
         import platprops
@@ -284,8 +285,54 @@ def lint(layout, sites=None, objects=(), scenery=(), dims=CONTAINER):
     return out
 
 
+CAST_CLEAR = 52.0               # a spell's cast circle: the power's ForbiddenObjectRange (32) + the seed it drops (20)
+                                # (units/icewall.py; tests/test_architecture.py G13 holds the numbers together)
+
+
+def cast_lint(sites, e, walk, objects, dims=CONTAINER):
+    """Every site a spell is cast on (Site.cast, K3) as the placement rules want it: the whole circle walkable (the power
+    is PATHABLE_ONLY), the ground across it level (nothing is put down mid-ramp: bench 2026-11-03, the back lane's foot sat
+    on a ramp and the ice never went down, the five level spots did), no map object within it (the power forbids any
+    within 32 of the target). The circle's own scenery is kept off by platprops.clearance."""
+    w, h, b = dims
+    x, y = _cells(dims)
+    out = []
+    for name, s in (sites or {}).items():
+        r = getattr(s, 'cast', 0.0)
+        if not r:
+            continue
+        rise = relief(e, s.x, s.y, 2 * r, b)
+        if rise > FLAT:
+            out.append(f'site {name}: the {2 * r:g} square a spell is cast on rises {rise:.0f} (most {FLAT:g}): it is '
+                       f'on a slope')
+        off = ((x - s.x) ** 2 + (y - s.y) ** 2 <= r * r) & ~walk
+        if off.any():
+            out.append(f'site {name}: {int(off.sum())} cells of its cast circle ({r:g}) are not walkable (cliff, water '
+                       f'or a wall)')
+        for o in objects:
+            d = _gap_to(o, s.x, s.y)
+            if d < r:
+                out.append(f'site {name}: {o.template} at ({o.x:g}, {o.y:g}) stands {d:.0f} from it, inside its cast '
+                           f'circle ({r:g})')
+    return out
+
+
+def _gap_to(o, px, py):
+    """How far (px, py) is from the edge of map object o: a wall piece as its rectangle, anything else as a point
+    less its catalog radius."""
+    if o.template in WALLS:
+        length, thick = WALLS[o.template]
+        a = o.angle or 0.0
+        u = (px - o.x) * math.cos(a) + (py - o.y) * math.sin(a)
+        v = -(px - o.x) * math.sin(a) + (py - o.y) * math.cos(a)
+        return math.hypot(max(abs(u) - length / 2, 0.0), max(abs(v) - thick / 2, 0.0))
+    import platprops
+    rad = platprops.radius(o.template) if o.template in platprops.CATALOG else 0.0
+    return max(math.dist((o.x, o.y), (px, py)) - rad, 0.0)
+
+
 # ---- what the player can walk to, the blocks' use, the gaps' width
-WALLS = {'MJ_PalaceWall01': (60.0, 20.0)}       # wall pieces that bar the way (bench 2026-10-27 fence bar: the palace
+WALLS ={'MJ_PalaceWall01': (60.0, 20.0)}       # wall pieces that bar the way (bench 2026-10-27 fence bar: the palace
                                                 # wall held infantry, retail's fences did not): length, thickness
 BRIDGE_DECK = 120.0                             # a bridge's walkable width laid over the water
 

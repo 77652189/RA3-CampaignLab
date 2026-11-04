@@ -59,7 +59,10 @@ P3 = (3250.0, 3490.0, 3020.0)                   # plaza 3's, north of the road: 
                                                 # side the ward's cliff
 WARD = (2760.0, 3250.0, 3060.0)                 # the raised ward between the north block and plaza 3: x0, x1, back
 NORTH_MOUTH_X = 3050.0                          # the gap through it (北坡口)
-EAST_MOUTH = ((P3[1] + CANAL[0]) / 2, ROAD_N + 120.0)     # 东街口: between plaza 3's wall and the canal
+EAST_MOUTH = ((P3[1] + CANAL[0]) / 2, ROAD_N + 120.0)     # 东街口: between plaza 3's wall and the canal (open ground
+                                                          # 3500..3620: its 104 cast circle just fits; 10 west of this
+                                                          # `placem` L3 passed on the bench, and graybox's old-A4 walk
+                                                          # meets an enemy in 布防 if this moves 5 or more)
 
 PLAZA3_X = (P3[0] + P3[1]) / 2
 PLAZAS = {1: ((P1[0] + P1[1]) / 2, True), 2: ((P2[0] + P2[1]) / 2, False), 3: ((P3[0] + P3[1]) / 2, True)}
@@ -87,8 +90,10 @@ SITES.update({
     # 2's approach, its troops held the convoy for good once the ice melted)
     'halt': Site(P2[0] + 150.0, ROAD_Y, 40.0, "the road at plaza 2's gate: the whole convoy past plaza 2's "
                                               "approach, short of plaza 3's"),
-    'lane foot': Site(LANE_UP, ROAD_Y + 40.0, 60.0, "the back lane's way up: the foot of the ramp from the avenue "
-                                                   'onto the north street block'),
+    # level ground a cast circle clear of the ramp (bench 2026-11-03: the ice went down at every spot but this, which sat
+    # at the ramp's first rise, ROAD_Y + 40; the ramp's foot is the 120 beyond it)
+    'lane foot': Site(LANE_UP, ROAD_Y - 30.0, 60.0, "the back lane's way up: level ground at the foot of the ramp from "
+                                                   'the avenue onto the north street block', cast=platmap.CAST_CLEAR),
     'lane mouth': Site(P1[0] + 60.0, (LANE[0] + LANE[1]) / 2, 50.0, "the back lane's west mouth, behind plaza 1: "
                                                                     'its sculptures stand here'),
     'lane depot': Site(LANE_DOWN, 3120.0, 150.0, "the lane's east end, on the north block: a repair depot's pad",
@@ -101,8 +106,10 @@ SITES.update({
     'gun plaza 3': Site(PLAZA3_X, 2950.0, 80.0, "a gun pad at the back of plaza 3's courtyard, behind its gate"),
     'gun east': Site(EAST_MOUTH[0], 3040.0, 70.0, 'a gun pad up the east street, behind the east mouth'),
     'north mouth': Site(NORTH_MOUTH_X, (ROAD_N + WARD[2]) / 2, 60.0, '北坡口: the gap through the raised ward, '
-                                                                    f'{GATE:g} wide, from the north camp to the road'),
-    'east mouth': Site(*EAST_MOUTH, 50.0, f"东街口: the street between plaza 3's wall and the canal, {GATE:g} wide"),
+                                                                    f'{GATE:g} wide, from the north camp to the road',
+                       cast=platmap.CAST_CLEAR),
+    'east mouth': Site(*EAST_MOUTH, 50.0, f"东街口: the street between plaza 3's wall and the canal, {GATE:g} wide",
+                       cast=platmap.CAST_CLEAR),
     'north camp': Site(2900.0, 3250.0, 200.0, 'open low ground behind the ward, below the north plateau: where a '
                                               'force from the north gathers'),
     'north base': Site(3050.0, 4100.0, 250.0, 'the north plateau past its ore: room for a small camp', build=160.0),
@@ -140,7 +147,8 @@ for _k, (_x, _north) in PLAZAS.items():
     SITES[f'gate {_k}'] = Site(_gx, _gy, 0.0, f"plaza {_k}'s gate: the one gap in its front wall ({GATE:g} wide), on "
                                              f'the road\'s {_side} edge')
     SITES[f'inside {_k}'] = Site(_gx, _gy + _s * 40.0, 0.0, f"just inside plaza {_k}'s gate, on the road's level: a "
-                                                          'block of ice 160 across here shuts it', build=160.0)
+                                                          'block of ice 160 across here shuts it', build=160.0,
+                                 cast=platmap.CAST_CLEAR)
     SITES[f'plaza {_k}'] = Site(_gx, _gy + _s * 200.0, 120.0, f'plaza {_k}, a walled courtyard {_side} of the road: '
                                                             'its sculptures stand here')
     SITES[f'approach {_k}'] = Site(_gx - APPROACH[0], ROAD_Y, APPROACH[1], f'the road west of plaza {_k}: a convoy '

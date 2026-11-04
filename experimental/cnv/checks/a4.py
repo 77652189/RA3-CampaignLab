@@ -449,7 +449,8 @@ def win(m):
 PLACE_GAP = 60.0      # place: seconds between two tries (the power's 20 s reload, his walk, the 5 s of building)
 PLACE_CLICKS = 29.0     # place: mission seconds the select + ability clicks take at x8 (bench 2026-11-03; at x1 ~4 s, but the
                         # 110 s opening scene then runs in real time and the bench game drops to the menu after ~40 s)
-PLACE_AT = 4.0          # place: the first try, after the scene's own camera move (2 s)
+PLACE_AT = 20.0         # place: the first try, after the scene's own camera move (2 s) and the engineer's info box (still over
+                        # him at 4 s: the first select click of `place` missed, bench 2026-11-04)
 PLACE_SAY = 3.0        # place: the engineer stands this long before he is selected
 
 

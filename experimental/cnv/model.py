@@ -146,6 +146,9 @@ class Mission(Part):
                                                                 # stand above the counters, in the same 4 lines)
     views: dict = dataclasses.field(default_factory=dict)       # {camera waypoint: the rect (x0 y0 x1 y1) its centre may
                                                                 # be in}: what a plan's camera moves aim at (K5)
+    spells: dict = dataclasses.field(default_factory=dict)      # {waypoint name: site}: where the PLAYER casts a spell
+                                                                # (an ice block); the site must keep its cast circle
+                                                                # clear (Site.cast, contract.cast_points_clear, K3)
     spawns: set = dataclasses.field(default_factory=set)       # templates its scripts name that nobody casts (a
                                                                 # plan's waves and reinforcements, what it counts)
     lines: list = dataclasses.field(default_factory=list)       # the plan's spoken captions, in compile order: {说话人,
@@ -206,10 +209,13 @@ class Mission(Part):
                 r.sites.append(site)
         return o
 
-    def waypoint(self, part, name, site, dx=0.0, dy=0.0):
-        """A waypoint by a map site, published as a mark (scripts aim at it; checks ask m.mark / m.point)."""
+    def waypoint(self, part, name, site, dx=0.0, dy=0.0, cast=False):
+        """A waypoint by a map site, published as a mark (scripts aim at it; checks ask m.mark / m.point). cast: the
+        player casts a spell here (an ice block): the waypoint is the site itself, and the site must be a cast point."""
         self.waypoints[name] = self.site(site, dx, dy)
         self.marks[part] = name
+        if cast:
+            self.spells[name] = site
 
     def mark(self, part):
         assert part in self.marks, f'mission {self.name} marks no {part!r}: {sorted(self.marks)}'

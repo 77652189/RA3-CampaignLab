@@ -105,7 +105,8 @@ def clearance(layout, sites=None, objects=(), avoid=()):
         if s.r >= WHOLE:
             continue
         build = getattr(s, 'build', 0) * 0.75
-        circles.append((s.x, s.y, max(s.r, build, 40.0), max(s.r * SOFT, build, 40.0)))
+        cast = getattr(s, 'cast', 0.0) + 20.0               # a spell is cast here: nothing stands in or hard by its circle
+        circles.append((s.x, s.y, max(s.r, build, cast, 40.0), max(s.r * SOFT, build, cast, 40.0)))
     objs = list(objects)
     k = 0
     while k < len(objs):

@@ -42,7 +42,16 @@
 - **验证**：见下面的提交信息；指纹 p4_k4 对 p3_k6 是 Sonnet 子 Agent 跑的，结果在汇报里。**没做**：`cnv_preview` 看图（A4 `--preview` 的 LINT 是 ok）、独立验收。
 - **要告诉策划线**：`docs/story/plans/a4.md` 里"北高原上有矿和油井，拆干净了就是你的"这句通报现在不准（油井不在北高原了）；电视塔还在（I9 说"电视塔删掉"，是策划线的决定，没动）。
 
-## K3 施法点（I3）：还没动手，设计
+## K3 施法点（I3）：做完（第十三个会话，11-04 04:30～05:00）
+
+- **后巷口放不下的原因**（量出来的）：`lane foot` 原在 (1200, 2540)，正好是后巷坡道的起点（坡从 y=2540 开始升）。以点为中心的 104 见方起伏 17、120 见方起伏 20；另外五个点（inside 1/2/3、north mouth）周围是平地（起伏 0）。测试台 11-03：五个放得出，只有这一个放不出。**所以放置规则里"平地"这一条是真的：不能放在斜坡起点。** 量出的东西不能解释到"多平才行"（`lane foot` 在 40 见方内起伏 7，没超过建筑的 8 也放不出），所以施法圈取整圈（2×半径见方）起伏 ≤ 8，比建筑规则严。
+- **东街口**（`east mouth`）：街（3500～3620）宽 120，施法圈如果取 60 会压到运河岸（起伏 13），所以圈取 52（= 32+20，不另加余量），3575 刚好放得下，位置没动。测试台 `placem` 在 x=3565 时三个口子（北坡口、三号广场、东街口）全 PASS（11-04 04:51，`work/testbench/runs/CampA4Placem_mcp_1104_045116`）；最终位置 3575 比测的偏东 10，没再测。**x 不能再往西挪 5 以上**：`tests/test_graybox.py::test_old_a4_can_be_pushed_through_every_stage` 会因为旧 A4 走查在"布防"阶段多撞上一批敌人而失败（量过：偏 5 就败，偏 2.5 过）。
+- **后巷口 V1 还没放出来**（`place` 11-04 04:46：V2、V3 PASS，V1 FAIL，用的是挪到平地后的新位置 (1200,2470)）。所以坡不是唯一原因，或者不是原因。截图 `work/testbench/runs/CampA4Place_mcp_1104_044627/0004～0006.png`：第一次点选时工兵头顶的信息框（"选中我，点街口…"）还在，点完工兵没被选中；`placem` 的第一次（L1，同样 4 秒）却选中了，所以不一定是信息框。我把 `place` 的第一次尝试推到 20 秒（`checks/a4.py PLACE_AT`）准备重测，**没测成**：测试台被音乐线的游戏占着（`CampMusDynC`，pid 22660）。**下一步**：测试台空了就跑 `run_check.py a4 place`（命令见 handoff.md 第 55 行那一条）；V1 若还失败，试把 V1 的落点往南挪（工兵站的位置、落点和路面的关系）或看冰雕/标志离落点的距离，再查是不是引擎对"落点在坡的投影内"有限制。
+- **做了什么**：①`platmap.CAST_CLEAR=52`（= 技能的 `ForbiddenObjectRange` 32 + 冰核 `SEED_SIZE` 20）、`platmap.cast_lint`：每个 `Site.cast>0` 的点，圆内全可走、整圈 ≤ FLAT、圆内没有地图物件（墙段按矩形量），并进 `platmap.lint`（所以 `contract.map_design` 每次构建都跑）；②`platprops.clearance` 把施法圈 +20 算进保持空旷的圈；③`Mission.waypoint(..., cast=True)` 登记到 `Mission.spells`，`devices/horn.py` 的冰标记都传 `cast=True`；④产物规则 `contract.cast_points_clear`：登记的点必须是 cast 点、标记就在点上、任务自己的物件不进圈；⑤`maps/sapporo.py`：`lane foot` 挪到 (1200, 2470)（坡脚往南 70，平地），inside 1/2/3、north mouth、east mouth 标 `cast=CAST_CLEAR`；⑥守卫 `tests/test_architecture.py::test_g13_a_cast_point_is_level_open_ground`（含 6 个变异：标在非施法点、物件压进圈、旧位置在坡上、圆压到水、墙进圈、干净点不报；`CAST_CLEAR == 技能禁物范围 + 冰核` 这条数字守住；设备里的冰标记不传 cast 就失败）。节日图 J4 的冰是地图自带的、不是玩家放的，没有施法点。
+- **后巷出兵点跟着南移了 70**（`出: lane foot` 偏移 [0,160]，现在出在 y=2630，仍在坡上）；冰雕偏移不变。策划线复核时看一眼。
+- 检查"一律走玩家点击"：已由 `contract.observes`（G11）保证，只观测的检查才能当验收；`place`/`placem` 用传送把工兵放到点边上，再由测试台点技能按钮和落点。
+
+## K3 施法点（原设计，留作参考）
 
 - 现状：冰墙落点是 horn 设备的 `点:` 里写的地点：`lane foot`、`inside 1`、`inside 2`、`north mouth`、`inside 3`、`east mouth`（plans/a4.md:125-135）。设备在 `devices/horn.py:265` 用 `ctx.waypoint(f'ice {wid}', ...)` 发布成标记。玩家点的是 `AssembleStructureSpecialAbilityUpdate` 放"冰核"（`units/icewall.py`，`SEED_SIZE=20`，`ForbiddenObjectRange=32`，`PATHABLE_ONLY`）；脚本放技能完全不检查位置（引擎线 11-04 从代码确认），所以旧检查 PASS 不代表玩家放得下。玩家点击的检查已有：`checks/a4.py` 的 `place`（街口）和 `placem`（口子），走 bench_click/bench_ability。
 - 做法（照 K4）：①地图点标 `Site(..., cast=CAST_CLEAR)`（常量 = 32 禁物范围 + 20 冰核 + 余量，约 60），`platprops.clearance`（`experimental/campaign/platprops.py:88`）把 `cast` 也算进保持空旷的圈，布景生成器就不会压上去；②`platmap.lint` 加施法点检查：圆内全是可走格（`walkable`）、起伏不超过 `FLAT`（P36 第 6 条：平地）、圆内没有地图物件（墙段按 `platmap.WALLS`，其他按 `platprops.radius`）；③`contract.py` 加产物规则：任务里所有 `ice ...` 标记必须落在 `cast>0` 的地点上，任务摆的物件（标志、冰雕、建筑）不压施法圈（半径 + 32）；④守卫 G13 + 变异检验；⑤`lane foot` 在坡脚（`Ramp` 起点），大概率不平，lint 会报，到时候改 plans/a4.md 的 `点:`。⑥issues.md I3 标修了待验，依据写产物规则名；"检查必须走玩家点击"那条已由 `contract.observes`（G11）保证：只观测的检查才能当验收。

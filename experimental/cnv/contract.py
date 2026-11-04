@@ -279,6 +279,25 @@ def base_has_ore(m):
             if min((math.dist((x, y), n) for n in ore), default=1e9) > resources.BASE_ORE]
 
 
+def cast_points_clear(m):
+    """K3: every place the player casts a spell (Mission.spells: a device's ice marks) is a map site made for it
+    (Site.cast > 0; platmap.cast_lint holds the ground and the map's objects off its circle, platprops keeps scenery off),
+    the mark is the site itself, and nothing the mission stands on the ground comes within its circle."""
+    import platmap
+    sites = getattr(m.map, 'SITES', {})
+    out = []
+    for wp, site in m.spells.items():
+        s = sites.get(site)
+        if s is None or not s.cast:
+            out.append(f'spell mark {wp!r}: site {site!r} is not a cast point (give it Site.cast = platmap.CAST_CLEAR)')
+            continue
+        if m.waypoints.get(wp) != (s.x, s.y):
+            out.append(f'spell mark {wp!r}: not on site {site!r} itself ({m.waypoints.get(wp)} vs {(s.x, s.y)})')
+        out += [f'spell mark {wp!r}: {o.template} at ({o.x:g}, {o.y:g}) stands inside the cast circle of {site!r} ({s.cast:g})'
+                for o in m.objects if platmap._gap_to(o, s.x, s.y) < s.cast]
+    return out
+
+
 _DESIGN = {}
 
 
@@ -359,7 +378,7 @@ def contract(mission):
     out += team_orders_land(m) + kind_counts_in_area(m)
     out += camera_outside_the_view(m)
     out += single_orders(m)
-    out += ore_faces_refinery(m) + ore_in_groups(m) + oil_off_the_camps(m) + base_has_ore(m) + map_design(m)
+    out += ore_faces_refinery(m) + ore_in_groups(m) + oil_off_the_camps(m) + base_has_ore(m) + cast_points_clear(m) + map_design(m)
     for s in m.scripts:
         for name, *args in s.when + s.do:
             types = cat[name]['args']
