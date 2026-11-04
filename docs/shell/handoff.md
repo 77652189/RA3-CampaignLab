@@ -8,9 +8,9 @@
 
 - **第 1 步 已提交**（git log 搜 "phase 1 step 1"）：c4/c6/c7/c18 导入时的接线都挪进各自的 `install()`（逐级调下一层），`package.assemble` 和 `make_campnew23` 显式调 `c18.install()`（c23 是单位线 make_campchrono 链上的，只加了这一行）。守卫 G7 在 `tests/test_architecture.py` 末尾（新解释器里逐个 import，后面的 import 不许改前面模块的状态）。变异检验脚本 `work/shell/phase1/g7_mutate.py`（改坏 c18/c4/c6 → 报错，按字节还原 → 通过）。指纹 shell_s1 一致。
 - **第 2 步 见 git log "phase 1 step 2"**：`package.py` 里 `ModSpec`（冻结数据类）、`with_more(spec, **more)`（元组追加、字典合并，层只用它往里加）、`spec_of(mission, test, shell, name)`、`mod_folder(name)`（CNV_OUT_DIR / 暂存 / Mods 的选择）、`build_mod(spec, out)`（进来快照 c2..c18 全部模块变量，`c18.install()` 后灌清单，出去原地恢复）。外壳这一步还内联在 `spec_of` 里。单测 `tests/test_package.py`（同进程构建两次不串，用假 `c4.main`）。如果 git log 里没有 step 2，说明指纹没过，先看 `work/logs/fp_shell_s2.log` 和 `fingerprint.py diff baseline shell_s2`。
-- **第 3 步 下一步**：草稿在 `work/shell/phase1/contribute_s3.txt`（`shell.contribute(spec, lang) -> spec`，加 `launcher=False`）。要做的：把这段加到 `shell.py` 末尾；`ModSpec` 加字段 `launcher: bool = True`；`build_mod` 在 `write_sidecar` 前 `if not spec.launcher` 删 `Play_<name>.bat`；`spec_of` 里 `if shell:` 那段换成 `spec = shell.contribute(spec, lang)`；`build.py` 第 474～475 行删 bat 的两行去掉（只动 --shell 那段）。然后指纹 shell_s3。
-- **第 4 步**：只设计接口。打算：`spec_of(..., layers=())`，每个层是 `spec -> spec` 的函数，只用 `with_more` 加东西，`map_edits` 是元组，检查层把自己的脚本作为一个追加的 map edit 叠在外壳后面；在 `ModSpec` 文档里写明。`build.py --shell --check` 下一阶段再放开（G8）。
-- 之后才是下面"下一步"第 3 项（重建 CampShell/CampShellEn，装 Mods 前单独查游戏在不在跑）。
+- **第 3 步 已提交**（git log 搜 "phase 1 step 3"）：`shell.contribute(spec, lang)` 在 `shell.py` 末尾，`spec_of` 只调它；`ModSpec.launcher`，`build_mod` 按它删 bat，`build.py` 不再自己删。指纹 shell_s3 一致。
+- **第 4 步 已提交**（"phase 1 step 4"）：`spec_of` / `assemble` 收 `layers=()`，层的约定写在 `ModSpec` 文档里。`build.py --shell --check` 归第 2 阶段（总控放开）。指纹 shell_s4 一致。`tests/test_package.py` 并进了 `tests/test_shell.py`（它改 sys.path，让 G4 超了上限）。
+- **重建已做**（11-03 22:44/22:47）：CampShell、CampShellEn 都用新代码装进 Mods。**游戏内自查没做成**：`shell_shots.py` 启动时游戏报 D3DERR_DEVICELOST（屏幕被占或锁屏，`work/logs/sc_zh_overview.log`）。屏幕空出来后照下面"下一步"第 3 项截图；issues.md 里 I10、I12 已标"修了待验"，I15 还是待修（差 9 关逐关进游戏），I11 没动手。
 
 坑：Bash 里 heredoc / `python -c` 写文件只要带反斜杠（包括 `\n`）就被 hook 拦，改写成 scratchpad 里的 .py 再跑。`tests/test_architecture.py` 别的线也在改（关卡线的 G9），提交时只暂存自己那段（用 `git hash-object -w` + `git update-index --cacheinfo`）。指纹跑着的时候别改活文件：三个目标是三个新进程，各自重新 import 工作区代码。
 
