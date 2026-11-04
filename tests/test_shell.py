@@ -118,16 +118,51 @@ def test_the_briefing_narration_events_are_renamed_to_ours_with_the_same_length_
     old = b'MA04_AlliedIntel02'
     new = shell.new_event(old)
     assert len(new) == len(old) and new == b'CNV_SHELL_I_040200' and shell.EVENT.fullmatch(old) and not shell.EVENT.fullmatch(new)
-    strings = shell.narration_strings(shell.missions())
-    assert 'DIALOGEVENT:CNV_SHELL_I_040200' in strings and strings['DIALOGEVENT:CNV_SHELL_I_040100'].startswith('（占位旁白）')
+    assert shell.new_event(b'MA07_AlliedIntel10', 4) == b'CNV_SHELL_I_040500'        # the template's 5th line in slot 4
+    info = shell.missions()
+    strings = shell.narration_strings(info)
+    assert strings['DIALOGEVENT:CNV_SHELL_I_040200'].endswith(info[4]['objectives'][0])
+
+
+def _briefing(k):
+    """Slot k's objective briefing as the shell builds it: (its movie, its .apt, the .apt + constants bytes)."""
+    import apt_movie
+    info = shell.missions()
+    targets = shell.site_targets('sapporo', info[4]['targets']) if k == 4 else None
+    files = dict(shell.objective_briefing(k, info[k]['short'], k == 4, targets=targets))
+    prefix = shell.APT + f'a{k:02d}_objective_briefing.'
+    (h, E, chunks, bufs), _ = apt_textures.mapxml.read_stream(prefix, lambda n: files[n])
+    kinds = {apt_textures.mapxml.sa.cstr(bufs[2], e[6]).split(b':')[0]: c[0] for e, c in zip(E, chunks)}
+    a, c = kinds[b'AptAptData'], kinds[b'AptConstData']
+    (ao, al), (co, cl) = apt_movie.apt_of(a), apt_movie.apt_of(c)
+    return apt_movie.movie(a[ao:ao + al], c[co:co + cl]), a[ao:ao + al], a + c
 
 
 @needs_game
-def test_the_objective_briefing_plays_no_retail_narration_after_the_rename():
-    prefix = 'data' + B + 'aptui' + B + 'a04_objective_briefing.'
-    files = dict(apt_textures.patch('Apt.big', prefix, {}, (shell.EVENT, shell.new_event)))
-    data = files[prefix + 'bin']
-    assert not shell.EVENT.search(data) and b'CNV_SHELL_I_010100' in data and b'$DIALOGEVENT:CNV_SHELL_I_040100' in data.upper()
+@pytest.mark.parametrize('k', range(1, 10))
+def test_every_objective_briefing_zooms_onto_objective_1_points_arrows_and_ends_on_the_whole_map_with_both_marked(k):
+    """I11 (K9): retail's structure in every slot -- the whole map, a zoom with arrows onto objective 1, back to the whole map
+    with a route of arrows and both objectives marked inside the window; its five lines are this slot's and labelled."""
+    import apt_movie
+    m, apt, data = _briefing(k)
+    inv = {v: n for n, v in m['imports'].items()}
+    maps, marks, arrows = [], {}, []
+    for it in apt_movie.placements(m, apt):
+        if it.flags & apt_movie.HAS_MATRIX and it.char == 4 and it.depth == 2:
+            maps.append((it.frame, it.matrix[0]))
+        elif it.flags & apt_movie.HAS_CHARACTER and it.flags & apt_movie.HAS_MATRIX and inv.get(it.char, '').startswith('box'):
+            marks[it.frame] = it.translate
+        elif it.flags & apt_movie.HAS_CHARACTER and inv.get(it.char) == 'blue arrow thin':
+            arrows.append(it.frame)
+    whole = maps[-1][1]
+    assert max(s for _, s in maps) > 1.5 * whole and abs(maps[0][1] - whole) < 0.02 * whole      # in, and back out
+    assert any(200 <= f <= 470 for f in arrows) and any(f >= 479 for f in arrows)              # zoom arrows, route arrows
+    w, h = shell.SCREEN
+    assert len({f for f in marks if f >= 479}) >= 2 and all(20 < x < w - 20 and 20 < y < h - 20 for x, y in marks.values())
+    played = set(re.findall(rb'CNV_SHELL_I_%02d\d\d00' % k, data))
+    strings = shell.narration_strings(shell.missions())
+    assert len(played) == 5 and all(f'DIALOGEVENT:{p.decode()}' in strings for p in played)
+    assert not shell.EVENT.search(data)
 
 
 @pytest.fixture

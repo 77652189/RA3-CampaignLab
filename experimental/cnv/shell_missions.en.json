@@ -29,7 +29,8 @@
     "short": "Ice Soldiers",
     "briefing": "Hokkaido has impounded a batch of clones Shimada left behind, to hand them over to a containment agency. Imperial remnants have dug tunnels under the snow festival's ice sculptures. Take the convoy through the festival grounds to the harbor.",
     "objectives": ["Escort the convoy to the gate of Plaza Two", "Deliver the convoy to the harbor"],
-    "where": [43.06, 141.35]
+    "where": [43.06, 141.35],
+    "targets": ["halt", "harbour"]
   },
   "A5": {
     "name": "Locks of Panama",

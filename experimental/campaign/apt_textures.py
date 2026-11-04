@@ -89,13 +89,30 @@ def hollow(archive, prefix, renames=None):
     return [(prefix + x, v) for x, v in zip(('manifest', 'bin', 'relo', 'imp'), files)]
 
 
-def patch(archive, prefix, images, renames=None, movie=None):
+SCRIPT = (b'AptAptData', b'AptConstData', b'AptDatData')     # a screen's movie, its constants, its image -> texture table
+
+
+def patch(archive, prefix, images, renames=None, movie=None, donor=None):
     """images: {texture id: PIL image of the texture's exact size}. The stream's four files with those pictures in.
     renames: (compiled regex over bytes, f(match bytes) -> bytes of the same length): the names in the stream's constants (a
     script's string table: event names it plays, labels it shows) rewritten, every occurrence the same way.
-    movie: f(.apt bytes, constant file bytes) -> .apt bytes of the same length (apt_movie: the timeline edited in place)."""
+    movie: f(.apt bytes, constant file bytes) -> .apt bytes of the same length (apt_movie: the timeline edited in place).
+    donor: another stream's prefix whose movie, constants and image table (SCRIPT) take the place of this one's -- its
+    timeline played over this stream's own shapes and pictures (the same character numbers: the retail objective
+    briefings all draw their map as shape 3 filled with texture 1); the entries' sizes and content hashes follow."""
     (h, E, chunks, bufs), raw = mapxml.read_stream(prefix, mapxml._archive_get(archive))
     chunks = [list(c) for c in chunks]
+    E = [list(e) for e in E]
+    if donor:
+        (_, dE, dC, dB), _ = mapxml.read_stream(donor, mapxml._archive_get(archive))
+        theirs = {mapxml.sa.cstr(dB[2], e[6]).split(b':')[0]: (e, c) for e, c in zip(dE, dC)}
+        for k, e in enumerate(E):
+            kind = mapxml.sa.cstr(bufs[2], e[6]).split(b':')[0]
+            if kind in SCRIPT:
+                de, dc = theirs[kind]
+                assert e[5] == de[5] == 0, f'{kind}: references other assets'
+                chunks[k] = list(dc)
+                e[3] = de[3]
     if movie:
         import apt_movie
         kinds = {mapxml.sa.cstr(bufs[2], e[6]).split(b':')[0]: k for k, e in enumerate(E)}
@@ -116,5 +133,7 @@ def patch(archive, prefix, images, renames=None, movie=None):
         from PIL import Image
         pixels = Image.merge('RGBA', (b, g, r, a)).tobytes()          # A8R8G8B8 little endian = B, G, R, A in memory
         chunks[k][0] = chunks[k][0][:HEAD + DDS_HEAD] + pixels
+    for e, c in zip(E, chunks):
+        e[8:11] = [len(x) for x in c]
     files = mapxml.write_stream(h, E, chunks, bufs, (raw[1][:4], raw[2][:4], raw[3][:4]))
     return [(prefix + x, v) for x, v in zip(('manifest', 'bin', 'relo', 'imp'), files)]

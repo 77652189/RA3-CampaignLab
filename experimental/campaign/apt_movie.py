@@ -84,3 +84,9 @@ def move(buf, it, translate):
     """Rewrite placement `it`'s translation in `buf` (a bytearray of the .apt)."""
     assert it.flags & HAS_MATRIX, f'frame {it.frame} depth {it.depth}: no matrix to move'
     struct.pack_into('<2f', buf, it.at + 32, *translate)
+
+
+def place(buf, it, matrix, translate):
+    """Rewrite placement `it`'s 2x2 matrix (a, b, c, d) and translation in `buf`."""
+    assert it.flags & HAS_MATRIX, f'frame {it.frame} depth {it.depth}: no matrix to rewrite'
+    struct.pack_into('<6f', buf, it.at + 16, *matrix, *translate)

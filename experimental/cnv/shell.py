@@ -34,7 +34,8 @@ HEAD_SIZE = (512, 288)              # retail's AMB01..09.vp6 (MVhd), the frame o
 WORK = os.path.join(ROOT, 'work', 'shell')
 TO_VP6 = os.path.join(ROOT, 'experimental', 'video', 'to_vp6.py')
 VOSS = os.path.join(os.path.dirname(ROOT), 'RA3-ChineseVoice', 'third_party', 'comfyui', 'input', 'voss_p1.png')
-MAP_PICTURE = os.path.join(ROOT, 'work', 'maps', 'CampA4_mcp.png')       # cnv_preview's picture of the map from above
+# The built mission's map from above for players (ground only, no debug labels): maprender.py <built mod> --plain -o this
+MAP_PICTURE = os.path.join(ROOT, 'work', 'shell', 'map_plain.png')
 FONT = r'C:\Windows\Fonts\msyhbd.ttc'
 B = chr(92)
 APT = 'data' + B + 'aptui' + B
@@ -50,13 +51,15 @@ TEXTS = {
                card='盟军战役（占位）：札幌雪祭的雪祭会场里，号角一响，三条街的地道同时出兵。',
                mission='盟军第 {k} 关', pic='占位图', pic_of='（占位图）', intel='情报', goals='目标',
                card_lines=('CNV', '占位卡片'), faction=dict(allies='战役实验室', soviet='苏军战役', empire='帝国战役'),
-               notes_title='任务说明', other_card='（占位）：这一战役还没做。', other_name='{side} 第 {k} 关（占位）', other_short='{side} {k}'),
+               notes_title='任务说明', goal='目标{n}：{text}', closing='指挥官，两个目标都已标在地图上。',
+               other_card='（占位）：这一战役还没做。', other_name='{side} 第 {k} 关（占位）', other_short='{side} {k}'),
     'intl': dict(title='Sapporo Snow Festival · Horns and Ice Walls', short='Ice Soldiers', file='shell_missions.en.json',
                  intro='Pre-mission movie (placeholder)', colon=': ', semi='; ', note=' (mission notes)', narr='(placeholder narration) ',
                  card='Allied campaign (placeholder): at the Sapporo snow festival, one blast of the horn and the tunnels of three streets send out their troops.',
                  mission='Allied Mission {k}', pic='Placeholder', pic_of=' (placeholder)', intel='Intel', goals='Goals',
                  card_lines=('CNV', 'Placeholder card'), faction=dict(allies='Campaign Lab', soviet='Soviet campaign', empire='Empire campaign'),
-                 notes_title='Mission notes', other_card=' (placeholder): this campaign is not made yet.', other_name='{side} mission {k} (placeholder)', other_short='{side} {k}'),
+                 notes_title='Mission notes', goal='Objective {n}: {text}', closing='Commander, both objectives are marked on the map.',
+                 other_card=' (placeholder): this campaign is not made yet.', other_name='{side} mission {k} (placeholder)', other_short='{side} {k}'),
 }
 T = TEXTS['zh']
 TITLE, SHORT = T['title'], T['short']
@@ -110,14 +113,17 @@ def centered(draw, xy_center, text, size, fill, stroke=0, stroke_fill=(0, 0, 0))
 
 # ---- pictures ----------------------------------------------------------------------------------------------------
 
-def map_picture(size, short=None, real=True, label=True):
-    """The briefing's map picture, `size` (w, h) or a square side: the built mission's map from above in the briefing's amber, or
-    (a slot with no map of ours) an amber grid with the name and 'placeholder'."""
+def map_picture(size, short=None, real=True, label=True, picture=None):
+    """The briefing's map picture, `size` (w, h) or a square side: the built mission's map from above (`picture`, a PIL
+    image or a file; MAP_PICTURE by default) in the briefing's amber, or (a slot with no map of ours) an amber grid with
+    the name and 'placeholder'."""
     from PIL import Image, ImageDraw, ImageOps
     w, h = (size, size) if isinstance(size, int) else size
     short = short or SHORT
-    if real and os.path.exists(MAP_PICTURE):
-        img = ImageOps.colorize(Image.open(MAP_PICTURE).convert('L'), black=(14, 6, 0), white=(255, 160, 60))
+    picture = picture if picture is not None else MAP_PICTURE
+    if real and (not isinstance(picture, str) or os.path.exists(picture)):
+        src = picture if not isinstance(picture, str) else Image.open(picture)
+        img = ImageOps.colorize(src.convert('L'), black=(14, 6, 0), white=(255, 160, 60))
         img = img.resize((w, h), Image.LANCZOS)
         d = ImageDraw.Draw(img)
     else:
@@ -134,22 +140,15 @@ def map_picture(size, short=None, real=True, label=True):
     return img
 
 
-def objective_map(short, real):
-    """The objective briefing's map texture: our picture over the retail picture's opaque rectangle."""
+def objective_map(short, real, picture=None):
+    """The objective briefing's map texture: our picture over the retail picture's opaque rectangle (no label: the screen
+    names the mission above the map, and a label would sit under the zoom)."""
     def paint(orig):
-        from PIL import Image
         out = orig.convert('RGBA').copy()
         x0, y0, x1, y1 = orig.getchannel('A').getbbox()
-        out.paste(map_picture((x1 - x0, y1 - y0), short, real).convert('RGBA'), (x0, y0))
+        out.paste(map_picture((x1 - x0, y1 - y0), short, real, label=False, picture=picture).convert('RGBA'), (x0, y0))
         return out
     return paint
-
-
-def objective_arrow(orig):
-    """The red arrow of the map screen, recoloured to ice blue (red and blue channels swapped)."""
-    from PIL import Image
-    r, g, b, a = orig.convert('RGBA').split()
-    return Image.merge('RGBA', (b, g, r, a))
 
 
 def name_card(inner, lines):
@@ -305,25 +304,160 @@ MONITOR = ['ASSAULT', 'ATTACKING', 'BUILDINGAIRCRAFT', 'BUILDINGFORCES', 'BUILDI
 EVENT = re.compile(rb'MA(\d\d)_AlliedIntel(\d\d)', re.I)       # the retail briefing narration the objective screens play
 
 
-def new_event(old):
+# ---- the objective briefing (I11, K9) ------------------------------------------------------------------------------
+# Retail's nine objective briefings are nine different timelines (A04 zooms three times and never back out, A01 never zooms
+# out, A04 draws no arrow ...). Every slot of ours plays one of them, A07's (2026-11-04 survey of the nine): the whole map
+# and the briefing; a zoom onto objective 1 where two arrows close in; back out to the whole map, objective 1 marked, a
+# route of arrows to objective 2, objective 2 marked -- over each slot's own map shape and picture (apt_textures.patch,
+# donor). Its five narration lines (frames 2, 179, 419, 509, 659) say, in order, LINES.
+TEMPLATE = 7
+TEMPLATE_LINES = (1, 2, 3, 4, 10)               # MA07_AlliedIntel<nn> in the order the timeline plays them
+LINES = ('opening', 'objective 1', 'briefing rest', 'objective 2', 'closing')
+SCREEN = (455, 474)                             # the briefing's map window (shape 1 of every objective briefing)
+# Where A07 has its two objectives, in its map's own units (its markers' boxes on the whole map, frames 479 and 529, through
+# the map's placement there): A is the first one marked, B the one its first zoom closes in on.
+RETAIL_A, RETAIL_B = (148.8, 810.2), (789.3, 763.5)
+# What each of A07's markers and arrows points at, by the frame its character is placed: (first, last, role). 'zoom' items
+# keep their place on the screen relative to the zoom's focus (retail B -> our objective 1), 'mark k' items to our objective
+# k on the whole map, 'route' arrows are carried from retail A -> B onto our objective 1 -> 2.
+ROLES = ((200, 470, ('zoom', RETAIL_B, 0)), (471, 508, ('mark', RETAIL_A, 0)), (509, 528, ('route',)),
+         (529, 719, ('mark', RETAIL_B, 1)))
+# A placeholder map's two objectives (fractions of the picture): a slot without a map of ours still shows the structure.
+PLACEHOLDER_TARGETS = ((0.30, 0.62), (0.72, 0.36))
+
+
+def new_event(old, slot=None):
     """Retail's narration event of a briefing line -> ours (same length: it is a name inside the screen's script constants).
-    Ours is no audio event at all, so nothing is spoken; its subtitle label (DIALOGEVENT:<name>) holds our placeholder text."""
+    Ours is no audio event at all, so nothing is spoken; its subtitle label (DIALOGEVENT:<name>) holds our text. In slot
+    `slot`'s screen the template's lines become that slot's lines in the order they play (CNV_SHELL_I_<slot><n>00).
+    The script's table of the other missions' lines (never played here) goes to CNV_SHELL_X_..., no label."""
     m = EVENT.fullmatch(old)
-    return f'CNV_SHELL_I_{int(m.group(1)):02d}{int(m.group(2)):02d}00'.encode()
+    mission, line = int(m.group(1)), int(m.group(2))
+    if not slot:
+        return f'CNV_SHELL_I_{mission:02d}{line:02d}00'.encode()
+    if mission == TEMPLATE and line in TEMPLATE_LINES:
+        return f'CNV_SHELL_I_{slot:02d}{TEMPLATE_LINES.index(line) + 1:02d}00'.encode()
+    return f'CNV_SHELL_X_{mission:02d}{line:02d}00'.encode()
+
+
+def narration_lines(m):
+    """The objective briefing's five lines for mission info `m`, in LINES' order: the briefing's first sentence over the whole
+    map, objective 1 as the map zooms onto it, the rest of the briefing, objective 2 as the route reaches it, a closing line."""
+    parts = [s + '。' for s in m['briefing'].split('。') if s] if '。' in m['briefing'] else \
+        [s.strip() + '.' for s in m['briefing'].split('. ') if s.strip()]
+    parts = [p.replace('..', '.') for p in parts]
+    first, rest = (parts[0], ''.join(parts[1:]) if T is TEXTS['zh'] else ' '.join(parts[1:])) if len(parts) > 1 else (m['briefing'], m['title'])
+    one, two = m['objectives']
+    return (first, T['goal'].format(n=1, text=one), rest, T['goal'].format(n=2, text=two), T['closing'])
 
 
 def narration_strings(info):
-    """{DIALOGEVENT:<our name>: text}: line 1 of a mission's briefing says its briefing, line 2 its objectives, the others only
-    say they are placeholders."""
-    out = {}
-    for mission in range(1, 10):
-        for line in range(1, 25):
-            old = f'MA{mission:02d}_AlliedIntel{line:02d}'.encode()
-            new = new_event(old).decode().upper()
-            m = info[mission]
-            out[f'DIALOGEVENT:{new}'] = {1: T['narr'] + m['briefing'], 2: T['narr'] + T['semi'].join(m['objectives'])}.get(
-                line, f'{T["narr"]}{m["title"]}')
-    return out
+    """{DIALOGEVENT:<our name>: text}: each slot's five lines (narration_lines) under the names its screen plays."""
+    return {f'DIALOGEVENT:CNV_SHELL_I_{k:02d}{n:02d}00': text for k, m in info.items()
+            for n, text in enumerate(narration_lines(m), 1)}
+
+
+def _geometry_rect(prefix, number=3):
+    """The (width, height) of a briefing's shape `number` (3: the map, in its own units = texture pixels)."""
+    import struct
+    import mapxml
+    (h, E, chunks, bufs), _ = mapxml.read_stream(prefix, mapxml._archive_get('Apt.big'))
+    for e, c in zip(E, chunks):
+        if mapxml.sa.cstr(bufs[2], e[6]).decode().endswith(f'Objective_Briefing_{number}') and \
+                mapxml.sa.cstr(bufs[2], e[6]).startswith(b'AptGeometryData'):
+            _, at, length, _ = struct.unpack_from('<4I', c[0], 0)
+            xs, ys = [], []
+            for line in c[0][at:at + length].decode('latin1').split('\r\n'):
+                if line.startswith('t '):
+                    v = [float(x) for x in line[2:].split(':')]
+                    xs += v[0::2]
+                    ys += v[1::2]
+            return max(xs), max(ys)
+    raise KeyError(f'{prefix}: no shape {number}')
+
+
+def views(size, targets):
+    """Our map's placements: {'whole': (scale, tx, ty), 'zoom': ...} for a map `size` (w, h) in its own units with the
+    objectives `targets` [(x, y)] in those units. The whole map covers the window (as retail's, cropped a little rather than
+    showing an edge); the zoom is retail's (A07's 0.78 over its whole 0.456) and puts objective 1 where A07's zoom puts B,
+    then is held inside the map (no edge in view)."""
+    w, h = size
+    whole = max(SCREEN[0] / w, SCREEN[1] / h)
+    z = whole * 0.78 / 0.456
+
+    def held(s, tx, ty):
+        return s, min(0.0, max(SCREEN[0] - s * w, tx)), min(0.0, max(SCREEN[1] - s * h, ty))
+    focus = 0.78 * RETAIL_B[0] - 330.4, 0.78 * RETAIL_B[1] - 348.6         # A07's zoom (frame 209 on) at its B
+    return {'whole': held(whole, (SCREEN[0] - whole * w) / 2, (SCREEN[1] - whole * h) / 2),
+            'zoom': held(z, focus[0] - z * targets[0][0], focus[1] - z * targets[0][1])}
+
+
+RETAIL_VIEWS = {'whole': (0.449, 3.7, -1.8), 'zoom': (0.78, -330.4, -348.6)}       # A07's after its moves (frames 479, 209)
+
+
+def retime(size, targets):
+    """The template's timeline (A07's) over a map of `size` with `targets` (views): every placement of the map is the
+    blend of our views that retail's is of its own (its scale between the whole map and the zoom); every marker and arrow
+    is carried to our objective by its ROLES."""
+    def edit(apt, const):
+        import apt_movie
+        m = apt_movie.movie(apt, const)
+        ours = views(size, targets)
+        mark = {k for n, k in m['imports'].items() if n != 'Map frame'}
+        buf = bytearray(apt)
+        role_at = {}
+
+        def screen(view, p):
+            s, tx, ty = view
+            return s * p[0] + tx, s * p[1] + ty
+
+        a0, b0 = screen(RETAIL_VIEWS['whole'], RETAIL_A), screen(RETAIL_VIEWS['whole'], RETAIL_B)
+        a1, b1 = screen(ours['whole'], targets[0]), screen(ours['whole'], targets[1])
+        r0, r1 = complex(*b0) - complex(*a0), complex(*b1) - complex(*a1)
+        turn = r1 / r0                                  # the route: retail A -> B onto ours, turned and scaled
+        for it in apt_movie.placements(m, apt):
+            if not it.flags & apt_movie.HAS_MATRIX:
+                continue
+            a, b, c, d = it.matrix
+            x, y = it.translate
+            if it.char == 4 and it.depth == 2:          # the map (sprite 4, depth 2 in every objective briefing)
+                lo, hi = RETAIL_VIEWS['whole'][0], RETAIL_VIEWS['zoom'][0]
+                u = min(1.0, max(0.0, (a - lo) / (hi - lo)))
+                v = [p + u * (q - p) for p, q in zip(ours['whole'], ours['zoom'])]
+                apt_movie.place(buf, it, (v[0], 0.0, 0.0, v[0]), (v[1], v[2]))
+                continue
+            if it.char not in mark:
+                continue
+            if it.flags & apt_movie.HAS_CHARACTER:
+                role_at[it.depth] = next(r for f0, f1, r in ROLES if f0 <= it.frame <= f1)
+            role = role_at[it.depth]
+            if role[0] == 'route':
+                p = complex(*a1) + turn * (complex(x, y) - complex(*a0))
+                col1, col2 = turn * complex(a, b), turn * complex(c, d)
+                apt_movie.place(buf, it, (col1.real, col1.imag, col2.real, col2.imag), (p.real, p.imag))
+            else:
+                kind, retail, k = role
+                view = ours['zoom'] if kind == 'zoom' else ours['whole']
+                was = screen(RETAIL_VIEWS[kind if kind == 'zoom' else 'whole'], retail)
+                now = screen(view, targets[k])
+                apt_movie.move(buf, it, (x + now[0] - was[0], y + now[1] - was[1]))
+        return bytes(buf)
+    return edit
+
+
+def objective_briefing(k, short, real, picture=None, targets=None):
+    """Slot k's objective briefing: [(big path, bytes)] for its four files -- A07's timeline (TEMPLATE) over slot k's own map
+    shape, our map picture in its texture, the narration renamed to slot k's lines. `targets`: our two objectives as
+    fractions (u, v) of the picture (PLACEHOLDER_TARGETS for a slot with no map of ours); `picture`: the map from above."""
+    prefix = APT + f'a{k:02d}_objective_briefing.'
+    tex = f'apt_A{k:02d}_Objective_Briefing_1'
+    orig = apt_textures.originals('Apt.big', prefix)[tex]
+    x0, y0, x1, y1 = orig.getchannel('A').getbbox()
+    targets = targets or PLACEHOLDER_TARGETS
+    local = [(x0 + u * (x1 - x0), y0 + v * (y1 - y0)) for u, v in targets]
+    return apt_textures.patch('Apt.big', prefix, {tex: objective_map(short, real, picture)(orig)},
+                              (EVENT, lambda old: new_event(old, k)), retime(_geometry_rect(prefix), local),
+                              donor=APT + f'a{TEMPLATE:02d}_objective_briefing.')
 
 
 def apt_files(slots):
@@ -336,15 +470,11 @@ def apt_files(slots):
         prefix = APT + stem + '.'
         files.extend((p, v) for p, v in make(prefix) if p.endswith('.bin'))
 
-    for k, (short, built, where) in slots.items():
-        def painted(prefix, k=k, short=short, built=built, renames=None, movie=None):
-            orig = apt_textures.originals('Apt.big', prefix)
-            kinds = {'Objective_Briefing_1': objective_map(short, built), 'Objective_Briefing_2': objective_arrow,
-                     'Global_Briefing_1': global_pictures(short, built)}
-            images = {t: kinds[t[len(f'apt_A{k:02d}_'):]](orig[t]) for t in orig if t[len(f'apt_A{k:02d}_'):] in kinds}
-            return apt_textures.patch('Apt.big', prefix, images, renames, movie)
-        add(f'a{k:02d}_objective_briefing', lambda prefix, painted=painted: painted(prefix, renames=(EVENT, new_event)))
-        add(f'a{k:02d}_global_briefing', lambda prefix, painted=painted, where=where: painted(prefix, movie=retarget(where)))
+    for k, (short, built, where, targets) in slots.items():
+        files.extend(objective_briefing(k, short, built, targets=targets))     # all four files: the donor's sizes
+        add(f'a{k:02d}_global_briefing', lambda prefix, k=k, short=short, built=built, where=where: apt_textures.patch(
+            'Apt.big', prefix, {f'apt_A{k:02d}_Global_Briefing_1': global_pictures(short, built)(
+                apt_textures.originals('Apt.big', prefix)[f'apt_A{k:02d}_Global_Briefing_1'])}, movie=retarget(where)))
     add('fes_m_factionmenu', lambda prefix: apt_textures.patch(
         'Apt.big', prefix, {t: faction_cards(apt_textures.originals('Apt.big', prefix)[t], boxes) for t, boxes in CARD_BOXES.items()}))
     for stem, boxes in ICON_BOXES.items():
@@ -381,7 +511,7 @@ def thumbnails(slots):
     only: retail's are not touched)."""
     out = []
     for k, stem in retail_map_stems().items():
-        short, built, _ = slots[k]
+        short, built = slots[k][:2]
         if built:
             stem = OWN_STEM
         out.append((f'data{B}maps{B}official{B}{stem}{B}{stem}.tga', thumbnail(short, built)))
@@ -474,9 +604,22 @@ def commander_text(k, title, info):
     return f'{title}{T["note"]}\n{info["briefing"]}\n{objectives}'
 
 
-def make(mission_title, mission_name='CampA4', lang='zh'):
+def site_targets(map_name, names):
+    """The built mission's two objectives on its map picture: the map's published sites `names` (shell_missions.json
+    `targets`) as fractions (u, v) of the picture, which shows the map's first border (the whole map), north up."""
+    import importlib
+    mod = importlib.import_module(f'maps.{map_name}')
+    x0, y0, x1, y1 = next(iter(mod.BORDERS.values()))
+    out = []
+    for name in names:
+        s = mod.SITES[name]
+        out.append(((s.x - x0) / (x1 - x0), 1 - (s.y - y0) / (y1 - y0)))
+    return tuple(out)
+
+
+def make(mission_title, mission_name='CampA4', lang='zh', map_name='sapporo'):
     """Everything the shell adds to the build of `mission_name` (the plan's `名字` / title, in the briefing's mission list) in the
-    edition `lang` (langs.py: zh, intl; the words of the shell are TEXTS)."""
+    edition `lang` (langs.py: zh, intl; the words of the shell are TEXTS) on the map module `map_name`."""
     use_lang(lang)
     slot = slot_of(mission_name)
     info = missions()
@@ -499,7 +642,8 @@ def make(mission_title, mission_name='CampA4', lang='zh'):
                            f'MISSIONOBJ:{label(k)}_1': m['objectives'][0], f'MISSIONOBJ:{label(k)}_2': m['objectives'][1]})
     sp.strings.update(narration_strings(info))
     sp.clips[HEAD_ID] = head_clip()
-    slots = {k: (m['short'], k == slot, tuple(m['where'])) for k, m in info.items()}
+    slots = {k: (m['short'], k == slot, tuple(m['where']), site_targets(map_name, m['targets']) if k == slot else None)
+             for k, m in info.items()}
     sp.files = apt_files(slots) + thumbnails(slots)
     sp.overrides = {'APT:ALLIES_FACTION_DESCRIPTION': T['card'], **{f'MONITOR:{k}': ' ' for k in MONITOR},
                     **{f'APT:{k}': T['notes_title'] for k in ('COCOMMANDER_NAME_TITLE', 'COCOMMANDER', 'YOUR_CO_COMMANDER',
@@ -522,7 +666,7 @@ def contribute(spec, lang='zh'):
     from dataclasses import replace
     from package import with_more
     from experimental.video import pack as video_pack
-    sp = make(spec.title or spec.mission, spec.mission, lang)
+    sp = make(spec.title or spec.mission, spec.mission, lang, spec.map_name or 'sapporo')
     video = dict(spec.packs).get('video')
     video = video_pack.Later({**(video.clips if video else {}), **sp.clips})     # written in build_mod's lock
     packs = tuple((k, video if k == 'video' else p) for k, p in spec.packs)

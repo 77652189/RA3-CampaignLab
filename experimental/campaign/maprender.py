@@ -110,7 +110,7 @@ def _blend_mask(px, direction, flags, two_sided):
     return np.maximum(ew, ns) if two_sided else np.minimum(ew, ns)
 
 
-def render(m, out, px=4, around=None, bench_view=False, water=newmap.WATERLINE, title=None):
+def render(m, out, px=4, around=None, bench_view=False, water=newmap.WATERLINE, title=None, plain=False):
     hm = mapterrain.HeightMap(m)
     tiles = mapterrain.Tiles(m, hm.width)
     tex = _Textures(tiles, px)
@@ -152,20 +152,20 @@ def render(m, out, px=4, around=None, bench_view=False, water=newmap.WATERLINE, 
     def at(x, y):
         return x * s, (h * mapterrain.CELL - y) * s
 
-    for g in range(0, int(max(w, h) * mapterrain.CELL) + 1, 500):    # world grid every 500
+    for g in range(0, 0 if plain else int(max(w, h) * mapterrain.CELL) + 1, 500):    # world grid every 500
         X, _ = at(g, 0)
         _, Y = at(0, g)
         d.line([(X, 0), (X, pic.height)], fill=(255, 255, 255, 50))
         d.line([(0, Y), (pic.width, Y)], fill=(255, 255, 255, 50))
         d.text((X + 2, 2), str(g), fill=(255, 255, 255, 170), font=small)
         d.text((2, Y - 3 * px), str(g), fill=(255, 255, 255, 170), font=small)
-    for name, pts in trigger_areas(m):
+    for name, pts in ([] if plain else trigger_areas(m)):
         q = [at(x, y) for x, y in pts]
         if len(q) >= 2:
             d.polygon(q, outline=(80, 230, 230, 220))
             d.text(q[0], name.replace('AREA - ', ''), fill=(80, 230, 230, 230), font=small)
     named = []
-    for o in mapxml.objects(m):
+    for o in ([] if plain else mapxml.objects(m)):
         x, y = at(o['x'], o['y'])
         p = o['props']
         if o['template'] == '*Waypoints/Waypoint':
@@ -244,10 +244,12 @@ def main():
     ap.add_argument('--around', type=float, nargs=3, metavar=('X', 'Y', 'R'), help='crop to a square around X Y')
     ap.add_argument('--bench-view', action='store_true')
     ap.add_argument('--water', type=float, default=newmap.WATERLINE)
+    ap.add_argument('--plain', action='store_true', help='the ground only (no grid, areas, objects or labels): a picture '
+                                                          'for players, e.g. the campaign shell\'s briefing map')
     a = ap.parse_args()
     stem = os.path.splitext(os.path.basename(a.source))[0]
     out = a.out or os.path.join(OUT_DIR, stem + '.png')
-    print(render(load(a.source), out, a.px, a.around, a.bench_view, a.water, title=stem))
+    print(render(load(a.source), out, a.px, a.around, a.bench_view, a.water, title=None if a.plain else stem, plain=a.plain))
 
 
 if __name__ == '__main__':
