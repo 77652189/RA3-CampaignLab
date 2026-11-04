@@ -40,19 +40,22 @@ def waits_for(m, s):
 def test_a_scene_holds_the_input_and_leads_the_camera():
     m = small(段=[{'名字': '一', '过场': SCENE, '目标': ['甲']}], 目标={'甲': {'标记': ['camp']}})
     first = next(s for s in m.scripts if s.name == 'CNV ZZ - Phase 1').do
-    assert first[:3] == [('SET_FLAG', 'CNV_ZZ_Phase_1', 1), ('DISABLE_INPUT',), ('CAMERA_LETTERBOX_BEGIN',)]
+    assert first[:4] == [('SET_FLAG', 'CNV_ZZ_Phase_1', 1), ('SET_FLAG', 'CNV_ZZ_InScene', 1), ('DISABLE_INPUT',),
+                         ('CAMERA_LETTERBOX_BEGIN',)]
     assert ('MOVE_CAMERA_TO', 'CNV ZZ At west field', 3.0, 0.0, 1.0, 1.0) in first
     steps = {waits_for(m, s): s.do for s in named(m, 'CNV ZZ - Phase 1 scene')}
     camp = m.cast['camp'].name
-    assert set(steps) == {3.0, 7.0, 9.0, 13.0}      # the closing line is said (4 s) before the hand-back
+    assert set(steps) == {3.0, 7.0, 13.0}           # the closing line (at 9 s, a script of its own) is said before the hand-back
+    line = named(m, 'CNV ZZ - Phase 1 line')[0]
+    assert waits_for(m, line) == 9.0 and ('FLAG', 'CNV_ZZ_Talking', 0) in line.when
     assert steps[3.0] == [('MAP_REVEAL_ALL_PERM', m.player('p1')), ('CAMERA_FOLLOW_NAMED', camp, 0, plan.FOLLOW_AT)]
     assert steps[7.0] == [('CAMERA_STOP_FOLLOW',)]
-    assert steps[9.0][0][0] == 'SHOW_MILITARY_CAPTION'
+    assert any(a[0] == 'SHOW_MILITARY_CAPTION' for a in line.do)
     # a 镜头's own reveal at its site while the scene runs (the camera sees what is not explored), shrouded at the hand-back
     reveal = next(a for a in first if a[0] == 'MAP_REVEAL_PERMANENTLY_AT_WAYPOINT')
     assert reveal[1] == 'CNV ZZ At west field' and reveal[3:] == (m.player('p1'), 'CNV ZZ Look west field')
     assert plan.LOOK_MIN <= reveal[2] <= plan.LOOK_MAX
-    assert steps[13.0][2:] == [('ENABLE_INPUT',), ('CAMERA_LETTERBOX_END',), ('CAMERA_STOP_FOLLOW',),
+    assert steps[13.0][1:] == [('ENABLE_INPUT',), ('CAMERA_LETTERBOX_END',), ('CAMERA_STOP_FOLLOW',),
                               ('MAP_REVEAL_ALL_UNDO_PERM', m.player('p1')),
                               ('MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT', 'CNV ZZ Look west field'),
                               ('SET_FLAG', 'CNV_ZZ_Scene_1', 1)]
@@ -145,11 +148,11 @@ def test_lines_in_a_scene_are_said_one_at_a_time():
     any two lines of a scene start STRIP_CLEAR apart at least, whatever the plan wrote between them, and the hand-back
     leaves the floor busy until the last line's strip has gone."""
     m = small(段=[{'名字': '一', '过场': [{'镜头': 'west field', '秒': 3}, '通报 一', '通报 二', {'停': 1}, '通报 三']}])
-    ws = [waits_for(m, s) for s in named(m, 'CNV ZZ - Phase 1 scene')]
-    starts = sorted(w for s, w in zip(named(m, 'CNV ZZ - Phase 1 scene'), ws)
-                    if any(a[0] == 'SHOW_MILITARY_CAPTION' for a in s.do))
+    lines = named(m, 'CNV ZZ - Phase 1 line')           # each line is a script of its own: it waits for the floor and takes it
+    starts = sorted(waits_for(m, s) for s in lines)
     assert len(starts) == 3 and all(b - a >= plan.STRIP_CLEAR for a, b in zip(starts, starts[1:]))
-    end = max(ws)
+    assert all(('FLAG', 'CNV_ZZ_Talking', 0) in s.when and ('SET_FLAG', 'CNV_ZZ_Talking', 1) in s.do for s in lines)
+    # the hand-back is not held for the last line: the floor stays taken (Say done frees it), so a queued line waits
     hand = next(s for s in named(m, 'CNV ZZ - Phase 1 scene') if ('ENABLE_INPUT',) in s.do)
-    assert starts[-1] + plan.STRIP_CLEAR - end == next(a[2] for a in hand.do if a[0] == 'SET_MILLISECOND_TIMER')
+    assert not any(a[0] == 'SET_MILLISECOND_TIMER' for a in hand.do)
     assert any(s.name.endswith('Say done') for s in m.scripts)

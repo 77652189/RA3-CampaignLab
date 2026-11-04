@@ -66,15 +66,16 @@ def mission(carrier=True, name='CampA8'):
     m.scripts += [
         Script('CNV A8 - Intro', [], [ctx.say('SCRIPT:CNVA8_INTRO', 20.0)]),
         Script('CNV A8 - Bonus Done', [('NAMED_DESTROYED', n) for n in F_NAMES], m.done(BONUS)),
-        Script(WIN, [('NAMED_DESTROYED', n) for n in P_NAMES],
+        Script(WIN, ctx.ending_gate() + [('NAMED_DESTROYED', n) for n in P_NAMES],
                m.done(OBJ) + (m.done(SURVIVE) if carrier else []) +
-               [ctx.say('SCRIPT:CNVA8_WIN', 10.0), ('SET_FLAG', 'Mission Won', 1)])]
+               ctx.ending_begin() + [ctx.final('SCRIPT:CNVA8_WIN', 10.0), ('SET_FLAG', 'Mission Won', 1)])]
     m.endings.append(WIN)
     if carrier:
-        m.scripts.append(Script(LOST, [('NAMED_DESTROYED', CARRIER)],
+        m.scripts.append(Script(LOST, ctx.ending_gate() + [('NAMED_DESTROYED', CARRIER)],
                                 m.failed(SURVIVE) + m.failed(OBJ) +
-                                [ctx.say('SCRIPT:CNVA8_LOST', 10.0), ('SET_FLAG', 'Mission Lost', 1)]))
+                                ctx.ending_begin() + [ctx.final('SCRIPT:CNVA8_LOST', 10.0), ('SET_FLAG', 'Mission Lost', 1)]))
         m.endings.append(LOST)
+    m.scripts += ctx.talk_scripts()
     return m
 
 

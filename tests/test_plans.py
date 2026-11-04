@@ -53,7 +53,7 @@ def test_a_repeating_wave_has_its_cap_and_its_source():
 
 
 def test_any_of_makes_one_script_per_alternative_latched_once():
-    m = small(规则=[{'当': {'任一': ['开局 + 2:00', '攻击 camp']}, '做': ['通报 来了']}])
+    m = small(规则=[{'当': {'任一': ['开局 + 2:00', '攻击 camp']}, '做': [{'镜头': 'west field'}, '通报 来了']}])
     rule = named(m, 'CNV ZZ - Rule 1')
     assert len(rule) == 2
     latch = {c for s in rule for c in s.when if c[0] == 'FLAG' and c[2] == 0}
@@ -177,7 +177,7 @@ def test_a_time_the_player_can_bring_forward_is_only_the_latest():
 
 
 def test_a_random_time_waits_between_its_two():
-    m = small(规则=[{'当': '开局 + 0:15~0:30/0:10~0:20/5', '做': ['通报 来了']}])
+    m = small(规则=[{'当': '开局 + 0:15~0:30/0:10~0:20/5', '做': [{'镜头': 'west field'}, '通报 来了']}])
     starts = {tuple(s.levels): s.do[0] for s in named(m, 'CNV ZZ - Wait')}
     timer = starts[HARD][1]
     assert starts == {EASY: ('SET_RANDOM_MSEC_TIMER', timer, 15.0, 30.0),

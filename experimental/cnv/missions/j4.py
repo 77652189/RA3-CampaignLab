@@ -95,11 +95,12 @@ def mission(name='CampJ4'):
         Script('CNV J4 - All Free', [('COUNTER', BROKEN, 3, 3)], m.done(ALL_FREE)),
         Script('CNV J4 - Bonus Done', [('COUNTER', convoy.losses, 2, 3)], m.done(BONUS)),
         Script('CNV J4 - Bonus Failed', [('COUNTER', convoy.arrived, 3, 1)], m.failed(BONUS)),
-        Script(WIN, [('COUNTER', convoy.losses, 3, 2)],
-               m.done(OBJ) + [ctx.say('SCRIPT:CNVJ4_WIN', 10.0), ('SET_FLAG', 'Mission Won', 1)]),
-        Script(LOST, [('COUNTER', convoy.arrived, 3, 2)],
-               m.failed(OBJ) + [ctx.say('SCRIPT:CNVJ4_LOST', 10.0), ('SET_FLAG', 'Mission Lost', 1)])]
+        Script(WIN, ctx.ending_gate() + [('COUNTER', convoy.losses, 3, 2)],
+               m.done(OBJ) + ctx.ending_begin() + [ctx.final('SCRIPT:CNVJ4_WIN', 10.0), ('SET_FLAG', 'Mission Won', 1)]),
+        Script(LOST, ctx.ending_gate() + [('COUNTER', convoy.arrived, 3, 2)],
+               m.failed(OBJ) + ctx.ending_begin() + [ctx.final('SCRIPT:CNVJ4_LOST', 10.0), ('SET_FLAG', 'Mission Lost', 1)])]
     m.endings += [WIN, LOST]
+    m.scripts += ctx.talk_scripts()
     return m
 
 

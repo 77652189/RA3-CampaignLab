@@ -25,7 +25,7 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 import glossary                                 # noqa: E402
 import langs                                    # noqa: E402
-from ctx import Ctx                             # noqa: E402
+from ctx import CHAT, FUNC, STRIP_CLEAR, Ctx                 # noqa: E402
 from parts import NOT, Goal, Mission, Script, square   # noqa: E402
 from plantime import (ALL, ONE, TAGS, PlanError, by_level, counts, number, per, seconds, spans,   # noqa: E402,F401
                       times)                                                                # re-exported: tests, checks
@@ -38,9 +38,6 @@ CHRONO_FLASH = 'fxprop_chronoflash'             # retail's chrono flash prop (it
 EASE = 1.0                                     # seconds a pan eases in / out (retail's most used eased pan: 1/1)
 PAN_SPEED = 250.0                               # map units a second at most between two sites of a 过场
 CAPTION_TURN = 4.0                              # seconds a caption-only line holds the floor outside a 过场
-STRIP_CLEAR = 6.5                               # the caption strip stacks lines and clears all at once ~5.4 s after the last one was
-                                                # added, whatever its seconds (bench 2026-11-03, x1 in CampShell, frames 1 s apart):
-                                                # a line outside a 过场 takes the floor this long at least, so it stands alone
 CAPTION_TAIL = 0.3                              # a dubbed line's caption stays this long after its recording ends
 EVA_TURN = 2.5                                 # ... a retail announcer line (its length is not known)
 SPEECH_GAP = 0.6                              # seconds of quiet after a dubbed line in a 过场
@@ -126,6 +123,17 @@ def start_time(c):
     return None
 
 
+def on_event(c):
+    """Whether a rule's condition hangs on something that happens in the game, not just on the clock (`开局 + 0:30`): a
+    list needs one such leaf (the others only narrow it), an `任一` needs every branch to (K2: a line said at a bare
+    time is said over whatever the player is looking at)."""
+    if isinstance(c, dict):
+        return all(on_event(x) for x in c.get('任一', []))
+    if isinstance(c, list):
+        return any(on_event(x) for x in c)
+    return not re.match(r'^开局\s*\+', str(c).strip())
+
+
 # ---------------------------------------------------------------- compiling
 @dataclasses.dataclass
 class Phase:
@@ -173,10 +181,6 @@ class Compiler:
         self.made = {}              # retail template -> the player's copy that builds ours too (可造)
         self.phases, self.waves, self.goals = [], {}, {}
         self.last = []              # the scripts the last when() made
-        self.talk = []              # spoken lines outside a 过场 (flag, actions, seconds): said one at a time (compile_talk)
-        self.scening = False        # compiling a 过场: its lines are timed by the scene itself
-        self.held = False           # a 过场 leaves the caption strip busy past its end (compile_talk frees the floor)
-        self.turn = 0.0             # seconds the last 通报 compiled inside a 过场 takes to say (say() sets it)
         self.counted = {}           # group -> the counter of its losses (摧毁 <group> <n> 个)
         self.troop_counters = {}    # kinds counted together -> their counter (兵少于 <n> <units>)
         self.music = self.load_music(data.get('音乐'))
@@ -483,6 +487,8 @@ class Compiler:
         out = []
         for a in acts or []:
             out += self.action(a)
+            if not self.is_line(a):
+                self.ctx.talk.anchored = True       # a line after a camera move or any act reports what that shows
         return out
 
     def action(self, a):
@@ -490,7 +496,7 @@ class Compiler:
         if isinstance(a, str):
             head, _, rest = a.strip().partition(' ')
             if head == '通报':
-                return self.say([self.ctx.say(self.text('SCRIPT', rest.strip()), CAPTION)], CAPTION_TURN)
+                return self.ctx.line((), self.text('SCRIPT', rest.strip()), CAPTION, turn=CAPTION_TURN, tier=CHAT)
             if head == '副指挥官':                   # the co-commander's panel (retail Cannes hides it at the start)
                 if rest.strip() not in ('开', '关'):
                     raise PlanError(f'action {a!r}: 副指挥官 开 / 关 (the panel at the top left; Player_2 stays)')
@@ -517,6 +523,7 @@ class Compiler:
         if not isinstance(a, dict):
             raise PlanError(f'action {a!r}: a string or a mapping')
         if '通报' in a:
+            tier = FUNC if a.get('功能') in (True, '是') else CHAT      # 功能: 是 marks a line that must not be dropped
             words, who = str(a['通报']), a.get('说')
             if '原文' in a and not who:
                 raise PlanError(f'action {a!r}: 原文 is a speaker\'s words: 说 <who> goes with it')
@@ -530,19 +537,19 @@ class Compiler:
                 # the line's own subtitle stays up seconds after the voice (user 2026-11-03: stacked): it has none, the
                 # caption is its text for the length of the recording
                 words = self.text('SCRIPT', self.voice.strings[f'DIALOGEVENT:{dubbed}'])
-                return self.say([('PLAY_SOUND_EFFECT', dubbed), self.ctx.say(words, n + CAPTION_TAIL)]
-                                + ([('MOVIE_PLAY_RADAR', clip)] if clip else []), n + SPEECH_GAP)
+                return self.ctx.line([('PLAY_SOUND_EFFECT', dubbed)], words, n + CAPTION_TAIL,
+                                     [('MOVIE_PLAY_RADAR', clip)] if clip else [], turn=n + SPEECH_GAP, tier=tier)
             retail = self.voice.eva(who, said) if who and self.voice is not None else None
             if retail:                              # retail's own announcer line: its event, no caption (as retail)
                 self.m.lines.append(dict(说话人=str(who), 原文=str(said), 通报=shown, 字串=retail))
-                return self.say([('PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT', retail)], EVA_TURN)
+                return self.ctx.line([('PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT', retail)], None, 0.0, turn=EVA_TURN, tier=tier)
             key = self.text('SCRIPT', shown)
             if who and self.voice is not None:      # said by someone, but no recording of it: listed (langs.py)
                 self.m.missing.append(f'caption only, no recording of it: {shown}')
             if who:                                 # a flow-script line: the dubbed line is found by who and what
                 self.m.lines.append(dict(说话人=str(who), 原文=str(a.get('原文', words)), 通报=shown, 字串=key))
             secs = float(a.get('秒', CAPTION))
-            return self.say([self.ctx.say(key, secs)], min(secs, CAPTION_TURN))
+            return self.ctx.line((), key, secs, turn=min(secs, CAPTION_TURN), tier=tier)
         if '镜头' in a:                             # to a site, or to one of the plan's own (retail: the statue)
             return self.camera(a, float(a.get('秒', CAMERA_MOVE)), EASE, EASE)
         if '跟随' in a:
@@ -626,8 +633,8 @@ class Compiler:
                 raise PlanError(f'翻脸 {a["翻脸"]!r}: a side of 阵营 其他 ({sorted(self.side)})')
             return [relates(m.player(x), p1, 'Enemy'), relates(p1, m.player(x), 'Enemy')]
         if '失败' in a:
-            return (self.cue('失败') if self.music else []) + [
-                self.ctx.say(self.text('SCRIPT', a['失败']), 10.0), ('SET_FLAG', 'Mission Lost', 1)]
+            return (self.cue('失败') if self.music else []) + self.ctx.ending_begin() + [
+                self.ctx.final(self.text('SCRIPT', a['失败']), 10.0), ('SET_FLAG', 'Mission Lost', 1)]
         raise PlanError(f'action {a!r}: no such action (plan.py lists them)')
 
     def camera(self, a, secs, ease_in, ease_out):
@@ -648,26 +655,9 @@ class Compiler:
         s0, s1 = self.m.where(prev), self.m.where(site)
         return max(secs, math.hypot(s1.x - s0.x, s1.y - s0.y) / PAN_SPEED)
 
-    def say(self, acts, secs):
-        """Lines outside a 过场 are said one at a time (user 2026-11-03: four subtitles at once; a rule's list of lines went
-        off in one frame and the engine queues the voices but not their subtitles): the line only raises its flag, and
-        compile_talk's script plays it when nobody is talking, then holds the floor for `secs`."""
-        if self.scening:
-            self.turn = secs                         # the scene queues its lines by this (scene_steps)
-            return acts
-        flag = f'CNV_{self.tag}_Say_{len(self.talk)}'
-        self.talk.append((flag, acts, max(secs, STRIP_CLEAR)))
-        return [('SET_FLAG', flag, 1)]
-
     def compile_talk(self):
-        busy, timer = f'CNV_{self.tag}_Talking', f'CNV {self.tag} Talk Timer'
-        for k, (flag, acts, secs) in enumerate(self.talk):      # lines raised together play in the order they were written
-            self.m.scripts.append(Script(f'CNV {self.tag} - Say {k}', [('FLAG', flag, 1), ('FLAG', busy, 0)],
-                                         [('SET_FLAG', flag, 0), ('SET_FLAG', busy, 1),
-                                          ('SET_MILLISECOND_TIMER', timer, float(secs))] + acts, once=False))
-        if self.talk or self.held:
-            self.m.scripts.append(Script(f'CNV {self.tag} - Say done', [('FLAG', busy, 1), ('TIMER_EXPIRED', timer)],
-                                         [('SET_FLAG', busy, 0)], once=False))
+        """The scripts that play every queued line (ctx.talk): one at a time, whoever asked."""
+        self.m.scripts += self.ctx.talk_scripts()
 
     @staticmethod
     def is_line(step):
@@ -719,11 +709,12 @@ class Compiler:
         return f'CNV {self.tag} Sight {site}'
 
     def scene(self, ph):
-        self.scening = True
+        talk = self.ctx.talk
+        talk.scene = talk.scened = True
         try:
             return self.scene_steps(ph)
         finally:
-            self.scening = False
+            talk.scene = False
 
     def scene_steps(self, ph):
         """A phase's 过场 (retail: 36 of 40 missions open with one): the player's input off and the letterbox on
@@ -732,7 +723,8 @@ class Compiler:
         action at once (a caption, a device's, a 技能: what the camera is to see); then the input back. Returns the
         phase-start actions and the scene's length; the later steps are timed scripts on `段 <phase> + t`."""
         at, t, look, follow, line_at = {}, 0.0, False, False, None
-        looked = []                                  # sites a 镜头 lifted the shroud at: shrouded again at the hand-back
+        talk, said = self.ctx.talk, []               # said: (when, actions) of each line, a script of its own
+        looked = []                                # sites a 镜头 lifted the shroud at: shrouded again at the hand-back
         steps, prev, joined = list(ph.spec['过场']), None, False
         for i, step in enumerate(steps):
             if isinstance(step, dict) and '停' in step:
@@ -768,12 +760,14 @@ class Compiler:
                 continue
             if self.is_line(step):
                 # one line at a time, as outside a 过场 (user 2026-11-03: "一句说完了之后再继续说"): the caption strip stacks
-                # its lines and clears them together STRIP_CLEAR after the last, so a line waits for the one before it
+                # its lines and clears them together STRIP_CLEAR after the last, so a line waits for the one before it.
+                # It is a script of its own that takes the queue's floor (ctx.talk): what was being said when the scene
+                # began is finished first
                 if line_at is not None and t < line_at + STRIP_CLEAR:
                     t = line_at + STRIP_CLEAR
-                self.turn = 0.0
-                at.setdefault(t, []).extend(self.action(step))
-                line_at, t, joined = t, t + self.turn, False
+                talk.turn = 0.0
+                said.append((t, talk.floor(self.action(step), talk.turn)))
+                line_at, t, joined = t, t + talk.turn, False
                 continue
             at.setdefault(t, []).extend(self.action(step))
         if t <= 0:
@@ -783,19 +777,18 @@ class Compiler:
         for part in ph.spec.get('保护') or []:
             guard += [('UNIT_CHANGE_OBJECT_STATUS', n, 'UNATTACKABLE', 1) for n in self.part_names(part)]
             guard_end += [('UNIT_CHANGE_OBJECT_STATUS', n, 'UNATTACKABLE', 0) for n in self.part_names(part)]
-        hold = []
-        if line_at is not None and line_at + STRIP_CLEAR > t:        # the last line's strip is still up: no line over it
-            self.held = True
-            hold = [('SET_FLAG', f'CNV_{self.tag}_Talking', 1),
-                    ('SET_MILLISECOND_TIMER', f'CNV {self.tag} Talk Timer', line_at + STRIP_CLEAR - t)]
-        end = hold + [('ENABLE_INPUT',), ('CAMERA_LETTERBOX_END',)] + ([('CAMERA_STOP_FOLLOW',)] if follow else []) + \
+        end = [('SET_FLAG', talk.scening, 0), ('ENABLE_INPUT',), ('CAMERA_LETTERBOX_END',)] + ([('CAMERA_STOP_FOLLOW',)] if follow else []) + \
             ([('MAP_REVEAL_ALL_UNDO_PERM', self.m.player('p1'))] if look else []) + \
             [('MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT', self.look_name(x)) for x in looked] + fire_end + guard_end + \
             [('SET_FLAG', self.scene_flag(ph), 1)]
         at.setdefault(t, []).extend(end)
-        now = [('DISABLE_INPUT',), ('CAMERA_LETTERBOX_BEGIN',)] + fire + guard + at.pop(0.0, [])
+        now = [('SET_FLAG', talk.scening, 1), ('DISABLE_INPUT',), ('CAMERA_LETTERBOX_BEGIN',)] + fire + guard + \
+            at.pop(0.0, [])
         for k, (when, acts) in enumerate(sorted(at.items())):
             self.when(f'Phase {ph.k + 1} scene {k + 1}', f'段 {ph.name} + {when:g}', acts)
+        for k, (when, acts) in enumerate(said):         # a line starts when its time is up and the floor is free
+            self.when(f'Phase {ph.k + 1} line {k + 1}', f'段 {ph.name} + {when:g}' if when else f'段 {ph.name}', acts,
+                      gate=[('FLAG', talk.busy, 0)])
         return now, t
 
     def ceasefire(self, ph):
@@ -1086,10 +1079,21 @@ class Compiler:
                 raise PlanError(f'规则 {k + 1}: 次数 {r["次数"]!r} -- a rule happens once, or again every so often '
                                 f'while it holds (每隔)')
             levels = self.difficulty(r, f'规则 {k + 1}')
+            talk = self.ctx.talk
+            talk.anchored = on_event(r['当'])          # a line in 做 needs an event in 当, or a 镜头 before it (actions)
+            try:
+                acts = self.actions(r.get('做'))
+            except PlanError as e:
+                raise PlanError(f'规则 {k + 1} (当 {r["当"]!r}): {e}')
+            finally:
+                talk.anchored = True
             if r.get('每隔') is None:
-                self.when(f'Rule {k + 1}', r['当'], self.actions(r.get('做')), levels=levels)
+                ends = any(isinstance(a, dict) and '失败' in a for a in r.get('做') or [])    # says its own last line
+                made = self.when(f'Rule {k + 1}', r['当'], acts, levels=levels,
+                                 gate=self.ctx.ending_gate() if ends else ())
+                self.m.endings += [s.name for s in made] if ends else []
                 continue
-            timer, acts = f'CNV {self.tag} Rule {k + 1}', self.actions(r.get('做'))
+            timer = f'CNV {self.tag} Rule {k + 1}'
             self.m.scripts.append(Script(f'CNV {self.tag} - Rule {k + 1} clock', [],
                                          [('SET_MILLISECOND_TIMER', timer, 0.0)]))     # run out: the first is now
             for lv, gap in by_level(times(r['每隔'])):
@@ -1215,10 +1219,12 @@ class Compiler:
             # before the mission ends (simstatic: a main objective nothing ticks is a wiring fault, 2026-10-27)
             held = [g for g in m.objectives if not g.bonus and not g.spec.get('完成')]
             tick = [a for g in held for a in m.done(g.name) + [('SET_FLAG', self.goal_flag(g, '完成'), 1)]]
-            m.endings += [s.name for s in self.when('Win', self.d['胜利'], tick + self.action('胜利'))]
+            m.endings += [s.name for s in self.when('Win', self.d['胜利'], tick + self.action('胜利'),
+                                                    gate=self.ctx.ending_gate())]
         for k, lose in enumerate(self.d.get('失败') or []):
             m.endings += [s.name for s in self.when(f'Lose {k + 1}', lose['当'],
-                                                    self.action({'失败': lose.get('原因', '任务失败')}))]
+                                                    self.action({'失败': lose.get('原因', '任务失败')}),
+                                                    gate=self.ctx.ending_gate())]
 
     def compile_countdowns(self):
         for timer, label in self.shown.items():

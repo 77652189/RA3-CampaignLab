@@ -131,7 +131,8 @@ def test_contract_catches_what_nobody_published():
                                    ('SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER', 'JapanNavalYard', 'Player_9', 'c'),
                                    ('SHOW_MILITARY_CAPTION', 'SCRIPT:NONE', 1.0)]))
     got = parts.contract(m)
-    assert len(got) == 7, got
+    assert len(got) == 8, got                          # the 7 it names, and the caption outside the dialogue outlet
+    assert any('dialogue outlet' in p for p in got)
     assert any('raw coordinates' in p for p in got) and any("object 'UNIT - Nobody'" in p for p in got)
     assert any("power 'SpecialPower_X'" in p for p in got) and any("waypoint 'WP X'" in p for p in got)
     assert any("template 'JapanNavalYard'" in p for p in got) and any("player 'Player_9'" in p for p in got)
@@ -327,7 +328,10 @@ def test_ctx_outlets_hand_over_the_same_actions():
     from plantime import PlanError
     import pytest
     ctx = Ctx(mission=parts.Mission(name='X', map=None), tag='T')
-    assert ctx.say('SCRIPT:K', 5.0) == ('SHOW_MILITARY_CAPTION', 'SCRIPT:K', 5.0)
+    assert ctx.say('SCRIPT:K', 5.0) == ('SET_FLAG', 'CNV_T_Want_0', 1)      # a line only asks; the queue plays it
+    said = [s for s in ctx.talk_scripts() if s.name == 'CNV T - Say 0'][0]
+    assert ('SHOW_MILITARY_CAPTION', 'SCRIPT:K', 5.0) in said.do
+    assert ctx.final('SCRIPT:E', 10.0) == ('SHOW_MILITARY_CAPTION', 'SCRIPT:E', 10.0)
     assert ctx.order('attack', ['a', 'b'], 't') == [('NAMED_ATTACK_NAMED', 'a', 't'), ('NAMED_ATTACK_NAMED', 'b', 't')]
     assert ctx.order('guard', ['a'], 'z') == [('UNIT_GUARD_AREA', 'a', 'z')]
     assert ctx.order('attack', [], 't') == []

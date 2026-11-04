@@ -5,6 +5,7 @@ Imports model.py at most, never package.py (tests/test_architecture.py, G-layers
 on sys.path (package.py / parts.py put it there) for mapscript. Split out of parts.py (ADR 0016).
 """
 import collections
+import re
 
 
 AREA_ARG = 9                            # script argument type of a trigger area name (script_catalog.json)
@@ -22,6 +23,50 @@ CREATES_NAMED = ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', 'CREATE_NAMED_ON_TEAM_AT_WA
 
 
 POINTS_AT_UNNAMED = 'SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER'    # (kind, player, team, name)
+
+
+OUTLET_SCRIPTS = re.compile(r'CNV \w+ - (Say \d+( chat)?|Phase \d+ line \d+)')    # ctx.talk's: a queued line, a scene's
+QUEUE_SCRIPTS = re.compile(r'CNV \w+ - (Say|Drop) (\d+)( chat)?')
+PENDING_FLAG = re.compile(r'CNV_\w+_Say_\d+')
+TALKING_FLAG = re.compile(r'CNV_\w+_Talking')
+
+
+def said_outside_the_outlet(m, cat):
+    """G3b (K1): everything the player sees said or hears said -- a caption, an announcer line, one of our voice lines,
+    a talking head -- is done by a script of the one queue (ctx.say: `CNV <tag> - Say k`, or a scene's `Phase n line k`,
+    which wait for the floor), or by the ending's own script (ctx.final: the ending line, which waits for the floor),
+    never by a script of its own, where two lines would come up together. Test scripts (`Test - ...`, a check's own)
+    are not the level's."""
+    talk = {n for n in cat if 'MILITARY_CAPTION' in n or 'EVA_EVENT' in n} | {'MOVIE_PLAY_RADAR'}
+    ends = set(m.endings)
+    return [f'{s.name}: {name} outside the dialogue outlet (ctx.say queues every line, one at a time)'
+            for s in m.scripts if not s.name.startswith('Test') and not OUTLET_SCRIPTS.fullmatch(s.name)
+            and s.name not in ends
+            for name, *args in s.do
+            if name in talk or (name == 'PLAY_SOUND_EFFECT' and str(args[0]).startswith('CNV_'))]
+
+
+def said_lines_kept(m):
+    """K2 (2026-11-04): what must be said is never lost. A line is dropped only by its own `Drop k` script, and only
+    a 闲话 line (its `Say k chat`) has one; nothing else puts a queued line's flag down; an ending script that shows
+    its line waits for the floor (the flag `Talking` is down), so it comes after the line being said and is said in
+    the frame the mission ends."""
+    names, out = {s.name for s in m.scripts}, []
+    for s in m.scripts:
+        q = QUEUE_SCRIPTS.fullmatch(s.name)
+        if q and q[1] == 'Drop' and s.name.replace('Drop', 'Say') + ' chat' not in names:
+            out.append(f'{s.name}: drops a line that is not 闲话 (a 功能 line is never dropped)')
+        if q:
+            continue
+        out += [f'{s.name}: puts the queued line flag {a[0]!r} down (only its own Say / Drop may)'
+                for name, *a in s.do if name == 'SET_FLAG' and PENDING_FLAG.fullmatch(str(a[0])) and not a[1]]
+    for s in m.scripts:
+        if s.name in m.endings and any('MILITARY_CAPTION' in x[0] for x in s.do) \
+                and not (any(c[0] == 'FLAG' and TALKING_FLAG.fullmatch(str(c[1])) and not c[2] for c in s.when)
+                         and any(x[0] == 'SET_FLAG' and TALKING_FLAG.fullmatch(str(x[1])) and x[2] for x in s.do)):
+            out.append(f'{s.name}: an ending that says its line must wait for the floor and then take it '
+                       f'(ctx.ending_gate, ctx.ending_begin)')
+    return out
 
 
 def missing_areas(mission):
@@ -74,6 +119,8 @@ def contract(mission):
                                                           ('area', m.areas)) for v in vs if not latin(v)]
     out += [f'{s.name}: {name} argument {v!r}: not Latin-1' for s in m.scripts for name, *args in s.when + s.do
             for v in args if isinstance(v, str) and not latin(v)]
+    out += said_outside_the_outlet(m, cat)
+    out += said_lines_kept(m)
     for s in m.scripts:
         for name, *args in s.when + s.do:
             types = cat[name]['args']

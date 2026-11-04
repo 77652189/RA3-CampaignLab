@@ -92,7 +92,7 @@ def test_a_spoken_caption_carries_its_speaker_and_the_flow_scripts_words():
     assert m.lines == [dict(说话人='沃斯', 原文='工兵都没了？我再派两个。', 通报='沃斯：我再派两个。',
                             字串=m.lines[0]['字串'])]
     assert m.strings[m.lines[0]['字串']] == '沃斯：我再派两个。'          # what the screen shows names the speaker
-    say = next(s for s in m.scripts if s.name == 'CNV ZZ - Say 0')       # outside a 过场 a line waits its turn (below)
+    say = next(s for s in m.scripts if s.name == 'CNV ZZ - Say 0 chat')  # outside a 过场 a line waits its turn (below)
     assert ('SHOW_MILITARY_CAPTION', m.lines[0]['字串'], plan.CAPTION) in say.do
 
 

@@ -257,6 +257,47 @@ def test_g11_acceptance_checks_only_observe():
     assert "G11 ['acts', 'adds', 'overrides', 'reveals']" in r.stdout, r.stdout.strip()
 
 
+# G3b (ADR 0016 phase 3, K1 + K2): everything said in a built level comes from the one queue. contract.said_outside_the_outlet
+# holds it on the product of every build (a level's own caption, announcer, voice line or talking head in a script
+# that is not `Say k` / a scene's `Phase n line k` / an ending's own is a problem), contract.said_lines_kept that a line
+# is lost only by a 闲话 line's own Drop and an ending waits for the floor, and the simulator's timetable of every level
+# shows lines at least the strip's 5.4 s apart (the strip stacks lines and clears them together after the last).
+# tests/test_talk_queue.py runs the queue itself (order, tiers, expiry, the ending).
+G3B_PROBE = '''
+import sys
+sys.path[:0] = [{cnv!r}, {root!r}]
+import build, contract, model, sim
+from model import Script
+bad = []
+for n in sorted(build.MISSIONS):
+    m, _, _ = build.resolve(n, '')
+    bad += [(n, p) for p in contract.contract(model.merged(m))
+            if 'dialogue outlet' in p or 'queued line' in p or 'not 闲话' in p or 'must wait for the floor' in p]
+print('G3B builds', len(build.MISSIONS), 'outside', bad[:3])
+m, _, _ = build.resolve('a4', '')
+m.scripts.append(Script('CNV A4 - Own caption', [], [('SHOW_MILITARY_CAPTION', 'SCRIPT:X', 3.0)]))
+print('G3B mutation', len([p for p in contract.contract(model.merged(m)) if 'dialogue outlet' in p]))
+close = []
+for lv in build.LEVELS:
+    s = sim.simulate(lv, until={until})
+    said = [t for t, kind, _ in s.log if kind in ('通报', '配音', '原版播报')]
+    # a voiced line logs its voice and its caption together: one line
+    starts = sorted(set(round(t, 2) for t in said))
+    close += [(lv, a, b) for a, b in zip(starts, starts[1:]) if b - a < 5.4]
+print('G3B close', close[:5])
+'''
+
+
+def test_g3b_everything_said_comes_from_the_one_queue():
+    import sys
+    probe = G3B_PROBE.format(cnv=str(ROOT / CNV), root=str(ROOT), until=900.0)
+    r = subprocess.run([sys.executable, '-I', '-X', 'utf8', '-c', probe], cwd=ROOT, capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr[-2000:]
+    assert 'G3B builds' in r.stdout and "outside []" in r.stdout, r.stdout.strip()
+    assert 'G3B mutation 1' in r.stdout, r.stdout.strip()
+    assert 'G3B close []' in r.stdout, r.stdout.strip()
+
+
 # G8 (ADR 0016 phase 2): a check builds on the campaign shell too. build.py <level> --shell --check <check> is parsed and
 # reaches packaging as the plain mission with the check as a layer (package.check_layer), under a mod name of its own
 # (CampShellT) so the release CampShell installed stays as it was. Only a check that only observes (contract.observes,
