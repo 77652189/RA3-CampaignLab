@@ -109,9 +109,9 @@
 分工：题卡的**好玩假设**是"这关为什么好玩"的唯一说法；要素和压力曲线只当手段和诊断仪表，不设达标线；底线规则只拦一定不好玩的；好不好玩只看试玩时假设成立没有（plan.md 那一行）。
 
 - **做完**：① A4 好玩假设（[cards/a4.md](cards/a4.md) 甲末尾，带"成立 / 不成立"现象表），手册第二节加了这一栏；③ 底线规则 [floor-rules.md](floor-rules.md) F1～F7 和 [floorcheck.py](floorcheck.py)（在攻略页 `work/walkthrough/<关>.json` 上查 F1 F2 F3 F4 F6，变异自测过；F5 F7 要测试台）；④ 盘点 [draft-inventory.md](draft-inventory.md)（26 关缺好玩假设的"试玩现象"；8 份旧策划稿逐份对照；机制并成 9 类；建议顺序）。
-- **② 原版压力曲线**：两个 Sonnet 子 Agent 量伊贺、宫古岛、横滨、斯大林格勒，结果写在本机 `work/pressure/<地图名>.md`；要汇总成 `docs/design/pressure-curves.md`（floor-rules.md 已经链过去），再用原版最长空档核对 F3 的 180 秒（`floorcheck.py` 的 `QUIET_S`）。work/ 丢了就照 floor-rules.md 第一段和本节重派。
-- **A4 攻略页发现的**（不是本线的文件，交总控）：`a4.json` 还写着西岭电视塔（11-03 已换成油井）；六条路线没写谁走（F2 缺数据）；最后一程没有时刻（F3 缺数据）。
-- **下一步**：汇总压力曲线 → 成批写 26 关的好玩假设（照 A4 的表，一关一段）。
+- **② 原版压力曲线做完**：[pressure-curves.md](pressure-curves.md)（伊贺、宫古岛、横滨、斯大林格勒，逐波表在 [teardowns/data/pressure/](teardowns/data/pressure/)）。F3 的 180 秒核过：原版守 / 护送段最长空档约 145 秒。
+- **A4 攻略页发现的**（不是本线的文件，交总控）：`a4.json` 还写着西岭电视塔（11-03 已换成油井）；六条路线没写谁走（F2 缺数据）；最后一程没有时刻（F3 缺数据）。旧拆解卡 iga.md 把机甲天狗和打击者-VX 叫反了；timeline_measure 漏认攻击移动类的出兵（伊贺 A 村 4 波）。
+- **下一步**：成批写 26 关的好玩假设（照 A4 的表，一关一段；卡上前两件已有，只补"试玩时看到什么算成立 / 不成立"，能计数的写成计数器）。写剧情和玩法稿按"先加戏"的规矩，好玩假设属于玩法判断，用 Opus 写。
 
 ## 下一步
 

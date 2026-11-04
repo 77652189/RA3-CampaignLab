@@ -8,6 +8,9 @@
 |---|---|---|
 | [question-handbook.md](question-handbook.md) | **出题手册**（[ADR 0010](../adr/0010-question-first.md)，2026-10-30 起关卡先出题）：题卡模板、"好题"自查清单、堵平推和拆源的六种结构、机制推论表、题型库（星际 2、指挥官挑战、心灵终结） | 第 2 步：题卡 |
 | [curriculum.md](curriculum.md) | **课程表**初稿：9 个考点按教练合考排进 27 关，每关用途、一句话巧解、难度波浪 | 第 1 步：课程表 |
+| [floor-rules.md](floor-rules.md)、[floorcheck.py](floorcheck.py) | **底线规则**（2026-11-04，草稿关）：只拦一定不好玩的七种情况，五条在攻略页上自动查 | 草稿关的检查 |
+| [pressure-curves.md](pressure-curves.md) | 原版 4 关的压力曲线：每波什么时候、多少、什么兵、从哪来，时间压力从哪来；只当参照和诊断，不设达标线 | 草稿关的参照 |
+| [draft-inventory.md](draft-inventory.md) | 27 关离草稿策划稿还差什么：好玩假设、旧策划稿对照、地图、机制分类、建议顺序 | 草稿关的盘点 |
 | [cards/](cards/) | 候选题卡：A4、S1、J7 各 3 张，带评委挑出的漏洞和推荐顺序 | 第 2 步 |
 | [charter.md](charter.md) | **设计总纲**：四个条件、工作流（三层、先横后纵）、问题归层。分层顺序已被 ADR 0010 取代，四个条件仍用 | 入口 |
 | [story-questions.md](story-questions.md) | 第 1 层开工前要用户一次定的剧情问题：三个结局、三条背叛、地点和关名、自由号、新角色的名字，各带推荐 | 第 1 层 |
