@@ -28,3 +28,13 @@ def test_the_pack_puts_the_clip_in_the_big_where_retails_are_and_checks_it_is_th
     p.check(p.files)
     with pytest.raises(SystemExit):
         p.check([])
+
+
+def test_a_later_pack_writes_video_xml_only_when_the_build_takes_it(tmp_path, monkeypatch):
+    clip = tmp_path / 'a.vp6'
+    clip.write_bytes(b'MVhd')
+    monkeypatch.setattr(pack.labpaths, 'SDK3', str(tmp_path / 'sdk'))
+    p = pack.Later({'CNVTEST01': str(clip)})
+    xml = tmp_path / 'sdk' / 'Mods' / 'CNVVideo' / 'Data' / 'video.xml'
+    assert p.events == {'CNVTEST01'} and not xml.exists()      # made outside build_mod's lock: nothing written yet
+    assert p.include == 'DATA:CNVVideo/Data/video.xml' and xml.exists()

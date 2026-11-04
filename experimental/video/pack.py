@@ -56,3 +56,21 @@ def make(clips, folder=FOLDER):
         with open(path, 'rb') as f:
             files.append((f'{MOVIES}\\{i}.vp6', f.read()))
     return Pack(f'DATA:{folder}/Data/video.xml', files, set(clips))
+
+
+class Later:
+    """make(clips) only when a build first takes the include, files or check -- that is inside package.build_mod's SDK
+    lock. video.xml is one file for every build: written outside the lock, a build running at the same time overwrote
+    it with its own clips (2026-11-03, fingerprint shell_p2: CampShell lost CNVHEAD01, CNVINTRO01.. to CampA4Win)."""
+
+    def __init__(self, clips, folder=FOLDER):
+        self.clips, self.folder, self.made, self.events, self.strings = dict(clips), folder, None, set(clips), {}
+
+    def _make(self):
+        if self.made is None:
+            self.made = make(self.clips, self.folder)
+        return self.made
+
+    include = property(lambda self: self._make().include)
+    files = property(lambda self: self._make().files)
+    check = property(lambda self: self._make().check)

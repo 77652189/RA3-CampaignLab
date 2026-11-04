@@ -337,6 +337,6 @@ print('G8', seen == want, seen)
 def test_g8_a_check_builds_on_the_shell():
     import sys
     r = subprocess.run([sys.executable, '-I', '-X', 'utf8', '-c', G8_PROBE.format(cnv=str(ROOT / CNV))], cwd=ROOT,
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, encoding='utf-8')     # -X utf8 child; the parent would read gbk
     assert r.returncode == 0, (r.stdout + r.stderr)[-2000:]
     assert 'G8 True' in r.stdout, r.stdout.strip()

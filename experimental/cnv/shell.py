@@ -524,7 +524,7 @@ def contribute(spec, lang='zh'):
     from experimental.video import pack as video_pack
     sp = make(spec.title or spec.mission, spec.mission, lang)
     video = dict(spec.packs).get('video')
-    video = video_pack.make({**(video.clips if video else {}), **sp.clips})
+    video = video_pack.Later({**(video.clips if video else {}), **sp.clips})     # written in build_mod's lock
     packs = tuple((k, video if k == 'video' else p) for k, p in spec.packs)
     if 'video' not in dict(spec.packs):
         packs += (('video', video),)
