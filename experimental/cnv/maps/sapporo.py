@@ -136,7 +136,7 @@ SITES.update({
 FIELDS = [
     resources.Field('south', 2540.0, 1170.0, 225.0, 1, base='south base', owner='p1', build=resources.PAD),
     resources.Field('north', 2917.0, 3833.0, 135.0, 1, base='north base', owner='s1'),
-    resources.Field('harbour', 3873.0, 1553.0, 45.0, 1),
+    resources.Field('harbour', 2801.0, 1814.0, 315.0, 1),    # user's map-page proposal 2026-11-04: the old pad's ground held no refinery
     resources.Field('low ground', 2727.0, 2013.0, 135.0, 1),
 ]
 DERRICKS = [(1120.0, 3860.0), (2120.0, 1660.0)]
