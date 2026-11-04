@@ -298,6 +298,41 @@ def test_g3b_everything_said_comes_from_the_one_queue():
     assert 'G3B close []' in r.stdout, r.stdout.strip()
 
 
+# G10 (ADR 0016 phase 3, K5): a level's camera moves aim at view points (plan.view_point): the site held inside the
+# playable area in force, a half screen from its edge. contract.camera_outside_the_view holds it on the product of every
+# build (a MOVE_CAMERA_TO at a waypoint the compiler gave no view rect, or outside it, is a problem).
+G10_PROBE = '''
+import sys
+sys.path[:0] = [{cnv!r}, {root!r}]
+import build, contract, model
+bad, moves = [], 0
+for n in sorted(build.MISSIONS):
+    m, _, _ = build.resolve(n, '')
+    mm = model.merged(m)
+    moves += sum(1 for s in mm.scripts for a in s.do if a[0] == 'MOVE_CAMERA_TO' and not s.name.startswith('Test'))
+    bad += [(n, p) for p in contract.contract(mm) if 'camera aims at' in p]
+print('G10 builds', len(build.MISSIONS), 'moves', moves, 'bad', bad[:3])
+m, _, _ = build.resolve('a4', '')
+mm = model.merged(m)
+name = next(a[1] for s in mm.scripts for a in s.do if a[0] == 'MOVE_CAMERA_TO')
+mm.waypoints[name] = (-500.0, -500.0)                                  # a view point pushed out of its rect
+n1 = len(contract.camera_outside_the_view(mm))
+print('G10 outside', n1 >= 1)
+mm.waypoints['CNV A4 Raw'] = (1500.0, 2500.0)
+mm.scripts.append(model.Script('CNV A4 - Raw camera', [], [('MOVE_CAMERA_TO', 'CNV A4 Raw', 2.0, 0.0, 1.0, 1.0)]))
+print('G10 raw', len(contract.camera_outside_the_view(mm)) == n1 + 1)
+'''
+
+
+def test_g10_every_camera_move_aims_at_a_view_point():
+    import sys
+    probe = G10_PROBE.format(cnv=str(ROOT / CNV), root=str(ROOT))
+    r = subprocess.run([sys.executable, '-I', '-X', 'utf8', '-c', probe], cwd=ROOT, capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr[-2000:]
+    assert 'G10 builds' in r.stdout and 'bad []' in r.stdout and 'moves 0' not in r.stdout, r.stdout.strip()
+    assert 'G10 outside True' in r.stdout and 'G10 raw True' in r.stdout, r.stdout.strip()
+
+
 # G8 (ADR 0016 phase 2): a check builds on the campaign shell too. build.py <level> --shell --check <check> is parsed and
 # reaches packaging as the plain mission with the check as a layer (package.check_layer), under a mod name of its own
 # (CampShellT) so the release CampShell installed stays as it was. Only a check that only observes (contract.observes,

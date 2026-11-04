@@ -8,6 +8,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'experimental' / 'cnv'))
+import contract  # noqa: E402
 import plan  # noqa: E402
 import plancheck  # noqa: E402
 
@@ -42,7 +43,9 @@ def test_a_scene_holds_the_input_and_leads_the_camera():
     first = next(s for s in m.scripts if s.name == 'CNV ZZ - Phase 1').do
     assert first[:4] == [('SET_FLAG', 'CNV_ZZ_Phase_1', 1), ('SET_FLAG', 'CNV_ZZ_InScene', 1), ('DISABLE_INPUT',),
                          ('CAMERA_LETTERBOX_BEGIN',)]
-    assert ('MOVE_CAMERA_TO', 'CNV ZZ At west field', 3.0, 0.0, 1.0, 1.0) in first
+    move = next(a for a in first if a[0] == 'MOVE_CAMERA_TO')
+    assert move[2:] == (3.0, 0.0, 1.0, 1.0) and move[1].startswith('CNV ZZ Cam west field ')     # a view point (K5)
+    assert move[1] in m.views and contract.camera_outside_the_view(m) == []
     steps = {waits_for(m, s): s.do for s in named(m, 'CNV ZZ - Phase 1 scene')}
     camp = m.cast['camp'].name
     assert set(steps) == {3.0, 7.0, 13.0}           # the closing line (at 9 s, a script of its own) is said before the hand-back
@@ -156,3 +159,21 @@ def test_lines_in_a_scene_are_said_one_at_a_time():
     hand = next(s for s in named(m, 'CNV ZZ - Phase 1 scene') if ('ENABLE_INPUT',) in s.do)
     assert not any(a[0] == 'SET_MILLISECOND_TIMER' for a in hand.do)
     assert any(s.name.endswith('Say done') for s in m.scripts)
+
+
+def test_a_camera_is_held_inside_the_playable_area_a_screen_from_its_edge():
+    """K5: a camera move aims at a view point: the site, clamped a half screen (plan.VIEW_HALF) inside the border in force
+    (a scene's phase border, else the level's; a rule's camera: every border the level uses)."""
+    from maps import festival
+    c = plan.Compiler({'关卡': 'zz', '地图': 'festival', '阵营': {'我': '盟军', '敌': '帝国'}, '开局': {'资金': 1},
+                       '边界': 'west of the canal', '段': [{'名字': '一'}, {'名字': '二', '边界': 'whole'}]})
+    c.setup_phases()
+    hx, hy = plan.VIEW_HALF
+    x0, y0, x1, y1 = c.view_rect(['whole'])
+    assert (x0, y0, x1, y1) == (hx, hy, 5000.0 - hx, 5000.0 - hy)
+    assert c.view_rect(['west of the canal'])[2] == festival.BORDERS['west of the canal'][2] - hx
+    assert c.view_rect(['whole', 'west of the canal'])[2] == c.view_rect(['west of the canal'])[2]     # the intersection
+    assert [c.border_at(p) for p in c.phases] == ['west of the canal', 'whole']
+    c.view = 'whole'
+    name = c.view_point('west field')
+    assert c.m.waypoints[name][0] >= x0 and c.m.views[name] == (x0, y0, x1, y1)

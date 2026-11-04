@@ -1,16 +1,10 @@
 """The one dialogue queue (experimental/cnv/ctx.py Talk, ADR 0016 K1 / K2, 总控 2026-11-04): first come, first played, in
 three tiers -- the ending's own line ahead of everything, a 功能 line never dropped and ahead of the 闲话, a 闲话 line that
 waited CHAT_LIFE seconds dropped. Run on the simulator, which runs the product's scripts in order as the engine does."""
-import sys
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / 'experimental' / 'cnv'))
-sys.path.insert(0, str(ROOT / 'tests'))
+from test_plans import small  # (puts experimental/cnv on the path)  # noqa: I001
 import contract  # noqa: E402
 import ctx  # noqa: E402
 import sim  # noqa: E402
-from test_plans import small  # noqa: E402
 
 BEAT = [{'镜头': 'west field'}]                 # an act before the first line: the rule hangs on something the player sees
 

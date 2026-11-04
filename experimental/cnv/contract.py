@@ -69,6 +69,26 @@ def said_lines_kept(m):
     return out
 
 
+def camera_outside_the_view(m):
+    """K5 (G10): a level's camera move aims at a view point (ctx.camera: the site held inside the playable area in
+    force, a screen's half-size from its edge), so no frame shows the black beyond the border. Every MOVE_CAMERA_TO of
+    the level's scripts (a check's `Test ...` own are not) names a waypoint the compiler published a view rect for,
+    and the waypoint lies inside it."""
+    out = []
+    for s in m.scripts:
+        if s.name.startswith('Test'):
+            continue
+        for name, *a in s.do:
+            if name != 'MOVE_CAMERA_TO':
+                continue
+            rect, at = m.views.get(a[0]), m.waypoints.get(a[0])
+            if rect is None or at is None:
+                out.append(f'{s.name}: camera aims at {a[0]!r}, which is no view point (ctx.camera makes them)')
+            elif not (rect[0] - 1e-6 <= at[0] <= rect[2] + 1e-6 and rect[1] - 1e-6 <= at[1] <= rect[3] + 1e-6):
+                out.append(f'{s.name}: camera aims at {a[0]!r} {at}, outside where the screen stays on the map {rect}')
+    return out
+
+
 def missing_areas(mission):
     """Trigger areas the scripts name but nobody declared (the map's own areas are replaced by the mission's)."""
     return [p for p in contract(mission) if ' area ' in p]
@@ -121,6 +141,7 @@ def contract(mission):
             for v in args if isinstance(v, str) and not latin(v)]
     out += said_outside_the_outlet(m, cat)
     out += said_lines_kept(m)
+    out += camera_outside_the_view(m)
     for s in m.scripts:
         for name, *args in s.when + s.do:
             types = cat[name]['args']

@@ -37,7 +37,10 @@ DEFAULT_AREA = 150.0                            # half-side of a site's trigger 
 CHRONO_FLASH = 'fxprop_chronoflash'             # retail's chrono flash prop (its FX plays on create, lives 1 s)
 EASE = 1.0                                     # seconds a pan eases in / out (retail's most used eased pan: 1/1)
 PAN_SPEED = 250.0                               # map units a second at most between two sites of a 过场
-CAPTION_TURN = 4.0                              # seconds a caption-only line holds the floor outside a 过场
+VIEW_HALF = (950.0, 540.0)                      # half the ground the screen shows at the default zoom (~1900 x 1080 map
+                                                # units, sapporo 'view start', user 2026-11-03): a camera centre nearer
+                                                # the playable border than this shows the black beyond it (K5)
+CAPTION_TURN = 4.0                             # seconds a caption-only line holds the floor outside a 过场
 CAPTION_TAIL = 0.3                              # a dubbed line's caption stays this long after its recording ends
 EVA_TURN = 2.5                                 # ... a retail announcer line (its length is not known)
 SPEECH_GAP = 0.6                              # seconds of quiet after a dubbed line in a 过场
@@ -181,6 +184,7 @@ class Compiler:
         self.made = {}              # retail template -> the player's copy that builds ours too (可造)
         self.phases, self.waves, self.goals = [], {}, {}
         self.last = []              # the scripts the last when() made
+        self.view = None            # the border a 过场's camera keeps to (view_point); None: every border the level uses
         self.counted = {}           # group -> the counter of its losses (摧毁 <group> <n> 个)
         self.troop_counters = {}    # kinds counted together -> their counter (兵少于 <n> <units>)
         self.music = self.load_music(data.get('音乐'))
@@ -643,7 +647,51 @@ class Compiler:
         ps = self.parts(str(a['镜头']))
         if ps:
             return [('MOVE_CAMERA_TO_NAMED', self.m.cast[ps[0]].name, secs, 0.0, ease_in, ease_out)]
-        return [('MOVE_CAMERA_TO', self.mark(a['镜头']), secs, 0.0, ease_in, ease_out)]
+        return [('MOVE_CAMERA_TO', self.view_point(str(a['镜头'])), secs, 0.0, ease_in, ease_out)]
+
+    def border_rect(self, name):
+        borders = getattr(self.m.map, 'BORDERS', {})
+        if name not in borders:
+            raise PlanError(f'边界 {name!r}: map {self.m.map.__name__} has {list(borders)}')
+        return borders[name]
+
+    def border_at(self, ph):
+        """The name of the playable area a phase runs in: its own 边界, else the last phase's, else the level's."""
+        name = self.d.get('边界') or 'whole'
+        for p in self.phases[:ph.k + 1]:
+            name = p.spec.get('边界') or name
+        return name
+
+    def view_rect(self, names):
+        """Where a camera centre may be while the playable area is (the intersection of) the named borders: inside
+        them, VIEW_HALF from their edges (the middle when a border is narrower than the screen)."""
+        x0, y0, x1, y1 = (None,) * 4
+        for n in names:
+            a, b, c, d = self.border_rect(n)
+            x0, y0, x1, y1 = (a if x0 is None else max(x0, a), b if y0 is None else max(y0, b),
+                              c if x1 is None else min(x1, c), d if y1 is None else min(y1, d))
+        hx, hy = VIEW_HALF
+        out = []
+        for lo, hi, h in ((x0, x1, hx), (y0, y1, hy)):
+            lo, hi = (lo + h, hi - h) if hi - lo > 2 * h else ((lo + hi) / 2,) * 2
+            out += [lo, hi]
+        return out[0], out[2], out[1], out[3]
+
+    def view_point(self, site):
+        """The waypoint a camera move aims at: the site, held inside the view rect of the playable area in force (K5).
+        A 过场 aims by its phase's border (self.view); any other camera by every border the level uses, since a rule
+        can fire in any phase. Published as `CNV <tag> Cam <site> <x> <y>` with its rect in m.views."""
+        if self.view is not None:
+            names = [self.view]
+        else:
+            names = sorted({self.d.get('边界') or 'whole'} | {p.spec['边界'] for p in self.phases if p.spec.get('边界')})
+        rect = self.view_rect(names)
+        x, y = self.m.waypoints[self.m.marks[site]] if site in self.m.marks else self.m.where(site).at()
+        x, y = min(max(x, rect[0]), rect[2]), min(max(y, rect[1]), rect[3])
+        name = f'CNV {self.tag} Cam {site} {x:.0f} {y:.0f}'      # (an asset id: letters, digits and spaces only)
+        self.m.waypoints[name] = (x, y)
+        self.m.views[name] = rect
+        return name
 
     def pan_seconds(self, a, prev):
         """A 镜头's seconds: the plan's own, but never so short that the camera flies from the last site faster than
@@ -711,10 +759,11 @@ class Compiler:
     def scene(self, ph):
         talk = self.ctx.talk
         talk.scene = talk.scened = True
+        self.view = self.border_at(ph)
         try:
             return self.scene_steps(ph)
         finally:
-            talk.scene = False
+            talk.scene, self.view = False, None
 
     def scene_steps(self, ph):
         """A phase's 过场 (retail: 36 of 40 missions open with one): the player's input off and the letterbox on

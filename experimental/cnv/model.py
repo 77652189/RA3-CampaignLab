@@ -140,7 +140,9 @@ class Mission(Part):
                                                                 # markers wait for made(), not the reveal
     countdowns: list = dataclasses.field(default_factory=list)  # published: the timers it shows on screen (countdowns
                                                                 # stand above the counters, in the same 4 lines)
-    spawns: set = dataclasses.field(default_factory=set)        # templates its scripts name that nobody casts (a
+    views: dict = dataclasses.field(default_factory=dict)       # {camera waypoint: the rect (x0 y0 x1 y1) its centre may
+                                                                # be in}: what a plan's camera moves aim at (K5)
+    spawns: set = dataclasses.field(default_factory=set)       # templates its scripts name that nobody casts (a
                                                                 # plan's waves and reinforcements, what it counts)
     lines: list = dataclasses.field(default_factory=list)       # the plan's spoken captions, in compile order: {说话人,
                                                                 # 原文 (the flow script's words, what a dubbed line
@@ -403,7 +405,7 @@ def merged(mission, test=None):
         return m
     for f in ('units', 'objects', 'scripts'):
         setattr(m, f, getattr(m, f) + getattr(test, f))
-    if m.countdowns and len(test.counters) + len(m.countdowns) > COUNTER_LINES:
+    if test.counters and m.countdowns and len(test.counters) + len(m.countdowns) > COUNTER_LINES:     # as contract.observes
         # the counters must stay readable: a countdown would push the last one off the screen (bench 2026-10-24)
         m.scripts = m.scripts + [Script('Test - countdowns off', [], [('HIDE_COUNTDOWN_TIMER', c) for c in m.countdowns],
                                         once=False)]
