@@ -2,6 +2,15 @@
 
 外壳线 2026-11-03 从关卡线拆出（[architecture.md](../architecture.md) 各线负责的文件）。以前做过的事和坑在 [story/handoff.md](../story/handoff.md) 搜"外壳""CampShell"（第 33～42、61～69 行）。问题编号见 [issues.md](../issues.md) K9。
 
+## 下一步：地图页改成本地运行（2026-11-04 总控派活，还没开工）
+
+用户原话："界面现在运行在claude的服务上？我更希望运行在本地"。要做的：
+1. `experimental/mappage/serve.py a4`：只监听 127.0.0.1（默认端口 8765，和 `.claude/launch.json` 现有那项 `mappage` 同端口——那项现在是 `python -m http.server`，改成跑 serve.py），启动先生成页面再打印网址。不加账号、不外发。
+2. 提议存本地：页面 POST / DELETE / GET 到服务，写 `work/mappage/<关>/proposals/<id>.json`。`--pull`、`--apply-preview` 的默认目录改成这个（`read_proposals` 已经能读 `<目录>/proposals/<id>.json`，只改 `main` 里的默认值 `pulled` → 这个目录）。页面的存储入口在 template.html 的 `(async () => {` 那段：先探测 `fetch('/api/...')`，有就用一个和 `memoryStore()` 同样接口的本地版（add / doc().delete / onSnapshot，用轮询或保存后重拉）；claude.ai 的 db 建议删掉（测试里没有依赖它）。
+3. 推荐：服务加一个 `POST /api/preview`，用 `mappage.apply_preview` 的逻辑（拆成返回结构的函数）算"改了以后哪些规则会红"，页面上加一个按钮显示结果。地面构建一次约 8 秒，服务启动时缓存 `terrain_edit.from_map(built_map(m))`。
+4. 不再发布到 claude.ai；mappage.py 开头的用法说明改成本地启动方式，上面"能改的地图页"一节里关于 ArtifactData 的步骤标为过时。
+5. 测试：服务的存取（起在随机端口，POST 一条，看文件和 `--pull`）；`pytest -q tests` 全过再提交。
+
 ## 地形编辑器（2026-11-04，总控派活，ADR 0017，git log 搜 "terrain editor"）
 
 - 页面上新工具：抬高、压低、整平、画/擦不可通行（半径、强度滑条），图层"坡度和通行"，右栏"地形预览"实时列出哪些建筑点/施法点不再平、施法圆里新增不可通行格。几笔存成一条 `kind: terrain` 提议，和拖地点同一个 `proposals` 集合。
