@@ -25,7 +25,7 @@
 |---|---|---|
 | 总控 | 路线和优先级、各线接口、审查与合并、测试台工具、执行计划和需求 / 架构 / ADR | `docs/plan.md`、`requirements.md`、`architecture.md`、`docs/adr/`、`docs/engine/`、`HANDOFF.md`、`experimental/testbench/` |
 | 关卡 | 策划案语言和编译器、模拟器、机关、关卡检查、各关玩法、地图（地图线 2026-10-26 结束，新关卡的地图跟着关卡一起设计）；单位的尺寸、血量和机制 | `docs/story/`、`experimental/cnv/`（`units/` 里的外观接线除外）、`experimental/campaign/platmap.py`、`platprops.py` |
-| 外壳（2026-11-03 从关卡线拆出） | 战役外壳（替换原版三个战役的卡片、章节、播报、局势介绍、界面，[ADR 0014](adr/0014-replace-retail-campaigns-in-mod.md)）、启动器 | `experimental/cnv/shell.py`、`shell_missions*.json`、`play.hta`、`launcher.py`、外壳用到的 `experimental/campaign/make_campnew*.py`、`experimental/testbench/shell_shots.py`；`build.py` 只改 `--shell` 那段 |
+| 外壳（2026-11-03 从关卡线拆出） | 战役外壳（替换原版三个战役的卡片、章节、播报、局势介绍、界面，[ADR 0014](adr/0014-replace-retail-campaigns-in-mod.md)）、启动器 | `experimental/cnv/shell.py`、`shell_missions*.json`、`play.hta`、`launcher.py`、外壳用到的 `experimental/campaign/make_campnew*.py`、`experimental/testbench/shell_shots.py`；`build.py` 只改 `--shell` 那段；能改的地图页 `experimental/mappage/`（[ADR 0017](adr/0017-engine-layers-and-map-page.md)：只读地图模块和策划稿，页面只存改动提议，地图模块仍归关卡线改） |
 | 单位 | 新单位建模（先出一个样品给用户定风格，再批量），在自己的分支上做 | `experimental/units/`、`docs/units/`；`experimental/cnv/units/` 里只改外观（模型、贴图、按钮头像、残骸、死亡特效的接线） |
 | 策划（2026-10-27 开） | 游戏设计这一层：原版任务拆解、设计总纲和准则、战役总表、各关的纸面设计 | `docs/design/` |
 | 音乐 | 自制配乐、曲谱图、战况音乐 | `experimental/music/`、`docs/music/` |
