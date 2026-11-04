@@ -19,7 +19,7 @@
 
 ## 各线负责的文件（用户 2026-10-26 定按线分会话开发）
 
-每个文件只归一条线改。共用文件（`experimental/cnv/build.py`、`parts.py`）要改先打招呼，只改自己那几行。各线做完一件事向总控报告，总控核对实际改动和测试结果后再更新 `docs/plan.md`。
+每个文件只归一条线改。`parts.py` 已按层拆成三份（[ADR 0016](adr/0016-one-outlet-per-class.md)）：`model.py`（关卡数据）归关卡线，`contract.py`（产物规则）归总控，`package.py`（打包）归外壳线。`parts.py` 本身只剩转手导出，新代码直接 import 这三份。`build.py` 仍是共用文件，要改先打招呼，只改自己那几行。守卫测试在 `tests/test_architecture.py`，由总控维护。各线做完一件事向总控报告，总控核对实际改动和测试结果后再更新 `docs/plan.md`。
 
 | 线 | 负责 | 文件 |
 |---|---|---|

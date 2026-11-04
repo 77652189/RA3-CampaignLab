@@ -1,7 +1,7 @@
 r"""One entry point for the everyday steps, so a session runs fixed commands instead of writing a fresh inline
 script each time (inline scripts are where backslashes got eaten and files got garbled).
 
-  python -I -X utf8 cnv.py build 30 [CNV_EASY=1 ...]   build make_campnew30.py (env settings after it), then draw
+  python -I -X utf8 cnv.py build 18 [CNV_EASY=1 ...]   build make_campnew18.py (env settings after it), then draw
                                                          its map (work/maps/<mod>.png)
   python -I -X utf8 cnv.py map CampNew30 [--around X Y R] [--bench-view] [--px N]       top-down map picture
   python -I -X utf8 cnv.py bench CampNew30 -s 120 --shots 30,60,90 [--actions '...'] [--visible]
@@ -156,7 +156,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     sub = ap.add_subparsers(dest='cmd', required=True)
     p = sub.add_parser('build')
-    p.add_argument('mission', help='campaign number (30 -> make_campnew30.py) or a script name')
+    p.add_argument('mission', help='campaign number (18 -> make_campnew18.py) or a script name')
     p.add_argument('env', nargs='*', help='KEY=VALUE settings for the build')
     p.set_defaults(fn=cmd_build)
     p = sub.add_parser('map')
