@@ -2,7 +2,7 @@
 
 引擎线第 6、7 轮（2026-11-04）。依据 ADR 0017（按层逆向，先放置和通行，再地形）。写法照 `script-semantics.md`：**码** = 读了游戏程序；**测** = 测试台；**推断，未实测** = 只从数据或别的资料推出来。反编译细节只在 `work/re/`（不进仓库）。
 
-规则落成了纯函数 `experimental/campaign/terrain_rules.py`，测试 `tests/test_terrain_rules.py`。外壳线做地形编辑（抬高、压低、整平、画通行）时直接调它。
+规则落成了纯函数 `experimental/campaign/terrain_rules.py`，测试在 `tests/test_platmap_terrain.py` 后半段（原 `tests/test_terrain_rules.py`，为守卫 G4 并进来的）。外壳线做地形编辑（抬高、压低、整平、画通行）时直接调它。
 
 ## 1. 高度的单位（码）—— 和我们的代码对不上
 
