@@ -51,6 +51,14 @@
 - **后巷出兵点跟着南移了 70**（`出: lane foot` 偏移 [0,160]，现在出在 y=2630，仍在坡上）；冰雕偏移不变。策划线复核时看一眼。
 - 检查"一律走玩家点击"：已由 `contract.observes`（G11）保证，只观测的检查才能当验收；`place`/`placem` 用传送把工兵放到点边上，再由测试台点技能按钮和落点。
 
+## 第十三个会话收尾（11-04 05:40，上下文 23 万）：K3 提交 41e0c73，K7、E7 没动
+
+**下一步按顺序**：
+1. **后巷 V1 放不出冰墙**：先看上面 K3 一节最后一条。测试台空了就跑 `place`（`PLACE_AT` 已推到 20 秒，没测）。I3 在 issues.md 里仍是"修了待验"但写明 V1 未过，V1 过了才算完。
+2. **K7（I8）**：设计见下面"K7 挡路"一节，没动手。现状量数（`platmap.heights` 算的，A4 当前）：陆地里高度 ≥455（第二层）占 39.4%，坡度 >9 的占陆地 15.0%（原版城市图 1.4～3.4%，目标 ≤4%）。垫高的块：北街区（含后巷）、南街区、北坡口两侧的 ward、西岭、西南山、北南高原、神社丘（`sapporo.py` 的 `SHAPES`）。要改的是前四个（街区和 ward），南北高原留。改完后后巷的两个坡口要重新定位，`lane foot`/`lane end` 以及 horn 的后巷出兵点、`Gap`、`tests/test_sapporo.py`、graybox 走查（见下条坑）都要跟着看。产物规则要一条：非悬崖的大片坡地（坡度 >1.5 且面积 ≥ 阈值）出现在路上就报，阈值先量原版（`docs/design/teardowns/data/edge_measure.py`）。守卫 G14 + 变异检验，I8 标"修了待验"。
+3. **E7**（`work/re/ra3-script-reference.md` E7-6、E7-4）：①配乐 cue（`PATH_MUSIC_PLAY_EVENT`）会把战况音乐挂起，之后不自己恢复：`plan.py` 里 `战况音乐` 的 PlanError 文字和 `plan.py:521` 一带注释说"没有关的动作"不对，A4 `战况音乐 开`（plans/a4.md:203）之后再有 `音乐`/`胜利` cue 的地方要核对顺序，必要时在 cue 后再发 `战况音乐 开`（要先在 sim/测试台确认再 ENABLE 会不会把刚放的 cue 盖掉；`music_dyn` 里是先 PLAY_EVENT 再 ENABLE）；②`NAMED_USE_COMMANDBUTTON_ABILITY`（`plan.py:630` 的 `技能`）技能用不了（冷却、没就绪）时静默什么也不做：靠它"一定放"的地方（A4 `derrick` 等）要在放之前确认冷却，测试台连发两次看第二次有没有效果。
+4. 小心：①跑 pytest 要 6 分半，指纹约 6 分，都交给 Sonnet 子 Agent，别和任何构建同时跑；②`tests/test_graybox.py::test_old_a4_can_be_pushed_through_every_stage` 很脆，动 sapporo 的站点坐标几个单位就会因"布防"阶段多撞到敌人失败（东街口偏 5 就败）；③测试台是共享的：音乐线可能占着游戏，`bench_start` 会拒绝，别杀别人的进程；④Bash 钩子拦"heredoc 里带反斜杠写文件"，改文件用 Edit。
+
 ## K3 施法点（原设计，留作参考）
 
 - 现状：冰墙落点是 horn 设备的 `点:` 里写的地点：`lane foot`、`inside 1`、`inside 2`、`north mouth`、`inside 3`、`east mouth`（plans/a4.md:125-135）。设备在 `devices/horn.py:265` 用 `ctx.waypoint(f'ice {wid}', ...)` 发布成标记。玩家点的是 `AssembleStructureSpecialAbilityUpdate` 放"冰核"（`units/icewall.py`，`SEED_SIZE=20`，`ForbiddenObjectRange=32`，`PATHABLE_ONLY`）；脚本放技能完全不检查位置（引擎线 11-04 从代码确认），所以旧检查 PASS 不代表玩家放得下。玩家点击的检查已有：`checks/a4.py` 的 `place`（街口）和 `placem`（口子），走 bench_click/bench_ability。
