@@ -16,6 +16,7 @@ platprops, kept off every way and place), LAYOUT, BORDERS.
 import make_campnew18 as c18
 import platmap
 import platprops
+import resources
 from platmap import Layout, Road, poly, wobble
 from platprops import area, cliff_feet, scatter
 from maps import island
@@ -29,16 +30,12 @@ SITES = {k: island.SITES[k] for k in ('island', 'start', 'base factory', 'base p
 SITES.update({
     'base yard': Site(1250.0, 2500.0, 0.0, "the construction yard's pad on the player's start", build=200.0),
     'base barracks': Site(1250.0, 2800.0, 0.0, "a barracks' pad north of the yard", build=160.0),
-    'base refinery': Site(1130.0, 2060.0, 0.0, "a refinery's pad by the base's own ore (~180 from the nearer node)",
-                          build=200.0),
     'launch pad': Site(*PAD, 0.0, 'the launch tower on its pad, in the middle of the steppe', build=260.0),
     'launch yard': Site(*PAD, 350.0, 'open ground round the launch pad'),
     'east base': Site(4250.0, 2500.0, 450.0, 'open ground in the east past the ridges: the Japanese stage here'),
     'east barracks': Site(4100.0, 2800.0, 0.0, 'a barracks in the east', build=160.0),
     'east factory': Site(4400.0, 2200.0, 0.0, 'a war factory in the east', build=200.0),
     'east power': Site(4550.0, 2750.0, 0.0, 'a power plant in the east', build=120.0),
-    'east refinery': Site(4430.0, 3180.0, 0.0, 'a refinery in the east, by its ore (~180 from the nearer node)',
-                          build=200.0),
 })
 for lane, y in LANES.items():
     SITES[f'{lane} gap'] = Site(GAP_X, y, 150.0, f'the {lane} valley where it meets the complex (500-700 '
@@ -78,13 +75,20 @@ LAYOUT = Layout(
            Road((PAD, (GAP_X, LANES['south']), (4000, LANES['south']), (4250, 2100)), 100.0, 'Dirt_Yucatan04')])
 
 
+# ore and oil as relations (resources.py, K4): a refinery pad, the way it faces, the base it serves; the ore is
+# made from that (180 straight ahead, a second node beside it), never typed
+FIELDS = [
+    resources.Field('base', 1130.0, 2060.0, 225.0, -1, base='start', owner='p1', build=resources.PAD),
+    resources.Field('east', 4430.0, 3180.0, 45.0, -1, build=resources.PAD),
+    resources.Field('north', 1873.0, 3473.0, 45.0, 0),
+    resources.Field('south', 2023.0, 1223.0, 45.0, 0),
+]
+DERRICKS = [(1900.0, 4200.0)]
+SITES.update(resources.sites(FIELDS))
+
+
 def _objects():
-    ore = [(850, 2050), (1010, 1930),               # the base's own
-           (4520, 3350), (4650, 3220),              # the east
-           (2000, 3600), (2150, 1350)]              # north and south of the complex
-    out = [Obj('OreNode', x, y, side='neutral', angle=0.0, site='map') for x, y in ore]
-    out.append(Obj('OilDerrick', 1900, 4200, side='neutral', angle=0.0, site='map'))
-    return out
+    return resources.objects(FIELDS, DERRICKS)
 
 
 OBJECTS = _objects()

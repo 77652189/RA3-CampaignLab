@@ -1,5 +1,7 @@
 # 关卡线·ADR 0016 第 3 阶段交接（2026-11-04，第八个会话，29 万上下文时写）
 
+**第 4 阶段（K4、K3、K7、引擎线 E1～E4、K1 功能句不能晚、策划案同源）的交接在 [handoff-phase4.md](handoff-phase4.md)，从那里接着做。**
+
 总控令（local_79408d22）：四个出口 K1 台词、K2 挂点、K5 镜头、K6 编组命令从源头做实，每个出口三样：一个出口、`contract.py` 里一条产物规则、`tests/test_architecture.py` 里一个守卫；顺手改 `model.merged`。做完每类跑 `fingerprint.py record p3_k<N>` 并和上一次比，`docs/issues.md` 对应项标"修了待验"（依据写"产物规则全关通过"＋规则名；"验过"只能独立验收标）。不许改 plan.md、ADR、HANDOFF.md，不许删文件。跑指纹时不要同时做别的构建；外壳线的视频包 video.xml 可能并发写，指纹里 video.xml 对不上先不算我的。
 
 ## 已做完

@@ -42,6 +42,8 @@ class Site:
     r: float = 0.0
     what: str = ''
     build: float = 0.0                  # > 0: a square this wide here must be flat enough to build on (platmap.lint)
+    facing: float = None                # radians: a refinery pad's front, the way its ore lies (resources.py, K4)
+    cast: float = 0.0                   # > 0: a spell is cast here (an ice block): this radius stays clear (K3, resources.py)
 
     def at(self, dx=0.0, dy=0.0):
         return (self.x + dx, self.y + dy)
@@ -189,6 +191,9 @@ class Mission(Part):
 
     def put(self, template, site, dx=0.0, dy=0.0, role='', side='p1', name='', **kw):
         """Place an object by a map site; with role, publish it in the cast (a named object: scripts refer to it)."""
+        pad = getattr(self.map, 'SITES', {}).get(site)
+        if pad is not None and pad.facing is not None and template.endswith('Refinery') and kw.get('angle') is None:
+            kw['angle'] = pad.facing                        # a refinery stands facing its ore (K4, resources.py)
         o = Obj(template, *self.site(site, dx, dy), side=side, name=name, site=site, **kw)
         self.objects.append(o)
         if role:

@@ -20,6 +20,7 @@ platprops, kept off every way and place), LAYOUT, BORDERS.
 import make_campnew18 as c18
 import platmap
 import platprops
+import resources
 from platmap import Layout, Ramp, Road, poly, wobble
 from platprops import area, cliff_feet, scatter, shore
 from maps import island
@@ -35,8 +36,6 @@ SITES = {k: island.SITES[k] for k in ('island', 'start', 'base factory', 'base p
 SITES.update({
     'base yard': Site(1250.0, 2500.0, 0.0, "the construction yard's pad on the player's start", build=200.0),
     'base barracks': Site(1250.0, 2800.0, 0.0, "a barracks' pad north of the yard", build=160.0),
-    'base refinery': Site(1130.0, 2060.0, 0.0, "a refinery's pad by the player's own ore (~180 from the nearer "
-                                               'node, as retail)', build=200.0),
     'west quay': Site(2150.0, 2500.0, 150.0, "the west bank by the lock chamber: the player's side of the water"),
     'chamber': Site(2500.0, 2500.0, 180.0, 'the lock chamber, between the gates: the fleet is shut in here'),
     'south gate': Site(2500.0, CHAMBER[2], 0.0, "the chamber's south gate, across the canal (200 of water)"),
@@ -53,8 +52,6 @@ SITES.update({
     'east barracks': Site(3750.0, 3300.0, 0.0, 'the Soviet barracks', build=160.0),
     'east factory': Site(4100.0, 3250.0, 0.0, 'the Soviet war factory', build=200.0),
     'east power': Site(4300.0, 3650.0, 0.0, 'the Soviet power plant', build=120.0),
-    'east refinery': Site(4380.0, 2900.0, 0.0, 'the Soviet refinery, by their ore (~180 from the nearer node)',
-                          build=200.0),
     'east gate': Site(3600.0, 2900.0, 200.0, 'open ground between the Soviet base and the bluff: their army forms '
                                              'up here'),
     'lake': Site(2600.0, 4300.0, 400.0, 'the lake north of the lock: the Soviet boats'),
@@ -101,17 +98,24 @@ LAYOUT = Layout(
            Road(((3250, 2500), (2950, 2500)), 90.0, 'Dirt_Yucatan04')])
 
 
+# ore and oil as relations (resources.py, K4): a refinery pad, the way it faces, the base it serves; the ore is
+# made from that (180 straight ahead, a second node beside it), never typed
+FIELDS = [
+    resources.Field('base', 1130.0, 2060.0, 225.0, -1, base='start', owner='p1', build=resources.PAD),
+    resources.Field('east', 4380.0, 2900.0, 135.0, -1, build=resources.PAD),
+    resources.Field('west south', 1927.0, 1123.0, 135.0, 1),
+    resources.Field('bluff', 3173.0, 1073.0, 45.0, 0),
+]
+DERRICKS = [(700.0, 3000.0)]
+SITES.update(resources.sites(FIELDS))
+
+
 def _objects():
     out = []
     for p, q in BRIDGES:
         for x, y, a, flags in platmap.bridge(p, q, 'HB_Bridge_02'):
             out.append(Obj('HB_Bridge_02', x, y, side='neutral', angle=a, flags=flags, site='map'))
-    ore = [(850, 2050), (1010, 1930),               # the player's own, ~550 from the start
-           (1650, 1150), (1800, 1250),              # the west bank south
-           (4250, 3050), (4450, 3150),              # the Soviets' own
-           (3300, 1200)]                            # one on the east bank south
-    out += [Obj('OreNode', x, y, side='neutral', angle=0.0, site='map') for x, y in ore]
-    out.append(Obj('OilDerrick', 700, 3000, side='neutral', angle=0.0, site='map'))
+    out += resources.objects(FIELDS, DERRICKS)
     return out
 
 

@@ -5,6 +5,7 @@ Imports model.py at most, never package.py (tests/test_architecture.py, G-layers
 on sys.path (package.py / parts.py put it there) for mapscript. Split out of parts.py (ADR 0016).
 """
 import collections
+import math
 import re
 
 
@@ -107,6 +108,117 @@ def single_orders(m, allow=SINGLE_ORDERS_LEFT):
             for name, *_ in s.do if name in SINGLE_ORDERS]
 
 
+# K4 (G12): ore, refineries and oil stand in the relations retail's maps keep (resources.py holds the measures; every
+# check here reads the finished objects, so a node typed into a map by hand is held to them too).
+def _placed(m):
+    """Everything standing on the ground: the map's own objects and the mission's."""
+    return list(getattr(m.map, 'OBJECTS', ())) + list(m.objects)
+
+
+def _pads(m):
+    """{site name: (x, y, facing radians)}: the refinery pads the map publishes (resources.sites)."""
+    return {k: (s.x, s.y, s.facing) for k, s in getattr(m.map, 'SITES', {}).items() if s.facing is not None}
+
+
+def ore_faces_refinery(m):
+    """Every refinery -- a pad the map publishes, one the mission places -- has the ore node it mines straight ahead,
+    resources.AXIS away (retail: 138 of 171 exactly there). A placed refinery stands at the pad's facing (Mission.put
+    turns it), so a refinery put by raw coordinates, or turned away from its ore, fails here."""
+    import resources
+    ore = [(o.x, o.y) for o in _placed(m) if o.template == 'OreNode']
+    spots = {f'pad {k}': v for k, v in _pads(m).items()}
+    spots.update({f'{o.template} at ({o.x:g}, {o.y:g})': (o.x, o.y, o.angle) for o in _placed(m)
+                  if o.template.endswith('Refinery')})
+    out = []
+    for what, (x, y, a) in spots.items():
+        if a is None:
+            out.append(f'{what}: no facing (a refinery stands facing its ore: place it on a pad, resources.Field)')
+            continue
+        want = (x + resources.AXIS * math.cos(a), y + resources.AXIS * math.sin(a))
+        near = min((math.dist(want, n) for n in ore), default=None)
+        if near is None or near > resources.AXIS_SLACK:
+            out.append(f'{what}: no ore node {resources.AXIS:g} straight ahead of it'
+                       + ('' if near is None else f' (nearest {near:.0f} off the spot)'))
+    return out
+
+
+def ore_in_groups(m):
+    """Ore comes as retail has it: one node or a pair (never a field of three), and every node is one a Field makes --
+    the front node of a pad or the one beside it -- not a coordinate typed into the map."""
+    import resources
+    ore = [(o.x, o.y) for o in _placed(m) if o.template == 'OreNode']
+    made = []
+    for x, y, a in _pads(m).values():
+        fx, fy = x + resources.AXIS * math.cos(a), y + resources.AXIS * math.sin(a)
+        made += [(fx, fy)] + [(fx - s * resources.PAIR_GAP * math.sin(a), fy + s * resources.PAIR_GAP * math.cos(a))
+                              for s in (-1, 1)]
+    out = [f'OreNode at ({x:g}, {y:g}): not made by a resources.Field (no pad has it ahead or beside)'
+           for x, y in ore if min((math.dist((x, y), p) for p in made), default=1e9) > 5.0]
+    left = list(ore)
+    while left:
+        group = [left.pop()]
+        for n in left[:]:
+            if any(math.dist(n, g) <= resources.PAIR_MAX for g in group):
+                group.append(n)
+                left.remove(n)
+        if len(group) > resources.GROUP_MAX:
+            out.append(f'{len(group)} ore nodes together near ({group[0][0]:g}, {group[0][1]:g}): '
+                       f'at most {resources.GROUP_MAX} (one or a pair)')
+    return out
+
+
+def _bases(m):
+    """[(site name, owner, x, y)]: the bases the map's fields serve (resources.Field.base)."""
+    sites = getattr(m.map, 'SITES', {})
+    return [(f.base, f.owner, sites[f.base].x, sites[f.base].y) for f in getattr(m.map, 'FIELDS', ())
+            if f.base in sites]
+
+
+def oil_off_the_camps(m):
+    """Oil is a prize outside the camps: every derrick stands resources.OIL_CLEAR from each enemy base the map's fields
+    name and from anything an enemy (s1) of the mission stands on (retail: 96% of derricks, I9: the derrick was in the
+    enemy camp)."""
+    import resources
+    enemy = [(f'base {k}', x, y) for k, owner, x, y in _bases(m) if owner == 's1']
+    enemy += [(f'{o.template} at ({o.x:g}, {o.y:g})', o.x, o.y) for o in m.objects if o.side == 's1']
+    return [f'OilDerrick at ({d.x:g}, {d.y:g}): {math.dist((d.x, d.y), (x, y)):.0f} from {what} (at least '
+            f'{resources.OIL_CLEAR:g}: oil is outside the camps)'
+            for d in _placed(m) if d.template.startswith('OilDerrick')
+            for what, x, y in enemy if math.dist((d.x, d.y), (x, y)) < resources.OIL_CLEAR]
+
+
+def base_has_ore(m):
+    """A base has ore to mine within resources.BASE_ORE of it (map-language.md: 开局 1000 以内有一组矿)."""
+    import resources
+    ore = [(o.x, o.y) for o in _placed(m) if o.template == 'OreNode']
+    return [f'base {k}: no ore within {resources.BASE_ORE:g}' for k, _, x, y in _bases(m)
+            if min((math.dist((x, y), n) for n in ore), default=1e9) > resources.BASE_ORE]
+
+
+_DESIGN = {}
+
+
+def map_design(m):
+    """K4e: the map's own design lint -- ramps, building sites, structures on flat dry ground, bridges, blocks, gaps,
+    the scenery clear of every way and place (platmap.lint, platprops.lint), and every refinery by its ore (ore_lint) --
+    on every build, not only in a preview. The map part is held per map module (it does not depend on the mission), the
+    ore part reads the mission's objects as well."""
+    import platmap
+    import platprops
+    mod = m.map
+    if mod.__name__ not in _DESIGN:
+        if hasattr(mod, 'LAYOUT'):
+            _DESIGN[mod.__name__] = platmap.lint(mod.LAYOUT, mod.SITES, getattr(mod, 'OBJECTS', []),
+                                                 getattr(mod, 'SCENERY', []))
+        elif hasattr(mod, 'ground'):
+            _DESIGN[mod.__name__] = platprops.lint(None, mod.SITES, getattr(mod, 'OBJECTS', []), mod.SCENERY,
+                                                   ground=mod.ground())
+        else:
+            _DESIGN[mod.__name__] = []
+    return [f'map {mod.__name__}: {p}' for p in _DESIGN[mod.__name__]] + \
+           [f'map {mod.__name__}: {p}' for p in platmap.ore_lint(_placed(m))]
+
+
 def missing_areas(mission):
     """Trigger areas the scripts name but nobody declared (the map's own areas are replaced by the mission's)."""
     return [p for p in contract(mission) if ' area ' in p]
@@ -161,6 +273,7 @@ def contract(mission):
     out += said_lines_kept(m)
     out += camera_outside_the_view(m)
     out += single_orders(m)
+    out += ore_faces_refinery(m) + ore_in_groups(m) + oil_off_the_camps(m) + base_has_ore(m) + map_design(m)
     for s in m.scripts:
         for name, *args in s.when + s.do:
             types = cat[name]['args']

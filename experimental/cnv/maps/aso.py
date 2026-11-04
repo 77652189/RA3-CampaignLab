@@ -17,6 +17,7 @@ import math
 import make_campnew18 as c18
 import platmap
 import platprops
+import resources
 from platmap import Layout, Road, poly, wobble
 from platprops import area, cliff_feet, scatter
 from maps import island
@@ -37,8 +38,6 @@ SITES = {k: island.SITES[k] for k in ('island', 'start', 'base factory', 'base p
 SITES.update({
     'base yard': Site(1250.0, 2500.0, 0.0, "the construction yard's pad on the player's start", build=200.0),
     'base barracks': Site(1250.0, 2800.0, 0.0, "a barracks' pad north of the yard", build=160.0),
-    'base refinery': Site(1130.0, 2060.0, 0.0, "a refinery's pad by the base's own ore (~180 from the nearer node)",
-                          build=200.0),
     'observatory': Site(*OBS, 0.0, "the Allied observatory at the volcano's west foot", build=220.0),
     'observatory yard': Site(*OBS, 350.0, 'open ground round the observatory'),
     'west foot': Site(2400.0, 2500.0, 200.0, "the volcano's west foot, where both passes come out"),
@@ -47,8 +46,6 @@ SITES.update({
     'merc barracks': Site(4100.0, 2800.0, 0.0, 'a barracks in the camp', build=160.0),
     'merc factory': Site(4400.0, 2200.0, 0.0, 'a war factory in the camp', build=200.0),
     'merc power': Site(4550.0, 2750.0, 0.0, 'a power plant in the camp', build=120.0),
-    'merc refinery': Site(4430.0, 3180.0, 0.0, 'a refinery in the camp, by its ore (~180 from the nearer node)',
-                          build=200.0),
 })
 for side, y in PASSES.items():
     SITES[f'{side} pass'] = Site(CONE[0], y, 200.0, f'the {side} pass between the volcano and the edge ridge, '
@@ -88,13 +85,20 @@ LAYOUT = Layout(
                 'Dirt_Yucatan04')])
 
 
+# ore and oil as relations (resources.py, K4): a refinery pad, the way it faces, the base it serves; the ore is
+# made from that (180 straight ahead, a second node beside it), never typed
+FIELDS = [
+    resources.Field('base', 1130.0, 2060.0, 225.0, -1, base='start', owner='p1', build=resources.PAD),
+    resources.Field('merc', 4430.0, 3180.0, 45.0, -1, build=resources.PAD),
+    resources.Field('north', 1673.0, 3373.0, 45.0, 0),
+    resources.Field('south', 1673.0, 1373.0, 45.0, 0),
+]
+DERRICKS = [(1500.0, 4100.0)]
+SITES.update(resources.sites(FIELDS))
+
+
 def _objects():
-    ore = [(850, 2050), (1010, 1930),               # the base's own
-           (4520, 3350), (4650, 3220),              # the camp's
-           (1800, 3500), (1800, 1500)]              # north and south of the observatory
-    out = [Obj('OreNode', x, y, side='neutral', angle=0.0, site='map') for x, y in ore]
-    out.append(Obj('OilDerrick', 1500, 4100, side='neutral', angle=0.0, site='map'))
-    return out
+    return resources.objects(FIELDS, DERRICKS)
 
 
 OBJECTS = _objects()

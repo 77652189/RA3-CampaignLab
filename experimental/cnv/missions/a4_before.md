@@ -46,7 +46,7 @@
     - {单位: 兵营, 在: north base, 阵营: 敌, 角色: north barracks}
     - {单位: 战车工厂, 在: north base, 偏移: [200, 0], 阵营: 敌, 角色: north factory}
     - {单位: 电厂, 在: north base, 偏移: [-180, 0], 阵营: 敌, 角色: north power}
-    - {单位: 矿厂, 在: north base, 偏移: [-120, -330], 阵营: 敌, 角色: north refinery}
+    - {单位: 矿厂, 在: north refinery, 阵营: 敌, 角色: north refinery}
     - {单位: 矿车, 在: north base, 偏移: [-280, -330], 阵营: 敌, 角色: north miner}
     - {单位: 帝国武士, 数量: 2/3/4, 在: north base, 偏移: [0, -150], 阵营: 敌, 角色: north guard, 守: north base}
     - {单位: 天狗, 数量: 2/3/4, 在: harbour, 阵营: 敌, 角色: harbour ambush, 守: harbour}

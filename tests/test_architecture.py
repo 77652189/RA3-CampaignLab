@@ -412,3 +412,68 @@ def test_g8_a_check_builds_on_the_shell():
                        capture_output=True, text=True, encoding='utf-8')     # -X utf8 child; the parent would read gbk
     assert r.returncode == 0, (r.stdout + r.stderr)[-2000:]
     assert 'G8 True' in r.stdout, r.stdout.strip()
+
+
+# G12 (ADR 0016 phase 4, K4): ore, refineries and oil are made from relations, never typed into a map. A map module
+# builds them from resources.Field / DERRICKS (resources.sites, resources.objects), so no map spells OreNode or
+# OilDerrick or writes a `<x> refinery` site itself; contract holds the finished objects of every build to the relations
+# (ore_faces_refinery, ore_in_groups, oil_off_the_camps, base_has_ore) and runs the map's design lint on every build
+# (map_design). The maps still allowed to do it by hand are a list, only ever deleted from: this test fixes it empty.
+G12_LEFT = ()
+G12_PROBE = '''
+import sys
+sys.path[:0] = [{cnv!r}, {root!r}]
+import build, contract, model
+from model import Obj
+RULES = ('straight ahead of it', 'not made by a resources.Field', 'ore nodes together', 'oil is outside the camps',
+         'no ore within', 'no facing', 'map maps.')
+bad, ore, pads, derricks = [], 0, 0, 0
+for n in sorted(build.MISSIONS):
+    m, _, _ = build.resolve(n, '')
+    mm = model.merged(m)
+    bad += [(n, p) for p in contract.contract(mm) if any(r in p for r in RULES)]
+    objs = list(getattr(mm.map, 'OBJECTS', []))
+    ore += sum(o.template == 'OreNode' for o in objs)
+    derricks += sum(o.template == 'OilDerrick' for o in objs)
+    pads += sum(s.facing is not None for s in getattr(mm.map, 'SITES', {{}}).values())
+print('G12 builds', len(build.MISSIONS), 'ore', ore > 0, 'pads', pads > 0, 'derricks', derricks > 0, 'bad', bad[:3])
+m, _, _ = build.resolve('a4', '')
+
+
+def found(extra, rule):
+    mm = model.merged(m)
+    mm.objects = list(mm.objects) + extra
+    return sum(rule in p for p in contract.contract(mm))
+
+
+pad = model.merged(m).map.SITES['south refinery']
+print('G12 mutation',
+      found([Obj('OreNode', 100.0, 100.0, side='neutral', site='map')], 'not made by a resources.Field'),
+      found([Obj('OreNode', pad.x + 10, pad.y + 10, side='neutral', site='map'),
+             Obj('OreNode', pad.x + 20, pad.y + 20, side='neutral', site='map')], 'ore nodes together'),
+      found([Obj('OilDerrick', 3050.0, 4100.0, side='neutral', site='map')], 'oil is outside the camps'),
+      found([Obj('AlliedRefinery', 100.0, 100.0, side='p1', site='map', angle=0.0)], 'straight ahead of it'),
+      found([Obj('AlliedRefinery', 100.0, 100.0, side='p1', site='map', angle=0.0)], 'map maps.sapporo'),
+      found([Obj('AlliedRefinery', 100.0, 100.0, side='p1', site='map')], 'no facing'))
+print('G12 left', {left!r})
+'''
+
+
+def test_g12_ore_and_oil_come_from_relations():
+    import re
+    import sys
+    files = _tracked()
+    typed = []
+    for rel in _under(files, f'{CNV}/maps', '.py'):
+        src = _read(rel)
+        if "'OreNode'" in src or "'OilDerrick'" in src or re.search(r"'[\w ]+ refinery': Site\(", src):
+            typed.append(rel)
+    assert sorted(typed) == sorted(G12_LEFT), f'maps typing ore / oil / refinery pads by hand: {sorted(typed)}'
+    probe = G12_PROBE.format(cnv=str(ROOT / CNV), root=str(ROOT), left=G12_LEFT)
+    r = subprocess.run([sys.executable, '-I', '-X', 'utf8', '-c', probe], cwd=ROOT, capture_output=True, text=True,
+                       encoding='utf-8')
+    assert r.returncode == 0, (r.stdout + r.stderr)[-2000:]
+    assert 'ore True pads True derricks True bad []' in r.stdout, r.stdout.strip()
+    got = re.search(r'G12 mutation (\d+) (\d+) (\d+) (\d+) (\d+) (\d+)', r.stdout)
+    assert got and all(int(x) >= 1 for x in got.groups()), r.stdout.strip()
+    assert f'G12 left {G12_LEFT!r}' in r.stdout, r.stdout.strip()

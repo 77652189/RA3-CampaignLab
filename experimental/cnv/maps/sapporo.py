@@ -29,6 +29,7 @@ import struct
 import make_campnew18 as c18
 import platmap
 import platprops
+import resources
 from platmap import Block, Gap, Layout, Ramp, Road, poly, rect, wobble
 from platprops import along, area, cliff_feet, clumps, scatter, shore
 from maps import island
@@ -112,8 +113,6 @@ SITES.update({
     'front ramp east': Site(3150.0, 3330.0, 80.0, "the foot of the north plateau's east front ramp (200 wide)"),
     'south base': Site(2850.0, 1150.0, 250.0, "the south plateau: the player's base ground (a construction yard's "
                                               'pad)', build=250.0),
-    'south refinery': Site(2540.0, 1170.0, 0.0, "a refinery's pad by the south plateau's pair of ore (~180 off, as "
-                                                'retail)', build=200.0),
     'south ramp': Site(2350.0, 1720.0, 80.0, "the foot of the south plateau's ramp, down to the low ground by the "
                                              'avenue'),
     'tv tower': Site(700.0, 3950.0, 200.0, "the west ridge's top: the TV tower's pad (an observation post)",
@@ -124,6 +123,17 @@ SITES.update({
     'north bridge': Site(3740.0, 3420.0, 60.0, 'the canal\'s north bridge'),
     'south bridge': Site(3740.0, 1850.0, 60.0, 'the canal\'s south bridge'),
 })
+# ore and oil as relations (resources.py, K4): a refinery pad, the way it faces, the base it serves; the ore is made from
+# that (180 straight ahead, a second node beside it), never typed. The oil stands off every camp (I9: the north
+# plateau's derrick was in the enemy camp; it is on the west ridge now, by the TV tower).
+FIELDS = [
+    resources.Field('south', 2540.0, 1170.0, 225.0, 1, base='south base', owner='p1', build=resources.PAD),
+    resources.Field('north', 2917.0, 3833.0, 135.0, 1, base='north base', owner='s1'),
+    resources.Field('harbour', 3873.0, 1553.0, 45.0, 1),
+    resources.Field('low ground', 2727.0, 2013.0, 135.0, 1),
+]
+DERRICKS = [(1120.0, 3860.0), (2120.0, 1660.0)]
+SITES.update(resources.sites(FIELDS))
 for _k, (_x, _north) in PLAZAS.items():
     _s, _side = (1 if _north else -1), ('north' if _north else 'south')
     _gx, _gy = _gate(_k)
@@ -228,14 +238,7 @@ def _objects():
     for p, q in BRIDGES:
         for x, y, a, flags in platmap.bridge(p, q, 'HB_Bridge_02'):
             out.append(Obj('HB_Bridge_02', x, y, side='neutral', angle=a, flags=flags, site='map'))
-    # pairs 150 apart, a refinery ~180 from both (retail's way; user 2026-11-03: ore and refinery belong together)
-    ore = [(2480, 1000), (2630, 1010),              # the south plateau: the player's base (its refinery pad is beside them)
-           (2640, 3930), (2790, 3960),              # north plateau
-           (4000, 1680), (4000, 1830),              # the harbour, past the canal
-           (2450, 2120), (2600, 2140)]              # the low ground between the south plateau and the avenue
-    out += [Obj('OreNode', x, y, side='neutral', angle=0.0, site='map') for x, y in ore]
-    for x, y in ((3200, 4050), (2120, 1660)):     # the north plateau's; one at the south ramp's foot (the base's)
-        out.append(Obj('OilDerrick', x, y, side='neutral', angle=0.0, site='map'))
+    out += resources.objects(FIELDS, DERRICKS)
     out += [Obj(t, round(x, 1), round(y, 1), side='civ', angle=round(a, 4), site='map') for t, x, y, a in WALLS]
     return out
 
