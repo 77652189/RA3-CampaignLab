@@ -14,7 +14,8 @@ MISSION = {
     'musicdyn': lambda: _music_bench('music_dyn').mission(),
     'musicdynspy': lambda: _music_bench('music_dyn').mission(name='CampMusDynS', spy=True),
     'musicdyntr': lambda: _music_bench('music_dyn').mission(name='CampMusDynT', tracer=True),
-    'musicroute': lambda: _music_bench('music_route').mission(),
+    'musicdyncue': lambda: _music_bench('music_dyn').mission(name='CampMusDynC', tracer=True, cue_at=20.0),
+    'musicroute':lambda: _music_bench('music_route').mission(),
     'musicrouteswap': lambda: _music_bench('music_route').mission(name='CampMusRouteW', swap=True),
     'musicroutecover': lambda: _music_bench('music_route').mission(name='CampMusRouteC', cover=True),
 }

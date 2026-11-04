@@ -5,7 +5,8 @@ infantry). The mission's rule: when a clone dies its side's units are handed bac
 ours 260 north of clone B, and her spot 70 north of B's engineer (within her 80); an enemy engineer no clone holds,
 by her spot too.
 
-Published (the cast): clone A, clone B, victim A, victim B, maiden, stranger; marks maiden spot.
+Published (the cast): clone A, clone B, victim A, victim B, maiden, stranger; marks maiden spot, beside clone A
+(40 south of it: within its reach, out of clone B's).
 """
 from maps import island
 from parts import Mission, Script
@@ -33,6 +34,7 @@ def mission(name='CampClone', picky=True):
     # so she waits 260 away and is sent to her spot by B's engineer after the clones' one press
     m.put(maiden.id, 'west field', 300, 260, name='UNIT - CNV Maiden', role='maiden')
     m.waypoint('maiden spot', 'CNV Maiden Spot', 'west field', 300, 110)
+    m.waypoint('beside clone A', 'CNV Beside Clone A', 'west field', 0, -40)
     # an enemy no clone holds, within her reach at her spot (63), out of clone B's (140)
     m.put('SovietEngineer', 'west field', 360, 130, side='s1', name='UNIT - CNV Stranger', role='stranger')
     return m

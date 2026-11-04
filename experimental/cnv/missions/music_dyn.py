@@ -54,10 +54,16 @@ def _tracer_pack():
     return pack.make(b.m, pack.tracer_tracks(b.m, ours, extract.retail_streams(b.kept)))
 
 
-def mission(name='CampMusDyn', spy=False, tracer=False):
-    start = a4.EVENTS['start'][0]
+def mission(name='CampMusDyn', spy=False, tracer=False, cue_at=None):
+    """cue_at: a4's escort cue played then, before the fight (engine line: does a cue suspend the dynamic system?
+    the program says it does, until it is turned on again)."""
+    start, cue = a4.EVENTS['start'][0], a4.EVENTS['escort'][0]
     m = Mission(name=name, map=island, facts={'enemy at': ENEMY_AT, 'help at': HELP_AT},
-                music=pack.Later(_spy_pack if spy else _tracer_pack if tracer else a4.pack, {start}))
+                music=pack.Later(_spy_pack if spy else _tracer_pack if tracer else a4.pack,
+                                 {start} | ({cue} if cue_at is not None else set())))
+    if cue_at is not None:
+        m.scripts += [Script('CNV Music - Cue timer', [], [('SET_MILLISECOND_TIMER', 'CNV Music Cue', cue_at)]),
+                      Script('CNV Music - Cue', [('TIMER_EXPIRED', 'CNV Music Cue')], [('PATH_MUSIC_PLAY_EVENT', cue)])]
     m.waypoint('fight', 'CNV Music Fight', 'west field')
     m.waypoint('help', 'CNV Music Help', 'west shore')
     k = 0

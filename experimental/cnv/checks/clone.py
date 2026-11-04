@@ -5,11 +5,18 @@ hold: both engineers are taken after CONTROL_AT; A's comes back after KILL_AT (t
 as long as the clone lives), B's -- whose clone lives on -- does not.
 free: as hold, and the mind maiden, sent to her spot at WALK_AT, uses hers by B's engineer at FREE_AT: it is ours again, clone B alive; the
   enemy engineer by her, whom no clone holds, stays the enemy's.
+twice (engine: a button the map presses while its power reloads): clone A presses at PRESS_AT and takes A's
+  engineer; B's engineer is put beside clone A at PRESS_AT + 2 and clone A pressed again at PRESS_AT + 3, inside the
+  10 s reload; once more at THIRD_AT, long after it. When B's engineer changes hands says what the early press did:
+  at once -- the reload is not checked; at PRESS_AT + 10 -- it waited for the reload; only after THIRD_AT -- it was
+  dropped without a word. Bench 2026-11-04: at once (taken by s4; once, without the early press: only at s18) -- a
+  map's press fires while the power reloads (the bench's seconds run ~2 s ahead of the mission's timers).
 """
 from parts import Script, Test, counted, status
 from units.clone import MARK
 
 CONTROL_AT, KILL_AT, FREE_AT, WALK_AT = 10.0, 25.0, 18.0, 12.0
+PRESS_AT, THIRD_AT = 2.0, 20.0
 
 
 def free(m):
@@ -56,8 +63,29 @@ def hold(m):
     return t
 
 
+def twice(m, second=True):
+    """second=False (once): the same without the early press -- what being put beside clone A alone does."""
+    t = Test()
+    press = ('NAMED_USE_COMMANDBUTTON_ABILITY', m.role('clone A').name, m.ability('clone A', 'control'))
+    timers = {'first': PRESS_AT, 'move': PRESS_AT + 2, 'second': PRESS_AT + 3, 'third': THIRD_AT}
+    t.scripts.append(Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))] +
+                            [('SET_MILLISECOND_TIMER', f'Test - {k} timer', at) for k, at in timers.items()]))
+    for k in ('first', 'second', 'third') if second else ('first', 'third'):
+        t.scripts.append(Script(f'Test - {k}', [('TIMER_EXPIRED', f'Test - {k} timer')], [press]))
+    t.scripts.append(Script('Test - move', [('TIMER_EXPIRED', 'Test - move timer')],
+                            [('UNIT_TELEPORT_TO_WAYPOINT', m.role('victim B').name, m.mark('beside clone A'))]))
+    for k in 'AB':
+        counted(f'Test Ours {k}', f'{k} 工程师归我', t, owner=m.role(f'victim {k}').name)
+    # a taken unit wears its new colour up to 4 s after the press (bench 2026-10-22)
+    t.expect += [('A 工程师归我', PRESS_AT + 5, '==', 0), ('B 工程师归我', 0, '==', 1, PRESS_AT + 1)]
+    t.expect += ([('B 工程师归我', PRESS_AT + 6, '==', 0)] if second else    # before the reload is over (PRESS_AT + 10)
+                 [('B 工程师归我', 0, '==', 1, THIRD_AT - 3), ('B 工程师归我', THIRD_AT + 6, '==', 0)])
+    t.bench = [('bench_watch', dict(seconds=30, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 # the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
 CHECKS = {
-    'clone': {'hold': hold, 'free': free},
+    'clone': {'hold': hold, 'free': free, 'twice': twice, 'once': lambda m: twice(m, second=False)},
     'clone_any': {'free': free_any},
 }

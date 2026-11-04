@@ -9,8 +9,12 @@ Bench 2026-11-04: it clears 5.1 - 5.6 game seconds after a line comes up, whatev
 audio's end (at x2.9 the 4.34 s line's audio was still playing when the panel cleared), not real seconds (at x8 the
 audio had not finished in 33 game seconds, the panel was long gone). At x1, as a player sees it: up at 0.9 s, the
 audio done at 5.3 s, the panel gone between 5.7 and 6.0 s. So a dubbed line's subtitle stays ~5.5 s however long it is.
+Stack, the same day: the first line up at 1.0 s, the second joins under it at 2.8 - 3.1 s (the first moves up a row);
+both stay till 7.7 s and are gone together by 8.1 s -- the first line ~7 s, not its own 5.5. The panel clears as a
+whole ~5.2 s after its last line came; each new line starts the wait again.
 
-The checks: one retail line (its own subtitle) at PLAY_AT s, or two 20 s apart (pair); real watches at x1 (a frame
+The checks: one retail line (its own subtitle) at PLAY_AT s, or two 20 s apart (pair), or two 2 s apart (stack: do
+the two leave together or each after its own ~5.5 s?); real and stack watch at x1 (a frame
 every 0.35 s), fast at x2.9 (every 1 s), slow at x8 (every 4 s). 第k句帧数 counts the game frames from the line's start
 till HAS_FINISHED_AUDIO -- the game's own clock (15 a second) to time the frames by, since the bench's seconds are its
 estimate. The panel is read off the frames: mean brightness and bright text pixels in its box (x 380-820, y 566-632
@@ -22,6 +26,7 @@ from parts import Mission, Script, Test
 PLAY_AT, RUN = 3.0, 33.0
 LINE = 'MA01_AlliedIntel24'                     # retail, 4.34 s, with its own subtitle
 PAIR = (('MA01_AlliedIntel36', PLAY_AT), ('MA01_AlliedIntel40', PLAY_AT + 20))     # 3.3 s and 4.3 s
+STACK = (('MA01_AlliedIntel36', PLAY_AT), ('MA01_AlliedIntel40', PLAY_AT + 2))     # stack: the second while the first is up
 
 
 def mission():
@@ -57,4 +62,4 @@ def _watch(every, lines=((LINE, PLAY_AT),), run=RUN):
 # the builds this module makes and their checks (cnv/registry.py); the bench's rate is set by the frame interval
 MISSION = {'engine_dialog': mission}
 CHECKS = {'engine_dialog': {'real': _watch(0.35, run=14.0), 'fast': _watch(1), 'slow': _watch(4),
-                            'pair': _watch(1, PAIR, run=48.0)}}
+                            'pair': _watch(1, PAIR, run=48.0), 'stack': _watch(0.35, STACK, run=16.0)}}
