@@ -118,6 +118,91 @@ JOINS_TEAM = {'UNIT_SET_TEAM': 1, 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT': 2,
               'CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION': 2}      # action -> the index of the team it names
 
 
+# E7 (2026-11-04, ra3-script-reference E7-6, E7-7). PATH_MUSIC_PLAY_EVENT suspends the game's combat music (the dynamic
+# system) and nothing brings it back, so every cue after it was switched on must switch it on again in the same action
+# list (the order the bench heard work: cue, then ENABLE, the same frame). And the library's Mission Won / Mission Lost
+# (Lib_End_Mission) play S_EndMissionWin / S_EndMissionLose themselves, then take the player's input away, show the
+# victory screen after 2 s and end in 5 s (QUICKVICTORY()) or end in 3 s (DEFEAT()): a caption set in the same script
+# is on screen that long at most.
+MUSIC_CUE, MUSIC_DYNAMIC = 'PATH_MUSIC_PLAY_EVENT', 'PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM'
+ENDING_EVENTS = 'S_EndMission'                      # the library plays these; the shell's own end-of-mission music
+PHASE_SCRIPT = re.compile(r'CNV \w+ - Phase (\d+)( \(\d+\))?')      # phase n's own script (its 开场 acts)
+PHASE_FLAG = re.compile(r'CNV_\w+_Phase_(\d+)')                     # raised when phase n begins, stays up
+ENDING_LIBRARY_AT = {'Mission Won': 5.0, 'Mission Lost': 3.0}       # seconds from the flag to QUICKVICTORY() / DEFEAT()
+                                                                    # (the victory screen comes at 2 s, whether the caption
+                                                                    # shows under it is not known)
+CJK_CPS, LATIN_CPS = 9.0, 17.0                      # characters a player reads in a second: the subtitle norm (Netflix
+                                                    # timed-text style guide: Chinese 9, English 17)
+
+
+def read_seconds(text):
+    """Seconds a player needs to read a caption."""
+    return sum(1 / CJK_CPS if ord(c) >= 0x2e80 else 1 / LATIN_CPS for c in text)
+
+
+def script_phase(s):
+    """The latest phase a script is certain to run in (or after): phase n's own script, or one whose condition holds
+    a phase's flag up. None: nothing ties it to a phase (a rule waiting for a device's event, say)."""
+    n = None
+    own = PHASE_SCRIPT.fullmatch(s.name)
+    if own:
+        n = int(own[1])
+    for c in s.when:
+        f = PHASE_FLAG.fullmatch(str(c[1])) if c[0] == 'FLAG' and len(c) > 2 and c[2] == 1 else None
+        if f:
+            n = max(n or 0, int(f[1]))
+    return n
+
+
+def unresumed_cues(scripts):
+    """[(script, index of the last cue)]: scripts that play a (non-ending) music cue in or after the phase that switches
+    the combat music on, with no switch-on after the cue."""
+    on = [script_phase(s) for s in scripts if any(a[0] == MUSIC_DYNAMIC for a in s.do)]
+    on = [n for n in on if n is not None]
+    if not on:
+        return []
+    out = []
+    for s in scripts:
+        n = script_phase(s)
+        if n is None or n < min(on):
+            continue
+        cues = [i for i, a in enumerate(s.do) if a[0] == MUSIC_CUE and not str(a[1]).startswith(ENDING_EVENTS)]
+        if cues and not any(a[0] == MUSIC_DYNAMIC for a in s.do[cues[-1]:]):
+            out.append((s, cues[-1]))
+    return out
+
+
+def music_resumes(m):
+    """E7: once the combat music is on, a cue switches it on again (see MUSIC_CUE above); the ending's cues are the
+    library's, so a script that sets Mission Won / Mission Lost plays none of its own."""
+    out = [f'{s.name}: plays a music cue after the combat music was switched on and does not switch it on again '
+           f'(it stays suspended: PATH_MUSIC_PLAY_EVENT, E7-6)' for s, _ in unresumed_cues(m.scripts)]
+    out += [f'{s.name}: plays {a[1]} itself; the library plays it when {flag!r} is set (E7-7)' for s in m.scripts
+            for flag in ENDING_LIBRARY_AT if ('SET_FLAG', flag, 1) in s.do
+            for a in s.do if a[0] == MUSIC_CUE and str(a[1]).startswith(ENDING_EVENTS)]
+    return out
+
+
+def ending_line_fits(m):
+    """E7: the caption of a script that sets Mission Won / Mission Lost stays on the screen only until the library's
+    QUICKVICTORY() / DEFEAT() (ENDING_LIBRARY_AT), and has the words a player reads in that time (read_seconds)."""
+    out = []
+    for s in m.scripts:
+        for flag, until in ENDING_LIBRARY_AT.items():
+            if ('SET_FLAG', flag, 1) not in s.do:
+                continue
+            for name, *a in s.do:
+                if 'MILITARY_CAPTION' not in name:
+                    continue
+                text = m.strings.get(a[0], a[0])
+                if a[1] > until:
+                    out.append(f'{s.name}: the ending caption stays {a[1]:g} s, {flag!r} ends it in {until:g} s')
+                if read_seconds(text) > until:
+                    out.append(f'{s.name}: the ending caption {text!r} takes {read_seconds(text):.1f} s to read, '
+                               f'{flag!r} ends it in {until:g} s')
+    return out
+
+
 def team_orders_land(m):
     """G6b: every whole-team order of the level (a check's `Test ...` own are not) goes to a team that has an instance
     when it runs: the same script put a unit on that team before it (ctx.order does: UNIT_SET_TEAM for each name, then
@@ -377,6 +462,7 @@ def contract(mission):
     out += said_once_and_on_time(m)
     out += team_orders_land(m) + kind_counts_in_area(m)
     out += camera_outside_the_view(m)
+    out += music_resumes(m) + ending_line_fits(m)
     out += single_orders(m)
     out += ore_faces_refinery(m) + ore_in_groups(m) + oil_off_the_camps(m) + base_has_ore(m) + cast_points_clear(m) + map_design(m)
     for s in m.scripts:

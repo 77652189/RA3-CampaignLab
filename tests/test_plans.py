@@ -352,14 +352,59 @@ def test_the_levels_own_music():
                                                      ('PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM', a4.DYNAMIC_SYSTEM)]
     win = [s for s in m.scripts if s.name in m.endings and 'Win' in s.name][0]
     lose = [s for s in m.scripts if s.name in m.endings and 'Lose' in s.name][0]
-    assert win.do[0] == ('PATH_MUSIC_PLAY_EVENT', a4.EVENTS['win'][0]) and win.do[-1] == ('SET_FLAG', 'Mission Won', 1)
-    assert lose.do[0] == ('PATH_MUSIC_PLAY_EVENT', a4.EVENTS['lose'][0]) and lose.do[-1][1] == 'Mission Lost'
+    # E7-7: the library's Mission Won / Lost play S_EndMissionWin / Lose themselves: ours plays none, whatever the music
+    assert win.do[-1] == ('SET_FLAG', 'Mission Won', 1) and lose.do[-1][1] == 'Mission Lost'
+    assert not any(a[0] == 'PATH_MUSIC_PLAY_EVENT' for s in (win, lose) for a in s.do)
     assert small().music is None                                              # no 音乐: retail's music
     ruled = small(音乐='a4', 规则=[{'当': '开局 + 1:00', '做': ['胜利']}, {'当': '开局 + 2:00', '做': [{'失败': '输了'}]}])
-    assert named(ruled, 'CNV ZZ - Rule 1')[0].do == [('PATH_MUSIC_PLAY_EVENT', a4.EVENTS['win'][0]),
-                                                     ('SET_FLAG', 'Mission Won', 1)]      # a rule's 胜利 too
-    assert named(ruled, 'CNV ZZ - Rule 2')[0].do[0] == ('PATH_MUSIC_PLAY_EVENT', a4.EVENTS['lose'][0])
+    assert named(ruled, 'CNV ZZ - Rule 1')[0].do == [('SET_FLAG', 'Mission Won', 1)]      # a rule's 胜利 too
+    assert not any(a[0] == 'PATH_MUSIC_PLAY_EVENT' for a in named(ruled, 'CNV ZZ - Rule 2')[0].do)
     assert named(small(规则=[{'当': '开局', '做': ['胜利']}]), 'CNV ZZ - Rule 1')[0].do == [('SET_FLAG', 'Mission Won', 1)]
+
+
+def test_a_cue_after_the_combat_music_switches_it_on_again():
+    """E7-6: a cue suspends the combat music for good (bench 2026-11-04: after a cue the dynamic states never came),
+    so every cue in or after the phase that switched it on is followed by the switch-on, in the same action list. A
+    cue before that phase is left as written; a rule gated by a later phase's flag is held too."""
+    import contract
+    sys.path.insert(0, str(ROOT))
+    from experimental.music import a4
+    on =('PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM', a4.DYNAMIC_SYSTEM)
+    m = small(音乐='a4', 段=[{'名字': '一', '开场': ['音乐 布防'], '结束': '开局 + 1:00'},
+                           {'名字': '二', '开场': ['音乐 港口', '战况音乐 开'], '结束': '开局 + 2:00'},
+                           {'名字': '三', '开场': ['音乐 最后一程'], '结束': '开局 + 3:00'}],
+              规则=[{'当': ['开局 + 4:00', '段 三'], '做': ['音乐 行进']}, {'当': '开局 + 5:00', '做': ['音乐 伏击']}])
+    one, two, three = (named(m, f'CNV ZZ - Phase {k}')[0].do for k in (1, 2, 3))
+    cue = lambda word: ('PATH_MUSIC_PLAY_EVENT', a4.EVENTS[a4.CUES[word]][0])
+    assert on not in one                                                           # before the switch-on: as written
+    assert [a for a in two if a[0].startswith('PATH_MUSIC')] == [cue('港口'), on]     # already in order: not doubled
+    assert [a for a in three if a[0].startswith('PATH_MUSIC')] == [cue('最后一程'), on]
+    gated = named(m, 'CNV ZZ - Rule 1')[0].do
+    assert gated[:2] == [cue('行进'), on]
+    assert on not in named(m, 'CNV ZZ - Rule 2')[0].do                              # tied to no phase: left as written
+    assert contract.music_resumes(m) == []
+    three_script = named(m, 'CNV ZZ - Phase 3')[0]
+    three_script.do.remove(on)                                                      # what the producer must not leave
+    assert 'does not switch it on again' in ' '.join(contract.music_resumes(m))
+
+
+def test_an_ending_says_its_line_inside_the_librarys_time():
+    """E7-7: Mission Lost ends the mission 3 s after its flag (DEFEAT()), so the ending's caption stays 3 s at most and
+    has the words a player reads in that time; the contract holds a longer one and a script's own end music."""
+    import contract
+    m = small(音乐='a4', 胜利='开局 + 9:00', 失败=[{'当': '摧毁 camp', '原因': '车队被劫走了……两辆车被毁。'}])
+    lose = [s for s in m.scripts if s.name in m.endings and 'Lose' in s.name][0]
+    cap = [a for a in lose.do if 'MILITARY_CAPTION' in a[0]][0]
+    assert cap[2] == 3.0 and contract.ending_line_fits(m) == [] and contract.music_resumes(m) == []
+    lose.do[lose.do.index(cap)] = cap[:2] + (10.0,)
+    assert 'ends it in 3 s' in ' '.join(contract.ending_line_fits(m))
+    lose.do[lose.do.index(cap[:2] + (10.0,))] = cap
+    m.strings[cap[1]] = '车队被劫走了……两辆车被毁，货全丢了，司令要发火了，沃斯也要被问话了，大家都别想睡觉了。'
+    assert 's to read' in ' '.join(contract.ending_line_fits(m))
+    m.strings[cap[1]] = 'The convoy was hijacked... two trucks destroyed.'        # English: 17 characters a second
+    assert contract.ending_line_fits(m) == []
+    lose.do.insert(0, ('PATH_MUSIC_PLAY_EVENT', 'S_EndMissionLose'))
+    assert 'the library plays it' in ' '.join(contract.music_resumes(m))
 
 
 def test_a_build_to_listen_with_shows_the_cue(monkeypatch):

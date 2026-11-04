@@ -16,6 +16,7 @@ Published (the cast): truck 1-3, ice 1-3 (the gate ice), escort (the enemy's); p
 k-n (plaza k's n-th: two tank busters, two warriors) (the player's). Marks: exit, seal 1-3 (where the gate ice
 stands); facts: convoy leaves, tick; endings: the win and lose scripts.
 """
+from contract import ENDING_LIBRARY_AT
 from ctx import Ctx
 from maps import festival
 from missions import festival_parts as fp
@@ -96,9 +97,9 @@ def mission(name='CampJ4'):
         Script('CNV J4 - Bonus Done', [('COUNTER', convoy.losses, 2, 3)], m.done(BONUS)),
         Script('CNV J4 - Bonus Failed', [('COUNTER', convoy.arrived, 3, 1)], m.failed(BONUS)),
         Script(WIN, ctx.ending_gate() + [('COUNTER', convoy.losses, 3, 2)],
-               m.done(OBJ) + ctx.ending_begin() + [ctx.final('SCRIPT:CNVJ4_WIN', 10.0), ('SET_FLAG', 'Mission Won', 1)]),
+               m.done(OBJ) + ctx.ending_begin() + [ctx.final('SCRIPT:CNVJ4_WIN', ENDING_LIBRARY_AT['Mission Won']), ('SET_FLAG', 'Mission Won', 1)]),
         Script(LOST, ctx.ending_gate() + [('COUNTER', convoy.arrived, 3, 2)],
-               m.failed(OBJ) + ctx.ending_begin() + [ctx.final('SCRIPT:CNVJ4_LOST', 10.0), ('SET_FLAG', 'Mission Lost', 1)])]
+               m.failed(OBJ) + ctx.ending_begin() + [ctx.final('SCRIPT:CNVJ4_LOST', ENDING_LIBRARY_AT['Mission Lost']), ('SET_FLAG', 'Mission Lost', 1)])]
     m.endings += [WIN, LOST]
     m.scripts += ctx.talk_scripts()
     return m

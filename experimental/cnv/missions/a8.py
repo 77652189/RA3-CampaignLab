@@ -10,6 +10,7 @@ carrier=False: the A/B control -- no carrier, eight Guardians and four IFVs inst
 Published (the cast): carrier, guardian, ifv (control only), platform 1-3, hammer, bullfrog 1-3, factory, power;
 endings: the win and lose scripts; mark: near platform 1. Placed on the island's sites west shore / west field / base * / east 1-3.
 """
+from contract import ENDING_LIBRARY_AT
 from ctx import Ctx
 from maps import island
 from parts import Goal, Mission, Script
@@ -68,12 +69,12 @@ def mission(carrier=True, name='CampA8'):
         Script('CNV A8 - Bonus Done', [('NAMED_DESTROYED', n) for n in F_NAMES], m.done(BONUS)),
         Script(WIN, ctx.ending_gate() + [('NAMED_DESTROYED', n) for n in P_NAMES],
                m.done(OBJ) + (m.done(SURVIVE) if carrier else []) +
-               ctx.ending_begin() + [ctx.final('SCRIPT:CNVA8_WIN', 10.0), ('SET_FLAG', 'Mission Won', 1)])]
+               ctx.ending_begin() + [ctx.final('SCRIPT:CNVA8_WIN', ENDING_LIBRARY_AT['Mission Won']), ('SET_FLAG', 'Mission Won', 1)])]
     m.endings.append(WIN)
     if carrier:
         m.scripts.append(Script(LOST, ctx.ending_gate() + [('NAMED_DESTROYED', CARRIER)],
                                 m.failed(SURVIVE) + m.failed(OBJ) +
-                                ctx.ending_begin() + [ctx.final('SCRIPT:CNVA8_LOST', 10.0), ('SET_FLAG', 'Mission Lost', 1)]))
+                                ctx.ending_begin() + [ctx.final('SCRIPT:CNVA8_LOST', ENDING_LIBRARY_AT['Mission Lost']), ('SET_FLAG', 'Mission Lost', 1)]))
         m.endings.append(LOST)
     m.scripts += ctx.talk_scripts()
     return m

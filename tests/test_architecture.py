@@ -563,3 +563,60 @@ def test_g13_a_cast_point_is_level_open_ground():
         for ln in _read(rel).splitlines():
             if 'IceAt' in ln and 'waypoint(' in ln:
                 assert 'cast=True' in ln, f'{rel}: an ice mark that is not a cast point: {ln.strip()}'
+
+
+# GE7 (ADR 0016 phase 4, E7): what the engine does with music and endings (work/re/ra3-script-reference.md E7-6, E7-7).
+# A music cue suspends the combat music for good, so after the phase that switches it on every cue is followed by the
+# switch-on again (contract.music_resumes; plan.resume_music produces it); the library's Mission Won / Lost play the
+# end music themselves and end the mission 3 s after the flag, so no ending script plays its own end music and its
+# caption fits those seconds (contract.ending_line_fits). Every build is held to both; the mutations are an a4 with
+# its last switch-on taken out, an ending that plays its own end music, and a lose caption that stays 10 s.
+GE7_PROBE = '''
+import sys
+sys.path[:0] = [{cnv!r}, {root!r}]
+import build, contract, model
+bad, ons = [], 0
+for n in sorted(build.MISSIONS):
+    m, _, _ = build.resolve(n, '')
+    mm = model.merged(m)
+    ons += sum(a[0] == contract.MUSIC_DYNAMIC for s in mm.scripts for a in s.do)
+    bad += [(n, p) for p in contract.music_resumes(mm) + contract.ending_line_fits(mm)]
+print('GE7 builds', len(build.MISSIONS), 'switch-ons', ons, 'bad', bad[:3])
+
+
+def fresh():
+    return model.merged(build.resolve('a4', '')[0])
+
+
+def lose_of(mm):
+    return next(s for s in mm.scripts if ('SET_FLAG', 'Mission Lost', 1) in s.do)
+
+
+m1 = fresh()
+last = [s for s in m1.scripts if contract.script_phase(s) and any(a[0] == contract.MUSIC_DYNAMIC for a in s.do)][-1]
+last.do[:] = [a for a in last.do if a[0] != contract.MUSIC_DYNAMIC]
+m2 = fresh()
+lose_of(m2).do.insert(0, (contract.MUSIC_CUE, 'S_EndMissionLose'))
+m3 = fresh()
+lose = lose_of(m3)
+i = next(k for k, a in enumerate(lose.do) if 'MILITARY_CAPTION' in a[0])
+lose.do[i] = lose.do[i][:2] + (10.0,)
+print('GE7 mutation', len(contract.music_resumes(m1)), len(contract.music_resumes(m2)),
+      len(contract.ending_line_fits(m3)), len(contract.music_resumes(fresh())) + len(contract.ending_line_fits(fresh())))
+'''
+
+
+def test_ge7_music_resumes_after_a_cue_and_endings_leave_the_end_to_the_library():
+    import re
+    import sys
+    probe = GE7_PROBE.format(cnv=str(ROOT / CNV), root=str(ROOT))
+    r = subprocess.run([sys.executable, '-I', '-X', 'utf8', '-c', probe], cwd=ROOT, capture_output=True, text=True,
+                       encoding='utf-8')
+    assert r.returncode == 0, (r.stdout + r.stderr)[-2000:]
+    assert 'bad []' in r.stdout and not re.search(r'switch-ons 0 ', r.stdout), r.stdout.strip()
+    got = re.search(r'GE7 mutation (\d+) (\d+) (\d+) (\d+)', r.stdout)
+    assert got, r.stdout.strip()
+    resumed, own_cue, long_line, fine = (int(x) for x in got.groups())
+    assert resumed >= 1 and own_cue >= 1 and long_line >= 1 and fine == 0, r.stdout.strip()
+    src = _read(f'{CNV}/plan.py')
+    assert "self.cue('胜利')" not in src and "self.cue('失败')" not in src, 'the library plays the end music (E7-7)'

@@ -51,12 +51,20 @@
 - **后巷出兵点跟着南移了 70**（`出: lane foot` 偏移 [0,160]，现在出在 y=2630，仍在坡上）；冰雕偏移不变。策划线复核时看一眼。
 - 检查"一律走玩家点击"：已由 `contract.observes`（G11）保证，只观测的检查才能当验收；`place`/`placem` 用传送把工兵放到点边上，再由测试台点技能按钮和落点。
 
+## 第十四个会话（11-04）：E7 做完（总控令 ADR 0017 后改顺序：E7 → 等引擎线查后巷 V1 → K7 等外壳线的地图页）
+
+- **配乐**：任何 `音乐 <提示词>` 都会把战况音乐挂起且不自己恢复（引擎线第 5 轮测过）。`plan.Compiler.resume_music()` 在编译末尾，给"战况音乐开了之后的段（`Phase n` 开场脚本）和条件里带 `段 X` 旗的规则"里的每个非收尾 cue 后面紧跟再发一次 `PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM`（cue 在前、开在后，同一动作列表：和 `music_dyn` 里测过能响的顺序一样）。A4 现在：`Phase 4`（布防）、`Phase 5`（最后一程）各补一次；`Phase 3` 本来就是 cue 后开；`Rule 5`（伏击，只等号角、不挂段）在开之前，不补。判定函数 `contract.unresumed_cues` 编译器和产物规则共用。**没在游戏里听过**布防、最后一程里战况音乐是否真的接得上（要录音：`musicdyncue` 一类的构建加一个"开之后再发 cue + 开"的对照）。
+- **胜负 cue 删了**：`plan.py` 的 `胜利`、`失败` 不再自己放 `S_EndMissionWin/Lose`，库脚本 `Lib_End_Mission` 设旗标时自己放（E7-7）。`失败` 的字幕从停 10 秒改成 `ENDING_LIBRARY_AT['Mission Lost']`（3 秒，库脚本 3 秒后 `DEFEAT()`）。手写关 a8、j4 的结局字幕同样改成引用这个常量（赢 5 秒、输 3 秒）。**没测**：①删掉我们那一发后游戏里胜负音乐是否照样响（库脚本发的是同一个事件名，理论上一样）；②旗标设下后 `HIDE_UI` 会不会把字幕框一起收掉（会的话 3 秒也看不到）。
+- **产物规则**（并进 `contract()`，每次构建都查）：`music_resumes`（战况音乐开了之后的 cue 后面没再开＝错；结局脚本自己放结束音乐＝错）、`ending_line_fits`（设 `Mission Won/Lost` 的脚本里的字幕：停留不超过库脚本的 5/3 秒，字数按每秒 9 个汉字 / 17 个英文字母读得完）。守卫 `tests/test_architecture.py::test_ge7_...`（全部 92 个构建过；三个变异：A4 拿掉最后一次再开、结局自己放音乐、10 秒字幕；`plan.py` 里不得再有 `self.cue('胜利')` / `self.cue('失败')`）。测试 `tests/test_plans.py` 三条：结局不放 cue、cue 后补开（含段旗规则、不重复）、结局字幕。
+- **`技能` 不用改**：第 5 轮实测脚本按按钮不看冷却（冷却只拦玩家点），所以 A4 `derrick` 等"发了就放"的写法是对的；反过来脚本连发拦不住，想要冷却得自己计时。其余 E7 条目（CREATE 朝向恒 0、AI 单玩家、建造中不数）核对过，我们的用法没有冲突。
+- **验证**：`pytest -q tests` 428 passed 1 skipped；指纹 `p4_e7` 对 `p4_k3`：a4、shell、shell_intl 各只变 `camp_cnv01_probe.map` 一个文件（脚本里多两次再开、少两个结局 cue、失败字幕 3 秒），字符串、配音、模型没变。没做：游戏里听、`cnv_check` 整关走查（改的只是脚本动作，sim 不模拟音乐）。
+
 ## 第十三个会话收尾（11-04 05:40，上下文 23 万）：K3 提交 41e0c73，K7、E7 没动
 
 **下一步按顺序**：
 1. **后巷 V1 放不出冰墙**：先看上面 K3 一节最后一条。测试台空了就跑 `place`（`PLACE_AT` 已推到 20 秒，没测）。I3 在 issues.md 里仍是"修了待验"但写明 V1 未过，V1 过了才算完。
 2. **K7（I8）**：设计见下面"K7 挡路"一节，没动手。现状量数（`platmap.heights` 算的，A4 当前）：陆地里高度 ≥455（第二层）占 39.4%，坡度 >9 的占陆地 15.0%（原版城市图 1.4～3.4%，目标 ≤4%）。垫高的块：北街区（含后巷）、南街区、北坡口两侧的 ward、西岭、西南山、北南高原、神社丘（`sapporo.py` 的 `SHAPES`）。要改的是前四个（街区和 ward），南北高原留。改完后后巷的两个坡口要重新定位，`lane foot`/`lane end` 以及 horn 的后巷出兵点、`Gap`、`tests/test_sapporo.py`、graybox 走查（见下条坑）都要跟着看。产物规则要一条：非悬崖的大片坡地（坡度 >1.5 且面积 ≥ 阈值）出现在路上就报，阈值先量原版（`docs/design/teardowns/data/edge_measure.py`）。守卫 G14 + 变异检验，I8 标"修了待验"。
-3. **E7**（`work/re/ra3-script-reference.md` E7-6、E7-4）：①配乐 cue（`PATH_MUSIC_PLAY_EVENT`）会把战况音乐挂起，之后不自己恢复：`plan.py` 里 `战况音乐` 的 PlanError 文字和 `plan.py:521` 一带注释说"没有关的动作"不对，A4 `战况音乐 开`（plans/a4.md:203）之后再有 `音乐`/`胜利` cue 的地方要核对顺序，必要时在 cue 后再发 `战况音乐 开`（要先在 sim/测试台确认再 ENABLE 会不会把刚放的 cue 盖掉；`music_dyn` 里是先 PLAY_EVENT 再 ENABLE）；②`NAMED_USE_COMMANDBUTTON_ABILITY`（`plan.py:630` 的 `技能`）技能用不了（冷却、没就绪）时静默什么也不做：靠它"一定放"的地方（A4 `derrick` 等）要在放之前确认冷却，测试台连发两次看第二次有没有效果。
+3. ~~**E7**~~ 第十四个会话做完，见上面那节。原记录（`work/re/ra3-script-reference.md` E7-6、E7-4）：①配乐 cue（`PATH_MUSIC_PLAY_EVENT`）会把战况音乐挂起，之后不自己恢复：`plan.py` 里 `战况音乐` 的 PlanError 文字和 `plan.py:521` 一带注释说"没有关的动作"不对，A4 `战况音乐 开`（plans/a4.md:203）之后再有 `音乐`/`胜利` cue 的地方要核对顺序，必要时在 cue 后再发 `战况音乐 开`（要先在 sim/测试台确认再 ENABLE 会不会把刚放的 cue 盖掉；`music_dyn` 里是先 PLAY_EVENT 再 ENABLE）；②`NAMED_USE_COMMANDBUTTON_ABILITY`（`plan.py:630` 的 `技能`）技能用不了（冷却、没就绪）时静默什么也不做：靠它"一定放"的地方（A4 `derrick` 等）要在放之前确认冷却，测试台连发两次看第二次有没有效果。
 4. 小心：①跑 pytest 要 6 分半，指纹约 6 分，都交给 Sonnet 子 Agent，别和任何构建同时跑；②`tests/test_graybox.py::test_old_a4_can_be_pushed_through_every_stage` 很脆，动 sapporo 的站点坐标几个单位就会因"布防"阶段多撞到敌人失败（东街口偏 5 就败）；③测试台是共享的：音乐线可能占着游戏，`bench_start` 会拒绝，别杀别人的进程；④Bash 钩子拦"heredoc 里带反斜杠写文件"，改文件用 Edit。
 
 ## K3 施法点（原设计，留作参考）

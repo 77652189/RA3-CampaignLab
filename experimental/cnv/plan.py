@@ -26,6 +26,7 @@ sys.path.insert(0, HERE)
 import glossary                                 # noqa: E402
 import langs                                    # noqa: E402
 from ctx import CHAT, FUNC, Ctx                 # noqa: E402
+from contract import ENDING_LIBRARY_AT, MUSIC_DYNAMIC, unresumed_cues   # noqa: E402
 from parts import NOT, Goal, Mission, Script, square   # noqa: E402
 from plantime import (ALL, ONE, TAGS, PlanError, by_level, counts, number, per, seconds, spans,   # noqa: E402,F401
                       times)                                                                # re-exported: tests, checks
@@ -509,13 +510,16 @@ class Compiler:
             if head == '存档':
                 m.strings.setdefault(AUTOSAVE, '新战役（自动存档）')
                 return [('CAMPAIGN_CREATE_AUTO_SAVE', AUTOSAVE)]
-            if head == '胜利':                       # with the level's music, its win music first
-                return (self.cue('胜利') if self.music else []) + [('SET_FLAG', 'Mission Won', 1)]
+            if head == '胜利':                       # the library's Mission Won plays S_EndMissionWin itself (E7-7)
+                return [('SET_FLAG', 'Mission Won', 1)]
             if head == '音乐':
                 return self.cue(rest.strip())
             if head == '战况音乐':                   # the game's own combat music states (sdk SageXML/PathMusic)
+                # no off: any 音乐 cue suspends it (PATH_MUSIC_PLAY_EVENT, E7-6), and resume_music() switches it on
+                # again after every cue that comes later
                 if rest.strip() != '开':
-                    raise PlanError(f'action {a!r}: 战况音乐 开 (there is no off: the game has no such action)')
+                    raise PlanError(f'action {a!r}: 战况音乐 开 (a cue after it suspends it, the compiler switches it '
+                                    f'on again after the cue; there is no off)')
                 if not self.music:
                     raise PlanError(f'action {a!r}: the plan names no music (音乐: <名字> at the top)')
                 return [('PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM', self.music.DYNAMIC_SYSTEM)]
@@ -649,8 +653,11 @@ class Compiler:
                 raise PlanError(f'翻脸 {a["翻脸"]!r}: a side of 阵营 其他 ({sorted(self.side)})')
             return [relates(m.player(x), p1, 'Enemy'), relates(p1, m.player(x), 'Enemy')]
         if '失败' in a:
-            return (self.cue('失败') if self.music else []) + self.ctx.ending_begin() + [
-                self.ctx.final(self.text('SCRIPT', a['失败']), 10.0), ('SET_FLAG', 'Mission Lost', 1)]
+            # the library's Mission Lost plays S_EndMissionLose itself and ends the mission in 3 s (E7-7): the line
+            # stays up no longer than that (contract.ending_line_fits holds the words to it: 9 CJK chars a second)
+            return self.ctx.ending_begin() + [
+                self.ctx.final(self.text('SCRIPT', a['失败']), ENDING_LIBRARY_AT['Mission Lost']),
+                ('SET_FLAG', 'Mission Lost', 1)]
         raise PlanError(f'action {a!r}: no such action (plan.py lists them)')
 
     def camera(self, a, secs, ease_in, ease_out):
@@ -1284,6 +1291,17 @@ class Compiler:
                                                     self.action({'失败': lose.get('原因', '任务失败')}),
                                                     gate=self.ctx.ending_gate())]
 
+    def resume_music(self):
+        """E7-6: a music cue suspends the combat music for good, so once a script switches it on, every cue in a script
+        that runs in or after that phase is followed by the switch-on again, in the same action list (cue first, then
+        ENABLE: the order the bench heard work, music_dyn.py). contract.music_resumes holds the product to it; which
+        scripts those are is contract.unresumed_cues (phase scripts and rules gated by a phase's flag; a rule waiting
+        for a device's event alone is tied to no phase and is left as written)."""
+        if not self.music:
+            return
+        for s, k in unresumed_cues(self.m.scripts):
+            s.do.insert(k + 1, (MUSIC_DYNAMIC, self.music.DYNAMIC_SYSTEM))
+
     def compile_countdowns(self):
         for timer, label in self.shown.items():
             started = next(st for t, st in self.timers.values() if t == timer)
@@ -1322,6 +1340,7 @@ class Compiler:
             self.m.scripts += dev.scripts()
         for dev in self.devices.values():
             self.m.scripts += dev.last()
+        self.resume_music()
         self.compile_countdowns()
         self.compile_talk()
         for ph in self.phases[1:]:                  # facts: a phase's start, when it is a time from the start
