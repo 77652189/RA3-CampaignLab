@@ -37,6 +37,14 @@ def test_a_broken_cast_point_is_drawn_at_its_site():
     assert cast['problems'][0]['at'] == m.waypoints[wp]          # drawn where the stray mark stands
 
 
+def test_every_a4_site_has_a_chinese_name():
+    """The page shows each site as 中文名 + code name; the names live beside the map module (maps/<map>_names.py)."""
+    sites = _a4().map.SITES
+    names = mappage.site_names(_a4().map)
+    assert sorted(k for k in sites if not names.get(k)) == [], 'add these to the map\'s _names.py'
+    assert sorted(set(names) - set(sites)) == [], 'names for sites the map no longer has'
+
+
 def test_locate_reads_coordinates_and_sites():
     sites = {'gate 1': mappage.parts.Site(100.0, 200.0)}
     m = dataclasses.make_dataclass('M', [('spells', dict)])({})

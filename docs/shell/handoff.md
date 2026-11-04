@@ -9,6 +9,8 @@
 - 关卡线用法：`mappage.py a4 --pull` 列出地形提议（刷了哪些地点）；`mappage.py a4 --apply-preview [--only ID]` 把地形提议套到构建出的地图上，报高度/通行变化、平不平变化、contract 哪些新红（`terrain_edit.lint_on` 临时让 platmap.lint 读改过的地面，不改 platmap）。
 - 已验证：本地 http 打开生成页（`.claude/launch.json` 的 mappage），用派发的指针事件涂抬高/压低/整平/画不可通行、撤一笔、存（没登录时退到内存存储）；把页面存出的提议喂给 `--apply-preview`，报的红和页面预览一致（inside 1 抬 34 → 建筑点、施法点都红）。
 - 没验证：真鼠标拖动的手感和性能（内置浏览器窗格隐藏，没截图）；claude.ai 上的真存储里存地形提议（dabs 存成一维数组，避开"数组套数组"）。A4 页面还没重新发布：要用 Artifact 工具带 url 发布 `work/mappage/a4/a4_mappage.html`（先 read）。
+- 中文界面（用户 2026-11-04："界面尽可能用中文，字体稍微大一些"）：正文 16px，图上标注按屏幕像素算（`fit()`，15px），375 宽不横向滚动（模拟手机测过）。地点显示成"中文名 英文代码名"，中文名在地图模块旁的 `experimental/cnv/maps/<地图>_names.py`（A4 是 `sapporo_names.py`；sapporo.py 当时有关卡线没提交的改动，所以没写进去，关卡线可以并进 sapporo.py）；`test_every_a4_site_has_a_chinese_name` 守着增删地点。规则问题的原文仍是检查代码给的英文（A4 现在没有问题）。
+- 用户验收：拖地点 + 写原因 + `--pull` 已通过；钉批注、地形编辑还没让用户试。
 - 坑：工具 `data-mode="block"` 现在是"画不可通行"，旧的画挡路线改叫 `line`（提议 kind 仍是 `block`）；页面 1.2 MB（高度图 base64 约 0.8 MB）。
 
 ## 能改的地图页，A4 先做（2026-11-04，总控派活，ADR 0017，git log 搜 "editable map page"）

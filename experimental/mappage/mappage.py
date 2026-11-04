@@ -203,6 +203,15 @@ def picture(mf, path):
     return [0.0, 0.0, w * CELL, h * CELL]
 
 
+def site_names(mp):
+    """The map's Chinese site names: maps/<map>_names.py next to the map module (NAMES), or {} if it has none."""
+    short = mp.__name__.split('.')[-1]
+    path = os.path.join(CNV, 'maps', f'{short}_names.py')
+    if not os.path.exists(path):
+        return {}
+    return dict(_load(f'{short}_names', path).NAMES)
+
+
 def export(name, with_picture=True, script=''):
     m, _, mod = build.resolve(name, '')
     m = parts.merged(m, None)
@@ -213,6 +222,7 @@ def export(name, with_picture=True, script=''):
     jpg = os.path.join(out_dir, name + '.jpg')
     world = list(getattr(mp, 'BORDERS', {}).get('whole', (0.0, 0.0, 5000.0, 5000.0)))
     ground = None
+    zh = site_names(mp)
     if with_picture:
         mf = built_map(m)
         world = picture(mf, jpg)
@@ -220,7 +230,7 @@ def export(name, with_picture=True, script=''):
         ground = dict(terrain_edit.params(g), **terrain_edit.encode(g))
     d = {
         'level': name, 'mod': mod, 'map': mp.__name__.split('.')[-1], 'world': world,
-        'sites': [{'k': k, 'x': _r(s.x), 'y': _r(s.y), 'r': _r(s.r), 'what': s.what, 'cast': _r(s.cast),
+        'sites': [{'k': k, 'zh': zh.get(k, ''), 'x': _r(s.x), 'y': _r(s.y), 'r': _r(s.r), 'what': s.what, 'cast': _r(s.cast),
                    'build': _r(s.build), 'pad': s.facing is not None} for k, s in sites.items()],
         'borders': {k: [_r(v) for v in b] for k, b in getattr(mp, 'BORDERS', {}).items()},
         'map_objects': [_obj(o) for o in getattr(mp, 'OBJECTS', ())],

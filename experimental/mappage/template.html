@@ -1,4 +1,5 @@
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>__TITLE__</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,80 +20,82 @@
 :root[data-theme="dark"] {
   --bg: #0e151b; --panel: #151f28; --ink: #e2e9ef; --muted: #93a3b0; --rule: #26343f;
   --allied: #6fa2e6; --enemy: #ff6e60; --ice: #63cfe3; --amber: #f0b43c; --ok: #5cc98a; --prop: #c58ae6; color-scheme: dark }
-body { background: var(--bg); color: var(--ink); font: 14px/1.6 var(--body); }
+body { background: var(--bg); color: var(--ink); font: 16px/1.65 var(--body); }
 .wrap { max-width: 1320px; margin: 0 auto; padding-block: 24px 56px;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   display: grid; gap: 18px; }
 h1, h2 { font-family: var(--display); text-wrap: balance; margin: 0; }
 h1 { font-size: clamp(24px, 3.6vw, 34px); font-weight: 900; letter-spacing: .02em; }
-h2 { font-size: 17px; font-weight: 600; }
+h2 { font-size: 19px; font-weight: 600; }
 p { margin: 0; }
-.eyebrow, .label { font: 500 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
-.note { font-size: 12.5px; color: var(--muted); }
+.eyebrow, .label { font: 500 13px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.note { font-size: 14.5px; color: var(--muted); }
 .head { display: grid; gap: 6px; }
 .head .lede { max-width: 72ch; }
-.pill { display: inline-flex; align-items: center; gap: 6px; font: 500 12px var(--mono); padding: 2px 10px; border-radius: 99px;
+.pill { display: inline-flex; align-items: center; gap: 6px; font: 500 14px var(--mono); padding: 3px 12px; border-radius: 99px;
   border: 1px solid currentColor; font-variant-numeric: tabular-nums; }
 .pill.ok { color: var(--ok); } .pill.bad { color: var(--enemy); }
 .board { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr); gap: 18px; align-items: start; }
 @media (max-width: 900px) { .board { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 480px) { .tools input[type=range] { width: 72px; } .tools label span { min-width: 0; } }
 .sheet { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; min-width: 0; }
 .tools { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px; border-bottom: 1px solid var(--rule); align-items: center; }
-button { font: 500 13px var(--body); color: var(--ink); background: transparent; border: 1px solid var(--rule); border-radius: 4px;
-  padding: 4px 10px; cursor: pointer; }
+button { font: 500 15px var(--body); color: var(--ink); background: transparent; border: 1px solid var(--rule); border-radius: 4px;
+  padding: 5px 12px; cursor: pointer; }
 button:hover { border-color: var(--muted); }
 button:focus-visible, textarea:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--allied); outline-offset: 1px; }
 button[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
 button.primary { background: var(--prop); color: #fff; border-color: var(--prop); }
 button:disabled { opacity: .45; cursor: default; }
 .tools .sep { width: 1px; align-self: stretch; background: var(--rule); margin: 0 4px; }
-.tools label { font-size: 12.5px; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; }
+.tools label { font-size: 14.5px; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; }
 .mapbox { position: relative; }
 .mapbox svg { display: block; width: 100%; height: auto; touch-action: none; user-select: none; }
 .mapbox svg.mode-line, .mapbox svg.mode-note, .mapbox svg.mode-raise, .mapbox svg.mode-lower, .mapbox svg.mode-flatten,
 .mapbox svg.mode-block, .mapbox svg.mode-unblock { cursor: crosshair; }
 .mapbox svg image.terrain { image-rendering: pixelated; }
 .tgroup { display: contents; }
-.tools input[type=range] { width: 84px; }
-.tools label span { font: 500 11px var(--mono); min-width: 6.5em; font-variant-numeric: tabular-nums; }
-.tlist { margin: 0; padding-left: 16px; font-size: 12.5px; display: grid; gap: 2px; }
+.tools input[type=range] { width: 96px; }
+.tools label span { font: 500 13px var(--mono); min-width: 7em; font-variant-numeric: tabular-nums; }
+.tlist { margin: 0; padding-left: 18px; font-size: 14.5px; display: grid; gap: 2px; }
 .tlist .bad { color: var(--enemy); } .tlist .good { color: var(--ok); }
 .swatch { display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; }
-.coord { position: absolute; left: 8px; bottom: 8px; font: 500 11px var(--mono); background: rgba(0,0,0,.55); color: #fff;
+.coord { position: absolute; left: 8px; bottom: 8px; font: 500 13px var(--mono); background: rgba(0,0,0,.55); color: #fff;
   padding: 2px 7px; border-radius: 3px; pointer-events: none; font-variant-numeric: tabular-nums; }
-.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 8px 12px; border-top: 1px solid var(--rule); font-size: 12px; color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 8px 12px; border-top: 1px solid var(--rule); font-size: 14px; color: var(--muted); }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
 .side { display: grid; gap: 14px; min-width: 0; }
 .side .sheet { padding: 12px 14px; display: grid; gap: 10px; }
 .slip { border: 1px dashed var(--prop); border-radius: 6px; padding: 10px 12px; display: grid; gap: 8px; }
 .slip b { color: var(--prop); }
-textarea { width: 100%; box-sizing: border-box; min-height: 64px; font: 13px/1.5 var(--body); color: var(--ink);
+textarea { width: 100%; box-sizing: border-box; min-height: 72px; font: 15px/1.55 var(--body); color: var(--ink);
   background: var(--bg); border: 1px solid var(--rule); border-radius: 4px; padding: 6px 8px; resize: vertical; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; max-height: 360px; overflow: auto; }
-.list li { border-left: 3px solid var(--prop); padding: 4px 8px; display: grid; gap: 2px; font-size: 13px; cursor: pointer; }
+.list li { border-left: 3px solid var(--prop); padding: 4px 8px; display: grid; gap: 2px; font-size: 15px; cursor: pointer; }
 .list li.on { background: color-mix(in srgb, var(--prop) 12%, transparent); }
-.list li .k { font: 500 11px var(--mono); color: var(--muted); }
+.list li .k { font: 500 13px var(--mono); color: var(--muted); }
 .list li .why { color: var(--ink); overflow-wrap: anywhere; }
-.list li .x { justify-self: start; font-size: 12px; padding: 1px 8px; }
+.list li .x { justify-self: start; font-size: 14px; padding: 2px 10px; }
 .rules { display: grid; gap: 6px; }
 .rule { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: baseline; }
-.rule .n { font: 500 12px var(--mono); font-variant-numeric: tabular-nums; min-width: 3.2em; }
+.rule .n { font: 500 14px var(--mono); font-variant-numeric: tabular-nums; min-width: 3.2em; }
 .rule .n.ok { color: var(--ok); } .rule .n.bad { color: var(--enemy); }
-.rule .w { font-size: 12px; color: var(--muted); grid-column: 2; }
-.rule ul { grid-column: 2; margin: 2px 0 4px; padding-left: 16px; font-size: 12.5px; color: var(--enemy); }
+.rule .w { font-size: 14px; color: var(--muted); grid-column: 2; }
+.rule ul { grid-column: 2; margin: 2px 0 4px; padding-left: 18px; font-size: 14.5px; color: var(--enemy); }
 .rule li { cursor: pointer; overflow-wrap: anywhere; }
-.status { font-size: 12.5px; color: var(--muted); }
+.status { font-size: 14.5px; color: var(--muted); }
 .status.err { color: var(--enemy); }
 .log { max-height: 420px; overflow: auto; padding: 0 14px 10px; }
-.log table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.log table { border-collapse: collapse; width: 100%; font-size: 15px; }
 .log td { padding: 3px 8px 3px 0; vertical-align: top; border-bottom: 1px solid var(--rule); }
-.log td.t { font: 500 12px var(--mono); color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.log td.k { white-space: nowrap; font-size: 12px; color: var(--amber); }
+.log td.t { font: 500 14px var(--mono); color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.log td.k { white-space: nowrap; font-size: 14px; color: var(--amber); }
 .log td.x { overflow-wrap: anywhere; }
 .loghead { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; padding: 12px 14px; }
-select { font: 13px var(--body); color: var(--ink); background: var(--panel); border: 1px solid var(--rule); border-radius: 4px; padding: 3px 6px; }
-svg text { font-family: var(--body); paint-order: stroke; stroke: rgba(10,16,22,.75); stroke-width: 3px; fill: #fff; }
+select { font: 15px var(--body); color: var(--ink); background: var(--panel); border: 1px solid var(--rule); border-radius: 4px; padding: 3px 6px; }
+svg text { font-family: var(--body); font-weight: 500; paint-order: stroke; stroke: rgba(10,16,22,.8); fill: #fff; }
+svg tspan.code { fill: #dfe7ee; font-weight: 400; }
 @media (prefers-reduced-motion: no-preference) { .flash { animation: flash 1.2s ease-out 2; } }
 @keyframes flash { 50% { opacity: .2; } }
 </style>
@@ -191,6 +194,8 @@ const sx = (x) => x - X0, sy = (y) => Y1 - y;
 const wx = (px) => px + X0, wy = (py) => Y1 - py;
 const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
 const r0 = (v) => Math.round(v);
+const ZH = Object.fromEntries(D.sites.map((s) => [s.k, s.zh || ""]));
+const nm = (k) => (ZH[k] ? `${ZH[k]} ${k}` : k);   // 港口矿场 harbour refinery
 function el(tag, attrs, parent) {
   const e = document.createElementNS(NS, tag);
   for (const k in attrs) e.setAttribute(k, attrs[k]);
@@ -205,7 +210,7 @@ $("title").textContent = `${D.level.toUpperCase()} 地图改动台`;
 const ruleBad = D.rules.rules.reduce((n, r) => n + r.problems.length, 0);
 $("summary").innerHTML = "";
 const pill = (cls, text) => { const s = document.createElement("span"); s.className = `pill ${cls}`; s.textContent = text; $("summary").appendChild(s); };
-pill(D.rules.total.length ? "bad" : "ok", `contract: ${D.rules.show}`);
+pill(D.rules.total.length ? "bad" : "ok", `接口检查（contract）：${D.rules.total.length ? D.rules.total.length + " 条问题" : "全部通过"}`);
 pill(ruleBad ? "bad" : "ok", `画在图上的规则问题 ${ruleBad}`);
 pill("", `地点 ${D.sites.length} · 物体 ${D.map_objects.length + D.objects.length} · 布景 ${D.scenery.length}`);
 
@@ -234,7 +239,7 @@ for (const o of [...D.map_objects, ...D.objects]) {
   if (!r) continue;
   const fill = o.side === "s1" && o.kind === "thing" ? "var(--enemy)" : o.side === "p1" && o.kind === "thing" ? "var(--allied)" : c;
   const e = el("circle", { cx: sx(o.x), cy: sy(o.y), r, fill, stroke: "#fff", "stroke-width": o.kind === "oil" ? 6 : 3, opacity: .92 }, G.objects);
-  el("title", {}, e).textContent = `${o.t}${o.name ? ` "${o.name}"` : ""} (${r0(o.x)}, ${r0(o.y)})${o.site ? `，按地点 ${o.site}` : ""}`;
+  el("title", {}, e).textContent = `${o.t}${o.name ? ` "${o.name}"` : ""} (${r0(o.x)}, ${r0(o.y)})${o.site ? `，按地点 ${nm(o.site)}` : ""}`;
 }
 
 // guides: what the rules measure
@@ -249,20 +254,22 @@ for (const p of gd.pads) {
 }
 for (const c of gd.casts) {
   const e = el("circle", { cx: sx(c.x), cy: sy(c.y), r: c.r, fill: "rgba(99,207,227,.22)", stroke: "var(--ice)", "stroke-width": 6 }, G.guides);
-  el("title", {}, e).textContent = `施法点 ${c.site}（${c.mark}），圆半径 ${c.r}`;
+  el("title", {}, e).textContent = `施法点 ${nm(c.site)}（冰墙标记 ${c.mark}），圆半径 ${c.r}`;
 }
 
 // sites (draggable)
 const siteEls = {};
-const LABEL = 46;
+const LABEL = 15;            // screen pixels: fit() turns these into map units for the current width
 for (const s of D.sites) {
   if (s.r >= 1000) continue;
   const g = el("g", { class: "site", tabindex: 0, "data-k": s.k, style: "cursor:grab" }, G.sites);
   if (s.r) el("circle", { cx: sx(s.x), cy: sy(s.y), r: s.r, fill: "rgba(36,94,166,.10)", stroke: "var(--allied)", "stroke-width": 3, opacity: .7, "pointer-events": "none" }, g);
   el("circle", { class: "dot", cx: sx(s.x), cy: sy(s.y), r: 26, fill: s.cast ? "var(--ice)" : "var(--allied)", stroke: "#fff", "stroke-width": 6 }, g);
-  const t = el("text", { class: "lab", x: sx(s.x) + 34, y: sy(s.y) + 14, "font-size": LABEL, "pointer-events": "none" }, g);
-  t.textContent = s.k;
-  el("title", {}, g).textContent = `${s.k} (${r0(s.x)}, ${r0(s.y)})${s.r ? `，半径 ${s.r}` : ""}\n${s.what}`;
+  const t = el("text", { class: "lab", x: sx(s.x) + 34, y: sy(s.y) + 14, "data-px": LABEL, "pointer-events": "none" }, g);
+  if (s.zh) { t.textContent = s.zh + " "; el("tspan", { class: "code", "data-px": LABEL * 0.8 }, t).textContent = s.k; }
+  else t.textContent = s.k;
+  el("title", {}, g).textContent = `${nm(s.k)}（${r0(s.x)}, ${r0(s.y)}）${s.r ? `，半径 ${s.r}` : ""}` +
+    `${s.build ? `，要能盖 ${s.build} 见方的建筑` : ""}${s.cast ? `，施法圆半径 ${s.cast}` : ""}\n地图模块里的说明（英文）：${s.what}`;
   siteEls[s.k] = g;
 }
 
@@ -274,7 +281,7 @@ for (const r of D.rules.rules) for (const p of r.problems) {
   if (!p.at) { probEls.push(null); continue; }
   const g = el("g", {}, G.problems);
   el("circle", { cx: sx(p.at[0]), cy: sy(p.at[1]), r: 70, fill: "none", stroke: "var(--enemy)", "stroke-width": 12 }, g);
-  const t = el("text", { x: sx(p.at[0]) + 80, y: sy(p.at[1]) - 50, "font-size": 56 }, g); t.textContent = `⚠${pn}`;
+  const t = el("text", { x: sx(p.at[0]) + 80, y: sy(p.at[1]) - 50, "data-px": 18 }, g); t.textContent = `⚠${pn}`;
   el("title", {}, g).textContent = `${r.label}：${p.text}`;
   probEls.push(g);
 }
@@ -354,7 +361,7 @@ function terrainReport() {
     const key = `${s.k}|${what}`; if (!(key in now)) continue;
     if (now[key] === FLAT0[key]) continue;
     const li = document.createElement("li"); li.className = now[key] ? "good" : "bad";
-    li.textContent = `${what === "build" ? "建筑点" : "施法点"} ${s.k}：${now[key] ? "改了以后变平了" : `改了以后不再平（${what === "build" ? s.build : 2 * s.cast} 见方的起伏超过 ${TP.build_variation} 世界单位）`}`;
+    li.textContent = `${what === "build" ? "建筑点" : "施法点"} ${nm(s.k)}：${now[key] ? "改了以后变平了" : `改了以后不再平（${what === "build" ? s.build : 2 * s.cast} 见方的起伏超过 ${TP.build_variation} 世界单位）`}`;
     ul.appendChild(li);
   }
   for (const s of TSITES) if (s.cast) {
@@ -364,7 +371,7 @@ function terrainReport() {
       const x = (q % TP.w - TP.b) * TP.cell, y = (Math.floor(q / TP.w) - TP.b) * TP.cell;
       if ((x - s.x) ** 2 + (y - s.y) ** 2 <= s.cast * s.cast) bad++;
     }
-    if (bad) { const li = document.createElement("li"); li.className = "bad"; li.textContent = `施法点 ${s.k}：圆里有 ${bad} 格新变成不可通行`; ul.appendChild(li); }
+    if (bad) { const li = document.createElement("li"); li.className = "bad"; li.textContent = `施法点 ${nm(s.k)}：圆里有 ${bad} 格新变成不可通行`; ul.appendChild(li); }
   }
   if (!ul.children.length && nT) { const li = document.createElement("li"); li.className = "good"; li.textContent = "没有建筑点或施法点因此变得不平。要看所有规则（坡道、豁口、街区），关卡线跑 mappage.py --apply-preview。"; ul.appendChild(li); }
 }
@@ -454,19 +461,19 @@ function describe(p) {
     const n = {}; for (const st of p.strokes) n[st.op] = (n[st.op] || 0) + 1;
     const b = strokeBox(p), c = nearest((b[0] + b[2]) / 2, (b[1] + b[3]) / 2);
     return `地形 ${p.strokes.length} 笔（${Object.entries(n).map(([k, v]) => `${OP_NAME[k]} ${v}`).join("、")}），范围 (${r0(b[0])}, ${r0(b[1])})–(${r0(b[2])}, ${r0(b[3])})` +
-      (c ? `，在 ${c[0]} 附近` : "");
+      (c ? `，在 ${nm(c[0])} 附近` : "");
   }
   if (p.kind === "move") {
     const n = nearest(p.to[0], p.to[1], p.site);
-    return `挪地点 ${p.site}：(${r0(p.from[0])}, ${r0(p.from[1])}) → (${p.to[0]}, ${p.to[1]})，挪了 ${r0(Math.hypot(p.to[0] - p.from[0], p.to[1] - p.from[1]))}` +
-      (n ? `；新位置离 ${n[0]} ${r0(n[1])}` : "");
+    return `挪地点 ${nm(p.site)}：(${r0(p.from[0])}, ${r0(p.from[1])}) → (${p.to[0]}, ${p.to[1]})，挪了 ${r0(Math.hypot(p.to[0] - p.from[0], p.to[1] - p.from[1]))}` +
+      (n ? `；新位置离 ${nm(n[0])} ${r0(n[1])}` : "");
   }
   if (p.kind === "block") {
     let len = 0; for (let i = 1; i < p.points.length; i++) len += Math.hypot(p.points[i][0] - p.points[i - 1][0], p.points[i][1] - p.points[i - 1][1]);
     return `挡路线 ${p.points.length} 个点，长 ${r0(len)}，从 (${p.points[0]}) 到 (${p.points[p.points.length - 1]})`;
   }
   const n = nearest(p.at_xy[0], p.at_xy[1]);
-  return `批注 (${p.at_xy[0]}, ${p.at_xy[1]})` + (n ? `，离 ${n[0]} ${r0(n[1])}` : "");
+  return `批注 (${p.at_xy[0]}, ${p.at_xy[1]})` + (n ? `，离 ${nm(n[0])} ${r0(n[1])}` : "");
 }
 function shape(p, layer, color, faint) {
   const g = el("g", { "data-id": p.id || "" }, layer);
@@ -487,7 +494,7 @@ function shape(p, layer, color, faint) {
   if (p.kind === "move") {
     el("line", { x1: sx(p.from[0]), y1: sy(p.from[1]), x2: sx(p.to[0]), y2: sy(p.to[1]), stroke: color, "stroke-width": 10, "stroke-dasharray": "26 14", opacity: op }, g);
     el("circle", { cx: sx(p.to[0]), cy: sy(p.to[1]), r: 34, fill: "none", stroke: color, "stroke-width": 10, opacity: op }, g);
-    const t = el("text", { x: sx(p.to[0]) + 42, y: sy(p.to[1]) + 16, "font-size": 46 }, g); t.textContent = `→ ${p.site}`;
+    const t = el("text", { x: sx(p.to[0]) + 42, y: sy(p.to[1]) + 16, "data-px": 15 }, g); t.textContent = `→ ${nm(p.site)}`; fit();
   } else if (p.kind === "block") {
     el("polyline", { points: p.points.map(([x, y]) => `${sx(x)},${sy(y)}`).join(" "), fill: "none", stroke: color, "stroke-width": 22,
       "stroke-linecap": "round", "stroke-linejoin": "round", opacity: op }, g);
@@ -593,6 +600,20 @@ renderProps(); terrainReport();
   }, (e) => { clearTimeout(timer); status(`读不到提议：${e && e.message || e}`, true); });
 })();
 
+// ---- labels on the map in screen pixels (the map is 5000 units across, the screen a few hundred pixels) ----------
+function fit() {
+  const w = svg.getBoundingClientRect().width;
+  if (!w) return;
+  const k = W / w;
+  for (const t of svg.querySelectorAll("[data-px]")) {
+    t.setAttribute("font-size", (+t.dataset.px * k).toFixed(1));
+    if (t.tagName === "text") t.style.strokeWidth = `${(3 * k).toFixed(1)}px`;
+  }
+}
+fit();
+window.addEventListener("resize", fit);
+if (window.ResizeObserver) new ResizeObserver(fit).observe(svg);
+
 // ---- rules ----------------------------------------------------------------------------------------------------------
 $("rulenote").textContent = `和 build.py ${D.level} --show 的 contract 同一套检查（${D.rules.total.length ? D.rules.total.length + " 条问题" : "全部通过"}）。图上的施法圆、矿场朝向线和营地圈是这些规则量的东西，合规时也画出来。`;
 let k = 0;
@@ -607,6 +628,7 @@ for (const r of D.rules.rules) {
     for (const p of r.problems) {
       const idx = k++;
       const li = document.createElement("li"); li.textContent = `⚠${idx + 1} ${p.text}` + (p.at ? "" : "（图上没有位置）");
+      li.title = "问题原文由检查代码给出（英文）";
       li.onclick = () => { const g = probEls[idx]; if (g) { g.classList.remove("flash"); void g.getBBox(); g.classList.add("flash"); } };
       ul.appendChild(li);
     }
