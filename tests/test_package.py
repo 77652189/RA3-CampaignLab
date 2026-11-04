@@ -46,3 +46,20 @@ def test_two_builds_in_one_process_do_not_carry_over(tmp_path, monkeypatch):
         assert set(now) == set(before[m]), m.__name__
         assert all(now[k] is v for k, v in before[m].items() if k != 'main'), m.__name__
     assert c7.EXTRA_OWN == own_before and c3.STRINGS == strings_before
+
+
+def test_a_spec_without_launcher_leaves_no_bat(tmp_path, monkeypatch):
+    import importlib
+    c2, c4 = importlib.import_module('make_campnew2'), importlib.import_module('make_campnew4')
+    if not os.path.isdir(c2.SDK):
+        pytest.skip('no SDK')
+    monkeypatch.setattr(package, 'sdk_build_lock', lambda name: (lambda: None))
+
+    def main():                                 # the pipeline writes its launcher next to the skudef
+        os.makedirs(c4.OUT)
+        open(os.path.join(c4.OUT, f'Play_{c4.NAME}.bat'), 'w').close()
+    monkeypatch.setattr(c4, 'main', main)
+    for launcher in (True, False):
+        out = str(tmp_path / str(launcher))
+        package.build_mod(package.ModSpec(name='CampX', launcher=launcher), out)
+        assert os.path.isfile(os.path.join(out, 'Play_CampX.bat')) == launcher

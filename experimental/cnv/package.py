@@ -104,6 +104,7 @@ class ModSpec:
     big_files: tuple = ()           # more (big path, bytes), after the packs' (a name twice: the last one)
     checks: tuple = ()              # more f(files) on the finished file list, after the packs'
     slot: dict = None               # the campaign shell's templates (make_campnew2.SHELL); None = the mission alone
+    launcher: bool = True           # Play_<name>.bat next to the skudef (the shell has its own: launcher.py)
 
 
 def with_more(spec, **more):
@@ -162,17 +163,8 @@ def spec_of(mission, test=None, shell=False, name=None):
                    templates=templates, extra_all=tuple(extra_all), extra_own=tuple(extra_own), strings=strings,
                    packs=packs)
     if shell:
-        import shell as shell_probe
-        from experimental.video import pack as video_pack
-        sp = shell_probe.make(spec.title or spec.mission, spec.mission, shell if isinstance(shell, str) else 'zh')
-        video = dict(spec.packs).get('video')
-        video = video_pack.make({**(video.clips if video else {}), **sp.clips})
-        packs = tuple((k, video if k == 'video' else p) for k, p in spec.packs)
-        if 'video' not in dict(spec.packs):
-            packs += (('video', video),)
-        spec = replace(with_more(spec, strings=sp.strings, overrides=sp.overrides, prefix_overrides=sp.prefix_overrides,
-                                 big_files=sp.files),
-                       packs=packs, slot={'slot': sp.slot, 'attrs': sp.attrs, 'others': sp.others, **sp.template})
+        import shell as shell_layer
+        spec = shell_layer.contribute(spec, shell if isinstance(shell, str) else 'zh')
     return spec
 
 
@@ -271,6 +263,8 @@ def build_mod(spec, out):
     finally:
         release()
         _restore(held)
+    if not spec.launcher and os.path.isfile(os.path.join(out, f'Play_{name}.bat')):
+        os.remove(os.path.join(out, f'Play_{name}.bat'))
     write_sidecar(out, spec.map_name, borders)
     return out
 

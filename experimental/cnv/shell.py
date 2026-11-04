@@ -511,3 +511,24 @@ def make(mission_title, mission_name='CampA4', lang='zh'):
             sp.overrides[f'MISSIONNAME:{key}_{k}'] = T['other_name'].format(side=T['faction'][side], k=k)
             sp.overrides[f'MISSIONNAME:{key}_{k}_SHORT'] = T['other_short'].format(side=T['faction'][side], k=k)
     return sp
+
+
+def contribute(spec, lang='zh'):
+    """The campaign shell as a layer on a mod's ModSpec (ADR 0016; package.spec_of adds it for build.py --shell): the
+    built mission in its slot of the Allied campaign and the other eight slots ours (make_campnew2.SHELL), the shell's
+    labels, the retail labels it rewrites, its APT screens and its movies (the mission's own clips kept, in the same
+    video pack). It only adds to the spec (package.with_more) and touches no other module; the shell has its own
+    launcher (launcher.py), so no Play_<name>.bat."""
+    from dataclasses import replace
+    from package import with_more
+    from experimental.video import pack as video_pack
+    sp = make(spec.title or spec.mission, spec.mission, lang)
+    video = dict(spec.packs).get('video')
+    video = video_pack.make({**(video.clips if video else {}), **sp.clips})
+    packs = tuple((k, video if k == 'video' else p) for k, p in spec.packs)
+    if 'video' not in dict(spec.packs):
+        packs += (('video', video),)
+    spec = with_more(spec, strings=sp.strings, overrides=sp.overrides, prefix_overrides=sp.prefix_overrides,
+                     big_files=sp.files)
+    return replace(spec, packs=packs, slot={'slot': sp.slot, 'attrs': sp.attrs, 'others': sp.others, **sp.template},
+                   launcher=False)

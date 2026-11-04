@@ -478,8 +478,6 @@ def main():
         sys.exit(status)
     if not a.no_build:
         out = parts.assemble(m, t, name=mod, shell=a.lang if a.shell else False)
-        if a.shell and os.path.isfile(os.path.join(out, f'Play_{mod}.bat')):    # the shell has its one launcher (launcher.py)
-            os.remove(os.path.join(out, f'Play_{mod}.bat'))
         if 'staging' in out:
             print('built to staging (RA3 is running): no bench run')
             if a.plan:
