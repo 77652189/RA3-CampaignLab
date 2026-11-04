@@ -56,6 +56,29 @@ def test_flat_enough_is_in_world_units():
     assert tr.world(platmap.FLAT) > tr.BUILD_VARIATION
 
 
+def test_site_lint_holds_build_and_cast_squares_to_the_game_rule(monkeypatch):
+    # platmap.level_enough = terrain_rules.flat_enough in map coordinates: a rise of 6 ours (3.75 world) passes the old
+    # FLAT = 8 but not the game's 3 world units; 4 ours (2.5 world) passes both
+    b = platmap.CONTAINER[2]
+    e = np.full((560, 560), 340.0)
+    x = y = 500.0
+    i = j = int(round(x / platmap.CELL)) + b
+    assert platmap.level_enough(e, x, y, 100.0, b)
+    e[j, i + 1] += 4.0
+    assert platmap.level_enough(e, x, y, 100.0, b)
+    e[j, i + 1] += 2.0                                   # 6 ours in all
+    assert platmap.relief(e, x, y, 100.0, b) <= platmap.FLAT
+    assert not platmap.level_enough(e, x, y, 100.0, b)
+    # lint reports both kinds of site, in world units, on that ground (and a flat one stays quiet)
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'experimental' / 'cnv'))
+    from model import Site
+    monkeypatch.setattr(platmap, 'heights', lambda layout, w, h, bb: (e, []))
+    monkeypatch.setattr(platmap, 'walkable', lambda *a, **k: np.ones((560, 560), bool))
+    sites = {'b': Site(x, y, 0.0, build=100.0), 'c': Site(x, y, 0.0, cast=50.0), 'f': Site(1500.0, 1500.0, 0.0, build=100.0)}
+    got = [p for p in platmap.lint(platmap.Layout(shapes=[]), sites) if p.startswith('site ')]
+    assert len(got) == 2 and all('world units' in p for p in got) and not any(p.startswith('site f') for p in got), got
+
+
 def test_an_edit_recomputes_field_0_only_round_the_change():
     e = np.full((30, 30), 340.0)
     bits = np.zeros((30, 30), bool)

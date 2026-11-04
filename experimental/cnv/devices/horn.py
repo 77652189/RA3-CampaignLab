@@ -45,8 +45,9 @@ CLEAR_MARGIN = ice_plazas.CLEAR_MARGIN
 WALL_SIDE = ice_plazas.WALL_SIDE
 RELOAD = ice_plazas.RELOAD
 # the core the engineer places is this square: the engine refuses a building where the ground rises across it more than
-# platmap.FLAT (8, in elevation / 16), and the lane's ramp rises 7 in 20 units but 14 in 40 (user 2026-11-02: the
-# placement preview was red all over the slope at the street mouth)
+# 3 world units (BuildSystemSettings.AllowedHeightVariationForBuildingPlacement = 4.8 in our elevation / 16;
+# platmap.level_enough, docs/engine/terrain.md), and the lane's ramp rises 7 in 20 units but 14 in 40 (user 2026-11-02:
+# the placement preview was red all over the slope at the street mouth)
 SEED_SIZE = 20
 MIN_APART = 10.0                               # two waves shut streets send to one open street arrive this far apart
 DEMO_BACK = 4.0                                 # the demonstration's foes walk back this long before they go down the tunnel

@@ -9,7 +9,9 @@ level's deadline (飞走): the countdown, not the route, decides the deadline (i
                   加快: [{当: 摧毁 a、b、c 1 个, 每隔: 1:00}, ...]}}
 
 落点: in order, the first the player has no unit in (the engine counts a kind in an area for every player, E1, so
-there is no "fewer than n of theirs"; 空虚 is kept in old plans and ignored); none: the last. Cast carrier (the
+there is no "fewer than n of theirs"; 空虚 is kept in old plans and ignored), never the one it jumped to last; none: the
+last. 迫降: <site> (+ 迫降血量, default 10 %): at that health it stops jumping, becomes UNATTACKABLE and flies to the site;
+the event 迫降 says so (the card's "一成血迫降，不能打下来"). Cast carrier (the
 enemy's); marks: carrier home, the landing points, the route's; facts: first jump (when 开始 is a time), jump every.
 """
 from devices import Device
@@ -26,8 +28,11 @@ class Carrier(Device):
               '落点': '一串地点：按顺序选玩家一个单位也没有的那一个', '空虚': '（不再起作用：引擎数不出"玩家的单位少于几个"，只能看有没有）',
               '每隔': '时间：跳回家后多久再跳', '停留': '秒：在落点停多久', '预警': '秒：跳之前提前多久报警',
               '家': '地点', '航线': '一串地点：飞走时绕着飞', '血量': '百分比（简单/普通/困难）',
-              '加快': '一串 {当: 条件, 每隔: 时间}：条件成立过以后跳得更勤，后面的一档优先（原版宫古岛：龙剩的关键建筑越少，充能越快）'}
+              '加快': '一串 {当: 条件, 每隔: 时间}：条件成立过以后跳得更勤，后面的一档优先（原版宫古岛：龙剩的关键建筑越少，充能越快）',
+              '迫降': '地点：血量掉到"迫降血量"时它不再跳、打不着了，朝这里飞去落下（不写就没有这一步）',
+              '迫降血量': '百分比：默认 10'}
     EVENTS = {'跃迁': '第一次跳过来了', '断电': '电站被毁或被玩家占领', '回防': '为了救电站跳回去了',
+              '迫降': '血量掉到迫降血量，已经锁住朝迫降点飞了', '落地': '迫降以后到了迫降点',
               '击落': '自由号被击落', '预警 <n>': '第 n 次跳之前报警了（报警那一刻起一直算数；地面进攻配合跃迁用）'}
     ACTIONS = {'回防': '马上跳到电站边上（电站还是敌人的、没在飞走时；不然不跳）', '飞走': '不再跳，绕航线飞'}
 
@@ -43,6 +48,8 @@ class Carrier(Device):
         self.choosing, self.on, self.flying = f'CNV_{t}_Jump_Choose', f'CNV_{t}_Jump_On', f'CNV_{t}_Flying'
         self.jumped, self.defended, self.asked = f'CNV_{t}_Jumped', f'CNV_{t}_Defended', f'CNV_{t}_Defend_Asked'
         self.warned = f'CNV_{t}_Jump_Warned'      # how many warnings so far (预警 <n>)
+        self.prev = f'CNV_{t}_Jump_Last'          # the landing point it jumped to last (it does not jump back there)
+        self.landed = f'CNV_{t}_Forced_Landing'   # 迫降: health down to 迫降血量
         self.faster = list(spec.get('加快') or [])
         for s in self.faster:
             if not isinstance(s, dict) or set(s) != {'当', '每隔'}:
@@ -55,6 +62,7 @@ class Carrier(Device):
         self.home = ctx.mark(self.spec['家'])
         self.lands = [ctx.mark(s) for s in self.spec['落点']]
         self.route = [ctx.mark(s) for s in self.spec.get('航线') or []]
+        self.down = ctx.mark(self.spec['迫降']) if self.spec.get('迫降') else None
         self.station = ctx.part_names(self.spec['电站'])[0]
         self.near_station = ctx.mark(ctx.role(self.spec['电站']).site)
 
@@ -69,6 +77,10 @@ class Carrier(Device):
             return [[('NAMED_DESTROYED', self.station)], [('NAMED_OWNED_BY_PLAYER', p1, self.station)]]
         if event == '回防':
             return [[('FLAG', self.defended, 1)]]
+        if event == '迫降':
+            return [[('FLAG', self.landed, 1)]]
+        if event == '落地':
+            return [[('FLAG', self.landed, 1), ('NAMED_INSIDE_AREA', self.obj, self.ctx.area(self.spec['迫降']))]]
         if event == '击落':
             return [[('NAMED_DESTROYED', self.obj)]]
         if event == '预警':
@@ -113,7 +125,7 @@ class Carrier(Device):
                           once=False))
         for k, site in enumerate(self.spec['落点']):
             out.append(Script(f'CNV {t} - Carrier picks {k + 1}',
-                              [('FLAG', self.choosing, 1),
+                              [('FLAG', self.choosing, 1), ('COUNTER', self.prev, 5, k + 1),
                                ('SKIRMISH_PLAYER_HAS_UNITS_IN_AREA', p1, ctx.area(site), NOT)],
                               [('SET_COUNTER', self.target, k + 1), ('SET_FLAG', self.choosing, 0)], once=False))
         out.append(Script(f'CNV {t} - Carrier picks the last', [('FLAG', self.choosing, 1)],
@@ -124,7 +136,8 @@ class Carrier(Device):
                                                                             ('COUNTER', self.target, 2, k + 1)],
                               [('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', self.obj, self.jump, wp),
                                ('SET_COUNTER', self.state, 2), ('SET_MILLISECOND_TIMER', self.timer, stay),
-                               ('HIDE_COUNTDOWN_TIMER', self.timer), ('SET_FLAG', self.jumped, 1)], once=False))
+                               ('HIDE_COUNTDOWN_TIMER', self.timer), ('SET_FLAG', self.jumped, 1),
+                               ('SET_COUNTER', self.prev, k + 1)], once=False))
         # 加快: the later a step that holds, the sooner it jumps again (retail Miyako: the fewer of Tatsu's key
         # buildings left, the faster the recharge, 90 -> 45 s); each step latched the first time it holds
         steps = [plantime.times(self.spec.get('每隔', 90))] + [plantime.times(s['每隔']) for s in self.faster]
@@ -152,6 +165,13 @@ class Carrier(Device):
             out.append(Script(f'CNV {t} - Carrier grounded {k + 1}', [('FLAG', self.on, 1)] + alt,
                               [('HIDE_COUNTDOWN_TIMER', self.timer)]))
         ctx.countdown(self.timer)
+        # 迫降: down to the forced-landing health it stops jumping, nothing can aim at it, it goes to the landing point
+        if self.down:
+            hp = int(self.spec.get('迫降血量', 10))
+            out.append(Script(f'CNV {t} - Carrier forced landing', [('UNIT_HEALTH', self.obj, 1, hp)],
+                              [('UNIT_CHANGE_OBJECT_STATUS', self.obj, 'UNATTACKABLE', 1), ('SET_FLAG', self.landed, 1),
+                               ('SET_FLAG', self.flying, 1), ('HIDE_COUNTDOWN_TIMER', self.timer)] +
+                              ctx.order('move', [self.obj], self.down, 's1')))
         # flying off: round the route, point after point
         for k, wp in enumerate(self.route):
             nxt = self.route[(k + 1) % len(self.route)]

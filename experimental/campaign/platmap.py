@@ -20,6 +20,7 @@ from PIL import Image, ImageDraw
 
 import mapterrain
 import newmap
+import terrain_rules
 
 CELL = mapterrain.CELL
 TIER = {0: 220.0, 1: 340.0, 2: 455.0, 3: 570.0}
@@ -230,8 +231,8 @@ def apply(m, layout, seed=11, swap=None):
 
 
 CONTAINER = (560, 560, 30)      # Heidelberg's height map (the container every generated map is written into)
-FLAT = 8.0                      # elevation / 16 a building's square may rise across and still be built on (newmap
-                                # flags 9 per cell impassable; bench 2026-10-23: nothing built mid-ramp)
+FLAT = 8.0                      # elevation / 16 the map's own objects (ore, tech, bridge ends) may rise across; the sites a
+                                # player builds or casts on use level_enough (the game's 3 world units = 4.8 of ours)
 
 
 def relief(e, x, y, side, b=CONTAINER[2]):
@@ -240,6 +241,14 @@ def relief(e, x, y, side, b=CONTAINER[2]):
     i, j = int(round(x / CELL)) + b, int(round(y / CELL)) + b
     win = e[max(0, j - h):j + h + 1, max(0, i - h):i + h + 1]
     return float(win.max() - win.min())
+
+
+def level_enough(e, x, y, side, b=CONTAINER[2]):
+    """Whether a building `side` across may be put down at (x, y): the game lets the ground under it vary by
+    BuildSystemSettings.AllowedHeightVariationForBuildingPlacement (3 world units = 4.8 of ours, terrain_rules), which is
+    stricter than FLAT (the older, looser figure the map's own objects are still held to)."""
+    i, j = int(round(x / CELL)) + b, int(round(y / CELL)) + b
+    return terrain_rules.flat_enough(e, i, j, side)
 
 
 def lint(layout, sites=None, objects=(), scenery=(), dims=CONTAINER):
@@ -251,9 +260,10 @@ def lint(layout, sites=None, objects=(), scenery=(), dims=CONTAINER):
     e, out = heights(layout, w, h, b)
     dry = lambda x, y: e[int(round(y / CELL)) + b, int(round(x / CELL)) + b] > newmap.WATERLINE + 10   # noqa: E731
     for name, s in (sites or {}).items():
-        if getattr(s, 'build', 0) and relief(e, s.x, s.y, s.build, b) > FLAT:
-            out.append(f'site {name}: the {s.build:g} square to build on rises {relief(e, s.x, s.y, s.build, b):.0f}'
-                       f' (most {FLAT:g})')
+        if getattr(s, 'build', 0) and not level_enough(e, s.x, s.y, s.build, b):
+            out.append(f'site {name}: the {s.build:g} square to build on rises '
+                       f'{terrain_rules.world(relief(e, s.x, s.y, s.build, b)):.1f} world units '
+                       f'(the game allows {terrain_rules.BUILD_VARIATION:g})')
     objs = list(objects)
     k = 0
     while k < len(objs):
@@ -301,10 +311,10 @@ def cast_lint(sites, e, walk, objects, dims=CONTAINER):
         r = getattr(s, 'cast', 0.0)
         if not r:
             continue
-        rise = relief(e, s.x, s.y, 2 * r, b)
-        if rise > FLAT:
-            out.append(f'site {name}: the {2 * r:g} square a spell is cast on rises {rise:.0f} (most {FLAT:g}): it is '
-                       f'on a slope')
+        if not level_enough(e, s.x, s.y, 2 * r, b):
+            out.append(f'site {name}: the {2 * r:g} square a spell is cast on rises '
+                       f'{terrain_rules.world(relief(e, s.x, s.y, 2 * r, b)):.1f} world units (the game allows '
+                       f'{terrain_rules.BUILD_VARIATION:g}): it is on a slope')
         off = ((x - s.x) ** 2 + (y - s.y) ** 2 <= r * r) & ~walk
         if off.any():
             out.append(f'site {name}: {int(off.sum())} cells of its cast circle ({r:g}) are not walkable (cliff, water '

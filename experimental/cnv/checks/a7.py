@@ -8,7 +8,7 @@ first phase ends as soon as its objective shows (READY) and the carrier's jumps 
 jumps: home, warned, at the base edge (the first landing point: the player's army stands elsewhere), home again.
 pick: four of the player's tanks at the base edge: it lands at the second point, the ore, instead.
 defend: the station down to 40 % before any jump: the carrier jumps to it at once.
-power: the station killed after the first jump: no jump home; grounded, the next phase sends it off its point.
+power: the station killed after the first jump: no jump home, and grounded it stays where it landed.
 east: the east bank's skirmish AI asleep and broke, then woken: it spends, keeps its barracks, its army crosses
   to the player's bank; the carrier stays home meanwhile.
 faster: two of the east bank's production buildings down early: the second jump comes 0:50 after the first home,
@@ -16,12 +16,12 @@ faster: two of the east bank's production buildings down early: the second jump 
 revenge: the east barracks down: a revenge wave of guardians out of the east gate at once.
 pincer: the carrier's first warning: a pincer wave of guardians out of the east gate then.
 nag: the station nag said 3:00 into phase 2 and again 3:00 later, the carrier still powered.
-win: the carrier at 1 % health jumps (by test script) to the base edge at 5 s, the player's IFVs shoot it down,
-  Mission Won ends the mission.
+win: the carrier starts at 1 % health: the forced landing (迫降) sends it to the base edge, where the player's units
+  wait; landed with a unit of theirs there, Mission Won ends the mission.
 """
 import plan
 from parts import Obj, Script, Test, counted, square
-from checks.liberty import EARLY, jumps as fire_jump
+from checks.liberty import EARLY
 
 AREA = 300.0                                    # half-side of the areas counted around the carrier's places
 READY = plan.REVEAL_FIRST + plan.REVEAL_GAP + 3.0   # the outposts' objective shows (2nd of phase 1), then done
@@ -33,7 +33,8 @@ GATE_EARLY = 6.0                                # revenge / pincer: looked for f
                                                 # clock behind the mission's)
 REVENGE_AT = 10.0                              # revenge: the barracks dies this long after phase 2 starts
 NAG_DRIFT = 30.0                                # nag: the second looked for from this long before its time
-NAG_FIRST = 180.0                             # nag: its first time, into phase 2 (docs/story/plans/a7.md 规则)
+LAND_BY = 60.0                                  # win: the forced landing's flight home -> base edge, at most
+NAG_FIRST = 180.0                            # nag: its first time, into phase 2 (docs/story/plans/a7.md 规则)
 
 
 def settle(t, m):
@@ -198,7 +199,7 @@ def power(m):
     t.expect += [('电站', 0, '==', 1, first + KILL_AFTER - EARLY), ('电站', first + KILL_AFTER + 2, '==', 0),
                  ('在基地边', first, 'ever==', 1, first + KILL_AFTER),       # wide enough for a reading every 4 s
                  ('在家', first + KILL_AFTER, '==', 0),                                  # no jump home, ever
-                 ('在基地边', first + stay + 30, '==', 0)]                               # flown off its point
+                 ('在基地边', first + stay + 30, '==', 1)]                               # grounded: stays on its point
     t.bench = [('bench_watch', dict(seconds=first + stay + 35, every=4, sheet=False, lines=len(t.counters)))]
     return t
 
@@ -247,9 +248,9 @@ def east(m):
 def win(m):
     m.find(m.role('carrier').name).props['objectInitialHealth'] = 1
     t = where(m)
-    fire_jump(t, m.role('carrier').name, m.ability('carrier', 'jump'), 'Test Strike', m.point('base edge'), at=5.0)
-    t.expect += [('ENDED', 5, '', None)]
-    t.bench = [('bench_watch', dict(seconds=25, every=1, sheet=False))]
+    t.objects.append(Obj('AlliedAntiVehicleVehicleTech1', *m.site('base edge', 0, 0), site='base edge'))
+    t.expect += [('ENDED', LAND_BY, '', None)]
+    t.bench = [('bench_watch', dict(seconds=LAND_BY, every=1, sheet=False))]
     return t
 
 
