@@ -104,6 +104,15 @@
 
 **ADR 0015 的错误类别写进准则（11-03）**：[ADR 0015](../adr/0015-fix-error-classes-at-source.md)（每条反馈先归类、从源头修）要策划线把第三轮归出的类别写进准则和模板。写在：台词挂镜头/事件、一次一句、镜头只拍可玩区 → [P21](principles.md#p21) 和 [flow/README.md](flow/README.md) 第三节第 5 条；命令给一队 → 同一条；施展点写清条件、平地 → [P36](principles.md#p36) 第 6 条和 [maps/README.md](maps/README.md) 第三节第 4 条；矿、矿场、基地写关系不写死坐标 → maps/README 第 7 条、flow/README 第 21 条；挡路和建筑密度 → P36 第 1 条。以后收到试玩反馈，先问"违反的是哪一类"，类别没写过就补进这几处，别只改那一关。
 
+## 草稿关（2026-11-04 起，用户：先把 27 关做成草稿、出试玩版）
+
+分工：题卡的**好玩假设**是"这关为什么好玩"的唯一说法；要素和压力曲线只当手段和诊断仪表，不设达标线；底线规则只拦一定不好玩的；好不好玩只看试玩时假设成立没有（plan.md 那一行）。
+
+- **做完**：① A4 好玩假设（[cards/a4.md](cards/a4.md) 甲末尾，带"成立 / 不成立"现象表），手册第二节加了这一栏；③ 底线规则 [floor-rules.md](floor-rules.md) F1～F7 和 [floorcheck.py](floorcheck.py)（在攻略页 `work/walkthrough/<关>.json` 上查 F1 F2 F3 F4 F6，变异自测过；F5 F7 要测试台）；④ 盘点 [draft-inventory.md](draft-inventory.md)（26 关缺好玩假设的"试玩现象"；8 份旧策划稿逐份对照；机制并成 9 类；建议顺序）。
+- **② 原版压力曲线**：两个 Sonnet 子 Agent 量伊贺、宫古岛、横滨、斯大林格勒，结果写在本机 `work/pressure/<地图名>.md`；要汇总成 `docs/design/pressure-curves.md`（floor-rules.md 已经链过去），再用原版最长空档核对 F3 的 180 秒（`floorcheck.py` 的 `QUIET_S`）。work/ 丢了就照 floor-rules.md 第一段和本节重派。
+- **A4 攻略页发现的**（不是本线的文件，交总控）：`a4.json` 还写着西岭电视塔（11-03 已换成油井）；六条路线没写谁走（F2 缺数据）；最后一程没有时刻（F3 缺数据）。
+- **下一步**：汇总压力曲线 → 成批写 26 关的好玩假设（照 A4 的表，一关一段）。
+
 ## 下一步
 
 0. **等关卡线**：sapporo 北高原油井挪到西岭（挪了 flowcheck 的 A4、J4 四条就清零）、A4 挡路和高差那一节、北营 11 栋、测试台查冰雕/摊位/石栏拦不拦得住。有结果再核对 [maps/a4.md](maps/a4.md) 的状态栏。
