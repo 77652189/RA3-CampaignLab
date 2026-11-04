@@ -73,6 +73,8 @@ SITES = {'island': island.SITES['island']}
 SITES.update({
     'start': Site(*START, 0.0, "the player's start: the corridor's west end, the map's edge behind it (P17); the "
                                'start camera looks here'),
+    'view start': Site(1000.0, ROAD_Y, 0.0, "where the opening cameras look: the screen is ~1900 wide, so any nearer the "
+                                            "map's west edge shows black beyond it (user 2026-11-03)"),
     'entry': Site(80.0, ROAD_Y, 60.0, 'the avenue past the west border: what comes in from off the map is made here'),
     'convoy start': Site(250.0, ROAD_Y, 100.0, 'the avenue at the west border: the convoy forms up here (trucks made '
                                                'at the departure stand west of it, off the border)'),
@@ -110,7 +112,7 @@ SITES.update({
     'front ramp east': Site(3150.0, 3330.0, 80.0, "the foot of the north plateau's east front ramp (200 wide)"),
     'south base': Site(2850.0, 1150.0, 250.0, "the south plateau: the player's base ground (a construction yard's "
                                               'pad)', build=250.0),
-    'south refinery': Site(2440.0, 1230.0, 0.0, "a refinery's pad by the south plateau's pair of ore (~180 off, as "
+    'south refinery': Site(2540.0, 1170.0, 0.0, "a refinery's pad by the south plateau's pair of ore (~180 off, as "
                                                 'retail)', build=200.0),
     'south ramp': Site(2350.0, 1720.0, 80.0, "the foot of the south plateau's ramp, down to the low ground by the "
                                              'avenue'),
@@ -226,10 +228,11 @@ def _objects():
     for p, q in BRIDGES:
         for x, y, a, flags in platmap.bridge(p, q, 'HB_Bridge_02'):
             out.append(Obj('HB_Bridge_02', x, y, side='neutral', angle=a, flags=flags, site='map'))
-    ore = [(2350, 1080), (2540, 1020),              # the south plateau: the player's base
-           (2600, 3900), (2790, 3960),              # north plateau
-           (4000, 1650), (4000, 1830),              # the harbour, past the canal
-           (2450, 2120)]                            # the low ground between the south plateau and the avenue
+    # pairs 150 apart, a refinery ~180 from both (retail's way; user 2026-11-03: ore and refinery belong together)
+    ore = [(2480, 1000), (2630, 1010),              # the south plateau: the player's base (its refinery pad is beside them)
+           (2640, 3930), (2790, 3960),              # north plateau
+           (4000, 1680), (4000, 1830),              # the harbour, past the canal
+           (2450, 2120), (2600, 2140)]              # the low ground between the south plateau and the avenue
     out += [Obj('OreNode', x, y, side='neutral', angle=0.0, site='map') for x, y in ore]
     for x, y in ((3200, 4050), (2120, 1660)):     # the north plateau's; one at the south ramp's foot (the base's)
         out.append(Obj('OilDerrick', x, y, side='neutral', angle=0.0, site='map'))

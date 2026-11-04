@@ -120,6 +120,14 @@ class Convoy(Device):
         # the tick runs before the convoy sets off too: what attacks it (a wave the player called early, troops out
         # of a broken sculpture) waits on the tick, and a timer never set never runs out
         out = [Script(f'CNV {self.c.tag} - Tick before', [], [('SET_MILLISECOND_TIMER', self.cv.timer, 0.0)])]
+        # a truck lost: the ones still waiting go now (user 2026-11-03: two trucks left, one drove, the other waited its
+        # 50-110 s, and the one driving was shot -- two lost, the mission over). Staggering is for a full convoy.
+        started = ('FLAG', self.resumed, 1) if self.batch_from == '继续' else ('FLAG', self.cv.rolling, 1)
+        for j, g in enumerate(self.go[:len(self.batches)]):
+            for i, lost in enumerate(self.cv.trucks):
+                if i != j:
+                    out.append(Script(f'CNV {self.c.tag} - Release {j + 1} after truck {i + 1} lost',
+                                      [started, ('NAMED_DESTROYED', lost)], [('SET_FLAG', g, 1)]))
         if self.spec.get('血量') is not None:      # retail Iga: NAMED_SET_MAX_HEALTH by difficulty, full health too
             there = [('FLAG', self.cv.rolling, 1)] if self.cv.enter else []     # trucks made at the departure
             for levels, v in plan.by_level(plan.counts(self.spec['血量'])):

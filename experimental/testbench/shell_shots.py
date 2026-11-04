@@ -120,6 +120,7 @@ def main():
     ap.add_argument('out')
     ap.add_argument('--plain', action='store_true', help='the game with no mod')
     ap.add_argument('--hud-wait', type=int, default=90)
+    ap.add_argument('--every', type=float, default=5.0, help='seconds between the frames kept once the game is up')
     ap.add_argument('--walk-timeout', type=int, default=240, help='seconds for the walk into the game')
     ap.add_argument('--visible', action='store_true')
     ap.add_argument('--slot', type=int, help='start the chapter of this slot (1-9) from the chapter list instead of the first one')
@@ -143,7 +144,7 @@ def main():
         t_end = time.monotonic() + a.hud_wait
         k = 0
         while time.monotonic() < t_end:
-            time.sleep(5)
+            time.sleep(a.every)
             b.shot(f'game_{k:02d}')
             k += 1
     finally:

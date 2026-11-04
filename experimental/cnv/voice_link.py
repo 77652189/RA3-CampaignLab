@@ -76,7 +76,7 @@ class Later:
 
     def _make(self):
         if self.made is None:
-            self.made = self.pack.make(self.levels, lang=self.lang, folder=self.folder, items=self.items)
+            self.made = self.pack.make(self.levels, lang=self.lang, folder=self.folder, items=self.items, subtitles=False)
         return self.made
 
     include = property(lambda self: self._make().include)

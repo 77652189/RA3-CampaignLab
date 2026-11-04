@@ -37,7 +37,13 @@ DEFAULT_AREA = 150.0                            # half-side of a site's trigger 
 CHRONO_FLASH = 'fxprop_chronoflash'             # retail's chrono flash prop (its FX plays on create, lives 1 s)
 EASE = 1.0                                     # seconds a pan eases in / out (retail's most used eased pan: 1/1)
 PAN_SPEED = 250.0                               # map units a second at most between two sites of a 过场
-SPEECH_GAP = 0.6                               # seconds of quiet after a dubbed line in a 过场
+CAPTION_TURN = 4.0                              # seconds a caption-only line holds the floor outside a 过场
+STRIP_CLEAR = 6.5                               # the caption strip stacks lines and clears all at once ~5.4 s after the last one was
+                                                # added, whatever its seconds (bench 2026-11-03, x1 in CampShell, frames 1 s apart):
+                                                # a line outside a 过场 takes the floor this long at least, so it stands alone
+CAPTION_TAIL = 0.3                              # a dubbed line's caption stays this long after its recording ends
+EVA_TURN = 2.5                                 # ... a retail announcer line (its length is not known)
+SPEECH_GAP = 0.6                              # seconds of quiet after a dubbed line in a 过场
 CAPTION = 6.0                                  # seconds a caption stays
 REVEAL_FIRST, REVEAL_GAP = 2.0, 4.0             # a phase's objectives: the first this long after it starts, then apart
 RELATIONS = {'盟友': 'Friend', '中立': 'Neutral', '敌人': 'Enemy'}     # 阵营 其他's 对我 / 对敌
@@ -232,6 +238,8 @@ class Compiler:
         self.made = {}              # retail template -> the player's copy that builds ours too (可造)
         self.phases, self.waves, self.goals = [], {}, {}
         self.last = []              # the scripts the last when() made
+        self.talk = []              # spoken lines outside a 过场 (flag, actions, seconds): said one at a time (compile_talk)
+        self.scening = False        # compiling a 过场: its lines are timed by the scene itself
         self.counted = {}           # group -> the counter of its losses (摧毁 <group> <n> 个)
         self.troop_counters = {}    # kinds counted together -> their counter (兵少于 <n> <units>)
         self.music = self.load_music(data.get('音乐'))
@@ -545,7 +553,7 @@ class Compiler:
         if isinstance(a, str):
             head, _, rest = a.strip().partition(' ')
             if head == '通报':
-                return [('SHOW_MILITARY_CAPTION', self.text('SCRIPT', rest.strip()), CAPTION)]
+                return self.say([('SHOW_MILITARY_CAPTION', self.text('SCRIPT', rest.strip()), CAPTION)], CAPTION_TURN)
             if head == '副指挥官':                   # the co-commander's panel (retail Cannes hides it at the start)
                 if rest.strip() not in ('开', '关'):
                     raise PlanError(f'action {a!r}: 副指挥官 开 / 关 (the panel at the top left; Player_2 stays)')
@@ -581,17 +589,23 @@ class Compiler:
             if dubbed:                              # the dubbed line: its subtitle comes with it
                 self.m.lines.append(dict(说话人=str(who), 原文=str(said), 通报=shown, 字串=dubbed))
                 clip = self.voice.clips.find(dubbed)        # the speaker's talking head, when the voice line made one
-                return [('PLAY_SOUND_EFFECT', dubbed)] + ([('MOVIE_PLAY_RADAR', clip)] if clip else [])
+                n = self.voice.length(who, said) or EVA_TURN
+                # the line's own subtitle stays up seconds after the voice (user 2026-11-03: stacked): it has none, the
+                # caption is its text for the length of the recording
+                words = self.text('SCRIPT', self.voice.strings[f'DIALOGEVENT:{dubbed}'])
+                return self.say([('PLAY_SOUND_EFFECT', dubbed), ('SHOW_MILITARY_CAPTION', words, n + CAPTION_TAIL)]
+                                + ([('MOVIE_PLAY_RADAR', clip)] if clip else []), n + SPEECH_GAP)
             retail = self.voice.eva(who, said) if who and self.voice is not None else None
             if retail:                              # retail's own announcer line: its event, no caption (as retail)
                 self.m.lines.append(dict(说话人=str(who), 原文=str(said), 通报=shown, 字串=retail))
-                return [('PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT', retail)]
+                return self.say([('PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT', retail)], EVA_TURN)
             key = self.text('SCRIPT', shown)
             if who and self.voice is not None:      # said by someone, but no recording of it: listed (langs.py)
                 self.m.missing.append(f'caption only, no recording of it: {shown}')
             if who:                                 # a flow-script line: the dubbed line is found by who and what
                 self.m.lines.append(dict(说话人=str(who), 原文=str(a.get('原文', words)), 通报=shown, 字串=key))
-            return [('SHOW_MILITARY_CAPTION', key, float(a.get('秒', CAPTION)))]
+            secs = float(a.get('秒', CAPTION))
+            return self.say([('SHOW_MILITARY_CAPTION', key, secs)], min(secs, CAPTION_TURN))
         if '镜头' in a:                             # to a site, or to one of the plan's own (retail: the statue)
             return self.camera(a, float(a.get('秒', CAMERA_MOVE)), EASE, EASE)
         if '跟随' in a:
@@ -697,6 +711,26 @@ class Compiler:
         s0, s1 = self.m.where(prev), self.m.where(site)
         return max(secs, math.hypot(s1.x - s0.x, s1.y - s0.y) / PAN_SPEED)
 
+    def say(self, acts, secs):
+        """Lines outside a 过场 are said one at a time (user 2026-11-03: four subtitles at once; a rule's list of lines went
+        off in one frame and the engine queues the voices but not their subtitles): the line only raises its flag, and
+        compile_talk's script plays it when nobody is talking, then holds the floor for `secs`."""
+        if self.scening:
+            return acts
+        flag = f'CNV_{self.tag}_Say_{len(self.talk)}'
+        self.talk.append((flag, acts, max(secs, STRIP_CLEAR)))
+        return [('SET_FLAG', flag, 1)]
+
+    def compile_talk(self):
+        busy, timer = f'CNV_{self.tag}_Talking', f'CNV {self.tag} Talk Timer'
+        for k, (flag, acts, secs) in enumerate(self.talk):      # lines raised together play in the order they were written
+            self.m.scripts.append(Script(f'CNV {self.tag} - Say {k}', [('FLAG', flag, 1), ('FLAG', busy, 0)],
+                                         [('SET_FLAG', flag, 0), ('SET_FLAG', busy, 1),
+                                          ('SET_MILLISECOND_TIMER', timer, float(secs))] + acts, once=False))
+        if self.talk:
+            self.m.scripts.append(Script(f'CNV {self.tag} - Say done', [('FLAG', busy, 1), ('TIMER_EXPIRED', timer)],
+                                         [('SET_FLAG', busy, 0)], once=False))
+
     def spoken(self, step):
         """Seconds a dubbed 通报 of a 过场 takes to say (its recording and a pause), or 0."""
         if not (isinstance(step, dict) and '通报' in step and step.get('说') and self.voice is not None):
@@ -745,6 +779,13 @@ class Compiler:
         return f'CNV {self.tag} Sight {site}'
 
     def scene(self, ph):
+        self.scening = True
+        try:
+            return self.scene_steps(ph)
+        finally:
+            self.scening = False
+
+    def scene_steps(self, ph):
         """A phase's 过场 (retail: 36 of 40 missions open with one): the player's input off and the letterbox on
         from the phase's start; its steps one after another -- 镜头 (a move: its 秒), 跟随 (the camera on one of the
         plan's own for 秒), 停 (秒 of nothing), 揭全图 看一眼 (the whole map, shrouded again at the end), any other
@@ -1267,6 +1308,7 @@ class Compiler:
         for dev in self.devices.values():
             self.m.scripts += dev.last()
         self.compile_countdowns()
+        self.compile_talk()
         for ph in self.phases[1:]:                  # facts: a phase's start, when it is a time from the start
             t = start_time(self.phases[ph.k - 1].spec.get('结束'))
             if t:

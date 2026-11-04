@@ -49,7 +49,8 @@ RELOAD = ice_plazas.RELOAD
 # placement preview was red all over the slope at the street mouth)
 SEED_SIZE = 20
 MIN_APART = 10.0                               # two waves shut streets send to one open street arrive this far apart
-MELT_WARN = 8.0                                 # 冰快化: this many seconds before an ice wall's lifetime is up
+DEMO_BACK = 4.0                                 # the demonstration's foes walk back this long before they go down the tunnel
+MELT_WARN = 8.0                                # 冰快化: this many seconds before an ice wall's lifetime is up
 MODES = {'街': 'V', '口': 'L'}                  # the two sets, and the letter in their names
 
 
@@ -582,7 +583,8 @@ class Horn(Device):
             foes.append(f'UNIT - CNV {tag} Demo Foe {j}')
             outs.append(f'UNIT - CNV {tag} Demo Out {j}')
         started, iced, turned = (f'CNV_{tag}_Demo_{x}' for x in ('Started', 'Iced', 'Turned'))
-        fire, turn = f'CNV {tag} Demo Fire', f'CNV {tag} Demo Turn'
+        fire, turn, gone = (f'CNV {tag} Demo {x}' for x in ('Fire', 'Turn', 'Gone'))
+        down = f'CNV_{tag}_Demo_Down'
         team = m.team('s1')
 
         def fx(wid, smoke=True, crack=True):
@@ -608,8 +610,14 @@ class Horn(Device):
                    fx(shut, smoke=False) +
                    [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', f, kind, team, m.mark(f'spawn {shut}')) for f in foes] +
                    [('MOVE_NAMED_UNIT_TO', f, f'CNV {tag} Clear {shut}') for f in foes]),
+            # the foes meet the ice, turn and walk back to the tunnel mouth they came out of (user 2026-11-03: they vanished
+            # at the wall); only there do they go down it, and come up at the detour street
             Script(f'CNV {tag} - Demo turn', [('TIMER_EXPIRED', turn), ('FLAG', turned, 0), ('FLAG', self.demo_off, 0)],
-                   [('SET_FLAG', turned, 1)] + [('NAMED_DELETE', f) for f in foes] + fx(to) +
+                   [('SET_FLAG', turned, 1), ('SET_MILLISECOND_TIMER', gone, DEMO_BACK)] +
+                   [('MOVE_NAMED_UNIT_TO', f, m.mark(f'spawn {shut}')) for f in foes]),
+            Script(f'CNV {tag} - Demo down', [('TIMER_EXPIRED', gone), ('FLAG', turned, 1), ('FLAG', down, 0),
+                                              ('FLAG', self.demo_off, 0)],
+                   [('SET_FLAG', down, 1)] + [('NAMED_DELETE', f) for f in foes] + fx(to) +
                    [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', o, kind, team, m.mark(f'spawn {to}')) for o in outs] +
                    [('OBJECT_CREATE_RADAR_EVENT', outs[0], 0)]),
             Script(f'CNV {tag} - Demo over', [('FLAG', self.demo_off, 1), ('FLAG', started, 1)],
