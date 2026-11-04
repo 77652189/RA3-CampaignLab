@@ -33,12 +33,13 @@
    - **关卡线的下一步**：读 `docs/story/handoff-phase4.md` 的"第十三个会话收尾"。先在测试台空着时重测 `place` 的 V1，再做 K7（A4 的陡坡占 15%，原版城市图只有 1.4～3.4%，要整块重排），最后做 E7。
    - **待用户定**：要不要加 git 提交前钩子，每次提交前自动跑架构守卫和文档守卫，大约 40 秒，不过就拒绝提交。
 2. **第 4 阶段做完后，在 CampShell 上做一次独立验收**：按 [docs/acceptance/brief.md](docs/acceptance/brief.md) 派一个新的子 Agent 去做。先从干净的提交重新构建 CampShell。
-3. **第二关当摩擦探针**：在 A5、A7 里挑一关，按草稿标准做，记下用了几轮会话、哪些步骤还得改平台代码。
-4. **等用户的**：
+3. **ADR 0017**：引擎线把放置和通行规则查清，再逐层往下做；外壳线做 A4 能改的地图页，这一页好用了，K7 就在页上重排地形。
+4. **第二关当摩擦探针**：在 A5、A7 里挑一关，按草稿标准做，记下用了几轮会话、哪些步骤还得改平台代码。
+5. **等用户的**：
    - 第一个可发布的版本做几关。总控建议先做 3～5 关的短战役；用户的倾向是 27 关都先做草稿；
    - git 历史里有一份反编译试探报告（23c4071，含函数地址），是否改写历史、强推清掉；
    - 配音响度对比页（配音仓库 `work/campaign/loudness_ab/`）和 I14。
-5. **留着的事**：
+6. **留着的事**：
    - A4 攻略页 https://claude.ai/artifact/Dp8HUcuyyFN42vqhitJZ8r，生成脚本在 `work/walkthrough/make_page.py`，数据在 `a4.json`；
    - 冷启动自检：`python -I -X utf8 experimental/testbench/doctor.py`；
    - 已删掉的测试 mod 名单在 `work/logs/mods_deleted.txt`。
