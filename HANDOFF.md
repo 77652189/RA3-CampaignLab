@@ -1,29 +1,37 @@
 # 交接
 
-总控会话的交接。各线有自己的交接：音乐 [docs/music/handoff.md](docs/music/handoff.md)，单位 [docs/units/handoff.md](docs/units/handoff.md)，策划从 [docs/design/README.md](docs/design/README.md) 进。
+总控会话的交接。各线有自己的交接：
+- 关卡 [docs/story/handoff-phase3.md](docs/story/handoff-phase3.md)
+- 外壳 [docs/shell/handoff.md](docs/shell/handoff.md)
+- 音乐 [docs/music/handoff.md](docs/music/handoff.md)
+- 单位 [docs/units/handoff.md](docs/units/handoff.md)
+- 策划从 [docs/design/README.md](docs/design/README.md) 进
+- 引擎线的交接和反编译参考在本机 `work/re/handoff.md`、`work/re/ra3-script-reference.md`。仓库在 GitHub 上是公开的，这些不进仓库。
 
 ## 当前目标
 
-**先解决管理和架构问题，再恢复产品线**（用户 2026-11-03："先把管理问题解决了"）。关卡线、外壳线已经暂停，原因是额度；策划、配音、音乐、单位四条线都空闲。
-
-为什么要先解决：A4 试玩三轮下来，用户提的问题大多是"坏了""看不懂"两类，而且有几条报过修好又复发。结构原因记在 [ADR 0015](docs/adr/0015-fix-error-classes-at-source.md)；代码层面的原因在只读架构评审 [docs/reviews/architecture-2026-11-03.md](docs/reviews/architecture-2026-11-03.md) 里，五个核心问题摘要在 [docs/plan.md](docs/plan.md) 的"架构整改"一行。
+**尽快把 27 关做成草稿，进入玩法验证**（用户 2026-11-04："尽可能把制作一关的摩擦降到最小，尽可能一次解决一类问题，尽快推进到玩法验证阶段"）。
+- 美术不提前、不返工。
+- 草稿关的完成标准和摩擦怎么量，见 [docs/plan.md](docs/plan.md) 的"先把 27 关做成草稿"一行。
+- 架构整改（[ADR 0016](docs/adr/0016-one-outlet-per-class.md)）已经做到第 3 阶段，状态在 plan.md 的"架构整改"一行。
 
 ## 下一步
 
-1. **[ADR 0016](docs/adr/0016-one-outlet-per-class.md) 第 1 阶段在做**（用户 2026-11-03："可以，按推荐做"；第 0 阶段已完成，见 plan.md"架构整改"行）：
-   - 外壳线做打包收口；
-   - 关卡线做断环、`Ctx` 和各自注册。
-   - 两线回报后，总控核对两件事：一是指纹 `fingerprint.py diff baseline <标签>` 完全一致，二是 `tests/test_architecture.py` 全过。
-2. **第 2 阶段由总控做验收层**：
-   - 检查叠在外壳清单上，`build.py --shell --check`，`build.py` 外壳那段由外壳线改；
-   - `cnv_check` 加 shell 选项；
-   - 观测词表，加"测试版只比正式版多观测脚本"的守卫；
-   - 现有检查分成机关单测和验收检查两类。
-   - 第 2 阶段做完过闸：守卫立住了，但一个问题都还没修好，就停下来重新评估。
-3. 等用户的：
-   - 配音响度对比页还没听，在配音仓库的 `work/campaign/loudness_ab/`，决定 -14 LUFS 要不要降；
-   - 英文播报和沃斯的声音是不是还像（I14）。
-4. 留着的事：用 `work/logs/mods_deleted.txt` 查已删掉的测试 mod；三个不能重建的 mod 备份在 `Documents\RA3Modding\mods_backup\`。
+1. **核对各线 2026-11-04 夜里的成果**：
+   - 关卡线：第 4 阶段的生成器 K4、K3、K7，以及引擎线查出的 E1～E4（A7 自由号按种类数会把所有玩家都算进去、"打 X"只看最后一次伤害、单例队要先入队才会执行命令、血量百分比向下取整）；
+   - 策划线：A4 的好玩假设、原版压力曲线、底线规则、27 关题卡盘点；
+   - 引擎线：字幕为什么累积，并写进脚本参考。
+   - 核对的办法：看提交和交接，指纹按 `fingerprint.py diff <上一次> <这一次>` 说明哪些文件变了，再跑 `pytest -q tests`。
+2. **第 4 阶段做完后，在 CampShell 上做一次独立验收**：按 [docs/acceptance/brief.md](docs/acceptance/brief.md) 派一个新的子 Agent 去做。先从干净的提交重新构建 CampShell。
+3. **第二关当摩擦探针**：在 A5、A7 里挑一关，按草稿标准做，记下用了几轮会话、哪些步骤还得改平台代码。
+4. **等用户的**：
+   - 第一个可发布的版本做几关。总控建议先做 3～5 关的短战役；用户的倾向是 27 关都先做草稿；
+   - git 历史里有一份反编译试探报告（23c4071，含函数地址），是否改写历史、强推清掉；
+   - 配音响度对比页（配音仓库 `work/campaign/loudness_ab/`）和 I14。
+5. **留着的事**：
+   - A4 攻略页 https://claude.ai/artifact/Dp8HUcuyyFN42vqhitJZ8r，生成脚本在 `work/walkthrough/make_page.py`，数据在 `a4.json`；
+   - 冷启动自检：`python -I -X utf8 experimental/testbench/doctor.py`；
+   - 已删掉的测试 mod 名单在 `work/logs/mods_deleted.txt`。
 
 ## 必读
 
@@ -65,7 +73,7 @@
 ## 状态
 
 ```yaml
-slice: architecture-remediation-phase1-2026-11-03
+slice: draft-levels-friction-2026-11-04
 blocked_on: none        # none | voice-session | user
 next_gate: playtest     # test-map | coordinate-calibration | demo | playtest
 ```
