@@ -222,7 +222,8 @@ class Session:
         self.frames = []
         self.t0 = None              # mission start (time.monotonic)
         self.view = None            # None: the start camera; else the world point the last minimap jump centred
-        self.borders = []           # the built map's playable areas (cnv_map.json beside the mod), [] the whole map
+        self.shift = (0.0, 0.0)     # screen pixels the view's point stands off the minimap-jump calibration (scripted_view)
+        self.borders = []         # the built map's playable areas (cnv_map.json beside the mod), [] the whole map
         self.last_border = None
         self.log = []
         self.muted = 0
@@ -263,6 +264,7 @@ class Session:
         self.run_dir = os.path.join(RUNS, f'{self.mod}_mcp_{datetime.datetime.now():%m%d_%H%M%S}')
         os.makedirs(self.run_dir)
         self.frames, self.view, self.log, self.muted, self.t0 = [], None, [], 0, None
+        self.shift = (0.0, 0.0)
         self.borders = map_borders(sku) if mod else []
         self.last_border = self.borders[0] if self.borders else None
         self.hold, self.paused, self.game_s, self.run_from, self.rate = hold, False, 0.0, None, 1.0
@@ -512,10 +514,10 @@ class Session:
     # -- world <-> screen -------------------------------------------------------------------------------------
     def to_screen(self, x, y, air=False):
         u, v = calib.world_to_screen(x, y) if self.view is None else calib.world_to_screen_at(x, y, self.view)
-        return u, v - (AIR_LIFT if air else 0)
+        return u + self.shift[0], v + self.shift[1] - (AIR_LIFT if air else 0)
 
     def to_world(self, u, v):
-        x, y = calib.screen_to_world(u, v)
+        x, y = calib.screen_to_world(u - self.shift[0], v - self.shift[1])
         if self.view is not None:
             x, y = x + self.view[0] - calib.START_VIEW[0], y + self.view[1] - calib.START_VIEW[1]
         return round(x, 1), round(y, 1)
@@ -540,7 +542,16 @@ class Session:
             raise BenchError(f'({x}, {y}) is outside the playable area now ({b[0]} {b[1]}): the camera cannot go there')
         click(h, *calib.world_to_minimap(x, y, b and b[1]))
         self.view = (float(x), float(y))
+        self.shift = (0.0, 0.0)
         time.sleep(0.3)
+
+    def scripted_view(self, x, y):
+        """The mission's own MOVE_CAMERA_TO put the camera on world (x, y): that point then stands at screen (640, 350)
+        (bench 2026-11-03, a4 place: an engineer teleported to the waypoint stood there), not where a minimap jump's
+        calibration puts the view's centre; later world clicks follow."""
+        self.view = (float(x), float(y))
+        u, v = calib.world_to_screen_at(x, y, self.view)
+        self.shift = (640.0 - u, 350.0 - v)
 
 
 def main():

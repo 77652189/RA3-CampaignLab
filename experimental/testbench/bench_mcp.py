@@ -193,6 +193,16 @@ def bench_key(vk: int, look: bool = True) -> list:
 
 @server.tool(structured_output=False)
 @guard
+def bench_view(x: float, y: float, look: bool = True) -> list:
+    """Tell the bench the camera now stands on a world point because the MISSION put it there (a MOVE_CAMERA_TO of a
+    test script, exact where bench_camera's minimap click is off by ~100 units): later world clicks follow it."""
+    go()
+    S.scripted_view(x, y)
+    return after(f'camera set by the mission on ({x}, {y})', look)
+
+
+@server.tool(structured_output=False)
+@guard
 def bench_camera(x: float, y: float, look: bool = True) -> list:
     """Centre the camera on a world point (a minimap click); later world clicks follow the new camera."""
     go()

@@ -422,3 +422,59 @@ def win(m):
     t.expect += [('到港口车数', 0, 'ever>=', 2), ('ENDED', FESTIVAL + HARBOUR_SCENE + 120, '', None, end)]
     t.bench = scene_proof_watch(end + 20, every=5, lines=len(t.counters))
     return t
+
+
+PLACE_GAP = 60.0      # place: seconds between two tries (the power's 20 s reload, his walk, the 5 s of building)
+PLACE_CLICKS = 29.0     # place: mission seconds the select + ability clicks take at x8 (bench 2026-11-03; at x1 ~4 s, but the
+                        # 110 s opening scene then runs in real time and the bench game drops to the menu after ~40 s)
+PLACE_AT = 4.0          # place: the first try, after the scene's own camera move (2 s)
+PLACE_SAY = 3.0        # place: the engineer stands this long before he is selected
+
+
+def place(m, kind='V'):
+    """The wall as the PLAYER puts it (ADR 0015 class 3; user 2026-11-03: "无法防止冰墙的问题仍在" after a check that
+    fired the power from a script passed): the engineer stands beside each of the six ice marks in turn, the bench selects
+    him with a click, presses his ability button and clicks the mark -- the game's own placement rules (the 32 forbidden
+    range, PATHABLE_ONLY) apply, a script's NAMED_FIRE_SPECIAL_POWER ignores them. A wall must then stand at every mark."""
+    t = scene(m, park=False)
+    t.scripts.append(Script('Test - horns off', [], [('SET_FLAG', flag('On', 'V'), 0), ('SET_FLAG', flag('On', 'L'), 0)],
+                            once=False))
+    wall = ice_wall(m).id
+    ways = [f'{kind}{n}' for n in (1, 2, 3)]       # four counter lines at most: the streets, then the mouths (place_mouths)
+    name = m.role('engineer').name
+    steps, at = [], 0.0
+    t.counters.append(('Test Seeds', '最后见到冰核的口'))
+    for k, wid in enumerate(ways):
+        x, y = m.point(f'ice {wid}')
+        stand_at = (x, y - 70.0)
+        timer = f'Test - place timer {wid}'
+        t.waypoints[f'Test Place {wid}'] = stand_at
+        t.areas[f'Test Wall {wid}'] = square(x, y, 90.0)
+        t.scripts += [Script(f'Test - place set {wid}', AFTER, [('SET_MILLISECOND_TIMER', timer, PLACE_AT + k * PLACE_GAP)]),
+                      Script(f'Test - place stand {wid}', [('TIMER_EXPIRED', timer)],
+                             [('UNIT_TELEPORT_TO_WAYPOINT', name, f'Test Place {wid}'),
+                              ('UNIT_CHANGE_OBJECT_STATUS', name, 'UNATTACKABLE', 1), ('SET_FLAG', f'Test_Placed_{wid}', 1),
+                              ('MOVE_CAMERA_TO', f'Test Place {wid}', 0.1, 0.0, 0.0, 0.0)])]   # the camera exactly on him
+        # a latch, not a count of what stands: the clicks run the game on (~30 s at x8) and the wall lives half a minute
+        t.counters.append((f'Test Wall {wid}', f'冰墙{wid}'))
+        t.scripts.append(Script(f'Test - wall seen {wid}', [('FLAG', f'Test_Placed_{wid}', 1),
+                                                         ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', m.player('p1'), 3, 1,
+                                                          wall, f'Test Wall {wid}')], [('SET_COUNTER', f'Test Wall {wid}', 1)]))
+        seed = m.param('engineer', 'wall')                  # the core he builds first (melts into the wall)
+        t.scripts.append(Script(f'Test - seed seen {wid}', [('FLAG', f'Test_Placed_{wid}', 1),
+                                                         ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', m.player('p1'), 3, 1,
+                                                          seed, f'Test Wall {wid}')], [('SET_COUNTER', 'Test Seeds', k + 1)]))
+        t.expect.append((f'冰墙{wid}', PLACE_AT + k * PLACE_GAP, 'ever>=', 1))
+        start = PLACE_AT + k * PLACE_GAP + PLACE_SAY
+        steps += [('bench_watch', dict(seconds=start - at, every=3, sheet=False, lines=len(ways) + 1))]
+        steps += [('bench_view', dict(x=stand_at[0], y=stand_at[1], look=False)),
+                  ('bench_click', dict(x=stand_at[0], y=stand_at[1], look=False)),
+                  ('bench_ability', dict(x=x, y=y, look=True))]
+        at = start + PLACE_CLICKS                       # the three clicks run the game on this long (x8)
+    steps.append(('bench_watch', dict(seconds=PLACE_GAP, every=3, sheet=False, lines=len(ways) + 1)))
+    t.bench = steps
+    return t
+
+
+def place_mouths(m):
+    return place(m, 'L')
