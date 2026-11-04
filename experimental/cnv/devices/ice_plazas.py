@@ -78,16 +78,16 @@ class IcePlazas(Device):
 
     def troops_of(self, spec, what):
         """(kinds, how many by difficulty) a sculpture holds by `spec`."""
-        import plan
+        import plantime
         kinds = [self.c.unit(u, 's1') for u in spec.get('每座兵', ['坦克杀手', '帝国武士'])]
-        many = plan.counts(spec.get('每座几个', len(kinds)))
+        many = plantime.counts(spec.get('每座几个', len(kinds)))
         assert min(many) >= 1 and max(many) <= len(kinds), \
             f'{what}: 每座几个 {many} must be 1 .. {len(kinds)} (每座兵 lists {len(kinds)})'
         return kinds, many
 
     def setting(self, k):
         """Plaza k's (kinds, many, unattackable, refill times or None)."""
-        import plan
+        import plantime
         own = self.own.get(k, {})
         kinds, many = self.base
         if '每座兵' in own or '每座几个' in own:
@@ -96,7 +96,7 @@ class IcePlazas(Device):
                                          f'{self.name}: 广场 {k}')
         tough = own.get('无敌') in (True, '是')
         assert own.get('无敌') in (None, True, False, '是', '否'), f'{self.name}: 广场 {k} 无敌 {own["无敌"]!r}: 是 / 否'
-        refill = plan.times(own['补兵']) if own.get('补兵') is not None else None
+        refill = plantime.times(own['补兵']) if own.get('补兵') is not None else None
         return kinds, many, tough, refill
 
     def troop(self, k, i, n):
@@ -152,7 +152,7 @@ class IcePlazas(Device):
         return f'CNV_{self.c.tag}_Blocking_{k}'
 
     def scripts(self):
-        import plan
+        import plantime
         m, tag, cv = self.m, self.c.tag, self.convoy
         life = self.wall.params['lifetime']
         out = []
@@ -172,8 +172,8 @@ class IcePlazas(Device):
                 out.append(Script(f'CNV {tag} - Tough {k}', [],
                                   [('UNIT_CHANGE_OBJECT_STATUS', n, 'UNATTACKABLE', 1) for n in names]))
             for i, sname in enumerate(names, 1):
-                for levels, much in plan.by_level(many):
-                    lv = '' if levels == plan.ALL else f' {plan.TAGS[levels.index(True)]}'
+                for levels, much in plantime.by_level(many):
+                    lv = '' if levels == plantime.ALL else f' {plantime.TAGS[levels.index(True)]}'
                     made = range(1, much + 1)
                     alive = [('SET_FLAG', self.alive(k, i, n), 1) for n in made] if refill is not None else []
                     out.append(Script(f'CNV {tag} - Out {k}-{i}{lv}',
@@ -201,8 +201,8 @@ class IcePlazas(Device):
                                        [('DECREMENT_COUNTER', 1, left)], levels=levels) for n in made]
             if refill is not None:                  # the clock runs while a truck is there; the backs above come first
                 out.append(Script(f'CNV {tag} - Refill {k} clock', [], [('SET_MILLISECOND_TIMER', self.refill(k), 0.0)]))
-                for levels, gap in plan.by_level(refill):
-                    lv = '' if levels == plan.ALL else f' {plan.TAGS[levels.index(True)]}'
+                for levels, gap in plantime.by_level(refill):
+                    lv = '' if levels == plantime.ALL else f' {plantime.TAGS[levels.index(True)]}'
                     out.append(Script(f'CNV {tag} - Refill {k} again{lv}',
                                       [('FLAG', here, 1), ('TIMER_EXPIRED', self.refill(k))],
                                       [('SET_MILLISECOND_TIMER', self.refill(k), gap)], once=False, levels=levels))

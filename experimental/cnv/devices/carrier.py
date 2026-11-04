@@ -45,7 +45,7 @@ class Carrier(Device):
         self.faster = list(spec.get('加快') or [])
         for s in self.faster:
             if not isinstance(s, dict) or set(s) != {'当', '每隔'}:
-                from plan import PlanError
+                from plantime import PlanError
                 raise PlanError(f'{name}: 加快 {s!r} -- each {{当: <condition>, 每隔: <time>}}')
 
     def place(self):
@@ -80,23 +80,23 @@ class Carrier(Device):
             return [('SET_FLAG', self.asked, 1)]
         if what == '飞走':
             if not self.route:
-                from plan import PlanError
+                from plantime import PlanError
                 raise PlanError(f'{self.name}.飞走: no 航线')
             return [('SET_FLAG', self.flying, 1), ('MOVE_NAMED_UNIT_TO', self.obj, self.route[0])]
         return super().action(what, args)
 
     def scripts(self):
-        import plan
+        import plantime
         m, c, t = self.m, self.c, self.c.tag
         s1, p1 = m.player('s1'), m.player('p1')
         stay = float(self.spec.get('停留', 30))
         warn = float(self.spec.get('预警', 15))
         few = int(self.spec.get('空虚', 3))
         out = []
-        for levels, hp in plan.by_level(plan.counts(self.spec.get('血量', 100))):
+        for levels, hp in plantime.by_level(plantime.counts(self.spec.get('血量', 100))):
             if hp < 100:
-                out.append(Script(f'CNV {t} - Carrier health' + ('' if levels == plan.ALL else
-                                                                f' {plan.TAGS[levels.index(True)]}'),
+                out.append(Script(f'CNV {t} - Carrier health' + ('' if levels == plantime.ALL else
+                                                                f' {plantime.TAGS[levels.index(True)]}'),
                                   [], [('UNIT_SET_HEALTH', self.obj, float(hp))], levels=levels))
         c.when('Carrier on', self.spec['开始'], [('SET_FLAG', self.on, 1), ('SET_COUNTER', self.state, 0),
                                                  ('SET_MILLISECOND_TIMER', self.timer, 0.0)])
@@ -127,15 +127,15 @@ class Carrier(Device):
                                ('HIDE_COUNTDOWN_TIMER', self.timer), ('SET_FLAG', self.jumped, 1)], once=False))
         # 加快: the later a step that holds, the sooner it jumps again (retail Miyako: the fewer of Tatsu's key
         # buildings left, the faster the recharge, 90 -> 45 s); each step latched the first time it holds
-        steps = [plan.times(self.spec.get('每隔', 90))] + [plan.times(s['每隔']) for s in self.faster]
+        steps = [plantime.times(self.spec.get('每隔', 90))] + [plantime.times(s['每隔']) for s in self.faster]
         flags = [None] + [f'CNV_{t}_Faster_{k}' for k in range(1, len(steps))]
         for k, s in enumerate(self.faster, 1):
             c.when(f'Carrier faster {k}', s['当'], [('SET_FLAG', flags[k], 1)])
         for k, gaps in enumerate(steps):
             step = ([('FLAG', flags[k], 1)] if k else []) + [('FLAG', f, 0) for f in flags[k + 1:]]
-            for levels, gap in plan.by_level(gaps):
+            for levels, gap in plantime.by_level(gaps):
                 out.append(Script(f'CNV {t} - Carrier home' + (f' {k}' if k else '') +
-                                  ('' if levels == plan.ALL else f' {plan.TAGS[levels.index(True)]}'),
+                                  ('' if levels == plantime.ALL else f' {plantime.TAGS[levels.index(True)]}'),
                                   ready + [('COUNTER', self.state, 2, 2)] + step,
                                   [('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', self.obj, self.jump, self.home),
                                    ('SET_COUNTER', self.state, 0), ('SET_MILLISECOND_TIMER', self.timer, gap)],
@@ -165,13 +165,13 @@ class Carrier(Device):
         start (its `+ t`); first jump: from the mission's start, when a time decides it."""
         import re
         import plancheck
-        import plan
-        out = {'jump every': plan.times(self.spec.get('每隔', 90))[1], 'warning': float(self.spec.get('预警', 15)),
+        import plantime
+        out = {'jump every': plantime.times(self.spec.get('每隔', 90))[1], 'warning': float(self.spec.get('预警', 15)),
                'stay': float(self.spec.get('停留', 30))}
         for k, s in enumerate(self.faster, 1):      # 加快's steps, normal difficulty
-            out[f'jump every {k}'] = plan.times(s['每隔'])[1]
+            out[f'jump every {k}'] = plantime.times(s['每隔'])[1]
         mm = re.match(r'^.*?\+\s*([^+]+)$', str(self.spec['开始']).strip())
-        out['jump delay'] = plan.times(mm.group(1))[1] if mm else 0.0
+        out['jump delay'] = plantime.times(mm.group(1))[1] if mm else 0.0
         first = plancheck.times_of(self.spec['开始'], plancheck.phase_starts(self.c.d))
         if first is not None:
             out['first jump'] = first + out['warning']

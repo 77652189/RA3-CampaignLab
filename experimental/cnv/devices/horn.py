@@ -105,9 +105,9 @@ class Horn(Device):
 
     def __init__(self, c, name, spec):
         super().__init__(c, name, spec)
-        import plan
-        from plan import PlanError
-        self.plan = plan
+        import plantime
+        from plantime import PlanError
+        self.plan = plantime
         tag = c.tag
         self.wall = iw.wall(f'CNV_{tag}IceWall', length=WALL_SIDE, shape='square')
         self.core = iw.seed(f'CNV_{tag}IceSeed', self.wall.id, size=SEED_SIZE)
@@ -118,10 +118,10 @@ class Horn(Device):
                                reload=f'{float(spec.get("冷却", RELOAD)):g}s', voice=iw.VOICE if voiced else None)
         self.units = [self.eng, self.core, self.wall]
         self.names = {'冰幕工兵': self.eng}
-        self.gaps = [plan.times(g) for g in spec['间隔']]
+        self.gaps = [plantime.times(g) for g in spec['间隔']]
         if not self.gaps:
             raise PlanError(f'{name}: 间隔 needs at least one time')
-        self.troops = {u: plan.counts(n) for u, n in (spec.get('每街一波') or {}).items()}
+        self.troops = {u: plantime.counts(n) for u, n in (spec.get('每街一波') or {}).items()}
         if not self.troops:
             raise PlanError(f'{name}: 每街一波 lists the troops of a wave')
         self.ways = {'V': dict(spec.get('街') or {}), 'L': dict(spec.get('口') or {})}
@@ -139,7 +139,7 @@ class Horn(Device):
             self.chips = fest.chips(f'CNV_{tag}IceChips')
             self.units += [self.sculpt, self.display, self.chips]
             self.names['小冰雕'] = self.display
-        self.delay = {s: {o: plan.seconds(t) for o, t in row.items()} for s, row in (spec.get('绕路') or {}).items()}
+        self.delay = {s: {o: plantime.seconds(t) for o, t in row.items()} for s, row in (spec.get('绕路') or {}).items()}
         if self.ways['V']:
             check_delays(self.delay, list(self.ways['V']))
         self.ghost = spec.get('鬼王')
@@ -222,13 +222,13 @@ class Horn(Device):
         for mode in 'VL':
             if name in self.ids(mode):
                 return self.ids(mode)[name]
-        from plan import PlanError
+        from plantime import PlanError
         raise PlanError(f'{self.name}.冻住 {name!r}: no street or mouth of that name: '
                         f'{[*self.ids("V"), *self.ids("L")]}')
 
     def action(self, what, args):
         if what == '开':
-            from plan import PlanError
+            from plantime import PlanError
             if len(args) != 1 or args[0] not in MODES:
                 raise PlanError(f'{self.name}.开 {" ".join(args)!r}: 街 or 口')
             mode = MODES[args[0]]
@@ -238,12 +238,12 @@ class Horn(Device):
                     ('SET_FLAG', self.start[mode], 1)]
         if what in ('演示', '演示收'):
             if not self.demo:
-                from plan import PlanError
+                from plantime import PlanError
                 raise PlanError(f'{self.name}.{what}: the device has no 演示')
             return [('SET_FLAG', self.demo_on if what == '演示' else self.demo_off, 1)]
         if what == '裂':
             if not self.sculpted:
-                from plan import PlanError
+                from plantime import PlanError
                 raise PlanError(f'{self.name}.裂: the device has no 冰雕')
             wid = self.ids_by_name(' '.join(args))
             self.m.spawns.add(self.chips.id)

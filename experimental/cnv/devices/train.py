@@ -30,7 +30,7 @@ class Train(Device):
 
     def __init__(self, c, name, spec):
         super().__init__(c, name, spec)
-        from plan import PlanError
+        from plantime import PlanError
         self.role = str(spec.get('角色', 'train'))
         self.route = list(spec.get('路线') or [])
         if not self.route or '起点' not in spec:
@@ -53,7 +53,7 @@ class Train(Device):
                    angle=self.spec.get('朝向', 0.0))
 
     def index(self, site):
-        from plan import PlanError
+        from plantime import PlanError
         if site not in self.route:
             raise PlanError(f'{self.name}: {site!r} is not on its route {self.route}')
         return self.route.index(site)
@@ -80,9 +80,9 @@ class Train(Device):
                        [('NAMED_ATTACK_NAMED', n, self.obj) for n in names], once=False)]
 
     def scripts(self):
-        import plan
+        import plantime
         tag, train = self.c.tag, self.obj
-        waits = plan.times(self.spec.get('停靠', 0) or 0)       # by difficulty (25/20/15)
+        waits = plantime.times(self.spec.get('停靠', 0) or 0)       # by difficulty (25/20/15)
         wait = max(waits)
         self.c.when(f'{self.role} go', self.spec.get('出发', '开局'), [('SET_FLAG', self.rolling, 1)])
         out = [Script(f'CNV {tag} - {self.role} tick', [], [('SET_MILLISECOND_TIMER', self.timer, TICK)])]
@@ -93,9 +93,9 @@ class Train(Device):
                                ('TIMER_EXPIRED', self.timer), ('COUNTER', self.stop, 2, k)],
                               [('MOVE_NAMED_UNIT_TO', train, wp)], once=False))
             docks = wait and k + 1 < len(self.route)
-            for levels, w in (plan.by_level(waits) if docks else [(plan.ALL, 0)]):
+            for levels, w in (plantime.by_level(waits) if docks else [(plantime.ALL, 0)]):
                 out.append(Script(f'CNV {tag} - {self.role} at {k + 1}' +
-                                  ('' if levels == plan.ALL else f' {plan.TAGS[levels.index(True)]}'),
+                                  ('' if levels == plantime.ALL else f' {plantime.TAGS[levels.index(True)]}'),
                                   [('FLAG', self.rolling, 1), ('COUNTER', self.stop, 2, k),
                                    ('NAMED_INSIDE_AREA', train, self.c.area(site))],
                                   [('SET_COUNTER', self.stop, k + 1)] +

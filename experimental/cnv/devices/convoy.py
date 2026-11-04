@@ -36,7 +36,7 @@ class Convoy(Device):
     def __init__(self, c, name, spec):
         super().__init__(c, name, spec)
         self.tick = float(spec.get('每隔', 3.0))
-        from plan import PlanError
+        from plantime import PlanError
         who = spec.get('车', '我')
         if who not in c.side:
             raise PlanError(f'{name}: 车 {who!r} is none of {sorted(c.side)}')
@@ -107,7 +107,7 @@ class Convoy(Device):
                        once=False) for j, t in enumerate(cv.trucks)]
 
     def scripts(self):
-        import plan
+        import plantime
         self.c.when('Convoy go', self.spec['出发'], self.cv.go()[0].do)
         for j, (after, g) in enumerate(zip(self.batches, self.go)):    # 分批: truck j once its time is up
             if self.batch_from == '继续':                 # all at the departure; in turn after the 继续
@@ -130,9 +130,9 @@ class Convoy(Device):
                                       [started, ('NAMED_DESTROYED', lost)], [('SET_FLAG', g, 1)]))
         if self.spec.get('血量') is not None:      # retail Iga: NAMED_SET_MAX_HEALTH by difficulty, full health too
             there = [('FLAG', self.cv.rolling, 1)] if self.cv.enter else []     # trucks made at the departure
-            for levels, v in plan.by_level(plan.counts(self.spec['血量'])):
-                out.append(Script(f'CNV {self.c.tag} - Truck health' + ('' if levels == plan.ALL else
-                                                                       f' {plan.TAGS[levels.index(True)]}'),
+            for levels, v in plantime.by_level(plantime.counts(self.spec['血量'])):
+                out.append(Script(f'CNV {self.c.tag} - Truck health' + ('' if levels == plantime.ALL else
+                                                                       f' {plantime.TAGS[levels.index(True)]}'),
                                   there, [('NAMED_SET_MAX_HEALTH', t, v, 1) for t in self.cv.trucks], levels=levels))
         out += self.hit_scripts()
         return out

@@ -31,7 +31,7 @@ class Device:
         raise self.unknown('action', what, self.ACTIONS)
 
     def attack(self, names):
-        from plan import PlanError
+        from plantime import PlanError
         raise PlanError(f'{self.name}: not a target a wave can attack')
 
     def scripts(self):
@@ -46,7 +46,7 @@ class Device:
         return {}
 
     def unknown(self, kind, what, known):
-        from plan import PlanError
+        from plantime import PlanError
         return PlanError(f'{self.name}: no {kind} {what!r}: {sorted(known)}')
 
 

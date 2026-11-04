@@ -168,6 +168,15 @@ def test_g_units_do_not_import_make_campnew2():
     assert not bad, f'units import a make_campnew module (use labpaths): {bad}'
 
 
+def test_g9_devices_do_not_import_the_compiler():
+    """A device is an input of plan.py, not its client: the pure words (times, counts, PlanError ...) live in
+    plantime.py and the rest comes through the Ctx a device is handed."""
+    files = _tracked()
+    devices = _under(files, f'{CNV}/devices', '.py', deep=False)
+    bad = [f for f in devices if _imported_tops(_read(f)) & {'plan'}]
+    assert not bad, f'devices import plan (take plantime or the Ctx): {bad}'
+
+
 # G-layers (ADR 0016): parts.py was split by layer. model.py (L2, mission data) imports neither contract.py (L5, rule
 # checks) nor package.py (L3, packaging); contract.py does not import package.py. The facade parts.py re-exports all
 # three, so neither of them may import it back.
