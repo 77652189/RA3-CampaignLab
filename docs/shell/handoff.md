@@ -2,6 +2,17 @@
 
 外壳线 2026-11-03 从关卡线拆出（[architecture.md](../architecture.md) 各线负责的文件）。以前做过的事和坑在 [story/handoff.md](../story/handoff.md) 搜"外壳""CampShell"（第 33～42、61～69 行）。问题编号见 [issues.md](../issues.md) K9。
 
+## 能改的地图页，A4 先做（2026-11-04，总控派活，ADR 0017，git log 搜 "editable map page"）
+
+- 页面：https://claude.ai/artifact/FDuEc4yQquWzWPgdAYCYv2 （私有，能力 db + user；提议存在集合 `proposals`）。
+- 用法和数据来源写在 `experimental/mappage/mappage.py` 开头的说明里；测试 `tests/test_mappage.py`。
+- 读提议两步：ArtifactData `list`，collection `proposals`，`out_dir` 填 `work/mappage/a4/pulled`；然后跑 `mappage.py a4 --pull`。
+- 改完地图模块后：`mappage.py a4` 重新生成，再用 Artifact 工具发布 `work/mappage/a4/a4_mappage.html`。从别的会话发布时要带上面的 url，先 read。
+- 已验证：用两条探针提议（拖 `inside 1`、在 start 钉批注）走通了"写入 → 读出 → --pull"，探针已删；页面的 contract 和 `build.py a4 --show` 一致（都是 ok）。
+- 没验证：在页面上真的用鼠标拖。内置浏览器没登录 claude.ai，要用户或总控在页面上试一次。
+- 下一步：用户在页面上试用后按反馈改；别的关卡跑 `mappage.py <关卡>` 就能出页，但每个关卡要单独发布。
+- 坑：A4 现在所有规则都通过，所以图上没有红圈。画问题的逻辑靠测试里故意挪偏施法点来证明；坐标从问题文字里的 "(x, y)" 或地点名解析，新规则的报错要带其中一种，否则只列出来、不画在图上。
+
 ## K9 原版内容检查 + 指挥官摘要页 + 地图图片从本次构建出（2026-11-04，总控派活，git log 搜 "K9 retail check"）
 
 - **检查**：`shell.still_retail(sp)`（`shell.py` "what the player still sees of retail" 一节）。从 `SCREENS`（阵营、章节、任务说明、**指挥官摘要页 `fes_m_objectivesbriefing`**（原来清单里漏了）、读盘、HUD 合作面板、战后统计、9 关的 global/objective briefing）出发，按 `apt_movie.movie()['libraries']` 递归导入的组件库；每个流按**我们发出去的版本**读（`sp.files` 优先，没有才读原版）。报三样：像素和原版一样的贴图、原版字串表里有又没被我们改写/新增的 `$标签`（无冒号的是 `APT:<名>`，`&Outline` 去掉；表里没有的是引擎填的字段，不算）、模板里不是我们片子的视频字段。`KEEP` 是保留清单（键 + 理由），**用不到的 KEEP 也报错**（防止清单烂掉）。测试：`tests/test_shell.py` 里 `test_no_retail_picture_label_or_video_...`（发货配置：`make(later=True)` + 地图钩子）、`test_the_retail_check_finds_what_it_was_not_told_about`（删一条改写、删一个发出去的流、删一条 KEEP，三样都报出来）。
