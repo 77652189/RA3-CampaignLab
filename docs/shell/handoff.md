@@ -2,6 +2,15 @@
 
 外壳线 2026-11-03 从关卡线拆出（[architecture.md](../architecture.md) 各线负责的文件）。以前做过的事和坑在 [story/handoff.md](../story/handoff.md) 搜"外壳""CampShell"（第 33～42、61～69 行）。问题编号见 [issues.md](../issues.md) K9。
 
+## 地形编辑器（2026-11-04，总控派活，ADR 0017，git log 搜 "terrain editor"）
+
+- 页面上新工具：抬高、压低、整平、画/擦不可通行（半径、强度滑条），图层"坡度和通行"，右栏"地形预览"实时列出哪些建筑点/施法点不再平、施法圆里新增不可通行格。几笔存成一条 `kind: terrain` 提议，和拖地点同一个 `proposals` 集合。
+- 一笔是什么：`experimental/mappage/terrain_edit.py` 开头说明（唯一权威）；页面用 `terrain.js` 镜像它，规则和数字都来自引擎线的 `terrain_rules.py`（`params()` 导给页面）。`tests/test_mappage_terrain.py` 用 node 跑 terrain.js，要求和 Python 逐格同高度、同通行位、同平不平；做过变异检查（取整方式、编辑圈边界）能抓到。
+- 关卡线用法：`mappage.py a4 --pull` 列出地形提议（刷了哪些地点）；`mappage.py a4 --apply-preview [--only ID]` 把地形提议套到构建出的地图上，报高度/通行变化、平不平变化、contract 哪些新红（`terrain_edit.lint_on` 临时让 platmap.lint 读改过的地面，不改 platmap）。
+- 已验证：本地 http 打开生成页（`.claude/launch.json` 的 mappage），用派发的指针事件涂抬高/压低/整平/画不可通行、撤一笔、存（没登录时退到内存存储）；把页面存出的提议喂给 `--apply-preview`，报的红和页面预览一致（inside 1 抬 34 → 建筑点、施法点都红）。
+- 没验证：真鼠标拖动的手感和性能（内置浏览器窗格隐藏，没截图）；claude.ai 上的真存储里存地形提议（dabs 存成一维数组，避开"数组套数组"）。A4 页面还没重新发布：要用 Artifact 工具带 url 发布 `work/mappage/a4/a4_mappage.html`（先 read）。
+- 坑：工具 `data-mode="block"` 现在是"画不可通行"，旧的画挡路线改叫 `line`（提议 kind 仍是 `block`）；页面 1.2 MB（高度图 base64 约 0.8 MB）。
+
 ## 能改的地图页，A4 先做（2026-11-04，总控派活，ADR 0017，git log 搜 "editable map page"）
 
 - 页面：https://claude.ai/artifact/FDuEc4yQquWzWPgdAYCYv2 （私有，能力 db + user；提议存在集合 `proposals`）。

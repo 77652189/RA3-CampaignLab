@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>__TITLE__</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -48,7 +49,15 @@ button:disabled { opacity: .45; cursor: default; }
 .tools label { font-size: 12.5px; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; }
 .mapbox { position: relative; }
 .mapbox svg { display: block; width: 100%; height: auto; touch-action: none; user-select: none; }
-.mapbox svg.mode-block, .mapbox svg.mode-note { cursor: crosshair; }
+.mapbox svg.mode-line, .mapbox svg.mode-note, .mapbox svg.mode-raise, .mapbox svg.mode-lower, .mapbox svg.mode-flatten,
+.mapbox svg.mode-block, .mapbox svg.mode-unblock { cursor: crosshair; }
+.mapbox svg image.terrain { image-rendering: pixelated; }
+.tgroup { display: contents; }
+.tools input[type=range] { width: 84px; }
+.tools label span { font: 500 11px var(--mono); min-width: 6.5em; font-variant-numeric: tabular-nums; }
+.tlist { margin: 0; padding-left: 16px; font-size: 12.5px; display: grid; gap: 2px; }
+.tlist .bad { color: var(--enemy); } .tlist .good { color: var(--ok); }
+.swatch { display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; }
 .coord { position: absolute; left: 8px; bottom: 8px; font: 500 11px var(--mono); background: rgba(0,0,0,.55); color: #fff;
   padding: 2px 7px; border-radius: 3px; pointer-events: none; font-variant-numeric: tabular-nums; }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 8px 12px; border-top: 1px solid var(--rule); font-size: 12px; color: var(--muted); }
@@ -92,7 +101,7 @@ svg text { font-family: var(--body); paint-order: stroke; stroke: rgba(10,16,22,
   <header class="head">
     <div class="eyebrow" id="eyebrow"></div>
     <h1 id="title"></h1>
-    <p class="lede">地图、地点、矿和油、规则检查结果、模拟器时间轴，全部在每次生成时从地图模块和关卡代码导出。你可以在图上拖地点、画挡路线、钉批注，页面只把它们记成<b>改动提议</b>，地图文件不会被改；关卡线读取提议后改地图模块，再重新生成这一页。</p>
+    <p class="lede">地图、地点、矿和油、规则检查结果、模拟器时间轴，全部在每次生成时从地图模块和关卡代码导出。你可以在图上拖地点、画挡路线、钉批注，也可以抬高、压低、整平地面和画/擦不可通行（实时预览坡度和哪些地点不再平），页面只把它们记成<b>改动提议</b>，地图文件不会被改；关卡线读取提议后改地图模块，再重新生成这一页。</p>
     <div class="row" id="summary"></div>
   </header>
 
@@ -100,14 +109,25 @@ svg text { font-family: var(--body); paint-order: stroke; stroke: rgba(10,16,22,
     <div class="sheet">
       <div class="tools" role="toolbar" aria-label="地图工具">
         <button id="m-move" aria-pressed="true" data-mode="move">拖地点</button>
-        <button id="m-block" aria-pressed="false" data-mode="block">画挡路线</button>
+        <button id="m-block" aria-pressed="false" data-mode="line">画挡路线</button>
         <button id="m-note" aria-pressed="false" data-mode="note">钉批注</button>
+        <span class="sep"></span>
+        <span class="tgroup" id="tgroup">
+        <button aria-pressed="false" data-mode="raise">抬高</button>
+        <button aria-pressed="false" data-mode="lower">压低</button>
+        <button aria-pressed="false" data-mode="flatten">整平</button>
+        <button aria-pressed="false" data-mode="block">画不可通行</button>
+        <button aria-pressed="false" data-mode="unblock">擦不可通行</button>
+        <label>半径 <input type="range" id="b-r" min="20" max="300" step="10" value="80"><span id="b-rv"></span></label>
+        <label>强度 <input type="range" id="b-s" min="0.5" max="20" step="0.5" value="3"><span id="b-sv"></span></label>
+        </span>
         <span class="sep"></span>
         <label><input type="checkbox" id="l-labels" checked> 地点名</label>
         <label><input type="checkbox" id="l-objects" checked> 物体</label>
         <label><input type="checkbox" id="l-guides" checked> 规则量线</label>
         <label><input type="checkbox" id="l-areas"> 触发区</label>
         <label><input type="checkbox" id="l-props" checked> 提议</label>
+        <label><input type="checkbox" id="l-terrain"> 坡度和通行</label>
       </div>
       <div class="mapbox">
         <svg id="map" role="img" aria-label="地图俯视图"></svg>
@@ -120,6 +140,11 @@ svg text { font-family: var(--body); paint-order: stroke; stroke: rgba(10,16,22,
         <span><i style="background:#222;border:1px solid #fff"></i>油井</span>
         <span><i style="background:var(--enemy)"></i>不合规的地方</span>
         <span><i style="background:var(--prop)"></i>改动提议</span>
+        <span><i class="swatch" style="background:#e0322a"></i>编辑后新变成不可通行</span>
+        <span><i class="swatch" style="background:#2fbf63"></i>编辑后新变成可通行</span>
+        <span><i class="swatch" style="background:rgba(20,20,20,.6)"></i>不可通行（原样）</span>
+        <span><i class="swatch" style="background:rgba(240,180,60,.7)"></i>陡（快到不可通行）</span>
+        <span><i class="swatch" style="background:rgba(160,80,220,.45)"></i>高度改过</span>
       </div>
     </div>
 
@@ -129,6 +154,11 @@ svg text { font-family: var(--body); paint-order: stroke; stroke: rgba(10,16,22,
         <div id="slip"><p class="note" id="hint"></p></div>
         <p class="status" id="dbstatus">正在连接提议存储…</p>
         <ul class="list" id="props"></ul>
+      </div>
+      <div class="sheet" id="tsheet">
+        <h2>地形预览</h2>
+        <p class="note" id="tnote"></p>
+        <ul class="tlist" id="tlist"></ul>
       </div>
       <div class="sheet">
         <h2>规则检查</h2>
@@ -147,6 +177,9 @@ svg text { font-family: var(--body); paint-order: stroke; stroke: rgba(10,16,22,
   </section>
 </div>
 
+<script>
+__TERRAIN_JS__
+</script>
 <script>
 const D = __DATA__;
 const IMG = "__IMG__";
@@ -182,7 +215,7 @@ svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
 if (IMG) el("image", { href: IMG, x: 0, y: 0, width: W, height: H, preserveAspectRatio: "none" }, svg);
 else el("rect", { x: 0, y: 0, width: W, height: H, fill: "#9fb4c4" }, svg);
 const G = {};
-for (const k of ["areas", "borders", "objects", "guides", "sites", "problems", "props", "draft"]) G[k] = el("g", { "data-layer": k }, svg);
+for (const k of ["terrain", "areas", "borders", "objects", "guides", "sites", "problems", "props", "draft"]) G[k] = el("g", { "data-layer": k }, svg);
 
 for (const [k, b] of Object.entries(D.borders)) {
   if (k === "whole") continue;
@@ -253,14 +286,116 @@ for (const [id, layer] of [["l-labels", null], ["l-objects", "objects"], ["l-gui
   });
 }
 
+// ---- terrain (terrain.js: the mirror of terrain_edit.py and terrain_rules.py) ---------------------------------------
+// T0: the ground as the build writes it; BASE: T0 with the saved terrain proposals; CUR: BASE with the draft on top;
+// PRE: CUR before the stroke being drawn (so a stroke is re-applied from it on every move).
+const TP = D.terrain, TSITES = D.sites.filter((s) => s.build || s.cast);
+const T0 = TP ? TERRAIN.decode(TP) : null;
+let BASE = T0, CUR = T0, PRE = null, stroke = null, tFrame = 0;
+const FLAT0 = T0 ? TERRAIN.flatSites(T0, TP, TSITES) : {};
+const pairs = (d) => { const o = []; if (d.length && Array.isArray(d[0])) return d; for (let k = 0; k + 1 < d.length; k += 2) o.push([d[k], d[k + 1]]); return o; };
+function strokeBox(p) {
+  let b = [Infinity, Infinity, -Infinity, -Infinity];
+  for (const st of p.strokes) for (const [x, y] of pairs(st.dabs)) b = [Math.min(b[0], x - st.r), Math.min(b[1], y - st.r), Math.max(b[2], x + st.r), Math.max(b[3], y + st.r)];
+  return b;
+}
+function cellIndex(x, y) {
+  const i = Math.min(TP.w - 1, Math.max(0, TERRAIN.pyRound(x / TP.cell) + TP.b)), j = Math.min(TP.h - 1, Math.max(0, TERRAIN.pyRound(y / TP.cell) + TP.b));
+  return j * TP.w + i;
+}
+function heightAt(x, y) { const v = CUR.e[cellIndex(x, y)]; return `${v.toFixed(1)}（世界 ${(v * TP.world_per_ours).toFixed(1)}）`; }
+function terrainChanged() {
+  if (!T0) return;
+  if (stroke) {
+    if (!PRE) { PRE = TERRAIN.copy(BASE); for (const st of draft.strokes) if (st !== stroke) TERRAIN.applyStroke(PRE, TP, st); }
+    CUR = TERRAIN.copy(PRE); TERRAIN.applyStroke(CUR, TP, stroke);
+  } else CUR = draft && draft.kind === "terrain" ? TERRAIN.applyProposals(BASE, TP, [draft]) : BASE;
+  drawDraft();
+  if (!tFrame) tFrame = setTimeout(() => { tFrame = 0; drawTerrain(); terrainReport(); }, 16);   // a timer, not rAF: rAF stalls in a hidden pane
+}
+function rebaseTerrain() {
+  if (!T0) return;
+  BASE = TERRAIN.applyProposals(T0, TP, props.filter((p) => p.kind === "terrain"));
+  PRE = null; terrainChanged();
+}
+const tcanvas = document.createElement("canvas");
+let timg = null;
+function drawTerrain() {
+  if (!T0 || G.terrain.style.display === "none") return;
+  const n = Math.round(W / TP.cell) + 1;
+  tcanvas.width = n; tcanvas.height = n;
+  const ctx = tcanvas.getContext("2d"), im = ctx.createImageData(n, n), px = im.data;
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+    const i = c + TP.b, j = n - 1 - r + TP.b;
+    if (i >= TP.w || j >= TP.h) continue;
+    const q = j * TP.w + i, o = 4 * (r * n + c), now = CUR.bits[q], was = T0.bits[q];
+    let rgba = null;
+    if (now && !was) rgba = [224, 50, 42, 220];
+    else if (!now && was) rgba = [47, 191, 99, 220];
+    else if (now) rgba = [20, 20, 20, 150];
+    else if (CUR.e[q] !== T0.e[q]) rgba = [160, 80, 220, 115];
+    else if (CUR.e[q] > TP.waterline && TERRAIN.slopeAt(CUR.e, TP.w, TP.h, i, j) > TP.steep * 0.6) rgba = [240, 180, 60, 170];
+    if (rgba) { px[o] = rgba[0]; px[o + 1] = rgba[1]; px[o + 2] = rgba[2]; px[o + 3] = rgba[3]; }
+  }
+  ctx.putImageData(im, 0, 0);
+  if (!timg) timg = el("image", { class: "terrain", x: -TP.cell / 2, y: -TP.cell / 2, width: n * TP.cell, height: n * TP.cell, preserveAspectRatio: "none" }, G.terrain);
+  timg.setAttribute("href", tcanvas.toDataURL());
+}
+function terrainReport() {
+  const ul = $("tlist"); ul.innerHTML = "";
+  if (!T0) { $("tnote").textContent = "这一页生成时没带地形（--no-picture），地形工具关着。"; return; }
+  let blocked = 0, opened = 0, moved = 0;
+  for (let q = 0; q < CUR.e.length; q++) { if (CUR.bits[q] && !T0.bits[q]) blocked++; if (!CUR.bits[q] && T0.bits[q]) opened++; if (CUR.e[q] !== T0.e[q]) moved++; }
+  const nT = props.filter((p) => p.kind === "terrain").length + (draft && draft.kind === "terrain" ? 1 : 0);
+  $("tnote").textContent = nT ? `已存的地形提议${draft && draft.kind === "terrain" ? "加上正在画的" : ""}合起来，和构建出的地图比：高度改了 ${moved} 格，新不可通行 ${blocked} 格，新可通行 ${opened} 格。规则和 terrain_rules.py 同一套（坡度超过 ${TP.steep}/格 且在水线以上 = 不可通行；建筑和施法圆的起伏不超过 ${TP.build_variation} 世界单位）。`
+    : `还没有地形提议。坡度和通行层画的是构建出的地图；用抬高、压低、整平、画/擦不可通行在图上涂，这里会实时列出哪些地点不再平。`;
+  const now = TERRAIN.flatSites(CUR, TP, TSITES);
+  for (const s of TSITES) for (const what of ["build", "cast"]) {
+    const key = `${s.k}|${what}`; if (!(key in now)) continue;
+    if (now[key] === FLAT0[key]) continue;
+    const li = document.createElement("li"); li.className = now[key] ? "good" : "bad";
+    li.textContent = `${what === "build" ? "建筑点" : "施法点"} ${s.k}：${now[key] ? "改了以后变平了" : `改了以后不再平（${what === "build" ? s.build : 2 * s.cast} 见方的起伏超过 ${TP.build_variation} 世界单位）`}`;
+    ul.appendChild(li);
+  }
+  for (const s of TSITES) if (s.cast) {
+    let bad = 0;
+    for (let q = 0; q < CUR.bits.length; q++) {
+      if (!CUR.bits[q] || T0.bits[q]) continue;
+      const x = (q % TP.w - TP.b) * TP.cell, y = (Math.floor(q / TP.w) - TP.b) * TP.cell;
+      if ((x - s.x) ** 2 + (y - s.y) ** 2 <= s.cast * s.cast) bad++;
+    }
+    if (bad) { const li = document.createElement("li"); li.className = "bad"; li.textContent = `施法点 ${s.k}：圆里有 ${bad} 格新变成不可通行`; ul.appendChild(li); }
+  }
+  if (!ul.children.length && nT) { const li = document.createElement("li"); li.className = "good"; li.textContent = "没有建筑点或施法点因此变得不平。要看所有规则（坡道、豁口、街区），关卡线跑 mappage.py --apply-preview。"; ul.appendChild(li); }
+}
+function brushLabels() {
+  $("b-rv").textContent = `${$("b-r").value} 世界`;
+  $("b-sv").textContent = TP ? `${$("b-s").value}≈${(+$("b-s").value * TP.world_per_ours).toFixed(1)} 世界/下` : $("b-s").value;
+}
+$("b-r").addEventListener("input", brushLabels); $("b-s").addEventListener("input", brushLabels); brushLabels();
+G.terrain.style.display = "none";
+$("l-terrain").addEventListener("change", (e) => { G.terrain.style.display = e.target.checked ? "" : "none"; drawTerrain(); });
+if (!TP) for (const b of document.querySelectorAll("#tgroup button, #tgroup input")) b.disabled = true;
+
 // ---- interaction ----------------------------------------------------------------------------------------------------
 let mode = "move", draft = null, drag = null;
 const HINT = { move: "按住一个地点拖到新位置，松手后写一句为什么，再保存提议。",
-  block: "在图上依次点下挡路线的各个点，点完按“画完了”。", note: "在图上点一下要批注的位置，然后写批注。" };
+  line: "在图上依次点下挡路线的各个点，点完按“画完了”。", note: "在图上点一下要批注的位置，然后写批注。",
+  raise: "按住在图上涂：每涂一下，圆心抬高“强度”，往外线性减到 0。可以连涂几笔，一起存成一条提议。",
+  lower: "按住在图上涂：每涂一下，圆心压低“强度”，往外线性减到 0。",
+  flatten: "按住在图上涂：取下笔那一格的高度，把圆里的地往这个高度拉，每下最多拉“强度”。",
+  block: "按住在图上涂：把圆里的格子画成不可通行（只改通行位，不动高度）。",
+  unblock: "按住在图上涂：擦掉圆里格子的不可通行位（游戏是否还会按坡度自己判悬崖，引擎线还没查清）。" };
+const TERRAIN_OPS = ["raise", "lower", "flatten", "block", "unblock"];
+const OP_NAME = { raise: "抬高", lower: "压低", flatten: "整平", block: "画不可通行", unblock: "擦不可通行" };
 function setMode(m) {
-  mode = m; cancelDraft();
+  if (TERRAIN_OPS.includes(m) && !D.terrain) return;
+  const keep = draft && draft.kind === "terrain" && TERRAIN_OPS.includes(m);
+  mode = m; if (!keep) cancelDraft();
   for (const b of document.querySelectorAll("[data-mode]")) b.setAttribute("aria-pressed", String(b.dataset.mode === m));
   svg.setAttribute("class", `mode-${m}`);
+  if (TERRAIN_OPS.includes(m) && !$("l-terrain").checked) { $("l-terrain").checked = true; G.terrain.style.display = ""; drawTerrain(); }
+  showSlip();
 }
 for (const b of document.querySelectorAll("[data-mode]")) b.addEventListener("click", () => setMode(b.dataset.mode));
 function world(ev) {
@@ -270,18 +405,28 @@ function world(ev) {
 }
 svg.addEventListener("pointermove", (ev) => {
   const [x, y] = world(ev);
-  $("coord").textContent = `x ${r0(x)}, y ${r0(y)}`;
+  $("coord").textContent = `x ${r0(x)}, y ${r0(y)}` + (D.terrain ? `，高 ${heightAt(x, y)}` : "");
   if (drag) { drag.to = [x, y]; drawDraft(); }
+  if (stroke) {
+    const n = stroke.dabs.length, lx = stroke.dabs[n - 2], ly = stroke.dabs[n - 1];
+    if (Math.hypot(x - lx, y - ly) >= Math.max(10, stroke.r / 4)) { stroke.dabs.push(r0(x), r0(y)); terrainChanged(); }
+  }
 });
 svg.addEventListener("pointerdown", (ev) => {
   const [x, y] = world(ev);
-  if (mode === "move") {
+  if (TERRAIN_OPS.includes(mode)) {
+    if (!draft || draft.kind !== "terrain") draft = { kind: "terrain", strokes: [] };
+    stroke = { op: mode, r: +$("b-r").value, s: +$("b-s").value, dabs: [r0(x), r0(y)] };
+    if (mode === "flatten") stroke.height = CUR.e[cellIndex(r0(x), r0(y))];
+    draft.strokes.push(stroke);
+    svg.setPointerCapture(ev.pointerId); terrainChanged();
+  } else if (mode === "move") {
     const g = ev.target.closest(".site");
     if (!g) return;
     const s = D.sites.find((q) => q.k === g.dataset.k);
     drag = { kind: "move", site: s.k, from: [s.x, s.y], to: [s.x, s.y] };
     draft = drag; svg.setPointerCapture(ev.pointerId); drawDraft();
-  } else if (mode === "block") {
+  } else if (mode === "line") {
     if (!draft) draft = { kind: "block", points: [] };
     draft.points.push([r0(x), r0(y)]); drawDraft(); showSlip();
   } else if (mode === "note") {
@@ -289,6 +434,7 @@ svg.addEventListener("pointerdown", (ev) => {
   }
 });
 svg.addEventListener("pointerup", () => {
+  if (stroke) { stroke = null; PRE = null; terrainChanged(); showSlip(); return; }
   if (!drag) return;
   const d = drag; drag = null;
   if (Math.hypot(d.to[0] - d.from[0], d.to[1] - d.from[1]) < 15) { cancelDraft(); return; }
@@ -304,6 +450,12 @@ function nearest(x, y, skip) {
   return best;
 }
 function describe(p) {
+  if (p.kind === "terrain") {
+    const n = {}; for (const st of p.strokes) n[st.op] = (n[st.op] || 0) + 1;
+    const b = strokeBox(p), c = nearest((b[0] + b[2]) / 2, (b[1] + b[3]) / 2);
+    return `地形 ${p.strokes.length} 笔（${Object.entries(n).map(([k, v]) => `${OP_NAME[k]} ${v}`).join("、")}），范围 (${r0(b[0])}, ${r0(b[1])})–(${r0(b[2])}, ${r0(b[3])})` +
+      (c ? `，在 ${c[0]} 附近` : "");
+  }
   if (p.kind === "move") {
     const n = nearest(p.to[0], p.to[1], p.site);
     return `挪地点 ${p.site}：(${r0(p.from[0])}, ${r0(p.from[1])}) → (${p.to[0]}, ${p.to[1]})，挪了 ${r0(Math.hypot(p.to[0] - p.from[0], p.to[1] - p.from[1]))}` +
@@ -319,6 +471,19 @@ function describe(p) {
 function shape(p, layer, color, faint) {
   const g = el("g", { "data-id": p.id || "" }, layer);
   const op = faint ? .55 : 1;
+  if (p.kind === "terrain") {
+    for (const st of p.strokes) {
+      const pts = pairs(st.dabs);
+      const dash = st.op === "lower" ? "30 18" : st.op === "unblock" ? "8 14" : null;
+      const a = { points: pts.map(([x, y]) => `${sx(x)},${sy(y)}`).join(" "), fill: "none", stroke: color, "stroke-width": 2 * st.r,
+        "stroke-linecap": "round", "stroke-linejoin": "round", opacity: .16 * op };
+      el("polyline", a, g);
+      const b = { ...a, "stroke-width": 6, opacity: op }; if (dash) b["stroke-dasharray"] = dash;
+      el("polyline", b, g);
+    }
+    if (p.why) el("title", {}, g).textContent = p.why;
+    return g;
+  }
   if (p.kind === "move") {
     el("line", { x1: sx(p.from[0]), y1: sy(p.from[1]), x2: sx(p.to[0]), y2: sy(p.to[1]), stroke: color, "stroke-width": 10, "stroke-dasharray": "26 14", opacity: op }, g);
     el("circle", { cx: sx(p.to[0]), cy: sy(p.to[1]), r: 34, fill: "none", stroke: color, "stroke-width": 10, opacity: op }, g);
@@ -336,16 +501,21 @@ function shape(p, layer, color, faint) {
   return g;
 }
 function drawDraft() { G.draft.innerHTML = ""; if (draft) shape(draft, G.draft, "var(--prop)", false); }
-function cancelDraft() { draft = null; drag = null; drawDraft(); showSlip(); }
+function cancelDraft() { const t = draft && draft.kind === "terrain"; draft = null; drag = null; stroke = null; PRE = null; drawDraft(); if (t) terrainChanged(); showSlip(); }
 function showSlip() {
   const box = $("slip"); box.innerHTML = "";
-  if (!draft || (draft.kind === "move" && drag)) {
+  if (!draft || (draft.kind === "move" && drag) || stroke) {
     const p = document.createElement("p"); p.className = "note"; p.id = "hint"; p.textContent = HINT[mode]; box.appendChild(p); return;
   }
   const s = document.createElement("div"); s.className = "slip";
   const d = document.createElement("div"); d.innerHTML = "<b>新提议</b> "; d.appendChild(document.createTextNode(describe(draft)));
   const ta = document.createElement("textarea"); ta.id = "why"; ta.placeholder = draft.kind === "note" ? "批注写什么" : "为什么要这样改";
   const row = document.createElement("div"); row.className = "row";
+  if (draft.kind === "terrain") {
+    const undo = document.createElement("button"); undo.textContent = "撤一笔";
+    undo.onclick = () => { draft.strokes.pop(); if (!draft.strokes.length) cancelDraft(); else { terrainChanged(); showSlip(); } };
+    row.appendChild(undo);
+  }
   if (draft.kind === "block") {
     const done = document.createElement("button"); done.textContent = "撤一个点";
     done.onclick = () => { draft.points.pop(); if (!draft.points.length) cancelDraft(); else { drawDraft(); showSlip(); } };
@@ -364,6 +534,17 @@ showSlip();
 
 // ---- proposal store (db) --------------------------------------------------------------------------------------------
 let db = null, me = "", props = [], selected = null;
+// when the page has no store (opened as a local file, or not signed in): the same calls, kept in memory only
+function memoryStore() {
+  const docs = new Map(), subs = [];
+  let n = 0;
+  const snap = () => ({ docs: [...docs].sort((a, b) => String(a[1].at).localeCompare(String(b[1].at))).map(([id, v]) => ({ id, data: () => v })) });
+  const tell = () => { const s = snap(); for (const f of subs) setTimeout(() => f(s), 0); };
+  const col = { add: async (v) => { const id = `local${++n}`; docs.set(id, JSON.parse(JSON.stringify(v))); tell(); return { id }; },
+    doc: (id) => ({ delete: async () => { docs.delete(id); tell(); } }),
+    orderBy: () => col, onSnapshot: (f) => { subs.push(f); setTimeout(() => f(snap()), 0); return () => {}; } };
+  return { collection: () => col };
+}
 function status(text, err) { const s = $("dbstatus"); s.textContent = text; s.className = "status" + (err ? " err" : ""); }
 async function submit(why) {
   if (!db || !draft) return;
@@ -395,18 +576,20 @@ function renderProps() {
     ul.appendChild(li);
   });
 }
-renderProps();
+renderProps(); terrainReport();
 (async () => {
   const timer = setTimeout(() => status("提议存储没有响应：页面可以看，但存不了提议。", true), 10000);
   const [d, u] = await Promise.all([window.claude?.use?.("db") ?? null, window.claude?.use?.("user") ?? null]);
   if (u) { try { me = await u.id() || ""; } catch (e) { me = ""; } }
-  if (!d) { clearTimeout(timer); status("这个视图里不能存提议（未登录或没开放存储），只能看。", true); return; }
-  db = d; showSlip();
+  let local = false;
+  if (!d) { clearTimeout(timer); db = memoryStore(); local = true; }
+  else db = d;
+  showSlip();
   db.collection("proposals").orderBy("at").onSnapshot((snap) => {
     clearTimeout(timer);
     props = snap.docs.map((s) => ({ ...s.data(), id: s.id })).filter((p) => p.level === D.level);
-    status(`${props.length} 条提议。`);
-    renderProps();
+    status(local ? `这个视图里没有提议存储（未登录或没开放），提议只记在本页内存里，刷新就没了：${props.length} 条。` : `${props.length} 条提议。`, local);
+    renderProps(); rebaseTerrain();
   }, (e) => { clearTimeout(timer); status(`读不到提议：${e && e.message || e}`, true); });
 })();
 

@@ -5,6 +5,12 @@ draw a block line, pin a note) in its own store, and --pull reads them back as a
   python -I -X utf8 experimental/mappage/mappage.py a4             -> work/mappage/a4/a4_mappage.html (+ a4.json, a4.png)
   python -I -X utf8 experimental/mappage/mappage.py a4 --no-picture   (skip the top-down picture: seconds faster)
   python -I -X utf8 experimental/mappage/mappage.py a4 --pull [FILE]  the proposals as a readable list
+  python -I -X utf8 experimental/mappage/mappage.py a4 --apply-preview [FILE] [--only ID ...]
+      the terrain proposals applied to the map a build writes (terrain_edit.py), and which contract rules that turns red
+
+Terrain proposals (raise, lower, flatten, paint the impassable bit) are brush strokes; terrain_edit.py says what a stroke
+does and terrain.js, put into the page, is its mirror for the live preview (tests/test_mappage_terrain.py holds them to
+the same result). The rules after the ground moves are the engine line's terrain_rules.py.
 
 Where everything comes from:
   - the map: the map module's SITES, BORDERS, OBJECTS (resources.py's ore, oil and pads included), SCENERY, LAYOUT
@@ -36,6 +42,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 CNV = os.path.join(ROOT, 'experimental', 'cnv')
 TEMPLATE = os.path.join(HERE, 'template.html')
+TERRAIN_JS = os.path.join(HERE, 'terrain.js')
 
 
 def _load(name, path):
@@ -53,6 +60,7 @@ def _load(name, path):
 build = _load('build', os.path.join(CNV, 'build.py'))
 import parts                                    # noqa: E402  (on the path build.py set)
 import contract                                 # noqa: E402
+terrain_edit = _load('terrain_edit', os.path.join(HERE, 'terrain_edit.py'))
 
 CELL = 10.0                                     # world units per map cell (mapterrain.CELL)
 PX = 2                                          # picture pixels per cell
@@ -169,17 +177,22 @@ def timeline(name, script=''):
     return {'ending': s.ending_line(), 'rows': rows}
 
 
-def picture(m, path):
-    """The map the build writes (the container map with the mission in it), from above, ground only; returns the world
-    rectangle it covers. Written with write_map directly, so a mission whose contract fails still gets a picture."""
+def built_map(m):
+    """The map the build writes (the container map with the mission in it). Written with write_map directly, so a
+    mission whose contract fails still gets one."""
     import make_campnew18 as c18
-    import maprender
-    import mapterrain
     from mapscript import MapFile
-    from PIL import Image
     _, data = next((p, d) for p, d in c18.c6._map_files() if p.lower().endswith('.map'))
     mf = MapFile(data)
     parts.write_map(mf, m)
+    return mf
+
+
+def picture(mf, path):
+    """A written map from above, ground only; returns the world rectangle it covers."""
+    import maprender
+    import mapterrain
+    from PIL import Image
     hm = mapterrain.HeightMap(mf)
     png = path + '.full.png'
     maprender.render(mf, png, px=PX, plain=True)
@@ -199,8 +212,12 @@ def export(name, with_picture=True, script=''):
     os.makedirs(out_dir, exist_ok=True)
     jpg = os.path.join(out_dir, name + '.jpg')
     world = list(getattr(mp, 'BORDERS', {}).get('whole', (0.0, 0.0, 5000.0, 5000.0)))
+    ground = None
     if with_picture:
-        world = picture(m, jpg)
+        mf = built_map(m)
+        world = picture(mf, jpg)
+        g = terrain_edit.from_map(mf)
+        ground = dict(terrain_edit.params(g), **terrain_edit.encode(g))
     d = {
         'level': name, 'mod': mod, 'map': mp.__name__.split('.')[-1], 'world': world,
         'sites': [{'k': k, 'x': _r(s.x), 'y': _r(s.y), 'r': _r(s.r), 'what': s.what, 'cast': _r(s.cast),
@@ -215,14 +232,17 @@ def export(name, with_picture=True, script=''):
         'guides': guides(m),
         'rules': rules(m),
         'timeline': timeline(name, script),
+        'terrain': ground,
     }
     for o in d['map_objects'] + d['objects']:
         o['kind'] = kind_of(o['t'])
-    json.dump(d, open(os.path.join(out_dir, name + '.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+    plain = dict(d, terrain=None if ground is None else {k: v for k, v in ground.items() if k not in ('elev', 'bits')})
+    json.dump(plain, open(os.path.join(out_dir, name + '.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
     img = ''
     if os.path.exists(jpg):
         img = 'data:image/jpeg;base64,' + base64.b64encode(open(jpg, 'rb').read()).decode()
     page = open(TEMPLATE, encoding='utf-8').read()
+    page = page.replace('__TERRAIN_JS__', open(TERRAIN_JS, encoding='utf-8').read())
     page = page.replace('__DATA__', json.dumps(d, ensure_ascii=False).replace('</', '<\\/')).replace('__IMG__', img).replace('__TITLE__', f'{name.upper()} 地图改动台')
     html = os.path.join(out_dir, f'{name}_mappage.html')
     open(html, 'w', encoding='utf-8', newline='\n').write(page)
@@ -263,16 +283,52 @@ def _where(sites, x, y, skip=(), moving=False):
     return f'{at}，离它最近的地点是 {k!r}（{dist:.0f} 远）；要用就新建一个地点'
 
 
-def pull(name, path):
-    m, _, _ = build.resolve(name, '')
-    sites = getattr(m.map, 'SITES', {})
-    if os.path.isdir(path):                     # ArtifactData out_dir: <path>/proposals/<id>.json, the body only
+def read_proposals(name, path):
+    """The level's proposals from a saved file or an ArtifactData out_dir (<path>/proposals/<id>.json, the body only)."""
+    if os.path.isdir(path):
         sub = os.path.join(path, 'proposals') if os.path.isdir(os.path.join(path, 'proposals')) else path
         raw = [{'id': f[:-5], 'data': json.load(open(os.path.join(sub, f), encoding='utf-8'))}
                for f in sorted(os.listdir(sub)) if f.endswith('.json')]
     else:
         raw = json.load(open(path, encoding='utf-8'))
-    docs = [p for p in _docs(raw) if p.get('level', name) == name]
+    return [p for p in _docs(raw) if p.get('level', name) == name]
+
+
+OP_NAME = {'raise': '抬高', 'lower': '压低', 'flatten': '整平', 'block': '画不可通行', 'unblock': '擦不可通行'}
+
+
+def _terrain_line(p, sites):
+    """One terrain proposal: its brushes, and where they are (the box they cover, the sites inside or nearest)."""
+    sts = p.get('strokes', [])
+    pts = [(x, y, float(st['r'])) for st in sts for x, y in terrain_edit.dabs(st['dabs'])]
+    if not pts:
+        return ['地形：没有笔画']
+    x0, y0 = min(x - r for x, y, r in pts), min(y - r for x, y, r in pts)
+    x1, y1 = max(x + r for x, y, r in pts), max(y + r for x, y, r in pts)
+    n = {}
+    for st in sts:
+        n[st['op']] = n.get(st['op'], 0) + 1
+    inside = [k for k, s in sites.items() if s.r < 1000 and any(math.dist((s.x, s.y), (x, y)) < r for x, y, r in pts)]
+    out = [f'地形 {len(sts)} 笔（' + '、'.join(f'{OP_NAME.get(k, k)} {v}' for k, v in n.items()) +
+           f'），范围 ({x0:.0f}, {y0:.0f})–({x1:.0f}, {y1:.0f})']
+    for st in sts:
+        what = f'   {OP_NAME.get(st["op"], st["op"])}：半径 {float(st["r"]):g}'
+        if st['op'] in terrain_edit.HEIGHT_OPS:
+            what += f'，强度 {float(st["s"]):g}/下'
+        if st['op'] == 'flatten':
+            what += f'，拉向高度 {float(st["height"]):g}'
+        out.append(what + f'，{len(terrain_edit.dabs(st["dabs"]))} 下')
+    if inside:
+        out.append(f'   刷到的地点：{", ".join(inside)}')
+    else:
+        out.append(f'   位置：{_where(sites, (x0 + x1) / 2, (y0 + y1) / 2)}')
+    return out
+
+
+def pull(name, path):
+    m, _, _ = build.resolve(name, '')
+    sites = getattr(m.map, 'SITES', {})
+    docs = read_proposals(name, path)
     lines = [f'{name} 的改动提议：{len(docs)} 条（{os.path.relpath(path, ROOT)}；地图模块 maps/{m.map.__name__.split(".")[-1]}.py）']
     for i, p in enumerate(docs, 1):
         why = p.get('why') or p.get('text') or ''
@@ -293,10 +349,52 @@ def pull(name, path):
                          f'{sum(math.dist(a, b) for a, b in zip(pts, pts[1:])):.0f}')
             for j, (x, y) in enumerate(pts):
                 lines.append(f'   {"起" if j == 0 else "终" if j == len(pts) - 1 else "经"}点 {_where(sites, x, y)}')
+        elif p['kind'] == 'terrain':
+            first, *rest = _terrain_line(p, sites)
+            lines.append(f'{head} {first}')
+            lines += rest
         else:
             x, y = p['at_xy']
             lines.append(f'{head} 批注 {_where(sites, x, y)}')
         lines.append(f'   为什么：{why or "（没写）"}' + (f'；状态 {p["status"]}' if p.get('status') else ''))
+    return '\n'.join(lines)
+
+
+def apply_preview(name, path, ids=None):
+    """The terrain proposals (all, or those in ids, in the order they were made) applied with terrain_edit on the map
+    the build writes, then the contract run on the edited ground against the unedited one: which rules go red, which
+    clear. The map module is not touched -- the level line makes the change."""
+    m, _, _ = build.resolve(name, '')
+    m = parts.merged(m, None)
+    sites = getattr(m.map, 'SITES', {})
+    docs = [p for p in read_proposals(name, path) if p['kind'] == 'terrain' and (not ids or p.get('id') in ids)]
+    lines = [f'{name}：{len(docs)} 条地形提议按先后套在构建出的地图上（{os.path.relpath(path, ROOT)}）']
+    if not docs:
+        return '\n'.join(lines)
+    g0 = terrain_edit.from_map(built_map(m))
+    g = g0
+    for i, p in enumerate(docs, 1):
+        g1, _ = terrain_edit.apply_proposals(g, [p])
+        s = terrain_edit.summary(p, g, g1)
+        lines.append(f'{i}. [{p.get("id", "")}] {_terrain_line(p, sites)[0]}')
+        lines.append(f'   高度改了 {s["moved"]} 格（最多抬 {max(0.0, s["up"]):.1f}、压 {max(0.0, -s["down"]):.1f}，我们的单位；世界单位 ×'
+                     f'{terrain_edit._rules().WORLD_PER_OURS}），新不可通行 {s["blocked"]} 格，新可通行 {s["opened"]} 格')
+        g = g1
+    f0, f1 = terrain_edit.flat_sites(g0, sites), terrain_edit.flat_sites(g, sites)
+    flips = [(k, w, f1[(k, w)]) for (k, w) in f0 if f0[(k, w)] != f1[(k, w)]]
+    lines.append('平不平（terrain_rules.flat_enough，地点的建筑方块和施法圆）：' +
+                 ('没有变化' if not flips else '；'.join(f'{k} 的{"建筑点" if w == "build" else "施法点"}'
+                                                    f'{"变平了" if ok else "不再平"}' for k, w, ok in flips)))
+    with terrain_edit.lint_on(g0):
+        before = parts.contract(m)
+    with terrain_edit.lint_on(g):
+        after = parts.contract(m)
+    red, cleared = [p for p in after if p not in before], [p for p in before if p not in after]
+    lines.append(f'contract：改之前 {len(before) or "ok"}，改之后 {len(after) or "ok"}'
+                 f'（同一套检查，地图设计那部分读改过的地面和画过的通行位）')
+    lines += [f'   新红 {p}' for p in red] + [f'   变好 {p}' for p in cleared]
+    import terrain_rules
+    lines.append('关卡线改地图模块时一起带上：' + '；'.join(k for k, _ in terrain_rules.MUST_FOLLOW))
     return '\n'.join(lines)
 
 
@@ -305,9 +403,15 @@ def main():
     ap.add_argument('name')
     ap.add_argument('--pull', nargs='?', const='', default=None, metavar='FILE',
                     help='list the proposals saved in FILE or folder (default work/mappage/<name>/pulled)')
+    ap.add_argument('--apply-preview', nargs='?', const='', default=None, metavar='FILE',
+                    help='apply the terrain proposals (FILE or folder, as --pull) to the built map and run the contract')
+    ap.add_argument('--only', nargs='*', default=None, metavar='ID', help='with --apply-preview: just these proposals')
     ap.add_argument('--no-picture', action='store_true')
     ap.add_argument('--script', default='', help="the simulator's player script (sim.py --script)")
     a = ap.parse_args()
+    if a.apply_preview is not None:
+        print(apply_preview(a.name, a.apply_preview or os.path.join(OUT, a.name, 'pulled'), a.only))
+        return
     if a.pull is not None:
         print(pull(a.name, a.pull or os.path.join(OUT, a.name, 'pulled')))
         return
