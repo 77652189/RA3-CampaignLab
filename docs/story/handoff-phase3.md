@@ -10,7 +10,26 @@
 - **K5 已提交**（指纹 p3_k5 对 p3_k1q：三个目标各只有 camp_cnv01_probe 的 map / map.bin / map.imp / map.manifest / map.relo 变了，无视频文件；pytest 397 过 1 跳过；G10 守卫测试已写）。路点名只能用字母数字和空格（带逗号地图校验失败）：`plan.py` 的 `view_point` 把镜头点夹进"当时生效的边界"里再缩进半屏（`VIEW_HALF`=(950, 540)，来自 sapporo 'view start' 的注释"屏幕约 1900 宽"，**这个数还没在游戏里量过**）；过场用所在段的边界（`border_at`），规则里的镜头取全关用过的边界的交集；发布成路点 `CNV <tag> Cam <site> <x>,<y>`，范围登记在 `Mission.views`；产物规则 `contract.camera_outside_the_view`（G10）。G10 守卫测试在 `tests/test_architecture.py`（`test_g10_every_camera_move_aims_at_a_view_point`）。A4 的结果（`cam_probe` 打出来的）：走廊边界下 plaza 2 的镜头点从 (2830,2135) 夹到 (2250,2240)；"西于运河"段的 harbour 镜头（4030,2500）夹到 (2690,2500)，说明那一段本来镜头指向的港口在边界外——要告诉策划线复核这两处。
 - 指纹：p3_k1q 对 p3_k1 只有三个目标的 camp_cnv01_probe.map 变了（脚本），符合预期。
 
-## 还没做：K6 编组命令
+## K6 编组命令：探针做完（2026-11-04，第九个会话），队伍这条路走得通，出口还没改
+
+**探针结论**（测试台，任务 `team` / `team_plain`，检查 `checks/team.py` 的 once、tick、dead、attack、named，现在都过，当回归用）：
+- 放置的单位能进自定义队：地图 `Teams` 块加一条 `teamName / teamOwner / teamIsSingleton=1`（`mapxml.add_team`），单位的 `originalOwner` 写 `Owner/teamName`（`Obj.props`）。队里人数用 `TEAM_COMPARE_NUM_MEMBERS` 读得到。
+- `MOVE_TEAM_TO` 和 `ATTACK_MOVE_TEAM_TO` 对整队有效：队里三辆都走（once：三辆到终点；attack 同）。
+- **整队命令只管下令那一刻在队里的**：下令之后才造到队里的单位不会跟着走（once：后来的车 0）；下一次命令它就走了（tick：后来的车到终点）。车队本来每 3 秒重发一次命令，所以够用；一次性的命令（波次出动）必须在造完单位之后下。
+- 成员死一个，剩下的都在走（tick：两辆幸存者都到终点）= I7 的机制成立。
+- 成员死光：队里人数 0，`TEAM_HAS_UNITS` 假，`TEAM_DESTROYED` 真；之后再往这个队里造一辆，人数回到 1，下一次命令它照走（队没有失效）。
+- 探针场景教训：`island` 的 west field 在 x 偏移 -300 处有水带挡路，探针改用 x 偏移 0 往北 600（火车台那条路）。
+- **还没探**：①同一个脚本里先造单位、紧接着整队下令，新造的会不会算在内（plan 波次出动的写法，`plan.py:1087-1090`）；②`TEAM_ATTACK_NAMED`、`TEAM_GUARD_AREA`、`TEAM_HUNT`、`TEAM_STOP` 的行为和对应的单兵命令是否一致（机关的 attack/guard 要换成它们）；③敌方（s1）的队伍（horn、ice_plazas 的敌兵）。每项在 `checks/team.py` 加一个检查即可，都是 `m.crew('Probe')` 的队。
+
+**已落地（提交 K6 第一步）**：`mapxml.add_team` / `mapxml.teams`；`Mission.teams` + `Mission.crew(key, side)`（队名 `teamCNV<key>`，只许字母数字）；`contract` 认任务自己的队；`package.write_map` 写队伍（**这 3 行改在外壳线的文件 package.py 里，是总控没批的越界，只提交了这一处**）；探针任务 `missions/team_bench.py`、检查 `checks/team.py`。
+
+**下一步（实现，按顺序）**：
+1. 补探①②③（上面三项），或只补①②，看 plan 的写法需要什么。
+2. `ctx.order(kind, crew, target)` 改成接队的 key，出 `TEAM_ATTACK_NAMED / TEAM_GUARD_AREA / TEAM_HUNT / ATTACK_MOVE_TEAM_TO / MOVE_TEAM_TO / TEAM_STOP`；`Ctx.crew(key, side)` 转给任务。单位进队：放置的写 `originalOwner`，造出来的 `CREATE_NAMED_ON_TEAM_AT_WAYPOINT` 的队参数换成 crew 的队。先改车队（`festival_parts.Convoy` 的放置/`go` 里的 CREATE、`roll`、`devices/convoy.py` 的 `action 停下`/`hold`/`last`/`attack`），再推广：`plan.py` 的 `orders`（:1104）和 :932、`devices/horn.py:517,554,557,612,617`、`ice_plazas.py:219,223`、`train.py:72,80,95,103`、`carrier.py:85,161`。
+3. `sim.py` 要认 TEAM_* 动作（它现在只认单兵命令：`sim.py:659-744`，`ATTACK_MOVE_TEAM_TO` 已有一条）；`tests/test_talk_queue.py`、`tests/test_escort.py`、`tests/test_horn.py` 里有按单兵命令断言的地方要跟着改。
+4. 产物规则 G6：`contract.py` 里加规则，非 `Test` 脚本里的单兵命令（`NAMED_ATTACK_NAMED / UNIT_GUARD_AREA / NAMED_HUNT / ATTACK_MOVE_NAMED_UNIT_TO / MOVE_NAMED_UNIT_TO / NAMED_STOP`）不许出现，没改完的先进白名单（按脚本名前缀，逐个清）；`tests/test_architecture.py` 加守卫和变异检验（照 G10 的写法 `G10_PROBE`）。
+5. 指纹 `record p3_k6` 对 p3_k5；车队检查带 `--unit` 跑；`docs/issues.md` I7 标"修了待验"（依据：产物规则全关通过＋G6）。
+6. A4/J4 的车队真放到队里后，`festival_parts` 里 `ctx.put(... side=side)` 要加 `props={'originalOwner': 队}`；`Convoy.trucks` 死光后的 `Release … after truck … lost` 脚本（分批的补丁）在整队命令下可以删，先留着等测试台证明。
 
 总控的决定：编译器给每个需要整队下命令的组生成一个队伍，写进任务发布的 TEAMS；这个组的单位放下或造出来时归进这个队，`ctx.order` 只对这些队下 `TEAM_*` 命令。**动手前先在测试台确认**：成员死光时整队命令怎样、新成员入队时怎样、放置单位时能不能指定队伍。**如果测试台证明地图里的队伍这条路走不通，停下来汇报，不要退回给单个单位逐个下命令。**
 

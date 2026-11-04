@@ -29,6 +29,9 @@ def write_map(m, mm):
     mm.map.terrain(m)
     for side, props in mm.sides.items():
         mapxml.set_player(m, mm.player(side), **props)
+    for team in mm.teams.values():          # the mission's own teams (Mission.crew), 'Owner/teamName'
+        owner, name = team.split('/')
+        mapxml.add_team(m, name, owner)
     borders = getattr(mm.map, 'BORDERS', None)
     if borders:                             # MAP_SWITCH_BORDER(k) switches to the k-th; the first is the whole map
         import mapterrain

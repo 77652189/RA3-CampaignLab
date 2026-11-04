@@ -148,6 +148,8 @@ class Mission(Part):
                                                                 # 原文 (the flow script's words, what a dubbed line
                                                                 # is looked up by), 通报 (what the caption shows),
                                                                 # 字串 (its string key)}
+    teams: dict = dataclasses.field(default_factory=dict)       # {crew key: 'Owner/teamName'} the mission's own teams,
+                                                                # written into the map's Teams (Mission.crew, K6)
     sides: dict = dataclasses.field(default_factory=dict)       # {side: {player property: value}} changed in the
                                                                 # map's player list (a skirmish AI's faction, its
                                                                 # personality: mapxml.set_player)
@@ -246,6 +248,15 @@ class Mission(Part):
             return self.map.TEAMS[side]
         p = self.player(side)
         return f'{p}/team{p}'
+
+    def crew(self, key, side='p1'):
+        """The team of a group that is ordered as one (a convoy: K6), made on first use, as `side`'s: written into the
+        map's Teams, a singleton named after the key. Returns what a script calls it ('Player_1/teamCNVConvoy')."""
+        if key not in self.teams:
+            owner = self.player(side)
+            assert key.isalnum(), f'crew {key!r}: letters and digits only (a team name goes through Latin-1 as a script argument)'
+            self.teams[key] = f'{owner}/teamCNV{key}'
+        return self.teams[key]
 
     def drop_endings(self):
         """The mission without its win / lose scripts (a check that keeps the counters up)."""

@@ -84,6 +84,28 @@ def set_player(m, name, **props):
     node.head = d[:p] + encode_props(m, pr) + d[end:]
 
 
+def add_team(m, name, owner):
+    """A singleton team `name` of player `owner` added to the map's Teams chunk (u32 count, then one property dictionary
+    per team: teamName, teamOwner, teamIsSingleton -- retail's player teams are exactly these three). A script names it
+    'owner/name' (CREATE_NAMED_ON_TEAM_AT_WAYPOINT, MOVE_TEAM_TO ...), a placed object by originalOwner 'owner/name'."""
+    node = next(x for _, x in m.walk() if x.name == 'Teams')
+    d = node.head
+    if any(t.get('teamName', (0, None))[1] == name for t in teams(m)):
+        raise KeyError(f'team {name!r} is already in the map')
+    pr = {'teamName': (3, name), 'teamOwner': (3, owner), 'teamIsSingleton': (0, 1)}
+    node.head = struct.pack('<I', struct.unpack_from('<I', d, 0)[0] + 1) + d[4:] + encode_props(m, pr)
+
+
+def teams(m):
+    """The map's teams, one {property: (type, value)} each."""
+    node = next(x for _, x in m.walk() if x.name == 'Teams')
+    d, p, out = node.head, 4, []
+    for _ in range(struct.unpack_from('<I', d, 0)[0]):
+        pr, p = _typed_props_end(m, d, p)
+        out.append(pr)
+    return out
+
+
 def environment(m):
     """GameMap's EnvironmentData / WorldDict / PostEffect from the .map's EnvironmentData (v5: 2 x f32, macro,
     cloud and environment texture names), WorldInfo (a property dictionary) and PostEffectsChunk (v2: u32 count,
