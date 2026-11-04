@@ -18,11 +18,11 @@ params length / lifetime / health.
 import os
 import re
 
-import make_campnew2 as c2
+import labpaths
 from parts import Unit
 from units import look
 
-SAGE = os.path.join(c2.SDK, 'SageXML')
+SAGE = os.path.join(labpaths.SDK3, 'SageXML')
 
 
 def sub1(x, old, new):

@@ -15,11 +15,11 @@ Published: building(retail, units, id) and yard(retail, copies, id), each a Unit
 import os
 import re
 
-import make_campnew2 as c2
+import labpaths
 from parts import Unit
 from units.icewall import sub1
 
-SAGE = os.path.join(c2.SDK, 'SageXML')
+SAGE = os.path.join(labpaths.SDK3, 'SageXML')
 FACTIONS = ('Allied', 'Soviet')
 _sets = None
 

@@ -17,9 +17,9 @@ quiet(unit): no command buttons at all (EmptyCommandSet) -- a prop on a building
 import os
 import re
 
-import make_campnew2 as c2
+import labpaths
 
-SAGE = os.path.join(c2.SDK, 'SageXML')
+SAGE = os.path.join(labpaths.SDK3, 'SageXML')
 _RETAIL = {}
 
 

@@ -13,12 +13,12 @@ Published: what it is; params health, speed.
 import os
 import re
 
-import make_campnew2 as c2
+import labpaths
 from parts import Unit
 from units import look
 from units.icewall import cut, sub1
 
-SAGE = os.path.join(c2.SDK, 'SageXML')
+SAGE = os.path.join(labpaths.SDK3, 'SageXML')
 CARGO = 'CNConvoyCargo'
 
 

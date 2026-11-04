@@ -17,11 +17,11 @@ child entering the parent (NAMED_GARRISON_SPECIFIC_BUILDING).
 import os
 import re
 
-import make_campnew2 as c2
+import labpaths
 from parts import Unit
 from units import look
 
-SAGE = os.path.join(c2.SDK, 'SageXML', 'Japan', 'Units')
+SAGE = os.path.join(labpaths.SDK3, 'SageXML', 'Japan', 'Units')
 JOINED = 'CONTAINER_OCCUPIED'                   # the parent's status while the child is aboard
 PART_COMMAND = 'Command_Evacuate'
 
@@ -33,7 +33,7 @@ def sub1(x, old, new):
 
 def breaker(id, damage):
     """The joined form's weapon: the King Oni's veteran beam, at buildings only (ANTI_STRUCTURE), `damage` a shot."""
-    w = open(os.path.join(c2.SDK, 'SageXML', 'GlobalData', 'Weapon.xml'), encoding='utf-8').read()
+    w = open(os.path.join(labpaths.SDK3, 'SageXML', 'GlobalData', 'Weapon.xml'), encoding='utf-8').read()
     m = re.search(r'<WeaponTemplate\s+id="JapanAntiVehicleVehicleTech3BeamWeapon_Veteran".*?</WeaponTemplate>', w,
                   flags=re.S)
     g = sub1(m.group(0), 'id="JapanAntiVehicleVehicleTech3BeamWeapon_Veteran"', f'id="{id}"')

@@ -21,11 +21,11 @@ Published: abilities deploy = the toggle's command button (NAMED_USE_COMMANDBUTT
 import os
 import re
 
-import make_campnew2 as c2
+import labpaths
 from parts import Unit
 from units import look
 
-SAGE = os.path.join(c2.SDK, 'SageXML')
+SAGE = os.path.join(labpaths.SDK3, 'SageXML')
 RETAIL = 'AlliedAntiVehicleVehicleTech1'        # the Guardian
 TOGGLE_COMMAND = 'Command_ToggleTargetPainter'   # its painter toggle: deploy / pack up
 COOLDOWN_BIT = 'DOES_CONTAIN_TIBERIUM'           # a C&C3 bit no RA3 XML uses (as in CampNew34)
