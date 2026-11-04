@@ -73,7 +73,7 @@ def assault(m):
     t.scripts.append(Script('Test - order again', [('TIMER_EXPIRED', order)],
                             [('SET_MILLISECOND_TIMER', order, ORDER_EVERY)], once=False))   # after the orders above
     t.strings['SCRIPT:CNVTEST_JUMP'] = 'TEST：自由号跃迁'
-    # by template owned (the KindOf-in-area counts read 20 for 12 vehicles on the first run: see build.kinds)
+    # by template owned (the KindOf-in-area counts read 20 for 12 vehicles on the first run: see missions/count_probes.kinds)
     counted('Test Platforms', '平台剩余', t, template=platforms[0].template, player=enemy)
     counted('Test Hammers', '敌方铁锤', t, template=hammer, player=enemy)
     counted('Test Guardians', '守护者', t, template=m.role('guardian').template)
