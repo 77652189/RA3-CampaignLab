@@ -10,16 +10,16 @@
 
 ## 下一步
 
-1. **为五个问题设计一套完整方案**，交给用户定。用户否掉了"只做低风险止血"，原话："A没办法解决全部五个问题吧"。方案要包括：
-   - 每个问题的目标状态：评审第 2.4 节的 L0～L5 分层，已写进 [docs/architecture.md](docs/architecture.md)；
-   - 分几步走，每步怎么验证没有回退：评审第 4 节建议用"构建指纹"，即对比整改前后 `.big` 里每个文件的 sha1；
-   - 守卫测试 G1～G10（评审第 5 节）分别在哪一步加；
-   - 各线分工：关卡负责 `cnv/`，外壳负责打包和 `shell.py`，总控负责 `testbench/` 和守卫；
-   - 独立验收怎么落地，也就是在 CampShell 上当玩家去验 I1～I15（[docs/issues.md](docs/issues.md)）；
-   - 额度估算，以及先后顺序。
-
-   评审里的"不建议"也要遵守：不一次性重写 c2～c18，也不把整个 `experimental/` 改成可安装包。
-2. 用户定下方案后，重大决定记成 ADR，再恢复关卡线（交接见 `docs/story/handoff.md`）和外壳线（交接见 `docs/shell/handoff.md`，如果它写了的话）。
+1. **第 0 阶段**，按 [ADR 0016](docs/adr/0016-one-outlet-per-class.md) 做。用户 2026-11-03："可以，按推荐做"。
+   - 指纹工具：先确认同样的输入构建两次结果一致，再给 A4 单关、CampShell、CampShellEn 记基线；
+   - `parts.py` 按层拆成三份，旧文件留作转手导出的空壳，拆完要求指纹不变；
+   - 在 `tests/test_architecture.py` 里加守卫 G1、G2、G3a、G4、G5，用法见评审第 5 节；
+   - `cnv/units` 的 15 个文件改用 `labpaths.SDK3`；
+   - 归档 26 个探针，归档后指纹不变。
+2. 第 0 阶段做完，恢复外壳线和关卡线：
+   - 外壳线做打包收口，交接见 `docs/shell/handoff.md`；
+   - 关卡线同时做断环、`Ctx` 和各自注册，交接见 `docs/story/handoff.md`。
+   - 开场消息里写明 ADR 0016 定的分工和文件归属。
 3. 等用户的：
    - 配音响度对比页还没听，在配音仓库的 `work/campaign/loudness_ab/`，决定 -14 LUFS 要不要降；
    - 英文播报和沃斯的声音是不是还像（I14）。
@@ -61,7 +61,7 @@
 ## 状态
 
 ```yaml
-slice: architecture-remediation-design-2026-11-03
+slice: architecture-remediation-phase0-2026-11-03
 blocked_on: none        # none | voice-session | user
 next_gate: playtest     # test-map | coordinate-calibration | demo | playtest
 ```
