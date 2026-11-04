@@ -24,7 +24,7 @@ STATE_FIELDS = {
     'blocked_on': {'none', 'voice-session', 'user'},
     'next_gate': {'test-map', 'coordinate-calibration', 'demo', 'playtest'},
 }
-ENGINE_DOCS = {'script-semantics.md', 'know-how.md'}
+ENGINE_DOCS = {'script-semantics.md', 'know-how.md', 're-probe.md'}
 PLAN_MAX_KB = 40        # status only (2026-10-28 it was 115 KB of history and know-how: archive/, engine/)
 
 
