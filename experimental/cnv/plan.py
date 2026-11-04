@@ -240,6 +240,8 @@ class Compiler:
         self.last = []              # the scripts the last when() made
         self.talk = []              # spoken lines outside a 过场 (flag, actions, seconds): said one at a time (compile_talk)
         self.scening = False        # compiling a 过场: its lines are timed by the scene itself
+        self.held = False           # a 过场 leaves the caption strip busy past its end (compile_talk frees the floor)
+        self.turn = 0.0             # seconds the last 通报 compiled inside a 过场 takes to say (say() sets it)
         self.counted = {}           # group -> the counter of its losses (摧毁 <group> <n> 个)
         self.troop_counters = {}    # kinds counted together -> their counter (兵少于 <n> <units>)
         self.music = self.load_music(data.get('音乐'))
@@ -716,6 +718,7 @@ class Compiler:
         off in one frame and the engine queues the voices but not their subtitles): the line only raises its flag, and
         compile_talk's script plays it when nobody is talking, then holds the floor for `secs`."""
         if self.scening:
+            self.turn = secs                         # the scene queues its lines by this (scene_steps)
             return acts
         flag = f'CNV_{self.tag}_Say_{len(self.talk)}'
         self.talk.append((flag, acts, max(secs, STRIP_CLEAR)))
@@ -727,21 +730,23 @@ class Compiler:
             self.m.scripts.append(Script(f'CNV {self.tag} - Say {k}', [('FLAG', flag, 1), ('FLAG', busy, 0)],
                                          [('SET_FLAG', flag, 0), ('SET_FLAG', busy, 1),
                                           ('SET_MILLISECOND_TIMER', timer, float(secs))] + acts, once=False))
-        if self.talk:
+        if self.talk or self.held:
             self.m.scripts.append(Script(f'CNV {self.tag} - Say done', [('FLAG', busy, 1), ('TIMER_EXPIRED', timer)],
                                          [('SET_FLAG', busy, 0)], once=False))
 
-    def spoken(self, step):
-        """Seconds a dubbed 通报 of a 过场 takes to say (its recording and a pause), or 0."""
-        if not (isinstance(step, dict) and '通报' in step and step.get('说') and self.voice is not None):
-            return 0.0
-        n = self.voice.length(step['说'], step.get('原文', step['通报']))
-        return n + SPEECH_GAP if n else 0.0
+    @staticmethod
+    def is_line(step):
+        """A 通报 (a line said or captioned): inside a 过场 it takes the floor like one outside (see say)."""
+        if isinstance(step, dict):
+            return '通报' in step
+        return isinstance(step, str) and step.strip().startswith('通报')
 
     def chained(self, rest):
         """True when the next thing in a 过场 that takes time is another 镜头 (the pans run into each other)."""
         for s in rest:
-            if isinstance(s, dict) and ('停' in s or '跟随' in s or self.spoken(s)):
+            if isinstance(s, dict) and ('停' in s or '跟随' in s):
+                return False
+            if self.is_line(s):
                 return False
             if isinstance(s, dict) and '镜头' in s:
                 return True
@@ -791,7 +796,7 @@ class Compiler:
         plan's own for 秒), 停 (秒 of nothing), 揭全图 看一眼 (the whole map, shrouded again at the end), any other
         action at once (a caption, a device's, a 技能: what the camera is to see); then the input back. Returns the
         phase-start actions and the scene's length; the later steps are timed scripts on `段 <phase> + t`."""
-        at, t, look, follow = {}, 0.0, False, False
+        at, t, look, follow, line_at = {}, 0.0, False, False, None
         looked = []                                  # sites a 镜头 lifted the shroud at: shrouded again at the hand-back
         steps, prev, joined = list(ph.spec['过场']), None, False
         for i, step in enumerate(steps):
@@ -826,10 +831,16 @@ class Compiler:
                                                  self.m.player('p1'), self.look_name(site)))
                 t, prev, joined = t + secs, str(step['镜头']), nxt
                 continue
+            if self.is_line(step):
+                # one line at a time, as outside a 过场 (user 2026-11-03: "一句说完了之后再继续说"): the caption strip stacks
+                # its lines and clears them together STRIP_CLEAR after the last, so a line waits for the one before it
+                if line_at is not None and t < line_at + STRIP_CLEAR:
+                    t = line_at + STRIP_CLEAR
+                self.turn = 0.0
+                at.setdefault(t, []).extend(self.action(step))
+                line_at, t, joined = t, t + self.turn, False
+                continue
             at.setdefault(t, []).extend(self.action(step))
-            if self.spoken(step):                    # the next step waits for the voice: one line at a time
-                t += self.spoken(step)
-                joined = False
         if t <= 0:
             raise PlanError(f'段 {ph.name} 过场: it takes no time -- a 镜头, 跟随 or 停 gives it its length')
         fire, fire_end = self.ceasefire(ph) if ph.spec.get('停火') else ([], [])
@@ -837,7 +848,12 @@ class Compiler:
         for part in ph.spec.get('保护') or []:
             guard += [('UNIT_CHANGE_OBJECT_STATUS', n, 'UNATTACKABLE', 1) for n in self.part_names(part)]
             guard_end += [('UNIT_CHANGE_OBJECT_STATUS', n, 'UNATTACKABLE', 0) for n in self.part_names(part)]
-        end = [('ENABLE_INPUT',), ('CAMERA_LETTERBOX_END',)] + ([('CAMERA_STOP_FOLLOW',)] if follow else []) + \
+        hold = []
+        if line_at is not None and line_at + STRIP_CLEAR > t:        # the last line's strip is still up: no line over it
+            self.held = True
+            hold = [('SET_FLAG', f'CNV_{self.tag}_Talking', 1),
+                    ('SET_MILLISECOND_TIMER', f'CNV {self.tag} Talk Timer', line_at + STRIP_CLEAR - t)]
+        end = hold + [('ENABLE_INPUT',), ('CAMERA_LETTERBOX_END',)] + ([('CAMERA_STOP_FOLLOW',)] if follow else []) + \
             ([('MAP_REVEAL_ALL_UNDO_PERM', self.m.player('p1'))] if look else []) + \
             [('MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT', self.look_name(x)) for x in looked] + fire_end + guard_end + \
             [('SET_FLAG', self.scene_flag(ph), 1)]

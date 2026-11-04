@@ -44,7 +44,7 @@ def test_a_scene_holds_the_input_and_leads_the_camera():
     assert ('MOVE_CAMERA_TO', 'CNV ZZ At west field', 3.0, 0.0, 1.0, 1.0) in first
     steps = {waits_for(m, s): s.do for s in named(m, 'CNV ZZ - Phase 1 scene')}
     camp = m.cast['camp'].name
-    assert set(steps) == {3.0, 7.0, 9.0}
+    assert set(steps) == {3.0, 7.0, 9.0, 13.0}      # the closing line is said (4 s) before the hand-back
     assert steps[3.0] == [('MAP_REVEAL_ALL_PERM', m.player('p1')), ('CAMERA_FOLLOW_NAMED', camp, 0, plan.FOLLOW_AT)]
     assert steps[7.0] == [('CAMERA_STOP_FOLLOW',)]
     assert steps[9.0][0][0] == 'SHOW_MILITARY_CAPTION'
@@ -52,13 +52,13 @@ def test_a_scene_holds_the_input_and_leads_the_camera():
     reveal = next(a for a in first if a[0] == 'MAP_REVEAL_PERMANENTLY_AT_WAYPOINT')
     assert reveal[1] == 'CNV ZZ At west field' and reveal[3:] == (m.player('p1'), 'CNV ZZ Look west field')
     assert plan.LOOK_MIN <= reveal[2] <= plan.LOOK_MAX
-    assert steps[9.0][1:] == [('ENABLE_INPUT',), ('CAMERA_LETTERBOX_END',), ('CAMERA_STOP_FOLLOW',),
+    assert steps[13.0][2:] == [('ENABLE_INPUT',), ('CAMERA_LETTERBOX_END',), ('CAMERA_STOP_FOLLOW',),
                               ('MAP_REVEAL_ALL_UNDO_PERM', m.player('p1')),
                               ('MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT', 'CNV ZZ Look west field'),
                               ('SET_FLAG', 'CNV_ZZ_Scene_1', 1)]
-    assert m.facts['过场 一'] == 9.0
+    assert m.facts['过场 一'] == 13.0
     goal = named(m, 'CNV ZZ - Phase 1 goal 1')[0]
-    assert waits_for(m, goal) == 9.0 + plan.REVEAL_FIRST         # the goals once the player has the input back
+    assert waits_for(m, goal) == 13.0 + plan.REVEAL_FIRST         # the goals once the player has the input back
 
 
 def test_after_the_scene():
@@ -91,7 +91,7 @@ def test_reveal_for_good_and_undo_it():
 
 @pytest.mark.parametrize('bad', [{'规则': [{'当': '开局', '做': [{'揭全图': '看一眼'}]}]},
                                  {'规则': [{'当': '开局', '做': [{'跟随': 'camp'}]}]},
-                                 {'段': [{'名字': '一', '过场': ['通报 没有时间']}]},
+                                 {'段': [{'名字': '一', '过场': [{'揭全图': '看一眼'}]}]},
                                  {'段': [{'名字': '一', '过场': [{'跟随': 'west field'}]}]},
                                  {'规则': [{'当': '开局', '做': [{'揭开': 'nowhere'}]}]}])
 def test_scene_words_misused_are_errors(bad):
@@ -138,3 +138,18 @@ def test_the_design_check_on_scenes_shown_goals_and_the_first_enemy():
     assert not any(t.startswith('开局没有基地') for _, t in plancheck.design_check(with_base))
     sheet = plancheck.beat_sheet(plan_of(段=[{'名字': '一', '过场': SCENE}]))
     assert '9 秒后交还控制' in sheet
+
+
+def test_lines_in_a_scene_are_said_one_at_a_time():
+    """User 2026-11-03 ("一句说完了之后再继续说", scenes too): the caption strip stacks lines and clears them together, so
+    any two lines of a scene start STRIP_CLEAR apart at least, whatever the plan wrote between them, and the hand-back
+    leaves the floor busy until the last line's strip has gone."""
+    m = small(段=[{'名字': '一', '过场': [{'镜头': 'west field', '秒': 3}, '通报 一', '通报 二', {'停': 1}, '通报 三']}])
+    ws = [waits_for(m, s) for s in named(m, 'CNV ZZ - Phase 1 scene')]
+    starts = sorted(w for s, w in zip(named(m, 'CNV ZZ - Phase 1 scene'), ws)
+                    if any(a[0] == 'SHOW_MILITARY_CAPTION' for a in s.do))
+    assert len(starts) == 3 and all(b - a >= plan.STRIP_CLEAR for a, b in zip(starts, starts[1:]))
+    end = max(ws)
+    hand = next(s for s in named(m, 'CNV ZZ - Phase 1 scene') if ('ENABLE_INPUT',) in s.do)
+    assert starts[-1] + plan.STRIP_CLEAR - end == next(a[2] for a in hand.do if a[0] == 'SET_MILLISECOND_TIMER')
+    assert any(s.name.endswith('Say done') for s in m.scripts)
