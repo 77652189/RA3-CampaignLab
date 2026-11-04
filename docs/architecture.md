@@ -4,13 +4,18 @@
 
 ## 分层
 
-```
-units/ (Blender 建模、贴图、图标)  ─┐
-campaign/ (地图、脚本、地形、光照) ─┼─> campaign/mapxml + make_campnew7 (编译 + 链接成 map.* 流)
-                                    │        └─> sdk\RA3ModSDK3 的 BinaryAssetBuilder
-testbench/ (隔离的游戏副本 + 截帧/输入 shim) <── 只读消费上面的产物，验证在游戏里的效果
-music/ (Pathfinder 曲谱图 .mpf + 音轨 .mus) ──> pack.py ──> cnv/parts.Mission.music ──> 关卡 mod 的 static 流和 big
-```
+**目标分层**来自 2026-11-03 的架构评审（[reviews/architecture-2026-11-03.md](reviews/architecture-2026-11-03.md) 第 2.4 节）。下表是边界；现状离目标有多远、按什么顺序收，以 [plan.md](plan.md) 为准。从下往上依次是：
+
+| 层 | 内容 | 对外接口 | 不许 |
+|---|---|---|---|
+| L0 格式库 | `labpaths`、`ra3voice/*`，以及 map、big、脚本、地形、光照的读写 | 读写函数 | 知道"关卡""外壳"这些概念 |
+| L1 内容 | `cnv/maps`、`cnv/units`、`cnv/devices`，音乐、配音、视频的打包 | 地点 `SITES`、单位对象、机关、资源包 | import 编译器或打包层 |
+| L2 编译 | `plan.py`（手写关卡也走同一个上下文） | 策划稿 → 纯数据的 Mission | 碰文件系统，碰打包层的全局变量 |
+| L3 打包 | `parts.assemble` 背后的 `make_campnew*`，以及外壳 | 一个入口：按清单（ModSpec）出 mod | 读模块级的可变全局变量。外壳只往清单里加东西 |
+| L4 编排 | `build.py` | 命令行入口；关卡和检查各自注册 | 手写注册表 |
+| L5 验收 | `parts.contract` 的规则检查、`testbench/` | 只读最终产物；动态检查只加观测 | import L1、L2 的常量，改动被测行为 |
+
+**现状**（评审第 1、2 节）：打包层是 `make_campnew18→7→6→4→{2,3}` 一串复制出来的版本，靠 import 时改别人模块的全局变量拼在一起；检查不能在 CampShell 上跑，还会改动被测的关卡；台词和单兵命令都有多个出口。音乐只通过 `cnv/parts.Mission.music` 进关卡 mod 的 static 流和 big（见下面"不许怎么做"）。
 
 ## 各线负责的文件（用户 2026-10-26 定按线分会话开发）
 

@@ -4,17 +4,26 @@
 
 ## 当前目标
 
-**按设计工作流返工关卡，先拿 A4 试点**（用户 2026-10-27）。11 关粗版都是从第 4 步（可玩粗版）直接做起的，要回到第 0～3 步补设计，再改策划案。工作流、闸门和准则见 [docs/design/charter.md](docs/design/charter.md)；A4 的纸面设计和给关卡线的实现清单见 [docs/design/a4-redesign.md](docs/design/a4-redesign.md)。
+**先解决管理和架构问题，再恢复产品线**（用户 2026-11-03："先把管理问题解决了"）。关卡线、外壳线已经暂停，原因是额度；策划、配音、音乐、单位四条线都空闲。
 
-**先模拟、后测试台**：改策划案先跑 `plan_sim`（`experimental/cnv/sim.py`），测试台只留给引擎行为和最后的对齐。
+为什么要先解决：A4 试玩三轮下来，用户提的问题大多是"坏了""看不懂"两类，而且有几条报过修好又复发。结构原因记在 [ADR 0015](docs/adr/0015-fix-error-classes-at-source.md)；代码层面的原因在只读架构评审 [docs/reviews/architecture-2026-11-03.md](docs/reviews/architecture-2026-11-03.md) 里，五个核心问题摘要在 [docs/plan.md](docs/plan.md) 的"架构整改"一行。
 
 ## 下一步
 
-1. 用户 2026-10-28 的试玩已归层（[docs/plan.md](docs/plan.md)「2026-10-28 试玩答过的」）：策划线补"敌军构成与克制"、改 A4 样板；音乐线做第三版；剩下的试玩项攒着等下一轮。
-2. 关卡线按 a4-redesign.md 末尾的实现清单返工 A4，先用模拟器跑通，再上测试台。总控验收：模拟器版检查 + 受影响的测试台检查。
-   - 2026-10-28 发给关卡线、在它队列里的两条：按需对齐模拟器（A4 的战斗对阵、高地视野、"一个兵种能否打完一段"的离线检查）；引擎探针结果（帧率约 15、死亡无残留，**取反条件在游戏里不起作用**，要查编译器）。下次先看它回了什么，验收取反修复要跑 `build.py probe --check align`（期望 PASS）。
-   - 引擎探针还没测：难度按哪一方；同一帧又赢又输的结算画面是胜是负，要对照一张已知画面。
-3. A4 走通后，其余 10 关依次过工作流的第 1～3 步（策划线），再进第 4 步（关卡线）。
+1. **为五个问题设计一套完整方案**，交给用户定。用户否掉了"只做低风险止血"，原话："A没办法解决全部五个问题吧"。方案要包括：
+   - 每个问题的目标状态：评审第 2.4 节的 L0～L5 分层，已写进 [docs/architecture.md](docs/architecture.md)；
+   - 分几步走，每步怎么验证没有回退：评审第 4 节建议用"构建指纹"，即对比整改前后 `.big` 里每个文件的 sha1；
+   - 守卫测试 G1～G10（评审第 5 节）分别在哪一步加；
+   - 各线分工：关卡负责 `cnv/`，外壳负责打包和 `shell.py`，总控负责 `testbench/` 和守卫；
+   - 独立验收怎么落地，也就是在 CampShell 上当玩家去验 I1～I15（[docs/issues.md](docs/issues.md)）；
+   - 额度估算，以及先后顺序。
+
+   评审里的"不建议"也要遵守：不一次性重写 c2～c18，也不把整个 `experimental/` 改成可安装包。
+2. 用户定下方案后，重大决定记成 ADR，再恢复关卡线（交接见 `docs/story/handoff.md`）和外壳线（交接见 `docs/shell/handoff.md`，如果它写了的话）。
+3. 等用户的：
+   - 配音响度对比页还没听，在配音仓库的 `work/campaign/loudness_ab/`，决定 -14 LUFS 要不要降；
+   - 英文播报和沃斯的声音是不是还像（I14）。
+4. 留着的事：用 `work/logs/mods_deleted.txt` 查已删掉的测试 mod；三个不能重建的 mod 备份在 `Documents\RA3Modding\mods_backup\`。
 
 ## 必读
 
@@ -52,7 +61,7 @@
 ## 状态
 
 ```yaml
-slice: design-workflow-a4-pilot-2026-10-28
-blocked_on: user        # none | voice-session | user
+slice: architecture-remediation-design-2026-11-03
+blocked_on: none        # none | voice-session | user
 next_gate: playtest     # test-map | coordinate-calibration | demo | playtest
 ```
