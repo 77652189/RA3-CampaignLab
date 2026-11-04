@@ -151,7 +151,10 @@ def test_g5_checks_do_not_reach_into_content_layers():
     files = _tracked()
     names = _layer_names(files)
     checks = _under(files, f'{CNV}/checks', '.py', deep=False)
-    hits = {f for f in checks if _imported_tops(_read(f)) & names}
+    # an engine probe (checks/engine_*.py) builds its own throwaway mission and needs a map to stand on, nothing else
+    maps = {'maps'} | {PurePosixPath(f).stem for f in _under(files, f'{CNV}/maps', '.py', deep=False)}
+    reach = lambda f: _imported_tops(_read(f)) & (names - maps if PurePosixPath(f).name.startswith('engine_') else names)
+    hits = {f for f in checks if reach(f)}
     assert hits, 'no check imports a content layer, the guard would pass vacuously'
     assert hits <= CHECK_IMPORT_ALLOWED, f'checks now import content layers: {sorted(hits - CHECK_IMPORT_ALLOWED)}'
 

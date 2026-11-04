@@ -1,6 +1,6 @@
 """Engine unit test: when does the caption strip clear, and is the tutorial text box a strip that does not stack?
 
-The strip (SHOW_MILITARY_CAPTION, shared with dialogue subtitles) stacks lines and clears them all together. What
+The strip (the military caption, through ctx.caption, shared with dialogue subtitles) stacks lines and clears them all together. What
 sets the moment: a fixed hold after the last line (seen ~5.4 s with 6 s captions), or the last line's own seconds?
   A at A_AT for 15 s alone, B at B_AT for 2 s alone, C at C_AT for 2 s then D a second later for 10 s.
   Fixed hold: each clears ~5.4 s after its last line. Own seconds: A ~15 s, B ~2 s, C+D ~10 s after D.

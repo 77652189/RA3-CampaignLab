@@ -24,7 +24,17 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 PAGES = os.path.join(ROOT, 'work', 'walkthrough')
-sys.path.insert(0, os.path.join(HERE, 'teardowns', 'data'))
+DATA = os.path.join(HERE, 'teardowns', 'data')
+
+
+def _data_module(name):
+    """A module of teardowns/data loaded by its path (no sys.path edit: tests/test_architecture.py G4)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(name, os.path.join(DATA, name + '.py'))
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[name] = mod
+    spec.loader.exec_module(mod)
+    return mod
 
 QUIET_S = 180       # F3: longest stretch of a defend / escort phase with no wave, no countdown (floor-rules.md F3)
 WARN_S = 5          # F6: a wave that goes for a lose condition gives at least this much warning before it spawns
@@ -35,7 +45,7 @@ GENERIC = {'帝国步兵': '步', '苏联步兵': '步', '盟军步兵': '步'} 
 
 def roles():
     """{Chinese unit name: (body, kills)} and {faction: [names]} from units_measure's hand table."""
-    import units_measure as UM
+    UM = _data_module('units_measure')
     table = {name: (body, kills) for name, body, kills in UM.ROLES.values()}
     standard = {f: [UM.ROLES[t][0] for t in ts if t in UM.ROLES] for f, ts in UM.STANDARD.items()}
     return table, standard
