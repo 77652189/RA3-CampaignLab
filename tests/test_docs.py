@@ -18,6 +18,9 @@ HARD_CONSTRAINTS = [
     '不改 Steam 游戏目录里的文件',
     '不解密 Corona mod',
     '回复用通俗中文',
+    '总之让我听不到就可以',
+    '就只在国内发布吧，不上N网',
+    '只用来做mod，研究学习里面的内容，不公开',
 ]
 STATE_FIELDS = {
     'slice': None,                                              # free text
