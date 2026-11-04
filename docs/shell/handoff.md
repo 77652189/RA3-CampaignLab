@@ -2,6 +2,15 @@
 
 外壳线 2026-11-03 从关卡线拆出（[architecture.md](../architecture.md) 各线负责的文件）。以前做过的事和坑在 [story/handoff.md](../story/handoff.md) 搜"外壳""CampShell"（第 33～42、61～69 行）。问题编号见 [issues.md](../issues.md) K9。
 
+## ADR 0016 第 2 阶段第一块：检查叠在外壳上（2026-11-04，总控派活，git log 搜 "phase 2" + "Shell line"）
+
+- **做了什么**：`build.py <关> --shell --check <检查>` 放开（`build.parse()` 抽出来了）。检查经 `package.check_layer(m, t)` 叠成一层：只往那一关的地图追加路点、物体、脚本、触发区（`package.write_more`，复用 `write_map` 存在 `m.cnv_like` 上的摆放模板），字串、单位走 `with_more`。构建前先过 `contract.observes(m, t)`：不是只观测就拒绝并列出原因；`--unit` 照样构建但叫机关单测，结果首行打"机关单测，不算验收"。mod 名：验收版 CampShellT / CampShellEnT，机关单测 CampShellU / CampShellEnU，正式版 CampShell 不动。
+- **测试台**：检查层给 `ModSpec.bench` 写 `{'slot': k}`，`write_sidecar` 只在有这一项时写进 `cnv_map.json`（正式版 sidecar 字节不变）。`harness.start` 没给 steps 时读到 slot 就走 `harness.shell_steps(slot)`（主菜单 → 战役子菜单的章节按钮 → `chapter_step(slot)` → nav.json 第 3 步以后）。`shell_shots.chapter_step` 现在就是 `harness.chapter_step`。`bench_mcp.cnv_check` 加了 `shell`、`unit` 两个参数。
+- **守卫 G8** 在 `tests/test_architecture.py` 末尾（子进程里把构建桩掉，只验接线：只观测的 → CampShellT + 层；会动手的 → 拒绝；`--unit` → CampShellU）。变异脚本 `work/shell/phase2/g8_mutate.py`（改的是副本，不碰活文件），5 种改坏都抓到，还原通过。离线等价测试 `tests/test_shell.py::test_a_check_as_a_layer_writes_the_map_the_merged_build_writes`：叠层写出的地图脚本、触发区、物体数和合并构建完全相同。
+- **验证**：指纹 shell_p2b 三个目标和 baseline 一致；pytest 386 过 1 跳过（在临时 worktree `../RA3-CampaignLab-p2` 里跑的：HEAD + 外壳线这几个文件，因为关卡线工作区里 `devices/horn.py` 正改到一半，a4 编不过）。测试台：`a4 --shell --check win --unit` RESULT PASS（第 4 关从章节列表进去，计数器读到）；`a4 --check win` 单关版两次 FAIL（一次 Esc 打不开菜单，一次车数一直 0、第 526 秒结束），判定对不上的原因见汇报。
+- **坑：视频包的并发问题（没修，是下一步）**：`experimental/video/pack.py` 的 `make()` 在 `spec_of` 里、构建锁外面就写 `SDK/Mods/CNVVideo/Data/video.xml`。两个构建同时跑时，后一个会覆盖前一个的视频声明：指纹 shell_p2 的 CampShell 丢了 CNVHEAD01、CNVINTRO01..（同时在构建 CampA4Win）。修法：写 include 挪到 `build_mod` 的锁里面（音乐、配音包也要查有没有同样的问题）。修之前别和指纹并行构建。
+- 临时 worktree `../RA3-CampaignLab-p2`（detached HEAD，`work` 是指回主目录的目录联接）用完可以 `git worktree remove`。
+
 ## ADR 0016 第 1 阶段：打包收口（2026-11-03 恢复，总控派活）
 
 任务四步，都是纯重构，每步要求：`fingerprint.py record shell_s<N>`（后台约 8 分钟）后 `diff baseline shell_s<N>` 三个目标一致，`pytest -q tests` 全过，小步提交只提交自己的文件。

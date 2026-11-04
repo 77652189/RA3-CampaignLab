@@ -58,12 +58,7 @@ def settle(b, h, wait=75):
             return
 
 
-def chapter_step(slot):
-    """The chapter list (title bar template cut from a frame of it: work/testbench/nav/step_chapters.png): its `slot`-th row,
-    then Proceed. The rows are 20.7 px apart from y 263 (1280 x 720 frame)."""
-    return {'name': f'chapter list: slot {slot}', 'how': 'tpl', 'box': [190, 28, 360, 68], 'threshold': 18,
-            'template': 'step_chapters.png',
-            'actions': [['click', 640, round(262.7 + 20.7 * (slot - 1))], ['wait', 0.6], ['click', 875, 676]]}
+chapter_step = harness.chapter_step     # the chapter list's row `slot`, then Proceed (the bench walks it too)
 
 
 def tour(mod, out, plain=False, visible=False, parts='cards,overview,chapters', slot=None, linger=6, look=8):
@@ -75,7 +70,7 @@ def tour(mod, out, plain=False, visible=False, parts='cards,overview,chapters', 
         steps = json.load(f)
     steps[2] = dict(steps[2], box=[190, 28, 360, 68], template='step2_shell.png', threshold=18)
     if slot:
-        steps = [steps[0], dict(steps[1], actions=[['click', 375, 426]]), chapter_step(slot)] + steps[3:]
+        steps = harness.shell_steps(slot)
     use = None if plain else mod
     for part in parts.split(','):
         b = Walker()

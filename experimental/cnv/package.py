@@ -38,27 +38,54 @@ def write_map(m, mm):
     objs = next(n for _, n in m.walk() if n.name == 'ObjectsList')
     tmpl = lambda k: k.head[22:22 + int.from_bytes(k.head[20:22], 'little')].decode('latin-1')   # noqa: E731
     like = mm.map.like(m, objs, tmpl)
+    m.cnv_like = like                       # a later map edit (a check as a layer: write_more) places with these too
     objs.kids = [k for k in objs.kids if tmpl(k) == '*Waypoints/Waypoint']        # the map's starts stay
+    _put_waypoints(m, objs, like, mm.waypoints)
+    # the map's own objects (a bridge's two ends stay next to each other), its scenery (civilian props), the mission's
+    _put_objects(m, objs, like, list(getattr(mm.map, 'OBJECTS', [])) + list(getattr(mm.map, 'SCENERY', [])) + mm.objects)
+    ours = _script_nodes(m, unnot(mm.scripts))      # before clearing: chunk versions are read off existing nodes
+    newmap.clear_scripts(m)[2].kids += ours
+    m.set_trigger_areas(mm.areas)           # the base map's areas went with its scripts
+    m.set_objectives([dict(name=g.name, title=g.title, desc=g.desc, bonus=int(g.bonus), flags=1)
+                      for g in mm.objectives])
+
+
+def write_more(m, waypoints, objects, scripts, areas):
+    """More written into a map write_map wrote (a check riding on a build as a layer, check_layer): waypoints and
+    objects after the mission's, placed like them; scripts (already unnot) after the mission's in the same list;
+    `areas` the map's trigger areas from now on (the mission's, then the new ones)."""
+    objs = next(n for _, n in m.walk() if n.name == 'ObjectsList')
+    _put_waypoints(m, objs, m.cnv_like, waypoints)
+    _put_objects(m, objs, m.cnv_like, objects)
+    psl = next(n for _, n in m.walk() if n.name == 'PlayerScriptsList')
+    psl.kids[2].kids += _script_nodes(m, scripts)       # newmap.clear_scripts: index 2 runs our scripts
+    m.set_trigger_areas(areas)
+
+
+def _put_waypoints(m, objs, like, waypoints):
+    import newmap
     wid = 1 + max(newmap.typed_props_of(m, k)[0].get('waypointID', (1, 0))[1] for k in objs.kids)
-    for k, (wname, (x, y)) in enumerate(mm.waypoints.items()):
+    for k, (wname, (x, y)) in enumerate(waypoints.items()):
         objs.kids.append(newmap.object_node(m, *like['wp'], '*Waypoints/Waypoint', x, y, waypointName=wname,
                                             waypointID=wid + k, uniqueID=f'Waypoint {wid + k}'))
-    # the map's own objects (a bridge's two ends stay next to each other), its scenery (civilian props), the mission's
-    for o in list(getattr(mm.map, 'OBJECTS', [])) + list(getattr(mm.map, 'SCENERY', [])) + mm.objects:
+
+
+def _put_objects(m, objs, like, objects):
+    import newmap
+    for o in objects:
         angle = o.angle if o.angle is not None else (1.5708 if o.side == 'p1' else -1.5708)
         extra = dict(o.props, **({'objectName': o.name} if o.name else {}))
         props, flags = like[o.side]
         objs.kids.append(newmap.object_node(m, props, flags if o.flags is None else o.flags, o.template, o.x, o.y,
                                             angle=angle, uniqueID=o.name or f'{o.template} {len(objs.kids)}', **extra))
-    ours = [m.new_script(s.name, [m.new_content('Condition', *c) for c in s.when]
+
+
+def _script_nodes(m, scripts):
+    return [m.new_script(s.name, [m.new_content('Condition', *c) for c in s.when]
                          or [m.new_content('Condition', 'CONDITION_TRUE')],
                          [m.new_content('ScriptAction', *a) for a in s.do], one_shot=s.once,
                          difficulties=tuple(s.levels))
-            for s in unnot(mm.scripts)]     # before clearing: chunk versions are read off existing nodes
-    newmap.clear_scripts(m)[2].kids += ours
-    m.set_trigger_areas(mm.areas)           # the base map's areas went with its scripts
-    m.set_objectives([dict(name=g.name, title=g.title, desc=g.desc, bonus=int(g.bonus), flags=1)
-                      for g in mm.objectives])
+            for s in scripts]
 
 
 def preview(mission, test=None, out=None):
@@ -115,6 +142,8 @@ class ModSpec:
     checks: tuple = ()              # more f(files) on the finished file list, after the packs'
     slot: dict = None               # the campaign shell's templates (make_campnew2.SHELL); None = the mission alone
     launcher: bool = True           # Play_<name>.bat next to the skudef (the shell has its own: launcher.py)
+    bench: dict = field(default_factory=dict)           # more for the bench in the sidecar (a check on the shell: the
+                                                        # slot to walk into); a release build has none
 
 
 def with_more(spec, **more):
@@ -135,24 +164,8 @@ def spec_of(mission, test=None, shell=False, name=None, layers=()):
     name = name or mm.name
     broken = contract(mm)
     assert not broken, 'uses what nobody published:\n  ' + '\n  '.join(broken)
-    unit_files, templates, extra_all, extra_own, strings = [], {}, [], [], {}
     seen = set()
-    for u in mm.units:
-        if u.id in seen:
-            continue
-        seen.add(u.id)
-        unit_files += list({u.id + '.xml': u.xml, **u.files}.items())
-        templates[u.id] = {'file': f'DATA:CNVUnits/Data/{u.id}.xml', 'EditorSorting': 'UNIT'}
-        # every unit compiled and linked, placed or not: map.xml includes only the object files the map places, and an
-        # object creation list or a builder names its template at run time, which the reference walk from the map
-        # never reaches (bench 2026-10-22: an OCL made retail's Guardian but nothing of ours the map did not place;
-        # the Soviet engineer building one of ours crashed the game)
-        if u.id not in {o.template for o in mm.objects}:
-            extra_all.append(f'DATA:CNVUnits/Data/{u.id}.xml')
-        extra_own += [f'GameObject:{u.id}'.encode()]
-        extra_own += [n if isinstance(n, bytes) else n.encode() for n in u.link]
-        extra_all += [f'DATA:CNVUnits/Data/{f}' for f in u.also]
-        strings.update(u.strings)
+    unit_files, templates, extra_all, extra_own, strings = _unit_parts(mm.units, mm.objects, seen)
     for fname, text, link in mm.assets:         # nothing in the map refers to them by file: included and linked
         unit_files.append((fname, text))
         extra_all.append(f'DATA:CNVUnits/Data/{fname}')
@@ -179,6 +192,67 @@ def spec_of(mission, test=None, shell=False, name=None, layers=()):
     for layer in layers:
         spec = layer(spec)
     return spec
+
+
+def _unit_parts(units, placed, seen):
+    """What `units` bring to a ModSpec (those whose id is not in `seen` yet; `seen` takes theirs): (unit_files,
+    templates, extra_all, extra_own, strings). `placed`: the objects the map places."""
+    unit_files, templates, extra_all, extra_own, strings = [], {}, [], [], {}
+    for u in units:
+        if u.id in seen:
+            continue
+        seen.add(u.id)
+        unit_files += list({u.id + '.xml': u.xml, **u.files}.items())
+        templates[u.id] = {'file': f'DATA:CNVUnits/Data/{u.id}.xml', 'EditorSorting': 'UNIT'}
+        # every unit compiled and linked, placed or not: map.xml includes only the object files the map places, and an
+        # object creation list or a builder names its template at run time, which the reference walk from the map
+        # never reaches (bench 2026-10-22: an OCL made retail's Guardian but nothing of ours the map did not place;
+        # the Soviet engineer building one of ours crashed the game)
+        if u.id not in {o.template for o in placed}:
+            extra_all.append(f'DATA:CNVUnits/Data/{u.id}.xml')
+        extra_own += [f'GameObject:{u.id}'.encode()]
+        extra_own += [n if isinstance(n, bytes) else n.encode() for n in u.link]
+        extra_all += [f'DATA:CNVUnits/Data/{f}' for f in u.also]
+        strings.update(u.strings)
+    return unit_files, templates, extra_all, extra_own, strings
+
+
+def check_layer(mission, test):
+    """A check as a layer (ADR 0016 phase 2, build.py --shell --check): what merged(mission, test) has more than the
+    mission -- the check's units; its waypoints, objects, scripts and trigger areas as one more map edit after the
+    mission's write_map (write_more), so only the mission's map gets them; its strings and its counters' labels -- with
+    nothing of the mission rewritten. The scripts come out as spec_of(mission, test) writes them, except that the
+    check's own NOT flags' scripts stand after the mission's scripts instead of first (still before the check's, the
+    only ones that read them). On a shell build it also tells the bench the slot to walk into (ModSpec.bench)."""
+    plain, whole = merged(mission), merged(mission, test)
+    broken = contract(whole)
+    assert not broken, 'uses what nobody published:\n  ' + '\n  '.join(broken)
+    for f in ('waypoints', 'areas', 'strings'):
+        had, has = getattr(plain, f), getattr(whole, f)
+        clash = sorted(key for key in had if has[key] != had[key])
+        assert not clash, f'the check rewrites the mission\'s {f}: {clash}'
+    assert whole.scripts[:len(plain.scripts)] == plain.scripts and whole.objects[:len(plain.objects)] == plain.objects
+    objects = whole.objects[len(plain.objects):]
+    waypoints = {k: v for k, v in whole.waypoints.items() if k not in plain.waypoints}
+    # unnot(whole) = the mission's NOT scripts, the check's, the mission's scripts, the check's (unnot numbers the tests
+    # in order, the mission's first); the mission's two parts are what write_map wrote
+    full, mine = unnot(whole.scripts), unnot(plain.scripts)
+    k, j = len(mine) - len(plain.scripts), len(full) - len(whole.scripts)
+    assert full[:k] == mine[:k] and full[j:j + len(plain.scripts)] == mine[k:]
+    scripts = full[k:j] + full[j + len(plain.scripts):]
+    seen = {u.id for u in plain.units}
+    unit_files, templates, extra_all, extra_own, strings = _unit_parts(whole.units, whole.objects, seen)
+    strings.update({key: v for key, v in whole.strings.items() if key not in plain.strings})
+
+    def edit(m):
+        write_more(m, waypoints, objects, scripts, whole.areas)
+        print(f'check: {len(objects)} objects, {len(waypoints)} waypoints, {len(whole.areas) - len(plain.areas)} '
+              f'areas, {len(scripts)} scripts more')
+
+    def layer(spec):
+        return with_more(spec, map_edits=(edit,), unit_files=unit_files, templates=templates, extra_all=extra_all,
+                         extra_own=extra_own, strings=strings, bench={'slot': spec.slot['slot']} if spec.slot else {})
+    return layer
 
 
 def assemble(mission, test=None, name=None, shell=False, layers=()):
@@ -278,19 +352,20 @@ def build_mod(spec, out):
         _restore(held)
     if not spec.launcher and os.path.isfile(os.path.join(out, f'Play_{name}.bat')):
         os.remove(os.path.join(out, f'Play_{name}.bat'))
-    write_sidecar(out, spec.map_name, borders)
+    write_sidecar(out, spec.map_name, borders, spec.bench)
     return out
 
 
 SIDECAR = 'cnv_map.json'
 
 
-def write_sidecar(out, map_name, borders):
+def write_sidecar(out, map_name, borders, more=None):
     """What the bench needs of the built map, next to the mod (testbench/harness.py reads it): the map's borders in
-    world units, in MAP_SWITCH_BORDER order -- the minimap draws only the playable one (calib.world_to_minimap)."""
+    world units, in MAP_SWITCH_BORDER order -- the minimap draws only the playable one (calib.world_to_minimap); and
+    `more` (ModSpec.bench: a check on the shell's 'slot', harness.start walks the chapter list into it)."""
     import json
     with open(os.path.join(out, SIDECAR), 'w', encoding='utf-8') as f:
-        json.dump(dict(map=map_name, borders=borders), f, ensure_ascii=False, indent=1)
+        json.dump(dict(map=map_name, borders=borders, **(more or {})), f, ensure_ascii=False, indent=1)
 
 
 def mod_busy(name):

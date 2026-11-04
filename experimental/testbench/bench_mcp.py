@@ -535,17 +535,23 @@ def plan_vocab(map: str = '') -> str:
 
 @server.tool(structured_output=False)
 @guard
-def cnv_check(name: str, check: str = '', build: bool = True, keep: bool = False, retry: bool = True) -> str:
+def cnv_check(name: str, check: str = '', build: bool = True, keep: bool = False, retry: bool = True,
+              shell: bool = False, unit: bool = False) -> str:
     """Build a mission with one of its checks (cnv_list), run it on the bench and judge it -- one call, no clicks, no
     pictures: the map's scripts act, its counters report, the counters are read as numbers and held against the
     check's expectations. Returns the build summary, the watch rows, the readings and PASS / FAIL per expectation.
     build=false: the mod already built. keep=true: the game stays up (inspect frames, bench_stop when done). Takes
     ~2-3 min (build ~70 s, menus ~40 s, the check's own run). retry=true: a run the capture dropped out of
-    (BENCH DROPOUT) is run once more by itself, without building again."""
-    out = _cnv_check(name, check, build, keep)
+    (BENCH DROPOUT) is run once more by itself, without building again. shell=true: the check rides on the campaign
+    shell (build.py --shell --check: the mod CampShellT, the release CampShell untouched) and the bench walks the chapter
+    list into the mission's slot -- the same check on what the player gets; only a check that only observes
+    (contract.observes) builds so. unit=true (with shell): one that acts, as a device unit test (机关单测, CampShellU) --
+    no acceptance."""
+    shell = ['--shell'] + (['--unit'] if unit else []) if shell else []
+    out = _cnv_check(name, check, build, keep, shell)
     if retry and 'BENCH DROPOUT' in out:
         # bench 2026-10-23: 3 of 14 runs dropped out, every rerun read through
-        out = out + '\n\n--- run again (dropout) ---\n' + _cnv_check(name, check, False, keep)
+        out = out + '\n\n--- run again (dropout) ---\n' + _cnv_check(name, check, False, keep, shell)
     return out
 
 
@@ -555,18 +561,18 @@ def cnv_check(name: str, check: str = '', build: bool = True, keep: bool = False
 CHECK_SPEED = float(os.environ.get('RA3_BENCH_SPEED') or 8)
 
 
-def _cnv_check(name, check, build, keep):
+def _cnv_check(name, check, build, keep, shell=()):
     was = harness.SPEED
     harness.SPEED = CHECK_SPEED         # before bench_start: the shim hooks the clocks only when the game starts sped up
     try:
-        return _cnv_run(name, check, build, keep)
+        return _cnv_run(name, check, build, keep, shell)
     finally:
         harness.SPEED = was
 
 
-def _cnv_run(name, check, build, keep):
+def _cnv_run(name, check, build, keep, shell=()):
     import json
-    args = [BUILD, name] + (['--check', check] if check else [])
+    args = [BUILD, name] + (['--check', check] if check else []) + list(shell)
     code, out = lab(*args, '--plan', *([] if build else ['--no-build']))
     plan = next((json.loads(x[5:]) for x in out.splitlines() if x.startswith('PLAN ')), None)
     if code or plan is None:

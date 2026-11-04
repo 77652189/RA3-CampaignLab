@@ -195,6 +195,32 @@ def map_borders(sku):
         return []
 
 
+def shell_slot(sku):
+    """The campaign shell's slot a check build rides on (cnv build.py --shell --check: the sidecar's 'slot'), else None."""
+    try:
+        with open(os.path.join(os.path.dirname(sku), 'cnv_map.json'), encoding='utf-8') as f:
+            return json.load(f).get('slot')
+    except (OSError, ValueError):
+        return None
+
+
+def chapter_step(slot):
+    """The chapter list (title bar template cut from a frame of it: work/testbench/nav/step_chapters.png): its `slot`-th row,
+    then Proceed. The rows are 20.7 px apart from y 263 (1280 x 720 frame)."""
+    return {'name': f'chapter list: slot {slot}', 'how': 'tpl', 'box': [190, 28, 360, 68], 'threshold': 18,
+            'template': 'step_chapters.png',
+            'actions': [['click', 640, round(262.7 + 20.7 * (slot - 1))], ['wait', 0.6], ['click', 875, 676]]}
+
+
+def shell_steps(slot):
+    """nav.json's way into a mission, through the campaign shell's chapter list to `slot` instead of the faction menu:
+    main menu, the campaign submenu's chapter button, the chapter list, then nav.json's briefing video, world map and
+    mission briefing into the game (testbench/shell_shots.py --tour overview --slot walks the same)."""
+    with open(os.path.join(nav.OUT, 'nav.json'), encoding='utf-8') as f:
+        steps = json.load(f)
+    return [steps[0], dict(steps[1], actions=[['click', 375, 426]]), chapter_step(slot)] + steps[3:]
+
+
 def seen_step(steps, frame, at, back=False):
     """A menu step other than `at` that the frame shows, the furthest first; earlier ones only with back=True (after a
     "connection lost" box). Template steps only: the video's brightness steps match any bright screen, the mission's
@@ -236,12 +262,15 @@ class Session:
     # -- life cycle -------------------------------------------------------------------------------------------
     def start(self, mod, visible=False, timeout=150, hold=True, steps=None):
         """mod None: the plain game (no -modConfig). steps: nav steps to walk instead of nav.json's way into the CNV
-        mission, e.g. nav.json's first step without its click to stop on the main menu (skirmish by hand)."""
+        mission, e.g. nav.json's first step without its click to stop on the main menu (skirmish by hand). A check
+        built on the campaign shell (its sidecar names a slot) walks the chapter list into that slot (shell_steps)."""
         if self.p and self.p.poll() is None:
             raise BenchError(f'a session is running ({self.mod}): stop it first')
         sku = skudef(mod) if mod else 'RA3'
         if mod and not os.path.exists(sku):
             raise BenchError(f'no such mod: {sku}')
+        if steps is None and mod and shell_slot(sku):
+            steps = shell_steps(shell_slot(sku))
         slot = slots.take_waiting('RA3-CampaignLab ra3bench', sku)     # queues while other bench games hold all
         foreign = slots.foreign_games()
         if foreign:

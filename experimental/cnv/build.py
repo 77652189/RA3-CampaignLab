@@ -215,7 +215,8 @@ def judge(t, readings):
     return verdicts
 
 
-def main():
+def parse(argv=None):
+    """build.py's arguments (tests/test_architecture.py G8: --shell --check is one of them)."""
     ap = argparse.ArgumentParser()
     ap.add_argument('name')
     ap.add_argument('--check', default='')
@@ -225,7 +226,13 @@ def main():
     ap.add_argument('--shell', action='store_true',
                     help='the campaign shell (shell.py, ADR 0014): the mission in its slot of the Allied campaign, the other '
                          'eight slots placeholders, with our own campaign front end, as the mod CampShell (CampShellEn with '
-                         '--lang intl; experimental/cnv/launcher.py starts either)')
+                         '--lang intl; experimental/cnv/launcher.py starts either); with --check the check rides on it as '
+                         'a layer (package.check_layer) and the mod is CampShellT / CampShellEnT, the bench walking the '
+                         'chapter list into the slot')
+    ap.add_argument('--unit', action='store_true',
+                    help='with --shell --check: a check that acts on the level (contract.observes lists how) built on the '
+                         'shell all the same, as a device unit test (机关单测, not acceptance): the mod CampShellU / '
+                         'CampShellEnU, never the acceptance CampShellT')
     ap.add_argument('--no-build', action='store_true')
     ap.add_argument('--calibrate', action='store_true')
     ap.add_argument('--plan', action='store_true', help='(ra3bench cnv_check) build, then print the bench steps as '
@@ -234,7 +241,16 @@ def main():
     ap.add_argument('--show', action='store_true', help="the build's interfaces and the contract check, nothing built")
     ap.add_argument('--preview', action='store_true', help='only the map, written to work/maps/<mod>.map in seconds '
                                                            '(no compile, no game): for mapstudy / maprender')
-    a = ap.parse_args()
+    return ap.parse_args(argv)
+
+
+TEST_SUFFIX = 'T'                       # a check on the shell: CampShellT / CampShellEnT, beside the release CampShell
+UNIT_SUFFIX = 'U'                       # a device unit test on the shell (--unit): CampShellU / CampShellEnU
+UNIT_NOTE = '机关单测，不算验收 (device unit test on the shell: the check acts on the level, contract.observes)'
+
+
+def main():
+    a = parse()
     if a.name == 'list':
         print(listing())
         return
@@ -248,10 +264,20 @@ def main():
         sys.exit(0 if text.endswith('contract: ok') else 1)
     m, t, mod = resolve(a.name, a.check)
     if a.shell:
-        if a.check:
-            sys.exit('build: --shell is the plain mission (no --check)')
         import shell
-        mod = shell.NAME + langs.edition(a.lang)['suffix']      # CampShell / CampShellEn
+        # CampShell / CampShellEn; with a check CampShellT / CampShellEnT, so the release build installed stays as it is
+        # (a device unit test: CampShellU / CampShellEnU). Only a check that only observes rides on the shell as
+        # acceptance (ADR 0016: test edition = release edition + observation)
+        mod = shell.NAME + langs.edition(a.lang)['suffix']
+        if t is not None:
+            import contract
+            acts = contract.observes(m, t)
+            if acts and not a.unit:
+                sys.exit('build: the check does more than observe, so it cannot ride on the shell as acceptance '
+                         '(--unit builds it as a device unit test):\n  ' + '\n  '.join(acts))
+            mod += UNIT_SUFFIX if a.unit else TEST_SUFFIX
+            if a.unit:
+                print(UNIT_NOTE)
     if missing_report(m):
         print(missing_report(m))
     if a.preview:
@@ -271,10 +297,14 @@ def main():
         return
     if a.judge is not None:
         lines, status = report(t, parse_counters(a.judge))
-        print('\n'.join(lines))
+        print('\n'.join(([UNIT_NOTE] if a.unit else []) + lines))
         sys.exit(status)
     if not a.no_build:
-        out = parts.assemble(m, t, name=mod, shell=a.lang if a.shell else False)
+        if a.shell and t is not None:        # the check as a layer on the shell (ADR 0016 phase 2): only adds
+            import package
+            out = parts.assemble(m, None, name=mod, shell=a.lang, layers=(package.check_layer(m, t),))
+        else:
+            out = parts.assemble(m, t, name=mod, shell=a.lang if a.shell else False)
         if 'staging' in out:
             print('built to staging (RA3 is running): no bench run')
             if a.plan:
@@ -296,7 +326,7 @@ def main():
         print('digits read back:', counters.calibrate(Image.open(os.path.join(run, last)).convert('RGB')))
         return
     lines, status = report(t, readings)
-    print('\n'.join(lines))
+    print('\n'.join(([UNIT_NOTE] if a.unit else []) + lines))
     sys.exit(status)
 
 

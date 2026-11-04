@@ -255,3 +255,47 @@ def test_g11_acceptance_checks_only_observe():
     r = subprocess.run([sys.executable, '-I', '-X', 'utf8', '-c', probe], cwd=ROOT, capture_output=True, text=True)
     assert r.returncode == 0, r.stderr[-2000:]
     assert "G11 ['acts', 'adds', 'overrides', 'reveals']" in r.stdout, r.stdout.strip()
+
+
+# G8 (ADR 0016 phase 2): a check builds on the campaign shell too. build.py <level> --shell --check <check> is parsed and
+# reaches packaging as the plain mission with the check as a layer (package.check_layer), under a mod name of its own
+# (CampShellT) so the release CampShell installed stays as it was. Only a check that only observes (contract.observes,
+# G11) gets there; one that acts is refused, or with --unit built as a device unit test under a name of its own
+# (CampShellU). The build itself is stubbed: only the wiring is held.
+G8_PROBE = '''
+import sys
+sys.path[:0] = [{cnv!r}]
+import build, contract, package, shell
+package.check_layer = lambda m, t: ('layer', m, t)
+build.resolve = lambda name, check: ('M', check, 'CampA4X')
+build.missing_report = lambda m: ''
+contract.observes = lambda m, t: [] if t == 'look' else ['NAMED_KILL acts']
+parse = build.parse
+
+def run(argv):
+    a = parse(argv)
+    got = {{}}
+    build.parse = lambda argv=None: a
+    build.parts.assemble = lambda m, t, name=None, shell=False, layers=(): got.update(
+        mission=m, test=t, name=name, shell=shell, layers=layers) or 'staging'
+    try:
+        build.main()
+    except SystemExit as e:
+        return 'refused' if 'observe' in str(e) else str(e)
+    return got
+
+ok = dict(mission='M', test=None, shell='zh')
+seen = [run(['a4', '--shell', '--check', 'look']), run(['a4', '--shell', '--check', 'win']),
+        run(['a4', '--shell', '--check', 'win', '--unit'])]
+want = [dict(ok, name=shell.NAME + 'T', layers=(('layer', 'M', 'look'),)), 'refused',
+        dict(ok, name=shell.NAME + 'U', layers=(('layer', 'M', 'win'),))]
+print('G8', seen == want, seen)
+'''
+
+
+def test_g8_a_check_builds_on_the_shell():
+    import sys
+    r = subprocess.run([sys.executable, '-I', '-X', 'utf8', '-c', G8_PROBE.format(cnv=str(ROOT / CNV))], cwd=ROOT,
+                       capture_output=True, text=True)
+    assert r.returncode == 0, (r.stdout + r.stderr)[-2000:]
+    assert 'G8 True' in r.stdout, r.stdout.strip()

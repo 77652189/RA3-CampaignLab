@@ -294,3 +294,27 @@ def test_layers_go_on_in_order_after_the_mission():
         return add
     spec = package.spec_of(liberty_bench.mission(riders=True), layers=(layer('a'), layer('b')))
     assert seen == [('a', 1), ('b', 2)] and spec.map_edits[1:] == ('a', 'b')
+
+
+def _written(spec):
+    import make_campnew18 as c18
+    from mapscript import MapFile
+    m = MapFile(next(d for p, d in c18.c6._map_files() if p.lower().endswith('.map')))
+    for e in spec.map_edits:
+        e(m)
+    objs = next(n for _, n in m.walk() if n.name == 'ObjectsList')
+    return m.script_text(), m.trigger_areas(), len(objs.kids)
+
+
+def test_a_check_as_a_layer_writes_the_map_the_merged_build_writes():
+    """build.py --shell --check (ADR 0016 phase 2): the check rides on the plain mission as a layer, and the map it
+    writes has the scripts, trigger areas and objects of the check merged into the mission (build.py --check)."""
+    import build
+    m, t, _ = build.resolve('a4', 'win')
+    layer = package.check_layer(m, t)
+    merged, layered = package.spec_of(m, t), package.spec_of(m, layers=(layer,))
+    assert _written(layered) == _written(merged)
+    assert layered.strings == merged.strings and layered.unit_files == merged.unit_files
+    # only a shell build tells the bench a slot to walk into; the release build's sidecar stays as it was
+    assert layer(package.ModSpec(name='x', slot={'slot': 4})).bench == {'slot': 4}
+    assert merged.bench == {} and layered.bench == {}
