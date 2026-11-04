@@ -20,12 +20,12 @@ Where everything comes from:
   - the rules: contract.contract over the merged mission, exactly what `build.py <level> --show` prints, and each rule
     function on its own so the page can draw where it fails.
 
-The page only stores proposals (ArtifactData collection 'proposals'); the map module stays the one source, changed by
-the level line. --pull reads what an Agent saved of that collection: by default the folder the ArtifactData 'list'
-writes with out_dir=work/mappage/<level>/pulled (one <doc id>.json per proposal, under pulled/proposals/), or one JSON
-file holding the documents.
+The page runs on this computer (user 2026-11-04): serve.py writes it, serves it on 127.0.0.1 and keeps its proposals
+as files, work/mappage/<level>/proposals/<id>.json; it also answers the page's "every rule" button with preview() below.
+The map module stays the one source, changed by the level line. --pull and --apply-preview read that folder by default
+(or another folder holding proposals/<id>.json, or one JSON file holding the documents).
 
-  ArtifactData list, url <the page>, collection proposals, out_dir work/mappage/a4/pulled
+  python -I -X utf8 experimental/mappage/serve.py a4        -> open http://127.0.0.1:8765/
   python -I -X utf8 experimental/mappage/mappage.py a4 --pull
 """
 import argparse
@@ -370,49 +370,76 @@ def pull(name, path):
     return '\n'.join(lines)
 
 
-def apply_preview(name, path, ids=None):
-    """The terrain proposals (all, or those in ids, in the order they were made) applied with terrain_edit on the map
-    the build writes, then the contract run on the edited ground against the unedited one: which rules go red, which
-    clear. The map module is not touched -- the level line makes the change."""
+def preview_base(name):
+    """What every preview of one level starts from, built once (the map build takes seconds; serve.py keeps it): the
+    merged mission, its sites, the ground the build writes and the contract on that ground."""
     m, _, _ = build.resolve(name, '')
     m = parts.merged(m, None)
-    sites = getattr(m.map, 'SITES', {})
+    g0 = terrain_edit.from_map(built_map(m))
+    with terrain_edit.lint_on(g0):
+        before = parts.contract(m)
+    return {'name': name, 'm': m, 'sites': getattr(m.map, 'SITES', {}), 'g0': g0, 'before': before}
+
+
+def preview(base, docs):
+    """The terrain proposals in docs (in the order given) applied with terrain_edit on base's ground, then the contract
+    run on the edited ground against the unedited one. Returns the steps, the sites whose flat-enough verdict flips,
+    the contract before and after, and which problems go red or clear. The map module is not touched."""
+    m, sites, g0 = base['m'], base['sites'], base['g0']
+    docs = [p for p in docs if p.get('kind') == 'terrain']
+    g, steps = g0, []
+    for p in docs:
+        g1, _ = terrain_edit.apply_proposals(g, [p])
+        steps.append({'id': p.get('id', ''), 'line': _terrain_line(p, sites)[0], 'moved': 0, 'up': 0.0, 'down': 0.0, 'blocked': 0,
+                      'opened': 0, **(terrain_edit.summary(p, g, g1) or {})})
+        g = g1
+    f0, f1 = terrain_edit.flat_sites(g0, sites), terrain_edit.flat_sites(g, sites)
+    flips = [{'site': k, 'what': w, 'flat': f1[(k, w)]} for (k, w) in f0 if f0[(k, w)] != f1[(k, w)]]
+    before = base['before']
+    if docs:
+        with terrain_edit.lint_on(g):
+            after = parts.contract(m)
+    else:
+        after = before
+    import terrain_rules
+    return {'steps': steps, 'flips': flips, 'before': list(before), 'after': list(after),
+            'red': [p for p in after if p not in before], 'cleared': [p for p in before if p not in after],
+            'must_follow': [k for k, _ in terrain_rules.MUST_FOLLOW]}
+
+
+def apply_preview(name, path, ids=None, base=None):
+    """--apply-preview: the terrain proposals saved in path (all, or those in ids, in the order they were made), as
+    text (preview() is the result as data)."""
     docs = [p for p in read_proposals(name, path) if p['kind'] == 'terrain' and (not ids or p.get('id') in ids)]
     lines = [f'{name}：{len(docs)} 条地形提议按先后套在构建出的地图上（{os.path.relpath(path, ROOT)}）']
     if not docs:
         return '\n'.join(lines)
-    g0 = terrain_edit.from_map(built_map(m))
-    g = g0
-    for i, p in enumerate(docs, 1):
-        g1, _ = terrain_edit.apply_proposals(g, [p])
-        s = terrain_edit.summary(p, g, g1)
-        lines.append(f'{i}. [{p.get("id", "")}] {_terrain_line(p, sites)[0]}')
+    r = preview(base or preview_base(name), docs)
+    for i, s in enumerate(r['steps'], 1):
+        lines.append(f'{i}. [{s["id"]}] {s["line"]}')
         lines.append(f'   高度改了 {s["moved"]} 格（最多抬 {max(0.0, s["up"]):.1f}、压 {max(0.0, -s["down"]):.1f}，我们的单位；世界单位 ×'
                      f'{terrain_edit._rules().WORLD_PER_OURS}），新不可通行 {s["blocked"]} 格，新可通行 {s["opened"]} 格')
-        g = g1
-    f0, f1 = terrain_edit.flat_sites(g0, sites), terrain_edit.flat_sites(g, sites)
-    flips = [(k, w, f1[(k, w)]) for (k, w) in f0 if f0[(k, w)] != f1[(k, w)]]
     lines.append('平不平（terrain_rules.flat_enough，地点的建筑方块和施法圆）：' +
-                 ('没有变化' if not flips else '；'.join(f'{k} 的{"建筑点" if w == "build" else "施法点"}'
-                                                    f'{"变平了" if ok else "不再平"}' for k, w, ok in flips)))
-    with terrain_edit.lint_on(g0):
-        before = parts.contract(m)
-    with terrain_edit.lint_on(g):
-        after = parts.contract(m)
-    red, cleared = [p for p in after if p not in before], [p for p in before if p not in after]
-    lines.append(f'contract：改之前 {len(before) or "ok"}，改之后 {len(after) or "ok"}'
+                 ('没有变化' if not r['flips'] else '；'.join(f'{f["site"]} 的{"建筑点" if f["what"] == "build" else "施法点"}'
+                                                         f'{"变平了" if f["flat"] else "不再平"}' for f in r['flips'])))
+    lines.append(f'contract：改之前 {len(r["before"]) or "ok"}，改之后 {len(r["after"]) or "ok"}'
                  f'（同一套检查，地图设计那部分读改过的地面和画过的通行位）')
-    lines += [f'   新红 {p}' for p in red] + [f'   变好 {p}' for p in cleared]
-    import terrain_rules
-    lines.append('关卡线改地图模块时一起带上：' + '；'.join(k for k, _ in terrain_rules.MUST_FOLLOW))
+    lines += [f'   新红 {p}' for p in r['red']] + [f'   变好 {p}' for p in r['cleared']]
+    lines.append('关卡线改地图模块时一起带上：' + '；'.join(r['must_follow']))
     return '\n'.join(lines)
+
+
+def proposals_dir(name):
+    """Where the local page server (serve.py) keeps a level's proposals: work/mappage/<level>/proposals/<id>.json;
+    --pull and --apply-preview read this by default."""
+    return os.path.join(OUT, name, 'proposals')
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('name')
     ap.add_argument('--pull', nargs='?', const='', default=None, metavar='FILE',
-                    help='list the proposals saved in FILE or folder (default work/mappage/<name>/pulled)')
+                    help='list the proposals saved in FILE or folder (default work/mappage/<name>, where serve.py saves)')
     ap.add_argument('--apply-preview', nargs='?', const='', default=None, metavar='FILE',
                     help='apply the terrain proposals (FILE or folder, as --pull) to the built map and run the contract')
     ap.add_argument('--only', nargs='*', default=None, metavar='ID', help='with --apply-preview: just these proposals')
@@ -420,10 +447,10 @@ def main():
     ap.add_argument('--script', default='', help="the simulator's player script (sim.py --script)")
     a = ap.parse_args()
     if a.apply_preview is not None:
-        print(apply_preview(a.name, a.apply_preview or os.path.join(OUT, a.name, 'pulled'), a.only))
+        print(apply_preview(a.name, a.apply_preview or os.path.join(OUT, a.name), a.only))
         return
     if a.pull is not None:
-        print(pull(a.name, a.pull or os.path.join(OUT, a.name, 'pulled')))
+        print(pull(a.name, a.pull or os.path.join(OUT, a.name)))
         return
     html, d = export(a.name, not a.no_picture, a.script)
     bad = sum(len(r['problems']) for r in d['rules']['rules'])

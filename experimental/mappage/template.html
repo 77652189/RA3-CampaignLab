@@ -162,6 +162,11 @@ svg tspan.code { fill: #dfe7ee; font-weight: 400; }
         <h2>地形预览</h2>
         <p class="note" id="tnote"></p>
         <ul class="tlist" id="tlist"></ul>
+        <div id="srvbox" hidden>
+          <button id="srvprev">让本机服务算全部规则</button>
+          <p class="note" id="srvnote">已存的地形提议加上正在画的，套在构建出的地图上，跑和 build.py --show 同一套 contract。</p>
+          <ul class="tlist" id="srvlist"></ul>
+        </div>
       </div>
       <div class="sheet">
         <h2>规则检查</h2>
@@ -373,7 +378,7 @@ function terrainReport() {
     }
     if (bad) { const li = document.createElement("li"); li.className = "bad"; li.textContent = `施法点 ${nm(s.k)}：圆里有 ${bad} 格新变成不可通行`; ul.appendChild(li); }
   }
-  if (!ul.children.length && nT) { const li = document.createElement("li"); li.className = "good"; li.textContent = "没有建筑点或施法点因此变得不平。要看所有规则（坡道、豁口、街区），关卡线跑 mappage.py --apply-preview。"; ul.appendChild(li); }
+  if (!ul.children.length && nT) { const li = document.createElement("li"); li.className = "good"; li.textContent = "没有建筑点或施法点因此变得不平。要看所有规则（坡道、豁口、街区），点下面「让本机服务算全部规则」。"; ul.appendChild(li); }
 }
 function brushLabels() {
   $("b-rv").textContent = `${$("b-r").value} 世界`;
@@ -539,9 +544,35 @@ function showSlip() {
 }
 showSlip();
 
-// ---- proposal store (db) --------------------------------------------------------------------------------------------
-let db = null, me = "", props = [], selected = null;
-// when the page has no store (opened as a local file, or not signed in): the same calls, kept in memory only
+// ---- proposal store -------------------------------------------------------------------------------------------------
+let db = null, me = "", props = [], selected = null, STORE_DIR = "";
+// served by serve.py on this computer: proposals are files in work/mappage/<level>/proposals (GET / POST / DELETE
+// /api/proposals); the page re-reads after each save and every few seconds (another tab, or a file removed by hand)
+function localStore() {
+  const subs = []; let last = null;
+  const pull = async () => {
+    const r = await fetch("/api/proposals", { cache: "no-store" });
+    if (!r.ok) throw new Error(`服务回 ${r.status}`);
+    const j = await r.json(), key = JSON.stringify(j.docs);
+    if (key === last) return;
+    last = key;
+    const s = { docs: j.docs.map((d) => ({ id: d.id, data: () => d.data })) };
+    for (const f of subs) f(s);
+  };
+  const call = async (method, url, body) => {
+    const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || `服务回 ${r.status}`);
+    await pull(); return j;
+  };
+  let errf = null;
+  setInterval(() => pull().catch((e) => errf && errf(e)), 3000);
+  const col = { add: (v) => call("POST", "/api/proposals", v),
+    doc: (id) => ({ delete: () => call("DELETE", `/api/proposals/${encodeURIComponent(id)}`) }),
+    orderBy: () => col, onSnapshot: (f, err) => { subs.push(f); errf = err; pull().catch((e) => err && err(e)); return () => {}; } };
+  return { collection: () => col };
+}
+// when the page has no server (opened as a file): the same calls, kept in memory only
 function memoryStore() {
   const docs = new Map(), subs = [];
   let n = 0;
@@ -559,7 +590,7 @@ async function submit(why) {
   if (p.kind === "move") p.from = [r0(p.from[0]), r0(p.from[1])];
   const btn = $("save"); if (btn) btn.disabled = true;
   try { await db.collection("proposals").add(p); status("已保存。关卡线用 mappage.py --pull 读取。"); cancelDraft(); }
-  catch (e) { status(`没存上：${e && e.message || e}。你可能只有查看权限。`, true); if (btn) btn.disabled = false; }
+  catch (e) { status(`没存上：${e && e.message || e}。本机服务（serve.py）还开着吗？`, true); if (btn) btn.disabled = false; }
 }
 async function remove(id) {
   try { await db.collection("proposals").doc(id).delete(); }
@@ -585,20 +616,43 @@ function renderProps() {
 }
 renderProps(); terrainReport();
 (async () => {
-  const timer = setTimeout(() => status("提议存储没有响应：页面可以看，但存不了提议。", true), 10000);
-  const [d, u] = await Promise.all([window.claude?.use?.("db") ?? null, window.claude?.use?.("user") ?? null]);
-  if (u) { try { me = await u.id() || ""; } catch (e) { me = ""; } }
-  let local = false;
-  if (!d) { clearTimeout(timer); db = memoryStore(); local = true; }
-  else db = d;
+  let ping = null;
+  if (location.protocol.startsWith("http")) {
+    try { const r = await fetch("/api/ping", { cache: "no-store" }); if (r.ok) ping = await r.json(); } catch (e) { ping = null; }
+  }
+  const local = !ping;
+  if (ping) { db = localStore(); STORE_DIR = ping.dir; me = "local"; $("srvbox").hidden = false; }
+  else db = memoryStore();
   showSlip();
   db.collection("proposals").orderBy("at").onSnapshot((snap) => {
-    clearTimeout(timer);
     props = snap.docs.map((s) => ({ ...s.data(), id: s.id })).filter((p) => p.level === D.level);
-    status(local ? `这个视图里没有提议存储（未登录或没开放），提议只记在本页内存里，刷新就没了：${props.length} 条。` : `${props.length} 条提议。`, local);
+    status(local ? `没连上本机服务（要用 serve.py 打开这一页），提议只记在本页内存里，刷新就没了：${props.length} 条。`
+                 : `${props.length} 条提议，存在本机 ${STORE_DIR}。关卡线用 mappage.py ${D.level} --pull 读取。`, local);
     renderProps(); rebaseTerrain();
-  }, (e) => { clearTimeout(timer); status(`读不到提议：${e && e.message || e}`, true); });
+  }, (e) => status(`读不到提议：${e && e.message || e}。本机服务（serve.py）还开着吗？`, true));
 })();
+
+// ---- every rule after the terrain proposals, computed by serve.py (mappage.preview) ---------------------------------
+$("srvprev").onclick = async () => {
+  const ul = $("srvlist"), btn = $("srvprev");
+  ul.innerHTML = ""; btn.disabled = true; $("srvnote").textContent = "正在算（第一次要先构建地图，十几秒）……";
+  const li = (cls, text) => { const e = document.createElement("li"); if (cls) e.className = cls; e.textContent = text; ul.appendChild(e); };
+  try {
+    const r = await fetch("/api/preview", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ draft: draft && draft.kind === "terrain" && draft.strokes.length ? draft : null }) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || `服务回 ${r.status}`);
+    const n = j.steps.length;
+    $("srvnote").textContent = n ? `${n} 条地形提议（${draft && draft.kind === "terrain" ? "含正在画的，" : ""}按先后）套上以后：contract 改之前 ${j.before.length || "ok"}，改之后 ${j.after.length || "ok"}。`
+                                 : `没有地形提议，contract 就是 build.py ${D.level} --show 的结果：${j.after.length ? j.after.length + " 条问题" : "ok"}。`;
+    for (const f of j.flips) li(f.flat ? "good" : "bad", `${f.what === "build" ? "建筑点" : "施法点"} ${nm(f.site)}：${f.flat ? "变平了" : "不再平"}`);
+    for (const p of j.red) li("bad", `新红：${p}`);
+    for (const p of j.cleared) li("good", `变好：${p}`);
+    if (n && !j.red.length && !j.cleared.length) li("good", "没有规则因此变红或变好。");
+    if (!n) for (const p of j.after) li("bad", p);
+  } catch (e) { $("srvnote").textContent = `算不了：${e && e.message || e}`; }
+  btn.disabled = false;
+};
 
 // ---- labels on the map in screen pixels (the map is 5000 units across, the screen a few hundred pixels) ----------
 function fit() {

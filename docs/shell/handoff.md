@@ -2,14 +2,16 @@
 
 外壳线 2026-11-03 从关卡线拆出（[architecture.md](../architecture.md) 各线负责的文件）。以前做过的事和坑在 [story/handoff.md](../story/handoff.md) 搜"外壳""CampShell"（第 33～42、61～69 行）。问题编号见 [issues.md](../issues.md) K9。
 
-## 下一步：地图页改成本地运行（2026-11-04 总控派活，还没开工）
+## 地图页本地运行（2026-11-04，总控派活，git log 搜 "map page served locally"）
 
-用户原话："界面现在运行在claude的服务上？我更希望运行在本地"。要做的：
-1. `experimental/mappage/serve.py a4`：只监听 127.0.0.1（默认端口 8765，和 `.claude/launch.json` 现有那项 `mappage` 同端口——那项现在是 `python -m http.server`，改成跑 serve.py），启动先生成页面再打印网址。不加账号、不外发。
-2. 提议存本地：页面 POST / DELETE / GET 到服务，写 `work/mappage/<关>/proposals/<id>.json`。`--pull`、`--apply-preview` 的默认目录改成这个（`read_proposals` 已经能读 `<目录>/proposals/<id>.json`，只改 `main` 里的默认值 `pulled` → 这个目录）。页面的存储入口在 template.html 的 `(async () => {` 那段：先探测 `fetch('/api/...')`，有就用一个和 `memoryStore()` 同样接口的本地版（add / doc().delete / onSnapshot，用轮询或保存后重拉）；claude.ai 的 db 建议删掉（测试里没有依赖它）。
-3. 推荐：服务加一个 `POST /api/preview`，用 `mappage.apply_preview` 的逻辑（拆成返回结构的函数）算"改了以后哪些规则会红"，页面上加一个按钮显示结果。地面构建一次约 8 秒，服务启动时缓存 `terrain_edit.from_map(built_map(m))`。
-4. 不再发布到 claude.ai；mappage.py 开头的用法说明改成本地启动方式，上面"能改的地图页"一节里关于 ArtifactData 的步骤标为过时。
-5. 测试：服务的存取（起在随机端口，POST 一条，看文件和 `--pull`）；`pytest -q tests` 全过再提交。
+用户原话："界面现在运行在claude的服务上？我更希望运行在本地"。
+- **启动**：`python -I -X utf8 experimental/mappage/serve.py a4`，等它打印网址（先生成页面，约十几秒），打开 http://127.0.0.1:8765/ 。Ctrl+C 停。内置浏览器用 `.claude/launch.json` 的 `mappage`（同一条命令）。
+- 服务只听 127.0.0.1，不加账号、不外发；写请求（POST/DELETE）要求 Origin 是本服务自己（别的网站的页面不能往这里写）。接口写在 `serve.py` 开头。
+- 提议存成文件 `work/mappage/<关>/proposals/<id>.json`；`mappage.py a4 --pull` / `--apply-preview` 默认读这里（`mappage.proposals_dir`）。页面每 3 秒重拉一次，手删文件页面也会跟上。没开服务直接打开 html 时退回内存存储（刷新就没了）。claude.ai 的 db/user 已从页面删掉。
+- 页面"地形预览"下有按钮"让本机服务算全部规则"：`POST /api/preview` → `mappage.preview(base, docs)`（已存的地形提议 + 正在画的），返回平不平变化、contract 改前改后、新红/变好。`preview_base` 第一次用时构建地图并缓存（服务启动后后台先建）。`--apply-preview` 现在是同一个函数的文字版。
+- 测试 `tests/test_mappage_serve.py`：随机端口起服务，POST → 文件 → `--pull` → DELETE；别的 Origin 403；什么都没提时 preview 的 contract 等于 `parts.contract`（`--show` 那套），施法点上抬一笔变红；页面脚本 `node --check`（中文里的直引号曾经截断整段脚本，做过变异检查能抓到）。
+- 已在内置浏览器亲手验：真鼠标拖起点、钉批注、涂一笔抬高 → 三个文件 → `--pull` 列出三条 → 页面按钮和 `--apply-preview` 都说 contract 改前改后 ok，和 `build.py a4 --show`（ok）一致；页面"撤回"删文件；港口矿场在新位置 (2801, 1814)。探针提议已删。
+- 坑：读页面地形数字要等报告刷新（拖完马上读到过旧数 386，刷新后 580 和 Python 一致）。
 
 ## 地形编辑器（2026-11-04，总控派活，ADR 0017，git log 搜 "terrain editor"）
 
@@ -17,12 +19,14 @@
 - 一笔是什么：`experimental/mappage/terrain_edit.py` 开头说明（唯一权威）；页面用 `terrain.js` 镜像它，规则和数字都来自引擎线的 `terrain_rules.py`（`params()` 导给页面）。`tests/test_mappage_terrain.py` 用 node 跑 terrain.js，要求和 Python 逐格同高度、同通行位、同平不平；做过变异检查（取整方式、编辑圈边界）能抓到。
 - 关卡线用法：`mappage.py a4 --pull` 列出地形提议（刷了哪些地点）；`mappage.py a4 --apply-preview [--only ID]` 把地形提议套到构建出的地图上，报高度/通行变化、平不平变化、contract 哪些新红（`terrain_edit.lint_on` 临时让 platmap.lint 读改过的地面，不改 platmap）。
 - 已验证：本地 http 打开生成页（`.claude/launch.json` 的 mappage），用派发的指针事件涂抬高/压低/整平/画不可通行、撤一笔、存（没登录时退到内存存储）；把页面存出的提议喂给 `--apply-preview`，报的红和页面预览一致（inside 1 抬 34 → 建筑点、施法点都红）。
-- 没验证：真鼠标拖动的手感和性能（内置浏览器窗格隐藏，没截图）；claude.ai 上的真存储里存地形提议（dabs 存成一维数组，避开"数组套数组"）。A4 页面还没重新发布：要用 Artifact 工具带 url 发布 `work/mappage/a4/a4_mappage.html`（先 read）。
+- 没验证：真鼠标拖动的手感和性能（内置浏览器窗格隐藏，没截图）；claude.ai 上的真存储里存地形提议（dabs 存成一维数组，避开"数组套数组"）。（claude.ai 发布已不需要，见"地图页本地运行"。）
 - 中文界面（用户 2026-11-04："界面尽可能用中文，字体稍微大一些"）：正文 16px，图上标注按屏幕像素算（`fit()`，15px），375 宽不横向滚动（模拟手机测过）。地点显示成"中文名 英文代码名"，中文名在地图模块旁的 `experimental/cnv/maps/<地图>_names.py`（A4 是 `sapporo_names.py`；sapporo.py 当时有关卡线没提交的改动，所以没写进去，关卡线可以并进 sapporo.py）；`test_every_a4_site_has_a_chinese_name` 守着增删地点。规则问题的原文仍是检查代码给的英文（A4 现在没有问题）。
 - 用户验收：拖地点 + 写原因 + `--pull` 已通过；钉批注、地形编辑还没让用户试。
 - 坑：工具 `data-mode="block"` 现在是"画不可通行"，旧的画挡路线改叫 `line`（提议 kind 仍是 `block`）；页面 1.2 MB（高度图 base64 约 0.8 MB）。
 
 ## 能改的地图页，A4 先做（2026-11-04，总控派活，ADR 0017，git log 搜 "editable map page"）
+
+> **过时**：下面 claude.ai 页面、ArtifactData、发布这几步不再用，改成本地运行（见上面"地图页本地运行"）。
 
 - 页面：https://claude.ai/artifact/FDuEc4yQquWzWPgdAYCYv2 （私有，能力 db + user；提议存在集合 `proposals`）。
 - 用法和数据来源写在 `experimental/mappage/mappage.py` 开头的说明里；测试 `tests/test_mappage.py`。
