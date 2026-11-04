@@ -249,6 +249,7 @@ class Session:
         self.t0 = None              # mission start (time.monotonic)
         self.view = None            # None: the start camera; else the world point the last minimap jump centred
         self.shift = (0.0, 0.0)     # screen pixels the view's point stands off the minimap-jump calibration (scripted_view)
+        self._ground = None         # the mod's terrain (calib.Ground), read at the first world click; False: unreadable
         self.borders = []         # the built map's playable areas (cnv_map.json beside the mod), [] the whole map
         self.last_border = None
         self.log = []
@@ -294,6 +295,7 @@ class Session:
         os.makedirs(self.run_dir)
         self.frames, self.view, self.log, self.muted, self.t0 = [], None, [], 0, None
         self.shift = (0.0, 0.0)
+        self._ground = None
         self.borders = map_borders(sku) if mod else []
         self.last_border = self.borders[0] if self.borders else None
         self.hold, self.paused, self.game_s, self.run_from, self.rate = hold, False, 0.0, None, 1.0
@@ -541,14 +543,34 @@ class Session:
         return Image.open(p).convert('RGB')
 
     # -- world <-> screen -------------------------------------------------------------------------------------
+    def ground(self):
+        """The running mod's terrain (calib.Ground), or None where its map cannot be read (then the ground is flat)."""
+        if self._ground is None:
+            try:
+                self._ground = calib.Ground(self.mod)
+            except (Exception, SystemExit) as e:          # maprender.load exits on a missing map
+                self._say(f'terrain of {self.mod} not read ({e}): clicks as on flat ground')
+                self._ground = False
+        return self._ground or None
+
+    def _lift(self, x, y):
+        g = self.ground() if self.view is not None and self.mod else None
+        return g.lift(x, y, self.view) if g else 0.0
+
     def to_screen(self, x, y, air=False):
-        u, v = calib.world_to_screen(x, y) if self.view is None else calib.world_to_screen_at(x, y, self.view)
+        if self.view is None:
+            u, v = calib.world_to_screen(x, y)
+        else:   # the ground's height against what the camera looks at (calib.Ground; A4 back lane V1, round 8)
+            u, v = calib.world_to_screen_at(x, y + self._lift(x, y), self.view)
         return u + self.shift[0], v + self.shift[1] - (AIR_LIFT if air else 0)
 
     def to_world(self, u, v):
         x, y = calib.screen_to_world(u - self.shift[0], v - self.shift[1])
         if self.view is not None:
             x, y = x + self.view[0] - calib.START_VIEW[0], y + self.view[1] - calib.START_VIEW[1]
+            fy = y                                         # the flat point drawn there; solve y + lift(x, y) = fy
+            for _ in range(4):
+                y = fy - self._lift(x, y)
         return round(x, 1), round(y, 1)
 
     def border(self):
@@ -575,11 +597,12 @@ class Session:
         time.sleep(0.3)
 
     def scripted_view(self, x, y):
-        """The mission's own MOVE_CAMERA_TO put the camera on world (x, y): that point then stands at screen (640, 350)
-        (bench 2026-11-03, a4 place: an engineer teleported to the waypoint stood there), not where a minimap jump's
-        calibration puts the view's centre; later world clicks follow."""
+        """The mission's own MOVE_CAMERA_TO put the camera on world (x, y): that point, at the height the camera looks
+        at, then stands at screen (640, 350) (bench 2026-11-03, a4 place: an engineer teleported to the waypoint stood
+        there), not where a minimap jump's calibration puts the view's centre; later world clicks follow. The ground
+        there is drawn lower where the camera looks higher (to_screen, calib.Ground: at A4's V1, 26 px)."""
         self.view = (float(x), float(y))
-        u, v = calib.world_to_screen_at(x, y, self.view)
+        u, v = calib.world_to_screen_at(x, y, self.view)      # the flat mapping: the look height at (640, 350)
         self.shift = (640.0 - u, 350.0 - v)
 
 

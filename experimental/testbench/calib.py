@@ -176,6 +176,63 @@ def world_to_screen(x, y):
     return round(u), round(v)
 
 
+# -- terrain under the camera (engine line round 8, checks/engine_camera.py, run CampCameraWhere_mcp_1104_150834) --
+# The mapping above is a flat ground plane. The game's camera looks at a height of its own: over flat ground the
+# ground's, but near higher ground it looks higher (A4's back lane V1, a terrace edge 40-60 south: 43 of our units
+# up, the engineer drawn 26 px low); lower ground around does not pull it down. A point HEIGHT_Y world units north
+# per unit of our height (ours = stored / 16) above that look height is drawn where that flat-ground point is (solved
+# from four heights under one camera: ~52 deg down). The look height is fitted, not read from the game: the ground at
+# the point plus the root mean square of what rises above it within PIVOT_R (13 probes, rows within 12 px, RMS 6 --
+# as close as the flat mapping itself gets on flat ground; the old flat-only mapping was 66 px off at worst).
+HEIGHT_Y = 0.48
+PIVOT_R = 100
+
+
+def _load_file(name, path):
+    import importlib.util
+    if name in sys.modules:
+        return sys.modules[name]
+    spec = importlib.util.spec_from_file_location(name, path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class Ground:
+    """A built mod's terrain heights (our units), bilinear between cells, and the height the camera looks at."""
+
+    def __init__(self, mod):
+        maprender = _load_file('maprender', os.path.join(ROOT, 'experimental', 'campaign', 'maprender.py'))
+        hm = sys.modules['mapterrain'].HeightMap(maprender.load(mod))
+        self.w, self.h, self.border = hm.width, hm.height, hm.border
+        self.e = np.asarray(hm.elev, dtype=np.float64).reshape(hm.height, hm.width) / sys.modules['mapterrain'].SCALE
+        self._pivots = {}
+
+    def at(self, x, y):
+        fx = min(max(x / 10.0 + self.border, 0.0), self.w - 1.001)
+        fy = min(max(y / 10.0 + self.border, 0.0), self.h - 1.001)
+        i, j = int(fx), int(fy)
+        a, b = fx - i, fy - j
+        e = self.e
+        return float(e[j, i] * (1 - a) * (1 - b) + e[j, i + 1] * a * (1 - b) + e[j + 1, i] * (1 - a) * b +
+                     e[j + 1, i + 1] * a * b)
+
+    def pivot(self, x, y):
+        key = (round(x, 1), round(y, 1))
+        if key not in self._pivots:
+            g = self.at(x, y)
+            rise = [max(self.at(x + dx, y + dy) - g, 0.0) ** 2 for dx in range(-PIVOT_R, PIVOT_R + 1, 10)
+                    for dy in range(-PIVOT_R, PIVOT_R + 1, 10) if dx * dx + dy * dy <= PIVOT_R * PIVOT_R]
+            self._pivots[key] = g + (sum(rise) / len(rise)) ** 0.5
+        return self._pivots[key]
+
+    def lift(self, x, y, view):
+        """World y to add to (x, y) before the flat mapping, the camera on `view`: negative (drawn lower) where the
+        ground at (x, y) is below the height the camera looks at."""
+        return HEIGHT_Y * (self.at(x, y) - self.pivot(*view))
+
+
 def screen_to_world(u, v):
     x, y = _apply(np.linalg.inv(_H()), u, v)
     return round(x, 1), round(y, 1)
