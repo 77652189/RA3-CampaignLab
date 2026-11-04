@@ -9,7 +9,7 @@
 - **守卫 G8** 在 `tests/test_architecture.py` 末尾（子进程里把构建桩掉，只验接线：只观测的 → CampShellT + 层；会动手的 → 拒绝；`--unit` → CampShellU）。变异脚本 `work/shell/phase2/g8_mutate.py`（改的是副本，不碰活文件），5 种改坏都抓到，还原通过。离线等价测试 `tests/test_shell.py::test_a_check_as_a_layer_writes_the_map_the_merged_build_writes`：叠层写出的地图脚本、触发区、物体数和合并构建完全相同。
 - **验证**：指纹 shell_p2b 三个目标和 baseline 一致；pytest 386 过 1 跳过（在临时 worktree `../RA3-CampaignLab-p2` 里跑的：HEAD + 外壳线这几个文件，因为关卡线工作区里 `devices/horn.py` 正改到一半，a4 编不过）。测试台：`a4 --shell --check win --unit` RESULT PASS（第 4 关从章节列表进去，计数器读到）；`a4 --check win` 单关版两次 FAIL（一次 Esc 打不开菜单，一次车数一直 0、第 526 秒结束），判定对不上的原因见汇报。
 - **坑：视频包的并发问题（没修，是下一步）**：`experimental/video/pack.py` 的 `make()` 在 `spec_of` 里、构建锁外面就写 `SDK/Mods/CNVVideo/Data/video.xml`。两个构建同时跑时，后一个会覆盖前一个的视频声明：指纹 shell_p2 的 CampShell 丢了 CNVHEAD01、CNVINTRO01..（同时在构建 CampA4Win）。修法：写 include 挪到 `build_mod` 的锁里面（音乐、配音包也要查有没有同样的问题）。修之前别和指纹并行构建。
-- 临时 worktree `../RA3-CampaignLab-p2`（detached HEAD，`work` 是指回主目录的目录联接）用完可以 `git worktree remove`。
+- 临时 worktree `../RA3-CampaignLab-p2`（detached HEAD，`work` 是指回主目录的目录联接）还留着。要删时**先单独拆掉联接**（`cmd /c rmdir ..\RA3-CampaignLab-p2\work`，只删联接本身），确认主目录 work/ 还在，再 `git worktree remove`；不先拆联接就整目录删，可能把主目录的 work/ 一起删掉。
 
 ## ADR 0016 第 1 阶段：打包收口（2026-11-03 恢复，总控派活）
 
