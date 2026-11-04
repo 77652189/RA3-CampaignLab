@@ -228,3 +228,36 @@ def test_g7_packaging_chain_has_no_import_side_effects():
     r = subprocess.run([sys.executable, '-I', '-X', 'utf8', '-c', probe], cwd=ROOT, capture_output=True, text=True)
     assert r.returncode == 0, r.stderr[-2000:]
     assert 'G7 BAD []' in r.stdout, f'importing the chain changed: {r.stdout.strip()}'
+
+
+# G11 (ADR 0016): an acceptance check only observes. contract.observes(mission, test) lists what a check does to the
+# level beyond reading it; a check that acts is a device unit test, never evidence for the player's game. The rule
+# is held on real checks (one that only counts, one that kills) and on each way a check can act.
+G11_PROBE = '''
+import sys
+sys.path[:0] = [{cnv!r}, {root!r}]
+import build, contract
+from model import Script, Test, Obj
+m, look, _ = build.resolve('sight', 'look')
+assert contract.observes(m, look) == [], contract.observes(m, look)
+m, win, _ = build.resolve('a4', 'win')
+assert any('NAMED_KILL acts' in p for p in contract.observes(m, win)), contract.observes(m, win)
+own = 'G11 own counter'
+used = next(a for s in m.scripts for x in s.do if isinstance(x, tuple) and x[0] == 'SET_FLAG' for a in x[1:2])
+cases = {{
+    'reads': Test(scripts=[Script('t', [], [('SET_COUNTER', own, 0), ('INCREMENT_COUNTER', 1, own)])]),
+    'acts': Test(scripts=[Script('t', [], [('UNIT_SET_HEALTH', 'x', 100)])]),
+    'reveals': Test(scripts=[Script('t', [], [('MAP_REVEAL_ALL_PERM', 'p')])]),
+    'overrides': Test(scripts=[Script('t', [], [('SET_FLAG', used, 0)])]),
+    'adds': Test(objects=[Obj('AlliedEngineer', 0, 0)]),
+}}
+print('G11', sorted(k for k, t in cases.items() if contract.observes(m, t)))
+'''
+
+
+def test_g11_acceptance_checks_only_observe():
+    import sys
+    probe = G11_PROBE.format(cnv=str(ROOT / CNV), root=str(ROOT))
+    r = subprocess.run([sys.executable, '-I', '-X', 'utf8', '-c', probe], cwd=ROOT, capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr[-2000:]
+    assert "G11 ['acts', 'adds', 'overrides', 'reveals']" in r.stdout, r.stdout.strip()

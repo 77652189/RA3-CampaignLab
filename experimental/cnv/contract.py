@@ -88,3 +88,36 @@ def contract(mission):
                 if who in named and power in powers and powers[power].id != named[who].template:
                     out.append(f'{s.name}: {who} ({named[who].template}) fired {power}, an ability of {powers[power].id}')
     return out
+
+
+# What an acceptance check may add to the mission it checks (ADR 0016: the test build is the release build plus
+# observation): the action -> the index of the name it writes. Everything here only reads the game into the check's
+# own counters, flags, timers and references, or moves the camera as a player can. Not here, and so not allowed:
+# anything that acts on units (kill, health, teleport, status, orders, abilities fired by script), money, AI, and the
+# view rules -- MAP_REVEAL_ALL_PERM would hide a black start (K5), MAP_SWITCH_BORDER changes the playable area.
+OBSERVE = {
+    'SET_COUNTER': 1, 'INCREMENT_COUNTER': -1, 'SET_MILLISECOND_TIMER': 1, 'SET_FLAG': 1,
+    'SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER': -1, 'SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER': -1,
+    'SET_PLAYER_MONEY_TO_COUNTER': -1, POINTS_AT_UNNAMED: -1,
+    'MOVE_CAMERA_TO': None,
+}
+
+
+def observes(mission, test):
+    """Why `test` is not observation only (empty: it is, and may run as an acceptance check on the release build):
+    it adds units or objects, uses an action outside OBSERVE, or writes a counter / flag / timer / reference the
+    mission's own scripts use (overriding the level, like a switch held off every frame). Waypoints and trigger
+    areas it adds are fine: they are geometry, read by its conditions only. A test that acts is a device unit test
+    (机关单测): useful, but no evidence for the player's game."""
+    out = [f'adds {len(getattr(test, f))} {f}' for f in ('units', 'objects') if getattr(test, f)]
+    if test.counters and len(test.counters) + len(mission.countdowns) > 4:          # model.COUNTER_LINES
+        out.append(f'{len(test.counters)} counters would push the mission\'s countdowns off the screen')
+    used = {a for s in mission.scripts for part in (s.when, s.do) for x in part if isinstance(x, tuple)
+            for a in x[1:] if isinstance(a, str)}
+    for s in test.scripts:
+        for x in s.do:
+            if x[0] not in OBSERVE:
+                out.append(f'{s.name}: {x[0]} acts on the game')
+            elif OBSERVE[x[0]] is not None and x[OBSERVE[x[0]]] in used:
+                out.append(f'{s.name}: {x[0]} writes {x[OBSERVE[x[0]]]!r}, which the mission itself uses')
+    return out
