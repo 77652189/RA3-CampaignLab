@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'experimental' / 'cnv'))
 sys.path.insert(0, str(ROOT / 'experimental' / 'campaign'))
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'experimental' / 'video'))
 import apt_textures  # noqa: E402
 import make_campnew2 as c2  # noqa: E402
 import shell  # noqa: E402
@@ -155,7 +156,7 @@ def test_the_shell_made_for_the_international_edition_has_only_english_words(edi
 
 
 def test_the_chapter_thumbnails_are_a_file_per_slot_in_retail_map_folders_and_ours():
-    files = dict(shell.thumbnails({k: ('占位', k == 4) for k in range(1, 10)}))
+    files = dict(shell.thumbnails({k: ('占位', k == 4, (0, 0)) for k in range(1, 10)}))
     small = {n: v for n, v in files.items() if not n.endswith('_art.tga')}
     assert len(files) == 18 and len(small) == 9 and all(v[:3] == b'\x00\x00\x02' and v[12:16] == b'\x80\x00\x80\x00' for v in small.values())   # 128 x 128
     assert all(v[12:16] == b'\x00\x02\x00\x02' and v[16] == 24 for n, v in files.items() if n not in small)     # the art: 512 x 512, 24 bits
@@ -187,3 +188,37 @@ def test_the_co_op_panel_no_longer_asks_the_engine_to_draw_the_commanders_pictur
     (h, E, chunks, bufs), _ = apt_textures.mapxml.read_stream(prefix, lambda n: files[n])
     consts = [c[0] for k, c in enumerate(chunks) if apt_textures.mapxml.sa.cstr(bufs[2], E[k][6]).startswith(b'AptConstData:')][0]
     assert b'RenderImagx' in consts and b'RenderImage\x00' not in consts
+
+
+@needs_game
+def test_every_slots_world_map_points_at_its_own_place():
+    """K9 / I10: the overview's marker is computed from the slot's `where`, for every slot (not a hand-placed point)."""
+    import apt_movie
+    for k, m in shell.missions().items():
+        prefix = 'data' + B + 'aptui' + B + f'a{k:02d}_global_briefing.'
+        (h, E, chunks, bufs), raw = apt_textures.mapxml.read_stream(prefix, apt_textures.mapxml._archive_get('Apt.big'))
+        a, c = chunks[0][0], chunks[1][0]
+        (ao, al), (co, cl) = apt_movie.apt_of(a), apt_movie.apt_of(c)
+        apt, const = a[ao:ao + al], c[co:co + cl]
+        new = shell.retarget(m['where'])(apt, const)
+        assert len(new) == len(apt)
+        got, want = shell.marked(apt_movie.movie(new, const), new), shell.grid(*m['where'])
+        period = 360 * shell.GRID['px_lon']
+        assert abs((got[0] - want[0] + period / 2) % period - period / 2) < 1 and abs(got[1] - want[1]) < 1, (k, got, want)
+
+
+@needs_game
+def test_the_chapter_lists_faction_icons_are_all_repainted():
+    """K9 / I12: no pixel of a retail faction icon is left in either copy of the chapter list's component."""
+    for stem, boxes in shell.ICON_BOXES.items():
+        orig = apt_textures.originals('Apt.big', 'data' + B + 'aptui' + B + stem + '.')
+        (tex, img), = orig.items()
+        new = shell.faction_icons(img, boxes)
+        alpha = img.getchannel('A').point(lambda v: 255 if v else 0)
+        changed = [p for p in zip(img.convert('RGBA').getdata(), new.getdata(), alpha.getdata()) if p[2] and p[0] == p[1]]
+        assert len(changed) < 0.02 * sum(1 for v in alpha.getdata() if v), stem
+
+
+def test_the_talking_head_is_made_at_retails_size():
+    import to_vp6  # noqa: F401  (experimental/video)
+    assert to_vp6.SIZES['head'] == shell.HEAD_SIZE == (512, 288)

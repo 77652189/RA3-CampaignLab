@@ -89,12 +89,20 @@ def hollow(archive, prefix, renames=None):
     return [(prefix + x, v) for x, v in zip(('manifest', 'bin', 'relo', 'imp'), files)]
 
 
-def patch(archive, prefix, images, renames=None):
+def patch(archive, prefix, images, renames=None, movie=None):
     """images: {texture id: PIL image of the texture's exact size}. The stream's four files with those pictures in.
     renames: (compiled regex over bytes, f(match bytes) -> bytes of the same length): the names in the stream's constants (a
-    script's string table: event names it plays, labels it shows) rewritten, every occurrence the same way."""
+    script's string table: event names it plays, labels it shows) rewritten, every occurrence the same way.
+    movie: f(.apt bytes, constant file bytes) -> .apt bytes of the same length (apt_movie: the timeline edited in place)."""
     (h, E, chunks, bufs), raw = mapxml.read_stream(prefix, mapxml._archive_get(archive))
     chunks = [list(c) for c in chunks]
+    if movie:
+        import apt_movie
+        kinds = {mapxml.sa.cstr(bufs[2], e[6]).split(b':')[0]: k for k, e in enumerate(E)}
+        a, c = chunks[kinds[b'AptAptData']][0], chunks[kinds[b'AptConstData']][0]
+        (ao, al), (co, cl) = apt_movie.apt_of(a), apt_movie.apt_of(c)
+        new = movie(a[ao:ao + al], c[co:co + cl])
+        chunks[kinds[b'AptAptData']][0] = a[:ao] + _same_length(a[ao:ao + al], new) + a[ao + al:]
     if renames:
         pattern, rename = renames
         for k, e in enumerate(E):

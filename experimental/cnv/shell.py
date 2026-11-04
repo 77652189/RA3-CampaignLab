@@ -29,7 +29,8 @@ sys.path.insert(0, os.path.join(ROOT, 'experimental', 'campaign'))
 import apt_textures                                     # noqa: E402
 
 NAME = os.environ.get('CNV_SHELL_NAME', 'CampShell')    # at most 15 characters, letters and digits (parts.assemble asserts it)
-HEAD_ID = 'CNVHEAD01'               # the overview's talking head (OverviewTalkingHead): radar-sized, shared by every slot
+HEAD_ID = 'CNVHEAD01'               # the overview's talking head (OverviewTalkingHead), shared by every slot
+HEAD_SIZE = (512, 288)              # retail's AMB01..09.vp6 (MVhd), the frame on the overview is drawn at this ratio
 WORK = os.path.join(ROOT, 'work', 'shell')
 TO_VP6 = os.path.join(ROOT, 'experimental', 'video', 'to_vp6.py')
 VOSS = os.path.join(os.path.dirname(ROOT), 'RA3-ChineseVoice', 'third_party', 'comfyui', 'input', 'voss_p1.png')
@@ -184,6 +185,60 @@ def global_pictures(short, real):
     return paint
 
 
+# ---- the overview's world map ----------------------------------------------------------------------------------------
+# Retail's world map (global_map2 of fe_missionBriefingAssets, only panned and zoomed by each overview) is a plain latitude /
+# longitude grid. Fitted on the 23 retail overviews of a known place (2026-11-03: the marker's first stop minus the map's
+# offset, in the map's own pixels): x = 1182.7 + 3.792 (lon - 139.84), repeating every 360 degrees, y = 431.7 - 3.821 lat;
+# the retail markers sit within 10 px (x) and 5 px (y) rms of it (they were placed by hand).
+GRID = dict(x0=1182.7, lon0=139.84, px_lon=3.792, y0=431.7, px_lat=-3.821)
+MARKER = ('brackets square', 'flashing square', 'line')     # the marker: its brackets, its flashing square, the crosshair
+
+
+def grid(lat, lon):
+    return GRID['x0'] + GRID['px_lon'] * (lon - GRID['lon0']), GRID['y0'] + GRID['px_lat'] * lat
+
+
+def marked(m, apt):
+    """Where on the map a retail overview points: its marker's first stop (the flashing square, both at scale 1) minus the
+    map's offset at that frame."""
+    import apt_movie
+    world, square = m['imports']['global_map2'], m['imports']['flashing square']
+    at = None
+    for it in apt_movie.placements(m, apt):
+        if it.char == world and it.flags & apt_movie.HAS_MATRIX:
+            at = it
+        elif it.char == square and it.flags & apt_movie.HAS_CHARACTER and at and abs(it.matrix[0] - 1) < .01 and abs(at.matrix[0] - 1) < .01:
+            return it.translate[0] - at.translate[0], it.translate[1] - at.translate[1]
+    raise ValueError('no marker on the world map')
+
+
+def retarget(where):
+    """The overview's timeline pointing at `where` (lat, lon) instead of its retail place, the difference (dx, dy) in map
+    pixels: the marker (brackets, flashing square, crosshair) moves down by dy, the map pans further by zoom * dx and up by
+    (zoom - 1) * dy at every frame. So the place lies under the marker at every zoom, and at zoom 1 (the whole world) the
+    map's vertical framing is retail's: no edge of the map comes into view."""
+    def edit(apt, const):
+        import apt_movie
+        m = apt_movie.movie(apt, const)
+        (ox, oy), (nx, ny) = marked(m, apt), grid(*where)
+        period = 360 * GRID['px_lon']
+        dx, dy = (nx - ox + period / 2) % period - period / 2, ny - oy
+        world, marks = m['imports']['global_map2'], {m['imports'][n] for n in MARKER}
+        buf = bytearray(apt)
+        for it in apt_movie.placements(m, apt):
+            if not it.flags & apt_movie.HAS_MATRIX:
+                continue
+            a, b, c, d = it.matrix
+            x, y = it.translate
+            if it.char == world:
+                assert abs(b) < 1e-6 and abs(c) < 1e-6, f'frame {it.frame}: the map is turned'
+                apt_movie.move(buf, it, (x - a * dx, y - (d - 1) * dy))
+            elif it.char in marks:
+                apt_movie.move(buf, it, (x, y + dy))
+        return bytes(buf)
+    return edit
+
+
 # The cards of the faction menu, by texture: {faction: [boxes]} (normal first, then highlighted) -- found from the orange outline
 # of the retail cards (2026-11-03): Allies and (a second copy of) the Empire in texture 1, the Empire and the Soviets in texture 3.
 CARD_BOXES = {
@@ -214,6 +269,31 @@ def faction_cards(orig, boxes):
             centered(d, (w // 2, h // 2 + 120), small, 36, (225, 225, 225), stroke=2, stroke_fill=edge)
             d.rectangle((0, 0, w - 1, h - 1), outline=(240, 170, 100, 255), width=2)
             out.paste(card, (x0, y0))
+    return out
+
+
+# The chapter list's three faction icons (Soviet, Allied, Japanese flags), by stream: the mouse UI's and the gamepad UI's
+# copy -- found from the opaque boxes of the components' only texture (2026-11-03).
+ICON_BOXES = {'mouse_chapterselectcomponent': {'soviet': [(1, 1, 127, 88)], 'allies': [(129, 1, 255, 88)], 'empire': [(1, 90, 127, 177)]},
+              'chapterselectcomponent': {'soviet': [(1, 1, 82, 48)], 'allies': [(84, 1, 165, 48)], 'empire': [(1, 50, 82, 97)]}}
+
+
+def faction_icons(orig, boxes):
+    """The texture with each faction's icon repainted as a placeholder: the card's gradient and 'CNV'."""
+    from PIL import Image, ImageDraw
+    out = orig.convert('RGBA').copy()
+    for faction, where in boxes.items():
+        top, bottom, edge = CARD_COLOURS[faction]
+        for (x0, y0, x1, y1) in where:
+            w, h = x1 - x0, y1 - y0
+            icon = Image.new('RGBA', (w, h))
+            d = ImageDraw.Draw(icon)
+            for y in range(h):
+                t = y / h
+                d.line((0, y, w, y), fill=tuple(int(bottom[c] + (top[c] - bottom[c]) * (1 - t)) for c in range(3)) + (255,))
+            centered(d, (w // 2, h // 2), T['card_lines'][0], max(12, h // 3), (255, 255, 255), stroke=2, stroke_fill=edge)
+            d.rectangle((0, 0, w - 1, h - 1), outline=(240, 170, 100, 255), width=1)
+            out.paste(icon, (x0, y0))
     return out
 
 
@@ -248,25 +328,28 @@ def narration_strings(info):
 
 def apt_files(slots):
     """The APT streams with our pictures and the emptied co-op panel: [(big path, bytes)]. `slots`: {slot: (short name, built
-    mission?)}. Only the .bin carries pictures / shapes; the other three files of a stream are the retail ones byte for byte
-    (checked by tests/test_shell.py), so they are not shipped."""
+    mission?, (lat, lon))}. Only the .bin carries pictures / shapes / timelines; the other three files of a stream are the
+    retail ones byte for byte (checked by tests/test_shell.py), so they are not shipped."""
     files = []
 
     def add(stem, make):
         prefix = APT + stem + '.'
         files.extend((p, v) for p, v in make(prefix) if p.endswith('.bin'))
 
-    for k, (short, built) in slots.items():
-        def painted(prefix, k=k, short=short, built=built, renames=None):
+    for k, (short, built, where) in slots.items():
+        def painted(prefix, k=k, short=short, built=built, renames=None, movie=None):
             orig = apt_textures.originals('Apt.big', prefix)
             kinds = {'Objective_Briefing_1': objective_map(short, built), 'Objective_Briefing_2': objective_arrow,
                      'Global_Briefing_1': global_pictures(short, built)}
             images = {t: kinds[t[len(f'apt_A{k:02d}_'):]](orig[t]) for t in orig if t[len(f'apt_A{k:02d}_'):] in kinds}
-            return apt_textures.patch('Apt.big', prefix, images, renames)
+            return apt_textures.patch('Apt.big', prefix, images, renames, movie)
         add(f'a{k:02d}_objective_briefing', lambda prefix, painted=painted: painted(prefix, renames=(EVENT, new_event)))
-        add(f'a{k:02d}_global_briefing', painted)
+        add(f'a{k:02d}_global_briefing', lambda prefix, painted=painted, where=where: painted(prefix, movie=retarget(where)))
     add('fes_m_factionmenu', lambda prefix: apt_textures.patch(
         'Apt.big', prefix, {t: faction_cards(apt_textures.originals('Apt.big', prefix)[t], boxes) for t, boxes in CARD_BOXES.items()}))
+    for stem, boxes in ICON_BOXES.items():
+        add(stem, lambda prefix, boxes=boxes: apt_textures.patch('Apt.big', prefix, {
+            t: faction_icons(img, boxes) for t, img in apt_textures.originals('Apt.big', prefix).items()}))
     add(PANEL, lambda prefix: apt_textures.hollow('Apt.big', prefix, (PORTRAIT_CALL, lambda old: old[:-1] + b'x')))
     return files
 
@@ -298,7 +381,7 @@ def thumbnails(slots):
     only: retail's are not touched)."""
     out = []
     for k, stem in retail_map_stems().items():
-        short, built = slots[k]
+        short, built, _ = slots[k]
         if built:
             stem = OWN_STEM
         out.append((f'data{B}maps{B}official{B}{stem}{B}{stem}.tga', thumbnail(short, built)))
@@ -355,23 +438,26 @@ def intro_clip(k, title):
 
 
 def head_clip():
-    """8 seconds, 288 x 288: Voss's portrait with a slow zoom and a sway (no lips: a still stands in for the talking video)."""
+    """8 seconds, 512 x 288 like retail's AMB*.vp6 (the overview's frame is 16:9; a square clip was stretched into it):
+    Voss's portrait with a slow zoom and a sway (no lips: a still stands in for the talking video)."""
     import math
     from PIL import Image
     os.makedirs(WORK, exist_ok=True)
-    path = os.path.join(WORK, 'voss_head.mp4')
+    path = os.path.join(WORK, 'voss_head169.mp4')
     src = Image.open(VOSS).convert('RGB')
+    w, h = HEAD_SIZE
 
     def frame(t, i):
         z = 1.0 + 0.012 * t
-        side = src.width * 0.9 / z
+        bw = min(src.width, src.height * w / h) * 0.95 / z
+        bh = bw * h / w
         cx = src.width / 2 + 10 * math.sin(t * 1.3)
-        box = (cx - side / 2, src.height * 0.02, cx + side / 2, src.height * 0.02 + side)
-        return src.resize((288, 288), Image.LANCZOS, box=box)
+        box = (cx - bw / 2, src.height * 0.02, cx + bw / 2, src.height * 0.02 + bh)
+        return src.resize((w, h), Image.LANCZOS, box=box)
 
     if not os.path.exists(path):
-        _write_mp4(path, (288, 288), 8, frame)
-    return _to_vp6(path, 'radar')
+        _write_mp4(path, (w, h), 8, frame)
+    return _to_vp6(path, 'head')
 
 
 # ---- the shell -----------------------------------------------------------------------------------------------------
@@ -413,7 +499,7 @@ def make(mission_title, mission_name='CampA4', lang='zh'):
                            f'MISSIONOBJ:{label(k)}_1': m['objectives'][0], f'MISSIONOBJ:{label(k)}_2': m['objectives'][1]})
     sp.strings.update(narration_strings(info))
     sp.clips[HEAD_ID] = head_clip()
-    slots = {k: (m['short'], k == slot) for k, m in info.items()}
+    slots = {k: (m['short'], k == slot, tuple(m['where'])) for k, m in info.items()}
     sp.files = apt_files(slots) + thumbnails(slots)
     sp.overrides = {'APT:ALLIES_FACTION_DESCRIPTION': T['card'], **{f'MONITOR:{k}': ' ' for k in MONITOR},
                     **{f'APT:{k}': T['notes_title'] for k in ('COCOMMANDER_NAME_TITLE', 'COCOMMANDER', 'YOUR_CO_COMMANDER',

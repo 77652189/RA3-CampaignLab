@@ -66,13 +66,16 @@ def chapter_step(slot):
             'actions': [['click', 640, round(262.7 + 20.7 * (slot - 1))], ['wait', 0.6], ['click', 875, 676]]}
 
 
-def tour(mod, out, plain=False, visible=False, parts='cards,overview,chapters'):
+def tour(mod, out, plain=False, visible=False, parts='cards,overview,chapters', slot=None, linger=6, look=8):
     """The campaign screens, lingered on (the walk passes them in seconds), one game per part: `cards` the faction menu
-    and the Allies card clicked, `overview` the world map with the talking head and then the mission briefing, `chapters`
-    the chapter list (main menu -> campaign -> chapters)."""
+    and the Allies card clicked, `overview` the world map with the talking head (`look` frames 0.6 s apart) and then the
+    mission briefing (a frame a second for `linger` s), `chapters` the chapter list (main menu -> campaign -> chapters).
+    `slot`: the overview of that chapter (picked from the chapter list) instead of the first one."""
     with open(os.path.join(nav.OUT, 'nav.json'), encoding='utf-8') as f:
         steps = json.load(f)
     steps[2] = dict(steps[2], box=[190, 28, 360, 68], template='step2_shell.png', threshold=18)
+    if slot:
+        steps = [steps[0], dict(steps[1], actions=[['click', 375, 426]]), chapter_step(slot)] + steps[3:]
     use = None if plain else mod
     for part in parts.split(','):
         b = Walker()
@@ -92,11 +95,11 @@ def tour(mod, out, plain=False, visible=False, parts='cards,overview,chapters'):
                 h = harness.main_window(b.p.pid)
                 settle(b, h)
                 b._walk_menus(visible, 240, steps[:6] + [dict(steps[6], actions=[])])
-                for k in range(8):
+                for k in range(look):
                     b.shot(f'overview_{k:02d}')
                     time.sleep(0.6)
                 harness.click(h, 1040, 676)                       # Continue: on to the mission briefing
-                for k in range(6):
+                for k in range(linger):
                     time.sleep(1)
                     b.shot(f'briefing_{k:02d}')
                 harness.click(h, 870, 100)                        # the "commander overview" tab: our mission notes
@@ -126,10 +129,12 @@ def main():
     ap.add_argument('--slot', type=int, help='start the chapter of this slot (1-9) from the chapter list instead of the first one')
     ap.add_argument('--tour', nargs='?', const='cards,overview,chapters', metavar='PARTS',
                     help='linger on screens instead of walking into the mission: cards, overview (+ briefing), chapters')
+    ap.add_argument('--linger', type=int, default=6, help='--tour overview: seconds on the mission briefing (a frame a second)')
+    ap.add_argument('--look', type=int, default=8, help='--tour overview: frames of the world map (0.6 s apart)')
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     if a.tour:
-        tour(a.mod, a.out, a.plain, a.visible, a.tour)
+        tour(a.mod, a.out, a.plain, a.visible, a.tour, a.slot, a.linger, a.look)
         return
     with open(os.path.join(nav.OUT, 'nav.json'), encoding='utf-8') as f:
         steps = json.load(f)
