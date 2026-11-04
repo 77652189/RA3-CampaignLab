@@ -74,6 +74,15 @@
   7. 题卡"好玩假设"A7 没有（策划线的盘点里就缺）；叛军轰炸机"越来越稀"等"断电"段的戏没做。
 - **提交前 pytest**：全量跑过一次（改 A7 之前）434 passed 1 failed；失败的 `test_g4_sys_path_ratchet`（130 个文件改 sys.path，天花板 129）**在 HEAD 上就是红的**，不是这轮造成的（`git grep` HEAD 就是 130），多半是引擎线 88ce082 新增的文件，由总控或引擎线定是抬高天花板还是去掉一个。改完 A7 之后又跑了 test_architecture、test_plans、test_sim、test_terrain_rules、test_maps、test_check_model，除上面这条外全过。
 
+### 第十五个会话收尾（11-04，上下文 22.7 万）：下一步
+
+- **A4 地图页提议 1 已做**（86a5171）：`harbour refinery` 挪到 (2801, 1814)、朝向 315°；lint ok、相关测试过；没上测试台。
+- **I3 / V1**：引擎线 9086bc0 查清：关卡没问题，是测试台在高台边上点偏了。等引擎线改好测试台工具，再重跑 `a4 place`（V1→V2→V3）；V1 过了就把 `docs/issues.md` I3 标完成（并把 `docs/engine/terrain.md` 第 4 节"后巷口 V1"和 K3 一节里"没查清"的话改掉）。
+- **A7（摩擦探针）做到哪了**：编出来、`plan_show` 接口检查 ok、sim 能赢（见上一节）。**下一步**：测试台重跑 `cnv_check a7 power`、`win`、`pick`（`jumps` 也跑一遍，选点脚本多了"不等于上次"）；`win` 只能上测试台（sim 不认开局血量）。测试台共享，工具会自己排队。过了再往下补：保底援军、断电段的戏；上一节摩擦清单 1～4 条是平台缺的，不在这里补。
+- **K7**：仍等外壳线的地形编辑器，在地图页上和用户定；现在别排。
+- **没提交的别线改动**：`docs/engine/terrain.md`、`experimental/mappage/`、`tests/test_mappage_terrain.py` 不是我的。`test_g4_sys_path_ratchet` 在 HEAD 就红（130 > 129），要总控或引擎线定。
+- **提醒**：`plan_sim` 的 MCP 每次回 7000 多字符，改用 `python -I -X utf8 experimental/cnv/sim.py a7 --script "..." > work/logs/x.log` 再 grep；改文件用 Edit（Bash 钩子拦带反斜杠的内联写文件）。
+
 ## 第十三个会话收尾（11-04 05:40，上下文 23 万）：K3 提交 41e0c73，K7、E7 没动
 
 **下一步按顺序**：
