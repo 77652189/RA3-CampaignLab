@@ -26,6 +26,7 @@ CAPTION_LITERAL = 'SHOW_MILITARY_CAPTION'
 CAPTION_ALLOWED = {
     'experimental/cnv/checks/a8.py',
     'experimental/cnv/checks/liberty.py',
+    'experimental/cnv/ctx.py',          # the outlet itself (Ctx.say); plan.py leaves the set once it goes through ctx
     'experimental/cnv/devices/carrier.py',
     'experimental/cnv/devices/horn.py',
     'experimental/cnv/missions/a8.py',
