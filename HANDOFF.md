@@ -10,16 +10,16 @@
 
 ## 下一步
 
-1. **第 0 阶段**，按 [ADR 0016](docs/adr/0016-one-outlet-per-class.md) 做。用户 2026-11-03："可以，按推荐做"。
-   - 指纹工具：先确认同样的输入构建两次结果一致，再给 A4 单关、CampShell、CampShellEn 记基线；
-   - `parts.py` 按层拆成三份，旧文件留作转手导出的空壳，拆完要求指纹不变；
-   - 在 `tests/test_architecture.py` 里加守卫 G1、G2、G3a、G4、G5，用法见评审第 5 节；
-   - `cnv/units` 的 15 个文件改用 `labpaths.SDK3`；
-   - 归档 26 个探针，归档后指纹不变。
-2. 第 0 阶段做完，恢复外壳线和关卡线：
-   - 外壳线做打包收口，交接见 `docs/shell/handoff.md`；
-   - 关卡线同时做断环、`Ctx` 和各自注册，交接见 `docs/story/handoff.md`。
-   - 开场消息里写明 ADR 0016 定的分工和文件归属。
+1. **[ADR 0016](docs/adr/0016-one-outlet-per-class.md) 第 1 阶段在做**（用户 2026-11-03："可以，按推荐做"；第 0 阶段已完成，见 plan.md"架构整改"行）：
+   - 外壳线做打包收口；
+   - 关卡线做断环、`Ctx` 和各自注册。
+   - 两线回报后，总控核对两件事：一是指纹 `fingerprint.py diff baseline <标签>` 完全一致，二是 `tests/test_architecture.py` 全过。
+2. **第 2 阶段由总控做验收层**：
+   - 检查叠在外壳清单上，`build.py --shell --check`，`build.py` 外壳那段由外壳线改；
+   - `cnv_check` 加 shell 选项；
+   - 观测词表，加"测试版只比正式版多观测脚本"的守卫；
+   - 现有检查分成机关单测和验收检查两类。
+   - 第 2 阶段做完过闸：守卫立住了，但一个问题都还没修好，就停下来重新评估。
 3. 等用户的：
    - 配音响度对比页还没听，在配音仓库的 `work/campaign/loudness_ab/`，决定 -14 LUFS 要不要降；
    - 英文播报和沃斯的声音是不是还像（I14）。
@@ -61,7 +61,7 @@
 ## 状态
 
 ```yaml
-slice: architecture-remediation-phase0-2026-11-03
+slice: architecture-remediation-phase1-2026-11-03
 blocked_on: none        # none | voice-session | user
 next_gate: playtest     # test-map | coordinate-calibration | demo | playtest
 ```
