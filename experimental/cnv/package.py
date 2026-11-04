@@ -81,6 +81,7 @@ def assemble(mission, test=None, name=None, shell=False):
     shell: the campaign shell (shell.py, ADR 0014): the mission in its slot of the Allied campaign, the other eight slots ours
     too, all with our own front end; the edition's name (langs.py: 'zh', 'intl') for the words of the shell, True = zh."""
     import make_campnew18 as c18                # the pipeline (c7 ... c2) and the generated island's start
+    c18.install()
     c7, c6, c4, c2 = c18.c7, c18.c6, c18.c4, c18.c2
     import newmap
     mm = merged(mission, test)

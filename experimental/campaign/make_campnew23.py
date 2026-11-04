@@ -16,6 +16,7 @@ import make_campnew18 as c18                    # noqa: E402
 import newmap                                   # noqa: E402
 import to_w3x                                   # noqa: E402
 
+c18.install()                                   # importing c18 no longer wires the chain (ADR 0016, G7)
 c7, c6, c4, c2 = c18.c7, c18.c6, c18.c4, c18.c2
 NAME = 'CampNew23'
 c4.NAME = c2.NAME = NAME

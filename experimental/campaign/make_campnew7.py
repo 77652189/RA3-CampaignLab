@@ -21,14 +21,10 @@ from mapscript import MapFile                   # noqa: E402
 
 c4, c2 = c6.c4, c6.c4.c2
 NAME = 'CampNew7'
-c4.NAME = c2.NAME = NAME
-c2.SRC_DIR = os.path.join(c2.SDK, 'Mods', NAME, 'data')
-c2.BUILT = os.path.join(c2.SDK, 'BuiltMods', 'mods', NAME.lower(), 'data')
-c2.OUT = c4.OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods', NAME)
 MAP_MOD = NAME + 'Map'          # separate SDK mod folder for the map compile
 GAME_MAP_ID = 'CAMP_A03_Heidelberg_Smith'      # same id as the retail stream had (atlas lookup unknown yet)
 
-_edited = c4.c2.map_files       # make_campnew6's edited_map_files
+_edited = c6.edited_map_files  # the map this one compiles
 SDK_OBJECTS = False             # make_campnew12 sets it
 EXTRA_TEMPLATES = {}            # our own GameObjects (make_campnew13)
 OWN_ATLAS = os.environ.get('CNV_OWN_ATLAS') == '1'     # compile the terrain atlas ourselves (make_campnew22)
@@ -133,7 +129,16 @@ def map_files():
     return sorted(keep.items())
 
 
-c4.c2.map_files = map_files
+def install():
+    """make_campnew6.install(), then this mod's name and the compiled map in c2 (importing changes nothing)."""
+    c6.install()
+    c4.NAME = c2.NAME = NAME
+    c2.SRC_DIR = os.path.join(c2.SDK, 'Mods', NAME, 'data')
+    c2.BUILT = os.path.join(c2.SDK, 'BuiltMods', 'mods', NAME.lower(), 'data')
+    c2.OUT = c4.OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods', NAME)
+    c4.c2.map_files = map_files
+
 
 if __name__ == '__main__':
+    install()
     c4.main()

@@ -192,3 +192,38 @@ def test_g_layers_model_and_contract_do_not_import_upwards():
         assert rel in files, f'{rel} is not tracked, the guard would pass vacuously'
         bad = _imported_tops(_read(rel)) & forbidden
         assert not bad, f'{rel} imports {sorted(bad)}: the dependency direction is model <- contract <- package'
+
+
+# G7 (ADR 0016): importing the packaging chain changes nothing. make_campnew4/6/7/18 used to point make_campnew2 at
+# themselves (NAME, OUT ...) and swap each other's functions on import; that now happens only in their install(),
+# which a build calls. Each module's state is taken right after its own import, before anything above it is imported,
+# and must be the same once the whole chain and package.py are in. Run in a fresh interpreter: other tests may have
+# imported the chain already.
+CHAIN = ('make_campnew2', 'make_campnew3', 'make_campnew4', 'make_campnew6', 'make_campnew7', 'make_campnew18')
+G7_PROBE = '''
+import copy, importlib, sys, types
+sys.path[:0] = [{campaign!r}, {cnv!r}]
+def state(m):
+    return {{k: (v, copy.copy(v) if isinstance(v, (dict, list, set)) else v) for k, v in vars(m).items()
+            if not k.startswith('__') and not isinstance(v, types.ModuleType)}}
+taken = {{}}
+for name in {chain!r}:
+    taken[name] = state(importlib.import_module(name))
+import package
+bad = []
+for name, before in taken.items():
+    now = vars(sys.modules[name])
+    for k, (obj, held) in before.items():
+        if now.get(k) is not obj or (isinstance(obj, (dict, list, set)) and obj != held):
+            bad.append(name + '.' + k)
+assert sys.modules['make_campnew2'].NAME == 'CampNew2', sys.modules['make_campnew2'].NAME
+print('G7 BAD', bad)
+'''
+
+
+def test_g7_packaging_chain_has_no_import_side_effects():
+    import sys
+    probe = G7_PROBE.format(campaign=str(ROOT / 'experimental' / 'campaign'), cnv=str(ROOT / CNV), chain=CHAIN)
+    r = subprocess.run([sys.executable, '-I', '-X', 'utf8', '-c', probe], cwd=ROOT, capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr[-2000:]
+    assert 'G7 BAD []' in r.stdout, f'importing the chain changed: {r.stdout.strip()}'

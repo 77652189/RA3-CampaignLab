@@ -22,18 +22,24 @@ import splice_assets                                # noqa: E402
 from ra3voice import big                            # noqa: E402
 
 NAME = 'CampNew4'
-c2.NAME = NAME
-c2.SRC_DIR = os.path.join(c2.SDK, 'Mods', NAME, 'data')
-c2.BUILT = os.path.join(c2.SDK, 'BuiltMods', 'mods', NAME.lower(), 'data')
-c2.OUT = OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods', NAME)
+OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods', NAME)
 NEW_MAP = c2.NEW_DIR + c2.NEW_STEM + '.map'
-# bare .map (first run, 2026-10-16 03:20): loads and plays, but the terrain is black and the city props are gone,
-# they live in the map's compiled streams; so ship those too (CampNew2 crashed with them because the cache entry
-# was missing, not because of the streams). CNV_MAP_STREAMS=0 goes back to the bare map.
-c2.SHIP_STREAMS = os.environ.get('CNV_MAP_STREAMS', '1') != '0'
 assert c3.STRINGS and NEW_MAP == c3.NEW_DIR + c3.NEW_STEM + '.map'
 EXTRA_FILES = []        # more (big path, bytes) for the mod's big (a music pack's .mus: experimental/music/pack.py)
 CHECKS = []             # f(files) run on the finished file list before it is written (pack.check)
+
+
+def install():
+    """Point make_campnew2 at this mod (importing this module changes nothing: ADR 0016, G7). Each probe up the chain
+    (c6, c7, c18) has its own install() that calls this one first, as their imports used to run in that order."""
+    c2.NAME = NAME
+    c2.SRC_DIR = os.path.join(c2.SDK, 'Mods', NAME, 'data')
+    c2.BUILT = os.path.join(c2.SDK, 'BuiltMods', 'mods', NAME.lower(), 'data')
+    c2.OUT = OUT
+    # bare .map (first run, 2026-10-16 03:20): loads and plays, but the terrain is black and the city props are gone,
+    # they live in the map's compiled streams; so ship those too (CampNew2 crashed with them because the cache entry
+    # was missing, not because of the streams). CNV_MAP_STREAMS=0 goes back to the bare map.
+    c2.SHIP_STREAMS = os.environ.get('CNV_MAP_STREAMS', '1') != '0'
 
 
 def cache_entry():
@@ -74,4 +80,5 @@ def write_launcher(out, name):
 
 
 if __name__ == '__main__':
+    install()
     main()
