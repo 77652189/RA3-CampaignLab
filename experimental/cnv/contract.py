@@ -26,7 +26,7 @@ CREATES_NAMED = ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', 'CREATE_NAMED_ON_TEAM_AT_WA
 POINTS_AT_UNNAMED = 'SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER'    # (kind, player, team, name)
 
 
-OUTLET_SCRIPTS = re.compile(r'CNV \w+ - (Say \d+( chat)?|Phase \d+ line \d+)')    # ctx.talk's: a queued line, a scene's
+OUTLET_SCRIPTS = re.compile(r'CNV \w+ - (Say \d+( chat)?|Now \d+|Phase \d+ line \d+)')    # ctx.talk's: a queued line, a scene's
 QUEUE_SCRIPTS = re.compile(r'CNV \w+ - (Say|Drop) (\d+)( chat)?')
 PENDING_FLAG = re.compile(r'CNV_\w+_Say_\d+')
 TALKING_FLAG = re.compile(r'CNV_\w+_Talking')
@@ -68,6 +68,90 @@ def said_lines_kept(m):
             out.append(f'{s.name}: an ending that says its line must wait for the floor and then take it '
                        f'(ctx.ending_gate, ctx.ending_begin)')
     return out
+
+
+NOW_SCRIPTS = re.compile(r'CNV \w+ - Now \d+')            # a 功能 line's caption (ctx.Talk): shown the frame its event came
+FUNC_SAY = re.compile(r'CNV \w+ - Say \d+')               # the 功能 queue's (a 闲话 line's has ' chat' after the number)
+SHOW_FLAG = re.compile(r'CNV_\w+_Show_\d+')
+SCENE_FLAG = re.compile(r'CNV_\w+_InScene')
+FRESH_FLAG = re.compile(r'CNV_\w+_Fresh')                 # a 功能 caption went up FUNC_HOLD ago (it is not cut short)
+
+
+def said_once_and_on_time(m):
+    """E6 (2026-11-04, the engine's two channels: one caption box that holds a line, one dialogue panel that stacks the
+    subtitles of dubbed lines) and K1's "a 功能 line is never late": (a) no line is shown in both places: a script that
+    plays a recording carrying its own subtitle shows no caption, and no caption has the words of such a subtitle;
+    (b) the recordings the voice pack gives a subtitle are exactly the ones the mission counts; (c) a 功能 line's
+    caption is a script of its own that waits for nothing but its event, a scene's end and the 功能 caption before it
+    (ctx.FUNC_HOLD), so it is up within ctx.FUNC_LATE of the event (the sim holds the run to that: late_captions), and
+    never sits in the queue; (d) nothing but that script shows a caption in the 功能 queue's scripts."""
+    out = []
+    texts = {m.strings.get(k, k) for k in m.subtitles.values()}
+    for s in m.scripts:
+        if s.name.startswith('Test'):
+            continue
+        plays = [a[0] for name, *a in s.do if name == 'PLAY_SOUND_EFFECT' and a and a[0] in m.subtitles]
+        caps = [a for name, *a in s.do if 'MILITARY_CAPTION' in name]
+        if plays and caps:
+            out.append(f'{s.name}: plays {plays[0]}, which carries its own subtitle, and shows a caption: one channel')
+        out += [f'{s.name}: caption {m.strings.get(c[0], c[0])!r} says what a recording\'s own subtitle shows (one channel)'
+                for c in caps if m.strings.get(c[0], c[0]) in texts]
+        if NOW_SCRIPTS.fullmatch(s.name):
+            late = [c for c in s.when if not ((c[0] == 'FLAG' and SHOW_FLAG.fullmatch(str(c[1])) and c[2])
+                                              or (c[0] == 'FLAG' and SCENE_FLAG.fullmatch(str(c[1])) and not c[2])
+                                              or (c[0] == 'FLAG' and FRESH_FLAG.fullmatch(str(c[1])) and not c[2]))]
+            out += [f'{s.name}: a 功能 caption that waits for {c[:2]} is late (it waits for its event only)' for c in late]
+        elif FUNC_SAY.fullmatch(s.name) and caps:
+            out.append(f'{s.name}: a caption in the 功能 queue is late (a 功能 line shows its caption at once, ctx.Talk)')
+    have = set(getattr(m.voice, 'subtitled', ())) if m.voice else set()
+    if have != set(m.subtitles):
+        out.append(f'the voice pack gives {sorted(have ^ set(m.subtitles))} a subtitle the mission does not count (or the '
+                   f'other way): plan.py and voice_link.Later.subtitled must agree')
+    return out
+
+
+# G6b (E3): the game finds a team by name without making it, so an order to a team nobody joined does nothing. A team
+# of the mission's own gets an instance when a unit is put on it (UNIT_SET_TEAM, even a unit that is not there; a
+# CREATE_*_ON_TEAM) or one placed in the map is its member.
+TEAM_COMMANDS = ('MOVE_TEAM_TO', 'ATTACK_MOVE_TEAM_TO', 'TEAM_ATTACK_NAMED', 'TEAM_GUARD_AREA', 'TEAM_STOP', 'TEAM_HUNT')
+JOINS_TEAM = {'UNIT_SET_TEAM': 1, 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT': 2,
+              'CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION': 2}      # action -> the index of the team it names
+
+
+def team_orders_land(m):
+    """G6b: every whole-team order of the level (a check's `Test ...` own are not) goes to a team that has an instance
+    when it runs: the same script put a unit on that team before it (ctx.order does: UNIT_SET_TEAM for each name, then
+    the order), or the team is one of the map's own or has a member placed in the map. A TEAM_STOP only needs the team
+    to be joined by some script of the level (it adds nobody, so it follows an order given before)."""
+    placed = {o.props.get('originalOwner') for o in m.objects if isinstance(getattr(o, 'props', {}).get('originalOwner'), str)}
+    own = set(getattr(m.map, 'TEAMS', {}).values()) | placed
+    joined = {a[JOINS_TEAM[name]] for s in m.scripts if not s.name.startswith('Test')
+              for name, *a in s.do if name in JOINS_TEAM}
+    out = []
+    for s in m.scripts:
+        if s.name.startswith('Test'):
+            continue
+        here = set()
+        for name, *a in s.do:
+            if name in JOINS_TEAM:
+                here.add(a[JOINS_TEAM[name]])
+            elif name in TEAM_COMMANDS and a[0] not in own | here and not (name == 'TEAM_STOP' and a[0] in joined):
+                out.append(f'{s.name}: {name} {a[0]}: nobody joined this team before the order (UNIT_SET_TEAM first, or '
+                           f'place a member in the map): the game ignores an order to a team without an instance')
+    return out
+
+
+KIND_IN_AREA = 'PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA'
+
+
+def kind_counts_in_area(m):
+    """E1 (the engine reads one table for every player, bench 2026-11-04): a count of a unit kind in a trigger area is a
+    count of everyone's, whatever player the condition names, so a level's own script (a check's `Test ...` own are not)
+    never uses it. Ask SKIRMISH_PLAYER_HAS_UNITS_IN_AREA (per player), or count a template
+    (PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA, per player)."""
+    return [f'{s.name}: {KIND_IN_AREA} counts every player\'s units of a kind (the engine ignores the player): ask '
+            f'SKIRMISH_PLAYER_HAS_UNITS_IN_AREA or count a template'
+            for s in m.scripts if not s.name.startswith('Test') for c in s.when if c[0] == KIND_IN_AREA]
 
 
 def camera_outside_the_view(m):
@@ -271,6 +355,8 @@ def contract(mission):
             for v in args if isinstance(v, str) and not latin(v)]
     out += said_outside_the_outlet(m, cat)
     out += said_lines_kept(m)
+    out += said_once_and_on_time(m)
+    out += team_orders_land(m) + kind_counts_in_area(m)
     out += camera_outside_the_view(m)
     out += single_orders(m)
     out += ore_faces_refinery(m) + ore_in_groups(m) + oil_off_the_camps(m) + base_has_ore(m) + map_design(m)

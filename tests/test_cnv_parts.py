@@ -330,8 +330,8 @@ def test_ctx_outlets_hand_over_the_same_actions():
     import types
     m = parts.Mission(name='X', map=types.SimpleNamespace(PLAYERS={'p1': 'Player_1', 's1': 'Soviet_2'}, TEAMS={}))
     ctx = Ctx(mission=m, tag='T')
-    assert ctx.say('SCRIPT:K', 5.0) == ('SET_FLAG', 'CNV_T_Want_0', 1)      # a line only asks; the queue plays it
-    said = [s for s in ctx.talk_scripts() if s.name == 'CNV T - Say 0'][0]
+    assert ctx.say('SCRIPT:K', 5.0) == ('SET_FLAG', 'CNV_T_Show_0', 1)      # a line only asks; its caption is up at once
+    said = [s for s in ctx.talk_scripts() if s.name == 'CNV T - Now 0'][0]
     assert ('SHOW_MILITARY_CAPTION', 'SCRIPT:K', 5.0) in said.do
     assert ctx.final('SCRIPT:E', 10.0) == ('SHOW_MILITARY_CAPTION', 'SCRIPT:E', 10.0)
     # K6: a group is a team of the map's own, ordered as one; the units join it in the same script (UNIT_SET_TEAM)

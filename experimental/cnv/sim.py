@@ -47,6 +47,11 @@ sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign'
 
 import parts  # noqa: E402
 import simunits  # noqa: E402
+from ctx import FUNC_LATE, PANEL_CLEAR  # noqa: E402
+
+TEAM_COMMANDS = ('MOVE_TEAM_TO', 'ATTACK_MOVE_TEAM_TO', 'TEAM_ATTACK_NAMED', 'TEAM_GUARD_AREA', 'TEAM_STOP')   # E3: need a live team
+SHOW_FLAG = re.compile(r'CNV_\w+_Show_\d+')       # ctx.Talk.show: a 功能 line's caption is asked for
+SCENE_FLAG = re.compile(r'CNV_\w+_InScene')       # ctx.Talk.scening
 
 DT = 0.5                        # seconds a tick
 UNTIL = 1800.0                  # a run stops here at the latest (30 minutes)
@@ -187,6 +192,10 @@ class Body:
     died_at: float = None                                       # killed or deleted then
     last_hit: str = None                                        # the player whose damage came last (None: a
                                                                 # script's NAMED_KILL, or never hit)
+    last_by: str = None                                         # the object whose damage came last (E2: the game
+                                                                # keeps its id, and "attacked by the player" holds
+                                                                # only while that object stands and is the player's);
+                                                                # None: no object of ours (a run script's hit)
     mode: str = 'idle'                                          # 'move' (a plain move: fires, does not stop) or
                                                                 # 'attack' (attack-move, attack named: stops to fight)
     fired_at: float = None                                      # a bombarder's last shot (seen by all a while)
@@ -345,6 +354,10 @@ class Sim:
         self.level = LEVELS[level]
         self.t = 0.0
         self.log = []                       # (t, kind, text)
+        self.box_log = []                   # [start, end, text]: the caption box holds one line; a new one ends the one up
+        self.panel_log = []                 # groups of (t, text): the dialogue panel stacks subtitles, a group clears together
+        self.asked, self.up = {}, []        # a 功能 caption asked for (flag -> t), and shown: (flag, asked, shown)
+        self.scenes = []                    # [start, end] of each 过场 (end None while it runs)
         self.used = set()                   # ALIGN keys the run leaned on
         self.unknown = {}                   # condition / action names the simulator does not know: count
         self.flags, self.counters, self.timers = {}, {}, {}
@@ -380,9 +393,15 @@ class Sim:
         self.guessed = set()
         self.walls = {u.id: u.params for u in self.mm.units if 'length' in u.params}   # our bars of ice, gates
         teams = getattr(mission.map, 'TEAMS', {})
+        self.active = set(teams.values())               # teams with an instance: a whole-team order to any other is lost (E3)
+        self.lost_orders = []                           # (t, script, order, team) given to a team nobody had joined
         for k, o in enumerate(list(getattr(mission.map, 'OBJECTS', [])) + self.mm.objects):
             b = self.add(o.name or f'#{k}', o.template, self.owner_of(o.side), o.x, o.y)
             b.team = teams.get(o.side, '')
+            crew = (getattr(o, 'props', None) or {}).get('originalOwner')
+            if isinstance(crew, str):                   # placed in a team of the mission's own (K6): that team has a member
+                b.team = crew
+                self.active.add(crew)
             b.angle = o.angle or 0.0
         import platprops
         for k, o in enumerate(getattr(mission.map, 'SCENERY', [])):
@@ -496,6 +515,34 @@ class Sim:
     def note(self, kind, text):
         self.log.append((self.t, kind, text))
 
+    def show_caption(self, text, secs):
+        """The military caption box (E6): one line, replaced by the next, gone after its own seconds."""
+        if self.box_log and self.box_log[-1][1] > self.t:
+            self.box_log[-1][1] = self.t
+        self.box_log.append([self.t, self.t + float(secs), text])
+
+    def show_subtitle(self, text):
+        """The dialogue panel (E6): a dubbed line's subtitle joins the stack; PANEL_CLEAR after the last the stack goes."""
+        if not self.panel_log or self.t >= self.panel_log[-1][-1][0] + PANEL_CLEAR:
+            self.panel_log.append([])
+        self.panel_log[-1].append((self.t, text))
+
+    def late_captions(self):
+        """The 功能 captions that came up more than FUNC_LATE after their event (K1: none may), and the ones still waiting
+        (the run ended, or a scene held them) as (flag, asked, None)."""
+        def wait(a, b):                         # the seconds from a to b the player could see (no scene running)
+            return (b - a) - sum(max(0.0, min(b, e if e is not None else b) - max(a, s)) for s, e in self.scenes)
+        return [x for x in self.up if wait(x[1], x[2]) > FUNC_LATE + 1e-6] + \
+            [(f, t, None) for f, t in self.asked.items() if wait(t, self.t) > FUNC_LATE]
+
+    def box_at(self, t):
+        """The caption up at t, or None."""
+        return next((x for a, b, x in self.box_log if a <= t < b), None)
+
+    def panel_at(self, t):
+        """The subtitles stacked in the panel at t."""
+        return [x for g in self.panel_log if g[0][0] <= t < g[-1][0] + PANEL_CLEAR for a, x in g if a <= t]
+
     def change(self):
         self.last_change = self.t
 
@@ -602,12 +649,22 @@ class Sim:
             b = self.body(a[1])
             return bool(self.present(b) and b.owner == a[0])
         if name == 'NAMED_ATTACKED_BY_PLAYER':
-            # the last damage's player only (ActiveBody's m_lastDamageInfo): a script's kill or another's hit clears it
+            # the last damage only (ActiveBody's m_lastDamageInfo): a script's kill or another's hit clears it; the game
+            # reads its source's id and looks that object up, so a source that is gone (dead and removed, deleted, self-
+            # destructed) makes it false, and one that changed hands counts for its new owner (E2, reference 2026-11-04)
             b = self.body(a[0])
-            return bool(self.present(b) and b.last_hit == a[1])
+            if not self.present(b):
+                return False
+            if b.last_by is None:               # a hit a run script made up (打 / 摧毁): taken as the player's, standing
+                return b.last_hit == a[1]
+            by = self.bodies.get(b.last_by)
+            return bool(self.present(by) and by.owner == a[1])
         if name == 'UNIT_HEALTH':
-            b = self.body(a[0])                 # a dying unit reads 0 %
-            return bool(self.present(b) and CMP[a[1]](b.health if b.alive else 0.0, a[2]))
+            # whole percent, rounded down (int(health * 100 / max): 99.9 % reads 99, so "< 50" holds at 49.9 %); a dying
+            # unit reads 0 (E4)
+            b = self.body(a[0])
+            pct = math.floor(b.health + 1e-6) if b is not None and b.alive else 0
+            return bool(self.present(b) and CMP[a[1]](pct, a[2]))
         if name == 'NAMED_DISCOVERED':
             self.used.add('discovered')
             b = self.body(a[1])
@@ -656,6 +713,16 @@ class Sim:
         if name in RA3_ONLY:
             self.ra3_only.add(name)
         if name == 'SET_FLAG':
+            if SCENE_FLAG.fullmatch(str(a[0])):         # the player's input is off: nothing is late for a scene's length
+                if a[1]:
+                    self.scenes.append([self.t, None])
+                elif self.scenes and self.scenes[-1][1] is None:
+                    self.scenes[-1][1] = self.t
+            if SHOW_FLAG.fullmatch(str(a[0])):          # a 功能 line's caption: asked for, then up (ctx.Talk `Now k`)
+                if a[1]:
+                    self.asked.setdefault(a[0], self.t)
+                elif a[0] in self.asked:
+                    self.up.append((a[0], self.asked.pop(a[0]), self.t))
             if int(self.flags.get(a[0], 0)) != int(a[1]):
                 self.flags[a[0]] = int(a[1])
                 self.change()
@@ -690,6 +757,7 @@ class Sim:
                 return                                  # one object to a name (the game makes no second)
             b = self.add(a[0], a[1], a[2].split('/')[0], *p, by=script.name, at=self.t)
             b.team = a[2]
+            self.active.add(a[2])
             b.angle = float(a[4]) if len(a) > 4 else 0.0
             if self.blocks(b):
                 self.reblock()
@@ -706,8 +774,13 @@ class Sim:
             self.order_stop(self.body(a[0]))
         elif name == 'UNIT_SET_TEAM':               # the unit joins the team (K6: ctx.order does it before every whole-team order)
             b = self.body(a[0])
+            self.active.add(a[1])                   # ... and the team has an instance from then on, the unit there or not (E3)
             if b and b.alive:
                 b.team = a[1]
+        elif name in TEAM_COMMANDS and a[0] not in self.active:
+            # the game looks the team up without making it: nobody joined it, so the order does nothing (E3)
+            self.lost_orders.append((self.t, script.name, name, a[0]))
+            self.note('无效命令', f'{name} {a[0]}：这个队还没有人加入，命令落空')
         elif name in ('MOVE_TEAM_TO', 'ATTACK_MOVE_TEAM_TO'):
             for b in self.members(a[0]):
                 self.order_move(b, a[1], name == 'ATTACK_MOVE_TEAM_TO')
@@ -735,7 +808,7 @@ class Sim:
             b = self.body(a[0])
             if b:
                 if name == 'NAMED_KILL':
-                    b.last_hit = None               # the game's kill damage comes from nobody (INVALID_ID)
+                    b.last_hit = b.last_by = None   # the game's kill damage comes from nobody (INVALID_ID)
                 self.destroy(b, '脚本' if name == 'NAMED_KILL' else '脚本删掉', delete=name == 'NAMED_DELETE')
         elif name == 'UNIT_SET_HEALTH':
             b = self.body(a[0])
@@ -843,6 +916,10 @@ class Sim:
         elif name in SHOWN:
             text = self.text(a[0]) if isinstance(a[0], str) else str(a[0])
             self.note(SHOWN[name], text)
+            if name == 'SHOW_MILITARY_CAPTION':
+                self.show_caption(text, a[1])
+            elif name == 'PLAY_SOUND_EFFECT' and a[0] in self.mm.subtitles:
+                self.show_subtitle(self.text(self.mm.subtitles[a[0]]))
         elif name in IGNORED or name == 'CAMERA_STOP_FOLLOW':
             pass
         else:
@@ -903,15 +980,15 @@ class Sim:
                 if verb == '摧毁' and 'UNATTACKABLE' in b.status:
                     self.note('剧本', f'{self.label(b)} 打不动（UNATTACKABLE），没摧毁')
                     continue
-                b.last_hit = self.human
+                b.last_hit, b.last_by = self.human, None
                 self.destroy(b, '剧本', delete=verb == '删除')
         elif verb == '血量':
             for b in self.pick(rest[0]):
                 b.health = float(rest[1])
-                b.last_hit = self.human
+                b.last_hit, b.last_by = self.human, None
         elif verb == '打':
             for b in self.pick(rest[0]):
-                b.last_hit = self.human
+                b.last_hit, b.last_by = self.human, None
         elif verb == '占领':
             for b in self.pick(rest[0]):
                 b.owner = self.human
@@ -1022,7 +1099,7 @@ class Sim:
             self.used.add('combat')
         for t, dmg, by in hurt.values():
             t.hp -= dmg
-            t.last_hit = by.owner
+            t.last_hit, t.last_by = by.owner, by.name
             if t.hp <= 0 and t.alive:
                 if self.first_death is None:
                     self.first_death = (self.t, t, by)
@@ -1059,7 +1136,7 @@ class Sim:
                 close = any(math.hypot(b.x - o.x, b.y - o.y) <= REACH for o in mine)
                 b.close_since = (b.close_since if b.close_since is not None else self.t) if close else None
                 if close and self.t - b.close_since >= self.auto_kill:
-                    b.last_hit = self.human
+                    b.last_hit, b.last_by = self.human, None
                     self.destroy(b, f'自动打掉：在玩家 {REACH:g} 以内 {self.auto_kill:g} 秒')
 
     def sample(self):

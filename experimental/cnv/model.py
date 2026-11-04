@@ -152,6 +152,9 @@ class Mission(Part):
                                                                 # 原文 (the flow script's words, what a dubbed line
                                                                 # is looked up by), 通报 (what the caption shows),
                                                                 # 字串 (its string key)}
+    subtitles: dict = dataclasses.field(default_factory=dict)   # {voice event: string key} the recordings that carry their
+                                                                # own subtitle (the dialogue panel shows it); a line is
+                                                                # shown there or as a caption, never both (E6)
     teams: dict = dataclasses.field(default_factory=dict)       # {crew key: 'Owner/teamName'} the mission's own teams,
                                                                 # written into the map's Teams (Mission.crew, K6)
     sides: dict = dataclasses.field(default_factory=dict)       # {side: {player property: value}} changed in the

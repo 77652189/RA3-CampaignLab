@@ -8,11 +8,12 @@ level's deadline (飞走): the countdown, not the route, decides the deadline (i
                   预警: 15, 家: carrier home, 航线: [site, ...], 血量: 70/100/100,
                   加快: [{当: 摧毁 a、b、c 1 个, 每隔: 1:00}, ...]}}
 
-落点: in order, the first with fewer than 空虚 of the player's armed units in it; none: the last. Cast carrier (the
+落点: in order, the first the player has no unit in (the engine counts a kind in an area for every player, E1, so
+there is no "fewer than n of theirs"; 空虚 is kept in old plans and ignored); none: the last. Cast carrier (the
 enemy's); marks: carrier home, the landing points, the route's; facts: first jump (when 开始 is a time), jump every.
 """
 from devices import Device
-from parts import Script, kindof
+from parts import NOT, Script
 from units import liberty as lib
 
 GUARDIAN = 'AlliedAntiVehicleVehicleTech1'      # what the deck factory builds
@@ -22,7 +23,7 @@ FAR = 99999.0
 class Carrier(Device):
     WHAT = '敌方的自由号：电站在，就跳到玩家防守最空的地方放无人机、卸兵，过一会儿跳回去；电站受伤就跳回去救；断电后可以让它绕航线飞'
     PARAMS = {'电站': '角色：给它供电的建筑（被毁或被玩家占领就断电）', '开始': '条件：什么时候开始跳',
-              '落点': '一串地点：按顺序选玩家武装单位少于"空虚"个的那一个', '空虚': '少于几个算空虚（默认 3）',
+              '落点': '一串地点：按顺序选玩家一个单位也没有的那一个', '空虚': '（不再起作用：引擎数不出"玩家的单位少于几个"，只能看有没有）',
               '每隔': '时间：跳回家后多久再跳', '停留': '秒：在落点停多久', '预警': '秒：跳之前提前多久报警',
               '家': '地点', '航线': '一串地点：飞走时绕着飞', '血量': '百分比（简单/普通/困难）',
               '加快': '一串 {当: 条件, 每隔: 时间}：条件成立过以后跳得更勤，后面的一档优先（原版宫古岛：龙剩的关键建筑越少，充能越快）'}
@@ -92,7 +93,6 @@ class Carrier(Device):
         s1, p1 = ctx.player('s1'), ctx.player('p1')
         stay = float(self.spec.get('停留', 30))
         warn = float(self.spec.get('预警', 15))
-        few = int(self.spec.get('空虚', 3))
         out = []
         for levels, hp in plantime.by_level(plantime.counts(self.spec.get('血量', 100))):
             if hp < 100:
@@ -111,11 +111,10 @@ class Carrier(Device):
                            ('SET_MILLISECOND_TIMER', self.timer, warn), ctx.say(warn_key, 5.0),
                            ('DISPLAY_COUNTDOWN_TIMER', self.timer, count_key), lib.charging(self.obj, warn)],
                           once=False))
-        armed = kindof('CAN_ATTACK')
         for k, site in enumerate(self.spec['落点']):
             out.append(Script(f'CNV {t} - Carrier picks {k + 1}',
                               [('FLAG', self.choosing, 1),
-                               ('PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA', p1, 0, few, armed, ctx.area(site))],
+                               ('SKIRMISH_PLAYER_HAS_UNITS_IN_AREA', p1, ctx.area(site), NOT)],
                               [('SET_COUNTER', self.target, k + 1), ('SET_FLAG', self.choosing, 0)], once=False))
         out.append(Script(f'CNV {t} - Carrier picks the last', [('FLAG', self.choosing, 1)],
                           [('SET_COUNTER', self.target, len(self.lands)), ('SET_FLAG', self.choosing, 0)], once=False))

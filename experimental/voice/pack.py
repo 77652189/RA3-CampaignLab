@@ -100,9 +100,9 @@ def lines(levels, lang='zh'):
 
 
 def xml(items, folder=FOLDER, subtitles=True):
-    """subtitles=False: a line carries no subtitle of its own (the engine keeps a dialogue's subtitle up for seconds after
-    the voice ends, so lines said one after another stood stacked; the mission shows the text itself for the line's
-    length, cnv/plan.py)."""
+    """subtitles: True, every line carries its subtitle (the dialogue panel stacks them); False, none does; a set of
+    audio ids, only those (a line the mission shows as a caption of its own carries none, so it is on screen once,
+    cnv/plan.py)."""
     groups, body = {}, ''
     for ev, _, _, group in items:
         if group:       # a unit voice: no subtitle; the group's event is written after the lines
@@ -110,7 +110,8 @@ def xml(items, folder=FOLDER, subtitles=True):
             body += f'\t<AudioFile id="{ev}" File="AUDIO:{folder}/{ev}.wav" PCCompression="XAS" />\n'
         else:
             body += (f'\t<AudioFile id="{ev}" File="AUDIO:{folder}/{ev}.wav" PCCompression="XAS"'
-                     + (f' SubtitleStringName="DIALOGEVENT:{ev}"' if subtitles else '') + ' />\n'
+                     + (f' SubtitleStringName="DIALOGEVENT:{ev}"'
+                        if subtitles is True or (subtitles and ev in subtitles) else '') + ' />\n'
                      f'\t<AudioEvent id="{ev}" {DIALOGUE}>\n{DIALOGUE_SLIDERS}\t\t<Sound>{ev}</Sound>\n\t</AudioEvent>\n')
     for group, evs in groups.items():
         body += (f'\t<AudioEvent id="{group}" {UNIT_VOICE}>\n\t\t<PitchShift Low="-1" High="1" />\n'

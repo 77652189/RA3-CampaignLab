@@ -147,13 +147,14 @@ def test_the_design_check_on_scenes_shown_goals_and_the_first_enemy():
 
 
 def test_lines_in_a_scene_are_said_one_at_a_time():
-    """User 2026-11-03 ("一句说完了之后再继续说", scenes too): the caption strip stacks lines and clears them together, so
-    any two lines of a scene start STRIP_CLEAR apart at least, whatever the plan wrote between them, and the hand-back
-    leaves the floor busy until the last line's strip has gone."""
+    """User 2026-11-03 ("一句说完了之后再继续说", scenes too): each line takes the floor for its own turn (a
+    caption its reading time, a dubbed line its recording and a gap: no longer, E6), so any two lines of a scene start a
+    turn apart at least, whatever the plan wrote between them, and the hand-back leaves the floor busy until the last
+    line is said."""
     m = small(段=[{'名字': '一', '过场': [{'镜头': 'west field', '秒': 3}, '通报 一', '通报 二', {'停': 1}, '通报 三']}])
     lines = named(m, 'CNV ZZ - Phase 1 line')           # each line is a script of its own: it waits for the floor and takes it
     starts = sorted(waits_for(m, s) for s in lines)
-    assert len(starts) == 3 and all(b - a >= plan.STRIP_CLEAR for a, b in zip(starts, starts[1:]))
+    assert len(starts) == 3 and all(b - a >= plan.CAPTION_TURN for a, b in zip(starts, starts[1:]))
     assert all(('FLAG', 'CNV_ZZ_Talking', 0) in s.when and ('SET_FLAG', 'CNV_ZZ_Talking', 1) in s.do for s in lines)
     # the hand-back is not held for the last line: the floor stays taken (Say done frees it), so a queued line waits
     hand = next(s for s in named(m, 'CNV ZZ - Phase 1 scene') if ('ENABLE_INPUT',) in s.do)

@@ -6,10 +6,13 @@ the compiler and the mission, and the three outlets everything a player sees or 
   order(kind, names, target)     the one way to tell named units what to do: whole-team orders (attack, guard, hunt,
                                  move, attack_move, stop), the group made a team of the map's own (K6, G6)
 
-`say` is the one queue (class Talk): a line only raises its flag, and the `CNV <tag> - Say k` script plays it when nobody
-is talking, then holds the floor. The strip stacks lines and clears them all ~5.4 s after the last one came up
-(2026-11-03, measured in CampShell), so two lines closer than that show together; a line in a 过场 takes the same floor
-(scene_steps), and the floor is reserved for a whole scene, so no line from outside lands in it. The rest is the small
+`say` is the one queue (class Talk): a line only raises its flag. The screen has two channels (engine line, 2026-11-04,
+measured on the bench, E6): the military caption box at the top holds ONE line, a new one replaces it and each leaves
+after its own seconds; the dialogue panel at the bottom stacks the subtitles of dubbed lines. A line goes by one channel
+only: a 功能 line is a caption, shown the frame its event comes (its recording, if any, goes to the head of the queue);
+a dubbed 闲话 line is its recording with its own subtitle in the panel and no caption; a 闲话 line nobody recorded is a
+caption that waits for the box. A line in a 过场 takes the floor too (scene_steps), and the floor is reserved for a whole
+scene, so no line from outside lands in it. The rest is the small
 set of things a device used to take from `self.c` (the compiler) and `self.m` (the mission) by reaching in: each is one
 line that forwards, so a device can no longer touch what is not listed. A Ctx made without a compiler (a hand-written
 level has none) answers say / order / tag and the mission's own; a compiler's questions raise PlanError.
@@ -21,8 +24,12 @@ CAPTION = 'SHOW_MILITARY_CAPTION'        # the caption action is spelled here an
 FUNC, CHAT = '功能', '闲话'              # a line's tier (Talk): the plan marks a 功能 line, an unmarked one is 闲话
 NAME = {FUNC: 'func', CHAT: 'chat'}       # a tier in a script's or counter's name (those are Latin-1)
 CHAT_LIFE = 10.0                       # a 闲话 line that waited this long (s) in the queue is dropped
-STRIP_CLEAR = 6.5                       # the caption strip stacks lines and clears all at once ~5.4 s after the last one was
-                                        # added; a line takes the floor this long at least (with a margin)
+PANEL_CLEAR = 5.4                       # the dialogue panel stacks subtitles and clears them all this long (s) after the last
+                                        # came up (measured 2026-11-03); the sim models it, no script waits for it
+FUNC_HOLD = 2.0                         # a 功能 caption stays up this long (s) at least before another 功能 one replaces it
+FUNC_LATE = 4.0                         # a 功能 line's caption is up this soon (s) after its event: the contract rule and
+                                        # the sim hold the product to it (K1: "号角响了！" came 14 s after the horn). Three
+                                        # lines at one moment fit (0, FUNC_HOLD, 2 * FUNC_HOLD); a fourth is a plan to fix
 
 
 def caption(key, secs):
@@ -30,24 +37,42 @@ def caption(key, secs):
     return (CAPTION, key, secs)
 
 
+class Line:
+    """One queued line: its tier; `acts` what the queue plays when its turn comes (a recording and its talking head, or
+    the caption of a 闲话 line nobody recorded); `turn` seconds it holds the floor; `now` a 功能 line's caption, which is
+    not queued but shown the frame its event comes (`secs` it stays); `strip` that `acts` show a caption (so the line
+    waits for the caption box to be free and holds it)."""
+    __slots__ = ('tier', 'acts', 'turn', 'now', 'secs', 'strip')
+
+    def __init__(self, tier, acts, turn, now=None, secs=0.0, strip=False):
+        self.tier, self.acts, self.turn, self.now, self.secs, self.strip = tier, acts, turn, now, secs, strip
+
+
 class Talk:
-    """The one queue of everything said (a caption, a voice line, an announcer line). Outside a 过场 a line asks to be
-    said (flag `Want k`); the script `Enq k` puts it at the back of its tier's queue (counter `Q`, the line's place in
-    counter `Pos k`), and `Say k` plays it when it is first in its tier and nobody is talking (flag `Talking`), then
-    holds the floor for the line's turn (at least STRIP_CLEAR): first come, first played. Three tiers, 2026-11-04
-    (总控): the ending's own line is said by the ending script itself, ahead of everything, once the floor is free
-    (ending_gate); a 功能 line (a goal, an attack coming, the convoy leaving, a horn) is never dropped and goes ahead of
-    the rest; a 闲话 line that has waited CHAT_LIFE seconds is dropped (a line said ten seconds late is not about what
-    the player sees: K2). Both queues only ever lose their first line (played, or the oldest 闲话 line dropped), so a
-    place is kept by one decrement of the lines behind (`Shift`). In a 过场 (scene) the line is handed back as its own
-    actions: the scene's timeline places it, and scene_steps puts it through floor() so it takes the same floor."""
+    """The one queue of everything said (a caption, a voice line, an announcer line). Two channels (E6, see the module
+    doc), so a line is one of three things. A 功能 line (a goal, an attack coming, the convoy leaving, a horn) is a caption
+    shown the frame its event comes -- the box takes it at once, replacing what was there (script `Now k`, at most
+    FUNC_LATE after the event) -- and its recording, if it has one, goes ahead of the 闲话 in the queue. A dubbed 闲话
+    line is its recording with a subtitle of its own, which the panel shows. A 闲话 line nobody recorded is a caption
+    that waits its turn, so it does not cut off a caption still being read. The queue: a line asks to be said (flag
+    `Want k`); the script `Enq k` puts it at the back of its tier's queue (counter `Q`, the line's place in counter
+    `Pos k`), and `Say k` plays it when it is first in its tier and nobody is talking (flag `Talking`), then holds the
+    floor for the line's turn (the recording and a short gap, or the caption's own seconds): first come, first played.
+    Three tiers, 2026-11-04 (总控): the ending's own line is said by the ending script itself, ahead of everything, once
+    the floor is free (ending_gate); a 功能 line is never dropped and goes ahead of the rest; a 闲话 line that has
+    waited CHAT_LIFE seconds is dropped (a line said ten seconds late is not about what the player sees: K2). Both
+    queues only ever lose their first line (played, or the oldest 闲话 line dropped), so a place is kept by one
+    decrement of the lines behind (`Shift`). In a 过场 (scene) the line is handed back as its own actions: the scene's
+    timeline places it, and scene_steps puts it through floor() so it takes the same floor."""
 
     def __init__(self, tag):
         self.tag = tag
         self.busy, self.timer = f'CNV_{tag}_Talking', f'CNV {tag} Talk Timer'
+        self.box, self.box_timer = f'CNV_{tag}_Box', f'CNV {tag} Box Timer'       # the caption box is taken (its line is up)
+        self.fresh, self.fresh_timer = f'CNV_{tag}_Fresh', f'CNV {tag} Fresh Timer'    # a 功能 caption went up FUNC_HOLD ago
         self.scening = f'CNV_{tag}_InScene'     # raised for the length of a scene: no queued line starts in it
         self.dropped = f'CNV_{tag}_Dropped'     # counts the 闲话 lines that waited too long (the sim reads it)
-        self.lines = []                         # (tier, actions, seconds) of the queued lines
+        self.lines = []                         # the Lines, in the order they were written
         self.scene = False                      # compiling a 过场
         self.scened = False                     # the level has a 过场 (its queued lines wait for it)
         self.floored = False                    # a scene line took the floor (Say done must free it)
@@ -57,6 +82,9 @@ class Talk:
     # names: one place for each (the flags and counters a line's scripts share)
     def want(self, k):
         return f'CNV_{self.tag}_Want_{k}'
+
+    def show(self, k):
+        return f'CNV_{self.tag}_Show_{k}'
 
     def pending(self, k):
         return f'CNV_{self.tag}_Say_{k}'
@@ -70,25 +98,35 @@ class Talk:
     def left(self, tier):
         return f'CNV_{self.tag}_Left_{NAME[tier]}'
 
+    def take_box(self, secs):
+        """The actions that mark the caption box taken for `secs`: a 闲话 caption waits for it."""
+        return [('SET_FLAG', self.box, 1), ('SET_MILLISECOND_TIMER', self.box_timer, float(secs))]
+
     def put(self, before, key, secs, after, turn, tier=FUNC):
-        acts = list(before) + ([caption(key, secs)] if key is not None else []) + list(after)
+        cap = [caption(key, secs)] if key is not None else []
         if self.scene:
             self.turn = turn
-            return acts
+            return list(before) + cap + list(after)
         if tier not in (FUNC, CHAT):
             raise PlanError(f'a line {key!r}: tier {tier!r}: {FUNC} or {CHAT}')
         if not self.anchored:
             raise PlanError(f'a line {key!r} that hangs on nothing but the clock: a rule that says something needs an '
                             f'event in its 当 (not just 开局 + a time), or a 镜头 or other act before the line, so what '
                             f'the player sees is what is said')
-        self.lines.append((tier, acts, max(turn, STRIP_CLEAR)))
-        return [('SET_FLAG', self.want(len(self.lines) - 1), 1)]
+        k, voice = len(self.lines), list(before) + list(after)
+        if tier == FUNC and cap:                # the caption now, the recording (if any) in the queue
+            self.lines.append(Line(tier, voice, turn, cap + self.take_box(secs), secs))
+            return [('SET_FLAG', self.show(k), 1)] + ([('SET_FLAG', self.want(k), 1)] if voice else [])
+        if cap:
+            self.lines.append(Line(tier, list(before) + cap + list(after) + self.take_box(turn), turn, strip=True))
+        else:
+            self.lines.append(Line(tier, voice, turn))
+        return [('SET_FLAG', self.want(k), 1)]
 
     def floor(self, acts, turn):
         """`acts` (one line of a scene) as a line that holds the floor for its turn."""
         self.floored = True
-        return [('SET_FLAG', self.busy, 1),
-                ('SET_MILLISECOND_TIMER', self.timer, float(max(turn, STRIP_CLEAR)))] + list(acts)
+        return [('SET_FLAG', self.busy, 1), ('SET_MILLISECOND_TIMER', self.timer, float(turn))] + list(acts)
 
     def ending_gate(self):
         """The condition an ending script adds: it waits for the line being said to end, then says its own and ends the
@@ -102,43 +140,56 @@ class Talk:
     def scripts(self):
         """The scripts that play the queued lines. The order is the engine's: Shift sees what the last frame's leaver
         raised, Enq sees the queue Shift left, and the leavers (Say, Drop) come after both."""
-        out, tiers = [], [t for t in (FUNC, CHAT) if any(x[0] == t for x in self.lines)]
+        out = []
+        queued = [(k, x) for k, x in enumerate(self.lines) if x.acts]
+        tiers = [t for t in (FUNC, CHAT) if any(x.tier == t for _, x in queued)]
         for tier in tiers:
-            ks = [k for k, x in enumerate(self.lines) if x[0] == tier]
+            ks = [k for k, x in queued if x.tier == tier]
             out += [Script(f'CNV {self.tag} - Shift {k}', [('FLAG', self.left(tier), 1), ('FLAG', self.pending(k), 1),
                                                            ('COUNTER', self.place(k), 4, 0)],
                            [('DECREMENT_COUNTER', 1, self.place(k))], once=False) for k in ks]
             out.append(Script(f'CNV {self.tag} - Shift done {NAME[tier]}', [('FLAG', self.left(tier), 1)],
                               [('SET_FLAG', self.left(tier), 0)], once=False))
-        for k, (tier, acts, secs) in enumerate(self.lines):
+        gate = [('FLAG', self.scening, 0)] if self.scened else []
+        if any(x.now for x in self.lines):      # (before the captions: the one that waited sees the flag down in its frame)
+            out.append(Script(f'CNV {self.tag} - Fresh done', [('FLAG', self.fresh, 1), ('TIMER_EXPIRED', self.fresh_timer)],
+                              [('SET_FLAG', self.fresh, 0)], once=False))
+        for k, x in enumerate(self.lines):      # a 功能 caption: up in the frame its event came (the scene's end, in one)
+            if x.now:
+                out.append(Script(f'CNV {self.tag} - Now {k}', [('FLAG', self.show(k), 1), ('FLAG', self.fresh, 0)] + gate,
+                                  [('SET_FLAG', self.show(k), 0), ('SET_FLAG', self.fresh, 1),
+                                   ('SET_MILLISECOND_TIMER', self.fresh_timer, FUNC_HOLD)] + x.now, once=False))
+        for k, x in queued:
             out.append(Script(f'CNV {self.tag} - Enq {k}', [('FLAG', self.want(k), 1), ('FLAG', self.pending(k), 0)],
                               [('SET_FLAG', self.want(k), 0), ('SET_FLAG', self.pending(k), 1),
-                               ('SET_COUNTER_TO_COUNTER', self.place(k), self.length(tier)),
-                               ('INCREMENT_COUNTER', 1, self.length(tier))] +
-                              ([('SET_MILLISECOND_TIMER', f'CNV {self.tag} Age {k}', CHAT_LIFE)] if tier == CHAT else []),
+                               ('SET_COUNTER_TO_COUNTER', self.place(k), self.length(x.tier)),
+                               ('INCREMENT_COUNTER', 1, self.length(x.tier))] +
+                              ([('SET_MILLISECOND_TIMER', f'CNV {self.tag} Age {k}', CHAT_LIFE)] if x.tier == CHAT else []),
                               once=False))
-        gate = [('FLAG', self.scening, 0)] if self.scened else []
-        for k, (tier, acts, secs) in enumerate(self.lines):
+        for k, x in queued:
             first = [('FLAG', self.pending(k), 1), ('COUNTER', self.place(k), 2, 0)]
             leave = [('SET_FLAG', self.pending(k), 0), ('SET_FLAG', self.want(k), 0),
-                     ('DECREMENT_COUNTER', 1, self.length(tier)), ('SET_FLAG', self.left(tier), 1)]
-            # the 闲话 wait for the 功能 queue to be empty
-            ahead = [('COUNTER', self.length(FUNC), 2, 0)] if tier == CHAT and FUNC in tiers else []
-            out.append(Script(f'CNV {self.tag} - Say {k}' + (' chat' if tier == CHAT else ''),
-                              first + [('FLAG', self.busy, 0)] + ahead + gate,
-                              leave + [('SET_FLAG', self.busy, 1), ('SET_MILLISECOND_TIMER', self.timer, float(secs))]
-                              + acts, once=False))
-        for k, (tier, acts, secs) in enumerate(self.lines):
-            if tier == CHAT:
+                     ('DECREMENT_COUNTER', 1, self.length(x.tier)), ('SET_FLAG', self.left(x.tier), 1)]
+            # the 闲话 wait for the 功能 queue to be empty, a caption for the box to be free
+            ahead = [('COUNTER', self.length(FUNC), 2, 0)] if x.tier == CHAT and FUNC in tiers else []
+            out.append(Script(f'CNV {self.tag} - Say {k}' + (' chat' if x.tier == CHAT else ''),
+                              first + [('FLAG', self.busy, 0)] + ahead + ([('FLAG', self.box, 0)] if x.strip else []) + gate,
+                              leave + [('SET_FLAG', self.busy, 1), ('SET_MILLISECOND_TIMER', self.timer, float(x.turn))]
+                              + x.acts, once=False))
+        for k, x in queued:
+            if x.tier == CHAT:
                 out.append(Script(f'CNV {self.tag} - Drop {k}',
                                   [('FLAG', self.pending(k), 1), ('TIMER_EXPIRED', f'CNV {self.tag} Age {k}'),
                                    ('COUNTER', self.place(k), 2, 0)],
                                   [('SET_FLAG', self.pending(k), 0), ('SET_FLAG', self.want(k), 0),
-                                   ('DECREMENT_COUNTER', 1, self.length(tier)), ('SET_FLAG', self.left(tier), 1),
+                                   ('DECREMENT_COUNTER', 1, self.length(x.tier)), ('SET_FLAG', self.left(x.tier), 1),
                                    ('INCREMENT_COUNTER', 1, self.dropped)], once=False))
-        if self.lines or self.floored:
+        if queued or self.floored:
             out.append(Script(f'CNV {self.tag} - Say done', [('FLAG', self.busy, 1), ('TIMER_EXPIRED', self.timer)],
                               [('SET_FLAG', self.busy, 0)], once=False))
+        if any(x.now or x.strip for x in self.lines):
+            out.append(Script(f'CNV {self.tag} - Box done', [('FLAG', self.box, 1), ('TIMER_EXPIRED', self.box_timer)],
+                              [('SET_FLAG', self.box, 0)], once=False))
         return out
 
 

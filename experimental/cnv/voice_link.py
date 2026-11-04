@@ -30,6 +30,7 @@ class Later:
         self.items, self.missing, self.said, self.retail = got.items, got.missing, got.said, got.retail
         self.folder = langs.voice_folder(lang)
         self.events = {ev for ev, *_ in self.items}
+        self.subtitled = set()      # the events whose recording carries its own subtitle (the compiler adds them, E6)
         import clips
         self.clips = clips.Clips({ev: wav for ev, wav, _, group in self.items if not group}, self.missing, heads)
         self.groups = {group for _, _, _, group in self.items if group}     # the unit voice events the pack has
@@ -76,7 +77,8 @@ class Later:
 
     def _make(self):
         if self.made is None:
-            self.made = self.pack.make(self.levels, lang=self.lang, folder=self.folder, items=self.items, subtitles=False)
+            self.made = self.pack.make(self.levels, lang=self.lang, folder=self.folder, items=self.items,
+                                       subtitles=self.subtitled)
         return self.made
 
     include = property(lambda self: self._make().include)

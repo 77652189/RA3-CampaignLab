@@ -275,7 +275,9 @@ bad = []
 for n in sorted(build.MISSIONS):
     m, _, _ = build.resolve(n, '')
     bad += [(n, p) for p in contract.contract(model.merged(m))
-            if 'dialogue outlet' in p or 'queued line' in p or 'not 闲话' in p or 'must wait for the floor' in p]
+            if 'dialogue outlet' in p or 'queued line' in p or 'not 闲话' in p or 'must wait for the floor' in p
+            or 'one channel' in p or 'is late' in p or 'voice pack gives' in p
+            or 'nobody joined' in p or 'counts every player' in p]
 print('G3B builds', len(build.MISSIONS), 'outside', bad[:3])
 m, _, _ = build.resolve('a4', '')
 m.scripts.append(Script('CNV A4 - Own caption', [], [('SHOW_MILITARY_CAPTION', 'SCRIPT:X', 3.0)]))
@@ -283,11 +285,17 @@ print('G3B mutation', len([p for p in contract.contract(model.merged(m)) if 'dia
 close = []
 for lv in build.LEVELS:
     s = sim.simulate(lv, until={until})
-    said = [t for t, kind, _ in s.log if kind in ('通报', '配音', '原版播报')]
-    # a voiced line logs its voice and its caption together: one line
-    starts = sorted(set(round(t, 2) for t in said))
-    close += [(lv, a, b) for a, b in zip(starts, starts[1:]) if b - a < 5.4]
+    # E6: a 功能 caption is up within ctx.FUNC_LATE of its event (a scene's seconds do not count), in every level's run
+    close += [(lv, f, round(a, 1)) for f, a, _ in s.late_captions()]
 print('G3B close', close[:5])
+print('G3B twice', len(contract.said_once_and_on_time(model.merged(build.resolve('a4', '')[0]))))
+m, _, _ = build.resolve('a4', '')
+mm = model.merged(m)
+ev = next(iter(mm.subtitles), None) or 'CNV_X'
+mm.subtitles[ev] = 'SCRIPT:Twice'
+mm.strings['SCRIPT:Twice'] = 'twice'
+mm.scripts.append(Script('CNV A4 - Twice', [], [('PLAY_SOUND_EFFECT', ev), ('SHOW_MILITARY_CAPTION', 'SCRIPT:Twice', 3.0)]))
+print('G3B twice mutation', len([p for p in contract.said_once_and_on_time(mm) if 'one channel' in p]))
 '''
 
 
@@ -299,6 +307,7 @@ def test_g3b_everything_said_comes_from_the_one_queue():
     assert 'G3B builds' in r.stdout and "outside []" in r.stdout, r.stdout.strip()
     assert 'G3B mutation 1' in r.stdout, r.stdout.strip()
     assert 'G3B close []' in r.stdout, r.stdout.strip()
+    assert 'G3B twice 0' in r.stdout and 'G3B twice mutation 2' in r.stdout, r.stdout.strip()
 
 
 # G10 (ADR 0016 phase 3, K5): a level's camera moves aim at view points (plan.view_point): the site held inside the

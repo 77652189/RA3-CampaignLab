@@ -25,7 +25,7 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 import glossary                                 # noqa: E402
 import langs                                    # noqa: E402
-from ctx import CHAT, FUNC, STRIP_CLEAR, Ctx                 # noqa: E402
+from ctx import CHAT, FUNC, Ctx                 # noqa: E402
 from parts import NOT, Goal, Mission, Script, square   # noqa: E402
 from plantime import (ALL, ONE, TAGS, PlanError, by_level, counts, number, per, seconds, spans,   # noqa: E402,F401
                       times)                                                                # re-exported: tests, checks
@@ -189,6 +189,7 @@ class Compiler:
         self.troop_counters = {}    # kinds counted together -> their counter (兵少于 <n> <units>)
         self.music = self.load_music(data.get('音乐'))
         self.voice = self.load_voice(data.get('语音'), data.get('头像'))
+        self.captioned = set()      # voice events a 功能 caption stands for: their recording carries no subtitle
 
     def load_voice(self, levels, heads=None):
         """语音: [A4, ICEENG] -> the delivered dubbed lines of those folders (voice_link.Later): a 通报 with 说 whose
@@ -538,11 +539,22 @@ class Compiler:
                 self.m.lines.append(dict(说话人=str(who), 原文=str(said), 通报=shown, 字串=dubbed))
                 clip = self.voice.clips.find(dubbed)        # the speaker's talking head, when the voice line made one
                 n = self.voice.length(who, said) or EVA_TURN
-                # the line's own subtitle stays up seconds after the voice (user 2026-11-03: stacked): it has none, the
-                # caption is its text for the length of the recording
+                # a line goes by one channel (E6): a 功能 line is a caption for the length of the recording, its voice has
+                # no subtitle; any other dubbed line (and every one in a 过场) carries its own subtitle into the dialogue
+                # panel and shows no caption
                 words = self.text('SCRIPT', self.voice.strings[f'DIALOGEVENT:{dubbed}'])
-                return self.ctx.line([('PLAY_SOUND_EFFECT', dubbed)], words, n + CAPTION_TAIL,
-                                     [('MOVIE_PLAY_RADAR', clip)] if clip else [], turn=n + SPEECH_GAP, tier=tier)
+                head = [('MOVIE_PLAY_RADAR', clip)] if clip else []
+                as_caption = tier == FUNC and not self.ctx.talk.scene
+                if dubbed in (self.m.subtitles if as_caption else self.captioned):
+                    raise PlanError(f'action {a!r}: the recording {dubbed} is said twice, once as a caption (功能) and '
+                                    f'once with its own subtitle: its subtitle is one or the other')
+                if as_caption:
+                    self.captioned.add(dubbed)
+                    return self.ctx.line([('PLAY_SOUND_EFFECT', dubbed)], words, n + CAPTION_TAIL, head,
+                                         turn=n + SPEECH_GAP, tier=tier)
+                self.voice.subtitled.add(dubbed)
+                self.m.subtitles[dubbed] = words
+                return self.ctx.line([('PLAY_SOUND_EFFECT', dubbed)], None, 0.0, head, turn=n + SPEECH_GAP, tier=tier)
             retail = self.voice.eva(who, said) if who and self.voice is not None else None
             if retail:                              # retail's own announcer line: its event, no caption (as retail)
                 self.m.lines.append(dict(说话人=str(who), 原文=str(said), 通报=shown, 字串=retail))
@@ -771,7 +783,7 @@ class Compiler:
         plan's own for 秒), 停 (秒 of nothing), 揭全图 看一眼 (the whole map, shrouded again at the end), any other
         action at once (a caption, a device's, a 技能: what the camera is to see); then the input back. Returns the
         phase-start actions and the scene's length; the later steps are timed scripts on `段 <phase> + t`."""
-        at, t, look, follow, line_at = {}, 0.0, False, False, None
+        at, t, look, follow = {}, 0.0, False, False
         talk, said = self.ctx.talk, []               # said: (when, actions) of each line, a script of its own
         looked = []                                # sites a 镜头 lifted the shroud at: shrouded again at the hand-back
         steps, prev, joined = list(ph.spec['过场']), None, False
@@ -808,15 +820,13 @@ class Compiler:
                 t, prev, joined = t + secs, str(step['镜头']), nxt
                 continue
             if self.is_line(step):
-                # one line at a time, as outside a 过场 (user 2026-11-03: "一句说完了之后再继续说"): the caption strip stacks
-                # its lines and clears them together STRIP_CLEAR after the last, so a line waits for the one before it.
-                # It is a script of its own that takes the queue's floor (ctx.talk): what was being said when the scene
-                # began is finished first
-                if line_at is not None and t < line_at + STRIP_CLEAR:
-                    t = line_at + STRIP_CLEAR
+                # one line at a time, as outside a 过场 (user 2026-11-03: "一句说完了之后再继续说"): a line takes the floor
+                # for its own turn (the recording and a gap, or the caption's own reading time; no floor longer than
+                # that, E6) and the next starts after it. It is a script of its own that takes the queue's floor
+                # (ctx.talk): what was being said when the scene began is finished first
                 talk.turn = 0.0
                 said.append((t, talk.floor(self.action(step), talk.turn)))
-                line_at, t, joined = t, t + talk.turn, False
+                t, joined = t + talk.turn, False
                 continue
             at.setdefault(t, []).extend(self.action(step))
         if t <= 0:
