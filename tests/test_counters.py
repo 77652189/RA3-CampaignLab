@@ -86,3 +86,14 @@ def test_a_countdown_under_the_counters_is_skipped(monkeypatch):
     assert not counters.countdown(counters.glyphs(img, counters.line_box(0)))
     monkeypatch.setattr(counters, 'read_line', lambda img, box: box[1])
     assert counters.read(img, 1) == [counters.line_box(0)[1]]
+
+
+def test_two_narrow_ones_are_one_value():
+    """Bench 2026-11-04 (CampGroundWalk): "11" -- two narrow 1s, 4 columns apart -- read as 1: the reader took the
+    gap for the space between the label and the value (that space is 7)."""
+    img = frame([(24, 40)])
+    a = np.asarray(img).copy()
+    x, y, *_ = counters.line_box(0)
+    a[y + 1:y + 14, 30:34] = BOX                # the value's glyph split in two: 24-30 and 34-40, 4 apart
+    img = Image.fromarray(a)
+    assert [(s, e) for s, e, _ in counters.glyphs(img, counters.line_box(0))] == [(24, 30), (34, 40)]

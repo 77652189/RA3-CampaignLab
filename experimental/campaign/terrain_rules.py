@@ -22,6 +22,9 @@ BUILD_VARIATION = 3.0               # world: BuildSystemSettings.AllowedHeightVa
 # BlendTileData's eight per-cell bit fields, in file order (v27; mapterrain.Tiles.set_bit's field index). Names by the
 # layout other SAGE readers give version 27 and by what is set on retail maps (field 0 on steep dry ground, 4 on ~94 %,
 # 5 on ~2 %): 推断, not read in the game's code. Only field 0 is written by our generators (fill 0, field 4 all on).
+# Field 0 is all the game goes by for ground units (测, checks/engine_terrain.py walk, 2026-11-04): a wall rising 40
+# per cell with the bit off, a tank and an infantryman walked over; level ground with the bit on, neither crossed. The
+# game does not work cliffs out of the heights, so a writer that moves heights must rewrite field 0 (apply_edit).
 FIELDS = ('impassable', 'impassable_to_players', 'passage_width', 'extra_passable', 'visible', 'buildability',
           'impassable_to_air', 'tiberium_growable')
 IMPASSABLE = FIELDS.index('impassable')
@@ -62,7 +65,8 @@ def slope(e):
 def passable(e, waterline, steep=STEEP):
     """The impassable bit (field 0) as our writers set it: dry ground steeper than `steep` is impassable. Returns the
     cells a ground unit may stand on (True = passable): dry (above waterline + 10) and not steep. Water is left to the
-    game's water areas, not to the bit."""
+    game's water areas, not to the bit. The game itself reads only the bit (测): this is where the bit should be, not
+    what the game would work out from the heights."""
     e = np.asarray(e, dtype=float)
     return (e > waterline + 10) & (slope(e) <= steep)
 

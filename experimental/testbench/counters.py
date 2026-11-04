@@ -21,7 +21,9 @@ TOP, LINE, HEIGHT = 578, 16, 15                # the first line's top row, the p
 MAX_LINES = 4
 LEFT, RIGHT = 0, 330
 TEXT = 170                                      # text pixels (yellow or white): red and green both above this
-GAP = 4                                         # columns of no text between the label and the value
+GAP = 5                                         # columns of no text between the label and the value (the space
+                                                # is 7; two narrow 1s stand 4 apart, so "11" read as 1 at GAP 4,
+                                                # bench 2026-11-04, CampGroundWalk)
 END_GAP = 12                                    # a wider gap: the line's text has ended
 START_BY = 30                                   # a counter line's text starts left of this
 MIN_HEIGHT = 6                                  # text columns shorter than this are specks (digits are 13 tall; a
