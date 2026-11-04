@@ -2,6 +2,14 @@
 
 外壳线 2026-11-03 从关卡线拆出（[architecture.md](../architecture.md) 各线负责的文件）。以前做过的事和坑在 [story/handoff.md](../story/handoff.md) 搜"外壳""CampShell"（第 33～42、61～69 行）。问题编号见 [issues.md](../issues.md) K9。
 
+## K9 原版内容检查 + 指挥官摘要页 + 地图图片从本次构建出（2026-11-04，总控派活，git log 搜 "K9 retail check"）
+
+- **检查**：`shell.still_retail(sp)`（`shell.py` "what the player still sees of retail" 一节）。从 `SCREENS`（阵营、章节、任务说明、**指挥官摘要页 `fes_m_objectivesbriefing`**（原来清单里漏了）、读盘、HUD 合作面板、战后统计、9 关的 global/objective briefing）出发，按 `apt_movie.movie()['libraries']` 递归导入的组件库；每个流按**我们发出去的版本**读（`sp.files` 优先，没有才读原版）。报三样：像素和原版一样的贴图、原版字串表里有又没被我们改写/新增的 `$标签`（无冒号的是 `APT:<名>`，`&Outline` 去掉；表里没有的是引擎填的字段，不算）、模板里不是我们片子的视频字段。`KEEP` 是保留清单（键 + 理由），**用不到的 KEEP 也报错**（防止清单烂掉）。测试：`tests/test_shell.py` 里 `test_no_retail_picture_label_or_video_...`（发货配置：`make(later=True)` + 地图钩子）、`test_the_retail_check_finds_what_it_was_not_told_about`（删一条改写、删一个发出去的流、删一条 KEEP，三样都报出来）。
+- **查出来并从源头改的**：(1) 9 关任务摘要脚本里还带着苏军、帝国全部旁白事件的表（`$DIALOGEVENT:MS..`/`MI..`，有原版字幕）——`EVENT` 扩到三个阵营，没播的一律改名 `CNV_SHELL_X<阵营>..`（同长度）。(2) 指挥官摘要页：这一页改成我们情报官的（`cast.md` 莉娜·沃斯）：标签页名 `APT:MISSION_COMMANDERS`、队伍栏第二行 `APT:CO_COMMANDER` → "情报官"，`PERSONALITY:` 前缀 → "莉娜·沃斯"（原来是"—"）；名字条上的星星烤在 `apt_fes_m_objectivesBriefing_1` 里，`STAR_BARS` + `destar()` 按列取最红的像素抹掉（测试 `test_the_commander_overviews_name_bar_has_no_stars_left`）。其余都进了 KEEP（通用框/按钮、盟军底图、界面通用词、单人/合作选择；`shellcontent`/`shellbuttons` 是读盘界面导入、但游戏包里根本没有的库）。
+- **没做**：指挥官摘要页左边的头像位（引擎画的 `CocommanderPortrait`，模板去掉了 Portrait 所以空着）。要放沃斯的像得给 mod 加一个 OnDemandImage 头像资源（原版头像名如 `Moskvin` 不在 SDK XML 里，在编译好的数据里），检查不会报它（它不是原版内容，是空位）。另外不确定星星是画在本屏贴图还是 `fe_m_generalScreenComponents_1`（那张也有一条带星的条）——进游戏看，还有星就是后者。
+- **地图图片**：`ModSpec.map_files`（f(MapFile) → 文件）；`build_mod` 的 `edit(m)` 在 map_edits 之后调它，结果接在 `c4.EXTRA_FILES` 后面（`c4.main` 在 `c2.map_files()` 返回后才读 EXTRA_FILES，同名文件后者胜）。`shell.make(.., later=True)`（contribute 用）不再生成本关的任务摘要、局势介绍、章节缩略图，改由钩子 `drawn(m)` 用 `picture_of(m)`（`maprender.render(m, MAP_PICTURE, px=2, plain=True)`）现画。`make()` 默认仍读 `MAP_PICTURE`（测试用）。
+- **重建**：见提交说明（`work/logs/k9_build_zh.log`、`k9_build_en.log`）。**没进游戏看过**。
+
 ## I11 任务摘要页（2026-11-04，总控派活，git log 搜 "I11"）
 
 - **查到的**：原版 9 关的任务摘要时间轴各不相同（A04 拉近三次、最后不拉回全图、没有箭头；A01/A03/A05/A06 不拉远；A07/A09 有拉远）。逐关原地改时间轴凑不出统一结构（帧数、物件都是固定的）。调查脚本思路：主时间轴里地图是第 4 号精灵、深度 2；标记、箭头都是从 `fe_objectiveBriefingsAssets` 导入的字符（`box 2 fill/outline`、`OI Primary *`、`blue arrow thin` + `mask`），放在主时间轴的屏幕坐标上；每关脚本常量里都有 9 关全部旁白事件的表。
@@ -47,13 +55,13 @@
 
 ## 下一步
 
-1. **I11 剩下的**：(a) 指挥官摘要页：11-04 截图（`work/shell/i11_before/commander_02.png`）里任务说明已经是我们的文字，还剩原版的是指挥官名一栏的"—"、五颗星、左边空着的头像框、"指挥官 2 —"；先用第 2 项的检查列出这一屏和它导入的组件里所有 `$标签`，再逐条换或写进保留清单。(b) 地图图片改成构建时从正在构建的地图画（现在用上一次构建的图；做法：`ModSpec` 加一个拿到改完的 MapFile 后再出文件的钩子，`build_mod` 在 `c4.main` 拼 `EXTRA_FILES` 之前调用——`make_campnew4.main` 第 58 行是在 `c2.map_files()` 之后才读 `EXTRA_FILES` 的）。(c) 两个目标离得近时路线箭头跟着缩小（A4 缩到 0.4 倍），进游戏看是否太细，太细就给 `retime` 的 route 加最小缩放。
+1. **I11 剩下的**：(a)(b) 已做，见最上面"K9 原版内容检查"一节；还差指挥官摘要页的头像位（要加头像资源，见那一节"没做"）。(c) 两个目标离得近时路线箭头跟着缩小（A4 缩到 0.4 倍），进游戏看是否太细，太细就给 `retime` 的 route 加最小缩放。
    以下是 11-03 的调查，已按上面的"I11 任务摘要页"一节做完：原版 `aNN_objective_briefing` 是固定 1140 帧（约 38 秒）的时间轴，不等配音：第 2 帧旁白 1、259 帧放大、269 帧旁白 2 + 目标方块闪、289 帧绿色目标标记、409 帧再移、419 帧旁白 3、569 帧旁白 4、799 帧拉远、809 帧旁白 5（A04 用的是 01、04、03、05、06 号旁白）。地图是精灵（A04 是第 4 号角色），缩放 0.479（全图）→0.936→平移→0.774；**最后没拉回全图**。读法：草稿脚本思路是解帧动作里的 `0xA1` 压字符串（4 字节对齐的指针），能读出 `playSound_<事件名>` 的顺序。我们的问题有三个：
    - **地图图片是开发用的预览图**（`work/maps/CampA4_mcp.png`），带"CNV A4 Truck1""Approach 1"这类调试标签和触发区方框，放大后玩家看得见。要换成不带标注的俯视图（先查 `cnv_map` / `cnv_preview` 有没有干净的出图选项；`cnv/` 是关卡线的，要加选项先打招呼）。
    - **放大落点是原版直布罗陀的坐标**，在我们的图上是空角落；绿色目标标记也在原版位置。做法：把时间轴分成"静止段"和"运动段"，每个静止段的焦点换成我们第 k 个目标的位置（从关卡公开的地点取，`m.site`，在 `shell_missions.json` 里写地点名，不写坐标），运动段按帧插值；屏幕上的标记跟着焦点走就不用单独挪。最后一段改成拉回第 0 帧的全图视角。精灵坐标约等于贴图像素（0.479×1024≈490，正好是全图框宽），先离线算、再进游戏核对。
    - **旁白字幕**：现在第 1 句是简报、第 2 句是所有目标、其余是标题占位（`narration_strings`）。要按时间轴里出现的顺序配：第 1 句简报，第 2、3 句是目标 1、2 的说明（和放大同步），最后一句收尾。
    - 指挥官摘要页剩下的原版文字：先在 CampShell 上 `--tour overview --slot 4` 截 `commander_*` 看还剩哪些，再查标签覆盖。
-2. **K9 类检查（ADR 0015，还没写）**：外壳构建时列出玩家能看到的原版内容，凡没替换、也没显式标"保留原版"（要写原因）的就报错。范围：`fes_m_factionmenu`、`fes_m_chapterselect`、`fes_m_missionbriefing`、各关 `aNN_global/objective_briefing`、`tacticalhudcoopaiorderpanel`、`loadscreencampaign`，**加上它们按名字导入的组件库**（AptAptData 里的导入是"库路径 + 符号名"两串，取路径最后一段小写就是流名，如 `mouse_chapterSelectComponent`、`fe_missionBriefingAssets`、`fe_m_generalScreenComponents`）。I12 就是漏在导入的组件里，所以必须递归导入。检查三样：每张 `Texture`、每个 `$标签`（AptAptData/AptConstData 里以 `$` 开头的字符串，`$DIALOGEVENT:` 另算）、战役模板里每个视频字段。通用界面框架（按钮、边框、扫描线）列进保留清单，逐张写原因。
+2. **K9 类检查 已做**（见最上面一节）。它查不到的：脚本运行时拼出来的字串（如 `PERSONALITY:` + 头像名，靠前缀改写兜住）、引擎往文本框里填的内容、引擎画的图（头像位）。贴图是按整张算的：一张里改了一块就算换过，同一张里别的原版小图不会再报（I12 那种要在 KEEP 理由里说清）。
 3. **重建并装 Mods**：先单独查游戏有没有在运行；`python -I -X utf8 experimental/cnv/build.py a4 --shell` 和 `... --shell --lang intl`（I15，国际版还要带配音线的新音频）。然后 CampShell 上截：`--tour overview --slot 4 --linger 40`（世界地图标记、头像比例、任务摘要），`--tour chapters`（三个图标）；国际版 9 关逐个 `--slot K` 走进游戏看不崩。
 4. 改 `docs/issues.md` 里 I10、I11、I12、I15 的状态为"修了待验"（只有这一处允许外壳线改），报告写类别怎么从源头改、对应检查、提交号、CampShell 已重建。
 

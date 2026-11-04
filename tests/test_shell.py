@@ -119,6 +119,9 @@ def test_the_briefing_narration_events_are_renamed_to_ours_with_the_same_length_
     new = shell.new_event(old)
     assert len(new) == len(old) and new == b'CNV_SHELL_I_040200' and shell.EVENT.fullmatch(old) and not shell.EVENT.fullmatch(new)
     assert shell.new_event(b'MA07_AlliedIntel10', 4) == b'CNV_SHELL_I_040500'        # the template's 5th line in slot 4
+    for other in (b'MS03_SovietIntel02', b'MI01_ImperialIntel01', b'MA02_AlliedIntel03'):     # the table's unplayed lines
+        new = shell.new_event(other, 4)
+        assert len(new) == len(other) and new.startswith(b'CNV_SHELL_X') and not shell.EVENT.search(new)
     info = shell.missions()
     strings = shell.narration_strings(info)
     assert strings['DIALOGEVENT:CNV_SHELL_I_040200'].endswith(info[4]['objectives'][0])
@@ -214,7 +217,94 @@ def test_the_launcher_has_two_edition_buttons_remembers_the_last_and_starts_that
 def test_the_commander_overview_shows_no_retail_commander_in_either_edition(edition):
     for lang in ('zh', 'intl'):
         sp = shell.make('x', 'CampA4', lang)
-        assert sp.prefix_overrides == {'PERSONALITY:': '—'} and sp.overrides['APT:COCOMMANDER_NAME_TITLE'] == shell.T['notes_title']
+        assert sp.prefix_overrides == {'PERSONALITY:': shell.T['officer']} and \
+            sp.overrides['APT:COCOMMANDER_NAME_TITLE'] == shell.T['notes_title'] and \
+            sp.overrides['APT:CO_COMMANDER'] == sp.overrides['APT:MISSION_COMMANDERS'] == shell.T['officer_title']
+
+
+def _container_map():
+    import make_campnew18 as c18
+    from mapscript import MapFile
+    return MapFile(next(d for p, d in c18.c6._map_files() if p.lower().endswith('.map')))
+
+
+@pytest.fixture(scope='module')
+def shipped(tmp_path_factory):
+    """The shell as the build ships it (Chinese edition: make(.., later=True), the built slot's files drawn from a map as
+    build_mod hands it over) and the string table it starts from: made once for the tests below."""
+    from dataclasses import replace
+    if not ARCHIVE.exists():
+        pytest.skip('no game install')
+    shell.use_lang('zh')
+    sp = shell.make('x', 'CampA4', 'zh', later=True)
+    keep, shell.MAP_PICTURE = shell.MAP_PICTURE, str(tmp_path_factory.mktemp('shell') / 'map.png')   # not work/shell's
+    try:
+        drawn = [f for make in sp.map_files for f in make(_container_map())]
+    finally:
+        shell.MAP_PICTURE = keep
+    return replace(sp, files=sp.files + drawn), shell.retail_labels(), sp.files, drawn
+
+
+@needs_game
+def test_the_built_slots_screens_are_drawn_from_the_map_being_built(shipped, tmp_path, monkeypatch):
+    """The built slot's objective briefing, overview and thumbnails come only from the map build_mod hands over (no file a
+    previous build left), and build_mod puts what a spec draws from the map into the big after its other files."""
+    sp, _, early, drawn = shipped
+    own = {shell.APT + 'a04_objective_briefing.bin', shell.APT + 'a04_global_briefing.bin',
+           f'data{B}maps{B}official{B}{shell.OWN_STEM}{B}{shell.OWN_STEM}.tga'}
+    assert own <= {p for p, _ in drawn} and not own & {p for p, _ in early}
+    import importlib
+    c2, c4, c6 = (importlib.import_module(n) for n in ('make_campnew2', 'make_campnew4', 'make_campnew6'))
+    if not os.path.isdir(c2.SDK):
+        pytest.skip('no SDK')
+    monkeypatch.setattr(package, 'sdk_build_lock', lambda name: (lambda: None))
+    seen = []
+
+    def main():                                 # the pipeline edits the map, then reads EXTRA_FILES
+        c6.edit(_container_map())
+        seen.append(list(c4.EXTRA_FILES))
+        os.makedirs(c4.OUT)
+    monkeypatch.setattr(c4, 'main', main)
+    order = []
+    spec = package.ModSpec(name='CampX', big_files=(('data\\x', b'early'),), map_edits=(lambda m: order.append(('edit', m)),),
+                           map_files=(lambda m: order.append(('draw', m)) or [('data\\x', b'late')],))
+    package.build_mod(spec, str(tmp_path / 'out'))
+    assert [k for k, _ in order] == ['edit', 'draw'] and order[0][1] is order[1][1]       # drawn from the edited map
+    assert seen[0][-2:] == [('data\\x', b'early'), ('data\\x', b'late')]                   # the last one wins in the big
+
+
+@needs_game
+def test_no_retail_picture_label_or_video_is_left_on_the_campaigns_screens_unless_kept_with_a_reason(shipped):
+    """K9 (ADR 0015): every screen of the campaign flow and every component it imports, as shipped, in all nine slots --
+    each retail picture, label and template video is replaced or listed in shell.KEEP with its reason (and no KEEP entry is
+    stale)."""
+    sp, table = shipped[:2]
+    assert all(isinstance(why, str) and why for why in shell.KEEP.values())
+    assert shell.still_retail(sp, table) == []
+
+
+@needs_game
+def test_the_retail_check_finds_what_it_was_not_told_about(shipped, monkeypatch):
+    """The check is not empty by construction: a retail label, an unshipped screen and a lost keep reason each come back."""
+    from dataclasses import replace
+    sp, table = shipped[:2]
+    bare = replace(sp, overrides={k: v for k, v in sp.overrides.items() if k != 'APT:MISSION_COMMANDERS'},
+                   files=[(p, v) for p, v in sp.files if 'fes_m_objectivesbriefing' not in p])
+    monkeypatch.delitem(shell.KEEP, ('label', 'APT:BACK'))
+    left = shell.still_retail(bare, table)
+    assert ('label', 'fes_m_objectivesbriefing', 'APT:MISSION_COMMANDERS') in left
+    assert ('texture', 'fes_m_objectivesbriefing', 'apt_fes_m_objectivesBriefing_1') in left
+    assert ('label', 'fes_m_factionmenu', 'APT:BACK') in left
+
+
+@needs_game
+def test_the_commander_overviews_name_bar_has_no_stars_left():
+    orig = apt_textures.originals('Apt.big', shell.APT + 'fes_m_objectivesbriefing.')
+    for tex, boxes in shell.STAR_BARS.items():
+        new = shell.destar(orig[tex], boxes)
+        for x0, y0, x1, y1 in boxes:
+            assert any(len({orig[tex].getpixel((x, y)) for y in range(y0, y1)}) > 1 for x in range(x0, x1))     # stars were there
+            assert all(len({new.getpixel((x, y)) for y in range(y0, y1)}) == 1 for x in range(x0, x1))
 
 
 @needs_game

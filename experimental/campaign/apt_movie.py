@@ -48,21 +48,23 @@ def _cstr(b, o):
 
 
 def movie(apt, const):
-    """{'frames': [[(kind, offset)]], 'imports': {name: character}, 'size': (w, h), 'ms': ms per frame} of the .apt bytes
+    """{'frames': [[(kind, offset)]], 'imports': {name: character}, 'libraries': {name: the library it is imported from, e.g.
+    '..\\\\common\\\\shell\\\\missionBriefings\\\\fe_missionBriefingAssets'}, 'size': (w, h), 'ms': ms per frame} of the .apt bytes
     `apt` with its constant file `const`."""
     off = _u(const, 20)
     kind, _sig = _u(apt, off, 2)
     assert kind == 9, f'no movie at {off}'
     fc, fp, _, cc, cp, w, h, ms, ic, ip = _u(apt, off + 8, 10)
-    imports = {}
+    imports, libraries = {}, {}
     for k in range(ic):
         lib, name, char, _p = _u(apt, ip + 16 * k, 4)
         imports[_cstr(apt, name)] = char
+        libraries[_cstr(apt, name)] = _cstr(apt, lib)
     frames = []
     for f in range(fc):
         n, items = _u(apt, fp + 8 * f, 2)
         frames.append([(_u(apt, p), p) for p in (_u(apt, items + 4 * i) for i in range(n))])
-    return dict(frames=frames, imports=imports, size=(w, h), ms=ms)
+    return dict(frames=frames, imports=imports, libraries=libraries, size=(w, h), ms=ms)
 
 
 def placements(m, apt):

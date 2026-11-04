@@ -52,14 +52,16 @@ TEXTS = {
                mission='盟军第 {k} 关', pic='占位图', pic_of='（占位图）', intel='情报', goals='目标',
                card_lines=('CNV', '占位卡片'), faction=dict(allies='战役实验室', soviet='苏军战役', empire='帝国战役'),
                notes_title='任务说明', goal='目标{n}：{text}', closing='指挥官，两个目标都已标在地图上。',
-               other_card='（占位）：这一战役还没做。', other_name='{side} 第 {k} 关（占位）', other_short='{side} {k}'),
+               other_card='（占位）：这一战役还没做。', other_name='{side} 第 {k} 关（占位）', other_short='{side} {k}',
+               officer='莉娜·沃斯', officer_title='情报官'),
     'intl': dict(title='Sapporo Snow Festival · Horns and Ice Walls', short='Ice Soldiers', file='shell_missions.en.json',
                  intro='Pre-mission movie (placeholder)', colon=': ', semi='; ', note=' (mission notes)', narr='(placeholder narration) ',
                  card='Allied campaign (placeholder): at the Sapporo snow festival, one blast of the horn and the tunnels of three streets send out their troops.',
                  mission='Allied Mission {k}', pic='Placeholder', pic_of=' (placeholder)', intel='Intel', goals='Goals',
                  card_lines=('CNV', 'Placeholder card'), faction=dict(allies='Campaign Lab', soviet='Soviet campaign', empire='Empire campaign'),
                  notes_title='Mission notes', goal='Objective {n}: {text}', closing='Commander, both objectives are marked on the map.',
-                 other_card=' (placeholder): this campaign is not made yet.', other_name='{side} mission {k} (placeholder)', other_short='{side} {k}'),
+                 other_card=' (placeholder): this campaign is not made yet.', other_name='{side} mission {k} (placeholder)', other_short='{side} {k}',
+                 officer='Lena Voss', officer_title='Intel officer'),
 }
 T = TEXTS['zh']
 TITLE, SHORT = T['title'], T['short']
@@ -97,6 +99,7 @@ class Shell:
     strings: dict = field(default_factory=dict)     # new labels
     overrides: dict = field(default_factory=dict)   # retail labels rewritten
     prefix_overrides: dict = field(default_factory=dict)    # label prefix -> text, every retail label that starts so
+    map_files: tuple = ()                           # f(MapFile) -> files drawn from the built map (make(.., later=True))
 
 
 def font(size):
@@ -163,7 +166,7 @@ def name_card(inner, lines):
     return card
 
 
-def global_pictures(short, real):
+def global_pictures(short, real, picture=None):
     """The overview's three framed pictures (276 x 326 at x 5, 301, 597): inside the frames, for the built mission the map from
     above, Voss and a card; for the other slots three cards."""
     def paint(orig):
@@ -171,7 +174,7 @@ def global_pictures(short, real):
         out = orig.convert('RGBA').copy()
         inner = (260, 310)
         if real:
-            m = map_picture(1000).crop((120, 0, 880, 1000)).resize(inner, Image.LANCZOS)
+            m = map_picture(1000, picture=picture).crop((120, 0, 880, 1000)).resize(inner, Image.LANCZOS)
             v = Image.open(VOSS).convert('RGBA').crop((120, 0, 1134, 1254)).resize(inner, Image.LANCZOS)
             pics = [m, v, name_card(inner, [(short, 56, 110), (T['pic'], 34, 190)])]
         else:
@@ -296,12 +299,31 @@ def faction_icons(orig, boxes):
     return out
 
 
+# The commander overview (fes_m_objectivesbriefing) is our intel officer's notes: no co-op commander comes with our missions.
+# Its name bar carries a row of rating stars baked into the screen's texture, over a bar whose colour changes only along x.
+STAR_BARS = {'apt_fes_m_objectivesBriefing_1': [(1620, 799, 1896, 822)]}
+
+
+def destar(orig, boxes):
+    """The texture with the stars gone from each box: every column of a box takes its unstarred pixel (the stars darken the
+    bar, so the column's reddest pixel is the bar's own)."""
+    out = orig.convert('RGBA').copy()
+    px = out.load()
+    for (x0, y0, x1, y1) in boxes:
+        for x in range(x0, x1):
+            bar = max((px[x, y] for y in range(y0, y1)), key=lambda p: p[0])
+            for y in range(y0, y1):
+                px[x, y] = bar
+    return out
+
+
 PORTRAIT_CALL = re.compile(rb'RenderImage')     # the panel's script asks the engine to draw the commander's picture; nobody answers 'RenderImagx'
 MONITOR = ['ASSAULT', 'ATTACKING', 'BUILDINGAIRCRAFT', 'BUILDINGFORCES', 'BUILDINGNAVY', 'BUILDINGVEHICLES', 'DEFENDING',
            'EXPANDING', 'HOLDOBJECT', 'HOLDPOSITION', 'INCOMBAT', 'INDANGER', 'LOWONCREDITS', 'LOWONPOWER', 'NORMAL', 'ONGUARD',
            'PREPARINGSTRIKE', 'RUSHING', 'SENDINGFORCES', 'TECHINGUP', 'TRAININGINFANTRY']      # the panel's state texts ("防御状态" ...)
 
-EVENT = re.compile(rb'MA(\d\d)_AlliedIntel(\d\d)', re.I)       # the retail briefing narration the objective screens play
+# the retail briefing narration: the objective screens' scripts carry the table of all three campaigns' lines
+EVENT = re.compile(rb'M([ASI])(\d\d)_(?:Allied|Soviet|Imperial)Intel(\d\d)', re.I)
 
 
 # ---- the objective briefing (I11, K9) ------------------------------------------------------------------------------
@@ -330,14 +352,15 @@ def new_event(old, slot=None):
     """Retail's narration event of a briefing line -> ours (same length: it is a name inside the screen's script constants).
     Ours is no audio event at all, so nothing is spoken; its subtitle label (DIALOGEVENT:<name>) holds our text. In slot
     `slot`'s screen the template's lines become that slot's lines in the order they play (CNV_SHELL_I_<slot><n>00).
-    The script's table of the other missions' lines (never played here) goes to CNV_SHELL_X_..., no label."""
+    The script's table of the other missions' lines, all three campaigns' (never played here), goes to CNV_SHELL_X<side>...,
+    no label: no retail subtitle is left reachable from the screen."""
     m = EVENT.fullmatch(old)
-    mission, line = int(m.group(1)), int(m.group(2))
-    if not slot:
+    side, mission, line = m.group(1).upper().decode(), int(m.group(2)), int(m.group(3))
+    if side == 'A' and not slot:
         return f'CNV_SHELL_I_{mission:02d}{line:02d}00'.encode()
-    if mission == TEMPLATE and line in TEMPLATE_LINES:
+    if side == 'A' and mission == TEMPLATE and line in TEMPLATE_LINES:
         return f'CNV_SHELL_I_{slot:02d}{TEMPLATE_LINES.index(line) + 1:02d}00'.encode()
-    return f'CNV_SHELL_X_{mission:02d}{line:02d}00'.encode()
+    return f'CNV_SHELL_X{side}{mission:02d}{line:02d}'.ljust(len(old), '0').encode()
 
 
 def narration_lines(m):
@@ -460,9 +483,10 @@ def objective_briefing(k, short, real, picture=None, targets=None):
                               donor=APT + f'a{TEMPLATE:02d}_objective_briefing.')
 
 
-def apt_files(slots):
+def apt_files(slots, picture=None, screens=True):
     """The APT streams with our pictures and the emptied co-op panel: [(big path, bytes)]. `slots`: {slot: (short name, built
-    mission?, (lat, lon))}. Only the .bin carries pictures / shapes / timelines; the other three files of a stream are the
+    mission?, (lat, lon), targets)}; `picture`: the built mission's map from above (map_picture); `screens`: the screens
+    shared by every slot too. Only the .bin carries pictures / shapes / timelines; the other three files of a stream are the
     retail ones byte for byte (checked by tests/test_shell.py), so they are not shipped."""
     files = []
 
@@ -471,17 +495,131 @@ def apt_files(slots):
         files.extend((p, v) for p, v in make(prefix) if p.endswith('.bin'))
 
     for k, (short, built, where, targets) in slots.items():
-        files.extend(objective_briefing(k, short, built, targets=targets))     # all four files: the donor's sizes
+        files.extend(objective_briefing(k, short, built, picture, targets))     # all four files: the donor's sizes
         add(f'a{k:02d}_global_briefing', lambda prefix, k=k, short=short, built=built, where=where: apt_textures.patch(
-            'Apt.big', prefix, {f'apt_A{k:02d}_Global_Briefing_1': global_pictures(short, built)(
+            'Apt.big', prefix, {f'apt_A{k:02d}_Global_Briefing_1': global_pictures(short, built, picture)(
                 apt_textures.originals('Apt.big', prefix)[f'apt_A{k:02d}_Global_Briefing_1'])}, movie=retarget(where)))
+    if not screens:
+        return files
     add('fes_m_factionmenu', lambda prefix: apt_textures.patch(
         'Apt.big', prefix, {t: faction_cards(apt_textures.originals('Apt.big', prefix)[t], boxes) for t, boxes in CARD_BOXES.items()}))
     for stem, boxes in ICON_BOXES.items():
         add(stem, lambda prefix, boxes=boxes: apt_textures.patch('Apt.big', prefix, {
             t: faction_icons(img, boxes) for t, img in apt_textures.originals('Apt.big', prefix).items()}))
+    add('fes_m_objectivesbriefing', lambda prefix: apt_textures.patch('Apt.big', prefix, {
+        t: destar(apt_textures.originals('Apt.big', prefix)[t], boxes) for t, boxes in STAR_BARS.items()}))
     add(PANEL, lambda prefix: apt_textures.hollow('Apt.big', prefix, (PORTRAIT_CALL, lambda old: old[:-1] + b'x')))
     return files
+
+
+# ---- what the player still sees of retail (K9, ADR 0015) -------------------------------------------------------------------
+# Every screen of the campaign flow, and every component library it imports (recursively: I12 hid in an imported component),
+# is read as the shell ships it; a picture whose pixels are retail's, a label whose text is the retail table's and that the
+# shell neither rewrites nor adds, and a template's video field that is not one of our clips, are retail content the player
+# sees. Each one is either replaced or listed in KEEP with its reason; anything else is an error (tests/test_shell.py).
+
+SCREENS = ('fes_m_factionmenu', 'fes_m_chapterselect', 'fes_m_missionbriefing', 'fes_m_objectivesbriefing',
+           'loadscreencampaign', PANEL, 'fes_m_postgameroundup',
+           *(f'a{k:02d}_{kind}_briefing' for k in range(1, 10) for kind in ('global', 'objective')))
+LABEL = re.compile(rb'(?<=\x00)\$([A-Za-z][\x21-\x7e]{2,})(?=\x00)')     # '$KEY' or '$KEY&Outline' (no ':' -> APT:KEY)
+VIDEO_FIELDS = ('OverviewTalkingHead', 'IntroMovie:FileName')
+_FRAME = 'the interface frame: panels, borders, bars (no picture of retail\'s story)'
+_ALLIED = 'the Allied screens\' backdrop (world map silhouette, the statue): our campaign takes the Allied slot'
+_WORD = 'a word of the interface itself, true in our campaign as it is'
+_MODE = 'single player / co-op choice of every campaign mission'
+KEEP = {
+    ('screen', 'shellcontent'): 'imported by the load screen but in no archive of the game: nothing of it is ever drawn',
+    ('screen', 'shellbuttons'): 'imported by the load screen but in no archive of the game: nothing of it is ever drawn',
+    ('screen', 'fe_m_assetsgamesetup'): 'the chapter list borrows only its MapPreviewComponent (the thumbnail frame; the '
+                                        'thumbnails are ours); the rest is the multiplayer setup screen',
+    ('screen', 'chatcomponent'): 'the co-op chat box (only with a human co-commander)',
+    ('screen', 'helpbox'): 'the tooltip of the co-op panel, which is hollowed (nothing of the panel is drawn)',
+    **{('texture', t): _FRAME for t in (
+        'apt_fes_m_factionMenu_2', 'apt_fes_m_objectivesBriefing_2', 'apt_fes_m_postgameRoundup_2',
+        'apt_fe_m_generalScreenComponents_1', 'apt_std_MouseButton_1', 'apt_std_mouseRadioButton_1',
+        'apt_std_mouseScrollbar_1', 'apt_std_mouseDropDownMenu_1', 'apt_LoadScreenCampaign_1',
+        'apt_fe_missionBriefingAssets_2', 'apt_fe_missionBriefingAssets_3', 'apt_fe_missionBriefingAssets_4',
+        'apt_fe_missionBriefingAssets_5', *(f'apt_A{k:02d}_Global_Briefing_2' for k in range(1, 10)))},
+    **{('texture', t): _ALLIED for t in (
+        'apt_fes_m_chapterSelect_1', 'apt_fes_m_missionBriefing_1', 'apt_fes_m_missionBriefing_2',
+        'apt_fes_m_postgameRoundup_1')},
+    ('texture', 'apt_fe_missionBriefingAssets_1'): 'the world map of the overview: geography; every slot\'s marker points at '
+                                                   'its own place on it (I10, retarget)',
+    ('texture', 'apt_fe_objectiveBriefingsAssets_1'): 'the objective briefing\'s window frame, markers and arrows, which '
+                                                      'point at our objectives (retime)',
+    ('texture', 'apt_A01_Objective_Briefing_2'): 'A01\'s own arrow picture, never drawn: A07\'s image table (the donor\'s '
+                                                 'AptDatData, "2->1") points only at texture 1',
+    **{('label', 'APT:' + w): _WORD for w in (
+        'BACK', 'CONTINUE', 'PLAY', 'NEXT', 'LOAD', 'MAINMENU', 'MAIN_MENU_BUTTON', 'ABORT_BUTTON', 'REPLAY_BUTTON',
+        'REPLAY_VIDEO_BUTTON', 'REPLAY_BRIEFING', 'READY', 'DIFFICULTY', 'EASYDIFFICULTY', 'MEDIUMDIFFICULTY',
+        'HARDDIFFICULTY', 'FACTION_SELECT_SCREEN_TITLE', 'HEADERCHAPTERSELECT', 'MISSION_CHOOSER', 'MISSION_NAME',
+        'MISSION_BRIEFING', 'MISSION_OBJECTIVES', 'MISSION_OBJECTIVE_PANEL_TITLE', 'GAME_COMMANDERS', 'MAIN_COMMANDER',
+        'COMMANDERS', 'POSTGAME_ROUNDUP', 'POSTGAME_STATS_TAB', 'RESOURCES', 'STRUCTURES', 'UNITS', 'LOADINGDOTDOTDOT',
+        'CHAT', 'CHATPANELTITLEBAR', 'ALLIESSHORTNAME', 'SOVIETSSHORTNAME', 'JAPANSHORTNAME')},
+    **{('label', 'APT:' + w): _MODE for w in (
+        'AI_BUTTON', 'RECRUIT_BUTTON', 'PLEASE_SELECT_YOUR_CO_COMMANDER_TYPE', 'CAMPAIGNMODESELECTIONHELPTEXT',
+        'WAITINGFORCOCOMMANDER')},
+}
+
+
+def _stream(prefix, get):
+    (h, E, chunks, bufs), _ = apt_textures.mapxml.read_stream(prefix, get)
+    return {apt_textures.mapxml.sa.cstr(bufs[2], e[6]).decode(): c[0] for e, c in zip(E, chunks)}
+
+
+def retail_labels():
+    """{LABEL: text} of the string table the mod's csf starts from (make_campnew3.strings)."""
+    import make_campnew3 as c3
+    from ra3voice import big, csf
+    name = 'data' + B + 'gamestrings.csf'
+    data = big.read_files(os.path.join(c3.GAME, 'Data', 'CNVoice_text.big'), [name])[name]
+    return {e[0].upper(): e[1] for e in csf.parse_full(data)[1]}
+
+
+def still_retail(sp, table=None):
+    """[(kind, where, what)] of the retail content the shell `sp` (make()) leaves on the campaign's screens and in its
+    templates and does not KEEP: ('texture', screen, texture id), ('label', screen, LABEL), ('video', template, field),
+    ('screen', name, 'not in Apt.big'), and ('keep', kind, what) for a KEEP entry that matches nothing any more."""
+    import apt_movie
+    table = retail_labels() if table is None else table
+    retail = apt_textures.mapxml._archive_get('Apt.big')
+    ours = dict(sp.files)
+    mine = {k.upper() for k in (*sp.strings, *sp.overrides)}
+    prefixes = tuple(p.upper() for p in sp.prefix_overrides)
+    left, seen, todo, used = [], set(), list(SCREENS), set()
+
+    def kept(item):
+        used.add(item)
+        return item in KEEP
+
+    while todo:
+        stem = todo.pop(0).lower()
+        if stem in seen or kept(('screen', stem)):
+            continue
+        seen.add(stem)
+        prefix = APT + stem + '.'
+        try:
+            got = _stream(prefix, lambda n: ours[n] if n in ours else retail(n))
+        except KeyError:
+            left.append(('screen', stem, 'not in Apt.big'))
+            continue
+        orig = _stream(prefix, retail) if any(n.startswith(prefix) for n in ours) else got
+        for name, data in got.items():
+            if name.startswith('Texture:') and data == orig.get(name) and not kept(('texture', name[8:])):
+                left.append(('texture', stem, name[8:]))
+        kinds = {n.split(':')[0]: d for n, d in got.items()}
+        a, c = kinds['AptAptData'], kinds['AptConstData']
+        for m in sorted({m.group(1).decode('latin1').split('&')[0] for m in LABEL.finditer(a + c)}):
+            key = (m if ':' in m else 'APT:' + m).upper()
+            if key in table and key not in mine and not key.startswith(prefixes) and not kept(('label', key)):
+                left.append(('label', stem, key))
+        (ao, al), (co, cl) = apt_movie.apt_of(a), apt_movie.apt_of(c)
+        todo += [re.split(r'[\\/]', lib)[-1] for lib in apt_movie.movie(a[ao:ao + al], c[co:co + cl])['libraries'].values()]
+    for k in range(1, 10):
+        attrs = sp.attrs if k == sp.slot else sp.others.get(k, {})
+        left += [('video', f'Allies_{k}', f) for f in VIDEO_FIELDS if attrs.get(f) not in sp.clips]
+    left += [('keep', kind, what) for kind, what in KEEP if (kind, what) not in used]      # kept, but no longer there
+    return left
 
 
 # ---- the chapter list's thumbnails ----------------------------------------------------------------------------------------
@@ -495,27 +633,27 @@ def retail_map_stems():
             for k in range(1, 10)}
 
 
-def thumbnail(short, real, size=128):
+def thumbnail(short, real, size=128, picture=None):
     """A picture of a map as retail's files are: 128 x 128 uncompressed 32-bit TGA (<map>.tga), or 512 x 512 24-bit (<map>_art.tga)."""
     import io
     from PIL import Image
-    img = map_picture(size, short, True, False).convert('RGBA') if real else name_card((size, size), [(short, size // 6, size * 0.4), (T['pic'], size // 9, size * 0.7)])
+    img = map_picture(size, short, True, False, picture).convert('RGBA') if real else name_card((size, size), [(short, size // 6, size * 0.4), (T['pic'], size // 9, size * 0.7)])
     buf = io.BytesIO()
     img.convert('RGBA' if size == 128 else 'RGB').save(buf, 'TGA')
     return buf.getvalue()
 
 
-def thumbnails(slots):
+def thumbnails(slots, picture=None):
     """[(big path, bytes)]: a mission's map picture is the file <its map folder>\\\\<stem>.tga; the built mission's is in the new
     folder (the build puts it there: make_campnew2.map_files), the others replace the retail folders' files (this mod's big
-    only: retail's are not touched)."""
+    only: retail's are not touched). `slots`: the slots to make (make()'s {slot: (short, built?, ..)})."""
     out = []
-    for k, stem in retail_map_stems().items():
+    stems = retail_map_stems()
+    for k in slots:
         short, built = slots[k][:2]
-        if built:
-            stem = OWN_STEM
-        out.append((f'data{B}maps{B}official{B}{stem}{B}{stem}.tga', thumbnail(short, built)))
-        out.append((f'data{B}maps{B}official{B}{stem}{B}{stem}_art.tga', thumbnail(short, built, 512)))
+        stem = OWN_STEM if built else stems[k]
+        out.append((f'data{B}maps{B}official{B}{stem}{B}{stem}.tga', thumbnail(short, built, picture=picture)))
+        out.append((f'data{B}maps{B}official{B}{stem}{B}{stem}_art.tga', thumbnail(short, built, 512, picture)))
     return out
 
 
@@ -617,9 +755,17 @@ def site_targets(map_name, names):
     return tuple(out)
 
 
-def make(mission_title, mission_name='CampA4', lang='zh', map_name='sapporo'):
+def picture_of(m):
+    """The map MapFile `m` from above, the ground only (maprender, plain), as MAP_PICTURE (kept there for a look)."""
+    import maprender
+    return maprender.render(m, MAP_PICTURE, px=2, plain=True)
+
+
+def make(mission_title, mission_name='CampA4', lang='zh', map_name='sapporo', later=False):
     """Everything the shell adds to the build of `mission_name` (the plan's `名字` / title, in the briefing's mission list) in the
-    edition `lang` (langs.py: zh, intl; the words of the shell are TEXTS) on the map module `map_name`."""
+    edition `lang` (langs.py: zh, intl; the words of the shell are TEXTS) on the map module `map_name`. later: the built
+    slot's screens and thumbnails are drawn from the map the build writes (sp.map_files, ModSpec.map_files), not from
+    MAP_PICTURE as the last build left it."""
     use_lang(lang)
     slot = slot_of(mission_name)
     info = missions()
@@ -644,11 +790,22 @@ def make(mission_title, mission_name='CampA4', lang='zh', map_name='sapporo'):
     sp.clips[HEAD_ID] = head_clip()
     slots = {k: (m['short'], k == slot, tuple(m['where']), site_targets(map_name, m['targets']) if k == slot else None)
              for k, m in info.items()}
+    if later:
+        own = {slot: slots.pop(slot)}
+
+        def drawn(m):                                   # the built slot's screens, from the map this build writes
+            use_lang(lang)
+            picture = picture_of(m)
+            return apt_files(own, picture, screens=False) + thumbnails(own, picture)
+        sp.map_files = (drawn,)
     sp.files = apt_files(slots) + thumbnails(slots)
     sp.overrides = {'APT:ALLIES_FACTION_DESCRIPTION': T['card'], **{f'MONITOR:{k}': ' ' for k in MONITOR},
                     **{f'APT:{k}': T['notes_title'] for k in ('COCOMMANDER_NAME_TITLE', 'COCOMMANDER', 'YOUR_CO_COMMANDER',
                                                               'SELECT_YOUR_AI_CO_COMMANDER')}}   # the overview tab's head ("副指挥官")
-    sp.prefix_overrides = {'PERSONALITY:': '—'}         # the co-op commanders' names (the briefing's team column)
+    # the commander overview is our intel officer's (docs/design/flow/cast.md): its tab, the team column's second row and the
+    # co-op commanders' names (its name bar, the team column) are hers
+    sp.overrides.update({'APT:MISSION_COMMANDERS': T['officer_title'], 'APT:CO_COMMANDER': T['officer_title']})
+    sp.prefix_overrides = {'PERSONALITY:': T['officer']}
     for key, side, desc in (('SOVIETS', 'soviet', 'APT:SOVIET_FACTION_DESCRIPTION'), ('JAPAN', 'empire', 'APT:JAPANESE_FACTION_DESCRIPTION')):
         sp.overrides[desc] = T['faction'][side] + T['other_card']        # the other two campaigns: placeholders (names, cards, texts)
         for k in range(1, 10):
@@ -666,13 +823,13 @@ def contribute(spec, lang='zh'):
     from dataclasses import replace
     from package import with_more
     from experimental.video import pack as video_pack
-    sp = make(spec.title or spec.mission, spec.mission, lang, spec.map_name or 'sapporo')
+    sp = make(spec.title or spec.mission, spec.mission, lang, spec.map_name or 'sapporo', later=True)
     video = dict(spec.packs).get('video')
     video = video_pack.Later({**(video.clips if video else {}), **sp.clips})     # written in build_mod's lock
     packs = tuple((k, video if k == 'video' else p) for k, p in spec.packs)
     if 'video' not in dict(spec.packs):
         packs += (('video', video),)
     spec = with_more(spec, strings=sp.strings, overrides=sp.overrides, prefix_overrides=sp.prefix_overrides,
-                     big_files=sp.files)
+                     big_files=sp.files, map_files=sp.map_files)
     return replace(spec, packs=packs, slot={'slot': sp.slot, 'attrs': sp.attrs, 'others': sp.others, **sp.template},
                    launcher=False)

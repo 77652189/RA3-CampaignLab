@@ -139,6 +139,8 @@ class ModSpec:
     packs: tuple = ()               # (kind, pack): music, voice, video ...; a pack's include into the static stream, its
                                     # files into the big, its check on the file list, its strings (if any) after `strings`
     big_files: tuple = ()           # more (big path, bytes), after the packs' (a name twice: the last one)
+    map_files: tuple = ()           # f(MapFile) -> [(big path, bytes)] made from the built map (after map_edits), after
+                                    # big_files: what is drawn from the map is drawn from this build's (the shell's map pictures)
     checks: tuple = ()              # more f(files) on the finished file list, after the packs'
     slot: dict = None               # the campaign shell's templates (make_campnew2.SHELL); None = the mission alone
     launcher: bool = True           # Play_<name>.bat next to the skudef (the shell has its own: launcher.py)
@@ -344,6 +346,8 @@ def build_mod(spec, out):
             names = spec.border_names
             borders[:] = [(names[k] if k < len(names) else str(k), [v * mapterrain.CELL for v in r])
                           for k, r in enumerate(mapterrain.HeightMap(m).borders())]
+            # c4.main reads EXTRA_FILES after c2.map_files() (which calls this) has returned
+            c4.EXTRA_FILES = c4.EXTRA_FILES + [f for make in spec.map_files for f in make(m)]
 
         c6.edit = edit
         c4.main()
