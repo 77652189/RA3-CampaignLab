@@ -79,6 +79,10 @@ class Ctx:
     def side(self, who):
         return self._compiler('side').side[who]
 
+    def side_names(self):
+        """The plan's side words (我, 敌 ...), sorted."""
+        return sorted(self._compiler('side_names').side)
+
     def device(self, name):
         return self._compiler('device').devices[name]
 
@@ -106,6 +110,10 @@ class Ctx:
 
     def site(self, name, dx=0.0, dy=0.0):
         return self._m.site(name, dx, dy)
+
+    def site_names(self):
+        """The names of the sites the map publishes."""
+        return list(self._m.map.SITES)
 
     def where(self, site):
         return self._m.where(site)

@@ -320,3 +320,36 @@ def test_registry_finds_only_modules_that_declare(monkeypatch):
     mods = registry.modules()
     assert 'missions.a4' in mods and 'checks.a4' in mods and 'missions.count_probes' in mods
     assert 'missions.music_bench' not in mods and 'missions.festival_parts' not in mods
+
+
+def test_ctx_outlets_hand_over_the_same_actions():
+    from ctx import Ctx
+    from plantime import PlanError
+    import pytest
+    ctx = Ctx(mission=parts.Mission(name='X', map=None), tag='T')
+    assert ctx.say('SCRIPT:K', 5.0) == ('SHOW_MILITARY_CAPTION', 'SCRIPT:K', 5.0)
+    assert ctx.order('attack', ['a', 'b'], 't') == [('NAMED_ATTACK_NAMED', 'a', 't'), ('NAMED_ATTACK_NAMED', 'b', 't')]
+    assert ctx.order('guard', ['a'], 'z') == [('UNIT_GUARD_AREA', 'a', 'z')]
+    assert ctx.order('attack', [], 't') == []
+    with pytest.raises(PlanError, match='no kind'):
+        ctx.order('flee', ['a'], 't')
+    for ask in (lambda: ctx.camera({}, 1.0, 0, 0), lambda: ctx.mark('s'), lambda: ctx.side('我')):
+        with pytest.raises(PlanError, match='written by hand'):
+            ask()
+    with pytest.raises(PlanError, match='needs a compiler or a mission'):
+        Ctx()
+
+
+def test_ctx_forwards_the_missions_own_writes():
+    from ctx import Ctx
+    m = parts.Mission(name='X', map=None)
+    ctx = Ctx(mission=m, tag='T')
+    ctx.string('K', 'a')
+    ctx.string('K', 'b', keep=True)
+    ctx.add_area('A', 'area')
+    ctx.add_point('P', (1.0, 2.0))
+    ctx.spawns_add('u1', 'u2')
+    ctx.countdown('timer')
+    assert (m.strings['K'], m.areas['A'], m.waypoints['P'], m.countdowns) == ('a', 'area', (1.0, 2.0), ['timer'])
+    assert {'u1', 'u2'} <= set(m.spawns)
+    assert ctx.voice_has('anything')          # no voice pack: nothing is missing

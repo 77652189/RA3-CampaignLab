@@ -17,8 +17,8 @@ class Device:
     ACTIONS = {}
     TARGET = ''
 
-    def __init__(self, c, name, spec):
-        self.c, self.m, self.name, self.spec = c, c.m, name, spec
+    def __init__(self, ctx, name, spec):
+        self.ctx, self.name, self.spec = ctx, name, spec
         self.units, self.names = [], {}
 
     def place(self):
@@ -35,7 +35,7 @@ class Device:
         raise PlanError(f'{self.name}: not a target a wave can attack')
 
     def scripts(self):
-        """Its scripts (it may also add some through the compiler, c.when)."""
+        """Its scripts (it may also add some through the context, ctx.when)."""
         return []
 
     def last(self):

@@ -28,20 +28,20 @@ class Train(Device):
     ACTIONS = {'停下': '列车停在原地', '继续': '列车接着开'}
     TARGET = '这辆列车'
 
-    def __init__(self, c, name, spec):
-        super().__init__(c, name, spec)
+    def __init__(self, ctx, name, spec):
+        super().__init__(ctx, name, spec)
         from plantime import PlanError
         self.role = str(spec.get('角色', 'train'))
         self.route = list(spec.get('路线') or [])
         if not self.route or '起点' not in spec:
             raise PlanError(f'{name}: 列车 needs 起点 and 路线 (a list of sites)')
         key = re.sub(r'[^A-Za-z0-9]', '', self.role.title())
-        tag = c.tag
+        tag = ctx.tag
         self.unit = tr.train(id=f'CNV_{tag}{key}Train', health=int(spec.get('血量', 3000)),
                              reach=int(spec.get('射程', 250)))
         self.units = [self.unit]
         self.names = {name: self.unit}
-        self.side = c.side[spec.get('阵营', '我')]
+        self.side = ctx.side(spec.get('阵营', '我'))
         self.obj = f'UNIT - CNV {tag} {self.role}'
         base = f'CNV_{tag}_{key}'
         self.rolling, self.halted, self.docked = f'{base}_Rolling', f'{base}_Halted', f'{base}_Docked'
@@ -49,8 +49,8 @@ class Train(Device):
         self.attacks = 0
 
     def place(self):
-        self.m.put(self.unit.id, self.spec['起点'], side=self.side, name=self.obj, role=self.role,
-                   angle=self.spec.get('朝向', 0.0))
+        self.ctx.put(self.unit.id, self.spec['起点'], side=self.side, name=self.obj, role=self.role,
+                     angle=self.spec.get('朝向', 0.0))
 
     def index(self, site):
         from plantime import PlanError
@@ -76,18 +76,19 @@ class Train(Device):
 
     def attack(self, names):
         self.attacks += 1
-        return [Script(f'CNV {self.c.tag} - {self.role} target {self.attacks}', [('TIMER_EXPIRED', self.timer)],
-                       [('NAMED_ATTACK_NAMED', n, self.obj) for n in names], once=False)]
+        return [Script(f'CNV {self.ctx.tag} - {self.role} target {self.attacks}', [('TIMER_EXPIRED', self.timer)],
+                       self.ctx.order('attack', names, self.obj), once=False)]
 
     def scripts(self):
         import plantime
-        tag, train = self.c.tag, self.obj
+        ctx = self.ctx
+        tag, train = ctx.tag, self.obj
         waits = plantime.times(self.spec.get('停靠', 0) or 0)       # by difficulty (25/20/15)
         wait = max(waits)
-        self.c.when(f'{self.role} go', self.spec.get('出发', '开局'), [('SET_FLAG', self.rolling, 1)])
+        ctx.when(f'{self.role} go', self.spec.get('出发', '开局'), [('SET_FLAG', self.rolling, 1)])
         out = [Script(f'CNV {tag} - {self.role} tick', [], [('SET_MILLISECOND_TIMER', self.timer, TICK)])]
         for k, site in enumerate(self.route):
-            wp = self.c.mark(site)
+            wp = ctx.mark(site)
             out.append(Script(f'CNV {tag} - {self.role} to {k + 1}',
                               [('FLAG', self.rolling, 1), ('FLAG', self.halted, 0), ('FLAG', self.docked, 0),
                                ('TIMER_EXPIRED', self.timer), ('COUNTER', self.stop, 2, k)],
@@ -97,7 +98,7 @@ class Train(Device):
                 out.append(Script(f'CNV {tag} - {self.role} at {k + 1}' +
                                   ('' if levels == plantime.ALL else f' {plantime.TAGS[levels.index(True)]}'),
                                   [('FLAG', self.rolling, 1), ('COUNTER', self.stop, 2, k),
-                                   ('NAMED_INSIDE_AREA', train, self.c.area(site))],
+                                   ('NAMED_INSIDE_AREA', train, ctx.area(site))],
                                   [('SET_COUNTER', self.stop, k + 1)] +
                                   ([('SET_FLAG', self.docked, 1), ('NAMED_STOP', train),
                                     ('SET_MILLISECOND_TIMER', self.dock, w)] if docks else []),
@@ -110,5 +111,5 @@ class Train(Device):
 
     def last(self):
         """The tick, after everything that waits on it (it sets the timer again)."""
-        return [Script(f'CNV {self.c.tag} - {self.role} tick again', [('TIMER_EXPIRED', self.timer)],
+        return [Script(f'CNV {self.ctx.tag} - {self.role} tick again', [('TIMER_EXPIRED', self.timer)],
                        [('SET_MILLISECOND_TIMER', self.timer, TICK)], once=False)]

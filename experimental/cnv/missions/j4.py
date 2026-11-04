@@ -16,6 +16,7 @@ Published (the cast): truck 1-3, ice 1-3 (the gate ice), escort (the enemy's); p
 k-n (plaza k's n-th: two tank busters, two warriors) (the player's). Marks: exit, seal 1-3 (where the gate ice
 stands); facts: convoy leaves, tick; endings: the win and lose scripts.
 """
+from ctx import Ctx
 from maps import festival
 from missions import festival_parts as fp
 from parts import Goal, Mission, Script
@@ -47,12 +48,13 @@ def mission(name='CampJ4'):
                             Goal(OBJ, 'MISSIONOBJ:CNVJ4_1', 'MISSIONOBJ:CNVJ4_1_DESC',
                                  show=('truck 1', 'truck 2', 'truck 3'), at=None)],
                 facts={'convoy leaves': LEAVE, 'tick': TICK})
-    convoy = fp.Convoy(m, 'J4', 's1', LEAVE, TICK, enter=True)     # no convoy to hit before it sets off
+    ctx = Ctx(mission=m, tag='J4')
+    convoy = fp.Convoy(ctx, 'J4', 's1', LEAVE, TICK, enter=True)   # no convoy to hit before it sets off
     for j, dx in enumerate((-80, 80), 1):
         m.put(parent.id, 'north camp', dx, 0, name=f'UNIT - CNV J4 Parent {j}', role=f'parent {j}', angle=-1.5708)
         m.put(child.id, 'north camp', dx, 70, name=f'UNIT - CNV J4 Child {j}', role=f'child {j}', angle=-1.5708)
-    for k in fp.plazas(m, 'J4'):
-        s = fp.north(m, k)
+    for k in fp.plazas(ctx, 'J4'):
+        s = fp.north(ctx, k)
         m.put(ice.id, f'gate {k}', 0, -s * fp.SEAL_IN, side='s1', name=f'UNIT - CNV J4 Ice {k}', role=f'ice {k}',
               angle=0.0)
         for n, (tmpl, (dx, dy)) in enumerate(zip(TROOPS, SPOTS), 1):
@@ -78,7 +80,7 @@ def mission(name='CampJ4'):
         'SCRIPT:CNVJ4_LOST': 'J4：车队跑掉了……',
     })
     m.scripts += [
-        Script('CNV J4 - Intro', [], [('SHOW_MILITARY_CAPTION', 'SCRIPT:CNVJ4_INTRO', 15.0), convoy.start(),
+        Script('CNV J4 - Intro', [], [ctx.say('SCRIPT:CNVJ4_INTRO', 15.0), convoy.start(),
                                       convoy.countdown('SCRIPT:CNVJ4_TIMER')]),
         *convoy.go(), *convoy.roll(), *convoy.tail(),
         Script('CNV J4 - Convoy Goal', [('FLAG', convoy.rolling, 1)], m.reveal(OBJ)),
@@ -94,9 +96,9 @@ def mission(name='CampJ4'):
         Script('CNV J4 - Bonus Done', [('COUNTER', convoy.losses, 2, 3)], m.done(BONUS)),
         Script('CNV J4 - Bonus Failed', [('COUNTER', convoy.arrived, 3, 1)], m.failed(BONUS)),
         Script(WIN, [('COUNTER', convoy.losses, 3, 2)],
-               m.done(OBJ) + [('SHOW_MILITARY_CAPTION', 'SCRIPT:CNVJ4_WIN', 10.0), ('SET_FLAG', 'Mission Won', 1)]),
+               m.done(OBJ) + [ctx.say('SCRIPT:CNVJ4_WIN', 10.0), ('SET_FLAG', 'Mission Won', 1)]),
         Script(LOST, [('COUNTER', convoy.arrived, 3, 2)],
-               m.failed(OBJ) + [('SHOW_MILITARY_CAPTION', 'SCRIPT:CNVJ4_LOST', 10.0), ('SET_FLAG', 'Mission Lost', 1)])]
+               m.failed(OBJ) + [ctx.say('SCRIPT:CNVJ4_LOST', 10.0), ('SET_FLAG', 'Mission Lost', 1)])]
     m.endings += [WIN, LOST]
     return m
 

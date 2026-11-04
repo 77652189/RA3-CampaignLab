@@ -25,6 +25,7 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 import glossary                                 # noqa: E402
 import langs                                    # noqa: E402
+from ctx import Ctx                             # noqa: E402
 from parts import NOT, Goal, Mission, Script, square   # noqa: E402
 from plantime import (ALL, ONE, TAGS, PlanError, by_level, counts, number, per, seconds, spans,   # noqa: E402,F401
                       times)                                                                # re-exported: tests, checks
@@ -159,6 +160,7 @@ class Compiler:
             self.side[who], self.faction[f's{k}'] = f's{k}', spec.get('阵营')
             self.relation[f's{k}'] = tuple(rel)
         self.m = Mission(name=name or langs.mod_name(self.tag, lang), map=mapmod)
+        self.ctx = Ctx(self)            # what a device (devices/) is given instead of this compiler and the mission
         self.m.missing = []             # what the edition lacks (audio, subtitle text, translations): the build lists it
         self.n = 0
         self.conds = {}             # condition text -> alternatives
@@ -488,7 +490,7 @@ class Compiler:
         if isinstance(a, str):
             head, _, rest = a.strip().partition(' ')
             if head == '通报':
-                return self.say([('SHOW_MILITARY_CAPTION', self.text('SCRIPT', rest.strip()), CAPTION)], CAPTION_TURN)
+                return self.say([self.ctx.say(self.text('SCRIPT', rest.strip()), CAPTION)], CAPTION_TURN)
             if head == '副指挥官':                   # the co-commander's panel (retail Cannes hides it at the start)
                 if rest.strip() not in ('开', '关'):
                     raise PlanError(f'action {a!r}: 副指挥官 开 / 关 (the panel at the top left; Player_2 stays)')
@@ -528,7 +530,7 @@ class Compiler:
                 # the line's own subtitle stays up seconds after the voice (user 2026-11-03: stacked): it has none, the
                 # caption is its text for the length of the recording
                 words = self.text('SCRIPT', self.voice.strings[f'DIALOGEVENT:{dubbed}'])
-                return self.say([('PLAY_SOUND_EFFECT', dubbed), ('SHOW_MILITARY_CAPTION', words, n + CAPTION_TAIL)]
+                return self.say([('PLAY_SOUND_EFFECT', dubbed), self.ctx.say(words, n + CAPTION_TAIL)]
                                 + ([('MOVIE_PLAY_RADAR', clip)] if clip else []), n + SPEECH_GAP)
             retail = self.voice.eva(who, said) if who and self.voice is not None else None
             if retail:                              # retail's own announcer line: its event, no caption (as retail)
@@ -540,7 +542,7 @@ class Compiler:
             if who:                                 # a flow-script line: the dubbed line is found by who and what
                 self.m.lines.append(dict(说话人=str(who), 原文=str(a.get('原文', words)), 通报=shown, 字串=key))
             secs = float(a.get('秒', CAPTION))
-            return self.say([('SHOW_MILITARY_CAPTION', key, secs)], min(secs, CAPTION_TURN))
+            return self.say([self.ctx.say(key, secs)], min(secs, CAPTION_TURN))
         if '镜头' in a:                             # to a site, or to one of the plan's own (retail: the statue)
             return self.camera(a, float(a.get('秒', CAMERA_MOVE)), EASE, EASE)
         if '跟随' in a:
@@ -625,7 +627,7 @@ class Compiler:
             return [relates(m.player(x), p1, 'Enemy'), relates(p1, m.player(x), 'Enemy')]
         if '失败' in a:
             return (self.cue('失败') if self.music else []) + [
-                ('SHOW_MILITARY_CAPTION', self.text('SCRIPT', a['失败']), 10.0), ('SET_FLAG', 'Mission Lost', 1)]
+                self.ctx.say(self.text('SCRIPT', a['失败']), 10.0), ('SET_FLAG', 'Mission Lost', 1)]
         raise PlanError(f'action {a!r}: no such action (plan.py lists them)')
 
     def camera(self, a, secs, ease_in, ease_out):
@@ -885,7 +887,7 @@ class Compiler:
             if spec.get('守') and role:
                 for nm in self.part_names(role):
                     m.scripts.append(Script(f'CNV {self.tag} - Guard {nm}', [],
-                                            [('UNIT_GUARD_AREA', nm, self.area(spec['守']))]))
+                                            self.ctx.order('guard', [nm], self.area(spec['守']))))
 
     def place_scenery(self):
         """布景: [{单位, 在: <地点>, 偏移: [[dx, dy], ...], 阵营: 平民, 朝向}] -- unnamed props placed by a site, one per
@@ -905,7 +907,7 @@ class Compiler:
             kind = spec.get('类型')
             if kind not in DEVICES:
                 raise PlanError(f'机关 {name}: no device type {kind!r}: {sorted(DEVICES)}')
-            dev = DEVICES[kind](self, name, spec)
+            dev = DEVICES[kind](self.ctx, name, spec)
             self.devices[name] = dev
             self.m.units += [u for u in dev.units if u not in self.m.units]
             self.dev_units.update(dev.names)
@@ -1028,7 +1030,7 @@ class Compiler:
         sooner = times(extra['每隔']) if extra.get('每隔') is not None else gaps
         if extra.get('每隔') is not None and not every:
             raise PlanError(f'进攻 {spec["名字"]}: 加码 每隔 on a wave without 每隔')
-        warn = [('SHOW_MILITARY_CAPTION', self.text('SCRIPT', spec['预警']), CAPTION)] if spec.get('预警') else []
+        warn = [self.ctx.say(self.text('SCRIPT', spec['预警']), CAPTION)] if spec.get('预警') else []
         for i in range(1, most + 1):
             for lv, levels in enumerate(ONE):
                 for bonus in ([False, True] if stepped else [False]):
@@ -1061,7 +1063,7 @@ class Compiler:
         w['names'] += names
         target = spec.get('打')
         if spec.get('守'):
-            return [('UNIT_GUARD_AREA', n, self.area(spec['守'])) for n in names]
+            return self.ctx.order('guard', names, self.area(spec['守'])) if names else []    # (the area is made only for someone)
         if not target or target == '猎杀':
             return [('NAMED_HUNT', n) for n in names]
         if target in self.devices:
@@ -1070,7 +1072,7 @@ class Compiler:
             group = self.parts(target)
             if len(group) == 1:
                 t = self.part_names(target)[0]
-                return [('NAMED_ATTACK_NAMED', n, t) for n in names]
+                return self.ctx.order('attack', names, t)
             # a group: attack-move to where it stands (one named target would leave them idle once it fell)
             return [('ATTACK_MOVE_NAMED_UNIT_TO', n, self.mark(self.m.cast[group[0]].site)) for n in names]
         return [('ATTACK_MOVE_NAMED_UNIT_TO', n, self.mark(target)) for n in names]

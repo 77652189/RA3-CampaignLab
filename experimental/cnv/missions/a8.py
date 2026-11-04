@@ -10,6 +10,7 @@ carrier=False: the A/B control -- no carrier, eight Guardians and four IFVs inst
 Published (the cast): carrier, guardian, ifv (control only), platform 1-3, hammer, bullfrog 1-3, factory, power;
 endings: the win and lose scripts; mark: near platform 1. Placed on the island's sites west shore / west field / base * / east 1-3.
 """
+from ctx import Ctx
 from maps import island
 from parts import Goal, Mission, Script
 from units import liberty as lib
@@ -61,17 +62,18 @@ def mission(carrier=True, name='CampA8'):
         'SCRIPT:CNVA8_WIN': 'A8：三座供电平台全部被毁。',
         'SCRIPT:CNVA8_LOST': 'A8：自由号被击落了……',
     })
+    ctx = Ctx(mission=m, tag='A8')
     m.scripts += [
-        Script('CNV A8 - Intro', [], [('SHOW_MILITARY_CAPTION', 'SCRIPT:CNVA8_INTRO', 20.0)]),
+        Script('CNV A8 - Intro', [], [ctx.say('SCRIPT:CNVA8_INTRO', 20.0)]),
         Script('CNV A8 - Bonus Done', [('NAMED_DESTROYED', n) for n in F_NAMES], m.done(BONUS)),
         Script(WIN, [('NAMED_DESTROYED', n) for n in P_NAMES],
                m.done(OBJ) + (m.done(SURVIVE) if carrier else []) +
-               [('SHOW_MILITARY_CAPTION', 'SCRIPT:CNVA8_WIN', 10.0), ('SET_FLAG', 'Mission Won', 1)])]
+               [ctx.say('SCRIPT:CNVA8_WIN', 10.0), ('SET_FLAG', 'Mission Won', 1)])]
     m.endings.append(WIN)
     if carrier:
         m.scripts.append(Script(LOST, [('NAMED_DESTROYED', CARRIER)],
                                 m.failed(SURVIVE) + m.failed(OBJ) +
-                                [('SHOW_MILITARY_CAPTION', 'SCRIPT:CNVA8_LOST', 10.0), ('SET_FLAG', 'Mission Lost', 1)]))
+                                [ctx.say('SCRIPT:CNVA8_LOST', 10.0), ('SET_FLAG', 'Mission Lost', 1)]))
         m.endings.append(LOST)
     return m
 

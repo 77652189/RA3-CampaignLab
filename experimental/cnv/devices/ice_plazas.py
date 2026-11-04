@@ -51,19 +51,19 @@ class IcePlazas(Device):
               '拦住 <k>': 'k 号广场的伏兵现在拦着车队（遇伏: 停下 时；车队停着）'}
     ACTIONS = {}
 
-    def __init__(self, c, name, spec):
-        super().__init__(c, name, spec)
+    def __init__(self, ctx, name, spec):
+        super().__init__(ctx, name, spec)
         # the engineer builds a small core that leaves a square block of ice across the gate's ramp
         # (units/icewall.py seed: a bar comes out at 45 degrees whatever is asked, and the gates stayed open)
-        self.wall = iw.wall(f'CNV_{c.tag}IceWall', length=WALL_SIDE, shape='square')
-        self.core = iw.seed(f'CNV_{c.tag}IceSeed', self.wall.id)
+        self.wall = iw.wall(f'CNV_{ctx.tag}IceWall', length=WALL_SIDE, shape='square')
+        self.core = iw.seed(f'CNV_{ctx.tag}IceSeed', self.wall.id)
         self.eng = iw.engineer(wall_id=self.core.id, stand=iw.clear_of(self.wall),    # not shut in his own block
                                reload=f'{float(spec.get("冷却", RELOAD)):g}s')
         self.sculpt = fest.sculpture()
         self.hard = fest.reinforced()               # the look of a 无敌 plaza's sculptures (the same building)
         self.units = [self.eng, self.core, self.wall, self.sculpt, self.hard]
         self.names = {'冰幕工兵': self.eng, '冰雕': self.sculpt}
-        self.sealed = f'CNV_{c.tag}_Sealed'
+        self.sealed = f'CNV_{ctx.tag}_Sealed'
         stop = spec.get('遇伏')
         assert stop in (None, '停下'), f'{name}: 遇伏 {stop!r} -- only 停下 (or leave it out)'
         self.stops = stop == '停下'
@@ -79,7 +79,7 @@ class IcePlazas(Device):
     def troops_of(self, spec, what):
         """(kinds, how many by difficulty) a sculpture holds by `spec`."""
         import plantime
-        kinds = [self.c.unit(u, 's1') for u in spec.get('每座兵', ['坦克杀手', '帝国武士'])]
+        kinds = [self.ctx.unit(u, 's1') for u in spec.get('每座兵', ['坦克杀手', '帝国武士'])]
         many = plantime.counts(spec.get('每座几个', len(kinds)))
         assert min(many) >= 1 and max(many) <= len(kinds), \
             f'{what}: 每座几个 {many} must be 1 .. {len(kinds)} (每座兵 lists {len(kinds)})'
@@ -100,37 +100,38 @@ class IcePlazas(Device):
         return kinds, many, tough, refill
 
     def troop(self, k, i, n):
-        return f'UNIT - CNV {self.c.tag} Troop {k}-{i}-{n}'
+        return f'UNIT - CNV {self.ctx.tag} Troop {k}-{i}-{n}'
 
     def place(self):
-        m, c, tag = self.m, self.c, self.c.tag
-        self.cdev = self.c.devices[self.spec['车队']]
+        ctx = self.ctx
+        tag = ctx.tag
+        self.cdev = ctx.device(self.spec['车队'])
         self.convoy = self.cdev.cv
         for k, site in ((1, 'approach 2'), (2, 'approach 3')):
-            m.waypoint(f'pass {k}', f'CNV {tag} Pass {k}', site)
-        self.plazas = fp.plazas(m, tag, at='inside')
+            ctx.waypoint(f'pass {k}', f'CNV {tag} Pass {k}', site)
+        self.plazas = fp.plazas(ctx, tag, at='inside')
         stray = sorted(set(self.own) - set(self.plazas))
         assert not stray, f'{self.name}: 广场 {stray} -- the map has plazas {self.plazas}'
         self.walls = {}
         for k in self.plazas:
             kinds, many, tough, _ = self.setting(k)
-            s = fp.north(m, k)
+            s = fp.north(ctx, k)
             for i, dx in enumerate((-45, 45), 1):
-                m.put((self.hard if tough else self.sculpt).id, f'plaza {k}', dx, s * 30, side='s1',
-                      name=f'UNIT - CNV {tag} Sculpture {k}-{i}', role=f'sculpture {k}-{i}')
-                m.waypoints[f'CNV {tag} Hide {k}-{i}'] = m.site(f'plaza {k}', dx, -s * 30)
+                ctx.put((self.hard if tough else self.sculpt).id, f'plaza {k}', dx, s * 30, side='s1',
+                        name=f'UNIT - CNV {tag} Sculpture {k}-{i}', role=f'sculpture {k}-{i}')
+                ctx.add_point(f'CNV {tag} Hide {k}-{i}', ctx.site(f'plaza {k}', dx, -s * 30))
                 for n in range(1, max(many) + 1):  # created when the sculpture breaks (contract: by that script)
-                    m.cast[f'troop {k}-{i}-{n}'] = Role(kinds[n - 1], self.troop(k, i, n), 's1', [f'plaza {k}'])
+                    ctx.add_role(f'troop {k}-{i}-{n}', Role(kinds[n - 1], self.troop(k, i, n), 's1', [f'plaza {k}']))
             gate = f'CNV {tag} Gate {k}'
-            m.areas[gate] = square(*m.point(f'seal {k}'), GATE_AREA)
+            ctx.add_area(gate, square(*ctx.point(f'seal {k}'), GATE_AREA))
             # an engineer the gate's block comes out round (he stood closer than `stand` when told): put outside it,
             # away from the plaza (bench 2026-10-26, ice_turns clear: shut in, he could not walk out)
-            (sx, sy), (px, py) = m.point(f'seal {k}'), m.site(f'plaza {k}')
+            (sx, sy), (px, py) = ctx.point(f'seal {k}'), ctx.site(f'plaza {k}')
             far = iw.clear_of(self.wall) / max(1.0, ((sx - px) ** 2 + (sy - py) ** 2) ** 0.5)
-            m.areas[f'CNV {tag} Block {k}'] = square(sx, sy, WALL_SIDE / 2 + CLEAR_MARGIN)
-            m.waypoints[f'CNV {tag} Clear {k}'] = (sx + (sx - px) * far, sy + (sy - py) * far)
-            m.areas[f'CNV {tag} Plaza {k}'] = square(*m.site(f'plaza {k}'), m.where(f'plaza {k}').r)
-            p1 = m.player('p1')
+            ctx.add_area(f'CNV {tag} Block {k}', square(sx, sy, WALL_SIDE / 2 + CLEAR_MARGIN))
+            ctx.add_point(f'CNV {tag} Clear {k}', (sx + (sx - px) * far, sy + (sy - py) * far))
+            ctx.add_area(f'CNV {tag} Plaza {k}', square(*ctx.site(f'plaza {k}'), ctx.where(f'plaza {k}').r))
+            p1 = ctx.player('p1')
             self.walls[k] = (('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', p1, 3, 1, self.wall.id, gate),
                              ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', p1, 2, 0, self.wall.id, gate))
 
@@ -142,24 +143,25 @@ class IcePlazas(Device):
         if event == '封过':
             return [[('COUNTER', self.sealed, 3, int(args[0]))]]
         if event == '伏兵出来':
-            return [[('FLAG', f'CNV_{self.c.tag}_Out_{int(args[0])}', 1)]]
+            return [[('FLAG', f'CNV_{self.ctx.tag}_Out_{int(args[0])}', 1)]]
         if event == '拦住':
             assert self.stops, f'{self.name}.拦住: the plazas stop the convoy only with 遇伏: 停下'
             return [[('FLAG', self.blocking(int(args[0])), 1)]]
         return super().cond(event, args)
 
     def blocking(self, k):
-        return f'CNV_{self.c.tag}_Blocking_{k}'
+        return f'CNV_{self.ctx.tag}_Blocking_{k}'
 
     def scripts(self):
         import plantime
-        m, tag, cv = self.m, self.c.tag, self.convoy
+        ctx = self.ctx
+        tag, cv = ctx.tag, self.convoy
         life = self.wall.params['lifetime']
         out = []
         for k in self.plazas:
             kinds, many, tough, refill = self.setting(k)
             names = [f'UNIT - CNV {tag} Sculpture {k}-{i}' for i in (1, 2)]
-            approach = self.c.area(f'approach {k}')
+            approach = ctx.area(f'approach {k}')
             near = f'CNV_{tag}_Near_{k}'            # a truck got to this plaza (latched)
             here = f'CNV_{tag}_Here_{k}'            # a truck is on its approach now: 0 each frame, then 1 if so
             left = f'CNV_{tag}_Left_{k}'            # the plaza's troops out and alive (遇伏: 停下)
@@ -179,7 +181,7 @@ class IcePlazas(Device):
                     out.append(Script(f'CNV {tag} - Out {k}-{i}{lv}',
                                       [('FLAG', near, 1)] if tough else [('NAMED_DESTROYED', sname)],
                                       [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', self.troop(k, i, n), kinds[n - 1],
-                                        m.team('s1'), f'CNV {tag} Hide {k}-{i}') for n in made] + alive +
+                                        ctx.team('s1'), f'CNV {tag} Hide {k}-{i}') for n in made] + alive +
                                       [('SET_FLAG', f'CNV_{tag}_Out_{k}', 1), ('SET_FLAG', f'CNV_{tag}_Out_{k}_{i}', 1)]
                                       + ([('INCREMENT_COUNTER', much, left)] if counts else []), levels=levels))
                     if refill is not None:          # down, and back while a truck is there (once made: the convoy tail)
@@ -191,7 +193,7 @@ class IcePlazas(Device):
                                        [('FLAG', f'CNV_{tag}_Out_{k}_{i}', 1), ('FLAG', self.alive(k, i, n), 0),
                                         ('FLAG', here, 1), ('TIMER_EXPIRED', self.refill(k))],
                                        [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', self.troop(k, i, n), kinds[n - 1],
-                                         m.team('s1'), f'CNV {tag} Hide {k}-{i}'),
+                                         ctx.team('s1'), f'CNV {tag} Hide {k}-{i}'),
                                         ('SET_FLAG', self.alive(k, i, n), 1), ('INCREMENT_COUNTER', 1, left)],
                                        once=False, levels=levels) for n in made]
                     elif self.stops:
@@ -214,11 +216,11 @@ class IcePlazas(Device):
             # out, they go for the leading truck still on the road; held while ice stands in their gate
             out += [Script(f'CNV {tag} - Chase {k} at {j + 1}',
                            [('FLAG', f'CNV_{tag}_Out_{k}', 1), ('TIMER_EXPIRED', cv.timer), open_] + cv.chase(j),
-                           [('NAMED_ATTACK_NAMED', t, target) for t in them], once=False)
+                           ctx.order('attack', them, target), once=False)
                     for j, target in enumerate(cv.trucks)]
             out.append(Script(f'CNV {tag} - Held {k}', [('FLAG', f'CNV_{tag}_Out_{k}', 1), ('TIMER_EXPIRED', cv.timer),
                                                         walled],
-                              [('UNIT_GUARD_AREA', t, f'CNV {tag} Plaza {k}') for t in them], once=False))
+                              ctx.order('guard', them, f'CNV {tag} Plaza {k}'), once=False))
             if self.stops:                          # a truck there, troops out, gate open: the convoy waits under fire
                 block = self.blocking(k)
                 stop = self.cdev.hold(block)
@@ -241,24 +243,24 @@ class IcePlazas(Device):
                     for j, e in enumerate(self.engineers())]
             timer, up = f'CNV {tag} Ice {k}', f'CNV_{tag}_Ice_{k}'
             label = f'SCRIPT:CNV{tag}_ICE{k}'
-            m.strings[label] = f'{k} 号冰墙'
+            ctx.string(label, f'{k} 号冰墙')
             out += [Script(f'CNV {tag} - Ice {k} up', [walled, ('FLAG', up, 0)],
                            [('SET_FLAG', up, 1), ('SET_MILLISECOND_TIMER', timer, float(life)),
                             ('DISPLAY_COUNTDOWN_TIMER', timer, label)], once=False),
                     Script(f'CNV {tag} - Ice {k} gone', [open_, ('FLAG', up, 1)],
                            [('SET_FLAG', up, 0), ('HIDE_COUNTDOWN_TIMER', timer)], once=False)]
-            m.countdowns.append(timer)
+            ctx.countdown(timer)
         return out
 
     def engineers(self):
         """Every engineer of the mission by name: the cast's, and those the plan's scripts create (给; scripts() runs
         after the plan's own are compiled)."""
-        names = [r.name for r in self.m.cast.values() if r.template == self.eng.id]
-        return list(dict.fromkeys(names + [a[1] for s in self.m.scripts for a in s.do
+        names = [r.name for r in self.ctx.roles() if r.template == self.eng.id]
+        return list(dict.fromkeys(names + [a[1] for s in self.ctx.compiled_scripts() for a in s.do
                                            if a[0] == 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT' and a[2] == self.eng.id]))
 
     def alive(self, k, i, n):
-        return f'CNV_{self.c.tag}_Alive_{k}_{i}_{n}'
+        return f'CNV_{self.ctx.tag}_Alive_{k}_{i}_{n}'
 
     def refill(self, k):
-        return f'CNV {self.c.tag} Refill {k}'
+        return f'CNV {self.ctx.tag} Refill {k}'
