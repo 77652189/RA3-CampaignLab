@@ -10,20 +10,8 @@
     {
       "name": "mapsketch",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-I", "-X", "utf8", "experimental/mappage/serve.py", "--new", "trial", "--port", "8766"],
+      "runtimeArgs": ["-I", "-X", "utf8", "experimental/mappage/serve.py", "--new", "--port", "8766"],
       "port": 8766
-    },
-    {
-      "name": "mapsketch-brussels",
-      "runtimeExecutable": "python",
-      "runtimeArgs": ["-I", "-X", "utf8", "experimental/mappage/serve.py", "--new", "brussels", "--port", "8767"],
-      "port": 8767
-    },
-    {
-      "name": "mapsketch-brushtest",
-      "runtimeExecutable": "python",
-      "runtimeArgs": ["-I", "-X", "utf8", "experimental/mappage/serve.py", "--new", "brushtest", "--port", "8768"],
-      "port": 8768
     }
   ]
 }

@@ -278,3 +278,110 @@ def test_sketch_page_script_parses(tmp_path):
     r = subprocess.run([shutil.which('node'), '--check', str(f)], capture_output=True, text=True, encoding='utf-8',
                        errors='replace')
     assert r.returncode == 0, r.stderr[-800:]
+
+
+# ---------------------------------------------------------------- 11-04 third round: agents, bridges, one launch entry
+
+def _river(bridge=True):
+    """A river straight across the map, the town on the far bank; with or without the bridge over it."""
+    s = sk.blank('rivertest', (3000, 2400))
+    s['shapes'] = [{'kind': 'rect', 'at': [1400, 0, 1600, 2400], 'tier': 0, 'what': 'river'}]
+    s['start'] = [500, 1200]
+    s['sites'] = {'town': {'x': 2300, 'y': 1000, 'r': 250, 'zh': '镇子', 'what': 'the far bank'}}
+    s['borders'] = {'whole': [0.0, 0.0, 3000.0, 2400.0]}
+    if bridge:
+        s['bridges'] = [{'a': [1340, 1200], 'b': [1660, 1200]}]
+    return s
+
+
+def test_bridge_joins_the_far_bank(tmp_path):
+    """No bridge: the town is cut off; a bridge drawn bank to bank joins it (platmap.walkable lays its deck), and the
+    module carries it as BRIDGES -> two bridge objects, start then end."""
+    no = sk.report('rivertest', _river(False), with_map=False, out=str(tmp_path / 'no'))
+    assert no['regions']['cut off'] == ['town'] and not no['ok']
+    yes = sk.report('rivertest', _river(), with_map=False, out=str(tmp_path / 'yes'))
+    assert yes['regions']['cut off'] == [] and yes['lint'] == [] and yes['ok'], yes
+    mod = sk.load(str(tmp_path / 'yes' / 'rivertest.py'), 'rivertest_bridge')
+    flags = [o.flags for o in mod.OBJECTS if 'Bridge' in o.template]
+    assert flags == [sk.platmap.BRIDGE_START, sk.platmap.BRIDGE_END]
+
+
+def test_bridge_end_in_the_water_is_linted(tmp_path):
+    s = _river()
+    s['bridges'] = [{'a': [1340, 1200], 'b': [1500, 1200]}]          # the far end stands in the river
+    r = sk.report('rivertest', s, with_map=False, out=str(tmp_path))
+    assert any('bridge' in p for p in r['lint']) and not r['ok'], r['lint']
+    s['bridges'] = [{'a': [1340, 1200], 'b': [1350, 1200]}]
+    assert any('apart' in p for p in sk.check_sketch(s))
+
+
+def test_existing_bridges_become_sketch_bridges():
+    """sapporo's three bridges come out as sketch bridges (not raw objects) and go back as the same objects."""
+    mod, names = sk.map_module('sapporo')
+    s = sk.from_module(mod, names)
+    assert len(s['bridges']) == 3 and not any('Bridge' in o['template'] for o in s['objects'])
+
+
+def test_sites_on_one_spot_warned_not_failed(tmp_path):
+    """Brussels had start and west suburb on one spot: a warning (the map still passes), not for sites merely near."""
+    s = _river()
+    s['sites']['west suburb'] = {'x': 500, 'y': 1200, 'r': 400, 'zh': '西郊', 'what': ''}
+    s['sites']['field edge'] = {'x': 800, 'y': 1200, 'r': 100, 'zh': '', 'what': ''}
+    r = sk.report('rivertest', s, with_map=False, out=str(tmp_path))
+    assert r['ok'] and [(x['a'], x['b']) for x in r['near']] == [('start', 'west suburb')], r['near']
+    assert '地点重合 start 和 west suburb' in sk.summary(r)
+
+
+def test_cli_checks_a_sketch_written_anywhere(tmp_path):
+    """An agent writes the sketch file and runs one command: a short summary, exit 0 when it passes."""
+    f = tmp_path / 'mine.json'
+    f.write_text(json.dumps(_river()), encoding='utf-8')
+    name = 'zz_clitest'
+    try:
+        r = subprocess.run([sys.executable, '-I', '-X', 'utf8', str(ROOT / 'experimental' / 'mappage' / 'sketch2map.py'),
+                            name, '--check', '--no-map', '--sketch', str(f)], capture_output=True, text=True,
+                           encoding='utf-8', errors='replace', timeout=300)
+        lines = r.stdout.strip().split('\n')
+        assert r.returncode == 0, r.stdout[-800:] + r.stderr[-800:]
+        assert any('全部通过' in x for x in lines) and len(lines) <= 12, lines
+        saved = json.loads((ROOT / 'work' / 'mappage' / name / 'sketch.json').read_text(encoding='utf-8'))
+        assert saved['name'] == name and saved['bridges']
+    finally:
+        shutil.rmtree(ROOT / 'work' / 'mappage' / name, ignore_errors=True)
+
+
+@pytest.fixture
+def many_server(tmp_path):
+    many = serve.Sketches(str(tmp_path))
+    s = serve.Sketch('alpha', folder=str(tmp_path / 'alpha'))
+    s.save(dict(_river(), name='alpha'))
+    srv = serve.make_sketch_server(many, 0)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    yield f'http://127.0.0.1:{srv.server_address[1]}', many, tmp_path
+    srv.shutdown()
+    srv.server_close()
+
+
+def test_one_server_lists_every_sketch(many_server):
+    """serve.py --new with no name: the list at /, each sketch at /m/<name>/, a new one started from the list."""
+    url, many, folder = many_server
+    code, page = _call(url + '/')
+    assert code == 200 and b'm/alpha/' in page
+    code, page = _call(url + '/m/alpha')                              # redirected to /m/alpha/
+    assert code == 200 and b'Labels' in page and b'/*LABELS_JS*/' not in page
+    code, s = _call(url + '/m/alpha/api/sketch')
+    assert code == 200 and s['name'] == 'alpha' and s['bridges']
+    assert _call(url + '/m/nosuch/api/sketch')[0] == 404
+    assert _call(url + '/m/..%2Fx/api/sketch')[0] == 404
+    code, d = _call(url + '/api/new', 'POST', {'name': 'beta'})
+    assert code == 200 and (folder / 'beta' / 'sketch.json').exists() and many.names() == ['alpha', 'beta']
+    assert _call(url + '/api/new', 'POST', {'name': 'beta'})[0] == 400
+    assert _call(url + '/api/new', 'POST', {'name': 'gamma'}, origin='https://example.com')[0] == 403
+    assert _call(url + '/m/alpha/api/sketch', 'POST', dict(_river(), name='x'))[0] == 200
+    assert json.loads((folder / 'alpha' / 'sketch.json').read_text(encoding='utf-8'))['name'] == 'alpha'
+
+
+def test_launch_has_one_sketch_entry():
+    conf = json.loads((ROOT / '.claude' / 'launch.json').read_text(encoding='utf-8'))
+    sketches = [c for c in conf['configurations'] if '--new' in c['runtimeArgs']]
+    assert len(sketches) == 1 and sketches[0]['runtimeArgs'][-3:] == ['--new', '--port', str(sketches[0]['port'])]

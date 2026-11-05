@@ -75,6 +75,7 @@ text.lbl { font-family: var(--body); fill: #fff; stroke: #000; stroke-opacity: .
       <button data-tool="circle" title="从圆心拖出半径">圆形地块</button>
       <button data-tool="wall" title="单击加点，双击收尾：一道谁都过不去的陡崖">悬崖墙</button>
       <button data-tool="ramp" title="先点低处一端，再点高处一端">坡道</button>
+      <button data-tool="bridge" title="先点一岸，再点对岸（两端都在同一高度的干地上）">桥</button>
       <button data-tool="road" title="单击加点，双击收尾（只换地面贴图，不改高度）">路</button>
       <button data-tool="site" title="单击放一个命名地点">地点</button>
       <button data-tool="start" title="单击放玩家出生点">出生点</button>
@@ -108,6 +109,7 @@ text.lbl { font-family: var(--body); fill: #fff; stroke: #000; stroke-opacity: .
         <g id="g-lines"></g>
         <g id="g-marks"></g>
         <g id="g-warn"></g>
+        <g id="g-labels"></g>
         <g id="g-draft"></g>
         <g id="g-handles"></g>
       </svg>
@@ -122,6 +124,7 @@ text.lbl { font-family: var(--body); fill: #fff; stroke: #000; stroke-opacity: .
       <span><i class="sw" style="background:var(--t2)"></i>高地</span>
       <span><i class="sw" style="background:var(--t3)"></i>更高</span>
       <span><i class="sw" style="background:#7a5"></i>坡道</span>
+      <span><i class="sw" style="background:#a0703c"></i>桥</span>
       <span><i class="sw" style="background:#ddd"></i>路</span>
       <span><i class="sw" style="background:#222"></i>悬崖墙</span>
       <span><i class="sw" style="background:#ffd54f"></i>矿场</span>
@@ -132,7 +135,7 @@ text.lbl { font-family: var(--body); fill: #fff; stroke: #000; stroke-opacity: .
     <div class="opts" style="margin-top:6px">
       <label><input type="checkbox" id="show-ground"> 叠生成后的地面图</label>
       <label><input type="checkbox" id="show-regions"> 叠连通区（绿=出生点能走到）</label>
-      <label><input type="checkbox" id="show-labels" checked> 地点名</label>
+      <label><input type="checkbox" id="show-labels" checked> 地点名 <span class="note" id="labnote"></span></label>
     </div>
   </div>
   <div class="panel">
@@ -153,10 +156,20 @@ text.lbl { font-family: var(--body); fill: #fff; stroke: #000; stroke-opacity: .
       <div class="row"><button class="go" id="gen">生成并检查</button></div>
       <div class="res" id="result"></div>
     </section>
+    <section>
+      <h2>草图 JSON（脚本写的草图贴进来）</h2>
+      <p class="note">格式见 docs/shell/sketch-format.md。导入会替换整张草图（可以撤销），图名不变。不开页面也行：<span class="mono">sketch2map.py &lt;名字&gt; --check --sketch 文件.json</span>。</p>
+      <textarea id="json" rows="6" spellcheck="false" style="width:100%;box-sizing:border-box;font:12px/1.4 var(--mono, monospace)" aria-label="草图 JSON"></textarea>
+      <div class="row"><button id="json-in">导入（替换草图）</button><button id="json-out">把当前草图放进框里</button></div>
+      <div class="note" id="json-msg"></div>
+    </section>
   </div>
 </div>
 <script>
 /*VIEW_JS*/
+</script>
+<script>
+/*LABELS_JS*/
 </script>
 <script>
 "use strict";
@@ -169,7 +182,14 @@ const NS = "http://www.w3.org/2000/svg";
 const $ = (id) => document.getElementById(id);
 const svg = $("map");
 let sk = BOOT.sketch, online = BOOT.online;
-sk.brushes = sk.brushes || [];                                 // sketches drawn before the brush layer
+const KEYS = { shapes: [], walls: [], ramps: [], roads: [], sites: {}, fields: [], derricks: [], blocks: [], gaps: [],
+  brushes: [], bridges: [], objects: [], scenery: [] };
+function filled(s) {                                           // sketches drawn before a layer existed (brushes, bridges)
+  for (const [k, v] of Object.entries(KEYS)) if (s[k] === undefined) s[k] = JSON.parse(JSON.stringify(v));
+  return s;
+}
+filled(sk);
+const BRIDGE_DECK = 120;                                       // platmap.BRIDGE_DECK: the walkable width laid over water
 const TIERS = BOOT.tiers;                                      // platmap.TIER: each tier's height (elevation / 16)
 let tool = "select", sel = null, draft = null, drag = null, view = View.full(W, H);
 const past = [], future = [];
@@ -192,7 +212,7 @@ function changed(push = true) { render(); if (push) {} clearTimeout(saveTimer); 
 async function save() {
   if (!online) { status("没连上本机服务：改动只在这页里，刷新就没了"); return; }
   try {
-    const r = await fetch("/api/sketch", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(sk) });
+    const r = await fetch("api/sketch", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(sk) });
     if (!r.ok) throw new Error((await r.json()).error || r.status);
     status("已存 " + new Date().toLocaleTimeString());
   } catch (e) { status("存不上：" + e.message); }
@@ -226,7 +246,8 @@ function render() {
   const k = scale(), isSel = (kind, i) => sel && sel.kind === kind && sel.i === i;
   $("bg").setAttribute("fill", TIER_COLOR[sk.base]);
   const gs = $("g-shapes"), gl = $("g-lines"), gm = $("g-marks"), gh = $("g-handles"), gb = $("g-brush"), gw = $("g-warn");
-  for (const g of [gs, gl, gm, gh, gb, gw]) g.replaceChildren();
+  for (const g of [gs, gl, gm, gh, gb, gw, $("g-labels")]) g.replaceChildren();
+  labs.length = 0;
   sk.brushes.forEach((st, i) => brushEl(st, gb, { "data-kind": "brushes", "data-i": i, on: isSel("brushes", i) }));
   drawWarnings(gw, k);
   sk.shapes.forEach((sh, i) => shapeEl(sh, gs, { "data-kind": "shapes", "data-i": i, stroke: isSel("shapes", i) ? "var(--sel)" : "#0005",
@@ -241,6 +262,7 @@ function render() {
     el("line", { x1: rp.low[0], y1: sy(rp.low[1]), x2: rp.high[0], y2: sy(rp.high[1]), stroke: "#fff", "stroke-width": 2 * k,
       "marker-end": "", "pointer-events": "none" }, gl);
   });
+  sk.bridges.forEach((b, i) => bridgeEl(b, gl, { "data-kind": "bridges", "data-i": i, on: isSel("bridges", i) }, k));
   const borders = Object.entries(sk.borders);
   if (borders.length) {                                       // outside the playable area: dimmed
     const [x0, y0, x1, y1] = borders[0][1];
@@ -259,21 +281,22 @@ function render() {
     el("circle", { cx: ox, cy: sy(oy), r: 40, fill: "#ffd54f", stroke: "#000", "stroke-width": k, "pointer-events": "none" }, gm);
     el("rect", { x: f.x - 60, y: sy(f.y) - 60, width: 120, height: 120, fill: "#ffd54f66", stroke: isSel("fields", i) ? "var(--sel)" : "#ffd54f",
       "stroke-width": 3 * k, "data-kind": "fields", "data-i": i }, gm);
-    if (labels) el("text", { x: f.x + 70, y: sy(f.y) - 60, "font-size": fs, "stroke-width": 3 * k, class: "lbl" }, gm).textContent = `${f.name} 矿场`;
+    if (labels) addLabel(f.x, f.y, `${f.name} 矿场`, "", fs, k);
   });
   Object.entries(sk.sites).forEach(([code, s]) => {
     if (s.r) el("circle", { cx: s.x, cy: sy(s.y), r: s.r, fill: "#fff1", stroke: "#fffa", "stroke-width": k, "pointer-events": "none" }, gm);
     if (s.build) el("rect", { x: s.x - s.build / 2, y: sy(s.y) - s.build / 2, width: s.build, height: s.build, fill: "none",
       stroke: "#9cf", "stroke-width": 2 * k, "pointer-events": "none" }, gm);
-    el("circle", { cx: s.x, cy: sy(s.y), r: 7 * k, fill: isSel("sites", code) ? "var(--sel)" : "#fff", stroke: "#000",
+    const dot = el("circle", { cx: s.x, cy: sy(s.y), r: 7 * k, fill: isSel("sites", code) ? "var(--sel)" : "#fff", stroke: "#000",
       "stroke-width": 1.5 * k, "data-kind": "sites", "data-i": code }, gm);
-    if (labels) el("text", { x: s.x + 10 * k, y: sy(s.y) - 8 * k, "font-size": fs, "stroke-width": 3 * k, class: "lbl" }, gm)
-      .textContent = s.zh ? `${s.zh} ${code}` : code;
+    el("title", {}, dot).textContent = s.zh ? `${s.zh} ${code}` : code;     // a name with no free spot: on hover
+    if (labels) addLabel(s.x, s.y, s.zh, code, fs, k);
   });
   const [x, y] = sk.start;
   el("path", { d: `M${x},${sy(y) - 22 * k} l${14 * k},${30 * k} h${-28 * k} z`, fill: isSel("start", 0) ? "var(--sel)" : "#4caf50",
     stroke: "#000", "stroke-width": 1.5 * k, "data-kind": "start", "data-i": 0 }, gm);
-  if (labels) el("text", { x: x + 16 * k, y: sy(y) + 6 * k, "font-size": fs, "stroke-width": 3 * k, class: "lbl" }, gm).textContent = "出生点";
+  if (labels) addLabel(x, y, "出生点", "", fs, k);
+  layoutLabels(k);
   drawHandles(gh, k);
   drawDraft(k);
   renderLayers(); renderProps();
@@ -293,6 +316,53 @@ function brushEl(st, parent, extra = {}) {
   if (extra.on) el("polyline", { points: pts(p.length > 1 ? p : [p[0], p[0]]), fill: "none", stroke: "var(--sel)", "stroke-width": 4 * scale(),
     "pointer-events": "none" }, g);
   return g;
+}
+// ---- bridges: a deck from bank a to bank b (platmap.bridge; the deck walkable width BRIDGE_DECK)
+function bridgeEl(b, parent, extra = {}, k = scale()) {
+  const attrs = extra["data-kind"] ? { "data-kind": extra["data-kind"], "data-i": extra["data-i"] } : { "pointer-events": "none" };
+  const line = { x1: b.a[0], y1: sy(b.a[1]), x2: b.b[0], y2: sy(b.b[1]), "stroke-linecap": "butt" };
+  el("line", { ...line, stroke: extra.on ? "var(--sel)" : "#3a2410", "stroke-width": BRIDGE_DECK + 16 * k, ...attrs }, parent);
+  el("line", { ...line, stroke: "#a0703c", "stroke-width": BRIDGE_DECK, ...attrs }, parent);
+  el("line", { ...line, stroke: "#0006", "stroke-width": 2 * k, "stroke-dasharray": `${14 * k} ${10 * k}`, "pointer-events": "none" }, parent);
+}
+// ---- site names: spread out by labels.js (the map page's layout) so none overlaps another; re-placed on every render
+const labs = [];
+function addLabel(x, y, zh, code, fs, k) {
+  const t = el("text", { x: 0, y: 0, "font-size": fs, "stroke-width": 3 * k, class: "lbl" }, $("g-labels"));
+  if (zh) el("tspan", {}, t).textContent = zh;
+  if (code) { const c = el("tspan", { class: "code" }, t); c.textContent = zh ? " " + code : code; }
+  const lead = el("line", { stroke: "#fffc", "stroke-width": 1.5 * k, "pointer-events": "none", style: "display:none" }, $("g-labels"));
+  labs.push({ x, y: sy(y), t, lead, short: !!(zh && code) });
+}
+function layoutLabels(k) {
+  if (!labs.length) { $("labnote").textContent = ""; return; }
+  const pad = 2 * k, vb = [view.x, view.y, view.x + view.w, view.y + View.height(view, W, H)];
+  const items = labs.map((L) => {
+    const bb = L.t.getBBox();
+    L.off = [bb.x - pad, bb.y - pad];
+    const it = { x: L.x, y: L.y, w: bb.width + 2 * pad, h: bb.height + 2 * pad };
+    const code = L.short && L.t.querySelector("tspan.code");
+    if (code) { code.style.display = "none"; it.ws = L.t.getBBox().width + 2 * pad; code.style.display = ""; }
+    return it;
+  });
+  const idx = items.map((_, i) => i).filter((i) => items[i].x >= vb[0] && items[i].x <= vb[2] && items[i].y >= vb[1] && items[i].y <= vb[3]);
+  const placed = Labels.place(idx.map((i) => items[i]), vb, Labels.opts(k));
+  const res = items.map(() => ({ shown: false }));
+  idx.forEach((i, n) => { res[i] = placed[n]; });
+  res.forEach((r, i) => {
+    const L = labs[i];
+    if (!r.shown) { L.t.style.display = "none"; return; }
+    L.t.setAttribute("x", (r.x - L.off[0]).toFixed(1)); L.t.setAttribute("y", (r.y - L.off[1]).toFixed(1));
+    const code = L.t.querySelector("tspan.code");
+    if (code && r.short) code.style.display = "none";
+    if (r.leader) {
+      const [[x1, y1], [x2, y2]] = r.leader;
+      for (const [a, v] of Object.entries({ x1, y1, x2, y2 })) L.lead.setAttribute(a, v.toFixed(1));
+      L.lead.style.display = "";
+    }
+  });
+  const n = res.filter((r) => r.shown).length;
+  $("labnote").textContent = n < idx.length ? `显示 ${n} / ${idx.length}（其余悬停在点上看，放大能显示更多）` : "";
 }
 // the ground tier under a point before smoothing: the last shape (or wall) drawn over it, else the base
 function inPoly(a, x, y) {
@@ -322,7 +392,7 @@ function tierAt(x, y) {
   return t;
 }
 // ---- the last report's warnings on the map: where a unit may stop, slits along the edge
-let warn = { stops: [], narrow: [] };
+let warn = { stops: [], narrow: [], near: [] };
 function drawWarnings(g, k) {
   for (const s of warn.stops) {
     if (!s.stop) continue;
@@ -330,6 +400,9 @@ function drawWarnings(g, k) {
     el("line", { x1: x, y1: sy(y), x2: tx, y2: sy(ty), stroke: "var(--warn)", "stroke-width": 3 * k, "stroke-dasharray": `${10 * k} ${7 * k}`, "pointer-events": "none" }, g);
     el("path", { d: `M${x - 14 * k},${sy(y) - 14 * k}l${28 * k},${28 * k}m0,${-28 * k}l${-28 * k},${28 * k}`, stroke: "var(--warn)", "stroke-width": 5 * k, "pointer-events": "none" }, g);
     el("text", { x: x + 16 * k, y: sy(y) + 18 * k, "font-size": 14 * k, "stroke-width": 3 * k, class: "lbl" }, g).textContent = `去${siteName(s.to)}可能停在这`;
+  }
+  for (const n of warn.near) {
+    el("circle", { cx: n.x, cy: sy(n.y), r: 60, fill: "none", stroke: "var(--warn)", "stroke-width": 4 * k, "stroke-dasharray": `${8 * k} ${6 * k}`, "pointer-events": "none" }, g);
   }
   for (const n of warn.narrow) {
     el("circle", { cx: n.x, cy: sy(n.y), r: Math.max(40, n.length / 2), fill: "none", stroke: "var(--warn)", "stroke-width": 4 * k, "pointer-events": "none" }, g);
@@ -350,6 +423,7 @@ function handlePoints() {
   }
   if (sel.kind === "walls" || sel.kind === "roads") return it.points.map((p, j) => ({ p, set: (q) => { it.points[j] = q; } }));
   if (sel.kind === "ramps") return [{ p: it.low, set: (q) => { it.low = q; } }, { p: it.high, set: (q) => { it.high = q; } }];
+  if (sel.kind === "bridges") return [{ p: it.a, set: (q) => { it.a = q; } }, { p: it.b, set: (q) => { it.b = q; } }];
   return [];
 }
 function drawHandles(g, k) {
@@ -372,6 +446,7 @@ function drawDraft(k) {
     if (tool === "rect" || tool === "border") shapeEl({ kind: "rect", at: [x0, y0, x1, y1], tier }, g,
       tool === "border" ? { fill: "none", stroke: "#fff", "stroke-width": 3 * k } : { "fill-opacity": .6, stroke: "var(--sel)", "stroke-width": 2 * k });
     else if (tool === "circle") shapeEl({ kind: "circle", at: [x0, y0, Math.hypot(x1 - x0, y1 - y0)], tier }, g, { "fill-opacity": .6, stroke: "var(--sel)", "stroke-width": 2 * k });
+    else if (tool === "bridge") bridgeEl({ a: draft.from, b: draft.to }, g, {}, k);
     else if (tool === "ramp") el("polygon", { points: pts(rampQuad({ low: draft.from, high: draft.to, width: +$("width").value })), fill: "#7a5", "fill-opacity": .7 }, g);
   }
 }
@@ -381,7 +456,7 @@ function item(s) {
   if (s.kind === "sites") return sk.sites[s.i];
   return (sk[s.kind] || [])[s.i];
 }
-const KIND_NAME = { shapes: "地块", walls: "悬崖墙", ramps: "坡道", roads: "路", fields: "矿场", sites: "地点", start: "出生点", brushes: "地形画刷" };
+const KIND_NAME = { shapes: "地块", walls: "悬崖墙", ramps: "坡道", roads: "路", fields: "矿场", sites: "地点", start: "出生点", brushes: "地形画刷", bridges: "桥" };
 function shapeName(sh) { return `${TIER_NAME[sh.tier]}（${{ poly: "多边形", rect: "矩形", circle: "圆" }[sh.kind]}）${sh.what ? "：" + sh.what : ""}`; }
 function renderLayers() {
   const ol = $("layers"); ol.replaceChildren();
@@ -458,8 +533,59 @@ function renderProps() {
   } else if (sel.kind === "start") {
     const n = document.createElement("p"); n.className = "note"; n.textContent = `(${it[0]}, ${it[1]})：玩家起点和开场镜头都放在这里。拖动它来移动。`; box.appendChild(n);
   }
+  coordFields(box, it);
   if (sel.kind !== "start") {
     const b = document.createElement("button"); b.textContent = "删除（Delete）"; b.onclick = removeSel; box.appendChild(b);
+  }
+}
+// numbers typed in: positions as x / y boxes, ends as "x, y", outlines as JSON (world units, +y north)
+const num = (v) => { const n = Number(v); if (!Number.isFinite(n)) throw new Error(`${v} 不是数`); return n; };
+function pointOf(text) {
+  const a = String(text).replace(/[[\]()]/g, "").split(/[,，\s]+/).filter(Boolean).map(num);
+  if (a.length !== 2) throw new Error("要两个数：x, y");
+  return a;
+}
+function checked(label, value, parse, set) {                   // a text box whose value is checked before it is kept
+  const w = input(label, value, () => {}, "text");
+  const i = w.querySelector("input");
+  i.onchange = () => {
+    let v; try { v = parse(i.value); } catch (e) { status("没改：" + e.message); i.value = value; return; }
+    snapshot(); set(v); changed();
+  };
+  return w;
+}
+function coordFields(box, it) {
+  const k = sel.kind;
+  if (k === "sites" || k === "fields") {
+    box.appendChild(input("x", it.x, (v) => { it.x = v; }, "number", { step: 10 }));
+    box.appendChild(input("y（北为正）", it.y, (v) => { it.y = v; }, "number", { step: 10 }));
+  } else if (k === "start") {
+    box.appendChild(input("x", it[0], (v) => { sk.start = [v, sk.start[1]]; }, "number", { step: 10 }));
+    box.appendChild(input("y（北为正）", it[1], (v) => { sk.start = [sk.start[0], v]; }, "number", { step: 10 }));
+  } else if (k === "ramps" || k === "bridges") {
+    const [a, b] = k === "ramps" ? ["low", "high"] : ["a", "b"];
+    box.appendChild(checked(k === "ramps" ? "低处一端 x, y" : "一岸 x, y", it[a].join(", "), pointOf, (v) => { it[a] = v; }));
+    box.appendChild(checked(k === "ramps" ? "高处一端 x, y" : "对岸 x, y", it[b].join(", "), pointOf, (v) => { it[b] = v; }));
+    if (k === "bridges") {
+      box.appendChild(input("模板", it.template || "HB_Bridge_02", (v) => { it.template = v.trim() || "HB_Bridge_02"; }));
+      const n = document.createElement("p"); n.className = "note";
+      n.textContent = `长 ${Math.round(Math.hypot(it.b[0] - it.a[0], it.b[1] - it.a[1]))}（原版桥 270～1780）。两端要站在同一高度的干地上，设计检查会量。`;
+      box.appendChild(n);
+    }
+  } else if (k === "shapes") {
+    const what = { poly: "顶点 [[x, y], ...]", rect: "[x0, y0, x1, y1]", circle: "[x, y, 半径]" }[it.kind];
+    box.appendChild(checked("坐标 " + what, JSON.stringify(it.at), (v) => {
+      const a = JSON.parse(v);
+      if (it.kind === "poly") { if (!Array.isArray(a) || a.length < 3) throw new Error("多边形至少 3 个点"); return a.map((p) => pointOf(p.join(","))); }
+      if (!Array.isArray(a) || a.length !== (it.kind === "rect" ? 4 : 3)) throw new Error(what);
+      return a.map(num);
+    }, (v) => { it.at = v; }));
+  } else if (k === "walls" || k === "roads") {
+    box.appendChild(checked("折线 [[x, y], ...]", JSON.stringify(it.points), (v) => {
+      const a = JSON.parse(v);
+      if (!Array.isArray(a) || a.length < 2) throw new Error("至少 2 个点");
+      return a.map((p) => pointOf(p.join(",")));
+    }, (v) => { it.points = v; }));
   }
 }
 function removeSel() {
@@ -474,6 +600,7 @@ const HINT = {
   select: "点选东西；拖地点、出生点、矿场、黄色顶点；拖空白处平移。Delete 删除，Ctrl+Z 撤销。",
   poly: "单击加点，双击或回车收尾，Esc 取消。层在上面选。", rect: "按住拖出矩形地块。", circle: "从圆心按住拖出半径。",
   wall: "单击加点，双击或回车收尾：一道谁都过不去的陡崖（宽度在上面填）。", ramp: "先点低处一端，再点高处一端（两端在不同层的平地上）。",
+  bridge: "先点一岸，再点对岸：桥面宽 120，两端要在同一高度的干地上（检查会报）。",
   road: "单击加点，双击或回车收尾。路只换地面贴图。", site: "单击放一个地点，然后在右边填代码名和中文名。",
   start: "单击放玩家出生点。", field: "单击放矿场的精炼厂位置；朝向和归属在上面选。", border: "按住拖出可玩区（第一块边界）。",
   brush: "按住在图上涂：抬高、压低，或整平到下笔处那一层的高度。一笔一条，生成时叠在地块和坡道上；看效果要生成后叠地面图。",
@@ -528,6 +655,11 @@ svg.addEventListener("pointerdown", (ev) => {
     snapshot(); sk.ramps.push({ low: draft.from, high: p, width: +$("width").value, what: "" });
     sel = { kind: "ramps", i: sk.ramps.length - 1 }; draft = null; changed(); return;
   }
+  if (tool === "bridge") {
+    if (!draft) { draft = { from: p, to: p }; render(); return; }
+    snapshot(); sk.bridges.push({ a: draft.from, b: p, template: "HB_Bridge_02" });
+    sel = { kind: "bridges", i: sk.bridges.length - 1 }; draft = null; changed(); return;
+  }
   if (tool === "site") {
     snapshot(); const code = newSiteCode(); sk.sites[code] = { x: p[0], y: p[1], r: 150, zh: "", what: "" };
     sel = { kind: "sites", i: code }; setTool("select"); changed(); return;
@@ -573,7 +705,7 @@ svg.addEventListener("pointermove", (ev) => {
     render(); return;
   }
   if (draft && draft.points) { draft.hover = p; drawDraft(scale()); return; }
-  if (draft && (drag && drag.draw || tool === "ramp")) { draft.to = p; drawDraft(scale()); }
+  if (draft && (drag && drag.draw || tool === "ramp" || tool === "bridge")) { draft.to = p; drawDraft(scale()); }
 });
 function up(ev) {
   pointers.delete(ev.pointerId);
@@ -646,7 +778,7 @@ function warnList(title, items, why) {
 }
 function showReport(r) {
   const box = $("result"); box.replaceChildren();
-  warn = { stops: [], narrow: [] };
+  warn = { stops: [], narrow: [], near: [] };
   const head = document.createElement("p");
   head.innerHTML = r.ok ? '<span class="ok">全部通过</span>' : '<span class="bad">有问题，见下面</span>';
   box.appendChild(head);
@@ -670,7 +802,11 @@ function showReport(r) {
   box.appendChild(warnList("贴边窄缝（悬崖或墙离地图边只剩比 50 窄的缝）", narrow.map((x) =>
     `(${Math.round(x.x)}, ${Math.round(x.y)}) 宽约 ${x.width}、长 ${x.length}（图上橙色圈）`),
     "能走，所以连通区算通；但车会往缝里开然后卡住。要么把墙画到边外封死，要么让出 50 以上。"));
-  warn = { stops, narrow };
+  const near = r.near || [];
+  box.appendChild(warnList("地点重合（两个地点几乎在同一个位置）", near.map((x) =>
+    `${siteName(x.a)} 和 ${siteName(x.b)} 相距 ${Math.round(x.gap)}（图上橙色虚线圈）`),
+    "多半是重复的（比如 start 和出生点所在的地点）：留一个，任务按另一个名字放东西就好。"));
+  warn = { stops, narrow, near };
   const p = document.createElement("p"); p.className = "note";
   p.textContent = "寻路：" + (typeof r.pathing === "string" ? r.pathing : r.pathing.map((x) => `${x.from}→${x.to} ${x.found ? "通" : "不通（" + x.reason + "）"}`).join("；"));
   box.appendChild(p);
@@ -681,20 +817,41 @@ function showReport(r) {
     box.appendChild(det);
   }
   const t = Date.now();
-  if (r.ground_png) { $("img-ground").setAttribute("href", `/files/${r.ground_png}?t=${t}`); }
-  if (r.regions_png) { $("img-regions").setAttribute("href", `/files/${r.regions_png}?t=${t}`); }
+  if (r.ground_png) { $("img-ground").setAttribute("href", `files/${r.ground_png}?t=${t}`); }
+  if (r.regions_png) { $("img-regions").setAttribute("href", `files/${r.regions_png}?t=${t}`); }
 }
 $("gen").onclick = async () => {
   if (!online) { $("result").textContent = "没连上本机服务，不能生成。用 serve.py --new 打开这页。"; return; }
   const b = $("gen"); b.disabled = true; b.textContent = "正在生成和检查（十几秒）……";
   try {
-    const r = await fetch("/api/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(sk) });
+    const r = await fetch("api/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(sk) });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || r.status);
     showReport(d); status("已生成 " + new Date().toLocaleTimeString());
     if (!$("show-regions").checked && d.regions && d.regions["cut off"].length) { $("show-regions").checked = true; $("show-regions").onchange(); }
   } catch (e) { $("result").textContent = "生成失败：" + e.message; }
   b.disabled = false; b.textContent = "生成并检查";
+};
+
+// ---- the sketch as JSON: a script's sketch pasted in (replaces the whole sketch; Ctrl+Z brings the old one back)
+$("json-out").onclick = () => { $("json").value = JSON.stringify(sk, null, 1); $("json-msg").textContent = "当前草图已放进框里。"; };
+$("json-in").onclick = () => {
+  let s;
+  try { s = JSON.parse($("json").value); } catch (e) { $("json-msg").textContent = "不是 JSON：" + e.message; return; }
+  const bad = [];
+  if (!s || typeof s !== "object" || Array.isArray(s)) bad.push("要一个 JSON 对象");
+  else {
+    if (s.version !== 1) bad.push(`version 要是 1（现在是 ${JSON.stringify(s.version)}）`);
+    if (!Array.isArray(s.start) || s.start.length !== 2) bad.push("start 要是 [x, y]");
+    if (!s.borders || !Object.keys(s.borders).length) bad.push("borders 至少一块（第一块是可玩区）");
+    if (![0, 1, 2, 3].includes(s.base)) bad.push("base 是 0～3 的层");
+  }
+  if (bad.length) { $("json-msg").textContent = "没导入：" + bad.join("；"); return; }
+  snapshot();
+  sk = filled(Object.assign({ cliff: 2, what: "" }, s, { name: sk.name }));
+  if (!sk.size) { const b = Object.values(sk.borders)[0]; sk.size = [b[2] - b[0], b[3] - b[1]]; }
+  sel = null; changed();
+  $("json-msg").textContent = `已导入：${sk.shapes.length} 块地、${Object.keys(sk.sites).length} 个地点、${sk.bridges.length} 座桥。点"生成并检查"。`;
 };
 
 // ---- start
@@ -710,6 +867,8 @@ setTool("select");
 }
 setView();
 window.addEventListener("resize", render);
+// the names are measured at the map's on-screen size: a hidden pane shown later (or a side panel resized) places them again
+if (window.ResizeObserver) { let w0 = 0; new ResizeObserver(() => { const w = svg.getBoundingClientRect().width; if (w && w !== w0) { w0 = w; render(); } }).observe(svg); }
 window.__sketch = { get sk() { return sk; }, render, setTool, get view() { return view; } };
 </script>
 </body>

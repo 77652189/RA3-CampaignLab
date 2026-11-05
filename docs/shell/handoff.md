@@ -2,9 +2,19 @@
 
 外壳线 2026-11-03 从关卡线拆出（[architecture.md](../architecture.md) 各线负责的文件）。以前做过的事和坑在 [story/handoff.md](../story/handoff.md) 搜"外壳""CampShell"（第 33～42、61～69 行）。问题编号见 [issues.md](../issues.md) K9。
 
+## 编辑器第三轮：Agent 能用、桥、一个启动项（2026-11-04 总控派活，关卡线画 A9 布鲁塞尔后的反馈，git log 搜 "sketch for agents"）
+
+- **Agent 用法**：格式文档 [sketch-format.md](sketch-format.md)（字段、单位、坐标系、能通过的例子）。`sketch2map.py <名字> --check --sketch 文件.json`（`-` 读标准输入）：存成草图、生成、检查，只打十来行摘要（构建自己的打印压掉），全文在 report.json，退出码 0＝通过。页面右栏"草图 JSON"：粘贴导入（替换整张，能撤销，先查 version/start/borders/base）、把当前草图放进框里；属性面板加了坐标：地点/矿场/出生点 x、y，坡道和桥两端"x, y"，地块和墙/路的坐标 JSON（不合法就不改，状态栏说为什么）。
+- **桥**：草图 `bridges [{a, b, template}]`；工具栏"桥"先点一岸再点对岸。模块里写 `BRIDGES` + `BRIDGE_OBJECTS`（`platmap.bridge`：起点、终点两个物体，neutral、site='map'），连通区和设计检查本来就认（`platmap.walkable` 铺桥面、lint 查两端干地同高）。`from_module` 把现有图里正好是 `platmap.bridge` 出的成对物体认成桥（sapporo 3 座），别的照旧当原样物体。
+- **启动**：`serve.py --new` 不带图名＝列出 `work/mappage/*/sketch.json`，`/` 是列表（尺寸、上次检查结果、新建表单，可从现有图复制），每张在 `/m/<名字>/`；页面里的请求都改成相对路径。`launch.json` 收成一项 `mapsketch`（8766）。带图名的老用法不变。
+- **名字避让**：草图页嵌了 `labels.js`（`/*LABELS_JS*/`），地点、矿场、出生点名字按地图页同一套规则排；放不下的悬停圆点看（`<title>`），"地点名"旁写"显示 n / m"。实测 brussels 815 px 宽 26/26 显示、零重叠、2 条引线。窗格隐藏时宽度为 0 量不了，`ResizeObserver` 在显示后重排。
+- **地点重合**：`near_sites`，相距小于 `NEAR`=40 或较小半径的五分之一 → 橙色提醒（不算失败），页面画虚线圈；brussels 报 start 和 west suburb。没改 `contract.map_design`（关卡线文件，改了 brussels 会红）。
+- 测试 `tests/test_mappage_sketch.py` 加 7 条（共 26）：桥接通对岸（没桥时走不到）、桥端在水里 lint 报、sapporo 的桥认成桥、重合提醒不算失败且不误报近处地点、命令行 `--check --sketch` 摘要 ≤12 行、一个服务列所有草图（404、新建、重名 400、别的来源 403）、launch.json 只有一项草图。
+- **没做**（按派活排后）：BLOCKS/GAPS 画不了、景物没有。
+
 ## 从零画新地图（2026-11-04 总控派活，用户原话"地形编辑器升级成能画新地图"，git log 搜 "new-map mode"）
 
-- **启动**：`python -I -X utf8 experimental/mappage/serve.py --new <名字> [--size W H] [--from <现有图>]`，开 http://127.0.0.1:8765/ （内置浏览器用 `.claude/launch.json` 的 `mapsketch`，端口 8766，图名 trial）。草图在 `work/mappage/<名字>/sketch.json`，已存在就打开它（`--size`/`--from` 只在新建时用）。改了 `sketch2map.py` 要重启服务（模块只载一次），`sketch.html` 刷新页面就行。
+- **启动**：`python -I -X utf8 experimental/mappage/serve.py --new <名字> [--size W H] [--from <现有图>]`，开 http://127.0.0.1:8765/ （内置浏览器用 `.claude/launch.json` 的 `mapsketch`，端口 8766，第三轮起不写死图名，见上一节）。草图在 `work/mappage/<名字>/sketch.json`，已存在就打开它（`--size`/`--from` 只在新建时用）。改了 `sketch2map.py` 要重启服务（模块只载一次），`sketch.html` 刷新页面就行。
 - **页面**（`experimental/mappage/sketch.html`，嵌 `view.js` 的缩放平移）：多边形/矩形/圆形地块（层：水面 0、低地 1、高地 2、更高 3，按画的顺序后盖先）、悬崖墙（折线+宽度，生成时变成一串第 3 层的四边形和圆，四面陡坡，不是看不见的墙）、坡道、路、地点（代码名、中文名、半径、可建造边长、施法半径）、出生点、矿场（resources.Field：朝向 4 选 1、归属、服务的基地）、可玩区。选择模式拖地点和黄色顶点、改属性、调地块顺序、Delete 删、Ctrl+Z/Y。每改一下自动存。"生成并检查"→ 右栏列 lint、contract、连通区、写不出 .map 的原因、mapstudy/terrainref；地面图、连通区图可以叠在草图上。
 - **生成器** `experimental/mappage/sketch2map.py`（开头写了草图格式）：草图 → `work/mappage/<名字>/<名字>.py` + `<名字>_names.py`（platmap 格式：START/SITES/FIELDS/DERRICKS/BORDERS/RAW_OBJECTS+OBJECTS/SHAPES/RAMPS/ROADS/BLOCKS/GAPS/LAYOUT/SCENERY/terrain/like，terrain() 照 sapporo 把起点和开场镜头挪到 START）。检查：`contract.map_design`、空任务的 `parts.contract`、连通区（`platmap.walkable` 裁到第一块边界，ndimage 分块，报出生点走不到的地点）、`parts.preview` 写 .map、`mapstudy --ours` 和 `terrainref`。命令行：`sketch2map.py <名字> [--from <图>] [--no-map] [--pathing]`。生成器只写 work/，模块由关卡线审过再搬进 maps/（ADR 0017）。
 - **稳**：同一份草图同样的文本（`module_text` 纯函数，数字用 repr 原样写）；`from_module` 把现有图导成草图再生成，高度、通行、lint、地点、边界、物体、景物、地块用途全部一致——测试用 sapporo、himeji；手动试过 niagara、festival、aso、baikonur、siberia 也一致。矿和精炼厂地点不进草图，从 FIELDS 重新算。

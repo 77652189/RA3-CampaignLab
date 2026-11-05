@@ -8,6 +8,8 @@ line has looked it over and moved it into experimental/cnv/maps/.
   python -I -X utf8 experimental/mappage/sketch2map.py trial                 sketch.json -> trial.py, trial_names.py, report
   python -I -X utf8 experimental/mappage/sketch2map.py trial --from sapporo  write the sketch of an existing map first
   python -I -X utf8 experimental/mappage/sketch2map.py trial --no-map        lint and regions only (no .map, no study)
+  python -I -X utf8 experimental/mappage/sketch2map.py trial --check --sketch my.json   take a sketch written anywhere
+                              (- = stdin), save it as work/mappage/trial/sketch.json, generate, check, print the summary
 
 The sketch (version 1), world units, +y north, as the map modules write them:
   size [W, H]                 the playable area ('whole' border) when borders are not given; the container is 5000
@@ -24,7 +26,11 @@ The sketch (version 1), world units, +y north, as the map modules write them:
   blocks [{at, use, what}], gaps [{x, y, width, what}]     platmap.Block / Gap (at: a shape dict or a rectangle)
   brushes [{op, r, s, dabs, height}]   raise / lower / flatten strokes laid last (platmap.brush, Layout.brushes; the
                               same rule as the existing maps' terrain editor); dabs flat [x0, y0, x1, y1, ...]
-  objects, scenery [{template, x, y, side, name, angle, flags, site}]     placed as they are (bridges, walls; props)
+  bridges [{a: [x, y], b: [x, y], template}]   a bridge from bank a to bank b (platmap.bridge: a start and an end
+                              object, neutral; the deck is platmap.BRIDGE_DECK wide). Both ends on dry ground of one
+                              height (the lint says so otherwise); template default HB_Bridge_02
+  objects, scenery [{template, x, y, side, name, angle, flags, site}]     placed as they are (walls; props)
+Full description, with units and an example an agent can write: docs/shell/sketch-format.md.
 
 The same sketch always gives the same module text (module_text is a pure function of it); a module written by
 from_module and generated again reads the same (readings(): heights, walkability, lint, sites, borders, objects) --
@@ -46,6 +52,8 @@ CAMPAIGN = os.path.join(ROOT, 'experimental', 'campaign')
 OUT = os.path.join(ROOT, 'work', 'mappage')
 VERSION = 1
 START_WHAT = "the player's start; the start camera looks here"
+BRIDGE = 'HB_Bridge_02'                         # the bridge template a new bridge gets
+NEAR = 40.0                                     # two sites closer than this (or a fifth of the smaller radius) are one
 WORLD = 5000.0                                  # the container map's width in world units ((560 - 2 * 30) * 10)
 
 
@@ -78,8 +86,8 @@ def blank(name, size=(WORLD, WORLD)):
     return {'version': VERSION, 'name': name, 'what': '', 'size': [w, h], 'base': 1, 'cliff': 2,
             'shapes': [], 'walls': [], 'ramps': [], 'roads': [],
             'sites': {}, 'start': [min(1250.0, w / 4), h / 2], 'fields': [], 'derricks': [],
-            'borders': {'whole': [0.0, 0.0, w, h]}, 'blocks': [], 'gaps': [], 'brushes': [], 'objects': [],
-            'scenery': []}
+            'borders': {'whole': [0.0, 0.0, w, h]}, 'blocks': [], 'gaps': [], 'brushes': [], 'bridges': [],
+            'objects': [], 'scenery': []}
 
 
 def _f(v):
@@ -118,6 +126,30 @@ def _brush_out(st):
     return d
 
 
+def _bridge_objs(b):
+    """The two objects of a sketch bridge, as the sketch keeps objects (platmap.bridge: start, then end)."""
+    t = b.get('template') or BRIDGE
+    return [{'template': t, 'x': _f(x), 'y': _f(y), 'side': 'neutral', 'site': 'map', 'angle': _f(a), 'flags': int(fl)}
+            for x, y, a, fl in platmap.bridge(tuple(b['a']), tuple(b['b']), t)]
+
+
+def _bridges_out(objects):
+    """Bridges among an existing map's objects: a start right before its end, exactly what platmap.bridge makes of
+    their two points (anything else stays a raw object). Returns (bridges, the other objects)."""
+    bridges, rest, k = [], [], 0
+    while k < len(objects):
+        o, q = objects[k], objects[k + 1] if k + 1 < len(objects) else None
+        if q and o.get('flags') == platmap.BRIDGE_START and q.get('flags') == platmap.BRIDGE_END:
+            b = {'a': [o['x'], o['y']], 'b': [q['x'], q['y']], 'template': o['template']}
+            if _bridge_objs(b) == [o, q]:
+                bridges.append(b)
+                k += 2
+                continue
+        rest.append(o)
+        k += 1
+    return bridges, rest
+
+
 def from_module(mod, names=None):
     """The sketch of an existing platmap map module: what generate() turns back into an equivalent module. The ore and
     the refinery sites are not copied: they are made from FIELDS again (resources.py)."""
@@ -144,6 +176,7 @@ def from_module(mod, names=None):
     objects = [_obj_out(o) for o in getattr(mod, 'OBJECTS', [])]
     for o in ore:                                   # the fields' ore and oil, made again: not raw objects
         objects.remove(o)
+    bridges, objects = _bridges_out(objects)
     start = getattr(mod, 'START', None) or (mod.SITES['start'].x, mod.SITES['start'].y)
     borders = {k: [_f(v) for v in b] for k, b in getattr(mod, 'BORDERS', {'whole': (0, 0, WORLD, WORLD)}).items()}
     whole = next(iter(borders.values()))
@@ -163,6 +196,7 @@ def from_module(mod, names=None):
                     'use': b.use, 'what': b.what} for b in lay.blocks],
         'gaps': [{'x': _f(g.x), 'y': _f(g.y), 'width': _f(g.width), 'what': g.what} for g in lay.gaps],
         'brushes': [_brush_out(st) for st in getattr(lay, 'brushes', [])],
+        'bridges': bridges,
         'objects': objects,
         'scenery': [_obj_out(o) for o in getattr(mod, 'SCENERY', [])],
     }
@@ -203,6 +237,14 @@ def check_sketch(s):
             out.append(f'brush {k + 1}: dabs are x, y pairs, one at least')
         elif st['op'] == 'flatten' and not isinstance(st.get('height'), (int, float)):
             out.append(f'brush {k + 1}: flatten needs the height it levels to')
+    for k, b in enumerate(s.get('bridges', [])):
+        try:
+            a, c = [(float(p[0]), float(p[1])) for p in (b['a'], b['b'])]
+        except (KeyError, TypeError, ValueError, IndexError):
+            out.append(f'bridge {k + 1}: two ends a and b, each [x, y]')
+            continue
+        if math.dist(a, c) < platmap.BRIDGE_DECK:
+            out.append(f'bridge {k + 1}: its ends are {math.dist(a, c):.0f} apart (a bridge is longer than it is wide)')
     if not s.get('borders'):
         out.append('no borders: the first one is the playable area')
     for f in s.get('fields', []):
@@ -285,7 +327,7 @@ def module_text(s):
          'mode): do not edit this draft by hand while the sketch is the source -- draw and generate again. Once the',
          'level line has looked it over and moved it into experimental/cnv/maps/ (ADR 0017), the module is the source.',
          '',
-         'Published: SITES, PLAYERS, TEAMS, BORDERS, OBJECTS, SCENERY, LAYOUT, FIELDS, DERRICKS, START.',
+         'Published: SITES, PLAYERS, TEAMS, BORDERS, OBJECTS, SCENERY, LAYOUT, FIELDS, DERRICKS, BRIDGES, START.',
          '"""',
          'import struct',
          '',
@@ -319,7 +361,12 @@ def module_text(s):
           "TEAMS = dict(island.TEAMS, s1='Soviet_1/teamSoviet_1')",
           '']
     L += _wrap('RAW_OBJECTS = [', [_obj_src(o) for o in s.get('objects', [])])
-    L += ['OBJECTS = RAW_OBJECTS + resources.objects(FIELDS, DERRICKS)', '']
+    L += ['# bridges bank to bank (platmap.bridge: a start object and its end, one right after the other)']
+    L += _wrap('BRIDGES = [', [f"({_pt(b['a'])}, {_pt(b['b'])}, {_s(b.get('template') or BRIDGE)})"
+                               for b in s.get('bridges', [])])
+    L += ["BRIDGE_OBJECTS = [Obj(t, x, y, side='neutral', angle=a, flags=f, site='map')",
+          '                  for p, q, t in BRIDGES for x, y, a, f in platmap.bridge(p, q, t)]',
+          'OBJECTS = RAW_OBJECTS + BRIDGE_OBJECTS + resources.objects(FIELDS, DERRICKS)', '']
     L += _wrap('SHAPES = [', [_shape_src(sh) for sh in shapes])
     L += _wrap('RAMPS = [', [f"Ramp({_pt(r['low'])}, {_pt(r['high'])}, {_r(r.get('width', 160))}, "
                              f"{_s(r.get('what', ''))})" for r in s.get('ramps', [])])
@@ -589,6 +636,23 @@ def narrow_edges(mod, walk=None):
     return sorted(out, key=lambda d: -d['length'])
 
 
+NEAR_WORDS = '两个地点几乎在同一个位置：多半是重复的（比如 start 和出生点所在的地点），留一个，任务按另一个名字放东西就好'
+
+
+def near_sites(mod):
+    """Pairs of sites that stand nearly on one spot (closer than NEAR, or a fifth of the smaller radius): one is
+    probably a copy of the other (Brussels: start and west suburb). Refinery sites are made from FIELDS: left out.
+    A warning: it does not make the sketch fail."""
+    pts = [(k, s) for k, s in mod.SITES.items() if not k.endswith(' refinery') and k != 'island']   # the container's
+    out = []
+    for i, (a, p) in enumerate(pts):
+        for b, q in pts[i + 1:]:
+            d = math.dist((p.x, p.y), (q.x, q.y))
+            if d < max(NEAR, min(p.r, q.r) / 5):
+                out.append({'a': a, 'b': b, 'gap': round(d, 1), 'x': p.x, 'y': p.y})
+    return out
+
+
 def _mission(mod, name):
     return parts.Mission(name=f'CampSk{name[:8].title()}', map=mod)
 
@@ -661,6 +725,7 @@ def report(name, s=None, with_map=True, with_pathing=False, out=None):
     region_png(reg['label'], os.path.join(d, 'regions.png'), reg['start'])
     out['regions_png'] = 'regions.png'
     out['narrow'] = narrow_edges(mod)
+    out['near'] = near_sites(mod)
     if with_pathing:
         pairs = [('start', k) for k in mod.SITES if k not in ('start', 'island') and not k.endswith(' refinery')]
         res = pathing(mod, pairs)
@@ -732,6 +797,29 @@ def text_report(r):
         out.append(f"可能半路停住 {x['from']}→{x['to']}（连通区能到，模型 {x['reason']}{at}）：{STOP_WORDS}")
     for x in r.get('narrow', []):
         out.append(f"贴边窄缝 ({x['x']:.0f}, {x['y']:.0f}) 宽约 {x['width']:.0f}、长 {x['length']:.0f}：{NARROW_WORDS}")
+    for x in r.get('near', []):
+        out.append(f"地点重合 {x['a']} 和 {x['b']} 相距 {x['gap']:.0f}（({x['x']:.0f}, {x['y']:.0f})）：{NEAR_WORDS}")
+    return '\n'.join(out)
+
+
+def summary(r):
+    """The few lines an agent needs: the verdict, each failing check, the warnings, where the files are (the long
+    study is in report.json and on the page)."""
+    full = text_report(r).split('\n')
+    if r.get('problems'):
+        return '\n'.join(full)
+    keep = ('草图 ', '模块草稿 ', 'LINT ', 'CONTRACT ', '连通区 ', 'MAP ', '可能半路停住 ', '贴边窄缝 ', '地点重合 ')
+    out = [x for x in full if x.startswith(keep)]
+    if r.get('map_error'):
+        out.append('写不出 .map: ' + r['map_error'])
+    p = r.get('pathing')
+    if isinstance(p, str):
+        out.append('寻路 ' + p)
+    else:
+        bad = [x for x in p if not x['found']]
+        out.append(f"寻路 {len(p) - len(bad)}/{len(p)} 通" + (('；不通: ' + ', '.join(f"{x['to']}（{x['reason']}）"
+                                                                                     for x in bad)) if bad else ''))
+    out.append(f"全文 {os.path.relpath(os.path.join(folder(r['name']), 'report.json'), ROOT).replace(os.sep, '/')}")
     return '\n'.join(out)
 
 
@@ -741,14 +829,36 @@ def main():
     ap.add_argument('--from', dest='src', help='write the sketch of this existing map module (maps/<name>.py) first')
     ap.add_argument('--no-map', action='store_true', help='lint and regions only')
     ap.add_argument('--pathing', action='store_true', help="the engine line's pathfinding model too (if present)")
+    ap.add_argument('--sketch', metavar='FILE', help='a sketch written anywhere (- = stdin): saved as '
+                    'work/mappage/<name>/sketch.json first (docs/shell/sketch-format.md)')
+    ap.add_argument('--check', action='store_true', help='print a short summary (verdict, failures, warnings, file '
+                    'paths) instead of the whole report; the whole report is in report.json')
     a = ap.parse_args()
+    if a.src and a.sketch:
+        ap.error('--from or --sketch, not both')
     if a.src:
         mod, names = map_module(a.src)
         s = from_module(mod, names)
         s['name'] = a.name
         print('SKETCH ' + write_sketch(s))
-    r = report(a.name, with_map=not a.no_map, with_pathing=a.pathing)
-    print(text_report(r))
+    if a.sketch:
+        text = sys.stdin.read() if a.sketch == '-' else open(a.sketch, encoding='utf-8').read()
+        try:
+            s = json.loads(text)
+        except ValueError as e:
+            sys.exit(f'草图 {a.sketch}: 不是 JSON（{e}）')
+        if not isinstance(s, dict):
+            sys.exit(f'草图 {a.sketch}: 要一个 JSON 对象')
+        s['name'] = a.name
+        print('SKETCH ' + write_sketch(s))
+    if a.check:                                 # the build's own prints (terrain, objects counts) are not the summary
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()):
+            r = report(a.name, with_map=not a.no_map, with_pathing=a.pathing)
+    else:
+        r = report(a.name, with_map=not a.no_map, with_pathing=a.pathing)
+    print(summary(r) if a.check else text_report(r))
     sys.exit(0 if r.get('ok') else 1)
 
 

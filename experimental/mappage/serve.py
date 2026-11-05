@@ -25,6 +25,7 @@ draws it and saves every change:
 """
 import argparse
 import datetime
+import html
 import http.server
 import importlib.util
 import json
@@ -237,21 +238,112 @@ class Sketch:
         html = open(SKETCH_PAGE, encoding='utf-8').read()
         # the boot data inside a <script>: no "</" may close it early
         data = json.dumps(boot, ensure_ascii=False).replace('</', '<\\/')
-        return html.replace('/*VIEW_JS*/', view).replace('/*BOOT*/null', data).encode('utf-8')
+        labels = open(os.path.join(HERE, 'labels.js'), encoding='utf-8').read()
+        return (html.replace('/*VIEW_JS*/', view).replace('/*LABELS_JS*/', labels)
+                .replace('/*BOOT*/null', data).encode('utf-8'))
+
+
+class Sketches:
+    """Every sketch under one folder (work/mappage/*/sketch.json), opened when first asked for: the server that does
+    not name a map (`serve.py --new` alone) lists them at / and serves each at /m/<name>/."""
+
+    def __init__(self, folder=None):
+        self.dir = folder or sketch2map().OUT
+        self.open, self.lock = {}, threading.Lock()
+
+    def names(self):
+        if not os.path.isdir(self.dir):
+            return []
+        return sorted(n for n in os.listdir(self.dir) if os.path.exists(os.path.join(self.dir, n, 'sketch.json')))
+
+    def get(self, name, size=None, src=None, new=False):
+        with self.lock:
+            if name not in self.open:
+                if not new and name not in self.names():
+                    raise KeyError(name)
+                self.open[name] = Sketch(name, size, src, folder=os.path.join(self.dir, name))
+            return self.open[name]
+
+    def page(self):
+        rows = []
+        for n in self.names():
+            p = os.path.join(self.dir, n, 'sketch.json')
+            try:
+                s = json.load(open(p, encoding='utf-8'))
+                what = s.get('what') or ''
+                size = 'x'.join(f'{v:g}' for v in s.get('size', []))
+                ok = (json.load(open(os.path.join(self.dir, n, 'report.json'), encoding='utf-8')).get('ok')
+                      if os.path.exists(os.path.join(self.dir, n, 'report.json')) else None)
+            except (OSError, ValueError):
+                what, size, ok = '（读不了 sketch.json）', '', None
+            mark = {True: '通过', False: '有问题', None: '没检查过'}[ok]
+            rows.append(f'<li><a href="m/{n}/">{html.escape(n)}</a> <span class="n">{html.escape(size)} · {mark}</span>'
+                        f'<div class="n">{html.escape(what)}</div></li>')
+        body = '\n'.join(rows) or '<li class="n">还没有草图：在下面新建一张。</li>'
+        return CHOOSER.replace('<!--ROWS-->', body).replace('<!--WHERE-->', html.escape(
+            os.path.relpath(self.dir, mappage.ROOT).replace(os.sep, '/'))).encode('utf-8')
+
+
+CHOOSER = """<!doctype html><html lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,
+initial-scale=1"><title>地图草图</title><style>
+:root { color-scheme: light dark; --bg: #f4f4f2; --fg: #222; --mute: #666; --line: #ccc; }
+@media (prefers-color-scheme: dark) { :root { --bg: #1d1f21; --fg: #ddd; --mute: #999; --line: #444; } }
+body { background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, sans-serif; margin: 0 auto; max-width: 720px;
+  padding: 16px; } ul { list-style: none; padding: 0; } li { padding: 8px 0; border-bottom: 1px solid var(--line); }
+a { font-weight: 700; font-size: 17px; } .n { color: var(--mute); font-size: 13px; }
+form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; } input { font: inherit; padding: 4px 6px; }
+</style></head><body><h1>地图草图</h1><p class="n">草图在 <code><!--WHERE--></code>/&lt;名字&gt;/sketch.json。
+Agent 不用开页面：<code>sketch2map.py &lt;名字&gt; --check --sketch 文件.json</code>（格式见 docs/shell/sketch-format.md）。</p>
+<ul><!--ROWS--></ul><h2>新建</h2><form id="f"><input id="name" placeholder="名字（小写英文、数字、_）" required
+pattern="[a-z][a-z0-9_]{0,30}"><input id="from" placeholder="从现有图复制（可空，如 sapporo）"><button>新建并打开</button>
+<span class="n" id="msg"></span></form><script>
+document.getElementById("f").onsubmit = async (ev) => { ev.preventDefault();
+  const name = document.getElementById("name").value.trim(), src = document.getElementById("from").value.trim();
+  const r = await fetch("api/new", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, from: src || null }) });
+  const d = await r.json(); if (r.ok) location.href = "m/" + d.name + "/"; else document.getElementById("msg").textContent = d.error; };
+</script></body></html>"""
 
 
 def sketch_handler(sketch):
+    """One sketch at / (serve.py --new <name>); with a Sketches, the list at / and each sketch at /m/<name>/."""
+    many = isinstance(sketch, Sketches)
+
     class H(handler(None)):
-        def do_GET(self):
+        def _which(self):
+            """(the sketch, the path inside it), or (None, the path) for the list's own paths."""
             path = self.path.split('?')[0]
+            if not many:
+                return sketch, path
+            m = re.match(r'^/m/([^/]+)(/.*)?$', path)
+            if not m:
+                return None, path
+            return sketch.get(m.group(1)), m.group(2) or ''
+
+        def do_GET(self):
+            try:
+                sk, path = self._which()
+            except (KeyError, ValueError):
+                return self._send(404, {'error': 'no such sketch'})
+            if sk is None:
+                if path in ('/', '/index.html'):
+                    return self._send(200, sketch.page(), 'text/html; charset=utf-8')
+                if path == '/api/sketches':
+                    return self._send(200, {'sketches': sketch.names()})
+                return self._send(404, {'error': 'not found'})
+            if path == '' and many:                            # /m/name -> /m/name/ (the page's links are relative)
+                self.send_response(301)
+                self.send_header('Location', self.path.split('?')[0] + '/')
+                self.end_headers()
+                return
             if path in ('/', '/index.html'):
-                return self._send(200, sketch.page(), 'text/html; charset=utf-8')
+                return self._send(200, sk.page(), 'text/html; charset=utf-8')
             if path == '/api/sketch':
-                return self._send(200, sketch.read())
+                return self._send(200, sk.read())
             if path == '/api/ping':
-                return self._send(200, {'sketch': sketch.name})
+                return self._send(200, {'sketch': sk.name})
             if path.startswith('/files/') and path[7:] in FILES:
-                p = os.path.join(sketch.dir, path[7:])
+                p = os.path.join(sk.dir, path[7:])
                 if os.path.exists(p):
                     return self._send(200, open(p, 'rb').read(), 'image/png')
             self._send(404, {'error': 'not found'})
@@ -259,16 +351,30 @@ def sketch_handler(sketch):
         def do_POST(self):
             if not self._local():
                 return self._send(403, {'error': 'other origin'})
-            path = self.path.split('?')[0]
+            try:
+                sk, path = self._which()
+            except (KeyError, ValueError):
+                return self._send(404, {'error': 'no such sketch'})
             try:
                 body = self._body()
+                if sk is None:
+                    if path == '/api/new':
+                        b = body or {}
+                        name = str(b.get('name') or '').strip()
+                        if name in sketch.names():
+                            raise ValueError(f'{name} 已经有了：在列表里点它')
+                        made = sketch.get(name, src=b.get('from') or None, new=True)
+                        return self._send(200, {'name': made.name})
+                    return self._send(404, {'error': 'not found'})
                 if path == '/api/sketch':
-                    sketch.save(body)
-                    return self._send(200, {'saved': sketch.name})
+                    sk.save(body)
+                    return self._send(200, {'saved': sk.name})
                 if path == '/api/generate':
-                    return self._send(200, sketch.generate(body))
+                    return self._send(200, sk.generate(body))
             except ValueError as e:
                 return self._send(400, {'error': str(e)})
+            except ModuleNotFoundError as e:
+                return self._send(400, {'error': f'没有这张图: {e.name}'})
             except Exception as e:
                 return self._send(500, {'error': f'{type(e).__name__}: {e}'})
             self._send(404, {'error': 'not found'})
@@ -287,10 +393,24 @@ def main():
     ap.add_argument('name', nargs='?')
     ap.add_argument('--port', type=int, default=8765)
     ap.add_argument('--no-picture', action='store_true', help='page without the picture and terrain (faster)')
-    ap.add_argument('--new', metavar='MAP', help='draw a new map (work/mappage/<MAP>/sketch.json) instead of a level')
+    ap.add_argument('--new', metavar='MAP', nargs='?', const='', help='draw a new map (work/mappage/<MAP>/sketch.json) '
+                    'instead of a level; without MAP: every sketch there, listed at / to pick or start one')
     ap.add_argument('--size', type=float, nargs=2, metavar=('W', 'H'), help='a new sketch\'s playable area (at most 5000)')
     ap.add_argument('--from', dest='src', metavar='MAP', help='a new sketch copied from maps/<MAP>.py')
     a = ap.parse_args()
+    if a.new == '':
+        if a.size or a.src:
+            ap.error('--size / --from start one new sketch: give its name (--new MAP), or start it on the list page')
+        many = Sketches()
+        srv = make_sketch_server(many, a.port)
+        print(f'草图 {len(many.names())} 张（{os.path.relpath(many.dir, mappage.ROOT)}）：{", ".join(many.names())}',
+              flush=True)
+        print(f'打开 http://127.0.0.1:{srv.server_address[1]}/    （Ctrl+C 停止）', flush=True)
+        try:
+            srv.serve_forever()
+        except KeyboardInterrupt:
+            pass
+        return
     if a.new:
         sketch = Sketch(a.new, a.size, a.src)
         srv = make_sketch_server(sketch, a.port)
