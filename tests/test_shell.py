@@ -559,6 +559,23 @@ def test_the_bench_walks_a_shells_chapter_list_into_the_chapter_asked(tmp_path):
     assert harness.shell_steps(3)[2]['name'] == 'chapter list: slot 3'
 
 
+def test_the_allied_end_cards_show_voss_not_retails_pin_up():
+    """I21: the defeat card (tacticalendgamedialog) still showed retail's pin-up: the screen was not in SCREENS at all. The
+    Allied victory and defeat cards' band is repainted, the rest of the textures (the other factions' posters) is not."""
+    sys.path.insert(0, str(ROOT / 'experimental' / 'campaign'))
+    import apt_textures
+    assert 'tacticalendgamedialog' in shell.SCREENS
+    orig = apt_textures.originals('Apt.big', shell.APT + 'tacticalendgamedialog.')
+    for t, cards in shell.END_CARDS.items():
+        new, old = shell.end_cards(orig[t], cards), orig[t].convert('RGBA')
+        for (x0, y0, x1, y1), (cx, cy, r), _ in cards:
+            assert new.getpixel((int(cx), int(cy))) != old.getpixel((int(cx), int(cy)))
+            assert new.getpixel((x0 + 3, (y0 + y1) // 2)) != old.getpixel((x0 + 3, (y0 + y1) // 2))   # her hand
+            assert new.crop((x0, 0, x1, y0 - 6)).tobytes() == old.crop((x0, 0, x1, y0 - 6)).tobytes()  # title untouched
+        other = (0, 0, 300, 512) if t.endswith('_3') else (724, 0, 1024, 512)
+        assert new.crop(other).tobytes() == old.crop(other).tobytes()
+
+
 def test_the_bench_keeps_the_menu_walk_as_half_size_frames(tmp_path):
     """I22: the briefing cards, the mission briefing and the opening cutscene could not be checked: the bench kept no
     frame before the HUD. bench_start(menu_frames=S) keeps them as frames with no mission second, at half size."""

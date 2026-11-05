@@ -325,6 +325,41 @@ def destar(orig, boxes):
     return out
 
 
+# The end-of-mission card (tacticalendgamedialog, I21): its textures hold every faction's victory and defeat poster; the
+# Allied two (our campaign takes the Allied slot) carry retail's pin-up in a circle between two rules, her hands and flags
+# reaching past it. The band between the rules is repainted: the paper's own colour row by row, Voss in the circle (grey
+# and dark on the defeat card). Boxes and circles measured on the retail textures (2026-11-05, the teal circle's widest row).
+END_CARDS = {'apt_TacticalEndGameDialog_2': [((20, 112, 336, 414), (173, 264, 141), 'victory')],
+             'apt_TacticalEndGameDialog_3': [((375, 112, 691, 416), (529.5, 264.5, 140.5), 'defeat')]}
+
+
+def end_cards(orig, cards):
+    """The texture with each Allied end card's band repainted (END_CARDS)."""
+    from PIL import Image, ImageDraw, ImageEnhance, ImageOps
+    out = orig.convert('RGBA').copy()
+    px = out.load()
+    for (x0, y0, x1, y1), (cx, cy, r), kind in cards:
+        def paper(x, y):                        # the paper near (x, y): the median of the light pixels around (not burns)
+            near = sorted((p[:3] for p in (px[u, v] for u in range(max(x0, x - 20), min(x1, x + 21))
+                                           for v in (y - 2, y, y + 2)) if sum(p[:3]) > 330), key=sum)
+            return near[len(near) // 2] if near else (225, 200, 150)
+        rows = {x: (paper(x, y0 + 2), paper(x, y1 - 3)) for x in range(x0, x1)}
+        for x in range(x0, x1):                 # each column blended from the band's top to its bottom
+            top, bottom = rows[x]
+            for y in range(y0, y1):
+                t = (y - y0) / (y1 - 1 - y0)
+                px[x, y] = tuple(round(a + (b - a) * t) for a, b in zip(top[:3], bottom[:3])) + (255,)
+        side = int(2 * r)
+        v = Image.open(VOSS).convert('RGBA').crop((120, 0, 1134, 1014)).resize((side, side), Image.LANCZOS)
+        if kind == 'defeat':
+            v = ImageEnhance.Brightness(ImageOps.grayscale(v).convert('RGBA')).enhance(0.6)
+        mask = Image.new('L', (side, side))
+        ImageDraw.Draw(mask).ellipse((0, 0, side - 1, side - 1), fill=255)
+        out.paste(v, (int(cx - r), int(cy - r)), mask)
+        ImageDraw.Draw(out).ellipse((cx - r, cy - r, cx + r, cy + r), outline=(150, 30, 30, 255), width=2)
+    return out
+
+
 PORTRAIT_CALL = re.compile(rb'RenderImage')     # the panel's script asks the engine to draw the commander's picture; nobody answers 'RenderImagx'
 MONITOR = ['ASSAULT', 'ATTACKING', 'BUILDINGAIRCRAFT', 'BUILDINGFORCES', 'BUILDINGNAVY', 'BUILDINGVEHICLES', 'DEFENDING',
            'EXPANDING', 'HOLDOBJECT', 'HOLDPOSITION', 'INCOMBAT', 'INDANGER', 'LOWONCREDITS', 'LOWONPOWER', 'NORMAL', 'ONGUARD',
@@ -516,6 +551,8 @@ def apt_files(slots, picture=None, screens=True):
             t: faction_icons(img, boxes) for t, img in apt_textures.originals('Apt.big', prefix).items()}))
     add('fes_m_objectivesbriefing', lambda prefix: apt_textures.patch('Apt.big', prefix, {
         t: destar(apt_textures.originals('Apt.big', prefix)[t], boxes) for t, boxes in STAR_BARS.items()}))
+    add('tacticalendgamedialog', lambda prefix: apt_textures.patch('Apt.big', prefix, {
+        t: end_cards(apt_textures.originals('Apt.big', prefix)[t], cards) for t, cards in END_CARDS.items()}))
     add(PANEL, lambda prefix: apt_textures.hollow('Apt.big', prefix, (PORTRAIT_CALL, lambda old: old[:-1] + b'x')))
     return files
 
@@ -527,7 +564,7 @@ def apt_files(slots, picture=None, screens=True):
 # sees. Each one is either replaced or listed in KEEP with its reason; anything else is an error (tests/test_shell.py).
 
 SCREENS = ('fes_m_factionmenu', 'fes_m_chapterselect', 'fes_m_missionbriefing', 'fes_m_objectivesbriefing',
-           'loadscreencampaign', PANEL, 'fes_m_postgameroundup',
+           'loadscreencampaign', PANEL, 'fes_m_postgameroundup', 'tacticalendgamedialog',
            *(f'a{k:02d}_{kind}_briefing' for k in range(1, 10) for kind in ('global', 'objective')))
 LABEL = re.compile(rb'(?<=\x00)\$([A-Za-z][\x21-\x7e]{2,})(?=\x00)')     # '$KEY' or '$KEY&Outline' (no ':' -> APT:KEY)
 VIDEO_FIELDS = ('OverviewTalkingHead', 'IntroMovie:FileName')
@@ -551,6 +588,8 @@ KEEP = {
     **{('texture', t): _ALLIED for t in (
         'apt_fes_m_chapterSelect_1', 'apt_fes_m_missionBriefing_1', 'apt_fes_m_missionBriefing_2',
         'apt_fes_m_postgameRoundup_1')},
+    ('texture', 'apt_TacticalEndGameDialog_1'): 'the Soviet and Japanese defeat posters of the end card: the dialog draws '
+                                                'the player\'s faction\'s, ours is the Allied slot (END_CARDS, I21)',
     ('texture', 'apt_fe_missionBriefingAssets_1'): 'the world map of the overview: geography; every slot\'s marker points at '
                                                    'its own place on it (I10, retarget)',
     ('texture', 'apt_fe_objectiveBriefingsAssets_1'): 'the objective briefing\'s window frame, markers and arrows, which '

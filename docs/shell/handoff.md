@@ -2,7 +2,14 @@
 
 外壳线 2026-11-03 从关卡线拆出（[architecture.md](../architecture.md) 各线负责的文件）。以前做过的事和坑在 [story/handoff.md](../story/handoff.md) 搜"外壳""CampShell"（第 33～42、61～69 行）。问题编号见 [issues.md](../issues.md) K9。
 
-## 接下来：I22、I21（2026-11-05 第二轮验收后总控派活，还没开始）
+## I22、I21 做完了（11-05，git log 搜 "I22"、"I21"），等总控验收
+
+- **I22**：`bench_start(menu_frames=2)` 走菜单和开场过场时存半尺寸帧（`harness.Session.keep_walk`，帧的 `second` 为空、带 `scale`；`bench_inspect` 按 scale 换算，counters/strip/look 跳过它们）。**MCP 服务要重启才认新参数**。
+- **I21**：结局卡片 `tacticalendgamedialog` 加进 `SCREENS`，盟军胜利/战败海报换沃斯（`END_CARDS`）。没看胜利卡片。"Nan" 是存档名，不改（issues.md I21 写了理由）。
+- **坑**：hold 模式下战败卡片会被暂停用的 Esc 跳过，要看结局卡片用 `bench_watch(every=2, sheet=false)` 连续存帧，别用 `bench_wait`。
+- **还可以做（没派）**：原版检查只从 `SCREENS` 出发，引擎直接弹出的界面（这次的结局卡片）漏掉；可以枚举 `Apt.big` 全部 `aptui` 界面，把战役流程里会弹出的（`tacticalnewintelligencepopup`、`tacticalplayerstatusdialog` 等）逐个归类到替换或 KEEP。
+
+## （旧）接下来：I22、I21（2026-11-05 第二轮验收后总控派活）
 
 验收报告 `work/acceptance/2026-11-05b/report.md`，条目见 [issues.md](../issues.md) I21、I22（928b4a2）。I16、I18 已验过。
 
