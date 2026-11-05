@@ -274,6 +274,33 @@ def camera_outside_the_view(m):
     return out
 
 
+OPENING_CAMERA = ' - Opening camera'      # the script plan.py adds that cuts the camera in once the game has set its own
+
+
+def start_camera_inside_the_view(m):
+    """K5 (I23): the camera the game starts with looks at the map's `start` site and nothing moves it before a script
+    does, so the first picture shows black beyond the map's edge unless `start` is a screen's half-size inside the
+    playable area the mission opens with (the border its start script switches to, else the first, the whole map).
+    Else a script with no condition (it runs at the start) must move the camera (MOVE_CAMERA_TO, itself held in view by
+    camera_outside_the_view). (User 2026-11-05, A2: a strip of black at the top and a big one top left for the first
+    minute, the start 430 from the west edge; A9 the same.)"""
+    import model
+    borders = getattr(m.map, 'BORDERS', None) or {}
+    start = (getattr(m.map, 'SITES', None) or {}).get('start')
+    if not borders or start is None:
+        return []
+    mine = [s for s in m.scripts if not s.name.startswith('Test')]
+    names = list(borders)
+    opening = next((names[a[0]] for s in mine if not s.when for name, *a in s.do if name == 'MAP_SWITCH_BORDER'), names[0])
+    x0, y0, x1, y1 = model.view_rect([borders[opening]])
+    if x0 - 1e-6 <= start.x <= x1 + 1e-6 and y0 - 1e-6 <= start.y <= y1 + 1e-6:
+        return []
+    if any(name == 'MOVE_CAMERA_TO' for s in mine if not s.when or s.name.endswith(OPENING_CAMERA) for name, *a in s.do):
+        return []
+    return [f'the start {start.x:.0f}, {start.y:.0f} is outside where the screen stays on the map {(x0, y0, x1, y1)} '
+            f'({opening!r}) and no script moves the camera at the start: the first picture shows black (K5)']
+
+
 # K8 (I4, G14): what a demonstration does that is not seen is not done in the picture. Its scripts are named
 # `CNV <tag> - Demo ...`; those that make, take away or move a unit belong to a stage (ctx.stage) with a camera of its
 # own, and the stage's geometry holds on the product: the camera aims at a view point whose picture (the ground a
@@ -523,7 +550,7 @@ def contract(mission):
     out += said_lines_kept(m)
     out += said_once_and_on_time(m)
     out += team_orders_land(m) + kind_counts_in_area(m)
-    out += camera_outside_the_view(m) + demo_unframed(m)
+    out += camera_outside_the_view(m) + start_camera_inside_the_view(m) + demo_unframed(m)
     out += music_resumes(m) + ending_line_fits(m)
     out += single_orders(m) + pace_released(m)
     out += ore_faces_refinery(m) + ore_in_groups(m) + oil_off_the_camps(m) + base_has_ore(m) + cast_points_clear(m) + map_design(m)

@@ -178,3 +178,19 @@ def test_a_camera_is_held_inside_the_playable_area_a_screen_from_its_edge():
     c.view = 'whole'
     name = c.view_point('west field')
     assert c.m.waypoints[name][0] >= x0 and c.m.views[name] == (x0, y0, x1, y1)
+
+
+def test_the_first_picture_of_every_level_shows_no_black(monkeypatch):
+    """K5 (I23, 2026-11-05): the camera the game starts with looks at the map's `start` site. A2's start was 430 from
+    the west edge and past the north one, so the first minute had black at the top and top left (A9, A1, A6 too); the
+    check watched only the camera moves a script makes. Phase 1 now cuts the camera to the view point of `start` when
+    it is outside, and contract.start_camera_inside_the_view holds every level to it -- and does fail without it."""
+    for level in plan.levels():
+        m = plan.Compiler(plan.load(level)).compile()
+        assert contract.start_camera_inside_the_view(m) == [], level
+    m = plan.Compiler(plan.load('a2')).compile()
+    cut = next(a for s in m.scripts if s.name == 'CNV A2 - Opening camera' for a in s.do if a[0] == 'MOVE_CAMERA_TO')
+    assert cut[1] == 'CNV A2 Cam start 950 1210' and cut[1] in m.views and contract.camera_outside_the_view(m) == []
+    monkeypatch.setattr(plan.Compiler, 'opening_camera', lambda self: [])
+    bare = plan.Compiler(plan.load('a2')).compile()
+    assert 'first picture shows black' in ''.join(contract.start_camera_inside_the_view(bare))

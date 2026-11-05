@@ -40,9 +40,7 @@ DEFAULT_AREA = 150.0                           # half-side of a site's trigger a
 CHRONO_FLASH = 'fxprop_chronoflash'             # retail's chrono flash prop (its FX plays on create, lives 1 s)
 EASE = 1.0                                     # seconds a pan eases in / out (retail's most used eased pan: 1/1)
 PAN_SPEED = 250.0                               # map units a second at most between two sites of a 过场
-VIEW_HALF = (950.0, 540.0)                      # half the ground the screen shows at the default zoom (~1900 x 1080 map
-                                                # units, sapporo 'view start', user 2026-11-03): a camera centre nearer
-                                                # the playable border than this shows the black beyond it (K5)
+VIEW_HALF = model.VIEW_HALF                     # half the ground the screen shows at the default zoom (model.py, K5)
 CAPTION_TURN = 4.0                             # seconds a caption-only line holds the floor outside a 过场
 CAPTION_TAIL = 0.3                              # a dubbed line's caption stays this long after its recording ends
 EVA_TURN = 2.5                                 # ... a retail announcer line (its length is not known)
@@ -694,17 +692,27 @@ class Compiler:
     def view_rect(self, names, half=None):
         """Where a camera centre may be while the playable area is (the intersection of) the named borders: inside
         them, VIEW_HALF (or `half`) from their edges (the middle when a border is narrower than the screen)."""
-        x0, y0, x1, y1 = (None,) * 4
-        for n in names:
-            a, b, c, d = self.border_rect(n)
-            x0, y0, x1, y1 = (a if x0 is None else max(x0, a), b if y0 is None else max(y0, b),
-                              c if x1 is None else min(x1, c), d if y1 is None else min(y1, d))
-        hx, hy = half or VIEW_HALF
-        out = []
-        for lo, hi, h in ((x0, x1, hx), (y0, y1, hy)):
-            lo, hi = (lo + h, hi - h) if hi - lo > 2 * h else ((lo + hi) / 2,) * 2
-            out += [lo, hi]
-        return out[0], out[2], out[1], out[3]
+        return model.view_rect([self.border_rect(n) for n in names], half)
+
+    def opening_camera(self):
+        """K5 (I23): the camera the game starts with looks at the map's `start` site -- wherever it is, even nearer the
+        playable border than half a screen (A2: 430 from the west edge, 70 past the north one; A9, A1, A6 too), which
+        shows the black beyond the map for as long as the player does not scroll. So the first thing Phase 1 does,
+        when `start` is outside the view rect of the opening border, is move the camera to the view point of it
+        (0.1 s: a cut). Nothing when it is inside, or when the map has no borders (a plan on a map without any)."""
+        borders = getattr(self.m.map, 'BORDERS', {})
+        start = getattr(self.m.map, 'SITES', {}).get('start')
+        name = self.d.get('边界') or 'whole'
+        if start is None or name not in borders:
+            return []
+        x0, y0, x1, y1 = self.view_rect([name])
+        if x0 - 1e-6 <= start.x <= x1 + 1e-6 and y0 - 1e-6 <= start.y <= y1 + 1e-6:
+            return []
+        self.view = name
+        try:
+            return [('MOVE_CAMERA_TO', self.view_point('start'), 0.1, 0.0, 0.0, 0.0)]
+        finally:
+            self.view = None
 
     def view_point(self, site, tight=False):
         """The waypoint a camera move aims at: the site, held inside the view rect of the playable area in force (K5).
@@ -1060,6 +1068,9 @@ class Compiler:
                 if self.d.get('边界'):                  # the playable area the mission starts with
                     acts = self.action({'边界': self.d['边界']}) + acts
                 self.m.scripts.append(Script(f'CNV {self.tag} - Phase 1', [], acts))
+                cut = self.opening_camera()
+                if cut:
+                    self.when('Opening camera', f'段 {ph.name} + 0.5', cut)
             else:
                 prev = self.phases[ph.k - 1]
                 if not prev.spec.get('结束'):

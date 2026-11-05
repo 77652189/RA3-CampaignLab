@@ -24,6 +24,22 @@ LETTERBOX_HALF = (410.0, 170.0)
 LETTERBOX_UNDER = (410.0, 230.0)       # ... and what the camera renders under the bars (16 : 9 at the same zoom): the ground the
                                        # border must cover for the picture to show no black (play's is plan.VIEW_HALF)
 STAGE_MARGIN = 40.0                    # what a staged piece shows stands this far inside that band, what it hides this far out
+VIEW_HALF = (950.0, 540.0)             # half the ground the screen shows at the default zoom (~1900 x 1080 map units, sapporo
+                                       # 'view start', user 2026-11-03): a camera centre nearer the playable border than this
+                                       # shows the black beyond it (K5)
+
+
+def view_rect(borders, half=None):
+    """Where a camera centre may be while the playable area is the intersection of `borders` ((x0, y0, x1, y1) each):
+    inside it, `half` (VIEW_HALF) from its edges, the middle where it is narrower than the screen. Returned as
+    (x0, y0, x1, y1), the rect of centres."""
+    x0, y0 = max(b[0] for b in borders), max(b[1] for b in borders)
+    x1, y1 = min(b[2] for b in borders), min(b[3] for b in borders)
+    out = []
+    for lo, hi, h in ((x0, x1, (half or VIEW_HALF)[0]), (y0, y1, (half or VIEW_HALF)[1])):
+        lo, hi = (lo + h, hi - h) if hi - lo > 2 * h else ((lo + hi) / 2,) * 2
+        out += [lo, hi]
+    return out[0], out[2], out[1], out[3]
 
 
 @dataclasses.dataclass

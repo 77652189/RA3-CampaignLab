@@ -324,3 +324,7 @@
 - **I1 没看到的**：A4 第 40～47 秒"车停着……"（要车被打）。过场里的句子也跟着 STRIP_MAX=1，最少隔 6 秒，过场可能变长，离线测试都过，没单独量。
 - **I23 下一步**（没动）：报告 `work/acceptance/2026-11-05b/report.md` K5 一条，截图 `a2_zh_s31_black_edge.png`、`a9_zh_s36.png`；查开局默认相机点离地图边界够不够（`plan.VIEW_HALF` 950×540）、`contract.camera_outside_the_view` 为什么没抓到。测试台现在能 `bench_start(menu_frames=2)` 存开场过场帧。
 - **别带进提交**：工作区里 `docs/engine/air.md`、`spawn.md`、`experimental/cnv/checks/engine_float.py`、`engine_spawn.py`、`maps/probe_range.py` 是引擎线没提交的改动。
+
+### 第二十六个会话（11-05，总控令：I23）：I23 做完，标"修了待验"
+- 根因和改法写在 `docs/issues.md` I23 行：开局镜头看 `start` 点，没人查；`plan.opening_camera` 在开局 0.5 秒切镜头，`contract.start_camera_inside_the_view` 查全关卡。时间 0 的镜头移动会被游戏随后重置，要延后。
+- 没做：A9、A1、A6 没单独进游戏看（同一机制）；开局头 0.5 秒仍是默认镜头。
