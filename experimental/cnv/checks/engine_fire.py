@@ -30,6 +30,12 @@ Deterministic: timers run again gave the same four; the cells of timers / timers
 pre-attack 23-38, with one 35-46: ~23 frames + a 0-15 frame spread that goes with the unit, not the lane (the
 "late lanes" of engine_missile are this) + the pre-attack; FiringDuration is not before the launch. Hits after the
 first: I00 every ~5 s, I every ~6.5 s.
+
+Round 26 (read in the program, docs/engine/weapons.md 1): a weapon without InstantLoadClipOnActivate reloads its
+first clip from the frame the unit is made, a random whole ClipReloadTime (V4 4.5-5.5 s = 68-83 frames); the
+order at 45 frames gives 23-38, the pre-attack adds 8. The spread is each unit's draw. Two checks to confirm,
+not run: shift (timers' units, the order at 4 s: each cell 15 less than timers) and late (at 6 s, the clips are
+loaded: the cells without a pre-attack one constant, with it 8 more).
 """
 import os
 import re
@@ -81,6 +87,7 @@ LANES = {   # check: {lane: shooter}
 }
 ALL_LANES = ('base', 'high', 'removed', 'switch')
 LANES.update({f'all{i[8:]}':{lane: i for lane in ALL_LANES} for i in COPIES})   # one copy on every lane
+ORDERS = {'shift': ('timers', 4.0), 'late': ('timers', 6.0)}   # timers' units, the order 15 / 45 frames later
 
 
 def mission():
@@ -94,7 +101,7 @@ def mission():
     return m
 
 
-def fire_test(m, lanes):
+def fire_test(m, lanes, order=ORDER):
     t = Test()
 
     def n(part):
@@ -106,7 +113,7 @@ def fire_test(m, lanes):
     start = [('MAP_REVEAL_ALL_PERM', m.player('p1'))]
     start += [('NAMED_DELETE', x) for x in idle]
     start += [('UNIT_CHANGE_OBJECT_STATUS', x, 'NO_ATTACK', 1) for x in targets + shooters]
-    start += [('SET_MILLISECOND_TIMER', 'Test Order', ORDER)]
+    start += [('SET_MILLISECOND_TIMER', 'Test Order', order)]
     t.scripts.append(Script('Test - start', [], start))
     t.scripts.append(Script('Test - order', [('TIMER_EXPIRED', 'Test Order')],
                             [('UNIT_CHANGE_OBJECT_STATUS', s, 'NO_ATTACK', 0) for s in shooters]
@@ -127,3 +134,4 @@ def fire_test(m, lanes):
 
 MISSION = {'engine_fire': mission}
 CHECKS = {'engine_fire': {k: (lambda m, k=k: fire_test(m, LANES[k])) for k in LANES}}
+CHECKS['engine_fire'].update({k: (lambda m, k=k: fire_test(m, LANES[ORDERS[k][0]], ORDERS[k][1])) for k in ORDERS})
