@@ -88,7 +88,53 @@ def swell(m):
     return t
 
 
+KILLS = (10.0, 15.0, 20.0)                      # win: when each platform is razed by test script (one phase each)
+WIN_BY = 40.0
+LOSE_TIMER = 40.0                               # lose: the 12-minute warm-up countdown, cut to this
+LOSE_BY = 60.0
+
+
+def lost_counter(t):
+    """A counter for the lost flag the plan's Lose scripts set ('Mission Lost'), so an end reads as won or lost."""
+    t.counters.append(('Test Lost', '输了'))
+    t.scripts += [Script('Test - lost zero', [], [('SET_COUNTER', 'Test Lost', 0)], once=False),
+                  Script('Test - lost on', [('FLAG', 'Mission Lost', 1)], [('SET_COUNTER', 'Test Lost', 1)], once=False)]
+
+
+def win(m):
+    """The whole run in a few seconds: the three platforms razed one after another by test script (the player's tool,
+    the carrier and army, is not exercised: `swell` and the live play do that); the three phases follow, the goal
+    completes, the mission is won (ended, and no lost flag)."""
+    t = Test()
+    for k, at in enumerate(KILLS):
+        timer = f'Test Raze {k}'
+        t.scripts += [Script(f'Test - raze set {k}', [], [('SET_MILLISECOND_TIMER', timer, at)]),
+                      Script(f'Test - raze {k}', [('TIMER_EXPIRED', timer)],
+                             [('NAMED_KILL', m.role(f'platform {k + 1}').name)])]
+    lost_counter(t)
+    # the counters vanish when the mission ends (bench 2026-11-04: s17 last read, ended by s19, 3 s of slack after the last
+    # raze at 20): the lost flag can only be read before the end, and nothing but the three razes can end this run
+    t.expect += [('输了', 0, '==', 0, KILLS[-1] - 4), ('ENDED', WIN_BY, '', None)]
+    t.bench = [('bench_watch', dict(seconds=WIN_BY, every=2, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+def lose(m):
+    """The warm-up runs out: the plan's 12-minute countdown timer is cut to LOSE_TIMER s, and the mission must end
+    lost (the machine is warm, the launch was a success) with the platforms still up."""
+    for s in m.scripts:
+        s.do = [(a[0], a[1], LOSE_TIMER) if a[0] == 'SET_MILLISECOND_TIMER' and a[1] == 'CNV A8 Wait 15' else a
+                for a in s.do]
+    t = Test()
+    lost_counter(t)
+    # the counter is gone when the mission has ended, so: still running (counter 0) well into the cut countdown, ended
+    # after it (nothing else can end this run: no army moves, the carrier is untouched)
+    t.expect += [('输了', 0, '==', 0, LOSE_TIMER - 8), ('ENDED', LOSE_BY, '', None)]
+    t.bench = [('bench_watch', dict(seconds=LOSE_BY, every=3, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 # the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
 CHECKS = {
-    'a8': {'beat': beat, 'swell': swell},
+    'a8': {'beat': beat, 'swell': swell, 'win': win, 'lose': lose},
 }
