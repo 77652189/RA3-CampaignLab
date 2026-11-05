@@ -654,7 +654,28 @@ def near_sites(mod):
 
 
 def _mission(mod, name):
-    return parts.Mission(name=f'CampSk{name[:8].title()}', map=mod)
+    m = parts.Mission(name=f'CampSk{name[:8].title()}', map=mod)
+    m.scripts += opening_camera(m)
+    return m
+
+
+def opening_camera(m):
+    """K5 (I23, contract.start_camera_inside_the_view): the game opens with its camera on the `start` site, drawn
+    where the player starts -- often nearer the map's edge than half a screen, and then the first picture shows the
+    black beyond it. So the draft's mission, like a level's Phase 1 (plan.opening_camera), cuts the camera at the start
+    to the view point of `start` (held inside model.view_rect of the first border, published in m.views for
+    contract.camera_outside_the_view). The start itself stays where it was drawn. No script when it is inside."""
+    import model
+    borders, start = getattr(m.map, 'BORDERS', None) or {}, (getattr(m.map, 'SITES', None) or {}).get('start')
+    if not borders or start is None:
+        return []
+    rect = model.view_rect([next(iter(borders.values()))])
+    x, y = min(max(start.x, rect[0]), rect[2]), min(max(start.y, rect[1]), rect[3])
+    if (x, y) == (start.x, start.y):
+        return []
+    at = f'CNV {m.name} Cam start {x:.0f} {y:.0f}'          # (an asset id: letters, digits and spaces only)
+    m.waypoints[at], m.views[at] = (x, y), rect
+    return [parts.Script(f'CNV {m.name}{contract.OPENING_CAMERA}', [], [('MOVE_CAMERA_TO', at, 0.1, 0.0, 0.0, 0.0)])]
 
 
 def _tail(text, n=8):
