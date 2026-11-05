@@ -15,7 +15,21 @@ On the range probe map (maps/probe_range.py, flat) four lanes; shooters face nor
 10 000-health Hammer, held with NO_ATTACK) FAR straight north. The shooters are held with NO_ATTACK and at ORDER
 freed and told to attack. Counters as in engine_missile: frames from the order to the first hit, + 1000 per percent
 lost (a hit is 5 %), so later hits show in the second-by-second watch. Two checks swap the copies between the early
-lanes (base, high) and the late ones (removed, switch: ~8 frames later every run of engine_missile, not read why).
+lanes (base, high) and the late ones (removed, switch: ~8 frames later every run of engine_missile, not read why);
+the four all<copy> checks put one copy on every lane.
+
+Bench 11-05 (round 25), frames from the order to the first hit (docs/engine/weapons.md 1):
+
+  copy \\ lane  base  high  removed  switch
+  I            35    46    38       36
+  I0P          33    23    30       31
+  I0F          45    38    40       41
+  I00          32    23    35       38
+
+Deterministic: timers run again gave the same four; the cells of timers / timers2 equal those of all*. Without a
+pre-attack 23-38, with one 35-46: ~23 frames + a 0-15 frame spread that goes with the unit, not the lane (the
+"late lanes" of engine_missile are this) + the pre-attack; FiringDuration is not before the launch. Hits after the
+first: I00 every ~5 s, I every ~6.5 s.
 """
 import os
 import re
@@ -66,6 +80,7 @@ LANES = {   # check: {lane: shooter}
     'timers2': {'base': 'CNV_FireI0F', 'high': 'CNV_FireI00', 'removed': 'CNV_FireI', 'switch': 'CNV_FireI0P'},
 }
 ALL_LANES = ('base', 'high', 'removed', 'switch')
+LANES.update({f'all{i[8:]}':{lane: i for lane in ALL_LANES} for i in COPIES})   # one copy on every lane
 
 
 def mission():
