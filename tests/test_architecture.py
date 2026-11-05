@@ -269,7 +269,7 @@ def test_g11_acceptance_checks_only_observe():
 G3B_PROBE = '''
 import sys
 sys.path[:0] = [{cnv!r}, {root!r}]
-import build, contract, model, sim
+import build, contract, ctx, model, plan, sim, strip
 from model import Script
 bad = []
 for n in sorted(build.MISSIONS):
@@ -282,12 +282,18 @@ print('G3B builds', len(build.MISSIONS), 'outside', bad[:3])
 m, _, _ = build.resolve('a4', '')
 m.scripts.append(Script('CNV A4 - Own caption', [], [('SHOW_MILITARY_CAPTION', 'SCRIPT:X', 3.0)]))
 print('G3B mutation', len([p for p in contract.contract(model.merged(m)) if 'dialogue outlet' in p]))
-close = []
+close, deep = [], []
 for lv in build.LEVELS:
     s = sim.simulate(lv, until={until})
     # E6: a 功能 caption is up within ctx.FUNC_LATE of its event (a scene's seconds do not count), in every level's run
     close += [(lv, f, round(a, 1)) for f, a, _ in s.late_captions()]
+    deep += [(lv, d) for d in strip.too_deep(s)]
 print('G3B close', close[:5])
+print('G3B strip', deep[:5])
+# I1 mutation: a queue that lets any number of lines into the strip (the product's state before 2026-11-05) is caught
+ctx.STRIP_MAX = plan.STRIP_MAX = 99
+print('G3B strip mutation', len(strip.too_deep(sim.simulate('a4', until=200.0), 2)) > 0)
+ctx.STRIP_MAX = plan.STRIP_MAX = 2
 print('G3B twice', len(contract.said_once_and_on_time(model.merged(build.resolve('a4', '')[0]))))
 m, _, _ = build.resolve('a4', '')
 mm = model.merged(m)
@@ -307,6 +313,7 @@ def test_g3b_everything_said_comes_from_the_one_queue():
     assert 'G3B builds' in r.stdout and "outside []" in r.stdout, r.stdout.strip()
     assert 'G3B mutation 1' in r.stdout, r.stdout.strip()
     assert 'G3B close []' in r.stdout, r.stdout.strip()
+    assert 'G3B strip []' in r.stdout and 'G3B strip mutation True' in r.stdout, r.stdout.strip()
     assert 'G3B twice 0' in r.stdout and 'G3B twice mutation 2' in r.stdout, r.stdout.strip()
 
 

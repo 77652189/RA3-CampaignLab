@@ -34,25 +34,31 @@ def test_a_gong_line_is_up_the_frame_its_event_comes_and_the_chat_waits_for_the_
 def test_a_chat_caption_is_read_to_its_turn_and_the_next_waits_for_the_box():
     s = run(['通报 闲话一', '通报 闲话二', '通报 闲话三'])
     out = said(s)
-    assert [x[-3:] for _, x in out] == ['闲话一', '闲话二', '闲话三'], out
-    # each takes the box for its turn (a caption-only line holds the floor for its reading time, no more) and none is cut off
+    # each takes the box for its turn (a caption-only line holds the floor for its reading time, no more) and none is cut
+    # off; two fill the strip (I1, ctx.STRIP_MAX), the third would wait for it to clear (6 s after the second: 10 s old): dropped
+    assert [x[-3:] for _, x in out] == ['闲话一', '闲话二'], out
     assert all(b - a >= 4.0 - 1e-6 for (a, _), (b, _) in zip(out, out[1:])), out
-    assert s.counters.get('CNV_ZZ_Dropped') is None
+    assert s.counters.get('CNV_ZZ_Dropped') == 1
 
 
 def test_a_chat_line_waits_up_to_chat_life_and_no_longer():
     s = run(['通报 闲话一', '通报 闲话二', '通报 闲话三', '通报 闲话四', '通报 闲话五'])
     out = said(s)
-    # a caption holds the box 4 s: lines at 5, 9, 13 (waited 8 s, inside 10 s); the fourth would start at 17 (12 s): dropped
-    assert [x[-3:] for _, x in out] == ['闲话一', '闲话二', '闲话三'], out
-    assert s.counters.get('CNV_ZZ_Dropped') == 2
+    # two lines fill the strip (5 and 9); the rest wait for it to clear, and what has waited CHAT_LIFE is dropped: no line is
+    # said that waited longer than that (give or take a frame), the ones said are in the order they asked, none is lost
+    names = [x[-3:] for _, x in out]
+    asked = ['闲话一', '闲话二', '闲话三', '闲话四', '闲话五']
+    assert names[:2] == asked[:2] and names == sorted(names, key=asked.index), out
+    assert all(t - 5.0 <= ctx.CHAT_LIFE + 0.2 for t, _ in out), out
+    assert len(out) + s.counters.get('CNV_ZZ_Dropped', 0) == 5 and len(out) < 5, (out, s.counters)
 
 
 def test_first_come_first_played_inside_a_tier_and_none_is_cut_short():
     s = run([{'通报': '甲', '功能': '是'}, {'通报': '乙', '功能': '是'}, {'通报': '丙', '功能': '是'}])
     out = said(s)
     assert [x[-1] for _, x in out] == ['甲', '乙', '丙']
-    assert [round(t - 5.0, 3) for t, _ in out] == [0.0, ctx.FUNC_HOLD, 2 * ctx.FUNC_HOLD]       # each read FUNC_HOLD at least
+    # each read FUNC_HOLD at least; the strip holds two (I1), the third comes once it has cleared (STRIP_HOLD after the second)
+    assert [round(t - 5.0, 3) for t, _ in out] == [0.0, ctx.FUNC_HOLD, ctx.FUNC_HOLD + ctx.STRIP_HOLD]
     assert not s.late_captions() and s.counters.get('CNV_ZZ_Dropped', 0) == 0
 
 
@@ -101,3 +107,17 @@ def test_the_product_rule_refuses_a_gong_caption_that_waits_and_a_line_on_both_c
     m.subtitles['CNV_X'] = next(a[1] for x in m.scripts for a in x.do if a[0] == 'SHOW_MILITARY_CAPTION')
     out = contract.said_once_and_on_time(m)                                # a recording whose subtitle is the caption's words
     assert any('one channel' in p for p in out) and any('the voice pack' in p or 'subtitle' in p for p in out), out
+
+
+def test_the_strip_never_holds_more_than_strip_max_lines():
+    # I1 (CampShell 2026-11-05): five 功能 captions and a 闲话 at one moment stacked 4 lines in the game's one box
+    import strip
+    s = run([{'通报': f'功能{c}', '功能': '是'} for c in '甲乙丙丁戊'] + ['通报 闲话一'], until=90)
+    assert len(strip.lines(s)) >= 5 and not strip.too_deep(s), (strip.lines(s), strip.too_deep(s))
+    saved = ctx.STRIP_MAX
+    ctx.STRIP_MAX = 99                     # the queue without the gate: the stack grows past two, and the reading says so
+    try:
+        s = run([{'通报': f'功能{c}', '功能': '是'} for c in '甲乙丙丁戊'], until=90)
+    finally:
+        ctx.STRIP_MAX = saved
+    assert strip.too_deep(s, 2), strip.stacks(s)

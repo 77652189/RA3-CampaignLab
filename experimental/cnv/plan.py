@@ -25,7 +25,7 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 import glossary                                 # noqa: E402
 import langs                                    # noqa: E402
-from ctx import CHAT, FUNC, Ctx                 # noqa: E402
+from ctx import CHAT, FUNC, STRIP_HOLD, STRIP_MAX, Ctx    # noqa: E402
 from contract import ENDING_LIBRARY_AT, MUSIC_DYNAMIC, unresumed_cues   # noqa: E402
 from parts import NOT, Goal, Mission, Script, square   # noqa: E402
 from plantime import (ALL, ONE, TAGS, PlanError, by_level, counts, number, per, seconds, spans,   # noqa: E402,F401
@@ -799,6 +799,7 @@ class Compiler:
         action at once (a caption, a device's, a 技能: what the camera is to see); then the input back. Returns the
         phase-start actions and the scene's length; the later steps are timed scripts on `段 <phase> + t`."""
         at, t, look, follow = {}, 0.0, False, False
+        run, last = 0, -STRIP_HOLD                   # lines in the strip now (this scene's own), when the last came up
         talk, said = self.ctx.talk, []               # said: (when, actions) of each line, a script of its own
         looked = []                                # sites a 镜头 lifted the shroud at: shrouded again at the hand-back
         steps, prev, joined = list(ph.spec['过场']), None, False
@@ -839,8 +840,15 @@ class Compiler:
                 # for its own turn (the recording and a gap, or the caption's own reading time; no floor longer than
                 # that, E6) and the next starts after it. It is a script of its own that takes the queue's floor
                 # (ctx.talk): what was being said when the scene began is finished first
+                # and never more than STRIP_MAX lines in the strip at once (I1, 2026-11-05): a third line waits until the
+                # strip has cleared (the scene idles; the line's script also waits for room, for what came before)
+                if run >= STRIP_MAX and t < last + STRIP_HOLD:
+                    t = last + STRIP_HOLD
+                if t >= last + STRIP_HOLD:
+                    run = 0
                 talk.turn = 0.0
                 said.append((t, talk.floor(self.action(step), talk.turn)))
+                run, last = run + 1, t
                 t, joined = t + talk.turn, False
                 continue
             at.setdefault(t, []).extend(self.action(step))
@@ -862,7 +870,7 @@ class Compiler:
             self.when(f'Phase {ph.k + 1} scene {k + 1}', f'段 {ph.name} + {when:g}', acts)
         for k, (when, acts) in enumerate(said):         # a line starts when its time is up and the floor is free
             self.when(f'Phase {ph.k + 1} line {k + 1}', f'段 {ph.name} + {when:g}' if when else f'段 {ph.name}', acts,
-                      gate=[('FLAG', talk.busy, 0)])
+                      gate=[('FLAG', talk.busy, 0), talk.strip_room()])
         return now, t
 
     def ceasefire(self, ph):

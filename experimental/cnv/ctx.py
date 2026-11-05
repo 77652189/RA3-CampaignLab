@@ -27,9 +27,20 @@ CHAT_LIFE = 10.0                       # a 闲话 line that waited this long (s)
 PANEL_CLEAR = 5.4                       # the dialogue panel stacks subtitles and clears them all this long (s) after the last
                                         # came up (measured 2026-11-03); the sim models it, no script waits for it
 FUNC_HOLD = 2.0                         # a 功能 caption stays up this long (s) at least before another 功能 one replaces it
-FUNC_LATE = 4.0                         # a 功能 line's caption is up this soon (s) after its event: the contract rule and
-                                        # the sim hold the product to it (K1: "号角响了！" came 14 s after the horn). Three
-                                        # lines at one moment fit (0, FUNC_HOLD, 2 * FUNC_HOLD); a fourth is a plan to fix
+STRIP_MAX = 2                           # lines the player sees at once (the strip, below): never more (I1, 2026-11-05)
+STRIP_HOLD = 6.0                        # what the scripts assume the strip holds a line (s) after the last one came up: the
+                                        # game clears it 5.1~6.0 s after the last (PANEL_CLEAR is the middle of that)
+FUNC_LATE = FUNC_HOLD + STRIP_HOLD + 0.5    # a 功能 line's caption is up this soon (s) after its event: the contract rule and
+                                        # the sim hold the product to it (K1: "号角响了！" came 14 s after the horn). A 功能
+                                        # line waits for room in the strip (STRIP_MAX): three at one moment fit (0, FUNC_HOLD,
+                                        # then one clearing, STRIP_HOLD, after the second); a fourth is a plan to fix
+# THE STRIP (I1, CampShell acceptance 2026-11-05): in the shipped game (CampShell) the military caption, the dubbed lines'
+# subtitles and an announcer event's text all go into ONE box that accumulates -- a new line is added under the old ones
+# and nothing leaves one by one; the whole stack clears STRIP_HOLD after the last was added. (The bench's E6 measurement
+# found a one-line caption box apart from the panel; the product screenshots do not: 3 and 4 lines, captions with
+# subtitles, one box.) So the number of lines at once is the depth of one stack, and it is what the queue keeps down:
+# every line that comes up counts into counter `Strip` (re-armed timer, cleared when it runs out), and a queued line or a
+# 功能 caption comes up only while the depth is below STRIP_MAX.
 
 
 def caption(key, secs):
@@ -42,10 +53,11 @@ class Line:
     the caption of a 闲话 line nobody recorded); `turn` seconds it holds the floor; `now` a 功能 line's caption, which is
     not queued but shown the frame its event comes (`secs` it stays); `strip` that `acts` show a caption (so the line
     waits for the caption box to be free and holds it)."""
-    __slots__ = ('tier', 'acts', 'turn', 'now', 'secs', 'strip')
+    __slots__ = ('tier', 'acts', 'turn', 'now', 'secs', 'strip', 'adds')
 
-    def __init__(self, tier, acts, turn, now=None, secs=0.0, strip=False):
+    def __init__(self, tier, acts, turn, now=None, secs=0.0, strip=False, adds=False):
         self.tier, self.acts, self.turn, self.now, self.secs, self.strip = tier, acts, turn, now, secs, strip
+        self.adds = adds        # coming up it adds a line to the strip (and waits for room in it); acts carry the count
 
 
 class Talk:
@@ -72,6 +84,7 @@ class Talk:
         self.fresh, self.fresh_timer = f'CNV_{tag}_Fresh', f'CNV {tag} Fresh Timer'    # a 功能 caption went up FUNC_HOLD ago
         self.scening = f'CNV_{tag}_InScene'     # raised for the length of a scene: no queued line starts in it
         self.dropped = f'CNV_{tag}_Dropped'     # counts the 闲话 lines that waited too long (the sim reads it)
+        self.strip, self.strip_timer = f'CNV_{tag}_Strip', f'CNV {tag} Strip Timer'    # lines in the strip now, its clear-out
         self.lines = []                         # the Lines, in the order they were written
         self.scene = False                      # compiling a 过场
         self.scened = False                     # the level has a 过场 (its queued lines wait for it)
@@ -102,11 +115,19 @@ class Talk:
         """The actions that mark the caption box taken for `secs`: a 闲话 caption waits for it."""
         return [('SET_FLAG', self.box, 1), ('SET_MILLISECOND_TIMER', self.box_timer, float(secs))]
 
+    def strip_add(self):
+        """What a line coming up does to the strip: one more line in it, its clear-out timer started again."""
+        return [('INCREMENT_COUNTER', 1, self.strip), ('SET_MILLISECOND_TIMER', self.strip_timer, STRIP_HOLD)]
+
+    def strip_room(self):
+        """The condition a line coming up waits for: fewer than STRIP_MAX lines in the strip."""
+        return ('COUNTER', self.strip, 0, STRIP_MAX)
+
     def put(self, before, key, secs, after, turn, tier=FUNC):
         cap = [caption(key, secs)] if key is not None else []
         if self.scene:
             self.turn = turn
-            return list(before) + cap + list(after)
+            return list(before) + cap + list(after) + self.strip_add()
         if tier not in (FUNC, CHAT):
             raise PlanError(f'a line {key!r}: tier {tier!r}: {FUNC} or {CHAT}')
         if not self.anchored:
@@ -115,12 +136,13 @@ class Talk:
                             f'the player sees is what is said')
         k, voice = len(self.lines), list(before) + list(after)
         if tier == FUNC and cap:                # the caption now, the recording (if any) in the queue
-            self.lines.append(Line(tier, voice, turn, cap + self.take_box(secs), secs))
+            self.lines.append(Line(tier, voice, turn, cap + self.take_box(secs) + self.strip_add(), secs, adds=True))
             return [('SET_FLAG', self.show(k), 1)] + ([('SET_FLAG', self.want(k), 1)] if voice else [])
         if cap:
-            self.lines.append(Line(tier, list(before) + cap + list(after) + self.take_box(turn), turn, strip=True))
-        else:
-            self.lines.append(Line(tier, voice, turn))
+            self.lines.append(Line(tier, list(before) + cap + list(after) + self.take_box(turn) + self.strip_add(), turn,
+                                   strip=True, adds=True))
+        else:                                   # a subtitled recording or an announcer event: its text is a line too
+            self.lines.append(Line(tier, voice + self.strip_add(), turn, adds=True))
         return [('SET_FLAG', self.want(k), 1)]
 
     def floor(self, acts, turn):
@@ -151,12 +173,16 @@ class Talk:
             out.append(Script(f'CNV {self.tag} - Shift done {NAME[tier]}', [('FLAG', self.left(tier), 1)],
                               [('SET_FLAG', self.left(tier), 0)], once=False))
         gate = [('FLAG', self.scening, 0)] if self.scened else []
+        if self.lines or self.floored:          # (first: a line coming up in the frame the strip clears sees it empty)
+            out.append(Script(f'CNV {self.tag} - Strip done', [('TIMER_EXPIRED', self.strip_timer)],
+                              [('SET_COUNTER', self.strip, 0)], once=False))
+        room = [self.strip_room()]
         if any(x.now for x in self.lines):      # (before the captions: the one that waited sees the flag down in its frame)
             out.append(Script(f'CNV {self.tag} - Fresh done', [('FLAG', self.fresh, 1), ('TIMER_EXPIRED', self.fresh_timer)],
                               [('SET_FLAG', self.fresh, 0)], once=False))
         for k, x in enumerate(self.lines):      # a 功能 caption: up in the frame its event came (the scene's end, in one)
             if x.now:
-                out.append(Script(f'CNV {self.tag} - Now {k}', [('FLAG', self.show(k), 1), ('FLAG', self.fresh, 0)] + gate,
+                out.append(Script(f'CNV {self.tag} - Now {k}', [('FLAG', self.show(k), 1), ('FLAG', self.fresh, 0)] + room + gate,
                                   [('SET_FLAG', self.show(k), 0), ('SET_FLAG', self.fresh, 1),
                                    ('SET_MILLISECOND_TIMER', self.fresh_timer, FUNC_HOLD)] + x.now, once=False))
         for k, x in queued:
@@ -173,7 +199,8 @@ class Talk:
             # the 闲话 wait for the 功能 queue to be empty, a caption for the box to be free
             ahead = [('COUNTER', self.length(FUNC), 2, 0)] if x.tier == CHAT and FUNC in tiers else []
             out.append(Script(f'CNV {self.tag} - Say {k}' + (' chat' if x.tier == CHAT else ''),
-                              first + [('FLAG', self.busy, 0)] + ahead + ([('FLAG', self.box, 0)] if x.strip else []) + gate,
+                              first + [('FLAG', self.busy, 0)] + ahead + ([('FLAG', self.box, 0)] if x.strip else [])
+                              + (room if x.adds and not x.now else []) + gate,
                               leave + [('SET_FLAG', self.busy, 1), ('SET_MILLISECOND_TIMER', self.timer, float(x.turn))]
                               + x.acts, once=False))
         for k, x in queued:

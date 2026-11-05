@@ -75,6 +75,7 @@ FUNC_SAY = re.compile(r'CNV \w+ - Say \d+')               # the 功能 queue's (
 SHOW_FLAG = re.compile(r'CNV_\w+_Show_\d+')
 SCENE_FLAG = re.compile(r'CNV_\w+_InScene')
 FRESH_FLAG = re.compile(r'CNV_\w+_Fresh')                 # a 功能 caption went up FUNC_HOLD ago (it is not cut short)
+STRIP_COUNTER = re.compile(r'CNV_\w+_Strip')              # the lines in the strip now: a caption waits for room in it (I1)
 
 
 def said_once_and_on_time(m):
@@ -99,7 +100,8 @@ def said_once_and_on_time(m):
         if NOW_SCRIPTS.fullmatch(s.name):
             late = [c for c in s.when if not ((c[0] == 'FLAG' and SHOW_FLAG.fullmatch(str(c[1])) and c[2])
                                               or (c[0] == 'FLAG' and SCENE_FLAG.fullmatch(str(c[1])) and not c[2])
-                                              or (c[0] == 'FLAG' and FRESH_FLAG.fullmatch(str(c[1])) and not c[2]))]
+                                              or (c[0] == 'FLAG' and FRESH_FLAG.fullmatch(str(c[1])) and not c[2])
+                                              or (c[0] == 'COUNTER' and STRIP_COUNTER.fullmatch(str(c[1]))))]
             out += [f'{s.name}: a 功能 caption that waits for {c[:2]} is late (it waits for its event only)' for c in late]
         elif FUNC_SAY.fullmatch(s.name) and caps:
             out.append(f'{s.name}: a caption in the 功能 queue is late (a 功能 line shows its caption at once, ctx.Talk)')
