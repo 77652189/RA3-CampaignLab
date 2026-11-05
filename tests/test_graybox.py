@@ -51,3 +51,23 @@ def test_a_mirror_match_needs_more_than_an_equal_army():
     body = graybox.Bodies(s)
     knight = glossary.template('维和步兵', '盟军')
     assert 1.0 < graybox.kstar(body, knight, {knight: 1}) < 1.3
+
+
+def test_a_walkthrough_time_hangs_on_the_plans_events_not_the_clock():
+    """ADR 0015 (I4 follow-up): the A4 walkthrough's seconds after the opening scene are `段 <phase>+n` / `过场 <phase>
+    结束+n`, turned into the plan's flags, so a longer opening (the 演示 added 7.5 s) moves the walkthrough with it."""
+    import plan
+    import pytest
+    import sim
+    import offline
+    c = plan.Compiler(plan.load('a4'))
+    c.compile()
+    ph = next(p for p in c.phases if p.name == '北营')
+    text = offline.anchored('段北营+4 摧毁 north command; 过场会场结束+2:00 派 guardian 去 halt; 40 造 x 在 y', c)
+    assert text.startswith(f'{ph.flag}+4 摧毁') and f'{c.scene_flag(c.phases[0])}+2:00 派' in text and '; 40 造' in text
+    ev = sim.parse_script(text)
+    assert ev[0][0] == ('@', ph.flag, 4.0) and ev[1][0][2] == 120.0 and ev[2][0] == 40.0
+    with pytest.raises(ValueError, match='no phase'):
+        offline.anchored('段没有+1 摧毁 x', c)
+    after_opening = [e for e in sim.parse_script(offline.anchored(offline.WALK['a4'], c)) if e[0] is not None]
+    assert all(isinstance(e[0], tuple) or e[0] <= 40.0 for e in after_opening)    # nothing later is on the bare clock

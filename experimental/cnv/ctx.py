@@ -102,6 +102,12 @@ class Talk:
     def pending(self, k):
         return f'CNV_{self.tag}_Say_{k}'
 
+    def aged(self, k):
+        """A 闲话 line has waited CHAT_LIFE: a flag, because the timer's expiry is one moment and the line may only reach
+        the head of the queue after it (the engine model holds TIMER_EXPIRED, the older simulator loop for one tick:
+        the line behind another was then said late; tests/test_talk_queue on both)."""
+        return f'CNV_{self.tag}_Aged_{k}'
+
     def place(self, k):
         return f'CNV_{self.tag}_Pos_{k}'
 
@@ -190,8 +196,14 @@ class Talk:
                               [('SET_FLAG', self.want(k), 0), ('SET_FLAG', self.pending(k), 1),
                                ('SET_COUNTER_TO_COUNTER', self.place(k), self.length(x.tier)),
                                ('INCREMENT_COUNTER', 1, self.length(x.tier))] +
-                              ([('SET_MILLISECOND_TIMER', f'CNV {self.tag} Age {k}', CHAT_LIFE)] if x.tier == CHAT else []),
+                              ([('SET_FLAG', self.aged(k), 0),
+                                ('SET_MILLISECOND_TIMER', f'CNV {self.tag} Age {k}', CHAT_LIFE)] if x.tier == CHAT else []),
                               once=False))
+        for k, x in queued:     # (before the Says: a line that has waited long enough is not said in the frame it ages)
+            if x.tier == CHAT:
+                out.append(Script(f'CNV {self.tag} - Aged {k}',
+                                  [('FLAG', self.pending(k), 1), ('TIMER_EXPIRED', f'CNV {self.tag} Age {k}')],
+                                  [('SET_FLAG', self.aged(k), 1)], once=False))
         for k, x in queued:
             first = [('FLAG', self.pending(k), 1), ('COUNTER', self.place(k), 2, 0)]
             leave = [('SET_FLAG', self.pending(k), 0), ('SET_FLAG', self.want(k), 0),
@@ -200,15 +212,17 @@ class Talk:
             ahead = [('COUNTER', self.length(FUNC), 2, 0)] if x.tier == CHAT and FUNC in tiers else []
             out.append(Script(f'CNV {self.tag} - Say {k}' + (' chat' if x.tier == CHAT else ''),
                               first + [('FLAG', self.busy, 0)] + ahead + ([('FLAG', self.box, 0)] if x.strip else [])
+                              + ([('FLAG', self.aged(k), 0)] if x.tier == CHAT else [])
                               + (room if x.adds and not x.now else []) + gate,
                               leave + [('SET_FLAG', self.busy, 1), ('SET_MILLISECOND_TIMER', self.timer, float(x.turn))]
                               + x.acts, once=False))
         for k, x in queued:
             if x.tier == CHAT:
                 out.append(Script(f'CNV {self.tag} - Drop {k}',
-                                  [('FLAG', self.pending(k), 1), ('TIMER_EXPIRED', f'CNV {self.tag} Age {k}'),
+                                  [('FLAG', self.pending(k), 1), ('FLAG', self.aged(k), 1),
                                    ('COUNTER', self.place(k), 2, 0)],
                                   [('SET_FLAG', self.pending(k), 0), ('SET_FLAG', self.want(k), 0),
+                                   ('SET_FLAG', self.aged(k), 0),
                                    ('DECREMENT_COUNTER', 1, self.length(x.tier)), ('SET_FLAG', self.left(x.tier), 1),
                                    ('INCREMENT_COUNTER', 1, self.dropped)], once=False))
         if queued or self.floored:

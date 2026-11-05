@@ -522,7 +522,8 @@ class Sim:
         self.unshot = {u.id for u in self.mm.units if 'lifetime' in (getattr(u, 'params', None) or {})}
         self.seen = {}                      # this tick: (side, id(body)) -> whether that side sees it
         self.first_death = None             # (t, body, killer): the fight's first death
-        self.events = sorted((e for e in self.script if e[0] is not None), key=lambda e: e[0])
+        self.events = sorted((e for e in self.script if isinstance(e[0], float)), key=lambda e: e[0])
+        self.anchored = [e for e in self.script if isinstance(e[0], tuple)]       # (('@', flag, delta), verb, ...)
         self.areas = self.mm.areas
         self.waypoints = self.mm.waypoints
         self.reblock()
@@ -1165,6 +1166,7 @@ class Sim:
         moved = False
         while eng.frame < last and self.ending is None:
             self.t = eng.frame / self.fps
+            self.release()
             while self.events and self.events[0][0] <= self.t + 1e-9:
                 self.happen(self.events.pop(0))
             eng.step()
@@ -1177,7 +1179,16 @@ class Sim:
                 self.move()
         self.t = t0
 
+    def release(self):
+        """The script events anchored to a flag that is up now: due `delta` after this moment."""
+        for e in list(self.anchored):
+            if self.flags.get(e[0][1]) == 1:
+                self.anchored.remove(e)
+                self.events.append((round(self.t + e[0][2], 6),) + tuple(e[1:]))
+                self.events.sort(key=lambda x: x[0])
+
     def step_old(self):
+        self.release()
         while self.events and self.events[0][0] <= self.t:
             self.happen(self.events.pop(0))
         for s in self.mm.scripts:
@@ -1351,7 +1362,7 @@ class Sim:
 
     def pending(self):
         """Something still to come: a timer running, a unit moving, a script event."""
-        return bool(self.events) or any(v > self.t for v in self.timers.values()) or \
+        return bool(self.events) or bool(self.anchored) or any(v > self.t for v in self.timers.values()) or \
             any(b.path for b in self.living())
 
     def run(self, until=UNTIL):
@@ -1461,6 +1472,14 @@ def parse_script(text):
     if text and os.path.exists(text):
         text = open(text, encoding='utf-8').read()
     out = []
+
+    def when(t):
+        """A time: seconds or m:ss, or `<flag>+<time>` -- that long after the flag first reads 1 (an event of the plan: a
+        phase's flag, a scene's), so a script follows the level when an opening gets longer (ADR 0015)."""
+        if '+' in t and not re.fullmatch(r'[\d:.]+', t):
+            flag, _, delta = t.rpartition('+')
+            return ('@', flag, seconds(delta))
+        return seconds(t)
     for line in re.split(r'[;\n]', text or ''):
         line = line.split('#')[0].strip()
         if not line or line == '不动':
@@ -1474,24 +1493,24 @@ def parse_script(text):
         t, rest = line.split(None, 1)
         if rest.startswith('派 '):
             who, _, where = rest[2:].rpartition(' 去 ')
-            out.append((seconds(t), '派', who.strip(), where.strip()))
+            out.append((when(t), '派', who.strip(), where.strip()))
         elif rest.startswith('血量 '):
             who, pct = rest[3:].rsplit(None, 1)
-            out.append((seconds(t), '血量', who.strip(), float(pct.rstrip('%'))))
+            out.append((when(t), '血量', who.strip(), float(pct.rstrip('%'))))
         elif rest.startswith('旗标 '):
             name, v = rest[3:].rsplit(None, 1)
-            out.append((seconds(t), '旗标', name.strip(), int(v)))
+            out.append((when(t), '旗标', name.strip(), int(v)))
         elif rest.startswith('造 '):
             what, _, where = rest[2:].partition(' 在 ')
             angle = 0.0
             if re.fullmatch(r'-?[\d.]+', where.split()[-1]) and len(where.split()) > 1:
                 where, angle = where.rsplit(None, 1)[0], float(where.split()[-1])
-            out.append((seconds(t), '造', what.strip(), where.strip(), angle))
+            out.append((when(t), '造', what.strip(), where.strip(), angle))
         else:
             verb, _, who = rest.partition(' ')
             if verb not in ('摧毁', '删除', '打', '占领'):
                 raise ValueError(f'剧本 {line!r}: 动作是 派 / 摧毁 / 删除 / 血量 / 打 / 占领 / 旗标 / 造 之一')
-            out.append((seconds(t), verb, who.strip()))
+            out.append((when(t), verb, who.strip()))
     return out
 
 

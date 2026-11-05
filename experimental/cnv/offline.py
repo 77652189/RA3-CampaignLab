@@ -33,12 +33,29 @@ import simunits  # noqa: E402
 ONE = 0.9                                       # P29 (a4-redesign.md): one unit type answers under 90 % of a stage
 # the walkthrough that wins (a4.md 返工: the player's escort with the trucks, plazas 2 and 3 frozen, the north
 # command down at 5:50). The convoy is slowed to 12 (2026-10-31): it reaches the halt at ~4 minutes (it was one), so
-# everything after the halt is the old time + 190 s
+# everything after the halt is the old time + 190 s (now written against the plan's events, below)
 WALK = {'a4': '不打; 自动打掉 5; 0 派 guardian 去 plaza 1; 0 派 peacekeeper 去 plaza 1; 0 派 javelin 去 plaza 1; '
-              '40 造 CNV_A4IceWall 在 inside 2; 200 派 guardian 去 halt; 200 派 peacekeeper 去 halt; '
-              '200 派 javelin 去 halt; 310 派 peacekeeper 去 north base; 310 派 javelin 去 north base; '
-              '350 摧毁 north command; 390 造 CNV_A4IceWall 在 inside 3; '
-              '400 派 guardian 去 north mouth'}
+              '40 造 CNV_A4IceWall 在 inside 2; '
+              '过场会场结束+120 派 guardian 去 halt; 过场会场结束+120 派 peacekeeper 去 halt; '
+              '过场会场结束+120 派 javelin 去 halt; 段港口生变+7 派 peacekeeper 去 north base; '
+              '段港口生变+7 派 javelin 去 north base; 段北营+4 摧毁 north command; '
+              '段布防+40 造 CNV_A4IceWall 在 inside 3; 段布防+50 派 guardian 去 north mouth'}
+# A time is seconds, or an event of the plan and seconds after it: `段 <name>+n` (n s after the phase begins) or
+# `过场 <name> 结束+n` (after its scene hands the input back), written without the spaces. The seconds after the opening
+# scene used to be absolute: the 演示 made that scene 7.5 s longer (2026-11-05, I4) and the harbour scene's sends and the
+# north command's razing landed in the wrong stage (ADR 0015: the script follows the level, not the clock).
+ANCHOR = re.compile(r'(?<![\w+])(段|过场)(\w+?)(结束)?\+(?=[\d:.])')
+
+
+def anchored(text, c):
+    """`text` with each `段X+` / `过场X结束+` turned into the flag it waits on (`CNV_A4_Phase_2+`), for the plan compiled
+    by `c`."""
+    def flag(m):
+        ph = next((p for p in c.phases if p.name == m[2]), None)
+        if ph is None:
+            raise ValueError(f'walkthrough {m[0]!r}: the plan has no phase {m[2]!r}: {[p.name for p in c.phases]}')
+        return (c.scene_flag(ph) if m[1] == '过场' else ph.flag) + '+'
+    return ANCHOR.sub(flag, text)
 # what a base builds that fights on the ground (air and ships: A4 bans the airfield, the fight is ashore)
 ROSTER = {'盟军': ['维和步兵', '标枪兵', '警犬', '谭雅', '守护者坦克', '幻影坦克', '多功能步兵车', '激流气垫船', '雅典娜炮'],
           '苏联': ['动员兵', '防空步兵', '磁暴步兵', '战熊', '娜塔莎', '镰刀机甲', '铁锤坦克', '天启坦克', 'V4火箭车'],
@@ -101,7 +118,7 @@ def walk(level):
     {stage: player templates})."""
     c = plan.Compiler(plan.load(level))
     m = c.compile()
-    s = sim.Sim(m, script=WALK.get(level, ''))
+    s = sim.Sim(m, script=anchored(WALK.get(level, ''), c))
     starts, met, have = [], {}, {}
     base = None
     while s.t <= sim.UNTIL and s.ending is None:
