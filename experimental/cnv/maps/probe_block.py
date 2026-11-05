@@ -1,0 +1,96 @@
+"""A probe map for the engine line's blocked-way tests (checks/engine_block.py, docs/engine/pathing.md 6, 7): flat
+ground (tier 1), fences on BlendTileData's field 0 (docs/engine/terrain.md 3), every lane its own box.
+
+Each box is 800 x 1000: start 250 south of a wall across the box at y0+500, goal 250 north of it, both at x0+200;
+the wall's one way round is a gap at the box's east end (x1-200..x1), about 950 of way round (probe_paths' 'near'
+box goes round at 1 100).
+
+  row A (y 300..1300)   'bits': the wall on field 0 (the control); 'built': no field-0 wall, a row of structures
+                        stands across instead (the ice wall is a structure: units/icewall.py); 'late': the same row,
+                        made by a script a moment after the order (A4's walls come up mid-way)
+  row B (y 3000..4000)  'enemy move' / 'enemy attack': the field-0 wall has a second, straight gap GAP_W across on
+                        the straight line, plugged by enemy vehicles; the far gap stays open
+
+The player's start (1250, 2500) stays clear. Published: SITES (each lane's start, goal, far gap, plug; ROW: where the
+structures of 'built' / 'late' stand), PLAYERS, TEAMS, BOXES, ROW.
+"""
+import numpy as np
+
+import make_campnew18 as c18
+import mapterrain
+import platmap
+from platmap import Layout, poly
+from maps import island
+from parts import Site
+
+FENCE = 40.0
+W, H = 800.0, 1000.0
+GAP_W = 60.0                       # the straight gap the enemy plugs
+ROW_STEP = 30.0                    # the structures' spacing along the wall (overlapping: no way between them)
+# box: its south-west corner, whether the wall is on field 0, whether it has the straight gap
+BOXES = {
+    'bits': ((300.0, 300.0), True, False),
+    'built': ((1400.0, 300.0), False, False),
+    'late': ((2500.0, 300.0), False, False),
+    'enemy move': ((300.0, 3000.0), True, True),
+    'enemy attack': ((1400.0, 3000.0), True, True),
+}
+
+
+def _wall_y(lane):
+    return BOXES[lane][0][1] + H / 2
+
+
+ROW = {lane: [(BOXES[lane][0][0] + 15.0 + ROW_STEP * k, _wall_y(lane)) for k in range(int((W - 200.0) // ROW_STEP))]
+       for lane in ('built', 'late')}
+
+SITES = {k: island.SITES[k] for k in ('island', 'start', 'base factory', 'base power', 'west field')}
+for _lane, ((_x0, _y0), _, _) in BOXES.items():
+    SITES[f'{_lane} start'] = Site(_x0 + 200.0, _y0 + 250.0, 60.0, f'where the {_lane} lane\'s unit stands')
+    SITES[f'{_lane} goal'] = Site(_x0 + 200.0, _y0 + 750.0, 60.0, f'where the {_lane} lane\'s unit is sent')
+    SITES[f'{_lane} gap'] = Site(_x0 + W - 100.0, _y0 + H / 2 - 150.0, 60.0, f'the {_lane} box\'s far gap, start side')
+    SITES[f'{_lane} wall'] = Site(_x0 + 15.0, _y0 + H / 2, 20.0, f'the {_lane} wall\'s west end (ROW runs east)')
+for _lane in ('enemy move', 'enemy attack'):
+    _x0, _y0 = BOXES[_lane][0]
+    SITES[f'{_lane} plug'] = Site(_x0 + 200.0, _y0 + H / 2, 30.0, 'the straight gap, where the enemy stands')
+PLAYERS = island.PLAYERS
+TEAMS = island.TEAMS
+
+_LAYOUT = Layout(shapes=[poly([(-300, -300), (5300, -300), (5300, 5300), (-300, 5300)], 1, 'level ground')])
+
+
+def walls(h, w, border):
+    """Field 0's cells (rows j): every box's fence, and its inner wall where it is on field 0 (less its gaps)."""
+    jj, ii = np.mgrid[0:h, 0:w]
+    xs, ys = (ii - border) * mapterrain.CELL, (jj - border) * mapterrain.CELL
+    on = np.zeros((h, w), bool)
+
+    def rect(x0, y0, x1, y1):
+        return (xs >= x0) & (xs <= x1) & (ys >= y0) & (ys <= y1)
+
+    for (x0, y0), bits, straight in BOXES.values():
+        x1, y1, wy = x0 + W, y0 + H, y0 + H / 2
+        on |= rect(x0 - FENCE, y0 - FENCE, x1 + FENCE, y0) | rect(x0 - FENCE, y1, x1 + FENCE, y1 + FENCE)
+        on |= rect(x0 - FENCE, y0, x0, y1) | rect(x1, y0, x1 + FENCE, y1)
+        if bits:
+            wall = rect(x0, wy - FENCE / 2, x1, wy + FENCE / 2) & ~rect(x1 - 200.0, -1e9, x1, 1e9)
+            if straight:
+                wall &= ~rect(x0 + 200.0 - GAP_W / 2, -1e9, x0 + 200.0 + GAP_W / 2, 1e9)
+            on |= wall
+    return on
+
+
+def terrain(m):
+    """CampNew18's generate (objects, scripts, light, the start), the level ground, then the walls on field 0."""
+    c18.generate(m)
+    previews, _ = platmap.apply(m, _LAYOUT)
+    c18.PREVIEWS.update(previews)
+    hm = mapterrain.HeightMap(m)
+    tiles = mapterrain.Tiles(m, hm.width)
+    for j, i in zip(*np.nonzero(walls(hm.height, hm.width, hm.border))):
+        tiles.set_bit(0, int(i), int(j), True)
+    tiles.store()
+
+
+def like(m, objs, tmpl):
+    return island.like(m, objs, tmpl)
