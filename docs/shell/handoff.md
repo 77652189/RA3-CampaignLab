@@ -2,6 +2,18 @@
 
 外壳线 2026-11-03 从关卡线拆出（[architecture.md](../architecture.md) 各线负责的文件）。以前做过的事和坑在 [story/handoff.md](../story/handoff.md) 搜"外壳""CampShell"（第 33～42、61～69 行）。问题编号见 [issues.md](../issues.md) K9。
 
+## 从零画新地图（2026-11-04 总控派活，用户原话"地形编辑器升级成能画新地图"，git log 搜 "new-map mode"）
+
+- **启动**：`python -I -X utf8 experimental/mappage/serve.py --new <名字> [--size W H] [--from <现有图>]`，开 http://127.0.0.1:8765/ （内置浏览器用 `.claude/launch.json` 的 `mapsketch`，端口 8766，图名 trial）。草图在 `work/mappage/<名字>/sketch.json`，已存在就打开它（`--size`/`--from` 只在新建时用）。改了 `sketch2map.py` 要重启服务（模块只载一次），`sketch.html` 刷新页面就行。
+- **页面**（`experimental/mappage/sketch.html`，嵌 `view.js` 的缩放平移）：多边形/矩形/圆形地块（层：水面 0、低地 1、高地 2、更高 3，按画的顺序后盖先）、悬崖墙（折线+宽度，生成时变成一串第 3 层的四边形和圆，四面陡坡，不是看不见的墙）、坡道、路、地点（代码名、中文名、半径、可建造边长、施法半径）、出生点、矿场（resources.Field：朝向 4 选 1、归属、服务的基地）、可玩区。选择模式拖地点和黄色顶点、改属性、调地块顺序、Delete 删、Ctrl+Z/Y。每改一下自动存。"生成并检查"→ 右栏列 lint、contract、连通区、写不出 .map 的原因、mapstudy/terrainref；地面图、连通区图可以叠在草图上。
+- **生成器** `experimental/mappage/sketch2map.py`（开头写了草图格式）：草图 → `work/mappage/<名字>/<名字>.py` + `<名字>_names.py`（platmap 格式：START/SITES/FIELDS/DERRICKS/BORDERS/RAW_OBJECTS+OBJECTS/SHAPES/RAMPS/ROADS/BLOCKS/GAPS/LAYOUT/SCENERY/terrain/like，terrain() 照 sapporo 把起点和开场镜头挪到 START）。检查：`contract.map_design`、空任务的 `parts.contract`、连通区（`platmap.walkable` 裁到第一块边界，ndimage 分块，报出生点走不到的地点）、`parts.preview` 写 .map、`mapstudy --ours` 和 `terrainref`。命令行：`sketch2map.py <名字> [--from <图>] [--no-map] [--pathing]`。生成器只写 work/，模块由关卡线审过再搬进 maps/（ADR 0017）。
+- **稳**：同一份草图同样的文本（`module_text` 纯函数，数字用 repr 原样写）；`from_module` 把现有图导成草图再生成，高度、通行、lint、地点、边界、物体、景物、地块用途全部一致——测试用 sapporo、himeji；手动试过 niagara、festival、aso、baikonur、siberia 也一致。矿和精炼厂地点不进草图，从 FIELDS 重新算。
+- **寻路接口**：`sketch2map.pathing(mod, pairs)`，找 `labpaths.ENGINE_MODEL/ra3model/pathing.py`，没有就返回 None（页面写"只看连通区"）。按模型自己的 `CELL_SIZE`（现在 20）重采样：一个模型格里全部能走才算空地。模型还是骨架，所以默认不跑，`--pathing` 才跑。试验图上读数：起点到东北高地、湖南岸都是 `budget`（搜索预算用完），连通区说能到——这是引擎线模型的事，没在这里解读。
+- **试验图** trial（不用于正式关卡）：3000×3000，东北高地+坡道、湖、孤台（先不画坡道时报"孤台走不到"，加坡道后全部通过）、带缺口的悬崖墙、路、两处矿、5 个地点。lint ok、contract ok、连通区无走不到、.map 写出（`work/mappage/trial/trial.map`），图在 `ground.png`、`regions.png`。
+- 测试 `tests/test_mappage_sketch.py`（14 条）：同草图同文本、sapporo/himeji 往返、挪一块地读数会变、孤台走不到→加坡道连上、横穿的悬崖墙切开地图、平坡道 lint 报且不写 .map、坏草图被拒、.map 写出且有 TERRAIN 行、寻路模型不在时跳过、服务存草图/生成/别的来源 403/坏名字、页面脚本 `node --check`。变异检查：数字取整到个位，两条往返都红。
+- **没做**：新图上的抬高/压低/整平画刷（草图是矢量的层，画刷只在现有图的地形编辑器里；要的话以后把笔画作为草图里的一层，生成时套 terrain_edit）；桥（现在只能原样带着已有图的桥）；景物（新图 SCENERY 为空，关卡线加 platprops）；地块用途 BLOCKS、缺口 GAPS 只从现有图带过来，页面不能画。容器图固定 5000×5000，`--size` 只设可玩区；mapstudy 量的是整张容器。
+- 坑：内置浏览器窗格被缩放模拟时，截图坐标和页面像素不成比例，真点击要按截图找位置；页面键盘处理挂在 document 上，合成事件的 target 是 document（已兼容）。
+
 ## 地点名标注避让 + 看不见的墙提示（2026-11-04 总控派活，已做，git log 搜 "label layout"）
 
 - **避让**：`experimental/mappage/labels.js`（纯几何，页面和测试共用，`mappage.py` 像 terrain.js 一样嵌进页面）。每个名字先试点旁 8 个方位（右边优先），再往外 6 圈、画引线；引线不穿别的名字，名字不盖别的点、不出图；拥挤的先排。全名放不下时退成只显示中文名（悬停补回英文代码名）；还放不下就藏起来，悬停或键盘聚焦地点时弹出（黄字）。地点名开关旁写"显示 n / 46"。`fit()` 每次改宽度重排（量 `getBBox`）。标注和引线在单独的 `labels` 图层。

@@ -6,6 +6,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-I", "-X", "utf8", "experimental/mappage/serve.py", "a4", "--port", "8765"],
       "port": 8765
+    },
+    {
+      "name": "mapsketch",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-I", "-X", "utf8", "experimental/mappage/serve.py", "--new", "trial", "--port", "8766"],
+      "port": 8766
     }
   ]
 }

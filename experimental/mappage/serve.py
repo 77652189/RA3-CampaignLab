@@ -12,6 +12,16 @@ stores its proposals here:
   POST   /api/preview            body = {draft: <terrain proposal or null>}: the saved terrain proposals, then the draft,
                                  applied to the built ground; the contract before and after (mappage.preview)
 `mappage.py a4 --pull` and `--apply-preview` read the same folder by default.
+
+New-map mode (user 2026-11-04: "地形编辑器升级成能画新地图"): draw a map from nothing, or start from a copy of one.
+  python -I -X utf8 experimental/mappage/serve.py --new trial [--size W H] [--from sapporo]
+The sketch is work/mappage/<name>/sketch.json (kept when it exists: --size / --from only start a new one); the page
+draws it and saves every change:
+  GET  /api/sketch               the sketch
+  POST /api/sketch               body = the sketch: saved
+  POST /api/generate             body = the sketch: saved, then sketch2map.report (the draft module, lint, contract,
+                                 walkable regions, the .map and its study); returns the report
+  GET  /files/ground.png | regions.png      the pictures the last generate wrote
 """
 import argparse
 import datetime
@@ -171,12 +181,125 @@ def make_server(level, port=8765):
     return http.server.ThreadingHTTPServer(('127.0.0.1', port), handler(level))
 
 
+SKETCH_PAGE = os.path.join(HERE, 'sketch.html')
+FILES = ('ground.png', 'regions.png')
+
+
+def sketch2map():
+    return mappage._load('sketch2map', os.path.join(HERE, 'sketch2map.py'))
+
+
+class Sketch:
+    """One new map's sketch (work/mappage/<name>/sketch.json) and its generate-and-check, one at a time."""
+
+    def __init__(self, name, size=None, src=None, folder=None):
+        sk = sketch2map()
+        if not re.match(r'^[a-z][a-z0-9_]{0,30}$', name):
+            raise ValueError(f'map name {name!r}: lower-case letters, digits and _ (it becomes a module name)')
+        self.name, self.lock = name, threading.Lock()
+        self.path = os.path.join(folder, 'sketch.json') if folder else sk.sketch_path(name)
+        if not os.path.exists(self.path):
+            if src:
+                mod, names = sk.map_module(src)
+                s = sk.from_module(mod, names)
+                s['name'] = name
+            else:
+                s = sk.blank(name, size or (sk.WORLD, sk.WORLD))
+            sk.write_sketch(s, self.path)
+        self.dir = os.path.dirname(self.path)
+        self.with_map = True                                   # tests turn the .map and its study off (seconds)
+
+    def read(self):
+        return sketch2map().read_sketch(self.path)
+
+    def save(self, s):
+        if not isinstance(s, dict) or s.get('version') != sketch2map().VERSION:
+            raise ValueError('a sketch is a JSON object of version 1')
+        s = dict(s, name=self.name)
+        return sketch2map().write_sketch(s, self.path)
+
+    def generate(self, s):
+        self.save(s)
+        with self.lock:                                        # contract.map_design, the build: one at a time
+            return sketch2map().report(self.name, self.read(), with_map=self.with_map, out=self.dir)
+
+    def report(self):
+        p = os.path.join(self.dir, 'report.json')
+        return json.load(open(p, encoding='utf-8')) if os.path.exists(p) else None
+
+    def page(self):
+        view = open(os.path.join(HERE, 'view.js'), encoding='utf-8').read()
+        boot = {'sketch': self.read(), 'online': True, 'report': self.report(),
+                'where': os.path.relpath(self.path, mappage.ROOT).replace(os.sep, '/')}
+        html = open(SKETCH_PAGE, encoding='utf-8').read()
+        # the boot data inside a <script>: no "</" may close it early
+        data = json.dumps(boot, ensure_ascii=False).replace('</', '<\\/')
+        return html.replace('/*VIEW_JS*/', view).replace('/*BOOT*/null', data).encode('utf-8')
+
+
+def sketch_handler(sketch):
+    class H(handler(None)):
+        def do_GET(self):
+            path = self.path.split('?')[0]
+            if path in ('/', '/index.html'):
+                return self._send(200, sketch.page(), 'text/html; charset=utf-8')
+            if path == '/api/sketch':
+                return self._send(200, sketch.read())
+            if path == '/api/ping':
+                return self._send(200, {'sketch': sketch.name})
+            if path.startswith('/files/') and path[7:] in FILES:
+                p = os.path.join(sketch.dir, path[7:])
+                if os.path.exists(p):
+                    return self._send(200, open(p, 'rb').read(), 'image/png')
+            self._send(404, {'error': 'not found'})
+
+        def do_POST(self):
+            if not self._local():
+                return self._send(403, {'error': 'other origin'})
+            path = self.path.split('?')[0]
+            try:
+                body = self._body()
+                if path == '/api/sketch':
+                    sketch.save(body)
+                    return self._send(200, {'saved': sketch.name})
+                if path == '/api/generate':
+                    return self._send(200, sketch.generate(body))
+            except ValueError as e:
+                return self._send(400, {'error': str(e)})
+            except Exception as e:
+                return self._send(500, {'error': f'{type(e).__name__}: {e}'})
+            self._send(404, {'error': 'not found'})
+
+        def do_DELETE(self):
+            self._send(404, {'error': 'not found'})
+    return H
+
+
+def make_sketch_server(sketch, port=8765):
+    return http.server.ThreadingHTTPServer(('127.0.0.1', port), sketch_handler(sketch))
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('name')
+    ap.add_argument('name', nargs='?')
     ap.add_argument('--port', type=int, default=8765)
     ap.add_argument('--no-picture', action='store_true', help='page without the picture and terrain (faster)')
+    ap.add_argument('--new', metavar='MAP', help='draw a new map (work/mappage/<MAP>/sketch.json) instead of a level')
+    ap.add_argument('--size', type=float, nargs=2, metavar=('W', 'H'), help='a new sketch\'s playable area (at most 5000)')
+    ap.add_argument('--from', dest='src', metavar='MAP', help='a new sketch copied from maps/<MAP>.py')
     a = ap.parse_args()
+    if a.new:
+        sketch = Sketch(a.new, a.size, a.src)
+        srv = make_sketch_server(sketch, a.port)
+        print(f'草图 {os.path.relpath(sketch.path, mappage.ROOT)}', flush=True)
+        print(f'打开 http://127.0.0.1:{srv.server_address[1]}/    （Ctrl+C 停止）', flush=True)
+        try:
+            srv.serve_forever()
+        except KeyboardInterrupt:
+            pass
+        return
+    if not a.name:
+        ap.error('give a level (a4 ...) or --new MAP')
     print(f'正在生成 {a.name} 的地图页（构建地图，约十几秒）……', flush=True)
     html, d = mappage.export(a.name, not a.no_picture)
     level = Level(a.name, html)

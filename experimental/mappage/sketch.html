@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>画新地图</title>
+<style>
+:root {
+  --bg: #eef2f4; --panel: #ffffff; --ink: #15212b; --muted: #5f6f7c; --rule: #cfd8de; --accent: #b4462b;
+  --ok: #2e7d4f; --bad: #b3261e; --sel: #ffb300;
+  --t0: #4f86c6; --t1: #c9cf9f; --t2: #b99a62; --t3: #8a6a44;
+  --body: system-ui, "Microsoft YaHei UI", "PingFang SC", "Noto Sans SC", sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #0e151b; --panel: #151f28; --ink: #e2e9ef; --muted: #93a3b0; --rule: #26343f; }
+}
+:root[data-theme="dark"] { --bg: #0e151b; --panel: #151f28; --ink: #e2e9ef; --muted: #93a3b0; --rule: #26343f; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 var(--body); }
+header { padding: 14px 16px 6px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
+h1 { font-size: 26px; margin: 0; }
+h2 { font-size: 18px; margin: 0 0 6px; }
+.note { font-size: 14.5px; color: var(--muted); }
+.wrap { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 12px; padding: 0 16px 16px; }
+@media (max-width: 900px) { .wrap { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px; min-width: 0; }
+.tools { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+button, select, input { font: 500 15px var(--body); color: var(--ink); background: var(--panel); border: 1px solid var(--rule);
+  border-radius: 4px; padding: 5px 10px; }
+button { cursor: pointer; }
+button:hover { border-color: var(--ink); }
+button[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+button.go { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 700; }
+input[type=text], input[type=number] { width: 100%; }
+input[type=range] { width: 100%; padding: 0; }
+.opts { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; font-size: 15px; margin-bottom: 8px; }
+.opts label { display: inline-flex; gap: 6px; align-items: center; }
+.mapbox { position: relative; background: #1b2229; border-radius: 6px; overflow: hidden; touch-action: none; }
+svg#map { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; user-select: none; }
+.zoom { position: absolute; right: 8px; top: 8px; display: grid; gap: 4px; }
+.zoom button { width: 36px; height: 36px; padding: 0; font-size: 18px; background: rgba(0,0,0,.6); color: #fff; border-color: #fff4; }
+.zoom button.all { font-size: 13px; }
+.coord { position: absolute; left: 8px; bottom: 8px; font: 500 14px var(--mono); background: rgba(0,0,0,.6); color: #fff;
+  padding: 2px 8px; border-radius: 3px; pointer-events: none; }
+.hint { position: absolute; left: 8px; top: 8px; right: 56px; font-size: 15px; background: rgba(0,0,0,.6); color: #fff;
+  padding: 4px 10px; border-radius: 4px; pointer-events: none; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; padding-top: 8px; font-size: 14.5px; color: var(--muted); }
+.sw { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; border: 1px solid #0003; }
+.field { display: grid; gap: 2px; margin-bottom: 8px; font-size: 15px; }
+.field > span { color: var(--muted); font-size: 14px; }
+ol.layers { margin: 0; padding-left: 22px; display: grid; gap: 2px; font-size: 15px; max-height: 260px; overflow: auto; }
+ol.layers li { cursor: pointer; }
+ol.layers li.on { color: var(--accent); font-weight: 700; }
+.row { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+.res { font-size: 15px; overflow-wrap: anywhere; }
+.res ul { margin: 4px 0 8px; padding-left: 20px; }
+.ok { color: var(--ok); font-weight: 700; } .bad { color: var(--bad); font-weight: 700; }
+.mono { font-family: var(--mono); font-size: 14px; }
+section + section { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--rule); }
+text.lbl { font-family: var(--body); fill: #fff; stroke: #000; stroke-opacity: .8; paint-order: stroke; pointer-events: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>画新地图：<span id="mapname"></span></h1>
+  <span class="note" id="status">正在连本机服务……</span>
+</header>
+<div class="wrap">
+  <div class="panel">
+    <div class="tools" id="tools" role="toolbar" aria-label="画图工具">
+      <button data-tool="select" aria-pressed="true" title="点选、拖动地点和顶点；Delete 删除">选择 / 拖动</button>
+      <button data-tool="poly" title="单击加点，双击或回车收尾，Esc 取消">多边形地块</button>
+      <button data-tool="rect" title="按住拖出矩形">矩形地块</button>
+      <button data-tool="circle" title="从圆心拖出半径">圆形地块</button>
+      <button data-tool="wall" title="单击加点，双击收尾：一道谁都过不去的陡崖">悬崖墙</button>
+      <button data-tool="ramp" title="先点低处一端，再点高处一端">坡道</button>
+      <button data-tool="road" title="单击加点，双击收尾（只换地面贴图，不改高度）">路</button>
+      <button data-tool="site" title="单击放一个命名地点">地点</button>
+      <button data-tool="start" title="单击放玩家出生点">出生点</button>
+      <button data-tool="field" title="单击放矿场（精炼厂位置，矿在它正前方 180）">矿场</button>
+      <button data-tool="border" title="按住拖出可玩区">可玩区</button>
+    </div>
+    <div class="opts" id="opts">
+      <label>层：<select id="tier">
+        <option value="0">水面（海底）</option><option value="1">低地（第 1 层）</option>
+        <option value="2" selected>高地（第 2 层）</option><option value="3">更高（第 3 层）</option></select></label>
+      <label>宽度 <input type="number" id="width" value="160" min="20" max="800" step="10" style="width:6em"></label>
+      <label>矿场朝向 <select id="facing"><option value="45">东北</option><option value="135">西北</option>
+        <option value="225">西南</option><option value="315">东南</option></select></label>
+      <label>矿场归属 <select id="owner"><option value="">无主</option><option value="p1">玩家</option><option value="s1">敌人</option></select></label>
+      <button id="undo" title="Ctrl+Z">撤销</button>
+      <button id="redo" title="Ctrl+Y">重做</button>
+    </div>
+    <div class="mapbox" id="mapbox">
+      <svg id="map" xmlns="http://www.w3.org/2000/svg" aria-label="地图草图">
+        <rect id="bg" x="0" y="0" width="5000" height="5000"></rect>
+        <g id="g-shapes"></g>
+        <image id="img-ground" x="0" y="0" width="5000" height="5000" preserveAspectRatio="none" opacity="0.85" style="display:none"></image>
+        <image id="img-regions" x="0" y="0" width="5000" height="5000" preserveAspectRatio="none" style="display:none;image-rendering:pixelated"></image>
+        <g id="g-lines"></g>
+        <g id="g-marks"></g>
+        <g id="g-draft"></g>
+        <g id="g-handles"></g>
+      </svg>
+      <div class="hint" id="hint"></div>
+      <div class="zoom"><button id="zin" aria-label="放大">+</button><button id="zout" aria-label="缩小">−</button>
+        <button id="zall" class="all">全图</button></div>
+      <div class="coord" id="coord"></div>
+    </div>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--t0)"></i>水面</span>
+      <span><i class="sw" style="background:var(--t1)"></i>低地</span>
+      <span><i class="sw" style="background:var(--t2)"></i>高地</span>
+      <span><i class="sw" style="background:var(--t3)"></i>更高</span>
+      <span><i class="sw" style="background:#7a5"></i>坡道</span>
+      <span><i class="sw" style="background:#ddd"></i>路</span>
+      <span><i class="sw" style="background:#222"></i>悬崖墙</span>
+      <span><i class="sw" style="background:#ffd54f"></i>矿场</span>
+      <span>层与层交界自动成悬崖（陡坡过不去），只有坡道能上下。</span>
+    </div>
+    <div class="opts" style="margin-top:6px">
+      <label><input type="checkbox" id="show-ground"> 叠生成后的地面图</label>
+      <label><input type="checkbox" id="show-regions"> 叠连通区（绿=出生点能走到）</label>
+      <label><input type="checkbox" id="show-labels" checked> 地点名</label>
+    </div>
+  </div>
+  <div class="panel">
+    <section>
+      <h2>选中的东西</h2>
+      <div id="props" class="note">点"选择 / 拖动"后点图上的东西。</div>
+    </section>
+    <section>
+      <h2>地块（按画的顺序，后画的盖住先画的）</h2>
+      <ol class="layers" id="layers"></ol>
+      <div class="field" style="margin-top:8px"><span>没画到的地方是</span>
+        <select id="base"><option value="0">水面（海底）</option><option value="1">低地（第 1 层）</option>
+          <option value="2">高地（第 2 层）</option><option value="3">更高（第 3 层）</option></select></div>
+    </section>
+    <section>
+      <h2>生成与检查</h2>
+      <p class="note">草图存在 <span class="mono" id="where"></span>；生成器写出地图模块草稿（只写到 work/，由关卡线审过再搬进 maps/），然后跑设计检查、contract、连通区和出 .map。</p>
+      <div class="row"><button class="go" id="gen">生成并检查</button></div>
+      <div class="res" id="result"></div>
+    </section>
+  </div>
+</div>
+<script>
+/*VIEW_JS*/
+</script>
+<script>
+"use strict";
+const BOOT = /*BOOT*/null;
+const W = 5000, H = 5000;
+const TIER_COLOR = ["var(--t0)", "var(--t1)", "var(--t2)", "var(--t3)"];
+const TIER_NAME = ["水面", "低地", "高地", "更高"];
+const FACING_NAME = { 45: "东北", 135: "西北", 225: "西南", 315: "东南" };
+const NS = "http://www.w3.org/2000/svg";
+const $ = (id) => document.getElementById(id);
+const svg = $("map");
+let sk = BOOT.sketch, online = BOOT.online;
+let tool = "select", sel = null, draft = null, drag = null, view = View.full(W, H);
+const past = [], future = [];
+
+// ---- coordinates: svg units are world units, y flipped (world +y is north)
+const sy = (y) => H - y;
+function worldAt(ev) {
+  const p = svg.createSVGPoint(); p.x = ev.clientX; p.y = ev.clientY;
+  const q = p.matrixTransform(svg.getScreenCTM().inverse());
+  return [Math.round(q.x), Math.round(H - q.y)];
+}
+const scale = () => view.w / (svg.getBoundingClientRect().width || 1);   // world units per screen pixel
+
+// ---- history and saving
+function snapshot() { past.push(JSON.stringify(sk)); if (past.length > 200) past.shift(); future.length = 0; }
+function undo() { if (!past.length) return; future.push(JSON.stringify(sk)); sk = JSON.parse(past.pop()); sel = null; changed(false); }
+function redo() { if (!future.length) return; past.push(JSON.stringify(sk)); sk = JSON.parse(future.pop()); sel = null; changed(false); }
+let saveTimer = null;
+function changed(push = true) { render(); if (push) {} clearTimeout(saveTimer); saveTimer = setTimeout(save, 500); }
+async function save() {
+  if (!online) { status("没连上本机服务：改动只在这页里，刷新就没了"); return; }
+  try {
+    const r = await fetch("/api/sketch", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(sk) });
+    if (!r.ok) throw new Error((await r.json()).error || r.status);
+    status("已存 " + new Date().toLocaleTimeString());
+  } catch (e) { status("存不上：" + e.message); }
+}
+function status(t) { $("status").textContent = t; }
+
+// ---- drawing
+function el(tag, attrs, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+const pts = (a) => a.map(([x, y]) => `${x},${sy(y)}`).join(" ");
+function shapeEl(sh, parent, extra) {
+  const fill = TIER_COLOR[sh.tier] || "#f0f";
+  if (sh.kind === "poly") return el("polygon", { points: pts(sh.at), fill, ...extra }, parent);
+  if (sh.kind === "rect") {
+    const [x0, y0, x1, y1] = sh.at;
+    return el("rect", { x: Math.min(x0, x1), y: sy(Math.max(y0, y1)), width: Math.abs(x1 - x0), height: Math.abs(y1 - y0), fill, ...extra }, parent);
+  }
+  const [x, y, r] = sh.at;
+  return el("circle", { cx: x, cy: sy(y), r, fill, ...extra }, parent);
+}
+function rampQuad(r) {
+  const [x0, y0] = r.low, [x1, y1] = r.high, d = Math.hypot(x1 - x0, y1 - y0) || 1, h = r.width / 2;
+  const nx = -(y1 - y0) / d * h, ny = (x1 - x0) / d * h;
+  return [[x0 + nx, y0 + ny], [x1 + nx, y1 + ny], [x1 - nx, y1 - ny], [x0 - nx, y0 - ny]];
+}
+function render() {
+  const k = scale(), isSel = (kind, i) => sel && sel.kind === kind && sel.i === i;
+  $("bg").setAttribute("fill", TIER_COLOR[sk.base]);
+  const gs = $("g-shapes"), gl = $("g-lines"), gm = $("g-marks"), gh = $("g-handles");
+  for (const g of [gs, gl, gm, gh]) g.replaceChildren();
+  sk.shapes.forEach((sh, i) => shapeEl(sh, gs, { "data-kind": "shapes", "data-i": i, stroke: isSel("shapes", i) ? "var(--sel)" : "#0005",
+    "stroke-width": (isSel("shapes", i) ? 3 : 1) * k }));
+  sk.walls.forEach((wl, i) => el("polyline", { points: pts(wl.points), fill: "none", stroke: isSel("walls", i) ? "var(--sel)" : "#222",
+    "stroke-width": wl.width, "stroke-linejoin": "round", "stroke-linecap": "round", "data-kind": "walls", "data-i": i }, gl));
+  sk.roads.forEach((rd, i) => el("polyline", { points: pts(rd.points), fill: "none", stroke: isSel("roads", i) ? "var(--sel)" : "#e4e4e4",
+    "stroke-opacity": .8, "stroke-width": rd.width, "stroke-linejoin": "round", "data-kind": "roads", "data-i": i }, gl));
+  sk.ramps.forEach((rp, i) => {
+    el("polygon", { points: pts(rampQuad(rp)), fill: "#7a5", "fill-opacity": .85, stroke: isSel("ramps", i) ? "var(--sel)" : "#253",
+      "stroke-width": 2 * k, "data-kind": "ramps", "data-i": i }, gl);
+    el("line", { x1: rp.low[0], y1: sy(rp.low[1]), x2: rp.high[0], y2: sy(rp.high[1]), stroke: "#fff", "stroke-width": 2 * k,
+      "marker-end": "", "pointer-events": "none" }, gl);
+  });
+  const borders = Object.entries(sk.borders);
+  if (borders.length) {                                       // outside the playable area: dimmed
+    const [x0, y0, x1, y1] = borders[0][1];
+    el("path", { d: `M0,0H${W}V${H}H0Z M${x0},${sy(y1)}V${sy(y0)}H${x1}V${sy(y1)}Z`, fill: "#000", "fill-opacity": .45,
+      "fill-rule": "evenodd", "pointer-events": "none" }, gl);
+  }
+  borders.forEach(([name, b], i) => el("rect", { x: Math.min(b[0], b[2]), y: sy(Math.max(b[1], b[3])), width: Math.abs(b[2] - b[0]),
+    height: Math.abs(b[3] - b[1]), fill: "none", stroke: i ? "#9cf" : "#fff", "stroke-width": (i ? 2 : 3) * k,
+    "stroke-dasharray": `${12 * k} ${8 * k}`, "pointer-events": "none" }, gl));
+  sk.blocks.forEach((b) => { if (!Array.isArray(b.at)) return; const [x0, y0, x1, y1] = b.at;
+    el("rect", { x: x0, y: sy(y1), width: x1 - x0, height: y1 - y0, fill: "none", stroke: "#fff6", "stroke-width": k, "pointer-events": "none" }, gl); });
+  const fs = 15 * k, labels = $("show-labels").checked;
+  sk.fields.forEach((f, i) => {
+    const a = f.facing * Math.PI / 180, ox = f.x + 180 * Math.cos(a), oy = f.y + 180 * Math.sin(a);
+    el("line", { x1: f.x, y1: sy(f.y), x2: ox, y2: sy(oy), stroke: "#ffd54f", "stroke-width": 3 * k, "pointer-events": "none" }, gm);
+    el("circle", { cx: ox, cy: sy(oy), r: 40, fill: "#ffd54f", stroke: "#000", "stroke-width": k, "pointer-events": "none" }, gm);
+    el("rect", { x: f.x - 60, y: sy(f.y) - 60, width: 120, height: 120, fill: "#ffd54f66", stroke: isSel("fields", i) ? "var(--sel)" : "#ffd54f",
+      "stroke-width": 3 * k, "data-kind": "fields", "data-i": i }, gm);
+    if (labels) el("text", { x: f.x + 70, y: sy(f.y) - 60, "font-size": fs, "stroke-width": 3 * k, class: "lbl" }, gm).textContent = `${f.name} 矿场`;
+  });
+  Object.entries(sk.sites).forEach(([code, s]) => {
+    if (s.r) el("circle", { cx: s.x, cy: sy(s.y), r: s.r, fill: "#fff1", stroke: "#fffa", "stroke-width": k, "pointer-events": "none" }, gm);
+    if (s.build) el("rect", { x: s.x - s.build / 2, y: sy(s.y) - s.build / 2, width: s.build, height: s.build, fill: "none",
+      stroke: "#9cf", "stroke-width": 2 * k, "pointer-events": "none" }, gm);
+    el("circle", { cx: s.x, cy: sy(s.y), r: 7 * k, fill: isSel("sites", code) ? "var(--sel)" : "#fff", stroke: "#000",
+      "stroke-width": 1.5 * k, "data-kind": "sites", "data-i": code }, gm);
+    if (labels) el("text", { x: s.x + 10 * k, y: sy(s.y) - 8 * k, "font-size": fs, "stroke-width": 3 * k, class: "lbl" }, gm)
+      .textContent = s.zh ? `${s.zh} ${code}` : code;
+  });
+  const [x, y] = sk.start;
+  el("path", { d: `M${x},${sy(y) - 22 * k} l${14 * k},${30 * k} h${-28 * k} z`, fill: isSel("start", 0) ? "var(--sel)" : "#4caf50",
+    stroke: "#000", "stroke-width": 1.5 * k, "data-kind": "start", "data-i": 0 }, gm);
+  if (labels) el("text", { x: x + 16 * k, y: sy(y) + 6 * k, "font-size": fs, "stroke-width": 3 * k, class: "lbl" }, gm).textContent = "出生点";
+  drawHandles(gh, k);
+  drawDraft(k);
+  renderLayers(); renderProps();
+  $("base").value = String(sk.base);
+}
+// the draggable points of the selected thing
+function handlePoints() {
+  if (!sel) return [];
+  const it = item(sel);
+  if (!it) return [];
+  if (sel.kind === "shapes") {
+    if (it.kind === "poly") return it.at.map((p, j) => ({ p, set: (q) => { it.at[j] = q; } }));
+    if (it.kind === "rect") return [[0, 1], [2, 3]].map(([a, b]) => ({ p: [it.at[a], it.at[b]], set: (q) => { it.at[a] = q[0]; it.at[b] = q[1]; } }));
+    return [{ p: [it.at[0], it.at[1]], set: (q) => { it.at[0] = q[0]; it.at[1] = q[1]; } },
+            { p: [it.at[0] + it.at[2], it.at[1]], set: (q) => { it.at[2] = Math.max(20, Math.round(Math.hypot(q[0] - it.at[0], q[1] - it.at[1]))); } }];
+  }
+  if (sel.kind === "walls" || sel.kind === "roads") return it.points.map((p, j) => ({ p, set: (q) => { it.points[j] = q; } }));
+  if (sel.kind === "ramps") return [{ p: it.low, set: (q) => { it.low = q; } }, { p: it.high, set: (q) => { it.high = q; } }];
+  return [];
+}
+function drawHandles(g, k) {
+  handlePoints().forEach((h, j) => el("rect", { x: h.p[0] - 8 * k, y: sy(h.p[1]) - 8 * k, width: 16 * k, height: 16 * k, fill: "var(--sel)",
+    stroke: "#000", "stroke-width": k, "data-handle": j }, g));
+}
+function drawDraft(k) {
+  const g = $("g-draft"); g.replaceChildren();
+  if (!draft) return;
+  const tier = +$("tier").value;
+  if (draft.points) {
+    const a = draft.hover ? [...draft.points, draft.hover] : draft.points;
+    if (tool === "poly") el("polygon", { points: pts(a), fill: TIER_COLOR[tier], "fill-opacity": .6, stroke: "var(--sel)", "stroke-width": 2 * k }, g);
+    else el("polyline", { points: pts(a), fill: "none", stroke: tool === "wall" ? "#222" : "#e4e4e4", "stroke-opacity": .7,
+      "stroke-width": +$("width").value, "stroke-linejoin": "round" }, g);
+    a.forEach(([x, y]) => el("circle", { cx: x, cy: sy(y), r: 5 * k, fill: "var(--sel)" }, g));
+  } else if (draft.from && draft.to) {
+    const [x0, y0] = draft.from, [x1, y1] = draft.to;
+    if (tool === "rect" || tool === "border") shapeEl({ kind: "rect", at: [x0, y0, x1, y1], tier }, g,
+      tool === "border" ? { fill: "none", stroke: "#fff", "stroke-width": 3 * k } : { "fill-opacity": .6, stroke: "var(--sel)", "stroke-width": 2 * k });
+    else if (tool === "circle") shapeEl({ kind: "circle", at: [x0, y0, Math.hypot(x1 - x0, y1 - y0)], tier }, g, { "fill-opacity": .6, stroke: "var(--sel)", "stroke-width": 2 * k });
+    else if (tool === "ramp") el("polygon", { points: pts(rampQuad({ low: draft.from, high: draft.to, width: +$("width").value })), fill: "#7a5", "fill-opacity": .7 }, g);
+  }
+}
+function item(s) {
+  if (!s) return null;
+  if (s.kind === "start") return sk.start;
+  if (s.kind === "sites") return sk.sites[s.i];
+  return (sk[s.kind] || [])[s.i];
+}
+const KIND_NAME = { shapes: "地块", walls: "悬崖墙", ramps: "坡道", roads: "路", fields: "矿场", sites: "地点", start: "出生点" };
+function shapeName(sh) { return `${TIER_NAME[sh.tier]}（${{ poly: "多边形", rect: "矩形", circle: "圆" }[sh.kind]}）${sh.what ? "：" + sh.what : ""}`; }
+function renderLayers() {
+  const ol = $("layers"); ol.replaceChildren();
+  sk.shapes.forEach((sh, i) => {
+    const li = document.createElement("li");
+    li.textContent = shapeName(sh);
+    if (sel && sel.kind === "shapes" && sel.i === i) li.className = "on";
+    li.onclick = () => { sel = { kind: "shapes", i }; setTool("select"); render(); };
+    ol.appendChild(li);
+  });
+  if (!sk.shapes.length) ol.innerHTML = '<li class="note">还没画地块：整张图都是下面选的那一层。</li>';
+}
+// the side panel: the selected thing's fields
+function input(label, value, onset, type = "text", attrs = {}) {
+  const wrap = document.createElement("label"); wrap.className = "field";
+  const s = document.createElement("span"); s.textContent = label; wrap.appendChild(s);
+  let i;
+  if (type === "select") {
+    i = document.createElement("select");
+    for (const [v, t] of attrs.options) { const o = document.createElement("option"); o.value = v; o.textContent = t; i.appendChild(o); }
+    i.value = String(value);
+  } else { i = document.createElement("input"); i.type = type; i.value = value ?? ""; Object.assign(i, attrs); }
+  i.onchange = () => { snapshot(); onset(type === "number" ? +i.value : i.value); changed(); };
+  wrap.appendChild(i);
+  return wrap;
+}
+function renderProps() {
+  const box = $("props"); box.replaceChildren();
+  const it = item(sel);
+  if (!it) { box.textContent = '点"选择 / 拖动"后点图上的东西。'; return; }
+  const h = document.createElement("div"); h.style.fontWeight = 700; h.textContent = KIND_NAME[sel.kind] + (sel.kind === "sites" ? "：" + sel.i : "");
+  box.appendChild(h);
+  const tiers = [[0, "水面"], [1, "低地（第 1 层）"], [2, "高地（第 2 层）"], [3, "更高（第 3 层）"]];
+  if (sel.kind === "shapes") {
+    box.appendChild(input("层", it.tier, (v) => { it.tier = +v; }, "select", { options: tiers }));
+    box.appendChild(input("说明（英文或中文）", it.what, (v) => { it.what = v; }));
+    const row = document.createElement("div"); row.className = "row";
+    const mv = (d) => { const j = sel.i + d; if (j < 0 || j >= sk.shapes.length) return; snapshot();
+      [sk.shapes[sel.i], sk.shapes[j]] = [sk.shapes[j], sk.shapes[sel.i]]; sel.i = j; changed(); };
+    for (const [t, d] of [["往下（先画）", -1], ["往上（后画）", 1]]) { const b = document.createElement("button"); b.textContent = t; b.onclick = () => mv(d); row.appendChild(b); }
+    box.appendChild(row);
+  } else if (sel.kind === "walls" || sel.kind === "roads" || sel.kind === "ramps") {
+    box.appendChild(input("宽度", it.width, (v) => { it.width = Math.max(20, v); }, "number", { min: 20, step: 10 }));
+    if (sel.kind === "walls") box.appendChild(input("墙顶的层", it.tier ?? 3, (v) => { it.tier = +v; }, "select", { options: tiers.slice(1) }));
+    if (sel.kind !== "roads") box.appendChild(input("说明", it.what, (v) => { it.what = v; }));
+    if (sel.kind === "ramps") { const n = document.createElement("p"); n.className = "note";
+      n.textContent = "两端要站在不同层的平地上；每格最多升 6.5（太陡检查会报）。"; box.appendChild(n); }
+  } else if (sel.kind === "sites") {
+    const code = sel.i;
+    box.appendChild(input("代码名（任务按它放东西，英文小写）", code, (v) => {
+      v = v.trim(); if (!v || v === code || sk.sites[v]) return;
+      const out = {}; for (const [k, s] of Object.entries(sk.sites)) out[k === code ? v : k] = s; sk.sites = out; sel.i = v; }));
+    box.appendChild(input("中文名", it.zh, (v) => { it.zh = v; }));
+    box.appendChild(input("说明（这里是干什么的）", it.what, (v) => { it.what = v; }));
+    box.appendChild(input("半径", it.r, (v) => { it.r = Math.max(0, v); }, "number", { min: 0, step: 10 }));
+    box.appendChild(input("要能建造的方块边长（0 = 不要求）", it.build || 0, (v) => { it.build = Math.max(0, v); if (!it.build) delete it.build; }, "number", { min: 0, step: 10 }));
+    box.appendChild(input("施法圆半径（0 = 不在这里施法）", it.cast || 0, (v) => { it.cast = Math.max(0, v); if (!it.cast) delete it.cast; }, "number", { min: 0, step: 2 }));
+  } else if (sel.kind === "fields") {
+    box.appendChild(input("名字（英文，出 <名字> refinery 地点）", it.name, (v) => { it.name = v.trim() || it.name; }));
+    box.appendChild(input("朝向（矿在哪边）", it.facing, (v) => { it.facing = +v; }, "select", { options: Object.entries(FACING_NAME) }));
+    box.appendChild(input("矿点", it.twin, (v) => { it.twin = +v; }, "select", { options: [[1, "两块（右边一块）"], [-1, "两块（左边一块）"], [0, "一块"]] }));
+    box.appendChild(input("归属", it.owner, (v) => { it.owner = v; }, "select", { options: [["", "无主"], ["p1", "玩家"], ["s1", "敌人"]] }));
+    box.appendChild(input("服务的基地地点（代码名，可空）", it.base, (v) => { it.base = v.trim(); }));
+    box.appendChild(input("精炼厂会建在这里（要平 200 见方）", it.build ? "1" : "0", (v) => { it.build = v === "1" ? 200 : 0; }, "select", { options: [["0", "否"], ["1", "是"]] }));
+  } else if (sel.kind === "start") {
+    const n = document.createElement("p"); n.className = "note"; n.textContent = `(${it[0]}, ${it[1]})：玩家起点和开场镜头都放在这里。拖动它来移动。`; box.appendChild(n);
+  }
+  if (sel.kind !== "start") {
+    const b = document.createElement("button"); b.textContent = "删除（Delete）"; b.onclick = removeSel; box.appendChild(b);
+  }
+}
+function removeSel() {
+  if (!sel || sel.kind === "start") return;
+  snapshot();
+  if (sel.kind === "sites") delete sk.sites[sel.i]; else sk[sel.kind].splice(sel.i, 1);
+  sel = null; changed();
+}
+
+// ---- tools
+const HINT = {
+  select: "点选东西；拖地点、出生点、矿场、黄色顶点；拖空白处平移。Delete 删除，Ctrl+Z 撤销。",
+  poly: "单击加点，双击或回车收尾，Esc 取消。层在上面选。", rect: "按住拖出矩形地块。", circle: "从圆心按住拖出半径。",
+  wall: "单击加点，双击或回车收尾：一道谁都过不去的陡崖（宽度在上面填）。", ramp: "先点低处一端，再点高处一端（两端在不同层的平地上）。",
+  road: "单击加点，双击或回车收尾。路只换地面贴图。", site: "单击放一个地点，然后在右边填代码名和中文名。",
+  start: "单击放玩家出生点。", field: "单击放矿场的精炼厂位置；朝向和归属在上面选。", border: "按住拖出可玩区（第一块边界）。",
+};
+function setTool(t) {
+  tool = t; draft = null;
+  for (const b of document.querySelectorAll("#tools button")) b.setAttribute("aria-pressed", String(b.dataset.tool === t));
+  $("hint").textContent = HINT[t];
+  render();
+}
+function finishLine() {
+  if (!draft || !draft.points) return;
+  const p = draft.points;
+  if (tool === "poly" && p.length >= 3) { snapshot(); sk.shapes.push({ kind: "poly", at: p, tier: +$("tier").value, what: "" }); sel = { kind: "shapes", i: sk.shapes.length - 1 }; }
+  else if (tool === "wall" && p.length >= 2) { snapshot(); sk.walls.push({ points: p, width: +$("width").value, tier: 3, what: "" }); sel = { kind: "walls", i: sk.walls.length - 1 }; }
+  else if (tool === "road" && p.length >= 2) { snapshot(); sk.roads.push({ points: p, width: +$("width").value, texture: "Pavement_Heidel02" }); sel = { kind: "roads", i: sk.roads.length - 1 }; }
+  draft = null; changed();
+}
+function newSiteCode() { let k = 1; while (sk.sites["site " + k]) k++; return "site " + k; }
+
+let pointers = new Map(), pinch0 = null, last = null;
+svg.addEventListener("pointerdown", (ev) => {
+  svg.setPointerCapture(ev.pointerId);
+  pointers.set(ev.pointerId, [ev.clientX, ev.clientY]);
+  if (pointers.size === 2) {                                  // two fingers: zoom and pan, drop what the first began
+    drag = null; if (draft && !draft.points) draft = null;
+    const [a, b] = [...pointers.values()]; pinch0 = { v: view, a, b }; return;
+  }
+  const p = worldAt(ev);
+  if (ev.button === 1) { drag = { pan: true, c: [ev.clientX, ev.clientY], v: view }; ev.preventDefault(); return; }
+  if (tool === "select") {
+    const t = ev.target;
+    if (t.dataset.handle !== undefined) { snapshot(); drag = { handle: handlePoints()[+t.dataset.handle] }; return; }
+    if (t.dataset.kind) {
+      sel = { kind: t.dataset.kind, i: t.dataset.kind === "sites" ? t.dataset.i : +t.dataset.i };
+      if (["sites", "start", "fields"].includes(sel.kind)) { snapshot(); drag = { move: sel }; }
+      render(); return;
+    }
+    sel = null; render();
+    drag = { pan: true, c: [ev.clientX, ev.clientY], v: view }; return;
+  }
+  if (["poly", "wall", "road"].includes(tool)) {
+    if (!draft) draft = { points: [] };
+    const q = draft.points[draft.points.length - 1];
+    if (!q || Math.hypot(q[0] - p[0], q[1] - p[1]) > 4 * scale()) draft.points.push(p);
+    render(); return;
+  }
+  if (["rect", "circle", "border"].includes(tool)) { draft = { from: p, to: p }; drag = { draw: true }; render(); return; }
+  if (tool === "ramp") {
+    if (!draft) { draft = { from: p, to: p }; render(); return; }
+    snapshot(); sk.ramps.push({ low: draft.from, high: p, width: +$("width").value, what: "" });
+    sel = { kind: "ramps", i: sk.ramps.length - 1 }; draft = null; changed(); return;
+  }
+  if (tool === "site") {
+    snapshot(); const code = newSiteCode(); sk.sites[code] = { x: p[0], y: p[1], r: 150, zh: "", what: "" };
+    sel = { kind: "sites", i: code }; setTool("select"); changed(); return;
+  }
+  if (tool === "start") { snapshot(); sk.start = p; changed(); return; }
+  if (tool === "field") {
+    snapshot(); let k = 1; while (sk.fields.some((f) => f.name === "field " + k)) k++;
+    sk.fields.push({ name: "field " + k, x: p[0], y: p[1], facing: +$("facing").value, twin: 1, base: "", owner: $("owner").value, build: 0 });
+    sel = { kind: "fields", i: sk.fields.length - 1 }; changed(); return;
+  }
+});
+svg.addEventListener("pointermove", (ev) => {
+  const p = worldAt(ev);
+  $("coord").textContent = `(${p[0]}, ${p[1]})`;
+  if (pointers.has(ev.pointerId)) pointers.set(ev.pointerId, [ev.clientX, ev.clientY]);
+  if (pinch0 && pointers.size === 2) {
+    const [a, b] = [...pointers.values()];
+    view = View.pinch(pinch0.v, W, H, svg.getBoundingClientRect(), pinch0.a, pinch0.b, a, b); setView(); return;
+  }
+  if (drag && drag.pan) {
+    const k = view.w / svg.getBoundingClientRect().width;
+    view = View.panBy(drag.v, W, H, -(ev.clientX - drag.c[0]) * k, -(ev.clientY - drag.c[1]) * k); setView(); return;
+  }
+  if (drag && drag.handle) { drag.handle.set(p); render(); return; }
+  if (drag && drag.move) {
+    const it = item(drag.move);
+    if (drag.move.kind === "start") sk.start = p; else { it.x = p[0]; it.y = p[1]; }
+    render(); return;
+  }
+  if (draft && draft.points) { draft.hover = p; drawDraft(scale()); return; }
+  if (draft && (drag && drag.draw || tool === "ramp")) { draft.to = p; drawDraft(scale()); }
+});
+function up(ev) {
+  pointers.delete(ev.pointerId);
+  if (pinch0) { if (pointers.size < 2) pinch0 = null; return; }
+  if (drag && (drag.handle || drag.move)) { drag = null; changed(); return; }
+  if (drag && drag.draw && draft) {
+    const [x0, y0] = draft.from, [x1, y1] = draft.to;
+    const big = Math.hypot(x1 - x0, y1 - y0) > 10 * scale();
+    if (big && tool === "rect") { snapshot(); sk.shapes.push({ kind: "rect", at: [Math.min(x0, x1), Math.min(y0, y1), Math.max(x0, x1), Math.max(y0, y1)], tier: +$("tier").value, what: "" }); sel = { kind: "shapes", i: sk.shapes.length - 1 }; }
+    if (big && tool === "circle") { snapshot(); sk.shapes.push({ kind: "circle", at: [x0, y0, Math.round(Math.hypot(x1 - x0, y1 - y0))], tier: +$("tier").value, what: "" }); sel = { kind: "shapes", i: sk.shapes.length - 1 }; }
+    if (big && tool === "border") { snapshot(); const b = [Math.max(0, Math.min(x0, x1)), Math.max(0, Math.min(y0, y1)), Math.min(W, Math.max(x0, x1)), Math.min(H, Math.max(y0, y1))];
+      const rest = Object.entries(sk.borders).slice(1); sk.borders = Object.fromEntries([["whole", b], ...rest]); sk.size = [b[2] - b[0], b[3] - b[1]]; }
+    draft = null; drag = null; changed(); return;
+  }
+  drag = null;
+}
+svg.addEventListener("pointerup", up);
+svg.addEventListener("pointercancel", up);
+// a double click's two presses add one point (the second lands on the first and is dropped): that point is the last
+svg.addEventListener("dblclick", (ev) => { if (draft && draft.points) finishLine(); ev.preventDefault(); });
+svg.addEventListener("wheel", (ev) => {
+  ev.preventDefault();
+  const p = svg.createSVGPoint(); p.x = ev.clientX; p.y = ev.clientY;
+  const q = p.matrixTransform(svg.getScreenCTM().inverse());
+  view = View.zoomAt(view, W, H, ev.deltaY < 0 ? 1.25 : 1 / 1.25, q.x, q.y); setView();
+}, { passive: false });
+function setView() { svg.setAttribute("viewBox", `${view.x} ${view.y} ${view.w} ${View.height(view, W, H)}`); render(); }
+$("zin").onclick = () => { view = View.zoomAt(view, W, H, 1.5, view.x + view.w / 2, view.y + view.w / 2); setView(); };
+$("zout").onclick = () => { view = View.zoomAt(view, W, H, 1 / 1.5, view.x + view.w / 2, view.y + view.w / 2); setView(); };
+$("zall").onclick = () => { view = View.full(W, H); setView(); };
+document.addEventListener("keydown", (ev) => {
+  if (ev.target.matches && ev.target.matches("input, select, textarea")) return;
+  if (ev.key === "Escape") { draft = null; render(); }
+  else if (ev.key === "Enter") finishLine();
+  else if (ev.key === "Delete" || ev.key === "Backspace") removeSel();
+  else if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "z") { ev.preventDefault(); undo(); }
+  else if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "y") { ev.preventDefault(); redo(); }
+});
+for (const b of document.querySelectorAll("#tools button")) b.onclick = () => setTool(b.dataset.tool);
+$("undo").onclick = undo; $("redo").onclick = redo;
+$("base").onchange = () => { snapshot(); sk.base = +$("base").value; changed(); };
+$("show-labels").onchange = render;
+$("show-ground").onchange = () => { $("img-ground").style.display = $("show-ground").checked ? "" : "none"; };
+$("show-regions").onchange = () => { $("img-regions").style.display = $("show-regions").checked ? "" : "none"; };
+
+// ---- generate and check (the server runs sketch2map.report)
+function list(title, items, good) {
+  const d = document.createElement("div");
+  const h = document.createElement("div");
+  h.innerHTML = `${title}：<span class="${items.length ? "bad" : "ok"}">${items.length ? items.length + " 条" : good}</span>`;
+  d.appendChild(h);
+  if (items.length) { const ul = document.createElement("ul"); for (const t of items) { const li = document.createElement("li"); li.textContent = t; ul.appendChild(li); } d.appendChild(ul); }
+  return d;
+}
+function showReport(r) {
+  const box = $("result"); box.replaceChildren();
+  const head = document.createElement("p");
+  head.innerHTML = r.ok ? '<span class="ok">全部通过</span>' : '<span class="bad">有问题，见下面</span>';
+  box.appendChild(head);
+  if (r.problems && r.problems.length) { box.appendChild(list("草图本身", r.problems, "")); return; }
+  const m = document.createElement("p"); m.className = "mono"; m.textContent = "模块草稿 " + r.module + (r.map ? "\n.map " + r.map : "");
+  m.style.whiteSpace = "pre-wrap"; box.appendChild(m);
+  box.appendChild(list("设计检查（坡道、建造点、矿、桥、地块用途、缺口宽度）", r.lint, "通过"));
+  box.appendChild(list("contract（空任务放在这张图上）", r.contract, "通过"));
+  if (r.map_error) box.appendChild(list("写不出 .map", [r.map_error], ""));
+  const g = r.regions;
+  const names = (codes) => codes.map((c) => (sk.sites[c] && sk.sites[c].zh ? `${sk.sites[c].zh}（${c}）` : c));
+  box.appendChild(list(`连通区（共 ${g.count} 块能走的地面）出生点走不到的地点`, names(g["cut off"]), "没有"));
+  const regs = document.createElement("ul");
+  for (const x of g.regions) { const li = document.createElement("li");
+    li.textContent = `${x.id === g.start ? "出生点这块" : "第 " + x.id + " 块"}：${x.km2} 平方公里，地点 ${names(x.sites).join("、") || "无"}`; regs.appendChild(li); }
+  box.appendChild(regs);
+  const p = document.createElement("p"); p.className = "note";
+  p.textContent = "寻路：" + (typeof r.pathing === "string" ? r.pathing : r.pathing.map((x) => `${x.from}→${x.to} ${x.found ? "通" : "不通（" + x.reason + "）"}`).join("；"));
+  box.appendChild(p);
+  if (r.study && r.study.length) {
+    const det = document.createElement("details"); const s = document.createElement("summary"); s.textContent = "和原版战役地图比（mapstudy、terrainref）"; det.appendChild(s);
+    const pre = document.createElement("pre"); pre.className = "mono"; pre.style.whiteSpace = "pre-wrap"; pre.textContent = r.study.join("\n"); det.appendChild(pre);
+    box.appendChild(det);
+  }
+  const t = Date.now();
+  if (r.ground_png) { $("img-ground").setAttribute("href", `/files/${r.ground_png}?t=${t}`); }
+  if (r.regions_png) { $("img-regions").setAttribute("href", `/files/${r.regions_png}?t=${t}`); }
+}
+$("gen").onclick = async () => {
+  if (!online) { $("result").textContent = "没连上本机服务，不能生成。用 serve.py --new 打开这页。"; return; }
+  const b = $("gen"); b.disabled = true; b.textContent = "正在生成和检查（十几秒）……";
+  try {
+    const r = await fetch("/api/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(sk) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.status);
+    showReport(d); status("已生成 " + new Date().toLocaleTimeString());
+    if (!$("show-regions").checked && d.regions && d.regions["cut off"].length) { $("show-regions").checked = true; $("show-regions").onchange(); }
+  } catch (e) { $("result").textContent = "生成失败：" + e.message; }
+  b.disabled = false; b.textContent = "生成并检查";
+};
+
+// ---- start
+$("mapname").textContent = sk.name;
+$("where").textContent = BOOT.where;
+if (BOOT.report) showReport(BOOT.report);
+status(online ? "已连上本机服务，改动自动存" : "没连上本机服务：改动只在这页里");
+setTool("select");
+{ // open on the playable area (the first border), a little round it
+  const b = Object.values(sk.borders)[0] || [0, 0, W, H], pad = 150;
+  const w = Math.max(b[2] - b[0], b[3] - b[1]) + 2 * pad;
+  view = View.clamp({ x: b[0] - pad, y: sy(b[3]) - pad, w }, W, H);
+}
+setView();
+window.addEventListener("resize", render);
+window.__sketch = { get sk() { return sk; }, render, setTool, get view() { return view; } };
+</script>
+</body>
+</html>
