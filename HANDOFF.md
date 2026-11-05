@@ -21,10 +21,10 @@
 
 ## 下一步
 
-1. **11-05 早上做到哪了**（各线都已提交推送，总控已核对）：
+1. **11-05 上午收工时做到哪了**（各线都已提交推送，总控已核对；外壳线自查 I4 I17 I22 已过，仍待独立验收）：
    - 盟军 9 关草稿 A1～A9 都有了，`build.py campaign --shell`（加 `--lang intl`）把 9 关都装进 CampShell。
    - CampShell 独立验收做了三轮（报告 `work/acceptance/2026-11-05*/report.md`，状态在 `docs/issues.md`）：验过 I1 I5 I10 I11 I12 I16 I18 I20 I23，I21 战败卡片验过；还待验 I4 I17 I22（总控会话的测试台服务早于 `menu_frames`，要在新会话里验；外壳线在自查）、I2 I3 I6 I7 I9（要真把 A4 打下去）、I13（听声音）。
-   - 引擎整体移植（ADR 0019）：第一层脚本引擎做完并接进 `sim.py`；第二层物体与模块做了 5 批（框架、血量死亡、属性修正和光环、升级加状态、无人机、空中的建筑 `docs/engine/air.md`），导弹第一批（追踪弹）做了但飞行时间和追踪还对不上（私有仓库 2 条 xfail，下一步读程序里的 BezierProjectile，见 `work/re/handoff.md` 开头）。导弹按用户不在时总控定的方案 A：只做最小开火部分，不开第三层。
+   - 引擎整体移植（ADR 0019）：第一层脚本引擎做完并接进 `sim.py`；第二层物体与模块做了 5 批（框架、血量死亡、属性修正和光环、升级加状态、无人机、空中的建筑 `docs/engine/air.md`），导弹第一批（追踪弹）做了，已读程序里的 BezierProjectile：飞行时长和连发间隔对上了；还剩 1 条 xfail：首中差约 24 帧，差在出膛前；追踪 300 在测试台落空，原因还没查清。下一步做躲靶扫时刻的探针，见 `work/re/handoff.md` 第 22 轮。导弹按用户不在时总控定的方案 A：只做最小开火部分，不开第三层。
    - 调研：`docs/research/rts-engine-survey.md`。
    - 各线每次清空后读自己的交接：关卡 `docs/story/handoff-phase4.md` 最末一节，外壳 `docs/shell/handoff.md` 第一节，引擎 `work/re/handoff.md` 开头。各线提交前至少跑 `tests/test_architecture.py`、`tests/test_docs.py`（关卡线再加 test_level_cards、test_plans；外壳线加 test_shell）。线会话一开工就容易过 15 万，派活前先看上下文，过了先清空。
 2. **等用户的**：I19（A4 不操作约 60 秒战败，节奏要不要放宽）；I21 统计页指挥官名 "Nan"（本机存档名，改不改）；导弹第三层要不要正式开（现在是方案 A）；K7（A4 陡坡重排，在地图页上定）；配音响度对比页和 I14。
