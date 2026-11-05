@@ -20,6 +20,7 @@ once Tanya is below full health (does the tower shoot?); 血西/东/南 the towe
 """
 from maps import stonehenge
 from parts import Mission, Script, Test, counted
+from checks.probe_view import open_in_view
 
 TOWER, CANNON, TANYA = 'AlliedBaseDefense', 'AlliedAntiStructureVehicle', 'AlliedCommandoTech1'
 ORDER, RUN = 8.0, 40.0
@@ -39,7 +40,7 @@ def mission():
         m.put(CANNON, 'start', ax - cx, ay - cy, name=f'UNIT - CNV See Cannon {k}', role=f'cannon {k}',
               angle=3.1416 if k == 'W' else 0.0)
     m.put(TANYA, 'start', SPOTTER[0] - cx, SPOTTER[1] - cy, name='UNIT - CNV See Tanya', role='tanya', angle=1.5708)
-    return m
+    return open_in_view(m, 'See')      # K5: the start is too near the map's edge
 
 
 def _test(m, clicked=None):

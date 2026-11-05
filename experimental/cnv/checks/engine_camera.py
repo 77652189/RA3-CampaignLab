@@ -16,6 +16,7 @@ screen (~52 deg down). Fitted into calib.Ground (HEIGHT_Y, PIVOT_R), which the b
 """
 from maps import sapporo
 from parts import Mission, Script, Test
+from checks.probe_view import open_in_view
 
 GUARDIAN = 'AlliedAntiVehicleVehicleTech1'
 PARK = (250.0, 2500.0)                     # 'convoy start': ~950 west of the nearest probe, off every probe's screen
@@ -42,7 +43,7 @@ RUN = FIRST + len(PROBES) * PERIOD + 2.0
 def mission():
     m = Mission(name='CampCamera', map=sapporo, facts={})
     m.put(GUARDIAN, 'convoy start', 0, 0, name='UNIT - CNV Camera Guardian', role='guardian')
-    return m
+    return open_in_view(m, 'Camera')    # K5: the map's start (450, 2500) is too near the west edge
 
 
 def where(m):

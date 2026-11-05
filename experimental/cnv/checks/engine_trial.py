@@ -16,6 +16,7 @@ import importlib.util
 import os
 
 from parts import Mission, Script, Test, square
+from checks.probe_view import open_in_view
 
 IFV = 'AlliedAntiAirVehicleTech1'
 MAPPAGE = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'work', 'mappage'))
@@ -50,7 +51,7 @@ def _mission(v):
     m = Mission(name=f'Camp{v.title()}', map=_draft(v), facts={})
     for k, lane in enumerate(LANES):
         m.put(IFV, 'start', -60.0 + 60.0 * k, 0, role=f'{lane} ifv', name=f'UNIT - CNV Trial {_key(lane)} Ifv')
-    return m
+    return open_in_view(m, 'Trial')    # K5: the start is too near the map's edge
 
 
 def mission():
