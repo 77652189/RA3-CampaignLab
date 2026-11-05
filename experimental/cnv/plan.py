@@ -34,7 +34,8 @@ from plantime import (ALL, ONE, TAGS, PlanError, by_level, counts, number, per, 
 PLANS = os.path.join(ROOT, 'docs', 'story', 'plans')
 LEVELS = ('简单', '普通', '困难')
 SPACING = 60.0                                  # between units placed together
-DEFAULT_AREA = 150.0                            # half-side of a site's trigger area when the site has no radius
+PACE_ARRIVE = 250.0                             # half-side of the area a 齐步 force is released in (a wave stops short of the point)
+DEFAULT_AREA = 150.0                           # half-side of a site's trigger area when the site has no radius
 CHRONO_FLASH = 'fxprop_chronoflash'             # retail's chrono flash prop (its FX plays on create, lives 1 s)
 EASE = 1.0                                     # seconds a pan eases in / out (retail's most used eased pan: 1/1)
 PAN_SPEED = 250.0                               # map units a second at most between two sites of a 过场
@@ -642,6 +643,9 @@ class Compiler:
                 raise PlanError(f'action {a!r}: 出动 <role> with 打 <site / role / 猎杀> or 守 <site>')
             if a.get('打') in self.devices:
                 raise PlanError(f'action {a!r}: 出动 can not 打 a device (a wave can)')
+            if '齐步' in a:
+                raise PlanError(f'action {a!r}: 齐步 is for 进攻 waves (units the script makes: their template is ours to '
+                                f'choose); placed troops are not copies')
             return self.orders(a, self.part_names(a['出动']), dict(names=[]), self.m.cast[self.parts(a['出动'])[0]].side)
         if '禁造' in a or '准造' in a:              # the player may (not) build it (retail Brighton Beach)
             return self.bans(a['禁造' if '禁造' in a else '准造'], int('准造' in a))
@@ -1089,21 +1093,33 @@ class Compiler:
         if extra.get('每隔') is not None and not every:
             raise PlanError(f'进攻 {spec["名字"]}: 加码 每隔 on a wave without 每隔')
         warn = [self.ctx.say(self.text('SCRIPT', spec['预警']), CAPTION)] if spec.get('预警') else []
+        copies, arrive = self.pace_plan(spec, [*troops, *more], f'进攻 {spec["名字"]}') if spec.get('齐步') else ({}, None)
         for i in range(1, most + 1):
             for lv, levels in enumerate(ONE):
                 for bonus in ([False, True] if stepped else [False]):
-                    names, acts = [], []
+                    names, acts, slowed = [], [], []
                     for group, tag in ((troops, ''), (more if bonus else {}, 'x')):
                         for u, ns in group.items():
                             tmpl = self.unit(u, 's1')
-                            m.spawns.add(tmpl)
+                            made = copies.get(tmpl)
+                            if not made:
+                                m.spawns.add(tmpl)
                             for j in range(ns[lv]):
                                 obj = f'UNIT - CNV {self.tag} W{k}-{i} {tmpl} {tag}{j + 1}'
                                 names.append(obj)
-                                acts.append(('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', obj, tmpl, m.team('s1'), wp))
+                                acts.append(('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', obj, made.id if made else tmpl,
+                                             m.team('s1'), wp))
+                                if made:
+                                    slowed.append((obj, made.names['pace']))
                     if not names:
                         continue
+                    acts += [('NAMED_RECEIVE_UPGRADE', up, obj) for obj, up in slowed]
                     acts += self.orders(spec, names, w) + [('INCREMENT_COUNTER', 1, sent)] + warn
+                    if slowed:                  # released as the first of them gets there (one script each: it may fall)
+                        free = [('NAMED_REMOVE_UPGRADE', up, obj) for obj, up in slowed]
+                        for n, (obj, _) in enumerate(slowed):
+                            m.scripts.append(Script(f'CNV {self.tag} - Pace {k} {i}{"+" if bonus else ""} {TAGS[lv]} {n + 1}',
+                                                    [('NAMED_INSIDE_AREA', obj, arrive)], free, levels=levels))
                     if every:
                         acts.append(('SET_MILLISECOND_TIMER', timer, (sooner if bonus else gaps)[lv]))
                     gate = [('FLAG', w['on'], 1), ('TIMER_EXPIRED', timer), ('COUNTER', sent, 2, i - 1)]
@@ -1116,6 +1132,34 @@ class Compiler:
         target = spec.get('打')
         if target in self.devices and not spec.get('守'):
             m.scripts += self.devices[target].attack(sorted(set(w['names'])))
+
+    def pace_plan(self, spec, units, what):
+        """齐步 for a force: ({template: the paced copy of it (a Unit, added to the mission)}, the area it is released in).
+        The slowest mover of the force keeps its own speed, every faster one gets a copy slowed to it (units/pace.py);
+        they are released when one gets inside the area round where the force is sent (打 / 守: a place or a role)."""
+        from units import pace
+        to = spec.get('守') or spec.get('打')
+        if not to or to == '猎杀' or to in self.devices:
+            raise PlanError(f'{what}: 齐步 needs 打 or 守 with a place or a role -- the force goes together to somewhere '
+                            f'(the upgrades are taken away there)')
+        group = self.parts(to)
+        site = self.m.cast[group[0]].site if group else to
+        w = self.m.where(site)
+        area = f'CNV {self.tag} Pace {site}'
+        self.m.areas.setdefault(area, square(w.x, w.y, max(w.r or 0.0, PACE_ARRIVE)))
+        own = {u.id: u.xml for u in self.m.units}
+        templates = [self.unit(u, 's1') for u in units]
+        speeds = pace.movers(templates, own)
+        copies = {}
+        if len(speeds) > 1:
+            slowest = min(speeds.values())
+            for t, v in speeds.items():
+                if slowest / v < pace.SAME:
+                    unit = pace.paced(t, pace.percent(v, slowest), own.get(t))
+                    if unit.id not in own:
+                        self.m.units.append(unit)
+                    copies[t] = unit
+        return copies, area
 
     def orders(self, spec, names, w, side='s1'):
         w['names'] += names

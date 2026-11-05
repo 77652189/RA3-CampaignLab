@@ -121,6 +121,17 @@
 - 注意：同一个原版文件在一个 mod 里拷两份会重复定义 Define 让构建停（`platform.py` 文档串已写）；a8 里只有一份，没事。
 - 还没做：整关一局实打（自由号载兵跳平台、12 分钟够不够）；炮塔高低玩家看不出来的提示；真公海图；下一轮总控说做"一队一起走"（引擎线测过 SPEED 33% 升级让快慢单位同时到，`docs/engine/pathing.md` 第 5 节）。
 
+### 第十八个会话续二（11-04）："一队一起走"进编译器（`齐步`）
+
+- **写法**：策划案 `进攻` 条目加 `齐步: 是`（`docs/story/plans/README.md` 进攻一行）。出口只有一个：`plan.Compiler.pace_plan` → `units/pace.py`。编译器按本波各兵种速度（`simunits.stats`）找最慢者，比它快的每种造一个升级副本（`CNV_Pace<百分比>_<原模板>`，原版文件拷一份加 `AttributeModifierUpgrade`，SPEED 修正 = 最慢/自己，向上取整），出生后马上给升级；每个被压速的单位一个脚本：它进了 `打`/`守` 地点的圈（半径取地点自己的、至少 250 `PACE_ARRIVE`）就把本批所有压速升级撤掉。空军、建筑不算；全队同速不加东西；`出动` 暂不支持（摆的是原版模板，写了会报错）。
+- **产物规则**：`contract.pace_released`（接在 `contract()` 里）：每个 `NAMED_RECEIVE_UPGRADE Upgrade_CNV_Pace…` 必须有一个以 `NAMED_INSIDE_AREA` 为条件的脚本撤掉同一对（升级、单位）。变异检验在 `tests/test_pace.py`（删掉撤销脚本、或把条件换成别的，规则报出来）。没单独加 `test_architecture` 守卫（规则对每一关都在 `contract()` 里跑，`parts.contract(m) == []` 的测试已经全覆盖）。
+- **模拟器**：`sim.py` 认 SPEED 修正（`simunits.speed_scale` 读单位自己的 XML）：给升级速度变、撤掉恢复；别的升级效果仍不模拟。`tests/test_pace.py` 里模拟器验过：不压速坦克先到，压速后两个同时进圈，进圈后速度恢复。
+- **用在 S5 `反扑`**（`docs/story/plans/s5.md`，守护者 80 + 维和步兵 50 → 坦克压到 63%）。选它是因为没有按名字读它的检查，也不像 A7 夹击那样踩着航母预警的时间。模拟器里整关跑过：第一批 6 个单位 35.5 秒出生，都进了圈、升级撤净、速度回 80。
+- **测试台还没验**（额度重置后）：`cnv_check s5 pace`（`checks/s5.py` 已写好，读数 `齐步` 一行：1 坦克进圈、10 步兵进圈、100 坦克独自抢在前面；期望 11 出现、100 不长时间亮）。要答的三件：①脚本创建的单位马上收 `NAMED_RECEIVE_UPGRADE` 收不收得到（引擎线探针是开局摆好的单位）；②`攻击移动`/`攻击` 带交火时两种兵是否同时到；③撤升级后速度立刻恢复。如果①不成，退路是给升级晚一帧（建一个"下一帧"计时脚本再给）。
+- 已知限制：中途被拦住、进不了圈的兵一直慢着；SPEED 修正只压平地速度，坡度、地形造成的减速不在内（引擎线原结论：大致同速）。
+- 验证：`pytest tests/test_architecture.py tests/test_docs.py tests/test_pace.py tests/test_plans.py tests/test_sim.py tests/test_rhythm.py` 99 passed。完整 pytest 没跑（6 分半，没改别的模块）。
+- 接下来按总控令：A8 按草稿标准做。
+
 ## 第十三个会话收尾（11-04 05:40，上下文 23 万）：K3 提交 41e0c73，K7、E7 没动
 
 **下一步按顺序**：

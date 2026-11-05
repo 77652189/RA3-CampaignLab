@@ -226,6 +226,19 @@ def team_orders_land(m):
     return out
 
 
+def pace_released(m):
+    """齐步 (units/pace.py): every pace upgrade a unit is granted is taken away again by a script of the level that
+    waits for that unit to be inside an area (where the force was sent). A slowed unit nobody releases stays slow for
+    good. A check's `Test ...` own scripts are not looked at."""
+    from units import pace
+    mine = [s for s in m.scripts if not s.name.startswith('Test')]
+    freed = {(a[0], a[1]) for s in mine if any(w[0] == 'NAMED_INSIDE_AREA' for w in s.when)
+             for name, *a in s.do if name == 'NAMED_REMOVE_UPGRADE'}
+    return [f'{s.name}: {a[1]} is slowed by {a[0]} and no script takes it away when it arrives (齐步)'
+            for s in mine for name, *a in s.do
+            if name == 'NAMED_RECEIVE_UPGRADE' and pace.is_pace_upgrade(a[0]) and (a[0], a[1]) not in freed]
+
+
 KIND_IN_AREA = 'PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA'
 
 
@@ -463,7 +476,7 @@ def contract(mission):
     out += team_orders_land(m) + kind_counts_in_area(m)
     out += camera_outside_the_view(m)
     out += music_resumes(m) + ending_line_fits(m)
-    out += single_orders(m)
+    out += single_orders(m) + pace_released(m)
     out += ore_faces_refinery(m) + ore_in_groups(m) + oil_off_the_camps(m) + base_has_ore(m) + cast_points_clear(m) + map_design(m)
     for s in m.scripts:
         for name, *args in s.when + s.do:

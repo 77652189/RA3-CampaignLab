@@ -297,6 +297,25 @@ def kind_of(kinds):
     return ''
 
 
+def speed_scale(xml, upgrades):
+    """The factor the SPEED modifiers of the upgrades a unit holds multiply its speed by, read from its own XML
+    (AttributeModifierUpgrade ... TriggeredBy -> AttributeModifier -> Modifier Type="SPEED" Value="N%"): units/pace.py's."""
+    scale = 1.0
+    if not xml or not upgrades:
+        return scale
+    for head, inner in _blocks(xml, 'AttributeModifierUpgrade'):
+        triggers = set(re.findall(r'<TriggeredBy>([^<]*)</TriggeredBy>', inner or ''))
+        triggers = {t for x in triggers for t in x.split()}
+        mod = _attr(head, 'AttributeModifier')
+        if not triggers & set(upgrades) or not mod:
+            continue
+        for mh, mi in _blocks(xml, 'AttributeModifier'):
+            if _attr(mh, 'id') == mod:
+                for v in re.findall(r'<Modifier\s+Type="SPEED"\s+Value="([\d.]+)%"', mi or ''):
+                    scale *= float(v) / 100.0
+    return scale
+
+
 def stats(template, own=None):
     """{speed, surface, vision, shroud, kinds, guessed} for a template; own: {id: xml text} of the mission's units."""
     if own and template in own:
