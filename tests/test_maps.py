@@ -32,6 +32,51 @@ def test_platform_maps_pass_their_lint():
         assert not problems, f'{mod.__name__}: ' + '; '.join(problems)
 
 
+def _field0_vs_rule(e, bits):
+    """(steep dry cells with no bit, bits set where the rule has none): the game reads only field 0 (docs/engine/terrain.md
+    3), so the first are cliffs a tank walks over and the second are walls nobody can see."""
+    import terrain_rules as tr
+    want = tr.impassable_bits(e, platmap.newmap.WATERLINE)
+    return int((want & ~bits).sum()), int((bits & ~want).sum())
+
+
+def test_field0_check_names_a_cliff_without_its_bit():
+    import numpy as np
+    e = np.full((20, 20), 400.0)
+    e[:, 10:] += 100.0                                   # a 100-high step: both cells beside it are steep
+    import terrain_rules as tr
+    bits = tr.impassable_bits(e, platmap.newmap.WATERLINE)
+    assert _field0_vs_rule(e, bits) == (0, 0)
+    bad = bits.copy()
+    bad[5, 9] = False                                     # the writer forgot one cell of the wall
+    bad[0, 0] = True                                      # and painted one that is not a wall
+    assert _field0_vs_rule(e, bad) == (1, 1)
+
+
+def test_every_platform_map_is_written_with_the_impassable_bit_the_rule_gives():
+    """Read back from the map as built (container map + the map's terrain()): field 0 equals terrain_rules.impassable_bits
+    of the heights written. A cliff with no bit is a wall tanks climb (A4's alley, 2026-11-04 engine line); a bit with no
+    cliff is an invisible wall. Needs the game's Heidelberg map as container."""
+    import numpy as np
+    import make_campnew18 as c18
+    import mapterrain
+    from mapscript import MapFile
+    try:
+        data = next(d for p, d in c18.c6._map_files() if p.lower().endswith('.map'))
+    except Exception as err:                              # no game install
+        import pytest
+        pytest.skip(f'no container map: {err}')
+    for mod in platform_maps():
+        m = MapFile(data)
+        mod.terrain(m)
+        hm = mapterrain.HeightMap(m)
+        e = np.array(hm.elev, float).reshape(hm.height, hm.width) / mapterrain.SCALE
+        t = mapterrain.Tiles(m, hm.width)
+        raw = np.frombuffer(bytes(t.extra[:t.row_bytes * t.height]), dtype=np.uint8).reshape(t.height, t.row_bytes)
+        bits = np.unpackbits(raw, axis=1, bitorder='little')[:, :t.width].astype(bool)
+        assert _field0_vs_rule(e, bits) == (0, 0), f'{mod.__name__}: field 0 differs from the rule (missing, extra)'
+
+
 def test_island_scenery_keeps_off_and_counts_as_nothing():
     """The noise island (no layout) dresses its coasts only: its scenery clear of every site on its own heights, and
     none of it a STRUCTURE (CampKinds counts that kind over the whole island, every player's)."""
