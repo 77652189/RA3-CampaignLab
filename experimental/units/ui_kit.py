@@ -29,7 +29,7 @@ UNITS = {'CNChrono': ('chronolag', 'Button_CNV_PhaseProbe_on.tga', 'Portrait_CNV
 # our units on retail models: the retail image with their ability icon badged on (ability_icons.py badges)
 UNITS.update({m: (f'badged/{m}', f'Button_{m}.tga', f'Portrait_{m}.tga') for m in
               ('CNBeacon', 'CNBurrower', 'CNJammer', 'CNTesla', 'CNTrain', 'CNShikigami', 'CNComboParent',
-               'CNComboChild', 'CNMaiden', 'CNCrane', 'CNIceWall')})
+               'CNComboChild', 'CNMaiden', 'CNCrane', 'CNIceWall', 'CNTowerBall')})
 KINDS = ('Button', 'Portrait')
 
 

@@ -281,3 +281,5 @@
 - **发现**：圈二的圆 (2760, 900) 连观测台（2350, 1000）都盖得到，所以平民被冻在山上——已把观测台挪西；`plan_sim` 的战斗模型会在第 3 段开始前把教堂的工程师打死（`摧毁 civ c` 一直成立，段 3 一开始就判输），真游戏里要看追兵会不会绕去教堂。
 - **没做**：地上的亮线（用通报）、河上接应、游隼、整局实打（追兵数、圈的时间都是占位）、圈四冻路障靠不靠得住（要整局看铁锤冻在哪）、"停一阵自己化开"（`收圈` 已有，没用）。
 - **下一步**（路径）：①A3 整局试玩，看圈四路障和东路压力；②盟军 9 关草稿齐了（A1～A9 全有）→ 按总控令做 S/J 线或回头验旧待做；③`a3 route` 检查：工程师从教堂走西豁口到船坞（长路分段）。
+
+- **提交前要跑什么（总控 11-05 令）**：除了 `tests/test_architecture.py`、`tests/test_docs.py`，还要跑 `tests/test_level_cards.py`、`tests/test_look.py`、`tests/test_plans.py`。11-05 全量 pytest 红过 4 条，都是草稿累积出来的：`build.LEVELS` 没加 a1/a2/a3/a6/a9、`levels.md` 没有这几关的卡片；a2/a5/a9/s5 策划稿的 `检查` 和 `checks/*.py` 登记的对不上（补了 a2 的 splash/frog/ray/dread、a5 的 route、s5 的 pace，a9 的 `beat` 没做所以从策划稿删掉、记进待做 1b）；A9 的原子球用了原版头像（现在是 `CNTowerBall`：`ability_icons.BADGED` + `ui_kit.UNITS`，护盾徽标，图在 `work/units/badged/CNTowerBall`，要 `python -I -X utf8 experimental/units/ability_icons.py badges` 生成，work/ 不进 git）。**新关卡草稿完成时顺手做三件事**：`build.LEVELS` 加、`levels.md` 加卡片、新单位进 `look.py` 带自己的头像。

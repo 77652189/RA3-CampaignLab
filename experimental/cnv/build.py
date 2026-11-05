@@ -34,7 +34,7 @@ _REG = registry.get()
 MISSIONS = {n: (make, _REG.checks.get(n, {})) for n, make in _REG.builds.items()}
 PAIRS = _REG.pairs
 
-LEVELS = ('a4', 'a5', 'a7', 'a8', 'j3', 'j4', 'j5', 'j7', 's2', 's5', 's6')                          # campaign levels: each has a card in docs/story/levels.md (the rest:
+LEVELS = ('a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8', 'a9', 'j3', 'j4', 'j5', 'j7', 's2', 's5', 's6')                          # campaign levels: each has a card in docs/story/levels.md (the rest:
                                                 # A/B controls and bench scenes)
 
 
