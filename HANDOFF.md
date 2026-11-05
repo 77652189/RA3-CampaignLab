@@ -70,8 +70,8 @@
 - 声音（2026-10-26）："请你在工作的时候关掉音量，或者不要在我的耳机上播放，总之让我听不到就可以"——录游戏声音只走 `listen.record_game`（-80 dB）
 - 发布（2026-11-02）："许可证有问题的话，就只在国内发布吧，不上N网"
 - 反编译（2026-11-04）："只用来做mod，研究学习里面的内容，不公开"——本仓库在 GitHub 上是公开的，反编译得来的东西（伪代码、函数地址、据此写的说明）只放 `work/re/`，不进仓库
-- 配音仓库 RA3-ChineseVoice：只提交、不推送（推送没授权）
-- 引擎模型（2026-11-04）："我希望尽可能把引擎的算法还原成python代码，这样我们后续就有一个稳定的地基，其他语言也可以"——照反编译重写的算法放本机私有仓库 `RA3Modding/RA3-EngineModel`，只提交、不推送、不加远端（[ADR 0018](docs/adr/0018-engine-model-private-repo.md)）
+- 配音仓库 RA3-ChineseVoice：公开的 origin 只提交、不推送（推送没授权）；私有远端 backup 每次提交后推（[ADR 0021](docs/adr/0021-private-github-repos.md)）
+- 引擎模型（2026-11-04）："我希望尽可能把引擎的算法还原成python代码，这样我们后续就有一个稳定的地基，其他语言也可以"——照反编译重写的算法放本机私有仓库 `RA3Modding/RA3-EngineModel`，只推到 GitHub 私有仓库，不改可见性（[ADR 0018](docs/adr/0018-engine-model-private-repo.md)、[ADR 0021](docs/adr/0021-private-github-repos.md)：用户 2026-11-05 "那就做成github私有仓库吧"）；`work/re` 同样是推私有仓库的单独 git 仓库
 
 ## 状态
 
