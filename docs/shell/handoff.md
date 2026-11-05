@@ -11,10 +11,10 @@
 - **I17**：短名一律取标题 " · " 前半（`shell.short_of`），卡片字 `centered(width=)` 缩到放得下。
 - **I18**：所有外壳构建的 cnv_map.json 都写 `slot`（多关还写 `levels`：每关的图名、边界）；`harness.start(chapter=)`、`bench_start(chapter=N)` 走章节列表进第 N 关，边界取那一关的。**MCP 服务要重启才认新参数。**
 - 测试 `tests/test_shell.py` 末尾 6 条（缺 targets、9 关都有目标位置、短名和卡片、合成规则、build_mod 逐关建图、测试台按章节）。
-- **坑**：写这些时工作区里 A1 过不了契约（别的线没提交的 `contract.py` STRIP_COUNTER / `strip.py`，I1 字幕条），`spec_of(a1)` 直接 assert。他们提交前 `build.py campaign --shell` 会停在 A1。另外 a7、a8 的 `CNV_Liberty.xml` 内容不同，逐关写 CNVUnits 各编各的，理论上没问题，进游戏要专门看 A7、A8 的自由女神。
+- **坑**：写的时候 A1 一度过不了契约（别的线 I1 字幕条改了一半），提交时已恢复，9 关的 spec 离线都能拼出来。a7、a8 的 `CNV_Liberty.xml` 内容不同，逐关写 CNVUnits 各编各的，理论上没问题，进游戏要专门看 A7、A8 的自由女神。
 
 **下一步**：
-1. 等 A1 契约恢复（`git log` 看 I1 提交了没有）；单独查游戏没在运行；后台跑 `python -I -X utf8 experimental/cnv/build.py campaign --shell > work/logs/campaign_zh.log`，再 `--lang intl`（约 9 次地图编译）。
+1. 单独查游戏没在运行；后台跑 `python -I -X utf8 experimental/cnv/build.py campaign --shell > work/logs/campaign_zh.log`，再 `--lang intl`（约 9 次地图编译）。
 2. 重启 ra3bench MCP 进程，`bench_start('CampShell', chapter=k)` k=1..9 各进一次，`bench_look` 一张小图确认是我们的图（不是布莱顿、戛纳）；英文版同样，再看 A4 任务摘要卡片字没被切。
 3. 跑 `fingerprint.py record shell_s5` + `diff baseline shell_s5`：单关路径的 build_mod 改过（`_map_part` 抽出来了），要确认 A4 单关外壳没变。
 4. issues.md 里 I16、I17、I18 现在标"修了待验"，验过后在报告里写结果。
