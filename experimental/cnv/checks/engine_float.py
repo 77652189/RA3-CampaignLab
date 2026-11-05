@@ -151,6 +151,50 @@ def float_test(m):
     return t
 
 
+# --- engine_float_far: is it the range (3D ~202 > 200) or the structure? ---------------------------------------------
+# The same plant with Range 1000, alone with a Kirov at 'switch gun': ATTACHED and riding the Kirov to its goal =
+# the range was 3D; still never ATTACHED = an AttachUpdate on a STRUCTURE does nothing.
+# Read (测, 11-05, run CampFarFar_mcp_1105_064559, PASS): 挂态 10 (in its start spot, never ATTACHED) to s15, then
+# 1010 (the Kirov in its goal, the plant still at the start) to the end; health 100. A STRUCTURE does not attach.
+FLOAT_FAR, FAR_RANGE = 'CNV_FloatPlantFar', 1000.0
+FAR_MOVE, FAR_RUN = 10.0, 30.0
+
+
+def far_mission():
+    m = Mission(name='CampFar', map=probe_range, units=[float_plant(FLOAT_FAR, rng=FAR_RANGE)], facts={})
+    site = GROUPS['plant']
+    m.put(KIROV, site, side='s1', role='kirov', name='UNIT - CNV FloatFar Kirov')
+    m.put(FLOAT_FAR, site, 0, -BELOW, side='s1', role='plant', name='UNIT - CNV FloatFar Plant')
+    m.waypoint('goal', 'CNV FloatFar Goal', site, -LEG, 0)
+    return m
+
+
+def far_test(m):
+    t = Test()
+    kirov, plant = m.role('kirov').name, m.role('plant').name
+    t.scripts.append(Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1')),
+                                                 ('UNIT_CHANGE_OBJECT_STATUS', kirov, 'NO_ATTACK', 1),
+                                                 ('SET_MILLISECOND_TIMER', 'Test Move', FAR_MOVE)]))
+    t.scripts.append(Script('Test - move', [('TIMER_EXPIRED', 'Test Move')],
+                            [('MOVE_NAMED_UNIT_TO', kirov, m.mark('goal'))]))
+    t.areas['Test Goal'] = square(*m.point('goal'), GOAL_R)
+    t.areas['Test Start'] = square(*m.site(GROUPS['plant'], 0, -BELOW), SPOT_R)
+    rows = [(1, ('UNIT_HAS_OBJECT_STATUS', plant, status('ATTACHED'))),
+            (10, ('NAMED_INSIDE_AREA', plant, 'Test Start')),
+            (100, ('NAMED_INSIDE_AREA', plant, 'Test Goal')),
+            (1000, ('NAMED_INSIDE_AREA', kirov, 'Test Goal'))]
+    t.counters.append(('CNV_FloatFar_Bits', '挂态'))
+    t.scripts.append(Script('Test - CNV_FloatFar_Bits zero', [], [('SET_COUNTER', 'CNV_FloatFar_Bits', 0)],
+                            once=False))
+    t.scripts += [Script(f'Test - CNV_FloatFar_Bits {step}', [cond],
+                         [('INCREMENT_COUNTER', step, 'CNV_FloatFar_Bits')], once=False) for step, cond in rows]
+    counted('CNV_FloatFar_Plant', '挂厂血量', t, health=plant)
+    # the Kirov reaching its goal shows the run went through; the plant's bits are the reading
+    t.expect = [('挂态', 0, 'ever>=', 1000, FAR_RUN - 2)]
+    t.bench = [('bench_watch', dict(seconds=FAR_RUN, every=1, sheet=False, lines=4))]
+    return t
+
+
 # the builds this module makes and their checks (cnv/registry.py)
-MISSION = {'engine_float': mission}
-CHECKS = {'engine_float': {'float': float_test}}
+MISSION = {'engine_float': mission, 'engine_float_far': far_mission}
+CHECKS = {'engine_float': {'float': float_test}, 'engine_float_far': {'far': far_test}}

@@ -4,11 +4,13 @@
 a row of power plant pads between the two rows of lanes (base defences are POWERED). The player's start (1250, 2500)
 stays clear.
 
-Published: SITES (the guns, the target spots, 'power 1'..'power 3'), PLAYERS, TEAMS, LANES {lane: (x, y)},
-DISTANCES {lane: the target distances}.
+Published: SITES (the guns, the target spots, 'power 1'..'power 3', 'probe refinery': a refinery pad facing 45, its
+one ore node 180 ahead), PLAYERS, TEAMS, LANES {lane: (x, y)}, DISTANCES {lane: the target distances}, FIELDS,
+OBJECTS (that ore node).
 """
 import make_campnew18 as c18
 import platmap
+import resources
 from platmap import Layout, poly
 from maps import island
 from parts import Site
@@ -39,6 +41,11 @@ for _lane, _y in PACE.items():
         SITES[f'{_lane} leg {_k}'] = Site(PACE_X[0] + 500.0 * _k, _y, 60.0, f'the {_lane} lane\'s leg point {_k}')
 for _k in range(3):
     SITES[f'power {_k + 1}'] = Site(3000.0 + 300.0 * _k, 1900.0, 120.0, 'a power plant pad', build=200.0)
+# a refinery pad in the free north-east corner with its one ore node (checks/engine_spawn.py count: the refinery's
+# collector); far from every lane, the start and the power pads
+FIELDS = [resources.Field('probe', 3000.0, 4200.0, 45.0, 0)]
+SITES.update(resources.sites(FIELDS))
+OBJECTS = resources.objects(FIELDS)
 PLAYERS = island.PLAYERS
 TEAMS = island.TEAMS
 
