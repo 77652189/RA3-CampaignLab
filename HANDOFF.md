@@ -21,16 +21,15 @@
 
 ## 下一步
 
-1. **11-04 晚做到哪了**（各线都已提交推送，总控已核对）：
-   - 盟军 9 关草稿：A4、A5、A7、A8、A9 有了（能编、sim 过、测试台能赢），现状表在 `docs/story/handoff-phase4.md`。关卡线在挑 A1、A2、A3、A6 里的下一关。
-   - 地图页（外壳线，`experimental/mappage/`，本地运行 `serve.py`）：改现有图（拖地点、批注、地形画刷），从零画新图（`serve.py --new`），Agent 直接写草图（`docs/shell/sketch-format.md`，`sketch2map.py --check`）。布鲁塞尔图就是这样画的。
-   - 引擎线：放置、通行、地形、寻路已查（`docs/engine/terrain.md`、`pathing.md`、`upgrades.md`）。寻路模型在私有仓库 RA3-EngineModel（ADR 0018），正在加分层粗路径并重新标定；A9 的"无敌升级"在等测试台验。
-   - 各线每次清空后读自己的交接：关卡 `docs/story/handoff-phase4.md` 最末一节，外壳 `docs/shell/handoff.md` 第一节，引擎 `work/re/handoff.md` 开头。
-   - git 提交前钩子：用户 2026-11-04 定"不用加"。各线提交前至少跑 `tests/test_architecture.py` 和 `tests/test_docs.py`，总控收到汇报后再核一遍。
-2. **盟军 9 关草稿做完后，在 CampShell 上做一次独立验收**：按 [docs/acceptance/brief.md](docs/acceptance/brief.md) 派一个新的子 Agent，先从干净的提交重新构建 CampShell。
-3. **K7**（A4 陡坡重排）在地图页上和用户一起定。
-4. **等用户的**：配音响度对比页（配音仓库 `work/campaign/loudness_ab/`）和 I14。
-5. **留着的事**：
+1. **11-05 早上做到哪了**（各线都已提交推送，总控已核对）：
+   - 盟军 9 关草稿 A1～A9 都有了，`build.py campaign --shell`（加 `--lang intl`）把 9 关都装进 CampShell。
+   - CampShell 独立验收做了三轮（报告 `work/acceptance/2026-11-05*/report.md`，状态在 `docs/issues.md`）：验过 I1 I5 I10 I11 I12 I16 I18 I20 I23，I21 战败卡片验过；还待验 I4 I17 I22（总控会话的测试台服务早于 `menu_frames`，要在新会话里验；外壳线在自查）、I2 I3 I6 I7 I9（要真把 A4 打下去）、I13（听声音）。
+   - 引擎整体移植（ADR 0019）：第一层脚本引擎做完并接进 `sim.py`；第二层物体与模块做了 5 批（框架、血量死亡、属性修正和光环、升级加状态、无人机、空中的建筑 `docs/engine/air.md`），导弹第一批（追踪弹）做了但飞行时间和追踪还对不上（私有仓库 2 条 xfail，下一步读程序里的 BezierProjectile，见 `work/re/handoff.md` 开头）。导弹按用户不在时总控定的方案 A：只做最小开火部分，不开第三层。
+   - 调研：`docs/research/rts-engine-survey.md`。
+   - 各线每次清空后读自己的交接：关卡 `docs/story/handoff-phase4.md` 最末一节，外壳 `docs/shell/handoff.md` 第一节，引擎 `work/re/handoff.md` 开头。各线提交前至少跑 `tests/test_architecture.py`、`tests/test_docs.py`（关卡线再加 test_level_cards、test_plans；外壳线加 test_shell）。线会话一开工就容易过 15 万，派活前先看上下文，过了先清空。
+2. **等用户的**：I19（A4 不操作约 60 秒战败，节奏要不要放宽）；I21 统计页指挥官名 "Nan"（本机存档名，改不改）；导弹第三层要不要正式开（现在是方案 A）；K7（A4 陡坡重排，在地图页上定）；配音响度对比页和 I14。
+3. **下一轮独立验收**：在新会话里先确认 `bench_start(menu_frames=2)` 生效，再验 I4 I17 I22，并派人真打一遍 A4 验 I2 I3 I7 I9。
+4. **留着的事**：
    - A4 攻略页 https://claude.ai/artifact/Dp8HUcuyyFN42vqhitJZ8r，生成脚本在 `work/walkthrough/make_page.py`；
    - 冷启动自检：`python -I -X utf8 experimental/testbench/doctor.py`；
    - 已删掉的测试 mod 名单在 `work/logs/mods_deleted.txt`。
