@@ -9,6 +9,8 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'experimental' / 'cnv'))
 sys.path.insert(0, str(ROOT / 'experimental' / 'campaign'))
+import contract  # noqa: E402
+import model  # noqa: E402
 import plan  # noqa: E402
 from devices import horn  # noqa: E402
 
@@ -137,26 +139,53 @@ def test_the_melt_event_goes_up_in_a_walls_last_seconds_and_down_when_it_is_gone
 
 
 def test_the_opening_demonstration_ices_a_street_and_the_foes_turn_back_to_the_lane():
+    sculpted = {k: {**v, '冰雕': {'偏移': [0, 50]}} for k, v in STREETS.items()}      # the demonstration needs the smoke
+    with pytest.raises(plan.PlanError, match='冰雕'):
+        level(机关={'车队': {'类型': '车队', '出发': '开局 + 0:10'},
+                  '雪祭': {'类型': '号角', '车队': '车队', '间隔': [45], '每街一波': {'帝国武士': 2}, '街': STREETS,
+                         '绕路': TABLE, '演示': {'街': '一号', '绕去': '后巷'}}})
     m = level(机关={'车队': {'类型': '车队', '出发': '开局 + 0:10'},
                   '雪祭': {'类型': '号角', '车队': '车队', '间隔': [45, 50, 45, 50, 45],
-                         '每街一波': {'帝国武士': 2, '坦克杀手': 2}, '街': STREETS, '绕路': TABLE,
+                         '每街一波': {'帝国武士': 2, '坦克杀手': 2}, '街': sculpted, '绕路': TABLE,
                          '演示': {'街': '一号', '绕去': '后巷', '等': 4, '兵': 2}}},
-              规则=[{'当': '开局 + 0:01', '做': ['雪祭.演示']}, {'当': '开局 + 0:30', '做': ['雪祭.演示收']}])
+              规则=[{'当': '开局 + 0:01', '做': ['雪祭.演示']}, {'当': '开局 + 0:20', '做': ['雪祭.演示绕']},
+                  {'当': '开局 + 0:30', '做': ['雪祭.演示收']}])
     by = {s.name: s for s in m.scripts}
     assert ('SET_FLAG', 'CNV_ZZ_Demo_On', 1) in next(s for s in m.scripts if s.name.endswith('Rule 1')).do
-    made = [a for a in by['CNV ZZ - Demo engineer'].do if a[0] == 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT']
-    assert len(made) == 1 and made[0][4] == 'CNV ZZ Clear V2'               # plaza 1 is the second street
-    assert any(a[0] == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT' for a in by['CNV ZZ - Demo ice'].do)
-    assert ('FLAG', 'CNV_ZZ_Frozen_V2', 1) in by['CNV ZZ - Demo foes'].when     # the foes are made once the ice stands
+    assert ('SET_FLAG', 'CNV_ZZ_Demo_To', 1) in next(s for s in m.scripts if s.name.endswith('Rule 2')).do
+    # A1 (I4): the engineer is made out of the picture, at the approach mark, and walks to the clear mark of the second
+    # street (plaza 1) with the camera on it; he casts only once he stands in the stand area
+    eng = by['CNV ZZ - Demo engineer'].do
+    made = [a for a in eng if a[0] == 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT']
+    assert len(made) == 1 and made[0][4] == 'CNV ZZ Demo Approach'
+    assert any(a[0] == 'MOVE_CAMERA_TO' for a in eng) and any(a[0] == 'MOVE_TEAM_TO' and a[2] == 'CNV ZZ Clear V2' for a in eng)
+    ice = by['CNV ZZ - Demo ice']
+    assert any(a[0] == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT' for a in ice.do)
+    assert any(c[0] == 'NAMED_INSIDE_AREA' and c[2] == 'CNV ZZ Demo Stand' for c in ice.when)
+    # A2: once the ice stands the camera goes up to the sculpture, and when it is there the pair comes out in smoke
+    assert ('FLAG', 'CNV_ZZ_Frozen_V2', 1) in by['CNV ZZ - Demo pan'].when
+    assert any(a[0] == 'MOVE_CAMERA_TO' for a in by['CNV ZZ - Demo pan'].do)
+    assert ('TIMER_EXPIRED', 'CNV ZZ Demo Made') in by['CNV ZZ - Demo foes'].when
     foes = [a[1] for a in by['CNV ZZ - Demo foes'].do if a[0] == 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT']
+    assert any(a[0] == 'CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT' for a in by['CNV ZZ - Demo foes'].do)       # smoke
     walk = by['CNV ZZ - Demo turn'].do                                         # they walk back to the tunnel mouth first
     assert len(foes) == 2 and [a[1] for a in walk if a[0] == 'UNIT_SET_TEAM'] == foes       # one team ordered to the mouth
     assert sum(a[0] == 'MOVE_TEAM_TO' for a in walk) == 1
     assert not any(a[0] == 'NAMED_DELETE' for a in walk)
-    turned = by['CNV ZZ - Demo down'].do                                       # ... and go down it
-    assert [a[1] for a in turned if a[0] == 'NAMED_DELETE'] == foes
-    outs = [a for a in turned if a[0] == 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT']
-    assert len(outs) == 2 and all(a[4] == m.mark('spawn V1') for a in outs)  # ... and a pair at the lane's foot
+    down = by['CNV ZZ - Demo down']                                            # ... and go down it, once they have left
+    assert ('FLAG', 'CNV_ZZ_Demo_Armed', 1) in down.when                       # the mouth and are back at it, in smoke
+    assert sum(c[0] == 'NAMED_INSIDE_AREA' for c in down.when) == 2
+    assert [a[1] for a in down.do if a[0] == 'NAMED_DELETE'] == foes
+    assert any(a[0] == 'CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT' for a in down.do)
+    assert [a[1] for a in by['CNV ZZ - Demo down late'].do if a[0] == 'NAMED_DELETE'] == foes
+    # B: the camera goes to the lane, the pair comes up its sculpture in smoke and walks off
+    assert any(a[0] == 'MOVE_CAMERA_TO' for a in by['CNV ZZ - Demo to'].do)
+    out = by['CNV ZZ - Demo out'].do
+    outs = [a for a in out if a[0] == 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT']
+    assert len(outs) == 2 and all(a[4] == m.mark('spawn V1') for a in outs)  # ... a pair at the lane's foot
+    assert any(a[0] == 'CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT' for a in out) and any(a[0] == 'MOVE_TEAM_TO' for a in out)
+    # staged (K8): three stages, the geometry holds on the product
+    assert len(m.stages) == 3 and contract.demo_unframed(model.merged(m)) == []
     with pytest.raises(plan.PlanError, match='演示'):
         level(规则=[{'当': '开局 + 0:01', '做': ['雪祭.演示']}])                # a device with no 演示
     with pytest.raises(plan.PlanError, match='same street'):

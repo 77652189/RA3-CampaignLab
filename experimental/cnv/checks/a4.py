@@ -280,8 +280,10 @@ def signs(m):
     return t
 
 
-DEMO_RUN = 60.0                                # demo: the scene's demonstration starts at its 12th second
-DEMO_OVER = 30.0                                # demo: the check takes the demonstration away (the bench skips the scene)
+DEMO_RUN = 60.0                                 # demo: the bench watches this long
+DEMO_AT = 88.0                                  # demo: the check starts the demonstration this many seconds into the mission
+                                                # (the bench's frame 1 is ~81 s in: bench 2026-11-05, started at its s19 when 100)
+DEMO_A, DEMO_B = 21.0, 9.0                    # demo: the plan's 停 after `演示`, and its line + 停 after `演示绕` (plans/a4.md)
 
 
 def made_names(m, part):
@@ -297,14 +299,20 @@ def demo(m):
     assert foes and outs, 'the plan has no 演示'
     # the bench skips the opening scene and its first frame is already ~40 s into the mission (bench 2026-11-01: the
     # whole demonstration ran before frame 1, state 111 and no troops to see, the scene's own `演示收` having fired).
-    # So the check reads latched flags (they never go back to 0) and takes the scene's `演示收` out: it takes the
-    # demonstration away itself DEMO_OVER seconds after it started, which also shows `演示收` clears what is left
-    off, started = f'CNV_{TAG}_Demo_Off', f'CNV_{TAG}_Demo_Started'
+    # So the check runs the demonstration on a clock of its own, after the first frame: the scene's three flags
+    # (`演示`, `演示绕`, `演示收`) are taken out of the plan's scene and set at the plan's own spacing (DEMO_A: the 停
+    # between `演示` and `演示绕`, DEMO_B: the line and the 停 after it), so the frames and counters show the demonstration
+    # as a player sees it (the camera is the device's own: it aims where the demonstration's stages say)
+    on, to, off = f'CNV_{TAG}_Demo_On', f'CNV_{TAG}_Demo_To', f'CNV_{TAG}_Demo_Off'
     for s in m.scripts:
-        s.do = [a for a in s.do if tuple(a[:3]) != ('SET_FLAG', off, 1)]
-    t.scripts += [Script('Test - demo over set', [('FLAG', started, 1)],
-                         [('SET_MILLISECOND_TIMER', 'Test - demo over', DEMO_OVER)]),
+        s.do = [a for a in s.do if not (a[0] == 'SET_FLAG' and a[1] in (on, to, off) and a[2] == 1)]
+    t.scripts += [Script('Test - demo clock', [], [('SET_MILLISECOND_TIMER', 'Test - demo on', DEMO_AT)]),
+                  Script('Test - demo on', [('TIMER_EXPIRED', 'Test - demo on')],
+                         [('SET_FLAG', on, 1), ('SET_MILLISECOND_TIMER', 'Test - demo to', DEMO_A)]),
+                  Script('Test - demo to', [('TIMER_EXPIRED', 'Test - demo to')],
+                         [('SET_FLAG', to, 1), ('SET_MILLISECOND_TIMER', 'Test - demo over', DEMO_B)]),
                   Script('Test - demo over', [('TIMER_EXPIRED', 'Test - demo over')], [('SET_FLAG', off, 1)])]
+    started = f'CNV_{TAG}_Demo_Started'
     counted('Test Walls', '冰墙', t, template=ice_wall(m).id)
     tally(t, foes, 'Test Demo Foes', '演示的兵')
     tally(t, outs, 'Test Demo Outs', '绕路出的兵')
@@ -314,10 +322,13 @@ def demo(m):
     t.counters.append(('Test Demo State', '演示状态'))
     t.scripts.append(Script('Test - state zero', [], [('SET_COUNTER', 'Test Demo State', 0)], once=False))
     t.scripts += [Script(f'Test - state {k}', [('FLAG', f, 1)], [('INCREMENT_COUNTER', k, 'Test Demo State')], once=False)
-                  for f, k in ((started, 1), (f'CNV_{TAG}_Demo_Iced', 20), (f'CNV_{TAG}_Demo_Turned', 300), (off, 4000))]
-    t.expect += [('冰墙', 0, 'ever>=', 1), ('演示状态', 0, 'ever>=', 321), ('演示状态', DEMO_RUN, '==', 4321),
+                  for f, k in ((started, 1), (f'CNV_{TAG}_Demo_Iced', 20), (f'CNV_{TAG}_Demo_Turned', 300), (off, 4000),
+                               (f'CNV_{TAG}_Demo_Down', 50000))]
+    # 50000: the pair that walked back out of the picture was taken away (stage A); the detour pair came up in between
+    t.expect += [('冰墙', 0, 'ever>=', 1), ('演示状态', 0, 'ever>=', 50321), ('演示状态', DEMO_RUN, '==', 54321),
+                 ('演示的兵', 0, 'ever>=', 2), ('绕路出的兵', 0, 'ever>=', 2),
                  ('演示的兵', DEMO_RUN, '==', 0), ('绕路出的兵', DEMO_RUN, '==', 0)]
-    t.bench = [('bench_watch', dict(seconds=DEMO_RUN, every=2, sheet=False, lines=len(t.counters)))]
+    t.bench = [('bench_watch', dict(seconds=DEMO_RUN, every=1, sheet=False, lines=len(t.counters)))]
     return t
 
 

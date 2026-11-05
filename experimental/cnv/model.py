@@ -17,6 +17,13 @@ MAX_NAME = 15                           # mod folder names longer than this cras
 TEAM_ORDERS = {'attack': 'TEAM_ATTACK_NAMED', 'guard': 'TEAM_GUARD_AREA', 'hunt': 'TEAM_HUNT', 'move': 'MOVE_TEAM_TO',
                'attack_move': 'ATTACK_MOVE_TEAM_TO', 'stop': 'TEAM_STOP'}      # Mission.order: kind -> whole-team action
 COUNTER_LINES = 4                      # counter / countdown lines that fit on the bench's screen (counters.MAX_LINES)
+# K8 (I4): the ground a camera shows while a scene runs (letterbox on: the picture is a band 2.4 : 1, not the 16 : 9 of
+# play). Measured in CampShell 2026-11-05 on A4's demo (work/acceptance/2026-11-05/zh_a4_demo_*.png): 0.39 px a map unit
+# in a 320 px wide picture whose band is 135 px tall -> ~820 x ~345 units about the camera centre. Half of that:
+LETTERBOX_HALF = (410.0, 170.0)
+LETTERBOX_UNDER = (410.0, 230.0)       # ... and what the camera renders under the bars (16 : 9 at the same zoom): the ground the
+                                       # border must cover for the picture to show no black (play's is plan.VIEW_HALF)
+STAGE_MARGIN = 40.0                    # what a staged piece shows stands this far inside that band, what it hides this far out
 
 
 @dataclasses.dataclass
@@ -148,6 +155,9 @@ class Mission(Part):
                                                                 # be in}: what a plan's camera moves aim at (K5)
     spells: dict = dataclasses.field(default_factory=dict)      # {waypoint name: site}: where the PLAYER casts a spell
                                                                 # (an ice block); the site must keep its cast circle
+    stages: list = dataclasses.field(default_factory=list)      # K8: what a staged piece of a scene shows and hides:
+                                                                # {label, camera (a view point), see [(what, (x, y))],
+                                                                # hide [(what, (x, y))], scripts [names], smoke [names]}
                                                                 # clear (Site.cast, contract.cast_points_clear, K3)
     spawns: set = dataclasses.field(default_factory=set)       # templates its scripts name that nobody casts (a
                                                                 # plan's waves and reinforcements, what it counts)

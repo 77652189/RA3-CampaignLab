@@ -256,8 +256,17 @@ class Ctx:
         """What a level written by hand adds to its scripts at the end: the scripts that play its queued lines."""
         return self.talk.scripts()
 
-    def camera(self, a, secs, ease_in, ease_out):
-        return self._compiler('camera').camera(a, secs, ease_in, ease_out)
+    def camera(self, a, secs, ease_in, ease_out, tight=False):
+        return self._compiler('camera').camera(a, secs, ease_in, ease_out, tight)
+
+    def stage(self, label, camera, see, hide, scripts, smoke=()):
+        """K8 (I4): declare a staged piece of a scene -- its camera (a view point: the waypoint a ctx.camera move
+        names), what must be in the picture (`see`: [(what, (x, y))]) and what must stay out of it (`hide`: where a
+        unit is made, taken away or sent from unseen), and the scripts that make / delete / move units for it.
+        `smoke`: those of the scripts that make or take away units IN the picture: each makes smoke at a place in it.
+        contract.demo_unframed checks the geometry and that no such script of a demonstration is left undeclared."""
+        self._m.stages.append(dict(label=label, camera=camera, see=list(see), hide=list(hide), scripts=list(scripts),
+                                   smoke=list(smoke)))
 
     def order(self, kind, names, target=None, side='p1', crew=None):
         """The one way to tell named units what to do (K6, G6): the actions that give the group `names`, of `side`, a

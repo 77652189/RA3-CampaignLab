@@ -20,9 +20,12 @@ Waves go for the convoy (the convoy device's attack). 鬼王 (last leg, from the
 2026-10-31, checks/icewall.py ghost: it does not do it on its own, an attack order at the wall does it), else it goes
 for the convoy.
 
-演示 (the opening scene's demonstration, an action of its own): an engineer made at the demo street's clear mark ices
-the street, a pair of troops made behind the ice turn back (deleted, "into the tunnel") and a pair is made at the
-detour street instead -- what the horn will do, shown once. `演示收` takes it all away again.
+演示 (the opening scene's demonstration, actions of their own): an engineer walks in to the demo street's clear mark and
+ices the street, a pair of troops comes out of the street's sculpture in smoke, meets the ice, turns and goes down the
+sculpture again in smoke (`演示`); then the detour street's pair comes up its sculpture in smoke and walks off
+(`演示绕`) -- what the horn will do, shown once. `演示收` takes it all away again. It is staged (K8, I4): each piece has
+a camera of its own that frame_for solves, so nothing appears or vanishes in the picture without smoke and the cast is
+in it (contract.demo_unframed, tests/test_architecture G14).
 
 Every wave's first troop (and a landed Ghost King) gets a minimap blip (OBJECT_CREATE_RADAR_EVENT, mechanics.md 小地图
 闪点), so a horn is seen on the minimap where the way is open.
@@ -34,7 +37,9 @@ until it is gone, so a rule with 每隔 speaks once per melt). Actions: 开 街 
 the first), 停 (they stop; what is made or kept goes on).
 """
 import itertools
+import math
 
+import model
 from devices import Device, ice_plazas
 from parts import Script, square
 from units import festival as fest, icewall as iw, smoke as sg
@@ -50,9 +55,33 @@ RELOAD = ice_plazas.RELOAD
 # the placement preview was red all over the slope at the street mouth)
 SEED_SIZE = 20
 MIN_APART = 10.0                               # two waves shut streets send to one open street arrive this far apart
-DEMO_BACK = 4.0                                 # the demonstration's foes walk back this long before they go down the tunnel
+DEMO_BACK = 7.0                                 # the demonstration's foes are taken away this long after they turn at the latest
+                                                # (normally the moment they stand at the sculpture's mouth)
+DEMO_ARM = 2.5                                  # ... and not before this long after they turn (they have to leave the mouth first)
+DEMO_PAN, DEMO_EASE = 2.0, 1.0                 # the demonstration's own camera moves (seconds, ease)
+STAND_AREA = 40.0                               # half-side of the area round the clear mark: the engineer casts once in it
+HOLE_AREA = 45.0                                # half-side of the area round the spawn mark the foes are taken away in
 MELT_WARN = 8.0                                # 冰快化: this many seconds before an ice wall's lifetime is up
 MODES = {'街': 'V', '口': 'L'}                  # the two sets, and the letter in their names
+
+
+def frame_for(see, hide):
+    """The camera centre (x, y) of a scene's staged piece: every point of `see` stands STAGE_MARGIN inside the picture
+    (model.LETTERBOX_HALF about the centre), every point of `hide` STAGE_MARGIN outside it; the one with the most room
+    left over (nearest the middle of `see` on a tie), or None when there is none. contract.demo_unframed holds the
+    product to the same rule."""
+    hx, hy = model.LETTERBOX_HALF
+    k = model.STAGE_MARGIN
+    mx, my = sum(p[0] for p in see) / len(see), sum(p[1] for p in see) / len(see)
+    best = None
+    for cx in range(int(min(p[0] for p in see) - hx), int(max(p[0] for p in see) + hx) + 1, 10):
+        for cy in range(int(min(p[1] for p in see) - hy), int(max(p[1] for p in see) + hy) + 1, 10):
+            room = min([min(hx - k - abs(x - cx), hy - k - abs(y - cy)) for x, y in see] +
+                       [max(abs(x - cx) - hx, abs(y - cy) - hy) - k for x, y in hide])
+            key = (room, -math.hypot(cx - mx, cy - my))
+            if best is None or key > best[0]:
+                best = (key, (float(cx), float(cy)))
+    return best[1] if best and best[0][0] >= 0 else None
 
 
 def route(delay, order, avail, shut, origin):
@@ -168,6 +197,7 @@ class Horn(Device):
         self.released = f'CNV_{tag}_Released'        # a kept wave of a mouth was made (its ice went)
         self.melting = f'CNV_{tag}_Melting'          # an ice wall is in its last MELT_WARN seconds
         self.demo_on, self.demo_off = f'CNV_{tag}_Demo_On', f'CNV_{tag}_Demo_Off'
+        self.demo_to = f'CNV_{tag}_Demo_To'          # the scene went on to the detour street (演示绕)
         self.detoured = f'CNV_{tag}_Detoured'        # a shut street's wave was made at another street
         self.smashing = f'CNV_{tag}_Smashing'        # a Ghost King was sent at an ice wall (until that wall is gone)
         self.smashed = f'CNV_{tag}_Smashed'          # a wall the Ghost King was sent at is gone
@@ -237,11 +267,11 @@ class Horn(Device):
                 raise PlanError(f'{self.name}.开 {args[0]}: the device has no {args[0]}')
             return [('SET_COUNTER', self.count[mode], 0), ('SET_FLAG', self.on[mode], 1),
                     ('SET_FLAG', self.start[mode], 1)]
-        if what in ('演示', '演示收'):
+        if what in ('演示', '演示绕', '演示收'):
             if not self.demo:
                 from plantime import PlanError
                 raise PlanError(f'{self.name}.{what}: the device has no 演示')
-            return [('SET_FLAG', self.demo_on if what == '演示' else self.demo_off, 1)]
+            return [('SET_FLAG', {'演示': self.demo_on, '演示绕': self.demo_to, '演示收': self.demo_off}[what], 1)]
         if what == '裂':
             if not self.sculpted:
                 from plantime import PlanError
@@ -280,10 +310,8 @@ class Horn(Device):
                 area = f'CNV {tag} Way {wid}'
                 ctx.add_area(area, square(*ctx.point(f'ice {wid}'), GATE_AREA))
                 sx, sy = ctx.point(f'ice {wid}')
-                px, py = ctx.point(f'spawn {wid}')
-                far = iw.clear_of(self.wall) / max(1.0, ((sx - px) ** 2 + (sy - py) ** 2) ** 0.5)
                 ctx.add_area(f'CNV {tag} Block {wid}', square(sx, sy, WALL_SIDE / 2 + CLEAR_MARGIN))
-                ctx.add_point(f'CNV {tag} Clear {wid}', (sx + (sx - px) * far, sy + (sy - py) * far))
+                ctx.add_point(f'CNV {tag} Clear {wid}', self.clear_at(wid))
                 self.walled[wid] = ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', p1, 3, 1, self.wall.id, area)
         self.cdev = self.ctx.device(self.spec['车队'])
         self.convoy = self.cdev.cv
@@ -292,6 +320,14 @@ class Horn(Device):
             ctx.waypoint('sea', f'CNV {tag} Sea', g.get('海', 'sea east'))
             ctx.waypoint('shore', f'CNV {tag} Shore', g.get('岸', 'beach'))
             ctx.add_area(f'CNV {tag} Shore', square(*ctx.point('shore'), max(60.0, ctx.where(g.get('岸', 'beach')).r)))
+
+    def clear_at(self, wid):
+        """Where an engineer stands to ice the street `wid` without being in the block: past the ice mark, away from
+        the spawn mark."""
+        sx, sy = self.ctx.point(f'ice {wid}')
+        px, py = self.ctx.point(f'spawn {wid}')
+        far = iw.clear_of(self.wall) / max(1.0, ((sx - px) ** 2 + (sy - py) ** 2) ** 0.5)
+        return sx + (sx - px) * far, sy + (sy - py) * far
 
     # ---- scripts
     def opens(self, mode, n):
@@ -558,69 +594,149 @@ class Horn(Device):
                                once=False) for t, target in enumerate(cv.trucks)]
         return out
 
-    # ---- the opening scene's demonstration
+    # ---- the opening scene's demonstration (K8, I4: nothing appears or vanishes in the picture, the cast is in it)
     def demo_scripts(self):
-        """The engineer is made and sent to ice the demo street; once the ice stands (the Frozen flag, so it waits as
-        long as the building takes) the pair of troops behind it is made and sent at it; `等` seconds on, they are
-        deleted and a pair is made at the detour street's mark. `演示收` deletes what is left."""
+        """The demonstration is staged in three pieces, each with a camera of its own (a view point `frame_for` solves
+        so the picture shows what must be seen and hides what must not; the scene's picture is a letterbox band only
+        ~345 map units tall, the street from the sculpture to the engineer is longer than that):
+        A1, the engineer: the camera goes to the shut street, the engineer is made out of the picture and WALKS in to
+          the clear mark and ices the street from there, so the cast is on screen.
+        A2, the troops: once the ice stands the camera goes up to the sculpture, the pair comes out of it in smoke and
+          ice chips, walks to the ice, meets it, turns and walks back, and goes down the sculpture in smoke again.
+        B, `演示绕`: the camera goes to the detour street, a pair comes up its sculpture in smoke and walks out of the
+          picture (taken away there by `演示收`, with the engineer's trip home).
+        contract.demo_unframed holds the geometry on the product: what is to be seen stands inside each picture, what
+        is made or taken away unseen stands outside it, what is made or taken away in it carries smoke made in it, and
+        every script of the demonstration that makes, takes away or moves a unit belongs to a stage."""
         d = self.demo
         if not d:
             return []
         ctx, tag = self.ctx, self.ctx.tag
         ids = self.ids('V')
         shut, to = ids[str(d['街'])], ids[str(d['绕去'])]
+        way_a, way_b = self.ways['V'][str(d['街'])], self.ways['V'][str(d['绕去'])]
+        for wid in (shut, to):
+            if not (self.sculpted and ctx.has_mark(f'chips {wid}')):
+                from plantime import PlanError
+                raise PlanError(f'{self.name}: 演示 needs a 冰雕 on both its streets (the troops come out of it and go '
+                                f'down it in smoke: nothing may appear or vanish in the picture without it, K8)')
         eng, foes, outs = f'UNIT - CNV {tag} Demo Engineer', [], []
         tmpl = self.ctx.unit('冰幕工兵')
         ctx.spawns_add(tmpl)
         home = d.get('工兵')                # the player's own engineer plays the demo, and goes back where he stood
+        home_at = None
         if home:
             eng = self.ctx.part_names(str(home['角色']))[0]
             site = str(home['回'])
             ctx.waypoint('demo home', f'CNV {tag} Demo Home', site, *[float(x) for x in home.get('偏移', (0, 0))])
+            home_at = ctx.point('demo home')
         kind = self.ctx.unit(next(iter(self.troops)), 's1')
         ctx.spawns_add(kind)
         for j in range(1, int(d.get('兵', 2)) + 1):
             foes.append(f'UNIT - CNV {tag} Demo Foe {j}')
             outs.append(f'UNIT - CNV {tag} Demo Out {j}')
-        started, iced, turned = (f'CNV_{tag}_Demo_{x}' for x in ('Started', 'Iced', 'Turned'))
-        fire, turn, gone = (f'CNV {tag} Demo {x}' for x in ('Fire', 'Turn', 'Gone'))
-        down = f'CNV_{tag}_Demo_Down'
+        started, iced, turned, to_started = (f'CNV_{tag}_Demo_{x}' for x in ('Started', 'Iced', 'Turned', 'ToStarted'))
+        turn, gone, emerge, made, arm = (f'CNV {tag} Demo {x}' for x in ('Turn', 'Gone', 'Emerge', 'Made', 'Arm'))
+        down, armed = f'CNV_{tag}_Demo_Down', f'CNV_{tag}_Demo_Armed'
         team = ctx.team('s1')
+        # ---- the stages' geometry
+        ice_a, spawn_a, spawn_b = ctx.point(f'ice {shut}'), ctx.point(f'spawn {shut}'), ctx.point(f'spawn {to}')
+        sign_a = ctx.point(f'sign {shut}') if ctx.has_mark(f'sign {shut}') else spawn_a
+        sign_b = ctx.point(f'sign {to}') if ctx.has_mark(f'sign {to}') else spawn_b
+        clear_a, clear_b = self.clear_at(shut), self.clear_at(to)
+        back = (clear_a[0] - ice_a[0], clear_a[1] - ice_a[1])
+        norm = math.hypot(*back) or 1.0
+        view_a1 = None
+        for far in (100.0, 150.0, 200.0, 250.0, 300.0, 400.0):          # the engineer's way in, out of the picture
+            approach = (clear_a[0] + back[0] / norm * far, clear_a[1] + back[1] / norm * far)
+            view_a1 = frame_for([clear_a, ice_a], [approach])
+            if view_a1:
+                break
+        view_a2 = frame_for([sign_a, spawn_a, ice_a], [])
+        view_b = frame_for([sign_b, spawn_b], [clear_b, clear_a] + ([home_at] if home_at else []))
+        for view, what in ((view_a1, 'the engineer at the clear mark and the ice'),
+                           (view_a2, 'the sculpture, the spawn mark and the ice'), (view_b, 'the detour sculpture')):
+            if not view:
+                from plantime import PlanError
+                raise PlanError(f'{self.name}: 演示 can not be framed: no camera centre shows {what} and keeps what must '
+                                f'not be seen out of a {2 * model.LETTERBOX_HALF[0]:g} x {2 * model.LETTERBOX_HALF[1]:g} picture')
+        ctx.add_point(f'CNV {tag} Demo Approach', approach)
+        ctx.add_area(f'CNV {tag} Demo Stand', square(*clear_a, STAND_AREA))
+        ctx.add_area(f'CNV {tag} Demo Hole', square(*spawn_a, HOLE_AREA))
+        for key, name, way, wid, at in (('demo view A1', f'CNV {tag} Demo View A1', way_a, shut, view_a1),
+                                        ('demo view A2', f'CNV {tag} Demo View A2', way_a, shut, view_a2),
+                                        ('demo view B', f'CNV {tag} Demo View B', way_b, to, view_b)):
+            ice = ctx.point(f'ice {wid}')
+            ctx.waypoint(key, name, way['点'], at[0] - ice[0], at[1] - ice[1])
+        cam = {k: ctx.camera({'镜头': f'demo view {k}'}, DEMO_PAN, DEMO_EASE, DEMO_EASE, tight=True)
+               for k in ('A1', 'A2', 'B')}
+        names = {k: f'CNV {tag} - Demo {k}' for k in ('engineer', 'foes', 'down', 'down late', 'out', 'over')}
 
         def fx(wid, smoke=True, crack=True):
-            """The demo street's spawn sculpture smokes and drops a little ice at its foot (it is split by the real
-            horn only: a sculpture cannot be put back)."""
+            """The street's spawn sculpture smokes and drops a little ice at its foot (it is split by the real horn
+            only: a sculpture cannot be put back)."""
             if not self.sculpted or not ctx.has_mark(f'chips {wid}'):
                 return []
             ctx.spawns_add(self.smoke.id, self.chips.id)
             return ([('CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT', self.smoke.id, team, ctx.mark_of(f'sign {wid}'))] if smoke else []) + \
                 ([('CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT', self.chips.id, team, ctx.mark_of(f'chips {wid}'))] if crack else [])
+        ctx.stage('demonstration, the engineer', cam['A1'][0][1],
+                  see=[('the engineer at the clear mark', clear_a), ('the ice', ice_a)],
+                  hide=[('the engineer comes in', approach)], scripts=[names['engineer']])
+        ctx.stage('demonstration, the troops at the shut street', cam['A2'][0][1],
+                  see=[('the sculpture', sign_a), ('the spawn mark', spawn_a), ('the ice', ice_a)], hide=[],
+                  scripts=[names[k] for k in ('foes', 'down', 'down late')],
+                  smoke=[names[k] for k in ('foes', 'down', 'down late')])
+        ctx.stage('demonstration, the pair at the detour street', cam['B'][0][1],
+                  see=[('the sculpture', sign_b), ('the spawn mark', spawn_b)],
+                  hide=[('the pair is taken away', clear_b), ('the engineer is sent home', clear_a)] +
+                       ([('the engineer is at home', home_at)] if home_at else []),
+                  scripts=[names['out'], names['over']], smoke=[names['out']])
+
+        def take_away():
+            return [('SET_FLAG', down, 1)] + [('NAMED_DELETE', f) for f in foes] + fx(shut, crack=False)
+        in_hole = [('NAMED_INSIDE_AREA', f, f'CNV {tag} Demo Hole') for f in foes]
         return [
-            Script(f'CNV {tag} - Demo engineer', [('FLAG', self.demo_on, 1), ('FLAG', started, 0)],
-                   fx(shut, crack=False) + [('SET_FLAG', started, 1),
-                    (('UNIT_TELEPORT_TO_WAYPOINT', eng, f'CNV {tag} Clear {shut}') if home else
-                     ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', eng, tmpl, ctx.team('p1'), f'CNV {tag} Clear {shut}')),
-                    ('SET_MILLISECOND_TIMER', fire, 1.0)]),
-            Script(f'CNV {tag} - Demo ice', [('TIMER_EXPIRED', fire)],
+            # A1: the camera goes to the street and the engineer walks in from out of the picture ...
+            Script(names['engineer'], [('FLAG', self.demo_on, 1), ('FLAG', started, 0)],
+                   [('SET_FLAG', started, 1)] + cam['A1'] + [
+                    (('UNIT_TELEPORT_TO_WAYPOINT', eng, f'CNV {tag} Demo Approach') if home else
+                     ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', eng, tmpl, ctx.team('p1'), f'CNV {tag} Demo Approach'))] +
+                   ctx.order('move', [eng], f'CNV {tag} Clear {shut}', 'p1')),
+            # ... and ices the street from the clear mark, in the picture, as soon as he stands there
+            Script(f'CNV {tag} - Demo ice', [('FLAG', started, 1), ('NAMED_INSIDE_AREA', eng, f'CNV {tag} Demo Stand')],
                    [('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', eng, self.eng.abilities['freeze'],
                      ctx.mark_of(f'ice {shut}'))]),
-            Script(f'CNV {tag} - Demo foes', [('FLAG', started, 1), ('FLAG', self.frozen(shut), 1), ('FLAG', iced, 0),
-                                              ('FLAG', self.demo_off, 0)],
-                   [('SET_FLAG', iced, 1), ('SET_MILLISECOND_TIMER', turn, float(d.get('等', 4.0)))] +
-                   fx(shut, smoke=False) +
+            # A2: once the ice stands (the Frozen flag, so it waits as long as the building takes) the camera goes up to
+            # the sculpture and, when it is there, the pair comes out of it in smoke
+            Script(f'CNV {tag} - Demo pan', [('FLAG', started, 1), ('FLAG', self.frozen(shut), 1), ('FLAG', iced, 0),
+                                             ('FLAG', self.demo_off, 0)],
+                   [('SET_FLAG', iced, 1), ('SET_MILLISECOND_TIMER', made, DEMO_PAN + 0.3)] + cam['A2']),
+            Script(names['foes'], [('TIMER_EXPIRED', made), ('FLAG', self.demo_off, 0)],
+                   fx(shut) + [('SET_MILLISECOND_TIMER', turn, float(d.get('等', 3.5)))] +
                    [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', f, kind, team, ctx.mark_of(f'spawn {shut}')) for f in foes] +
                    ctx.order('move', foes, f'CNV {tag} Clear {shut}', 's1')),
-            # the foes meet the ice, turn and walk back to the tunnel mouth they came out of (user 2026-11-03: they vanished
-            # at the wall); only there do they go down it, and come up at the detour street
+            # they meet the ice, turn and walk back to the sculpture they came out of
             Script(f'CNV {tag} - Demo turn', [('TIMER_EXPIRED', turn), ('FLAG', turned, 0), ('FLAG', self.demo_off, 0)],
-                   [('SET_FLAG', turned, 1), ('SET_MILLISECOND_TIMER', gone, DEMO_BACK)] +
+                   [('SET_FLAG', turned, 1), ('SET_MILLISECOND_TIMER', gone, float(d.get('退', DEMO_BACK))),
+                    ('SET_MILLISECOND_TIMER', arm, DEMO_ARM)] +
                    ctx.order('move', foes, ctx.mark_of(f'spawn {shut}'), 's1')),
-            Script(f'CNV {tag} - Demo down', [('TIMER_EXPIRED', gone), ('FLAG', turned, 1), ('FLAG', down, 0),
-                                              ('FLAG', self.demo_off, 0)],
-                   [('SET_FLAG', down, 1)] + [('NAMED_DELETE', f) for f in foes] + fx(to) +
+            Script(f'CNV {tag} - Demo armed', [('TIMER_EXPIRED', arm)], [('SET_FLAG', armed, 1)]),
+            # there they go down it, in smoke (the moment they stand at its mouth, which is DEMO_ARM seconds after they
+            # turned at the earliest -- they have not left it yet before -- else `退` seconds on at the latest)
+            Script(names['down'], [('FLAG', armed, 1), ('FLAG', down, 0), ('FLAG', self.demo_off, 0)] + in_hole,
+                   take_away()),
+            Script(names['down late'], [('TIMER_EXPIRED', gone), ('FLAG', turned, 1), ('FLAG', down, 0),
+                                        ('FLAG', self.demo_off, 0)], take_away()),
+            # B: the camera goes to the detour street, and once it is there the pair comes up in smoke and walks off
+            Script(f'CNV {tag} - Demo to', [('FLAG', self.demo_to, 1), ('FLAG', to_started, 0), ('FLAG', self.demo_off, 0)],
+                   [('SET_FLAG', to_started, 1), ('SET_MILLISECOND_TIMER', emerge, DEMO_PAN + 0.4)] + cam['B']),
+            Script(names['out'], [('TIMER_EXPIRED', emerge), ('FLAG', self.demo_off, 0)],
+                   fx(to) +
                    [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', o, kind, team, ctx.mark_of(f'spawn {to}')) for o in outs] +
+                   ctx.order('move', outs, f'CNV {tag} Clear {to}', 's1') +
                    [('OBJECT_CREATE_RADAR_EVENT', outs[0], 0)]),
-            Script(f'CNV {tag} - Demo over', [('FLAG', self.demo_off, 1), ('FLAG', started, 1)],
+            Script(names['over'], [('FLAG', self.demo_off, 1), ('FLAG', started, 1)],
                    [('UNIT_TELEPORT_TO_WAYPOINT', eng, f'CNV {tag} Demo Home') if home else ('NAMED_DELETE', eng)] +
                    [('NAMED_DELETE', n) for n in foes + outs]),
         ]

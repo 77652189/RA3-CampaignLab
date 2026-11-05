@@ -274,6 +274,53 @@ def camera_outside_the_view(m):
     return out
 
 
+# K8 (I4, G14): what a demonstration does that is not seen is not done in the picture. Its scripts are named
+# `CNV <tag> - Demo ...`; those that make, take away or move a unit belong to a stage (ctx.stage) with a camera of its
+# own, and the stage's geometry holds on the product: the camera aims at a view point whose picture (the ground a
+# scene's camera shows, model.LETTERBOX_HALF about it) holds what is to be seen with STAGE_MARGIN to spare and has the
+# spots where a unit appears from or goes to unseen STAGE_MARGIN outside it. (User 2026-11-05, A4: "the troops vanished
+# on open snow" -- the picture was 345 units tall, the engineer's cast mark was just under its edge and the sculpture
+# the troops went down was just above.)
+DEMO_UNIT_ACTIONS = ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', 'NAMED_DELETE', 'UNIT_TELEPORT_TO_WAYPOINT')
+
+
+def demo_unframed(m):
+    import model
+    hx, hy = model.LETTERBOX_HALF
+    k = model.STAGE_MARGIN
+    out, declared = [], set()
+    for st in m.stages:
+        at = m.waypoints.get(st['camera'])
+        if at is None or st['camera'] not in m.views:
+            out.append(f"stage {st['label']}: camera {st['camera']!r} is no view point (ctx.camera makes them)")
+            continue
+        declared |= set(st['scripts'])
+        for what, (x, y) in st['see']:
+            if abs(x - at[0]) > hx - k or abs(y - at[1]) > hy - k:
+                out.append(f"stage {st['label']}: {what} at ({x:.0f}, {y:.0f}) is not {k:g} inside the picture of the "
+                           f"camera at ({at[0]:.0f}, {at[1]:.0f}), {2 * hx:g} x {2 * hy:g} wide")
+        for what, (x, y) in st['hide']:
+            if abs(x - at[0]) < hx + k and abs(y - at[1]) < hy + k:
+                out.append(f"stage {st['label']}: {what} at ({x:.0f}, {y:.0f}) is less than {k:g} outside the picture of "
+                           f"the camera at ({at[0]:.0f}, {at[1]:.0f}): a unit would appear or vanish in view")
+        by_name = {s.name: s for s in m.scripts}
+        for name in st.get('smoke', ()):
+            s = by_name.get(name)
+            made = [m.waypoints.get(a[3]) for a in (s.do if s else ()) if a[0] == 'CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT']
+            if s is None:
+                out.append(f"stage {st['label']}: script {name!r} (it makes or takes away units in the picture) is not built")
+            elif not any(p and abs(p[0] - at[0]) <= hx and abs(p[1] - at[1]) <= hy for p in made):
+                out.append(f"{name}: makes or takes away units in the picture of the camera at ({at[0]:.0f}, {at[1]:.0f}) "
+                           f"with no smoke made in it (an unseen appearing or vanishing needs the picture's edge, a seen "
+                           f"one a smoke)")
+    for s in m.scripts:
+        if ' - Demo ' in s.name and not s.name.startswith('Test') and s.name not in declared \
+                and any(a[0] in DEMO_UNIT_ACTIONS for a in s.do):
+            out.append(f'{s.name}: makes, takes away or moves a unit in a demonstration without a stage (ctx.stage) '
+                       f'that frames it')
+    return out
+
+
 # G6 (K6): the commands that give one named unit an order. A level never uses them: a group is a team of the map's own
 # and is ordered as one (ctx.order / Mission.order: the units join the team in the same script, so a member lost leaves
 # the rest all going and one made later takes the order too, I7).
@@ -476,7 +523,7 @@ def contract(mission):
     out += said_lines_kept(m)
     out += said_once_and_on_time(m)
     out += team_orders_land(m) + kind_counts_in_area(m)
-    out += camera_outside_the_view(m)
+    out += camera_outside_the_view(m) + demo_unframed(m)
     out += music_resumes(m) + ending_line_fits(m)
     out += single_orders(m) + pace_released(m)
     out += ore_faces_refinery(m) + ore_in_groups(m) + oil_off_the_camps(m) + base_has_ore(m) + cast_points_clear(m) + map_design(m)

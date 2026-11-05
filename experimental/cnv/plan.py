@@ -24,6 +24,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 import glossary                                 # noqa: E402
+import model                                    # noqa: E402
 import langs                                    # noqa: E402
 from ctx import CHAT, FUNC, STRIP_HOLD, STRIP_MAX, Ctx    # noqa: E402
 from contract import ENDING_LIBRARY_AT, MUSIC_DYNAMIC, unresumed_cues   # noqa: E402
@@ -668,13 +669,14 @@ class Compiler:
                 ('SET_FLAG', 'Mission Lost', 1)]
         raise PlanError(f'action {a!r}: no such action (plan.py lists them)')
 
-    def camera(self, a, secs, ease_in, ease_out):
+    def camera(self, a, secs, ease_in, ease_out, tight=False):
         """MOVE_CAMERA_TO / _NAMED (waypoint, seconds, stutter 0, ease in, ease out). Retail runs a pan linear or eased
-        only at its ends (retailref: 144 of 240 moves 0/0/0, the rest 1-5 s eases on pans of 3-12 s)."""
+        only at its ends (retailref: 144 of 240 moves 0/0/0, the rest 1-5 s eases on pans of 3-12 s). `tight`: a camera
+        of a staged piece of a scene (letterbox on, zoomed in): held by the scene's picture, not by play's."""
         ps = self.parts(str(a['镜头']))
         if ps:
             return [('MOVE_CAMERA_TO_NAMED', self.m.cast[ps[0]].name, secs, 0.0, ease_in, ease_out)]
-        return [('MOVE_CAMERA_TO', self.view_point(str(a['镜头'])), secs, 0.0, ease_in, ease_out)]
+        return [('MOVE_CAMERA_TO', self.view_point(str(a['镜头']), tight), secs, 0.0, ease_in, ease_out)]
 
     def border_rect(self, name):
         borders = getattr(self.m.map, 'BORDERS', {})
@@ -689,22 +691,22 @@ class Compiler:
             name = p.spec.get('边界') or name
         return name
 
-    def view_rect(self, names):
+    def view_rect(self, names, half=None):
         """Where a camera centre may be while the playable area is (the intersection of) the named borders: inside
-        them, VIEW_HALF from their edges (the middle when a border is narrower than the screen)."""
+        them, VIEW_HALF (or `half`) from their edges (the middle when a border is narrower than the screen)."""
         x0, y0, x1, y1 = (None,) * 4
         for n in names:
             a, b, c, d = self.border_rect(n)
             x0, y0, x1, y1 = (a if x0 is None else max(x0, a), b if y0 is None else max(y0, b),
                               c if x1 is None else min(x1, c), d if y1 is None else min(y1, d))
-        hx, hy = VIEW_HALF
+        hx, hy = half or VIEW_HALF
         out = []
         for lo, hi, h in ((x0, x1, hx), (y0, y1, hy)):
             lo, hi = (lo + h, hi - h) if hi - lo > 2 * h else ((lo + hi) / 2,) * 2
             out += [lo, hi]
         return out[0], out[2], out[1], out[3]
 
-    def view_point(self, site):
+    def view_point(self, site, tight=False):
         """The waypoint a camera move aims at: the site, held inside the view rect of the playable area in force (K5).
         A 过场 aims by its phase's border (self.view); any other camera by every border the level uses, since a rule
         can fire in any phase. Published as `CNV <tag> Cam <site> <x> <y>` with its rect in m.views."""
@@ -712,7 +714,7 @@ class Compiler:
             names = [self.view]
         else:
             names = sorted({self.d.get('边界') or 'whole'} | {p.spec['边界'] for p in self.phases if p.spec.get('边界')})
-        rect = self.view_rect(names)
+        rect = self.view_rect(names, model.LETTERBOX_UNDER if tight else None)
         x, y = self.m.waypoints[self.m.marks[site]] if site in self.m.marks else self.m.where(site).at()
         x, y = min(max(x, rect[0]), rect[2]), min(max(y, rect[1]), rect[3])
         name = f'CNV {self.tag} Cam {site} {x:.0f} {y:.0f}'      # (an asset id: letters, digits and spaces only)

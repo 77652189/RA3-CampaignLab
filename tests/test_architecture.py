@@ -352,6 +352,61 @@ def test_g10_every_camera_move_aims_at_a_view_point():
     assert 'G10 outside True' in r.stdout and 'G10 raw True' in r.stdout, r.stdout.strip()
 
 
+# G14 (I4, K8): nothing a demonstration does is done unseen in the picture. A demonstration is staged (ctx.stage: a
+# camera of its own, what it shows, where units appear from / go to unseen, which scripts make or take them away in
+# view and so carry smoke); contract.demo_unframed holds that on the product of every build: what is to be seen stands
+# STAGE_MARGIN inside the picture (model.LETTERBOX_HALF about the camera), what is hidden STAGE_MARGIN outside it, every
+# script that makes / takes away / moves a unit in a ` - Demo ` script belongs to a stage, and one that does it in view
+# makes smoke in view. The mutations are the bugs of 2026-11-05: the picture moved so the engineer's cast mark is
+# out of it (the state before the fix: 345 units tall, the mark just under the edge), troops taken away in view with no
+# smoke, and a demonstration script with no stage.
+G14_PROBE = '''
+import sys
+sys.path[:0] = [{cnv!r}, {root!r}]
+import build, contract, model
+from model import Script
+bad, stages = [], 0
+for n in sorted(build.MISSIONS):
+    m, _, _ = build.resolve(n, '')
+    mm = model.merged(m)
+    stages += len(mm.stages)
+    bad += [(n, p) for p in contract.contract(mm) if 'stage ' in p or ' - Demo ' in p]
+print('G14 builds', len(build.MISSIONS), 'stages', stages, 'bad', bad[:3])
+def fresh():
+    m, _, _ = build.resolve('a4', '')
+    return model.merged(m)
+mm = fresh()
+st = next(s for s in mm.stages if 'engineer' in s['label'])
+x, y = mm.waypoints[st['camera']]
+mm.waypoints[st['camera']] = (x, y - 120.0)                         # the picture slid down: the engineer is out of it
+print('G14 moved', len(contract.demo_unframed(mm)) >= 1)
+mm = fresh()
+st = next(s for s in mm.stages if 'engineer' in s['label'])
+st['hide'].append(('a unit made in view', st['see'][0][1]))        # a place made unseen that is inside the picture
+print('G14 shown', len(contract.demo_unframed(mm)) == 1)
+mm = fresh()
+down = next(s for s in mm.scripts if s.name.endswith('Demo down'))
+down.do = [a for a in down.do if a[0] != 'CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT']      # taken away in view, no smoke
+print('G14 smokeless', len([p for p in contract.demo_unframed(mm) if 'no smoke' in p]) == 1)
+mm = fresh()
+mm.stages = [s for s in mm.stages if 'detour' not in s['label']]   # the detour pair made and taken away without a stage
+print('G14 unstaged', len([p for p in contract.demo_unframed(mm) if 'without a stage' in p]) >= 2)
+mm = fresh()
+mm.scripts.append(Script('CNV A4 - Demo extra', [], [('NAMED_DELETE', 'UNIT - CNV A4 Demo Foe 1')]))
+print('G14 extra', len([p for p in contract.demo_unframed(mm) if 'Demo extra' in p]) == 1)
+'''
+
+
+def test_g14_a_demonstration_is_staged_in_the_picture():
+    import sys
+    probe = G14_PROBE.format(cnv=str(ROOT / CNV), root=str(ROOT))
+    r = subprocess.run([sys.executable, '-I', '-X', 'utf8', '-c', probe], cwd=ROOT, capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr[-2000:]
+    assert 'G14 builds' in r.stdout and 'bad []' in r.stdout and 'stages 0' not in r.stdout, r.stdout.strip()
+    for k in ('moved', 'shown', 'smokeless', 'unstaged', 'extra'):
+        assert f'G14 {k} True' in r.stdout, r.stdout.strip()
+
+
 # G6 (ADR 0016 phase 3, K6): nothing in a built level orders one unit by name. A group is a team of the map's own,
 # ordered as one through ctx.order / Mission.order (the units join the team in the same script). contract.single_orders
 # holds it on the product of every build, and on every check's merged build too (a check's own `Test ...` scripts are
