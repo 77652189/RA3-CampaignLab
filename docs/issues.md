@@ -40,7 +40,7 @@
 | I13 | K10 | "男声播报的地方声音很小" | 第三轮配音 | 配音 | 修了待验（统一到 -14 LUFS，等用户听对比页） | `RA3-ChineseVoice/work/campaign/loudness_ab/` |
 | I14 | K10 | 英文版播报和沃斯的声音仍然像（声纹相似度 0.76） | 配音自查 | 配音 | 待用户听 | |
 | I15 | K9 | 国际版 CampShellEn 没带上新音频，也没逐关验过 | 关卡自查 | 外壳 | 修了待验（11-05 验收：国际版第 4 关不崩；其余章节进的是原版关，见 I16。之前：11-03 已重建，带上 118 句配音；11-04 重建后 9 关逐个从章节列表进游戏，都进到游戏里、停 40 秒没崩，`work/logs/r3_en_slot*.log`、`work/shell/r3/en_slot*/`） | |
-| I16 | K9 | 章节名是我们的，进去却是原版关（布莱顿、戛纳……），9 关草稿玩家玩不到 | 11-05 验收 | 外壳 | 待修（只有 A4 能装进外壳；其它关构建报 `KeyError: 'targets'`，`shell_missions*.json` 只有 A4 有 targets） | `work/acceptance/2026-11-05/` `zh_slots_*.png` |
-| I17 | K9 | 国际版局势介绍卡片字被切成"ce Soldier"；任务摘要标题 Ice Soldiers 和章节名对不上 | 11-05 验收 | 外壳 | 待修 | `work/acceptance/2026-11-05/` `en_tour4_key.png` |
-| I18 | — | 测试台 `bench_start` 进外壳 mod 卡在阵营卡片界面，要操作单位的条目验不了 | 11-05 验收 | 外壳 | 待修（工具问题） | `work/acceptance/2026-11-05/` `start_stuck_faction.png` |
+| I16 | K9 | 章节名是我们的，进去却是原版关（布莱顿、戛纳……），9 关草稿玩家玩不到 | 11-05 验收 | 外壳 | 修了待验（代码已改、**还没重建 Mods、没进游戏**：`build.py campaign --shell [--lang intl]` 把 a1～a9 各装进自己的槽、各用自己的地图；缺 targets 时取关卡目标的位置，都没有就构建报错。见 docs/shell/handoff.md 最上面一节。之前：只有 A4 能装进外壳，其它关构建报 `KeyError: 'targets'`） | `work/acceptance/2026-11-05/` `zh_slots_*.png` |
+| I17 | K9 | 国际版局势介绍卡片字被切成"ce Soldier"；任务摘要标题 Ice Soldiers 和章节名对不上 | 11-05 验收 | 外壳 | 修了待验（短名一律取标题前半，卡片字缩到放得下；未重建） | `work/acceptance/2026-11-05/` `en_tour4_key.png` |
+| I18 | — | 测试台 `bench_start` 进外壳 mod 卡在阵营卡片界面，要操作单位的条目验不了 | 11-05 验收 | 外壳 | 修了待验（外壳构建都在 cnv_map.json 写 slot，`bench_start(mod, chapter=N)` 走章节列表进第 N 关；MCP 服务要重启；未进游戏试） | `work/acceptance/2026-11-05/` `start_stuck_faction.png` |
 | I19 | — | A4 什么都不做约 50 秒车被劫、约 60 秒战败，新玩家可能来不及 | 11-05 验收 | 关卡 | 待定（节奏，先给用户看） | `work/acceptance/2026-11-05/` `zh_slot4_game_sheet.png` |

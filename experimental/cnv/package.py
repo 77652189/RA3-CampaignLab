@@ -149,6 +149,12 @@ class ModSpec:
     launcher: bool = True           # Play_<name>.bat next to the skudef (the shell has its own: launcher.py)
     bench: dict = field(default_factory=dict)           # more for the bench in the sidecar (a check on the shell: the
                                                         # slot to walk into); a release build has none
+    goals: tuple = ()               # the mission's objectives where the player is sent, as published ((x, y) world
+                                    # units, goal_points): the shell's briefing zooms there when shell_missions names none
+    levels: tuple = ()              # a mod of several missions (the campaign shell with every level, shell.campaign):
+                                    # ((slot, level ModSpec), ...), each level's map built into its own folder
+                                    # (level_stem); the level's map_edits, unit_files, templates, extra_*, map_files and
+                                    # border_names are its own map's, the rest of the mod is this spec's
 
 
 def with_more(spec, **more):
@@ -190,13 +196,49 @@ def spec_of(mission, test=None, shell=False, name=None, layers=()):
                    map_name=mm.map.__name__.split('.')[-1], map_edits=(edit,),
                    border_names=tuple(getattr(mm.map, 'BORDERS', {})), unit_files=tuple(unit_files),
                    templates=templates, extra_all=tuple(extra_all), extra_own=tuple(extra_own), strings=strings,
-                   packs=packs)
+                   packs=packs, goals=goal_points(mm))
     if shell:
         import shell as shell_layer
         spec = shell_layer.contribute(spec, shell if isinstance(shell, str) else 'zh')
     for layer in layers:
         spec = layer(spec)
     return spec
+
+
+def goal_points(mm):
+    """Where the mission's objectives send the player, in their order ((x, y) world units): for each objective that is
+    not a bonus, the first thing it marks that has a place -- a mark (waypoint), a cast part (its named object, else
+    the site it stands on) or a map site. Objectives that mark nothing placed are left out."""
+    sites = getattr(mm.map, 'SITES', {})
+    by_name = {o.name: o for o in mm.objects if o.name}
+
+    def where(part):
+        if part in mm.marks:
+            return tuple(mm.point(part))
+        if part in mm.cast:
+            r = mm.cast[part]
+            if r.name in by_name:
+                return by_name[r.name].x, by_name[r.name].y
+            if r.sites and r.sites[0] in sites:
+                return sites[r.sites[0]].at()
+        if part in sites:
+            return sites[part].at()
+        return None
+
+    out = []
+    for g in mm.objectives:
+        if g.bonus:
+            continue
+        got = next((p for p in map(where, g.show) if p), None)
+        if got:
+            out.append((float(got[0]), float(got[1])))
+    return tuple(out)
+
+
+def level_stem(slot):
+    """The map folder and file stem of the level in campaign slot `slot` in a mod of several missions (ModSpec.levels);
+    a mod of one mission keeps make_campnew2.NEW_STEM."""
+    return f'camp_cnva{slot:02d}'
 
 
 def _unit_parts(units, placed, seen):
@@ -268,6 +310,15 @@ def assemble(mission, test=None, name=None, shell=False, layers=()):
     return build_mod(spec, mod_folder(spec.name))
 
 
+def assemble_campaign(missions, name=None, lang='zh', fallback=()):
+    """The campaign shell carrying every mission of `missions` ({slot: mission}) in its slot (shell.campaign, I16), built
+    into one mod (the edition `lang`'s shell name by default); `fallback`: slots with another edition standing in.
+    Returns the mod folder."""
+    import shell as shell_layer
+    spec = shell_layer.campaign({k: spec_of(m) for k, m in missions.items()}, name, lang, fallback)
+    return build_mod(spec, mod_folder(spec.name))
+
+
 def mod_folder(name):
     """Where the mod is written: Documents\\Red Alert 3\\Mods\\<name>; CNV_OUT_DIR/<name> for testbench/fingerprint.py
     (never into Mods); work/staging/<name> while the game is up or a bench game has this mod open."""
@@ -319,20 +370,27 @@ def build_mod(spec, out):
     held = _held([c2, c3, c4, c6, c7, c18])
     release = sdk_build_lock(name)              # one build at a time: the SDK's CNVUnits folder is shared
     try:
+        levels, maps = {}, []                   # several missions: each level's map on its own, first
+        for slot, lv in spec.levels:
+            _restore(held)
+            c18.install()
+            stem = level_stem(slot)
+            c2.NEW_STEM, c2.NEW_DIR = stem, f'data\\maps\\official\\{stem}\\'
+            c4.NEW_MAP = c2.NEW_DIR + stem + '.map'
+            c7.MAP_MOD = f'{name}Map{slot}'
+            borders, drawn = _map_part(lv, c4, c6, c7, c2.SDK)
+            files = c2.map_files()
+            maps.append((files, drawn, c4.cache_entry()))
+            levels[slot] = dict(map=lv.map_name, borders=borders, mission=lv.mission)
+            print(f'{name}: slot {slot} {lv.mission} -> {c4.NEW_MAP}')
+        if spec.levels:
+            _restore(held)
         c18.install()                           # the pipeline (c7 ... c2) and the generated island's start
         c4.NAME = c2.NAME = name
         c2.SRC_DIR = os.path.join(c2.SDK, 'Mods', name, 'data')
         c2.BUILT = os.path.join(c2.SDK, 'BuiltMods', 'mods', name.lower(), 'data')
         c2.OUT = c4.OUT = out
         c7.MAP_MOD = name + 'Map'
-        data = os.path.join(c2.SDK, 'Mods', 'CNVUnits', 'Data')
-        os.makedirs(data, exist_ok=True)
-        for fname, text in spec.unit_files:
-            with open(os.path.join(data, fname), 'w', encoding='utf-8', newline='\r\n') as f:
-                f.write(text.replace('\r\n', '\n'))
-        c7.EXTRA_TEMPLATES.update(spec.templates)
-        c7.EXTRA_ALL += list(spec.extra_all)
-        c7.EXTRA_OWN += list(spec.extra_own)
         c3.STRINGS.update(spec.strings)
         for _, p in spec.packs:
             c3.STRINGS.update(getattr(p, 'strings', {}))
@@ -340,27 +398,64 @@ def build_mod(spec, out):
         c2.EXTRA_STATIC = [p.include for _, p in spec.packs]
         c4.EXTRA_FILES = [f for _, p in spec.packs for f in p.files] + list(spec.big_files)
         c4.CHECKS = [p.check for _, p in spec.packs] + list(spec.checks)
-        borders = []
+        if spec.levels:                         # the maps are built: the mod gets their folders and cache entries
+            c2.map_files = lambda: [f for files, _, _ in maps for f in files]
+            c4.CACHE_ENTRIES = [e for _, _, e in maps]
+            c4.EXTRA_FILES += [f for _, drawn, _ in maps for f in drawn]     # after big_files (a name twice: the last)
+            borders = []
+        else:
+            borders, drawn = _map_part(spec, c4, c6, c7, c2.SDK)
+            write = c6.edit
 
-        def edit(m):
-            for e in spec.map_edits:
-                e(m)
-            import mapterrain
-            names = spec.border_names
-            borders[:] = [(names[k] if k < len(names) else str(k), [v * mapterrain.CELL for v in r])
-                          for k, r in enumerate(mapterrain.HeightMap(m).borders())]
-            # c4.main reads EXTRA_FILES after c2.map_files() (which calls this) has returned
-            c4.EXTRA_FILES = c4.EXTRA_FILES + [f for make in spec.map_files for f in make(m)]
-
-        c6.edit = edit
+            def edit(m):
+                write(m)
+                # c4.main reads EXTRA_FILES after c2.map_files() (which calls this) has returned
+                c4.EXTRA_FILES = c4.EXTRA_FILES + drawn
+            c6.edit = edit
         c4.main()
     finally:
         release()
         _restore(held)
     if not spec.launcher and os.path.isfile(os.path.join(out, f'Play_{name}.bat')):
         os.remove(os.path.join(out, f'Play_{name}.bat'))
-    write_sidecar(out, spec.map_name, borders, spec.bench)
+    more = dict(spec.bench)
+    if spec.slot:                               # a shell build: the bench walks its chapter list (I18), not the faction menu
+        more.setdefault('slot', spec.slot['slot'])
+    if levels:
+        more['levels'] = {str(k): v for k, v in levels.items()}
+        more.setdefault('slot', min(levels))
+        first = levels[more['slot']]
+        write_sidecar(out, first['map'], first['borders'], more)
+    else:
+        write_sidecar(out, spec.map_name, borders, more)
     return out
+
+
+def _map_part(spec, c4, c6, c7, sdk):
+    """Set the pipeline up for the map of `spec` (a mod's or a level's): its units into the SDK's CNVUnits/Data, its
+    templates and linked names, the edit that writes it (c6.edit). Returns (borders, drawn): both fill when the map
+    is made (c2.map_files runs the edit) -- the map's borders in world units, and the files drawn from it."""
+    data = os.path.join(sdk, 'Mods', 'CNVUnits', 'Data')
+    os.makedirs(data, exist_ok=True)
+    for fname, text in spec.unit_files:
+        with open(os.path.join(data, fname), 'w', encoding='utf-8', newline='\r\n') as f:
+            f.write(text.replace('\r\n', '\n'))
+    c7.EXTRA_TEMPLATES.update(spec.templates)
+    c7.EXTRA_ALL += list(spec.extra_all)
+    c7.EXTRA_OWN += list(spec.extra_own)
+    borders, drawn = [], []
+
+    def edit(m):
+        for e in spec.map_edits:
+            e(m)
+        import mapterrain
+        names = spec.border_names
+        borders[:] = [(names[k] if k < len(names) else str(k), [v * mapterrain.CELL for v in r])
+                      for k, r in enumerate(mapterrain.HeightMap(m).borders())]
+        drawn[:] = [f for make in spec.map_files for f in make(m)]
+
+    c6.edit = edit
+    return borders, drawn
 
 
 SIDECAR = 'cnv_map.json'

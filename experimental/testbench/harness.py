@@ -183,14 +183,17 @@ def skudef(mod):
     return os.path.join(MODS, mod, f'{mod}_1.0.skudef')
 
 
-def map_borders(sku):
+def map_borders(sku, chapter=None):
     """The built map's borders [(name, (x0, y0, x1, y1))] from the sidecar the cnv build leaves next to the mod
-    (cnv/parts.write_sidecar); [] for a mod without one (older builds, the campaign makers: the whole map)."""
+    (cnv/parts.write_sidecar); a shell with several levels: chapter `chapter`'s map (the sidecar's 'levels'); [] for a
+    mod without one (older builds, the campaign makers: the whole map)."""
     try:
         with open(os.path.join(os.path.dirname(sku), 'cnv_map.json'), encoding='utf-8') as f:
-            # empty ones left out: the island's container keeps retail leftovers like (5010, 5010, 5010, 5010), and
-            # a zero-size area divided the minimap fit by zero (bench 2026-10-27, the units line's bench_camera)
-            return [(n, tuple(r)) for n, r in json.load(f)['borders'] if r[2] > r[0] and r[3] > r[1]]
+            side = json.load(f)
+        side = side.get('levels', {}).get(str(chapter), side)
+        # empty ones left out: the island's container keeps retail leftovers like (5010, 5010, 5010, 5010), and
+        # a zero-size area divided the minimap fit by zero (bench 2026-10-27, the units line's bench_camera)
+        return [(n, tuple(r)) for n, r in side['borders'] if r[2] > r[0] and r[3] > r[1]]
     except (OSError, ValueError, KeyError):
         return []
 
@@ -261,17 +264,21 @@ class Session:
         self.rate = 1.0             # the speed the mission runs at now: x1 till speed_up
 
     # -- life cycle -------------------------------------------------------------------------------------------
-    def start(self, mod, visible=False, timeout=150, hold=True, steps=None):
+    def start(self, mod, visible=False, timeout=150, hold=True, steps=None, chapter=None):
         """mod None: the plain game (no -modConfig). steps: nav steps to walk instead of nav.json's way into the CNV
-        mission, e.g. nav.json's first step without its click to stop on the main menu (skirmish by hand). A check
-        built on the campaign shell (its sidecar names a slot) walks the chapter list into that slot (shell_steps)."""
+        mission, e.g. nav.json's first step without its click to stop on the main menu (skirmish by hand). A build on
+        the campaign shell (its sidecar names a slot) walks the chapter list into that slot (shell_steps), or into
+        `chapter` (1..9) when given (I18: the release shell carries every level, cnv build.py campaign --shell)."""
         if self.p and self.p.poll() is None:
             raise BenchError(f'a session is running ({self.mod}): stop it first')
         sku = skudef(mod) if mod else 'RA3'
         if mod and not os.path.exists(sku):
             raise BenchError(f'no such mod: {sku}')
-        if steps is None and mod and shell_slot(sku):
-            steps = shell_steps(shell_slot(sku))
+        if chapter and not (mod and shell_slot(sku)):
+            raise BenchError(f'{mod} is no campaign shell build (its cnv_map.json names no slot): no chapter to pick')
+        chapter = chapter or (shell_slot(sku) if mod else None)
+        if steps is None and chapter:
+            steps = shell_steps(chapter)
         slot = slots.take_waiting('RA3-CampaignLab ra3bench', sku)     # queues while other bench games hold all
         foreign = slots.foreign_games()
         if foreign:
@@ -296,7 +303,7 @@ class Session:
         self.frames, self.view, self.log, self.muted, self.t0 = [], None, [], 0, None
         self.shift = (0.0, 0.0)
         self._ground = None
-        self.borders = map_borders(sku) if mod else []
+        self.borders = map_borders(sku, chapter) if mod else []
         self.last_border = self.borders[0] if self.borders else None
         self.hold, self.paused, self.game_s, self.run_from, self.rate = hold, False, 0.0, None, 1.0
         args = [os.path.join(BENCH, 'Data', 'RA3_1.13.game'), '-config', os.path.join(BENCH, 'RA3_chinese_t_1.13.SkuDef'),

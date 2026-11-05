@@ -2,6 +2,23 @@
 
 外壳线 2026-11-03 从关卡线拆出（[architecture.md](../architecture.md) 各线负责的文件）。以前做过的事和坑在 [story/handoff.md](../story/handoff.md) 搜"外壳""CampShell"（第 33～42、61～69 行）。问题编号见 [issues.md](../issues.md) K9。
 
+## I16 / I17 / I18：9 关全装进外壳（2026-11-05 总控派活，git log 搜 "I16"）
+
+**代码已提交，Mods 里还没用新代码重建，也没进游戏验。** 下一个会话从"下一步"做起。
+
+- **I16 做法**：`build.py campaign --shell [--lang intl]` 出 CampShell / CampShellEn，带 a1～a9（`build.campaign_levels`：国际版没有 `_intl` 的关用中文版顶上，打 MISSING 行，A4 以外现在都是这样）。`shell.campaign(levels, name, lang, fallback)` 把各关 ModSpec 合成一个 mod：`ModSpec.levels=((槽, 关的 spec), ...)`，`package.build_mod` 先逐关编地图（每关自己的文件夹 `package.level_stem(k)`=`camp_cnvaNN`、自己的地图缓存条目 `c4.CACHE_ENTRIES`、单位只进本关地图流，关与关之间 `_restore`），再编一次静态流（`make_campnew2.SHELL['maps']` 让每个槽的模板指向自己的地图）。标签两关不同文本→报错；顶替关（fallback）的同名标签让位（`AUTOSAVE:CNVCAMPAIGN`）；两关各带音乐/配音包→报错（目前只有 A4 带）。
+- **targets 从源头**：`shell_missions*.json` 没写 targets 时用 `ModSpec.goals`（`package.goal_points`：每个非奖励目标 show 里第一个有位置的标记/角色/地点）；都没有就 SystemExit 说清楚。没有 BORDERS 的图（island）按 5000×5000 整图算。
+- **I17**：短名一律取标题 " · " 前半（`shell.short_of`），卡片字 `centered(width=)` 缩到放得下。
+- **I18**：所有外壳构建的 cnv_map.json 都写 `slot`（多关还写 `levels`：每关的图名、边界）；`harness.start(chapter=)`、`bench_start(chapter=N)` 走章节列表进第 N 关，边界取那一关的。**MCP 服务要重启才认新参数。**
+- 测试 `tests/test_shell.py` 末尾 6 条（缺 targets、9 关都有目标位置、短名和卡片、合成规则、build_mod 逐关建图、测试台按章节）。
+- **坑**：写这些时工作区里 A1 过不了契约（别的线没提交的 `contract.py` STRIP_COUNTER / `strip.py`，I1 字幕条），`spec_of(a1)` 直接 assert。他们提交前 `build.py campaign --shell` 会停在 A1。另外 a7、a8 的 `CNV_Liberty.xml` 内容不同，逐关写 CNVUnits 各编各的，理论上没问题，进游戏要专门看 A7、A8 的自由女神。
+
+**下一步**：
+1. 等 A1 契约恢复（`git log` 看 I1 提交了没有）；单独查游戏没在运行；后台跑 `python -I -X utf8 experimental/cnv/build.py campaign --shell > work/logs/campaign_zh.log`，再 `--lang intl`（约 9 次地图编译）。
+2. 重启 ra3bench MCP 进程，`bench_start('CampShell', chapter=k)` k=1..9 各进一次，`bench_look` 一张小图确认是我们的图（不是布莱顿、戛纳）；英文版同样，再看 A4 任务摘要卡片字没被切。
+3. 跑 `fingerprint.py record shell_s5` + `diff baseline shell_s5`：单关路径的 build_mod 改过（`_map_part` 抽出来了），要确认 A4 单关外壳没变。
+4. issues.md 里 I16、I17、I18 现在标"修了待验"，验过后在报告里写结果。
+
 ## 编辑器第三轮：Agent 能用、桥、一个启动项（2026-11-04 总控派活，关卡线画 A9 布鲁塞尔后的反馈，git log 搜 "sketch for agents"）
 
 - **Agent 用法**：格式文档 [sketch-format.md](sketch-format.md)（字段、单位、坐标系、能通过的例子）。`sketch2map.py <名字> --check --sketch 文件.json`（`-` 读标准输入）：存成草图、生成、检查，只打十来行摘要（构建自己的打印压掉），全文在 report.json，退出码 0＝通过。页面右栏"草图 JSON"：粘贴导入（替换整张，能撤销，先查 version/start/borders/base）、把当前草图放进框里；属性面板加了坐标：地点/矿场/出生点 x、y，坡道和桥两端"x, y"，地块和墙/路的坐标 JSON（不合法就不改，状态栏说为什么）。

@@ -54,7 +54,7 @@ TEXTS = {
                notes_title='任务说明', goal='目标{n}：{text}', closing='指挥官，两个目标都已标在地图上。',
                other_card='（占位）：这一战役还没做。', other_name='{side} 第 {k} 关（占位）', other_short='{side} {k}',
                officer='莉娜·沃斯', officer_title='情报官'),
-    'intl': dict(title='Sapporo Snow Festival · Horns and Ice Walls', short='Ice Soldiers', file='shell_missions.en.json',
+    'intl': dict(title='Sapporo Snow Festival · Horns and Ice Walls', short='Sapporo Snow Festival', file='shell_missions.en.json',
                  intro='Pre-mission movie (placeholder)', colon=': ', semi='; ', note=' (mission notes)', narr='(placeholder narration) ',
                  card='Allied campaign (placeholder): at the Sapporo snow festival, one blast of the horn and the tunnels of three streets send out their troops.',
                  mission='Allied Mission {k}', pic='Placeholder', pic_of=' (placeholder)', intel='Intel', goals='Goals',
@@ -100,6 +100,7 @@ class Shell:
     overrides: dict = field(default_factory=dict)   # retail labels rewritten
     prefix_overrides: dict = field(default_factory=dict)    # label prefix -> text, every retail label that starts so
     map_files: tuple = ()                           # f(MapFile) -> files drawn from the built map (make(.., later=True))
+    drawn: dict = field(default_factory=dict)       # the same per built slot: {slot: f(MapFile) -> files} (make_slots)
 
 
 def font(size):
@@ -107,10 +108,16 @@ def font(size):
     return ImageFont.truetype(FONT, size, index=0)
 
 
-def centered(draw, xy_center, text, size, fill, stroke=0, stroke_fill=(0, 0, 0)):
+def centered(draw, xy_center, text, size, fill, stroke=0, stroke_fill=(0, 0, 0), width=None):
+    """`text` centred on xy_center; width: at most this wide (the font shrinks till it fits: I17, a long English name
+    ran off both sides of its card)."""
     x, y = xy_center
     f = font(size)
     l, t, r, b = draw.textbbox((0, 0), text, font=f, stroke_width=stroke)
+    while width and r - l > width and size > 8:
+        size -= 2
+        f = font(size)
+        l, t, r, b = draw.textbbox((0, 0), text, font=f, stroke_width=stroke)
     draw.text((x - (l + r) / 2, y - (t + b) / 2), text, font=f, fill=fill, stroke_width=stroke, stroke_fill=stroke_fill)
 
 
@@ -162,7 +169,8 @@ def name_card(inner, lines):
         t = y / inner[1]
         d.line((0, y, inner[0], y), fill=(int(30 + 90 * t), int(70 + 130 * t), int(130 + 110 * t), 255))
     for (text, size, dy) in lines:
-        centered(d, (inner[0] // 2, dy), text, size, (255, 255, 255), stroke=3, stroke_fill=(10, 30, 70))
+        centered(d, (inner[0] // 2, dy), text, size, (255, 255, 255), stroke=3, stroke_fill=(10, 30, 70),
+                 width=inner[0] * 0.9)
     return card
 
 
@@ -643,15 +651,16 @@ def thumbnail(short, real, size=128, picture=None):
     return buf.getvalue()
 
 
-def thumbnails(slots, picture=None):
-    """[(big path, bytes)]: a mission's map picture is the file <its map folder>\\\\<stem>.tga; the built mission's is in the new
-    folder (the build puts it there: make_campnew2.map_files), the others replace the retail folders' files (this mod's big
-    only: retail's are not touched). `slots`: the slots to make (make()'s {slot: (short, built?, ..)})."""
+def thumbnails(slots, picture=None, own=None):
+    """[(big path, bytes)]: a mission's map picture is the file <its map folder>\\\\<stem>.tga; a built mission's is in its
+    new folder (`own`: {slot: stem}, OWN_STEM by default; the build puts it there: make_campnew2.map_files), the others
+    replace the retail folders' files (this mod's big only: retail's are not touched). `slots`: the slots to make
+    (make()'s {slot: (short, built?, ..)})."""
     out = []
     stems = retail_map_stems()
     for k in slots:
         short, built = slots[k][:2]
-        stem = OWN_STEM if built else stems[k]
+        stem = (own or {}).get(k, OWN_STEM) if built else stems[k]
         out.append((f'data{B}maps{B}official{B}{stem}{B}{stem}.tga', thumbnail(short, built, picture=picture)))
         out.append((f'data{B}maps{B}official{B}{stem}{B}{stem}_art.tga', thumbnail(short, built, 512, picture)))
     return out
@@ -742,17 +751,36 @@ def commander_text(k, title, info):
     return f'{title}{T["note"]}\n{info["briefing"]}\n{objectives}'
 
 
-def site_targets(map_name, names):
-    """The built mission's two objectives on its map picture: the map's published sites `names` (shell_missions.json
-    `targets`) as fractions (u, v) of the picture, which shows the map's first border (the whole map), north up."""
+def site_targets(map_name, names=None, goals=(), slot=None):
+    """The built mission's two objectives on its map picture as fractions (u, v) of the picture, which shows the map's
+    first border (the whole map), north up: the map's published sites `names` (shell_missions.json `targets`), or
+    without them the first two of `goals` (ModSpec.goals: where the mission's own objectives send the player; one is
+    used twice). Neither: the build stops and says so (I16: a missing field must not fall back to anything silently)."""
     import importlib
     mod = importlib.import_module(f'maps.{map_name}')
-    x0, y0, x1, y1 = next(iter(mod.BORDERS.values()))
-    out = []
-    for name in names:
-        s = mod.SITES[name]
-        out.append(((s.x - x0) / (x1 - x0), 1 - (s.y - y0) / (y1 - y0)))
-    return tuple(out)
+    # a map with no BORDERS is the whole container: Heidelberg's, 5000 x 5000 world units playable (maps/island.py)
+    x0, y0, x1, y1 = next(iter((getattr(mod, 'BORDERS', None) or {'whole': (0.0, 0.0, 5000.0, 5000.0)}).values()))
+    if names:
+        gone = [n for n in names if n not in mod.SITES]
+        if gone:
+            raise SystemExit(f'shell: slot {slot}: {T["file"]} targets {gone} are no sites of map {map_name} '
+                             f'(its sites: {sorted(mod.SITES)})')
+        points = [mod.SITES[n].at() for n in names]
+    else:
+        points = list(goals)[:2]
+        if not points:
+            raise SystemExit(f'shell: slot {slot}: no "targets" in {T["file"]} and the mission publishes no objective '
+                             f'with a place (Goal.show) on map {map_name}: name two of its sites there')
+    points = (points * 2)[:2]
+    return tuple(((x - x0) / (x1 - x0), 1 - (y - y0) / (y1 - y0)) for x, y in points)
+
+
+def short_of(m):
+    """A slot's short name: its title's first part (before ' · '), so the briefing's heading and the map card say what
+    the chapter list says (I17: 'Ice Soldiers' under 'Sapporo Snow Festival · ...')."""
+    return m['title'].split(' · ')[0].strip()
+
+
 
 
 def picture_of(m):
@@ -761,22 +789,30 @@ def picture_of(m):
     return maprender.render(m, MAP_PICTURE, px=2, plain=True)
 
 
-def make(mission_title, mission_name='CampA4', lang='zh', map_name='sapporo', later=False):
-    """Everything the shell adds to the build of `mission_name` (the plan's `名字` / title, in the briefing's mission list) in the
-    edition `lang` (langs.py: zh, intl; the words of the shell are TEXTS) on the map module `map_name`. later: the built
-    slot's screens and thumbnails are drawn from the map the build writes (sp.map_files, ModSpec.map_files), not from
-    MAP_PICTURE as the last build left it."""
+def make(mission_title, mission_name='CampA4', lang='zh', map_name='sapporo', later=False, goals=()):
+    """Everything the shell adds to the build of the one mission `mission_name` (in the slot slot_of names) in the
+    edition `lang` (langs.py: zh, intl; the words of the shell are TEXTS) on the map module `map_name`; `goals`: where
+    its objectives are (ModSpec.goals), for a slot whose shell_missions entry names no targets. make_slots says more."""
+    return make_slots({slot_of(mission_name): (map_name, goals, OWN_STEM)}, lang, later)
+
+
+def make_slots(built, lang='zh', later=False):
+    """Everything the shell adds to a build carrying the missions `built`, {slot: (map module name, goals (ModSpec.goals),
+    map stem)}, in the edition `lang`. Every slot's names are shell_missions[.en].json's (the short name short_of the
+    title). later: each built slot's screens and thumbnails are drawn from the map the build writes (sp.drawn[slot],
+    f(MapFile) -> files; one built slot: also sp.map_files), not from MAP_PICTURE as the last build left it."""
     use_lang(lang)
-    slot = slot_of(mission_name)
     info = missions()
-    info[slot] = dict(info[slot], title=TITLE, short=SHORT)             # the built mission's names are the plan's
-    sp = Shell(slot=slot)
+    for m in info.values():
+        m['short'] = short_of(m)
+    first = min(built)
+    sp = Shell(slot=first)
     sp.template = {'no_portrait': True}
     for k, m in info.items():
         attrs = {'OverviewTalkingHead': HEAD_ID, 'IntroMovie:FileName': intro_id(k),
                  'IntroMovie:ScreenName': f'MissionName:{label(k)}', 'IntroMovie:Description': f'MissionDesc:{label(k)}',
                  'AICommander:Description': f'CommanderDescription:{label(k)}'}
-        if k == slot:
+        if k == first:
             sp.attrs = attrs
         else:
             sp.others[k] = attrs
@@ -788,17 +824,20 @@ def make(mission_title, mission_name='CampA4', lang='zh', map_name='sapporo', la
                            f'MISSIONOBJ:{label(k)}_1': m['objectives'][0], f'MISSIONOBJ:{label(k)}_2': m['objectives'][1]})
     sp.strings.update(narration_strings(info))
     sp.clips[HEAD_ID] = head_clip()
-    slots = {k: (m['short'], k == slot, tuple(m['where']), site_targets(map_name, m['targets']) if k == slot else None)
+    slots = {k: (m['short'], k in built, tuple(m['where']),
+                 site_targets(built[k][0], m.get('targets'), built[k][1], k) if k in built else None)
              for k, m in info.items()}
+    own = {k: b[2] for k, b in built.items()}
     if later:
-        own = {slot: slots.pop(slot)}
+        mine = {k: slots.pop(k) for k in built}
 
-        def drawn(m):                                   # the built slot's screens, from the map this build writes
+        def drawn(m, k):                                # a built slot's screens, from the map this build writes
             use_lang(lang)
             picture = picture_of(m)
-            return apt_files(own, picture, screens=False) + thumbnails(own, picture)
-        sp.map_files = (drawn,)
-    sp.files = apt_files(slots) + thumbnails(slots)
+            return apt_files({k: mine[k]}, picture, screens=False) + thumbnails({k: mine[k]}, picture, own)
+        sp.drawn = {k: (lambda m, k=k: drawn(m, k)) for k in built}
+        sp.map_files = (sp.drawn[first],) if len(built) == 1 else ()
+    sp.files = apt_files(slots) + thumbnails(slots, own=own)
     sp.overrides = {'APT:ALLIES_FACTION_DESCRIPTION': T['card'], **{f'MONITOR:{k}': ' ' for k in MONITOR},
                     **{f'APT:{k}': T['notes_title'] for k in ('COCOMMANDER_NAME_TITLE', 'COCOMMANDER', 'YOUR_CO_COMMANDER',
                                                               'SELECT_YOUR_AI_CO_COMMANDER')}}   # the overview tab's head ("副指挥官")
@@ -823,7 +862,7 @@ def contribute(spec, lang='zh'):
     from dataclasses import replace
     from package import with_more
     from experimental.video import pack as video_pack
-    sp = make(spec.title or spec.mission, spec.mission, lang, spec.map_name or 'sapporo', later=True)
+    sp = make(spec.title or spec.mission, spec.mission, lang, spec.map_name or 'sapporo', later=True, goals=spec.goals)
     video = dict(spec.packs).get('video')
     video = video_pack.Later({**(video.clips if video else {}), **sp.clips})     # written in build_mod's lock
     packs = tuple((k, video if k == 'video' else p) for k, p in spec.packs)
@@ -833,3 +872,43 @@ def contribute(spec, lang='zh'):
                      big_files=sp.files, map_files=sp.map_files)
     return replace(spec, packs=packs, slot={'slot': sp.slot, 'attrs': sp.attrs, 'others': sp.others, **sp.template},
                    launcher=False)
+
+
+def campaign(levels, name=None, lang='zh', fallback=()):
+    """The campaign shell with a level of ours in each of `levels`' slots (I16: the release shell carries every Allied
+    level, not one): {slot: the level's ModSpec (package.spec_of, no shell)} -> the mod's ModSpec, its levels in
+    ModSpec.levels (package.build_mod builds each map into its own folder, package.level_stem) and every slot's
+    template on its map (make_campnew2.SHELL 'maps'). The levels' labels and packs go into the one mod: a label two
+    levels give different texts, or a second music / voice pack, stops the build (one mod has one of each); their
+    movies join the shell's in one video pack. `fallback`: the slots whose level has no edition `lang` (another
+    edition stands in, build.campaign_levels says so): a label they share with a level of the edition keeps that
+    level's text (AUTOSAVE:CNVCAMPAIGN in English, not Chinese)."""
+    from dataclasses import replace
+    from package import ModSpec, level_stem, with_more
+    from experimental.video import pack as video_pack
+    import langs
+    name = name or NAME + langs.edition(lang)['suffix']
+    built = {k: (lv.map_name, lv.goals, level_stem(k)) for k, lv in levels.items()}
+    sp = make_slots(built, lang, later=True)
+    strings, clips, packs = {}, {}, {}
+    for k, lv in sorted(levels.items(), key=lambda kv: (kv[0] in fallback, kv[0])):    # the edition's own levels first
+        clash = sorted(x for x in lv.strings if x in strings and strings[x] != lv.strings[x])
+        if clash and k not in fallback:
+            raise SystemExit(f'shell: slot {k} ({lv.mission}) gives labels another level has a different text: {clash[:8]}')
+        strings.update({x: v for x, v in lv.strings.items() if x not in strings})
+        for kind, p in lv.packs:
+            if kind == 'video':
+                clips.update(p.clips)
+            elif kind in packs:
+                raise SystemExit(f'shell: slot {packs[kind][0]} and slot {k} both bring a {kind} pack: one mod has one')
+            else:
+                packs[kind] = (k, p)
+    video = video_pack.Later({**clips, **sp.clips})                     # written in build_mod's lock
+    maps = {k: f'data{B}maps{B}official{B}{s}{B}{s}.map' for k, (_, _, s) in built.items()}
+    spec = ModSpec(name=name, mission='+'.join(lv.mission for _, lv in sorted(levels.items())),
+                   packs=tuple((kind, p) for kind, (_, p) in packs.items()) + (('video', video),),
+                   levels=tuple((k, replace(lv, map_files=lv.map_files + (sp.drawn[k],))) for k, lv in sorted(levels.items())),
+                   slot={'slot': sp.slot, 'attrs': sp.attrs, 'others': sp.others, 'maps': maps, **sp.template},
+                   launcher=False)
+    return with_more(spec, strings={**strings, **sp.strings}, overrides=sp.overrides,
+                     prefix_overrides=sp.prefix_overrides, big_files=sp.files)

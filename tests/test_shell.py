@@ -443,3 +443,117 @@ def test_a_check_as_a_layer_writes_the_map_the_merged_build_writes():
     # only a shell build tells the bench a slot to walk into; the release build's sidecar stays as it was
     assert layer(package.ModSpec(name='x', slot={'slot': 4})).bench == {'slot': 4}
     assert merged.bench == {} and layered.bench == {}
+
+
+# ---- I16: every Allied level in the shell; I17: names that fit and agree; I18: the bench walks the chapter list -----------
+
+def test_a_slot_with_no_targets_zooms_on_the_missions_own_objectives_and_neither_stops_the_build():
+    """I16: a level whose shell_missions entry names no targets used to stop the build with KeyError: 'targets' and the
+    slot fell back to retail. Now the briefing zooms on where the mission's own objectives are (ModSpec.goals); with
+    neither the build stops and says what to add."""
+    shell.use_lang('zh')
+    by_sites = shell.site_targets('sapporo', ['halt', 'harbour'])
+    s = __import__('maps.sapporo', fromlist=['SITES']).SITES
+    by_goals = shell.site_targets('sapporo', None, (s['halt'].at(), s['harbour'].at()))
+    assert by_sites == by_goals and all(0 <= c <= 1 for p in by_goals for c in p)
+    assert len(shell.site_targets('island', None, ((2500.0, 2500.0),))) == 2          # one goal used twice; no BORDERS
+    with pytest.raises(SystemExit, match='no "targets"'):
+        shell.site_targets('sapporo', None, (), slot=2)
+    with pytest.raises(SystemExit, match='no sites'):
+        shell.site_targets('sapporo', ['nowhere'], slot=4)
+
+
+def test_every_allied_level_publishes_where_its_objectives_send_the_player():
+    """The source of the automatic targets: each level a1..a9 (build.LEVELS) has at least one objective with a place."""
+    import build
+    for name in (n for n in build.LEVELS if n.startswith('a')):
+        m = build.MISSIONS[name][0]()
+        assert package.goal_points(package.merged(m)), name
+
+
+def test_short_names_are_the_first_part_of_the_title_and_fit_their_card():
+    """I17: the briefing's heading (MissionName_Short) said 'Ice Soldiers' under the chapter 'Sapporo Snow Festival · ...',
+    and the card cut it to 'ce Soldier'. The short name is the title's first part; a card's text shrinks to fit."""
+    for lang in ('zh', 'intl'):
+        shell.use_lang(lang)
+        for k, m in shell.missions().items():
+            assert m['title'].startswith(shell.short_of(m)) and ' · ' not in shell.short_of(m), (lang, k)
+    shell.use_lang('intl')
+    card = shell.name_card((260, 310), [('Press Conference at Sea', 56, 110)]).convert('RGB')
+    edge = [card.getpixel((x, y)) for x in (*range(0, 10), *range(250, 260)) for y in range(60, 160)]
+    assert all(min(px) < 250 for px in edge)                     # no white letter near either side
+    assert any(min(card.getpixel((x, 110))) >= 250 for x in range(260))     # and the name is drawn
+    shell.use_lang('zh')
+
+
+def test_a_campaign_of_levels_carries_each_on_its_own_map_and_keeps_the_editions_labels():
+    """shell.campaign: each level in its slot on its own map folder (package.level_stem), every label of every level in the
+    one mod; a label a stand-in level (another edition) shares keeps the edition's text, and a clash between two levels
+    of the edition stops the build."""
+    a = package.ModSpec(name='a', mission='CampA2', map_name='hoover', goals=((2000.0, 2000.0),),
+                        strings={'AUTOSAVE:X': 'New campaign', 'A2:only': 'two'})
+    b = package.ModSpec(name='b', mission='CampA8', map_name='island', goals=((3400.0, 2200.0), (1300.0, 2300.0)),
+                        strings={'AUTOSAVE:X': '新战役', 'A8:only': 'eight'})
+    sp = shell.campaign({2: a, 8: b}, 'CampX', 'intl', fallback={8})
+    assert [k for k, _ in sp.levels] == [2, 8] and sp.slot['slot'] == 2
+    assert sp.slot['maps'] == {k: f'data{B}maps{B}official{B}{package.level_stem(k)}{B}{package.level_stem(k)}.map'
+                               for k in (2, 8)}
+    assert sp.strings['AUTOSAVE:X'] == 'New campaign' and sp.strings['A8:only'] == 'eight'
+    assert all(len(lv.map_files) == 1 for _, lv in sp.levels)  # each level's own screens, drawn from its own map
+    with pytest.raises(SystemExit, match='AUTOSAVE:X'):
+        shell.campaign({2: a, 8: b}, 'CampX', 'intl')
+    shell.use_lang('zh')
+
+
+@needs_game
+def test_build_mod_builds_each_levels_map_into_its_own_folder(tmp_path, monkeypatch):
+    """package.build_mod with levels: one map per level, in its own folder, with its own cache entry and only its own
+    units; the mod's templates point each slot at its map, and the sidecar tells the bench every level (I18)."""
+    import importlib
+    import json
+    c2, c4, c6, c7 = (importlib.import_module(n) for n in ('make_campnew2', 'make_campnew4', 'make_campnew6',
+                                                           'make_campnew7'))
+    monkeypatch.setattr(package, 'sdk_build_lock', lambda name: (lambda: None))
+    def part(spec, c4, c6, c7, sdk):            # the level's units in, nothing written to the SDK
+        c7.EXTRA_TEMPLATES.update(spec.templates)
+        return [('whole', [0, 0, 1, 1])], [(f'data{B}drawn{B}{spec.mission}', b'')]
+    monkeypatch.setattr(package, '_map_part', part)
+    built = {}
+
+    def maps():
+        built[c2.NEW_STEM] = sorted(c7.EXTRA_TEMPLATES)
+        return [(c2.NEW_DIR + c2.NEW_STEM + '.map', b'map')]
+    monkeypatch.setattr(c7, 'map_files', maps)
+    seen = {}
+
+    def main():
+        seen.update(maps=[p for p, _ in c2.map_files()], cache=[e['file'] for e in c4.CACHE_ENTRIES],
+                    shell=dict(c2.SHELL), extra=[p for p, _ in c4.EXTRA_FILES], templates=dict(c7.EXTRA_TEMPLATES))
+        os.makedirs(c4.OUT)
+    monkeypatch.setattr(c4, 'main', main)
+    lv = {k: package.ModSpec(name='l', mission=f'CampA{k}', map_name='m', templates={f'U{k}': {}}) for k in (1, 3)}
+    spec = package.ModSpec(name='CampX', levels=tuple(lv.items()), big_files=((f'data{B}drawn{B}CampA1', b'early'),),
+                           slot={'slot': 1, 'maps': {}})
+    out = package.build_mod(spec, str(tmp_path / 'out'))
+    stems = [package.level_stem(k) for k in (1, 3)]
+    assert built == {stems[0]: ['U1'], stems[1]: ['U3']} and seen['templates'] == {}     # no level's units leak
+    assert seen['maps'] == [f'data{B}maps{B}official{B}{s}{B}{s}.map' for s in stems] == seen['cache']
+    assert seen['extra'][-2:] == [f'data{B}drawn{B}CampA1', f'data{B}drawn{B}CampA3']      # drawn after big_files
+    side = json.load(open(os.path.join(out, package.SIDECAR), encoding='utf-8'))
+    assert side['slot'] == 1 and set(side['levels']) == {'1', '3'} and side['levels']['3']['mission'] == 'CampA3'
+
+
+def test_the_bench_walks_a_shells_chapter_list_into_the_chapter_asked(tmp_path):
+    """I18: bench_start on the release shell stopped on the faction cards (its sidecar named no slot). Every shell build
+    names one now; chapter=N picks level N and that level's map borders."""
+    import json
+    sys.path.insert(0, str(ROOT / 'experimental' / 'testbench'))
+    import harness
+    sku = tmp_path / 'CampX_1.0.skudef'
+    sku.write_text('')
+    (tmp_path / package.SIDECAR).write_text(json.dumps({'map': 'a', 'borders': [['whole', [0, 0, 5, 5]]], 'slot': 1,
+                                                        'levels': {'3': {'map': 'b', 'borders': [['whole', [0, 0, 9, 9]]]}}}))
+    assert harness.shell_slot(str(sku)) == 1
+    assert harness.map_borders(str(sku)) == [('whole', (0, 0, 5, 5))]
+    assert harness.map_borders(str(sku), 3) == [('whole', (0, 0, 9, 9))]
+    assert harness.shell_steps(3)[2]['name'] == 'chapter list: slot 3'

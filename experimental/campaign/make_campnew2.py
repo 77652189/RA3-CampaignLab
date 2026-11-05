@@ -43,7 +43,8 @@ EXTRA_STATIC = []
 # the campaign shell (experimental/cnv/shell.py, ADR 0014): all nine slots of the Allied campaign are ours; the built mission
 # takes slot `slot` (retail's mission of that slot is the base: its briefing screens), the others keep retail's maps as
 # placeholders. {'slot': 4, 'attrs': {template attribute: value} (the built mission's fields), 'others': {slot: attrs},
-# 'no_portrait': drop the co-op commanders' pictures}
+# 'no_portrait': drop the co-op commanders' pictures, 'maps': {slot: map path} more slots with a map of ours (a mod of
+# several missions: package.build_mod with levels)}
 SHELL = None
 STRINGS = [
     ('MissionName:CNV01', 'CNV01 新关卡测试：海德堡'),
@@ -95,8 +96,8 @@ def sources():
             mine = k == slot
             new_id = 'Allies_New' if mine else f'Allies_S{k}'
             attrs = SHELL.get('attrs', {}) if mine else SHELL.get('others', {}).get(k, {})
-            news.append(template(xml, f'Allies_{k}', new_id, f'CNV{k:02d}', attrs, NEW_DIR + NEW_STEM + '.map' if mine else None,
-                                 SHELL.get('no_portrait', False)))
+            path = SHELL.get('maps', {}).get(k) or (NEW_DIR + NEW_STEM + '.map' if mine else None)
+            news.append(template(xml, f'Allies_{k}', new_id, f'CNV{k:02d}', attrs, path, SHELL.get('no_portrait', False)))
             camp = camp.replace(f'<Mission>Allies_{k}</Mission>', f'<Mission>{new_id}</Mission>', 1)
         assert camp.count('<Mission>') == 9
         new = news[slot - 1]

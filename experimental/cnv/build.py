@@ -38,6 +38,34 @@ LEVELS = ('a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8', 'a9', 'j3', 'j4', 'j5'
                                                 # A/B controls and bench scenes)
 
 
+CAMPAIGN = 'campaign'                           # build.py campaign --shell [--lang intl]: CampShell / CampShellEn, I16
+
+
+def campaign_levels(lang='zh'):
+    """({slot: mission}, fallback slots) of every Allied level (LEVELS a1..a9) in the edition `lang`: its own edition
+    where it has one, else the Chinese one (a fallback slot) -- said, never silently (langs.py), as a MISSING line."""
+    import shell
+    out, missing, fallback = {}, [], set()
+    for name in (n for n in LEVELS if n.startswith('a')):
+        own = name if lang == 'zh' else f'{name}_{lang}'
+        m = MISSIONS[own if own in MISSIONS else name][0]()
+        if own not in MISSIONS:
+            missing.append(f'{name}: no {lang} edition (built as {name}, the Chinese one)')
+            fallback.add(shell.slot_of(m.name))
+        if missing_report(m):
+            print(missing_report(m))
+        out[shell.slot_of(m.name)] = m
+    if missing:
+        print(f'MISSING in the {lang} campaign ({len(missing)}):\n  ' + '\n  '.join(missing))
+    return out, fallback
+
+
+def campaign(lang='zh'):
+    import package
+    levels, fallback = campaign_levels(lang)
+    return package.assemble_campaign(levels, lang=lang, fallback=fallback)
+
+
 def resolve(name, check):
     if name in PAIRS:
         m, t = PAIRS[name]()
@@ -253,6 +281,12 @@ def main():
     a = parse()
     if a.name == 'list':
         print(listing())
+        return
+    if a.name == CAMPAIGN:
+        if not a.shell or a.check:
+            sys.exit(f'build: {CAMPAIGN} is the campaign shell with every Allied level: --shell, no --check')
+        out = campaign(a.lang)
+        print('built to staging (RA3 is running)' if 'staging' in out else f'-> {out}')
         return
     if a.lang != 'zh':
         a.name = f'{a.name}_{a.lang}'

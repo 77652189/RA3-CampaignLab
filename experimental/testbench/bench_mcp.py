@@ -83,13 +83,15 @@ def guard(fn):
 
 @server.tool(structured_output=False)
 @guard
-def bench_start(mod: str, visible: bool = False, hold: bool = True, look: bool = True) -> list:
+def bench_start(mod: str, visible: bool = False, hold: bool = True, look: bool = True, chapter: int = 0) -> list:
     """Start the bench game with a built mod (a folder name under Documents/Red Alert 3/Mods, e.g. CampNew38) and
     walk the menus into its mission. Refuses while RA3 runs (the user may be playing) or the bench lock is held.
     visible=true leaves the window on the desktop (default: parked off screen, muted). hold=true (default): the
     mission is paused (its Esc menu) between tool calls and only runs while a tool acts or waits. look=false: no
-    first frame (a scripted test that only needs bench_watch)."""
-    r = S.start(mod, visible=visible, hold=hold)
+    first frame (a scripted test that only needs bench_watch). The campaign shell (CampShell / CampShellEn, every
+    Allied level): chapter=N walks its chapter list into level N (default: the slot its build names, 1 for the
+    release shell)."""
+    r = S.start(mod, visible=visible, hold=hold, chapter=chapter or None)
     msg = f'started {r["mod"]} (pid {r["pid"]}); frames archived in {r["run_dir"]}; ' + '; '.join(r['log'])
     return [msg] + looked('start', settle=1.0) if look else after(msg, False)
 

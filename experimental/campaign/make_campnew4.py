@@ -27,6 +27,7 @@ NEW_MAP = c2.NEW_DIR + c2.NEW_STEM + '.map'
 assert c3.STRINGS and NEW_MAP == c3.NEW_DIR + c3.NEW_STEM + '.map'
 EXTRA_FILES = []        # more (big path, bytes) for the mod's big (a music pack's .mus: experimental/music/pack.py)
 CHECKS = []             # f(files) run on the finished file list before it is written (pack.check)
+CACHE_ENTRIES = []      # the map cache's entries of a mod with several maps (package.build_mod levels); [] = cache_entry()
 
 
 def install():
@@ -53,9 +54,10 @@ def main():
     c2.sources()
     c2.compile_mod()
     files = splice_assets.spliced_files(c2.BUILT)
-    entry = cache_entry()
-    print('map cache entry:', {k: v for k, v in entry.items() if k != 'starts'}, len(entry['starts']), 'starts')
-    files += mapcache.with_maps([entry]) + c2.map_files() + c3.strings() + EXTRA_FILES
+    entries = list(CACHE_ENTRIES) or [cache_entry()]
+    for entry in entries:
+        print('map cache entry:', {k: v for k, v in entry.items() if k != 'starts'}, len(entry['starts']), 'starts')
+    files += mapcache.with_maps(entries) + c2.map_files() + c3.strings() + EXTRA_FILES
     files = list({n.lower(): (n, v) for n, v in files}.values())      # a file named twice: the last one (EXTRA_FILES over the copied map folder)
     for check in CHECKS:
         check(files)
