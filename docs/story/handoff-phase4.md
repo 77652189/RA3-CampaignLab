@@ -212,3 +212,12 @@
   4. 然后写 A9 策划稿（`docs/story/plans/a9.md`，参照 a7/a8/a5 的写法）：题卡 `docs/design/cards/all.md` A9、流程稿 `docs/design/flow/a9.md`；设备基本现成（`节律`九个球轮流充能、冰墙、信标兵、时滞炮车；收缩射线车没有、"光沿钢管跑"是特效可不做）；补好玩假设进题卡；`plan_show a9`、`plan_sim a9`。
   5. 提交前至少跑 `tests/test_architecture.py`、`tests/test_docs.py`；提交后 push。15 万交接。
 - 水位升降三问已由总控转引擎线，等答复；答复来了再回头给 A5 补水位。
+
+### 第二十一个会话（11-04）：布鲁塞尔图做完（A9、S9、J9 共用），A9 策划稿还没写
+
+- **地图** `experimental/cnv/maps/brussels.py` + `brussels_names.py`（中文名）：4000×2400，流程稿示意图格 → 世界 `x = gx*40, y = (60-gy)*40`。西郊（A9 基地地）→ 西环路（两块楼之间 540 宽的口子，A9 防线）→ 原子球塔（高地第 2 层圆台，东南西北四条坡道，护盾四段地点在坡脚）；北街、南街绕楼而过；东边河（x 3380～3560）+ 桥（y 1000～1240 一条陆地"堤"）、东岸（S9 基地地）；北边海（y>2150）+ 三条滑道到海滩（J9 登陆，两栖单位能上岸）、河两岸各一条滑道。19 个地点（`plan_vocab brussels`）：start、west suburb、ring road、tv tower、tower、garage、shield west/east/north/south、north street、south street、airport、east bridge、east bank、relay、beach、beach camp、fleet + 6 个精炼厂地。边界 8 个：`whole`，A9 `a9 open`/`a9 first`/`a9 charge`，S9 `s9 open`/`s9 follow`，J9 `j9 open`/`j9 street`（按三份流程稿的可玩区换算）。lint ok、contract ok、连通区无走不到的地点、`.map` 写得出。
+- **怎么画的**：草图 `work/mappage/brussels/sketch.json` 由 `work/mappage/brussels/mk_sketch.py`（不进 git）写出，编辑器页面只加载和检查（`.claude/launch.json` 新增 `mapsketch-brussels`，端口 8767）；搬进 maps/ 后**模块本身是源**，改图直接改模块，不要再从草图重生成覆盖。
+- **引擎寻路模型读数**（`sketch2map.py brussels --pathing`）：起点到西环路、塔、车库、南街、滩头营地"通"；到北街、机场、东桥、东岸、中继站、海滩都是"budget"（长距离搜索预算用完，单位会半路停住）。**策划稿里派兵跨半张图要分段下令**（比如 西郊 → 西环路 → tower → 东桥）。
+- **编辑器的毛病（报给总控/外壳线）**：①`launch.json` 的 `mapsketch` 写死图名 trial，新图要自己加一项；②桥画不了：现在用"两块河水夹一条陆地堤"代替，没有桥的外观；③没有画刷、景物、BLOCKS/GAPS（楼只能用第 3 层矩形，生成图里是空心灰框）；④页面上点着画 10 块地 + 20 个地点太费劲，我是写脚本直接出 sketch.json，页面只拿来看——建议：页面能粘贴/导入 JSON，地点和地块能直接输数；⑤默认缩放下地点名全叠在一起，小窗里看不清（地点密时要自动避让或可折叠）；⑥lint 的话好用，抓出了坡道太短（6.5/格上限）、建造方块压到河岸/悬崖、矿点落在河边不平，都是报告里直接看得懂的；⑦`start` 地点和同位置的 `west suburb` 重复，新图应该自动不让 start 另占一个名字。
+- **验证**：`pytest -q tests/test_architecture.py tests/test_docs.py tests/test_mappage.py tests/test_mappage_sketch.py tests/test_maps.py tests/test_landings.py` 71 passed；去掉一个站在坡边的地点后 `test_mappage.py test_maps.py` 16 passed。没跑完整 pytest。
+- **下一步**：①写 `docs/story/plans/a9.md`（参照 a8.md：定位/yaml 一关/开局/机关/节拍/目标/进攻/规则/输赢/检查），读题卡、流程稿 `flow/a9.md`；**节律设备要一个"球"单位**（现在名册里只有 `浪涌炮塔` 有 on/off 升级对，要在 `units/` 新写 `tower_ball`：off = INVULNERABLE，on = 去掉，参考 `units/platform.py` 的 `tide_gun`）；收缩射线车不存在，草稿用别的反制（标枪兵、时滞炮车）代替并在策划稿注明；"光沿钢管跑"当特效不做，改成通报提示；"每拆一个剩下的充得更快"= 节律的 `周期` 要能随事件变，先查 `倒计时提前` / 节律有没有改周期的动作，没有就在每拆一个球时用规则重开一个周期更短的节律；②`plan_show a9`、`plan_sim a9`；③测试台能赢（`a9 win`）。
