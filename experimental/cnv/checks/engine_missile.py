@@ -27,6 +27,7 @@ Read (测, 2026-11-05, docs/engine/missile.md 1):
   flight run CampMslFlight_mcp_1105_074901: near / far never saw their rocket (the type-in-area count does not count
          it); dodge 5210, home 5212: jumped at +90 frames (JUMP_LATE), the first rocket of both missed -- homing 300
          did not follow a 150 jump ~1.2 s before impact.
+The builds engine_missile_sweep / _ns / _adj (further down) found why: the V4 weapon's scatter.
 """
 import os
 import re
@@ -54,9 +55,12 @@ def _sub1(x, old, new):
     return x.replace(old, new, 1)
 
 
-def home_v4(id=HOME, adjust=HOME_ADJUST):
-    """Retail's V4 under `id`, its rocket weapon swapped for a copy whose projectile is retail's V4 rocket with
-    FlightPathAdjustDistPerSecond = adjust (retail 10). Nothing else differs (ADR 0016 G5: the probe builds it)."""
+def home_v4(id=HOME, adjust=HOME_ADJUST, scatter=True):
+    """Retail's V4 under `id`, its rocket weapon swapped for a copy (`id`Rocket) whose projectile (`id`Projectile)
+    is retail's V4 rocket with FlightPathAdjustDistPerSecond = adjust (retail 10). scatter=False also drops the
+    weapon's own ScatterRadiusVsType 0.1 vs INFANTRY VEHICLE (with a scatter Generals launches at a position, not at
+    the victim, so nothing homes). Nothing else differs (ADR 0016 G5: the probe builds it)."""
+    HOME_WEAPON, HOME_ROCKET = id + 'Rocket', id + 'Projectile'
     x = open(os.path.join(SAGE, 'Soviet', 'Units', V4 + '.xml'), encoding='utf-8').read()
     x = _sub1(x, f'id="{V4}"', f'id="{id}"')
     x = re.sub(rf'EditorName="{V4}"', f'EditorName="{id}"', x)
@@ -67,6 +71,9 @@ def home_v4(id=HOME, adjust=HOME_ADJUST):
     # its parent ScatterableWeapon (Weapon.xml) is not in our stream; it only adds a scatter while SHRINK_EFFECT
     s = _sub1(s, 'inheritFrom="ScatterableWeapon"', '')
     s = _sub1(s, f'ProjectileTemplate="{V4_ROCKET}"', f'ProjectileTemplate="{HOME_ROCKET}"')
+    if not scatter:
+        s, k = re.subn(r'\s*<ScatterRadiusVsType\s+Radius="0\.1">.*?</ScatterRadiusVsType>', '', s, flags=re.S)
+        assert k == 1, k
     x = _sub1(x, '</AssetDeclaration>', s + '</AssetDeclaration>')
     p = open(os.path.join(SAGE, 'Soviet', 'Props', V4_ROCKET + '.xml'), encoding='utf-8').read()
     # the file's second GameObject is retail's heroic variant (inherits the rocket): not ours, dropped
@@ -78,8 +85,9 @@ def home_v4(id=HOME, adjust=HOME_ADJUST):
     fname = HOME_ROCKET + '.xml'
     return Unit(id, x, files={fname: p}, also=[fname], link=[f'WeaponTemplate:{HOME_WEAPON}'],
                 names=dict(unit=id, weapon=HOME_WEAPON, rocket=HOME_ROCKET),
-                what=f'追踪加强的 V4（探针）：导弹每秒修正 {adjust:g}（原版 10），其余同原版',
-                params=dict(adjust=adjust))
+                what=f'追踪加强的 V4（探针）：导弹每秒修正 {adjust:g}（原版 10）'
+                     f'{"" if scatter else "，去掉对车辆步兵的 0.1 散布"}，其余同原版',
+                params=dict(adjust=adjust, scatter=scatter))
 
 
 def target(id=TARGET_ID, health=TARGET_HP):
@@ -205,6 +213,125 @@ def flight_test(m):
     return t
 
 
+# --- sweep / drive: when does the rocket leave, and does homing follow at all? ---------------------------------
+# A second build, four lanes of the probe map at FAR (only four counter lines fit): base / high shoot with retail's
+# V4 (homing 10 / s), removed / switch with CNV_MslHome (300 / s). A frame tick counts from the order; each lane's
+# target is moved at its own tick -- teleported SWEEP_DODGE east (sweep*) or sent driving DRIVE_TO east (drive). A
+# jump before the launch is aimed at (the first rocket hits, maybe late); after it only homing can save the shot.
+# Counters as in miss: frames from the order to the first hit + 1000 per percent lost (a first-rocket miss reads
+# ~210: the second rocket).
+# The third build (engine_missile_ns) asks why: the V4 weapon has its own ScatterRadiusVsType 0.1 vs INFANTRY
+# VEHICLE, and Generals launches a scattering weapon at a position (Weapon.cpp: "With a scatter radius, don't follow
+# the victim"). Its lanes: CNV_MslCopy (retail's V4 renamed, homing 10, scatter kept: does the copy alone fire
+# later?), CNV_MslHomeNS (homing 300 without the scatter, two lanes), CNV_MslV4NS (homing 10 without the scatter).
+# The fourth (engine_missile_adj): no scatter, FlightPathAdjustDistPerSecond 2 / 5 / 10 / 20, 150 jump at +60.
+#
+# Read (测, 2026-11-05, docs/engine/missile.md 3; frames to the first hit, ~210 = the first rocket missed):
+#   sweep   CampMslSSweep_mcp_1105_120848   V4 jump +40 5209, +60 5203; Home +40 5117, +60 5212
+#   sweep2  CampMslSSweep2_mcp_1105_121148  V4 +34 5109, +40 5203; Home +40 5117, +50 5212
+#   drive   CampMslSDrive_mcp_1105_121412   V4 drive 0 6218, 40 6258; Home 0 6220, 40 6257 (all missed)
+#   small   CampMslSSmall_mcp_1105_121632   V4 +75 east 50 2109 (graze), east 80 5203; Home +75/80 5210, +60/80 5212
+#   still   CampMslSStill_mcp_1105_122110   none moved: 5109 5108 (base, high) 5117 5116 (removed, switch)
+#   nsjump  CampMslNNsjump_mcp_1105_122534  Copy still 5109; HomeNS +60 5109, +75/80 5117; V4NS +60 4114 (graze)
+#   nsdrive CampMslNNsdrive_mcp_1105_122913 Copy drive 40 6257 (missed); HomeNS 0 6109, 40 6117; V4NS 40 6257
+#   adj     CampMslAAdj_mcp_1105_123121     adjust 2 5214, 5 5211 (missed); 10 5116, 20 5115 (hit)
+# So: the V4 launches 35-40 frames after the order; with the scatter nothing homes; without it 300 follows jumps
+# and a driving Hammer, 10 follows a jump but not a drive. The removed / switch / order lanes run ~8 frames later
+# than base / high every run, whatever the shooter (not read why).
+SWEEP_DODGE, DRIVE_TO, SWEEP_RUN = 150.0, 600.0, 24.0
+COPY, HOME_NS, V4_NS = 'CNV_MslCopy', 'CNV_MslHomeNS', 'CNV_MslV4NS'
+WHO = {V4: 'V4', HOME: '追300', COPY: '复制V4', HOME_NS: '追300无散', V4_NS: 'V4无散'}
+BUILDS = {   # build: (mission name, units, {lane: shooter})
+    'engine_missile_sweep': ('CampMslS', lambda: [home_v4(), target()],
+                             {'base': V4, 'high': V4, 'removed': HOME, 'switch': HOME}),
+    'engine_missile_ns': ('CampMslN', lambda: [home_v4(COPY, 10.0), home_v4(HOME_NS, HOME_ADJUST, scatter=False),
+                                               home_v4(V4_NS, 10.0, scatter=False), target()],
+                          {'base': COPY, 'high': HOME_NS, 'removed': HOME_NS, 'switch': V4_NS}),
+    # how strong is FlightPathAdjustDistPerSecond? no scatter, 2 / 5 / 10 / 20, three lanes of the south row
+    'engine_missile_adj': ('CampMslA', lambda: [home_v4('CNV_MslA2', 2.0, scatter=False),
+                                                home_v4('CNV_MslA5', 5.0, scatter=False),
+                                                home_v4(V4_NS, 10.0, scatter=False),
+                                                home_v4('CNV_MslA20', 20.0, scatter=False), target()],
+                           {'base': 'CNV_MslA2', 'high': 'CNV_MslA5', 'order': V4_NS, 'switch': 'CNV_MslA20'}),
+}
+WHO |= {'CNV_MslA2': '修2', 'CNV_MslA5': '修5', 'CNV_MslA20': '修20'}
+JUMPS = (50.0, 80.0, SWEEP_DODGE)                     # the jump waypoints east of each target
+MOVES = {     # build: {check: (how, per lane frames after the order or (frames, jump east); None stays)}
+    'engine_missile_sweep': {
+        'sweep': ('jump', {'base': 40, 'high': 60, 'removed': 40, 'switch': 60}),
+        'sweep2': ('jump', {'base': 34, 'high': 40, 'removed': 40, 'switch': 50}),
+        'drive': ('drive', {'base': 0, 'high': 40, 'removed': 0, 'switch': 40}),
+        'small': ('jump', {'base': (75, 50.0), 'high': (75, 80.0), 'removed': (75, 80.0), 'switch': (60, 80.0)}),
+        'still': ('jump', {'base': None, 'high': None, 'removed': None, 'switch': None})},
+    'engine_missile_ns': {
+        'nsjump': ('jump', {'base': None, 'high': 60, 'removed': (75, 80.0), 'switch': 60}),
+        'nsdrive': ('drive', {'base': 40, 'high': 0, 'removed': 40, 'switch': 40})},
+    'engine_missile_adj': {
+        'adj': ('jump', {'base': 60, 'high': 60, 'order': 60, 'switch': 60})},
+}
+
+
+def _sweep_label(who, at, how):
+    k, dx = at if isinstance(at, tuple) else (at, SWEEP_DODGE)
+    far = '' if dx == SWEEP_DODGE else f'东{dx:g}'
+    return f'{WHO[who]}{how}{"不动" if k is None else k}{far}'
+
+
+def sweep_mission(build='engine_missile_sweep'):
+    name, units, lanes = BUILDS[build]
+    m = Mission(name=name, map=probe_range, units=units(), facts={})
+    for lane, tpl in lanes.items():
+        L, site = lane.title(), f'{lane} gun'
+        m.put(tpl, site, side='p1', role=f'{lane} shooter', name=f'UNIT - CNV MslS {L} Shooter')
+        m.put(TARGET_ID, site, 0, FAR, side='s1', role=f'{lane} target', name=f'UNIT - CNV MslS {L} Target')
+        for dx in JUMPS:
+            m.waypoint(f'{lane} jump {dx:g}', f'CNV MslS {L} Jump {dx:g}', site, dx, FAR)
+        m.waypoint(f'{lane} drive', f'CNV MslS {L} Drive', site, DRIVE_TO, FAR)
+    return m
+
+
+def _moved_test(m, lanes, at, how):
+    """The targets are moved at `at[lane]` frames after the order: how = 'jump' (teleport) or 'drive' (move)."""
+    t = Test()
+
+    def n(part):
+        return m.role(part).name
+
+    targets = [n(f'{lane} target') for lane in lanes]
+    shooters = [n(f'{lane} shooter') for lane in lanes]
+    start = [('MAP_REVEAL_ALL_PERM', m.player('p1'))]
+    start += [('UNIT_CHANGE_OBJECT_STATUS', x, 'NO_ATTACK', 1) for x in targets + shooters]
+    start += [('SET_MILLISECOND_TIMER', 'Test Order', ORDER)]
+    t.scripts.append(Script('Test - start', [], start))
+    t.scripts.append(Script('Test - order', [('TIMER_EXPIRED', 'Test Order')],
+                            [('UNIT_CHANGE_OBJECT_STATUS', s, 'NO_ATTACK', 0) for s in shooters]
+                            + [('NAMED_ATTACK_NAMED', n(f'{lane} shooter'), n(f'{lane} target')) for lane in lanes]
+                            + [('SET_FLAG', 'Test Ordered', 1)]))
+    t.scripts.append(Script('Test - tick', [('FLAG', 'Test Ordered', 1)], [('INCREMENT_COUNTER', 1, 'Test_Tick')],
+                            once=False))
+    for lane in lanes:
+        L, tg, k = lane.title(), n(f'{lane} target'), at[lane]
+        k, dx = k if isinstance(k, tuple) else (k, SWEEP_DODGE)      # (frames after the order, jump east)
+        if k is not None:
+            act = (('UNIT_TELEPORT_TO_WAYPOINT', tg, m.mark(f'{lane} jump {dx:g}')) if how == 'jump' else
+                   ('MOVE_NAMED_UNIT_TO', tg, m.mark(f'{lane} drive')))
+            t.scripts.append(Script(f'Test - move {L}', [('FLAG', 'Test Ordered', 1), ('COUNTER', 'Test_Tick', 3, k)],
+                                    [act]))
+        c = f'CNV_MslS_{L}'
+        t.counters.append((c, _sweep_label(lanes[lane], at[lane], '跳' if how == 'jump' else '开')))
+        t.scripts.append(Script(f'Test - {c} frames', [('FLAG', 'Test Ordered', 1), ('UNIT_HEALTH', tg, 2, 100)],
+                                [('INCREMENT_COUNTER', 1, c)], once=False))
+        t.scripts += [Script(f'Test - {c} lost {j}', [('UNIT_HEALTH', tg, 0, 100 - j + 1)],
+                             [('INCREMENT_COUNTER', 1000, c)]) for j in range(1, LOST_MAX + 1)]
+    first = next(iter(lanes))
+    t.expect = [(_sweep_label(lanes[first], at[first], '跳' if how == 'jump' else '开'), 0, 'ever>=', 1,
+                 SWEEP_RUN - 2)]
+    t.bench = [('bench_watch', dict(seconds=SWEEP_RUN, every=1, sheet=False, lines=6))]
+    return t
+
+
 # the builds this module makes and their checks (cnv/registry.py)
-MISSION = {'engine_missile': mission}
-CHECKS = {'engine_missile': {'miss': missile_test, 'flight': flight_test}}
+MISSION = {'engine_missile': mission} | {b: (lambda b=b: sweep_mission(b)) for b in BUILDS}
+CHECKS = {'engine_missile': {'miss': missile_test, 'flight': flight_test}} | {
+    b: {k: (lambda m, b=b, k=k: _moved_test(m, BUILDS[b][2], MOVES[b][k][1], MOVES[b][k][0])) for k in MOVES[b]}
+    for b in BUILDS}
