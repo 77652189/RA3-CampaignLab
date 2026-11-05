@@ -28,7 +28,7 @@ STATE_FIELDS = {
     'blocked_on': {'none', 'voice-session', 'user'},
     'next_gate': {'test-map', 'coordinate-calibration', 'demo', 'playtest'},
 }
-ENGINE_DOCS = {'script-semantics.md', 'know-how.md', 'terrain.md', 'pathing.md', 'upgrades.md'}   # reverse-engineering notes stay in work/re/ (repo is public)
+ENGINE_DOCS = {'script-semantics.md', 'know-how.md', 'terrain.md', 'pathing.md', 'upgrades.md', 'spawn.md'}   # reverse-engineering notes stay in work/re/ (repo is public)
 PLAN_MAX_KB = 40        # status only (2026-10-28 it was 115 KB of history and know-how: archive/, engine/)
 
 
