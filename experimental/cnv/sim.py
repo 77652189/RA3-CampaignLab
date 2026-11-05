@@ -2,9 +2,11 @@ r"""The plan simulator: a level's timeline and ending in seconds, without the ga
 完整，先把开发效率提升上去，最后再把游戏实际和策划案模拟器对齐").
 
 It runs the mission as built -- parts.merged(mission, check): the scripts the compiler wrote (plan.py and the
-devices), the objectives' reveal scripts, a check's own -- the way the game runs a map's scripts: every tick each
-active script in order, all its conditions true, its actions at once (later scripts see them in the same tick), a
-once-script then off. The world is what those scripts ask about: named objects and their owners, health, positions;
+devices), the objectives' reveal scripts, a check's own -- the way the game runs a map's scripts: every frame each
+active script in order, all its conditions true, its actions at once (later scripts see them in the same frame), a
+once-script then off. Where the engine line's script engine model is on this computer (ADR 0019 layer 1,
+labpaths.ENGINE_MODEL) it runs them, 15 frames a second; elsewhere (a clean clone) an older loop does, a DT tick a
+frame. The world is what those scripts ask about: named objects and their owners, health, positions;
 flags, counters, timers; objectives; the border, reveals, the camera. Units move along the map's walkable ground
 (water for ships, both for amphibians, a straight line for aircraft) at their game speed (simunits.py), routed on the
 map's own height field. They fight by a deterministic model from the game's data (Sim.fight: the nearest enemy in
@@ -34,7 +36,9 @@ A script (剧本), one event a line (or ';' between them), times in seconds or m
   (every object whose name holds it: '名字含 W1-' a plan's first wave), 敌人 在 <地点> (the enemy's there).
 """
 import argparse
+import collections.abc
 import dataclasses
+import importlib.util
 import math
 import os
 import re
@@ -100,7 +104,12 @@ ALIGN = {
     'frame rate': 'a tick is DT 0.5 s; RA3 runs about 15 script frames a mission second (bench 2026-10-28, probe '
                   'align; Generals 30; a timer runs out ceil(seconds x rate) frames on: 源码 3) -- the timeline is '
                   'good to about half a second',
-    'difficulty side': '未对齐: a script\'s difficulty bits are taken at the level the run is given; the game takes '
+    'engine model': 'the scripts run in the engine line\'s script engine model (ADR 0019 layer 1: RA3-EngineModel '
+                    'ra3model/scripts.py, labpaths.ENGINE_MODEL): 15 frames a mission second, a timer ceil(seconds x '
+                    '15) frames counted down before the scripts, counters and timers in one table, ENABLE_SCRIPT arms '
+                    'a fired once-script again, a NOT read off the flags parts.unnot writes (as the game runs them); '
+                    'units move and fight once a DT tick, on its first frame',
+    'difficulty side':'未对齐: a script\'s difficulty bits are taken at the level the run is given; the game takes '
                        'the difficulty of the side the script list belongs to, that side\'s AI\'s if it has one '
                        '(源码 1) -- which side our scripts belong to is to check',
     'border reveal': 'a permanent reveal made before MAP_SWITCH_BORDER covers the new ground too (bench 2026-10-28, '
@@ -155,6 +164,95 @@ IGNORED = {'PLAYER_SET_MAX_PLAYER_POWER_POINTS', 'PLAYER_SET_PLAYER_POWER_POINTS
            'SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES',
            'SKIRMISH_AI_USE_REPAIRS', 'SKIRMISH_AI_USE_REBUILD_SYSTEM', 'CAMERA_LETTERBOX_BEGIN', 'CAMERA_LETTERBOX_END',
            'CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT', 'SET_COOP_AI_COMMAND_UI_ENABLED'}
+
+# ---- the engine line's script engine (ADR 0019 layer 1). Where it is not on this computer (a clean clone) the
+# simulator runs its own older loop: every DT tick each script once, timers as seconds, NOT as a plain negation.
+SEEN_CORE = {'SET_FLAG', 'SET_MISSION_OBJECTIVE_STATUS', 'DISPLAY_COUNTDOWN_TIMER'}   # the timeline's notes on them
+CHANGES = {'INCREMENT_COUNTER', 'DECREMENT_COUNTER', 'SET_MILLISECOND_TIMER', 'SET_RANDOM_MSEC_TIMER'}
+_MODEL = {}
+
+
+def engine_model():
+    """RA3-EngineModel's ra3model/scripts.py (labpaths.ENGINE_MODEL, CNV_ENGINE_MODEL overrides it) as a module, or
+    None where it is not there. Loaded by file: this adds nothing to sys.path, and the model's code stays in its own
+    private repository (ADR 0018)."""
+    import labpaths
+    path = os.path.join(labpaths.ENGINE_MODEL, 'ra3model', 'scripts.py')
+    if path not in _MODEL:
+        mod = None
+        if os.path.isfile(path):
+            name = 'ra3model_scripts'
+            spec = importlib.util.spec_from_file_location(name, path)
+            mod = importlib.util.module_from_spec(spec)
+            sys.modules[name] = mod             # dataclasses look their module up while the file runs
+            spec.loader.exec_module(mod)
+        _MODEL[path] = mod and (mod, _engine_class(mod))
+    return _MODEL[path]
+
+
+def _engine_class(scripts):
+    class SimEngine(scripts.Engine):
+        """The model's engine with the simulator as its World, watching the core actions it reports on (a flag's
+        scene, caption, ending; an objective; a countdown shown; something changed). A random timer runs to its
+        latest, as the beat sheet counts."""
+        script = None
+
+        def action(self, name, a, s=None):
+            sim, self.script = self.world, s
+            if name in SEEN_CORE:
+                sim.act(name, list(a), s)
+            elif name in CHANGES:
+                sim.change()
+            if name == 'SET_RANDOM_MSEC_TIMER':
+                name, a = 'SET_MILLISECOND_TIMER', (a[0], a[2])
+            elif name == 'COUNTER_MATH_COUNTER' and scripts.as_int(a[1]) not in (0, 1):
+                sim.used.add(f'COUNTER_MATH_COUNTER code {a[1]}')
+            super().action(name, a, s)
+    return SimEngine
+
+
+class Counters(collections.abc.MutableMapping):
+    """The engine's one counter / timer table as the simulator's counters: a plain counter's value by name."""
+
+    def __init__(self, eng):
+        self.eng = eng
+
+    def __getitem__(self, k):
+        c = self.eng.counters[k]
+        if c[1]:
+            raise KeyError(k)
+        return c[0]
+
+    def __setitem__(self, k, v):
+        self.eng.counter(k)[0] = v
+
+    def __delitem__(self, k):
+        del self.eng.counters[k]
+
+    def __iter__(self):
+        return (k for k, c in self.eng.counters.items() if not c[1])
+
+    def __len__(self):
+        return sum(1 for _ in self)
+
+
+class Timers(collections.abc.Mapping):
+    """... and as its timers: a running countdown's mission second it runs out at (at or before now once out)."""
+
+    def __init__(self, sim, fps):
+        self.sim, self.fps = sim, fps
+
+    def __getitem__(self, k):
+        c = self.sim.eng.counters[k]
+        if not c[1]:
+            raise KeyError(k)
+        return self.sim.t + c[0] / self.fps
+
+    def __iter__(self):
+        return (k for k, c in self.sim.eng.counters.items() if c[1])
+
+    def __len__(self):
+        return sum(1 for _ in self)
 
 
 @dataclasses.dataclass
@@ -353,7 +451,8 @@ class Ground:
 
 
 class Sim:
-    def __init__(self, mission, test=None, level='normal', script=''):
+    def __init__(self, mission, test=None, level='normal', script='', model=True):
+        """model: run the scripts in the engine line's model where it is on this computer (False: the older loop)."""
         self.m = mission
         self.mm = parts.merged(mission, test)
         self.test = test
@@ -427,6 +526,18 @@ class Sim:
         self.areas = self.mm.areas
         self.waypoints = self.mm.waypoints
         self.reblock()
+        self.eng = None
+        got = engine_model() if model else None
+        if got:
+            # the scripts as the game runs them: the compiler's NOT flags (package.py writes unnot's), the inverted
+            # bit ignored; one list, the run's difficulty; this Sim is the engine's World (condition / action)
+            mod, cls = got
+            self.fps = mod.FPS
+            self.eng = cls(mod.from_cnv(parts.unnot(self.mm.scripts)), world=self, difficulty=self.level,
+                           honor_inverted=False)
+            self.flags, self.counters, self.timers = self.eng.flags, Counters(self.eng), Timers(self, mod.FPS)
+            if any(c and c[-1] == parts.NOT for s in self.mm.scripts for c in s.when):
+                self.used.add('inverted')
 
     def blocks(self, b):
         """What of the way a body takes up: a wall of ours its bar (or disc, square), a building its round."""
@@ -596,6 +707,21 @@ class Sim:
         if self.blocks(b):
             self.reblock()
 
+    # ---- the engine model's World: what its script engine asks of the objects (the rest it does itself)
+    def condition(self, eng, name, args):
+        if name in RA3_ONLY:
+            self.ra3_only.add(name)
+        return self.cond(name, list(args))
+
+    def action(self, eng, name, args):
+        self.act(name, list(args), eng.script)
+
+    def update(self, eng):
+        """Units move and fight in step(), once a DT tick."""
+
+    def difficulty(self, side):
+        return None                             # the run's level ('difficulty side')
+
     # ---- conditions
     def holds(self, c):
         c = list(c)
@@ -636,8 +762,9 @@ class Sim:
             return within if name == 'NAMED_INSIDE_AREA' else not within
         if name == 'PLAYER_HAS_OBJECT_COMPARISON':
             # the dying counted too (Team::countObjectsByThingTemplate, ignoreDead false)
-            n = sum(1 for b in self.bodies.values() if self.present(b) and b.owner == a[0]
-                    and b.template.lower() == a[3].lower())
+            want = a[3].lower()
+            n = sum(1 for b in self.bodies.values() if b.owner == a[0] and b.template.lower() == want
+                    and self.present(b))
             return CMP[a[1]](n, a[2])
         if name == 'PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA':
             n = sum(1 for b in self.living() if b.owner == a[0] and b.template.lower() == a[3].lower()
@@ -1028,6 +1155,29 @@ class Sim:
 
     # ---- running
     def step(self):
+        """One DT tick from self.t (the caller moves self.t on). With the engine model: the tick's frames (those
+        before self.t + DT, 7 or 8), the run script's events at the first frame at or after their second, a check's
+        counters read on each whole second's frame; units move and fight after the tick's first frame."""
+        if self.eng is None:
+            return self.step_old()
+        t0, eng = self.t, self.eng
+        last = math.ceil(round((t0 + DT) * self.fps, 6))
+        moved = False
+        while eng.frame < last and self.ending is None:
+            self.t = eng.frame / self.fps
+            while self.events and self.events[0][0] <= self.t + 1e-9:
+                self.happen(self.events.pop(0))
+            eng.step()
+            if self.test and self.test.counters and (eng.frame - 1) % self.fps == 0 and self.t >= LAG:
+                self.series.append((int(round(self.t - LAG)), [self.counters.get(c, 0) for c, _ in self.test.counters]))
+            if not moved and self.ending is None and self.t >= t0 - 1e-9:
+                moved = True
+                if self.combat:
+                    self.fight()
+                self.move()
+        self.t = t0
+
+    def step_old(self):
         while self.events and self.events[0][0] <= self.t:
             self.happen(self.events.pop(0))
         for s in self.mm.scripts:
@@ -1154,7 +1304,7 @@ class Sim:
 
     def sample(self):
         """Every second: a check's counters; every 10: the threat; every 30: what the player has seen."""
-        if self.test and self.test.counters and self.t >= LAG:
+        if self.eng is None and self.test and self.test.counters and self.t >= LAG:     # the model's: in step
             self.series.append((int(round(self.t - LAG)), [self.counters.get(c, 0) for c, _ in self.test.counters]))
         if int(round(self.t)) % 10 == 0:
             # can the player hold: the enemy's fire within NEAR of the player's things against the player's own
@@ -1205,7 +1355,7 @@ class Sim:
             any(b.path for b in self.living())
 
     def run(self, until=UNTIL):
-        self.used |= {'frame rate', 'difficulty side'}
+        self.used |= {'engine model' if self.eng else 'frame rate', 'difficulty side'}
         while self.t <= until and self.ending is None:
             self.step()
             if abs(self.t - round(self.t)) < 1e-6:
