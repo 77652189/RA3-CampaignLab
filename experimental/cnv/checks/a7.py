@@ -20,7 +20,7 @@ win: the carrier starts at 1 % health: the forced landing (迫降) sends it to t
   wait; landed with a unit of theirs there, Mission Won ends the mission.
 """
 import plan
-from parts import Obj, Script, Test, counted, square
+from parts import Obj, Script, Test, counted, kindof, square
 from checks.liberty import EARLY
 
 AREA = 300.0                                    # half-side of the areas counted around the carrier's places
@@ -33,8 +33,9 @@ GATE_EARLY = 6.0                                # revenge / pincer: looked for f
                                                 # clock behind the mission's)
 REVENGE_AT = 10.0                              # revenge: the barracks dies this long after phase 2 starts
 NAG_DRIFT = 30.0                                # nag: the second looked for from this long before its time
-LAND_BY = 60.0                                  # win: the forced landing's flight home -> base edge, at most
-NAG_FIRST = 180.0                            # nag: its first time, into phase 2 (docs/story/plans/a7.md 规则)
+LAND_BY = 110.0                                 # win: the forced landing's flight home -> base edge, at most (sim: about 70 s of flight, won at 1:35)
+RELIEF_AFTER = 60.0                             # relief: the engineer relief's time, into phase 2 (docs/story/plans/a7.md 规则)
+NAG_FIRST = 180.0                           # nag: its first time, into phase 2 (docs/story/plans/a7.md 规则)
 
 
 def settle(t, m):
@@ -245,16 +246,42 @@ def east(m):
     return t
 
 
+def relief(m):
+    """The engineer relief (保底): both engineers die early, a minute into phase 2 two new ones come out at the base."""
+    m.keep_ai_asleep()
+    t = Test()
+    settle(t, m)
+    # the engineers die, and so do the loyal outpost's three infantry (handed over by settle): nothing else is infantry
+    kill_at(t, [r.name for g in ('engineer', 'loyal 2 troops') for r in (m.roles(g) or [m.role(g)])], 5.0, 'engineers')
+    w = m.where('start')
+    t.areas['Test start'] = square(w.x, w.y, 1200.0)       # all round the base: where they stand once out is not the point
+    # by kind, not by template: a count by template did not see the ones the rule makes (bench 2026-11-04: the template
+    # count stayed 0 while the kind count rose by two); the AI is asleep, so the infantry in the base's square are the engineers
+    counted('Test Relief', '基地来的工程师', t, kind=kindof('INFANTRY'), area='Test start')
+    at = READY + RELIEF_AFTER
+    # bench 2026-11-04: the two showed at bench s55, a dozen seconds before READY + 60 (phase 2 starts before the
+    # objectives' reveal), so the windows are wide; the carrier's first jump (s38) brings infantry of its own
+    # (a 1 at s38, a 4 at s65), so the zero is only held until s30
+    t.expect += [('基地来的工程师', 8, '==', 0, 30.0), ('基地来的工程师', at - 12, 'ever==', 2, at + 20)]
+    t.bench = [('bench_watch', dict(seconds=at + 22, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 def win(m):
     m.find(m.role('carrier').name).props['objectInitialHealth'] = 1
-    t = where(m)
-    t.objects.append(Obj('AlliedAntiVehicleVehicleTech1', *m.site('base edge', 0, 0), site='base edge'))
+    t = where(m, places=('base edge',))
+    for dx, dy in ((0, 0), (-60, 0), (60, 0)):  # three: the carrier fires on its way in (bench 2026-11-04: one died at s63)
+        t.objects.append(Obj('AlliedAntiVehicleVehicleTech1', *m.site('base edge', dx, dy), site='base edge'))
+    # what the win needs, one by one (bench 2026-11-04: it came to the 300 square at s66 but the mission did not end)
+    t.areas['Test edge 150'] = square(*m.point('base edge'), 150.0)
+    counted('Test Landed Close', '落在基地边150内', t, named=m.role('carrier').name, area='Test edge 150')
+    counted('Test Ours At Edge', '我方坦克在基地边', t, template='AlliedAntiVehicleVehicleTech1', area='Test edge 150')
     t.expect += [('ENDED', LAND_BY, '', None)]
-    t.bench = [('bench_watch', dict(seconds=LAND_BY, every=1, sheet=False))]
+    t.bench = [('bench_watch', dict(seconds=LAND_BY, every=1, sheet=False, lines=len(t.counters)))]
     return t
 
 
 # the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
 CHECKS = {
-    'a7': {'jumps': jumps, 'pick': pick, 'defend': defend, 'power': power, 'win': win, 'east': east, 'nag': nag, 'faster': faster, 'revenge': revenge, 'pincer': pincer},
+    'a7': {'jumps': jumps, 'pick': pick, 'defend': defend, 'power': power, 'win': win, 'relief': relief, 'east': east, 'nag': nag, 'faster': faster, 'revenge': revenge, 'pincer': pincer},
 }

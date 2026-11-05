@@ -46,7 +46,7 @@
 
 - **后巷口放不下的原因**（量出来的）：`lane foot` 原在 (1200, 2540)，正好是后巷坡道的起点（坡从 y=2540 开始升）。以点为中心的 104 见方起伏 17、120 见方起伏 20；另外五个点（inside 1/2/3、north mouth）周围是平地（起伏 0）。测试台 11-03：五个放得出，只有这一个放不出。**所以放置规则里"平地"这一条是真的：不能放在斜坡起点。** 量出的东西不能解释到"多平才行"（`lane foot` 在 40 见方内起伏 7，没超过建筑的 8 也放不出），所以施法圈取整圈（2×半径见方）起伏 ≤ 8，比建筑规则严。
 - **东街口**（`east mouth`）：街（3500～3620）宽 120，施法圈如果取 60 会压到运河岸（起伏 13），所以圈取 52（= 32+20，不另加余量），3575 刚好放得下，位置没动。测试台 `placem` 在 x=3565 时三个口子（北坡口、三号广场、东街口）全 PASS（11-04 04:51，`work/testbench/runs/CampA4Placem_mcp_1104_045116`）；最终位置 3575 比测的偏东 10，没再测。**x 不能再往西挪 5 以上**：`tests/test_graybox.py::test_old_a4_can_be_pushed_through_every_stage` 会因为旧 A4 走查在"布防"阶段多撞上一批敌人而失败（量过：偏 5 就败，偏 2.5 过）。
-- **后巷口 V1 还没放出来**（`place` 11-04 04:46：V2、V3 PASS，V1 FAIL，用的是挪到平地后的新位置 (1200,2470)）。所以坡不是唯一原因，或者不是原因。截图 `work/testbench/runs/CampA4Place_mcp_1104_044627/0004～0006.png`：第一次点选时工兵头顶的信息框（"选中我，点街口…"）还在，点完工兵没被选中；`placem` 的第一次（L1，同样 4 秒）却选中了，所以不一定是信息框。我把 `place` 的第一次尝试推到 20 秒（`checks/a4.py PLACE_AT`）准备重测，**没测成**：测试台被音乐线的游戏占着（`CampMusDynC`，pid 22660）。**下一步**：测试台空了就跑 `run_check.py a4 place`（命令见 handoff.md 第 55 行那一条）；V1 若还失败，试把 V1 的落点往南挪（工兵站的位置、落点和路面的关系）或看冰雕/标志离落点的距离，再查是不是引擎对"落点在坡的投影内"有限制。
+- **后巷口 V1：已解决**（第十六个会话 11-04 重跑）。原先 FAIL 不是关卡的问题：测试台在高台边上把工兵点偏了 26 像素（查清过程见 `docs/engine/terrain.md` 第 4 节），引擎线 4fe6cb0 按地形修正了世界点击；修正后 `a4 place` V1/V2/V3 全 PASS（`work/testbench/runs/CampA4Place_mcp_1104_152808`）。上面"信息框挡着""落点在坡的投影内"这些猜测都不成立，不用再试。
 - **做了什么**：①`platmap.CAST_CLEAR=52`（= 技能的 `ForbiddenObjectRange` 32 + 冰核 `SEED_SIZE` 20）、`platmap.cast_lint`：每个 `Site.cast>0` 的点，圆内全可走、整圈 ≤ FLAT、圆内没有地图物件（墙段按矩形量），并进 `platmap.lint`（所以 `contract.map_design` 每次构建都跑）；②`platprops.clearance` 把施法圈 +20 算进保持空旷的圈；③`Mission.waypoint(..., cast=True)` 登记到 `Mission.spells`，`devices/horn.py` 的冰标记都传 `cast=True`；④产物规则 `contract.cast_points_clear`：登记的点必须是 cast 点、标记就在点上、任务自己的物件不进圈；⑤`maps/sapporo.py`：`lane foot` 挪到 (1200, 2470)（坡脚往南 70，平地），inside 1/2/3、north mouth、east mouth 标 `cast=CAST_CLEAR`；⑥守卫 `tests/test_architecture.py::test_g13_a_cast_point_is_level_open_ground`（含 6 个变异：标在非施法点、物件压进圈、旧位置在坡上、圆压到水、墙进圈、干净点不报；`CAST_CLEAR == 技能禁物范围 + 冰核` 这条数字守住；设备里的冰标记不传 cast 就失败）。节日图 J4 的冰是地图自带的、不是玩家放的，没有施法点。
 - **后巷出兵点跟着南移了 70**（`出: lane foot` 偏移 [0,160]，现在出在 y=2630，仍在坡上）；冰雕偏移不变。策划线复核时看一眼。
 - 检查"一律走玩家点击"：已由 `contract.observes`（G11）保证，只观测的检查才能当验收；`place`/`placem` 用传送把工兵放到点边上，再由测试台点技能按钮和落点。
@@ -82,6 +82,16 @@
 - **K7**：仍等外壳线的地形编辑器，在地图页上和用户定；现在别排。
 - **没提交的别线改动**：`docs/engine/terrain.md`、`experimental/mappage/`、`tests/test_mappage_terrain.py` 不是我的。`test_g4_sys_path_ratchet` 在 HEAD 就红（130 > 129），要总控或引擎线定。
 - **提醒**：`plan_sim` 的 MCP 每次回 7000 多字符，改用 `python -I -X utf8 experimental/cnv/sim.py a7 --script "..." > work/logs/x.log` 再 grep；改文件用 Edit（Bash 钩子拦带反斜杠的内联写文件）。
+
+## 第十六个会话（11-04）：I3 收尾、A7 测试台全过、保底援军
+
+- **I3 / V1 收尾**：引擎线 4fe6cb0 修了测试台后，我重跑 `a4 place`：V1/V2/V3 全 PASS（`work/testbench/runs/CampA4Place_mcp_1104_152808`）。`docs/issues.md` I3 的话改成"V1 原先过不了是测试台点偏，已修好；测试台验证完成，只差独立验收者在 CampShell 上验"（状态仍写`修了待验`：`验过`要独立验收者）。`docs/engine/terrain.md` 第 4 节引擎线已经改过，K3 一节的"V1 还没放出来"改成"已解决"。
+- **A7 测试台**（`cnv_check a7 …`）：`power` PASS、`pick` PASS、`jumps` PASS、`win` PASS（改了检查，见下）、新增 `relief` PASS。
+  - `win` 原先 FAIL 有两个检查自己的问题，不是机关坏：①`LAND_BY=60` 比飞行时间短（货舰 s66 才进基地边的检测区，s72 左右胜利），改成 110；②**货舰迫降飞近时会开火，把基地边那辆测试坦克打掉了**（读数 1→0 在 s63），"进入 base edge"就不成立；检查改成放 3 辆（剩 2 辆，胜利）。`win` 现在带两个诊断读数（货舰进 150 区、我方坦克在基地边），counters 只有 4 行（`counters.MAX_LINES`），所以它只剩 `base edge` 一个地点。**策划线要知道**：迫降段货舰会打基地边的兵，"登舰"得有扛得住的人，目前题卡没写。
+  - **保底**（`docs/story/plans/a7.md` 规则）：用现成的 `兵少于` + `给` 写了两条，都没动平台代码：工程师全死了，第 2 段 + 1:00 在 `start` 送 2 个；第 3 段 + 0:30，标枪兵和多功能步兵车少于 3，在 `start` 送 2 辆多功能步兵车。`relief` 检查：开场杀光工程师和哨所步兵，测试台上 s55 冒出 2 个（步兵数 0→2），通报也出了。防空那条只编译过、没在测试台跑。
+- **摩擦清单补充**（接上一节 1～7）：8. 按**模板**数区域里的单位，看不到脚本 `给` 出来的零售单位（`PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA` 一直是 0，按兵种 `INFANTRY` 数就看得到），`relief` 因此按兵种数；以后"检查要数给出来的单位"一律先用兵种。9. 货舰第一次跃迁到达时步兵数会多出来（s38 +1，s65 +4，是它自己带的兵，不是我们的），数兵种的检查要避开。10. `兵少于` 够用做保底，**第 5 条（保底援军）不再是平台缺口**，只剩北岸哨所翻脸的补救没写。
+- **没做**：断电段的戏（叛军轰炸机越来越稀）和题卡"好玩假设"仍是策划线的活，没排；A7 以外还没动。
+- **验证**：A7 五个检查 + `a4 place` 都是测试台跑的；`pytest -q tests`见提交信息。
 
 ## 第十三个会话收尾（11-04 05:40，上下文 23 万）：K3 提交 41e0c73，K7、E7 没动
 
