@@ -3,8 +3,8 @@ the bunker's logic without its garrison, units/icewall.wall) that is **invulnera
 building while lit. The mission's scripts hand it one of two upgrades and take the other away
 (devices/rhythm.py: NAMED_RECEIVE_UPGRADE / NAMED_REMOVE_UPGRADE):
 
-  off  (dark)  -- the upgrade whose attribute modifier is INVULNERABLE 100% (retail's Iron Curtain modifier,
-                  GlobalData/AttributeModifier.xml: no Duration here, so it lasts as long as the upgrade). Shots land on
+  off  (dark)  -- the upgrade whose attribute modifier is INVULNERABLE 100% plus retail's Iron Curtain status bits
+                  (GlobalData/AttributeModifier.xml: no Duration here, so it lasts as long as the upgrade). Shots land on
                   the shield (the Iron Curtain shader) and do nothing: "白打了".
   on   (lit)   -- no modifier: the ball can be shot to pieces. A removed upgrade's modifier goes and a re-granted one
                   comes back (bench 2026-11-04, docs/engine/upgrades.md 1, for RANGE: the same modifier machinery).
@@ -12,9 +12,11 @@ building while lit. The mission's scripts hand it one of two upgrades and take t
 It starts with neither, so the rhythm's first step ("begin": every unit of every group to `off`) darkens it; the device
 does that at its start, so a ball of a not-yet-started device is plain vulnerable until then.
 
-NOT YET VERIFIED on the bench: that the INVULNERABLE type works through an AttributeModifierUpgrade and that taking the
-upgrade away makes the ball hurt-able again (docs/engine/upgrades.md has RANGE / VISION, not INVULNERABLE) -- listed to
-the engine line; `cnv_check a9 dark` is the one-ball probe for it.
+Bench-verified (engine line 44bb8f5, docs/engine/upgrades.md 4): INVULNERABLE alone through an AttributeModifierUpgrade
+does NOT stop damage; the modifier also has to set retail Iron Curtain's status bits (ObjectStatusToSet="NO_BRIBE
+UNDER_IRON_CURTAIN") -- then the dark ball takes no damage, taking the upgrade away makes it hurt-able, granting it
+again makes it invulnerable again. The modifier must have no Duration (it would run out under the upgrade too).
+`cnv_check a9 dark` is the same probe on the real ball (a sentry gun at a dark ball and at the lit one).
 
 Published: names on / off = the two upgrade ids a rhythm device grants (lit / dark). params health, size.
 """
@@ -38,7 +40,7 @@ def tower_ball(id='CNV_TowerBall', health=4000, size=90, shield=True):
     shade = f'\n\t\tShader="{SHADER}"' if shield else ''
     x = icewall.sub1(x, '</AssetDeclaration>', f'''	<UpgradeTemplate id="{up_on}" Type="OBJECT"/>
 	<UpgradeTemplate id="{up_off}" Type="OBJECT"/>
-	<AttributeModifier id="{mod_off}" Category="NONE"{shade}>
+	<AttributeModifier id="{mod_off}" Category="NONE" ObjectStatusToSet="NO_BRIBE UNDER_IRON_CURTAIN"{shade}>
 		<Modifier Type="INVULNERABLE" Value="100%"/>
 	</AttributeModifier>
 </AssetDeclaration>''')
