@@ -18,6 +18,17 @@ order to the first hit + 1000 per percent lost.
 splash (lane low, check splash; the lanes above are check way): one more I00 V4 whose nugget is Damage SPLASH_DAMAGE, Radius 100, DamageTaperOff 20; its target
 NEAR north, three more of the same Hammers SPLASH_AT east of it (the last outside the radius). Counter per Hammer:
 percent lost (1 per percent).
+
+Bench 11-05 (round 30, docs/engine/weapons.md 2):
+
+  way     instant 2, slow 2, shell 11, laser 2 frames after the order; every lane 5 % a hit. WeaponSpeed does not
+          delay an instant weapon; the laser neither delays nor deals damage; the radius-0 shell hits its victim and
+          lands 9 frames after the instant shot (the model: 11). C = 2 (engine_fire late agrees; the model: 1).
+  splash  first shot: 0 / 40 / 80 / 120 east lose 20 / 17 / 9 / 0 %. The taper goes by the distance less the
+          Hammer's bounding circle (40 and 80 fit it; by the bare distance 40 would lose 12 %), but the Hammer at
+          120 -- beyond Radius by its centre, within it less the circle -- is spared (the model gives it 2 %).
+          From the fourth shot on splash0 stops gaining and the others gain 9 each: not read (the Hammers pushed
+          apart?); only the first shot is used.
 """
 import os
 import re

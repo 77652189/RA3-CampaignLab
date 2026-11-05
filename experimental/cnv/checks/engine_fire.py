@@ -33,9 +33,12 @@ first: I00 every ~5 s, I every ~6.5 s.
 
 Round 26 (read in the program, docs/engine/weapons.md 1): a weapon without InstantLoadClipOnActivate reloads its
 first clip from the frame the unit is made, a random whole ClipReloadTime (V4 4.5-5.5 s = 68-83 frames); the
-order at 45 frames gives 23-38, the pre-attack adds 8. The spread is each unit's draw. Two checks to confirm,
-not run: shift (timers' units, the order at 4 s: each cell 15 less than timers) and late (at 6 s, the clips are
-loaded: the cells without a pre-attack one constant, with it 8 more).
+order at 45 frames gives 23-38, the pre-attack adds 8. The spread is each unit's draw.
+
+Bench 11-05 (round 30): shift (timers' units, the order at 4 s) 20 / 8 / 25 / 23 -- each cell exactly 15 less
+than timers, so the reload runs from the unit's creation; late (6 s, clips loaded) 10 / 2 / 10 / 2 -- without a
+pre-attack the constant 2, with it 8 more. The model is 1 frame late on the reload side (24-39) and 1 frame early
+on the order side (1): two opposite frames, not placed.
 """
 import os
 import re
