@@ -1093,7 +1093,7 @@ class Compiler:
         if extra.get('每隔') is not None and not every:
             raise PlanError(f'进攻 {spec["名字"]}: 加码 每隔 on a wave without 每隔')
         warn = [self.ctx.say(self.text('SCRIPT', spec['预警']), CAPTION)] if spec.get('预警') else []
-        copies, arrive = self.pace_plan(spec, [*troops, *more], f'进攻 {spec["名字"]}') if spec.get('齐步') else ({}, None)
+        copies, arrive = self.pace_plan(spec, [*troops, *more], f'进攻 {spec["名字"]}') if spec.get('齐步') in (True, '是') else ({}, None)
         for i in range(1, most + 1):
             for lv, levels in enumerate(ONE):
                 for bonus in ([False, True] if stepped else [False]):

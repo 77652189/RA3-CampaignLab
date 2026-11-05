@@ -142,6 +142,59 @@ def wiring(mm):
     return sorted(set(out))
 
 
+DETOUR_LIMIT = 1400.0               # a way round longer than this the game does not take (docs/engine/pathing.md 1: 1 400 does,
+BENT = 1.5                          # 1 800 does not); only a way that bends round something counts: longer than this x the straight
+                                    # (measured: 1 400 round for 400 straight; a long straight way is not what was measured)
+TEAM_MOVES = ('MOVE_TEAM_TO', 'ATTACK_MOVE_TEAM_TO')
+
+
+def long_detours(mm, ground=None):
+    """Whole-team moves whose way round, over the map's passable cells, is longer than DETOUR_LIMIT and bends (BENT x the
+    straight line): the units would stop partway (pathing.md 1). Where the team starts is known when the same script
+    makes its units at a waypoint, or they stand named in the map (where placed); other orders are not looked at.
+    Returns lines naming the script, the team, the straight and the way lengths and the surface."""
+    import math
+
+    import simunits
+    ground = ground or sim.Ground(mm.map)
+    own = {u.id: u.xml for u in mm.units}
+    placed = {o.name: o for o in mm.objects if o.name}
+    out = []
+    for s in mm.scripts:
+        if s.name.startswith('Test'):
+            continue
+        made, members = {}, {}
+        for name, *a in s.do:
+            if name in CREATES:
+                made[a[0]] = (a[1], a[3])
+                members.setdefault(a[2], []).append(a[0])
+            elif name == 'UNIT_SET_TEAM':
+                members.setdefault(a[1], []).append(a[0])
+            elif name in TEAM_MOVES and a[1] in mm.waypoints:
+                goal, seen = mm.waypoints[a[1]], set()
+                for obj in members.get(a[0], []):
+                    if obj in made and made[obj][1] in mm.waypoints:
+                        tmpl, start = made[obj][0], mm.waypoints[made[obj][1]]
+                    elif obj in placed:
+                        tmpl, start = placed[obj].template, (placed[obj].x, placed[obj].y)
+                    else:
+                        continue
+                    st = simunits.stats(tmpl, own)
+                    surf = 'both' if st['surface'] == 'both' else st['surface']
+                    if surf == 'air' or 'STRUCTURE' in st['kinds'] or (surf, start, goal) in seen:
+                        continue
+                    seen.add((surf, start, goal))
+                    path = ground.route(surf, start, goal)
+                    if not path:
+                        continue
+                    way = sum(math.hypot(q[0] - p[0], q[1] - p[1]) for p, q in zip([start] + path, path))
+                    line = math.hypot(goal[0] - start[0], goal[1] - start[1])
+                    if way > DETOUR_LIMIT and way > BENT * line:
+                        out.append(f'{s.name}: {name} {a[0]} to {a[1]}: {way:.0f} round for {line:.0f} straight ({surf}); '
+                                   f'over {DETOUR_LIMIT:.0f} the game stops partway: order it by legs (pathing.md 1)')
+    return sorted(set(out))
+
+
 def report(m, t=None):
     """The lines: per difficulty, what can never happen; the wiring once."""
     mm = parts.merged(m, t)
@@ -188,6 +241,9 @@ def report(m, t=None):
     w = wiring(mm)
     out.append('接线：' + ('没发现等了却没人设的旗标、计时、计数' if not w else f'{len(w)} 处'))
     out += ['  ' + x for x in w[:20]]
+    d = long_detours(mm)
+    out.append('绕路：' + ('没发现要绕过 1400 的整队移动' if not d else f'注意：{len(d)} 处整队移动要绕很远，游戏会走到半路停下'))
+    out += ['  ' + x for x in d[:20]]
     return out
 
 

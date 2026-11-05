@@ -68,7 +68,11 @@ def pace(m):
     t.areas['Test Pace goal'] = square(gx, gy, 250.0)
     t.areas['Test Pace tank near'] = square(gx, gy, 600.0)
     t.areas['Test Pace walker near'] = square(gx, gy, 900.0)
-    t.counters = [('Test Pace', '齐步')]
+    up = next((u.names['pace'] for u in m.units if u.id.startswith('CNV_Pace')), 'Upgrade_CNV_Pace0')    # (none: 齐步 off)
+    t.counters = [('Test Pace', '齐步'), ('Test PaceUp', '限速')]       # (the second: 1 while the enemy holds a slowed unit)
+    t.scripts += [Script('Test - paceup zero', [], [('SET_COUNTER', 'Test PaceUp', 0)], once=False),
+                  Script('Test - paceup held', [('PLAYER_HAS_NUM_UNITS_WITH_UPGRADE', m.player('s1'), 1, up)],
+                         [('INCREMENT_COUNTER', 1, 'Test PaceUp')], once=False)]
     t.scripts += [Script('Test - pace zero', [], [('SET_COUNTER', 'Test Pace', 0)], once=False),
                   Script('Test - pace tank', [('NAMED_INSIDE_AREA', tank, 'Test Pace goal')],
                          [('INCREMENT_COUNTER', 1, 'Test Pace')], once=False),
@@ -77,7 +81,7 @@ def pace(m):
                   Script('Test - pace ahead', [('NAMED_INSIDE_AREA', tank, 'Test Pace tank near'),
                                                ('NAMED_INSIDE_AREA', walker, 'Test Pace walker near', NOT)],
                          [('INCREMENT_COUNTER', 100, 'Test Pace')], once=False)]
-    t.bench = [('bench_watch', dict(seconds=RAZE_AT + 30 + 150, every=2, sheet=False, lines=1))]
+    t.bench = [('bench_watch', dict(seconds=RAZE_AT + 30 + 150, every=2, sheet=False, lines=2))]
     return t
 
 
