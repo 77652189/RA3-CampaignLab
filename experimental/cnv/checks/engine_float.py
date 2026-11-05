@@ -34,7 +34,8 @@ Read (测, 2026-11-05, run CampFloatFloat_mcp_1105_053518; the bench's seconds 1
   2000 a frame until s46: the squads under it counted 0 from s46 -- the falling wreck killed them.
   挂厂 / 挂厂空 identical: 100 -> 92 under the IFVs (the IFV hits buildings too), -> 86 under the Hammers;
   挂态 0 throughout: neither plant ever ATTACHED nor moved with its carrier, the Hammer never got onto the plant's
-  spot -- an AttachUpdate on a STRUCTURE does nothing; ParentStatusToCopy never came into play.
+  spot; ParentStatusToCopy never came into play. Why is open (docs/engine/air.md 1): an AttachUpdate on a
+  STRUCTURE does nothing, or the range is 3D (the plant was ~202 from the Kirov hovering at 175, Range 200).
 """
 import os
 
