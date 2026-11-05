@@ -2,6 +2,14 @@
 
 外壳线 2026-11-03 从关卡线拆出（[architecture.md](../architecture.md) 各线负责的文件）。以前做过的事和坑在 [story/handoff.md](../story/handoff.md) 搜"外壳""CampShell"（第 33～42、61～69 行）。问题编号见 [issues.md](../issues.md) K9。
 
+## 接下来：I22、I21（2026-11-05 第二轮验收后总控派活，还没开始）
+
+验收报告 `work/acceptance/2026-11-05b/report.md`，条目见 [issues.md](../issues.md) I21、I22（928b4a2）。I16、I18 已验过。
+
+1. **I22 先做（挡着验收）**：`bench_start` 加一个选项，走菜单和开场过场时也按固定间隔存缩小的帧，存进 `bench_inspect` 能读的运行档（`work/testbench/runs/<run>/`，现在只有进游戏后的帧和 `nav_last.bmp`）。入口：`experimental/testbench/harness.py` 的 `start()`（第 267 行附近，走菜单的循环）、`bench_mcp.py` 的 `bench_start`。改了要用 `experimental/testbench/bench_client.py` 另起服务进程验证（HANDOFF.md「常用做法」）。可参考 `shell_shots.py` 已有的走菜单存帧（`--tour`、`--every`）。
+2. **I21（K9）**：战败卡片还是原版人物肖像（`a4_zh_s60_defeat_card.png`）；A1 统计页"指挥官1"显示 "Nan"（`a1_zh_s38_ended_stats.png`，任务摘要的指挥队伍里也是 Nan，见 `en_tour4_after_key.png`）。从源头查还剩哪些结局、统计界面没换（K9 原版内容检查一节）。
+3. 做完重建 CampShell 中英两版（关卡线也在建，构建工具有锁会排队，别同时建），自查后 issues.md 改"修了待验"；提交前跑 tests/test_architecture.py、test_docs.py、test_shell.py，推送。
+
 ## I16 / I17 / I18：9 关全装进外壳（2026-11-05 总控派活，git log 搜 "I16"）
 
 **11-05 已重建 CampShell / CampShellEn 并进游戏自查过**（两版 `bench_start(chapter=1..9)` 各 9 关、`shell_shots --tour overview --slot 4`；结果写在 [issues.md](../issues.md) I16～I18 的备注里，证据在 `work/acceptance/2026-11-05/` 的 `i16_*_after.png`、`i18_control_zh.png`、`en_tour4_after_key.png`）。等总控的独立验收。没看到的：A7 的自由号（开局在不能进的东岸）。
