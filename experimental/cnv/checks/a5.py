@@ -54,7 +54,37 @@ def win(m):
     return t
 
 
+ROUTE_RUN = 100.0                               # route: seconds for the Riptide to cross and the beacon to climb
+BEACH_AREA, STAIR_AREA = 150.0, 100.0
+
+
+def route(m):
+    """The way the plan's answer takes, in the real game (the draft's two doubts: the banks are steep, so only the
+    slips let an amphibian ashore; the back stair is the only way up that the ramp's guns do not face). Phase 1, the
+    east bank's guards not yet in play: a Riptide sent to the east beach from the west bank, and the beacon put down
+    on the beach and sent to the back stair's head (a Riptide's cargo in play, here walked: the carry itself is
+    the unit's own). Both must arrive."""
+    t = Test()
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1')),
+                                                  ('SET_MILLISECOND_TIMER', 'Test - go timer', GO_AT)]))
+    t.waypoints['Test Beach'] = tuple(m.site('east beach'))
+    t.waypoints['Test Stair'] = tuple(m.site('back stair'))
+    ride, beacon = m.role('riptide 1').name, m.role('beacon').name
+    t.scripts.append(Script('Test - go', [('TIMER_EXPIRED', 'Test - go timer')],
+                            [('UNIT_TELEPORT_TO_WAYPOINT', beacon, 'Test Beach'),
+                             ('MOVE_NAMED_UNIT_TO', ride, 'Test Beach'),
+                             ('MOVE_NAMED_UNIT_TO', beacon, 'Test Stair')]))
+    t.areas['Test beach'] = square(*m.site('east beach'), BEACH_AREA)
+    t.areas['Test stair'] = square(*m.site('back stair'), STAIR_AREA)
+    counted('Test Ride on beach', 'Riptide在滩头', t, named=ride, area='Test beach')
+    counted('Test Beacon on stair', '信标兵在背阶顶', t, named=beacon, area='Test stair')
+    t.expect += [('Riptide在滩头', 0, 'ever==', 1, ROUTE_RUN), ('信标兵在背阶顶', 0, 'ever==', 1, ROUTE_RUN)]
+    t.bench = [('bench_camera', dict(x=m.site('east beach')[0], y=m.site('east beach')[1], look=False)),
+               ('bench_watch', dict(seconds=ROUTE_RUN, every=4, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 # the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
 CHECKS = {
-    'a5': {'hold': hold, 'win': win},
+    'a5': {'hold': hold, 'win': win, 'route': route},
 }

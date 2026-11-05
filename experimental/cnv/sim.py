@@ -258,7 +258,11 @@ class Ground:
         self.e = e                                                          # ground height (CELL cells)
         self.zgrid = e[:hh * d:d, :ww * d:d]                                # the same at each GRID cell's corner
         self.grids ={'ground': fold(walk).all(axis=(1, 3)), 'water': fold(water).all(axis=(1, 3))}
-        self.grids['both'] = self.grids['ground'] | self.grids['water'] | fold(walk | water).all(axis=(1, 3))
+        # the shore's shallows (between the water's edge and 'dry'): platmap.apply blocks only steep ground, so an
+        # amphibian goes ashore through them; left out they cut every slip (a5, 2026-11-04)
+        shallow = (e >= newmap.WATERLINE - 5) & (e <= newmap.WATERLINE + 10) & (platmap.slope_of(e) <= platmap.STEEP)
+        self.grids['both'] = (self.grids['ground'] | self.grids['water'] |
+                              fold(walk | water | shallow).all(axis=(1, 3)))
         self.cache = {}
         self.blocked = np.zeros(self.grids['ground'].shape, bool)
         self.version = 0
