@@ -316,3 +316,11 @@
 - **I1 下一步**（报告 `work/acceptance/2026-11-05b/report.md` 第 10 行，三张截图 `a4_zh_s40_two_captions.png`、`a4_zh_s46_caption_late.png`、`en_a4_s1_two_captions.png`）：先读截图弄清哪一句进哪个位置、7 秒后重复的是哪个脚本；`ctx.py` Talk 队列、`cnv/strip.py`、`tests/test_architecture.py` G3B、`tests/test_talk_queue.py` 是上次（c30d18f）的实现，用户要求"任何时候屏幕上最多一句"，同一句话不许在两个位置各出一次。
 - **I23** 没动：A2 开局镜头上沿黑（第 1～62 秒）、A9 左上角小黑三角；查开局默认相机点离边界够不够（`plan.VIEW_HALF` 950×540），`contract.camera_outside_the_view` 为什么没抓到。
 - 工作区里 `experimental/cnv/shell.py`、`tests/test_shell.py` 是外壳线没提交的改动，别带进提交。
+
+### 第二十五个会话（11-05，总控令：G4 红 → I1 → I23）：G4 红修了、I1 做完（c858229，已推），I23 没动（上下文约 19 万时交接）
+
+- **G4 红**：`tests/test_a1_plan.py` 改成 `from test_plans import small`（照 `test_stasis.py` 的做法拿路径），不再改 sys.path，棘轮回到绿（63a770e）。
+- **I1 做完，标"修了待验"**（证据写在 `docs/issues.md` I1 行）：根因两个。①游戏按字符串表里的标签 `DIALOGEVENT:<事件>` 找配音字幕，AudioFile 不写 `SubtitleStringName` 也照出，所以功能句（上方字幕）的录音 7 秒后又在下方面板出一次；改 `voice_link.Later.strings`（只给带字幕的事件写标签，`texts` 是全部）。②军事字幕和面板是真的两处，规则改成一次最多 `STRIP_MAX=1` 句（`ctx.py` 头部注释；`strip.py` 改成按两处同时读）。A4 在 CampShell 里 3.7～25 秒六帧每帧一句。
+- **I1 没看到的**：A4 第 40～47 秒"车停着……"（要车被打）。过场里的句子也跟着 STRIP_MAX=1，最少隔 6 秒，过场可能变长，离线测试都过，没单独量。
+- **I23 下一步**（没动）：报告 `work/acceptance/2026-11-05b/report.md` K5 一条，截图 `a2_zh_s31_black_edge.png`、`a9_zh_s36.png`；查开局默认相机点离地图边界够不够（`plan.VIEW_HALF` 950×540）、`contract.camera_outside_the_view` 为什么没抓到。测试台现在能 `bench_start(menu_frames=2)` 存开场过场帧。
+- **别带进提交**：工作区里 `docs/engine/air.md`、`spawn.md`、`experimental/cnv/checks/engine_float.py`、`engine_spawn.py`、`maps/probe_range.py` 是引擎线没提交的改动。
