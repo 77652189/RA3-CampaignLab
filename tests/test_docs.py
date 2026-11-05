@@ -21,6 +21,7 @@ HARD_CONSTRAINTS = [
     '总之让我听不到就可以',
     '就只在国内发布吧，不上N网',
     '只用来做mod，研究学习里面的内容，不公开',
+    '我希望尽可能把引擎的算法还原成python代码',
 ]
 STATE_FIELDS = {
     'slice': None,                                              # free text

@@ -30,6 +30,7 @@
 | 策划（2026-10-27 开） | 游戏设计这一层：原版任务拆解、设计总纲和准则、战役总表、各关的纸面设计 | `docs/design/` |
 | 音乐 | 自制配乐、曲谱图、战况音乐 | `experimental/music/`、`docs/music/` |
 | 配音 | AI 中文配音 mod | 另一个仓库 RA3-ChineseVoice |
+| 引擎 | 引擎各层的还原（[ADR 0017](adr/0017-engine-layers-and-map-page.md)、[0018](adr/0018-engine-model-private-repo.md)）：反编译笔记、可执行模型、引擎探针 | 本机私有仓库 RA3-EngineModel（不推送）、`work/re/`（不进 git）；本仓库里 `experimental/cnv/checks/engine_*.py` 和 `maps/probe_*.py`（探针只 import 地图）、`experimental/campaign/terrain_rules.py`。`docs/engine/` 仍归总控，引擎线写实测结论 |
 
 ## 不许怎么做
 
