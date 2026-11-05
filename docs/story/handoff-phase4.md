@@ -309,3 +309,10 @@
 - I19（A4 不操作约 60 秒战败）仍等用户，不动。I21、I22 是外壳线的。
 - 上次留下的待验：I4 的演示（CampShell 里看开场）；G14 守卫在 `tests/test_architecture.py`；`sim.py` 脚本时间可写 `旗标+秒`，`offline.WALK` 已改成挂事件。
 - 本会话上下文已到 40 万，下个会话读本节开始。
+
+### 第二十四个会话（11-05，总控令：第二轮验收 I20 → I1 → I23）：I20 做完（175dba0，已推），I1、I23 没动（上下文 21 万时交接）
+
+- **I20 做完，标"修了待验"**：根因不是条件写错，是兵路过**自己开火**把南岸巡逻打倒（第 3 条规则成立）；巡逻原来站桥头离出生点 420，一走近就开火。**停火姿态试过没用**：`UNIT_SET_STANCE` 3、`UNIT_ALLOW_AI_AUTOACQUIRE` 0、`TEAM_SET_STANCE`、`PLAYER_ALLOW_AI_AUTOACQUIRE` 0 测试台四次，兵照样开火（写进 `docs/engine/terrain.md` 补记；别再试）。改法：巡逻挪上桥 160、新增地点 `patrol watch`（半径 450）走进先通报"停下"。检查：`cnv_check a1 walk`（测试台）、`simchecks` 的 a1 walk、`tests/test_a1_plan.py` 三条。**遗留**：玩家右键点到桥面上仍会输（有警告，到开火至少 5 秒）；若用户觉得还是不公平，下一招是 `无敌`（但规则 1、3 就成了死规则）或地形挡路。
+- **I1 下一步**（报告 `work/acceptance/2026-11-05b/report.md` 第 10 行，三张截图 `a4_zh_s40_two_captions.png`、`a4_zh_s46_caption_late.png`、`en_a4_s1_two_captions.png`）：先读截图弄清哪一句进哪个位置、7 秒后重复的是哪个脚本；`ctx.py` Talk 队列、`cnv/strip.py`、`tests/test_architecture.py` G3B、`tests/test_talk_queue.py` 是上次（c30d18f）的实现，用户要求"任何时候屏幕上最多一句"，同一句话不许在两个位置各出一次。
+- **I23** 没动：A2 开局镜头上沿黑（第 1～62 秒）、A9 左上角小黑三角；查开局默认相机点离边界够不够（`plan.VIEW_HALF` 950×540），`contract.camera_outside_the_view` 为什么没抓到。
+- 工作区里 `experimental/cnv/shell.py`、`tests/test_shell.py` 是外壳线没提交的改动，别带进提交。
