@@ -96,6 +96,8 @@ textarea { width: 100%; box-sizing: border-box; min-height: 72px; font: 15px/1.5
 select { font: 15px var(--body); color: var(--ink); background: var(--panel); border: 1px solid var(--rule); border-radius: 4px; padding: 3px 6px; }
 svg text { font-family: var(--body); font-weight: 500; paint-order: stroke; stroke: rgba(10,16,22,.8); fill: #fff; }
 svg tspan.code { fill: #dfe7ee; font-weight: 400; }
+svg line.lead { stroke: #fff; opacity: .85; pointer-events: none; }
+svg text.lab.pop { fill: #ffe9a8; }
 @media (prefers-reduced-motion: no-preference) { .flash { animation: flash 1.2s ease-out 2; } }
 @keyframes flash { 50% { opacity: .2; } }
 </style>
@@ -125,7 +127,7 @@ svg tspan.code { fill: #dfe7ee; font-weight: 400; }
         <label>强度 <input type="range" id="b-s" min="0.5" max="20" step="0.5" value="3"><span id="b-sv"></span></label>
         </span>
         <span class="sep"></span>
-        <label><input type="checkbox" id="l-labels" checked> 地点名</label>
+        <label><input type="checkbox" id="l-labels" checked> 地点名</label><span class="note" id="labnote"></span>
         <label><input type="checkbox" id="l-objects" checked> 物体</label>
         <label><input type="checkbox" id="l-guides" checked> 规则量线</label>
         <label><input type="checkbox" id="l-areas"> 触发区</label>
@@ -143,8 +145,8 @@ svg tspan.code { fill: #dfe7ee; font-weight: 400; }
         <span><i style="background:#222;border:1px solid #fff"></i>油井</span>
         <span><i style="background:var(--enemy)"></i>不合规的地方</span>
         <span><i style="background:var(--prop)"></i>改动提议</span>
-        <span><i class="swatch" style="background:#e0322a"></i>编辑后新变成不可通行</span>
-        <span><i class="swatch" style="background:#2fbf63"></i>编辑后新变成可通行</span>
+        <span><i class="swatch" style="background:#e0322a"></i>编辑后新变成不可通行（画在平地上就是<b>看不见的墙：坦克步兵都过不去</b>）</span>
+        <span><i class="swatch" style="background:#2fbf63"></i>编辑后新变成可通行（擦在陡坡上，谁都能爬过去）</span>
         <span><i class="swatch" style="background:rgba(20,20,20,.6)"></i>不可通行（原样）</span>
         <span><i class="swatch" style="background:rgba(240,180,60,.7)"></i>陡（快到不可通行）</span>
         <span><i class="swatch" style="background:rgba(160,80,220,.45)"></i>高度改过</span>
@@ -189,6 +191,9 @@ svg tspan.code { fill: #dfe7ee; font-weight: 400; }
 __TERRAIN_JS__
 </script>
 <script>
+__LABELS_JS__
+</script>
+<script>
 const D = __DATA__;
 const IMG = "__IMG__";
 const $ = (id) => document.getElementById(id);
@@ -225,7 +230,7 @@ svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
 if (IMG) el("image", { href: IMG, x: 0, y: 0, width: W, height: H, preserveAspectRatio: "none" }, svg);
 else el("rect", { x: 0, y: 0, width: W, height: H, fill: "#9fb4c4" }, svg);
 const G = {};
-for (const k of ["terrain", "areas", "borders", "objects", "guides", "sites", "problems", "props", "draft"]) G[k] = el("g", { "data-layer": k }, svg);
+for (const k of ["terrain", "areas", "borders", "objects", "guides", "sites", "labels", "problems", "props", "draft"]) G[k] = el("g", { "data-layer": k }, svg);
 
 for (const [k, b] of Object.entries(D.borders)) {
   if (k === "whole") continue;
@@ -264,18 +269,24 @@ for (const c of gd.casts) {
 
 // sites (draggable)
 const siteEls = {};
+const labs = [];             // one per drawn site: its label, leader line and where layoutLabels() put it
 const LABEL = 15;            // screen pixels: fit() turns these into map units for the current width
 for (const s of D.sites) {
   if (s.r >= 1000) continue;
   const g = el("g", { class: "site", tabindex: 0, "data-k": s.k, style: "cursor:grab" }, G.sites);
   if (s.r) el("circle", { cx: sx(s.x), cy: sy(s.y), r: s.r, fill: "rgba(36,94,166,.10)", stroke: "var(--allied)", "stroke-width": 3, opacity: .7, "pointer-events": "none" }, g);
   el("circle", { class: "dot", cx: sx(s.x), cy: sy(s.y), r: 26, fill: s.cast ? "var(--ice)" : "var(--allied)", stroke: "#fff", "stroke-width": 6 }, g);
-  const t = el("text", { class: "lab", x: sx(s.x) + 34, y: sy(s.y) + 14, "data-px": LABEL, "pointer-events": "none" }, g);
+  const lead = el("line", { class: "lead", "data-pxw": 1.5, style: "display:none" }, G.labels);
+  const t = el("text", { class: "lab", x: sx(s.x) + 34, y: sy(s.y) + 14, "data-px": LABEL, "pointer-events": "none" }, G.labels);
   if (s.zh) { t.textContent = s.zh + " "; el("tspan", { class: "code", "data-px": LABEL * 0.8 }, t).textContent = s.k; }
   else t.textContent = s.k;
   el("title", {}, g).textContent = `${nm(s.k)}（${r0(s.x)}, ${r0(s.y)}）${s.r ? `，半径 ${s.r}` : ""}` +
     `${s.build ? `，要能盖 ${s.build} 见方的建筑` : ""}${s.cast ? `，施法圆半径 ${s.cast}` : ""}\n地图模块里的说明（英文）：${s.what}`;
   siteEls[s.k] = g;
+  const L = { s, g, t, lead, shown: true, item: null };
+  labs.push(L);
+  g.addEventListener("pointerenter", () => popLabel(L, true)); g.addEventListener("pointerleave", () => popLabel(L, false));
+  g.addEventListener("focus", () => popLabel(L, true)); g.addEventListener("blur", () => popLabel(L, false));
 }
 
 // rule problems
@@ -294,7 +305,7 @@ for (const r of D.rules.rules) for (const p of r.problems) {
 for (const [id, layer] of [["l-labels", null], ["l-objects", "objects"], ["l-guides", "guides"], ["l-areas", "areas"], ["l-props", "props"]]) {
   $(id).addEventListener("change", (e) => {
     if (layer) G[layer].style.display = e.target.checked ? "" : "none";
-    else for (const t of svg.querySelectorAll(".lab")) t.style.display = e.target.checked ? "" : "none";
+    else layoutLabels();
   });
 }
 
@@ -353,6 +364,7 @@ function drawTerrain() {
   if (!timg) timg = el("image", { class: "terrain", x: -TP.cell / 2, y: -TP.cell / 2, width: n * TP.cell, height: n * TP.cell, preserveAspectRatio: "none" }, G.terrain);
   timg.setAttribute("href", tcanvas.toDataURL());
 }
+let ODD0 = null;             // the built map's own invisible walls / climbable steep cells, counted once
 function terrainReport() {
   const ul = $("tlist"); ul.innerHTML = "";
   if (!T0) { $("tnote").textContent = "这一页生成时没带地形（--no-picture），地形工具关着。"; return; }
@@ -361,6 +373,19 @@ function terrainReport() {
   const nT = props.filter((p) => p.kind === "terrain").length + (draft && draft.kind === "terrain" ? 1 : 0);
   $("tnote").textContent = nT ? `已存的地形提议${draft && draft.kind === "terrain" ? "加上正在画的" : ""}合起来，和构建出的地图比：高度改了 ${moved} 格，新不可通行 ${blocked} 格，新可通行 ${opened} 格。规则和 terrain_rules.py 同一套（坡度超过 ${TP.steep}/格 且在水线以上 = 不可通行；建筑和施法圆的起伏不超过 ${TP.build_variation} 世界单位）。`
     : `还没有地形提议。坡度和通行层画的是构建出的地图；用抬高、压低、整平、画/擦不可通行在图上涂，这里会实时列出哪些地点不再平。`;
+  // the game reads field 0 alone (docs/engine/terrain.md 3): a bit on gentle ground is an invisible wall, a steep cell
+  // without it a slope anyone climbs -- count the ones the edits add
+  const odd = (Gd) => { let wall = 0, climb = 0;
+    for (let q = 0; q < Gd.e.length; q++) {
+      const i = q % TP.w, j = Math.floor(q / TP.w), steep = TERRAIN.impassableAt(Gd, TP, i, j);
+      if (Gd.bits[q] && !steep && Gd.e[q] > TP.waterline) wall++; else if (!Gd.bits[q] && steep) climb++;
+    }
+    return [wall, climb]; };
+  if (!ODD0) ODD0 = odd(T0);
+  const [w1, c1] = odd(CUR), [w0, c0] = ODD0;
+  const warn = (t) => { const li = document.createElement("li"); li.className = "bad"; li.textContent = t; ul.appendChild(li); };
+  if (w1 > w0) warn(`⚠ 看不见的墙：平地上画了 ${w1 - w0} 格不可通行。游戏只看这个位，坦克、步兵都过不去，玩家看不出为什么——要配栅栏、碎石之类看得见的东西。`);
+  if (c1 > c0) warn(`⚠ 看不见的路：陡坡上擦掉了 ${c1 - c0} 格不可通行。游戏不按坡度自己判悬崖，坦克、步兵能直接爬过去。`);
   const now = TERRAIN.flatSites(CUR, TP, TSITES);
   for (const s of TSITES) for (const what of ["build", "cast"]) {
     const key = `${s.k}|${what}`; if (!(key in now)) continue;
@@ -396,8 +421,8 @@ const HINT = { move: "按住一个地点拖到新位置，松手后写一句为�
   raise: "按住在图上涂：每涂一下，圆心抬高“强度”，往外线性减到 0。可以连涂几笔，一起存成一条提议。",
   lower: "按住在图上涂：每涂一下，圆心压低“强度”，往外线性减到 0。",
   flatten: "按住在图上涂：取下笔那一格的高度，把圆里的地往这个高度拉，每下最多拉“强度”。",
-  block: "按住在图上涂：把圆里的格子画成不可通行（只改通行位，不动高度）。",
-  unblock: "按住在图上涂：擦掉圆里格子的不可通行位（游戏是否还会按坡度自己判悬崖，引擎线还没查清）。" };
+  block: "按住在图上涂：把圆里的格子画成不可通行（只改通行位，不动高度）。注意：游戏判断能不能走只看这个位，画在平地上就是一堵看不见的墙，坦克、步兵都过不去，玩家看不出原因，要配上栅栏、碎石这类看得见的东西。",
+  unblock: "按住在图上涂：擦掉圆里格子的不可通行位。游戏不会按坡度自己判悬崖，擦在陡坡上，坦克、步兵就能直接爬过去。" };
 const TERRAIN_OPS = ["raise", "lower", "flatten", "block", "unblock"];
 const OP_NAME = { raise: "抬高", lower: "压低", flatten: "整平", block: "画不可通行", unblock: "擦不可通行" };
 function setMode(m) {
@@ -663,6 +688,62 @@ function fit() {
     t.setAttribute("font-size", (+t.dataset.px * k).toFixed(1));
     if (t.tagName === "text") t.style.strokeWidth = `${(3 * k).toFixed(1)}px`;
   }
+  for (const t of svg.querySelectorAll("[data-pxw]")) t.setAttribute("stroke-width", (+t.dataset.pxw * k).toFixed(1));
+  layoutLabels();
+}
+// Site names spread out so none overlaps another (labels.js): measured at the current zoom, re-placed on every resize.
+// A name with no free spot is hidden and shown while the pointer is on (or focus is in) its site.
+function layoutLabels() {
+  const w = svg.getBoundingClientRect().width;
+  if (!w || !$("l-labels").checked) {
+    for (const L of labs) { L.t.style.display = "none"; L.lead.style.display = "none"; }
+    $("labnote").textContent = "";
+    return;
+  }
+  const k = W / w, pad = 2 * k;
+  const items = labs.map((L) => {
+    const x = sx(L.s.x), y = sy(L.s.y);
+    L.t.style.display = ""; L.t.classList.remove("pop"); L.t.setAttribute("x", x); L.t.setAttribute("y", y);
+    const code = L.t.querySelector("tspan.code");
+    if (code) code.style.display = "";
+    const bb = L.t.getBBox();
+    L.off = [bb.x - x - pad, bb.y - y - pad];
+    const it = { x, y, w: bb.width + 2 * pad, h: bb.height + 2 * pad };
+    if (code) { code.style.display = "none"; it.ws = L.t.getBBox().width + 2 * pad; code.style.display = ""; }
+    return it;
+  });
+  const res = Labels.place(items, [0, 0, W, H], Labels.opts(k));
+  res.forEach((r, i) => {
+    const L = labs[i];
+    L.shown = r.shown; L.short = r.short; L.item = items[i];
+    if (r.shown) { L.t.setAttribute("x", (r.x - L.off[0]).toFixed(1)); L.t.setAttribute("y", (r.y - L.off[1]).toFixed(1)); }
+    else L.t.style.display = "none";
+    const code = L.t.querySelector("tspan.code");
+    if (code) code.style.display = r.short ? "none" : "";
+    if (r.leader) {
+      const [[x1, y1], [x2, y2]] = r.leader;
+      for (const [a, v] of Object.entries({ x1, y1, x2, y2 })) L.lead.setAttribute(a, v.toFixed(1));
+      L.lead.style.display = "";
+    } else L.lead.style.display = "none";
+  });
+  const n = res.filter((r) => r.shown).length;
+  $("labnote").textContent = n < labs.length ? `（显示 ${n} / ${labs.length}，其余鼠标悬停或点选地点看）` : "";
+}
+function popLabel(L, on) {
+  if (!$("l-labels").checked || !L.item) return;
+  if (L.shown) {             // shown short (Chinese name only): the code name comes back while hovered
+    const code = L.t.querySelector("tspan.code");
+    if (L.short && code) { code.style.display = on ? "" : "none"; L.t.classList.toggle("pop", on); G.labels.appendChild(L.t); }
+    return;
+  }
+  if (on) {
+    const it = L.item, d = Labels.opts(W / svg.getBoundingClientRect().width).dot;
+    const x = Math.min(Math.max(it.x + d, 0), W - it.w), y = Math.min(Math.max(it.y - it.h / 2, 0), H - it.h);
+    L.t.setAttribute("x", (x - L.off[0]).toFixed(1)); L.t.setAttribute("y", (y - L.off[1]).toFixed(1));
+    const code = L.t.querySelector("tspan.code");
+    if (code) code.style.display = "";
+    L.t.classList.add("pop"); L.t.style.display = ""; G.labels.appendChild(L.t);
+  } else { L.t.classList.remove("pop"); L.t.style.display = "none"; }
 }
 fit();
 window.addEventListener("resize", fit);
