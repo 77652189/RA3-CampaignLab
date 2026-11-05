@@ -29,7 +29,7 @@ STATE_FIELDS = {
     'next_gate': {'test-map', 'coordinate-calibration', 'demo', 'playtest'},
 }
 ENGINE_DOCS = {'script-semantics.md', 'know-how.md', 'terrain.md', 'pathing.md', 'upgrades.md', 'spawn.md', 'air.md',
-               'missile.md'}   # reverse-engineering notes stay in work/re/ (repo is public)
+               'missile.md', 'weapons.md'}   # reverse-engineering notes stay in work/re/ (repo is public)
 PLAN_MAX_KB = 40        # status only (2026-10-28 it was 115 KB of history and know-how: archive/, engine/)
 
 
