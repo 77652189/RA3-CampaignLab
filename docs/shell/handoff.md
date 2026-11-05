@@ -4,7 +4,7 @@
 
 ## I16 / I17 / I18：9 关全装进外壳（2026-11-05 总控派活，git log 搜 "I16"）
 
-**代码已提交，Mods 里还没用新代码重建，也没进游戏验。** 下一个会话从"下一步"做起。
+**11-05 已重建 CampShell / CampShellEn 并进游戏自查过**（两版 `bench_start(chapter=1..9)` 各 9 关、`shell_shots --tour overview --slot 4`；结果写在 [issues.md](../issues.md) I16～I18 的备注里，证据在 `work/acceptance/2026-11-05/` 的 `i16_*_after.png`、`i18_control_zh.png`、`en_tour4_after_key.png`）。等总控的独立验收。没看到的：A7 的自由号（开局在不能进的东岸）。
 
 - **I16 做法**：`build.py campaign --shell [--lang intl]` 出 CampShell / CampShellEn，带 a1～a9（`build.campaign_levels`：国际版没有 `_intl` 的关用中文版顶上，打 MISSING 行，A4 以外现在都是这样）。`shell.campaign(levels, name, lang, fallback)` 把各关 ModSpec 合成一个 mod：`ModSpec.levels=((槽, 关的 spec), ...)`，`package.build_mod` 先逐关编地图（每关自己的文件夹 `package.level_stem(k)`=`camp_cnvaNN`、自己的地图缓存条目 `c4.CACHE_ENTRIES`、单位只进本关地图流，关与关之间 `_restore`），再编一次静态流（`make_campnew2.SHELL['maps']` 让每个槽的模板指向自己的地图）。标签两关不同文本→报错；顶替关（fallback）的同名标签让位（`AUTOSAVE:CNVCAMPAIGN`）；两关各带音乐/配音包→报错（目前只有 A4 带）。
 - **targets 从源头**：`shell_missions*.json` 没写 targets 时用 `ModSpec.goals`（`package.goal_points`：每个非奖励目标 show 里第一个有位置的标记/角色/地点）；都没有就 SystemExit 说清楚。没有 BORDERS 的图（island）按 5000×5000 整图算。
@@ -13,11 +13,13 @@
 - 测试 `tests/test_shell.py` 末尾 6 条（缺 targets、9 关都有目标位置、短名和卡片、合成规则、build_mod 逐关建图、测试台按章节）。
 - **坑**：写的时候 A1 一度过不了契约（别的线 I1 字幕条改了一半），提交时已恢复，9 关的 spec 离线都能拼出来。a7、a8 的 `CNV_Liberty.xml` 内容不同，逐关写 CNVUnits 各编各的，理论上没问题，进游戏要专门看 A7、A8 的自由女神。
 
-**下一步**：
-1. 单独查游戏没在运行；后台跑 `python -I -X utf8 experimental/cnv/build.py campaign --shell > work/logs/campaign_zh.log`，再 `--lang intl`（约 9 次地图编译）。
-2. 重启 ra3bench MCP 进程，`bench_start('CampShell', chapter=k)` k=1..9 各进一次，`bench_look` 一张小图确认是我们的图（不是布莱顿、戛纳）；英文版同样，再看 A4 任务摘要卡片字没被切。
-3. 跑 `fingerprint.py record shell_s5` + `diff baseline shell_s5`：单关路径的 build_mod 改过（`_map_part` 抽出来了），要确认 A4 单关外壳没变。
-4. issues.md 里 I16、I17、I18 现在标"修了待验"，验过后在报告里写结果。
+**做完了（11-05）**：两版重建；`bench_start(chapter=1..9)` 两版各 9 关进游戏（每关约 57 s，A4 约 130 s）；指纹在 e98743d 前后各记一次（`pre_i16` / `post_i16`，日志 `work/logs/fp_diff_i16.log`）：单关 A4 完全一致，外壳两版只变了卡片和标题类文件（各槽 `aNN_*_briefing.bin`、缩略图 tga、gamestrings、cnv_map.json 的 slot）；tests/test_architecture.py、test_docs.py、test_shell.py 70 过。
+
+**剩下的**：等总控独立验收 I16～I18；A7 自由号开局看不到（要看就在 A7 打到它出场）。
+
+**这次的坑**：
+- 指纹要在源码不动的时候比。别的线常在中途提交（这次 acc4849 改了 A4），所以比"某个提交前后"用临时 worktree：`git worktree add --detach ../RA3-CampaignLab-fp <提交>`，`work` 用 `New-Item -ItemType Junction` 指向主仓库的 work（大文件不在 git 里），记完先用 `[System.IO.Directory]::Delete(联接, $false)` 只删联接，再 `git worktree remove --force`（直接 remove 可能顺着联接删主仓库的 work）。
+- 外壳 A4 里框选常选不到人（单位在画面外），用 `bench_key(81)`（Q 全选）再右键。
 
 ## 编辑器第三轮：Agent 能用、桥、一个启动项（2026-11-04 总控派活，关卡线画 A9 布鲁塞尔后的反馈，git log 搜 "sketch for agents"）
 
