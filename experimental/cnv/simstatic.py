@@ -195,6 +195,46 @@ def long_detours(mm, ground=None):
     return sorted(set(out))
 
 
+def landings(mm, ground=None):
+    """Amphibious units (surface 'both': the Riptide, the Bullfrog, the Ghost King's boats) in the mission -- placed in the
+    map or made at a waypoint by a script -- that cannot reach, over water and land, a dry published site: the banks are
+    steep (platmap.apply blocks ground steeper than STEEP, and a bank is 22..35 a cell unless a Ramp is cut), so an
+    amphibian leaves the water only at a slip (docs/story/handoff-phase4.md, A5 2026-11-04: the Riptide that was to
+    carry the beacon across could not land anywhere). Sites no ground unit can stand on (the air's, a cliff's top
+    nobody climbs to) are not asked for: only land that touches the water (a land mass cut off by cliffs and away from
+    the water is no landing's business). Returns lines naming the unit's template and start and the sites it cannot reach."""
+    import numpy as np
+    from scipy import ndimage
+
+    import simunits
+    ground = ground or sim.Ground(mm.map)
+    own = {u.id: u.xml for u in mm.units}
+    sites = getattr(mm.map, 'SITES', {})
+    land, _ = ndimage.label(ground.grids['ground'])
+    coast = set(np.unique(land[ndimage.binary_dilation(ground.grids['water'], iterations=3) & (land > 0)]))
+    dry = {k: (s.x, s.y) for k, s in sites.items()
+           if ground.grids['ground'][ground.cell(s.x, s.y)] and land[ground.cell(s.x, s.y)] in coast}
+    starts = {}
+    for o in mm.objects:
+        if o.template and (o.x, o.y) != (0, 0):
+            starts.setdefault(o.template, (o.x, o.y))
+    for s in mm.scripts:
+        if s.name.startswith('Test'):
+            continue
+        for name, *a in s.do:
+            if name in CREATES and a[3] in mm.waypoints:
+                starts.setdefault(a[1], mm.waypoints[a[3]])
+    out = []
+    for tmpl, start in starts.items():
+        st = simunits.stats(tmpl, own)
+        if st['surface'] != 'both' or 'STRUCTURE' in st['kinds']:
+            continue
+        lost = sorted(k for k, p in dry.items() if ground.route('both', start, p) is None)
+        if lost:
+            out.append(f'{tmpl} from ({start[0]:g}, {start[1]:g}) cannot reach: {", ".join(lost)}')
+    return out
+
+
 def report(m, t=None):
     """The lines: per difficulty, what can never happen; the wiring once."""
     mm = parts.merged(m, t)
@@ -244,6 +284,9 @@ def report(m, t=None):
     d = long_detours(mm)
     out.append('绕路：' + ('没发现要绕过 1400 的整队移动' if not d else f'注意：{len(d)} 处整队移动要绕很远，游戏会走到半路停下'))
     out += ['  ' + x for x in d[:20]]
+    lz = landings(mm)
+    out.append('上岸：' + ('两栖单位都能上岸到每处靠水的地点' if not lz else f'问题：{len(lz)} 处两栖单位上不了岸（岸太陡，要开滑道）'))
+    out += ['  ' + x for x in lz[:20]]
     return out
 
 
