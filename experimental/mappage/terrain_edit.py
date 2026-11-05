@@ -1,6 +1,6 @@
 """The map page's terrain editor, Python side (ADR 0017: the page only stores proposals). A terrain proposal is a list
-of brush strokes; this file is the one place that says what a stroke does to the ground, and terrain.js (the page's live
-preview) is its mirror, held to it by tests/test_mappage_terrain.py. The rules after the heights move -- which cells
+of brush strokes; this file says what a stroke does to the ground (the height part is platmap.brush, which a new map's
+Layout.brushes run through at build time too), and terrain.js (the page's live preview) is its mirror, held to it by tests/test_mappage_terrain.py. The rules after the heights move -- which cells
 get the impassable bit, what is flat enough to build on, the unit conversions -- are the engine line's
 experimental/campaign/terrain_rules.py, read here and handed to the page as numbers (params()), never retyped.
 
@@ -104,24 +104,10 @@ def apply_stroke(g, stroke):
             if win is not None:
                 g.bits[win][d <= r] = op == 'block'
         return changed
+    import platmap                               # the stroke rule itself (a new map's Layout.brushes use it too)
     tr = _rules()
     e0 = g.e.copy()
-    e = g.e
-    for x, y in dabs(stroke['dabs']):
-        win, d = _window(g, float(x), float(y), r)
-        if win is None:
-            continue
-        near = d < r
-        amt = s * (1.0 - d / r)
-        sub = e[win]
-        if op == 'raise':
-            sub[near] = sub[near] + amt[near]
-        elif op == 'lower':
-            sub[near] = sub[near] - amt[near]
-        else:
-            want = float(stroke['height']) - sub[near]
-            sub[near] = sub[near] + np.maximum(-amt[near], np.minimum(amt[near], want))
-        e[win] = sub
+    e = platmap.brush(g.e.astype(float), dict(stroke, r=r, s=s), g.b, g.cell)
     raw = np.clip(np.floor(e * tr.RAW_PER_OURS + 0.5), 0, 65535)
     g.e = raw / tr.RAW_PER_OURS
     changed = g.e != e0

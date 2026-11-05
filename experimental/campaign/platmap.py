@@ -90,6 +90,51 @@ class Layout:
     cliff: int = 2                      # smoothing passes (3 x 3 box): a tier step becomes a cliff ~2 * cliff cells wide
     blocks: list = dataclasses.field(default_factory=list)     # [Block]: lint holds the map to them (P24)
     gaps: list = dataclasses.field(default_factory=list)       # [Gap]: lint measures each
+    brushes: list = dataclasses.field(default_factory=list)    # height strokes laid last (brush(); the map page's)
+
+
+BRUSH_OPS = ('raise', 'lower', 'flatten')
+
+
+def _dab_points(d):
+    """A stroke's dabs as stored: flat [x0, y0, x1, y1, ...] (the page's store takes no array of arrays), or pairs."""
+    d = list(d)
+    if d and isinstance(d[0], (list, tuple)):
+        return [(float(x), float(y)) for x, y in d]
+    return [(float(d[k]), float(d[k + 1])) for k in range(0, len(d) - 1, 2)]
+
+
+def brush(e, stroke, b, cell=CELL):
+    """One height stroke on e (a float64 height field, rows j, columns i; changed in place and returned). A stroke is
+    {op: raise | lower | flatten, r: radius (world units), s: strength (elevation / 16 per dab at the centre, falling
+    off linearly to 0 at r), dabs: [x0, y0, x1, y1, ...] world points in the order laid, height: flatten's level}:
+    each dab moves the cells closer than r to its centre, flatten pulls them toward height by at most s * weight.
+    The map page's terrain editor (experimental/mappage/terrain_edit.py, its preview terrain.js) lays strokes by this
+    rule; a map drawn on the page's new-map mode keeps its strokes in Layout.brushes."""
+    op, r, s = stroke['op'], float(stroke['r']), float(stroke.get('s', 0.0))
+    if op not in BRUSH_OPS:
+        raise ValueError(f'unknown brush op {op!r}')
+    h, w = e.shape
+    for x, y in _dab_points(stroke['dabs']):
+        i0, i1 = max(0, math.floor((x - r) / cell) + b), min(w - 1, math.ceil((x + r) / cell) + b)
+        j0, j1 = max(0, math.floor((y - r) / cell) + b), min(h - 1, math.ceil((y + r) / cell) + b)
+        if i0 > i1 or j0 > j1:
+            continue
+        dx = (np.arange(i0, i1 + 1) - b) * cell - x
+        dy = (np.arange(j0, j1 + 1) - b) * cell - y
+        dist = np.sqrt(dx[None, :] * dx[None, :] + dy[:, None] * dy[:, None])
+        near = dist < r
+        amt = s * (1.0 - dist / r)
+        sub = e[j0:j1 + 1, i0:i1 + 1]
+        if op == 'raise':
+            sub[near] = sub[near] + amt[near]
+        elif op == 'lower':
+            sub[near] = sub[near] - amt[near]
+        else:
+            want = float(stroke['height']) - sub[near]
+            sub[near] = sub[near] + np.maximum(-amt[near], np.minimum(amt[near], want))
+        e[j0:j1 + 1, i0:i1 + 1] = sub
+    return e
 
 
 def rect(x0, y0, x1, y1, tier, what=''):
@@ -181,6 +226,11 @@ def heights(layout, w, h, b):
             problems.append(f'ramp {r.what or r.low}: both ends on one level ({lo:.0f} / {hi:.0f})')
         near, t = _strip(r.low, r.high, r.width, w, h, b)
         e[near] = (lo + (hi - lo) * t)[near]
+    if layout.brushes:                                      # hand strokes, on the ground the tiers and ramps made
+        e = e.astype(np.float64)
+        for st in layout.brushes:
+            brush(e, st, b)
+        e = e.astype(np.float32)
     return e, problems
 
 

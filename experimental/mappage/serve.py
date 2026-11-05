@@ -221,7 +221,9 @@ class Sketch:
     def generate(self, s):
         self.save(s)
         with self.lock:                                        # contract.map_design, the build: one at a time
-            return sketch2map().report(self.name, self.read(), with_map=self.with_map, out=self.dir)
+            # the engine line's pathfinding model too when it is on this computer (about a second): its "may stop
+            # half way" warnings (docs/engine/pathing.md 1) are the page's to show
+            return sketch2map().report(self.name, self.read(), with_map=self.with_map, with_pathing=True, out=self.dir)
 
     def report(self):
         p = os.path.join(self.dir, 'report.json')
@@ -230,6 +232,7 @@ class Sketch:
     def page(self):
         view = open(os.path.join(HERE, 'view.js'), encoding='utf-8').read()
         boot = {'sketch': self.read(), 'online': True, 'report': self.report(),
+                'tiers': [sketch2map().platmap.TIER[k] for k in sorted(sketch2map().platmap.TIER)],
                 'where': os.path.relpath(self.path, mappage.ROOT).replace(os.sep, '/')}
         html = open(SKETCH_PAGE, encoding='utf-8').read()
         # the boot data inside a <script>: no "</" may close it early

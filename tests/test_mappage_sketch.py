@@ -137,6 +137,86 @@ def test_pathing_skips_without_the_model(tmp_path):
     assert sk.pathing(mod, [('start', 'plateau')], model_dir=str(tmp_path / 'nowhere')) is None
 
 
+# ---- the brush layer (raise / lower / flatten on a new map: platmap.Layout.brushes)
+
+def _e_at(mod, x, y):
+    w, h, b = sk.platmap.CONTAINER
+    return float(sk.heights(mod)[int(round(y / 10)) + b, int(round(x / 10)) + b])
+
+
+def test_brush_layer_reaches_the_module(tmp_path):
+    """A raise stroke drawn on the sketch is in the module (BRUSHES, Layout.brushes) and lifts the ground there by its
+    strength at the centre; the same stroke through the terrain editor's rule (terrain_edit) moves the same cells."""
+    s = _trial()
+    plain = sk.load(sk.generate(s, str(tmp_path / 'plain')), 'plain_trial')
+    s['brushes'] = [{'op': 'raise', 'r': 100, 's': 40, 'dabs': [2000, 800]}]
+    text = sk.module_text(s)
+    assert 'BRUSHES = [' in text and 'brushes=BRUSHES' in text
+    up = sk.load(sk.generate(s, str(tmp_path / 'up')), 'up_trial')
+    assert _e_at(up, 2000, 800) == pytest.approx(_e_at(plain, 2000, 800) + 40, abs=0.01)
+    assert _e_at(up, 2300, 800) == _e_at(plain, 2300, 800)                     # outside the radius: untouched
+    te = mappage.terrain_edit
+    w, h, b = sk.platmap.CONTAINER
+    g = te.Ground(sk.heights(plain), sk.walk_of(plain) * False, b, 0.0)
+    te.apply_stroke(g, s['brushes'][0])
+    box = (slice(65 + b, 96 + b), slice(185 + b, 216 + b))      # round the dab, on flat low ground (the editor
+    e0 = sk.heights(plain)[box]                                 # stores heights to 1/16 everywhere it is run)
+    assert (g.e[box] != e0).sum() > 200
+    assert ((g.e[box] != e0) == (sk.heights(up)[box] != e0)).all()
+
+
+def test_brush_trench_cuts_off_and_round_trips(tmp_path):
+    """A lowered trench across the map is steep on both sides: the regions see it (the east cut off), and a module
+    with brushes written out as a sketch again keeps them (from_module)."""
+    s = _trial()
+    s['walls'] = []
+    s['sites']['east'] = {'x': 2600, 'y': 800, 'r': 50, 'zh': '', 'what': ''}
+    s['brushes'] = [{'op': 'lower', 'r': 60, 's': 200, 'dabs': [v for y in range(-100, 3101, 15) for v in (1500, y)]}]
+    r = sk.report('trialtest', s, with_map=False, out=str(tmp_path))
+    assert 'east' in r['regions']['cut off'], r['regions']
+    mod = sk.load(str(tmp_path / 'trialtest.py'), 'trench_trial')
+    back = sk.from_module(mod)
+    assert back['brushes'] == [sk._brush_out(b) for b in s['brushes']]
+
+
+def test_flatten_levels_and_bad_brush_refused(tmp_path):
+    """Flatten pulls the cells toward its height (a mesa's edge brought to the low ground); a stroke without what it
+    needs is refused before anything is written."""
+    s = _trial()
+    s['brushes'] = [{'op': 'flatten', 'r': 120, 's': 500, 'height': sk.platmap.TIER[1], 'dabs': [900, 2500]}]
+    mod = sk.load(sk.generate(s, str(tmp_path)), 'flat_trial')
+    assert _e_at(mod, 900, 2500) == pytest.approx(sk.platmap.TIER[1], abs=0.01)
+    bad = _trial()
+    bad['brushes'] = [{'op': 'dig', 'r': 50, 's': 1, 'dabs': [0, 0]}, {'op': 'flatten', 'r': 50, 's': 1, 'dabs': [0, 0]},
+                      {'op': 'raise', 'r': 50, 's': 1, 'dabs': [0]}]
+    probs = sk.check_sketch(bad)
+    assert len([p for p in probs if p.startswith('brush ')]) == 3, probs
+
+
+# ---- warnings: a slit along the edge, a unit that may stop half way
+
+def test_slit_along_the_edge_warned(tmp_path):
+    """The trial wall ends 100 from the south edge: a walkable slit narrower than a tank (the engine line saw a car
+    stop at that wall's south end). Run past the edge it is shut; ended 300 short it is a lane: neither is warned."""
+    def slits(y0):
+        s = _trial()
+        s['walls'] = [{'points': [[1100, y0], [1100, 1300]], 'width': 100, 'tier': 3, 'what': ''}]
+        return sk.narrow_edges(sk.load(sk.generate(s, str(tmp_path / str(y0))), f'slit_{y0 + 500}'))
+    near = slits(100)
+    assert len(near) == 1 and 1000 <= near[0]['x'] <= 1200 and near[0]['y'] < 60 and 0 < near[0]['width'] < sk.NARROW
+    assert slits(-200) == [] and slits(300) == []
+
+
+def test_stops_are_warnings_not_cut_off():
+    """Model says no, regions say yes: a may-stop warning; a site the regions already cut off is not repeated; no model
+    run, no warning."""
+    paths = [{'from': 'start', 'to': 'a', 'found': False, 'reason': 'budget', 'stop': [1, 2], 'gap': 300.0},
+             {'from': 'start', 'to': 'b', 'found': False, 'reason': 'zone'},
+             {'from': 'start', 'to': 'c', 'found': True, 'reason': ''}]
+    assert [p['to'] for p in sk.stops(paths, {'cut off': ['b']})] == ['a']
+    assert sk.stops('没跑', {'cut off': []}) == []
+
+
 # ---- the server's new-map mode
 
 @pytest.fixture

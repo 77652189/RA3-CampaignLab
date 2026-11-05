@@ -22,6 +22,8 @@ The sketch (version 1), world units, +y north, as the map modules write them:
   fields [{name, x, y, facing, twin, base, owner, build}], derricks [[x, y]]     resources.Field: ore made from the pad
   borders {name: [x0, y0, x1, y1]}   the first is the playable area (MAP_SWITCH_BORDER order)
   blocks [{at, use, what}], gaps [{x, y, width, what}]     platmap.Block / Gap (at: a shape dict or a rectangle)
+  brushes [{op, r, s, dabs, height}]   raise / lower / flatten strokes laid last (platmap.brush, Layout.brushes; the
+                              same rule as the existing maps' terrain editor); dabs flat [x0, y0, x1, y1, ...]
   objects, scenery [{template, x, y, side, name, angle, flags, site}]     placed as they are (bridges, walls; props)
 
 The same sketch always gives the same module text (module_text is a pure function of it); a module written by
@@ -76,7 +78,8 @@ def blank(name, size=(WORLD, WORLD)):
     return {'version': VERSION, 'name': name, 'what': '', 'size': [w, h], 'base': 1, 'cliff': 2,
             'shapes': [], 'walls': [], 'ramps': [], 'roads': [],
             'sites': {}, 'start': [min(1250.0, w / 4), h / 2], 'fields': [], 'derricks': [],
-            'borders': {'whole': [0.0, 0.0, w, h]}, 'blocks': [], 'gaps': [], 'objects': [], 'scenery': []}
+            'borders': {'whole': [0.0, 0.0, w, h]}, 'blocks': [], 'gaps': [], 'brushes': [], 'objects': [],
+            'scenery': []}
 
 
 def _f(v):
@@ -103,6 +106,15 @@ def _obj_out(o):
         d['angle'] = _f(o.angle)
     if o.flags is not None:
         d['flags'] = int(o.flags)
+    return d
+
+
+def _brush_out(st):
+    """A height stroke as the sketch keeps it: flat dabs, numbers as floats, height only for flatten."""
+    d = {'op': st['op'], 'r': _f(st['r']), 's': _f(st.get('s', 0.0)),
+         'dabs': [_f(v) for q in platmap._dab_points(st['dabs']) for v in q]}
+    if st['op'] == 'flatten':
+        d['height'] = _f(st['height'])
     return d
 
 
@@ -150,6 +162,7 @@ def from_module(mod, names=None):
         'blocks': [{'at': _shape_out(b.at) if isinstance(b.at, platmap.Shape) else [_f(v) for v in b.at],
                     'use': b.use, 'what': b.what} for b in lay.blocks],
         'gaps': [{'x': _f(g.x), 'y': _f(g.y), 'width': _f(g.width), 'what': g.what} for g in lay.gaps],
+        'brushes': [_brush_out(st) for st in getattr(lay, 'brushes', [])],
         'objects': objects,
         'scenery': [_obj_out(o) for o in getattr(mod, 'SCENERY', [])],
     }
@@ -181,6 +194,15 @@ def check_sketch(s):
     for code in s.get('sites', {}):
         if not code or code != code.strip() or "'" in code or '\\' in code:
             out.append(f'site {code!r}: a code name is plain text without quotes')
+    for k, st in enumerate(s.get('brushes', [])):
+        if st.get('op') not in platmap.BRUSH_OPS:
+            out.append(f'brush {k + 1}: op {st.get("op")!r} (one of {", ".join(platmap.BRUSH_OPS)})')
+        elif not (st.get('r', 0) > 0 and st.get('s', 0) >= 0):
+            out.append(f'brush {k + 1}: a radius above 0 and a strength of 0 or more')
+        elif not st.get('dabs') or len(st['dabs']) % 2:
+            out.append(f'brush {k + 1}: dabs are x, y pairs, one at least')
+        elif st['op'] == 'flatten' and not isinstance(st.get('height'), (int, float)):
+            out.append(f'brush {k + 1}: flatten needs the height it levels to')
     if not s.get('borders'):
         out.append('no borders: the first one is the playable area')
     for f in s.get('fields', []):
@@ -310,8 +332,13 @@ def module_text(s):
     L += _wrap('BLOCKS = [', blocks)
     L += _wrap('GAPS = [', [f"Gap({_r(g['x'])}, {_r(g['y'])}, {_r(g['width'])}, {_s(g.get('what', ''))})"
                             for g in s.get('gaps', [])])
+    L += ['# hand strokes (raise / lower / flatten, platmap.brush), laid on the ground the shapes and ramps make']
+    L += _wrap('BRUSHES = [', ['{' + ', '.join([f"'op': {_s(b['op'])}", f"'r': {_r(b['r'])}", f"'s': {_r(b['s'])}"]
+                                            + ([f"'height': {_r(b['height'])}"] if b['op'] == 'flatten' else [])
+                                            + ["'dabs': [" + ', '.join(_r(v) for v in b['dabs']) + ']']) + '}'
+                               for b in map(_brush_out, s.get('brushes', []))])
     L += [f"LAYOUT = Layout(shapes=SHAPES, ramps=RAMPS, roads=ROADS, base={int(s['base'])}, cliff={int(s['cliff'])}, "
-          'blocks=BLOCKS, gaps=GAPS)',
+          'blocks=BLOCKS, gaps=GAPS, brushes=BRUSHES)',
           '']
     L += ['# the look: retail objects placed as they are (a new map has none yet: the level line adds platprops)']
     L += _wrap('SCENERY = [', [_obj_src(o) for o in s.get('scenery', [])])
@@ -500,8 +527,66 @@ def pathing(mod, pairs, model_dir=None):
     for a, z in pairs:
         sa, sz = mod.SITES[a], mod.SITES[z]
         r = pf.find_path(grid, pf.world_to_cell(sa.x, sa.y), pf.world_to_cell(sz.x, sz.y))
-        out.append({'from': a, 'to': z, 'found': r.found, 'reason': r.reason, 'cells': len(r.cells)})
+        d = {'from': a, 'to': z, 'found': r.found, 'reason': r.reason, 'cells': len(r.cells), 'at': [sz.x, sz.y]}
+        if not r.found and getattr(r, 'approximate', False) and r.goal is not None:
+            # RA3's plain move: the unit drives to the searched cell nearest the goal and stops there (pathing.md 1)
+            d['stop'] = [float(v) for v in pf.cell_center(*r.goal)]
+            d['gap'] = round(float(r.gap) * float(pf.CELL_SIZE), 1)
+        out.append(d)
     return out
+
+
+STOP_WORDS = '游戏不报错，单位会开到半路停住；脚本派兵请分段下令；模型偏保守，可能多报'
+
+
+def stops(paths, reg):
+    """The pairs the walkable regions join but the pathfinding model does not (docs/engine/pathing.md 1: over its
+    search budget the game says nothing, the unit drives to the searched cell nearest the goal and stops there). Not
+    a failure -- the model is cautious on open ground (trial: the north-east mesa read 'budget', the game got there in
+    19 s) -- a warning, kept apart from the sites nobody can walk to."""
+    if not isinstance(paths, list):
+        return []
+    cut = set(reg['cut off'])
+    return [p for p in paths if not p['found'] and p['to'] not in cut]
+
+
+NARROW = 50.0       # docs/engine/pathing.md 4: six tanks went through a 50-wide gap; narrower is not measured
+NARROW_LONG = 100.0         # a slit shorter than this is a cliff foot's corner, not a lane
+NARROW_WORDS = (f'悬崖或墙离地图边只剩窄缝（能走，但比 {NARROW:g} 窄）：车会往缝里开然后卡住；'
+                f'要么把墙画到边外封死，要么让出 {NARROW:g} 以上')
+
+
+def narrow_edges(mod, walk=None):
+    """Slits between a cliff (or a wall) and the edge of the playable area: walkable, so the regions join through
+    them, but narrower than NARROW -- a vehicle sent along the edge drives in and sticks. Each: {x, y (its middle),
+    width, length} in world units, widest-first by length."""
+    import numpy as np
+    from scipy import ndimage
+    walk = (walk_of(mod) if walk is None else walk) & inside(mod)
+    rad = NARROW / platmap.CELL / 2
+    k = int(math.floor(rad))
+    jj, ii = np.mgrid[-k:k + 1, -k:k + 1]
+    disk = ii * ii + jj * jj <= rad * rad
+    roomy = ndimage.binary_opening(walk, structure=disk)        # where a NARROW-wide body fits
+    slit = walk & ~roomy
+    to_edge = ndimage.distance_transform_edt(inside(mod)) * platmap.CELL
+    across = ndimage.distance_transform_edt(walk) * platmap.CELL
+    label, n = ndimage.label(slit)
+    near_roomy = ndimage.binary_dilation(roomy, iterations=1)
+    w, h, b = platmap.CONTAINER
+    out = []
+    for k, sl in enumerate(ndimage.find_objects(label), 1):
+        part = label[sl] == k
+        length = max(part.shape) * platmap.CELL
+        if length < NARROW_LONG or (to_edge[sl][part] <= NARROW).mean() < 0.5 or not (near_roomy[sl] & part).any():
+            continue                    # a short corner, a slit away from the edge, or one no vehicle can drive into
+        js, is_ = np.nonzero(part)
+        mid = len(js) // 2
+        order = np.lexsort((is_, js))
+        j, i = js[order[mid]] + sl[0].start, is_[order[mid]] + sl[1].start
+        out.append({'x': float((i - b) * platmap.CELL), 'y': float((j - b) * platmap.CELL),
+                    'width': float(round(2 * across[sl][part].max() - platmap.CELL)), 'length': float(length)})
+    return sorted(out, key=lambda d: -d['length'])
 
 
 def _mission(mod, name):
@@ -575,12 +660,14 @@ def report(name, s=None, with_map=True, with_pathing=False, out=None):
     out['regions'] = {k: v for k, v in reg.items() if k != 'label'}
     region_png(reg['label'], os.path.join(d, 'regions.png'), reg['start'])
     out['regions_png'] = 'regions.png'
+    out['narrow'] = narrow_edges(mod)
     if with_pathing:
         pairs = [('start', k) for k in mod.SITES if k not in ('start', 'island') and not k.endswith(' refinery')]
         res = pathing(mod, pairs)
         out['pathing'] = res if res is not None else '引擎线的寻路模型不在这台电脑上（labpaths.ENGINE_MODEL），只看连通区'
     else:
-        out['pathing'] = '没跑（--pathing 才跑；寻路模型还是骨架，先看连通区）'
+        out['pathing'] = '没跑（--pathing 才跑）'
+    out['stops'] = stops(out['pathing'], reg)          # warnings: they do not make the sketch fail
     if with_map:
         try:
             out.update(write_and_study(m, d, s['name'], bool(out['contract'])))
@@ -640,6 +727,11 @@ def text_report(r):
     p = r.get('pathing')
     out.append('寻路 ' + (p if isinstance(p, str) else '; '.join(
         f"{x['from']}→{x['to']} {'通' if x['found'] else '不通 ' + x['reason']}" for x in p)))
+    for x in r.get('stops', []):
+        at = f"，停在 ({x['stop'][0]:.0f}, {x['stop'][1]:.0f})，离目标 {x['gap']:.0f}" if x.get('stop') else ''
+        out.append(f"可能半路停住 {x['from']}→{x['to']}（连通区能到，模型 {x['reason']}{at}）：{STOP_WORDS}")
+    for x in r.get('narrow', []):
+        out.append(f"贴边窄缝 ({x['x']:.0f}, {x['y']:.0f}) 宽约 {x['width']:.0f}、长 {x['length']:.0f}：{NARROW_WORDS}")
     return '\n'.join(out)
 
 
