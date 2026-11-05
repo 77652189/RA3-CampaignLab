@@ -1,5 +1,5 @@
 """Engine unit tests: what an upgrade's RANGE attribute modifier does to a turret (docs/engine/upgrades.md; A8's swell,
-units/platform.py tide_gun, devices/rhythm.py). On the probe map (maps/probe_range.py) six of A8's turrets (retail's
+what A8's tide_gun relies on). On the probe map (maps/probe_range.py) six turrets of the probe's own (gun(): retail's
 sentry gun, AttackRange 300 / VisionRange 300, with two OBJECT upgrades: High = RANGE x2, Low = RANGE x0.6), the
 player's, each with its own lane of engineers standing straight north of it at fixed distances. The engineers start
 neutral (nobody shoots them) and are handed to the enemy at SHOW s, after the upgrades have been granted / removed,
@@ -24,10 +24,13 @@ but its forced 450 is hit; reach 1110 / 101 / 101 -- base's forced 450 not hit, 
 itself, removed's forced 450 not hit, order's (High again) hit, switch's forced 250 not hit. So: a removed upgrade's
 modifier goes, a re-granted one comes back, two never stack here; RANGE moves the weapon, VISION the picking.
 """
-from maps import probe_range
-from parts import Mission, Script, Test
-from units import platform
+import os
 
+import labpaths
+from maps import probe_range
+from parts import Mission, Script, Test, Unit
+
+RETAIL_GUN = 'SovietBaseDefenseGround'
 GUN = 'CNV_RangeGun'
 TARGET = 'AlliedEngineer'
 SWAP, SHOW, RUN = 4.0, 8.0, 40.0
@@ -44,15 +47,47 @@ SEEN = 'CNV_RangeSeen'              # reach: the high lane's gun, whose High als
                                     # AttributeModifier.xml line 56, RANGE 175% with VISION 250%)
 
 
+def gun(id, high=2.0, low=0.6, vision=None):
+    """The probe's own turret (ADR 0016 G5: an engine probe builds its units itself, not from units/): retail's
+    sentry gun (SovietBaseDefenseGround) under `id`, its power-plant dependency dropped, with two OBJECT upgrades,
+    names on / off: High = RANGE x`high` (and VISION x`vision` if given), Low = RANGE x`low`."""
+    up_on, up_off = f'Upgrade_{id}_High', f'Upgrade_{id}_Low'
+    mod_on, mod_off = f'AttributeModifier_{id}_High', f'AttributeModifier_{id}_Low'
+    x = open(os.path.join(labpaths.SDK3, 'SageXML', 'Soviet', 'Structures', 'SovietBaseDefenseGround.xml'),
+             encoding='utf-8').read()
+    sight = f'\n\t\t<Modifier Type="VISION" Value="{round(vision * 100)}%"/>' if vision else ''
+    for old, new in ((f'id="{RETAIL_GUN}"', f'id="{id}"'), (f'EditorName="{RETAIL_GUN}"', f'EditorName="{id}"'),
+                     ('<GameDependency>\n\t\t\t<RequiredObject>SovietPowerPlant</RequiredObject>\n\t\t</GameDependency>', ''),
+                     ('<Behaviors>', f'''<Behaviors>
+			<AttributeModifierUpgrade id="ModuleTag_CNV_High" AttributeModifier="{mod_on}">
+				<TriggeredBy>{up_on}</TriggeredBy>
+			</AttributeModifierUpgrade>
+			<AttributeModifierUpgrade id="ModuleTag_CNV_Low" AttributeModifier="{mod_off}">
+				<TriggeredBy>{up_off}</TriggeredBy>
+			</AttributeModifierUpgrade>'''),
+                     ('</AssetDeclaration>', f'''	<UpgradeTemplate id="{up_on}" Type="OBJECT"/>
+	<UpgradeTemplate id="{up_off}" Type="OBJECT"/>
+	<AttributeModifier id="{mod_on}" Category="NONE">
+		<Modifier Type="RANGE" Value="{round(high * 100)}%"/>{sight}
+	</AttributeModifier>
+	<AttributeModifier id="{mod_off}" Category="NONE">
+		<Modifier Type="RANGE" Value="{round(low * 100)}%"/>
+	</AttributeModifier>
+</AssetDeclaration>''')):
+        assert x.count(old) == 1, (old[:60], x.count(old))
+        x = x.replace(old, new, 1)
+    # two copies of one retail file in one mod would define its <Define> twice (BinaryAssetBuilder: Critical)
+    x = x.replace('SOVIET_BASE_DEFENSE_GROUND_LOCAL_UNPACK_TIME', f'{id.upper()}_UNPACK_TIME')
+    return Unit(id, x, link=[f'UpgradeTemplate:{up_on}', f'UpgradeTemplate:{up_off}', f'AttributeModifier:{mod_on}',
+                             f'AttributeModifier:{mod_off}'],
+                names={'on': up_on, 'off': up_off}, what='引擎探针：原版哨戒炮，两个升级各带射程修正',
+                params=dict(high=high, low=low, vision=vision))
+
+
 def mission(seen=False):
-    u = platform.tide_gun(id=GUN, high=2.0, low=0.6, vision=None)      # the control: RANGE alone (tide_gun now pairs it)
-    units = [u]
+    units = [gun(GUN)]                                  # the control: RANGE alone
     if seen:
-        v = platform.tide_gun(id=SEEN, high=2.0, low=0.6, vision=2.0)
-        # two copies of one retail file in one mod: its <Define> would be defined twice (BinaryAssetBuilder:
-        # Critical, the build stops)
-        v.xml = v.xml.replace('SOVIET_BASE_DEFENSE_GROUND_LOCAL_UNPACK_TIME', 'CNV_RANGE_SEEN_UNPACK_TIME')
-        units.append(v)
+        units.append(gun(SEEN, vision=2.0))
     m = Mission(name='CampRange', map=probe_range, units=units, facts={})
     for lane in probe_range.LANES:
         tmpl = SEEN if seen and lane == 'high' else GUN
