@@ -298,3 +298,14 @@
 - **测试台**：`cnv_check a4 demo` PASS（检查改用自己的时钟 `DEMO_AT/DEMO_A/DEMO_B`，开场过场被测试台跳过，所以演示放在首帧之后；A 段量到约 18～19 s）。帧里镜头跟着走、冰雕冒红烟、兵在画面中走。测试台看到的是游戏画面不是电影黑边——带高 345 是从验收截图量的，没复现。
 - **提交前跑过**：`tests/test_architecture.py test_docs.py test_level_cards.py test_plans.py test_a4_plan.py test_horn.py test_talk_queue.py` 共 105 过。
 - **待验（要在 CampShell 里看开场）**：工兵走进来施法、兵冒烟出来折回冒烟下去、后巷冒烟出兵；兵走路比预想慢，若兵没走到冰前就折回，调 `plans/a4.md` 的 `等`（现 6）。其它关卡用 `演示` 的暂时没有（只有 A4）。
+
+### 第二十三个会话收尾（11-05，上下文 40 万，已超 15 万）：I4 和两个修补已推（acc4849、3076bd9），第二轮验收三条还没动
+
+总控令（第二轮 CampShell 验收，`work/acceptance/2026-11-05b/report.md`，issues.md 928b4a2）按顺序做，**每条独立提交**，提交前跑 `tests/test_architecture.py test_docs.py test_level_cards.py test_plans.py`，改完 issues.md 的 I20 / I1 / I23 为"修了待验"并写证据：
+
+1. **I20（最急）**：A1 开局全选、右键往右上桥头 (1503,2806) 开，约 38 秒关卡直接结束跳统计页，部队一个没少（`a1_zh_s38_ended_stats.png`）。查哪条结局被误触（多半是 `docs/story/plans/a1.md` 的"谁看见谁"三条规则：桥面守军倒 / 南塔爆破手倒且北塔还活着 → 输；南岸巡逻倒且南塔还活着 → 输，里的条件在开局往桥头走时就满足，注意 `还没` 只认 `段 …`，写法见第二十三个会话（A1）一节的坑），从源头修，加一条检查：开局往桥头走不该结束（`checks/a1.py`，`plan_sim a1` 带 `派 … 去 …` 的剧本能复现，先在模拟器复现再上测试台）。
+2. **I1 仍不过**：游戏里有两个字幕位——上方单行军事字幕框和下方面板——同时各显示一句不同的话；而且同一句"车停着就是活靶子"先在上方、约 7 秒后又在下方出现一次（`a4_zh_s40_two_captions.png`、`a4_zh_s46_caption_late.png`、国际版 `en_a4_s1_two_captions.png`）。用户要求：任何时候屏幕上最多一句。上次（c30d18f）我把两个位置当成同一个累积字幕框、`STRIP_MAX=2`，验收说不对：要重新量真实布局（一句可能同时占上方框和下方面板，一句话配音字幕 + 军事字幕各出一次 = 重复），把两个位置共用一个出口（`ctx.py` Talk 队列：`SHOW_MILITARY_CAPTION` 与配音字幕事件 `PLAY_SOUND_EFFECT` 对同一句只许出一个位置、`STRIP_MAX` 改为 1 的话要看过场里的台词会不会拖长），去掉重复，离线检查（`cnv/strip.py`、G3B）按真实的两个位置算。先对着三张截图读清楚：哪一句进了哪个框、几秒后重复的是哪个脚本。
+3. **I23**：A2 开局镜头上沿和左上角一大块地图外的黑（第 1～62 秒，`a2_zh_s31_black_edge.png`），A9 左上角小块黑三角（`a9_zh_s36.png`）。同 I5 一类，查为什么 `contract.camera_outside_the_view` 没抓到。我的猜测（没验）：K5 只夹脚本里的 `MOVE_CAMERA_TO`，开局默认镜头（玩家基地所在处，不是脚本移的）和 `MAP_SWITCH_BORDER` 之后的当前相机位置都没夹；A2 的黑是第 1～62 秒一直在，更像开局镜头落在离边界不到半屏的地方。要查开局镜头怎么定的（`ctx`/`plan.py` 的开局相机、地图的默认相机点），再按 `plan.VIEW_HALF`（玩法画面半宽高 950×540）检查它离边界够不够。
+- I19（A4 不操作约 60 秒战败）仍等用户，不动。I21、I22 是外壳线的。
+- 上次留下的待验：I4 的演示（CampShell 里看开场）；G14 守卫在 `tests/test_architecture.py`；`sim.py` 脚本时间可写 `旗标+秒`，`offline.WALK` 已改成挂事件。
+- 本会话上下文已到 40 万，下个会话读本节开始。
