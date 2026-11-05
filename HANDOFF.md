@@ -14,34 +14,23 @@
 - 美术不提前、不返工。
 - 第一个发布版本（用户 2026-11-04）："第一个发布版本至少盟军的9关做完"。
 - git 历史里那份反编译试探报告（23c4071）："可以暂时不删"。
-- 引擎线优先（用户 2026-11-04）："接下来你先自主完成引擎线的开发，如果额度充足，就把地形编辑器也做出来"。地形编辑器 = 在能改的地图页上加抬高、压低、整平、画通行，等外壳线的地图页和引擎线的地形规则（第 7 轮）都到了再派。
+- 引擎线优先（用户 2026-11-04）："接下来你先自主完成引擎线的开发，如果额度充足，就把地形编辑器也做出来"；"可以，地形编辑器升级成能画新地图"。
 - 草稿关的完成标准和摩擦怎么量，见 [docs/plan.md](docs/plan.md) 的"先把 27 关做成草稿"一行。
 - 架构整改（[ADR 0016](docs/adr/0016-one-outlet-per-class.md)）已经做到第 3 阶段，状态在 plan.md 的"架构整改"一行。
 
 ## 下一步
 
-1. **2026-11-04 夜里做完的**（各线都已提交推送，总控已核对）：
-   - 关卡线：
-     - K4 资源生成器（`resources.py`，规则从原版量出来）；
-     - E6 两条字幕通道：功能句走上方军事字幕框，事件当帧就出，"号角响了！"在 sim 里和号角同一秒；配音句只走下方对白面板；
-     - E1～E4；
-     - K3 施法点做了一半：后巷口 V1 的冰墙仍放不下，I3 还没修好。
-   - 策划线：A4 的好玩假设、4 关原版压力曲线、底线规则脚本 `docs/design/floorcheck.py`、27 关题卡盘点（26 张卡缺"试玩时怎么看假设成不成立"）。
-   - 引擎线：
-     - 字幕其实有两条通道；
-     - 脚本按按钮不看冷却；
-     - 对白面板会一句句累积；
-     - 结论在本机 `work/re/`。
-   - 总控：A4 攻略页、冷启动自检 `doctor.py`、修好了三条守卫（夜里有两条线带着红的守卫测试提交过）。
-   - **关卡线的下一步**：读 `docs/story/handoff-phase4.md` 的"第十三个会话收尾"。先在测试台空着时重测 `place` 的 V1，再做 K7（A4 的陡坡占 15%，原版城市图只有 1.4～3.4%，要整块重排），最后做 E7。
+1. **11-04 晚做到哪了**（各线都已提交推送，总控已核对）：
+   - 盟军 9 关草稿：A4、A5、A7、A8、A9 有了（能编、sim 过、测试台能赢），现状表在 `docs/story/handoff-phase4.md`。关卡线在挑 A1、A2、A3、A6 里的下一关。
+   - 地图页（外壳线，`experimental/mappage/`，本地运行 `serve.py`）：改现有图（拖地点、批注、地形画刷），从零画新图（`serve.py --new`），Agent 直接写草图（`docs/shell/sketch-format.md`，`sketch2map.py --check`）。布鲁塞尔图就是这样画的。
+   - 引擎线：放置、通行、地形、寻路已查（`docs/engine/terrain.md`、`pathing.md`、`upgrades.md`）。寻路模型在私有仓库 RA3-EngineModel（ADR 0018），正在加分层粗路径并重新标定；A9 的"无敌升级"在等测试台验。
+   - 各线每次清空后读自己的交接：关卡 `docs/story/handoff-phase4.md` 最末一节，外壳 `docs/shell/handoff.md` 第一节，引擎 `work/re/handoff.md` 开头。
    - git 提交前钩子：用户 2026-11-04 定"不用加"。各线提交前至少跑 `tests/test_architecture.py` 和 `tests/test_docs.py`，总控收到汇报后再核一遍。
-2. **第 4 阶段做完后，在 CampShell 上做一次独立验收**：按 [docs/acceptance/brief.md](docs/acceptance/brief.md) 派一个新的子 Agent 去做。先从干净的提交重新构建 CampShell。
-3. **ADR 0017**：引擎线把放置和通行规则查清，再逐层往下做；外壳线做 A4 能改的地图页，这一页好用了，K7 就在页上重排地形。
-4. **第二关当摩擦探针**：在 A5、A7 里挑一关，按草稿标准做，记下用了几轮会话、哪些步骤还得改平台代码。
-5. **等用户的**：
-   - 配音响度对比页（配音仓库 `work/campaign/loudness_ab/`）和 I14。
-6. **留着的事**：
-   - A4 攻略页 https://claude.ai/artifact/Dp8HUcuyyFN42vqhitJZ8r，生成脚本在 `work/walkthrough/make_page.py`，数据在 `a4.json`；
+2. **盟军 9 关草稿做完后，在 CampShell 上做一次独立验收**：按 [docs/acceptance/brief.md](docs/acceptance/brief.md) 派一个新的子 Agent，先从干净的提交重新构建 CampShell。
+3. **K7**（A4 陡坡重排）在地图页上和用户一起定。
+4. **等用户的**：配音响度对比页（配音仓库 `work/campaign/loudness_ab/`）和 I14。
+5. **留着的事**：
+   - A4 攻略页 https://claude.ai/artifact/Dp8HUcuyyFN42vqhitJZ8r，生成脚本在 `work/walkthrough/make_page.py`；
    - 冷启动自检：`python -I -X utf8 experimental/testbench/doctor.py`；
    - 已删掉的测试 mod 名单在 `work/logs/mods_deleted.txt`。
 
