@@ -1,12 +1,7 @@
 """A1's trap is fair (docs/story/plans/a1.md, I20 of the 2026-11-05 CampShell acceptance): a player who sends the whole
 squad to the south bridge end at the start (the natural first move) is not thrown out; one who goes on to the deck
 (the patrol's own ground) is warned first, with time to stop, before the fuse is lit."""
-import sys
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / 'experimental' / 'cnv'))
-sys.path.insert(0, str(ROOT / 'experimental' / 'campaign'))
+from test_plans import small  # (puts experimental/cnv on the path)  # noqa: F401, I001
 import build  # noqa: E402
 import sim  # noqa: E402
 
