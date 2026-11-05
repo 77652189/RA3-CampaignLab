@@ -58,6 +58,13 @@
   - 上轮"换成 V2、V1、V3 也是 V1 失败"那次不算数：那次 V1 一步的截图画的是二号广场（V3）的院子，工兵当时被传到了别处，测试台和任务的时间对不上。
   - **关卡线该怎么改**：关卡、地图、检查都不用改。测试台修好后（上一条），`place` 照原样跑就行。以前在不平的地方"镜头移过去再按世界坐标点"的检查结果要重看：点偏 20 来个单位也可能碰巧放得下，所以修之前的 PASS 只能说明落点附近能放。
 
+## 4b. 脚本改不了水位，也改不了地形高度（码，11-04，A5 船闸问）
+
+- 有名字的脚本动作里没有改水面或地形高度的（`work/re/actions_map.json` 513 个动作）；原版战役脚本也没用过（`retail_scripts` 搜 water / terrain / height / flood，只有触发区名字）。
+- 没名字的动作也排除了：红警3 的动作编号是照《将军》的顺序排的，《将军》在 `TEAM_IDLE_FOR_FRAMECOUNT` 和 `MAP_SWITCH_BORDER` 之间夹着 `WATER_CHANGE_HEIGHT`、`WATER_CHANGE_HEIGHT_OVER_TIME`，红警3 这一段是 160 `TEAM_IDLE_FOR_FRAMECOUNT`、161～162 两个 `NAMED_USE_COMMANDBUTTON_ABILITY_*`、163 `MAP_SWITCH_BORDER`，两个水位动作都删掉了，编号没留空位。
+- 所以"水位变时船怎么办"不用问了。顺带：《将军》改水位时只对淹到水下的物体扣水淹伤害，不抬船（`TerrainLogic.cpp` `setWaterHeight`）。
+- **关卡线该怎么改**：船闸"升降"只能做成外观和叙事；机制上扣船、放船照 `experimental/cnv/checks/lock.py` 的办法（`UNIT_CHANGE_OBJECT_STATUS` 设 IMMOBILE，水上建筑挡不住船）。"水位一变梯子就换边"要用别的东西表达：按时开关的通道（脚本造/删物体，`CREATE_*` / `NAMED_DELETE` 都有），或背阶这类地形本来就有的路。脚本造出来的物体能不能当步兵踩上去的台阶，没测（寻路格子里只有桥一类在地图载入时建的层，推断不能）。
+
 ## 5. 实测记录
 
 | 日期 | 检查 | 结果 |
