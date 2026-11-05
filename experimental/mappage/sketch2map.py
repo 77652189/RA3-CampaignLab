@@ -589,8 +589,8 @@ STOP_WORDS = '游戏不报错，单位会开到半路停住；脚本派兵请分
 def stops(paths, reg):
     """The pairs the walkable regions join but the pathfinding model does not (docs/engine/pathing.md 1: over its
     search budget the game says nothing, the unit drives to the searched cell nearest the goal and stops there). Not
-    a failure -- the model is cautious on open ground (trial: the north-east mesa read 'budget', the game got there in
-    19 s) -- a warning, kept apart from the sites nobody can walk to."""
+    a failure -- the model is cautious on long detours across a big map (trial2 / trial3: the lake shore reads
+    'budget', the game got there in 16 s / 13 s) -- a warning, kept apart from the sites nobody can walk to."""
     if not isinstance(paths, list):
         return []
     cut = set(reg['cut off'])
