@@ -340,3 +340,11 @@
   4. 房子行在真游戏里挡不挡得住步兵没单独验（模型按占地盒算；宫墙已在测试台验过）。建议在测试台摆一排 `MJ_Structure_02` 让步兵冲，或看 A4 `detour`/`queue` 的结果。
 - **同类问题还在别的图里（没动）**：brussels（A9/S9/J9：ring road gate、四块 city block 垫高）、greenwich（18 块 "a row of buildings"）、hoover、siberia、niagara 等。`Layout.cliff` 默认 2 让悬崖 4～5 格宽，改 1 对 A4 只降约 2 个点，会动全部关卡地形，没改默认值。
 - **坑**：Bash 钩子拦 heredoc 里带反斜杠写文件（用 Edit/Write 或 scratchpad 脚本）；`cnv_list` 输出巨大，别调；`issues.md` 里有总控没提交的 I14 行改动，一并带进了提交。
+
+#### 第二十七个会话补记（graybox 红修好）
+
+- **graybox "布防" 红的根因**：开局 `出动: harbour guard, 守: north camp`，守卫从港口沿大街往西走到北坡口再北上，路过停在 halt 的车队 266 远（REACH 300），走查把它算成"撞到敌人"。真游戏里也是这么走，所以不是测试脆，是计划有问题：**改 `plans/a4.md` 第 230 行，港口守卫改守 `gun east`**（走东街，离车队 700 以上），不动断言。
+- **同时修的**：`offline.a4_sight` 里三条"后巷高处看得见大街/大街看不见后巷高处"声明随后巷压平删掉（后巷不再是高地，a4.md 表里本来就写了"俯瞰大街没有玩法用处"）；`test_offline` 里"过"的条数 6→3（只剩两块高原波能塔的 3 条，仍要求全部"过"、没有"不对"）。
+- **全部测试**：543 过、8 红。8 红都不是 K7 引起：`test_mappage_sketch` 6 条是 trial 图的开局镜头规则（I23 那次提交的 `start_camera_inside_the_view`，地图页的试验图没跟上，外壳线/地图线的事）；`test_cnv_parts::test_every_build_keeps_the_contract` 是引擎线没提交的 `checks/engine_missile.py`（`CampMslS` 缺 'base jump' 标记）。**我没有用 stash 对照验证**，判断依据是失败信息指向的文件。
+- **测试台**：`a4 place`、`placem`、`horn` PASS（冰核落在三个新口子上、号角兵数对）；`detour/queue/smash/derrick/melt/smoke/win` 没跑，下个会话在测试台空时跑（每条 3～5 分钟，交给 Sonnet 子 Agent）。
+- **还欠**：G15 守卫（见上节第 3 条）；房子行对步兵的实测；`plans/a4.md` 改了守卫位置后 `flow/a4.md` 若写了"港口守卫守北营地"要同步。

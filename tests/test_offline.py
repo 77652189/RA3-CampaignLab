@@ -28,7 +28,8 @@ def test_a4_offline():
     assert '结局：赢' in text
     assert '段：会场 0:00，港口生变' in text and '北营' in text and '布防' in text and '最后一程' in text
     assert not [p for p in problems if p.startswith('sight')], problems
-    assert text.count('\n- 过 ') == 6 and '\n- 不对 ' not in text
+    # the plateau towers' three claims (K7: the back lane's three went with its hill)
+    assert text.count('\n- 过 ') == 3 and '\n- 不对 ' not in text
     s, starts, enemy, have = offline.walk('a4')
     body = {}
 

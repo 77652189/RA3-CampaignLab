@@ -66,14 +66,10 @@ BASE = re.compile(r'constructionyard|mcv', re.I)
 
 def a4_sight(m, s):
     """A4's high-ground claims (a4-redesign.md P27, a4.md 规则 and 目标说明)."""
-    mp = m.map
-    x = mp.P1[1] + 40.0                         # the lane's middle stretch, over the avenue
-    lane, avenue = (x, mp.LANE[0] + 30.0), (x, mp.ROAD_Y + mp.AVENUE / 2 - 20.0)
+    # K7 (I8, 2026-11-05): the back lane is flat, between house rows -- no high-ground claim on it any more (the three
+    # lane-over-avenue claims went with the hill); the two plateaus' towers keep theirs
     tower = s.point('ramp tower 1')
-    return [('后巷高处看得见大街（占了后巷就能看清大街）', '守护者坦克', lane, avenue, True),
-            ('后巷高处看得见大街（步兵上去）', '维和步兵', lane, avenue, True),
-            ('大街看不见后巷高处（大街上的敌人看不见你）', '帝国武士', avenue, lane, False),
-            ('坡脚看不见坡顶的波能塔（要先派兵上坡）', '守护者坦克', s.point('front ramp west'), tower, False),
+    return [('坡脚看不见坡顶的波能塔（要先派兵上坡）', '守护者坦克', s.point('front ramp west'), tower, False),
             ('北营低地看不见坡顶的波能塔', '守护者坦克', s.point('north camp'), tower, False),
             ('波能塔看得见坡脚', '波能塔', tower, s.point('front ramp west'), True)]
 
