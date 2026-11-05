@@ -378,6 +378,10 @@ class Compiler:
             mm = re.match(r'^(.+?)\s+(\d+)\s*个$', rest)
             if mm:                                  # n of a group, whichever (retail: Havana's launch sites)
                 return [[('COUNTER', self.losses(mm.group(1)), 3, int(mm.group(2)))]]
+            if re.search(r'[、,，]', rest):          # a list without its count: say the syntax (not "no named part")
+                raise PlanError(f'{s!r}: several parts need a count -- write 摧毁 <part>、<part>、<part> <n> 个 '
+                                '(parts joined with 、, then how many of them must fall, e.g. 摧毁 dam w、dam m、dam e 2 个); '
+                                'for one part or a group write 摧毁 <part> (all of it)')
             return [[('NAMED_DESTROYED', n) for n in self.part_names(rest)]]
         if head == '冻住':                           # frozen now (retail: Iga's objectives, freeze, never kill)
             return [[('UNIT_HAS_OBJECT_STATUS', n, 'UNDER_FROZEN')] for n in self.part_names(rest)]

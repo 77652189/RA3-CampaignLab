@@ -318,6 +318,16 @@ def test_how_many_of_a_group_are_down():
               规则=[{'当': '摧毁 power 1 个', '做': []}])              # one part is not a group
 
 
+def test_a_list_of_parts_without_its_count_says_the_syntax():
+    """A6 friction probe: `摧毁 a, b, c` (no count) used to fail as "no named part 'a, b, c'", naming no syntax."""
+    for rest in ('camp、power', 'camp, power', 'camp，power'):
+        with pytest.raises(plan.PlanError, match='需要|count') as e:
+            small(开局={'部队': [{'单位': '兵营', '在': 'north base', '阵营': '敌', '角色': 'camp'},
+                              {'单位': '电厂', '在': 'north base', '偏移': [300, 0], '阵营': '敌', '角色': 'power'}]},
+                  规则=[{'当': f'摧毁 {rest}', '做': []}])
+        assert '摧毁 <part>、<part>' in str(e.value) and '个' in str(e.value)
+
+
 def test_one_of_the_plans_own_in_a_site_and_frozen():
     m = small(开局={'部队': [{'单位': '帝国武士', '数量': 2, '在': 'north base', '阵营': '敌', '角色': 'guard'}]},
               规则=[{'当': 'guard 进入 west field', '做': ['通报 来了']}, {'当': '冻住 guard 1', '做': ['通报 冻住了']}])
