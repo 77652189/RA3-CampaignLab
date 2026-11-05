@@ -62,6 +62,11 @@ button:disabled { opacity: .45; cursor: default; }
 .swatch { display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; }
 .coord { position: absolute; left: 8px; bottom: 8px; font: 500 13px var(--mono); background: rgba(0,0,0,.55); color: #fff;
   padding: 2px 7px; border-radius: 3px; pointer-events: none; font-variant-numeric: tabular-nums; }
+.zoom { position: absolute; right: 8px; top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.zoom button { width: 34px; height: 34px; padding: 0; font: 600 18px var(--body); background: rgba(0,0,0,.6); color: #fff;
+  border: 1px solid rgba(255,255,255,.35); border-radius: 4px; cursor: pointer; }
+.zoom button.all { font-size: 12px; }
+.zoom button:disabled { opacity: .4; cursor: default; }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 8px 12px; border-top: 1px solid var(--rule); font-size: 14px; color: var(--muted); }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
 .side { display: grid; gap: 14px; min-width: 0; }
@@ -137,6 +142,11 @@ svg text.lab.pop { fill: #ffe9a8; }
       <div class="mapbox">
         <svg id="map" role="img" aria-label="地图俯视图"></svg>
         <div class="coord" id="coord">x —, y —</div>
+        <div class="zoom" role="group" aria-label="缩放">
+          <button id="z-in" title="放大（也可滚轮，或两指张开）" aria-label="放大">+</button>
+          <button id="z-out" title="缩小" aria-label="缩小">−</button>
+          <button id="z-all" class="all" title="看全图" aria-label="看全图">全图</button>
+        </div>
       </div>
       <div class="legend">
         <span><i style="background:var(--allied)"></i>地点（可拖）</span>
@@ -192,6 +202,9 @@ __TERRAIN_JS__
 </script>
 <script>
 __LABELS_JS__
+</script>
+<script>
+__VIEW_JS__
 </script>
 <script>
 const D = __DATA__;
@@ -416,7 +429,7 @@ if (!TP) for (const b of document.querySelectorAll("#tgroup button, #tgroup inpu
 
 // ---- interaction ----------------------------------------------------------------------------------------------------
 let mode = "move", draft = null, drag = null;
-const HINT = { move: "按住一个地点拖到新位置，松手后写一句为什么，再保存提议。",
+const HINT = { move: "按住一个地点拖到新位置，松手后写一句为什么，再保存提议。按住空白处拖动可以平移；滚轮或右上角 +/− 缩放，手机上两指缩放和平移。",
   line: "在图上依次点下挡路线的各个点，点完按“画完了”。", note: "在图上点一下要批注的位置，然后写批注。",
   raise: "按住在图上涂：每涂一下，圆心抬高“强度”，往外线性减到 0。可以连涂几笔，一起存成一条提议。",
   lower: "按住在图上涂：每涂一下，圆心压低“强度”，往外线性减到 0。",
@@ -440,6 +453,79 @@ function world(ev) {
   const p = pt.matrixTransform(svg.getScreenCTM().inverse());
   return [wx(p.x), wy(p.y)];
 }
+// ---- zoom and pan (view.js): wheel, the +/− buttons, drag on empty ground in 拖地点, middle button anywhere, two fingers
+let VIEW = View.full(W, H);
+let fitQueued = false;
+function setView(v) {
+  VIEW = View.clamp(v, W, H);
+  svg.setAttribute("viewBox", `${VIEW.x.toFixed(1)} ${VIEW.y.toFixed(1)} ${VIEW.w.toFixed(1)} ${View.height(VIEW, W, H).toFixed(1)}`);
+  $("z-in").disabled = VIEW.w <= W / View.MAX_ZOOM + 1e-6; $("z-out").disabled = $("z-all").disabled = VIEW.w >= W - 1e-6;
+  if (!fitQueued) { fitQueued = true; requestAnimationFrame(() => { fitQueued = false; fit(); }); }
+}
+const centre = () => [VIEW.x + VIEW.w / 2, VIEW.y + View.height(VIEW, W, H) / 2];
+$("z-in").onclick = () => setView(View.zoomAt(VIEW, W, H, 1.6, ...centre()));
+$("z-out").onclick = () => setView(View.zoomAt(VIEW, W, H, 1 / 1.6, ...centre()));
+$("z-all").onclick = () => setView(View.full(W, H));
+function svgPoint(cx, cy) {
+  const r = svg.getBoundingClientRect(), k = VIEW.w / r.width;
+  return [VIEW.x + (cx - r.left) * k, VIEW.y + (cy - r.top) * k];
+}
+svg.addEventListener("wheel", (ev) => {
+  ev.preventDefault();
+  const f = Math.exp(-ev.deltaY * (ev.deltaMode === 1 ? 0.05 : 0.0015));
+  setView(View.zoomAt(VIEW, W, H, f, ...svgPoint(ev.clientX, ev.clientY)));
+}, { passive: false });
+const fingers = new Map();
+let pan = null;
+function dropGesture() {         // a second finger came down: what the first one started is a pinch, not an edit
+  if (stroke) { draft.strokes.pop(); stroke = null; PRE = null; if (!draft.strokes.length) draft = null; terrainChanged(); showSlip(); }
+  else if (drag) cancelDraft();
+  else if (draft && draft.kind === "block" && mode === "line") { draft.points.pop(); if (!draft.points.length) draft = null; drawDraft(); showSlip(); }
+  else if (draft && draft.kind === "note" && mode === "note") cancelDraft();
+}
+svg.addEventListener("pointerdown", (ev) => {
+  if (ev.pointerType === "touch") fingers.set(ev.pointerId, [ev.clientX, ev.clientY]);
+  if (fingers.size === 2) {
+    dropGesture();
+    const [a, b] = [...fingers.values()];
+    pan = { pinch: true, v0: VIEW, a0: a, b0: b, rect: svg.getBoundingClientRect() };
+    ev.stopImmediatePropagation(); return;
+  }
+  if (fingers.size > 2) { ev.stopImmediatePropagation(); return; }
+  const empty = mode === "move" && ev.button === 0 && !ev.target.closest(".site");
+  if (ev.button === 1 || empty) {
+    ev.preventDefault();
+    pan = { pinch: false, last: [ev.clientX, ev.clientY] };
+    try { svg.setPointerCapture(ev.pointerId); } catch (e) { /* pointer already gone */ }
+    svg.style.cursor = "grabbing";
+    ev.stopImmediatePropagation();
+  }
+});
+svg.addEventListener("pointermove", (ev) => {
+  if (fingers.has(ev.pointerId)) fingers.set(ev.pointerId, [ev.clientX, ev.clientY]);
+  if (!pan) return;
+  if (pan.pinch) {
+    if (fingers.size < 2) return;
+    const [a, b] = [...fingers.values()];
+    setView(View.pinch(pan.v0, W, H, pan.rect, pan.a0, pan.b0, a, b));
+  } else {
+    const k = VIEW.w / svg.getBoundingClientRect().width;
+    setView(View.panBy(VIEW, W, H, -(ev.clientX - pan.last[0]) * k, -(ev.clientY - pan.last[1]) * k));
+    pan.last = [ev.clientX, ev.clientY];
+  }
+  ev.stopImmediatePropagation();
+});
+const liftFinger = (ev) => {
+  fingers.delete(ev.pointerId);
+  if (pan && (!pan.pinch || fingers.size < 2)) {
+    pan = null; svg.style.cursor = "";
+    ev.stopImmediatePropagation();
+  }
+};
+svg.addEventListener("pointerup", liftFinger);
+svg.addEventListener("pointercancel", liftFinger);
+svg.addEventListener("auxclick", (ev) => { if (ev.button === 1) ev.preventDefault(); });
+
 svg.addEventListener("pointermove", (ev) => {
   const [x, y] = world(ev);
   $("coord").textContent = `x ${r0(x)}, y ${r0(y)}` + (D.terrain ? `，高 ${heightAt(x, y)}` : "");
@@ -683,7 +769,7 @@ $("srvprev").onclick = async () => {
 function fit() {
   const w = svg.getBoundingClientRect().width;
   if (!w) return;
-  const k = W / w;
+  const k = VIEW.w / w;
   for (const t of svg.querySelectorAll("[data-px]")) {
     t.setAttribute("font-size", (+t.dataset.px * k).toFixed(1));
     if (t.tagName === "text") t.style.strokeWidth = `${(3 * k).toFixed(1)}px`;
@@ -700,7 +786,8 @@ function layoutLabels() {
     $("labnote").textContent = "";
     return;
   }
-  const k = W / w, pad = 2 * k;
+  const k = VIEW.w / w, pad = 2 * k;
+  const vb = [VIEW.x, VIEW.y, VIEW.x + VIEW.w, VIEW.y + View.height(VIEW, W, H)];
   const items = labs.map((L) => {
     const x = sx(L.s.x), y = sy(L.s.y);
     L.t.style.display = ""; L.t.classList.remove("pop"); L.t.setAttribute("x", x); L.t.setAttribute("y", y);
@@ -712,7 +799,12 @@ function layoutLabels() {
     if (code) { code.style.display = "none"; it.ws = L.t.getBBox().width + 2 * pad; code.style.display = ""; }
     return it;
   });
-  const res = Labels.place(items, [0, 0, W, H], Labels.opts(k));
+  // only the sites in view take part; the rest stay hidden until the view comes to them
+  const inView = items.map((it) => it.x >= vb[0] && it.x <= vb[2] && it.y >= vb[1] && it.y <= vb[3]);
+  const idx = items.map((_, i) => i).filter((i) => inView[i]);
+  const placed = Labels.place(idx.map((i) => items[i]), vb, Labels.opts(k));
+  const res = items.map(() => ({ shown: false, short: false, leader: null }));
+  idx.forEach((i, n) => { res[i] = placed[n]; });
   res.forEach((r, i) => {
     const L = labs[i];
     L.shown = r.shown; L.short = r.short; L.item = items[i];
@@ -726,8 +818,8 @@ function layoutLabels() {
       L.lead.style.display = "";
     } else L.lead.style.display = "none";
   });
-  const n = res.filter((r) => r.shown).length;
-  $("labnote").textContent = n < labs.length ? `（显示 ${n} / ${labs.length}，其余鼠标悬停或点选地点看）` : "";
+  const n = res.filter((r) => r.shown).length, m = idx.length;
+  $("labnote").textContent = n < m ? `（视野里 ${m} 个地点显示了 ${n} 个，其余悬停或点选看，放大能显示更多）` : "";
 }
 function popLabel(L, on) {
   if (!$("l-labels").checked || !L.item) return;
@@ -737,8 +829,8 @@ function popLabel(L, on) {
     return;
   }
   if (on) {
-    const it = L.item, d = Labels.opts(W / svg.getBoundingClientRect().width).dot;
-    const x = Math.min(Math.max(it.x + d, 0), W - it.w), y = Math.min(Math.max(it.y - it.h / 2, 0), H - it.h);
+    const it = L.item, d = Labels.opts(VIEW.w / svg.getBoundingClientRect().width).dot, vh = View.height(VIEW, W, H);
+    const x = Math.min(Math.max(it.x + d, VIEW.x), VIEW.x + VIEW.w - it.w), y = Math.min(Math.max(it.y - it.h / 2, VIEW.y), VIEW.y + vh - it.h);
     L.t.setAttribute("x", (x - L.off[0]).toFixed(1)); L.t.setAttribute("y", (y - L.off[1]).toFixed(1));
     const code = L.t.querySelector("tspan.code");
     if (code) code.style.display = "";

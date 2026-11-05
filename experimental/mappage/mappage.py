@@ -44,6 +44,7 @@ CNV = os.path.join(ROOT, 'experimental', 'cnv')
 TEMPLATE = os.path.join(HERE, 'template.html')
 TERRAIN_JS = os.path.join(HERE, 'terrain.js')
 LABELS_JS = os.path.join(HERE, 'labels.js')
+VIEW_JS = os.path.join(HERE, 'view.js')
 
 
 def _load(name, path):
@@ -255,6 +256,7 @@ def export(name, with_picture=True, script=''):
     page = open(TEMPLATE, encoding='utf-8').read()
     page = page.replace('__TERRAIN_JS__', open(TERRAIN_JS, encoding='utf-8').read())
     page = page.replace('__LABELS_JS__', open(LABELS_JS, encoding='utf-8').read())
+    page = page.replace('__VIEW_JS__', open(VIEW_JS, encoding='utf-8').read())
     page = page.replace('__DATA__', json.dumps(d, ensure_ascii=False).replace('</', '<\\/')).replace('__IMG__', img).replace('__TITLE__', f'{name.upper()} 地图改动台')
     html = os.path.join(out_dir, f'{name}_mappage.html')
     open(html, 'w', encoding='utf-8', newline='\n').write(page)

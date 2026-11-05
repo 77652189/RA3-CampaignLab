@@ -108,3 +108,47 @@ def test_crowded_cluster_spreads_with_leaders():
     res, _ = _place(items, [0, 0, 5000, 5000], o)
     n = _check(items, res, [0, 0, 5000, 5000], o['dot'])
     assert n >= 8 and any(r['leader'] for r in res)
+
+
+VIEW = ROOT / 'experimental' / 'mappage' / 'view.js'
+
+
+def _view(expr):
+    js = f"""const View = require({json.dumps(str(VIEW))}); const W = 5000, H = 4000;
+process.stdout.write(JSON.stringify({expr}));"""
+    r = subprocess.run([shutil.which('node'), '-e', js], capture_output=True, text=True, encoding='utf-8', timeout=60)
+    assert r.returncode == 0, r.stderr
+    return json.loads(r.stdout)
+
+
+def test_zoom_keeps_the_point_under_the_cursor_and_stays_on_the_map():
+    """Wheel zoom about a map point leaves that point where it was on screen; no view leaves the map or zooms past the
+    limit; zooming all the way out is the whole map."""
+    v = _view('View.zoomAt(View.full(W, H), W, H, 2, 1000, 1000)')
+    assert v['w'] == 2500 and abs((1000 - v['x']) / v['w'] - 1000 / 5000) < 1e-9 and abs((1000 - v['y']) / v['w'] - 1000 / 5000) < 1e-9
+    deep = _view('View.zoomAt(View.full(W, H), W, H, 1000, 4990, 3990)')
+    assert abs(deep['w'] - 5000 / 12) < 1e-9 and deep['x'] + deep['w'] <= 5000 + 1e-9 and deep['y'] + deep['w'] * 0.8 <= 4000 + 1e-9
+    assert _view('View.zoomAt({x: 100, y: 100, w: 1000}, W, H, 0.001, 0, 0)') == {'x': 0, 'y': 0, 'w': 5000}
+    p = _view('View.panBy({x: 0, y: 0, w: 1000}, W, H, -500, 99999)')
+    assert p == {'x': 0, 'y': 3200, 'w': 1000}
+
+
+def test_pinch_spreading_two_fingers_zooms_in_about_their_midpoint():
+    rect = '{left: 0, top: 0, width: 500}'
+    v = _view(f'View.pinch(View.full(W, H), W, H, {rect}, [200, 200], [300, 200], [150, 200], [350, 200])')
+    assert abs(v['w'] - 2500) < 1e-9
+    # the map point under the fingers' midpoint (screen 250, 200 -> map 2500, 2000) is still under it
+    k = v['w'] / 500
+    assert abs(v['x'] + 250 * k - 2500) < 1e-6 and abs(v['y'] + 200 * k - 2000) < 1e-6
+
+
+def test_labels_in_a_zoomed_view_stay_inside_it():
+    """Zoomed into A4's harbour corner the page lays out only the sites in view, inside the view's box."""
+    world, sites = _a4()
+    W, H = world[2] - world[0], world[3] - world[1]
+    vb = [W * 0.4, 0, W * 0.4 + W / 3, H / 3]
+    k = (W / 3) / 564
+    items = [it for it in _items(world, sites, k) if vb[0] <= it['x'] <= vb[2] and vb[1] <= it['y'] <= vb[3]]
+    res, o = _place(items, vb, k)
+    n = _check(items, res, vb, o['dot'])
+    assert items and n >= 0.8 * len(items), f'{n} of {len(items)} shown zoomed in'
