@@ -264,11 +264,14 @@ class Session:
         self.rate = 1.0             # the speed the mission runs at now: x1 till speed_up
 
     # -- life cycle -------------------------------------------------------------------------------------------
-    def start(self, mod, visible=False, timeout=150, hold=True, steps=None, chapter=None):
+    def start(self, mod, visible=False, timeout=150, hold=True, steps=None, chapter=None, menu_frames=0.0):
         """mod None: the plain game (no -modConfig). steps: nav steps to walk instead of nav.json's way into the CNV
         mission, e.g. nav.json's first step without its click to stop on the main menu (skirmish by hand). A build on
         the campaign shell (its sidecar names a slot) walks the chapter list into that slot (shell_steps), or into
-        `chapter` (1..9) when given (I18: the release shell carries every level, cnv build.py campaign --shell)."""
+        `chapter` (1..9) when given (I18: the release shell carries every level, cnv build.py campaign --shell).
+        menu_frames > 0 (I22): also archive the walk itself -- a half-size frame every `menu_frames` seconds and one
+        of each menu step before its click (chapter list, briefing cards, mission briefing, the opening cutscene till
+        the HUD is up), as ordinary frames with second None and note "menu: <step>", so bench_inspect reads them."""
         if self.p and self.p.poll() is None:
             raise BenchError(f'a session is running ({self.mod}): stop it first')
         sku = skudef(mod) if mod else 'RA3'
@@ -310,7 +313,7 @@ class Session:
                 '-runver', '1.13', '-win', '-xres', str(W), '-yres', str(H)] + (['-modConfig', sku] if mod else [])
         try:
             self._launch(args)
-            self._walk_menus(visible, timeout, steps)
+            self._walk_menus(visible, timeout, steps, menu_frames)
         except BaseException:
             self.stop()
             raise
@@ -343,12 +346,13 @@ class Session:
     def _say(self, s):
         self.log.append(s)
 
-    def _walk_menus(self, visible, timeout, steps=None):
+    def _walk_menus(self, visible, timeout, steps=None, every=0.0):
         if steps is None:
             with open(os.path.join(nav.OUT, 'nav.json'), encoding='utf-8') as f:
                 steps = json.load(f)
         at, done_at, parked, t = 0, 0, False, time.monotonic()
         lost = False                    # a "connection lost" box was answered: the screen may be any step now
+        kept = None                     # when the last walk frame was archived (every > 0)
         while True:
             time.sleep(1)
             s = round(time.monotonic() - t)
@@ -366,13 +370,19 @@ class Session:
             if frame is None:
                 continue
             pop = nav.popup(frame)
+            matched = not pop and nav.matches(steps[at], nav.metric(frame, steps[at]))
+            if every and (matched or kept is None or time.monotonic() - kept >= every):
+                name = 'opening cutscene (waiting for the HUD)' if at == len(steps) - 1 and not matched \
+                    else steps[at]['name']
+                self.keep_walk(frame, name + (' (before its keys)' if matched else ''), s)
+                kept = time.monotonic()
             if pop:
                 name, (x, y) = pop
                 self._say(f'popup {name} at {s} s: click {x},{y}')
                 click(h, x, y)
                 if name == 'connection lost':        # often back to the main menu, but it also came up in the
                     lost, done_at = True, s          # mission (bench 2026-10-27): walk on from what the screen shows
-            elif nav.matches(steps[at], nav.metric(frame, steps[at])):
+            elif matched:
                 self._say(f'menu {at} {steps[at]["name"]} at {s} s')
                 self._do(h, steps[at]['actions'])
                 at, done_at = at + 1, s
@@ -542,6 +552,17 @@ class Session:
         with open(os.path.join(self.run_dir, 'index.json'), 'w', encoding='utf-8') as f:
             json.dump(dict(mod=self.mod, frames=self.frames), f, ensure_ascii=False, indent=1)
         return fid, img
+
+    def keep_walk(self, bmp, step, s, scale=0.5):
+        """Archive a frame of the menu walk (I22): `scale` size, second None, the step and walk second in the note."""
+        img = Image.open(bmp).convert('RGB')
+        img = img.resize((round(img.width * scale), round(img.height * scale)), Image.BILINEAR)
+        fid = len(self.frames) + 1
+        img.save(os.path.join(self.run_dir, f'{fid:04d}.png'))
+        self.frames.append(dict(id=fid, second=None, note=f'menu: {step} at walk {s} s', view=None, scale=scale))
+        with open(os.path.join(self.run_dir, 'index.json'), 'w', encoding='utf-8') as f:
+            json.dump(dict(mod=self.mod, frames=self.frames), f, ensure_ascii=False, indent=1)
+        return fid
 
     def archived(self, fid):
         p = os.path.join(self.run_dir, f'{int(fid):04d}.png')

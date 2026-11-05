@@ -83,16 +83,24 @@ def guard(fn):
 
 @server.tool(structured_output=False)
 @guard
-def bench_start(mod: str, visible: bool = False, hold: bool = True, look: bool = True, chapter: int = 0) -> list:
+def bench_start(mod: str, visible: bool = False, hold: bool = True, look: bool = True, chapter: int = 0,
+                menu_frames: float = 0.0) -> list:
     """Start the bench game with a built mod (a folder name under Documents/Red Alert 3/Mods, e.g. CampNew38) and
     walk the menus into its mission. Refuses while RA3 runs (the user may be playing) or the bench lock is held.
     visible=true leaves the window on the desktop (default: parked off screen, muted). hold=true (default): the
     mission is paused (its Esc menu) between tool calls and only runs while a tool acts or waits. look=false: no
     first frame (a scripted test that only needs bench_watch). The campaign shell (CampShell / CampShellEn, every
     Allied level): chapter=N walks its chapter list into level N (default: the slot its build names, 1 for the
-    release shell)."""
-    r = S.start(mod, visible=visible, hold=hold, chapter=chapter or None)
+    release shell). menu_frames=S (e.g. 2): also archive the menu walk -- a half-size frame every S seconds and one
+    of each menu screen before its click (chapter list, briefing cards, mission briefing, the opening cutscene till
+    the HUD is up); they are frames 1..N (mission second None, listed in the reply), bench_inspect reads them with
+    the box in 1280x720 screen pixels as usual."""
+    r = S.start(mod, visible=visible, hold=hold, chapter=chapter or None, menu_frames=menu_frames)
     msg = f'started {r["mod"]} (pid {r["pid"]}); frames archived in {r["run_dir"]}; ' + '; '.join(r['log'])
+    walk = [f for f in S.frames if f['second'] is None]
+    if walk:
+        msg += (f'; menu walk: frames 1..{len(walk)}, menu screens at '
+                + ', '.join(f'{f["id"]} {f["note"][6:].split(" (")[0]}' for f in walk if '(before' in f['note']))
     return [msg] + looked('start', settle=1.0) if look else after(msg, False)
 
 
@@ -101,7 +109,7 @@ def bench_start(mod: str, visible: bool = False, hold: bool = True, look: bool =
 def bench_look(note: str = '', scale: float = 0.5) -> list:
     """The current frame (scale 0.5 = 640x360; full size stays in the archive). Paused (hold mode): the last frame,
     the game has not moved since."""
-    if S.paused and S.frames:
+    if S.paused and S.frames and S.frames[-1]['second'] is not None:
         fid = S.frames[-1]['id']
         return [f'frame {fid} at mission second {S.second()} (paused: nothing moved since)', view(S.archived(fid), scale)]
     S.window()
@@ -122,18 +130,24 @@ def after(msg, look):
 def bench_inspect(frame: int, x0: float, y0: float, x1: float, y1: float, world: bool = False,
                   zoom: float = 2.0) -> list:
     """Crop an archived frame and enlarge it. Box in screen pixels (1280x720), or world units with world=true
-    (converted with that frame's camera)."""
+    (converted with that frame's camera). Menu-walk frames (bench_start menu_frames) are kept at half size: the box
+    is scaled to them."""
     img = S.archived(frame)
+    meta = S.frames[frame - 1]
+    if world and meta['second'] is None:
+        return 'BENCH: a menu-walk frame has no camera: give the box in screen pixels'
     if world:
         keep = S.view
         S.view = S.frames[frame - 1]['view']
         (u0, v0), (u1, v1) = S.to_screen(x0, y0), S.to_screen(x1, y1)
         S.view = keep
         x0, y0, x1, y1 = min(u0, u1), min(v0, v1), max(u0, u1), max(v0, v1)
+    k = meta.get('scale', 1.0)
+    x0, y0, x1, y1 = x0 * k, y0 * k, x1 * k, y1 * k
     box = tuple(int(max(0, min(lim, c))) for c, lim in zip((x0, y0, x1, y1), (img.width, img.height) * 2))
     if box[2] <= box[0] or box[3] <= box[1]:
         return f'BENCH: empty box {box}'
-    return [f'frame {frame} box {box} x{zoom}', view(img.crop(box), zoom, 'PNG')]
+    return [f'frame {frame} box {box} x{zoom}', view(img.crop(box), zoom / k, 'PNG')]
 
 
 @server.tool(structured_output=False)
@@ -142,7 +156,7 @@ def bench_caption(frame: int = 0) -> list:
     """The military-caption strip (where mission scripts report test signals) of a frame, enlarged; frame 0 = a new
     frame now."""
     if not frame:
-        if S.paused and S.frames:
+        if S.paused and S.frames and S.frames[-1]['second'] is not None:
             frame = S.frames[-1]['id']
         else:
             frame, _ = S.frame('caption')
@@ -334,7 +348,7 @@ def bench_counters(lines: int, frames: str = 'all') -> str:
     no image, the game untouched. lines: how many counters the map shows (top to bottom). frames as bench_strip.
     '?' = nothing read there (no digit templates yet: counters.py calibrate)."""
     import counters
-    ids = [f['id'] for f in S.frames]
+    ids = [f['id'] for f in S.frames if f['second'] is not None]        # not the menu walk's frames (I22)
     if frames.startswith('last'):
         ids = ids[-int(frames[4:] or 5):]
     elif frames != 'all':
@@ -355,7 +369,7 @@ def bench_strip(x0: float = harness.COUNTER_BOX[0], y0: float = harness.COUNTER_
     a timeline in one small image, the game untouched. Default box: the script counters (DISPLAY_COUNTER, bottom
     left), so a test map that counts what it checks reads as numbers over time. frames: 'all', 'last5' or '3,7,10'."""
     from PIL import Image as PImage, ImageDraw
-    ids = [f['id'] for f in S.frames]
+    ids = [f['id'] for f in S.frames if f['second'] is not None]        # not the menu walk's frames (I22)
     if frames.startswith('last'):
         ids = ids[-int(frames[4:] or 5):]
     elif frames != 'all':

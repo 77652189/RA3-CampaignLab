@@ -557,3 +557,21 @@ def test_the_bench_walks_a_shells_chapter_list_into_the_chapter_asked(tmp_path):
     assert harness.map_borders(str(sku)) == [('whole', (0, 0, 5, 5))]
     assert harness.map_borders(str(sku), 3) == [('whole', (0, 0, 9, 9))]
     assert harness.shell_steps(3)[2]['name'] == 'chapter list: slot 3'
+
+
+def test_the_bench_keeps_the_menu_walk_as_half_size_frames(tmp_path):
+    """I22: the briefing cards, the mission briefing and the opening cutscene could not be checked: the bench kept no
+    frame before the HUD. bench_start(menu_frames=S) keeps them as frames with no mission second, at half size."""
+    import json
+    from PIL import Image
+    sys.path.insert(0, str(ROOT / 'experimental' / 'testbench'))
+    import harness
+    s = harness.Session()
+    s.run_dir, s.mod = str(tmp_path), 'CampX'
+    bmp = tmp_path / 'nav.bmp'
+    Image.new('RGB', (1280, 720), (200, 10, 10)).save(bmp)
+    fid = s.keep_walk(str(bmp), 'mission briefing (before its keys)', 54)
+    assert fid == 1 and Image.open(tmp_path / '0001.png').size == (640, 360)
+    meta = json.loads((tmp_path / 'index.json').read_text(encoding='utf-8'))['frames'][0]
+    assert meta['second'] is None and meta['scale'] == 0.5 and meta['note'].startswith('menu: mission briefing')
+    assert s.archived(1).size == (640, 360)
