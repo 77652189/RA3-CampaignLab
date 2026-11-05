@@ -18,8 +18,12 @@ import os
 from parts import Mission, Script, Test, square
 
 IFV = 'AlliedAntiAirVehicleTech1'
-DRAFT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'work', 'mappage', 'trial',
-                                      'trial.py'))
+MAPPAGE = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'work', 'mappage'))
+DRAFT = os.path.join(MAPPAGE, 'trial', 'trial.py')
+# the engine line's copies of the trial map (work/mappage/<v>/<v>.py, never the shell line's original):
+# trial2 -- the west cliff wall runs into the south map edge (no slit under its cap);
+# trial3 -- the wall ends at y 400 (a 350-wide way round to the south).
+VARIANTS = {'engine_trial': 'trial', 'engine_trial2': 'trial2', 'engine_trial3': 'trial3'}
 LANES = {   # goal: (model's stop, the way round, label)
     'plateau': ((1930.0, 1810.0), 'ramp foot', '东北高地'),
     'lake shore': ((990.0, 510.0), 'wall gap', '湖南岸'),
@@ -31,20 +35,26 @@ def _key(s):
     return s.title().replace(' ', '')
 
 
-def _draft():
-    if not os.path.exists(DRAFT):
-        raise FileNotFoundError(f'the trial map draft is not there: {DRAFT} (the map page, serve.py --new trial)')
-    spec = importlib.util.spec_from_file_location('engine_trial_map', DRAFT)
+def _draft(v='trial'):
+    path = os.path.join(MAPPAGE, v, f'{v}.py')
+    if not os.path.exists(path):
+        raise FileNotFoundError(f'the trial map draft is not there: {path} (the map page, serve.py --new trial; '
+                                f'trial2/trial3 are the engine line\'s copies of it)')
+    spec = importlib.util.spec_from_file_location(f'engine_{v}_map', path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
 
 
-def mission():
-    m = Mission(name='CampTrial', map=_draft(), facts={})
+def _mission(v):
+    m = Mission(name=f'Camp{v.title()}', map=_draft(v), facts={})
     for k, lane in enumerate(LANES):
         m.put(IFV, 'start', -60.0 + 60.0 * k, 0, role=f'{lane} ifv', name=f'UNIT - CNV Trial {_key(lane)} Ifv')
     return m
+
+
+def mission():
+    return _mission('trial')
 
 
 def trial(m):
@@ -101,5 +111,5 @@ def where(m):
 
 
 # the builds this module makes and their checks (cnv/registry.py)
-MISSION = {'engine_trial': mission}
-CHECKS = {'engine_trial': {'trial': trial, 'where': where}}
+MISSION = {b: (lambda v=v: _mission(v)) for b, v in VARIANTS.items()}
+CHECKS = {b: {'trial': trial, 'where': where} for b in VARIANTS}
