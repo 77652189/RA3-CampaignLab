@@ -255,13 +255,14 @@ def relief(m):
     kill_at(t, [r.name for g in ('engineer', 'loyal 2 troops') for r in (m.roles(g) or [m.role(g)])], 5.0, 'engineers')
     w = m.where('start')
     t.areas['Test start'] = square(w.x, w.y, 1200.0)       # all round the base: where they stand once out is not the point
-    # by kind, not by template: a count by template did not see the ones the rule makes (bench 2026-11-04: the template
-    # count stayed 0 while the kind count rose by two); the AI is asleep, so the infantry in the base's square are the engineers
-    counted('Test Relief', '基地来的工程师', t, kind=kindof('INFANTRY'), area='Test start')
+    # by template, the template the rule gives (给): bench 2026-11-04 (engine line, a7 given) read a count by template
+    # of a scripted unit fine -- 2 as the relief came at s65. The kind count read 2 from s55 but counted every
+    # player's infantry (E1), not the engineers; and the carrier landing at the base edge at s65 killed both in 4 s
+    made = sorted({a[2] for s in m.scripts for a in s.do if a[0] == 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT' and 'Engineer' in a[2]})
+    assert made == [m.roles('engineer')[0].template], made          # counted = given = the placed ones
+    counted('Test Relief', '基地来的工程师', t, template=made[0], area='Test start')
     at = READY + RELIEF_AFTER
-    # bench 2026-11-04: the two showed at bench s55, a dozen seconds before READY + 60 (phase 2 starts before the
-    # objectives' reveal), so the windows are wide; the carrier's first jump (s38) brings infantry of its own
-    # (a 1 at s38, a 4 at s65), so the zero is only held until s30
+    # the windows are wide (the bench's clock runs behind the mission's); the zero from s8 to s30, the two at s65
     t.expect += [('基地来的工程师', 8, '==', 0, 30.0), ('基地来的工程师', at - 12, 'ever==', 2, at + 20)]
     t.bench = [('bench_watch', dict(seconds=at + 22, every=1, sheet=False, lines=len(t.counters)))]
     return t
