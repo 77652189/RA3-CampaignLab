@@ -52,6 +52,6 @@ class Device:
 
 def registry():
     """{device type (the plan's 类型): class}."""
-    from devices import carrier, convoy, horn, ice_plazas, rhythm, train
+    from devices import carrier, convoy, horn, ice_plazas, rhythm, stasis, train
     return {'车队': convoy.Convoy, '冰雕广场': ice_plazas.IcePlazas, '号角': horn.Horn, '自由号': carrier.Carrier,
-            '列车': train.Train, '节律': rhythm.Rhythm}
+            '列车': train.Train, '节律': rhythm.Rhythm, '时停区': stasis.Stasis}
