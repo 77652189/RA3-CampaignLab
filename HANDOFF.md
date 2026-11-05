@@ -27,7 +27,7 @@
    - 引擎整体移植（ADR 0019）：第一层脚本引擎做完并接进 `sim.py`；第二层物体与模块做了 5 批（框架、血量死亡、属性修正和光环、升级加状态、无人机、空中的建筑 `docs/engine/air.md`），导弹第一批（追踪弹）做了，已读程序里的 BezierProjectile：飞行时长和连发间隔对上了；还剩 1 条 xfail：首中差约 24 帧，差在出膛前；追踪 300 在测试台落空，原因还没查清。下一步做躲靶扫时刻的探针，见 `work/re/handoff.md` 第 22 轮。导弹按用户不在时总控定的方案 A：只做最小开火部分，不开第三层。
    - 调研：`docs/research/rts-engine-survey.md`。
    - 各线每次清空后读自己的交接：关卡 `docs/story/handoff-phase4.md` 最末一节，外壳 `docs/shell/handoff.md` 第一节，引擎 `work/re/handoff.md` 开头。各线提交前至少跑 `tests/test_architecture.py`、`tests/test_docs.py`（关卡线再加 test_level_cards、test_plans；外壳线加 test_shell）。线会话一开工就容易过 15 万，派活前先看上下文，过了先清空。
-2. **等用户的**：I19（A4 不操作约 60 秒战败，节奏要不要放宽）；I21 统计页指挥官名 "Nan"（本机存档名，改不改）；导弹第三层要不要正式开（现在是方案 A）；K7（A4 陡坡重排，在地图页上定）；配音响度对比页和 I14。
+2. **用户 11-05 中午定的**（"3.B也做，4.地图大幅度改，目前还在开发阶段，距离交付很远，其他按推荐"）：I19 先不改，等真打 A4；I21 指挥官名不改；导弹两处对不上的先查清，同时正式开第三层武器层（引擎线在做）；K7/I8 的 A4 地形大改（关卡线在做）；配音响度对比页 `RA3-ChineseVoice/work/campaign/loudness_ab/index.html` 给用户听，I14 的候选音色试听页配音线在做。**还在等用户的**：听响度页和 I14 页。
 3. **下一轮独立验收**：在新会话里先确认 `bench_start(menu_frames=2)` 生效，再验 I4 I17 I22，并派人真打一遍 A4 验 I2 I3 I7 I9。
 4. **留着的事**：
    - A4 攻略页 https://claude.ai/artifact/Dp8HUcuyyFN42vqhitJZ8r，生成脚本在 `work/walkthrough/make_page.py`；
