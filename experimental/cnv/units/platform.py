@@ -6,10 +6,12 @@ base reach.
 
 Published: names on / off = the two upgrade ids a rhythm device grants (swell up / swell down).
 
-Not tested on the bench (2026-11-04, paper stage): whether an AttributeModifierUpgrade's modifier goes away when the
-upgrade is removed (the device removes one and grants the other, so either way the later one stands only if the
-modifiers replace each other -- the same Category), and whether RANGE moves what the turret may target as well as
-what the weapon reaches. The first run of `a8 swell` (checks/a8.py) answers both.
+Bench 2026-11-04 (docs/engine/upgrades.md): a removed upgrade's modifier goes and a re-granted one comes back, two never
+stack; RANGE moves the weapon only, the picking follows VISION -- so `high` carries a VISION modifier too (`a8 swell`,
+checks/a8.py, checks it on the real mission).
+
+Two copies of this retail file in one mod would define its <Define> twice (BinaryAssetBuilder: Critical, the build
+stops): a second tide_gun unit in one mod needs that Define renamed (checks/engine_range.py does).
 """
 import os
 
@@ -26,11 +28,15 @@ def sub1(x, old, new):
 
 
 @look.named('tide_gun')
-def tide_gun(id='CNV_TideGun', high=2.0, low=0.6, health=None):
-    """The turret. high / low: the range multipliers of the two states (1.0 is retail's reach). health: its MaxHealth
-    (None keeps retail's)."""
+def tide_gun(id='CNV_TideGun', high=2.0, low=0.6, health=None, vision=2.0):
+    """The turret. high / low: the range multipliers of the two states (1.0 is retail's reach). vision: the VISION
+    multiplier that comes with `high` (None: none). RANGE moves the weapon, not the picking: a turret picks its own targets
+    only within its VISION (retail's sentry gun: 300, equal to its reach), so a RANGE x2 alone is a gun that hits what it
+    is ordered to and never looks past 300 (bench 2026-11-04, docs/engine/upgrades.md 2); retail pairs the two
+    (AttributeModifier.xml: RANGE 175% with VISION 250%). health: its MaxHealth (None keeps retail's)."""
     up_on, up_off = f'Upgrade_{id}_High', f'Upgrade_{id}_Low'
     mod_on, mod_off = f'AttributeModifier_{id}_High', f'AttributeModifier_{id}_Low'
+    seen = f'\n\t\t<Modifier Type="VISION" Value="{round(vision * 100)}%"/>' if vision else ''
     x = open(os.path.join(SAGE, 'Soviet', 'Structures', 'SovietBaseDefenseGround.xml'), encoding='utf-8').read()
     x = sub1(x, 'id="SovietBaseDefenseGround"', f'id="{id}"')
     x = sub1(x, 'EditorName="SovietBaseDefenseGround"', f'EditorName="{id}"')
@@ -45,7 +51,7 @@ def tide_gun(id='CNV_TideGun', high=2.0, low=0.6, health=None):
     x = sub1(x, '</AssetDeclaration>', f'''	<UpgradeTemplate id="{up_on}" Type="OBJECT"/>
 	<UpgradeTemplate id="{up_off}" Type="OBJECT"/>
 	<AttributeModifier id="{mod_on}" Category="NONE">
-		<Modifier Type="RANGE" Value="{round(high * 100)}%"/>
+		<Modifier Type="RANGE" Value="{round(high * 100)}%"/>{seen}
 	</AttributeModifier>
 	<AttributeModifier id="{mod_off}" Category="NONE">
 		<Modifier Type="RANGE" Value="{round(low * 100)}%"/>
@@ -60,4 +66,4 @@ def tide_gun(id='CNV_TideGun', high=2.0, low=0.6, health=None):
                       f'AttributeModifier:{mod_off}'],
                 names={'on': up_on, 'off': up_off},
                 what=f'海上平台的炮塔：原版哨戒炮，射程随浪（高 x{high:g}、低 x{low:g}）；任务脚本给它升级来切换',
-                params=dict(high=high, low=low, health=health))
+                params=dict(high=high, low=low, health=health, vision=vision))

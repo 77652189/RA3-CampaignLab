@@ -45,13 +45,10 @@ SEEN = 'CNV_RangeSeen'              # reach: the high lane's gun, whose High als
 
 
 def mission(seen=False):
-    u = platform.tide_gun(id=GUN, high=2.0, low=0.6)
+    u = platform.tide_gun(id=GUN, high=2.0, low=0.6, vision=None)      # the control: RANGE alone (tide_gun now pairs it)
     units = [u]
     if seen:
-        v = platform.tide_gun(id=SEEN, high=2.0, low=0.6)
-        old = '<Modifier Type="RANGE" Value="200%"/>'
-        assert v.xml.count(old) == 1
-        v.xml = v.xml.replace(old, old + '\n\t\t<Modifier Type="VISION" Value="200%"/>')
+        v = platform.tide_gun(id=SEEN, high=2.0, low=0.6, vision=2.0)
         # two copies of one retail file in one mod: its <Define> would be defined twice (BinaryAssetBuilder:
         # Critical, the build stops)
         v.xml = v.xml.replace('SOVIET_BASE_DEFENSE_GROUND_LOCAL_UNPACK_TIME', 'CNV_RANGE_SEEN_UNPACK_TIME')
