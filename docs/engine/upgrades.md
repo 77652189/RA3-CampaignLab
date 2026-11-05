@@ -23,3 +23,12 @@
 
 - 同一个模组里放两份由同一个原版文件改出来的单位（例如两门 id 不同的 `tide_gun`），原版文件里的 `<Define>`（哨戒炮的 `SOVIET_BASE_DEFENSE_GROUND_LOCAL_UNPACK_TIME`）会被定义两次，地图编译报 Critical 停下。第二份要把 Define 改名（`engine_range.py` 里有写法）。A8 现在只有一种炮塔，不受影响；以后同一关要两种浪涌炮塔时，`tide_gun` 要做这件事（单位线）。
 - 靶子先归中立、到点再转给敌人，是"让单位在指定状态下才见到敌人"的通用办法，比挪位置可靠。
+
+## 4. 无敌：光写 `INVULNERABLE 100%` 不管用，要再设铁幕状态位；撤掉就能打，再给又无敌（测）
+
+关卡线 A9 原子球问的（`experimental/cnv/units/tower_ball.py`：暗 = 升级挂 `INVULNERABLE 100%`，亮 = 无修正）。探针 `experimental/cnv/checks/engine_invuln.py`：同一张炮道图，靶子是探针自己复制的原版地堡（去掉驻军、光环、隐身，4000 血），哨戒炮强令攻击（哨戒炮不会自己挑建筑打，不下令谁都不掉血）。`cnv_check engine_invuln invuln`、`engine_invuln_enemy invuln`、`engine_invuln_kinds invuln`。
+
+- **只写 `<Modifier Type="INVULNERABLE" Value="100%"/>`，经 `AttributeModifierUpgrade` 挂上：照样掉血。** 两轮（靶子先中立再转敌方 / 一直归敌方）都一样，亮暗来回切的那个血一直匀速往下掉。
+- **同一个修正加 `ObjectStatusToSet="NO_BRIBE UNDER_IRON_CURTAIN"`（原版铁幕修正设的状态位）：不掉血。** 一直挂着的那个整局满血；打的途中撤掉升级，马上开始掉血；按节律设备的两步切"亮"（撤暗、给亮）8 秒掉到 90% 以下，再切回"暗"后到结束不再掉。
+- 对照：原版战役 A09 的铁幕光环物体（`A09_IronCurtainEffect`）放在靶子旁边：不掉血。升级直接挂原版 `AttributeModifier_IronCurtain`：前 20 秒不掉血，之后开始掉——修正自带的 `Duration` 经升级挂上也照样到时失效，所以长期开关的修正不能写 `Duration`。
+- **关卡线该怎么改**：`tower_ball.py` 的暗修正加一个属性，`<AttributeModifier id="..._Dark" Category="NONE" ObjectStatusToSet="NO_BRIBE UNDER_IRON_CURTAIN" ...>`，`INVULNERABLE` 那行留着（测过的组合是两样都有；只设状态位、不写 INVULNERABLE 没测）。别的不用改：撤升级、再给升级都按第 1 节的规律走。
