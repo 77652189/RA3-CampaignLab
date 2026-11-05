@@ -15,7 +15,7 @@ stuck / alive / where: detour's far and mid IFVs read again -- at the start, und
 Read (测, 2026-11-04, runs CampPaths*_mcp_1104_*; docs/engine/pathing.md): near got there by s9; far and mid, alive,
 never reached their gap -- they drove a few hundred east and stopped south of the wall (x 700..1500); shut stopped
 outside the ring on its own side; team / attack team: the IFV at s7, the engineer at s25 (nobody waits); narrow 3 at
-s9 and 6 at s11, wide 6 at s9.
+s9 and 6 at s11, wide 6 at s9. limit: 1 400 there by s10, 1 800 and 2 600 never at their gap in 90 s.
 """
 from maps import probe_paths
 from parts import Mission, Script, Test, counted, square
@@ -25,7 +25,8 @@ TANK = 'AlliedAntiVehicleVehicleTech1'
 ENGINEER = 'AlliedEngineer'
 CHOKE = 6
 LABEL = {'far': '远绕', 'mid': '中绕', 'near': '近绕', 'shut': '围死', 'team': '同队移动', 'attack team': '同队攻移',
-         'narrow': '窄口', 'wide': '宽口'}
+         'narrow': '窄口', 'wide': '宽口', 'd1400': '绕1400', 'd1800': '绕1800', 'd2600': '绕2600'}
+LIMIT = ('near', 'd1400', 'd1800')   # limit: the way round about 1 100 (control) / 1 400 / 1 800 (2 600: the first run, no)
 
 
 def _key(s):
@@ -34,7 +35,7 @@ def _key(s):
 
 def mission():
     m = Mission(name='CampPaths', map=probe_paths, facts={})
-    for lane in ('far', 'mid', 'near'):
+    for lane in ('far', 'mid', 'near', 'd1400', 'd1800', 'd2600'):
         m.put(IFV, f'{lane} start', role=f'{lane} ifv', name=f'UNIT - CNV Paths {_key(lane)} Ifv')
     m.put(TANK, 'shut start', role='shut tank', name='UNIT - CNV Paths Shut Tank')
     for lane in ('team', 'attack team'):
@@ -84,6 +85,21 @@ def detour(m):
     t.scripts.insert(0, Script('Test - go', [], order))
     t.bench = [('bench_watch', dict(seconds=200, every=4, sheet=False, lines=4))]
     t.expect = [('近绕', 0, 'ever==', 10, 200)]          # the near one gets there: the rest are read, not judged
+    return t
+
+
+def limit(m, lanes=LIMIT):
+    """Between near (gets there) and mid (stops): IFVs whose way round is about 1 400 / 1 800, near as the control.
+    Counters as detour's: 1 by the gap, 10 at the goal."""
+    t = Test()
+    order = [('MAP_REVEAL_ALL_PERM', m.player('p1'))]
+    for lane in lanes:
+        order += _go(m, t, lane, [f'{lane} ifv'])
+        ifv = m.role(f'{lane} ifv').name
+        _scored(t, lane, [(ifv, _area(m, t, f'{lane} gap', 140.0), 1), (ifv, _area(m, t, f'{lane} goal', 100.0), 10)])
+    t.scripts.insert(0, Script('Test - go', [], order))
+    t.bench = [('bench_watch', dict(seconds=90, every=3, sheet=False, lines=3))]
+    t.expect = [('近绕', 0, 'ever==', 10, 90)]
     return t
 
 
@@ -173,4 +189,4 @@ def group(m):
 
 # the builds this module makes and their checks (cnv/registry.py)
 MISSION = {'engine_paths': mission}
-CHECKS = {'engine_paths': {'detour': detour, 'stuck': stuck, 'alive': alive, 'where': where, 'group': group}}
+CHECKS = {'engine_paths': {'detour': detour, 'limit': limit, 'stuck': stuck, 'alive': alive, 'where': where, 'group': group}}
