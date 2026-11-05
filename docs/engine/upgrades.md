@@ -32,3 +32,29 @@
 - **同一个修正加 `ObjectStatusToSet="NO_BRIBE UNDER_IRON_CURTAIN"`（原版铁幕修正设的状态位）：不掉血。** 一直挂着的那个整局满血；打的途中撤掉升级，马上开始掉血；按节律设备的两步切"亮"（撤暗、给亮）8 秒掉到 90% 以下，再切回"暗"后到结束不再掉。
 - 对照：原版战役 A09 的铁幕光环物体（`A09_IronCurtainEffect`）放在靶子旁边：不掉血。升级直接挂原版 `AttributeModifier_IronCurtain`：前 20 秒不掉血，之后开始掉——修正自带的 `Duration` 经升级挂上也照样到时失效，所以长期开关的修正不能写 `Duration`。
 - **关卡线该怎么改**：`tower_ball.py` 的暗修正加一个属性，`<AttributeModifier id="..._Dark" Category="NONE" ObjectStatusToSet="NO_BRIBE UNDER_IRON_CURTAIN" ...>`，`INVULNERABLE` 那行留着（测过的组合是两样都有；只设状态位、不写 INVULNERABLE 没测）。别的不用改：撤升级、再给升级都按第 1 节的规律走。
+
+## 5. 时停区：一个隐形的光环物体，圈里敌我中立全停住；删掉物体或离开圈 1 秒内恢复（测）
+
+关卡线 A3 问的（`docs/design/flow/a3.md`：子午线以东成了时停区，进去的全停住、敌我不分、打不坏，每隔一阵往西扩一圈）。
+
+**找过的路子**：脚本动作里没有"给一块区域里的单位加状态"的（按区域的只有 `UNIT_KILL_ALL_IN_AREA`、守区、攻区；`UNIT_CHANGE_OBJECT_STATUS` / `TEAM_CHANGE_OBJECT_STATUS` 只给点名的单位或一队，管不到后来进圈的追兵）。原版的时间类效果：超时空裂隙（`SpecialPowerChronoRift`）是选一片再传送，不是冻住；时间炸弹（`AlliedTimeBombLvl1`）有寿命、最后要炸。现成能用的是两样拼起来：**光环模块 `AttributeModifierAuraUpdate`**（原版 A09 铁幕光环物体、本仓库干扰车 `units/jammer.py` 都这么用，`Relationship="ALLIES ENEMIES NEUTRAL"` 管敌我中立）+ **时滞炮车的"推出时间"修正**（`units/chronolag.py`：状态位 `UNATTACKABLE NO_ATTACK NON_AUTOACQUIRABLE IN_STASIS`、`SPEED 0%`、超时空裂隙的着色）。光环每隔 `RefreshDelay` 给圈里的单位挂一次修正，修正自带很短的 `Duration`，不再被挂就到时自己掉。
+
+探针 `experimental/cnv/checks/engine_stasis.py`（单位就是里面的 `zone()`）。`cnv_check engine_stasis zone`（平地，测了两次，读数一样）、`cnv_check engine_stasis_plug plug`（窄口，`pathing.md` 第 7 节那张图）。时停区物体归敌方，半径 200，刷新 0.25 秒，修正 `Duration` 1 秒。
+
+- **圈里的全停住，不分敌我中立**：我方坦克、我方步兵班、敌方坦克、中立坦克开局就在圈里，第 3 秒都下令开走：都没动。一直不动，到删掉物体为止。
+- **追兵进圈就停**：圈外的敌方坦克下令穿过圈：在圈边停住。另一辆敌方坦克奉命去打圈里的我方坦克：自己开进圈里也停了（追着冻住的目标会把自己送进去）。
+- **停住的打不坏、也不开火**：圈里的我方坦克从第 4 秒起被下令攻击，到删掉物体前一直满血；圈里敌我挨着站，没人掉血。删掉物体后马上开始掉血（对照）。
+- **中途造出来的圈照样管用**：第 14 秒用 `CREATE_NAMED_ON_TEAM_AT_WAYPOINT` 在别处造第二个物体，站在那里的我方坦克马上停住，之后下令也不动。
+- **离开圈就恢复**：圈里的敌方坦克被 `UNIT_TELEPORT_TO_WAYPOINT` 传到圈外，下一个命令照常执行开走。
+- **到时间恢复 = 删掉物体**：`NAMED_DELETE` 那一秒，圈里所有单位的时滞状态位就没了（计数 1 秒内归零），可以动、可以打。
+- **停着的时候下的命令不会丢**：第 3 秒下令开走的两辆车，删掉物体后没再下令，自己开走了（解冻后 3～7 秒出圈）；同在圈里、从没下过令的中立车一直没动（对照）。
+- **冻住的车能把窄口堵死**：60 宽的口里停两辆敌方 MCV，各罩一个半径 45 的小时停圈。我方坦克一辆用移动、一辆用攻击移动去口对面：60 秒都没过去，也没去走远处开着的口（绕约 950）；冻住的车一直满血（攻击移动打不动它）；有一辆坦克挤着挤着自己进了小圈，也停了。对照 `pathing.md` 第 7 节：没冻的敌车，移动命令有一次 25 秒挤过去、攻击移动会把车打烂再走。
+
+**关卡线照抄的写法**：
+
+1. 单位：用 `checks/engine_stasis.py` 的 `zone(id, radius, hold, refresh, include)`（复制原版铁幕效果物体：不碰撞、打不着；去掉寿命和杀步兵的武器；换成上面的光环）。要正式用就搬进 `units/`（关卡线或单位线搬，模样是单位线的事；探针里沿用铁幕的球形模型，没管好不好看）。
+2. 摆圈：圈是圆的，半径就是 `radius`。一块不规则的区（子午线以东一整片）用几个物体拼；往西扩一圈 = 到点在新的路点上 `CREATE_NAMED_ON_TEAM_AT_WAYPOINT` 再造一批。物体归谁都行（测的是归敌方；`Relationship` 三样全写了，归玩家或中立应当一样，没测）。
+3. 收圈：到点 `NAMED_DELETE` 那批物体；1 秒（`hold`）内全恢复。只想要"冻一阵自己化开"也可以给物体加寿命（`LifetimeUpdate`，没测）。
+4. 设计上要知道的：玩家停着时点的命令解冻后会接着执行；追敌的单位会把自己送进圈；冻住的车挡在窄路上就是一堵打不坏的墙，寻路也不会因为它去绕别的路（要绕得脚本改路点）。
+
+没测：飞机（`include` 没写 `AIRCRAFT`，悬停的飞机会怎样不知道）；建筑（`include` 写了 `STRUCTURE`，没放建筑进去）；圈边上判定是到单位中心还是到外形（追兵在圈边停住，离圆心多远没量）；冻住的车解冻后是不是还记得原来的目标。
