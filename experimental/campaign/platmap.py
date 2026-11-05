@@ -380,12 +380,12 @@ def cast_lint(sites, e, walk, objects, dims=CONTAINER):
 def _gap_to(o, px, py):
     """How far (px, py) is from the edge of map object o: a wall piece as its rectangle, anything else as a point
     less its catalog radius."""
-    if o.template in WALLS:
-        length, thick = WALLS[o.template]
+    box = bar_box(o.template)
+    if box:
         a = o.angle or 0.0
         u = (px - o.x) * math.cos(a) + (py - o.y) * math.sin(a)
         v = -(px - o.x) * math.sin(a) + (py - o.y) * math.cos(a)
-        return math.hypot(max(abs(u) - length / 2, 0.0), max(abs(v) - thick / 2, 0.0))
+        return math.hypot(max(abs(u) - box[0], 0.0), max(abs(v) - box[1], 0.0))
     import platprops
     rad = platprops.radius(o.template) if o.template in platprops.CATALOG else 0.0
     return max(math.dist((o.x, o.y), (px, py)) - rad, 0.0)
@@ -394,7 +394,21 @@ def _gap_to(o, px, py):
 # ---- what the player can walk to, the blocks' use, the gaps' width
 WALLS ={'MJ_PalaceWall01': (60.0, 20.0)}       # wall pieces that bar the way (bench 2026-10-27 fence bar: the palace
                                                 # wall held infantry, retail's fences did not): length, thickness
+# civilian buildings that bar the way as a row (K7, P36): the box half sides in the object's own frame (SageXML Geometry
+# MajorRadius, MinorRadius of the retail GameObject; bench check: tests/test_housing.py). Only near-square ones: a row
+# is laid so either side may lie along the line.
+HOUSES = {'MJ_Structure_02': (26.4, 25.5), 'HA_Building16_02': (26.9, 31.0), 'HA_Building16_03': (26.9, 31.0),
+          'TH_SushiBar_01': (23.1, 28.6)}
+HOUSE_OVERLAP = 0.97                            # a row's houses stand this fraction of their shorter side apart (touching)
 BRIDGE_DECK = 120.0                             # a bridge's walkable width laid over the water
+
+
+def bar_box(template):
+    """The half sides (along, across) of the box a map object blocks the ground with: a wall piece or a house; None for
+    anything that does not bar the way."""
+    if template in WALLS:
+        return WALLS[template][0] / 2, WALLS[template][1] / 2
+    return HOUSES.get(template)
 
 
 def _cells(dims):
@@ -417,12 +431,12 @@ def walkable(layout, objects=(), dims=CONTAINER, e=None):
             ok |= near
     x, y = _cells(dims)
     for o in objs:
-        if o.template in WALLS:
-            length, thick = WALLS[o.template]
+        box = bar_box(o.template)
+        if box:
             a = o.angle or 0.0
             u = (x - o.x) * math.cos(a) + (y - o.y) * math.sin(a)
             v = -(x - o.x) * math.sin(a) + (y - o.y) * math.cos(a)
-            ok &= ~((abs(u) <= length / 2) & (abs(v) <= thick / 2))
+            ok &= ~((abs(u) <= box[0]) & (abs(v) <= box[1]))
     return ok
 
 
@@ -581,7 +595,55 @@ def wall_line(points, gaps=(), template=WALL_PIECE):
     return out
 
 
-REFINERY_REACH = 250.0      # retail (Tokyo Harbor, Heidelberg, Havana): each refinery ~180 from the ore node it faces
+def house_row(points, gaps=(), templates=('MJ_Structure_02',), seed=0):
+    """A row of houses along a polyline (world points), one touching the next (HOUSES' boxes, HOUSE_OVERLAP), an
+    opening of the given width left at each gap ((x, y, width): the point projected onto the line, the opening that wide
+    between the houses' ends) -- the way P36 shuts a street without a hill. Returns (template, x, y, angle). A corner
+    gets its own house. The walkable model (walkable) counts every one as a block."""
+    import random
+    rnd = random.Random(seed)
+    segs, s0 = [], 0.0
+    for p, q in zip(points, points[1:]):
+        d = math.hypot(q[0] - p[0], q[1] - p[1])
+        segs.append((p, q, s0, d))
+        s0 += d
+    total = s0
+
+    def along(x, y):
+        best = (math.inf, 0.0)
+        for p, q, s, d in segs:
+            t = max(0.0, min(1.0, ((x - p[0]) * (q[0] - p[0]) + (y - p[1]) * (q[1] - p[1])) / max(d * d, 1e-9)))
+            best = min(best, (math.hypot(x - p[0] - (q[0] - p[0]) * t, y - p[1] - (q[1] - p[1]) * t), s + t * d))
+        return best[1]
+
+    holes = sorted((along(x, y) - wd / 2, along(x, y) + wd / 2) for x, y, wd in gaps)
+
+    def at(s):
+        p, q, s_, d = next((sg for sg in segs if sg[2] <= s <= sg[2] + sg[3] + 1e-6), segs[-1])
+        t = (s - s_) / max(d, 1e-9)
+        return p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, math.atan2(q[1] - p[1], q[0] - p[0])
+
+    out, s = [], 0.0
+    while s < total - 1e-6:
+        t = rnd.choice(templates)
+        length = 2 * min(HOUSES[t]) * HOUSE_OVERLAP
+        hole = next(((a, b_) for a, b_ in holes if s < b_ and s + length > a), None)
+        if hole:                                    # the house would reach into an opening: one flush against it, then
+            if hole[0] - s > 1.0:                   # start again past it (the opening is as wide as asked, to the unit)
+                out.append((t, *at(hole[0] - length / 2)))
+            s = max(s, hole[1])
+            continue
+        c = min(s + length / 2, total - length / 2) if total >= length else total / 2
+        out.append((t, *at(max(c, 0.0))))
+        s += length
+    for k in range(1, len(segs)):                   # a house on each corner not in an opening
+        cx, cy = segs[k][0]
+        if not any(a <= segs[k][2] <= b_ for a, b_ in holes):
+            out.append((rnd.choice(templates), cx, cy, at(segs[k][2])[2]))
+    return out
+
+
+REFINERY_REACH = 250.0     # retail (Tokyo Harbor, Heidelberg, Havana): each refinery ~180 from the ore node it faces
 
 
 def ore_lint(objects):

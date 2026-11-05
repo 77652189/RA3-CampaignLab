@@ -49,10 +49,12 @@ LANE_UP = 1200.0                                # the back lane's ramp up from t
 P1 = (1860.0, 2170.0, 3030.0)                   # plaza 1's courtyard: x0, x1, its back (y); its front the avenue
 WEST_END = P1[0] - 100.0                        # the three street mouths (the lane's ramp, gates 1 and 2) are >= 800
                                                 # apart: 1200, 2015, 2830 (a street's ice shuts one, the troops detour)
-LANE = (3030.0, 3200.0)                         # the back lane behind plaza 1 (y): raised, between two cliffs
-NB_EAST = (2460.0, 2760.0, 3260.0)              # the north block's east end: x0, x1, its back -- the lane comes
+LANE = (3030.0, 3170.0)                         # the back lane behind plaza 1 (y): between plaza 1's back wall and the
+                                                # district's north wall (120 clear, GATE)
+NB_EAST = (2460.0, 2760.0, 3170.0)              # the north district's east end: x0, x1, its back -- the lane comes
 LANE_DOWN = 2610.0                              # down its ramp here (x), between plazas 1 and 2
-NB_BACK = 3190.0                                # the north block's back (y), west of plaza 1
+NB_BACK = 3170.0                                # the north district's back wall (y): one line from the coast to NB_EAST
+ROW_N, ROW_S = ROAD_N + 30.0, ROAD_S - 30.0     # the house rows facing the avenue (K7: they shut the street blocks, no hill)
 SB_FRONT = 1820.0                               # the south block's south edge (y): into the sea
 P2 = (2680.0, 2980.0, 1980.0)                   # plaza 2's courtyard, south of the road: x0, x1, its back (y)
 P3 = (3250.0, 3490.0, 3020.0)                   # plaza 3's, north of the road: x0, x1, its back (y); its west
@@ -90,23 +92,24 @@ SITES.update({
     # 2's approach, its troops held the convoy for good once the ice melted)
     'halt': Site(P2[0] + 150.0, ROAD_Y, 40.0, "the road at plaza 2's gate: the whole convoy past plaza 2's "
                                               "approach, short of plaza 3's"),
-    # level ground a cast circle clear of the ramp (bench 2026-11-03: the ice went down at every spot but this, which sat
-    # at the ramp's first rise, ROAD_Y + 40; the ramp's foot is the 120 beyond it)
-    'lane foot': Site(LANE_UP, ROAD_Y - 30.0, 60.0, "the back lane's way up: level ground at the foot of the ramp from "
-                                                   'the avenue onto the north street block', cast=platmap.CAST_CLEAR),
+    # K7: the lane is a street between house rows now, not a ramp: its mouth is the opening in the avenue's north row,
+    # level with the avenue (the ice shuts the opening itself: bench 2026-11-03 had it going down on flat ground only)
+    'lane foot': Site(LANE_UP, ROW_N, 60.0, "the back lane's mouth: the 120 opening in the avenue's north house row, "
+                                            'level with the avenue', cast=platmap.CAST_CLEAR),
     'lane mouth': Site(P1[0] + 60.0, (LANE[0] + LANE[1]) / 2, 50.0, "the back lane's west mouth, behind plaza 1: "
                                                                     'its sculptures stand here'),
-    'lane depot': Site(LANE_DOWN, 3120.0, 150.0, "the lane's east end, on the north block: a repair depot's pad",
+    'lane depot': Site(LANE_DOWN, 3030.0, 150.0, "the lane's east end, in the north district: a repair depot's pad",
                        build=160.0),
     'lane end': Site(LANE_DOWN, ROAD_Y + 80.0, 60.0, 'where the back lane comes down to the avenue, between plazas 1 '
                                                     'and 2'),
     # the last leg's gun pads: open ground ~250 behind each mouth (the enemy's side), where a gun can reach the ice in
     # front of the mouth and the open ground beside it
-    'gun north': Site(NORTH_MOUTH_X, 3110.0, 80.0, 'a gun pad behind the north mouth, in the low ground below the ward'),
+    'gun north': Site(NORTH_MOUTH_X, ROW_N + 270.0, 80.0, 'a gun pad behind the north mouth, in the open ground north of '
+                                                          'the house row'),
     'gun plaza 3': Site(PLAZA3_X, 2950.0, 80.0, "a gun pad at the back of plaza 3's courtyard, behind its gate"),
     'gun east': Site(EAST_MOUTH[0], 3040.0, 70.0, 'a gun pad up the east street, behind the east mouth'),
-    'north mouth': Site(NORTH_MOUTH_X, (ROAD_N + WARD[2]) / 2, 60.0, '北坡口: the gap through the raised ward, '
-                                                                    f'{GATE:g} wide, from the north camp to the road',
+    'north mouth': Site(NORTH_MOUTH_X, ROW_N, 60.0, '北坡口: the opening in the house row east of the north district, '
+                                                    f'{GATE:g} wide, from the north camp to the road',
                        cast=platmap.CAST_CLEAR),
     'east mouth': Site(*EAST_MOUTH, 50.0, f"东街口: the street between plaza 3's wall and the canal, {GATE:g} wide",
                        cast=platmap.CAST_CLEAR),
@@ -179,13 +182,14 @@ ISLETS = [wobble([(x + r * c, y + r * s) for c, s in ((1, 0), (.7, .7), (0, 1), 
                                                      (0, -1), (.7, -.7))], r * 0.3, 60 + k)
           for k, (x, y, r) in enumerate(((150, 250, 170), (4650, 1150, 190), (4700, 4100, 150), (1300, 4950, 160),
                                          (2800, 120, 130)))]
-# the north street block: west part to NB_BACK, plaza 1 cut out of it, the lane's strip behind plaza 1, the east end
-NORTH_BLOCK = [(-50, ROAD_N), (P1[0], ROAD_N), (P1[0], P1[2]), (P1[1], P1[2]), (P1[1], ROAD_N), (NB_EAST[1], ROAD_N),
-               (NB_EAST[1], NB_EAST[2]), (P1[1], NB_EAST[2]), (P1[1], LANE[1]), (P1[0], LANE[1]), (P1[0], NB_BACK),
-               (-50, NB_BACK)]
+# K7 (I8: "the big earth slopes are everywhere", user 2026-11-03/05): no street block is raised any more. The north
+# district (west part to NB_BACK, plaza 1 a courtyard of its own, the lane's strip behind plaza 1, the east end) and the
+# south block are flat ground shut by rows of houses facing the avenue and by walls behind -- the ground is what the
+# blocks' polygons below say, the shutting is OBJECTS (_rows, _walls). Only the two plateaus, the west ridge, the hills
+# and the knoll keep a height: P36's high ground (sight from above) and the map's edge mountains.
+NORTH_BLOCK = [(-50, ROAD_N), (P1[0], ROAD_N), (P1[0], LANE[0]), (P1[1], LANE[0]), (P1[1], ROAD_N), (NB_EAST[1], ROAD_N),
+               (NB_EAST[1], NB_BACK), (-50, NB_BACK)]
 SOUTH_BLOCK = [(-50, SB_FRONT), (WEST_END - 100, SB_FRONT), (WEST_END - 100, ROAD_S), (-50, ROAD_S)]
-WARD_W = (WARD[0], ROAD_N, NORTH_MOUTH_X - GATE / 2 - 40, WARD[2])     # its cliffs take ~40 off each side
-WARD_E = (NORTH_MOUTH_X + GATE / 2 + 40, ROAD_N, WARD[1], WARD[2])
 SHAPES = [
     poly(COAST, 1, 'the island: low ground'),
     poly(HARBOUR, 1, 'the harbour strip, between the bridges'),
@@ -195,15 +199,9 @@ SHAPES = [
     poly(KNOLL, 3, 'the shrine knoll'),
     poly(SOUTH_PLATEAU, 2, 'south plateau'),
     poly(WEST_RIDGE, 2, 'the west ridge'),
-    poly(NORTH_BLOCK, 2, 'the north street block (the back lane on top)'),
-    poly(SOUTH_BLOCK, 2, 'the south street block'),
-    rect(*WARD_W, 2, 'the ward west of the north mouth'),
-    rect(*WARD_E, 2, 'the ward east of the north mouth'),
     rect(CANAL[0], 200, CANAL[1], 4800, 0, 'the canal'),
 ]
 RAMPS = [
-    Ramp((LANE_UP, ROAD_Y + 40), (LANE_UP, ROAD_N + 230), GATE, 'the back lane up (west)'),
-    Ramp((LANE_DOWN, ROAD_Y + 60), (LANE_DOWN, ROAD_N + 300), GATE, 'the back lane down (east)'),
     Ramp((2650, 3330), (2650, 3700), 200.0, 'north plateau west'),
     Ramp((3150, 3330), (3150, 3700), 200.0, 'north plateau east'),
     Ramp((1820, 3720), (2090, 3720), 100.0, 'north plateau back'),
@@ -212,32 +210,52 @@ RAMPS = [
 ]
 # streets (ground texture only): the lane on the north block, up to the plateaus' ramps, the canal's west bank, the
 # harbour's street
-LANE_WAY = ((LANE_UP, ROAD_N + 230), (LANE_UP + 50, 2980), (P1[0] - 20, 3100), (P1[1] + 40, 3100), (LANE_DOWN, 3020),
-            (LANE_DOWN, ROAD_N + 300))
-STREETS = [((2650, ROAD_N), (2650, 3330)), ((3150, ROAD_N), (3150, 3330)), ((2350, ROAD_S), (2350, 1720)),
+LANE_WAY = ((LANE_UP, ROW_N), (LANE_UP, 3100), (LANE_DOWN, 3100), (LANE_DOWN, ROW_N))
+STREETS = [((NORTH_MOUTH_X, ROAD_N), (NORTH_MOUTH_X, 3330)), ((NORTH_MOUTH_X, 3330), (3150, 3330)),
+           ((2350, ROAD_S), (2350, 1720)),
            ((EAST_MOUTH[0], ROAD_N), (EAST_MOUTH[0], 4300)), ((3580, ROAD_S), (3580, 1600)),
            ((3900, 1600), (3900, 3650)), ((1400, 3360), (1400, 3200)), ((1820, 3720), (1700, 3400))]
 ROADS = [Road(((0, ROAD_Y), (4050, ROAD_Y)), 160.0), Road(LANE_WAY, 90.0), *[Road(s, 90.0) for s in STREETS]]
 
-# ---- the courtyards' walls: palace wall pieces round three sides and the front, one gate each (plaza 1's sides are
-# the north block's cliffs: only its front is walled)
-WALLS = []
+# ---- what shuts the ways without a hill (K7, P36 point 1): the courtyards' palace walls (all four sides, one gate each),
+# the north district's back and east walls, the south block's east wall, and the houses in a row along the avenue's two
+# edges, an opening left at each mouth. A wall or house over water is dropped (the sea shuts the coast itself).
+def _dry(flat=False):
+    """Whether (x, y) is dry ground, and with flat=True also level enough for a house (the walls may stand on a shore)."""
+    import newmap
+    e, _ = platmap.heights(Layout(shapes=SHAPES, ramps=RAMPS), *platmap.CONTAINER)
+    b, cell = platmap.CONTAINER[2], platmap.CELL
+    return lambda x, y: bool(e[int(round(y / cell)) + b, int(round(x / cell)) + b] > newmap.WATERLINE + 10
+                             and (not flat or platmap.relief(e, x, y, 60.0, b) <= platmap.FLAT))
 
 
 def _walls():
+    dry = _dry()
     out = []
-    gx, gy = _gate(1)
-    out += platmap.wall_line([(P1[0] - 10, gy), (P1[1] + 10, gy)], gaps=[(gx, gy, GATE)])
-    gx, gy = _gate(2)
-    out += platmap.wall_line([(P2[0], gy), (P2[0], P2[2]), (P2[1], P2[2]), (P2[1], gy), (P2[0], gy)],
-                             gaps=[(gx, gy, GATE)])
-    gx, gy = _gate(3)
-    out += platmap.wall_line([(P3[0] - 20, P3[2]), (P3[1], P3[2]), (P3[1], gy), (P3[0] - 20, gy)],
-                             gaps=[(gx, gy, GATE)])
-    return out
+    for k, (x0, x1, back) in {1: P1, 2: P2, 3: P3}.items():
+        gx, gy = _gate(k)
+        out += platmap.wall_line([(x0, gy), (x0, back), (x1, back), (x1, gy), (x0, gy)], gaps=[(gx, gy, GATE)])
+    out += platmap.wall_line([(-50.0, NB_BACK), (NB_EAST[1], NB_BACK), (NB_EAST[1], ROW_N)])
+    out += platmap.wall_line([(WEST_END - 100.0, ROW_S), (WEST_END - 100.0, 1780.0)])
+    return [w for w in out if dry(w[1], w[2])]
+
+
+HOUSE_MIX = ('MJ_Structure_02', 'MJ_Structure_02', 'MJ_Structure_02', 'HA_Building16_02', 'HA_Building16_03',
+             'TH_SushiBar_01')
+
+
+def _rows():
+    """The house rows; where a house cannot stand (the shore's slope) a wall piece takes its place, the row stays shut."""
+    dry, flat = _dry(), _dry(True)
+    out = platmap.house_row([(-50.0, ROW_N), (P1[0], ROW_N)], [(LANE_UP, ROW_N, GATE)], HOUSE_MIX, 1)
+    out += platmap.house_row([(P1[1], ROW_N), (P3[0], ROW_N)], [(LANE_DOWN, ROW_N, GATE), (NORTH_MOUTH_X, ROW_N, GATE)],
+                             HOUSE_MIX, 2)
+    out += platmap.house_row([(-50.0, ROW_S), (WEST_END - 100.0, ROW_S)], (), HOUSE_MIX, 3)
+    return [h if flat(h[1], h[2]) else (platmap.WALL_PIECE, *h[1:]) for h in out if dry(h[1], h[2])]
 
 
 WALLS = _walls()
+HOUSE_ROWS = _rows()
 BRIDGES = [((3590, 2500), (3890, 2500)), ((3590, 3420), (3890, 3420)), ((3590, 1850), (3890, 1850))]
 
 
@@ -248,6 +266,7 @@ def _objects():
             out.append(Obj('HB_Bridge_02', x, y, side='neutral', angle=a, flags=flags, site='map'))
     out += resources.objects(FIELDS, DERRICKS)
     out += [Obj(t, round(x, 1), round(y, 1), side='civ', angle=round(a, 4), site='map') for t, x, y, a in WALLS]
+    out += [Obj(t, round(x, 1), round(y, 1), side='civ', angle=round(a, 4), site='map') for t, x, y, a in HOUSE_ROWS]
     return out
 
 
@@ -259,11 +278,9 @@ BLOCKS = [
     Block(rect(P2[0], P2[2], P2[1], ROAD_S, 1), '前线', 'plaza 2'),
     Block(rect(P3[0], ROAD_N, P3[1], P3[2], 1), '前线', 'plaza 3'),
     Block((-50, ROAD_S, CANAL[0], ROAD_N), '通道', 'the avenue'),
-    Block(poly(NORTH_BLOCK, 2), '支线', 'the north street block: the back lane, the repair depot'),
-    Block(poly(SOUTH_BLOCK, 2), '远景', 'the south street block'),
-    Block(WARD_W, '支线', 'the ward west of the north mouth: the north block goes on over it'),
-    Block(WARD_E, '远景', 'the ward east of the north mouth'),
-    Block((WARD_W[2], ROAD_N, WARD_E[0], WARD[2] + 40), '前线', 'the north mouth'),
+    Block(poly(NORTH_BLOCK, 1), '支线', 'the north district: the back lane, the repair depot'),
+    Block(poly(SOUTH_BLOCK, 1), '远景', 'the south street block'),
+    Block((NB_EAST[1], ROAD_N, P3[0], WARD[2] + 40), '前线', 'the open ground behind the north mouth'),
     Block((P3[1], ROAD_N, CANAL[0], 4400), '前线', 'the east street along the canal'),
     Block((1700, 1450, CANAL[0], ROAD_S), '通道', 'the low ground between the south plateau and the avenue'),
     Block(poly(SOUTH_PLATEAU, 2), '后方', "the south plateau: the player's base"),
@@ -278,7 +295,9 @@ BLOCKS = [
 ]
 GAPS = [Gap(*_gate(k), GATE, f'gate {k}') for k in (1, 2, 3)] + [
     Gap(P1[0] + 150, (LANE[0] + LANE[1]) / 2, GATE, 'the back lane'),
-    Gap(NORTH_MOUTH_X, (ROAD_N + WARD[2]) / 2, GATE, 'the north mouth'),
+    Gap(NORTH_MOUTH_X, ROW_N, GATE, 'the north mouth'),
+    Gap(LANE_UP, ROW_N, GATE, "the back lane's mouth"),
+    Gap(LANE_DOWN, ROW_N, GATE, "the back lane's east mouth"),
     Gap(*EAST_MOUTH, GATE, 'the east mouth'),
 ]
 LAYOUT = Layout(shapes=SHAPES, ramps=RAMPS, roads=ROADS, blocks=BLOCKS, gaps=GAPS)
@@ -313,11 +332,10 @@ def _scenery():
     put(along(avenue, ['OK_LANTERN01', 'MJ_BANNER01', 'MJ_BANNER02', 'TH_LAMPDECO03'], 70, 105, 1, jitter=0.0))
     put(along([(WEST_END, ROAD_Y), (CANAL[0] - 60, ROAD_Y)], PARK, 60, 175, 2))
     # the street blocks: houses on both, facing the avenue, the lane's way kept (a road)
-    put(along([(0, ROAD_Y), (WEST_END, ROAD_Y)], HOUSES, 120, 240, 10, face=True))
     put(scatter(area('poly', NORTH_BLOCK), HOUSES, 150, 11, density=0.7))
     put(scatter(area('poly', SOUTH_BLOCK), HOUSES, 140, 12, density=0.8))
     put(along(LANE_WAY, 'TH_LAMPPOST04', 110, 55, 13))
-    for k, street in enumerate(STREETS[:2]):
+    for k, street in enumerate(STREETS[:1]):
         put(along(street, HOUSES, 120, 150, 20 + k, face=True))
         put(along(street, 'TH_LAMPPOST04', 120, 62, 22 + k))
     put(along(STREETS[5], {'TH_Fish_Market02': 2, 'TH_Fish_Market03': 2, 'TH_FISH_MARKET04': 2}, 95, 125, 30,

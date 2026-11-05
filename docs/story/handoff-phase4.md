@@ -328,3 +328,15 @@
 ### 第二十六个会话（11-05，总控令：I23）：I23 做完，标"修了待验"
 - 根因和改法写在 `docs/issues.md` I23 行：开局镜头看 `start` 点，没人查；`plan.opening_camera` 在开局 0.5 秒切镜头，`contract.start_camera_inside_the_view` 查全关卡。时间 0 的镜头移动会被游戏随后重置，要延后。
 - 没做：A9、A1、A6 没单独进游戏看（同一机制）；开局头 0.5 秒仍是默认镜头。
+
+### 第二十七个会话（11-05，总控令：K7 / I8 A4 地形大改）：地图改完、lint 过，graybox 一条红和测试台检查还没收完
+
+- **做了什么**：①生成器 `platmap.py`：`HOUSES`（几种近方形民房的占地半边，SageXML 量的）、`bar_box`、`house_row`（沿折线一栋挨一栋，口子留给定宽度，口边各贴一栋），`walkable`/`_gap_to` 把房子也当挡路物（以前只有宫墙）。②`maps/sapporo.py`：北街区、南街区、北坡口两侧 ward 不再垫高（`SHAPES` 里删了）；大街北沿 `ROW_N`、南沿 `ROW_S` 各一排房子，北沿留三个 120 宽口（`lane foot` x=1200、后巷东口 x=2610、北坡口 x=3050）；街区后沿 y=3170 和东沿 x=2760 一道宫墙，南街区东头一道墙；一、三号广场也四面砌宫墙；`lane foot`、`north mouth` 搬到口子上，`gun north` 搬到 ROW_N+270，`lane depot` 搬到 y=3030，`LANE`/`NB_BACK` 改 3170，两条后巷坡道删了。③`tests/test_sapporo.py`：后巷改成"两个口"、加"南街区走不到"；`test_architecture.py` G13 的"在坡上"变异改用北高原西坡道。④`docs/design/maps/a4.md` 逐块表标了已做。
+- **量数**：陡面 8.3%→5.8%（原版中位 3.7%，P36 目标 ≤4% 没到：剩下是两块高原、西岭、西南山、小丘和海岸）；民房 110→243。`cnv_preview a4` lint ok；test_architecture、test_docs、test_level_cards、test_plans 74 过，test_sapporo 10 过。
+- **没收完（下个会话先做）**：
+  1. `tests/test_graybox.py::test_old_a4_can_be_pushed_through_every_stage` 红：走查的"布防"阶段多撞到敌人（该测试本来就脆，见前面几节）。试过把 `gun north` 挪到 +315，没用。要看是哪个敌人、哪条路线（`graybox.stages('a4')`），可能是后巷口/北坡口移位。
+  2. 子 Agent 的回归没出完：`work/logs/k7_b.log`（landings、horn、detours、maps、platmap_terrain、lint、sim、a4_plan、offline、ownmap、mappage*、cnv_parts）有一条红，名字还没拿到；`work/logs/k7_graybox.log` 是上面那条。测试台 `cnv_check a4 place/placem/horn/detour/queue/smash/derrick/melt/smoke/win` 一条都没确认（`place`、`placem` 最要紧：冰核落点在新口子上）。
+  3. 守卫（没做）：声明了 `Block` 的地图，`Shape.tier≥2` 的块必须被一块写了"为什么要高处视野"（新字段 `Block.high`）或用途是 `远景` 的 Block 盖住；放 `platmap.lint`，守卫编号用 G15（G14 已被占），变异：把 sapporo 北高原那块 Block 的 `high` 去掉要红。现在只有 sapporo 声明了 Block，别的图不会被连累。
+  4. 房子行在真游戏里挡不挡得住步兵没单独验（模型按占地盒算；宫墙已在测试台验过）。建议在测试台摆一排 `MJ_Structure_02` 让步兵冲，或看 A4 `detour`/`queue` 的结果。
+- **同类问题还在别的图里（没动）**：brussels（A9/S9/J9：ring road gate、四块 city block 垫高）、greenwich（18 块 "a row of buildings"）、hoover、siberia、niagara 等。`Layout.cliff` 默认 2 让悬崖 4～5 格宽，改 1 对 A4 只降约 2 个点，会动全部关卡地形，没改默认值。
+- **坑**：Bash 钩子拦 heredoc 里带反斜杠写文件（用 Edit/Write 或 scratchpad 脚本）；`cnv_list` 输出巨大，别调；`issues.md` 里有总控没提交的 I14 行改动，一并带进了提交。

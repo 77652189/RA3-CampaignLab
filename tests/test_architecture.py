@@ -595,7 +595,7 @@ print('G13 clear', platmap.CAST_CLEAR)
 print('G13 mutation',
       marked('start'),
       sum('stands inside the cast circle' in p for p in contract.contract(crowd)),
-      len(lint(Site(foot.x, 2540.0, 0.0, cast=platmap.CAST_CLEAR))),
+      len(lint(Site(2650.0, 3450.0, 0.0, cast=platmap.CAST_CLEAR))),             # on the north plateau's west ramp
       len(lint(Site(3640.0, 2770.0, 0.0, cast=platmap.CAST_CLEAR))),
       len(lint(Site(foot.x, foot.y, 0.0, cast=platmap.CAST_CLEAR), [Obj('MJ_PalaceWall01', foot.x + 40.0, foot.y, angle=0.0)])),
       len(lint(Site(foot.x, foot.y, 0.0, cast=platmap.CAST_CLEAR))))
