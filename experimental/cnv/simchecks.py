@@ -31,6 +31,10 @@ CHECKS = {
     ('a5', 'hold'): dict(script='', ending=None, counters=True),
     ('a5', 'win'): dict(script='', ending='赢', counters=True),
     # A7: the nag repeats, the gate's guard is reinforced on revenge and on the pincer
+    # A8: the swell's beat (节律 device) turns the three platform groups on in turn, 25 s of every 60, 20 s apart
+    # (不打: nothing the player does is tested, only the timers and flags; the upgrades are not simulated; the run is
+    # past the 12-minute countdown, so it ends lost -- the counters are read before)
+    ('a8', 'beat'): dict(script='不打', ending='输', counters=True),
     ('a7', 'nag'): dict(script='', ending=None, counters=True),
     ('a7', 'revenge'): dict(script='', ending=None, counters=True),
     ('a7', 'pincer'): dict(script='', ending=None, counters=True),

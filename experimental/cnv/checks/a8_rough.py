@@ -106,6 +106,6 @@ def lose(m):
 
 # the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
 CHECKS = {
-    'a8': {'jump': jump, 'lose': lose, 'assault': assault},
-    'a8_control': {'assault': assault},
+    'a8_rough': {'jump': jump, 'lose': lose, 'assault': assault},
+    'a8_rough_control': {'assault': assault},
 }

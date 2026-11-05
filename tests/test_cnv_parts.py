@@ -12,7 +12,7 @@ import build  # noqa: E402
 import lint  # noqa: E402  (experimental/campaign, put on the path by parts)
 import parts  # noqa: E402
 import registry  # noqa: E402
-from missions import a8, liberty_bench  # noqa: E402
+from missions import a8_rough as a8, liberty_bench  # noqa: E402
 from units import liberty as lib  # noqa: E402
 
 
@@ -74,7 +74,7 @@ def test_trigger_areas_round_trip():
 
 def test_a8_assault_same_for_both():
     names = {}
-    for build_name in ('a8', 'a8_control'):
+    for build_name in ('a8_rough', 'a8_rough_control'):
         m, t, mod = build.resolve(build_name, 'assault')
         names[build_name] = mod
         mm = parts.merged(m, t)
@@ -83,17 +83,17 @@ def test_a8_assault_same_for_both():
         labels = [label for _, label in t.counters]
         assert labels[:3] == ['平台剩余', '敌方铁锤', '守护者']
         jumps = [s for s in t.scripts if s.name.startswith('Test - jump ')]
-        assert len(jumps) == (3 if build_name == 'a8' else 0) and labels[3:] == (['自由号'] if jumps else ['多功能车'])
+        assert len(jumps) == (3 if build_name == 'a8_rough' else 0) and labels[3:] == (['自由号'] if jumps else ['多功能车'])
         assert t.bench[0][0] == 'bench_camera'
         order = [s.name for s in t.scripts]
         assert order.index('Test - order again') > order.index('Test - attack 3')   # the tick resets after the orders
-    assert names == {'a8': 'CampA8Assault', 'a8_control': 'CampA8CAssault'}
+    assert names == {'a8_rough': 'CampA8RAssault', 'a8_rough_control': 'CampA8RCAssault'}
     assert parts.kindof('VEHICLE')[2] == 'VEHICLE'
 
 
 def test_a8_lose_moves_the_carrier():
     m = a8.mission()
-    build.MISSIONS['a8'][1]['lose'](m)
+    build.MISSIONS['a8_rough'][1]['lose'](m)
     c = m.find(m.role('carrier').name)
     assert (c.x, c.y) == m.site('west shore') and c.props == {'objectInitialHealth': 1}
     assert a8.mission().find(a8.CARRIER).props == {}
@@ -108,7 +108,7 @@ def test_every_build_keeps_the_contract():
     for n in build.PAIRS:
         m, t, _ = build.resolve(n, '')
         assert parts.contract(parts.merged(m, t)) == [], n
-    assert build.show('a8', 'assault').endswith('contract: ok')
+    assert build.show('a8_rough', 'assault').endswith('contract: ok')
 
 
 def test_a7_publishes_marks_facts_and_counts_by_name():

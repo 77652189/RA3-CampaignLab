@@ -25,7 +25,7 @@ GUARDIAN = 'AlliedAntiVehicleVehicleTech1'
 WIN, LOST = 'CNV A8 - Win', 'CNV A8 - Lost'
 
 
-def mission(carrier=True, name='CampA8'):
+def mission(carrier=True, name='CampA8R'):
     unit = lib.liberty('CNV_Liberty', reload='45s', factory=GUARDIAN)
     goals = [Goal(OBJ, 'MISSIONOBJ:CNVA8_1', 'MISSIONOBJ:CNVA8_1_DESC', show=('platform 1', 'platform 2', 'platform 3'))]
     if carrier:
@@ -82,6 +82,6 @@ def mission(carrier=True, name='CampA8'):
 
 # the builds this module makes (cnv/registry.py): build name -> mission factory
 MISSION = {
-    'a8': lambda: mission(),
-    'a8_control': lambda: mission(carrier=False, name='CampA8C'),
+    'a8_rough': lambda: mission(),
+    'a8_rough_control': lambda: mission(carrier=False, name='CampA8RC'),
 }

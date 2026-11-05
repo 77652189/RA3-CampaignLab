@@ -24,7 +24,7 @@ ARCHIVE = 'experimental/archive'
 # G3a: the only files under experimental/cnv that may spell out the caption action (one outlet for dialogue).
 CAPTION_LITERAL = 'SHOW_MILITARY_CAPTION'
 CAPTION_ALLOWED = {
-    'experimental/cnv/checks/a8.py',
+    'experimental/cnv/checks/a8_rough.py',
     'experimental/cnv/checks/liberty.py',
     'experimental/cnv/ctx.py',          # the outlet itself (Ctx.say)
     'experimental/cnv/model.py',

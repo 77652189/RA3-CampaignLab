@@ -189,6 +189,7 @@ class Body:
     dest: object = None                                         # where it was sent (rerouted when the way changes)
     status: set = dataclasses.field(default_factory=set)       # IMMOBILE (stays put), UNATTACKABLE (the player
                                                                 # cannot destroy it) ...
+    upgrades: set = dataclasses.field(default_factory=set)     # NAMED_RECEIVE_UPGRADE / _REMOVE_UPGRADE (recorded only)
     died_at: float = None                                       # killed or deleted then
     last_hit: str = None                                        # the player whose damage came last (None: a
                                                                 # script's NAMED_KILL, or never hit)
@@ -825,6 +826,10 @@ class Sim:
             st = a[1][2] if isinstance(a[1], tuple) else a[1]
             if b:
                 (b.status.add if a[2] else b.status.discard)(st)
+        elif name in ('NAMED_RECEIVE_UPGRADE', 'NAMED_REMOVE_UPGRADE'):     # (upgrade, object): recorded; what an upgrade
+            b = self.body(a[1])                                              # does to a unit (a range, a shield) is not
+            if b:                                                            # simulated
+                (b.upgrades.add if name == 'NAMED_RECEIVE_UPGRADE' else b.upgrades.discard)(a[0])
         elif name == 'SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER':
             b = self.body(a[0])
             if b:
