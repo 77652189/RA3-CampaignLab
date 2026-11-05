@@ -27,6 +27,8 @@ CHECKS = {
     ('a4_before', 'placed'): dict(script='', ending=None, counters=True),
     ('a4_before', 'smash'): dict(script='不打', ending=None, counters=True),
     ('a4_before', 'ambush'): dict(script='不打', ending=None, counters=True),
+    # A1: the squad walks to the south bridgehead and no patrol falls (I20); the mission goes on
+    ('a1', 'walk'): dict(script='', ending=None, counters=False),
     # A5: the gates hold the fleet till the guards are dead, then it sails and two at the sea win
     ('a5', 'hold'): dict(script='', ending=None, counters=True),
     ('a5', 'win'): dict(script='', ending='赢', counters=True),

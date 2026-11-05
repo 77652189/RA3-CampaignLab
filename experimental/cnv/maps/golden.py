@@ -21,6 +21,7 @@ SITES = {
     'start': Site(*START, 120, 'A1 start: Tanya and the squad'),
     'south camp': Site(2000, 420, 330, 'the south camp: base ground for the base vehicle, a pair of ore', build=440),
     'south bridgehead': Site(2000, 600, 130, 'south end of the deck'),
+    'patrol watch': Site(2000, 760, 450, 'the south patrol and its reach: a squad that walks in here is two seconds from firing'),
     'deck': Site(2000, 1250, 200, "the deck's middle: the charge boxes, the patrol"),
     'north bridgehead': Site(2000, 1900, 130, "north end of the deck, the dock's gate"),
     'south tower': Site(2450, 1000, 100, 'south tower top: the south bomber'),

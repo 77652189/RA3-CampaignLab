@@ -3,6 +3,8 @@
 win: the three phases in a few seconds: the north bomber razed, then the south one, then the dock's guards one after
   another (the player's tools -- the swim along the shoals, the army -- are not exercised: the live play does that);
   the goals complete, the mission is won (ended, and no lost flag). It builds the mission through the real map compile.
+walk: I20 (CampShell acceptance 2026-11-05b): the whole squad sent to the south bridgehead at the start, as anyone would:
+  no patrol falls (they stand 160 up the deck, out of reach) and the mission goes on to the end of the walk.
 trap: the "who sees whom" rule: one bridge guard razed while the north bomber lives -> the fuse is lit, the mission
   ends lost soon after (the lost flag is read before the end: 0 until the raze).
 """
@@ -28,6 +30,22 @@ def raze(t, m, role, k, at):
                   Script(f'Test - raze {k}', [('TIMER_EXPIRED', timer)], [('NAMED_KILL', m.role(role).name)])]
 
 
+WALK_BY = FIRST + 40.0
+SQUAD = ['tanya', 'hawk 1', 'hawk 2', 'peace 1', 'peace 2', 'peace 3', 'peace 4']
+
+
+def walk(m):
+    t = Test()
+    t.scripts += [Script('Test - walk set', [], [('SET_MILLISECOND_TIMER', 'Test Walk', FIRST)]),
+                  Script('Test - walk', [('TIMER_EXPIRED', 'Test Walk')],
+                         [('MOVE_NAMED_UNIT_TO', m.role(r).name, m.mark('south bridgehead')) for r in SQUAD])]
+    lost_counter(t)
+    t.counters += [('CNV_A1_Lost_2', '巡逻倒')]
+    t.expect += [('输了', 0, '==', 0, WALK_BY), ('巡逻倒', 0, '==', 0, WALK_BY)]
+    t.bench = [('bench_watch', dict(seconds=WALK_BY, every=2, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 def win(m):
     t = Test()
     for k, role in enumerate(['north bomber', 'south bomber'] + DOCK):
@@ -50,5 +68,5 @@ def trap(m):
 
 # the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
 CHECKS = {
-    'a1': {'win': win, 'trap': trap},
+    'a1': {'win': win, 'trap': trap, 'walk': walk},
 }
