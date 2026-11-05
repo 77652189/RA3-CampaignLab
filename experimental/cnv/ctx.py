@@ -27,20 +27,22 @@ CHAT_LIFE = 10.0                       # a 闲话 line that waited this long (s)
 PANEL_CLEAR = 5.4                       # the dialogue panel stacks subtitles and clears them all this long (s) after the last
                                         # came up (measured 2026-11-03); the sim models it, no script waits for it
 FUNC_HOLD = 2.0                         # a 功能 caption stays up this long (s) at least before another 功能 one replaces it
-STRIP_MAX = 2                           # lines the player sees at once (the strip, below): never more (I1, 2026-11-05)
+STRIP_MAX = 1                           # lines the player sees at once (the strip, below): never more (I1, 2026-11-05)
 STRIP_HOLD = 6.0                        # what the scripts assume the strip holds a line (s) after the last one came up: the
                                         # game clears it 5.1~6.0 s after the last (PANEL_CLEAR is the middle of that)
 FUNC_LATE = FUNC_HOLD + STRIP_HOLD + 0.5    # a 功能 line's caption is up this soon (s) after its event: the contract rule and
                                         # the sim hold the product to it (K1: "号角响了！" came 14 s after the horn). A 功能
                                         # line waits for room in the strip (STRIP_MAX): three at one moment fit (0, FUNC_HOLD,
                                         # then one clearing, STRIP_HOLD, after the second); a fourth is a plan to fix
-# THE STRIP (I1, CampShell acceptance 2026-11-05): in the shipped game (CampShell) the military caption, the dubbed lines'
-# subtitles and an announcer event's text all go into ONE box that accumulates -- a new line is added under the old ones
-# and nothing leaves one by one; the whole stack clears STRIP_HOLD after the last was added. (The bench's E6 measurement
-# found a one-line caption box apart from the panel; the product screenshots do not: 3 and 4 lines, captions with
-# subtitles, one box.) So the number of lines at once is the depth of one stack, and it is what the queue keeps down:
-# every line that comes up counts into counter `Strip` (re-armed timer, cleared when it runs out), and a queued line or a
-# 功能 caption comes up only while the depth is below STRIP_MAX.
+# ONE SENTENCE AT A TIME (I1, CampShell acceptance 2026-11-05, two rounds): the player wants at most STRIP_MAX sentences on
+# screen, wherever they are. The two places E6 measured are real (the caption box on top, the panel below: the first
+# round's "one accumulating box" reading was wrong, the second round's screenshots show both at once), so the rule is
+# between them: panel text (a subtitle, an announcer event's text) raises counter `Strip` for STRIP_HOLD (re-armed timer,
+# cleared when it runs out), and
+#   - a caption (a 功能 `Now`, an ending) comes up only while `Strip` is clear (it replaces the caption before it),
+#   - a panel line comes up only while `Strip` is clear AND the caption box is free (flag `Box`).
+# The game finds a recording's subtitle by its label DIALOGEVENT:<event> in the string table whether or not the AudioFile
+# names it, so a recording whose words are a caption has no label (voice_link.Later.strings): its text is on screen once.
 
 
 def caption(key, secs):
@@ -142,10 +144,10 @@ class Talk:
                             f'the player sees is what is said')
         k, voice = len(self.lines), list(before) + list(after)
         if tier == FUNC and cap:                # the caption now, the recording (if any) in the queue
-            self.lines.append(Line(tier, voice, turn, cap + self.take_box(secs) + self.strip_add(), secs, adds=True))
+            self.lines.append(Line(tier, voice, turn, cap + self.take_box(secs), secs, adds=True))
             return [('SET_FLAG', self.show(k), 1)] + ([('SET_FLAG', self.want(k), 1)] if voice else [])
         if cap:
-            self.lines.append(Line(tier, list(before) + cap + list(after) + self.take_box(turn) + self.strip_add(), turn,
+            self.lines.append(Line(tier, list(before) + cap + list(after) + self.take_box(turn), turn,
                                    strip=True, adds=True))
         else:                                   # a subtitled recording or an announcer event: its text is a line too
             self.lines.append(Line(tier, voice + self.strip_add(), turn, adds=True))
@@ -159,7 +161,7 @@ class Talk:
     def ending_gate(self):
         """The condition an ending script adds: it waits for the line being said to end, then says its own and ends the
         mission in the same frame (the ending line is never lost, and is before every queued line)."""
-        return [('FLAG', self.busy, 0)]
+        return [('FLAG', self.busy, 0), self.strip_room()]
 
     def ending_begin(self):
         """What an ending script does first: take the floor, so no queued line starts in the frame the mission ends."""
@@ -211,7 +213,8 @@ class Talk:
             # the 闲话 wait for the 功能 queue to be empty, a caption for the box to be free
             ahead = [('COUNTER', self.length(FUNC), 2, 0)] if x.tier == CHAT and FUNC in tiers else []
             out.append(Script(f'CNV {self.tag} - Say {k}' + (' chat' if x.tier == CHAT else ''),
-                              first + [('FLAG', self.busy, 0)] + ahead + ([('FLAG', self.box, 0)] if x.strip else [])
+                              first + [('FLAG', self.busy, 0)] + ahead
+                              + ([('FLAG', self.box, 0)] if x.strip or (x.adds and not x.now) else [])
                               + ([('FLAG', self.aged(k), 0)] if x.tier == CHAT else [])
                               + (room if x.adds and not x.now else []) + gate,
                               leave + [('SET_FLAG', self.busy, 1), ('SET_MILLISECOND_TIMER', self.timer, float(x.turn))]

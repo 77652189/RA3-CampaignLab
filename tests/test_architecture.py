@@ -264,7 +264,7 @@ def test_g11_acceptance_checks_only_observe():
 # holds it on the product of every build (a level's own caption, announcer, voice line or talking head in a script
 # that is not `Say k` / a scene's `Phase n line k` / an ending's own is a problem), contract.said_lines_kept that a line
 # is lost only by a 闲话 line's own Drop and an ending waits for the floor, and the simulator's timetable of every level
-# shows lines at least the strip's 5.4 s apart (the strip stacks lines and clears them together after the last).
+# shows no more than ctx.STRIP_MAX sentences on screen at once (the caption box and the dialogue panel together).
 # tests/test_talk_queue.py runs the queue itself (order, tiers, expiry, the ending).
 G3B_PROBE = '''
 import sys
@@ -292,8 +292,8 @@ print('G3B close', close[:5])
 print('G3B strip', deep[:5])
 # I1 mutation: a queue that lets any number of lines into the strip (the product's state before 2026-11-05) is caught
 ctx.STRIP_MAX = plan.STRIP_MAX = 99
-print('G3B strip mutation', len(strip.too_deep(sim.simulate('a4', until=200.0), 2)) > 0)
-ctx.STRIP_MAX = plan.STRIP_MAX = 2
+print('G3B strip mutation', len(strip.too_deep(sim.simulate("a4", until=200.0))) > 0)
+ctx.STRIP_MAX = plan.STRIP_MAX = 1
 print('G3B twice', len(contract.said_once_and_on_time(model.merged(build.resolve('a4', '')[0]))))
 m, _, _ = build.resolve('a4', '')
 mm = model.merged(m)

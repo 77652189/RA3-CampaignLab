@@ -34,11 +34,19 @@ class Later:
         import clips
         self.clips = clips.Clips({ev: wav for ev, wav, _, group in self.items if not group}, self.missing, heads)
         self.groups = {group for _, _, _, group in self.items if group}     # the unit voice events the pack has
-        self.strings = {f'DIALOGEVENT:{ev}': text for ev, _, text, group in self.items if not group}
+        self.texts = {f'DIALOGEVENT:{ev}': text for ev, _, text, group in self.items if not group}   # every line's words
         known = self._retail_events() if self.retail else None
         for ev in sorted(set(self.retail.values())):
             if known is not None and ev not in known:
                 self.missing.append(f'{ev} (retail announcer): not a retail audio event')
+
+    @property
+    def strings(self):
+        """The labels that reach the mod's string table: only the lines that carry their own subtitle. The game finds a
+        recording's subtitle by its label DIALOGEVENT:<event> whether or not the AudioFile names it (I1, CampShell
+        2026-11-05: a 功能 line shown as a caption came up again in the dialogue panel ~7 s later, when its recording
+        played), so a line the mission shows as a caption has no such label."""
+        return {k: t for k, t in self.texts.items() if k.split(':', 1)[1] in self.subtitled}
 
     def __bool__(self):                 # an edition with none of its lines delivered has no pack to build
         return bool(self.items)

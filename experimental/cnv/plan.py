@@ -552,7 +552,7 @@ class Compiler:
                 # a line goes by one channel (E6): a 功能 line is a caption for the length of the recording, its voice has
                 # no subtitle; any other dubbed line (and every one in a 过场) carries its own subtitle into the dialogue
                 # panel and shows no caption
-                words = self.text('SCRIPT', self.voice.strings[f'DIALOGEVENT:{dubbed}'])
+                words = self.text('SCRIPT', self.voice.texts[f'DIALOGEVENT:{dubbed}'])
                 head = [('MOVIE_PLAY_RADAR', clip)] if clip else []
                 as_caption = tier == FUNC and not self.ctx.talk.scene
                 if dubbed in (self.m.subtitles if as_caption else self.captioned):

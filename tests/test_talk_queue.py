@@ -35,10 +35,10 @@ def test_a_chat_caption_is_read_to_its_turn_and_the_next_waits_for_the_box():
     s = run(['通报 闲话一', '通报 闲话二', '通报 闲话三'])
     out = said(s)
     # each takes the box for its turn (a caption-only line holds the floor for its reading time, no more) and none is cut
-    # off; two fill the strip (I1, ctx.STRIP_MAX), the third would wait for it to clear (6 s after the second: 10 s old): dropped
-    assert [x[-3:] for _, x in out] == ['闲话一', '闲话二'], out
+    # off; a caption is not panel text, so all three are said, one after the other
+    assert [x[-3:] for _, x in out] == ['闲话一', '闲话二', '闲话三'], out
     assert all(b - a >= 4.0 - 1e-6 for (a, _), (b, _) in zip(out, out[1:])), out
-    assert s.counters.get('CNV_ZZ_Dropped') == 1
+    assert not s.counters.get('CNV_ZZ_Dropped')
 
 
 def test_a_chat_line_waits_up_to_chat_life_and_no_longer():
@@ -57,8 +57,8 @@ def test_first_come_first_played_inside_a_tier_and_none_is_cut_short():
     s = run([{'通报': '甲', '功能': '是'}, {'通报': '乙', '功能': '是'}, {'通报': '丙', '功能': '是'}])
     out = said(s)
     assert [x[-1] for _, x in out] == ['甲', '乙', '丙']
-    # each read FUNC_HOLD at least; the strip holds two (I1), the third comes once it has cleared (STRIP_HOLD after the second)
-    assert [round(t - 5.0, 3) for t, _ in out] == [0.0, ctx.FUNC_HOLD, ctx.FUNC_HOLD + ctx.STRIP_HOLD]
+    # each read FUNC_HOLD at least, then the next caption replaces it (one sentence at a time; none is panel text)
+    assert [round(t - 5.0, 3) for t, _ in out] == [0.0, ctx.FUNC_HOLD, 2 * ctx.FUNC_HOLD]
     assert not s.late_captions() and s.counters.get('CNV_ZZ_Dropped', 0) == 0
 
 
@@ -109,15 +109,16 @@ def test_the_product_rule_refuses_a_gong_caption_that_waits_and_a_line_on_both_c
     assert any('one channel' in p for p in out) and any('the voice pack' in p or 'subtitle' in p for p in out), out
 
 
-def test_the_strip_never_holds_more_than_strip_max_lines():
-    # I1 (CampShell 2026-11-05): five 功能 captions and a 闲话 at one moment stacked 4 lines in the game's one box
+def test_no_more_than_strip_max_sentences_are_on_screen_at_once():
+    # I1 (CampShell 2026-11-05, second round): a caption on top and a different line in the panel at the same time
+    import plan
     import strip
-    s = run([{'通报': f'功能{c}', '功能': '是'} for c in '甲乙丙丁戊'] + ['通报 闲话一'], until=90)
-    assert len(strip.lines(s)) >= 5 and not strip.too_deep(s), (strip.lines(s), strip.too_deep(s))
+    s = sim.simulate('a4', until=200.0)
+    assert len(strip.lines(s)) >= 20 and not strip.too_deep(s), strip.too_deep(s)
     saved = ctx.STRIP_MAX
-    ctx.STRIP_MAX = 99                     # the queue without the gate: the stack grows past two, and the reading says so
+    ctx.STRIP_MAX = plan.STRIP_MAX = 99      # the queue without the gate: a caption and a subtitle meet, and the reading says so
     try:
-        s = run([{'通报': f'功能{c}', '功能': '是'} for c in '甲乙丙丁戊'], until=90)
+        s = sim.simulate('a4', until=200.0)
     finally:
-        ctx.STRIP_MAX = saved
-    assert strip.too_deep(s, 2), strip.stacks(s)
+        ctx.STRIP_MAX = plan.STRIP_MAX = saved
+    assert strip.too_deep(s), strip.lines(s)
