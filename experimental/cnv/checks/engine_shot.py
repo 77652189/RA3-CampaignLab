@@ -34,7 +34,21 @@ shells (round 32; the order lane): four CNV_ShotReach -- the shell V4 with Attac
 own Hammer SHELLS_AT north; counters as in way. Bench 11-05: 250 / 350 / 450 / 550 read 7 / 9 / 11 / 13 = 2 +
 floor(d / 50): the distance alone, 1 / MuzzleVelocity a unit, no launch offset (the model before read 9 / 11 / 13 /
 15; now Idle leaves at the launch and the move ending in the victim detonates, INFERRED collision).
+
+The splash 120 Hammer (round 33): the radius takes by the shape (the default PartitionFilterTestType EXTENTS_3D: the
+ball against the box), the taper by the circle; the Hammer faces south, its box 14 wide east, the edge 106 away.
+
+Round 33 (counters: percent lost, a step counted once begun, so 6.25 shows as 7; only the first hit is read):
+
+  armor   instant V4s of 2000 GUN / AUTO_CANNON / IMPACT / RADIATION at Hammers 250 north (front hits): 10 / 5 /
+          15 / 1 = BaseTankArmor's 50 / 25 / 75 / 5 %.
+  flank   4000 EXPLOSIVE from 0 / 40 / 90 / 180 degrees off the Hammer's facing (it faces south): 40 / 40 / 42 /
+          44 -- Side 105 beyond 45 degrees, Rear 110 beyond 135, by the attacker's position.
+  vet     retail V4s given 0 / 3600 / 7200 / 10800 points (ranks 1-4): 5 / 7 / 7 / 7 -- the veteran's DAMAGE_MULT
+          125 stays at elite and heroic; the heroic's second rocket came sooner (RATE_OF_FIRE 120 %). A copy of the
+          V4 with its own ExperienceLevelTemplates (linked) read 20 % at every level: copies do not get ranks so.
 """
+import math
 import os
 import re
 
@@ -52,6 +66,20 @@ SHELLS_AT = (250.0, 350.0, 450.0, 550.0)   # check shells: each shell's target t
 SHELLS_DX = (-600.0, -200.0, 200.0, 600.0)  # the shooters along the order lane, 400 apart (the lanes 1 500)
 SHELLS_REACH = 800.0                       # past 550 (retail's 500 would drive the V4 nearer first)
 DAMAGE = '<DamageNugget Damage="{d:.1f}" DamageType="EXPLOSIVE" DeathType="EXPLODED" Radius="{r:g}"{extra} />'
+# check armor (round 33): one instant V4 per DamageType, ARMOR_DAMAGE a hit, each at its own Hammer ARMOR_AT north
+# (the Hammer faces south, the map's default for s1: a front hit); retail's BaseTankArmor gives these percents
+ARMOR_KINDS = (('GUN', 50), ('AUTO_CANNON', 25), ('IMPACT', 75), ('RADIATION', 5))
+ARMOR_DAMAGE, ARMOR_AT, ARMOR_DX = 2000.0, 250.0, -500.0
+# check flank: four EXPLOSIVE V4s of FLANK_DAMAGE, each at its own Hammer (at lane + FLANK_AT, facing south) from
+# FLANK_REACH away at this many degrees off the Hammer's facing (BaseTankArmor Side 105, Rear 110)
+FLANK_OFF = (0.0, 40.0, 90.0, 180.0)
+FLANK_DAMAGE, FLANK_AT, FLANK_REACH = 4000.0, (500.0, 300.0), 250.0
+SHORT = ORDER + 3.0                  # armor / flank: only the first hit (the next is >= 4.5 s later)
+# check vet: four retail V4s (SovietAntiStructureVehicle: retail's ranks name it as their Target; a copy given its
+# own ExperienceLevelTemplates read 20 % at every point level, round 33 -- the copy's levels did not take or the
+# points did nothing, not told apart), given these points at the start (ranks 1-4 at 1 / 3600 / 7200 / 10800), each
+# at its own Hammer; the first rocket lands ~108 frames after the order (engine_missile miss), 5 % at rank 1
+VET, VET_DX, VET_POINTS, VET_RUN = 'SovietAntiStructureVehicle', 250.0, (0, 3600, 7200, 10800), ORDER + 9.0
 LASER = ('<ActivateLaserNugget id="DefaultLaserNugget" Lifetime="0.1s" LaserId="1" />')
 
 
@@ -120,8 +148,21 @@ def units():
         shot_v4('CNV_ShotSplash', _nuggets(splash),
                 what=f'溅射 V4（探针）：{SPLASH_DAMAGE:g} 伤害、半径 {SPLASH_RADIUS:g}、边缘衰减到 {SPLASH_TAPER:g}，'
                      '无预瞄、无开火持续、无散布'),
+        *[shot_v4(_kind_id(k), _nuggets(_kind_nugget(k, ARMOR_DAMAGE)),
+                  what=f'{k} 瞬发 V4（探针）：{ARMOR_DAMAGE:g} 伤害、伤害类型 {k}，无预瞄、无开火持续、无散布')
+          for k, _ in ARMOR_KINDS],
+        shot_v4('CNV_ShotFlank', _nuggets(DAMAGE.format(d=FLANK_DAMAGE, r=0, extra='')),
+                what=f'侧击 V4（探针）：{FLANK_DAMAGE:g} 伤害（EXPLOSIVE），无预瞄、无开火持续、无散布'),
         target(),
     ]
+
+
+def _kind_id(kind):
+    return 'CNV_ShotKind' + ''.join(p.title() for p in kind.split('_'))
+
+
+def _kind_nugget(kind, d):
+    return f'<DamageNugget Damage="{d:.1f}" DamageType="{kind}" DeathType="EXPLODED" Radius="0" />'
 
 
 LANES = {'base': 'CNV_ShotInstant', 'high': 'CNV_ShotSlow', 'removed': 'CNV_ShotShell', 'switch': 'CNV_ShotLaser'}
@@ -143,6 +184,24 @@ def mission():
               name=f'UNIT - CNV Shot Shells {k} Shooter')
         m.put(TARGET_ID, 'order gun', dx, d, side='s1', role=f'shells {d:g} target',
               name=f'UNIT - CNV Shot Shells {k} Target')
+    for (kind, _), lane in zip(ARMOR_KINDS, LANES):
+        m.put(_kind_id(kind), f'{lane} gun', ARMOR_DX, 0, side='p1', role=f'armor {kind} shooter',
+              name=f'UNIT - CNV Shot Armor {kind} Shooter')
+        m.put(TARGET_ID, f'{lane} gun', ARMOR_DX, ARMOR_AT, side='s1', role=f'armor {kind} target',
+              name=f'UNIT - CNV Shot Armor {kind} Target')
+    fx, fy = FLANK_AT
+    for off, lane in zip(FLANK_OFF, LANES):
+        a = math.radians(off)                       # the Hammer faces south: front is (0, -1)
+        m.put('CNV_ShotFlank', f'{lane} gun', fx + FLANK_REACH * math.sin(a), fy - FLANK_REACH * math.cos(a),
+              side='p1', role=f'flank {off:g} shooter', name=f'UNIT - CNV Shot Flank {off:g} Shooter',
+              angle=math.atan2(math.cos(a), -math.sin(a)))  # facing its Hammer: no turn before the shot
+        m.put(TARGET_ID, f'{lane} gun', fx, fy, side='s1', role=f'flank {off:g} target',
+              name=f'UNIT - CNV Shot Flank {off:g} Target')
+    for pts, lane in zip(VET_POINTS, LANES):
+        m.put(VET, f'{lane} gun', VET_DX, 0, side='p1', role=f'vet {pts} shooter',
+              name=f'UNIT - CNV Shot Vet {pts} Shooter')
+        m.put(TARGET_ID, f'{lane} gun', VET_DX, ARMOR_AT, side='s1', role=f'vet {pts} target',
+              name=f'UNIT - CNV Shot Vet {pts} Target')
     m.spawns |= {'CNV_ShotShellProjectile', 'CNV_ShotReachProjectile'}
     return m
 
@@ -160,15 +219,23 @@ def shot_test(m, group):
     lanes = [(LABELS[lane], n(f'{lane} shooter'), n(f'{lane} target')) for lane in LANES]
     splash = [(f'splash{dx:g}', n(f'splash {dx:g}')) for dx in (0.0,) + SPLASH_AT]
     shells = [(f'shell{d:g}', n(f'shells {d:g} shooter'), n(f'shells {d:g} target')) for d in SHELLS_AT]
+    kinds = [(k.lower(), n(f'armor {k} shooter'), n(f'armor {k} target')) for k, _ in ARMOR_KINDS]
+    flank = [(f'flank{off:g}', n(f'flank {off:g} shooter'), n(f'flank {off:g} target')) for off in FLANK_OFF]
+    vet = [(f'vet{p}', n(f'vet {p} shooter'), n(f'vet {p} target')) for p in VET_POINTS]
+    rows = {'armor': kinds, 'flank': flank, 'vet': vet}
     if group == 'way':
         pairs = [(s, tg) for _, s, tg in lanes]
     elif group == 'shells':
         pairs = [(s, tg) for _, s, tg in shells]
+    elif group in rows:
+        pairs = [(s, tg) for _, s, tg in rows[group]]
     else:
         pairs = [(n('splash shooter'), splash[0][1])]
     held = [s for _, s, _ in lanes] + [tg for _, _, tg in lanes] + [n('splash shooter')] + [tg for _, tg in splash]
-    held += [s for _, s, _ in shells] + [tg for _, _, tg in shells]
+    held += [x for _, s, tg in shells + kinds + flank + vet for x in (s, tg)]
     start = [('MAP_REVEAL_ALL_PERM', m.player('p1'))]
+    if group == 'vet':
+        start += [('UNIT_GIVE_EXPERIENCE_POINTS', s, p) for (_, s, _), p in zip(vet, VET_POINTS) if p]
     start += [('UNIT_CHANGE_OBJECT_STATUS', x, 'NO_ATTACK', 1) for x in held]
     start += [('SET_MILLISECOND_TIMER', 'Test Order', ORDER)]
     t.scripts.append(Script('Test - start', [], start))
@@ -185,6 +252,16 @@ def shot_test(m, group):
             t.scripts += [Script(f'Test - {c} lost {j}', [('UNIT_HEALTH', tg, 0, 100 - j + 1)],
                                  [('INCREMENT_COUNTER', 1000, c)]) for j in range(1, LOST_MAX + 1)]
         t.expect = [(lanes[0][0] if group == 'way' else shells[0][0], 0, 'ever>=', 1000, RUN - 2)]
+    elif group in rows:
+        for k, (label, _, tg) in enumerate(rows[group]):
+            c = f'CNV_Shot_{group[0].upper()}{k}'
+            t.counters.append((c, label))
+            t.scripts += [Script(f'Test - {c} lost {j}', [('UNIT_HEALTH', tg, 0, 100 - j + 1)],
+                                 [('INCREMENT_COUNTER', 1, c)]) for j in range(1, LOST_MAX + 1)]
+        run = VET_RUN if group == 'vet' else SHORT
+        t.expect = [(rows[group][0][0], 0, 'ever>=', 1, run - 1)]
+        t.bench = [('bench_watch', dict(seconds=run, every=1, sheet=False, lines=6))]
+        return t
     else:
         for k, (label, tg) in enumerate(splash):
             c = f'CNV_Shot_S{k}'
@@ -198,4 +275,5 @@ def shot_test(m, group):
 
 MISSION = {'engine_shot': mission}
 CHECKS = {'engine_shot': {'way': lambda m: shot_test(m, 'way'), 'splash': lambda m: shot_test(m, 'splash'),
-                          'shells': lambda m: shot_test(m, 'shells')}}
+                          'shells': lambda m: shot_test(m, 'shells'), 'armor': lambda m: shot_test(m, 'armor'),
+                          'flank': lambda m: shot_test(m, 'flank'), 'vet': lambda m: shot_test(m, 'vet')}}
