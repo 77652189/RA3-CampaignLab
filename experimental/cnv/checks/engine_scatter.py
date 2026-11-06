@@ -13,8 +13,10 @@ What it tells apart (the shot aims at a point within R of the Hammer's centre):
   the shell detonating on the Hammer on its way to a point beyond it (collision) raises the share on every lane.
 
 Bench 11-05 (round 34, CampScatterHits_mcp_1105_170642): 51 shots in the run; R 0 / 30 / 60 / 120 hit 51 / 34 / 19 /
-4 (100 / 67 / 37 / 8 %). Neither law alone: 30 -> 60 halves (1 / R), 60 -> 120 quarters (1 / R^2). Not yet held
-against the model (work/re handoff round 34).
+4, and CampScatterHits_mcp_1105_171950 the same to the second (the game's draws are fixed). The counter is one more
+than the hits (the first step is true at full health): 50 shots, 66 / 36 / 6 %. Held against the model (round 35,
+RA3-EngineModel tests/test_scatter.py): the radius uniform in [0, R] on the shooter's half, the point inside the
+Hammer's 20 x 14 box -- expected 62 / 31 / 16 %, within 3 sigma of all three.
 """
 from maps import probe_range
 from parts import Mission, Script, Test
