@@ -29,6 +29,11 @@ Bench 11-05 (round 30, docs/engine/weapons.md 2):
           120 -- beyond Radius by its centre, within it less the circle -- is spared (the model gives it 2 %).
           From the fourth shot on splash0 stops gaining and the others gain 9 each: not read (the Hammers pushed
           apart?); only the first shot is used.
+
+shells (round 32; the order lane): four CNV_ShotReach -- the shell V4 with AttackRange SHELLS_REACH -- each at its
+own Hammer SHELLS_AT north; counters as in way. Bench 11-05: 250 / 350 / 450 / 550 read 7 / 9 / 11 / 13 = 2 +
+floor(d / 50): the distance alone, 1 / MuzzleVelocity a unit, no launch offset (the model before read 9 / 11 / 13 /
+15; now Idle leaves at the launch and the move ending in the victim detonates, INFERRED collision).
 """
 import os
 import re
@@ -43,6 +48,9 @@ SPLASH_DAMAGE, SPLASH_RADIUS, SPLASH_TAPER = 2000.0, 100.0, 20.0
 SPLASH_NEAR = 250.0
 SPLASH_AT = (40.0, 80.0, 120.0)
 SHELL = 'SovietAntiVehicleVehicleTech1TankProjectile'
+SHELLS_AT = (250.0, 350.0, 450.0, 550.0)   # check shells: each shell's target this far north of its shooter
+SHELLS_DX = (-600.0, -200.0, 200.0, 600.0)  # the shooters along the order lane, 400 apart (the lanes 1 500)
+SHELLS_REACH = 800.0                       # past 550 (retail's 500 would drive the V4 nearer first)
 DAMAGE = '<DamageNugget Damage="{d:.1f}" DamageType="EXPLOSIVE" DeathType="EXPLODED" Radius="{r:g}"{extra} />'
 LASER = ('<ActivateLaserNugget id="DefaultLaserNugget" Lifetime="0.1s" LaserId="1" />')
 
@@ -51,10 +59,10 @@ def _nuggets(*items):
     return '<Nuggets>\n\t\t\t' + '\n\t\t\t'.join(items) + '\n\t\t</Nuggets>'
 
 
-def shot_v4(id, nuggets, speed=999999.0, files=None, extra='', what=''):
+def shot_v4(id, nuggets, speed=999999.0, files=None, extra='', what='', reach=None):
     """Retail's V4 under `id`, its rocket weapon swapped for `id`Weapon: `nuggets`, WeaponSpeed `speed`, no scatter,
     pre-attack 0, FiringDuration 0; nothing else differs (ADR 0016 G5: the probe builds it). `extra`: more assets
-    laid into the unit's file, `files`: {name: xml} of its own."""
+    laid into the unit's file, `files`: {name: xml} of its own; `reach`: AttackRange instead of retail's 500."""
     wid = id + 'Weapon'
     x = open(os.path.join(SAGE, 'Soviet', 'Units', V4 + '.xml'), encoding='utf-8').read()
     x = _sub1(x, f'id="{V4}"', f'id="{id}"')
@@ -65,6 +73,8 @@ def shot_v4(id, nuggets, speed=999999.0, files=None, extra='', what=''):
     s = _sub1(s, f'id="{V4_WEAPON}"', f'id="{wid}"')
     s = _sub1(s, 'inheritFrom="ScatterableWeapon"', '')
     s = _sub1(s, 'WeaponSpeed="200"', f'WeaponSpeed="{speed:g}"')
+    if reach is not None:
+        s = _sub1(s, 'AttackRange="500.0"', f'AttackRange="{reach:g}"')
     s, k = re.subn(r'<Nuggets>.*?</Nuggets>', nuggets, s, flags=re.S)
     assert k == 1, k
     s, k = re.subn(r'\s*<ScatterRadiusVsType\s+Radius="0\.1">.*?</ScatterRadiusVsType>', '', s, flags=re.S)
@@ -78,9 +88,9 @@ def shot_v4(id, nuggets, speed=999999.0, files=None, extra='', what=''):
                 names=dict(unit=id, weapon=wid), what=what, params=dict(speed=speed))
 
 
-def shell_v4(id='CNV_ShotShell'):
+def shell_v4(id='CNV_ShotShell', reach=None):
     """The V4 firing retail's Hammer shell (copied as `id`Projectile) with a warhead (`id`Warhead) of one radius-0
-    DamageNugget of 500."""
+    DamageNugget of 500; `reach`: its AttackRange (retail 500)."""
     proj, wh = id + 'Projectile', id + 'Warhead'
     p = open(os.path.join(SAGE, 'Soviet', 'Props', SHELL + '.xml'), encoding='utf-8').read()
     p = _sub1(p, f'id="{SHELL}"', f'id="{proj}"')
@@ -89,8 +99,9 @@ def shell_v4(id='CNV_ShotShell'):
                f'\t\tRadiusDamageAffects="ENEMIES" RequiredAntiMask="ANTI_WATER ANTI_GROUND ANTI_STRUCTURE">\n'
                f'\t\t{_nuggets(DAMAGE.format(d=500.0, r=0, extra=""))}\n\t</WeaponTemplate>\n')
     nug = f'<ProjectileNugget WarheadTemplate="{wh}" ProjectileTemplate="{proj}" />'
-    u = shot_v4(id, _nuggets(nug), files={proj + '.xml': p}, extra=warhead,
-                what='打锤子炮弹的 V4（探针）：直射弹（原版锤子炮弹），弹头半径 0、500 伤害，无预瞄、无开火持续、无散布')
+    far = '' if reach is None else f'，射程 {reach:g}'
+    u = shot_v4(id, _nuggets(nug), files={proj + '.xml': p}, extra=warhead, reach=reach,
+                what=f'打锤子炮弹的 V4（探针）：直射弹（原版锤子炮弹），弹头半径 0、500 伤害，无预瞄、无开火持续、无散布{far}')
     u.names.update(projectile=proj, warhead=wh)
     return u
 
@@ -103,6 +114,7 @@ def units():
         shot_v4('CNV_ShotSlow', _nuggets(one), SLOW,
                 what=f'慢速瞬发 V4（探针）：WeaponSpeed {SLOW:g}，500 伤害，无预瞄、无开火持续、无散布'),
         shell_v4(),
+        shell_v4('CNV_ShotReach', SHELLS_REACH),
         shot_v4('CNV_ShotLaser', _nuggets(LASER, one),
                 what='激光 V4（探针）：开激光光束 + 500 伤害，WeaponSpeed 999999，无预瞄、无开火持续、无散布'),
         shot_v4('CNV_ShotSplash', _nuggets(splash),
@@ -126,7 +138,12 @@ def mission():
     for k, dx in enumerate((0.0,) + SPLASH_AT):
         m.put(TARGET_ID, 'low gun', dx, SPLASH_NEAR, side='s1', role=f'splash {dx:g}',
               name=f'UNIT - CNV Shot Splash {k}')
-    m.spawns |= {'CNV_ShotShellProjectile'}
+    for k, (dx, d) in enumerate(zip(SHELLS_DX, SHELLS_AT)):
+        m.put('CNV_ShotReach', 'order gun', dx, 0, side='p1', role=f'shells {d:g} shooter',
+              name=f'UNIT - CNV Shot Shells {k} Shooter')
+        m.put(TARGET_ID, 'order gun', dx, d, side='s1', role=f'shells {d:g} target',
+              name=f'UNIT - CNV Shot Shells {k} Target')
+    m.spawns |= {'CNV_ShotShellProjectile', 'CNV_ShotReachProjectile'}
     return m
 
 
@@ -142,11 +159,15 @@ def shot_test(m, group):
 
     lanes = [(LABELS[lane], n(f'{lane} shooter'), n(f'{lane} target')) for lane in LANES]
     splash = [(f'splash{dx:g}', n(f'splash {dx:g}')) for dx in (0.0,) + SPLASH_AT]
+    shells = [(f'shell{d:g}', n(f'shells {d:g} shooter'), n(f'shells {d:g} target')) for d in SHELLS_AT]
     if group == 'way':
         pairs = [(s, tg) for _, s, tg in lanes]
+    elif group == 'shells':
+        pairs = [(s, tg) for _, s, tg in shells]
     else:
         pairs = [(n('splash shooter'), splash[0][1])]
     held = [s for _, s, _ in lanes] + [tg for _, _, tg in lanes] + [n('splash shooter')] + [tg for _, tg in splash]
+    held += [s for _, s, _ in shells] + [tg for _, _, tg in shells]
     start = [('MAP_REVEAL_ALL_PERM', m.player('p1'))]
     start += [('UNIT_CHANGE_OBJECT_STATUS', x, 'NO_ATTACK', 1) for x in held]
     start += [('SET_MILLISECOND_TIMER', 'Test Order', ORDER)]
@@ -155,15 +176,15 @@ def shot_test(m, group):
                             [('UNIT_CHANGE_OBJECT_STATUS', s, 'NO_ATTACK', 0) for s, _ in pairs]
                             + [('NAMED_ATTACK_NAMED', s, tg) for s, tg in pairs]
                             + [('SET_FLAG', 'Test Ordered', 1)]))
-    if group == 'way':
-        for k, (label, _, tg) in enumerate(lanes):
-            c = f'CNV_Shot_W{k}'
+    if group in ('way', 'shells'):
+        for k, (label, _, tg) in enumerate(lanes if group == 'way' else shells):
+            c = f'CNV_Shot_{"W" if group == "way" else "D"}{k}'
             t.counters.append((c, label))
             t.scripts.append(Script(f'Test - {c} frames', [('FLAG', 'Test Ordered', 1), ('UNIT_HEALTH', tg, 2, 100)],
                                     [('INCREMENT_COUNTER', 1, c)], once=False))
             t.scripts += [Script(f'Test - {c} lost {j}', [('UNIT_HEALTH', tg, 0, 100 - j + 1)],
                                  [('INCREMENT_COUNTER', 1000, c)]) for j in range(1, LOST_MAX + 1)]
-        t.expect = [('instant', 0, 'ever>=', 1000, RUN - 2)]
+        t.expect = [(lanes[0][0] if group == 'way' else shells[0][0], 0, 'ever>=', 1000, RUN - 2)]
     else:
         for k, (label, tg) in enumerate(splash):
             c = f'CNV_Shot_S{k}'
@@ -176,4 +197,5 @@ def shot_test(m, group):
 
 
 MISSION = {'engine_shot': mission}
-CHECKS = {'engine_shot': {'way': lambda m: shot_test(m, 'way'), 'splash': lambda m: shot_test(m, 'splash')}}
+CHECKS = {'engine_shot': {'way': lambda m: shot_test(m, 'way'), 'splash': lambda m: shot_test(m, 'splash'),
+                          'shells': lambda m: shot_test(m, 'shells')}}
