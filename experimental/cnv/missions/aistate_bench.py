@@ -18,6 +18,7 @@ WAKE_AT, INF_AT, TANK_AT = 10.0, 20.0, 60.0
 PID = 'CNVStateTest'
 INF, TANK = 'AlliedAntiInfantryInfantry', 'AlliedAntiVehicleVehicleTech1'
 FLAG_INF, FLAG_TANK = 'CNV AI Infantry', 'CNV AI Tanks'
+PLAIN = ('CNVAIInfantry', 'CNVAITanks')     # aistateplain: letters only (is the space the trouble?)
 BASE = 'AlliedCoopBasePersonality'
 # its strategic states with the parents' (SDK BasePersonality, CoopBasePersonality, AlliedCoopBasePersonality);
 # removed so only the probe's two can recruit
@@ -49,7 +50,7 @@ def _state(sid, flag, unit, gate='flag'):
   </AIStrategicStateDefinition>'''
 
 
-def personality_xml(gate='flag'):
+def personality_xml(gate='flag', flags=(FLAG_INF, FLAG_TANK)):
     removed = [f'    <StrategicState id="{k}" xai:joinAction="Remove"/>' for k in INHERITED]
     return '\n'.join([
         '<?xml version="1.0" encoding="utf-8"?>',
@@ -59,8 +60,8 @@ def personality_xml(gate='flag'):
         '  <Includes>',
         f'    <Include type="instance" source="DATA:SkirmishAI/Personalities/{BASE}.xml" />',
         '  </Includes>',
-        _state('CNVStateInf', FLAG_INF, INF, gate),
-        _state('CNVStateTank', FLAG_TANK, TANK, gate),
+        _state('CNVStateInf', flags[0], INF, gate),
+        _state('CNVStateTank', flags[1], TANK, gate),
         f'  <AIPersonalityDefinition id="{PID}" PersonalityType="{PID}" inheritFrom="{BASE}">',
         *removed,
         '    <StrategicState id="CNVStateInf" State="CNVStateInf"/>',
@@ -69,13 +70,14 @@ def personality_xml(gate='flag'):
         '</AssetDeclaration>', ''])
 
 
-def mission(name='CampAIState', near=False, gate='flag'):
+def mission(name='CampAIState', near=False, gate='flag', flags=(FLAG_INF, FLAG_TANK)):
     """near: the player also has a power plant 300 west of the east gate, ~750 from the AI's units (the yard on the
     west bank is ~2600 away, past ClosestStructureHeuristic's default SearchRange 1500). gate 'const': both states
     always on (ConstantHeuristic) -- does a team go at all."""
     m = Mission(name=name, map=niagara, facts={'wake at': WAKE_AT, 'infantry at': INF_AT, 'tanks at': TANK_AT})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{PID}'}
-    m.assets.append((f'{PID}.xml', personality_xml(gate), f'AIPersonalityDefinition:{PID}'))
+    m.assets.append((f'{PID}.xml', personality_xml(gate, flags), f'AIPersonalityDefinition:{PID}'))
+    m.cnv_flags = flags                     # the check counts with these names
     if near:
         m.put('AlliedPowerPlant', 'east gate', -300.0, 0.0, name='UNIT - CNV AI Player Target', role='player target')
     m.spawns |= {INF, TANK}
@@ -97,12 +99,13 @@ def mission(name='CampAIState', near=False, gate='flag'):
                [('UNIT_AI_TRANSFER_ALL', s1, 1), ('SKIRMISH_AI_MAKE_BASE', s1, base),
                 ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', s1, 20), ('SKIRMISH_AI_USE_REPAIRS', s1, 0),
                 ('SKIRMISH_AI_USE_REBUILD_SYSTEM', s1, 0), ('PLAYER_SET_MONEY', s1, 0)]),
-        Script('CNV AI - Infantry on', [('TIMER_EXPIRED', 'CNV AI Inf')], [('SET_FLAG', FLAG_INF, 1)]),
+        Script('CNV AI - Infantry on', [('TIMER_EXPIRED', 'CNV AI Inf')], [('SET_FLAG', flags[0], 1)]),
         Script('CNV AI - Tanks on', [('TIMER_EXPIRED', 'CNV AI Tank')],
-               [('SET_FLAG', FLAG_INF, 0), ('SET_FLAG', FLAG_TANK, 1)])]
+               [('SET_FLAG', flags[0], 0), ('SET_FLAG', flags[1], 1)])]
     return m
 
 
 MISSION = {'aistate': mission,
+           'aistateplain': lambda: mission('CampAIPlain', near=True, flags=PLAIN),
            'aistatenear': lambda: mission('CampAINear', near=True),
            'aistateconst': lambda: mission('CampAIConst', near=True, gate='const')}
