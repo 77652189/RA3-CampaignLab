@@ -87,10 +87,11 @@ def _nuggets(*items):
     return '<Nuggets>\n\t\t\t' + '\n\t\t\t'.join(items) + '\n\t\t</Nuggets>'
 
 
-def shot_v4(id, nuggets, speed=999999.0, files=None, extra='', what='', reach=None):
+def shot_v4(id, nuggets, speed=999999.0, files=None, extra='', what='', reach=None, scatter=0.0, reload=None):
     """Retail's V4 under `id`, its rocket weapon swapped for `id`Weapon: `nuggets`, WeaponSpeed `speed`, no scatter,
     pre-attack 0, FiringDuration 0; nothing else differs (ADR 0016 G5: the probe builds it). `extra`: more assets
-    laid into the unit's file, `files`: {name: xml} of its own; `reach`: AttackRange instead of retail's 500."""
+    laid into the unit's file, `files`: {name: xml} of its own; `reach`: AttackRange instead of retail's 500;
+    `scatter`: a ScatterRadius (engine_scatter); `reload`: ClipReloadTime seconds instead of retail's 4.5-5.5."""
     wid = id + 'Weapon'
     x = open(os.path.join(SAGE, 'Soviet', 'Units', V4 + '.xml'), encoding='utf-8').read()
     x = _sub1(x, f'id="{V4}"', f'id="{id}"')
@@ -103,6 +104,11 @@ def shot_v4(id, nuggets, speed=999999.0, files=None, extra='', what='', reach=No
     s = _sub1(s, 'WeaponSpeed="200"', f'WeaponSpeed="{speed:g}"')
     if reach is not None:
         s = _sub1(s, 'AttackRange="500.0"', f'AttackRange="{reach:g}"')
+    if scatter:
+        s = _sub1(s, 'MinimumAttackRange=', f'ScatterRadius="{scatter:g}" MinimumAttackRange=')
+    if reload is not None:
+        s, k = re.subn(r'(<ClipReloadTime\s+MinSeconds=")4\.5s("\s+MaxSeconds=")5\.5s"', rf'\g<1>{reload:g}s\g<2>{reload:g}s"', s)
+        assert k == 1, k
     s, k = re.subn(r'<Nuggets>.*?</Nuggets>', nuggets, s, flags=re.S)
     assert k == 1, k
     s, k = re.subn(r'\s*<ScatterRadiusVsType\s+Radius="0\.1">.*?</ScatterRadiusVsType>', '', s, flags=re.S)
@@ -116,20 +122,20 @@ def shot_v4(id, nuggets, speed=999999.0, files=None, extra='', what='', reach=No
                 names=dict(unit=id, weapon=wid), what=what, params=dict(speed=speed))
 
 
-def shell_v4(id='CNV_ShotShell', reach=None):
+def shell_v4(id='CNV_ShotShell', reach=None, damage=500.0, what=None, **kw):
     """The V4 firing retail's Hammer shell (copied as `id`Projectile) with a warhead (`id`Warhead) of one radius-0
-    DamageNugget of 500; `reach`: its AttackRange (retail 500)."""
+    DamageNugget of `damage` (500); `reach`: its AttackRange (retail 500); `kw`: shot_v4's scatter / reload."""
     proj, wh = id + 'Projectile', id + 'Warhead'
     p = open(os.path.join(SAGE, 'Soviet', 'Props', SHELL + '.xml'), encoding='utf-8').read()
     p = _sub1(p, f'id="{SHELL}"', f'id="{proj}"')
     p = _sub1(p, f'EditorName="{SHELL}"', f'EditorName="{proj}"')
     warhead = (f'\t<WeaponTemplate id="{wh}" ProjectileCollidesWith="ALLIES ENEMIES NEUTRAL STRUCTURES WALLS"\n'
                f'\t\tRadiusDamageAffects="ENEMIES" RequiredAntiMask="ANTI_WATER ANTI_GROUND ANTI_STRUCTURE">\n'
-               f'\t\t{_nuggets(DAMAGE.format(d=500.0, r=0, extra=""))}\n\t</WeaponTemplate>\n')
+               f'\t\t{_nuggets(DAMAGE.format(d=damage, r=0, extra=""))}\n\t</WeaponTemplate>\n')
     nug = f'<ProjectileNugget WarheadTemplate="{wh}" ProjectileTemplate="{proj}" />'
     far = '' if reach is None else f'，射程 {reach:g}'
-    u = shot_v4(id, _nuggets(nug), files={proj + '.xml': p}, extra=warhead, reach=reach,
-                what=f'打锤子炮弹的 V4（探针）：直射弹（原版锤子炮弹），弹头半径 0、500 伤害，无预瞄、无开火持续、无散布{far}')
+    u = shot_v4(id, _nuggets(nug), files={proj + '.xml': p}, extra=warhead, reach=reach, **kw,
+                what=what or f'打锤子炮弹的 V4（探针）：直射弹（原版锤子炮弹），弹头半径 0、500 伤害，无预瞄、无开火持续、无散布{far}')
     u.names.update(projectile=proj, warhead=wh)
     return u
 
