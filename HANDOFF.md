@@ -28,7 +28,7 @@
    - 调研：`docs/research/rts-engine-survey.md`。
    - 各线每次清空后读自己的交接：关卡 `docs/story/handoff-phase4.md` 最末一节，外壳 `docs/shell/handoff.md` 第一节，引擎 `work/re/handoff.md` 开头。各线提交前至少跑 `tests/test_architecture.py`、`tests/test_docs.py`（关卡线再加 test_level_cards、test_plans；外壳线加 test_shell）。线会话一开工就容易过 15 万，派活前先看上下文，过了先清空。
 2. **用户 11-05 中午定的**（"3.B也做，4.地图大幅度改，目前还在开发阶段，距离交付很远，其他按推荐"）：I19 先不改，等真打 A4；I21 指挥官名不改；导弹两处对不上的先查清，同时正式开第三层武器层（引擎线在做）；K7/I8 的 A4 地形大改（关卡线在做）；配音响度用户听过："响度问题不大"（I13 验过）；I14 "音色不换也可以"。高帧率（用户 11-05 "可以，按A做"）：配音线在维护我们的 SAGE-Unlocked 分支（合上游测试版修复、联机回归测试、发行版兜底），并加 DXVK 可选项；摸底报告 `work/re/fps-unlock-survey.md`。现在没有等用户的事。
-2b. **引擎线队列**（11-06 起分 A / B 两个会话：A 做建筑类、传送，交接 `work/re/handoff.md`；B 做回血、视野、开出地图外、碰撞，交接 `work/re/handoff-b.md`；清单总表在 A 的交接里，B 的项由总控勾）。第二层只剩传送（A）、碰撞（B）。用户 11-06 凌晨："等六点四十额度重置之后，再让引擎线完成二阶段的剩余内容，以及遭遇战AI部分的研究。最晚10点之前关机"——第四层（遭遇战 AI）的研究已获授权，先出研究计划。教授演示的材料在 `work/demo/`（安装包、模拟器、流水线网页）和讲解页 https://claude.ai/artifact/P6AogyCYi18xdogwwF7cP6；用户"明天中午再具体看实机演示能不能成功"。
+2b. **引擎线队列**（11-06 起分 A / B 两个会话：A 做建筑类、传送，交接 `work/re/handoff.md`；B 做回血、视野、开出地图外、碰撞，交接 `work/re/handoff-b.md`；清单总表在 A 的交接里，B 的项由总控勾）。第二层只剩传送（A，对拍和文档未做）；B 的四项已全完成。用户 11-06 凌晨："等六点四十额度重置之后，再让引擎线完成二阶段的剩余内容，以及遭遇战AI部分的研究。最晚10点之前关机"——第四层（遭遇战 AI）已获授权，用户原话："不止出研究计划，先重构成python代码便于后续研究。可以考虑的功能要点包括：语音响应，代理玩家指挥部队或建造，闲聊"——先把原版遭遇战 AI 移植成 Python 模型（ADR 0019 做法），三个功能方向记作模型的用途。教授演示的材料在 `work/demo/`（安装包、模拟器、流水线网页）和讲解页 https://claude.ai/artifact/P6AogyCYi18xdogwwF7cP6；用户"明天中午再具体看实机演示能不能成功"。
 3. **下一轮独立验收**：在新会话里先确认 `bench_start(menu_frames=2)` 生效，再验 I4 I17 I22，并派人真打一遍 A4 验 I2 I3 I7 I9。
 4. **留着的事**：
    - A4 攻略页 https://claude.ai/artifact/Dp8HUcuyyFN42vqhitJZ8r，生成脚本在 `work/walkthrough/make_page.py`；
