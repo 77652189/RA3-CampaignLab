@@ -16,6 +16,8 @@ COMMAND_ARG = 34                        # a command button (NAMED_USE_COMMANDBUT
 # retail units' own command buttons a script may press (SageXML GlobalData/LogicCommandSet.xml): ours publish theirs
 RETAIL_COMMANDS = {'Command_CaptureBuilding',           # an engineer takes a building (AlliedEngineerCommandSet)
                    'Command_UnPackAlliedMCV',           # the MCV deploys (AlliedMCVCommandSet)
+                   'Command_JAIV_Transform',            # the Tengu transforms (JapanAntiInfantryVehicle)
+                   'Command_JAAVT1_Transform',          # the VX transforms (JapanAntiAirVehicleTech1)
                    'Command_ToggleMirageField'}         # the Mirage tank's field on / off (AlliedAntiVehicleVehicleTech3CommandSet)
 # retail buildings' own special powers a script may fire / read (they publish no unit ability here)
 RETAIL_POWERS = {'SpecialPowerIronCurtain'}             # the Soviet superweapon building's (SovietSuperWeapon, OCLSpecialPower)
