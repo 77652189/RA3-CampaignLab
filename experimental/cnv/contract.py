@@ -15,7 +15,10 @@ TEAM_ARG, WAYPOINT_ARG, PLAYER_ARG, OBJECT_ARG, STRING_ARG, POWER_ARG, TEMPLATE_
 COMMAND_ARG = 34                        # a command button (NAMED_USE_COMMANDBUTTON_ABILITY)
 # retail units' own command buttons a script may press (SageXML GlobalData/LogicCommandSet.xml): ours publish theirs
 RETAIL_COMMANDS = {'Command_CaptureBuilding',           # an engineer takes a building (AlliedEngineerCommandSet)
-                   'Command_UnPackAlliedMCV'}           # the MCV deploys (AlliedMCVCommandSet)
+                   'Command_UnPackAlliedMCV',           # the MCV deploys (AlliedMCVCommandSet)
+                   'Command_ToggleMirageField'}         # the Mirage tank's field on / off (AlliedAntiVehicleVehicleTech3CommandSet)
+# retail buildings' own special powers a script may fire / read (they publish no unit ability here)
+RETAIL_POWERS = {'SpecialPowerIronCurtain'}             # the Soviet superweapon building's (SovietSuperWeapon, OCLSpecialPower)
 OBJECTIVE_ARG = 91                      # a mission objective's name (SET_MISSION_OBJECTIVE_STATUS ...)
 MUSIC_EVENT_ARG = 96                    # a Pathfinder event's name (PATH_MUSIC_PLAY_EVENT): held to Mission.music
 SOUND_ARG = 12                          # a sound event (PLAY_SOUND_EFFECT, HAS_FINISHED_AUDIO): ours (CNV_*) held to
@@ -526,7 +529,7 @@ def contract(mission):
     powers = {p: u for u in m.units for p in u.abilities.values()}
     known = {AREA_ARG: ('area', m.areas), TEAM_ARG: ('team', set(getattr(m.map, 'TEAMS', {}).values()) | set(m.teams.values())),
              WAYPOINT_ARG: ('waypoint', m.waypoints), PLAYER_ARG: ('player', set(getattr(m.map, 'PLAYERS', {}).values())),
-             OBJECT_ARG: ('object', set(named) | created), STRING_ARG: ('string', m.strings), POWER_ARG: ('power', powers),
+             OBJECT_ARG: ('object', set(named) | created), STRING_ARG: ('string', m.strings), POWER_ARG: ('power', set(powers) | RETAIL_POWERS),
              COMMAND_ARG: ('command button', set(powers) | RETAIL_COMMANDS), OBJECTIVE_ARG: ('objective', {g.name for g in m.objectives}),
              TEMPLATE_ARG: ('template', {r.template for r in m.cast.values()} | {u.id for u in m.units} | m.spawns)}
     if m.music:
