@@ -29,6 +29,10 @@ Why (program, round 8): one flag table keyed (scope, name); a script list runs u
 Bench 2026-11-06 aistateslash a (CampAISlash): the scripts write '/CNVAIInfantry', '/CNVAITanks', the AI's FlagName
   stays bare -- PASS 3 of 3. 步兵在家 4 -> 0 @ s23 (步兵等帧 stops at 74: ~5 s after the flag), 坦克在家 4 at s60,
   4 -> 0 @ s63 (坦克等帧 77). The flags switch the AI's states, as fast as an always-on state goes (~5 s).
+Bench 2026-11-06 aistateoff off (CampAIOffOff, EndBehavior RAMPAGE) and aistateoffhome off (CampAIHomeOff,
+  RETURN_HOME_AND_DISBAND), the infantry flag on at 20 s, off at 28 s: PASS 1 of 1 each. 步兵在家 4 -> 0 @ s23-24,
+  步兵到目标 0 -> 3/4 @ s28, 4 @ s29 and 4 to s62, in both. So turning the flag off on the way did not end the
+  tactic: the team went on to the target and stayed, nobody came home (EndIfStateTurnsOff="true" on both).
 """
 from parts import Script, Test, counted, square
 
@@ -58,5 +62,29 @@ def a(m):
     return t
 
 
+THERE = 'CNV AI Target Area'
+OFF_SECONDS = 58.0                          # before the tank flag (60 s)
+
+
+def off(m):
+    """aistateoff / aistateoffhome: the infantry flag on at 'infantry at', off at 'infantry off at' (on the way).
+    步兵在家 / 步兵到目标 (Peacekeepers of s1 within 300 of the player's power plant) once a second; the rest are
+    between. Ended where they were: neither count grows after the flag goes off; went on: 步兵到目标 -> 4; came
+    home: 步兵在家 -> 4."""
+    t = Test()
+    s1 = m.player('s1')
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    t.areas[AREA] = square(*m.site('east base'), 450.0)
+    goal = m.find(m.role('player target').name)             # the placed object (x, y)
+    t.areas[THERE] = square(goal.x, goal.y, 300.0)
+    inf, _ = m.cnv_units
+    counted('CNV_AS_InfHome', '步兵在家', t, template=inf, area=AREA, player=s1)
+    counted('CNV_AS_InfThere', '步兵到目标', t, template=inf, area=THERE, player=s1)
+    o = m.facts['infantry off at']
+    t.expect += [('步兵在家', o, '<', 4, o + 1)]           # they had left when the flag went off
+    t.bench = [('bench_watch', dict(seconds=OFF_SECONDS + LAG, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 CHECKS = {'aistate': {'a': a}, 'aistatenear': {'a': a}, 'aistateconst': {'a': a}, 'aistateplain': {'a': a},
-          'aistateslash': {'a': a}}
+          'aistateslash': {'a': a}, 'aistateoff': {'off': off}, 'aistateoffhome': {'off': off}}

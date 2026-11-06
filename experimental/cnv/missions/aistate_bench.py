@@ -8,13 +8,16 @@ Allied co-op base with every inherited strategic state removed and two states of
 both aimed at the closest enemy structure (the player's yard on the west bank). The AI has a yard, 4 of each unit
 and no money (it builds nothing). Woken at WAKE_AT the retail way (as aiopen_bench.py); INF_AT the infantry flag goes
 on, TANK_AT it goes off and the tank flag on.
+aistateoff / aistateoffhome (EndIfStateTurnsOff): the infantry flag also goes off at OFF_AT, while the team is on its
+way (out of the base ~5 s after the flag, ~400 short of the target at OFF_AT); EndBehavior RAMPAGE / RETURN_HOME_AND_DISBAND.
 
-Facts: wake at, infantry at, tanks at.
+Facts: wake at, infantry at, tanks at, infantry off at (OFF_AT, or None).
 """
 from maps import niagara
 from parts import Mission, Script
 
 WAKE_AT, INF_AT, TANK_AT = 10.0, 20.0, 60.0
+OFF_AT = 28.0
 PID = 'CNVStateTest'
 INF, TANK = 'AlliedAntiInfantryInfantry', 'AlliedAntiVehicleVehicleTech1'
 FLAG_INF, FLAG_TANK = 'CNV AI Infantry', 'CNV AI Tanks'
@@ -31,14 +34,14 @@ INHERITED = ('ScoutAircraft', 'EngineerIdle', 'JapanEggUnpacker', 'HarvesterCont
              'AlliedCaptureWaterHusks')
 
 
-def _state(sid, flag, unit, gate='flag'):
+def _state(sid, flag, unit, gate='flag', end='RAMPAGE'):
     when = f'<ScriptedFlagHeuristic FlagName="{flag}"/>' if gate == 'flag' else '<ConstantHeuristic/>'
     return f'''  <AIStrategicStateDefinition id="{sid}" MaxTargets="1">
     <Heuristic>
       {when}
     </Heuristic>
     <TargetHeuristic TargetHeuristic="ClosestStructureHeuristic"/>
-    <Tactic id="Attack" Tactic="SimpleAttack" EndBehavior="RAMPAGE" EndIfStateTurnsOff="true">
+    <Tactic id="Attack" Tactic="SimpleAttack" EndBehavior="{end}" EndIfStateTurnsOff="true">
       <TeamTemplate MinUnits="2" MaxUnits="4" IncludeKindOf="CAN_ATTACK" ExcludeKindOf="IGNORES_SELECT_ALL HARVESTER"
                     AllowedLocomotorTypes="LAND AMPHIBIOUS" Priority="STANDARD" AlwaysRecruit="false"
                     MicroManager="StandardMicroManager_MEDIUM">
@@ -50,7 +53,7 @@ def _state(sid, flag, unit, gate='flag'):
   </AIStrategicStateDefinition>'''
 
 
-def personality_xml(gate='flag', flags=(FLAG_INF, FLAG_TANK)):
+def personality_xml(gate='flag', flags=(FLAG_INF, FLAG_TANK), end='RAMPAGE'):
     removed = [f'    <StrategicState id="{k}" xai:joinAction="Remove"/>' for k in INHERITED]
     return '\n'.join([
         '<?xml version="1.0" encoding="utf-8"?>',
@@ -60,8 +63,8 @@ def personality_xml(gate='flag', flags=(FLAG_INF, FLAG_TANK)):
         '  <Includes>',
         f'    <Include type="instance" source="DATA:SkirmishAI/Personalities/{BASE}.xml" />',
         '  </Includes>',
-        _state('CNVStateInf', flags[0], INF, gate),
-        _state('CNVStateTank', flags[1], TANK, gate),
+        _state('CNVStateInf', flags[0], INF, gate, end),
+        _state('CNVStateTank', flags[1], TANK, gate, end),
         f'  <AIPersonalityDefinition id="{PID}" PersonalityType="{PID}" inheritFrom="{BASE}">',
         *removed,
         '    <StrategicState id="CNVStateInf" State="CNVStateInf"/>',
@@ -70,14 +73,17 @@ def personality_xml(gate='flag', flags=(FLAG_INF, FLAG_TANK)):
         '</AssetDeclaration>', ''])
 
 
-def mission(name='CampAIState', near=False, gate='flag', flags=(FLAG_INF, FLAG_TANK), scope=None):
+def mission(name='CampAIState', near=False, gate='flag', flags=(FLAG_INF, FLAG_TANK), scope=None, off_at=None,
+            end='RAMPAGE'):
     """near: the player also has a power plant 300 west of the east gate, ~750 from the AI's units (the yard on the
     west bank is ~2600 away, past ClosestStructureHeuristic's default SearchRange 1500). gate 'const': both states
     always on (ConstantHeuristic) -- does a team go at all. scope: the scripts' flag names get this prefix
-    ('/' = the empty scope, which ScriptedFlagHeuristic reads), the AI's FlagName stays the bare name."""
-    m = Mission(name=name, map=niagara, facts={'wake at': WAKE_AT, 'infantry at': INF_AT, 'tanks at': TANK_AT})
+    ('/' = the empty scope, which ScriptedFlagHeuristic reads), the AI's FlagName stays the bare name.
+    off_at: the infantry flag also goes off then (seconds); end: the tactics' EndBehavior."""
+    m = Mission(name=name, map=niagara, facts={'wake at': WAKE_AT, 'infantry at': INF_AT, 'tanks at': TANK_AT,
+                                               'infantry off at': off_at})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{PID}'}
-    m.assets.append((f'{PID}.xml', personality_xml(gate, flags), f'AIPersonalityDefinition:{PID}'))
+    m.assets.append((f'{PID}.xml', personality_xml(gate, flags, end), f'AIPersonalityDefinition:{PID}'))
     if scope is not None:
         flags = tuple(scope + f for f in flags)
     m.cnv_flags = flags                     # the check counts with these names (as the scripts write them)
@@ -106,6 +112,11 @@ def mission(name='CampAIState', near=False, gate='flag', flags=(FLAG_INF, FLAG_T
         Script('CNV AI - Infantry on', [('TIMER_EXPIRED', 'CNV AI Inf')], [('SET_FLAG', flags[0], 1)]),
         Script('CNV AI - Tanks on', [('TIMER_EXPIRED', 'CNV AI Tank')],
                [('SET_FLAG', flags[0], 0), ('SET_FLAG', flags[1], 1)])]
+    if off_at is not None:
+        next(s for s in m.scripts if s.name == 'CNV AI - Start').do.append(
+            ('SET_MILLISECOND_TIMER', 'CNV AI Inf Off', off_at))
+        m.scripts.append(Script('CNV AI - Infantry off', [('TIMER_EXPIRED', 'CNV AI Inf Off')],
+                                [('SET_FLAG', flags[0], 0)]))
     return m
 
 
@@ -113,4 +124,7 @@ MISSION = {'aistate': mission,
            'aistateplain': lambda: mission('CampAIPlain', near=True, flags=PLAIN),
            'aistatenear': lambda: mission('CampAINear', near=True),
            'aistateconst': lambda: mission('CampAIConst', near=True, gate='const'),
-           'aistateslash': lambda: mission('CampAISlash', near=True, flags=PLAIN, scope='/')}
+           'aistateslash': lambda: mission('CampAISlash', near=True, flags=PLAIN, scope='/'),
+           'aistateoff': lambda: mission('CampAIOff', near=True, flags=PLAIN, scope='/', off_at=OFF_AT),
+           'aistateoffhome': lambda: mission('CampAIHome', near=True, flags=PLAIN, scope='/', off_at=OFF_AT,
+                                             end='RETURN_HOME_AND_DISBAND')}
