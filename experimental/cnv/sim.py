@@ -71,8 +71,9 @@ LINGER = 0.0                    # a killed unit's death (its slow death): still 
                                 # (docs/engine/script-semantics.md 4.2) -- the bench (2026-10-28, probe death): out of
                                 # the area from the reading the kill shows in; the guess was 3 s
 GRID = 20.0                     # routing cells (world units)
-HIGH_STEP = 40.0                # ground this much above a viewer's is high ground it cannot see (the terrain card's
-                                # "高出 40" measure; a guess for the game's own)
+HIGH_STEP = 50.0                # ShroudClearingHeight's default: a viewer does not discover a cell this much above its own
+                                # (bench, docs/engine/vision.md; a unit's own value is Body.clear_height). Cell by cell,
+                                # no line of sight; ENEMY_SIGHTED is a range query and ignores it
 FIRE_SEEN = 3.0                 # a bombarder (a weapon longer than its own vision) that fired this lately is seen
 LAG = 0.0                       # the readings' clock: mission seconds, as the bench's since 4aed60f (ADR 0007: the
                                 # bench counts mission time, at 8x). Expectations written before that counted wall
@@ -132,14 +133,13 @@ ALIGN = {
               'overrides it, 不打 turns it off -- to be tuned on the bench at the end. One rule measured: nobody '
               'fires at our ice walls unless ordered to (bench 2026-10-28, a4 hold: four tank busters let out '
               'behind plaza 2\'s ice left the 1500-health wall whole its 30 s; the fight model had it down in 7 s)',
-    'high ground': '未对齐: the high-ground rule -- a unit does not see ground HIGH_STEP (40) above its own (aircraft '
-                   'see and are seen anyhow); nobody fires at what its side does not see; a bombarder that fired in '
-                   'the last FIRE_SEEN s is seen by all; 高地不挡 turns it off. Two statements: the design line\'s '
-                   'terrain card (docs/design/teardowns/terrain.md 2, the user 2026-10-27): RA3 has StarCraft 2\'s '
-                   'rule, low ground does not see high ground, a bombarder firing shows itself (high ground seeing '
-                   'farther: not modelled); the Generals source: sight is a plain circle '
-                   '(PartitionManager::doShroudReveal), terrain only stops a direct-fire weapon\'s line '
-                   '(Weapon::isClearFiringLineOfSightTerrain); the bench (2026-10-27, sight look) could not tell',
+    'high ground': '未对齐: the discovery rule is the bench\'s (docs/engine/vision.md): a unit does not discover a '
+                   'cell its own ShroudClearingHeight (default 50) or more above the one it stands on, cell by cell, '
+                   'no line of sight (aircraft see anyhow); 高地不挡 turns it off. Not aligned: nobody fires at what '
+                   'its side does not see, a bombarder that fired in the last FIRE_SEEN s is seen by all (guesses, '
+                   'the design line\'s terrain card, docs/design/teardowns/terrain.md 2); a script\'s reveal that '
+                   'shuts again (about 9 s by default) and ENEMY_SIGHTED (a range query: true on the high ground '
+                   'where NAMED_DISCOVERED is not) are not modelled',
 }
 # RA3's own actions and conditions (docs/engine/script-semantics.md 6: in neither source): run as we understand them,
 # each run that uses one lists it under 'ra3 only'
@@ -283,6 +283,7 @@ class Body:
     scenery: bool = False
     team: str = ''
     guessed: list = dataclasses.field(default_factory=list)    # what of its numbers simunits only guessed
+    clear_height: float = HIGH_STEP                             # its ShroudClearingHeight (simunits: 50 unless written)
     angle: float = 0.0
     dest: object = None                                         # where it was sent (rerouted when the way changes)
     status: set = dataclasses.field(default_factory=set)       # IMMOBILE (stays put), UNATTACKABLE (the player
@@ -569,6 +570,7 @@ class Sim:
         b = Body(name, template, owner, float(x), float(y), st['speed'], st['surface'],
                  max(st['vision'] or 0.0, st['shroud'] or 0.0), frozenset(st['kinds']), made_by=by, made_at=at)
         b.guessed = st['guessed']
+        b.clear_height = st['clear_height']
         f = simunits.fight(template, self.own)
         if f['hp']:
             b.max_hp = b.hp = f['hp']
@@ -825,7 +827,7 @@ class Sim:
         if not self.high or air or v.surface == 'air':
             return True
         self.used.add('high ground')
-        return self.ground.z(x, y) <= self.ground.z(v.x, v.y) + HIGH_STEP
+        return self.ground.z(x, y) <= self.ground.z(v.x, v.y) + v.clear_height
 
     def side_sees(self, side, t):
         """Whether a side (it or a friend of it) sees body t, this tick; the player's reveals count for the player."""
@@ -1352,7 +1354,7 @@ class Sim:
             if b.owner == self.human and b.vision:
                 seen = (x - b.x) ** 2 + (y - b.y) ** 2 <= b.vision ** 2
                 if self.high and b.surface != 'air':
-                    seen &= self.ground.zgrid[:seen.shape[0], :seen.shape[1]] <= self.ground.z(b.x, b.y) + HIGH_STEP
+                    seen &= self.ground.zgrid[:seen.shape[0], :seen.shape[1]] <= self.ground.z(b.x, b.y) + b.clear_height
                 self.known |= seen
         self.peeks = []
         rect = list(getattr(self.m.map, 'BORDERS', {'': (0, 0, 1e9, 1e9)}).values())

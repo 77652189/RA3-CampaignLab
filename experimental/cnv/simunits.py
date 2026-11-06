@@ -13,7 +13,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'campaign'))
 import labpaths  # noqa: E402
 
-CACHE = os.path.join(labpaths.WORK, 'sim_units_v2.json')     # v2: defines resolved (2026-10-29)
+CACHE = os.path.join(labpaths.WORK, 'sim_units_v3.json')     # v2: defines resolved (2026-10-29); v3: + ShroudClearingHeight
+CLEAR_HEIGHT = 50.0             # ShroudClearingHeight when a unit does not write one (docs/engine/vision.md: retail units
+                                # nearly all leave it out)
 INDEX = os.path.join(labpaths.WORK, 'sagexml_gameobjects.json')
 SAGEXML = os.path.join(labpaths.SDK3, 'SageXML')
 LOCOMOTORS = os.path.join(SAGEXML, 'GlobalData', 'Locomotor.xml')
@@ -79,7 +81,8 @@ def read_xml(text, kindof='', surfaces=None):
         k = re.search(r'\bKindOf="([^"]+)"', text)
         kinds = set(k.group(1).split()) if k else set()
     return dict(speed=speed, surface=surface_of(surf, kinds), vision=number(text, 'VisionRange'),
-                shroud=number(text, 'ShroudClearingRange'), kinds=sorted(kinds))
+                shroud=number(text, 'ShroudClearingRange'), kinds=sorted(kinds),
+                clear_height=number(text, 'ShroudClearingHeight'))
 
 
 def surface_of(surf, kinds):
@@ -334,6 +337,8 @@ def stats(template, own=None):
         e['vision'] = vision
     e.setdefault('surface', 'ground')
     e.setdefault('shroud', None)
+    if e.get('clear_height') is None:
+        e['clear_height'] = CLEAR_HEIGHT
     e['kinds'] = sorted(kinds)
     e['guessed'] = guessed if e.get('kinds') or own else ['all']
     return e
