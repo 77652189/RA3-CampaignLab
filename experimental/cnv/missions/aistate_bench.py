@@ -30,10 +30,11 @@ INHERITED = ('ScoutAircraft', 'EngineerIdle', 'JapanEggUnpacker', 'HarvesterCont
              'AlliedCaptureWaterHusks')
 
 
-def _state(sid, flag, unit):
+def _state(sid, flag, unit, gate='flag'):
+    when = f'<ScriptedFlagHeuristic FlagName="{flag}"/>' if gate == 'flag' else '<ConstantHeuristic/>'
     return f'''  <AIStrategicStateDefinition id="{sid}" MaxTargets="1">
     <Heuristic>
-      <ScriptedFlagHeuristic FlagName="{flag}"/>
+      {when}
     </Heuristic>
     <TargetHeuristic TargetHeuristic="ClosestStructureHeuristic"/>
     <Tactic id="Attack" Tactic="SimpleAttack" EndBehavior="RAMPAGE" EndIfStateTurnsOff="true">
@@ -48,7 +49,7 @@ def _state(sid, flag, unit):
   </AIStrategicStateDefinition>'''
 
 
-def personality_xml():
+def personality_xml(gate='flag'):
     removed = [f'    <StrategicState id="{k}" xai:joinAction="Remove"/>' for k in INHERITED]
     return '\n'.join([
         '<?xml version="1.0" encoding="utf-8"?>',
@@ -58,8 +59,8 @@ def personality_xml():
         '  <Includes>',
         f'    <Include type="instance" source="DATA:SkirmishAI/Personalities/{BASE}.xml" />',
         '  </Includes>',
-        _state('CNVStateInf', FLAG_INF, INF),
-        _state('CNVStateTank', FLAG_TANK, TANK),
+        _state('CNVStateInf', FLAG_INF, INF, gate),
+        _state('CNVStateTank', FLAG_TANK, TANK, gate),
         f'  <AIPersonalityDefinition id="{PID}" PersonalityType="{PID}" inheritFrom="{BASE}">',
         *removed,
         '    <StrategicState id="CNVStateInf" State="CNVStateInf"/>',
@@ -68,10 +69,15 @@ def personality_xml():
         '</AssetDeclaration>', ''])
 
 
-def mission(name='CampAIState'):
+def mission(name='CampAIState', near=False, gate='flag'):
+    """near: the player also has a power plant 300 west of the east gate, ~750 from the AI's units (the yard on the
+    west bank is ~2600 away, past ClosestStructureHeuristic's default SearchRange 1500). gate 'const': both states
+    always on (ConstantHeuristic) -- does a team go at all."""
     m = Mission(name=name, map=niagara, facts={'wake at': WAKE_AT, 'infantry at': INF_AT, 'tanks at': TANK_AT})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{PID}'}
-    m.assets.append((f'{PID}.xml', personality_xml(), f'AIPersonalityDefinition:{PID}'))
+    m.assets.append((f'{PID}.xml', personality_xml(gate), f'AIPersonalityDefinition:{PID}'))
+    if near:
+        m.put('AlliedPowerPlant', 'east gate', -300.0, 0.0, name='UNIT - CNV AI Player Target', role='player target')
     m.spawns |= {INF, TANK}
     s1 = m.player('s1')
     m.put('AlliedConstructionYard', 'east base', 0, 0, side='s1', name='UNIT - CNV AI Yard', role='ai yard')
@@ -97,4 +103,6 @@ def mission(name='CampAIState'):
     return m
 
 
-MISSION = {'aistate': mission}
+MISSION = {'aistate': mission,
+           'aistatenear': lambda: mission('CampAINear', near=True),
+           'aistateconst': lambda: mission('CampAIConst', near=True, gate='const')}

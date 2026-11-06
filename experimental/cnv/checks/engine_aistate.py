@@ -7,6 +7,13 @@ its base, and how many frames after their state's flag went on.
 Expected if ScriptedFlagHeuristic follows SET_FLAG and a team takes only what its filter names: the infantry go
 after INF_AT and the tanks stay home till TANK_AT, then the tanks go. The waits are the reading (the model,
 RA3-EngineModel ra3model/ai/states.py, re-weighs states every 15 frames).
+Builds: aistate (target only the player's yard, ~2600 away), aistatenear (+ a player power plant ~750 away),
+aistateconst (near, and both states always on: does a team go at all).
+
+读数
+Bench 2026-11-06 aistate a (CampAIStateA, one run): nobody left -- 步兵在家 / 坦克在家 4 / 4 from s1 to s127;
+  步兵等帧 grows from s19 (the flag is on) to 600 at s58 and stays (the flag off), 坦克等帧 from s58 to 1065 at
+  s127. So both flags were set (the FLAG condition saw them) and neither state sent a unit. FAIL 2 of 3.
 """
 from missions import aistate_bench as ab
 from parts import Script, Test, counted, square
@@ -35,4 +42,4 @@ def a(m):
     return t
 
 
-CHECKS = {'aistate': {'a': a}}
+CHECKS = {'aistate': {'a': a}, 'aistatenear': {'a': a}, 'aistateconst': {'a': a}}
