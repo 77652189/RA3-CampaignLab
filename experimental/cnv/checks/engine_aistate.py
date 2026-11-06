@@ -33,6 +33,14 @@ Bench 2026-11-06 aistateoff off (CampAIOffOff, EndBehavior RAMPAGE) and aistateo
   RETURN_HOME_AND_DISBAND), the infantry flag on at 20 s, off at 28 s: PASS 1 of 1 each. 步兵在家 4 -> 0 @ s23-24,
   步兵到目标 0 -> 3/4 @ s28, 4 @ s29 and 4 to s62, in both. So turning the flag off on the way did not end the
   tactic: the team went on to the target and stayed, nobody came home (EndIfStateTurnsOff="true" on both).
+Bench 2026-11-06 aistateoff1 off (CampAIOff1Off, off 1 s after on) and aistateoffh off (CampAIOffHOff, off 0.5 s
+  after on), RAMPAGE: FAIL 1 of 1 each, against the guess "off while home = they stay": 步兵在家 4 -> 0 @ s24 / s23,
+  步兵到目标 0 -> 4 @ s28 and 4 to the end, in both -- as aistateoff. So once a state has its slot (the first
+  evaluation that saw the flag), the flag going off does not stop its team, even before it leaves home.
+Bench 2026-11-06 aihunt hunt (CampAIHuntHunt, Targetless Hunt, a team of one, no MaxRunningCopies) PASS: 步兵在家
+  4 -> 0 @ s13; 在家4帧 / 3 / 2 stop at 59 / 60 / 60. aihunt2 hunt (CampAIHunt2Hunt, MaxRunningCopies 2) PASS:
+  4 -> 2 @ s13 and 2 to s55; 在家4帧 / 3 stop at 59 / 60, 在家2帧 grows to the end. So a targetless state runs as
+  many copies as it may (one team each), all within a few frames of the wake, and MaxRunningCopies caps them.
 """
 from parts import Script, Test, counted, square
 
@@ -80,11 +88,46 @@ def off(m):
     inf, _ = m.cnv_units
     counted('CNV_AS_InfHome', '步兵在家', t, template=inf, area=AREA, player=s1)
     counted('CNV_AS_InfThere', '步兵到目标', t, template=inf, area=THERE, player=s1)
-    o = m.facts['infantry off at']
-    t.expect += [('步兵在家', o, '<', 4, o + 1)]           # they had left when the flag went off
+    o, i = m.facts['infantry off at'], m.facts['infantry at']
+    if o - i >= LAG:
+        t.expect += [('步兵在家', o, '<', 4, o + 1)]       # they had left when the flag went off
+    else:
+        # aistateoff1 / aistateoffh: off before they left -- the guess under test: the tactic ends, they stay home
+        t.expect += [('步兵在家', OFF_SECONDS, '==', 4, OFF_SECONDS + 1)]
     t.bench = [('bench_watch', dict(seconds=OFF_SECONDS + LAG, every=1, sheet=False, lines=len(t.counters)))]
     return t
 
 
+HUNT_SECONDS = 50.0
+
+
+def hunt(m):
+    """aihunt / aihunt2: one always-on Targetless Hunt state, a team of one Peacekeeper.
+    步兵在家 once a second; 在家4帧 / 在家3帧 / 在家2帧: frames from the wake while at least 4 / 3 / 2 Peacekeepers are
+    still home -- the frames the 1st / 2nd / 3rd left at. Program read (work/re l4_states.md 8): no slot, every
+    pass with weight > 0 starts another copy up to the copies cap. Guess under test: aihunt2 (cap 2) keeps 2 home."""
+    t = Test()
+    s1 = m.player('s1')
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    t.areas[AREA] = square(*m.site('east base'), 450.0)
+    inf, _ = m.cnv_units
+    counted('CNV_AS_InfHome', '步兵在家', t, template=inf, area=AREA, player=s1)
+    t.scripts += [Script('Test - wake timer', [], [('SET_MILLISECOND_TIMER', 'CNV Test Wake', m.facts['wake at'])]),
+                  Script('Test - awake', [('TIMER_EXPIRED', 'CNV Test Wake')], [('SET_FLAG', 'CNVTestAwake', 1)])]
+    for n in (4, 3, 2):
+        c = f'CNV_AS_Home{n}'
+        t.counters.append((c, f'在家{n}帧'))
+        t.scripts.append(Script(f'Test - home {n}', [
+            ('FLAG', 'CNVTestAwake', 1), ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', s1, 3, n, inf, AREA)],
+            [('INCREMENT_COUNTER', 1, c)], once=False))
+    if m.facts['hunt copies'] == 2:
+        t.expect += [('步兵在家', HUNT_SECONDS, '==', 2, HUNT_SECONDS + 1)]
+    else:
+        t.expect += [('步兵在家', HUNT_SECONDS, '<', 4, HUNT_SECONDS + 1)]
+    t.bench = [('bench_watch', dict(seconds=HUNT_SECONDS + LAG, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 CHECKS = {'aistate': {'a': a}, 'aistatenear': {'a': a}, 'aistateconst': {'a': a}, 'aistateplain': {'a': a},
-          'aistateslash': {'a': a}, 'aistateoff': {'off': off}, 'aistateoffhome': {'off': off}}
+          'aistateslash': {'a': a}, 'aistateoff': {'off': off}, 'aistateoffhome': {'off': off},
+          'aistateoff1': {'off': off}, 'aistateoffh': {'off': off}, 'aihunt': {'hunt': hunt}, 'aihunt2': {'hunt': hunt}}

@@ -10,6 +10,9 @@ and no money (it builds nothing). Woken at WAKE_AT the retail way (as aiopen_ben
 on, TANK_AT it goes off and the tank flag on.
 aistateoff / aistateoffhome (EndIfStateTurnsOff): the infantry flag also goes off at OFF_AT, while the team is on its
 way (out of the base ~5 s after the flag, ~400 short of the target at OFF_AT); EndBehavior RAMPAGE / RETURN_HOME_AND_DISBAND.
+aistateoff1 / aistateoffh: the same, off 1 s / 0.5 s after it went on -- while the team is still home.
+aihunt / aihunt2: instead of the two, one always-on state with a Targetless Hunt tactic and a team of exactly one
+Peacekeeper; MaxRunningCopies not written / 2. How soon does each next copy start, and how many run at once?
 
 Facts: wake at, infantry at, tanks at, infantry off at (OFF_AT, or None).
 """
@@ -53,8 +56,35 @@ def _state(sid, flag, unit, gate='flag', end='RAMPAGE'):
   </AIStrategicStateDefinition>'''
 
 
-def personality_xml(gate='flag', flags=(FLAG_INF, FLAG_TANK), end='RAMPAGE'):
+def _hunt(copies):
+    """round 10: one always-on state with only a Targetless Hunt tactic (as retail AIStateLibrary.xml Hunt), a team
+    of exactly one Peacekeeper; MaxRunningCopies = copies (None: not written)."""
+    cap = '' if copies is None else f' MaxRunningCopies="{copies}"'
+    return f'''  <AIStrategicStateDefinition id="CNVStateHunt"{cap}>
+    <Heuristic>
+      <ConstantHeuristic/>
+    </Heuristic>
+    <Tactic id="Hunt" Tactic="Hunt" Targetless="true">
+      <TeamTemplate MinUnits="1" MaxUnits="1" IncludeKindOf="CAN_ATTACK" ExcludeKindOf="IGNORES_SELECT_ALL HARVESTER"
+                    AllowedLocomotorTypes="LAND AMPHIBIOUS" Priority="STANDARD" AlwaysRecruit="false"
+                    MicroManager="StandardMicroManager_MEDIUM">
+        <ObjectFilter Rule="ANY">
+          <IncludeThing>{INF}</IncludeThing>
+        </ObjectFilter>
+      </TeamTemplate>
+    </Tactic>
+  </AIStrategicStateDefinition>'''
+
+
+def personality_xml(gate='flag', flags=(FLAG_INF, FLAG_TANK), end='RAMPAGE', hunt=False, copies=None):
     removed = [f'    <StrategicState id="{k}" xai:joinAction="Remove"/>' for k in INHERITED]
+    if hunt:
+        states = [_hunt(copies)]
+        used = ['    <StrategicState id="CNVStateHunt" State="CNVStateHunt"/>']
+    else:
+        states = [_state('CNVStateInf', flags[0], INF, gate, end), _state('CNVStateTank', flags[1], TANK, gate, end)]
+        used = ['    <StrategicState id="CNVStateInf" State="CNVStateInf"/>',
+                '    <StrategicState id="CNVStateTank" State="CNVStateTank"/>']
     return '\n'.join([
         '<?xml version="1.0" encoding="utf-8"?>',
         '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
@@ -63,27 +93,26 @@ def personality_xml(gate='flag', flags=(FLAG_INF, FLAG_TANK), end='RAMPAGE'):
         '  <Includes>',
         f'    <Include type="instance" source="DATA:SkirmishAI/Personalities/{BASE}.xml" />',
         '  </Includes>',
-        _state('CNVStateInf', flags[0], INF, gate, end),
-        _state('CNVStateTank', flags[1], TANK, gate, end),
+        *states,
         f'  <AIPersonalityDefinition id="{PID}" PersonalityType="{PID}" inheritFrom="{BASE}">',
         *removed,
-        '    <StrategicState id="CNVStateInf" State="CNVStateInf"/>',
-        '    <StrategicState id="CNVStateTank" State="CNVStateTank"/>',
+        *used,
         '  </AIPersonalityDefinition>',
         '</AssetDeclaration>', ''])
 
 
 def mission(name='CampAIState', near=False, gate='flag', flags=(FLAG_INF, FLAG_TANK), scope=None, off_at=None,
-            end='RAMPAGE'):
+            end='RAMPAGE', hunt=False, copies=None):
     """near: the player also has a power plant 300 west of the east gate, ~750 from the AI's units (the yard on the
     west bank is ~2600 away, past ClosestStructureHeuristic's default SearchRange 1500). gate 'const': both states
     always on (ConstantHeuristic) -- does a team go at all. scope: the scripts' flag names get this prefix
     ('/' = the empty scope, which ScriptedFlagHeuristic reads), the AI's FlagName stays the bare name.
     off_at: the infantry flag also goes off then (seconds); end: the tactics' EndBehavior."""
-    m = Mission(name=name, map=niagara, facts={'wake at': WAKE_AT, 'infantry at': INF_AT, 'tanks at': TANK_AT,
-                                               'infantry off at': off_at})
+    facts = {'wake at': WAKE_AT, 'infantry at': INF_AT, 'tanks at': TANK_AT, 'infantry off at': off_at,
+             'hunt copies': (copies or 0) if hunt else None}   # 0: not written
+    m = Mission(name=name, map=niagara, facts={k: v for k, v in facts.items() if v is not None})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{PID}'}
-    m.assets.append((f'{PID}.xml', personality_xml(gate, flags, end), f'AIPersonalityDefinition:{PID}'))
+    m.assets.append((f'{PID}.xml', personality_xml(gate, flags, end, hunt, copies), f'AIPersonalityDefinition:{PID}'))
     if scope is not None:
         flags = tuple(scope + f for f in flags)
     m.cnv_flags = flags                     # the check counts with these names (as the scripts write them)
@@ -127,4 +156,10 @@ MISSION = {'aistate': mission,
            'aistateslash': lambda: mission('CampAISlash', near=True, flags=PLAIN, scope='/'),
            'aistateoff': lambda: mission('CampAIOff', near=True, flags=PLAIN, scope='/', off_at=OFF_AT),
            'aistateoffhome': lambda: mission('CampAIHome', near=True, flags=PLAIN, scope='/', off_at=OFF_AT,
-                                             end='RETURN_HOME_AND_DISBAND')}
+                                             end='RETURN_HOME_AND_DISBAND'),
+           # round 10: the flag off again while the team is still home (it leaves ~74 frames after the flag)
+           'aistateoff1': lambda: mission('CampAIOff1', near=True, flags=PLAIN, scope='/', off_at=INF_AT + 1.0),
+           'aistateoffh': lambda: mission('CampAIOffH', near=True, flags=PLAIN, scope='/', off_at=INF_AT + 0.5),
+           # round 10: a Targetless always-on state, one Peacekeeper a team -- how often, how many at once
+           'aihunt': lambda: mission('CampAIHunt', near=True, hunt=True),
+           'aihunt2': lambda: mission('CampAIHunt2', near=True, hunt=True, copies=2)}
