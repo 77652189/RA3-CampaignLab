@@ -70,14 +70,18 @@ def personality_xml(gate='flag', flags=(FLAG_INF, FLAG_TANK)):
         '</AssetDeclaration>', ''])
 
 
-def mission(name='CampAIState', near=False, gate='flag', flags=(FLAG_INF, FLAG_TANK)):
+def mission(name='CampAIState', near=False, gate='flag', flags=(FLAG_INF, FLAG_TANK), scope=None):
     """near: the player also has a power plant 300 west of the east gate, ~750 from the AI's units (the yard on the
     west bank is ~2600 away, past ClosestStructureHeuristic's default SearchRange 1500). gate 'const': both states
-    always on (ConstantHeuristic) -- does a team go at all."""
+    always on (ConstantHeuristic) -- does a team go at all. scope: the scripts' flag names get this prefix
+    ('/' = the empty scope, which ScriptedFlagHeuristic reads), the AI's FlagName stays the bare name."""
     m = Mission(name=name, map=niagara, facts={'wake at': WAKE_AT, 'infantry at': INF_AT, 'tanks at': TANK_AT})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{PID}'}
     m.assets.append((f'{PID}.xml', personality_xml(gate, flags), f'AIPersonalityDefinition:{PID}'))
-    m.cnv_flags = flags                     # the check counts with these names
+    if scope is not None:
+        flags = tuple(scope + f for f in flags)
+    m.cnv_flags = flags                     # the check counts with these names (as the scripts write them)
+    m.cnv_units = (INF, TANK)               # and these templates
     if near:
         m.put('AlliedPowerPlant', 'east gate', -300.0, 0.0, name='UNIT - CNV AI Player Target', role='player target')
     m.spawns |= {INF, TANK}
@@ -108,4 +112,5 @@ def mission(name='CampAIState', near=False, gate='flag', flags=(FLAG_INF, FLAG_T
 MISSION = {'aistate': mission,
            'aistateplain': lambda: mission('CampAIPlain', near=True, flags=PLAIN),
            'aistatenear': lambda: mission('CampAINear', near=True),
-           'aistateconst': lambda: mission('CampAIConst', near=True, gate='const')}
+           'aistateconst': lambda: mission('CampAIConst', near=True, gate='const'),
+           'aistateslash': lambda: mission('CampAISlash', near=True, flags=PLAIN, scope='/')}

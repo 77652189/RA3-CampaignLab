@@ -23,8 +23,13 @@ Bench 2026-11-06 aistatenear a (CampAINear): the near target, the flags as aista
   against the program read (work/re l4_states.md 3: the same table).
 Bench 2026-11-06 aistateplain a (CampAIPlain): flag names of letters only -- the same, nobody left (4 / 4 to
   s127; 步兵等帧 s19 -> 600 at s58, 坦克等帧 s58 -> 1064). Not the name's spaces.
+Why (program, round 8): one flag table keyed (scope, name); a script list runs under its player's scope, so a bare
+  name SET_FLAG writes is that player's, while ScriptedFlagHeuristic reads the empty scope. 'scope/name' sets the
+  scope by hand: '/name' is the empty one.
+Bench 2026-11-06 aistateslash a (CampAISlash): the scripts write '/CNVAIInfantry', '/CNVAITanks', the AI's FlagName
+  stays bare -- PASS 3 of 3. 步兵在家 4 -> 0 @ s23 (步兵等帧 stops at 74: ~5 s after the flag), 坦克在家 4 at s60,
+  4 -> 0 @ s63 (坦克等帧 77). The flags switch the AI's states, as fast as an always-on state goes (~5 s).
 """
-from missions import aistate_bench as ab
 from parts import Script, Test, counted, square
 
 AREA = 'CNV AI Base Area'
@@ -37,11 +42,12 @@ def a(m):
     s1 = m.player('s1')
     t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
     t.areas[AREA] = square(*m.site('east base'), 450.0)
-    counted('CNV_AS_InfHome', '步兵在家', t, template=ab.INF, area=AREA, player=s1)
-    counted('CNV_AS_TankHome', '坦克在家', t, template=ab.TANK, area=AREA, player=s1)
-    f_inf, f_tank = getattr(m, 'cnv_flags', (ab.FLAG_INF, ab.FLAG_TANK))
-    for c, lab, flag, unit in (('CNV_AS_InfWait', '步兵等帧', f_inf, ab.INF),
-                               ('CNV_AS_TankWait', '坦克等帧', f_tank, ab.TANK)):
+    inf, tank = m.cnv_units                 # the mission says (missions/aistate_bench.py), the check asks
+    counted('CNV_AS_InfHome', '步兵在家', t, template=inf, area=AREA, player=s1)
+    counted('CNV_AS_TankHome', '坦克在家', t, template=tank, area=AREA, player=s1)
+    f_inf, f_tank = m.cnv_flags
+    for c, lab, flag, unit in (('CNV_AS_InfWait', '步兵等帧', f_inf, inf),
+                               ('CNV_AS_TankWait', '坦克等帧', f_tank, tank)):
         t.counters.append((c, lab))
         t.scripts.append(Script(f'Test - wait {c}', [
             ('FLAG', flag, 1), ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', s1, 3, 4, unit, AREA)],
@@ -52,4 +58,5 @@ def a(m):
     return t
 
 
-CHECKS = {'aistate': {'a': a}, 'aistatenear': {'a': a}, 'aistateconst': {'a': a}, 'aistateplain': {'a': a}}
+CHECKS = {'aistate': {'a': a}, 'aistatenear': {'a': a}, 'aistateconst': {'a': a}, 'aistateplain': {'a': a},
+          'aistateslash': {'a': a}}
