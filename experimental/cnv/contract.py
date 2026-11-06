@@ -14,7 +14,8 @@ AREA_ARG = 9                            # script argument type of a trigger area
 TEAM_ARG, WAYPOINT_ARG, PLAYER_ARG, OBJECT_ARG, STRING_ARG, POWER_ARG, TEMPLATE_ARG = 3, 7, 11, 14, 25, 31, 61
 COMMAND_ARG = 34                        # a command button (NAMED_USE_COMMANDBUTTON_ABILITY)
 # retail units' own command buttons a script may press (SageXML GlobalData/LogicCommandSet.xml): ours publish theirs
-RETAIL_COMMANDS = {'Command_CaptureBuilding'}           # an engineer takes a building (AlliedEngineerCommandSet)
+RETAIL_COMMANDS = {'Command_CaptureBuilding',           # an engineer takes a building (AlliedEngineerCommandSet)
+                   'Command_UnPackAlliedMCV'}           # the MCV deploys (AlliedMCVCommandSet)
 OBJECTIVE_ARG = 91                      # a mission objective's name (SET_MISSION_OBJECTIVE_STATUS ...)
 MUSIC_EVENT_ARG = 96                    # a Pathfinder event's name (PATH_MUSIC_PLAY_EVENT): held to Mission.music
 SOUND_ARG = 12                          # a sound event (PLAY_SOUND_EFFECT, HAS_FINISHED_AUDIO): ours (CNV_*) held to
