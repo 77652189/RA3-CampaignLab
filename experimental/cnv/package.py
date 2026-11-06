@@ -139,6 +139,8 @@ class ModSpec:
     strings: dict = field(default_factory=dict)         # new labels -> text
     overrides: dict = field(default_factory=dict)       # retail labels rewritten (make_campnew3.OVERRIDES)
     prefix_overrides: dict = field(default_factory=dict)    # retail label prefix -> text (make_campnew3.PREFIX_OVERRIDES)
+    strings_base: str = ''          # the game's table the csf starts from (make_campnew3.STRINGS_BASE; '' = its default,
+                                    # the installed CNVoice table); the edition's (langs.EDITIONS) for the shell
     packs: tuple = ()               # (kind, pack): music, voice, video ...; a pack's include into the static stream, its
                                     # files into the big, its check on the file list, its strings (if any) after `strings`
     big_files: tuple = ()           # more (big path, bytes), after the packs' (a name twice: the last one)
@@ -395,6 +397,8 @@ def build_mod(spec, out):
         for _, p in spec.packs:
             c3.STRINGS.update(getattr(p, 'strings', {}))
         c2.SHELL, c3.OVERRIDES, c3.PREFIX_OVERRIDES = spec.slot, dict(spec.overrides), dict(spec.prefix_overrides)
+        if spec.strings_base:
+            c3.STRINGS_BASE = spec.strings_base
         c2.EXTRA_STATIC = [p.include for _, p in spec.packs]
         c4.EXTRA_FILES = [f for _, p in spec.packs for f in p.files] + list(spec.big_files)
         c4.CHECKS = [p.check for _, p in spec.packs] + list(spec.checks)

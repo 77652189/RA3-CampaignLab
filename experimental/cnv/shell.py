@@ -909,8 +909,9 @@ def contribute(spec, lang='zh'):
         packs += (('video', video),)
     spec = with_more(spec, strings=sp.strings, overrides=sp.overrides, prefix_overrides=sp.prefix_overrides,
                      big_files=sp.files, map_files=sp.map_files)
+    import langs
     return replace(spec, packs=packs, slot={'slot': sp.slot, 'attrs': sp.attrs, 'others': sp.others, **sp.template},
-                   launcher=False)
+                   launcher=False, strings_base=langs.edition(lang)['strings_base'])
 
 
 def campaign(levels, name=None, lang='zh', fallback=()):
@@ -948,6 +949,6 @@ def campaign(levels, name=None, lang='zh', fallback=()):
                    packs=tuple((kind, p) for kind, (_, p) in packs.items()) + (('video', video),),
                    levels=tuple((k, replace(lv, map_files=lv.map_files + (sp.drawn[k],))) for k, lv in sorted(levels.items())),
                    slot={'slot': sp.slot, 'attrs': sp.attrs, 'others': sp.others, 'maps': maps, **sp.template},
-                   launcher=False)
+                   launcher=False, strings_base=langs.edition(lang)['strings_base'])
     return with_more(spec, strings={**strings, **sp.strings}, overrides=sp.overrides,
                      prefix_overrides=sp.prefix_overrides, big_files=sp.files)
