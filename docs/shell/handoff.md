@@ -2,6 +2,14 @@
 
 外壳线 2026-11-03 从关卡线拆出（[architecture.md](../architecture.md) 各线负责的文件）。以前做过的事和坑在 [story/handoff.md](../story/handoff.md) 搜"外壳""CampShell"（第 33～42、61～69 行）。问题编号见 [issues.md](../issues.md) K9。
 
+## 笔记本演示包（11-06 总控派活，git log 搜 "retail English"）
+
+- **交付物**都在 `work/demo/`：`CampShellEn_demo.zip`（INSTALL.txt + CampShellEn 文件夹，内含 skudef、big、`Play_CampShellEn.bat`），`a4.mp4`（118 s，开场过场 + 字幕 + "NEW PRIMARY/BONUS OBJECTIVE"）。源文件在 `work/demo/src/`；打包、驱动、合成视频的脚本在那次会话的 scratchpad，没进仓库（要重做就照下面的路子再写）。
+- **修了**：国际版外壳的字符串表原来以配音线装进游戏的 `CNVoice_text.big`（中文）为底本，纯英文 Steam 上原版条目全成横线。现在由 `langs.EDITIONS[...]['strings_base']` → `ModSpec.strings_base` → `make_campnew3.STRINGS_BASE` 决定，国际版用 `Lang-English11.big`。
+- **模拟笔记本**：`work/testbench/RA3van` 是测试台副本，改成原版样子（没打 4GB 补丁的 .game、Steam 原样的 skudef、没有 SAGE-Unlocked/CNVoice/代理 DLL，只留截帧垫片），`-config RA3_chinese_t_1.13.SkuDef` 里写的是英文链。用 `RA3_BENCH_DIR` 指过去，菜单是英文、测试台的中文模板认不出，所以按 nav.json 的坐标定时盲点（先点断线框的 OK 634,426）。
+- **录像**：截帧垫片 `CNV_SHOT_MS=50` 存 `auto_<ms>.bmp`（实际约 15 帧/秒），按进程号录音（`listen.CAPTURE_EXE`，-80 dB），按帧文件写入时间对齐，ffmpeg 用配音线 `third_party/ffmpeg`，音频要 loudnorm（原始电平很低）。`work/demo/rec_v2/` 是 13 GB 原始帧，可以删。
+- **还剩**：没在真笔记本上装过；没人操作时 A4 约 150 s 判负（车队被打掉），演示要尽快接手；打通只用 `cnv_check a4_intl win shell unit` 验过（脚本拆北营）。
+
 ## I22、I21 做完了（11-05，git log 搜 "I22"、"I21"），等总控验收
 
 - **I22**：`bench_start(menu_frames=2)` 走菜单和开场过场时存半尺寸帧（`harness.Session.keep_walk`，帧的 `second` 为空、带 `scale`；`bench_inspect` 按 scale 换算，counters/strip/look 跳过它们）。**MCP 服务要重启才认新参数**。
