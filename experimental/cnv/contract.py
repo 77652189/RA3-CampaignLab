@@ -20,7 +20,7 @@ RETAIL_COMMANDS = {'Command_CaptureBuilding',           # an engineer takes a bu
                    'Command_JAAVT1_Transform',          # the VX transforms (JapanAntiAirVehicleTech1)
                    'Command_ToggleMirageField'}         # the Mirage tank's field on / off (AlliedAntiVehicleVehicleTech3CommandSet)
 # retail buildings' own special powers a script may fire / read (they publish no unit ability here)
-RETAIL_POWERS = {'SpecialPowerIronCurtain'}             # the Soviet superweapon building's (SovietSuperWeapon, OCLSpecialPower)
+RETAIL_POWERS = {'SpecialPowerIronCurtain', 'SpecialPowerParticleCannon'}            # the Soviet superweapon building's (SovietSuperWeapon, OCLSpecialPower)
 OBJECTIVE_ARG = 91                      # a mission objective's name (SET_MISSION_OBJECTIVE_STATUS ...)
 MUSIC_EVENT_ARG = 96                    # a Pathfinder event's name (PATH_MUSIC_PLAY_EVENT): held to Mission.music
 SOUND_ARG = 12                          # a sound event (PLAY_SOUND_EFFECT, HAS_FINISHED_AUDIO): ours (CNV_*) held to
