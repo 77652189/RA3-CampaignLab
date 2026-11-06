@@ -20,8 +20,9 @@ Bench 2026-11-06 aistateconst a (CampAIConstA): both states always on, the near 
   and the far-only target of aistate is one reason nothing went there.
 Bench 2026-11-06 aistatenear a (CampAINear): the near target, the flags as aistate -- nobody left (4 / 4 to
   s127), the flags seen by FLAG from s19 / s58. So ScriptedFlagHeuristic did not see SET_FLAG's flags here,
-  against the program read (work/re l4_states.md 3: the same table). aistateplain: the same with flag names of
-  letters only.
+  against the program read (work/re l4_states.md 3: the same table).
+Bench 2026-11-06 aistateplain a (CampAIPlain): flag names of letters only -- the same, nobody left (4 / 4 to
+  s127; 步兵等帧 s19 -> 600 at s58, 坦克等帧 s58 -> 1064). Not the name's spaces.
 """
 from missions import aistate_bench as ab
 from parts import Script, Test, counted, square
