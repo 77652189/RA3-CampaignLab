@@ -40,6 +40,10 @@ tests/test_objects_bench.py): the aura by script, the order kept on a hidden tar
 hides agree; the scout reveals only from ~6 s into the mission (the model: its first scan), GARRISON_CAN_STEALTH by
 script does not hide the house (the model: hidden), STEALTHED / BROADCASTING_INVISIBILITY never read (the model sets
 both), INVISIBLE_DETECTED does (the model never) -- three strict xfails.
+Round 42 (read how the manager applies its result): the state is re-evaluated only by an entry, a detector's mark
+or something running out, never by a script's status change; INVISIBLE_DETECTED only on hidden -> visible; neither
+STEALTHED nor BROADCASTING_INVISIBILITY is set. The model now agrees on all three (the scout's case with the bench's
+draw: its first scan before the aura's first pass); one strict xfail left: the scout lane stops one shot later.
 """
 from maps import probe_range
 from model import status
