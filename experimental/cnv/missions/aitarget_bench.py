@@ -11,6 +11,9 @@ Builds:
   aitargetsafe  the retail main attack's pair: SafestToGroundStructureHeuristic + DefenseAvoidanceAttack
                 (1AlliedBalanced BalancedAttackGround_MEDIUM). The model (least threat within 400) says: far.
   aitargetnear  ClosestStructureHeuristic + SimpleAttack, the control. The model (nearest the base centre): near.
+  aitargetidle5 / aitargetidle30  aitargetsafe with the team's MaxTeamIdleTime 5 s / 30 s (retail 15 s): the
+                DefenseAvoidanceAttack legs wait for the team to be ready or idle that long (l4_tactics.md).
+  aitargetflank aitargetsafe with FlankAttack (the same class as DefenseAvoidanceAttack, a random side).
 Facts: wake at.
 """
 from maps import niagara
@@ -23,7 +26,7 @@ INF = ab.INF
 TURRET = 'AlliedBaseDefense'
 
 
-def _state(heuristic, tactic):
+def _state(heuristic, tactic, micro='StandardMicroManager_MEDIUM'):
     return f'''  <AIStrategicStateDefinition id="CNVStateGo" MaxTargets="1">
     <Heuristic>
       <ConstantHeuristic/>
@@ -32,7 +35,7 @@ def _state(heuristic, tactic):
     <Tactic id="Attack" Tactic="{tactic}" EndBehavior="RAMPAGE">
       <TeamTemplate MinUnits="2" MaxUnits="4" IncludeKindOf="CAN_ATTACK" ExcludeKindOf="IGNORES_SELECT_ALL HARVESTER"
                     AllowedLocomotorTypes="LAND AMPHIBIOUS" Priority="STANDARD" AlwaysRecruit="false"
-                    MicroManager="StandardMicroManager_MEDIUM">
+                    MicroManager="{micro}">
         <ObjectFilter Rule="ANY">
           <IncludeThing>{INF}</IncludeThing>
         </ObjectFilter>
@@ -41,7 +44,30 @@ def _state(heuristic, tactic):
   </AIStrategicStateDefinition>'''
 
 
-def personality_xml(heuristic, tactic):
+IDLE_ID = 'CNVMicroIdle'
+
+
+def _micro_xml(idle):
+    # StandardMicroManager_MEDIUM with its chain (Standard, Base) flattened -- the type cannot be inherited from
+    # (the build says: not BaseInheritableAsset) -- only MaxTeamIdleTime changed
+    return f'''  <AIMicroManagerData id="{IDLE_ID}" UpdateTime="2.0s" MaxTeamIdleTime="{idle}s"
+    MaxTeamIdleDistanceChange="50.0" MaxUnitIdleTime="10s" MaxUnitIdleDistanceChange="30.0"
+    EnemySearchDistanceVisionMultiplier="1.5" MinTimeToKeepTempVisionRangeBonus="10s" SiegeWeaponBuffer="1.5"
+    DodgeThreatsReactionTimeMin="6s" DodgeThreatsReactionTimeMax="14s" GatherTempVisionRangeBonus="1.5"
+    RetreatTempVisionRangeBonus="1.5" MaxSecondaryDamageFraction="1.3" EngageHostileTargets="true"
+    EngagePassiveTargets="true" EngageTacticalTarget="true" RetreatPowerAdvantage="0.2"
+    RetreatMinDistanceFromBase="900.0" RetreatMinDistanceToFallback="500.0" AlphaStrikeTargetHealthPct="0.5"
+    AlphaStrikeTargetTimeToKill="4.0" Crush="true" EnterGarrisons="true" EnterGarrisonableStructureDistance="150"
+    EnterBaseDefensesWhenIdle="false" PullbackInjured="true" PullbackInjuredHealthPct="0.35" ReverseMove="true"
+    DodgeThreats="true" UseSpecialPowers="true" TimeToKeepTargetMin="3s" TimeToKeepTargetMax="5s"
+    RandomTargetScoreModifier="1.0" SpecialPowerDelayMinimum="2s" SpecialPowerDelayMaximum="8s">
+    <SpecificSpecialPowerDelay PowerType="TOGGLE" TogglePowerSubType="TOGGLE_LOCKDOWN" MinimumDelay="20s" MaximumDelay="40s"/>
+    <RetreatBaseCriteria PreferredNotBaseTypes="CAPTURED" SortOrder="PREFER_CLOSEST"/>
+    <IgnoreTargets Rule="ANY" Include="TIME_BOMB"/>
+  </AIMicroManagerData>'''
+
+
+def personality_xml(heuristic, tactic, idle=None):
     removed = [f'    <StrategicState id="{k}" xai:joinAction="Remove"/>' for k in ab.INHERITED]
     return '\n'.join([
         '<?xml version="1.0" encoding="utf-8"?>',
@@ -51,7 +77,8 @@ def personality_xml(heuristic, tactic):
         '  <Includes>',
         f'    <Include type="instance" source="DATA:SkirmishAI/Personalities/{ab.BASE}.xml" />',
         '  </Includes>',
-        _state(heuristic, tactic),
+        *([_micro_xml(idle)] if idle else []),
+        _state(heuristic, tactic, IDLE_ID if idle else 'StandardMicroManager_MEDIUM'),
         f'  <AIPersonalityDefinition id="{PID}" PersonalityType="{PID}" inheritFrom="{ab.BASE}">',
         *removed,
         '    <StrategicState id="CNVStateGo" State="CNVStateGo"/>',
@@ -59,11 +86,11 @@ def personality_xml(heuristic, tactic):
         '</AssetDeclaration>', ''])
 
 
-def mission(name, heuristic, tactic):
+def mission(name, heuristic, tactic, idle=None):
     m = Mission(name=name, map=niagara, facts={'wake at': WAKE_AT})
     m.cnv_heuristic = heuristic             # the check says the model's pick by it
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{PID}'}
-    m.assets.append((f'{PID}.xml', personality_xml(heuristic, tactic), f'AIPersonalityDefinition:{PID}'))
+    m.assets.append((f'{PID}.xml', personality_xml(heuristic, tactic, idle), f'AIPersonalityDefinition:{PID}'))
     m.cnv_units = (INF,)
     s1 = m.player('s1')
     m.put('AlliedConstructionYard', 'east base', 0, 0, side='s1', name='UNIT - CNV AI Yard', role='ai yard')
@@ -89,4 +116,9 @@ def mission(name, heuristic, tactic):
 
 
 MISSION = {'aitargetsafe': lambda: mission('CampAISafe', 'SafestToGroundStructureHeuristic', 'DefenseAvoidanceAttack'),
-           'aitargetnear': lambda: mission('CampAINearest', 'ClosestStructureHeuristic', 'SimpleAttack')}
+           'aitargetnear': lambda: mission('CampAINearest', 'ClosestStructureHeuristic', 'SimpleAttack'),
+           'aitargetidle5': lambda: mission('CampAIIdle5', 'SafestToGroundStructureHeuristic',
+                                            'DefenseAvoidanceAttack', idle=5),
+           'aitargetidle30': lambda: mission('CampAIIdle30', 'SafestToGroundStructureHeuristic',
+                                             'DefenseAvoidanceAttack', idle=30),
+           'aitargetflank': lambda: mission('CampAIFlank', 'SafestToGroundStructureHeuristic', 'FlankAttack')}

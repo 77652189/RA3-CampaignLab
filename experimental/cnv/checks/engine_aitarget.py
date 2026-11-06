@@ -16,6 +16,16 @@ Bench 2026-11-06 aitargetsafe a (CampAISafeA, one run): PASS 2 of 2. 步兵在�
 Bench 2026-11-06 aitargetnear a (CampAINearestA): PASS 2 of 2. 到近厂 2 @ s13 (步兵在家 still 4: the two squares
   touch), 4 @ s14-21, shot down 3 / 2 / 1 / 0 by s35 (the turrets); 到远厂 0 all 76 s. The nearest first, as the
   model.
+Bench 2026-11-06 aitargetidle5 a (CampAIIdle5A): PASS 2 of 2. DefenseAvoidanceAttack with MaxTeamIdleTime 5s (a
+  flattened copy of StandardMicroManager_MEDIUM; the type cannot be inherited from). 步兵在家 4 -> 3 @ s17, 0 @ s21;
+  到远厂 1 @ s22, 4 s26-s41, 3 @ s42, 0 from s43; 到近厂 1 @ s51 (RAMPAGE on). The far plant first, as aitargetsafe,
+  ~11 s earlier (s28 -> s17 leaving, s35 -> s22 arriving).
+Bench 2026-11-06 aitargetidle30 a (CampAIIdle30A): PASS 2 of 2. Same with MaxTeamIdleTime 30s. 步兵在家 4 -> 3 @ s28,
+  0 @ s30; 到远厂 3 @ s35, 4 s36-s60, 2 @ s61, 0 from s63; 到近厂 2 @ s70, 4 @ s73. Identical to aitargetsafe (15 s
+  default): 15 s -> 30 s changes nothing, so the wait is not (only) the idle release.
+Bench 2026-11-06 aitargetflank a (CampAIFlankA): PASS 2 of 2. SafestToGroundStructureHeuristic + FlankAttack, default
+  micro manager. 步兵在家 4 -> 3 @ s25, 0 @ s26; 到远厂 1 @ s58, 3 @ s59, 4 from s61; 到近厂 0 all 76 s. The far plant
+  first, but ~23 s later than DefenseAvoidanceAttack (s35) -- a longer way round, or a later start.
 """
 from parts import Script, Test, counted, square
 
@@ -46,4 +56,4 @@ def a(m):
     return t
 
 
-CHECKS = {'aitargetsafe': {'a': a}, 'aitargetnear': {'a': a}}
+CHECKS = {k: {'a': a} for k in ('aitargetsafe', 'aitargetnear', 'aitargetidle5', 'aitargetidle30', 'aitargetflank')}
