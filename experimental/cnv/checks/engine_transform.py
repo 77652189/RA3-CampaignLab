@@ -33,7 +33,7 @@ Bench 11-06 (round 51):
     refreshed at 10: 10 + 15 ~ 25), it extended the window to ~16 frames after the second press.
 Against the model (RA3-EngineModel transform.py, tests/test_objects_bench.py "transform"): the on spans (b 59,
 d 9), status with USER_1, USER_3 with TAKING_OFF, the trigger starting with the status and a press refreshing it
-all match. Two strict xfails: the trigger lasts 16 frames here, the model's ROUND(s) x 15 gives 30; the model
+all match. Two strict xfails: the trigger lasts 16 frames here, the model's trunc(trunc(s) x 15) gives 15; the model
 toggles one frame late (2002 against 1001, the Mirage field's open question).
 """
 from maps import niagara
