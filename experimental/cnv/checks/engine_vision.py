@@ -12,6 +12,7 @@ start, so one mission serves every check.
   reshroud  both cannons retail. At Go (1 s) MAP_REVEAL_AT_WAYPOINT, radius 150, p1, on tower W. 揭开 = frames from
             Go on that NAMED_DISCOVERED(p1, tower W) is true; 帧数 = frames since Go. How long the reveal holds.
   resh5     as reshroud with MAP_SHROUD_SET_RESHROUD_TIME 5.0 (seconds: retail A04 uses 1.0) at the start.
+  resh0 / resh1 / resh10   the same with 0, 1, 10: how the setting maps to frames.
 
 (Check names are short: the mod name, mission + check, may not pass 15 characters.)
 
@@ -23,6 +24,8 @@ Bench 11-06 (counters 看见 / 揭开 + 帧数; ~15 frames per second):
     (between s8 and s9, ~9.1 s) and stays 137 to the end (帧数 482): the reveal lapses after 137 frames.
   resh5    CampVisResh5_mcp_1106_031048 (MAP_SHROUD_SET_RESHROUD_TIME 5.0 at the start): 揭开 60 at s3, stops at 62
     frames (~4.1 s) and stays 62 (帧数 483): shorter than the default 137.
+  resh1 CampVisResh1_mcp_1106_032237: 揭开 2. resh10 CampVisResh10_mcp_1106_032431: 137 (as the default).
+  resh0 CampVisResh0_mcp_1106_032628: 0 (never shown). So a reveal holds 15 x N - 13 frames (docs/engine/vision.md 2).
 """
 import os
 
@@ -33,7 +36,8 @@ from checks.probe_view import open_in_view
 
 TOWER, CANNON = 'AlliedBaseDefense', 'AlliedAntiStructureVehicle'
 HI, HI2 = 'CNV_VisionHi', 'CNV_VisionHi2'
-GO, RUN = 1.0, {'height': 20.0, 'height2': 20.0, 'reshroud': 30.0, 'resh5': 30.0}
+GO, RUN = 1.0, {'height': 20.0, 'height2': 20.0, 'reshroud': 30.0, 'resh5': 30.0, 'resh1': 30.0, 'resh10': 30.0,
+               'resh0': 30.0}
 TOWERS = {'W': (1280.0, 1350.0), 'E': (2420.0, 1250.0)}
 # role: (template, x, y); W has three cannons (probe, probe2, control), the unused ones are deleted at the start
 CANNONS = {'W': (HI, 880.0, 1350.0), 'W2': (HI2, 880.0, 1450.0), 'W0': (CANNON, 880.0, 1250.0),
@@ -66,7 +70,7 @@ def mission():
 def _test(m, which):
     t = Test()
     p1, s1 = m.player('p1'), m.player('s1')
-    keep = {'height': ('W', 'E'), 'height2': ('W2', 'E'), 'reshroud': ('W0', 'E'), 'resh5': ('W0', 'E')}[which]
+    keep = {'height': ('W', 'E'), 'height2': ('W2', 'E')}.get(which, ('W0', 'E'))
     start = []
     for k in CANNONS:
         n = m.role(f'cannon {k}').name
@@ -89,8 +93,8 @@ def _test(m, which):
         t.expect = [('看见', 0, 'ever>=', 1101)]
         t.bench = [('bench_watch', dict(seconds=RUN[which], every=1, sheet=False, lines=1))]
         return t
-    if which == 'resh5':
-        start.append(('MAP_SHROUD_SET_RESHROUD_TIME', 5.0))
+    if which != 'reshroud':  # resh<N>: MAP_SHROUD_SET_RESHROUD_TIME N at the start
+        start.append(('MAP_SHROUD_SET_RESHROUD_TIME', float(which[4:])))
     start.append(('SET_MILLISECOND_TIMER', 'Test Go', GO))
     t.scripts.append(Script('Test - start', [], start))
     t.waypoints['Test Reveal'] = TOWERS['W']
