@@ -1,0 +1,105 @@
+"""Engine probe: the skirmish AI's StaticDefense tactic -- the Distance circle and the pull-back (read back by
+checks/engine_aidefense.py; engine line B).
+
+The enemy (s1, Allied) runs a personality of this probe's own: the Allied co-op base with every inherited strategic
+state removed (as aistate_bench.py) and one state, always on (ConstantHeuristic, MaxTargets 1), whose target is
+FriendlyLandStructureHeuristic (the retail BalancedDefense pick) and whose tactic is
+  StaticDefense EndBehavior="DISBAND" Distance=D UpdateTime=U CombatLeashSlack=S UseAestheticsManager="false"
+with a team of 2-4 Peacekeepers. s1 owns one structure, its yard at 'east base' (the thing to defend), and four
+Peacekeepers beside it (100 west, 90 north .. 90 south of the yard centre, all within 150). The player has only
+its own yard at 'base yard' on the west bank, no turret, no enemy near: nothing fights.
+Ten seconds after the start the AI wakes (as aitarget_bench); 20 s later (mission second 30) a script orders the four
+Peacekeepers by name to MOVE (plain move, not attack-move) to FAR: 1200 from the yard centre toward 'east gate'
+(direction (-0.990, -0.141); yard (3850, 3400), FAR (2662, 3231)). The check reads how far they get from the yard
+and whether the team pulls them back inside Distance.
+Builds:
+  aidef250    D=250, U=1 s, S=1.5 (the schema default slack)
+  aidef450    D=450
+  aidefupd4   D=250, UpdateTime 4 s
+  aidefslack  D=250, CombatLeashSlack 3.0
+"""
+from maps import niagara
+from missions import aistate_bench as ab
+from parts import Mission, Script
+
+WAKE_AT = 10.0
+MOVE_AT = 30.0
+FAR_DIST = 1200.0
+PID = 'CNVDefenseTest'
+INF = ab.INF
+HEURISTIC = 'FriendlyLandStructureHeuristic'
+
+
+def _state(dist, upd, slack):
+    return f'''  <AIStrategicStateDefinition id="CNVStateGo" MaxTargets="1">
+    <Heuristic>
+      <ConstantHeuristic/>
+    </Heuristic>
+    <TargetHeuristic TargetHeuristic="{HEURISTIC}"/>
+    <Tactic id="Defend" Tactic="StaticDefense" EndBehavior="DISBAND" Distance="{dist}" UpdateTime="{upd}s"
+            CombatLeashSlack="{slack}" UseAestheticsManager="false">
+      <TeamTemplate MinUnits="2" MaxUnits="4" IncludeKindOf="CAN_ATTACK" ExcludeKindOf="IGNORES_SELECT_ALL HARVESTER"
+                    AllowedLocomotorTypes="LAND AMPHIBIOUS" Priority="STANDARD" AlwaysRecruit="false"
+                    MicroManager="StandardMicroManager_MEDIUM">
+        <ObjectFilter Rule="ANY">
+          <IncludeThing>{INF}</IncludeThing>
+        </ObjectFilter>
+      </TeamTemplate>
+    </Tactic>
+  </AIStrategicStateDefinition>'''
+
+
+def personality_xml(dist, upd, slack):
+    removed = [f'    <StrategicState id="{k}" xai:joinAction="Remove"/>' for k in ab.INHERITED]
+    return '\n'.join([
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
+        ' xmlns:xai="uri:ea.com:eala:asset:instance">',
+        '  <Tags></Tags>',
+        '  <Includes>',
+        f'    <Include type="instance" source="DATA:SkirmishAI/Personalities/{ab.BASE}.xml" />',
+        '  </Includes>',
+        _state(dist, upd, slack),
+        f'  <AIPersonalityDefinition id="{PID}" PersonalityType="{PID}" inheritFrom="{ab.BASE}">',
+        *removed,
+        '    <StrategicState id="CNVStateGo" State="CNVStateGo"/>',
+        '  </AIPersonalityDefinition>',
+        '</AssetDeclaration>', ''])
+
+
+def mission(name, dist, upd, slack):
+    m = Mission(name=name, map=niagara, facts={'wake at': WAKE_AT, 'move at': MOVE_AT})
+    m.cnv_dist = dist
+    m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{PID}'}
+    m.assets.append((f'{PID}.xml', personality_xml(dist, upd, slack), f'AIPersonalityDefinition:{PID}'))
+    m.cnv_units = (INF,)
+    s1 = m.player('s1')
+    m.put('AlliedConstructionYard', 'east base', 0, 0, side='s1', name='UNIT - CNV AI Yard', role='ai yard')
+    m.put('AlliedConstructionYard', 'base yard', name='UNIT - CNV AI Player Yard', role='player yard')
+    m.spawns |= {INF}
+    for k in range(4):
+        m.put(INF, 'east base', -100.0, -90.0 + 60.0 * k, side='s1', angle=3.1416, name=f'UNIT - CNV AI Inf {k + 1}',
+              role=f'peacekeeper {k + 1}')
+    base = 'CNV AI Base'
+    m.waypoint('ai base', base, 'east base')
+    ex, ey = m.site('east base')
+    gx, gy = m.site('east gate')
+    L = ((gx - ex) ** 2 + (gy - ey) ** 2) ** 0.5
+    m.waypoint('far', 'CNV AI Far', 'east base', FAR_DIST * (gx - ex) / L, FAR_DIST * (gy - ey) / L)
+    m.scripts += [
+        Script('CNV AI - Start', [], [('PLAYER_SET_MONEY', s1, 0), ('SET_MILLISECOND_TIMER', 'CNV AI Wake', WAKE_AT),
+                                      ('SET_MILLISECOND_TIMER', 'CNV AI Move', MOVE_AT)]),
+        Script('CNV AI - Wake', [('TIMER_EXPIRED', 'CNV AI Wake')],
+               [('UNIT_AI_TRANSFER_ALL', s1, 1), ('SKIRMISH_AI_MAKE_BASE', s1, base),
+                ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', s1, 20), ('SKIRMISH_AI_USE_REPAIRS', s1, 0),
+                ('SKIRMISH_AI_USE_REBUILD_SYSTEM', s1, 0), ('PLAYER_SET_MONEY', s1, 0)]),
+        Script('CNV AI - Move', [('TIMER_EXPIRED', 'CNV AI Move')],
+               m.order('move', [m.role(f'peacekeeper {k}').name for k in range(1, 5)], 'CNV AI Far', side='s1',
+                       crew='CNVDefMove'))]
+    return m
+
+
+MISSION = {'aidef250': lambda: mission('CampAIDef250', 250, 1, 1.5),
+           'aidef450': lambda: mission('CampAIDef450', 450, 1, 1.5),
+           'aidefupd4': lambda: mission('CampAIDefUpd4', 250, 4, 1.5),
+           'aidefslack': lambda: mission('CampAIDefSlack', 250, 1, 3.0)}
