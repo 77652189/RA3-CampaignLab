@@ -434,3 +434,119 @@ def stats(template, own=None):
     e['kinds'] = sorted(kinds)
     e['guessed'] = guessed if e.get('kinds') or own else ['all']
     return e
+
+
+# ---- production: what a factory builds, for how much, how long (sim.Sim.offers / order_build; docs/engine/production.md)
+COMMAND_SETS = os.path.join(SAGEXML, 'GlobalData', 'LogicCommandSet.xml')
+COMMANDS = os.path.join(SAGEXML, 'GlobalData', 'LogicCommand.xml')
+_retail_commands = None
+
+
+def _read_commands(text, sets, cmds):
+    for head, inner in _blocks(text, 'LogicCommandSet'):
+        if _attr(head, 'id'):           # a set inheriting another (JapanBarracksCommandSet): the base's buttons first
+            own = re.findall(r'<Cmd>\s*([^<\s]+)', re.sub(r'<!--.*?-->', '', inner, flags=re.S))
+            sets[_attr(head, 'id')] = sets.get(_attr(head, 'inheritFrom', ''), []) + own
+    for head, inner in _blocks(text, 'LogicCommand'):
+        m = re.search(r'<Object>\s*([^<\s]+)', inner)
+        if _attr(head, 'id'):
+            cmds[_attr(head, 'id')] = (_attr(head, 'Type', ''), m.group(1) if m else None)
+
+
+def _commands(own=None):
+    """({command set: [command]}, {command: (Type, Object)}): the SDK's GlobalData, then the mission's own XML on top."""
+    global _retail_commands
+    if _retail_commands is None:
+        sets, cmds = {}, {}
+        for p in (COMMAND_SETS, COMMANDS):
+            if os.path.exists(p):
+                _read_commands(open(p, encoding='utf-8', errors='replace').read(), sets, cmds)
+        _retail_commands = sets, cmds
+    if not own:
+        return _retail_commands
+    sets, cmds = dict(_retail_commands[0]), dict(_retail_commands[1])
+    for xml in own.values():
+        _read_commands(xml or '', sets, cmds)
+    return sets, cmds
+
+
+_index = None
+
+
+def _xml(template, own=None):
+    """The template's own XML: a mission's, else its GameObject in the file the SageXML index names (a file may hold
+    several, AlliedAntiInfantryVehicle.xml the Riptide's two), else the file of its own name."""
+    global _index
+    if (own or {}).get(template):
+        return own[template]
+    if _index is None:
+        _index = {k.lower(): v for k, v in json.load(open(INDEX, encoding='utf-8')).items()} \
+            if os.path.exists(INDEX) else {}
+    f = (_index.get(template.lower()) or {}).get('file', '')
+    path = os.path.join(SAGEXML, *f[5:].split('/')) if f.startswith('DATA:') else ''
+    if path and os.path.exists(path):
+        text = open(path, encoding='utf-8', errors='replace').read()
+        for m in re.finditer(r'<GameObject\b.*?</GameObject>', text, re.S):
+            if re.search(rf'\bid="{re.escape(template)}"', m.group(0)[:2000], re.I):
+                return m.group(0)
+    return retail_xml(template)
+
+
+def _inherited(template, own, read, empty):
+    """read(xml) of the template, else of what it inherits from (inheritFrom), up to 5 steps. A campaign override
+    (CampaignOverrides.xml: the same id inheriting itself) is read first, then the file of the template's own name."""
+    xml = _xml(template, own)
+    for _ in range(5):
+        got = read(xml)
+        if got != empty:
+            return got
+        m = re.search(r'\binheritFrom="([^"]+)"', xml[:2000])
+        if not m:
+            break
+        xml = retail_xml(template) if m.group(1).lower() == template.lower() else _xml(m.group(1), own)
+        template = m.group(1)
+    return empty
+
+
+def menu(factory, own=None):
+    """The units a structure builds: its CommandSet's UNIT_BUILD commands' objects, in the sidebar's order."""
+    cs = _inherited(factory, own, lambda xml: (re.findall(r'\bCommandSet="([^"]+)"', xml) or [''])[0], '')
+    sets, cmds = _commands(own)
+    return [cmds[c][1] for c in sets.get(cs, []) if cmds.get(c, ('', None))[0] == 'UNIT_BUILD' and cmds[c][1]]
+
+
+def production(template, own=None):
+    """(cost, seconds): BuildCost Amount and BuildTime of the template's XML ((0, 0.0) where it writes none)."""
+    def read(xml):
+        cost = re.search(r'<BuildCost\b[^>]*\bAmount="([\d.]+)"', xml)
+        secs = re.search(r'\bBuildTime="([\d.]+)"', xml)
+        return int(float(cost.group(1))) if cost else 0, float(secs.group(1)) if secs else 0.0
+    return _inherited(template, own, read, (0, 0.0))
+
+
+def needs(template, own=None):
+    """(objects, upgrades) its GameDependency asks for: every RequiredObject the player must own, every NeededUpgrade
+    the player must hold (all of them: inference, the sidebar's lit buttons not measured)."""
+    def read(xml):
+        head, inner = next(_blocks(xml, 'GameDependency'), (None, ''))
+        return (re.findall(r'<RequiredObject>\s*([^<\s]+)', inner or ''),
+                re.findall(r'<NeededUpgrade>\s*([^<\s]+)', inner or ''))
+    return _inherited(template, own, read, ([], []))
+
+
+def exit_of(factory, own=None):
+    """(create, rally, door frames) of a factory: UnitCreatePoint and NaturalRallyPoint (x, y) in its own frame (rally
+    None where it writes none), and ProductionUpdate's DoorOpeningTime in frames, rounded up (0.66 s -> 10: bench
+    2026-11-05 engine_production, every unit appeared 10 frames after its build was full)."""
+    def read(xml):
+        if '<ProductionUpdate' not in xml:
+            return None
+
+        def point(tag):
+            head, _ = next(_blocks(xml, tag), (None, ''))
+            return None if head is None else (_num(_attr(head, 'x'), 0.0), _num(_attr(head, 'y'), 0.0))
+        head, _ = next(_blocks(xml, 'ProductionUpdate'), ('', ''))
+        door = _secs(_attr(head or '', 'DoorOpeningTime', '0s'))
+        return point('UnitCreatePoint') or (0.0, 0.0), point('NaturalRallyPoint'), \
+            int(-(-round(door * LIFE_FPS, 6) // 1))
+    return _inherited(factory, own, read, None) or ((0.0, 0.0), None, 0)

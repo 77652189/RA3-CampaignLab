@@ -152,3 +152,72 @@ def test_r4_no_engineer_no_derrick():
     """Mutation: the engineer deleted before the order -- the derrick stays neutral and no money comes."""
     status, lines = simbench.run('derrick', script=['0 删除 UNIT - Test Engineer'])
     assert status == 1 and any(x.startswith('FAIL 资金') for x in lines), '\n'.join(lines)
+
+
+# ---- production: the second hook for simproxy's player (sim.Sim.offers / order_build / produce_due)
+# bench 2026-11-05 engine_production (docs/engine/production.md): (帧数, 资金) pairs read on the bench, 帧数 when the
+# engineer is first counted -- the same table the engine line's model is held to (RA3-EngineModel BENCH_PRODUCTION)
+BENCH_PRODUCTION = {'a': ([(16, 1946), (25, 1916), (31, 1896), (39, 1870), (145, 1516), (153, 1500)], 160),
+                    'b': ([(133, 3), (150, 1953), (157, 1929), (210, 1753)], 221)}
+
+
+def _production_rows(check, order=True):
+    """The check run in the simulator with the engineer ordered at frame 30 (the bench clicks the sidebar), the
+    counters read after every frame's production."""
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_production', check)
+    s = sim.Sim(m, t)
+    rows, done = [], s.produce_due
+
+    def read(frame):
+        done(frame)
+        rows.append({lab: s.counters.get(c, 0) for c, lab in t.counters})
+    s.produce_due = read
+    s.advance(30)
+    offered = [o[0] for o in s.offers(s.human)]
+    if order:
+        assert s.order_build(s.human, 'AlliedEngineer')
+    s.advance(45 * 15 - 30)
+    return s, rows, offered
+
+
+@pytest.mark.parametrize('check', sorted(BENCH_PRODUCTION))
+def test_production_pays_as_it_builds_and_comes_out_after_the_door(check):
+    """a: 10 s = 150 frames, ceil(500 k / 150) paid by k, full at the 151st (single float), out 10 frames on;
+    b: 250 runs out at 3 (owes 251 at k 75), stands until the 2000 come, then goes on."""
+    s, rows, offered = _production_rows(check)
+    pairs, made = BENCH_PRODUCTION[check]
+    money = {}
+    for rd in rows:
+        money.setdefault(rd['帧数'], rd['资金'])
+    assert [(k, money.get(k)) for k, _ in pairs] == pairs
+    assert next(rd['帧数'] for rd in rows if rd['工程师'] >= 1) == made
+    assert next(rd['出口位'] for rd in rows if rd['出口位']) == 101      # out at UnitCreatePoint, as on the bench
+    assert offered[:4] == ['AlliedScoutInfantry', 'AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry',
+                           'AlliedEngineer']   # the barracks' tier-1 buttons; the spy needs Upgrade_AlliedTech2
+
+
+def test_production_needs_a_factory_and_its_prerequisites():
+    """Nothing is offered or queued without a factory of the player's; a unit whose NeededUpgrade the player lacks is
+    not offered until GIVE_PLAYER_UPGRADE gives it; a banned one (ALLOW_DISALLOW_ONE_BUILDING 0) is not."""
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_production', 'a')
+    s = sim.Sim(m, t)
+    s.advance(15)
+    names = [o[0] for o in s.offers(s.human)]
+    assert 'AlliedEngineer' in names and 'AlliedInfiltrationInfantry' not in names
+    s.act('GIVE_PLAYER_UPGRADE', [s.human, 'Upgrade_AlliedTech2'], None)
+    assert 'AlliedInfiltrationInfantry' in [o[0] for o in s.offers(s.human)]
+    s.act('ALLOW_DISALLOW_ONE_BUILDING', [s.human, 'alliedengineer', 0], None)
+    assert 'AlliedEngineer' not in [o[0] for o in s.offers(s.human)] and not s.order_build(s.human, 'AlliedEngineer')
+    for f in s.factories(s.human):
+        s.destroy(f, 'test', delete=True)
+    assert s.offers(s.human) == [] and not s.order_build(s.human, 'AlliedAntiInfantryInfantry')
+
+
+def test_production_mutation_no_order_no_engineer():
+    """Mutation: without the order the money stays and no engineer comes -- the readings above are the order's."""
+    s, rows, _ = _production_rows('a', order=False)
+    assert all(rd['工程师'] == 0 for rd in rows) and s.money[s.human] == 2000

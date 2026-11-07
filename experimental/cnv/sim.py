@@ -136,6 +136,10 @@ ALIGN = {
     'capture': 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED Command_CaptureBuilding: at its side the building changes hands, '
                'a deposit building pays its bonus then its amount each interval (R4, bench 2026-11-07 a4 derrick)',
     'nearest ref':'SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER: the unnamed one nearest the team\'s middle (R2, bench 2026-11-07 engine_ref)',
+    'production': 'Sim.order_build (simproxy\'s player): BuildTime x 15 frames, paid frame by frame up to '
+                  'ceil(cost x progress) (single-float progress), a frame it cannot pay does not go on, the unit out '
+                  'DoorOpeningTime (10 frames) after it is full at UnitCreatePoint, walking to NaturalRallyPoint '
+                  '(bench 2026-11-05 engine_production a-d). Not modelled: low power, the factory\'s veterancy',
     'attack': 'NAMED_ATTACK_NAMED: the attacker goes to its target; the fight is the script\'s (摧毁)',
     'guard': 'UNIT_GUARD_AREA: goes to the area\'s middle and stays',
     'bridge deck': 'a bridge is walkable deck from its start to its end object (BRIDGE_DECK wide); bench '
@@ -341,6 +345,11 @@ def inside(pts, x, y):
         if (y0 > y) != (y1 > y) and x < x0 + (y - y0) * (x1 - x0) / (y1 - y0):
             c = not c
     return c
+
+
+def f32(x):
+    """x as a single float (the game's production progress, docs/engine/production.md)."""
+    return float(np.float32(x))
 
 
 def mmss(t):
@@ -582,6 +591,9 @@ class Sim:
         self.guessed = set()
         self.walls = {u.id: u.params for u in self.mm.units if 'length' in u.params}   # our bars of ice, gates
         self.due = []                       # (frame, structure, owner, team, x, y, by): a builder's, to put down (R5)
+        self.queues = {}                    # factory name -> [job]: production (order_build, produce_due)
+        self.produced_to = None             # the last frame produce_due ran
+        self.player_ups = {}                # player -> upgrades GIVE_PLAYER_UPGRADE gave (a unit's NeededUpgrade)
         teams = getattr(mission.map, 'TEAMS', {})
         self.active = set(teams.values())               # teams with an instance: a whole-team order to any other is lost (E3)
         self.lost_orders = []                           # (t, script, order, team) given to a team nobody had joined
@@ -751,6 +763,100 @@ class Sim:
                 b.deposit_at = frame + b.deposit[2]
                 if b.owner != CIV and b.deposit[1] > 0:
                     self.money[b.owner] = self.money.get(b.owner, 0) + b.deposit[1]
+
+    # ---- production: the second hook for simproxy's player (docs/engine/production.md, bench 2026-11-05)
+    def factories(self, owner):
+        """The owner's living structures that build units (their CommandSet has UNIT_BUILD buttons)."""
+        return [b for b in self.living() if b.owner == owner and 'STRUCTURE' in b.kinds and not b.scenery
+                and simunits.menu(b.template, self.own)]
+
+    def holds_upgrade(self, owner, up):
+        """A player's upgrade (GIVE_PLAYER_UPGRADE), or an object's of the owner's (NAMED_RECEIVE_UPGRADE: Japan's
+        factory tiers are the factory's own)."""
+        return up in self.player_ups.get(owner, ()) or any(up in b.upgrades for b in self.living() if b.owner == owner)
+
+    def can_build(self, owner, template):
+        """Whether owner's sidebar button for `template` is lit: not banned (ALLOW_DISALLOW_ONE_BUILDING), every
+        RequiredObject standing, every NeededUpgrade held (simunits.needs; all of them is an inference)."""
+        if (owner, template.lower()) in self.banned:
+            return False
+        objs, ups = simunits.needs(template, self.own)
+        have = {b.template.lower() for b in self.living() if b.owner == owner}
+        return all(o.lower() in have for o in objs) and all(self.holds_upgrade(owner, u) for u in ups)
+
+    def offers(self, owner):
+        """[(template, cost, seconds)] owner can build now, each once, in the factories' sidebar order."""
+        out = {}
+        for f in self.factories(owner):
+            for t in simunits.menu(f.template, self.own):
+                if t not in out and self.can_build(owner, t):
+                    out[t] = (t,) + simunits.production(t, self.own)
+        return list(out.values())
+
+    def order_build(self, owner, template):
+        """Queue `template` at the owner's factory that builds it with the shortest queue; nothing is paid now
+        (produce_due pays frame by frame). False: no factory of the owner's builds it now."""
+        fs = [f for f in self.factories(owner) if template in simunits.menu(f.template, self.own)]
+        if not fs or not self.can_build(owner, template):
+            return False
+        f = min(fs, key=lambda f: len(self.queues.get(f.name, [])))
+        cost, secs = simunits.production(template, self.own)
+        self.queues.setdefault(f.name, []).append(
+            {'template': template, 'owner': owner, 'cost': cost, 'frames': max(1, int(round(secs * simunits.LIFE_FPS))),
+             'progress': 0.0, 'paid': 0, 'full': None})
+        self.used.add('production')
+        self.note('生产', f'{self.who(owner)} 在 {self.label(f)} 排 {template}（{cost}，{secs:g} 秒）')
+        return True
+
+    def produce_due(self, frame):
+        """Each factory's queue up to `frame`, a frame at a time: the first job not yet full goes on 100 / frames
+        (single float, so a 150-frame build fills at the 151st), paying up to ceil(cost x progress / 100) -- a frame
+        the owner cannot pay the difference stands still; the next job starts the frame after one fills; a full one
+        comes out DoorOpeningTime later at the factory's UnitCreatePoint (turned with it), on the factory's team,
+        and walks to its NaturalRallyPoint (bench 2026-11-05 engine_production a-d: 150 / 151 frames, 54 paid at
+        the 16th, a 250 budget stalls at 3 left, out 10 frames after full). A factory gone takes its queue along."""
+        start = frame if self.produced_to is None else self.produced_to + 1
+        self.produced_to = frame
+        if not self.queues:
+            return
+        for fr in range(start, frame + 1):
+            for name in list(self.queues):
+                f, q = self.bodies.get(name), self.queues[name]
+                if f is None or not f.alive or not q:
+                    del self.queues[name]
+                    continue
+                create, rally, door = simunits.exit_of(f.template, self.own)
+                for job in [j for j in q if j['full'] is not None and fr >= j['full'] + door]:
+                    q.remove(job)
+                    self.produce_out(f, job, create, rally)
+                job = next((j for j in q if j['full'] is None), None)
+                if job is None:
+                    continue
+                step = f32(100.0 / job['frames'])
+                nxt = f32(job['progress'] + step)
+                owe = min(job['cost'], math.ceil(round(job['cost'] * nxt / 100.0, 9))) - job['paid']
+                have = self.money.get(job['owner'], 0)
+                if owe > have:
+                    continue
+                self.money[job['owner']] = have - owe
+                job['paid'] += owe
+                job['progress'] = nxt
+                if nxt >= 100.0:
+                    job['full'] = fr
+
+    def produce_out(self, f, job, create, rally):
+        c, s = math.cos(f.angle), math.sin(f.angle)
+
+        def at(p):
+            return f.x + p[0] * c - p[1] * s, f.y + p[0] * s + p[1] * c
+        b = self.add(f'#made {len(self.bodies)} {job["template"]}', job['template'], job['owner'], *at(create),
+                     by=f.name, at=self.t)
+        b.team, b.angle = f.team, f.angle
+        self.note('生产', f'{self.label(f)} 出 {job["template"]}')
+        if rally is not None:
+            b.mode = 'move'
+            self.send(b, at(rally))
+        self.change()
 
     def order_guard(self, b, area):
         self.used.add('guard')
@@ -1182,6 +1288,8 @@ class Sim:
             (s.add if a[2] else s.discard)(a[1])
         elif name == 'ALLOW_DISALLOW_ONE_BUILDING':     # the AI's production is not simulated; the player's 造 is
             (self.banned.discard if a[2] else self.banned.add)((a[0], str(a[1]).lower()))
+        elif name == 'GIVE_PLAYER_UPGRADE':             # (player, upgrade): a unit's NeededUpgrade (can_build)
+            self.player_ups.setdefault(a[0], set()).add(a[1])
         elif name == 'PLAYER_RELATES_PLAYER':           # (index, 0, name): the game reads the index (plan.relates)
             r = a[2]
             self.relations[(a[0], a[1])] = r if isinstance(r, str) else \
@@ -1369,6 +1477,7 @@ class Sim:
             self.expire(eng.frame)
             self.build_due(eng.frame)
             self.deposit_due(eng.frame)
+            self.produce_due(eng.frame)
             if self.test and self.test.counters and (eng.frame - 1) % self.fps == 0 and self.t >= LAG:
                 self.series.append((int(round(self.t - LAG)), [self.counters.get(c, 0) for c, _ in self.test.counters]))
             if not moved and self.ending is None and self.t >= t0 - 1e-9:
@@ -1403,6 +1512,7 @@ class Sim:
         self.expire(self.frame_now())
         self.build_due(self.frame_now())
         self.deposit_due(self.frame_now())
+        self.produce_due(self.frame_now())
         if self.ending:
             return
         if self.combat:
