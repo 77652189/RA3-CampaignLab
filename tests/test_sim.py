@@ -194,7 +194,10 @@ A4_WALKTHROUGH = '''不打; 自动打掉 5
 0 派 guardian 去 plaza 1; 0 派 riptide 去 plaza 1; 50 造 CNV_A4IceWall 在 inside 2
 85 派 guardian 去 harbour; 85 派 riptide 去 harbour
 165 派 guardian 去 north factory; 165 派 riptide 去 north barracks; 180 摧毁 north factory; 180 摧毁 north barracks
-200 造 CNV_A4IceWall 在 inside 3; 210 派 guardian 去 halt; 210 派 riptide 去 halt'''
+200 造 CNV_A4IceWall 在 inside 3; 210 派 guardian 去 halt; 210 派 riptide 去 halt
+80 造 CNV_A4IceWall 在 inside 2; 110 造 CNV_A4IceWall 在 inside 2; 140 造 CNV_A4IceWall 在 inside 2
+170 造 CNV_A4IceWall 在 inside 2; 200 造 CNV_A4IceWall 在 inside 2'''
+# the walls melt after their 30 s (R1, sim.Sim.expire): the player freezes plaza 2 again as each goes
 
 
 def test_a4_before_the_rework_can_be_won():

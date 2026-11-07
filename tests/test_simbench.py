@@ -26,6 +26,21 @@ def test_it_fails_when_the_player_builds_no_wall(check):
     assert status == 1 and any(x.startswith('FAIL') for x in lines), '\n'.join(lines)
 
 
+def _sim_run(build_name, check, until):
+    import build
+    import sim
+    m, t, _ = build.resolve(build_name, check)
+    return sim.Sim(m, t).run(until)
+
+
+def test_r1_lifetime_as_the_bench():
+    """R1 (sim.Sim.expire): bench 2026-11-07 `cnv_check engine_life frames` -- a 30 s wall made by a script in frame 1
+    is seen by 451 frames' scripts, the area count drops with it (墙A 451451); a 5.5 s core lives 83 frames' and its
+    wall 450 (墙B 83450)."""
+    a, b, _ = _sim_run('engine_life', 'frames', 50.0).series[-1][1]
+    assert (a, b) == (451451, 83450)
+
+
 def test_a_counter_the_simulator_cannot_read_is_skipped_not_passed():
     status, lines = simbench.run('smash')
     assert any(x.startswith('SKIP 目标墙血量') for x in lines), '\n'.join(lines)

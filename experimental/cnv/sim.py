@@ -120,6 +120,11 @@ ALIGN = {
                      '(a jump, a carrier\'s drop: the device\'s own scripts say what follows)',
     'ai': 'a skirmish AI (UNIT_AI_TRANSFER_ALL, SKIRMISH_AI_*): woken and logged; what it builds and when it '
           'attacks is not simulated (bench 2026-10-27 aistep: it may never build a kind it is let to)',
+    'lifetime': 'an object with a LifetimeUpdate (our ice walls, cores, smoke) is killed seconds x 15 frames (cut '
+                'down) after the frame it was made, and its CreateObjectDie for that death type makes what it lists '
+                'there that frame (bench 2026-11-07 engine_life: a 30 s wall lived 450 frames, a 5.5 s core 82, the '
+                'core\'s wall there at once; nothing of the dead lingers in an area). Min and Max apart: their '
+                'middle (a guess); retail templates\' lifetimes are not read',
     'attack': 'NAMED_ATTACK_NAMED: the attacker goes to its target; the fight is the script\'s (摧毁)',
     'guard': 'UNIT_GUARD_AREA: goes to the area\'s middle and stays',
     'bridge deck': 'a bridge is walkable deck from its start to its end object (BRIDGE_DECK wide); bench '
@@ -300,6 +305,9 @@ class Body:
     mode: str = 'idle'                                          # 'move' (a plain move: fires, does not stop) or
                                                                 # 'attack' (attack-move, attack named: stops to fight)
     fired_at: float = None                                      # a bombarder's last shot (seen by all a while)
+    life_end: int = None                                        # its LifetimeUpdate kills it after this frame's
+                                                                # scripts (simunits.lifetime, R1)
+    leaves: list = dataclasses.field(default_factory=list)      # what that death makes where it stood
 
     @property
     def health(self):
@@ -577,8 +585,28 @@ class Sim:
         else:                                   # no health in the data: a building's or a unit's usual (a guess)
             b.max_hp = b.hp = 2000.0 if 'STRUCTURE' in b.kinds else 300.0
         b.armor, b.weapons = f['armor'], f['weapons']
+        frames, b.leaves = simunits.lifetime(template, self.own)
+        if frames is not None:                  # made in this frame's scripts (or, by a run event, at its start)
+            made = self.eng.frame if getattr(self, 'eng', None) else int(round(at * simunits.LIFE_FPS))
+            b.life_end = made + frames
         self.bodies[name] = b
         return b
+
+    def expire(self, frame):
+        """R1: whatever's lifetime is up by `frame` dies (killed, as the game's LifetimeUpdate: NAMED_DESTROYED, gone
+        from areas at once -- bench 2026-11-07 engine_life, no body lingers) and leaves what its death makes, made
+        that frame (the ice core's wall)."""
+        for b in self.living():
+            if b.life_end is None or frame < b.life_end:
+                continue
+            self.used.add('lifetime')
+            self.destroy(b, '寿命到了')
+            for tmpl in b.leaves:
+                n = self.add(f'#left {len(self.bodies)} of {b.name}', tmpl, b.owner, b.x, b.y, by=b.name, at=self.t)
+                n.team, n.angle = b.team, b.angle
+                self.note('留下', f'{tmpl}（{self.label(b)} 寿命到了）')
+                if self.blocks(n):
+                    self.reblock()
 
     def living(self):
         return [b for b in self.bodies.values() if b.alive]
@@ -1172,6 +1200,7 @@ class Sim:
             while self.events and self.events[0][0] <= self.t + 1e-9:
                 self.happen(self.events.pop(0))
             eng.step()
+            self.expire(eng.frame)
             if self.test and self.test.counters and (eng.frame - 1) % self.fps == 0 and self.t >= LAG:
                 self.series.append((int(round(self.t - LAG)), [self.counters.get(c, 0) for c, _ in self.test.counters]))
             if not moved and self.ending is None and self.t >= t0 - 1e-9:
@@ -1201,6 +1230,7 @@ class Sim:
                     self.act(name, a, s)
                 if s.once:
                     self.done.add(s.name)
+        self.expire(int(round(self.t * simunits.LIFE_FPS)))
         if self.ending:
             return
         if self.combat:
@@ -1365,7 +1395,7 @@ class Sim:
     def pending(self):
         """Something still to come: a timer running, a unit moving, a script event."""
         return bool(self.events) or bool(self.anchored) or any(v > self.t for v in self.timers.values()) or \
-            any(b.path for b in self.living())
+            any(b.path or b.life_end is not None for b in self.living())
 
     def run(self, until=UNTIL):
         self.used |= {'engine model' if self.eng else 'frame rate', 'difficulty side'}

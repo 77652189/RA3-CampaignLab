@@ -293,6 +293,46 @@ def fight(template, own=None):
     return d['units'].get(template.lower(), dict(hp=None, armor={}, weapons=[]))
 
 
+LIFE_FPS = 15                   # the game's logic frames a second (bench 2026-10-28, probe align)
+
+
+def _dies_of(head, death):
+    """A DieMuxData's DeathTypes takes this death type: 'ALL' less its '-X's, or the types it names; never one of
+    its DeathTypesForbidden."""
+    no = re.search(r'DeathTypesForbidden="([^"]*)"', head)
+    if no and death in no.group(1).split():
+        return False
+    m = re.search(r'\bDeathTypes="([^"]*)"', head)
+    words = (m.group(1) if m else 'ALL').split()
+    if 'ALL' in words:
+        return f'-{death}' not in words
+    return death in words or f'+{death}' in words
+
+
+def lifetime(template, own=None):
+    """(frames, leaves) of a mission unit with a LifetimeUpdate, else (None, []): it is killed (its DeathType, not
+    deleted) `frames` after the frame it was made -- the seconds x 15, cut down (bench 2026-11-07 engine_life: a 30 s
+    wall 450 frames, a 5.5 s core 82); Min and Max apart: their middle (the game draws one between, a guess). leaves:
+    what its CreateObjectDie lists for that death type make where it stood (the ice core's wall, born the frame the
+    core dies). Retail templates are not read (none of our scripts makes one with a lifetime)."""
+    xml = (own or {}).get(template)
+    life = next(_blocks(xml, 'LifetimeUpdate'), None) if xml else None
+    if life is None:
+        return None, []
+    lo, hi = _secs(_attr(life[0], 'MinLifetime')), _secs(_attr(life[0], 'MaxLifetime'))
+    death = _attr(life[0], 'DeathType', 'NORMAL')
+    frames = int((lo + hi) / 2 * LIFE_FPS + 1e-6)
+    leaves = []
+    for head, inner in _blocks(xml, 'CreateObjectDie'):
+        if not _dies_of(next((h for h, _ in _blocks(inner, 'DieMuxData')), ''), death):
+            continue
+        ocl = _attr(head, 'CreationList')
+        for h, body in _blocks(xml, 'ObjectCreationList'):
+            if _attr(h, 'id') == ocl:
+                leaves += re.findall(r'<CreateObject>\s*([^<\s]+)\s*</CreateObject>', body)
+    return frames, leaves
+
+
 def kind_of(kinds):
     for k in ('STRUCTURE', 'AIRCRAFT', 'SHIP', 'INFANTRY', 'VEHICLE'):
         if k in kinds:

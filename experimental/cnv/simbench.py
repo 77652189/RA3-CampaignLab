@@ -28,20 +28,16 @@ def after(secs):
     return f'{SCENE}+{secs:g}'
 
 
-def ice(m, mark, order_at, melts=True):
-    """The engineer's order at `order_at` (the check's own time) as the player's: the wall stands BUILD s later and, as
-    the game's lifetime does, goes `life` s after that (`melts`)."""
+def ice(m, mark, order_at):
+    """The engineer's order at `order_at` (the check's own time) as the player's: the wall stands BUILD s later; it
+    melts by the simulator's lifetime rule (R1, sim.Sim.expire: bench 2026-11-07 engine_life)."""
     from checks.a4_before import ice_wall
-    w = ice_wall(m)
-    lines = [f'{after(order_at + BUILD)} 造 {w.id} 在 {mark}']
-    if melts:
-        lines.append(f'{after(order_at + BUILD + w.params["lifetime"])} 删除 名字含 SIM Made')
-    return lines
+    return [f'{after(order_at + BUILD)} 造 {ice_wall(m).id} 在 {mark}']
 
 
 def detour_script(m):
     from checks import a4
-    return ice(m, 'ice V2', a4.HORN1 - a4.BUILD, melts=False)
+    return ice(m, 'ice V2', a4.HORN1 - a4.BUILD)
 
 
 def queue_script(m):
@@ -51,7 +47,7 @@ def queue_script(m):
 
 def smash_script(m):
     from checks import a4
-    return ice(m, 'ice L3', a4.MOUTH1 - 2.0, melts=False)
+    return ice(m, 'ice L3', a4.MOUTH1 - 2.0)
 
 
 def melt_script(m):
