@@ -9,9 +9,11 @@ with a team of 2-4 Peacekeepers. s1 owns one structure, its yard at 'east base' 
 Peacekeepers beside it (100 west, 90 north .. 90 south of the yard centre, all within 150). The player has only
 its own yard at 'base yard' on the west bank, no turret, no enemy near: nothing fights.
 Ten seconds after the start the AI wakes (as aitarget_bench); 20 s later (mission second 30) a script orders the four
-Peacekeepers by name to MOVE (plain move, not attack-move) to FAR: 1200 from the yard centre toward 'east gate'
-(direction (-0.990, -0.141); yard (3850, 3400), FAR (2662, 3231)). The check reads how far they get from the yard
-and whether the team pulls them back inside Distance.
+Peacekeepers by name to MOVE (plain move, not attack-move) to FAR: FAR_DIST from the yard centre toward 'east gate'
+(direction (-0.990, -0.141); yard (3850, 3400)). FAR_DIST was 1200 (FAR (2662, 3231)) for every reading taken on
+2026-11-06; it is 1150 (FAR (2712, 3237)) since round 65, because 1175..1250 on that line is a thicket of trees
+(sapporo's MR_Tree06 pair at (2659, 3223) / (2648, 3249); test_maps keeps waypoints off scenery). The check reads how
+far they get from the yard and whether the team pulls them back inside Distance.
 Builds:
   aidef250    D=250, U=1 s, S=1.5 (the schema default slack)
   aidef450    D=450
@@ -33,7 +35,7 @@ WAKE_AT = 10.0
 MOVE_AT = 30.0
 PUSH_AT = 55.0
 START_FAR = 700.0
-FAR_DIST = 1200.0
+FAR_DIST = 1150.0   # 1200 until round 65 (on two trees), see the docstring
 PID = 'CNVDefenseTest'
 INF = ab.INF
 HEURISTIC = 'FriendlyLandStructureHeuristic'

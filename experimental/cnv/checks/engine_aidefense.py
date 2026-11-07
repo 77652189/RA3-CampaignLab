@@ -3,7 +3,8 @@
   a  圈300 / 圈450 / 圈650 / 圈900   Peacekeepers of s1 inside a square of half-width r centred on the AI's yard
                                   (r = 300 / 450 / 650 / 900) -- once a second from the wake to ~65 s after it
 
-The Peacekeepers are ordered (plain MOVE, mission second 30) 1200 from the yard toward the east gate, almost due west
+The Peacekeepers are ordered (plain MOVE, mission second 30) to FAR, 1150 from the yard (1200, on two trees, for every
+reading below: see missions/aidefense_bench.py) toward the east gate, almost due west
 (direction (-0.990, -0.141)), so a square of half-width r is the circle of radius r to within the small sideways
 drift (the yard-to-unit distance is the x-distance times ~1.01). The reading is how low each ring goes after s30 and
 when it is back at 4 (the team dragging them back inside Distance). The expectation is weak (the 900 ring holds >= 1
