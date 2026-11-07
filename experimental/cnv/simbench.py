@@ -44,11 +44,12 @@ SPECS = {
     'smash': (nothing, {}),             # R2 (the reference to the nearest wall) + R3 (the ordered attack on it)
     'melt': (nothing, {}),
     'smoke': (lambda m: [], {}),
-    'win': (lambda m: ['不打'], {}),
+    'win': (lambda m: [], {}),          # R6: with the fight on (the damage frame by frame, after the check's top-up)
     'derrick': (nothing, {}),           # R4: the capture and the derrick's pay are the simulator's (bench 2026-11-07)
 }
-# win: the fight model off -- with it the check's top-up of the trucks (every frame, 15 a second) cannot hold against
-# a 0.5 s tick of a dozen units' clips, and the trucks fall at 4:23 -- so the mission's wiring is judged, not the fight
+# win: until R6 the fight model was off here -- the check's top-up of the trucks (every frame, 15 a second) could not hold
+# against a 0.5 s tick of a dozen units' fire dealt at once, and the trucks fell at 4:23; now the fire is dealt a frame at
+# a time after the frame's scripts (sim.Sim.deal), and the mission is won with the fight on
 
 
 # mission seconds a run goes on to (the scene's ~80 s, then the check's last expectation and a margin)

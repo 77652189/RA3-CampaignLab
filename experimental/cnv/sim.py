@@ -606,6 +606,7 @@ class Sim:
         # what nobody shoots unless ordered: our ice walls (units with a lifetime; bench 2026-10-28, a4 hold)
         self.unshot = {u.id for u in self.mm.units if 'lifetime' in (getattr(u, 'params', None) or {})}
         self.seen = {}                      # this tick: (side, id(body)) -> whether that side sees it
+        self.firing = []                    # this tick's aimed fire: (target, damage per second, shooter) (fight, deal)
         self.first_death = None             # (t, body, killer): the fight's first death
         self.events = sorted((e for e in self.script if isinstance(e[0], float)), key=lambda e: e[0])
         self.anchored = [e for e in self.script if isinstance(e[0], tuple)]       # (('@', flag, delta), verb, ...)
@@ -1375,6 +1376,8 @@ class Sim:
                 if self.combat:
                     self.fight()
                 self.move()
+            if self.combat and self.ending is None:
+                self.deal(1.0 / self.fps)       # R6: the aimed fire frame by frame, after the frame's scripts
         self.t = t0
 
     def release(self):
@@ -1421,21 +1424,19 @@ class Sim:
     def fight(self):
         """One tick of the fight model (未对齐, docs: the 'combat' align entry): every armed body fires each of its
         weapons at the nearest enemy in that weapon's range it can hit (its NAMED_ATTACK target first, when in
-        range); damage = the weapon's damage per second x the target's armour percent for its damage type, all at
-        once; an attack-mover with an enemy in range holds while it fights; a plain move goes on firing; nobody
-        chases. Bodies at 0 die, the last hit their killer's."""
+        range); the damage rate = the weapon's damage per second x the target's armour percent for its damage type;
+        an attack-mover with an enemy in range holds while it fights; a plain move goes on firing; nobody chases.
+        The aim is taken once a tick; the damage is dealt frame by frame (`deal`, R6)."""
         self.seen = {}
+        self.firing = []
         live = [b for b in self.living() if not b.scenery]
         armed = [b for b in live if b.weapons]
-        if not armed:
-            return
         targets = [b for b in live if 'UNATTACKABLE' not in b.status]
-        if not targets:
+        if not armed or not targets:
             return
         aimable = {id(t) for t in targets}
         tx = np.array([b.x for b in targets])
         ty = np.array([b.y for b in targets])
-        hurt = {}
         for a in armed:
             a.engaged = False
             foes = [k for k, t in enumerate(targets) if t is not a and self.enemy(a.owner, t.owner)]
@@ -1464,14 +1465,26 @@ class Sim:
                     continue
                 if a.vision and w['range'] > a.vision:
                     a.fired_at = self.t                 # a bombarder firing shows itself
-                dmg = w['dps'] * DT * pick.armor.get(w['type'], simunits.ARMOR_DEFAULT) / 100.0
-                h = hurt.setdefault(id(pick), [pick, 0.0, a])
-                h[1] += dmg
-                h[2] = a
+                self.firing.append((pick, w['dps'] * pick.armor.get(w['type'], simunits.ARMOR_DEFAULT) / 100.0, a))
                 if a.mode == 'attack':
                     a.engaged = True
-        if hurt:
+        if self.firing:
             self.used.add('combat')
+        if self.eng is None:                    # no frames: the tick's damage at once
+            self.deal(DT)
+
+    def deal(self, dt):
+        """R6: `dt` seconds of the aimed fire (`fight`) from shooters and at targets still alive. With the engine model
+        once a frame, after that frame's scripts (Generals GameLogic::update runs the script engine before the objects'
+        updates): a script's health top-up (UNIT_SET_HEALTH every frame, the a4 checks' trucks) lands before the
+        frame's damage, so only a frame's fire of the whole maximum kills (A4 win: bench 2026-11-07 against the 0.5 s
+        tick that killed the trucks at 4:23). Bodies at 0 die, the last hit their killer's."""
+        hurt = {}
+        for t, rate, by in self.firing:
+            if t.alive and by.alive:
+                h = hurt.setdefault(id(t), [t, 0.0, by])
+                h[1] += rate * dt
+                h[2] = by
         for t, dmg, by in hurt.values():
             t.hp -= dmg
             t.last_hit, t.last_by = by.owner, by.name
@@ -1617,6 +1630,19 @@ class Sim:
             self.t = round(self.t + DT, 3)
         if self.ending and self.test and self.test.counters:   # the counters go with the mission
             self.series += [(int(self.t - LAG) + k, [None] * len(self.test.counters)) for k in range(1, 4)]
+        return self
+
+    def advance(self, frames):
+        """The mission `frames` frames on, for a caller that plays it a slice at a time (simproxy's player gives its
+        orders between slices): run's DT ticks (step, each whole second's sample) up to the first tick at or past them,
+        stopping at the mission's end. No quiet check and no end-of-run counters (run's). Returns self."""
+        fps = self.fps if self.eng is not None else simunits.LIFE_FPS
+        target = round(self.t + frames / fps, 6)
+        while self.t < target - 1e-9 and self.ending is None:
+            self.step()
+            if abs(self.t - round(self.t)) < 1e-6:
+                self.sample()
+            self.t = round(self.t + DT, 3)
         return self
 
     # ---- the report

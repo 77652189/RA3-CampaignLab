@@ -69,6 +69,33 @@ def test_r7_the_ghost_king_lands_as_on_the_bench():
     assert abs(start - 58) <= 3, row
 
 
+def test_advance_in_slices_is_run():
+    """Sim.advance (simproxy's player plays a slice at a time): 54 one-second slices and a last 7 frames make the same
+    run as run(54) -- the same ticks, readings and log."""
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_life', 'frames')
+    whole = sim.Sim(m, t).run(54.0)
+    m, t, _ = build.resolve('engine_life', 'frames')
+    part = sim.Sim(m, t)
+    for _ in range(54):
+        part.advance(15)
+    part.advance(7)
+    assert part.t == whole.t and part.series == whole.series and part.log == whole.log
+
+
+def test_r6_win_is_won_by_the_top_up_not_by_a_fight_left_out():
+    """R6 (sim.Sim.deal: the fire dealt frame by frame, after the frame's scripts): win runs with the fight on and is
+    won (test_the_simulators_version_of_the_check_holds); the same run without the check's top-up of the trucks must
+    be lost -- the fight is real, the top-up is what holds it."""
+    import build
+    import sim
+    m, t, _ = build.resolve(simbench.LEVEL, 'win')
+    t.scripts = [s for s in t.scripts if s.name != 'Test - keep the trucks up']
+    s = sim.Sim(m, t).run(simbench.UNTIL['win'])
+    assert 'combat' in s.used and s.ending_line().startswith('结局：输'), s.ending_line()
+
+
 def test_a_counter_the_simulator_cannot_read_is_skipped_not_passed():
     """A counter listed blind (a rule the simulator lacks) is taken out of the judged expectations and said as SKIP
     (smash's wall health was, before R2 / R3: a reference nobody set reads 0, and '< 100' took it for a hit)."""
