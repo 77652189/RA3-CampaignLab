@@ -26,6 +26,8 @@ Builds:
   aimicmed    D = 90,  StandardMicroManager_MEDIUM     (one fire, then a 2..8 s team delay before the other)
   aimicfar    D = 140, StandardMicroManager            (in range but >= 100: the model never fires)
   aimichurt   D = 140, StandardMicroManager, the warriors at 70 % health from the start (health < 0.8: fires)
+  aimicmade   D = 90,  StandardMicroManager, no warriors placed: the script creates them on s1's team at HAND_AT
+              (the AI awake) -- does a unit made after the wake charge where the handed-over ones did not?
 Facts: wake at.
 """
 from maps import niagara
@@ -39,7 +41,7 @@ WARRIOR, ENGINEER = 'JapanAntiInfantryInfantry', 'AlliedEngineer'
 WEST, APART = 200.0, 100.0
 
 
-def _state(micro):
+def _state(micro, unit=WARRIOR):
     return f'''  <AIStrategicStateDefinition id="CNVStateMicro" MaxTargets="1">
     <Heuristic>
       <ConstantHeuristic/>
@@ -51,14 +53,14 @@ def _state(micro):
                     AllowedLocomotorTypes="LAND AMPHIBIOUS" Priority="STANDARD" AlwaysRecruit="false"
                     MicroManager="{micro}">
         <ObjectFilter Rule="ANY">
-          <IncludeThing>{WARRIOR}</IncludeThing>
+          <IncludeThing>{unit}</IncludeThing>
         </ObjectFilter>
       </TeamTemplate>
     </Tactic>
   </AIStrategicStateDefinition>'''
 
 
-def personality_xml(micro):
+def personality_xml(micro, unit=WARRIOR):
     removed = [f'    <StrategicState id="{k}" xai:joinAction="Remove"/>' for k in ab.INHERITED]
     return '\n'.join([
         '<?xml version="1.0" encoding="utf-8"?>',
@@ -68,7 +70,7 @@ def personality_xml(micro):
         '  <Includes>',
         f'    <Include type="instance" source="DATA:SkirmishAI/Personalities/{ab.BASE}.xml" />',
         '  </Includes>',
-        _state(micro),
+        _state(micro, unit),
         f'  <AIPersonalityDefinition id="{PID}" PersonalityType="{PID}" inheritFrom="{ab.BASE}">',
         *removed,
         '    <StrategicState id="CNVStateMicro" State="CNVStateMicro"/>',
@@ -76,8 +78,8 @@ def personality_xml(micro):
         '</AssetDeclaration>', ''])
 
 
-def mission(name, dist, micro='StandardMicroManager', health=100.0, hand=True):
-    facts = {'wake at': WAKE_AT, 'hand at': HAND_AT if hand else 0.0, 'distance': dist, 'health': health}
+def mission(name, dist, micro='StandardMicroManager', health=100.0, hand=True, made=False):
+    facts = {'wake at': WAKE_AT, 'hand at': HAND_AT if hand or made else 0.0, 'distance': dist, 'health': health}
     m = Mission(name=name, map=niagara, facts=facts)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{PID}'}
     m.assets.append((f'{PID}.xml', personality_xml(micro), f'AIPersonalityDefinition:{PID}'))
@@ -86,12 +88,18 @@ def mission(name, dist, micro='StandardMicroManager', health=100.0, hand=True):
     m.put('AlliedConstructionYard', 'east base', 0, 0, side='s1', name='UNIT - CNV AI Yard', role='ai yard')
     m.put('AlliedConstructionYard', 'base yard', name='UNIT - CNV AI Player Yard', role='player yard')
     m.spawns |= {WARRIOR}
-    start = []
+    start, made_ = [], []
+    m.cnv_named = {}       # part -> name of a unit the mission's scripts create (no cast role); the checks read it
     for k in range(2):
         dy = APART * (k - 0.5)
         w = f'UNIT - CNV AM Warrior {k + 1}'
-        m.put(WARRIOR, 'east base', -WEST, dy, side='p1' if hand else 's1', angle=3.1416, name=w,
-              role=f'warrior {k + 1}')
+        if made:           # created on s1's team by the script at HAND_AT, the AI awake
+            m.waypoint(f'warrior {k + 1} spot', f'CNV AM Warrior Spot {k + 1}', 'east base', -WEST, dy)
+            made_.append(w)
+            m.cnv_named[f'warrior {k + 1}'] = w
+        else:
+            m.put(WARRIOR, 'east base', -WEST, dy, side='p1' if hand else 's1', angle=3.1416, name=w,
+                  role=f'warrior {k + 1}')
         m.put(ENGINEER, 'east base', -WEST - dist, dy, name=f'UNIT - CNV AM Engineer {k + 1}',
               role=f'engineer {k + 1}')
         if health < 100.0:
@@ -100,13 +108,17 @@ def mission(name, dist, micro='StandardMicroManager', health=100.0, hand=True):
     m.waypoint('ai base', base, 'east base')
     m.scripts += [
         Script('CNV AI - Start', [], [('PLAYER_SET_MONEY', s1, 0), ('SET_MILLISECOND_TIMER', 'CNV AI Wake', WAKE_AT),
-                                      *([('SET_MILLISECOND_TIMER', 'CNV AI Hand', HAND_AT)] if hand else []),
+                                      *([('SET_MILLISECOND_TIMER', 'CNV AI Hand', HAND_AT)] if hand or made else []),
                                       *start]),
         Script('CNV AI - Wake', [('TIMER_EXPIRED', 'CNV AI Wake')],
                [('UNIT_AI_TRANSFER_ALL', s1, 1), ('SKIRMISH_AI_MAKE_BASE', s1, base),
                 ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', s1, 20), ('SKIRMISH_AI_USE_REPAIRS', s1, 0),
                 ('SKIRMISH_AI_USE_REBUILD_SYSTEM', s1, 0), ('PLAYER_SET_MONEY', s1, 0)])]
-    if hand:
+    if made:
+        m.scripts.append(Script('CNV AI - Make', [('TIMER_EXPIRED', 'CNV AI Hand')],
+                                [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', w, WARRIOR, m.team('s1'),
+                                  m.mark(f'warrior {k + 1} spot')) for k, w in enumerate(made_)]))
+    elif hand:
         m.scripts.append(Script('CNV AI - Hand', [('TIMER_EXPIRED', 'CNV AI Hand')],
                                 [('NAMED_TRANSFER_OWNERSHIP_PLAYER', r.name, s1) for r in m.roles('warrior')]))
     return m
@@ -116,4 +128,5 @@ MISSION = {'aimicpre': lambda: mission('CampAIMicPre', 90.0, hand=False),
            'aimicnear': lambda: mission('CampAIMicNear', 90.0),
            'aimicmed': lambda: mission('CampAIMicMed', 90.0, 'StandardMicroManager_MEDIUM'),
            'aimicfar': lambda: mission('CampAIMicFar', 140.0),
-           'aimichurt': lambda: mission('CampAIMicHurt', 140.0, health=70.0)}
+           'aimichurt': lambda: mission('CampAIMicHurt', 140.0, health=70.0),
+           'aimicmade': lambda: mission('CampAIMicMade', 90.0, hand=False, made=True)}
