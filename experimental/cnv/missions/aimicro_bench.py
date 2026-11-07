@@ -94,6 +94,7 @@ OPENER = 'CNVMicroOpener'
 OPENER_DEPOSIT = 1000
 BARRACKS_DY, PLANT_DY = -400.0, 400.0     # built: s1's factory south of its yard, its power plant north
 CONSCRIPT = 'SovietAntiInfantryInfantry'
+CONSCRIPT_DY = -80.0   # built: off the tree YP_Tree02 (3776, 2613) one stood on at 2 * BARRACKS_DY (test_maps)
 
 
 def _opener(unit, n=2):
@@ -225,7 +226,8 @@ def built(name, tactic='StaticDefense', foes=None):
     for k in range(2):
         n = f'UNIT - CNV AM Conscript {k + 1}'
         names.append(n)
-        m.put(CONSCRIPT, 'east base', APART * (k - 0.5), 2 * BARRACKS_DY, name=n, role=f'conscript {k + 1}')
+        m.put(CONSCRIPT, 'east base', APART * (k - 0.5), 2 * BARRACKS_DY + CONSCRIPT_DY, name=n,
+              role=f'conscript {k + 1}')
     m.scripts.append(Script('CNV AM - Go', [('COUNTER', 'CNV_AI_Owned', 3, 2)],
                             m.order('attack_move', names, m.mark('factory spot'), 'p1')))
     return m
