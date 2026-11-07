@@ -13,7 +13,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'campaign'))
 import labpaths  # noqa: E402
 
-CACHE = os.path.join(labpaths.WORK, 'sim_units_v3.json')     # v2: defines resolved (2026-10-29); v3: + ShroudClearingHeight
+CACHE = os.path.join(labpaths.WORK, 'sim_units_v4.json')     # v2: defines resolved (2026-10-29); v3: + ShroudClearingHeight;
+                                                            # v4: + radius (R8)
 CLEAR_HEIGHT = 50.0             # ShroudClearingHeight when a unit does not write one (docs/engine/vision.md: retail units
                                 # nearly all leave it out)
 INDEX = os.path.join(labpaths.WORK, 'sagexml_gameobjects.json')
@@ -82,7 +83,25 @@ def read_xml(text, kindof='', surfaces=None):
         kinds = set(k.group(1).split()) if k else set()
     return dict(speed=speed, surface=surface_of(surf, kinds), vision=number(text, 'VisionRange'),
                 shroud=number(text, 'ShroudClearingRange'), kinds=sorted(kinds),
-                clear_height=number(text, 'ShroudClearingHeight'))
+                clear_height=number(text, 'ShroudClearingHeight'), radius=radius(text))
+
+
+def radius(text):
+    """R8: the bounding circle radius of a unit's Geometry (its first Shape): a BOX's corner, sqrt(major^2 + minor^2);
+    a CYLINDER's or SPHERE's MajorRadius (Generals GeometryInfo::calcBoundingStuff). The weapon reach is measured
+    between these circles (sim.Sim.in_range). None when the XML has no Shape."""
+    g = re.search(r'<Geometry\b.*?</Geometry>', text, re.S)
+    m = re.search(r'<Shape\b(.*?)/?>', g.group(0) if g else '', re.S)
+    if not m:
+        return None
+    a = m.group(1)
+    kind = re.search(r'\bType="([^"]+)"', a)
+    major, minor = (re.search(rf'\b{n}="([\d.]+)"', a) for n in ('MajorRadius', 'MinorRadius'))
+    major = float(major.group(1)) if major else 0.0
+    if kind and kind.group(1).upper() == 'BOX':
+        minor = float(minor.group(1)) if minor else 0.0
+        return (major * major + minor * minor) ** 0.5
+    return major
 
 
 def surface_of(surf, kinds):
@@ -412,7 +431,7 @@ def speed_scale(xml, upgrades):
 
 
 def stats(template, own=None):
-    """{speed, surface, vision, shroud, kinds, guessed} for a template; own: {id: xml text} of the mission's units."""
+    """{speed, surface, vision, shroud, kinds, radius, guessed} for a template; own: {id: xml text} of the mission's units."""
     if own and template in own:
         e = read_xml(own[template], surfaces=_surfaces())
     else:
@@ -431,6 +450,8 @@ def stats(template, own=None):
     e.setdefault('shroud', None)
     if e.get('clear_height') is None:
         e['clear_height'] = CLEAR_HEIGHT
+    if e.get('radius') is None:
+        e['radius'] = 0.0               # no Shape: a point (centre to centre)
     e['kinds'] = sorted(kinds)
     e['guessed'] = guessed if e.get('kinds') or own else ['all']
     return e

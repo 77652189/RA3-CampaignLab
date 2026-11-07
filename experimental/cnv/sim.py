@@ -148,11 +148,17 @@ ALIGN = {
     'combat': '未对齐: the fight model -- each armed unit fires each weapon (its PRIMARY one a slot) at the nearest '
               'enemy in that weapon\'s range it can hit, damage per second (one clip, then the reload) x the '
               'target\'s armour percent (a type its armour does not name: 100 %); an attack-mover holds while it '
-              'fights, a plain move goes on; nobody chases, no veterancy, no splash, no garrisons, no abilities; '
+              'fights, a plain move goes on; the range is measured between the two bounding circles (R8, bench '
+              '2026-11-07 engine_acquire: a Guardian 150 fires at a tank 180 off, centre to centre); '
+              'no veterancy, no splash, no garrisons, no abilities; '
               'health, damage, range, rate, armour from SageXML (simunits.fight); a script\'s 摧毁 / 自动打掉 '
               'overrides it, 不打 turns it off -- to be tuned on the bench at the end. One rule measured: nobody '
               'fires at our ice walls unless ordered to (bench 2026-10-28, a4 hold: four tank busters let out '
               'behind plaza 2\'s ice left the 1500-health wall whole its 30 s; the fight model had it down in 7 s)',
+    'acquire': 'an idle unit goes after the nearest enemy within its VisionRange plus the enemy\'s radius, fires, and '
+               'walks back to where it stood (bench 2026-11-07 engine_acquire: a Guardian, vision 200, goes at 200 '
+               'and 220, not at 240; guarding or attack-moving past at 260 / 400: nothing); the exact limit, and how '
+               'near it stops (beyond 11.6 inside its reach at 200), are not read',
     'high ground': '未对齐: the discovery rule is the bench\'s (docs/engine/vision.md): a unit does not discover a '
                    'cell its own ShroudClearingHeight (default 50) or more above the one it stands on, cell by cell, '
                    'no line of sight (aircraft see anyhow); 高地不挡 turns it off. Not aligned: nobody fires at what '
@@ -291,6 +297,11 @@ class Body:
     hp: float = 100.0
     armor: dict = dataclasses.field(default_factory=dict)      # damage type -> percent taken (simunits.fight)
     weapons: list = dataclasses.field(default_factory=list)    # [{range, dps, type, anti}]
+    radius: float = 0.0                                         # R8: Geometry's bounding circle (simunits.radius)
+    sight: float = 0.0                                          # R8: its VisionRange alone (vision: with the shroud)
+    chase: object = None                                        # R8 idle_chase: the enemy it went after by itself,
+    home: tuple = None                                          # where it stood then (it walks back),
+    auto_to: tuple = None                                       # and the way's end that rule gave it
     engaged: bool = False                                       # an attack-mover with an enemy in range: holds
     alive: bool = True
     deleted: bool = False
@@ -668,6 +679,8 @@ class Sim:
                  max(st['vision'] or 0.0, st['shroud'] or 0.0), frozenset(st['kinds']), made_by=by, made_at=at)
         b.guessed = st['guessed']
         b.clear_height = st['clear_height']
+        b.radius = st.get('radius') or 0.0
+        b.sight = st['vision'] or 0.0
         f = simunits.fight(template, self.own)
         if f['hp']:
             b.max_hp = b.hp = f['hp']
@@ -926,10 +939,20 @@ class Sim:
         self.last_change = self.t
 
     def reach(self, b, target):
-        """R3: how near an attacker goes to its target: the longest range of its weapons that can hit it, less
-        ATTACK_SLACK (0: it has none -- it goes to the target itself)."""
+        """R3: how near (centre to centre) an attacker goes to its target: the longest range of its weapons that can
+        hit it, plus both bounding radii (R8, `in_range`), less ATTACK_SLACK (0: it has none -- it goes to the target
+        itself)."""
         r = [w['range'] for w in b.weapons if self.can_hit(w, target)]
-        return max(max(r) - ATTACK_SLACK, 1.0) if r else 0.0
+        return max(max(r) + b.radius + target.radius - ATTACK_SLACK, 1.0) if r else 0.0
+
+    @staticmethod
+    def in_range(a, t, w, d=None):
+        """R8: a weapon reaches when the 2D gap between the two bounding circles is within its range (Generals
+        Weapon::isWithinAttackRange, FROM_BOUNDINGSPHERE_2D: the centre distance less both radii); `d` the centre
+        distance when known. Bench 2026-11-07 engine_acquire: a Guardian (150, radius 23.3) fires at one 180 off."""
+        if d is None:
+            d = math.hypot(t.x - a.x, t.y - a.y)
+        return d - a.radius - t.radius <= w['range']
 
     def send(self, b, target, by='', reach=0.0):
         if b.guessed:                               # its speed matters now: say when it is only a guess
@@ -1535,12 +1558,13 @@ class Sim:
         """One tick of the fight model (未对齐, docs: the 'combat' align entry): every armed body fires each of its
         weapons at the nearest enemy in that weapon's range it can hit (its NAMED_ATTACK target first, when in
         range); the damage rate = the weapon's damage per second x the target's armour percent for its damage type;
-        an attack-mover with an enemy in range holds while it fights; a plain move goes on firing; nobody chases.
-        The aim is taken once a tick; the damage is dealt frame by frame (`deal`, R6)."""
+        an attack-mover with an enemy in range holds while it fights; a plain move goes on firing; an idle unit goes
+        after an enemy within its sight and comes back (`idle_chase`, R8). The reach is measured between the bounding
+        circles (`in_range`, R8). The aim is taken once a tick; the damage is dealt frame by frame (`deal`, R6)."""
         self.seen = {}
         self.firing = []
         live = [b for b in self.living() if not b.scenery]
-        armed = [b for b in live if b.weapons]
+        armed = [b for b in live if b.weapons and 'NO_ATTACK' not in b.status]    # NO_ATTACK: holds its fire
         targets = [b for b in live if 'UNATTACKABLE' not in b.status]
         if not armed or not targets:
             return
@@ -1551,21 +1575,26 @@ class Sim:
             a.engaged = False
             foes = [k for k, t in enumerate(targets) if t is not a and self.enemy(a.owner, t.owner)]
             if not foes:
+                self.idle_chase(a, False, [])
                 continue
             idx = np.array(foes)
             d = np.hypot(tx[idx] - a.x, ty[idx] - a.y)
+            pad = max(targets[k].radius for k in foes)          # the biggest foe's radius: the scan's cut-off (R8)
+            fired = False
             for w in a.weapons:
                 order = np.argsort(d)
                 pick = None
                 if isinstance(a.goal, Body) and a.goal.alive and id(a.goal) in aimable and \
-                        math.hypot(a.goal.x - a.x, a.goal.y - a.y) <= w['range'] and self.can_hit(w, a.goal) and \
+                        self.in_range(a, a.goal, w) and self.can_hit(w, a.goal) and \
                         self.side_sees(a.owner, a.goal):
                     pick = a.goal
                 else:
                     for j in order:
-                        if d[j] > w['range']:
+                        if d[j] - a.radius - pad > w['range']:      # sorted by centre: nobody nearer after this
                             break
                         t = targets[idx[j]]
+                        if not self.in_range(a, t, w, d[j]):
+                            continue
                         if t.template in self.unshot:       # our ice: only when ordered (the bench, a4 hold)
                             continue
                         if self.can_hit(w, t) and self.side_sees(a.owner, t):
@@ -1576,12 +1605,61 @@ class Sim:
                 if a.vision and w['range'] > a.vision:
                     a.fired_at = self.t                 # a bombarder firing shows itself
                 self.firing.append((pick, w['dps'] * pick.armor.get(w['type'], simunits.ARMOR_DEFAULT) / 100.0, a))
+                fired = True
                 if a.mode == 'attack':
                     a.engaged = True
+            self.idle_chase(a, fired, [(d[j], targets[idx[j]]) for j in np.argsort(d)])
         if self.firing:
             self.used.add('combat')
         if self.eng is None:                    # no frames: the tick's damage at once
             self.deal(DT)
+
+    def idle_chase(self, a, fired, near):
+        """R8, bench 2026-11-07 engine_acquire (a Guardian, weapon 150, VisionRange 200, both tanks radius 23.3): an
+        idle unit fires where it stands at 180 (centre to centre); at 200 and 220 it walks up, fires, and once its
+        target is done walks back to where it stood (within 15); at 240 and beyond, nothing -- likewise when guarding
+        (260) or attack-moving past (260 / 400). Read as: an idle unit takes the nearest enemy it can hit and its side
+        sees, when the centre distance less the target's radius is within its own VisionRange (220 < limit < 240:
+        200 + 23.3; INFERRED, the scan itself not read), walks to `reach` of it, and goes home when it has none left.
+        Idle = not building, no goal, no way of its own (a way this rule gave it does not count); any order since
+        (another way) drops the chase and the home. `near`: [(centre distance, enemy)] nearest first."""
+        mine = a.path and a.dest is not None and a.dest == a.auto_to
+        if a.path and not mine:                 # an order of its own since: not idle, nothing of ours to keep
+            a.chase = a.home = a.auto_to = None
+            return
+        if a.goal is not None or a.building or a.speed <= 0 or 'IMMOBILE' in a.status:
+            return
+        if a.home is not None and a.chase is None and not a.path:
+            a.home = a.auto_to = None           # back home
+        if fired:
+            return
+        sight = a.sight
+        c = a.chase
+        if c is not None and c.alive and self.side_sees(a.owner, c) and \
+                math.hypot(c.x - a.x, c.y - a.y) - c.radius <= sight:
+            if not a.path:                      # got there and it is still out of reach: after it again
+                self.send(a, (c.x, c.y), reach=self.reach(a, c))
+                a.auto_to = a.dest
+            return
+        a.chase = None
+        for dist, t in near:
+            if dist - t.radius > sight:
+                break                           # sorted by centre; a radius over 0 only cuts more
+            if t.template in self.unshot or not self.side_sees(a.owner, t):
+                continue
+            if not any(self.can_hit(w, t) for w in a.weapons):
+                continue
+            if a.home is None:
+                a.home = (a.x, a.y)
+            a.chase = t
+            self.used.add('acquire')
+            self.send(a, (t.x, t.y), reach=self.reach(a, t))
+            a.auto_to = a.dest
+            return
+        if a.home is not None and (a.path or math.hypot(a.home[0] - a.x, a.home[1] - a.y) > 1.0):
+            if a.dest != a.home:
+                self.send(a, a.home)
+                a.auto_to = a.dest
 
     def deal(self, dt):
         """R6: `dt` seconds of the aimed fire (`fight`) from shooters and at targets still alive. With the engine model

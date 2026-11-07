@@ -14,7 +14,7 @@ from parts import Mission
 
 TANK = 'AlliedAntiVehicleVehicleTech1'
 S, E = (0.0, -400.0), (600.0, -400.0)
-VARIANTS = ('idle180', 'idle260', 'idle400', 'guard260', 'guard400', 'am260', 'am400')
+VARIANTS = ('idle180', 'idle260', 'idle400', 'guard260', 'guard400', 'am260', 'am400', 'idle200', 'idle220', 'idle240')
 
 
 def target(variant):

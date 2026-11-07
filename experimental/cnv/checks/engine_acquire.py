@@ -9,17 +9,28 @@ Counters: 起点 (the attacker within 60 of S), 原地 (within 15 of S; idle / g
 RESULTS (bench 2026-11-07; the s1 side has no reveal: it sees with its own vision 200):
   idle180   起点 1 原地 1 all along; 坦克血 100 -> 86 s2, -14 per 2 s, 3 from s14: it fired WITHOUT moving (within 15
             of S) at a tank 180 off, centre to centre -- the reach is more than the weapon's 150 (target / own
-            radius counted?). The simulator (centre to centre 150) does not fire here: the one mismatch.
+            radius counted?).
+  idle200   起点 1; 原地 0 from s1 to s15 (it MOVED toward the tank: 近敌 1 all along), 原地 1 again from s16; 坦克血
+            100 -> 86 s2, -14 per 2 s, 3 from s14 (it stops at 3: the same count as idle180).
+  idle220   起点 1; 原地 0 s1-s15 (moved), 近敌 1 until s15 then 0 with 原地 1 from s16 (back at S, 220 off); 坦克血
+            100 -> 86 s2, -14 per 2 s, 17 at s12, 3 from s13.  So at 220 it still acquires, walks in, fires and returns.
+  idle240   起点 1, 原地 1, 近敌 0, 坦克血 100 all 26 s: no move, no shot.  Acquire reach: between 220 and 240
+            (vision 200 + the tank's own radius?); idle180 fires in place, idle200 / 220 walk in first.
   idle260   起点 1, 坦克血 100 all 26 s: no move, no shot (beyond its vision 200).  Simulator: the same.
   guard260  (TEAM_GUARD the half-100 square round S) 起点 1, 坦克血 100: no move, no shot.  Simulator: the same.
   am260     walked straight to E (终点 1 from s7), 坦克血 100: no turn aside for a tank 260 beside the path.  Same.
   am400     the same as am260.  Simulator: the same.
   (idle400, guard400 not run: nothing is expected beyond 260.)
-  Reading: no chase past the unit's own vision in any mode; the only rule to fix is the weapon reach (>= 165 for 150).
+  Reading (both tanks a 20 x 12 BOX: bounding circle 23.3): the weapon reaches when the centre distance less both
+  radii is within its range (Generals FROM_BOUNDINGSPHERE_2D: 196.6 here -- 180 in place, 200 a step in); an idle
+  unit goes after an enemy within its VisionRange + the enemy's radius (223.3: 220 yes, 240 no), fires, and walks
+  back to its spot; guarding / attack-moving at 260+ nothing. The simulator (sim.Sim.in_range / idle_chase, R8)
+  holds all ten (tests/test_simbench.py 'R8'); its fire is steadier (no clips) and kills the tank (the bench's
+  stays at 3: not explained), so it walks home at s18 against the bench's s16.
 """
 from parts import Script, Test, counted, square
 
-VARIANTS = ('idle180', 'idle260', 'idle400', 'guard260', 'guard400', 'am260', 'am400')
+VARIANTS = ('idle180', 'idle260', 'idle400', 'guard260', 'guard400', 'am260', 'am400', 'idle200', 'idle220', 'idle240')
 ATK, TANK = 'UNIT - CNV Aq Atk', 'UNIT - CNV Aq Tank'
 RUN = 25.0
 
