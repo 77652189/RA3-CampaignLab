@@ -70,6 +70,9 @@ ICE_GOALS = {
 # proxy decides when and which (player._blocks); nothing here says which way to block.
 CHOKES = {
     'a4': {'countdown': 'CNV A4 Horn', 'power': ('engineer', 'freeze'),
+           # the road each way's threat walks onto (a site on it): a way's JUNCTION is (its block site's x, the road's y),
+           # where its wave meets the convoy's road -- where the guard waits for it (SimWorld.junctions)
+           'road': 'convoy start',
            'ways': (('后巷', 'lane foot', 'lane foot'), ('一号', 'inside 1', 'plaza 1'), ('二号', 'inside 2', 'plaza 2'),
                     ('北坡口', 'north mouth', 'north mouth'), ('三号广场', 'inside 3', 'plaza 3'),
                     ('东街口', 'east mouth', 'east mouth'))},
@@ -276,6 +279,18 @@ class SimWorld:
                 continue
             blocked = any(math.hypot(x - p[0], y - p[1]) <= BLOCKED_R for x, y in walls)
             out.append(self.pw.Choke(way, tuple(p), tuple(q), at, power or '', by, blocked))
+        return out
+
+    def junctions(self):
+        """{way: (x, y)}: where each of the level's ways meets the convoy's road (CHOKES 'road'), the spot a guard
+        stands to meet the wave that comes out of it -- not the ice's mouth (up the street) nor the convoy."""
+        spec = CHOKES.get(self.level) or {}
+        road = self.sim.point(spec.get('road', ''))
+        out = {}
+        for way, block, _source in spec.get('ways', ()):
+            p = self.sim.point(block)
+            if road and p:
+                out[way] = (float(p[0]), float(road[1]))
         return out
 
     # ---- what the player does

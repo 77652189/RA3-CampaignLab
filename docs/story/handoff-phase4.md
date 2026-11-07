@@ -355,7 +355,7 @@
 - **工具**：`experimental/cnv/simbench.py`（新，没动 `sim.py`）：`python -I -X utf8 experimental/cnv/simbench.py [检查名]`，把检查的任务放进模拟器、玩家的冰墙用剧本 `造`、读数按开场过场长度（80 秒）前移，再用检查自己的期望判；读不了的读数写 SKIP。`tests/test_simbench.py` 守着（6 项过 + 3 个"没墙必须红"的变异 + SKIP 不算 PASS）。
 - **G15**：`platmap.Block.high` + `platmap.high_lint`（并进 `block_lint`，所以 `cnv_preview` / `build.py` 都会跑）：声明了 Block 的地图里，`Shape.tier≥2` 要被带 `high` 或 `远景` 的 Block 盖住（至多 10% 例外）。守卫 `test_architecture.py::test_g15_*` 带变异（去掉北高原的 `high` 变红、改成远景不红、没盖住的高地变红、没有 Block 的图不管）；`tests/test_platmap_terrain.py` 一条单元测试。sapporo 三块高地写了 `high`（来自 `docs/design/maps/a4.md` 逐块表的用途栏）。`experimental/mappage/sketch2map.py` 跟着带 `high`（否则地图页的往返对比红）。
 - **全量测试**（`work/logs/full_tests.log`，改动前的一次）：559 过、3 红：`test_mappage_sketch[sapporo]`（G15 引起的，已修）、`test_platmap_terrain` 的夹具（高地没盖，已修）、`test_maps::test_nothing_a_build_places_stands_on_scenery`——**不是关卡线的**：引擎线的 `aidefense_bench`（`checks/engine_aidefense.py`）里 waypoint `CNV AI Far`（2662, 3230）落在 sapporo 的两棵树 `MR_Tree06` 上，要引擎线挪点。上轮的 8 红（mappage_sketch 6 条、`test_cnv_parts`）这次都过了，我没有改它们，什么时候、被谁修好的没查。
-- **测试台对照已做（11-07，第二十九个会话）**：7 项里 6 项 PASS，读数和模拟器对得上；**`smash` 第一次 FAIL，已修好**：真因是 `horn.py` 的 `smashes` 每帧重下攻击令，鬼王要走一段才进炮程时被卡在桥上（不是没路）；改成每面墙只下一次令（`Hit` 旗），测试台 PASS，detour / queue / melt 复跑 PASS。详见 [`sim-vs-bench-a4.md`](sim-vs-bench-a4.md) 末节；R7（运输船速度）已记进规则清单。
+- **测试台对照已做（11-07，第二十九个会话）**：7 项里 6 项 PASS，读数和模拟器对得上；**`smash` 第一次 FAIL，改后 PASS**：`horn.py` 的 `smashes` 改成每面墙只下一次令（`Hit` 旗），测试台 PASS。**原来写的"真因是每帧重下令"11-07 被 A 线的测试台推翻**（`engine_reorder` 探针：每帧重下令单位照走），真因没查到（线索：目标是 SET_REF 引用；水边出生点连移动令都不动，上岸点在水边），G16 守卫已撤，detour / queue / melt 复跑 PASS。详见 [`sim-vs-bench-a4.md`](sim-vs-bench-a4.md) 末节；R7（运输船速度）已记进规则清单。
 - **还欠**：房子行挡不挡步兵；A4 以外各图的 G15（只有声明了 Block 的图被管，目前 4 张，都干净）。
 
 ### 第三十个会话（11-07，总控令：代理玩家两种打法都输，查是不是关卡的事）：A4 数据没改，结论和要别人做的事写在 sim-vs-bench-a4.md 末节
@@ -366,3 +366,8 @@
 - **没做**：把 `绕路` 表加倍试过，没有数据支持，已放回。手写"题卡打法"的玩家没打通整段（第三声丢车），不能当"打得赢"的证据。
 - **工具**：`work/re/a4_trace.py`（逐秒出兵 / 车血）、`work/re/a4_intended_play.py`（手写打法），不进 git。`--compare` 一次约 25 秒。
 - **下一步**：等 A 补 R8 + B 改打法后重跑 `simproxy.py a4 --compare`；再看是否要把脚本打法固化成测试（要先有一个能整段打通的版本）。
+
+#### 第三十个会话补记（11-07 早，总控转告两件事）
+
+- **G16 撤了，smash 的"真因"改正**：A 线 `engine_reorder` 探针（公开 5d5e4ef）量到每帧重下同一道令单位照走，"每帧重下令会卡"不成立；`contract.ref_orders_once` 和两条 g16 测试删了，`sim-vs-bench-a4.md` 相应几处改成"已撤回"。`horn.py` 的"每面墙只下一次令"保留（smash 测试台 PASS，无害），但它为什么有效没弄清。**smash 当时不动的真因没查**，线索：① 目标是 `SET_REF…` 引用（探针打的是有名字的墙）；② 水边出生点连移动令都不动，鬼王上岸点 `CNV A4 Shore` 在水边。下一步要查就上测试台：用一个有名字的墙 + 上岸点离水边远一点，各试一次。
+- **给 B 的接点**：`simproxy.CHOKES['a4']['road'] = 'convoy start'`（车队路的 y），`SimWorld.junctions()` 返回 `{路名: (x, y)}`，x 取各路 `block` 点的 x、y 取路的 y（后巷 1200、一号 2015、二号 2830、北坡口 3050、三号广场 3370、东街口 3575，y 都是 2500）。代理玩家预站位站这里，别站冰的位置（在街里）也别贴车。没改 `ra3model`，所以 `Observation.chokes` 里的 `Choke` 还没带它，B 读 `world.junctions()` 即可。测试 `test_a4_every_way_has_a_junction_on_the_convoys_road`。

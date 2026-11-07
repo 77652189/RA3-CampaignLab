@@ -150,6 +150,17 @@ def test_the_ice_goes_where_the_player_put_it(lib):
     assert venue.test(tr) == f and last.test(tr) is None
 
 
+def test_a4_every_way_has_a_junction_on_the_convoys_road(lib):
+    """Where a guard waits for a wave: the way's x, the convoy road's y (CHOKES 'road'), one per way, each on the road."""
+    w = simproxy.SimWorld('a4', lib=lib)
+    j = w.junctions()
+    ways = [c.name for c in w.observe().chokes]
+    assert set(j) == set(ways) and len(ways) == 6
+    road_y = w.sim.point('convoy start')[1]
+    assert all(y == road_y for _x, y in j.values())
+    assert j['一号'] == (w.sim.point('inside 1')[0], road_y) and j['二号'][0] == w.sim.point('inside 2')[0]
+
+
 def test_a4_the_proxy_ices_the_streets_on_its_own_and_compares(a4_run, lib):
     """The level gives only what a human sees (simproxy.CHOKES: the horn's countdown, the ways, the ice power); the
     proxy decides when and which (player._blocks). The default play ices the venue's streets before a horn and the

@@ -590,8 +590,9 @@ class Horn(Device):
                 out.append(Script(f'CNV {tag} - King {n}-{j} smashes',
                                   [('FLAG', landed, 1), ('FLAG', picked, 1), ('FLAG', hit, 0), ('NAMED_NOT_DESTROYED', ref),
                                    ('NAMED_NOT_DESTROYED', k)],
-                                  # told ONCE per wall: told again every frame the King stood where it was when the
-                                  # wall came up, out of its range (bench 2026-11-07, K7/I8 map)
+                                  # told once per wall (smash PASSed on the bench after this; but A's engine_reorder
+                                  # probe shows re-telling every frame does not stop a unit, so why the King stood
+                                  # there before is open: a SET_REF target? the water's-edge landing?)
                                   ctx.order('attack', [k], ref, 's1') + [('SET_FLAG', self.smashing, 1),
                                                                          ('SET_FLAG', hit, 1)], once=False))
                 out += [Script(f'CNV {tag} - King {n}-{j} hunts at {t + 1}',
