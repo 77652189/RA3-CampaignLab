@@ -81,7 +81,39 @@ def mission(name, made, tactic='StaticDefense', xfer=False):
     return m
 
 
-MISSION = {'aitogglehand': lambda: mission('CampAITogHand', made=False),
+# bench 2026-11-07 first run (attack 30 / stop 45): the Allied barracks gave the second Peacekeeper only at ~s51
+BUILT_ATTACK_AT, BUILT_STOP_AT = 70.0, 85.0
+
+
+def built(name):
+    """aitogglebuilt (round 19): the AI builds the two Peacekeepers itself (aimicro_bench.py built_base: an opening
+    move, an Allied barracks 400 south of the yard). The units are unnamed: the check counts by player. Once s1 owns
+    two, the barracks is deleted (nothing but the Peacekeepers for the gunship to hit near there); at BUILT_ATTACK_AT
+    the gunship is made 300 south of the barracks spot and attack-moves to it; deleted at BUILT_STOP_AT."""
+    facts = {'wake at': WAKE_AT, 'give at': 0.0, 'attack at': BUILT_ATTACK_AT, 'stop at': BUILT_STOP_AT, 'hunt': 0.0,
+             'built': 1.0}
+    m = Mission(name=name, map=niagara, facts=facts)
+    m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{am.PID}'}
+    m.assets.append((f'{am.PID}.xml', am.personality_xml('StandardMicroManager', PK, built=True),
+                     f'AIPersonalityDefinition:{am.PID}'))
+    m.cnv_units = (PK,)
+    m.spawns |= {PK, GUNSHIP}
+    m.cnv_named = {'gunship': GUNSHIP_NAME}
+    am.built_base(m, 'AlliedBarracks')
+    m.waypoint('gunship spot', 'CNV AT Gunship Spot', 'east base', 0, am.BARRACKS_DY - 300)
+    m.scripts += [
+        Script('CNV AT - Timers', [], [('SET_MILLISECOND_TIMER', 'CNV AT Attack', BUILT_ATTACK_AT),
+                                       ('SET_MILLISECOND_TIMER', 'CNV AT Stop', BUILT_STOP_AT)]),
+        Script('CNV AT - Clear', [('COUNTER', 'CNV_AI_Owned', 3, 2)], [('NAMED_DELETE', 'UNIT - CNV AI Factory')]),
+        Script('CNV AT - Attack', [('TIMER_EXPIRED', 'CNV AT Attack')],
+               [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', GUNSHIP_NAME, GUNSHIP, m.team('p1'), m.mark('gunship spot')),
+                *m.order('attack_move', [GUNSHIP_NAME], m.mark('factory spot'), 'p1')]),
+        Script('CNV AT - Stop', [('TIMER_EXPIRED', 'CNV AT Stop')], [('NAMED_DELETE', GUNSHIP_NAME)])]
+    return m
+
+
+MISSION = {'aitogglebuilt': lambda: built('CampAITogBuilt'),
+           'aitogglehand':lambda: mission('CampAITogHand', made=False),
            'aitogglemade': lambda: mission('CampAITogMade', made=True),
            'aitogglehunt': lambda: mission('CampAITogHunt', made=True, tactic='Hunt'),
            'aitogglexfer': lambda: mission('CampAITogXfer', made=True, xfer=True)}

@@ -32,6 +32,13 @@ Bench 2026-11-07 (Sonnet, one run each, no dropout):
     units the script creates on s1's team after the wake are not recruited; the micro manager never had them.
   aitogglexfer r FAIL (Sonnet, round 18): 盾1开 盾1关 盾2 all 0 through 帧数 489 -- UNIT_AI_TRANSFER_ALL again right
     after the make did not help either (see engine_aimicro: next, the AI produces the units itself).
+  aitogglebuilt r (Sonnet, round 19; counters 帧数 造出 盾 曾盾): first run (attack 30 s) the Allied barracks gave the
+    second Peacekeeper only at ~s51, after the attack -- moved to attack 70 / stop 85. Rerun: 造出 2 from s21, the
+    gunship's attack 70-85 s: 盾 / 曾盾 0 throughout; the control (named Peacekeeper made on s1's team 5 s after the
+    stop, toggle pressed 1 s later): 盾 1, 曾盾 8 at s91 -- the by-player count reads a shield. NOT conclusive: 造出 stayed
+    2 through 15 s of a Twinblade "attacking" them, so it most likely never shot at them (attack-move to the deleted
+    barracks' spot; where the AI put them is not known). A fair try needs the gunship ordered at them (they are
+    unnamed: a team hunt, or a player-area attack) -- the warriors' aimicbuilt reading is the firm one.
 """
 from parts import NOT, Script, Test, counted, square, status
 
@@ -88,5 +95,48 @@ def probe(m, press=False):
     return t
 
 
-CHECKS = {'aitogglehand': {'r': probe}, 'aitogglemade': {'r': probe, 'c': lambda m: probe(m, press=True)},
+CONTROL = 'UNIT - CNV AT Control'
+CTRL_AFTER = 5.0   # built: seconds after the stop at which the check makes a named Peacekeeper on s1's team
+
+
+def probe_built(m):
+    """aitogglebuilt (round 19): the AI's own Peacekeepers are unnamed, so count by player. Counters from the attack:
+      帧数  frames since the attack order
+      造出  Peacekeepers s1 owns (the opener built them: >= 2 before the attack)
+      盾    s1's objects with the shield up now (GENERIC_TOGGLE_STATE)
+      曾盾  frames since s1 first had one up -> first raised at frame 帧数 - 曾盾 (> 帧数: before the attack)
+    The model raises one within the attack and lowers it after the stop (盾 back to 0). Control: CTRL_AFTER after the
+    stop the check makes a named Peacekeeper on s1's team at the control spot and presses its toggle one second later
+    -- 盾 must read it."""
+    t = Test()
+    p1, s1 = m.player('p1'), m.player('s1')
+    attack, stop = m.facts['attack at'], m.facts['stop at']
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', p1)]))
+    t.counters.append(('CNV_AT_Frames', '帧数'))
+    t.scripts.append(Script('Test - frames', [('TIMER_EXPIRED', 'CNV AT Attack')],
+                            [('INCREMENT_COUNTER', 1, 'CNV_AT_Frames')], once=False))
+    counted('CNV_AT_Owned', '造出', t, template=m.cnv_units[0], player=s1)
+    counted('CNV_AT_Up', '盾', t, status=status(SHIELD), player=s1)
+    t.counters.append(('CNV_AT_Ever', '曾盾'))
+    t.scripts += [
+        Script('Test - up seen any', [('PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS', s1, 3, 1, status(SHIELD))],
+               [('SET_FLAG', 'Test Up Any', 1)]),
+        Script('Test - up count any', [('FLAG', 'Test Up Any', 1)], [('INCREMENT_COUNTER', 1, 'CNV_AT_Ever')],
+               once=False)]
+    ctrl = int((stop - attack + CTRL_AFTER) * 15)
+    t.scripts += [
+        Script('Test - control make', [('COUNTER', 'CNV_AT_Frames', 2, ctrl)],
+               [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', CONTROL, m.cnv_units[0], m.team('s1'), m.mark('control spot'))]),
+        Script('Test - control press', [('COUNTER', 'CNV_AT_Frames', 2, ctrl + 15)],
+               [('NAMED_USE_COMMANDBUTTON_ABILITY', CONTROL, COMMAND)])]
+    t.expect += [('帧数', attack + LAG, 'ever>=', 1), ('造出', attack, 'ever>=', 2, stop),
+                 ('曾盾', attack + LAG, 'ever>=', 1, stop), ('盾', stop + LAG, '==', 0, stop + CTRL_AFTER),
+                 ('盾', stop + CTRL_AFTER + 2, 'ever>=', 1)]
+    t.bench = [('bench_watch', dict(seconds=stop + CTRL_AFTER + AFTER, every=10, sheet=False,
+                                    lines=len(t.counters)))]
+    return t
+
+
+CHECKS = {'aitogglebuilt': {'r': probe_built},
+          'aitogglehand': {'r': probe}, 'aitogglemade': {'r': probe, 'c': lambda m: probe(m, press=True)},
           'aitogglehunt': {'r': probe}, 'aitogglexfer': {'r': probe}}

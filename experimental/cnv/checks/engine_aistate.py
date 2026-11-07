@@ -50,6 +50,11 @@ Bench 2026-11-07 aistatefar a (CampAIFarA, Sonnet, one run): both states always 
   tanks, not for the infantry). So 2600 does not stop a team (A round 67's read holds for the tanks). Why the
   infantry stayed: INFERRED, not tested -- one structure only, and a target one state holds is not given to another
   (aistateconst had two: the yard and the power plant).
+Bench 2026-11-07 aistatefar2 a (CampAIFar2A, Sonnet, one run; B round 19): aistatefar plus the player's power plant
+  on its own base (base power, ~2400 away) -- 步兵在家 and 坦克在家 4 -> 0 @ s14, both teams out (FAIL on 坦克在家 == 4
+  at s60, the aistate expectation; the run ended at ~s84 so no s120 reading). So one target per state: the data's
+  ClosestStructureHeuristic has RequireUniqueTarget="true" and skips a structure another state holds (RA3-EngineModel
+  targets.pick claims; tests/test_ai_bench.py test_states_far2_const_both_go).
 """
 from parts import Script, Test, counted, square
 
@@ -137,6 +142,6 @@ def hunt(m):
     return t
 
 
-CHECKS = {'aistate': {'a': a}, 'aistatenear': {'a': a}, 'aistateconst': {'a': a}, 'aistatefar': {'a': a}, 'aistateplain': {'a': a},
+CHECKS = {'aistate': {'a': a}, 'aistatenear': {'a': a}, 'aistateconst': {'a': a}, 'aistatefar': {'a': a}, 'aistatefar2': {'a': a},'aistateplain': {'a': a},
           'aistateslash': {'a': a}, 'aistateoff': {'off': off}, 'aistateoffhome': {'off': off},
           'aistateoff1': {'off': off}, 'aistateoffh': {'off': off}, 'aihunt': {'hunt': hunt}, 'aihunt2': {'hunt': hunt}}

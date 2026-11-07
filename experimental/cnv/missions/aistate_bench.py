@@ -102,13 +102,15 @@ def personality_xml(gate='flag', flags=(FLAG_INF, FLAG_TANK), end='RAMPAGE', hun
 
 
 def mission(name='CampAIState', near=False, gate='flag', flags=(FLAG_INF, FLAG_TANK), scope=None, off_at=None,
-            end='RAMPAGE', hunt=False, copies=None):
+            end='RAMPAGE', hunt=False, copies=None, far2=False):
     """near: the player also has a power plant 300 west of the east gate, ~750 from the AI's units (the yard on the
     west bank is ~2600 away; A round 67 read: ClosestStructureHeuristic measures no distance, SearchRange is only the
     tech heuristic's -- aistatefar tests it). gate 'const': both states
     always on (ConstantHeuristic) -- does a team go at all. scope: the scripts' flag names get this prefix
     ('/' = the empty scope, which ScriptedFlagHeuristic reads), the AI's FlagName stays the bare name.
-    off_at: the infantry flag also goes off then (seconds); end: the tactics' EndBehavior."""
+    off_at: the infantry flag also goes off then (seconds); end: the tactics' EndBehavior.
+    far2 (B round 19): the player also has a power plant on its own base (site base power, ~2400 from the AI): two
+    structures, both far -- does the infantry state go when there is a second target for it?"""
     facts = {'wake at': WAKE_AT, 'infantry at': INF_AT, 'tanks at': TANK_AT, 'infantry off at': off_at,
              'hunt copies': (copies or 0) if hunt else None}   # 0: not written
     m = Mission(name=name, map=niagara, facts={k: v for k, v in facts.items() if v is not None})
@@ -120,6 +122,8 @@ def mission(name='CampAIState', near=False, gate='flag', flags=(FLAG_INF, FLAG_T
     m.cnv_units = (INF, TANK)               # and these templates
     if near:
         m.put('AlliedPowerPlant', 'east gate', -300.0, 0.0, name='UNIT - CNV AI Player Target', role='player target')
+    if far2:
+        m.put('AlliedPowerPlant', 'base power', name='UNIT - CNV AI Player Far Plant', role='player far plant')
     m.spawns |= {INF, TANK}
     s1 = m.player('s1')
     m.put('AlliedConstructionYard', 'east base', 0, 0, side='s1', name='UNIT - CNV AI Yard', role='ai yard')
@@ -157,6 +161,9 @@ MISSION = {'aistate': mission,
            # both states always on, only the player's yard ~2600 away: does distance stop a team (A round 67 read:
            # the enemy structure / unit heuristics measure no distance, only the tech one uses SearchRange)
            'aistatefar': lambda: mission('CampAIFar', gate='const'),
+           # B round 19: aistatefar plus a second far structure -- one target per state? (the infantry went on
+           # aistateconst, two structures, and stayed home on aistatefar, one)
+           'aistatefar2': lambda: mission('CampAIFar2', gate='const', far2=True),
            'aistateslash': lambda: mission('CampAISlash', near=True, flags=PLAIN, scope='/'),
            'aistateoff': lambda: mission('CampAIOff', near=True, flags=PLAIN, scope='/', off_at=OFF_AT),
            'aistateoffhome': lambda: mission('CampAIHome', near=True, flags=PLAIN, scope='/', off_at=OFF_AT,

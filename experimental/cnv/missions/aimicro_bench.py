@@ -33,7 +33,17 @@ Builds:
   aimicxfer   as aimicmade, the script runs UNIT_AI_TRANSFER_ALL again right after making them (work/re
               l4_micro_gate.md: the recruiters refuse units on teamSoviet_1; the wake's transfer saw only the units then)
   aimicnearx  as aimicnear (hand-over), UNIT_AI_TRANSFER_ALL again right after the hand-over
-Facts: wake at, hand at, distance, health, hunt (1: the Hunt tactic).
+  aimicbuilt  no warriors placed: the AI builds them itself (round 19) -- s1 owns a Japanese barracks (JapanBarracks)
+              400 south of its yard and a power plant 400 north; an opening move of this probe's own (OPENER: a
+              deposit of 1000 to PRODUCTION, then two warriors; the build state AlliedNeededUnits removed, retail
+              budgets kept, as aitower_bench.py), money BUILT_MONEY at the wake. The units are unnamed: the check
+              counts them by player (template owned, objects with the charge status). Two player conscripts (kept at
+              full health) stand 400 south of the barracks and attack-move to it once s1 owns two warriors (the
+              warriors get hurt: under 0.8 health the model fires whatever the distance). l4_micro_gate.md: the
+              recruiters take units on the AI's default team; script-made ones sit on teamSoviet_1.
+  aimicbuilth as aimicbuilt, the team a Targetless Hunt, no conscripts: are the built warriors recruited at all
+              (they walk off) -- the by-player count cannot tell whose team a unit is on.
+Facts: wake at, hand at, distance, health, hunt (1: the Hunt tactic), built (1: the AI builds them).
 """
 from maps import niagara
 from missions import aistate_bench as ab
@@ -76,8 +86,28 @@ def _state(micro, unit=WARRIOR, tactic='StaticDefense'):
   </AIStrategicStateDefinition>'''
 
 
-def personality_xml(micro, unit=WARRIOR, tactic='StaticDefense'):
+BUILT_MONEY = 2000
+OPENER = 'CNVMicroOpener'
+OPENER_DEPOSIT = 1000
+BARRACKS_DY, PLANT_DY = -400.0, 400.0     # built: s1's factory south of its yard, its power plant north
+CONSCRIPT = 'SovietAntiInfantryInfantry'
+
+
+def _opener(unit, n=2):
+    # as aitower_bench.py (retail AIOpener_A08_AlliedSpecialForces): a deposit, the builds; the Time order ends it
+    return [f'  <SkirmishOpeningMove id="{OPENER}" Side="PlayerTemplate:Allies">',
+            f'    <Order Time="0s" Account="PRODUCTION" Deposit="{OPENER_DEPOSIT}" />',
+            *[f'    <Order Build="{unit}" />'] * n, '    <Order Time="90s"/>', '  </SkirmishOpeningMove>']
+
+
+def personality_xml(micro, unit=WARRIOR, tactic='StaticDefense', built=False):
+    """built (round 19): the AI builds two `unit`s itself by an opening move."""
     removed = [f'    <StrategicState id="{k}" xai:joinAction="Remove"/>' for k in ab.INHERITED]
+    first = []
+    if built:
+        removed += ['    <BuildState id="AlliedNeededUnits" xai:joinAction="Remove"/>']
+        first = [f'    <OpeningMove Name="{OPENER}" Weight="100%">', '      <Heuristic>',
+                 '        <ConstantHeuristic/>', '      </Heuristic>', '    </OpeningMove>']
     return '\n'.join([
         '<?xml version="1.0" encoding="utf-8"?>',
         '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
@@ -87,7 +117,9 @@ def personality_xml(micro, unit=WARRIOR, tactic='StaticDefense'):
         f'    <Include type="instance" source="DATA:SkirmishAI/Personalities/{ab.BASE}.xml" />',
         '  </Includes>',
         _state(micro, unit, tactic),
+        *(_opener(unit) if built else []),
         f'  <AIPersonalityDefinition id="{PID}" PersonalityType="{PID}" inheritFrom="{ab.BASE}">',
+        *first,
         *removed,
         '    <StrategicState id="CNVStateMicro" State="CNVStateMicro"/>',
         '  </AIPersonalityDefinition>',
@@ -146,7 +178,56 @@ def mission(name, dist, micro='StandardMicroManager', health=100.0, hand=True, m
     return m
 
 
-MISSION = {'aimicpre': lambda: mission('CampAIMicPre', 90.0, hand=False),
+def built_base(m, factory, money=BUILT_MONEY):
+    """Round 19, the AI builds its units itself: s1's yard, `factory` south of it, a power plant north, the player's
+    yard; a control spot west of the yard (the check makes a named unit there at the end) and the wake scripts."""
+    s1 = m.player('s1')
+    m.put('AlliedConstructionYard', 'east base', 0, 0, side='s1', name='UNIT - CNV AI Yard', role='ai yard')
+    m.put(factory, 'east base', 0, BARRACKS_DY, side='s1', name='UNIT - CNV AI Factory', role='ai factory')
+    m.put('AlliedPowerPlant', 'east base', 0, PLANT_DY, side='s1', name='UNIT - CNV AI Plant', role='ai plant')
+    m.put('AlliedConstructionYard', 'base yard', name='UNIT - CNV AI Player Yard', role='player yard')
+    m.waypoint('factory spot', 'CNV AI Factory Spot', 'east base', 0, BARRACKS_DY)
+    m.waypoint('control spot', 'CNV AI Control Spot', 'east base', -WEST, 0)
+    base = 'CNV AI Base'
+    m.waypoint('ai base', base, 'east base')
+    m.scripts += [
+        Script('CNV AI - Start', [], [('PLAYER_SET_MONEY', s1, 0), ('SET_MILLISECOND_TIMER', 'CNV AI Wake', WAKE_AT)]),
+        Script('CNV AI - Wake', [('TIMER_EXPIRED', 'CNV AI Wake')],
+               [('UNIT_AI_TRANSFER_ALL', s1, 1), ('SKIRMISH_AI_MAKE_BASE', s1, base),
+                ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', s1, 20), ('SKIRMISH_AI_USE_REPAIRS', s1, 0),
+                ('SKIRMISH_AI_USE_REBUILD_SYSTEM', s1, 0), ('PLAYER_SET_MONEY', s1, money)]),
+        # how many of the unit s1 owns, every frame (the mission's own counter; the check shows its own)
+        Script('CNV AI - Owned', [], [('SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER', m.cnv_units[0], s1, 'CNV_AI_Owned')],
+               once=False)]
+
+
+def built(name, tactic='StaticDefense'):
+    """tactic 'Hunt' (aimicbuilth): a membership test -- a Targetless Hunt team that takes the built warriors walks
+    them off (the check counts them home round the barracks); no conscripts."""
+    hunt = tactic == 'Hunt'
+    facts = {'wake at': WAKE_AT, 'hand at': 0.0, 'distance': 0.0, 'health': 100.0, 'hunt': float(hunt), 'built': 1.0}
+    m = Mission(name=name, map=niagara, facts=facts)
+    m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{PID}'}
+    m.assets.append((f'{PID}.xml', personality_xml('StandardMicroManager', tactic=tactic, built=True),
+                     f'AIPersonalityDefinition:{PID}'))
+    m.cnv_units = (WARRIOR,)
+    m.spawns |= {WARRIOR}
+    built_base(m, 'JapanBarracks')
+    if hunt:
+        return m
+    names = []
+    for k in range(2):
+        n = f'UNIT - CNV AM Conscript {k + 1}'
+        names.append(n)
+        m.put(CONSCRIPT, 'east base', APART * (k - 0.5), 2 * BARRACKS_DY, name=n, role=f'conscript {k + 1}')
+    m.scripts.append(Script('CNV AM - Go', [('COUNTER', 'CNV_AI_Owned', 3, 2)],
+                            m.order('attack_move', names, m.mark('factory spot'), 'p1')))
+    return m
+
+
+MISSION = {'aimicbuilt': lambda: built('CampAIMicBuilt'),
+           'aimicbuilth': lambda: built('CampAIMicBltH', tactic='Hunt'),
+           'aimicpre':lambda: mission('CampAIMicPre', 90.0, hand=False),
            'aimicnear': lambda: mission('CampAIMicNear', 90.0),
            'aimicmed': lambda: mission('CampAIMicMed', 90.0, 'StandardMicroManager_MEDIUM'),
            'aimicfar': lambda: mission('CampAIMicFar', 140.0),

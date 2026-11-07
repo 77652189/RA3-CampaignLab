@@ -37,8 +37,18 @@ Bench 2026-11-07 (Sonnet, one run each, no dropout):
     unit's own team's library -- so (INFERRED) aimicpre (placed s1's, recruited at the wake, powers never registered: made
     with the AI asleep) and the made / handed-over builds (registered, never recruited) each miss one half.
     Next: the AI produces the warriors itself.
+  aimicbuilt r (Sonnet, round 19; counters 帧数 造出 冲 曾冲): the opener built both warriors by s21 (造出 2), the
+    conscripts walked in and both warriors were dead by s41 (造出 0) -- 曾冲 0 throughout, the AI's own warriors never
+    charged though hurt and fighting infantry. The control (named warrior made on s1's team at wake + 45 s, button
+    pressed 1 s later): 冲 1 at s61, 曾冲 100 -- the by-player status count reads a charge. So not the hand-over, the
+    tactic, or the team the unit was made on: even units the AI builds do not charge (whether they were recruited at
+    all: aimicbuilth).
+  aimicbuilth r PASS (Sonnet, round 19, mod CampAIMicBltHR; counters 帧数 造出 在家 曾冲): 造出 2 from s21, 在家 2 -> 1
+    @ s31 -> 0 @ s41 -- the Targetless Hunt team took the AI-built warriors and walked them off: AI-built units ARE
+    recruited (unlike the script-made ones). So the aimicbuilt silence is past recruitment: the power entry check
+    (0x8ce710 / the heuristic's vtable+0x40) or the power registration, not the team.
 """
-from parts import Script, Test, status
+from parts import Script, Test, counted, square, status
 
 LAG = 4.0
 RUN = 60.0
@@ -57,7 +67,9 @@ def names(m, group):
 
 # what the model (RA3-EngineModel ra3model/ai/micro.py) expects of each build: does each warrior charge within the run
 FIRES = {'aimicpre': False, 'aimicnear': True, 'aimicmed': True, 'aimicfar': False, 'aimichurt': True,
-         'aimicmade': True, 'aimichunt': True, 'aimicxfer': True, 'aimicnearx': True}
+         'aimicmade': True, 'aimichunt': True, 'aimicxfer': True, 'aimicnearx': True, 'aimicbuilt': True,
+         'aimicbuilth': False}     # builth: the Hunt walks them off to no infantry -- nothing to charge at
+HOME, HOME_R = 'CNV AM Home Area', 400.0   # aimicbuilth: round the barracks (the units come out within it)
 
 
 def probe(m, press=False, build=''):
@@ -101,5 +113,61 @@ def probe(m, press=False, build=''):
     return t
 
 
-CHECKS = {b: {'r': lambda m, b=b: probe(m, build=b)} for b in FIRES}
+CTRL_S = 45.0      # built: seconds after the wake at which the check makes a named warrior on s1's team (the control)
+CONTROL = 'UNIT - CNV AM Control'
+
+
+def probe_built(m, build='aimicbuilt'):
+    """aimicbuilt (round 19): the AI's own warriors are unnamed, so count by player. Counters from the wake:
+      帧数  frames since the wake
+      造出  warriors s1 owns (the opener built them: >= 2)
+      冲    s1's objects charging now (WEAPON_UPGRADED_02)
+      曾冲  frames since s1 first had one charging -> first charge at frame 帧数 - 曾冲
+    Control: CTRL_S after the wake the check makes a named warrior on s1's team at the control spot and presses its
+    charge one second later -- 冲 must read it (the by-player count sees the status), and 曾冲 starting only then
+    means the AI's own never charged."""
+    t = Test()
+    p1, s1 = m.player('p1'), m.player('s1')
+    wake = m.facts['wake at']
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', p1)]))
+    t.scripts.append(Script('Test - keep the conscripts up', [],
+                            [('UNIT_SET_HEALTH', r.name, 100.0) for r in m.roles('conscript')], once=False))
+    t.scripts += [Script('Test - tick', [], [('INCREMENT_COUNTER', 1, 'CNV_AM_Tick')], once=False),
+                  Script('Test - woke', [('TIMER_EXPIRED', 'CNV AI Wake'), ('COUNTER', 'CNV_AM_Tick', 3, 30)],
+                         [('SET_FLAG', 'Test Woke', 1)])]
+    t.counters.append(('CNV_AM_Frames', '帧数'))
+    t.scripts.append(Script('Test - frames', [('FLAG', 'Test Woke', 1)], [('INCREMENT_COUNTER', 1, 'CNV_AM_Frames')],
+                            once=False))
+    counted('CNV_AM_Owned', '造出', t, template=m.cnv_units[0], player=s1)
+    hunt = bool(m.facts.get('hunt'))
+    if hunt:   # aimicbuilth: 冲 gives way to 在家 -- s1's warriors within HOME_R of the barracks (left = recruited)
+        x, y = m.point('factory spot')
+        t.areas[HOME] = square(x, y, HOME_R)
+        counted('CNV_AM_Home', '在家', t, template=m.cnv_units[0], area=HOME, player=s1)
+    else:
+        counted('CNV_AM_Rush', '冲', t, status=status(CHARGE), player=s1)
+    t.counters.append(('CNV_AM_Ever', '曾冲'))
+    t.scripts += [
+        Script('Test - rush seen any', [('PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS', s1, 3, 1, status(CHARGE))],
+               [('SET_FLAG', 'Test Rush Any', 1)]),
+        Script('Test - rush count any', [('FLAG', 'Test Rush Any', 1)], [('INCREMENT_COUNTER', 1, 'CNV_AM_Ever')],
+               once=False)]
+    ctrl = int(CTRL_S * 15)
+    t.scripts += [
+        Script('Test - control make', [('FLAG', 'Test Woke', 1), ('COUNTER', 'CNV_AM_Frames', 2, ctrl)],
+               [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', CONTROL, m.cnv_units[0], m.team('s1'), m.mark('control spot'))]),
+        Script('Test - control press', [('FLAG', 'Test Woke', 1), ('COUNTER', 'CNV_AM_Frames', 2, ctrl + 15)],
+               [('NAMED_USE_COMMANDBUTTON_ABILITY', CONTROL, COMMAND)])]
+    fires = FIRES[build]
+    t.expect += [('帧数', wake + LAG, 'ever>=', 1, wake + RUN), ('造出', wake + LAG, 'ever>=', 2, wake + CTRL_S),
+                 ('曾冲', wake + LAG, 'ever>=' if fires else '==', 1 if fires else 0, wake + CTRL_S)]
+    # hunt: the model recruits the built warriors -- they leave (在家 0 while 造出 is 2); else the control's charge
+    t.expect += [('在家', wake + LAG, 'ever==', 0, wake + CTRL_S)] if hunt else [('冲', wake + CTRL_S + 2, 'ever>=', 1)]
+    t.bench = [('bench_watch', dict(seconds=wake + RUN + LAG, every=10, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+CHECKS = {b: {'r': lambda m, b=b: probe(m, build=b)} for b in FIRES if b != 'aimicbuilt'}
+CHECKS['aimicbuilt'] = {'r': probe_built}
+CHECKS['aimicbuilth'] = {'r': lambda m: probe_built(m, 'aimicbuilth')}
 CHECKS['aimicnear']['c'] = lambda m: probe(m, press=True)
