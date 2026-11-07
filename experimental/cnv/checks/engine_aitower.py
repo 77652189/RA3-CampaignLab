@@ -30,6 +30,14 @@ aitower100 c (two runs): 560 / 590 内 0, 620 / 650 内 1 from s31 -> r in (590,
 aitower50 d (two runs), aitower100 d (one): FAIL -- 塔在厂南 and 塔在厂南带 0 throughout; 0.5's 塔距场 350 内 1 (s29 /
   s31), 1.0's 0 (its r ~600). Revealed for the AI too, the turret still stands round the yard, not by the plant:
   not the fog (0xb38d70 reads none either, l4_tower_r.md Q3). The model's centre / angle is a strict xfail.
+Round 71 (bench 2026-11-07):
+aitowerfoe e (own budget 50 / 50, only AlliedDefenseBuildState, 4 Guardians 600 south of the AI plant, revealed for
+  both; 120 s): FAIL -- no turret anywhere (塔在基地 0 to s139, 落塔帧 never stops). An enemy army does not wake the
+  build state either.
+aitowerdep e (as aitowerfoe, but an opener that only deposits 1000 to DEFENSE, no Build order; retail budgets): PASS
+  -- 落塔帧 451 (as the opener's), 塔距场 350 内 1 from s29, 塔在厂南带 0 throughout. So the build state builds once
+  the DEFENSE account has money (PLAYER_SET_MONEY never reaches the accounts: aitowerstate / aitowerfoe were broke),
+  and its turret stands round the yard just as the opener's, the enemy tanks 600 south of the plant notwithstanding.
 """
 import math
 
@@ -172,4 +180,44 @@ def d(m):
     return t
 
 
-CHECKS = {k: {'a': a, 'b': b, 'c': c, 'd': d} for k in ('aitower50', 'aitower75', 'aitower100', 'aitowerstate')}
+LONG = 120.0                                # the build state is not timed like the opener: give it two minutes
+
+
+def e(m):
+    """Round 71 (aitowerfoe): the regular build state, not the opener. As aitowerstate (own budget, only
+    AlliedDefenseBuildState) plus the player's tanks 600 south of the AI plant (HOLD_FIRE), map revealed for both.
+    Does BEST_UNIT_EXPECTED build a turret once there is an enemy army, and round which building?
+
+      塔在厂南带      s1's turret south of the AI plant by 100-900, x within 400 (read: centre = the AI building nearest
+                      an enemy = the plant, first angle south, r 0.5 x 600 = 300)
+      塔距场 350 内   round the yard (the opener's spot at 0.5, bench round 69 / 70)
+      塔在基地        anywhere in the 1500 square round the yard (built at all)
+      落塔帧          as a
+    The expectation: built at all (a FAIL is the reading "the build state builds nothing even with an enemy army")."""
+    t = Test()
+    s1 = m.player('s1')
+    t.scripts += [Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]),
+                  Script('Test - reveal for the AI', [], [('MAP_REVEAL_ALL_PERM', s1)])]
+    o = m.find(m.role('ai plant').name)
+    t.areas['CNV AT South'] = [(o.x - 400, o.y - 900), (o.x + 400, o.y - 900), (o.x + 400, o.y - 100),
+                               (o.x - 400, o.y - 100)]
+    counted('CNV_AT_South', '塔在厂南带', t, template=m.cnv_turret, area='CNV AT South', player=s1)
+    x, y = m.site('east base')
+    t.areas['CNV AT Yard 350'] = _disc(x, y, 350.0)
+    counted('CNV_AT_Y350', '塔距场 350 内', t, template=m.cnv_turret, area='CNV AT Yard 350', player=s1)
+    t.areas[ANY] = square(x, y, 1500.0)
+    counted('CNV_AT_Any', '塔在基地', t, template=m.cnv_turret, area=ANY, player=s1)
+    t.counters.append(('CNV_AT_First', '落塔帧'))
+    t.scripts += [Script('Test - a tower', [('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', s1, 3, 1, m.cnv_turret,
+                                             ANY)], [('SET_FLAG', 'Test Tower', 1)]),
+                  Script('Test - no tower yet', [('FLAG', 'Test Tower', 0)],
+                         [('INCREMENT_COUNTER', 1, 'CNV_AT_First')], once=False)]
+    end = m.facts['wake at'] + LONG
+    t.expect += [('塔在基地', 1, 'ever>=', 1, end)]
+    t.bench = [('bench_watch', dict(seconds=end + LAG, every=2, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+CHECKS = {k: {'a': a, 'b': b, 'c': c, 'd': d, 'e': e}
+          for k in ('aitower50', 'aitower75', 'aitower100', 'aitowerstate', 'aitowerfoe',
+                   'aitowerdep')}

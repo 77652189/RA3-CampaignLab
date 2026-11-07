@@ -14,7 +14,11 @@ first angle points from the base centre to its nearest enemy (south), the radius
 So the first tower should stand south of the AI plant, 250 / 375 / 475-500 from it for 0.5 / 0.75 / 1.0.
 Builds: aitower50 (0.5, the Allied co-op default), aitower75, aitower100 -- these build the turret by an opening move
 (a deposit of 1000 to PRODUCTION, then AlliedBaseDefense; retail budgets kept): the build state alone built nothing in
-70 s (aitowerstate: the own budget above, no opener). Readings in checks/engine_aitower.py.
+70 s (aitowerstate: the own budget above, no opener). aitowerfoe (round 71): as aitowerstate, plus FOES of the
+player's Guardian tanks (HOLD_FIRE) 600 south of the AI plant -- does the build state (BEST_UNIT_EXPECTED) build once
+there is an enemy army, and round which building (the opener's turret stood round the yard). aitowerdep: as
+aitowerfoe, but an opener that only deposits 1000 to DEFENSE (no Build order; retail budgets kept) -- is the script's
+money just never in the accounts? Readings in checks/engine_aitower.py.
 Facts: wake at, money.
 """
 from maps import niagara
@@ -33,6 +37,10 @@ BUDGETS = ('CoopBudget', 'DefenseBudget', 'HeavyDefenseBudget', 'OpeningMoveBudg
 BUDGET_ID = 'CNVTowerBudget'
 OPENER = 'CNVTowerOpener'
 OPENER_DEPOSIT = 1000
+FOE = 'AlliedAntiVehicleVehicleTech1'       # Guardian tank
+FOES = 4
+FOE_DY = AI_PLANT_DY - 600.0                # 600 south of the AI plant (1050 from the yard)
+HOLD_FIRE = 3
 
 
 def _budget():
@@ -48,16 +56,17 @@ def _budget():
   </AIBudgetStateDefinition>'''
 
 
-def _opener():
-    # as retail AIOpener_A08_AlliedSpecialForces: a deposit, then the build; the trailing Time order ends the opening
-    return f'''  <SkirmishOpeningMove id="{OPENER}" Side="PlayerTemplate:Allies">
-    <Order Time="0s" Account="PRODUCTION" Deposit="{OPENER_DEPOSIT}" />
-    <Order Build="{TURRET}" />
-    <Order Time="90s"/>
-  </SkirmishOpeningMove>'''
+def _opener(build=True):
+    # as retail AIOpener_A08_AlliedSpecialForces: a deposit, then the build; the trailing Time order ends the opening.
+    # build=False: the deposit only, to DEFENSE (the build state spends it, if it builds at all)
+    account = 'PRODUCTION' if build else 'DEFENSE'
+    order = [f'    <Order Build="{TURRET}" />'] if build else []
+    return '\n'.join([f'  <SkirmishOpeningMove id="{OPENER}" Side="PlayerTemplate:Allies">',
+                      f'    <Order Time="0s" Account="{account}" Deposit="{OPENER_DEPOSIT}" />', *order,
+                      '    <Order Time="90s"/>', '  </SkirmishOpeningMove>'])
 
 
-def personality_xml(compactness, opener=False):
+def personality_xml(compactness, opener=False, build=True):
     removed = [f'    <StrategicState id="{k}" xai:joinAction="Remove"/>' for k in ab.INHERITED]
     removed += ['    <BuildState id="AlliedNeededUnits" xai:joinAction="Remove"/>']
     if opener:                              # retail budgets kept; the opening move first (as 1AlliedBalanced's)
@@ -77,7 +86,7 @@ def personality_xml(compactness, opener=False):
         f'    <Include type="instance" source="DATA:SkirmishAI/Personalities/{ab.BASE}.xml" />',
         '  </Includes>',
         *own,
-        *([_opener()] if opener else []),
+        *([_opener(build)] if opener else []),
         f'  <AIPersonalityDefinition id="{PID}" PersonalityType="{PID}" inheritFrom="{ab.BASE}"'
         f' BaseCompactness="{compactness}">',
         *first,
@@ -87,12 +96,12 @@ def personality_xml(compactness, opener=False):
         '</AssetDeclaration>', ''])
 
 
-def mission(name, compactness, opener=True):
+def mission(name, compactness, opener=True, foes=0, build=True):
     m = Mission(name=name, map=niagara, facts={'wake at': WAKE_AT, 'money': MONEY})
     m.cnv_compactness = compactness         # the check says the model's radius by it
     m.cnv_turret = TURRET                   # what the check counts (checks ask the mission, not this module)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{PID}'}
-    m.assets.append((f'{PID}.xml', personality_xml(compactness, opener), f'AIPersonalityDefinition:{PID}'))
+    m.assets.append((f'{PID}.xml', personality_xml(compactness, opener, build), f'AIPersonalityDefinition:{PID}'))
     s1 = m.player('s1')
     m.put('AlliedConstructionYard', 'east base', 0, 0, side='s1', name='UNIT - CNV AI Yard', role='ai yard')
     m.put(PLANT, 'east base', 0.0, AI_PLANT_DY, side='s1', name='UNIT - CNV AI Plant', role='ai plant')
@@ -100,9 +109,13 @@ def mission(name, compactness, opener=True):
     m.put('AlliedConstructionYard', 'base yard', name='UNIT - CNV AI Player Yard', role='player yard')
     m.spawns |= {TURRET}
     base = 'CNV AI Base'
+    foe = [f'UNIT - CNV AI Foe {k}' for k in range(foes)]
+    for k, n in enumerate(foe):
+        m.put(FOE, 'east base', 60.0 * k - 30.0 * (foes - 1), FOE_DY, name=n, role=f'foe {k}')
     m.waypoint('ai base', base, 'east base')
     m.scripts += [
-        Script('CNV AI - Start', [], [('PLAYER_SET_MONEY', s1, 0), ('SET_MILLISECOND_TIMER', 'CNV AI Wake', WAKE_AT)]),
+        Script('CNV AI - Start', [], [('PLAYER_SET_MONEY', s1, 0), ('SET_MILLISECOND_TIMER', 'CNV AI Wake', WAKE_AT)]
+               + [('UNIT_SET_STANCE', n, HOLD_FIRE) for n in foe]),
         Script('CNV AI - Wake', [('TIMER_EXPIRED', 'CNV AI Wake')],
                [('UNIT_AI_TRANSFER_ALL', s1, 1), ('SKIRMISH_AI_MAKE_BASE', s1, base),
                 ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', s1, 20), ('SKIRMISH_AI_USE_REPAIRS', s1, 0),
@@ -113,4 +126,6 @@ def mission(name, compactness, opener=True):
 MISSION = {'aitower50': lambda: mission('CampAITow50', 0.5),
            'aitower75': lambda: mission('CampAITow75', 0.75),
            'aitower100': lambda: mission('CampAITow100', 1.0),
-           'aitowerstate': lambda: mission('CampAITowState', 0.5, opener=False)}
+           'aitowerstate': lambda: mission('CampAITowState', 0.5, opener=False),
+           'aitowerfoe': lambda: mission('CampAITowFoe', 0.5, opener=False, foes=FOES),
+           'aitowerdep': lambda: mission('CampAITowDep', 0.5, foes=FOES, build=False)}
