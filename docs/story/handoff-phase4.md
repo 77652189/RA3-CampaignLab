@@ -357,3 +357,12 @@
 - **全量测试**（`work/logs/full_tests.log`，改动前的一次）：559 过、3 红：`test_mappage_sketch[sapporo]`（G15 引起的，已修）、`test_platmap_terrain` 的夹具（高地没盖，已修）、`test_maps::test_nothing_a_build_places_stands_on_scenery`——**不是关卡线的**：引擎线的 `aidefense_bench`（`checks/engine_aidefense.py`）里 waypoint `CNV AI Far`（2662, 3230）落在 sapporo 的两棵树 `MR_Tree06` 上，要引擎线挪点。上轮的 8 红（mappage_sketch 6 条、`test_cnv_parts`）这次都过了，我没有改它们，什么时候、被谁修好的没查。
 - **测试台对照已做（11-07，第二十九个会话）**：7 项里 6 项 PASS，读数和模拟器对得上；**`smash` 第一次 FAIL，已修好**：真因是 `horn.py` 的 `smashes` 每帧重下攻击令，鬼王要走一段才进炮程时被卡在桥上（不是没路）；改成每面墙只下一次令（`Hit` 旗），测试台 PASS，detour / queue / melt 复跑 PASS。详见 [`sim-vs-bench-a4.md`](sim-vs-bench-a4.md) 末节；R7（运输船速度）已记进规则清单。
 - **还欠**：房子行挡不挡步兵；A4 以外各图的 G15（只有声明了 Block 的图被管，目前 4 张，都干净）。
+
+### 第三十个会话（11-07，总控令：代理玩家两种打法都输，查是不是关卡的事）：A4 数据没改，结论和要别人做的事写在 sim-vs-bench-a4.md 末节
+
+- **结论**：三条（放冰早输、开局兵种、没回血）都不是 A4 该改的。放冰早输 = 号角表里的"晚 10 秒"在（detour 检查验过），代理玩家的兵贴着车被动等，两股兵合在一处来；开局兵种和没回血是用户 / 流程稿定的设计（10-31 删修理厂、11-02 会场护卫不换）。
+- **模拟器缺 R8**（空闲 / 攻击移动的单位不追，射程短的一方站着挨打）：同样的兵、同样的站位，改成逐个下 `attack` 后第一声 8 个兵 15 秒全灭、车一点没伤。要 A 补，补完 B 重跑 `--compare`。
+- **代理玩家在开场过场里下令**（`Sim.input` 为假时真人不能动）：会打死演示的兵、车队提前 30 秒出发。给 B。
+- **没做**：把 `绕路` 表加倍试过，没有数据支持，已放回。手写"题卡打法"的玩家没打通整段（第三声丢车），不能当"打得赢"的证据。
+- **工具**：`work/re/a4_trace.py`（逐秒出兵 / 车血）、`work/re/a4_intended_play.py`（手写打法），不进 git。`--compare` 一次约 25 秒。
+- **下一步**：等 A 补 R8 + B 改打法后重跑 `simproxy.py a4 --compare`；再看是否要把脚本打法固化成测试（要先有一个能整段打通的版本）。
