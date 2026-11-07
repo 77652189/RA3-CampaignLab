@@ -26,6 +26,13 @@ SUPER_NAME = 'UNIT - CNV AS Collider'
 PILES = (('A', 'AlliedBarracks', 'outpost 1', 150.0, 4, 1), ('B', 'AlliedWarFactory', 'outpost 2', 200.0, 3, 10),
          ('C', 'AlliedBaseDefense', 'front', 120.0, 5, 100))
 HIDDEN = (('H', 'AlliedBaseDefense', 'west field', 120.0, 5, 1),)
+# pile letter -> (dx, dy) off its site: A and B stood on niagara's trees (barracks 4 at (1925, 3350) on YP_Tree02,
+# war factory 1 at (1700, 1650) on MR_Tree04; test_maps' scenery check). Moved 2026-11-06 (B round 16) to the
+# nearest spots clear by 40+ of every tree. The readings of 11-06 (checks a-h, aispecialhid d) were taken before the
+# move; they need no rerun: the piles keep their counts, spacing and costs, A moves 56 and B 56 units, still well
+# apart (> 600) and far from the AI base, and the result (C is hit: A and B fail MinTargetsHit / value) does not hang
+# on where inside the outpost a pile stands.
+SHIFT = {'A': (-50.0, 25.0), 'B': (50.0, -25.0)}
 
 
 def names(pile):
@@ -46,8 +53,9 @@ def mission(name='CampAISpecial', piles=PILES):
     m.put('AlliedConstructionYard', 'base yard', name='UNIT - CNV AI Player Yard', role='player yard')
     for pile in piles:
         letter, tpl, site, step, n, _ = pile
+        dx, dy = SHIFT.get(letter, (0.0, 0.0))
         for k, nm in enumerate(names(pile)):
-            m.put(tpl, site, step * (k - (n - 1) / 2.0), 0.0, name=nm, role=f'{letter} {k + 1}')
+            m.put(tpl, site, dx + step * (k - (n - 1) / 2.0), dy, name=nm, role=f'{letter} {k + 1}')
     base = 'CNV AI Base'
     m.waypoint('ai base', base, 'east base')
     m.scripts += [
