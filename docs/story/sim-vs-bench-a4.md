@@ -76,3 +76,18 @@ python -m pytest -q tests/test_simbench.py                 # 6 项过 + 3 个变
    - **真因**：`horn.py` 的 `smashes` 脚本（`once=False`）**每一帧**都给鬼王重下一次"攻击这面墙"的令。墙立起来时鬼王还得走一段才进炮程的话，每帧重下令让它原地不动（墙立起来那一刻它停在哪就停在哪）。三次测试台对比：墙在鬼王上岸前就立着（原检查）→ 血量一直 100；墙在上岸后 3 秒立（`ICE_LATE=2`）→ 一直 100；墙在上岸后 11 秒立（鬼王已走到桥西、本来就在炮程内）→ 能砸，血量 88→76→65→41→30→18→6。10-31 的 PASS 是旧地形上岸点离墙近、不用走。
    - **修**：`devices/horn.py` `ghost_scripts`：每个鬼王对每面墙**只下一次令**（新旗 `CNV_<tag>_Hit_<n>_<j>`，下令时置 1，"墙没了"那条脚本 `Ghost dropped` 把它们清 0，下一面墙重新下令）。原检查不改（`ICE_LATE=-2`，墙先立着）在测试台 PASS：血量 100→76→53→41→18→6。
    - 这个 bug 的本质：**对同一目标每帧重下一次移动 / 攻击令，单位走不动**。别的设备里有 `once=False` 的 `ctx.order`（`hunts` 每帧下令却能动，因为那时单位本来在走；没有改，没证据）。该写进经验的是：持续条件下的命令要用旗做成一次性。
+
+## 同一类毛病的扫描（2026-11-07，ADR 0015 从源头修）
+
+问的是"脚本每帧给单位重下移动 / 攻击令"还有没有别处。方法：对 `build.MISSIONS` 里每个任务和每个检查合并后的脚本，找 `once=False` 且动作里有整队命令（`TEAM_ATTACK_NAMED`、`MOVE_TEAM_TO`、`ATTACK_MOVE_TEAM_TO`、`TEAM_GUARD_AREA`、`TEAM_HUNT`）的脚本。结果 15 族：
+
+| 族 | 目标 | 测试台上的证据 | 处理 |
+| --- | --- | --- | --- |
+| `King n-j smashes`（a4） | 引用（`UNITRef`，SET_REF 选出来的墙） | **会卡住**（本节上面） | 已改成只下一次（`Hit` 旗） |
+| `King n-j hunts at t`、`Convoy target t at t`、`Chase`、`Held`（a4 / a4_before / a8 的 assault） | 有名字的卡车或区域 | 鬼王 hunts 时从上岸点走过桥（s58→s63）；车队咬住卡车的检查（win）PASS | **没改**：每帧下令在这些上走得动，改了会动已经验过的车队行为，没有反例就不动 |
+| `Roll`、`armoured to`、`cryo to`（a4、ally、j4、s2、sapporo） | 路点（移动） | 车队沿街走到港口（win PASS，三辆车 s438～s468） | **没改**，同上 |
+| `Test - ...`（检查自己的） | — | — | 不管 |
+
+只有"目标是引用"的一族出了事，所以守卫也只管这一类：`contract.ref_orders_once`（G16，并进 `contract.check`，`test_every_build_keeps_the_contract` 每个任务都跑）——`once=False` 的脚本对 `UNITRef…` 下整队命令，必须自己测一面旗（`FLAG f 0`）并置它（`SET_FLAG f 1`），否则红。`tests/test_engine_rules.py::test_g16_*` 两条：合成脚本的变异（每帧下令红、只测不置红、置了过、有名字的目标不管、`Test` 不管），和 a4 的真实脚本去掉旗变红。
+
+我**没有**证明"每帧重下令一律会卡"。机制猜测（没验证）：目标是引用 / 墙这种要绕路的，每帧重下令让寻路来不及出结果；目标在直路上（卡车、路点）不受影响。若以后在别的有引用 / 要绕远路的目标上又见到"单位原地不动"，把那一族也加进 G16。

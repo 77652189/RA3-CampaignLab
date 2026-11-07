@@ -73,6 +73,33 @@ def test_e3_the_product_rule_wants_the_team_joined_first():
     assert contract.team_orders_land(m) == []                                # a check's own scripts are not the level's
 
 
+def test_g16_a_repeating_order_at_a_reference_is_given_once():
+    m = small()
+    team = 'Soviet_1/teamCNVTest'
+    assert contract.ref_orders_once(m) == []
+    bad = Script('CNV ZZ - Smash', [('FLAG', 'landed', 1)],
+                 [('UNIT_SET_TEAM', 'a', team), ('TEAM_ATTACK_NAMED', team, 'UNITRef - CNV ZZ Wall')], once=False)
+    m.scripts.append(bad)
+    assert any('Smash' in p for p in contract.ref_orders_once(m))             # told every frame: the K7/I8 smash bug
+    bad.when.append(('FLAG', 'hit', 0))
+    assert any('Smash' in p for p in contract.ref_orders_once(m))             # tests the flag, never sets it
+    bad.do.append(('SET_FLAG', 'hit', 1))
+    assert contract.ref_orders_once(m) == []                                   # the horn.py shape
+    m.scripts.append(Script('CNV ZZ - Named', [], [('TEAM_ATTACK_NAMED', team, 'UNIT - truck')], once=False))
+    assert contract.ref_orders_once(m) == []                                   # named targets are not held to it
+    m.scripts.append(Script('Test - ref', [], [('TEAM_ATTACK_NAMED', team, 'UNITRef - x')], once=False))
+    assert contract.ref_orders_once(m) == []                                   # a check's own scripts are not the level's
+
+
+def test_g16_the_a4_ghost_king_is_told_once_per_wall():
+    import build
+    m = build.resolve('a4', '')[0]
+    assert contract.ref_orders_once(m) == []
+    s = next(s for s in m.scripts if s.name.endswith('smashes'))
+    s.when[:] = [c for c in s.when if c[0] != 'FLAG' or c[2] != 0]             # drop its once-flag: the guard turns red
+    assert any('smashes' in p for p in contract.ref_orders_once(m))
+
+
 def test_e1_the_product_rule_refuses_a_kind_counted_in_an_area():
     m = small()
     assert contract.kind_counts_in_area(m) == []

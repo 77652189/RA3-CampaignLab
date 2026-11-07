@@ -374,6 +374,28 @@ def single_orders(m, allow=SINGLE_ORDERS_LEFT):
             for name, *_ in s.do if name in SINGLE_ORDERS]
 
 
+def ref_orders_once(m):
+    """G16: a script that runs every frame (once=False) and orders a team at a REFERENCE (`UNITRef - ...`, a unit
+    picked by SET_REF_TO_...) gives the order once: it tests a flag it sets (`('FLAG', f, 0)` ... `('SET_FLAG', f, 1)`),
+    and something else clears the flag when the target is lost. Bench 2026-11-07, A4 smash: the Ghost King was told to
+    attack the wall every frame, and when it had to walk into range first it stood where it was when the wall came up
+    (health read 100 to the end; once-only orders: 100 -> 6). Orders at named units are not held to this: the convoy's
+    and the King's every-frame orders at named trucks move on the bench. A check's `Test ...` scripts are not looked at."""
+    out = []
+    for s in m.scripts:
+        if s.name.startswith('Test') or s.once:
+            continue
+        refs = [name for name, *a in s.do if name in TEAM_COMMANDS and any(isinstance(v, str) and 'UNITRef' in v for v in a)]
+        if not refs:
+            continue
+        waits = {c[1] for c in s.when if c[0] == 'FLAG' and c[2] == 0}
+        sets = {a[1] for a in s.do if a[0] == 'SET_FLAG' and a[2] == 1}
+        if not waits & sets:
+            out.append(f'{s.name}: {refs[0]} at a reference every frame: gate it with a flag it sets (tests FLAG f 0, '
+                       f'sets f 1), cleared when the target is gone')
+    return out
+
+
 # K4 (G12): ore, refineries and oil stand in the relations retail's maps keep (resources.py holds the measures; every
 # check here reads the finished objects, so a node typed into a map by hand is held to them too).
 def _placed(m):
@@ -560,7 +582,7 @@ def contract(mission):
     out += team_orders_land(m) + kind_counts_in_area(m)
     out += camera_outside_the_view(m) + start_camera_inside_the_view(m) + demo_unframed(m)
     out += music_resumes(m) + ending_line_fits(m)
-    out += single_orders(m) + pace_released(m)
+    out += single_orders(m) + ref_orders_once(m) + pace_released(m)
     out += ore_faces_refinery(m) + ore_in_groups(m) + oil_off_the_camps(m) + base_has_ore(m) + cast_points_clear(m) + map_design(m)
     for s in m.scripts:
         for name, *args in s.when + s.do:
