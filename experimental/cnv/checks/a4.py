@@ -225,6 +225,53 @@ def smash(m):
     return t
 
 
+# ---- smash's open cause (11-07, level line): A's engine_reorder probe shows re-ordering every frame does not stop a unit,
+# so why the King once stood on the bridge is probed here on the real map, one change at a time. Each variant is the
+# smash check with: `every` = the old script (the order given every frame, no Hit flag), `inland` = the King made off
+# the shore mark instead of on it. Plus counters of where King 3-1 is (x bands of the way: shore strip, bridge, west bank).
+KING = f'UNIT - CNV {TAG} King 3-1'
+
+
+DECOY = 'UNIT - Test Decoy'
+
+
+def smash_probe(m, every=False, inland=False, spawn=None, decoy=False):
+    """spawn: an absolute point the King is made at instead of the shore mark. decoy: the King is told to attack a named
+    NO_ATTACK tank standing where the wall does (not the SET_REF pick), and the tank's health is read instead of the
+    wall-count line."""
+    t = smash(m)
+    if decoy:
+        t.objects.append(Obj('AlliedAntiVehicleVehicleTech1', *m.site('east mouth', 0, -80), side='p1', name=DECOY,
+                             site='east mouth'))
+        t.scripts.append(Script('Test - decoy quiet', [], [('UNIT_CHANGE_OBJECT_STATUS', DECOY, 'NO_ATTACK', 1)]))
+        t.counters = [c for c in t.counters if c[1] != '冰墙']
+        t.expect = [e for e in t.expect if e[0] != '冰墙']
+        counted('CNV_A4_DH', '诱饵血', t, health=DECOY)
+    for s in m.scripts:
+        if decoy and s.name.endswith('smashes'):
+            ref = f'UNITRef - CNV {TAG} Nearest Wall'
+            s.do = [tuple(DECOY if x == ref else x for x in a) for a in s.do]
+        if every and s.name.endswith('smashes'):
+            s.when = [c for c in s.when if not (c[0] == 'FLAG' and '_Hit_' in c[1])]
+            s.do = [a for a in s.do if not (a[0] == 'SET_FLAG' and '_Hit_' in a[1])]
+        if (inland or spawn) and s.name.endswith('lands'):
+            sx, sy = m.point('shore')
+            t.waypoints['Test King Inland'] = spawn or (sx - 140.0, sy - 200.0)
+            s.do = [(a[0], a[1], a[2], a[3], 'Test King Inland') if a[0] == 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT' else a
+                    for a in s.do]
+    rect = lambda x0, x1: [(x0, 2300.0), (x1, 2300.0), (x1, 3300.0), (x0, 3300.0)]
+    t.areas['Test K Strip'] = rect(3900.0, 4300.0)
+    t.areas['Test K Bridge'] = rect(3620.0, 3900.0)
+    t.areas['Test K West'] = rect(3000.0, 3620.0)
+    kp = f'CNV_{TAG}_KP'                        # 0 not made / elsewhere, 1 on the shore strip, 2 on the bridge, 3 past it
+    t.counters.append((kp, '鬼王位置'))
+    t.scripts += [Script('Test - king zero', [], [('SET_COUNTER', kp, 0)], once=False)] + [
+        Script(f'Test - king at {a}', [('NAMED_INSIDE_AREA', KING, f'Test K {a}')], [('SET_COUNTER', kp, v)], once=False)
+        for v, a in ((1, 'Strip'), (2, 'Bridge'), (3, 'West'))]
+    t.bench = [('bench_watch', dict(seconds=MOUTH1 + GHOST_WAIT + 10, every=3, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 DERRICK_RUN = 45.0
 
 
@@ -521,6 +568,6 @@ def place_mouths(m):
 
 # the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
 CHECKS = {
-    'a4': {'lose': lose, 'horn': horn, 'detour': detour, 'queue': queue, 'smash': smash, 'derrick': derrick, 'demo': demo, 'heads': heads, 'melt': melt, 'idle': idle, 'hold': hold, 'win': win, 'signs': signs, 'smoke': smoke, 'place': place, 'placem': place_mouths},
+    'a4': {'lose': lose, 'horn': horn, 'detour': detour, 'queue': queue, 'smash': smash, 'smpos': lambda m: smash_probe(m), 'smev': lambda m: smash_probe(m, every=True), 'smwest': lambda m: smash_probe(m, every=True, spawn=(3000.0, 2500.0)), 'smdecoy': lambda m: smash_probe(m, every=True, decoy=True), 'derrick': derrick, 'demo': demo, 'heads': heads, 'melt': melt, 'idle': idle, 'hold': hold, 'win': win, 'signs': signs, 'smoke': smoke, 'place': place, 'placem': place_mouths},
     'a4_intl': {'lose': lose, 'horn': horn, 'detour': detour, 'queue': queue, 'smash': smash, 'derrick': derrick, 'demo': demo, 'heads': heads, 'melt': melt, 'idle': idle, 'hold': hold, 'win': win, 'signs': signs, 'smoke': smoke, 'place': place, 'placem': place_mouths},
 }

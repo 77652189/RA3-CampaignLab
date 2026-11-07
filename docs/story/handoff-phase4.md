@@ -370,4 +370,10 @@
 #### 第三十个会话补记（11-07 早，总控转告两件事）
 
 - **G16 撤了，smash 的"真因"改正**：A 线 `engine_reorder` 探针（公开 5d5e4ef）量到每帧重下同一道令单位照走，"每帧重下令会卡"不成立；`contract.ref_orders_once` 和两条 g16 测试删了，`sim-vs-bench-a4.md` 相应几处改成"已撤回"。`horn.py` 的"每面墙只下一次令"保留（smash 测试台 PASS，无害），但它为什么有效没弄清。**smash 当时不动的真因没查**，线索：① 目标是 `SET_REF…` 引用（探针打的是有名字的墙）；② 水边出生点连移动令都不动，鬼王上岸点 `CNV A4 Shore` 在水边。下一步要查就上测试台：用一个有名字的墙 + 上岸点离水边远一点，各试一次。
+#### 第三十一个会话（11-07，总控令：查 smash 鬼王不动的真因）
+
+- **结论**（详见 [`sim-vs-bench-a4.md`](sim-vs-bench-a4.md) "smash 当时鬼王为什么不开火"）：A 给的两条线索都排除（水边出生点、SET_REF 引用都不是；King 类型也不是）。**触发条件是"每帧重下攻击令 + 目标要绕路"**：同一道每帧令，直路开火，从东岛上岸要过桥时鬼王站在桥上不开火；只下一次令在同一座桥上开火。机制没查清，要查是 A 的事。`horn.py` 的"每面墙只下一次令"保留且有道理。**没改地图数据**。
+- **工具**：`checks/a4.py` 里 `smash_probe` 和检查 `smpos`（对照）、`smev`（旧写法复现，会 FAIL）、`smwest`（鬼王放西岸）、`smdecoy`（有名字的目标，会 FAIL）；`missions/kingref_bench.py` + `checks/engine_kingref.py`（海岛，King）。
+- **要总控 / A 定**：G16 撤得太急——对"引用"的说法错了，但"每帧给要绕路的目标重下攻击令会卡"在真地图上成立。要不要恢复一条守卫（不分引用与否，要求带 `Hit` 旗）归 `contract.py` 的主人。
+
 - **给 B 的接点**：`simproxy.CHOKES['a4']['road'] = 'convoy start'`（车队路的 y），`SimWorld.junctions()` 返回 `{路名: (x, y)}`，x 取各路 `block` 点的 x、y 取路的 y（后巷 1200、一号 2015、二号 2830、北坡口 3050、三号广场 3370、东街口 3575，y 都是 2500）。代理玩家预站位站这里，别站冰的位置（在街里）也别贴车。没改 `ra3model`，所以 `Observation.chokes` 里的 `Choke` 还没带它，B 读 `world.junctions()` 即可。测试 `test_a4_every_way_has_a_junction_on_the_convoys_road`。
