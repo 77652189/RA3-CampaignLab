@@ -1,0 +1,119 @@
+"""Engine probe: when the skirmish AI's micro manager makes Imperial Warriors use their Bonzai charge (RUSH_ATTACK;
+read back by checks/engine_aimicro.py; engine line B).
+
+The data (SDK LogicCommand Command_JapanAntiInfantryInfantryBonzai): AISpecialPowerInfo Heuristic RUSH_ATTACK,
+MICRO_MANAGER, TargetObjectInclude INFANTRY, HealthFraction 0.8, Distance 100, UseToCounterGarrison. The charge
+(SpecialPower_JapanAntiInfantryInfantryBonzai, ReloadTime 30 s) puts AttributeModifier_..Bonzai on the warrior for 10 s:
+ObjectStatus WEAPON_UPGRADED_02 (the check reads it with UNIT_HAS_OBJECT_STATUS), speed 150 %. The warrior's gun
+(JapanAntiInfantryInfantryWeapon) has AttackRange 150, the charge sword 20.
+The model (RA3-EngineModel ra3model/ai/micro.py rush): fire when the target is INFANTRY and (own health < 0.8 of max,
+or the target within weapon range and < 100 away, 2D).
+
+The enemy (s1, Allied faction -- the micro manager reads the unit's command set, not the faction) runs a personality
+of this probe's own, as aidefense_bench.py: the Allied co-op base with every inherited strategic state removed and one
+state, always on, StaticDefense of its yard (Distance 400, UseAestheticsManager false) with a team of exactly the two
+warriors and MicroManager = the build's (StandardMicroManager: UpdateTime 0.5 s, no delays; _MEDIUM: 2 s, team delay
+2..8 s after a fire). Two warriors stand 200 west of the s1 yard, 100 apart north-south, facing west; one player
+engineer (unarmed infantry; the check keeps it at full health) stands D west of each warrior (the other engineer is
+>= 134 away). Money 0. The AI wakes at WAKE_AT (the retail wake set, as aispecial_bench.py).
+The warriors start as the player's (friends of the engineers, nothing fights) and are handed to s1 at HAND_AT, one
+second after the wake: the program registers a unit's AISpecialPowerInfo only when it is made or changes hands while
+the AI brain is not paused (work/re l4_specials.md, 0x9025e0), and aimicpre -- the warriors s1's from the start, the
+AI asleep then -- never charged in 60 s.
+Builds:
+  aimicpre    D = 90,  StandardMicroManager, the warriors s1's from the start (no hand-over)
+  aimicnear   D = 90,  StandardMicroManager            (in range and < 100: the model fires at the first round)
+  aimicmed    D = 90,  StandardMicroManager_MEDIUM     (one fire, then a 2..8 s team delay before the other)
+  aimicfar    D = 140, StandardMicroManager            (in range but >= 100: the model never fires)
+  aimichurt   D = 140, StandardMicroManager, the warriors at 70 % health from the start (health < 0.8: fires)
+Facts: wake at.
+"""
+from maps import niagara
+from missions import aistate_bench as ab
+from parts import Mission, Script
+
+WAKE_AT = 10.0
+HAND_AT = 11.0     # the warriors change hands (p1 -> s1) one second after the wake
+PID = 'CNVMicroTest'
+WARRIOR, ENGINEER = 'JapanAntiInfantryInfantry', 'AlliedEngineer'
+WEST, APART = 200.0, 100.0
+
+
+def _state(micro):
+    return f'''  <AIStrategicStateDefinition id="CNVStateMicro" MaxTargets="1">
+    <Heuristic>
+      <ConstantHeuristic/>
+    </Heuristic>
+    <TargetHeuristic TargetHeuristic="FriendlyLandStructureHeuristic"/>
+    <Tactic id="Defend" Tactic="StaticDefense" EndBehavior="DISBAND" Distance="400" UpdateTime="1s"
+            CombatLeashSlack="1.5" UseAestheticsManager="false">
+      <TeamTemplate MinUnits="2" MaxUnits="2" IncludeKindOf="CAN_ATTACK" ExcludeKindOf="IGNORES_SELECT_ALL HARVESTER"
+                    AllowedLocomotorTypes="LAND AMPHIBIOUS" Priority="STANDARD" AlwaysRecruit="false"
+                    MicroManager="{micro}">
+        <ObjectFilter Rule="ANY">
+          <IncludeThing>{WARRIOR}</IncludeThing>
+        </ObjectFilter>
+      </TeamTemplate>
+    </Tactic>
+  </AIStrategicStateDefinition>'''
+
+
+def personality_xml(micro):
+    removed = [f'    <StrategicState id="{k}" xai:joinAction="Remove"/>' for k in ab.INHERITED]
+    return '\n'.join([
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
+        ' xmlns:xai="uri:ea.com:eala:asset:instance">',
+        '  <Tags></Tags>',
+        '  <Includes>',
+        f'    <Include type="instance" source="DATA:SkirmishAI/Personalities/{ab.BASE}.xml" />',
+        '  </Includes>',
+        _state(micro),
+        f'  <AIPersonalityDefinition id="{PID}" PersonalityType="{PID}" inheritFrom="{ab.BASE}">',
+        *removed,
+        '    <StrategicState id="CNVStateMicro" State="CNVStateMicro"/>',
+        '  </AIPersonalityDefinition>',
+        '</AssetDeclaration>', ''])
+
+
+def mission(name, dist, micro='StandardMicroManager', health=100.0, hand=True):
+    facts = {'wake at': WAKE_AT, 'hand at': HAND_AT if hand else 0.0, 'distance': dist, 'health': health}
+    m = Mission(name=name, map=niagara, facts=facts)
+    m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{PID}'}
+    m.assets.append((f'{PID}.xml', personality_xml(micro), f'AIPersonalityDefinition:{PID}'))
+    m.cnv_units = (WARRIOR,)
+    s1 = m.player('s1')
+    m.put('AlliedConstructionYard', 'east base', 0, 0, side='s1', name='UNIT - CNV AI Yard', role='ai yard')
+    m.put('AlliedConstructionYard', 'base yard', name='UNIT - CNV AI Player Yard', role='player yard')
+    m.spawns |= {WARRIOR}
+    start = []
+    for k in range(2):
+        dy = APART * (k - 0.5)
+        w = f'UNIT - CNV AM Warrior {k + 1}'
+        m.put(WARRIOR, 'east base', -WEST, dy, side='p1' if hand else 's1', angle=3.1416, name=w,
+              role=f'warrior {k + 1}')
+        m.put(ENGINEER, 'east base', -WEST - dist, dy, name=f'UNIT - CNV AM Engineer {k + 1}',
+              role=f'engineer {k + 1}')
+        if health < 100.0:
+            start.append(('UNIT_SET_HEALTH', w, health))
+    base = 'CNV AI Base'
+    m.waypoint('ai base', base, 'east base')
+    m.scripts += [
+        Script('CNV AI - Start', [], [('PLAYER_SET_MONEY', s1, 0), ('SET_MILLISECOND_TIMER', 'CNV AI Wake', WAKE_AT),
+                                      *([('SET_MILLISECOND_TIMER', 'CNV AI Hand', HAND_AT)] if hand else []),
+                                      *start]),
+        Script('CNV AI - Wake', [('TIMER_EXPIRED', 'CNV AI Wake')],
+               [('UNIT_AI_TRANSFER_ALL', s1, 1), ('SKIRMISH_AI_MAKE_BASE', s1, base),
+                ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', s1, 20), ('SKIRMISH_AI_USE_REPAIRS', s1, 0),
+                ('SKIRMISH_AI_USE_REBUILD_SYSTEM', s1, 0), ('PLAYER_SET_MONEY', s1, 0)])]
+    if hand:
+        m.scripts.append(Script('CNV AI - Hand', [('TIMER_EXPIRED', 'CNV AI Hand')],
+                                [('NAMED_TRANSFER_OWNERSHIP_PLAYER', r.name, s1) for r in m.roles('warrior')]))
+    return m
+
+
+MISSION = {'aimicpre': lambda: mission('CampAIMicPre', 90.0, hand=False),
+           'aimicnear': lambda: mission('CampAIMicNear', 90.0),
+           'aimicmed': lambda: mission('CampAIMicMed', 90.0, 'StandardMicroManager_MEDIUM'),
+           'aimicfar': lambda: mission('CampAIMicFar', 140.0),
+           'aimichurt': lambda: mission('CampAIMicHurt', 140.0, health=70.0)}
