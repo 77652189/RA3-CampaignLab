@@ -10,6 +10,8 @@ Counters (four lines), from the attack on (run to STOP_AT + 15 s):
   盾1关  frames since Peacekeeper 1 was seen unshielded after that -> lowered at frame = 帧数 - 盾1关
          (the stop is at frame (STOP_AT - ATTACK_AT) * 15 = 225)
   盾2    frames since Peacekeeper 2 (never targeted) was first seen shielded
+  在家   aitogglehunt only, in 盾2's place: how many of s1's Peacekeepers stand within 150 of their spots (2 = the
+         Hunt team never took them; it walks off with them)
 A shield seen before the attack makes 盾k > 帧数.
 The verdicts after 帧数 are the model's answer (RA3-EngineModel micro.py toggle, UpdateTime 0.5 s): 盾1 raised within
 the attack, lowered after the stop, 盾2 never -- a FAIL is the bench reading otherwise.
@@ -23,10 +25,18 @@ Bench 2026-11-07 (Sonnet, one run each, no dropout):
     after the wake never charged) the silence is not the hand-over: INFERRED the StaticDefense team runs no micro,
     or a precondition (work/re l4_micro_powers.md 1) fails. Model: raises at the first round (strict xfail in
     RA3-EngineModel tests/test_ai_bench.py).
+  aitogglehunt r FAIL (Sonnet, round 18): 盾1开 盾1关 盾2 all 0 through 帧数 493 -- a Targetless Hunt team never raised
+    the shield either: not the StaticDefense tactic.
+  aitogglehunt r again with 在家 (Sonnet, round 18): 在家 2 from s11 to s51 -- the Peacekeepers never left their spots:
+    the Hunt team never took them (aistate aihunt: Peacekeepers s1's from the start left 4 s after the wake). So the
+    units the script creates on s1's team after the wake are not recruited; the micro manager never had them.
+  aitogglexfer r FAIL (Sonnet, round 18): 盾1开 盾1关 盾2 all 0 through 帧数 489 -- UNIT_AI_TRANSFER_ALL again right
+    after the make did not help either (see engine_aimicro: next, the AI produces the units itself).
 """
-from parts import NOT, Script, Test, status
+from parts import NOT, Script, Test, counted, square, status
 
 LAG = 4.0
+HOME, HOME_R = 'CNV AT Home Area', 150.0   # aitogglehunt: the square of half-side 150 round the two spots
 AFTER = 15.0
 SHIELD = 'GENERIC_TOGGLE_STATE'
 COMMAND = 'Command_ToggleRiotShieldSpecialPower'
@@ -45,10 +55,17 @@ def probe(m, press=False):
     pks = names(m, 'peacekeeper')
     t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', p1)]))
     t.scripts.append(Script('Test - keep them up', [], [('UNIT_SET_HEALTH', n, 100.0) for n in pks], once=False))
-    t.counters += [('CNV_AT_Frames', '帧数'), ('CNV_AT_Up1', '盾1开'), ('CNV_AT_Down1', '盾1关'), ('CNV_AT_Up2', '盾2')]
+    hunt = bool(m.facts.get('hunt'))
+    t.counters += [('CNV_AT_Frames', '帧数'), ('CNV_AT_Up1', '盾1开'), ('CNV_AT_Down1', '盾1关')]
+    if hunt:   # 盾2 gives way to 在家: did the Hunt team take the Peacekeepers (they walk off) or not (they stand)
+        (x1, y1), (x2, y2) = m.point('peacekeeper 1 spot'), m.point('peacekeeper 2 spot')
+        t.areas[HOME] = square((x1 + x2) / 2, (y1 + y2) / 2, HOME_R)
+        counted('CNV_AT_Home', '在家', t, template=m.cnv_units[0], area=HOME, player=m.player('s1'))
+    else:
+        t.counters.append(('CNV_AT_Up2', '盾2'))
     t.scripts += [Script('Test - frames', [('TIMER_EXPIRED', 'CNV AT Attack')],
                          [('INCREMENT_COUNTER', 1, 'CNV_AT_Frames')], once=False)]
-    for k, n in enumerate(pks, 1):
+    for k, n in enumerate(pks if not hunt else pks[:1], 1):
         t.scripts += [
             Script(f'Test - up seen {k}', [('UNIT_HAS_OBJECT_STATUS', n, status(SHIELD))], [('SET_FLAG', f'Test Up {k}', 1)]),
             Script(f'Test - up count {k}', [('FLAG', f'Test Up {k}', 1)],
@@ -65,10 +82,11 @@ def probe(m, press=False):
     if press:
         t.expect += [('盾2', attack + LAG, 'ever>=', 1)]
     else:
-        t.expect += [('盾1开', attack + LAG, 'ever>=', 1, stop), ('盾1关', stop + LAG, 'ever>=', 1),
-                     ('盾2', attack + LAG, '==', 0)]
+        t.expect += [('盾1开', attack + LAG, 'ever>=', 1, stop), ('盾1关', stop + LAG, 'ever>=', 1)]
+        t.expect += [] if hunt else [('盾2', attack + LAG, '==', 0)]
     t.bench = [('bench_watch', dict(seconds=stop + AFTER, every=10, sheet=False, lines=len(t.counters)))]
     return t
 
 
-CHECKS = {'aitogglehand': {'r': probe}, 'aitogglemade': {'r': probe, 'c': lambda m: probe(m, press=True)}}
+CHECKS = {'aitogglehand': {'r': probe}, 'aitogglemade': {'r': probe, 'c': lambda m: probe(m, press=True)},
+          'aitogglehunt': {'r': probe}, 'aitogglexfer': {'r': probe}}

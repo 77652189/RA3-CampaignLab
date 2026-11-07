@@ -18,7 +18,11 @@ changed hands with the AI awake; yet aimicro's hand-over 1 s after the wake did 
 two builds:
   aitogglehand  the Peacekeepers start as the player's, handed to s1 at GIVE_AT (as aimicro_bench.py)
   aitogglemade  none placed: the script creates them on s1's team at GIVE_AT
-Facts: wake at, give at, attack at, stop at.
+  aitogglehunt  as aitogglemade, the team's tactic a Targetless Hunt instead of StaticDefense (round 18: does the micro
+                manager run only under some tactics? the Peacekeepers walk off towards the player; the Twinblade follows)
+  aitogglexfer  as aitogglemade (StaticDefense), UNIT_AI_TRANSFER_ALL again right after making them (work/re
+                l4_micro_gate.md: units left on teamSoviet_1 are never recruited)
+Facts: wake at, give at, attack at, stop at, hunt (1: the Hunt tactic).
 """
 from maps import niagara
 from missions import aimicro_bench as am
@@ -32,11 +36,12 @@ GUNSHIP_NAME = 'UNIT - CNV AT Gunship'
 WEST, APART, STANDOFF = 200.0, 100.0, 250.0
 
 
-def mission(name, made):
-    facts = {'wake at': WAKE_AT, 'give at': GIVE_AT, 'attack at': ATTACK_AT, 'stop at': STOP_AT}
+def mission(name, made, tactic='StaticDefense', xfer=False):
+    facts = {'wake at': WAKE_AT, 'give at': GIVE_AT, 'attack at': ATTACK_AT, 'stop at': STOP_AT, 'hunt': float(tactic == 'Hunt')}
     m = Mission(name=name, map=niagara, facts=facts)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{am.PID}'}
-    m.assets.append((f'{am.PID}.xml', am.personality_xml('StandardMicroManager', PK), f'AIPersonalityDefinition:{am.PID}'))
+    m.assets.append((f'{am.PID}.xml', am.personality_xml('StandardMicroManager', PK, tactic),
+                     f'AIPersonalityDefinition:{am.PID}'))
     m.cnv_units = (PK,)
     s1 = m.player('s1')
     m.put('AlliedConstructionYard', 'east base', 0, 0, side='s1', name='UNIT - CNV AI Yard', role='ai yard')
@@ -58,6 +63,7 @@ def mission(name, made):
     m.waypoint('ai base', base, 'east base')
     give = ([('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', n, PK, m.team('s1'), m.mark(f'peacekeeper {k + 1} spot'))
              for k, n in enumerate(pks)] if made else [('NAMED_TRANSFER_OWNERSHIP_PLAYER', n, s1) for n in pks])
+    give += [('UNIT_AI_TRANSFER_ALL', s1, 1)] if xfer else []   # round 18: as aimicro_bench.py xfer
     m.scripts += [
         Script('CNV AI - Start', [], [('PLAYER_SET_MONEY', s1, 0), ('SET_MILLISECOND_TIMER', 'CNV AI Wake', WAKE_AT),
                                       ('SET_MILLISECOND_TIMER', 'CNV AI Give', GIVE_AT),
@@ -76,4 +82,6 @@ def mission(name, made):
 
 
 MISSION = {'aitogglehand': lambda: mission('CampAITogHand', made=False),
-           'aitogglemade': lambda: mission('CampAITogMade', made=True)}
+           'aitogglemade': lambda: mission('CampAITogMade', made=True),
+           'aitogglehunt': lambda: mission('CampAITogHunt', made=True, tactic='Hunt'),
+           'aitogglexfer': lambda: mission('CampAITogXfer', made=True, xfer=True)}

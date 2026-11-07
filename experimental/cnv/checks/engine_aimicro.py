@@ -28,6 +28,15 @@ Bench 2026-11-07 (Sonnet, one run each, no dropout):
     the StaticDefense team not taking handed-over units, or one of the 6 preconditions (l4_micro_powers.md 1).
   aimicmade r (Sonnet): 冲1 冲2 再冲1 all 0 through 帧数 939 -- warriors created on s1's team after the wake did not
     charge either: not the hand-over. Same in engine_aitoggle (no shield). INFERRED: StaticDefense runs no micro.
+  aimichunt r (Sonnet, round 18): 冲1 冲2 再冲1 all 0 through 帧数 943 -- a Targetless Hunt team did not charge either:
+    not the tactic. Left: the units never joined the team, or a gate of 0x9028e0 / the power registration.
+    (engine_aitoggle aitogglehunt: the Hunt team never took the script-made units -- they stood at their spots.)
+  aimicxfer r / aimicnearx r (Sonnet, round 18): 冲1 冲2 再冲1 all 0 through 帧数 951 / 943 -- UNIT_AI_TRANSFER_ALL
+    run again right after the make / hand-over did not help. Program (work/re l4_micro_gate.md): the recruiter
+    refuses a unit whose team's +0x24 is 0 (teamSoviet_1; only defaultSkirmishTeam is 1), the powers live in the
+    unit's own team's library -- so (INFERRED) aimicpre (placed s1's, recruited at the wake, powers never registered: made
+    with the AI asleep) and the made / handed-over builds (registered, never recruited) each miss one half.
+    Next: the AI produces the warriors itself.
 """
 from parts import Script, Test, status
 
@@ -48,7 +57,7 @@ def names(m, group):
 
 # what the model (RA3-EngineModel ra3model/ai/micro.py) expects of each build: does each warrior charge within the run
 FIRES = {'aimicpre': False, 'aimicnear': True, 'aimicmed': True, 'aimicfar': False, 'aimichurt': True,
-         'aimicmade': True}
+         'aimicmade': True, 'aimichunt': True, 'aimicxfer': True, 'aimicnearx': True}
 
 
 def probe(m, press=False, build=''):

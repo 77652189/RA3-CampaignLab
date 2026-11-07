@@ -28,7 +28,12 @@ Builds:
   aimichurt   D = 140, StandardMicroManager, the warriors at 70 % health from the start (health < 0.8: fires)
   aimicmade   D = 90,  StandardMicroManager, no warriors placed: the script creates them on s1's team at HAND_AT
               (the AI awake) -- does a unit made after the wake charge where the handed-over ones did not?
-Facts: wake at.
+  aimichunt   as aimicmade, but the team's tactic is a Targetless Hunt (as aistate_bench.py aihunt) instead of
+              StaticDefense: does the micro manager run only under some tactics? (no: never recruited, see aitoggle)
+  aimicxfer   as aimicmade, the script runs UNIT_AI_TRANSFER_ALL again right after making them (work/re
+              l4_micro_gate.md: the recruiters refuse units on teamSoviet_1; the wake's transfer saw only the units then)
+  aimicnearx  as aimicnear (hand-over), UNIT_AI_TRANSFER_ALL again right after the hand-over
+Facts: wake at, hand at, distance, health, hunt (1: the Hunt tactic).
 """
 from maps import niagara
 from missions import aistate_bench as ab
@@ -41,15 +46,26 @@ WARRIOR, ENGINEER = 'JapanAntiInfantryInfantry', 'AlliedEngineer'
 WEST, APART = 200.0, 100.0
 
 
-def _state(micro, unit=WARRIOR):
-    return f'''  <AIStrategicStateDefinition id="CNVStateMicro" MaxTargets="1">
+HUNT_HEAD = '''  <AIStrategicStateDefinition id="CNVStateMicro">
+    <Heuristic>
+      <ConstantHeuristic/>
+    </Heuristic>
+    <Tactic id="Hunt" Tactic="Hunt" Targetless="true">
+'''
+DEFEND_HEAD = '''  <AIStrategicStateDefinition id="CNVStateMicro" MaxTargets="1">
     <Heuristic>
       <ConstantHeuristic/>
     </Heuristic>
     <TargetHeuristic TargetHeuristic="FriendlyLandStructureHeuristic"/>
     <Tactic id="Defend" Tactic="StaticDefense" EndBehavior="DISBAND" Distance="400" UpdateTime="1s"
             CombatLeashSlack="1.5" UseAestheticsManager="false">
-      <TeamTemplate MinUnits="2" MaxUnits="2" IncludeKindOf="CAN_ATTACK" ExcludeKindOf="IGNORES_SELECT_ALL HARVESTER"
+'''
+
+
+def _state(micro, unit=WARRIOR, tactic='StaticDefense'):
+    """tactic 'Hunt' (round 18): the attacking control, as aistate_bench.py _hunt (Targetless, no target heuristic)."""
+    head = HUNT_HEAD if tactic == 'Hunt' else DEFEND_HEAD
+    return head + f'''      <TeamTemplate MinUnits="2" MaxUnits="2" IncludeKindOf="CAN_ATTACK" ExcludeKindOf="IGNORES_SELECT_ALL HARVESTER"
                     AllowedLocomotorTypes="LAND AMPHIBIOUS" Priority="STANDARD" AlwaysRecruit="false"
                     MicroManager="{micro}">
         <ObjectFilter Rule="ANY">
@@ -60,7 +76,7 @@ def _state(micro, unit=WARRIOR):
   </AIStrategicStateDefinition>'''
 
 
-def personality_xml(micro, unit=WARRIOR):
+def personality_xml(micro, unit=WARRIOR, tactic='StaticDefense'):
     removed = [f'    <StrategicState id="{k}" xai:joinAction="Remove"/>' for k in ab.INHERITED]
     return '\n'.join([
         '<?xml version="1.0" encoding="utf-8"?>',
@@ -70,7 +86,7 @@ def personality_xml(micro, unit=WARRIOR):
         '  <Includes>',
         f'    <Include type="instance" source="DATA:SkirmishAI/Personalities/{ab.BASE}.xml" />',
         '  </Includes>',
-        _state(micro, unit),
+        _state(micro, unit, tactic),
         f'  <AIPersonalityDefinition id="{PID}" PersonalityType="{PID}" inheritFrom="{ab.BASE}">',
         *removed,
         '    <StrategicState id="CNVStateMicro" State="CNVStateMicro"/>',
@@ -78,11 +94,13 @@ def personality_xml(micro, unit=WARRIOR):
         '</AssetDeclaration>', ''])
 
 
-def mission(name, dist, micro='StandardMicroManager', health=100.0, hand=True, made=False):
-    facts = {'wake at': WAKE_AT, 'hand at': HAND_AT if hand or made else 0.0, 'distance': dist, 'health': health}
+def mission(name, dist, micro='StandardMicroManager', health=100.0, hand=True, made=False, tactic='StaticDefense',
+            xfer=False):
+    facts = {'wake at': WAKE_AT, 'hand at': HAND_AT if hand or made else 0.0, 'distance': dist, 'health': health,
+             'hunt': float(tactic == 'Hunt')}
     m = Mission(name=name, map=niagara, facts=facts)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{PID}'}
-    m.assets.append((f'{PID}.xml', personality_xml(micro), f'AIPersonalityDefinition:{PID}'))
+    m.assets.append((f'{PID}.xml', personality_xml(micro, tactic=tactic), f'AIPersonalityDefinition:{PID}'))
     m.cnv_units = (WARRIOR,)
     s1 = m.player('s1')
     m.put('AlliedConstructionYard', 'east base', 0, 0, side='s1', name='UNIT - CNV AI Yard', role='ai yard')
@@ -114,13 +132,17 @@ def mission(name, dist, micro='StandardMicroManager', health=100.0, hand=True, m
                [('UNIT_AI_TRANSFER_ALL', s1, 1), ('SKIRMISH_AI_MAKE_BASE', s1, base),
                 ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', s1, 20), ('SKIRMISH_AI_USE_REPAIRS', s1, 0),
                 ('SKIRMISH_AI_USE_REBUILD_SYSTEM', s1, 0), ('PLAYER_SET_MONEY', s1, 0)])]
+    # xfer: hand the new units to the AI brain again after they are made / change hands (round 18, l4_micro_gate.md:
+    # the recruiters refuse a unit whose team is not the AI's own -- teamSoviet_1 -- and the wake's transfer saw only
+    # the units there at the wake)
+    again = [('UNIT_AI_TRANSFER_ALL', s1, 1)] if xfer else []
     if made:
         m.scripts.append(Script('CNV AI - Make', [('TIMER_EXPIRED', 'CNV AI Hand')],
                                 [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', w, WARRIOR, m.team('s1'),
-                                  m.mark(f'warrior {k + 1} spot')) for k, w in enumerate(made_)]))
+                                  m.mark(f'warrior {k + 1} spot')) for k, w in enumerate(made_)] + again))
     elif hand:
         m.scripts.append(Script('CNV AI - Hand', [('TIMER_EXPIRED', 'CNV AI Hand')],
-                                [('NAMED_TRANSFER_OWNERSHIP_PLAYER', r.name, s1) for r in m.roles('warrior')]))
+                                [('NAMED_TRANSFER_OWNERSHIP_PLAYER', r.name, s1) for r in m.roles('warrior')] + again))
     return m
 
 
@@ -129,4 +151,7 @@ MISSION = {'aimicpre': lambda: mission('CampAIMicPre', 90.0, hand=False),
            'aimicmed': lambda: mission('CampAIMicMed', 90.0, 'StandardMicroManager_MEDIUM'),
            'aimicfar': lambda: mission('CampAIMicFar', 140.0),
            'aimichurt': lambda: mission('CampAIMicHurt', 140.0, health=70.0),
-           'aimicmade': lambda: mission('CampAIMicMade', 90.0, hand=False, made=True)}
+           'aimicmade': lambda: mission('CampAIMicMade', 90.0, hand=False, made=True),
+           'aimichunt': lambda: mission('CampAIMicHunt', 90.0, hand=False, made=True, tactic='Hunt'),
+           'aimicxfer': lambda: mission('CampAIMicXfer', 90.0, hand=False, made=True, xfer=True),
+           'aimicnearx': lambda: mission('CampAIMicNearX', 90.0, xfer=True)}
