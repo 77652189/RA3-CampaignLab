@@ -202,6 +202,11 @@ def melt(m):
 
 
 GHOST_WAIT = 45.0                               # smash: the wall's health read for this long after the horn
+ICE_LATE = -2.0                                 # smash: the wall is ordered this long after the horn (it stands ~9 s later,
+                                                # a ~28 s life; the King lands ~12 s after the horn and walks to the wall
+                                                # over the bridge). Bench 2026-11-07: with the wall up BEFORE the King
+                                                # landed (this value) or soon after, the K7/I8 map read health 100 to the
+                                                # end (the order was re-given every frame, see horn.py ghost_scripts)
 
 
 def smash(m):
@@ -210,7 +215,7 @@ def smash(m):
     horn3 = MOUTH1
     ex, _ = m.point('ice L3')
     stand(t, m, 'engineer', (ex, m.site('start')[1] + 60.0), 'east mouth')
-    ice_at(t, m, 'engineer', 'ice L3', horn3 - 2.0, 'east mouth')
+    ice_at(t, m, 'engineer', 'ice L3', horn3 + ICE_LATE, 'east mouth')
     t.counters += [(f'CNV_{TAG}_Walls', '冰墙'), (f'CNV_{TAG}_Kings', '鬼王上岸')]
     ref = f'UNITRef - CNV {TAG} Nearest Wall'
     counted('Test Ref Health', '目标墙血量', t, health=ref)

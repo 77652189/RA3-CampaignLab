@@ -565,6 +565,8 @@ class Horn(Device):
         p1, wall = ctx.player('p1'), self.wall.id
         ref = f'UNITRef - CNV {tag} Nearest Wall'
         walls, picked, kings = f'CNV_{tag}_Walls', f'CNV_{tag}_Picked', self.kings
+        hits = [f'CNV_{tag}_Hit_{n}_{j}' for n in range(int(g.get('从', 3)), self.horns + 1)
+                for j in range(1, max(many) + 1)]
         out = [Script(f'CNV {tag} - Walls counted', [], [('SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER', wall, p1, walls)],
                       once=False),
                Script(f'CNV {tag} - Ghost pick', [('COUNTER', kings, 3, 1), ('FLAG', picked, 0), ('COUNTER', walls, 3, 1)],
@@ -573,21 +575,25 @@ class Horn(Device):
                Script(f'CNV {tag} - Ghost broke', [('FLAG', picked, 1), ('NAMED_DESTROYED', ref),
                                                    ('FLAG', self.smashing, 1)],
                       [('SET_FLAG', self.smashed, 1), ('SET_FLAG', self.smashing, 0)], once=False),
+               # the wall is gone: every King is told afresh at the next pick (see `smashes`)
                Script(f'CNV {tag} - Ghost dropped', [('FLAG', picked, 1), ('NAMED_DESTROYED', ref)],
-                      [('SET_FLAG', picked, 0)], once=False)]
+                      [('SET_FLAG', picked, 0)] + [('SET_FLAG', h, 0) for h in hits], once=False)]
         for n in range(int(g.get('从', 3)), self.horns + 1):
             for j in range(1, max(many) + 1):
                 b, k = f'UNIT - CNV {tag} Boat {n}-{j}', f'UNIT - CNV {tag} King {n}-{j}'
-                landed = f'CNV_{tag}_Landed_{n}_{j}'
+                landed, hit = f'CNV_{tag}_Landed_{n}_{j}', f'CNV_{tag}_Hit_{n}_{j}'
                 out.append(Script(f'CNV {tag} - King {n}-{j} lands',
                                   [('NAMED_INSIDE_AREA', b, f'CNV {tag} Shore'), ('FLAG', landed, 0)],
                                   [('SET_FLAG', landed, 1), ('INCREMENT_COUNTER', 1, kings),
                                    ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', k, king, ctx.team('s1'), ctx.mark_of('shore')),
                                    ('OBJECT_CREATE_RADAR_EVENT', k, 0)]))
                 out.append(Script(f'CNV {tag} - King {n}-{j} smashes',
-                                  [('FLAG', landed, 1), ('FLAG', picked, 1), ('NAMED_NOT_DESTROYED', ref),
+                                  [('FLAG', landed, 1), ('FLAG', picked, 1), ('FLAG', hit, 0), ('NAMED_NOT_DESTROYED', ref),
                                    ('NAMED_NOT_DESTROYED', k)],
-                                  ctx.order('attack', [k], ref, 's1') + [('SET_FLAG', self.smashing, 1)], once=False))
+                                  # told ONCE per wall: told again every frame the King stood where it was when the
+                                  # wall came up, out of its range (bench 2026-11-07, K7/I8 map)
+                                  ctx.order('attack', [k], ref, 's1') + [('SET_FLAG', self.smashing, 1),
+                                                                         ('SET_FLAG', hit, 1)], once=False))
                 out += [Script(f'CNV {tag} - King {n}-{j} hunts at {t + 1}',
                                [('FLAG', landed, 1), ('COUNTER', walls, 2, 0), ('NAMED_NOT_DESTROYED', k),
                                 ('TIMER_EXPIRED', cv.timer)] + cv.chase(t), ctx.order('attack', [k], target, 's1'),
