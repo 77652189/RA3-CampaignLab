@@ -33,7 +33,10 @@ def names(pile):
 
 
 def mission(name='CampAISpecial', piles=PILES):
-    m = Mission(name=name, map=niagara, facts={'wake at': WAKE_AT})
+    # facts for the check (it may not import this module): the power, which piles (letters, cast 'A 1' ...) with their
+    # hit weights, and whether the piles are revealed to the AI
+    facts = {'wake at': WAKE_AT, 'power': POWER, 'piles': {p[0]: p[5] for p in piles}, 'reveal to ai': piles is PILES}
+    m = Mission(name=name, map=niagara, facts=facts)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
     m.spawns |= {SUPER}
     s1 = m.player('s1')
