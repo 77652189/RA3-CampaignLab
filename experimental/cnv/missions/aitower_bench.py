@@ -90,6 +90,7 @@ def personality_xml(compactness, opener=False):
 def mission(name, compactness, opener=True):
     m = Mission(name=name, map=niagara, facts={'wake at': WAKE_AT, 'money': MONEY})
     m.cnv_compactness = compactness         # the check says the model's radius by it
+    m.cnv_turret = TURRET                   # what the check counts (checks ask the mission, not this module)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{PID}'}
     m.assets.append((f'{PID}.xml', personality_xml(compactness, opener), f'AIPersonalityDefinition:{PID}'))
     s1 = m.player('s1')

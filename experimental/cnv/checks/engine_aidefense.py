@@ -34,6 +34,11 @@ Bench 2026-11-06 aidefctl b (CampAIDefCtlB, D=250 U=1 s, teleport): PASS. The co
   to the end (s120). Pulled back: StaticDefense holds the team that the earlier m.order probes had taken away.
 Bench 2026-11-06 aidefctl4 b (CampAIDefCtl4B, U=4 s): PASS. The control the same (圈300 4 @ s9); after the teleport
   圈900 4 @ s68, 圈650 4 @ s75, 圈450 4 @ s79, 圈300 4 @ s82: ~2 s later than U=1 (the next update comes up to 4 s on).
+Bench 2026-11-07 (round 70) with FAR at 1150: both teleports moved no one (4 4 4 4 from s9 to s120, PASS all the same:
+  FAR sits on the river bank). So the teleports go to OUT, 1200 straight south, and a second expectation wants 圈900
+  empty right after the push. Rerun: aidefctl b out at s54 (the control expectation then sat on s54; moved a second
+  earlier), back 圈900 4 @ s61, 圈650 @ s66, 圈450 @ s70, 圈300 @ s73; aidefctl4 b out at s56, back s63 / s68 / s72 / s74
+  (1-2 s later per ring). The straight walk back over open grass is 7-8 s quicker than 11-06's westward one.
 Bench 2026-11-06 aidefmv b (CampAIDefMvB, MOVE_NAMED_UNIT_TO): PASS. The control the same; after the move order no ring
   ever drops (4 4 4 4 from s9 to s120): never 300 out.
   c  (aidefmv) the same with rings 100 / 175 / 225 / 275, to see how far the script move gets.
@@ -69,10 +74,11 @@ def a(m):
 PUSH_AFTER = 105.0
 
 
-def push(how, rings=RINGS):
+def push(how, rings=RINGS, to='CNV AI Far'):
     """Round 62 (missions aidefctl / aidefctl4 / aidefmv): the four start 700 out, so the rings filling after the wake
-    is the control (the team formed and walks to the yard it defends); at 'push at' this script moves them out to FAR
-    by name, with no UNIT_SET_TEAM (how: UNIT_TELEPORT_TO_WAYPOINT or MOVE_NAMED_UNIT_TO)."""
+    is the control (the team formed and walks to the yard it defends); at 'push at' this script moves them out to `to`
+    by name, with no UNIT_SET_TEAM (how: UNIT_TELEPORT_TO_WAYPOINT or MOVE_NAMED_UNIT_TO). A teleport must empty the
+    outer ring right after (round 70: the teleport to FAR at 1150 moved no one and the check still passed)."""
     def b(m):
         t = Test()
         s1 = m.player('s1')
@@ -84,16 +90,19 @@ def push(how, rings=RINGS):
             t.areas[area] = square(x, y, r)
             counted(f'CNV_AD_{int(r)}', f'圈{int(r)}', t, template=inf, area=area, player=s1)
         t.scripts.append(Script('Test - push', [('TIMER_EXPIRED', 'CNV AI Push')],
-                                [(how, m.role(f'peacekeeper {k}').name, 'CNV AI Far') for k in range(1, 5)]))
+                                [(how, m.role(f'peacekeeper {k}').name, to) for k in range(1, 5)]))
         w, p = m.facts['wake at'], m.facts['push at']
         end = w + PUSH_AFTER
-        t.expect += [(f'圈{int(rings[-1])}', p - 1, '>=', 1, p)]   # the control: the team brought them to the yard
+        # the control: the team brought them to the yard (a second early: the watch clock runs ~1 s off, round 70)
+        t.expect += [(f'圈{int(rings[-1])}', p - 2, '>=', 1, p - 1)]
+        if how == 'UNIT_TELEPORT_TO_WAYPOINT':
+            t.expect += [(f'圈{int(rings[-1])}', p, 'ever<=', 0, p + 5)]     # the teleport took them out
         t.bench = [('bench_watch', dict(seconds=end + LAG, every=1, sheet=False, lines=len(t.counters)))]
         return t
     return b
 
 
 CHECKS = {k: {'a': a} for k in ('aidef250', 'aidef450', 'aidefupd4', 'aidefslack')}
-CHECKS |= {'aidefctl': {'b': push('UNIT_TELEPORT_TO_WAYPOINT')},
-           'aidefctl4': {'b': push('UNIT_TELEPORT_TO_WAYPOINT')},
+CHECKS |= {'aidefctl': {'b': push('UNIT_TELEPORT_TO_WAYPOINT', to='CNV AI Out')},
+           'aidefctl4': {'b': push('UNIT_TELEPORT_TO_WAYPOINT', to='CNV AI Out')},
            'aidefmv': {'b': push('MOVE_NAMED_UNIT_TO'), 'c': push('MOVE_NAMED_UNIT_TO', (100.0, 175.0, 225.0, 275.0))}}

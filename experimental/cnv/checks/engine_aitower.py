@@ -23,12 +23,17 @@ aitower50 a (the opener: deposit 1000 PRODUCTION + one AlliedBaseDefense; retail
 aitower50 b: 落塔帧 451, 塔距场 350 内 1 from s33 (560 内 1). aitower100 b (two runs): 落塔帧 451, 350 / 560 内 0, 700 内
   1 from s29. Radius 0.5 -> ~296, 1.0 -> 560-700: r = BaseCompactness x ~600, not x 500 (the model's R when the
   radius table is empty, l4_defense2.md 2.1) -- the table is not empty, or the default is not 500.
+Round 70 (bench 2026-11-07, all 落塔帧 451):
+aitower100 c (two runs): 560 / 590 内 0, 620 / 650 内 1 from s31 -> r in (590, 620]. aitower75 c: 420 内 0, 442 内 1
+  from s30 -> r in (420, 442]. aitower75 b: 350 内 0, 560 / 700 内 1. So R in [590, 631]: ~600 (the model's
+  TOWER_LIST_R, INFERRED: who fills the radius list is not read).
+aitower50 d (two runs), aitower100 d (one): FAIL -- 塔在厂南 and 塔在厂南带 0 throughout; 0.5's 塔距场 350 内 1 (s29 /
+  s31), 1.0's 0 (its r ~600). Revealed for the AI too, the turret still stands round the yard, not by the plant:
+  not the fog (0xb38d70 reads none either, l4_tower_r.md Q3). The model's centre / angle is a strict xfail.
 """
 import math
 
 from parts import Script, Test, counted, square
-
-from missions import aitower_bench as tb
 
 LAG = 4.0
 AFTER = 60.0
@@ -51,13 +56,13 @@ def a(m):
     pick = None
     for comp, label, area, near, far in BANDS:
         t.areas[area] = _band(o.x, o.y, near, far)
-        counted(f'CNV_AT_B{int(comp * 100)}', label, t, template=tb.TURRET, area=area, player=s1)
+        counted(f'CNV_AT_B{int(comp * 100)}', label, t, template=m.cnv_turret, area=area, player=s1)
         if comp == m.cnv_compactness:
             pick = label
     x, y = m.site('east base')
     t.areas[ANY] = square(x, y, 1500.0)
     t.counters.append(('CNV_AT_First', '落塔帧'))
-    t.scripts += [Script('Test - a tower', [('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', s1, 3, 1, tb.TURRET,
+    t.scripts += [Script('Test - a tower', [('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', s1, 3, 1, m.cnv_turret,
                                              ANY)], [('SET_FLAG', 'Test Tower', 1)]),
                   Script('Test - no tower yet', [('FLAG', 'Test Tower', 0)],
                          [('INCREMENT_COUNTER', 1, 'CNV_AT_First')], once=False)]
@@ -88,10 +93,10 @@ def b(m):
     x, y = m.site('east base')
     for r, label, area in RINGS:
         t.areas[area] = _disc(x, y, r)
-        counted(f'CNV_AT_Y{int(r)}', label, t, template=tb.TURRET, area=area, player=s1)
+        counted(f'CNV_AT_Y{int(r)}', label, t, template=m.cnv_turret, area=area, player=s1)
     t.areas[ANY] = square(x, y, 1500.0)
     t.counters.append(('CNV_AT_First', '落塔帧'))
-    t.scripts += [Script('Test - a tower', [('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', s1, 3, 1, tb.TURRET,
+    t.scripts += [Script('Test - a tower', [('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', s1, 3, 1, m.cnv_turret,
                                              ANY)], [('SET_FLAG', 'Test Tower', 1)]),
                   Script('Test - no tower yet', [('FLAG', 'Test Tower', 0)],
                          [('INCREMENT_COUNTER', 1, 'CNV_AT_First')], once=False)]
@@ -103,4 +108,68 @@ def b(m):
     return t
 
 
-CHECKS = {k: {'a': a, 'b': b} for k in tb.MISSION}
+FINE = (560.0, 590.0, 620.0, 650.0)         # x BaseCompactness: R's candidates round 600
+
+
+def c(m):
+    """Round 70: pin R. Four rings round the yard at BaseCompactness x 560 / 590 / 620 / 650 (no 落塔帧: the turret is
+    down by frame 451 in every run so far). Read r = (BaseCompactness +- 0.05) x R clamped to R (l4_defense2.md 2.2):
+    at 1.0, r is in [0.95 R, R] -- the first ring that counts the turret bounds R from above, the one before from
+    below (R >= that / 1.05 at 1.0). The expectation: the outer ring (bench b put 1.0 inside 700)."""
+    t = Test()
+    s1 = m.player('s1')
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    x, y = m.site('east base')
+    k = m.cnv_compactness
+    labels = []
+    for f in FINE:
+        r = k * f
+        label, area = f'塔距场 {int(r)} 内', f'CNV AT Fine {int(f)}'
+        t.areas[area] = _disc(x, y, r, n=48)
+        counted(f'CNV_AT_F{int(f)}', label, t, template=m.cnv_turret, area=area, player=s1)
+        labels.append(label)
+    end = m.facts['wake at'] + AFTER
+    t.expect += [(labels[-1], 1, 'ever>=', 1, end)]
+    t.bench = [('bench_watch', dict(seconds=end + LAG, every=2, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+AIM = 296.0                                 # bench a/b: the 0.5 turret ~296 from its centre
+
+
+def d(m):
+    """Round 70: is "no enemy found" the AI's fog? As b, but the map is revealed for s1 too (MAP_REVEAL_ALL_PERM s1).
+    Read: centre = the AI building nearest an enemy (the AI plant), first angle = base centre -> nearest enemy (south).
+
+      塔在厂南        s1's turret within 120 of the AI plant + (0, -BaseCompactness x 592) (the enemy-found spot)
+      塔在厂南带      south of the AI plant by 100 or more, x within 400 (any of the 5 tries' angles round south)
+      塔距场 350 内   round the yard as b (the no-enemy spot at 0.5)
+      落塔帧          as a
+    Revealed and still round the yard -> the fog is not why (the opener's own placement path, or 0xb38d70's filter)."""
+    t = Test()
+    s1 = m.player('s1')
+    t.scripts += [Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]),
+                  Script('Test - reveal for the AI', [], [('MAP_REVEAL_ALL_PERM', s1)])]
+    o = m.find(m.role('ai plant').name)
+    r = m.cnv_compactness * 2 * AIM
+    t.areas['CNV AT Spot'] = _disc(o.x, o.y - r, 120.0)
+    counted('CNV_AT_Spot', '塔在厂南', t, template=m.cnv_turret, area='CNV AT Spot', player=s1)
+    t.areas['CNV AT South'] = [(o.x - 400, o.y - 900), (o.x + 400, o.y - 900), (o.x + 400, o.y - 100),
+                               (o.x - 400, o.y - 100)]
+    counted('CNV_AT_South', '塔在厂南带', t, template=m.cnv_turret, area='CNV AT South', player=s1)
+    x, y = m.site('east base')
+    t.areas['CNV AT Yard 350'] = _disc(x, y, 350.0)
+    counted('CNV_AT_Y350', '塔距场 350 内', t, template=m.cnv_turret, area='CNV AT Yard 350', player=s1)
+    t.areas[ANY] = square(x, y, 1500.0)
+    t.counters.append(('CNV_AT_First', '落塔帧'))
+    t.scripts += [Script('Test - a tower', [('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', s1, 3, 1, m.cnv_turret,
+                                             ANY)], [('SET_FLAG', 'Test Tower', 1)]),
+                  Script('Test - no tower yet', [('FLAG', 'Test Tower', 0)],
+                         [('INCREMENT_COUNTER', 1, 'CNV_AT_First')], once=False)]
+    end = m.facts['wake at'] + AFTER
+    t.expect += [('塔在厂南带', 1, 'ever>=', 1, end)]      # the read rule; a FAIL is the reading "still the yard"
+    t.bench = [('bench_watch', dict(seconds=end + LAG, every=2, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+CHECKS = {k: {'a': a, 'b': b, 'c': c, 'd': d} for k in ('aitower50', 'aitower75', 'aitower100', 'aitowerstate')}

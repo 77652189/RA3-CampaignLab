@@ -25,6 +25,9 @@ the yard is the control (the team formed and defends); at mission second PUSH_AT
 moves them out to FAR itself, with no UNIT_SET_TEAM:
   aidefctl    D=250, U=1 s: UNIT_TELEPORT_TO_WAYPOINT FAR, one by one
   aidefctl4   D=250, U=4 s: the same teleport
+  (since round 70 the teleports go to OUT, OUT_DIST (1200) straight south of the yard on open grass: bench 11-07, the
+  teleport to FAR at 1150 moved no one -- both builds 4 4 4 4 from s9 to the end; FAR sits on the river bank. 11-06's
+  readings were teleports to FAR at 1200 west, the same distance.)
   aidefmv     D=250, U=1 s: MOVE_NAMED_UNIT_TO FAR, one by one (the AI's attack-move against a plain script move)
 """
 from maps import niagara
@@ -36,6 +39,7 @@ MOVE_AT = 30.0
 PUSH_AT = 55.0
 START_FAR = 700.0
 FAR_DIST = 1150.0   # 1200 until round 65 (on two trees), see the docstring
+OUT_DIST = 1200.0   # the teleports' OUT, straight south of the yard (round 70)
 PID = 'CNVDefenseTest'
 INF = ab.INF
 HEURISTIC = 'FriendlyLandStructureHeuristic'
@@ -100,6 +104,8 @@ def mission(name, dist, upd, slack, far=False):
     base = 'CNV AI Base'
     m.waypoint('ai base', base, 'east base')
     m.waypoint('far', 'CNV AI Far', 'east base', FAR_DIST * (gx - ex) / L, FAR_DIST * (gy - ey) / L)
+    if far:
+        m.waypoint('out', 'CNV AI Out', 'east base', 0.0, -OUT_DIST)
     timers = [('SET_MILLISECOND_TIMER', 'CNV AI Push', PUSH_AT)] if far else [
         ('SET_MILLISECOND_TIMER', 'CNV AI Move', MOVE_AT)]
     m.scripts += [
