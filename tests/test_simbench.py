@@ -168,7 +168,11 @@ def test_r4_no_engineer_no_derrick():
 # bench 2026-11-05 engine_production (docs/engine/production.md): (帧数, 资金) pairs read on the bench, 帧数 when the
 # engineer is first counted -- the same table the engine line's model is held to (RA3-EngineModel BENCH_PRODUCTION)
 BENCH_PRODUCTION = {'a': ([(16, 1946), (25, 1916), (31, 1896), (39, 1870), (145, 1516), (153, 1500)], 160),
-                    'b': ([(133, 3), (150, 1953), (157, 1929), (210, 1753)], 221)}
+                    'b': ([(133, 3), (150, 1953), (157, 1929), (210, 1753)], 221),
+                    # short of power (sim.Sim.build_frames): c supply 0 / demand 25 -> f 0.3, 495 frames;
+                    # d 50 / 75 -> f 0.5 (at most 0.5 while short), 300 frames
+                    'c': ([(132, 1866), (488, 1507), (496, 1500)], 505),
+                    'd': ([(132, 1780), (299, 1501)], 309)}
 
 
 def _production_rows(check, order=True):
@@ -206,6 +210,20 @@ def test_production_pays_as_it_builds_and_comes_out_after_the_door(check):
     assert next(rd['出口位'] for rd in rows if rd['出口位']) == 101      # out at UnitCreatePoint, as on the bench
     assert offered[:4] == ['AlliedScoutInfantry', 'AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry',
                            'AlliedEngineer']   # the barracks' tier-1 buttons; the spy needs Upgrade_AlliedTech2
+
+
+@pytest.mark.parametrize('check, power, factor', [('a', (150, 25), 1.0), ('c', (0, 25), 0.3), ('d', (50, 75), 0.5)])
+def test_power_is_the_living_objects_energy(check, power, factor):
+    """Supply and demand from EnergyProduction of what still stands (yard +50, plant +100, barracks -25 each), the
+    low-power factor from them; PLAYER_EXCESS_POWER_COMPARE_VALUE reads supply - demand."""
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_production', check)
+    s = sim.Sim(m, t)
+    s.advance(30)
+    assert s.power(s.human) == power
+    assert sim.power_factor(*power) == pytest.approx(factor)
+    assert s.cond('PLAYER_EXCESS_POWER_COMPARE_VALUE', [s.human, 2, power[0] - power[1]])
 
 
 def test_production_needs_a_factory_and_its_prerequisites():

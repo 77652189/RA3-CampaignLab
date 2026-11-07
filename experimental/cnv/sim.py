@@ -139,7 +139,11 @@ ALIGN = {
     'production': 'Sim.order_build (simproxy\'s player): BuildTime x 15 frames, paid frame by frame up to '
                   'ceil(cost x progress) (single-float progress), a frame it cannot pay does not go on, the unit out '
                   'DoorOpeningTime (10 frames) after it is full at UnitCreatePoint, walking to NaturalRallyPoint '
-                  '(bench 2026-11-05 engine_production a-d). Not modelled: low power, the factory\'s veterancy',
+                  '(bench 2026-11-05 engine_production a-d); short of power (supply < demand: EnergyProduction of the '
+                  'owner\'s living objects) 15 x trunc(BuildTime / f), f 0.3 to 0.5 (engine_production c / d). Not '
+                  'modelled: the factory\'s veterancy',
+    'power': 'PLAYER_EXCESS_POWER_COMPARE_VALUE: supply - demand of the player\'s living objects (EnergyProduction; '
+             'not measured)',
     'attack': 'NAMED_ATTACK_NAMED: the attacker goes to its target; the fight is the script\'s (摧毁)',
     'guard': 'UNIT_GUARD_AREA: goes to the area\'s middle and stays',
     'bridge deck': 'a bridge is walkable deck from its start to its end object (BRIDGE_DECK wide); bench '
@@ -361,6 +365,22 @@ def inside(pts, x, y):
 def f32(x):
     """x as a single float (the game's production progress, docs/engine/production.md)."""
     return float(np.float32(x))
+
+
+LOW_POWER = {'penalty': 1.0, 'min': 0.3, 'max': 0.5}   # GameData LowEnergyPenaltyModifier, Min / Max-
+                                                        # LowEnergyProductionSpeed (retail; work/re/l2_production.md)
+
+
+def power_factor(supply, demand, rules=LOW_POWER):
+    """A player's low-power speed (RA3 1.13 0x864560; docs/engine/production.md): 1 - (1 - min(1, supply / demand))
+    x penalty, at least min, and while short at most max (retail: short of power is 0.3 to 0.5 whatever the
+    shortfall); <= 0 -> 0.01. 1.0 with enough power."""
+    r = 1.0 if demand == 0 else min(1.0, f32(supply / demand))
+    f = 1.0 - (1.0 - r) * rules['penalty']
+    f = max(f, rules['min'])
+    if r < 1.0:
+        f = min(f, rules['max'])
+    return f32(f) if f > 0 else f32(0.01)
 
 
 def mmss(t):
@@ -604,6 +624,7 @@ class Sim:
         self.due = []                       # (frame, structure, owner, team, x, y, by): a builder's, to put down (R5)
         self.queues = {}                    # factory name -> [job]: production (order_build, produce_due)
         self.produced_to = None             # the last frame produce_due ran
+        self.energies = {}                  # template -> EnergyProduction (simunits.energy; power)
         self.player_ups = {}                # player -> upgrades GIVE_PLAYER_UPGRADE gave (a unit's NeededUpgrade)
         teams = getattr(mission.map, 'TEAMS', {})
         self.active = set(teams.values())               # teams with an instance: a whole-team order to any other is lost (E3)
@@ -815,8 +836,8 @@ class Sim:
         f = min(fs, key=lambda f: len(self.queues.get(f.name, [])))
         cost, secs = simunits.production(template, self.own)
         self.queues.setdefault(f.name, []).append(
-            {'template': template, 'owner': owner, 'cost': cost, 'frames': max(1, int(round(secs * simunits.LIFE_FPS))),
-             'progress': 0.0, 'paid': 0, 'full': None})
+            {'template': template, 'owner': owner, 'cost': cost, 'secs': secs, 'progress': 0.0, 'paid': 0,
+             'full': None})
         self.used.add('production')
         self.note('生产', f'{self.who(owner)} 在 {self.label(f)} 排 {template}（{cost}，{secs:g} 秒）')
         return True
@@ -845,7 +866,7 @@ class Sim:
                 job = next((j for j in q if j['full'] is None), None)
                 if job is None:
                     continue
-                step = f32(100.0 / job['frames'])
+                step = f32(100.0 / self.build_frames(job['secs'], job['owner']))
                 nxt = f32(job['progress'] + step)
                 owe = min(job['cost'], math.ceil(round(job['cost'] * nxt / 100.0, 9))) - job['paid']
                 have = self.money.get(job['owner'], 0)
@@ -856,6 +877,32 @@ class Sim:
                 job['progress'] = nxt
                 if nxt >= 100.0:
                     job['full'] = fr
+
+    def power(self, owner):
+        """(supply, demand) of the owner: its living objects' EnergyProduction, > 0 summed into the supply, < 0 into
+        the demand (RA3 1.13 0x7424a0 leaves out an object under construction or powered down: the simulator has
+        neither -- a building stands built from the frame it appears)."""
+        sup = dem = 0
+        for b in self.living():
+            if b.owner == owner:
+                e = self.energies.get(b.template)
+                if e is None:
+                    e = self.energies[b.template] = simunits.energy(b.template, self.own)
+                sup, dem = (sup + e, dem) if e > 0 else (sup, dem - e)
+        return sup, dem
+
+    def short_of_power(self, owner):
+        sup, dem = self.power(owner)
+        return sup < dem
+
+    def build_frames(self, secs, owner):
+        """A unit's build frames, worked out again every frame (RA3 1.13 0x71ddc0): BuildTime x 15 with enough power;
+        short of it 15 x trunc(BuildTime / power_factor) -- the division and its truncation on the seconds (bench
+        2026-11-05 engine_production c: supply 0, f 0.3, 10 s -> 495 frames; d: 50 / 75, f 0.5 -> 300)."""
+        f = power_factor(*self.power(owner))
+        if f >= 1.0:
+            return max(1, int(round(secs * simunits.LIFE_FPS)))
+        return max(1, math.trunc(secs / f) * simunits.LIFE_FPS)
 
     def produce_out(self, f, job, create, rally):
         c, s = math.cos(f.angle), math.sin(f.angle)
@@ -1071,6 +1118,10 @@ class Sim:
             b = self.body(a[0])
             within = bool(self.present(b) and inside(self.areas[a[1]], b.x, b.y))
             return within if name == 'NAMED_INSIDE_AREA' else not within
+        if name == 'PLAYER_EXCESS_POWER_COMPARE_VALUE':    # (player, cmp, n): supply - demand (the engine model's
+            sup, dem = self.power(a[0])                     # world.py reads it so; not measured)
+            self.used.add('power')
+            return CMP[a[1]](sup - dem, a[2])
         if name == 'PLAYER_HAS_OBJECT_COMPARISON':
             # the dying counted too (Team::countObjectsByThingTemplate, ignoreDead false)
             want = a[3].lower()

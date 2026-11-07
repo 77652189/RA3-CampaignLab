@@ -545,6 +545,14 @@ def production(template, own=None):
     return _inherited(template, own, read, (0, 0.0))
 
 
+def energy(template, own=None):
+    """EnergyProduction of the template (0 where it writes none): > 0 supplies the owner's power, < 0 is its demand."""
+    def read(xml):
+        m = re.search(r'\bEnergyProduction="(-?[\d.]+)"', xml)
+        return int(float(m.group(1))) if m else None
+    return _inherited(template, own, read, None) or 0
+
+
 def needs(template, own=None):
     """(objects, upgrades) its GameDependency asks for: every RequiredObject the player must own, every NeededUpgrade
     the player must hold (all of them: inference, the sidebar's lit buttons not measured)."""
