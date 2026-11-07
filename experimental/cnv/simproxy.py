@@ -161,15 +161,8 @@ class SimWorld:
         return s.eng.frame if s.eng is not None else int(round(s.t * FPS))
 
     def step(self, frames):
-        """Run the simulator `frames` on, a DT tick at a time as Sim.run does (step, then each whole second's
-        sample)."""
-        s = self.sim
-        target = round(s.t + frames / FPS, 6)
-        while s.t < target - 1e-9 and s.ending is None:
-            s.step()
-            if abs(s.t - round(s.t)) < 1e-6:
-                s.sample()
-            s.t = round(s.t + sim.DT, 3)
+        """Run the simulator `frames` on (Sim.advance: run's ticks a slice at a time, stopping at the mission's end)."""
+        self.sim.advance(frames)
 
     def result(self):
         e = self.sim.ending
@@ -218,8 +211,11 @@ class SimWorld:
     def enemies(self):
         return frozenset(p for p in self.sim.players.values() if p != self.me and self.sim.enemy(self.me, p))
 
+    def _convoy(self):
+        return [b for b in (self.sim.bodies.get(n) for n in self.escort) if b is not None and b.alive]
+
     def where_home(self):
-        convoy = [b for b in (self.sim.bodies.get(n) for n in self.escort) if b is not None and b.alive]
+        convoy = self._convoy()
         if not convoy:
             return self.home
         return (sum(b.x for b in convoy) / len(convoy), sum(b.y for b in convoy) / len(convoy))
@@ -231,7 +227,7 @@ class SimWorld:
         seen = [self._thing(b) for b in s.living() if not b.scenery and b.owner != self.me
                 and (b.owner == sim.CIV or s.enemy(self.me, b.owner)) and s.side_sees(self.me, b)]
         return self.pw.Observation(self.frame, self.me, int(s.money.get(self.me, 0)), self.where_home(), mine, seen, [],
-                                   self.enemies(), list(self.leads), self.chokes())
+                                   self.enemies(), list(self.leads), self.chokes(), escort=bool(self._convoy()))
 
     def chokes(self):
         """The level's chokes (CHOKES) as the player sees them now: the countdown's end if it is on screen, whether
@@ -272,12 +268,12 @@ class SimWorld:
         units = [b for b in units if b is not None and b.owner == self.me]
         if not units:
             return self._refuse(o, 'no living unit of mine')
-        if o.kind == 'move':
+        if o.kind in ('move', 'attack_move'):
             if o.pos is None:
                 return self._refuse(o, 'move without a place')
             for b in units:
                 b.goal = None
-                s.order_move(b, (float(o.pos[0]), float(o.pos[1])), False)
+                s.order_move(b, (float(o.pos[0]), float(o.pos[1])), o.kind == 'attack_move')
             return True
         if o.kind == 'attack':
             t = self._body(o.target)

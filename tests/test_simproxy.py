@@ -139,6 +139,11 @@ def test_a4_the_proxy_ices_the_streets_on_its_own_and_compares(a4_run, lib):
     plain, _ = simproxy.play('a4', style=w.p['player'].Style(block=0), label='不放冰', lib=lib)
     assert not [m for m in plain['moments'] if m['what'] == 'block']
     assert not plain['goals']['会场冻街口']['met'] and not plain['goals']['最后一程冻口子']['met']
-    assert rep['frames'] > plain['frames']                          # the ice holds the convoy longer
+    assert rep['result'] == plain['result'] == 'lose'             # 11-07 B r26: ice 3:02, plain 3:50 (no longer "ice
+    # holds longer": with the army kept round the convoy, two streets iced send the third street's wave sooner)
+    # the army never goes for what cannot be aimed at (the spawn sculptures, the signal smoke) nor at the dead
+    goes = [m['detail'] for m in rep['moments'] + plain['moments'] if m['what'] in ('go', 'defend')]
+    assert not [d for d in goes if 'Sculpture' in d or 'Smoke' in d]
+    assert rep['world']['refused'] == 0
     table = w.p['report'].compare([rep, plain])
     assert '挡路 0 次' in table and '共 2 局' in table and '会场冻街口 1/2' in table
