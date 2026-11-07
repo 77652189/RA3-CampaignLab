@@ -348,3 +348,11 @@
 - **全部测试**：543 过、8 红。8 红都不是 K7 引起：`test_mappage_sketch` 6 条是 trial 图的开局镜头规则（I23 那次提交的 `start_camera_inside_the_view`，地图页的试验图没跟上，外壳线/地图线的事）；`test_cnv_parts::test_every_build_keeps_the_contract` 是引擎线没提交的 `checks/engine_missile.py`（`CampMslS` 缺 'base jump' 标记）。**我没有用 stash 对照验证**，判断依据是失败信息指向的文件。
 - **测试台**：`a4 place`、`placem`、`horn` PASS（冰核落在三个新口子上、号角兵数对）；`detour/queue/smash/derrick/melt/smoke/win` 没跑，下个会话在测试台空时跑（每条 3～5 分钟，交给 Sonnet 子 Agent）。
 - **还欠**：G15 守卫（见上节第 3 条）；房子行对步兵的实测；`plans/a4.md` 改了守卫位置后 `flow/a4.md` 若写了"港口守卫守北营地"要同步。
+
+### 第二十八个会话（11-06，总控令：关卡线试一次"只靠模拟器、不开测试台"）：7 项检查都用模拟器重做了，G15 做完
+
+- **报告**：[`docs/story/sim-vs-bench-a4.md`](sim-vs-bench-a4.md)（表：detour、smoke 能；queue 能但墙的消失靠脚本；melt、smash、win 部分；derrick 不能，只判走得到；末尾 R1～R6 是给引擎线的缺规则清单）。
+- **工具**：`experimental/cnv/simbench.py`（新，没动 `sim.py`）：`python -I -X utf8 experimental/cnv/simbench.py [检查名]`，把检查的任务放进模拟器、玩家的冰墙用剧本 `造`、读数按开场过场长度（80 秒）前移，再用检查自己的期望判；读不了的读数写 SKIP。`tests/test_simbench.py` 守着（6 项过 + 3 个"没墙必须红"的变异 + SKIP 不算 PASS）。
+- **G15**：`platmap.Block.high` + `platmap.high_lint`（并进 `block_lint`，所以 `cnv_preview` / `build.py` 都会跑）：声明了 Block 的地图里，`Shape.tier≥2` 要被带 `high` 或 `远景` 的 Block 盖住（至多 10% 例外）。守卫 `test_architecture.py::test_g15_*` 带变异（去掉北高原的 `high` 变红、改成远景不红、没盖住的高地变红、没有 Block 的图不管）；`tests/test_platmap_terrain.py` 一条单元测试。sapporo 三块高地写了 `high`（来自 `docs/design/maps/a4.md` 逐块表的用途栏）。`experimental/mappage/sketch2map.py` 跟着带 `high`（否则地图页的往返对比红）。
+- **全量测试**（`work/logs/full_tests.log`，改动前的一次）：559 过、3 红：`test_mappage_sketch[sapporo]`（G15 引起的，已修）、`test_platmap_terrain` 的夹具（高地没盖，已修）、`test_maps::test_nothing_a_build_places_stands_on_scenery`——**不是关卡线的**：引擎线的 `aidefense_bench`（`checks/engine_aidefense.py`）里 waypoint `CNV AI Far`（2662, 3230）落在 sapporo 的两棵树 `MR_Tree06` 上，要引擎线挪点。上轮的 8 红（mappage_sketch 6 条、`test_cnv_parts`）这次都过了，我没有改它们，什么时候、被谁修好的没查。
+- **还欠**：用测试台把 7 项在这一版地图上各跑一次，对照模拟器读数（出入就是该补的规则）；房子行挡不挡步兵；A4 以外各图的 G15（只有声明了 Block 的图被管，目前 4 张，都干净）。

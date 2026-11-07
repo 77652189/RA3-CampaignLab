@@ -38,9 +38,22 @@ def test_no_blocks_no_block_problems():
 def test_ground_in_no_block_is_empty_and_at_most_a_quarter():
     few = island(blocks=[Block((0, 0, 1000, 1000), '后方', 'base')])
     assert any('in no block' in p for p in problems(few))
-    most = island(blocks=[Block((0, 0, 2000, 1000), '后方', 'base'), Block((0, 1000, 1300, 2000), '前线', 'camp')])
+    most = island(blocks=[Block((0, 0, 2000, 1000), '后方', 'base'), Block((0, 1000, 1300, 2000), '前线', 'camp'),
+                          Block((1400, 1400, 1900, 1900), '远景', 'plateau')])
     use = platmap.block_use(most, {'start': START}, platmap.walkable(most))
     assert use['share']['空地'] <= platmap.EMPTY_MOST and not problems(most)
+
+
+def test_raised_ground_says_what_it_is_for():
+    """G15: a shape of tier 2 or above must lie in blocks that carry a `high` (why the view from above is needed) or
+    are 远景; a layout with no blocks is not held to it."""
+    base = [Block((0, 0, 2000, 1400), '后方', 'base')]
+    unsaid = island(blocks=base + [Block((1400, 1400, 1900, 1900), '前线', 'camp')])
+    said = island(blocks=base + [Block((1400, 1400, 1900, 1900), '前线', 'camp', high='sees the whole low ground')])
+    backdrop = island(blocks=base + [Block((1400, 1400, 1900, 1900), '远景', 'camp')])
+    assert any('high ground shut plateau' in p for p in platmap.high_lint(unsaid))
+    assert not platmap.high_lint(said) and not platmap.high_lint(backdrop) and not platmap.high_lint(island())
+    assert any('high ground' in p for p in problems(unsaid))      # it is part of the map's lint
 
 
 def test_backdrop_must_be_out_of_reach():

@@ -23,7 +23,7 @@ The sketch (version 1), world units, +y north, as the map modules write them:
   start [x, y]                the player's start (Player_1_Start and the start camera are moved there)
   fields [{name, x, y, facing, twin, base, owner, build}], derricks [[x, y]]     resources.Field: ore made from the pad
   borders {name: [x0, y0, x1, y1]}   the first is the playable area (MAP_SWITCH_BORDER order)
-  blocks [{at, use, what}], gaps [{x, y, width, what}]     platmap.Block / Gap (at: a shape dict or a rectangle)
+  blocks [{at, use, what, high}], gaps [{x, y, width, what}]     platmap.Block / Gap (at: a shape dict or a rectangle)
   brushes [{op, r, s, dabs, height}]   raise / lower / flatten strokes laid last (platmap.brush, Layout.brushes; the
                               same rule as the existing maps' terrain editor); dabs flat [x0, y0, x1, y1, ...]
   bridges [{a: [x, y], b: [x, y], template}]   a bridge from bank a to bank b (platmap.bridge: a start and an end
@@ -193,7 +193,7 @@ def from_module(mod, names=None):
         'derricks': [[_f(x), _f(y)] for x, y in derricks],
         'borders': borders,
         'blocks': [{'at': _shape_out(b.at) if isinstance(b.at, platmap.Shape) else [_f(v) for v in b.at],
-                    'use': b.use, 'what': b.what} for b in lay.blocks],
+                    'use': b.use, 'what': b.what, 'high': b.high} for b in lay.blocks],
         'gaps': [{'x': _f(g.x), 'y': _f(g.y), 'width': _f(g.width), 'what': g.what} for g in lay.gaps],
         'brushes': [_brush_out(st) for st in getattr(lay, 'brushes', [])],
         'bridges': bridges,
@@ -375,7 +375,8 @@ def module_text(s):
     blocks = []
     for b in s.get('blocks', []):
         at = _shape_src(b['at']) if isinstance(b['at'], dict) else '(' + ', '.join(_r(v) for v in b['at']) + ')'
-        blocks.append(f"Block({at}, {_s(b['use'])}, {_s(b.get('what', ''))})")
+        high = f", high={_s(b['high'])}" if b.get('high') else ''
+        blocks.append(f"Block({at}, {_s(b['use'])}, {_s(b.get('what', ''))}{high})")
     L += _wrap('BLOCKS = [', blocks)
     L += _wrap('GAPS = [', [f"Gap({_r(g['x'])}, {_r(g['y'])}, {_r(g['width'])}, {_s(g.get('what', ''))})"
                             for g in s.get('gaps', [])])

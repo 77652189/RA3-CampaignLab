@@ -627,6 +627,61 @@ def test_g13_a_cast_point_is_level_open_ground():
                 assert 'cast=True' in ln, f'{rel}: an ice mark that is not a cast point: {ln.strip()}'
 
 
+# G15 (K7 / I8, A4 terrain rework): raised ground says what it is for. A map that declares Blocks (P24) must cover every
+# shape of tier 2 or above with blocks that carry a Block.high (why the level needs the view from above there) or are
+# 远景 (platmap.high_lint, part of platmap.lint, so cnv_preview and build.py run it). The A4 street blocks were raised
+# only to bar the convoy and cost the player the way and the sight for nothing; the rule keeps that from coming back.
+# Maps that declare no Blocks are not held to it yet (only sapporo has any).
+G15_PROBE = '''
+import dataclasses, sys
+sys.path[:0] = [{cnv!r}, {root!r}]
+import build, model, platmap
+from platmap import Block, Layout, poly, rect
+bad, declared = [], 0
+for n in sorted(build.MISSIONS):
+    m, _, _ = build.resolve(n, '')
+    layout = getattr(model.merged(m).map, 'LAYOUT', None)
+    if layout is not None and layout.blocks:
+        declared += 1
+        bad += [(n, p) for p in platmap.high_lint(layout)]
+print('G15 builds', len(build.MISSIONS), 'declared', declared, 'bad', bad[:3])
+m, _, _ = build.resolve('a4', '')
+layout = model.merged(m).map.LAYOUT
+plateau = next(b for b in layout.blocks if b.what.startswith('the north plateau'))
+assert plateau.high, 'sapporo: the north plateau block lost its high'
+
+
+def red(blocks, shapes=None):
+    return len(platmap.high_lint(dataclasses.replace(layout, blocks=blocks, shapes=shapes or layout.shapes)))
+
+
+plain = [dataclasses.replace(b, high='') if b is plateau else b for b in layout.blocks]
+backdrop = [dataclasses.replace(b, high='', use='远景') if b is plateau else b for b in layout.blocks]
+hill = rect(0, 0, 400, 400, 3, 'a hill')
+print('G15 mutation',
+      red(layout.blocks),                                 # as built: nothing
+      red(plain),                                         # the plateau's reason taken away
+      red(backdrop),                                      # ... or it is backdrop: fine
+      red(layout.blocks, layout.shapes + [hill]),         # a raised shape no block covers
+      red([Block(rect(0, 0, 400, 400, 1), '前线', 'x')], [hill]),   # a block with no reason covering it
+      len(platmap.high_lint(dataclasses.replace(layout, blocks=[]))))   # no blocks declared: not held to it
+'''
+
+
+def test_g15_raised_ground_says_what_it_is_for():
+    import re
+    import sys
+    probe = G15_PROBE.format(cnv=str(ROOT / CNV), root=str(ROOT / 'experimental' / 'campaign'))
+    r = subprocess.run([sys.executable, '-I', '-X', 'utf8', '-c', probe], cwd=ROOT, capture_output=True, text=True,
+                       encoding='utf-8')
+    assert r.returncode == 0, (r.stdout + r.stderr)[-2000:]
+    assert 'bad []' in r.stdout and not re.search(r'declared 0 ', r.stdout), r.stdout.strip()
+    got = re.search(r'G15 mutation (\d+) (\d+) (\d+) (\d+) (\d+) (\d+)', r.stdout)
+    assert got, r.stdout.strip()
+    built, plain, backdrop, loose, unsaid, none = (int(x) for x in got.groups())
+    assert built == 0 and plain >= 1 and backdrop == 0 and loose >= 1 and unsaid >= 1 and none == 0, r.stdout.strip()
+
+
 # GE7 (ADR 0016 phase 4, E7): what the engine does with music and endings (work/re/ra3-script-reference.md E7-6, E7-7).
 # A music cue suspends the combat music for good, so after the phase that switches it on every cue is followed by the
 # switch-on again (contract.music_resumes; plan.resume_music produces it); the library's Mission Won / Lost play the

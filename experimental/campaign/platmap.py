@@ -64,10 +64,13 @@ BACKDROP_MOST = 0.01            # km2 of a 远景 block the player may still wal
 class Block:
     """A part of the playable area and what it is for (docs/design/principles.md P24): use 前线 (the enemy or the
     main objective), 支线 (a bonus, a tech building, a strongpoint), 通道 (the way between), 后方 (the base), 远景
-    (backdrop: nobody can walk there). at: a Shape, or a rectangle (x0, y0, x1, y1)."""
+    (backdrop: nobody can walk there). at: a Shape, or a rectangle (x0, y0, x1, y1). high: why the ground here needs
+    the view from above (G15: raised ground costs the player the way and the sight; retail raises it only where the
+    level plays on what is seen from it) -- a block covering raised ground says it, or is 远景."""
     at: object
     use: str
     what: str = ''
+    high: str = ''
 
 
 @dataclasses.dataclass
@@ -495,6 +498,37 @@ def block_lint(layout, sites, walk, dims=CONTAINER):
                    f'(empty; most {EMPTY_MOST:.0%}): give it a use, or make it backdrop (water, cliff, the border)')
     out += [f'block {k} (远景): {v:g} km2 of it can be walked to (most {BACKDROP_MOST:g})'
             for k, v in use['backdrop'].items() if v > BACKDROP_MOST]
+    return out + high_lint(layout, dims)
+
+
+HIGH_TIER = 2                   # a shape of this tier or above is raised ground a level plays on or does not (G15)
+HIGH_UNSAID_MOST = 0.1          # of a raised shape, at most this share outside the blocks that say what it is for
+
+
+def high_lint(layout, dims=CONTAINER):
+    """G15: raised ground says what it is for. In a layout that declares blocks, every shape of tier HIGH_TIER or above
+    must lie (all but HIGH_UNSAID_MOST of it) inside blocks that either carry a Block.high -- why the level needs the view
+    from above there -- or are 远景 (backdrop, nobody walks there; raising it is scenery). Otherwise the height is a
+    free-for-all: it costs the player the way and the sight and buys nothing (the street blocks of A4 were raised
+    only to bar the convoy)."""
+    if not layout.blocks:
+        return []
+    w, h, b = dims
+    said, out = None, []
+    for s in layout.shapes:
+        if s.tier < HIGH_TIER:
+            continue
+        mk = _mask(s, w, h, b)
+        if said is None:                    # the ground the blocks that say it cover
+            said = np.zeros_like(mk)
+            for bl in layout.blocks:
+                if bl.high or bl.use == '远景':
+                    said |= block_mask(bl, dims)
+        n = int(mk.sum())
+        loose = float((mk & ~said).sum()) / n if n else 0.0
+        if loose > HIGH_UNSAID_MOST:
+            out.append(f'high ground {s.what or s.at}: tier {s.tier}, {loose:.0%} of it in no block that says why the view '
+                       f'from above is needed (Block.high) or is 远景 (most {HIGH_UNSAID_MOST:.0%})')
     return out
 
 
