@@ -8,7 +8,11 @@ Expected if ScriptedFlagHeuristic follows SET_FLAG and a team takes only what it
 after INF_AT and the tanks stay home till TANK_AT, then the tanks go. The waits are the reading (the model,
 RA3-EngineModel ra3model/ai/states.py, re-weighs states every 15 frames).
 Builds: aistate (target only the player's yard, ~2600 away), aistatenear (+ a player power plant ~750 away),
-aistateconst (near, and both states always on: does a team go at all).
+aistateconst (near, and both states always on: does a team go at all), aistatefar (both states always on, only the
+yard ~2600 away: not run yet; A round 67 reads no distance limit, so the expected reading is aistateconst's -- both
+teams leave ~5 s after the wake; 坦克在家 == 4 at TANK_AT then fails, as on aistateconst).
+NB: aistate's "nobody left" below says nothing about distance: its flags had no '/', and aistatenear (750) with the
+same flags did not move either.
 
 读数
 Bench 2026-11-06 aistate a (CampAIStateA, one run): nobody left -- 步兵在家 / 坦克在家 4 / 4 from s1 to s127;
@@ -128,6 +132,6 @@ def hunt(m):
     return t
 
 
-CHECKS = {'aistate': {'a': a}, 'aistatenear': {'a': a}, 'aistateconst': {'a': a}, 'aistateplain': {'a': a},
+CHECKS = {'aistate': {'a': a}, 'aistatenear': {'a': a}, 'aistateconst': {'a': a}, 'aistatefar': {'a': a}, 'aistateplain': {'a': a},
           'aistateslash': {'a': a}, 'aistateoff': {'off': off}, 'aistateoffhome': {'off': off},
           'aistateoff1': {'off': off}, 'aistateoffh': {'off': off}, 'aihunt': {'hunt': hunt}, 'aihunt2': {'hunt': hunt}}

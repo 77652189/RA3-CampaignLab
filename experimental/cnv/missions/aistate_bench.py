@@ -104,7 +104,8 @@ def personality_xml(gate='flag', flags=(FLAG_INF, FLAG_TANK), end='RAMPAGE', hun
 def mission(name='CampAIState', near=False, gate='flag', flags=(FLAG_INF, FLAG_TANK), scope=None, off_at=None,
             end='RAMPAGE', hunt=False, copies=None):
     """near: the player also has a power plant 300 west of the east gate, ~750 from the AI's units (the yard on the
-    west bank is ~2600 away, past ClosestStructureHeuristic's default SearchRange 1500). gate 'const': both states
+    west bank is ~2600 away; A round 67 read: ClosestStructureHeuristic measures no distance, SearchRange is only the
+    tech heuristic's -- aistatefar tests it). gate 'const': both states
     always on (ConstantHeuristic) -- does a team go at all. scope: the scripts' flag names get this prefix
     ('/' = the empty scope, which ScriptedFlagHeuristic reads), the AI's FlagName stays the bare name.
     off_at: the infantry flag also goes off then (seconds); end: the tactics' EndBehavior."""
@@ -153,6 +154,9 @@ MISSION = {'aistate': mission,
            'aistateplain': lambda: mission('CampAIPlain', near=True, flags=PLAIN),
            'aistatenear': lambda: mission('CampAINear', near=True),
            'aistateconst': lambda: mission('CampAIConst', near=True, gate='const'),
+           # both states always on, only the player's yard ~2600 away: does distance stop a team (A round 67 read:
+           # the enemy structure / unit heuristics measure no distance, only the tech one uses SearchRange)
+           'aistatefar': lambda: mission('CampAIFar', gate='const'),
            'aistateslash': lambda: mission('CampAISlash', near=True, flags=PLAIN, scope='/'),
            'aistateoff': lambda: mission('CampAIOff', near=True, flags=PLAIN, scope='/', off_at=OFF_AT),
            'aistateoffhome': lambda: mission('CampAIHome', near=True, flags=PLAIN, scope='/', off_at=OFF_AT,
