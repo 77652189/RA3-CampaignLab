@@ -553,6 +553,26 @@ def energy(template, own=None):
     return _inherited(template, own, read, None) or 0
 
 
+def unpack_frames(template, own=None):
+    """StructureUnpackUpdate's UnpackTime x 15 rounded (RA3 1.13 0x720100: F = round(UnpackTime x 15)); 0 where it
+    has none. A '=$NAME' value is the define of the template's file (SovietPowerPlant: 10 s) or GlobalDefines."""
+    def read(xml):
+        head, _ = next(_blocks(xml, 'StructureUnpackUpdate'), (None, ''))
+        return _attr(head, 'UnpackTime') if head else None
+    v = _inherited(template, own, read, None)
+    if not v:
+        return 0
+    if v.startswith('=$'):
+        _xml(template, own)                     # loads the index
+        f = (_index.get(template.lower()) or {}).get('file', '')
+        path = os.path.join(SAGEXML, *f[5:].split('/')) if f.startswith('DATA:') else ''
+        text = open(path, encoding='utf-8', errors='replace').read() if path and os.path.exists(path) else ''
+        g = dict(DEFINE.findall(open(GLOBAL_DEFINES, encoding='utf-8', errors='replace').read())) \
+            if os.path.exists(GLOBAL_DEFINES) else {}
+        v = {**g, **dict(DEFINE.findall(text))}.get(v[2:], '')
+    return int(round(_secs(v.lstrip('=')) * LIFE_FPS))
+
+
 def needs(template, own=None):
     """(objects, upgrades) its GameDependency asks for: every RequiredObject the player must own, every NeededUpgrade
     the player must hold (all of them: inference, the sidebar's lit buttons not measured)."""

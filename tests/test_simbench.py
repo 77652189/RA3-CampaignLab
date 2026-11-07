@@ -292,3 +292,51 @@ def test_r8_attack_move_past_does_not_turn_aside(variant):
     """Bench: walks straight to E (终点 from s7), the tank 260 / 400 beside the path untouched."""
     rows = _acquire_rows(variant)
     assert rows[-1]['终点'] == 1 and all(r['坦克血'] == 100 for r in rows)
+
+
+# ---- power: a POWERED structure of a player short of power holds its fire (sim.Sim.unpowered)
+# bench 2026-11-07 engine_powerdef (readings in checks/engine_powerdef.py): s1's Tesla coil (-75) beside six NO_ATTACK
+# Guardians; on (a plant +100): first loss at 111, then one per ~125 frames; off (no plant): none in 728; cut (the
+# plant deleted ~150): none after; back (a plant made by script ~150): first loss at 475
+def _powerdef(variant, until=50.0):
+    import build
+    import sim
+    m, t, _ = build.resolve(f'powerdef_{variant}', 'frames')
+    s = sim.Sim(m, t)
+    s.run(until)
+    labels = [lab for _, lab in t.counters]
+    return s, [dict(zip(labels, row)) for k, row in s.series if k >= 1]
+
+
+def test_power_off_the_coil_never_fires():
+    s, rows = _powerdef('off')
+    assert rows[-1]['帧数'] >= 728 and all(r['坦克'] == 6 for r in rows)
+
+
+def test_power_cut_the_coil_stops():
+    """Mutation of on: the plant deleted, the coil is unpowered from then on."""
+    s, rows = _powerdef('cut', until=12.0)
+    coil = next(b for b in s.living() if b.template == 'SovietBaseDefenseAdvanced')
+    assert s.short_of_power(coil.owner) and s.unpowered(coil)
+    s2, _ = _powerdef('on', until=12.0)
+    assert not s2.unpowered(next(b for b in s2.living() if b.template == 'SovietBaseDefenseAdvanced'))
+
+
+def test_power_back_after_the_plant_unpacks():
+    """A plant made short of power unpacks trunc((2 - 0.3) x 150) = 255 frames before it counts (RA3 0x720100); the
+    coil fires after that: no loss before, the first after (bench: 475, ~325 after the plant)."""
+    s, rows = _powerdef('back')
+    plant = next(b for b in s.bodies.values() if b.template == 'SovietPowerPlant')
+    made = int(round(plant.made_at * 15))
+    assert abs(plant.unpack_end - made - 255) <= 1          # made_at is the tick's second, the frame the script's
+    first = next(r['帧数'] for r in rows if r['坦克'] < 6)
+    assert plant.unpack_end <= first <= 475
+
+
+@pytest.mark.xfail(strict=True, reason='the coil kills a tank a second in the simulator (damage per second over a '
+                   'continuous cycle), one per ~125 frames on the bench: the fight model does not shoot by the clip '
+                   '(round 77 "战斗按弹夹的节奏")')
+def test_power_on_the_coil_kills_one_tank_per_125_frames():
+    s, rows = _powerdef('on')
+    lost = [r['帧数'] for i, r in enumerate(rows) if i and r['坦克'] < rows[i - 1]['坦克']]
+    assert 100 <= lost[1] - lost[0] <= 150

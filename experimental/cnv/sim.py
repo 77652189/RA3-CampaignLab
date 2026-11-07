@@ -341,6 +341,7 @@ class Body:
                                                                 # scripts (simunits.lifetime, R1)
     leaves: list = dataclasses.field(default_factory=list)      # what that death makes where it stood
     building: tuple = None                                      # (structure, (x, y), stand): told to build there (R5)
+    unpack_end: int = None                                      # a structure made in the run: unpacking until then
 
     @property
     def health(self):
@@ -712,6 +713,11 @@ class Sim:
         if frames is not None:                  # made in this frame's scripts (or, by a run event, at its start)
             made = self.eng.frame if getattr(self, 'eng', None) else int(round(at * simunits.LIFE_FPS))
             b.life_end = made + frames
+        unpack = simunits.unpack_frames(template, self.own) if by and 'STRUCTURE' in b.kinds else 0
+        if unpack:                              # made in the run (a map's own skip it): unpacks first -- adds no power
+            v = np.float32(power_factor(*self.power(owner)))       # and does not fire meanwhile; RA3 1.13 0x720100:
+            extra = np.float32(np.float32(1.0) - v) * np.float32(unpack)   # trunc((1 - v) F + F), v the owner's
+            b.unpack_end = self.frame_now() + int(np.float32(extra + np.float32(unpack)))   # factor then
         b.deposit = simunits.deposit(template, self.own)
         if b.deposit:                           # Generals: the first deposit an interval after it is made
             b.deposit_at = (self.eng.frame if getattr(self, 'eng', None) else int(round(at * simunits.LIFE_FPS))) \
@@ -883,8 +889,9 @@ class Sim:
         the demand (RA3 1.13 0x7424a0 leaves out an object under construction or powered down: the simulator has
         neither -- a building stands built from the frame it appears)."""
         sup = dem = 0
+        now = self.frame_now()
         for b in self.living():
-            if b.owner == owner:
+            if b.owner == owner and not (b.unpack_end is not None and now < b.unpack_end):
                 e = self.energies.get(b.template)
                 if e is None:
                     e = self.energies[b.template] = simunits.energy(b.template, self.own)
@@ -894,6 +901,15 @@ class Sim:
     def short_of_power(self, owner):
         sup, dem = self.power(owner)
         return sup < dem
+
+    def unpowered(self, b):
+        """Holds its fire: still unpacking, or POWERED while its owner is short of power (bench 2026-11-07
+        engine_powerdef: a Tesla coil of a player with supply 0 < 75 never fires; the plant deleted, it stops within a
+        shot's interval; a plant made by script unpacks 255 frames short of power, the coil's next kill 70 frames
+        after that)."""
+        if b.unpack_end is not None and self.frame_now() < b.unpack_end:
+            return True
+        return 'POWERED' in b.kinds and self.short_of_power(b.owner)
 
     def build_frames(self, secs, owner):
         """A unit's build frames, worked out again every frame (RA3 1.13 0x71ddc0): BuildTime x 15 with enough power;
@@ -1615,7 +1631,8 @@ class Sim:
         self.seen = {}
         self.firing = []
         live = [b for b in self.living() if not b.scenery]
-        armed = [b for b in live if b.weapons and 'NO_ATTACK' not in b.status]    # NO_ATTACK: holds its fire
+        armed = [b for b in live if b.weapons and 'NO_ATTACK' not in b.status    # NO_ATTACK: holds its fire
+                 and not self.unpowered(b)]
         targets = [b for b in live if 'UNATTACKABLE' not in b.status]
         if not armed or not targets:
             return
