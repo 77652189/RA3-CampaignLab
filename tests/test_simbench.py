@@ -13,7 +13,7 @@ simbench = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(simbench)
 
 
-@pytest.mark.parametrize('check', ['detour', 'queue', 'melt', 'smoke', 'smash', 'win'])
+@pytest.mark.parametrize('check', ['detour', 'queue', 'melt', 'smoke', 'smash', 'win', 'derrick'])
 def test_the_simulators_version_of_the_check_holds(check):
     status, lines = simbench.run(check)
     assert status == 0, '\n'.join(lines)
@@ -70,6 +70,36 @@ def test_r7_the_ghost_king_lands_as_on_the_bench():
 
 
 def test_a_counter_the_simulator_cannot_read_is_skipped_not_passed():
-    status, lines = simbench.run('smash')
-    assert any(x.startswith('SKIP 目标墙血量') for x in lines), '\n'.join(lines)
-    assert not any(x.startswith('PASS 目标墙血量') for x in lines)
+    """A counter listed blind (a rule the simulator lacks) is taken out of the judged expectations and said as SKIP
+    (smash's wall health was, before R2 / R3: a reference nobody set reads 0, and '< 100' took it for a hit)."""
+    import build
+    _, t, _ = build.resolve(simbench.LEVEL, 'smash')
+    keep, skip = simbench.judged(t, {'目标墙血量': 'no rule'})
+    assert any(x.startswith('SKIP 目标墙血量') for x in skip)
+    assert not any(e[0] == '目标墙血量' for e in keep) and keep
+
+
+def _series(lines, label_count=2):
+    """The counters row of a simbench run as [(second, (values...))] at each change."""
+    import re
+    row = next(x for x in lines if x.startswith('counters'))
+    pat = r's(\d+)(?:-s\d+)?: ' + ' '.join([r'(\S+)'] * label_count)
+    return [(int(m[0]), m[1:]) for m in re.findall(pat, row)]
+
+
+def test_r4_the_engineer_takes_the_derrick_as_on_the_bench():
+    """R4 (sim.Sim.capture_due / deposit_due): bench 2026-11-07 `cnv_check a4 derrick` -- the derrick the player's
+    at the first reading after the order (s4) with 500 (the capture bonus), 515 at s7, 800 at s46 (15 every 2 s)."""
+    status, lines = simbench.run('derrick')
+    got = _series(lines)
+    taken = next(s for s, (ours, _) in got if ours == '1')
+    money = {s: int(v) for s, (_, v) in got}
+    assert abs(taken - 4) <= 1 and money[taken] == 500, got
+    at = lambda sec: money[max(s for s in money if s <= sec)]
+    assert abs(at(7) - 515) <= 15 and abs(at(46) - 800) <= 15, got
+
+
+def test_r4_no_engineer_no_derrick():
+    """Mutation: the engineer deleted before the order -- the derrick stays neutral and no money comes."""
+    status, lines = simbench.run('derrick', script=['0 删除 UNIT - Test Engineer'])
+    assert status == 1 and any(x.startswith('FAIL 资金') for x in lines), '\n'.join(lines)

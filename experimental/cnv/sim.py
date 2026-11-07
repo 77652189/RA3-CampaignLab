@@ -66,7 +66,8 @@ CMP = {0: lambda a, b: a < b, 1: lambda a, b: a <= b, 2: lambda a, b: a == b, 3:
 WON, LOST = 'Mission Won', 'Mission Lost'
 LEVELS = {'easy': 0, 'normal': 1, 'hard': 2}
 NEAR = 800.0                    # an enemy this close to something of the player's is a threat (the tension curve)
-REACH = 300.0                   # 自动打掉: an enemy this close to something of the player's is being fought
+CAPTURE_REACH = 20.0            # R4: an engineer this far outside a building's round is at its side (a guess)
+REACH = 300.0                  # 自动打掉: an enemy this close to something of the player's is being fought
 LINGER = 0.0                    # a killed unit's death (its slow death): still in the game's name cache, where it fell
                                 # (docs/engine/script-semantics.md 4.2) -- the bench (2026-10-28, probe death): out of
                                 # the area from the reading the kill shows in; the guess was 3 s
@@ -131,6 +132,9 @@ ALIGN = {
                 'is made there the next frame (bench 2026-11-07 engine_life: within range, the core one frame after '
                 'the order). Not modelled: the power\'s reload, its placing rules (ForbiddenObjectRange, '
                 'PATHABLE_ONLY), his being busy while it builds',
+    'capture': 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED Command_CaptureBuilding: at its side the building changes hands, '
+               'a deposit building pays its bonus then its amount each interval (R4, bench 2026-11-07 a4 derrick)',
+    'nearest ref':'SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER: the nearest unnamed one (R2, PENDING bench)',
     'attack': 'NAMED_ATTACK_NAMED: the attacker goes to its target; the fight is the script\'s (摧毁)',
     'guard': 'UNIT_GUARD_AREA: goes to the area\'s middle and stays',
     'bridge deck': 'a bridge is walkable deck from its start to its end object (BRIDGE_DECK wide); bench '
@@ -301,6 +305,8 @@ class Body:
                                                                 # cannot destroy it) ...
     upgrades: set = dataclasses.field(default_factory=set)     # NAMED_RECEIVE_UPGRADE / _REMOVE_UPGRADE (a SPEED modifier acts)
     base_speed: float = None                                    # its speed before upgrades (set at the first one)
+    deposit: tuple = None                                       # R4: its AutoDepositUpdate (bonus, amount, frames)
+    deposit_at: int = None                                      # ... the frame of its next deposit
     died_at: float = None                                       # killed or deleted then
     last_hit: str = None                                        # the player whose damage came last (None: a
                                                                 # script's NAMED_KILL, or never hit)
@@ -540,6 +546,7 @@ class Sim:
         self.ground = Ground(mission.map)
         self.own = {u.id: u.xml for u in self.mm.units}
         self.bodies = {}                    # name -> Body (named ones), plus unnamed under '#k'
+        self.refs = {}                      # reference name (UNITRef - ...) -> the Body a SET_REF_TO_... pointed it at
         self.series = []                    # (t, counter values) for a check's counters
         self.threat = []                    # (t, enemies near, countdowns) every 10 s
         self.first_threat = None
@@ -631,6 +638,10 @@ class Sim:
         if frames is not None:                  # made in this frame's scripts (or, by a run event, at its start)
             made = self.eng.frame if getattr(self, 'eng', None) else int(round(at * simunits.LIFE_FPS))
             b.life_end = made + frames
+        b.deposit = simunits.deposit(template, self.own)
+        if b.deposit:                           # Generals: the first deposit an interval after it is made
+            b.deposit_at = (self.eng.frame if getattr(self, 'eng', None) else int(round(at * simunits.LIFE_FPS))) \
+                + b.deposit[2]
         self.bodies[name] = b
         return b
 
@@ -668,6 +679,50 @@ class Sim:
         if b and target and target.alive and b.alive and b.goal is not target:
             b.goal, b.mode = target, 'attack'
             self.send(b, (target.x, target.y))
+
+    def order_capture(self, b, target_name):
+        """R4: NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED with Command_CaptureBuilding: the engineer goes to the
+        building; at its side it takes it (capture_due)."""
+        self.used.add('capture')
+        target = self.body(target_name)
+        if b and b.alive and target and target.alive:
+            b.goal, b.mode = target, 'capture'
+            self.send(b, (target.x, target.y))
+
+    def capture_due(self):
+        """R4: an engineer at the side of the building it was told to take (within the building's round + CAPTURE_REACH,
+        or stopped as near as the way lets it within twice that): the building is his player's from then, the
+        engineer gone into it (a guess: RA3's engineer is used up), a deposit building pays its bonus now and its next
+        deposit an interval on (Generals' AutoDepositUpdate.awardInitialCaptureBonus). Bench 2026-11-07 a4 derrick:
+        the derrick the player's at the first reading after the order (s4), 500, then 15 every 2 s (s7 515 -> s46 800)."""
+        for b in self.living():
+            g = b.goal
+            if b.mode != 'capture' or not isinstance(g, Body):
+                continue
+            if not g.alive:
+                b.goal, b.mode, b.path = None, 'move', []
+                continue
+            shape = self.blocks(g)
+            r = (shape[2] if shape and len(shape) == 3 else 40.0) + CAPTURE_REACH
+            d = math.hypot(g.x - b.x, g.y - b.y)
+            if d > r and (b.path or d > 2 * r):
+                continue
+            g.owner = b.owner
+            self.note('占领', f'{self.label(b)} 占下 {self.label(g)}，归 {self.who(b.owner)}')
+            if g.deposit:
+                self.money[b.owner] = self.money.get(b.owner, 0) + g.deposit[0]
+                g.deposit_at = self.frame_now() + g.deposit[2]
+            self.destroy(b, '进楼占领', delete=True)
+            self.change()
+
+    def deposit_due(self, frame):
+        """R4: the deposit buildings a player (not the neutral side) holds pay `amount` each `frames` (Generals'
+        AutoDepositUpdate.update: the clock runs for the neutral too, it just pays nobody)."""
+        for b in self.living():
+            if b.deposit and b.deposit_at is not None and frame >= b.deposit_at:
+                b.deposit_at = frame + b.deposit[2]
+                if b.owner != CIV and b.deposit[1] > 0:
+                    self.money[b.owner] = self.money.get(b.owner, 0) + b.deposit[1]
 
     def order_guard(self, b, area):
         self.used.add('guard')
@@ -808,7 +863,21 @@ class Sim:
         return (not v) if neg else v
 
     def body(self, name):
+        if name in self.refs:                       # R2: a reference reads as the object it points at, dead or not
+            return self.refs[name]
         return self.bodies.get(name)
+
+    def nearest_ref(self, template, owner, team, ref):
+        """R2: SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER -- point `ref` at the living `template` of
+        `owner` nearest to `team`. PENDING bench (engine_ref): nearest to any member, objects with a script name
+        skipped, `ref` left as it was when there is none."""
+        self.used.add('nearest ref')
+        crew = self.members(team)
+        cands = [b for b in self.living() if b.owner == owner and b.template.lower() == template.lower()
+                 and b.name.startswith('#')]
+        if not crew or not cands:
+            return
+        self.refs[ref] = min(cands, key=lambda c: min(math.hypot(c.x - m.x, c.y - m.y) for m in crew))
 
     def cond(self, name, a):
         if name == 'FLAG':
@@ -978,6 +1047,10 @@ class Sim:
             self.order_guard(self.body(a[0]), a[1])
         elif name == 'NAMED_STOP':
             self.order_stop(self.body(a[0]))
+        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED' and a[1] == 'Command_CaptureBuilding':
+            self.order_capture(self.body(a[0]), a[2])
+        elif name == 'SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER':
+            self.nearest_ref(*a[:4])
         elif name == 'UNIT_SET_TEAM':               # the unit joins the team (K6: ctx.order does it before every whole-team order)
             b = self.body(a[0])
             self.active.add(a[1])                   # ... and the team has an instance from then on, the unit there or not (E3)
@@ -1255,6 +1328,7 @@ class Sim:
             eng.step()
             self.expire(eng.frame)
             self.build_due(eng.frame)
+            self.deposit_due(eng.frame)
             if self.test and self.test.counters and (eng.frame - 1) % self.fps == 0 and self.t >= LAG:
                 self.series.append((int(round(self.t - LAG)), [self.counters.get(c, 0) for c, _ in self.test.counters]))
             if not moved and self.ending is None and self.t >= t0 - 1e-9:
@@ -1286,6 +1360,7 @@ class Sim:
                     self.done.add(s.name)
         self.expire(self.frame_now())
         self.build_due(self.frame_now())
+        self.deposit_due(self.frame_now())
         if self.ending:
             return
         if self.combat:
@@ -1427,6 +1502,7 @@ class Sim:
             if b.building:
                 self.at_site(b, b.speed * DT - left)
             self.change()
+        self.capture_due()
         if self.auto_kill is not None:
             mine = [b for b in self.living() if b.owner == self.human]
             for b in self.living():

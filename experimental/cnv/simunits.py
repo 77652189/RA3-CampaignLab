@@ -333,6 +333,46 @@ def lifetime(template, own=None):
     return frames, leaves
 
 
+_retail_files = None
+
+
+def retail_xml(template):
+    """The SageXML text of a retail template (the file of its own name), '' when there is none."""
+    global _retail_files
+    if _retail_files is None:
+        _retail_files = {}
+        for root, _, files in os.walk(SAGEXML):
+            for f in files:
+                if f.endswith('.xml'):
+                    _retail_files.setdefault(f[:-4].lower(), os.path.join(root, f))
+    p = _retail_files.get(template.lower())
+    return open(p, encoding='utf-8', errors='replace').read() if p else ''
+
+
+def deposit(template, own=None):
+    """(bonus, amount, frames) of an AutoDepositUpdate (the oil derrick: 500 when taken, 15 every 2 s), else None.
+    When it pays (Generals' AutoDepositUpdate, R4): the capture pays the bonus and sets the next deposit `frames` on;
+    then `amount` every `frames` while a player (not the neutral side) holds it; frames = seconds x 15, cut down."""
+    if own and template in own:
+        return _deposit_of(own[template])
+    if template.lower() not in _deposits:
+        _deposits[template.lower()] = _deposit_of(retail_xml(template))
+    return _deposits[template.lower()]
+
+
+_deposits = {}
+
+
+def _deposit_of(xml):
+    head, inner = next(_blocks(xml, 'AutoDepositUpdate'), (None, ''))
+    if head is None:
+        return None
+    bonus = re.search(r'<InitialCaptureBonus[^>]*Amount="([\d.]+)"', inner)
+    amount = re.search(r'<Deposit\b[^>]*Amount="([\d.]+)"', inner)
+    return (float(bonus.group(1)) if bonus else 0.0, float(amount.group(1)) if amount else 0.0,
+            int(_secs(_attr(head, 'DepositInterval', '0s')) * LIFE_FPS + 1e-6))
+
+
 def assemble(template, power, own=None):
     """(stand, structure) of a mission unit's AssembleStructureSpecialAbilityUpdate for that special power (the ice
     engineer's freeze), else None: he walks to within `stand` (StartAbilityRange) of the target and builds

@@ -41,19 +41,19 @@ def nothing(m):
 SPECS = {
     'detour': (nothing, {}),
     'queue': (nothing, {}),
-    'smash': (nothing, {'目标墙血量': 'SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER is not known (no '
-                                          'reference to the nearest wall), and nothing damages a wall without an '
-                                          'order in the fight model'}),
+    'smash': (nothing, {}),             # R2 (the reference to the nearest wall) + R3 (the ordered attack on it)
     'melt': (nothing, {}),
     'smoke': (lambda m: [], {}),
     'win': (lambda m: ['不打'], {}),
+    'derrick': (nothing, {}),           # R4: the capture and the derrick's pay are the simulator's (bench 2026-11-07)
 }
 # win: the fight model off -- with it the check's top-up of the trucks (every frame, 15 a second) cannot hold against
 # a 0.5 s tick of a dozen units' clips, and the trucks fall at 4:23 -- so the mission's wiring is judged, not the fight
 
 
 # mission seconds a run goes on to (the scene's ~80 s, then the check's last expectation and a margin)
-UNTIL = {'detour': 170.0, 'queue': 220.0, 'smash': 200.0, 'melt': 170.0, 'smoke': 150.0, 'win': 900.0}
+UNTIL = {'detour': 170.0, 'queue': 220.0, 'smash': 200.0, 'melt': 170.0, 'smoke': 150.0, 'win': 900.0,
+         'derrick': 130.0}
 
 
 def judged(t, blind):
@@ -68,8 +68,10 @@ def run(check, script=None):
     player's lines in place of the check's own (a mutation: the player does nothing)."""
     import build
     import sim
-    if check == 'derrick':
-        return reach()
+    if check == 'derrick' and script is None:       # the check itself, then the walk to the map's own derricks
+        status, lines = run(check, [])
+        more, extra = reach()
+        return status + more, lines + extra
     make, blind = SPECS[check]
     m, t, _ = build.resolve(LEVEL, check)
     s = sim.Sim(m, t, script=';'.join(make(m) if script is None else script)).run(UNTIL[check])
@@ -102,12 +104,11 @@ def reach():
         ok = far <= REACH
         status += not ok
         lines.append(f'{"PASS" if ok else "FAIL"} 工程师走到油井 {k} ({x:g}, {y:g})：{REACH_RUN:g} 秒后离它 {far:.0f}')
-    return status, lines + ['SKIP 占下来、钱涨（NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED 不认识；占领是引擎的事，'
-                            '测试台 2026-10-29 已确认）']
+    return status, lines
 
 
 def main():
-    names = sys.argv[1:] or [*SPECS, 'derrick']
+    names = sys.argv[1:] or [*SPECS]
     bad = 0
     for name in names:
         status, lines = run(name)
