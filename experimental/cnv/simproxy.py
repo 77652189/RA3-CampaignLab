@@ -21,6 +21,8 @@ What the world shows the player (Observation, ra3model/proxy/world.py):
   chokes  CHOKES[level]: each way's block site and threat source, the on-screen countdown's end (the horn), the power
           that blocks (the ice engineer's) and whether ice stands there now; the proxy decides when and which to ice
           (player._blocks, Style.block = 0 never ices: --compare plays both)
+  cinematic  not Sim.input (a scene holds the player's input; issue refuses every order then); healing HEALING[level]
+          (the simulator heals nobody: False); counters what each seen template is made to kill (Matchup good_against)
 What the player may do (Order): 'move' (a plain move), 'attack' (Sim.order_attack on a body), 'power' with a pos (a
 ground power: NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT at a waypoint made for it -- the ice engineer walks there and
 builds, the simulator's R5) or with a target (noted only). losses(): every death so far (not deleted, not scenery,
@@ -72,7 +74,10 @@ CHOKES = {
                     ('北坡口', 'north mouth', 'north mouth'), ('三号广场', 'inside 3', 'plaza 3'),
                     ('东街口', 'east mouth', 'east mouth'))},
 }
-BLOCKED_R = 120.0               # a choke counts as blocked while a body with a lifetime of its own (ice) stands this close
+# levels with somewhere the wounded heal (Observation.healing): the simulator heals nobody (no auto-heal, no repair
+# modelled), so every level is False until it does; A4's first part has no repair on purpose (flow/a4.md)
+HEALING = {}
+BLOCKED_R = 120.0              # a choke counts as blocked while a body with a lifetime of its own (ice) stands this close
 # a level's own targets the report asks about: (goal name, cast part, note)
 TARGET_GOALS = {
     'a4': (('拆北营指挥所', 'north command', '第 3 段：指挥所一倒港口的兵撤走、车队走最后一程'),),
@@ -229,7 +234,9 @@ class SimWorld:
         seen = [self._thing(b) for b in s.living() if not b.scenery and b.owner != self.me
                 and (b.owner == sim.CIV or s.enemy(self.me, b.owner)) and s.side_sees(self.me, b)]
         return self.pw.Observation(self.frame, self.me, self.money(), self.where_home(), mine, seen, self.offers(),
-                                   self.enemies(), list(self.leads), self.chokes(), escort=bool(self._convoy()))
+                                   self.enemies(), list(self.leads), self.chokes(), escort=bool(self._convoy()),
+                                   cinematic=not s.input, healing=HEALING.get(self.level, False),
+                                   counters={t.template: self._data(t.template)[1] for t in seen})
 
     def money(self):
         """What the player can still spend: the bank less what the queued builds will still take (Sim.order_build pays
@@ -282,6 +289,8 @@ class SimWorld:
 
     def issue(self, o):
         s = self.sim
+        if not s.input:                         # a scene: the player has no control (Sim.input, ENABLE_INPUT)
+            return self._refuse(o, 'cinematic: no control')
         if o.kind == 'build':
             return True if s.order_build(self.me, o.template) else self._refuse(o, 'no factory of mine builds it now')
         units = [self._body(i) for i in o.units]

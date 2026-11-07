@@ -167,6 +167,9 @@ def test_a4_the_proxy_ices_the_streets_on_its_own_and_compares(a4_run, lib):
     # the army never goes for what cannot be aimed at (the spawn sculptures, the signal smoke) nor at the dead
     goes = [m['detail'] for m in rep['moments'] + plain['moments'] if m['what'] in ('go', 'defend')]
     assert not [d for d in goes if 'Sculpture' in d or 'Smoke' in d]
-    assert rep['world']['refused'] == 0
+    # B r28: the opening scene holds the player's input -- the proxy only watches (no order even tried), then the
+    # only refusals are attacks on a unit that died out of sight (the proxy forgets it on the refusal)
+    assert min(m['frame'] for m in rep['moments'] if m['what'] in ('go', 'defend', 'block', 'post')) >= 75 * 15
+    assert not [r for r in w.refused if r[2] != 'target gone']
     table = w.p['report'].compare([rep, plain])
     assert '挡路 0 次' in table and '共 2 局' in table and '会场冻街口 1/2' in table
