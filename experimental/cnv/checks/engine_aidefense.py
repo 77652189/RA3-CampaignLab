@@ -39,8 +39,8 @@ Bench 2026-11-06 aidefmv b (CampAIDefMvB, MOVE_NAMED_UNIT_TO): PASS. The control
   c  (aidefmv) the same with rings 100 / 175 / 225 / 275, to see how far the script move gets.
 Bench 2026-11-06 aidefmv c (CampAIDefMvC): PASS. 圈100 1 @ s54-55, 2 @ s56, 4 @ s57 to the end; 圈175 / 225 / 275 hold 4
   throughout: called back before 175, long before Distance 250, and no back and forth. Read as the aesthetics-off
-  re-gather (ready and the centre more than 100 off -> attack-move to the point); the model's ready test misses it
-  (RA3-EngineModel tests/test_ai_defense.py, strict xfail).
+  re-gather (ready and the centre more than 100 off -> attack-move to the point), with the members' ready test using
+  their stale standing records; the model matches it since round 64 (RA3-EngineModel tests/test_ai_defense.py).
 """
 from parts import Script, Test, counted, square
 
