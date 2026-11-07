@@ -16,6 +16,13 @@ Bench 2026-11-06 (one run each; charged at = 帧数 - 冲k at the last row):
   aimicpre r (first design: the warriors s1's from the start, as aimicnear but no hand-over; run as CampAIMicNearR):
     冲1 冲2 再冲1 all 0 through 帧数 947 -- never charged, though the engineer stood 90 away in gun range. Read
     afterwards: a unit's AI powers are registered only when it is made / changes hands with the AI brain awake.
+Bench 2026-11-07 (Sonnet, one run each, no dropout):
+  aimicnear c: 冲2 counting from about frame 300 (100 at s51, 404 at s71 of 帧数 704) -- the scripted press is seen,
+    so the status reads a charge.
+  aimicnear r / aimicmed r / aimicfar r / aimichurt r: 冲1 冲2 再冲1 all 0 through 帧数 949 / 940 / 948 / 933 --
+    nobody charged, the hand-over 1 s after the wake did not help. The model fires in near / med / hurt (strict xfail
+    in RA3-EngineModel tests/test_ai_bench.py); far agrees. Not known yet why: the hand-over not registering either,
+    the StaticDefense team not taking handed-over units, or one of the 6 preconditions (l4_micro_powers.md 1).
 """
 from parts import Script, Test, status
 
