@@ -39,6 +39,12 @@ Bench 2026-11-07 (Sonnet, one run each, no dropout):
     2 through 15 s of a Twinblade "attacking" them, so it most likely never shot at them (attack-move to the deleted
     barracks' spot; where the AI put them is not known). A fair try needs the gunship ordered at them (they are
     unnamed: a team hunt, or a player-area attack) -- the warriors' aimicbuilt reading is the firm one.
+  aitogglebltf r (B, round 20, mod CampAITogBltFR; a Targetless Hunt team, s1's structures deleted once it owns two),
+    three gunship placements, all NOT conclusive: (1) TEAM_HUNT at s70: 造出 2 throughout, never hit; (2) attack-move
+    to the barracks spot the moment s1 owned two (s21): both dead by s41, 曾盾 0 -- but most likely before the Hunt
+    team took them (the warriors were taken 10-20 s after being built); (3) TEAM_HUNT from the barracks spot 12 s
+    after two owned: 造出 2 throughout, never hit. The control read each time (盾 1 at s91). Not followed further (the
+    layer 4 closing line); engine_aimicro aimicbuiltf is the firm answer for AI-built units.
 """
 from parts import NOT, Script, Test, counted, square, status
 
@@ -137,6 +143,6 @@ def probe_built(m):
     return t
 
 
-CHECKS = {'aitogglebuilt': {'r': probe_built},
+CHECKS = {'aitogglebuilt': {'r': probe_built}, 'aitogglebltf': {'r': probe_built},
           'aitogglehand': {'r': probe}, 'aitogglemade': {'r': probe, 'c': lambda m: probe(m, press=True)},
           'aitogglehunt': {'r': probe}, 'aitogglexfer': {'r': probe}}

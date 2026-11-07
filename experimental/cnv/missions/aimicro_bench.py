@@ -43,7 +43,10 @@ Builds:
               recruiters take units on the AI's default team; script-made ones sit on teamSoviet_1.
   aimicbuilth as aimicbuilt, the team a Targetless Hunt, no conscripts: are the built warriors recruited at all
               (they walk off) -- the by-player count cannot tell whose team a unit is on.
-Facts: wake at, hand at, distance, health, hunt (1: the Hunt tactic), built (1: the AI builds them).
+  aimicbuiltf as aimicbuilth with the conscripts (round 20): the Hunt team has recruited the warriors (builth) and
+              now meets infantry and gets hurt -- in a running team, a target, under 0.8 health: do they charge?
+Facts: wake at, hand at, distance, health, hunt (1: the Hunt tactic), built (1: the AI builds them), foes (1: built,
+with the conscripts).
 """
 from maps import niagara
 from missions import aistate_bench as ab
@@ -201,11 +204,14 @@ def built_base(m, factory, money=BUILT_MONEY):
                once=False)]
 
 
-def built(name, tactic='StaticDefense'):
+def built(name, tactic='StaticDefense', foes=None):
     """tactic 'Hunt' (aimicbuilth): a membership test -- a Targetless Hunt team that takes the built warriors walks
-    them off (the check counts them home round the barracks); no conscripts."""
+    them off (the check counts them home round the barracks); no conscripts. foes (default: not Hunt) puts the
+    conscripts in (aimicbuiltf: Hunt and conscripts -- recruited, with something to fight)."""
     hunt = tactic == 'Hunt'
-    facts = {'wake at': WAKE_AT, 'hand at': 0.0, 'distance': 0.0, 'health': 100.0, 'hunt': float(hunt), 'built': 1.0}
+    foes = not hunt if foes is None else foes
+    facts = {'wake at': WAKE_AT, 'hand at': 0.0, 'distance': 0.0, 'health': 100.0, 'hunt': float(hunt), 'built': 1.0,
+             'foes': float(foes)}
     m = Mission(name=name, map=niagara, facts=facts)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{PID}'}
     m.assets.append((f'{PID}.xml', personality_xml('StandardMicroManager', tactic=tactic, built=True),
@@ -213,7 +219,7 @@ def built(name, tactic='StaticDefense'):
     m.cnv_units = (WARRIOR,)
     m.spawns |= {WARRIOR}
     built_base(m, 'JapanBarracks')
-    if hunt:
+    if not foes:
         return m
     names = []
     for k in range(2):
@@ -227,6 +233,7 @@ def built(name, tactic='StaticDefense'):
 
 MISSION = {'aimicbuilt': lambda: built('CampAIMicBuilt'),
            'aimicbuilth': lambda: built('CampAIMicBltH', tactic='Hunt'),
+           'aimicbuiltf': lambda: built('CampAIMicBltF', tactic='Hunt', foes=True),
            'aimicpre':lambda: mission('CampAIMicPre', 90.0, hand=False),
            'aimicnear': lambda: mission('CampAIMicNear', 90.0),
            'aimicmed': lambda: mission('CampAIMicMed', 90.0, 'StandardMicroManager_MEDIUM'),

@@ -83,18 +83,26 @@ def mission(name, made, tactic='StaticDefense', xfer=False):
 
 # bench 2026-11-07 first run (attack 30 / stop 45): the Allied barracks gave the second Peacekeeper only at ~s51
 BUILT_ATTACK_AT, BUILT_STOP_AT = 70.0, 85.0
+HUNT_DELAY = 12.0   # aitogglebltf: seconds after s1 owns two before the gunship (the Hunt recruits ~10-20 s after)
 
 
-def built(name):
+def built(name, tactic='StaticDefense'):
     """aitogglebuilt (round 19): the AI builds the two Peacekeepers itself (aimicro_bench.py built_base: an opening
     move, an Allied barracks 400 south of the yard). The units are unnamed: the check counts by player. Once s1 owns
     two, the barracks is deleted (nothing but the Peacekeepers for the gunship to hit near there); at BUILT_ATTACK_AT
-    the gunship is made 300 south of the barracks spot and attack-moves to it; deleted at BUILT_STOP_AT."""
-    facts = {'wake at': WAKE_AT, 'give at': 0.0, 'attack at': BUILT_ATTACK_AT, 'stop at': BUILT_STOP_AT, 'hunt': 0.0,
-             'built': 1.0}
+    the gunship is made 300 south of the barracks spot and attack-moves to it; deleted at BUILT_STOP_AT.
+    tactic 'Hunt' (aitogglebltf, round 20, as aimicro_bench.py aimicbuiltf): a Targetless Hunt team recruits them and
+    walks them off; once s1 owns two, all three of s1's structures are deleted and HUNT_DELAY later the gunship is
+    made at the barracks spot and HUNTs (TEAM_HUNT) -- the Peacekeepers are the only thing of s1's left to aim at.
+    (Bench 11-07: TEAM_HUNT at s70 never hit them; attack-move at the moment of two owned killed both by s41 with no
+    shield -- likely before the Hunt took them.) The check's 帧数 still counts from BUILT_ATTACK_AT; 曾盾 counts from
+    the first shield whenever."""
+    hunt = tactic == 'Hunt'
+    facts = {'wake at': WAKE_AT, 'give at': 0.0, 'attack at': BUILT_ATTACK_AT, 'stop at': BUILT_STOP_AT,
+             'hunt': float(hunt), 'built': 1.0}
     m = Mission(name=name, map=niagara, facts=facts)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{am.PID}'}
-    m.assets.append((f'{am.PID}.xml', am.personality_xml('StandardMicroManager', PK, built=True),
+    m.assets.append((f'{am.PID}.xml', am.personality_xml('StandardMicroManager', PK, tactic, built=True),
                      f'AIPersonalityDefinition:{am.PID}'))
     m.cnv_units = (PK,)
     m.spawns |= {PK, GUNSHIP}
@@ -104,15 +112,22 @@ def built(name):
     m.scripts += [
         Script('CNV AT - Timers', [], [('SET_MILLISECOND_TIMER', 'CNV AT Attack', BUILT_ATTACK_AT),
                                        ('SET_MILLISECOND_TIMER', 'CNV AT Stop', BUILT_STOP_AT)]),
-        Script('CNV AT - Clear', [('COUNTER', 'CNV_AI_Owned', 3, 2)], [('NAMED_DELETE', 'UNIT - CNV AI Factory')]),
-        Script('CNV AT - Attack', [('TIMER_EXPIRED', 'CNV AT Attack')],
-               [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', GUNSHIP_NAME, GUNSHIP, m.team('p1'), m.mark('gunship spot')),
-                *m.order('attack_move', [GUNSHIP_NAME], m.mark('factory spot'), 'p1')]),
+        Script('CNV AT - Clear', [('COUNTER', 'CNV_AI_Owned', 3, 2)],
+               [('NAMED_DELETE', n) for n in ('UNIT - CNV AI Factory',
+                                              *(('UNIT - CNV AI Plant', 'UNIT - CNV AI Yard') if hunt else ()))]),
+        *([Script('CNV AT - Go timer', [('COUNTER', 'CNV_AI_Owned', 3, 2)],
+                  [('SET_MILLISECOND_TIMER', 'CNV AT Go', HUNT_DELAY)])] if hunt else []),
+        Script('CNV AT - Attack', [('TIMER_EXPIRED', 'CNV AT Go')] if hunt else [('TIMER_EXPIRED', 'CNV AT Attack')],
+               [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', GUNSHIP_NAME, GUNSHIP, m.team('p1'),
+                 m.mark('factory spot' if hunt else 'gunship spot')),
+                *(m.order('hunt', [GUNSHIP_NAME], None, 'p1') if hunt else
+                  m.order('attack_move', [GUNSHIP_NAME], m.mark('factory spot'), 'p1'))]),
         Script('CNV AT - Stop', [('TIMER_EXPIRED', 'CNV AT Stop')], [('NAMED_DELETE', GUNSHIP_NAME)])]
     return m
 
 
 MISSION = {'aitogglebuilt': lambda: built('CampAITogBuilt'),
+           'aitogglebltf': lambda: built('CampAITogBltF', tactic='Hunt'),
            'aitogglehand':lambda: mission('CampAITogHand', made=False),
            'aitogglemade': lambda: mission('CampAITogMade', made=True),
            'aitogglehunt': lambda: mission('CampAITogHunt', made=True, tactic='Hunt'),

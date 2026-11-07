@@ -47,6 +47,11 @@ Bench 2026-11-07 (Sonnet, one run each, no dropout):
     @ s31 -> 0 @ s41 -- the Targetless Hunt team took the AI-built warriors and walked them off: AI-built units ARE
     recruited (unlike the script-made ones). So the aimicbuilt silence is past recruitment: the power entry check
     (0x8ce710 / the heuristic's vtable+0x40) or the power registration, not the team.
+  aimicbuiltf r PASS (B, round 20, mod CampAIMicBltFR; counters 帧数 造出 冲 曾冲): 造出 2 from s21; 冲 2 @ s41,
+    曾冲 145 @ 帧数 499 -> first charge at frame ~354 after the wake; the control read at s61. AI-built warriors that a
+    Hunt team took, hurt by conscripts, DO charge. Read (work/re l4_micro_gate.md 7): a team change carries the
+    unit's power entries along (0x7b5df0 -> 0x863310 / 0x863290), so the aimicbuilt silence is the StaticDefense team
+    (not taking them, or not running the round there) -- not followed (the layer 4 closing line).
 """
 from parts import Script, Test, counted, square, status
 
@@ -68,7 +73,7 @@ def names(m, group):
 # what the model (RA3-EngineModel ra3model/ai/micro.py) expects of each build: does each warrior charge within the run
 FIRES = {'aimicpre': False, 'aimicnear': True, 'aimicmed': True, 'aimicfar': False, 'aimichurt': True,
          'aimicmade': True, 'aimichunt': True, 'aimicxfer': True, 'aimicnearx': True, 'aimicbuilt': True,
-         'aimicbuilth': False}     # builth: the Hunt walks them off to no infantry -- nothing to charge at
+         'aimicbuilth': False, 'aimicbuiltf': True}     # builth: the Hunt walks them off to no infantry -- nothing to charge at
 HOME, HOME_R = 'CNV AM Home Area', 400.0   # aimicbuilth: round the barracks (the units come out within it)
 
 
@@ -139,7 +144,7 @@ def probe_built(m, build='aimicbuilt'):
     t.scripts.append(Script('Test - frames', [('FLAG', 'Test Woke', 1)], [('INCREMENT_COUNTER', 1, 'CNV_AM_Frames')],
                             once=False))
     counted('CNV_AM_Owned', '造出', t, template=m.cnv_units[0], player=s1)
-    hunt = bool(m.facts.get('hunt'))
+    hunt = bool(m.facts.get('hunt')) and not m.facts.get('foes')
     if hunt:   # aimicbuilth: 冲 gives way to 在家 -- s1's warriors within HOME_R of the barracks (left = recruited)
         x, y = m.point('factory spot')
         t.areas[HOME] = square(x, y, HOME_R)
@@ -167,7 +172,8 @@ def probe_built(m, build='aimicbuilt'):
     return t
 
 
-CHECKS = {b: {'r': lambda m, b=b: probe(m, build=b)} for b in FIRES if b != 'aimicbuilt'}
+CHECKS = {b: {'r': lambda m, b=b: probe(m, build=b)} for b in FIRES if not b.startswith('aimicbuilt')}
 CHECKS['aimicbuilt'] = {'r': probe_built}
 CHECKS['aimicbuilth'] = {'r': lambda m: probe_built(m, 'aimicbuilth')}
+CHECKS['aimicbuiltf'] = {'r': lambda m: probe_built(m, 'aimicbuiltf')}
 CHECKS['aimicnear']['c'] = lambda m: probe(m, press=True)
