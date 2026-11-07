@@ -26,6 +26,14 @@ Bench 2026-11-06 aitargetidle30 a (CampAIIdle30A): PASS 2 of 2. Same with MaxTea
 Bench 2026-11-06 aitargetflank a (CampAIFlankA): PASS 2 of 2. SafestToGroundStructureHeuristic + FlankAttack, default
   micro manager. 步兵在家 4 -> 3 @ s25, 0 @ s26; 到远厂 1 @ s58, 3 @ s59, 4 from s61; 到近厂 0 all 76 s. The far plant
   first, but ~23 s later than DefenseAvoidanceAttack (s35) -- a longer way round, or a later start.
+Bench 2026-11-07 b (frames from frame 0; 出发帧 = 1000 x last out of the start box + first out):
+  aitargetidle5 (two runs)   出发帧 197170, 到达帧 355, 离家帧 280 (the first run had no 离家帧)
+  aitargetsafe (two runs)    出发帧 192175, 到达帧 548, 离家帧 443 -- the two runs alike to the frame
+  aitargetstill              出发帧 192175, 到达帧 548, 离家帧 443 -- MaxTeamIdleTime and MaxUnitIdleTime 600 s,
+                             to the frame as 15 s: neither idle time lets the team go
+  Every team leaves the start box 20-25 frames after the wake (frame 150): the first leg goes at once (members with
+  no order are idle, 0x8d4e90); the 5 s team then sends the rest at once (straight), the others walk leg by leg.
+  The 193 frames at the plant are the DA route's extra walk (RA3-EngineModel tests/test_ai_tactics.py, strict xfail).
 """
 from parts import Script, Test, counted, square
 
@@ -56,4 +64,46 @@ def a(m):
     return t
 
 
-CHECKS = {k: {'a': a} for k in ('aitargetsafe', 'aitargetnear', 'aitargetidle5', 'aitargetidle30', 'aitargetflank')}
+START = 'CNV AI Start Area'
+
+
+def b(m):
+    """Departure / arrival to the frame (for the 5 s vs 15 s MaxTeamIdleTime gap; check a reads once a second).
+
+      出发帧   1 x frames from frame 0 while all four Peacekeepers stand in a tight box round their start spots
+               + 1000 x frames while at least one does (first to leave / last to leave)
+      到达帧   frames from frame 0 until the first Peacekeeper is inside the far plant's 300 square (stops then)
+      在家     Peacekeepers in the box (a sanity readout)
+      离家帧   frames from frame 0 until a Peacekeeper is first outside check a's 450 square round the base
+    Both builds walk to the far plant first, so the box's exit lag and the way there cancel in the difference."""
+    t = Test()
+    s1 = m.player('s1')
+    (inf,) = m.cnv_units
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    x, y = m.site('east base')
+    t.areas[START] = [(x - 280.0, y - 110.0), (x - 240.0, y - 110.0), (x - 240.0, y + 110.0), (x - 280.0, y + 110.0)]
+    o = m.find(m.role('far plant').name)
+    t.areas[FAR] = square(o.x, o.y, 300.0)
+    has = lambda cmp, n, area: ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', s1, cmp, n, inf, area)
+    t.counters.append(('CNV_AT_Leave', '出发帧'))
+    t.scripts += [Script('Test - all home', [has(2, 4, START)], [('INCREMENT_COUNTER', 1, 'CNV_AT_Leave')], once=False),
+                  Script('Test - any home', [has(3, 1, START)], [('INCREMENT_COUNTER', 1000, 'CNV_AT_Leave')],
+                         once=False)]
+    t.counters.append(('CNV_AT_Arrive', '到达帧'))
+    t.scripts += [Script('Test - arrived', [has(3, 1, FAR)], [('SET_FLAG', 'Test Arrived', 1)]),
+                  Script('Test - on the way', [('FLAG', 'Test Arrived', 0)],
+                         [('INCREMENT_COUNTER', 1, 'CNV_AT_Arrive')], once=False)]
+    counted('CNV_AT_Box', '在家', t, template=inf, area=START, player=s1)
+    t.areas[HOME] = square(x, y, 450.0)
+    t.counters.append(('CNV_AT_Out', '离家帧'))
+    t.scripts += [Script('Test - out', [has(0, 4, HOME)], [('SET_FLAG', 'Test Out', 1)]),
+                  Script('Test - not out', [('FLAG', 'Test Out', 0)], [('INCREMENT_COUNTER', 1, 'CNV_AT_Out')],
+                         once=False)]
+    end = m.facts['wake at'] + AFTER
+    t.expect += [('在家', end, '<', 4, end + 2)]
+    t.bench = [('bench_watch', dict(seconds=end + LAG, every=2, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+CHECKS = {k: {'a': a, 'b': b} for k in ('aitargetsafe', 'aitargetnear', 'aitargetidle5', 'aitargetidle30',
+                                         'aitargetstill', 'aitargetflank')}

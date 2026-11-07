@@ -13,6 +13,8 @@ Builds:
   aitargetnear  ClosestStructureHeuristic + SimpleAttack, the control. The model (nearest the base centre): near.
   aitargetidle5 / aitargetidle30  aitargetsafe with the team's MaxTeamIdleTime 5 s / 30 s (retail 15 s): the
                 DefenseAvoidanceAttack legs wait for the team to be ready or idle that long (l4_tactics.md).
+  aitargetstill aitargetsafe with MaxTeamIdleTime and MaxUnitIdleTime both 600 s: does either idle time let the
+                legs go? (bench 2026-11-07: no, to the frame as 15 s)
   aitargetflank aitargetsafe with FlankAttack (the same class as DefenseAvoidanceAttack, a random side).
 Facts: wake at.
 """
@@ -47,11 +49,11 @@ def _state(heuristic, tactic, micro='StandardMicroManager_MEDIUM'):
 IDLE_ID = 'CNVMicroIdle'
 
 
-def _micro_xml(idle):
+def _micro_xml(idle, unit_idle=10):
     # StandardMicroManager_MEDIUM with its chain (Standard, Base) flattened -- the type cannot be inherited from
-    # (the build says: not BaseInheritableAsset) -- only MaxTeamIdleTime changed
+    # (the build says: not BaseInheritableAsset) -- only MaxTeamIdleTime (and for aitargetstill MaxUnitIdleTime)
     return f'''  <AIMicroManagerData id="{IDLE_ID}" UpdateTime="2.0s" MaxTeamIdleTime="{idle}s"
-    MaxTeamIdleDistanceChange="50.0" MaxUnitIdleTime="10s" MaxUnitIdleDistanceChange="30.0"
+    MaxTeamIdleDistanceChange="50.0" MaxUnitIdleTime="{unit_idle}s" MaxUnitIdleDistanceChange="30.0"
     EnemySearchDistanceVisionMultiplier="1.5" MinTimeToKeepTempVisionRangeBonus="10s" SiegeWeaponBuffer="1.5"
     DodgeThreatsReactionTimeMin="6s" DodgeThreatsReactionTimeMax="14s" GatherTempVisionRangeBonus="1.5"
     RetreatTempVisionRangeBonus="1.5" MaxSecondaryDamageFraction="1.3" EngageHostileTargets="true"
@@ -67,7 +69,7 @@ def _micro_xml(idle):
   </AIMicroManagerData>'''
 
 
-def personality_xml(heuristic, tactic, idle=None):
+def personality_xml(heuristic, tactic, idle=None, unit_idle=10):
     removed = [f'    <StrategicState id="{k}" xai:joinAction="Remove"/>' for k in ab.INHERITED]
     return '\n'.join([
         '<?xml version="1.0" encoding="utf-8"?>',
@@ -77,7 +79,7 @@ def personality_xml(heuristic, tactic, idle=None):
         '  <Includes>',
         f'    <Include type="instance" source="DATA:SkirmishAI/Personalities/{ab.BASE}.xml" />',
         '  </Includes>',
-        *([_micro_xml(idle)] if idle else []),
+        *([_micro_xml(idle, unit_idle)] if idle else []),
         _state(heuristic, tactic, IDLE_ID if idle else 'StandardMicroManager_MEDIUM'),
         f'  <AIPersonalityDefinition id="{PID}" PersonalityType="{PID}" inheritFrom="{ab.BASE}">',
         *removed,
@@ -86,11 +88,12 @@ def personality_xml(heuristic, tactic, idle=None):
         '</AssetDeclaration>', ''])
 
 
-def mission(name, heuristic, tactic, idle=None):
+def mission(name, heuristic, tactic, idle=None, unit_idle=10):
     m = Mission(name=name, map=niagara, facts={'wake at': WAKE_AT})
     m.cnv_heuristic = heuristic             # the check says the model's pick by it
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{PID}'}
-    m.assets.append((f'{PID}.xml', personality_xml(heuristic, tactic, idle), f'AIPersonalityDefinition:{PID}'))
+    m.assets.append((f'{PID}.xml', personality_xml(heuristic, tactic, idle, unit_idle),
+                     f'AIPersonalityDefinition:{PID}'))
     m.cnv_units = (INF,)
     s1 = m.player('s1')
     m.put('AlliedConstructionYard', 'east base', 0, 0, side='s1', name='UNIT - CNV AI Yard', role='ai yard')
@@ -121,4 +124,6 @@ MISSION = {'aitargetsafe': lambda: mission('CampAISafe', 'SafestToGroundStructur
                                             'DefenseAvoidanceAttack', idle=5),
            'aitargetidle30': lambda: mission('CampAIIdle30', 'SafestToGroundStructureHeuristic',
                                              'DefenseAvoidanceAttack', idle=30),
+           'aitargetstill': lambda: mission('CampAIStill', 'SafestToGroundStructureHeuristic',
+                                            'DefenseAvoidanceAttack', idle=600, unit_idle=600),
            'aitargetflank': lambda: mission('CampAIFlank', 'SafestToGroundStructureHeuristic', 'FlankAttack')}
