@@ -18,7 +18,7 @@ def mission():
     m.waypoints['CNV Land Sea'], m.marks['sea'] = SEA, 'CNV Land Sea'
     m.waypoints['CNV Land Shore'], m.marks['shore'] = SHORE, 'CNV Land Shore'
     # the game's start camera is off the map's view (K5): cut it to the quay, held inside the 'whole' border's view
-    m.waypoints['CNV Land View'], m.views['CNV Land View'] = (4000.0, 2900.0), (950.0, 540.0, 4050.0, 4460.0)
+    m.waypoints['CNV Land View'], m.views['CNV Land View'] = (3940.0, 2970.0), (950.0, 540.0, 4050.0, 4460.0)
     m.scripts.append(Script('CNV Land - camera', [], [('MOVE_CAMERA_TO', 'CNV Land View', 0.1, 0.0, 0.0, 0.0)]))
     return m
 

@@ -66,7 +66,8 @@ CMP = {0: lambda a, b: a < b, 1: lambda a, b: a <= b, 2: lambda a, b: a == b, 3:
 WON, LOST = 'Mission Won', 'Mission Lost'
 LEVELS = {'easy': 0, 'normal': 1, 'hard': 2}
 NEAR = 800.0                    # an enemy this close to something of the player's is a threat (the tension curve)
-CAPTURE_REACH = 20.0            # R4: an engineer this far outside a building's round is at its side (a guess)
+ATTACK_SLACK = 10.0             # R3: an attacker stops this far inside its range of the target (a guess)
+CAPTURE_REACH = 20.0           # R4: an engineer this far outside a building's round is at its side (a guess)
 REACH = 300.0                  # 自动打掉: an enemy this close to something of the player's is being fought
 LINGER = 0.0                    # a killed unit's death (its slow death): still in the game's name cache, where it fell
                                 # (docs/engine/script-semantics.md 4.2) -- the bench (2026-10-28, probe death): out of
@@ -134,7 +135,7 @@ ALIGN = {
                 'PATHABLE_ONLY), his being busy while it builds',
     'capture': 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED Command_CaptureBuilding: at its side the building changes hands, '
                'a deposit building pays its bonus then its amount each interval (R4, bench 2026-11-07 a4 derrick)',
-    'nearest ref':'SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER: the nearest unnamed one (R2, PENDING bench)',
+    'nearest ref':'SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER: the unnamed one nearest the team\'s middle (R2, bench 2026-11-07 engine_ref)',
     'attack': 'NAMED_ATTACK_NAMED: the attacker goes to its target; the fight is the script\'s (摧毁)',
     'guard': 'UNIT_GUARD_AREA: goes to the area\'s middle and stays',
     'bridge deck': 'a bridge is walkable deck from its start to its end object (BRIDGE_DECK wide); bench '
@@ -505,6 +506,32 @@ class Ground:
         pts = [self.world(c) for c in m.traceback(end)]
         return pts[1::3] + [pts[-1]] if len(pts) > 3 else [pts[-1]]
 
+    def within(self, surface, p, q, reach):
+        """R3: an attacker's way -- to the cell it reaches soonest from which q is within `reach` (Generals' attack
+        path: the way to a spot in range, not to the target; bench 2026-11-07 a4 smash: the Ghost King at the ice wall
+        12 s after landing, not round the wall to its far side). [] when p is in range already, None when no cell is."""
+        import platmap
+        if math.hypot(q[0] - p[0], q[1] - p[1]) <= reach:
+            return []
+        if surface == 'air':
+            return [q]
+        from skimage import graph
+        g = self.grids[surface] & ~self.blocked
+        a = self.snap(g, self.cell(*p))
+        if a is None:
+            return None
+        m = graph.MCP_Geometric(np.where(g, 1.0, np.inf))
+        cost, _ = m.find_costs([a])
+        jj, ii = np.nonzero(np.isfinite(cost))
+        x = (ii * self.d - self.b) * platmap.CELL
+        y = (jj * self.d - self.b) * platmap.CELL
+        ok = np.hypot(x - q[0], y - q[1]) <= reach
+        if not ok.any():
+            return None
+        k = int(np.flatnonzero(ok)[np.argmin(cost[jj[ok], ii[ok]])])
+        pts = [self.world(c) for c in m.traceback((int(jj[k]), int(ii[k])))]
+        return pts[1::3] + [pts[-1]] if len(pts) > 3 else [pts[-1]]
+
 
 class Sim:
     def __init__(self, mission, test=None, level='normal', script='', model=True):
@@ -678,7 +705,7 @@ class Sim:
         target = self.body(target_name)
         if b and target and target.alive and b.alive and b.goal is not target:
             b.goal, b.mode = target, 'attack'
-            self.send(b, (target.x, target.y))
+            self.send(b, (target.x, target.y), reach=self.reach(b, target))
 
     def order_capture(self, b, target_name):
         """R4: NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED with Command_CaptureBuilding: the engineer goes to the
@@ -791,7 +818,13 @@ class Sim:
     def change(self):
         self.last_change = self.t
 
-    def send(self, b, target, by=''):
+    def reach(self, b, target):
+        """R3: how near an attacker goes to its target: the longest range of its weapons that can hit it, less
+        ATTACK_SLACK (0: it has none -- it goes to the target itself)."""
+        r = [w['range'] for w in b.weapons if self.can_hit(w, target)]
+        return max(max(r) - ATTACK_SLACK, 1.0) if r else 0.0
+
+    def send(self, b, target, by='', reach=0.0):
         if b.guessed:                               # its speed matters now: say when it is only a guess
             self.guessed.add(f'{b.template}: {", ".join(b.guessed)}')
         if not b.alive or b.speed <= 0:
@@ -800,7 +833,9 @@ class Sim:
         if p is None:
             self.note('卡住', f'{self.label(b)} 找不到要去的地方 {target}')
             return
-        path = self.ground.route(b.surface, (b.x, b.y), p, closest=True)
+        path = self.ground.within(b.surface, (b.x, b.y), p, reach) if reach else None
+        if path is None:
+            path = self.ground.route(b.surface, (b.x, b.y), p, closest=True)
         b.dest = p
         if path is None:
             self.note('卡住', f'{self.label(b)} 到不了 {target if isinstance(target, str) else "目标"}'
@@ -869,15 +904,19 @@ class Sim:
 
     def nearest_ref(self, template, owner, team, ref):
         """R2: SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER -- point `ref` at the living `template` of
-        `owner` nearest to `team`. PENDING bench (engine_ref): nearest to any member, objects with a script name
-        skipped, `ref` left as it was when there is none."""
+        `owner` nearest to `team`'s middle (its members' mean place; bench 2026-11-07 engine_ref a / a2: not the first
+        member's nor any member's nearest, whatever order they were made in), objects with a script name skipped
+        (ref_b); an empty team's middle reads (0, 0) (ref_c: the wall nearest the map's corner was picked -- a
+        guess as to why). None of the type: `ref` left as it was (not read on the bench)."""
         self.used.add('nearest ref')
         crew = self.members(team)
         cands = [b for b in self.living() if b.owner == owner and b.template.lower() == template.lower()
                  and b.name.startswith('#')]
-        if not crew or not cands:
+        if not cands:
             return
-        self.refs[ref] = min(cands, key=lambda c: min(math.hypot(c.x - m.x, c.y - m.y) for m in crew))
+        mx = sum(m.x for m in crew) / len(crew) if crew else 0.0
+        my = sum(m.y for m in crew) / len(crew) if crew else 0.0
+        self.refs[ref] = min(cands, key=lambda c: math.hypot(c.x - mx, c.y - my))
 
     def cond(self, name, a):
         if name == 'FLAG':
@@ -1475,7 +1514,7 @@ class Sim:
                     b.goal, b.path = None, []
                 elif not b.path or math.hypot(b.path[-1][0] - g.x, b.path[-1][1] - g.y) > 150:
                     if int(self.t / DT) % 8 == 0:                    # re-aimed every 4 s
-                        self.send(b, (g.x, g.y))
+                        self.send(b, (g.x, g.y), reach=self.reach(b, g) if b.mode == 'attack' else 0.0)
             if b.building and self.at_site(b, 0.0):
                 continue
             if not b.path or 'IMMOBILE' in b.status or b.engaged:

@@ -99,6 +99,28 @@ def test_r4_the_engineer_takes_the_derrick_as_on_the_bench():
     assert abs(at(7) - 515) <= 15 and abs(at(46) - 800) <= 15, got
 
 
+@pytest.mark.parametrize('variant, gone', [('ref_a', 2), ('ref_a2', 2), ('ref_b', 1), ('ref_c', 0)])
+def test_r2_the_reference_picks_the_wall_the_bench_did(variant, gone):
+    """R2 (sim.Sim.nearest_ref): bench 2026-11-07 `cnv_check <variant> frames` (checks/engine_ref.py) -- the wall the
+    reference was deleted through: C, nearest the team's middle, whichever member was made first (a, a2); B when C
+    has a script name (b); A, nearest the map's corner, for an empty team (c)."""
+    series = _sim_run(variant, 'frames', 16.0).series
+    walls = series[-1][1][:3]
+    assert walls == [0 if k == gone else 1 for k in range(3)], series[-1]
+
+
+def test_r3_the_ghost_king_smashes_the_wall_as_on_the_bench():
+    """R2 + R3 (sim.Ground.within: an attacker goes to a spot in range, not round the wall to the cell nearest its
+    middle): bench 2026-11-07 `cnv_check a4 smash` -- ashore s58, the wall's health 100 to s67, 76 at s70, 53 s73,
+    41 s76, 18 s79, 6 s82, the wall gone at s82 (smashed, before its 30 s were up). Before R3's way the simulator
+    took the King round the wall's far side: first damage s78, the wall melted at 40."""
+    status, lines = simbench.run('smash')
+    got = _series(lines, 3)
+    hurt = next(s for s, (_, _, h) in got if h not in ('0', '100'))
+    gone = next(s for s, (w, _, _) in got if s > 40 and w == '0')
+    assert abs(hurt - 69) <= 2 and abs(gone - 82) <= 3, got
+
+
 def test_r4_no_engineer_no_derrick():
     """Mutation: the engineer deleted before the order -- the derrick stays neutral and no money comes."""
     status, lines = simbench.run('derrick', script=['0 删除 UNIT - Test Engineer'])
