@@ -13,7 +13,11 @@ import sim  # noqa: E402
 import simstatic  # noqa: E402
 
 # what the levels do today (a name prefix of the finding's line): delete a line when it is fixed, never add one.
-LEFT = ()
+# A4's Ghost King transport: made at the sea, it reaches no dry land -- the quay is a wall, the bench (2026-11-07,
+# engine_land) read it drive to the quay's foot and stay; the King is made ashore by the horn's script when it gets
+# there, so the level works. Came in with R7 (the simulator no longer lets it drive out of the water onto a bridge's
+# deck), not with a level change; the level line decides whether the boat should have a slip.
+LEFT = ('JapanLightTransportVehicle from (4750, 2900)',)
 
 
 def found(level, ground=None):

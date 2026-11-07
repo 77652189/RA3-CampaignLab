@@ -7,9 +7,9 @@ import parts  # noqa: E402
 import simstatic  # noqa: E402
 
 # what the levels do today, by the script that does it (a name prefix): delete a line when it is fixed, never add one.
-# A4's Ghost King transports are made at the sea and sent to the shore: 2 420 round for 630 straight on the simulator's
-# amphibious grid -- to be read on the bench (does the boat reach the shore?) or sent by legs.
-LEFT = ('CNV A4 - Boats ',)
+# (A4's Ghost King transports, 2 420 round for 630 straight, are gone from it: the bench, 2026-11-07 engine_land, read
+# the boat go straight at the quay; the simulator's way round was a bridge deck it drove onto from the water, R7)
+LEFT = ()
 
 
 def found(level):
@@ -25,7 +25,8 @@ def test_every_level_moves_its_teams_by_ways_the_game_takes_or_is_listed(level):
 
 def test_the_list_is_still_true():
     """A name left in LEFT that no level trips any more is stale."""
-    assert any(x.startswith(LEFT) for x in found('a4'))
+    tripped = found('a4')
+    assert all(any(x.startswith(n) for x in tripped) for n in LEFT)
 
 
 def test_a_stricter_limit_names_more_and_a_looser_names_none(monkeypatch):

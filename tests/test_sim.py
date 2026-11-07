@@ -153,10 +153,14 @@ def test_no_level_has_a_static_problem():
     """Every level as built: it can be won, each phase can be reached, each main objective gets its tick (a hold-out
     objective with no 完成 of its own is ticked by the win: plan.py compile_endings)."""
     import build
+    from test_landings import LEFT, found
     bad = []
     for lv in build.LEVELS:
         m, t, _ = build.resolve(lv, '')
-        bad += [f'{lv}: {x.strip()}' for x in simstatic.report(m) if '问题' in x]
+        # the landing finding is test_landings' (one list, ADR 0016): a level whose only unlanded amphibian is listed
+        # there (A4's Ghost King transport, R7) is not reported twice
+        listed = found(lv) and all(x.startswith(LEFT) for x in found(lv))
+        bad += [f'{lv}: {x.strip()}' for x in simstatic.report(m) if '问题' in x and not (listed and '上岸' in x)]
     assert not bad, '\n'.join(bad)
 
 

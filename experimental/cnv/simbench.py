@@ -2,11 +2,10 @@ r"""A4's bench checks (checks/a4.py) judged by the plan simulator instead of the
 
 The bench's first frame is the moment the opening scene hands the controls back, so a check's expectations count from
 there; the simulator's clock starts with the mission, the scene runs ~79 s first. This runs the check's mission in the
-simulator with the player's part scripted (the simulator logs the engineer's power and does nothing: it makes the
-wall itself, `造`, a few seconds after the order as the game does, and takes it away at the end of its life, `删除`),
-shifts the counters' readings back by the scene's length and judges the check's own expectations on them. It changes
-nothing in sim.py: what the simulator has no rule for (a wall damaged, an engineer capturing) is scripted here or
-listed as SKIP -- never as PASS.
+simulator as it is -- the check's own order to the engineer builds the ice by the simulator's rules (R5: he walks
+to the spot, the core; R1: the core leaves the wall, the wall melts; bench 2026-11-07 engine_life) -- shifts the
+counters' readings back by the scene's length and judges the check's own expectations on them. What the simulator
+has no rule for (a wall damaged, an engineer capturing) is scripted here or listed as SKIP -- never as PASS.
 
   python -I -X utf8 experimental/cnv/simbench.py [check ...]      -> PASS / FAIL for each, the verdict lines under it
 """
@@ -18,7 +17,6 @@ sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign'
 
 LEVEL = 'a4'
 SCENE = 'CNV_A4_Scene_1'     # the plan's flag: the opening scene is over (checks/a4.py AFTER)
-BUILD = 9.0                  # the order to the wall standing: the engineer's seed, then the wall (checks/a4.py BUILD: ~9 s)
 REACH = 60.0                 # derrick: the engineer is this close to the derrick at the end of the run
 REACH_RUN = 600.0
 
@@ -28,43 +26,25 @@ def after(secs):
     return f'{SCENE}+{secs:g}'
 
 
-def ice(m, mark, order_at):
-    """The engineer's order at `order_at` (the check's own time) as the player's: the wall stands BUILD s later; it
-    melts by the simulator's lifetime rule (R1, sim.Sim.expire: bench 2026-11-07 engine_life)."""
-    from checks.a4_before import ice_wall
-    return [f'{after(order_at + BUILD)} 造 {ice_wall(m).id} 在 {mark}']
+NO_ENGINEER = ['0 删除 engineer']     # the mutation: no engineer from the start (the opening's demonstration ice too)
 
 
-def detour_script(m):
-    from checks import a4
-    return ice(m, 'ice V2', a4.HORN1 - a4.BUILD)
-
-
-def queue_script(m):
-    from checks import a4
-    return ice(m, 'ice L1', a4.MOUTH1 - a4.BUILD)
-
-
-def smash_script(m):
-    from checks import a4
-    return ice(m, 'ice L3', a4.MOUTH1 - 2.0)
-
-
-def melt_script(m):
-    from checks import a4
-    return ice(m, 'ice V3', a4.MELT_ICE_AT)
+def nothing(m):
+    return []
 
 
 # check -> (the player's script as lines, the counters the simulator cannot read: each with the rule it lacks)
 # A reading the simulator has no rule for is not a reading (a health of a reference nobody set is 0, which any
-# "< 100" expectation takes for a hit): its expectations are listed as SKIP, never as PASS.
+# "< 100" expectation takes for a hit): its expectations are listed as SKIP, never as PASS. The ice: the check's own
+# order to the engineer (checks/a4.py ice_at), built by the simulator's rules R5 (he walks, the core) and R1 (it
+# leaves the wall, the wall melts)
 SPECS = {
-    'detour': (detour_script, {}),
-    'queue': (queue_script, {}),
-    'smash': (smash_script, {'目标墙血量': 'SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER is not known (no '
+    'detour': (nothing, {}),
+    'queue': (nothing, {}),
+    'smash': (nothing, {'目标墙血量': 'SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER is not known (no '
                                           'reference to the nearest wall), and nothing damages a wall without an '
                                           'order in the fight model'}),
-    'melt': (melt_script, {}),
+    'melt': (nothing, {}),
     'smoke': (lambda m: [], {}),
     'win': (lambda m: ['不打'], {}),
 }

@@ -333,6 +333,18 @@ def lifetime(template, own=None):
     return frames, leaves
 
 
+def assemble(template, power, own=None):
+    """(stand, structure) of a mission unit's AssembleStructureSpecialAbilityUpdate for that special power (the ice
+    engineer's freeze), else None: he walks to within `stand` (StartAbilityRange) of the target and builds
+    `structure` there (bench 2026-11-07 engine_life, R5)."""
+    xml = (own or {}).get(template) or ''
+    for head, inner in _blocks(xml, 'AssembleStructureSpecialAbilityUpdate'):
+        if _attr(head, 'SpecialPowerTemplate') == power:
+            m = re.search(r'<StructureTemplate>\s*([^<\s]+)', inner)
+            return _num(_attr(head, 'StartAbilityRange'), 0.0), m.group(1) if m else None
+    return None
+
+
 def kind_of(kinds):
     for k in ('STRUCTURE', 'AIRCRAFT', 'SHIP', 'INFANTRY', 'VEHICLE'):
         if k in kinds:

@@ -71,6 +71,7 @@ LINGER = 0.0                    # a killed unit's death (its slow death): still 
                                 # (docs/engine/script-semantics.md 4.2) -- the bench (2026-10-28, probe death): out of
                                 # the area from the reading the kill shows in; the guess was 3 s
 GRID = 20.0                     # routing cells (world units)
+BUILD_STEP = 5.0                # a builder on his way (R5) moves in steps this long, to see where he gets within range
 HIGH_STEP = 50.0                # ShroudClearingHeight's default: a viewer does not discover a cell this much above its own
                                 # (bench, docs/engine/vision.md; a unit's own value is Body.clear_height). Cell by cell,
                                 # no line of sight; ENEMY_SIGHTED is a range query and ignores it
@@ -125,6 +126,11 @@ ALIGN = {
                 'there that frame (bench 2026-11-07 engine_life: a 30 s wall lived 450 frames, a 5.5 s core 82, the '
                 'core\'s wall there at once; nothing of the dead lingers in an area). Min and Max apart: their '
                 'middle (a guess); retail templates\' lifetimes are not read',
+    'assemble': 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT to a unit with an AssembleStructureSpecialAbilityUpdate for it '
+                '(the ice engineer): he walks till within its StartAbilityRange of the spot, stops, and the structure '
+                'is made there the next frame (bench 2026-11-07 engine_life: within range, the core one frame after '
+                'the order). Not modelled: the power\'s reload, its placing rules (ForbiddenObjectRange, '
+                'PATHABLE_ONLY), his being busy while it builds',
     'attack': 'NAMED_ATTACK_NAMED: the attacker goes to its target; the fight is the script\'s (摧毁)',
     'guard': 'UNIT_GUARD_AREA: goes to the area\'s middle and stays',
     'bridge deck': 'a bridge is walkable deck from its start to its end object (BRIDGE_DECK wide); bench '
@@ -308,6 +314,7 @@ class Body:
     life_end: int = None                                        # its LifetimeUpdate kills it after this frame's
                                                                 # scripts (simunits.lifetime, R1)
     leaves: list = dataclasses.field(default_factory=list)      # what that death makes where it stood
+    building: tuple = None                                      # (structure, (x, y), stand): told to build there (R5)
 
     @property
     def health(self):
@@ -352,10 +359,12 @@ class Ground:
         if hasattr(mapmod, 'LAYOUT'):
             e, _ = platmap.heights(mapmod.LAYOUT, w, h, b)
             walk = platmap.walkable(mapmod.LAYOUT, getattr(mapmod, 'OBJECTS', []), dims, e)
+            bridge = walk & ~platmap.walkable(mapmod.LAYOUT, [], dims, e)    # walkable only for a bridge laid on it
         else:
             e = mapmod.ground().e
             import newmap
             walk = (e > newmap.WATERLINE + 10) & (platmap.slope_of(e) <= platmap.STEEP)
+            bridge = np.zeros_like(walk)
         import newmap
         water = e < newmap.WATERLINE - 5
         d = int(GRID // platmap.CELL)
@@ -368,8 +377,12 @@ class Ground:
         # the shore's shallows (between the water's edge and 'dry'): platmap.apply blocks only steep ground, so an
         # amphibian goes ashore through them; left out they cut every slip (a5, 2026-11-04)
         shallow = (e >= newmap.WATERLINE - 5) & (e <= newmap.WATERLINE + 10) & (platmap.slope_of(e) <= platmap.STEEP)
-        self.grids['both'] = (self.grids['ground'] | self.grids['water'] |
-                              fold(walk | water | shallow).all(axis=(1, 3)))
+        # R7: an amphibian does not take a bridge -- its deck is up over the water, it swims under (bench 2026-11-07
+        # engine_land: the A4 transport went straight at the quay, 89 frames to the shore area, where the simulator
+        # had it drive out of the water onto the southern bridge's deck and round, 346)
+        land = walk & ~bridge
+        self.grids['both'] = (fold(land).all(axis=(1, 3)) | self.grids['water'] |
+                              fold(land | water | shallow).all(axis=(1, 3)))
         self.cache = {}
         self.blocked = np.zeros(self.grids['ground'].shape, bool)
         self.version = 0
@@ -437,10 +450,23 @@ class Ground:
         k = int(np.argmin((jj + max(0, c[0] - 15) - c[0]) ** 2 + (ii + max(0, c[1] - 15) - c[1]) ** 2))
         return (int(jj[k] + max(0, c[0] - 15)), int(ii[k] + max(0, c[1] - 15)))
 
-    def route(self, surface, p, q):
-        """World points from p to q (None: no way); aircraft fly straight."""
+    def route(self, surface, p, q, closest=False):
+        """World points from p to q (None: no way); aircraft fly straight. closest: no way to q -- the way to the
+        nearest point it can reach instead (a unit's move, R7; the static checks ask for q itself)."""
         if surface == 'air':
             return [q]
+        got = self.way(surface, p, q, False)
+        if got is None and surface == 'both':
+            # R7: an amphibian on dry land may take a bridge from its end (the 'both' grid has no decks: from the
+            # water nothing climbs onto one); one starting on land and not reaching q by water goes by land
+            c, g = self.cell(*p), self.grids['ground'] & ~self.blocked
+            if 0 <= c[0] < g.shape[0] and 0 <= c[1] < g.shape[1] and g[c]:
+                got = self.way('ground', p, q, False)
+        if got is None and closest:
+            got = self.way(surface, p, q, True)
+        return got
+
+    def way(self, surface, p, q, closest):
         from skimage import graph
         g = self.grids[surface] & ~self.blocked
         a, z = self.snap(g, self.cell(*p)), self.snap(g, self.cell(*q))
@@ -453,10 +479,25 @@ class Ground:
             self.cache[key] = (m, cost)
         m, cost = self.cache[key]
         if not np.isfinite(cost[a]):
-            return None
+            return self.closest(g, a, z) if closest else None
         cells = m.traceback(a)[::-1]                # traceback runs from the goal (the costs' source) to a
         pts = [self.world(c) for c in cells]
         return pts[1::3] + [q] if len(pts) > 3 else [q]
+
+    def closest(self, g, a, z):
+        """R7: the goal out of reach -- the way to the cell it can reach nearest the goal (bench 2026-11-07
+        engine_land: the A4 transport sent to the quay's top went straight to its foot and stayed; the Generals
+        pathfinder's closest path). None when that is where it stands."""
+        from skimage import graph
+        m = graph.MCP_Geometric(np.where(g, 1.0, np.inf))
+        cost, _ = m.find_costs([a])
+        jj, ii = np.nonzero(np.isfinite(cost))
+        k = int(np.argmin((jj - z[0]) ** 2 + (ii - z[1]) ** 2))
+        end = (int(jj[k]), int(ii[k]))
+        if end == tuple(a):
+            return None
+        pts = [self.world(c) for c in m.traceback(end)]
+        return pts[1::3] + [pts[-1]] if len(pts) > 3 else [pts[-1]]
 
 
 class Sim:
@@ -506,6 +547,7 @@ class Sim:
         self.known_at = []                  # (t, km2 known)
         self.guessed = set()
         self.walls = {u.id: u.params for u in self.mm.units if 'length' in u.params}   # our bars of ice, gates
+        self.due = []                       # (frame, structure, owner, team, x, y, by): a builder's, to put down (R5)
         teams = getattr(mission.map, 'TEAMS', {})
         self.active = set(teams.values())               # teams with an instance: a whole-team order to any other is lost (E3)
         self.lost_orders = []                           # (t, script, order, team) given to a team nobody had joined
@@ -703,7 +745,7 @@ class Sim:
         if p is None:
             self.note('卡住', f'{self.label(b)} 找不到要去的地方 {target}')
             return
-        path = self.ground.route(b.surface, (b.x, b.y), p)
+        path = self.ground.route(b.surface, (b.x, b.y), p, closest=True)
         b.dest = p
         if path is None:
             self.note('卡住', f'{self.label(b)} 到不了 {target if isinstance(target, str) else "目标"}'
@@ -1075,8 +1117,19 @@ class Sim:
         elif name == 'HIDE_COUNTDOWN_TIMER':
             self.countdowns.discard(a[0])
         elif name in ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY'):
-            self.used.add('special power')
-            self.note('技能', f'{a[0]} 用 {a[1]}' + (f' 打 {a[2]}' if len(a) > 2 else ''))
+            b = self.body(a[0])
+            got = b and b.alive and name == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT' and \
+                simunits.assemble(b.template, a[1], self.own)
+            p = self.point(a[2]) if got and got[1] else None
+            if p is not None:                       # R5: he walks there and builds (the ice engineer's core)
+                self.used.add('assemble')
+                b.building, b.goal, b.mode = (got[1], p, got[0]), None, 'move'
+                self.note('技能', f'{self.label(b)} 去 {a[2]} 造 {got[1]}')
+                if not self.at_site(b, 0.0):
+                    self.send(b, p)
+            else:
+                self.used.add('special power')
+                self.note('技能', f'{a[0]} 用 {a[1]}' + (f' 打 {a[2]}' if len(a) > 2 else ''))
         elif name in ('ENABLE_SCRIPT', 'DISABLE_SCRIPT'):
             # a once-script that fired is only switched off: ENABLE_SCRIPT arms it again (SE enableScript)
             if name == 'ENABLE_SCRIPT':
@@ -1201,6 +1254,7 @@ class Sim:
                 self.happen(self.events.pop(0))
             eng.step()
             self.expire(eng.frame)
+            self.build_due(eng.frame)
             if self.test and self.test.counters and (eng.frame - 1) % self.fps == 0 and self.t >= LAG:
                 self.series.append((int(round(self.t - LAG)), [self.counters.get(c, 0) for c, _ in self.test.counters]))
             if not moved and self.ending is None and self.t >= t0 - 1e-9:
@@ -1230,7 +1284,8 @@ class Sim:
                     self.act(name, a, s)
                 if s.once:
                     self.done.add(s.name)
-        self.expire(int(round(self.t * simunits.LIFE_FPS)))
+        self.expire(self.frame_now())
+        self.build_due(self.frame_now())
         if self.ending:
             return
         if self.combat:
@@ -1311,6 +1366,32 @@ class Sim:
                     self.first_death = (self.t, t, by)
                 self.destroy(t, f'被 {self.label(by)} 打掉')
 
+    def frame_now(self):
+        return self.eng.frame if self.eng else int(round(self.t * simunits.LIFE_FPS))
+
+    def at_site(self, b, walked):
+        """R5: a builder within his stand of the spot he was told to build at stops; the structure is made there the
+        frame after he got there (`walked` this tick before that: bench 2026-11-07 engine_life, the ice core one frame
+        after an order given within range). False while he is still short of it."""
+        structure, (x, y), stand = b.building
+        if math.hypot(b.x - x, b.y - y) > stand + 1e-6:
+            return False
+        got = self.frame_now() + (math.ceil(round(walked / b.speed * simunits.LIFE_FPS, 6)) if walked else 0)
+        self.due.append((got + 1, structure, b.owner, b.team, x, y, b.name))
+        b.building, b.path, b.dest = None, [], None
+        self.note('技能', f'{self.label(b)} 到位，造 {structure}')
+        return True
+
+    def build_due(self, frame):
+        """The structures builders put down by `frame` (at_site)."""
+        for d in [d for d in self.due if d[0] <= frame]:
+            self.due.remove(d)
+            _, structure, owner, team, x, y, by = d
+            n = self.add(f'#built {len(self.bodies)} by {by}', structure, owner, x, y, by=by, at=self.t)
+            n.team = team
+            if self.blocks(n):
+                self.reblock()
+
     def move(self):
         for b in self.living():
             if isinstance(b.goal, Body):
@@ -1320,12 +1401,22 @@ class Sim:
                 elif not b.path or math.hypot(b.path[-1][0] - g.x, b.path[-1][1] - g.y) > 150:
                     if int(self.t / DT) % 8 == 0:                    # re-aimed every 4 s
                         self.send(b, (g.x, g.y))
+            if b.building and self.at_site(b, 0.0):
+                continue
             if not b.path or 'IMMOBILE' in b.status or b.engaged:
                 continue
             left = b.speed * DT
             while left > 0 and b.path:
                 tx, ty = b.path[0]
                 d = math.hypot(tx - b.x, ty - b.y)
+                step = min(BUILD_STEP, left)
+                if b.building and d > step:                 # a builder: in short steps, to see where he reaches it
+                    b.x += (tx - b.x) * step / d
+                    b.y += (ty - b.y) * step / d
+                    left -= step
+                    if self.at_site(b, b.speed * DT - left):
+                        break
+                    continue
                 if d <= left:
                     b.x, b.y, left = tx, ty, left - d
                     b.path.pop(0)
@@ -1333,6 +1424,8 @@ class Sim:
                     b.x += (tx - b.x) * left / d
                     b.y += (ty - b.y) * left / d
                     left = 0
+            if b.building:
+                self.at_site(b, b.speed * DT - left)
             self.change()
         if self.auto_kill is not None:
             mine = [b for b in self.living() if b.owner == self.human]
@@ -1395,7 +1488,7 @@ class Sim:
     def pending(self):
         """Something still to come: a timer running, a unit moving, a script event."""
         return bool(self.events) or bool(self.anchored) or any(v > self.t for v in self.timers.values()) or \
-            any(b.path or b.life_end is not None for b in self.living())
+            bool(self.due) or any(b.path or b.building or b.life_end is not None for b in self.living())
 
     def run(self, until=UNTIL):
         self.used |= {'engine model' if self.eng else 'frame rate', 'difficulty side'}
