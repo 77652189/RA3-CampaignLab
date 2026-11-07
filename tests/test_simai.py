@@ -75,6 +75,51 @@ def test_skirmish_ai_builds_makes_units_and_attacks(skirmish):
     assert min(x.died_at for x in lost) > (gone[0][0] / simai.FPS), 'died before the team left'
 
 
+# checks/engine_aistate.py (bench 2026-11-06): the probe's own personality (missions/aistate_bench.py, written into
+# the mod as Mission.assets) with two states; frames from the wake (const) / from the state's flag (slash) to the
+# first of its four units out of the base area (450 round the east base). Bench clock: aistateconst's wake is s9,
+# the units out s14-16 (~5 s; one-second readings, so +-15 frames).
+AI_HOME, HOME_R = (3850.0, 3400.0), 450.0
+INF, TANK = 'AlliedAntiInfantryInfantry', 'AlliedAntiVehicleVehicleTech1'
+
+
+def _first_out(build, lib, until=75.0):
+    """{template: first frame one of the AI's four is out of the base area}, the run's SimAI."""
+    w = simai.run(build, until=1, lib=lib)
+    s, first = w.sim, {INF: None, TANK: None}
+    while w.frame < until * simai.FPS:
+        w.advance(1)
+        for tpl in first:
+            if first[tpl] is None and any(x.template == tpl and x.owner != s.human and
+                                          (x.x - AI_HOME[0]) ** 2 + (x.y - AI_HOME[1]) ** 2 > HOME_R ** 2
+                                          for x in s.bodies.values()):
+                first[tpl] = w.frame
+    return first, w
+
+
+def test_mission_personality_both_states_go_at_the_wake(lib):
+    """aistateconst a: both states always on -- all four of each out s14-16, the wake s9 (~5 s after it)."""
+    first, w = _first_out('aistateconst', lib, until=25)
+    (b,) = w.brains.values()
+    assert b.ai.personality.id == 'CNVStateTest'
+    for tpl, f in first.items():
+        assert f is not None and abs((f - b.woke) - 5 * simai.FPS) <= 1.5 * simai.FPS, (tpl, f - b.woke)
+
+
+def test_slash_flags_switch_the_states(lib):
+    """aistateslash a: scripts SET_FLAG '/CNVAIInfantry' at 20 s, '/CNVAITanks' at 60 s -- the infantry out 74 frames
+    after its flag, the tanks 77 after theirs."""
+    first, _ = _first_out('aistateslash', lib)
+    inf, tank = first[INF] - 20 * simai.FPS, first[TANK] - 60 * simai.FPS
+    assert abs(inf - 74) <= RIPTIDE_SLACK and abs(tank - 77) <= 2 * RIPTIDE_SLACK, (inf, tank)
+
+
+def test_bare_flags_are_the_script_players_not_the_ais(lib):
+    """aistateplain a: bare flag names (the script list's own scope) -- nobody left the base."""
+    first, _ = _first_out('aistateplain', lib, until=75)
+    assert first == {INF: None, TANK: None}, first
+
+
 def test_skirmish_ai_talks_about_itself(skirmish):
     th = skirmish.thoughts()
     (me,) = th.values()

@@ -62,7 +62,8 @@ RING = (260.0, 400.0, 540.0, 680.0)     # INFERRED: the rings a yard puts its st
 GAP = 20.0                          # INFERRED: room left between two structures' rounds
 DIFFICULTY = {'easy': 'EASY', 'normal': 'MEDIUM', 'hard': 'HARD', 'brutal': 'BRUTAL'}
 BLOCKS = ('targets', 'defense', 'micro', 'specials')
-MODULES = ('data', 'player', 'opening', 'states', 'teams', 'targets', 'tactics', 'defense', 'micro', 'specials')
+SCRIPT_SCOPE = 'the list owner'     # the scope of a bare flag name (the script list's player; INFERRED: its name)
+MODULES = ('data','player', 'opening', 'states', 'teams', 'targets', 'tactics', 'defense', 'micro', 'specials')
 _AI = {}
 
 
@@ -479,9 +480,11 @@ class SimAI:
         return s.eng.frame if s.eng is not None else int(round(s.t * FPS))
 
     def flags(self, player):
-        """The mission's flags as states.py keys them (ScriptedFlagHeuristic '/name': a flag of the map's scripts)."""
+        """The mission's flags as states.py keys them: cnv's scripts run in a player's script list, so a bare SET_FLAG
+        name is that list owner's and 'scope/name' sets the scope by hand ('/name' the empty one, which
+        ScriptedFlagHeuristic reads -- l4_states.md 7; bench aistateplain: bare names unseen, aistateslash: seen)."""
         st = self.mod['states']
-        return {st.flag_key('/' + k, player): bool(v) for k, v in (self.sim.flags or {}).items()}
+        return {st.flag_key(k, SCRIPT_SCOPE): bool(v) for k, v in (self.sim.flags or {}).items()}
 
     def data_of(self, what):
         """The blocks' SDK data, read once a run."""
@@ -557,6 +560,16 @@ class SimAI:
             return miner if simunits.table().get(miner.lower()) else None
         return None
 
+    def own_personalities(self):
+        """The AI personalities the mission writes into its mod (Mission.assets, AIPersonalityDefinition:...) added to
+        the AI's data once, so a probe's own personality (missions/aistate_bench.py) is the one the brain runs."""
+        if getattr(self, '_own_done', False):
+            return
+        self._own_done = True
+        for a in getattr(self.sim.m, 'assets', None) or []:
+            if len(a) >= 3 and str(a[2]).startswith('AIPersonalityDefinition:'):
+                self.data.add_text(a[1])
+
     def attach(self):
         """Brains for the players the mission has handed to the AI since the last call."""
         s = self.sim
@@ -566,6 +579,7 @@ class SimAI:
                 continue
             side = sides.get(player, '')
             pid = (s.m.sides.get(side) or {}).get('aiPersonality', '').split(':')[-1] or '1AlliedBalanced'
+            self.own_personalities()
             self.brains[player] = Brain(self, player, side, pid, int(round(s.ai[player] * FPS)))
 
     def advance(self, frames):
