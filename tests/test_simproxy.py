@@ -125,3 +125,20 @@ def test_the_ice_goes_where_the_player_put_it(lib):
     venue = next(g for g in simproxy.goals(w) if g.name == '会场冻街口')
     last = next(g for g in simproxy.goals(w) if g.name == '最后一程冻口子')
     assert venue.test(tr) == f and last.test(tr) is None
+
+
+def test_a4_the_proxy_ices_the_streets_on_its_own_and_compares(a4_run, lib):
+    """The level gives only what a human sees (simproxy.CHOKES: the horn's countdown, the ways, the ice power); the
+    proxy decides when and which (player._blocks). The default play ices the venue's streets before a horn and the
+    report's 冰在哪 criterion sees it; Style(block=0) (the plain play) never ices, and compare() puts the two side by
+    side."""
+    rep, w = a4_run
+    blocks = [m for m in rep['moments'] if m['what'] == 'block']
+    assert blocks and rep['goals']['会场冻街口']['met']
+    assert all(m['detail'].split(' by ')[0] in {c[0] for c in simproxy.CHOKES['a4']['ways']} for m in blocks)
+    plain, _ = simproxy.play('a4', style=w.p['player'].Style(block=0), label='不放冰', lib=lib)
+    assert not [m for m in plain['moments'] if m['what'] == 'block']
+    assert not plain['goals']['会场冻街口']['met'] and not plain['goals']['最后一程冻口子']['met']
+    assert rep['frames'] > plain['frames']                          # the ice holds the convoy longer
+    table = w.p['report'].compare([rep, plain])
+    assert '挡路 0 次' in table and '共 2 局' in table and '会场冻街口 1/2' in table

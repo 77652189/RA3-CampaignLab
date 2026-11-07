@@ -16,6 +16,9 @@ What the world shows the player (Observation, ra3model/proxy/world.py):
           the high-ground rule, reveals) as ai.targets.Thing; civilians' owner ''
   money   Sim.money; offers: none -- the simulator has no production (a 'build' order is refused)
   home    the level's start site, or on an escort level (ESCORT) the middle of the living convoy; leads: LEADS[level] (the briefing's places), each a map site
+  chokes  CHOKES[level]: each way's block site and threat source, the on-screen countdown's end (the horn), the power
+          that blocks (the ice engineer's) and whether ice stands there now; the proxy decides when and which to ice
+          (player._blocks, Style.block = 0 never ices: --compare plays both)
 What the player may do (Order): 'move' (a plain move), 'attack' (Sim.order_attack on a body), 'power' with a pos (a
 ground power: NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT at a waypoint made for it -- the ice engineer walks there and
 builds, the simulator's R5) or with a target (noted only). losses(): every death so far (not deleted, not scenery,
@@ -24,6 +27,7 @@ The end: Sim.ending ('赢' -> 'win', '输' -> 'lose'), else the run's frames run
 """
 import argparse
 import importlib
+import importlib.util
 import json
 import math
 import os
@@ -56,6 +60,17 @@ ICE_GOALS = {
            ('最后一程冻口子', ('north mouth', 'inside 3', 'east mouth'), 200.0,
             '最后一程三个口子冻上冰墙：兵在墙后攒着')),
 }
+# where a level's coming threat can be blocked (proxy world.Choke): what a human sees -- the countdown on screen
+# ('countdown': the timer DISPLAY_COUNTDOWN_TIMER shows), the ways the briefing and the signs point at (name, the
+# site the block goes on, the site the threat comes out of), and the power that blocks (cast part, ability). The
+# proxy decides when and which (player._blocks); nothing here says which way to block.
+CHOKES = {
+    'a4': {'countdown': 'CNV A4 Horn', 'power': ('engineer', 'freeze'),
+           'ways': (('后巷', 'lane foot', 'lane foot'), ('一号', 'inside 1', 'plaza 1'), ('二号', 'inside 2', 'plaza 2'),
+                    ('北坡口', 'north mouth', 'north mouth'), ('三号广场', 'inside 3', 'plaza 3'),
+                    ('东街口', 'east mouth', 'east mouth'))},
+}
+BLOCKED_R = 120.0               # a choke counts as blocked while a body with a lifetime of its own (ice) stands this close
 # a level's own targets the report asks about: (goal name, cast part, note)
 TARGET_GOALS = {
     'a4': (('拆北营指挥所', 'north command', '第 3 段：指挥所一倒港口的兵撤走、车队走最后一程'),),
@@ -64,15 +79,27 @@ TARGET_GOALS = {
 _PROXY = {}
 
 
+def _package(folder):
+    """The engine model's ra3model package, loaded by file as sim.engine_model does (nothing added to sys.path, guard
+    G4): its submodules then import by name through the package's own path."""
+    if 'ra3model' in sys.modules:
+        return sys.modules['ra3model']
+    spec = importlib.util.spec_from_file_location('ra3model', os.path.join(folder, '__init__.py'),
+                                                  submodule_search_locations=[folder])
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules['ra3model'] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def proxy():
     """The engine line's ra3model.proxy modules (world, player, report, matchup) as a namespace dict, or None."""
     if 'got' not in _PROXY:
         root = labpaths.ENGINE_MODEL
         got = None
         if os.path.isfile(os.path.join(root, 'ra3model', 'proxy', 'world.py')):
-            if root not in sys.path:
-                sys.path.append(root)
             try:
+                _package(os.path.join(root, 'ra3model'))
                 got = {k: importlib.import_module(f'ra3model.proxy.{k}') for k in ('world', 'player', 'report',
                                                                                    'matchup')}
                 got['targets'] = importlib.import_module('ra3model.ai.targets')
@@ -178,7 +205,7 @@ class SimWorld:
         busy = 'attack' if isinstance(b.goal, sim.Body) else ('move' if b.path or b.building else '')
         return self.pw.Mine(self._id(b), b.template, frozenset(b.kinds), b.x, b.y, b.hp, b.max_hp, cost,
                             max((w['range'] for w in b.weapons), default=0.0), b.vision or 300.0, good, (), busy,
-                            rates)
+                            rates, float(b.speed or 0.0))
 
     def _thing(self, b):
         cost, _, _ = self._data(b.template)
@@ -204,7 +231,29 @@ class SimWorld:
         seen = [self._thing(b) for b in s.living() if not b.scenery and b.owner != self.me
                 and (b.owner == sim.CIV or s.enemy(self.me, b.owner)) and s.side_sees(self.me, b)]
         return self.pw.Observation(self.frame, self.me, int(s.money.get(self.me, 0)), self.where_home(), mine, seen, [],
-                                   self.enemies(), list(self.leads))
+                                   self.enemies(), list(self.leads), self.chokes())
+
+    def chokes(self):
+        """The level's chokes (CHOKES) as the player sees them now: the countdown's end if it is on screen, whether
+        an ice wall (a body with a lifetime of its own, not a unit) stands in the mouth."""
+        spec = CHOKES.get(self.level)
+        if not spec:
+            return []
+        s = self.sim
+        name = spec['countdown']
+        at = int(round(s.timers[name] * FPS)) if name in s.countdowns and name in s.timers else None
+        part, ability = spec['power']
+        power = s.m.ability(part, ability) if part in s.m.cast else None
+        by = frozenset({s.m.cast[part].template}) if part in s.m.cast else frozenset()
+        walls = [(b.x, b.y) for b in s.living() if b.life_end is not None and b.speed == 0 and not b.scenery]
+        out = []
+        for way, block, source in spec['ways']:
+            p, q = s.point(block), s.point(source)
+            if not p or not q:
+                continue
+            blocked = any(math.hypot(x - p[0], y - p[1]) <= BLOCKED_R for x, y in walls)
+            out.append(self.pw.Choke(way, tuple(p), tuple(q), at, power or '', by, blocked))
+        return out
 
     # ---- what the player does
     def _body(self, i):
@@ -302,17 +351,24 @@ def main():
     ap.add_argument('level', nargs='?', default='a4')
     ap.add_argument('--until', type=float, default=UNTIL)
     ap.add_argument('--level', dest='difficulty', default=DIFFICULTY, choices=list(sim.LEVELS))
-    ap.add_argument('--json', default='', help='write the whole report here')
+    ap.add_argument('--json', default='', help='write the whole report here (with --compare: a list of both)')
+    ap.add_argument('--compare', action='store_true', help="also play without the level's power and compare")
     a = ap.parse_args()
     if not available():
         print(f'没有代理玩家（{labpaths.ENGINE_MODEL} 下没有 ra3model/proxy）')
         sys.exit(2)
-    rep, w = play(a.level, until=a.until, difficulty=a.difficulty)
+    rep, w = play(a.level, until=a.until, difficulty=a.difficulty, label=f'{a.level} 默认')
+    reps = [rep]
     print(w.p['report'].summary(rep))
     print(rep['world']['simulator_ending'])
+    if a.compare:
+        plain, _ = play(a.level, style=w.p['player'].Style(block=0), until=a.until, difficulty=a.difficulty,
+                        label=f'{a.level} 不用关卡技能', lib=w.match.lib)
+        reps.append(plain)
+        print(w.p['report'].compare(reps))
     if a.json:
         with open(a.json, 'w', encoding='utf-8') as f:
-            json.dump(rep, f, ensure_ascii=False, indent=1)
+            json.dump(reps if a.compare else rep, f, ensure_ascii=False, indent=1)
 
 
 if __name__ == '__main__':
