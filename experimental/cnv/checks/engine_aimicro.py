@@ -26,6 +26,8 @@ Bench 2026-11-07 (Sonnet, one run each, no dropout):
     nobody charged, the hand-over 1 s after the wake did not help. The model fires in near / med / hurt (strict xfail
     in RA3-EngineModel tests/test_ai_bench.py); far agrees. Not known yet why: the hand-over not registering either,
     the StaticDefense team not taking handed-over units, or one of the 6 preconditions (l4_micro_powers.md 1).
+  aimicmade r (Sonnet): 冲1 冲2 再冲1 all 0 through 帧数 939 -- warriors created on s1's team after the wake did not
+    charge either: not the hand-over. Same in engine_aitoggle (no shield). INFERRED: StaticDefense runs no micro.
 """
 from parts import Script, Test, status
 

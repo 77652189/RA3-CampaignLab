@@ -15,7 +15,14 @@ The verdicts after 帧数 are the model's answer (RA3-EngineModel micro.py toggl
 the attack, lowered after the stop, 盾2 never -- a FAIL is the bench reading otherwise.
 
 读数
-(not run yet)
+Bench 2026-11-07 (Sonnet, one run each, no dropout):
+  aitogglemade c PASS: 盾2 463 at 帧数 493 -> raised 30 frames after the order, the frame of the press: the status
+    reads a raised shield.
+  aitogglemade r / aitogglehand r FAIL: 盾1开 盾1关 盾2 all 0 through 帧数 426 / 495 -- the AI never raised the
+    shield of the attacked Peacekeeper (made after the wake or handed over alike). With aimicmade (warriors made
+    after the wake never charged) the silence is not the hand-over: INFERRED the StaticDefense team runs no micro,
+    or a precondition (work/re l4_micro_powers.md 1) fails. Model: raises at the first round (strict xfail in
+    RA3-EngineModel tests/test_ai_bench.py).
 """
 from parts import NOT, Script, Test, status
 
