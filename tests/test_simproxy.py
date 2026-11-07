@@ -95,14 +95,37 @@ def test_orders_move_attack_and_refusals(lib):
     w.step(3 * FPS)
     b = w.sim.bodies[w.names[u.id]]
     assert math.hypot(b.x - goal[0], b.y - goal[1]) < math.hypot(u.x - goal[0], u.y - goal[1]) - 50
-    assert not w.issue(pw.Order('build', template='AlliedAntiInfantryInfantry'))    # no production in the simulator
+    assert not w.issue(pw.Order('build', template='AlliedAntiInfantryInfantry'))    # A4: the player has no factory
     assert not w.issue(pw.Order('attack', (u.id,), target=999999))
     assert not w.issue(pw.Order('move', (999999,), pos=goal))
-    assert [r[2] for r in w.refused][:1] == ['the simulator has no production']
+    assert [r[2] for r in w.refused][:1] == ['no factory of mine builds it now']
     sign = w.sim.bodies[w.sim.m.cast['标志 一号'].name]
     sid = w._id(sign)
     assert w.issue(pw.Order('attack', (u.id,), target=sid))
     assert b.goal is sign and b.mode == 'attack'
+
+
+def test_build_through_the_simulators_sidebar(lib):
+    """engine_production a (a barracks, 2000): the lit buttons come as Offers with the data's counters, a build order
+    queues at the barracks, the money the player sees drops by the whole cost at once (the queue's debt), and the
+    unit comes out as one of the player's."""
+    w = simproxy.SimWorld('engine_production', check='a', lib=lib)
+    w.step(30)
+    obs = w.observe()
+    pw = w.pw
+    offers = {o.template: o for o in obs.offers}
+    assert 'AlliedEngineer' in offers and 'AlliedInfiltrationInfantry' not in offers   # tier 2 needs the upgrade
+    pk = offers['AlliedAntiInfantryInfantry']
+    assert pk.cost > 0 and pk.seconds > 0 and 'infantry' in pk.good_against and pk.rates
+    before = obs.money
+    assert w.issue(pw.Order('build', template='AlliedEngineer'))
+    assert w.observe().money == before - offers['AlliedEngineer'].cost
+    had = {u.id for u in obs.mine}
+    w.step(15 * 15)
+    new = [u for u in w.observe().mine if u.id not in had]
+    assert [u.template for u in new] == ['AlliedEngineer']
+    assert w.observe().money == int(w.sim.money[w.me])                 # paid off: nothing owed
+    assert not w.issue(pw.Order('build', template='AlliedInfiltrationInfantry'))
 
 
 def test_the_ice_goes_where_the_player_put_it(lib):

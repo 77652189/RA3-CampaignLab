@@ -14,7 +14,9 @@ What the world shows the player (Observation, ra3model/proxy/world.py):
           proxy's Matchup on the SDK's data when the template is a retail one, else roles_from_name (CNV_* parts)
   seen    every living, non-scenery body of an enemy or of the civilians the player sees now (Sim.side_sees: vision,
           the high-ground rule, reveals) as ai.targets.Thing; civilians' owner ''
-  money   Sim.money; offers: none -- the simulator has no production (a 'build' order is refused)
+  money   Sim.money less what the player's queued builds still owe; offers: Sim.offers (the live factories' lit
+          buttons) with Matchup's good_against / rates; a 'build' order is Sim.order_build (refused when no factory
+          of the player's builds it now -- A4 has none)
   home    the level's start site, or on an escort level (ESCORT) the middle of the living convoy; leads: LEADS[level] (the briefing's places), each a map site
   chokes  CHOKES[level]: each way's block site and threat source, the on-screen countdown's end (the horn), the power
           that blocks (the ice engineer's) and whether ice stands there now; the proxy decides when and which to ice
@@ -226,8 +228,26 @@ class SimWorld:
         mine = [self._mine(b) for b in s.living() if b.owner == self.me and self._is_unit(b)]
         seen = [self._thing(b) for b in s.living() if not b.scenery and b.owner != self.me
                 and (b.owner == sim.CIV or s.enemy(self.me, b.owner)) and s.side_sees(self.me, b)]
-        return self.pw.Observation(self.frame, self.me, int(s.money.get(self.me, 0)), self.where_home(), mine, seen, [],
+        return self.pw.Observation(self.frame, self.me, self.money(), self.where_home(), mine, seen, self.offers(),
                                    self.enemies(), list(self.leads), self.chokes(), escort=bool(self._convoy()))
+
+    def money(self):
+        """What the player can still spend: the bank less what the queued builds will still take (Sim.order_build pays
+        frame by frame, so the bank alone would let the player queue far more than it can pay for)."""
+        s = self.sim
+        owed = sum(j['cost'] - j['paid'] for q in s.queues.values() for j in q if j['owner'] == self.me)
+        return int(s.money.get(self.me, 0)) - int(owed)
+
+    def offers(self):
+        """The lit sidebar buttons (Sim.offers: the player's live factories, prerequisites held, not banned) as the
+        proxy's Offers: KindOf / good_against / rates from the data (Matchup.offer), cost and time from the simulator."""
+        out = []
+        for template, cost, secs in self.sim.offers(self.me):
+            tpl = self.match.lib.template(template)
+            _, good, rates = self._data(template)
+            out.append(self.pw.Offer(template, frozenset(tpl.kinds) if tpl is not None else frozenset(), int(cost),
+                                     good, float(secs), rates=rates))
+        return out
 
     def chokes(self):
         """The level's chokes (CHOKES) as the player sees them now: the countdown's end if it is on screen, whether
@@ -263,7 +283,7 @@ class SimWorld:
     def issue(self, o):
         s = self.sim
         if o.kind == 'build':
-            return self._refuse(o, 'the simulator has no production')
+            return True if s.order_build(self.me, o.template) else self._refuse(o, 'no factory of mine builds it now')
         units = [self._body(i) for i in o.units]
         units = [b for b in units if b is not None and b.owner == self.me]
         if not units:
