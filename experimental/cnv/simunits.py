@@ -460,6 +460,34 @@ def weapon_table(own=None):
     return _own_weapons[key]
 
 
+def declared_weapons(template, own=None):
+    """The weapon template of each WeaponSlot as read_fight takes it (the PRIMARY one), from the unit's XML or what it
+    inherits from (5 steps); [] when the XML names none. Sim.add asks it when fight() reads no weapon (a gap, not a
+    unit without guns); simcoverage.declared_picks reads the same."""
+    try:
+        xml = _xml(template, own)
+    except (OSError, ValueError):
+        return []
+    for _ in range(5):
+        picks = []
+        for head, body in _blocks(xml or '', 'WeaponSetUpdate'):
+            for slot in re.finditer(r'<WeaponSlot\w*\b.*?</WeaponSlot\w*>', body, re.S):
+                ws = [(_attr(h, 'Ordering'), _attr(h, 'Template')) for h, _ in _blocks(slot.group(0), 'Weapon')]
+                pick = next((t for o, t in ws if o == 'PRIMARY_WEAPON'), ws[0][1] if ws else None)
+                if pick:
+                    picks.append(pick)
+        if picks:
+            return picks
+        m = re.search(r'\binheritFrom="([^"]+)"', (xml or '')[:2000])
+        if not m or m.group(1).lower() == template.lower():
+            break
+        try:
+            xml = _xml(m.group(1), own)
+        except (OSError, ValueError):
+            break
+    return []
+
+
 def fight(template, own=None):
     """{hp, armor {damage type: percent}, weapons [{range, dps, type, anti}]} for a template (own: the mission's
     units' XML, read with the retail weapons and armours and their own weapons); hp None when the data has none."""

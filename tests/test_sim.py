@@ -236,3 +236,49 @@ def test_a_placed_objects_starting_health():
     s = sim.Sim(m, t, script='').run(a7.LAND_BY)
     assert s.bodies[m.role('carrier').name].health == 1.0
     assert s.ending and s.ending[0] == '赢' and s.ending[1] <= a7.LAND_BY, s.ending
+
+
+# ---- Sim.unmodeled: what a run met and the simulator does not act on, recorded in one place (Sim.gap)
+
+def test_acted_status_is_what_the_source_tests():
+    """sim.ACTED_STATUS (what a status-bit gap is measured against) holds every `'X' in b.status` test in sim.py."""
+    import re
+    src = (ROOT / 'experimental' / 'cnv' / 'sim.py').read_text(encoding='utf-8')
+    assert set(re.findall(r"'([A-Z_]+)' (?:not )?in \w+\.status", src)) | {'IN_STASIS'} == sim.ACTED_STATUS
+
+
+def test_a_run_records_what_it_does_not_model():
+    """An unknown action and condition, a status bit nothing acts on, a button with no effect: each one entry under its
+    kind (the refined name simcoverage reports), counted, with the first time; a bit the fight acts on is no gap."""
+    m = mission([Script('make', [], [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', 'W', 'JapanAntiInfantryInfantry',
+                                      'Soviet_1/teamSoviet_1', 'A')]),
+                 Script('do', [('TIMER_EXPIRED', 'T')], [('UNIT_CHANGE_OBJECT_STATUS', 'W', 'DISGUISED', 1),
+                                                          ('UNIT_CHANGE_OBJECT_STATUS', 'W', 'NO_ATTACK', 1),
+                                                          ('NAMED_USE_COMMANDBUTTON_ABILITY', 'W', 'Command_Nothing'),
+                                                          ('MADE_UP_ACTION', 1)]),
+                 Script('timer', [], [('SET_MILLISECOND_TIMER', 'T', 2.0)]),
+                 Script('ask', [('MADE_UP_CONDITION', 1)], [WON])])
+    a = festival.SITES['start']
+    m.waypoints = {'A': (a.x, a.y)}
+    s = sim.Sim(m).run(5)
+    got = {k: g['n'] for k, g in s.unmodeled.items()}
+    assert got[(sim.GAP_ACTION, 'UNIT_CHANGE_OBJECT_STATUS:DISGUISED')] == 1
+    assert (sim.GAP_ACTION, 'UNIT_CHANGE_OBJECT_STATUS:NO_ATTACK') not in got
+    assert got[(sim.GAP_ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY:Command_Nothing')] == 1
+    assert got[(sim.GAP_ACTION, 'MADE_UP_ACTION')] == 1 and s.unknown['MADE_UP_ACTION'] == 1
+    assert got[(sim.GAP_CONDITION, 'MADE_UP_CONDITION')] > 1             # asked every tick
+    assert 1.9 <= s.unmodeled[(sim.GAP_ACTION, 'MADE_UP_ACTION')]['t'] <= 2.2
+    assert s.unmodeled[(sim.GAP_CONDITION, 'MADE_UP_CONDITION')]['t'] < 0.2
+    assert any('Sim.unmodeled' in line for line in s.report())
+
+
+def test_a_unit_whose_guns_are_not_read_is_a_gap(monkeypatch):
+    """A unit whose XML names weapons and the fight reads none is recorded under 武器 (once a template, counted)."""
+    monkeypatch.setattr(sim.simunits, 'fight', lambda t, own=None: dict(hp=None, armor={}, weapons=[]))
+    m = mission([Script('make', [], [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', w, 'JapanAntiInfantryInfantry',
+                                      'Soviet_1/teamSoviet_1', 'A') for w in ('W', 'V')])])
+    a = festival.SITES['start']
+    m.waypoints = {'A': (a.x, a.y)}
+    s = sim.Sim(m).run(1)
+    g = s.unmodeled[(sim.GAP_WEAPON, 'JapanAntiInfantryInfantry')]
+    assert g['n'] == 2 and g['what'].startswith('XML 有 JapanAntiInfantryInfantryWeapon')

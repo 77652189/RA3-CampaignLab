@@ -253,6 +253,29 @@ RA3_ONLY = {'ATTACK_MOVE_NAMED_UNIT_TO', 'ATTACK_MOVE_TEAM_TO', 'CREATE_NAMED_ON
             'PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM', 'CAMERA_ENTERED_AREA',
             'PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS', 'SET_COUNTER_TO_COUNTER', 'COUNTER_MATH_COUNTER'}
 
+# Sim.unmodeled's kinds: what a run met and the simulator does not act on (Sim.gap). The names are simcoverage.py's
+# (the level line's static register; it imports sim, so they are spelled here too) plus 状态 (a status bit an upgrade
+# sets; a script's bit is a 脚本动作 under its refined name, as simcoverage reports it)
+GAP_WEAPON, GAP_UPGRADE, GAP_ACTION, GAP_CONDITION, GAP_COMMAND, GAP_STATUS = \
+    '武器', '升级', '脚本动作', '脚本条件', '命令', '状态'
+# the object statuses sim.py acts on (tested with `in b.status`; IN_STASIS = IMMOBILE NO_ATTACK UNATTACKABLE in
+# Sim.modify); tests/test_sim.py checks the list against the source
+ACTED_STATUS = frozenset({'IMMOBILE', 'NO_ATTACK', 'UNATTACKABLE', 'NON_AUTOACQUIRABLE', 'IN_STASIS'})
+# a script's power or button by itself, as simcoverage.refined names it
+BUTTON_ACTIONS = ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY',
+                  'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED')
+
+
+def refined(name, a):
+    """An action's name told apart by what it is told to do where that matters: the status bit, the power, the button
+    (simcoverage.refined's spelling: NAME:ARG)."""
+    if name == 'UNIT_CHANGE_OBJECT_STATUS' and len(a) > 1:
+        return f'{name}:{a[1][2] if isinstance(a[1], tuple) else a[1]}'
+    if name in BUTTON_ACTIONS and len(a) > 1:
+        return f'{name}:{a[1]}'
+    return name
+
+
 # actions that change nothing the scripts ask about: logged on the timeline (the player sees or hears them)
 SHOWN = {'SHOW_MILITARY_CAPTION': '通报', 'CAMPAIGN_CREATE_AUTO_SAVE': '存档', 'PATH_MUSIC_PLAY_EVENT': '音乐',
          'PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM': '战况音乐', 'NAMED_FLASH': '闪烁', 'NAMED_SHOW_INFOBOX': '信息框',
@@ -714,6 +737,8 @@ class Sim:
         self.scenes = []                    # [start, end] of each 过场 (end None while it runs)
         self.used = set()                   # ALIGN keys the run leaned on
         self.unknown = {}                   # condition / action names the simulator does not know: count
+        self.unmodeled = {}                 # (kind, name) -> {'n', 't' first met, 'what'}: Sim.gap
+        self.declared = {}                  # template -> the weapons its XML names (simunits.declared_weapons), asked once
         self.flags, self.counters, self.timers = {}, {}, {}
         self.objectives = {}                # name -> status (0 hidden, 1 shown, 2 done, 3 failed)
         self.markers = {}                   # objective -> {object / waypoint}
@@ -842,7 +867,12 @@ class Sim:
         else:                                   # no health in the data: a building's or a unit's usual (a guess)
             b.max_hp = b.hp = 2000.0 if 'STRUCTURE' in b.kinds else 300.0
         b.armor, b.weapons = f['armor'], f['weapons']
-        b.acquire = frozenset(simunits.acquire(template, self.own)) if b.weapons else frozenset()
+        if not b.weapons:                       # its XML names guns and none was read: a gap, not a unit without guns
+            if template not in self.declared:
+                self.declared[template] = simunits.declared_weapons(template, self.own)
+            if self.declared[template]:
+                self.gap(GAP_WEAPON, template, f'XML 有 {", ".join(self.declared[template])}，读成没有武器')
+        b.acquire =frozenset(simunits.acquire(template, self.own)) if b.weapons else frozenset()
         frames, b.leaves = simunits.lifetime(template, self.own)
         if frames is not None:                  # made in this frame's scripts (or, by a run event, at its start)
             made = self.eng.frame if getattr(self, 'eng', None) else int(round(at * simunits.LIFE_FPS))
@@ -1292,6 +1322,11 @@ class Sim:
         b.taken, b.dealt = e['ARMOR'], e['DAMAGE_MULT'] * e['RATE_OF_FIRE']
         if mods or on:
             self.used.add('modifier')
+        for m in mods:
+            for ty in sorted(set(m['types']) - simunits.ACTING_TYPES) if m else ():
+                self.gap(GAP_UPGRADE, m['id'], f'修正类型 {ty} 没模拟')
+        for bit in sorted(e['status'] - b.script_status - ACTED_STATUS - ({'UNDER_IRON_CURTAIN'} if b.shielded else set())):
+            self.gap(GAP_STATUS, bit, f'{b.template} 身上的修正 / 升级给的，只记下来')
 
     def relation(self, a, b):
         """ENEMIES / NEUTRAL / ALLIES: how owner b stands to owner a (an aura's ObjectFilter Relationship)."""
@@ -1456,6 +1491,16 @@ class Sim:
 
     def note(self, kind, text):
         self.log.append((self.t, kind, text))
+
+    def gap(self, kind, name, what=''):
+        """Records what this run met and the simulator does not act on -- one place for every such skip, so a gap shows
+        when a play meets it instead of being passed over in silence (the user's rule 11-08: fix by class). kind: a
+        GAP_* name; Sim.unmodeled[(kind, name)] = {'n' times, 't' the first time, 'what' the first note}."""
+        g = self.unmodeled.get((kind, name))
+        if g is None:
+            self.unmodeled[(kind, name)] = {'n': 1, 't': self.t, 'what': what}
+        else:
+            g['n'] += 1
 
     def show_caption(self, text, secs):
         """The military caption box (E6): one line, replaced by the next, gone after its own seconds."""
@@ -1677,6 +1722,7 @@ class Sim:
         if name == 'CAMERA_ENTERED_AREA':
             return bool(self.camera and inside(self.areas[a[0]], *self.camera))
         self.unknown[name] = self.unknown.get(name, 0) + 1
+        self.gap(GAP_CONDITION, name, 'Sim.cond 不认识：当成不成立')
         return False
 
     def sees(self, x, y, air=False):
@@ -1837,6 +1883,8 @@ class Sim:
             if b:
                 (b.script_status.add if a[2] else b.script_status.discard)(st)
                 self.modify(b)
+            if st not in ACTED_STATUS:
+                self.gap(GAP_ACTION, refined(name, a), f'状态位 {st} 只记下来；模拟器只认 {"、".join(sorted(ACTED_STATUS))}')
         elif name in ('NAMED_RECEIVE_UPGRADE', 'NAMED_REMOVE_UPGRADE'):     # (upgrade, object): recorded; of what an upgrade
             b = self.body(a[1])                                              # does to a unit only the SPEED modifier is
             if b:                                                            # simulated (units/pace.py's 齐步); a range,
@@ -1966,6 +2014,8 @@ class Sim:
                         if (kinds is None or t.kinds & kinds) and \
                                 math.hypot(t.x - q[0], t.y - q[1]) - t.radius <= reach:
                             t.immune_until = self.frame_now() + lasts
+                if b and b.alive and not ((hits or a[1] in CURTAIN) and q is not None):
+                    self.gap(GAP_ACTION, refined(name, a), f'{a[1]} 只记进时间线（special power），没有效果')
         elif name in ('ENABLE_SCRIPT', 'DISABLE_SCRIPT'):
             # a once-script that fired is only switched off: ENABLE_SCRIPT arms it again (SE enableScript)
             if name == 'ENABLE_SCRIPT':
@@ -1984,6 +2034,7 @@ class Sim:
             pass
         else:
             self.unknown[name] = self.unknown.get(name, 0) + 1
+            self.gap(GAP_ACTION, refined(name, a), 'Sim.act 不认识：没效果')
 
     def text(self, key):
         return self.mm.strings.get(key, key)
@@ -2624,8 +2675,9 @@ class Sim:
         if self.used:
             out.append('待对齐（这次推演用到的假设）：' + '；'.join(
                 ALIGN[k] + (', '.join(sorted(self.ra3_only)) if k == 'ra3 only' else '') for k in sorted(self.used)))
-        if self.unknown:
-            out.append('不认识的条件 / 动作（当成不成立 / 没效果）：' + ', '.join(f'{k}×{v}' for k, v in self.unknown.items()))
+        if self.unmodeled:                  # Sim.unknown's names are among them
+            out.append('这次碰到、模拟器没模拟的（Sim.unmodeled）：' + '；'.join(
+                f'[{k}] {n}×{g["n"]}（{mmss(g["t"])} 起）{g["what"]}' for (k, n), g in self.unmodeled.items()))
         if self.guessed:
             out.append('数据里没有、用了默认值：' + '；'.join(sorted(self.guessed)))
         return out
