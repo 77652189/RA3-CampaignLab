@@ -27,7 +27,8 @@ Bench 11-07 (Guardian clicked by hand coordinates at ~s16; the missions' money 4
                the Guardian button works (3050 paid, Guardian 1 at 帧数 824).
 """
 from parts import Script, Test, counted, square
-from missions.tech_bench import GUARDIAN
+
+GUARDIAN = 'AlliedAntiVehicleVehicleTech1'      # the Guardian (NeededUpgrade Upgrade_AlliedTech2): G5, no mission import
 
 MONEY = 4000
 UP2, UP3 = 'Upgrade_AlliedTech2', 'Upgrade_AlliedTech3'
