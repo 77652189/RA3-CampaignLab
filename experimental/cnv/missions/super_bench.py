@@ -19,6 +19,10 @@ COLLIDER_AT, CURTAIN_AT = (-300.0, -300.0), (100.0, -175.0)
 PROTON_AT, CURTAIN_SPOT = (300.0, 700.0), (-400.0, 100.0)
 PROTON_DIST = {0: (0.0, 0.0), 150: (150.0, 0.0), 240: (240.0, 0.0), 300: (-300.0, 0.0)}
 TANK_DIST = {0: (0.0, 0.0), 150: (150.0, 0.0)}
+VAC, POWER_V = 'SovietSuperWeaponAdvanced', 'SpecialPowerVacuumBomb'
+VAC_AT, VAC_SPOT = (-300.0, -500.0), (300.0, -600.0)
+VAC_DIST = {0: (0.0, 0.0), 150: (150.0, 0.0), 280: (280.0, 0.0), 350: (-350.0, 0.0)}
+FOE_DY = 200.0     # enemy tanks stand this far from the curtained tank (+y), one per tank
 
 
 def _n(part):
@@ -28,7 +32,7 @@ def _n(part):
 def mission(name='CampSuper'):
     m = Mission(name=name, map=niagara, units=[], facts={})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies'}
-    m.spawns |= {COLLIDER, CURTAIN, TARGET, TANK}
+    m.spawns |= {COLLIDER, CURTAIN, TARGET, TANK, VAC}
     m.put('AlliedConstructionYard', 'base yard', angle=0.0, role='yard', name=_n('Yard'))
     m.put('AlliedPowerPlant', 'base power', angle=0.0, role='power', name=_n('Power'))
     m.put(COLLIDER, SITE, *COLLIDER_AT, angle=0.0, role='collider', name=_n('Collider'))
@@ -41,6 +45,14 @@ def mission(name='CampSuper'):
     for d, (dx, dy) in TANK_DIST.items():
         m.put(TANK, SITE, CURTAIN_SPOT[0] + dx, CURTAIN_SPOT[1] + dy, angle=0.0, role=f'tank {d}',
               name=_n(f'Tank {d}'))
+    m.put(VAC, SITE, *VAC_AT, angle=0.0, role='vacuum', name=_n('Vacuum'))
+    m.waypoint('vacuum spot', 'Test Vacuum Spot', SITE, *VAC_SPOT)
+    for d, (dx, dy) in VAC_DIST.items():
+        m.put(TARGET, SITE, VAC_SPOT[0] + dx, VAC_SPOT[1] + dy, side='s1', angle=0.0, role=f'vtarget {d}',
+              name=_n(f'VTarget {d}'))
+    for d, (dx, dy) in TANK_DIST.items():
+        m.put(TANK, SITE, CURTAIN_SPOT[0] + dx, CURTAIN_SPOT[1] + dy + FOE_DY, side='s1', angle=0.0,
+              role=f'foe {d}', name=_n(f'Foe {d}'))
     return m
 
 

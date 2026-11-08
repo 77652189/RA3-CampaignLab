@@ -314,6 +314,21 @@ def test_super_the_proton_collider_hits_56_frames_after_the_cast():
     assert abs(rows[1] - 56) <= 1, rows        # 满血帧: frames the centre target stayed whole after the cast
 
 
+def test_super_the_vacuum_imploder_ends_as_the_bench():
+    """v: 满血帧 62, health % at 0 / 150 / 280 end 5 / 1 / 1; w: the one at 350 untouched."""
+    v = _sim_run('engine_super', 'v', 30.0).series[-1][1]
+    assert abs(v[0] - 62) <= 1 and [abs(g - w) <= 2 for g, w in zip(v[1:], (5, 1, 1))] == [True] * 3, v
+    w = _sim_run('engine_super', 'w', 30.0).series[-1][1]
+    assert w[-1] == 100, w
+
+
+def test_super_the_iron_curtain_holds_off_fire_some_23_seconds():
+    """j: both tanks (0 and 150 from the waypoint) whole until frame ~354 after the cast, then the enemy's fire takes
+    them down (bench 86 / 73 / 60 % at 362 / 391 / 422: a volley, where the simulator's fire is steady, 72 at 422)."""
+    by = {r[0]: r[1:] for _, r in _sim_run('engine_super', 'j', 34.0).series}
+    assert by[347] == [100, 100, 0] and by[362][0] < 100 and by[422][0] <= 75, by
+
+
 # ---- tech tiers: what lets a factory build a tier-2 unit (sim.Sim.holds_upgrade / can_build / upgrade_sellers)
 # bench 2026-11-07 engine_tech (checks/engine_tech.py): the Guardian (NeededUpgrade Upgrade_AlliedTech2, 950) clicked
 # at ~s16 -- built only in c (the yard holds Tech2, the factory 300 off); e: the player buys Tech2 on the yard

@@ -64,15 +64,25 @@ QUIET = 120.0                   # nothing pending this long and no ending: stuck
 # A script's superweapon at a waypoint: [(frames after the cast, [(centre distance, damage)])], nothing past the last
 # distance. Proton collider: bench 2026-11-07 engine_super p / q (base defenses of 1000 at 0 / 150 / 240 / 300): the
 # first hit 56 frames after the cast (+-1), the others in rows ~7 frames apart (INFERRED +15 / +45); the one at 300
-# untouched (XML Radius 250); the centre hit once only (the beams sweep: not a taper, not modelled further). The Iron
-# Curtain (engine_super i) showed no protection against NAMED_DAMAGE after a scripted cast: not modelled.
+# untouched (XML Radius 250); the centre hit once only (the beams sweep: not a taper, not modelled further).
 SUPERWEAPON_HITS = {
     'SpecialPowerParticleCannon': [
         (56, [(0.0, 560.0), (150.0, 500.0), (240.0, 390.0), (250.0, 390.0)]),
         (71, [(0.0, 0.0), (150.0, 440.0), (240.0, 340.0), (250.0, 340.0)]),
         (101, [(0.0, 0.0), (150.0, 0.0), (240.0, 150.0), (250.0, 150.0)]),
     ],
+    # Vacuum Imploder: engine_super v / w (base defenses at 0 / 150 / 280 / 350): the first loss 62 frames after the cast
+    # (the 4 s seed), then gradual in rows ~7 frames apart (~16 % / 11 % / 8 % a row) until 5 / 1 / 1 % are left (the
+    # centre after 6 rows, 150 after 9, 280 after ~13); 350 untouched (XML Radius 300). Rows of 7 frames: INFERRED.
+    'SpecialPowerVacuumBomb': [
+        (62 + 7 * k, [(0.0, 158.0 if k < 6 else 0.0), (150.0, 110.0 if k < 9 else 0.0), (280.0, 76.0), (300.0, 76.0)])
+        for k in range(13)
+    ],
 }
+# Iron Curtain: engine_super j -- a scripted cast keeps tanks at 0 and 150 from the waypoint whole against enemy fire for
+# ~355 frames (the 20 s modifier + the 3 s effect); NAMED_DAMAGE goes through (i). XML: vehicles and structures, aura
+# 100 (the 150 tank covered: its edge, or a larger reach -- INFERRED 150 by centre).
+CURTAIN = {'SpecialPowerIronCurtain': (150.0, 355)}
 
 
 def hit_at(table, d):
@@ -325,6 +335,7 @@ class Body:
     kinds: frozenset = frozenset()
     max_hp: float = 100.0
     hp: float = 100.0
+    immune_until: int = -1          # the frame an Iron Curtain's protection ends (weapons and superweapons, not scripts)
     armor: dict = dataclasses.field(default_factory=dict)      # damage type -> percent taken (simunits.fight)
     weapons: list = dataclasses.field(default_factory=list)    # [{range, dps, type, anti}]
     radius: float = 0.0                                         # R8: Geometry's bounding circle (simunits.radius)
@@ -1609,6 +1620,12 @@ class Sim:
                     now = self.frame_now()
                     for after, table in hits:
                         self.blasts.append((now + after, q[0], q[1], table, b.owner, b))
+                if a[1] in CURTAIN and q is not None and b and b.alive:
+                    self.used.add('superweapon')
+                    reach, lasts = CURTAIN[a[1]]
+                    for t in self.living():
+                        if t.kinds & {'VEHICLE', 'STRUCTURE'} and math.hypot(t.x - q[0], t.y - q[1]) <= reach:
+                            t.immune_until = self.frame_now() + lasts
         elif name in ('ENABLE_SCRIPT', 'DISABLE_SCRIPT'):
             # a once-script that fired is only switched off: ENABLE_SCRIPT arms it again (SE enableScript)
             if name == 'ENABLE_SCRIPT':
@@ -1911,6 +1928,8 @@ class Sim:
                 h[1] += rate * dt
                 h[2] = by
         for t, dmg, by in hurt.values():
+            if self.frame_now() < t.immune_until:
+                continue
             t.hp -= dmg
             t.last_hit, t.last_by = by.owner, by.name
             if t.hp <= 0 and t.alive:
@@ -1952,7 +1971,7 @@ class Sim:
             _, x, y, table, owner, by = d
             for t in self.living():
                 dmg = hit_at(table, math.hypot(t.x - x, t.y - y))
-                if dmg <= 0:
+                if dmg <= 0 or frame < t.immune_until:
                     continue
                 t.hp -= dmg
                 t.last_hit, t.last_by = owner, by.name
