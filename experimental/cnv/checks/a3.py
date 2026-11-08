@@ -10,6 +10,7 @@ freeze: nobody does anything for ~2:10 (no endings, so a lost fight does not end
 """
 import hashlib
 
+import playcheck
 from checks.a6 import lost_counter
 from parts import Script, Test, counted, status
 
@@ -71,5 +72,5 @@ def freeze(m):
 
 # the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
 CHECKS = {
-    'a3': {'win': win, 'freeze': freeze},
+    'a3': {'win': win, 'freeze': freeze, 'play': playcheck.make('a3')},
 }

@@ -8,6 +8,7 @@ walk: I20 (CampShell acceptance 2026-11-05b): the whole squad sent to the south 
 trap: the "who sees whom" rule: one bridge guard razed while the north bomber lives -> the fuse is lit, the mission
   ends lost soon after (the lost flag is read before the end: 0 until the raze).
 """
+import playcheck
 from parts import Script, Test
 
 FIRST = 8.0
@@ -68,5 +69,5 @@ def trap(m):
 
 # the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
 CHECKS = {
-    'a1': {'win': win, 'trap': trap, 'walk': walk},
+    'a1': {'win': win, 'trap': trap, 'walk': walk, 'play': playcheck.make('a1')},
 }

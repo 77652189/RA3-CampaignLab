@@ -5,6 +5,7 @@ win: the phases in a few seconds: the outer tower razed by test script, then the
   and no lost flag). The player's part (the climb, the spotter and the guns: the plan's `待做` 1) is the live play's.
 lose: Tanya razed by test script: the mission ends lost, the lost flag 0 before.
 """
+import playcheck
 from parts import Script, Test
 
 FIRST = 8.0
@@ -50,5 +51,5 @@ def lose(m):
 
 # the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
 CHECKS = {
-    'a6': {'win': win, 'lose': lose},
+    'a6': {'win': win, 'lose': lose, 'play': playcheck.make('a6')},
 }

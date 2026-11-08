@@ -6,6 +6,7 @@ win: the whole run in a few seconds: the nine balls razed one after another by t
   -- the balls' unit (units/tower_ball.py), the four rhythm devices -- through the real map compile.
 dark: the shield on the real ball: a sentry gun at the dark ball 6 does no harm, one at the lit ball 1 does.
 """
+import playcheck
 from parts import Obj, Script, Test
 
 KILLS = 3.0                                     # seconds between two razes
@@ -81,5 +82,5 @@ def dark(m):
 
 # the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
 CHECKS = {
-    'a9': {'win': win, 'dark': dark},
+    'a9': {'win': win, 'dark': dark, 'play': playcheck.make('a9')},
 }
