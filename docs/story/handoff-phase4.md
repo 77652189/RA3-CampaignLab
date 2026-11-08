@@ -419,3 +419,9 @@
 - **第一项做完**：`simproxy.py` 的 `SimWorld` / `play` 加 `show=False`；`show=True` 时世界用 `simshow.ShowSim`（只多记录、不改规则），`rep['world']['show']` 放 `simshow.problems` 的行。`--compare` 的两局都开 `show`，末尾各打一段"玩家看到的"。代理玩家逻辑没动。测试：`test_simproxy.py::test_a4_show_run_reads_the_presentation_and_changes_no_rule`（同一局开关 `show` 结局相同）。`pytest -q tests/test_simproxy.py tests/test_architecture.py tests/test_simshow.py` 41 过。
 - **首个读数**（`work/logs/simproxy_compare.log`）：A4 代理默认局 3:15 输，报 `K1 2:58 功能字幕 CNV_A4_Show_45 3:08 才出`；不用关卡技能那局没有问题。代理打输得早，这条是不是真问题要看正常打法下同一句。
 - **第二项没做**：测试台起不来，`RA3_1.13.game` 正在运行（`bench_start` 拒绝）。游戏退出后再 `bench_start(mod='CampA4'，menu_frames=2)` 存开局帧，量头几帧镜头和 `LETTERBOX_HALF`（现 410×170，11-05 量的）。
+
+#### 第三十四个会话（11-07，测试台量了开局镜头；复验了 A 线挪 A1 巡逻的改动）
+
+- **A1 南岸巡逻 310（624d950）验过，不用回退**：`cnv_check a1 walk` PASS（输了 0、巡逻倒 0，全程 49 秒）；另手动开 `CampA1Walk` 逐秒取帧，队伍 11.6 秒到桥头，"停下！再往桥头走……"通报正好在这时出现、巡逻没倒（`tests/test_a1_plan.py` 3 过）。
+- **A4 开局头几帧（`bench_start(CampA4, menu_frames=2)`，帧 15 起是过场）**：过场**第一帧就已经有黑边**，镜头直接在一号街口，**没有"头 ~1 秒默认镜头 / 黑屏"**（模型里 `cam0` = 地图 `start`、`BLACK_MIN`=2 秒的假设，真游戏头几帧没出现；采样间隔 2 秒，所以"头 1 秒内"仍没量到）。过场帧与 1.0 秒的玩法帧（有 HUD）同一个镜头同一个缩放（两尊冰雕间距 357 / 355 像素）。过场结束后镜头静止在同一处至少 28 秒，没有自动平移。
+- **`LETTERBOX_HALF` 现值 410×170 偏小（y 方向偏多）**：过场画面是全宽 1280 × 约 540 像素的带（上下各 90 像素黑边）。用 `bench_where(to_world)` 在同缩放的玩法镜头下量这条带：上缘宽约 1126、下缘宽约 710（透视），**高约 525 地图单位**（正中宽约 877）。旧值 820×345 把竖直方向按水平比例（1.46 像素/单位）折算，漏了俯视压缩（竖直约 1.04 像素/单位）。方向上的后果：`horn.frame_for` 把"要藏的"放在 345 高的带外 40，真画面是 525 高，**藏的东西可能其实看得见**。**没改常量**：它同时驱动 `contract` 的取景检查、`horn.frame_for` 的解镜头、`simshow`，改了要重解 A4 演示镜头并重跑相关测试。建议改成约 (450, 262)（带中心还要核对：玩法镜头里镜头目标不在屏幕正中，偏 (+83, +33) 像素），由关卡线下一步做。
