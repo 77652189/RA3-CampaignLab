@@ -532,3 +532,16 @@
 - **剧本没测到的玩法**：a3 五个圈的冻结；a6 雅典娜炮、谭雅 C4、塔要电；a7 工程师占领、东岸基地没拆（靠断电迫降通关）、报复波；a9 节律亮暗、超时空信标兵；j7 纸鹤隐身、式神护卫技能、中路/南路；各关的 `造` 都是造出来就在，没有造价和建造时间。
 - **a6 脆弱**：撤出段是惊险的仗（最后造的守护者才打赢），内圈段命令时间按这一局塔倒的时间估，参数变了要重调。
 - **没做**：A4 冰墙重调照旧等总控通知（引擎 A 线补"没路时兵怎么办"）。
+
+#### 第四十个会话（11-08，总控令：覆盖检查；A4 重调）
+- **路线（ADR 0023，总控 11-08）**：覆盖检查 → "对照局"（几关固定打法同时在模拟器和测试台跑，比结局和关键时间，差 15% 以上停下归因）→ 按"可试玩"标准逐关推：覆盖清零、2～3 份全程脚本（巧解能赢、自然打法明显更难但不必输）、时长 8～15 分钟、测试台全程验收；9 关攒一批交用户。
+- **覆盖检查做完**：`experimental/cnv/simcoverage.py` + `tests/test_simcoverage.py`（10 过，全部关卡 5～11 秒，不跑模拟只编关卡）。`python -I -X utf8 experimental/cnv/simcoverage.py [关…] [--verbose]` 列每关"模拟器不认识的东西"，八类：武器（读空或找不到）、升级的状态位/属性修改器、脚本动作、脚本条件、被忽略的动作、设备、玩家命令、对打不动的组合。**清单必须全是登记在案的**（`KNOWN`，每项带 owner / repro / note），新出现的未登记项让测试变红，登记过期（修好了没删）也变红。16 关共 293 项（104 种），已全登记，owner 先都填"总控分派"，由总控按线改。完整清单：`work/logs/simcoverage_summary.txt`（未入 git，重跑命令即可再生成）。
+- **清单要点（按影响面）**：
+  1. **苏联征召兵（`SovietAntiInfantryInfantry`）在 a1 a2 a3 a5 j7 s2 s5 读成没有武器**：战役覆盖武器文件 inheritFrom 指向自己，射程读 0。影响面比已知 6 个缺口都大，该最先派给引擎线。同类：`AlliedFighterAircraft`（a7 a8）、`AlliedAntiAirVehicleTech1` 的机枪（6 关）。
+  2. 武器模板找不到：`CNV_Liberty`（a7 a8）、`CNV_ChronoLag`（a3 a9）、`CNV_S2ArmouredTrain`、`CNV_S2CryoTrain`、`CNV_Pace63_…`。轨道打击：`AlliedAntiStructureVehicle`（a2 a6）、`AlliedAntiStructureShip`（a5）。
+  3. 升级 32 种：时停区（a3）、球 INVULNERABLE（a9）、干扰车（j7 s6）、掘进车（a5 s5）、列车 IMMOBILE（s2）、纸鹤/式神 ARMOR（j5 j7）、浪涌炮 RANGE/VISION（a8）、ComboParent（j4）等，模拟器只读"升级触发的速度"。
+  4. 脚本动作真不认识 3 种：a7 `SpecialPower_CNV_ChronoDeck`、`UNIT_SET_MODELCONDITION_GENERIC`，j7 `Command_CNV_Jammer_jam`；条件 0 项。被忽略的动作里 `CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT`（a4）是造单位，可能掩盖玩法。
+  5. 设备 3 种没有对应规则：时停区（a3）、自由号跳跃（a7）、列车刹车（s2）。
+  6. 玩家命令 41 种：停止/守卫/停火站位（代理玩家下不了，几乎每关）、占领（a3 a4 a7）、技能只记日志（Command_CNV_* 一批、雅典娜炮、`PaintTarget` 10 关、`ToggleRiotShield` 等）。
+  7. 对打不动：`AlliedCommandoTech1`（谭雅，a1 a6 a9）、`JapanInfiltrationInfantry`（j3）。
+- **没做到**：原版单位的指令按钮只取了 `SpecialPowerTemplate` 一种；带减速/状态的武器额外效果没查；设备那张表（`MECHANISMS`）是人工整理的。
