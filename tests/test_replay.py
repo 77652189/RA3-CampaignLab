@@ -1,10 +1,13 @@
 """experimental/replay/ra3replay.py: command framing and typed arguments, on command bytes seen in our replays."""
+import importlib.util
 import os
 import struct
-import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'experimental', 'replay'))
-import ra3replay as R  # noqa: E402
+# loaded by file (guard G4: no new sys.path edits)
+_spec = importlib.util.spec_from_file_location('ra3replay', os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'experimental', 'replay', 'ra3replay.py'))
+R = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(R)
 
 
 def chunk(*cmds):
