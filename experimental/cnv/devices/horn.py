@@ -115,7 +115,9 @@ class Horn(Device):
     WHAT = '号角按间隔表一声声响，每响一声开着的地道口各出一波扑车；冰墙把出口封住：街口的兵绕路晚到，最后一程口子的兵攒在墙后'
     PARAMS = {'车队': '哪个车队机关（兵扑它）', '间隔': '每声号角的间隔（秒，可按难度写），一个数一声；开头那个是开始到第一声',
               '每街一波': '每个开着的口一声出多少兵，{兵种: 数量}（可按难度）', '冷却': '冰幕工兵放一次冰后多少秒才能再放（默认 40）',
-              '街': '会场的街：{名: {点: 冰放的地方, 出: 兵出生的地方, 偏移: [dx, dy], 从: 第几声起开, '
+              '每口一波': '最后一程每个口每声出多少兵，{兵种: 数量}（可按难度；不写就同每街一波）',
+              '冰墙寿命': '一道冰墙立多少秒后化掉（默认 30，ice 单位的寿命）',
+              '街': '会场的街：{名: {点: 冰放的地方, 出: 兵出生的地方, 偏移: [dx, dy], 从: 第几声起开, 止: 第几声起关（车队过了它，不出兵也不接兵）, '
                     '冰雕: {偏移: [dx, dy]}（兵出生处往后挪这么多立一座出兵冰雕，当这个口子的标志：打不坏，口子的第一声号角把它震碎、'
                     '留下裂开的冰雕；写了就多一个单位名 小冰雕 给 布景 用）, '
                     '标志: {物件: 现成的场景物件, 偏移: [dx, dy], 朝向}}}。写了 标志 的口子立一个有名字的物件（角色 "标志 <名>"，目标的标记可以挂），'
@@ -141,7 +143,8 @@ class Horn(Device):
         from plantime import PlanError
         self.plan = plantime
         tag = ctx.tag
-        self.wall = iw.wall(f'CNV_{tag}IceWall', length=WALL_SIDE, shape='square')
+        wall_kw = {'lifetime': float(spec['冰墙寿命'])} if '冰墙寿命' in spec else {}   # default: iw.wall's 30 s
+        self.wall = iw.wall(f'CNV_{tag}IceWall', length=WALL_SIDE, shape='square', **wall_kw)
         self.core = iw.seed(f'CNV_{tag}IceSeed', self.wall.id, size=SEED_SIZE)
         # his own voice events come with the voice pack; a pack that lacks them (an edition whose dub of his lines has
         # not been delivered, langs.py) leaves him retail's voice rather than naming events that are not there
@@ -156,6 +159,8 @@ class Horn(Device):
         self.troops = {u: plantime.counts(n) for u, n in (spec.get('每街一波') or {}).items()}
         if not self.troops:
             raise PlanError(f'{name}: 每街一波 lists the troops of a wave')
+        mouth = spec.get('每口一波')              # the last leg's mouths: their own wave, else the streets' one
+        self.troops_L = {u: plantime.counts(n) for u, n in mouth.items()} if mouth else self.troops
         self.ways = {'V': dict(spec.get('街') or {}), 'L': dict(spec.get('口') or {})}
         for k, v in self.ways.items():
             if any(len(str(w)) == 0 for w in v):
@@ -336,14 +341,17 @@ class Horn(Device):
 
     # ---- scripts
     def opens(self, mode, n):
-        """The way ids of the set that take part in horn n (a street opens from its 从)."""
-        return [wid for w, wid in self.ids(mode).items() if int(self.ways[mode][w].get('从', 1)) <= n]
+        """The way ids of the set that take part in horn n (a street opens from its 从 and is shut from its 止: the
+        convoy is past it, its tunnel sends no wave and takes none)."""
+        return [wid for w, wid in self.ids(mode).items()
+                if int(self.ways[mode][w].get('从', 1)) <= n < int(self.ways[mode][w].get('止', 10 ** 6))]
 
     def variants(self, many=None):
         """[(levels, level index)]: one entry when the waves (or `many`, one number per difficulty) are the same on all
         difficulties, else one per level."""
         plan = self.plan
-        keys = [tuple(n[lv] for n in self.troops.values()) for lv in range(3)] if many is None else list(many)
+        keys = [tuple(n[lv] for t in (self.troops, self.troops_L) for n in t.values()) for lv in range(3)] \
+            if many is None else list(many)
         if keys[0] == keys[1] == keys[2]:
             return [(plan.ALL, 0)]
         return [(plan.ONE[lv], lv) for lv in range(3)]
@@ -355,7 +363,7 @@ class Horn(Device):
         """Actions that make the wave of horn n of way `origin` (named after it) at the spawn mark of `target`."""
         ctx = self.ctx
         acts = []
-        for u, ns in self.troops.items():
+        for u, ns in (self.troops_L if mode == 'L' else self.troops).items():
             tmpl = self.ctx.unit(u, 's1')
             ctx.spawns_add(tmpl)
             acts += [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', self.troop(mode, n, origin, tmpl, j), tmpl, ctx.team('s1'),
@@ -370,7 +378,7 @@ class Horn(Device):
                 for n in range(1, self.horns + 1):
                     if wid not in self.opens(mode, n):
                         continue                    # a street not open yet makes no wave
-                    for u, ns in self.troops.items():
+                    for u, ns in (self.troops_L if mode == 'L' else self.troops).items():
                         out += [self.troop(mode, n, wid, self.ctx.unit(u, 's1'), j) for j in range(1, max(ns) + 1)]
         return out
 

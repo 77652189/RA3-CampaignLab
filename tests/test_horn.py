@@ -77,6 +77,24 @@ def test_the_device_compiles_with_its_horns_streets_and_mouths():
     assert [n for n in names if n.startswith('CNV ZZ - Out V2 V3 at')]
 
 
+def test_a_street_the_convoy_is_past_shuts_from_its_stop_horn_and_the_mouths_have_their_own_wave():
+    """止: the lane is shut from horn 3 (no wave from it, none sent to it); 每口一波: the mouths make 3 troops a wave,
+    the streets 2 (a4, 2026-11-08: the convoy passes the lane and plaza 1 early, their tunnels behind it only hit its tail)."""
+    streets = {**STREETS, '后巷': {**STREETS['后巷'], '止': 3}}
+    m = level(机关={'车队': {'类型': '车队', '出发': '开局 + 0:10'},
+                  '雪祭': {'类型': '号角', '车队': '车队', '间隔': [45, 50, 45, 50, 45],
+                         '每街一波': {'帝国武士': 1, '坦克杀手': 1}, '每口一波': {'帝国武士': 2, '坦克杀手': 1},
+                         '街': streets, '绕路': TABLE, '口': MOUTHS, '鬼王': {'从': 3, '数量': '1/1/2'}}})
+    by = {s.name: s for s in m.scripts}
+
+    def made(name):
+        return sum(1 for a in by[name].do if a[0] == 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT')
+    assert [n for n in by if n.startswith('CNV ZZ - Out V2 V1 at')]            # horn 2: the lane still makes a wave
+    assert not [n for n in by if n.startswith('CNV ZZ - Out V3 V1 at')]        # from horn 3 it makes none
+    assert not [n for n in by if n.startswith('CNV ZZ - Out V3 V2 at V1')]     # ... and takes none
+    assert made('CNV ZZ - Out V1 V1 at V1') == 2 and made('CNV ZZ - Out L1 L1') == 3
+
+
 def test_a_shut_mouth_keeps_its_wave_and_makes_it_when_the_ice_is_gone():
     m = level()
     by = {s.name: s for s in m.scripts}
