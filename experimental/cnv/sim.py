@@ -78,11 +78,24 @@ SUPERWEAPON_HITS = {
         (62 + 7 * k, [(0.0, 158.0 if k < 6 else 0.0), (150.0, 110.0 if k < 9 else 0.0), (280.0, 76.0), (300.0, 76.0)])
         for k in range(13)
     ],
+    # Psionic Decimator (the Empire's): engine_super d / e (base defenses of 1000 at 0 / 150 / 250 / 350): all within 250
+    # dead 61 frames after the cast, 350 whole (XML: 4 s, damage 2000, radius 300 -- one hit, flat inside, INFERRED).
+    'SpecialPowerTelekineticProjectorDevice': [(61, [(0.0, 2000.0), (300.0, 2000.0)])],
 }
 # Iron Curtain: engine_super j -- a scripted cast keeps tanks at 0 and 150 from the waypoint whole against enemy fire for
 # ~355 frames (the 20 s modifier + the 3 s effect); NAMED_DAMAGE goes through (i). XML: vehicles and structures, aura
-# 100 (the 150 tank covered: its edge, or a larger reach -- INFERRED 150 by centre).
-CURTAIN = {'SpecialPowerIronCurtain': (150.0, 355)}
+# 100, yet g / a (each tank shot by one enemy of its own, NAMED_ATTACK_NAMED, open ground): tanks at 100 / 300 / 500 /
+# 800 whole till ~354, at 850 / 950 / 1050 / 1150 hit from frame ~20 -- the reach between 800 and 850 (800 taken; k / l /
+# m / o / s were muddled by the enemies picking other targets).
+# Nanoswarm Hive: engine_super n -- tanks at 0 and 150 untouched by enemy fire 497+ frames (the run's end), 250 hit from
+# frame ~27 (XML radius 200, IN_STASIS 20 s; the end of the stasis not seen -- INFERRED 497); NAMED_DAMAGE goes through.
+# Name -> (reach by centre, frames, kinds covered or None for all).
+# Frames a superweapon's script cast takes over its ReloadTime before it is ready again: engine_super f -- the proton
+# collider ready 5550 frames after the cast (ReloadTime 360 s = 5400; the 150 maybe the cast's own delay: INFERRED,
+# the others not measured).
+RELOAD_LAG = {'SpecialPowerParticleCannon': 150}
+CURTAIN = {'SpecialPowerIronCurtain': (800.0, 355, {'VEHICLE', 'STRUCTURE'}),
+           'SpecialPowerNanoSwarmHive': (200.0, 497, None)}
 
 
 def hit_at(table, d):
@@ -1614,6 +1627,9 @@ class Sim:
                 self.used.add('special power')
                 self.note('技能', f'{a[0]} 用 {a[1]}' + (f' 打 {a[2]}' if len(a) > 2 else ''))
                 q = self.point(a[2]) if len(a) > 2 and name == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT' else None
+                rules = simunits.power_rules(b.template, a[1], self.own) if b and b.alive else None
+                if rules and rules['reload']:       # every cast starts the reload anew (RA3 1.13 0x7dea80, read;
+                    b.ready_at[a[1]] = self.frame_now() + rules['reload'] + RELOAD_LAG.get(a[1], 0)   # SDK GlobalData)
                 hits = SUPERWEAPON_HITS.get(a[1]) if b and b.alive else None
                 if hits and q is not None:         # a script's cast fires though the power is not ready
                     self.used.add('superweapon')
@@ -1622,9 +1638,9 @@ class Sim:
                         self.blasts.append((now + after, q[0], q[1], table, b.owner, b))
                 if a[1] in CURTAIN and q is not None and b and b.alive:
                     self.used.add('superweapon')
-                    reach, lasts = CURTAIN[a[1]]
+                    reach, lasts, kinds = CURTAIN[a[1]]
                     for t in self.living():
-                        if t.kinds & {'VEHICLE', 'STRUCTURE'} and math.hypot(t.x - q[0], t.y - q[1]) <= reach:
+                        if (kinds is None or t.kinds & kinds) and math.hypot(t.x - q[0], t.y - q[1]) <= reach:
                             t.immune_until = self.frame_now() + lasts
         elif name in ('ENABLE_SCRIPT', 'DISABLE_SCRIPT'):
             # a once-script that fired is only switched off: ENABLE_SCRIPT arms it again (SE enableScript)

@@ -314,12 +314,50 @@ def test_super_the_proton_collider_hits_56_frames_after_the_cast():
     assert abs(rows[1] - 56) <= 1, rows        # 满血帧: frames the centre target stayed whole after the cast
 
 
+def test_super_a_scripts_cast_starts_the_retail_reload():
+    """The proton collider's script cast (p) starts its reload: bench engine_super f -- ready again 5550 frames after the
+    cast (ReloadTime 360 s = 5400 from the SDK's GlobalData SpecialPowerTemplates.xml + sim.RELOAD_LAG 150; every cast
+    restarts it, RA3 1.13 0x7dea80, read): the player's click refused (order_power, INFERRED) until it is over."""
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_super', 'p')
+    s = sim.Sim(m, t)
+    s.advance(30 * 15)
+    b = next(b for b in s.bodies.values() if b.template == 'AlliedSuperWeaponAdvanced')
+    power = 'SpecialPowerParticleCannon'
+    assert b.ready_at[power] - s.frame_now() > 5400 - 30 * 15 and abs(b.ready_at[power] - 90 - 5550) <= 2 and s.order_power(b, power, (b.x + 500, b.y))[1] == 'reloading'
+    s.advance(b.ready_at[power] - s.frame_now())
+    assert s.order_power(b, power, (b.x + 500, b.y)) == (True, None)
+
+
 def test_super_the_vacuum_imploder_ends_as_the_bench():
     """v: 满血帧 62, health % at 0 / 150 / 280 end 5 / 1 / 1; w: the one at 350 untouched."""
     v = _sim_run('engine_super', 'v', 30.0).series[-1][1]
     assert abs(v[0] - 62) <= 1 and [abs(g - w) <= 2 for g, w in zip(v[1:], (5, 1, 1))] == [True] * 3, v
     w = _sim_run('engine_super', 'w', 30.0).series[-1][1]
     assert w[-1] == 100, w
+
+
+def test_super_the_psionic_decimator_kills_within_300_at_61_frames():
+    """e: the base defenses (1000) at 0 and 250 whole 61 frames after the cast, then dead; 350 whole to the end (the
+    bench's counters freeze at a dead object's last health, so only the 满血 frames compare)."""
+    e = dict(zip(('full0', 'full250', 'full350', 'h250'), _sim_run('engine_super', 'e', 34.0).series[-1][1]))
+    assert abs(e['full0'] - 61) <= 1 and abs(e['full250'] - 61) <= 1 and e['full350'] > 400, e
+
+
+def test_super_the_nanoswarm_keeps_200_out_of_fire():
+    """n: tanks at 0 and 150 from the hive's spot whole against enemy fire to the end (497 frames; NAMED_DAMAGE goes
+    through -- the bench's two 10 % scripted hits are not in the simulator's run), 250 shot down (bench 1 % by 180)."""
+    n = _sim_run('engine_super', 'n', 34.0).series[-1][1]
+    assert n[-3:-1] == [100, 100] and n[-1] <= 10, n
+
+
+def test_super_the_iron_curtain_reaches_800():
+    """g / a (each tank shot by an enemy of its own): 满血 frames of tanks at 100 / 300 / 500 / 800 bench 353 / 357 /
+    351 / 354 (covered), at 850 / 950 / 1050 / 1150 bench 20 / 23 / 23 / 25 (not)."""
+    g = _sim_run('engine_super', 'g', 34.0).series[-1][1]
+    a = _sim_run('engine_super', 'a', 34.0).series[-1][1]
+    assert all(abs(x - 354) <= 6 for x in g) and all(x <= 30 for x in a), (g, a)
 
 
 def test_super_the_iron_curtain_holds_off_fire_some_23_seconds():

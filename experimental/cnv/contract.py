@@ -22,7 +22,8 @@ RETAIL_COMMANDS = {'Command_CaptureBuilding',           # an engineer takes a bu
                    'Command_JapanAntiInfantryInfantryBonzai',   # the Imperial Warrior's Bonzai charge (engine_aimicro)
                    'Command_ToggleRiotShieldSpecialPower'}      # the Peacekeeper's riot shield (engine_aitoggle)
 # retail buildings' own special powers a script may fire / read (they publish no unit ability here)
-RETAIL_POWERS = {'SpecialPowerIronCurtain', 'SpecialPowerParticleCannon', 'SpecialPowerVacuumBomb'}            # the Soviet superweapon building's (SovietSuperWeapon, OCLSpecialPower)
+RETAIL_POWERS = {'SpecialPowerIronCurtain', 'SpecialPowerParticleCannon', 'SpecialPowerVacuumBomb',
+                 'SpecialPowerNanoSwarmHive', 'SpecialPowerTelekineticProjectorDevice'}            # the Soviet superweapon building's (SovietSuperWeapon, OCLSpecialPower)
 OBJECTIVE_ARG = 91                      # a mission objective's name (SET_MISSION_OBJECTIVE_STATUS ...)
 MUSIC_EVENT_ARG = 96                    # a Pathfinder event's name (PATH_MUSIC_PLAY_EVENT): held to Mission.music
 SOUND_ARG = 12                          # a sound event (PLAY_SOUND_EFFECT, HAS_FINISHED_AUDIO): ours (CNV_*) held to

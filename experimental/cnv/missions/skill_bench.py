@@ -22,7 +22,7 @@ B_SPOTS = {1: (200.0, -300.0), 2: (200.0, 0.0), 3: (200.0, 300.0)}
 B_DIST = {1: 20.0, 2: 40.0, 3: 60.0}            # tank's centre east of the spot
 C_ENG, C_SPOTS = (60.0, 50.0), {1: (90.0, -10.0), 2: (90.0, -70.0)}      # from 'gate 1'
 D_ENG, D_SPOT = (-300.0, 150.0), (100.0, 150.0)                              # from 'west field': 400 apart
-W_ENG, W_SPOT = (-750.0, 25.0), (-850.0, 25.0)       # the west shore (x ~360): engineer on land, the point 100 out in the sea
+W_ENG, W_SPOT = (-790.0, 25.0), (-850.0, 25.0)       # the west shore (x ~360): engineer on land, the point 100 out in the sea
 
 
 def mission(name='CampSkill'):

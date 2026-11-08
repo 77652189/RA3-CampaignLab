@@ -404,12 +404,36 @@ def assemble(template, power, own=None):
     return None
 
 
+_retail_powers = None
+
+
+def _retail_power_heads():
+    """id -> attributes text of every SpecialPowerTemplate in the SDK's GlobalData/SpecialPowerTemplates.xml."""
+    global _retail_powers
+    if _retail_powers is None:
+        _retail_powers = {}
+        p = os.path.join(SAGEXML, 'GlobalData', 'SpecialPowerTemplates.xml')
+        text = open(p, encoding='utf-8', errors='replace').read() if os.path.exists(p) else ''
+        for head, _ in _blocks(text, 'SpecialPowerTemplate'):
+            m = re.search(r'\bid="([^"]*)"', head)
+            if m:
+                _retail_powers.setdefault(m.group(1), head)
+    return _retail_powers
+
+
 def power_rules(template, power, own=None):
-    """A mission unit's SpecialPowerTemplate for `power` (in its own XML): {'reload': frames (ReloadTime x 15,
-    rounded twice -- RA3 1.13 0x863050, docs/engine/specialpower.md 1 -- at least 1), 'forbidden': ForbiddenObjectRange,
-    'flags': set of Flags, 'reach': MaxCastRange or 0}, else None (a retail power: not read)."""
+    """The SpecialPowerTemplate for `power` of unit `template`: {'reload': frames (ReloadTime x 15, rounded twice --
+    RA3 1.13 0x863050, docs/engine/specialpower.md 1 -- at least 1), 'forbidden': ForbiddenObjectRange, 'flags': set of
+    Flags, 'reach': MaxCastRange or 0}, else None. A mission unit's own XML first; else a retail power (the SDK's
+    GlobalData/SpecialPowerTemplates.xml -- the superweapons: proton collider 360 s ...) when the template's XML (own or
+    retail) names it, so a unit without the power still gets None."""
     xml = (own or {}).get(template) or ''
-    for head, _ in _blocks(xml, 'SpecialPowerTemplate'):
+    heads = [h for h, _ in _blocks(xml, 'SpecialPowerTemplate')]
+    if not any(re.search(r'\bid="([^"]*)"', h).group(1) == power for h in heads):
+        body = xml or retail_xml(template)
+        if f'"{power}"' in body and power in _retail_power_heads():
+            heads = [_retail_power_heads()[power]]
+    for head in heads:
         if re.search(r'\bid="([^"]*)"', head).group(1) == power:
             secs = _secs(_attr(head, 'ReloadTime'))
             return {'reload': max(1, int(round(secs * 15))) if secs else 0,
