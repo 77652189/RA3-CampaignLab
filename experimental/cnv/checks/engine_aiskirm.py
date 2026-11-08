@@ -76,6 +76,33 @@ RESULTS f (aiskirmlow, 20000 given at s166 = ~157 s after wake s9, not 160: the 
     兵数 9 at 102 s, 10 at 114, 12 at 123, 13 at 133, 15 at 145, 16 at 151, 17 at 157, 18 at 162, 22 at 174, 27 at 197,
     30 at 238. The tower came at the same ~176 s as in aiskirm d (50000), so it does not look tied to the gift but to
     time plus having money then (aiskirmlow d, money ~1500 at 177 s, had none).
+
+  e  标枪近院 / 出门帧 / 维和在家 / 标枪在家   (aiskjav only: s1 has a named Javelin soldier 'UNIT - CNV AI Jav' 100 west of
+     the yard; at mission second 100 (90 s after the wake) it is teleported to OUT, 1200 straight south of the yard.
+     标枪近院 = that soldier inside 300 around the yard (1/0); 出门帧 and 维和在家 as in a / c; 标枪在家 = all of s1's
+     Javelin soldiers inside 600. Question: does the AI's LandDefense team still hold its soldiers 90 s after the wake?
+     Runs to ~170 s of the mission. Weak expectation: the readings are complete.)
+RESULTS e (bench 2026-11-08, aiskjav, CampAISkJavE; PASS (weak); bench s, which runs ~2 s ahead of the mission clock, so
+  the teleport at mission 100 shows at ~s102):
+  标枪近院: 1 from the start to s20, 0 s21-s32 (it walked out of 300 and back), 1 from s33 to s99 -- so NOT a constant 1
+    before the teleport, it left the 300 square for ~12 s once. 0 from s102 (the teleport, out 1200 south) to s154;
+    1 again at s155-s161 (inside 300 again ~53 s after the teleport); 0 from s162 on (out again, to the end).
+  出门帧: counts 15 a second from s9, stops at 2004 at s158 (first Riptide out; ~19 s later than aiskirm a's s139).
+  维和在家: 1 at s37, 2 at s49, 3 at s60, stays 3 to s165; 1 at s166 (two leave), 2 at s167-170, 1-2 after.
+  标枪在家: 1 to s31, 2 at s32, 3 at s43, 4 at s54, stays 4 THROUGH the teleport (s102) to s122; 3 at s123-s146, 4 at
+    s147, 5 at s150, 2 at s166 (three leave, same second as the Peacekeepers), 1-2 after. No drop at the teleport
+    second: the count has other soldiers besides the named one -- read it with 标枪近院, not alone.
+  Reading: the named Javelin soldier teleported 1200 away at 90 s after the wake is inside 300 again at ~s155 (so the
+    AI does not leave it out there), then is out again from s162, just before the first team (Peacekeepers + Javelins)
+    leaves at s166.
+  B's reading (round 51): the s21-32 walk is the defense team taking it (MinUnits 1) and placing it; it is brought
+    back after the teleport, but in ~53 s, not the ~18 s aidefense b's StaticDefense team took for the same 1200 --
+    so likely not held the whole time (re-recruited by a later defense team copy, SortByDistance). It then seems to
+    leave with the first attack team (out of 300 at s162, three Javelins leave at s166): the general recruit path
+    never takes a unit of another team, so at ~s162 it was in no team -- defense membership is not sticky (disband /
+    re-recruit), which is candidate 2 of handoff-b 50, not a gate on AlwaysRecruit. The preplaced soldier also moves
+    the first team out from s139 to s158-166 (it gets Javelins: the type mix changed). Not proven: which team it left
+    with (no team read on the bench).
 """
 from parts import Script, Test, counted, square
 
@@ -222,5 +249,42 @@ def f(m):
     return _spend(m, give=True)
 
 
+JAV_OUT_AT = 100.0                  # mission second the named Javelin soldier is teleported out (e)
+
+
+def e(m):
+    t = Test()
+    PK, JAV = 'AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry'
+    for tpl in (PK, JAV, RIPTIDE):
+        m.spawns.add(tpl)
+    s1 = m.player('s1')
+    jav = m.role('ai jav').name
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    t.areas[AREA] = square(*m.site('east base'), 600.0)
+    t.areas['CNV AI Yard 300'] = square(*m.site('east base'), 300.0)
+    counted('CNV_AK_JavNear', '标枪近院', t, named=jav, area='CNV AI Yard 300')
+    counted('CNV_AK_Total', '激流总数', t, template=RIPTIDE, player=s1)
+    counted('CNV_AK_Home', '激流在家', t, template=RIPTIDE, area=AREA, player=s1)
+    t.counters[1:3] = []                # the two Riptide counters work, they are not shown (four lines fit)
+    t.counters.append(('CNV_AK_OutFrames', '出门帧'))
+    counted('CNV_AK_PkHome', '维和在家', t, template=PK, area=AREA, player=s1)
+    counted('CNV_AK_JavHome', '标枪在家', t, template=JAV, area=AREA, player=s1)
+    t.scripts += [Script('Test - tick', [], [('INCREMENT_COUNTER', 1, 'CNV_AK_Tick')], once=False),
+                  Script('Test - woke', [('TIMER_EXPIRED', 'CNV AI Wake'), ('COUNTER', 'CNV_AK_Tick', 3, 30)],
+                         [('SET_FLAG', 'Test Woke', 1)])]
+    for n in range(1, 9):
+        t.scripts.append(Script(f'Test - out {n}', [('COUNTER', 'CNV_AK_Total', 2, n), ('COUNTER', 'CNV_AK_Home', 0, n)],
+                                [('SET_FLAG', 'Test Out', 1)], once=False))
+    t.scripts += [Script('Test - wait out', [('FLAG', 'Test Woke', 1), ('FLAG', 'Test Out', 0)],
+                         [('INCREMENT_COUNTER', 1, 'CNV_AK_OutFrames')], once=False),
+                  Script('Test - jav timer', [], [('SET_MILLISECOND_TIMER', 'Test Jav Out', JAV_OUT_AT)]),
+                  Script('Test - jav out', [('TIMER_EXPIRED', 'Test Jav Out')],
+                         [('UNIT_TELEPORT_TO_WAYPOINT', jav, 'CNV AI Out')])]
+    t.expect += [('标枪近院', 20.0, '>=', 0, 21.0)]            # weak: the readings exist
+    t.bench = [('bench_watch', dict(seconds=174.0, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d},
+          'aiskjav': {'e': e},
           'aiskirmlow': {'d': d, 'f': f}}
