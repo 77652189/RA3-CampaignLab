@@ -168,7 +168,8 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v3.json')     # v3: weapon inheritFrom (2026-11-08)
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v4.json')     # v3: weapon inheritFrom (2026-11-08); v4: + los
+                                                                    # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
 ARMOR_DEFAULT = 100.0           # a damage type an armour does not name: taken in full (a guess)
@@ -213,7 +214,7 @@ def _weapon_files():
 
 
 def _weapons(texts):
-    """Weapon template id -> {range, damage, type, shots, cycle, anti, warhead}; a projectile's damage is its
+    """Weapon template id -> {range, damage, type, shots, cycle, anti, warhead, los}; a projectile's damage is its
     warhead's (filled in by _resolve). A template with inheritFrom takes what it does not write from its parent
     (the flak trooper's anti-air SovietAntiVehicleFlakLauncher_Aircraft writes only its range and anti mask: without
     this it had no damage and never fired at aircraft; bench 2026-11-08 engine_air flak*)."""
@@ -243,8 +244,10 @@ def _weapons(texts):
                     got[k] = _secs(mt.group(1))
             if _attr(head, 'RequiredAntiMask'):
                 got['anti'] = _attr(head, 'RequiredAntiMask').split()
+            if _attr(head, 'Flags') is not None:                # a template that writes Flags writes all of them
+                got['los'] = 'ATTACK_NEEDS_LINE_OF_SIGHT' in _attr(head, 'Flags').split()
             own[wid], parent[wid] = got, _attr(head, 'inheritFrom')
-    base = dict(range=0.0, damage=0.0, type='', shots=1, fire=0.0, reload=0.0, delay=0.0, anti=[], warhead=None)
+    base = dict(range=0.0, damage=0.0, type='', shots=1, fire=0.0, reload=0.0, delay=0.0, anti=[], warhead=None, los=False)
     out = {}
 
     def get(wid, depth=0):
@@ -269,7 +272,8 @@ def _resolve(w, weapons):
     else:
         shots = w['shots']
         cycle = shots * max(w['fire'], w['delay'], 0.1) + w['reload']
-    return dict(range=w['range'], dps=round(dmg * shots / cycle, 2) if dmg else 0.0, type=typ, anti=w['anti'])
+    return dict(range=w['range'], dps=round(dmg * shots / cycle, 2) if dmg else 0.0, type=typ, anti=w['anti'],
+                los=w['los'])
 
 
 def _armors():

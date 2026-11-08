@@ -430,6 +430,44 @@ def inside(pts, x, y):
     return c
 
 
+def _local(s, x, y):
+    """A point in a bar's own frame (u along its length, v across)."""
+    cx, cy, a = s[0], s[1], s[2]
+    dx, dy = x - cx, y - cy
+    return dx * math.cos(a) + dy * math.sin(a), -dx * math.sin(a) + dy * math.cos(a)
+
+
+def _in_shape(s, x, y):
+    """Whether a point is within a `Sim.blocks` footprint: (x, y, r) a round, (x, y, angle, length, thick) a bar."""
+    if len(s) == 3:
+        return (x - s[0]) ** 2 + (y - s[1]) ** 2 <= s[2] ** 2
+    u, v = _local(s, x, y)
+    return abs(u) <= s[3] / 2 and abs(v) <= s[4] / 2
+
+
+def _line_hits(s, x0, y0, x1, y1):
+    """Whether the segment (x0, y0)-(x1, y1) crosses a `Sim.blocks` footprint."""
+    if len(s) == 3:
+        cx, cy, r = s
+        dx, dy = x1 - x0, y1 - y0
+        n = dx * dx + dy * dy
+        k = 0.0 if n == 0 else min(max(((cx - x0) * dx + (cy - y0) * dy) / n, 0.0), 1.0)
+        return (x0 + k * dx - cx) ** 2 + (y0 + k * dy - cy) ** 2 <= r * r
+    (u0, v0), (u1, v1) = _local(s, x0, y0), _local(s, x1, y1)
+    lo, hi = 0.0, 1.0                                   # Liang-Barsky clip against |u| <= L/2, |v| <= T/2
+    for p0, p1, h in ((u0, u1, s[3] / 2), (v0, v1, s[4] / 2)):
+        d = p1 - p0
+        if d == 0:
+            if abs(p0) > h:
+                return False
+            continue
+        ta, tb = (-h - p0) / d, (h - p0) / d
+        lo, hi = max(lo, min(ta, tb)), min(hi, max(ta, tb))
+        if lo > hi:
+            return False
+    return True
+
+
 def f32(x):
     """x as a single float (the game's production progress, docs/engine/production.md)."""
     return float(np.float32(x))
@@ -2003,6 +2041,25 @@ class Sim:
             return 'ANTI_STRUCTURE' in anti or 'ANTI_GROUND' in anti
         return 'ANTI_GROUND' in anti or 'ANTI_WATER' in anti
 
+    def shot_blocked(self, a, t, w):
+        """Line of fire (docs/engine/pathing.md 7c; bench 2026-11-08 engine_seal idle / row / cut): a weapon with
+        ATTACK_NEEDS_LINE_OF_SIGHT in its Flags (simunits `los`: the peacekeeper's shotgun, tank cannons, the IFV's
+        missiles; not the Athena's lob) does not shoot through a structure's footprint, whoever owns it; terrain in
+        between does not stop it. Generals Pathfinder::isAttackViewBlockedByObstacle walks the pathfinding cells along
+        the line: an obstacle cell blocks unless it is the shooter's own, the target's, or one the shooter or the
+        target stands inside (its container; a target within another's bounds). Here the footprints are `blocks`'s
+        shapes and the line is tested against them exactly (INFERRED: the cell walk, not read in RA3's program)."""
+        if not w.get('los'):
+            return False
+        if getattr(self, '_fire_obstacles', None) is None:
+            self._fire_obstacles = [(b, s) for b in self.living() for s in (self.blocks(b),) if s]
+        for b, s in self._fire_obstacles:
+            if b is a or b is t or _in_shape(s, a.x, a.y) or _in_shape(s, t.x, t.y):
+                continue
+            if _line_hits(s, a.x, a.y, t.x, t.y):
+                return True
+        return False
+
     def fight(self):
         """One tick of the fight model (未对齐, docs: the 'combat' align entry): every armed body fires each of its
         weapons at the nearest enemy in that weapon's range it can hit (its NAMED_ATTACK target first, when in
@@ -2012,6 +2069,7 @@ class Sim:
         circles (`in_range`, R8). The aim is taken once a tick; the damage is dealt frame by frame (`deal`, R6)."""
         self.seen = {}
         self.firing = []
+        self._fire_obstacles = None             # `shot_blocked`'s footprints, taken once a tick when first asked
         live = [b for b in self.living() if not b.scenery]
         armed = [b for b in live if b.weapons and 'NO_ATTACK' not in b.status    # NO_ATTACK: holds its fire
                  and not self.unpowered(b)]
@@ -2038,7 +2096,7 @@ class Sim:
                 pick = None
                 if isinstance(a.goal, Body) and a.goal.alive and id(a.goal) in aimable and \
                         self.in_range(a, a.goal, w) and self.can_hit(w, a.goal) and \
-                        self.side_sees(a.owner, a.goal):
+                        self.side_sees(a.owner, a.goal) and not self.shot_blocked(a, a.goal, w):
                     pick = a.goal
                 else:
                     for j in order:
@@ -2049,7 +2107,7 @@ class Sim:
                             continue
                         if t.template in self.unshot:       # our ice: only when ordered (the bench, a4 hold)
                             continue
-                        if self.can_hit(w, t) and self.side_sees(a.owner, t):
+                        if self.can_hit(w, t) and self.side_sees(a.owner, t) and not self.shot_blocked(a, t, w):
                             pick = t
                             break
                 if pick is None:
@@ -2099,8 +2157,8 @@ class Sim:
                 break                           # sorted by centre; a radius over 0 only cuts more
             if t.template in self.unshot or not self.side_sees(a.owner, t):
                 continue
-            if not any(self.can_hit(w, t) for w in a.weapons):
-                continue
+            if not any(self.can_hit(w, t) and not self.shot_blocked(a, t, w) for w in a.weapons):
+                continue                        # bench engine_seal row: a target behind a structure is not gone after
             if a.home is None:
                 a.home = (a.x, a.y)
             a.chase = t

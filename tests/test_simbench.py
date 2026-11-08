@@ -789,15 +789,20 @@ def test_seal_cut_off_by_ground_it_still_fires():
     assert 85 <= rows[-1][1]['敌车血量'] <= 95, rows[-1]
 
 
-SHOT_BLOCKED = ('bench engine_seal idle / row (2026-11-08): the player\'s own bunkers between an idle peacekeeper and an '
-                'MCV 210 off (a ring round it, or a row across with both ends open) -- it neither fires (99-100 % for '
-                '61 s) nor moves; over impassable ground (`cut`) it fires. Structures in the line block the shot; the '
-                'simulator has no line of fire. Not yet known: an enemy\'s structures, the ice walls, other weapons '
-                '(cannon, artillery, anti-air)')
+def test_line_of_fire_is_the_weapons_flag():
+    """`los` = ATTACK_NEEDS_LINE_OF_SIGHT in the WeaponTemplate's Flags: the peacekeeper's shotgun and the Guardian's
+    cannon have it, the Athena's lob (AthenaCannonWeapon) does not."""
+    import simunits
+    assert all(w['los'] for w in simunits.fight('AlliedAntiInfantryInfantry')['weapons'])
+    assert all(w['los'] for w in simunits.fight('AlliedAntiVehicleVehicleTech1')['weapons'])
+    assert not any(w['los'] for w in simunits.fight('AlliedAntiStructureVehicle')['weapons'])
 
 
-@pytest.mark.xfail(strict=True, reason=SHOT_BLOCKED)
 @pytest.mark.parametrize('variant', ['idle', 'row'])
 def test_seal_structures_in_the_line_block_the_shot(variant):
+    """Bench engine_seal idle / row (2026-11-08): the player's own bunkers between an idle peacekeeper and an MCV 210
+    off (a ring round it, or a row across with both ends open) -- it neither fires (99-100 % for 61 s) nor moves; over
+    impassable ground (`cut`) it fires. The simulator's line of fire (`Sim.shot_blocked`: a weapon with
+    ATTACK_NEEDS_LINE_OF_SIGHT does not shoot through a structure's footprint) the same."""
     rows, _ = _seal_rows(variant, 40.0)
     assert rows[-1][1]['敌车血量'] >= 99, rows[-1]
