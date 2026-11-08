@@ -1343,9 +1343,12 @@ class Sim:
 
     def aura_tick(self):
         """Once a tick before the fight: every living aura object (simunits.auras, active, holding the bits it needs)
-        hangs its modifier on what its filter takes within Range, centre to centre (the edge not measured: INFERRED),
-        until now + the modifier's Duration (none: the refresh); then every body with a modifier is re-set (modify).
-        Bench upgrades.md 5: the zone's 0.25 s refresh and 1 s hold free a unit within 1 s; a 0.5 s tick keeps it."""
+        hangs its modifier on what its filter takes within Range, centre to centre, once every RefreshDelay (the first
+        at once), until then + the modifier's Duration (none: the refresh); then every body with a modifier is re-set
+        (modify). Bench upgrades.md 5 / 5.1 (engine_stasis_edge / _leave): the edge is the unit's centre (a Guardian
+        at 190 from a 200 zone held, at 205 not, though its box is 20 x 12); a unit out of the zone keeps it Duration
+        after the last refresh (hold 2 s: 26 frames after the teleport); a hold shorter than the refresh flickers
+        (refresh 1 s, hold 0.2 s: on 22 of 150 frames) -- a 0.5 s tick shows that only as on at a refresh tick."""
         now = self.frame_now()
         live = self.living()
         cache = self.__dict__.setdefault('_auras', {})
@@ -1358,6 +1361,11 @@ class Sim:
                 m = simunits.modifier(self.xml_of(e.template), a['mod'])
                 if m is None:
                     continue
+                beat = self.__dict__.setdefault('_aura_beat', {})
+                k = (e.name, a['mod'])
+                if k in beat and now - beat[k] < a['refresh']:
+                    continue
+                beat[k] = now if k not in beat else beat[k] + (now - beat[k]) // a['refresh'] * a['refresh']
                 until = now + (m['frames'] or a['refresh'])
                 for t in live:
                     if t is e and not a['self']:

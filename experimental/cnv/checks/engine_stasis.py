@@ -37,6 +37,7 @@ Read (测, 2026-11-05, twice; the bench's seconds ~1 s ahead of the timers; runs
   s24 (乙 100) though attacked since s4. Plug round (engine_stasis_plug plug, CampFrzPlug_mcp_1105_000346): neither
   tank through nor round the far gap in 60 s, the frozen MCV 100 % throughout, one tank frozen itself from s55.
 """
+import math
 import os
 import re
 
@@ -189,6 +190,76 @@ def plug(m):
     return t
 
 
+EDGE_DIST = (170, 190, 205, 220, 240)       # edge round: five neutral Guardians' centres from zone 1 (radius RADIUS 200)
+EDGE_ANGLE = (0, 72, 144, 216, 288)         # degrees apart so the tanks do not touch
+LEAVE_AWAY, LEAVE_OPEN, LEAVE_CLOSE = 5.0, 3.0, 13.0
+LEAVE_ZONES = {'a': ('CNV_StasisZoneA', '2s', '0.25s', Z1), 'b': ('CNV_StasisZoneB', '0.2s', '1s', Z2),
+               'c': ('CNV_StasisZoneC', '0.2s', '0.25s', 'low at 250')}
+
+
+def edge_mission():
+    """Does the aura's edge count from a unit's centre or its outline? One zone (RADIUS 200), five neutral Guardians
+    (box 20 x 12) never ordered at 170 / 190 / 205 / 220 / 240 from its centre."""
+    m = Mission(name='CampSE', map=probe_range, units=[zone()], facts={})
+    m.put(ZONE, Z1, side='s1', role='zone 1', name='UNIT - CNV Edge Zone')
+    for k, (d, a) in enumerate(zip(EDGE_DIST, EDGE_ANGLE), 1):
+        dx, dy = d * math.cos(math.radians(a)), d * math.sin(math.radians(a))
+        m.put(GUARDIAN, Z1, dx, dy, side='neutral', role=f'edge {k}', name=f'UNIT - CNV Edge {k}')
+    return m
+
+
+def edge(m):
+    """Counter 边甲: unit k (distance order 170 .. 240) IN_STASIS adds 10 ** (k - 1) (digits 1 .. 10000)."""
+    t = Test()
+    t.scripts.append(Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    t.counters.append(('CNV_Edge_A', '边甲'))
+    t.scripts.append(Script('Test - edge zero', [], [('SET_COUNTER', 'CNV_Edge_A', 0)], once=False))
+    for k in range(5):
+        seen = ('UNIT_HAS_OBJECT_STATUS', m.role(f'edge {k + 1}').name, status('IN_STASIS'))
+        t.scripts.append(Script(f'Test - edge {k}', [seen], [('INCREMENT_COUNTER', 10 ** k, 'CNV_Edge_A')], once=False))
+    t.bench = [('bench_watch', dict(seconds=8, every=1, sheet=False, lines=4))]
+    return t
+
+
+def leave_mission():
+    """How long after leaving does a unit come back, and does RefreshDelay matter? Three zones (a: refresh 0.25 s hold
+    2 s; b: refresh 1 s hold 0.2 s; c: refresh 0.25 s hold 0.2 s), a neutral Guardian at each centre."""
+    units = [zone(id=i, hold=h, refresh=r) for i, h, r, _ in LEAVE_ZONES.values()]
+    m = Mission(name='CampSL', map=probe_range, units=units, facts={})
+    for part, (i, h, r, site) in LEAVE_ZONES.items():
+        m.put(i, site, side='s1', role=f'zone {part}', name=f'UNIT - CNV Leave Zone {part.upper()}')
+        m.put(GUARDIAN, site, side='neutral', role=part, name=f'UNIT - CNV Leave {part.upper()}')
+    m.waypoint('away', 'CNV Leave Away', Z1, 0, 600)
+    return m
+
+
+def leave(m):
+    """离甲: frames a is IN_STASIS after it was teleported away (at LEAVE_AWAY; ~hold * 30 if it recovers one hold
+    after the last refresh). 离乙 / 离丙: frames b / c are IN_STASIS from LEAVE_OPEN to LEAVE_CLOSE (150 frames in all;
+    flicker ~ a hold-sized share, always-on 150). Flags rather than timers in the conditions (an unset timer's
+    reading is doubtful)."""
+    t = Test()
+    ist = status('IN_STASIS')
+    t.scripts.append(Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))] +
+                            [('SET_MILLISECOND_TIMER', f'Test {k}', s) for k, s in
+                             (('Away', LEAVE_AWAY), ('Open', LEAVE_OPEN), ('Close', LEAVE_CLOSE))]))
+    t.scripts += [
+        Script('Test - away', [('TIMER_EXPIRED', 'Test Away')],
+               [('UNIT_TELEPORT_TO_WAYPOINT', m.role('a').name, m.mark('away')), ('SET_FLAG', 'Test Gone', 1)]),
+        Script('Test - open', [('TIMER_EXPIRED', 'Test Open')], [('SET_FLAG', 'Test Window', 1)]),
+        Script('Test - close', [('TIMER_EXPIRED', 'Test Close')], [('SET_FLAG', 'Test Window', 0)])]
+    for counter, label, part, flag in (('CNV_Leave_A', '离甲', 'a', 'Test Gone'), ('CNV_Leave_B', '离乙', 'b', 'Test Window'),
+                                       ('CNV_Leave_C', '离丙', 'c', 'Test Window')):
+        t.counters.append((counter, label))
+        seen = ('UNIT_HAS_OBJECT_STATUS', m.role(part).name, ist)
+        t.scripts.append(Script(f'Test - {counter} count', [seen, ('FLAG', flag, 1)],
+                                [('INCREMENT_COUNTER', 1, counter)], once=False))
+    t.bench = [('bench_watch', dict(seconds=16, every=2, sheet=False, lines=4))]
+    return t
+
+
 # the builds this module makes and their checks (cnv/registry.py)
-MISSION = {'engine_stasis': mission, 'engine_stasis_plug': plug_mission}
-CHECKS = {'engine_stasis': {'zone': zone_test}, 'engine_stasis_plug': {'plug': plug}}
+MISSION = {'engine_stasis': mission, 'engine_stasis_plug': plug_mission, 'engine_stasis_edge': edge_mission,
+           'engine_stasis_leave': leave_mission}
+CHECKS = {'engine_stasis': {'zone': zone_test}, 'engine_stasis_plug': {'plug': plug},
+          'engine_stasis_edge': {'edge': edge}, 'engine_stasis_leave': {'leave': leave}}

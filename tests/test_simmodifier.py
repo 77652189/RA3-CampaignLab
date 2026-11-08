@@ -86,3 +86,21 @@ def test_a_script_status_stays_under_the_modifiers():
     assert gun.weapons[0]['range'] == 300.0 and gun.sight == 600.0 and gun.status == {'UNATTACKABLE'}
     s._upgrade(gun, u.names['on'], False)
     assert gun.weapons[0]['range'] == 150.0 and gun.sight == 300.0 and gun.status == {'UNATTACKABLE'}
+
+
+def test_the_zone_holds_by_the_centre_and_a_short_hold_flickers_with_the_refresh():
+    """Bench upgrades.md 5.1 (engine_stasis_edge / _leave): a Guardian at 190 from a 200 zone held, at 205 not (its
+    box 20 x 12 does not count); refresh 1 s with hold 0.2 s flickers -- on at a refresh, off before the next."""
+    u = stasis_zone.zone(radius=200, hold=0.2, refresh=1.0)
+    s = _world({u.id: u.xml})
+    zone = _body(s, 'zone', u.id, 'PlyrEnemy', 0, ['IMMOBILE'], speed=0.0)
+    zone.weapons = []
+    near = _body(s, 'near', 'Tank', 'PlyrHuman', 190, ['VEHICLE'])
+    edge = _body(s, 'edge', 'Tank', 'PlyrHuman', 205, ['VEHICLE'])
+    seen = []
+    for k in range(4):
+        s.t = 0.5 * k
+        s.aura_tick()
+        seen.append(near.speed == 0.0)
+        assert edge.speed == 30.0
+    assert seen == [True, False, True, False]
