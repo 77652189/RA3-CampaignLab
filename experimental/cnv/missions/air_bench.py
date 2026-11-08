@@ -27,7 +27,7 @@ HELI, GUN, FLAK, GUARDIAN, PLANT = ('SovietAntiGroundAircraft', 'SovietBaseDefen
                                     'AlliedAntiVehicleVehicleTech1', 'SovietPowerPlant')
 FLY = ('fly_flat', 'fly_sea', 'fly_cliff')
 RANGE = {'gun': (280, 320, 370), 'flak': (280, 312, 354)}
-VARIANTS = FLY + tuple(f'{k}{d}' for k, ds in RANGE.items() for d in ds) + ('noaa', 'a2g')
+VARIANTS = FLY + tuple(f'{k}{d}' for k, ds in RANGE.items() for d in ds) + ('noaa', 'a2g', 'land_gun', 'land_takeoff', 'land_idle', 'land_atk', 'land_still', 'land_flak')
 
 
 def mission(name, variant):
@@ -39,6 +39,23 @@ def mission(name, variant):
         s, e = f'air {lane} S', f'air {lane} E'
         for part, label, site, dx in (('s', 'S', s, 0.0), ('e', 'E', e, 0.0), ('mid', 'Mid', s, 600.0)):
             m.waypoint(part, f'CNV Air {label}', site, dx, 0.0)
+    elif variant.startswith('land_'):
+        # the Twinblade stays where the map put it (on the ground); u its spot, h 30 east (land_takeoff's goal)
+        k = variant[5:]
+        m.put(HELI, 'air B', role='heli', name='UNIT - CNV Air Heli')
+        if k == 'gun':
+            m.put(GUARDIAN, 'air B', 0.0, 100.0, role='tank', side='s1', name='UNIT - CNV Air Target')
+        elif k in ('takeoff', 'still'):      # still: the same, but no order (control)
+            m.put(GUN, 'air B', 0.0, 280.0, role='unit', side='s1', name='UNIT - CNV Air Unit')
+            m.put(PLANT, 'air B', 150.0, 280.0, side='s1')
+        elif k == 'flak':      # control: an s1 flak trooper 280 north, the Twinblade idle (no order, NO_ATTACK)
+            m.put(FLAK, 'air B', 0.0, 280.0, role='unit', side='s1', name='UNIT - CNV Air Unit')
+            m.waypoint('f', 'CNV Air F', 'air B', 0.0, 280.0)
+        else:
+            m.put(GUARDIAN, 'air B', 0.0, 120.0, role='tank', side='s1', name='UNIT - CNV Air Target')
+        m.waypoint('u', 'CNV Air U', 'air B')
+        m.waypoint('h', 'CNV Air H', 'air B', 30.0, 0.0)
+        m.crew('Ah', 'p1')
     elif variant == 'a2g':
         m.put(HELI, 'air D', role='heli', name='UNIT - CNV Air Heli')
         m.put(GUARDIAN, 'air D', 0.0, 600.0, role='tank', side='s1', name='UNIT - CNV Air Target')
@@ -52,9 +69,9 @@ def mission(name, variant):
         m.put(unit, 'air B', role='unit', side='s1', name='UNIT - CNV Air Unit')
         if kind == 'gun':
             m.put(PLANT, 'air B', 150.0, 0.0, side='s1')
-        # a Twinblade placed by the map stands on the ground (bench 2026-11-07: gun280 / flak280 unplaced, no shot in
-        # 25 s; moved, shot at once): it is placed 30 west and moved at Go to h, 30 east, where it hovers (d is the
-        # distance north; the centre distance is d + 0.2 at 300)
+        # placed 30 west and moved at Go to h, 30 east, where it hovers (d is the distance north; the centre distance
+        # is d + 0.2 at 300).  The move was for a Twinblade thought to stand on the ground when placed (11-07); the
+        # land_* variants (11-08) show it is an air target from the start, so the move changes nothing
         m.put(HELI, 'air B', -30.0, d, role='heli', name='UNIT - CNV Air Heli')
         m.waypoint('u', 'CNV Air U', 'air B')
         m.waypoint('h', 'CNV Air H', 'air B', 30.0, d)

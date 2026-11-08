@@ -607,9 +607,10 @@ def test_mining_a_second_miner_on_one_node_adds_nothing():
 # Sim.in_range; simunits weapon inheritFrom). bench 2026-11-08 engine_air (readings in checks/engine_air.py, map
 # maps/probe_air.py): a Twinblade (Speed 150, radius 19.4) flies 1 200 over flat ground, a sea trench or a cliff;
 # hovers before a flak cannon (300, radius 14-21) / a flak trooper (anti-air 300 by inheritFrom) / a Guardian
-# (no ANTI_AIRBORNE); attacks a NO_ATTACK Guardian 600 off. A Twinblade placed by the map stands on the ground and is
-# no air target till it moves (bench; not in the simulator: a placed Kirov flies, engine_float -- what tells them
-# apart is not read), so the probe moves it 60 at Go.
+# (no ANTI_AIRBORNE); attacks a NO_ATTACK Guardian 600 off. A Twinblade placed by the map is an air target from the
+# start, as the simulator has it (bench 2026-11-08 land_*: shot by the flak cannon from frame ~18 and by the flak
+# trooper with no order, never by a Guardian; it fires where it stands); the 11-07 "placed, it stands on the ground"
+# was not reproduced, so the probe's move at Go changes nothing.
 def _air_rows(variant, until=25.0):
     import build
     import sim
@@ -659,6 +660,28 @@ def test_air_flak_trooper_walks_in_from_354_when_revealed():
 def test_air_a_guardian_does_not_shoot_up():
     rows = _air_rows('noaa', 20.0)
     assert all(r['机血'] == 100 and r['原地'] == 1 for _, r in rows)
+
+
+def test_air_a_placed_twinblade_is_an_air_target_from_the_start():
+    """Bench land_still (no order): the gun's first hit ~frame 18 (the simulator: frame 1), 66 at s1, 4 from s5;
+    land_flak: the trooper fires in place, 91 at s1, 4 at s24 (the simulator ~3 tenths faster, as flak280);
+    land_gun: a Guardian 100 off never touches it."""
+    rows = _air_rows('land_still', 15.0)
+    assert rows[0][1]['机血'] < 100
+    assert abs(next(k for k, r in rows if r['机血'] <= 5) - 5) <= 2
+    rows = _air_rows('land_flak')
+    assert rows[0][1]['机血'] < 100 and all(r['原地'] == 1 for _, r in rows)
+    assert abs(next(k for k, r in rows if r['机血'] <= 5) - 22) <= 5
+    assert all(r['机血'] == 100 for _, r in _air_rows('land_gun'))
+
+
+@pytest.mark.parametrize('variant', ['land_idle', 'land_atk'])
+def test_air_a_placed_twinblade_fires_where_it_stands(variant):
+    """Bench: with no order (land_idle) or an attack order at 2 s (land_atk) it hits the Guardian 120 off from s1
+    without leaving its spot; the tank 38 at s16, 1 from s17 (land_atk: 10 at s18, 1 from s19)."""
+    rows = _air_rows(variant, 20.0)
+    assert rows[0][1]['坦克血'] < 100 and all(r['原地'] == 1 for _, r in rows)
+    assert abs(next(k for k, r in rows if r['坦克血'] <= 10) - 17) <= 3
 
 
 def test_air_the_twinblade_attacks_from_its_reach_not_overhead():
