@@ -301,6 +301,19 @@ def test_skill_the_players_click_keeps_off_objects_and_unpathable_ground():
     assert s.order_power(b, m.ability('engineer w', 'freeze'), s.point(m.mark('w'))) == (False, 'not pathable')
 
 
+# ---- superweapons: a script's cast at a waypoint (sim.SUPERWEAPON_HITS, Sim.blast_due). bench 2026-11-07 engine_super
+# p (checks/engine_super.py): health % of base defenses (1000) at 0 / 150 / 240 / 300 from the waypoint, ended
+# 44 / 7 / 12 / 100; q: the first loss 56 frames after the cast (+-1)
+def test_super_the_proton_collider_ends_as_the_bench():
+    rows = _sim_run('engine_super', 'p', 30.0).series[-1][1]
+    assert [abs(g - w) <= 2 for g, w in zip(rows, (44, 7, 12, 100))] == [True] * 4, rows
+
+
+def test_super_the_proton_collider_hits_56_frames_after_the_cast():
+    rows = _sim_run('engine_super', 'q', 30.0).series[-1][1]
+    assert abs(rows[1] - 56) <= 1, rows        # 满血帧: frames the centre target stayed whole after the cast
+
+
 # ---- tech tiers: what lets a factory build a tier-2 unit (sim.Sim.holds_upgrade / can_build / upgrade_sellers)
 # bench 2026-11-07 engine_tech (checks/engine_tech.py): the Guardian (NeededUpgrade Upgrade_AlliedTech2, 950) clicked
 # at ~s16 -- built only in c (the yard holds Tech2, the factory 300 off); e: the player buys Tech2 on the yard

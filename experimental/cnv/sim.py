@@ -60,6 +60,29 @@ SCENE_FLAG = re.compile(r'CNV_\w+_InScene')       # ctx.Talk.scening
 DT = 0.5                        # seconds a tick
 UNTIL = 1800.0                  # a run stops here at the latest (30 minutes)
 QUIET = 120.0                   # nothing pending this long and no ending: stuck
+
+# A script's superweapon at a waypoint: [(frames after the cast, [(centre distance, damage)])], nothing past the last
+# distance. Proton collider: bench 2026-11-07 engine_super p / q (base defenses of 1000 at 0 / 150 / 240 / 300): the
+# first hit 56 frames after the cast (+-1), the others in rows ~7 frames apart (INFERRED +15 / +45); the one at 300
+# untouched (XML Radius 250); the centre hit once only (the beams sweep: not a taper, not modelled further). The Iron
+# Curtain (engine_super i) showed no protection against NAMED_DAMAGE after a scripted cast: not modelled.
+SUPERWEAPON_HITS = {
+    'SpecialPowerParticleCannon': [
+        (56, [(0.0, 560.0), (150.0, 500.0), (240.0, 390.0), (250.0, 390.0)]),
+        (71, [(0.0, 0.0), (150.0, 440.0), (240.0, 340.0), (250.0, 340.0)]),
+        (101, [(0.0, 0.0), (150.0, 0.0), (240.0, 150.0), (250.0, 150.0)]),
+    ],
+}
+
+
+def hit_at(table, d):
+    """The damage of one hit's table at centre distance `d`: linear between its distances, 0 past the last."""
+    if d > table[-1][0]:
+        return 0.0
+    for (d0, v0), (d1, v1) in zip(table, table[1:]):
+        if d <= d1:
+            return v0 + (v1 - v0) * (d - d0) / (d1 - d0) if d1 > d0 else v1
+    return table[-1][1]
 CIV = 'PlyrCivilian'
 CMP = {0: lambda a, b: a < b, 1: lambda a, b: a <= b, 2: lambda a, b: a == b, 3: lambda a, b: a >= b,
        4: lambda a, b: a > b, 5: lambda a, b: a != b}
@@ -629,6 +652,7 @@ class Sim:
         self.guessed = set()
         self.walls = {u.id: u.params for u in self.mm.units if 'length' in u.params}   # our bars of ice, gates
         self.due = []                       # (frame, structure, owner, team, x, y, by): a builder's, to put down (R5)
+        self.blasts = []                    # (frame, x, y, [(distance, damage)], owner, by): a superweapon's hits
         self.queues = {}                    # factory name -> [job]: production (order_build, produce_due)
         self.produced_to = None             # the last frame produce_due ran
         self.energies = {}                  # template -> EnergyProduction (simunits.energy; power)
@@ -1578,6 +1602,13 @@ class Sim:
             else:
                 self.used.add('special power')
                 self.note('技能', f'{a[0]} 用 {a[1]}' + (f' 打 {a[2]}' if len(a) > 2 else ''))
+                q = self.point(a[2]) if len(a) > 2 and name == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT' else None
+                hits = SUPERWEAPON_HITS.get(a[1]) if b and b.alive else None
+                if hits and q is not None:         # a script's cast fires though the power is not ready
+                    self.used.add('superweapon')
+                    now = self.frame_now()
+                    for after, table in hits:
+                        self.blasts.append((now + after, q[0], q[1], table, b.owner, b))
         elif name in ('ENABLE_SCRIPT', 'DISABLE_SCRIPT'):
             # a once-script that fired is only switched off: ENABLE_SCRIPT arms it again (SE enableScript)
             if name == 'ENABLE_SCRIPT':
@@ -1703,6 +1734,7 @@ class Sim:
             eng.step()
             self.expire(eng.frame)
             self.build_due(eng.frame)
+            self.blast_due(eng.frame)
             self.deposit_due(eng.frame)
             self.produce_due(eng.frame)
             if self.test and self.test.counters and (eng.frame - 1) % self.fps == 0 and self.t >= LAG:
@@ -1911,6 +1943,23 @@ class Sim:
             n.team = team
             if self.blocks(n):
                 self.reblock()
+
+    def blast_due(self, frame):
+        """A superweapon's hits landing by `frame` (SUPERWEAPON_HITS): every living object, friend or foe, within the
+        table's reach loses the damage read off its centre distance (linear between the measured distances)."""
+        for d in [d for d in self.blasts if d[0] <= frame]:
+            self.blasts.remove(d)
+            _, x, y, table, owner, by = d
+            for t in self.living():
+                dmg = hit_at(table, math.hypot(t.x - x, t.y - y))
+                if dmg <= 0:
+                    continue
+                t.hp -= dmg
+                t.last_hit, t.last_by = owner, by.name
+                if t.hp <= 0 and t.alive:
+                    if self.first_death is None:
+                        self.first_death = (self.t, t, by)
+                    self.destroy(t, f'被 {self.label(by)} 的超武打掉')
 
     def move(self):
         for b in self.living():
