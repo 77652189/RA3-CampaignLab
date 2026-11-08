@@ -227,8 +227,9 @@ def test_power_is_the_living_objects_energy(check, power, factor):
 
 
 def test_production_needs_a_factory_and_its_prerequisites():
-    """Nothing is offered or queued without a factory of the player's; a unit whose NeededUpgrade the player lacks is
-    not offered until GIVE_PLAYER_UPGRADE gives it; a banned one (ALLOW_DISALLOW_ONE_BUILDING 0) is not."""
+    """Nothing is offered or queued without a factory of the player's; a unit whose NeededUpgrade the barracks lacks is
+    not offered until the yard holds it (NAMED_RECEIVE_UPGRADE; GIVE_PLAYER_UPGRADE gives nothing: engine_tech b); a
+    banned one (ALLOW_DISALLOW_ONE_BUILDING 0) is not."""
     import build
     import sim
     m, t, _ = build.resolve('engine_production', 'a')
@@ -237,12 +238,82 @@ def test_production_needs_a_factory_and_its_prerequisites():
     names = [o[0] for o in s.offers(s.human)]
     assert 'AlliedEngineer' in names and 'AlliedInfiltrationInfantry' not in names
     s.act('GIVE_PLAYER_UPGRADE', [s.human, 'Upgrade_AlliedTech2'], None)
+    assert 'AlliedInfiltrationInfantry' not in [o[0] for o in s.offers(s.human)]
+    yard = next(b for b in s.living() if b.owner == s.human and b.template == 'AlliedConstructionYard')
+    s.act('NAMED_RECEIVE_UPGRADE', ['Upgrade_AlliedTech2', yard.name], None)
     assert 'AlliedInfiltrationInfantry' in [o[0] for o in s.offers(s.human)]
     s.act('ALLOW_DISALLOW_ONE_BUILDING', [s.human, 'alliedengineer', 0], None)
     assert 'AlliedEngineer' not in [o[0] for o in s.offers(s.human)] and not s.order_build(s.human, 'AlliedEngineer')
     for f in s.factories(s.human):
         s.destroy(f, 'test', delete=True)
-    assert s.offers(s.human) == [] and not s.order_build(s.human, 'AlliedAntiInfantryInfantry')
+    assert [o for o in s.offers(s.human) if not o[0].startswith('Upgrade_')] == [] and \
+        not s.order_build(s.human, 'AlliedAntiInfantryInfantry')
+
+
+# ---- tech tiers: what lets a factory build a tier-2 unit (sim.Sim.holds_upgrade / can_build / upgrade_sellers)
+# bench 2026-11-07 engine_tech (checks/engine_tech.py): the Guardian (NeededUpgrade Upgrade_AlliedTech2, 950) clicked
+# at ~s16 -- built only in c (the yard holds Tech2, the factory 300 off); e: the player buys Tech2 on the yard
+# (1500, 15 s, paid frame by frame), then the Guardian builds
+BENCH_TECH = {'a': False, 'b': False, 'c': True, 'd': False, 'g': False, 'h': False}
+
+
+def _tech(variant, order_at=16 * 15, until=30 * 15):
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_tech', variant)
+    s = sim.Sim(m, t)
+    s.advance(order_at)
+    ordered = s.order_build(s.human, 'AlliedAntiVehicleVehicleTech1')
+    s.advance(until - order_at)
+    return s, ordered
+
+
+@pytest.mark.parametrize('variant', sorted(BENCH_TECH))
+def test_tech_the_guardian_builds_only_near_a_yard_holding_tech2(variant):
+    s, ordered = _tech(variant)
+    made = s.counters.get('CNV_Tech_Made', 0)
+    assert ordered == BENCH_TECH[variant] and (made >= 1) == BENCH_TECH[variant]
+    assert s.money[s.human] < 4000 if BENCH_TECH[variant] else s.money[s.human] >= 4000
+
+
+def test_tech_bought_on_the_yard_then_the_guardian():
+    """e: Tech2 on the yard's button (needs the refinery), 1500 over 15 s paid as a unit is; the yard's button then
+    buys Tech3; the Guardian builds after it."""
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_tech', 'e')
+    s = sim.Sim(m, t)
+    s.advance(15)
+    guard = 'AlliedAntiVehicleVehicleTech1'
+    names = [o[0] for o in s.offers(s.human)]
+    assert 'Upgrade_AlliedTech2' in names and guard not in names
+    assert s.order_build(s.human, 'Upgrade_AlliedTech2') and not s.order_build(s.human, 'Upgrade_AlliedTech2')
+    start = s.money[s.human]
+    s.advance(8 * 15)
+    assert start - 1500 < s.money[s.human] < start          # paid as it goes (the refinery's income aside)
+    assert not s.order_build(s.human, guard)
+    s.advance(8 * 15)
+    names = [o[0] for o in s.offers(s.human)]
+    assert guard in names and 'Upgrade_AlliedTech3' in names and 'Upgrade_AlliedTech2' not in names
+    assert s.order_build(s.human, guard)
+    s.advance(25 * 15)
+    assert s.counters.get('CNV_Tech_Made', 0) >= 1
+
+
+def test_tech_banned_and_needs_the_refinery():
+    """ALLOW_DISALLOW_ONE_UPGRADE 0 takes the yard's button away (retail campaigns ban Tech2/3 so); without a
+    refinery it is grey (bench: tooltip 'needs refinery')."""
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_tech', 'e')
+    s = sim.Sim(m, t)
+    s.advance(15)
+    s.act('ALLOW_DISALLOW_ONE_UPGRADE', [s.human, 'upgrade_alliedtech2', 0], None)
+    assert not any(o[0] == 'Upgrade_AlliedTech2' for o in s.offers(s.human))
+    s.act('ALLOW_DISALLOW_ONE_UPGRADE', [s.human, 'upgrade_alliedtech2', 1], None)
+    ref = next(b for b in s.living() if b.owner == s.human and b.template == 'AlliedRefinery')
+    s.destroy(ref, 'test', delete=True)
+    assert not s.order_build(s.human, 'Upgrade_AlliedTech2')
 
 
 def test_production_mutation_no_order_no_engineer():

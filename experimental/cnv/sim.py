@@ -179,8 +179,8 @@ RA3_ONLY = {'ATTACK_MOVE_NAMED_UNIT_TO', 'ATTACK_MOVE_TEAM_TO', 'CREATE_NAMED_ON
             'SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', 'SET_MISSION_OBJECTIVE_STATUS', 'LINK_MISSION_OBJECTIVE_TO_OBJECT',
             'LINK_MISSION_OBJECTIVE_TO_WAYPOINT', 'CAMPAIGN_CREATE_AUTO_SAVE', 'MOVE_CAMERA_TO_NAMED',
             'PLAYER_SET_PLAYER_POWER_POINTS', 'PLAYER_SET_MAX_PLAYER_POWER_POINTS', 'SET_PLAYER_MONEY_TO_COUNTER',
-            'SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER', 'ALLOW_DISALLOW_ONE_BUILDING', 'SKIRMISH_AI_MAKE_BASE',
-            'SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', 'SKIRMISH_AI_TRANSFER_ALL', 'SKIRMISH_AI_USE_REBUILD_SYSTEM',
+            'SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER', 'ALLOW_DISALLOW_ONE_BUILDING', 'ALLOW_DISALLOW_ONE_UPGRADE',
+            'SKIRMISH_AI_MAKE_BASE', 'SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', 'SKIRMISH_AI_TRANSFER_ALL', 'SKIRMISH_AI_USE_REBUILD_SYSTEM',
             'SKIRMISH_AI_USE_REPAIRS', 'UNIT_AI_TRANSFER_ALL', 'PATH_MUSIC_PLAY_EVENT',
             'PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM', 'CAMERA_ENTERED_AREA',
             'PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS', 'SET_COUNTER_TO_COUNTER', 'COUNTER_MATH_COUNTER'}
@@ -594,6 +594,7 @@ class Sim:
         self.markers = {}                   # objective -> {object / waypoint}
         self.done, self.disabled = set(), set()
         self.banned = set()                 # (player, template in lower case): ALLOW_DISALLOW_ONE_BUILDING 0
+        self.banned_ups = set()             # (player, upgrade in lower case): ALLOW_DISALLOW_ONE_UPGRADE 0
         self.border = 0
         self.reveal_all = False
         self.reveals = {}                   # name -> (x, y, r)
@@ -810,34 +811,104 @@ class Sim:
         return [b for b in self.living() if b.owner == owner and 'STRUCTURE' in b.kinds and not b.scenery
                 and simunits.menu(b.template, self.own)]
 
-    def holds_upgrade(self, owner, up):
-        """A player's upgrade (GIVE_PLAYER_UPGRADE), or an object's of the owner's (NAMED_RECEIVE_UPGRADE: Japan's
-        factory tiers are the factory's own)."""
-        return up in self.player_ups.get(owner, ()) or any(up in b.upgrades for b in self.living() if b.owner == owner)
+    def holds_upgrade(self, owner, up, factory=None):
+        """Whether `factory` (else any of owner's structures) has the upgrade a unit's NeededUpgrade asks for. A PLAYER
+        upgrade: owner holds it (GIVE_PLAYER_UPGRADE). An OBJECT upgrade (the tiers): a factory with a
+        TechUpgradeReceiver for it (the Allied ones) has it while a yard / outpost of owner's holding it stands within
+        the radius (600, RECTANGULAR: |dx| and |dy| both, an inference); one without (Japan's) holds it itself
+        (bench 2026-11-07 engine_tech: GIVE_PLAYER_UPGRADE Tech2 builds no Guardian, the yard's Tech2 lets a factory
+        300 off build and not one 750 off, the factory's own Tech2 builds nothing, with or without the yard's)."""
+        low = up.lower()
+        if simunits.upgrade_type(up) != 'OBJECT':
+            return low in {u.lower() for u in self.player_ups.get(owner, ())}
+        fs = [factory] if factory is not None else \
+            [b for b in self.living() if b.owner == owner and 'STRUCTURE' in b.kinds and not b.scenery]
+        return any(self._tier_held(owner, f, low) for f in fs)
 
-    def can_build(self, owner, template):
-        """Whether owner's sidebar button for `template` is lit: not banned (ALLOW_DISALLOW_ONE_BUILDING), every
-        RequiredObject standing, every NeededUpgrade held (simunits.needs; all of them is an inference)."""
+    def _tier_held(self, owner, f, low):
+        recv = [r for r in simunits.tech_receivers(f.template, self.own) if low in r[0]]
+        if not recv:
+            return low in {u.lower() for u in f.upgrades}
+        for _, radius, rect, sources in recv:
+            for b in self.living():
+                if b.owner == owner and b.template.lower() in sources and low in {u.lower() for u in b.upgrades}:
+                    dx, dy = abs(b.x - f.x), abs(b.y - f.y)
+                    if (max(dx, dy) if rect else math.hypot(dx, dy)) <= radius:
+                        return True
+        return False
+
+    def can_build(self, owner, template, factory=None):
+        """Whether owner's sidebar button for `template` is lit (at `factory`, else at any of owner's that builds it):
+        not banned (ALLOW_DISALLOW_ONE_BUILDING), every RequiredObject standing, every NeededUpgrade held there
+        (holds_upgrade; all of them is an inference)."""
         if (owner, template.lower()) in self.banned:
             return False
         objs, ups = simunits.needs(template, self.own)
         have = {b.template.lower() for b in self.living() if b.owner == owner}
-        return all(o.lower() in have for o in objs) and all(self.holds_upgrade(owner, u) for u in ups)
+        if not all(o.lower() in have for o in objs):
+            return False
+        if not ups:
+            return True
+        fs = [factory] if factory is not None else \
+            [f for f in self.factories(owner) if template in simunits.menu(f.template, self.own, f.upgrades)] or [None]
+        return any(all(self.holds_upgrade(owner, u, f) for u in ups) for f in fs)
+
+    def upgrade_sellers(self, owner, up):
+        """The owner's living structures whose buttons buy `up` now: not banned (ALLOW_DISALLOW_ONE_UPGRADE 0), its
+        GameDependency met (RequiredObject owned; NeededUpgrade held by the structure: inference), not held yet
+        (OBJECT: by that structure; PLAYER: by the owner), not in any of the owner's queues already."""
+        low = up.lower()
+        if (owner, low) in self.banned_ups or ('<All Players>', low) in self.banned_ups:
+            return []
+        objs, ups = simunits.upgrade_needs(up)
+        have = {b.template.lower() for b in self.living() if b.owner == owner}
+        if not all(o.lower() in have for o in objs):
+            return []
+        queued = any(j.get('upgrade', '').lower() == low for q in self.queues.values() for j in q
+                     if j['owner'] == owner)
+        out = []
+        for b in self.living():
+            if b.owner != owner or 'STRUCTURE' not in b.kinds or b.scenery or queued:
+                continue
+            for u, kind in simunits.upgrade_menu(b.template, self.own, b.upgrades):
+                if u.lower() == low and all(n in b.upgrades for n in ups) and not (
+                        u in b.upgrades if kind == 'OBJECT' else u in self.player_ups.get(owner, ())):
+                    out.append(b)
+        return out
 
     def offers(self, owner):
-        """[(template, cost, seconds)] owner can build now, each once, in the factories' sidebar order."""
+        """[(template or upgrade, cost, seconds)] owner can build or buy now, each once: the factories' units in their
+        sidebar order, then the upgrades its structures' buttons buy (Upgrade_AlliedTech2 at the yard)."""
         out = {}
         for f in self.factories(owner):
-            for t in simunits.menu(f.template, self.own):
-                if t not in out and self.can_build(owner, t):
+            for t in simunits.menu(f.template, self.own, f.upgrades):
+                if t not in out and self.can_build(owner, t, f):
                     out[t] = (t,) + simunits.production(t, self.own)
+        for b in self.living():
+            if b.owner == owner and 'STRUCTURE' in b.kinds and not b.scenery:
+                for u, _ in simunits.upgrade_menu(b.template, self.own, b.upgrades):
+                    if u not in out and self.upgrade_sellers(owner, u):
+                        out[u] = (u,) + simunits.upgrade_cost(u)
         return list(out.values())
 
     def order_build(self, owner, template):
-        """Queue `template` at the owner's factory that builds it with the shortest queue; nothing is paid now
-        (produce_due pays frame by frame). False: no factory of the owner's builds it now."""
-        fs = [f for f in self.factories(owner) if template in simunits.menu(f.template, self.own)]
-        if not fs or not self.can_build(owner, template):
+        """Queue `template` at the owner's factory that builds it with the shortest queue -- or an upgrade at the
+        structure whose button buys it; nothing is paid now (produce_due pays frame by frame, an upgrade as a unit).
+        False: nothing of the owner's builds / buys it now."""
+        sellers = self.upgrade_sellers(owner, template)
+        if sellers:
+            b = min(sellers, key=lambda b: len(self.queues.get(b.name, [])))
+            cost, secs = simunits.upgrade_cost(template)
+            kind = dict(simunits.upgrade_menu(b.template, self.own, b.upgrades))[template]
+            self.queues.setdefault(b.name, []).append(
+                {'template': template, 'upgrade': template, 'kind': kind, 'owner': owner, 'cost': cost,
+                 'secs': secs, 'progress': 0.0, 'paid': 0, 'full': None})
+            self.used.add('production')
+            self.note('生产', f'{self.who(owner)} 在 {self.label(b)} 买 {template}（{cost}，{secs:g} 秒）')
+            return True
+        fs = [f for f in self.factories(owner) if template in simunits.menu(f.template, self.own, f.upgrades)
+              and self.can_build(owner, template, f)]
+        if not fs:
             return False
         f = min(fs, key=lambda f: len(self.queues.get(f.name, [])))
         cost, secs = simunits.production(template, self.own)
@@ -866,9 +937,12 @@ class Sim:
                     del self.queues[name]
                     continue
                 create, rally, door = simunits.exit_of(f.template, self.own)
-                for job in [j for j in q if j['full'] is not None and fr >= j['full'] + door]:
+                for job in [j for j in q if j['full'] is not None and fr >= j['full'] + (0 if 'upgrade' in j else door)]:
                     q.remove(job)
-                    self.produce_out(f, job, create, rally)
+                    if 'upgrade' in job:
+                        self.upgrade_done(f, job)
+                    else:
+                        self.produce_out(f, job, create, rally)
                 job = next((j for j in q if j['full'] is None), None)
                 if job is None:
                     continue
@@ -883,6 +957,26 @@ class Sim:
                 job['progress'] = nxt
                 if nxt >= 100.0:
                     job['full'] = fr
+
+    def upgrade_done(self, b, job):
+        """A bought upgrade arrives: OBJECT on the structure that bought it, PLAYER on its owner."""
+        up = job['upgrade']
+        if job['kind'] == 'OBJECT':
+            self.give_upgrade(b, up)
+        else:
+            self.player_ups.setdefault(job['owner'], set()).add(up)
+        self.note('生产', f'{self.who(job["owner"])} 的 {self.label(b)} 买好 {up}')
+        self.change()
+
+    def give_upgrade(self, b, up):
+        """An object upgrade on b (bought, or NAMED_RECEIVE_UPGRADE): a SPEED modifier acts on a unit."""
+        self._upgrade(b, up, True)
+
+    def _upgrade(self, b, up, on):
+        (b.upgrades.add if on else b.upgrades.discard)(up)
+        if b.base_speed is None:
+            b.base_speed = b.speed
+        b.speed = b.base_speed * simunits.speed_scale(self.own.get(b.template), b.upgrades)
 
     def power(self, owner):
         """(supply, demand) of the owner: its living objects' EnergyProduction, > 0 summed into the supply, < 0 into
@@ -1343,10 +1437,9 @@ class Sim:
         elif name in ('NAMED_RECEIVE_UPGRADE', 'NAMED_REMOVE_UPGRADE'):     # (upgrade, object): recorded; of what an upgrade
             b = self.body(a[1])                                              # does to a unit only the SPEED modifier is
             if b:                                                            # simulated (units/pace.py's 齐步); a range,
-                (b.upgrades.add if name == 'NAMED_RECEIVE_UPGRADE' else b.upgrades.discard)(a[0])   # a shield are not
-                if b.base_speed is None:
-                    b.base_speed = b.speed
-                b.speed = b.base_speed * simunits.speed_scale(self.own.get(b.template), b.upgrades)
+                self._upgrade(b, a[0], name == 'NAMED_RECEIVE_UPGRADE')     # a shield are not; a tier (can_build) is
+        elif name == 'ALLOW_DISALLOW_ONE_UPGRADE':      # (player, upgrade, allow): retail campaigns ban Tech2/3 with 0
+            (self.banned_ups.discard if a[2] else self.banned_ups.add)((a[0], str(a[1]).lower()))
         elif name == 'SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER':
             b = self.body(a[0])
             if b:
@@ -1378,7 +1471,8 @@ class Sim:
             (s.add if a[2] else s.discard)(a[1])
         elif name == 'ALLOW_DISALLOW_ONE_BUILDING':     # the AI's production is not simulated; the player's 造 is
             (self.banned.discard if a[2] else self.banned.add)((a[0], str(a[1]).lower()))
-        elif name == 'GIVE_PLAYER_UPGRADE':             # (player, upgrade): a unit's NeededUpgrade (can_build)
+        elif name == 'GIVE_PLAYER_UPGRADE':             # (player, upgrade): a PLAYER upgrade; an OBJECT one (the tiers)
+                                                        # it gives unlocks nothing (bench 11-07 engine_tech b)
             self.player_ups.setdefault(a[0], set()).add(a[1])
         elif name == 'PLAYER_RELATES_PLAYER':           # (index, 0, name): the game reads the index (plan.relates)
             r = a[2]

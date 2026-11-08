@@ -468,8 +468,8 @@ def _read_commands(text, sets, cmds):
         if _attr(head, 'id'):           # a set inheriting another (JapanBarracksCommandSet): the base's buttons first
             own = re.findall(r'<Cmd>\s*([^<\s]+)', re.sub(r'<!--.*?-->', '', inner, flags=re.S))
             sets[_attr(head, 'id')] = sets.get(_attr(head, 'inheritFrom', ''), []) + own
-    for head, inner in _blocks(text, 'LogicCommand'):
-        m = re.search(r'<Object>\s*([^<\s]+)', inner)
+    for head, inner in _blocks(text, 'LogicCommand'):     # UNIT_BUILD: its <Object>; OBJECT_ / PLAYER_UPGRADE: its <Upgrade>
+        m = re.search(r'<Object>\s*([^<\s]+)', inner) or re.search(r'<Upgrade>\s*([^<\s]+)', inner)
         if _attr(head, 'id'):
             cmds[_attr(head, 'id')] = (_attr(head, 'Type', ''), m.group(1) if m else None)
 
@@ -529,11 +529,99 @@ def _inherited(template, own, read, empty):
     return empty
 
 
-def menu(factory, own=None):
+def command_set(structure, upgrades=(), own=None):
+    """The structure's CommandSet: its own, or the last CommandSetUpgrade's whose TriggeredBy it holds (AlliedConstruction
+    Yard: ...Level2 once it holds Upgrade_AlliedTech2, its button then buys Tech3)."""
+    def read(xml):
+        bare = re.sub(r'<CommandSetUpgrade\b.*?(/>|</CommandSetUpgrade>)', '', xml, flags=re.S)
+        base = (re.findall(r'\bCommandSet="([^"]+)"', bare) or [None])[0]
+        swaps = [(_attr(h, 'CommandSet'), set(re.findall(r'<TriggeredBy>\s*([^<\s]+)', i)))
+                 for h, i in _blocks(xml, 'CommandSetUpgrade')]
+        return (base, swaps) if base or swaps else None
+    base, swaps = _inherited(structure, own, read, None) or ('', [])
+    held = {u.lower() for u in upgrades}
+    for cs, trig in swaps:
+        if cs and trig and {t.lower() for t in trig} <= held:
+            base = cs
+    return base or ''
+
+
+def menu(factory, own=None, upgrades=()):
     """The units a structure builds: its CommandSet's UNIT_BUILD commands' objects, in the sidebar's order."""
-    cs = _inherited(factory, own, lambda xml: (re.findall(r'\bCommandSet="([^"]+)"', xml) or [''])[0], '')
     sets, cmds = _commands(own)
-    return [cmds[c][1] for c in sets.get(cs, []) if cmds.get(c, ('', None))[0] == 'UNIT_BUILD' and cmds[c][1]]
+    return [cmds[c][1] for c in sets.get(command_set(factory, upgrades, own), [])
+            if cmds.get(c, ('', None))[0] == 'UNIT_BUILD' and cmds[c][1]]
+
+
+def upgrade_menu(structure, own=None, upgrades=()):
+    """The upgrades a structure's buttons buy (OBJECT_UPGRADE: the structure's own; PLAYER_UPGRADE: the player's), as
+    [(upgrade, 'OBJECT' | 'PLAYER')] in the sidebar's order."""
+    sets, cmds = _commands(own)
+    out = []
+    for c in sets.get(command_set(structure, upgrades, own), []):
+        kind, up = cmds.get(c, ('', None))
+        if kind in ('OBJECT_UPGRADE', 'PLAYER_UPGRADE') and up:
+            out.append((up, kind.split('_')[0]))
+    return out
+
+
+UPGRADES = os.path.join(SAGEXML, 'GlobalData', 'upgrade.xml')
+_upgrades = None
+
+
+def _upgrade_table():
+    global _upgrades
+    if _upgrades is None:
+        _upgrades = {}
+        text = open(UPGRADES, encoding='utf-8', errors='replace').read() if os.path.exists(UPGRADES) else ''
+        for head, inner in _blocks(text, 'UpgradeTemplate'):
+            if _attr(head, 'id'):
+                _upgrades[_attr(head, 'id').lower()] = (
+                    int(_num(_attr(head, 'BuildCost'), 0)), _secs(_attr(head, 'BuildTime')),
+                    re.findall(r'<RequiredObject>\s*([^<\s]+)', inner), re.findall(r'<NeededUpgrade>\s*([^<\s]+)', inner),
+                    (_attr(head, 'Type', '') or '').upper())
+    return _upgrades
+
+
+def upgrade_type(upgrade):
+    """'OBJECT' (an object holds it: the tiers), 'PLAYER' (the player holds it) or '' (not in upgrade.xml)."""
+    return _upgrade_table().get(upgrade.lower(), (0, 0.0, [], [], ''))[4]
+
+
+def upgrade_cost(upgrade):
+    """(cost, seconds) of an UpgradeTemplate in GlobalData/upgrade.xml (BuildCost, BuildTime; (0, 0.0) where none)."""
+    return _upgrade_table().get(upgrade.lower(), (0, 0.0))[:2]
+
+
+def upgrade_needs(upgrade):
+    """(objects, upgrades) the upgrade's GameDependency asks for: Upgrade_AlliedTech2 an AlliedRefinery of the player's
+    (bench 2026-11-07 engine_tech: the yard's button is grey without one), Tech3 Upgrade_AlliedTech2 (held by the yard
+    that buys it: inference)."""
+    return tuple(_upgrade_table().get(upgrade.lower(), (0, 0.0, [], [], ''))[2:4])
+
+
+def _with_includes(xml):
+    """The XML with the text of every DATA:Includes/... file it references (AlliedWarFactory's TechUpgradeReceiver)."""
+    out = [xml]
+    for href in re.findall(r'href="DATA:([^"]+)"', xml):
+        p = os.path.join(SAGEXML, *href.replace('\\', '/').split('/'))
+        if os.path.exists(p):
+            out.append(open(p, encoding='utf-8', errors='replace').read())
+    return '\n'.join(out)
+
+
+def tech_receivers(structure, own=None):
+    """The structure's TechUpgradeReceiver modules: [(upgrades in lower case, radius, rectangular?, {source templates
+    in lower case})] -- an Allied factory takes Upgrade_AlliedTech2 / 3 from a yard or outpost holding it within 600
+    (RECTANGULAR; AlliedTechUpgradeReceiverLevel2/3.xml)."""
+    def read(xml):
+        out = []
+        for h, i in _blocks(_with_includes(xml), 'TechUpgradeReceiver'):
+            out.append(({t.lower() for t in re.findall(r'<TriggeredBy>\s*([^<\s]+)', i)}, _num(_attr(h, 'Radius'), 0.0),
+                        (_attr(h, 'DistanceType', '') or '').upper() == 'RECTANGULAR',
+                        {t.lower() for t in re.findall(r'<IncludeThing>\s*([^<\s]+)', i)}))
+        return out or None
+    return _inherited(structure, own, read, None) or []
 
 
 def production(template, own=None):
