@@ -42,8 +42,21 @@ MADE = 'UNIT - SIM Made {}'
 # WINDOW of a reading, or another result, the test is red -- stop, find out why, run the bench again, re-baseline here.
 # A level not in the table has no expectations: its check only prints readings (bench and simulator not yet agreed,
 # or not yet compared). result: 1 win, 2 lose
-WATCH = {       # level -> [(counter label, cast part)]: its health shown beside the result (two lines at most)
+WATCH = {       # level -> [(counter label, cast part)]: its health shown beside the result (three lines at most)
+    'a4': [('1号车', 'truck 1'), ('2号车', 'truck 2'), ('3号车', 'truck 3')],
     'j7': [('天狗', 'count tengu 1'), ('海啸', 'count tsunami 1')],
+}
+SCENE = {       # level -> (the flag the opening scene's end sets, the simulator second it comes up at): the simulator plays the
+                # opening scene (a4: 79.9 s, input locked), the bench skips it (checks/a4.py OPENING), so a play's absolute
+                # times are counted from that flag on both sides (a4 play 2026-11-08: the raw times put the ice 80 s late
+                # on the bench -- horn 1 hit the trucks first, a loss against the simulator's win)
+    'a4': ('CNV_A4_Scene_1', 79.9),
+}
+BENCH_ENDS = {  # level -> the mission seconds the bench watches end at: a watch ends with Esc, which fails inside a phase's
+                # scene (the bench then takes the mission for ended and skips the rest, a4 win 2026-11-08 s322), so no end
+                # falls inside a scene (the simulator's phase seconds + ~60 s)
+    'a4': [120, 200, 240, 340, 440, 540, 640, 740, 860, 980],     # the simulator's phases less the opening scene (80 s):
+                                                                  # 233 / 277 / 548 / 655, +~15 s on the bench (a4 play)
 }
 EXPECT = {
     'a3': (1, 85.6, [(2, 23.0), (3, 55.0)]),     # bench 2026-11-08: PASS (phases s21 / s51, the flag s79-81, the victory card)
@@ -143,7 +156,9 @@ class Compiler:
                 power = self.m.ability(who.strip(), ability) if who.strip() in self.m.cast else None
                 if power is None:
                     o = next((x for x in self.m.objects if x.name == n), None)
-                    u = next((u for u in self.m.units if o and u.id == o.template), None)
+                    tmpl = o.template if o else next((a[2] for s in self.m.scripts for a in s.do      # a unit the plan's own scripts make
+                                                      if a[0].startswith('CREATE_NAMED_ON_TEAM_AT_WAYPOINT') and a[1] == n), None)
+                    u = next((u for u in self.m.units if tmpl and u.id == tmpl), None)
                     power = u.abilities.get(ability) if u else None
                 out.append(('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', n, power or ability, wp))
             return out
@@ -190,6 +205,11 @@ class Compiler:
             now = None if isinstance(when, tuple) else when
             do = self.actions(e, now)
             timer = f'Play {i}'
+            if not isinstance(when, tuple) and level in SCENE:      # a time of the simulator's clock, which plays the opening
+                flag, hand_back = SCENE[level]                      # scene; the bench skips it: counted from the scene's flag
+                if when < hand_back:
+                    raise ValueError(f'play: {when:g} s is inside the opening scene (the player has control from {hand_back:g} s)')
+                when = ('@', flag, when - hand_back)
             if isinstance(when, tuple):          # ('@', flag, delta): that long after the flag first reads 1
                 self.t.scripts.append(Script(f'Test - play arm {i}', [('FLAG', when[1], 1)],
                                              [('SET_MILLISECOND_TIMER', timer, float(when[2]))]))
@@ -221,6 +241,11 @@ def build(m, level, run=None):
         result, end, phases = run
         t.expect += window_expect(result, end, phases)
         t.bench = [('bench_watch', dict(seconds=end * (1 + WINDOW) + SLACK + 10, every=2, sheet=False, lines=len(t.counters)))]
+    if level in BENCH_ENDS:                 # a long play: watches (each at most 120 s) that end outside the phase scenes
+        at, t.bench = 0.0, []
+        for stop in BENCH_ENDS[level]:
+            t.bench.append(('bench_watch', dict(seconds=stop - at, every=4, sheet=False, lines=len(t.counters))))
+            at = stop
     return t
 
 

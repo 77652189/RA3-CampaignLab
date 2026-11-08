@@ -27,6 +27,7 @@ win: the trucks kept whole and the north command razed the moment the north camp
 demo: the opening scene's demonstration: an engineer ices plaza 1's street, the pair of troops behind it turn back,
   a pair is made at the lane's foot.
 """
+import playcheck
 from checks.a4_before import freeze, ice_wall, keep_up, start
 from parts import Obj, Script, Test, counted, square
 
@@ -576,6 +577,6 @@ def place_mouths(m):
 
 # the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
 CHECKS = {
-    'a4': {'lose': lose, 'horn': horn, 'detour': detour, 'queue': queue, 'smash': smash, 'smpos': lambda m: smash_probe(m), 'smev': lambda m: smash_probe(m, every=True), 'smwest': lambda m: smash_probe(m, every=True, spawn=(3000.0, 2500.0)), 'smdecoy': lambda m: smash_probe(m, every=True, decoy=True), 'derrick': derrick, 'demo': demo, 'demoeng': lambda m: demo(m, alive=True), 'heads': heads, 'melt': melt, 'idle': idle, 'hold': hold, 'win': win, 'signs': signs, 'smoke': smoke, 'place': place, 'placem': place_mouths},
+    'a4': {'play': playcheck.make('a4'), 'lose': lose, 'horn': horn, 'detour': detour, 'queue': queue, 'smash': smash, 'smpos': lambda m: smash_probe(m), 'smev': lambda m: smash_probe(m, every=True), 'smwest': lambda m: smash_probe(m, every=True, spawn=(3000.0, 2500.0)), 'smdecoy': lambda m: smash_probe(m, every=True, decoy=True), 'derrick': derrick, 'demo': demo, 'demoeng': lambda m: demo(m, alive=True), 'heads': heads, 'melt': melt, 'idle': idle, 'hold': hold, 'win': win, 'signs': signs, 'smoke': smoke, 'place': place, 'placem': place_mouths},
     'a4_intl': {'lose': lose, 'horn': horn, 'detour': detour, 'queue': queue, 'smash': smash, 'derrick': derrick, 'demo': demo, 'heads': heads, 'melt': melt, 'idle': idle, 'hold': hold, 'win': win, 'signs': signs, 'smoke': smoke, 'place': place, 'placem': place_mouths},
 }
