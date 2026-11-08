@@ -806,3 +806,58 @@ def test_seal_structures_in_the_line_block_the_shot(variant):
     ATTACK_NEEDS_LINE_OF_SIGHT does not shoot through a structure's footprint) the same."""
     rows, _ = _seal_rows(variant, 40.0)
     assert rows[-1][1]['敌车血量'] >= 99, rows[-1]
+
+
+# ---- what a unit takes by itself (sim.Sim.takes_by_itself / auto_acquires / can_hit): docs/engine/pathing.md 7d
+def test_seal_erow_an_idle_soldier_leaves_enemy_bunkers_alone():
+    """Bench engine_seal erow (2026-11-08): the enemy's 11 bunkers in a row 105 off, the MCV 210 behind -- the player's
+    idle peacekeeper fires at neither (the middle bunker 100, the MCV 99 for 61 s). Generals' building filter on a
+    unit's own picks; the simulator had shot the middle bunker to 31 %."""
+    rows, _ = _seal_rows('erow', 40.0)
+    assert rows[-1][1]['中墙血'] >= 99 and rows[-1][1]['敌车血量'] >= 99, rows[-1]
+    assert all(r['兵'] == 0 for _, r in rows)
+
+
+@pytest.mark.parametrize('variant,secs', [('ebld', 60.0), ('ebldam', 22.0), ('pam', 60.0)])
+def test_seal_units_leave_the_enemys_buildings_alone_by_themselves(variant, secs):
+    """Bench engine_seal (2026-11-08), a bunker and a power plant in range, the line clear: ebld -- the enemy's (a
+    computer player's, no skirmish AI) peacekeeper idle, the player's bunker 120 east and plant 150 west: both 100 for
+    61 s; ebldam -- it attack-moves 1000 east past the two (100 / 120 off its line, 500 along): both 100 while it
+    passes (at the goal, 11, s19-s22; see the xfail below for after); pam -- the player's soldier attack-moves past the
+    enemy's two the same way: both 100 for 61 s, at the goal s22. RA3 drops Generals' 'a computer player's units take
+    enemy buildings'; an attack-move takes no building either."""
+    rows, _ = _seal_rows(variant, secs)
+    assert rows[-1][1]['地堡血'] >= 99 and rows[-1][1]['电厂血'] >= 99, rows[-1]
+    if variant != 'ebld':
+        assert rows[-1][1]['兵'] == 11, rows[-1]
+
+
+@pytest.mark.xfail(strict=True, reason='bench engine_seal ebldam, twice: some time after the enemy soldier is at its '
+                   'attack-move goal (s19) the player\'s plant 500 back loses 5 % / 3 s (from s25 in one run, s31 in '
+                   'the other; the bunker untouched), the soldier never in the strip south of the line round the plant '
+                   '(100); who fires is not known (that soldier walking back along the line, or the ebld lane\'s), '
+                   'the simulator leaves the plant alone')
+def test_seal_after_an_attack_move_the_computers_soldier_goes_back_for_the_plant():
+    rows, _ = _seal_rows('ebldam', 61.0)
+    assert rows[-1][1]['电厂血'] <= 50, rows[-1]
+
+
+def test_a_weapon_doing_nothing_to_the_armour_never_takes_the_target():
+    """Tanya's pistol (SNIPER) at a faction building's armour (SNIPER 0 %): Generals estimateWeaponDamage 0 ->
+    INVALID_SHOT, ordered or not (the a6 Tanya who stood firing at a building); the peacekeeper's GUN (100 %) can."""
+    import sim
+    import simunits
+    plant = sim.Body('p', 'AlliedPowerPlant', 's1', 0.0, 0.0)
+    plant.armor, plant.kinds = simunits.fight('AlliedPowerPlant')['armor'], frozenset({'STRUCTURE'})
+    s = sim.Sim.__new__(sim.Sim)
+    assert not any(s.can_hit(w, plant) for w in simunits.fight('AlliedCommandoTech1')['weapons'])
+    assert all(s.can_hit(w, plant) for w in simunits.fight('AlliedAntiInfantryInfantry')['weapons'])
+
+
+def test_idle_acquiring_is_the_units_own_word():
+    """AutoAcquireEnemiesWhenIdle: the peacekeeper YES, the MCV NO, the Riptide writes none (Generals' 0: no idle
+    acquiring); the one ATTACK_BUILDINGS is a squad's."""
+    import simunits
+    assert simunits.acquire('AlliedAntiInfantryInfantry') == ['YES']
+    assert simunits.acquire('AlliedMCV') == ['NO']
+    assert simunits.acquire('AlliedAntiInfantryVehicle') == []

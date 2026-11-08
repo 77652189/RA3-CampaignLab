@@ -130,6 +130,13 @@ def mission():
         m.put(IFV, f'seal {lane}', role=f'{lane} foot', name=f'UNIT - CNV Seal {k} Foot')
         m.put(HELI, f'seal {lane}', 200.0, 0.0, side='s1', role=f'{lane} enemy', name=f'UNIT - CNV Seal {k} Enemy')
     m.put(BUILDING, 'seal spawn', role='spawn building', name='UNIT - CNV Seal Spawn Building')
+    for lane, (bx, by), (px, py), (us, them) in (('ebld', (120.0, 0.0), (-150.0, 0.0), ('s1', 'p1')),
+                                                 ('ebldam', (500.0, 100.0), (500.0, -120.0), ('s1', 'p1')),
+                                                 ('pam', (500.0, 100.0), (500.0, -120.0), ('p1', 's1'))):
+        k = lane.title()
+        m.put(FOOT, f'seal {lane}', side=us, role=f'{lane} foot', name=f'UNIT - CNV Seal {k} Foot')
+        m.put(WALL, f'seal {lane}', bx, by, side=them, role=f'{lane} bunker', name=f'UNIT - CNV Seal {k} Bunker')
+        m.put(BUILDING, f'seal {lane}', px, py, side=them, role=f'{lane} plant', name=f'UNIT - CNV Seal {k} Plant')
     return m
 
 
@@ -268,6 +275,53 @@ def aaopen(m):
     return t
 
 
+def _ebld(m, lane):
+    """The computer side's soldier by the player's buildings (Generals PartitionFilterRejectBuildings: a computer
+    player's units take enemy buildings by themselves, a human's only base defences): a bunker and a power plant of
+    the player's in range, the line clear. Counters: the bunker's and the plant's health, the soldier (1 = left the
+    start's 60, 10 = at the goal)."""
+    t = Test()
+    counted('CNV_Seal_Wall', '地堡血', t, health=m.role(f'{lane} bunker').name)
+    counted('CNV_Seal_Hp', '电厂血', t, health=m.role(f'{lane} plant').name)
+    x, y = m.site(f'seal {lane}')
+    t.areas[f'Test Seal {lane.title()} Start'] = square(x, y, 60.0)
+    parts = [(f'Test Seal {lane.title()} Start', 1, 'out')]
+    if lane in ('ebldam', 'pam'):
+        k = lane.title()
+        gx, gy = m.site(f'seal {lane} goal')
+        t.areas[f'Test Seal {k} Goal'] = square(gx, gy, 100.0)
+        parts.append((f'Test Seal {k} Goal', 10, 'in'))
+        # 100 = back by the plant (a strip south of the attack-move's line, round the plant: not on the way)
+        t.areas[f'Test Seal {k} By Plant'] = [(x + 300, y - 300), (x + 700, y - 300), (x + 700, y - 70), (x + 300, y - 70)]
+        parts.append((f'Test Seal {k} By Plant', 100, 'in'))
+        wp = f'Test Seal {k} Goal Point'
+        t.waypoints[wp] = (gx, gy)
+        _timers(t)
+        side = 's1' if lane == 'ebldam' else 'p1'
+        t.scripts.append(Script(f'Test - seal {lane} go', [('TIMER_EXPIRED', 'Test Seal Order')],
+                                m.order('attack_move', [m.role(f'{lane} foot').name], wp, side, crew=f'Seal{k}')))
+    _score(m, t, 'CNV_Seal_Foot', '兵', m.role(f'{lane} foot').name, parts)
+    t.bench = [('bench_watch', dict(seconds=60, every=3, sheet=False, lines=3))]
+    t.expect = []
+    return t
+
+
+def ebld(m):
+    """the enemy's soldier idle, the player's bunker 120 east and power plant 150 west."""
+    return _ebld(m, 'ebld')
+
+
+def ebldam(m):
+    """the enemy's soldier attack-moves 1000 east at 4 s past the player's bunker (100 north of its line) and power
+    plant (120 south), both 500 along."""
+    return _ebld(m, 'ebldam')
+
+
+def pam(m):
+    """ebldam with the sides swapped: the player's soldier attack-moves past the enemy's bunker and plant."""
+    return _ebld(m, 'pam')
+
+
 def spawn(m):
     t = Test()
     _timers(t)
@@ -300,4 +354,4 @@ def spawn(m):
 MISSION = {'engine_seal': mission}
 CHECKS = {'engine_seal': {'move': move, 'idle': idle, 'open': idle_open, 'cut': cut, 'row': row, 'spawn': spawn,
                            'erow': erow, 'tank': tank, 'topen': tankopen, 'arty': arty, 'attack': attack,
-                           'aa': aa, 'aaopen': aaopen}}
+                           'aa': aa, 'aaopen': aaopen, 'ebld': ebld, 'ebldam': ebldam, 'pam': pam}}

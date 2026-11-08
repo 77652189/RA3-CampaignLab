@@ -469,6 +469,28 @@ def assemble(template, power, own=None):
     return None
 
 
+_acquire = {}
+
+
+def acquire(template, own=None):
+    """The words of a template's AIUpdate AutoAcquireEnemiesWhenIdle (YES = takes enemies by itself when idle,
+    ATTACK_BUILDINGS = buildings too); [] when it writes none (Generals' default 0: no idle acquiring). Retail
+    2026-11-08: of the 56 armed templates 50 YES, 4 NO (tech-building guns), 2 none (Riptide, Bullfrog); one squad
+    'YES ATTACK_BUILDINGS'."""
+    if own and template in own:
+        m = re.search(r'\bAutoAcquireEnemiesWhenIdle="([^"]*)"', own[template])
+        return m.group(1).split() if m else []
+    key = template.lower()
+    if not _acquire:
+        _acquire[None] = {t: p for t, _, p in units()}
+    if key not in _acquire:
+        path = _acquire[None].get(key)
+        text = open(path, encoding='utf-8', errors='replace').read() if path else ''
+        m = re.search(r'\bAutoAcquireEnemiesWhenIdle="([^"]*)"', text)
+        _acquire[key] = m.group(1).split() if m else (['YES'] if not path else [])
+    return _acquire[key]
+
+
 _retail_powers = None
 
 

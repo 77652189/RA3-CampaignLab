@@ -361,6 +361,7 @@ class Body:
     immune_until: int = -1          # the frame an Iron Curtain's protection ends (weapons and superweapons, not scripts)
     armor: dict = dataclasses.field(default_factory=dict)      # damage type -> percent taken (simunits.fight)
     weapons: list = dataclasses.field(default_factory=list)    # [{range, dps, type, anti}]
+    acquire: frozenset = frozenset({'YES'})                     # AutoAcquireEnemiesWhenIdle words (simunits.acquire)
     radius: float = 0.0                                         # R8: Geometry's bounding circle (simunits.radius)
     sight: float = 0.0                                          # R8: its VisionRange alone (vision: with the shroud)
     chase: object = None                                        # R8 idle_chase: the enemy it went after by itself,
@@ -825,6 +826,7 @@ class Sim:
         else:                                   # no health in the data: a building's or a unit's usual (a guess)
             b.max_hp = b.hp = 2000.0 if 'STRUCTURE' in b.kinds else 300.0
         b.armor, b.weapons = f['armor'], f['weapons']
+        b.acquire = frozenset(simunits.acquire(template, self.own)) if b.weapons else frozenset()
         frames, b.leaves = simunits.lifetime(template, self.own)
         if frames is not None:                  # made in this frame's scripts (or, by a run event, at its start)
             made = self.eng.frame if getattr(self, 'eng', None) else int(round(at * simunits.LIFE_FPS))
@@ -2031,7 +2033,12 @@ class Sim:
 
     def can_hit(self, w, t):
         """A weapon's anti mask against a target: aircraft need ANTI_AIRBORNE, buildings ANTI_STRUCTURE (or
-        ground), the rest ground or water."""
+        ground), the rest ground or water. A weapon that does nothing to the target's armour (its damage type at 0 %:
+        Tanya's pistol, SNIPER, at every faction building) cannot take it at all, ordered or not (Generals
+        WeaponSet::getAbleToUseWeaponAgainstTarget: estimateWeaponDamage 0 -> ATTACKRESULT_INVALID_SHOT; the a6
+        Tanya who stood firing at a building, 2026-11-08)."""
+        if t.armor.get(w['type'], simunits.ARMOR_DEFAULT) <= 0:
+            return False
         anti = w['anti']
         if not anti:
             return True
@@ -2040,6 +2047,30 @@ class Sim:
         if 'STRUCTURE' in t.kinds:
             return 'ANTI_STRUCTURE' in anti or 'ANTI_GROUND' in anti
         return 'ANTI_GROUND' in anti or 'ANTI_WATER' in anti
+
+    def takes_by_itself(self, a, t):
+        """Whether `a` may take `t` with no order naming it (idle, firing on a plain move, attack-moving, going after:
+        Generals AIUpdateInterface::getNextMoodTarget -> AI::findClosestEnemy, every such path): never a structure
+        (PartitionFilterRejectBuildings) unless `a` is ATTACK_BUILDINGS or `t` a base defence (FS_BASE_DEFENSE; a
+        garrisoned building that can fire is the other exception, not modelled: no garrisons here), never a
+        NOT_AUTOACQUIRABLE one (INFERRED by its name). Bench 2026-11-08 engine_seal: the player's idle peacekeeper
+        leaves the enemy's bunkers alone (erow), the enemy's (a computer player's: Generals would let it take
+        buildings) idle and attack-moving past leaves the player's bunker and plant alone (ebld / ebldam) -- RA3 drops
+        Generals' computer exception; the a4 ice nobody shoots (2026-10-28) is the same rule. An order naming the
+        target (`a.goal`) is not filtered here. A side run by the skirmish AI (`self.ai`, woken) keeps Generals'
+        exception and takes buildings (INFERRED: the bench's s1 had no AI; a skirmish AI's attack does pull down
+        buildings -- tests/test_simai)."""
+        if 'NOT_AUTOACQUIRABLE' in t.kinds:
+            return False
+        if 'STRUCTURE' in t.kinds:
+            return ('ATTACK_BUILDINGS' in a.acquire or 'FS_BASE_DEFENSE' in t.kinds
+                    or a.owner in getattr(self, 'ai', ()))
+        return True
+
+    def auto_acquires(self, a):
+        """Whether `a` takes targets by itself now: an attack-mover always; idle or on a plain move (Generals'
+        calledDuringIdle: the idle state and the turret's scan) only with AutoAcquireEnemiesWhenIdle YES."""
+        return a.mode == 'attack' or 'YES' in a.acquire
 
     def shot_blocked(self, a, t, w):
         """Line of fire (docs/engine/pathing.md 7c; bench 2026-11-08 engine_seal idle / row / cut): a weapon with
@@ -2098,15 +2129,15 @@ class Sim:
                         self.in_range(a, a.goal, w) and self.can_hit(w, a.goal) and \
                         self.side_sees(a.owner, a.goal) and not self.shot_blocked(a, a.goal, w):
                     pick = a.goal
-                else:
+                elif self.auto_acquires(a):
                     for j in order:
                         if d[j] - a.radius - pad > w['range']:      # sorted by centre: nobody nearer after this
                             break
                         t = targets[idx[j]]
                         if not self.in_range(a, t, w, d[j]):
                             continue
-                        if t.template in self.unshot:       # our ice: only when ordered (the bench, a4 hold)
-                            continue
+                        if t.template in self.unshot or not self.takes_by_itself(a, t):
+                            continue                # a building / our ice: only when ordered (takes_by_itself)
                         if self.can_hit(w, t) and self.side_sees(a.owner, t) and not self.shot_blocked(a, t, w):
                             pick = t
                             break
@@ -2152,10 +2183,12 @@ class Sim:
                 a.auto_to = a.dest
             return
         a.chase = None
+        if 'YES' not in a.acquire:              # AutoAcquireEnemiesWhenIdle NO / none: idle, it takes nothing
+            near = []
         for dist, t in near:
             if dist - t.radius > sight:
                 break                           # sorted by centre; a radius over 0 only cuts more
-            if t.template in self.unshot or not self.side_sees(a.owner, t):
+            if t.template in self.unshot or not self.takes_by_itself(a, t) or not self.side_sees(a.owner, t):
                 continue
             if not any(self.can_hit(w, t) and not self.shot_blocked(a, t, w) for w in a.weapons):
                 continue                        # bench engine_seal row: a target behind a structure is not gone after

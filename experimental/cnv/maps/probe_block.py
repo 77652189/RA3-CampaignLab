@@ -62,6 +62,11 @@ for _k, _x, _y in (('erow', 2800.0, 1800.0), ('tank', 2800.0, 2600.0), ('arty', 
                    ('attack', 2800.0, 4200.0), ('aa', 4600.0, 1400.0), ('aaopen', 4600.0, 2300.0),
                    ('tankopen', 4600.0, 3300.0)):                                   # engine_seal shot-blocking lanes
     SITES[f'seal {_k}'] = Site(_x, _y, 60.0, f'the {_k} seal test: where its shooter stands (open ground)')
+for _k, _x in (('ebld', 600.0), ('ebldam', 1300.0)):                              # engine_seal: the enemy's soldier
+    SITES[f'seal {_k}'] = Site(_x, 4800.0, 60.0, f'the {_k} seal test: where the enemy soldier stands (open ground)')
+SITES['seal ebldam goal'] = Site(2300.0, 4800.0, 60.0, 'the ebldam seal test: where the enemy soldier attack-moves')
+SITES['seal pam'] = Site(2800.0, 4800.0, 60.0, 'the pam seal test: where the player\'s soldier stands (open ground)')
+SITES['seal pam goal'] = Site(3800.0, 4800.0, 60.0, 'the pam seal test: where the player\'s soldier attack-moves')
 PLAYERS = island.PLAYERS
 TEAMS = island.TEAMS
 
