@@ -131,6 +131,7 @@ class Horn(Device):
                '鬼王上岸': '第一个鬼王上岸了', '放出': '口子后攒着的兵放出来过（冰化了或被砸开）',
               '冰快化': f'某道冰墙只剩 {MELT_WARN:g} 秒就化了（那道墙没了就不成立；配 每隔 一个融化说一次）'}
     ACTIONS = {'开 <街|口>': '号角从头开始响（先显示倒计时）', '停': '号角停（倒计时收起）；已经出的、攒着的照旧',
+               '收': '号角停，已经出来的兵也撤回地道（删掉；中场休息时用，免得过场一结束他们就在车边）',
                '演示': '开场演示开始：工兵冻住演示的街，兵掉头绕去另一条街（只在过场里用）', '演示收': '演示的人都收走',
                '裂 <街|口>': '这个口子的冰雕脚下掉一堆碎冰（冰雕没倒，像裂了一道缝）'}
 
@@ -282,6 +283,9 @@ class Horn(Device):
             return [('CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT', self.chips.id, self.ctx.team('s1'), self.ctx.mark_of(f'chips {wid}'))]
         if what == '停':
             return [('SET_FLAG', self.on['V'], 0), ('SET_FLAG', self.on['L'], 0), ('HIDE_COUNTDOWN_TIMER', self.timer)]
+        if what == '收':                    # the horn stops and the troops out go back down: in a cutscene the trucks are safe,
+            return [('SET_FLAG', self.on['V'], 0), ('SET_FLAG', self.on['L'], 0), ('HIDE_COUNTDOWN_TIMER', self.timer)] + \
+                   [('NAMED_DELETE', n) for n in self.names_of_waves()]     # troops left at them kill them when it ends (a4, 11-08)
         return super().action(what, args)
 
     # ---- the map side: marks and areas

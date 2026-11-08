@@ -1,31 +1,63 @@
-# A4 as a player plays it (docs/story/plans/a4.md), the venue part first: the simulator's script for simshow --script.
-# The trucks (they cannot be ordered) leave at ~1:34 at 12 a second: x 1200 (the back lane) at 2:49, 2015 (plaza 1) 3:57,
-# 2830 (plaza 2) 5:05. The horn: 1:55 lane + plaza 1, 2:45 + plaza 2, 3:25, 4:15, 4:55. The army stands AHEAD of the trucks
-# (a wave from a street east of them meets it first), the ice engineers freeze the street a wave would use when it is
-# behind the trucks or at them: a cast walks up (~13 s), builds 5 s, the wall stands 30 s, a power reloads 40 s, a second
-# cast on the same spot is refused while its wall stands -- so one cast per engineer per horn, ordered ~25 s before it.
-# The relief (3 guardians, 4 peacekeepers, 2 javelins at the first horn but one) comes in at the west end and is sent on.
-# 1. the army forward of the trucks, at the first junction
+# A4 as a player plays it (docs/story/plans/a4.md): the simulator's script for simshow --script. Part 1 = the festival
+# (stage 会场), found 2026-11-08 by hill-climbing play styles in the simulator (work/re/scripts/a4climb.py, a4plays.py),
+# the venue ends with ONE truck lost (the bonus goal is for perfect play), the two others reach `halt` at 5:11.
+# Why this and not the earlier forward-army script (lost at 4:00): (1) the trucks drive at 12 a second, x 1200 (the back
+# lane) at 2:49: the second horn (2:45) makes the lane's troops at the trucks themselves, nothing but a wall on the lane
+# stops them (an army cannot, a truck dies in a few seconds), (2) a street BEHIND the trucks sends its troops at their tail
+# with the army ahead -- freeze the lane and plaza 1 every horn, leave plaza 2 (ahead of the trucks) open and put the army
+# at its gate: every wave, the rerouted ones too, then comes to the army first, (3) troops sent at a truck ignore the army
+# on the way: the army must be where they spawn or will pass, not beside the trucks (an army that escorts the trucks lost at
+# 2:35), (4) the ice engineers go back to a quiet place as soon as their wall stands (the first one died at the lane).
+# Without ice: lost at 3:12 (the lane at the trucks, 2:54). 320 random plays: none survives, the best 4:13.
+# Order times: a cast starts ~25 s before the horn (walk ~13 s, build 5 s, the wall stands 30 s, reload 40 s, one cast per
+# engineer per horn), the horn: 1:55 lane + plaza 1, 2:45 + plaza 2, 3:25, 4:15, 4:55. The relief (3 guardians, 4
+# peacekeepers, 2 javelins at the 2nd and 4th horn) is at the west end: every order below goes to it too (-AlliedAnti).
+# 1. the army: the first junction, then plaza 1's road, from the third horn on the open street's gate (plaza 2)
 95 派 guardian 去 view start
 95 派 peacekeeper 去 view start
 95 派 javelin 去 view start
-100 派 名字含 IceEngineer 去 view start
-# 2. horn 1 (1:55): the lane is frozen, plaza 1's four come on their own and the lane's four 25 s late
-90 放 engineer freeze 在 lane foot
-# 3. horn 2 (2:45): the trucks are at the lane then
-139 放 名字含 IceEngineer freeze 在 lane foot
-150 派 guardian 去 approach 1
-150 派 peacekeeper 去 approach 1
-150 派 javelin 去 approach 1
+95 派 名字含 -AlliedAnti 去 view start
+125 派 guardian 去 approach 1
+125 派 peacekeeper 去 approach 1
+125 派 javelin 去 approach 1
+125 派 名字含 -AlliedAnti 去 approach 1
+155 派 guardian 去 approach 1
+155 派 peacekeeper 去 approach 1
+155 派 javelin 去 approach 1
+155 派 名字含 -AlliedAnti 去 approach 1
+185 派 guardian 去 approach 1
+185 派 peacekeeper 去 approach 1
+185 派 javelin 去 approach 1
 185 派 名字含 -AlliedAnti 去 approach 1
-# 4. horn 3 (3:25): the lane again, from the other engineer (the first wall is down at 2:59)
-181 放 engineer freeze 在 lane foot
-# 5. horn 4 (4:15): the trucks pass plaza 1's gate at 3:57, freeze it
-225 放 名字含 IceEngineer freeze 在 inside 1
-235 派 名字含 -AlliedAnti 去 approach 2
-235 派 guardian 去 approach 2
-235 派 peacekeeper 去 approach 2
-235 派 javelin 去 approach 2
-# 6. horn 5 (4:55): plaza 2 is the one ahead
-235 派 engineer 去 approach 2
-268 放 engineer freeze 在 inside 2
+215 派 guardian 去 halt
+215 派 peacekeeper 去 halt
+215 派 javelin 去 halt
+215 派 名字含 -AlliedAnti 去 halt
+245 派 guardian 去 halt
+245 派 peacekeeper 去 halt
+245 派 javelin 去 halt
+245 派 名字含 -AlliedAnti 去 halt
+275 派 guardian 去 halt
+275 派 peacekeeper 去 halt
+275 派 javelin 去 halt
+275 派 名字含 -AlliedAnti 去 halt
+# 2. the ice: the first engineer (a cast role) takes the lane at every horn and waits at the first junction between casts,
+#    the second (comes in at the west end at 1:39) takes plaza 1 from the second horn on and waits at plaza 1's road
+90 放 engineer freeze 在 lane foot
+110 派 engineer 去 view start
+140 放 engineer freeze 在 lane foot
+140 放 名字含 IceEngineer freeze 在 inside 1
+160 派 engineer 去 view start
+160 派 名字含 IceEngineer 去 approach 1
+180 放 engineer freeze 在 lane foot
+180 放 名字含 IceEngineer freeze 在 inside 1
+200 派 engineer 去 view start
+200 派 名字含 IceEngineer 去 approach 1
+230 放 engineer freeze 在 lane foot
+230 放 名字含 IceEngineer freeze 在 inside 1
+250 派 engineer 去 view start
+250 派 名字含 IceEngineer 去 approach 1
+270 放 engineer freeze 在 inside 1
+270 放 名字含 IceEngineer freeze 在 inside 2
+290 派 engineer 去 view start
+290 派 名字含 IceEngineer 去 approach 1
