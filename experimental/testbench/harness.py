@@ -103,6 +103,56 @@ def crash_box(pid):
     return None
 
 
+def boxes(pid):
+    """[(title, [its texts])] of the process's visible standard dialog boxes (top-level, class #32770): a message
+    box the game put up -- "Steam: Failed to initialize Steam", a crash box -- which no captured frame shows (with no
+    Direct3D device yet there are no frames at all, and the parked window is off screen)."""
+    out = []
+
+    def each(h, _):
+        p = wt.DWORD()
+        user32.GetWindowThreadProcessId(h, ctypes.byref(p))
+        if p.value != pid or not user32.IsWindowVisible(h):
+            return True
+        cls = ctypes.create_unicode_buffer(256)
+        user32.GetClassNameW(h, cls, 256)
+        if cls.value != '#32770':
+            return True
+        title = ctypes.create_unicode_buffer(256)
+        user32.GetWindowTextW(h, title, 256)
+        texts = []
+
+        def child(c, _):
+            buf = ctypes.create_unicode_buffer(2048)
+            user32.GetWindowTextW(c, buf, 2048)
+            if buf.value.strip():
+                texts.append(buf.value.strip())
+            return True
+        user32.EnumChildWindows(h, EnumProc(child), 0)
+        out.append((title.value, texts))
+        return True
+    user32.EnumWindows(EnumProc(each), 0)
+    return out
+
+
+STEAM_HINT = ('Steam is not ready (bench 2026-11-08: right after boot its library never got ready -- '
+              'steamui_login.txt "Timed out waiting for library ready"): restart Steam, '
+              'python -I -X utf8 experimental/testbench/doctor.py checks it')
+BOX_WAIT = 10       # seconds a box stays up in the menu walk before it is the error (a passing one may close itself)
+BUTTONS = {'OK', 'Cancel', 'Yes', 'No', 'Retry', 'Abort', 'Ignore', '确定', '取消', '是', '否', '重试'}
+
+
+def box_error(found):
+    """The bench error for dialog boxes `found` (boxes(pid)), or None when there are none: each box's title and its
+    texts without the buttons, plus what to do when it is Steam's."""
+    if not found:
+        return None
+    said = '; '.join(f'{title or "(untitled)"}: ' + ' | '.join(t for t in texts if t not in BUTTONS)
+                     for title, texts in found)
+    hint = f' -- {STEAM_HINT}' if 'steam' in said.lower() else ''
+    return f'the game put up a box: {said}{hint}'
+
+
 def lp(x, y):
     return (int(y) << 16) | (int(x) & 0xFFFF)
 
@@ -262,6 +312,7 @@ class Session:
         self.game_s = 0.0           # mission seconds run before the current running stretch
         self.run_from = None        # when the current running stretch began (time.monotonic), None while paused
         self.rate = 1.0             # the speed the mission runs at now: x1 till speed_up
+        self.boxes = boxes          # pid -> the game's dialog boxes (a stand-in in tests)
 
     # -- life cycle -------------------------------------------------------------------------------------------
     def start(self, mod, visible=False, timeout=150, hold=True, steps=None, chapter=None, menu_frames=0.0):
@@ -353,12 +404,20 @@ class Session:
         at, done_at, parked, t = 0, 0, False, time.monotonic()
         lost = False                    # a "connection lost" box was answered: the screen may be any step now
         kept = None                     # when the last walk frame was archived (every > 0)
+        boxed = None                    # since when a dialog box of the game's has been up
         while True:
             time.sleep(1)
             s = round(time.monotonic() - t)
             self._alive()
+            # A Windows box (Steam failed, ...) blocks the game before any menu: no frame ever shows it, so ask the
+            # windows. Up BOX_WAIT s in a row: report it instead of waiting the whole timeout out as "menus stuck".
+            box = box_error(self.boxes(self.p.pid))
+            boxed = (boxed if boxed is not None else s) if box else None
+            if box and s - boxed >= BOX_WAIT:
+                raise BenchError(f'{box} (up {s - boxed} s, menus at "{steps[at]["name"]}")')
             if s > timeout:             # here, not only after a frame: with no frames at all it never got there
-                raise BenchError(f'menus stuck at "{steps[at]["name"]}" after {s} s (see {self.run_dir}\\nav_last.bmp)')
+                raise BenchError(box or f'menus stuck at "{steps[at]["name"]}" after {s} s '
+                                        f'(see {self.run_dir}\\nav_last.bmp)')
             h = main_window(self.p.pid)
             if h is None:
                 continue

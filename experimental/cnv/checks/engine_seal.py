@@ -49,6 +49,14 @@ artyrv (artyo + the player's MAP_REVEAL_ALL_PERM at the start; 测 2026-11-08 08
 artyb (artyo with an s1 AlliedPowerPlant 350 east; 测 2026-11-08 08:55) -- the V4 0, the plant 100 s1..s61; artybk (an s1
   SovietBunker 350 east; 08:57) -- the V4 0, the bunker 100 s1..s61: an idle V4 picks no structure either, so 'siege units
   pick only structures when idle' is NOT it (the V4 stayed inside its 60 in both; the counter works on both targets).
+artyfe / artyf15 / artyf30 (artyo with the V4 put down facing 0 / 15 / 30 degrees off the MCV 350 east instead of the
+  player's default north = 90 off; 测 2026-11-08 15:11-15:17) -- all three alike: the V4 0 throughout, the MCV 100 s1-s7,
+  84 at s10 (s11 in f15), then only regenerating ~1 per 3 s up to 97 at s61: an idle V4 facing within 30 degrees fires
+  ONE volley and never again; facing 90 off (artyo) it fires none.  So the facing matters, but not by the rocket's
+  AcceptableAimDelta 20 alone (30 fires), and something stops it after the first volley (not split yet).
+  artyf60 (60 off, its own lane at (300, 2500); 15:24) -- the same: 84 at s10, then regenerating to 97: one volley.
+  So 0..60 off: one volley, 90 off: none (CanOnlyAttackTargetsInFront-like strict half plane?); the V4 rocket is
+  ClipSize 1, ClipReloadTime 4.5-5.5 s, ReAcquireDetailType PRE_FIRE: the stop is after its one clip.
 attack -- the soldier 1 at s4 (left the start), 5 from s7 (north of the row's end, never east of it); the MCV 99 s1-s7,
   97 s10, 96 s13 ... 86 s37, 85 s40-s61: told to attack, it walks round the row's end and fires from there.
 aa (IFV, a hovering Twinblade with NO_ATTACK 200 east, the row 100 east) and aaopen (no row): the same readings, 79 s1,
@@ -68,7 +76,7 @@ WALL = 'SovietBunker'
 ENEMY = 'AlliedMCV'
 TANK, V4, HELI = 'AlliedAntiVehicleVehicleTech1', 'SovietAntiStructureVehicle', 'SovietAntiGroundAircraft'
 BUILDING = 'AlliedPowerPlant'
-FACING = {'artyfe': 0.0, 'artyf15': 15.0, 'artyf30': 30.0}    # the V4's facing off the MCV, degrees (p1's default: 90)
+FACING = {'artyfe': 0.0, 'artyf15': 15.0, 'artyf30': 30.0, 'artyf60': 60.0}    # the V4's facing off the MCV, degrees (p1's default: 90)
 RING, R = 36, 150.0
 MAKE, ORDER = 1.0, 4.0
 
@@ -351,6 +359,11 @@ def artyf30(m):
     return _idle(m, 'artyf30', False)
 
 
+def artyf60(m):
+    """artyfe with the V4 turned 60 degrees off the MCV (between 30, one volley, and the default 90, none)."""
+    return _idle(m, 'artyf60', False)
+
+
 def attack(m):
     """row's set-up (lane 'attack'), plus an explicit attack order on the MCV at 4 s."""
     t = _wall(m, 'attack', 'p1', 105.0)
@@ -455,5 +468,5 @@ MISSION = {'engine_seal': mission}
 CHECKS = {'engine_seal': {'move': move, 'idle': idle, 'open': idle_open, 'cut': cut, 'row': row, 'spawn': spawn,
                            'erow': erow, 'tank': tank, 'topen': tankopen, 'arty': arty, 'artyhp': artyhp, 'artyo': artyopen, 'artyrv': artyrv, 'arty250': arty250,
                            'artyatk': artyatk, 'artytk': artytk, 'artyb': artyb, 'artybk': artybk, 'artyfe': artyfe,
-                           'artyf15': artyf15, 'artyf30': artyf30, 'attack': attack,
+                           'artyf15': artyf15, 'artyf30': artyf30, 'artyf60': artyf60, 'attack': attack,
                            'aa': aa, 'aaopen': aaopen, 'ebld': ebld, 'ebldam': ebldam, 'pam': pam}}

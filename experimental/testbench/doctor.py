@@ -3,7 +3,8 @@
     python -I -X utf8 experimental/testbench/doctor.py [--verbose]
 
 OK / WARN / MISSING / BROKEN per item; exit 1 when anything is MISSING or BROKEN (WARN: regenerable or optional).
-Read only: it writes nothing, starts no game, takes no lock (it only runs each env's python once to print its version).
+Read only: it writes nothing, starts no game, takes no lock (it only runs each env's python once to print its version,
+and tasklist to see Steam).
 Rebuilding each item: README.md, Requirements section."""
 import importlib.util
 import json
@@ -53,6 +54,66 @@ def python_version(py):
     return (r.stdout.strip(), '') if r.returncode == 0 else (None, (r.stderr or r.stdout).strip()[-200:])
 
 
+STEAM_HOWTO = 'restart Steam and wait for its library to show (the game shows "Failed to initialize Steam" till then)'
+
+
+def steam_log():
+    """Steam's login log (logs/steamui_login.txt under the Steam folder the registry names), or None."""
+    root = r'C:\Program Files (x86)\Steam'
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r'Software\Valve\Steam') as k:
+            root = winreg.QueryValueEx(k, 'SteamPath')[0]
+    except (OSError, ImportError):
+        pass
+    p = os.path.join(root, 'logs', 'steamui_login.txt')
+    return p if os.path.isfile(p) else None
+
+
+def steam_state(tail):
+    """(status, detail) from the end of steamui_login.txt: OK when the last login state set is Success and no
+    "Timed out waiting for library ready" came after it (bench 2026-11-08: after a boot Steam logged that for minutes
+    and every game start failed on a Steam box)."""
+    state, stuck = None, False
+    for line in tail.splitlines():
+        if 'SetLoginState:' in line:
+            state = line.split('SetLoginState:', 1)[1].split(' - ')[0].strip()
+            stuck = False
+        elif 'Timed out waiting for library ready' in line:
+            stuck = True
+    if state is None and not stuck:
+        return 'WARN', 'no login state in the log tail'
+    if stuck:
+        return 'BROKEN', 'Steam timed out waiting for its library (WaitingForLibraryReady)'
+    if state != 'Success':
+        return 'BROKEN', f'Steam login state {state}'
+    return 'OK', 'login state Success'
+
+
+def steam_running():
+    try:
+        r = subprocess.run(['tasklist', '/FI', 'IMAGENAME eq steam.exe', '/NH'], capture_output=True, text=True,
+                           timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return 'steam.exe' in r.stdout.lower()
+
+
+def check_steam():
+    log = steam_log()
+    if log is None:
+        add('WARN', 'Steam ready', 'no logs/steamui_login.txt found', 'cannot tell: start Steam once')
+        return
+    if steam_running() is False:
+        add('BROKEN', 'Steam ready', 'steam.exe is not running', 'start Steam (the game needs it)')
+        return
+    with open(log, 'rb') as f:
+        f.seek(max(0, os.path.getsize(log) - 8192))
+        tail = f.read().decode('utf-8', 'replace')
+    status, detail = steam_state(tail)
+    add(status, 'Steam ready', f'{log}: {detail}', '' if status == 'OK' else STEAM_HOWTO)
+
+
 def main():
     verbose = '--verbose' in sys.argv
 
@@ -64,6 +125,7 @@ def main():
 
     # the Steam game (read only source of the bench copy)
     check_path('game (Steam)', labpaths.GAME, 'install Red Alert 3 from Steam or set CNV_GAME', must_be_dir=True)
+    check_steam()
 
     # bench copy
     miss = [f for f in BENCH_FILES if not os.path.isfile(os.path.join(BENCH, f))]
