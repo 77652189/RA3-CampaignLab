@@ -406,3 +406,10 @@
 - **A4 跑出来的东西**：开场过场 0:00～1:19 锁操作（`InScene` 旗同段），1:19 交还；5:11～6:41 又有两段过场（赢之前的收尾）。K5 没有黑边。**K1 有一处**（`--check win` 整局打赢那一遍）：9:03 一口气来 4 条功能字幕（`CNV_A4_Show_65/66/74/80`），排队到 9:12～9:18 才出，"号角响了！"晚了约 10 秒。是结局前一堆事件挤在一起，不是 A4 的闲话。原来 `test_architecture` 的 G3B 只跑"玩家什么都不做"那一遍，抓不到。**没改 A4 数据**（关卡制作暂缓）；要不要错开或合并，归后面恢复出关时定。
 - **给 A（总控转）的钩子**，`sim.py` 里做成原生的话 `ShowSim` 能变薄（现在都不急）：① `act` 里 `MOVE_CAMERA_TO` 存 `(t, 起点, 终点, 秒数)` 而不只存终点；② `CAMERA_LETTERBOX_*`、`CAMERA_FOLLOW_NAMED`、`HIDE_COUNTER` 别放进 `IGNORED`；③ `show_caption` 保留脚本要的秒数；④ 开局把 `Sim.camera` 设成地图 `start`。清单也写在 `simshow.HOOKS`。
 - **下一步（建议）**：① 把 `simshow.problems` 并进 `simproxy` 的 `--compare` 输出（B 的文件，要总控转告）；② 测试台量一次开局头几帧的镜头和 `LETTERBOX_HALF`（`bench_start(menu_frames=2)` 存帧）；③ 同样的"整局打赢"再对 A4 以外的关跑（需要各关有能打赢的剧本）。
+
+#### 第三十二个会话收尾（11-07，全量 pytest：616 过、5 红，已处理 2 条，其余 3 条不是展示逻辑层引起的）
+
+- 全量（`work/logs/levels_full.log`，23 分钟）：**我们这边的两条已修**：`test_architecture::test_g3a_caption_action_has_one_outlet`（`simshow.py` 不再自己写字幕动作名，取 `sim.SHOWN`，984db90）；`test_level_cards::test_plans_compile_against_the_published_interfaces`（`plans/a4.md` 的 `检查` 漏列上个会话加的 `smpos/smev/smwest/smdecoy`，补上）。
+- **不是我们的、已转给 A 线**：`test_simproxy::test_the_ice_goes_where_the_player_put_it`、`test_architecture` G5（总控说已转）。**没报过的两条**：`test_a1_plan::test_walking_to_the_bridge_end_does_not_end_the_mission` 和 `test_sim::test_the_wiring_checks_in_the_simulator`（`a1 walk`）：A1 走查在模拟器里 0:13 被 `CNV A1 - Rule 3` 判输，应该不结束。没动过 A1 数据，嫌疑是 `ef4a7d7` R8（空闲单位追着看到的目标打）之后 A1 的桥头单位提前交火；**没查**，归 A 线 / A1 的主人（关卡线暂缓出关，要查的话先看 A1 桥头两边的单位是不是互相看得见）。
+- 跑全量时必须写 `pytest -q tests`（不带目录会扫进 `work/downloads/blender` 的库而中断）。
+- **下一步第一项**：用 `simshow.problems` 并进 `simproxy --compare`（B 的文件，要总控转告）；其次测试台量开局头几帧镜头与 `LETTERBOX_HALF`；再次各关写"整局打赢"剧本后跑 `simshow`。A4 的 K1：整局打赢结尾 9:03 四条功能字幕挤在一起（见上节），等恢复出关再定。
