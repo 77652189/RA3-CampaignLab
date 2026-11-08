@@ -92,5 +92,21 @@ def terrain(m):
     tiles.store()
 
 
+SCENERY = []                               # none: contract.map_design lints a map with ground() by its scenery
+
+
+def ground():
+    """The heights as the simulator asks them (sim.Ground): level ground, without the map."""
+    import platprops
+    w, h, b = platmap.CONTAINER
+    return platprops.Ground(e=np.full((h, w), platmap.TIER[1], np.float32))
+
+
+def impassable():
+    """Field 0's cells as the simulator asks them (sim.Ground): the fences and the field-0 walls."""
+    w, h, b = platmap.CONTAINER
+    return walls(h, w, b)
+
+
 def like(m, objs, tmpl):
     return island.like(m, objs, tmpl)

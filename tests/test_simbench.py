@@ -670,3 +670,47 @@ def test_air_the_twinblade_attacks_from_its_reach_not_overhead():
     assert all(r['近100'] == 0 for _, r in rows)
     assert abs(next(k for k, r in rows if r['坦克血'] < 100) - 4) <= 2
     assert abs(next(k for k, r in rows if r['坦克血'] <= 8) - 18) <= 4
+
+
+# ---- buildings in the way (sim.Sim.reblock, Ground.set_blocks): docs/engine/pathing.md 6, know-how.md A4 ice walls
+def _block_rows(check):
+    _, t, s = _sim_resolve('engine_block', check)
+    s.run(30.0)
+    labels = [c[1] for c in t.counters]
+    return [(sec, dict(zip(labels, v))) for sec, v in s.series]
+
+
+def _sim_resolve(build_name, check):
+    import build
+    import sim
+    m, t, _ = build.resolve(build_name, check)
+    return m, t, sim.Sim(m, t)
+
+
+def test_block_a_unit_on_the_move_goes_through_a_building_made_since():
+    """Bench 2026-11-04 `cnv_check engine_block wall`: the bitmap wall and the map's row of bunkers 11 (round by the
+    gap, s7); the row made a second after the order 10, at the goal s4 (straight through it). The simulator s8."""
+    rows = _block_rows('wall')
+    end = rows[-1][1]
+    assert end['位图墙'] == 11 and end['建筑墙'] == 11 and end['后建墙'] == 10, rows[-1]
+    assert abs(next(k for k, r in rows if r['后建墙'] == 10) - 4) <= 1
+    assert abs(next(k for k, r in rows if r['建筑墙'] == 11) - 7) <= 1
+
+
+def test_block_the_late_row_stands_by_the_first_second():
+    """Bench `made`: all 8 of the late row counted from s1 (the counter caps at 8), the map's row 8 from the start."""
+    rows = _block_rows('made')
+    assert rows[0][1]['建筑墙座数'] == 8
+    assert next(k for k, r in rows if r['后建墙座数'] == 8) <= 1
+
+
+def test_block_a_new_order_goes_round_a_building_made_before_it_infantry_too():
+    """Bench 2026-11-08 `cnv_check engine_block foot`: the late row made at the start, 4 s on the IFV and a
+    peacekeeper beside it ordered to the goal -- both 11 (round by the gap), the IFV at the goal s13, the soldier s22.
+    So a structure made in the run is in a new order's way for infantry as for a vehicle (know-how.md's A4 ice walls
+    letting soldiers out was not that). The simulator s12 / s22."""
+    rows = _block_rows('foot')
+    end = rows[-1][1]
+    assert end['后建墙'] == 11 and end['后建墙步兵'] == 11, rows[-1]
+    assert abs(next(k for k, r in rows if r['后建墙'] == 11) - 13) <= 2
+    assert abs(next(k for k, r in rows if r['后建墙步兵'] == 11) - 22) <= 2

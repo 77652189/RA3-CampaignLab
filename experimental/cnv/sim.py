@@ -477,6 +477,8 @@ class Ground:
             e = mapmod.ground().e
             import newmap
             walk = (e > newmap.WATERLINE + 10) & (platmap.slope_of(e) <= platmap.STEEP)
+            if hasattr(mapmod, 'impassable'):                   # a probe's field-0 cells (maps/probe_block.py)
+                walk &= ~mapmod.impassable()
             bridge = np.zeros_like(walk)
         import newmap
         water = e < newmap.WATERLINE - 5
@@ -757,14 +759,12 @@ class Sim:
         return None
 
     def reblock(self):
-        """The way as it stands now; whoever is on the move takes it anew. Not one stopped short (`held_up`): a4 win's
-        trucks, stopped at (2914, 2500), would leave when the north command falls at 5:55 and reach the harbour ~90 s
-        before the bench's (tried 2026-11-08); they wait for the last leg's order."""
-        shapes = [s for s in (self.blocks(b) for b in self.living()) if s]
-        if self.ground.set_blocks(shapes):
-            for b in self.living():
-                if b.path and b.dest is not None:
-                    self.send(b, b.dest)
+        """The way as it stands now, for the orders given from now on: whoever is on the move keeps the way it was
+        given and goes through what came up since (docs/engine/pathing.md 6, bench 2026-11-04 engine_block wall: the
+        IFV ordered a second before its row of bunkers was made drove straight through it, s4, not round by the gap).
+        A new order goes round a building made in the run, infantry's as a vehicle's (bench 2026-11-08 engine_block
+        foot: the IFV and a peacekeeper ordered 3 s after the row was made both went round by the gap, s13 / s22)."""
+        self.ground.set_blocks([s for s in (self.blocks(b) for b in self.living()) if s])
 
     # ---- the world
     def owner_of(self, side):

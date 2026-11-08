@@ -11,6 +11,8 @@ enemy: the wall has a straight gap plugged by two enemy MCVs (unarmed), the far 
 Read (测, 2026-11-04, docs/engine/pathing.md 6, 7): wall -- bits and built 11 (round, s7), late 10 at s4 (through
 the row, made by s1: `made` reads 8 and 8); enemy -- move 10 at s25 (through the plug; `plugs` again: not by s41),
 attack never there, the MCV 98 -> 24 in 90 s.
+foot (测, 2026-11-08): the row made at the start, the IFV and a peacekeeper ordered at s4 -- both 11 (round): the IFV
+by the gap s7, at the goal s13; the soldier s10 / s22. A made structure is in a new order's way, infantry's too.
 """
 from maps import probe_block
 from parts import Mission, Script, Test, counted, square
@@ -19,7 +21,9 @@ IFV = 'AlliedAntiAirVehicleTech1'
 TANK = 'AlliedAntiVehicleVehicleTech1'
 WALL = 'SovietBunker'              # the ice wall is a structure; a retail one stands in (G5: no units/ imports)
 PLUG = 'AlliedMCV'
+FOOT = 'AlliedAntiInfantryInfantry'
 LATE = 1.0
+AFTER = 4.0                        # foot: the order, 3 s after the late row is made
 LABEL = {'bits': '位图墙', 'built': '建筑墙', 'late': '后建墙', 'enemy move': '敌堵移动', 'enemy attack': '敌堵攻移'}
 
 
@@ -31,6 +35,7 @@ def mission():
     m = Mission(name='CampBlock', map=probe_block, facts={})
     for lane in ('bits', 'built', 'late'):
         m.put(IFV, f'{lane} start', role=f'{lane} unit', name=f'UNIT - CNV Block {_key(lane)} Unit')
+    m.put(FOOT, 'late start', 80.0, 0.0, role='late foot', name='UNIT - CNV Block Late Foot')    # foot's soldier
     x0, y0 = m.site('built wall')
     for k, (x, y) in enumerate(probe_block.ROW['built']):
         m.put(WALL, 'built wall', x - x0, y - y0, name=f'UNIT - CNV Block Built Wall {k}',
@@ -95,6 +100,35 @@ def made(m):
     return t
 
 
+def foot(m):
+    """The late row made first (LATE), then -- AFTER -- the late lane's IFV and a soldier beside it ordered to the
+    goal: is a structure made in the run in a new order's way, for a vehicle and for infantry (docs/engine/pathing.md
+    6). Counters as wall's: 11 went round by the gap, 10 straight through."""
+    t = Test()
+    make = []
+    for k, xy in enumerate(probe_block.ROW['late']):
+        wp = f'Test Block Late {k}'
+        t.waypoints[wp] = xy
+        make.append(('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', f'UNIT - CNV Block Late Wall {k}', WALL, m.team('p1'), wp))
+    t.scripts.append(Script('Test - late wall', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))] + make))
+    t.scripts.append(Script('Test - wait', [], [('SET_MILLISECOND_TIMER', 'Test Block After', AFTER)]))
+    wp = 'Test Block Late Goal'
+    t.waypoints[wp] = m.site('late goal')
+    order = m.order('move', [m.role('late unit').name], wp, crew='BlockLate') + \
+        m.order('move', [m.role('late foot').name], wp, crew='BlockFoot')
+    t.scripts.append(Script('Test - go', [('TIMER_EXPIRED', 'Test Block After')], order))
+    _scored(m, t, 'late')
+    counter = 'CNV_Block_Foot'
+    t.counters.append((counter, '后建墙步兵'))
+    for k, (site, half, n) in enumerate((('late gap', 140.0, 1), ('late goal', 100.0, 10))):
+        t.scripts.append(Script(f'Test - {counter} {k}', [('NAMED_INSIDE_AREA', m.role('late foot').name,
+                                                           f'Test Block {_key(site)}')],
+                                [('INCREMENT_COUNTER', n, counter)], once=True))
+    t.bench = [('bench_watch', dict(seconds=60, every=3, sheet=False, lines=2))]
+    t.expect = []
+    return t
+
+
 def enemy(m):
     t = Test()
     order = [('MAP_REVEAL_ALL_PERM', m.player('p1'))]
@@ -123,4 +157,4 @@ def plugs(m):
 
 # the builds this module makes and their checks (cnv/registry.py)
 MISSION = {'engine_block': mission}
-CHECKS = {'engine_block': {'wall': wall, 'made': made, 'enemy': enemy, 'plugs': plugs}}
+CHECKS = {'engine_block': {'wall': wall, 'made': made, 'foot': foot, 'enemy': enemy, 'plugs': plugs}}
