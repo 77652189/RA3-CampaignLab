@@ -366,6 +366,7 @@ class Body:
     chase: object = None                                        # R8 idle_chase: the enemy it went after by itself,
     home: tuple = None                                          # where it stood then (it walks back),
     auto_to: tuple = None                                       # and the way's end that rule gave it
+    stood_for: tuple = None                                     # the goal it was told and stands short of (send)
     engaged: bool = False                                       # an attack-mover with an enemy in range: holds
     alive: bool = True
     deleted: bool = False
@@ -602,7 +603,8 @@ class Ground:
     def closest(self, g, a, z):
         """R7: the goal out of reach -- the way to the cell it can reach nearest the goal (bench 2026-11-07
         engine_land: the A4 transport sent to the quay's top went straight to its foot and stayed; the Generals
-        pathfinder's closest path). None when that is where it stands."""
+        pathfinder's closest path; bench 2026-11-08 engine_seal move: a peacekeeper walled in, sent 600 out, walked
+        to the wall's inside nearest the goal and stood). [] when that is where it stands: it stays (not stuck)."""
         from skimage import graph
         m = graph.MCP_Geometric(np.where(g, 1.0, np.inf))
         cost, _ = m.find_costs([a])
@@ -610,7 +612,7 @@ class Ground:
         k = int(np.argmin((jj - z[0]) ** 2 + (ii - z[1]) ** 2))
         end = (int(jj[k]), int(ii[k]))
         if end == tuple(a):
-            return None
+            return []
         pts = [self.world(c) for c in m.traceback(end)]
         return pts[1::3] + [pts[-1]] if len(pts) > 3 else [pts[-1]]
 
@@ -1365,14 +1367,21 @@ class Sim:
             self.note('卡住', f'{self.label(b)} 找不到要去的地方 {target}')
             return
         path = self.ground.within(b.surface, (b.x, b.y), p, reach) if reach else None
+        stands = False
         if path is None:
             path = self.ground.route(b.surface, (b.x, b.y), p, closest=True)
+            stands = path == []
         b.dest = p
         if path is None:
             self.note('卡住', f'{self.label(b)} 到不了 {target if isinstance(target, str) else "目标"}'
                               f'（{b.surface} 没有路）')
             b.path = []
             return
+        if stands and b.dest != b.stood_for:
+            # walled in, where it stands is the nearest it gets: it stays (bench engine_seal move); not stuck
+            self.note('够不着', f'{self.label(b)} 走不到 {target if isinstance(target, str) else "目标"}，'
+                                f'原地就是能到的最近处，站着')
+            b.stood_for = b.dest
         b.path = path
         self.change()
 

@@ -53,6 +53,11 @@ for _lane, ((_x0, _y0), _, _) in BOXES.items():
 for _lane in ('enemy move', 'enemy attack'):
     _x0, _y0 = BOXES[_lane][0]
     SITES[f'{_lane} plug'] = Site(_x0 + 200.0, _y0 + H / 2, 30.0, 'the straight gap, where the enemy stands')
+CUT = (3900.0 + 120.0, 3500.0 - 140.0, 3900.0 + 300.0, 3500.0 + 140.0)    # 'seal cut': a closed ring of field-0 ground
+for _k, _y in (('move', 700.0), ('idle', 1400.0), ('idle open', 2100.0), ('spawn', 2800.0), ('cut', 3500.0),
+               ('row', 4200.0)):                                                  # checks/engine_seal.py
+    SITES[f'seal {_k}'] = Site(3900.0, _y, 60.0, f'the {_k} seal test: where its units stand (open ground)')
+    SITES[f'seal {_k} goal'] = Site(4500.0, _y, 60.0, f'the {_k} seal test: 600 east of its start')
 PLAYERS = island.PLAYERS
 TEAMS = island.TEAMS
 
@@ -77,6 +82,8 @@ def walls(h, w, border):
             if straight:
                 wall &= ~rect(x0 + 200.0 - GAP_W / 2, -1e9, x0 + 200.0 + GAP_W / 2, 1e9)
             on |= wall
+    cx0, cy0, cx1, cy1 = CUT                  # a closed box (walls 40 thick, 100 inside) on field 0: nothing walks in
+    on |= rect(cx0, cy0, cx1, cy1) & ~rect(cx0 + 40, cy0 + 40, cx1 - 40, cy1 - 40)
     return on
 
 

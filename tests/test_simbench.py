@@ -737,3 +737,67 @@ def test_block_a_new_order_goes_round_a_building_made_before_it_infantry_too():
     assert end['后建墙'] == 11 and end['后建墙步兵'] == 11, rows[-1]
     assert abs(next(k for k, r in rows if r['后建墙'] == 11) - 13) <= 2
     assert abs(next(k for k, r in rows if r['后建墙步兵'] == 11) - 22) <= 2
+
+
+# ---- walled in, no way (sim.Ground.closest, Sim.send): docs/engine/pathing.md 6, A4 horn troopers behind the ice
+def _seal_rows(check, secs=30.0):
+    _, t, s = _sim_resolve('engine_seal', check)
+    s.run(secs)
+    labels = [c[1] for c in t.counters]
+    return [(sec, dict(zip(labels, v))) for sec, v in s.series], s
+
+
+def test_seal_a_walled_in_soldier_walks_to_the_wall_nearest_the_goal_and_stands():
+    """Bench 2026-11-08 `cnv_check engine_seal move`: a ring of the player's bunkers made at s1, the order at s4 to a
+    goal 600 out -- the peacekeeper 7 (left the start, the east wall's inside) and there to s61, never at the goal. The
+    simulator walks it to the cell nearest the goal and keeps it there; standing short is not 'stuck'."""
+    rows, s = _seal_rows('move')
+    assert rows[-1][1]['兵'] == 7, rows[-1]
+    assert next(k for k, r in rows if r['兵'] == 7) <= 8
+    assert not [x for x in s.log if x[1] == '卡住']
+
+
+@pytest.mark.xfail(strict=True, reason='bench engine_seal move: the walled-in IFV ends in the ring\'s south part (17), '
+                   'not at the east wall; the simulator takes it to the cell nearest the goal (3). Not looked into')
+def test_seal_a_walled_in_ifv_ends_in_the_rings_south_part():
+    rows, _ = _seal_rows('move')
+    assert rows[-1][1]['车'] == 17, rows[-1]
+
+
+def test_seal_units_made_inside_a_building_come_out_and_go():
+    """Bench `engine_seal spawn`: an IFV and a peacekeeper made at a power plant's centre at s1, ordered 600 east at s4
+    -- both out by themselves, at the goal (13) the IFV s10, the soldier s13. The simulator s9 / s16."""
+    rows, _ = _seal_rows('spawn')
+    assert rows[-1][1]['车'] == 13 and rows[-1][1]['兵'] == 13, rows[-1]
+    assert abs(next(k for k, r in rows if r['车'] == 13) - 10) <= 2
+    assert abs(next(k for k, r in rows if r['兵'] == 13) - 13) <= 3
+
+
+def test_seal_open_an_idle_soldier_fires_from_where_it_stands_at_210():
+    """Bench `engine_seal open` (no ring): the peacekeeper never leaves its start, the MCV 210 off 99 % at s1 .. 88 %
+    at s61 (it fires from there: the MCV is big). The simulator the same, 89 % at s40."""
+    rows, _ = _seal_rows('open', 40.0)
+    assert all(r['兵'] == 0 for _, r in rows)
+    assert 85 <= rows[-1][1]['敌车血量'] <= 95, rows[-1]
+
+
+def test_seal_cut_off_by_ground_it_still_fires():
+    """Bench `engine_seal cut`: the MCV 210 off behind a closed box of impassable ground -- the peacekeeper fires as
+    in `open` (88 % at s61): no way to the target does not stop an idle unit taking it. The simulator the same."""
+    rows, _ = _seal_rows('cut', 40.0)
+    assert all(r['兵'] == 0 for _, r in rows)
+    assert 85 <= rows[-1][1]['敌车血量'] <= 95, rows[-1]
+
+
+SHOT_BLOCKED = ('bench engine_seal idle / row (2026-11-08): the player\'s own bunkers between an idle peacekeeper and an '
+                'MCV 210 off (a ring round it, or a row across with both ends open) -- it neither fires (99-100 % for '
+                '61 s) nor moves; over impassable ground (`cut`) it fires. Structures in the line block the shot; the '
+                'simulator has no line of fire. Not yet known: an enemy\'s structures, the ice walls, other weapons '
+                '(cannon, artillery, anti-air)')
+
+
+@pytest.mark.xfail(strict=True, reason=SHOT_BLOCKED)
+@pytest.mark.parametrize('variant', ['idle', 'row'])
+def test_seal_structures_in_the_line_block_the_shot(variant):
+    rows, _ = _seal_rows(variant, 40.0)
+    assert rows[-1][1]['敌车血量'] >= 99, rows[-1]
