@@ -294,6 +294,40 @@ def test_r8_attack_move_past_does_not_turn_aside(variant):
     assert rows[-1]['终点'] == 1 and all(r['坦克血'] == 100 for r in rows)
 
 
+# ---- re-ordering: the same attack order given again every frame (sim.Sim.order_attack ignores it)
+# bench 2026-11-07 engine_reorder (readings in checks/engine_reorder.py): straight on, round a wall line (dt*), and
+# standing in range but turned 90 degrees away (tu*), King or Guardian, every frame or once: all walk and fire alike,
+# the wall hurt from s10 (straight), s16 (dt King), s13 (dt Guardian), s14 (tu King), s13 (tu Guardian). A4's King
+# stalling on the bridge under every-frame orders (level line 06282d5) did not show on the island (no bridge there).
+def _reorder_rows(variant, until):
+    import build
+    import sim
+    m, t, _ = build.resolve(f'reorder_{variant}', 'frames')
+    s = sim.Sim(m, t)
+    s.run(until)
+    labels = [lab for _, lab in t.counters]
+    return [(k, dict(zip(labels, row))) for k, row in s.series if k >= 1]
+
+
+@pytest.mark.parametrize('once, every, until, bench', [('once', 'every', 25.0, 10), ('dt1', 'dtev', 45.0, 16),
+                                                       ('tu1', 'tuev', 35.0, 14)])
+def test_reorder_every_frame_is_the_order_once(once, every, until, bench):
+    """The every-frame variant runs row for row as the once one, and the wall is hurt within 3 s of the bench (the
+    simulator starts ~1-2 s late: no acceleration)."""
+    a, b = _reorder_rows(once, until), _reorder_rows(every, until)
+    assert a == b
+    hp = next(k for k in a[0][1] if '血' in k)
+    first = next(k for k, r in a if r[hp] < 100)
+    assert abs(first - bench) <= 3
+
+
+@pytest.mark.parametrize('variant, until, bench', [('dtevg', 50.0, 13), ('tuevg', 35.0, 13)])
+def test_reorder_every_frame_guardian(variant, until, bench):
+    rows = _reorder_rows(variant, until)
+    hp = next(k for k in rows[0][1] if '血' in k)
+    assert abs(next(k for k, r in rows if r[hp] < 100) - bench) <= 3
+
+
 # ---- power: a POWERED structure of a player short of power holds its fire (sim.Sim.unpowered)
 # bench 2026-11-07 engine_powerdef (readings in checks/engine_powerdef.py): s1's Tesla coil (-75) beside six NO_ATTACK
 # Guardians; on (a plant +100): first loss at 111, then one per ~125 frames; off (no plant): none in 728; cut (the

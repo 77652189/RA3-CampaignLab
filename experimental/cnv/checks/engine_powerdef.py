@@ -21,17 +21,19 @@ RESULTS (bench 2026-11-07; script frames run ~15 a second; 帧数 is the frame, 
   Reading: a POWERED defence with its owner short of power does not fire; cutting the supply stops it within a shot
   interval; restoring it starts it again after about 325 frames (the first shot; not the exact power-up time).
 """
-from missions.powerdef_bench import N_TANKS, PLANT, VARIANTS, PLANT_AT, tank_name
 from parts import Script, Test, counted
 
+VARIANTS = ('on', 'off', 'cut', 'back')           # the mission's (missions/powerdef_bench.py), in its order
+PLANT = 'SovietPowerPlant'
 EVENT, RUN = 10.0, 45.0
 
 
 def frames(m):
     t = Test()
     v = VARIANTS[m.facts['variant']]
+    N_TANKS = m.facts['tanks']
     p1 = m.player('p1')
-    start = [('MAP_REVEAL_ALL_PERM', p1)] + [('UNIT_CHANGE_OBJECT_STATUS', tank_name(k), 'NO_ATTACK', 1)
+    start = [('MAP_REVEAL_ALL_PERM', p1)] + [('UNIT_CHANGE_OBJECT_STATUS', m.role(f'tank {k}').name, 'NO_ATTACK', 1)
                                              for k in range(N_TANKS)]
     if v in ('cut', 'back'):
         start.append(('SET_MILLISECOND_TIMER', 'Test Event', EVENT))

@@ -16,7 +16,20 @@ from units import icewall as iw
 WALL = 'CNV_ReoWall'
 TANK = 'AlliedAntiVehicleVehicleTech1'
 S, W, T, M = (0.0, -400.0), (0.0, 500.0), (250.0, 500.0), (0.0, 200.0)
-VARIANTS = ('once', 'every', 'bare', 'tank', 'move', 'alt', 'late')
+OLD = ('once', 'every', 'bare', 'tank', 'move', 'alt', 'late')
+DT = ('dt1', 'dtev', 'dtevg')      # detour: a barrier row at y = 50, open only at the east end
+TU = ('tu1', 'tuev', 'tuevg')      # turn: walk east to P (west was the sea), then attack W2 (due north of P, a 90 degree turn)
+VARIANTS = OLD + DT + TU
+BAR = 'CNV_ReoBar'
+WALL2 = 'UNIT - CNV Reo Wall2'
+P, W2, GAP = (200.0, -400.0), (200.0, -250.0), (380.0, 50.0)
+BAR_XS = list(range(-420, 251, 70)) + [250]   # 80-wide blocks at 70 steps, no seam; open for x > 290
+
+
+def modname(v):
+    # the build names the mod name + 'Frames': 'CampRo' + 2 letters + 'Frames' = 14, the limit is 15
+    short = {'dt1': 'D1', 'dtev': 'De', 'dtevg': 'Dg', 'tu1': 'U1', 'tuev': 'Ue', 'tuevg': 'Ug'}
+    return 'CampRo' + (v[:2].capitalize() if v in OLD else short[v])
 
 
 def mission(name, variant):
@@ -27,7 +40,15 @@ def mission(name, variant):
     m.put(TANK, 'west field', *T, role='tank', name='UNIT - CNV Reo Tank')
     for part, label, at in (('s', 'S', S), ('mid', 'Mid', (0.0, 0.0)), ('near', 'Near', (0.0, 330.0)), ('m', 'M', M)):
         m.waypoint(part, f'CNV Reo {label}', 'west field', *at)
+    if variant in DT:
+        m.units += [iw.wall(BAR, length=80, shape='square', lifetime=None)]
+        m.waypoint('gap', 'CNV Reo Gap', 'west field', *GAP)
+        for x in BAR_XS:
+            m.put(BAR, 'west field', float(x), 50.0, role='bar')
+    if variant in TU:
+        m.put(WALL, 'west field', *W2, role='wall2', name=WALL2)
+        m.waypoint('p', 'CNV Reo P', 'west field', *P)
     return m
 
 
-MISSION = {f'reorder_{v}': (lambda v=v: mission('CampRo' + v[:2].capitalize(), v)) for v in VARIANTS}
+MISSION = {f'reorder_{v}': (lambda v=v: mission(modname(v), v)) for v in VARIANTS}

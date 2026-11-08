@@ -22,7 +22,7 @@ def tank_name(k):
 
 
 def mission(name, variant):
-    m = Mission(name=name, map=island, facts={'variant': VARIANTS.index(variant)})
+    m = Mission(name=name, map=island, facts={'variant': VARIANTS.index(variant), 'tanks': N_TANKS})
     m.spawns |= {PLANT}
     m.put(COIL, 'west field', 0.0, 0.0, side='s1', role='coil', name='UNIT - CNV Pd Coil')
     if variant in ('on', 'cut'):
