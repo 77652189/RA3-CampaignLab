@@ -30,11 +30,18 @@ def a4_run(lib):
     return simproxy.play('a4', lib=lib)
 
 
-def _after_scene(w, extra=0.0):
-    """Run the world until the opening scene hands the controls back (plus `extra` seconds)."""
+def _after_scene(w, extra=0.0, demo_holds_fire=False):
+    """Run the world until the opening scene hands the controls back (plus `extra` seconds).
+    demo_holds_fire: the opening demo's troops (' Demo Foe ' / ' Demo Out ') get NO_ATTACK the second they are made,
+    so the player's engineer comes out of the scene alive as on the bench -- in the simulator Demo Foe 2 stops 157
+    from him against the ice and shoots him (test_simbench.DEMO_KILL: where the demo troops stop is not modelled)."""
     s = w.sim
     while s.flags.get('CNV_A4_Scene_1') != 1 and s.t < 200:
         w.step(FPS)
+        if demo_holds_fire:
+            for n, b in s.bodies.items():
+                if ' Demo Foe ' in n or ' Demo Out ' in n:
+                    b.status.add('NO_ATTACK')
     w.step(int(extra * FPS))
 
 
@@ -132,7 +139,7 @@ def test_the_ice_goes_where_the_player_put_it(lib):
     """A ground power: the engineer walks to the spot and the ice core stands there (the simulator's R5), and the
     report's 冰在哪 criterion (report.power_at) holds for that place and not for another."""
     w = simproxy.SimWorld('a4', lib=lib)
-    _after_scene(w, 2)
+    _after_scene(w, 2, demo_holds_fire=True)
     s, pw, rp = w.sim, w.pw, w.p['report']
     eng = next(m for m in w.observe().mine if m.template == 'CNV_IceEngineer')
     spot = s.point('inside 1')
