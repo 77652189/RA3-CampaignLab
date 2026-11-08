@@ -168,7 +168,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v5.json')     # v3: weapon inheritFrom (2026-11-08); v4: + los; v5: overrides, LineDamageNugget
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v6.json')     # v3: weapon inheritFrom (2026-11-08); v4: + los; v5: overrides, LineDamageNugget; v6: OCL, pre-attack
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -239,7 +239,15 @@ def _weapons(texts, base_table=None):
             fire = re.search(r'<FiringDuration\b[^>]*MinSeconds="([^"]+)"', body)
             reload_ = re.search(r'<ClipReloadTime\b[^>]*MinSeconds="([^"]+)"', body)
             delay = re.search(r'<DelayBetweenShots\b[^>]*MinSeconds="([^"]+)"', body)
+            pre = re.search(r'<PreAttackDelay\b[^>]*MinSeconds="([^"]+)"', body)
+            ocl = [_attr(h, 'WeaponOCL') for h, _ in _blocks(bare, 'WeaponOCLNugget')]
             got = {}                                            # only what this template writes
+            if any(ocl):
+                got['ocl'] = next(o for o in ocl if o)          # the first (a _VET one follows the plain one)
+            if pre:
+                got['pre'] = _secs(pre.group(1))
+            if _attr(head, 'PreAttackType'):
+                got['pretype'] = _attr(head, 'PreAttackType')
             if _attr(head, 'AttackRange'):
                 got['range'] = _num(_attr(head, 'AttackRange'))
             if dmg:
@@ -267,7 +275,8 @@ def _weapons(texts, base_table=None):
                 own[wid] = {**own.get(wid, {}), **got}
             else:
                 own[wid], parent[wid] = got, p
-    base = dict(range=0.0, damage=0.0, type='', shots=1, fire=0.0, reload=0.0, delay=0.0, anti=[], warhead=None, los=False)
+    base = dict(range=0.0, damage=0.0, type='', shots=1, fire=0.0, reload=0.0, delay=0.0, anti=[], warhead=None, los=False,
+                ocl=None, pre=0.0, pretype='PER_SHOT')
     out = {}
 
     def get(wid, depth=0):
@@ -284,19 +293,102 @@ def _weapons(texts, base_table=None):
     return out
 
 
+def _pre_per_clip(w, shots):
+    """The PreAttackDelay seconds one clip of `shots` waits: before every shot (PER_SHOT, the default), before the
+    clip's first (PER_CLIP), none in a long fight (PER_TARGET / PER_ATTACK: once per target). The game's weapon goes
+    CoolDown -> PreFire -> Fire, the pre-attack after the shot delay, not under it (read 1.13, work/re/fire_state.md;
+    Generals Weapon::getPreAttackDelay); bench engine_ocl a 2026-11-08: the Athena's round comes every ~5.3 s =
+    pre-attack 2 + firing 2 + reload 1.1."""
+    kind = w.get('pretype', 'PER_SHOT')
+    if kind == 'PER_CLIP' and w['shots'] > 0:
+        return w.get('pre', 0.0)
+    if kind in ('PER_SHOT', 'PER_CLIP'):
+        return w.get('pre', 0.0) * shots
+    return 0.0
+
+
 def _resolve(w, weapons):
-    """A weapon's damage per second: its own damage, else its warhead's; one clip of `shots` then the reload."""
+    """A weapon's damage per second: its own damage, else its warhead's, else the round of the objects its OCL makes
+    (ocl_round); one clip of `shots` (each after its pre-attack) then the reload."""
     dmg, typ = w['damage'], w['type']
     if not dmg and w['warhead'] in weapons:
         h = weapons[w['warhead']]
         dmg, typ = h['damage'], h['type']
+    if not dmg and w.get('ocl'):
+        dmg, typ = ocl_round(w['ocl'], weapons)
     if w['shots'] <= 0:                         # an unlimited clip: no reload
-        shots, cycle = 1, max(w['fire'], w['delay'], 0.1)
+        shots, cycle = 1, max(w['fire'], w['delay'], 0.1) + _pre_per_clip(w, 1)
     else:
         shots = w['shots']
-        cycle = shots * max(w['fire'], w['delay'], 0.1) + w['reload']
+        cycle = shots * max(w['fire'], w['delay'], 0.1) + w['reload'] + _pre_per_clip(w, shots)
     return dict(range=w['range'], dps=round(dmg * shots / cycle, 2) if dmg else 0.0, type=typ, anti=w['anti'],
                 los=w['los'])
+
+
+_ocls = None
+
+
+def _ocl_table():
+    """ObjectCreationList id -> [(count, object template)] (every CreateObject of it), from the SageXML."""
+    global _ocls
+    if _ocls is None:
+        _ocls = {}
+        for root, _, files in os.walk(SAGEXML):
+            for f in files:
+                if not f.endswith('.xml'):
+                    continue
+                text = open(os.path.join(root, f), encoding='utf-8', errors='replace').read()
+                if '<ObjectCreationList' not in text:
+                    continue
+                for head, body in _blocks(re.sub(r'<!--.*?-->', '', text, flags=re.S), 'ObjectCreationList'):
+                    made, count = [], 1
+                    for m in re.finditer(r'<CreateObject\b([^>]*)>([^<]*)', body):
+                        if m.group(1).strip():                  # the outer element: its options and Count
+                            count = int(_num(_attr(m.group(1), 'Count'), 1.0))
+                        elif m.group(2).strip():                # the inner one: the template's name
+                            made.append((count, m.group(2).strip()))
+                    if _attr(head, 'id'):
+                        _ocls[_attr(head, 'id')] = made
+    return _ocls
+
+
+def _game_object(template):
+    """The <GameObject id=template> block of the retail file of that name ('' when none): a file can hold more than
+    one (the Athena's effect and its veteran one)."""
+    for head, body in _blocks(retail_xml(template), 'GameObject'):
+        if _attr(head, 'id') == template:
+            return body
+    return ''
+
+
+def ocl_round(ocl, weapons):
+    """(damage, damage type) of one firing of a weapon whose WeaponOCLNugget makes `ocl`: each object it makes that
+    lives LifetimeUpdate's MinLifetime and fires a FireWeaponUpdate weapon all that time (every frame for a weapon
+    with no firing duration or shot delay; its own pre-attack is not waited for) and its FireWeaponWhenDead weapon once.
+    Bench engine_ocl a 2026-11-08: the Athena's effect (2 s of AthenaCannonWeapon 20, + 20 when it dies) takes ~600
+    raw a round off a building; this gives 620. An object with no FireWeaponUpdate (a drone with weapons of its own,
+    the carrier's) gives 0: a unit the simulator would have to make (simcoverage lists it)."""
+    dmg, typ = 0.0, ''
+    for count, template in _ocl_table().get(ocl, []):
+        body = re.sub(r'<!--.*?-->', '', _game_object(template), flags=re.S)
+        life = re.search(r'<LifetimeUpdate\b[^>]*MinLifetime="([^"]+)"', body)
+        fire = [_attr(h, 'WeaponName') for h, _ in _blocks(body, 'FireWeaponNugget')]
+        dead = [_attr(h, 'DeathWeapon') for h, _ in _blocks(body, 'FireWeaponWhenDead')]
+        if not (life and any(w in weapons for w in fire)):
+            continue
+        each = 0.0
+        for wid in fire:
+            if wid in weapons:
+                w = weapons[wid]
+                every = max(w['fire'], w['delay'], 1.0 / LIFE_FPS)
+                each += round(_secs(life.group(1)) / every) * w['damage']
+                typ = typ or w['type']
+        for wid in dead:
+            if wid in weapons:
+                each += weapons[wid]['damage']
+                typ = typ or weapons[wid]['type']
+        dmg += count * each
+    return dmg, typ
 
 
 def _armors():

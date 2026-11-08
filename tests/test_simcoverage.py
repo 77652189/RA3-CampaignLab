@@ -17,7 +17,8 @@ _spec.loader.exec_module(sc)
 pytestmark = pytest.mark.skipif(sc.sim.engine_model() is None, reason='no ra3model.scripts (labpaths.ENGINE_MODEL)')
 
 SIX = [('a9', '升级', 'CNV_TowerBall:INVULNERABLE'), ('a3', '设备', '时停区:冻结+无敌'),
-       ('a6', '武器', 'AlliedAntiStructureVehicle'), ('a6', '对打不动', 'AlliedCommandoTech1'),
+       ('a6', '命令', '技能 SpecialPower_AthenaCannonTrigger'),
+       # (11-08: the Athena's weapon is read -- its OCL; Tanya no longer fires at what she cannot hurt -- d4297bd)
        ('a7', '命令', '占领'), ('j7', '脚本动作', 'NAMED_USE_COMMANDBUTTON_ABILITY:Command_CNV_Jammer_jam')]
 
 
@@ -64,7 +65,9 @@ def test_the_six_known_gaps_are_found_and_registered(census):
 def test_every_category_finds_something(census):
     items, _ = census
     seen = {i.category for i in items}
-    assert {sc.WEAPON, sc.UPGRADE, sc.ACTION, sc.IGNORED_ACTION, sc.DEVICE, sc.COMMAND, sc.STUCK} <= seen
+    # (STUCK: none left since d4297bd -- a unit takes no target its weapon does nothing to; the verdict tests below
+    # still cover the category)
+    assert {sc.WEAPON, sc.UPGRADE, sc.ACTION, sc.IGNORED_ACTION, sc.DEVICE, sc.COMMAND} <= seen
 
 
 def test_a_new_unmodelled_item_turns_the_check_red():
@@ -98,9 +101,11 @@ def test_the_probe_tells_a_known_name_from_a_made_up_one():
 
 
 def test_a_weapon_read_as_none_is_caught():
-    # a weapon the simulator reads empty although the XML declares it: the Athena cannon's orbital strike (an OCL nugget)
-    inf = sc.info('a6')
-    got = [i for i in sc.weapon_items(inf) if i.name == 'AlliedAntiStructureVehicle']
+    # a weapon the simulator reads empty although the XML declares it: the aircraft carrier's drones (an OCL nugget
+    # making a unit; the Athena's OCL, an effect firing a weapon, is read since 11-08)
+    got = [i for i in sc.weapon_items(sc.info('a5')) if i.name == 'AlliedAntiStructureShip']
     assert got and 'WeaponOCLNugget' in got[0].text
+    assert not [i for i in sc.weapon_items(sc.info('a6')) if i.name == 'AlliedAntiStructureVehicle']
+    inf = sc.info('a6')
     # and one that really has none (an engineer, a miner) is not
     assert not [i for i in sc.weapon_items(inf) if i.name in ('AlliedEngineer', 'AlliedMiner')]

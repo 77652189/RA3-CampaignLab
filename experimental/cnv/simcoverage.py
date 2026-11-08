@@ -270,8 +270,7 @@ def weapon_items(inf):
             if w is None:
                 lost.append(f'{p}: 武器模板找不到')
                 continue
-            dmg = w['damage'] or (table[w['warhead']]['damage'] if w['warhead'] in table else 0.0)
-            r = dict(dps=dmg, range=w['range'])           # (what simunits._resolve decides on, kept apart from its fields)
+            r = simunits._resolve(w, table)               # its warhead's or its OCL's damage too, as the fight reads it
             if r['dps'] > 0 and r['range'] > 0:
                 continue
             why = ', '.join(nuggets_of(p, inf.own)) or '没有伤害块'
@@ -596,12 +595,8 @@ A9 = gap(rf'{SIMPY} a9 --script experimental/cnv/plays/a9.txt --until 900 | grep
 A3 = gap(f'{SIMPY} a3 --script experimental/cnv/plays/a3.txt | grep Beatc5bb8',
          'a3 时停区没模拟：圈里单位不冻、圈不挡追兵（光环给的 IN_STASIS / UNATTACKABLE / NO_ATTACK / SPEED 0%）')
 A6_ATHENA = gap(f'{SIMPY} a6 --script experimental/cnv/plays/a6.txt --until 400 --all',
-                'a6 雅典娜炮没武器：AlliedAntiStructureVehicle 的武器是轨道打击（WeaponOCLNugget），read_fight 读成空，'
-                '玩家用 SpecialPower_AthenaCannonTrigger 点炮也没效果')
-A6_TANYA = gap(f'{SIMPY} a6 --script "2 派 tanya 去 dog route; 30 派 tanya 去 outer ramp; 50 派 tanya 去 outer east; '
-               f'150 派 tanya 去 south camp" --until 260',
-               'a6 谭雅（AlliedCommandoTech1）卡死在对建筑开火：对打不动的目标一直开火，攻击移动在交战中不放行，'
-               '她始终停在 (2420, 1438)（docs/story/handoff-phase4.md 第三十九个会话）')
+                'a6 雅典娜炮的自动开火已模拟（11-08 引擎线 B：OCL 武器按生成物体的 FireWeaponUpdate 算，台上 engine_ocl a），'
+                '玩家用 SpecialPower_AthenaCannonTrigger 点炮仍没效果')
 A7 = gap(f'{SIMPY} a7 --script experimental/cnv/plays/a7.txt | grep "奖励目标失败"',
          'a7 玩家没法下占领命令：order_capture 只由脚本动作触发，"完好占领电站"奖励目标在剧本里必然失败')
 J7 = gap(f'{SIMPY} j7 --script experimental/cnv/plays/j7.txt --all | grep -i jam',
@@ -618,9 +613,7 @@ KNOWN = {
     ('a3', '升级', 'CNV_A3StasisZone:状态 NO_ATTACK'): A3,
     ('a3', '升级', 'CNV_A3StasisZone:状态 NON_AUTOACQUIRABLE'): A3,
     ('a3', '升级', 'CNV_A3StasisZone:状态 IN_STASIS'): A3,
-    ('a6', '武器', 'AlliedAntiStructureVehicle'): A6_ATHENA,
     ('a6', '命令', '技能 SpecialPower_AthenaCannonTrigger'): A6_ATHENA,
-    ('a6', '对打不动', 'AlliedCommandoTech1'): A6_TANYA,
     ('a7', '命令', '占领'): A7,
     ('j7', '升级', 'CNV_Jammer:状态 IMMOBILE'): J7,
     ('j7', '升级', 'CNV_Jammer:SPEED'): J7,
@@ -628,7 +621,6 @@ KNOWN = {
     ('j7', '脚本动作', 'NAMED_USE_COMMANDBUTTON_ABILITY:Command_CNV_Jammer_jam'): J7,
     # ---- the first census (2026-11-08): everything else it found, not looked at yet, to be assigned
     ('武器', 'AlliedAntiStructureShip'): first('a5', 'AlliedAntiStructureShip', '读空 AlliedAntiStructureAttackDrones: 伤害读成 0（WeaponOCLNugget）'),
-    ('a2', '武器', 'AlliedAntiStructureVehicle'): first('a2', 'AlliedAntiStructureVehicle', '读空 AlliedAntiStructureSolarTargeter: 伤害读成 0（WeaponOCLNugget）'),
     ('武器', 'AlliedAntiVehicleVehicleTech1'): first('a1', 'AlliedAntiVehicleVehicleTech1', '少读了 AlliedAntiVehicleVehicleTech1TargetPainter: 伤害读成 0（Activ'),
     ('武器', 'AlliedSupportAircraft'): first('a7', 'AlliedSupportAircraft', '读空 AlliedSupportAircraftCryobeam: 伤害读成 0（ActivateLaserNugget'),
     ('武器', 'CNV_ChronoLag'): first('a3', 'CNV_ChronoLag', '读空 CNV_ChronoLag_Shell: 武器模板找不到; AlliedAntiVehicleVehicleTec'),
@@ -712,9 +704,6 @@ KNOWN = {
     ('命令', '技能 SpecialPower_TriggerJump'): first('a2', '技能 SpecialPower_TriggerJump', 'AlliedAntiNavalScout 的原版特殊能力：玩家能点，模拟器只记日志、没有效果'),
     ('命令', '技能 SpecialPower_TriggerLeap'): first('s2', '技能 SpecialPower_TriggerLeap', 'SovietAntiInfantryVehicle 的原版特殊能力：玩家能点，模拟器只记日志、没有效果'),
     ('命令', '技能 SpecialPower_UnpackReplaceSelf'): first('a1', '技能 SpecialPower_UnpackReplaceSelf', 'AlliedMCV 的原版特殊能力：玩家能点，模拟器只记日志、没有效果'),
-    ('a1', '对打不动', 'AlliedCommandoTech1'): first('a1', 'AlliedCommandoTech1', '玩家的 AlliedCommandoTech1 对 SovietAntiVehicleVehicleTech1 一直开火'),
-    ('a9', '对打不动', 'AlliedCommandoTech1'): first('a9', 'AlliedCommandoTech1', '玩家的 AlliedCommandoTech1 对 AlliedBaseDefenseAdvanced, CNV_Tow'),
-    ('对打不动', 'JapanInfiltrationInfantry'): first('j3', 'JapanInfiltrationInfantry', '玩家的 JapanInfiltrationInfantry 对 AlliedAntiVehicleVehicleTech'),
 }
 
 
