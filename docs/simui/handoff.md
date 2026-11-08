@@ -27,6 +27,17 @@
    - 先读：ADR 0007、ADR 0016、`experimental/testbench`（变速垫片），还有试玩版是怎么构建的（`build.resolve` / `build_mod(ModSpec)`）。
 2. 原来的"下一步"第 2 项（7 关各玩一遍）排到后面。
 
+### 第 1 条的进度（2026-11-08）
+
+- **快进、跳过场：做在变速垫片里，不改 mod**（试玩版 = 正式版 CampShell 原样 + 从试玩专用游戏副本启动）。`capture_shim.cpp` 新增"the playtest's keys"一节，只在 `CNV_DEV_KEYS=1`（且 `CNV_SPEED` 已挂钟）时生效：Ctrl+Alt+= / - / 0 调 1/2/4/8 倍；Ctrl+Alt+空格跳过场 = 8 倍跑到黑边消失再回原速（不截断过场，脚本照常全跑，和模拟器一致）；左上角小方块显示倍速。`dev.req` 文件（faster/slower/normal/skip）走同一函数，供测试台验证。
+- 启动：`python -I -X utf8 experimental/cnv/playtest.py [intl] [-win]`；副本 `work/testbench/RA3play`（`--prepare` 建副本/刷新垫片，已建好）；任何红警3在运行就拒绝。单测 `tests/test_playtest.py`（3 项过）。
+- 游戏内验证：`python -X utf8 experimental/testbench/devkeys_check.py 4`（从 testbench 目录跑，走 CampShell 第 4 槽 = A4，停在开场过场里发 skip/faster/normal/skip）。11-08 结果 RESULT PASS：开场过场 8 倍跑完用 10.6 秒真实时间，黑边消失后回 1 倍；1→2→4→8→1；无过场时 1.5 秒自动结束。真键盘热键还没有人手按过（`dev.req` 和热键走同一函数）——用户第一次试玩时顺便确认。
+- 踩坑：第一次实测游戏在第一帧附近崩（0xC0000005）；不开热键同副本正常，再开热键启动没复现。若再崩，先怀疑 `poll_dev` 用 `o_GetAsyncKeyState`（GetAsyncKeyState 可能被别的钩子"chained in front"）。
+- 共享测试台在别的线手里时 `devkeys_check` 会拒绝（只认"有红警3在跑"），要等它空。
+- `test_architecture.py::test_g4_sys_path_ratchet` 现在 130 > 129，不是本线文件造成的（新文件都没改 sys.path），没动。
+- **跳阶段：暂停**（总控 11-08：用户定引擎优先，ADR 0026，关卡暂停推新内容；跳阶段等关卡恢复后的阶段存档点清单再做）。之前已向关卡线（`local_3846ee54-ebdf-4bbd-b2e4-0a3ec2535997`）回格式。已发建议：`docs/levels/checkpoints/<关>.json`，每阶段含旗、关卡秒、目标状态、钱、边界、玩家单位（角色/模板+坐标+血）、敌方剩余、可选变体；游戏侧需要编译器从第 k 段起跑的入口（如 `Compiler(start_phase=k)`）。
+- 没做：桌面快捷方式/HTA 里的"试玩版"按钮（现在只能命令行启动）。
+
 ## 没做到 / 已知缺口
 
 - 引擎 A 已加（5d41212）：`Sim.point` 认 '@x,y'（`model.coord`）、剧本动词"走"（纯移动）。界面已接上：右键 = 走，Alt+右键 = 派（攻击移动）；外挂里自己解析坐标的代码删了。测试里点击记录直接喂给原版 `sim.Sim` 也得到同一局。

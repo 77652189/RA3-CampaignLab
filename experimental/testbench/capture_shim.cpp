@@ -7,6 +7,7 @@
 //     (its first line, if any, becomes the file name instead)
 //   - CNV_SHOT_MS=<n>: also save a frame every n ms
 //   - cnv_testbench.log: device setup and frames presented per second (does the game keep drawing in background?)
+//   - CNV_SPEED / speed.req: the game's clocks sped up (ADR 0007); CNV_DEV_KEYS: the playtest's own keys (ADR 0025)
 // Shot folder: CNV_SHOT_DIR, default <dll folder>\..\shots.
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -101,6 +102,7 @@ static void shoot(IDirect3DDevice9 *d, const WCHAR *name)
     bb->Release();
 }
 
+static void dev_frame(IDirect3DDevice9 *d);
 static void on_frame(IDirect3DDevice9 *d, HWND w)
 {
     DWORD now = GetTickCount();
@@ -140,6 +142,7 @@ static void on_frame(IDirect3DDevice9 *d, HWND w)
         wsprintfW(name, L"auto_%07lu", now - g_t0);
         shoot(d, name);
     }
+    dev_frame(d);
 }
 
 static HRESULT STDMETHODCALLTYPE h_Present(IDirect3DDevice9 *d, const RECT *a, const RECT *b, HWND w, const RGNDATA *r)
@@ -290,6 +293,7 @@ static void set_speed(double x)
 }
 
 static bool g_speed_hooked;
+static bool g_devkeys;                       // CNV_DEV_KEYS: the playtest's keys (below)
 static void hook_speed()
 {
     WCHAR v[32];
@@ -308,6 +312,8 @@ static void hook_speed()
         g_mm_real0 = g_mm_fake0 = o_timeGetTime();
     g_speed_hooked = true;
     set_speed(_wtof(v));
+    g_devkeys = GetEnvironmentVariableW(L"CNV_DEV_KEYS", v, 32) > 0 && v[0] == L'1';
+    if (g_devkeys) logf("dev keys on: Ctrl+Alt+= / - / 0 speed, Ctrl+Alt+Space skip the scene\n");
 }
 
 static void poll_speed_request()
@@ -322,6 +328,160 @@ static void poll_speed_request()
     fclose(f);
     DeleteFileW(req);
     set_speed(x);
+}
+
+// ---------------------------------------------------------------- the playtest's keys (ADR 0025)
+// CNV_DEV_KEYS=1 (set with CNV_SPEED=1 only by experimental/cnv/playtest.py, in the playtest's own copy of the game):
+// the player's keys, read while the game window has the focus --
+//   Ctrl+Alt+=  faster (x1 -> x2 -> x4 -> x8)     Ctrl+Alt+-  slower     Ctrl+Alt+0  back to x1
+//   Ctrl+Alt+Space  skip the scene: x8 while the letterbox bars are up, then the speed from before (pressed again: stop)
+// A file "dev.req" in the shot folder holding faster / slower / normal / skip does the same (how the bench tests it).
+// While the speed is not x1 a row of small squares in the top left corner shows it (one per doubling; cyan: skipping).
+// The scene is not cut short: it runs to its end at x8, so every one of its scripts acts as in a played scene.
+static const double DEV_STEPS[] = {1, 2, 4, 8};
+static const int DEV_TOP = 3;
+static volatile int g_dev_step;
+static volatile LONG g_skip;                 // 0 no; 1 asked, the bars not seen yet; 2 the bars seen
+static double g_skip_back = 1.0;
+static DWORD g_skip_t0, g_bars_checked;
+static int g_bars_gone;
+static const double SKIP_SPEED = 8;          // the fastest the bench runs checks at (ADR 0007)
+static const DWORD SKIP_WAIT = 1500;         // ms after the key with no bars seen: not in a scene, the skip ends
+static const int BARS_GONE = 3;              // checks in a row (100 ms apart) without the bars: the scene is over
+
+static void dev_command(const char *c)
+{
+    if (!g_devkeys || !g_speed_hooked) return;
+    if (!lstrcmpA(c, "skip"))
+    {
+        if (InterlockedCompareExchange(&g_skip, 1, 0) == 0)
+        {
+            g_skip_back = DEV_STEPS[g_dev_step];
+            g_skip_t0 = GetTickCount();
+            g_bars_gone = 0;
+            logf("dev: skip asked (back to x%.0f after)\n", g_skip_back);
+            set_speed(SKIP_SPEED);
+        }
+        else
+        {
+            InterlockedExchange(&g_skip, 0);
+            logf("dev: skip stopped by the key\n");
+            set_speed(DEV_STEPS[g_dev_step]);
+        }
+        return;
+    }
+    int k = g_dev_step;
+    if (!lstrcmpA(c, "faster")) k = k < DEV_TOP ? k + 1 : k;
+    else if (!lstrcmpA(c, "slower")) k = k > 0 ? k - 1 : k;
+    else if (!lstrcmpA(c, "normal")) k = 0;
+    else { logf("dev: unknown request '%s'\n", c); return; }
+    g_dev_step = k;
+    logf("dev: %s -> x%.0f%s\n", c, DEV_STEPS[k], g_skip ? " (after the skip)" : "");
+    if (g_skip) g_skip_back = DEV_STEPS[k];
+    else set_speed(DEV_STEPS[k]);
+}
+
+static void poll_dev()
+{
+    if (!g_devkeys) return;
+    WCHAR req[MAX_PATH];
+    wsprintfW(req, L"%s\\dev.req", g_dir);
+    FILE *f = _wfopen(req, L"r");
+    if (f)
+    {
+        char c[32] = "";
+        fscanf(f, "%31s", c);
+        fclose(f);
+        DeleteFileW(req);
+        dev_command(c);
+    }
+    static bool was[4];
+    static const int vks[4] = {VK_OEM_PLUS, VK_OEM_MINUS, '0', VK_SPACE};
+    static const int pad[4] = {VK_ADD, VK_SUBTRACT, VK_NUMPAD0, VK_SPACE};
+    static const char *cmds[4] = {"faster", "slower", "normal", "skip"};
+    HWND fg = GetForegroundWindow();
+    DWORD pid = 0;
+    if (fg) GetWindowThreadProcessId(fg, &pid);
+    GetKeyFn key = o_GetAsyncKeyState ? o_GetAsyncKeyState : GetAsyncKeyState;     // the real keyboard, not key.req
+    bool mods = pid == GetCurrentProcessId() && (key(VK_CONTROL) & 0x8000) && (key(VK_MENU) & 0x8000);
+    for (int i = 0; i < 4; i++)
+    {
+        bool down = mods && ((key(vks[i]) & 0x8000) || (key(pad[i]) & 0x8000));
+        if (down && !was[i]) dev_command(cmds[i]);
+        was[i] = down;
+    }
+}
+
+// The letterbox bars: the top bar's rows across the middle 80 % and the bottom bar's rows at both ends (the caption
+// sits in its middle) all black. 1 the bars are up, 0 not, -1 the frame could not be read.
+static int bars_up(IDirect3DDevice9 *d)
+{
+    IDirect3DSurface9 *bb = 0, *rt = 0, *sys = 0;
+    D3DSURFACE_DESC desc;
+    if (FAILED(d->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &bb))) return -1;
+    bb->GetDesc(&desc);
+    IDirect3DSurface9 *src = bb;
+    if (desc.MultiSampleType != D3DMULTISAMPLE_NONE &&
+        SUCCEEDED(d->CreateRenderTarget(desc.Width, desc.Height, desc.Format, D3DMULTISAMPLE_NONE, 0, FALSE, &rt, 0)) &&
+        SUCCEEDED(d->StretchRect(bb, 0, rt, 0, D3DTEXF_NONE)))
+        src = rt;
+    int out = -1;
+    D3DLOCKED_RECT lr;
+    if ((desc.Format == D3DFMT_X8R8G8B8 || desc.Format == D3DFMT_A8R8G8B8) &&
+        SUCCEEDED(d->CreateOffscreenPlainSurface(desc.Width, desc.Height, desc.Format, D3DPOOL_SYSTEMMEM, &sys, 0)) &&
+        SUCCEEDED(d->GetRenderTargetData(src, sys)) && SUCCEEDED(sys->LockRect(&lr, 0, D3DLOCK_READONLY)))
+    {
+        UINT W = desc.Width, H = desc.Height;
+        out = 1;
+        const int rows[4] = {3, 9, 91, 97};                     // % of the height: two rows in each bar
+        for (int r = 0; r < 4 && out; r++)
+        {
+            const BYTE *line = (const BYTE *)lr.pBits + (size_t)(H * rows[r] / 100) * lr.Pitch;
+            for (int c = 0; c < 24 && out; c++)
+            {
+                UINT x = r < 2 ? W * (10 + c * 80 / 23) / 100                                   // top: 10 % .. 90 %
+                               : W * (c < 12 ? 2 + c * 16 / 11 : 82 + (c - 12) * 16 / 11) / 100;   // bottom: the ends
+                const BYTE *p = line + x * 4;
+                if (p[0] > 24 || p[1] > 24 || p[2] > 24) out = 0;
+            }
+        }
+        sys->UnlockRect();
+    }
+    if (sys) sys->Release();
+    if (rt) rt->Release();
+    bb->Release();
+    return out;
+}
+
+static void skip_end(const char *why)
+{
+    InterlockedExchange(&g_skip, 0);
+    logf("dev: skip over (%s), back to x%.0f\n", why, g_skip_back);
+    set_speed(g_skip_back);
+}
+
+static void dev_frame(IDirect3DDevice9 *d)
+{
+    if (!g_devkeys) return;
+    DWORD now = GetTickCount();
+    if (g_skip && now - g_bars_checked >= 100)
+    {
+        g_bars_checked = now;
+        int b = bars_up(d);
+        if (g_skip == 1)
+        {
+            if (b == 1) { InterlockedExchange(&g_skip, 2); logf("dev: skip: the bars are up\n"); }
+            else if (now - g_skip_t0 > SKIP_WAIT) skip_end("no scene");
+        }
+        else if (b == 0 && ++g_bars_gone >= BARS_GONE) skip_end("the bars are down");
+        else if (b == 1) g_bars_gone = 0;
+    }
+    int n = g_skip ? 1 : g_dev_step;
+    if (!n) return;
+    D3DRECT r[DEV_TOP];
+    for (int i = 0; i < n; i++)
+        r[i].x1 = 8 + i * 14, r[i].y1 = 8, r[i].x2 = r[i].x1 + 10, r[i].y2 = 18;
+    d->Clear(n, r, D3DCLEAR_TARGET, g_skip ? D3DCOLOR_XRGB(0, 220, 255) : D3DCOLOR_XRGB(255, 150, 0), 1.0f, 0);
 }
 
 // Hot-patch a user32 export in place (Windows' "mov edi,edi" prologue with 5 spare bytes before it), so every caller
@@ -429,6 +589,7 @@ static DWORD WINAPI watch_vtable(LPVOID)
         Sleep(100);
         poll_key_request();
         poll_speed_request();
+        poll_dev();
         if (tick == 200)
             logf("loaded: dinput8 %p, dinput %p, xinput1_3 %p\n", (void *)GetModuleHandleW(L"dinput8.dll"),
                  (void *)GetModuleHandleW(L"dinput.dll"), (void *)GetModuleHandleW(L"xinput1_3.dll"));
