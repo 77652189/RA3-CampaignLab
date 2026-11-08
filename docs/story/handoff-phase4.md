@@ -465,3 +465,34 @@
 - **A4 全程验收现状（11-08 末）**：`python -I -X utf8 experimental/cnv/simshow.py a4 --check win --out work/player_timeline/a4.md`（约 1 分钟）→ 赢 11:07、展示层 0 问题。**K1 结局字幕那两条（`CNV_A4_Show_66`、`_80`，原来 9:03 挤在一起晚 9～15 秒）已消失**：根因是三辆车只隔 5 秒到，不是字幕本身，车队分批修好后到达 8:53 / 9:46 / 10:52，结局那三句"货收到了"等不再和别的功能字幕叠。A4 数据没为 K1 改过。
 - **接下来**：①等总控通知引擎 A 线补完"没路时兵怎么办"（`sim.py` `route` / `send`，`closest=True` 对被冰墙盖住的起点返回 None，18 条卡住）→ 重跑 `a4waves.py 0` 与 `0 block=0`，放冰须明显长于不放冰（预期 ≥ 5:00），不成立再调 `a4.md` 的 `绕路` 表；②按难度分绕路表（`25/25/20` 写法）；③总控下一个活：A4 之外各关 `simshow.py <关> --check win` 跑一遍、列缺的规则（前次 A1 A3 A5 A6 A8 A9 已 0 问题、A2 `real` 0 问题，见第三十五节上下；A7 及其它没跑过）。
 - **全量 pytest 有 7 个别人的失败**（`test_graybox_cards` 2、`test_simai` 1、`test_simbench` 4），不是 A4 这线改的，见上。
+
+#### 第三十八个会话（11-08，总控令：A4 以外各关在模拟器里 `simshow.py <关> --check win` 跑一遍）
+- **结论**：所有现有关卡的"赢"类检查在模拟器里都能走到结局，**展示层 0 问题**（唯一例外见下），**没有关卡脚本问题要修，没有新的引擎规则缺口**。`simchecks.py`（只测接线的 25 条）25/25 过（约 4 分钟）。
+- **每关一行**（`simshow.py <关> --check <检查>`，各自 2～20 秒；时间线在 `work/player_timeline/<关>_<检查>.md`，未入 git）：
+
+| 关 / 检查 | 结局 | 展示层问题 | 卡住 |
+| --- | --- | --- | --- |
+| a1 win | 赢 0:26 | 0 | 0 |
+| a2 win | 赢 0:33 | **6**（K1：字幕被下一句顶掉，0:09～0:28） | 0 |
+| a2 real | 赢 9:06 | 0 | 0 |
+| a3 win | 赢 0:16 | 0 | 0 |
+| a5 win | 赢 3:17 | 0 | 0 |
+| a6 win | 赢 0:21 | 0 | 0 |
+| a7 win | 赢 1:10 | 0 | 0 |
+| a8 win | 赢 0:22 | 0 | 0 |
+| a9 win / dark | 赢 0:32 / 赢 4:01 | 0 | 0 |
+| j3 run | 赢 2:14 | 0 | 0 |
+| j4 play | 赢 1:52 | 0 | 0 |
+| j5 hold | 赢 9:00 | 0 | 0 |
+| j7 win | 赢 0:10 | 0 | 0 |
+| s2 catch / escape | 赢 1:11 / 输 3:12（escape 本该输） | 0 | 0 / 2 |
+| s5 trap / pace / escape | 赢 5:05 / 赢 5:05 / 输 3:53（escape 本该输） | 0 | 0 |
+| s6 hold | 赢 9:30 | 0 | 0 |
+| a4 win（上一节） | 赢 11:07 | 0 | 0 |
+
+- **要读懂的三点**：
+  1. **`a2 win` 那 6 条是检查的快进造成的，不是关卡问题**：这个检查 33 秒就让一波波来，字幕自然被顶掉；同一关全程的 `a2 real`（9:06）展示层 0 问题。
+  2. **a1 / a3 / a6 / a7 / a8 / a9 / j7 / a2 的 `win` 是"检查脚本替玩家完成目标"的快进（10～70 秒），不是整局**。只有 a2 real、a4 win、a5 win、a9 dark、j3 run、j4 play、j5 hold、s2 catch、s5 trap/pace、s6 hold 是接近整局的跑法。要证明"整局能赢"，a1 a3 a6 a7 a8 a9 j7 还缺一份按玩家打法的全程脚本（`sim.py` 的 `script`），这是下一件值得做的事，但要不要做、做到多细，等总控定。
+  3. **没有结局的检查不是故障**：`a1 walk`、`a3 freeze`、`a7 jumps/pick/relief/east/nag/faster/revenge/pincer/power`、`a2 splash/frog`、`j4 breach` 本来就没写输赢（只看计数），simshow 显示"30:00 内没有结束"或"卡住（什么都不会再发生）"；`a7 power` 那条"120 秒没有任何变化"是跑到头没事可做，不是兵卡住；`a8 beat/swell` 12:00 输是计时终点，`a2 ray/dread` 3:46 输是检查里没人守坝。计数的对错由 `simchecks.py` 管（它已含 a1 walk、a5、a8 beat、a7 nag/revenge/pincer、j3 j4 j5 j7、s2 s5 s6）。没进 simchecks 的（a1 win/trap、a2 全部、a3、a6、a7 的 jumps/pick/defend/power/relief/east/faster、a8 swell/win/lose、a9、j4 breach/play、s5 pace）靠引擎，只在测试台上验过计数。
+- **卡住条数**：全部关卡只有两处，都不是缺口：`j4 breach` 的 `troop 2-1 到不了 Test Road Point`（2 号冰墙本来就没倒，兵被挡，是检查要的）；`s2 escape` 的 `river guard 3 到不了 目标（ground 没有路）` ×2（第 97 秒，守护者坦克打掉两列车后追一个轨道上的目标，没有地面路，**引擎小瑕疵**：真实游戏里坦克会停在原地，模拟器里记一条"卡住"然后不动，结果一样，不影响结局）。复现：`python -I -X utf8 work/re/scripts/simall.py s2:escape`（打印结局、展示层问题数、卡住条数和前几条；`work/` 未入 git，脚本在 `work/re/scripts/simall.py`，一次可传多个 `关:检查`）。
+- **没做**：a4 的其它检查（上一节已说）；整局打法脚本；`a5 hold` 在 30 分钟内没有结局（它的计数期望由 simchecks 过，`在闸室` 在 155 秒后归 0），没发现问题。
