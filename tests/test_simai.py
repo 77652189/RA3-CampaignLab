@@ -111,6 +111,30 @@ def test_skirmish_ai_builds_makes_units_and_attacks(skirmish):
     assert min(x.died_at for x in lost) > (gone[0][0] / simai.FPS), 'died before the team left'
 
 
+@pytest.mark.xfail(strict=True, reason='work/re/simai.md round 39: after the opening the accounts get only the '
+                   "miners' income x shares (the split is NOT READ); bench c spends ~4650 in 120-177 s, more than two "
+                   'miners can earn, so the bank feeds the accounts; tried: re-split the bank at the budget change '
+                   '(126.0 s) -- not landed, ADR 0019 two tries')
+def test_skirmish_ai_builds_again_as_soon_as_the_opening_is_done(skirmish):
+    """Bench c: the 4th Peacekeeper out 125 s after the wake, i.e. the barracks restarts the moment the opening's
+    budget ends (~120 s), and then hardly stops (9 infantry + engineer by 177 s). The sim waits for miner trips
+    (151.5 s)."""
+    again = [s for s, t in _barracks_out(skirmish) if s >= 120]
+    assert again and again[0] <= 130, again
+
+
+@pytest.mark.xfail(strict=True, reason='work/re/simai.md round 39: the AlliedScout team ends the frame after it '
+                   'goes (a higher-priority team recruits its dog away: teams.recruit takes from gone teams), so the '
+                   "dogs are home and fill BalancedAttackGround's MaxTypesOfUnits 2 with Javelins; tried: no "
+                   'recruiting from gone teams (dogs still home, team 169.5 s) -- ADR 0019 two tries')
+def test_skirmish_ai_first_attack_team_takes_no_dogs(skirmish):
+    """Bench b: the dogs leave ~44 s after the wake and stay away 120-170 s; the first team (132.8 s) is 2 Riptides +
+    3 Peacekeepers out at once, no dog."""
+    (b,) = skirmish.brains.values()
+    gone = [e for e in b.ai.teams.log if e[1] == 'go' and e[2][0].startswith('BalancedAttack')]
+    assert gone and 'AlliedScoutInfantry' not in gone[0][3], gone[:1]
+
+
 # checks/engine_aistate.py (bench 2026-11-06): the probe's own personality (missions/aistate_bench.py, written into
 # the mod as Mission.assets) with two states; frames from the wake (const) / from the state's flag (slash) to the
 # first of its four units out of the base area (450 round the east base). Bench clock: aistateconst's wake is s9,
