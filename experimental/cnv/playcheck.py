@@ -3,7 +3,7 @@ r"""A level's player script (plays/<level>.txt) as a bench check: the comparison
 The same play, run by the plan simulator and by the bench, and the two readings compared: how the mission ended (win /
 lose) and when, and when its phases began. The simulator takes the play as `sim.Sim(script=...)`; the bench cannot, so
 this compiles the play's lines into the mission's own script actions (a Test, like any check): `派` is
-ATTACK_MOVE_NAMED_UNIT_TO, `造` a CREATE_NAMED_ON_TEAM_AT_WAYPOINT named `UNIT - SIM Made k`, `删除` / `摧毁` NAMED_DELETE
+ATTACK_MOVE_NAMED_UNIT_TO, `占领 <who> 进 <building>` NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED Command_CaptureBuilding, `造` a CREATE_NAMED_ON_TEAM_AT_WAYPOINT named `UNIT - SIM Made k`, `删除` / `摧毁` NAMED_DELETE
 / NAMED_KILL, `旗标` SET_FLAG; a time is a millisecond timer set when the mission starts (or, `<flag>+<time>`, when
 the flag first reads 1). The sim runs that same Test too (checks/<level>.py: CHECKS[level]['play']), so what differs
 between the two is the game's rules, not the translation.
@@ -17,7 +17,7 @@ reading +-WINDOW (15 %, ADR 0023: past it, stop and find out why) and at least S
 (they are hidden by then): it is the end card on the run's last frames (RESULT_CARD), read by looking.
 
 Not translated (the simulator's own verbs for a script that stands for something the bench cannot be told): `血量`,
-`打`, `占领`, `不打`, `自动打掉`, a unit named by its template (an unnamed object cannot be addressed by a script):
+`打`, `占领 <who>` (one object, at once), `不打`, `自动打掉`, a unit named by its template (an unnamed object cannot be addressed by a script):
 compiling such a line raises, so a play is never half played on one side.
 
   python -I -X utf8 experimental/cnv/playcheck.py <level>       -> the play's lines compiled, and what the check expects
@@ -128,6 +128,11 @@ class Compiler:
             who, target = rest
             goal = self.who(target, now)[0]
             return [('NAMED_ATTACK_NAMED', n, goal) for n in self.who(who, now)]
+        if verb == '占领' and len(rest) == 2:
+            who, target = rest
+            goal = self.who(target, now)[0]
+            return [('NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED', n, 'Command_CaptureBuilding', goal)
+                    for n in self.who(who, now)]
         if verb in ('删除', '摧毁'):
             return [('NAMED_DELETE' if verb == '删除' else 'NAMED_KILL', n) for n in self.who(rest[0], now)]
         if verb == '旗标':

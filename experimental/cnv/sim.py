@@ -25,6 +25,8 @@ A script (剧本), one event a line (or ';' between them), times in seconds or m
   <t> 血量 <谁> <百分比>     health set
   <t> 打 <谁>               attacked by the player (NAMED_ATTACKED_BY_PLAYER)
   <t> 占领 <谁>             now the player's
+  <t> 占领 <谁> 进 <建筑>    the player's capture order (NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED Command_CaptureBuilding,
+                            order_capture): the engineer walks to the building and takes it at its side
   <t> 旗标 <名字> <值>       a flag set outright (a check's or a device's)
   <t> 造 <单位> 在 <地点> [角度]  the player makes one (a unit id of the mission's, a cast part's template, a retail
                             template): an engineer's ice -- '40 造 CNV_IceWall 在 inside 1 1.57'
@@ -2052,6 +2054,11 @@ class Sim:
             return any(a.startswith('ANTI_AIRBORNE') for a in anti)
         if 'STRUCTURE' in t.kinds:
             return 'ANTI_STRUCTURE' in anti or 'ANTI_GROUND' in anti
+        elif verb == '占领' and len(rest) == 2:
+            targets = self.pick(rest[1])            # the player's order: the engineer goes and takes it (capture_due)
+            if targets:
+                for b in self.pick(rest[0]):
+                    self.order_capture(b, targets[0].name)
         return 'ANTI_GROUND' in anti or 'ANTI_WATER' in anti
 
     def takes_by_itself(self, a, t):
@@ -2574,3 +2581,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+        elif rest.startswith('占领 ') and ' 进 ' in rest:
+            who, _, target = rest[3:].rpartition(' 进 ')
+            out.append((when(t), '占领', who.strip(), target.strip()))

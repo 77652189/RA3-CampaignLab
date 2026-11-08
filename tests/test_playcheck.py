@@ -62,6 +62,24 @@ def test_an_attack_line_compiles_to_an_attack_order_on_the_target():
     assert acts and acts == [('NAMED_ATTACK_NAMED', n, goal) for n in c.who('tengu', 5.0)]
 
 
+def test_a_capture_line_is_the_engineers_capture_order_on_both_sides():
+    # `占领 <who> 进 <building>`: the player's capture order -- the bench's script action, the simulator's order_capture
+    import build
+    import sim
+    m, t, _ = build.resolve('a7', '')
+    c = playcheck.Compiler(m, playcheck.Test())
+    acts = c.actions((5.0, '占领', 'engineer', 'station'), 5.0)
+    goal = c.who('station', 5.0)[0]
+    assert acts and acts == [('NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED', n, 'Command_CaptureBuilding', goal)
+                             for n in c.who('engineer', 5.0)]
+    assert sim.parse_script('5 占领 engineer 进 station; 6 占领 station') == [(5.0, '占领', 'engineer', 'station'),
+                                                                     (6.0, '占领', 'station')]
+    s = sim.Sim(m, t, 'normal', '')
+    eng = s.pick('engineer')[0]
+    s.happen((5.0, '占领', 'engineer', 'station'))
+    assert eng.mode == 'capture' and eng.goal is s.pick('station')[0]
+
+
 def test_a_line_the_bench_cannot_be_told_stops_the_compile():
     import build
     m, _, _ = build.resolve('j7', '')
