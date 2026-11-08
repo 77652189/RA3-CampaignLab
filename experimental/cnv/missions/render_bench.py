@@ -17,7 +17,7 @@ ROWS, COLS, GAP, FRONT = 6, 8, 35.0, 150.0
 
 
 def mission(name):
-    m = Mission(name=name, map=island, facts={})
+    m = Mission(name=name, map=island, facts={})     # checks/render_war.py keeps its own copy of the kinds (G5)
     m.spawns |= set(ALLIED + SOVIET)
     for side, kinds, sign in (('p1', ALLIED, -1), ('s1', SOVIET, 1)):
         for r in range(ROWS):

@@ -5,10 +5,15 @@ Every 2 s each side gets one of each of its kinds at its rear while it has fewer
 3 s both armies are told to attack-move to the other side's rear. Counters: 帧数 (+1 every script frame: logic frames
 since the start; against the watch's real seconds it is the logic rate), 守护者 / 铁锤 (each side's main tank left).
 """
-from missions.render_bench import ALLIED, SOVIET
 from parts import Script, Test, counted
 
 TOP, BIG, RUN = 24, 60, 120.0
+# the kinds each side gets, the same as missions/render_bench.py places (G5: a check does not import its mission);
+# the first is the side's main tank, the one counted
+ALLIED = ('AlliedAntiVehicleVehicleTech1', 'AlliedAntiInfantryVehicle', 'AlliedAntiStructureVehicle',
+          'AlliedAntiInfantryInfantry')
+SOVIET = ('SovietAntiVehicleVehicleTech1', 'SovietAntiVehicleVehicleTech3', 'SovietAntiStructureVehicle',
+          'SovietAntiInfantryInfantry')
 
 
 def war(m, top=TOP):
