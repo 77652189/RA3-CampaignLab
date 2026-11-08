@@ -144,7 +144,7 @@ def _hits(weapons):
 class SimWorld:
     """A level in the plan simulator as the proxy player's World (observe / issue / step / losses)."""
 
-    def __init__(self, level='a4', check='', script='', difficulty=DIFFICULTY, leads=None, lib=None):
+    def __init__(self, level='a4', check='', script='', difficulty=DIFFICULTY, leads=None, lib=None, show=False):
         import build
         p = proxy()
         if p is None:
@@ -152,7 +152,11 @@ class SimWorld:
         self.p, self.pw = p, p['world']
         self.level = level
         m, t, _ = build.resolve(level, check)
-        self.sim = sim.Sim(m, t, difficulty, script)
+        if show:        # simshow.ShowSim is sim.Sim plus presentation records (it changes no rule): what the player saw
+            import simshow
+            self.sim = simshow.ShowSim(m, t, difficulty, script)
+        else:
+            self.sim = sim.Sim(m, t, difficulty, script)
         self.me = self.sim.human
         self.ids, self.names = {}, {}          # body name <-> the int id the player knows it by
         home = self.sim.point('start')
@@ -369,15 +373,19 @@ def goals(world):
 
 
 def play(level='a4', style=None, until=UNTIL, every=15, check='', script='', difficulty=DIFFICULTY, label='',
-         lib=None):
-    """One playtest: (report dict, the SimWorld). The proxy plays until the mission ends or `until` seconds."""
-    w = SimWorld(level, check, script, difficulty, lib=lib)
+         lib=None, show=False):
+    """One playtest: (report dict, the SimWorld). The proxy plays until the mission ends or `until` seconds.
+    show=True also reads what the player saw off the run (simshow.problems) into rep['world']['show']."""
+    w = SimWorld(level, check, script, difficulty, lib=lib, show=show)
     p = w.p
     player = p['player'].ProxyPlayer(style)
     tr = p['report'].run(w, player, int(until * FPS), every, end=w.end, label=label or level)
     rep = p['report'].report(tr, goals(w))
     rep['world'] = {'simulator_ending': w.sim.ending_line(), 'refused': len(w.refused),
                     'guessed': sorted(w.sim.guessed)[:20]}
+    if show:
+        import simshow
+        rep['world']['show'] = simshow.problems(w.sim)
     return rep, w
 
 
@@ -397,15 +405,20 @@ def main():
     if not available():
         print(f'没有代理玩家（{labpaths.ENGINE_MODEL} 下没有 ra3model/proxy）')
         sys.exit(2)
-    rep, w = play(a.level, until=a.until, difficulty=a.difficulty, label=f'{a.level} 默认')
+    rep, w = play(a.level, until=a.until, difficulty=a.difficulty, label=f'{a.level} 默认', show=a.compare)
     reps = [rep]
     print(w.p['report'].summary(rep))
     print(rep['world']['simulator_ending'])
     if a.compare:
         plain, _ = play(a.level, style=w.p['player'].Style(block=0), until=a.until, difficulty=a.difficulty,
-                        label=f'{a.level} 不用关卡技能', lib=w.match.lib)
+                        label=f'{a.level} 不用关卡技能', lib=w.match.lib, show=True)
         reps.append(plain)
         print(w.p['report'].compare(reps))
+        for r in reps:         # what the player saw on each run (simshow.problems: K5 black edge, K1 captions, I1, flow)
+            probs = r['world']['show']
+            print(f'## 玩家看到的（{r.get("label", "")}）：{len(probs)} 个问题')
+            for x in probs:
+                print('- ' + x)
     if a.json:
         with open(a.json, 'w', encoding='utf-8') as f:
             json.dump(reps if a.compare else rep, f, ensure_ascii=False, indent=1)

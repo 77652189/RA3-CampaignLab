@@ -413,3 +413,9 @@
 - **不是我们的、已转给 A 线**：`test_simproxy::test_the_ice_goes_where_the_player_put_it`、`test_architecture` G5（总控说已转）。**没报过的两条**：`test_a1_plan::test_walking_to_the_bridge_end_does_not_end_the_mission` 和 `test_sim::test_the_wiring_checks_in_the_simulator`（`a1 walk`）：A1 走查在模拟器里 0:13 被 `CNV A1 - Rule 3` 判输，应该不结束。没动过 A1 数据，嫌疑是 `ef4a7d7` R8（空闲单位追着看到的目标打）之后 A1 的桥头单位提前交火；**没查**，归 A 线 / A1 的主人（关卡线暂缓出关，要查的话先看 A1 桥头两边的单位是不是互相看得见）。
 - 跑全量时必须写 `pytest -q tests`（不带目录会扫进 `work/downloads/blender` 的库而中断）。
 - **下一步第一项**：用 `simshow.problems` 并进 `simproxy --compare`（B 的文件，要总控转告）；其次测试台量开局头几帧镜头与 `LETTERBOX_HALF`；再次各关写"整局打赢"剧本后跑 `simshow`。A4 的 K1：整局打赢结尾 9:03 四条功能字幕挤在一起（见上节），等恢复出关再定。
+
+#### 第三十三个会话（11-07，总控批准改 `simproxy.py` 的 `--compare` 部分，只做加法）
+
+- **第一项做完**：`simproxy.py` 的 `SimWorld` / `play` 加 `show=False`；`show=True` 时世界用 `simshow.ShowSim`（只多记录、不改规则），`rep['world']['show']` 放 `simshow.problems` 的行。`--compare` 的两局都开 `show`，末尾各打一段"玩家看到的"。代理玩家逻辑没动。测试：`test_simproxy.py::test_a4_show_run_reads_the_presentation_and_changes_no_rule`（同一局开关 `show` 结局相同）。`pytest -q tests/test_simproxy.py tests/test_architecture.py tests/test_simshow.py` 41 过。
+- **首个读数**（`work/logs/simproxy_compare.log`）：A4 代理默认局 3:15 输，报 `K1 2:58 功能字幕 CNV_A4_Show_45 3:08 才出`；不用关卡技能那局没有问题。代理打输得早，这条是不是真问题要看正常打法下同一句。
+- **第二项没做**：测试台起不来，`RA3_1.13.game` 正在运行（`bench_start` 拒绝）。游戏退出后再 `bench_start(mod='CampA4'，menu_frames=2)` 存开局帧，量头几帧镜头和 `LETTERBOX_HALF`（现 410×170，11-05 量的）。

@@ -191,3 +191,14 @@ def test_a4_the_proxy_ices_the_streets_on_its_own_and_compares(a4_run, lib):
     assert not [r for r in w.refused if r[2] != 'target gone']
     table = w.p['report'].compare([rep, plain])
     assert '挡路 0 次' in table and '共 2 局' in table and '会场冻街口 1/2' in table
+
+
+def test_a4_show_run_reads_the_presentation_and_changes_no_rule(a4_run, lib):
+    """--compare plays on simshow.ShowSim (sim.Sim plus presentation records): rep['world']['show'] is the problems a
+    player would see (readable lines), and the run itself is the same as the plain one (same ending, same moment)."""
+    rep, w = a4_run
+    shown, _ = simproxy.play('a4', label='看得见', lib=lib, show=True)
+    assert isinstance(shown['world']['show'], list) and all(isinstance(x, str) for x in shown['world']['show'])
+    assert 'show' not in rep['world']
+    assert shown['world']['simulator_ending'] == rep['world']['simulator_ending']
+    assert shown['result'] == rep['result']
