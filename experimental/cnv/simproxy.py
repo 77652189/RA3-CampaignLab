@@ -212,7 +212,8 @@ class SimWorld:
         busy = 'attack' if isinstance(b.goal, sim.Body) else ('move' if b.path or b.building else '')
         return self.pw.Mine(self._id(b), b.template, frozenset(b.kinds), b.x, b.y, b.hp, b.max_hp, cost,
                             max((w['range'] for w in b.weapons), default=0.0), b.vision or 300.0, good, (), busy,
-                            rates, float(b.speed or 0.0))
+                            rates, float(b.speed or 0.0),
+                            frozenset(p for p, f in b.ready_at.items() if f > self.sim.frame_now()))
 
     def _thing(self, b):
         cost, _, _ = self._data(b.template)
@@ -331,11 +332,14 @@ class SimWorld:
                 s.order_attack(b, t.name)
             return True
         if o.kind == 'power':
-            if o.pos is not None:               # a ground power: the scripts' way, at a waypoint of its own
-                spot = f'SIMPROXY spot {len(s.waypoints)}'
-                s.waypoints[spot] = (float(o.pos[0]), float(o.pos[1]))
+            if o.pos is not None:               # a ground power: the player's click (Sim.order_power: reload, ground,
+                whys = []                       # ForbiddenObjectRange, reach), then the scripts' way at a waypoint
                 for b in units:
-                    s.act('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', [b.name, o.power, spot], None)
+                    ok, why = s.order_power(b, o.power, o.pos)
+                    if not ok:
+                        whys.append(why)
+                if len(whys) == len(units):
+                    return self._refuse(o, f'power refused: {", ".join(sorted(set(whys)))}')
             else:
                 for b in units:
                     s.note('技能', f'{s.label(b)} 用 {o.power}' + (f' 打 #{o.target}' if o.target else ''))

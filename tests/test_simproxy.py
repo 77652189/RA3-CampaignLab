@@ -139,14 +139,19 @@ def test_the_ice_goes_where_the_player_put_it(lib):
     """A ground power: the engineer walks to the spot and the ice core stands there (the simulator's R5), and the
     report's 冰在哪 criterion (report.power_at) holds for that place and not for another."""
     w = simproxy.SimWorld('a4', lib=lib)
-    _after_scene(w, 2, demo_holds_fire=True)
+    # 8 s: the scene's own ice (a scripted cast) starts the engineer's 40 s reload anew (bench engine_skill c); it is
+    # over ~5 s after the controls come back, and the player's click heeds it (Sim.order_power)
+    _after_scene(w, 8, demo_holds_fire=True)
     s, pw, rp = w.sim, w.pw, w.p['report']
     eng = next(m for m in w.observe().mine if m.template == 'CNV_IceEngineer')
-    spot = s.point('inside 1')
+    spot = s.point('lane foot')     # the nearest venue mouth: inside 1 is a 33 s walk and the first wave gets him there
     power = s.m.ability('engineer', 'freeze')
     before = set(s.bodies)
     f = w.frame
     assert w.issue(pw.Order('power', (eng.id,), pos=spot, power=power))
+    # the player's click heeds the reload (Sim.order_power): a second cast at once is refused, not done
+    assert not w.issue(pw.Order('power', (eng.id,), pos=s.point('inside 2'), power=power))
+    assert 'reloading' in w.refused[-1][2]
     w.step(40 * FPS)
     made = [s.bodies[n] for n in set(s.bodies) - before if s.bodies[n].made_by == w.names[eng.id]]
     assert made and all(math.hypot(b.x - spot[0], b.y - spot[1]) < 1 for b in made)
