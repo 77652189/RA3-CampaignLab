@@ -189,10 +189,14 @@ class Brain:
         not re-pick; targets.TargetsBlock keeps what a team holds through tactics.held): a state whose team runs
         with a target picks no more. Without it the AlliedScout state (MaxTargets 2, unique targets) took two more
         of the player's three structures every think while its dog walked to the third, and BalancedAttackGround
-        had none to go for (work/re/simai.md round 43). Belongs in the targets block (A's); wired here meanwhile."""
-        on = set(ai.states.on)
-        busy = {r.team.state for r in self.tactics.runs.values() if r.phase != 'done' and r.target is not None}
-        return [c.target for c in ai.states.choices if c.key in on and c.key not in busy]
+        had none to go for (work/re/simai.md round 43). A state holds one slot per copy (MaxTargets slots, round 44),
+        so it picks while one of its slots has no busy team. Belongs in the targets block (A's); wired here meanwhile."""
+        on = list(ai.states.on)
+        busy = {}
+        for r in self.tactics.runs.values():
+            if r.phase != 'done' and r.target is not None:
+                busy[r.team.state] = busy.get(r.team.state, 0) + 1
+        return [c.target for c in ai.states.choices if on.count(c.key) > busy.get(c.key, 0)]
 
     def base_of(self, player):
         ys = [b for b in self.sim.living() if b.owner == player and 'STRUCTURE' in b.kinds and not b.scenery]

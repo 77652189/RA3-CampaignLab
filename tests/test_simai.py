@@ -128,12 +128,15 @@ def test_skirmish_ai_scout_dog_stays_out(skirmish):
     (teams.releases, read 0x8a9a90); before that rule the scout team ended the frame after it went (BalancedAttack-
     Ground, STANDARD > LOW, took the dog) and was made again every few seconds (simai.md round 39). "No dog at all in
     the first team" is not asserted: the bench's barracks drew 2 dogs, the sim's uniform draw 6 (round 35), and the
-    dogs the scout team does not hold are free to join."""
+    dogs the scout team does not hold are free to join.
+    Round 44: AlliedScout is MaxTargets 2 = two slots, two teams (read 0x8d72f0, work/re l4_states.md 7); the bench's
+    second dog left ~3 s after the first (s55), the sim's ~20 s after (not asserted: known difference)."""
     (b,) = skirmish.brains.values()
     log = b.ai.teams.log
     until = b.started + 170 * simai.FPS
     scout = [e for e in log if e[2][0] == 'AlliedScout' and e[1] in ('go', 'ended') and e[0] < until]
-    assert [e[1] for e in scout] == ['go'], scout
+    assert sorted((e[1], e[2]) for e in scout) == [('go', ('AlliedScout', 'Attack', 0)),
+                                                   ('go', ('AlliedScout', 'Attack', 0, 1))], scout
 
 
 # checks/engine_aistate.py (bench 2026-11-06): the probe's own personality (missions/aistate_bench.py, written into
