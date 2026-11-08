@@ -52,6 +52,20 @@ def win(m):
     return t
 
 
+def real(m):
+    """win at the plan's own pace (nothing compressed): the three phases are 3:00 each, the rocket cars razed by test
+    script 4 s into the last. For simulators that read the presentation (simshow: is a K1 of the compressed win only
+    the compression?); the bench would take 9 minutes, so no bench run is declared."""
+    t = Test()
+    at = 3 * 180.0 + 4.0
+    for k, r in enumerate(m.roles('rocket')):
+        raze(t, r.name, k, at + 0.5 * k)
+    lost_counter(t)
+    t.expect += [('输了', 0, '==', 0, at - 2), ('ENDED', at + 14.0, '', None)]
+    t.bench = [('bench_watch', dict(seconds=at + 14.0, every=10, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 def lose(m):
     t = Test()
     raze(t, m.role('dam w').name, 0, FIRST)
@@ -122,7 +136,7 @@ def frog(m, tpl=FROG, count=3):
 
 # the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
 CHECKS = {
-    'a2': {'win': win, 'lose': lose, 'splash': splash, 'frog': frog,
+    'a2': {'win': win, 'real': real, 'lose': lose, 'splash': splash, 'frog': frog,
            'ray': lambda m: frog(m, 'SovietAntiNavyShipTech1'),
            'dread': lambda m: frog(m, 'SovietAntiStructureShip', 1)},
 }
