@@ -1,0 +1,32 @@
+# A8 as a player plays it (docs/story/plans/a8.md): the simulator's script for simshow --script / simchecks ('a8', 'play').
+# Nothing is razed or deleted by the script, the fight is the simulator's. NOT tested here (the simulator does not model
+# them): the swell (a tower's reach by the wave, upgrades are not simulated), the chrono deck's jump, the drones and the
+# deck factory's own pace -- the guardians the deck makes every 20 s are 造 lines (a made unit is there at once), the
+# carrier is kept at the west shore (the javelin men on the platforms shoot it: sent to platform 1 it was down at 3:03).
+# 1. build up for 3 minutes: a guardian from the deck every 20 s, peacekeepers against the javelin men, two anti-air
+#    vehicles (the apollo fighters come at 3:00 for the carrier)
+10 造 AlliedAntiVehicleVehicleTech1 在 west shore
+30 造 AlliedAntiVehicleVehicleTech1 在 west shore
+50 造 AlliedAntiVehicleVehicleTech1 在 west shore
+70 造 AlliedAntiVehicleVehicleTech1 在 west shore
+90 造 AlliedAntiVehicleVehicleTech1 在 west shore
+110 造 AlliedAntiVehicleVehicleTech1 在 west shore
+130 造 AlliedAntiVehicleVehicleTech1 在 west shore
+150 造 AlliedAntiVehicleVehicleTech1 在 west shore
+170 造 AlliedAntiVehicleVehicleTech1 在 west shore
+120 造 AlliedAntiAirVehicleTech1 在 west shore
+140 造 AlliedAntiAirVehicleTech1 在 west shore
+30 造 AlliedAntiInfantryInfantry 在 base edge
+45 造 AlliedAntiInfantryInfantry 在 base edge
+60 造 AlliedAntiInfantryInfantry 在 base edge
+75 造 AlliedAntiInfantryInfantry 在 base edge
+90 造 AlliedAntiInfantryInfantry 在 base edge
+105 造 AlliedAntiInfantryInfantry 在 base edge
+120 造 AlliedAntiInfantryInfantry 在 base edge
+# 2. one platform after the other with everybody (the next one at once when the last falls)
+200 派 guardian 去 platform 1
+200 派 名字含 SIM Made 去 platform 1
+CNV_A8_Phase_2+3 派 guardian 去 platform 2
+CNV_A8_Phase_2+3 派 名字含 SIM Made 去 platform 2
+CNV_A8_Phase_3+3 派 guardian 去 platform 3
+CNV_A8_Phase_3+3 派 名字含 SIM Made 去 platform 3

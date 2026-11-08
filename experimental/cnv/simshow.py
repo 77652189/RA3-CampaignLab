@@ -348,9 +348,10 @@ def main():
     ap.add_argument('--check', default='')
     ap.add_argument('--until', type=float, default=sim.UNTIL)
     ap.add_argument('--level', default='normal', choices=list(sim.LEVELS))
+    ap.add_argument('--script', default='', help="the player's orders (sim.py's script: a file, or 't 动作 ...; ...')")
     ap.add_argument('--out', default='', help='write the timeline here as a text file')
     a = ap.parse_args()
-    s = run(a.name, a.check, a.until, a.level)
+    s = run(a.name, a.check, a.until, a.level, a.script)
     text = '\n'.join(report(s))
     if a.out:
         os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
