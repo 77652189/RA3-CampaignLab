@@ -68,6 +68,7 @@ WALL = 'SovietBunker'
 ENEMY = 'AlliedMCV'
 TANK, V4, HELI = 'AlliedAntiVehicleVehicleTech1', 'SovietAntiStructureVehicle', 'SovietAntiGroundAircraft'
 BUILDING = 'AlliedPowerPlant'
+FACING = {'artyfe': 0.0, 'artyf15': 15.0, 'artyf30': 30.0}    # the V4's facing off the MCV, degrees (p1's default: 90)
 RING, R = 36, 150.0
 MAKE, ORDER = 1.0, 4.0
 
@@ -150,6 +151,11 @@ def mission():
             m.put(TANK, f'seal {lane}', 350.0, 0.0, side='s1', role=f'{lane} enemy', name=f'UNIT - CNV Seal {k} Enemy')
             continue
         m.put(ENEMY, f'seal {lane}', dx, 0.0, side='s1', angle=90.0, role=f'{lane} enemy', name=f'UNIT - CNV Seal {k} Enemy')
+    for lane, deg in FACING.items():    # artyo's lane with the V4 turned: 0 = facing the MCV 350 east
+        k = lane.title()
+        m.put(V4, f'seal {lane}', angle=math.radians(deg), role=f'{lane} foot', name=f'UNIT - CNV Seal {k} Foot')
+        m.put(ENEMY, f'seal {lane}', 350.0, 0.0, side='s1', angle=90.0, role=f'{lane} enemy',
+              name=f'UNIT - CNV Seal {k} Enemy')
     for lane in ('aa', 'aaopen'):
         k = lane.title()
         m.put(IFV, f'seal {lane}', role=f'{lane} foot', name=f'UNIT - CNV Seal {k} Foot')
@@ -328,6 +334,23 @@ def artybk(m):
     return _idle(m, 'artybk', False)
 
 
+def artyfe(m):
+    """artyo with the V4 placed facing the MCV 350 east (p1 units face north by default: the MCV was 90 degrees off its
+    nose). The V4's rocket is on a hardpoint (no turret) and it writes no RotateToTargetWhenAiming (default false; the
+    peacekeeper, which does fire idle, writes true): does an idle V4 take what is in front of it."""
+    return _idle(m, 'artyfe', False)
+
+
+def artyf15(m):
+    """artyfe with the V4 turned 15 degrees off the MCV (its rocket's AcceptableAimDelta is 20)."""
+    return _idle(m, 'artyf15', False)
+
+
+def artyf30(m):
+    """artyfe with the V4 turned 30 degrees off the MCV."""
+    return _idle(m, 'artyf30', False)
+
+
 def attack(m):
     """row's set-up (lane 'attack'), plus an explicit attack order on the MCV at 4 s."""
     t = _wall(m, 'attack', 'p1', 105.0)
@@ -431,5 +454,6 @@ def spawn(m):
 MISSION = {'engine_seal': mission}
 CHECKS = {'engine_seal': {'move': move, 'idle': idle, 'open': idle_open, 'cut': cut, 'row': row, 'spawn': spawn,
                            'erow': erow, 'tank': tank, 'topen': tankopen, 'arty': arty, 'artyhp': artyhp, 'artyo': artyopen, 'artyrv': artyrv, 'arty250': arty250,
-                           'artyatk': artyatk, 'artytk': artytk, 'artyb': artyb, 'artybk': artybk, 'attack': attack,
+                           'artyatk': artyatk, 'artytk': artytk, 'artyb': artyb, 'artybk': artybk, 'artyfe': artyfe,
+                           'artyf15': artyf15, 'artyf30': artyf30, 'attack': attack,
                            'aa': aa, 'aaopen': aaopen, 'ebld': ebld, 'ebldam': ebldam, 'pam': pam}}

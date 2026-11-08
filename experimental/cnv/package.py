@@ -75,8 +75,9 @@ def _put_waypoints(m, objs, like, waypoints):
 
 def _put_objects(m, objs, like, objects):
     import newmap
+    from model import facing
     for o in objects:
-        angle = o.angle if o.angle is not None else (1.5708 if o.side == 'p1' else -1.5708)
+        angle = facing(o)
         extra = dict(o.props, **({'objectName': o.name} if o.name else {}))
         props, flags = like[o.side]
         objs.kids.append(newmap.object_node(m, props, flags if o.flags is None else o.flags, o.template, o.x, o.y,

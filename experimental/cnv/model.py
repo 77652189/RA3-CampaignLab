@@ -128,6 +128,13 @@ class Obj:
     flags: int = None                   # object flags (a bridge's start 16 / end 32); None: those of its side's template
 
 
+def facing(o):
+    """The angle (radians, 0 = east, map +x) an object is put down at in the built map: its own, else the player's
+    face north (+y) and everyone else's south. package._put_objects writes it, the simulator places by it (a unit's
+    nose, a bar's lie) -- one rule, so the two cannot drift (the simulator took 0 = east till 2026-11-08)."""
+    return o.angle if o.angle is not None else (1.5708 if o.side == 'p1' else -1.5708)
+
+
 NOT = 'NOT'                             # a condition's last item: it holds when its test does not (unnot)
 
 

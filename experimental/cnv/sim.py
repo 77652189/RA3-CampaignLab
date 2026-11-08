@@ -57,6 +57,7 @@ sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign'
 import parts  # noqa: E402
 import simunits  # noqa: E402
 from ctx import FUNC_LATE, PANEL_CLEAR  # noqa: E402
+from model import facing  # noqa: E402
 
 TEAM_COMMANDS = ('MOVE_TEAM_TO', 'ATTACK_MOVE_TEAM_TO', 'TEAM_ATTACK_NAMED', 'TEAM_GUARD_AREA', 'TEAM_STOP')   # E3: need a live team
 SHOW_FLAG = re.compile(r'CNV_\w+_Show_\d+')       # ctx.Talk.show: a 功能 line's caption is asked for
@@ -798,7 +799,7 @@ class Sim:
             if isinstance(crew, str):                   # placed in a team of the mission's own (K6): that team has a member
                 b.team = crew
                 self.active.add(crew)
-            b.angle = o.angle or 0.0
+            b.angle = facing(o)                         # as the built map puts it (the player's north, others' south)
         import platprops
         for k, o in enumerate(getattr(mission.map, 'SCENERY', [])):
             if o.template in platprops.STRUCTURE:

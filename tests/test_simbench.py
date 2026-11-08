@@ -843,6 +843,19 @@ def test_seal_an_idle_v4_leaves_the_mcv_350_off_alone():
     assert rows[-1][1]['敌车血量'] >= 99, rows[-1]
 
 
+def test_bodies_face_as_the_built_map_puts_them():
+    """The simulator places a body at the angle the built map writes (model.facing, package._put_objects): its own,
+    else the player's north (+y) and everyone else's south -- it took 0 (east) for 'none' till 2026-11-08. The
+    engine_seal artyfe / artyf15 / artyf30 V4s write theirs; artyo's V4 writes none (north), its s1 MCV writes 90."""
+    import math
+    import model
+    _, _, s = _sim_resolve('engine_seal', 'artyfe')
+    for lane, deg in (('Artyfe', 0.0), ('Artyf15', 15.0), ('Artyf30', 30.0)):
+        assert s.body(f'UNIT - CNV Seal {lane} Foot').angle == pytest.approx(math.radians(deg))
+    assert s.body('UNIT - CNV Seal Arty Foot').angle == pytest.approx(1.5708)
+    assert model.facing(model.Obj('X', 0, 0, side='s1')) == pytest.approx(-1.5708)
+
+
 def test_seal_told_to_attack_through_the_row_it_walks_round_the_end():
     """Bench engine_seal attack (2026-11-08): row's set-up, an attack order on the MCV at 4 s -- the peacekeeper
     leaves the start by s4, is north of the row's end from s7 (5 = 1 + 4; never east of it), the MCV 97 at s10 down

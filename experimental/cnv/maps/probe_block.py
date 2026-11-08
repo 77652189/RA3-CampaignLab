@@ -61,7 +61,8 @@ for _k, _y in (('move', 700.0), ('idle', 1400.0), ('idle open', 2100.0), ('spawn
 for _k, _x, _y in (('erow', 2800.0, 1800.0), ('tank', 2800.0, 2600.0), ('arty', 2800.0, 3400.0),
                    ('attack', 2800.0, 4200.0), ('aa', 4600.0, 1400.0), ('aaopen', 4600.0, 2300.0),
                    ('tankopen', 4600.0, 3300.0), ('arty250', 4600.0, 4200.0), ('artytk', 4600.0, 4800.0),
-                   ('artyb', 1400.0, 3400.0), ('artybk', 1400.0, 2600.0)):                                   # engine_seal shot-blocking lanes
+                   ('artyb', 1400.0, 3400.0), ('artybk', 1400.0, 2600.0),
+                   ('artyfe', 600.0, 1900.0), ('artyf15', 2100.0, 2000.0), ('artyf30', 4600.0, 600.0)):  # engine_seal shot-blocking lanes
     SITES[f'seal {_k}'] = Site(_x, _y, 60.0, f'the {_k} seal test: where its shooter stands (open ground)')
 for _k, _x in (('ebld', 600.0), ('ebldam', 1300.0)):                              # engine_seal: the enemy's soldier
     SITES[f'seal {_k}'] = Site(_x, 4800.0, 60.0, f'the {_k} seal test: where the enemy soldier stands (open ground)')
