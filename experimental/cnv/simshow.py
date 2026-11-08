@@ -38,7 +38,8 @@ SEEN_FOR_MIN = ctx.FUNC_HOLD    # a caption pushed out sooner than this after it
 BLACK_MIN = 2.0         # seconds a black picture stands before it counts: the mission's first ~1 s show the game's own start
                         # camera until the opening script has run (every level has them: the model's flag chain), and a pan
                         # may graze an edge on its way
-CAST_LIMIT = 8          # units named in one camera row of the report
+CAPTION_ACTION = next(k for k, v in sim.SHOWN.items() if v == '通报')    # the one outlet is the simulator's: not spelt here (G3a)
+CAST_LIMIT = 8         # units named in one camera row of the report
 
 # What this reader had to add to the simulator (sim.Sim), for its owner to make native if it wants:
 HOOKS = [
@@ -99,7 +100,7 @@ class ShowSim(sim.Sim):
             self.locks.append((t, name == 'ENABLE_INPUT'))
         elif name == 'MAP_SWITCH_BORDER':
             self.borders.append((t, int(a[0])))
-        elif name == 'SHOW_MILITARY_CAPTION':
+        elif name == CAPTION_ACTION:
             self.asked_caps.append((t, self.text(a[0]) if isinstance(a[0], str) else str(a[0]), float(a[1])))
         elif name in ('HIDE_COUNTER', 'HIDE_COUNTDOWN_TIMER'):
             label = self.text(a[0]) if isinstance(a[0], str) else str(a[0])
