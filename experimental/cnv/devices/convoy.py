@@ -42,6 +42,7 @@ class Convoy(Device):
             raise PlanError(f'{name}: 车 {who!r} is none of {ctx.side_names()}')
         self.cv = fp.Convoy(ctx, ctx.tag, ctx.side(who), 0.0, self.tick, speed=float(spec.get('速度', 50.0)))
         self.batches = [float(x) for x in spec.get('分批') or []]
+        self.cv.split = bool(self.batches)           # a team a truck: a later truck is not swept along by the first's order
         if self.batches and len(self.batches) != len(self.cv.trucks):
             raise PlanError(f'{name}: 分批 gives one time per truck ({len(self.cv.trucks)})')
         self.go = [f'CNV_{ctx.tag}_Go_{j}' for j in range(1, len(self.cv.trucks) + 1)]
@@ -127,7 +128,8 @@ class Convoy(Device):
             for i, lost in enumerate(self.cv.trucks):
                 if i != j:
                     out.append(Script(f'CNV {self.ctx.tag} - Release {j + 1} after truck {i + 1} lost',
-                                      [started, ('NAMED_DESTROYED', lost)], [('SET_FLAG', g, 1)]))
+                                      [started, ('NAMED_DESTROYED', lost), ('FLAG', f'CNV_{self.ctx.tag}_Safe_{i + 1}', 0)],
+                                      [('SET_FLAG', g, 1)]))     # (a truck that got there is deleted, not lost)
         if self.spec.get('血量') is not None:      # retail Iga: NAMED_SET_MAX_HEALTH by difficulty, full health too
             there = [('FLAG', self.cv.rolling, 1)] if self.cv.enter else []     # trucks made at the departure
             for levels, v in plantime.by_level(plantime.counts(self.spec['血量'])):

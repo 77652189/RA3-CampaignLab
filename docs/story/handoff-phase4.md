@@ -453,3 +453,11 @@
 - **测试台**：`cnv_check a4 detour` PASS（一号街的兵 s59 在后巷口出，号角 s36，晚 25 秒）；`checks/a4.py` 的 detour 期望按新延迟改了（`DETOUR = 25`，"号角后 21 秒前一号街不出兵"也加了断言）。pytest（horn、level_cards、architecture、simproxy、a4_plan）54 过。
 - **没做/下一步**：①A 线修完冰墙后重跑上表那行"冰墙全挡"；②按难度分表（上一条）；③`docs/design/cards/a4-layer3.md` 里"三条绕路长短差 ≥ 10 秒"是旧设计稿，没改（约束还成立）。
 - **下一步（总控 11-08 建议，ADR 0022）**：A4 改完绕路表后，用 `experimental/cnv/simshow.py a4 --check win`（和 `simproxy.py`）把 A4 在模拟器里从头跑通当验收，完成判据是"一关全程在模拟器里跑"；跑完列出还缺的规则（比如冰墙不挡步兵那条等 A 线、按难度分绕路表）。踩过的坑：本机 8 核，并行跑 `a4waves` 超过 8 个会很慢（每局 1～5 分钟）；Git Bash 里 `pgrep` 看不到 Windows 进程，别拿它判断后台任务是否结束，用日志文件首行判断。
+
+#### 第三十七个会话（11-08，总控令：ADR 0022 验收，`simshow.py a4 --check win` 从头跑通）
+- **结果**：模拟器里 A4 整局能赢；改前 9:23 赢、展示层 2 条 K1（结局 9:03 挤一堆功能字幕，字幕晚 9～15 秒）；改后 **11:07 赢、展示层 0 问题**（`work/player_timeline/a4.md`，未入 git）。完成判据"一关全程在模拟器里跑"在 A4 上达到。
+- **挖出一个真 bug（关卡脚本，不是模拟器缺规则）**：车队的 3 辆车共用一个队（ADR 0016 K6 的 `crew`），每辆车出发时的 `MOVE_TEAM_TO` 把整队带走，`分批 0/50/110` 形同虚设，三辆车只隔 5 秒（车距 60 ÷ 速度 12）到港口。真实游戏里同样。改了：`Convoy.order`（`experimental/cnv/missions/festival_parts.py`）在分批时一车一队（`crew` 名 `Convoy<tag>1/2/3`，机关 `devices/convoy.py` 置 `cv.split`）；`Release j after truck i lost` 加 `Safe_i = 0`（到终点的车是被删掉的，不算损失）。到达时间 8:53 / 9:46 / 10:52。`tests/test_plan_allies.py` 里"整队一个队"的断言改成一车一队。
+- **测试台**：`cnv_check a4 win` 三次里 2 次 PASS（第一辆车 s445 到、第二辆 s505 到，约隔 60 秒，真实游戏也错开了；任务 s540 左右赢），1 次第 322 秒游戏里"任务已结束"没读到计数（FAIL，画面停在港口过场），子 Agent 另跑的一次 FAIL（到港口车数一直 0）。失败的两次原因没查清，像测试台掉线，不像逻辑（PASS 的两次读数完全一致）；`a4 lose` PASS。以后 `a4 win` 失败先重跑一次。
+- **全量 pytest（671 过 7 失败）**，7 个都不是这次改的：`test_graybox_cards` 2 个（`mine` 射程 300 = 钩子 300）、`test_simai::test_skirmish_ai_builds_makes_units_and_attacks`（攻击没毁玩家东西）、`test_simbench` 4 个（detour/queue/smash 的墙计数是 0；`r3` 墙没被打伤）。simbench 那 4 个在干净的 HEAD 副本上同样失败，A 线（冰墙）的事。
+- **还缺的规则 / 要别人做的**：①A 线：中途立起的冰墙不挡步兵（`a4waves.py 0` 对照还没重跑）；②上面 7 个失败归引擎 A/B 线、`graybox_cards` 归写它的线；③按难度分绕路表（上一节）。属于引擎规则的新缺口：**这次没发现新的**。
+- **没做**：`a4waves` 重跑（这次改的是最后一程的车队，会场段不受影响）；A4 其它检查（`hold`、`smoke` 等）没重跑测试台，只跑了 `win`、`lose`。

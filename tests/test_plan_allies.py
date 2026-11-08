@@ -61,10 +61,11 @@ def test_the_convoy_is_the_allys_and_sets_off_in_batches():
     m = small(机关={'车队': {'类型': '车队', '出发': '开局 + 0:30', '车': '护送队', '分批': [0, 50, 110]}})
     assert {m.cast[f'truck {j}'].side for j in (1, 2, 3)} == {'s2'}
     rolls = [s for s in m.scripts if s.name.startswith('CNV ZZ - Roll ') and s.name[-1].isdigit()]
-    team = m.teams['ConvoyZZ']                                                  # the convoy is one team: ordered as one
-    assert team.startswith(m.player('s2'))
-    assert [s.do for s in rolls] == [[('UNIT_SET_TEAM', f'UNIT - CNV ZZ Truck {j}', team),
-                                      ('MOVE_TEAM_TO', team, 'CNV ZZ Exit')] for j in (1, 2, 3)]
+    teams = [m.teams[f'ConvoyZZ{j}'] for j in (1, 2, 3)]       # staggered: a team a truck (one team swept all three along:
+    assert all(t.startswith(m.player('s2')) for t in teams)     # a4 --check win, simshow 2026-11-08, arrivals 5 s apart)
+    assert len(set(teams)) == 3 and 'ConvoyZZ' not in m.teams
+    assert [s.do for s in rolls] == [[('UNIT_SET_TEAM', f'UNIT - CNV ZZ Truck {j}', teams[j - 1]),
+                                      ('MOVE_TEAM_TO', teams[j - 1], 'CNV ZZ Exit')] for j in (1, 2, 3)]
     assert [next(c for c in s.when if c[0] == 'FLAG' and '_Go_' in c[1]) for s in rolls] == \
         [('FLAG', f'CNV_ZZ_Go_{j}', 1) for j in (1, 2, 3)]
     roll = next(s for s in m.scripts if s.name == 'CNV ZZ - Roll')

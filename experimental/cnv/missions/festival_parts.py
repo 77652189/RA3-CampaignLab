@@ -40,6 +40,7 @@ class Convoy:
         self.arrived, self.losses = f'CNV_{tag}_Arrived', f'CNV_{tag}_Lost'  # ASCII: names go through Latin-1
         self.crew = 'Convoy' + ''.join(c for c in tag if c.isalnum())      # the key of the trucks' team
         self.leave, self.tick, self.side, self.enter = leave, tick, side, enter
+        self.split = False                      # the device sets it when the trucks leave one by one (分批)
         ctx.waypoint('exit', self.exit, 'road exit')
         ctx.add_area(self.exit_area, square(*ctx.site('road exit'), ctx.where('road exit').r))
         self.truck = convoy.truck(speed=speed)
@@ -85,7 +86,12 @@ class Convoy:
     def order(self, kind, trucks, target=None):
         """The convoy's trucks (or some of them) told what to do: one team for the convoy, so a truck lost leaves the
         rest all going (I7: two left, one drove) and one let go later joins whoever is driving (ctx.order)."""
-        return self.ctx.order(kind, trucks, target, self.side, crew=self.crew)
+        if not self.split:
+            return self.ctx.order(kind, trucks, target, self.side, crew=self.crew)
+        out = []                                # staggered (分批): a team a truck, else the first one's order sweeps the
+        for t in trucks:                        # later ones along (sim a4 --check win: all three arrived 5 s apart)
+            out += self.ctx.order(kind, [t], target, self.side, crew=f'{self.crew}{self.trucks.index(t) + 1}')
+        return out
 
     def tail(self):
         out = []
