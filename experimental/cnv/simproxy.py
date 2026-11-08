@@ -69,7 +69,8 @@ ICE_GOALS = {
 # site the block goes on, the site the threat comes out of), and the power that blocks (cast part, ability). The
 # proxy decides when and which (player._blocks); nothing here says which way to block.
 CHOKES = {
-    'a4': {'countdown': 'CNV A4 Horn', 'power': ('engineer', 'freeze'),
+    # 'seed': what the power puts down; its lifetime is the build bar the player watches (Choke.build)
+    'a4': {'countdown': 'CNV A4 Horn', 'power': ('engineer', 'freeze'), 'seed': 'CNV_A4IceSeed',
            # the road each way's threat walks onto (a site on it): a way's JUNCTION is (its block site's x, the road's y),
            # where its wave meets the convoy's road -- where the guard waits for it (SimWorld.junctions)
            'road': 'convoy start',
@@ -80,7 +81,8 @@ CHOKES = {
 # levels with somewhere the wounded heal (Observation.healing): the simulator heals nobody (no auto-heal, no repair
 # modelled), so every level is False until it does; A4's first part has no repair on purpose (flow/a4.md)
 HEALING = {}
-BLOCKED_R = 120.0              # a choke counts as blocked while a body with a lifetime of its own (ice) stands this close
+BLIP_KEEP = 30.0               # seconds a minimap flash stays in Observation.blips (the proxy decides how long it matters)
+BLOCKED_R = 120.0             # a choke counts as blocked while a body with a lifetime of its own (ice) stands this close
 # a level's own targets the report asks about: (goal name, cast part, note)
 TARGET_GOALS = {
     'a4': (('拆北营指挥所', 'north command', '第 3 段：指挥所一倒港口的兵撤走、车队走最后一程'),),
@@ -167,6 +169,7 @@ class SimWorld:
         self.match = p['matchup'].Matchup(lib if lib is not None else p['xmldata'].Library())
         self._offer = {}
         self.refused = []                       # (frame, Order, why) the world would not take
+        self._blips, self._log_read = [], 0     # minimap flashes seen so far (blips), how far Sim.log is read
 
     # ---- the clock
     @property
@@ -244,7 +247,24 @@ class SimWorld:
         return self.pw.Observation(self.frame, self.me, self.money(), self.where_home(), mine, seen, self.offers(),
                                    self.enemies(), list(self.leads), self.chokes(), escort=bool(self._convoy()),
                                    cinematic=not s.input, healing=HEALING.get(self.level, False),
-                                   counters={t.template: self._data(t.template)[1] for t in seen})
+                                   counters={t.template: self._data(t.template)[1] for t in seen},
+                                   blips=self.blips())
+
+    def blips(self):
+        """[(frame, x, y)] the minimap flashes (the scripts' OBJECT_CREATE_RADAR_EVENT, Sim.log '小地图闪点', named by
+        the object they flash on) of the last BLIP_KEEP seconds, where that object stands: a human sees the flash even
+        where the fog hides the object. Read off the log as it grows (a flash is placed when first read: observe runs
+        every decision, before the flashed object has walked off)."""
+        s = self.sim
+        for t, kind, text in s.log[self._log_read:]:
+            if kind == '小地图闪点':
+                b = s.bodies.get(text)
+                if b is not None:
+                    self._blips.append((int(round(t * FPS)), float(b.x), float(b.y)))
+        self._log_read = len(s.log)
+        keep = self.frame - int(BLIP_KEEP * FPS)
+        self._blips = [b for b in self._blips if b[0] >= keep]
+        return list(self._blips)
 
     def money(self):
         """What the player can still spend: the bank less what the queued builds will still take (Sim.order_build pays
@@ -277,13 +297,15 @@ class SimWorld:
         power = s.m.ability(part, ability) if part in s.m.cast else None
         by = frozenset({s.m.cast[part].template}) if part in s.m.cast else frozenset()
         walls = [(b.x, b.y) for b in s.living() if b.life_end is not None and b.speed == 0 and not b.scenery]
+        life = sim.simunits.lifetime(spec['seed'], s.own)[0] if spec.get('seed') else None
+        build = life / FPS if life else 0.0
         out = []
         for way, block, source in spec['ways']:
             p, q = s.point(block), s.point(source)
             if not p or not q:
                 continue
             blocked = any(math.hypot(x - p[0], y - p[1]) <= BLOCKED_R for x, y in walls)
-            out.append(self.pw.Choke(way, tuple(p), tuple(q), at, power or '', by, blocked))
+            out.append(self.pw.Choke(way, tuple(p), tuple(q), at, power or '', by, blocked, build))
         return out
 
     def junctions(self):
