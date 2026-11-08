@@ -60,7 +60,9 @@ class PlaySim(simshow.ShowSim):
             text = sub or self.text(key)
             kind = '配音' if name == 'PLAY_SOUND_EFFECT' else '播报'
             # the engine queues dialogue events (voice_link.Later.length: ten lines at one moment "are heard one after
-            # another"): a line starts when the one before it has played out, in game time; the page plays a line
+            # another"; source: docs/story/handoff.md 4、7 叠播的真根因 ②, seen in the game on CampShell, r3_fine* frames --
+            # not a bench counter measurement; the level line re-checks it in the game): a line starts when the one
+            # before it has played out, in game time; the page plays a line
             # when the run reaches its start and cuts the one before, so at most one is heard at a time
             start = max(self.t, self.voice_free)
             secs = voice_seconds(key, text, kind)
