@@ -168,7 +168,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v4.json')     # v3: weapon inheritFrom (2026-11-08); v4: + los
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v5.json')     # v3: weapon inheritFrom (2026-11-08); v4: + los; v5: overrides, LineDamageNugget
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -213,19 +213,28 @@ def _weapon_files():
     return out
 
 
-def _weapons(texts):
+HIT_NUGGETS = ('DamageNugget', 'LineDamageNugget')     # nuggets whose Damage takes health off what they hit (a
+                                                        # LineDamageNugget: the sniper rifles, the wave-force beams)
+
+
+def _weapons(texts, base_table=None):
     """Weapon template id -> {range, damage, type, shots, cycle, anti, warhead, los}; a projectile's damage is its
     warhead's (filled in by _resolve). A template with inheritFrom takes what it does not write from its parent
     (the flak trooper's anti-air SovietAntiVehicleFlakLauncher_Aircraft writes only its range and anti mask: without
-    this it had no damage and never fired at aircraft; bench 2026-11-08 engine_air flak*)."""
-    own, parent = {}, {}
+    this it had no damage and never fired at aircraft; bench 2026-11-08 engine_air flak*). A template that inherits
+    from its own id (Includes/CampaignOverrides: the conscript's AK47, the tesla trooper's gun, the Apollo's cannon,
+    the Century bomber's bombs) changes what it writes on the earlier template of that id, it does not replace it.
+    base_table: resolved templates (the retail ones) a parent not among `texts` is looked up in (a mission's own
+    weapon inheriting a retail one)."""
+    defs = []                                           # (id, what it writes, parent) in file order
     for text in texts:
         for head, body in _blocks(text, 'WeaponTemplate'):
             wid = _attr(head, 'id')
             if not wid:
                 continue
             bare = re.sub(r'<!--.*?-->', '', body, flags=re.S)
-            dmg = [(_num(_attr(h, 'Damage')), _attr(h, 'DamageType', '')) for h, _ in _blocks(bare, 'DamageNugget')]
+            dmg = [(_num(_attr(h, 'Damage')), _attr(h, 'DamageType', '')) for tag in HIT_NUGGETS
+                   for h, _ in _blocks(bare, tag) if _attr(h, 'Damage') is not None]
             war = [_attr(h, 'WarheadTemplate') for h, _ in _blocks(bare, 'ProjectileNugget')]
             fire = re.search(r'<FiringDuration\b[^>]*MinSeconds="([^"]+)"', body)
             reload_ = re.search(r'<ClipReloadTime\b[^>]*MinSeconds="([^"]+)"', body)
@@ -234,7 +243,9 @@ def _weapons(texts):
             if _attr(head, 'AttackRange'):
                 got['range'] = _num(_attr(head, 'AttackRange'))
             if dmg:
-                got['damage'], got['type'] = sum(d for d, _ in dmg), next((t for d, t in dmg if t), '')
+                got['damage'] = sum(d for d, _ in dmg)
+                if any(t for _, t in dmg):                  # an override writing only Damage keeps the type
+                    got['type'] = next(t for _, t in dmg if t)
             if any(war):
                 got['warhead'] = next(w for w in war if w)
             if _attr(head, 'ClipSize'):
@@ -246,14 +257,26 @@ def _weapons(texts):
                 got['anti'] = _attr(head, 'RequiredAntiMask').split()
             if _attr(head, 'Flags') is not None:                # a template that writes Flags writes all of them
                 got['los'] = 'ATTACK_NEEDS_LINE_OF_SIGHT' in _attr(head, 'Flags').split()
-            own[wid], parent[wid] = got, _attr(head, 'inheritFrom')
+            defs.append((wid, got, _attr(head, 'inheritFrom')))
+    own, parent = {}, {}
+    for overrides in (False, True):                     # every override after every first definition, whatever the
+        for wid, got, p in defs:                        # file order
+            if (p == wid) != overrides:
+                continue
+            if overrides:
+                own[wid] = {**own.get(wid, {}), **got}
+            else:
+                own[wid], parent[wid] = got, p
     base = dict(range=0.0, damage=0.0, type='', shots=1, fire=0.0, reload=0.0, delay=0.0, anti=[], warhead=None, los=False)
     out = {}
 
     def get(wid, depth=0):
         if wid not in out:
             p = parent.get(wid)
-            up = get(p, depth + 1) if p in own and depth < 10 else base
+            if p in own and p != wid and depth < 10:
+                up = get(p, depth + 1)
+            else:
+                up = (base_table or {}).get(p, base)
             out[wid] = {**up, **own[wid]}
         return out[wid]
     for wid in own:
@@ -329,12 +352,28 @@ def _fight_data():
     return _fight
 
 
+_own_weapons = {}
+
+
+def weapon_table(own=None):
+    """Weapon template id -> its fields (_weapons): the retail ones and the WeaponTemplates the mission's own units'
+    XML declare (a unit of ours carries its weapons in its XML: CNV_ChronoLag_Shell, the trains' tesla guns)."""
+    d = _fight_data()
+    texts = [x for x in (own or {}).values() if '<WeaponTemplate' in x]
+    if not texts:
+        return d['weapons']
+    key = hash(tuple(texts))
+    if key not in _own_weapons:
+        _own_weapons[key] = {**d['weapons'], **_weapons(texts, d['weapons'])}
+    return _own_weapons[key]
+
+
 def fight(template, own=None):
     """{hp, armor {damage type: percent}, weapons [{range, dps, type, anti}]} for a template (own: the mission's
-    units' XML, read with the retail weapons and armours); hp None when the data has none."""
+    units' XML, read with the retail weapons and armours and their own weapons); hp None when the data has none."""
     d = _fight_data()
     if own and template in own:
-        return read_fight(own[template], d['weapons'], d['armors'])
+        return read_fight(own[template], weapon_table(own), d['armors'])
     return d['units'].get(template.lower(), dict(hp=None, armor={}, weapons=[]))
 
 

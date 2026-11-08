@@ -214,13 +214,20 @@ def weapon_body(wid):
     return _weapon_bodies.get(wid)
 
 
-def nuggets_of(wid):
+def nuggets_of(wid, own=None):
+    """The nugget tags of a weapon over its inheritFrom chain: a retail template, or one the mission's own units'
+    XML declare."""
+    mine = {}
+    for text in (own or {}).values():
+        for head, body in simunits._blocks(text, 'WeaponTemplate'):
+            if simunits._attr(head, 'id'):
+                mine[simunits._attr(head, 'id')] = (head, re.sub(r'<!--.*?-->', '', body, flags=re.S))
     out, seen = set(), set()
-    while wid in _weapon_bodies or weapon_body(wid):
+    while wid in mine or wid in _weapon_bodies or weapon_body(wid):
         if wid in seen:
             break
         seen.add(wid)
-        head, body = _weapon_bodies[wid]
+        head, body = mine.get(wid) or _weapon_bodies[wid]
         out |= set(re.findall(r'<(\w*Nugget)\b', body))
         wid = simunits._attr(head, 'inheritFrom')
     return sorted(out)
@@ -251,6 +258,7 @@ def declared_picks(template, own):
 def weapon_items(inf):
     out = []
     data = simunits._fight_data()
+    table = simunits.weapon_table(inf.own)              # the retail weapons and the mission's own units' ones
     for t in sorted(inf.templates):
         picks = declared_picks(t, inf.own)
         if not picks:
@@ -258,17 +266,15 @@ def weapon_items(inf):
         read = simunits.fight(t, inf.own)['weapons']
         lost = []
         for p in picks:
-            w = data['weapons'].get(p)
+            w = table.get(p)
             if w is None:
                 lost.append(f'{p}: 武器模板找不到')
                 continue
-            dmg = w['damage'] or (data['weapons'][w['warhead']]['damage'] if w['warhead'] in data['weapons'] else 0.0)
+            dmg = w['damage'] or (table[w['warhead']]['damage'] if w['warhead'] in table else 0.0)
             r = dict(dps=dmg, range=w['range'])           # (what simunits._resolve decides on, kept apart from its fields)
             if r['dps'] > 0 and r['range'] > 0:
                 continue
-            why = ', '.join(nuggets_of(p)) or '没有伤害块'
-            if simunits._attr(weapon_body(p)[0], 'inheritFrom') == p:
-                why += '；战役覆盖文件，inheritFrom 指向自己，射程 / 伤害类型没继承到'
+            why = ', '.join(nuggets_of(p, inf.own)) or '没有伤害块'
             lost.append(f'{p}: 伤害读成 0（{why}）' if r['range'] > 0 else f'{p}: 射程读成 0（{why}）')
         if lost:
             out.append(Item(inf.name, WEAPON, t, ('读空 ' if not read else '少读了 ') + '; '.join(lost)))
@@ -621,24 +627,16 @@ KNOWN = {
     ('j7', '升级', 'CNV_Jammer:StatusBitsUpgrade'): J7,
     ('j7', '脚本动作', 'NAMED_USE_COMMANDBUTTON_ABILITY:Command_CNV_Jammer_jam'): J7,
     # ---- the first census (2026-11-08): everything else it found, not looked at yet, to be assigned
-    ('武器', 'AlliedAntiAirVehicleTech1'): first('a1', 'AlliedAntiAirVehicleTech1', '少读了 AAAVT1_MachineGun: 射程读成 0（DamageNugget）; AAAVT1_SovietCo'),
     ('武器', 'AlliedAntiStructureShip'): first('a5', 'AlliedAntiStructureShip', '读空 AlliedAntiStructureAttackDrones: 伤害读成 0（WeaponOCLNugget）'),
     ('a2', '武器', 'AlliedAntiStructureVehicle'): first('a2', 'AlliedAntiStructureVehicle', '读空 AlliedAntiStructureSolarTargeter: 伤害读成 0（WeaponOCLNugget）'),
     ('武器', 'AlliedAntiVehicleVehicleTech1'): first('a1', 'AlliedAntiVehicleVehicleTech1', '少读了 AlliedAntiVehicleVehicleTech1TargetPainter: 伤害读成 0（Activ'),
-    ('武器', 'AlliedBomberAircraft'): first('a9', 'AlliedBomberAircraft', '读空 AlliedBomberAircraftBombWeapon: 射程读成 0（没有伤害块；战役覆盖文件，inher'),
-    ('武器', 'AlliedFighterAircraft'): first('a7', 'AlliedFighterAircraft', '读空 AlliedFighterAircraftCannon: 射程读成 0（DamageNugget；战役覆盖文件，i'),
     ('武器', 'AlliedSupportAircraft'): first('a7', 'AlliedSupportAircraft', '读空 AlliedSupportAircraftCryobeam: 伤害读成 0（ActivateLaserNugget'),
     ('武器', 'CNV_ChronoLag'): first('a3', 'CNV_ChronoLag', '读空 CNV_ChronoLag_Shell: 武器模板找不到; AlliedAntiVehicleVehicleTec'),
     ('武器', 'CNV_Liberty'): first('a7', 'CNV_Liberty', '读空 CNV_LibertyDrones: 武器模板找不到'),
     ('武器', 'CNV_Pace63_AlliedAntiVehicleVehicleTech1'): first('s5', 'CNV_Pace63_AlliedAntiVehicleVehicleTech1', '少读了 AlliedAntiVehicleVehicleTech1TargetPainter: 伤害读成 0（Activ'),
-    ('武器', 'CNV_S2ArmouredTrain'): first('s2', 'CNV_S2ArmouredTrain', '读空 CNV_S2ArmouredTrain_TeslaGun: 武器模板找不到'),
-    ('武器', 'CNV_S2CryoTrain'): first('s2', 'CNV_S2CryoTrain', '读空 CNV_S2CryoTrain_TeslaGun: 武器模板找不到'),
-    ('武器', 'JapanBaseDefenseAdvanced'): first('a4', 'JapanBaseDefenseAdvanced', '读空 JapanBaseDefenseAdvancedBeamWeapon: 伤害读成 0（ActivateLaserN'),
     ('武器', 'JapanCommandoTech1'): first('j3', 'JapanCommandoTech1', '读空 JapanCommandoTech1PsyonicCrush: 伤害读成 0（ActivateLiftObject'),
     ('武器', 'JapanLightTransportVehicle'): first('a4', 'JapanLightTransportVehicle', '读空 JapanLightTransportVehicleDisguiser: 伤害读成 0（SpecialPowerN'),
-    ('武器', 'SovietAntiInfantryInfantry'): first('a1', 'SovietAntiInfantryInfantry', '读空 SovietAntiInfantryInfantryAK47: 射程读成 0（DamageNugget；战役覆盖文'),
     ('武器', 'SovietAntiVehicleVehicleTech3'): first('a3', 'SovietAntiVehicleVehicleTech3', '少读了 SovietAntiVehicleVehicleTech3Harpoon: 伤害读成 0（GrapplingHo'),
-    ('武器', 'SovietHeavyAntiVehicleInfantry'): first('a1', 'SovietHeavyAntiVehicleInfantry', '读空 SovietHeavyAntiVehicleInfantryTeslaGun: 射程读成 0（没有伤害块；战役覆盖'),
     ('升级', 'CNV_Burrower:SPEED'): first('a5', 'CNV_Burrower:SPEED', '属性修改器 AttributeModifier_CNV_Burrower_Under 的 SPEED（不是升级给的（光环'),
     ('升级', 'CNV_Burrower:StatusBitsUpgrade'): first('a5', 'CNV_Burrower:StatusBitsUpgrade', '升级模块 StatusBitsUpgrade：模拟器不读'),
     ('升级', 'CNV_Burrower:状态 NO_ATTACK'): first('a5', 'CNV_Burrower:状态 NO_ATTACK', '属性修改器 AttributeModifier_CNV_Burrower_Under 设状态位 NO_ATTACK（不是'),
