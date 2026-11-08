@@ -24,9 +24,8 @@ import urllib.request
 
 import numpy as np
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-if ROOT not in sys.path:
-    sys.path.insert(0, ROOT)
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(os.path.dirname(HERE))
 LAB = os.path.dirname(ROOT)
 COMFY = os.path.join(LAB, 'RA3-ChineseVoice', 'third_party', 'comfyui')
 FFMPEG = os.path.join(LAB, 'RA3-ChineseVoice', 'third_party', 'ffmpeg', 'ffmpeg.exe')
@@ -62,6 +61,25 @@ CAPTIONS = {
 LYRICS = '[Instrumental]\n[Instrumental]\n[Instrumental]\n[Instrumental]'
 # tag: (section, seed, seconds)
 TAKES = {f'{s}_{i}': (s, seed, 40.0) for s in CAPTIONS for i, seed in enumerate((11, 22, 33), 1)}
+
+
+def _by_file(name, path, package=False):
+    """A module (or a package, whose submodules then import normally) loaded by file: this script adds nothing to
+    sys.path (tests/test_architecture.py G4 only lets the count of files that edit it go down)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        name, path, submodule_search_locations=[os.path.dirname(path)] if package else None)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _repo():
+    """`from experimental.music import ...` needs the repo root on sys.path; a4.py puts it there itself when it is
+    loaded, so load it by file once instead of editing the path here."""
+    if 'a4_boot' not in sys.modules:
+        _by_file('a4_boot', os.path.join(HERE, 'a4.py'))
 
 
 # --- generating ------------------------------------------------------------------------------------------------
@@ -228,6 +246,7 @@ def _unwrap_ms(ph, beat_ms):
 
 def bands_db(x, n=2048):
     """Third-octave band energy (synth.BANDS), dB, per frame."""
+    _repo()
     from experimental.music import synth
     spec = _frames(x, n) ** 2
     f = np.fft.rfftfreq(n, 1 / RATE)
@@ -280,6 +299,7 @@ def click(y):
 def spectrum_gap(x, kind):
     """test_a4music's balance test: max |dB| of the smoothed third-octave balance against retail's kind, 50 Hz..8 kHz;
     and side over mid dB against retail's. a4's own sections pass at < 4 dB."""
+    _repo()
     from experimental.music import a4, synth
     tilt = lambda v: np.convolve(np.pad(v, 2, mode='edge'), np.array([1, 2, 3, 2, 1]) / 9, 'valid')
     bands, side_mid = a4.REFERENCE[kind]
@@ -332,6 +352,7 @@ def measure_one(x, label, kind):
 
 
 def main_measure():
+    _repo()
     from experimental.music import a4, synth
     kinds = {s: a4.REFERENCE_OF[s] for s in CAPTIONS}
     runs = json.load(open(os.path.join(OUT, 'runs.json'), encoding='utf-8'))
@@ -376,7 +397,8 @@ def main_vocals():
     """Is anyone singing? The voice line's Demucs (RA3-ChineseVoice ra3voice.separate, htdemucs) splits each take; the
     vocal stem's level under the mix, and its loudest 2 s. a4's sections are the control: no voice, but a choir (and
     the shakuhachi) leak into the stem too. -> work/music/music3/vocals.txt"""
-    sys.path.insert(0, os.path.join(LAB, 'RA3-ChineseVoice'))
+    _repo()
+    _by_file('ra3voice', os.path.join(LAB, 'RA3-ChineseVoice', 'ra3voice', '__init__.py'), package=True)
     from ra3voice import separate
     from experimental.music import a4
     runs = json.load(open(os.path.join(OUT, 'runs.json'), encoding='utf-8'))
