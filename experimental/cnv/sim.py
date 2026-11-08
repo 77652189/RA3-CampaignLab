@@ -385,6 +385,7 @@ class Body:
     status: set = dataclasses.field(default_factory=set)       # IMMOBILE (stays put), UNATTACKABLE (the player
                                                                 # cannot destroy it) ...
     upgrades: set = dataclasses.field(default_factory=set)     # NAMED_RECEIVE_UPGRADE / _REMOVE_UPGRADE (a SPEED modifier acts)
+    shielded: bool = False                                      # an upgrade's INVULNERABLE + Iron Curtain bits (simunits.shielded)
     base_speed: float = None                                    # its speed before upgrades (set at the first one)
     deposit: tuple = None                                       # R4: its AutoDepositUpdate (bonus, amount, frames)
     deposit_at: int = None                                      # ... the frame of its next deposit
@@ -1184,6 +1185,7 @@ class Sim:
         if b.base_speed is None:
             b.base_speed = b.speed
         b.speed = b.base_speed * simunits.speed_scale(self.own.get(b.template), b.upgrades)
+        b.shielded = simunits.shielded(self.own.get(b.template), b.upgrades)
 
     def power(self, owner):
         """(supply, demand) of the owner: its living objects' EnergyProduction, > 0 summed into the supply, < 0 into
@@ -2124,7 +2126,7 @@ class Sim:
                 h[1] += rate * dt
                 h[2] = by
         for t, dmg, by in hurt.values():
-            if self.frame_now() < t.immune_until:
+            if self.frame_now() < t.immune_until or t.shielded:
                 continue
             t.hp -= dmg
             t.last_hit, t.last_by = by.owner, by.name
@@ -2167,7 +2169,7 @@ class Sim:
             _, x, y, table, owner, by = d
             for t in self.living():
                 dmg = hit_at(table, math.hypot(t.x - x, t.y - y))
-                if dmg <= 0 or frame < t.immune_until:
+                if dmg <= 0 or frame < t.immune_until or t.shielded:
                     continue
                 t.hp -= dmg
                 t.last_hit, t.last_by = owner, by.name

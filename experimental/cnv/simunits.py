@@ -491,6 +491,25 @@ def speed_scale(xml, upgrades):
     return scale
 
 
+def shielded(xml, upgrades):
+    """Whether an upgrade the unit holds gives it retail Iron Curtain's protection: its AttributeModifier has
+    Modifier Type="INVULNERABLE" and sets the UNDER_IRON_CURTAIN status bit. Bench (docs/engine/upgrades.md 4,
+    engine line 44bb8f5): INVULNERABLE 100% alone does not stop damage, with ObjectStatusToSet="NO_BRIBE
+    UNDER_IRON_CURTAIN" it does; taking the upgrade away makes the unit hurt-able again (units/tower_ball.py)."""
+    if not xml or not upgrades:
+        return False
+    for head, inner in _blocks(xml, 'AttributeModifierUpgrade'):
+        triggers = {t for x in re.findall(r'<TriggeredBy>([^<]*)</TriggeredBy>', inner or '') for t in x.split()}
+        mod = _attr(head, 'AttributeModifier')
+        if not triggers & set(upgrades) or not mod:
+            continue
+        for mh, mi in _blocks(xml, 'AttributeModifier'):
+            if (_attr(mh, 'id') == mod and 'UNDER_IRON_CURTAIN' in _attr(mh, 'ObjectStatusToSet', '').split()
+                    and re.search(r'<Modifier\s+Type="INVULNERABLE"', mi or '')):
+                return True
+    return False
+
+
 _radii = {}
 
 
