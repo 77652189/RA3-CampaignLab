@@ -377,6 +377,7 @@ class Body:
     home: tuple = None                                          # where it stood then (it walks back),
     auto_to: tuple = None                                       # and the way's end that rule gave it
     stood_for: tuple = None                                     # the goal it was told and stands short of (send)
+    spot: tuple = None                                          # (goal id, goal x, y): sent to a fire_spot for it
     engaged: bool = False                                       # an attack-mover with an enemy in range: holds
     alive: bool = True
     deleted: bool = False
@@ -2197,17 +2198,52 @@ class Sim:
         between does not stop it. Generals Pathfinder::isAttackViewBlockedByObstacle walks the pathfinding cells along
         the line: an obstacle cell blocks unless it is the shooter's own, the target's, or one the shooter or the
         target stands inside (its container; a target within another's bounds). Here the footprints are `blocks`'s
-        shapes and the line is tested against them exactly (INFERRED: the cell walk, not read in RA3's program)."""
-        if not w.get('los'):
+        shapes and the line is tested against them exactly (INFERRED: the cell walk, not read in RA3's program).
+        A target in the air is never blocked (bench 2026-11-08 engine_seal aa / aaopen: an IFV's missiles at a
+        Twinblade over the player's row the same as with no row)."""
+        if not w.get('los') or t.surface == 'air':
             return False
+        return self.line_blocked(a.x, a.y, t, a)
+
+    def line_blocked(self, x, y, t, a=None):
+        """A structure's footprint on the line from (x, y) to t (shot_blocked's test from any point)."""
         if getattr(self, '_fire_obstacles', None) is None:
             self._fire_obstacles = [(b, s) for b in self.living() for s in (self.blocks(b),) if s]
         for b, s in self._fire_obstacles:
-            if b is a or b is t or _in_shape(s, a.x, a.y) or _in_shape(s, t.x, t.y):
+            if b is a or b is t or _in_shape(s, x, y) or _in_shape(s, t.x, t.y):
                 continue
-            if _line_hits(s, a.x, a.y, t.x, t.y):
+            if _line_hits(s, x, y, t.x, t.y):
                 return True
         return False
+
+    def fire_spot(self, a, t):
+        """Where an attacker told to attack t goes when every weapon of its that can hit t has its line blocked (bench
+        2026-11-08 engine_seal attack: a peacekeeper ordered onto an MCV behind the player's row walks round the
+        row's north end and fires from there, s10; the row's far side never reached). Generals AIAttackState asks
+        Pathfinder::findAttackPath for a cell in range with a clear view. Here: points on rings round t inside its
+        longest such weapon's reach, the line clear and a way there, the shortest way taken (INFERRED: rings, 10
+        degree steps; a tie goes north). None: no such point."""
+        ws = [w for w in a.weapons if self.can_hit(w, t) and w.get('los')]
+        if not ws or t.surface == 'air':
+            return None
+        far = max(w['range'] for w in ws) + a.radius + t.radius - 1.0
+        cands = []
+        for f in (1.0, 0.8, 0.6, 0.4):
+            r = max(far * f, t.radius + a.radius + 1.0)
+            for k in range(36):
+                x, y = t.x + r * math.cos(math.radians(10 * k)), t.y + r * math.sin(math.radians(10 * k))
+                if not self.line_blocked(x, y, t, a) and \
+                        not any(b is not t and _in_shape(sh, x, y) for b, sh in self._fire_obstacles):
+                    cands.append((math.hypot(x - a.x, y - a.y), -y, x, y))
+        best = None
+        for _, _, x, y in sorted(cands)[:12]:
+            way = self.ground.route(a.surface, (a.x, a.y), (x, y))
+            if way is None:
+                continue
+            n = sum(math.hypot(q[0] - p[0], q[1] - p[1]) for p, q in zip([(a.x, a.y)] + way[:-1], way))
+            if best is None or (round(n / 10.0), -y) < best[0]:
+                best = ((round(n / 10.0), -y), (x, y))
+        return best and best[1]
 
     def fight(self):
         """One tick of the fight model (未对齐, docs: the 'combat' align entry): every armed body fires each of its
@@ -2269,6 +2305,17 @@ class Sim:
                 fired = True
                 if a.mode == 'attack':
                     a.engaged = True
+            g = a.goal
+            if not fired and isinstance(g, Body) and g.alive and not a.path and id(g) in aimable and \
+                    (a.spot is None or a.spot[0] != id(g) or math.hypot(g.x - a.spot[1], g.y - a.spot[2]) > 150) and \
+                    any(self.can_hit(w, g) and self.shot_blocked(a, g, w) for w in a.weapons) and \
+                    not any(self.can_hit(w, g) and self.in_range(a, g, w) and not self.shot_blocked(a, g, w)
+                            for w in a.weapons):
+                a.spot = (id(g), g.x, g.y)          # told to attack, the line blocked: round to a clear spot
+                p = self.fire_spot(a, g)
+                if p is not None:
+                    self.note('绕位', f'{self.label(a)} 打不着 {self.label(g)}（中间有建筑），绕到 ({p[0]:.0f},{p[1]:.0f})')
+                    self.send(a, p)
             self.idle_chase(a, fired, [(d[j], targets[idx[j]]) for j in np.argsort(d)])
         if self.firing:
             self.used.add('combat')
@@ -2396,6 +2443,8 @@ class Sim:
                 g = b.goal
                 if not g.alive:
                     b.goal, b.path = None, []
+                elif b.spot and b.spot[0] == id(g) and math.hypot(g.x - b.spot[1], g.y - b.spot[2]) <= 150:
+                    pass                            # at / on the way to its fire_spot while the goal stays near it
                 elif not b.path or math.hypot(b.path[-1][0] - g.x, b.path[-1][1] - g.y) > 150:
                     if int(self.t / DT) % 8 == 0:                    # re-aimed every 4 s
                         self.send(b, (g.x, g.y), reach=self.reach(b, g) if b.mode == 'attack' else 0.0)

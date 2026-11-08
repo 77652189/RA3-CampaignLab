@@ -808,6 +808,40 @@ def test_seal_structures_in_the_line_block_the_shot(variant):
     assert rows[-1][1]['敌车血量'] >= 99, rows[-1]
 
 
+def test_seal_a_target_in_the_air_is_not_behind_the_row():
+    """Bench engine_seal aa / aaopen (2026-11-08): an IFV, a hovering Twinblade (NO_ATTACK) 200 east, the player's
+    row 100 east or no row -- the same readings both ways (79 s1, 50 s4, 16 s7, 4 from s10): the line of fire does
+    not stop a shot at a target in the air (Sim.shot_blocked). Only how alike the two are is asserted; the rate is
+    not (the simulator's 85 / 40 / 0)."""
+    aa, _ = _seal_rows('aa', 12.0)
+    op, _ = _seal_rows('aaopen', 12.0)
+    assert [r['敌车血量'] for _, r in aa] == [r['敌车血量'] for _, r in op]
+    assert aa[-1][1]['敌车血量'] <= 20, aa[-1]
+
+
+@pytest.mark.xfail(strict=True, reason='bench engine_seal arty / artyhp / artyo (2026-11-08): an idle V4 (range 500, '
+                   'min 200, VisionRange 500, AutoAcquire YES, no LINE_OF_SIGHT flag) never fires at the MCV 350 off, '
+                   'with the row or without (artyo), the middle bunker 100 too; the simulator fires (MCV 0 by s61). '
+                   'Not split yet: the side does not see it (ShroudClearingRange, STANDARD_SHROUD_CLEAR not found), '
+                   'or the V4 takes nothing by itself -- next: the same with the map revealed, and the MCV at 250')
+def test_seal_an_idle_v4_leaves_the_mcv_350_off_alone():
+    rows, _ = _seal_rows('artyo', 61.0)
+    assert rows[-1][1]['敌车血量'] >= 99, rows[-1]
+
+
+def test_seal_told_to_attack_through_the_row_it_walks_round_the_end():
+    """Bench engine_seal attack (2026-11-08): row's set-up, an attack order on the MCV at 4 s -- the peacekeeper
+    leaves the start by s4, is north of the row's end from s7 (5 = 1 + 4; never east of it), the MCV 97 at s10 down
+    to 85 at s40 (Sim.fire_spot: a clear spot in range, the shortest way). The simulator: north of the row from s10,
+    the first hit by s13, 86 at s61."""
+    rows, _ = _seal_rows('attack', 61.0)
+    foot = dict((k, r['兵']) for k, r in rows)
+    hp = dict((k, r['敌车血量']) for k, r in rows)
+    assert foot[61] & 1 and foot[61] & 4, rows[-1]
+    assert next(k for k, v in hp.items() if v < 100) <= 13, hp
+    assert hp[61] <= 90, hp
+
+
 # ---- what a unit takes by itself (sim.Sim.takes_by_itself / auto_acquires / can_hit): docs/engine/pathing.md 7d
 def test_seal_erow_an_idle_soldier_leaves_enemy_bunkers_alone():
     """Bench engine_seal erow (2026-11-08): the enemy's 11 bunkers in a row 105 off, the MCV 210 behind -- the player's

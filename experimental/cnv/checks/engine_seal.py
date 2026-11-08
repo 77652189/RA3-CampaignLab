@@ -34,9 +34,15 @@ tank -- a Guardian (AttackRange 150, LINE_OF_SIGHT flag) at the lane's start, th
   the tank 0 (stands), the MCV 100 for s1..s61.  topen (control, no row): the tank 0, the MCV 98 s1, 96 s4-s10, 98 s13,
   99 s16-s19, 100 from s22 (hit by 4 % at most, then back up: NOT a clean control -- the cannon should hit harder;
   unexplained, the MCV may repair itself).
-arty / attack / aa / aaopen -- written (V4 launcher range 500, min 200, no LINE_OF_SIGHT flag; the Athena unit's only own
-  weapon is a 500 / min 200 targeter, so V4 stands in) but NOT measured: the bench's Direct3D device was lost
-  (another program held the screen) on four tries.
+arty (V4 launcher range 500, min 200, no LINE_OF_SIGHT flag; the Athena unit's only own weapon is a 500 / min 200
+  targeter, so V4 stands in; MCV 350 east, the player's row 200 east) -- the V4 0, the MCV 100 s1..s61.  artyhp (the
+  same, the middle bunker counted): the bunker 100 too.  artyo (no row, the control): the MCV 100 s1..s62 as well --
+  the idle V4 does not fire at all, the row is not why (not split: unseen, or takes nothing by itself).
+attack -- the soldier 1 at s4 (left the start), 5 from s7 (north of the row's end, never east of it); the MCV 99 s1-s7,
+  97 s10, 96 s13 ... 86 s37, 85 s40-s61: told to attack, it walks round the row's end and fires from there.
+aa (IFV, a hovering Twinblade with NO_ATTACK 200 east, the row 100 east) and aaopen (no row): the same readings, 79 s1,
+  50 s4, 16 s7, 4 from s10: the row does not stop a shot at a target in the air.
+(All four measured 2026-11-08 06:41-06:59; arty / attack / aa / aaopen had failed on a lost Direct3D device before.)
 (A first spawn run read 3 3 at s1: a named unit that does not exist yet counts as 'outside' an area; the scripts now
 also ask it to be inside a big area.)
 """
@@ -251,6 +257,18 @@ def arty(m):
     return _wall(m, 'arty', 'p1', 200.0)
 
 
+def artyhp(m):
+    """arty's set-up, the middle bunker's health counted too: does the V4's rocket hit the row in between."""
+    t = _wall(m, 'arty', 'p1', 200.0, wall_hp=True)
+    t.bench[0][1]['lines'] = 3
+    return t
+
+
+def artyopen(m):
+    """arty's lane with no row (the control): does the idle V4 fire at the MCV 350 off at all."""
+    return _idle(m, 'arty', False)
+
+
 def attack(m):
     """row's set-up (lane 'attack'), plus an explicit attack order on the MCV at 4 s."""
     t = _wall(m, 'attack', 'p1', 105.0)
@@ -353,5 +371,5 @@ def spawn(m):
 
 MISSION = {'engine_seal': mission}
 CHECKS = {'engine_seal': {'move': move, 'idle': idle, 'open': idle_open, 'cut': cut, 'row': row, 'spawn': spawn,
-                           'erow': erow, 'tank': tank, 'topen': tankopen, 'arty': arty, 'attack': attack,
+                           'erow': erow, 'tank': tank, 'topen': tankopen, 'arty': arty, 'artyhp': artyhp, 'artyo': artyopen, 'attack': attack,
                            'aa': aa, 'aaopen': aaopen, 'ebld': ebld, 'ebldam': ebldam, 'pam': pam}}
