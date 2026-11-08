@@ -97,7 +97,9 @@ def reach():
     m.drop_endings()                    # the check keeps the plan's own: the trucks' loss ends the run at 2:31
     lines, status = [], 0
     for k, (x, y) in enumerate(m.map.DERRICKS):
-        s = sim.Sim(m, t, script=f'{SCENE}+2 派 engineer 去 Derrick {k}')
+        # the fight off: the walk is the question (since DEMO_KILL closed, the engineer lives past the demo and the way
+        # to derrick 0 runs through street V2, where the first wave kills him at 1:59)
+        s = sim.Sim(m, t, script=f'不打;{SCENE}+2 派 engineer 去 Derrick {k}')
         s.waypoints[f'Derrick {k}'] = (x, y)
         s.run(REACH_RUN)
         b = s.bodies[m.role('engineer').name]

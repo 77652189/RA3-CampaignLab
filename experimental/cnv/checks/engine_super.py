@@ -55,6 +55,10 @@ Tanks / targets stand at the given distance from the cast spot; counters 帧数 
                 100 until 358 -- like a protected one.
   o CampSuperO  cast at 'Test Vacuum Spot', tanks 350 / 250 / 150 at 782 / 832 / 890: 250 and 150 lose health from frame ~28
                 (to 8 %), 350 stays 100 until 361.
+                重跑 2026-11-07（挪真空点后）：只有 150 早挨打（86 在帧 32，60 在 92，34 在 149，21 在 181，8 在 211 后不动）；
+                250 和 350 都保护到帧 361（86），之后同步降（361 86 / 391 73 / 419 60 / 484 34）。与旧读数不一致：
+                250 不再早挨打（旧读数 250 和 150 都从帧 ~28 掉到 8 %）。挪后离施放点 350 / 250 / 150 = 770 / 807 / 872：
+                807 保护、872 和旧的 832 不保护 -> 中心距减坦克半径 23.3 在 800 内（sim.CURTAIN 照此改，INFERRED）。
   s CampSuperS  same cast, tanks 450 / 600 / 250 at 540 / 707 / 832: ALL stay 100 until 354-475 (450: 86 at 361, 600: 86 at
                 354, 250: 100 until 475). So tank 250 (832) was shot early in o but not in s: the protection radius is NOT
                 a clean function of distance in these runs (or the foes differ: tank 350 is always hit only at ~358 -- its foe
@@ -203,7 +207,7 @@ VARIANTS = {
     'm': ('SpecialPowerIronCurtain', 'curtain', 'Test Proton Spot',        # control of l: the cast ~900 away from the tanks
           ['curtain', 'tank 350', 'tank 450', 'tank 600', 'foe 350', 'foe 450', 'foe 600'],
           ['tank 350', 'tank 450', 'tank 600'], ['foe 350', 'foe 450', 'foe 600']),
-    'o': ('SpecialPowerIronCurtain', 'curtain', 'Test Vacuum Spot',        # tanks 782 / 880 / 919 from the cast
+    'o': ('SpecialPowerIronCurtain', 'curtain', 'Test Vacuum Spot',        # tanks 770 / 807 / 872 from the cast (since the spot moved)
           ['curtain', 'tank 350', 'tank 250', 'tank 150', 'foe 350', 'foe 250', 'foe 150'],
           ['tank 350', 'tank 250', 'tank 150'], ['foe 350', 'foe 250', 'foe 150']),
     's': ('SpecialPowerIronCurtain', 'curtain', 'Test Vacuum Spot',        # tanks 540 / 707 / 832 from the cast

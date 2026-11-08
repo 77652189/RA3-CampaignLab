@@ -223,3 +223,16 @@ def test_low_ground_does_not_see_high_ground():
     assert w == 160 and g < 480
     g, w = run('高地不挡')
     assert w < 160 and g < 480
+
+
+def test_a_placed_objects_starting_health():
+    """objectInitialHealth (the map's starting health, in percent) is the unit's health from the start: A7's `win`
+    check places the carrier at 1 %, so its forced landing (at 10 %) starts at once and the mission is won when it is
+    down at the base edge with our tanks there (bench 2026-11-04 PASS within LAND_BY). Before, the simulator placed it
+    at 100 % and the run lost at 8:44."""
+    import build
+    from checks import a7
+    m, t, _ = build.resolve('a7', 'win')
+    s = sim.Sim(m, t, script='').run(a7.LAND_BY)
+    assert s.bodies[m.role('carrier').name].health == 1.0
+    assert s.ending and s.ending[0] == '赢' and s.ending[1] <= a7.LAND_BY, s.ending

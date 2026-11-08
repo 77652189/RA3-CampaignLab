@@ -13,16 +13,10 @@ simbench = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(simbench)
 
 
-DEMO_KILL = pytest.mark.xfail(strict=True, reason=(
-    'R8 (2026-11-07): with the reach between bounding circles the opening demo\'s Demo Foe 2 (stopped at (2100, 2720), '
-    '157 from the player\'s engineer at the clear mark, radii 7 + 7) shoots the engineer at 61.7 s, so no ice later; '
-    'the bench\'s engineer lives -- where the demo foe stops against the ice (or whether it turns at once) is not '
-    'modelled; holding fire on the move does not save him (tried)'))
-
-
-@pytest.mark.parametrize('check', [pytest.param('detour', marks=DEMO_KILL), pytest.param('queue', marks=DEMO_KILL),
-                                   'melt', 'smoke', pytest.param('smash', marks=DEMO_KILL), 'win',
-                                   pytest.param('derrick', marks=DEMO_KILL)])
+# DEMO_KILL (strict xfail 2026-11-07, green since sim.Sim.held_up): the opening demo's pair, stopped by the ice 157
+# from the player's engineer, counted idle and shot him at 61.7 s; on the bench (`a4 demoeng`) he lives the whole
+# demonstration. A plain move stopped short is still on its move now: no fire, no chase till its next order.
+@pytest.mark.parametrize('check', ['detour', 'queue', 'melt', 'smoke', 'smash', 'win', 'derrick'])
 def test_the_simulators_version_of_the_check_holds(check):
     status, lines = simbench.run(check)
     assert status == 0, '\n'.join(lines)
@@ -145,7 +139,6 @@ def test_r2_the_reference_picks_the_wall_the_bench_did(variant, gone):
     assert walls == [0 if k == gone else 1 for k in range(3)], series[-1]
 
 
-@DEMO_KILL
 def test_r3_the_ghost_king_smashes_the_wall_as_on_the_bench():
     """R2 + R3 (sim.Ground.within: an attacker goes to a spot in range, not round the wall to the cell nearest its
     middle): bench 2026-11-07 `cnv_check a4 smash` -- ashore s58, the wall's health 100 to s67, 76 at s70, 53 s73,
@@ -358,6 +351,14 @@ def test_super_the_iron_curtain_reaches_800():
     g = _sim_run('engine_super', 'g', 34.0).series[-1][1]
     a = _sim_run('engine_super', 'a', 34.0).series[-1][1]
     assert all(abs(x - 354) <= 6 for x in g) and all(x <= 30 for x in a), (g, a)
+
+
+def test_super_the_iron_curtain_reaches_the_tanks_edge():
+    """o (rerun 2026-11-07 after the vacuum spot moved): tanks 770 / 807 from the cast whole until frame 361, the one
+    at 872 shot from frame 32; the first o run had 832 shot from ~28. Centre distance less the tank's radius 23.3 within
+    800 (sim.CURTAIN, measured like R8's reach); by centre alone the 807 one is left out."""
+    by = {r[0]: r[1:] for _, r in _sim_run('engine_super', 'o', 34.0).series}
+    assert by[347][:2] == [100, 100] and by[347][2] < 100, by[347]
 
 
 def test_super_the_iron_curtain_holds_off_fire_some_23_seconds():

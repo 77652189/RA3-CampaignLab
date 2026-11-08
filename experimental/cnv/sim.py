@@ -127,6 +127,7 @@ LINGER = 0.0                    # a killed unit's death (its slow death): still 
                                 # (docs/engine/script-semantics.md 4.2) -- the bench (2026-10-28, probe death): out of
                                 # the area from the reading the kill shows in; the guess was 3 s
 GRID = 20.0                     # routing cells (world units)
+ARRIVE = 1.5 * GRID             # a plain move that ends farther than this from where it was sent stopped short (held_up)
 BUILD_STEP = 5.0                # a builder on his way (R5) moves in steps this long, to see where he gets within range
 HIGH_STEP = 50.0                # ShroudClearingHeight's default: a viewer does not discover a cell this much above its own
                                 # (bench, docs/engine/vision.md; a unit's own value is Body.clear_height). Cell by cell,
@@ -209,7 +210,8 @@ ALIGN = {
     'combat': '未对齐: the fight model -- each armed unit fires each weapon (its PRIMARY one a slot) at the nearest '
               'enemy in that weapon\'s range it can hit, damage per second (one clip, then the reload) x the '
               'target\'s armour percent (a type its armour does not name: 100 %); an attack-mover holds while it '
-              'fights, a plain move goes on; the range is measured between the two bounding circles (R8, bench '
+              'fights, a plain move goes on (stopped short of where it was sent, it holds its fire till its next '
+              'order: held_up, bench 2026-11-07 a4 demoeng); the range is measured between the two bounding circles (R8, bench '
               '2026-11-07 engine_acquire: a Guardian 150 fires at a tank 180 off, centre to centre); '
               'no veterancy, no splash, no garrisons, no abilities; '
               'health, damage, range, rate, armour from SageXML (simunits.fight); a script\'s 摧毁 / 自动打掉 '
@@ -394,6 +396,7 @@ class Body:
                                                                 # None: no object of ours (a run script's hit)
     mode: str = 'idle'                                          # 'move' (a plain move: fires, does not stop) or
                                                                 # 'attack' (attack-move, attack named: stops to fight)
+    move_to: tuple = None                                       # where its last plain move sent it (held_up)
     fired_at: float = None                                      # a bombarder's last shot (seen by all a while)
     life_end: int = None                                        # its LifetimeUpdate kills it after this frame's
                                                                 # scripts (simunits.lifetime, R1)
@@ -699,6 +702,9 @@ class Sim:
         for k, o in enumerate(list(getattr(mission.map, 'OBJECTS', [])) + self.mm.objects):
             b = self.add(o.name or f'#{k}', o.template, self.owner_of(o.side), o.x, o.y)
             b.team = teams.get(o.side, '')
+            health = (getattr(o, 'props', None) or {}).get('objectInitialHealth')
+            if isinstance(health, (int, float)) and 0 < health < 100:     # the map's starting health, in percent
+                b.hp = b.max_hp * health / 100.0                            # (a7 win: the carrier placed at 1 %)
             crew = (getattr(o, 'props', None) or {}).get('originalOwner')
             if isinstance(crew, str):                   # placed in a team of the mission's own (K6): that team has a member
                 b.team = crew
@@ -750,7 +756,9 @@ class Sim:
         return None
 
     def reblock(self):
-        """The way as it stands now; whoever is on the move takes it anew."""
+        """The way as it stands now; whoever is on the move takes it anew. Not one stopped short (`held_up`): a4 win's
+        trucks, stopped at (2914, 2500), would leave when the north command falls at 5:55 and reach the harbour ~90 s
+        before the bench's (tried 2026-11-08); they wait for the last leg's order."""
         shapes = [s for s in (self.blocks(b) for b in self.living()) if s]
         if self.ground.set_blocks(shapes):
             for b in self.living():
@@ -818,6 +826,17 @@ class Sim:
         if b:
             b.mode = 'attack' if attacking else 'move'
             self.send(b, where)
+            b.move_to = b.dest if not attacking else None
+
+    def held_up(self, b):
+        """A plain move whose way ended short of where it was sent (blocked: a wall across the street) is still on
+        that move: it neither fires nor goes after anyone until its next order. Bench 2026-11-07 `a4 demoeng`: the
+        opening demo's pair, sent to the engineer's clear mark and stopped by the ice ~157 from him (centre to centre,
+        in the simulator), never shot him in the 2 s before their turn order; the simulator, counting them idle once
+        stopped, had him dead at 61.7 s. INFERRED (RA3's AI move state not read); not told apart on the bench: that
+        they stop farther off than the simulator's wall lets them (out of reach)."""
+        return b.mode == 'move' and not b.path and b.goal is None and b.move_to is not None and \
+            b.dest == b.move_to and math.hypot(b.dest[0] - b.x, b.dest[1] - b.y) > ARRIVE
 
     def order_attack(self, b, target_name):
         self.used.add('attack')
@@ -1772,7 +1791,10 @@ class Sim:
                     self.used.add('superweapon')
                     reach, lasts, kinds = CURTAIN[a[1]]
                     for t in self.living():
-                        if (kinds is None or t.kinds & kinds) and math.hypot(t.x - q[0], t.y - q[1]) <= reach:
+                        # the reach to the object's bounding circle (bench engine_super o: a tank 807 off covered,
+                        # 832 not; 800 + its 23.3 radius -- INFERRED, R8's measure)
+                        if (kinds is None or t.kinds & kinds) and \
+                                math.hypot(t.x - q[0], t.y - q[1]) - t.radius <= reach:
                             t.immune_until = self.frame_now() + lasts
         elif name in ('ENABLE_SCRIPT', 'DISABLE_SCRIPT'):
             # a once-script that fired is only switched off: ENABLE_SCRIPT arms it again (SE enableScript)
@@ -1977,7 +1999,9 @@ class Sim:
         ty = np.array([b.y for b in targets])
         for a in armed:
             a.engaged = False
-            foes = [k for k, t in enumerate(targets) if t is not a and self.enemy(a.owner, t.owner)]
+            if self.held_up(a):                 # stopped short on a plain move: still moving (DEMO_KILL)
+                continue
+            foes =[k for k, t in enumerate(targets) if t is not a and self.enemy(a.owner, t.owner)]
             if not foes:
                 self.idle_chase(a, False, [])
                 continue
