@@ -115,21 +115,25 @@ def test_skirmish_ai_builds_again_as_soon_as_the_opening_is_done(skirmish):
     """Bench c: the 4th Peacekeeper out 125 s after the wake, i.e. the barracks restarts the moment the opening's
     budget ends (~120 s), and then hardly stops (9 infantry + engineer by 177 s). It spends its budget share of the
     bank, not only the miners' income (AIPlayer.available, INFERRED from bench d / f; round 39's sim waited for miner
-    trips, 151.5 s)."""
+    trips, 151.5 s). The bound is the seed spread, not a fit: seeds 1-6 gave 126-131.5 s both before and after
+    round 43's team / target rules (a uniform draw that lands on a busy candidate skips the round; simai.md
+    round 43); bench one run 125 s."""
     again = [s for s, t in _barracks_out(skirmish) if s >= 120]
-    assert again and again[0] <= 130, again
+    assert again and again[0] <= 132, again
 
 
-@pytest.mark.xfail(strict=True, reason='work/re/simai.md round 39: the AlliedScout team ends the frame after it '
-                   'goes (a higher-priority team recruits its dog away: teams.recruit takes from gone teams), so the '
-                   "dogs are home and fill BalancedAttackGround's MaxTypesOfUnits 2 with Javelins; tried: no "
-                   'recruiting from gone teams (dogs still home, team 169.5 s) -- ADR 0019 two tries')
-def test_skirmish_ai_first_attack_team_takes_no_dogs(skirmish):
+def test_skirmish_ai_scout_dog_stays_out(skirmish):
     """Bench b: the dogs leave ~44 s after the wake and stay away 120-170 s; the first team (132.8 s) is 2 Riptides +
-    3 Peacekeepers out at once, no dog."""
+    3 Peacekeepers out at once, no dog. The AlliedScout team is ReleaseType NEVER_RELEASE, so no team takes its dog
+    (teams.releases, read 0x8a9a90); before that rule the scout team ended the frame after it went (BalancedAttack-
+    Ground, STANDARD > LOW, took the dog) and was made again every few seconds (simai.md round 39). "No dog at all in
+    the first team" is not asserted: the bench's barracks drew 2 dogs, the sim's uniform draw 6 (round 35), and the
+    dogs the scout team does not hold are free to join."""
     (b,) = skirmish.brains.values()
-    gone = [e for e in b.ai.teams.log if e[1] == 'go' and e[2][0].startswith('BalancedAttack')]
-    assert gone and 'AlliedScoutInfantry' not in gone[0][3], gone[:1]
+    log = b.ai.teams.log
+    until = b.started + 170 * simai.FPS
+    scout = [e for e in log if e[2][0] == 'AlliedScout' and e[1] in ('go', 'ended') and e[0] < until]
+    assert [e[1] for e in scout] == ['go'], scout
 
 
 # checks/engine_aistate.py (bench 2026-11-06): the probe's own personality (missions/aistate_bench.py, written into
