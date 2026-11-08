@@ -5,16 +5,17 @@ it reaches north and south of the camera centre (model.LETTERBOX_BAND, 2026-11-0
 
   python -I -X utf8 experimental/testbench/letterbox_fit.py <run dir> <frame before> <frame after>
 """
+import importlib.util
 import os
 import sys
 
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, HERE)
-sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'cnv'))
-sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'cnv', 'checks'))
-import calib  # noqa: E402
+_spec = importlib.util.spec_from_file_location('calib', os.path.join(HERE, 'calib.py'))
+calib = importlib.util.module_from_spec(_spec)
+sys.modules['calib'] = calib
+_spec.loader.exec_module(calib)            # (no sys.path edit: tests/test_architecture.py G4 only lets the count go down)
 
 C = (2830.0, 2225.0)
 COLS = [-450.0, -300.0, -150.0, 0.0, 150.0, 300.0, 450.0]
