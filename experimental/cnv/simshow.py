@@ -70,7 +70,7 @@ class ShowSim(sim.Sim):
         self.borders = [(0.0, 0)]   # (t, the playable area's index)
         self.asked_caps = []        # (t, text, secs the script asked it up for)
         self.shown_ui = []          # (t, kind, text): counters / countdowns up and down, with their values
-        self.shots = []             # (t, centre, half, outside {side: units}, [units in the picture])
+        self.shots = []             # (t, centre, reach, outside {side: units}, [units in the picture])
         self._up = set()            # counters / countdowns shown now (by label)
         self._read = 0              # how much of the engine model's log is in shown_ui already
         self._value = {}            # a shown counter's last value seen
@@ -160,9 +160,19 @@ class ShowSim(sim.Sim):
     def state_at(self, series, t):
         return next((v for tt, v in reversed(series) if tt <= t + 1e-9), series[0][1])
 
-    def half_at(self, t):
-        """The ground (half width, half height) the picture shows: the letterbox band in a scene, the screen in play."""
-        return model.LETTERBOX_HALF if self.state_at(self.bars, t) else model.VIEW_HALF
+    def reach_at(self, t):
+        """How far the picture reaches from the camera's aim point, (west, low y, east, high y): the letterbox band's
+        widest and farthest extents in a scene (the band is a trapezoid, 207 units to lower y, 290 to higher), the
+        screen in play."""
+        if self.state_at(self.bars, t):
+            b = model.LETTERBOX_BAND
+            return b['half_top'], b['south'], b['half_top'], b['north']
+        return model.VIEW_HALF[0], model.VIEW_HALF[1], model.VIEW_HALF[0], model.VIEW_HALF[1]
+
+    def in_picture(self, t, c, x, y):
+        if self.state_at(self.bars, t):
+            return model.in_letterbox(x - c[0], y - c[1])
+        return abs(x - c[0]) <= model.VIEW_HALF[0] and abs(y - c[1]) <= model.VIEW_HALF[1]
 
     def playable(self, t):
         names = getattr(self.m.map, 'BORDERS', None)
@@ -177,19 +187,19 @@ class ShowSim(sim.Sim):
         c = self.camera_at(t)
         if c is None:
             return
-        hx, hy = self.half_at(t)
+        west, low, east, high = self.reach_at(t)
         rect = self.playable(t)
         out = {}
         if rect:
-            for side, over in (('west', rect[0] - (c[0] - hx)), ('north', rect[1] - (c[1] - hy)),
-                               ('east', (c[0] + hx) - rect[2]), ('south', (c[1] + hy) - rect[3])):
+            for side, over in (('west', rect[0] - (c[0] - west)), ('north', rect[1] - (c[1] - low)),
+                               ('east', (c[0] + east) - rect[2]), ('south', (c[1] + high) - rect[3])):
                 if over > BLACK_TOL:
                     out[side] = round(over, 1)
         seen = [(self.label(b) if b.name else b.template, self.who(b.owner)) for b in self.living()
-                if not b.scenery and b.owner != sim.CIV and abs(b.x - c[0]) <= hx and abs(b.y - c[1]) <= hy]
+                if not b.scenery and b.owner != sim.CIV and self.in_picture(t, c, b.x, b.y)]
         if self.shots and self.shots[-1][0] == t:
             self.shots.pop()
-        self.shots.append((t, c, (hx, hy), out, seen))
+        self.shots.append((t, c, (west, low, east, high), out, seen))
 
 
 # ---- the run ----------------------------------------------------------------------------------------------------

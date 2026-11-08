@@ -10,7 +10,7 @@ from maps import sapporo  # noqa: E402
 from parts import Mission, Script  # noqa: E402
 
 CORRIDOR = sapporo.BORDERS['corridor']          # (300, 1700, 3200, 3300): the playable area A4 opens in
-WAYS = {'West': (450.0, 2500.0), 'Safe': (1250.0, 2500.0), 'East': (3000.0, 2500.0), 'Edge': (800.0, 2500.0),
+WAYS = {'West': (450.0, 2500.0), 'Safe': (1250.0, 2500.0), 'East': (3000.0, 2500.0), 'Edge': (800.0, 2500.0), 'BandEdge': (900.0, 2500.0),
         'Near': (1000.0, 2500.0)}
 
 
@@ -59,11 +59,14 @@ def test_a_pan_takes_its_seconds_and_a_letterbox_picture_is_smaller():
     x = s.camera_at(10.0)[0]                                   # five seconds into a ten second pan from 1250 to 3000
     assert abs(x - (1250 + (3000 - 1250) * 0.5)) < 1.0, x
     assert s.camera_at(16.0) == WAYS['East']
-    # at (800, 2500) the screen shows 150 units of black; the letterbox band (410 wide) does not reach the border
+    # at (800, 2500) the screen shows 150 units of black; the letterbox band (562 half wide at its far edge,
+    # measured 2026-11-07) shows 62 of black there too, but none at (900, 2500) where the screen still shows 50 + 300 beyond
     edge = play([Script('border', [], CORRIDOR_ON), HOME] + at(1, PAN('Edge'), name='cut'))
-    assert simshow.black_runs(edge) and edge.half_at(5.0) == model.VIEW_HALF
-    band = play([Script('border', [], CORRIDOR_ON), HOME] + at(1, ('CAMERA_LETTERBOX_BEGIN',), PAN('Edge'), name='cut'))
-    assert band.half_at(5.0) == model.LETTERBOX_HALF and not simshow.black_runs(band)
+    assert simshow.black_runs(edge) and edge.reach_at(5.0)[0] == model.VIEW_HALF[0]
+    wide = play([Script('border', [], CORRIDOR_ON), HOME] + at(1, PAN('BandEdge'), name='cut'))
+    assert simshow.black_runs(wide)
+    band = play([Script('border', [], CORRIDOR_ON), HOME] + at(1, ('CAMERA_LETTERBOX_BEGIN',), PAN('BandEdge'), name='cut'))
+    assert band.reach_at(5.0)[3] == model.LETTERBOX_BAND['north'] and not simshow.black_runs(band)
     assert [on for _, on in band.bars] == [False, True]
 
 

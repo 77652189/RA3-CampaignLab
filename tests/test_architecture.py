@@ -355,7 +355,7 @@ def test_g10_every_camera_move_aims_at_a_view_point():
 # G14 (I4, K8): nothing a demonstration does is done unseen in the picture. A demonstration is staged (ctx.stage: a
 # camera of its own, what it shows, where units appear from / go to unseen, which scripts make or take them away in
 # view and so carry smoke); contract.demo_unframed holds that on the product of every build: what is to be seen stands
-# STAGE_MARGIN inside the picture (model.LETTERBOX_HALF about the camera), what is hidden STAGE_MARGIN outside it, every
+# STAGE_MARGIN inside the picture (model.LETTERBOX_BAND about the camera), what is hidden STAGE_MARGIN outside it, every
 # script that makes / takes away / moves a unit in a ` - Demo ` script belongs to a stage, and one that does it in view
 # makes smoke in view. The mutations are the bugs of 2026-11-05: the picture moved so the engineer's cast mark is
 # out of it (the state before the fix: 345 units tall, the mark just under the edge), troops taken away in view with no

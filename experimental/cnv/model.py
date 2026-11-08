@@ -17,16 +17,41 @@ MAX_NAME = 15                           # mod folder names longer than this cras
 TEAM_ORDERS = {'attack': 'TEAM_ATTACK_NAMED', 'guard': 'TEAM_GUARD_AREA', 'hunt': 'TEAM_HUNT', 'move': 'MOVE_TEAM_TO',
                'attack_move': 'ATTACK_MOVE_TEAM_TO', 'stop': 'TEAM_STOP'}      # Mission.order: kind -> whole-team action
 COUNTER_LINES = 4                      # counter / countdown lines that fit on the bench's screen (counters.MAX_LINES)
-# K8 (I4): the ground a camera shows while a scene runs (letterbox on: the picture is a band 2.4 : 1, not the 16 : 9 of
-# play). Measured in CampShell 2026-11-05 on A4's demo (work/acceptance/2026-11-05/zh_a4_demo_*.png): 0.39 px a map unit
-# in a 320 px wide picture whose band is 135 px tall -> ~820 units wide. Height remeasured 2026-11-07 on the bench
-# (A4's demonstration camera, two marks of known world position in one letterbox frame: runs/CampA4_mcp_1107_195947
-# frame 38): ~1.42 px a map unit up the screen (the ground is seen at an angle), the band 540 of 720 px -> ~380 units
-# tall, not the 345 of taking the sideways scale for both. bench_where (the play camera's fit) is ~50 px off here and
-# says 525: do not use it for this. Half of that:
-LETTERBOX_HALF = (410.0, 190.0)
-LETTERBOX_UNDER = (410.0, 254.0)      # ... and what the camera renders under the bars (16 : 9 at the same zoom): the ground the
-                                       # border must cover for the picture to show no black (play's is plan.VIEW_HALF)
+# K8 (I4): the ground a camera shows while a scene runs (letterbox on: the picture is a band 1280 x 540 of the 1280 x 720
+# screen, the rest bars). The ground is seen at an angle, so the band is a TRAPEZOID on the map, not a rectangle: wider at
+# its far (north) edge. Measured 2026-11-07 on the bench (checks/engine_letterbox.py 'g': a 7 x 5 grid of guardians
+# teleported in under a scene camera on A4's flat avenue; experimental/testbench/letterbox_fit.py fits ground -> screen,
+# 11 markers, residual 2.9 px; run CampLbxG_mcp_1107_202615), relative to the ground point the camera is aimed at:
+#   band top row    : 290 north, 1125 wide          band middle row: 12 south, 887 wide
+#   band bottom row : 207 south,  733 wide          (all 720 rows: 424 north .. 258 south, 1236 .. 692 wide)
+# It agrees with the play camera's fit (testbench/calib.py: 1126 / 710 wide at rows 90 / 630) and with the two small
+# statues of A4's plaza 1 (frame 38 of runs/CampA4_mcp_1107_195947: 240 units apart = 1.6 px a unit). The old rectangle
+# (820 wide, then 345 / 380 tall) was a guess from one picture's mean scale: too narrow, too short, and centred on the
+# camera (the band's middle is really 42 units north of the aim point).
+LETTERBOX_BAND = dict(north=290.0, south=207.0, half_top=562.0, half_bottom=366.0)
+LETTERBOX_UNDER = (618.0, 424.0)      # what the camera renders under the bars (all 720 rows): half width at the far edge, how far
+                                       # north: the ground the border must cover for the picture to show no black (play's is
+                                       # plan.VIEW_HALF). It reaches only 258 south, but a view rect is symmetric
+
+
+def letterbox_half_width(dy):
+    """Half the band's width `dy` north of the camera's aim point (negative: south); None outside the band."""
+    b = LETTERBOX_BAND
+    if not -b['south'] <= dy <= b['north']:
+        return None
+    return b['half_bottom'] + (b['half_top'] - b['half_bottom']) * (dy + b['south']) / (b['north'] + b['south'])
+
+
+def letterbox_depth(dx, dy):
+    """How far inside a scene's picture the ground point `dx, dy` from the camera's aim point is (the nearest edge,
+    sideways as the band's width there); negative: how far outside (the worst overshoot)."""
+    b = LETTERBOX_BAND
+    return min(b['north'] - dy, dy + b['south'], letterbox_half_width(min(max(dy, -b['south']), b['north'])) - abs(dx))
+
+
+def in_letterbox(dx, dy, margin=0.0):
+    """Whether the point is in the picture, `margin` units inside its edges (negative: that far outside still counts)."""
+    return letterbox_depth(dx, dy) >= margin
 STAGE_MARGIN = 40.0                    # what a staged piece shows stands this far inside that band, what it hides this far out
 VIEW_HALF = (950.0, 540.0)             # half the ground the screen shows at the default zoom (~1900 x 1080 map units, sapporo
                                        # 'view start', user 2026-11-03): a camera centre nearer the playable border than this

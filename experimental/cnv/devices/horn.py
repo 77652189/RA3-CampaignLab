@@ -67,17 +67,18 @@ MODES = {'街': 'V', '口': 'L'}                  # the two sets, and the letter
 
 def frame_for(see, hide):
     """The camera centre (x, y) of a scene's staged piece: every point of `see` stands STAGE_MARGIN inside the picture
-    (model.LETTERBOX_HALF about the centre), every point of `hide` STAGE_MARGIN outside it; the one with the most room
+    (the band model.LETTERBOX_BAND about it), every point of `hide` STAGE_MARGIN outside it; the one with the most room
     left over (nearest the middle of `see` on a tie), or None when there is none. contract.demo_unframed holds the
     product to the same rule."""
-    hx, hy = model.LETTERBOX_HALF
+    reach = model.LETTERBOX_BAND['half_top']
+    north, south = model.LETTERBOX_BAND['north'], model.LETTERBOX_BAND['south']
     k = model.STAGE_MARGIN
     mx, my = sum(p[0] for p in see) / len(see), sum(p[1] for p in see) / len(see)
     best = None
-    for cx in range(int(min(p[0] for p in see) - hx), int(max(p[0] for p in see) + hx) + 1, 10):
-        for cy in range(int(min(p[1] for p in see) - hy), int(max(p[1] for p in see) + hy) + 1, 10):
-            room = min([min(hx - k - abs(x - cx), hy - k - abs(y - cy)) for x, y in see] +
-                       [max(abs(x - cx) - hx, abs(y - cy) - hy) - k for x, y in hide])
+    for cx in range(int(min(p[0] for p in see) - reach), int(max(p[0] for p in see) + reach) + 1, 10):
+        for cy in range(int(min(p[1] for p in see) - north), int(max(p[1] for p in see) + south) + 1, 10):
+            room = min([model.letterbox_depth(x - cx, y - cy) - k for x, y in see] +
+                       [-model.letterbox_depth(x - cx, y - cy) - k for x, y in hide])
             key = (room, -math.hypot(cx - mx, cy - my))
             if best is None or key > best[0]:
                 best = (key, (float(cx), float(cy)))
@@ -666,7 +667,9 @@ class Horn(Device):
             if not view:
                 from plantime import PlanError
                 raise PlanError(f'{self.name}: 演示 can not be framed: no camera centre shows {what} and keeps what must '
-                                f'not be seen out of a {2 * model.LETTERBOX_HALF[0]:g} x {2 * model.LETTERBOX_HALF[1]:g} picture')
+                                f'not be seen out of a picture {2 * model.LETTERBOX_BAND["half_bottom"]:g}-'
+                                f'{2 * model.LETTERBOX_BAND["half_top"]:g} wide and '
+                                f'{model.LETTERBOX_BAND["north"] + model.LETTERBOX_BAND["south"]:g} tall')
         ctx.add_point(f'CNV {tag} Demo Approach', approach)
         ctx.add_area(f'CNV {tag} Demo Stand', square(*clear_a, STAND_AREA))
         ctx.add_area(f'CNV {tag} Demo Hole', square(*spawn_a, HOLE_AREA))

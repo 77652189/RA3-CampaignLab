@@ -313,17 +313,17 @@ def start_camera_inside_the_view(m):
 # K8 (I4, G14): what a demonstration does that is not seen is not done in the picture. Its scripts are named
 # `CNV <tag> - Demo ...`; those that make, take away or move a unit belong to a stage (ctx.stage) with a camera of its
 # own, and the stage's geometry holds on the product: the camera aims at a view point whose picture (the ground a
-# scene's camera shows, model.LETTERBOX_HALF about it) holds what is to be seen with STAGE_MARGIN to spare and has the
+# scene's camera shows, model.LETTERBOX_BAND about it) holds what is to be seen with STAGE_MARGIN to spare and has the
 # spots where a unit appears from or goes to unseen STAGE_MARGIN outside it. (User 2026-11-05, A4: "the troops vanished
-# on open snow" -- the picture was 345 units tall, the engineer's cast mark was just under its edge and the sculpture
+# on open snow" -- the picture was taken to be 345 units tall (it is ~500), the engineer's cast mark was just under its edge and the sculpture
 # the troops went down was just above.)
 DEMO_UNIT_ACTIONS = ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', 'NAMED_DELETE', 'UNIT_TELEPORT_TO_WAYPOINT')
 
 
 def demo_unframed(m):
     import model
-    hx, hy = model.LETTERBOX_HALF
     k = model.STAGE_MARGIN
+    band = model.LETTERBOX_BAND
     out, declared = [], set()
     for st in m.stages:
         at = m.waypoints.get(st['camera'])
@@ -332,11 +332,12 @@ def demo_unframed(m):
             continue
         declared |= set(st['scripts'])
         for what, (x, y) in st['see']:
-            if abs(x - at[0]) > hx - k or abs(y - at[1]) > hy - k:
+            if not model.in_letterbox(x - at[0], y - at[1], k):
                 out.append(f"stage {st['label']}: {what} at ({x:.0f}, {y:.0f}) is not {k:g} inside the picture of the "
-                           f"camera at ({at[0]:.0f}, {at[1]:.0f}), {2 * hx:g} x {2 * hy:g} wide")
+                           f"camera at ({at[0]:.0f}, {at[1]:.0f}) (the band: {band['north']:g} north, {band['south']:g} south of it, "
+                           f"{2 * band['half_bottom']:g} .. {2 * band['half_top']:g} wide)")
         for what, (x, y) in st['hide']:
-            if abs(x - at[0]) < hx + k and abs(y - at[1]) < hy + k:
+            if model.in_letterbox(x - at[0], y - at[1], -k):
                 out.append(f"stage {st['label']}: {what} at ({x:.0f}, {y:.0f}) is less than {k:g} outside the picture of "
                            f"the camera at ({at[0]:.0f}, {at[1]:.0f}): a unit would appear or vanish in view")
         by_name = {s.name: s for s in m.scripts}
@@ -345,7 +346,7 @@ def demo_unframed(m):
             made = [m.waypoints.get(a[3]) for a in (s.do if s else ()) if a[0] == 'CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT']
             if s is None:
                 out.append(f"stage {st['label']}: script {name!r} (it makes or takes away units in the picture) is not built")
-            elif not any(p and abs(p[0] - at[0]) <= hx and abs(p[1] - at[1]) <= hy for p in made):
+            elif not any(p and model.in_letterbox(p[0] - at[0], p[1] - at[1]) for p in made):
                 out.append(f"{name}: makes or takes away units in the picture of the camera at ({at[0]:.0f}, {at[1]:.0f}) "
                            f"with no smoke made in it (an unseen appearing or vanishing needs the picture's edge, a seen "
                            f"one a smoke)")
