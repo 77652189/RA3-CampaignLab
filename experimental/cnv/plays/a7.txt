@@ -42,6 +42,11 @@ CNV_A7_Phase_2+120 派 guardian 去 goat island
 CNV_A7_Phase_2+120 派 loyal 1 troops 去 goat island
 CNV_A7_Phase_2+120 派 名字含 SIM Made 去 goat island
 CNV_A7_Phase_2+125 派 engineer 去 station
+# the station is a building: the guardians are ordered to shoot it (no player capture order in the simulator), the guard
+# is down by then
+CNV_A7_Phase_2+150 攻击 guardian 打 station
+CNV_A7_Phase_2+150 攻击 loyal 1 troops 打 station
+CNV_A7_Phase_2+150 攻击 名字含 SIM Made 打 station
 # 3. 它困住了: the given Apollos and AA vehicles meet the last wave at the base edge, then go after the carrier where it
 #    sits (the jump home), the guardians hold the yard.
 CNV_A7_Phase_3+75 派 名字含 Give 去 carrier home

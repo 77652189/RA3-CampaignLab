@@ -53,6 +53,15 @@ def test_a_window_is_15_percent_and_never_narrower_than_the_slack():
     assert (lo, hi) == (6.0, 14.0)
 
 
+def test_an_attack_line_compiles_to_an_attack_order_on_the_target():
+    import build
+    m, _, _ = build.resolve('j7', '')
+    c = playcheck.Compiler(m, playcheck.Test())
+    acts = c.actions((5.0, '攻击', 'tengu', 'launch tower'), 5.0)
+    goal = c.who('launch tower', 5.0)[0]
+    assert acts and acts == [('NAMED_ATTACK_NAMED', n, goal) for n in c.who('tengu', 5.0)]
+
+
 def test_a_line_the_bench_cannot_be_told_stops_the_compile():
     import build
     m, _, _ = build.resolve('j7', '')

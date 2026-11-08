@@ -22,3 +22,8 @@ CNV_J7_Phase_2+5 派 tengu 去 launch pad
 CNV_J7_Phase_2+5 派 tsunami 去 launch pad
 CNV_J7_Phase_2+5 派 hunter 去 launch pad
 CNV_J7_Phase_2+5 派 shikigami 去 launch pad
+# the tower is a building: at the pad the squad is ordered to shoot it
+CNV_J7_Phase_2+25 攻击 tengu 打 launch tower
+CNV_J7_Phase_2+25 攻击 tsunami 打 launch tower
+CNV_J7_Phase_2+25 攻击 hunter 打 launch tower
+CNV_J7_Phase_2+25 攻击 shikigami 打 launch tower

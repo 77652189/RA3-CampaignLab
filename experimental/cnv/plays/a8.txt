@@ -26,7 +26,14 @@
 # 2. one platform after the other with everybody (the next one at once when the last falls)
 200 派 guardian 去 platform 1
 200 派 名字含 SIM Made 去 platform 1
+# a platform is a building: units never pick one by themselves, so at the shore they are ordered to shoot it
+220 攻击 guardian 打 platform 1
+220 攻击 名字含 SIM Made 打 platform 1
 CNV_A8_Phase_2+3 派 guardian 去 platform 2
 CNV_A8_Phase_2+3 派 名字含 SIM Made 去 platform 2
+CNV_A8_Phase_2+13 攻击 guardian 打 platform 2
+CNV_A8_Phase_2+13 攻击 名字含 SIM Made 打 platform 2
 CNV_A8_Phase_3+3 派 guardian 去 platform 3
 CNV_A8_Phase_3+3 派 名字含 SIM Made 去 platform 3
+CNV_A8_Phase_3+13 攻击 guardian 打 platform 3
+CNV_A8_Phase_3+13 攻击 名字含 SIM Made 打 platform 3

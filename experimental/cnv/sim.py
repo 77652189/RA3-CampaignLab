@@ -1929,6 +1929,12 @@ class Sim:
             for b in self.pick(who):
                 b.mode = 'attack'                   # the player's units go attack-moving, fighting on the way
                 self.send(b, where)
+        elif verb == '攻击':
+            who, target = rest                      # an attack order on a thing (NAMED_ATTACK_NAMED): units take no building by themselves
+            targets = self.pick(target)
+            if targets:
+                for b in self.pick(who):
+                    self.order_attack(b, targets[0].name)
         elif verb in ('摧毁', '删除'):
             for b in self.pick(rest[0]):
                 if verb == '摧毁' and 'UNATTACKABLE' in b.status:
@@ -2510,6 +2516,9 @@ def parse_script(text):
         if rest.startswith('派 '):
             who, _, where = rest[2:].rpartition(' 去 ')
             out.append((when(t), '派', who.strip(), where.strip()))
+        elif rest.startswith('攻击 '):
+            who, _, target = rest[3:].rpartition(' 打 ')
+            out.append((when(t), '攻击', who.strip(), target.strip()))
         elif rest.startswith('血量 '):
             who, pct = rest[3:].rsplit(None, 1)
             out.append((when(t), '血量', who.strip(), float(pct.rstrip('%'))))
@@ -2525,7 +2534,7 @@ def parse_script(text):
         else:
             verb, _, who = rest.partition(' ')
             if verb not in ('摧毁', '删除', '打', '占领'):
-                raise ValueError(f'剧本 {line!r}: 动作是 派 / 摧毁 / 删除 / 血量 / 打 / 占领 / 旗标 / 造 之一')
+                raise ValueError(f'剧本 {line!r}: 动作是 派 / 攻击 / 摧毁 / 删除 / 血量 / 打 / 占领 / 旗标 / 造 之一')
             out.append((when(t), verb, who.strip()))
     return out
 

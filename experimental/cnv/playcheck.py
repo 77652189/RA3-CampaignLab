@@ -124,6 +124,10 @@ class Compiler:
             who, where = rest
             wp = self.where(where)
             return [('ATTACK_MOVE_NAMED_UNIT_TO', n, wp) for n in self.who(who, now)]
+        if verb == '攻击':
+            who, target = rest
+            goal = self.who(target, now)[0]
+            return [('NAMED_ATTACK_NAMED', n, goal) for n in self.who(who, now)]
         if verb in ('删除', '摧毁'):
             return [('NAMED_DELETE' if verb == '删除' else 'NAMED_KILL', n) for n in self.who(rest[0], now)]
         if verb == '旗标':
