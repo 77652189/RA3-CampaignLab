@@ -3,7 +3,7 @@ r"""A level's player script (plays/<level>.txt) as a bench check: the comparison
 The same play, run by the plan simulator and by the bench, and the two readings compared: how the mission ended (win /
 lose) and when, and when its phases began. The simulator takes the play as `sim.Sim(script=...)`; the bench cannot, so
 this compiles the play's lines into the mission's own script actions (a Test, like any check): `派` is
-ATTACK_MOVE_NAMED_UNIT_TO, `占领 <who> 进 <building>` NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED Command_CaptureBuilding, `造` a CREATE_NAMED_ON_TEAM_AT_WAYPOINT named `UNIT - SIM Made k`, `删除` / `摧毁` NAMED_DELETE
+ATTACK_MOVE_NAMED_UNIT_TO, `占领 <who> 进 <building>` NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED Command_CaptureBuilding, `放 <who> <ability> 在 <site>` NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT, `造` a CREATE_NAMED_ON_TEAM_AT_WAYPOINT named `UNIT - SIM Made k`, `删除` / `摧毁` NAMED_DELETE
 / NAMED_KILL, `旗标` SET_FLAG; a time is a millisecond timer set when the mission starts (or, `<flag>+<time>`, when
 the flag first reads 1). The sim runs that same Test too (checks/<level>.py: CHECKS[level]['play']), so what differs
 between the two is the game's rules, not the translation.
@@ -128,6 +128,18 @@ class Compiler:
             who, target = rest
             goal = self.who(target, now)[0]
             return [('NAMED_ATTACK_NAMED', n, goal) for n in self.who(who, now)]
+        if verb == '放':
+            who, ability, where = rest
+            wp = self.where(where)
+            out = []
+            for n in self.who(who, now):
+                power = self.m.ability(who.strip(), ability) if who.strip() in self.m.cast else None
+                if power is None:
+                    o = next((x for x in self.m.objects if x.name == n), None)
+                    u = next((u for u in self.m.units if o and u.id == o.template), None)
+                    power = u.abilities.get(ability) if u else None
+                out.append(('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', n, power or ability, wp))
+            return out
         if verb == '占领' and len(rest) == 2:
             who, target = rest
             goal = self.who(target, now)[0]

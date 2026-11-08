@@ -2055,6 +2055,15 @@ class Sim:
         elif verb == '打':
             for b in self.pick(rest[0]):
                 b.last_hit, b.last_by = self.human, None
+        elif verb == '放':
+            who, ability, where = rest              # a ground power of the player's (order_power): `放 engineer freeze 在 inside 1`
+            p = self.point(where)
+            for b in self.pick(who):
+                u = next((u for u in self.mm.units if u.id == b.template), None)
+                if p is None:
+                    self.note('剧本', f'找不到地点 {where}')
+                else:
+                    self.order_power(b, (u.abilities.get(ability) if u else None) or ability, p)
         elif verb == '占领' and len(rest) == 2:
             targets = self.pick(rest[1])            # the player's order: the engineer goes and takes it (capture_due)
             if targets:
@@ -2683,6 +2692,10 @@ def parse_script(text):
         elif rest.startswith('攻击 '):
             who, _, target = rest[3:].rpartition(' 打 ')
             out.append((when(t), '攻击', who.strip(), target.strip()))
+        elif rest.startswith('放 ') and ' 在 ' in rest:
+            who_power, _, where = rest[2:].rpartition(' 在 ')
+            who, _, power = who_power.strip().rpartition(' ')
+            out.append((when(t), '放', who.strip(), power.strip(), where.strip()))
         elif rest.startswith('占领 ') and ' 进 ' in rest:
             who, _, target = rest[3:].rpartition(' 进 ')
             out.append((when(t), '占领', who.strip(), target.strip()))
@@ -2701,7 +2714,7 @@ def parse_script(text):
         else:
             verb, _, who = rest.partition(' ')
             if verb not in ('摧毁', '删除', '打', '占领'):
-                raise ValueError(f'剧本 {line!r}: 动作是 派 / 攻击 / 摧毁 / 删除 / 血量 / 打 / 占领 / 旗标 / 造 之一')
+                raise ValueError(f'剧本 {line!r}: 动作是 派 / 攻击 / 放 / 摧毁 / 删除 / 血量 / 打 / 占领 / 旗标 / 造 之一')
             out.append((when(t), verb, who.strip()))
     return out
 
