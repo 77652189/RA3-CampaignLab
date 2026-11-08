@@ -31,6 +31,11 @@ SITES = {
     'dog route': Site(2850, 1500, 260, 'outside the ring, north-east: the dogs walk here, by the hidden ramp'),
     'north road': Site(1900, 2300, 200, 'where the road comes in from off the map: the tank waves'),
     'east grove': Site(3100, 1150, 250, "the last wave's ground, east"),
+    # the way round the outer ring a player keeps to: its outer lane (radius ~680 from the middle), 300+ from the
+    # inner towers' reach (the shortest way hugs the inner platform and walks into three towers at once)
+    'ring north': Site(1900, 2030, 60, 'the outer ring, north: the outer lane, out of the inner towers reach'),
+    'ring northwest': Site(1420, 1830, 60, 'the outer ring, north-west: the outer lane'),
+    'ring west': Site(1230, 1450, 60, 'the outer ring, west: the outer lane, beside the outer tower'),
 }
 FIELDS = [
     resources.Field('south ore', 1400, 250, 135, 1, base='south camp', owner='p1', build=0),

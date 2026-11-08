@@ -1,0 +1,24 @@
+# J7 as a player plays it (docs/story/plans/j7.md): the simulator's script for simshow --script / simchecks ('j7', '').
+# Nothing is razed or deleted by the script, the fight is the simulator's. NOT tested here (the simulator does not model
+# them): the jammers' slow-down field (the 'jam' ability is not simulated, so the jammer is only a car to kill here),
+# the crane's stealth (nothing sees it or not: it scouts for the player's sake only), the shikigami's skills.
+# 1. look first: the crane flies over the three gaps, the squad waits at the east base for the 0:40 probe (3 conscripts
+#    from the launch yard) and meets it there.
+2 派 crane 去 north mouth
+12 派 crane 去 middle mouth
+22 派 crane 去 south mouth
+# 2. the north valley: only conscripts guard it (no coil, no hammers), everybody goes in together, jammer first, then on
+#    to the launch pad (the tower is the goal, the pad guard of hammer tanks is met there by the whole squad).
+50 派 tengu 去 north mouth
+50 派 tsunami 去 north mouth
+50 派 hunter 去 north mouth
+50 派 shikigami 去 north mouth
+70 派 tengu 去 north gap
+70 派 tsunami 去 north gap
+70 派 hunter 去 north gap
+70 派 shikigami 去 north gap
+# 3. the jammer is down: the whole squad on to the pad, the tower
+CNV_J7_Phase_2+5 派 tengu 去 launch pad
+CNV_J7_Phase_2+5 派 tsunami 去 launch pad
+CNV_J7_Phase_2+5 派 hunter 去 launch pad
+CNV_J7_Phase_2+5 派 shikigami 去 launch pad

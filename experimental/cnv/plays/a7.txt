@@ -1,0 +1,48 @@
+# A7 as a player plays it (docs/story/plans/a7.md): the simulator's script for simshow --script.
+# Nothing is razed or deleted by the script, the fight is the simulator's (the one delete is the MCV, unpacked into a yard).
+# 1. 清点人数: unpack the base (yard, then the war factory = the first objective), a guardian and the engineers/IFVs
+#    take the two loyal outposts (they come over at once), then everybody goes against the north outpost (3).
+2 删除 mcv
+2 造 AlliedConstructionYard 在 base yard
+15 造 AlliedWarFactory 在 base factory
+10 派 guardian 去 outpost 1
+10 派 engineer 去 outpost 2
+10 派 ifv 去 outpost 2
+30 造 AlliedAntiVehicleVehicleTech1 在 base edge
+60 造 AlliedAntiVehicleVehicleTech1 在 base edge
+90 造 AlliedAntiVehicleVehicleTech1 在 base edge
+120 造 AlliedAntiVehicleVehicleTech1 在 base edge
+45 派 guardian 去 outpost 3
+45 派 loyal 1 troops 去 outpost 3
+45 派 名字含 SIM Made 去 outpost 3
+# 2. 自由号来了: a guardian every 30 s from the new factory. The first warning (the 15 s countdown) is the cue: the
+#    pincer comes to the base edge, so everybody is brought back and meets it there, the IFVs stay home for the carrier.
+#    Then the army goes up the bridge and clears Goat Island (the station guard), the engineers a little behind it to take
+#    the station. NOT tested here: the capture (no player capture order in the simulator -- the guardians, idle, walk up
+#    to the station and shoot it down 6 s after the guard falls, so the bonus "take it whole" goes and the power is cut
+#    by the razing, which the objective's text allows too).
+90 造 AlliedAntiVehicleVehicleTech1 在 base edge
+120 造 AlliedAntiVehicleVehicleTech1 在 base edge
+150 造 AlliedAntiVehicleVehicleTech1 在 base edge
+180 造 AlliedAntiVehicleVehicleTech1 在 base edge
+210 造 AlliedAntiVehicleVehicleTech1 在 base edge
+240 造 AlliedAntiVehicleVehicleTech1 在 base edge
+270 造 AlliedAntiVehicleVehicleTech1 在 base edge
+300 造 AlliedAntiVehicleVehicleTech1 在 base edge
+CNV_A7_Phase_2+2 派 ifv 去 base edge
+CNV_A7_Phase_2+2 派 guardian 去 base edge
+CNV_A7_Phase_2+2 派 loyal 1 troops 去 base edge
+CNV_A7_Phase_2+2 派 engineer 去 start
+CNV_A7_Phase_2+2 派 名字含 SIM Made 去 base edge
+CNV_A7_Phase_2+90 派 guardian 去 front
+CNV_A7_Phase_2+90 派 loyal 1 troops 去 front
+CNV_A7_Phase_2+90 派 名字含 SIM Made 去 front
+CNV_A7_Phase_2+100 派 engineer 去 front
+CNV_A7_Phase_2+120 派 guardian 去 goat island
+CNV_A7_Phase_2+120 派 loyal 1 troops 去 goat island
+CNV_A7_Phase_2+120 派 名字含 SIM Made 去 goat island
+CNV_A7_Phase_2+125 派 engineer 去 station
+# 3. 它困住了: the given Apollos and AA vehicles meet the last wave at the base edge, then go after the carrier where it
+#    sits (the jump home), the guardians hold the yard.
+CNV_A7_Phase_3+75 派 名字含 Give 去 carrier home
+CNV_A7_Phase_3+75 派 ifv 去 carrier home

@@ -1,0 +1,65 @@
+# A9 as a player plays it (docs/story/plans/a9.md): the simulator's script for simshow --script. The script only gives
+# orders (go, make), nothing is razed or deleted but the base vehicle (unpacked into a yard, as in a1).
+# NOT tested here (the simulator does not model them): the balls' shield (a dark ball takes no damage: sim.py has no
+# Iron Curtain for a script's upgrade, so the army razes dark balls too -- the script still walks the lit order, the
+# player's play), the chrono beacons' jump (they stay at the start), the rhythm's blink hint, the rotation's pace.
+# 1. the first ball: guardians and javelin men lead, through the west gate, the slow lag cars and Tanya (who runs well
+#    ahead of the rest and must not meet the line alone) follow, Tanya takes the spectrum towers.
+2 派 guardian 去 ring road
+2 派 javelin 去 ring road
+10 派 lag 去 ring road
+10 派 beacon 去 start
+14 派 tanya 去 ring road
+# up the plaza ramp: the guardians first (the three peacekeepers at the foot), then everybody to the west ball
+45 派 guardian 去 shield west
+45 派 javelin 去 shield west
+55 派 lag 去 shield west
+55 派 tanya 去 shield west
+85 派 guardian 去 ball 1
+85 派 javelin 去 ball 1
+85 派 lag 去 ball 1
+85 派 tanya 去 ball 1
+# 2. the rotation: the yard goes up at once (anti-air for the bombers and the Kirov), the team stands at the ball that
+#    lights next, a few seconds before it (the rotation: ball k at 8 + 45 (k-2) s after the west ball falls)
+CNV_A9_Phase_2+3 删除 名字含 AlliedMCV
+CNV_A9_Phase_2+3 造 AlliedConstructionYard 在 west suburb
+CNV_A9_Phase_2+10 造 AlliedAntiAirVehicleTech1 在 west suburb
+CNV_A9_Phase_2+30 造 AlliedAntiAirVehicleTech1 在 west suburb
+CNV_A9_Phase_2+50 造 AlliedAntiAirVehicleTech1 在 west suburb
+CNV_A9_Phase_2+3 派 guardian 去 ball 2
+CNV_A9_Phase_2+3 派 javelin 去 ball 2
+CNV_A9_Phase_2+3 派 lag 去 ball 2
+CNV_A9_Phase_2+3 派 tanya 去 ball 2
+CNV_A9_Phase_2+50 派 guardian 去 ball 3
+CNV_A9_Phase_2+50 派 javelin 去 ball 3
+CNV_A9_Phase_2+50 派 lag 去 ball 3
+CNV_A9_Phase_2+50 派 tanya 去 ball 3
+CNV_A9_Phase_2+95 派 guardian 去 ball 4
+CNV_A9_Phase_2+95 派 javelin 去 ball 4
+CNV_A9_Phase_2+95 派 lag 去 ball 4
+CNV_A9_Phase_2+95 派 tanya 去 ball 4
+CNV_A9_Phase_2+140 派 guardian 去 ball 5
+CNV_A9_Phase_2+140 派 javelin 去 ball 5
+CNV_A9_Phase_2+140 派 lag 去 ball 5
+CNV_A9_Phase_2+140 派 tanya 去 ball 5
+CNV_A9_Phase_2+185 派 guardian 去 ball 6
+CNV_A9_Phase_2+185 派 javelin 去 ball 6
+CNV_A9_Phase_2+185 派 lag 去 ball 6
+CNV_A9_Phase_2+185 派 tanya 去 ball 6
+# 3. the last three: the Soviets come over the east bridge (apocalypse tanks, a Kirov). Swap like for like: javelin men
+#    and guardians hold the plaza centre against the tanks, the time-lag cars stop them, the anti-air cars (the yard's)
+#    come up for the Kirov and the bombers, Tanya stays back with them. Then the last balls in the rotation's order.
+CNV_A9_Phase_3+2 派 javelin 去 tower
+CNV_A9_Phase_3+2 派 guardian 去 tower
+CNV_A9_Phase_3+2 派 lag 去 tower
+CNV_A9_Phase_3+2 派 tanya 去 shield west
+CNV_A9_Phase_3+2 派 名字含 SIM Made 去 tower
+CNV_A9_Phase_3+100 派 javelin 去 ball 7
+CNV_A9_Phase_3+100 派 guardian 去 ball 7
+CNV_A9_Phase_3+100 派 lag 去 ball 7
+CNV_A9_Phase_3+122 派 javelin 去 ball 8
+CNV_A9_Phase_3+122 派 guardian 去 ball 8
+CNV_A9_Phase_3+122 派 lag 去 ball 8
+CNV_A9_Phase_3+144 派 javelin 去 ball 9
+CNV_A9_Phase_3+144 派 guardian 去 ball 9
+CNV_A9_Phase_3+144 派 lag 去 ball 9

@@ -14,5 +14,8 @@ NAMES = {
     'dog route': '警犬巡路',
     'north road': '北边公路',
     'east grove': '东边树林',
+    'ring north': '外圈北侧',
+    'ring northwest': '外圈西北',
+    'ring west': '外圈西侧',
     'south ore refinery': 'south ore 矿场',
 }

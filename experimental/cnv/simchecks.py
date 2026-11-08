@@ -33,6 +33,13 @@ CHECKS = {
     # script, the fight is the simulator's -- the quick `win` of the bench just razes the targets): won
     ('a1', ''): dict(script=os.path.join(HERE, 'plays', 'a1.txt'), ending='赢', counters=False),
     ('a8', ''): dict(script=os.path.join(HERE, 'plays', 'a8.txt'), ending='赢', counters=False),
+    # A3, A6, A7, A9, J7 the same way (11-08): won in the simulator; what it does not model is in handoff-phase4
+    # (a3 stasis zones, a6 Athena cannon, a7 capture order, a9 dark-orb shield, j7 jamming)
+    ('a3', ''): dict(script=os.path.join(HERE, 'plays', 'a3.txt'), ending='赢', counters=False),
+    ('a6', ''): dict(script=os.path.join(HERE, 'plays', 'a6.txt'), ending='赢', counters=False),
+    ('a7', ''): dict(script=os.path.join(HERE, 'plays', 'a7.txt'), ending='赢', counters=False),
+    ('a9', ''): dict(script=os.path.join(HERE, 'plays', 'a9.txt'), ending='赢', counters=False),
+    ('j7', ''): dict(script=os.path.join(HERE, 'plays', 'j7.txt'), ending='赢', counters=False),
     # A5: the gates hold the fleet till the guards are dead, then it sails and two at the sea win
     ('a5', 'hold'): dict(script='', ending=None, counters=True),
     ('a5', 'win'): dict(script='', ending='赢', counters=True),

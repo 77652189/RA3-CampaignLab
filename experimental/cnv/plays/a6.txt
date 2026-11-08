@@ -1,0 +1,85 @@
+# A6 as a player plays it (docs/story/plans/a6.md): the simulator's script for simshow --script / simchecks ('a6', '').
+# Nothing is razed or deleted by the script (but the base vehicle's own deploy), the fight is the simulator's. NOT tested
+# here: the Athena cannons (the simulator gives AlliedAntiStructureVehicle no weapon: its gun is an orbital strike
+# through WeaponOCLNugget), so the squad's guns take the towers. The "click the cannon on what Tanya sees" play is the
+# bench's (docs/engine/terrain.md 4c). The cannons stay at the camp.
+# 1. 外圈: the squad goes the dark way, by the dogs' route, up the north-east ramp and round the ring's OUTER lane (the
+#    shortest way hugs the inner platform and walks into three towers: ring north / ring northwest / ring west are the
+#    lane's stops), the tanks and the peacekeepers first, Tanya a little behind. The outer tower falls to them.
+2 派 tanya 去 dog route
+2 派 peace 去 dog route
+2 派 guardian 去 dog route
+30 派 tanya 去 outer ramp
+30 派 peace 去 outer ramp
+30 派 guardian 去 outer ramp
+50 派 tanya 去 ring north
+50 派 peace 去 ring north
+50 派 guardian 去 ring north
+80 派 tanya 去 ring northwest
+80 派 peace 去 ring northwest
+80 派 guardian 去 ring northwest
+105 派 peace 去 ring west
+105 派 guardian 去 ring west
+# 2. 内圈: the base vehicle is given at the camp: deploy it (the made yard stands for it), a guardian from it every 20 s,
+#    the squad back along the lane to wait for them. The camp holds the north road's first tanks (+1:30), then, at +3:10,
+#    the whole force goes round the lane and up the north ramp, one tower after the other (the three stand 300 from
+#    the middle, 600 apart: only the one the force is at reaches it). Tanya stays behind the tanks and goes down to the
+#    pit (the bonus) once the west tower is down.
+CNV_A6_Phase_2+5 派 tanya 去 ring northwest
+CNV_A6_Phase_2+5 派 peace 去 ring northwest
+CNV_A6_Phase_2+5 派 guardian 去 ring northwest
+CNV_A6_Phase_2+5 删除 名字含 AlliedMCV
+CNV_A6_Phase_2+5 造 AlliedConstructionYard 在 south camp
+CNV_A6_Phase_2+10 造 AlliedAntiVehicleVehicleTech1 在 south camp
+CNV_A6_Phase_2+30 造 AlliedAntiVehicleVehicleTech1 在 south camp
+CNV_A6_Phase_2+50 造 AlliedAntiVehicleVehicleTech1 在 south camp
+CNV_A6_Phase_2+70 造 AlliedAntiVehicleVehicleTech1 在 south camp
+CNV_A6_Phase_2+90 造 AlliedAntiVehicleVehicleTech1 在 south camp
+CNV_A6_Phase_2+110 造 AlliedAntiVehicleVehicleTech1 在 south camp
+CNV_A6_Phase_2+130 造 AlliedAntiVehicleVehicleTech1 在 south camp
+CNV_A6_Phase_2+150 造 AlliedAntiVehicleVehicleTech1 在 south camp
+CNV_A6_Phase_2+170 造 AlliedAntiVehicleVehicleTech1 在 south camp
+CNV_A6_Phase_2+190 造 AlliedAntiVehicleVehicleTech1 在 south camp
+CNV_A6_Phase_2+210 造 AlliedAntiVehicleVehicleTech1 在 south camp
+CNV_A6_Phase_2+230 造 AlliedAntiVehicleVehicleTech1 在 south camp
+CNV_A6_Phase_2+250 造 AlliedAntiVehicleVehicleTech1 在 south camp
+CNV_A6_Phase_2+270 造 AlliedAntiVehicleVehicleTech1 在 south camp
+CNV_A6_Phase_2+290 造 AlliedAntiVehicleVehicleTech1 在 south camp
+CNV_A6_Phase_2+310 造 AlliedAntiVehicleVehicleTech1 在 south camp
+CNV_A6_Phase_2+330 派 名字含 SIM Made 去 outer ramp
+CNV_A6_Phase_2+355 派 名字含 SIM Made 去 ring north
+CNV_A6_Phase_2+355 派 tanya 去 ring north
+CNV_A6_Phase_2+355 派 peace 去 ring north
+CNV_A6_Phase_2+355 派 guardian 去 ring north
+CNV_A6_Phase_2+385 派 名字含 SIM Made 去 tower north
+CNV_A6_Phase_2+385 派 peace 去 tower north
+CNV_A6_Phase_2+385 派 guardian 去 tower north
+CNV_A6_Phase_2+400 派 tanya 去 tower north
+CNV_A6_Phase_2+410 派 名字含 SIM Made 去 tower west
+CNV_A6_Phase_2+410 派 peace 去 tower west
+CNV_A6_Phase_2+410 派 guardian 去 tower west
+CNV_A6_Phase_2+440 派 tanya 去 pit
+CNV_A6_Phase_2+455 派 名字含 SIM Made 去 tower east
+CNV_A6_Phase_2+455 派 peace 去 tower east
+CNV_A6_Phase_2+455 派 guardian 去 tower east
+# 3. 撤出: the last tower is down, the east grove's tanks come for the camp at +0:20 (the north road's second tanks are
+#    there already): the force gathers at the ramp's foot and goes down to the camp together, a guardian from the yard
+#    every 20 s once it is there. Tanya waits in the pit until the camp is clear, then comes down the way she went up.
+CNV_A6_Phase_3+1 派 名字含 SIM Made 去 ring north
+CNV_A6_Phase_3+1 派 peace 去 ring north
+CNV_A6_Phase_3+1 派 guardian 去 ring north
+CNV_A6_Phase_3+40 派 名字含 SIM Made 去 outer ramp
+CNV_A6_Phase_3+40 派 peace 去 outer ramp
+CNV_A6_Phase_3+40 派 guardian 去 outer ramp
+CNV_A6_Phase_3+60 派 名字含 SIM Made 去 south camp
+CNV_A6_Phase_3+60 派 peace 去 south camp
+CNV_A6_Phase_3+60 派 guardian 去 south camp
+
+CNV_A6_Phase_3+62 造 AlliedAntiVehicleVehicleTech1 在 south camp
+CNV_A6_Phase_3+82 造 AlliedAntiVehicleVehicleTech1 在 south camp
+CNV_A6_Phase_3+102 造 AlliedAntiVehicleVehicleTech1 在 south camp
+CNV_A6_Phase_3+122 造 AlliedAntiVehicleVehicleTech1 在 south camp
+CNV_A6_Phase_3+142 造 AlliedAntiVehicleVehicleTech1 在 south camp
+CNV_A6_Phase_3+110 派 tanya 去 ring north
+CNV_A6_Phase_3+135 派 tanya 去 outer ramp
+CNV_A6_Phase_3+160 派 tanya 去 south camp
