@@ -250,6 +250,57 @@ def test_production_needs_a_factory_and_its_prerequisites():
         not s.order_build(s.human, 'AlliedAntiInfantryInfantry')
 
 
+# ---- skills: a unit's ground power, its reload and placing rules (sim.Sim.act NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT,
+# order_power). bench 2026-11-07 engine_skill (checks/engine_skill.py): per spot, units = frames from the order to the
+# core, thousands = frames it stood. A script's cast heeds neither the 20 s reload, ForbiddenObjectRange 32 nor
+# PATHABLE_ONLY. c's 平D (a 400 walk first) is left to R5's test; 走D only counts the walk.
+BENCH_SKILL = {'a': (82002, 82003, 82003), 'b': (82002, 82002, 82002), 'c': (82004, 82002, 82103), 'w': (82004,)}
+
+
+@pytest.mark.parametrize('variant', sorted(BENCH_SKILL))
+def test_skill_a_scripted_cast_builds_whatever_the_reload_or_the_spot(variant):
+    """Every core comes and stands its 82 frames; the frame it comes within 2 of the bench's (the simulator has every
+    in-range core 1 frame after its order; the bench 2-3 frames for a, 4 on the cliff edge and in the sea -- the 2 more
+    not explained) and the walked D within 4 (as R5)."""
+    rows = _sim_run('engine_skill', variant, 60.0).series[-1][1]
+    for got, want in zip(rows, BENCH_SKILL[variant]):
+        assert got // 1000 == want // 1000
+        assert abs(got % 1000 - want % 1000) <= (4 if want % 1000 > 50 else 2)
+
+
+def _skill(variant):
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_skill', variant)
+    s = sim.Sim(m, t)
+    s.advance(15)
+    return m, s
+
+
+def test_skill_the_players_click_waits_for_the_reload():
+    """order_power (INFERRED: the click itself not measured): goes, then refused till ReloadTime x 15 = 300 frames on --
+    the script's cast starts the reload too."""
+    m, s = _skill('a')
+    b, power = s.body(m.role('engineer a').name), m.ability('engineer a', 'freeze')
+    assert s.order_power(b, power, s.point(m.mark('a1'))) == (True, None)
+    s.advance(8 * 15)
+    assert s.order_power(b, power, s.point(m.mark('a2'))) == (False, 'reloading')
+    s.advance(300 - 8 * 15)
+    assert s.order_power(b, power, s.point(m.mark('a2')))[0]
+
+
+def test_skill_the_players_click_keeps_off_objects_and_unpathable_ground():
+    """INFERRED: within ForbiddenObjectRange 32 of the tank's centre refused (20), clear of it (40, 60) not; a point in
+    the sea refused (PATHABLE_ONLY)."""
+    m, s = _skill('b')
+    power = m.ability('engineer b1', 'freeze')
+    got = [s.order_power(s.body(m.role(f'engineer b{k}').name), power, s.point(m.mark(f'b{k}')))[1] for k in (1, 2, 3)]
+    assert got == ['too near an object', None, None]
+    m, s = _skill('w')
+    b = s.body(m.role('engineer w').name)
+    assert s.order_power(b, m.ability('engineer w', 'freeze'), s.point(m.mark('w'))) == (False, 'not pathable')
+
+
 # ---- tech tiers: what lets a factory build a tier-2 unit (sim.Sim.holds_upgrade / can_build / upgrade_sellers)
 # bench 2026-11-07 engine_tech (checks/engine_tech.py): the Guardian (NeededUpgrade Upgrade_AlliedTech2, 950) clicked
 # at ~s16 -- built only in c (the yard holds Tech2, the factory 300 off); e: the player buys Tech2 on the yard

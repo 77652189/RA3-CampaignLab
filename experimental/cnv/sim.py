@@ -131,8 +131,11 @@ ALIGN = {
     'assemble': 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT to a unit with an AssembleStructureSpecialAbilityUpdate for it '
                 '(the ice engineer): he walks till within its StartAbilityRange of the spot, stops, and the structure '
                 'is made there the next frame (bench 2026-11-07 engine_life: within range, the core one frame after '
-                'the order). Not modelled: the power\'s reload, its placing rules (ForbiddenObjectRange, '
-                'PATHABLE_ONLY), his being busy while it builds',
+                'the order). A script\'s cast heeds neither the power\'s reload nor its placing rules (bench '
+                '2026-11-07 engine_skill: again 8 s into a 20 s reload, 20 from a tank, on a cliff, in the sea -- '
+                'all built), it starts the reload anew. The player\'s click (Sim.order_power) is refused while '
+                'reloading, off pathable ground, within ForbiddenObjectRange of an object (INFERRED: not measured). '
+                'Not modelled: his being busy while it builds',
     'capture': 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED Command_CaptureBuilding: at its side the building changes hands, '
                'a deposit building pays its bonus then its amount each interval (R4, bench 2026-11-07 a4 derrick)',
     'nearest ref':'SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER: the unnamed one nearest the team\'s middle (R2, bench 2026-11-07 engine_ref)',
@@ -342,6 +345,8 @@ class Body:
     leaves: list = dataclasses.field(default_factory=list)      # what that death makes where it stood
     building: tuple = None                                      # (structure, (x, y), stand): told to build there (R5)
     unpack_end: int = None                                      # a structure made in the run: unpacking until then
+    ready_at: dict = dataclasses.field(default_factory=dict)   # special power -> the frame its reload ends (a cast,
+                                                                # the script's too, starts it anew: order_power)
 
     @property
     def health(self):
@@ -1033,6 +1038,41 @@ class Sim:
         if b and not inside(self.areas[area], b.x, b.y):
             self.send(b, area)
 
+    def power_refusal(self, b, power, x, y):
+        """Why the player's click of `power` on (x, y) for unit b would be refused, None if it goes (order_power). The
+        bench (engine_skill a-c, w) only read the script's cast, which skips all of this; the click's rules are
+        INFERRED (docs/engine/specialpower.md 2: the command layer checks): its reload not over (ready_at); PATHABLE_ONLY
+        and the spot not ground the unit can walk; within ForbiddenObjectRange of another object's centre (centre or
+        edge: not read); MaxCastRange with LIMIT_DISTANCE and the spot farther from him."""
+        rules = simunits.power_rules(b.template, power, self.own)
+        if rules is None:
+            return 'not a power of his'
+        if b.ready_at.get(power, 0) > self.frame_now():
+            return 'reloading'
+        if 'PATHABLE_ONLY' in rules['flags']:
+            g, c = self.ground.grids.get(b.surface, self.ground.grids['ground']), self.ground.cell(x, y)
+            if not (0 <= c[0] < g.shape[0] and 0 <= c[1] < g.shape[1] and g[c]):
+                return 'not pathable'
+        if rules['forbidden'] and any(o is not b and math.hypot(o.x - x, o.y - y) < rules['forbidden']
+                                      for o in self.living()):
+            return 'too near an object'
+        if 'LIMIT_DISTANCE' in rules['flags'] and rules['reach'] and math.hypot(b.x - x, b.y - y) > rules['reach']:
+            return 'out of reach'
+        return None
+
+    def order_power(self, b, power, pos):
+        """The player's ground power (simproxy's): (True, None) and cast as the scripts' way does (at a waypoint of its
+        own), or (False, why) -- power_refusal."""
+        x, y = float(pos[0]), float(pos[1])
+        why = self.power_refusal(b, power, x, y) if b and b.alive else 'gone'
+        if why:
+            self.note('技能', f'{self.label(b) if b else "?"} 用 {power} 不行：{why}')
+            return False, why
+        spot = f'SIM power spot {len(self.waypoints)}'
+        self.waypoints[spot] = (x, y)
+        self.act('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', [b.name, power, spot], None)
+        return True, None
+
     def order_stop(self, b):
         if b:
             b.path, b.goal = [], None
@@ -1527,7 +1567,10 @@ class Sim:
                 simunits.assemble(b.template, a[1], self.own)
             p = self.point(a[2]) if got and got[1] else None
             if p is not None:                       # R5: he walks there and builds (the ice engineer's core)
-                self.used.add('assemble')
+                self.used.add('assemble')           # a script's cast heeds neither reload nor placing rules
+                rules = simunits.power_rules(b.template, a[1], self.own)    # (bench engine_skill a-c, w); it
+                if rules and rules['reload']:                               # starts the reload all the same
+                    b.ready_at[a[1]] = self.frame_now() + rules['reload']   # (RA3 1.13 0x7dea80, read)
                 b.building, b.goal, b.mode = (got[1], p, got[0]), None, 'move'
                 self.note('技能', f'{self.label(b)} 去 {a[2]} 造 {got[1]}')
                 if not self.at_site(b, 0.0):

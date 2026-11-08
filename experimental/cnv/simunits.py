@@ -404,6 +404,21 @@ def assemble(template, power, own=None):
     return None
 
 
+def power_rules(template, power, own=None):
+    """A mission unit's SpecialPowerTemplate for `power` (in its own XML): {'reload': frames (ReloadTime x 15,
+    rounded twice -- RA3 1.13 0x863050, docs/engine/specialpower.md 1 -- at least 1), 'forbidden': ForbiddenObjectRange,
+    'flags': set of Flags, 'reach': MaxCastRange or 0}, else None (a retail power: not read)."""
+    xml = (own or {}).get(template) or ''
+    for head, _ in _blocks(xml, 'SpecialPowerTemplate'):
+        if re.search(r'\bid="([^"]*)"', head).group(1) == power:
+            secs = _secs(_attr(head, 'ReloadTime'))
+            return {'reload': max(1, int(round(secs * 15))) if secs else 0,
+                    'forbidden': _num(_attr(head, 'ForbiddenObjectRange'), 0.0),
+                    'flags': set((_attr(head, 'Flags') or '').split()),
+                    'reach': _num(_attr(head, 'MaxCastRange'), 0.0)}
+    return None
+
+
 def kind_of(kinds):
     for k in ('STRUCTURE', 'AIRCRAFT', 'SHIP', 'INFANTRY', 'VEHICLE'):
         if k in kinds:
