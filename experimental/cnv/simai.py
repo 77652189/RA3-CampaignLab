@@ -17,7 +17,10 @@ every frame (the simulator moves in DT ticks; the AI is ticked for each frame of
               miner its UnpackTime later (bench aiopen: 667 = refinery + 60).
   units       Sim.order_build, one at a time a factory: the next is queued once the last has left the door (bench
               aiopen: 161 frames a Riptide = 151 + door 10), none before the factory has unpacked (UnpackTime).
-  teams       ai.units = the AI's own movers (not HARVESTER, not IGNORES_SELECT_ALL) as stable Unit wrappers;
+  offers      the unit builder's candidates (Sim.offers) with their state (0 an idle factory, 1 all busy), standard
+              combat flag and cost; it orders for no team, beside the opening, on the AI's PRODUCTION account.
+  earn        the player's money rising since the last tick = income, split into the AI's accounts by its budget.
+  teams      ai.units = the AI's own movers (not HARVESTER, not IGNORES_SELECT_ALL) as stable Unit wrappers;
               team_point = the closest enemy structure to the AI's yard.
   states      ctx: the mission's flags (ScriptedFlagHeuristic), 'has' (its templates), 'building' (the kinds queued),
               'enemy nearby' (enemy value within the distance of its yard).
@@ -134,9 +137,6 @@ class Brain:
         self.ai.units = self.units
         self.ai.team_point = self.team_point
         self.ai.offers = self.offers
-        self.ai.waiting = lambda ai: len(self.unit_q) + sum(
-            len(q) for f, q in self.sim.queues.items() if (self.sim.bodies.get(f) or sim.Body('', '', '', 0, 0)).owner
-            == self.player)
         self.yard_q = {}                # yard name -> [job]
         self.yard_rest = {}             # yard name -> the last frame it starts nothing (the one after a put)
         self.unit_q = []                # [template] waiting for a free, unpacked factory that makes it
@@ -147,6 +147,7 @@ class Brain:
         self.woke = self.frame = frame
         self.ids, self.hp, self.hurt_at = {}, {}, {}     # body name -> Thing id; last hp; id -> frame last hurt
         self.seen_t = None              # the sim time the view was last built at
+        self.money_seen = None          # the player's money at the last tick (earn)
         self.fired = []                 # (frame, team key, unit, command): unit powers the micro wanted
         yards = self.yards()
         self.home = (yards[0].x, yards[0].y) if yards else (0.0, 0.0)
@@ -179,7 +180,7 @@ class Brain:
             self.ai.blocks.append(self.defense)
         if 'micro' in which:
             self.micro = mc.MicroBlock(self.micro_team, fire=self.fire_unit, data=h.data_of('micro'),
-                                       rng=random.Random(h.seed))
+                                       rng=random.Random(h.seed).uniform)      # MicroManager's rng(lo, hi)
             self.ai.blocks.append(self.micro)
         if 'specials' in which:
             self.powers = m['specials'].PlayerPowers([], DIFFICULTY.get(h.level, 'MEDIUM'))
@@ -325,14 +326,25 @@ class Brain:
         return True
 
     def offers(self, ai, frame):
-        """AIPlayer.offers: the units the AI's live factories can build now (Sim.offers), as teams.Offer."""
+        """AIPlayer.offers: the units the AI's live factories can build now (Sim.offers), as teams.Offer with the unit
+        builder's candidate state (0x8c7910): 0 = an unpacked factory that makes it has an empty queue and nothing of
+        unit_q it would take, 1 = all such factories are busy; a unit only unpacking factories make is left out
+        (state 2, cannot build now)."""
         tm = self.host.mod['teams']
+        s, frame = self.sim, self.frame
+        ready = [f for f in self.factories() if frame >= self.made.get(f.name, -10 ** 9) + self.host.unpack(f.template)]
         out = []
-        for t, _, _ in self.sim.offers(self.player):
+        for t, _, _ in s.offers(self.player):
+            fs = [f for f in ready if t in self.host.menu(f.template)]
+            if not fs:
+                continue
+            idle = any(not s.queues.get(f.name) and not any(q in self.host.menu(f.template) for q in self.unit_q)
+                       for f in fs)
             kinds = self.host.kinds(t)
             surface = 'AIR' if 'AIRCRAFT' in kinds else 'AMPHIBIOUS' if 'AMPHIBIOUS' in kinds else \
                 'WATER' if 'SHIP' in kinds else 'LAND'
-            out.append(tm.Offer(t, frozenset(kinds), surface))
+            out.append(tm.Offer(t, frozenset(kinds), surface, state=0 if idle else 1,
+                                standard=self.host.standard(t), cost=self.host.cost(t)))
         return out
 
     def units(self, ai, frame):
@@ -448,8 +460,18 @@ class Brain:
         """The frame 'make base' ran (the AI's start; the bench's 'from the wake' frames count from it)."""
         return self.ai.start if self.ai.start is not None else self.woke
 
+    def earn(self):
+        """AIPlayer.earn: the rise of the player's money since the last tick is income for the AI's accounts
+        (INFERRED: a frame that both earns and pays counts the net; the simulator's miners do not mine yet, HOOKS 7,
+        so after the wake's script money -- in the opening, all to SLUSH_FUND -- the income is the deposits')."""
+        now = self.sim.money.get(self.player, 0)
+        if self.money_seen is not None and now > self.money_seen:
+            self.ai.earn(now - self.money_seen)
+        self.money_seen = now
+
     def tick(self, frame):
         self.frame = frame
+        self.earn()
         self.later_due(frame)
         self.yard_due(frame)
         self.unit_due(frame)
@@ -472,7 +494,7 @@ class SimAI:
         self.blocks = tuple(blocks)     # which of A's blocks the brains get (() = opening, states and teams only)
         self.brains = {}                # player -> Brain
         self.done_to = None             # the last frame the AI ran
-        self._data, self._cost, self._menu, self._cs, self._kinds = {}, {}, {}, {}, {}
+        self._data, self._cost, self._menu, self._cs, self._kinds, self._std = {}, {}, {}, {}, {}, {}
 
     @property
     def frame(self):
@@ -514,6 +536,14 @@ class SimAI:
                                      lambda xml: (re.findall(r'\bCommandSet="([^"]+)"', xml) or [''])[0], '')
             self._cs[template] = simunits._commands(self.sim.own)[0].get(cs, [])
         return self._cs[template]
+
+    def standard(self, template):
+        """UnitBuilderStandardCombatUnit of a template (the unit builder's candidates, INFERRED), cached."""
+        if template not in self._std:
+            self._std[template] = simunits._inherited(
+                template, self.sim.own,
+                lambda xml: (re.findall(r'\bUnitBuilderStandardCombatUnit="(\w+)"', xml) or [''])[0], '') == 'true'
+        return self._std[template]
 
     def unpack(self, template):
         """round(UnpackTime x 15) (tools/aiopen.unpack_frames); 0 without the module."""

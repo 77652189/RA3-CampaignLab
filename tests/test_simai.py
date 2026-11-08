@@ -55,7 +55,9 @@ def test_short_of_money_the_opening_stalls_on_the_refinery(lib):
     assert w.sim.money[b.player] < 30, w.sim.money[b.player]
     (q,) = b.yard_q.values()                            # the orders are in (the yard's queue); its head is stuck
     assert q[0]['template'] == 'AlliedRefinery' and q[0]['full'] is None, q[0]
-    assert not [t for f, what, t in trace if what == 'out'], trace
+    # the unit builder runs beside the opening on the 2000 PRODUCTION Deposit (bench m counted no units: model only)
+    spent = sum(w.cost(t) for f, what, t in trace if what == 'out')
+    assert spent <= 2000, trace
 
 
 @pytest.fixture(scope='module')
@@ -63,6 +65,42 @@ def skirmish(lib):
     return simai.run('aiskirm', until=300, lib=lib)
 
 
+BARRACKS = ('AlliedScoutInfantry', 'AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry')
+
+
+def _barracks_out(skirmish):
+    (b,) = skirmish.brains.values()
+    return [((f - b.started) / simai.FPS, t) for f, what, t in b.trace if what == 'out' and t in BARRACKS]
+
+
+def test_skirmish_ai_builds_infantry_in_the_opening_until_the_deposit_is_spent(skirmish):
+    """bench engine_aiskirm c: the barracks builds from ~15 s after the wake, beside the opening (the unit builder is
+    tied to no team, l4_unitbuilder.md 2), 1900 of the opening's PRODUCTION Deposit 2000 by 52 s, then nothing till
+    125 s (the opening's budget gives PRODUCTION 0 %)."""
+    out = _barracks_out(skirmish)
+    assert out and out[0][0] < 30, out                              # during the opening
+    spent = sum(skirmish.cost(t) for s, t in out if s < 120)
+    assert 1800 <= spent <= 2000, (spent, out)
+    assert not [s for s, t in out if 70 < s < 120], out
+
+
+@pytest.mark.xfail(strict=True, reason='the unit mix: the score is the UnitModifier stand-in (0x8b9c30 / 0x8f1490 '
+                                       'NOT READ); bench c: 2 dogs first (15 / 18 s), then 3 Javelins + 3 Peacekeepers')
+def test_skirmish_ai_barracks_mix_matches_the_bench(skirmish):
+    made = collections.Counter(t for s, t in _barracks_out(skirmish) if s < 120)
+    assert made == {'AlliedScoutInfantry': 2, 'AlliedAntiInfantryInfantry': 3, 'AlliedAntiVehicleInfantry': 3}, made
+
+
+@pytest.mark.xfail(strict=True, reason='after the opening the unit builder lives on income (CoopBudget PRODUCTION '
+                                       '85 %); the simulator\'s miners do not mine (simai.md HOOKS 7) -- bench c: '
+                                       'Peacekeepers again at 125 / 142 / 154 s')
+def test_skirmish_ai_builds_again_after_the_opening(skirmish):
+    assert [s for s, t in _barracks_out(skirmish) if 120 <= s < 160]
+
+
+@pytest.mark.xfail(strict=True, reason='bench a/c: the first attack team (8) leaves ~133 s after the wake; the '
+                                       'simulator\'s never leaves -- no income after the opening (HOOKS 7) and the '
+                                       'mix (6 Peacekeepers + a dog fill MaxTypesOfUnits 2 at 7 of MinUnits 8)')
 def test_skirmish_ai_builds_makes_units_and_attacks(skirmish):
     w = skirmish
     (b,) = w.brains.values()
