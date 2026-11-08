@@ -89,6 +89,9 @@ def test_what_the_player_sees_at_the_start(lib):
     far = w.sim.bodies[w.sim.m.cast['north command'].name]
     assert w.ids.get(far.name) not in {t.id for t in obs.seen}      # the north base is not in sight at the start
     assert len(obs.leads) == len(simproxy.LEADS['a4'])
+    # frame 0: the level's first tick (A4 locks the input for its scene) has not run, so the player has no control
+    # yet (round 40: orders taken here sent a unit into lane foot and set the convoy off ~85 s early)
+    assert obs.cinematic and not w.issue(w.pw.Order('move', (obs.mine[0].id,), pos=(1200.0, 2680.0)))
 
 
 def test_orders_move_attack_and_refusals(lib):

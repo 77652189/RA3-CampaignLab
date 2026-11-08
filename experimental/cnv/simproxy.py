@@ -21,7 +21,8 @@ What the world shows the player (Observation, ra3model/proxy/world.py):
   chokes  CHOKES[level]: each way's block site and threat source, the on-screen countdown's end (the horn), the power
           that blocks (the ice engineer's) and whether ice stands there now; the proxy decides when and which to ice
           (player._blocks, Style.block = 0 never ices: --compare plays both)
-  cinematic  not Sim.input (a scene holds the player's input; issue refuses every order then); healing HEALING[level]
+  cinematic  not SimWorld.control() (a scene holds the player's input, or the first tick has not run yet; issue
+          refuses every order then); healing HEALING[level]
           (the simulator heals nobody: False); counters what each seen template is made to kill (Matchup good_against)
 What the player may do (Order): 'move' (a plain move), 'attack' (Sim.order_attack on a body), 'power' with a pos (a
 ground power: NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT at a waypoint made for it -- the ice engineer walks there and
@@ -246,7 +247,7 @@ class SimWorld:
                 and (b.owner == sim.CIV or s.enemy(self.me, b.owner)) and s.side_sees(self.me, b)]
         return self.pw.Observation(self.frame, self.me, self.money(), self.where_home(), mine, seen, self.offers(),
                                    self.enemies(), list(self.leads), self.chokes(), escort=bool(self._convoy()),
-                                   cinematic=not s.input, healing=HEALING.get(self.level, False),
+                                   cinematic=not self.control(), healing=HEALING.get(self.level, False),
                                    counters={t.template: self._data(t.template)[1] for t in seen},
                                    blips=self.blips())
 
@@ -329,9 +330,16 @@ class SimWorld:
         self.refused.append((self.frame, o, why))
         return False
 
+    def control(self):
+        """The player has control: no scene holds the input (Sim.input, ENABLE_INPUT) and the first tick has run.
+        Before it the level's scripts have not yet said whether a scene opens the mission (A4 locks the input in its
+        first tick): orders the proxy gave at frame 0 sent a unit into lane foot and set the convoy off ~85 s early
+        (round 40, 2026-11-07)."""
+        return self.sim.input and self.sim.t > 0
+
     def issue(self, o):
         s = self.sim
-        if not s.input:                         # a scene: the player has no control (Sim.input, ENABLE_INPUT)
+        if not self.control():
             return self._refuse(o, 'cinematic: no control')
         if o.kind == 'build':
             return True if s.order_build(self.me, o.template) else self._refuse(o, 'no factory of mine builds it now')
