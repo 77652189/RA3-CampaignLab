@@ -80,6 +80,23 @@ def test_a_capture_line_is_the_engineers_capture_order_on_both_sides():
     assert eng.mode == 'capture' and eng.goal is s.pick('station')[0]
 
 
+def test_a_walk_line_is_a_plain_move_on_both_sides_and_takes_map_coordinates():
+    # `走 <who> 去 <place>`: MOVE_NAMED_UNIT_TO on the bench, order_move(..., attacking=False) in the simulator; a place
+    # '@x,y' is map coordinates on both (model.coord: a waypoint there / Sim.point)
+    import build
+    import sim
+    m, t, _ = build.resolve('j7', '')
+    c = playcheck.Compiler(m, playcheck.Test())
+    acts = c.actions((5.0, '走', 'tengu', '@1500,2450.5'), 5.0)
+    assert acts and acts == [('MOVE_NAMED_UNIT_TO', n, 'Play @1500,2450.5') for n in c.who('tengu', 5.0)]
+    assert c.t.waypoints['Play @1500,2450.5'] == (1500.0, 2450.5)
+    assert sim.parse_script('5 走 tengu 去 @1500,2450.5') == [(5.0, '走', 'tengu', '@1500,2450.5')]
+    s = sim.Sim(m, t, 'normal', '')
+    assert s.point('@-10,20') == (-10.0, 20.0)
+    s.happen((5.0, '走', 'tengu', '@1500,2450.5'))
+    assert all(b.mode == 'move' for b in s.pick('tengu'))
+
+
 def test_a_line_the_bench_cannot_be_told_stops_the_compile():
     import build
     m, _, _ = build.resolve('j7', '')

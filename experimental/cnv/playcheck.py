@@ -82,7 +82,10 @@ class Compiler:
             return name
         wp = f'Play {name}'
         if wp not in self.t.waypoints:
-            if name in m.cast and m.cast[name].name:                 # a cast part: where it stands
+            from model import coord
+            if coord(name) is not None:                             # '@x,y': a waypoint at those map coordinates
+                self.t.waypoints[wp] = coord(name)
+            elif name in m.cast and m.cast[name].name:               # a cast part: where it stands
                 o = m.find(m.cast[name].name)
                 self.t.waypoints[wp] = (o.x, o.y)
             else:
@@ -124,6 +127,10 @@ class Compiler:
             who, where = rest
             wp = self.where(where)
             return [('ATTACK_MOVE_NAMED_UNIT_TO', n, wp) for n in self.who(who, now)]
+        if verb == '走':                    # a plain move (the simulator's order_move(..., attacking=False))
+            who, where = rest
+            wp = self.where(where)
+            return [('MOVE_NAMED_UNIT_TO', n, wp) for n in self.who(who, now)]
         if verb == '攻击':
             who, target = rest
             goal = self.who(target, now)[0]

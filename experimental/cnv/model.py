@@ -11,6 +11,7 @@ be on sys.path (package.py / parts.py put it there) for _enum's labpaths. Split 
 """
 import dataclasses
 import os
+import re
 
 
 MAX_NAME = 15                           # mod folder names longer than this crash the game at start (see assemble)
@@ -133,6 +134,17 @@ def facing(o):
     face north (+y) and everyone else's south. package._put_objects writes it, the simulator places by it (a unit's
     nose, a bar's lie) -- one rule, so the two cannot drift (the simulator took 0 = east till 2026-11-08)."""
     return o.angle if o.angle is not None else (1.5708 if o.side == 'p1' else -1.5708)
+
+
+_COORD = re.compile(r'@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)$')
+
+
+def coord(name):
+    """A place given as map coordinates, '@1500,2450' -> (1500.0, 2450.0), else None: a play line's place where no site
+    or mark stands (the simulator's UI orders by a click on the ground). The simulator (Sim.point) and the bench
+    (playcheck.where: a waypoint there) read it by this one rule."""
+    m = _COORD.match(name.strip()) if isinstance(name, str) else None
+    return (float(m.group(1)), float(m.group(2))) if m else None
 
 
 NOT = 'NOT'                             # a condition's last item: it holds when its test does not (unnot)

@@ -19,7 +19,9 @@ not simulated (only what the scripts send). Whatever the engine does that the si
                                              [--level easy|normal|hard] [--until <seconds>]
 
 A script (剧本), one event a line (or ';' between them), times in seconds or m:ss:
-  <t> 派 <谁> 去 <地点>     move (a map site, a mark, a trigger area, a named object)
+  <t> 派 <谁> 去 <地点>     attack-move (a map site, a mark, a trigger area, a named object, '@x,y' map coordinates)
+  <t> 走 <谁> 去 <地点>     a plain move (MOVE_NAMED_UNIT_TO / order_move(..., attacking=False)): fires on the way, does
+                            not stop to fight
   <t> 摧毁 <谁>             destroyed (killed by the player)
   <t> 删除 <谁>             gone without dying
   <t> 血量 <谁> <百分比>     health set
@@ -57,7 +59,7 @@ sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign'
 import parts  # noqa: E402
 import simunits  # noqa: E402
 from ctx import FUNC_LATE, PANEL_CLEAR  # noqa: E402
-from model import facing  # noqa: E402
+from model import coord, facing  # noqa: E402
 
 TEAM_COMMANDS = ('MOVE_TEAM_TO', 'ATTACK_MOVE_TEAM_TO', 'TEAM_ATTACK_NAMED', 'TEAM_GUARD_AREA', 'TEAM_STOP')   # E3: need a live team
 SHOW_FLAG = re.compile(r'CNV_\w+_Show_\d+')       # ctx.Talk.show: a 功能 line's caption is asked for
@@ -1487,7 +1489,10 @@ class Sim:
                                                    and (a in self.ai or b in self.ai))
 
     def point(self, name):
-        """A waypoint, a trigger area's middle, a site, a mark, a named object."""
+        """A waypoint, a trigger area's middle, a site, a mark, a named object, map coordinates '@x,y' (model.coord)."""
+        c = coord(name)
+        if c is not None:
+            return c
         if name in self.waypoints:
             return self.waypoints[name]
         if name in self.areas:
@@ -2108,6 +2113,10 @@ class Sim:
             for b in self.pick(who):
                 b.mode = 'attack'                   # the player's units go attack-moving, fighting on the way
                 self.send(b, where)
+        elif verb == '走':
+            who, where = rest
+            for b in self.pick(who):
+                self.order_move(b, where, False)    # as MOVE_NAMED_UNIT_TO
         elif verb == '攻击':
             who, target = rest                      # an attack order on a thing (NAMED_ATTACK_NAMED): units take no building by themselves
             targets = self.pick(target)
@@ -2772,6 +2781,9 @@ def parse_script(text):
         if rest.startswith('派 '):
             who, _, where = rest[2:].rpartition(' 去 ')
             out.append((when(t), '派', who.strip(), where.strip()))
+        elif rest.startswith('走 ') and ' 去 ' in rest:
+            who, _, where = rest[2:].rpartition(' 去 ')
+            out.append((when(t), '走', who.strip(), where.strip()))
         elif rest.startswith('攻击 '):
             who, _, target = rest[3:].rpartition(' 打 ')
             out.append((when(t), '攻击', who.strip(), target.strip()))
