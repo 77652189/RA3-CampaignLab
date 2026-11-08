@@ -24,6 +24,15 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import labpaths  # noqa: E402
 
+SCREEN_Y = -1           # a top-down picture's rows run against world y (north up): the one place it is said -- the
+                        # simulator page (experimental/simui) draws with it too
+
+
+def north_up(x, y, top):
+    """A world point as picture coordinates in world units: x across, rows down from the north edge `top`."""
+    return x, top + SCREEN_Y * y
+
+
 sys.path.insert(0, labpaths.ROOT)
 import mapscript  # noqa: E402
 import mapterrain  # noqa: E402
@@ -150,7 +159,8 @@ def render(m, out, px=4, around=None, bench_view=False, water=newmap.WATERLINE, 
     s = px / mapterrain.CELL                                          # pixels per world unit
 
     def at(x, y):
-        return x * s, (h * mapterrain.CELL - y) * s
+        px_, py_ = north_up(x, y, h * mapterrain.CELL)
+        return px_ * s, py_ * s
 
     for g in range(0, 0 if plain else int(max(w, h) * mapterrain.CELL) + 1, 500):    # world grid every 500
         X, _ = at(g, 0)

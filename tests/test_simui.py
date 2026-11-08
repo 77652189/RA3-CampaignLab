@@ -177,3 +177,19 @@ def test_the_page_gets_a_line_when_the_run_reaches_its_start():
     assert 'CNV_A4_002' in [x['key'] for x in se.state(first[-1]['i'] + 1)['voices']]
     se.restart()
     assert se.state()['run'] == run + 1                         # the page drops what it is playing
+
+
+# ---- the map's orientation: north up, as the map pictures (maprender) and the game's minimap ----------------------
+
+def test_the_page_draws_north_up_by_the_map_pictures_own_definition():
+    import maprender
+    se = game.Session('a4')
+    st = se.static()
+    assert st['screen_y'] == maprender.SCREEN_Y == -1           # world y grows north, the screen's y down
+    assert maprender.north_up(0, 100, 1000) == (0, 900)        # the picture's own projection uses it
+    sites = {x['name']: x for x in st['sites']}
+    north, south = sites['north refinery'], sites['south refinery']
+    assert north['y'] > south['y']                              # so on screen the north camp is above the south
+    page = open(os.path.join(ROOT, 'experimental', 'simui', 'index.html'), encoding='utf-8').read()
+    assert 'SY = ST.screen_y' in page                           # the page takes it from there, no copy of its own
+    assert 'SY * (y - view.cy)' in page and 'SY * (y - cv.height / 2)' in page    # both ways (W2S, S2W)

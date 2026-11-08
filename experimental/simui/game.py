@@ -26,6 +26,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 CNV = os.path.join(os.path.dirname(HERE), 'cnv')
 sys.path[:0] = [p for p in (CNV, os.path.join(os.path.dirname(HERE), 'campaign')) if p not in sys.path]
 
+import maprender  # noqa: E402  (experimental/campaign: the map pictures' orientation, SCREEN_Y)
 import sim  # noqa: E402
 import simshow  # noqa: E402
 
@@ -396,6 +397,7 @@ class Session:
         sites = getattr(self.mission.map, 'SITES', {}) or {}
         return dict(
             level=self.level, difficulty=self.difficulty, play=bool(self.play), dt=sim.DT,
+            screen_y=maprender.SCREEN_Y,        # world y on the screen: north up, as the map pictures (one definition)
             grid=dict(w=int(walk.shape[1]), h=int(walk.shape[0]), x0=x0, y0=y0, step=g.d * platmap.CELL,
                       kind=base64.b64encode(kind.tobytes()).decode(), shade=base64.b64encode(shade.tobytes()).decode()),
             areas=[dict(name=k, pts=[[float(p[0]), float(p[1])] for p in v]) for k, v in s.areas.items()],
