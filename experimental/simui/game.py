@@ -48,19 +48,82 @@ class PlaySim(simshow.ShowSim):
 
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
-        self.voices = []            # (t, kind, sound key, text): PLAY_SOUND_EFFECT / the announcer's
+        self.voices = []            # Voice, in the order they are heard: PLAY_SOUND_EFFECT / the announcer's
+        self.voice_free = 0.0       # when the voice channel is free again (sim seconds)
         self.happened = []          # every script event as Sim.happen carried it out, time as scheduled
 
     def act(self, name, a, script):
         if name in ('PLAY_SOUND_EFFECT', 'PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT') and a:
             key = a[0] if isinstance(a[0], str) else str(a[0])
             sub = self.text(self.mm.subtitles[key]) if key in getattr(self.mm, 'subtitles', {}) else ''
-            self.voices.append((self.t, '配音' if name == 'PLAY_SOUND_EFFECT' else '播报', key, sub or self.text(key)))
+            text = sub or self.text(key)
+            kind = '配音' if name == 'PLAY_SOUND_EFFECT' else '播报'
+            # the engine queues dialogue events (voice_link.Later.length: ten lines at one moment "are heard one after
+            # another"): a line starts when the one before it has played out, in game time; the page plays a line
+            # when the run reaches its start and cuts the one before, so at most one is heard at a time
+            start = max(self.t, self.voice_free)
+            secs = voice_seconds(key, text, kind)
+            self.voice_free = start + secs
+            self.voices.append(Voice(start, kind, key, text, secs, self.t))
         super().act(name, a, script)
 
     def happen(self, e):
         self.happened.append(tuple(e))
         super().happen(e)
+
+
+class Voice(tuple):
+    """One line on the voice channel: `t` when it starts being heard (the queue's), `asked` when the script played it,
+    `secs` how long it is heard (the recording's length; EVA_TURN for an announcer line; a guess for one read aloud)."""
+    __slots__ = ()
+
+    def __new__(cls, t, kind, key, text, secs, asked):
+        return super().__new__(cls, (t, kind, key, text, secs, asked))
+
+    t = property(lambda s: s[0])
+    kind = property(lambda s: s[1])
+    key = property(lambda s: s[2])
+    text = property(lambda s: s[3])
+    secs = property(lambda s: s[4])
+    asked = property(lambda s: s[5])
+
+
+EVA_TURN = 2.5          # plan.EVA_TURN: a retail announcer line's floor (its length is not known)
+READ_RATE = 4.5         # characters a second the browser reads a line nobody recorded (a guess; the page cuts it off)
+_lengths = {}
+
+
+def recording_seconds(path):
+    """Seconds a recording plays, or None (not a wav it can read)."""
+    if path not in _lengths:
+        import wave
+        try:
+            with wave.open(path) as w:
+                _lengths[path] = w.getnframes() / w.getframerate()
+        except (wave.Error, OSError, EOFError):
+            _lengths[path] = None
+    return _lengths[path]
+
+
+def spoken(key, text):
+    """Whether a line with no recording has words to read aloud (an untranslated key such as Aeva_... has none)."""
+    return bool(text) and text != key
+
+
+def voice_seconds(key, text, kind):
+    p = find_voice(key)
+    n = recording_seconds(p) if p else None
+    if n:
+        return n
+    if kind == '播报' or not spoken(key, text):
+        return EVA_TURN
+    return 0.5 + len(text) / READ_RATE
+
+
+def voice_waits(voices, slack=0.05):
+    """The lines the queue held back: (asked, start, key, the line still being heard when it was asked). The game
+    queues dialogue the same way, so there too the line is heard that late: each one is the level's to look at."""
+    return [(b.asked, b.t, b.key, a.key) for a, b in zip(voices, voices[1:]) if b.t - b.asked > slack]
 
 
 def level_play(level):
@@ -137,6 +200,7 @@ class Session:
     def new(self, script=''):
         with self.lock:
             self.s = PlaySim(self.mission, self.test, self.difficulty, script)
+            self.run = getattr(self, 'run', 0) + 1      # a new run (restart, stage jump): the page drops its voice
             self.stages = phase_flags(self.s)
             self.orders, self.refused = [], []
             self.wall0 = time.time()
@@ -413,8 +477,9 @@ class Session:
                 units=units, caption=s.box_at(t), panel=panel,
                 objectives=[dict(name=k, status=v) for k, v in s.objectives.items() if v],
                 counters=ui, money=s.money.get(s.human, 0), unmodeled=unmod,
-                voices=[dict(i=i, t=v[0], kind=v[1], key=v[2], text=v[3], file=bool(find_voice(v[2])))
-                        for i, v in enumerate(s.voices) if i >= since],
+                run=self.run, voices=[dict(i=i, t=v.t, kind=v.kind, key=v.key, text=v.text, secs=round(v.secs, 2),
+                                           file=bool(find_voice(v.key)), speak=spoken(v.key, v.text))
+                                      for i, v in enumerate(s.voices) if i >= since and v.t <= t],
                 stages=[dict(flag=f, reached=s.flags.get(f) == 1) for f in self.stages],
                 factories=factories, offers=offers,
                 refused=[dict(t=a, why=b) for a, b in self.refused[-5:]],

@@ -133,3 +133,47 @@ def test_the_state_serialises():
     assert st['units'] and st['letterbox'] in (True, False) and 'unmodeled' in st
     me = [u for u in st['units'] if u['rel'] == 'me']
     assert me and all('x' in u and 'hp' in u for u in me)
+
+
+# ---- the voice channel: one line heard at a time, queued in game time as the engine queues dialogue ----------------
+
+def test_two_lines_at_one_moment_are_heard_one_after_another():
+    se = game.Session('a4')
+    s = se.s
+    s.act('PLAY_SOUND_EFFECT', ['CNV_A4_001'], None)
+    s.act('PLAY_SOUND_EFFECT', ['CNV_A4_002'], None)
+    a, b = s.voices[-2:]
+    assert a.t == a.asked == b.asked
+    assert b.t == pytest.approx(a.t + a.secs)                   # the second waits for the first to play out
+    if game.find_voice('CNV_A4_001'):
+        assert a.secs == pytest.approx(game.recording_seconds(game.find_voice('CNV_A4_001')))
+    assert game.voice_waits(s.voices[-2:]) == [(b.asked, b.t, 'CNV_A4_002', 'CNV_A4_001')]
+
+
+def test_a4_voice_channel_never_holds_two_lines(a4_ui):
+    v = a4_ui.voices
+    assert len(v) > 20
+    for a, b in zip(v, v[1:]):
+        assert b.t >= a.t + a.secs - 1e-6, (a.key, b.key)       # at any moment at most one line is heard
+
+
+def test_a4_full_play_holds_no_line_back(a4_ui):
+    """The level itself: the A4 full play's lines, at their recordings' real lengths, never wait for one another. A
+    line held back here is heard late in the game as well (the engine queues dialogue): the level line's to fix."""
+    assert game.voice_waits(a4_ui.voices) == []
+
+
+def test_the_page_gets_a_line_when_the_run_reaches_its_start():
+    se = game.Session('a4')
+    se.run_to(1.0)
+    run = se.state()['run']
+    assert se.state()['voices'] == []
+    s = se.s
+    s.act('PLAY_SOUND_EFFECT', ['CNV_A4_001'], None)
+    s.act('PLAY_SOUND_EFFECT', ['CNV_A4_002'], None)
+    first = se.state()['voices']
+    assert [x['key'] for x in first] == ['CNV_A4_001']          # the second is not handed over before its start
+    se.run_to(s.voices[-1].t + 0.1)
+    assert 'CNV_A4_002' in [x['key'] for x in se.state(first[-1]['i'] + 1)['voices']]
+    se.restart()
+    assert se.state()['run'] == run + 1                         # the page drops what it is playing

@@ -294,7 +294,7 @@ for (const [v, label] of SPEEDS) {
 }
 $('skip').onclick = skip;
 $('restart').onclick = () => { sel.clear(); voiceSince = 0; lastEnding = null; api('/api/restart', {}); };
-$('mute').onclick = () => { muted = !muted; $('mute').textContent = '配音：' + (muted ? '关' : '开'); if (muted) speechSynthesis.cancel(); };
+$('mute').onclick = () => { muted = !muted; $('mute').textContent = '配音：' + (muted ? '关' : '开'); if (muted) stopVoice(); };
 $('fogbtn').onclick = () => { showFog = !showFog; $('fogbtn').classList.toggle('on', showFog); };
 $('namebtn').onclick = () => { showNames = !showNames; $('namebtn').classList.toggle('on', showNames); };
 $('lv').onchange = async () => { await api('/api/open', { level: $('lv').value }); location.reload(); };
@@ -358,13 +358,41 @@ function renderSide() {
 const fmt = t => Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0');
 function modal(html) { $('modal').style.display = html ? 'flex' : 'none'; if (html) $('mbox').innerHTML = html; }
 
+// One voice channel, as the game's: the server queues the lines in game time (game.py PlaySim.act: the engine plays
+// dialogue one after another) and hands a line over when the run reaches its start, so a new line means the one
+// before has played out -- whatever is left of it is cut. Fast (4x, 8x, as fast), a skip or a jump: silent.
+let voice = null, voiceRun = 0;
+const silent = () => muted || !S || S.busy || S.speed > 2 || S.speed < 0;
+function stopVoice() {
+  if (voice && voice.a) voice.a.pause();
+  if (voice && voice.tts) speechSynthesis.cancel();
+  voice = null;
+}
 function speak(v) {
-  if (muted || !S || S.busy || S.speed > 2 || S.speed < 0) return;      // fast: the lines are only shown
-  if (v.file) { const a = new Audio('/voice/' + encodeURIComponent(v.key)); a.playbackRate = Math.max(1, S.speed); a.play().catch(() => {}); return; }
-  if (!('speechSynthesis' in window) || !v.text) return;
+  stopVoice();
+  if (silent()) return;
+  const late = S.t - v.t;                       // heard of late (a slow poll): start where the run is, or not at all
+  if (late >= v.secs) return;
+  if (v.file) {
+    const a = new Audio('/voice/' + encodeURIComponent(v.key)); a.playbackRate = Math.max(1, S.speed || 1);
+    if (late > 0.3) a.addEventListener('loadedmetadata', () => { a.currentTime = late; }, { once: true });
+    a.addEventListener('ended', () => { if (voice && voice.a === a) voice = null; });
+    voice = { a }; if (S.speed > 0) a.play().catch(() => {});
+    return;
+  }
+  if (!('speechSynthesis' in window) || !v.speak) return;   // an announcer key with no words: shown, not read
   const u = new SpeechSynthesisUtterance(v.text); u.lang = 'zh-CN'; u.rate = Math.min(2, Math.max(1, S.speed || 1));
   const zh = speechSynthesis.getVoices().find(x => /zh/i.test(x.lang)); if (zh) u.voice = zh;
-  speechSynthesis.speak(u);
+  u.onend = () => { if (voice && voice.u === u) voice = null; };
+  voice = { tts: true, u }; speechSynthesis.speak(u);
+}
+function voiceFollow() {                        // the line being heard follows pause / speed / skip
+  if (!voice) return;
+  if (silent()) return stopVoice();
+  if (voice.a) {
+    if (S.speed === 0) voice.a.pause();
+    else { voice.a.playbackRate = Math.max(1, S.speed); if (voice.a.paused) voice.a.play().catch(() => {}); }
+  } else if (S.speed === 0) speechSynthesis.pause(); else speechSynthesis.resume();
 }
 
 function renderHud() {
@@ -399,8 +427,9 @@ async function poll() {
     curPos = new Map(st.units.map(u => [u.id, [u.x, u.y]]));
     const wasEnd = S && S.ending; S = st;
     if (!S.ending && wasEnd) lastEnding = null;
-    for (const v of S.voices) { if (v.i >= voiceSince) { speak(v); voiceSince = v.i + 1; } }
-    if (S.voices.length === 0 && voiceSince > 0 && S.t < 1) voiceSince = 0;
+    if (S.run !== voiceRun) { stopVoice(); voiceRun = S.run; voiceSince = 0; }   // restart / jump: a new run
+    else for (const v of S.voices) { if (v.i >= voiceSince) { speak(v); voiceSince = v.i + 1; } }
+    voiceFollow();
     renderHud(); renderSide(); if (sel.size) renderSel();
   } catch (e) { $('busy').textContent = '连不上服务器'; }
   setTimeout(poll, S && S.busy ? 250 : 100);
