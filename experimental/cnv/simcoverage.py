@@ -87,7 +87,8 @@ def sim_code():
 def status_modelled():
     """The object statuses sim.py acts on (a `'X' in b.status` test)."""
     src = open(os.path.join(HERE, 'sim.py'), encoding='utf-8').read()
-    return set(re.findall(r"'([A-Z_]+)' (?:not )?in \w+\.status", src))
+    return set(re.findall(r"'([A-Z_]+)' (?:not )?in \w+\.status", src)) | {'IN_STASIS'}    # Sim.modify: IN_STASIS
+                                                                                            # = IMMOBILE NO_ATTACK UNATTACKABLE
 
 
 def issuable_kinds():
@@ -288,9 +289,14 @@ def weapon_items(inf):
 # tiers: simunits.upgrade_needs / tech_receivers, bench engine_tech), ModelConditionUpgrade and SubObjectsUpgrade (what
 # the unit looks like: nothing a script or the fight asks about)
 READ_OR_VISUAL = {'AttributeModifierUpgrade', 'CommandSetUpgrade', 'NeededUpgrade', 'TechUpgrade',
-                  'ModelConditionUpgrade', 'SubObjectsUpgrade'}
+                  'ModelConditionUpgrade', 'SubObjectsUpgrade', 'StatusBitsUpgrade'}
+# A modifier hung through an upgrade or an aura is read (simunits.upgrade_mods / auras -> sim.Sim.modify); of what it
+# carries the simulator acts on simunits.ACTING_TYPES and ACTING_BITS. Hung any other way (a ToggleState the player
+# flips, a weapon's AttributeModifierNugget): not read at all.
 def upgrade_items(inf):
     out = []
+    aura_mods = {a['mod'] for xml in inf.own.values() for a in simunits.auras(xml)
+                 if not a['needs']}                   # the jammer's needs its ToggleState's bit: never on in sim
     for uid, xml in sorted(inf.own.items()):
         mods = {}
         for head, body in simunits._blocks(xml, 'AttributeModifier'):
@@ -300,14 +306,23 @@ def upgrade_items(inf):
         by_upgrade = {simunits._attr(h, 'AttributeModifier'): ' '.join(re.findall(r'<TriggeredBy>([^<]*)</TriggeredBy>', b))
                       for h, b in simunits._blocks(xml, 'AttributeModifierUpgrade')}
         for mid, (types, status) in sorted(mods.items()):
-            via = f'升级 {by_upgrade[mid].strip()}' if mid in by_upgrade else '不是升级给的（光环等）'
+            read = mid in by_upgrade or mid in aura_mods
+            via = f'升级 {by_upgrade[mid].strip()}' if mid in by_upgrade else '光环' if mid in aura_mods else \
+                '不是升级或光环给的（开关、武器等）'
             for ty in dict.fromkeys(types):
-                if ty == 'SPEED' and mid in by_upgrade:
-                    continue                               # simunits.speed_scale reads exactly this
+                if read and ty in simunits.ACTING_TYPES:
+                    continue                               # sim.Sim.modify acts on it
                 out.append(Item(inf.name, UPGRADE, f'{uid}:{ty}', f'属性修改器 {mid} 的 {ty}（{via}）模拟器不读'
-                                + ('（只读升级给的 SPEED）' if ty != 'SPEED' else '')))
+                                + ('' if read else '（只读升级和光环挂的）')))
             for st in (status or '').split():
-                out.append(Item(inf.name, UPGRADE, f'{uid}:状态 {st}', f'属性修改器 {mid} 设状态位 {st}（{via}），模拟器的状态只由脚本动作改'))
+                if read and st in simunits.ACTING_BITS:
+                    continue
+                out.append(Item(inf.name, UPGRADE, f'{uid}:状态 {st}', f'属性修改器 {mid} 设状态位 {st}（{via}），'
+                                + ('模拟器不管这个状态位' if read else '模拟器不读这种来源')))
+        for head, body in simunits._blocks(xml, 'StatusBitsUpgrade'):
+            for st in (simunits._attr(head, 'StatusToSet') or '').split():
+                if st not in simunits.ACTING_BITS:
+                    out.append(Item(inf.name, UPGRADE, f'{uid}:状态 {st}', f'StatusBitsUpgrade 设状态位 {st}，模拟器不管这个状态位'))
         for tag in dict.fromkeys(re.findall(r'<(\w+Upgrade)\b', xml)):
             if tag in READ_OR_VISUAL:
                 continue
@@ -324,9 +339,9 @@ def upgrade_items(inf):
             seen.add(up)
             tmpl = objs.get(who)
             xml = simunits._xml(tmpl, inf.own) if tmpl else ''
-            if xml and simunits.speed_scale(xml, {up}) != 1.0:
-                continue
-            out.append(Item(inf.name, UPGRADE, up, f'原版升级 {up}（{name}）：效果不模拟（只认 SPEED 修改器）'))
+            if xml and (simunits.upgrade_mods(xml, {up}) or any(simunits.status_bits(xml, {up}))):
+                continue                                   # sim.Sim.modify reads what it hangs
+            out.append(Item(inf.name, UPGRADE, up, f'原版升级 {up}（{name}）：单位身上没有它触发的修正或状态位模块，效果不模拟'))
     seen = set()
     for a in inf.actions.get('GIVE_PLAYER_UPGRADE', []):
         up = a[1]
@@ -590,10 +605,10 @@ def first(level, name, text):
 
 
 SIMPY = 'python -I -X utf8 experimental/cnv/sim.py'
-A9 = gap(rf'{SIMPY} a9 --script experimental/cnv/plays/a9.txt --until 900 | grep "摧毁\] ball"',
-         'a9 球的暗护盾：升级给球的 INVULNERABLE 状态位没模拟（只有超武铁幕有无敌），暗球被打掉，6 个球 1 分钟拆完')
-A3 = gap(f'{SIMPY} a3 --script experimental/cnv/plays/a3.txt | grep Beatc5bb8',
-         'a3 时停区没模拟：圈里单位不冻、圈不挡追兵（光环给的 IN_STASIS / UNATTACKABLE / NO_ATTACK / SPEED 0%）')
+A9 = gap(f'python -I -X utf8 experimental/cnv/simcoverage.py a9 --verbose | grep -F NO_BRIBE',
+         'a9 球的暗修正另设 NO_BRIBE（不可收买）：模拟器没有收买，这一位不起作用（暗球无敌已由 Sim.modify 模拟）')
+WEAPON_BITS = gap(f'python -I -X utf8 experimental/cnv/simcoverage.py --verbose | grep -F WEAPON_UPGRADED',
+                  '原版继承来的 StatusBitsUpgrade 设 WEAPON_UPGRADED_0x（武器升级后换 WeaponSet）：模拟器不换武器组')
 A6_ATHENA = gap(f'{SIMPY} a6 --script experimental/cnv/plays/a6.txt --until 400 --all',
                 'a6 雅典娜炮的自动开火已模拟（11-08 引擎线 B：OCL 武器按生成物体的 FireWeaponUpdate 算，台上 engine_ocl a），'
                 '玩家用 SpecialPower_AthenaCannonTrigger 点炮仍没效果')
@@ -604,20 +619,12 @@ J7 = gap(f'{SIMPY} j7 --script experimental/cnv/plays/j7.txt --all | grep -i jam
 
 KNOWN = {
     # ---- the gaps the player-style runs found (docs/story/handoff-phase4.md, 39th session). One gap can be several items
-    ('a9', '升级', 'CNV_TowerBall:INVULNERABLE'): A9,
     ('a9', '升级', 'CNV_TowerBall:状态 NO_BRIBE'): A9,
-    ('a9', '升级', 'CNV_TowerBall:状态 UNDER_IRON_CURTAIN'): A9,
-    ('a3', '设备', '时停区:冻结+无敌'): A3,
-    ('a3', '升级', 'CNV_A3StasisZone:SPEED'): A3,
-    ('a3', '升级', 'CNV_A3StasisZone:状态 UNATTACKABLE'): A3,
-    ('a3', '升级', 'CNV_A3StasisZone:状态 NO_ATTACK'): A3,
-    ('a3', '升级', 'CNV_A3StasisZone:状态 NON_AUTOACQUIRABLE'): A3,
-    ('a3', '升级', 'CNV_A3StasisZone:状态 IN_STASIS'): A3,
     ('a6', '命令', '技能 SpecialPower_AthenaCannonTrigger'): A6_ATHENA,
     ('a7', '命令', '占领'): A7,
     ('j7', '升级', 'CNV_Jammer:状态 IMMOBILE'): J7,
     ('j7', '升级', 'CNV_Jammer:SPEED'): J7,
-    ('j7', '升级', 'CNV_Jammer:StatusBitsUpgrade'): J7,
+    ('j7', '升级', 'CNV_Jammer:状态 WEAPON_UPGRADED_01'): J7,
     ('j7', '脚本动作', 'NAMED_USE_COMMANDBUTTON_ABILITY:Command_CNV_Jammer_jam'): J7,
     # ---- the first census (2026-11-08): everything else it found, not looked at yet, to be assigned
     ('武器', 'AlliedAntiStructureShip'): first('a5', 'AlliedAntiStructureShip', '读空 AlliedAntiStructureAttackDrones: 伤害读成 0（WeaponOCLNugget）'),
@@ -630,11 +637,11 @@ KNOWN = {
     ('武器', 'JapanLightTransportVehicle'): first('a4', 'JapanLightTransportVehicle', '读空 JapanLightTransportVehicleDisguiser: 伤害读成 0（SpecialPowerN'),
     ('武器', 'SovietAntiVehicleVehicleTech3'): first('a3', 'SovietAntiVehicleVehicleTech3', '少读了 SovietAntiVehicleVehicleTech3Harpoon: 伤害读成 0（GrapplingHo'),
     ('升级', 'CNV_Burrower:SPEED'): first('a5', 'CNV_Burrower:SPEED', '属性修改器 AttributeModifier_CNV_Burrower_Under 的 SPEED（不是升级给的（光环'),
-    ('升级', 'CNV_Burrower:StatusBitsUpgrade'): first('a5', 'CNV_Burrower:StatusBitsUpgrade', '升级模块 StatusBitsUpgrade：模拟器不读'),
+    ('升级', 'CNV_Burrower:状态 WEAPON_UPGRADED_01'): WEAPON_BITS,
     ('升级', 'CNV_Burrower:状态 NO_ATTACK'): first('a5', 'CNV_Burrower:状态 NO_ATTACK', '属性修改器 AttributeModifier_CNV_Burrower_Under 设状态位 NO_ATTACK（不是'),
     ('升级', 'CNV_Burrower:状态 UNATTACKABLE'): first('a5', 'CNV_Burrower:状态 UNATTACKABLE', '属性修改器 AttributeModifier_CNV_Burrower_Under 设状态位 UNATTACKABLE'),
     ('升级', 'CNV_ChronoLag:SPEED'): first('a3', 'CNV_ChronoLag:SPEED', '属性修改器 AttributeModifier_CNV_ChronoLag_Unit 的 SPEED（不是升级给的（光环'),
-    ('升级', 'CNV_ChronoLag:StatusBitsUpgrade'): first('a3', 'CNV_ChronoLag:StatusBitsUpgrade', '升级模块 StatusBitsUpgrade：模拟器不读'),
+    ('升级', 'CNV_ChronoLag:状态 WEAPON_UPGRADED_02'): WEAPON_BITS,
     ('升级', 'CNV_ChronoLag:VISION'): first('a3', 'CNV_ChronoLag:VISION', '属性修改器 AttributeModifier_CNV_ChronoLag_Deploy 的 VISION（不是升级给的'),
     ('升级', 'CNV_ChronoLag:状态 DOES_CONTAIN_TIBERIUM'): first('a3', 'CNV_ChronoLag:状态 DOES_CONTAIN_TIBERIUM', '属性修改器 AttributeModifier_CNV_ChronoLag_Cooldown 设状态位 DOES_CON'),
     ('升级', 'CNV_ChronoLag:状态 IMMOBILE'): first('a3', 'CNV_ChronoLag:状态 IMMOBILE', '属性修改器 AttributeModifier_CNV_ChronoLag_Deploy 设状态位 IMMOBILE（不'),
@@ -642,17 +649,15 @@ KNOWN = {
     ('升级', 'CNV_ChronoLag:状态 NON_AUTOACQUIRABLE'): first('a3', 'CNV_ChronoLag:状态 NON_AUTOACQUIRABLE', '属性修改器 AttributeModifier_CNV_ChronoLag_Structure 设状态位 NON_AUT'),
     ('升级', 'CNV_ChronoLag:状态 NO_ATTACK'): first('a3', 'CNV_ChronoLag:状态 NO_ATTACK', '属性修改器 AttributeModifier_CNV_ChronoLag_Structure 设状态位 NO_ATTA'),
     ('升级', 'CNV_ChronoLag:状态 UNATTACKABLE'): first('a3', 'CNV_ChronoLag:状态 UNATTACKABLE', '属性修改器 AttributeModifier_CNV_ChronoLag_Structure 设状态位 UNATTAC'),
-    ('升级', 'CNV_ComboParent:StatusBitsUpgrade'): first('j4', 'CNV_ComboParent:StatusBitsUpgrade', '升级模块 StatusBitsUpgrade：模拟器不读'),
+    ('升级', 'CNV_ComboParent:状态 WEAPON_UPGRADED_01'): WEAPON_BITS,
     ('s6', '升级', 'CNV_Jammer:SPEED'): first('s6', 'CNV_Jammer:SPEED', '属性修改器 AttributeModifier_CNV_Jammer_Slow 的 SPEED（不是升级给的（光环等））'),
-    ('s6', '升级', 'CNV_Jammer:StatusBitsUpgrade'): first('s6', 'CNV_Jammer:StatusBitsUpgrade', '升级模块 StatusBitsUpgrade：模拟器不读'),
+    ('s6', '升级', 'CNV_Jammer:状态 WEAPON_UPGRADED_01'): WEAPON_BITS,
     ('s6', '升级', 'CNV_Jammer:状态 IMMOBILE'): first('s6', 'CNV_Jammer:状态 IMMOBILE', '属性修改器 AttributeModifier_CNV_Jammer_On 设状态位 IMMOBILE（不是升级给的（光'),
-    ('升级', 'CNV_Pace63_AlliedAntiVehicleVehicleTech1:StatusBitsUpgrade'): first('s5', 'CNV_Pace63_AlliedAntiVehicleVehicleTech1:StatusBitsUpgrade', '升级模块 StatusBitsUpgrade：模拟器不读'),
+    ('升级', 'CNV_Pace63_AlliedAntiVehicleVehicleTech1:状态 WEAPON_UPGRADED_02'): WEAPON_BITS,
     ('升级', 'CNV_S2ArmouredTrain:状态 IMMOBILE'): first('s2', 'CNV_S2ArmouredTrain:状态 IMMOBILE', '属性修改器 AttributeModifier_CNV_S2ArmouredTrain_Brake 设状态位 IMMOB'),
     ('升级', 'CNV_S2CryoTrain:状态 IMMOBILE'): first('s2', 'CNV_S2CryoTrain:状态 IMMOBILE', '属性修改器 AttributeModifier_CNV_S2CryoTrain_Brake 设状态位 IMMOBILE（'),
     ('升级', 'CNV_Shikigami:ARMOR'): first('j5', 'CNV_Shikigami:ARMOR', '属性修改器 AttributeModifier_CNV_Shikigami_Guard 的 ARMOR（不是升级给的（光'),
-    ('升级', 'CNV_Shikigami:StatusBitsUpgrade'): first('j5', 'CNV_Shikigami:StatusBitsUpgrade', '升级模块 StatusBitsUpgrade：模拟器不读'),
-    ('升级', 'CNV_TideGun:RANGE'): first('a8', 'CNV_TideGun:RANGE', '属性修改器 AttributeModifier_CNV_TideGun_High 的 RANGE（升级 Upgrade_'),
-    ('升级', 'CNV_TideGun:VISION'): first('a8', 'CNV_TideGun:VISION', '属性修改器 AttributeModifier_CNV_TideGun_High 的 VISION（升级 Upgrade'),
+    ('升级', 'CNV_Shikigami:状态 WEAPON_UPGRADED_01'): WEAPON_BITS,
     ('脚本动作', 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT:SpecialPower_CNV_ChronoDeck'): first('a7', 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT:SpecialPower_CNV_ChronoDeck', 'SpecialPower_CNV_ChronoDeck 只记进时间线（special power），没有效果'),
     ('脚本动作', 'UNIT_SET_MODELCONDITION_GENERIC'): first('a7', 'UNIT_SET_MODELCONDITION_GENERIC', 'Sim.act 不认识：没效果，记进 Sim.unknown'),
     ('脚本动作(忽略)', 'CAMERA_LETTERBOX_BEGIN'): first('a4', 'CAMERA_LETTERBOX_BEGIN', 'sim.IGNORED 明确忽略（不做任何事）'),

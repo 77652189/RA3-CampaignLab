@@ -185,6 +185,13 @@ ALIGN = {
                 'there that frame (bench 2026-11-07 engine_life: a 30 s wall lived 450 frames, a 5.5 s core 82, the '
                 'core\'s wall there at once; nothing of the dead lingers in an area). Min and Max apart: their '
                 'middle (a guess); retail templates\' lifetimes are not read',
+    'modifier': 'attribute modifiers (simunits.effect, Sim.modify / aura_tick) from upgrades held and aura objects '
+                'near: SPEED x speed, RANGE x weapon range only, VISION x sight, INVULNERABLE + UNDER_IRON_CURTAIN '
+                'no damage, a Duration runs out (bench docs/engine/upgrades.md 1, 2, 4); an aura hangs its modifier '
+                'on its filter\'s units within Range for the Duration, IN_STASIS stops, silences, shields (5: the '
+                'stasis zone). INFERRED: ARMOR / DAMAGE_MULT / RATE_OF_FIRE x damage (weapons.md, read), '
+                'StatusBitsUpgrade, NON_AUTOACQUIRABLE not taken by itself, the aura edge by centre. Not read: '
+                'modifiers a ToggleState or a weapon nugget hangs',
     'assemble': 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT to a unit with an AssembleStructureSpecialAbilityUpdate for it '
                 '(the ice engineer): he walks till within its StartAbilityRange of the spot, stops, and the structure '
                 'is made there the next frame (bench 2026-11-07 engine_life: within range, the core one frame after '
@@ -387,9 +394,15 @@ class Body:
     dest: object = None                                         # where it was sent (rerouted when the way changes)
     status: set = dataclasses.field(default_factory=set)       # IMMOBILE (stays put), UNATTACKABLE (the player
                                                                 # cannot destroy it) ...
-    upgrades: set = dataclasses.field(default_factory=set)     # NAMED_RECEIVE_UPGRADE / _REMOVE_UPGRADE (a SPEED modifier acts)
-    shielded: bool = False                                      # an upgrade's INVULNERABLE + Iron Curtain bits (simunits.shielded)
-    base_speed: float = None                                    # its speed before upgrades (set at the first one)
+    upgrades: set = dataclasses.field(default_factory=set)     # NAMED_RECEIVE_UPGRADE / _REMOVE_UPGRADE (modify)
+    up_since: dict = dataclasses.field(default_factory=dict)   # upgrade -> the frame it was given (a Duration runs)
+    script_status: set = dataclasses.field(default_factory=set)  # UNIT_CHANGE_OBJECT_STATUS's bits; `status` is these
+                                                                # + the modifiers' (modify)
+    auras_on: dict = dataclasses.field(default_factory=dict)   # modifier id -> (until frame, xml) an aura hung on it
+    shielded: bool = False                                      # INVULNERABLE + Iron Curtain bits on it (simunits.effect)
+    taken: float = 1.0                                          # ARMOR factor: damage taken x (INFERRED)
+    dealt: float = 1.0                                          # DAMAGE_MULT x RATE_OF_FIRE: damage dealt x (INFERRED)
+    base: dict = None                                           # speed, vision, sight, weapons before modifiers
     deposit: tuple = None                                       # R4: its AutoDepositUpdate (bonus, amount, frames)
     deposit_at: int = None                                      # ... the frame of its next deposit
     died_at: float = None                                       # killed or deleted then
@@ -1224,10 +1237,99 @@ class Sim:
 
     def _upgrade(self, b, up, on):
         (b.upgrades.add if on else b.upgrades.discard)(up)
-        if b.base_speed is None:
-            b.base_speed = b.speed
-        b.speed = b.base_speed * simunits.speed_scale(self.own.get(b.template), b.upgrades)
-        b.shielded = simunits.shielded(self.own.get(b.template), b.upgrades)
+        if on:
+            b.up_since[up] = self.frame_now()
+        else:
+            b.up_since.pop(up, None)
+        self.modify(b)
+
+    def xml_of(self, template):
+        """The template's XML (a mission's own, else retail; '' where none), kept."""
+        cache = self.__dict__.setdefault('_xmls', {})
+        if template not in cache:
+            try:
+                cache[template] = simunits._xml(template, self.own) or ''
+            except (OSError, ValueError):
+                cache[template] = ''
+        return cache[template]
+
+    def modify(self, b):
+        """Sets b's acting values from the attribute modifiers on it (simunits.effect): the upgrades it holds (an
+        AttributeModifierUpgrade's modifier, until its Duration runs out from the giving: bench upgrades.md 4; a
+        StatusBitsUpgrade's bits) and what auras hung on it (aura_tick, each until its frame). SPEED x the speed,
+        RANGE x the weapons' range only, VISION x vision and sight (upgrades.md 1, 2); the status = the script's bits
+        + the modifiers', IN_STASIS meaning IMMOBILE NO_ATTACK UNATTACKABLE (INFERRED: the measured stasis modifier
+        sets them all); shielded, ARMOR (taken), DAMAGE_MULT x RATE_OF_FIRE (dealt)."""
+        now = self.frame_now()
+        xml = self.xml_of(b.template)
+        mods = []
+        for up, mid in simunits.upgrade_mods(xml, b.upgrades):
+            m = simunits.modifier(xml, mid)
+            if m and (m['frames'] is None or now < b.up_since.get(up, now) + m['frames']):
+                mods.append(m)
+        for mid, (until, src) in list(b.auras_on.items()):
+            if now >= until:
+                del b.auras_on[mid]
+            else:
+                mods.append(simunits.modifier(src, mid))
+        on, off = simunits.status_bits(xml, b.upgrades)
+        e = simunits.effect(mods, on | b.script_status, off)
+        if not mods and not on and not off and b.base is None:
+            b.status = set(b.script_status)
+            return
+        if b.base is None:
+            b.base = {'speed': b.speed, 'vision': b.vision, 'sight': b.sight, 'weapons': b.weapons}
+        st = e['status']
+        if 'IN_STASIS' in st:
+            st = st | {'IMMOBILE', 'NO_ATTACK', 'UNATTACKABLE'}
+        b.status = st
+        b.speed = b.base['speed'] * e['SPEED']
+        b.vision, b.sight = b.base['vision'] * e['VISION'], b.base['sight'] * e['VISION']
+        b.weapons = b.base['weapons'] if e['RANGE'] == 1.0 else \
+            [dict(w, range=w['range'] * e['RANGE']) for w in b.base['weapons']]
+        b.shielded = e['shielded']
+        b.taken, b.dealt = e['ARMOR'], e['DAMAGE_MULT'] * e['RATE_OF_FIRE']
+        if mods or on:
+            self.used.add('modifier')
+
+    def relation(self, a, b):
+        """ENEMIES / NEUTRAL / ALLIES: how owner b stands to owner a (an aura's ObjectFilter Relationship)."""
+        if self.enemy(a, b):
+            return 'ENEMIES'
+        if a != b and CIV in (a, b):
+            return 'NEUTRAL'
+        return 'ALLIES'
+
+    def aura_tick(self):
+        """Once a tick before the fight: every living aura object (simunits.auras, active, holding the bits it needs)
+        hangs its modifier on what its filter takes within Range, centre to centre (the edge not measured: INFERRED),
+        until now + the modifier's Duration (none: the refresh); then every body with a modifier is re-set (modify).
+        Bench upgrades.md 5: the zone's 0.25 s refresh and 1 s hold free a unit within 1 s; a 0.5 s tick keeps it."""
+        now = self.frame_now()
+        live = self.living()
+        cache = self.__dict__.setdefault('_auras', {})
+        for e in live:
+            if e.template not in cache:
+                cache[e.template] = simunits.auras(self.xml_of(e.template))
+            for a in cache[e.template]:
+                if not a['active'] or not a['needs'] <= e.status:
+                    continue
+                m = simunits.modifier(self.xml_of(e.template), a['mod'])
+                if m is None:
+                    continue
+                until = now + (m['frames'] or a['refresh'])
+                for t in live:
+                    if t is e and not a['self']:
+                        continue
+                    if t.scenery or (a['include'] and not a['include'] & t.kinds) or a['exclude'] & t.kinds:
+                        continue
+                    if self.relation(e.owner, t.owner) not in a['relation']:
+                        continue
+                    if math.hypot(t.x - e.x, t.y - e.y) <= a['range']:
+                        t.auras_on[a['mod']] = (until, self.xml_of(e.template))
+        for b in live:
+            if b.auras_on or b.base is not None:
+                self.modify(b)
 
     def power(self, owner):
         """(supply, demand) of the owner: its living objects' EnergyProduction, > 0 summed into the supply, < 0 into
@@ -1732,7 +1834,8 @@ class Sim:
             b = self.body(a[0])
             st = a[1][2] if isinstance(a[1], tuple) else a[1]
             if b:
-                (b.status.add if a[2] else b.status.discard)(st)
+                (b.script_status.add if a[2] else b.script_status.discard)(st)
+                self.modify(b)
         elif name in ('NAMED_RECEIVE_UPGRADE', 'NAMED_REMOVE_UPGRADE'):     # (upgrade, object): recorded; of what an upgrade
             b = self.body(a[1])                                              # does to a unit only the SPEED modifier is
             if b:                                                            # simulated (units/pace.py's 齐步); a range,
@@ -1951,6 +2054,11 @@ class Sim:
         elif verb == '打':
             for b in self.pick(rest[0]):
                 b.last_hit, b.last_by = self.human, None
+        elif verb == '占领' and len(rest) == 2:
+            targets = self.pick(rest[1])            # the player's order: the engineer goes and takes it (capture_due)
+            if targets:
+                for b in self.pick(rest[0]):
+                    self.order_capture(b, targets[0].name)
         elif verb == '占领':
             for b in self.pick(rest[0]):
                 b.owner = self.human
@@ -2001,6 +2109,7 @@ class Sim:
                 self.series.append((int(round(self.t - LAG)), [self.counters.get(c, 0) for c, _ in self.test.counters]))
             if not moved and self.ending is None and self.t >= t0 - 1e-9:
                 moved = True
+                self.aura_tick()
                 if self.combat:
                     self.fight()
                 self.move()
@@ -2035,6 +2144,7 @@ class Sim:
         self.produce_due(self.frame_now())
         if self.ending:
             return
+        self.aura_tick()
         if self.combat:
             self.fight()
         self.move()
@@ -2054,11 +2164,6 @@ class Sim:
             return any(a.startswith('ANTI_AIRBORNE') for a in anti)
         if 'STRUCTURE' in t.kinds:
             return 'ANTI_STRUCTURE' in anti or 'ANTI_GROUND' in anti
-        elif verb == '占领' and len(rest) == 2:
-            targets = self.pick(rest[1])            # the player's order: the engineer goes and takes it (capture_due)
-            if targets:
-                for b in self.pick(rest[0]):
-                    self.order_capture(b, targets[0].name)
         return 'ANTI_GROUND' in anti or 'ANTI_WATER' in anti
 
     def takes_by_itself(self, a, t):
@@ -2149,7 +2254,8 @@ class Sim:
                         t = targets[idx[j]]
                         if not self.in_range(a, t, w, d[j]):
                             continue
-                        if t.template in self.unshot or not self.takes_by_itself(a, t):
+                        if t.template in self.unshot or not self.takes_by_itself(a, t) or \
+                                'NON_AUTOACQUIRABLE' in t.status:
                             continue                # a building / our ice: only when ordered (takes_by_itself)
                         if self.can_hit(w, t) and self.side_sees(a.owner, t) and not self.shot_blocked(a, t, w):
                             pick = t
@@ -2158,7 +2264,8 @@ class Sim:
                     continue
                 if a.vision and w['range'] > a.vision:
                     a.fired_at = self.t                 # a bombarder firing shows itself
-                self.firing.append((pick, w['dps'] * pick.armor.get(w['type'], simunits.ARMOR_DEFAULT) / 100.0, a))
+                self.firing.append((pick, w['dps'] * pick.armor.get(w['type'], simunits.ARMOR_DEFAULT) / 100.0
+                                    * a.dealt * pick.taken, a))
                 fired = True
                 if a.mode == 'attack':
                     a.engaged = True
@@ -2201,7 +2308,8 @@ class Sim:
         for dist, t in near:
             if dist - t.radius > sight:
                 break                           # sorted by centre; a radius over 0 only cuts more
-            if t.template in self.unshot or not self.takes_by_itself(a, t) or not self.side_sees(a.owner, t):
+            if t.template in self.unshot or not self.takes_by_itself(a, t) or not self.side_sees(a.owner, t) or \
+                    'NON_AUTOACQUIRABLE' in t.status:
                 continue
             if not any(self.can_hit(w, t) and not self.shot_blocked(a, t, w) for w in a.weapons):
                 continue                        # bench engine_seal row: a target behind a structure is not gone after
@@ -2526,6 +2634,9 @@ def parse_script(text):
         elif rest.startswith('攻击 '):
             who, _, target = rest[3:].rpartition(' 打 ')
             out.append((when(t), '攻击', who.strip(), target.strip()))
+        elif rest.startswith('占领 ') and ' 进 ' in rest:
+            who, _, target = rest[3:].rpartition(' 进 ')
+            out.append((when(t), '占领', who.strip(), target.strip()))
         elif rest.startswith('血量 '):
             who, pct = rest[3:].rsplit(None, 1)
             out.append((when(t), '血量', who.strip(), float(pct.rstrip('%'))))
@@ -2581,6 +2692,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-        elif rest.startswith('占领 ') and ' 进 ' in rest:
-            who, _, target = rest[3:].rpartition(' 进 ')
-            out.append((when(t), '占领', who.strip(), target.strip()))

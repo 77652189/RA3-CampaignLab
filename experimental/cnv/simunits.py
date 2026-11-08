@@ -632,20 +632,9 @@ def kind_of(kinds):
 def speed_scale(xml, upgrades):
     """The factor the SPEED modifiers of the upgrades a unit holds multiply its speed by, read from its own XML
     (AttributeModifierUpgrade ... TriggeredBy -> AttributeModifier -> Modifier Type="SPEED" Value="N%"): units/pace.py's."""
-    scale = 1.0
     if not xml or not upgrades:
-        return scale
-    for head, inner in _blocks(xml, 'AttributeModifierUpgrade'):
-        triggers = set(re.findall(r'<TriggeredBy>([^<]*)</TriggeredBy>', inner or ''))
-        triggers = {t for x in triggers for t in x.split()}
-        mod = _attr(head, 'AttributeModifier')
-        if not triggers & set(upgrades) or not mod:
-            continue
-        for mh, mi in _blocks(xml, 'AttributeModifier'):
-            if _attr(mh, 'id') == mod:
-                for v in re.findall(r'<Modifier\s+Type="SPEED"\s+Value="([\d.]+)%"', mi or ''):
-                    scale *= float(v) / 100.0
-    return scale
+        return 1.0
+    return effect([modifier(xml, m) for _, m in upgrade_mods(xml, upgrades)])['SPEED']
 
 
 def shielded(xml, upgrades):
@@ -655,16 +644,134 @@ def shielded(xml, upgrades):
     UNDER_IRON_CURTAIN" it does; taking the upgrade away makes the unit hurt-able again (units/tower_ball.py)."""
     if not xml or not upgrades:
         return False
-    for head, inner in _blocks(xml, 'AttributeModifierUpgrade'):
-        triggers = {t for x in re.findall(r'<TriggeredBy>([^<]*)</TriggeredBy>', inner or '') for t in x.split()}
-        mod = _attr(head, 'AttributeModifier')
-        if not triggers & set(upgrades) or not mod:
+    return effect([modifier(xml, m) for _, m in upgrade_mods(xml, upgrades)])['shielded']
+
+
+# ---- attribute modifiers, one interface for their two sources (docs/engine/upgrades.md 1, 2, 4, 5)
+# An AttributeModifier (a mission's own XML, else retail GlobalData/AttributeModifier.xml) hangs on a unit either through
+# an upgrade it holds (AttributeModifierUpgrade; StatusBitsUpgrade sets / clears bits without a modifier) or through an
+# aura object near it (AttributeModifierAuraUpdate: every RefreshDelay the modifier on whatever its ObjectFilter takes
+# within Range; the modifier's own Duration lets it fall off once no longer hung). `modifier` reads one, `effect` sums
+# what a unit has on it into the factors and bits the simulator acts on.
+RETAIL_MODIFIERS = os.path.join(SAGEXML, 'GlobalData', 'AttributeModifier.xml')
+_retail_mods = None
+
+
+def _retail_modifier_blocks():
+    global _retail_mods
+    if _retail_mods is None:
+        text = open(RETAIL_MODIFIERS, encoding='utf-8', errors='replace').read() \
+            if os.path.exists(RETAIL_MODIFIERS) else ''
+        _retail_mods = {_attr(h, 'id'): (h, i) for h, i in _blocks(text, 'AttributeModifier') if _attr(h, 'id')}
+    return _retail_mods
+
+
+def modifier(xml, mid):
+    """AttributeModifier `mid` (in `xml` first, else retail): {'id', 'types': {Type: [fractions]} (SPEED 0% -> [0.0],
+    RANGE 200% -> [2.0]), 'status': set of ObjectStatusToSet bits, 'frames': Duration x 15 or None (none written:
+    held while its source holds -- bench upgrades.md 4: a Duration hung through an upgrade still runs out)}; None
+    where neither has it."""
+    found = None
+    for h, i in _blocks(xml or '', 'AttributeModifier'):
+        if _attr(h, 'id') == mid:
+            found = (h, i)
+            break
+    if found is None:
+        found = _retail_modifier_blocks().get(mid)
+    if found is None:
+        return None
+    head, inner = found
+    types = {}
+    for ty, v in re.findall(r'<Modifier\s+Type="(\w+)"\s+Value="(-?[\d.]+)%?"', inner or ''):
+        types.setdefault(ty, []).append(float(v) / 100.0)
+    dur = _attr(head, 'Duration')
+    return {'id': mid, 'types': types, 'status': set((_attr(head, 'ObjectStatusToSet') or '').split()),
+            'frames': int(round(_secs(dur) * LIFE_FPS)) if dur else None}
+
+
+def _triggers(inner):
+    return {t for x in re.findall(r'<TriggeredBy>([^<]*)</TriggeredBy>', inner or '') for t in x.split()}
+
+
+def upgrade_mods(xml, upgrades):
+    """[(upgrade, modifier id)] the upgrades held hang on the unit through its AttributeModifierUpgrade modules."""
+    out = []
+    for head, inner in _blocks(xml or '', 'AttributeModifierUpgrade'):
+        mid = _attr(head, 'AttributeModifier')
+        for up in sorted(_triggers(inner) & set(upgrades)):
+            if mid:
+                out.append((up, mid))
+                break
+    return out
+
+
+def status_bits(xml, upgrades):
+    """(set, clear): the bits the held upgrades' StatusBitsUpgrade modules set and clear (Generals StatusBitsUpgrade:
+    on upgrade sets StatusToSet, clears StatusToClear; INFERRED for RA3, not on the bench)."""
+    on, off = set(), set()
+    for head, inner in _blocks(xml or '', 'StatusBitsUpgrade'):
+        if _triggers(inner) & set(upgrades):
+            on |= set((_attr(head, 'StatusToSet') or '').split())
+            off |= set((_attr(head, 'StatusToClear') or '').split())
+    return on, off
+
+
+def auras(xml):
+    """The object's AttributeModifierAuraUpdate modules: [{'mod', 'range', 'refresh' (frames), 'relation' (set of
+    ALLIES / ENEMIES / NEUTRAL, against the aura's owner), 'include' / 'exclude' (KindOf sets; include empty = any),
+    'active' (InitiallyActive), 'needs' (RequiredObjectStatusFlags the aura object must have: the jammer's toggle),
+    'self' (AllowSelf)}]. Bench upgrades.md 5 (the stasis zone): Range 200, refresh 0.25 s, the modifier's Duration 1 s
+    -- whoever is within stops, and is free within 1 s of the object's going or of leaving the circle."""
+    out = []
+    for head, inner in _blocks(xml or '', 'AttributeModifierAuraUpdate'):
+        f, _ = next(_blocks(inner, 'ObjectFilter'), ('', ''))
+        out.append({'mod': _attr(head, 'AttributeModifierName'), 'range': _num(_attr(head, 'Range'), 0.0),
+                    'refresh': max(1, int(round(_secs(_attr(head, 'RefreshDelay', '1s')) * LIFE_FPS))),
+                    'relation': set((_attr(f, 'Relationship') or 'ALLIES ENEMIES NEUTRAL').split()),
+                    'include': set((_attr(f, 'Include') or '').split()),
+                    'exclude': set((_attr(f, 'Exclude') or '').split()),
+                    'active': (_attr(head, 'InitiallyActive', 'true') or 'true').lower() != 'false',
+                    'needs': set((_attr(head, 'RequiredObjectStatusFlags') or '').split()),
+                    'self': (_attr(head, 'AllowSelf', 'false') or '').lower() == 'true'})
+    return [a for a in out if a['mod']]
+
+
+def stack(values):
+    """One Type's fractions on one unit: those >= 1 add their excess, those < 1 multiply (docs/engine/weapons.md row
+    'AttributeModifier 怎么叠': 150% + 200% = 250%; read in the program, not on the bench)."""
+    f = 1.0 + sum(v - 1.0 for v in values if v >= 1.0)
+    for v in values:
+        if v < 1.0:
+            f *= v
+    return f
+
+
+# What a status bit does in the simulator. IN_STASIS: the stasis zone's and the chronolag's modifiers set it together
+# with UNATTACKABLE NO_ATTACK NON_AUTOACQUIRABLE and SPEED 0% (bench upgrades.md 5 saw the sum: stops, holds its fire,
+# untouched); alone it is taken to stop the unit too (INFERRED).
+ACTING_BITS = {'IMMOBILE', 'UNATTACKABLE', 'NO_ATTACK', 'NON_AUTOACQUIRABLE', 'IN_STASIS', 'UNDER_IRON_CURTAIN'}
+# Types the simulator applies: SPEED (bench upgrades.md 1, units/pace.py), RANGE (the weapons' range only, upgrades.md
+# 2), VISION (sight and so idle acquiring, 2), INVULNERABLE with UNDER_IRON_CURTAIN (4); ARMOR (damage taken x),
+# DAMAGE_MULT, RATE_OF_FIRE (damage dealt x) read in the program (weapons.md 107), not on the bench: INFERRED.
+ACTING_TYPES = {'SPEED', 'RANGE', 'VISION', 'INVULNERABLE', 'ARMOR', 'DAMAGE_MULT', 'RATE_OF_FIRE'}
+
+
+def effect(mods, bits=(), cleared=()):
+    """What the modifiers on a unit add up to: {Type: factor (stack) for ACTING_TYPES, 'status': bits (the modifiers'
+    ObjectStatusToSet + `bits` - `cleared`), 'shielded': INVULNERABLE and UNDER_IRON_CURTAIN both (bench
+    upgrades.md 4: INVULNERABLE alone does not stop damage)}."""
+    types, status = {}, set(bits)
+    for m in mods:
+        if not m:
             continue
-        for mh, mi in _blocks(xml, 'AttributeModifier'):
-            if (_attr(mh, 'id') == mod and 'UNDER_IRON_CURTAIN' in _attr(mh, 'ObjectStatusToSet', '').split()
-                    and re.search(r'<Modifier\s+Type="INVULNERABLE"', mi or '')):
-                return True
-    return False
+        for ty, vs in m['types'].items():
+            types.setdefault(ty, []).extend(vs)
+        status |= m['status']
+    status -= set(cleared)
+    out = {ty: stack(types.get(ty, [])) for ty in ACTING_TYPES}
+    out['status'] = status
+    out['shielded'] = 'INVULNERABLE' in types and 'UNDER_IRON_CURTAIN' in status
+    return out
 
 
 _radii = {}
