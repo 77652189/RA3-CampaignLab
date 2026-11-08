@@ -19,7 +19,16 @@ bench 2026-11-07 (units = frames from the order to the core; thousands = frames 
                 cores came 2-4 frames after the order, the engineer did not walk. 平D (point 400 away): core at
                 frame 103 (he walks first), 走D from frame 13 after the order: he walks first, as expected.
   w CampSkillW  水 82004: a core stands 100 out in the sea, 4 frames after the order: PATHABLE_ONLY not checked for
-                a scripted cast either. (Player-click variant d not run.)
+                a scripted cast either.
+  d CampSkillD  by hand (no script casts; bench_start, select each engineer, bench_ability on a point; three runs
+                11-07, the counters 冷却 / 禁20/40 / 禁60 / 地形 below): the player's click heeds all three --
+                reload: A's click 8 s after his a1 cast refused, 21 s after it went (core ~s25 from a click at ~s25);
+                forbidden: b1 / b2 / b3 (our own tank's centre 20 / 40 / 60 away, inside its 23 radius) all built
+                (82082 / 82); a2 never built (an ore node's centre 75 away, its box 33 x 41) and a point in a2's
+                square 123 from that node did (82164): the range counts from an unmoving object's edge, not a unit;
+                a click right on the tank's centre built nothing; 10 / 15 from it the frames show a core but the
+                counter stayed 0 (not settled). terrain: the sea (w) and the cliff (c1) refused (地形 0; the cursor
+                showed the cliff red).
 """
 from parts import Script, Test, square
 
@@ -40,6 +49,8 @@ def skill_test(m, which='a'):
     elif which == 'c':
         cases = [('P1', '悬1', 'engineer c', 'c1', 0.0), ('P2', '悬2', 'engineer c', 'c2', 25.0),
                  ('QD', '平D', 'engineer d', 'd', 0.0)]
+    elif which == 'd':
+        return click_test(m)
     start = [('MAP_REVEAL_ALL_PERM', p1)]
     start += [('UNIT_CHANGE_OBJECT_STATUS', m.role(f'tank {k}').name, 'NO_ATTACK', 1) for k in (1, 2, 3)]
     delays = sorted({c[4] for c in cases})
@@ -72,4 +83,32 @@ def skill_test(m, which='a'):
     return t
 
 
-CHECKS = {'engine_skill': {w: (lambda m, w=w: skill_test(m, w)) for w in 'abcw'}}
+# d: no script casts; by hand (bench_start, select each engineer, bench_ability on his spot). Each counter adds, every
+# frame a core stands in a spot's square (half 40), that spot's weight -- so 0 = no core came there.
+CLICK_COUNTERS = [('CNV_Skill_Cool', '冷却', (('a1', 1), ('a3', 1), ('a2', 1000))),
+                  ('CNV_Skill_Ban', '禁20/40', (('b1', 1), ('b2', 1000))),
+                  ('CNV_Skill_Ban60', '禁60', (('b3', 1),)),
+                  ('CNV_Skill_Land', '地形', (('w', 1), ('c1', 1000)))]
+CLICK_RUN = 90.0
+
+
+def click_test(m):
+    t = Test()
+    p1 = m.player('p1')
+    start = [('MAP_REVEAL_ALL_PERM', p1)]
+    start += [('UNIT_CHANGE_OBJECT_STATUS', m.role(f'tank {k}').name, 'NO_ATTACK', 1) for k in (1, 2, 3)]
+    t.scripts.append(Script('Test - start', [], start))
+    for cname, label, spots in CLICK_COUNTERS:
+        for part, weight in spots:
+            area = f'Test Skill {part}'
+            t.areas[area] = square(*m.point(part), 40.0)
+            t.scripts.append(Script(f'Test - core {part}', [('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', p1, 3,
+                                                             1, 'CNV_SkillSeed', area)],
+                                    [('INCREMENT_COUNTER', weight, cname)], once=False))
+        t.counters.append((cname, label))
+    t.bench = [('bench_watch', dict(seconds=CLICK_RUN, every=4, sheet=False, lines=len(t.counters)))]
+    t.expect = []
+    return t
+
+
+CHECKS = {'engine_skill': {w: (lambda m, w=w: skill_test(m, w)) for w in 'abcwd'}}

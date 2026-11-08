@@ -271,27 +271,29 @@ def _skill(variant):
 
 
 def test_skill_the_players_click_waits_for_the_reload():
-    """order_power (INFERRED: the click itself not measured): goes, then refused till ReloadTime x 15 = 300 frames on --
-    the script's cast starts the reload too."""
+    """order_power: goes, then refused till ReloadTime x 15 = 300 frames on -- the script's cast starts the reload too.
+    Bench engine_skill d (by hand): his second click 8 s after the first refused, 21 s after it went."""
     m, s = _skill('a')
     b, power = s.body(m.role('engineer a').name), m.ability('engineer a', 'freeze')
     assert s.order_power(b, power, s.point(m.mark('a1'))) == (True, None)
     s.advance(8 * 15)
-    assert s.order_power(b, power, s.point(m.mark('a2'))) == (False, 'reloading')
+    assert s.order_power(b, power, s.point(m.mark('a3'))) == (False, 'reloading')
     s.advance(300 - 8 * 15)
-    assert s.order_power(b, power, s.point(m.mark('a2')))[0]
+    assert s.order_power(b, power, s.point(m.mark('a3')))[0]      # (a2 lies by an ore node: refused for that)
 
 
 def test_skill_the_players_click_keeps_off_objects_and_unpathable_ground():
-    """INFERRED: within ForbiddenObjectRange 32 of the tank's centre refused (20), clear of it (40, 60) not; a point in
-    the sea refused (PATHABLE_ONLY)."""
-    m, s = _skill('b')
-    power = m.ability('engineer b1', 'freeze')
-    got = [s.order_power(s.body(m.role(f'engineer b{k}').name), power, s.point(m.mark(f'b{k}')))[1] for k in (1, 2, 3)]
-    assert got == ['too near an object', None, None]
-    m, s = _skill('w')
-    b = s.body(m.role('engineer w').name)
-    assert s.order_power(b, m.ability('engineer w', 'freeze'), s.point(m.mark('w'))) == (False, 'not pathable')
+    """Bench engine_skill d (clicked by hand): our own tank 20 / 40 / 60 from the spot blocks nothing; the ore node
+    (box 33 x 41) refuses a2, 75 from its centre, not a point 123 from it; the sea (w) and the cliff (c1) refuse."""
+    m, s = _skill('d')
+    power = m.ability('engineer a', 'freeze')
+    got = [s.power_refusal(s.body(m.role(f'engineer b{k}').name), power, *s.point(m.mark(f'b{k}'))) for k in (1, 2, 3)]
+    assert got == [None, None, None]
+    a, d = s.body(m.role('engineer a').name), s.body(m.role('engineer d').name)
+    assert s.power_refusal(a, power, *s.point(m.mark('a2'))) == 'too near an object'
+    assert s.power_refusal(d, power, 790.0, 2100.0) is None
+    for e, spot in (('engineer w', 'w'), ('engineer c', 'c1')):
+        assert s.order_power(s.body(m.role(e).name), power, s.point(m.mark(spot))) == (False, 'not pathable')
 
 
 # ---- superweapons: a script's cast at a waypoint (sim.SUPERWEAPON_HITS, Sim.blast_due). bench 2026-11-07 engine_super

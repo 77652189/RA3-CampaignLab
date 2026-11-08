@@ -1238,11 +1238,14 @@ class Sim:
             self.send(b, area)
 
     def power_refusal(self, b, power, x, y):
-        """Why the player's click of `power` on (x, y) for unit b would be refused, None if it goes (order_power). The
-        bench (engine_skill a-c, w) only read the script's cast, which skips all of this; the click's rules are
-        INFERRED (docs/engine/specialpower.md 2: the command layer checks): its reload not over (ready_at); PATHABLE_ONLY
-        and the spot not ground the unit can walk; within ForbiddenObjectRange of another object's centre (centre or
-        edge: not read); MaxCastRange with LIMIT_DISTANCE and the spot farther from him."""
+        """Why the player's click of `power` on (x, y) for unit b would be refused, None if it goes (order_power). A
+        script's cast (engine_skill a-c, w) skips all of this. The click, bench 2026-11-07 engine_skill d (clicked by
+        hand, the ice engineer): its reload not over (ready_at: refused 8 s after his cast, went 21 s after); PATHABLE_ONLY
+        and the spot not ground he can walk (a point in the sea and one on the cliff refused); within ForbiddenObjectRange
+        (32) of the edge of an object that does not move (an ore node, box 33 x 41, refused 75 from its centre and not
+        123: its bounding circle 53 + 32 lies between) -- a unit does not count (our own tank 20 / 40 / 60 from the spot,
+        inside its 23 radius, the core came all the same; a click right on the tank's centre took nothing, left out);
+        MaxCastRange with LIMIT_DISTANCE and the spot farther from him (not measured)."""
         rules = simunits.power_rules(b.template, power, self.own)
         if rules is None:
             return 'not a power of his'
@@ -1252,7 +1255,8 @@ class Sim:
             g, c = self.ground.grids.get(b.surface, self.ground.grids['ground']), self.ground.cell(x, y)
             if not (0 <= c[0] < g.shape[0] and 0 <= c[1] < g.shape[1] and g[c]):
                 return 'not pathable'
-        if rules['forbidden'] and any(o is not b and math.hypot(o.x - x, o.y - y) < rules['forbidden']
+        if rules['forbidden'] and any(o is not b and not o.speed
+                                      and math.hypot(o.x - x, o.y - y) - o.radius < rules['forbidden']
                                       for o in self.living()):
             return 'too near an object'
         if 'LIMIT_DISTANCE' in rules['flags'] and rules['reach'] and math.hypot(b.x - x, b.y - y) > rules['reach']:

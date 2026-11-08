@@ -13,8 +13,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'campaign'))
 import labpaths  # noqa: E402
 
-CACHE = os.path.join(labpaths.WORK, 'sim_units_v4.json')     # v2: defines resolved (2026-10-29); v3: + ShroudClearingHeight;
-                                                            # v4: + radius (R8)
+CACHE = os.path.join(labpaths.WORK, 'sim_units_v5.json')     # v2: defines resolved (2026-10-29); v3: + ShroudClearingHeight;
+                                                            # v4: + radius (R8); v5: radius read through 'Type= "BOX"'
 CLEAR_HEIGHT = 50.0             # ShroudClearingHeight when a unit does not write one (docs/engine/vision.md: retail units
                                 # nearly all leave it out)
 INDEX = os.path.join(labpaths.WORK, 'sagexml_gameobjects.json')
@@ -95,8 +95,9 @@ def radius(text):
     if not m:
         return None
     a = m.group(1)
-    kind = re.search(r'\bType="([^"]+)"', a)
-    major, minor = (re.search(rf'\b{n}="([\d.]+)"', a) for n in ('MajorRadius', 'MinorRadius'))
+    # retail writes some with spaces round '=' (OreNode: Type= "BOX", MajorRadius = "33.3968")
+    kind = re.search(r'\bType\s*=\s*"([^"]+)"', a)
+    major, minor = (re.search(rf'\b{n}\s*=\s*"([\d.]+)"', a) for n in ('MajorRadius', 'MinorRadius'))
     major = float(major.group(1)) if major else 0.0
     if kind and kind.group(1).upper() == 'BOX':
         minor = float(minor.group(1)) if minor else 0.0
@@ -469,6 +470,19 @@ def speed_scale(xml, upgrades):
     return scale
 
 
+_radii = {}
+
+
+def _retail_radius(template):
+    """radius() of a retail template the unit table leaves out (props, ore nodes), None without XML or Shape."""
+    if template not in _radii:
+        try:
+            _radii[template] = radius(retail_xml(template) or '')
+        except (OSError, ValueError):
+            _radii[template] = None
+    return _radii[template]
+
+
 def stats(template, own=None):
     """{speed, surface, vision, shroud, kinds, radius, guessed} for a template; own: {id: xml text} of the mission's units."""
     if own and template in own:
@@ -489,6 +503,8 @@ def stats(template, own=None):
     e.setdefault('shroud', None)
     if e.get('clear_height') is None:
         e['clear_height'] = CLEAR_HEIGHT
+    if e.get('radius') is None and not (own and template in own):
+        e['radius'] = _retail_radius(template)      # outside the table (an ore node): its retail Geometry
     if e.get('radius') is None:
         e['radius'] = 0.0               # no Shape: a point (centre to centre)
     e['kinds'] = sorted(kinds)
