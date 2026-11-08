@@ -940,6 +940,23 @@ def menu(factory, own=None, upgrades=()):
             if cmds.get(c, ('', None))[0] == 'UNIT_BUILD' and cmds[c][1]]
 
 
+def build_button(factory, template, own=None, upgrades=()):
+    """The factory's UNIT_BUILD command that builds `template` (Command_ConstructAlliedEngineer), None when its
+    CommandSet has none (the other way: built)."""
+    sets, cmds = _commands(own)
+    return next((c for c in sets.get(command_set(factory, upgrades, own), [])
+                 if cmds.get(c, ('', None)) == ('UNIT_BUILD', template)), None)
+
+
+def built(factory, button, own=None, upgrades=()):
+    """The template the factory's `button` builds (a UNIT_BUILD command of its CommandSet), else None."""
+    sets, cmds = _commands(own)
+    if button not in sets.get(command_set(factory, upgrades, own), []):
+        return None
+    kind, obj = cmds.get(button, ('', None))
+    return obj if kind == 'UNIT_BUILD' else None
+
+
 def upgrade_menu(structure, own=None, upgrades=()):
     """The upgrades a structure's buttons buy (OBJECT_UPGRADE: the structure's own; PLAYER_UPGRADE: the player's), as
     [(upgrade, 'OBJECT' | 'PLAYER')] in the sidebar's order."""

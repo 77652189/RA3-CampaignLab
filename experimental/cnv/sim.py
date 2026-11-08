@@ -28,6 +28,9 @@ A script (剧本), one event a line (or ';' between them), times in seconds or m
   <t> 占领 <谁> 进 <建筑>    the player's capture order (NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED Command_CaptureBuilding,
                             order_capture): the engineer walks to the building and takes it at its side
   <t> 旗标 <名字> <值>       a flag set outright (a check's or a device's)
+  <t> 生产 <单位> 在 <工厂>   the player's build order at that factory (NAMED_USE_COMMANDBUTTON_ABILITY with its build
+                            button): paid as it builds, the build time, out at its door -- '30 生产 AlliedEngineer 在
+                            barracks' (bench 2026-11-08 engine_production e: a script's press = the player's click)
   <t> 造 <单位> 在 <地点> [角度]  the player makes one (a unit id of the mission's, a cast part's template, a retail
                             template): an engineer's ice -- '40 造 CNV_IceWall 在 inside 1 1.57'
   自动打掉 <秒>             every enemy that has been that long within REACH (300) of something of the player's is
@@ -1185,9 +1188,11 @@ class Sim:
                         out[u] = (u,) + simunits.upgrade_cost(u)
         return list(out.values())
 
-    def order_build(self, owner, template):
-        """Queue `template` at the owner's factory that builds it with the shortest queue -- or an upgrade at the
-        structure whose button buys it; nothing is paid now (produce_due pays frame by frame, an upgrade as a unit).
+    def order_build(self, owner, template, factory=None):
+        """Queue `template` at the owner's factory that builds it with the shortest queue (`factory`: that one only, a
+        Body -- a script's press of its build button, which bench 2026-11-08 engine_production e measured the same
+        as the player's click: paid as it builds, 160 frames to the engineer) -- or an upgrade at the structure
+        whose button buys it; nothing is paid now (produce_due pays frame by frame, an upgrade as a unit).
         False: nothing of the owner's builds / buys it now."""
         sellers = self.upgrade_sellers(owner, template)
         if sellers:
@@ -1201,7 +1206,7 @@ class Sim:
             self.note('生产', f'{self.who(owner)} 在 {self.label(b)} 买 {template}（{cost}，{secs:g} 秒）')
             return True
         fs = [f for f in self.factories(owner) if template in simunits.menu(f.template, self.own, f.upgrades)
-              and self.can_build(owner, template, f)]
+              and self.can_build(owner, template, f) and (factory is None or f is factory)]
         if not fs:
             return False
         f = min(fs, key=lambda f: len(self.queues.get(f.name, [])))
@@ -1978,6 +1983,14 @@ class Sim:
                 self.note('倒计时', f'{self.text(a[1])} {mmss(max(0.0, left))}')
         elif name == 'HIDE_COUNTDOWN_TIMER':
             self.countdowns.discard(a[0])
+        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and self.body(a[0]) and self.body(a[0]).alive and \
+                simunits.built(self.body(a[0]).template, a[1], self.own, self.body(a[0]).upgrades):
+            # a factory's build button: queued there as the player's click (bench engine_production e); refused where
+            # the player's click would be (can_build: tier, ban, a factory still unpacking -- INFERRED, not measured)
+            f = self.body(a[0])
+            tmpl = simunits.built(f.template, a[1], self.own, f.upgrades)
+            if not self.order_build(f.owner, tmpl, factory=f):
+                self.note('生产', f'{self.label(f)} 按 {a[1]}：现在造不了 {tmpl}')
         elif name in ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY'):
             b = self.body(a[0])
             got = b and b.alive and name == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT' and \
@@ -2125,6 +2138,15 @@ class Sim:
                 b.owner = self.human
         elif verb == '旗标':
             self.flags[rest[0]] = int(rest[1])
+        elif verb == '生产':                         # the player's build order at a named factory: paid as it builds, the
+            what, where = rest                      # build time, out at the factory's door (order_build / produce_due)
+            tmpl = next((u.id for u in self.mm.units if u.id == what), None) or \
+                next((r.template for k, r in self.m.cast.items() if k == what), what)
+            f = next(iter(self.pick(where)), None)
+            if f is None:
+                self.note('剧本', f'找不到工厂 {where}')
+            elif not self.order_build(self.human, tmpl, factory=f):
+                self.note('剧本', f'{self.label(f)} 现在造不了 {tmpl}（不是玩家的、不造它、科技或禁造）')
         elif verb == '造':
             what, where, angle = rest
             tmpl = next((u.id for u in self.mm.units if u.id == what), None) or \
@@ -2757,6 +2779,9 @@ def parse_script(text):
         elif rest.startswith('旗标 '):
             name, v = rest[3:].rsplit(None, 1)
             out.append((when(t), '旗标', name.strip(), int(v)))
+        elif rest.startswith('生产 ') and ' 在 ' in rest:
+            what, _, where = rest[3:].rpartition(' 在 ')
+            out.append((when(t), '生产', what.strip(), where.strip()))
         elif rest.startswith('造 '):
             what, _, where = rest[2:].partition(' 在 ')
             angle = 0.0
@@ -2766,7 +2791,7 @@ def parse_script(text):
         else:
             verb, _, who = rest.partition(' ')
             if verb not in ('摧毁', '删除', '打', '占领'):
-                raise ValueError(f'剧本 {line!r}: 动作是 派 / 攻击 / 放 / 摧毁 / 删除 / 血量 / 打 / 占领 / 旗标 / 造 之一')
+                raise ValueError(f'剧本 {line!r}: 动作是 派 / 攻击 / 放 / 摧毁 / 删除 / 血量 / 打 / 占领 / 旗标 / 生产 / 造 之一')
             out.append((when(t), verb, who.strip()))
     return out
 

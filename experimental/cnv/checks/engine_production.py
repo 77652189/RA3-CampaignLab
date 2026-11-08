@@ -3,7 +3,8 @@ it builds, waiting while short of money, building slower while short of power, w
 
 On the Niagara map the player's construction yard (+50 power), a power plant (+100) and three barracks (-25 each) at
 the base; the player orders one engineer (AlliedEngineer: BuildTime 10, BuildCost 500) by clicking the sidebar's
-infantry tab and its button (no script action makes a factory build: round 39). At the start each variant deletes
+infantry tab and its button (e / f: a script presses the factory's build button instead -- round 39's "no script
+action makes a factory build" was wrong, NAMED_USE_COMMANDBUTTON_ABILITY does). At the start each variant deletes
 what it does not need:
 
   a  normal   barracks 2 and 3 deleted: supply 150, demand 25; money MONEY
@@ -22,6 +23,14 @@ Bench 11-05 (round 41; the clicks land at ~s8, so read against 帧数, not the c
   b CampProdB_mcp_1105_192504: 资金 stops at 3 (帧数 133), 2000 come 4 s later, the engineer at 221.
   c CampProdC_mcp_1105_192728: ~1 a frame (1866 at 132, 1507 at 488, 1500 at 496), the engineer at 505.
   d CampProdD_mcp_1105_193015: 1780 at 132, 1501 at 299, the engineer at 309.
+Bench 11-08 (a script presses the button: NAMED_USE_COMMANDBUTTON_ABILITY(barracks 1, 'Command_ConstructAlliedEngineer')
+at 2 s, no clicks; e / f, barracks 2 and 3 deleted as a):
+  e CampProdE_mcp_1108_083724: 资金 2000 -> 1960 at s1, 1506 at 帧数 148, 1500 from 帧数 156 (a: 153; the watch
+    samples twice a second); 帧数 stops at 160; 工程师 1 and 出口位 101 -> 100 -> 110 -> 100 at 帧数 160 (a: 160).
+    Same curve as a: the scripted press is charged as it builds and takes the full build time (not free, not instant).
+  f CampProdF_mcp_1108_083934: money 0 at the start; 30 s of 资金 0, 帧数 0 (the flag needs money below the start, so it
+    never counts), 工程师 0, 出口位 0: the scripted press with no money builds nothing (refused, or waits at 0; no
+    money was given later, so these two are not told apart).
 Against the model (RA3-EngineModel production.py, round 41; tests/test_objects_bench.py, tools/objsidebyside.py with
 orders): every pair and every 帧数 the same, once the model divides the seconds before x 15 (c: 495, not 500), keeps
 the progress in float32 (10 s takes 151 updates; b owes 251 at k 75) and opens the door 10 frames (DoorOpeningTime
@@ -32,11 +41,12 @@ from parts import Mission, Script, Test, counted, square
 
 ENGINEER, BARRACKS = 'AlliedEngineer', 'AlliedBarracks'
 MONEY, SHORT, GIVE, BONUS = 2000, 250, 4.0, 2000     # b: GIVE s after the money reaches 0
-RUN = {'a': 22.0, 'b': 30.0, 'c': 48.0, 'd': 34.0}
+RUN = {'a': 22.0, 'b': 30.0, 'c': 48.0, 'd': 34.0, 'e': 24.0, 'f': 30.0}
+PRESS_AT, BUTTON_NAME = 2.0, 'Command_ConstructAlliedEngineer'   # e, f: a script presses the factory's button
 FACTORY = (1550.0, 2560.0)              # niagara 'base factory'; the barracks turned 180 degrees (exit to the west)
 CREATE, RALLY = (FACTORY[0], FACTORY[1] - 18.0), (FACTORY[0] - 40.0, FACTORY[1] - 18.0)   # (0, 18), (40, 18) turned
 DELETE = {'a': ('Barracks 2', 'Barracks 3'), 'b': ('Barracks 2', 'Barracks 3'),
-          'c': ('Yard', 'Power', 'Barracks 2', 'Barracks 3'), 'd': ('Power',)}
+          'c': ('Yard', 'Power', 'Barracks 2', 'Barracks 3'), 'd': ('Power',), 'e': ('Barracks 2', 'Barracks 3'), 'f': ('Barracks 2', 'Barracks 3')}
 # the sidebar's infantry tab and the engineer's button, screen pixels (1280 x 720): bench 11-05, round 41
 TAB, BUTTON = (1174.0, 251.0), (1135.0, 367.0)
 
@@ -61,7 +71,7 @@ def production_test(m, which='a'):
     t.areas['Test Create'] = square(*CREATE, 10.0)
     t.areas['Test Rally'] = square(*RALLY, 10.0)
     t.areas['Test Near'] = square(*FACTORY, 80.0)
-    start = SHORT if which == 'b' else MONEY
+    start = SHORT if which == 'b' else 0 if which == 'f' else MONEY
     t.scripts.append(Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', p1), ('PLAYER_SET_MONEY', p1, start)] + [
         ('NAMED_DELETE', _n(p)) for p in DELETE[which]]))
     t.counters.append(('CNV_Prod_Money', '资金'))
@@ -84,9 +94,15 @@ def production_test(m, which='a'):
                                                 ENGINEER, f'Test {a}')],
                          [('INCREMENT_COUNTER', step, 'CNV_Prod_Exit')], once=False)
                   for a, step in (('Create', 1), ('Rally', 10), ('Near', 100))]
-    t.expect = [('工程师', 0, 'ever>=', 1, RUN[which])]
+    if which in 'ef':                       # no clicks: a script presses barracks 1's engineer button
+        t.scripts += [Script('Test - press set', [], [('SET_MILLISECOND_TIMER', 'Test Press', PRESS_AT)]),
+                      Script('Test - press', [('TIMER_EXPIRED', 'Test Press')],
+                             [('NAMED_USE_COMMANDBUTTON_ABILITY', _n('Barracks 1'), BUTTON_NAME)])]
+    t.expect = [('工程师', 0, 'ever>=', 1, RUN[which])] if which != 'f' else []
     watch = dict(every=0.5, sheet=False, lines=len(t.counters))
-    if TAB[0] is None:                      # the buttons not found yet: run, look by hand (keep=true)
+    if which in 'ef':
+        t.bench = [('bench_watch', dict(watch, seconds=RUN[which]))]
+    elif TAB[0] is None:                     # the buttons not found yet: run, look by hand (keep=true)
         t.bench = [('bench_watch', dict(watch, seconds=2.0))]
     else:
         t.bench = [('bench_watch', dict(watch, seconds=2.0)),
@@ -97,4 +113,4 @@ def production_test(m, which='a'):
 
 
 MISSION = {'engine_production': mission}
-CHECKS = {'engine_production': {w: (lambda m, w=w: production_test(m, w)) for w in 'abcd'}}
+CHECKS = {'engine_production': {w: (lambda m, w=w: production_test(m, w)) for w in 'abcdef'}}

@@ -21,6 +21,11 @@ RETAIL_COMMANDS = {'Command_CaptureBuilding',           # an engineer takes a bu
                    'Command_ToggleMirageField',         # the Mirage tank's field on / off (AlliedAntiVehicleVehicleTech3CommandSet)
                    'Command_JapanAntiInfantryInfantryBonzai',   # the Imperial Warrior's Bonzai charge (engine_aimicro)
                    'Command_ToggleRiotShieldSpecialPower'}      # the Peacekeeper's riot shield (engine_aitoggle)
+# a factory's build button (a UNIT_BUILD command: Command_ConstructAlliedEngineer, retail j07's
+# Command_ConstructJapanMinerFromRefinery): a script's press builds as the player's click does -- paid, the build time
+# (bench 2026-11-08 engine_production e / f); the simulator and playcheck take the button from the factory's CommandSet
+# (simunits.build_button)
+RETAIL_BUILD = re.compile(r'Command_Construct\w+$')
 # retail buildings' own special powers a script may fire / read (they publish no unit ability here)
 RETAIL_POWERS = {'SpecialPowerIronCurtain', 'SpecialPowerParticleCannon', 'SpecialPowerVacuumBomb',
                  'SpecialPowerNanoSwarmHive', 'SpecialPowerTelekineticProjectorDevice'}            # the Soviet superweapon building's (SovietSuperWeapon, OCLSpecialPower)
@@ -568,7 +573,7 @@ def contract(mission):
         for name, *args in s.when + s.do:
             types = cat[name]['args']
             for t, v in zip(types, args):
-                if t in known and v not in known[t][1]:
+                if t in known and v not in known[t][1] and not (t == COMMAND_ARG and RETAIL_BUILD.match(str(v))):
                     out.append(f'{s.name}: {name} {known[t][0]} {v!r} not published')
                 if t == SOUND_ARG and str(v).startswith('CNV_') and v not in (m.voice.events if m.voice else ()):
                     out.append(f'{s.name}: {name} voice line {v!r} not in the voice pack')

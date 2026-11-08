@@ -205,6 +205,20 @@ def test_production_pays_as_it_builds_and_comes_out_after_the_door(check):
                            'AlliedEngineer']   # the barracks' tier-1 buttons; the spy needs Upgrade_AlliedTech2
 
 
+def test_a_scripts_press_of_the_build_button_builds_as_the_click():
+    """engine_production e / f (bench 2026-11-08): the check's own script presses barracks 1's
+    Command_ConstructAlliedEngineer at 2 s (NAMED_USE_COMMANDBUTTON_ABILITY) -- e paid 1506 at 帧数 148, the engineer at
+    帧数 160, as a's click; f (no money) builds nothing in 30 s. The simulator queues it there (Sim.order_build)."""
+    s, rows, _ = _production_rows('e', order=False)
+    money = {}
+    for rd in rows:
+        money.setdefault(rd['帧数'], rd['资金'])
+    assert money.get(148) == 1506 and money.get(153) == 1500
+    assert next(rd['帧数'] for rd in rows if rd['工程师'] >= 1) == 160
+    s, rows, _ = _production_rows('f', order=False)
+    assert not any(rd['工程师'] for rd in rows) and s.money.get(s.human, 0) == 0 and s.queues
+
+
 @pytest.mark.parametrize('check, power, factor', [('a', (150, 25), 1.0), ('c', (0, 25), 0.3), ('d', (50, 75), 0.5)])
 def test_power_is_the_living_objects_energy(check, power, factor):
     """Supply and demand from EnergyProduction of what still stands (yard +50, plant +100, barracks -25 each), the

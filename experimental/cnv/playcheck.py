@@ -3,7 +3,7 @@ r"""A level's player script (plays/<level>.txt) as a bench check: the comparison
 The same play, run by the plan simulator and by the bench, and the two readings compared: how the mission ended (win /
 lose) and when, and when its phases began. The simulator takes the play as `sim.Sim(script=...)`; the bench cannot, so
 this compiles the play's lines into the mission's own script actions (a Test, like any check): `派` is
-ATTACK_MOVE_NAMED_UNIT_TO, `占领 <who> 进 <building>` NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED Command_CaptureBuilding, `放 <who> <ability> 在 <site>` NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT, `造` a CREATE_NAMED_ON_TEAM_AT_WAYPOINT named `UNIT - SIM Made k`, `删除` / `摧毁` NAMED_DELETE
+ATTACK_MOVE_NAMED_UNIT_TO, `占领 <who> 进 <building>` NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED Command_CaptureBuilding, `放 <who> <ability> 在 <site>` NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT, `生产 <unit> 在 <factory>` NAMED_USE_COMMANDBUTTON_ABILITY with the factory's build button, `造`a CREATE_NAMED_ON_TEAM_AT_WAYPOINT named `UNIT - SIM Made k`, `删除` / `摧毁` NAMED_DELETE
 / NAMED_KILL, `旗标` SET_FLAG; a time is a millisecond timer set when the mission starts (or, `<flag>+<time>`, when
 the flag first reads 1). The sim runs that same Test too (checks/<level>.py: CHECKS[level]['play']), so what differs
 between the two is the game's rules, not the translation.
@@ -145,6 +145,18 @@ class Compiler:
             goal = self.who(target, now)[0]
             return [('NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED', n, 'Command_CaptureBuilding', goal)
                     for n in self.who(who, now)]
+        if verb == '生产':                  # the factory's build button (a script's press = the player's click: bench
+            import simunits                 # engine_production e)
+            what, where = rest
+            tmpl, own = self.template(what), {u.id: u.xml for u in self.m.units}
+            out = []
+            for n in self.who(where, now)[:1]:
+                o = next((x for x in self.m.objects if x.name == n), None)
+                button = simunits.build_button(o.template, tmpl, own) if o else None
+                if button is None:
+                    raise ValueError(f'play: {where!r} has no build button for {tmpl}')
+                out.append(('NAMED_USE_COMMANDBUTTON_ABILITY', n, button))
+            return out
         if verb in ('删除', '摧毁'):
             return [('NAMED_DELETE' if verb == '删除' else 'NAMED_KILL', n) for n in self.who(rest[0], now)]
         if verb == '旗标':

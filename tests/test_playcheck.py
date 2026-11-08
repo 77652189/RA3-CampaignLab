@@ -86,3 +86,15 @@ def test_a_line_the_bench_cannot_be_told_stops_the_compile():
     c = playcheck.Compiler(m, playcheck.Test())
     with pytest.raises(ValueError):
         c.actions((5.0, '打', 'tengu 1'), 5.0)
+
+
+def test_a_build_line_compiles_to_the_factorys_build_button():
+    """`生产 <unit> 在 <factory>`: the factory's UNIT_BUILD button (a script's press builds as the player's click: bench
+    engine_production e); a factory that does not build it is an error, not a silent skip."""
+    import build
+    m, _, _ = build.resolve('engine_production', 'a')
+    c = playcheck.Compiler(m, playcheck.Test())
+    acts = c.actions((5.0, '生产', 'AlliedEngineer', 'barracks 1'), 5.0)
+    assert acts == [('NAMED_USE_COMMANDBUTTON_ABILITY', 'UNIT - CNV Prod Barracks 1', 'Command_ConstructAlliedEngineer')]
+    with pytest.raises(ValueError):
+        c.actions((5.0, '生产', 'AlliedEngineer', 'power'), 5.0)

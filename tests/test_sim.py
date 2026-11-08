@@ -282,3 +282,16 @@ def test_a_unit_whose_guns_are_not_read_is_a_gap(monkeypatch):
     s = sim.Sim(m).run(1)
     g = s.unmodeled[(sim.GAP_WEAPON, 'JapanAntiInfantryInfantry')]
     assert g['n'] == 2 and g['what'].startswith('XML 有 JapanAntiInfantryInfantryWeapon')
+
+
+def test_a_build_line_queues_at_the_factory_and_pays():
+    """`2 生产 AlliedEngineer 在 barracks 1`: queued at that barracks (order_build), 500 paid as it builds, out
+    10 s + the door later (bench engine_production a / e: 帧数 160)."""
+    import build
+    m, t, _ = build.resolve('engine_production', 'a')
+    s = sim.Sim(m, t, script='2 生产 AlliedEngineer 在 barracks 1')
+    s.advance(15)
+    start = s.money.get(s.human)
+    s.advance(14 * 15)
+    out = [e for e in s.log if e[1] == '生产' and '出 AlliedEngineer' in e[2]]
+    assert start - s.money.get(s.human) == 500 and out and abs(out[0][0] - (2 + 160 / 15)) < 0.1
