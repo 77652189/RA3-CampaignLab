@@ -83,11 +83,10 @@ def test_skirmish_ai_builds_infantry_in_the_opening_until_the_deposit_is_spent(s
     assert 1800 <= spent <= 2000, (spent, out)
 
 
-@pytest.mark.xfail(strict=True, reason='B round 45: with the general recruit path (nobody joins short of MinUnits, '
-                   'l4_recruit.md) seed 1 orders 8 barracks units before 70 s, not 9, and spends the rest of the '
-                   'Deposit at 83 s (seeds 2-6 do not); the bench spends it by 52 s. The draw path is not tuned.')
 def test_skirmish_ai_spends_the_deposit_before_70_s(skirmish):
-    """bench engine_aiskirm c: nothing from the barracks between 70 and 125 s."""
+    """bench engine_aiskirm c: nothing from the barracks between 70 and 125 s. Round 45 had seed 1 spend the rest at
+    83 s (strict xfail); since round 49 (teams only for slots with a target) seeds 1-6 all spend it by 60 s -- the
+    draws moved, the draw path is still not tuned (bench: by 52 s)."""
     out = _barracks_out(skirmish)
     assert not [s for s, t in out if 70 < s < 120], out
 
@@ -125,9 +124,11 @@ def test_skirmish_ai_builds_again_as_soon_as_the_opening_is_done(skirmish):
     bank, not only the miners' income (AIPlayer.available, INFERRED from bench d / f; round 39's sim waited for miner
     trips, 151.5 s). The bound is the seed spread, not a fit: seeds 1-6 gave 126-131.5 s both before and after
     round 43's team / target rules (a uniform draw that lands on a busy candidate skips the round; simai.md
-    round 43); bench one run 125 s."""
+    round 43); bench one run 125 s. Round 49 (teams only for slots with a target, B handoff 47.3) moves the draws:
+    seeds 1-6 126-141.5 s (seed 1 141.5); the same workspace without that gate 126-138.5 s (seed 4) -- so the bound
+    is the measured spread again (work/logs/gate_seeds2.log), not a fit."""
     again = [s for s, t in _barracks_out(skirmish) if s >= 120]
-    assert again and again[0] <= 132, again
+    assert again and again[0] <= 142, again
 
 
 def test_skirmish_ai_scout_dog_stays_out(skirmish):

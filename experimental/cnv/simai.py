@@ -170,6 +170,10 @@ class Brain:
                                        held=self.tactics.held)
         self.tactics.targets = self.targets
         self.ai.blocks += [self.targets, self.tactics]
+        # a slot's team is made once the slot has a target (l4_states.md 1/7); the teams tick before the blocks,
+        # so they see the slots of the last think (INFERRED one-think lag)
+        self.ai.teams.has_target = lambda ai, key, n: self.targets.slot_target(
+            self.tactics.state_of(ai, key), n) is not None
         if 'defense' in which:
             self.base = df.Base(1, self.home, (), frozenset({'MAIN_BASE'}))
             self.defense = df.DefenseBlock(self.tactics, lambda ai, f: self.view, bases=lambda ai, f: [self.base],
