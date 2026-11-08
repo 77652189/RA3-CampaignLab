@@ -12,6 +12,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-I", "-X", "utf8", "experimental/mappage/serve.py", "--new", "--port", "8766"],
       "port": 8766
+    },
+    {
+      "name": "simui",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-I", "-X", "utf8", "experimental/simui/serve.py", "a4", "--port", "8724"],
+      "port": 8724
     }
   ]
 }

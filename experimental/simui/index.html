@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>关卡模拟器</title>
+<style>
+:root { --bg:#14171c; --panel:#1d222a; --line:#2e3540; --text:#d9dee6; --dim:#8b95a3; --me:#4aa3ff; --foe:#ff5a4f;
+        --other:#e8c34a; --warn:#ffb347; --gap:#c77dff; --ok:#6fd38a; }
+* { box-sizing:border-box; }
+html, body { margin:0; height:100%; background:var(--bg); color:var(--text);
+             font:13px/1.45 "Microsoft YaHei", "PingFang SC", system-ui, sans-serif; overflow:hidden; }
+#top { position:fixed; left:0; right:0; top:0; height:40px; display:flex; gap:6px; align-items:center; padding:0 8px;
+       background:var(--panel); border-bottom:1px solid var(--line); z-index:5; white-space:nowrap; overflow-x:auto; }
+#top .grp { display:flex; gap:3px; align-items:center; padding-right:8px; border-right:1px solid var(--line); }
+button, select { background:#2a313b; color:var(--text); border:1px solid #3a4350; border-radius:4px; padding:3px 8px;
+                 font:inherit; cursor:pointer; }
+button:hover { background:#36404c; } button.on { background:#2d5a8a; border-color:#4aa3ff; }
+button:disabled { opacity:.4; cursor:default; }
+#clock { font:600 16px/1 Consolas, monospace; min-width:58px; text-align:center; }
+#busy { color:var(--warn); }
+#cv { position:fixed; left:0; top:40px; width:calc(100% - 300px); height:calc(100% - 40px); display:block; }
+#side { position:fixed; top:40px; right:0; width:300px; bottom:0; background:var(--panel); border-left:1px solid var(--line);
+        overflow-y:auto; padding:8px 10px; z-index:4; }
+#side h3 { margin:10px 0 4px; font-size:12px; color:var(--dim); font-weight:600; letter-spacing:.05em; }
+.obj { padding:2px 0; } .obj.done { color:var(--ok); text-decoration:line-through; } .obj.fail { color:var(--foe); }
+.obj.bonus::before { content:"奖励 "; color:var(--other); font-size:11px; }
+.ctr { display:flex; justify-content:space-between; font-family:Consolas, monospace; }
+.gap { color:var(--gap); font-size:12px; padding:1px 0; } .gap.new { color:var(--warn); font-weight:600; }
+.small { font-size:11px; color:var(--dim); }
+.prod button { margin:2px 2px 0 0; font-size:12px; padding:2px 6px; }
+#caption { position:fixed; left:calc((100% - 300px)/2); transform:translateX(-50%); top:56px; max-width:60%;
+           background:rgba(10,12,16,.82); border:1px solid #556; padding:6px 12px; border-radius:4px; font-size:15px;
+           display:none; z-index:3; text-align:center; }
+#panel { position:fixed; left:12px; bottom:16px; max-width:46%; z-index:3; }
+#panel div { background:rgba(10,12,16,.8); border-left:3px solid var(--me); padding:4px 10px; margin-top:4px;
+             font-size:15px; border-radius:2px; }
+.bar { position:fixed; left:0; right:300px; height:9vh; background:#000; z-index:2; display:none; }
+#barT { top:40px; } #barB { bottom:0; }
+#lockmsg { position:fixed; left:calc((100% - 300px)/2); transform:translateX(-50%); bottom:calc(9vh + 8px);
+           color:#ccc; z-index:3; display:none; font-size:12px; }
+#modal { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center;
+         z-index:10; }
+#modal .box { background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:18px 22px; max-width:640px;
+              max-height:80vh; overflow:auto; }
+#modal h2 { margin:0 0 8px; font-size:20px; }
+#hint { position:fixed; left:8px; top:46px; color:var(--dim); font-size:11px; z-index:3; pointer-events:none; }
+#tip { position:fixed; pointer-events:none; background:rgba(10,12,16,.9); border:1px solid #445; padding:3px 7px;
+       border-radius:3px; font-size:12px; z-index:6; display:none; }
+@media (max-width: 760px) { #side { width:220px; } .bar { right:220px; } #cv { width:calc(100% - 220px); } }
+</style>
+</head>
+<body>
+<div id="top">
+  <div class="grp"><select id="lv" title="关卡"></select><button id="restart" title="从头开始">重开</button></div>
+  <div class="grp"><span id="clock">0:00</span></div>
+  <div class="grp" id="speeds"></div>
+  <div class="grp"><button id="skip" title="Esc：快进到交还操作">跳过场 (Esc)</button></div>
+  <div class="grp" id="stages"><span class="small">跳到阶段</span></div>
+  <div class="grp"><button id="mute">配音：开</button><button id="fogbtn" title="显示雾里的敌人（游戏里看不见）">雾</button>
+    <button id="namebtn" title="地名和区域名">地名</button><a id="rep" href="/api/replay" target="_blank"><button>导出操作</button></a></div>
+  <span id="busy"></span>
+</div>
+<canvas id="cv"></canvas>
+<div class="bar" id="barT"></div><div class="bar" id="barB"></div>
+<div id="caption"></div><div id="panel"></div><div id="lockmsg">过场中，操作锁住 — Esc 跳到交还操作</div>
+<div id="hint">左键选/框选 · 右键移动(攻击移动)/点敌人攻击 · Ctrl+右键 占领 · 右键拖/中键拖 平移 · 滚轮缩放 · 空格 暂停</div>
+<div id="tip"></div>
+<div id="side">
+  <h3>目标</h3><div id="objs"></div>
+  <h3>计数 / 倒计时</h3><div id="ctrs" class="small">没有</div>
+  <h3>选中</h3><div id="sel" class="small">没有</div>
+  <h3>生产 <span id="money" class="small"></span></h3><div id="prod" class="prod small">没有工厂</div>
+  <h3 style="color:var(--gap)">模拟器没模拟（本局遇到）</h3><div id="unmod" class="small">还没遇到</div>
+  <h3 style="color:var(--gap)">本关覆盖清单</h3><div id="cov" class="small">读取中…</div>
+  <h3>记录</h3><div id="log" class="small"></div>
+</div>
+<div id="modal"><div class="box" id="mbox"></div></div>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const cv = $('cv'), g = cv.getContext('2d');
+let ST = null, S = null, prevPos = new Map(), curPos = new Map(), recvAt = 0, gap = 500;
+let view = { cx: 2500, cy: 2500, k: 0.2 }, sel = new Set(), targeting = null, voiceSince = 0;
+let muted = false, showFog = false, showNames = false, terrain = null, covWarned = false, lastEnding = null;
+let mouse = { x: 0, y: 0, down: null }, gapNames = new Set();
+const SPEEDS = [[0, '⏸'], [1, '1×'], [2, '2×'], [4, '4×'], [8, '8×'], [-1, '尽快']];
+const OWNER_COLORS = ['#ff5a4f', '#ff8a3d', '#e05ad0', '#ff4f8a', '#d8513a', '#ff7070'];
+
+async function api(path, body) {
+  const r = await fetch(path, body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) });
+  return r.json();
+}
+function colorOf(u) {
+  if (u.rel === 'me') return getComputedStyle(document.documentElement).getPropertyValue('--me');
+  if (u.sc || u.o === 'PlyrCivilian') return '#7c828c';
+  if (u.rel === 'foe') { const ks = Object.values(ST.players); const i = ks.indexOf(u.o); return OWNER_COLORS[Math.max(0, i - 1) % OWNER_COLORS.length]; }
+  return '#e8c34a';
+}
+// ---------- the map ----------
+function buildTerrain() {
+  const gr = ST.grid, kind = Uint8Array.from(atob(gr.kind), c => c.charCodeAt(0)),
+        shade = Uint8Array.from(atob(gr.shade), c => c.charCodeAt(0));
+  const c = document.createElement('canvas'); c.width = gr.w; c.height = gr.h;
+  const x = c.getContext('2d'), img = x.createImageData(gr.w, gr.h);
+  for (let i = 0; i < kind.length; i++) {
+    const s = shade[i], k = kind[i], o = i * 4;
+    if (k === 2) { img.data[o] = 30; img.data[o + 1] = 60 + s / 8; img.data[o + 2] = 105 + s / 6; }
+    else if (k === 1) { img.data[o] = 70 + s * .35; img.data[o + 1] = 78 + s * .35; img.data[o + 2] = 70 + s * .3; }
+    else { img.data[o] = 38 + s * .2; img.data[o + 1] = 34 + s * .18; img.data[o + 2] = 32 + s * .16; }
+    img.data[o + 3] = 255;
+  }
+  x.putImageData(img, 0, 0); terrain = c;
+}
+const W2S = (x, y) => [(x - view.cx) * view.k + cv.width / 2, (y - view.cy) * view.k + cv.height / 2];
+const S2W = (x, y) => [(x - cv.width / 2) / view.k + view.cx, (y - cv.height / 2) / view.k + view.cy];
+function resize() { cv.width = cv.clientWidth; cv.height = cv.clientHeight; }
+window.addEventListener('resize', resize);
+
+function posOf(u, now) {
+  const a = prevPos.get(u.id), b = curPos.get(u.id);
+  if (!a || !b) return [u.x, u.y];
+  const f = Math.min(1, (now - recvAt) / gap);
+  return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+}
+function visible(u) { return showFog || !u.fog; }
+
+function draw() {
+  requestAnimationFrame(draw);
+  if (!ST) return;
+  const now = performance.now();
+  if (S && (!S.input || S.letterbox) && S.camera) {          // a scene: the camera is the script's
+    view.cx += (S.camera[0] - view.cx) * .15; view.cy += (S.camera[1] - view.cy) * .15;
+  }
+  g.fillStyle = '#0b0d10'; g.fillRect(0, 0, cv.width, cv.height);
+  const gr = ST.grid;
+  if (terrain) {
+    const [sx, sy] = W2S(gr.x0 - gr.step / 2, gr.y0 - gr.step / 2);
+    g.imageSmoothingEnabled = false;
+    g.drawImage(terrain, sx, sy, gr.w * gr.step * view.k, gr.h * gr.step * view.k);
+  }
+  if (S && ST.borders.length) {                                 // the playable area now
+    const b = ST.borders[S.border] || ST.borders[0];
+    const [x0, y0] = W2S(b[1], b[2]), [x1, y1] = W2S(b[3], b[4]);
+    g.fillStyle = 'rgba(0,0,0,.45)';
+    g.fillRect(0, 0, cv.width, y0); g.fillRect(0, y1, cv.width, cv.height - y1);
+    g.fillRect(0, y0, x0, y1 - y0); g.fillRect(x1, y0, cv.width - x1, y1 - y0);
+    g.strokeStyle = 'rgba(255,255,255,.25)'; g.strokeRect(x0, y0, x1 - x0, y1 - y0);
+  }
+  g.lineWidth = 1;
+  for (const a of ST.areas) {
+    g.beginPath();
+    a.pts.forEach((p, i) => { const [x, y] = W2S(p[0], p[1]); i ? g.lineTo(x, y) : g.moveTo(x, y); });
+    g.closePath(); g.strokeStyle = 'rgba(255,220,120,.35)'; g.setLineDash([4, 4]); g.stroke(); g.setLineDash([]);
+    if (showNames) { const [x, y] = W2S(a.pts[0][0], a.pts[0][1]); g.fillStyle = 'rgba(255,220,120,.8)'; g.font = '11px sans-serif'; g.fillText(a.name.replace(/^CNV \w+ /, ''), x + 2, y - 2); }
+  }
+  if (showNames) for (const s of ST.sites) {
+    const [x, y] = W2S(s.x, s.y); g.fillStyle = 'rgba(180,220,255,.85)'; g.font = '11px sans-serif';
+    g.fillRect(x - 2, y - 2, 4, 4); g.fillText(s.name, x + 4, y + 4);
+  }
+  if (!S) return;
+  // units: structures first, then ground, then air
+  const order = u => u.k.includes('S') ? 0 : u.k.includes('A') ? 2 : 1;
+  const us = S.units.filter(visible).sort((a, b) => order(a) - order(b));
+  for (const u of us) {
+    const [x, y] = W2S(...posOf(u, now)), r = Math.max(3, u.r * view.k), col = colorOf(u);
+    g.globalAlpha = u.fog ? .35 : 1;
+    if (u.bar) {
+      g.save(); g.translate(x, y); g.rotate(u.bar[2]); g.fillStyle = u.rel === 'me' ? '#9fd8ff' : col;
+      g.fillRect(-u.bar[0] * view.k / 2, -u.bar[1] * view.k / 2, u.bar[0] * view.k, u.bar[1] * view.k); g.restore();
+    } else if (u.k.includes('S')) {
+      g.fillStyle = col; g.globalAlpha *= u.sc ? .5 : .85; g.fillRect(x - r, y - r, 2 * r, 2 * r);
+      g.globalAlpha = u.fog ? .35 : 1; g.strokeStyle = '#000'; g.strokeRect(x - r, y - r, 2 * r, 2 * r);
+    } else if (u.k.includes('A')) {
+      g.fillStyle = col; g.beginPath(); g.moveTo(x, y - r - 3); g.lineTo(x + r + 2, y + r); g.lineTo(x - r - 2, y + r); g.closePath(); g.fill();
+    } else if (u.k.includes('I')) {
+      g.fillStyle = col; g.beginPath(); g.arc(x, y, Math.max(2.5, r * .8), 0, 7); g.fill();
+    } else {
+      g.fillStyle = col; g.fillRect(x - r, y - r * .75, 2 * r, 1.5 * r); g.strokeStyle = '#000'; g.strokeRect(x - r, y - r * .75, 2 * r, 1.5 * r);
+    }
+    if (gapNames.has(u.tp)) {                                    // the simulator does not model something of it
+      g.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--gap'); g.setLineDash([3, 3]);
+      g.beginPath(); g.arc(x, y, r + 5, 0, 7); g.stroke(); g.setLineDash([]);
+      g.fillStyle = g.strokeStyle; g.font = 'bold 11px sans-serif'; g.fillText('?', x + r + 4, y - r - 2);
+    }
+    if (u.st && (u.st.includes('IN_STASIS') || u.st.includes('UNATTACKABLE'))) { g.strokeStyle = '#cff'; g.beginPath(); g.arc(x, y, r + 3, 0, 7); g.stroke(); }
+    if (sel.has(u.id)) {
+      g.strokeStyle = '#7fffa0'; g.lineWidth = 1.5; g.strokeRect(x - r - 3, y - r - 3, 2 * r + 6, 2 * r + 6); g.lineWidth = 1;
+      if (u.to) { const [tx, ty] = W2S(u.to[0], u.to[1]); g.strokeStyle = 'rgba(127,255,160,.35)'; g.beginPath(); g.moveTo(x, y); g.lineTo(tx, ty); g.stroke(); }
+    }
+    if ((u.hp < 99.5 || sel.has(u.id)) && !u.sc && !u.bar) {
+      const w = Math.max(14, 2 * r); g.fillStyle = '#000'; g.fillRect(x - w / 2, y - r - 7, w, 3);
+      g.fillStyle = u.hp > 60 ? '#5f5' : u.hp > 30 ? '#fd4' : '#f44'; g.fillRect(x - w / 2, y - r - 7, w * u.hp / 100, 3);
+    }
+    g.globalAlpha = 1;
+  }
+  if (mouse.down && mouse.down.b === 0 && mouse.down.drag) {
+    g.strokeStyle = '#7fffa0'; g.setLineDash([4, 3]);
+    g.strokeRect(mouse.down.x, mouse.down.y, mouse.x - mouse.down.x, mouse.y - mouse.down.y); g.setLineDash([]);
+  }
+  if (targeting) { g.strokeStyle = '#cff'; g.beginPath(); g.arc(mouse.x, mouse.y, 14, 0, 7); g.stroke(); }
+}
+
+// ---------- input ----------
+function unitAt(sx, sy, pred) {
+  if (!S) return null;
+  let best = null, bd = 1e9;
+  for (const u of S.units) {
+    if (!visible(u) || u.sc || (pred && !pred(u))) continue;
+    const [x, y] = W2S(u.x, u.y), d = Math.hypot(x - sx, y - sy);
+    if (d < Math.max(8, u.r * view.k + 4) && d < bd) { bd = d; best = u; }
+  }
+  return best;
+}
+const locked = () => S && !S.input;
+cv.addEventListener('contextmenu', e => e.preventDefault());
+cv.addEventListener('mousedown', e => { mouse.down = { b: e.button, x: e.offsetX, y: e.offsetY, cx: view.cx, cy: view.cy, drag: false }; });
+cv.addEventListener('mousemove', e => {
+  mouse.x = e.offsetX; mouse.y = e.offsetY;
+  const d = mouse.down;
+  if (d && Math.hypot(e.offsetX - d.x, e.offsetY - d.y) > 5) d.drag = true;
+  if (d && d.drag && (d.b === 2 || d.b === 1) && !locked()) {
+    view.cx = d.cx - (e.offsetX - d.x) / view.k; view.cy = d.cy - (e.offsetY - d.y) / view.k;
+  }
+  const u = unitAt(e.offsetX, e.offsetY), tip = $('tip');
+  if (u) {
+    tip.style.display = 'block'; tip.style.left = (e.clientX + 14) + 'px'; tip.style.top = (e.clientY + 10) + 'px';
+    tip.textContent = `${u.lb}（${u.tp}）${Math.round(u.hp)}%` + (u.st ? ' ' + u.st.join(',') : '') + (gapNames.has(u.tp) ? ' ·模拟器有没模拟的部分' : '');
+  } else tip.style.display = 'none';
+});
+cv.addEventListener('mouseup', e => {
+  const d = mouse.down; mouse.down = null;
+  if (!d || !S) return;
+  const [wx, wy] = S2W(e.offsetX, e.offsetY);
+  if (d.b === 0) {
+    if (targeting) {
+      const t = unitAt(e.offsetX, e.offsetY);
+      order({ verb: '放', units: targeting.units, ability: targeting.ability, to: t ? t.id : [wx, wy] });
+      targeting = null; return;
+    }
+    if (d.drag) {
+      const [ax, ay] = S2W(d.x, d.y), x0 = Math.min(ax, wx), x1 = Math.max(ax, wx), y0 = Math.min(ay, wy), y1 = Math.max(ay, wy);
+      if (!e.shiftKey) sel.clear();
+      for (const u of S.units) if (u.rel === 'me' && u.mv && u.x >= x0 && u.x <= x1 && u.y >= y0 && u.y <= y1) sel.add(u.id);
+    } else {
+      const u = unitAt(e.offsetX, e.offsetY, u => u.rel === 'me');
+      if (!e.shiftKey) sel.clear();
+      if (u) sel.has(u.id) && e.shiftKey ? sel.delete(u.id) : sel.add(u.id);
+    }
+    renderSel();
+  } else if (d.b === 2 && !d.drag) {
+    if (targeting) { targeting = null; return; }
+    const units = [...sel];
+    if (!units.length) return;
+    const t = unitAt(e.offsetX, e.offsetY, u => u.rel !== 'me');
+    if (t && e.ctrlKey) order({ verb: '占领', units, target: t.id });
+    else if (t && t.rel === 'foe') order({ verb: '攻击', units, target: t.id });
+    else order({ verb: '派', units, to: [wx, wy] });
+  }
+});
+cv.addEventListener('wheel', e => {
+  e.preventDefault(); if (locked()) return;
+  const [wx, wy] = S2W(e.offsetX, e.offsetY), f = Math.exp(-e.deltaY * .0015);
+  view.k = Math.min(3, Math.max(.05, view.k * f));
+  const [nx, ny] = S2W(e.offsetX, e.offsetY); view.cx += wx - nx; view.cy += wy - ny;
+}, { passive: false });
+const keys = new Set();
+window.addEventListener('keydown', e => {
+  if (e.target.tagName === 'SELECT') return;
+  if (e.key === 'Escape') { if (targeting) targeting = null; else skip(); e.preventDefault(); }
+  else if (e.key === ' ') { setSpeed(S && S.speed === 0 ? (lastSpeed || 1) : 0); e.preventDefault(); }
+  else keys.add(e.key.toLowerCase());
+});
+window.addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
+setInterval(() => {
+  if (locked()) return;
+  const v = 25 / view.k;
+  if (keys.has('arrowleft') || keys.has('a')) view.cx -= v; if (keys.has('arrowright') || keys.has('d')) view.cx += v;
+  if (keys.has('arrowup') || keys.has('w')) view.cy -= v; if (keys.has('arrowdown') || keys.has('s')) view.cy += v;
+}, 30);
+
+async function order(c) {
+  const r = await api('/api/cmd', c);
+  if (!r.ok) flash(r.why);
+}
+function flash(text) { const l = $('lockmsg'); l.textContent = text; l.style.display = 'block'; clearTimeout(flash.t); flash.t = setTimeout(() => l.style.display = 'none', 1800); }
+
+// ---------- controls ----------
+let lastSpeed = 1;
+function setSpeed(v) { if (v !== 0) lastSpeed = v; api('/api/speed', { speed: v }); }
+function skip() { api('/api/skip', {}).then(r => { if (!r.ok) flash(r.why); }); }
+for (const [v, label] of SPEEDS) {
+  const b = document.createElement('button'); b.textContent = label; b.dataset.v = v; b.onclick = () => setSpeed(v); $('speeds').appendChild(b);
+}
+$('skip').onclick = skip;
+$('restart').onclick = () => { sel.clear(); voiceSince = 0; lastEnding = null; api('/api/restart', {}); };
+$('mute').onclick = () => { muted = !muted; $('mute').textContent = '配音：' + (muted ? '关' : '开'); if (muted) speechSynthesis.cancel(); };
+$('fogbtn').onclick = () => { showFog = !showFog; $('fogbtn').classList.toggle('on', showFog); };
+$('namebtn').onclick = () => { showNames = !showNames; $('namebtn').classList.toggle('on', showNames); };
+$('lv').onchange = async () => { await api('/api/open', { level: $('lv').value }); location.reload(); };
+
+function renderSel() {
+  if (!S) return;
+  const us = S.units.filter(u => sel.has(u.id));
+  for (const id of [...sel]) if (!us.find(u => u.id === id)) sel.delete(id);
+  if (!us.length) { $('sel').textContent = '没有'; return; }
+  const by = {};
+  for (const u of us) (by[u.lb.replace(/ \d+$/, '')] = by[u.lb.replace(/ \d+$/, '')] || []).push(u);
+  const abil = {};
+  for (const u of us) for (const [k, cd] of Object.entries(u.ab || {})) (abil[k] = abil[k] || []).push([u.id, cd]);
+  let h = Object.entries(by).map(([k, v]) => `${k} ×${v.length}`).join('<br>');
+  for (const [k, list] of Object.entries(abil)) {
+    const ready = list.filter(x => x[1] <= 0).map(x => x[0]), cd = Math.min(...list.map(x => x[1]));
+    h += `<br><button data-ab="${k}" ${ready.length ? '' : 'disabled'}>技能 ${k}${ready.length ? `（${ready.length} 个可放）` : `（${cd.toFixed(0)} 秒）`}</button>`;
+  }
+  selAbil = abil;
+  if ($('sel')._h !== h) { $('sel').innerHTML = h; $('sel')._h = h; }
+}
+let selAbil = {};
+// buttons are redrawn as the state comes in: act on mousedown (a click spans a redraw), delegated
+$('sel').addEventListener('mousedown', e => {
+  const b = e.target.closest('button[data-ab]'); if (!b || b.disabled) return;
+  const k = b.dataset.ab; targeting = { ability: k, units: (selAbil[k] || []).filter(x => x[1] <= 0).map(x => x[0]) };
+});
+$('prod').addEventListener('mousedown', e => {
+  const b = e.target.closest('button[data-t]'); if (b) order({ verb: '生产', template: b.dataset.t, factory: b.dataset.f });
+});
+
+function renderSide() {
+  const objs = S.objectives.map(o => {
+    const m = ST.objectives.find(x => x.name === o.name) || { title: o.name };
+    return `<div class="obj ${o.status === 2 ? 'done' : o.status === 3 ? 'fail' : ''} ${m.bonus ? 'bonus' : ''}">${m.title}</div>`;
+  });
+  $('objs').innerHTML = objs.join('') || '<span class="small">还没有</span>';
+  $('ctrs').innerHTML = S.counters.map(c => `<div class="ctr"><span>${c.label}</span><span>${c.left != null ?
+     Math.floor(c.left / 60) + ':' + String(Math.floor(c.left % 60)).padStart(2, '0') : (c.value ?? '')}</span></div>`).join('') || '没有';
+  $('money').textContent = S.money ? `$${S.money}` : '';
+  $('prod').innerHTML = S.factories.length ? S.factories.map(f => `<div>${f.lb}${f.queue.length ? '：' +
+     f.queue.map(q => `${q.tp} ${Math.round(q.p)}%`).join('、') : ''}</div>` + f.can.map(o =>
+     `<button data-f="${f.id}" data-t="${o.tp}" title="${o.cost} 元，${o.secs} 秒">${o.tp.replace(/^(Allied|Soviet|Japan)/, '')}</button>`).join('')).join('') : '没有工厂';
+  gapNames = new Set(S.unmodeled.map(u => u.name.split(/[ :(]/)[0]));
+  if (S.coverage) for (const i of S.coverage.items) gapNames.add(String(i.name).split(/[ :(→]/)[0]);
+  $('unmod').innerHTML = S.unmodeled.map(u => `<div class="gap" title="${u.what}">${u.kind} · ${u.name} ×${u.n}（首次 ${fmt(u.t)}）</div>`).join('') || '还没遇到';
+  if (S.coverage) {
+    $('cov').innerHTML = `${S.coverage.items.length} 项（未登记 ${S.coverage.unregistered}）` + S.coverage.items.map(i =>
+      `<div class="gap ${i.known ? '' : 'new'}" title="${String(i.text).replace(/"/g, '&quot;')}">${i.known ? '' : '未登记 '}${i.category} · ${i.name}</div>`).join('');
+    if (S.coverage.unregistered && !covWarned) {
+      covWarned = true;
+      modal(`<h2 style="color:var(--warn)">先看这个：覆盖清单有 ${S.coverage.unregistered} 项未登记</h2>
+        <p>这关有模拟器不认识、也没登记的东西（ADR 0023/0024）：在这里玩出来的结果可能和游戏不一致，不能当成玩法结论。</p>` +
+        S.coverage.items.filter(i => !i.known).map(i => `<div class="gap new">${i.category} · ${i.name}：${i.text}</div>`).join('') +
+        `<p><button onclick="modal(); if (S.t === 0) setSpeed(1)">知道了，继续</button></p>`);
+    }
+  }
+  $('log').innerHTML = S.refused.map(r => `<div style="color:var(--warn)">${fmt(r.t)} 不行：${r.why}</div>`).join('') +
+    S.log.slice().reverse().map(l => `<div>${fmt(l.t)} [${l.k}] ${l.x}</div>`).join('');
+}
+const fmt = t => Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0');
+function modal(html) { $('modal').style.display = html ? 'flex' : 'none'; if (html) $('mbox').innerHTML = html; }
+
+function speak(v) {
+  if (muted || !S || S.busy || S.speed > 2 || S.speed < 0) return;      // fast: the lines are only shown
+  if (v.file) { const a = new Audio('/voice/' + encodeURIComponent(v.key)); a.playbackRate = Math.max(1, S.speed); a.play().catch(() => {}); return; }
+  if (!('speechSynthesis' in window) || !v.text) return;
+  const u = new SpeechSynthesisUtterance(v.text); u.lang = 'zh-CN'; u.rate = Math.min(2, Math.max(1, S.speed || 1));
+  const zh = speechSynthesis.getVoices().find(x => /zh/i.test(x.lang)); if (zh) u.voice = zh;
+  speechSynthesis.speak(u);
+}
+
+function renderHud() {
+  $('clock').textContent = S.clock;
+  for (const b of $('speeds').children) b.classList.toggle('on', +b.dataset.v === S.speed);
+  $('busy').textContent = S.busy ? `${S.busy}…（${S.clock}）` : '';
+  $('skip').disabled = S.input && !S.letterbox;
+  const cap = $('caption'); cap.style.display = S.caption ? 'block' : 'none'; cap.textContent = S.caption || '';
+  $('panel').innerHTML = S.panel.slice(-3).map(x => `<div>${x}</div>`).join('');
+  for (const id of ['barT', 'barB']) $(id).style.display = S.letterbox ? 'block' : 'none';
+  $('lockmsg').style.display = !S.input ? 'block' : 'none';
+  if (!S.input) $('lockmsg').textContent = '过场中，操作锁住 — Esc 跳到交还操作';
+  [...$('stages').querySelectorAll('button')].forEach((b, i) => {
+    b.disabled = !ST.play; b.classList.toggle('on', !!(S.stages[i] && S.stages[i].reached));
+  });
+  if (S.ending && !lastEnding) {
+    lastEnding = S.ending;
+    modal(`<h2 style="color:${S.ending.how === '赢' ? 'var(--ok)' : 'var(--foe)'}">${S.ending.how === '赢' ? '胜利' : S.ending.how === '输' ? '失败' : S.ending.how}</h2>
+      <p>用时 <b>${S.ending.clock}</b>（关卡时间；你实际花了 ${fmt(S.wall)}）· ${S.ending.by}</p>
+      <p>${S.objectives.map(o => { const m = ST.objectives.find(x => x.name === o.name) || { title: o.name };
+        return `${['', '…', '✔', '✘'][o.status]} ${m.title}`; }).join('<br>')}</p>
+      ${S.unmodeled.length ? `<p style="color:var(--gap)">本局遇到 ${S.unmodeled.length} 项模拟器没模拟的东西（右栏），结论要打折扣。</p>` : ''}
+      <p><button onclick="modal();document.getElementById('restart').click()">重开</button> <a href="/api/replay" target="_blank"><button>导出操作</button></a> <button onclick="modal()">看地图</button></p>`);
+  }
+}
+
+async function poll() {
+  try {
+    const st = await api('/api/state?since=' + voiceSince);
+    if (S && st.t !== S.t) { prevPos = curPos; gap = st.speed > 0 ? Math.max(60, 500 / st.speed) : 120; recvAt = performance.now(); }
+    else if (!S) recvAt = performance.now();
+    curPos = new Map(st.units.map(u => [u.id, [u.x, u.y]]));
+    const wasEnd = S && S.ending; S = st;
+    if (!S.ending && wasEnd) lastEnding = null;
+    for (const v of S.voices) { if (v.i >= voiceSince) { speak(v); voiceSince = v.i + 1; } }
+    if (S.voices.length === 0 && voiceSince > 0 && S.t < 1) voiceSince = 0;
+    renderHud(); renderSide(); if (sel.size) renderSel();
+  } catch (e) { $('busy').textContent = '连不上服务器'; }
+  setTimeout(poll, S && S.busy ? 250 : 100);
+}
+
+(async function init() {
+  ST = await api('/api/static');
+  document.title = `模拟器 ${ST.level}`;
+  for (const l of ST.levels) { const o = document.createElement('option'); o.value = l.name; o.textContent = l.name + (l.play ? '' : '（无全程脚本）'); if (l.name === ST.level) o.selected = true; $('lv').appendChild(o); }
+  ST.stages.forEach((f, i) => { const b = document.createElement('button'); b.textContent = i + 1; b.title = f + '：用全程脚本替你打到这里'; b.onclick = () => { sel.clear(); lastEnding = null; modal(); api('/api/jump', { stage: i }).then(r => { if (!r.ok) flash(r.why); }); }; $('stages').appendChild(b); });
+  if (!ST.stages.length) $('stages').innerHTML += '<span class="small">（这关没有阶段旗）</span>';
+  resize(); buildTerrain();
+  const start = ST.sites.find(s => s.name === 'start'); if (start) { view.cx = start.x + 500; view.cy = start.y; }
+  view.k = Math.min(cv.width, cv.height) / 2200;
+  modal(`<h2>模拟器：${ST.level}</h2><p>这是 <code>sim.py</code> 的外壳：规则只有一份，所有操作都走剧本动作（派 / 攻击 / 放 / 占领 / 生产）。
+     右键是<b>攻击移动</b>（剧本动词“派”，模拟器还没有纯移动命令）。紫色虚线圈 = 这个单位有模拟器没模拟的部分。</p>
+     <p>空格暂停 · Esc 跳过场 · 1/2/4/8/尽快 快进 · 顶栏数字按阶段跳（用该关全程脚本替你打到那里）。</p>
+     <p><button id="go">开始（1×）</button></p>`);
+  $('go').onclick = () => { modal(); setSpeed(1); };
+  poll(); draw();
+})();
+</script>
+</body>
+</html>
