@@ -28,6 +28,15 @@ cut -- open's set-up, a closed box of field-0 ground (40 thick, 100 inside, no s
 row -- open's set-up, 11 player bunkers in a row 105 east of the soldier (330 long, ends open), made s1: the peacekeeper 0
   (never leaves, never goes round), the MCV 99 from s1 to s61 (one hit at most before the row stood): a structure in
   the line stops the fire. So 'sealed in, no fire' is the structures blocking the shot, not 'no way, no target'.
+erow -- row's set-up, the 11 bunkers the ENEMY's (s1): the peacekeeper 0 (stands), the MCV 99 and the middle bunker (Row
+  Wall 5) 100, both flat from s1 to s61: it fires at neither the MCV nor the bunkers.
+tank -- a Guardian (AttackRange 150, LINE_OF_SIGHT flag) at the lane's start, the MCV 130 east, 11 player bunkers 65 east:
+  the tank 0 (stands), the MCV 100 for s1..s61.  topen (control, no row): the tank 0, the MCV 98 s1, 96 s4-s10, 98 s13,
+  99 s16-s19, 100 from s22 (hit by 4 % at most, then back up: NOT a clean control -- the cannon should hit harder;
+  unexplained, the MCV may repair itself).
+arty / attack / aa / aaopen -- written (V4 launcher range 500, min 200, no LINE_OF_SIGHT flag; the Athena unit's only own
+  weapon is a 500 / min 200 targeter, so V4 stands in) but NOT measured: the bench's Direct3D device was lost
+  (another program held the screen) on four tries.
 (A first spawn run read 3 3 at s1: a named unit that does not exist yet counts as 'outside' an area; the scripts now
 also ask it to be inside a big area.)
 """
@@ -40,6 +49,7 @@ IFV = 'AlliedAntiAirVehicleTech1'
 FOOT = 'AlliedAntiInfantryInfantry'
 WALL = 'SovietBunker'
 ENEMY = 'AlliedMCV'
+TANK, V4, HELI = 'AlliedAntiVehicleVehicleTech1', 'SovietAntiStructureVehicle', 'SovietAntiGroundAircraft'
 BUILDING = 'AlliedPowerPlant'
 RING, R = 36, 150.0
 MAKE, ORDER = 1.0, 4.0
@@ -110,6 +120,15 @@ def mission():
         m.put(FOOT, f'seal {lane}', role=f'{lane} foot', name=f'UNIT - CNV Seal {k} Foot')
         m.put(ENEMY, f'seal {lane}', 210.0, 0.0, side='s1', angle=90.0, role=f'{lane} enemy',
               name=f'UNIT - CNV Seal {k} Enemy')
+    for lane, kind, dx in (('erow', FOOT, 210.0), ('attack', FOOT, 210.0), ('tank', TANK, 130.0),
+                           ('tankopen', TANK, 130.0), ('arty', V4, 350.0)):
+        k = lane.title()
+        m.put(kind, f'seal {lane}', role=f'{lane} foot', name=f'UNIT - CNV Seal {k} Foot')
+        m.put(ENEMY, f'seal {lane}', dx, 0.0, side='s1', angle=90.0, role=f'{lane} enemy', name=f'UNIT - CNV Seal {k} Enemy')
+    for lane in ('aa', 'aaopen'):
+        k = lane.title()
+        m.put(IFV, f'seal {lane}', role=f'{lane} foot', name=f'UNIT - CNV Seal {k} Foot')
+        m.put(HELI, f'seal {lane}', 200.0, 0.0, side='s1', role=f'{lane} enemy', name=f'UNIT - CNV Seal {k} Enemy')
     m.put(BUILDING, 'seal spawn', role='spawn building', name='UNIT - CNV Seal Spawn Building')
     return m
 
@@ -177,6 +196,78 @@ def row(m):
     return t
 
 
+def _wall(m, lane, side, dx, step=30.0, n=11, wall_hp=False):
+    """A row of n bunkers of `side`, dx east of the lane's start, centred on its y, made at MAKE s. Counters:
+    CNV_Seal_Foot (1 = left the start's 60, 2 = east of the row, 4 / 8 = north / south of the row's end),
+    CNV_Seal_Hp the target's health, CNV_Seal_Wall the middle bunker's health when wall_hp."""
+    t = _idle(m, lane, False)
+    _timers(t)
+    x0, y0 = m.site(f'seal {lane}')
+    half = step * (n - 1) / 2
+    names = [f'UNIT - CNV Seal {lane.title()} Wall {k}' for k in range(n)]
+    make = []
+    for k in range(n):
+        wp = f'Test Seal {lane.title()} Row {k}'
+        t.waypoints[wp] = (x0 + dx, y0 - half + step * k)
+        make.append(('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', names[k], WALL, m.team(side), wp))
+    t.scripts.append(Script(f'Test - seal {lane} make', [('TIMER_EXPIRED', 'Test Seal Make')], make))
+    unit = m.role(f'{lane} foot').name
+    e, hy, tag = x0 + dx + 25.0, half + 20.0, lane.title()
+    t.areas[f'Test Seal {tag} East'] = [(e, y0 - 400), (x0 + 900, y0 - 400), (x0 + 900, y0 + 400), (e, y0 + 400)]
+    t.areas[f'Test Seal {tag} North'] = [(x0 - 200, y0 + hy), (e, y0 + hy), (e, y0 + 400), (x0 - 200, y0 + 400)]
+    t.areas[f'Test Seal {tag} South'] = [(x0 - 200, y0 - 400), (e, y0 - 400), (e, y0 - hy), (x0 - 200, y0 - hy)]
+    for k, (area, nn) in enumerate(((f'Test Seal {tag} East', 2), (f'Test Seal {tag} North', 4),
+                                    (f'Test Seal {tag} South', 8))):
+        t.scripts.append(Script(f'Test - CNV_Seal_Foot {lane} r{k}', [('NAMED_INSIDE_AREA', unit, area)],
+                                [('INCREMENT_COUNTER', nn, 'CNV_Seal_Foot')], once=True))
+    if wall_hp:
+        counted('CNV_Seal_Wall', '中墙血', t, health=names[n // 2])
+    return t
+
+
+def erow(m):
+    """row with the 11 bunkers the ENEMY's (s1): does the soldier shoot the MCV, the bunkers, or nothing."""
+    return _wall(m, 'erow', 's1', 105.0, wall_hp=True)
+
+
+def tank(m):
+    """a Guardian tank (range 150), the MCV 130 east, the player's row 65 east."""
+    return _wall(m, 'tank', 'p1', 65.0)
+
+
+def tankopen(m):
+    return _idle(m, 'tankopen', False)
+
+
+def arty(m):
+    """a Soviet V4 launcher (range 500, min 200; no LINE_OF_SIGHT flag), the MCV 350 east, the player's row 200 east."""
+    return _wall(m, 'arty', 'p1', 200.0)
+
+
+def attack(m):
+    """row's set-up (lane 'attack'), plus an explicit attack order on the MCV at 4 s."""
+    t = _wall(m, 'attack', 'p1', 105.0)
+    t.scripts.append(Script('Test - seal attack', [('TIMER_EXPIRED', 'Test Seal Order')],
+                            m.order('attack', [m.role('attack foot').name], m.role('attack enemy').name, 'p1',
+                                    crew='SealAttack')))
+    return t
+
+
+def aa(m):
+    """an IFV (range 300), an s1 Twinblade (NO_ATTACK, on the ground) 200 east, the player's row 100 east."""
+    t = _wall(m, 'aa', 'p1', 100.0)
+    t.scripts.append(Script('Test - seal aa start', [], [('UNIT_CHANGE_OBJECT_STATUS', m.role('aa enemy').name,
+                                                          'NO_ATTACK', 1)]))
+    return t
+
+
+def aaopen(m):
+    t = _idle(m, 'aaopen', False)
+    t.scripts.append(Script('Test - seal aa start', [], [('UNIT_CHANGE_OBJECT_STATUS', m.role('aaopen enemy').name,
+                                                          'NO_ATTACK', 1)]))
+    return t
+
+
 def spawn(m):
     t = Test()
     _timers(t)
@@ -207,4 +298,6 @@ def spawn(m):
 
 
 MISSION = {'engine_seal': mission}
-CHECKS = {'engine_seal': {'move': move, 'idle': idle, 'open': idle_open, 'cut': cut, 'row': row, 'spawn': spawn}}
+CHECKS = {'engine_seal': {'move': move, 'idle': idle, 'open': idle_open, 'cut': cut, 'row': row, 'spawn': spawn,
+                           'erow': erow, 'tank': tank, 'topen': tankopen, 'arty': arty, 'attack': attack,
+                           'aa': aa, 'aaopen': aaopen}}
