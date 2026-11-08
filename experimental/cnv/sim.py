@@ -114,6 +114,14 @@ LEVELS = {'easy': 0, 'normal': 1, 'hard': 2}
 NEAR = 800.0                    # an enemy this close to something of the player's is a threat (the tension curve)
 ATTACK_SLACK = 10.0             # R3: an attacker stops this far inside its range of the target (a guess)
 CAPTURE_REACH = 20.0           # R4: an engineer this far outside a building's round is at its side (a guess)
+# HOOKS 7, ore mining (docs/engine/mining.md, bench 2026-11-05 engine_mining a-e): a load 250 (retail miners'
+# DeliveryCapacity), loaded at the node in 30 frames starting the frame after the miner docks, unloaded at the refinery
+# in 30 frames from its arrival, 8 a frame and the rest on the last; the node then plays 150 frames (move to extract,
+# extract, move to deliver: 60 + 30 + 60) before it takes the next miner; past MaximumGatheredValue (30000) a load is 60
+MINE_LOAD, MINE_DOCK, MINE_REST, MINE_FULL, MINE_EMPTY = 250, 30, 150, 30000, 60
+MINE_RETRY = 15                # no node / refinery found: the miner idles 1 s and looks again
+MINE_DRIVE_EXTRA = 50          # frames a leg takes beyond straight distance / speed: fitted to engine_mining a (a trip of
+                               # 269 = 2 x 104 + 30 + 30 + 1, the refinery 180 from its node, the miner 50 a second: 54)
 REACH = 300.0                  # 自动打掉: an enemy this close to something of the player's is being fought
 LINGER = 0.0                    # a killed unit's death (its slow death): still in the game's name cache, where it fell
                                 # (docs/engine/script-semantics.md 4.2) -- the bench (2026-10-28, probe death): out of
@@ -392,6 +400,8 @@ class Body:
     leaves: list = dataclasses.field(default_factory=list)      # what that death makes where it stood
     building: tuple = None                                      # (structure, (x, y), stand): told to build there (R5)
     unpack_end: int = None                                      # a structure made in the run: unpacking until then
+    mine: dict = None                                           # a harvester's trip (mine_due): state, node,
+                                                                # refinery, due frame, load, paid, leg
     ready_at: dict = dataclasses.field(default_factory=dict)   # special power -> the frame its reload ends (a cast,
                                                                 # the script's too, starts it anew: order_power)
 
@@ -660,6 +670,8 @@ class Sim:
         self.last_change = 0.0
         self.ai = {}                        # player -> woken at
         self.money = {}
+        self.nodes = {}                     # ore node name -> {'free': frame it takes a miner from, 'gathered', 'at'}
+        self.mined_to = None                # the last frame mine_due ran
         self.relations = {}
         self.players = dict(mission.map.PLAYERS)
         self.human = self.players['p1']
@@ -857,6 +869,126 @@ class Sim:
                 b.deposit_at = frame + b.deposit[2]
                 if b.owner != CIV and b.deposit[1] > 0:
                     self.money[b.owner] = self.money.get(b.owner, 0) + b.deposit[1]
+
+    # ---- mining: HOOKS 7 (simai: after the opening the AI lives on its miners' income)
+    def mine_due(self, frame):
+        """Every player's harvester (KindOf HARVESTER, not the neutral side's) up to `frame`, a frame at a time, the
+        collector's loop of docs/engine/mining.md: locate a node -> drive -> dock (the node loads it MINE_DOCK frames,
+        from the frame after it docked, once the node waits for a miner) -> the nearest unpacked refinery of its
+        owner's -> drive -> unload MINE_DOCK frames into the owner's money, load // MINE_DOCK a frame and the rest on the
+        last -> again. The node: its last one first (sticky), else the nearest (INFERRED: 'the first one found', the
+        search order not read). A miner coming to a node where another is docked waits there for good (the retail node
+        has no queue place: bench engine_mining b / e); one coming while the node plays its MINE_REST frames docks and
+        waits for it. A refinery unloads one miner at a time, the next waiting (INFERRED: its queue places not read).
+        A leg is straight distance at the miner's speed + MINE_DRIVE_EXTRA (fitted, no path finding); the miner is
+        drawn along it. A harvester given a path (a script's move) drops its trip and starts over once it stands."""
+        start = frame if self.mined_to is None else self.mined_to + 1
+        self.mined_to = frame
+        miners = [b for b in self.living() if 'HARVESTER' in b.kinds and b.owner != CIV and b.speed > 0]
+        if not miners:
+            return
+        nodes = [b for b in self.living() if 'orenode' in b.template.lower()]
+        for fr in range(start, frame + 1):
+            for b in miners:
+                if b.alive:
+                    self._mine(b, fr, nodes)
+
+    def _leg(self, b, fr, to, state):
+        """Off to `to`: there MINE_DRIVE_EXTRA + distance / speed frames on, in `state` meanwhile."""
+        d = math.hypot(to[0] - b.x, to[1] - b.y)
+        frames = int(round(d / b.speed * simunits.LIFE_FPS)) + MINE_DRIVE_EXTRA
+        b.mine.update(state=state, due=fr + frames, leg=((b.x, b.y), to, fr, fr + frames))
+
+    def _mine(self, b, fr, nodes):
+        """One frame of a harvester's trip (mine_due)."""
+        m = b.mine
+        if b.path:                                  # moved by someone else: start over once it stands
+            if m is not None:
+                self._undock(b)
+                b.mine = None
+            return
+        if m is None:
+            m = b.mine = {'state': 'locate', 'node': None, 'ref': None, 'due': fr, 'load': 0, 'n': 0, 'leg': None}
+        if m['leg']:                                # drawn along its drive
+            (x0, y0), (x1, y1), f0, f1 = m['leg']
+            k = min(1.0, (fr - f0) / max(1, f1 - f0))
+            b.x, b.y = x0 + (x1 - x0) * k, y0 + (y1 - y0) * k
+        if fr < m['due']:
+            return
+        st = m['state']
+        if st == 'locate':
+            node = self.bodies.get(m['node']) if m['node'] else None
+            if node is None or not node.alive:
+                node = min(nodes, key=lambda n: math.hypot(n.x - b.x, n.y - b.y), default=None)
+            if node is None:
+                m['due'] = fr + MINE_RETRY
+                return
+            m['node'] = node.name
+            self._leg(b, fr, (node.x, node.y), 'to node')
+        elif st == 'to node':
+            m['leg'] = None
+            n = self.nodes.setdefault(m['node'], {'free': 0, 'gathered': 0, 'at': None})
+            if n['at'] is not None and n['at'] != b.name and self._docked(n['at'], m['node']):
+                m['state'], m['due'] = 'stuck', 10 ** 9     # no queue place: it never gets in
+                return
+            n['at'] = b.name
+            m['state'], m['due'] = 'docked', max(fr + 1, n['free'])
+        elif st == 'docked':                        # the node's first loading frame
+            n = self.nodes[m['node']]
+            m['load'] = MINE_LOAD if n['gathered'] < MINE_FULL else MINE_EMPTY
+            if n['gathered'] < MINE_FULL:
+                n['gathered'] += MINE_LOAD
+            m['state'], m['due'] = 'loading', fr + MINE_DOCK - 1
+        elif st == 'loading':                       # full on its last loading frame: off the frame after (the trip
+            n = self.nodes[m['node']]               # 2 x 104 + 61 = 269 of engine_mining a)
+            n['at'], n['free'] = None, fr + MINE_REST + 1
+            m['state'], m['due'] = 'find refinery', fr + 1
+        elif st == 'find refinery':
+            now = self.frame_now()
+            refs = [r for r in self.living() if r.owner == b.owner and 'REFINERY' in r.kinds
+                    and not (r.unpack_end is not None and now < r.unpack_end)]
+            r = min(refs, key=lambda r: math.hypot(r.x - b.x, r.y - b.y), default=None)
+            if r is None:
+                m['due'] = fr + MINE_RETRY
+                return
+            m['ref'] = r.name
+            self._leg(b, fr, (r.x, r.y), 'to refinery')
+        elif st == 'to refinery':
+            m['leg'] = None
+            r = self.bodies.get(m['ref'])
+            if r is None or not r.alive:
+                m['state'] = 'find refinery'
+                return
+            busy = next((o for o in self.living() if o is not b and o.mine and o.mine['state'] == 'unloading'
+                         and o.mine['ref'] == r.name), None)
+            if busy is not None:                    # one at a time: wait for it to finish
+                m['due'] = busy.mine['due'] + MINE_DOCK - busy.mine['n']
+                return
+            m['state'], m['n'] = 'unloading', 0
+            self._mine(b, fr, nodes)
+        elif st == 'unloading':                     # money on the arrival frame and the next MINE_DOCK - 1
+            r = self.bodies.get(m['ref'])
+            if r is None or not r.alive:
+                m['state'] = 'find refinery'
+                return
+            m['n'] += 1
+            step = m['load'] // MINE_DOCK
+            give = step if m['n'] < MINE_DOCK else m['load'] - step * (MINE_DOCK - 1)
+            self.money[b.owner] = self.money.get(b.owner, 0) + give
+            m['due'] = fr + 1
+            if m['n'] >= MINE_DOCK:
+                m['state'] = 'locate'
+
+    def _docked(self, miner, node):
+        """Whether `miner` stands docked at (or is being loaded by) `node`."""
+        o = self.bodies.get(miner)
+        return o is not None and o.alive and o.mine is not None and o.mine['node'] == node \
+            and o.mine['state'] in ('docked', 'loading')
+
+    def _undock(self, b):
+        n = self.nodes.get(b.mine['node']) if b.mine and b.mine['node'] else None
+        if n and n['at'] == b.name:
+            n['at'] = None
 
     # ---- production: the second hook for simproxy's player (docs/engine/production.md, bench 2026-11-05)
     def factories(self, owner):
@@ -1769,6 +1901,7 @@ class Sim:
             self.build_due(eng.frame)
             self.blast_due(eng.frame)
             self.deposit_due(eng.frame)
+            self.mine_due(eng.frame)
             self.produce_due(eng.frame)
             if self.test and self.test.counters and (eng.frame - 1) % self.fps == 0 and self.t >= LAG:
                 self.series.append((int(round(self.t - LAG)), [self.counters.get(c, 0) for c, _ in self.test.counters]))
@@ -1804,6 +1937,7 @@ class Sim:
         self.expire(self.frame_now())
         self.build_due(self.frame_now())
         self.deposit_due(self.frame_now())
+        self.mine_due(self.frame_now())
         self.produce_due(self.frame_now())
         if self.ending:
             return

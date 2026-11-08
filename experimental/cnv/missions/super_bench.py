@@ -19,21 +19,21 @@ COLLIDER_AT, CURTAIN_AT = (-300.0, -300.0), (100.0, -175.0)
 PROTON_AT, CURTAIN_SPOT = (300.0, 700.0), (-400.0, 100.0)
 PROTON_DIST = {0: (0.0, 0.0), 150: (150.0, 0.0), 240: (240.0, 0.0), 300: (-300.0, 0.0)}
 TANK_DIST = {0: (0.0, 0.0), 150: (150.0, 0.0), 200: (-200.0, 0.0), 250: (0.0, -250.0),
-             350: (350.0, 0.0), 450: (318.0, -318.0), 600: (0.0, -600.0)}     # i / j use 0 and 150; k 150-250; l 350-600
+             350: (350.0, 0.0), 450: (318.0, -318.0), 600: (25.0, -595.0)}     # i / j use 0 and 150; k 150-250; l 350-600
 FOE_AT = {0: (0.0, 200.0), 150: (150.0, 200.0), 200: (-200.0, 200.0), 250: (0.0, -450.0),   # an enemy tank behind each
-          350: (350.0, 200.0), 450: (459.0, -459.0), 600: (0.0, -800.0)}
+          350: (350.0, 200.0), 450: (459.0, -459.0), 600: (20.0, -800.0)}
 NFOE_AT = {0: (0.0, 300.0), 150: (150.0, 300.0)}     # n (nanoswarm, ring 200): these foes start outside the one-shot ring
 NANO, POWER_N = 'JapanSuperWeapon', 'SpecialPowerNanoSwarmHive'
 PSI, POWER_D = 'JapanSuperWeaponAdvanced', 'SpecialPowerTelekineticProjectorDevice'     # the Psionic Decimator
-NANO_AT, PSI_AT, PSI_SPOT = (500.0, -300.0), (-800.0, -300.0), (200.0, -800.0)
+NANO_AT, PSI_AT, PSI_SPOT = (500.0, -300.0), (-800.0, -300.0), (190.0, -750.0)
 PSI_DIST = {0: (0.0, 0.0), 150: (150.0, 0.0), 250: (250.0, 0.0), 350: (350.0, 0.0)}
 VAC, POWER_V = 'SovietSuperWeaponAdvanced', 'SpecialPowerVacuumBomb'
-VAC_AT, VAC_SPOT = (-300.0, -500.0), (300.0, -600.0)
+VAC_AT, VAC_SPOT = (-300.0, -500.0), (270.0, -600.0)
 VAC_DIST = {0: (0.0, 0.0), 150: (150.0, 0.0), 280: (280.0, 0.0), 350: (-350.0, 0.0)}
 
 # g / h: curtain radius with one foe per tank (checks/engine_super.py): spot and tank directions, far from any base
-RAD_SPOTS = {'g': ('Test Radius Spot', (-80.0, 1325.0)), 'h': ('Test Radius Far', (1120.0, -75.0)),
-             'a': ('Test Radius Edge', (1120.0, -75.0))}
+RAD_SPOTS = {'g': ('Test Radius Spot', (-110.0, 1355.0)), 'h': ('Test Radius Far', (1170.0, -75.0)),
+             'a': ('Test Radius Edge', (1170.0, -75.0))}
 RAD_DIRS = {'g': {100: (0, -1), 300: (1, 0), 500: (-1, 0), 800: (0, 1)},
             'a': {850: (-1, 0), 950: (0, -1), 1050: (0, 1), 1150: (1, 0)},
             'h': {1200: (-1, 0), 1600: (0, -1), 2000: (0, 1), 2400: (0.7071, -0.7071)}}

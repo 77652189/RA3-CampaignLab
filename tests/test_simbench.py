@@ -562,3 +562,39 @@ def test_power_on_the_coil_kills_one_tank_per_125_frames():
     s, rows = _powerdef('on')
     lost = [r['帧数'] for i, r in enumerate(rows) if i and r['坦克'] < rows[i - 1]['坦克']]
     assert 100 <= lost[1] - lost[0] <= 150
+
+
+# ---- mining (HOOKS 7): engine_mining's layout -- the refinery 180 from a lone node -- on Niagara's bluff ore (the
+# probe map has no ground for the simulator); the loop alone (mine_due), frames from 0
+def _mining(miners=1, frames=1200):
+    import build
+    import sim
+    m, _, _ = build.resolve('aiskirm', None)
+    s = sim.Sim(m, None)
+    node = next(b for b in s.living() if b.template == 'OreNode' and b.x > 3300 and b.y < 1400)
+    p = s.human
+    s.add('test refinery', 'AlliedRefinery', p, node.x + 180.0, node.y)
+    for k in range(miners):
+        s.add(f'test miner {k}', 'AlliedMiner', p, node.x + 180.0, node.y)
+    s.money[p] = 0
+    got = []
+    for fr in range(frames):
+        s.mine_due(fr)
+        got.append(s.money[p])
+    return got
+
+
+def test_mining_pays_8_a_frame_and_a_trip_takes_269():
+    """bench engine_mining a: 250 in 30 frames (8 a frame, the rest on the last), the next trip's first money 269
+    frames after the last's (the trip's drives fitted to it, sim.MINE_DRIVE_EXTRA)."""
+    got = _mining()
+    starts = [f for f in range(1, len(got)) if got[f] > got[f - 1] and got[f - 1] % 250 == 0]
+    first = starts[0]
+    assert [got[first + k] - got[first - 1] for k in (0, 1, 8, 28, 29)] == [8, 16, 72, 232, 250]
+    assert [b - a for a, b in zip(starts, starts[1:])] == [269] * (len(starts) - 1) and len(starts) >= 3
+
+
+def test_mining_a_second_miner_on_one_node_adds_nothing():
+    """bench engine_mining b / d: two miners on one node earn what one does -- the other waits there for good (the
+    retail node has no queue place)."""
+    assert _mining(miners=2) == _mining(miners=1)

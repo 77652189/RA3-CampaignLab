@@ -85,6 +85,9 @@ bench 2026-11-07 round 3 (Sonnet probe; checks f / g / h / a; mission 'Test Radi
   h CampSuperH  tanks 1200 / 1600 / 2000 (spot (2300, 2300)): 满 = 20 / 21 / 23 -- hit at once (the foes do fire), NOT protected.
                 2400 (south-east diagonal) counter garbled (7 / 25 / 77 flicker), ignore.
   a CampSuperA  tanks 850 / 950 / 1050 / 1150 (same spot as h): 满 = 20 / 23 / 23 / 25 -- all hit at once, none protected.
+                2026-11-08, the spot moved 50 east off the trees (test_maps scenery): 20 / never / 23 / 25 -- the 950 tank
+                is not hit at all (also with the spot 40 east): its foe, not the curtain (950 is past 850), so not a
+                radius reading; h (same spot) still reads 20 / 24 / 23 / 25.
   Conclusion: the curtain's radius is between 800 (protected) and 850 (not): ~800+, far above the XML Range 100. The earlier
   k / l / m / o / s contradiction (832 once hit, once not) came from the foes' own target choice (they shot buildings), not the
   radius; with one foe forced at each tank the line is clean. Not measured: the exact value in 800-850.

@@ -92,17 +92,14 @@ def test_skirmish_ai_barracks_mix_matches_the_bench(skirmish):
     assert set(made) == {'AlliedScoutInfantry', 'AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry'}, made
 
 
-@pytest.mark.xfail(strict=True, reason='after the opening the unit builder lives on income (CoopBudget PRODUCTION '
-                                       '85 %); the simulator\'s miners do not mine (simai.md HOOKS 7) -- bench c: '
-                                       'Peacekeepers again at 125 / 142 / 154 s')
 def test_skirmish_ai_builds_again_after_the_opening(skirmish):
+    """After the opening the unit builder lives on income (CoopBudget PRODUCTION 85 %): the miners' (sim.mine_due,
+    HOOKS 7) -- bench c: Peacekeepers again at 125 / 142 / 154 s."""
     assert [s for s, t in _barracks_out(skirmish) if 120 <= s < 160]
 
 
-@pytest.mark.xfail(strict=True, reason='bench a/c: the first attack team (8) leaves ~133 s after the wake; the '
-                                       'simulator\'s never leaves -- no income after the opening (HOOKS 7), so the '
-                                       'barracks stops at the opening deposit (~9 infantry)')
 def test_skirmish_ai_builds_makes_units_and_attacks(skirmish):
+    """Bench a/c: the first attack team (8) leaves ~133 s after the wake (on the miners' income, HOOKS 7)."""
     w = skirmish
     (b,) = w.brains.values()
     made = collections.Counter(t for f, what, t in b.trace if what == 'out')
