@@ -462,8 +462,8 @@ class Brain:
 
     def earn(self):
         """AIPlayer.earn: the rise of the player's money since the last tick is income for the AI's accounts
-        (INFERRED: a frame that both earns and pays counts the net; the simulator's miners do not mine yet, HOOKS 7,
-        so after the wake's script money -- in the opening, all to SLUSH_FUND -- the income is the deposits')."""
+        (INFERRED: a frame that both earns and pays counts the net; after the wake's script money -- in the opening,
+        all to SLUSH_FUND -- the income is the miners' deposits, Sim.mine_due, HOOKS 7)."""
         now = self.sim.money.get(self.player, 0)
         if self.money_seen is not None and now > self.money_seen:
             self.ai.earn(now - self.money_seen)
