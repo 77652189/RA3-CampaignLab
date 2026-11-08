@@ -384,3 +384,25 @@
 - 先盘点这些脚本动作在 `sim.py` 里现在是"执行了没记录"还是"直接跳过"，再定先做哪项；时间和行为照 ADR 0019 必要时上测试台量（`bench_menu`、`bench_caption`）。`sim.py` / `simunits.py` 归 A，要钩子写清发总控；`simproxy.py` / `ra3model` 归 B。
 - 完成标准：A4 跑一遍出一份"玩家时间线"（镜头、台词、操作锁、目标），K1、K5 的规则检查改在模拟器上跑，有测试。
 - 本会话上下文约 17 万，已超 15 万，所以交接。
+
+### 第三十二个会话（11-07，总控令，ADR 0022）：展示逻辑层 `experimental/cnv/simshow.py` 做完，A4 出了玩家时间线
+
+- **做法**：没动 `sim.py`。`ShowSim(sim.Sim)` 只多记录、不改规则（每个动作仍交给模拟器自己的 `act`）；读数函数都在 `simshow.py`：`black_runs`（K5）、`late_lines`（K1，就是 `Sim.late_captions`）、`pushed_out`（字幕被顶掉没读完）、`too_many`（I1，`strip.too_deep`）、`input_spans` / `first_control`（过场锁操作和交还）、`timeline` / `report`（玩家时间线）。命令：`python -I -X utf8 experimental/cnv/simshow.py a4 [--check win --until 900] --out work/player_timeline/a4.md`（`work/` 不进 git；`--check win` 是模拟器里整局打到赢，约 45 秒）。测试 `tests/test_simshow.py`（14 条：小任务里镜头靠边 / 平移 / 黑条 / 边界收窄 / 检查自己的镜头不算；台词 6 条才晚；被顶掉；锁操作；计数器；A4 开场时间线；A4 去掉镜头脚本变异；全部 16 关 K5 和 K1 on 模拟器）。
+- **盘点结果（模拟器里这些脚本动作原来的状态）**：
+  | 动作 | 原来 | 现在 |
+  | --- | --- | --- |
+  | `MOVE_CAMERA_TO` / `_NAMED` | 执行，只存目标点（`Sim.camera`），不记秒数、起点、时间 | `ShowSim.moves`，平移按线性、缓入缓出不模拟 |
+  | `CAMERA_FOLLOW_NAMED` / `STOP_FOLLOW` | 当成跳一下 / 忽略 | `follows`，镜头坐在单位上（真游戏落后 300，没模拟） |
+  | `CAMERA_LETTERBOX_BEGIN/END` | `IGNORED`，没有任何痕迹 | `bars`；取景半宽高用 `model.LETTERBOX_HALF`（过场）/ `VIEW_HALF`（玩法） |
+  | 游戏默认开局镜头 | 没有 | `cam0` = 地图 `start` 点（K5 的 I23 就是这个） |
+  | 取景里有哪些单位 | 没有 | `shots`（每个 DT 一张：中心、出界量、框里的非平民单位）；雾不管 |
+  | `DISABLE/ENABLE_INPUT` | 只留最后状态和一条备注 | `locks` 历史 |
+  | 字幕框 / 对白面板 / `late_captions` | 已有 | 沿用；多记了脚本要求的秒数（`asked_caps`），用来判"被顶掉" |
+  | `DISPLAY_COUNTER` | 引擎模型自己处理，模拟器看不见 | 读 `eng.log`，加每秒读数变化（`shown_ui`） |
+  | `HIDE_COUNTER` / `HIDE_COUNTDOWN_TIMER` | 忽略 | 记（每帧重复收起只记一次） |
+  | 目标、小地图闪点、信息框、倒计时 | 已记在 `Sim.log` | 沿用，并进时间线 |
+  | 配音 | 记事件时刻 | 不变。**录音自身长度和引擎的对白队列没模拟**（音频何时真播不知道） |
+- **没验、或者是猜的**（ADR 0019 该上测试台量，这次没量）：平移缓动、跟随偏移、开局头 ~1 秒用游戏默认镜头（模型的 flag 链决定的，所以 `BLACK_MIN`=2 秒不算黑边；真游戏头几帧到底显示什么没量）、`LETTERBOX_HALF` 用的是 11-05 量的 410×170。
+- **A4 跑出来的东西**：开场过场 0:00～1:19 锁操作（`InScene` 旗同段），1:19 交还；5:11～6:41 又有两段过场（赢之前的收尾）。K5 没有黑边。**K1 有一处**（`--check win` 整局打赢那一遍）：9:03 一口气来 4 条功能字幕（`CNV_A4_Show_65/66/74/80`），排队到 9:12～9:18 才出，"号角响了！"晚了约 10 秒。是结局前一堆事件挤在一起，不是 A4 的闲话。原来 `test_architecture` 的 G3B 只跑"玩家什么都不做"那一遍，抓不到。**没改 A4 数据**（关卡制作暂缓）；要不要错开或合并，归后面恢复出关时定。
+- **给 A（总控转）的钩子**，`sim.py` 里做成原生的话 `ShowSim` 能变薄（现在都不急）：① `act` 里 `MOVE_CAMERA_TO` 存 `(t, 起点, 终点, 秒数)` 而不只存终点；② `CAMERA_LETTERBOX_*`、`CAMERA_FOLLOW_NAMED`、`HIDE_COUNTER` 别放进 `IGNORED`；③ `show_caption` 保留脚本要的秒数；④ 开局把 `Sim.camera` 设成地图 `start`。清单也写在 `simshow.HOOKS`。
+- **下一步（建议）**：① 把 `simshow.problems` 并进 `simproxy` 的 `--compare` 输出（B 的文件，要总控转告）；② 测试台量一次开局头几帧的镜头和 `LETTERBOX_HALF`（`bench_start(menu_frames=2)` 存帧）；③ 同样的"整局打赢"再对 A4 以外的关跑（需要各关有能打赢的剧本）。
