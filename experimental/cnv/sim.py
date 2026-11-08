@@ -661,7 +661,8 @@ class Sim:
         self.banned = set()                 # (player, template in lower case): ALLOW_DISALLOW_ONE_BUILDING 0
         self.banned_ups = set()             # (player, upgrade in lower case): ALLOW_DISALLOW_ONE_UPGRADE 0
         self.border = 0
-        self.reveal_all = False
+        self.reveal_all = False             # the player's MAP_REVEAL_ALL
+        self.revealed_to = set()            # other players given MAP_REVEAL_ALL (side_sees: they see everything)
         self.reveals = {}                   # name -> (x, y, r)
         self.peeks = []                     # (x, y, r): a reveal that is not permanent (taken as for this tick on)
         self.camera = None
@@ -1550,6 +1551,8 @@ class Sim:
                 ok = True
             elif side == self.human:
                 ok = self.sees(t.x, t.y, air)
+            elif side in self.revealed_to:
+                ok = True
             else:
                 ok = any(not self.enemy(side, v.owner) and v.owner != CIV and self.looks(v, t.x, t.y, air)
                          for v in self.living())
@@ -1734,11 +1737,17 @@ class Sim:
             self.note('边界', f'可玩区换成 {names[self.border] if self.border < len(names) else self.border}')
             self.change()
         elif name in ('MAP_REVEAL_ALL', 'MAP_REVEAL_ALL_PERM'):
-            self.reveal_all = True
-            self.note('揭图', '全图')
+            if a and a[0] != self.human and a[0] in self.players.values():   # another side's: its own sight
+                self.revealed_to.add(a[0])
+            else:
+                self.reveal_all = True
+                self.note('揭图', '全图')
         elif name == 'MAP_REVEAL_ALL_UNDO_PERM':
-            self.reveal_all = False
-            self.note('揭图', '全图收回')
+            if a and a[0] != self.human and a[0] in self.players.values():
+                self.revealed_to.discard(a[0])
+            else:
+                self.reveal_all = False
+                self.note('揭图', '全图收回')
         elif name in ('MAP_REVEAL_PERMANENTLY_AT_WAYPOINT', 'MAP_REVEAL_AT_WAYPOINT'):
             p = self.point(a[0])
             if p:

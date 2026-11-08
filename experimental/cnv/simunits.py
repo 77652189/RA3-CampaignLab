@@ -168,7 +168,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v2.json')     # v2: defines resolved (2026-10-29)
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v3.json')     # v3: weapon inheritFrom (2026-11-08)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
 ARMOR_DEFAULT = 100.0           # a damage type an armour does not name: taken in full (a guess)
@@ -214,26 +214,47 @@ def _weapon_files():
 
 def _weapons(texts):
     """Weapon template id -> {range, damage, type, shots, cycle, anti, warhead}; a projectile's damage is its
-    warhead's (filled in by _resolve)."""
-    out = {}
+    warhead's (filled in by _resolve). A template with inheritFrom takes what it does not write from its parent
+    (the flak trooper's anti-air SovietAntiVehicleFlakLauncher_Aircraft writes only its range and anti mask: without
+    this it had no damage and never fired at aircraft; bench 2026-11-08 engine_air flak*)."""
+    own, parent = {}, {}
     for text in texts:
         for head, body in _blocks(text, 'WeaponTemplate'):
             wid = _attr(head, 'id')
             if not wid:
                 continue
-            dmg = [(_num(_attr(h, 'Damage')), _attr(h, 'DamageType', ''))
-                   for h, _ in _blocks(re.sub(r'<!--.*?-->', '', body, flags=re.S), 'DamageNugget')]
-            war = [_attr(h, 'WarheadTemplate') for h, _ in _blocks(re.sub(r'<!--.*?-->', '', body, flags=re.S),
-                                                                     'ProjectileNugget')]
+            bare = re.sub(r'<!--.*?-->', '', body, flags=re.S)
+            dmg = [(_num(_attr(h, 'Damage')), _attr(h, 'DamageType', '')) for h, _ in _blocks(bare, 'DamageNugget')]
+            war = [_attr(h, 'WarheadTemplate') for h, _ in _blocks(bare, 'ProjectileNugget')]
             fire = re.search(r'<FiringDuration\b[^>]*MinSeconds="([^"]+)"', body)
             reload_ = re.search(r'<ClipReloadTime\b[^>]*MinSeconds="([^"]+)"', body)
             delay = re.search(r'<DelayBetweenShots\b[^>]*MinSeconds="([^"]+)"', body)
-            out[wid] = dict(range=_num(_attr(head, 'AttackRange')), damage=sum(d for d, _ in dmg),
-                            type=next((t for d, t in dmg if t), ''),
-                            shots=int(_num(_attr(head, 'ClipSize'), 1.0 if not _attr(head, 'ClipSize') else 0.0)),
-                            fire=_secs(fire.group(1)) if fire else 0.0, reload=_secs(reload_.group(1)) if reload_ else 0.0,
-                            delay=_secs(delay.group(1)) if delay else 0.0,
-                            anti=(_attr(head, 'RequiredAntiMask') or '').split(), warhead=next((w for w in war if w), None))
+            got = {}                                            # only what this template writes
+            if _attr(head, 'AttackRange'):
+                got['range'] = _num(_attr(head, 'AttackRange'))
+            if dmg:
+                got['damage'], got['type'] = sum(d for d, _ in dmg), next((t for d, t in dmg if t), '')
+            if any(war):
+                got['warhead'] = next(w for w in war if w)
+            if _attr(head, 'ClipSize'):
+                got['shots'] = int(_num(_attr(head, 'ClipSize'), 0.0))
+            for k, mt in (('fire', fire), ('reload', reload_), ('delay', delay)):
+                if mt:
+                    got[k] = _secs(mt.group(1))
+            if _attr(head, 'RequiredAntiMask'):
+                got['anti'] = _attr(head, 'RequiredAntiMask').split()
+            own[wid], parent[wid] = got, _attr(head, 'inheritFrom')
+    base = dict(range=0.0, damage=0.0, type='', shots=1, fire=0.0, reload=0.0, delay=0.0, anti=[], warhead=None)
+    out = {}
+
+    def get(wid, depth=0):
+        if wid not in out:
+            p = parent.get(wid)
+            up = get(p, depth + 1) if p in own and depth < 10 else base
+            out[wid] = {**up, **own[wid]}
+        return out[wid]
+    for wid in own:
+        get(wid)
     return out
 
 

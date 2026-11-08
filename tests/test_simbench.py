@@ -601,3 +601,72 @@ def test_mining_a_second_miner_on_one_node_adds_nothing():
     """bench engine_mining b / d: two miners on one node earn what one does -- the other waits there for good (the
     retail node has no queue place)."""
     assert _mining(miners=2) == _mining(miners=1)
+
+
+# ---- air (ADR 0022 item 5): flight over terrain, anti-air reach, air-to-ground (sim.Ground.route 'air', Sim.can_hit,
+# Sim.in_range; simunits weapon inheritFrom). bench 2026-11-08 engine_air (readings in checks/engine_air.py, map
+# maps/probe_air.py): a Twinblade (Speed 150, radius 19.4) flies 1 200 over flat ground, a sea trench or a cliff;
+# hovers before a flak cannon (300, radius 14-21) / a flak trooper (anti-air 300 by inheritFrom) / a Guardian
+# (no ANTI_AIRBORNE); attacks a NO_ATTACK Guardian 600 off. A Twinblade placed by the map stands on the ground and is
+# no air target till it moves (bench; not in the simulator: a placed Kirov flies, engine_float -- what tells them
+# apart is not read), so the probe moves it 60 at Go.
+def _air_rows(variant, until=25.0):
+    import build
+    import sim
+    m, t, _ = build.resolve(f'air_{variant}', 'frames')
+    s = sim.Sim(m, t)
+    s.run(until)
+    labels = [lab for _, lab in t.counters]
+    return [(k, dict(zip(labels, row))) for k, row in s.series if k >= 1]
+
+
+@pytest.mark.parametrize('variant', ['fly_flat', 'fly_sea', 'fly_cliff'])
+def test_air_flies_straight_over_sea_and_cliff_at_its_speed(variant):
+    """Bench: 114 frames from Go to the end box, the middle box at s4-s5, whatever lies under the lane. The
+    simulator has no acceleration (bench ~0.5 s): 8 frames early is in."""
+    rows = _air_rows(variant, 12.0)
+    flown = next(r['飞帧'] for _, r in rows if r['到达'] == 1)
+    assert abs(flown - 114) <= 10
+    mid = [k for k, r in rows if r['中途'] == 1]
+    assert mid and abs(mid[0] - 4) <= 1
+
+
+@pytest.mark.parametrize('variant, hit', [('gun280', True), ('gun320', True), ('gun370', False),
+                                          ('flak280', True), ('flak312', True)])
+def test_air_anti_air_reaches_edge_to_edge_on_the_flat(variant, hit):
+    """Bench: the flak cannon fires at 320 centre to centre (300 + both radii, 2D: with the 130 flight height counted
+    it would not) and not at 370; the flak trooper's anti-air weapon (written as inheritFrom: no damage of its own)
+    fires in place at 280 and 312. The cannon kills by s5 (bench 4 left at s5), the trooper takes ~4 a second (the
+    simulator ~5.5: dead s18 against the bench's 4 at s24)."""
+    rows = _air_rows(variant)
+    assert all(r['原地'] == 1 for _, r in rows)
+    if not hit:
+        assert all(r['机血'] == 100 for _, r in rows)
+        return
+    assert rows[0][1]['机血'] < 100
+    gone = next(k for k, r in rows if r['机血'] <= 5)
+    assert abs(gone - (5 if variant.startswith('gun') else 22)) <= 4
+
+
+@pytest.mark.xfail(strict=True, reason='bench engine_air flak354: with both sides revealed the idle trooper walked in '
+                   'on a Twinblade 354 off (334 beyond its radius, vision 200) and shot it; idle_chase only goes '
+                   'within VisionRange + the target radius (R8, read unrevealed) -- the scan with a reveal not known')
+def test_air_flak_trooper_walks_in_from_354_when_revealed():
+    rows = _air_rows('flak354')
+    assert any(r['原地'] == 0 for _, r in rows) and rows[-1][1]['机血'] < 50
+
+
+def test_air_a_guardian_does_not_shoot_up():
+    rows = _air_rows('noaa', 20.0)
+    assert all(r['机血'] == 100 and r['原地'] == 1 for _, r in rows)
+
+
+def test_air_the_twinblade_attacks_from_its_reach_not_overhead():
+    """Bench: within 300 from s3, 200 from s4, never 100 (it stops at 150 + both radii); the tank's first loss s4, 5
+    left from s18. The simulator: one second later, steadier fire (no volleys), within 4 s of the bench."""
+    rows = _air_rows('a2g', 40.0)
+    near = lambda lab: next(k for k, r in rows if r[lab] == 1)          # noqa: E731
+    assert abs(near('近300') - 3) <= 1 and abs(near('近200') - 4) <= 1
+    assert all(r['近100'] == 0 for _, r in rows)
+    assert abs(next(k for k, r in rows if r['坦克血'] < 100) - 4) <= 2
+    assert abs(next(k for k, r in rows if r['坦克血'] <= 8) - 18) <= 4
