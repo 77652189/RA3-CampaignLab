@@ -19,7 +19,7 @@ every frame (the simulator moves in DT ticks; the AI is ticked for each frame of
               aiopen: 161 frames a Riptide = 151 + door 10), none before the factory has unpacked (UnpackTime).
   offers      the unit builder's candidates (Sim.offers) with their state (0 an idle factory, 1 all busy), standard
               combat flag and cost; it orders for no team, beside the opening, on the AI's PRODUCTION account.
-  earn        the player's money rising since the last tick = income, split into the AI's accounts by its budget.
+  money       the player's money now (Sim.money) = ai.money: an account spends its Deposits + its budget share of it.
   teams      ai.units = the AI's own movers (not HARVESTER, not IGNORES_SELECT_ALL) as stable Unit wrappers;
               team_point = the closest enemy structure to the AI's yard.
   states      ctx: the mission's flags (ScriptedFlagHeuristic), 'has' (its templates), 'building' (the kinds queued),
@@ -147,7 +147,6 @@ class Brain:
         self.woke = self.frame = frame
         self.ids, self.hp, self.hurt_at = {}, {}, {}     # body name -> Thing id; last hp; id -> frame last hurt
         self.seen_t = None              # the sim time the view was last built at
-        self.money_seen = None          # the player's money at the last tick (earn)
         self.fired = []                 # (frame, team key, unit, command): unit powers the micro wanted
         yards = self.yards()
         self.home = (yards[0].x, yards[0].y) if yards else (0.0, 0.0)
@@ -461,13 +460,9 @@ class Brain:
         return self.ai.start if self.ai.start is not None else self.woke
 
     def earn(self):
-        """AIPlayer.earn: the rise of the player's money since the last tick is income for the AI's accounts
-        (INFERRED: a frame that both earns and pays counts the net; after the wake's script money -- in the opening,
-        all to SLUSH_FUND -- the income is the miners' deposits, Sim.mine_due, HOOKS 7)."""
-        now = self.sim.money.get(self.player, 0)
-        if self.money_seen is not None and now > self.money_seen:
-            self.ai.earn(now - self.money_seen)
-        self.money_seen = now
+        """AIPlayer.money: the player's money now (AIPlayer.available: an account spends its Deposits + its budget
+        share of the money -- INFERRED, bench engine_aiskirm d / f; the income is in it, Sim.mine_due, HOOKS 7)."""
+        self.ai.money = self.sim.money.get(self.player, 0)
 
     def tick(self, frame):
         self.frame = frame

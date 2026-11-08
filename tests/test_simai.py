@@ -111,14 +111,11 @@ def test_skirmish_ai_builds_makes_units_and_attacks(skirmish):
     assert min(x.died_at for x in lost) > (gone[0][0] / simai.FPS), 'died before the team left'
 
 
-@pytest.mark.xfail(strict=True, reason='work/re/simai.md round 39: after the opening the accounts get only the '
-                   "miners' income x shares (the split is NOT READ); bench c spends ~4650 in 120-177 s, more than two "
-                   'miners can earn, so the bank feeds the accounts; tried: re-split the bank at the budget change '
-                   '(126.0 s) -- not landed, ADR 0019 two tries')
 def test_skirmish_ai_builds_again_as_soon_as_the_opening_is_done(skirmish):
     """Bench c: the 4th Peacekeeper out 125 s after the wake, i.e. the barracks restarts the moment the opening's
-    budget ends (~120 s), and then hardly stops (9 infantry + engineer by 177 s). The sim waits for miner trips
-    (151.5 s)."""
+    budget ends (~120 s), and then hardly stops (9 infantry + engineer by 177 s). It spends its budget share of the
+    bank, not only the miners' income (AIPlayer.available, INFERRED from bench d / f; round 39's sim waited for miner
+    trips, 151.5 s)."""
     again = [s for s, t in _barracks_out(skirmish) if s >= 120]
     assert again and again[0] <= 130, again
 

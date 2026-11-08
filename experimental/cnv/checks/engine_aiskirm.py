@@ -49,6 +49,33 @@ RESULTS c (bench 2026-11-07; PASS; after-wake seconds = bench s minus 8.1; templ
     total stays 4, so they return), 4 at s150, 1 at s152 (3 out again). Engineer built s144 (136 s).
   Reading: the first attack team leaves ~133 s after wake with 3 Peacekeepers (plus the Riptides); the barracks'
     4th Peacekeeper (125 s) is built just before and stays or comes back.
+
+  d  AI钱 / 塔数 / 建筑数 / 兵数   (AI钱 = s1's money each frame; 塔数 = AlliedBaseDefense + AlliedBaseDefenseAdvanced;
+     建筑数 = yard + power + barracks + refinery + war factory + towers; 兵数 = Peacekeeper + Javelin + Riptide + dog.
+     Mission aiskirm (50000) and aiskirmlow (15000, CampAISkLow). f = d + PLAYER_GIVE_MONEY 20000 to s1, aiskirmlow only.)
+RESULTS d (bench 2026-11-07; PASS; after-wake seconds = bench s minus the first-money second: s8 for aiskirm, s9 for
+  aiskirmlow; the run ends ~245 s after wake, longer than the 200 s asked):
+  aiskirm d, AI钱 at 0/60/100/110/120/130/140/160/180/200 s after wake: 49996, 43050, 41063, 40810, 40790, 40389,
+    39740, 38300, 35685, 33608. Per 10 s: ~1160 (0-60 s), ~500 (60-100), ~260 (100-110), ~0-20 (110-120), ~400 (120-130),
+    ~650 (130-140), ~720 (140-160), ~1300 (160-180), ~1040 (180-200). No cliff at 120 s: money goes out steadily.
+    Towers: first at s184 (176 s after wake), second at s204 (196 s). 建筑数 1, 2 at 11 s, 3 at 21, 4 at 41, 5 at 61,
+    6 at 71, 7 at 95, 8 at 163, 10 at 176 (a tower + one more), 11 at 196. 兵数: 8 from 52 s to 114 s, 9 at 115, 10 at 129,
+    11 at 145, 12 at 147, 13 at 170, ... 18 at 201, 26 at 237.
+  aiskirmlow d: AI钱 at 0/60/100/110/120/130/140/160/180/200: 14966, 8089, 5989, 5700, 5670, 5405, 4830, 2400, 1183,
+    800. Per 10 s: ~1150 (0-60), ~525 (60-100), ~290 (100-110), ~30 (110-120), ~265 (120-130), ~575 (130-140), ~1215
+    (140-160), ~610 (160-180), ~190 (180-200). Money under 1300 from 166 s on, 85 at s234, 50 at s235 (floor). NO tower
+    in the whole run (0 to s279). 建筑数 2 at 10 s, 3 at 20, 4 at 42, 5 at 61, 6 at 71, 7 at 92, 8 at 153, 9 at 162 (not
+    towers). 兵数 8 from 52 s to 103, 9 at 104, 10 at 125, 12 at 147, 13 at 157, 15 at 171, 19 at 241.
+RESULTS f (aiskirmlow, 20000 given at s166 = ~157 s after wake s9, not 160: the timer starts a bit early; PASS):
+  AI钱 at 0/60/100/110/120/130/140/160 s after wake: 14960, 7986, 5835, 5630, 4853, 3315, 1671, ~410 (s165, just before
+    the gift); the gift: 405 -> 20276 at s166. After it: 161 s 19812, 170 s 18578 (s179), 180 s 17022 (s189), 190 s
+    15644 (s199), 200 s 14491 (s209), 210 s 13586 (s219), 230 s 11740 (s239). Spent after the gift: 1355 in the first 10 s,
+    ~2670 in 20 s, ~4120 in 30 s (income included), ~5800 in 43 s, ~8500 in 70 s (s236).
+    Before the gift this run spent faster than aiskirmlow d (money 5300 at s126 vs s142 there).
+  Tower: the first at s186 (177 s after wake, ~20 s after the gift), one only. 建筑数 9 at 138 s, 10 at 177 (that tower).
+    兵数 9 at 102 s, 10 at 114, 12 at 123, 13 at 133, 15 at 145, 16 at 151, 17 at 157, 18 at 162, 22 at 174, 27 at 197,
+    30 at 238. The tower came at the same ~176 s as in aiskirm d (50000), so it does not look tied to the gift but to
+    time plus having money then (aiskirmlow d, money ~1500 at 177 s, had none).
 """
 from parts import Script, Test, counted, square
 
@@ -139,4 +166,61 @@ def c(m):
     return t
 
 
-CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c}}
+TOWERS = ('AlliedBaseDefense', 'AlliedBaseDefenseAdvanced')
+BUILDINGS = ('AlliedConstructionYard', 'AlliedPowerPlant', 'AlliedBarracks', 'AlliedRefinery', 'AlliedWarFactory')
+ARMY = ('AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry', RIPTIDE, DOG)
+CAP = 24                            # a sum reads at most this many per template
+
+
+def _sum(t, m, s1, counter, label, templates):
+    """A shown counter that is the total of what s1 owns over `templates`: each template is counted into a hidden
+    counter every frame, the shown one is zeroed first and gets +1 per unit (hidden >= n for n = 1..CAP)."""
+    t.counters.append((counter, label))
+    t.scripts.append(Script(f'Test - {counter} zero', [], [('SET_COUNTER', counter, 0)], once=False))
+    for i, tpl in enumerate(templates):
+        m.spawns.add(tpl)
+        h = f'{counter}_H{i}'
+        t.scripts.append(Script(f'Test - {counter} own {i}', [], [('SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER', tpl, s1, h)],
+                                once=False))
+        for n in range(1, CAP + 1):
+            t.scripts.append(Script(f'Test - {counter} {i} >= {n}', [('COUNTER', h, 3, n)],
+                                    [('INCREMENT_COUNTER', 1, counter)], once=False))
+
+
+def _spend(m, give=False):
+    """d / f: money, towers, buildings, army of s1."""
+    t = Test()
+    s1 = m.player('s1')
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    t.counters.append(('CNV_AK_Money', 'AI钱'))
+    t.scripts.append(Script('Test - money', [], [('SET_PLAYER_MONEY_TO_COUNTER', s1, 'CNV_AK_Money')], once=False))
+    _sum(t, m, s1, 'CNV_AK_Towers', '塔数', TOWERS)
+    _sum(t, m, s1, 'CNV_AK_Built', '建筑数', BUILDINGS + TOWERS)
+    _sum(t, m, s1, 'CNV_AK_Army', '兵数', ARMY)
+    w = m.facts['wake at']
+    t.scripts += [Script('Test - tick', [], [('INCREMENT_COUNTER', 1, 'CNV_AK_Tick')], once=False),
+                  Script('Test - woke', [('TIMER_EXPIRED', 'CNV AI Wake'), ('COUNTER', 'CNV_AK_Tick', 3, 30)],
+                         [('SET_FLAG', 'Test Woke', 1)])]
+    run = 230.0 if give else 200.0
+    if give:
+        t.scripts += [Script('Test - give set', [('FLAG', 'Test Woke', 1)], [('SET_MILLISECOND_TIMER', 'Test Give', 160.0)]),
+                      Script('Test - give', [('FLAG', 'Test Woke', 1), ('TIMER_EXPIRED', 'Test Give')],
+                             [('PLAYER_GIVE_MONEY', s1, 20000)])]
+    t.expect += [('兵数', w + 150.0, 'ever>=', 1, w + run)]
+    t.bench = [('bench_watch', dict(seconds=w + run + 4.0, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+def d(m):
+    """s1's money every frame, towers (AlliedBaseDefense + AlliedBaseDefenseAdvanced), all buildings (yard, power,
+    barracks, refinery, war factory, towers) and army (Peacekeeper + Javelin + Riptide + dog). To ~200 s after wake."""
+    return _spend(m)
+
+
+def f(m):
+    """Same as d, plus PLAYER_GIVE_MONEY 20000 to s1 160 s after the wake; to ~230 s after the wake."""
+    return _spend(m, give=True)
+
+
+CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d},
+          'aiskirmlow': {'d': d, 'f': f}}

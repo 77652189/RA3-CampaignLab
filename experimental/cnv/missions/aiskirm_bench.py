@@ -37,4 +37,4 @@ def mission(name='CampAISkirm', money=MONEY):
 
 
 # the builds this module makes (cnv/registry.py): build name -> mission factory
-MISSION = {'aiskirm': mission}
+MISSION = {'aiskirm': mission, 'aiskirmlow': lambda: mission('CampAISkLow', money=15000)}
