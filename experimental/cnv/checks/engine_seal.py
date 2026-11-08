@@ -38,6 +38,17 @@ arty (V4 launcher range 500, min 200, no LINE_OF_SIGHT flag; the Athena unit's o
   targeter, so V4 stands in; MCV 350 east, the player's row 200 east) -- the V4 0, the MCV 100 s1..s61.  artyhp (the
   same, the middle bunker counted): the bunker 100 too.  artyo (no row, the control): the MCV 100 s1..s62 as well --
   the idle V4 does not fire at all, the row is not why (not split: unseen, or takes nothing by itself).
+artyrv (artyo + the player's MAP_REVEAL_ALL_PERM at the start; 测 2026-11-08 08:38) -- the V4 0, the MCV 100 s1..s61:
+  seeing it is not the missing piece.  arty250 (artyo, the MCV 250 east; 08:40) -- the V4 0 at s1 but 1 from s4 (it
+  LEFT its start's 60: idle, it walked off by itself), the MCV 100 s1..s61: no fire.  artyatk (artyo + an attack order
+  on the MCV at 2 s; 08:43) -- the V4 0 (stays inside its 60 until s61, 1 at s61), the MCV 100 s1-s7, 84 s10, 85 s13-16,
+  71 s19-22, 56 s25, 57 s28, 42 s31, 43 s34, 28 s37, 29 s40, 14 s43, 15 s46, 1 s49-s58: ordered, it fires from where it
+  stands (~15 %/volley every ~7 s, the MCV regenerates ~1 between) and kills it by ~s60.  artytk (artyo with an s1
+  Guardian tank, NO_ATTACK, 350 east instead; 08:48) -- the V4 0, the tank 100 s1..s61: an idle V4 picks no tank either.
+  So the weapon / map / line are fine; only AutoAcquire of the idle V4 does not trigger (target seen, 350 inside 500).
+artyb (artyo with an s1 AlliedPowerPlant 350 east; 测 2026-11-08 08:55) -- the V4 0, the plant 100 s1..s61; artybk (an s1
+  SovietBunker 350 east; 08:57) -- the V4 0, the bunker 100 s1..s61: an idle V4 picks no structure either, so 'siege units
+  pick only structures when idle' is NOT it (the V4 stayed inside its 60 in both; the counter works on both targets).
 attack -- the soldier 1 at s4 (left the start), 5 from s7 (north of the row's end, never east of it); the MCV 99 s1-s7,
   97 s10, 96 s13 ... 86 s37, 85 s40-s61: told to attack, it walks round the row's end and fires from there.
 aa (IFV, a hovering Twinblade with NO_ATTACK 200 east, the row 100 east) and aaopen (no row): the same readings, 79 s1,
@@ -127,9 +138,17 @@ def mission():
         m.put(ENEMY, f'seal {lane}', 210.0, 0.0, side='s1', angle=90.0, role=f'{lane} enemy',
               name=f'UNIT - CNV Seal {k} Enemy')
     for lane, kind, dx in (('erow', FOOT, 210.0), ('attack', FOOT, 210.0), ('tank', TANK, 130.0),
-                           ('tankopen', TANK, 130.0), ('arty', V4, 350.0)):
+                           ('tankopen', TANK, 130.0), ('arty', V4, 350.0), ('arty250', V4, 250.0),
+                           ('artytk', V4, None), ('artyb', V4, None), ('artybk', V4, None)):
         k = lane.title()
         m.put(kind, f'seal {lane}', role=f'{lane} foot', name=f'UNIT - CNV Seal {k} Foot')
+        if lane in ('artyb', 'artybk'):    # an s1 structure 350 east instead of the MCV
+            m.put(BUILDING if lane == 'artyb' else WALL, f'seal {lane}', 350.0, 0.0, side='s1', role=f'{lane} enemy',
+                  name=f'UNIT - CNV Seal {k} Enemy')
+            continue
+        if dx is None:    # artytk: an s1 Guardian instead of the MCV
+            m.put(TANK, f'seal {lane}', 350.0, 0.0, side='s1', role=f'{lane} enemy', name=f'UNIT - CNV Seal {k} Enemy')
+            continue
         m.put(ENEMY, f'seal {lane}', dx, 0.0, side='s1', angle=90.0, role=f'{lane} enemy', name=f'UNIT - CNV Seal {k} Enemy')
     for lane in ('aa', 'aaopen'):
         k = lane.title()
@@ -269,6 +288,46 @@ def artyopen(m):
     return _idle(m, 'arty', False)
 
 
+def artyrv(m):
+    """artyo's set-up plus the player's MAP_REVEAL_ALL_PERM at the start: is it 'the player does not see it'."""
+    t = _idle(m, 'arty', False)
+    t.scripts.append(Script('Test - seal reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    return t
+
+
+def arty250(m):
+    """artyo's set-up with the MCV 250 east (lane 'arty250'): a range-edge / acquire-range issue?"""
+    return _idle(m, 'arty250', False)
+
+
+def artyatk(m):
+    """artyo's set-up plus an explicit attack order on the MCV at 2 s: does the V4 fire at it at all here."""
+    t = _idle(m, 'arty', False)
+    t.scripts.append(Script('Test - seal arty attack', [('TIMER_EXPIRED', 'Test Seal Atk')],
+                            m.order('attack', [m.role('arty foot').name], m.role('arty enemy').name, 'p1',
+                                    crew='SealArtyAtk')))
+    t.scripts.append(Script('Test - seal arty timer', [], [('SET_MILLISECOND_TIMER', 'Test Seal Atk', 2.0)]))
+    return t
+
+
+def artytk(m):
+    """artyo's set-up with an s1 Guardian tank (NO_ATTACK) 350 east instead of the MCV: does an idle V4 pick a unit."""
+    t = _idle(m, 'artytk', False)
+    t.scripts.append(Script('Test - seal artytk start', [], [('UNIT_CHANGE_OBJECT_STATUS', m.role('artytk enemy').name,
+                                                              'NO_ATTACK', 1)]))
+    return t
+
+
+def artyb(m):
+    """artyo's set-up with an s1 AlliedPowerPlant 350 east: does an idle (siege) V4 pick a structure by itself."""
+    return _idle(m, 'artyb', False)
+
+
+def artybk(m):
+    """artyb with an s1 SovietBunker instead of the power plant."""
+    return _idle(m, 'artybk', False)
+
+
 def attack(m):
     """row's set-up (lane 'attack'), plus an explicit attack order on the MCV at 4 s."""
     t = _wall(m, 'attack', 'p1', 105.0)
@@ -371,5 +430,6 @@ def spawn(m):
 
 MISSION = {'engine_seal': mission}
 CHECKS = {'engine_seal': {'move': move, 'idle': idle, 'open': idle_open, 'cut': cut, 'row': row, 'spawn': spawn,
-                           'erow': erow, 'tank': tank, 'topen': tankopen, 'arty': arty, 'artyhp': artyhp, 'artyo': artyopen, 'attack': attack,
+                           'erow': erow, 'tank': tank, 'topen': tankopen, 'arty': arty, 'artyhp': artyhp, 'artyo': artyopen, 'artyrv': artyrv, 'arty250': arty250,
+                           'artyatk': artyatk, 'artytk': artytk, 'artyb': artyb, 'artybk': artybk, 'attack': attack,
                            'aa': aa, 'aaopen': aaopen, 'ebld': ebld, 'ebldam': ebldam, 'pam': pam}}
