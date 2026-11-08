@@ -61,3 +61,50 @@
 270 放 名字含 IceEngineer freeze 在 inside 2
 290 派 engineer 去 view start
 290 派 名字含 IceEngineer 去 approach 1
+# Part 2: north camp, defence, last leg (drafted by a Sonnet sub-agent, checked in the simulator 11-08: Win (2) at 13:56). The last leg
+# here is held by three groups at the mouths, the ice engineers are NOT used there yet (the intended play: freeze the mouth a truck passes).
+# TAIL of A4: stage 北营 = Phase_3, 布防 = Phase_4, 最后一程 = Phase_5 (no semicolons in comments: the parser splits on them)
+# groups: the relief (名字含 -AlliedAnti), the cast ones left (名字含 A4 peacekeeper / A4 javelin), made ones (名字含 SIM Made)
+# beware 名字含 A4 alone: it matches the trucks too
+CNV_A4_Phase_3+2 删除 名字含 AlliedMCV
+CNV_A4_Phase_3+2 造 AlliedConstructionYard 在 south base
+# 1. clear the bridgehead guards (the 4 warriors of the harbour guard), then come back west
+CNV_A4_Phase_3+4 派 名字含 -AlliedAnti 去 road exit
+CNV_A4_Phase_3+4 派 名字含 A4 peacekeeper 去 road exit
+CNV_A4_Phase_3+4 派 名字含 A4 javelin 去 road exit
+CNV_A4_Phase_3+50 派 名字含 -AlliedAnti 去 ridge ramp
+CNV_A4_Phase_3+50 派 名字含 A4 peacekeeper 去 ridge ramp
+CNV_A4_Phase_3+50 派 名字含 A4 javelin 去 ridge ramp
+# 2. the economy: a unit every 10-15 s, all gather at the ridge ramp (out of the towers' reach, west of the back ramp)
+CNV_A4_Phase_3+10 造 AlliedAntiVehicleVehicleTech1 在 south base
+CNV_A4_Phase_3+25 造 AlliedAntiVehicleVehicleTech1 在 south base
+CNV_A4_Phase_3+25 造 AlliedAntiInfantryInfantry 在 south base
+CNV_A4_Phase_3+35 造 AlliedAntiInfantryInfantry 在 south base
+CNV_A4_Phase_3+40 造 AlliedAntiVehicleVehicleTech1 在 south base
+CNV_A4_Phase_3+40 造 AlliedAntiAirVehicleTech1 在 south base
+CNV_A4_Phase_3+45 造 AlliedAntiInfantryInfantry 在 south base
+CNV_A4_Phase_3+55 造 AlliedAntiVehicleVehicleTech1 在 south base
+CNV_A4_Phase_3+55 造 AlliedAntiInfantryInfantry 在 south base
+CNV_A4_Phase_3+70 造 AlliedAntiVehicleVehicleTech1 在 south base
+CNV_A4_Phase_3+70 造 AlliedAntiVehicleInfantry 在 south base
+CNV_A4_Phase_3+80 造 AlliedAntiVehicleVehicleTech1 在 south base
+CNV_A4_Phase_3+80 造 AlliedAntiVehicleInfantry 在 south base
+CNV_A4_Phase_3+60 派 名字含 SIM Made 去 ridge ramp
+CNV_A4_Phase_3+95 派 名字含 SIM Made 去 ridge ramp
+# 3. all together up the back ramp, razing the power plant first (the ramp towers lose their power), then the command post
+CNV_A4_Phase_3+190 派 名字含 -AlliedAnti 去 back ramp
+CNV_A4_Phase_3+190 派 名字含 A4 peacekeeper 去 back ramp
+CNV_A4_Phase_3+190 派 名字含 A4 javelin 去 back ramp
+CNV_A4_Phase_3+190 派 名字含 SIM Made 去 back ramp
+CNV_A4_Phase_3+215 攻击 名字含 -AlliedAnti 打 north power
+CNV_A4_Phase_3+215 攻击 名字含 SIM Made 打 north power
+CNV_A4_Phase_3+250 攻击 名字含 -AlliedAnti 打 north command
+CNV_A4_Phase_3+250 攻击 名字含 SIM Made 打 north command
+# 4. 布防: after the cutscene (Phase_4+47) three groups to the three gun pads, one at each mouth, the engineers to the halt
+CNV_A4_Phase_4+50 派 名字含 Give 149 去 gun north
+CNV_A4_Phase_4+50 派 名字含 SIM Made 去 gun plaza 3
+CNV_A4_Phase_4+50 派 名字含 Give 146 去 gun east
+CNV_A4_Phase_4+50 派 名字含 A4 peacekeeper 去 gun east
+CNV_A4_Phase_4+50 派 名字含 A4 javelin 去 gun east
+CNV_A4_Phase_4+50 派 名字含 IceEngineer 去 halt
+CNV_A4_Phase_4+50 派 名字含 A4 engineer 去 halt
