@@ -161,7 +161,47 @@ def nugget_items():
     return items
 
 
+CHECKS = os.path.join(HERE, 'checks')
+ENGINE_DOCS = os.path.join(ROOT, 'docs', 'engine')
+
+
+def bench_sources():
+    """[(source, text)] where bench measurements live: the engine probes (checks/engine_*.py, run with cnv_check on the
+    bench, their readings in the docstrings) and the lines of docs/engine/*.md marked measured (**测**, not 未实测)."""
+    need(CHECKS, 'the bench checks')
+    need(ENGINE_DOCS, 'the engine docs')
+    out = []
+    for f in sorted(os.listdir(CHECKS)):
+        if f.startswith('engine_') and f.endswith('.py'):
+            out.append((f'checks/{f}', open(os.path.join(CHECKS, f), encoding='utf-8').read()))
+    for f in sorted(os.listdir(ENGINE_DOCS)):
+        if f.endswith('.md') and f != os.path.basename(OUT):
+            lines = [x for x in open(os.path.join(ENGINE_DOCS, f), encoding='utf-8')
+                     if '测' in x.replace('未实测', '').replace('推断', '') and '未实测' not in x]
+            out.append((f'docs/engine/{f}', ''.join(lines)))
+    if not out:
+        raise SystemExit('inventory: no bench sources found')
+    return out
+
+
+def benched(items):
+    """An implemented item (推断) whose name a bench source names becomes 已对拍, citing the first such source."""
+    src = bench_sources()
+    for it in items:
+        if it['state'] not in (GUESSED, TODO):
+            continue
+        name = it['name'].split('/')[-1].split(':')[-1] if it['part'] == MODULE else it['name'].split(':')[-1]
+        rx = re.compile(r'(?<![A-Za-z0-9_])' + re.escape(name) + r'(?![A-Za-z0-9_])')
+        hit = next((s for s, text in src if rx.search(text)), None)
+        if hit and it['state'] == GUESSED:
+            it['state'], it['why'] = BENCHED, f'{it["why"]}；台上量过：{hit}'
+        elif hit and it['part'] in (MODULE, NUGGET):       # measured, but the name rule finds no code: look (NOTES)
+            it['why'] = f'{it["why"]}；**待核**：台上量过（{hit}），可能用别的名字实现了'
+    return items
+
+
 def apply_registers(items):
+    benched(items)
     for it in items:
         k = (it['part'], it['name'])
         if k in NOTES:
