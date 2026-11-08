@@ -64,7 +64,7 @@ button:disabled { opacity:.4; cursor:default; }
 <canvas id="cv"></canvas>
 <div class="bar" id="barT"></div><div class="bar" id="barB"></div>
 <div id="caption"></div><div id="panel"></div><div id="lockmsg">过场中，操作锁住 — Esc 跳到交还操作</div>
-<div id="hint">左键选/框选 · 右键移动(攻击移动)/点敌人攻击 · Ctrl+右键 占领 · 右键拖/中键拖 平移 · 滚轮缩放 · 空格 暂停</div>
+<div id="hint">左键选/框选 · 右键移动/点敌人攻击 · Alt+右键 攻击移动 · Ctrl+右键 占领 · 右键拖/中键拖 平移 · 滚轮缩放 · 空格 暂停</div>
 <div id="tip"></div>
 <div id="side">
   <h3>目标</h3><div id="objs"></div>
@@ -255,7 +255,7 @@ cv.addEventListener('mouseup', e => {
     const t = unitAt(e.offsetX, e.offsetY, u => u.rel !== 'me');
     if (t && e.ctrlKey) order({ verb: '占领', units, target: t.id });
     else if (t && t.rel === 'foe') order({ verb: '攻击', units, target: t.id });
-    else order({ verb: '派', units, to: [wx, wy] });
+    else order({ verb: e.altKey ? '派' : '走', units, to: [wx, wy] });
   }
 });
 cv.addEventListener('wheel', e => {
@@ -415,8 +415,8 @@ async function poll() {
   resize(); buildTerrain();
   const start = ST.sites.find(s => s.name === 'start'); if (start) { view.cx = start.x + 500; view.cy = start.y; }
   view.k = Math.min(cv.width, cv.height) / 2200;
-  modal(`<h2>模拟器：${ST.level}</h2><p>这是 <code>sim.py</code> 的外壳：规则只有一份，所有操作都走剧本动作（派 / 攻击 / 放 / 占领 / 生产）。
-     右键是<b>攻击移动</b>（剧本动词“派”，模拟器还没有纯移动命令）。紫色虚线圈 = 这个单位有模拟器没模拟的部分。</p>
+  modal(`<h2>模拟器：${ST.level}</h2><p>这是 <code>sim.py</code> 的外壳：规则只有一份，所有操作都走剧本动作（走 / 派 / 攻击 / 放 / 占领 / 生产）。
+     右键是移动（剧本“走”），Alt+右键是攻击移动（剧本“派”）。紫色虚线圈 = 这个单位有模拟器没模拟的部分。</p>
      <p>空格暂停 · Esc 跳过场 · 1/2/4/8/尽快 快进 · 顶栏数字按阶段跳（用该关全程脚本替你打到那里）。</p>
      <p><button id="go">开始（1×）</button></p>`);
   $('go').onclick = () => { modal(); setSpeed(1); };

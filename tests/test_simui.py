@@ -1,6 +1,7 @@
 """The playable simulator's back end (experimental/simui/game.py, ADR 0024) agrees with the simulator: the same play
 driven through the page's order path gives the same ending and key moments as sim.simulate(); a run of clicks replays
 to the same run; a stage jump hands over at its flag; the page's state serialises."""
+import importlib.util
 import json
 import os
 import sys
@@ -8,8 +9,10 @@ import sys
 import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(ROOT, 'experimental', 'simui'))
-import game  # noqa: E402
+_spec = importlib.util.spec_from_file_location('simui_game', os.path.join(ROOT, 'experimental', 'simui', 'game.py'))
+game = importlib.util.module_from_spec(_spec)      # loaded by file: no sys.path edit here (G4 ratchet)
+sys.modules['simui_game'] = game
+_spec.loader.exec_module(game)
 import sim  # noqa: E402  (game puts experimental/cnv on the path)
 
 A4 = os.path.join(ROOT, 'experimental', 'cnv', 'plays', 'a4.txt')
@@ -75,7 +78,8 @@ def clicks_session():
     wait(0)
     mine = [b.name for b in s.living() if b.owner == s.human and b.speed > 0]
     eng = next(b.name for b in s.living() if b.owner == s.human and b.template == 'CNV_IceEngineer')
-    assert se.command({'verb': '派', 'units': mine, 'to': [1500, 2500]}) == (True, '')
+    assert se.command({'verb': '走', 'units': mine[:5], 'to': [1500, 2500]}) == (True, '')
+    assert se.command({'verb': '派', 'units': mine[5:], 'to': [1500, 2500]}) == (True, '')
     wait(20)
     assert se.command({'verb': '放', 'units': [eng], 'ability': 'freeze', 'to': [1600, 2450]}) == (True, '')
     wait(15)
@@ -100,6 +104,12 @@ def test_clicks_replay_to_the_same_run():
     again = game.replay('a4', list(s.happened), until=s.t - sim.DT)
     assert round(again.t, 3) == round(s.t, 3)
     assert snapshot(again) == snapshot(s)
+    import build                                            # the plain simulator, no UI class at all, the same
+    m, t, _ = build.resolve('a4', '')
+    plain = sim.Sim(m, t, 'normal', '')
+    plain.events = sorted(s.happened, key=lambda e: e[0])
+    plain.run(s.t - sim.DT)
+    assert snapshot(plain) == snapshot(s)
 
 
 def test_a_stage_jump_hands_over_at_its_flag():

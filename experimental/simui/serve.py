@@ -8,15 +8,19 @@ orders to /api/cmd; game.Session runs the level in a worker thread. Nothing here
 import argparse
 import json
 import os
-import sys
 import threading
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, HERE)
-import game  # noqa: E402
+import importlib.util  # noqa: E402
+import sys  # noqa: E402
+
+_spec = importlib.util.spec_from_file_location('simui_game', os.path.join(HERE, 'game.py'))
+game = importlib.util.module_from_spec(_spec)       # by file: -I leaves the script's folder off the path, and the G4
+sys.modules['simui_game'] = game                    # ratchet allows no new sys.path edit
+_spec.loader.exec_module(game)
 
 AUDIO_TYPES = {'.wav': 'audio/wav', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg'}
 

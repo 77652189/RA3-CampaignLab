@@ -1,9 +1,9 @@
 r"""The playable simulator's back end (ADR 0024): a level's simulated run that a player drives from the browser.
 
-It changes no rule. `PlaySim` is simshow.ShowSim (itself sim.Sim plus the presentation records) with three readers
-added -- the dubbed lines' sound keys, every script event as it happens (the replay record), and a point named by its
-coordinates ('@x,y': a click on the ground) -- and the player's orders are *script events*: a click becomes the tuple
-sim.parse_script makes of a play script's line (派 / 攻击 / 放 / 占领 / 生产), put on Sim.events at the current tick, so
+It changes no rule. `PlaySim` is simshow.ShowSim (itself sim.Sim plus the presentation records) with two readers
+added -- the dubbed lines' sound keys, and every script event as it happens (the replay record) -- and the player's
+orders are *script events*: a click becomes the tuple sim.parse_script makes of a play script's line (走 / 派 / 攻击 /
+放 / 占领 / 生产; a click on the ground is the place '@x,y', model.coord), put on Sim.events at the current tick, so
 Sim.happen carries it out exactly as it carries out plays/<level>.txt. `Session.tick` is Sim.run's loop body (step, the
 whole second's sample, t + DT) without the quiet stop: a level the player is still playing does not end because
 nothing moved for two minutes.
@@ -33,7 +33,6 @@ PLAYS = os.path.join(CNV, 'plays')
 REPO = os.path.dirname(os.path.dirname(HERE))
 VOICE_DIRS = [os.path.join(HERE, 'voice'), os.path.join(REPO, 'work', 'voice')]   # <key>.wav / .mp3 / .ogg, if any
 AUDIO_EXT = ('.wav', '.mp3', '.ogg')
-POINT = re.compile(r'@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)$')
 SPEEDS = (0.0, 1.0, 2.0, 4.0, 8.0, -1.0)      # 0 paused, -1 as fast as it goes
 TICK_BUDGET = 0.25                             # seconds of wall time one worker turn may spend ticking (as fast)
 
@@ -45,18 +44,12 @@ def at(x, y):
 
 class PlaySim(simshow.ShowSim):
     """ShowSim plus what the page needs: the sound key of each dubbed line, every script event as it happened (the
-    replay), a clicked point by its coordinates. No rule changes: each action still goes to Sim.act."""
+    replay). No rule changes: each action still goes to Sim.act."""
 
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
         self.voices = []            # (t, kind, sound key, text): PLAY_SOUND_EFFECT / the announcer's
         self.happened = []          # every script event as Sim.happen carried it out, time as scheduled
-
-    def point(self, name):
-        m = POINT.match(name) if isinstance(name, str) else None
-        if m:
-            return (float(m.group(1)), float(m.group(2)))
-        return super().point(name)
 
     def act(self, name, a, script):
         if name in ('PLAY_SOUND_EFFECT', 'PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT') and a:
@@ -171,7 +164,8 @@ class Session:
     # ---- the player's orders: script events --------------------------------------------------------------------
     def command(self, c):
         """An order from the page, as a script event at the current tick. c: {'verb': ..., ...}:
-          派   units [names], to [x, y] or a point name             (attack-move: the play scripts' 派)
+          走   units [names], to [x, y] or a point name             (a plain move)
+          派   units, to                                             (attack-move)
           攻击 units, target name
           放   units, ability, to [x, y] or a name                    (a ground power: order_power)
           占领 units, target name
@@ -193,8 +187,8 @@ class Session:
             if isinstance(where, (list, tuple)):
                 where = at(*where)
             evs = []
-            if verb == '派':
-                evs = [('派', n, where) for n in names if s.bodies[n].speed > 0]
+            if verb in ('派', '走'):
+                evs = [(verb, n, where) for n in names if s.bodies[n].speed > 0]
             elif verb == '攻击':
                 evs = [('攻击', n, c['target']) for n in names] if c.get('target') in s.bodies else []
             elif verb == '放':
