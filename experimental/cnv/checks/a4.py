@@ -9,7 +9,8 @@ ending (the troops would take them), and count what the horn made by name (`tall
 horn: the first horn on the streets: the lane and plaza 1 send their waves (4 each), plaza 2 sends none yet; the
   second horn: plaza 2 as well.
 detour: engineer 1, brought to plaza 1's street, ices it just before the first horn: the lane's wave is made at once,
-  plaza 1's later and at the lane's foot (its wave detours, 10 s late).
+  plaza 1's later and at the lane's foot (its wave detours, DETOUR = 25 s late: about half a horn gap, so it comes
+  between two horns instead of on top of a street's own wave; 2026-11-07, proxy runs).
 queue: the mouths' horns started by the test (the plan starts them after the harbour turns), engineer 1 at the north
   mouth icing it before the first one: the other mouths' waves are made, the north mouth's is kept, and made when the
   ice has melted.
@@ -37,7 +38,8 @@ HORN1 = OPENING + GAP1                          # the first horn on the streets
 MOUTHS_AT = 16.0                                # queue, smash: the mouths' horns started (after the plan's rule)
 MOUTH1 = MOUTHS_AT + GAP1                       # ... their first
 BUILD = 17.0                                    # the ice order given this long before the horn (walk 0, build ~9 s)
-LEAD = 4.0                                      # the mission runs ~3 s ahead of the bench's clock
+DETOUR = 25.0                                   # plaza 1 -> the lane in the plan's 绕路 table (docs/story/plans/a4.md)
+LEAD = 4.0                                     # the mission runs ~3 s ahead of the bench's clock
 
 
 AFTER = [('FLAG', f'CNV_{TAG}_Scene_1', 1)]     # the opening scene is over (the plan's flag). The bench's first frame is that
@@ -150,9 +152,11 @@ def detour(m):
     t.expect += [('冰墙', HORN1 - 3, 'ever==', 1),
                  ('后巷的兵', HORN1 + 6, 'ever>=', 4),
                  ('1号街的兵', 0, '==', 0, HORN1 - LEAD + 2),         # the ice up: plaza 1's wave is not made there
-                 ('1号街的兵', HORN1 + 8, 'ever>=', 4),                # but later (bench: s45, the escort kills them soon), ...
-                 ('1号街兵在后巷口', HORN1 + 4, 'ever>=', 1)]        # ... at the lane's foot (bench: s45, 10 s late)
-    t.bench = [('bench_watch', dict(seconds=HORN1 + 28, every=2, sheet=False, lines=len(t.counters)))]
+                 ('1号街的兵', 0, '==', 0, HORN1 + DETOUR - 4),         # nor soon after the horn: the detour is long
+                 ('1号街的兵', HORN1 + DETOUR + 4, 'ever>=', 4),        # but later (the escort kills them soon), ...
+                 ('1号街兵在后巷口', HORN1 + DETOUR - 4, 'ever>=', 1)]  # ... at the lane's foot, DETOUR s late (they walk off
+                                                                       # it within 3 s: bench 2026-11-07, s59 only)
+    t.bench = [('bench_watch', dict(seconds=HORN1 + DETOUR + 20, every=2, sheet=False, lines=len(t.counters)))]
     return t
 
 
