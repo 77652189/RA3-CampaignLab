@@ -16,7 +16,8 @@ PARK = (250.0, 2500.0)                      # 'convoy start'
 C = (2830.0, 2225.0)                        # camera centre: A4's V3, the ground flat for 300 around, the avenue
 COLS = [-450.0, -300.0, -150.0, 0.0, 150.0, 300.0, 450.0]       # grid offsets from C (x)
 ROWS = [-250.0, -125.0, 0.0, 125.0, 250.0]                       # (y)
-GRID = [(C[0] + dx, C[1] + dy) for dy in ROWS for dx in COLS]
+GRID = [(C[0] + dx, C[1] + dy) for dy in ROWS for dx in COLS
+        if (dx, dy) != (450.0, 125.0)]      # (that spot stands on a tree: test_maps, nothing a build places on scenery)
 SCENE_AT, SHOW_AT, RUN = 2.0, 6.0, 9.0
 
 
