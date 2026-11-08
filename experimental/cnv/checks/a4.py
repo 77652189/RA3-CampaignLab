@@ -343,7 +343,7 @@ def made_names(m, part):
     return sorted({a[1] for s in m.scripts for a in s.do if a[0] == 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT' and part in a[1]})
 
 
-def demo(m):
+def demo(m, alive=False):
     """The opening scene's demonstration (the bench plays the scene's timed steps, only the camera is its own): the
     engineer ices plaza 1's street, the pair behind the ice is made and turned back, a pair is made at the lane."""
     t = scene(m)
@@ -367,7 +367,10 @@ def demo(m):
     started = f'CNV_{TAG}_Demo_Started'
     counted('Test Walls', '冰墙', t, template=ice_wall(m).id)
     tally(t, foes, 'Test Demo Foes', '演示的兵')
-    tally(t, outs, 'Test Demo Outs', '绕路出的兵')
+    if alive:      # (only four counter lines fit: this variant drops the detour pair's)
+        tally(t, [m.role('engineer').name], 'Test Engineer', '工兵活着')
+    else:
+        tally(t, outs, 'Test Demo Outs', '绕路出的兵')
     # what the demonstration has done, in one number: 1 started, 20 the pair was made behind the ice (it stood), 300 the
     # pair was turned and the lane's pair made, 4000 taken away (distinct digits: the counter reader merges a run of
     # one digit, bench 2026-11-01 read 111 as 1)
@@ -378,8 +381,9 @@ def demo(m):
                                (f'CNV_{TAG}_Demo_Down', 50000))]
     # 50000: the pair that walked back out of the picture was taken away (stage A); the detour pair came up in between
     t.expect += [('冰墙', 0, 'ever>=', 1), ('演示状态', 0, 'ever>=', 50321), ('演示状态', DEMO_RUN, '==', 54321),
-                 ('演示的兵', 0, 'ever>=', 2), ('绕路出的兵', 0, 'ever>=', 2),
-                 ('演示的兵', DEMO_RUN, '==', 0), ('绕路出的兵', DEMO_RUN, '==', 0)]
+                 ('演示的兵', 0, 'ever>=', 2), ('演示的兵', DEMO_RUN, '==', 0)]
+    t.expect += [('工兵活着', DEMO_RUN, '==', 1)] if alive else [('绕路出的兵', 0, 'ever>=', 2),
+                                                               ('绕路出的兵', DEMO_RUN, '==', 0)]
     t.bench = [('bench_watch', dict(seconds=DEMO_RUN, every=1, sheet=False, lines=len(t.counters)))]
     return t
 
@@ -568,6 +572,6 @@ def place_mouths(m):
 
 # the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
 CHECKS = {
-    'a4': {'lose': lose, 'horn': horn, 'detour': detour, 'queue': queue, 'smash': smash, 'smpos': lambda m: smash_probe(m), 'smev': lambda m: smash_probe(m, every=True), 'smwest': lambda m: smash_probe(m, every=True, spawn=(3000.0, 2500.0)), 'smdecoy': lambda m: smash_probe(m, every=True, decoy=True), 'derrick': derrick, 'demo': demo, 'heads': heads, 'melt': melt, 'idle': idle, 'hold': hold, 'win': win, 'signs': signs, 'smoke': smoke, 'place': place, 'placem': place_mouths},
+    'a4': {'lose': lose, 'horn': horn, 'detour': detour, 'queue': queue, 'smash': smash, 'smpos': lambda m: smash_probe(m), 'smev': lambda m: smash_probe(m, every=True), 'smwest': lambda m: smash_probe(m, every=True, spawn=(3000.0, 2500.0)), 'smdecoy': lambda m: smash_probe(m, every=True, decoy=True), 'derrick': derrick, 'demo': demo, 'demoeng': lambda m: demo(m, alive=True), 'heads': heads, 'melt': melt, 'idle': idle, 'hold': hold, 'win': win, 'signs': signs, 'smoke': smoke, 'place': place, 'placem': place_mouths},
     'a4_intl': {'lose': lose, 'horn': horn, 'detour': detour, 'queue': queue, 'smash': smash, 'derrick': derrick, 'demo': demo, 'heads': heads, 'melt': melt, 'idle': idle, 'hold': hold, 'win': win, 'signs': signs, 'smoke': smoke, 'place': place, 'placem': place_mouths},
 }
