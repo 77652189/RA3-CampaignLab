@@ -19,9 +19,13 @@ TEAM_ORDERS = {'attack': 'TEAM_ATTACK_NAMED', 'guard': 'TEAM_GUARD_AREA', 'hunt'
 COUNTER_LINES = 4                      # counter / countdown lines that fit on the bench's screen (counters.MAX_LINES)
 # K8 (I4): the ground a camera shows while a scene runs (letterbox on: the picture is a band 2.4 : 1, not the 16 : 9 of
 # play). Measured in CampShell 2026-11-05 on A4's demo (work/acceptance/2026-11-05/zh_a4_demo_*.png): 0.39 px a map unit
-# in a 320 px wide picture whose band is 135 px tall -> ~820 x ~345 units about the camera centre. Half of that:
-LETTERBOX_HALF = (410.0, 170.0)
-LETTERBOX_UNDER = (410.0, 230.0)       # ... and what the camera renders under the bars (16 : 9 at the same zoom): the ground the
+# in a 320 px wide picture whose band is 135 px tall -> ~820 units wide. Height remeasured 2026-11-07 on the bench
+# (A4's demonstration camera, two marks of known world position in one letterbox frame: runs/CampA4_mcp_1107_195947
+# frame 38): ~1.42 px a map unit up the screen (the ground is seen at an angle), the band 540 of 720 px -> ~380 units
+# tall, not the 345 of taking the sideways scale for both. bench_where (the play camera's fit) is ~50 px off here and
+# says 525: do not use it for this. Half of that:
+LETTERBOX_HALF = (410.0, 190.0)
+LETTERBOX_UNDER = (410.0, 254.0)      # ... and what the camera renders under the bars (16 : 9 at the same zoom): the ground the
                                        # border must cover for the picture to show no black (play's is plan.VIEW_HALF)
 STAGE_MARGIN = 40.0                    # what a staged piece shows stands this far inside that band, what it hides this far out
 VIEW_HALF = (950.0, 540.0)             # half the ground the screen shows at the default zoom (~1900 x 1080 map units, sapporo
