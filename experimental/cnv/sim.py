@@ -836,7 +836,8 @@ class Sim:
         for p in dict.fromkeys(self.players.values()):
             f = simtech.faction_of(p, sides.get(p))
             if f:
-                self.books[p] = simtech.Book(f, simunits.LIFE_FPS)
+                self.books[p] = simtech.Book(f, simunits.LIFE_FPS,    # its personality's PowerChoice lottery
+                                             (sides.get(p) or {}).get('aiPersonality'))
         self.tech_to = 0                    # the last frame tech_due ran
         self.tech_read = False              # a script has read the points or the protocols (pending: a rank to come)
         self.ground = Ground(mission.map)

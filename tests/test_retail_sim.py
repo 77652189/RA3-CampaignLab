@@ -42,6 +42,14 @@ def test_the_map_reads_as_a_mission(mission):
     assert mission.map.DIMS == (575, 575, 50)
 
 
+def test_each_computer_player_draws_from_its_own_personality(mission):
+    """A player's protocol lottery is its map personality's PowerChoice lines (simtech.Book): DefaultPersonality has
+    none (never buys); the map's own AIP_... ones are not in the SDK and take their faction's solo base lines."""
+    books = sim.Sim(mission).books
+    assert not books['Soviet_2'].choices and not books['Allied_1'].choices     # DefaultPersonality
+    assert books['Soviet_1'].choices                                           # AIP_A01_SovietHuntMarshall
+
+
 def test_the_opening_runs_on_its_own_scripts(mission):
     """The intro locks input and gives it back at ~22 s, the first objective shows, the starting team (4 Peacekeepers,
     2 dogs on Allied_1's 'TEAM - Player 1 Starting Team') is handed to Player_1 -- as the game's opening."""
