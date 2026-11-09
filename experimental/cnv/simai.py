@@ -152,7 +152,7 @@ class Brain:
         self.home = (yards[0].x, yards[0].y) if yards else (0.0, 0.0)
         tg = m['targets']
         foes = frozenset(p for p in self.sim.players.values() if p != player and self.sim.enemy(player, p))
-        self.view = tg.View(player, [], enemies=foes)
+        self.view = tg.View(player, [], enemies=foes, waypoints=self.sim.waypoints)   # Waypoint targets
         self.base = self.powers = None
         self.attach(host.blocks)
         self.ai.tell(m['player'].Command('make base'))
@@ -235,7 +235,8 @@ class Brain:
             things.append(tg.Thing(i, owner, b.template, frozenset(b.kinds), frozenset(b.status), b.x, b.y,
                                    water=b.surface == 'water', value=float(self.host.cost(b.template)),
                                    hits=simproxy._hits(b.weapons) if b.weapons else frozenset(),
-                                   under_attack=frame - self.hurt_at.get(i, -10 ** 9) <= 2 * FPS))
+                                   under_attack=frame - self.hurt_at.get(i, -10 ** 9) <= 2 * FPS,
+                                   name=b.name))                    # script name (NamedObject)
         self.view.things = things
         if self.base is not None:
             self.base.buildings = tuple(t.id for t in things if t.owner == self.player and 'STRUCTURE' in t.kindof)

@@ -8,7 +8,7 @@
 | 脚本条件 | 89 | 15 | 5 | 69 | 0 | 85% |
 | 物体模块 | 184 | 9 | 13 | 148 | 14 | 26% |
 | 武器效果 | 25 | 2 | 2 | 21 | 0 | 52% |
-| AI | 415 | 25 | 142 | 214 | 34 | 74% |
+| AI | 415 | 27 | 142 | 212 | 34 | 76% |
 
 ## 脚本动作
 
@@ -787,7 +787,7 @@
 | 已对拍 | `战术/Tactic.EndBehavior` | 152 | AI 模型代码里读了这个名字；台上量过：checks/engine_aistate.py |
 | 推断 | `组队招人/ObjectFilter.IncludeThing` | 152 | AI 模型代码里读了这个名字 |
 | 推断 | `组队招人/TeamTemplate.RegisteredObjectSet` | 148 | AI 模型代码里读了这个名字 |
-| 未做 | `目标/AITargetingHeuristic.HeuristicType=NamedObject` | 145 | AI 模型代码里没有这个名字 |
+| 已对拍 | `目标/AITargetingHeuristic.HeuristicType=NamedObject` | 145 | AI 模型代码里读了这个名字；台上量过：checks/engine_ainamed.py |
 | 推断 | `组队招人/TeamTemplate.AllowedLocomotorTypes` | 145 | AI 模型代码里读了这个名字 |
 | 推断 | `目标/AITargetingHeuristic.VitalKindOf` | 129 | AI 模型代码里读了这个名字 |
 | 推断 | `组队招人/TeamTemplate.Priority=STANDARD` | 126 | AI 模型代码里读了这个名字 |
@@ -797,7 +797,7 @@
 | 推断 | `战术/Tactic.EndBehavior=DISBAND` | 105 | AI 模型代码里读了这个名字 |
 | 推断 | `目标/AITargetingHeuristic.ForbiddenKindOf` | 102 | AI 模型代码里读了这个名字 |
 | 未做 | `微操/AIMicroManagerData.RetreatPowerAdvantage` | 94 | AI 模型代码里没有这个名字 |
-| 未做 | `目标/AITargetingHeuristic.HeuristicType=Waypoint` | 94 | AI 模型代码里没有这个名字 |
+| 已对拍 | `目标/AITargetingHeuristic.HeuristicType=Waypoint` | 94 | AI 模型代码里读了这个名字；台上量过：checks/engine_ainamed.py |
 | 推断 | `人格/UnitModifier.DefensiveModifier` | 92 | AI 模型代码里读了这个名字 |
 | 推断 | `人格/UnitModifier.OffensiveModifier` | 92 | AI 模型代码里读了这个名字 |
 | 推断 | `人格/UnitModifier.Unit` | 92 | AI 模型代码里读了这个名字 |
@@ -844,7 +844,7 @@
 | 推断 | `开局/OpeningMove.Difficulty` | 46 | AI 模型代码里读了这个名字 |
 | 推断 | `开局/OpeningMove.Name` | 46 | AI 模型代码里读了这个名字 |
 | 推断 | `开局/OpeningMove.Weight` | 46 | AI 模型代码里读了这个名字 |
-| 已对拍 | `战术/Tactic.EndBehavior=RAMPAGE` | 46 | AI 模型代码里读了这个名字；台上量过：checks/engine_aistate.py |
+| 已对拍 | `战术/Tactic.EndBehavior=RAMPAGE` | 46 | AI 模型代码里读了这个名字；台上量过：checks/engine_ainamed.py |
 | 推断 | `组队招人/TeamTemplate.ReleaseType=RELEASE_TO_PRIORITY` | 46 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/PathToTargetHeuristic` | 45 | AI 模型代码里读了这个名字 |
 | 未做 | `启发条件/PathToTargetHeuristic.LocomotorConditionToUseForTest` | 45 | AI 模型代码里没有这个名字 |
