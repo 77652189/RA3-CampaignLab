@@ -382,7 +382,7 @@ class Brain:
         def rate_of(b):
             def rate(o):
                 t = o.body
-                return sum(w['dps'] * t.armor.get(w['type'], sim.simunits.ARMOR_DEFAULT) / 100.0
+                return sum(w['dps'] * sim.simunits.percent(t.armor, w['type']) / 100.0
                            for w in b.weapons if s.can_hit(w, t))
             return rate
 
