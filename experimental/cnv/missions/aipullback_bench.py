@@ -51,6 +51,17 @@ MISSION = {
     'aipullh0': lambda: mission('CampAIPullH0', factory=True, PullbackInjured='false'),
     # aipullh1 too: no tank went home -- the same with the AI's own faction's tank (an Allied AI, Soviet Hammers)
     'aipullga': lambda: guardians(mission('CampAIPullGa', factory=True)),
+    # 0x8df430's gates all pass statically (work/re handoff-b 69): hurt the tanks at the wake, ~1000 from any enemy
+    # (no AlphaStrike state 0), with a health counter (did UNIT_SET_HEALTH take?); aipullr1 also turns the AI's
+    # repair switch on (aitarget_bench's wake sets SKIRMISH_AI_USE_REPAIRS 0)
+    'aipulli1': lambda: mission('CampAIPullI1', factory=True),
+    'aipullr1': lambda: mission('CampAIPullR1', factory=True),
+    # aipulli1 / r1 no tank went home: hurt BEFORE the wake (the tanks idle ~400 from the factory) and count 近家
+    # (within 600) for 到远厂 -- a tank sent home then recruited again would linger near home
+    'aipullp1': lambda: mission('CampAIPullP1', factory=True),
+    # aipullp1 none either (they join the team at 30 % and drive off): is Body slot 0x40 a 0..1 ratio? any health
+    # passes a PullbackInjuredHealthPct this big
+    'aipullbig': lambda: mission('CampAIPullBig', factory=True, PullbackInjuredHealthPct='100000.0'),
     'airev1': lambda: mission('CampAIRev1'),
     'airev0': lambda: mission('CampAIRev0', ReverseMove='false'),
 }

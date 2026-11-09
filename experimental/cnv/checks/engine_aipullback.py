@@ -25,6 +25,16 @@ Readings (11-09; 4 Hammers vs 12 Peacekeepers, Crush false; tanks reach the plan
            faction either. Not settled: the member KindOf filter 0x808990 (masks 0xc000 / 0x1000, not read), the
            template +0xdc bit 13 test, the path test 0x6d9130, or 0x8df430 never reached in these states.
   aipullh0 not run (aipull0 already shows no-one goes home).
+  (11-09, round 69; 血量 = tank 1's health %, read 30 from the set on: UNIT_SET_HEALTH does take)
+  aipulli1 FAIL: hurt 0.5 s after the wake, ~1000 from any enemy (no AlphaStrike) -- 血量 30 s9-12, the 4 drive on,
+           到远厂 1 @ s13 .. 3 @ s15-16, all dead by s23; 回家 0 from s3
+  aipullr1 FAIL, second for second as aipulli1, with SKIRMISH_AI_USE_REPAIRS s1 1 at the hurt: not the repair switch
+  aipullp1 FAIL: hurt before the wake (idle, ~400 from the factory): they join the team at 30 % and leave steadily,
+           近家 (600) 4 @ s1-5, 3 @ s6-7, 2 @ s8, 1 @ s9-10, 0 from s11 -- no lingering (not sent home and re-recruited)
+  aipullbig FAIL, the same as aipullp1 with PullbackInjuredHealthPct 100000: not the health ratio's scale
+  So 0x8df430 is reached (EnterGarrisons, in the same state functions, worked) and the member gates pass; left: the
+  facility search -- the ArmyDef map lookup (key at team / brain + 0x24), template +8 against ArmyDef +0x28, or the
+  path test 0x6d9130.
   ReverseMove: airev1 / airev0 differ too little to read a back-up (近厂 2 in both at s19-22).
 """
 from checks import engine_aitarget as at
@@ -33,6 +43,8 @@ from parts import Script, Test, counted, square
 AFTER = 70.0
 LATE = 25.0
 HURT_AT = 12.0                           # aipullh*: the tanks are on the road (at the far plant s15)
+IDLE = ('aipulli1', 'aipullr1', 'aipullp1', 'aipullbig')   # hurt at the wake, ~1000 from any enemy (p1: before it)
+IDLE_HURT = {'aipulli1': 0.5, 'aipullr1': 0.5, 'aipullp1': -9.0, 'aipullbig': -9.0}   # s after the wake
 HURT = 30.0                              # % -- under PullbackInjuredHealthPct 0.35
 
 
@@ -45,20 +57,33 @@ def a(m, build):
     inf, tank = m.cnv_units
     wake = m.facts['wake at']
     end = wake + AFTER
-    counted('CNV_PB_Guards', '守军数', t, template=inf, player=p1, most=13)
+    tanks = [o.name for o in m.objects if o.template == tank and o.side == 's1']
+    if build in IDLE:                    # four counters at most: 血量 (tank 1's health %) for 守军数
+        t.counters.append(('CNV_PB_Health', '血量'))
+        t.scripts.append(Script('Test - health', [], [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', tanks[0],
+                                                       'CNV_PB_Health')], once=False))
+    else:
+        counted('CNV_PB_Guards', '守军数', t, template=inf, player=p1, most=13)
     counted('CNV_PB_Tanks', '坦克数', t, template=tank, player=s1)
     if build.startswith('aipull'):
         f = m.find(m.role('ai factory').name)
         t.areas[at.HOME] = square(f.x, f.y, 300.0)
-        counted('CNV_PB_Far', '到远厂', t, template=tank, area=at.FAR, player=s1)
+        if build in ('aipullp1', 'aipullbig'):
+            t.areas['CNV_PB_NearHome'] = square(f.x, f.y, 600.0)
+            counted('CNV_PB_NearH', '近家', t, template=tank, area='CNV_PB_NearHome', player=s1)
+        else:
+            counted('CNV_PB_Far', '到远厂', t, template=tank, area=at.FAR, player=s1)
         counted('CNV_PB_Home', '回家', t, template=tank, area=at.HOME, player=s1)
-        if build.startswith('aipullh') or build == 'aipullga':
+        if build.startswith('aipullh') or build == 'aipullga' or build in IDLE:
             timer = 'Test - hurt timer'
-            tanks = [o.name for o in m.objects if o.template == tank and o.side == 's1']
-            t.scripts += [Script('Test - hurt set', [], [('SET_MILLISECOND_TIMER', timer, HURT_AT)]),
+            t.scripts += [Script('Test - hurt set', [], [('SET_MILLISECOND_TIMER', timer,
+                                                          wake + IDLE_HURT[build] if build in IDLE else HURT_AT)]),
                           Script('Test - hurt tanks', [('TIMER_EXPIRED', timer)],
                                  [('UNIT_SET_HEALTH', n, HURT) for n in tanks])]
-        if build in ('aipull1', 'aipullh1', 'aipullga'):
+        if build == 'aipullr1':          # after the wake's SKIRMISH_AI_USE_REPAIRS 0
+            t.scripts.append(Script('Test - repairs on', [('TIMER_EXPIRED', timer)],
+                                    [('SKIRMISH_AI_USE_REPAIRS', s1, 1)]))
+        if build in ('aipull1', 'aipullh1', 'aipullga') or build in IDLE:
             t.expect += [('回家', wake + LATE, 'ever>=', 1, end)]
         else:
             t.expect += [('回家', wake + LATE, '==', 0, end)]
@@ -71,4 +96,5 @@ def a(m, build):
     return t
 
 
-CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aipull1', 'aipull0', 'aipullh1', 'aipullh0', 'aipullga', 'airev1', 'airev0')}
+CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aipull1', 'aipull0', 'aipullh1', 'aipullh0', 'aipullga', 'aipulli1', 'aipullr1', 'aipullp1', 'aipullbig',
+                                                           'airev1', 'airev0')}

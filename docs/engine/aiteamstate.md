@@ -43,7 +43,8 @@
 ## 6. 伤员撤退、倒车（台上没对上）
 
 - 规则（程序）：队员血量比 < PullbackInjuredHealthPct（MEDIUM 0.35）→ 离队，去自己/盟友的建筑里模板正好是 ArmyDefinition 车辆维修设施（盟军 AlliedWarFactory、苏联 SovietCrane）、走得到的最近一座。倒车：离目标比"最远射程 − 10"近就退到那个距离。
-- **测**（aipullback_bench：AI 4 辆坦克打远厂旁 12 个维和，Crush 关，AI 家里放一座 AlliedWarFactory）：aipull1 一辆没回家，被打光；aipullh1 第 12 秒在路上把坦克血设成 30%，照样开去送死；aipullga 换成盟军自己的守护者坦克，也不回。**和程序读法对不上，原因没定**（队员的类别过滤 0x808990 没读懂，最可疑）。
+- **测**（aipullback_bench：AI 4 辆坦克打远厂旁 12 个维和，Crush 关，AI 家里放一座 AlliedWarFactory）：aipull1 一辆没回家，被打光；aipullh1 第 12 秒在路上把坦克血设成 30%，照样开去送死；aipullga 换成盟军自己的守护者坦克，也不回。**和程序读法对不上，原因没定**。
+- **测**（第 69 轮，排除法，都 FAIL）：离敌人 1000 远时设 30%（aipulli1）、再打开 AI 修理总闸（aipullr1）、唤醒前在维修厂旁设 30%（aipullp1：照样入队平稳开走，不在家附近逗留）、阈值调到 100000（aipullbig）——全都一辆不回。血量计数证实设血生效。所以不是"来不及 / 在集火状态 / 修理总闸 / 血量比的尺度 / 踢出后又被招回"，剩下"找维修厂"那一步（ArmyDefinition 怎么查、路检查）。
 - **测**（airev1 / airev0：倒车开 / 关）：两边"离远厂 150 内的坦克数"几乎一样，看不出倒车。
 - 给关卡：别指望原版 AI 的坦克受伤会回家修；按"打到死"设计。
 
