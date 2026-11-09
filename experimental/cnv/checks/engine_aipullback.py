@@ -45,6 +45,15 @@ Readings (11-09; 4 Hammers vs 12 Peacekeepers, Crush false; tanks reach the plan
   (no vehicle Contain) are never found (the facility search's reach test, or the template match -- not told apart);
   the Soviet AI recycles its hurt vehicles in the Crane.
   ReverseMove: airev1 / airev0 differ too little to read a back-up (近厂 2 in both at s19-22).
+  (11-09, round 71; the target beside the tanks, 80-135 off, healed to 100 every frame)
+  airevp1 / airevp0 (the far plant): first runs, unhealed, the tanks shot it to 2 % by s8 and both left s19-24 alike
+           (target gone). Healed: airevp0 PASS 近厂 4 all 85 s; airevp1 FAIL, the same -- 近厂 4 all along. A plant is a
+           tactical target (state 6), and 0x8dec40 runs in states 2 and 4 only.
+  airevt1  FAIL (a player's AlliedBaseDefense instead, CleanupPowerAdvantage 1000, UseGatherState off -> state 2):
+           no tank moves, 近塔 = 坦克数 = 中圈 all along; the turret kills them one by one 4 @ s1-10, 3 @ s11-22,
+           2 @ s23-34, 1 @ s35-46, 0 from s47. airevt0 not run (airevt1 already shows no back-up).
+  Left (work/re handoff-b 72): 0x8dec40's first gate 0x7069a0 -- the member's +0x374 -> +0x21c -> +4 -> +4, byte
+  +0x179 (read as a locomotor template flag, not named); the weapon flag 0x8a8db0 (+0xfc -> +9) skips too.
 """
 from checks import engine_aitarget as at
 from parts import Script, Test, counted, square
@@ -71,7 +80,7 @@ def a(m, build):
         t.counters.append(('CNV_PB_Health', '血量'))
         t.scripts.append(Script('Test - health', [], [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', tanks[0],
                                                        'CNV_PB_Health')], once=False))
-    else:
+    elif not build.startswith(('airevp', 'airevt')):  # no guards
         counted('CNV_PB_Guards', '守军数', t, template=inf, player=p1, most=13)
     counted('CNV_PB_Tanks', '坦克数', t, template=tank, player=s1)
     if build.startswith('aipull'):
@@ -97,6 +106,26 @@ def a(m, build):
             t.expect += [('回家', wake + (5.0 if build in IDLE else LATE), 'ever>=', 1, end)]
         else:
             t.expect += [('回家', wake + LATE, '==', 0, end)]
+    elif build.startswith('airevp') or build.startswith('airevt'):
+        # airevp: the far plant beside the tanks, no guards (missions CLOSE_AT); airevt: a player's turret there instead
+        turret = build.startswith('airevt')
+        g = m.find(m.role('rev turret').name) if turret else o
+        near, ring = (100.0, 250.0) if turret else (150.0, 300.0)
+        t.counters.append(('CNV_PB_PlantHp', '塔血' if turret else '厂血'))
+        t.scripts.append(Script('Test - target health', [], [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', g.name,
+                                                              'CNV_PB_PlantHp')], once=False))
+        # first runs: the tanks shot the plant to 2 % before the wake (s8) and both builds left it s19-24 alike -- the
+        # target gone, not a back-up. So the target is healed back every frame: it stays
+        t.scripts.append(Script('Test - target keep', [], [('UNIT_SET_HEALTH', g.name, 100.0)], once=False))
+        t.areas['CNV_PB_Near'] = square(g.x, g.y, near)
+        t.areas['CNV_PB_Ring'] = square(g.x, g.y, ring)
+        lab = '近塔' if turret else '近厂'
+        counted('CNV_PB_NearC', lab, t, template=tank, area='CNV_PB_Near', player=s1)
+        counted('CNV_PB_Far', '中圈', t, template=tank, area='CNV_PB_Ring', player=s1)
+        # model: on, every tank backs off to range - 10 (out of the near square) within a micro update or two;
+        # off, they stay
+        t.expect += ([(lab, wake, 'ever<', 1, wake + 15.0)] if build.endswith('1')
+                     else [(lab, wake + 2.0, '>=', 3, wake + 15.0)])
     else:
         t.areas['CNV_PB_Near'] = square(o.x, o.y, 150.0)
         counted('CNV_PB_NearC', '近厂', t, template=tank, area='CNV_PB_Near', player=s1)
@@ -107,4 +136,4 @@ def a(m, build):
 
 
 CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aipull1', 'aipull0', 'aipullh1', 'aipullh0', 'aipullga', 'aipulli1', 'aipullr1', 'aipullp1', 'aipullbig', 'aipullsov', 'aipulljp',
-                                                           'airev1', 'airev0')}
+                                                           'airev1', 'airev0', 'airevp1', 'airevp0', 'airevt1', 'airevt0')}
