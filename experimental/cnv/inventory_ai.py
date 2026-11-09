@@ -12,7 +12,7 @@ the mission personalities) live there too, so they count. Items, named <组成�
 Left out: bookkeeping (ids, inheritance, includes). 不涉及: speech / video / greeting feedback and AIData's drawing knobs.
 
 States: 推断 -- the name is a quoted string in the AI model (the private engine model's ra3model/ai/*.py, or the public
-simai.py): a first cut, "read" is not "acts on" -- NOTES corrects it; 未做 -- not there; 已对拍 -- an implemented item
+simai.py, simtech.py for the protocol lottery): a first cut, "read" is not "acts on" -- NOTES corrects it; 未做 -- not there; 已对拍 -- an implemented item
 whose last word a measured (测) line of docs/engine/ai*.md or a checks/engine_ai*.py names (generic words excluded),
 or the BENCHED register.
 """
@@ -27,7 +27,8 @@ sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign'
 import labpaths                                 # noqa: E402
 
 AI_DATA = os.path.join(labpaths.SDK3, 'SageXML', 'SkirmishAI')
-AI_CODE = [os.path.join(labpaths.ENGINE_MODEL, 'ra3model', 'ai'), os.path.join(os.path.dirname(__file__), 'simai.py')]
+AI_CODE = [os.path.join(labpaths.ENGINE_MODEL, 'ra3model', 'ai'), os.path.join(os.path.dirname(__file__), 'simai.py'),
+           os.path.join(os.path.dirname(__file__), 'simtech.py')]
 PART = 'AI'
 BENCHED, GUESSED, TODO, NA = '已对拍', '推断', '未做', '不涉及'
 

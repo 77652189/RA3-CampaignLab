@@ -6,17 +6,16 @@
 
 | 部分 | 已对拍 | 推断 | 未做 |
 |---|---|---|---|
-| AI | 24 | 155 | 178 |
+| AI | 24 | 156 | 177 |
 | 脚本动作 | 9 | 2 | 0 |
 | 脚本条件 | 0 | 1 | 0 |
 
-按原版用量加权：已对拍 13%，已有（已对拍+推断）89%。
+按原版用量加权：已对拍 13%，已有（已对拍+推断）90%。
 
 | 状态 | 部分 | 项 | 原版用量 | 关 | 说明 |
 |---|---|---|---|---|---|
 | 未做 | AI | `造兵/BuildEntry.Heuristic` | 380 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `造兵/BuildEntry.Build` | 364 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 未做 | AI | `人格/PowerChoice.PlayerPower` | 117 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `造兵/BuildState.Difficulty` | 84 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `造兵/BuildState.State` | 84 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `造兵/BuildEntry.PercentHigh` | 54 | a4 a5 a7 | AI 模型代码里没有这个名字 |
@@ -215,6 +214,7 @@
 | 推断 | AI | `目标/AITargetingHeuristic.VitalKindOf` | 129 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `组队招人/TeamTemplate.Priority=STANDARD` | 126 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `启发条件/ConstantHeuristic` | 119 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 推断 | AI | `人格/PowerChoice.PlayerPower` | 117 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/PowerChoice.Weight` | 117 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `战术/Tactic.EndBehavior=DISBAND` | 105 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `目标/AITargetingHeuristic.ForbiddenKindOf` | 102 | a4 a5 a7 | AI 模型代码里读了这个名字 |

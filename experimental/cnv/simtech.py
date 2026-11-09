@@ -17,13 +17,21 @@ scripts' actions skip it, its conditions read false). The book:
            its protocols given and its TechPointsGranted (1) added -- clipped to the cap, the protocols given anyway
 PLAYER_SET_PLAYER_POWER_POINTS(n) is the game's own odd rule: points = n, except where a cap of 1 or more is set
 and points + n (the old points) would pass it: then points = cap. A cap of 0 does not limit it.
-A computer player spends its points as soon as it can (ai_buy; a campaign one too, its AI not woken: bench 11-08) --
-which protocol it takes is INFERRED (engine line B's personality choice).
+A computer player spends its points as soon as it can (ai_buy; a campaign one too, its AI not woken: bench 11-08),
+by its personality's lottery (read from the program): from frame 10, while it has points, every frame, the
+personality's <PowerChoice PlayerPower Weight> lines it may buy now (cost, not held, dependencies held, not locked) in
+file order; a draw uniform in [0, their weights' sum) is walked down the lines, the one it falls in bought -- one a
+frame; a sum of 0 buys nothing (DefaultPersonality and HuntPersonality have no PowerChoice: they never buy). The
+lines add up through inheritFrom, parents first (INFERRED, as the AI model's lists); Weight's default 20% (the XSD).
+A retail mission's own personality (AIP_..., its map's assets, not in the SDK) cannot be read: its faction's
+<Faction>SoloBasePersonality stands in (INFERRED; the bench's AIP_A03_Soviet02BaseMarshall did spend its point).
+Which protocol is drawn has not been benched (the game's random stream is not this one).
 Not modelled: experience from kills (not found in the program), the red alert's multiplier (1.0 / 1.5 / 2.0 at
 yellow / orange / red; the simulator has no red alert), what a protocol does once held.
 """
 import functools
 import os
+import random
 import re
 
 import simunits
@@ -83,6 +91,48 @@ def protocols():
     return out
 
 
+@functools.lru_cache(maxsize=None)
+def _personalities():
+    """personality id (lower case) -> (inheritFrom, [(protocol, weight)]) from the SDK's SkirmishAI/Personalities."""
+    out = {}
+    root = os.path.join(simunits.SAGEXML, 'SkirmishAI', 'Personalities')
+    for fn in sorted(os.listdir(root)):
+        if not fn.lower().endswith('.xml'):
+            continue
+        text = _xml('SkirmishAI', 'Personalities', fn)       # (_blocks would stop the head at a child's '/>')
+        for head, inner in re.findall(r'<AIPersonalityDefinition\b([^>]*)>(.*?)</AIPersonalityDefinition>', text, re.S):
+            pid = simunits._attr(head, 'id')
+            if pid:
+                lines = [(simunits._attr(h, 'PlayerPower'), _weight(simunits._attr(h, 'Weight')))
+                         for h, _ in simunits._blocks(inner, 'PowerChoice')]
+                out[pid.lower()] = (simunits._attr(head, 'inheritFrom'), lines)
+    return out
+
+
+def _weight(v):
+    """A PowerChoice Weight ('200%' -> 2.0); none: the XSD's default 20%."""
+    v = (v or '20%').strip()
+    return simunits._num(v[:-1], 20.0) / 100.0 if v.endswith('%') else simunits._num(v, 0.2)
+
+
+SOLO_BASE = {'Allies': 'alliedsolobasepersonality', 'Soviet': 'sovietsolobasepersonality',
+             'Japan': 'japansolobasepersonality'}
+
+
+def power_choices(personality, faction=None):
+    """A personality's PowerChoice lines [(protocol, weight)] through its inheritFrom chain, parents first. One the
+    SDK does not have (a retail map's own AIP_...), or none given: its faction's SoloBasePersonality's (INFERRED)."""
+    table = _personalities()
+    key = str(personality or '').split(':')[-1].lower()
+    if key not in table:
+        key = SOLO_BASE.get(faction, '')
+    chain = []
+    while key and key in table and key not in chain:
+        chain.append(key)
+        key = (table[key][0] or '').lower()
+    return [line for k in reversed(chain) for line in table[k][1]]
+
+
 def faction_of(name, props=None):
     """A player's faction: its SidesList playerFaction where the map gives it (retail), else by its name (ours:
     Player_1 the Allies, Soviet_N, Japan_N / Empire_N); None for a civilian or neutral one (no book)."""
@@ -101,9 +151,11 @@ def faction_of(name, props=None):
 
 
 class Book:
-    def __init__(self, faction, fps=15):
+    def __init__(self, faction, fps=15, personality=None):
         f = factions()[faction]
         self.faction, self.fps = faction, fps
+        self.choices = power_choices(personality, faction)     # a computer player's lottery (ai_buy)
+        self.rng = random.Random(f'{faction}:{personality}')    # stands in for the game's logic random stream
         self.rank_ids = f['ranks']
         self.pps = f['pps']
         self.points = self.earned = f['initial']
@@ -170,16 +222,21 @@ class Book:
 
     def ai_buy(self, frame):
         """A computer player's purchase (the program: from frame 10, while points != 0, one a frame, among the
-        protocols it can buy -- not held, not locked, dependencies held, affordable). Bench 11-08 engine_protocol
-        ailock: an unlocked campaign computer player's starting point is gone at once, a fully locked one keeps it.
-        Which one it picks (its personality's PowerChoice, by weight) is engine line B's: INFERRED the first of its
-        faction's by name."""
+        personality's PowerChoice lines it can buy -- not held, not locked, dependencies held, affordable): the one a
+        draw in [0, their weights' sum) falls in, in file order; nothing when the sum is 0. Bench 11-08
+        engine_protocol ailock: an unlocked campaign computer player's starting point is gone at once, a fully locked
+        one keeps it. Which one it takes has not been benched."""
         if frame < AI_FROM or self.points == 0:
             return False
-        tag = {'Allies': 'allied', 'Soviet': 'soviet', 'Japan': 'japan'}[self.faction]
-        for key in sorted(protocols()):
-            if tag in key and self.can_buy(key):
-                return self.buy(key, frame)
+        lines = [(p, w) for p, w in self.choices if p and self.can_buy(p)]
+        total = sum(w for _, w in lines)
+        if total <= 0:
+            return False
+        r = self.rng.random() * total
+        for p, w in lines:
+            r -= w
+            if r < 0:
+                return self.buy(p, frame)
         return False
 
     def buy(self, name, frame=0):
