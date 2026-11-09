@@ -45,11 +45,18 @@ def _after_scene(w, extra=0.0, demo_holds_fire=False):
     w.step(int(extra * FPS))
 
 
-def test_a4_played_to_its_ending_with_a_report(a4_run):
+def test_a4_the_convoy_reaches_the_halt_alive_with_a_report(a4_run):
+    """sim.HOLD_SPOTS on (the game's, bench 11-09 checks/engine_spots.py): the proxy's army stands apart, beats the
+    venue's waves, and all three trucks halt alive (the harbour phase on). Then 北营 wants a base vehicle deployed and
+    its command post razed: the proxy has no deploy or build (docs/story/handoff-phase4.md, A4 待办), so the run
+    goes to the clock -- judged here is the first leg only."""
     rep, w = a4_run
-    assert rep['result'] in ('win', 'lose')                         # the mission ended it, not the clock
-    assert rep['result'] == simproxy.ENDINGS[w.sim.ending[0]]
-    assert rep['frames'] == pytest.approx(w.sim.ending[1] * FPS, abs=FPS)
+    s = w.sim
+    assert rep['result'] == 'timeout' and rep['frames'] == simproxy.UNTIL * FPS
+    assert s.flags.get('CNV_A4_Phase_2') and s.flags.get('CNV_A4_Halted')
+    halt = s.point('halt')
+    trucks = [b for n, b in s.bodies.items() if b.template == 'CNV_ConvoyTruck']
+    assert len(trucks) == 3 and all(b.alive and math.hypot(b.x - halt[0], b.y - halt[1]) <= 100 for b in trucks)
     assert json.loads(json.dumps(rep, ensure_ascii=False)) == rep   # plain JSON values
     assert set(rep['goals']) == {'会场冻街口', '最后一程冻口子', '拆北营指挥所'}
     assert rep['sorties'] >= 1 and rep['peak_army'] >= 10          # it fought: the ten it starts with, the engineers
@@ -65,8 +72,8 @@ def test_the_score_screen_is_the_simulators_deaths(a4_run):
     dead = [b for b in w.sim.bodies.values() if not b.alive and not b.deleted and not b.scenery
             and b.life_end is None]
     assert len(got) == len(dead)
-    trucks = [l for l in got if l.template == 'CNV_ConvoyTruck']
-    assert trucks and all(l.owner != w.me for l in trucks)          # the convoy is an ally's, not the player's
+    assert got                                                      # (no truck among them: all three halt alive)
+    assert all(l.owner != w.me for l in got if l.template == 'CNV_ConvoyTruck')   # the convoy is an ally's
     assert all(l.kind in w.pw.KINDS for l in got)
     assert [l.frame for l in got] == sorted(l.frame for l in got)
 
@@ -188,8 +195,9 @@ def test_a4_the_proxy_ices_the_streets_on_its_own_and_compares(a4_run, lib):
     plain, _ = simproxy.play('a4', style=w.p['player'].Style(block=0), label='不放冰', lib=lib)
     assert not [m for m in plain['moments'] if m['what'] == 'block']
     assert not plain['goals']['会场冻街口']['met'] and not plain['goals']['最后一程冻口子']['met']
-    assert rep['result'] == plain['result'] == 'lose'             # 11-07 B r26: ice 3:02, plain 3:50 (no longer "ice
-    # holds longer": with the army kept round the convoy, two streets iced send the third street's wave sooner)
+    # sim.HOLD_SPOTS on (11-09): both plays' convoys halt with no truck lost and the runs go to the clock (the proxy
+    # cannot take 北营) -- the plain play no longer loses on the way (level line's to-do, handoff-phase4.md A4)
+    assert rep['result'] == plain['result'] == 'timeout'
     # the army never goes for what cannot be aimed at (the spawn sculptures, the signal smoke) nor at the dead
     goes = [m['detail'] for m in rep['moments'] + plain['moments'] if m['what'] in ('go', 'defend')]
     assert not [d for d in goes if 'Sculpture' in d or 'Smoke' in d]

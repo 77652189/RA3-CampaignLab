@@ -97,9 +97,6 @@ def test_question_1_the_squad_stands_round_the_point(mission):
     assert max(math.hypot(b.x - 505.2, b.y - 1576.7) for b in crew) <= 75
 
 
-@pytest.mark.xfail(strict=True, reason='sim.HOLD_SPOTS off: the rule is the game\'s and a4\'s trucks reach the halt '
-                                       'with it since Ground.pull, but on, the a4 proxy times out and j7 / a3\'s '
-                                       'compiled plays drift (sim.Sim.claims; work/re/handoff.md round 112)')
 def test_two_units_sent_alone_to_one_point_stand_apart(mission):
     """Two separate move orders to one point (MOVE_NAMED_UNIT_TO each): the second's goal is moved off the first's
     (Generals' AIInternalMoveToState adjusts every move's goal off the spots other units hold). Bench 11-09

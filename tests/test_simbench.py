@@ -1022,3 +1022,13 @@ def test_protocol_rank_two_at_frame_5400():
     Soviet_2 (cap 2) not Soviet_1 (cap 0): 二级 5; Soviet_2's points spent at once."""
     last = _protocol('rank', 380.0)[380]
     assert last == [2, 0, 5, 5400], last
+
+
+# ---- sim.HOLD_SPOTS: bench 2026-11-09 `cnv_check engine_spots same / late`, readings in checks/engine_spots.py
+@pytest.mark.parametrize('variant,until', [('same', 35.0), ('late', 75.0)])
+def test_spots_three_trucks_sent_alone_to_one_point_stand_apart(variant, until):
+    """Three trucks, each on a team of its own, sent to one point (at once, or 20 s apart): the bench ends 4 2 1 (环k:
+    nested squares 10 / 25 / 45 / 80 round the point) -- the first on the point, the other two 10-80 off. The
+    simulator (HOLD_SPOTS): 4 2 2 (truck 3 44.7 off, the bench's beyond 45)."""
+    ring = _sim_run('engine_spots', variant, until).series[-1][1]
+    assert ring[0] == 4 and all(1 <= r <= 3 for r in ring[1:]), ring

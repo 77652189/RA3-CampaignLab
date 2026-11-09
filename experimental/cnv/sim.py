@@ -140,7 +140,8 @@ LINGER = 0.0                    # a killed unit's death (its slow death): still 
                                 # the area from the reading the kill shows in; the guess was 3 s
 GRID = 20.0                     # routing cells (world units)
 COLUMN_GAP = 44.0              # infantry column march's ends, across and back (bench 11-09 a01: ~44-50; Generals 22)
-HOLD_SPOTS = False             # every move's goal kept off other units' spots (Sim.claims): the game's (bench 11-09), off
+HOLD_SPOTS = True              # every move's goal kept off other units' spots (Sim.claims): the game's (bench 11-09,
+                               # a01's two infantry; checks/engine_spots.py, three trucks sent alone to one point)
 ARRIVE = 1.5 * GRID             # a plain move that ends farther than this from where it was sent stopped short (held_up)
 BUILD_STEP = 5.0                # a builder on his way (R5) moves in steps this long, to see where he gets within range
 HIGH_STEP = 50.0                # ShroudClearingHeight's default: a viewer does not discover a cell this much above its own
@@ -1076,12 +1077,14 @@ class Sim:
         and the game's a4 gets all trucks to the 80-wide halt area (checks/a4.py hold PASS). The simulator's trucks
         2 and 3, their goals moved 30 aside, ran on grid rows 40 off the road's middle the whole way, on the halt
         area's edges, and drove past it: its ways were not pulled straight (Ground.pull since; now 2854,2479 and
-        2794,2521 at the halt at s315, like the switch off). Still off: on, the a4 proxy plays to a timeout
-        (test_simproxy a4 x3) -- not a stuck truck: its army stands apart, beats the second wave at x~1950 (switch
-        off: all three trucks shot there at s232-240, the mission lost at s248), the convoy halts, and the proxy has
-        no base-vehicle deploy, builds nothing (造兵 0) and never takes 北营's command post (round 113,
-        work/re/hs_a4h.py). And j7 / a3's compiled plays end 0.5-3.6 s off their own scripts (test_playcheck,
-        j7 126.9 vs 130.5) -- not looked into (guess: the order units are given moves in, who claims a spot first)."""
+        2794,2521 at the halt at s315, like the switch off). On since bench 11-09 checks/engine_spots.py: three
+        trucks on teams of their own sent to one point (at once, or 20 s apart) end one on it, two 10-80 off (the
+        simulator 0 / 50 / 44.7). With it the a4 proxy's army stands apart, beats the second wave at x~1950 (off: all
+        three trucks shot there at s232-240, lost at s248), the convoy halts alive, and the run goes to the clock:
+        the proxy has no base-vehicle deploy, builds nothing and never takes 北营's command post (the level line's
+        to-do, docs/story/handoff-phase4.md). j7 / a3's compiled plays end 0.5-3.6 s off their own scripts
+        (test_playcheck, j7 126.9 vs 130.5) -- not looked into (guess: the order units are given moves in, who claims
+        a spot first)."""
         if b.surface == 'air' or not HOLD_SPOTS:
             return []
         return [tuple(o.dest if o.path and o.dest else (o.x, o.y)) + (o.radius,) for o in self.living()
