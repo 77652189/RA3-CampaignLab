@@ -12,6 +12,9 @@ team stands to fight within 150 of them, one place each):
   aibd1     EnterBaseDefenses true  -> the model: Peacekeepers go into the turrets (ENCLOSED), leave the team
   aibd0     EnterBaseDefenses false -> nobody goes in
   aibdidle  EnterBaseDefenses false, EnterBaseDefensesWhenIdle true -> nobody (the team fights, never idle at a turret)
+  aibdwho   as aibd1, counted by turret (who stands next to which): why only one went in. 0x8de960 takes, for each
+            member in one pass, the FIRST turret of the list within 150 that it can be ordered into -- if 'can' does
+            not see where the earlier members of the same pass were sent, all four go to the same turret
 Facts: wake at.
 """
 from missions import airetreat_bench as ar
@@ -34,4 +37,5 @@ MISSION = {
     'aibd1': lambda: mission('CampAIBd1', EnterBaseDefenses='true', EnterBaseDefensesWhenIdle='false'),
     'aibd0': lambda: mission('CampAIBd0', EnterBaseDefenses='false', EnterBaseDefensesWhenIdle='false'),
     'aibdidle': lambda: mission('CampAIBdIdle', EnterBaseDefenses='false', EnterBaseDefensesWhenIdle='true'),
+    'aibdwho': lambda: mission('CampAIBdWho', EnterBaseDefenses='true', EnterBaseDefensesWhenIdle='false'),
 }

@@ -70,6 +70,9 @@ BENCHED_REG = {'人格/PowerChoice.Weight': '台上量过：docs/engine/aiopen.m
 NOTES = {
     '组队招人/TeamTemplate.SortByDistance': (GUESSED, 'AI 模型代码里读了这个名字（台上没单独量：engine_aiskirm 里是推测）'),
     '组队招人/CreateUnits.MinUnits': (GUESSED, 'AI 模型代码里读了这个名字（台上量的是 TeamTemplate.MinUnits，不是现造兵）'),
+    '微操/AIMicroManagerData.PullbackInjured': (GUESSED, '上了台没对上：受伤坦克不回维修设施（engine_aipullback，aiteamstate.md 第 6 节）'),
+    '微操/AIMicroManagerData.PullbackInjuredHealthPct': (GUESSED, '同 PullbackInjured，台上没对上'),
+    '微操/AIMicroManagerData.ReverseMove': (GUESSED, '上了台读不出倒车（airev1 / airev0 几乎一样）'),
     '组队招人/TeamTemplate.AlwaysRecruit': (GUESSED,'读了，出发后继续招人的门默认关（防御队吸兵和台上对不上，handoff-b 第 50、51 节）'),
 }
 
