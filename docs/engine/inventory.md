@@ -8,7 +8,7 @@
 | 脚本条件 | 89 | 22 | 6 | 61 | 0 | 94% |
 | 物体模块 | 184 | 9 | 15 | 143 | 17 | 42% |
 | 武器效果 | 25 | 2 | 3 | 20 | 0 | 53% |
-| AI | 415 | 33 | 194 | 154 | 34 | 87% |
+| AI | 415 | 36 | 191 | 154 | 34 | 87% |
 
 ## 脚本动作
 
@@ -812,7 +812,7 @@
 | 推断 | `开局/Order.Deposit` | 81 | AI 模型代码里读了这个名字 |
 | 推断 | `微操/AIMicroManagerData.EngageTacticalTarget` | 79 | AI 模型代码里读了这个名字 |
 | 推断 | `微操/AIMicroManagerData.PullbackInjured` | 78 | AI 模型代码里读了这个名字 |
-| 推断 | `微操/AIMicroManagerData.Crush` | 77 | AI 模型代码里读了这个名字 |
+| 已对拍 | `微操/AIMicroManagerData.Crush` | 77 | AI 模型代码里读了这个名字；台上量过：checks/engine_aicrush.py |
 | 推断 | `目标/AITargetingHeuristic.SortType` | 76 | AI 模型代码里读了这个名字 |
 | 推断 | `组队招人/TeamTemplate.SortByDistance` | 75 | AI 模型代码里读了这个名字（台上没单独量：engine_aiskirm 里是推测） |
 | 推断 | `微操/AIMicroManagerData.ReverseMove` | 74 | AI 模型代码里读了这个名字 |
@@ -877,7 +877,7 @@
 | 推断 | `目标/AITargetingHeuristic.HeuristicType=EnemyStructure` | 25 | AI 模型代码里读了这个名字 |
 | 推断 | `组队招人/TeamTemplate.ReleaseType=NEVER_RELEASE` | 25 | AI 模型代码里读了这个名字 |
 | 推断 | `战术/Tactic.Tactic=Engineer` | 24 | AI 模型代码里读了这个名字 |
-| 推断 | `微操/AIMicroManagerData.EnterBaseDefensesWhenIdle` | 23 | AI 模型代码里读了这个名字 |
+| 已对拍 | `微操/AIMicroManagerData.EnterBaseDefensesWhenIdle` | 23 | AI 模型代码里读了这个名字；台上量过：docs/engine/aiteamstate.md |
 | 推断 | `启发条件/IntervalHeuristic` | 22 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/IntervalHeuristic.ActiveTime` | 22 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/IntervalHeuristic.IntervalTime` | 22 | AI 模型代码里读了这个名字 |
@@ -912,7 +912,7 @@
 | 推断 | `微操/IgnoreTargets.Rule` | 13 | AI 模型代码里读了这个名字 |
 | 已对拍 | `组队招人/TeamTemplate.Priority=DEFENSE` | 13 | AI 模型代码里读了这个名字；台上量过：checks/engine_aitower.py |
 | 推断 | `启发条件/AllNearbyNodesFullHeuristic` | 12 | AI 模型代码里读了这个名字 |
-| 推断 | `微操/AIMicroManagerData.CrushPreference` | 12 | AI 模型代码里读了这个名字 |
+| 已对拍 | `微操/AIMicroManagerData.CrushPreference` | 12 | AI 模型代码里读了这个名字；台上量过：checks/engine_aicrush.py |
 | 未做 | `微操/AIMicroManagerData.RandomTargetScoreModifier` | 12 | AI 模型代码里没有这个名字 |
 | 未做 | `微操/AIMicroManagerData.TimeToKeepTargetMax` | 12 | AI 模型代码里没有这个名字 |
 | 未做 | `微操/AIMicroManagerData.TimeToKeepTargetMin` | 12 | AI 模型代码里没有这个名字 |

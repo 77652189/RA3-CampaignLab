@@ -1,0 +1,46 @@
+"""Engine probe: the skirmish AI team's EnterBaseDefenses (missions/aibasedef_bench.py; docs/engine/aiteamstate.md).
+
+  a  进炮塔     s1's objects with status ENCLOSED (someone is inside a turret)
+     炮塔数     AlliedBaseDefense s1 owns
+     步兵数     Peacekeepers s1 owns (in a turret too)
+     到远厂     Peacekeepers of s1 within 300 of the far power plant
+     once a second, AFTER seconds after the wake
+
+Expectations are the model's (l4_micro_engage.md 1.7); a FAIL is a reading too:
+  aibd1     进炮塔 reaches 1 or more
+  aibd0 / aibdidle  进炮塔 stays 0
+
+Readings (11-09, all PASS; counters 进炮塔 炮塔数 步兵数 到远厂; the AI's 4 AlliedBaseDefense 200 north of the far plant):
+  aibd1     s1-s14 0 4 4 0 | s15-17 到远厂 2,3,4 | s18-s20 0 3 4 4 | s21-s25 1 3 4 4 | s26-s32 1 2 3 3 | s33-s75 1 2 2 2
+            -- one Peacekeeper in a turret from s21 to the end (alive: the others die by s33, a turret lost per ~5 s)
+  aibd0     s18-s25 0 3 4 4 | s26-s28 0 2 4 4 | s29 0 2 3 3 | s30 0 2 2 2 | s31-32 0 2 1 1 | s33-s75 0 2 0 0
+  aibdidle  the same as aibd0 (进炮塔 0 all along; team dead by s33)
+"""
+from checks import engine_aitarget as at
+from parts import Script, Test, counted, square, status
+
+AFTER = 60.0
+
+
+def a(m, build):
+    t = Test()
+    s1 = m.player('s1')
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    o = m.find(m.role('far plant').name)
+    t.areas[at.FAR] = square(o.x, o.y, 300.0)
+    (inf,) = m.cnv_units
+    counted('CNV_BD_In', '进炮塔', t, status=status('ENCLOSED'), player=s1)
+    counted('CNV_BD_Turrets', '炮塔数', t, template=m.role('turret 1').template, player=s1)
+    counted('CNV_BD_Count', '步兵数', t, template=inf, player=s1)
+    counted('CNV_BD_Far', '到远厂', t, template=inf, area=at.FAR, player=s1)
+    wake = m.facts['wake at']
+    end = wake + AFTER
+    if build == 'aibd1':
+        t.expect += [('进炮塔', 1, 'ever>=', 1, end)]
+    else:
+        t.expect += [('进炮塔', 1, '==', 0, end)]
+    t.bench = [('bench_watch', dict(seconds=end + at.LAG, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aibd1', 'aibd0', 'aibdidle')}

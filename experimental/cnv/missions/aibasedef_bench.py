@@ -1,0 +1,37 @@
+"""Engine probe: the skirmish AI team's EnterBaseDefenses (engine line B, layer 4; read back by
+checks/engine_aibasedef.py; program: work/re l4_micro_engage.md 1.7 -- 0x8de960, called in team states 2 / 4 / 5 with
+the AI player's object list of class 0x2e; state 8 only with EnterBaseDefensesWhenIdle).
+
+Retail data: AlliedBaseDefense (the Multigunner turret; KindOf FS_BASE_DEFENSE GARRISONABLE_UNTIL_DESTROYED) carries a
+GarrisonContain, ContainMax 1, PassengerFilter INFANTRY, allies inside allowed. (Soviet / Japan base defenses carry no
+garrison contain; only the Allied one qualifies.)
+
+airetreat_bench's airet0 (12 of the player's Peacekeepers round the far plant, RetreatPowerAdvantage 0: the team
+fights there, state 2, and dies) with FOUR of the AI's own AlliedBaseDefense 200 north of the far plant (80 apart: the
+team stands to fight within 150 of them, one place each):
+  aibd1     EnterBaseDefenses true  -> the model: Peacekeepers go into the turrets (ENCLOSED), leave the team
+  aibd0     EnterBaseDefenses false -> nobody goes in
+  aibdidle  EnterBaseDefenses false, EnterBaseDefensesWhenIdle true -> nobody (the team fights, never idle at a turret)
+Facts: wake at.
+"""
+from missions import airetreat_bench as ar
+
+TURRET = 'AlliedBaseDefense'
+NEAR = 200.0                             # north (+) of the far plant
+SPREAD = (-120.0, -40.0, 40.0, 120.0)
+EAST = 40.0
+
+
+def mission(mod, **fields):
+    m = ar.mission(mod, guards=ar.GUARDS, RetreatPowerAdvantage='0.0', **fields)
+    for k, dx in enumerate(SPREAD):
+        m.put(TURRET, 'carrier home', EAST + dx, NEAR, side='s1', name=f'UNIT - CNV AI Turret {k + 1}',
+              role=f'turret {k + 1}')
+    return m
+
+
+MISSION = {
+    'aibd1': lambda: mission('CampAIBd1', EnterBaseDefenses='true', EnterBaseDefensesWhenIdle='false'),
+    'aibd0': lambda: mission('CampAIBd0', EnterBaseDefenses='false', EnterBaseDefensesWhenIdle='false'),
+    'aibdidle': lambda: mission('CampAIBdIdle', EnterBaseDefenses='false', EnterBaseDefensesWhenIdle='true'),
+}
