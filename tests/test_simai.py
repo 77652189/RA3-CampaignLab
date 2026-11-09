@@ -330,6 +330,29 @@ def test_only_the_states_listed_for_the_difficulty_run(lib, build, tanks, inf):
     assert (rows[39]['坦克在家'], rows[39]['步兵在家']) == (tanks, inf), [(r['坦克在家'], r['步兵在家']) for r in rows]
 
 
+# bench 2026-11-09 checks/engine_aiotime.py a: power plant / Time 30s / plant / Time 20s / plant, woken at s10:
+# the plants stand from s19, s49, s59 (Time = since the wake; the 20s point has passed, the third goes at once)
+AIOTIME_BENCH = (19, 49, 59)
+
+
+def _aiotime_firsts(lib):
+    w = simai.run('aiotime', 'a', 70.0, lib=lib, blocks=())
+    seen = [v[0] for _, v in w.sim.series]
+    return [next(k + 1 for k, v in enumerate(seen) if v >= n) for n in (1, 2, 3)]
+
+
+def test_opening_time_counts_from_the_wake_as_on_the_bench(lib):
+    """The gaps: 30 s to the second plant, 10 s (one build) to the third -- not 20 s (since the previous Time)."""
+    a, b, c = _aiotime_firsts(lib)
+    assert (b - a, c - b) == (AIOTIME_BENCH[1] - AIOTIME_BENCH[0], AIOTIME_BENCH[2] - AIOTIME_BENCH[1]), (a, b, c)
+
+
+@pytest.mark.xfail(strict=True, reason='simai 22 / 52 / 62: the first plant 3 s late (an opening that starts with a '
+                                       'power plant, no barracks: aiopen is on time) -- not found, handoff-b 81')
+def test_opening_time_plants_stand_when_on_the_bench(lib):
+    assert all(abs(f - b) <= 1 for f, b in zip(_aiotime_firsts(lib), AIOTIME_BENCH))
+
+
 def test_path_to_target_is_asked_on_the_simulators_grid(lib):
     """PathToTargetHeuristic (work/re l4_states.md 3): the opening and the states ask the brain; the skirmish map is
     one piece of land, so infantry has a way and a ship finds no water spot (= no way). At 300 s the player's base
