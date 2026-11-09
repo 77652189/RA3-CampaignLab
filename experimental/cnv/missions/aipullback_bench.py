@@ -15,13 +15,18 @@ from missions import aicrush_bench as ac
 
 FACTORY = 'AlliedWarFactory'
 FACTORY_NAME = 'UNIT - CNV AI War Factory'
-FACTORY_AT = (0.0, 300.0)               # off the yard's east base site, clear of the yard and the tanks' way west
+REPAIR = {'Soviet': 'SovietCrane', 'Japan': 'JapanWarFactory'}   # ArmyDef*.xml VehicleRepairFacility
+FACTORY_AT = (0.0, 300.0)              # off the yard's east base site, clear of the yard and the tanks' way west
 
 
-def mission(mod, factory=False, **fields):
+def mission(mod, factory=False, faction=None, **fields):
+    """faction 'Soviet' / 'Japan': s1 that faction's player, its repair place that faction's VehicleRepairFacility
+    (REPAIR) -- the pull-back looks the ArmyDefinition up by the player's faction (its Side; work/re handoff-b 71)."""
     m = ac.mission(mod, Crush='false', **fields)
+    if faction:
+        m.sides['s1'] = dict(m.sides['s1'], playerFaction=f'PlayerTemplate:{faction}')
     if factory:
-        m.put(FACTORY, 'east base', *FACTORY_AT, side='s1', name=FACTORY_NAME, role='ai factory')
+        m.put(REPAIR.get(faction, FACTORY), 'east base', *FACTORY_AT, side='s1', name=FACTORY_NAME, role='ai factory')
     return m
 
 
@@ -62,6 +67,10 @@ MISSION = {
     # aipullp1 none either (they join the team at 30 % and drive off): is Body slot 0x40 a 0..1 ratio? any health
     # passes a PullbackInjuredHealthPct this big
     'aipullbig': lambda: mission('CampAIPullBig', factory=True, PullbackInjuredHealthPct='100000.0'),
+    # aipulli1 with a Soviet AI and a SovietCrane: the lookup is by faction (s1 Allied -> AlliedArmy, AlliedWarFactory,
+    # as the probe has it) -- does another faction / facility draw them home?
+    'aipullsov': lambda: mission('CampAIPullSov', factory=True, faction='Soviet'),
+    'aipulljp': lambda: mission('CampAIPullJp', factory=True, faction='Japan'),
     'airev1': lambda: mission('CampAIRev1'),
     'airev0': lambda: mission('CampAIRev0', ReverseMove='false'),
 }

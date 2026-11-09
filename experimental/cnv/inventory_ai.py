@@ -65,13 +65,13 @@ GENERIC = {'Distance', 'Priority', 'Value', 'Above', 'Rule', 'Include', 'Exclude
            'Budget', 'Surface', 'Event', 'Target', 'Beacon', 'KindOf', 'Engineer'}
 
 # name -> source (a docs/engine/ai*.md section or a test) where the auto rule misses a bench comparison
-BENCHED_REG = {'人格/PowerChoice.Weight': '台上量过：docs/engine/aiopen.md 买协议（aipwrb 权重 0 的不买）'}
+BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（aipwrb 权重 0 的不买）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
     '组队招人/TeamTemplate.SortByDistance': (GUESSED, 'AI 模型代码里读了这个名字（台上没单独量：engine_aiskirm 里是推测）'),
     '组队招人/CreateUnits.MinUnits': (GUESSED, 'AI 模型代码里读了这个名字（台上量的是 TeamTemplate.MinUnits，不是现造兵）'),
-    '微操/AIMicroManagerData.PullbackInjured': (GUESSED, '上了台没对上：受伤坦克不回维修设施（engine_aipullback，aiteamstate.md 第 6 节）'),
-    '微操/AIMicroManagerData.PullbackInjuredHealthPct': (GUESSED, '同 PullbackInjured，台上没对上'),
+    '微操/AIMicroManagerData.PullbackInjured': (BENCHED, '只认车能开进去的维修设施：苏联 AI + 吊车，残血坦克回去被回收（aipullsov PASS）；盟军 / 日本工厂找不到（aiteamstate.md 第 6 节）'),
+    '微操/AIMicroManagerData.PullbackInjuredHealthPct': (GUESSED, '30% 低于 0.35 时苏联坦克会撤（aipullsov），阈值边界没量'),
     '微操/AIMicroManagerData.ReverseMove': (GUESSED, '上了台读不出倒车（airev1 / airev0 几乎一样）'),
     '组队招人/TeamTemplate.AlwaysRecruit': (GUESSED,'读了，出发后继续招人的门默认关（防御队吸兵和台上对不上，handoff-b 第 50、51 节）'),
 }

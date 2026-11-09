@@ -35,6 +35,15 @@ Readings (11-09; 4 Hammers vs 12 Peacekeepers, Crush false; tanks reach the plan
   So 0x8df430 is reached (EnterGarrisons, in the same state functions, worked) and the member gates pass; left: the
   facility search -- the ArmyDef map lookup (key at team / brain + 0x24), template +8 against ArmyDef +0x28, or the
   path test 0x6d9130.
+  (11-09, round 70) The ArmyDefinition is found by the player's faction (its Side), so s1 Allied -> AlliedWarFactory
+  as the probe has it. aipulli1 with the faction changed:
+  aipullsov PASS (Soviet AI, a SovietCrane): 血量 30 from s9, 回家 1 @ s19 .. 4 @ s23, then 坦克数 4 -> 0 by s29 with
+           血量 frozen at 39 -- the 4 hurt tanks drive home and into the Crane (SlaughterHordeContain: ground up for
+           75 % cash back). Before this run's window moved to wake + 5 s it read FAIL (the window began at s35).
+  aipulljp  FAIL (Japan AI, a JapanWarFactory): as aipulli1 -- they drive on, all dead by s25, 回家 0.
+  So the pull-back works, but only to a repair place the vehicle can enter: retail's Allied / Japan war factories
+  (no vehicle Contain) are never found (the facility search's reach test, or the template match -- not told apart);
+  the Soviet AI recycles its hurt vehicles in the Crane.
   ReverseMove: airev1 / airev0 differ too little to read a back-up (近厂 2 in both at s19-22).
 """
 from checks import engine_aitarget as at
@@ -43,8 +52,8 @@ from parts import Script, Test, counted, square
 AFTER = 70.0
 LATE = 25.0
 HURT_AT = 12.0                           # aipullh*: the tanks are on the road (at the far plant s15)
-IDLE = ('aipulli1', 'aipullr1', 'aipullp1', 'aipullbig')   # hurt at the wake, ~1000 from any enemy (p1: before it)
-IDLE_HURT = {'aipulli1': 0.5, 'aipullr1': 0.5, 'aipullp1': -9.0, 'aipullbig': -9.0}   # s after the wake
+IDLE = ('aipulli1', 'aipullr1', 'aipullp1', 'aipullbig', 'aipullsov', 'aipulljp')   # hurt at the wake, ~1000 from any enemy (p1: before it)
+IDLE_HURT = {'aipulli1': 0.5, 'aipullr1': 0.5, 'aipullp1': -9.0, 'aipullbig': -9.0, 'aipullsov': 0.5, 'aipulljp': 0.5}   # s after the wake
 HURT = 30.0                              # % -- under PullbackInjuredHealthPct 0.35
 
 
@@ -84,7 +93,8 @@ def a(m, build):
             t.scripts.append(Script('Test - repairs on', [('TIMER_EXPIRED', timer)],
                                     [('SKIRMISH_AI_USE_REPAIRS', s1, 1)]))
         if build in ('aipull1', 'aipullh1', 'aipullga') or build in IDLE:
-            t.expect += [('回家', wake + LATE, 'ever>=', 1, end)]
+            # IDLE: from 5 s after the wake (aipullsov's Soviet tanks were home s19-28, wake ~s9, then ground up)
+            t.expect += [('回家', wake + (5.0 if build in IDLE else LATE), 'ever>=', 1, end)]
         else:
             t.expect += [('回家', wake + LATE, '==', 0, end)]
     else:
@@ -96,5 +106,5 @@ def a(m, build):
     return t
 
 
-CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aipull1', 'aipull0', 'aipullh1', 'aipullh0', 'aipullga', 'aipulli1', 'aipullr1', 'aipullp1', 'aipullbig',
+CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aipull1', 'aipull0', 'aipullh1', 'aipullh0', 'aipullga', 'aipulli1', 'aipullr1', 'aipullp1', 'aipullbig', 'aipullsov', 'aipulljp',
                                                            'airev1', 'airev0')}

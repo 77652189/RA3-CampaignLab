@@ -8,7 +8,7 @@
 | 脚本条件 | 89 | 22 | 6 | 61 | 0 | 94% |
 | 物体模块 | 184 | 9 | 15 | 143 | 17 | 42% |
 | 武器效果 | 25 | 2 | 3 | 20 | 0 | 53% |
-| AI | 415 | 36 | 191 | 154 | 34 | 87% |
+| AI | 415 | 37 | 190 | 154 | 34 | 87% |
 
 ## 脚本动作
 
@@ -114,7 +114,7 @@
 | 推断 | `SET_RANDOM_MSEC_TIMER` | 77 | 引擎模型核心 |
 | 已对拍 | `TEAM_ATTACK_NAMED` | 76 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_reorder.py |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ActivateEjectPassengersSpecialPowerUntargeted` | 75 | 只记进时间线，没有效果 |
-| 已对拍 | `SKIRMISH_AI_USE_REPAIRS` | 75 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aiswitch.py |
+| 已对拍 | `SKIRMISH_AI_USE_REPAIRS` | 75 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aipullback.py |
 | 未做 | `NAMED_OUTLINE` | 74 | Sim.act / Sim.cond 不认识 |
 | 未做 | `FLASH_UI_UNIT_ABILITY_BUTTON` | 72 | Sim.act / Sim.cond 不认识 |
 | 推断 | `MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT` | 72 | Sim.act / Sim.cond 有分支 |
@@ -255,7 +255,7 @@
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleAfterburners` | 12 | 只记进时间线，没有效果 |
 | 未做 | `OPTIONS_SET_OCCLUSION_MODE` | 12 | Sim.act / Sim.cond 不认识 |
 | 未做 | `PLAYER_SELL_EVERYTHING` | 12 | Sim.act / Sim.cond 不认识 |
-| 已对拍 | `SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER` | 12 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_build.py |
+| 已对拍 | `SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER` | 12 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aipullback.py |
 | 未做 | `TEAM_GARRISON_NEAREST_BUILDING` | 12 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_MOVE_TO_NEAREST_OBJECT_OF_KINDOF_OWNED_BY_PLAYER` | 12 | Sim.act / Sim.cond 不认识 |
 | 未做 | `DISABLE_JOYPAD_COMMANDBAR_BUTTON` | 11 | Sim.act / Sim.cond 不认识 |
@@ -628,7 +628,7 @@
 | 未做 | `Behaviors/SpecialDisguiseUpdate` | 4 (4) | 模拟器代码里没有这个名字；例：AlliedAntiVehicleVehicleTech3, AlliedInfiltrationInfantry |
 | 未做 | `Behaviors/AttachUpdate` | 3 (24) | 已核（11-08）：模拟器没有这个效果（没有附着）；例：ChronoTargetMarker, AlliedAirfieldRepairDrone |
 | 未做 | `Behaviors/StealthDetectorUpdate` | 3 (8) | 已核（11-08）：模拟器没有这个效果（没有反隐）；例：AlliedScoutInfantry, A08_Dog1 |
-| 未做 | `Behaviors/SlaughterHordeContain` | 3 (6) | 模拟器代码里没有这个名字；例：AlliedAntiStructureShip, S08_AlliedAntiStructureShip |
+| 未做 | `Behaviors/SlaughterHordeContain` | 3 (6) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_aipullback.py），可能用别的名字实现了；例：AlliedAntiStructureShip, S08_AlliedAntiStructureShip |
 | 未做 | `AI/AnimalAIUpdate` | 3 (4) | 模拟器代码里没有这个名字；例：BaseCivilian, CivilianFemale1 |
 | 未做 | `Behaviors/AssistedPlacementBehavior` | 3 (4) | 模拟器代码里没有这个名字；例：AlliedRefinery, AlliedRefinery_NoHarvester |
 | 未做 | `Behaviors/LoseHealthUpdate` | 3 (4) | 模拟器代码里没有这个名字；例：SovietAntiStructureShip, SovietBomberAircraft |
@@ -793,7 +793,7 @@
 | 推断 | `组队招人/TeamTemplate.Priority=STANDARD` | 126 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/ConstantHeuristic` | 119 | AI 模型代码里读了这个名字 |
 | 已对拍 | `人格/PowerChoice.PlayerPower` | 117 | AI 模型代码里读了这个名字；台上量过：docs/engine/aiopen.md |
-| 已对拍 | `人格/PowerChoice.Weight` | 117 | 台上量过：docs/engine/aiopen.md 买协议（aipwrb 权重 0 的不买） |
+| 已对拍 | `人格/PowerChoice.Weight` | 117 | docs/engine/aiopen.md#买协议（aipwrb 权重 0 的不买） |
 | 推断 | `战术/Tactic.EndBehavior=DISBAND` | 105 | AI 模型代码里读了这个名字 |
 | 推断 | `目标/AITargetingHeuristic.ForbiddenKindOf` | 102 | AI 模型代码里读了这个名字 |
 | 已对拍 | `微操/AIMicroManagerData.RetreatPowerAdvantage` | 94 | AI 模型代码里读了这个名字；台上量过：checks/engine_airetreat.py |
@@ -811,11 +811,11 @@
 | 推断 | `开局/Order.Account` | 81 | AI 模型代码里读了这个名字 |
 | 推断 | `开局/Order.Deposit` | 81 | AI 模型代码里读了这个名字 |
 | 推断 | `微操/AIMicroManagerData.EngageTacticalTarget` | 79 | AI 模型代码里读了这个名字 |
-| 推断 | `微操/AIMicroManagerData.PullbackInjured` | 78 | AI 模型代码里读了这个名字 |
+| 已对拍 | `微操/AIMicroManagerData.PullbackInjured` | 78 | 只认车能开进去的维修设施：苏联 AI + 吊车，残血坦克回去被回收（aipullsov PASS）；盟军 / 日本工厂找不到（aiteamstate.md 第 6 节） |
 | 已对拍 | `微操/AIMicroManagerData.Crush` | 77 | AI 模型代码里读了这个名字；台上量过：checks/engine_aicrush.py |
 | 推断 | `目标/AITargetingHeuristic.SortType` | 76 | AI 模型代码里读了这个名字 |
 | 推断 | `组队招人/TeamTemplate.SortByDistance` | 75 | AI 模型代码里读了这个名字（台上没单独量：engine_aiskirm 里是推测） |
-| 推断 | `微操/AIMicroManagerData.ReverseMove` | 74 | AI 模型代码里读了这个名字 |
+| 推断 | `微操/AIMicroManagerData.ReverseMove` | 74 | 上了台读不出倒车（airev1 / airev0 几乎一样） |
 | 推断 | `目标/AITargetingHeuristic.Location` | 74 | AI 模型代码里读了这个名字 |
 | 推断 | `组队招人/TeamTemplate.ReleaseType` | 71 | AI 模型代码里读了这个名字 |
 | 推断 | `微操/AIMicroManagerData.EnemySearchDistanceVisionMultiplier` | 70 | AI 模型代码里读了这个名字 |
@@ -864,7 +864,7 @@
 | 推断 | `启发条件/IsBuildingHeuristic` | 30 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/IsBuildingHeuristic.KindOf` | 30 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/IsBuildingHeuristic.PassIfBuilding` | 30 | AI 模型代码里读了这个名字 |
-| 推断 | `微操/AIMicroManagerData.PullbackInjuredHealthPct` | 30 | AI 模型代码里读了这个名字 |
+| 推断 | `微操/AIMicroManagerData.PullbackInjuredHealthPct` | 30 | 30% 低于 0.35 时苏联坦克会撤（aipullsov），阈值边界没量 |
 | 推断 | `微操/AIMicroManagerData.AlphaStrikeTargetHealthPct` | 28 | AI 模型代码里读了这个名字 |
 | 已对拍 | `战术/Tactic.Tactic=StaticDefense` | 28 | AI 模型代码里读了这个名字；台上量过：checks/engine_aidefense.py |
 | 未做 | `造兵/BlockIfThingNearFactory.Relationship` | 28 | AI 模型代码里没有这个名字 |
