@@ -67,6 +67,12 @@ BENCHED_TESTS = {
     (CONDITION, 'PLAYER_HAS_COMPARISON_POWER_POINTS'):
         'tests/test_simbench.py::test_protocol_set_points_follows_the_programs_rule',
     (CONDITION, 'PLAYER_HAS_PLAYER_TECH'): 'tests/test_simbench.py::test_protocol_rank_two_at_frame_5400',
+    # engine line C round 1: modules whose retail data the simulator already follows and a bench-reading test cites
+    (MODULE, 'Behaviors/ProductionUpdate'):
+        'tests/test_simbench.py::test_production_pays_as_it_builds_and_comes_out_after_the_door',   # engine_production a-g
+    (MODULE, 'Behaviors/StructureUnpackUpdate'): 'tests/test_simbench.py::test_power_back_after_the_plant_unpacks',
+    (MODULE, 'Behaviors/SpecialPower'): 'tests/test_simbench.py::test_super_a_scripts_cast_starts_the_retail_reload',
+    (MODULE, 'AI/AIUpdate'): 'tests/test_simbench.py::test_r8_idle_within_sight_walks_up_fires_and_comes_back',
 }
 
 # (part, name) -> (state, why): where the name rule above is wrong (a module read under another name ...)
