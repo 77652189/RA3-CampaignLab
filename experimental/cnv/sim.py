@@ -139,7 +139,8 @@ LINGER = 0.0                    # a killed unit's death (its slow death): still 
                                 # (docs/engine/script-semantics.md 4.2) -- the bench (2026-10-28, probe death): out of
                                 # the area from the reading the kill shows in; the guess was 3 s
 GRID = 20.0                     # routing cells (world units)
-HOLD_SPOTS = False              # every move's goal kept off other units' spots (Sim.claims): not benched, a4 changes
+COLUMN_GAP = 44.0              # infantry column march's ends, across and back (bench 11-09 a01: ~44-50; Generals 22)
+HOLD_SPOTS = False             # every move's goal kept off other units' spots (Sim.claims): not benched, a4 changes
 ARRIVE = 1.5 * GRID             # a plain move that ends farther than this from where it was sent stopped short (held_up)
 BUILD_STEP = 5.0                # a builder on his way (R5) moves in steps this long, to see where he gets within range
 HIGH_STEP = 50.0                # ShroudClearingHeight's default: a viewer does not discover a cell this much above its own
@@ -1045,7 +1046,9 @@ class Sim:
         """The spots other mobile ground units hold (x, y, radius): where they are going, or where they stand (the
         pathfinder's goal cells, Pathfinder::updateGoal); none for aircraft in the air or for `skip`. Off unless
         HOLD_SPOTS (2026-11-09): on, a4's three trucks sent to plaza 2 stop apart and its objective never completes
-        (the card plan wins 6:50 instead of 14:48) -- to the bench first (work/re/handoff.md)."""
+        (the card plan wins 6:50 instead of 14:48). Benched 11-09: the rule is the game's (a01, two infantry sent
+        alone to one point stood ~22 apart), and the game's a4 still gets all trucks to the halt (checks/a4.py hold
+        PASS) -- so what is wrong is this rule's take on the trucks, not the level (work/re/handoff.md round 109)."""
         if b.surface == 'air' or not HOLD_SPOTS:
             return []
         return [tuple(o.dest if o.path and o.dest else (o.x, o.y)) + (o.radius,) for o in self.living()
@@ -1089,8 +1092,10 @@ class Sim:
 
     def column_ends(self, foot, p, attacking, given, skip):
         """Generals' infantry column march (AIGroup::friend_moveInfantryToPos), its ends only: 3 columns (5 from 16
-        men) across the way in, 22 apart, filled by where the men stand across it; in each column the front man at
-        the point's row, the next 22 behind (and 10 to the side every other one). The way in is taken straight from
+        men) across the way in, COLUMN_GAP apart, filled by where the men stand across it; in each column the front man
+        at the point's row, the next COLUMN_GAP behind. Bench 2026-11-09 (testbench/retail_q1_spots.py, a01's squad):
+        3 columns x 2 rows, ~44-50 across and ~48 back, no side step on the second row -- Generals' 2.2 cells and its
+        every-other-one cell aside read as RA3 with 20-unit cells and no side step. The way in is taken straight from
         the man nearest the group's middle (Generals: the last leg of one wide ground path); the column's own way
         there and the conditions' constants (AIData MinDistanceForGroup, here 100; MinInfantryForGroup, here 3) are
         INFERRED. Bench 2026-11-08 question 1: the squad's middle ~18-23 short of the point."""
@@ -1109,8 +1114,8 @@ class Sim:
             c = column[id(b)]
             r = rows[c]
             rows[c] += 1
-            side = 22.0 * c + (10.0 if r % 2 else 0.0)
-            want = (p[0] + side * nx - r * 22.0 * ex, p[1] + side * ny - r * 22.0 * ey)
+            side = COLUMN_GAP * c
+            want = (p[0] + side * nx - r * COLUMN_GAP * ex, p[1] + side * ny - r * COLUMN_GAP * ey)
             self.order_move(b, want, attacking, given, skip)
             given.append(tuple(b.dest or (b.x, b.y)) + (b.radius,))
 
