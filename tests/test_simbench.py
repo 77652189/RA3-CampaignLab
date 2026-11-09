@@ -984,6 +984,27 @@ def test_scripts3_a_script_moves_the_player_under_disable_input():
     assert last[0] == 1 and last[2:] == [-3, -3], last
 
 
+# checks/engine_scripts4.py (bench 11-09, CampScr4Border / Team / Clock)
+def test_scripts4_off_the_border_nobody_fires_or_is_fired_on():
+    """border: the west half from the start -- the pair across its edge (X) and the pair outside (Y) hold their fire
+    till the whole map opens at 20 s, the pair inside (Z) fights; Y's Guardian lives on in its area (Y在 1)."""
+    by = {round(s): v for s, v in _sim_run('engine_scripts4', 'border', 32.0).series}
+    assert by[18][:2] == [100, 100] and by[18][3] == 1 and by[9][2] < 100, by[18]
+    assert by[30][0] < 100 and by[30][1] < 100, by[30]
+
+
+def test_scripts4_team_stop_and_team_guard_area_as_the_bench():
+    """team: TEAM_STOP 3 s into a 1400 move -- both stay in the middle; TEAM_GUARD_AREA -- both in the zone."""
+    last = _sim_run('engine_scripts4', 'team', 30.0).series[-1][1]
+    assert last == [0, 2, 0, 2], last
+
+
+def test_scripts4_a_hidden_countdown_runs_on():
+    """clock: the 20 s timer hidden at 8 and shown at 14 expires at 20 all the same (到点 1, bench s19)."""
+    by = {round(s): v for s, v in _sim_run('engine_scripts4', 'clock', 26.0).series}
+    assert by[18] == [0] and by[24] == [1], by
+
+
 # checks/engine_scripts1.py
 def _scripts1(variant, until):
     return {round(sec): vals for sec, vals in _sim_run('engine_scripts1', variant, until).series}

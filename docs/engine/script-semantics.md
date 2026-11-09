@@ -125,6 +125,7 @@
 
 - `DISPLAY_COUNTER` / `DISPLAY_COUNTDOWN_TIMER`：`SA` 里的 `doDisplayCounter` / `doDisplayCountdownTimer` → `InGameUI::addNamedTimer`（`ZH/Source/GameClient/InGameUI.cpp`）。只是登记一个界面条目，绘制时现读计数器的值。倒计时显示的是 `(int)(剩余帧/30)`，向下取整。对逻辑**没有任何影响**。
 - `HIDE_COUNTER` / `HIDE_COUNTDOWN_TIMER` 调用 `removeNamedTimer`。
+  - 台上测过（11-09，`checks/engine_scripts4.py` clock）：藏起来的倒计时照走，到时 `TIMER_EXPIRED` 照常成立；再显示时读的是剩下的时间（不重置），**排到列表最后**（原来在计数器上面，再显示就跑到计数器下面）；到时后停在 0:00 一直显示，要自己藏。
 - `SHOW_MILITARY_CAPTION`：`SA` 里的 `doMilitaryCaption` → `InGameUI::militarySubtitle`。《将军》的时长参数是 Int 毫秒；红警3的 catalog 里参数类型是 Real（秒），类型变了。
 - 任务目标相关的动作（`SET_MISSION_OBJECTIVE_STATUS`、`LINK_MISSION_OBJECTIVE_TO_*`）《将军》里没有，见第 6 节。
 
@@ -133,6 +134,7 @@
 - `MAP_SWITCH_BORDER`：`SA` 里的 `doBorderSwitch` → `TerrainLogic::setActiveBoundary`（`ZH/Source/GameLogic/Map/TerrainLogic.cpp`）。
   - 序号越界、和当前相同、或那条边界宽高为 0 → 什么都不做。
   - 否则立即重建 PartitionManager 并恢复雾和揭开的格子，所有对象重新登记；落在新边界外的对象只是打上 `OFF_MAP` 状态，**不会被删或被杀**（`Object::friend_notifyOfNewMapBoundary`）。
+  - 台上测过（11-09，`checks/engine_scripts4.py` border）：边界外的单位**既不开火也不挨打**——一边在界内一边在界外的一对、两边都在界外的一对，都一枪不放；界内的一对照打；边界放开马上开打。界外单位还活着，区域条件照样看得见。比《将军》"同一边才互打"的过滤更严。模拟器 `Sim.on_map`。
   - 源码注释说边界切换"和永久揭图配合不好"，所以对观战者会先撤销永久揭图、切换、再重新揭。对普通玩家没有这样处理。推断：切换**之前**做的永久揭图，可能盖不到新扩出来的区域。未实测。
 - `MAP_REVEAL_ALL_PERM` / `MAP_REVEAL_ALL_UNDO_PERM`：`SA` 里的 `doRevealMapEntirePermanently`。玩家参数为空时作用于所有人类玩家。
 - `MAP_REVEAL_ALL`：`SA` 里的 `doRevealMapEntire`，一次性揭开，之后照常回雾。

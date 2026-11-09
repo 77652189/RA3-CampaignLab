@@ -2811,6 +2811,20 @@ class Sim:
                 best = ((round(n / 10.0), -y), (x, y))
         return best and best[1]
 
+    def on_map(self, b):
+        """Within the active border (MAP_SWITCH_BORDER). Bench 2026-11-09 engine_scripts4 border: while the border is
+        the west half, a Guardian pair across its edge (ours inside, theirs 60 outside) and a pair both outside hold
+        their fire, a pair inside fights; the border opened, both pairs fight at once. An object off the border is
+        neither a shooter nor a target (the Generals source marks it OFF_MAP); it lives on and the area conditions
+        see it. Taken by its centre (INFERRED: the pairs stood well clear of the edge)."""
+        if not self.border:
+            return True
+        rect = list(getattr(self.m.map, 'BORDERS', {}).values())
+        if self.border >= len(rect):
+            return True
+        x0, y0, x1, y1 = rect[self.border]
+        return x0 <= b.x <= x1 and y0 <= b.y <= y1
+
     def fight(self):
         """One tick of the fight model (未对齐, docs: the 'combat' align entry): every armed body fires each of its
         weapons at the nearest enemy in that weapon's range it can hit (its NAMED_ATTACK target first, when in
@@ -2822,7 +2836,7 @@ class Sim:
         self.firing = []
         self.chilling = []
         self._fire_obstacles = None             # `shot_blocked`'s footprints, taken once a tick when first asked
-        live = [b for b in self.living() if not b.scenery]
+        live = [b for b in self.living() if not b.scenery and self.on_map(b)]     # off the border: out of the fight
         armed = [b for b in live if b.weapons and 'NO_ATTACK' not in b.status    # NO_ATTACK: holds its fire
                  and not self.unpowered(b)]
         targets = [b for b in live if 'UNATTACKABLE' not in b.status]

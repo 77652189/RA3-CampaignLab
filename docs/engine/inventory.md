@@ -4,7 +4,7 @@
 
 | 部分 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|
-| 脚本动作 | 427 | 56 | 51 | 272 | 48 | 81% |
+| 脚本动作 | 427 | 62 | 45 | 272 | 48 | 81% |
 | 脚本条件 | 89 | 23 | 5 | 61 | 0 | 94% |
 | 物体模块 | 184 | 9 | 15 | 143 | 17 | 42% |
 | 武器效果 | 25 | 2 | 3 | 20 | 0 | 53% |
@@ -106,7 +106,7 @@
 | 已对拍 | `PLAYER_SET_PLAYER_POWER_POINTS` | 95 | tests/test_simbench.py::test_protocol_set_points_follows_the_programs_rule |
 | 推断 | `SET_REF_TO_NEREST_TEAM_OF_TYPE_OWNED_BY_PLAYER` | 94 | Sim.act / Sim.cond 有分支 |
 | 已对拍 | `MAP_REVEAL_ALL_PERM` | 89 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_acquire.py |
-| 推断 | `MAP_SWITCH_BORDER` | 87 | Sim.act / Sim.cond 有分支 |
+| 已对拍 | `MAP_SWITCH_BORDER` | 87 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts4.py |
 | 未做 | `NAMED_SET_DISABLED` | 86 | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_REMOVE_INFOBOX` | 83 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_FOLLOW_WAYPOINTS` | 83 | Sim.act / Sim.cond 不认识 |
@@ -146,7 +146,7 @@
 | 已对拍 | `PLAY_SOUND_EFFECT` | 51 | 只记进时间线（sim.SHOWN）；台上量过：checks/engine_dialog.py |
 | 未做 | `TEAM_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT` | 51 | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `DECREMENT_COUNTER` | 50 | 引擎模型核心；台上量过：checks/engine_scripts3.py |
-| 推断 | `DISPLAY_COUNTDOWN_TIMER` | 50 | Sim.act / Sim.cond 有分支 |
+| 已对拍 | `DISPLAY_COUNTDOWN_TIMER` | 50 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts4.py |
 | 未做 | `SELL_OBJECT` | 50 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_ATTACK_TEAM` | 50 | Sim.act / Sim.cond 不认识 |
 | 未做 | `FLASH_UI_BUILD_BUTTON` | 48 | Sim.act / Sim.cond 不认识 |
@@ -156,7 +156,7 @@
 | 已对拍 | `NAMED_RECEIVE_UPGRADE` | 47 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_invuln.py |
 | 未做 | `TEAM_SET_STANCE` | 45 | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_CUSTOM_COLOR` | 44 | Sim.act / Sim.cond 不认识 |
-| 推断 | `HIDE_COUNTDOWN_TIMER` | 43 | Sim.act / Sim.cond 有分支 |
+| 已对拍 | `HIDE_COUNTDOWN_TIMER` | 43 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts4.py |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_SovietAntiGroundAircraftEvacuate` | 43 | 只记进时间线，没有效果 |
 | 未做 | `PLAYER_SET_OVERRIDE_RELATION_TO_TEAM` | 43 | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleSpiderHole` | 41 | 只记进时间线，没有效果 |
@@ -193,7 +193,7 @@
 | 未做 | `PLAYER_CAMERA_MOVE_TO_NAMED` | 27 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_GARRISON_SPECIFIC_BUILDING` | 27 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_SET_PLAYERS_NEAREST_UNIT_OF_TYPE_TO_REFERENCE` | 27 | Sim.act / Sim.cond 不认识 |
-| 推断 | `TEAM_STOP` | 27 | Sim.act / Sim.cond 有分支 |
+| 已对拍 | `TEAM_STOP` | 27 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts4.py |
 | 未做 | `TEAM_TELEPORT_TO_WAYPOINT` | 27 | Sim.act / Sim.cond 不认识 |
 | 未做 | `MAP_UNDO_REVEAL_PERMANENTLY_IN_TRIGGER` | 26 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `NAMED_FLASH_WHITE` | 26 | 纯表现（名字规则） |
@@ -275,7 +275,7 @@
 | 未做 | `SKIRMISH_AI_START` | 9 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `SOUND_ENABLE_TYPE` | 9 | 纯表现（名字规则） |
 | 推断 | `SUB_FROM_MSEC_TIMER` | 9 | 引擎模型核心 |
-| 推断 | `TEAM_GUARD_AREA` | 9 | Sim.act / Sim.cond 有分支 |
+| 已对拍 | `TEAM_GUARD_AREA` | 9 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts4.py |
 | 未做 | `TEAM_IDLE_FOR_FRAMECOUNT` | 9 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_MOVE_TO_NEAREST_OBJECT_OF_TYPE_OWNED_BY_PLAYER` | 9 | Sim.act / Sim.cond 不认识 |
 | 推断 | `COUNTER_MATH_VALUE` | 8 | 引擎模型核心 |
@@ -336,7 +336,7 @@
 | 未做 | `TEAM_EXECUTE_SEQUENTIAL_SCRIPT` | 4 | Sim.act / Sim.cond 不认识 |
 | 未做 | `UNIT_ATTACK_MOVE_TOWARDS_NEAREST_OBJECT_TYPE` | 4 | Sim.act / Sim.cond 不认识 |
 | 未做 | `UNIT_CHANGE_OBJECT_STATUS:NO_COLLISIONS` | 4 | 状态位 NO_COLLISIONS 只记下来 |
-| 推断 | `UNIT_GUARD_AREA` | 4 | Sim.act / Sim.cond 有分支 |
+| 已对拍 | `UNIT_GUARD_AREA` | 4 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts4.py |
 | 未做 | `UNIT_GUARD_OBJECT` | 4 | Sim.act / Sim.cond 不认识 |
 | 推断 | `MAP_REVEAL_ALL` | 3 | Sim.act / Sim.cond 有分支 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JapanAntiInfantryInfantryBonzai` | 3 | 只记进时间线，没有效果 |
