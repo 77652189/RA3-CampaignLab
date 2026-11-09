@@ -605,6 +605,20 @@ def test_power_on_the_coil_kills_one_tank_per_125_frames():
     assert 100 <= lost[1] - lost[0] <= 150
 
 
+def test_shot_clock_the_coil_shoots_every_31_s_two_shots_a_tank(monkeypatch):
+    """Engine line C round 2: with Sim.shot_clock the coil (SovietBaseDefenseAdvancedTeslaGun: PreAttack 2.5 +
+    Firing 0.5 + Reload 0.1 = 3.1 s, Damage 450 against a 480-health tank) loses a tank every 2 x 3.1 s = 93 frames
+    (the clock works). The bench's is ~125 (~4.15 s a shot): ~1 s a shot the weapon data does not say, not found --
+    why the clock stays off by default and the xfail above stands. Frames 100-150 when found."""
+    import sim
+    monkeypatch.setattr(sim.Sim, 'shot_clock', True)
+    s, rows = _powerdef('on')
+    lost = [r['帧数'] for i, r in enumerate(rows) if i and r['坦克'] < rows[i - 1]['坦克']]
+    assert len(lost) >= 4 and all(88 <= b - a <= 107 for a, b in zip(lost, lost[1:]))     # rows are 15 frames apart
+    coil = next(b for b in s.living() if b.template == 'SovietBaseDefenseAdvanced')
+    assert coil.weapons[0]['sched'] == [2.5] and abs(coil.weapons[0]['cycle'] - 3.1) < 1e-9
+
+
 # ---- mining (HOOKS 7): engine_mining's layout -- the refinery 180 from a lone node -- on Niagara's bluff ore (the
 # probe map has no ground for the simulator); the loop alone (mine_due), frames from 0
 def _mining(miners=1, frames=1200):

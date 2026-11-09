@@ -826,6 +826,9 @@ class Ground:
 
 
 class Sim:
+    shot_clock = False                  # engine line C round 2: fire by the clip's clock (shots_due); off until it
+                                        # is on the bench's numbers (work/re/handoff-c.md)
+
     def __init__(self, mission, test=None, level='normal', script='', model=True):
         """model: run the scripts in the engine line's model where it is on this computer (False: the older loop)."""
         self.m = mission
@@ -2842,6 +2845,7 @@ class Sim:
         circles (`in_range`, R8). The aim is taken once a tick; the damage is dealt frame by frame (`deal`, R6)."""
         self.seen = {}
         self.firing = []
+        self.volleys = []
         self.chilling = []
         self._fire_obstacles = None             # `shot_blocked`'s footprints, taken once a tick when first asked
         live = [b for b in self.living() if not b.scenery and self.on_map(b)]     # off the border: out of the fight
@@ -2890,8 +2894,11 @@ class Sim:
                 if a.vision and w['range'] > a.vision:
                     a.fired_at = self.t                 # a bombarder firing shows itself
                 if w['dps']:
-                    self.firing.append((pick, w['dps'] * simunits.percent(pick.armor, w['type']) / 100.0
-                                        * a.dealt * pick.taken, a))
+                    if 'sched' in w and self.shot_clock:    # by the clip's clock (deal), not a continuous rate
+                        self.volleys.append((pick, w, a))
+                    else:
+                        self.firing.append((pick, w['dps'] * simunits.percent(pick.armor, w['type']) / 100.0
+                                            * a.dealt * pick.taken, a))
                 if w.get('sdps'):
                     self.chilling.append((pick, w['sdps'] * a.dealt, a))
                 fired = True
@@ -2908,8 +2915,8 @@ class Sim:
                 if p is not None:
                     self.note('绕位', f'{self.label(a)} 打不着 {self.label(g)}（中间有建筑），绕到 ({p[0]:.0f},{p[1]:.0f})')
                     self.send(a, p)
-            self.idle_chase(a, fired, [(d[j], targets[idx[j]]) for j in np.argsort(d)])
-        if self.firing:
+            self.idle_chase(a, fired, [(d[j], targets[idx[j]]) for j in np.argsort(d, kind='stable')])
+        if self.firing or self.volleys:
             self.used.add('combat')
         if self.chilling:
             self.used.add('freeze')
@@ -2978,6 +2985,13 @@ class Sim:
                 h = hurt.setdefault(id(t), [t, 0.0, by])
                 h[1] += rate * dt
                 h[2] = by
+        for t, w, by in self.volleys:           # engine line C round 2: a shot lands when its clock says (shots_due)
+            if t.alive and by.alive:
+                n = self.shots_due(by, w, dt)
+                if n:
+                    h = hurt.setdefault(id(t), [t, 0.0, by])
+                    h[1] += n * w['dmg'] * simunits.percent(t.armor, w['type']) / 100.0 * by.dealt * t.taken
+                    h[2] = by
         for t, dmg, by in hurt.values():
             if self.frame_now() < t.immune_until or t.shielded or t.indestructible:
                 continue
@@ -2988,6 +3002,37 @@ class Sim:
                     self.first_death = (self.t, t, by)
                 self.destroy(t, f'被 {self.label(by)} 打掉')
         self.chill(dt)
+
+    def shots_due(self, b, w, dt):
+        """How many of weapon `w`'s clip-clock shots of body `b` land in [self.t, self.t + dt): the clip is a
+        schedule (simunits._shot_times, then the reload), each cycle `w['cycle']` long, one shot after another as
+        long as the weapon has a target every window. After an idle gap (no target in the previous window) a
+        cycle that has run out starts anew now, pre-attack first; one still running (a reload, a part-spent clip)
+        goes on by the clock. Round 2 of engine line C (bench: the coil one tank per ~125 frames)."""
+        t0, t1 = self.t, self.t + dt
+        eps = 1e-6
+        clocks = self.__dict__.setdefault('clocks', {})
+        key = (id(b), id(w))
+        c = clocks.get(key)
+        cycle = w['cycle']
+        if c is None or (t0 - c[1] > dt * 1.5 and c[0] + cycle <= t0 + eps):
+            c = [t0, t0]                                # [this cycle's start, the last window with a target]
+        else:
+            c[1] = t0
+            while c[0] + cycle <= t0 + eps:             # chained: the next cycle starts where this one ends
+                c[0] += cycle
+        clocks[key] = c
+        n = 0
+        while True:
+            for at in w['sched']:
+                when = c[0] + at
+                if t0 - eps <= when < t1 - eps:
+                    n += 1
+            if c[0] + cycle < t1 - eps:                 # the window reaches into the next cycle
+                c[0] += cycle
+                continue
+            break
+        return n
 
     def cold_of(self, b):
         """(simunits.freeze tracker, frozen armour) of b's template, read once a template."""

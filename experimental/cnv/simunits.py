@@ -168,7 +168,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v7.json')     # v7: freeze (secondary damage), armour Default; v3: weapon inheritFrom (2026-11-08); v4: + los; v5: overrides, LineDamageNugget; v6: OCL, pre-attack
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v8.json')     # v8: + dmg, cycle, sched (shot clock); v7: freeze (secondary damage), armour Default; v3: weapon inheritFrom (2026-11-08); v4: + los; v5: overrides, LineDamageNugget; v6: OCL, pre-attack
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -336,7 +336,25 @@ def _resolve(w, weapons):
         cycle = shots * max(w['fire'], w['delay'], 0.1) + w['reload'] + _pre_per_clip(w, shots)
     sd = w.get('sd', 0.0)
     return dict(range=w['range'], dps=round(dmg * shots / cycle, 2) if dmg else 0.0, type=typ, anti=w['anti'],
-                los=w['los'], sdps=round(sd * shots / cycle, 2) if sd > 0 else 0.0)
+                los=w['los'], sdps=round(sd * shots / cycle, 2) if sd > 0 else 0.0,
+                dmg=dmg, cycle=cycle, sched=_shot_times(w, shots))
+
+
+def _shot_times(w, shots):
+    """The seconds, from the start of a clip's cycle, at which each of its `shots` lands: shot k after the
+    pre-attack delay(s) and k gaps of max(FiringDuration, DelayBetweenShots) before it; the clip's cycle (the reload
+    after the last gap) is `_resolve`'s `cycle`. Engine line C round 2: the fight fires by this clock, not a
+    continuous damage per second (the mean rate is the same: dmg x shots / cycle)."""
+    gap = max(w['fire'], w['delay'], 0.1)
+    kind = w.get('pretype', 'PER_SHOT')
+    pre = w.get('pre', 0.0)
+    out, t = [], 0.0
+    for k in range(shots):
+        if kind == 'PER_SHOT' or (kind == 'PER_CLIP' and k == 0):
+            t += pre
+        out.append(round(t, 4))
+        t += gap
+    return out
 
 
 _ocls = None
