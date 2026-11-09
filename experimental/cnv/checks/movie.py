@@ -45,7 +45,42 @@ def play(m):
     return t
 
 
+RETAIL = (('A02TH06', 'A'), ('J01TH05', 'B'))      # the game's own radar clips: 454 / 258 frames at 23.976 (VP6 header)
+
+
+def retail(m):
+    """retail: two of the game's own radar clips, one after the other -- A02TH06 at `radar at` s, J01TH05 as soon as
+    HAS_FINISHED_VIDEO holds for the first. 原版A帧数 / 原版B帧数 count the frames from each play till it holds. Asks
+    whether a retail clip reads finished after its own length (the simulator, Sim.video_len, says 18.9 s = 284 frames
+    and 10.8 s = 161) or earlier: a02 / j01's objectives hang on these clips (engine line A round 110).
+    Bench 2026-11-09 (run CampMovieRetail_mcp_1109_033257): A02TH06 plays in the radar window (Lisa) from s2.2 and is
+    still on screen at s39.8; HAS_FINISHED_VIDEO never held (621 frames by s42), so B never started -- FAIL. Retail
+    a02 lights its objective 2 ~16 s after the HUD comes back with this clip in the chain, so the game does finish it
+    there: what differs in our mod (looping? the dialogue line retail plays beside it?) is open. Sim.video_len left at
+    VIDEO_GUESS for retail clips until this is read."""
+    t = Test()
+    r = m.facts['radar at']
+    t.scripts.append(Script('Test - retail timer', [], [('SET_MILLISECOND_TIMER', 'CNV Movie Retail', r)]))
+    start = [('TIMER_EXPIRED', 'CNV Movie Retail')]
+    for clip, k in RETAIL:
+        t.counters += [(f'CNV_Movie_{k}Frames', f'原版{k}帧数'), (f'CNV_Movie_{k}Done', f'原版{k}播完')]
+        t.scripts += [
+            Script(f'Test - retail {k}', start, [('MOVIE_PLAY_RADAR', clip), ('SET_FLAG', f'CNV Movie {k}Played', 1)]),
+            Script(f'Test - retail {k} playing', [('FLAG', f'CNV Movie {k}Played', 1), ('FLAG', f'CNV Movie {k}Fin', 0)],
+                   [('INCREMENT_COUNTER', 1, f'CNV_Movie_{k}Frames')], once=False),
+            Script(f'Test - retail {k} finished', [('FLAG', f'CNV Movie {k}Played', 1), ('HAS_FINISHED_VIDEO', clip)],
+                   [('SET_FLAG', f'CNV Movie {k}Fin', 1), ('SET_COUNTER', f'CNV_Movie_{k}Done', 1)])]
+        start = [('FLAG', f'CNV Movie {k}Fin', 1)]
+    run = r + 19.0 + 11.0 + 6.0
+    t.expect += [('原版A播完', run - 2, '==', 1), ('原版A帧数', run - 2, '>=', 270), ('原版A帧数', run - 2, '<=', 300),
+                 ('原版B播完', run - 2, '==', 1), ('原版B帧数', run - 2, '>=', 150), ('原版B帧数', run - 2, '<=', 175)]
+    t.bench = [('bench_watch', dict(seconds=r + 3.0, every=1, sheet=False, lines=len(t.counters))),
+               ('bench_look', dict(note='the radar window: a retail talking head (A02TH06)?')),
+               ('bench_watch', dict(seconds=run - r - 3.0, every=2, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 # the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
 CHECKS = {
-    'movie': {'play': play},
+    'movie': {'play': play, 'retail': retail},
 }
