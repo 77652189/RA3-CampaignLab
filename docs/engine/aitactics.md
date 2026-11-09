@@ -66,6 +66,23 @@
 
 （时间都是唤醒后秒数，测试台每秒读一次，±1 秒；瞬移那两行是瞬移后秒数。11-06 的 `aidefense` 读数里外派点在 1200，压着两棵树；第 65 轮挪到 1150 后落在河岸上、瞬移不生效，第 70 轮瞬移改到正南 1200 重测。）
 
+### 目标挑哪个（aitargetpick：VitalKindOf / ForbiddenKindOf / EnemyUnit / Priority / MaxTargets）
+
+探针 `experimental/cnv/missions/aitargetpick_bench.py` + `checks/engine_aitargetpick.py`（11-09，8 组全 PASS，读数在检查 docstring）。AI 家里 4 辆守护者（MaxTargets 两组 8 辆），一个常开状态一队 SimpleAttack、MaxUnits 4；玩家三个保活目标：近电厂（~710）、远兵营（~1010）、一辆坦克（~910）。
+
+| 变体 | 状态里的目标启发 | 去哪 |
+| --- | --- | --- |
+| `aitpnear` | ClosestStructure | 电厂（对照） |
+| `aitpvk` | 自写 EnemyStructure，`VitalKindOf` FS_BARRACKS | 兵营 |
+| `aitpfk` | 自写 EnemyStructure，`VitalKindOf` STRUCTURE、`ForbiddenKindOf` FS_POWER | 兵营 |
+| `aitpunit` | 自写 `HeuristicType` EnemyUnit、`VitalKindOf` VEHICLE | 玩家坦克（建筑不去） |
+| `aitpphi` | 兵营启发 `Priority` 20 + ClosestStructure 10 | 兵营：先试优先级高的 |
+| `aitpplo` | 兵营启发 `Priority` 5 + ClosestStructure 10 | 电厂 |
+| `aitpmt1` | `MaxTargets` 1，8 辆 | 一队 4 辆去电厂，4 辆留家 |
+| `aitpmt2` | `MaxTargets` 2，8 辆 | 两队：4 辆电厂、4 辆兵营（第二个槽避开第一个槽的目标，挑次近） |
+
+给关卡：一个状态 `MaxTargets` 几就同时出几队、各打一个不同目标；同一状态里写几条目标启发时先用 `Priority` 高的，找不到才往下。模拟器（simai）八组都对上（`tests/test_simai.py::test_target_pick_as_on_the_bench`）。没测：同优先级时随机挑哪条、VitalKindOf 写多个是"全都"还是"任一"、MaxTargets 大于可用兵力时。
+
 ## 没测 / 没建模
 
 - DA 怎么选"防御最弱的一侧"绕路，没进模型；所以 5 对 15 秒到达差的 193 帧（绕路多走的）模型对不上（模型里路点只有"队伍中心 → 目标"）。出发时刻已对上：都是唤醒就走。

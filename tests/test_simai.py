@@ -335,6 +335,19 @@ def test_only_the_states_listed_for_the_difficulty_run(lib, build, tanks, inf):
 AIOTIME_BENCH = (19, 49, 59)
 
 
+# bench 2026-11-09 checks/engine_aitargetpick.py a, at s40: (build, 到电厂, 到兵营, 到坦克, 在家)
+@pytest.mark.parametrize('build,plant,barracks,tank,home', [
+    ('aitpnear', 4, 0, 0, 0), ('aitpvk', 0, 4, 0, 0), ('aitpfk', 0, 4, 0, 0), ('aitpunit', 0, 0, 4, 0),
+    ('aitpphi', 0, 4, 0, 0), ('aitpplo', 4, 0, 0, 0), ('aitpmt1', 4, 0, 0, 4), ('aitpmt2', 4, 4, 0, 0)])
+def test_target_pick_as_on_the_bench(lib, build, plant, barracks, tank, home):
+    """VitalKindOf / ForbiddenKindOf / EnemyUnit pick the target, the higher TargetHeuristic Priority is tried first,
+    MaxTargets 2 sends a second team at the next unique target. The tank's count may fall as it shoots back."""
+    _, rows = _switch_run(build, lib, until=41.0)
+    r = rows[39]
+    got = (r['到电厂'], r['到兵营'], max(x['到坦克'] for x in rows), r['在家'])
+    assert got == (plant, barracks, tank, home), got
+
+
 def _aiotime_firsts(lib):
     w = simai.run('aiotime', 'a', 70.0, lib=lib, blocks=())
     seen = [v[0] for _, v in w.sim.series]
