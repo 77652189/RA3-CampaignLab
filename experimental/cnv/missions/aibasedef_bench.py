@@ -26,6 +26,9 @@ TURRET = 'AlliedBaseDefense'
 NEAR = 200.0                             # north (+) of the far plant
 SPREAD = (-120.0, -40.0, 40.0, 120.0)
 EAST = 40.0
+# Turrets 1 and 3 (and the sitter) stand on a wooden fence and a tree of niagara's scenery. Kept so: the round-66c
+# readings were taken here, and the row moved clear (EAST -20, NEAR 150) changes which turrets are within 150 of the
+# team (tests/test_simai.py turret order). tests/test_maps.py names these builds as placed so on purpose.
 
 
 def mission(mod, sitter=False, **fields):

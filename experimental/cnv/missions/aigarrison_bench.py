@@ -18,7 +18,9 @@ from missions import airetreat_bench as ar
 HOUSE = 'AM_Apartments_01'
 HOUSE_NAME = 'UNIT - CNV AI House'
 NEAR, FAR = 200.0, -450.0                # north (+) of the far plant (3700, 2400); the AI's base is north (3850, 3400)
-EAST = 40.0                              # towards the team's line from its base
+EAST = 0.0                               # towards the team's line from its base
+# Round 121 (engine A): was 40, the house then stood on a grass tuft of niagara's scenery (CC_GRASS06 at 3733, 2599;
+# tests/test_maps.py test_nothing_a_build_places_stands_on_scenery). The round-66 bench readings were at EAST 40.
 
 
 def mission(mod, north, enter):

@@ -126,13 +126,14 @@ def horn(m):
     t = scene(m)
     first = wave(m, 'V', 1, 'V1') + wave(m, 'V', 1, 'V2')       # the third street has no wave in the first horn
     tally(t, first, 'Test Horn 1', '号角1的兵')
-    tally(t, wave(m, 'V', 2, 'V3'), 'Test Plaza 2', '号角2街3的兵')
+    plaza2 = wave(m, 'V', 2, 'V3')
+    tally(t, plaza2, 'Test Plaza 2', '号角2街3的兵')
     t.expect += [('号角1的兵', 0, '==', 0, HORN1 - LEAD - 3),
-                 ('号角1的兵', HORN1 + 5, 'ever>=', 8),              # two streets, four each: plaza 2 is not open yet
-                 ('号角1的兵', 0, '<=', 8),
+                 ('号角1的兵', HORN1 + 5, 'ever>=', len(first)),     # two streets, a wave each: plaza 2 not open yet
+                 ('号角1的兵', 0, '<=', len(first)),
                  # from s4: the counter reader reads the first frame's 0 as a 4 (bench 2026-11-02, the screen says 0)
                  ('号角2街3的兵', 4, '==', 0, HORN1 + 20),
-                 ('号角2街3的兵', HORN1 + 50 + 5, 'ever>=', 4)]
+                 ('号角2街3的兵', HORN1 + 50 + 5, 'ever>=', len(plaza2))]
     t.bench = [('bench_watch', dict(seconds=HORN1 + 65, every=4, sheet=False, lines=len(t.counters)))]
     return t
 
@@ -151,10 +152,10 @@ def detour(m):
     tally(t, plaza1, 'Test Plaza 1 Wave', '1号街的兵')
     tally(t, plaza1, 'Test At Lane', '1号街兵在后巷口', area='Test Lane')
     t.expect += [('冰墙', HORN1 - 3, 'ever==', 1),
-                 ('后巷的兵', HORN1 + 6, 'ever>=', 4),
+                 ('后巷的兵', HORN1 + 6, 'ever>=', len(lane)),          # a whole wave (the plan's size: 2+1 since f17d13e)
                  ('1号街的兵', 0, '==', 0, HORN1 - LEAD + 2),         # the ice up: plaza 1's wave is not made there
                  ('1号街的兵', 0, '==', 0, HORN1 + DETOUR - 4),         # nor soon after the horn: the detour is long
-                 ('1号街的兵', HORN1 + DETOUR + 4, 'ever>=', 4),        # but later (the escort kills them soon), ...
+                 ('1号街的兵', HORN1 + DETOUR + 4, 'ever>=', len(plaza1)),  # but later (the escort kills them soon), ...
                  ('1号街兵在后巷口', HORN1 + DETOUR - 4, 'ever>=', 1)]  # ... at the lane's foot, DETOUR s late (they walk off
                                                                        # it within 3 s: bench 2026-11-07, s59 only)
     t.bench = [('bench_watch', dict(seconds=HORN1 + DETOUR + 20, every=2, sheet=False, lines=len(t.counters)))]
@@ -173,10 +174,10 @@ def queue(m):
     tally(t, plaza3 + east, 'Test Others', '另两口的兵')
     life = ice_wall(m).params['lifetime']
     t.expect += [('冰墙', MOUTH1 - 3, 'ever==', 1),
-                 ('另两口的兵', MOUTH1 + 6, 'ever>=', 8),               # open mouths: made at once, four each
+                 ('另两口的兵', MOUTH1 + 6, 'ever>=', len(plaza3 + east)),   # open mouths: made at once, whole waves
                  # the ice stands s31-s59 (bench 2026-10-31), the horn at ~s48: kept in between, made at ~s61
                  ('北坡口的兵', 0, '==', 0, MOUTH1 - LEAD + 6),         # kept while the ice stands
-                 ('北坡口的兵', MOUTH1 + 15, 'ever>=', 4)]              # made when it is gone
+                 ('北坡口的兵', MOUTH1 + 15, 'ever>=', len(north))]     # made when it is gone
     t.bench = [('bench_watch', dict(seconds=MOUTH1 + life + 30, every=3, sheet=False, lines=len(t.counters)))]
     return t
 

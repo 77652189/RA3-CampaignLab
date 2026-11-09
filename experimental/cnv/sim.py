@@ -2870,8 +2870,8 @@ class Sim:
             pad = max(targets[k].radius for k in foes)          # the biggest foe's radius: the scan's cut-off (R8)
             fired = False
             for w in a.weapons:
-                order = np.argsort(d)
-                pick = None
+                order = np.argsort(d, kind='stable')    # ties (two foes made on one point) by list order: the
+                pick = None                              # default quicksort broke them by the array's length (a4 r121)
                 if isinstance(a.goal, Body) and a.goal.alive and id(a.goal) in aimable and \
                         self.in_range(a, a.goal, w) and self.can_hit(w, a.goal) and \
                         self.side_sees(a.owner, a.goal) and not self.shot_blocked(a, a.goal, w):

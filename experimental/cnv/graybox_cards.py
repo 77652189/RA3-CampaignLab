@@ -24,6 +24,13 @@ import simunits  # noqa: E402
 T = glossary.template
 
 
+def ground_range(b):
+    """A body's longest gun against the ground: the cards compare guns on the lake / in the valleys. Since simunits
+    reads every weapon of a unit (11-08/09: the Flak Trooper's anti-air flak, 300, besides its ground one, 175),
+    a plain max over the weapons picks the anti-air reach."""
+    return max((w['range'] for w in b.weapons if not w.get('anti') or 'ANTI_GROUND' in w['anti']), default=0.0)
+
+
 def world():
     """A4's sim for the bodies' numbers, and the fight-numbers reader."""
     s = sim.Sim(plan.Compiler(plan.load('a4')).compile())
@@ -143,7 +150,7 @@ def s1_lake(s, body):
     enemy's, and the lake against the ice window of card 丙 (60 s) at the roster's speeds."""
     mine = ['防空步兵', '镰刀机甲']
     theirs = ['守护者坦克', '维和步兵']
-    ranges = {n: max((w['range'] for w in body(T(n, f)).weapons), default=0.0)
+    ranges = {n: ground_range(body(T(n, f)))
               for n, f in [(x, '苏联') for x in mine] + [(x, '盟军') for x in theirs]}
     vision = body(T('守护者坦克', '盟军')).vision
     heavy = {n: body(T(n, '苏联')).speed for n in ['镰刀机甲']}
@@ -158,7 +165,7 @@ def j7_valleys(s, body):
     for who, f in [('动员兵', '苏联'), ('铁锤坦克', '苏联'), ('天启坦克', '苏联')]:
         v = body(T(who, f)).speed
         out[who] = dict(speed=v, extra=2 * 250.0 / v * (1 / 0.4 - 1))   # a full pass through the circle
-    far = {n: max((w['range'] for w in body(T(n, '帝国')).weapons), default=0.0)
+    far = {n: ground_range(body(T(n, '帝国')))
            for n in ['帝国武士', '坦克杀手', '天狗机甲', '海啸坦克', '鬼王']}
     v4 = max(w['range'] for w in body(T('V4火箭车', '苏联')).weapons)
     h = 1.0                                              # a tower's health, in towers: arithmetic of the shields
@@ -338,8 +345,8 @@ def s1_geometry(s, body):
     hook reaches across is never wider than the leap, so w can never block the jump. `window` = seconds a tow
     Guardian passing at its closest g_near = g_max / 2 stays in the hook's reach (a chord of the 300 circle)."""
     guard, peace = body(T('守护者坦克', '盟军')), body(T('维和步兵', '盟军'))
-    enemy = max(w['range'] for b in (guard, peace) for w in b.weapons)
-    mine = max(w['range'] for n in ('防空步兵', '镰刀机甲') for w in body(T(n, '苏联')).weapons)
+    enemy = max(ground_range(b) for b in (guard, peace))
+    mine = max(ground_range(body(T(n, '苏联'))) for n in ('防空步兵', '镰刀机甲'))
     leap, d, rows = leap_range(), 10.0, []
     for w in (160, 180, 200, 220, 250, 280):
         gmax = S1_HOOK - d - w

@@ -49,14 +49,18 @@ def test_a4_the_convoy_reaches_the_halt_alive_with_a_report(a4_run):
     """sim.HOLD_SPOTS on (the game's, bench 11-09 checks/engine_spots.py): the proxy's army stands apart, beats the
     venue's waves, and all three trucks halt alive (the harbour phase on). Then 北营 wants a base vehicle deployed and
     its command post razed: the proxy has no deploy or build (docs/story/handoff-phase4.md, A4 待办), so the run
-    goes to the clock -- judged here is the first leg only."""
+    goes to the clock -- judged here is the first leg only.
+    Round 121 (engine A): the run now LOSES in the venue (~196 s, two trucks down short of the halt). The timeout it
+    had was a tie-break: two horn troops made on one point are equally far, and fight()'s np.argsort (quicksort, not
+    stable) ordered them by the array's length -- round 118's border rule (ba3a725) took 12 off-border Japanese out of
+    the fight's lists and the order flipped at s116. Sorted stably the run loses with or without those 12: the first
+    leg is on a knife edge for the proxy (level line's, docs/story/handoff-phase4.md A4)."""
     rep, w = a4_run
     s = w.sim
-    assert rep['result'] == 'timeout' and rep['frames'] == simproxy.UNTIL * FPS
-    assert s.flags.get('CNV_A4_Phase_2') and s.flags.get('CNV_A4_Halted')
-    halt = s.point('halt')
+    assert rep['result'] == 'lose' and rep['frames'] < 220 * FPS
+    assert not s.flags.get('CNV_A4_Halted')
     trucks = [b for n, b in s.bodies.items() if b.template == 'CNV_ConvoyTruck']
-    assert len(trucks) == 3 and all(b.alive and math.hypot(b.x - halt[0], b.y - halt[1]) <= 100 for b in trucks)
+    assert len(trucks) == 3 and sum(b.alive for b in trucks) <= 1
     assert json.loads(json.dumps(rep, ensure_ascii=False)) == rep   # plain JSON values
     assert set(rep['goals']) == {'会场冻街口', '最后一程冻口子', '拆北营指挥所'}
     assert rep['sorties'] >= 1 and rep['peak_army'] >= 10          # it fought: the ten it starts with, the engineers
@@ -197,7 +201,9 @@ def test_a4_the_proxy_ices_the_streets_on_its_own_and_compares(a4_run, lib):
     assert not plain['goals']['会场冻街口']['met'] and not plain['goals']['最后一程冻口子']['met']
     # sim.HOLD_SPOTS on (11-09): both plays' convoys halt with no truck lost and the runs go to the clock (the proxy
     # cannot take 北营) -- the plain play no longer loses on the way (level line's to-do, handoff-phase4.md A4)
-    assert rep['result'] == plain['result'] == 'timeout'
+    # round 121: the default play loses in the venue (see the test above: the old timeout was a tie-break); the
+    # plain play, never icing, halts and goes to the clock -- icing does the proxy no good here (level line's to read)
+    assert (rep['result'], plain['result']) == ('lose', 'timeout')
     # the army never goes for what cannot be aimed at (the spawn sculptures, the signal smoke) nor at the dead
     goes = [m['detail'] for m in rep['moments'] + plain['moments'] if m['what'] in ('go', 'defend')]
     assert not [d for d in goes if 'Sculpture' in d or 'Smoke' in d]

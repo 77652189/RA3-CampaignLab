@@ -66,11 +66,15 @@ def test_a4_card_a_third_version_grinds_the_escort_in_two_waves():
 def test_j7_card_a_the_counter_must_be_about_three_times_the_army_under_the_tower():
     """J7 甲 recheck: the best Empire army waiting under the tower eats a counterattack up to ~3x its own cost when the
     three routes come at once, ~4x when the first route comes 15 s ahead; later gaps add nothing (the first route is
-    eaten in 15 s), so the card's 15 s a jammer is enough."""
+    eaten in 15 s), so the card's 15 s a jammer is enough.
+    Moved 11-08 (44b9bc5: the conscript's AK47, the Tesla Trooper's coil and others had been read as no weapon): the
+    Soviet routes shoot back now, and the army eats ~1.1x (infantry-heavy) / ~2.2x (mech-heavy) at once, not ~3x;
+    the 15 s lead still buys ~1.3x and later gaps still add nothing. docs/story/graybox-cards.md's ~3x is stale
+    (level line's to rewrite); the bounds below are the numbers since 44b9bc5."""
     c = facts()['j7_counter']
-    for rname in ('步兵多', '机甲多'):
+    for rname, lo, hi in (('步兵多', 0.9, 1.4), ('机甲多', 1.9, 2.5)):
         same, early, late = (c[(rname, t)]['ratio'] for t in ('同时到', '先一路，另两路晚 15 秒', '先一路，另两路晚 45 秒'))
-        assert 2.5 < same < 3.5 and early > 1.2 * same and abs(late - early) < 0.15 * early
+        assert lo < same < hi and early > 1.2 * same and abs(late - early) < 0.15 * early
 
 
 def test_the_jammer_costs_seconds_not_multiples_and_v4_outranges_the_empire():
@@ -127,10 +131,13 @@ def test_j7_card_a_the_best_valley_changes_every_wave_but_a_blip_is_enough_to_fo
 def test_j7_card_a_the_mouth_with_a_base_behind_it_eats_far_more_than_a_head_on_valley():
     """J7 甲: an Empire army alone in a cleared valley, wave after wave with no top-up, is ground down: it holds a
     wave of 2.9x its cost once, 1.7x three times, 1.3x five times; at the valley mouth with the base topping it up
-    and the wave coming out in a column it holds ~3.8x every time. Between them is the card's 'punished' window."""
+    and the wave coming out in a column it holds ~3.8x every time. Between them is the card's 'punished' window.
+    Moved 11-08 (44b9bc5, the Soviet infantry's guns read at last, as the test above): head-on 1.1x once, 0.64x three
+    times, 0.49x five times; at the mouth ~1.9x every time -- still ~3x the head-on army by the third wave, so the
+    'punished' window stands, at a third of the old sizes (graybox-cards.md stale, level line's)."""
     h, m = facts()['j7_valley']['head_on'], facts()['j7_valley']['at_mouth']
-    assert h[1] > h[3] > h[5] and 2.5 < h[1] < 3.5 and 1.4 < h[3] < 2.0
-    assert all(3.0 < x < 4.5 for x in m.values()) and m[3] > 1.8 * h[3]
+    assert h[1] > h[3] > h[5] and 0.9 < h[1] < 1.4 and 0.5 < h[3] < 0.8
+    assert all(1.6 < x < 2.3 for x in m.values()) and m[3] > 1.8 * h[3]
 
 
 def test_a4_last_a_mass_of_peacekeepers_eats_a_whole_horn_cheaply():
