@@ -4,11 +4,11 @@
 
 | 部分 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|
-| 脚本动作 | 427 | 65 | 43 | 271 | 48 | 81% |
+| 脚本动作 | 427 | 68 | 40 | 271 | 48 | 81% |
 | 脚本条件 | 89 | 23 | 5 | 61 | 0 | 94% |
 | 物体模块 | 184 | 9 | 15 | 143 | 17 | 42% |
 | 武器效果 | 25 | 2 | 3 | 20 | 0 | 53% |
-| AI | 415 | 38 | 189 | 154 | 34 | 87% |
+| AI | 415 | 43 | 186 | 152 | 34 | 88% |
 
 ## 脚本动作
 
@@ -21,10 +21,10 @@
 | 已对拍 | `PLAYER_LOCK_PLAYER_TECH` | 1887 | tests/test_simbench.py::test_protocol_a_computer_player_spends_unless_locked |
 | 推断 | `DISABLE_SCRIPT` | 1099 | 引擎模型核心 |
 | 已对拍 | `MOVE_NAMED_UNIT_TO` | 1000 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aidefense.py |
-| 推断 | `LINK_MISSION_OBJECTIVE_TO_OBJECT` | 950 | Sim.act / Sim.cond 有分支 |
+| 已对拍 | `LINK_MISSION_OBJECTIVE_TO_OBJECT` | 950 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts5.py |
 | 已对拍 | `NAMED_DELETE` | 908 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_attack.py |
 | 未做 | `CREATE_REINFORCEMENT_TEAM` | 753 | Sim.act / Sim.cond 不认识 |
-| 推断 | `SET_MISSION_OBJECTIVE_STATUS` | 732 | Sim.act / Sim.cond 有分支 |
+| 已对拍 | `SET_MISSION_OBJECTIVE_STATUS` | 732 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts5.py |
 | 推断 | `PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT` | 640 | 只记进时间线（sim.SHOWN） |
 | 推断 | `CALL_SUBROUTINE` | 533 | 引擎模型核心 |
 | 推断 | `UNIT_IDLE_FOR_FRAMECOUNT` | 504 | Sim.stand：和 UNIT_IDLE_FOR_SECONDS 同一个处理函数，秒版台上量过（命令清掉，不是暂停） |
@@ -53,7 +53,7 @@
 | 已对拍 | `NAMED_KILL` | 204 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_attack.py |
 | 推断 | `TEAM_HUNT` | 203 | 没交给 AI 的玩家（含玩家自己）：不动，台上量过（engine_scripts1 hunt 60 s）；AI 玩家的 HuntTactic 不模拟（引擎 B），碰到记 Sim.unmodeled |
 | 已对拍 | `CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT` | 196 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_ref.py |
-| 推断 | `LINK_MISSION_OBJECTIVE_TO_WAYPOINT` | 194 | Sim.act / Sim.cond 有分支 |
+| 已对拍 | `LINK_MISSION_OBJECTIVE_TO_WAYPOINT` | 194 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts5.py |
 | 未做 | `NAMED_FOLLOW_WAYPOINTS` | 192 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_GARRISON_SPECIFIC_BUILDING_INSTANTLY` | 186 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS` | 184 | Sim.act / Sim.cond 不认识 |
@@ -791,7 +791,7 @@
 | 推断 | `组队招人/TeamTemplate.AllowedLocomotorTypes` | 145 | AI 模型代码里读了这个名字 |
 | 推断 | `目标/AITargetingHeuristic.VitalKindOf` | 129 | AI 模型代码里读了这个名字 |
 | 推断 | `组队招人/TeamTemplate.Priority=STANDARD` | 126 | AI 模型代码里读了这个名字 |
-| 推断 | `启发条件/ConstantHeuristic` | 119 | AI 模型代码里读了这个名字 |
+| 已对拍 | `启发条件/ConstantHeuristic` | 119 | AI 模型代码里读了这个名字；台上量过：checks/engine_aipoweradv.py |
 | 已对拍 | `人格/PowerChoice.PlayerPower` | 117 | AI 模型代码里读了这个名字；台上量过：docs/engine/aiopen.md |
 | 已对拍 | `人格/PowerChoice.Weight` | 117 | docs/engine/aiopen.md#买协议（aipwrb 权重 0 的不买） |
 | 推断 | `战术/Tactic.EndBehavior=DISBAND` | 105 | AI 模型代码里读了这个名字 |
@@ -846,10 +846,10 @@
 | 推断 | `开局/OpeningMove.Weight` | 46 | AI 模型代码里读了这个名字 |
 | 已对拍 | `战术/Tactic.EndBehavior=RAMPAGE` | 46 | AI 模型代码里读了这个名字；台上量过：checks/engine_ainamed.py |
 | 推断 | `组队招人/TeamTemplate.ReleaseType=RELEASE_TO_PRIORITY` | 46 | AI 模型代码里读了这个名字 |
-| 推断 | `启发条件/PathToTargetHeuristic` | 45 | AI 模型代码里读了这个名字 |
+| 已对拍 | `启发条件/PathToTargetHeuristic` | 45 | AI 模型代码里读了这个名字；台上量过：checks/engine_aiopath.py |
 | 推断 | `启发条件/PathToTargetHeuristic.LocomotorConditionToUseForTest` | 45 | AI 模型代码里读了这个名字 |
-| 推断 | `启发条件/PathToTargetHeuristic.ObjectTypeToUseForTest` | 45 | AI 模型代码里读了这个名字 |
-| 推断 | `启发条件/PathToTargetHeuristic.PathExists` | 45 | AI 模型代码里读了这个名字 |
+| 已对拍 | `启发条件/PathToTargetHeuristic.ObjectTypeToUseForTest` | 45 | AI 模型代码里读了这个名字；台上量过：checks/engine_aiopath.py |
+| 已对拍 | `启发条件/PathToTargetHeuristic.PathExists` | 45 | AI 模型代码里读了这个名字；台上量过：checks/engine_aiopath.py |
 | 推断 | `目标/AITargetingHeuristic.HeuristicType=EnemyUnit` | 44 | AI 模型代码里读了这个名字 |
 | 已对拍 | `战术/Tactic.Tactic=DefenseAvoidanceAttack` | 43 | AI 模型代码里读了这个名字；台上量过：checks/engine_aitarget.py |
 | 推断 | `战术/Tactic.Distance` | 41 | AI 模型代码里读了这个名字 |
@@ -924,11 +924,11 @@
 | 不涉及 | `战略状态/AIStrategicStateDefinition.ExecutionCanceledFeedbackKey` | 11 | 纯表现（语音、视频、画面） |
 | 不涉及 | `战略状态/AIStrategicStateDefinition.ExecutionCompleteFeedbackKey` | 11 | 纯表现（语音、视频、画面） |
 | 推断 | `目标/AITargetingHeuristic.HeuristicType=FriendlyStructure` | 11 | AI 模型代码里读了这个名字 |
-| 未做 | `组队招人/ObjectFilter.Include` | 11 | AI 模型代码里没有这个名字 |
+| 推断 | `组队招人/ObjectFilter.Include` | 11 | AI 模型代码里读了这个名字 |
 | 推断 | `组队招人/TeamTemplate.Priority=COOP` | 11 | AI 模型代码里读了这个名字 |
 | 不涉及 | `人格/AIPersonalityDefinition.CommanderPortrait` | 10 | 纯表现（语音、视频、画面） |
 | 未做 | `其他/BuildingPlacementDistance.Distance` | 10 | AI 模型代码里没有这个名字 |
-| 推断 | `启发条件/PowerAdvantageHeuristic` | 10 | AI 模型代码里读了这个名字 |
+| 已对拍 | `启发条件/PowerAdvantageHeuristic` | 10 | AI 模型代码里读了这个名字；台上量过：checks/engine_aipoweradv.py |
 | 推断 | `启发条件/PowerAdvantageHeuristic.Above` | 10 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/PowerAdvantageHeuristic.IncludeEnemyDefenses` | 10 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/PowerAdvantageHeuristic.IncludeOwnDefenses` | 10 | AI 模型代码里读了这个名字 |
@@ -983,7 +983,7 @@
 | 推断 | `微操/AIMicroManagerData.SiegeWeaponBuffer` | 5 | AI 模型代码里读了这个名字 |
 | 推断 | `微操/AIMicroManagerData.SpecialPowerDelayMaximum` | 5 | AI 模型代码里读了这个名字 |
 | 推断 | `微操/AIMicroManagerData.SpecialPowerDelayMinimum` | 5 | AI 模型代码里读了这个名字 |
-| 未做 | `微操/IgnoreTargets.Include` | 5 | AI 模型代码里没有这个名字 |
+| 推断 | `微操/IgnoreTargets.Include` | 5 | AI 模型代码里读了这个名字 |
 | 未做 | `微操/SpecificSpecialPowerDelay.TogglePowerSubType=TOGGLE_LOCKDOWN` | 5 | AI 模型代码里没有这个名字 |
 | 未做 | `战略状态/AIStrategicStateDefinition.PathfindingCheckType=None` | 5 | AI 模型代码里没有这个名字 |
 | 推断 | `目标/AITargetingHeuristic.HeuristicType=EnemyStructureCloseToShore` | 5 | AI 模型代码里读了这个名字 |

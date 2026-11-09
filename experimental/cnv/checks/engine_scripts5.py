@@ -1,7 +1,6 @@
 """Engine probe, the mission objective items (docs/engine/inventory-levels-a.md, the three heaviest inferred script
 actions): SET_MISSION_OBJECTIVE_STATUS (732), LINK_MISSION_OBJECTIVE_TO_OBJECT (950), LINK_MISSION_OBJECTIVE_TO_WAYPOINT
-(194). NOT RUN YET: named pending_ so inventory.py does not count it as benched -- rename it engine_scripts5.py
-once the readings are in. No condition reads an objective, so the check only steps the statuses (counter 阶段: 1 at STEP1, 2 at STEP2)
+(194). No condition reads an objective, so the check only steps the statuses (counter 阶段: 1 at STEP1, 2 at STEP2)
 and the reading is the mission menu (cnv_check keep=true, then bench_menu by hand). Mission here (build
 engine_scripts5) on maps/probe_border.py (the simulator's level ground): one tank of the player's at 'line' for the object markers.
 
@@ -17,7 +16,20 @@ engine_scripts5) on maps/probe_border.py (the simulator's level ground): one tan
           [The simulator (sim.py): objectives[name] = status as written, 7 too; markers a set per objective, apart
           from the status.]
 
-读数 (bench, below)
+读数 (bench 11-09, CampScr5Goals_mcp_1109_095326: PASS 阶段 1 s1-s4, 2 from s5; bench_menu at s14, minimap frames 4 / 13)
+  menu list at s14 (main, green):  1. 一 [check]   2. 二 [red X]   3. 五 [empty box]   4. 四 [check]
+               (bonus, yellow, numbered apart):  1. 六 [empty box]
+  - O1 1 -> 2: done mark; O2 1 -> 3: failed mark.
+  - O3 1 -> 0: gone from the list, the numbers close up (五 is 3) -- 0 hides an objective already shown.
+  - O4 2 without ever 1: listed, done -- a done / failed status shows it too.
+  - the list is in order of first appearance, not of the mission's goal list: 四 (first shown at STEP2) after 五
+    (STEP1).
+  - O5 1 -> 7: still listed, no mark -- 7 ignored, as the source (and the simulator since round 119).
+  - O6 bonus: a separate yellow list, its own numbers from 1.
+  - markers (minimap, s4): a green '!' on the tank (main; O1 and O2 both on it, one icon drawn), a yellow '!' at the
+    east waypoint (bonus). s13: the tank's marker gone (O1 done with its link left on, O2 unlinked and failed), the
+    waypoint's stays. The menu map at s14 shows only the bonus pin ('1', yellow). So a done objective's marker is not
+    drawn [not told apart: done hides the marker vs one icon per object that O2's unlink took away].
 """
 from maps import probe_border
 from parts import Goal, Mission, Script, Test

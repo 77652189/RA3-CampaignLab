@@ -128,6 +128,8 @@
   - 台上测过（11-09，`checks/engine_scripts4.py` clock）：藏起来的倒计时照走，到时 `TIMER_EXPIRED` 照常成立；再显示时读的是剩下的时间（不重置），**排到列表最后**（原来在计数器上面，再显示就跑到计数器下面）；到时后停在 0:00 一直显示，要自己藏。
 - `SHOW_MILITARY_CAPTION`：`SA` 里的 `doMilitaryCaption` → `InGameUI::militarySubtitle`。《将军》的时长参数是 Int 毫秒；红警3的 catalog 里参数类型是 Real（秒），类型变了。
 - 任务目标相关的动作（`SET_MISSION_OBJECTIVE_STATUS`、`LINK_MISSION_OBJECTIVE_TO_*`）《将军》里没有，见第 6 节。
+  - 台上测过（11-09，`checks/engine_scripts5.py` goals，看任务菜单和小地图）：状态 1 = 亮出；2 = 打勾、3 = 打红叉；**写 0 把已亮出的目标藏回去**，列表编号跟着收拢；**没亮过直接写 2/3 也会出现**（带勾/叉）；写 7 不做（还是亮着没勾）。列表按**第一次出现的先后**排，不按任务里目标的声明顺序。奖励目标是单独一组黄色、自己从 1 编号。
+  - 标记：`LINK_MISSION_OBJECTIVE_TO_OBJECT` 在小地图上画在单位身上（主目标绿色"!"，两个目标挂同一单位只画一个），`..._TO_WAYPOINT` 画在路点（奖励黄色"!"）。目标完成后单位身上的标记不再画（没区分开：是"完成就不画"，还是"同一单位只一个图标、另一个目标摘链把它带走了"）。
 
 ### 4.4 边界切换、揭图
 
