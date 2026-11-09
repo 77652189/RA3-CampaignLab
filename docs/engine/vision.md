@@ -6,7 +6,7 @@
 
 - **低处单位看不见比它高约 50 以上的地方**。判据是逐格比较：某个迷雾格的地面高度减去单位脚下那格的高度，小于单位的 ShroudClearingHeight（不写就是 50）才揭开。这里**没有视线遮挡**，所以高台挡不住高台后面更低的地方。原版只有少数模板改过这个值。想让某个单位在低处也能看见高台，就给它加大 ShroudClearingHeight。
 - **两类条件别混用**：NAMED_DISCOVERED / TEAM_DISCOVERED 看的是迷雾格，带高度判据；ENEMY_SIGHTED（TYPE_SIGHTED 也一样）只按单位的视野半径做距离查询，不看迷雾，也不管高度。所以低处单位面对高台上的敌人时，ENEMY_SIGHTED 为真，NAMED_DISCOVERED 却为假。要写"玩家看见高台上的东西才触发"，用 DISCOVERED 那一类。
-- **脚本揭雾**（MAP_REVEAL_AT_WAYPOINT）不受高度限制。原版默认大约 **9 秒（137 帧）后回到迷雾**；MAP_SHROUD_SET_RESHROUD_TIME N 秒能改这个时长，保持 **15 × N − 13 帧**，设 0 就是完全不揭开。要一直揭开，用 MAP_REVEAL_PERMANENTLY_AT_WAYPOINT。
+- **脚本揭雾**（MAP_REVEAL_AT_WAYPOINT）不受高度限制。原版默认大约 **9 秒（137 帧）后回到迷雾**；MAP_SHROUD_SET_RESHROUD_TIME N 秒能改这个时长，保持 **15 × N − 13 帧**，设 0 就是完全不揭开。要一直揭开，用 MAP_REVEAL_PERMANENTLY_AT_WAYPOINT（测：整局不过期；MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT 按名字撤销，当帧回雾，没有那 137 帧延迟；`engine_vision` perm / undo，11-09）。
 - **雷达（小地图）不能拿来当关卡条件**：没有任何脚本条件读它。
 
 ## 1. 高度（测，模型逐读一致）

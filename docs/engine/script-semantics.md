@@ -138,8 +138,8 @@
   - 源码注释说边界切换"和永久揭图配合不好"，所以对观战者会先撤销永久揭图、切换、再重新揭。对普通玩家没有这样处理。推断：切换**之前**做的永久揭图，可能盖不到新扩出来的区域。未实测。
 - `MAP_REVEAL_ALL_PERM` / `MAP_REVEAL_ALL_UNDO_PERM`：`SA` 里的 `doRevealMapEntirePermanently`。玩家参数为空时作用于所有人类玩家。
 - `MAP_REVEAL_ALL`：`SA` 里的 `doRevealMapEntire`，一次性揭开，之后照常回雾。
-- `MAP_REVEAL_AT_WAYPOINT`：`SA` 里的 `doRevealMapAtWaypoint`，`doShroudReveal` 后紧跟 `undoShroudReveal`，只是一瞬间照亮。
-- `MAP_REVEAL_PERMANENTLY_AT_WAYPOINT` / `MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT`：`SA` 里的 `doRevealMapAtWaypointPermanent` → `ScriptEngine::createNamedMapReveal` + `doNamedMapReveal`，按名字登记、按名字撤销。
+- `MAP_REVEAL_AT_WAYPOINT`：`SA` 里的 `doRevealMapAtWaypoint`，`doShroudReveal` 后紧跟 `undoShroudReveal`；撤销进的是回雾队列，所以不是一瞬间：台上测过默认亮 **137 帧（约 9 秒）**，`MAP_SHROUD_SET_RESHROUD_TIME N` 改成 15 × N − 13 帧（`vision.md` 第 2 节）。
+- `MAP_REVEAL_PERMANENTLY_AT_WAYPOINT` / `MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT`：`SA` 里的 `doRevealMapAtWaypointPermanent` → `ScriptEngine::createNamedMapReveal` + `doNamedMapReveal`，按名字登记、按名字撤销。台上测过（11-09，`checks/engine_vision.py` perm / undo）：永久揭开**整局不过期**（30 秒 483 帧一直亮）；按名字撤销后**当帧就回雾**，不走回雾队列的 137 帧延迟。模拟器 `sim.py` 两条都一样。
 
 ### 4.5 胜负
 

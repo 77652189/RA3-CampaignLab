@@ -1005,6 +1005,21 @@ def test_scripts4_a_hidden_countdown_runs_on():
     assert by[18] == [0] and by[24] == [1], by
 
 
+# checks/engine_vision.py (bench 11-06 reshroud / resh*, 11-09 perm / undo: counters 揭开 帧数 [撤后] at 30 s)
+@pytest.mark.parametrize('variant, opened', [('reshroud', 137), ('resh0', 0), ('resh1', 2), ('resh5', 62),
+                                             ('resh10', 137)])
+def test_vision_a_plain_reveal_holds_15n_minus_13_frames(variant, opened):
+    """MAP_REVEAL_AT_WAYPOINT goes back to fog 137 frames after (default), 15 x N - 13 with RESHROUD_TIME N."""
+    assert _sim_run('engine_vision', variant, 30.0).series[-1][1][0] == opened
+
+
+def test_vision_a_permanent_reveal_holds_and_its_undo_shuts_at_once():
+    """perm: 揭开 = 帧数 all along; undo at Go + 10 s: 揭开 stays 151, nothing after the undo (撤后 0)."""
+    perm = _sim_run('engine_vision', 'perm', 30.0).series[-1][1]
+    undo = _sim_run('engine_vision', 'undo', 30.0).series[-1][1]
+    assert perm[0] == perm[1] > 400 and undo[0] == 151 and undo[2] == 0, (perm, undo)
+
+
 # checks/engine_scripts1.py
 def _scripts1(variant, until):
     return {round(sec): vals for sec, vals in _sim_run('engine_scripts1', variant, until).series}

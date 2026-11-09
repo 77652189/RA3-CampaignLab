@@ -13,6 +13,9 @@ start, so one mission serves every check.
             Go on that NAMED_DISCOVERED(p1, tower W) is true; 帧数 = frames since Go. How long the reveal holds.
   resh5     as reshroud with MAP_SHROUD_SET_RESHROUD_TIME 5.0 (seconds: retail A04 uses 1.0) at the start.
   resh0 / resh1 / resh10   the same with 0, 1, 10: how the setting maps to frames.
+  perm      as reshroud with MAP_REVEAL_PERMANENTLY_AT_WAYPOINT (name 'Test Look'): does it hold past 137 frames?
+  undo      as perm, and MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT 'Test Look' at 11 s (Go + 10). 撤后 = frames from
+            the undo on that the tower is still discovered: 0 = the fog comes back at once, ~137 = the reshroud delay.
 
 (Check names are short: the mod name, mission + check, may not pass 15 characters.)
 
@@ -26,6 +29,14 @@ Bench 11-06 (counters 看见 / 揭开 + 帧数; ~15 frames per second):
     frames (~4.1 s) and stays 62 (帧数 483): shorter than the default 137.
   resh1 CampVisResh1_mcp_1106_032237: 揭开 2. resh10 CampVisResh10_mcp_1106_032431: 137 (as the default).
   resh0 CampVisResh0_mcp_1106_032628: 0 (never shown). So a reveal holds 15 x N - 13 frames (docs/engine/vision.md 2).
+
+Bench 11-09 (engine line A round 119):
+  perm  CampVisPerm_mcp_1109_085452: 揭开 = 帧数 from s1 (30) to s31 (483): MAP_REVEAL_PERMANENTLY_AT_WAYPOINT holds
+    the whole run, far past the 137 frames of a plain reveal.
+  undo  CampVisUndo_mcp_1109_085241: 揭开 = 帧数 to s9 (151), then stays 151 (帧数 484 at s31); 撤后 0 all along:
+    MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT (by the reveal's name) puts the fog back the frame it runs, no reshroud
+    delay. The simulator (sim.py reveals / peeks) reads the same for all seven variants
+    (tests/test_simbench.py::test_vision_*).
 """
 import os
 
@@ -37,7 +48,8 @@ from checks.probe_view import open_in_view
 TOWER, CANNON = 'AlliedBaseDefense', 'AlliedAntiStructureVehicle'
 HI, HI2 = 'CNV_VisionHi', 'CNV_VisionHi2'
 GO, RUN = 1.0, {'height': 20.0, 'height2': 20.0, 'reshroud': 30.0, 'resh5': 30.0, 'resh1': 30.0, 'resh10': 30.0,
-               'resh0': 30.0}
+               'resh0': 30.0, 'perm': 30.0, 'undo': 30.0}
+UNDO = 10.0  # undo: seconds after Go
 TOWERS = {'W': (1280.0, 1350.0), 'E': (2420.0, 1250.0)}
 # role: (template, x, y); W has three cannons (probe, probe2, control), the unused ones are deleted at the start
 CANNONS = {'W': (HI, 880.0, 1350.0), 'W2': (HI2, 880.0, 1450.0), 'W0': (CANNON, 880.0, 1250.0),
@@ -93,21 +105,30 @@ def _test(m, which):
         t.expect = [('看见', 0, 'ever>=', 1101)]
         t.bench = [('bench_watch', dict(seconds=RUN[which], every=1, sheet=False, lines=1))]
         return t
-    if which != 'reshroud':  # resh<N>: MAP_SHROUD_SET_RESHROUD_TIME N at the start
+    if which.startswith('resh') and which != 'reshroud':  # resh<N>: MAP_SHROUD_SET_RESHROUD_TIME N at the start
         start.append(('MAP_SHROUD_SET_RESHROUD_TIME', float(which[4:])))
     start.append(('SET_MILLISECOND_TIMER', 'Test Go', GO))
     t.scripts.append(Script('Test - start', [], start))
     t.waypoints['Test Reveal'] = TOWERS['W']
-    t.scripts.append(Script('Test - go', [('TIMER_EXPIRED', 'Test Go')],
-                            [('MAP_REVEAL_AT_WAYPOINT', 'Test Reveal', 150.0, p1), ('SET_FLAG', 'Test Going', 1)]))
+    reveal = (('MAP_REVEAL_PERMANENTLY_AT_WAYPOINT', 'Test Reveal', 150.0, p1, 'Test Look') if which in ('perm', 'undo')
+              else ('MAP_REVEAL_AT_WAYPOINT', 'Test Reveal', 150.0, p1))
+    t.scripts.append(Script('Test - go', [('TIMER_EXPIRED', 'Test Go')], [reveal, ('SET_FLAG', 'Test Going', 1)]))
     going = ('FLAG', 'Test Going', 1)
     t.counters.append(('Test Open', '揭开'))
     t.counters.append(('Test Frames', '帧数'))
     t.scripts.append(Script('Test - frames', [going], [('INCREMENT_COUNTER', 1, 'Test Frames')], once=False))
     t.scripts.append(Script('Test - open', [going, ('NAMED_DISCOVERED', p1, tw('W'))],
                             [('INCREMENT_COUNTER', 1, 'Test Open')], once=False))
+    if which == 'undo':
+        t.scripts.append(Script('Test - go undo', [('TIMER_EXPIRED', 'Test Go')],
+                                [('SET_MILLISECOND_TIMER', 'Test Undo', UNDO)]))
+        t.scripts.append(Script('Test - undo', [('TIMER_EXPIRED', 'Test Undo')],
+                                [('MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT', 'Test Look'), ('SET_FLAG', 'Test Undone', 1)]))
+        t.counters.append(('Test After', '撤后'))
+        t.scripts.append(Script('Test - after', [('FLAG', 'Test Undone', 1), ('NAMED_DISCOVERED', p1, tw('W'))],
+                                [('INCREMENT_COUNTER', 1, 'Test After')], once=False))
     t.expect = [('帧数', 0, 'ever>=', 1, RUN[which])]
-    t.bench = [('bench_watch', dict(seconds=RUN[which], every=1, sheet=False, lines=2))]
+    t.bench = [('bench_watch', dict(seconds=RUN[which], every=1, sheet=False, lines=3 if which == 'undo' else 2))]
     return t
 
 

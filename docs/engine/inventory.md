@@ -4,7 +4,7 @@
 
 | 部分 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|
-| 脚本动作 | 427 | 62 | 45 | 272 | 48 | 81% |
+| 脚本动作 | 427 | 65 | 43 | 271 | 48 | 81% |
 | 脚本条件 | 89 | 23 | 5 | 61 | 0 | 94% |
 | 物体模块 | 184 | 9 | 15 | 143 | 17 | 42% |
 | 武器效果 | 25 | 2 | 3 | 20 | 0 | 53% |
@@ -95,7 +95,7 @@
 | 不涉及 | `UNIT_SET_MODELCONDITION_GENERIC` | 111 | 纯表现：设模型状态只换画法。原版脚本设的是 SUPPRESSED（a01 摆拍枪战的趴下动作），SDK 数据里读 SUPPRESSED 的只有绘制模块的 ConditionsYes；我们 a7 设的 USER_1 只有自由号的充能画法读 |
 | 不涉及 | `PLAY_SOUND_AS_AI_COCOMMANDER_DIALOG` | 109 | 纯表现（名字规则） |
 | 未做 | `TEAM_CREATE_RADAR_EVENT` | 107 | Sim.act / Sim.cond 不认识 |
-| 推断 | `MAP_REVEAL_PERMANENTLY_AT_WAYPOINT` | 105 | Sim.act / Sim.cond 有分支 |
+| 已对拍 | `MAP_REVEAL_PERMANENTLY_AT_WAYPOINT` | 105 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_vision.py |
 | 不涉及 | `CAMERA_LETTERBOX_BEGIN` | 104 | 纯表现（名字规则） |
 | 未做 | `NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY` | 103 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_ALLOW_AI_AUTOACQUIRE` | 103 | Sim.act / Sim.cond 不认识 |
@@ -117,7 +117,7 @@
 | 已对拍 | `SKIRMISH_AI_USE_REPAIRS` | 75 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aipullback.py |
 | 未做 | `NAMED_OUTLINE` | 74 | Sim.act / Sim.cond 不认识 |
 | 未做 | `FLASH_UI_UNIT_ABILITY_BUTTON` | 72 | Sim.act / Sim.cond 不认识 |
-| 推断 | `MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT` | 72 | Sim.act / Sim.cond 有分支 |
+| 已对拍 | `MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT` | 72 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_vision.py |
 | 已对拍 | `PLAYER_GIVE_MONEY` | 72 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aiskirm.py |
 | 已对拍 | `UNIT_SET_TEAM` | 72 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_acquire.py |
 | 未做 | `TEAM_CHANGE_OBJECT_STATUS` | 71 | Sim.act / Sim.cond 不认识 |
@@ -267,7 +267,7 @@
 | 不涉及 | `ROTATE_CAMERA` | 10 | 纯表现（名字规则） |
 | 未做 | `SKIRMISH_AI_CONSIDER_ALL_ENEMIES_WHEN_BUILDING` | 10 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `ZOOM_CAMERA` | 10 | 纯表现（名字规则） |
-| 未做 | `MAP_SHROUD_SET_RESHROUD_TIME` | 9 | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `MAP_SHROUD_SET_RESHROUD_TIME` | 9 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_vision.py |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleHarpoonSpecialPower` | 9 | 只记进时间线，没有效果 |
 | 未做 | `PLAYER_DISABLE_UNIT_CONSTRUCTION` | 9 | Sim.act / Sim.cond 不认识 |
 | 未做 | `PLAYER_TOGGLE_SKIRMISH_AI` | 9 | Sim.act / Sim.cond 不认识 |

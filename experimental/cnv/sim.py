@@ -853,7 +853,8 @@ class Sim:
         self.reveal_all = False             # the player's MAP_REVEAL_ALL
         self.revealed_to = set()            # other players given MAP_REVEAL_ALL (side_sees: they see everything)
         self.reveals = {}                   # name -> (x, y, r)
-        self.peeks = []                     # (x, y, r): a reveal that is not permanent (taken as for this tick on)
+        self.peeks = []                     # (x, y, r, until frame): MAP_REVEAL_AT_WAYPOINT, back to fog at `until`
+        self.reshroud = 10.0                # MAP_SHROUD_SET_RESHROUD_TIME seconds (retail default holds as 10)
         self.camera = None
         self.input = True
         self.countdowns = set()
@@ -2075,7 +2076,7 @@ class Sim:
         """Whether the player sees a point (a body there, airborne or not)."""
         if self.reveal_all:
             return True
-        if any(math.hypot(x - rx, y - ry) <= r for rx, ry, r in list(self.reveals.values()) + self.peeks):
+        if any(math.hypot(x - rx, y - ry) <= r for rx, ry, r in list(self.reveals.values()) + self.peeking()):
             return True
         return any(b.owner == self.human and self.looks(b, x, y, air) for b in self.living())
 
@@ -2374,6 +2375,8 @@ class Sim:
             if b and self.body(a[1]):
                 self.send(b, a[1])
         elif name == 'SET_MISSION_OBJECTIVE_STATUS':
+            if a[1] not in (0, 1, 2, 3):                # script-semantics.md 8: only 0..3, any other does nothing
+                return                                  # (inferred; checks/engine_scripts5.py goals O5 asks the bench)
             old = self.objectives.get(a[0], 0)
             self.objectives[a[0]] = a[1]
             if a[1] != old and a[1]:
@@ -2432,12 +2435,17 @@ class Sim:
             p = self.point(a[0])
             if p:
                 if name == 'MAP_REVEAL_AT_WAYPOINT':
-                    self.peeks.append((p[0], p[1], float(a[1])))
+                    # docs/engine/vision.md 2 (bench 11-06 engine_vision resh*): it holds 15 x N - 13 frames
+                    hold = max(0, int(round(self.reshroud * 15)) - 13)
+                    self.peeks.append((p[0], p[1], float(a[1]), self.frame_now() + hold))
                 else:
                     self.reveals[a[3]] = (p[0], p[1], float(a[1]))
                 self.note('揭图', f'{a[0]} 半径 {a[1]:g}')
         elif name == 'MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT':
+            # bench 11-09 engine_vision undo: back to fog at once (no reshroud delay), by the reveal's name
             self.reveals.pop(a[0], None)
+        elif name == 'MAP_SHROUD_SET_RESHROUD_TIME':
+            self.reshroud = float(a[0])
         elif name in ('MOVE_CAMERA_TO', 'MOVE_CAMERA_TO_NAMED', 'CAMERA_FOLLOW_NAMED'):
             p = self.point(a[0])
             if p:
@@ -3017,6 +3025,12 @@ class Sim:
                 if step >= 0 and tr['steps'][step][4] and t.alive:
                     self.destroy(t, f'被 {self.label(by)} 冻死')
 
+    def peeking(self):
+        """The MAP_REVEAL_AT_WAYPOINT reveals still open this frame, as (x, y, r)."""
+        now = self.frame_now()
+        self.peeks = [q for q in self.peeks if now < q[3]]
+        return [q[:3] for q in self.peeks]
+
     def frame_now(self):
         return self.eng.frame if self.eng else int(round(self.t * simunits.LIFE_FPS))
 
@@ -3142,7 +3156,7 @@ class Sim:
         x, y = self._xy
         if self.reveal_all:
             self.known[:] = True
-        for rx, ry, r in list(self.reveals.values()) + self.peeks:
+        for rx, ry, r in list(self.reveals.values()) + self.peeking():
             self.known |= (x - rx) ** 2 + (y - ry) ** 2 <= r * r
         for b in self.living():
             if b.owner == self.human and b.vision:
@@ -3150,7 +3164,6 @@ class Sim:
                 if self.high and b.surface != 'air':
                     seen &= self.ground.zgrid[:seen.shape[0], :seen.shape[1]] <= self.ground.z(b.x, b.y) + b.clear_height
                 self.known |= seen
-        self.peeks = []
         rect = list(getattr(self.m.map, 'BORDERS', {'': (0, 0, 1e9, 1e9)}).values())
         x0, y0, x1, y1 = rect[self.border] if self.border < len(rect) else rect[0]
         inb = (x >= x0) & (x <= x1) & (y >= y0) & (y <= y1)
