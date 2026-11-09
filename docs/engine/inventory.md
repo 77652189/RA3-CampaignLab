@@ -6,8 +6,8 @@
 |---|---|---|---|---|---|---|
 | 脚本动作 | 427 | 49 | 58 | 272 | 48 | 81% |
 | 脚本条件 | 89 | 22 | 6 | 61 | 0 | 94% |
-| 物体模块 | 184 | 9 | 14 | 146 | 15 | 33% |
-| 武器效果 | 25 | 2 | 2 | 21 | 0 | 52% |
+| 物体模块 | 184 | 9 | 15 | 145 | 15 | 38% |
+| 武器效果 | 25 | 2 | 3 | 20 | 0 | 53% |
 | AI | 415 | 30 | 170 | 181 | 34 | 86% |
 
 ## 脚本动作
@@ -541,17 +541,17 @@
 | 状态 | 名字 | 用量 | 说明 |
 |---|---|---|---|
 | 不涉及 | `Draws/ScriptedModelDraw` | 1895 (2888) | 纯表现（Draws）；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
-| 未做 | `Body/PropBody` | 1443 (2758) | 模拟器代码里没有这个名字；例：AlliedAirField_Collapse, AlliedAntiAirShip_Collapse |
+| 未做 | `Body/PropBody` | 1443 (2758) | 弹体和特效道具的身体（9 关 22 个模板里 16 个是弹体）：模拟器没有弹体（同 BezierProjectile），道具能不能挨打没读；例：AlliedAirField_Collapse, AlliedAntiAirShip_Collapse |
 | 不涉及 | `Behaviors/FXListBehavior` | 796 (1241) | 纯表现（名字规则）；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
 | 推断 | `Body/ActiveBody` | 790 (1398) | simunits.stats 读 MaxHealth（只有生命值；受伤状态、回血等另算）；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
 | 未做 | `Behaviors/ObjectDefectionHelper` | 640 (1059) | 模拟器代码里没有这个名字；例：AlliedSatelliteSweepShroudRevealer, AlliedTimeBombLvl1 |
 | 不涉及 | `Behaviors/ObjectSMCHelper` | 640 (1059) | 纯表现：《将军》ObjectSMCHelper 到时清掉"定时模型状态"（UNIT_SET_MODELCONDITION_GENERIC 的秒数），只换画法；例：AlliedSatelliteSweepShroudRevealer, AlliedTimeBombLvl1 |
 | 推断 | `Behaviors/AttributeModifierPoolUpdate` | 622 (910) | Sim.modify：属性修正挂在这个池里，到期规则（到期帧 >= 即失效、再挂覆盖不叠加）读自程序，work/re/l2_ability.md 第 51 轮；例：AlliedAntiVehicleVehicleTech3CannonNodeBase, AlliedAntiVehicleVehicleTech3CannonNodeEnd |
-| 未做 | `Behaviors/SecondaryDamageTracker` | 617 (852) | 模拟器代码里没有这个名字；例：AlliedSatelliteSweepShroudRevealer, AlliedTimeBombLvl1 |
-| 未做 | `Behaviors/Physics` | 597 (836) | 模拟器代码里没有这个名字；例：AlliedAntiGroundAircraft_Dying, AlliedBomberAircraft_Dying |
+| 推断 | `Behaviors/SecondaryDamageTracker` | 617 (852) | Sim.chill（ALIGN freeze）：冷冻光束的冷冻值累计、每秒消散、按生命值分档减速、满档冻住（CryoBeamFrozenArmor 90000%，一碰就碎）；规则读自 SDK 数据，程序和台上都没对；例：AlliedSatelliteSweepShroudRevealer, AlliedTimeBombLvl1 |
+| 未做 | `Behaviors/Physics` | 597 (836) | 移动物理（坠落、弹跳、被击飞、倾倒）：模拟器走路按速度直走，没有物理；例：AlliedAntiGroundAircraft_Dying, AlliedBomberAircraft_Dying |
 | 已对拍 | `Behaviors/CreateObjectDie` | 591 (838) | 模拟器代码里有这个名字；台上量过：checks/engine_crush.py；例：AlliedAntiGroundAircraft_Dying, AlliedBomberAircraft_Dying |
 | 推断 | `Behaviors/DestroyDie` | 578 (1006) | Sim.destroy：死了当帧移出（LINGER 0，台上 death 探针量过）；DeathTypes 筛选、几个 Die 模块选哪个没读；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
-| 未做 | `Behaviors/SquishCollide` | 569 (749) | 模拟器代码里没有这个名字；例：AlliedSatelliteSweepShroudRevealer, AlliedWallPiece |
+| 未做 | `Behaviors/SquishCollide` | 569 (749) | 碾压步兵：模拟器没有碾压（坦克压过步兵不死）；影响玩法，没做；例：AlliedSatelliteSweepShroudRevealer, AlliedWallPiece |
 | 未做 | `Behaviors/SlowDeath` | 565 (1480) | 已核（11-08）：模拟器没有这个效果（死了立即移出，没有慢死、倒塌延迟）；例：AlliedAirField_Collapse, AlliedAntiAirShip_Collapse |
 | 未做 | `Behaviors/BuildingDestructionBehavior` | 493 (650) | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |
 | 不涉及 | `ClientBehaviors/ModelConditionAudioLoopClientBehavior` | 466 (649) | 纯表现（ClientBehaviors）；例：AlliedSatelliteSweepShroudRevealer, AlliedAirfield |
@@ -743,7 +743,7 @@
 | 推断 | `LineDamageNugget` | 6 | 模拟器代码里有这个名字；例：SovietCommandoSniperRifle, AAAVT1_SovietCommandoSniperRifle |
 | 未做 | `SpecialPowerNugget` | 6 | 模拟器代码里没有这个名字；例：SovietCommandoCallBombingRun, AlliedAntiVehicleVehicleTech1TargetPainter |
 | 未做 | `FireOnObjectsNugget` | 5 | 模拟器代码里没有这个名字；例：PlayerPowerJapanEmperorsResolveWeapon_L1, PlayerPowerJapanEmperorsResolveWeapon_L2 |
-| 未做 | `SecondaryDamageNugget` | 5 | 模拟器代码里没有这个名字；例：MountRushmoreHeadEyeWeapon, AlliedCryoSatelliteLvl1 |
+| 推断 | `SecondaryDamageNugget` | 5 | simunits._weapons 读 Amount（不要升级的那条）→ sdps，Sim.chill；例：MountRushmoreHeadEyeWeapon, AlliedCryoSatelliteLvl1 |
 | 未做 | `AttachNugget` | 4 | 模拟器代码里没有这个名字；例：AlliedCommandoAttachWeapon, SovietAntiVehicleInfantryMagneticBombAttachWeapon |
 | 未做 | `StripMaxHealthPercentNugget` | 3 | 模拟器代码里没有这个名字；例：JapanCommandoTech1PsyonicCrush, AAAVT1_JapanCommandoTech1PsyonicCrush |
 | 未做 | `ActivateLinearDamageNugget` | 2 | 模拟器代码里没有这个名字；例：AlliedAntiNavalScoutSonar, AlliedAntiNavalScoutSonarForBridges |

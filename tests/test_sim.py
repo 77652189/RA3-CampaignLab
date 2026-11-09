@@ -53,6 +53,24 @@ def test_a_unit_walks_the_map_at_its_speed():
     assert s.ending[0] == '赢' and straight / 50 - 3 <= s.ending[1] <= 1.6 * straight / 50
 
 
+def test_a_cryo_beam_slows_by_steps_then_freezes_and_a_frozen_unit_breaks_at_a_touch():
+    """ALIGN 'freeze' (INFERRED from the SDK data): the cryocopter's beam (75 a second) against a Hammer tank (550,
+    BaseVehicle's tracker melting 25 a second): speed 80 % from 110 cold, ... frozen at 550 -- stopped, silent,
+    CryoBeamFrozenArmor (90000 %): a peacekeeper's shotgun (26.7 a second, 20 s for 550) kills it within a second."""
+    m = mission([])
+    s = sim.Sim(m)
+    a = festival.SITES['west field']
+    s.add('cop', 'AlliedSupportAircraft', s.foe, a.x, a.y)
+    tank = s.add('tank', 'SovietAntiVehicleVehicleTech1', s.human, a.x + 100, a.y)
+    s.run(3)
+    assert tank.cold_step == 0 and abs(tank.speed - 0.8 * 75.0) < 1e-6
+    s.run(13)
+    assert 'UNDER_FROZEN' in tank.status and tank.speed == 0 and tank.alive and tank.hp == tank.max_hp
+    s.add('gi', 'AlliedAntiInfantryInfantry', s.foe, a.x + 130, a.y)
+    s.run(14)
+    assert not tank.alive
+
+
 def test_an_unnamed_create_makes_a_new_object_each_time_on_the_team():
     """CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT (was ignored): each action one more object, no name, on that team at the
     waypoint; an unnamed-type reference finds it (it is unnamed: '#')."""
@@ -261,10 +279,12 @@ def test_a_placed_objects_starting_health():
 # ---- Sim.unmodeled: what a run met and the simulator does not act on, recorded in one place (Sim.gap)
 
 def test_acted_status_is_what_the_source_tests():
-    """sim.ACTED_STATUS (what a status-bit gap is measured against) holds every `'X' in b.status` test in sim.py."""
+    """sim.ACTED_STATUS (what a status-bit gap is measured against) holds every `'X' in b.status` test in sim.py
+    (IN_STASIS, UNDER_FROZEN: tested on the modifiers' bits in Sim.modify)."""
     import re
     src = (ROOT / 'experimental' / 'cnv' / 'sim.py').read_text(encoding='utf-8')
-    assert set(re.findall(r"'([A-Z_]+)' (?:not )?in \w+\.status", src)) | {'IN_STASIS'} == sim.ACTED_STATUS
+    assert set(re.findall(r"'([A-Z_]+)' (?:not )?in \w+\.status", src)) | {'IN_STASIS', 'UNDER_FROZEN'} == \
+        sim.ACTED_STATUS
 
 
 def test_a_run_records_what_it_does_not_model():

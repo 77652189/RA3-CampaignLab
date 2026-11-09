@@ -8,10 +8,10 @@
 |---|---|---|---|---|
 | 脚本动作 | 35 | 25 | 0 | 4 |
 | 脚本条件 | 11 | 1 | 0 | 0 |
-| 物体模块 | 9 | 14 | 95 | 12 |
-| 武器效果 | 2 | 2 | 17 | 0 |
+| 物体模块 | 9 | 15 | 94 | 12 |
+| 武器效果 | 2 | 3 | 16 | 0 |
 
-按原版用量加权：已对拍 57%，已有（已对拍+推断）83%。
+按原版用量加权：已对拍 57%，已有（已对拍+推断）84%。
 
 摆了、但原版数据和我们的单位里都找不到的模板（模块没算）：a9 `AlliedFutureTank`。
 
@@ -19,11 +19,10 @@
 
 | 状态 | 部分 | 项 | 原版用量 | 关 | 说明 |
 |---|---|---|---|---|---|
-| 未做 | 物体模块 | `Body/PropBody` | 1443 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAntiGroundAircraftMissileProjectile_Veteran, AlliedAntiInfantryVehicleTorpedoProjectile |
+| 未做 | 物体模块 | `Body/PropBody` | 1443 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 弹体和特效道具的身体（9 关 22 个模板里 16 个是弹体）：模拟器没有弹体（同 BezierProjectile），道具能不能挨打没读；例：AlliedAntiGroundAircraftMissileProjectile_Veteran, AlliedAntiInfantryVehicleTorpedoProjectile |
 | 未做 | 物体模块 | `Behaviors/ObjectDefectionHelper` | 640 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
-| 未做 | 物体模块 | `Behaviors/SecondaryDamageTracker` | 617 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
-| 未做 | 物体模块 | `Behaviors/Physics` | 597 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
-| 未做 | 物体模块 | `Behaviors/SquishCollide` | 569 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAntiAirVehicleTech1, AlliedAntiInfantryInfantry |
+| 未做 | 物体模块 | `Behaviors/Physics` | 597 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 移动物理（坠落、弹跳、被击飞、倾倒）：模拟器走路按速度直走，没有物理；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
+| 未做 | 物体模块 | `Behaviors/SquishCollide` | 569 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 碾压步兵：模拟器没有碾压（坦克压过步兵不死）；影响玩法，没做；例：AlliedAntiAirVehicleTech1, AlliedAntiInfantryInfantry |
 | 未做 | 物体模块 | `Behaviors/SlowDeath` | 565 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 已核（11-08）：模拟器没有这个效果（死了立即移出，没有慢死、倒塌延迟）；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
 | 未做 | 物体模块 | `Behaviors/BuildingDestructionBehavior` | 493 | a1 a2 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |
 | 未做 | 物体模块 | `Behaviors/ToppleUpdate` | 347 | a4 | 模拟器代码里没有这个名字；例：OK_Lantern01 |
@@ -123,7 +122,6 @@
 | 未做 | 武器效果 | `TintObjectsNugget` | 9 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoAttachWeapon, AlliedSupportAircraftShrinkRay |
 | 未做 | 武器效果 | `ActivateLiftObjectNugget` | 6 | a1 a2 a4 a6 a7 | 模拟器代码里没有这个名字；例：AAAVT1_JapanCommandoTech1PsyonicAntiAirCrush, AAAVT1_JapanCommandoTech1PsyonicCrush |
 | 未做 | 武器效果 | `SpecialPowerNugget` | 6 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAntiVehicleVehicleTech1TargetPainter, CNV_DeckSendTrigger |
-| 未做 | 武器效果 | `SecondaryDamageNugget` | 5 | a7 | 模拟器代码里没有这个名字；例：AlliedSupportAircraftCryobeam |
 | 未做 | 武器效果 | `AttachNugget` | 4 | a1 a2 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoAttachWeapon, SovietScoutVehicleMeleeAttachWeapon |
 | 未做 | 武器效果 | `StripMaxHealthPercentNugget` | 3 | a1 a2 a4 a6 a7 | 模拟器代码里没有这个名字；例：AAAVT1_JapanCommandoTech1PsyonicCrush, ABD_JapanCommandoTech1PsyonicCrush |
 | 未做 | 武器效果 | `ActivateLinearDamageNugget` | 2 | a1 a2 a4 a6 a7 | 模拟器代码里没有这个名字；例：AlliedAntiNavalScoutSonar, AlliedAntiNavalScoutSonarForBridges |
@@ -159,6 +157,7 @@
 | 推断 | 脚本条件 | `PLAYER_HAS_OBJECT_COMPARISON` | 628 | a1 a4 a5 a7 | Sim.act / Sim.cond 有分支 |
 | 推断 | 物体模块 | `Body/ActiveBody` | 790 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | simunits.stats 读 MaxHealth（只有生命值；受伤状态、回血等另算）；例：AlliedAirfield, AlliedAntiAirMissileProjectile |
 | 推断 | 物体模块 | `Behaviors/AttributeModifierPoolUpdate` | 622 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | Sim.modify：属性修正挂在这个池里，到期规则（到期帧 >= 即失效、再挂覆盖不叠加）读自程序，work/re/l2_ability.md 第 51 轮；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
+| 推断 | 物体模块 | `Behaviors/SecondaryDamageTracker` | 617 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | Sim.chill（ALIGN freeze）：冷冻光束的冷冻值累计、每秒消散、按生命值分档减速、满档冻住（CryoBeamFrozenArmor 90000%，一碰就碎）；规则读自 SDK 数据，程序和台上都没对；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
 | 推断 | 物体模块 | `Behaviors/DestroyDie` | 578 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | Sim.destroy：死了当帧移出（LINGER 0，台上 death 探针量过）；DeathTypes 筛选、几个 Die 模块选哪个没读；例：AlliedAirfield, AlliedAntiAirMissileProjectile |
 | 推断 | 物体模块 | `Behaviors/ProductionUpdate` | 351 | a1 a2 a4 a5 a6 a7 a8 a9 | 模拟器代码里有这个名字；例：AlliedAirfield, AlliedBarracks |
 | 推断 | 物体模块 | `AI/AIUpdate` | 136 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | Sim.fight / 移动（单位 AI 的状态机细项按引擎 B 的 AI 清单推进）；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
@@ -173,6 +172,7 @@
 | 推断 | 物体模块 | `Behaviors/FireWeaponUpdate` | 1 | a1 a2 a4 a5 a6 a7 | 部分：simunits.ocl_round 把召出物的 FireWeaponNugget + LifetimeUpdate 折成伤害，不模拟召出物本身；例：SovietHeavyAntiVehicleInfantry |
 | 推断 | 武器效果 | `WeaponOCLNugget` | 26 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里有这个名字；例：AlliedAntiStructureAttackDrones, AlliedAntiStructureSolarTargeter |
 | 推断 | 武器效果 | `LineDamageNugget` | 6 | a1 a2 a3 a4 a5 a6 a7 | 模拟器代码里有这个名字；例：AAAVT1_SovietCommandoSniperRifle, ABD_SovietCommandoSniperRifle |
+| 推断 | 武器效果 | `SecondaryDamageNugget` | 5 | a7 | simunits._weapons 读 Amount（不要升级的那条）→ sdps，Sim.chill；例：AlliedSupportAircraftCryobeam |
 | 已对拍 | 脚本动作 | `SET_MILLISECOND_TIMER` | 4153 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 引擎模型核心；台上量过：checks/engine_acquire.py |
 | 已对拍 | 脚本动作 | `SET_FLAG` | 4105 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aimicro.py |
 | 已对拍 | 脚本动作 | `NAMED_DELETE` | 908 | a2 a4 a5 a6 a7 a9 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_attack.py |

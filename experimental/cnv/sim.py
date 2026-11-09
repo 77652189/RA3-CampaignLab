@@ -204,6 +204,14 @@ ALIGN = {
                 'there that frame (bench 2026-11-07 engine_life: a 30 s wall lived 450 frames, a 5.5 s core 82, the '
                 'core\'s wall there at once; nothing of the dead lingers in an area). Min and Max apart: their '
                 'middle (a guess); retail templates\' lifetimes are not read',
+    'freeze': 'the cryo beam (SecondaryDamageNugget, simunits.freeze): its Amount a shot (x RATE_OF_FIRE) adds to '
+              'the target\'s cold, DissipateAmount comes off a second (spread over the second), held up to '
+              'MaxDamageClampScaler x max health; the highest EffectInfo Fraction x max health reached hangs its '
+              'modifier (0.2 .. 0.8: speed and rate of fire 80 .. 20 %), 1.0 freezes: UNDER_FROZEN, stopped and '
+              'silent (OnEnterDisable), the ArmorSet of Conditions SECONDARY_DAMAGE (CryoBeamFrozenArmor, Default '
+              '90000 %: any hit breaks it), DIE_ON_ENTER kills. INFERRED from the SDK data (the tracker\'s update '
+              'not read in the program, not benched): Fraction of max health, only the highest step\'s modifier, '
+              'no armour on the Amount, the Iron Curtain keeps it off',
     'modifier': 'attribute modifiers (simunits.effect, Sim.modify / aura_tick) from upgrades held and aura objects '
                 'near: SPEED x speed, RANGE x weapon range only, VISION x sight, INVULNERABLE + UNDER_IRON_CURTAIN '
                 'no damage, a Duration runs out (bench docs/engine/upgrades.md 1, 2, 4); an aura hangs its modifier '
@@ -286,7 +294,7 @@ GAP_WEAPON, GAP_UPGRADE, GAP_ACTION, GAP_CONDITION, GAP_COMMAND, GAP_STATUS = \
     '武器', '升级', '脚本动作', '脚本条件', '命令', '状态'
 # the object statuses sim.py acts on (tested with `in b.status`; IN_STASIS = IMMOBILE NO_ATTACK UNATTACKABLE in
 # Sim.modify); tests/test_sim.py checks the list against the source
-ACTED_STATUS = frozenset({'IMMOBILE', 'NO_ATTACK', 'UNATTACKABLE', 'NON_AUTOACQUIRABLE', 'IN_STASIS'})
+ACTED_STATUS = frozenset({'IMMOBILE', 'NO_ATTACK', 'UNATTACKABLE', 'NON_AUTOACQUIRABLE', 'IN_STASIS', 'UNDER_FROZEN'})
 # a script's power or button by itself, as simcoverage.refined names it
 BUTTON_ACTIONS = ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY',
                   'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED')
@@ -460,6 +468,8 @@ class Body:
     auras_on: dict = dataclasses.field(default_factory=dict)   # modifier id -> (until frame, xml) an aura hung on it
     shielded: bool = False                                      # INVULNERABLE + Iron Curtain bits on it (simunits.effect)
     taken: float = 1.0                                          # ARMOR factor: damage taken x (INFERRED)
+    cold: float = 0.0                                           # the cryo beam's secondary damage held (deal, R freeze)
+    cold_step: int = -1                                         # ... the highest EffectInfo reached (-1: none)
     dealt: float = 1.0                                          # DAMAGE_MULT x RATE_OF_FIRE: damage dealt x (INFERRED)
     base: dict = None                                           # speed, vision, sight, weapons before modifiers
     deposit: tuple = None                                       # R4: its AutoDepositUpdate (bonus, amount, frames)
@@ -1517,16 +1527,22 @@ class Sim:
                 del b.auras_on[mid]
             else:
                 mods.append(simunits.modifier(src, mid))
+        step = self.cold_of(b)[0]['steps'][b.cold_step] if b.cold_step >= 0 else None
+        if step and step[1]:
+            mods.append(simunits.modifier(xml, step[1]))
         on, off = simunits.status_bits(xml, b.upgrades)
         e = simunits.effect(mods, on | b.script_status, off)
         if not mods and not on and not off and b.base is None:
             b.status = set(b.script_status)
             return
         if b.base is None:
-            b.base = {'speed': b.speed, 'vision': b.vision, 'sight': b.sight, 'weapons': b.weapons}
+            b.base = {'speed': b.speed, 'vision': b.vision, 'sight': b.sight, 'weapons': b.weapons, 'armor': b.armor}
         st = e['status']
         if 'IN_STASIS' in st:
             st = st | {'IMMOBILE', 'NO_ATTACK', 'UNATTACKABLE'}
+        if 'UNDER_FROZEN' in st or (step and step[2]):          # frozen (OnEnterDisable): stopped and silent
+            st = st | {'IMMOBILE', 'NO_ATTACK'}
+        b.armor = self.cold_of(b)[1] if step and step[3] and self.cold_of(b)[1] else b.base['armor']
         b.status = st
         b.speed = b.base['speed'] * e['SPEED']
         b.vision, b.sight = b.base['vision'] * e['VISION'], b.base['sight'] * e['VISION']
@@ -2654,7 +2670,7 @@ class Sim:
         Tanya's pistol, SNIPER, at every faction building) cannot take it at all, ordered or not (Generals
         WeaponSet::getAbleToUseWeaponAgainstTarget: estimateWeaponDamage 0 -> ATTACKRESULT_INVALID_SHOT; the a6
         Tanya who stood firing at a building, 2026-11-08)."""
-        if t.armor.get(w['type'], simunits.ARMOR_DEFAULT) <= 0:
+        if simunits.percent(t.armor, w['type']) <= 0:
             return False
         anti = w['anti']
         if not anti:
@@ -2752,6 +2768,7 @@ class Sim:
         circles (`in_range`, R8). The aim is taken once a tick; the damage is dealt frame by frame (`deal`, R6)."""
         self.seen = {}
         self.firing = []
+        self.chilling = []
         self._fire_obstacles = None             # `shot_blocked`'s footprints, taken once a tick when first asked
         live = [b for b in self.living() if not b.scenery]
         armed = [b for b in live if b.weapons and 'NO_ATTACK' not in b.status    # NO_ATTACK: holds its fire
@@ -2798,8 +2815,11 @@ class Sim:
                     continue
                 if a.vision and w['range'] > a.vision:
                     a.fired_at = self.t                 # a bombarder firing shows itself
-                self.firing.append((pick, w['dps'] * pick.armor.get(w['type'], simunits.ARMOR_DEFAULT) / 100.0
-                                    * a.dealt * pick.taken, a))
+                if w['dps']:
+                    self.firing.append((pick, w['dps'] * simunits.percent(pick.armor, w['type']) / 100.0
+                                        * a.dealt * pick.taken, a))
+                if w.get('sdps'):
+                    self.chilling.append((pick, w['sdps'] * a.dealt, a))
                 fired = True
                 if a.mode == 'attack':
                     a.engaged = True
@@ -2817,6 +2837,8 @@ class Sim:
             self.idle_chase(a, fired, [(d[j], targets[idx[j]]) for j in np.argsort(d)])
         if self.firing:
             self.used.add('combat')
+        if self.chilling:
+            self.used.add('freeze')
         if self.eng is None:                    # no frames: the tick's damage at once
             self.deal(DT)
 
@@ -2891,6 +2913,43 @@ class Sim:
                 if self.first_death is None:
                     self.first_death = (self.t, t, by)
                 self.destroy(t, f'被 {self.label(by)} 打掉')
+        self.chill(dt)
+
+    def cold_of(self, b):
+        """(simunits.freeze tracker, frozen armour) of b's template, read once a template."""
+        cache = self.__dict__.setdefault('_cold', {})
+        if b.template not in cache:
+            cache[b.template] = simunits.freeze(b.template, self.own)
+        return cache[b.template]
+
+    def chill(self, dt):
+        """`dt` seconds of the cryo beams aimed this tick (fight's `chilling`) and of melting (ALIGN 'freeze'): the
+        cold goes up by the beams' rate, down by DissipateAmount / UpdateDuration, stays within 0 .. cap x max health;
+        a change of the highest step reached re-sets the body (modify); a DIE_ON_ENTER step kills."""
+        cold = self.__dict__.setdefault('_cold_on', {})
+        for t, rate, by in getattr(self, 'chilling', ()):
+            if not (t.alive and by.alive) or t.shielded:     # shielded: the Iron Curtain (the nugget's filter)
+                continue
+            if self.cold_of(t)[0] is None:
+                continue
+            t.cold += rate * dt
+            cold[id(t)] = (t, by)
+        for k, (t, by) in list(cold.items()):
+            tr = self.cold_of(t)[0]
+            if not t.alive:
+                del cold[k]
+                continue
+            t.cold = min(max(t.cold - tr['melt'] / max(tr['every'], 1e-6) * dt, 0.0), tr['cap'] * t.max_hp)
+            step = max((i for i, st in enumerate(tr['steps']) if t.cold >= st[0] * t.max_hp), default=-1)
+            if t.cold <= 0:
+                del cold[k]
+            if step != t.cold_step:
+                t.cold_step = step
+                self.modify(t)
+                if step >= 0:
+                    self.note('冷冻', f'{self.label(t)} 冷冻到第 {step + 1} 档（{tr["steps"][step][0]:.0%} 生命值）')
+                if step >= 0 and tr['steps'][step][4] and t.alive:
+                    self.destroy(t, f'被 {self.label(by)} 冻死')
 
     def frame_now(self):
         return self.eng.frame if self.eng else int(round(self.t * simunits.LIFE_FPS))

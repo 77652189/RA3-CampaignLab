@@ -168,11 +168,18 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v6.json')     # v3: weapon inheritFrom (2026-11-08); v4: + los; v5: overrides, LineDamageNugget; v6: OCL, pre-attack
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v7.json')     # v7: freeze (secondary damage), armour Default; v3: weapon inheritFrom (2026-11-08); v4: + los; v5: overrides, LineDamageNugget; v6: OCL, pre-attack
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
 ARMOR_DEFAULT = 100.0           # a damage type an armour does not name: taken in full (a guess)
+
+
+def percent(armor, dtype):
+    """The percent of `dtype` damage an armour ({type: percent}, '*': its ArmorTemplate Default) takes: the type's own
+    line, else the Default (CryoBeamFrozenArmor 90000: a frozen unit breaks at a touch; InvulnerableArmor 0), else
+    ARMOR_DEFAULT."""
+    return armor.get(dtype, armor.get('*', ARMOR_DEFAULT))
 
 
 def _blocks(text, tag):
@@ -241,7 +248,13 @@ def _weapons(texts, base_table=None):
             delay = re.search(r'<DelayBetweenShots\b[^>]*MinSeconds="([^"]+)"', body)
             pre = re.search(r'<PreAttackDelay\b[^>]*MinSeconds="([^"]+)"', body)
             ocl = [_attr(h, 'WeaponOCL') for h, _ in _blocks(bare, 'WeaponOCLNugget')]
+            # the cryo beam's freeze: a SecondaryDamageNugget's Amount a shot, not one that needs an upgrade (the
+            # Allied High Technology one)
+            sd = [_num(_attr(h, 'Amount')) for h, i in _blocks(bare, 'SecondaryDamageNugget')
+                  if '<RequiredUpgrade' not in (i or '')]
             got = {}                                            # only what this template writes
+            if sd:
+                got['sd'] = sd[0]
             if any(ocl):
                 got['ocl'] = next(o for o in ocl if o)          # the first (a _VET one follows the plain one)
             if pre:
@@ -276,7 +289,7 @@ def _weapons(texts, base_table=None):
             else:
                 own[wid], parent[wid] = got, p
     base = dict(range=0.0, damage=0.0, type='', shots=1, fire=0.0, reload=0.0, delay=0.0, anti=[], warhead=None, los=False,
-                ocl=None, pre=0.0, pretype='PER_SHOT')
+                ocl=None, pre=0.0, pretype='PER_SHOT', sd=0.0)
     out = {}
 
     def get(wid, depth=0):
@@ -321,8 +334,9 @@ def _resolve(w, weapons):
     else:
         shots = w['shots']
         cycle = shots * max(w['fire'], w['delay'], 0.1) + w['reload'] + _pre_per_clip(w, shots)
+    sd = w.get('sd', 0.0)
     return dict(range=w['range'], dps=round(dmg * shots / cycle, 2) if dmg else 0.0, type=typ, anti=w['anti'],
-                los=w['los'])
+                los=w['los'], sdps=round(sd * shots / cycle, 2) if sd > 0 else 0.0)
 
 
 _ocls = None
@@ -395,8 +409,10 @@ def _armors():
     text = open(ARMOR, encoding='utf-8', errors='replace').read() if os.path.exists(ARMOR) else ''
     raw = {}
     for head, body in _blocks(text, 'ArmorTemplate'):
-        raw[_attr(head, 'id')] = (_attr(head, 'inheritFrom'), {_attr(h, 'Damage'): _num(_attr(h, 'Percent'), 100.0)
-                                                              for h, _ in _blocks(body, 'Armor')})
+        own = {_attr(h, 'Damage'): _num(_attr(h, 'Percent'), 100.0) for h, _ in _blocks(body, 'Armor')}
+        if _attr(head, 'Default') is not None:          # the types it does not name (percent: '*')
+            own['*'] = _num(_attr(head, 'Default'), ARMOR_DEFAULT)
+        raw[_attr(head, 'id')] = (_attr(head, 'inheritFrom'), own)
     out = {}
 
     def get(a, depth=0):
@@ -424,7 +440,43 @@ def read_fight(text, weapons, armors):
             if pick in weapons:
                 guns.append(_resolve(weapons[pick], weapons))
     return dict(hp=number(text, 'MaxHealth'), armor=armors.get(arm.group(1), {}) if arm else {},
-                weapons=[g for g in guns if g['dps'] > 0 and g['range'] > 0])
+                weapons=[g for g in guns if (g['dps'] > 0 or g.get('sdps', 0) > 0) and g['range'] > 0])
+
+
+def freeze(template, own=None):
+    """(tracker(), the armour {type: percent} of its ArmorSet with Conditions SECONDARY_DAMAGE) of a template, each
+    from its own XML else what it inherits from (the retail units inherit both from BaseVehicle / BaseInfantry /
+    BaseStructure; INFERRED that a unit's own ArmorSet does not drop the base's frozen one: frozen units break at a
+    touch in the game); (None, None) where neither is found."""
+    def frozen(xml):
+        m = re.search(r'<ArmorSet\b[^>]*\bArmor="([^"]+)"[^>]*\bConditions="[^"]*SECONDARY_DAMAGE', xml or '')
+        return m.group(1) if m else None
+    try:
+        t = _inherited(template, own, lambda x: tracker(x or ''), None)
+        a = _inherited(template, own, frozen, None)
+    except (OSError, ValueError):
+        return None, None
+    return t, (_fight_data()['armors'].get(a) if a else None)
+
+
+def tracker(text):
+    """A SecondaryDamageTracker (the freeze): {'every': UpdateDuration s, 'melt': DissipateAmount taken off each
+    UpdateDuration, 'cap': MaxDamageClampScaler (the most it holds, x max health), 'steps': [[Fraction of max health,
+    AttributeModifier id, OnEnterDisable, SetUpgradedArmor, DIE_ON_ENTER], ...] lowest first}; None without one. Retail BaseVehicle /
+    BaseInfantry / BaseStructure: 25 a second, 200 %, 0.2 .. 0.8 slow speed and rate of fire to 80 .. 20 %, 1.0 frozen
+    (UNDER_FROZEN, CryoBeamFrozenArmor). A $ define as the cap: MAX_SECONDARY_DAMAGE_SCALER, 200 % (the only one)."""
+    blocks = list(_blocks(re.sub(r'<!--.*?-->', '', text, flags=re.S), 'SecondaryDamageTracker'))
+    if not blocks:
+        return None
+    head, inner = blocks[-1]                            # an override after the base's (xai:joinAction Replace)
+    cap = _attr(head, 'MaxDamageClampScaler') or '125%'
+    cap = 2.0 if cap.startswith('=') else _num(cap.rstrip('%'), 125.0) / 100.0
+    steps = sorted((_num(_attr(h, 'Fraction')), _attr(h, 'AttributeModifier'),
+                    _attr(h, 'OnEnterDisable') == 'true', _attr(h, 'SetUpgradedArmor') == 'true',
+                    'DIE_ON_ENTER' in (_attr(h, 'Options') or '').split())
+                   for h, _ in _blocks(inner or '', 'EffectInfo'))
+    return dict(every=_secs(_attr(head, 'UpdateDuration') or '1s'), melt=_num(_attr(head, 'DissipateAmount'), 0.0),
+                cap=cap, steps=[list(x) for x in steps])
 
 
 _fight = None
