@@ -1077,8 +1077,11 @@ class Sim:
         2 and 3, their goals moved 30 aside, ran on grid rows 40 off the road's middle the whole way, on the halt
         area's edges, and drove past it: its ways were not pulled straight (Ground.pull since; now 2854,2479 and
         2794,2521 at the halt at s315, like the switch off). Still off: on, the a4 proxy plays to a timeout
-        (test_simproxy a4 x3) and j7 / a3's compiled plays end 0.5-3.6 s off their own scripts (test_playcheck) --
-        not looked into yet (work/re/handoff.md round 112)."""
+        (test_simproxy a4 x3) -- not a stuck truck: its army stands apart, beats the second wave at x~1950 (switch
+        off: all three trucks shot there at s232-240, the mission lost at s248), the convoy halts, and the proxy has
+        no base-vehicle deploy, builds nothing (造兵 0) and never takes 北营's command post (round 113,
+        work/re/hs_a4h.py). And j7 / a3's compiled plays end 0.5-3.6 s off their own scripts (test_playcheck,
+        j7 126.9 vs 130.5) -- not looked into (guess: the order units are given moves in, who claims a spot first)."""
         if b.surface == 'air' or not HOLD_SPOTS:
             return []
         return [tuple(o.dest if o.path and o.dest else (o.x, o.y)) + (o.radius,) for o in self.living()
