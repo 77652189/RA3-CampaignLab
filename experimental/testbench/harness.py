@@ -290,6 +290,21 @@ def shell_steps(slot):
     return [steps[0], dict(steps[1], actions=[['click', 375, 426]]), chapter_step(slot)] + steps[3:]
 
 
+# The faction select screen's three cards (1280 x 720 frame, 2026-11-08): Soviet left, Allied middle, Empire right.
+FACTION_X = {'s': 360, 'a': 637, 'j': 907}
+
+
+def faction_steps(letter):
+    """nav.json's way into the FIRST mission of a faction (the plain game's campaign is linear: only mission 1 of each
+    faction can be walked into; later ones need a campaign shell): the faction card clicked is `letter` (s Soviet,
+    a Allied, j Empire; the retail map names camp_<letter>01_...). The steps after it are the same screens."""
+    with open(os.path.join(nav.OUT, 'nav.json'), encoding='utf-8') as f:
+        steps = json.load(f)
+    acts = [['click', FACTION_X[letter], 315]] + steps[2]['actions'][1:]
+    last = dict(steps[-1], template=f'step8_{letter}.png') if letter != 'a' else steps[-1]   # the HUD's faction emblem
+    return steps[:2] + [dict(steps[2], actions=acts)] + steps[3:-1] + [last]
+
+
 def seen_step(steps, frame, at, back=False):
     """A menu step other than `at` that the frame shows, the furthest first; earlier ones only with back=True (after a
     "connection lost" box). Template steps only: the video's brightness steps match any bright screen, the mission's
@@ -353,6 +368,8 @@ class Session:
         chapter = chapter or (shell_slot(sku) if mod else None)
         if steps is None and chapter:
             steps = shell_steps(chapter)
+        if steps is None and not mod and (retail_map or '')[:6] in ('camp_s', 'camp_j') and retail_map[6:8] == '01':
+            steps = faction_steps(retail_map[5])        # the Soviet / Empire campaign's first mission
         slot = slots.take_waiting('RA3-CampaignLab ra3bench', sku)     # queues while other bench games hold all
         foreign = slots.foreign_games()
         if foreign:
