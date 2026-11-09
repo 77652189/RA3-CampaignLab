@@ -40,13 +40,33 @@ HEURISTICS = {
 }
 
 
-def personality_xml(pid, targets, max_targets):
-    removed = [f'    <StrategicState id="{k}" xai:joinAction="Remove"/>' for k in INHERITED]
-    own = sorted({h for h, _ in targets if h in HEURISTICS})
-    heur = ['  <AITargetingHeuristic id="{}" {} />'.format(
-        h, ' '.join(f'{k}="{v}"' for k, v in HEURISTICS[h].items())) for h in own]
+def state_xml(sid, targets, max_targets, priority='STANDARD'):
     th = ['    <TargetHeuristic TargetHeuristic="{}"{}/>'.format(h, '' if p is None else f' Priority="{p}"')
           for h, p in targets]
+    return '\n'.join([
+        f'  <AIStrategicStateDefinition id="{sid}" MaxTargets="{max_targets}">',
+        '    <Heuristic>',
+        '      <ConstantHeuristic/>',
+        '    </Heuristic>',
+        *th,
+        '''    <Tactic id="Attack" Tactic="SimpleAttack" EndBehavior="RAMPAGE" EndIfStateTurnsOff="true">
+      <TeamTemplate MinUnits="1" MaxUnits="4" IncludeKindOf="CAN_ATTACK" ExcludeKindOf="IGNORES_SELECT_ALL HARVESTER"
+                    AllowedLocomotorTypes="LAND AMPHIBIOUS" Priority="''' + priority + '''" AlwaysRecruit="false"
+                    MicroManager="StandardMicroManager_MEDIUM"/>
+    </Tactic>
+  </AIStrategicStateDefinition>'''])
+
+
+def personality_xml(pid, targets, max_targets, priority='STANDARD', second=None):
+    """second = (TargetHeuristic list, team Priority) of a second always-on state CNVStateTQ, or None."""
+    removed = [f'    <StrategicState id="{k}" xai:joinAction="Remove"/>' for k in INHERITED]
+    every = list(targets) + (list(second[0]) if second else [])
+    own = sorted({h for h, _ in every if h in HEURISTICS})
+    heur = ['  <AITargetingHeuristic id="{}" {} />'.format(
+        h, ' '.join(f'{k}="{v}"' for k, v in HEURISTICS[h].items())) for h in own]
+    states = [state_xml('CNVStateTP', targets, max_targets, priority)]
+    if second:
+        states.append(state_xml('CNVStateTQ', second[0], max_targets, second[1]))
     return '\n'.join([
         '<?xml version="1.0" encoding="utf-8"?>',
         '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
@@ -56,25 +76,16 @@ def personality_xml(pid, targets, max_targets):
         f'    <Include type="instance" source="DATA:SkirmishAI/Personalities/{BASE}.xml" />',
         '  </Includes>',
         *heur,
-        f'  <AIStrategicStateDefinition id="CNVStateTP" MaxTargets="{max_targets}">',
-        '    <Heuristic>',
-        '      <ConstantHeuristic/>',
-        '    </Heuristic>',
-        *th,
-        '''    <Tactic id="Attack" Tactic="SimpleAttack" EndBehavior="RAMPAGE" EndIfStateTurnsOff="true">
-      <TeamTemplate MinUnits="1" MaxUnits="4" IncludeKindOf="CAN_ATTACK" ExcludeKindOf="IGNORES_SELECT_ALL HARVESTER"
-                    AllowedLocomotorTypes="LAND AMPHIBIOUS" Priority="STANDARD" AlwaysRecruit="false"
-                    MicroManager="StandardMicroManager_MEDIUM"/>
-    </Tactic>
-  </AIStrategicStateDefinition>''',
+        *states,
         f'  <AIPersonalityDefinition id="{pid}" PersonalityType="{pid}" inheritFrom="{BASE}">',
         *removed,
         '    <StrategicState id="CNVStateTP" State="CNVStateTP"/>',
+        *(['    <StrategicState id="CNVStateTQ" State="CNVStateTQ"/>'] if second else []),
         '  </AIPersonalityDefinition>',
         '</AssetDeclaration>', ''])
 
 
-def mission(name, targets, expect, max_targets=1, tanks=4):
+def mission(name, targets, expect, max_targets=1, tanks=4, priority='STANDARD', second=None):
     """expect = (plant, barracks, tank, home): Guardians there at the end, the model's guess."""
     pid = PID + name[-3:]
     plant, barracks, tank, home = expect
@@ -82,7 +93,7 @@ def mission(name, targets, expect, max_targets=1, tanks=4):
                                                'expect barracks': barracks, 'expect tank': tank,
                                                'expect home': home})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{pid}'}
-    m.assets.append((f'{pid}.xml', personality_xml(pid, targets, max_targets), f'AIPersonalityDefinition:{pid}'))
+    m.assets.append((f'{pid}.xml', personality_xml(pid, targets, max_targets, priority, second), f'AIPersonalityDefinition:{pid}'))
     m.cnv_units = (TANK,)
     m.spawns |= {TANK}
     s1 = m.player('s1')
@@ -106,6 +117,7 @@ def mission(name, targets, expect, max_targets=1, tanks=4):
 
 
 CLOSEST = 'ClosestStructureHeuristic'
+BARRACKS = [('CNVHBarracks', None)]
 MISSION = {
     'aitpnear': lambda: mission('CampAITPNear', [(CLOSEST, None)], (4, 0, 0, 0)),
     'aitpvk': lambda: mission('CampAITPVk', [('CNVHBarracks', None)], (0, 4, 0, 0)),
@@ -115,4 +127,15 @@ MISSION = {
     'aitpplo': lambda: mission('CampAITPPlo', [('CNVHBarracks', 5), (CLOSEST, 10)], (4, 0, 0, 0)),
     'aitpmt1': lambda: mission('CampAITPMt1', [(CLOSEST, None)], (4, 0, 0, 4), tanks=8),
     'aitpmt2': lambda: mission('CampAITPMt2', [(CLOSEST, None)], (4, 4, 0, 0), max_targets=2, tanks=8),
+    # round 82: TeamTemplate.Priority -- two always-on states, P (CNVStateTP, the plant, a target from s13) and B
+    # (CNVStateTQ, the barracks, from s19), both general-path teams of MaxUnits 4 over the same 4 Guardians.
+    # The model guessed (4, 0, 0, 0) for all four (the plant's team first, no taking from another team); the bench
+    # (round 82) sent all 4 to the barracks unless the plant's team is the higher (HIGH over STANDARD): expected now
+    # as read.
+    'aitpprs': lambda: mission('CampAITPPrS', [(CLOSEST, None)], (0, 4, 0, 0), second=(BARRACKS, 'STANDARD')),
+    'aitpprh': lambda: mission('CampAITPPrH', [(CLOSEST, None)], (0, 4, 0, 0), second=(BARRACKS, 'HIGH')),
+    'aitpprp': lambda: mission('CampAITPPrP', [(CLOSEST, None)], (4, 0, 0, 0), priority='HIGH',
+                               second=(BARRACKS, 'STANDARD')),
+    'aitpprl': lambda: mission('CampAITPPrL', [(CLOSEST, None)], (0, 4, 0, 0), priority='LOW',
+                               second=(BARRACKS, 'STANDARD')),
 }

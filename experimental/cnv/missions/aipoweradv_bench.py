@@ -25,8 +25,9 @@ PID = 'CNVPowerAdv'
 TANK, MINER = 'AlliedAntiVehicleVehicleTech1', 'AlliedMiner'
 
 
-def personality_xml(pid, gate):
+def personality_xml(pid, gate, min_power=None):
     removed = [f'    <StrategicState id="{k}" xai:joinAction="Remove"/>' for k in INHERITED]
+    mpa = '' if min_power is None else f' MinPowerAdvantage="{min_power}"'
     when = ('<PowerAdvantageHeuristic Value="1.0" Above="true" IncludeOwnDefenses="false"'
             ' IncludeEnemyDefenses="false"/>' if gate == 'power' else '<ConstantHeuristic/>')
     return '\n'.join([
@@ -43,7 +44,7 @@ def personality_xml(pid, gate):
     </Heuristic>
     <TargetHeuristic TargetHeuristic="ClosestStructureHeuristic"/>
     <Tactic id="Attack" Tactic="SimpleAttack" EndBehavior="RAMPAGE" EndIfStateTurnsOff="true">
-      <TeamTemplate MinUnits="2" MaxUnits="8" IncludeKindOf="CAN_ATTACK" ExcludeKindOf="IGNORES_SELECT_ALL HARVESTER"
+      <TeamTemplate MinUnits="2" MaxUnits="8"{mpa} IncludeKindOf="CAN_ATTACK" ExcludeKindOf="IGNORES_SELECT_ALL HARVESTER"
                     AllowedLocomotorTypes="LAND AMPHIBIOUS" Priority="STANDARD" AlwaysRecruit="false"
                     MicroManager="StandardMicroManager_MEDIUM">
         <ObjectFilter Rule="ANY">
@@ -59,12 +60,12 @@ def personality_xml(pid, gate):
         '</AssetDeclaration>', ''])
 
 
-def mission(name, ai, player, miner=False, gate='power', expect=1):
-    pid = PID + name[-1]
+def mission(name, ai, player, miner=False, gate='power', expect=1, min_power=None):
+    pid = PID + (name[-1] if min_power is None else name[-2:])
     m = Mission(name=name, map=niagara, facts={'wake at': WAKE_AT, 'ai tanks': ai, 'player tanks': player,
                                                'expect on': expect})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{pid}'}
-    m.assets.append((f'{pid}.xml', personality_xml(pid, gate), f'AIPersonalityDefinition:{pid}'))
+    m.assets.append((f'{pid}.xml', personality_xml(pid, gate, min_power), f'AIPersonalityDefinition:{pid}'))
     m.cnv_units = (TANK,)
     m.spawns |= {TANK, MINER}
     s1 = m.player('s1')
@@ -95,4 +96,9 @@ MISSION = {
     'aipadv1': lambda: mission('CampAIPAdv1', 4, 8, expect=0),
     'aipadvh': lambda: mission('CampAIPAdvH', 4, 0, miner=True, expect=1),
     'aipadvc': lambda: mission('CampAIPAdvC', 4, 8, gate='const', expect=1),
+    # round 82: the team's MinPowerAdvantage (the state always on). The first guess (the heuristic's ratio: 4 v 8 +
+    # 1.0 and 8 v 4 + 5.0 stay home) was wrong on the bench -- all three go as without it; expected now as read.
+    'aipadm1': lambda: mission('CampAIPAdvM1', 8, 4, gate='const', expect=1, min_power=1.0),
+    'aipadm0': lambda: mission('CampAIPAdvM0', 4, 8, gate='const', expect=1, min_power=1.0),
+    'aipadm5': lambda: mission('CampAIPAdvM5', 8, 4, gate='const', expect=1, min_power=5.0),
 }

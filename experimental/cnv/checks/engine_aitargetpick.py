@@ -23,6 +23,16 @@ Bench 2026-11-09 (B round 80, run_queue --jobs 2, one run each, all PASS; counte
             slot, the second slot's unique nearest = the barracks (the plant is the first slot's).
 (aitpmt1's first run read 在家 2: the home area was then a 300 square that held 6 of the 8 start spots; widened.)
 The simulator (simai) gives the same eight (tests/test_simai.py test_target_pick_as_on_the_bench).
+Bench 2026-11-09 (B round 82, TeamTemplate.Priority: two always-on states over the same 4 Guardians, P = the plant
+(ClosestStructure), B = the barracks (CNVHBarracks); one run each, run first with the model's guess plant 4 for all):
+  aitpprs   P STANDARD / B STANDARD: 在家 4 to s16, 3/2/1/0 s17-s20; 到兵营 2 @ s21, 4 s23-s55; 到电厂 0 throughout.
+  aitpprh   P STANDARD / B HIGH: the same to the second.
+  aitpprl   P LOW / B STANDARD: the same (到兵营 3 @ s22).
+  aitpprp   P HIGH / B STANDARD: 在家 2 @ s12, 0 @ s14; 到电厂 4 s15-s56; 到兵营 0 -- the plant, a second earlier than
+            aitpnear alone.
+Read: the higher team Priority takes the units; on a tie the barracks' state (listed second) wins, though its target
+is found later (s19 in aitpvk) -- nobody went to the plant first. Not split: a tie by list order or by state draw.
+simai sends all four to the plant (strict xfail, tests/test_simai.py test_team_priority_as_on_the_bench).
 """
 from parts import Test, counted, square, Script
 
@@ -56,4 +66,4 @@ def a(m):
 
 
 CHECKS = {k: {'a': a} for k in ('aitpnear', 'aitpvk', 'aitpfk', 'aitpunit', 'aitpphi', 'aitpplo', 'aitpmt1',
-                                 'aitpmt2')}
+                                 'aitpmt2', 'aitpprs', 'aitpprh', 'aitpprp', 'aitpprl')}

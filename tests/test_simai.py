@@ -360,6 +360,27 @@ def test_target_pick_as_on_the_bench(lib, build, plant, barracks, tank, home):
     assert got == (plant, barracks, tank, home), got
 
 
+def test_team_priority_higher_plant_team_as_on_the_bench(lib):
+    """aitpprp (B round 82): the plant's team HIGH over the barracks' STANDARD -> all 4 at the plant."""
+    _, rows = _switch_run('aitpprp', lib, until=41.0)
+    assert (rows[39]['到电厂'], rows[39]['到兵营'], rows[39]['在家']) == (4, 0, 0)
+
+
+@pytest.mark.xfail(strict=True, reason='simai sends the plant\'s team (target first, s13) all 4; the bench gives them '
+                                       'to the barracks\' state on a tie or when it is higher -- handoff-b 84')
+@pytest.mark.parametrize('build', ['aitpprs', 'aitpprh', 'aitpprl'])
+def test_team_priority_as_on_the_bench(lib, build):
+    _, rows = _switch_run(build, lib, until=41.0)
+    assert (rows[39]['到电厂'], rows[39]['到兵营'], rows[39]['在家']) == (0, 4, 0)
+
+
+@pytest.mark.parametrize('build,n', [('aipadm1', 8), ('aipadm0', 4), ('aipadm5', 8)])
+def test_team_min_power_advantage_holds_nobody_back(lib, build, n):
+    """bench (B round 82): MinPowerAdvantage 1.0 / 5.0 on the team, 8 v 4 and 4 v 8 -- all leave home by s16."""
+    _, rows = _switch_run(build, lib, until=31.0)
+    assert rows[5]['坦克在家'] == n and rows[19]['坦克在家'] == 0, [r['坦克在家'] for r in rows]
+
+
 def _aiotime_firsts(lib):
     w = simai.run('aiotime', 'a', 70.0, lib=lib, blocks=())
     seen = [v[0] for _, v in w.sim.series]

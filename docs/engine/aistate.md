@@ -88,6 +88,24 @@
 - 想让海军队伍也带上两栖单位，要写 `WATER AMPHIBIOUS`（原版就这么写）；只写 WATER 不收两栖的。
 - `RegisteredObjectSet` 也是一道筛选：INFANTRY 只收步兵、VEHICLES 只收车。模型原先没用它，已补（私有 `ai/teams.py`；AIRCRAFT、HARVESTERS 按名字推断，没量）；模拟器六组对上（`tests/test_simai.py::test_locomotor_types_and_object_sets_take_whom_the_bench_sent`）。"普通作战单位"那组晚 6 秒的原因没查，模拟器没做。
 
+### 两队抢兵和 MinPowerAdvantage（第 82 轮）
+
+两个常开状态抢同一批 4 辆守护者：P 打电厂（ClosestStructure，单独跑时 s13 就有目标）、B 打兵营（单独跑 s19 才有目标）。探针 `missions/aitargetpick_bench.py` aitppr*，读数在 `checks/engine_aitargetpick.py`。
+
+| build | P / B 的队伍 Priority | 去哪（测） |
+| --- | --- | --- |
+| `aitpprs` | STANDARD / STANDARD | 4 辆全去兵营（s17～20 出门），电厂一辆没有 |
+| `aitpprh` | STANDARD / HIGH | 同上 |
+| `aitpprl` | LOW / STANDARD | 同上 |
+| `aitpprp` | HIGH / STANDARD | 4 辆全去电厂（s12 出门） |
+
+队伍 `MinPowerAdvantage`（探针 `missions/aipoweradv_bench.py` aipadm*，状态常开）：8 对 4 写 1.0、4 对 8 写 1.0、8 对 4 写 5.0，**三组都照常出门**——它不拦队伍（模型本来就只解析不用；它管什么没找到）。
+
+给关卡线（测）：
+- 两个状态抢同一批兵时，**队伍 Priority 高的那队拿走全部**；一样高时归后写的那个状态（B），哪怕它的目标晚找到——不是"先找到目标的先招"。一样高时是按写的顺序还是抽签没分开。
+- 想让 AI 留着兵等优势再出门，别靠队伍的 MinPowerAdvantage，用状态的 PowerAdvantageHeuristic（见上"战力优势开关"）。
+- 模拟器：HIGH 对 STANDARD 那组对上；另三组模拟器给"全去电厂"，对不上（`tests/test_simai.py::test_team_priority_as_on_the_bench` strict xfail）。
+
 ## 按难度挂的状态（StrategicState 的 Difficulty）
 
 引擎线 B 第 79 轮（2026-11-09）。探针 `checks/engine_aidiff.py`（任务 `missions/aidiff_bench.py`）：同上的图和 AI，家里 4 辆守护者 + 4 个维和，两个常开状态，一个挂 `Difficulty="MEDIUM"`、一个挂 `Difficulty="EASY HARD BRUTAL"`，各只招一种兵；玩家放两座电厂（一个目标只给一个状态，两队都能走）。另用三条各只开一个难度位的任务脚本把战役难度写进计数器。
