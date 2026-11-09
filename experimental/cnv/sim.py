@@ -444,6 +444,7 @@ class Body:
     dest: object = None                                         # where it was sent (rerouted when the way changes)
     status: set = dataclasses.field(default_factory=set)       # IMMOBILE (stays put), UNATTACKABLE (the player
                                                                 # cannot destroy it) ...
+    indestructible: bool = False                                # the Indestructible panel flag: takes no damage
     upgrades: set = dataclasses.field(default_factory=set)     # NAMED_RECEIVE_UPGRADE / _REMOVE_UPGRADE (modify)
     up_since: dict = dataclasses.field(default_factory=dict)   # upgrade -> the frame it was given (a Duration runs)
     script_status: set = dataclasses.field(default_factory=set)  # UNIT_CHANGE_OBJECT_STATUS's bits; `status` is these
@@ -500,6 +501,21 @@ def inside(pts, x, y):
         if (y0 > y) != (y1 > y) and x < x0 + (y - y0) * (x1 - x0) / (y1 - y0):
             c = not c
     return c
+
+
+class Areas(dict):
+    """The map's trigger areas by name. A name the map does not have reads as an empty area (nobody is inside it)
+    and is noted in `missing`: retail s01's 'Introduction - Delete Planes' names 'AREA - P2 Delete Aircraft',
+    which the map does not define, and the game plays on (bench 2026-11-08, retail-q4-q5.md). INFERRED: the
+    game's behaviour for an unknown area name is not read from the program, only that it does not stop."""
+
+    def __init__(self, areas):
+        super().__init__(areas)
+        self.missing = set()
+
+    def __missing__(self, name):
+        self.missing.add(name)
+        return ()
 
 
 def _local(s, x, y):
@@ -815,7 +831,8 @@ class Sim:
         self.own = {u.id: u.xml for u in self.mm.units}
         self.bodies = {}                    # name -> Body (named ones), plus unnamed under '#k'
         self.refs = {}                      # reference name (UNITRef - ...) -> the Body a SET_REF_TO_... pointed it at
-        self.object_lists = {}              # OBJECTLIST_ADDOBJECTTYPE: list name -> {template, lower case}
+        self.object_lists = {}              # OBJECTLIST_ADDOBJECTTYPE: list name -> {template}, both lower case
+                                            # (one table for every player, names any case: retail.SCOPED_ARGS)
         self.series = []                    # (t, counter values) for a check's counters
         self.threat = []                    # (t, enemies near, countdowns) every 10 s
         self.first_threat = None
@@ -860,7 +877,7 @@ class Sim:
         self.first_death = None             # (t, body, killer): the fight's first death
         self.events = sorted((e for e in self.script if isinstance(e[0], float)), key=lambda e: e[0])
         self.anchored = [e for e in self.script if isinstance(e[0], tuple)]       # (('@', flag, delta), verb, ...)
-        self.areas = self.mm.areas
+        self.areas = Areas(self.mm.areas)
         self.waypoints = self.mm.waypoints
         self.reblock()
         self.eng = None
@@ -1732,9 +1749,9 @@ class Sim:
         return self.bodies.get(name)
 
     def of_types(self, name):
-        """A script's object type argument (type 61): an object list's types (retail.scope_names wrote a list's name
-        out in full) or that one type, lower case."""
-        return self.object_lists.get(str(name)) or {str(name).lower()}
+        """A script's object type argument (type 61): an object list's types (any player's list, any case) or that
+        one type, lower case."""
+        return self.object_lists.get(str(name).lower()) or {str(name).lower()}
 
     def nearest_ref(self, template, owner, team, ref, unnamed=True):
         """R2: SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER -- point `ref` at the living `template` of
@@ -2024,7 +2041,7 @@ class Sim:
             self.used.add('nearest ref any')
             self.nearest_ref(*a[:4], unnamed=False)
         elif name == 'OBJECTLIST_ADDOBJECTTYPE':    # (type, list): the list grows by that type (types read lower case)
-            self.object_lists.setdefault(str(a[1]), set()).add(str(a[0]).lower())
+            self.object_lists.setdefault(str(a[1]).lower(), set()).add(str(a[0]).lower())
         elif name == 'UNIT_SET_TEAM':               # the unit joins the team (K6: ctx.order does it before every whole-team order)
             b = self.body(a[0])
             self.active.add(a[1])                   # ... and the team has an instance from then on, the unit there or not (E3)
@@ -2113,6 +2130,19 @@ class Sim:
                 self.modify(b)
             if st not in ACTED_STATUS:
                 self.gap(GAP_ACTION, refined(name, a), f'状态位 {st} 只记下来；模拟器只认 {"、".join(sorted(ACTED_STATUS))}')
+        elif name in ('UNIT_AFFECT_OBJECT_PANEL_FLAGS', 'TEAM_AFFECT_OBJECT_PANEL_FLAGS'):
+            # (unit or team, flag, on). Indestructible: the body takes no damage at all (Generals ScriptActions
+            # changeObjectPanelFlagForSingleObject -> ActiveBody::setIndestructible; attemptDamage returns at once;
+            # not read in RA3). Retail s01 keeps Natasha alive so ('Emergency - Natasha Indestructible'); the other
+            # flags (Selectable, Enabled, AI Recruitable ...) are only noted
+            flag = str(a[1][2] if isinstance(a[1], tuple) else a[1])
+            if flag.lower() == 'indestructible':
+                bodies = [self.body(a[0])] if name.startswith('UNIT') else self.members(a[0])
+                for b in bodies:
+                    if b:
+                        b.indestructible = bool(a[2])
+            else:
+                self.gap(GAP_ACTION, f'{name}:{flag}', f'面板标志 {flag} 没模拟（只认 Indestructible）')
         elif name in ('NAMED_RECEIVE_UPGRADE', 'NAMED_REMOVE_UPGRADE'):     # (upgrade, object): recorded; of what an upgrade
             b = self.body(a[1])                                              # does to a unit only the SPEED modifier is
             if b:                                                            # simulated (units/pace.py's 齐步); a range,
@@ -2716,7 +2746,7 @@ class Sim:
                 h[1] += rate * dt
                 h[2] = by
         for t, dmg, by in hurt.values():
-            if self.frame_now() < t.immune_until or t.shielded:
+            if self.frame_now() < t.immune_until or t.shielded or t.indestructible:
                 continue
             t.hp -= dmg
             t.last_hit, t.last_by = by.owner, by.name
@@ -2759,7 +2789,7 @@ class Sim:
             _, x, y, table, owner, by = d
             for t in self.living():
                 dmg = hit_at(table, math.hypot(t.x - x, t.y - y))
-                if dmg <= 0 or frame < t.immune_until or t.shielded:
+                if dmg <= 0 or frame < t.immune_until or t.shielded or t.indestructible:
                     continue
                 t.hp -= dmg
                 t.last_hit, t.last_by = owner, by.name
@@ -2951,6 +2981,8 @@ class Sim:
         if self.unmodeled:                  # Sim.unknown's names are among them
             out.append('这次碰到、模拟器没模拟的（Sim.unmodeled）：' + '；'.join(
                 f'[{k}] {n}×{g["n"]}（{mmss(g["t"])} 起）{g["what"]}' for (k, n), g in self.unmodeled.items()))
+        if self.areas.missing:
+            self.guessed.add('地图里没有的区域（按空区域算）：' + ', '.join(sorted(self.areas.missing)))
         if self.guessed:
             out.append('数据里没有、用了默认值：' + '；'.join(sorted(self.guessed)))
         return out

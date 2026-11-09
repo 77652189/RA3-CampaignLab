@@ -169,17 +169,25 @@ def library_names(m):
 
 @functools.lru_cache(maxsize=None)
 def _library_map(name):
+    """The library map `name`, or None when the game does not ship it: Libraries.big holds 29 libraries, and some
+    retail maps name one it lacks (lib_yurikoautoheal) -- the game plays those maps, so a missing library adds no
+    scripts (INFERRED: not read in the program)."""
     import labpaths
     arc = os.path.join(labpaths.GAME, 'Data', LIBRARIES)
-    return maprender.load(f'{arc}::libraries\\{name}\\{name}.map')
+    try:
+        return maprender.load(f'{arc}::libraries\\{name}\\{name}.map')
+    except KeyError:
+        return None
 
 
 def library_lists(scripts, names):
     """The items of the library maps `names`, in order: a library is a map of one player ('Player') and the unnamed
-    neutral side; both lists' items, as the side carrying it would own them."""
+    neutral side; both lists' items, as the side carrying it would own them. A library the game lacks: none."""
     items = []
     for name in names:
         m = _library_map(name)
+        if m is None:
+            continue
         props = mapstudy.players(m)
         n = len([1 for _, x in m.walk() if x.name == 'ScriptList'])
         for lst in scripts.from_mapfile(m, ([''] if n == len(props) + 1 else []) + list(props)):
@@ -212,9 +220,13 @@ def with_libraries(scripts, own, library):
 
 
 # Argument types (script_catalog.json) whose names a player's script list keeps for itself: script, counter (timers
-# are counters), flag, subroutine, object list (48; 61 = an object type or an object list)
-SCOPED_ARGS = (2, 4, 5, 13, 48)
-LIST_OR_TYPE = 61
+# are counters), flag, subroutine. Object lists (48; 61 = an object type or an object list) are one table for all
+# players, names in any case (Sim.of_types): the 40 retail campaign maps (scan 2026-11-08, engine line round 103)
+# define no list on two sides, refer 197 times to a list another side defines (Lib_Object_Lists rides on the neutral
+# side or 'PlyrNeutral', the maps' lists on whichever side wrote them) and 308 times in another case
+# ('_object list_japan all units' for '_OBJECT LIST_Japan All Units'); read so, none is left unresolved. j01's
+# 'AllP1DeadP2IsAI' read an empty list and lost the mission at 0:42; the game plays on. Not read in the program.
+SCOPED_ARGS = (2, 4, 5, 13)
 
 
 def scoped(side, name, players):
@@ -242,22 +254,10 @@ def scope_names(scripts, lists, players):
             if isinstance(it, scripts.Group):
                 yield from walk(it.items)
 
-    defined = set()                             # the object lists the map makes, scoped
-    for lst in lists:
-        for it in walk(lst.items):
-            if isinstance(it, scripts.Script):
-                for c in it.actions + it.else_actions:
-                    if c.name == 'OBJECTLIST_ADDOBJECTTYPE' and len(c.args) > 1:
-                        defined.add(scoped(lst.side, str(c.args[1]), players))
-
     def fix(side, c):
         args = list(c.args)
         for k, t in enumerate(types.get(c.name, ())[:len(args)]):
-            if not isinstance(args[k], str):
-                continue
-            if t in SCOPED_ARGS:
-                args[k] = scoped(side, args[k], players)
-            elif t == LIST_OR_TYPE and scoped(side, args[k], players) in defined:
+            if isinstance(args[k], str) and t in SCOPED_ARGS:
                 args[k] = scoped(side, args[k], players)
         return dataclasses.replace(c, args=tuple(args))
 

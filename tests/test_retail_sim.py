@@ -147,3 +147,26 @@ def test_a03_the_escort_objective_shows_after_the_intro():
     s = sim.Sim(retail.RetailMission(A03)).run(25.0)
     shown = [t for t, text in _objectives(s) if text == '目标亮出：MISSIONOBJ:A03_OBJECTIVE_1']
     assert shown and 17 <= shown[0] <= 19, _objectives(s)
+
+
+J01, S01 = 'camp_j01_russianvillage_white', 'camp_s01_leningradcanals_rao'
+
+
+def test_j01_reads_the_neutral_sides_object_list_in_any_case():
+    """Question 4 (docs/story/retail-q4-q5.md): j01's unnamed list asks '_object list_japan all units', which
+    Lib_Object_Lists defines on PlyrNeutral as '_OBJECT LIST_Japan All Units'. Object lists are one table, any case
+    (retail.SCOPED_ARGS): read per side or by case the list was empty, 'AllP1DeadP2IsAI' fired and the mission was
+    lost at 0:42; the game plays on past 63 s."""
+    s = sim.Sim(retail.RetailMission(J01)).run(70.0)
+    assert len(s.of_types('_object list_japan all units')) > 1          # the list's types, not the name itself
+    assert not any(kind == '结局' or text == 'S_EndMissionLose' for _, kind, text in s.log), s.log[-10:]
+
+
+def test_s01_runs_without_its_missing_area_and_keeps_natasha():
+    """Question 5: s01 names 'AREA - P2 Delete Aircraft', which the map lacks -- an empty area (it raised KeyError);
+    'Emergency - Natasha Indestructible' sets the Indestructible panel flag below 10 % health, and an indestructible
+    body takes no damage (it was killed at 0:09 and the mission lost at 0:17); the game plays on past 63 s."""
+    s = sim.Sim(retail.RetailMission(S01)).run(70.0)
+    assert 'AREA - P2 Delete Aircraft' in s.areas.missing
+    assert s.body('UNIT - Commando').alive
+    assert not any(kind == '结局' for _, kind, _ in s.log), s.log[-10:]
