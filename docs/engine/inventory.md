@@ -8,7 +8,7 @@
 | 脚本条件 | 89 | 22 | 6 | 61 | 0 | 94% |
 | 物体模块 | 184 | 9 | 13 | 148 | 14 | 26% |
 | 武器效果 | 25 | 2 | 2 | 21 | 0 | 52% |
-| AI | 415 | 30 | 157 | 194 | 34 | 81% |
+| AI | 415 | 30 | 166 | 185 | 34 | 84% |
 
 ## 脚本动作
 
@@ -802,7 +802,7 @@
 | 推断 | `人格/UnitModifier.OffensiveModifier` | 92 | AI 模型代码里读了这个名字 |
 | 推断 | `人格/UnitModifier.Unit` | 92 | AI 模型代码里读了这个名字 |
 | 推断 | `战术/Tactic.DisbandAfterRetreatTeamSize` | 86 | AI 模型代码里读了这个名字 |
-| 未做 | `微操/AIMicroManagerData.EnterGarrisons` | 84 | AI 模型代码里没有这个名字 |
+| 推断 | `微操/AIMicroManagerData.EnterGarrisons` | 84 | AI 模型代码里读了这个名字（探针 engine_aigarrison 写好，还没上台） |
 | 未做 | `造兵/BuildState.Difficulty` | 84 | AI 模型代码里没有这个名字 |
 | 未做 | `造兵/BuildState.State` | 84 | AI 模型代码里没有这个名字 |
 | 推断 | `微操/AIMicroManagerData.UseSpecialPowers` | 83 | AI 模型代码里读了这个名字 |
@@ -811,11 +811,11 @@
 | 推断 | `开局/Order.Account` | 81 | AI 模型代码里读了这个名字 |
 | 推断 | `开局/Order.Deposit` | 81 | AI 模型代码里读了这个名字 |
 | 推断 | `微操/AIMicroManagerData.EngageTacticalTarget` | 79 | AI 模型代码里读了这个名字 |
-| 未做 | `微操/AIMicroManagerData.PullbackInjured` | 78 | AI 模型代码里没有这个名字 |
-| 未做 | `微操/AIMicroManagerData.Crush` | 77 | AI 模型代码里没有这个名字 |
+| 推断 | `微操/AIMicroManagerData.PullbackInjured` | 78 | AI 模型代码里读了这个名字 |
+| 推断 | `微操/AIMicroManagerData.Crush` | 77 | AI 模型代码里读了这个名字 |
 | 推断 | `目标/AITargetingHeuristic.SortType` | 76 | AI 模型代码里读了这个名字 |
 | 推断 | `组队招人/TeamTemplate.SortByDistance` | 75 | AI 模型代码里读了这个名字（台上没单独量：engine_aiskirm 里是推测） |
-| 未做 | `微操/AIMicroManagerData.ReverseMove` | 74 | AI 模型代码里没有这个名字 |
+| 推断 | `微操/AIMicroManagerData.ReverseMove` | 74 | AI 模型代码里读了这个名字 |
 | 推断 | `目标/AITargetingHeuristic.Location` | 74 | AI 模型代码里读了这个名字 |
 | 推断 | `组队招人/TeamTemplate.ReleaseType` | 71 | AI 模型代码里读了这个名字 |
 | 推断 | `微操/AIMicroManagerData.EnemySearchDistanceVisionMultiplier` | 70 | AI 模型代码里读了这个名字 |
@@ -864,7 +864,7 @@
 | 推断 | `启发条件/IsBuildingHeuristic` | 30 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/IsBuildingHeuristic.KindOf` | 30 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/IsBuildingHeuristic.PassIfBuilding` | 30 | AI 模型代码里读了这个名字 |
-| 未做 | `微操/AIMicroManagerData.PullbackInjuredHealthPct` | 30 | AI 模型代码里没有这个名字 |
+| 推断 | `微操/AIMicroManagerData.PullbackInjuredHealthPct` | 30 | AI 模型代码里读了这个名字 |
 | 推断 | `微操/AIMicroManagerData.AlphaStrikeTargetHealthPct` | 28 | AI 模型代码里读了这个名字 |
 | 已对拍 | `战术/Tactic.Tactic=StaticDefense` | 28 | AI 模型代码里读了这个名字；台上量过：checks/engine_aidefense.py |
 | 未做 | `造兵/BlockIfThingNearFactory.Relationship` | 28 | AI 模型代码里没有这个名字 |
@@ -877,11 +877,11 @@
 | 推断 | `目标/AITargetingHeuristic.HeuristicType=EnemyStructure` | 25 | AI 模型代码里读了这个名字 |
 | 推断 | `组队招人/TeamTemplate.ReleaseType=NEVER_RELEASE` | 25 | AI 模型代码里读了这个名字 |
 | 推断 | `战术/Tactic.Tactic=Engineer` | 24 | AI 模型代码里读了这个名字 |
-| 未做 | `微操/AIMicroManagerData.EnterBaseDefensesWhenIdle` | 23 | AI 模型代码里没有这个名字 |
+| 推断 | `微操/AIMicroManagerData.EnterBaseDefensesWhenIdle` | 23 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/IntervalHeuristic` | 22 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/IntervalHeuristic.ActiveTime` | 22 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/IntervalHeuristic.IntervalTime` | 22 | AI 模型代码里读了这个名字 |
-| 未做 | `微操/AIMicroManagerData.EnterGarrisonableStructureDistance` | 21 | AI 模型代码里没有这个名字 |
+| 推断 | `微操/AIMicroManagerData.EnterGarrisonableStructureDistance` | 21 | AI 模型代码里读了这个名字 |
 | 未做 | `人格/AIPersonalityDefinition.SkirmishPersonality` | 20 | AI 模型代码里没有这个名字 |
 | 已对拍 | `战术/Tactic.EndIfStateTurnsOff` | 19 | AI 模型代码里读了这个名字；台上量过：checks/engine_aistate.py |
 | 推断 | `经济/AccountShare.Account` | 18 | AI 模型代码里读了这个名字 |
@@ -912,7 +912,7 @@
 | 推断 | `微操/IgnoreTargets.Rule` | 13 | AI 模型代码里读了这个名字 |
 | 已对拍 | `组队招人/TeamTemplate.Priority=DEFENSE` | 13 | AI 模型代码里读了这个名字；台上量过：checks/engine_aitower.py |
 | 未做 | `启发条件/AllNearbyNodesFullHeuristic` | 12 | AI 模型代码里没有这个名字 |
-| 未做 | `微操/AIMicroManagerData.CrushPreference` | 12 | AI 模型代码里没有这个名字 |
+| 推断 | `微操/AIMicroManagerData.CrushPreference` | 12 | AI 模型代码里读了这个名字 |
 | 未做 | `微操/AIMicroManagerData.RandomTargetScoreModifier` | 12 | AI 模型代码里没有这个名字 |
 | 未做 | `微操/AIMicroManagerData.TimeToKeepTargetMax` | 12 | AI 模型代码里没有这个名字 |
 | 未做 | `微操/AIMicroManagerData.TimeToKeepTargetMin` | 12 | AI 模型代码里没有这个名字 |
@@ -1024,7 +1024,7 @@
 | 未做 | `阵营/ArmyDefinition.NavalRepairFacility` | 3 | AI 模型代码里没有这个名字 |
 | 未做 | `阵营/ArmyDefinition.PrimaryResourceNodeCollector` | 3 | AI 模型代码里没有这个名字 |
 | 未做 | `阵营/ArmyDefinition.PrimaryResourceThingToBuild` | 3 | AI 模型代码里没有这个名字 |
-| 未做 | `阵营/ArmyDefinition.Side` | 3 | AI 模型代码里没有这个名字 |
+| 推断 | `阵营/ArmyDefinition.Side` | 3 | AI 模型代码里读了这个名字 |
 | 未做 | `阵营/ArmyDefinition.VehicleRepairFacility` | 3 | AI 模型代码里没有这个名字 |
 | 未做 | `阵营/ArmyDefinition.WallPiece` | 3 | AI 模型代码里没有这个名字 |
 | 未做 | `人格/AIPersonalityDefinition.BuildTechEfficiencyThreshold` | 2 | AI 模型代码里没有这个名字 |
