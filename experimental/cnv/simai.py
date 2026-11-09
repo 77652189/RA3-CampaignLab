@@ -164,7 +164,7 @@ class Brain:
         if 'targets' not in which:
             return
         self.tactics = tc.TacticsBlock(None, lambda ai, f: self.view, self.order, lambda ai: self.home,
-                                       micro=h.data_of('tactics micro'))
+                                       micro=h.data_of('tactics micro'), fight=self.fight)
         self.targets = tg.TargetsBlock(h.data_of('targets'), self.active, lambda ai, f: self.view,
                                        lambda ai, st: self.home, home=self.home, base_of=self.base_of,
                                        held=self.tactics.held)
@@ -291,9 +291,39 @@ class Brain:
     def order(self, u, kind, arg):
         """TacticsBlock / DefenseBlock: 'move' or 'attack-move' to a point -> Sim.order_move."""
         b = u.body
-        if b.alive:
-            b.goal = None
-            self.sim.order_move(b, (float(arg[0]), float(arg[1])), kind == 'attack-move')
+        if not b.alive:
+            return
+        if kind == 'attack':                    # the team state's 0 / 6: attack the current enemy (a Thing id)
+            t = self.body_of(arg)
+            if t is not None:
+                self.sim.order_attack(b, t.name)
+            return
+        b.goal = None
+        self.sim.order_move(b, (float(arg[0]), float(arg[1])), kind == 'attack-move')
+
+    def fight(self, ai, team):
+        """TacticsBlock's fight hook (the team state, 0x8cdb70): the members and every living enemy body as
+        Fighters; rate = the sum of the dps of the weapons that can hit the other, times its armour (Sim.can_hit /
+        the firing rule); vision = its VisionRange alone (Body.sight, 0x725c80; not the shroud clearing range)."""
+        tc, s = self.host.mod['tactics'], self.sim
+
+        def rate_of(b):
+            def rate(o):
+                t = o.body
+                return sum(w['dps'] * t.armor.get(w['type'], sim.simunits.ARMOR_DEFAULT) / 100.0
+                           for w in b.weapons if s.can_hit(w, t))
+            return rate
+
+        def fighter(b, i):
+            f = tc.Fighter(i, (b.x, b.y), b.hp, b.max_hp, b.speed,
+                           max((w.get('range') or 0.0 for w in b.weapons), default=0.0), b.sight or b.vision,
+                           'STRUCTURE' in b.kinds, rate_of(b))
+            f.body = b
+            return f
+        mem = [fighter(u.body, self.tid(u.body)) for u in team.members if u.body.alive]
+        foes = [fighter(b, self.tid(b)) for b in s.living()
+                if not b.scenery and b.owner != self.player and b.owner in self.view.enemies]
+        return mem, foes
 
     def busy(self, team):
         return any(u.body.engaged or isinstance(u.body.goal, sim.Body) for u in team.members)
@@ -633,6 +663,8 @@ class SimAI:
                 self.data.add_text(a[1])
                 if 'AITargetingHeuristic' in a[1] and 'targets' in self.blocks:    # a probe's own heuristic
                     self.data_of('targets').add_text(a[1])                        # (missions/ainamed_bench.py)
+                if 'AIMicroManagerData' in a[1] and 'targets' in self.blocks:      # a probe's own micro manager
+                    self.data_of('tactics micro').add_text(a[1])                  # (missions/airetreat_bench.py)
 
     def attach(self):
         """Brains for the players the mission has handed to the AI since the last call."""
