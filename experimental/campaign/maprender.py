@@ -223,8 +223,31 @@ def render(m, out, px=4, around=None, bench_view=False, water=newmap.WATERLINE, 
     return out
 
 
+def _retail(name):
+    """(archive, in-archive path) of the one retail campaign map whose name is `name` (exactly, else a part of it
+    matching one map), or None -- a mod folder of that name wins, so this runs only once that was not found."""
+    for base in (MODS, STAGING):
+        if os.path.exists(os.path.join(base, name, name + '.big')):
+            return None
+    sys.path.insert(0, HERE)
+    import mapstudy
+    hits = mapstudy.retail_maps([name])
+    exact = [h for h in hits if h[3] == name]
+    hits = exact or hits
+    return (hits[0][1], hits[0][2]) if len(hits) == 1 else None
+
+
 def load(source):
-    """MapFile from a .map file, a mod .big, or a mod name (Mods folder, then work\\staging)."""
+    """MapFile from a .map file, a mod .big, a mod name (Mods folder, then work\\staging), or a retail campaign
+    map by its name (a part of it, e.g. 'camp_a01_brightonbeach_smith': read from the game's MapsCampaign.big by its
+    in-archive path; `archive.big::inner\\path.map` names one explicitly)."""
+    if '::' in source:
+        arc, inner = source.split('::', 1)
+        return mapscript.MapFile(big.read_files(arc, [inner])[inner])
+    if not os.path.exists(source):
+        retail = _retail(source)
+        if retail:
+            return mapscript.MapFile(big.read_files(retail[0], [retail[1]])[retail[1]])
     if not os.path.exists(source):
         for base in (MODS, STAGING):
             cand = os.path.join(base, source, source + '.big')

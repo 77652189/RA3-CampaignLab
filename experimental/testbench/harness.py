@@ -248,6 +248,22 @@ def map_borders(sku, chapter=None):
         return []
 
 
+# The plain game (no -modConfig) walks nav.json into the first Allied mission; its map, read for borders and terrain.
+RETAIL_DEFAULT = 'camp_a01_brightonbeach_smith'
+
+
+def retail_borders(name):
+    """A retail campaign map's borders [(name, (x0, y0, x1, y1))] in world units (the same as map_borders gives for a
+    built map): read from the map in the game's MapsCampaign.big by name; [] where it cannot be read."""
+    try:
+        maprender = calib._load_file('maprender', os.path.join(calib.ROOT, 'experimental', 'campaign', 'maprender.py'))
+        hm = sys.modules['mapterrain'].HeightMap(maprender.load(name))
+        cell = sys.modules['mapterrain'].CELL
+        return [(str(k), tuple(v * cell for v in r)) for k, r in enumerate(hm.borders()) if r[2] > r[0] and r[3] > r[1]]
+    except (Exception, SystemExit):
+        return []
+
+
 def shell_slot(sku):
     """The campaign shell's slot a check build rides on (cnv build.py --shell --check: the sidecar's 'slot'), else None."""
     try:
@@ -303,6 +319,7 @@ class Session:
         self.view = None            # None: the start camera; else the world point the last minimap jump centred
         self.shift = (0.0, 0.0)     # screen pixels the view's point stands off the minimap-jump calibration (scripted_view)
         self._ground = None         # the mod's terrain (calib.Ground), read at the first world click; False: unreadable
+        self.map_name = None        # the retail map a plain game plays (RETAIL_DEFAULT), None with a mod
         self.borders = []         # the built map's playable areas (cnv_map.json beside the mod), [] the whole map
         self.last_border = None
         self.log = []
@@ -315,8 +332,11 @@ class Session:
         self.boxes = boxes          # pid -> the game's dialog boxes (a stand-in in tests)
 
     # -- life cycle -------------------------------------------------------------------------------------------
-    def start(self, mod, visible=False, timeout=150, hold=True, steps=None, chapter=None, menu_frames=0.0):
-        """mod None: the plain game (no -modConfig). steps: nav steps to walk instead of nav.json's way into the CNV
+    def start(self, mod, visible=False, timeout=150, hold=True, steps=None, chapter=None, menu_frames=0.0,
+              retail_map=None):
+        """mod None: the plain game (no -modConfig); its map is `retail_map` (default: RETAIL_DEFAULT, the first
+        Allied mission nav.json walks into): the borders and terrain are read from it and the camera fitted for it
+        (calib.set_profile) is used. steps: nav steps to walk instead of nav.json's way into the CNV
         mission, e.g. nav.json's first step without its click to stop on the main menu (skirmish by hand). A build on
         the campaign shell (its sidecar names a slot) walks the chapter list into that slot (shell_steps), or into
         `chapter` (1..9) when given (I18: the release shell carries every level, cnv build.py campaign --shell).
@@ -357,7 +377,12 @@ class Session:
         self.frames, self.view, self.log, self.muted, self.t0 = [], None, [], 0, None
         self.shift = (0.0, 0.0)
         self._ground = None
-        self.borders = map_borders(sku, chapter) if mod else []
+        self.map_name = None if mod else (retail_map or RETAIL_DEFAULT)
+        if not mod and not calib.set_profile(self.map_name):
+            self._say(f'no camera fitted for {self.map_name} (calib.py fit_retail): world clicks are not to be trusted')
+        elif mod:
+            calib.set_profile(None)
+        self.borders = map_borders(sku, chapter) if mod else retail_borders(self.map_name)
         self.last_border = self.borders[0] if self.borders else None
         self.hold, self.paused, self.game_s, self.run_from, self.rate = hold, False, 0.0, None, 1.0
         args = [os.path.join(BENCH, 'Data', 'RA3_1.13.game'), '-config', os.path.join(BENCH, 'RA3_chinese_t_1.13.SkuDef'),
@@ -634,14 +659,14 @@ class Session:
         """The running mod's terrain (calib.Ground), or None where its map cannot be read (then the ground is flat)."""
         if self._ground is None:
             try:
-                self._ground = calib.Ground(self.mod)
+                self._ground = calib.Ground(self.map_name or self.mod)
             except (Exception, SystemExit) as e:          # maprender.load exits on a missing map
                 self._say(f'terrain of {self.mod} not read ({e}): clicks as on flat ground')
                 self._ground = False
         return self._ground or None
 
     def _lift(self, x, y):
-        g = self.ground() if self.view is not None and self.mod else None
+        g = self.ground() if self.view is not None and (self.mod or self.map_name) else None
         return g.lift(x, y, self.view) if g else 0.0
 
     def to_screen(self, x, y, air=False):

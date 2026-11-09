@@ -84,7 +84,7 @@ def guard(fn):
 @server.tool(structured_output=False)
 @guard
 def bench_start(mod: str, visible: bool = False, hold: bool = True, look: bool = True, chapter: int = 0,
-                menu_frames: float = 0.0) -> list:
+                menu_frames: float = 0.0, retail_map: str = '') -> list:
     """Start the bench game with a built mod (a folder name under Documents/Red Alert 3/Mods, e.g. CampNew38) and
     walk the menus into its mission. Refuses while RA3 runs (the user may be playing) or the bench lock is held.
     visible=true leaves the window on the desktop (default: parked off screen, muted). hold=true (default): the
@@ -94,8 +94,11 @@ def bench_start(mod: str, visible: bool = False, hold: bool = True, look: bool =
     release shell). menu_frames=S (e.g. 2): also archive the menu walk -- a half-size frame every S seconds and one
     of each menu screen before its click (chapter list, briefing cards, mission briefing, the opening cutscene till
     the HUD is up); they are frames 1..N (mission second None, listed in the reply), bench_inspect reads them with
-    the box in 1280x720 screen pixels as usual."""
-    r = S.start(mod, visible=visible, hold=hold, chapter=chapter or None, menu_frames=menu_frames)
+    the box in 1280x720 screen pixels as usual. mod="" starts the plain game (no mod) in the retail campaign: the
+    first Allied mission (retail_map: its map's name, default camp_a01_brightonbeach_smith; the map's borders and
+    terrain are read from the game's own files and the camera mapping fitted for it is used: calib.py fit_retail)."""
+    r = S.start(mod, visible=visible, hold=hold, chapter=chapter or None, menu_frames=menu_frames,
+                retail_map=retail_map or None)
     msg = f'started {r["mod"]} (pid {r["pid"]}); frames archived in {r["run_dir"]}; ' + '; '.join(r['log'])
     walk = [f for f in S.frames if f['second'] is None]
     if walk:

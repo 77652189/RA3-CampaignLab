@@ -102,7 +102,99 @@ def fit(base, grid, radius=70):
           f'max {np.max(err):.1f} px -> {OUT}')
 
 
+# A retail campaign map's start camera is not the CNV island's (its scripts zoom the camera), so the mapping is fitted
+# again from landmarks read off a frame of that map. A profile is retail_cam/<map>.json (in the repo): the landmarks
+# ("points", written by hand off a frame: world (x, y) from retail_objects, screen (u, v) of the same thing) and what
+# fit_retail derived from them: a pinhole camera facing north (look-at point, pitch, distance, focal length), its
+# ground-plane homography H and `start_view`, the look-at point (a minimap jump moves the same camera over the ground,
+# so a point at world p is drawn where p - view + start_view was at the start). set_profile(name) switches H and
+# START_VIEW to it, set_profile(None) back to the CNV island's (harness.Session does so at every start).
+PROFILE = None
+DEFAULT_VIEW = None
+RETAIL_CAM = os.path.join(HERE, 'retail_cam')
+
+
+def profile_path(name):
+    return os.path.join(RETAIL_CAM, f'{name}.json')
+
+
+def set_profile(name):
+    """Use the camera fitted for retail map `name` (True: found and used; False: none fitted, the CNV island's
+    mapping stays -- then clicks on that map are not to be trusted)."""
+    global PROFILE, START_VIEW, DEFAULT_VIEW
+    if DEFAULT_VIEW is None:
+        DEFAULT_VIEW = START_VIEW
+    PROFILE, START_VIEW = None, DEFAULT_VIEW
+    if not name or not os.path.exists(profile_path(name)):
+        return False
+    with open(profile_path(name), encoding='utf-8') as f:
+        d = json.load(f)
+    if 'H' not in d:
+        return False
+    PROFILE, START_VIEW = d, tuple(d['start_view'])
+    return True
+
+
+def pinhole(p, x, y, z=0.0):
+    """Screen (u, v) of world point (x, y, z) for a camera facing north: p = (look-at x, look-at y, pitch, distance
+    to the look-at point, focal length in px); the look-at point stands at the centre of the 1280x720 screen."""
+    cx, cy, th, dist, f = p[:5]
+    cam = np.array([cx, cy - dist * np.cos(th), dist * np.sin(th)])
+    fwd = np.array([0, np.cos(th), -np.sin(th)])
+    up = np.array([0, np.sin(th), np.cos(th)])
+    q = np.array([x, y, z]) - cam
+    zc = fwd @ q
+    return 640 + f * q[0] / zc, 360 - f * (up @ q) / zc
+
+
+def fit_retail(name):
+    """Fit retail map `name`'s camera from the landmarks of its profile file (needs scipy): "points" lists
+    {"what", "world": [x, y], "screen": [u, v], "raised": true when the screen point is the top of something
+    `height` world units tall (a fence post: the height is fitted, shared by all raised points)}; "corners" (optional,
+    same shape, weak prior) the screen corners' world points read off the minimap's view trapezoid."""
+    from scipy.optimize import least_squares
+    with open(profile_path(name), encoding='utf-8') as f:
+        d = json.load(f)
+    pts, corners = d['points'], d.get('corners', [])
+
+    def res(p, wc=0.5):
+        r = []
+        for q in pts:
+            u, v = pinhole(p, *q['world'], z=p[5] if q.get('raised') else 0.0)
+            r += [u - q['screen'][0], v - q['screen'][1]]
+        for q in corners:
+            u, v = pinhole(p, *q['world'])
+            r += [wc * (u - q['screen'][0]), wc * (v - q['screen'][1])]
+        return np.asarray(r)
+
+    cx = float(np.mean([q['world'][0] for q in pts]))
+    cy = float(np.mean([q['world'][1] for q in pts]))
+    best = None
+    for th in (0.7, 0.9, 1.1):                      # a few starts: the focal length / distance trade off
+        for dist in (800, 1500, 2500):
+            s = least_squares(res, [cx, cy, th, dist, 0.7 * dist + 300, 25.0], x_scale=[100, 100, 0.2, 300, 200, 10],
+                              bounds=([-500, 0, 0.2, 200, 200, 0], [5000, 5000, 1.5, 8000, 6000, 80]))
+            if best is None or s.cost < best.cost:
+                best = s
+    p = best.x
+    r = res(p, 1.0)[:2 * len(pts)].reshape(-1, 2)
+    world = [(x, y) for x in np.linspace(p[0] - 400, p[0] + 400, 5) for y in np.linspace(p[1] - 300, p[1] + 300, 5)]
+    H = homography(world, [pinhole(p, *w) for w in world])
+    d.update(H=H.tolist(), start_view=[round(float(p[0]), 1), round(float(p[1]), 1)], height=round(float(p[5]), 1),
+             pinhole=dict(look_at=[round(float(p[0]), 1), round(float(p[1]), 1)],
+                          pitch_deg=round(float(np.degrees(p[2])), 1), distance=round(float(p[3]), 1),
+                          focal_px=round(float(p[4]), 1)),
+             residual_px=dict(rms=round(float(np.sqrt((r ** 2).mean())), 1), max=round(float(np.abs(r).max()), 1)),
+             note=f'ground plane (map units) -> 1280x720 screen at the start camera of retail map {name}')
+    with open(profile_path(name), 'w', encoding='utf-8') as f:
+        json.dump(d, f, indent=1, ensure_ascii=False)
+    print(f'{len(pts)} landmarks; pinhole {d["pinhole"]}, post height {d["height"]}; residual {d["residual_px"]} px '
+          f'-> {profile_path(name)}')
+
+
 def _H():
+    if PROFILE:
+        return np.asarray(PROFILE['H'])
     with open(OUT, encoding='utf-8') as f:
         return np.asarray(json.load(f)['H'])
 
@@ -200,7 +292,8 @@ def _load_file(name, path):
 
 
 class Ground:
-    """A built mod's terrain heights (our units), bilinear between cells, and the height the camera looks at."""
+    """A map's terrain heights (our units), bilinear between cells, and the height the camera looks at. `mod`: a
+    built mod's name, a .map / .big path, or a retail campaign map's name (maprender.load)."""
 
     def __init__(self, mod):
         maprender = _load_file('maprender', os.path.join(ROOT, 'experimental', 'campaign', 'maprender.py'))
@@ -242,6 +335,8 @@ if __name__ == '__main__':
     cmd = sys.argv[1]
     if cmd == 'fit':
         fit(*(sys.argv[2:4] or [os.path.join(DIR, 'base.png'), os.path.join(DIR, 'grid.png')]))
+    elif cmd == 'fit_retail':       # fit_retail <map>: from retail_cam/<map>.json's landmarks
+        fit_retail(sys.argv[2])
     elif cmd == 'screen':
         print(*world_to_screen(float(sys.argv[2]), float(sys.argv[3])))
     elif cmd == 'world':

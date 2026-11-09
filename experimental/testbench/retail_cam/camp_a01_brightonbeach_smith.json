@@ -1,0 +1,232 @@
+{
+ "map": "camp_a01_brightonbeach_smith",
+ "camera": "the start camera of the first Allied mission after the opening, 1280x720 (bench_start mod='', frame 1)",
+ "points": [
+  {
+   "what": "west fence post 1 (cap top) ST_FENCE02 #1487",
+   "world": [
+    164,
+    1561
+   ],
+   "screen": [
+    131.7,
+    496
+   ],
+   "raised": true
+  },
+  {
+   "what": "west fence post 2 ST_FENCE01 #1484",
+   "world": [
+    160,
+    1584
+   ],
+   "screen": [
+    142.7,
+    456
+   ],
+   "raised": true
+  },
+  {
+   "what": "west fence post 3 ST_FENCE01 #1485",
+   "world": [
+    159,
+    1607
+   ],
+   "screen": [
+    157.3,
+    419.3
+   ],
+   "raised": true
+  },
+  {
+   "what": "west fence post 4 ST_FENCE01 #1485",
+   "world": [
+    161,
+    1630
+   ],
+   "screen": [
+    179.3,
+    385
+   ],
+   "raised": true
+  },
+  {
+   "what": "west fence post 5 ST_FENCE01 #1486",
+   "world": [
+    164,
+    1652
+   ],
+   "screen": [
+    200,
+    353.3
+   ],
+   "raised": true
+  },
+  {
+   "what": "west fence post 6 ST_FENCE01 #1488",
+   "world": [
+    166,
+    1674
+   ],
+   "screen": [
+    219,
+    322.7
+   ],
+   "raised": true
+  },
+  {
+   "what": "north fence post 1 ST_FENCE01 #1912",
+   "world": [
+    286,
+    1791
+   ],
+   "screen": [
+    480,
+    193.8
+   ],
+   "raised": true
+  },
+  {
+   "what": "north fence post 2 ST_FENCE01 #1911",
+   "world": [
+    309,
+    1795
+   ],
+   "screen": [
+    518,
+    188
+   ],
+   "raised": true
+  },
+  {
+   "what": "north fence post 3 ST_FENCE01 #1910",
+   "world": [
+    332,
+    1795
+   ],
+   "screen": [
+    555.3,
+    188
+   ],
+   "raised": true
+  },
+  {
+   "what": "north fence post 4 ST_FENCE01 #1909",
+   "world": [
+    355,
+    1795
+   ],
+   "screen": [
+    593,
+    187.5
+   ],
+   "raised": true
+  },
+  {
+   "what": "north fence post 5 ST_FENCE01 #1908",
+   "world": [
+    377,
+    1791
+   ],
+   "screen": [
+    630.5,
+    191.3
+   ],
+   "raised": true
+  },
+  {
+   "what": "north fence post 6 ST_FENCE02 #1482",
+   "world": [
+    400,
+    1785
+   ],
+   "screen": [
+    668,
+    197.5
+   ],
+   "raised": true
+  }
+ ],
+ "corners": [
+  {
+   "what": "screen top-left: minimap view trapezoid, extended past the minimap's clipped left edge",
+   "world": [
+    -134,
+    2086
+   ],
+   "screen": [
+    0,
+    0
+   ]
+  },
+  {
+   "what": "screen top-right: minimap view trapezoid",
+   "world": [
+    912,
+    2086
+   ],
+   "screen": [
+    1280,
+    0
+   ]
+  },
+  {
+   "what": "screen bottom-right: minimap view trapezoid",
+   "world": [
+    633,
+    1463
+   ],
+   "screen": [
+    1280,
+    720
+   ]
+  },
+  {
+   "what": "screen bottom-left: minimap view trapezoid",
+   "world": [
+    125,
+    1463
+   ],
+   "screen": [
+    0,
+    720
+   ]
+  }
+ ],
+ "H": [
+  [
+   -1.6721749679181337,
+   -0.7219147125654182,
+   1282.3143495245838
+  ],
+  [
+   -3.156322090244181e-11,
+   0.7524793813835868,
+   -1575.7350560346085
+  ],
+  [
+   1.8240461345794686e-13,
+   -0.00112799173839141,
+   1.0
+  ]
+ ],
+ "start_view": [
+  384.1,
+  1670.8
+ ],
+ "height": 23.4,
+ "pinhole": {
+  "look_at": [
+   384.1,
+   1670.8
+  ],
+  "pitch_deg": 43.9,
+  "distance": 565.5,
+  "focal_px": 1069.0
+ },
+ "residual_px": {
+  "rms": 2.8,
+  "max": 7.8
+ },
+ "note": "ground plane (map units) -> 1280x720 screen at the start camera of retail map camp_a01_brightonbeach_smith"
+}
