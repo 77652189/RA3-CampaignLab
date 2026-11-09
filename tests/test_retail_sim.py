@@ -78,3 +78,29 @@ def test_question_1_the_squad_stands_round_the_point(mission):
     crew = [b for b in s.living() if b.owner == 'Player_1']
     spread = max(math.hypot(b.x - 505.2, b.y - 1576.7) for b in crew)
     assert spread >= 15, spread
+
+
+def test_a_players_names_are_its_own():
+    """A name in a player's script list is that player's (retail.scoped): 'Player/name' another's, a bare one the
+    list's own; our maps' unnamed list keeps names as they are."""
+    players = {'Soviet_2', 'Player_1'}
+    assert retail.scoped('Soviet_2', 'FLAG - X', players) == 'Soviet_2/FLAG - X'
+    assert retail.scoped('Player_1', 'Soviet_2/FLAG - X', players) == 'Soviet_2/FLAG - X'
+    assert retail.scoped('Player_1', 'A/B', players) == 'Player_1/A/B'
+    assert retail.scoped('', 'FLAG - X', players) == 'FLAG - X'
+
+
+def test_objective_1_completes_when_the_soviets_are_gone(mission):
+    """A01_OBJECTIVE_1 ('Objective 01 - Completed'): the buffer timer, Soviet_2's flag set when its 'TEAM - Intro
+    Patrol 01' is destroyed (TEAM_DESTROYED, read from the other list as 'Soviet_2/FLAG - ...'), and no Soviet_1
+    object of the list 'objective 01 - soviet infantry' (OBJECTLIST_ADDOBJECTTYPE: conscripts and war bears) left.
+    The Soviets killed by hand at 31 s: the objective is done in the next second."""
+    s = sim.Sim(mission, script='30 摧毁 队 Soviet_2/TEAM - Intro Patrol 01')
+    s.advance(31 * 15)
+    assert not any('目标完成' in text for _, kind, text in s.log if kind == '目标')
+    for b in s.living():
+        if b.owner == 'Soviet_1' and b.template.lower() in s.of_types('objective 01 - soviet infantry'):
+            s.destroy(b, 'test')
+    s.advance(5 * 15)
+    done = [t for t, kind, text in s.log if kind == '目标' and text == '目标完成：MISSIONOBJ:A01_OBJECTIVE_1']
+    assert done and 31 <= done[0] <= 32, s.log[-20:]

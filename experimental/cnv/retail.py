@@ -133,8 +133,69 @@ class RetailMission:
                                                      'subtitles'])([], [], [], self.areas, self.waypoints, {}, {})
 
     def script_lists(self, scripts):
-        """The map's scripts for the engine model (scripts = ra3model.scripts), one list per side."""
-        return scripts.from_mapfile(self.file, self.order)
+        """The map's scripts for the engine model (scripts = ra3model.scripts), one list per side, every name a
+        player's list keeps for itself written out in full (scope_names)."""
+        return scope_names(scripts, scripts.from_mapfile(self.file, self.order), set(self.sides))
+
+
+# Argument types (script_catalog.json) whose names a player's script list keeps for itself: script, counter (timers
+# are counters), flag, subroutine, object list (48; 61 = an object type or an object list)
+SCOPED_ARGS = (2, 4, 5, 13, 48)
+LIST_OR_TYPE = 61
+
+
+def scoped(side, name, players):
+    """A name as the game files it: 'Player/name' names that player's own; a bare one (or one whose part before '/'
+    is no player) is the list's own player's. The retail campaign's 81 maps (scan 2026-11-08): every 'Player/' reference -- 126 flags, 54 timers, 314 scripts -- names one that player's list sets or
+    holds, none another's; of the bare ones 4273 flags / 3408 timers / 6765 scripts are the list's own and 4 in all
+    only another list's (taken for slips of the maps'). Not read in the program: INFERRED from the maps. The engine
+    model keeps one table of each, so a run's names are written out in full before it reads them."""
+    if not side:
+        return name                             # ours: one unnamed list, no scopes
+    head, sep, _ = name.partition('/')
+    return name if sep and head in players else f'{side}/{name}'
+
+
+def scope_names(scripts, lists, players):
+    import json
+    import os
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign', 'script_catalog.json'),
+              encoding='utf-8') as f:
+        types = {k: v['args'] for k, v in json.load(f).items()}
+
+    def walk(items):
+        for it in items:
+            yield it
+            if isinstance(it, scripts.Group):
+                yield from walk(it.items)
+
+    defined = set()                             # the object lists the map makes, scoped
+    for lst in lists:
+        for it in walk(lst.items):
+            if isinstance(it, scripts.Script):
+                for c in it.actions + it.else_actions:
+                    if c.name == 'OBJECTLIST_ADDOBJECTTYPE' and len(c.args) > 1:
+                        defined.add(scoped(lst.side, str(c.args[1]), players))
+
+    def fix(side, c):
+        args = list(c.args)
+        for k, t in enumerate(types.get(c.name, ())[:len(args)]):
+            if not isinstance(args[k], str):
+                continue
+            if t in SCOPED_ARGS:
+                args[k] = scoped(side, args[k], players)
+            elif t == LIST_OR_TYPE and scoped(side, args[k], players) in defined:
+                args[k] = scoped(side, args[k], players)
+        return dataclasses.replace(c, args=tuple(args))
+
+    for lst in lists:
+        for it in walk(lst.items):
+            it.name = scoped(lst.side, it.name, players)
+            if isinstance(it, scripts.Script):
+                it.ors = [[fix(lst.side, c) for c in o] for o in it.ors]
+                it.actions = [fix(lst.side, c) for c in it.actions]
+                it.else_actions = [fix(lst.side, c) for c in it.else_actions]
+    return lists
 
 
 def simulate(name, level='normal', until=600.0):

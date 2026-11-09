@@ -217,6 +217,10 @@ ALIGN = {
     'capture': 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED Command_CaptureBuilding: at its side the building changes hands, '
                'a deposit building pays its bonus then its amount each interval (R4, bench 2026-11-07 a4 derrick)',
     'nearest ref':'SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER: the unnamed one nearest the team\'s middle (R2, bench 2026-11-07 engine_ref)',
+    'nearest ref any': '未对齐: SET_REF_TO_NEREST_TEAM_OF_TYPE_OWNED_BY_PLAYER: as the unnamed one\'s (nearest ref), '
+                       'named objects too; not read, not benched',
+    'team destroyed': '未对齐: TEAM_DESTROYED: no object of the team left, the dying counted (Generals '
+                      'evaluateIsDestroyed; not read in RA3, not benched); a team nobody was ever in is not destroyed',
     'production': 'Sim.order_build (simproxy\'s player): BuildTime x 15 frames, paid frame by frame up to '
                   'ceil(cost x progress) (single-float progress), a frame it cannot pay does not go on, the unit out '
                   'DoorOpeningTime (10 frames) after it is full at UnitCreatePoint, walking to NaturalRallyPoint '
@@ -811,6 +815,7 @@ class Sim:
         self.own = {u.id: u.xml for u in self.mm.units}
         self.bodies = {}                    # name -> Body (named ones), plus unnamed under '#k'
         self.refs = {}                      # reference name (UNITRef - ...) -> the Body a SET_REF_TO_... pointed it at
+        self.object_lists = {}              # OBJECTLIST_ADDOBJECTTYPE: list name -> {template, lower case}
         self.series = []                    # (t, counter values) for a check's counters
         self.threat = []                    # (t, enemies near, countdowns) every 10 s
         self.first_threat = None
@@ -1724,7 +1729,12 @@ class Sim:
             return self.refs[name]
         return self.bodies.get(name)
 
-    def nearest_ref(self, template, owner, team, ref):
+    def of_types(self, name):
+        """A script's object type argument (type 61): an object list's types (retail.scope_names wrote a list's name
+        out in full) or that one type, lower case."""
+        return self.object_lists.get(str(name)) or {str(name).lower()}
+
+    def nearest_ref(self, template, owner, team, ref, unnamed=True):
         """R2: SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER -- point `ref` at the living `template` of
         `owner` nearest to `team`'s middle (its members' mean place; bench 2026-11-07 engine_ref a / a2: not the first
         member's nor any member's nearest, whatever order they were made in), objects with a script name skipped
@@ -1732,8 +1742,9 @@ class Sim:
         guess as to why). None of the type: `ref` left as it was (not read on the bench)."""
         self.used.add('nearest ref')
         crew = self.members(team)
-        cands = [b for b in self.living() if b.owner == owner and b.template.lower() == template.lower()
-                 and b.name.startswith('#')]
+        want = self.of_types(template)
+        cands = [b for b in self.living() if b.owner == owner and b.template.lower() in want
+                 and (b.name.startswith('#') or not unnamed)]
         if not cands:
             return
         mx = sum(m.x for m in crew) / len(crew) if crew else 0.0
@@ -1776,11 +1787,20 @@ class Sim:
             self.used.add('power')
             return CMP[a[1]](sup - dem, a[2])
         if name == 'PLAYER_HAS_OBJECT_COMPARISON':
-            # the dying counted too (Team::countObjectsByThingTemplate, ignoreDead false)
-            want = a[3].lower()
-            n = sum(1 for b in self.bodies.values() if b.owner == a[0] and b.template.lower() == want
+            # the dying counted too (Team::countObjectsByThingTemplate, ignoreDead false); a type or an object list
+            want = self.of_types(a[3])
+            n = sum(1 for b in self.bodies.values() if b.owner == a[0] and b.template.lower() in want
                     and self.present(b))
             return CMP[a[1]](n, a[2])
+        if name == 'TEAM_DESTROYED':
+            # INFERRED (Generals evaluateIsDestroyed: the team has no object left; not read in RA3): the dying count
+            # as there, as PLAYER_HAS_OBJECT_COMPARISON's; a team nobody was ever in is not destroyed
+            self.used.add('team destroyed')
+            if not self.team_active(a[0]):
+                return False
+            return not any(same_team(b.team, a[0]) and self.present(b) for b in self.bodies.values())
+        if name == 'CURRENT_PLATFORM':          # the game we run is the PC one
+            return str(a[0]).upper() == 'PC'
         if name == 'PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA':
             n = sum(1 for b in self.living() if b.owner == a[0] and b.template.lower() == a[3].lower()
                     and inside(self.areas[a[4]], b.x, b.y))
@@ -1994,6 +2014,11 @@ class Sim:
             self.order_capture(self.body(a[0]), a[2])
         elif name == 'SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER':
             self.nearest_ref(*a[:4])
+        elif name == 'SET_REF_TO_NEREST_TEAM_OF_TYPE_OWNED_BY_PLAYER':     # INFERRED: the same, named ones too
+            self.used.add('nearest ref any')
+            self.nearest_ref(*a[:4], unnamed=False)
+        elif name == 'OBJECTLIST_ADDOBJECTTYPE':    # (type, list): the list grows by that type (types read lower case)
+            self.object_lists.setdefault(str(a[1]), set()).add(str(a[0]).lower())
         elif name == 'UNIT_SET_TEAM':               # the unit joins the team (K6: ctx.order does it before every whole-team order)
             b = self.body(a[0])
             self.active.add(a[1])                   # ... and the team has an instance from then on, the unit there or not (E3)
