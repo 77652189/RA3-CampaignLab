@@ -300,6 +300,17 @@ def test_the_opening_path_test_picks_what_the_bench_picked(lib, build, first):
     assert own and own[0] == first, own
 
 
+# bench 2026-11-09 checks/engine_aipoweradv.py a: (build, the AI's Guardians, home at s30)
+@pytest.mark.parametrize('build,n,home', [('aipadv2', 8, 0), ('aipadv1', 4, 4), ('aipadvh', 4, 0),
+                                          ('aipadvc', 4, 0)])
+def test_power_advantage_gates_the_state_as_on_the_bench(lib, build, n, home):
+    """PowerAdvantageHeuristic Value 1 Above true: 8 against 4 out s13-16; 4 against 8 home to s65; the player
+    with only an Ore Collector (nothing CAN_ATTACK: FLT_MAX) out s15-16; aipadvc (4 against 8, ConstantHeuristic,
+    the control) out s14-15."""
+    _, rows = _switch_run(build, lib, until=31.0)
+    assert rows[5]['坦克在家'] == n and rows[29]['坦克在家'] == home, [r['坦克在家'] for r in rows]
+
+
 def test_path_to_target_is_asked_on_the_simulators_grid(lib):
     """PathToTargetHeuristic (work/re l4_states.md 3): the opening and the states ask the brain; the skirmish map is
     one piece of land, so infantry has a way and a ship finds no water spot (= no way). At 300 s the player's base
