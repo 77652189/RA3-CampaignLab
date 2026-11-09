@@ -43,12 +43,43 @@ ACTION, CONDITION, MODULE, NUGGET = '脚本动作', '脚本条件', '物体模�
 PARTS = (ACTION, CONDITION, MODULE, NUGGET)
 
 # (part, name) -> 'tests/<file>.py::<test>': the bench comparison that backs the item (the guard checks the test exists)
-BENCHED_TESTS = {}
+BENCHED_TESTS = {
+    (MODULE, 'Behaviors/OreMinerBehavior'): 'tests/test_simbench.py::test_mining_pays_8_a_frame_and_a_trip_takes_269',
+    (MODULE, 'Behaviors/OreNodeBehavior'): 'tests/test_simbench.py::test_mining_a_second_miner_on_one_node_adds_nothing',
+}
 
 # (part, name) -> (state, why): where the name rule above is wrong (a module read under another name ...)
+_NOT_IN_SIM = '已核（11-08）：模拟器没有这个效果'
 NOTES = {
     (MODULE, 'Body/ActiveBody'): (GUESSED, 'simunits.stats 读 MaxHealth（只有生命值；受伤状态、回血等另算）'),
     (MODULE, 'AI/AIUpdate'): (GUESSED, 'Sim.fight / 移动（单位 AI 的状态机细项按引擎 B 的 AI 清单推进）'),
+    # the 26 the bench measured but the name rule called 未做 (checked 11-08 against sim.py / simunits.py)
+    (MODULE, 'Behaviors/DestroyDie'): (GUESSED, 'Sim.destroy：死了当帧移出（LINGER 0，台上 death 探针量过）；'
+                                                'DeathTypes 筛选、几个 Die 模块选哪个没读'),
+    (MODULE, 'Behaviors/FireWeaponUpdate'): (GUESSED, '部分：simunits.ocl_round 把召出物的 FireWeaponNugget + '
+                                                      'LifetimeUpdate 折成伤害，不模拟召出物本身'),
+    (MODULE, 'Behaviors/SlowDeath'): (TODO, f'{_NOT_IN_SIM}（死了立即移出，没有慢死、倒塌延迟）'),
+    (MODULE, 'Behaviors/BuildingBehavior'): (TODO, f'{_NOT_IN_SIM}（没有出售建筑）'),
+    (MODULE, 'Behaviors/StructureSellUpdate'): (TODO, f'{_NOT_IN_SIM}（没有出售、返还金钱）'),
+    (MODULE, 'Behaviors/InvisibilityBehavior'): (TODO, f'{_NOT_IN_SIM}（没有隐身）'),
+    (MODULE, 'Behaviors/InvisibilityBroadcastUpdate'): (TODO, f'{_NOT_IN_SIM}（没有隐身）'),
+    (MODULE, 'Behaviors/StealthDetectorUpdate'): (TODO, f'{_NOT_IN_SIM}（没有反隐）'),
+    (MODULE, 'Behaviors/ContestableGarrisonContain'): (TODO, f'{_NOT_IN_SIM}（没有驻军）'),
+    (MODULE, 'Behaviors/GarrisonContain'): (TODO, f'{_NOT_IN_SIM}（没有驻军；NAMED_GARRISON_SPECIFIC_BUILDING 另算）'),
+    (MODULE, 'Behaviors/StancesBehavior'): (TODO, f'{_NOT_IN_SIM}（没有姿态）'),
+    (MODULE, 'Behaviors/AutoHealBehavior'): (TODO, f'{_NOT_IN_SIM}（没有自动回血）'),
+    (MODULE, 'Behaviors/RunOffMapBehavior'): (TODO, f'{_NOT_IN_SIM}（没有逃离地图）'),
+    (MODULE, 'Behaviors/ToggleStatusSpecialAbilityUpdate'): (TODO, f'{_NOT_IN_SIM}（没有按钮切换状态）'),
+    (MODULE, 'Behaviors/ReplaceSelfSpecialAbility'): (TODO, f'{_NOT_IN_SIM}（没有换形态）'),
+    (MODULE, 'Behaviors/SpawnBehavior'): (TODO, f'{_NOT_IN_SIM}（没有母体造随从）'),
+    (MODULE, 'Behaviors/SlavedUpdate'): (TODO, f'{_NOT_IN_SIM}（没有随从跟随）'),
+    (MODULE, 'Behaviors/BezierProjectile'): (TODO, f'{_NOT_IN_SIM}（开火按每秒伤害直接扣血，没有弹体）'),
+    (MODULE, 'Behaviors/ProjectileUpdate'): (TODO, f'{_NOT_IN_SIM}（开火按每秒伤害直接扣血，没有弹体飞行时间）'),
+    (MODULE, 'Behaviors/AttachUpdate'): (TODO, f'{_NOT_IN_SIM}（没有附着）'),
+    (MODULE, 'Behaviors/StoreObjectsSpecialPower'): (TODO, f'{_NOT_IN_SIM}（没有存放单位）'),
+    (MODULE, 'Behaviors/TeleportStoredObjectsSpecialPower'): (TODO, f'{_NOT_IN_SIM}（没有传送存放的单位）'),
+    (MODULE, 'Behaviors/TeleportStoredObjectsUpdate'): (TODO, f'{_NOT_IN_SIM}（UNIT_TELEPORT_TO_WAYPOINT 另算）'),
+    (NUGGET, 'ActivateLaserNugget'): (TODO, f'{_NOT_IN_SIM}（没有激光束）'),
 }
 
 # presentation only: script actions that move the camera, play sound / film, draw on screen (conditions are never NA:

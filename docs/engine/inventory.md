@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|---|
 | 脚本动作 | 427 | 40 | 47 | 295 | 45 | 69% |
 | 脚本条件 | 89 | 15 | 5 | 69 | 0 | 85% |
-| 物体模块 | 184 | 7 | 11 | 152 | 14 | 21% |
+| 物体模块 | 184 | 9 | 13 | 148 | 14 | 26% |
 | 武器效果 | 25 | 2 | 2 | 21 | 0 | 52% |
 
 ## 脚本动作
@@ -549,18 +549,18 @@
 | 未做 | `Behaviors/SecondaryDamageTracker` | 617 (852) | 模拟器代码里没有这个名字；例：AlliedSatelliteSweepShroudRevealer, AlliedTimeBombLvl1 |
 | 未做 | `Behaviors/Physics` | 597 (836) | 模拟器代码里没有这个名字；例：AlliedAntiGroundAircraft_Dying, AlliedBomberAircraft_Dying |
 | 已对拍 | `Behaviors/CreateObjectDie` | 591 (838) | 模拟器代码里有这个名字；台上量过：checks/engine_crush.py；例：AlliedAntiGroundAircraft_Dying, AlliedBomberAircraft_Dying |
-| 未做 | `Behaviors/DestroyDie` | 578 (1006) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_crush.py），可能用别的名字实现了；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
+| 推断 | `Behaviors/DestroyDie` | 578 (1006) | Sim.destroy：死了当帧移出（LINGER 0，台上 death 探针量过）；DeathTypes 筛选、几个 Die 模块选哪个没读；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
 | 未做 | `Behaviors/SquishCollide` | 569 (749) | 模拟器代码里没有这个名字；例：AlliedSatelliteSweepShroudRevealer, AlliedWallPiece |
-| 未做 | `Behaviors/SlowDeath` | 565 (1480) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_crush.py），可能用别的名字实现了；例：AlliedAirField_Collapse, AlliedAntiAirShip_Collapse |
+| 未做 | `Behaviors/SlowDeath` | 565 (1480) | 已核（11-08）：模拟器没有这个效果（死了立即移出，没有慢死、倒塌延迟）；例：AlliedAirField_Collapse, AlliedAntiAirShip_Collapse |
 | 未做 | `Behaviors/BuildingDestructionBehavior` | 493 (650) | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |
 | 不涉及 | `ClientBehaviors/ModelConditionAudioLoopClientBehavior` | 466 (649) | 纯表现（ClientBehaviors）；例：AlliedSatelliteSweepShroudRevealer, AlliedAirfield |
 | 推断 | `Behaviors/ProductionUpdate` | 351 (465) | 模拟器代码里有这个名字；例：AlliedAirfield, AlliedBarracks |
 | 未做 | `Behaviors/ToppleUpdate` | 347 (410) | 模拟器代码里没有这个名字；例：BaseTopple, BaseTree |
 | 未做 | `Behaviors/ModelConditionUpgrade` | 341 (465) | 模拟器代码里没有这个名字；例：AlliedAntiInfantryInfantry, AlliedAntiVehicleInfantry |
-| 未做 | `Behaviors/BuildingBehavior` | 334 (440) | 模拟器代码里没有这个名字；**待核**：台上量过（docs/engine/sell.md），可能用别的名字实现了；例：AlliedAirfield, AlliedBarracks |
+| 未做 | `Behaviors/BuildingBehavior` | 334 (440) | 已核（11-08）：模拟器没有这个效果（没有出售建筑）；例：AlliedAirfield, AlliedBarracks |
 | 已对拍 | `Behaviors/AttributeModifierAuraUpdate` | 311 (420) | 模拟器代码里有这个名字；台上量过：checks/engine_invuln.py；例：A09_IronCurtainEffect, BaseCivilianStructure |
-| 未做 | `Behaviors/InvisibilityBehavior` | 305 (412) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_invuln.py），可能用别的名字实现了；例：BaseCivilianStructure, BaseCivilianStructureLarge |
-| 未做 | `Behaviors/ContestableGarrisonContain` | 305 (411) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_garrison.py），可能用别的名字实现了；例：BaseCivilianStructure, BaseCivilianStructureLarge |
+| 未做 | `Behaviors/InvisibilityBehavior` | 305 (412) | 已核（11-08）：模拟器没有这个效果（没有隐身）；例：BaseCivilianStructure, BaseCivilianStructureLarge |
+| 未做 | `Behaviors/ContestableGarrisonContain` | 305 (411) | 已核（11-08）：模拟器没有这个效果（没有驻军）；例：BaseCivilianStructure, BaseCivilianStructureLarge |
 | 不涉及 | `Draws/PropDraw` | 221 (301) | 纯表现（Draws）；例：AM_Trash01, AM_Debris01 |
 | 已对拍 | `Behaviors/FireWeaponWhenDead` | 146 (230) | 模拟器代码里有这个名字；台上量过：checks/engine_spawn.py；例：AlliedAntiGroundAircraft_Dying, AlliedAntiStructureVehicleCannonEffect |
 | 不涉及 | `ClientBehaviors/ModelConditionSoundSelectorClientBehavior` | 140 (195) | 纯表现（ClientBehaviors）；例：AlliedSatelliteSweepShroudRevealer, AlliedAirfield |
@@ -568,23 +568,23 @@
 | 未做 | `Behaviors/EnableDynamicsCollide` | 137 (154) | 模拟器代码里没有这个名字；例：BaseSimulatedProp, AM_Boat01 |
 | 推断 | `AI/AIUpdate` | 136 (237) | Sim.fight / 移动（单位 AI 的状态机细项按引擎 B 的 AI 清单推进）；例：AlliedSatelliteSweepShroudRevealer, AlliedSuperWeaponEffect |
 | 未做 | `Behaviors/DynamicsUpdate` | 113 (154) | 模拟器代码里没有这个名字；例：AlliedDynamicsImpact, AlliedSatelliteSweepShroudRevealer |
-| 未做 | `Behaviors/StancesBehavior` | 108 (148) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_stance.py），可能用别的名字实现了；例：AlliedSatelliteSweepShroudRevealer, AlliedAirfield |
+| 未做 | `Behaviors/StancesBehavior` | 108 (148) | 已核（11-08）：模拟器没有这个效果（没有姿态）；例：AlliedSatelliteSweepShroudRevealer, AlliedAirfield |
 | 未做 | `Body/ImmortalBody` | 91 (111) | 模拟器代码里没有这个名字；例：BaseRock, CPDummyTarget |
 | 未做 | `Behaviors/LevelUpUpgrade` | 88 (124) | 模拟器代码里没有这个名字；例：AlliedSatelliteSweepShroudRevealer, AlliedAntiAirShip |
-| 未做 | `Behaviors/AutoHealBehavior` | 88 (123) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_heal.py），可能用别的名字实现了；例：AlliedSatelliteSweepShroudRevealer, AlliedAntiAirShip |
-| 未做 | `Behaviors/RunOffMapBehavior` | 88 (123) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_runoffmap.py），可能用别的名字实现了；例：AlliedSatelliteSweepShroudRevealer, AlliedAntiAirShip |
+| 未做 | `Behaviors/AutoHealBehavior` | 88 (123) | 已核（11-08）：模拟器没有这个效果（没有自动回血）；例：AlliedSatelliteSweepShroudRevealer, AlliedAntiAirShip |
+| 未做 | `Behaviors/RunOffMapBehavior` | 88 (123) | 已核（11-08）：模拟器没有这个效果（没有逃离地图）；例：AlliedSatelliteSweepShroudRevealer, AlliedAntiAirShip |
 | 推断 | `Behaviors/WeaponSetUpdate` | 82 (110) | 模拟器代码里有这个名字；例：AlliedBaseDefense, AlliedBaseDefenseAdvanced |
 | 推断 | `Behaviors/SpecialPower` | 74 (95) | 模拟器代码里有这个名字；例：AlliedConstructionYard, AlliedAntiAirShip |
 | 未做 | `Behaviors/EngineerContain` | 70 (105) | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |
 | 未做 | `Behaviors/RepairUpdate` | 66 (91) | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |
 | 推断 | `Behaviors/StatusBitsUpgrade` | 66 (85) | 模拟器代码里有这个名字；例：AlliedBaseDefense, AlliedAntiAirShip |
 | 推断 | `Behaviors/StructureUnpackUpdate` | 59 (96) | 模拟器代码里有这个名字；例：AlliedAirfield, AlliedBarracks |
-| 未做 | `Behaviors/StructureSellUpdate` | 52 (72) | 模拟器代码里没有这个名字；**待核**：台上量过（docs/engine/sell.md），可能用别的名字实现了；例：AlliedAirfield, AlliedBarracks |
+| 未做 | `Behaviors/StructureSellUpdate` | 52 (72) | 已核（11-08）：模拟器没有这个效果（没有出售、返还金钱）；例：AlliedAirfield, AlliedBarracks |
 | 不涉及 | `ClientBehaviors/AnimationSoundClientBehavior` | 48 (67) | 纯表现（ClientBehaviors）；例：AlliedTimeBombLvl3, AlliedRefinery |
 | 不涉及 | `Draws/TruckDraw` | 35 (51) | 纯表现（Draws）；例：AlliedTimeBombLvl1, AlliedTimeBombLvl2 |
 | 未做 | `Behaviors/InfiltratorContain` | 34 (38) | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |
 | 未做 | `Behaviors/LUAEventList` | 32 (44) | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |
-| 未做 | `Behaviors/ToggleStatusSpecialAbilityUpdate` | 27 (34) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_transform.py），可能用别的名字实现了；例：AlliedAntiAirShip, AlliedAntiInfantryInfantry |
+| 未做 | `Behaviors/ToggleStatusSpecialAbilityUpdate` | 27 (34) | 已核（11-08）：模拟器没有这个效果（没有按钮切换状态）；例：AlliedAntiAirShip, AlliedAntiInfantryInfantry |
 | 未做 | `Behaviors/SubObjectsUpgrade` | 26 (30) | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |
 | 未做 | `Behaviors/FreefallUpdate` | 24 (31) | 模拟器代码里没有这个名字；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
 | 已对拍 | `Behaviors/AttributeModifierUpgrade` | 22 (30) | 模拟器代码里有这个名字；台上量过：checks/engine_invuln.py；例：AlliedOutpost, AlliedAntiGroundAircraft |
@@ -593,17 +593,17 @@
 | 不涉及 | `Draws/LaserDraw` | 21 (37) | 纯表现（Draws）；例：AlliedAntiVehicleVehicleTech3CannonNodeBase, AlliedAntiVehicleVehicleTech3CannonNodeEnd |
 | 未做 | `Behaviors/LaserState` | 19 (25) | 模拟器代码里没有这个名字；例：AlliedBaseDefense, AlliedBaseDefenseAdvanced |
 | 未做 | `Behaviors/QueueProductionExitUpdate` | 19 (20) | 模拟器代码里没有这个名字；例：AlliedBarracks, AlliedConstructionYard |
-| 未做 | `Behaviors/ReplaceSelfSpecialAbility` | 18 (24) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_replace.py），可能用别的名字实现了；例：AlliedConstructionYard, AlliedMCV |
+| 未做 | `Behaviors/ReplaceSelfSpecialAbility` | 18 (24) | 已核（11-08）：模拟器没有这个效果（没有换形态）；例：AlliedConstructionYard, AlliedMCV |
 | 不涉及 | `Draws/TracerModelDraw` | 18 (22) | 纯表现（Draws）；例：AlliedAntiAirShip, AlliedAntiAirVehicleTech1 |
 | 未做 | `Behaviors/WeaponFireSpecialAbilityUpdate` | 16 (23) | 模拟器代码里没有这个名字；例：AlliedSuperWeaponAdvanced, AlliedAntiNavalScout |
 | 未做 | `Body/ManagerBody` | 14 (32) | 模拟器代码里没有这个名字；例：BaseBridge, BaseCivilianBridge |
 | 未做 | `Behaviors/BridgeBuilder` | 14 (30) | 模拟器代码里没有这个名字；例：AM_Bridge_01, AM_Bridge_01a |
 | 未做 | `AI/JetAIUpdate` | 13 (17) | 模拟器代码里没有这个名字；例：AlliedAntiGroundAircraft, AlliedAttackDrone |
 | 未做 | `Behaviors/TransportContain` | 13 (16) | 模拟器代码里没有这个名字；例：AlliedAntiAirVehicleTech1, AlliedAntiInfantryVehicle |
-| 未做 | `Behaviors/SpawnBehavior` | 10 (16) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_mining.py），可能用别的名字实现了；例：AlliedAirfield, AlliedConstructionYardRepairBay |
+| 未做 | `Behaviors/SpawnBehavior` | 10 (16) | 已核（11-08）：模拟器没有这个效果（没有母体造随从）；例：AlliedAirfield, AlliedConstructionYardRepairBay |
 | 未做 | `Behaviors/ProductionUpdateInfo` | 9 (9) | 模拟器代码里没有这个名字；例：AlliedConstructionYard, AlliedMCV |
 | 未做 | `Behaviors/EjectPassengersSpecialAbilityUpdate` | 7 (8) | 模拟器代码里没有这个名字；例：AlliedBomberAircraft, A08_CenturyTransportAircraft |
-| 未做 | `Behaviors/BezierProjectile` | 6 (78) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_missile.py），可能用别的名字实现了；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
+| 未做 | `Behaviors/BezierProjectile` | 6 (78) | 已核（11-08）：模拟器没有这个效果（开火按每秒伤害直接扣血，没有弹体）；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
 | 未做 | `Behaviors/AssignSlavesTargetObjectSpecialPower` | 6 (10) | 模拟器代码里没有这个名字；例：AlliedConstructionYardRepairBay, AlliedNavalYard |
 | 未做 | `Behaviors/TrackDamage` | 6 (9) | 模拟器代码里没有这个名字；例：AlliedAntiNavalScout, AlliedFighterAircraft |
 | 未做 | `Behaviors/TrackIncomingWeaponFireBehavior` | 6 (9) | 模拟器代码里没有这个名字；例：AlliedAntiNavalScout, AlliedFighterAircraft |
@@ -625,8 +625,8 @@
 | 未做 | `Behaviors/HealCrateCollide` | 4 (4) | 模拟器代码里没有这个名字；例：SS_SecretFile1, SS_SecretFile2 |
 | 未做 | `Behaviors/ParkingPlaceBehavior` | 4 (4) | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedAntiStructureShip |
 | 未做 | `Behaviors/SpecialDisguiseUpdate` | 4 (4) | 模拟器代码里没有这个名字；例：AlliedAntiVehicleVehicleTech3, AlliedInfiltrationInfantry |
-| 未做 | `Behaviors/AttachUpdate` | 3 (24) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_float.py），可能用别的名字实现了；例：ChronoTargetMarker, AlliedAirfieldRepairDrone |
-| 未做 | `Behaviors/StealthDetectorUpdate` | 3 (8) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_stealth.py），可能用别的名字实现了；例：AlliedScoutInfantry, A08_Dog1 |
+| 未做 | `Behaviors/AttachUpdate` | 3 (24) | 已核（11-08）：模拟器没有这个效果（没有附着）；例：ChronoTargetMarker, AlliedAirfieldRepairDrone |
+| 未做 | `Behaviors/StealthDetectorUpdate` | 3 (8) | 已核（11-08）：模拟器没有这个效果（没有反隐）；例：AlliedScoutInfantry, A08_Dog1 |
 | 未做 | `Behaviors/SlaughterHordeContain` | 3 (6) | 模拟器代码里没有这个名字；例：AlliedAntiStructureShip, S08_AlliedAntiStructureShip |
 | 未做 | `AI/AnimalAIUpdate` | 3 (4) | 模拟器代码里没有这个名字；例：BaseCivilian, CivilianFemale1 |
 | 未做 | `Behaviors/AssistedPlacementBehavior` | 3 (4) | 模拟器代码里没有这个名字；例：AlliedRefinery, AlliedRefinery_NoHarvester |
@@ -642,7 +642,7 @@
 | 未做 | `Behaviors/ConvergingLaserState` | 2 (3) | 模拟器代码里没有这个名字；例：AlliedAntiStructureVehicle, SovietAntiVehicleVehicleTech1 |
 | 未做 | `Behaviors/AimWeapon` | 2 (2) | 模拟器代码里没有这个名字；例：AlliedAntiVehicleInfantry, SovietAntiVehicleInfantry |
 | 未做 | `Behaviors/GateOpenAndCloseBehavior` | 2 (2) | 模拟器代码里没有这个名字；例：RM_AlliedBlastDoor, SS_Door |
-| 未做 | `Behaviors/InvisibilityBroadcastUpdate` | 2 (2) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_stealth.py），可能用别的名字实现了；例：AlliedAntiVehicleVehicleTech3, A08_SpecialMirageTank |
+| 未做 | `Behaviors/InvisibilityBroadcastUpdate` | 2 (2) | 已核（11-08）：模拟器没有这个效果（没有隐身）；例：AlliedAntiVehicleVehicleTech3, A08_SpecialMirageTank |
 | 未做 | `Behaviors/NotifyWhenAttackingBehavior` | 2 (2) | 模拟器代码里没有这个名字；例：AlliedBaseDefenseAdvanced, SovietBaseDefenseAdvanced |
 | 未做 | `Behaviors/PowerUpgrade` | 2 (2) | 模拟器代码里没有这个名字；例：SovietPowerPlantAdvanced, SovietPowerPlant |
 | 未做 | `Behaviors/PrematureDischargeSpecialPower` | 2 (2) | 模拟器代码里没有这个名字；例：JapanBaseDefenseAdvanced, JapanAntiStructureVehicle |
@@ -650,23 +650,23 @@
 | 未做 | `Behaviors/SpiderHoleUpdate` | 2 (2) | 模拟器代码里没有这个名字；例：JapanAntiVehicleInfantry, JapanAntiVehicleInfantry_Ambush |
 | 已对拍 | `Behaviors/TechUpgrade` | 2 (2) | 模拟器代码里有这个名字；台上量过：checks/engine_tech.py；例：AlliedConstructionYard, AlliedOutpost |
 | 已对拍 | `Behaviors/LifetimeUpdate` | 1 (855) | 模拟器代码里有这个名字；台上量过：checks/engine_crush.py；例：AlliedAirField_Collapse, AlliedAntiAirShip_Collapse |
-| 未做 | `Behaviors/FireWeaponUpdate` | 1 (21) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_stasis.py），可能用别的名字实现了；例：AlliedAntiStructureVehicleCannonEffect, AlliedAntiStructureVehicleCannonEffect_Vet |
-| 未做 | `Behaviors/OreNodeBehavior` | 1 (8) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_mining.py），可能用别的名字实现了；例：BaseOreNode, OreNode |
+| 推断 | `Behaviors/FireWeaponUpdate` | 1 (21) | 部分：simunits.ocl_round 把召出物的 FireWeaponNugget + LifetimeUpdate 折成伤害，不模拟召出物本身；例：AlliedAntiStructureVehicleCannonEffect, AlliedAntiStructureVehicleCannonEffect_Vet |
+| 已对拍 | `Behaviors/OreNodeBehavior` | 1 (8) | tests/test_simbench.py::test_mining_a_second_miner_on_one_node_adds_nothing；例：BaseOreNode, OreNode |
 | 未做 | `Behaviors/AssistedPlacementInfoBehavior` | 1 (7) | 模拟器代码里没有这个名字；例：OreNode, OreNode2a |
-| 未做 | `Behaviors/OreMinerBehavior` | 1 (7) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_mining.py），可能用别的名字实现了；例：AlliedMiner, AlliedMiner_Naval |
+| 已对拍 | `Behaviors/OreMinerBehavior` | 1 (7) | tests/test_simbench.py::test_mining_pays_8_a_frame_and_a_trip_takes_269；例：AlliedMiner, AlliedMiner_Naval |
 | 未做 | `Behaviors/FireWeaponCollide` | 1 (4) | 模拟器代码里没有这个名字；例：SovietAntiVehicleInfantry, JapanAntiVehicleShipTorpedoSpreadProjectile |
 | 未做 | `Behaviors/StrafeAreaUpdate` | 1 (3) | 模拟器代码里没有这个名字；例：AlliedSatelliteSweepShroudRevealer, JapanFinalSquadronAircraft |
 | 不涉及 | `Behaviors/AudioLoopUpgrade` | 1 (2) | 纯表现（名字规则）；例：SovietAntiVehicleVehicleTech1, Tutorial_SovietTech1Tank |
-| 未做 | `Behaviors/GarrisonContain` | 1 (2) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_invuln.py），可能用别的名字实现了；例：AlliedBaseDefense, SovietBunker |
+| 未做 | `Behaviors/GarrisonContain` | 1 (2) | 已核（11-08）：模拟器没有这个效果（没有驻军；NAMED_GARRISON_SPECIFIC_BUILDING 另算）；例：AlliedBaseDefense, SovietBunker |
 | 未做 | `Behaviors/MoneyCrateCollide` | 1 (2) | 模拟器代码里没有这个名字；例：MoneyCrate, MoneyCrateMP |
 | 未做 | `Behaviors/MonitorConditionUpdate` | 1 (2) | 模拟器代码里没有这个名字；例：JapanMiner, JapanMiner_Naval |
 | 未做 | `Behaviors/OCLMonitorUpdate` | 1 (2) | 模拟器代码里没有这个名字；例：SovietCommandoTech1, Soviet_BombingRun |
 | 未做 | `Behaviors/ObjectCreationUpgrade` | 1 (2) | 模拟器代码里没有这个名字；例：SovietAntiVehicleVehicleTech1, Tutorial_SovietTech1Tank |
 | 未做 | `Behaviors/SlaveWatcherBehavior` | 1 (2) | 模拟器代码里没有这个名字；例：SovietAntiVehicleVehicleTech1, Tutorial_SovietTech1Tank |
-| 未做 | `Behaviors/StoreObjectsSpecialPower` | 1 (2) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_teleport.py），可能用别的名字实现了；例：AlliedSuperWeapon, PlayerSpellBook |
+| 未做 | `Behaviors/StoreObjectsSpecialPower` | 1 (2) | 已核（11-08）：模拟器没有这个效果（没有存放单位）；例：AlliedSuperWeapon, PlayerSpellBook |
 | 未做 | `Behaviors/SwitchLocomotorUpdate` | 1 (2) | 模拟器代码里没有这个名字；例：SovietBomberAircraft, SovietBomberAircraft_Special |
-| 未做 | `Behaviors/TeleportStoredObjectsSpecialPower` | 1 (2) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_teleport.py），可能用别的名字实现了；例：AlliedSuperWeapon, PlayerSpellBook |
-| 未做 | `Behaviors/TeleportStoredObjectsUpdate` | 1 (2) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_teleport.py），可能用别的名字实现了；例：AlliedSuperWeapon, PlayerSpellBook |
+| 未做 | `Behaviors/TeleportStoredObjectsSpecialPower` | 1 (2) | 已核（11-08）：模拟器没有这个效果（没有传送存放的单位）；例：AlliedSuperWeapon, PlayerSpellBook |
+| 未做 | `Behaviors/TeleportStoredObjectsUpdate` | 1 (2) | 已核（11-08）：模拟器没有这个效果（UNIT_TELEPORT_TO_WAYPOINT 另算）；例：AlliedSuperWeapon, PlayerSpellBook |
 | 未做 | `Behaviors/VeterancyCrateCollide` | 1 (2) | 模拟器代码里没有这个名字；例：VeterancyCrate, VeterancyCrateMP |
 | 未做 | `Behaviors/ActivateSpecialPowerOnCreate` | 1 (1) | 模拟器代码里没有这个名字；例：JapanAntiVehicleInfantry_Ambush |
 | 已对拍 | `Behaviors/AssembleStructureSpecialAbilityUpdate` | 1 (1) | 模拟器代码里有这个名字；台上量过：checks/engine_skill.py；例：SovietEngineer |
@@ -687,9 +687,9 @@
 | 不涉及 | `Draws/TankDraw` | 1 (1) | 纯表现（Draws）；例：SovietAntiVehicleVehicleTech2 |
 | 未做 | `Body/ManagedImmortalBody` | 0 (44) | 模拟器代码里没有这个名字；例：BaseIndestructableBridgeSegment, BaseBridgeEnd |
 | 未做 | `Body/ManagedActiveBody` | 0 (31) | 模拟器代码里没有这个名字；例：BaseBridgeSegment, AM_Bridge_01_Center |
-| 未做 | `Behaviors/ProjectileUpdate` | 0 (18) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_shot.py），可能用别的名字实现了；例：AlliedAntiVehicleVehicleTech1Projectile, AlliedBomberAircraftBombProjectile |
+| 未做 | `Behaviors/ProjectileUpdate` | 0 (18) | 已核（11-08）：模拟器没有这个效果（开火按每秒伤害直接扣血，没有弹体飞行时间）；例：AlliedAntiVehicleVehicleTech1Projectile, AlliedBomberAircraftBombProjectile |
 | 未做 | `Behaviors/LaserScatterUpdate` | 0 (10) | 模拟器代码里没有这个名字；例：AlliedAntiVehicleVehicleTech3CannonNodeBase, AlliedAntiVehicleVehicleTech3CannonNodeEnd |
-| 未做 | `Behaviors/SlavedUpdate` | 0 (9) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_spawn.py），可能用别的名字实现了；例：AlliedAirfieldRepairDrone, AlliedAttackDrone_Leeched |
+| 未做 | `Behaviors/SlavedUpdate` | 0 (9) | 已核（11-08）：模拟器没有这个效果（没有随从跟随）；例：AlliedAirfieldRepairDrone, AlliedAttackDrone_Leeched |
 | 未做 | `Behaviors/BombardAreaUpdate` | 0 (8) | 模拟器代码里没有这个名字；例：BaseBalloonBombEffect, BalloonBombEffectLvl1 |
 | 未做 | `Behaviors/WeaponScatterEffectUpdate` | 0 (8) | 模拟器代码里没有这个名字；例：AlliedAntiVehicleVehicleTech3CannonNodeEnd, AlliedAntiVehicleVehicleTech3CannonNodeRegular |
 | 未做 | `Behaviors/DestroyObjectsUpdate` | 0 (7) | 模拟器代码里没有这个名字；例：AlliedAntiStructureVehicleCannonEffect, AlliedAntiStructureVehicleCannonEffect_Vet |
@@ -733,7 +733,7 @@
 | 未做 | `InformTargetNugget` | 69 | 模拟器代码里没有这个名字；例：BB_EuropeCoastalGunWeapon, AlliedPrecisionBomb |
 | 未做 | `SuppressionNugget` | 64 | 模拟器代码里没有这个名字；例：BB_EuropeCoastalGunWeapon, KremlinArtilleryDomeMissle |
 | 未做 | `MetaImpactNugget` | 36 | 模拟器代码里没有这个名字；例：KremlinArtilleryDomeMissleWarhead, AlliedTimeBomb_Level1 |
-| 未做 | `ActivateLaserNugget` | 27 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_shot.py），可能用别的名字实现了；例：MountRushmoreHeadEyeWeapon, JapanAntiVehicleInfantryTech3LockDownGun |
+| 未做 | `ActivateLaserNugget` | 27 | 已核（11-08）：模拟器没有这个效果（没有激光束）；例：MountRushmoreHeadEyeWeapon, JapanAntiVehicleInfantryTech3LockDownGun |
 | 推断 | `WeaponOCLNugget` | 26 | 模拟器代码里有这个名字；例：MountRushmoreHeadEyeWeapon, AlliedPrecisionBombWarhead |
 | 未做 | `AttributeModifierNugget` | 20 | 模拟器代码里没有这个名字；例：NanoHiveSwarmEffectTrigger, JapanCommandoSoftLanding |
 | 未做 | `ParalyzeNugget` | 11 | 模拟器代码里没有这个名字；例：JapanAntiVehicleInfantryTech3LockDownGun, AlliedAntiStructureShipEMPCruiseMissleWarhead |
