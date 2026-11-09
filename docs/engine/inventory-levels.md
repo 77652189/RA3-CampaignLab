@@ -2,15 +2,15 @@
 
 由 `experimental/cnv/inventory_ai.py levels` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）里由遭遇战 AI 带的敌人：它的人格（`enemy_ai.py` 生成）沿继承、战略状态、战术、组队、目标启发、微操、造兵 / 预算状态、开局一路引用到的原版 AI 数据项，加上全局常量 AIData 和本阵营的 ArmyDefinition；再加关卡脚本里点了 AI 玩家名字的脚本动作 / 条件。状态取自 [inventory.md](inventory.md)。"AI 做完"的第一条：下表全部已对拍。
 
-**已对拍 34 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
+**已对拍 36 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
 
 | 部分 | 已对拍 | 推断 | 未做 |
 |---|---|---|---|
-| AI | 25 | 185 | 147 |
+| AI | 27 | 183 | 147 |
 | 脚本动作 | 9 | 2 | 0 |
 | 脚本条件 | 0 | 1 | 0 |
 
-按原版用量加权：已对拍 13%，已有（已对拍+推断）91%。
+按原版用量加权：已对拍 14%，已有（已对拍+推断）91%。
 
 | 状态 | 部分 | 项 | 原版用量 | 关 | 说明 |
 |---|---|---|---|---|---|
@@ -184,8 +184,6 @@
 | 推断 | AI | `目标/AITargetingHeuristic.VitalKindOf` | 129 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `组队招人/TeamTemplate.Priority=STANDARD` | 126 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `启发条件/ConstantHeuristic` | 119 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `人格/PowerChoice.PlayerPower` | 117 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `人格/PowerChoice.Weight` | 117 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `战术/Tactic.EndBehavior=DISBAND` | 105 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `目标/AITargetingHeuristic.ForbiddenKindOf` | 102 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/UnitModifier.DefensiveModifier` | 92 | a4 a5 a7 | AI 模型代码里读了这个名字 |
@@ -352,6 +350,8 @@
 | 已对拍 | AI | `组队招人/TeamTemplate.MinUnits` | 182 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aiskirm.py |
 | 已对拍 | AI | `目标/AITargetingHeuristic.RequireUniqueTarget` | 154 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aistate.py |
 | 已对拍 | AI | `战术/Tactic.EndBehavior` | 152 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aistate.py |
+| 已对拍 | AI | `人格/PowerChoice.PlayerPower` | 117 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：docs/engine/aiopen.md |
+| 已对拍 | AI | `人格/PowerChoice.Weight` | 117 | a4 a5 a7 | 台上量过：docs/engine/aiopen.md 买协议（aipwrb 权重 0 的不买） |
 | 已对拍 | AI | `微操/AIMicroManagerData.RetreatPowerAdvantage` | 94 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_airetreat.py |
 | 已对拍 | AI | `微操/AIMicroManagerData.EnterGarrisons` | 84 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aigarrison.py |
 | 已对拍 | AI | `微操/AIMicroManagerData.EngagePassiveTargets` | 82 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_airetreat.py |

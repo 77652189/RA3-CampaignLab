@@ -8,7 +8,7 @@
 | 脚本条件 | 89 | 22 | 6 | 61 | 0 | 94% |
 | 物体模块 | 184 | 9 | 15 | 143 | 17 | 42% |
 | 武器效果 | 25 | 2 | 3 | 20 | 0 | 53% |
-| AI | 415 | 31 | 196 | 154 | 34 | 87% |
+| AI | 415 | 33 | 194 | 154 | 34 | 87% |
 
 ## 脚本动作
 
@@ -792,8 +792,8 @@
 | 推断 | `目标/AITargetingHeuristic.VitalKindOf` | 129 | AI 模型代码里读了这个名字 |
 | 推断 | `组队招人/TeamTemplate.Priority=STANDARD` | 126 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/ConstantHeuristic` | 119 | AI 模型代码里读了这个名字 |
-| 推断 | `人格/PowerChoice.PlayerPower` | 117 | AI 模型代码里读了这个名字 |
-| 推断 | `人格/PowerChoice.Weight` | 117 | AI 模型代码里读了这个名字 |
+| 已对拍 | `人格/PowerChoice.PlayerPower` | 117 | AI 模型代码里读了这个名字；台上量过：docs/engine/aiopen.md |
+| 已对拍 | `人格/PowerChoice.Weight` | 117 | 台上量过：docs/engine/aiopen.md 买协议（aipwrb 权重 0 的不买） |
 | 推断 | `战术/Tactic.EndBehavior=DISBAND` | 105 | AI 模型代码里读了这个名字 |
 | 推断 | `目标/AITargetingHeuristic.ForbiddenKindOf` | 102 | AI 模型代码里读了这个名字 |
 | 已对拍 | `微操/AIMicroManagerData.RetreatPowerAdvantage` | 94 | AI 模型代码里读了这个名字；台上量过：checks/engine_airetreat.py |

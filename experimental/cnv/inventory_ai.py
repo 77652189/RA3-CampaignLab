@@ -65,7 +65,7 @@ GENERIC = {'Distance', 'Priority', 'Value', 'Above', 'Rule', 'Include', 'Exclude
            'Budget', 'Surface', 'Event', 'Target', 'Beacon', 'KindOf', 'Engineer'}
 
 # name -> source (a docs/engine/ai*.md section or a test) where the auto rule misses a bench comparison
-BENCHED_REG = {}
+BENCHED_REG = {'人格/PowerChoice.Weight': '台上量过：docs/engine/aiopen.md 买协议（aipwrb 权重 0 的不买）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
     '组队招人/TeamTemplate.SortByDistance': (GUESSED, 'AI 模型代码里读了这个名字（台上没单独量：engine_aiskirm 里是推测）'),
