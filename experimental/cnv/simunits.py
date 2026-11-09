@@ -530,11 +530,11 @@ def declared_weapons(template, own=None):
                     picks.append(pick)
         if picks:
             return picks
-        m = re.search(r'\binheritFrom="([^"]+)"', (xml or '')[:2000])
-        if not m or m.group(1).lower() == template.lower():
+        up = parent(xml, template)
+        if not up or up.lower() == template.lower():
             break
         try:
-            xml = _xml(m.group(1), own)
+            xml = _xml(up, own)
         except (OSError, ValueError):
             break
     return []
@@ -952,6 +952,18 @@ def _xml(template, own=None):
     return retail_xml(template)
 
 
+def parent(xml, template=None):
+    """The inheritFrom of the template's GameObject in `xml`, else of the first GameObject, else the first inheritFrom
+    in its head (a file without one); None. A mission unit's file opens with its includes and defines, so the tag can
+    sit far past the first 2000 characters (CNV_IceEngineer: the chain to BaseInfantry was lost there)."""
+    heads = re.findall(r'<GameObject\b[^>]*>', xml or '')
+    if template:
+        mine = [h for h in heads if re.search(rf'\bid="{re.escape(template)}"', h, re.I)]
+        heads = mine or heads
+    m = re.search(r'\binheritFrom="([^"]+)"', heads[0] if heads else (xml or '')[:2000])
+    return m.group(1) if m else None
+
+
 def _inherited(template, own, read, empty):
     """read(xml) of the template, else of what it inherits from (inheritFrom), up to 5 steps. A campaign override
     (CampaignOverrides.xml: the same id inheriting itself) is read first, then the file of the template's own name."""
@@ -960,11 +972,11 @@ def _inherited(template, own, read, empty):
         got = read(xml)
         if got != empty:
             return got
-        m = re.search(r'\binheritFrom="([^"]+)"', xml[:2000])
-        if not m:
+        up = parent(xml, template)
+        if not up:
             break
-        xml = retail_xml(template) if m.group(1).lower() == template.lower() else _xml(m.group(1), own)
-        template = m.group(1)
+        xml = retail_xml(template) if up.lower() == template.lower() else _xml(up, own)
+        template = up
     return empty
 
 

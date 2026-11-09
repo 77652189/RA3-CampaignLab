@@ -335,3 +335,16 @@ def test_a_build_line_queues_at_the_factory_and_pays():
     s.advance(14 * 15)
     out = [e for e in s.log if e[1] == '生产' and '出 AlliedEngineer' in e[2]]
     assert start - s.money.get(s.human) == 500 and out and abs(out[0][0] - (2 + 160 / 15)) < 0.1
+
+
+def test_a_mission_unit_whose_file_opens_with_a_long_preamble_still_inherits_its_base():
+    """CNV_IceEngineer's file opens with its includes and defines; its GameObject (inheritFrom BaseInfantry) sat past
+    the first 2000 characters, so every _inherited reading (the freeze among them) lost the chain."""
+    su = sim.simunits
+    xml = ('<?xml version="1.0"?>\n<AssetDeclaration>\n<!--' + ' preamble ' * 400 + '-->\n'
+           '<GameObject id="CNV_Probe" inheritFrom="BaseInfantry" KindOf="INFANTRY">\n'
+           '<ArmorSet Armor="AlliedEngineerArmor" />\n</GameObject>\n</AssetDeclaration>')
+    assert xml.index('<GameObject') > 2000
+    assert su.parent(xml, 'CNV_Probe') == 'BaseInfantry'
+    tracker, frozen = su.freeze('CNV_Probe', {'CNV_Probe': xml})
+    assert tracker and tracker['steps'] and frozen is not None

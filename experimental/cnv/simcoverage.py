@@ -249,10 +249,10 @@ def declared_picks(template, own):
                     picks.append(pick)
         if picks:
             return picks
-        m = re.search(r'\binheritFrom="([^"]+)"', xml[:2000])
-        if not m or m.group(1).lower() == template.lower():
+        up = simunits.parent(xml, template)
+        if not up or up.lower() == template.lower():
             break
-        xml = simunits._xml(m.group(1), own)
+        xml = simunits._xml(up, own)
     return None
 
 
@@ -494,10 +494,10 @@ def inherited_text(template, own):
     xml, out = simunits._xml(template, own), []
     for _ in range(5):
         out.append(xml)
-        m = re.search(r'\binheritFrom="([^"]+)"', xml[:2000])
-        if not m or m.group(1).lower() == template.lower():
+        up = simunits.parent(xml, template)
+        if not up or up.lower() == template.lower():
             break
-        xml = simunits._xml(m.group(1), own)
+        xml = simunits._xml(up, own)
     return '\n'.join(out)
 
 

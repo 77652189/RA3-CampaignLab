@@ -128,6 +128,17 @@ NOTES = {
                                       '（同 BezierProjectile），道具能不能挨打没读'),
     (MODULE, 'Behaviors/SquishCollide'): (TODO, '碾压步兵：模拟器没有碾压（坦克压过步兵不死）；影响玩法，没做'),
     (MODULE, 'Behaviors/Physics'): (TODO, '移动物理（坠落、弹跳、被击飞、倾倒）：模拟器走路按速度直走，没有物理'),
+    # engine A round 108: read in the SDK data
+    (MODULE, 'Behaviors/ObjectDefectionHelper'): (NA, '没人触发：原版只在 BaseObject 挂一个空的（所以每个物体都有），'
+                                                      'SageXML 里没有一处 DefectorSpecialPower，脚本动作表里也没有'
+                                                      '叛变；《将军》里它管"叛变后一段时间不被发现"'),
+    (MODULE, 'Behaviors/BuildingDestructionBehavior'): (NA, '纯表现：建筑死后按骨骼放特效、甩碎块（CreationObject '
+                                                            '如 AlliedBarracks_Debris：只有画法、寿命和碎片体积，'
+                                                            '没有身体和武器）、烟尘'),
+    (MODULE, 'Behaviors/ToppleUpdate'): (TODO, '倒伏：车压过的灯笼、栏杆、路灯倒下即死（OK_Lantern01 '
+                                              'KillWhenStartToppled）。模拟器没有碾压（同 SquishCollide）：'
+                                              'OK_LANTERN01 在模拟器里不是物体（不挡路），platprops.STRUCTURE 里的'
+                                              '栏杆路灯是永久障碍（游戏里车能压倒）；跟碾压一起做'),
 }
 
 # presentation only: script actions that move the camera, play sound / film, draw on screen (conditions are never NA:

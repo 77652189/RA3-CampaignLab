@@ -2,16 +2,16 @@
 
 由 `experimental/cnv/inventory_levels.py --write` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）编出的全部脚本（`parts.merged`，含目标显示脚本）里的动作和条件；地图和任务摆的物体、我们自己的单位、脚本点名的模板，连同模块点名的武器、武器点名的物体（抛射体）和武器，取生效的模块（继承、include、同 id 覆盖）和武器效果。没跟：模块点名的别的物体（多是能变成 / 能装的东西：多功能步兵车的乘客、锤子坦克吸来的车）、物体生成表（死亡碎片、OCL 技能）和命令表（工厂能造什么）。AI 部分（引擎 B）在 [inventory-levels.md](inventory-levels.md)。状态和原版用量取自 [inventory.md](inventory.md)。停止条件①：下表全部已对拍。
 
-**已对拍 57 / 211**（不涉及的不算）。
+**已对拍 57 / 209**（不涉及的不算）。
 
 | 部分 | 已对拍 | 推断 | 未做 | 不涉及 |
 |---|---|---|---|---|
 | 脚本动作 | 35 | 25 | 0 | 4 |
 | 脚本条件 | 11 | 1 | 0 | 0 |
-| 物体模块 | 9 | 15 | 94 | 12 |
+| 物体模块 | 9 | 15 | 92 | 14 |
 | 武器效果 | 2 | 3 | 16 | 0 |
 
-按原版用量加权：已对拍 57%，已有（已对拍+推断）84%。
+按原版用量加权：已对拍 59%，已有（已对拍+推断）86%。
 
 摆了、但原版数据和我们的单位里都找不到的模板（模块没算）：a9 `AlliedFutureTank`。
 
@@ -20,12 +20,10 @@
 | 状态 | 部分 | 项 | 原版用量 | 关 | 说明 |
 |---|---|---|---|---|---|
 | 未做 | 物体模块 | `Body/PropBody` | 1443 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 弹体和特效道具的身体（9 关 22 个模板里 16 个是弹体）：模拟器没有弹体（同 BezierProjectile），道具能不能挨打没读；例：AlliedAntiGroundAircraftMissileProjectile_Veteran, AlliedAntiInfantryVehicleTorpedoProjectile |
-| 未做 | 物体模块 | `Behaviors/ObjectDefectionHelper` | 640 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
 | 未做 | 物体模块 | `Behaviors/Physics` | 597 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 移动物理（坠落、弹跳、被击飞、倾倒）：模拟器走路按速度直走，没有物理；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
 | 未做 | 物体模块 | `Behaviors/SquishCollide` | 569 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 碾压步兵：模拟器没有碾压（坦克压过步兵不死）；影响玩法，没做；例：AlliedAntiAirVehicleTech1, AlliedAntiInfantryInfantry |
 | 未做 | 物体模块 | `Behaviors/SlowDeath` | 565 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 已核（11-08）：模拟器没有这个效果（死了立即移出，没有慢死、倒塌延迟）；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
-| 未做 | 物体模块 | `Behaviors/BuildingDestructionBehavior` | 493 | a1 a2 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |
-| 未做 | 物体模块 | `Behaviors/ToppleUpdate` | 347 | a4 | 模拟器代码里没有这个名字；例：OK_Lantern01 |
+| 未做 | 物体模块 | `Behaviors/ToppleUpdate` | 347 | a4 | 倒伏：车压过的灯笼、栏杆、路灯倒下即死（OK_Lantern01 KillWhenStartToppled）。模拟器没有碾压（同 SquishCollide）：OK_LANTERN01 在模拟器里不是物体（不挡路），platprops.STRUCTURE 里的栏杆路灯是永久障碍（游戏里车能压倒）；跟碾压一起做；例：OK_Lantern01 |
 | 未做 | 物体模块 | `Behaviors/ModelConditionUpgrade` | 341 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAntiInfantryInfantry, AlliedAntiVehicleInfantry |
 | 未做 | 物体模块 | `Behaviors/BuildingBehavior` | 334 | a1 a2 a4 a5 a6 a7 a8 | 已核（11-08）：模拟器没有这个效果（没有出售建筑）；例：AlliedAirfield, AlliedBarracks |
 | 未做 | 物体模块 | `Behaviors/ContestableGarrisonContain` | 305 | a4 | 已核（11-08）：模拟器没有这个效果（没有驻军）；例：HA_Building16_02, HA_Building16_03 |
@@ -236,7 +234,9 @@
 | 不涉及 | 脚本动作 | `SET_COOP_AI_COMMAND_UI_ENABLED` | 24 | a4 | 纯界面：开关玩家给盟友 AI 下令的按钮；模拟器的玩家没有给盟友下令的命令，开关无从起作用（以后加了这个命令再算） |
 | 不涉及 | 物体模块 | `Draws/ScriptedModelDraw` | 1895 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 纯表现（Draws）；例：AlliedAirfield, AlliedAntiAirMissileProjectile |
 | 不涉及 | 物体模块 | `Behaviors/FXListBehavior` | 796 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 纯表现（名字规则）；例：AlliedAirfield, AlliedAntiAirMissileProjectile |
+| 不涉及 | 物体模块 | `Behaviors/ObjectDefectionHelper` | 640 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 没人触发：原版只在 BaseObject 挂一个空的（所以每个物体都有），SageXML 里没有一处 DefectorSpecialPower，脚本动作表里也没有叛变；《将军》里它管"叛变后一段时间不被发现"；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
 | 不涉及 | 物体模块 | `Behaviors/ObjectSMCHelper` | 640 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 纯表现：《将军》ObjectSMCHelper 到时清掉"定时模型状态"（UNIT_SET_MODELCONDITION_GENERIC 的秒数），只换画法；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
+| 不涉及 | 物体模块 | `Behaviors/BuildingDestructionBehavior` | 493 | a1 a2 a4 a5 a6 a7 a8 a9 | 纯表现：建筑死后按骨骼放特效、甩碎块（CreationObject 如 AlliedBarracks_Debris：只有画法、寿命和碎片体积，没有身体和武器）、烟尘；例：AlliedAirfield, AlliedBarracks |
 | 不涉及 | 物体模块 | `ClientBehaviors/ModelConditionAudioLoopClientBehavior` | 466 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 纯表现（ClientBehaviors）；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
 | 不涉及 | 物体模块 | `ClientBehaviors/ModelConditionSoundSelectorClientBehavior` | 140 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 纯表现（ClientBehaviors）；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
 | 不涉及 | 物体模块 | `Draws/DynamicsDraw` | 138 | a4 | 纯表现（Draws）；例：OK_Lantern01 |

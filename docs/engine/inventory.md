@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|---|
 | 脚本动作 | 427 | 49 | 58 | 272 | 48 | 81% |
 | 脚本条件 | 89 | 22 | 6 | 61 | 0 | 94% |
-| 物体模块 | 184 | 9 | 15 | 145 | 15 | 38% |
+| 物体模块 | 184 | 9 | 15 | 143 | 17 | 42% |
 | 武器效果 | 25 | 2 | 3 | 20 | 0 | 53% |
 | AI | 415 | 30 | 197 | 154 | 34 | 87% |
 
@@ -544,7 +544,7 @@
 | 未做 | `Body/PropBody` | 1443 (2758) | 弹体和特效道具的身体（9 关 22 个模板里 16 个是弹体）：模拟器没有弹体（同 BezierProjectile），道具能不能挨打没读；例：AlliedAirField_Collapse, AlliedAntiAirShip_Collapse |
 | 不涉及 | `Behaviors/FXListBehavior` | 796 (1241) | 纯表现（名字规则）；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
 | 推断 | `Body/ActiveBody` | 790 (1398) | simunits.stats 读 MaxHealth（只有生命值；受伤状态、回血等另算）；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
-| 未做 | `Behaviors/ObjectDefectionHelper` | 640 (1059) | 模拟器代码里没有这个名字；例：AlliedSatelliteSweepShroudRevealer, AlliedTimeBombLvl1 |
+| 不涉及 | `Behaviors/ObjectDefectionHelper` | 640 (1059) | 没人触发：原版只在 BaseObject 挂一个空的（所以每个物体都有），SageXML 里没有一处 DefectorSpecialPower，脚本动作表里也没有叛变；《将军》里它管"叛变后一段时间不被发现"；例：AlliedSatelliteSweepShroudRevealer, AlliedTimeBombLvl1 |
 | 不涉及 | `Behaviors/ObjectSMCHelper` | 640 (1059) | 纯表现：《将军》ObjectSMCHelper 到时清掉"定时模型状态"（UNIT_SET_MODELCONDITION_GENERIC 的秒数），只换画法；例：AlliedSatelliteSweepShroudRevealer, AlliedTimeBombLvl1 |
 | 推断 | `Behaviors/AttributeModifierPoolUpdate` | 622 (910) | Sim.modify：属性修正挂在这个池里，到期规则（到期帧 >= 即失效、再挂覆盖不叠加）读自程序，work/re/l2_ability.md 第 51 轮；例：AlliedAntiVehicleVehicleTech3CannonNodeBase, AlliedAntiVehicleVehicleTech3CannonNodeEnd |
 | 推断 | `Behaviors/SecondaryDamageTracker` | 617 (852) | Sim.chill（ALIGN freeze）：冷冻光束的冷冻值累计、每秒消散、按生命值分档减速、满档冻住（CryoBeamFrozenArmor 90000%，一碰就碎）；规则读自 SDK 数据，程序和台上都没对；例：AlliedSatelliteSweepShroudRevealer, AlliedTimeBombLvl1 |
@@ -553,10 +553,10 @@
 | 推断 | `Behaviors/DestroyDie` | 578 (1006) | Sim.destroy：死了当帧移出（LINGER 0，台上 death 探针量过）；DeathTypes 筛选、几个 Die 模块选哪个没读；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
 | 未做 | `Behaviors/SquishCollide` | 569 (749) | 碾压步兵：模拟器没有碾压（坦克压过步兵不死）；影响玩法，没做；例：AlliedSatelliteSweepShroudRevealer, AlliedWallPiece |
 | 未做 | `Behaviors/SlowDeath` | 565 (1480) | 已核（11-08）：模拟器没有这个效果（死了立即移出，没有慢死、倒塌延迟）；例：AlliedAirField_Collapse, AlliedAntiAirShip_Collapse |
-| 未做 | `Behaviors/BuildingDestructionBehavior` | 493 (650) | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |
+| 不涉及 | `Behaviors/BuildingDestructionBehavior` | 493 (650) | 纯表现：建筑死后按骨骼放特效、甩碎块（CreationObject 如 AlliedBarracks_Debris：只有画法、寿命和碎片体积，没有身体和武器）、烟尘；例：AlliedAirfield, AlliedBarracks |
 | 不涉及 | `ClientBehaviors/ModelConditionAudioLoopClientBehavior` | 466 (649) | 纯表现（ClientBehaviors）；例：AlliedSatelliteSweepShroudRevealer, AlliedAirfield |
 | 推断 | `Behaviors/ProductionUpdate` | 351 (465) | 模拟器代码里有这个名字；例：AlliedAirfield, AlliedBarracks |
-| 未做 | `Behaviors/ToppleUpdate` | 347 (410) | 模拟器代码里没有这个名字；例：BaseTopple, BaseTree |
+| 未做 | `Behaviors/ToppleUpdate` | 347 (410) | 倒伏：车压过的灯笼、栏杆、路灯倒下即死（OK_Lantern01 KillWhenStartToppled）。模拟器没有碾压（同 SquishCollide）：OK_LANTERN01 在模拟器里不是物体（不挡路），platprops.STRUCTURE 里的栏杆路灯是永久障碍（游戏里车能压倒）；跟碾压一起做；例：BaseTopple, BaseTree |
 | 未做 | `Behaviors/ModelConditionUpgrade` | 341 (465) | 模拟器代码里没有这个名字；例：AlliedAntiInfantryInfantry, AlliedAntiVehicleInfantry |
 | 未做 | `Behaviors/BuildingBehavior` | 334 (440) | 已核（11-08）：模拟器没有这个效果（没有出售建筑）；例：AlliedAirfield, AlliedBarracks |
 | 已对拍 | `Behaviors/AttributeModifierAuraUpdate` | 311 (420) | 模拟器代码里有这个名字；台上量过：checks/engine_invuln.py；例：A09_IronCurtainEffect, BaseCivilianStructure |

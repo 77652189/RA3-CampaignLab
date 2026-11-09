@@ -96,7 +96,7 @@ def cost(template):
 
 def dps(s, a, t):
     """Damage per second body a does to body t: each weapon that can hit t, x t's armour for its type."""
-    return sum(w['dps'] * t.armor.get(w['type'], simunits.ARMOR_DEFAULT) / 100.0 for w in a.weapons
+    return sum(w['dps'] * simunits.percent(t.armor, w['type']) / 100.0 for w in a.weapons
                if s.can_hit(w, t))
 
 
