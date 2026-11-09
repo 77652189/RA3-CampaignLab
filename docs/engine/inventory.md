@@ -8,7 +8,7 @@
 | 脚本条件 | 89 | 22 | 6 | 61 | 0 | 94% |
 | 物体模块 | 184 | 9 | 15 | 145 | 15 | 38% |
 | 武器效果 | 25 | 2 | 3 | 20 | 0 | 53% |
-| AI | 415 | 30 | 170 | 181 | 34 | 86% |
+| AI | 415 | 30 | 197 | 154 | 34 | 87% |
 
 ## 脚本动作
 
@@ -896,9 +896,9 @@
 | 推断 | `人格/BaseSelection.SortOrder=PREFER_OLDEST` | 15 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/ConstantHeuristic.Weight` | 15 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/IntervalHeuristic.CountFrom` | 15 | AI 模型代码里读了这个名字 |
-| 未做 | `启发条件/TechBuildingShareHeuristic` | 15 | AI 模型代码里没有这个名字 |
-| 未做 | `启发条件/TechBuildingShareHeuristic.Above` | 15 | AI 模型代码里没有这个名字 |
-| 未做 | `启发条件/TechBuildingShareHeuristic.PercentOfFairShare` | 15 | AI 模型代码里没有这个名字 |
+| 推断 | `启发条件/TechBuildingShareHeuristic` | 15 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/TechBuildingShareHeuristic.Above` | 15 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/TechBuildingShareHeuristic.PercentOfFairShare` | 15 | AI 模型代码里读了这个名字 |
 | 推断 | `微操/AIMicroManagerData.AlphaStrikeTargetTimeToKill` | 15 | AI 模型代码里读了这个名字 |
 | 未做 | `微操/AIMicroManagerData.DodgeThreats` | 15 | AI 模型代码里没有这个名字 |
 | 推断 | `微操/IgnoreTargets.IncludeThing` | 15 | AI 模型代码里读了这个名字 |
@@ -911,7 +911,7 @@
 | 推断 | `人格/AIPersonalityDefinition.Side` | 13 | AI 模型代码里读了这个名字 |
 | 推断 | `微操/IgnoreTargets.Rule` | 13 | AI 模型代码里读了这个名字 |
 | 已对拍 | `组队招人/TeamTemplate.Priority=DEFENSE` | 13 | AI 模型代码里读了这个名字；台上量过：checks/engine_aitower.py |
-| 未做 | `启发条件/AllNearbyNodesFullHeuristic` | 12 | AI 模型代码里没有这个名字 |
+| 推断 | `启发条件/AllNearbyNodesFullHeuristic` | 12 | AI 模型代码里读了这个名字 |
 | 推断 | `微操/AIMicroManagerData.CrushPreference` | 12 | AI 模型代码里读了这个名字 |
 | 未做 | `微操/AIMicroManagerData.RandomTargetScoreModifier` | 12 | AI 模型代码里没有这个名字 |
 | 未做 | `微操/AIMicroManagerData.TimeToKeepTargetMax` | 12 | AI 模型代码里没有这个名字 |
@@ -928,13 +928,13 @@
 | 推断 | `组队招人/TeamTemplate.Priority=COOP` | 11 | AI 模型代码里读了这个名字 |
 | 不涉及 | `人格/AIPersonalityDefinition.CommanderPortrait` | 10 | 纯表现（语音、视频、画面） |
 | 未做 | `其他/BuildingPlacementDistance.Distance` | 10 | AI 模型代码里没有这个名字 |
-| 未做 | `启发条件/PowerAdvantageHeuristic` | 10 | AI 模型代码里没有这个名字 |
-| 未做 | `启发条件/PowerAdvantageHeuristic.Above` | 10 | AI 模型代码里没有这个名字 |
-| 未做 | `启发条件/PowerAdvantageHeuristic.IncludeEnemyDefenses` | 10 | AI 模型代码里没有这个名字 |
-| 未做 | `启发条件/PowerAdvantageHeuristic.IncludeOwnDefenses` | 10 | AI 模型代码里没有这个名字 |
-| 未做 | `启发条件/PowerAdvantageHeuristic.Value` | 10 | AI 模型代码里没有这个名字 |
-| 未做 | `启发条件/TimeSinceLastExpansionHeuristic` | 10 | AI 模型代码里没有这个名字 |
-| 未做 | `启发条件/TimeSinceLastExpansionHeuristic.Time` | 10 | AI 模型代码里没有这个名字 |
+| 推断 | `启发条件/PowerAdvantageHeuristic` | 10 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/PowerAdvantageHeuristic.Above` | 10 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/PowerAdvantageHeuristic.IncludeEnemyDefenses` | 10 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/PowerAdvantageHeuristic.IncludeOwnDefenses` | 10 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/PowerAdvantageHeuristic.Value` | 10 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/TimeSinceLastExpansionHeuristic` | 10 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/TimeSinceLastExpansionHeuristic.Time` | 10 | AI 模型代码里读了这个名字 |
 | 已对拍 | `目标/AITargetingHeuristic.SearchRange` | 10 | AI 模型代码里读了这个名字；台上量过：docs/engine/aistate.md |
 | 推断 | `组队招人/TeamTemplate.AllowRecruitUnitsInCombat` | 9 | AI 模型代码里读了这个名字 |
 | 推断 | `组队招人/TeamTemplate.Priority=HIGH` | 9 | AI 模型代码里读了这个名字 |
@@ -951,13 +951,13 @@
 | 已对拍 | `人格/AIPersonalityDefinition.BaseCompactness` | 6 | AI 模型代码里读了这个名字；台上量过：checks/engine_aitower.py |
 | 未做 | `人格/AIPersonalityDefinition.RepairBuildingsAtDifficulty` | 6 | AI 模型代码里没有这个名字 |
 | 未做 | `人格/AIPersonalityDefinition.UsePlayerPowersAtDifficulty` | 6 | AI 模型代码里没有这个名字 |
-| 未做 | `启发条件/BeaconExistsHeuristic` | 6 | AI 模型代码里没有这个名字 |
-| 未做 | `启发条件/BeaconExistsHeuristic.Exists` | 6 | AI 模型代码里没有这个名字 |
-| 未做 | `启发条件/BeaconExistsHeuristic.Type` | 6 | AI 模型代码里没有这个名字 |
+| 推断 | `启发条件/BeaconExistsHeuristic` | 6 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/BeaconExistsHeuristic.Exists` | 6 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/BeaconExistsHeuristic.Type` | 6 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/PathToTargetHeuristic.Surface` | 6 | AI 模型代码里读了这个名字 |
-| 未做 | `启发条件/ResourceNodeShareHeuristic` | 6 | AI 模型代码里没有这个名字 |
-| 未做 | `启发条件/ResourceNodeShareHeuristic.Above` | 6 | AI 模型代码里没有这个名字 |
-| 未做 | `启发条件/ResourceNodeShareHeuristic.PercentOfFairShare` | 6 | AI 模型代码里没有这个名字 |
+| 推断 | `启发条件/ResourceNodeShareHeuristic` | 6 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/ResourceNodeShareHeuristic.Above` | 6 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/ResourceNodeShareHeuristic.PercentOfFairShare` | 6 | AI 模型代码里读了这个名字 |
 | 未做 | `微操/AIMicroManagerData.DodgeThreatsReactionTimeMax` | 6 | AI 模型代码里没有这个名字 |
 | 未做 | `微操/AIMicroManagerData.DodgeThreatsReactionTimeMin` | 6 | AI 模型代码里没有这个名字 |
 | 推断 | `微操/SpecificSpecialPowerDelay.MaximumDelay` | 6 | AI 模型代码里读了这个名字 |
@@ -995,12 +995,12 @@
 | 推断 | `经济/BudgetState.State` | 5 | AI 模型代码里读了这个名字 |
 | 推断 | `人格/UnitCap.Cap` | 4 | AI 模型代码里读了这个名字 |
 | 推断 | `人格/UnitCap.Difficulty` | 4 | AI 模型代码里读了这个名字 |
-| 未做 | `启发条件/IncomeAdvantageHeuristic` | 4 | AI 模型代码里没有这个名字 |
-| 未做 | `启发条件/IncomeAdvantageHeuristic.Above` | 4 | AI 模型代码里没有这个名字 |
-| 未做 | `启发条件/IncomeAdvantageHeuristic.Value` | 4 | AI 模型代码里没有这个名字 |
-| 未做 | `启发条件/OpenNodeHeuristic` | 4 | AI 模型代码里没有这个名字 |
-| 未做 | `启发条件/OpenNodeHeuristic.Exists` | 4 | AI 模型代码里没有这个名字 |
-| 未做 | `启发条件/OpenNodeHeuristic.MinDistanceFromEnemy` | 4 | AI 模型代码里没有这个名字 |
+| 推断 | `启发条件/IncomeAdvantageHeuristic` | 4 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/IncomeAdvantageHeuristic.Above` | 4 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/IncomeAdvantageHeuristic.Value` | 4 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/OpenNodeHeuristic` | 4 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/OpenNodeHeuristic.Exists` | 4 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/OpenNodeHeuristic.MinDistanceFromEnemy` | 4 | AI 模型代码里读了这个名字 |
 | 推断 | `微操/AIMicroManagerData.CanUseSiegeState` | 4 | AI 模型代码里读了这个名字 |
 | 推断 | `微操/AIMicroManagerData.GatherTempVisionRangeBonus` | 4 | AI 模型代码里读了这个名字 |
 | 推断 | `微操/AIMicroManagerData.RetreatTempVisionRangeBonus` | 4 | AI 模型代码里读了这个名字 |
@@ -1034,10 +1034,10 @@
 | 未做 | `人格/AIPersonalityDefinition.EmergencyManagerHandleNoIncomeAtDifficulty` | 2 | AI 模型代码里没有这个名字 |
 | 未做 | `人格/AIPersonalityDefinition.EmergencyManagerHandleUnderAttackAtDifficulty` | 2 | AI 模型代码里没有这个名字 |
 | 推断 | `人格/BaseSelection.SortOrder=PREFER_NEWEST` | 2 | AI 模型代码里读了这个名字 |
-| 未做 | `启发条件/CanBuildBuildingsOnSurfaceHeuristic` | 2 | AI 模型代码里没有这个名字 |
-| 未做 | `启发条件/CanBuildBuildingsOnSurfaceHeuristic.MaxPlacementGridCells` | 2 | AI 模型代码里没有这个名字 |
-| 未做 | `启发条件/CanBuildBuildingsOnSurfaceHeuristic.MinPlacementGridCells` | 2 | AI 模型代码里没有这个名字 |
-| 未做 | `启发条件/CanBuildBuildingsOnSurfaceHeuristic.Surfaces` | 2 | AI 模型代码里没有这个名字 |
+| 推断 | `启发条件/CanBuildBuildingsOnSurfaceHeuristic` | 2 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/CanBuildBuildingsOnSurfaceHeuristic.MaxPlacementGridCells` | 2 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/CanBuildBuildingsOnSurfaceHeuristic.MinPlacementGridCells` | 2 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/CanBuildBuildingsOnSurfaceHeuristic.Surfaces` | 2 | AI 模型代码里读了这个名字 |
 | 推断 | `微操/AIMicroManagerData.MaxUnitIdleDistanceChange` | 2 | AI 模型代码里读了这个名字 |
 | 推断 | `战术/Tactic.Tactic=Hunt` | 2 | AI 模型代码里读了这个名字 |
 | 推断 | `目标/AITargetingHeuristic.HeuristicType=Husk` | 2 | AI 模型代码里读了这个名字 |

@@ -25,7 +25,9 @@ every frame (the simulator moves in DT ticks; the AI is ticked for each frame of
   states      ctx: the mission's flags (ScriptedFlagHeuristic), 'has' (its templates), 'building' (the kinds queued),
               'enemy nearby' (enemy value within the distance of its yard), 'path to target' (PathToTargetHeuristic:
               the last enemy with a structure, both base objects by states.base_object, spots by states.spot on
-              the simulator's grids, a route for the test template's surface; cached PATH_EVERY).
+              the simulator's grids, a route for the test template's surface; cached PATH_EVERY), 'harvesters',
+              'money', 'opponent funds' (the first enemy's), 'beacons' (none), 'power advantage' (tactics'
+              rule over the whole armies -- INFERRED); the other strategic facts stay unmodelled (states.strategic).
   blocks      A's TargetsBlock + TacticsBlock (orders: 'move' / 'attack-move' -> Sim.order_move), DefenseBlock (one
               MAIN_BASE round the first yard; hurt = the body's hp fell; aesthetics = a circle round the point),
               MicroBlock (unit powers from the CommandSet; a use is only recorded: the simulator gives the AI's units
@@ -316,11 +318,32 @@ class Brain:
             v = sum(t.value for t in self.view.things if t.owner in self.view.enemies
                     and math.hypot(t.x - hx, t.y - hy) <= distance and (not things or t.template in things))
             return v > 0 and v >= min_value
+        foes = sorted(self.view.enemies)
         out = {'flags': self.host.flags(self.player), 'has': {b.template for b in mine}, 'building': building,
-               'enemy nearby': near}
+               'enemy nearby': near,
+               'harvesters': sum('HARVESTER' in b.kinds for b in mine),               # INFERRED category 0x14
+               'money': lambda account: self.sim.money.get(self.player, 0),          # one account in the simulator
+               'beacons': set(),                                                     # no beacons in the simulator
+               'power advantage': self.power_advantage}
+        if foes:                                     # INFERRED: 0x8b3a00's enemy = the first of the enemies here
+            out['opponent funds'] = self.sim.money.get(foes[0], 0)
         if 'targets' in self.host.blocks:
             out['target'] = self.has_target
         return out
+
+    def power_advantage(self, own_kindof, enemy_kindof, own_defenses, enemy_defenses):
+        """ctx 'power advantage' (PowerAdvantageHeuristic, 0x8c4910): our units of OwnKindOf (and defences, i.e.
+        structures with a weapon, if asked) against the enemies' -- INFERRED the team rule tactics.power_advantage
+        (their time to kill us over ours to kill them), the ratio lines 187-189 not read."""
+        ok, ek = set(own_kindof.split()), set(enemy_kindof.split())
+
+        def side(test, kinds, defenses):
+            return [b for b in self.sim.living() if not b.scenery and test(b.owner) and b.weapons
+                    and (not kinds or kinds & set(b.kinds))
+                    and (defenses or 'STRUCTURE' not in b.kinds)]
+        mine = side(lambda o: o == self.player, ok, own_defenses)
+        theirs = side(lambda o: o != self.player and o in self.view.enemies, ek, enemy_defenses)
+        return self.host.mod['tactics'].power_advantage(self.fighters(mine), self.fighters(theirs))
 
     def has_target(self, st):
         """ctx 'target' (states._draw): one of the state's target heuristics finds a Thing now (claims count)."""
@@ -348,6 +371,12 @@ class Brain:
         """TacticsBlock's fight hook (the team state, 0x8cdb70): the members and every living enemy body as
         Fighters; rate = the sum of the dps of the weapons that can hit the other, times its armour (Sim.can_hit /
         the firing rule); vision = its VisionRange alone (Body.sight, 0x725c80; not the shroud clearing range)."""
+        foes = [b for b in self.sim.living()
+                if not b.scenery and b.owner != self.player and b.owner in self.view.enemies]
+        return self.fighters([u.body for u in team.members if u.body.alive]), self.fighters(foes)
+
+    def fighters(self, bodies):
+        """Bodies as tactics.Fighter (fight's rule: rate by Sim.can_hit and the armour, vision = VisionRange)."""
         tc, s = self.host.mod['tactics'], self.sim
 
         def rate_of(b):
@@ -363,10 +392,7 @@ class Brain:
                            'STRUCTURE' in b.kinds, rate_of(b))
             f.body = b
             return f
-        mem = [fighter(u.body, self.tid(u.body)) for u in team.members if u.body.alive]
-        foes = [fighter(b, self.tid(b)) for b in s.living()
-                if not b.scenery and b.owner != self.player and b.owner in self.view.enemies]
-        return mem, foes
+        return [fighter(b, self.tid(b)) for b in bodies]
 
     def busy(self, team):
         return any(u.body.engaged or isinstance(u.body.goal, sim.Body) for u in team.members)

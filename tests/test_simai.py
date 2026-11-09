@@ -309,3 +309,21 @@ def test_path_to_target_cannot_judge_without_an_enemy_base(skirmish):
         pytest.skip('an enemy structure still stands at 300 s')
     b.paths.clear()
     assert b.path_to_target('Land', 'AlliedAntiInfantryInfantry', 'NORMAL') is None
+
+
+def test_strategic_facts_the_brain_gives(lib):
+    """The cheap strategic-state facts (work/re l4_states.md 10, states.strategic): harvesters, money, the first
+    enemy's money, no beacons, and PowerAdvantage asked lazily with tactics' rule; the rest stay unmodelled."""
+    w = simai.run('aiskirm', until=30, lib=lib)
+    (b,) = w.brains.values()
+    f = b.facts()
+    st = b.host.mod['states']
+    assert f['harvesters'] == sum('HARVESTER' in x.kinds for x in b.sim.living() if x.owner == b.player)
+    assert f['money'](0) == b.sim.money.get(b.player, 0)
+    assert f['beacons'] == set()
+    assert st.value('BeaconExistsHeuristic', {'Type': 'Assault', 'Exists': 'false'}, f) == 1.0
+    assert st.value('MoneyHeuristic', {'Money': '0', 'Above': 'true'}, f) == float(f['money'](0) > 0)
+    r = b.power_advantage('CAN_ATTACK', 'CAN_ATTACK', True, True)
+    assert r >= 0.0
+    assert st.value('PowerAdvantageHeuristic', {'Value': '-1'}, f) == 1.0                 # any ratio is above -1
+    assert st.value('RedAlertHeuristic', {}, f) is None
