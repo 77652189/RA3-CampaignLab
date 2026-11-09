@@ -662,7 +662,6 @@ KNOWN = {
     ('脚本动作', 'UNIT_SET_MODELCONDITION_GENERIC'): first('a7', 'UNIT_SET_MODELCONDITION_GENERIC', 'Sim.act 不认识：没效果，记进 Sim.unknown'),
     ('脚本动作(忽略)', 'CAMERA_LETTERBOX_BEGIN'): first('a4', 'CAMERA_LETTERBOX_BEGIN', 'sim.IGNORED 明确忽略（不做任何事）'),
     ('脚本动作(忽略)', 'CAMERA_LETTERBOX_END'): first('a4', 'CAMERA_LETTERBOX_END', 'sim.IGNORED 明确忽略（不做任何事）'),
-    ('脚本动作(忽略)', 'CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT'): first('a4', 'CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT', 'sim.IGNORED 明确忽略（不做任何事）'),
     ('脚本动作(忽略)', 'SET_COOP_AI_COMMAND_UI_ENABLED'): first('a4', 'SET_COOP_AI_COMMAND_UI_ENABLED', 'sim.IGNORED 明确忽略（不做任何事）'),
     ('设备', '列车:刹车'): first('s2', '列车:刹车', '机关 装甲列车（列车）：玩家用 Command_*_brake 让列车停下（列车路线靠脚本每秒下命令）；模拟器没有对应规'),
     ('设备', '自由号:跳跃'): first('a7', '自由号:跳跃', '机关 自由号（自由号）：自由号用 SpecialPower_CNV_ChronoDeck 跳到落点 / 跳回家 / 跳回'),

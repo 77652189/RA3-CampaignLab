@@ -2,16 +2,16 @@
 
 由 `experimental/cnv/inventory_levels.py --write` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）编出的全部脚本（`parts.merged`，含目标显示脚本）里的动作和条件；地图和任务摆的物体、我们自己的单位、脚本点名的模板，连同模块点名的武器、武器点名的物体（抛射体）和武器，取生效的模块（继承、include、同 id 覆盖）和武器效果。没跟：模块点名的别的物体（多是能变成 / 能装的东西：多功能步兵车的乘客、锤子坦克吸来的车）、物体生成表（死亡碎片、OCL 技能）和命令表（工厂能造什么）。AI 部分（引擎 B）在 [inventory-levels.md](inventory-levels.md)。状态和原版用量取自 [inventory.md](inventory.md)。停止条件①：下表全部已对拍。
 
-**已对拍 57 / 214**（不涉及的不算）。
+**已对拍 57 / 211**（不涉及的不算）。
 
 | 部分 | 已对拍 | 推断 | 未做 | 不涉及 |
 |---|---|---|---|---|
-| 脚本动作 | 35 | 24 | 3 | 2 |
+| 脚本动作 | 35 | 25 | 0 | 4 |
 | 脚本条件 | 11 | 1 | 0 | 0 |
-| 物体模块 | 9 | 13 | 97 | 11 |
+| 物体模块 | 9 | 14 | 95 | 12 |
 | 武器效果 | 2 | 2 | 17 | 0 |
 
-按原版用量加权：已对拍 56%，已有（已对拍+推断）80%。
+按原版用量加权：已对拍 57%，已有（已对拍+推断）83%。
 
 摆了、但原版数据和我们的单位里都找不到的模板（模块没算）：a9 `AlliedFutureTank`。
 
@@ -19,13 +19,8 @@
 
 | 状态 | 部分 | 项 | 原版用量 | 关 | 说明 |
 |---|---|---|---|---|---|
-| 未做 | 脚本动作 | `CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT` | 196 | a4 | sim.IGNORED 明确丢掉 |
-| 未做 | 脚本动作 | `UNIT_SET_MODELCONDITION_GENERIC` | 111 | a7 | Sim.act / Sim.cond 不认识 |
-| 未做 | 脚本动作 | `SET_COOP_AI_COMMAND_UI_ENABLED` | 24 | a4 | sim.IGNORED 明确丢掉 |
 | 未做 | 物体模块 | `Body/PropBody` | 1443 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAntiGroundAircraftMissileProjectile_Veteran, AlliedAntiInfantryVehicleTorpedoProjectile |
 | 未做 | 物体模块 | `Behaviors/ObjectDefectionHelper` | 640 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
-| 未做 | 物体模块 | `Behaviors/ObjectSMCHelper` | 640 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
-| 未做 | 物体模块 | `Behaviors/AttributeModifierPoolUpdate` | 622 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
 | 未做 | 物体模块 | `Behaviors/SecondaryDamageTracker` | 617 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
 | 未做 | 物体模块 | `Behaviors/Physics` | 597 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
 | 未做 | 物体模块 | `Behaviors/SquishCollide` | 569 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAntiAirVehicleTech1, AlliedAntiInfantryInfantry |
@@ -143,6 +138,7 @@
 | 推断 | 脚本动作 | `MOVIE_PLAY_RADAR` | 433 | a4 | 只记进时间线（sim.SHOWN） |
 | 推断 | 脚本动作 | `PLAYER_RELATES_PLAYER` | 319 | a2 a4 a5 a7 a9 | Sim.act / Sim.cond 有分支 |
 | 推断 | 脚本动作 | `OBJECT_CREATE_RADAR_EVENT` | 254 | a4 | 只记进时间线（sim.SHOWN） |
+| 推断 | 脚本动作 | `CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT` | 196 | a4 | Sim.act / Sim.cond 有分支 |
 | 推断 | 脚本动作 | `LINK_MISSION_OBJECTIVE_TO_WAYPOINT` | 194 | a1 a3 a4 a5 a6 a7 | Sim.act / Sim.cond 有分支 |
 | 推断 | 脚本动作 | `NAMED_FLASH` | 173 | a9 | 只记进时间线（sim.SHOWN） |
 | 推断 | 脚本动作 | `NAMED_SHOW_INFOBOX` | 166 | a4 | 只记进时间线（sim.SHOWN） |
@@ -162,6 +158,7 @@
 | 推断 | 脚本动作 | `TEAM_GUARD_AREA` | 9 | a1 a4 a5 a6 a7 a8 a9 | Sim.act / Sim.cond 有分支 |
 | 推断 | 脚本条件 | `PLAYER_HAS_OBJECT_COMPARISON` | 628 | a1 a4 a5 a7 | Sim.act / Sim.cond 有分支 |
 | 推断 | 物体模块 | `Body/ActiveBody` | 790 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | simunits.stats 读 MaxHealth（只有生命值；受伤状态、回血等另算）；例：AlliedAirfield, AlliedAntiAirMissileProjectile |
+| 推断 | 物体模块 | `Behaviors/AttributeModifierPoolUpdate` | 622 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | Sim.modify：属性修正挂在这个池里，到期规则（到期帧 >= 即失效、再挂覆盖不叠加）读自程序，work/re/l2_ability.md 第 51 轮；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
 | 推断 | 物体模块 | `Behaviors/DestroyDie` | 578 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | Sim.destroy：死了当帧移出（LINGER 0，台上 death 探针量过）；DeathTypes 筛选、几个 Die 模块选哪个没读；例：AlliedAirfield, AlliedAntiAirMissileProjectile |
 | 推断 | 物体模块 | `Behaviors/ProductionUpdate` | 351 | a1 a2 a4 a5 a6 a7 a8 a9 | 模拟器代码里有这个名字；例：AlliedAirfield, AlliedBarracks |
 | 推断 | 物体模块 | `AI/AIUpdate` | 136 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | Sim.fight / 移动（单位 AI 的状态机细项按引擎 B 的 AI 清单推进）；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
@@ -234,9 +231,12 @@
 | 已对拍 | 武器效果 | `DamageNugget` | 183 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里有这个名字；台上量过：checks/engine_fire.py；例：AAAVT1_CommandoPistolWeapon, AAAVT1_JapanAntiVehicleInfantryPlasmaBazooka |
 | 已对拍 | 武器效果 | `ProjectileNugget` | 88 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里有这个名字；台上量过：checks/engine_shot.py；例：AAAVT1_AlliedAntiVehicleInfantryMissileLauncher, AAAVT1_JapanInfiltrationShiruken |
 | 不涉及 | 脚本动作 | `CAMERA_LETTERBOX_END` | 154 | a4 | 纯表现（名字规则） |
+| 不涉及 | 脚本动作 | `UNIT_SET_MODELCONDITION_GENERIC` | 111 | a7 | 纯表现：设模型状态只换画法。原版脚本设的是 SUPPRESSED（a01 摆拍枪战的趴下动作），SDK 数据里读 SUPPRESSED 的只有绘制模块的 ConditionsYes；我们 a7 设的 USER_1 只有自由号的充能画法读 |
 | 不涉及 | 脚本动作 | `CAMERA_LETTERBOX_BEGIN` | 104 | a4 | 纯表现（名字规则） |
+| 不涉及 | 脚本动作 | `SET_COOP_AI_COMMAND_UI_ENABLED` | 24 | a4 | 纯界面：开关玩家给盟友 AI 下令的按钮；模拟器的玩家没有给盟友下令的命令，开关无从起作用（以后加了这个命令再算） |
 | 不涉及 | 物体模块 | `Draws/ScriptedModelDraw` | 1895 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 纯表现（Draws）；例：AlliedAirfield, AlliedAntiAirMissileProjectile |
 | 不涉及 | 物体模块 | `Behaviors/FXListBehavior` | 796 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 纯表现（名字规则）；例：AlliedAirfield, AlliedAntiAirMissileProjectile |
+| 不涉及 | 物体模块 | `Behaviors/ObjectSMCHelper` | 640 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 纯表现：《将军》ObjectSMCHelper 到时清掉"定时模型状态"（UNIT_SET_MODELCONDITION_GENERIC 的秒数），只换画法；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
 | 不涉及 | 物体模块 | `ClientBehaviors/ModelConditionAudioLoopClientBehavior` | 466 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 纯表现（ClientBehaviors）；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
 | 不涉及 | 物体模块 | `ClientBehaviors/ModelConditionSoundSelectorClientBehavior` | 140 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 纯表现（ClientBehaviors）；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
 | 不涉及 | 物体模块 | `Draws/DynamicsDraw` | 138 | a4 | 纯表现（Draws）；例：OK_Lantern01 |

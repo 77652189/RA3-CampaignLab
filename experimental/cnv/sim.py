@@ -222,7 +222,10 @@ ALIGN = {
     'capture': 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED Command_CaptureBuilding: at its side the building changes hands, '
                'a deposit building pays its bonus then its amount each interval (R4, bench 2026-11-07 a4 derrick)',
     'nearest ref':'SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER: the unnamed one nearest the team\'s middle (R2, bench 2026-11-07 engine_ref)',
-    'nearest ref any': '未对齐: SET_REF_TO_NEREST_TEAM_OF_TYPE_OWNED_BY_PLAYER: as the unnamed one\'s (nearest ref), '
+    'create unnamed': '未对齐: CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT (_WITH_ORIENTATION): the named one\'s maker without a '
+                      'name, a new object each run, on the team (RA3 1.13: the same three calls as the named one); '
+                      'not benched',
+    'nearest ref any': '未对齐:SET_REF_TO_NEREST_TEAM_OF_TYPE_OWNED_BY_PLAYER: as the unnamed one\'s (nearest ref), '
                        'named objects too; not read, not benched',
     'team destroyed': '未对齐: TEAM_DESTROYED: no object of the team left, the dying counted (Generals '
                       'evaluateIsDestroyed; not read in RA3, not benched); a team nobody was ever in is not destroyed',
@@ -315,7 +318,7 @@ SOUND_PLAYS = ('PLAY_SOUND_EFFECT', 'PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT')
 AI_SWITCHES = ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', 'SKIRMISH_AI_USE_REPAIRS', 'SKIRMISH_AI_USE_REBUILD_SYSTEM')
 IGNORED = {'DISPLAY_COUNTER', 'HIDE_COUNTER',
            'CAMERA_LETTERBOX_BEGIN', 'CAMERA_LETTERBOX_END',
-           'CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT', 'SET_COOP_AI_COMMAND_UI_ENABLED'}
+           'SET_COOP_AI_COMMAND_UI_ENABLED'}
 
 # ---- the engine line's script engine (ADR 0019 layer 1). Where it is not on this computer (a clean clone) the
 # simulator runs its own older loop: every DT tick each script once, timers as seconds, NOT as a plain negation.
@@ -2142,6 +2145,23 @@ class Sim:
             if self.blocks(b):
                 self.reblock()
             self.note('出现', f'{self.label(b)}（{a[1]}，{self.who(b.owner)}）在 {a[3]}'
+                      + ('' if b.owner == self.human or self.sees(b.x, b.y, b.surface == 'air') else '，玩家看不见'))
+            self.change()
+        elif name in ('CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT', 'CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION'):
+            # (type, team, waypoint[, angle]): the named one's maker without a name (RA3 1.13: both run the same three
+            # calls, work/re actions_map.json), a new object every time it runs. INFERRED, not benched: no name, so
+            # '#' (an unnamed one for SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER)
+            self.used.add('create unnamed')
+            p = self.point(a[2])
+            if p is None:
+                return
+            b = self.add(f'#created {len(self.bodies)} {a[0]}', a[0], a[1].split('/')[0], *p, by=script.name, at=self.t)
+            b.team = a[1]
+            self.active.add(a[1])
+            b.angle = float(a[3]) if len(a) > 3 else 0.0
+            if self.blocks(b):
+                self.reblock()
+            self.note('出现', f'{a[0]}（{self.who(b.owner)}）在 {a[2]}'
                       + ('' if b.owner == self.human or self.sees(b.x, b.y, b.surface == 'air') else '，玩家看不见'))
             self.change()
         elif name in ('MOVE_NAMED_UNIT_TO', 'ATTACK_MOVE_NAMED_UNIT_TO'):

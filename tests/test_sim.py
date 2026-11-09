@@ -53,6 +53,26 @@ def test_a_unit_walks_the_map_at_its_speed():
     assert s.ending[0] == '赢' and straight / 50 - 3 <= s.ending[1] <= 1.6 * straight / 50
 
 
+def test_an_unnamed_create_makes_a_new_object_each_time_on_the_team():
+    """CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT (was ignored): each action one more object, no name, on that team at the
+    waypoint; an unnamed-type reference finds it (it is unnamed: '#')."""
+    team = 'Soviet_1/teamSoviet_1'
+    m = mission([Script('make', [], [('CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT', 'JapanAntiInfantryInfantry', team, 'A'),
+                                     ('CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION', 'JapanAntiInfantryInfantry',
+                                      team, 'A', 90.0),
+                                     ('SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER',
+                                      'JapanAntiInfantryInfantry', 'Soviet_1', team, 'R')])])
+    a = festival.SITES['start']
+    m.waypoints = {'A': (a.x, a.y)}
+    s = sim.Sim(m).run(1)
+    made = [b for b in s.bodies.values() if b.template == 'JapanAntiInfantryInfantry']
+    assert len(made) == 2 and all(b.name.startswith('#') and b.team == team and b.owner == 'Soviet_1' for b in made)
+    assert all(abs(b.x - a.x) < 1 and abs(b.y - a.y) < 1 for b in made)
+    assert sorted(b.angle for b in made) == [0.0, 90.0]
+    assert s.refs.get('R') in made
+    assert 'CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT' not in s.unknown
+
+
 def test_a_route_runs_from_where_the_unit_stands():
     """The route from the start to the west field begins at the start and is not much longer than the straight line
     (the first simulator reversed it twice: a unit went straight at its goal, walked the route back to where it set

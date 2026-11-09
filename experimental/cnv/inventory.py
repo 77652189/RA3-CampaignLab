@@ -107,6 +107,18 @@ NOTES = {
     (ACTION, 'UNIT_AI_TRANSFER'): (GUESSED, '程序读到：人类玩家的单位无效、不清命令；交给 AI 后的行为归引擎 B，'
                                             '碰到记 Sim.unmodeled（台上没量）'),
     (ACTION, 'TEAM_AI_TRANSFER'): (GUESSED, '同 UNIT_AI_TRANSFER，对队里每个成员（台上没量）'),
+    # engine A round 106: judged by what reads them
+    (ACTION, 'UNIT_SET_MODELCONDITION_GENERIC'): (NA, '纯表现：设模型状态只换画法。原版脚本设的是 SUPPRESSED（a01 '
+                                                      '摆拍枪战的趴下动作），SDK 数据里读 SUPPRESSED 的只有绘制模块的 '
+                                                      'ConditionsYes；我们 a7 设的 USER_1 只有自由号的充能画法读'),
+    (ACTION, 'UNIT_CLEAR_MODELCONDITION'): (NA, '纯表现：同 UNIT_SET_MODELCONDITION_GENERIC，清掉画法状态'),
+    (MODULE, 'Behaviors/ObjectSMCHelper'): (NA, '纯表现：《将军》ObjectSMCHelper 到时清掉"定时模型状态"'
+                                                '（UNIT_SET_MODELCONDITION_GENERIC 的秒数），只换画法'),
+    (MODULE, 'Behaviors/AttributeModifierPoolUpdate'): (GUESSED, 'Sim.modify：属性修正挂在这个池里，到期规则'
+                                                                 '（到期帧 >= 即失效、再挂覆盖不叠加）读自程序，'
+                                                                 'work/re/l2_ability.md 第 51 轮'),
+    (ACTION, 'SET_COOP_AI_COMMAND_UI_ENABLED'): (NA,'纯界面：开关玩家给盟友 AI 下令的按钮；模拟器的玩家没有给盟友'
+                                                     '下令的命令，开关无从起作用（以后加了这个命令再算）'),
 }
 
 # presentation only: script actions that move the camera, play sound / film, draw on screen (conditions are never NA:

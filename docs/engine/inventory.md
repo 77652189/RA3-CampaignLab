@@ -4,9 +4,9 @@
 
 | 部分 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|
-| 脚本动作 | 427 | 49 | 56 | 277 | 45 | 80% |
+| 脚本动作 | 427 | 49 | 58 | 272 | 48 | 81% |
 | 脚本条件 | 89 | 22 | 6 | 61 | 0 | 94% |
-| 物体模块 | 184 | 9 | 13 | 148 | 14 | 26% |
+| 物体模块 | 184 | 9 | 14 | 146 | 15 | 33% |
 | 武器效果 | 25 | 2 | 2 | 21 | 0 | 52% |
 | AI | 415 | 30 | 167 | 184 | 34 | 85% |
 
@@ -41,7 +41,7 @@
 | 已对拍 | `CREATE_NAMED_ON_TEAM_AT_WAYPOINT` | 291 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_acquire.py |
 | 已对拍 | `NAMED_ATTACK_NAMED` | 271 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_attack.py |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT` | 264 | Sim.act / Sim.cond 不认识 |
-| 未做 | `CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION` | 259 | Sim.act / Sim.cond 不认识 |
+| 推断 | `CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION` | 259 | Sim.act / Sim.cond 有分支 |
 | 已对拍 | `MOVE_CAMERA_TO` | 255 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_camera.py |
 | 推断 | `OBJECT_CREATE_RADAR_EVENT` | 254 | 只记进时间线（sim.SHOWN） |
 | 已对拍 | `UNIT_IDLE_FOR_SECONDS` | 237 | tests/test_simbench.py::test_scripts1_idle_for_seconds_drops_the_move |
@@ -52,7 +52,7 @@
 | 已对拍 | `PLAYER_SET_MAX_PLAYER_POWER_POINTS` | 206 | tests/test_simbench.py::test_protocol_set_points_follows_the_programs_rule |
 | 已对拍 | `NAMED_KILL` | 204 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_attack.py |
 | 推断 | `TEAM_HUNT` | 203 | 没交给 AI 的玩家（含玩家自己）：不动，台上量过（engine_scripts1 hunt 60 s）；AI 玩家的 HuntTactic 不模拟（引擎 B），碰到记 Sim.unmodeled |
-| 未做 | `CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT` | 196 | sim.IGNORED 明确丢掉 |
+| 推断 | `CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT` | 196 | Sim.act / Sim.cond 有分支 |
 | 推断 | `LINK_MISSION_OBJECTIVE_TO_WAYPOINT` | 194 | Sim.act / Sim.cond 有分支 |
 | 未做 | `NAMED_FOLLOW_WAYPOINTS` | 192 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_GARRISON_SPECIFIC_BUILDING_INSTANTLY` | 186 | Sim.act / Sim.cond 不认识 |
@@ -92,7 +92,7 @@
 | 未做 | `TEAM_IDLE_FOR_SECONDS` | 114 | Sim.act / Sim.cond 不认识 |
 | 未做 | `PLAYER_SET_BASE_POWER` | 112 | Sim.act / Sim.cond 不认识 |
 | 未做 | `PLAYER_TOGGLE_RESOURCE_SHARING` | 111 | Sim.act / Sim.cond 不认识 |
-| 未做 | `UNIT_SET_MODELCONDITION_GENERIC` | 111 | Sim.act / Sim.cond 不认识 |
+| 不涉及 | `UNIT_SET_MODELCONDITION_GENERIC` | 111 | 纯表现：设模型状态只换画法。原版脚本设的是 SUPPRESSED（a01 摆拍枪战的趴下动作），SDK 数据里读 SUPPRESSED 的只有绘制模块的 ConditionsYes；我们 a7 设的 USER_1 只有自由号的充能画法读 |
 | 不涉及 | `PLAY_SOUND_AS_AI_COCOMMANDER_DIALOG` | 109 | 纯表现（名字规则） |
 | 未做 | `TEAM_CREATE_RADAR_EVENT` | 107 | Sim.act / Sim.cond 不认识 |
 | 推断 | `MAP_REVEAL_PERMANENTLY_AT_WAYPOINT` | 105 | Sim.act / Sim.cond 有分支 |
@@ -122,7 +122,7 @@
 | 已对拍 | `UNIT_SET_TEAM` | 72 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_acquire.py |
 | 未做 | `TEAM_CHANGE_OBJECT_STATUS` | 71 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_GARRISON_TEAM_INSTANTLY` | 68 | Sim.act / Sim.cond 不认识 |
-| 未做 | `UNIT_CLEAR_MODELCONDITION` | 68 | Sim.act / Sim.cond 不认识 |
+| 不涉及 | `UNIT_CLEAR_MODELCONDITION` | 68 | 纯表现：同 UNIT_SET_MODELCONDITION_GENERIC，清掉画法状态 |
 | 未做 | `CREATE_UNNAMED_ON_TEAM_AT_NAMED_OBJECT_LOCATION` | 67 | Sim.act / Sim.cond 不认识 |
 | 未做 | `LINK_MISSION_HOT_SPOT_TO_OBJECT` | 67 | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `SKIRMISH_AI_USE_REBUILD_SYSTEM` | 67 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aiswitch.py |
@@ -211,7 +211,7 @@
 | 未做 | `PLAYER_ALLOW_AI_AUTOACQUIRE` | 24 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `PLAY_SOUND_AS_AI_COCOMMANDER_DIALOG_WITH_SUBTITLE` | 24 | 纯表现（名字规则） |
 | 不涉及 | `SETUP_CAMERA` | 24 | 纯表现（名字规则） |
-| 未做 | `SET_COOP_AI_COMMAND_UI_ENABLED` | 24 | sim.IGNORED 明确丢掉 |
+| 不涉及 | `SET_COOP_AI_COMMAND_UI_ENABLED` | 24 | 纯界面：开关玩家给盟友 AI 下令的按钮；模拟器的玩家没有给盟友下令的命令，开关无从起作用（以后加了这个命令再算） |
 | 未做 | `LINK_MISSION_OBJECTIVE_TO_WAYPOINT_WITH_CATEGORY` | 23 | Sim.act / Sim.cond 不认识 |
 | 未做 | `PLAYER_GRANT_SPECIAL_POWER` | 23 | Sim.act / Sim.cond 不认识 |
 | 未做 | `PLAYER_TRANSFER_OWNERSHIP_PLAYER` | 23 | Sim.act / Sim.cond 不认识 |
@@ -545,8 +545,8 @@
 | 不涉及 | `Behaviors/FXListBehavior` | 796 (1241) | 纯表现（名字规则）；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
 | 推断 | `Body/ActiveBody` | 790 (1398) | simunits.stats 读 MaxHealth（只有生命值；受伤状态、回血等另算）；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
 | 未做 | `Behaviors/ObjectDefectionHelper` | 640 (1059) | 模拟器代码里没有这个名字；例：AlliedSatelliteSweepShroudRevealer, AlliedTimeBombLvl1 |
-| 未做 | `Behaviors/ObjectSMCHelper` | 640 (1059) | 模拟器代码里没有这个名字；例：AlliedSatelliteSweepShroudRevealer, AlliedTimeBombLvl1 |
-| 未做 | `Behaviors/AttributeModifierPoolUpdate` | 622 (910) | 模拟器代码里没有这个名字；例：AlliedAntiVehicleVehicleTech3CannonNodeBase, AlliedAntiVehicleVehicleTech3CannonNodeEnd |
+| 不涉及 | `Behaviors/ObjectSMCHelper` | 640 (1059) | 纯表现：《将军》ObjectSMCHelper 到时清掉"定时模型状态"（UNIT_SET_MODELCONDITION_GENERIC 的秒数），只换画法；例：AlliedSatelliteSweepShroudRevealer, AlliedTimeBombLvl1 |
+| 推断 | `Behaviors/AttributeModifierPoolUpdate` | 622 (910) | Sim.modify：属性修正挂在这个池里，到期规则（到期帧 >= 即失效、再挂覆盖不叠加）读自程序，work/re/l2_ability.md 第 51 轮；例：AlliedAntiVehicleVehicleTech3CannonNodeBase, AlliedAntiVehicleVehicleTech3CannonNodeEnd |
 | 未做 | `Behaviors/SecondaryDamageTracker` | 617 (852) | 模拟器代码里没有这个名字；例：AlliedSatelliteSweepShroudRevealer, AlliedTimeBombLvl1 |
 | 未做 | `Behaviors/Physics` | 597 (836) | 模拟器代码里没有这个名字；例：AlliedAntiGroundAircraft_Dying, AlliedBomberAircraft_Dying |
 | 已对拍 | `Behaviors/CreateObjectDie` | 591 (838) | 模拟器代码里有这个名字；台上量过：checks/engine_crush.py；例：AlliedAntiGroundAircraft_Dying, AlliedBomberAircraft_Dying |
