@@ -1,4 +1,4 @@
-最新进度看 [handoff-phase4.md](handoff-phase4.md)（前一份是 [handoff-phase3.md](handoff-phase3.md)）。
+最新进度看 [handoff-phase4.md](handoff-phase4.md)（前一份是 [handoff-phase3.md](../archive/level-handoff-phase3.md)）。
 
 # 关卡线交接（早期，2026-10-30～11-04；已瘦身，只留仍有效的坑、工具用法和被别处引用的章节）
 
@@ -15,7 +15,7 @@
 - NOT 条件 `parts.unnot`；模拟器对齐 `sim.py --align`；A4 离线检查 `experimental/cnv/offline.py`。
 - 配音接线：任务带 `voice` 包，`CNV_` 开头的声音名必须在包里（`parts.py` 的契约）；细节见 `experimental/cnv/checks/voice.py` 顶部注释。
 - 灰盒（ADR 0011）：`experimental/cnv/graybox.py`、`graybox_cards.py`，结论在 [graybox-cards.md](graybox-cards.md)。新题卡往 `graybox_cards.py` 加函数、往 `graybox-cards.md` 加一节；判断不了的写"留给实机"。
-- 引擎机制最小检查（冰面承重只能脚本做、干扰车对飞机有效、小地图闪点按物体、信息框当字符条）：结果在 [drive-probe.md](drive-probe.md) 末节和 [../design/flow/mechanics.md](../design/flow/mechanics.md)。
+- 引擎机制最小检查（冰面承重只能脚本做、干扰车对飞机有效、小地图闪点按物体、信息框当字符条）：结果在 [drive-probe.md](../archive/drive-probe.md) 末节和 [../design/flow/mechanics.md](../design/flow/mechanics.md)。
 
 ## 1a 引擎事实：鬼王、数冰墙、找最近的墙（结论已写进 mechanics.md，PASS）
 
@@ -72,7 +72,7 @@ ADR 0015 第 2 类要求编译器拒收没挂镜头/事件的台词（I2，已�
 
 ## 1 ADR 0016 重构（关卡部分）留下的坑
 
-交接在 [handoff-phase3.md](handoff-phase3.md)。已做：`cnv/plantime.py`（`PlanError`/`times` 等，`plan.py` re-export）、`cnv/registry.py`（扫 `missions/`、`checks/` 里的 `MISSION`/`CHECKS`/`PAIR_BUILDS`；`build.MISSIONS/PAIRS` 是它的视图）、`cnv/ctx.py`（机关只拿 Ctx，不再有 `self.c/self.m`）。
+交接在 [handoff-phase3.md](../archive/level-handoff-phase3.md)。已做：`cnv/plantime.py`（`PlanError`/`times` 等，`plan.py` re-export）、`cnv/registry.py`（扫 `missions/`、`checks/` 里的 `MISSION`/`CHECKS`/`PAIR_BUILDS`；`build.MISSIONS/PAIRS` 是它的视图）、`cnv/ctx.py`（机关只拿 Ctx，不再有 `self.c/self.m`）。
 - 基线只信指纹：`python -I -X utf8 experimental/testbench/fingerprint.py record <名>`（约 8 分钟，跑时别改源码），`diff baseline` 三目标一致；`git archive`/`git worktree` 在仓库外解出的树跑 `sim.py a4` 结局不同，别当基线；`self.c.xxx` 遗漏要到运行才报 NameError，改完做一次 symtable 检查（函数里引用但模块没定义的全局名）。
 - `tests/test_architecture.py` 的 G4（sys.path 上限只降不升）、G9、G3a 白名单；不能新建带 `sys.path.insert` 的测试文件；混着别人未提交改动时只暂存自己的函数（`git hash-object` + `update-index --cacheinfo`）。
 - `plan.py` 和多数源文件是 CRLF，批量改写要保留换行风格；`sed -i` 往 .py 塞 `\r\n` 会弄坏文件。

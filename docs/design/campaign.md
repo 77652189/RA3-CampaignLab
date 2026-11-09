@@ -209,7 +209,7 @@
 
 ## 六、第 1 层的剧情问题（用户 2026-10-28 已定）
 
-用户 2026-10-28："5 个问题都按推荐来"。每题的选项和理由在 [story-questions.md](story-questions.md)，这里只记结论。大纲 [outline.md](../story/outline.md) 和 [units.md](../story/units.md) 的同步归关卡线，照下面的句子抄。
+用户 2026-10-28："5 个问题都按推荐来"。每题的选项和理由在 [story-questions.md](../archive/story-questions.md)，这里只记结论。大纲 [outline.md](../story/outline.md) 和 [units.md](../story/units.md) 的同步归关卡线，照下面的句子抄。
 
 | # | 事 | 定了什么 |
 |---|---|---|

@@ -4,7 +4,7 @@ thin: the three runners are sent north at GO_AT through the thin-ice square; a s
   is inside it, never the light one. Read as the units' health (0 once dead) and the light one's arrival.
 shown: at SHOW_AT an info box goes up on the near unit and a radar event on the far one; the counters only say the
   actions ran without taking the mission down (the game gives scripts no way to read the screen) -- the picture is
-  looked at by hand (bench_look), see docs/story/drive-probe.md.
+  looked at by hand (bench_look), see docs/archive/drive-probe.md.
 """
 from parts import Script, Test, counted, square
 

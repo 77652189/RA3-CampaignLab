@@ -90,7 +90,7 @@
 - [principles.md](principles.md)：36 条准则，按四个条件和工作流的步骤归位。
 - [campaign.md](campaign.md)：第 0 步的战役总表。
 - [a4-redesign.md](a4-redesign.md)：A4 试点，走完第 1～3 步，并写好第 5 步的试玩问题和给关卡线的实现清单。
-- [story-questions.md](story-questions.md)：第 1 层开工前要用户一次定的剧情问题。
+- [story-questions.md](../archive/story-questions.md)：第 1 层开工前要用户一次定的剧情问题。
 - [flow/](flow/README.md)：第 1 层的流程剧本，每关一份，加模板和角色表。
 - [teardowns/](teardowns/)：准则的证据。8 张单关拆解卡，加 1 张布局卡（40 张原版图的布局和玩家视角时间线）、1 张地形卡（地形复杂度和地图利用率）。
 - [plan-template.md](plan-template.md)：给关卡线的策划案模板增补建议。第 2、3 步的产出最终要落进策划案。
