@@ -74,7 +74,8 @@
 
 **计数器**（`SE` 里的 `evaluateCounter`、`setCounter`、`addCounter`、`subCounter`）
 - 比较码：0 `<`、1 `<=`、2 `==`、3 `>=`、4 `>`、5 `!=`（`ZH/Include/GameLogic/Scripts.h` 里 `Parameter` 的枚举）。
-- `INCREMENT_COUNTER` / `DECREMENT_COUNTER` 的参数顺序是 **(数值, 计数器名)**。
+- `INCREMENT_COUNTER` / `DECREMENT_COUNTER` 的参数顺序是 **(数值, 计数器名)**。减到 0 以下不封底（台上 2 减 5 读 -3）。
+- `COUNTER_MATH_COUNTER(计数器, 运算码, 另一个计数器)`：**0 加、1 减、2 乘、3 除（向零取整）**，结果写回第一个；减可以减成负数（台上 2026-11-09 `engine_scripts3`：3+4=7、3-4=-1、3×4=12、13÷4=3、-13÷4=-3；`math`、`input`）。模型 `ra3model/scripts.py` 本来就这么算。
 
 **旗标**（`SE` 里的 `evaluateFlag`、`setFlag`）：值按布尔比较（非 0 即真）。从没设过的旗标，`FLAG x 0` 为真。
 
@@ -250,6 +251,7 @@
     - 一个动作造成的变化，排在后面的脚本当帧看得到，排在前面的下一帧才看到（同一个旗标，后面的计数器 18 帧，前面的 17 帧）。
     - `ENABLE_SCRIPT` 会把已经触发过的一次性脚本重新打开，条件还成立就再触发一次。第 7 节第 8 条"不会重新武装"的假设不对。
     - 计数器和计时器是同一张表：2 秒的计时器拿 `SET_COUNTER_TO_COUNTER` 读出来是 30（剩余帧数）。第 7 节第 9 条的担心成立，起名别撞。`SET_COUNTER_TO_COUNTER` 的参数是（目标，来源）。
+13. **`DISABLE_INPUT` 只锁玩家，不锁脚本；连 Esc 菜单也锁**（`engine_scripts3`：`input`，2026-11-09）。锁着的时候脚本给玩家坦克下 `MOVE_NAMED_UNIT_TO`，坦克照走、约 4 秒到位；玩家单位自己照样开火；计时器、计数器照常。锁在任务一开局时，测试台按 Esc 打不开任务菜单（暂停不了，`bench_start` 报错），所以探针要等台子开局暂停过了再锁（第 5 秒），到 `ENABLE_INPUT` 前也别指望台子能暂停。模拟器把它当一个没人读的标记，和这一致。
 
 **推断，未实测**（读程序得来，没上测试台核对；关卡要靠哪一条，先补一个机关单测）：
 - 血量百分比向下取整：99.9% 读成 99。找不到这个单位时，`UNIT_HEALTH` 的所有比较都读假，包括"小于"。

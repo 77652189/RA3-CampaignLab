@@ -4,7 +4,7 @@
 
 | 部分 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|
-| 脚本动作 | 427 | 52 | 55 | 272 | 48 | 81% |
+| 脚本动作 | 427 | 56 | 51 | 272 | 48 | 81% |
 | 脚本条件 | 89 | 23 | 5 | 61 | 0 | 94% |
 | 物体模块 | 184 | 9 | 15 | 143 | 17 | 42% |
 | 武器效果 | 25 | 2 | 3 | 20 | 0 | 53% |
@@ -67,14 +67,14 @@
 | 未做 | `PLAYER_SPECIAL_POWER_AVAILABILITY` | 158 | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `PATH_MUSIC_PLAY_EVENT` | 155 | 只记进时间线（sim.SHOWN）；台上量过：docs/engine/script-semantics.md |
 | 不涉及 | `CAMERA_LETTERBOX_END` | 154 | 纯表现（名字规则） |
-| 推断 | `DISABLE_INPUT` | 152 | Sim.act / Sim.cond 有分支 |
+| 已对拍 | `DISABLE_INPUT` | 152 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts3.py |
 | 推断 | `TEAM_AI_TRANSFER` | 152 | 同 UNIT_AI_TRANSFER，对队里每个成员（台上没量） |
 | 不涉及 | `EVA_SET_ENABLED_DISABLED` | 148 | 纯表现（名字规则） |
 | 不涉及 | `PLAY_SOUND_EFFECT_AT` | 147 | 纯表现（名字规则） |
 | 推断 | `ATTACK_MOVE_NAMED_UNIT_TO` | 146 | Sim.act / Sim.cond 有分支 |
 | 不涉及 | `SOUND_PLAY_NAMED` | 137 | 纯表现（名字规则） |
 | 已对拍 | `UNIT_AI_TRANSFER_ALL` | 137 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aidefense.py |
-| 推断 | `ENABLE_INPUT` | 132 | Sim.act / Sim.cond 有分支 |
+| 已对拍 | `ENABLE_INPUT` | 132 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts3.py |
 | 推断 | `NO_OP` | 130 | 引擎模型核心 |
 | 推断 | `TEAM_AFFECT_OBJECT_PANEL_FLAGS` | 130 | Sim.act / Sim.cond 有分支 |
 | 推断 | `UNIT_AI_TRANSFER` | 129 | 程序读到：人类玩家的单位无效、不清命令；交给 AI 后的行为归引擎 B，碰到记 Sim.unmodeled（台上没量） |
@@ -145,7 +145,7 @@
 | 未做 | `DISPLAY_TUTORIAL_TEXT` | 52 | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `PLAY_SOUND_EFFECT` | 51 | 只记进时间线（sim.SHOWN）；台上量过：checks/engine_dialog.py |
 | 未做 | `TEAM_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT` | 51 | Sim.act / Sim.cond 不认识 |
-| 推断 | `DECREMENT_COUNTER` | 50 | 引擎模型核心 |
+| 已对拍 | `DECREMENT_COUNTER` | 50 | 引擎模型核心；台上量过：checks/engine_scripts3.py |
 | 推断 | `DISPLAY_COUNTDOWN_TIMER` | 50 | Sim.act / Sim.cond 有分支 |
 | 未做 | `SELL_OBJECT` | 50 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_ATTACK_TEAM` | 50 | Sim.act / Sim.cond 不认识 |
@@ -226,7 +226,7 @@
 | 未做 | `REDALERT_DISABLE_THREAT_LEVEL_BONUS` | 20 | Sim.act / Sim.cond 不认识 |
 | 未做 | `UNIT_EXECUTE_SEQUENTIAL_SCRIPT_COPY` | 20 | Sim.act / Sim.cond 不认识 |
 | 推断 | `CAMERA_FOLLOW_NAMED` | 19 | Sim.act / Sim.cond 有分支 |
-| 推断 | `COUNTER_MATH_COUNTER` | 19 | 引擎模型核心 |
+| 已对拍 | `COUNTER_MATH_COUNTER` | 19 | 引擎模型核心；台上量过：checks/engine_scripts3.py |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_SmokeBombSpecialPower` | 19 | 只记进时间线，没有效果 |
 | 未做 | `PLAYER_DISABLE_BASE_CONSTRUCTION` | 16 | Sim.act / Sim.cond 不认识 |
 | 未做 | `PLAYER_ENABLE_UNIT_CONSTRUCTION` | 16 | Sim.act / Sim.cond 不认识 |

@@ -970,6 +970,20 @@ def test_scripts2_all_players_in_a_relation_changes_nothing():
     assert by[24][0] < 95 and by[5][0] < 100, by
 
 
+# checks/engine_scripts3.py (bench 11-09, CampScr3Math / CampScr3Input)
+def test_scripts3_counter_math_codes_as_the_bench():
+    """math: COUNTER_MATH_COUNTER by 4 -- 0 adds, 1 takes away (no floor: -1), 2 multiplies, 3 divides (13 -> 3)."""
+    series = _sim_run('engine_scripts3', 'math', 10.0).series
+    assert series[0][1] == [3, 3, 3, 13] and series[-1][1] == [7, -1, 12, 3], series[-1]
+
+
+def test_scripts3_a_script_moves_the_player_under_disable_input():
+    """input: DISABLE_INPUT at 5 s, the tank's MOVE_NAMED_UNIT_TO at 7 done (走到 1, bench s9); DECREMENT 5 from 2
+    reads -3; -13 / 4 reads -3 (toward zero)."""
+    last = _sim_run('engine_scripts3', 'input', 24.0).series[-1][1]
+    assert last[0] == 1 and last[2:] == [-3, -3], last
+
+
 # checks/engine_scripts1.py
 def _scripts1(variant, until):
     return {round(sec): vals for sec, vals in _sim_run('engine_scripts1', variant, until).series}

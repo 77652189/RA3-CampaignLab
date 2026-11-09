@@ -88,6 +88,22 @@ def test_a_countdown_under_the_counters_is_skipped(monkeypatch):
     assert counters.read(img, 1) == [counters.line_box(0)[1]]
 
 
+def test_a_minus_sign_is_read_before_the_digits(monkeypatch):
+    """Bench 2026-11-09 (CampScr3Math, "-1"): the minus is a 1-px bar at mid height, 3 px before the digit. Dropped as
+    a speck, it left the label and the 1 too far apart and the line read nothing."""
+    img = frame([(24, 40)])
+    a = np.asarray(img).copy()
+    x, y, *_ = counters.line_box(0)
+    a[y + 1:y + 14, 24:31] = BOX                # the value: a bar 24-28 at row 9, then a digit 31-40 (3 apart)
+    a[y + 9, 24:28] = TEXT
+    img = Image.fromarray(a)
+    assert [(s, e) for s, e, _ in counters.glyphs(img, counters.line_box(0))] == [(24, 28), (31, 40)]
+    # the digit glyph is solid: a solid template for 1, empty ones for the rest (the real ones are in work/, not git)
+    monkeypatch.setattr(counters, 'templates',
+                        lambda: {d: np.full(counters.SIZE[::-1], float(d == 1)) for d in range(10)})
+    assert counters.read_line(img, counters.line_box(0)) == -1
+
+
 def test_two_narrow_ones_are_one_value():
     """Bench 2026-11-04 (CampGroundWalk): "11" -- two narrow 1s, 4 columns apart -- read as 1: the reader took the
     gap for the space between the label and the value (that space is 7)."""

@@ -31,4 +31,5 @@ def mission(name='CampScr2'):
     return m
 
 
-MISSION = {'engine_scripts2': mission}
+MISSION = {'engine_scripts2': mission,
+           'engine_scripts3': lambda: mission('CampScr3')}     # checks/engine_scripts3.py: counter math, DISABLE_INPUT
