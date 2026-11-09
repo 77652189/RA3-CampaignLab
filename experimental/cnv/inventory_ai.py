@@ -67,6 +67,7 @@ GENERIC = {'Distance', 'Priority', 'Value', 'Above', 'Rule', 'Include', 'Exclude
 # name -> source (a docs/engine/ai*.md section or a test) where the auto rule misses a bench comparison
 BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（aipwrb 权重 0 的不买）',
               '组队招人/ObjectFilter.Rule': 'docs/engine/aistate.md#队伍招谁（aitfany / aitfnone / aitfall：ANY、NONE + 名单只要名单，ALL + 排除名单）',
+              '战略状态/StrategicState.Difficulty': 'docs/engine/aistate.md#按难度挂的状态（aidiff / aidiffx：普通 = MEDIUM，没挂 MEDIUM 的状态不跑）',
               '开局/Order.Build': 'docs/engine/aiopen.md#读数（aiopen f1～f3：造的顺序和 AlliedStandard 单子一样）',
               '战略状态/StrategicState.State': 'docs/engine/aistate.md#读数（人格只留台上写的状态，AI 只跑这些：aistateconst / aistateslash 等）',
               '战略状态/TargetHeuristic.TargetHeuristic': 'docs/engine/aitactics.md#读数（aitargetnear / aitargetsafe：按状态写的目标启发挑楼）',

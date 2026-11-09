@@ -71,6 +71,20 @@
 - `MaxUnits` 是一队的人数上限；同一个目标只派一队（`MaxTargets` 1），所以多出来的兵留在家里。
 - 模型原先把 NONE 当"不筛"，台上否了，已改（私有 `ai/teams.py`）；模拟器六组都对上（`tests/test_simai.py::test_team_filters_take_whom_the_bench_sent`）。
 
+## 按难度挂的状态（StrategicState 的 Difficulty）
+
+引擎线 B 第 79 轮（2026-11-09）。探针 `checks/engine_aidiff.py`（任务 `missions/aidiff_bench.py`）：同上的图和 AI，家里 4 辆守护者 + 4 个维和，两个常开状态，一个挂 `Difficulty="MEDIUM"`、一个挂 `Difficulty="EASY HARD BRUTAL"`，各只招一种兵；玩家放两座电厂（一个目标只给一个状态，两队都能走）。另用三条各只开一个难度位的任务脚本把战役难度写进计数器。
+
+| build | 守护者那个状态挂 | 维和那个状态挂 | 战役难度 | 出门的（测） |
+| --- | --- | --- | --- | --- |
+| `aidiff` | MEDIUM | EASY HARD BRUTAL | 普通 | 只有 4 辆守护者（唤醒后约 5 秒） |
+| `aidiffx` | EASY HARD BRUTAL | MEDIUM | 普通 | 只有 4 个维和 |
+
+给关卡线（测）：
+- **战役"普通"难度下，地图里的遭遇战 AI 按 MEDIUM 跑**；没挂 MEDIUM 的状态根本不跑。测试台走菜单进的是普通难度。
+- 想让敌人在不同难度下做不同的事，就在人格里给同一个状态挂不同难度的版本（原版 `LandDefense` HARD BRUTAL、`LandDefense_MEDIUM`、`LandDefense_EASY` 就这么写）。
+- 简单、困难两档对应 EASY / HARD 是推断（测试台只走普通）；模拟器（simai 的 DIFFICULTY）按这个对应，两组都对上（`tests/test_simai.py::test_only_the_states_listed_for_the_difficulty_run`）。
+
 ## 没测的
 
 - `EndIfStateTurnsOff` 到底在什么时候起作用：出门前、出门后关旗都不管用，程序里也没找到判据。队伍凑不齐 MinUnits、一直在家等人时关旗会怎样，没测。

@@ -321,6 +321,15 @@ def test_team_filters_take_whom_the_bench_sent(lib, build, tanks, inf):
     assert (rows[39]['坦克在家'], rows[39]['步兵在家']) == (tanks, inf), [(r['坦克在家'], r['步兵在家']) for r in rows]
 
 
+# bench 2026-11-09 checks/engine_aidiff.py a: (build, tanks home, infantry home) from s17 on; the bench walks normal
+@pytest.mark.parametrize('build,tanks,inf', [('aidiff', 0, 4), ('aidiffx', 4, 0)])
+def test_only_the_states_listed_for_the_difficulty_run(lib, build, tanks, inf):
+    """Two always-on states, one listed Difficulty MEDIUM, one EASY HARD BRUTAL: at campaign normal only the MEDIUM
+    one's team leaves (aidiff: the Guardians; aidiffx, lists swapped: the Peacekeepers)."""
+    _, rows = _switch_run(build, lib, until=41.0)
+    assert (rows[39]['坦克在家'], rows[39]['步兵在家']) == (tanks, inf), [(r['坦克在家'], r['步兵在家']) for r in rows]
+
+
 def test_path_to_target_is_asked_on_the_simulators_grid(lib):
     """PathToTargetHeuristic (work/re l4_states.md 3): the opening and the states ask the brain; the skirmish map is
     one piece of land, so infantry has a way and a ship finds no water spot (= no way). At 300 s the player's base
