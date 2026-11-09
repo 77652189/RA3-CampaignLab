@@ -6,8 +6,14 @@ import sys
 
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'experimental', 'testbench'))
-import run_queue as rq  # noqa: E402
+import importlib.util  # noqa: E402
+
+# loaded by its path, so this file needs no sys.path edit (tests/test_architecture.py G4 ratchet)
+_SPEC = importlib.util.spec_from_file_location('run_queue', os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'experimental', 'testbench', 'run_queue.py'))
+rq = importlib.util.module_from_spec(_SPEC)
+sys.modules['run_queue'] = rq
+_SPEC.loader.exec_module(rq)
 
 PASS = ('counters (坦克在家): s0-s14: 4 | s15-s55: 0\nPASS 坦克在家 == 0 from s40 until s41: s40-s41: 0\n'
         'RESULT PASS')
@@ -69,7 +75,9 @@ def test_a_prefix_that_matches_nothing_is_an_error():
 
 def test_the_prefix_lists_the_checks_of_the_matching_check_files():
     got = rq.listing('engine_aiteamfilter')
-    assert got == [(b, 'a') for b in ('aitfany', 'aitfnone', 'aitfall', 'aitfki', 'aitfke', 'aitfmax')]
+    # the module grows (B round 81 added aitfland ...): the first six as declared, every one check 'a', no repeats
+    assert got[:6] == [(b, 'a') for b in ('aitfany', 'aitfnone', 'aitfall', 'aitfki', 'aitfke', 'aitfmax')]
+    assert all(c == 'a' for _, c in got) and len(set(got)) == len(got)
     assert rq.listing('no_such_prefix_') == []
 
 

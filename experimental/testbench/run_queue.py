@@ -59,19 +59,26 @@ def read_list(path):
 def listing(prefix):
     """(mission, check) of every check in a checks/<prefix>*.py module, in cnv_list's order (modules by name, builds and
     checks as each declares them); a build the module only declares as a pair is (build, '')."""
-    sys.path.insert(0, os.path.join(ROOT, 'experimental', 'cnv'))
-    import parts                    # noqa: F401  (puts experimental/campaign on the path, as build.py does)
-    import importlib
-    import registry
-    out = []
-    for name in registry.modules():
-        folder, _, module = name.partition('.')
-        if folder != 'checks' or not module.startswith(prefix):
-            continue
-        mod = importlib.import_module(name)
-        out += [(build, check) for build, table in getattr(mod, 'CHECKS', {}).items() for check in table]
-        out += [(build, '') for build in getattr(mod, 'PAIR_BUILDS', {})]
-    return out
+    # in a child started in experimental/cnv (python -c puts its cwd first on the path; no -I for that reason), so this
+    # file needs no sys.path edit of its own (tests/test_architecture.py G4 ratchet)
+    code = ('import importlib, json, sys\n'
+            'import parts  # noqa: F401  (puts experimental/campaign on the path, as build.py does)\n'
+            'import registry\n'
+            'out = []\n'
+            'for name in registry.modules():\n'
+            '    folder, _, module = name.partition(".")\n'
+            '    if folder != "checks" or not module.startswith(sys.argv[1]):\n'
+            '        continue\n'
+            '    mod = importlib.import_module(name)\n'
+            '    out += [(b, c) for b, table in getattr(mod, "CHECKS", {}).items() for c in table]\n'
+            '    out += [(b, "") for b in getattr(mod, "PAIR_BUILDS", {})]\n'
+            'print("LISTING " + json.dumps(out))\n')
+    run = subprocess.run([sys.executable, '-X', 'utf8', '-c', code, prefix], cwd=os.path.join(ROOT, 'experimental', 'cnv'),
+                         capture_output=True, text=True, encoding='utf-8')
+    line = next((x for x in run.stdout.splitlines() if x.startswith('LISTING ')), None)
+    if run.returncode or line is None:
+        raise RuntimeError(f'listing checks/{prefix}* failed:\n{run.stderr[-2000:]}')
+    return [tuple(x) for x in json.loads(line[len('LISTING '):])]
 
 
 def collect(items, file=None, prefix=None, lister=listing):
