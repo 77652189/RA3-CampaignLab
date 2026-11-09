@@ -607,6 +607,64 @@ def lifetime(template, own=None):
     return frames, leaves
 
 
+_crush_memo = {}
+
+
+def _chain(template, own, first):
+    """Walk the template's XML up its inheritFrom chain (5 steps, as _inherited) calling first(xml) on each; the first
+    non-None answer, else None."""
+    xml = _xml(template, own)
+    for _ in range(5):
+        got = first(xml)
+        if got is not None:
+            return got
+        up = parent(xml, template)
+        if not up:
+            break
+        xml = retail_xml(template) if up.lower() == template.lower() else _xml(up, own)
+        template = up
+    return None
+
+
+def crush(template, own=None):
+    """(crusher, crushable): its CrusherInfo's CrusherLevel (0: crushes nothing) and CrushableLevel (None: cannot be
+    crushed), each from the nearest template up the chain that writes it (a child's own number beats its base's:
+    the Hammer's 20 over BaseVehicle's 10 -- docs/engine/crush.md, bench 11-06). Crushed when crusher > crushable,
+    strictly (crush.md: 30 against 30 and 20 against 20 live)."""
+    key = (template, (own or {}).get(template))
+    if key not in _crush_memo:
+        def level(attr):
+            def read(xml):
+                for head, _ in _blocks(xml or '', 'CrusherInfo'):
+                    v = _attr(head, attr)
+                    if v is not None:
+                        return int(_num(v))
+                return None
+            return _chain(template, own, read)
+        _crush_memo[key] = (level('CrusherLevel') or 0, level('CrushableLevel'))
+    return _crush_memo[key]
+
+
+_slow_memo = {}
+
+
+def slow_death(template, own=None):
+    """Seconds a body lies as a dying one after it is killed: the DestructionDelay of its plain SlowDeath (the module
+    without DeathFlags -- the others are for named death types), 0 without one (a vehicle or building's DestroyDie
+    takes it out at once). Bench 11-06 engine_crush: a crushed conscript (8.5 s) lay 127 frames, dying and in its
+    spot; a plant killed by script was gone the next frame."""
+    key = (template, (own or {}).get(template))
+    if key not in _slow_memo:
+        def read(xml):
+            mods = list(_blocks(xml or '', 'SlowDeath'))
+            if not mods:
+                return None
+            plain = [h for h, _ in mods if 'DeathFlags' not in h and 'DeathTypes' not in h]
+            return _secs(_attr(plain[0], 'DestructionDelay')) if plain else 0.0
+        _slow_memo[key] = _chain(template, own, read) or 0.0
+    return _slow_memo[key]
+
+
 _retail_files = None
 
 

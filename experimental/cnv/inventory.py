@@ -73,6 +73,14 @@ BENCHED_TESTS = {
     (MODULE, 'Behaviors/StructureUnpackUpdate'): 'tests/test_simbench.py::test_power_back_after_the_plant_unpacks',
     (MODULE, 'Behaviors/SpecialPower'): 'tests/test_simbench.py::test_super_a_scripts_cast_starts_the_retail_reload',
     (MODULE, 'AI/AIUpdate'): 'tests/test_simbench.py::test_r8_idle_within_sight_walks_up_fires_and_comes_back',
+    # engine line C round 3: the crush / slow-death family (checks/engine_crush.py, docs/engine/crush.md, bench 11-06)
+    (MODULE, 'Behaviors/SquishCollide'):
+        'tests/test_simbench.py::test_crush_a_tank_drives_over_a_lower_level_and_leaves_an_equal_one',
+    (MODULE, 'Behaviors/CrushDie'):
+        'tests/test_simbench.py::test_crush_a_tank_drives_over_a_lower_level_and_leaves_an_equal_one',
+    (MODULE, 'Behaviors/SlowDeath'):
+        'tests/test_simbench.py::test_slow_death_a_crushed_conscript_lies_127_frames_dying_and_in_its_spot',
+    (MODULE, 'Behaviors/DestroyDie'): 'tests/test_simbench.py::test_destroy_die_a_building_killed_is_dying_one_frame_and_gone',
 }
 
 # (part, name) -> (state, why): where the name rule above is wrong (a module read under another name ...)
@@ -81,11 +89,8 @@ NOTES = {
     (MODULE, 'Body/ActiveBody'): (GUESSED, 'simunits.stats 读 MaxHealth（只有生命值；受伤状态、回血等另算）'),
     (MODULE, 'AI/AIUpdate'): (GUESSED, 'Sim.fight / 移动（单位 AI 的状态机细项按引擎 B 的 AI 清单推进）'),
     # the 26 the bench measured but the name rule called 未做 (checked 11-08 against sim.py / simunits.py)
-    (MODULE, 'Behaviors/DestroyDie'): (GUESSED, 'Sim.destroy：死了当帧移出（LINGER 0，台上 death 探针量过）；'
-                                                'DeathTypes 筛选、几个 Die 模块选哪个没读'),
     (MODULE, 'Behaviors/FireWeaponUpdate'): (GUESSED, '部分：simunits.ocl_round 把召出物的 FireWeaponNugget + '
                                                       'LifetimeUpdate 折成伤害，不模拟召出物本身'),
-    (MODULE, 'Behaviors/SlowDeath'): (TODO, f'{_NOT_IN_SIM}（死了立即移出，没有慢死、倒塌延迟）'),
     (MODULE, 'Behaviors/BuildingBehavior'): (TODO, f'{_NOT_IN_SIM}（没有出售建筑）'),
     (MODULE, 'Behaviors/StructureSellUpdate'): (TODO, f'{_NOT_IN_SIM}（没有出售、返还金钱）'),
     (MODULE, 'Behaviors/InvisibilityBehavior'): (TODO, f'{_NOT_IN_SIM}（没有隐身）'),
@@ -135,7 +140,6 @@ NOTES = {
     (NUGGET, 'SecondaryDamageNugget'): (GUESSED, 'simunits._weapons 读 Amount（不要升级的那条）→ sdps，Sim.chill'),
     (MODULE, 'Body/PropBody'): (TODO, '弹体和特效道具的身体（9 关 22 个模板里 16 个是弹体）：模拟器没有弹体'
                                       '（同 BezierProjectile），道具能不能挨打没读'),
-    (MODULE, 'Behaviors/SquishCollide'): (TODO, '碾压步兵：模拟器没有碾压（坦克压过步兵不死）；影响玩法，没做'),
     (MODULE, 'Behaviors/Physics'): (TODO, '移动物理（坠落、弹跳、被击飞、倾倒）：模拟器走路按速度直走，没有物理'),
     # engine A round 108: read in the SDK data
     (MODULE, 'Behaviors/ObjectDefectionHelper'): (NA, '没人触发：原版只在 BaseObject 挂一个空的（所以每个物体都有），'
@@ -145,9 +149,9 @@ NOTES = {
                                                             '如 AlliedBarracks_Debris：只有画法、寿命和碎片体积，'
                                                             '没有身体和武器）、烟尘'),
     (MODULE, 'Behaviors/ToppleUpdate'): (TODO, '倒伏：车压过的灯笼、栏杆、路灯倒下即死（OK_Lantern01 '
-                                              'KillWhenStartToppled）。模拟器没有碾压（同 SquishCollide）：'
+                                              'KillWhenStartToppled）。碾压本身已做（Sim.crush_along，台上对过），倒伏还没有：'
                                               'OK_LANTERN01 在模拟器里不是物体（不挡路），platprops.STRUCTURE 里的'
-                                              '栏杆路灯是永久障碍（游戏里车能压倒）；跟碾压一起做'),
+                                              '栏杆路灯是永久障碍（游戏里车能压倒）；台上没量过灯笼，要先写探针'),
 }
 
 # presentation only: script actions that move the camera, play sound / film, draw on screen (conditions are never NA:

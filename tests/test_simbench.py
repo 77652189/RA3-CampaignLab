@@ -619,6 +619,55 @@ def test_shot_clock_the_coil_shoots_every_31_s_two_shots_a_tank(monkeypatch):
     assert coil.weapons[0]['sched'] == [2.5] and abs(coil.weapons[0]['cycle'] - 3.1) < 1e-9
 
 
+# ---- crush / slow death (sim.Sim.crush_along, sim.Sim.dying, simunits.crush / slow_death): bench 2026-11-06
+# engine_crush (docs/engine/crush.md; one run each): `all` 步兵 170127043 (a Hammer drives over an enemy conscript:
+# crushed frame 43, never left its spot, lay dying 127 frames), 坦克 605069701 (a guardian, 20 against 20, lives the
+# whole run; an Apocalypse crushes one at frame 69), 建筑 1000 (a plant killed by script: dying the kill frame only);
+# `b` the Apocalypse never crushes a Sickle (30 against 30). The simulator has no acceleration: its tanks arrive ~25
+# frames sooner and crush a few to ~15 frames earlier -- the frames below are bands, the rest exact.
+def _crush(build_name, check):
+    import build
+    import sim
+    m, t, _ = build.resolve(build_name, check)
+    s = sim.Sim(m, t)
+    s.run(47.7)
+    return s, dict(zip([lab for _, lab in t.counters], s.series[-1][1]))
+
+
+def test_crush_levels_come_from_the_data_and_the_greater_wins():
+    import simunits
+    conscript, hammer = simunits.crush('SovietAntiInfantryInfantry'), simunits.crush('SovietAntiVehicleVehicleTech1')
+    guardian, apoc = simunits.crush('AlliedAntiVehicleVehicleTech1'), simunits.crush('SovietAntiVehicleVehicleTech3')
+    sickle = simunits.crush('SovietScoutVehicle')
+    assert conscript[1] == 10 and hammer == (20, 20) and guardian[1] == 20 and apoc == (30, 31) and sickle[1] == 30
+    assert hammer[0] > conscript[1] and not hammer[0] > guardian[1]             # crush.md: all 1 dies, all 2 lives
+    assert apoc[0] > guardian[1] and not apoc[0] > sickle[1] and not apoc[0] > apoc[1]     # all 3 dies, b 1 lives
+
+
+def test_crush_a_tank_drives_over_a_lower_level_and_leaves_an_equal_one():
+    s, r = _crush('engine_crush', 'all')
+    frames = r['帧数']
+    assert 39 <= r['步兵'] % 1000 <= 55                       # conscript crushed at frame 43 (bench)
+    assert r['坦克'] % 1000 == frames                          # lane 2: a guardian, level 20 against 20, never crushed
+    assert 45 <= r['坦克'] // 1000 % 1000 <= 80                # lane 3: the Apocalypse crushes one (bench 69)
+    assert r['坦克'] // 10 ** 6 > 0                            # ... and the Hammer goes round / on to its goal
+    s2, r2 = _crush('engine_crush_b', 'two')
+    assert r2['镰刀'] % 1000 == r2['帧数'] and r2['镰刀'] // 1000 % 1000 == 0      # 30 against 30: alive, never dying
+
+
+def test_slow_death_a_crushed_conscript_lies_127_frames_dying_and_in_its_spot():
+    s, r = _crush('engine_crush', 'all')
+    assert abs(r['步兵'] // 1000 % 1000 - 127) <= 2            # 8.5 s of its SlowDeath
+    assert r['步兵'] // 10 ** 6 == r['步兵'] % 1000 + r['步兵'] // 1000 % 1000      # in its spot all the while, not after
+
+
+def test_destroy_die_a_building_killed_is_dying_one_frame_and_gone():
+    s, r = _crush('engine_crush', 'all')
+    assert r['建筑'] == 1000                                   # dying the kill frame only; no collapse object counted
+    s2, r2 = _crush('engine_crush_b', 'two')
+    assert r2['电厂'] == 1000
+
+
 # ---- mining (HOOKS 7): engine_mining's layout -- the refinery 180 from a lone node -- on Niagara's bluff ore (the
 # probe map has no ground for the simulator); the loop alone (mine_due), frames from 0
 def _mining(miners=1, frames=1200):

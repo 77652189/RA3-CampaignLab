@@ -496,6 +496,13 @@ class Body:
                                                                 # refinery, due frame, load, paid, leg
     ready_at: dict = dataclasses.field(default_factory=dict)   # special power -> the frame its reload ends (a cast,
                                                                 # the script's too, starts it anew: order_power)
+    crusher: int = 0                                            # CrusherInfo (simunits.crush): drives over what is
+    crushable: object = None                                    # of a lower level; None: cannot be crushed
+    lies: float = 0.0                                           # seconds it lies dying once killed (SlowDeath's
+                                                                # DestructionDelay), the crush's death only (R9)
+    linger: float = 0.0                                         # ... the lie this death has (LINGER, or `lies`)
+    hold_fire: bool = False                                     # UNIT_SET_STANCE 3 (HOLD_FIRE): fires only at a
+                                                                # target it was ordered on (stance.md a / b / d / e)
 
     @property
     def health(self):
@@ -992,7 +999,10 @@ class Sim:
         else:                                   # no health in the data: a building's or a unit's usual (a guess)
             b.max_hp = b.hp = 2000.0 if 'STRUCTURE' in b.kinds else 300.0
         b.armor, b.weapons = f['armor'], f['weapons']
-        if not b.weapons:                       # its XML names guns and none was read: a gap, not a unit without guns
+        b.crusher, b.crushable = simunits.crush(template, self.own)
+        b.lies = simunits.slow_death(template, self.own)
+        b.linger = LINGER
+        if not b.weapons:                     # its XML names guns and none was read: a gap, not a unit without guns
             if template not in self.declared:
                 self.declared[template] = simunits.declared_weapons(template, self.own)
             if self.declared[template]:
@@ -1884,7 +1894,12 @@ class Sim:
         if b.deleted:
             return self.t <= b.died_at
         self.used.add('death linger')
-        return self.t - b.died_at <= LINGER
+        return self.t - b.died_at <= b.linger + 1e-9
+
+    def dying(self, b):
+        """NAMED_DYING: killed (not deleted) and still lying -- the kill frame at least; a crushed infantryman its
+        SlowDeath's DestructionDelay (bench 11-06 engine_crush: 127 frames; a plant killed by script: one frame)."""
+        return b is not None and not b.alive and not b.deleted and self.t - b.died_at <= b.linger + 1e-9
 
     def destroy(self, b, why, delete=False):
         if not b.alive:
@@ -1984,6 +1999,8 @@ class Sim:
             # killed: destroyed at once; deleted: only from the next frame (the game's destroy list at the frame's end)
             dead = not b.alive and not (b.deleted and self.t <= b.died_at)
             return dead if name == 'NAMED_DESTROYED' else not dead
+        if name == 'NAMED_DYING':
+            return self.dying(self.body(a[0]))
         if name in ('NAMED_INSIDE_AREA', 'NAMED_OUTSIDE_AREA'):
             # the game asks no question of life: a dying unit is where it fell; a removed one is outside every area
             b = self.body(a[0])
@@ -2322,6 +2339,10 @@ class Sim:
                 if name == 'NAMED_KILL':
                     b.last_hit = b.last_by = None   # the game's kill damage comes from nobody (INVALID_ID)
                 self.destroy(b, '脚本' if name == 'NAMED_KILL' else '脚本删掉', delete=name == 'NAMED_DELETE')
+        elif name == 'UNIT_SET_STANCE':          # (name, stance): 3 is HOLD_FIRE; the others are not modelled
+            b = self.body(a[0])
+            if b and b.alive:
+                b.hold_fire = int(a[1]) == 3
         elif name == 'UNIT_SET_HEALTH':
             b = self.body(a[0])
             if b and b.alive:
@@ -2850,7 +2871,7 @@ class Sim:
         self._fire_obstacles = None             # `shot_blocked`'s footprints, taken once a tick when first asked
         live = [b for b in self.living() if not b.scenery and self.on_map(b)]     # off the border: out of the fight
         armed = [b for b in live if b.weapons and 'NO_ATTACK' not in b.status    # NO_ATTACK: holds its fire
-                 and not self.unpowered(b)]
+                 and not self.unpowered(b) and not (b.hold_fire and not isinstance(b.goal, Body))]
         targets = [b for b in live if 'UNATTACKABLE' not in b.status]
         if not armed or not targets:
             return
@@ -3119,7 +3140,38 @@ class Sim:
                         self.first_death = (self.t, t, by)
                     self.destroy(t, f'被 {self.label(by)} 的超武打掉')
 
+    def crush_along(self, b, x0, y0):
+        """R9: a driving crusher kills what its footprint passes over that is a lower level (docs/engine/crush.md,
+        bench 11-06 engine_crush: strictly greater kills, 20 against 20 and 30 against 30 live; the crushed does not
+        step aside; the dead lie their SlowDeath out). The segment this tick passing within the CRUSHED's own radius
+        of its centre (FITTED to two readings: Hammer / conscript at frame 43, Apocalypse / guardian at 69 -- touching
+        at the radii's sum would be ~12 and ~30 frames earlier still; the simulator has no acceleration). Whose
+        units: the crusher's enemies' only (INFERRED: crushing one's own / neutral units was not measured)."""
+        dx, dy = b.x - x0, b.y - y0
+        seg = dx * dx + dy * dy
+        pool = self._crushable_pool
+        if pool is None:                        # once a tick: the crushable ones, as arrays (a big map's tanks all drive)
+            low = [o for o in self.living() if o.crushable is not None and not o.scenery and o.surface == 'ground']
+            pool = self._crushable_pool = (low, np.array([o.x for o in low]), np.array([o.y for o in low]),
+                                           np.array([o.radius for o in low]), np.array([o.crushable for o in low]))
+        low, ox, oy, orad, olevel = pool
+        if not low:
+            return
+        k = np.clip(((ox - x0) * dx + (oy - y0) * dy) / seg, 0.0, 1.0) if seg else np.zeros(len(low))
+        near = np.hypot(ox - (x0 + k * dx), oy - (y0 + k * dy)) <= orad
+        for j in np.nonzero(near & (olevel < b.crusher))[0]:
+            o = low[j]
+            if o is b or not o.alive or not self.enemy(b.owner, o.owner):
+                continue
+            self.used.add('crush')
+            o.last_hit, o.last_by = b.owner, b.name
+            o.linger = o.lies
+            self.destroy(o, f'被 {self.label(b)} 压死')
+
+    _crushable_pool = None
+
     def move(self):
+        self._crushable_pool = None
         for b in self.living():
             if isinstance(b.goal, Body):
                 g = b.goal
@@ -3135,6 +3187,7 @@ class Sim:
             if not b.path or 'IMMOBILE' in b.status or b.engaged:
                 continue
             left = b.speed * DT
+            x0, y0 = b.x, b.y
             while left > 0 and b.path:
                 tx, ty = b.path[0]
                 d = math.hypot(tx - b.x, ty - b.y)
@@ -3155,6 +3208,8 @@ class Sim:
                     left = 0
             if b.building:
                 self.at_site(b, b.speed * DT - left)
+            if b.crusher > 0 and b.surface == 'ground' and (b.x, b.y) != (x0, y0):
+                self.crush_along(b, x0, y0)
             self.change()
         self.capture_due()
         if self.auto_kill is not None:

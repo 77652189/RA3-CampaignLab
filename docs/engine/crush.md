@@ -34,3 +34,13 @@
 - 想让坦克碾步兵阵地：没问题，任何坦克都行。想让一辆车"推开"别的车：只有更高一档的（天启式 30 对 20）才行。
 - 新单位想要"能压坦克"：CrusherLevel 至少 21；想要"不被天启压"：CrushableLevel 至少 30。
 - 建筑一炸就当空地用：不用等倒塌画面，脚本、寻路、建造都能马上用那块地。
+
+## 模拟器对拍（引擎线 C 第 3 轮，2026-11-09）
+
+模拟器现在有碾压和慢死（`Sim.crush_along`、`Sim.dying`，数据读 `simunits.crush` / `slow_death`），上面第 1 节的读数对在 `tests/test_simbench.py` 的 `test_crush_*` / `test_slow_death_*` / `test_destroy_die_*`：
+
+- **等级**：CrusherLevel / CrushableLevel 读自 CrusherInfo（子模板自己写的数压过基类的），压的等级严格大于被压的才压死；只压敌人（**推断**：压自己人、中立单位没测）。
+- **何时压死**：压的一方走过被压者**自己半径以内**（拟合两个读数：铁锤压动员兵第 43 帧、天启压守护者第 69 帧；按两个半径之和算会早 12 / 30 帧）。模拟器没有加速，所以坦克比台上早到约 25 帧、压死早几到 15 帧；测试按带宽比。
+- **慢死**：被压死的步兵按 SlowDeath（没有 DeathFlags 的那个）的 DestructionDelay 躺着：`NAMED_DYING` 和 `NAMED_INSIDE_AREA` 都读到它（127 帧，台上 127）。**战斗打死的单位仍按旧的 `LINGER` 0**（10-28 death 探针量的，当时测的单位没法确认是不是步兵，**没验证**；要统一得在台上打死一个步兵看）。建筑、车辆没有 SlowDeath：当帧移出，`NAMED_DYING` 只真被杀那一帧。
+- **没做**：`CrushKillDelay`（车被压 1.5 s 后才死？数据里有，台上没测）、压过时减速、倒伏 `ToppleUpdate`（灯笼栏杆，台上没量）、被压者躲开。
+- 顺带加了 `UNIT_SET_STANCE 3`（HOLD_FIRE）：只对下过命令的目标开火（对着 stance.md a/b/d/e）。别的姿态没建模。
