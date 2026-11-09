@@ -56,7 +56,8 @@ def retail(m):
     Bench 2026-11-09 (run CampMovieRetail_mcp_1109_033257): A02TH06 plays in the radar window (Lisa) from s2.2 and is
     still on screen at s39.8; HAS_FINISHED_VIDEO never held (621 frames by s42), so B never started -- FAIL. Retail
     a02 lights its objective 2 ~16 s after the HUD comes back with this clip in the chain, so the game does finish it
-    there: what differs in our mod (looping? the dialogue line retail plays beside it?) is open. Sim.video_len left at
+    there. Most likely the run itself: the bench ran the mission at x8 / x5.7 and a clip plays in real time (18.9 real
+s = 100+ mission s) -- run it again at x1 before reading anything into it. Sim.video_len left at
     VIDEO_GUESS for retail clips until this is read."""
     t = Test()
     r = m.facts['radar at']
