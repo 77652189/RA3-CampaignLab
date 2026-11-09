@@ -1,5 +1,16 @@
 """Engine probe: the skirmish AI team's retreat and its EngagePassiveTargets switch (missions/airetreat_bench.py;
-not benched yet: the readings and docs/engine/airetreat.md come with the first run).
+docs/engine/aiteamstate.md; the simulator against these readings: tests/test_simai.py).
+
+Bench 2026-11-08 (all four PASS; wake at s10):
+  airet   (步兵在家, 到远厂, 步兵数) 4 0 4 to s9 | out s10-s12 | 到远厂 2 @ s15-s16, 1 @ s17-s18 | home 1 @ s20 ... 4 @
+          s26-s41 | out s42-s46 | 到远厂 2 @ s47-s48 | home 1 @ s49 ... 4 @ s54-s68 | out s69-s73 | 到远厂 2 @ s74-s76 |
+          home 4 from s82; 步兵数 4 all along: the team turns round at the far plant's edge, walks home through the
+          guards unhurt (a plain move), stands ~15 s, goes again -- a ~27-32 s cycle
+  airet0  out s10-s12 | 到远厂 2 @ s15 ... 4 @ s17-s18 | 步兵数 3 @ s19, 2 @ s22, 1 @ s23, 0 from s25; never home again
+  aipas1  旁厂血量 94 @ s11 (1 s after the wake), 3 @ s25, 1 from s26; the team within 450 of its base all the while
+          (到旁厂 0: it shoots from beyond 120); 到远厂 0 to s85
+  aipas0  out s10-s12 | 到远厂 2 @ s15, 4 @ s17-s34 | 旁厂血量 100 to s35, then (RAMPAGE: the nearest) 97 @ s36 ... 2 @
+          s50; 到旁厂 3-4 @ s55-s57
 
   a  步兵在家 / 到远厂     Peacekeepers of s1 within 450 of the AI's base / 300 of the far power plant
      步兵数 (airet*)      Peacekeepers s1 owns

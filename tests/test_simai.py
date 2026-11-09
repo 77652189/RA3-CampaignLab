@@ -236,3 +236,54 @@ def test_a_killed_plant_is_not_rebuilt_either_way(lib, build):
     w, rows = _switch_run(build, lib, until=100.0)
     kill = int(w.sim.m.facts['kill at'])
     assert rows[kill - 2]['电厂数'] == 1 and all(r['电厂数'] == 0 for r in rows[kill + 2:])
+
+
+# ---- the team state: retreat and EngagePassiveTargets (checks/engine_airetreat.py, bench 2026-11-08;
+# work/re l4_micro_retreat.md, l4_micro_engage.md). The simulator's team leaves ~8 s later than the bench's (s18 / s10):
+# compared from the leave.
+def _left(rows, key='步兵在家'):
+    return next(i for i, r in enumerate(rows) if r[key] == 0)
+
+
+def test_outgunned_team_walks_home_alive_and_goes_again(lib):
+    # bench airet: out s10-s12, 到远厂 2 @ s15, back home 4 @ s26 (步兵数 4 all along), out again s42, home again s54
+    _, rows = _switch_run('airet', lib, until=85.0)
+    out = _left(rows)
+    back = next(i for i in range(out, len(rows)) if rows[i]['步兵在家'] == 4)
+    assert any(r['到远厂'] >= 1 for r in rows[out:back])
+    assert back - out <= 16 and rows[back]['步兵数'] == 4                   # bench 16 s, nobody lost
+    again = next(i for i in range(back, len(rows)) if rows[i]['步兵在家'] == 0)
+    assert any(r['到远厂'] >= 1 for r in rows[again:])
+
+
+@pytest.mark.xfail(strict=True, reason='bench airet: 16 s home before going again and 4 alive to s85; the simulator '
+                                       '9 s (members within READY_RADIUS of the base are ready at once, INFERRED) '
+                                       'and loses one on the second trip')
+def test_outgunned_team_home_stay_and_losses_match_the_bench(lib):
+    _, rows = _switch_run('airet', lib, until=85.0)
+    out = _left(rows)
+    back = next(i for i in range(out, len(rows)) if rows[i]['步兵在家'] == 4)
+    again = next(i for i in range(back, len(rows)) if rows[i]['步兵在家'] < 4)
+    assert 14 <= again - back <= 18 and all(r['步兵数'] == 4 for r in rows)
+
+
+def test_no_retreat_at_power_advantage_zero(lib):
+    # bench airet0: 到远厂 4 s17-s18, 步兵数 3 @ s19 ... 0 from s25; nobody home again
+    _, rows = _switch_run('airet0', lib, until=85.0)
+    out = _left(rows)
+    assert all(r['步兵在家'] == 0 for r in rows[out:]) and rows[-1]['步兵数'] == 0
+
+
+def test_engage_passive_on_hits_the_side_plant_first(lib):
+    # bench aipas1: 旁厂血量 94 @ s11 (1 s after the wake), 3 @ s25; nobody at the far plant to s85
+    _, rows = _switch_run('aipas1', lib, until=60.0)
+    hit = next(i for i, r in enumerate(rows) if r['旁厂血量'] < 100)
+    assert all(r['到远厂'] == 0 for r in rows[:hit + 10])
+
+
+def test_engage_passive_off_goes_straight_to_the_far_plant(lib):
+    # bench aipas0: 到远厂 2 @ s15, 4 s17-s34; the side plant at 100 until s35, then RAMPAGE hurts it (97 @ s36)
+    _, rows = _switch_run('aipas0', lib, until=60.0)
+    far = next(i for i, r in enumerate(rows) if r['到远厂'] >= 1)
+    hit = next(i for i, r in enumerate(rows) if r['旁厂血量'] < 100)
+    assert far < hit
