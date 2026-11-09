@@ -922,3 +922,76 @@ def test_idle_acquiring_is_the_units_own_word():
     assert simunits.acquire('AlliedAntiInfantryInfantry') == ['YES']
     assert simunits.acquire('AlliedMCV') == ['NO']
     assert simunits.acquire('AlliedAntiInfantryVehicle') == []
+
+
+# ---- inventory batch 1 (work/re/l2_scripts1.md): bench 2026-11-08 `cnv_check engine_scripts1 <variant>`, readings in
+# checks/engine_scripts1.py
+def _scripts1(variant, until):
+    return {round(sec): vals for sec, vals in _sim_run('engine_scripts1', variant, until).series}
+
+
+def test_scripts1_conditions_as_the_bench():
+    """cond: 条件位 9 all run (Player_1 Human 1 + a line never played reads done 8; Soviet_1 not Human, before and after
+    its AI is woken; a clip never played not done); 状态 3 -> 1 at the kill -> 0 at the clear."""
+    by = _scripts1('cond', 12.0)
+    assert all(v[0] == 9 for v in by.values()), by
+    assert (by[3][1], by[4][1], by[11][1]) == (3, 1, 0), by
+
+
+def test_scripts1_a_team_handed_over_drops_its_move():
+    """xfer: Soviet_2's from the hand-over, the move it was on dropped (nobody in `far` in 40 s), both off home."""
+    last = _scripts1('xfer', 40.0)[40]
+    assert last[:3] == [1, 0, 2], last
+
+
+def test_scripts1_idle_for_seconds_drops_the_move():
+    """idle: the tank without the idle order arrives (bench s7, about 9 game s), the one told UNIT_IDLE_FOR_SECONDS 3
+    at 3 s never does in 45 s -- the order dropped, not a 3 s pause."""
+    by = _scripts1('idle', 45.0)
+    arrived = min(s for s, v in by.items() if v[1] == 1)
+    assert 7 <= arrived <= 12 and all(v[0] == 0 for v in by.values()), by
+
+
+def test_scripts1_hunt_without_an_ai_moves_nobody():
+    """hunt: TEAM_HUNT / NAMED_HUNT on a computer player's units (AI not woken) and TEAM_HUNT on the player's: 60 s
+    where they stood."""
+    assert all(v == [0, 0, 0] for v in _scripts1('hunt', 60.0).values())
+
+
+@pytest.mark.xfail(strict=True, reason='the Peacekeeper toggle (ToggleStatusSpecialAbilityUpdate) is not simulated: '
+                                       'the button reaches each member, the shield status is not set')
+def test_scripts1_team_button_raises_both_shields():
+    """button: TEAM_USE_COMMANDBUTTON_ABILITY(Pk, the riot shield) at 2 s: 举盾 2 from then."""
+    assert _scripts1('button', 10.0)[10] == [2]
+
+
+def test_video_a_radar_clip_is_done_after_its_length_full_screen_never():
+    """movie play (bench, docs/story/handoff.md 1g): CNVTEST01 (95 frames at 23.976) in the radar window done 63 game
+    frames after its start; the full-screen clip never reads done."""
+    last = _sim_run('movie', 'play', 30.0).series[-1][1]
+    assert abs(last[0] - 63) <= 3 and last[1] == 1 and last[3] == 0, last
+
+
+def test_audio_a_dubbed_line_is_done_its_length_after_it_is_heard(tmp_path):
+    """HAS_FINISHED_AUDIO: true for a line never played; a 4.34 s recording played at t is done at t + 0.9 + 4.34 (bench
+    11-04 engine_dialog at x1: heard 0.9 s after the play, done at 5.3 s)."""
+    import types
+    import wave
+    import build
+    import sim
+    wav = tmp_path / 'line.wav'
+    with wave.open(str(wav), 'wb') as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(1000)
+        w.writeframes(b'\0\0' * 4340)
+    m, t, _ = build.resolve('engine_scripts1', 'cond')
+    m.voice = types.SimpleNamespace(items=[('CNV_Line', str(wav), None, None)])
+    s = sim.Sim(m, t)
+    assert s.cond('HAS_FINISHED_AUDIO', ['CNV_Line'])
+    s.act('PLAY_SOUND_EFFECT', ['CNV_Line'], None)
+    start = s.t
+    s.t = start + 5.2
+    assert not s.cond('HAS_FINISHED_AUDIO', ['CNV_Line'])
+    s.t = start + 5.3
+    assert s.cond('HAS_FINISHED_AUDIO', ['CNV_Line'])

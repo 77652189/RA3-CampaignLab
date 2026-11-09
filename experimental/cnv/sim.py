@@ -49,6 +49,7 @@ import importlib.util
 import math
 import os
 import re
+import struct
 import sys
 
 import numpy as np
@@ -287,6 +288,13 @@ SHOWN = {'SHOW_MILITARY_CAPTION': '通报', 'CAMPAIGN_CREATE_AUTO_SAVE': '存档
          'PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM': '战况音乐', 'NAMED_FLASH': '闪烁', 'NAMED_SHOW_INFOBOX': '信息框',
          'OBJECT_CREATE_RADAR_EVENT': '小地图闪点', 'PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT': '原版播报',
          'PLAY_SOUND_EFFECT': '配音', 'MOVIE_PLAY_RADAR': '头像'}
+# HAS_FINISHED_AUDIO / _VIDEO (work/re/l2_scripts1.md 2.3 / 2.4): the game waits for the clients' end-of-play report,
+# not a time; we place it. A dubbed line, x1 as a player hears it (bench 11-04 checks/engine_dialog.py): heard
+# AUDIO_LEAD s after the play, done at its length after that (4.34 s line -> 5.3 s). A radar clip (bench movie.py
+# play): done its own length after the play (CNVTEST01, 95 frames at 23.976 = 3.96 s: 63 game frames, 4.2 s);
+# a full-screen one never reads done. Lengths we cannot read (a retail line, a retail clip) take the guesses below.
+AUDIO_LEAD, AUDIO_GUESS, VIDEO_GUESS = 0.9, 2.5, 4.0
+SOUND_PLAYS = ('PLAY_SOUND_EFFECT', 'PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT')
 IGNORED = {'PLAYER_SET_MAX_PLAYER_POWER_POINTS', 'PLAYER_SET_PLAYER_POWER_POINTS', 'DISPLAY_COUNTER', 'HIDE_COUNTER',
            'SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES',
            'SKIRMISH_AI_USE_REPAIRS', 'SKIRMISH_AI_USE_REBUILD_SYSTEM', 'CAMERA_LETTERBOX_BEGIN', 'CAMERA_LETTERBOX_END',
@@ -764,6 +772,8 @@ class Sim:
         self.ra3_only = set()               # RA3-only action / condition names the run used
         self.last_change = 0.0
         self.ai = {}                        # player -> woken at
+        self.audio_end = {}                 # sound event -> when HAS_FINISHED_AUDIO holds again (Sim.played)
+        self.video_end = {}                 # clip -> when HAS_FINISHED_VIDEO holds (None: never, a full-screen one)
         self.money = {}
         self.nodes = {}                     # ore node name -> {'free': frame it takes a miner from, 'gathered', 'at'}
         self.mined_to = None                # the last frame mine_due ran
@@ -1481,6 +1491,10 @@ class Sim:
         if b:
             b.path, b.goal = [], None
 
+    def stand(self, b):
+        """Its order dropped, nothing new: idle where it is (the AI's command 5: l2_scripts1 3, 6)."""
+        b.path, b.goal, b.mode, b.move_to = [], None, 'idle', None
+
     def enemy(self, a, b):
         """Player a takes player b as an enemy."""
         if (a, b) in self.relations:
@@ -1740,6 +1754,27 @@ class Sim:
             return bool(b and self.sees(b.x, b.y, b.surface == 'air'))
         if name == 'CAMERA_ENTERED_AREA':
             return bool(self.camera and inside(self.areas[a[0]], *self.camera))
+        if name == 'PLAYER_IS_HUMAN_OR_AI_PERSONALITY':
+            # (player, personality) l2_scripts1 2.1: "Human" = the player has no AI; else its AI's personality is the
+            # name. Bench 11-08 engine_scripts1 cond: Player_1 Human holds, Soviet_1 (a campaign computer player, its
+            # AI never woken) is not Human from the start -- every computer player has its AI object
+            if a[1] == 'Human':
+                return a[0] == self.human
+            return a[0] != self.human and any(self.players.get(s) == a[0] and p.get('aiPersonality') == a[1]
+                                              for s, p in getattr(self.m, 'sides', {}).items())
+        if name == 'UNIT_HAS_OBJECT_STATUS':
+            # (unit, status) l2_scripts1 2.2: the object's status bit; no object, false. Bench 11-08 cond: a bit a
+            # script set reads at once, cleared at once, and a killed unit reads false from the kill
+            b = self.body(a[0])
+            st = a[1][2] if isinstance(a[1], tuple) else a[1]
+            if st not in ACTED_STATUS and st not in getattr(b, 'status', ()):
+                self.gap(GAP_CONDITION, name, f'状态位 {st}：模拟器只知道脚本设的和 {"、".join(sorted(ACTED_STATUS))}')
+            return bool(b and b.alive and st in b.status)
+        if name == 'HAS_FINISHED_AUDIO':        # never played: true (l2_scripts1 2.3; bench 11-08 cond)
+            return self.t >= self.audio_end.get(a[0], 0.0)
+        if name == 'HAS_FINISHED_VIDEO':        # never played: false (bench 11-08 cond); full screen: never (movie.py)
+            end = self.video_end.get(a[0])
+            return end is not None and self.t >= end
         self.unknown[name] = self.unknown.get(name, 0) + 1
         self.gap(GAP_CONDITION, name, 'Sim.cond 不认识：当成不成立')
         return False
@@ -1781,9 +1816,55 @@ class Sim:
         return self.seen[key]
 
     # ---- actions
+    def played(self, name, a):
+        """A sound or a movie started: when HAS_FINISHED_AUDIO / _VIDEO will hold (AUDIO_LEAD ...)."""
+        if name in SOUND_PLAYS:
+            n = self.audio_len(a[0])
+            if n is None:
+                self.gap(GAP_ACTION, name, f'{a[0]} 时长读不到：按 {AUDIO_GUESS} 秒算播完')
+                n = AUDIO_GUESS
+            self.audio_end[a[0]] = self.t + AUDIO_LEAD + n
+        elif name == 'MOVIE_PLAY_RADAR':
+            n = self.video_len(a[0])
+            if n is None:
+                self.gap(GAP_ACTION, name, f'{a[0]} 时长读不到：按 {VIDEO_GUESS} 秒算播完')
+                n = VIDEO_GUESS
+            self.video_end[a[0]] = self.t + n
+        elif name == 'MOVIE_PLAY_FULLSCREEN':
+            self.video_end[a[0]] = None
+
+    def audio_len(self, event):
+        """Seconds one of our dubbed lines plays (its recording in the mission's voice pack), else None (a retail
+        line, a unit's voice)."""
+        items = getattr(getattr(self.m, 'voice', None), 'items', None) or ()
+        wav = next((it[1] for it in items if it[0] == event and not it[3]), None)
+        if not wav:
+            return None
+        import wave
+        try:
+            with wave.open(wav) as w:
+                return w.getnframes() / w.getframerate()
+        except (wave.Error, OSError, EOFError):
+            return None
+
+    def video_len(self, clip):
+        """Seconds one of our clips plays: its VP6 header (frames, rate), else None (a retail clip)."""
+        path = (getattr(getattr(self.m, 'video', None), 'clips', None) or {}).get(clip)
+        try:
+            with open(path, 'rb') as f:
+                head = f.read(32)
+        except (OSError, TypeError):
+            return None
+        if head[:4] != b'MVhd':
+            return None
+        frames, _, den, num = struct.unpack('<IIII', head[16:32])
+        return frames * num / den if den else None
+
     def act(self, name, a, script):
         if name in RA3_ONLY:
             self.ra3_only.add(name)
+        if name in SOUND_PLAYS or name.startswith('MOVIE_PLAY_'):
+            self.played(name, a)
         if name == 'SET_FLAG':
             if SCENE_FLAG.fullmatch(str(a[0])):         # the player's input is off: nothing is late for a scene's length
                 if a[1]:
@@ -1880,6 +1961,38 @@ class Sim:
                 b.owner = a[1]
                 self.note('易主', f'{self.label(b)} 归 {self.who(a[1])}')
                 self.change()
+        elif name == 'TEAM_TRANSFER_TO_PLAYER':
+            # (team, player) l2_scripts1 6: each member goes to the player's own team, its order cleared. Bench 11-08
+            # engine_scripts1 xfer: owned by the new player at once, the move it was on dropped, the team left empty
+            for b in self.members(a[0]):
+                b.owner, b.team = a[1], f'{a[1]}/team{a[1]}'
+                self.stand(b)
+                self.note('易主', f'{self.label(b)} 归 {self.who(a[1])}（命令清掉）')
+            self.change()
+        elif name in ('UNIT_IDLE_FOR_FRAMECOUNT', 'UNIT_IDLE_FOR_SECONDS'):
+            # (unit, n) l2_scripts1 3: a unit with an AI drops its order (command 5) and its idle count is set. Bench
+            # 11-08 idle: UNIT_IDLE_FOR_SECONDS 3 on a moving tank -- it never went on (45 s), not a 3 s pause
+            b = self.body(a[0])
+            if b and b.alive and b.speed:
+                self.stand(b)
+        elif name in ('TEAM_HUNT', 'NAMED_HUNT'):
+            # l2_scripts1 4: a flag bit on each unit and its AI woken; only an AI player's HuntTactic (TEAM_HUNT) and
+            # its AI (NAMED_HUNT) read it. Bench 11-08 hunt: a computer player's team / unit (AI not woken) and the
+            # player's own team stayed where they were for 60 s
+            crew = self.members(a[0]) if name == 'TEAM_HUNT' else [b for b in [self.body(a[0])] if b and b.alive]
+            if any(b.owner in self.ai for b in crew):
+                self.gap(GAP_ACTION, name, 'AI 玩家的猎杀战术（HuntTactic）不模拟（引擎 B 的 AI）')
+        elif name in ('UNIT_AI_TRANSFER', 'TEAM_AI_TRANSFER'):
+            # (unit / team, on) l2_scripts1 7: a computer player's units into / out of its AI's hands (no order
+            # cleared); a human player's: nothing. What the AI then does with them is engine B's (AI not simulated)
+            crew = self.members(a[0]) if name == 'TEAM_AI_TRANSFER' else [b for b in [self.body(a[0])] if b and b.alive]
+            if any(b.owner != self.human for b in crew):
+                self.gap(GAP_ACTION, name, '交给 AI 后的行为不模拟（引擎 B 的 AI）')
+        elif name == 'TEAM_USE_COMMANDBUTTON_ABILITY':
+            # (team, button) l2_scripts1 8: the button on every living member, no target. Bench 11-08 button: both
+            # Peacekeepers of the crew raised their shields
+            for b in self.members(a[0]):
+                self.act('NAMED_USE_COMMANDBUTTON_ABILITY', [b.name, a[1]], script)
         elif name in ('NAMED_KILL', 'NAMED_DELETE'):
             b = self.body(a[0])
             if b:

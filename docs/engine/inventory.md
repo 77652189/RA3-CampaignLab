@@ -4,8 +4,8 @@
 
 | 部分 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|
-| 脚本动作 | 427 | 40 | 47 | 295 | 45 | 69% |
-| 脚本条件 | 89 | 15 | 5 | 69 | 0 | 85% |
+| 脚本动作 | 427 | 43 | 52 | 287 | 45 | 72% |
+| 脚本条件 | 89 | 19 | 5 | 65 | 0 | 93% |
 | 物体模块 | 184 | 9 | 13 | 148 | 14 | 26% |
 | 武器效果 | 25 | 2 | 2 | 21 | 0 | 52% |
 | AI | 415 | 27 | 142 | 212 | 34 | 76% |
@@ -18,7 +18,7 @@
 | 已对拍 | `SET_MILLISECOND_TIMER` | 4153 | 引擎模型核心；台上量过：checks/engine_acquire.py |
 | 已对拍 | `SET_FLAG` | 4105 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aimicro.py |
 | 推断 | `ALLOW_DISALLOW_ONE_BUILDING` | 3466 | Sim.act / Sim.cond 有分支 |
-| 未做 | `PLAYER_LOCK_PLAYER_TECH` | 1887 | Sim.act / Sim.cond 不认识 |
+| 未做 | `PLAYER_LOCK_PLAYER_TECH` | 1887 | 程序读到：把协议（PlayerTech）加进 / 移出玩家的锁表；模拟器没有协议，有协议模型前补它没有效果（work/re/l2_scripts1.md 5） |
 | 推断 | `DISABLE_SCRIPT` | 1099 | 引擎模型核心 |
 | 已对拍 | `MOVE_NAMED_UNIT_TO` | 1000 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aidefense.py |
 | 推断 | `LINK_MISSION_OBJECTIVE_TO_OBJECT` | 950 | Sim.act / Sim.cond 有分支 |
@@ -27,7 +27,7 @@
 | 推断 | `SET_MISSION_OBJECTIVE_STATUS` | 732 | Sim.act / Sim.cond 有分支 |
 | 推断 | `PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT` | 640 | 只记进时间线（sim.SHOWN） |
 | 推断 | `CALL_SUBROUTINE` | 533 | 引擎模型核心 |
-| 未做 | `UNIT_IDLE_FOR_FRAMECOUNT` | 504 | Sim.act / Sim.cond 不认识 |
+| 推断 | `UNIT_IDLE_FOR_FRAMECOUNT` | 504 | Sim.stand：和 UNIT_IDLE_FOR_SECONDS 同一个处理函数，秒版台上量过（命令清掉，不是暂停） |
 | 不涉及 | `PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT_WITH_SUBTITLE` | 445 | 纯表现（名字规则） |
 | 推断 | `MOVIE_PLAY_RADAR` | 433 | 只记进时间线（sim.SHOWN） |
 | 推断 | `CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION` | 399 | Sim.act / Sim.cond 有分支 |
@@ -37,21 +37,21 @@
 | 推断 | `PLAYER_RELATES_PLAYER` | 319 | Sim.act / Sim.cond 有分支 |
 | 未做 | `UNIT_AFFECT_OBJECT_PANEL_FLAGS` | 317 | Sim.act / Sim.cond 不认识 |
 | 未做 | `SET_MISSION_HOT_SPOT_VISIBILITY` | 300 | Sim.act / Sim.cond 不认识 |
-| 已对拍 | `MOVE_TEAM_TO` | 298 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_team.py |
+| 已对拍 | `MOVE_TEAM_TO` | 298 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts1.py |
 | 已对拍 | `CREATE_NAMED_ON_TEAM_AT_WAYPOINT` | 291 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_acquire.py |
 | 已对拍 | `NAMED_ATTACK_NAMED` | 271 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_attack.py |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT` | 264 | Sim.act / Sim.cond 不认识 |
 | 未做 | `CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION` | 259 | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `MOVE_CAMERA_TO` | 255 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_camera.py |
 | 推断 | `OBJECT_CREATE_RADAR_EVENT` | 254 | 只记进时间线（sim.SHOWN） |
-| 未做 | `UNIT_IDLE_FOR_SECONDS` | 237 | Sim.act / Sim.cond 不认识 |
-| 未做 | `TEAM_TRANSFER_TO_PLAYER` | 235 | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `UNIT_IDLE_FOR_SECONDS` | 237 | tests/test_simbench.py::test_scripts1_idle_for_seconds_drops_the_move |
+| 已对拍 | `TEAM_TRANSFER_TO_PLAYER` | 235 | tests/test_simbench.py::test_scripts1_a_team_handed_over_drops_its_move |
 | 已对拍 | `NAMED_TRANSFER_OWNERSHIP_PLAYER` | 231 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_invuln.py |
 | 已对拍 | `INCREMENT_COUNTER` | 229 | 引擎模型核心；台上量过：checks/engine_aimicro.py |
 | 未做 | `UNIT_CHANGE_OBJECT_STATUS:SHROUD_REVEAL_TO_ALL` | 218 | 状态位 SHROUD_REVEAL_TO_ALL 只记下来 |
 | 未做 | `PLAYER_SET_MAX_PLAYER_POWER_POINTS` | 206 | sim.IGNORED 明确丢掉 |
 | 已对拍 | `NAMED_KILL` | 204 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_attack.py |
-| 未做 | `TEAM_HUNT` | 203 | Sim.act / Sim.cond 不认识 |
+| 推断 | `TEAM_HUNT` | 203 | 没交给 AI 的玩家（含玩家自己）：不动，台上量过（engine_scripts1 hunt 60 s）；AI 玩家的 HuntTactic 不模拟（引擎 B），碰到记 Sim.unmodeled |
 | 未做 | `CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT` | 196 | sim.IGNORED 明确丢掉 |
 | 推断 | `LINK_MISSION_OBJECTIVE_TO_WAYPOINT` | 194 | Sim.act / Sim.cond 有分支 |
 | 未做 | `NAMED_FOLLOW_WAYPOINTS` | 192 | Sim.act / Sim.cond 不认识 |
@@ -63,12 +63,12 @@
 | 已对拍 | `SET_COUNTER` | 171 | 引擎模型核心；台上量过：checks/engine_aiskirm.py |
 | 未做 | `UNIT_CHANGE_OBJECT_STATUS:SKIRMISH_AI_DO_NOT_ATTACK` | 171 | 状态位 SKIRMISH_AI_DO_NOT_ATTACK 只记下来 |
 | 推断 | `NAMED_SHOW_INFOBOX` | 166 | 只记进时间线（sim.SHOWN） |
-| 未做 | `TEAM_USE_COMMANDBUTTON_ABILITY` | 162 | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `TEAM_USE_COMMANDBUTTON_ABILITY` | 162 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts1.py |
 | 未做 | `PLAYER_SPECIAL_POWER_AVAILABILITY` | 158 | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `PATH_MUSIC_PLAY_EVENT` | 155 | 只记进时间线（sim.SHOWN）；台上量过：docs/engine/script-semantics.md |
 | 不涉及 | `CAMERA_LETTERBOX_END` | 154 | 纯表现（名字规则） |
 | 推断 | `DISABLE_INPUT` | 152 | Sim.act / Sim.cond 有分支 |
-| 未做 | `TEAM_AI_TRANSFER` | 152 | Sim.act / Sim.cond 不认识 |
+| 推断 | `TEAM_AI_TRANSFER` | 152 | 同 UNIT_AI_TRANSFER，对队里每个成员（台上没量） |
 | 不涉及 | `EVA_SET_ENABLED_DISABLED` | 148 | 纯表现（名字规则） |
 | 不涉及 | `PLAY_SOUND_EFFECT_AT` | 147 | 纯表现（名字规则） |
 | 推断 | `ATTACK_MOVE_NAMED_UNIT_TO` | 146 | Sim.act / Sim.cond 有分支 |
@@ -77,7 +77,7 @@
 | 推断 | `ENABLE_INPUT` | 132 | Sim.act / Sim.cond 有分支 |
 | 推断 | `NO_OP` | 130 | 引擎模型核心 |
 | 未做 | `TEAM_AFFECT_OBJECT_PANEL_FLAGS` | 130 | Sim.act / Sim.cond 不认识 |
-| 未做 | `UNIT_AI_TRANSFER` | 129 | Sim.act / Sim.cond 不认识 |
+| 推断 | `UNIT_AI_TRANSFER` | 129 | 程序读到：人类玩家的单位无效、不清命令；交给 AI 后的行为归引擎 B，碰到记 Sim.unmodeled（台上没量） |
 | 未做 | `TELEPORT_STRUCTURE` | 128 | Sim.act / Sim.cond 不认识 |
 | 推断 | `CAMPAIGN_CREATE_AUTO_SAVE` | 127 | 只记进时间线（sim.SHOWN） |
 | 未做 | `UNIT_SET_STANCE` | 124 | Sim.act / Sim.cond 不认识 |
@@ -127,7 +127,7 @@
 | 未做 | `LINK_MISSION_HOT_SPOT_TO_OBJECT` | 67 | Sim.act / Sim.cond 不认识 |
 | 未做 | `SKIRMISH_AI_USE_REBUILD_SYSTEM` | 67 | sim.IGNORED 明确丢掉 |
 | 未做 | `TEAM_MERGE_INTO_TEAM` | 67 | Sim.act / Sim.cond 不认识 |
-| 未做 | `NAMED_HUNT` | 66 | Sim.act / Sim.cond 不认识 |
+| 推断 | `NAMED_HUNT` | 66 | 同 TEAM_HUNT：没交给 AI 不动（台上量过）；AI 玩家的猎杀不模拟（引擎 B） |
 | 未做 | `TEAM_FLASH` | 66 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_SET_OVERRIDE_RELATION_TO_PLAYER` | 64 | Sim.act / Sim.cond 不认识 |
 | 未做 | `SET_MISSION_HOT_SPOT_ACTIVENESS` | 61 | Sim.act / Sim.cond 不认识 |
@@ -452,16 +452,16 @@
 | 已对拍 | `NAMED_DESTROYED` | 922 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aispecial.py |
 | 推断 | `PLAYER_HAS_OBJECT_COMPARISON` | 628 | Sim.act / Sim.cond 有分支 |
 | 已对拍 | `COUNTER` | 577 | 引擎模型核心；台上量过：checks/engine_aimicro.py |
-| 未做 | `HAS_FINISHED_AUDIO` | 495 | Sim.act / Sim.cond 不认识 |
-| 未做 | `PLAYER_IS_HUMAN_OR_AI_PERSONALITY` | 470 | Sim.act / Sim.cond 不认识 |
-| 未做 | `HAS_FINISHED_VIDEO` | 422 | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `HAS_FINISHED_AUDIO` | 495 | tests/test_simbench.py::test_audio_a_dubbed_line_is_done_its_length_after_it_is_heard |
+| 已对拍 | `PLAYER_IS_HUMAN_OR_AI_PERSONALITY` | 470 | tests/test_simbench.py::test_scripts1_conditions_as_the_bench |
+| 已对拍 | `HAS_FINISHED_VIDEO` | 422 | tests/test_simbench.py::test_video_a_radar_clip_is_done_after_its_length_full_screen_never |
 | 已对拍 | `NAMED_INSIDE_AREA` | 413 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_bits.py |
 | 已对拍 | `SKIRMISH_PLAYER_HAS_UNITS_IN_AREA` | 410 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_area.py |
 | 已对拍 | `NAMED_OWNED_BY_PLAYER` | 397 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_garrison.py |
 | 已对拍 | `NAMED_NOT_DESTROYED` | 374 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_crush.py |
 | 已对拍 | `PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA` | 278 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aistate.py |
 | 已对拍 | `NAMED_ATTACKED_BY_PLAYER` | 150 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_attack.py |
-| 未做 | `UNIT_HAS_OBJECT_STATUS` | 142 | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `UNIT_HAS_OBJECT_STATUS` | 142 | tests/test_simbench.py::test_scripts1_conditions_as_the_bench |
 | 推断 | `COUNTER_SECONDS` | 141 | 引擎模型核心 |
 | 已对拍 | `UNIT_HEALTH` | 134 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_air.py |
 | 未做 | `MISSION_HOT_SPOT_ACTIVE` | 110 | Sim.act / Sim.cond 不认识 |

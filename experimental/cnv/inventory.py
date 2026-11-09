@@ -46,6 +46,15 @@ PARTS = (ACTION, CONDITION, MODULE, NUGGET, AI)     # AI: engine B's part, its o
 BENCHED_TESTS = {
     (MODULE, 'Behaviors/OreMinerBehavior'): 'tests/test_simbench.py::test_mining_pays_8_a_frame_and_a_trip_takes_269',
     (MODULE, 'Behaviors/OreNodeBehavior'): 'tests/test_simbench.py::test_mining_a_second_miner_on_one_node_adds_nothing',
+    # batch 1 (work/re/l2_scripts1.md, checks/engine_scripts1.py, bench 11-08)
+    (CONDITION, 'PLAYER_IS_HUMAN_OR_AI_PERSONALITY'): 'tests/test_simbench.py::test_scripts1_conditions_as_the_bench',
+    (CONDITION, 'UNIT_HAS_OBJECT_STATUS'): 'tests/test_simbench.py::test_scripts1_conditions_as_the_bench',
+    (CONDITION, 'HAS_FINISHED_AUDIO'):
+        'tests/test_simbench.py::test_audio_a_dubbed_line_is_done_its_length_after_it_is_heard',
+    (CONDITION, 'HAS_FINISHED_VIDEO'):
+        'tests/test_simbench.py::test_video_a_radar_clip_is_done_after_its_length_full_screen_never',
+    (ACTION, 'TEAM_TRANSFER_TO_PLAYER'): 'tests/test_simbench.py::test_scripts1_a_team_handed_over_drops_its_move',
+    (ACTION, 'UNIT_IDLE_FOR_SECONDS'): 'tests/test_simbench.py::test_scripts1_idle_for_seconds_drops_the_move',
 }
 
 # (part, name) -> (state, why): where the name rule above is wrong (a module read under another name ...)
@@ -80,6 +89,17 @@ NOTES = {
     (MODULE, 'Behaviors/TeleportStoredObjectsSpecialPower'): (TODO, f'{_NOT_IN_SIM}（没有传送存放的单位）'),
     (MODULE, 'Behaviors/TeleportStoredObjectsUpdate'): (TODO, f'{_NOT_IN_SIM}（UNIT_TELEPORT_TO_WAYPOINT 另算）'),
     (NUGGET, 'ActivateLaserNugget'): (TODO, f'{_NOT_IN_SIM}（没有激光束）'),
+    # batch 1 (work/re/l2_scripts1.md, checks/engine_scripts1.py, bench 11-08)
+    (ACTION, 'UNIT_IDLE_FOR_FRAMECOUNT'): (GUESSED, 'Sim.stand：和 UNIT_IDLE_FOR_SECONDS 同一个处理函数，'
+                                                     '秒版台上量过（命令清掉，不是暂停）'),
+    (ACTION, 'TEAM_HUNT'): (GUESSED, '没交给 AI 的玩家（含玩家自己）：不动，台上量过（engine_scripts1 hunt 60 s）；'
+                                     'AI 玩家的 HuntTactic 不模拟（引擎 B），碰到记 Sim.unmodeled'),
+    (ACTION, 'NAMED_HUNT'): (GUESSED, '同 TEAM_HUNT：没交给 AI 不动（台上量过）；AI 玩家的猎杀不模拟（引擎 B）'),
+    (ACTION, 'UNIT_AI_TRANSFER'): (GUESSED, '程序读到：人类玩家的单位无效、不清命令；交给 AI 后的行为归引擎 B，'
+                                            '碰到记 Sim.unmodeled（台上没量）'),
+    (ACTION, 'TEAM_AI_TRANSFER'): (GUESSED, '同 UNIT_AI_TRANSFER，对队里每个成员（台上没量）'),
+    (ACTION, 'PLAYER_LOCK_PLAYER_TECH'): (TODO, '程序读到：把协议（PlayerTech）加进 / 移出玩家的锁表；模拟器没有协议，'
+                                                '有协议模型前补它没有效果（work/re/l2_scripts1.md 5）'),
 }
 
 # presentation only: script actions that move the camera, play sound / film, draw on screen (conditions are never NA:
