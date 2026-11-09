@@ -925,6 +925,27 @@ def test_idle_acquiring_is_the_units_own_word():
 
 
 # ---- inventory batch 1 (work/re/l2_scripts1.md): bench 2026-11-08 `cnv_check engine_scripts1 <variant>`, readings in
+# checks/engine_scripts2.py (bench 11-09, CampScr2One / CampScr2All: counters A血 B血 比较数 类型数)
+def _scripts2(variant, until):
+    return {round(sec): vals for sec, vals in _sim_run('engine_scripts2', variant, until).series}
+
+
+def test_scripts2_a_relation_is_one_way_and_turns_back():
+    """one: Soviet_1 neutral to Player_1 -- its Guardian holds fire (A血 100 to bench s8), shoots again from BACK_AT
+    (10 s); a killed tank leaves PLAYER_HAS_OBJECT_COMPARISON's count at once, as the type counter (3 -> 2)."""
+    by = _scripts2('one', 24.0)
+    assert all(v[0] == 100 for s, v in by.items() if s <= 9), by
+    assert by[24][0] < 95, by
+    assert all(v[2] == v[3] == 2 for s, v in by.items() if s >= 4), by
+
+
+def test_scripts2_all_players_in_a_relation_changes_nothing():
+    """all: PLAYER_RELATES_PLAYER(Soviet_1, '<All Players>', Neutral) -- the Guardian shoots the player's MCV all along
+    (bench A血 98 at s1, 80 at s25)."""
+    by = _scripts2('all', 24.0)
+    assert by[24][0] < 95 and by[5][0] < 100, by
+
+
 # checks/engine_scripts1.py
 def _scripts1(variant, until):
     return {round(sec): vals for sec, vals in _sim_run('engine_scripts1', variant, until).series}

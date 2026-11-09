@@ -54,6 +54,8 @@ BENCHED_TESTS = {
     (CONDITION, 'HAS_FINISHED_VIDEO'):
         'tests/test_simbench.py::test_video_a_radar_clip_is_done_after_its_length_full_screen_never',
     (ACTION, 'TEAM_TRANSFER_TO_PLAYER'): 'tests/test_simbench.py::test_scripts1_a_team_handed_over_drops_its_move',
+    (ACTION, 'PLAYER_RELATES_PLAYER'): 'tests/test_simbench.py::test_scripts2_a_relation_is_one_way_and_turns_back',
+    (CONDITION, 'PLAYER_HAS_OBJECT_COMPARISON'): 'tests/test_simbench.py::test_scripts2_a_relation_is_one_way_and_turns_back',
     (ACTION, 'UNIT_IDLE_FOR_SECONDS'): 'tests/test_simbench.py::test_scripts1_idle_for_seconds_drops_the_move',
     # protocol points (simtech.py, checks/engine_protocol.py, bench 11-08)
     (ACTION, 'PLAYER_SET_MAX_PLAYER_POWER_POINTS'):

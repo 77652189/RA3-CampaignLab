@@ -2,16 +2,16 @@
 
 由 `experimental/cnv/inventory_levels.py --write` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）编出的全部脚本（`parts.merged`，含目标显示脚本）里的动作和条件；地图和任务摆的物体、我们自己的单位、脚本点名的模板，连同模块点名的武器、武器点名的物体（抛射体）和武器，取生效的模块（继承、include、同 id 覆盖）和武器效果。没跟：模块点名的别的物体（多是能变成 / 能装的东西：多功能步兵车的乘客、锤子坦克吸来的车）、物体生成表（死亡碎片、OCL 技能）和命令表（工厂能造什么）。AI 部分（引擎 B）在 [inventory-levels.md](inventory-levels.md)。状态和原版用量取自 [inventory.md](inventory.md)。停止条件①：下表全部已对拍。
 
-**已对拍 57 / 209**（不涉及的不算）。
+**已对拍 59 / 209**（不涉及的不算）。
 
 | 部分 | 已对拍 | 推断 | 未做 | 不涉及 |
 |---|---|---|---|---|
-| 脚本动作 | 35 | 25 | 0 | 4 |
-| 脚本条件 | 11 | 1 | 0 | 0 |
+| 脚本动作 | 36 | 24 | 0 | 4 |
+| 脚本条件 | 12 | 0 | 0 | 0 |
 | 物体模块 | 9 | 15 | 92 | 14 |
 | 武器效果 | 2 | 3 | 16 | 0 |
 
-按原版用量加权：已对拍 59%，已有（已对拍+推断）86%。
+按原版用量加权：已对拍 61%，已有（已对拍+推断）86%。
 
 摆了、但原版数据和我们的单位里都找不到的模板（模块没算）：a9 `AlliedFutureTank`。
 
@@ -79,7 +79,7 @@
 | 未做 | 物体模块 | `Behaviors/MovementSpecialPower` | 3 | a1 a4 a6 a7 | 模拟器代码里没有这个名字；例：JapanAntiVehicleVehicleTech3 |
 | 未做 | 物体模块 | `Behaviors/ReturnToProducerSpecialPower` | 3 | a1 a2 a3 a4 a5 a6 a7 a8 | 模拟器代码里没有这个名字；例：AlliedFighterAircraft, SovietFighterAircraft |
 | 未做 | 物体模块 | `Behaviors/SecondaryObjectListenerModule` | 3 | a1 a2 a3 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedAntiAirVehicleTech1, AlliedBaseDefense |
-| 未做 | 物体模块 | `Behaviors/SlaughterHordeContain` | 3 | a5 a7 a8 | 模拟器代码里没有这个名字；例：AlliedAntiStructureShip, CNV_Liberty |
+| 未做 | 物体模块 | `Behaviors/SlaughterHordeContain` | 3 | a5 a7 a8 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_aipullback.py），可能用别的名字实现了；例：AlliedAntiStructureShip, CNV_Liberty |
 | 未做 | 物体模块 | `Behaviors/StealthDetectorUpdate` | 3 | a2 a6 | 已核（11-08）：模拟器没有这个效果（没有反隐）；例：AlliedScoutInfantry |
 | 未做 | 物体模块 | `Behaviors/StructurePlacementBehavior` | 3 | a1 a2 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedRefinery, JapanRefinery |
 | 未做 | 物体模块 | `Behaviors/AimWeapon` | 2 | a1 a4 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAntiVehicleInfantry, SovietAntiVehicleInfantry |
@@ -132,7 +132,6 @@
 | 推断 | 脚本动作 | `SET_MISSION_OBJECTIVE_STATUS` | 732 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | Sim.act / Sim.cond 有分支 |
 | 推断 | 脚本动作 | `PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT` | 640 | a4 | 只记进时间线（sim.SHOWN） |
 | 推断 | 脚本动作 | `MOVIE_PLAY_RADAR` | 433 | a4 | 只记进时间线（sim.SHOWN） |
-| 推断 | 脚本动作 | `PLAYER_RELATES_PLAYER` | 319 | a2 a4 a5 a7 a9 | Sim.act / Sim.cond 有分支 |
 | 推断 | 脚本动作 | `OBJECT_CREATE_RADAR_EVENT` | 254 | a4 | 只记进时间线（sim.SHOWN） |
 | 推断 | 脚本动作 | `CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT` | 196 | a4 | Sim.act / Sim.cond 有分支 |
 | 推断 | 脚本动作 | `LINK_MISSION_OBJECTIVE_TO_WAYPOINT` | 194 | a1 a3 a4 a5 a6 a7 | Sim.act / Sim.cond 有分支 |
@@ -152,7 +151,6 @@
 | 推断 | 脚本动作 | `MOVE_CAMERA_TO_NAMED` | 20 | a5 a7 | Sim.act / Sim.cond 有分支 |
 | 推断 | 脚本动作 | `COUNTER_MATH_COUNTER` | 19 | a1 a2 a3 a6 a7 a9 | 引擎模型核心 |
 | 推断 | 脚本动作 | `TEAM_GUARD_AREA` | 9 | a1 a4 a5 a6 a7 a8 a9 | Sim.act / Sim.cond 有分支 |
-| 推断 | 脚本条件 | `PLAYER_HAS_OBJECT_COMPARISON` | 628 | a1 a4 a5 a7 | Sim.act / Sim.cond 有分支 |
 | 推断 | 物体模块 | `Body/ActiveBody` | 790 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | simunits.stats 读 MaxHealth（只有生命值；受伤状态、回血等另算）；例：AlliedAirfield, AlliedAntiAirMissileProjectile |
 | 推断 | 物体模块 | `Behaviors/AttributeModifierPoolUpdate` | 622 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | Sim.modify：属性修正挂在这个池里，到期规则（到期帧 >= 即失效、再挂覆盖不叠加）读自程序，work/re/l2_ability.md 第 51 轮；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
 | 推断 | 物体模块 | `Behaviors/SecondaryDamageTracker` | 617 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | Sim.chill（ALIGN freeze）：冷冻光束的冷冻值累计、每秒消散、按生命值分档减速、满档冻住（CryoBeamFrozenArmor 90000%，一碰就碎）；规则读自 SDK 数据，程序和台上都没对；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
@@ -175,6 +173,7 @@
 | 已对拍 | 脚本动作 | `SET_FLAG` | 4105 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aimicro.py |
 | 已对拍 | 脚本动作 | `NAMED_DELETE` | 908 | a2 a4 a5 a6 a7 a9 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_attack.py |
 | 已对拍 | 脚本动作 | `PLAYER_SET_MONEY` | 345 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aitower.py |
+| 已对拍 | 脚本动作 | `PLAYER_RELATES_PLAYER` | 319 | a2 a4 a5 a7 a9 | tests/test_simbench.py::test_scripts2_a_relation_is_one_way_and_turns_back |
 | 已对拍 | 脚本动作 | `MOVE_TEAM_TO` | 298 | a4 a7 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts1.py |
 | 已对拍 | 脚本动作 | `CREATE_NAMED_ON_TEAM_AT_WAYPOINT` | 291 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_acquire.py |
 | 已对拍 | 脚本动作 | `MOVE_CAMERA_TO` | 255 | a1 a2 a4 a6 a9 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_camera.py |
@@ -191,7 +190,7 @@
 | 已对拍 | 脚本动作 | `PLAYER_SET_PLAYER_POWER_POINTS` | 95 | a4 a5 a7 | tests/test_simbench.py::test_protocol_set_points_follows_the_programs_rule |
 | 已对拍 | 脚本动作 | `SKIRMISH_AI_MAKE_BASE` | 82 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aistate.py |
 | 已对拍 | 脚本动作 | `TEAM_ATTACK_NAMED` | 76 | a2 a4 a7 a8 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_reorder.py |
-| 已对拍 | 脚本动作 | `SKIRMISH_AI_USE_REPAIRS` | 75 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aiswitch.py |
+| 已对拍 | 脚本动作 | `SKIRMISH_AI_USE_REPAIRS` | 75 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aipullback.py |
 | 已对拍 | 脚本动作 | `PLAYER_GIVE_MONEY` | 72 | a4 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aiskirm.py |
 | 已对拍 | 脚本动作 | `UNIT_SET_TEAM` | 72 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_acquire.py |
 | 已对拍 | 脚本动作 | `SKIRMISH_AI_USE_REBUILD_SYSTEM` | 67 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aiswitch.py |
@@ -209,6 +208,7 @@
 | 已对拍 | 脚本条件 | `FLAG` | 5099 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 引擎模型核心；台上量过：checks/engine_aimicro.py |
 | 已对拍 | 脚本条件 | `TIMER_EXPIRED` | 3917 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 引擎模型核心；台上量过：checks/engine_acquire.py |
 | 已对拍 | 脚本条件 | `NAMED_DESTROYED` | 922 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aispecial.py |
+| 已对拍 | 脚本条件 | `PLAYER_HAS_OBJECT_COMPARISON` | 628 | a1 a4 a5 a7 | tests/test_simbench.py::test_scripts2_a_relation_is_one_way_and_turns_back |
 | 已对拍 | 脚本条件 | `COUNTER` | 577 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 引擎模型核心；台上量过：checks/engine_aimicro.py |
 | 已对拍 | 脚本条件 | `NAMED_INSIDE_AREA` | 413 | a3 a4 a5 a6 a7 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_bits.py |
 | 已对拍 | 脚本条件 | `SKIRMISH_PLAYER_HAS_UNITS_IN_AREA` | 410 | a1 a3 a4 a7 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_area.py |

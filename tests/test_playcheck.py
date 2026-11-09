@@ -40,9 +40,6 @@ def test_the_table_is_what_the_simulator_reads(level):
         assert lo <= seen.get(k, -99) <= hi, f'{level}: phase {k} at {seen.get(k)}, agreed {sec} (window {lo:.0f}-{hi:.0f})'
 
 
-@pytest.mark.xfail(strict=True, reason='sim.HOLD_SPOTS on (bench 11-09 checks/engine_spots.py): the compiled plays end '
-                                       '0.5-3.6 s off their own scripts (j7 126.9 vs 130.5) -- guess: the order units '
-                                       'get moves in, who claims a spot first; engine line A next (work/re/handoff.md)')
 @pytest.mark.parametrize('level', ['j7', 'a3'])
 def test_compiled_play_ends_as_the_simulators_own_script_does(level):
     t, s = playcheck.read(level)

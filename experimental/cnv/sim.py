@@ -1082,9 +1082,10 @@ class Sim:
         simulator 0 / 50 / 44.7). With it the a4 proxy's army stands apart, beats the second wave at x~1950 (off: all
         three trucks shot there at s232-240, lost at s248), the convoy halts alive, and the run goes to the clock:
         the proxy has no base-vehicle deploy, builds nothing and never takes 北营's command post (the level line's
-        to-do, docs/story/handoff-phase4.md). j7 / a3's compiled plays end 0.5-3.6 s off their own scripts
-        (test_playcheck, j7 126.9 vs 130.5) -- not looked into (guess: the order units are given moves in, who claims
-        a spot first)."""
+        to-do, docs/story/handoff-phase4.md). j7 / a3's compiled plays ended 0.5-3.6 s off their own scripts
+        (j7 126.9 vs 130.5): the script's 派 went straight to `send`, past this; it is order_move now, as its compiled
+        ATTACK_MOVE_NAMED_UNIT_TO (test_playcheck). The script's 走 is a group move (order_group) but compiles to one
+        MOVE_NAMED_UNIT_TO per unit -- no play has 走 for several units yet."""
         if b.surface == 'air' or not HOLD_SPOTS:
             return []
         return [tuple(o.dest if o.path and o.dest else (o.x, o.y)) + (o.radius,) for o in self.living()
@@ -2563,9 +2564,8 @@ class Sim:
         self.note('剧本', ' '.join([verb] + [str(x) for x in rest]))
         if verb == '派':
             who, where = rest
-            for b in self.pick(who):
-                b.mode = 'attack'                   # the player's units go attack-moving, fighting on the way
-                self.send(b, where)
+            for b in self.pick(who):                # the player's units go attack-moving, fighting on the way: one
+                self.order_move(b, where, True)     # unit's order as ATTACK_MOVE_NAMED_UNIT_TO (its goal off held spots)
         elif verb == '走':
             who, where = rest
             self.order_group(self.pick(who), where, False)  # as MOVE_NAMED_UNIT_TO; several at once, a group move

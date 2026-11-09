@@ -4,8 +4,8 @@
 
 | 部分 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|
-| 脚本动作 | 427 | 49 | 58 | 272 | 48 | 81% |
-| 脚本条件 | 89 | 22 | 6 | 61 | 0 | 94% |
+| 脚本动作 | 427 | 50 | 57 | 272 | 48 | 81% |
+| 脚本条件 | 89 | 23 | 5 | 61 | 0 | 94% |
 | 物体模块 | 184 | 9 | 15 | 143 | 17 | 42% |
 | 武器效果 | 25 | 2 | 3 | 20 | 0 | 53% |
 | AI | 415 | 37 | 190 | 154 | 34 | 87% |
@@ -34,7 +34,7 @@
 | 推断 | `OBJECTLIST_ADDOBJECTTYPE` | 383 | Sim.act / Sim.cond 有分支 |
 | 已对拍 | `PLAYER_SET_MONEY` | 345 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aitower.py |
 | 未做 | `SKIRMISH_AI_SET_ENEMY_PLAYER_PRIORITY` | 343 | Sim.act / Sim.cond 不认识 |
-| 推断 | `PLAYER_RELATES_PLAYER` | 319 | Sim.act / Sim.cond 有分支 |
+| 已对拍 | `PLAYER_RELATES_PLAYER` | 319 | tests/test_simbench.py::test_scripts2_a_relation_is_one_way_and_turns_back |
 | 推断 | `UNIT_AFFECT_OBJECT_PANEL_FLAGS` | 317 | Sim.act / Sim.cond 有分支 |
 | 未做 | `SET_MISSION_HOT_SPOT_VISIBILITY` | 300 | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `MOVE_TEAM_TO` | 298 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts1.py |
@@ -450,7 +450,7 @@
 | 已对拍 | `TIMER_EXPIRED` | 3917 | 引擎模型核心；台上量过：checks/engine_acquire.py |
 | 推断 | `CONDITION_TRUE` | 2947 | 引擎模型核心 |
 | 已对拍 | `NAMED_DESTROYED` | 922 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aispecial.py |
-| 推断 | `PLAYER_HAS_OBJECT_COMPARISON` | 628 | Sim.act / Sim.cond 有分支 |
+| 已对拍 | `PLAYER_HAS_OBJECT_COMPARISON` | 628 | tests/test_simbench.py::test_scripts2_a_relation_is_one_way_and_turns_back |
 | 已对拍 | `COUNTER` | 577 | 引擎模型核心；台上量过：checks/engine_aimicro.py |
 | 已对拍 | `HAS_FINISHED_AUDIO` | 495 | tests/test_simbench.py::test_audio_a_dubbed_line_is_done_its_length_after_it_is_heard |
 | 已对拍 | `PLAYER_IS_HUMAN_OR_AI_PERSONALITY` | 470 | tests/test_simbench.py::test_scripts1_conditions_as_the_bench |
