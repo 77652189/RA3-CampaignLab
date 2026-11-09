@@ -13,11 +13,15 @@ What is read off the map (mapstudy / mapxml / mapscript / mapterrain, the reader
   terrain   the height field (elevation / 16, as the cnv maps'), the water height (GlobalWaterSettings), the engine's
             own impassable cells (BlendTileData bit field 0)
   scripts   PlayerScriptsList as the engine model reads a .map (ra3model scripts.from_mapfile), one list per side in
-            SidesList order (the unnamed neutral side first)
+            SidesList order (the unnamed neutral side first), each with the scripts of the library maps that side
+            carries (LibraryMaps, read from the game's Libraries.big: library_lists)
 What the simulator does not act on is listed by the run (Sim.unmodeled / Sim.unknown), not dropped quietly.
 """
 import argparse
 import dataclasses
+import functools
+import os
+import struct
 
 import numpy as np
 
@@ -124,6 +128,7 @@ class RetailMission:
         lists = len([1 for _, n in m.walk() if n.name == 'ScriptList'])
         # SidesList's first side is the unnamed neutral one (mapstudy.players leaves out the nameless)
         self.order = ([''] if lists == len(props) + 1 else []) + list(props)
+        self.libraries = dict(zip(self.order, library_names(m)))
 
     def merged(self, test=None):
         """What sim.Sim takes from parts.merged: no units or objects of our own (the map's are .map.OBJECTS), no
@@ -135,7 +140,75 @@ class RetailMission:
     def script_lists(self, scripts):
         """The map's scripts for the engine model (scripts = ra3model.scripts), one list per side, every name a
         player's list keeps for itself written out in full (scope_names)."""
-        return scope_names(scripts, scripts.from_mapfile(self.file, self.order), set(self.sides))
+        lists = scripts.from_mapfile(self.file, self.order)
+        for lst in lists:
+            if self.libraries.get(lst.side):
+                lst.items = with_libraries(scripts, lst.items, library_lists(scripts, self.libraries[lst.side]))
+        return scope_names(scripts, lists, set(self.sides))
+
+
+LIBRARIES = 'Libraries.big'
+
+
+def library_names(m):
+    """LibraryMaps: one chunk per script list (SidesList order, the unnamed neutral side first -- the 81 retail
+    campaign maps: always as many as their script lists), each u32 count, then u16-prefixed paths
+    ('Libraries\\Lib_End_Mission\\Lib_End_Mission.map'); the library's short name, lower case."""
+    out = []
+    for _, n in m.walk():
+        if n.name == 'LibraryMaps':
+            d, names = n.head, []
+            p = 4
+            for _ in range(struct.unpack_from('<I', d, 0)[0]):
+                k = struct.unpack_from('<H', d, p)[0]
+                names.append(d[p + 2:p + 2 + k].decode('ascii').replace('/', '\\').split('\\')[-1][:-4].lower())
+                p += 2 + k
+            out.append(tuple(names))
+    return out
+
+
+@functools.lru_cache(maxsize=None)
+def _library_map(name):
+    import labpaths
+    arc = os.path.join(labpaths.GAME, 'Data', LIBRARIES)
+    return maprender.load(f'{arc}::libraries\\{name}\\{name}.map')
+
+
+def library_lists(scripts, names):
+    """The items of the library maps `names`, in order: a library is a map of one player ('Player') and the unnamed
+    neutral side; both lists' items, as the side carrying it would own them."""
+    items = []
+    for name in names:
+        m = _library_map(name)
+        props = mapstudy.players(m)
+        n = len([1 for _, x in m.walk() if x.name == 'ScriptList'])
+        for lst in scripts.from_mapfile(m, ([''] if n == len(props) + 1 else []) + list(props)):
+            items += lst.items
+    return items
+
+
+def with_libraries(scripts, own, library):
+    """A side's list with its libraries' scripts: the libraries' first, then the map's own; a library script or group
+    whose name the map's own list also has is left out -- the map overrides it (the libraries name such scripts
+    'Victory Condition (OVERRIDE ME)', one OR of no conditions; the maps that carry Lib_End_Mission write their own
+    of that name). Not read in the program: INFERRED from the libraries and maps (order included)."""
+    def names(items):
+        for it in items:
+            yield it.name
+            if isinstance(it, scripts.Group):
+                yield from names(it.items)
+    mine = set(names(own))
+
+    def keep(items):
+        out = []
+        for it in items:
+            if it.name in mine:
+                continue
+            if isinstance(it, scripts.Group):
+                it = dataclasses.replace(it, items=keep(it.items))
+            out.append(it)
+        return out
+    return keep(library) + list(own)
 
 
 # Argument types (script_catalog.json) whose names a player's script list keeps for itself: script, counter (timers

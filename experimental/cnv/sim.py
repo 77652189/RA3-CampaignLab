@@ -871,7 +871,9 @@ class Sim:
             mod, cls = got
             self.fps = mod.FPS
             lists = mission.script_lists(mod) if self.retail else mod.from_cnv(parts.unnot(self.mm.scripts))
-            self.eng = cls(lists, world=self, difficulty=self.level, honor_inverted=False)
+            # a retail map's own scripts keep their inverted bit (the engine model: honored for retail's compiled
+            # scripts; a02's 'NOT units in the convention center' completed objective 1 at 0:04 with it ignored)
+            self.eng = cls(lists, world=self, difficulty=self.level, honor_inverted=self.retail)
             self.flags, self.counters, self.timers = self.eng.flags, Counters(self.eng), Timers(self, mod.FPS)
             if any(c and c[-1] == parts.NOT for s in self.mm.scripts for c in s.when):
                 self.used.add('inverted')
@@ -1843,9 +1845,13 @@ class Sim:
             # (player, personality) l2_scripts1 2.1: "Human" = the player has no AI; else its AI's personality is the
             # name. Bench 11-08 engine_scripts1 cond: Player_1 Human holds, Soviet_1 (a campaign computer player, its
             # AI never woken) is not Human from the start -- every computer player has its AI object
+            # The map keeps the personality as an asset reference ('AIPersonalityDefinition:AIP_A03_Coop_...'), the
+            # script names it bare: compared by the name after the type, case aside (asset names)
             if a[1] == 'Human':
                 return a[0] == self.human
-            return a[0] != self.human and any(self.players.get(s) == a[0] and p.get('aiPersonality') == a[1]
+            want = str(a[1]).split(':')[-1].lower()
+            return a[0] != self.human and any(self.players.get(s) == a[0] and
+                                              str(p.get('aiPersonality', '')).split(':')[-1].lower() == want
                                               for s, p in getattr(self.m, 'sides', {}).items())
         if name == 'UNIT_HAS_OBJECT_STATUS':
             # (unit, status) l2_scripts1 2.2: the object's status bit; no object, false. Bench 11-08 cond: a bit a
