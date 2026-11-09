@@ -62,10 +62,9 @@ def test_the_opening_runs_on_its_own_scripts(mission):
     assert sorted(b.template for b in mine) == ['AlliedAntiInfantryInfantry'] * 4 + ['AlliedScoutInfantry'] * 2
 
 
-@pytest.mark.xfail(strict=True, reason='bench 11-09 (retail_q1_spots.py): the blobs\' middle at its final spot <=2.9 s '
-                                       'after the order; the simulator 3.9 s since the 44 column gap (walk speed or '
-                                       'way not yet checked; work/re/handoff.md round 109)')
 def test_question_1_the_squad_walks_to_the_point(mission):
+    # bench 11-09 (retail_q1_spots.py): the blobs' middle at its final spot <=2.9 s after the order; the simulator was
+    # 3.9 s on grid-row ways, in time since they are pulled straight (Ground.pull, Generals' Path::optimize)
     """Acceptance question 1 (docs/story/retail-q1-a01.md): the squad ordered to (505, 1577) has its middle within 30 of
     it ~2.5-2.9 s after the order (bench: 2.9 s at most, sampled every 0.8 s)."""
     order = 22.6
@@ -98,12 +97,13 @@ def test_question_1_the_squad_stands_round_the_point(mission):
     assert max(math.hypot(b.x - 505.2, b.y - 1576.7) for b in crew) <= 75
 
 
-@pytest.mark.xfail(strict=True, reason='sim.HOLD_SPOTS off: the rule is the game\'s (bench 11-09 retail_q1_spots.py: '
-                                       'a dog and a Peacekeeper sent alone to one point stood ~22 apart), but on, '
-                                       'a4\'s trucks never all reach the halt, which the game\'s a4 hold check does')
+@pytest.mark.xfail(strict=True, reason='sim.HOLD_SPOTS off: the rule is the game\'s and a4\'s trucks reach the halt '
+                                       'with it since Ground.pull, but on, the a4 proxy times out and j7 / a3\'s '
+                                       'compiled plays drift (sim.Sim.claims; work/re/handoff.md round 112)')
 def test_two_units_sent_alone_to_one_point_stand_apart(mission):
     """Two separate move orders to one point (MOVE_NAMED_UNIT_TO each): the second's goal is moved off the first's
-    (Generals' AIInternalMoveToState adjusts every move's goal off the spots other units hold)."""
+    (Generals' AIInternalMoveToState adjusts every move's goal off the spots other units hold). Bench 11-09
+    retail_q1_spots.py: a dog and a Peacekeeper sent alone to one point stood ~22 apart (sim.HOLD_SPOTS)."""
     s = sim.Sim(mission, script='22.6 走 UNIT - P1 - Peacekeeper 01 去 @505.2,1576.7; '
                                 '22.6 走 UNIT - P1 - Peacekeeper 02 去 @505.2,1576.7')
     s.advance(int(35 * 15))

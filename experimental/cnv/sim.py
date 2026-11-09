@@ -140,7 +140,7 @@ LINGER = 0.0                    # a killed unit's death (its slow death): still 
                                 # the area from the reading the kill shows in; the guess was 3 s
 GRID = 20.0                     # routing cells (world units)
 COLUMN_GAP = 44.0              # infantry column march's ends, across and back (bench 11-09 a01: ~44-50; Generals 22)
-HOLD_SPOTS = False             # every move's goal kept off other units' spots (Sim.claims): not benched, a4 changes
+HOLD_SPOTS = False             # every move's goal kept off other units' spots (Sim.claims): the game's (bench 11-09), off
 ARRIVE = 1.5 * GRID             # a plain move that ends farther than this from where it was sent stopped short (held_up)
 BUILD_STEP = 5.0                # a builder on his way (R5) moves in steps this long, to see where he gets within range
 HIGH_STEP = 50.0                # ShroudClearingHeight's default: a viewer does not discover a cell this much above its own
@@ -751,8 +751,36 @@ class Ground:
         if not np.isfinite(cost[a]):
             return self.closest(g, a, z) if closest else None
         cells = m.traceback(a)[::-1]                # traceback runs from the goal (the costs' source) to a
-        pts = [self.world(c) for c in cells]
-        return pts[1::3] + [q] if len(pts) > 3 else [q]
+        pts = [self.world(c) for c in self.pull(g, cells)]
+        if pts and math.hypot(pts[-1][0] - q[0], pts[-1][1] - q[1]) <= GRID:
+            pts.pop()                               # the goal's own cell: q itself ends the way
+        return pts + [q]
+
+    def pull(self, g, cells):
+        """Generals' Path::optimize (AIPathfind.cpp 474; work/re/generals-source-map.md): from each anchor the way
+        goes straight to the farthest cell it can see over walkable cells, the cells between left out; the cells
+        after the start, `cells[0]`. Without it a way ran on the grid's rows: a goal moved 30 aside (HOLD_SPOTS) put
+        the unit on the next row from early on and kept it there the whole way, where the game goes in one slant
+        line (a4's trucks 2 and 3 on the halt area's edges, 2026-11-09). Generals' extra cases (a diagonal
+        neighbour, a straight run along a row or a 45 degree line taken as passable) need no rule here: the next cell
+        is always kept."""
+        out, a, n = [], 0, len(cells)
+        while a < n - 1:
+            j = a + 1
+            while j + 1 < n and self.clear(g, cells[a], cells[j + 1]):
+                j += 1
+            out.append(cells[j])
+            a = j
+        return out
+
+    @staticmethod
+    def clear(g, c0, c1):
+        """Every grid cell the straight line between the centres of cells c0 and c1 passes (sampled every quarter
+        cell) walkable in g."""
+        k = 4 * max(abs(c1[0] - c0[0]), abs(c1[1] - c0[1])) + 1
+        jj = np.rint(np.linspace(c0[0], c1[0], k)).astype(int)
+        ii = np.rint(np.linspace(c0[1], c1[1], k)).astype(int)
+        return bool(g[jj, ii].all())
 
     def closest(self, g, a, z):
         """R7: the goal out of reach -- the way to the cell it can reach nearest the goal (bench 2026-11-07
@@ -767,8 +795,7 @@ class Ground:
         end = (int(jj[k]), int(ii[k]))
         if end == tuple(a):
             return []
-        pts = [self.world(c) for c in m.traceback(end)]
-        return pts[1::3] + [pts[-1]] if len(pts) > 3 else [pts[-1]]
+        return [self.world(c) for c in self.pull(g, m.traceback(end))] or [self.world(end)]
 
     def within(self, surface, p, q, reach):
         """R3: an attacker's way -- to the cell it reaches soonest from which q is within `reach` (Generals' attack
@@ -793,8 +820,8 @@ class Ground:
         if not ok.any():
             return None
         k = int(np.flatnonzero(ok)[np.argmin(cost[jj[ok], ii[ok]])])
-        pts = [self.world(c) for c in m.traceback((int(jj[k]), int(ii[k])))]
-        return pts[1::3] + [pts[-1]] if len(pts) > 3 else [pts[-1]]
+        end = (int(jj[k]), int(ii[k]))
+        return [self.world(c) for c in self.pull(g, m.traceback(end))] or [self.world(end)]
 
 
 class Sim:
@@ -1044,11 +1071,14 @@ class Sim:
 
     def claims(self, b, skip=()):
         """The spots other mobile ground units hold (x, y, radius): where they are going, or where they stand (the
-        pathfinder's goal cells, Pathfinder::updateGoal); none for aircraft in the air or for `skip`. Off unless
-        HOLD_SPOTS (2026-11-09): on, a4's three trucks sent to plaza 2 stop apart and its objective never completes
-        (the card plan wins 6:50 instead of 14:48). Benched 11-09: the rule is the game's (a01, two infantry sent
-        alone to one point stood ~22 apart), and the game's a4 still gets all trucks to the halt (checks/a4.py hold
-        PASS) -- so what is wrong is this rule's take on the trucks, not the level (work/re/handoff.md round 109)."""
+        pathfinder's goal cells, Pathfinder::updateGoal); none for aircraft in the air or for `skip`; none unless
+        HOLD_SPOTS. Benched 11-09: the rule is the game's (a01, two infantry sent alone to one point stood ~22 apart),
+        and the game's a4 gets all trucks to the 80-wide halt area (checks/a4.py hold PASS). The simulator's trucks
+        2 and 3, their goals moved 30 aside, ran on grid rows 40 off the road's middle the whole way, on the halt
+        area's edges, and drove past it: its ways were not pulled straight (Ground.pull since; now 2854,2479 and
+        2794,2521 at the halt at s315, like the switch off). Still off: on, the a4 proxy plays to a timeout
+        (test_simproxy a4 x3) and j7 / a3's compiled plays end 0.5-3.6 s off their own scripts (test_playcheck) --
+        not looked into yet (work/re/handoff.md round 112)."""
         if b.surface == 'air' or not HOLD_SPOTS:
             return []
         return [tuple(o.dest if o.path and o.dest else (o.x, o.y)) + (o.radius,) for o in self.living()

@@ -100,7 +100,8 @@ def test_a_route_runs_from_where_the_unit_stands():
     path = sim.Ground(festival).route('ground', (a.x, a.y), (b.x, b.y))
     d = lambda p, q: ((p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2) ** 0.5           # noqa: E731
     walk = sum(d(p, q) for p, q in zip([(a.x, a.y)] + path, path))
-    assert d(path[0], (a.x, a.y)) < d(path[0], (b.x, b.y)) and path[-1] == (b.x, b.y)
+    # its first leg heads for the goal (since 11-09 a straight way is pulled to one leg: Ground.pull)
+    assert d(path[0], (b.x, b.y)) < d((a.x, a.y), (b.x, b.y)) and path[-1] == (b.x, b.y)
     assert walk <= 1.6 * d((a.x, a.y), (b.x, b.y))
 
 
