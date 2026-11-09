@@ -19,9 +19,12 @@ or the BENCHED register.
 import collections
 import os
 import re
+import sys
 import xml.etree.ElementTree as ET
 
-import labpaths
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign')) if p not in sys.path]
+import labpaths                                 # noqa: E402
 
 AI_DATA = os.path.join(labpaths.SDK3, 'SageXML', 'SkirmishAI')
 AI_CODE = [os.path.join(labpaths.ENGINE_MODEL, 'ra3model', 'ai'), os.path.join(os.path.dirname(__file__), 'simai.py')]
@@ -94,30 +97,34 @@ def census():
         tree = ET.parse(path)
         parent = {c: p for p in tree.iter() for c in p}
         for el in tree.iter():
-            tag = _local(el.tag)
-            if tag in SKIP_TAGS:
-                continue
-            heur = tag.endswith('Heuristic') and tag not in GROUP
-            group = HEURISTIC_GROUP if heur else GROUP.get(tag)
-            if tag in PRESENTATION_TAGS:
-                group = '表现'
-            if el.text and el.text.strip() and not el.attrib:           # IncludeThing / ExcludeThing / Side lists
-                ptag = _local(parent[el].tag) if el in parent else ''
-                add(f'{GROUP.get(ptag, HEURISTIC_GROUP if ptag.endswith("Heuristic") else "其他")}/{ptag}.{tag}',
-                    GROUP.get(ptag, HEURISTIC_GROUP))
-                continue
-            if group is None:
-                group = '其他'
-            if heur:
-                add(f'{group}/{tag}', group)
-            for a, v in el.attrib.items():
-                a = _local(a)
-                if a in SKIP_ATTRS:
-                    continue
-                add(f'{group}/{tag}.{a}', group)
-                if (tag, a) in SELECTORS:
-                    for word in v.split():
-                        add(f'{group}/{tag}.{a}={word}', group)
+            for name, group in element_names(el, parent.get(el)):
+                add(name, group)
+    return out
+
+
+def element_names(el, par):
+    """The items one element of the AI data writes: [(name, group)] (par = its parent element, or None)."""
+    tag = _local(el.tag)
+    if tag in SKIP_TAGS:
+        return []
+    heur = tag.endswith('Heuristic') and tag not in GROUP
+    group = HEURISTIC_GROUP if heur else GROUP.get(tag)
+    if tag in PRESENTATION_TAGS:
+        group = '表现'
+    if el.text and el.text.strip() and not el.attrib:           # IncludeThing / ExcludeThing / Side lists
+        ptag = _local(par.tag) if par is not None else ''
+        return [(f'{GROUP.get(ptag, HEURISTIC_GROUP if ptag.endswith("Heuristic") else "其他")}/{ptag}.{tag}',
+                 GROUP.get(ptag, HEURISTIC_GROUP))]
+    if group is None:
+        group = '其他'
+    out = [(f'{group}/{tag}', group)] if heur else []
+    for a, v in el.attrib.items():
+        a = _local(a)
+        if a in SKIP_ATTRS:
+            continue
+        out.append((f'{group}/{tag}.{a}', group))
+        if (tag, a) in SELECTORS:
+            out += [(f'{group}/{tag}.{a}={word}', group) for word in v.split()]
     return out
 
 
@@ -170,3 +177,156 @@ def ai_items(bench_sources):
             state, why = BENCHED, BENCHED_REG[name]
         items.append(dict(part=PART, name=name, uses=n, state=state, why=why))
     return items
+
+
+# ---- what our own levels' enemy AI uses (the "AI done" bar's first point: all of it 已对拍)
+LEVELS = [f'a{k}' for k in range(1, 10)]          # the Allied 9 (experimental/cnv/missions/a1.py ...)
+LEVELS_OUT = os.path.join(os.path.dirname(os.path.dirname(HERE)),
+                          'docs', 'engine', 'inventory-levels.md')
+
+
+def assets():
+    """{id: element} of every top-level asset of the retail AI data."""
+    need(AI_DATA, 'the SDK SkirmishAI data')
+    out = {}
+    for r, _, fs in os.walk(AI_DATA):
+        for f in sorted(fs):
+            if f.endswith('.xml'):
+                for el in ET.parse(os.path.join(r, f)).getroot():
+                    if el.get('id'):
+                        out[el.get('id')] = el
+    return out
+
+
+CAMPAIGN_DIFFICULTIES = {'EASY', 'MEDIUM', 'HARD'}      # the campaign's three (plan.py LEVELS); BRUTAL is skirmish's
+
+
+def _effective(el, index):
+    """(the inheritFrom chain, the children in effect): a child's own children first; a parent's child whose id the
+    child already gave (or removed with joinAction Remove) is left out, the way instance inheritance overrides."""
+    chain, kids, ids = [], [], set()
+    while el is not None and el not in chain:
+        chain.append(el)
+        for c in el:
+            cid = c.get('id')
+            if cid is not None:
+                if cid in ids:
+                    continue
+                ids.add(cid)
+                if any(_local(a) == 'joinAction' and v == 'Remove' for a, v in c.attrib.items()):
+                    continue
+            if c.get('Difficulty') and not set(c.get('Difficulty').split()) & CAMPAIGN_DIFFICULTIES:
+                continue                     # a BRUTAL-only state or move: no campaign runs it
+            kids.append(c)
+        el = index.get(el.get('inheritFrom'))
+    return chain, kids
+
+
+def reached(roots, index):
+    """{item name: group} over every asset the roots (elements) reach: down their inheritance and every attribute
+    value or text naming another asset (a state, tactic, team, heuristic, micro manager, build or budget state ...)."""
+    names, seen, todo = {}, set(), list(roots)
+    while todo:
+        el = todo.pop()
+        if id(el) in seen:
+            continue
+        seen.add(id(el))
+        chain, kids = _effective(el, index)
+        els = [(c, None) for c in chain]
+        for k in kids:
+            par = {c: p for p in k.iter() for c in p}
+            els += [(d, par.get(d, chain[0])) for d in k.iter()]
+        for d, par in els:
+            for name, group in element_names(d, par):
+                names[name] = group
+            words = [w for v in d.attrib.values() for w in v.split()] + ((d.text or '').split())
+            for w in words:
+                w = w.split(':')[-1]
+                if w in index and id(index[w]) not in seen:
+                    todo.append(index[w])
+    return names
+
+
+def level_ai(levels=LEVELS):
+    """[(level, ai player, faction template, personality xml, [(action or condition, args)] on the AI player)] for
+    the levels whose plan has an enemy AI (plan.py compile_ai)."""
+    import importlib
+    out = []
+    for lv in levels:
+        m = importlib.import_module(f'missions.{lv}').mission()
+        for side, spec in m.sides.items():
+            pid = spec.get('aiPersonality', '').split(':')[-1]
+            xml = next((x for _, x, aid in m.assets if aid.endswith(':' + pid)), None)
+            if not pid or xml is None:
+                continue
+            player = m.player(side)
+            used = [(a[0], a[1:]) for s in m.scripts for a in list(s.when) + list(s.do)
+                    if isinstance(a, tuple) and player in a[1:]]
+            out.append((lv, player, spec['playerFaction'], xml, used))
+    return out
+
+
+def level_scope(levels=LEVELS):
+    """{(part, name): set of levels}: the AI items (part AI) the levels' personalities reach, plus the script actions
+    and conditions (inventory parts 脚本动作 / 脚本条件) their scripts aim at the AI player."""
+    index = assets()
+    glob = [el for el in index.values() if _local(el.tag) == 'AIData']
+    scope = collections.defaultdict(set)
+    for lv, player, faction, xml, used in level_ai(levels):
+        root = ET.fromstring(xml.encode('utf-8'))
+        mine = [el for el in root if el.get('id')]
+        army = [el for el in index.values() if _local(el.tag) == 'ArmyDefinition' and el.get('Side') == faction]
+        for name in reached(mine + army + glob, index):
+            scope[(PART, name)].add(lv)
+        for what, _ in used:
+            scope[('?', what)].add(lv)
+    return scope
+
+
+def render_levels(items, scope):
+    """docs/engine/inventory-levels.md from the inventory items and level_scope()."""
+    by = {(i['part'], i['name']): i for i in items}
+    rows = []
+    for (part, name), lvs in scope.items():
+        it = by.get((part, name)) or next((i for (p, n), i in by.items() if part == '?' and n == name), None)
+        if it is None:
+            continue                         # an action no inventory part lists (the map's own bookkeeping)
+        rows.append((it, sorted(lvs)))
+    order = {BENCHED: 3, GUESSED: 1, TODO: 0, NA: 4}
+    rows.sort(key=lambda r: (order[r[0]['state']], r[0]['part'], -r[0]['uses'], r[0]['name']))
+    live = [r for r in rows if r[0]['state'] != NA]
+    done = sum(r[0]['state'] == BENCHED for r in live)
+    count = collections.Counter((r[0]['part'], r[0]['state']) for r in live)
+    parts = sorted({r[0]['part'] for r in live}, key=lambda p: (p != PART, p))
+    lines = ['# 我们 9 关的敌方 AI 用到的清单项', '',
+             '由 `experimental/cnv/inventory_ai.py levels` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）里由'
+             '遭遇战 AI 带的敌人：它的人格（`enemy_ai.py` 生成）沿继承、战略状态、战术、组队、目标启发、微操、造兵 / 预算'
+             '状态、开局一路引用到的原版 AI 数据项，加上全局常量 AIData 和本阵营的 ArmyDefinition；再加关卡脚本里点了 AI '
+             '玩家名字的脚本动作 / 条件。状态取自 [inventory.md](inventory.md)。"AI 做完"的第一条：下表全部已对拍。', '',
+             f'**已对拍 {done} / {len(live)}**（不涉及的不算）。用到敌方 AI 的关：'
+             + '、'.join(sorted({lv for _, lvs in live for lv in lvs})) + '。', '',
+             '| 部分 | 已对拍 | 推断 | 未做 |', '|---|---|---|---|']
+    lines += [f'| {p} | {count[(p, BENCHED)]} | {count[(p, GUESSED)]} | {count[(p, TODO)]} |' for p in parts]
+    total = sum(r[0]['uses'] for r in live) or 1
+    pct = lambda states: round(100 * sum(r[0]['uses'] for r in live if r[0]['state'] in states) / total)  # noqa: E731
+    lines += ['', f'按原版用量加权：已对拍 {pct({BENCHED})}%，已有（已对拍+推断）{pct({BENCHED, GUESSED})}%。']
+    lines += ['', '| 状态 | 部分 | 项 | 原版用量 | 关 | 说明 |', '|---|---|---|---|---|---|']
+    lines += [f'| {it["state"]} | {it["part"]} | `{it["name"]}` | {it["uses"]} | {" ".join(lvs)} | {it["why"]} |'
+              for it, lvs in rows]
+    return '\n'.join(lines) + '\n'
+
+
+def main_levels(write=False):
+    import inventory
+    items = inventory.collect()
+    text = render_levels(items, level_scope())
+    if write:
+        with open(LEVELS_OUT, 'w', encoding='utf-8', newline='\n') as f:
+            f.write(text)
+    print('\n'.join(text.splitlines()[4:12]))
+    return text
+
+
+if __name__ == '__main__':
+    if sys.argv[1:2] == ['levels']:
+        main_levels(write='--write' in sys.argv)

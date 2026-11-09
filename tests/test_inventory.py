@@ -93,6 +93,27 @@ def test_the_ai_part_has_no_decompiler_addresses():
     assert not re.search(r'0x[0-9a-fA-F]{5,}', text)
 
 
+def test_the_committed_level_scope_is_current():
+    # docs/engine/inventory-levels.md: what our 9 levels' enemy AI uses ("AI done" point 1); regenerate with
+    # python -I -X utf8 experimental/cnv/inventory_ai.py levels --write
+    want = inventory_ai.render_levels(items(), inventory_ai.level_scope())
+    assert open(inventory_ai.LEVELS_OUT, encoding='utf-8').read() == want
+
+
+def test_level_scope_follows_inheritance_overrides_and_campaign_difficulties():
+    ET = inventory_ai.ET
+    root = ET.fromstring(
+        '<AssetDeclaration xmlns:xai="uri:x">'
+        '<P id="Base"><S id="keep" State="A"/><S id="over" State="B"/><S id="gone" State="C"/>'
+        '<S id="brutal" State="D" Difficulty="BRUTAL"/></P>'
+        '<P id="Mine" inheritFrom="Base"><S id="over" State="E"/><S id="gone" xai:joinAction="Remove"/></P>'
+        '</AssetDeclaration>')
+    index = {el.get('id'): el for el in root}
+    chain, kids = inventory_ai._effective(index['Mine'], index)
+    assert [c.get('id') for c in chain] == ['Mine', 'Base']
+    assert sorted((k.get('id'), k.get('State')) for k in kids) == [('keep', 'A'), ('over', 'E')]
+
+
 def test_a_missing_ai_source_stops_it(monkeypatch, tmp_path):
     monkeypatch.setattr(inventory_ai, 'AI_DATA', str(tmp_path / 'nowhere'))
     with pytest.raises(SystemExit):
