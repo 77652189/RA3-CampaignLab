@@ -56,9 +56,10 @@ def retail(m):
     Bench 2026-11-09 (run CampMovieRetail_mcp_1109_033257): A02TH06 plays in the radar window (Lisa) from s2.2 and is
     still on screen at s39.8; HAS_FINISHED_VIDEO never held (621 frames by s42), so B never started -- FAIL. Retail
     a02 lights its objective 2 ~16 s after the HUD comes back with this clip in the chain, so the game does finish it
-    there. Most likely the run itself: the bench ran the mission at x8 / x5.7 and a clip plays in real time (18.9 real
-s = 100+ mission s) -- run it again at x1 before reading anything into it. Sim.video_len left at
-    VIDEO_GUESS for retail clips until this is read."""
+    there. It was the run: the bench ran the mission at x8 / x5.7 and a retail clip plays in real time (18.9 real s
+    = 100+ mission s). At x1 (round 111: build.py movie --check retail, then bench_start + bench_watch by hand, the
+    server's own driving is x1) A finished at 291 frames, B at 169: both PASS, a retail clip runs its header's length
+    -- Sim.video_len reads it from the game's Data/Movies. cnv_check runs this at x8: judge it only at x1."""
     t = Test()
     r = m.facts['radar at']
     t.scripts.append(Script('Test - retail timer', [], [('SET_MILLISECOND_TIMER', 'CNV Movie Retail', r)]))

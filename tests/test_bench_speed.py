@@ -65,10 +65,32 @@ def test_the_pause_keeps_mission_time(monkeypatch, clock, shots):
     monkeypatch.setattr(harness, 'key', lambda h, vk: None)
     monkeypatch.setattr(s, '_capture', lambda name, **k: 'menu')
     monkeypatch.setattr(s, 'menu_open', lambda img: True)
-    now['t'] += 10.5                                # 10 s running, then the 0.5 s the menu takes to come up
+    now['t'] += 10                                  # 10 s running, then Esc
     s.pause()
     now['t'] += 60                                  # paused: the mission does not move
     assert s.second() == 40.0
+
+
+def test_a_pause_and_resume_lose_no_mission_time(monkeypatch, shots):
+    """The clock stops at the Esc that opens the menu and starts at the Esc that closes it -- the check after each
+    (a sleep, a frame) is not paused time (bench 11-09: the resume's 0.4 s + frame went uncounted, 0.4 s a pause)."""
+    now = {'t': 100.0}
+    monkeypatch.setattr(harness.time, 'monotonic', lambda: now['t'])
+    monkeypatch.setattr(harness.time, 'sleep', lambda x: now.__setitem__('t', now['t'] + x))
+    monkeypatch.setattr(harness, 'SPEED', 1.0)
+    s = harness.Session()
+    s.hold, s.t0, s.run_from = True, now['t'], now['t']
+    state = {'menu': False}
+    monkeypatch.setattr(s, 'window', lambda: 1)
+    monkeypatch.setattr(harness, 'key', lambda h, vk: state.__setitem__('menu', not state['menu']))
+    monkeypatch.setattr(s, '_capture', lambda name, **k: 'frame')
+    monkeypatch.setattr(s, 'menu_open', lambda img: state['menu'])
+    for _ in range(10):
+        now['t'] += 1.4                             # running
+        s.pause()
+        now['t'] += 2.0                             # paused (a frame archived, the menu read)
+        s.resume()                                  # running again from its Esc: its 0.4 s check counts
+    assert s.second() == pytest.approx(10 * 1.4 + 10 * 0.4, abs=0.15)
 
 
 @pytest.mark.parametrize('speed, hooked', [(1.0, None), (4.0, '1')])

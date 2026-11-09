@@ -578,13 +578,17 @@ class Session:
         """Hold mode: open the mission menu (the mission stands still); checked on a frame, retried once."""
         if not self.hold or self.paused:
             return
+        # the clock stops / starts at the Esc that worked, not after the check: resume started it after its 0.4 s
+        # and a frame, while the mission was already running -- ~0.4 mission s lost per pause, a run paused every
+        # 1.4 s counted 15 s for 19.5 (bench 11-09, movie_pause_probe.py: 19.5 counter frames a 'second', 15 unpaused)
         h = self.window()
         for _ in range(2):
+            pressed = time.monotonic()
             key(h, 0x1B)
             time.sleep(0.5)
             img = self._capture('hold')
             if img is not None and self.menu_open(img):
-                self.game_s += (time.monotonic() - self.run_from - 0.5) * self.rate
+                self.game_s += (pressed - self.run_from) * self.rate
                 self.paused, self.run_from = True, None
                 return
         raise BenchError('Esc did not open the mission menu (a targeting cursor or a dialog in the way?)')
@@ -596,11 +600,12 @@ class Session:
             return
         h = self.window()
         for _ in range(2):
+            pressed = time.monotonic()
             key(h, 0x1B)
             time.sleep(0.4)
             img = self._capture('hold')
             if img is not None and not self.menu_open(img):
-                self.paused, self.run_from = False, time.monotonic()
+                self.paused, self.run_from = False, pressed
                 self.speed_up()
                 return
         raise BenchError('Esc did not close the mission menu')

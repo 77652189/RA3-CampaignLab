@@ -2099,8 +2099,14 @@ class Sim:
             return None
 
     def video_len(self, clip):
-        """Seconds one of our clips plays: its VP6 header (frames, rate), else None (a retail clip)."""
+        """Seconds a radar clip plays: its VP6 header (frames, rate) -- ours from the mission's clips, a retail one
+        from the game's loose <GAME>/Data/Movies/<clip>.vp6 -- else None. Bench 11-09 (checks/movie.py retail at x1):
+        A02TH06 291 frames (header 18.9 s), J01TH05 169 (10.8 s): a retail clip reads finished after its own length
+        (at x8 the shim's clock hook does not reach the clip: it plays in real time, 100+ mission s)."""
         path = (getattr(getattr(self.m, 'video', None), 'clips', None) or {}).get(clip)
+        if not path:
+            import labpaths
+            path = os.path.join(labpaths.GAME, 'Data', 'Movies', f'{clip}.vp6')
         try:
             with open(path, 'rb') as f:
                 head = f.read(32)
