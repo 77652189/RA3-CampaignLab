@@ -13,7 +13,8 @@ Parts (the engine A line's share of ADR 0026; AI is the B line's):
 
 States (STATES): 已对拍 -- implemented and a bench comparison test cites it (BENCHED: the register, each entry naming
 the test); 推断 -- the simulator has code for it, no bench comparison yet; 未做 -- nothing; 不涉及 -- presentation only
-(a rule below, by name or module group: never a list). How "has code" is told:
+(a rule below, by name or module group: never a list; a presentation action measured on the bench stays 已对拍).
+How "has code" is told:
   script names    simcoverage.name_state: the engine model's core, a Sim.act / Sim.cond branch (probed with a retail
                   use's own arguments), sim.SHOWN; sim.IGNORED is 未做 (dropped on purpose, may hide play)
   modules, nuggets  the type's name is a string constant in sim.py / simunits.py / simproxy.py (simcoverage.sim_code)
@@ -160,9 +161,18 @@ PRESENTATION_ACTION = re.compile(
     r'^(CAMERA_|MOVE_CAMERA|ZOOM_CAMERA|PITCH_CAMERA|ROTATE_CAMERA|RESET_CAMERA|SETUP_CAMERA|FREEZE_TIME|UNFREEZE_TIME|'
     r'CAMERA|SOUND_|PLAY_SOUND|MUSIC_|PATH_MUSIC|SPEECH_|MOVIE_|CINEMATIC|DISPLAY_CINEMATIC|FADE|SCREEN_SHAKE|'
     r'DRAW_|NAMED_FLASH|SHOW_|HIDE_|LETTERBOX|OBJECT_CREATE_RADAR_EVENT|RADAR_CREATE_EVENT|EVA_|NAMED_SET_EVAC|'
-    r'SET_VISUAL_SPEED|WEATHER|TERRAIN_RENDER|WATER_|SKYBOX|OVERSIZE_TERRAIN)')
+    r'SET_VISUAL_SPEED|WEATHER|TERRAIN_RENDER|WATER_|SKYBOX|OVERSIZE_TERRAIN|'
+    # engine A round 122 (shared/night_plan.md 11-09): UI hints, sound, render settings, selection, the save
+    r'FLASH_|AUDIO_|(RESUME|SUSPEND)_BACKGROUND_SOUNDS|DISPLAY_TUTORIAL_TEXT|TOGGLE_RADAR_UI|'
+    r'SET_MISSION_HOT_SPOT_VISIBILITY|LINK_MISSION_HOT_SPOT_TO_|LINK_MISSION_OBJECTIVE_TO_|'
+    r'OPTIONS_|SET_TEXTURE_LOOKUP_TABLE|SET_BLOOM_INTENSITY|TOGGLE_SHADER_OVERRIDE|(DISABLE_)?BORDER_SHROUD|'
+    r'SELECT_OBJECT|DESELECT|CAMPAIGN_CREATE_AUTO_SAVE)'
+    # ... and anywhere in the name: a camera, a flash, an infobox, a radar blip, an outline, a colour, a sound, a clip
+    r'|(_CAMERA_|_FLASH|_INFOBOX|RADAR_EVENT|_OUTLINE$|_CUSTOM_COLOR$|_HOUSE_COLOR$|PLAY_SOUND|MOVIE_PLAY|'
+    r'_TIMER_DISPLAY$)')
 PRESENTATION_GROUPS = {'Draws', 'ClientBehaviors'}
-PRESENTATION_MODULE = re.compile(r'(Draw|Sound|Audio|Particle|FXList|Decal|Shadow|Flash|Camera|Animation)', re.I)
+PRESENTATION_MODULE = re.compile(r'(Draw|Sound|Audio|Particle|FXList|Decal|Shadow|Flash|Camera|Animation|'
+                                 r'^TimedOpacityUpdate$|^SubObjectsUpgrade$)', re.I)
 
 
 def need(path, what):
@@ -227,9 +237,10 @@ def script_items():
             state, why = TODO, 'sim.IGNORED 明确丢掉'
         else:
             state, why = TODO, 'Sim.act / Sim.cond 不认识'
-        if part == ACTION and state == TODO and PRESENTATION_ACTION.match(name) and not detail:
+        present = part == ACTION and bool(PRESENTATION_ACTION.search(name)) and not detail
+        if present and state == TODO:
             state, why = NA, '纯表现（名字规则）'
-        items.append(dict(part=part, name=key, uses=n, state=state, why=why))
+        items.append(dict(part=part, name=key, uses=n, state=state, why=why, present=present))
     return items
 
 
@@ -306,6 +317,8 @@ def benched(items):
 def apply_registers(items):
     benched(items)
     for it in items:
+        if it.pop('present', False) and it['state'] == GUESSED:     # presentation, has code (often sim.SHOWN), not
+            it['state'], it['why'] = NA, f'纯表现（名字规则）；{it["why"]}'     # measured: a measured one stays 已对拍
         k = (it['part'], it['name'])
         if k in NOTES:
             it['state'], it['why'] = NOTES[k]
