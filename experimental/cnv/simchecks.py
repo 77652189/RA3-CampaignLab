@@ -38,9 +38,9 @@ CHECKS = {
     ('a3', ''): dict(script=os.path.join(HERE, 'plays', 'a3.txt'), ending='赢', counters=False),
     ('a6', ''): dict(script=os.path.join(HERE, 'plays', 'a6.txt'), ending='赢', counters=False),
     ('a7', ''): dict(script=os.path.join(HERE, 'plays', 'a7.txt'), ending='赢', counters=False),
-    # a9: since the dark balls' shield is simulated (engine line B, 11-08) this play razes only 6 of the 9 balls in
-    # 15 min and does not win -- to be re-timed by the level line, then ending='赢' again
-    ('a9', ''): dict(script=os.path.join(HERE, 'plays', 'a9.txt'), ending=None, counters=False),
+    # a9: with the dark balls' shield simulated (engine line B, 11-08) this play razed only 6 of the 9 balls in 15 min;
+    # since the ground ways are pulled straight (engine line A round 112, Ground.pull) it razes all 9 and wins at 12:15
+    ('a9', ''): dict(script=os.path.join(HERE, 'plays', 'a9.txt'), ending='赢', counters=False),
     ('j7', ''): dict(script=os.path.join(HERE, 'plays', 'j7.txt'), ending='赢', counters=False),
     # A5: the gates hold the fleet till the guards are dead, then it sails and two at the sea win
     ('a5', 'hold'): dict(script='', ending=None, counters=True),
