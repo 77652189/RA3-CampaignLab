@@ -28,8 +28,11 @@ TANK, MINER = 'AlliedAntiVehicleVehicleTech1', 'AlliedMiner'
 def personality_xml(pid, gate, min_power=None):
     removed = [f'    <StrategicState id="{k}" xai:joinAction="Remove"/>' for k in INHERITED]
     mpa = '' if min_power is None else f' MinPowerAdvantage="{min_power}"'
-    when = ('<PowerAdvantageHeuristic Value="1.0" Above="true" IncludeOwnDefenses="false"'
-            ' IncludeEnemyDefenses="false"/>' if gate == 'power' else '<ConstantHeuristic/>')
+    if gate.startswith('<'):                      # round 83: any heuristic, as written
+        when = gate
+    else:
+        when = ('<PowerAdvantageHeuristic Value="1.0" Above="true" IncludeOwnDefenses="false"'
+                ' IncludeEnemyDefenses="false"/>' if gate == 'power' else '<ConstantHeuristic/>')
     return '\n'.join([
         '<?xml version="1.0" encoding="utf-8"?>',
         '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
@@ -60,10 +63,15 @@ def personality_xml(pid, gate, min_power=None):
         '</AssetDeclaration>', ''])
 
 
-def mission(name, ai, player, miner=False, gate='power', expect=1, min_power=None):
-    pid = PID + (name[-1] if min_power is None else name[-2:])
-    m = Mission(name=name, map=niagara, facts={'wake at': WAKE_AT, 'ai tanks': ai, 'player tanks': player,
-                                               'expect on': expect})
+def mission(name, ai, player, miner=False, gate='power', expect=1, min_power=None, home_until=None, out_by=None,
+            ai_miner=False):
+    pid = PID + name[len('CampAIPAdv'):]
+    facts = {'wake at': WAKE_AT, 'ai tanks': ai, 'player tanks': player, 'expect on': expect}
+    if home_until is not None:
+        facts['home until'] = home_until
+    if out_by is not None:
+        facts['out by'] = out_by
+    m = Mission(name=name, map=niagara, facts=facts)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{pid}'}
     m.assets.append((f'{pid}.xml', personality_xml(pid, gate, min_power), f'AIPersonalityDefinition:{pid}'))
     m.cnv_units = (TANK,)
@@ -78,8 +86,12 @@ def mission(name, ai, player, miner=False, gate='power', expect=1, min_power=Non
     for k in range(player):
         m.put(TANK, 'base yard', 300.0 + 80.0 * (k // 4), -120.0 + 70.0 * (k % 4), name=f'UNIT - CNV Player Tank {k + 1}',
               role=f'player guardian {k + 1}')
-    if miner:
+    if miner == 'ai base':                       # round 83 EnemyNearby: behind the AI's yard, 350 from its centre
+        m.put(MINER, 'east base', 350.0, 0.0, name='UNIT - CNV Player Miner', role='player miner')
+    elif miner:
         m.put(MINER, 'base yard', 300.0, 0.0, name='UNIT - CNV Player Miner', role='player miner')
+    if ai_miner:
+        m.put(MINER, 'east base', 350.0, 0.0, side='s1', name='UNIT - CNV AI Miner', role='ai miner')
     base = 'CNV AI Base'
     m.waypoint('ai base', base, 'east base')
     m.scripts += [
@@ -102,3 +114,30 @@ MISSION = {
     'aipadm0': lambda: mission('CampAIPAdvM0', 4, 8, gate='const', expect=1, min_power=1.0),
     'aipadm5': lambda: mission('CampAIPAdvM5', 8, 4, gate='const', expect=1, min_power=5.0),
 }
+
+# round 83: the condition heuristics (4 Guardians against none; the gate any heuristic). Expected as the program read
+# / the model (private ai/states.py value): 'home until' = all 4 still home that second, 'out by' = fewer by then.
+_OOT = ('<ObjectOfTypeExistsHeuristic PassIfExists="{p}"><ObjectFilter Relationship="{r}" Rule="ANY">'
+        '<IncludeThing>AlliedMiner</IncludeThing></ObjectFilter></ObjectOfTypeExistsHeuristic>')
+HEUR = {
+    # TimerHeuristic: on after StartTime from CountFrom (MAP_START default; AI_START = the wake), EndTime a length
+    'aihtim': ('Tim', dict(gate='<TimerHeuristic StartTime="30s" EndTime="-1s"/>', home_until=29, out_by=42)),
+    'aihtima': ('TimA', dict(gate='<TimerHeuristic StartTime="25s" EndTime="-1s" CountFrom="AI_START"/>',
+                             home_until=34, out_by=47)),
+    'aihtimx': ('TimX', dict(gate='<TimerHeuristic StartTime="20s" EndTime="10s"/>', home_until=19, out_by=30)),
+    # IntervalHeuristic: off IntervalTime, then on ActiveTime
+    'aihint': ('Int', dict(gate='<IntervalHeuristic IntervalTime="25s" ActiveTime="30s"/>', home_until=24,
+                           out_by=37)),
+    # EnemyNearbyHeuristic: an enemy (the player's Ore Collector: it drives to the ore node 527 off) within Distance
+    'aihen1': ('En1', dict(gate='<EnemyNearbyHeuristic Distance="700.0" EnemyNearby="true"/>', miner='ai base')),
+    'aihen0': ('En0', dict(gate='<EnemyNearbyHeuristic Distance="700.0" EnemyNearby="true"/>', expect=0)),
+    'aihenn': ('Enn', dict(gate='<EnemyNearbyHeuristic Distance="700.0" EnemyNearby="false"/>')),
+    # ObjectOfTypeExistsHeuristic with the retail's ObjectFilter Relationship (the model ignores it: own templates)
+    'aihoe1': ('Oe1', dict(gate=_OOT.format(p='true', r='ENEMIES'), miner=True)),
+    'aihoe0': ('Oe0', dict(gate=_OOT.format(p='true', r='ENEMIES'), expect=0)),
+    'aihoef': ('Oef', dict(gate=_OOT.format(p='false', r='ENEMIES'), miner=True, expect=0)),
+    'aihoea': ('Oea', dict(gate=_OOT.format(p='true', r='ALLIES'), miner=True, expect=0)),
+    'aihoes': ('Oes', dict(gate=_OOT.format(p='true', r='ALLIES'), ai_miner=True)),
+}
+for _k, (_tail, _kw) in HEUR.items():
+    MISSION[_k] = (lambda tail, kw: lambda: mission('CampAIPAdv' + tail, 4, 0, **kw))(_tail, _kw)

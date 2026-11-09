@@ -381,6 +381,32 @@ def test_team_min_power_advantage_holds_nobody_back(lib, build, n):
     assert rows[5]['坦克在家'] == n and rows[19]['坦克在家'] == 0, [r['坦克在家'] for r in rows]
 
 
+# bench 2026-11-09 checks/engine_aipoweradv.py a (B round 83): (build, last second all 4 home or None, first second
+# all gone or None = home to the end)
+@pytest.mark.parametrize('build,home,gone', [('aihtim', 32, 34), ('aihtima', 37, 39), ('aihtimx', 22, 23),
+                                             ('aihint', 27, 28), ('aihen1', 13, 15), ('aihen0', None, None),
+                                             ('aihenn', 13, 16), ('aihoe0', None, None), ('aihoea', None, None),
+                                             ('aihoes', 14, 16)])
+def test_condition_heuristics_gate_the_state_as_on_the_bench(lib, build, home, gone):
+    """Timer (MAP_START / AI_START, EndTime a length), Interval (off first), EnemyNearby, ObjectOfTypeExists ALLIES
+    with one's own: within 3 s of the bench (the simulator's teams leave a second or two apart from it)."""
+    _, rows = _switch_run(build, lib, until=61.0)
+    seq = [r['坦克在家'] for r in rows]
+    if home is None:
+        assert all(v == 4 for v in seq), seq
+        return
+    last = next(k for k, v in enumerate(seq) if v < 4)          # rows[k] is second k + 1: the last all-home second
+    assert abs(last - home) <= 3 and seq[gone + 2] == 0, (last, seq)
+
+
+@pytest.mark.xfail(strict=True, reason='ObjectOfTypeExists: the simulator looks at its own templates only; the bench '
+                                       'counts the filter Relationship (ENEMIES: the player\'s collector) -- handoff-b 85')
+@pytest.mark.parametrize('build,out', [('aihoe1', True), ('aihoef', False)])
+def test_object_of_type_exists_counts_the_relationship_as_on_the_bench(lib, build, out):
+    _, rows = _switch_run(build, lib, until=41.0)
+    assert (rows[39]['坦克在家'] == 0) == out
+
+
 def _aiotime_firsts(lib):
     w = simai.run('aiotime', 'a', 70.0, lib=lib, blocks=())
     seen = [v[0] for _, v in w.sim.series]

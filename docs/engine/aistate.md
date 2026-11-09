@@ -106,6 +106,25 @@
 - 想让 AI 留着兵等优势再出门，别靠队伍的 MinPowerAdvantage，用状态的 PowerAdvantageHeuristic（见上"战力优势开关"）。
 - 模拟器：HIGH 对 STANDARD 那组对上；另三组模拟器给"全去电厂"，对不上（`tests/test_simai.py::test_team_priority_as_on_the_bench` strict xfail）。
 
+## 启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮）
+
+探针 `missions/aipoweradv_bench.py` aih*（AI 4 辆守护者、玩家没兵，状态门换成一条启发条件），读数在 `checks/engine_aipoweradv.py`。全部 PASS。
+
+| 条件 | 写法 | 台上 |
+| --- | --- | --- |
+| `TimerHeuristic` | StartTime 30s（默认 CountFrom MAP_START） | 任务第 30 秒后开，s33 出门 |
+| | StartTime 25s CountFrom AI_START（第 10 秒唤醒） | 从唤醒算，第 35 秒后开 |
+| | StartTime 20s EndTime 10s | 20 秒开；EndTime 是**时长**（不是时刻） |
+| `IntervalHeuristic` | IntervalTime 25s ActiveTime 30s | **先关** 25 秒，再开 |
+| `EnemyNearbyHeuristic` | Distance 700，玩家矿车在 AI 基地约 527 外 | 开；没矿车不开；EnemyNearby false 没矿车时开 |
+| `ObjectOfTypeExistsHeuristic` | ObjectFilter Relationship ENEMIES + AlliedMiner | 玩家有矿车就开；PassIfExists false 时反过来 |
+| | Relationship ALLIES | 只有玩家的矿车 → 不开；AI 自己有矿车 → 开（ALLIES 含自己） |
+
+给关卡线（测）：
+- 定时类全按读法：Timer 从开局或唤醒算、EndTime 是开着的时长；Interval 先等再开。
+- `ObjectOfTypeExists` 看的是 ObjectFilter 的 Relationship（原版用 ENEMIES 看玩家有没有某建筑），ALLIES 包括 AI 自己。
+- 模拟器：前三种对上（`tests/test_simai.py::test_condition_heuristics_gate_the_state_as_on_the_bench`）；ObjectOfTypeExists 模拟器只看自己的东西，ENEMIES 两组对不上（`test_object_of_type_exists_counts_the_relationship_as_on_the_bench` strict xfail）。
+
 ## 按难度挂的状态（StrategicState 的 Difficulty）
 
 引擎线 B 第 79 轮（2026-11-09）。探针 `checks/engine_aidiff.py`（任务 `missions/aidiff_bench.py`）：同上的图和 AI，家里 4 辆守护者 + 4 个维和，两个常开状态，一个挂 `Difficulty="MEDIUM"`、一个挂 `Difficulty="EASY HARD BRUTAL"`，各只招一种兵；玩家放两座电厂（一个目标只给一个状态，两队都能走）。另用三条各只开一个难度位的任务脚本把战役难度写进计数器。

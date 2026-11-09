@@ -21,6 +21,19 @@ Bench 2026-11-09 (B round 82, the team's MinPowerAdvantage, the state ConstantHe
   aipadm5 (8 v 4, 5.0; ratio 4 < 5): 坦克在家 8 -> 0 s13-16; 坦克出门 8 s21-26 -- goes (the guess said stay).
 Read: MinPowerAdvantage holds no team back here (as the model: parsed, not used); what it gates, if anything, not
 found. simai agrees (it ignores the field): tests/test_simai.py test_team_min_power_advantage_holds_nobody_back.
+Bench 2026-11-09 (B round 83, the condition heuristics, 4 Guardians against none; one run each, all PASS):
+  aihtim  (Timer 30s, MAP_START):         home 4 to s32, 0 @ s34 -- on after 30 s from the mission start.
+  aihtima (Timer 25s AI_START, wake s10): home 4 to s37, 0 @ s39 -- from the wake.
+  aihtimx (Timer 20s EndTime 10s):        home 4 to s22, 0 @ s23; out s27-s65 (they stay out after s30).
+  aihint  (Interval 25s off, 30s on):     home 4 to s27, 0 @ s28 -- off first, then on.
+  aihen1  (EnemyNearby 700 true, the player's Ore Collector ~527 off at the ore node): out s14-16.
+  aihen0  (the same, no collector): home 4 to s65.   aihenn (EnemyNearby false, none): out s14-16.
+  aihoe1  (ObjectOfTypeExists ENEMIES AlliedMiner, the player has one): out s15-17 -- the model said off.
+  aihoe0  (none): home to s65.   aihoef (PassIfExists false, the player has one): home to s65 -- the model said on.
+  aihoea  (ALLIES, only the player's): home to s65.   aihoes (ALLIES, s1's own collector): out s15-17 -- ALLIES
+          includes oneself.
+Read: Timer / Interval / EnemyNearby as the model; ObjectOfTypeExists counts the filter's Relationship (the model
+looks only at its own templates: tests/test_simai.py test_object_of_type_exists_* strict xfail).
 """
 from parts import Script, Test, counted, square
 
@@ -40,12 +53,19 @@ def a(m):
     counted('CNV_PA_Home', '坦克在家', t, template=tank, area=AREA, player=s1)
     counted('CNV_PA_There', '坦克出门', t, template=tank, area=THERE, player=s1)
     n = m.facts['ai tanks']
+    if 'home until' in m.facts:                  # round 83: still all home that second
+        hu = m.facts['home until']
+        t.expect += [('坦克在家', hu, '==', n, hu + 1)]
     if m.facts['expect on']:
-        t.expect += [('坦克在家', ON_BY, '<', n, ON_BY + 1)]
+        by = m.facts.get('out by', ON_BY)
+        t.expect += [('坦克在家', by, '<', n, by + 1)]
     else:
         t.expect += [('坦克在家', SECONDS, '==', n, SECONDS + 1)]
     t.bench = [('bench_watch', dict(seconds=SECONDS + LAG, every=1, sheet=False, lines=len(t.counters)))]
     return t
 
 
-CHECKS = {k: {'a': a} for k in ('aipadv2', 'aipadv1', 'aipadvh', 'aipadvc', 'aipadm1', 'aipadm0', 'aipadm5')}
+CHECKS = {k: {'a': a} for k in ('aipadv2', 'aipadv1', 'aipadvh', 'aipadvc', 'aipadm1', 'aipadm0', 'aipadm5',
+                                 # round 83: the condition heuristics
+                                 'aihtim', 'aihtima', 'aihtimx', 'aihint', 'aihen1', 'aihen0', 'aihenn',
+                                 'aihoe1', 'aihoe0', 'aihoef', 'aihoea', 'aihoes')}
