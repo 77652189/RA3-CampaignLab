@@ -379,10 +379,11 @@ def test_super_the_psionic_decimator_kills_within_300_at_61_frames():
 
 
 def test_super_the_nanoswarm_keeps_200_out_of_fire():
-    """n: tanks at 0 and 150 from the hive's spot whole against enemy fire to the end (497 frames; NAMED_DAMAGE goes
-    through -- the bench's two 10 % scripted hits are not in the simulator's run), 250 shot down (bench 1 % by 180)."""
+    """n: tanks at 0 and 150 from the hive's spot take no fire to the end (497 frames) -- their health goes 100 -> 90 -> 80
+    by the bench's two scripted NAMED_DAMAGE hits only (the simulator applies them since engine line C round 5), 250 shot
+    down (bench 1 % by 180)."""
     n = _sim_run('engine_super', 'n', 34.0).series[-1][1]
-    assert n[-3:-1] == [100, 100] and n[-1] <= 10, n
+    assert n[-3:-1] == [80, 80] and n[-1] <= 10, n
 
 
 def test_super_the_iron_curtain_reaches_800():
@@ -666,6 +667,32 @@ def test_destroy_die_a_building_killed_is_dying_one_frame_and_gone():
     assert r['建筑'] == 1000                                   # dying the kill frame only; no collapse object counted
     s2, r2 = _crush('engine_crush_b', 'two')
     assert r2['电厂'] == 1000
+
+
+# ---- selling (sim.Sim.sell, NAMED_DAMAGE): bench 2026-11-06 engine_sell (docs/engine/sell.md; one run each): money 2000
+# -> 2400 for a full 800 plant (a), 2200 hurt to half (b), 2250 for a 500 bunker (d), 2400 once for two orders (f);
+# 卖帧 31031 = alive 31 frames and SOLD 31 (deleted 30 frames after the order, counted as power till then); killed at
+# frame 5 (e): paid, 5004 (SOLD read 5 frames, alive 4); sold while unpacking (c): nothing, never SOLD.
+def _sell(which):
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_sell', which)
+    s = sim.Sim(m, t)
+    s.run(8.0)
+    return dict(zip([lab for _, lab in t.counters], s.series[-1][1]))
+
+
+def test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames():
+    a, b, d, f = (_sell(w) for w in 'abdf')
+    assert (a['资金'], b['资金'], d['资金'], f['资金']) == (2400, 2200, 2250, 2400)
+    assert a['卖帧'] == b['卖帧'] == d['卖帧'] == f['卖帧'] == 31031
+    assert a['第四行'] % 1000 == 31 and a['第四行'] // 1000 == a['帧数'] - 31      # the plant counts 31 frames, then not
+
+
+def test_sell_a_killed_building_stays_paid_and_a_building_unpacking_is_not_sold():
+    e, c = _sell('e'), _sell('c')
+    assert e['资金'] == 2400 and e['卖帧'] == 5004 and e['第四行'] % 1000 == 4
+    assert c['资金'] == 2000 and c['卖帧'] == c['帧数']                                # never SOLD, never gone
 
 
 # ---- mining (HOOKS 7): engine_mining's layout -- the refinery 180 from a lone node -- on Niagara's bluff ore (the

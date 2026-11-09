@@ -296,7 +296,7 @@ GAP_WEAPON, GAP_UPGRADE, GAP_ACTION, GAP_CONDITION, GAP_COMMAND, GAP_STATUS = \
     '武器', '升级', '脚本动作', '脚本条件', '命令', '状态'
 # the object statuses sim.py acts on (tested with `in b.status`; IN_STASIS = IMMOBILE NO_ATTACK UNATTACKABLE in
 # Sim.modify); tests/test_sim.py checks the list against the source
-ACTED_STATUS = frozenset({'IMMOBILE', 'NO_ATTACK', 'UNATTACKABLE', 'NON_AUTOACQUIRABLE', 'IN_STASIS', 'UNDER_FROZEN'})
+ACTED_STATUS = frozenset({'SOLD', 'IMMOBILE', 'NO_ATTACK', 'UNATTACKABLE', 'NON_AUTOACQUIRABLE', 'IN_STASIS', 'UNDER_FROZEN'})
 # a script's power or button by itself, as simcoverage.refined names it
 BUTTON_ACTIONS = ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY',
                   'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED')
@@ -492,6 +492,8 @@ class Body:
     leaves: list = dataclasses.field(default_factory=list)      # what that death makes where it stood
     building: tuple = None                                      # (structure, (x, y), stand): told to build there (R5)
     unpack_end: int = None                                      # a structure made in the run: unpacking until then
+    read_until: int = None                                      # killed by NAMED_DAMAGE in this frame: bits still read
+    sell_end: int = None                                        # SELL_OBJECT: the frame the sale deletes it (sell)
     mine: dict = None                                           # a harvester's trip (mine_due): state, node,
                                                                 # refinery, due frame, load, paid, leg
     ready_at: dict = dataclasses.field(default_factory=dict)   # special power -> the frame its reload ends (a cast,
@@ -1029,6 +1031,9 @@ class Sim:
         from areas at once -- bench 2026-11-07 engine_life, no body lingers) and leaves what its death makes, made
         that frame (the ice core's wall)."""
         for b in self.living():
+            if b.sell_end is not None and frame >= b.sell_end:
+                self.destroy(b, '卖掉了', delete=True)          # StructureSellUpdate: deleted, no death, no ruin
+                continue
             if b.life_end is None or frame < b.life_end:
                 continue
             self.used.add('lifetime')
@@ -1901,6 +1906,27 @@ class Sim:
         SlowDeath's DestructionDelay (bench 11-06 engine_crush: 127 frames; a plant killed by script: one frame)."""
         return b is not None and not b.alive and not b.deleted and self.t - b.died_at <= b.linger + 1e-9
 
+    SELL_PERCENT, SELL_FRAMES = 0.5, 30          # SellPercentage (SDK default) and SellTime 2 s x 15 (BuildingBehavior)
+
+    def sell(self, b):
+        """SELL_OBJECT (bench 2026-11-06 engine_sell, docs/engine/sell.md): a living structure that is not unpacking
+        and not already sold is paid at once -- round(round(cost x 50%) x health share) -- and carries SOLD; 30 frames
+        later it is deleted (no death, no ruin); meanwhile it still counts as power and can still be killed (then the
+        money stays paid and it is just dead). Anything else: nothing happens. Not read: a template's RefundValue,
+        NOT_SELLABLE, the factory's queue, the garrison (the simulator has none)."""
+        if b is None or not b.alive or 'STRUCTURE' not in b.kinds or b.sell_end is not None:
+            return
+        if b.unpack_end is not None and self.frame_now() < b.unpack_end:
+            return                                                  # engine_sell c: refused while it unpacks
+        self.used.add('sell')
+        cost = simunits.production(b.template, self.own)[0]
+        refund = math.floor(math.floor(cost * self.SELL_PERCENT + 0.5) * (b.hp / b.max_hp if b.max_hp else 1.0) + 0.5)
+        self.money[b.owner] = self.money.get(b.owner, 0) + refund
+        b.script_status.add('SOLD')
+        self.modify(b)
+        b.sell_end = self.frame_now() + self.SELL_FRAMES
+        self.note('出售', f'{self.label(b)}（退 {refund}）')
+
     def destroy(self, b, why, delete=False):
         if not b.alive:
             return
@@ -2082,6 +2108,8 @@ class Sim:
             st = a[1][2] if isinstance(a[1], tuple) else a[1]
             if st not in ACTED_STATUS and st not in getattr(b, 'status', ()):
                 self.gap(GAP_CONDITION, name, f'状态位 {st}：模拟器只知道脚本设的和 {"、".join(sorted(ACTED_STATUS))}')
+            if b and not b.alive and b.read_until == self.frame_now():     # engine_sell e: a damage kill still reads
+                return st in b.status                                      # its bits in that frame
             return bool(b and b.alive and st in b.status)
         if name == 'HAS_FINISHED_AUDIO':        # never played: true (l2_scripts1 2.3; bench 11-08 cond)
             return self.t >= self.audio_end.get(a[0], 0.0)
@@ -2333,6 +2361,16 @@ class Sim:
             # Peacekeepers of the crew raised their shields
             for b in self.members(a[0]):
                 self.act('NAMED_USE_COMMANDBUTTON_ABILITY', [b.name, a[1]], script)
+        elif name == 'SELL_OBJECT':              # (object) engine_sell: sell(), refused while unpacking
+            self.sell(self.body(a[0]))
+        elif name == 'NAMED_DAMAGE':             # (object, amount) health points off, no armour; engine_sell b / e
+            b = self.body(a[0])
+            if b and b.alive and not b.indestructible:
+                b.last_hit = b.last_by = None
+                b.hp = max(0.0, b.hp - float(a[1]))
+                if b.hp <= 0.0:
+                    self.destroy(b, '脚本伤害')
+                    b.read_until = self.frame_now()
         elif name in ('NAMED_KILL', 'NAMED_DELETE'):
             b = self.body(a[0])
             if b:

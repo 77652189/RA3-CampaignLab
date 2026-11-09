@@ -82,6 +82,15 @@ BENCHED_TESTS = {
     (MODULE, 'Behaviors/SlowDeath'):
         'tests/test_simbench.py::test_slow_death_a_crushed_conscript_lies_127_frames_dying_and_in_its_spot',
     (MODULE, 'Behaviors/DestroyDie'): 'tests/test_simbench.py::test_destroy_die_a_building_killed_is_dying_one_frame_and_gone',
+    # engine line C round 5: selling (checks/engine_sell.py, docs/engine/sell.md, bench 11-06)
+    (MODULE, 'Behaviors/BuildingBehavior'):
+        'tests/test_simbench.py::test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames',
+    (MODULE, 'Behaviors/StructureSellUpdate'):
+        'tests/test_simbench.py::test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames',
+    (ACTION, 'SELL_OBJECT'):
+        'tests/test_simbench.py::test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames',
+    (ACTION, 'NAMED_DAMAGE'):
+        'tests/test_simbench.py::test_sell_a_killed_building_stays_paid_and_a_building_unpacking_is_not_sold',
 }
 
 # (part, name) -> (state, why): where the name rule above is wrong (a module read under another name ...)
@@ -92,8 +101,6 @@ NOTES = {
     # the 26 the bench measured but the name rule called 未做 (checked 11-08 against sim.py / simunits.py)
     (MODULE, 'Behaviors/FireWeaponUpdate'): (GUESSED, '部分：simunits.ocl_round 把召出物的 FireWeaponNugget + '
                                                       'LifetimeUpdate 折成伤害，不模拟召出物本身'),
-    (MODULE, 'Behaviors/BuildingBehavior'): (TODO, f'{_NOT_IN_SIM}（没有出售建筑）'),
-    (MODULE, 'Behaviors/StructureSellUpdate'): (TODO, f'{_NOT_IN_SIM}（没有出售、返还金钱）'),
     (MODULE, 'Behaviors/InvisibilityBehavior'): (TODO, f'{_NOT_IN_SIM}（没有隐身）'),
     (MODULE, 'Behaviors/InvisibilityBroadcastUpdate'): (TODO, f'{_NOT_IN_SIM}（没有隐身）'),
     (MODULE, 'Behaviors/StealthDetectorUpdate'): (TODO, f'{_NOT_IN_SIM}（没有反隐）'),
