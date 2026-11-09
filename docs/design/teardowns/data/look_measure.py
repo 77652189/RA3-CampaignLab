@@ -5,10 +5,12 @@ Per map: civilian buildings / props / decals / ambient sounds per km2 of land; m
 0/90 degrees, share on 45); template counts; civilian buildings' nearest-neighbour spacing (median, CV, share in
 an exactly repeated spacing); vignette props (a man-made prop with 2+ other man-made templates within 120);
 ground textures used inside the playable area, top texture's share, blended cells; machine-flat land; steep
-terrain edges' direction (share within 10 degrees of the axes / of 45). Classes come from mapstudy.kind (by
+terrain edges' direction (share within 10 degrees of the axes / of 45); man-made template count (no trees or
+rocks), vehicles and war damage per km2 (by name); rhythm: of the 250 x 250 cells that are mostly land, the share
+with nothing and the share at least twice the mean. Classes come from mapstudy.kind (by
 name and SageXML sorting: a map whose buildings belong to a player, e.g. Kremlin, reads 0 civilian buildings).
 """
-import json, math, os, sys
+import json, math, os, re, sys
 from collections import Counter
 import numpy as np
 
@@ -20,6 +22,9 @@ import mapxml  # noqa
 from ra3voice import big  # noqa
 
 VEG = ('tree', 'bush', 'plant', 'grass', 'shrub', 'flower', 'palm', 'pine', 'weed', 'reed', 'fern', 'bamboo')
+WAR = re.compile(r'wreck|rubble|crater|debris|barricade|sandbag|burn|destroy|damag|tanktrap|hedgehog|ruin|broken|husk'
+                 r'|scorch|bombed|dead', re.I)
+VEHICLE = re.compile(r'car\d|_car|truck|bus\b|bus_|van\b|van_|taxi|tram|train|forklift|boat|trailer', re.I)
 
 
 def measure(m, name):
@@ -82,6 +87,25 @@ def measure(m, name):
             if len({t[j] for j in near if t[j] != t[i]}) >= 2:
                 vig += 1
         out['vignette_props_per_km2'] = round(vig / km2, 1)
+    # what kind of place: man-made template count (no trees / rocks), vehicles, war damage
+
+    things = [r for r in rows if r[0] in ('civ_building', 'prop', 'other')]
+    out['manmade_templates'] = len({r[1] for r in things if not any(v in r[1].lower() for v in VEG + ('rock',))})
+    out['vehicle_per_km2'] = round(sum(1 for r in things if VEHICLE.search(r[1])) / km2, 2)
+    out['war_per_km2'] = round(sum(1 for r in things if WAR.search(r[1])) / km2, 2)
+    # rhythm: 250 x 250 cells that are mostly land, how many are empty / at least twice the mean
+    C = 25
+    cnt = np.zeros((h // C, w // C))
+    for r in things:
+        i, j = int(r[2] / 10) // C, int(r[3] / 10) // C
+        if 0 <= j < cnt.shape[0] and 0 <= i < cnt.shape[1]:
+            cnt[j, i] += 1
+    lc = np.array([[land[j * C:(j + 1) * C, i * C:(i + 1) * C].mean() > 0.8 for i in range(cnt.shape[1])]
+                   for j in range(cnt.shape[0])])
+    v = cnt[lc]
+    if v.size and v.mean():
+        out['empty_cells'] = round(float((v == 0).mean()), 2)
+        out['dense_cells'] = round(float((v >= 2 * v.mean()).mean()), 2)
     # ground textures inside the playable area
     try:
         tiles = mapterrain.Tiles(m, hm.width)
