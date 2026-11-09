@@ -6,6 +6,7 @@ Rank_1, Y = PlayerTech_Soviet_OrbitalRefuse_Rank1 (both 1 point, only PlayerTech
   aipwrb  Y Weight 0% then X Weight 100%         [X bought, never Y]
   aipwrd  stock DefaultPersonality, no PowerChoice  [nothing bought, 点数 stays 1]
   aipwre  X 50% then Y 50%  /  aipwrf  Y 50% then X 50%   [check e: only 点数 == 0 from s8, no pick expected]
+  aipwrg  X 30% then Y 70%  /  aipwrh  X 10% then Y 90%   [check e: where the draw falls]
 
 读数
 Bench 2026-11-09 (one run each, 76 frames s0.7-s75.7; counters 有X, 有Y, 点数; mods CampAIPwrAA / BA / DA):
@@ -20,7 +21,11 @@ Bench 2026-11-09, check e (16 frames s1.1-s16.1; counters 有X, 有Y, 点数; fi
   aipwrf  run 1: 0 1 0   Y bought (Y listed first)
   aipwrf  run 2: 0 1 0   Y bought
   aipwrf  run 3: 0 1 0   Y bought
-Which of several nonzero-weight lines is drawn is not tested here.
+Bench 2026-11-09, check e (mods CampAIPwrGE / HE, one run each, first reading s1 = final s16):
+  aipwrg  s1-s16: 1 0 0   X bought (X 30% first, Y 70%)
+  aipwrh  s1-s16: 0 1 0   Y bought (X 10% first, Y 90%)
+So the draw is not "the heaviest line": it falls at the same place every run (single-player seed 0, INFERRED from
+Generals), there between 10% and 30% of the sum. simtech.DRAW = 0.2; tests/test_simtech_powerchoice.py holds the seven.
 """
 from parts import Script, Test
 from checks import engine_protocol as ep
@@ -60,4 +65,4 @@ def e(m):
 
 
 CHECKS = {'aipwra': {'a': a}, 'aipwrb': {'a': a}, 'aipwrd': {'a': d},
-          'aipwre': {'e': e}, 'aipwrf': {'e': e}}
+          'aipwre': {'e': e}, 'aipwrf': {'e': e}, 'aipwrg': {'e': e}, 'aipwrh': {'e': e}}

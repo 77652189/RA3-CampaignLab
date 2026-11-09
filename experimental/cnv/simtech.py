@@ -25,19 +25,24 @@ frame; a sum of 0 buys nothing (DefaultPersonality and HuntPersonality have no P
 lines add up through inheritFrom, parents first (INFERRED, as the AI model's lists); Weight's default 20% (the XSD).
 A retail mission's own personality (AIP_..., its map's assets, not in the SDK) cannot be read: its faction's
 <Faction>SoloBasePersonality stands in (INFERRED; the bench's AIP_A03_Soviet02BaseMarshall did spend its point).
-Which protocol is drawn has not been benched (the game's random stream is not this one).
+Where the draw falls (DRAW): the program takes it from the logic random stream, and a single-player game seeds that
+stream with 0 (Generals InitRandom(0); RA3 INFERRED), so a mission draws the same every run. The simulator cannot
+replay the stream, so it walks a fixed fraction DRAW of the sum. Bench 11-09 (checks/engine_aipower.py e, a Soviet
+computer player, two 1-point lines): 50/50 either order -> the first listed, 7 runs of 7; X 30% first / Y 70% -> X;
+X 10% / Y 90% -> Y. So there draw / sum lies in [0.1, 0.3), not "the heaviest line"; DRAW = 0.2 is that bracket's
+middle (INFERRED for other missions: the stream's position at frame 10 is their own).
 Not modelled: experience from kills (not found in the program), the red alert's multiplier (1.0 / 1.5 / 2.0 at
 yellow / orange / red; the simulator has no red alert), what a protocol does once held.
 """
 import functools
 import os
-import random
 import re
 
 import simunits
 
 INITIAL_CAP = -1
 AI_FROM = 10                    # the first frame a computer player buys in
+DRAW = 0.2                      # where the protocol draw falls, a fraction of the weights' sum (bench: [0.1, 0.3))
 PLAYABLE = ('Allies', 'Soviet', 'Japan')
 
 
@@ -155,7 +160,6 @@ class Book:
         f = factions()[faction]
         self.faction, self.fps = faction, fps
         self.choices = power_choices(personality, faction)     # a computer player's lottery (ai_buy)
-        self.rng = random.Random(f'{faction}:{personality}')    # stands in for the game's logic random stream
         self.rank_ids = f['ranks']
         self.pps = f['pps']
         self.points = self.earned = f['initial']
@@ -222,17 +226,17 @@ class Book:
 
     def ai_buy(self, frame):
         """A computer player's purchase (the program: from frame 10, while points != 0, one a frame, among the
-        personality's PowerChoice lines it can buy -- not held, not locked, dependencies held, affordable): the one a
-        draw in [0, their weights' sum) falls in, in file order; nothing when the sum is 0. Bench 11-08
-        engine_protocol ailock: an unlocked campaign computer player's starting point is gone at once, a fully locked
-        one keeps it. Which one it takes has not been benched."""
+        personality's PowerChoice lines it can buy -- not held, not locked, dependencies held, affordable): the one
+        DRAW x their weights' sum falls in, in file order; nothing when the sum is 0. Bench 11-08 engine_protocol
+        ailock: an unlocked campaign computer player's starting point is gone at once, a fully locked one keeps it;
+        11-09 engine_aipower: equal weights -> the first listed, 30/70 -> the first, 10/90 -> the second."""
         if frame < AI_FROM or self.points == 0:
             return False
         lines = [(p, w) for p, w in self.choices if p and self.can_buy(p)]
         total = sum(w for _, w in lines)
         if total <= 0:
             return False
-        r = self.rng.random() * total
+        r = DRAW * total                    # the game's draw: the same every run (seed 0); DRAW from the bench
         for p, w in lines:
             r -= w
             if r < 0:

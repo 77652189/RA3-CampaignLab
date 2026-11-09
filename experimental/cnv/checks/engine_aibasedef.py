@@ -21,6 +21,13 @@ Readings (11-09, all PASS; counters 进炮塔 炮塔数 步兵数 到远厂; the
             s24 1 2 2 0 | s25 1 1 1 1 | s26-76 1 0 0 2 -- the men gather at turret 1 (3 next to it at s22), one goes in at
             s21, the rest drift off: read as all sent to the first turret of the list in one pass (no place kept for
             the earlier ones), not as 'the others were beyond 150'. Not proved (a man inside is not counted in 旁k).
+  aibdpre   FAIL (11-09, 进炮塔 旁1 旁2 旁3): s1-15 1 1 0 0 (the sitter, counted in 旁1) | s16 1 1 1 0 | s17 1 1 2 1 |
+            s18-19 1 1 3 0 | s20-25 1 2 3 0 | s26-29 0 1 3 0 (turret 1 lost, the sitter with it) | ... | s46-75 0 0 0 0
+            -- 进炮塔 never passes 1: with turret 1 full nobody goes into turret 2 or 3, though 3 stand by turret 2
+            (s18-25); one walks up to the full turret 1 (旁1 2, s20-25). Read: the full turret is NOT skipped -- the
+            pass still takes the list's first turret (0x8de960's 0x864100 'can the order be done' does not look at
+            room, INFERRED), the men leave the team for it and stay out. Not a 'one per pass' rule: then one would have
+            gone into turret 2.
 """
 from checks import engine_aitarget as at
 from parts import Script, Test, counted, square, status

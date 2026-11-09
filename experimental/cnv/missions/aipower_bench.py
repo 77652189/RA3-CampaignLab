@@ -7,6 +7,8 @@ Soviet) is a computer player with starting point 1 (InitialTechPoints), its pers
   aipwrd  the stock DefaultPersonality (no PowerChoice at all): the model says it never buys
   aipwre  CNVPowerE: two lines of equal weight, X (50%) first, then Y (50%) -- which is drawn, does it vary per run
   aipwrf  CNVPowerF: the same two lines, order reversed: Y (50%) first, then X (50%)
+  aipwrg  CNVPowerG: X (30%) first, then Y (70%) -- where the draw falls: X iff draw / sum < 0.3
+  aipwrh  CNVPowerH: X (10%) first, then Y (90%) -- X iff draw / sum < 0.1
 """
 from missions import scripts1_bench
 from parts import Mission
@@ -48,4 +50,6 @@ MISSION = {
     'aipwrd': lambda: mission('CampAIPwrD'),
     'aipwre': lambda: mission('CampAIPwrE', 'CNVPowerE', [(X, '50%'), (Y, '50%')]),
     'aipwrf': lambda: mission('CampAIPwrF', 'CNVPowerF', [(Y, '50%'), (X, '50%')]),
+    'aipwrg': lambda: mission('CampAIPwrG', 'CNVPowerG', [(X, '30%'), (Y, '70%')]),
+    'aipwrh': lambda: mission('CampAIPwrH', 'CNVPowerH', [(X, '10%'), (Y, '90%')]),
 }
