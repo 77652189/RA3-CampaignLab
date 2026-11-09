@@ -72,7 +72,7 @@ NOTES = {
     '组队招人/CreateUnits.MinUnits': (GUESSED, 'AI 模型代码里读了这个名字（台上量的是 TeamTemplate.MinUnits，不是现造兵）'),
     '微操/AIMicroManagerData.PullbackInjured': (BENCHED, '只认车能开进去的维修设施：苏联 AI + 吊车，残血坦克回去被回收（aipullsov PASS）；盟军 / 日本工厂找不到（aiteamstate.md 第 6 节）'),
     '微操/AIMicroManagerData.PullbackInjuredHealthPct': (GUESSED, '30% 低于 0.35 时苏联坦克会撤（aipullsov），阈值边界没量'),
-    '微操/AIMicroManagerData.ReverseMove': (GUESSED, '上了台读不出倒车（airev1 / airev0 几乎一样）'),
+    '微操/AIMicroManagerData.ReverseMove': (GUESSED, '推断（台上未复现）：锤子 airev / airevp / airevt 都不倒车；剩门队员有没有当前攻击目标，量法见 handoff-b 第 73 节'),
     '组队招人/TeamTemplate.AlwaysRecruit': (GUESSED,'读了，出发后继续招人的门默认关（防御队吸兵和台上对不上，handoff-b 第 50、51 节）'),
 }
 

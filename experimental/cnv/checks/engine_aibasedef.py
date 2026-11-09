@@ -10,6 +10,7 @@ Expectations are the model's (l4_micro_engage.md 1.7); a FAIL is a reading too:
   aibd1     进炮塔 reaches 1 or more
   aibd0 / aibdidle  进炮塔 stays 0
   aibdwho   (counters 进炮塔 旁1 旁2 旁3: Peacekeepers of s1 within NEXT of turret 1 / 2 / 3, in it too) 进炮塔 reaches 1
+  aibdpre   (as aibdwho; turret 1 holds a fifth Peacekeeper from s0) 进炮塔 reaches 2 (the full turret skipped)
 
 Readings (11-09, all PASS; counters 进炮塔 炮塔数 步兵数 到远厂; the AI's 4 AlliedBaseDefense 200 north of the far plant):
   aibd1     s1-s14 0 4 4 0 | s15-17 到远厂 2,3,4 | s18-s20 0 3 4 4 | s21-s25 1 3 4 4 | s26-s32 1 2 3 3 | s33-s75 1 2 2 2
@@ -36,7 +37,10 @@ def a(m, build):
     t.areas[at.FAR] = square(o.x, o.y, 300.0)
     (inf,) = m.cnv_units
     counted('CNV_BD_In', '进炮塔', t, status=status('ENCLOSED'), player=s1)
-    if build == 'aibdwho':
+    if build == 'aibdpre':
+        t.scripts.append(Script('Test - sit', [], [('NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY',
+                                                       m.role('sitter').name, m.role('turret 1').name)]))
+    if build in ('aibdwho', 'aibdpre'):
         for k in (1, 2, 3):
             tur = m.find(m.role(f'turret {k}').name)
             area = f'CNV_BD_Next{k}'
@@ -50,10 +54,12 @@ def a(m, build):
     end = wake + AFTER
     if build in ('aibd1', 'aibdwho'):
         t.expect += [('进炮塔', 1, 'ever>=', 1, end)]
+    elif build == 'aibdpre':                 # the model: a full turret is skipped, one more goes into turret 2
+        t.expect += [('进炮塔', 1, 'ever>=', 2, end)]
     else:
         t.expect += [('进炮塔', 1, '==', 0, end)]
     t.bench = [('bench_watch', dict(seconds=end + at.LAG, every=1, sheet=False, lines=len(t.counters)))]
     return t
 
 
-CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aibd1', 'aibd0', 'aibdidle', 'aibdwho')}
+CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aibd1', 'aibd0', 'aibdidle', 'aibdwho', 'aibdpre')}

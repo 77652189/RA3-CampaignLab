@@ -815,7 +815,7 @@
 | 已对拍 | `微操/AIMicroManagerData.Crush` | 77 | AI 模型代码里读了这个名字；台上量过：checks/engine_aicrush.py |
 | 推断 | `目标/AITargetingHeuristic.SortType` | 76 | AI 模型代码里读了这个名字 |
 | 推断 | `组队招人/TeamTemplate.SortByDistance` | 75 | AI 模型代码里读了这个名字（台上没单独量：engine_aiskirm 里是推测） |
-| 推断 | `微操/AIMicroManagerData.ReverseMove` | 74 | 上了台读不出倒车（airev1 / airev0 几乎一样） |
+| 推断 | `微操/AIMicroManagerData.ReverseMove` | 74 | 推断（台上未复现）：锤子 airev / airevp / airevt 都不倒车；剩门队员有没有当前攻击目标，量法见 handoff-b 第 73 节 |
 | 推断 | `目标/AITargetingHeuristic.Location` | 74 | AI 模型代码里读了这个名字 |
 | 推断 | `组队招人/TeamTemplate.ReleaseType` | 71 | AI 模型代码里读了这个名字 |
 | 推断 | `微操/AIMicroManagerData.EnemySearchDistanceVisionMultiplier` | 70 | AI 模型代码里读了这个名字 |

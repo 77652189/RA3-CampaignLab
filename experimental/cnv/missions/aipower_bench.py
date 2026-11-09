@@ -5,6 +5,8 @@ Soviet) is a computer player with starting point 1 (InitialTechPoints), its pers
           1 point, needs only PlayerTech_Soviet, which Soviet holds)
   aipwrb  CNVPowerB: two lines, Y (PlayerTech_Soviet_OrbitalRefuse_Rank1, Weight 0%) first, then X (100%)
   aipwrd  the stock DefaultPersonality (no PowerChoice at all): the model says it never buys
+  aipwre  CNVPowerE: two lines of equal weight, X (50%) first, then Y (50%) -- which is drawn, does it vary per run
+  aipwrf  CNVPowerF: the same two lines, order reversed: Y (50%) first, then X (50%)
 """
 from missions import scripts1_bench
 from parts import Mission
@@ -44,4 +46,6 @@ MISSION = {
     'aipwra': lambda: mission('CampAIPwrA', 'CNVPowerA', [(X, '100%')]),
     'aipwrb': lambda: mission('CampAIPwrB', 'CNVPowerB', [(Y, '0%'), (X, '100%')]),
     'aipwrd': lambda: mission('CampAIPwrD'),
+    'aipwre': lambda: mission('CampAIPwrE', 'CNVPowerE', [(X, '50%'), (Y, '50%')]),
+    'aipwrf': lambda: mission('CampAIPwrF', 'CNVPowerF', [(Y, '50%'), (X, '50%')]),
 }

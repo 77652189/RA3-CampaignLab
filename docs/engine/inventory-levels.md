@@ -197,7 +197,7 @@
 | 推断 | AI | `微操/AIMicroManagerData.EngageTacticalTarget` | 79 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `目标/AITargetingHeuristic.SortType` | 76 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `组队招人/TeamTemplate.SortByDistance` | 75 | a4 a5 a7 | AI 模型代码里读了这个名字（台上没单独量：engine_aiskirm 里是推测） |
-| 推断 | AI | `微操/AIMicroManagerData.ReverseMove` | 74 | a4 a5 a7 | 上了台读不出倒车（airev1 / airev0 几乎一样） |
+| 推断 | AI | `微操/AIMicroManagerData.ReverseMove` | 74 | a4 a5 a7 | 推断（台上未复现）：锤子 airev / airevp / airevt 都不倒车；剩门队员有没有当前攻击目标，量法见 handoff-b 第 73 节 |
 | 推断 | AI | `目标/AITargetingHeuristic.Location` | 74 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `组队招人/TeamTemplate.ReleaseType` | 71 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `微操/AIMicroManagerData.EnemySearchDistanceVisionMultiplier` | 70 | a4 a5 a7 | AI 模型代码里读了这个名字 |

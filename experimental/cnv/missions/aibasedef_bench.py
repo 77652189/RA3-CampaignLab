@@ -15,6 +15,9 @@ team stands to fight within 150 of them, one place each):
   aibdwho   as aibd1, counted by turret (who stands next to which): why only one went in. 0x8de960 takes, for each
             member in one pass, the FIRST turret of the list within 150 that it can be ordered into -- if 'can' does
             not see where the earlier members of the same pass were sent, all four go to the same turret
+  aibdpre   as aibdwho, with a fifth Peacekeeper of s1 put into turret 1 by script at the start (full from s0): does
+            the member's 'can be ordered into' see a full turret? Seen -> the team goes on to turret 2 and one goes in
+            (进炮塔 2); not seen -> they crowd turret 1 again and nobody else gets in (进炮塔 stays 1)
 Facts: wake at.
 """
 from missions import airetreat_bench as ar
@@ -25,11 +28,15 @@ SPREAD = (-120.0, -40.0, 40.0, 120.0)
 EAST = 40.0
 
 
-def mission(mod, **fields):
+def mission(mod, sitter=False, **fields):
     m = ar.mission(mod, guards=ar.GUARDS, RetreatPowerAdvantage='0.0', **fields)
     for k, dx in enumerate(SPREAD):
         m.put(TURRET, 'carrier home', EAST + dx, NEAR, side='s1', name=f'UNIT - CNV AI Turret {k + 1}',
               role=f'turret {k + 1}')
+    if sitter:                           # garrisoned into turret 1 at s0 by the check's script
+        (inf,) = m.cnv_units
+        m.put(inf, 'carrier home', EAST + SPREAD[0], NEAR + 30.0, side='s1', name='UNIT - CNV AI Sitter',
+              role='sitter')
     return m
 
 
@@ -38,4 +45,6 @@ MISSION = {
     'aibd0': lambda: mission('CampAIBd0', EnterBaseDefenses='false', EnterBaseDefensesWhenIdle='false'),
     'aibdidle': lambda: mission('CampAIBdIdle', EnterBaseDefenses='false', EnterBaseDefensesWhenIdle='true'),
     'aibdwho': lambda: mission('CampAIBdWho', EnterBaseDefenses='true', EnterBaseDefensesWhenIdle='false'),
+    'aibdpre': lambda: mission('CampAIBdPre', sitter=True, EnterBaseDefenses='true',
+                               EnterBaseDefensesWhenIdle='false'),
 }
