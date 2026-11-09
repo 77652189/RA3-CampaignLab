@@ -404,7 +404,9 @@ class Brain:
 
     def path_to_target(self, surface, template, cond):
         """ctx 'path to target' (read 0x8c56b0, l4_states.md 3): None when it cannot judge (no base of ours, no enemy
-        with one); False when a spot is not found or the template has no locomotor; else whether the simulator's
+        with one); False when a spot is not found; True when the template has no locomotor (bench aiopath1 /
+        aiopathr, checks/engine_aiopath.py: AlliedPowerPlant as the tester picks the PathExists="true" opening in
+        either order -- the program read "no locomotor -> no way" is wrong or misread); else whether the simulator's
         grid of the template's surface joins the two spots. cond: the simulator knows only NORMAL (INFERRED: same)."""
         key = (surface, template, cond)
         got = self.paths.get(key)
@@ -419,7 +421,7 @@ class Brain:
         else:
             stats = simunits.stats(template, s.own) if template else {'speed': None}
             if not stats.get('speed'):
-                answer = False                                   # read: no locomotor in that condition -> no way
+                answer = True                                    # bench aiopath1 / aiopathr: no locomotor -> a way
             else:
                 grid = 'water' if surface == 'Water' else 'ground'   # read: cell type Water 7 / Land 0
                 ok = lambda p: s.ground.open(grid, *p)           # noqa: E731

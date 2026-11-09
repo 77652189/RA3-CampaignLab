@@ -47,6 +47,18 @@
 - 给关卡：别指望权重比例；想让 AI 一定买某个协议，就只写那一条或把别的权重写 0。
 - 没测：买的具体时刻（程序是第 10 帧以后，早于测试台第一次读数）。
 
+## 陆地开局还是海岛开局（PathToTargetHeuristic）
+
+人格里每条 OpeningMove 带一个"从我方基地到敌方基地有没有路"的判断（`PathExists` true 走陆地开局、false 走海岛开局），用 `ObjectTypeToUseForTest` 那个单位来试。探针 `checks/engine_aiopath.py`（自写人格只留 Standard / Island 两条，台上 2026-11-09）：
+
+| 变体 | 测路单位 | 结果 |
+| --- | --- | --- |
+| aiopathi | 步兵，只有一条 Island（PathExists=true） | 先电厂、s89 船坞——自写人格生效 |
+| aiopath1 | 电厂（没有移动方式），Standard 在前 | 陆地开局（先兵营） |
+| aiopathr | 电厂，Island 在前 | 还是陆地开局 |
+
+结论：**测路单位不会动时，AI 当"有路"**（不是两条都过再按顺序取）。给关卡线：想让 AI 走海岛开局，得真的没陆路（或用自写人格只给一条），换个不会动的测路单位没用。模拟器 `simai.Brain.path_to_target` 已照此改。真正没陆路的海岛图没测。
+
 ## 没测的
 
 - 有采矿收入时钱不够的样子（这次没让矿车出来）；收入怎么按预算分进各账户（程序没读通）。

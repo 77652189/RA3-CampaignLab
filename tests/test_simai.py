@@ -289,6 +289,17 @@ def test_engage_passive_off_goes_straight_to_the_far_plant(lib):
     assert far < hit
 
 
+@pytest.mark.parametrize('build,first', [('aiopath1', 'AlliedBarracks'), ('aiopathr', 'AlliedBarracks'),
+                                         ('aiopathi', 'AlliedPowerPlant')])
+def test_the_opening_path_test_picks_what_the_bench_picked(lib, build, first):
+    """checks/engine_aiopath.py p (bench 2026-11-09): AlliedPowerPlant as ObjectTypeToUseForTest picks the
+    PathExists="true" line (Standard, barracks first) whichever is listed first; aiopathi (one Island line, true):
+    the probe's personality takes (a power plant first)."""
+    b, trace = _from_wake(simai.run(build, until=40, lib=lib, blocks=()))
+    own = [t for f, what, t in trace if what == 'own']
+    assert own and own[0] == first, own
+
+
 def test_path_to_target_is_asked_on_the_simulators_grid(lib):
     """PathToTargetHeuristic (work/re l4_states.md 3): the opening and the states ask the brain; the skirmish map is
     one piece of land, so infantry has a way and a ship finds no water spot (= no way). At 300 s the player's base
@@ -299,7 +310,7 @@ def test_path_to_target_is_asked_on_the_simulators_grid(lib):
     b.paths.clear()
     assert b.path_to_target('Land', 'AlliedAntiInfantryInfantry', 'NORMAL') is True
     assert b.path_to_target('Water', 'AlliedAntiNavalScout', 'NORMAL') is False
-    assert b.path_to_target('Land', 'AlliedPowerPlant', 'NORMAL') is False      # no locomotor: no way
+    assert b.path_to_target('Land', 'AlliedPowerPlant', 'NORMAL') is True       # no locomotor: a way (aiopath1)
 
 
 def test_path_to_target_cannot_judge_without_an_enemy_base(skirmish):
