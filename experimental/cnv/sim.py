@@ -1395,11 +1395,11 @@ class Sim:
                         return True
         return False
 
-    def can_build(self, owner, template, factory=None):
+    def can_build(self, owner, template, factory=None, ban=True):
         """Whether owner's sidebar button for `template` is lit (at `factory`, else at any of owner's that builds it):
-        not banned (ALLOW_DISALLOW_ONE_BUILDING), every RequiredObject standing, every NeededUpgrade held there
-        (holds_upgrade; all of them is an inference)."""
-        if (owner, template.lower()) in self.banned:
+        not banned (ALLOW_DISALLOW_ONE_BUILDING; ban=False: the ban not asked), every RequiredObject standing, every
+        NeededUpgrade held there (holds_upgrade; all of them is an inference)."""
+        if ban and (owner, template.lower()) in self.banned:
             return False
         objs, ups = simunits.needs(template, self.own)
         have = {b.template.lower() for b in self.living() if b.owner == owner}
@@ -1449,11 +1449,13 @@ class Sim:
                         out[u] = (u,) + simunits.upgrade_cost(u)
         return list(out.values())
 
-    def order_build(self, owner, template, factory=None):
+    def order_build(self, owner, template, factory=None, press=False):
         """Queue `template` at the owner's factory that builds it with the shortest queue (`factory`: that one only, a
         Body -- a script's press of its build button, which bench 2026-11-08 engine_production e measured the same
         as the player's click: paid as it builds, 160 frames to the engineer) -- or an upgrade at the structure
         whose button buys it; nothing is paid now (produce_due pays frame by frame, an upgrade as a unit).
+        press: a script's press, queued even while the unit is banned (ALLOW_DISALLOW_ONE_BUILDING 0) -- it waits
+        unbuilt until let go (bench 2026-11-09 engine_production g); the player's click is not (the button is locked).
         False: nothing of the owner's builds / buys it now."""
         sellers = self.upgrade_sellers(owner, template)
         if sellers:
@@ -1467,7 +1469,7 @@ class Sim:
             self.note('生产', f'{self.who(owner)} 在 {self.label(b)} 买 {template}（{cost}，{secs:g} 秒）')
             return True
         fs = [f for f in self.factories(owner) if template in simunits.menu(f.template, self.own, f.upgrades)
-              and self.can_build(owner, template, f) and (factory is None or f is factory)]
+              and self.can_build(owner, template, f, ban=not press) and (factory is None or f is factory)]
         if not fs:
             return False
         f = min(fs, key=lambda f: len(self.queues.get(f.name, [])))
@@ -1485,7 +1487,9 @@ class Sim:
         the owner cannot pay the difference stands still; the next job starts the frame after one fills; a full one
         comes out DoorOpeningTime later at the factory's UnitCreatePoint (turned with it), on the factory's team,
         and walks to its NaturalRallyPoint (bench 2026-11-05 engine_production a-d: 150 / 151 frames, 54 paid at
-        the 16th, a 250 budget stalls at 3 left, out 10 frames after full). A factory gone takes its queue along."""
+        the 16th, a 250 budget stalls at 3 left, out 10 frames after full). A banned unit's job
+        (ALLOW_DISALLOW_ONE_BUILDING 0) stands, keeps what it paid and goes on when let go -- not cancelled, not
+        refunded (bench 2026-11-09 engine_production g). A factory gone takes its queue along."""
         start = frame if self.produced_to is None else self.produced_to + 1
         self.produced_to = frame
         if not self.queues:
@@ -1504,8 +1508,8 @@ class Sim:
                     else:
                         self.produce_out(f, job, create, rally)
                 job = next((j for j in q if j['full'] is None), None)
-                if job is None:
-                    continue
+                if job is None or 'upgrade' not in job and (job['owner'], job['template'].lower()) in self.banned:
+                    continue                # banned: the first job stands, paid so far kept, the queue behind it too
                 step = f32(100.0 / self.build_frames(job['secs'], job['owner']))
                 nxt = f32(job['progress'] + step)
                 owe = min(job['cost'], math.ceil(round(job['cost'] * nxt / 100.0, 9))) - job['paid']
@@ -2213,8 +2217,8 @@ class Sim:
             self.change()
         elif name in ('CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT', 'CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION'):
             # (type, team, waypoint[, angle]): the named one's maker without a name (RA3 1.13: both run the same three
-            # calls, work/re actions_map.json), a new object every time it runs. INFERRED, not benched: no name, so
-            # '#' (an unnamed one for SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER)
+            # calls, work/re actions_map.json), a new object every time it runs, on the team; no name, so '#' (an
+            # unnamed one for SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER) -- bench 2026-11-09 ref_d
             self.used.add('create unnamed')
             p = self.point(a[2])
             if p is None:
@@ -2451,11 +2455,12 @@ class Sim:
             self.countdowns.discard(a[0])
         elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and self.body(a[0]) and self.body(a[0]).alive and \
                 simunits.built(self.body(a[0]).template, a[1], self.own, self.body(a[0]).upgrades):
-            # a factory's build button: queued there as the player's click (bench engine_production e); refused where
-            # the player's click would be (can_build: tier, ban, a factory still unpacking -- INFERRED, not measured)
+            # a factory's build button: queued there as the player's click (bench engine_production e); a banned unit
+            # queued all the same and waits (g); refused where the player's click would be for the rest (can_build:
+            # tier, a factory still unpacking -- INFERRED, not measured)
             f = self.body(a[0])
             tmpl = simunits.built(f.template, a[1], self.own, f.upgrades)
-            if not self.order_build(f.owner, tmpl, factory=f):
+            if not self.order_build(f.owner, tmpl, factory=f, press=True):
                 self.note('生产', f'{self.label(f)} 按 {a[1]}：现在造不了 {tmpl}')
         elif name in ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY'):
             b = self.body(a[0])

@@ -139,6 +139,15 @@ def test_r2_the_reference_picks_the_wall_the_bench_did(variant, gone):
     assert walls == [0 if k == gone else 1 for k in range(3)], series[-1]
 
 
+def test_r2_unnamed_made_twice_by_one_script_join_the_team_and_are_picked():
+    """bench 2026-11-09 `cnv_check ref_d frames` (CampRefDFrames_mcp_1109_061813): one script run twice
+    (CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT at M2) -- 造了 2, 坦克 2 from s1; the wall pick took B (the team's middle at M2:
+    both on the team; an empty team would take A); the tank type's pick took one of them (坦克 2 -> 1 at the delete)."""
+    series = _sim_run('ref_d', 'frames', 16.0).series
+    assert series[-1][1][:4] == [2, 1, 1, 0], series[-1]
+    assert any(row[1][:2] == [2, 2] for row in series), series[:3]
+
+
 def test_r3_the_ghost_king_smashes_the_wall_as_on_the_bench():
     """R2 + R3 (sim.Ground.within: an attacker goes to a spot in range, not round the wall to the cell nearest its
     middle): bench 2026-11-07 `cnv_check a4 smash` -- ashore s58, the wall's health 100 to s67, 76 at s70, 53 s73,
@@ -217,6 +226,21 @@ def test_a_scripts_press_of_the_build_button_builds_as_the_click():
     assert next(rd['帧数'] for rd in rows if rd['工程师'] >= 1) == 160
     s, rows, _ = _production_rows('f', order=False)
     assert not any(rd['工程师'] for rd in rows) and s.money.get(s.human, 0) == 0 and s.queues
+
+
+def test_a_ban_holds_the_queue_and_does_not_cancel():
+    """engine_production g (bench 2026-11-09, CampProdG_mcp_1109_055742): the engineer banned from the start
+    (ALLOW_DISALLOW_ONE_BUILDING 0), the button pressed at 2 s, 8 s, 19 s; let go at 6 s, banned again at 21 s, let go
+    at 30 s. Bench: 2000 until the let-go (the 2 s press was queued and waited), the first engineer at 帧数 160 as a;
+    the second job stands at 1286 from s20 to s28 (paid kept, nothing refunded, nothing cancelled), goes on at s29,
+    the second engineer at s35; the third job pays down to 500 by s45. The simulator: the press queues past the ban,
+    a banned job stands (Sim.order_build press, Sim.produce_due)."""
+    s, rows, _ = _production_rows('g', order=False)
+    assert all(rd['资金'] == 2000 for rd in rows[:90])
+    assert next(rd['帧数'] for rd in rows if rd['工程师'] >= 1) == 160
+    held = [rd['资金'] for rd in rows[330:440]]          # 22 s .. 29 s: banned halfway through the second
+    assert len(set(held)) == 1 and 1240 <= held[0] <= 1300 and all(rd['工程师'] == 1 for rd in rows[330:440])
+    assert rows[-1]['工程师'] == 2 and 500 <= rows[-1]['资金'] <= 520
 
 
 @pytest.mark.parametrize('check, power, factor', [('a', (150, 25), 1.0), ('c', (0, 25), 0.3), ('d', (50, 75), 0.5)])

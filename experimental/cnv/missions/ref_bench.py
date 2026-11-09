@@ -8,7 +8,9 @@ kind with no lifetime), placed by the map:
   B (-100,  400): 100 from M2, 806 from M1, 412 from the middle   (nearest to ANY member, nearest to M2)
   C ( 150,    0): 427 from each, 150 from the middle              (nearest to the CENTRE of the team)
 (offsets from 'west field'). ref_a: all three unnamed. ref_b: the nearest of the pair (B) is named, A and C unnamed
-stay. ref_c: the pick is made, then asked again with a type nobody owns, again, and with the team emptied.
+stay. ref_c: the pick is made, then asked again with a type nobody owns, again, and with the team emptied. ref_d:
+the members are made by ONE script run twice, CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT at M2 both times (on the team: the
+pick takes B; not on it: an empty team's (0, 0) takes A).
 """
 from maps import island
 from parts import Mission
@@ -20,11 +22,13 @@ M1, M2 = (0.0, -400.0), (0.0, 400.0)
 WALLS = {'A': (-250.0, -400.0), 'B': (-100.0, 400.0), 'C': (150.0, 0.0)}
 
 
-def mission(name, named=(), swap=False, extra=False):
+def mission(name, named=(), swap=False, extra=False, unnamed=False):
     wall = iw.wall(WALL, length=60, shape='square', lifetime=None)
-    m = Mission(name=name, map=island, facts={'swap': int(swap), 'extra': int(extra)})
+    m = Mission(name=name, map=island, facts={'swap': int(swap), 'extra': int(extra), 'unnamed': int(unnamed)})
     m.units += [wall] + ([iw.wall(NONE, length=60, shape='square', lifetime=None)] if extra else [])
     m.crew('Ref')
+    if unnamed:                                 # ref_d counts and picks the members' type
+        m.spawns |= {MEMBER}
     m.waypoint('m1', 'CNV Ref M1', 'west field', *M1)
     m.waypoint('m2', 'CNV Ref M2', 'west field', *M2)
     for k, (dx, dy) in WALLS.items():
@@ -37,4 +41,5 @@ def mission(name, named=(), swap=False, extra=False):
 MISSION = {'ref_a': lambda: mission('CampRefA'),
            'ref_a2': lambda: mission('CampRefA2', swap=True),
            'ref_b': lambda: mission('CampRefB', named='C'),
-           'ref_c': lambda: mission('CampRefC', extra=True)}
+           'ref_c': lambda: mission('CampRefC', extra=True),
+           'ref_d': lambda: mission('CampRefD', unnamed=True)}

@@ -31,6 +31,12 @@ at 2 s, no clicks; e / f, barracks 2 and 3 deleted as a):
   f CampProdF_mcp_1108_083934: money 0 at the start; 30 s of 资金 0, 帧数 0 (the flag needs money below the start, so it
     never counts), 工程师 0, 出口位 0: the scripted press with no money builds nothing (refused, or waits at 0; no
     money was given later, so these two are not told apart).
+Bench 11-09 (g: the engineer banned at the start, ALLOW_DISALLOW_ONE_BUILDING(p1, 'alliedengineer', 0); presses at
+2 / 8 / 19 s, let go at 6 s, banned at 21 s, let go at 30 s; the watch's s runs ~1.3 s behind the timers):
+  g CampProdG_mcp_1109_055742: 2000 to s4, paying from s5 (the 2 s press queued and waited for the let-go), the
+    first engineer at 帧数 160 (as a); the second job 1500 -> 1286 by s20, 1286 from s20 to s28 (banned halfway: it
+    stands, nothing refunded or cancelled), paying again from s29, the second engineer at s35; the third 1000 -> 500
+    by s45. A ban stops the building, not the queueing (docs/engine/production.md section 4).
 Against the model (RA3-EngineModel production.py, round 41; tests/test_objects_bench.py, tools/objsidebyside.py with
 orders): every pair and every 帧数 the same, once the model divides the seconds before x 15 (c: 495, not 500), keeps
 the progress in float32 (10 s takes 151 updates; b owes 251 at k 75) and opens the door 10 frames (DoorOpeningTime
@@ -41,12 +47,16 @@ from parts import Mission, Script, Test, counted, square
 
 ENGINEER, BARRACKS = 'AlliedEngineer', 'AlliedBarracks'
 MONEY, SHORT, GIVE, BONUS = 2000, 250, 4.0, 2000     # b: GIVE s after the money reaches 0
-RUN = {'a': 22.0, 'b': 30.0, 'c': 48.0, 'd': 34.0, 'e': 24.0, 'f': 30.0}
+RUN = {'a': 22.0, 'b': 30.0, 'c': 48.0, 'd': 34.0, 'e': 24.0, 'f': 30.0, 'g': 44.0}
 PRESS_AT, BUTTON_NAME = 2.0, 'Command_ConstructAlliedEngineer'   # e, f: a script presses the factory's button
 FACTORY = (1550.0, 2560.0)              # niagara 'base factory'; the barracks turned 180 degrees (exit to the west)
 CREATE, RALLY = (FACTORY[0], FACTORY[1] - 18.0), (FACTORY[0] - 40.0, FACTORY[1] - 18.0)   # (0, 18), (40, 18) turned
 DELETE = {'a': ('Barracks 2', 'Barracks 3'), 'b': ('Barracks 2', 'Barracks 3'),
-          'c': ('Yard', 'Power', 'Barracks 2', 'Barracks 3'), 'd': ('Power',), 'e': ('Barracks 2', 'Barracks 3'), 'f': ('Barracks 2', 'Barracks 3')}
+          'c': ('Yard', 'Power', 'Barracks 2', 'Barracks 3'), 'd': ('Power',), 'e': ('Barracks 2', 'Barracks 3'), 'f': ('Barracks 2', 'Barracks 3'),
+          'g': ('Barracks 2', 'Barracks 3')}
+# g: ALLOW_DISALLOW_ONE_BUILDING(p1, 'alliedengineer', allow) at the start (0) and these seconds; presses at PRESS_G
+BAN_G = ((6.0, 1), (21.0, 0), (30.0, 1))
+PRESS_G = (2.0, 8.0, 19.0)
 # the sidebar's infantry tab and the engineer's button, screen pixels (1280 x 720): bench 11-05, round 41
 TAB, BUTTON = (1174.0, 251.0), (1135.0, 367.0)
 
@@ -73,7 +83,8 @@ def production_test(m, which='a'):
     t.areas['Test Near'] = square(*FACTORY, 80.0)
     start = SHORT if which == 'b' else 0 if which == 'f' else MONEY
     t.scripts.append(Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', p1), ('PLAYER_SET_MONEY', p1, start)] + [
-        ('NAMED_DELETE', _n(p)) for p in DELETE[which]]))
+        ('NAMED_DELETE', _n(p)) for p in DELETE[which]] + (
+        [('ALLOW_DISALLOW_ONE_BUILDING', p1, ENGINEER.lower(), 0)] if which == 'g' else [])))
     t.counters.append(('CNV_Prod_Money', '资金'))
     if which == 'b':                        # by events: the clicks' mission second is not known (bench 11-05: ~s8)
         # (op 1, meant as <=, held at 250 <= 0 -- bench 11-05; op 0 '<' as 'paying' reads right)
@@ -98,9 +109,19 @@ def production_test(m, which='a'):
         t.scripts += [Script('Test - press set', [], [('SET_MILLISECOND_TIMER', 'Test Press', PRESS_AT)]),
                       Script('Test - press', [('TIMER_EXPIRED', 'Test Press')],
                              [('NAMED_USE_COMMANDBUTTON_ABILITY', _n('Barracks 1'), BUTTON_NAME)])]
+    if which == 'g':                        # a ban, a press while banned, a let go, a ban halfway through a build
+        t.scripts.append(Script('Test - g set', [], [('SET_MILLISECOND_TIMER', f'Test Press {k}', s)
+                                                     for k, s in enumerate(PRESS_G)] +
+                                [('SET_MILLISECOND_TIMER', f'Test Ban {k}', s) for k, (s, _) in enumerate(BAN_G)]))
+        t.scripts += [Script(f'Test - press {k}', [('TIMER_EXPIRED', f'Test Press {k}')],
+                             [('NAMED_USE_COMMANDBUTTON_ABILITY', _n('Barracks 1'), BUTTON_NAME)])
+                      for k in range(len(PRESS_G))]
+        t.scripts += [Script(f'Test - ban {k}', [('TIMER_EXPIRED', f'Test Ban {k}')],
+                             [('ALLOW_DISALLOW_ONE_BUILDING', p1, ENGINEER.lower(), allow)])
+                      for k, (_, allow) in enumerate(BAN_G)]
     t.expect = [('工程师', 0, 'ever>=', 1, RUN[which])] if which != 'f' else []
     watch = dict(every=0.5, sheet=False, lines=len(t.counters))
-    if which in 'ef':
+    if which in 'efg':
         t.bench = [('bench_watch', dict(watch, seconds=RUN[which]))]
     elif TAB[0] is None:                     # the buttons not found yet: run, look by hand (keep=true)
         t.bench = [('bench_watch', dict(watch, seconds=2.0))]
@@ -113,4 +134,4 @@ def production_test(m, which='a'):
 
 
 MISSION = {'engine_production': mission}
-CHECKS = {'engine_production': {w: (lambda m, w=w: production_test(m, w)) for w in 'abcdef'}}
+CHECKS = {'engine_production': {w: (lambda m, w=w: production_test(m, w)) for w in 'abcdefg'}}

@@ -4,11 +4,11 @@
 
 | 部分 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|
-| 脚本动作 | 427 | 50 | 57 | 272 | 48 | 81% |
+| 脚本动作 | 427 | 52 | 55 | 272 | 48 | 81% |
 | 脚本条件 | 89 | 23 | 5 | 61 | 0 | 94% |
 | 物体模块 | 184 | 9 | 15 | 143 | 17 | 42% |
 | 武器效果 | 25 | 2 | 3 | 20 | 0 | 53% |
-| AI | 415 | 37 | 190 | 154 | 34 | 87% |
+| AI | 415 | 38 | 189 | 154 | 34 | 87% |
 
 ## 脚本动作
 
@@ -17,7 +17,7 @@
 | 已对拍 | `ENABLE_SCRIPT` | 5727 | 引擎模型核心；台上量过：checks/engine_script.py |
 | 已对拍 | `SET_MILLISECOND_TIMER` | 4153 | 引擎模型核心；台上量过：checks/engine_acquire.py |
 | 已对拍 | `SET_FLAG` | 4105 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aimicro.py |
-| 推断 | `ALLOW_DISALLOW_ONE_BUILDING` | 3466 | Sim.act / Sim.cond 有分支 |
+| 已对拍 | `ALLOW_DISALLOW_ONE_BUILDING` | 3466 | tests/test_simbench.py::test_a_ban_holds_the_queue_and_does_not_cancel |
 | 已对拍 | `PLAYER_LOCK_PLAYER_TECH` | 1887 | tests/test_simbench.py::test_protocol_a_computer_player_spends_unless_locked |
 | 推断 | `DISABLE_SCRIPT` | 1099 | 引擎模型核心 |
 | 已对拍 | `MOVE_NAMED_UNIT_TO` | 1000 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aidefense.py |
@@ -52,7 +52,7 @@
 | 已对拍 | `PLAYER_SET_MAX_PLAYER_POWER_POINTS` | 206 | tests/test_simbench.py::test_protocol_set_points_follows_the_programs_rule |
 | 已对拍 | `NAMED_KILL` | 204 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_attack.py |
 | 推断 | `TEAM_HUNT` | 203 | 没交给 AI 的玩家（含玩家自己）：不动，台上量过（engine_scripts1 hunt 60 s）；AI 玩家的 HuntTactic 不模拟（引擎 B），碰到记 Sim.unmodeled |
-| 推断 | `CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT` | 196 | Sim.act / Sim.cond 有分支 |
+| 已对拍 | `CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT` | 196 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_ref.py |
 | 推断 | `LINK_MISSION_OBJECTIVE_TO_WAYPOINT` | 194 | Sim.act / Sim.cond 有分支 |
 | 未做 | `NAMED_FOLLOW_WAYPOINTS` | 192 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_GARRISON_SPECIFIC_BUILDING_INSTANTLY` | 186 | Sim.act / Sim.cond 不认识 |
@@ -838,7 +838,7 @@
 | 不涉及 | `表现/FeedbackEntry.Timeout` | 56 | 纯表现（语音、视频、画面） |
 | 未做 | `造兵/BuildEntry.PercentHigh` | 54 | AI 模型代码里没有这个名字 |
 | 未做 | `造兵/BuildEntry.PercentLow` | 54 | AI 模型代码里没有这个名字 |
-| 推断 | `微操/AIMicroManagerData.UseGatherState` | 51 | AI 模型代码里读了这个名字 |
+| 已对拍 | `微操/AIMicroManagerData.UseGatherState` | 51 | AI 模型代码里读了这个名字；台上量过：checks/engine_aipullback.py |
 | 推断 | `启发条件/OpeningMoveHeuristic` | 47 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/OpeningMoveHeuristic.Complete` | 47 | AI 模型代码里读了这个名字 |
 | 推断 | `开局/OpeningMove.Difficulty` | 46 | AI 模型代码里读了这个名字 |
