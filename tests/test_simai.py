@@ -198,3 +198,41 @@ def test_skirmish_ai_talks_about_itself(skirmish):
     (me,) = th.values()
     assert me['opening'] == 'AlliedStandard' and me['opening done']
     assert 'targets' in me and any(me['targets'].values())
+
+
+# ---- the wake's script switches (checks/engine_aiswitch.py, bench 2026-11-08; work/re l4_aiswitches.md)
+def _switch_run(build, lib, until=70.0):
+    w = simai.run(build, 'a', until, lib=lib)
+    labels = [lab for _, lab in w.sim.test.counters]
+    return w, [dict(zip(labels, v)) for _, v in w.sim.series]
+
+
+def test_priorities_zero_send_no_team_to_the_nearest_structure(lib):
+    # bench aisw0near: 步兵在家 4 from s1 to s75, nobody at either plant (the control aitargetnear went at s13)
+    w, rows = _switch_run('aisw0near', lib)
+    (b,) = w.brains.values()
+    assert b.ai.enemy_table == []
+    assert all(r['步兵在家'] == 4 and r['到近厂'] == 0 and r['到远厂'] == 0 for r in rows)
+
+
+def test_priorities_zero_do_not_stop_a_named_target(lib):
+    # bench aisw0far: 到远厂 2 @ s15, 4 s17-s33, 0 from s35; then RAMPAGE to the near plant (到近厂 4 s44-s51)
+    _, rows = _switch_run('aisw0far', lib)
+    far = [i for i, r in enumerate(rows) if r['到远厂'] >= 1]
+    near = [i for i, r in enumerate(rows) if r['到近厂'] >= 1]
+    assert far and near and far[0] < near[0]
+
+
+@pytest.mark.parametrize('build', ['aiswrep1', 'aiswrep0'])
+def test_the_ais_hurt_plant_is_not_repaired_either_way(lib, build):
+    # bench aiswrep1 / aiswrep0: 电厂血量 50 all along (75 s / 107 s), repairs 1 or 0 -- why 1 does not repair is open
+    _, rows = _switch_run(build, lib)
+    assert all(r['电厂血量'] == 50 for r in rows)
+
+
+@pytest.mark.parametrize('build', ['aiswreb1', 'aiswreb0'])
+def test_a_killed_plant_is_not_rebuilt_either_way(lib, build):
+    # bench aiswreb1 / aiswreb0: 电厂数 0 from s14 to s119-s120, 5000 money, rebuild 1 or 0
+    w, rows = _switch_run(build, lib, until=100.0)
+    kill = int(w.sim.m.facts['kill at'])
+    assert rows[kill - 2]['电厂数'] == 1 and all(r['电厂数'] == 0 for r in rows[kill + 2:])

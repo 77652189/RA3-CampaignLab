@@ -295,9 +295,10 @@ SHOWN = {'SHOW_MILITARY_CAPTION': '通报', 'CAMPAIGN_CREATE_AUTO_SAVE': '存档
 # a full-screen one never reads done. Lengths we cannot read (a retail line, a retail clip) take the guesses below.
 AUDIO_LEAD, AUDIO_GUESS, VIDEO_GUESS = 0.9, 2.5, 4.0
 SOUND_PLAYS = ('PLAY_SOUND_EFFECT', 'PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT')
+# the skirmish AI's script switches, kept per player for simai (work/re l4_aiswitches.md; docs/engine/aiswitches.md)
+AI_SWITCHES = ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', 'SKIRMISH_AI_USE_REPAIRS', 'SKIRMISH_AI_USE_REBUILD_SYSTEM')
 IGNORED = {'PLAYER_SET_MAX_PLAYER_POWER_POINTS', 'PLAYER_SET_PLAYER_POWER_POINTS', 'DISPLAY_COUNTER', 'HIDE_COUNTER',
-           'SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES',
-           'SKIRMISH_AI_USE_REPAIRS', 'SKIRMISH_AI_USE_REBUILD_SYSTEM', 'CAMERA_LETTERBOX_BEGIN', 'CAMERA_LETTERBOX_END',
+           'CAMERA_LETTERBOX_BEGIN', 'CAMERA_LETTERBOX_END',
            'CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT', 'SET_COOP_AI_COMMAND_UI_ENABLED'}
 
 # ---- the engine line's script engine (ADR 0019 layer 1). Where it is not on this computer (a clean clone) the
@@ -772,6 +773,7 @@ class Sim:
         self.ra3_only = set()               # RA3-only action / condition names the run used
         self.last_change = 0.0
         self.ai = {}                        # player -> woken at
+        self.ai_switches = {}               # player -> {AI_SWITCHES name: value} (simai.Brain reads them)
         self.audio_end = {}                 # sound event -> when HAS_FINISHED_AUDIO holds again (Sim.played)
         self.video_end = {}                 # clip -> when HAS_FINISHED_VIDEO holds (None: never, a full-screen one)
         self.money = {}
@@ -2061,6 +2063,8 @@ class Sim:
             r = a[2]
             self.relations[(a[0], a[1])] = r if isinstance(r, str) else \
                 {0: 'Enemy', 1: 'Neutral', 2: 'Friend'}[r[0]]
+        elif name in AI_SWITCHES:                       # (player, value): the skirmish AI's script switches; what
+            self.ai_switches.setdefault(a[0], {})[name] = int(a[1])     # they do is simai's (engine line B)
         elif name in ('UNIT_AI_TRANSFER_ALL', 'SKIRMISH_AI_MAKE_BASE'):
             self.used.add('ai')
             if a[0] not in self.ai:

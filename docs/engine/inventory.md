@@ -4,7 +4,7 @@
 
 | 部分 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|
-| 脚本动作 | 427 | 43 | 52 | 287 | 45 | 72% |
+| 脚本动作 | 427 | 46 | 52 | 284 | 45 | 73% |
 | 脚本条件 | 89 | 19 | 5 | 65 | 0 | 93% |
 | 物体模块 | 184 | 9 | 13 | 148 | 14 | 26% |
 | 武器效果 | 25 | 2 | 2 | 21 | 0 | 52% |
@@ -114,7 +114,7 @@
 | 推断 | `SET_RANDOM_MSEC_TIMER` | 77 | 引擎模型核心 |
 | 已对拍 | `TEAM_ATTACK_NAMED` | 76 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_reorder.py |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ActivateEjectPassengersSpecialPowerUntargeted` | 75 | 只记进时间线，没有效果 |
-| 未做 | `SKIRMISH_AI_USE_REPAIRS` | 75 | sim.IGNORED 明确丢掉 |
+| 已对拍 | `SKIRMISH_AI_USE_REPAIRS` | 75 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aiswitch.py |
 | 未做 | `NAMED_OUTLINE` | 74 | Sim.act / Sim.cond 不认识 |
 | 未做 | `FLASH_UI_UNIT_ABILITY_BUTTON` | 72 | Sim.act / Sim.cond 不认识 |
 | 推断 | `MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT` | 72 | Sim.act / Sim.cond 有分支 |
@@ -125,7 +125,7 @@
 | 未做 | `UNIT_CLEAR_MODELCONDITION` | 68 | Sim.act / Sim.cond 不认识 |
 | 未做 | `CREATE_UNNAMED_ON_TEAM_AT_NAMED_OBJECT_LOCATION` | 67 | Sim.act / Sim.cond 不认识 |
 | 未做 | `LINK_MISSION_HOT_SPOT_TO_OBJECT` | 67 | Sim.act / Sim.cond 不认识 |
-| 未做 | `SKIRMISH_AI_USE_REBUILD_SYSTEM` | 67 | sim.IGNORED 明确丢掉 |
+| 已对拍 | `SKIRMISH_AI_USE_REBUILD_SYSTEM` | 67 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aiswitch.py |
 | 未做 | `TEAM_MERGE_INTO_TEAM` | 67 | Sim.act / Sim.cond 不认识 |
 | 推断 | `NAMED_HUNT` | 66 | 同 TEAM_HUNT：没交给 AI 不动（台上量过）；AI 玩家的猎杀不模拟（引擎 B） |
 | 未做 | `TEAM_FLASH` | 66 | Sim.act / Sim.cond 不认识 |
@@ -244,7 +244,7 @@
 | 未做 | `PLAYER_KILL` | 14 | Sim.act / Sim.cond 不认识 |
 | 未做 | `PLAYER_SET_ALL_UNITS_TO_FLEE` | 14 | Sim.act / Sim.cond 不认识 |
 | 未做 | `SET_REFERENCE_TO_FIRST_TEAM_MEMBER_IN_AREA` | 14 | Sim.act / Sim.cond 不认识 |
-| 未做 | `SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES` | 14 | sim.IGNORED 明确丢掉 |
+| 已对拍 | `SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES` | 14 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aiswitch.py |
 | 未做 | `UNIT_EXECUTE_SEQUENTIAL_SCRIPT_LOOPING` | 14 | Sim.act / Sim.cond 不认识 |
 | 未做 | `DISABLE_MOUSE_HUD_FIXED_ELEMENT` | 13 | Sim.act / Sim.cond 不认识 |
 | 未做 | `SET_LAST_CREATED_UNIT_TO_REFERENCE` | 13 | Sim.act / Sim.cond 不认识 |

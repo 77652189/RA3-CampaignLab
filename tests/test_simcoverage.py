@@ -94,7 +94,8 @@ def test_the_probe_tells_a_known_name_from_a_made_up_one():
     assert sc.name_state('act', 'SET_FLAG', ['F', 1], inf) == 'handled'         # both (the timeline's notes on it)
     assert sc.name_state('act', 'NAMED_KILL', ['nobody'], inf) == 'handled'
     assert sc.name_state('act', 'DISPLAY_COUNTER', ['c', 'k'], inf) == 'core'   # the model shows counters itself
-    assert sc.name_state('act', 'SKIRMISH_AI_USE_REPAIRS', ['p', 1], inf) == 'ignored'   # sim.IGNORED, the model's not
+    assert sc.name_state('act', 'CAMERA_LETTERBOX_BEGIN', [], inf) == 'ignored'     # sim.IGNORED, the model's not
+    assert sc.name_state('act', 'SKIRMISH_AI_USE_REPAIRS', ['p', 1], inf) == 'handled'   # sim.AI_SWITCHES (11-08)
     assert sc.name_state('act', 'MADE_UP_ACTION', [], inf) == 'unknown'
     assert sc.name_state('cond', 'MADE_UP_CONDITION', [], inf) == 'unknown'
     assert sc.name_state('cond', 'NAMED_DESTROYED', ['nobody'], inf) == 'handled'

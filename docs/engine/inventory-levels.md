@@ -2,15 +2,15 @@
 
 由 `experimental/cnv/inventory_ai.py levels` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）里由遭遇战 AI 带的敌人：它的人格（`enemy_ai.py` 生成）沿继承、战略状态、战术、组队、目标启发、微操、造兵 / 预算状态、开局一路引用到的原版 AI 数据项，加上全局常量 AIData 和本阵营的 ArmyDefinition；再加关卡脚本里点了 AI 玩家名字的脚本动作 / 条件。状态取自 [inventory.md](inventory.md)。"AI 做完"的第一条：下表全部已对拍。
 
-**已对拍 25 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
+**已对拍 28 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
 
 | 部分 | 已对拍 | 推断 | 未做 |
 |---|---|---|---|
 | AI | 21 | 131 | 205 |
-| 脚本动作 | 4 | 2 | 5 |
+| 脚本动作 | 7 | 2 | 2 |
 | 脚本条件 | 0 | 1 | 0 |
 
-按原版用量加权：已对拍 9%，已有（已对拍+推断）81%。
+按原版用量加权：已对拍 10%，已有（已对拍+推断）81%。
 
 | 状态 | 部分 | 项 | 原版用量 | 关 | 说明 |
 |---|---|---|---|---|---|
@@ -221,9 +221,6 @@
 | 未做 | AI | `组队招人/TeamTemplate.BaseDefenseMaxDistance` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | 脚本动作 | `PLAYER_SET_MAX_PLAYER_POWER_POINTS` | 206 | a4 a5 a7 | sim.IGNORED 明确丢掉 |
 | 未做 | 脚本动作 | `PLAYER_SET_PLAYER_POWER_POINTS` | 95 | a4 a5 a7 | sim.IGNORED 明确丢掉 |
-| 未做 | 脚本动作 | `SKIRMISH_AI_USE_REPAIRS` | 75 | a4 a5 a7 | sim.IGNORED 明确丢掉 |
-| 未做 | 脚本动作 | `SKIRMISH_AI_USE_REBUILD_SYSTEM` | 67 | a4 a5 a7 | sim.IGNORED 明确丢掉 |
-| 未做 | 脚本动作 | `SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES` | 14 | a4 a5 a7 | sim.IGNORED 明确丢掉 |
 | 推断 | AI | `开局/Order.Build` | 635 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `目标/AITargetingHeuristic.HeuristicType` | 392 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `组队招人/ObjectFilter.ExcludeThing` | 288 | a4 a5 a7 | AI 模型代码里读了这个名字 |
@@ -383,6 +380,9 @@
 | 已对拍 | 脚本动作 | `NAMED_TRANSFER_OWNERSHIP_PLAYER` | 231 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_invuln.py |
 | 已对拍 | 脚本动作 | `UNIT_AI_TRANSFER_ALL` | 137 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aidefense.py |
 | 已对拍 | 脚本动作 | `SKIRMISH_AI_MAKE_BASE` | 82 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aistate.py |
+| 已对拍 | 脚本动作 | `SKIRMISH_AI_USE_REPAIRS` | 75 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aiswitch.py |
+| 已对拍 | 脚本动作 | `SKIRMISH_AI_USE_REBUILD_SYSTEM` | 67 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aiswitch.py |
+| 已对拍 | 脚本动作 | `SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES` | 14 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aiswitch.py |
 | 不涉及 | AI | `战略状态/AIStrategicStateDefinition.ExecutionBeginFeedbackKey` | 11 | a4 a5 a7 | 纯表现（语音、视频、画面） |
 | 不涉及 | AI | `战略状态/AIStrategicStateDefinition.ExecutionCanceledFeedbackKey` | 11 | a4 a5 a7 | 纯表现（语音、视频、画面） |
 | 不涉及 | AI | `战略状态/AIStrategicStateDefinition.ExecutionCompleteFeedbackKey` | 11 | a4 a5 a7 | 纯表现（语音、视频、画面） |

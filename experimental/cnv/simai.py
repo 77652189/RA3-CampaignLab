@@ -202,6 +202,26 @@ class Brain:
                 busy[r.team.state] = busy.get(r.team.state, 0) + 1
         return [c.target for c in ai.states.choices if on.count(c.key) > busy.get(c.key, 0)]
 
+    def switches(self):
+        """The mission's SKIRMISH_AI_* switches (sim.AI_SWITCHES, kept by Sim.act) told to the AI as they change
+        (work/re l4_aiswitches.md): enemy priorities over the enemies now, repairs, rebuild with a snapshot of the
+        own structures."""
+        got = self.sim.ai_switches.get(self.player, {})
+        seen = getattr(self, '_switched', {})
+        Command = self.host.mod['player'].Command
+        for name, v in got.items():
+            if seen.get(name) == v:
+                continue
+            if name == 'SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES':
+                self.ai.tell(Command('enemy priorities', {'n': v, 'enemies': sorted(self.view.enemies)}))
+            elif name == 'SKIRMISH_AI_USE_REPAIRS':
+                self.ai.tell(Command('use repairs', {'on': v}))
+            elif name == 'SKIRMISH_AI_USE_REBUILD_SYSTEM':
+                own = [(b.template, b.x, b.y) for b in self.sim.living()
+                       if b.owner == self.player and 'STRUCTURE' in b.kinds and not b.scenery]
+                self.ai.tell(Command('use rebuild', {'on': v, 'structures': own}))
+        self._switched = dict(got)
+
     def base_of(self, player):
         ys = [b for b in self.sim.living() if b.owner == player and 'STRUCTURE' in b.kinds and not b.scenery]
         y = next((b for b in ys if 'CONSTRUCTION_YARD' in b.kinds), ys[0] if ys else None)
@@ -262,7 +282,9 @@ class Brain:
     def has_target(self, st):
         """ctx 'target' (states._draw): one of the state's target heuristics finds a Thing now (claims count)."""
         tg, td = self.host.mod['targets'], self.host.data_of('targets')
-        return any(tg.find(td.heuristic(hid), self.view, self.home, None, None, self.home) is not None
+        table = self.ai.enemy_table             # fixed by script: one tier ([[]] = no enemy), as TargetsBlock
+        tiers = None if table is None else [[p for p in table if p in self.view.enemies]]
+        return any(tg.find(td.heuristic(hid), self.view, self.home, tiers, None, self.home) is not None
                    for hid, _ in st.targets)
 
     # ---- the blocks' outlets
@@ -609,6 +631,8 @@ class SimAI:
         for a in getattr(self.sim.m, 'assets', None) or []:
             if len(a) >= 3 and str(a[2]).startswith('AIPersonalityDefinition:'):
                 self.data.add_text(a[1])
+                if 'AITargetingHeuristic' in a[1] and 'targets' in self.blocks:    # a probe's own heuristic
+                    self.data_of('targets').add_text(a[1])                        # (missions/ainamed_bench.py)
 
     def attach(self):
         """Brains for the players the mission has handed to the AI since the last call."""
@@ -628,6 +652,8 @@ class SimAI:
         while self.frame < target and self.sim.ending is None:
             self.sim.advance(1)
             self.attach()
+            for b in self.brains.values():
+                b.switches()
             now = self.frame
             for f in range(now if self.done_to is None else self.done_to + 1, now + 1):
                 for b in self.brains.values():
