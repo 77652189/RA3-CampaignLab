@@ -28,7 +28,8 @@ every frame (the simulator moves in DT ticks; the AI is ticked for each frame of
               the simulator's grids, a route for the test template's surface; cached PATH_EVERY), 'harvesters',
               'money', 'opponent funds' (the first enemy's), 'beacons' (none), 'power advantage' (tactics'
               rule over the whole armies -- INFERRED); the other strategic facts stay unmodelled (states.strategic).
-  blocks      A's TargetsBlock + TacticsBlock (orders: 'move' / 'attack-move' -> Sim.order_move), DefenseBlock (one
+  blocks      A's TargetsBlock + TacticsBlock (orders: 'move' / 'attack-move' -> Sim.order_move, 'enter' -> Garrisons;
+              houses / defenses = Brain.garrisons, full ones listed too), DefenseBlock (one
               MAIN_BASE round the first yard; hurt = the body's hp fell; aesthetics = a circle round the point),
               MicroBlock (unit powers from the CommandSet; a use is only recorded: the simulator gives the AI's units
               no abilities), PlayerPowers (none yet: the simulator has no superweapon charge). The AI sees the whole
@@ -45,6 +46,9 @@ HOOKS (what this file would rather have from sim.py; for A through the coordinat
   5. unit abilities and superweapon charge for an AI player (micro / PlayerPowers only record what they would fire);
   6. simunits' table misses the second GameObject of a file (AlliedAntiInfantryVehicle_Ground, the Riptide the war
      factory makes: speed 0, no KindOf, no weapons); fill() patches the AI's own such units from the model's library.
+  8. garrisons in Sim: Garrisons (below) walks the AI's men into houses / turrets and parks them there, wraps Sim.act
+     for NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY, and sim.py does not count PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS
+     (ENCLOSED), so the tests read Garrisons.log; no fire from inside.
 """
 import argparse
 import importlib
@@ -105,6 +109,158 @@ def side_index(side):
         return int(side.lstrip('ps'))
     except ValueError:
         return 0
+
+
+GARRISON_TAGS = ('GarrisonContain', 'ContestableGarrisonContain')
+ENTER_REACH = 20.0          # INFERRED: in at the building's side (its round + this; as Sim.capture_due's CAPTURE_REACH)
+INSIDE_STATUS = {'IMMOBILE', 'UNATTACKABLE'}    # INFERRED: a passenger neither walks nor is shot at by itself
+                                                # (the building takes the hits); its own ObjectStatusOfContained too
+
+
+class Garrisons:
+    """Garrisons for the AI's teams (HOOKS 8): sim.py has none, so the TacticsBlock's EnterGarrisons /
+    EnterBaseDefenses orders ('enter' a building) and the script's NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY are
+    carried out here, on the retail GarrisonContain / ContestableGarrisonContain data (the model's library):
+      who         PassengerFilter INFANTRY (every retail garrison); the relation of the unit to the building (no owner =
+                  neutral): AllowEnemiesInside / AllowNeutralInside / AllowAlliesInside, own player with
+                  AllowOwnPlayerInsideOverride (the engine model's objects/contain.py, l2 garrison)
+      going in    the unit walks to the building; at its side (round + ENTER_REACH, or stopped within twice that) it is
+                  in if fewer than ContainMax are; else it stays there, out (bench aibdpre: a full turret is walked up
+                  to and not entered)
+      inside      the body stays alive at the building's spot with its ObjectStatusOfContained (ENCLOSED ...: what the
+                  checks count) + INSIDE_STATUS; a neutral building turns the first passenger's player's (garrison.md 2)
+                  and back to its owner when empty
+      the end     the building dies: KillPassengersOnDeath kills them (the Multigunner turret; bench aibdpre 'the
+                  sitter with it'), else they come out where it stood
+    Not modelled: fire from inside (a house's passengers keep their own weapons, CAN_ATTACK; a turret's weapon set by
+    its passenger), DamagePercentToUnits, contesting, leaving by order."""
+
+    def __init__(self, sim_, lib):
+        self.sim, self.lib = sim_, lib
+        self.inside = {}            # building name -> [passenger bodies]
+        self.where = {}             # passenger name -> building body
+        self.going = {}             # body name -> building body it was sent into
+        self.home = {}              # building name -> its owner before the first passenger
+        self.log = []               # (sim seconds, passenger name, building name, script)
+        self._spec = {}
+
+    def spec(self, template):
+        """The template's garrison: {'max', 'allow', 'own', 'kill', 'status', 'kinds'} or None."""
+        if template not in self._spec:
+            tpl = self.lib.template(template)
+            m = next((m for t in GARRISON_TAGS for m in (tpl.find(t) if tpl is not None else ())), None)
+            if m is None:
+                self._spec[template] = None
+            else:
+                a = m.attrs
+                yes = lambda k, d: a.get(k, d).lower() == 'true'                         # noqa: E731
+                f = next((c for c in m.children if c.tag == 'PassengerFilter'), None)
+                self._spec[template] = {
+                    'max': int(float(a.get('ContainMax', '0'))),
+                    'allow': {'ENEMIES': yes('AllowEnemiesInside', 'true'), 'NEUTRAL': yes('AllowNeutralInside', 'true'),
+                              'ALLIES': yes('AllowAlliesInside', 'true')},
+                    'own': yes('AllowOwnPlayerInsideOverride', 'false'),
+                    'kill': yes('KillPassengersOnDeath', 'false'),
+                    'status': set(a.get('ObjectStatusOfContained', '').split()),
+                    'kinds': set(f.attrs.get('Include', '').split()) if f is not None else set()}
+        return self._spec[template]
+
+    def may(self, u, g):
+        """u may go into g by the filter and the relation (not the room: the AI's pass does not look at it, aibdpre)."""
+        sp = self.spec(g.template) if g.alive and 'STRUCTURE' in g.kinds else None
+        if sp is None or u.name in self.where or (sp['kinds'] and not sp['kinds'] & set(u.kinds)):
+            return False
+        if g.owner == sim.CIV:
+            return sp['allow']['NEUTRAL']
+        if self.sim.enemy(u.owner, g.owner):
+            return sp['allow']['ENEMIES']
+        return (sp['own'] and u.owner == g.owner) or sp['allow']['ALLIES']
+
+    def places(self, u, own_defenses):
+        """The buildings u could be sent into, in the world's order (sim.living: made first, first): own_defenses ->
+        u's player's base defenses (category 0x2e: FS_BASE_DEFENSE, INFERRED), else the other garrisons (aibd0: with
+        EnterGarrisons on by default nobody went into the own turrets -- they are not on that list)."""
+        out = []
+        for g in self.sim.living():
+            if 'STRUCTURE' not in g.kinds or self.spec(g.template) is None:
+                continue
+            d = 'FS_BASE_DEFENSE' in g.kinds
+            if (d and own_defenses and g.owner == u.owner or not d and not own_defenses) and self.may(u, g):
+                out.append(g)
+        return out
+
+    def send(self, u, g):
+        if u.alive and g.alive:
+            self.going[u.name] = g
+            u.goal = None
+            self.sim.order_move(u, (g.x, g.y), False)
+
+    def busy(self, u):
+        return u.name in self.going or u.name in self.where
+
+    def put(self, u, g, script=False):
+        """u in g now if it may and there is room (script: the script's ..._INSTANTLY skips the relation and the
+        room, the filter kept; objects/contain.py)."""
+        sp = self.spec(g.template) if g and g.alive else None
+        if sp is None or not u or not u.alive or u.name in self.where:
+            return False
+        held = self.inside.setdefault(g.name, [])
+        if not script and (not self.may(u, g) or len(held) >= sp['max']):
+            return False
+        if script and sp['kinds'] and not sp['kinds'] & set(u.kinds):
+            return False
+        if not held and g.owner == sim.CIV:
+            self.home[g.name] = g.owner
+            g.owner = u.owner
+        held.append(u)
+        self.where[u.name] = g
+        self.log.append((self.sim.t, u.name, g.name, script))
+        u.x, u.y, u.path, u.goal = g.x, g.y, [], None
+        u.script_status |= sp['status'] | INSIDE_STATUS
+        self.sim.modify(u)
+        self.sim.note('AI', f'{self.sim.label(u)} 进 {self.sim.label(g)}')
+        self.sim.change()
+        return True
+
+    def due(self):
+        """Once a DT tick: the ones sent in that have got there; the buildings that died."""
+        s = self.sim
+        for name, g in list(self.going.items()):
+            u = s.bodies.get(name)
+            if u is None or not u.alive or not g.alive:
+                del self.going[name]
+                continue
+            sh = s.blocks(g)
+            r = (sh[2] if sh and len(sh) == 3 else 40.0) + ENTER_REACH
+            d = math.hypot(g.x - u.x, g.y - u.y)
+            if d > r and (u.path or d > 2 * r):
+                if not u.path and u.goal is None:
+                    s.order_move(u, (g.x, g.y), False)          # stopped short (a fight): on its way again
+                continue
+            del self.going[name]
+            self.put(u, g)
+        for gname, held in list(self.inside.items()):
+            g = s.bodies.get(gname)
+            if g is not None and g.alive:
+                continue
+            sp = self.spec(g.template) if g is not None else None
+            for u in held:
+                self.where.pop(u.name, None)
+                if not u.alive:
+                    continue
+                if sp and sp['kill']:
+                    s.destroy(u, '楼毁乘员同死')
+                else:
+                    u.script_status -= (sp['status'] if sp else set()) | INSIDE_STATUS
+                    s.modify(u)
+            del self.inside[gname]
+        for gname, held in self.inside.items():         # the dead inside (none shoots them: a script's kill)
+            held[:] = [u for u in held if u.alive]
+            g = s.bodies.get(gname)
+            if not held and gname in self.home and g is not None:
+                g.owner = self.home.pop(gname)
+        for name in [n for n, g in self.where.items() if not (s.bodies.get(n) and s.bodies[n].alive)]:
+            del self.where[name]
 
 
 class Unit:
@@ -173,7 +329,9 @@ class Brain:
         if 'targets' not in which:
             return
         self.tactics = tc.TacticsBlock(None, lambda ai, f: self.view, self.order, lambda ai: self.home,
-                                       micro=h.data_of('tactics micro'), fight=self.fight)
+                                       micro=h.data_of('tactics micro'), fight=self.fight,
+                                       houses=lambda ai, u: self.garrisons(u, False),
+                                       defenses=lambda ai, u: self.garrisons(u, True))
         self.targets = tg.TargetsBlock(h.data_of('targets'), self.active, lambda ai, f: self.view,
                                        lambda ai, st: self.home, home=self.home, base_of=self.base_of,
                                        held=self.tactics.held)
@@ -392,6 +550,11 @@ class Brain:
             if t is not None:
                 self.sim.order_attack(b, t.name)
             return
+        if kind == 'enter':                     # EnterGarrisons / EnterBaseDefenses: into a building (a Thing id)
+            t = self.body_of(arg)
+            if t is not None:
+                self.host.garrison.send(b, t)
+            return
         b.goal = None
         self.sim.order_move(b, (float(arg[0]), float(arg[1])), kind == 'attack-move')
 
@@ -421,6 +584,15 @@ class Brain:
             f.body = b
             return f
         return [fighter(b, self.tid(b)) for b in bodies]
+
+    def garrisons(self, u, own_defenses):
+        """TacticsBlock's houses / defenses hooks: [(id, (x, y))] u could be sent into, the list's order; [] when it
+        cannot garrison (INFANTRY, not SKIRMISH_AI_DONT_GARRISON: template +0xc0 bit 10 / +0xdc bit 12). Full ones
+        are listed too (bench aibdpre)."""
+        b = u.body
+        if not b.alive or 'INFANTRY' not in b.kinds or 'SKIRMISH_AI_DONT_GARRISON' in b.kinds:
+            return []
+        return [(self.tid(g), (g.x, g.y)) for g in self.host.garrison.places(b, own_defenses)]
 
     def busy(self, team):
         return any(u.body.engaged or isinstance(u.body.goal, sim.Body) for u in team.members)
@@ -516,6 +688,8 @@ class Brain:
             if b.owner != self.player or 'STRUCTURE' in b.kinds or b.speed <= 0:
                 continue
             if 'HARVESTER' in b.kinds or 'IGNORES_SELECT_ALL' in b.kinds:
+                continue
+            if self.host.garrison.busy(b):  # inside or on its way in (INFERRED: not taken into a team again)
                 continue
             if b.name not in self.wrappers:
                 self.wrappers[b.name] = Unit(b)
@@ -654,6 +828,15 @@ class SimAI:
         self.brains = {}                # player -> Brain
         self.done_to = None             # the last frame the AI ran
         self._data, self._cost, self._menu, self._cs, self._kinds, self._std = {}, {}, {}, {}, {}, {}
+        self.garrison = Garrisons(s, self.lib)
+        act = s.act
+
+        def act_with_garrisons(name, a, script):     # HOOKS 8: the script's instant garrison, which sim.act lacks
+            if name == 'NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY':
+                self.garrison.put(s.body(a[0]), s.body(a[1]), script=True)
+                return
+            act(name, a, script)
+        s.act = act_with_garrisons
 
     @property
     def frame(self):
@@ -780,6 +963,7 @@ class SimAI:
         target = self.frame + frames
         while self.frame < target and self.sim.ending is None:
             self.sim.advance(1)
+            self.garrison.due()
             self.attach()
             for b in self.brains.values():
                 b.switches()

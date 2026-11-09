@@ -337,3 +337,61 @@ def test_strategic_facts_the_brain_gives(lib):
     yard = next(t for t in b.view.things if t.owner == b.player and 'STRUCTURE' in t.kindof)
     b.hurt_at[yard.id] = b.frame - 3 * 15
     assert f['attacked'](4) and not f['attacked'](2)                                     # hurt 3 s ago
+
+
+# ---- EnterBaseDefenses / EnterGarrisons (checks/engine_aibasedef.py, engine_aigarrison.py, bench 11-09; public
+# docs/engine/aiteamstate.md sections 3 / 4). The simulator has no garrisons: simai.Garrisons carries the model's
+# 'enter' orders out; sim.py does not count ENCLOSED, so these read Garrisons.log, not the check's counters.
+def _garrison_run(build, lib, until=60.0):
+    w = simai.run(build, 'a', until, lib=lib)
+    return w, [e for e in w.garrison.log if not e[3]]          # the AI's own entries (not the script's sitter)
+
+
+def _ai_hooks(build, lib):
+    """The brain just after the wake: an AI Peacekeeper's defenses / houses lists (building names, the list's order)."""
+    w = simai.run(build, 'a', 12.0, lib=lib)
+    (b,) = w.brains.values()
+    u = simai.Unit(next(x for x in w.sim.living() if x.owner == b.player and 'INFANTRY' in x.kinds
+                        and not w.garrison.busy(x)))
+    names = lambda got: [b.body_of(i).name for i, _ in got                    # noqa: E731
+                         if not b.body_of(i).scenery]      # the map's own houses are on the list too (real ones)
+    return w, names(b.garrisons(u, True)), names(b.garrisons(u, False))
+
+
+def test_the_ais_turrets_are_its_base_defenses_in_their_order_not_houses(lib):
+    _, defenses, houses = _ai_hooks('aibd1', lib)
+    assert defenses == [f'UNIT - CNV AI Turret {k}' for k in (1, 2, 3, 4)] and houses == []
+
+
+def test_a_full_turret_stays_first_on_the_list(lib):
+    # bench aibdpre: turret 1 full from s0, nobody went into turret 2 / 3 -- the pass does not skip a full one
+    w, defenses, _ = _ai_hooks('aibdpre', lib)
+    assert w.garrison.inside['UNIT - CNV AI Turret 1'][0].name == 'UNIT - CNV AI Sitter'
+    assert defenses[0] == 'UNIT - CNV AI Turret 1'
+
+
+def test_a_neutral_house_is_a_house_not_a_defense(lib):
+    _, defenses, houses = _ai_hooks('aigar1', lib)
+    assert defenses == [] and houses == ['UNIT - CNV AI House']
+
+
+@pytest.mark.parametrize('build', ['aibd0', 'aibdidle', 'aigar0', 'aigarfar', 'aibdpre'])
+def test_nobody_goes_in_where_the_bench_had_nobody(lib, build):
+    # bench: aibd0 / aibdidle / aigar0 / aigarfar nobody in; aibdpre nobody besides the sitter
+    _, got = _garrison_run(build, lib)
+    assert got == []
+
+
+@pytest.mark.xfail(strict=True, reason="bench aibd1: one Peacekeeper in turret 1 from s21; the simulator's fight kills "
+                                       "all four turrets by s25, before the team (~8 s late) gets there")
+def test_one_goes_into_the_first_turret(lib):
+    _, got = _garrison_run('aibd1', lib)
+    assert [e[2] for e in got] == ['UNIT - CNV AI Turret 1']
+
+
+@pytest.mark.xfail(strict=True, reason='bench aigar1: the house the AI\'s at s18, three alive inside to s75; in the '
+                                       'simulator the men are sent at s24-28 and die ~2.5x faster than on the bench, '
+                                       'within a few steps of the door')
+def test_the_team_goes_into_the_house(lib):
+    _, got = _garrison_run('aigar1', lib, until=75.0)
+    assert len(got) == 3
