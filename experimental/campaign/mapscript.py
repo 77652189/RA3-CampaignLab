@@ -193,7 +193,11 @@ class MapFile:
             body += encode_arg(t, v)
         body += struct.pack('<I', enabled) + (struct.pack('<I', inverted) if kind == 'Condition' else b'')
         self.name_id(kind)
-        return Node(kind, self.version(kind), body, [])
+        # a map with no ELSE action has no ScriptActionFalse to read the version off: Generals writes both with
+        # one version (K_SCRIPT_ACTION_VERSION)
+        ver = self.version('ScriptAction' if kind == 'ScriptActionFalse' and not any(
+            n.name == kind for _, n in self.walk()) else kind)
+        return Node(kind, ver, body, [])
 
     def new_script(self, name, conditions, actions, else_actions=(), comment='', active=True, one_shot=True,
                    difficulties=(True, True, True), subroutine=False, interval=0):

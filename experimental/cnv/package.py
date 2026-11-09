@@ -88,7 +88,9 @@ def _script_nodes(m, scripts):
     return [m.new_script(s.name, [m.new_content('Condition', *c) for c in s.when]
                          or [m.new_content('Condition', 'CONDITION_TRUE')],
                          [m.new_content('ScriptAction', *a) for a in s.do], one_shot=s.once,
-                         difficulties=tuple(s.levels))
+                         difficulties=tuple(s.levels), active=getattr(s, 'active', True),
+                         subroutine=getattr(s, 'sub', False),
+                         else_actions=[m.new_content('ScriptActionFalse', *a) for a in getattr(s, 'orelse', ())])
             for s in scripts]
 
 

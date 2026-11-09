@@ -1217,3 +1217,24 @@ def test_spots_three_trucks_sent_alone_to_one_point_stand_apart(variant, until):
     simulator (HOLD_SPOTS): 4 2 2 (truck 3 44.7 off, the bench's beyond 45)."""
     ring = _sim_run('engine_spots', variant, until).series[-1][1]
     assert ring[0] == 4 and all(1 <= r <= 3 for r in ring[1:]), ring
+
+
+# checks/engine_scripts6.py (bench 11-09 switch / timers, both PASS; the script machinery, no units)
+def test_scripts6_switches_and_subroutines_as_the_bench():
+    """帧 15 a second, held at 151 from the 10 s DISABLE_SCRIPT till the 14 s ENABLE_SCRIPT; 开关 24 -> 26 -> 42 (an
+    [off] script, a once-script cut before / after its turn, a fired one re-armed); 自关 11 (actions after a script's
+    own DISABLE_SCRIPT run, NO_OP); 子程序 11 -> 21 (a once-sub runs once, a repeating sub per call, an [off] sub never)."""
+    by = {round(s): v for s, v in _sim_run('engine_scripts6', 'switch', 20.0).series}
+    assert by[11][0] == by[13][0] == 151 and by[15][0] == 166, by
+    assert by[1][1:] == [24, 11, 0] and by[3][1:] == [24, 11, 11] and by[5][1:] == [26, 11, 21], by
+    assert by[19][1:] == [42, 11, 21], by
+
+
+def test_scripts6_else_random_and_timers_as_the_bench():
+    """否则 1 -> 11 -> 21 (a once-script's ELSE closes it; a called sub's ELSE); 随机 14 (SET_RANDOM_COUNTER 1..3
+    inclusive); 计时 1 (SET_TIMER 45 frames) -> 33 (COUNTER_COUNTER) -> 41 (COUNTER_SECONDS <=) -> 43
+    (SET_RANDOM_MSEC_TIMER 6..6 s) -> 63 (COUNTER_SECONDS <, the 8..10 s timer)."""
+    by = {round(s): v for s, v in _sim_run('engine_scripts6', 'timers', 20.0).series}
+    assert [by[k][0] for k in (1, 3, 19)] == [1, 11, 21], by
+    assert by[19][1] == 14, by
+    assert by[3][2] == 1 and by[5][2] == 41 and by[7][2] == 43 and by[11][2] == 63, by

@@ -174,6 +174,9 @@ class Script:
     once: bool = True
     levels: tuple = (True, True, True)  # the difficulties it runs on (easy, normal, hard): the script header's bits,
                                         # retail's only difficulty switch (no map uses a difficulty condition)
+    active: bool = True                 # off at the start (retail's [off]): only ENABLE_SCRIPT turns it on
+    sub: bool = False                   # a subroutine: not run in the frame's pass, only by CALL_SUBROUTINE
+    orelse: list = dataclasses.field(default_factory=list)  # ELSE actions: run when the conditions do not hold
 
 
 @dataclasses.dataclass
