@@ -139,6 +139,7 @@ LINGER = 0.0                    # a killed unit's death (its slow death): still 
                                 # (docs/engine/script-semantics.md 4.2) -- the bench (2026-10-28, probe death): out of
                                 # the area from the reading the kill shows in; the guess was 3 s
 GRID = 20.0                     # routing cells (world units)
+HOLD_SPOTS = False              # every move's goal kept off other units' spots (Sim.claims): not benched, a4 changes
 ARRIVE = 1.5 * GRID             # a plain move that ends farther than this from where it was sent stopped short (held_up)
 BUILD_STEP = 5.0                # a builder on his way (R5) moves in steps this long, to see where he gets within range
 HIGH_STEP = 50.0                # ShroudClearingHeight's default: a viewer does not discover a cell this much above its own
@@ -169,6 +170,10 @@ ALIGN = {
     'discovered': '未对齐: NAMED_DISCOVERED: inside the player\'s sight (vision / shroud range) or a reveal; on the '
                   'bench 2026-10-27 (sight look) it read 1 for every target, 400 off too (the source: ALWAYS_VISIBLE '
                   'objects and ones out of the partition count as clear -- a guess why)',
+    'group move': 'units ordered together stop apart, each where it stood from the one nearest the goal (cut to 6 '
+                  'radii) on a free spot (Generals AIGroup::groupMoveToPosition; RA3 not read)',
+    'column march': '3+ infantry sent 100+ off stop in 3 columns 22 apart, rows 22 back (Generals '
+                    'friend_moveInfantryToPos, its ends only; the thresholds 3 / 100 INFERRED; RA3 not read)',
     'death linger': 'a killed unit is gone from areas and counts from the next reading: LINGER 0 (bench 2026-10-28, '
                     'probe death; the Generals source keeps it while it dies, 源码 4.2)',
     'both endings': '未对齐: won and lost in one frame: Generals runs the frame\'s later scripts and takes the last; '
@@ -669,6 +674,13 @@ class Ground:
             return True
         return False
 
+    def open(self, surface, x, y):
+        """A world point a unit of that surface may stand on now (its routing cell walkable and not blocked)."""
+        if surface == 'air':
+            return True
+        c, g = self.cell(x, y), self.grids[surface]
+        return 0 <= c[0] < g.shape[0] and 0 <= c[1] < g.shape[1] and bool(g[c]) and not self.blocked[c]
+
     def cell(self, x, y):
         import platmap
         return (int(round((y / platmap.CELL + self.b) / self.d)), int(round((x / platmap.CELL + self.b) / self.d)))
@@ -1002,11 +1014,117 @@ class Sim:
                         self.note('协议', f'玩家：{what}')
         self.tech_to = max(self.tech_to, frame)
 
-    def order_move(self, b, where, attacking):
+    def order_move(self, b, where, attacking, given=(), skip=()):
+        """A plain move (attacking: an attack-move). The spot is adjusted first (free_spot: Generals'
+        AIInternalMoveToState::onEnter adjusts every move's goal off the spots other units hold); `given` are spots
+        already handed out to a group being ordered, `skip` that group (its members' old goals are dropped first)."""
         if b:
             b.mode = 'attack' if attacking else 'move'
+            p = self.point(where) if isinstance(where, str) else where
+            if p is not None and b.alive and b.speed > 0:
+                spot = self.free_spot(b, p, self.claims(b, skip) + list(given))
+                where = where if spot == p else spot
             self.send(b, where)
             b.move_to = b.dest if not attacking else None
+
+    def claims(self, b, skip=()):
+        """The spots other mobile ground units hold (x, y, radius): where they are going, or where they stand (the
+        pathfinder's goal cells, Pathfinder::updateGoal); none for aircraft in the air or for `skip`. Off unless
+        HOLD_SPOTS (2026-11-09): on, a4's three trucks sent to plaza 2 stop apart and its objective never completes
+        (the card plan wins 6:50 instead of 14:48) -- to the bench first (work/re/handoff.md)."""
+        if b.surface == 'air' or not HOLD_SPOTS:
+            return []
+        return [tuple(o.dest if o.path and o.dest else (o.x, o.y)) + (o.radius,) for o in self.living()
+                if o is not b and o not in skip and o.speed > 0 and o.surface != 'air' and not o.scenery]
+
+    def order_group(self, bodies, where, attacking):
+        """A move order to several units at once (a team's MOVE_TEAM_TO, a selection's click): Generals'
+        AIGroup::groupMoveToPosition without a formation (GL/AI/AIGroup.cpp; work/re/generals-source-map.md). The unit
+        nearest the goal is the centre and walks to the point; the others, nearest first, each to the point plus where
+        it stands from that centre, the offset cut to 6 times its radius (computeIndividualDestination), then moved
+        off spots already held (free_spot). Bench 2026-11-08 acceptance question 1 (a01's squad, 4 Peacekeepers + 2
+        dogs): the squad's middle ~18-23 short of the point, the units apart -- the simulator had all six on the point.
+        INFERRED for RA3 (its group move not read, docs/engine/pathing.md 5: the script's MOVE_TEAM_TO hands the team
+        to one group command): Generals' column march for a big, far group (friend_moveInfantryToPos) and the line
+        check from the group's goal to the spot are left out."""
+        movers = [b for b in bodies if b and b.alive and b.speed > 0 and 'IMMOBILE' not in b.status]
+        p = self.point(where) if isinstance(where, str) else where
+        if len(movers) < 2 or p is None:
+            for b in bodies:
+                self.order_move(b, where, attacking)
+            return
+        self.used.add('group move')
+        movers.sort(key=lambda b: (b.x - p[0]) ** 2 + (b.y - p[1]) ** 2)
+        given = []                                  # (x, y, radius) spots handed out to the group so far
+        foot = [b for b in movers if 'INFANTRY' in b.kinds]
+        if len(foot) >= 3 and math.hypot(movers[0].x - p[0], movers[0].y - p[1]) >= 100:
+            self.used.add('column march')
+            self.column_ends(foot, p, attacking, given, movers)
+            movers = [b for b in movers if b not in foot]
+        if not movers:
+            return
+        cx, cy = movers[0].x, movers[0].y
+        for b in movers:
+            vx, vy = b.x - cx, b.y - cy
+            n = math.hypot(vx, vy)
+            cap = 6 * b.radius
+            if n > cap:
+                vx, vy = vx * cap / n, vy * cap / n
+            self.order_move(b, (p[0] + vx, p[1] + vy), attacking, given, movers)
+            given.append(tuple(b.dest or (b.x, b.y)) + (b.radius,))
+
+    def column_ends(self, foot, p, attacking, given, skip):
+        """Generals' infantry column march (AIGroup::friend_moveInfantryToPos), its ends only: 3 columns (5 from 16
+        men) across the way in, 22 apart, filled by where the men stand across it; in each column the front man at
+        the point's row, the next 22 behind (and 10 to the side every other one). The way in is taken straight from
+        the man nearest the group's middle (Generals: the last leg of one wide ground path); the column's own way
+        there and the conditions' constants (AIData MinDistanceForGroup, here 100; MinInfantryForGroup, here 3) are
+        INFERRED. Bench 2026-11-08 question 1: the squad's middle ~18-23 short of the point."""
+        mx, my = sum(b.x for b in foot) / len(foot), sum(b.y for b in foot) / len(foot)
+        mid = min(foot, key=lambda b: (b.x - mx) ** 2 + (b.y - my) ** 2)
+        ex, ey = p[0] - mid.x, p[1] - mid.y
+        n = math.hypot(ex, ey) or 1.0
+        ex, ey = ex / n, ey / n
+        nx, ny = -ey, ex
+        cols = 5 if len(foot) >= 16 else 3
+        across = sorted(foot, key=lambda b: -((b.x - mid.x) * nx + (b.y - mid.y) * ny))
+        size = max(len(foot) // cols if cols == 5 else (len(foot) + 1) // 3, 1)
+        column = {id(b): min(k // size, cols - 1) - cols // 2 for k, b in enumerate(across)}
+        rows = collections.Counter()
+        for b in sorted(foot, key=lambda b: -((b.x - mid.x) * ex + (b.y - mid.y) * ey)):    # front first
+            c = column[id(b)]
+            r = rows[c]
+            rows[c] += 1
+            side = 22.0 * c + (10.0 if r % 2 else 0.0)
+            want = (p[0] + side * nx - r * 22.0 * ex, p[1] + side * ny - r * 22.0 * ey)
+            self.order_move(b, want, attacking, given, skip)
+            given.append(tuple(b.dest or (b.x, b.y)) + (b.radius,))
+
+    def free_spot(self, b, want, held):
+        """Pathfinder::adjustDestination over 10-unit cells: `want` or the first spot of the spiral round it (400
+        tries) on ground b may stand on and clear of the spots `held` (centres at least the two radii apart);
+        aircraft in the air take `want` as it is. None found, or `want` off its ground (the way finder's closest
+        point decides, R7): `want`."""
+        if b.surface == 'air' or not held:
+            return want
+        step = 10.0
+
+        def ok(x, y):
+            return self.ground.open(b.surface, x, y) and \
+                all(math.hypot(x - gx, y - gy) >= max(b.radius + gr, 1.0) for gx, gy, gr in held)
+        if ok(*want) or not self.ground.open(b.surface, *want):
+            return want
+        i = j = 0
+        delta, left = 1, 400
+        while left > 0:
+            for di, dj, k in ((1, 0, delta), (0, 1, delta), (-1, 0, delta + 1), (0, -1, delta + 1)):
+                for _ in range(k):
+                    i, j, left = i + di, j + dj, left - 1
+                    x, y = want[0] + i * step, want[1] + j * step
+                    if ok(x, y):
+                        return (x, y)
+            delta += 2
+        return want
 
     def held_up(self, b):
         """A plain move whose way ended short of where it was sent (blocked: a wall across the street) is still on
@@ -2052,8 +2170,7 @@ class Sim:
             self.lost_orders.append((self.t, script.name, name, a[0]))
             self.note('无效命令', f'{name} {a[0]}：这个队还没有人加入，命令落空')
         elif name in ('MOVE_TEAM_TO', 'ATTACK_MOVE_TEAM_TO'):
-            for b in self.members(a[0]):
-                self.order_move(b, a[1], name == 'ATTACK_MOVE_TEAM_TO')
+            self.order_group(self.members(a[0]), a[1], name == 'ATTACK_MOVE_TEAM_TO')
         elif name == 'TEAM_ATTACK_NAMED':
             for b in self.members(a[0]):
                 self.order_attack(b, a[1])
@@ -2367,8 +2484,7 @@ class Sim:
                 self.send(b, where)
         elif verb == '走':
             who, where = rest
-            for b in self.pick(who):
-                self.order_move(b, where, False)    # as MOVE_NAMED_UNIT_TO
+            self.order_group(self.pick(who), where, False)  # as MOVE_NAMED_UNIT_TO; several at once, a group move
         elif verb == '攻击':
             who, target = rest                      # an attack order on a thing (NAMED_ATTACK_NAMED): units take no building by themselves
             targets = self.pick(target)

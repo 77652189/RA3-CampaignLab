@@ -352,7 +352,7 @@ class SimWorld:
                 return self._refuse(o, 'move without a place')
             for b in units:
                 b.goal = None
-                s.order_move(b, (float(o.pos[0]), float(o.pos[1])), o.kind == 'attack_move')
+            s.order_group(units, (float(o.pos[0]), float(o.pos[1])), o.kind == 'attack_move')   # a selection: a group
             return True
         if o.kind == 'attack':
             t = self._body(o.target)
