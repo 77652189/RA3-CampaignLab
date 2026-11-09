@@ -323,7 +323,17 @@ def test_strategic_facts_the_brain_gives(lib):
     assert f['beacons'] == set()
     assert st.value('BeaconExistsHeuristic', {'Type': 'Assault', 'Exists': 'false'}, f) == 1.0
     assert st.value('MoneyHeuristic', {'Money': '0', 'Above': 'true'}, f) == float(f['money'](0) > 0)
-    r = b.power_advantage('CAN_ATTACK', 'CAN_ATTACK', True, True)
-    assert r >= 0.0
-    assert st.value('PowerAdvantageHeuristic', {'Value': '-1'}, f) == 1.0                 # any ratio is above -1
+    theirs, ours = b.power_advantage('CAN_ATTACK', 'CAN_ATTACK', True, True)
+    assert theirs >= 0.0 and ours >= 0.0
+    want = 1.0 if theirs > 9999 else 0.0 if ours > 9999 else float(ours <= 0 or theirs / ours > -1)
+    assert st.value('PowerAdvantageHeuristic', {'Value': '-1'}, f) == want                # 0x8c4910's caps
     assert st.value('RedAlertHeuristic', {}, f) is None
+    # 'energy': ours by SAME_PLAYER, else the first enemy's; 'attacked': a structure / harvester of ours hurt lately
+    sup, dem = b.sim.power(b.player)
+    assert f['energy']('SAME_PLAYER') == sup - dem
+    assert st.value('EnergyHeuristic', {'Relationship': 'SAME_PLAYER', 'ExcessEnergy': str(sup - dem - 1),
+                                        'Above': 'true'}, f) == 1.0
+    assert st.value('StructureOrHarvesterUnderAttackHeuristic', {}, f) == float(f['attacked'](4))
+    yard = next(t for t in b.view.things if t.owner == b.player and 'STRUCTURE' in t.kindof)
+    b.hurt_at[yard.id] = b.frame - 3 * 15
+    assert f['attacked'](4) and not f['attacked'](2)                                     # hurt 3 s ago

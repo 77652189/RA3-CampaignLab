@@ -324,7 +324,8 @@ class Brain:
                'harvesters': sum('HARVESTER' in b.kinds for b in mine),               # INFERRED category 0x14
                'money': lambda account: self.sim.money.get(self.player, 0),          # one account in the simulator
                'beacons': set(),                                                     # no beacons in the simulator
-               'power advantage': self.power_advantage}
+               'power advantage': self.power_advantage,
+               'attacked': self.attacked, 'energy': self.energy}
         if foes:                                     # INFERRED: 0x8b3a00's enemy = the first of the enemies here
             out['opponent funds'] = self.sim.money.get(foes[0], 0)
         if 'targets' in self.host.blocks:
@@ -332,18 +333,45 @@ class Brain:
         return out
 
     def power_advantage(self, own_kindof, enemy_kindof, own_defenses, enemy_defenses):
-        """ctx 'power advantage' (PowerAdvantageHeuristic, 0x8c4910): our units of OwnKindOf (and defences, i.e.
-        structures with a weapon, if asked) against the enemies' -- INFERRED the team rule tactics.power_advantage
-        (their time to kill us over ours to kill them), the ratio lines 187-189 not read."""
-        ok, ek = set(own_kindof.split()), set(enemy_kindof.split())
+        """ctx 'power advantage' (PowerAdvantageHeuristic, 0x8c4910, read): (the enemy's time to kill all of ours,
+        ours to kill all of theirs), tactics.army_time -- template health, not what is left. A side = its units of
+        the KindOf (category 0xd: INFERRED every unit, armed or not) and, if asked, its defences (category 0x2e,
+        no KindOf: INFERRED structures with a weapon). The enemy is one player: INFERRED the first of the enemies,
+        as 'opponent funds' (0x8b39b0's list order not read)."""
+        foes = sorted(self.view.enemies)
+        if not foes:
+            return None
+        tc = self.host.mod['tactics']
 
-        def side(test, kinds, defenses):
-            return [b for b in self.sim.living() if not b.scenery and test(b.owner) and b.weapons
-                    and (not kinds or kinds & set(b.kinds))
-                    and (defenses or 'STRUCTURE' not in b.kinds)]
-        mine = side(lambda o: o == self.player, ok, own_defenses)
-        theirs = side(lambda o: o != self.player and o in self.view.enemies, ek, enemy_defenses)
-        return self.host.mod['tactics'].power_advantage(self.fighters(mine), self.fighters(theirs))
+        def side(owner, kinds, defenses):
+            kinds = set(kinds.split())
+            return [b for b in self.sim.living() if not b.scenery and b.owner == owner
+                    and (b.weapons and defenses if 'STRUCTURE' in b.kinds else not kinds or kinds & set(b.kinds))]
+        mine = self.fighters(side(self.player, own_kindof, own_defenses))
+        theirs = self.fighters(side(foes[0], enemy_kindof, enemy_defenses))
+        return tc.army_time(theirs, mine), tc.army_time(mine, theirs)
+
+    def attacked(self, seconds):
+        """ctx 'attacked' (StructureOrHarvesterUnderAttackHeuristic, 0x8e0c50 -> 0x8da000 / 0x8da170 -> 0x741b70,
+        read): one of our structures (category 0xb) or harvesters (0x14) last hurt no longer than 15 x seconds
+        frames ago. The program also wants the one who hurt it still there (not modelled: the simulator keeps no
+        attacker)."""
+        due = self.frame - FPS * seconds
+        return any(t.owner == self.player and ('STRUCTURE' in t.kindof or 'HARVESTER' in t.kindof)
+                   and self.hurt_at.get(t.id, -10 ** 9) >= due for t in self.view.things)
+
+    def energy(self, relationship):
+        """ctx 'energy' (EnergyHeuristic, 0x8c52a0, read): produced - used of us (Relationship SAME_PLAYER) or else
+        of the enemy (the first, as 'opponent funds'); None = no enemy. Sim.power (EnergyProduction)."""
+        if relationship == 'SAME_PLAYER':
+            who = self.player
+        else:
+            foes = sorted(self.view.enemies)
+            if not foes:
+                return None
+            who = foes[0]
+        sup, dem = self.sim.power(who)
+        return sup - dem
 
     def has_target(self, st):
         """ctx 'target' (states._draw): one of the state's target heuristics finds a Thing now (claims count)."""
