@@ -6,7 +6,7 @@
 
 | 部分 | 已对拍 | 推断 | 未做 |
 |---|---|---|---|
-| AI | 24 | 156 | 177 |
+| AI | 24 | 159 | 174 |
 | 脚本动作 | 9 | 2 | 0 |
 | 脚本条件 | 0 | 1 | 0 |
 
@@ -20,8 +20,6 @@
 | 未做 | AI | `造兵/BuildState.State` | 84 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `造兵/BuildEntry.PercentHigh` | 54 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `造兵/BuildEntry.PercentLow` | 54 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 未做 | AI | `启发条件/PathToTargetHeuristic.LocomotorConditionToUseForTest` | 45 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 未做 | AI | `启发条件/PathToTargetHeuristic.ObjectTypeToUseForTest` | 45 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `造兵/BlockIfThingNearFactory.IncludeThing` | 40 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `人格/AIPersonalityDefinition.PersonalityType` | 35 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `造兵/BuildEntry.MinTime` | 34 | a4 a5 a7 | AI 模型代码里没有这个名字 |
@@ -53,7 +51,6 @@
 | 未做 | AI | `启发条件/BeaconExistsHeuristic` | 6 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `启发条件/BeaconExistsHeuristic.Exists` | 6 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `启发条件/BeaconExistsHeuristic.Type` | 6 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 未做 | AI | `启发条件/PathToTargetHeuristic.Surface` | 6 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `启发条件/ResourceNodeShareHeuristic` | 6 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `启发条件/ResourceNodeShareHeuristic.Above` | 6 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `启发条件/ResourceNodeShareHeuristic.PercentOfFairShare` | 6 | a4 a5 a7 | AI 模型代码里没有这个名字 |
@@ -258,6 +255,8 @@
 | 推断 | AI | `开局/OpeningMove.Weight` | 46 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `组队招人/TeamTemplate.ReleaseType=RELEASE_TO_PRIORITY` | 46 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `启发条件/PathToTargetHeuristic` | 45 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 推断 | AI | `启发条件/PathToTargetHeuristic.LocomotorConditionToUseForTest` | 45 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 推断 | AI | `启发条件/PathToTargetHeuristic.ObjectTypeToUseForTest` | 45 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `启发条件/PathToTargetHeuristic.PathExists` | 45 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `目标/AITargetingHeuristic.HeuristicType=EnemyUnit` | 44 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `战术/Tactic.Distance` | 41 | a4 a5 a7 | AI 模型代码里读了这个名字 |
@@ -311,6 +310,7 @@
 | 推断 | AI | `目标/AITargetingHeuristic.Beacon` | 7 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `目标/AITargetingHeuristic.HeuristicType=Beacon` | 7 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `组队招人/TeamTemplate.MaxTypesOfUnits` | 7 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 推断 | AI | `启发条件/PathToTargetHeuristic.Surface` | 6 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `微操/SpecificSpecialPowerDelay.MaximumDelay` | 6 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `微操/SpecificSpecialPowerDelay.MinimumDelay` | 6 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `微操/SpecificSpecialPowerDelay.PowerType` | 6 | a4 a5 a7 | AI 模型代码里读了这个名字 |

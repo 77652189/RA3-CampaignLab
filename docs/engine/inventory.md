@@ -8,7 +8,7 @@
 | 脚本条件 | 89 | 22 | 6 | 61 | 0 | 94% |
 | 物体模块 | 184 | 9 | 14 | 146 | 15 | 33% |
 | 武器效果 | 25 | 2 | 2 | 21 | 0 | 52% |
-| AI | 415 | 30 | 167 | 184 | 34 | 85% |
+| AI | 415 | 30 | 170 | 181 | 34 | 86% |
 
 ## 脚本动作
 
@@ -847,8 +847,8 @@
 | 已对拍 | `战术/Tactic.EndBehavior=RAMPAGE` | 46 | AI 模型代码里读了这个名字；台上量过：checks/engine_ainamed.py |
 | 推断 | `组队招人/TeamTemplate.ReleaseType=RELEASE_TO_PRIORITY` | 46 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/PathToTargetHeuristic` | 45 | AI 模型代码里读了这个名字 |
-| 未做 | `启发条件/PathToTargetHeuristic.LocomotorConditionToUseForTest` | 45 | AI 模型代码里没有这个名字 |
-| 未做 | `启发条件/PathToTargetHeuristic.ObjectTypeToUseForTest` | 45 | AI 模型代码里没有这个名字 |
+| 推断 | `启发条件/PathToTargetHeuristic.LocomotorConditionToUseForTest` | 45 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/PathToTargetHeuristic.ObjectTypeToUseForTest` | 45 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/PathToTargetHeuristic.PathExists` | 45 | AI 模型代码里读了这个名字 |
 | 推断 | `目标/AITargetingHeuristic.HeuristicType=EnemyUnit` | 44 | AI 模型代码里读了这个名字 |
 | 已对拍 | `战术/Tactic.Tactic=DefenseAvoidanceAttack` | 43 | AI 模型代码里读了这个名字；台上量过：checks/engine_aitarget.py |
@@ -954,7 +954,7 @@
 | 未做 | `启发条件/BeaconExistsHeuristic` | 6 | AI 模型代码里没有这个名字 |
 | 未做 | `启发条件/BeaconExistsHeuristic.Exists` | 6 | AI 模型代码里没有这个名字 |
 | 未做 | `启发条件/BeaconExistsHeuristic.Type` | 6 | AI 模型代码里没有这个名字 |
-| 未做 | `启发条件/PathToTargetHeuristic.Surface` | 6 | AI 模型代码里没有这个名字 |
+| 推断 | `启发条件/PathToTargetHeuristic.Surface` | 6 | AI 模型代码里读了这个名字 |
 | 未做 | `启发条件/ResourceNodeShareHeuristic` | 6 | AI 模型代码里没有这个名字 |
 | 未做 | `启发条件/ResourceNodeShareHeuristic.Above` | 6 | AI 模型代码里没有这个名字 |
 | 未做 | `启发条件/ResourceNodeShareHeuristic.PercentOfFairShare` | 6 | AI 模型代码里没有这个名字 |

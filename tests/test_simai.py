@@ -287,3 +287,25 @@ def test_engage_passive_off_goes_straight_to_the_far_plant(lib):
     far = next(i for i, r in enumerate(rows) if r['到远厂'] >= 1)
     hit = next(i for i, r in enumerate(rows) if r['旁厂血量'] < 100)
     assert far < hit
+
+
+def test_path_to_target_is_asked_on_the_simulators_grid(lib):
+    """PathToTargetHeuristic (work/re l4_states.md 3): the opening and the states ask the brain; the skirmish map is
+    one piece of land, so infantry has a way and a ship finds no water spot (= no way). At 300 s the player's base
+    is gone: no enemy with a base object, so it cannot judge (None, counted as a way)."""
+    w = simai.run('aiskirm', until=30, lib=lib)
+    (b,) = w.brains.values()
+    assert any(k[0] == 'Land' and v[1] is True for k, v in b.paths.items())   # the opening / states asked
+    b.paths.clear()
+    assert b.path_to_target('Land', 'AlliedAntiInfantryInfantry', 'NORMAL') is True
+    assert b.path_to_target('Water', 'AlliedAntiNavalScout', 'NORMAL') is False
+    assert b.path_to_target('Land', 'AlliedPowerPlant', 'NORMAL') is False      # no locomotor: no way
+
+
+def test_path_to_target_cannot_judge_without_an_enemy_base(skirmish):
+    (b,) = skirmish.brains.values()
+    s = b.sim
+    if any(x.owner != b.player and 'STRUCTURE' in x.kinds and s.enemy(b.player, x.owner) for x in s.living()):
+        pytest.skip('an enemy structure still stands at 300 s')
+    b.paths.clear()
+    assert b.path_to_target('Land', 'AlliedAntiInfantryInfantry', 'NORMAL') is None

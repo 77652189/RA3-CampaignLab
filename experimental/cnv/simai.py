@@ -23,7 +23,9 @@ every frame (the simulator moves in DT ticks; the AI is ticked for each frame of
   teams      ai.units = the AI's own movers (not HARVESTER, not IGNORES_SELECT_ALL) as stable Unit wrappers;
               team_point = the closest enemy structure to the AI's yard.
   states      ctx: the mission's flags (ScriptedFlagHeuristic), 'has' (its templates), 'building' (the kinds queued),
-              'enemy nearby' (enemy value within the distance of its yard).
+              'enemy nearby' (enemy value within the distance of its yard), 'path to target' (PathToTargetHeuristic:
+              the last enemy with a structure, both base objects by states.base_object, spots by states.spot on
+              the simulator's grids, a route for the test template's surface; cached PATH_EVERY).
   blocks      A's TargetsBlock + TacticsBlock (orders: 'move' / 'attack-move' -> Sim.order_move), DefenseBlock (one
               MAIN_BASE round the first yard; hurt = the body's hp fell; aesthetics = a circle round the point),
               MicroBlock (unit powers from the CommandSet; a use is only recorded: the simulator gives the AI's units
@@ -65,6 +67,8 @@ RING = (260.0, 400.0, 540.0, 680.0)     # INFERRED: the rings a yard puts its st
 GAP = 20.0                          # INFERRED: room left between two structures' rounds
 DIFFICULTY = {'easy': 'EASY', 'normal': 'MEDIUM', 'hard': 'HARD', 'brutal': 'BRUTAL'}
 BLOCKS = ('targets', 'defense', 'micro', 'specials')
+PATH_EVERY = 10 * FPS               # INFERRED: a PathToTargetHeuristic answer is kept 10 s (the engine asks every
+                                    # evaluation; here a route costs a whole-grid search)
 SCRIPT_SCOPE = 'the list owner'     # the scope of a bare flag name (the script list's player; INFERRED: its name)
 MODULES = ('data','player', 'opening', 'states', 'teams', 'targets', 'tactics', 'defense', 'micro', 'specials')
 _AI = {}
@@ -132,7 +136,10 @@ class Brain:
         self.host, self.sim, self.player = host, host.sim, player
         m = host.mod
         self.ai = m['player'].AIPlayer(host.data, personality, DIFFICULTY.get(host.level, 'MEDIUM'),
-                                       ctx={'land path': True}, rng=random.Random(host.seed), index=side_index(side))
+                                       ctx={'path to target': self.path_to_target}, rng=random.Random(host.seed),
+                                       index=side_index(side))
+        self.paths = {}                 # (surface, template, condition) -> (frame asked, answer)
+        self.path_rng = random.Random(host.seed)    # the spot's start angles (the engine: the logic random)
         self.ai.builder = self.build
         self.ai.units = self.units
         self.ai.team_point = self.team_point
@@ -226,6 +233,42 @@ class Brain:
         ys = [b for b in self.sim.living() if b.owner == player and 'STRUCTURE' in b.kinds and not b.scenery]
         y = next((b for b in ys if 'CONSTRUCTION_YARD' in b.kinds), ys[0] if ys else None)
         return (y.x, y.y) if y else None
+
+    def base_object(self, player):
+        """states.base_object over a player's living, unpacked structures: preferred = CONSTRUCTION_YARD, rank = cost
+        (INFERRED: which template bit / value the engine reads is not known)."""
+        st, now = self.host.mod['states'], self.sim.frame_now()
+        ys = [b for b in self.sim.living() if b.owner == player and 'STRUCTURE' in b.kinds and not b.scenery
+              and (getattr(b, 'unpack_end', None) or 0) <= now]
+        return st.base_object(ys, lambda b: 'CONSTRUCTION_YARD' in b.kinds, lambda b: self.host.cost(b.template))
+
+    def path_to_target(self, surface, template, cond):
+        """ctx 'path to target' (read 0x8c56b0, l4_states.md 3): None when it cannot judge (no base of ours, no enemy
+        with one); False when a spot is not found or the template has no locomotor; else whether the simulator's
+        grid of the template's surface joins the two spots. cond: the simulator knows only NORMAL (INFERRED: same)."""
+        key = (surface, template, cond)
+        got = self.paths.get(key)
+        if got is not None and self.frame - got[0] < PATH_EVERY:
+            return got[1]
+        st, s = self.host.mod['states'], self.sim
+        mine = self.base_object(self.player)
+        foes = [p for p in s.players.values() if p != self.player and s.enemy(self.player, p)]
+        them = st.target_player(foes, self.base_object)
+        if mine is None or them is None:
+            answer = None
+        else:
+            stats = simunits.stats(template, s.own) if template else {'speed': None}
+            if not stats.get('speed'):
+                answer = False                                   # read: no locomotor in that condition -> no way
+            else:
+                grid = 'water' if surface == 'Water' else 'ground'   # read: cell type Water 7 / Land 0
+                ok = lambda p: s.ground.open(grid, *p)           # noqa: E731
+                theirs = self.base_object(them)
+                a = st.spot((mine.x, mine.y), ok, self.path_rng)
+                b = st.spot((theirs.x, theirs.y), ok, self.path_rng)
+                answer = a is not None and b is not None and s.ground.route(stats['surface'], a, b) is not None
+        self.paths[key] = (self.frame, answer)
+        return answer
 
     def tid(self, b):
         if b.name not in self.ids:
