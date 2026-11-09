@@ -39,8 +39,8 @@ OUT = os.path.join(ROOT, 'docs', 'engine', 'inventory.md')
 
 BENCHED, GUESSED, TODO, NA = '已对拍', '推断', '未做', '不涉及'
 STATES = (BENCHED, GUESSED, TODO, NA)
-ACTION, CONDITION, MODULE, NUGGET = '脚本动作', '脚本条件', '物体模块', '武器效果'
-PARTS = (ACTION, CONDITION, MODULE, NUGGET)
+ACTION, CONDITION, MODULE, NUGGET, AI = '脚本动作', '脚本条件', '物体模块', '武器效果', 'AI'
+PARTS = (ACTION, CONDITION, MODULE, NUGGET, AI)     # AI: engine B's part, its own rules in inventory_ai.py
 
 # (part, name) -> 'tests/<file>.py::<test>': the bench comparison that backs the item (the guard checks the test exists)
 BENCHED_TESTS = {
@@ -250,7 +250,11 @@ def collect(parts=PARTS):
         items += module_items()
     if NUGGET in parts:
         items += nugget_items()
-    return apply_registers(items)
+    items = apply_registers(items)
+    if AI in parts:                                 # engine B: its own state rules and registers (inventory_ai.py)
+        import inventory_ai
+        items += inventory_ai.ai_items(bench_sources())
+    return items
 
 
 def order(items):
@@ -261,10 +265,11 @@ def render(items):
     by = collections.defaultdict(list)
     for it in order(items):
         by[it['part']].append(it)
-    out = ['# 原版功能总清单（引擎 A：脚本层、物体模块、武器效果）', '',
+    out = ['# 原版功能总清单（引擎 A：脚本层、物体模块、武器效果；引擎 B：AI）', '',
            '由 `experimental/cnv/inventory.py` 从原版数据生成，**别手改**；`tests/test_inventory.py` 在它过期时变红。'
            '状态与判定规则见脚本 docstring（ADR 0026）。用量：脚本 = 原版战役脚本里出现的次数；模块 = 原版战役地图里摆了的、'
-           '用到它的物体种数（括号里是全部物体种数）；武器效果 = 用到它的原版武器数。', '',
+           '用到它的物体种数（括号里是全部物体种数）；武器效果 = 用到它的原版武器数；'
+           'AI = 原版 AI 数据（SDK SkirmishAI，含战役关的 AI 状态）里写它的次数，判定规则见 `inventory_ai.py`。', '',
            '| 部分 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |', '|---|---|---|---|---|---|---|']
     for part in PARTS:
         xs = by.get(part, [])

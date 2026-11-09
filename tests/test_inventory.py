@@ -62,3 +62,41 @@ def test_a_missing_source_stops_it_instead_of_an_empty_list(monkeypatch, tmp_pat
     monkeypatch.setattr(inventory, 'RETAIL_SCRIPTS', str(tmp_path))
     with pytest.raises(SystemExit):
         inventory.retail_uses()
+
+
+# ---- the AI part (engine B, experimental/cnv/inventory_ai.py)
+_spec_ai = importlib.util.spec_from_file_location('inventory_ai', os.path.join(ROOT, 'experimental', 'cnv', 'inventory_ai.py'))
+inventory_ai = importlib.util.module_from_spec(_spec_ai)
+_spec_ai.loader.exec_module(inventory_ai)
+
+
+def test_every_retail_tactic_and_heuristic_kind_is_an_ai_item():
+    names = {i['name'] for i in items() if i['part'] == inventory.AI}
+    census = inventory_ai.census()
+    assert census and set(census) <= names
+    tactics = {n.split('=')[1] for n in names if '/Tactic.Tactic=' in n}
+    assert {'SimpleAttack', 'StaticDefense', 'DefenseAvoidanceAttack'} <= tactics
+    assert any(n.endswith('/ConstantHeuristic') for n in names)
+
+
+def test_the_ai_registers_point_at_real_items_and_sources():
+    names = {i['name'] for i in items() if i['part'] == inventory.AI}
+    for name, (state, _) in inventory_ai.NOTES.items():
+        assert name in names and state in inventory.STATES, name
+    for name, src in inventory_ai.BENCHED_REG.items():
+        assert name in names, name
+        assert os.path.exists(os.path.join(ROOT, src.split('::')[0].split('#')[0])), src
+
+
+def test_the_ai_part_has_no_decompiler_addresses():
+    text = open(inventory.OUT, encoding='utf-8').read()
+    assert not re.search(r'0x[0-9a-fA-F]{5,}', text)
+
+
+def test_a_missing_ai_source_stops_it(monkeypatch, tmp_path):
+    monkeypatch.setattr(inventory_ai, 'AI_DATA', str(tmp_path / 'nowhere'))
+    with pytest.raises(SystemExit):
+        inventory_ai.census()
+    monkeypatch.setattr(inventory_ai, 'AI_DATA', str(tmp_path))
+    with pytest.raises(SystemExit):
+        inventory_ai.census()

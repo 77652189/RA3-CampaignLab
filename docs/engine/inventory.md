@@ -1,6 +1,6 @@
-# 原版功能总清单（引擎 A：脚本层、物体模块、武器效果）
+# 原版功能总清单（引擎 A：脚本层、物体模块、武器效果；引擎 B：AI）
 
-由 `experimental/cnv/inventory.py` 从原版数据生成，**别手改**；`tests/test_inventory.py` 在它过期时变红。状态与判定规则见脚本 docstring（ADR 0026）。用量：脚本 = 原版战役脚本里出现的次数；模块 = 原版战役地图里摆了的、用到它的物体种数（括号里是全部物体种数）；武器效果 = 用到它的原版武器数。
+由 `experimental/cnv/inventory.py` 从原版数据生成，**别手改**；`tests/test_inventory.py` 在它过期时变红。状态与判定规则见脚本 docstring（ADR 0026）。用量：脚本 = 原版战役脚本里出现的次数；模块 = 原版战役地图里摆了的、用到它的物体种数（括号里是全部物体种数）；武器效果 = 用到它的原版武器数；AI = 原版 AI 数据（SDK SkirmishAI，含战役关的 AI 状态）里写它的次数，判定规则见 `inventory_ai.py`。
 
 | 部分 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|
@@ -8,6 +8,7 @@
 | 脚本条件 | 89 | 15 | 5 | 69 | 0 | 85% |
 | 物体模块 | 184 | 9 | 13 | 148 | 14 | 26% |
 | 武器效果 | 25 | 2 | 2 | 21 | 0 | 52% |
+| AI | 415 | 25 | 142 | 214 | 34 | 74% |
 
 ## 脚本动作
 
@@ -753,3 +754,423 @@
 | 未做 | `DOTNugget` | 1 | 模拟器代码里没有这个名字；例：PlayerPowerIrradiateTargetWeapon |
 | 未做 | `GrapplingHookNugget` | 1 | 模拟器代码里没有这个名字；例：SovietAntiVehicleVehicleTech3Harpoon |
 | 未做 | `LeechHealthDamageNugget` | 1 | 模拟器代码里没有这个名字；例：SovietAntiVehicleVehicleTech1LeechBeamWeapon |
+
+## AI
+
+| 状态 | 名字 | 用量 | 说明 |
+|---|---|---|---|
+| 推断 | `开局/Order.Build` | 635 | AI 模型代码里读了这个名字 |
+| 推断 | `目标/AITargetingHeuristic.HeuristicType` | 392 | AI 模型代码里读了这个名字 |
+| 未做 | `造兵/BuildEntry.Heuristic` | 380 | AI 模型代码里没有这个名字 |
+| 未做 | `造兵/BuildEntry.Build` | 364 | AI 模型代码里没有这个名字 |
+| 推断 | `组队招人/ObjectFilter.ExcludeThing` | 288 | AI 模型代码里读了这个名字 |
+| 推断 | `战略状态/TargetHeuristic.TargetHeuristic` | 287 | AI 模型代码里读了这个名字 |
+| 推断 | `战略状态/StrategicState.Difficulty` | 268 | AI 模型代码里读了这个名字 |
+| 推断 | `战略状态/StrategicState.State` | 268 | AI 模型代码里读了这个名字 |
+| 推断 | `目标/AITargetingHeuristic.Name` | 241 | AI 模型代码里读了这个名字 |
+| 不涉及 | `表现/FeedbackEntry.FeedbackKey` | 238 | 纯表现（语音、视频、画面） |
+| 不涉及 | `表现/FeedbackEntry.FeedbackTo` | 238 | 纯表现（语音、视频、画面） |
+| 推断 | `开局/Order.Time` | 237 | AI 模型代码里读了这个名字 |
+| 推断 | `战术/Tactic.Tactic` | 184 | AI 模型代码里读了这个名字 |
+| 推断 | `组队招人/TeamTemplate.AlwaysRecruit` | 182 | 读了，出发后继续招人的门默认关（防御队吸兵和台上对不上，handoff-b 第 50、51 节） |
+| 推断 | `组队招人/TeamTemplate.MicroManager` | 182 | AI 模型代码里读了这个名字 |
+| 已对拍 | `组队招人/TeamTemplate.MinUnits` | 182 | AI 模型代码里读了这个名字；台上量过：checks/engine_aiskirm.py |
+| 推断 | `组队招人/TeamTemplate.Priority` | 182 | AI 模型代码里读了这个名字 |
+| 推断 | `战略状态/TargetHeuristic.Priority` | 170 | AI 模型代码里读了这个名字 |
+| 推断 | `组队招人/TeamTemplate.ExcludeKindOf` | 170 | AI 模型代码里读了这个名字 |
+| 推断 | `组队招人/TeamTemplate.IncludeKindOf` | 170 | AI 模型代码里读了这个名字 |
+| 推断 | `组队招人/TeamTemplate.MaxUnits` | 170 | AI 模型代码里读了这个名字 |
+| 不涉及 | `表现/FeedbackEntry.Video` | 168 | 纯表现（语音、视频、画面） |
+| 推断 | `战略状态/AIStrategicStateDefinition.MaxTargets` | 156 | AI 模型代码里读了这个名字 |
+| 推断 | `组队招人/ObjectFilter.Rule` | 155 | AI 模型代码里读了这个名字 |
+| 已对拍 | `目标/AITargetingHeuristic.RequireUniqueTarget` | 154 | AI 模型代码里读了这个名字；台上量过：checks/engine_aistate.py |
+| 已对拍 | `战术/Tactic.EndBehavior` | 152 | AI 模型代码里读了这个名字；台上量过：checks/engine_aistate.py |
+| 推断 | `组队招人/ObjectFilter.IncludeThing` | 152 | AI 模型代码里读了这个名字 |
+| 推断 | `组队招人/TeamTemplate.RegisteredObjectSet` | 148 | AI 模型代码里读了这个名字 |
+| 未做 | `目标/AITargetingHeuristic.HeuristicType=NamedObject` | 145 | AI 模型代码里没有这个名字 |
+| 推断 | `组队招人/TeamTemplate.AllowedLocomotorTypes` | 145 | AI 模型代码里读了这个名字 |
+| 推断 | `目标/AITargetingHeuristic.VitalKindOf` | 129 | AI 模型代码里读了这个名字 |
+| 推断 | `组队招人/TeamTemplate.Priority=STANDARD` | 126 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/ConstantHeuristic` | 119 | AI 模型代码里读了这个名字 |
+| 未做 | `人格/PowerChoice.PlayerPower` | 117 | AI 模型代码里没有这个名字 |
+| 推断 | `人格/PowerChoice.Weight` | 117 | AI 模型代码里读了这个名字 |
+| 推断 | `战术/Tactic.EndBehavior=DISBAND` | 105 | AI 模型代码里读了这个名字 |
+| 推断 | `目标/AITargetingHeuristic.ForbiddenKindOf` | 102 | AI 模型代码里读了这个名字 |
+| 未做 | `微操/AIMicroManagerData.RetreatPowerAdvantage` | 94 | AI 模型代码里没有这个名字 |
+| 未做 | `目标/AITargetingHeuristic.HeuristicType=Waypoint` | 94 | AI 模型代码里没有这个名字 |
+| 推断 | `人格/UnitModifier.DefensiveModifier` | 92 | AI 模型代码里读了这个名字 |
+| 推断 | `人格/UnitModifier.OffensiveModifier` | 92 | AI 模型代码里读了这个名字 |
+| 推断 | `人格/UnitModifier.Unit` | 92 | AI 模型代码里读了这个名字 |
+| 推断 | `战术/Tactic.DisbandAfterRetreatTeamSize` | 86 | AI 模型代码里读了这个名字 |
+| 未做 | `微操/AIMicroManagerData.EnterGarrisons` | 84 | AI 模型代码里没有这个名字 |
+| 未做 | `造兵/BuildState.Difficulty` | 84 | AI 模型代码里没有这个名字 |
+| 未做 | `造兵/BuildState.State` | 84 | AI 模型代码里没有这个名字 |
+| 推断 | `微操/AIMicroManagerData.UseSpecialPowers` | 83 | AI 模型代码里读了这个名字 |
+| 未做 | `微操/AIMicroManagerData.EngageHostileTargets` | 82 | AI 模型代码里没有这个名字 |
+| 未做 | `微操/AIMicroManagerData.EngagePassiveTargets` | 82 | AI 模型代码里没有这个名字 |
+| 推断 | `开局/Order.Account` | 81 | AI 模型代码里读了这个名字 |
+| 推断 | `开局/Order.Deposit` | 81 | AI 模型代码里读了这个名字 |
+| 未做 | `微操/AIMicroManagerData.EngageTacticalTarget` | 79 | AI 模型代码里没有这个名字 |
+| 未做 | `微操/AIMicroManagerData.PullbackInjured` | 78 | AI 模型代码里没有这个名字 |
+| 未做 | `微操/AIMicroManagerData.Crush` | 77 | AI 模型代码里没有这个名字 |
+| 推断 | `目标/AITargetingHeuristic.SortType` | 76 | AI 模型代码里读了这个名字 |
+| 推断 | `组队招人/TeamTemplate.SortByDistance` | 75 | AI 模型代码里读了这个名字（台上没单独量：engine_aiskirm 里是推测） |
+| 未做 | `微操/AIMicroManagerData.ReverseMove` | 74 | AI 模型代码里没有这个名字 |
+| 推断 | `目标/AITargetingHeuristic.Location` | 74 | AI 模型代码里读了这个名字 |
+| 推断 | `组队招人/TeamTemplate.ReleaseType` | 71 | AI 模型代码里读了这个名字 |
+| 未做 | `微操/AIMicroManagerData.EnemySearchDistanceVisionMultiplier` | 70 | AI 模型代码里没有这个名字 |
+| 不涉及 | `表现/FeedbackEntry.EvaEvent` | 70 | 纯表现（语音、视频、画面） |
+| 推断 | `启发条件/EnemyNearbyHeuristic` | 68 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/EnemyNearbyHeuristic.Distance` | 68 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/EnemyNearbyHeuristic.EnemyNearby` | 68 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/ObjectOfTypeExistsHeuristic` | 67 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/ObjectOfTypeExistsHeuristic.PassIfExists` | 67 | AI 模型代码里读了这个名字 |
+| 推断 | `组队招人/ObjectFilter.Relationship` | 67 | AI 模型代码里读了这个名字 |
+| 推断 | `开局/SkirmishOpeningMove.Side` | 64 | AI 模型代码里读了这个名字 |
+| 推断 | `组队招人/TeamTemplate.MinPowerAdvantage` | 64 | AI 模型代码里读了这个名字 |
+| 推断 | `人格/SpecificUnitCap.Cap` | 60 | AI 模型代码里读了这个名字 |
+| 推断 | `人格/SpecificUnitCap.Difficulty` | 60 | AI 模型代码里读了这个名字 |
+| 推断 | `人格/SpecificUnitCap.Unit` | 60 | AI 模型代码里读了这个名字 |
+| 推断 | `组队招人/CreateUnits.MaxUnits` | 60 | AI 模型代码里读了这个名字 |
+| 推断 | `组队招人/CreateUnits.MinUnits` | 60 | AI 模型代码里读了这个名字（台上量的是 TeamTemplate.MinUnits，不是现造兵） |
+| 推断 | `组队招人/CreateUnits.UnitName` | 60 | AI 模型代码里读了这个名字 |
+| 已对拍 | `战术/Tactic.Tactic=SimpleAttack` | 59 | AI 模型代码里读了这个名字；台上量过：checks/engine_aitarget.py |
+| 不涉及 | `表现/FeedbackEntry.Timeout` | 56 | 纯表现（语音、视频、画面） |
+| 未做 | `造兵/BuildEntry.PercentHigh` | 54 | AI 模型代码里没有这个名字 |
+| 未做 | `造兵/BuildEntry.PercentLow` | 54 | AI 模型代码里没有这个名字 |
+| 未做 | `微操/AIMicroManagerData.UseGatherState` | 51 | AI 模型代码里没有这个名字 |
+| 推断 | `启发条件/OpeningMoveHeuristic` | 47 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/OpeningMoveHeuristic.Complete` | 47 | AI 模型代码里读了这个名字 |
+| 推断 | `开局/OpeningMove.Difficulty` | 46 | AI 模型代码里读了这个名字 |
+| 推断 | `开局/OpeningMove.Name` | 46 | AI 模型代码里读了这个名字 |
+| 推断 | `开局/OpeningMove.Weight` | 46 | AI 模型代码里读了这个名字 |
+| 已对拍 | `战术/Tactic.EndBehavior=RAMPAGE` | 46 | AI 模型代码里读了这个名字；台上量过：checks/engine_aistate.py |
+| 推断 | `组队招人/TeamTemplate.ReleaseType=RELEASE_TO_PRIORITY` | 46 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/PathToTargetHeuristic` | 45 | AI 模型代码里读了这个名字 |
+| 未做 | `启发条件/PathToTargetHeuristic.LocomotorConditionToUseForTest` | 45 | AI 模型代码里没有这个名字 |
+| 未做 | `启发条件/PathToTargetHeuristic.ObjectTypeToUseForTest` | 45 | AI 模型代码里没有这个名字 |
+| 推断 | `启发条件/PathToTargetHeuristic.PathExists` | 45 | AI 模型代码里读了这个名字 |
+| 推断 | `目标/AITargetingHeuristic.HeuristicType=EnemyUnit` | 44 | AI 模型代码里读了这个名字 |
+| 已对拍 | `战术/Tactic.Tactic=DefenseAvoidanceAttack` | 43 | AI 模型代码里读了这个名字；台上量过：checks/engine_aitarget.py |
+| 推断 | `战术/Tactic.Distance` | 41 | AI 模型代码里读了这个名字 |
+| 未做 | `微操/AIMicroManagerData.RetreatMinDistanceFromBase` | 40 | AI 模型代码里没有这个名字 |
+| 推断 | `战术/Tactic.UseAestheticsManager` | 40 | AI 模型代码里读了这个名字 |
+| 推断 | `目标/AITargetingHeuristic.Relationship` | 40 | AI 模型代码里读了这个名字 |
+| 未做 | `造兵/BlockIfThingNearFactory.IncludeThing` | 40 | AI 模型代码里没有这个名字 |
+| 未做 | `微操/AIMicroManagerData.RetreatMinDistanceToFallback` | 38 | AI 模型代码里没有这个名字 |
+| 推断 | `目标/AITargetingHeuristic.SortType=Distance` | 37 | AI 模型代码里读了这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.PersonalityType` | 35 | AI 模型代码里没有这个名字 |
+| 未做 | `造兵/BuildEntry.MinTime` | 34 | AI 模型代码里没有这个名字 |
+| 推断 | `启发条件/IsBuildingHeuristic` | 30 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/IsBuildingHeuristic.KindOf` | 30 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/IsBuildingHeuristic.PassIfBuilding` | 30 | AI 模型代码里读了这个名字 |
+| 未做 | `微操/AIMicroManagerData.PullbackInjuredHealthPct` | 30 | AI 模型代码里没有这个名字 |
+| 未做 | `微操/AIMicroManagerData.AlphaStrikeTargetHealthPct` | 28 | AI 模型代码里没有这个名字 |
+| 已对拍 | `战术/Tactic.Tactic=StaticDefense` | 28 | AI 模型代码里读了这个名字；台上量过：checks/engine_aidefense.py |
+| 未做 | `造兵/BlockIfThingNearFactory.Relationship` | 28 | AI 模型代码里没有这个名字 |
+| 未做 | `造兵/BlockIfThingNearFactory.Rule` | 28 | AI 模型代码里没有这个名字 |
+| 推断 | `目标/AITargetingHeuristic.HeuristicType=FriendlyUnit` | 27 | AI 模型代码里读了这个名字 |
+| 已对拍 | `微操/AIMicroManagerData.UpdateTime` | 26 | AI 模型代码里读了这个名字；台上量过：checks/engine_aidefense.py |
+| 推断 | `启发条件/TimerHeuristic` | 25 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/TimerHeuristic.EndTime` | 25 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/TimerHeuristic.StartTime` | 25 | AI 模型代码里读了这个名字 |
+| 推断 | `目标/AITargetingHeuristic.HeuristicType=EnemyStructure` | 25 | AI 模型代码里读了这个名字 |
+| 推断 | `组队招人/TeamTemplate.ReleaseType=NEVER_RELEASE` | 25 | AI 模型代码里读了这个名字 |
+| 推断 | `战术/Tactic.Tactic=Engineer` | 24 | AI 模型代码里读了这个名字 |
+| 未做 | `微操/AIMicroManagerData.EnterBaseDefensesWhenIdle` | 23 | AI 模型代码里没有这个名字 |
+| 推断 | `启发条件/IntervalHeuristic` | 22 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/IntervalHeuristic.ActiveTime` | 22 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/IntervalHeuristic.IntervalTime` | 22 | AI 模型代码里读了这个名字 |
+| 未做 | `微操/AIMicroManagerData.EnterGarrisonableStructureDistance` | 21 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.SkirmishPersonality` | 20 | AI 模型代码里没有这个名字 |
+| 已对拍 | `战术/Tactic.EndIfStateTurnsOff` | 19 | AI 模型代码里读了这个名字；台上量过：checks/engine_aistate.py |
+| 推断 | `经济/AccountShare.Account` | 18 | AI 模型代码里读了这个名字 |
+| 推断 | `经济/AccountShare.Percent` | 18 | AI 模型代码里读了这个名字 |
+| 推断 | `人格/BaseSelection.PreferredNotBaseTypes` | 17 | AI 模型代码里读了这个名字 |
+| 推断 | `人格/BaseSelection.SortOrder` | 17 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/TimerHeuristic.CountFrom` | 16 | AI 模型代码里读了这个名字 |
+| 未做 | `战略状态/AIStrategicStateDefinition.CannotAttackTargetReaction` | 16 | AI 模型代码里没有这个名字 |
+| 已对拍 | `战略状态/AIStrategicStateDefinition.MaxRunningCopies` | 16 | AI 模型代码里读了这个名字；台上量过：checks/engine_aistate.py |
+| 未做 | `造兵/BuildEntry.Upgrade` | 16 | AI 模型代码里没有这个名字 |
+| 推断 | `人格/BaseSelection.PreferredBaseTypes` | 15 | AI 模型代码里读了这个名字 |
+| 推断 | `人格/BaseSelection.SortOrder=PREFER_OLDEST` | 15 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/ConstantHeuristic.Weight` | 15 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/IntervalHeuristic.CountFrom` | 15 | AI 模型代码里读了这个名字 |
+| 未做 | `启发条件/TechBuildingShareHeuristic` | 15 | AI 模型代码里没有这个名字 |
+| 未做 | `启发条件/TechBuildingShareHeuristic.Above` | 15 | AI 模型代码里没有这个名字 |
+| 未做 | `启发条件/TechBuildingShareHeuristic.PercentOfFairShare` | 15 | AI 模型代码里没有这个名字 |
+| 未做 | `微操/AIMicroManagerData.AlphaStrikeTargetTimeToKill` | 15 | AI 模型代码里没有这个名字 |
+| 未做 | `微操/AIMicroManagerData.DodgeThreats` | 15 | AI 模型代码里没有这个名字 |
+| 未做 | `微操/IgnoreTargets.IncludeThing` | 15 | AI 模型代码里没有这个名字 |
+| 推断 | `目标/AITargetingHeuristic.HighestPriorityEnemyPlayersOnly` | 15 | AI 模型代码里读了这个名字 |
+| 推断 | `目标/AITargetingHeuristic.MinDistanceFromEnemy` | 15 | AI 模型代码里读了这个名字 |
+| 推断 | `组队招人/TeamTemplate.Priority=LOW` | 15 | AI 模型代码里读了这个名字 |
+| 未做 | `造兵/BuildEntry.CountModifier` | 15 | AI 模型代码里没有这个名字 |
+| 不涉及 | `人格/AIPersonalityDefinition.PersonalityUIName` | 14 | 纯表现（语音、视频、画面） |
+| 推断 | `目标/AITargetingHeuristic.SortType=ThreatToWater` | 14 | AI 模型代码里读了这个名字 |
+| 推断 | `人格/AIPersonalityDefinition.Side` | 13 | AI 模型代码里读了这个名字 |
+| 未做 | `微操/IgnoreTargets.Rule` | 13 | AI 模型代码里没有这个名字 |
+| 已对拍 | `组队招人/TeamTemplate.Priority=DEFENSE` | 13 | AI 模型代码里读了这个名字；台上量过：checks/engine_aitower.py |
+| 未做 | `启发条件/AllNearbyNodesFullHeuristic` | 12 | AI 模型代码里没有这个名字 |
+| 未做 | `微操/AIMicroManagerData.CrushPreference` | 12 | AI 模型代码里没有这个名字 |
+| 未做 | `微操/AIMicroManagerData.RandomTargetScoreModifier` | 12 | AI 模型代码里没有这个名字 |
+| 未做 | `微操/AIMicroManagerData.TimeToKeepTargetMax` | 12 | AI 模型代码里没有这个名字 |
+| 未做 | `微操/AIMicroManagerData.TimeToKeepTargetMin` | 12 | AI 模型代码里没有这个名字 |
+| 推断 | `战术/Tactic.Tactic=SimpleExpansion` | 12 | AI 模型代码里读了这个名字 |
+| 未做 | `目标/AITargetingHeuristic.HeuristicType=Expansion` | 12 | AI 模型代码里没有这个名字 |
+| 已对拍 | `目标/AITargetingHeuristic.SortType=ThreatToGround` | 12 | AI 模型代码里读了这个名字；台上量过：checks/engine_aitarget.py |
+| 未做 | `造兵/CountAsStructureForBuildPurposesFilter.ExcludeThing` | 12 | AI 模型代码里没有这个名字 |
+| 不涉及 | `战略状态/AIStrategicStateDefinition.ExecutionBeginFeedbackKey` | 11 | 纯表现（语音、视频、画面） |
+| 不涉及 | `战略状态/AIStrategicStateDefinition.ExecutionCanceledFeedbackKey` | 11 | 纯表现（语音、视频、画面） |
+| 不涉及 | `战略状态/AIStrategicStateDefinition.ExecutionCompleteFeedbackKey` | 11 | 纯表现（语音、视频、画面） |
+| 推断 | `目标/AITargetingHeuristic.HeuristicType=FriendlyStructure` | 11 | AI 模型代码里读了这个名字 |
+| 未做 | `组队招人/ObjectFilter.Include` | 11 | AI 模型代码里没有这个名字 |
+| 推断 | `组队招人/TeamTemplate.Priority=COOP` | 11 | AI 模型代码里读了这个名字 |
+| 不涉及 | `人格/AIPersonalityDefinition.CommanderPortrait` | 10 | 纯表现（语音、视频、画面） |
+| 未做 | `其他/BuildingPlacementDistance.Distance` | 10 | AI 模型代码里没有这个名字 |
+| 未做 | `启发条件/PowerAdvantageHeuristic` | 10 | AI 模型代码里没有这个名字 |
+| 未做 | `启发条件/PowerAdvantageHeuristic.Above` | 10 | AI 模型代码里没有这个名字 |
+| 未做 | `启发条件/PowerAdvantageHeuristic.IncludeEnemyDefenses` | 10 | AI 模型代码里没有这个名字 |
+| 未做 | `启发条件/PowerAdvantageHeuristic.IncludeOwnDefenses` | 10 | AI 模型代码里没有这个名字 |
+| 未做 | `启发条件/PowerAdvantageHeuristic.Value` | 10 | AI 模型代码里没有这个名字 |
+| 未做 | `启发条件/TimeSinceLastExpansionHeuristic` | 10 | AI 模型代码里没有这个名字 |
+| 未做 | `启发条件/TimeSinceLastExpansionHeuristic.Time` | 10 | AI 模型代码里没有这个名字 |
+| 已对拍 | `目标/AITargetingHeuristic.SearchRange` | 10 | AI 模型代码里读了这个名字；台上量过：docs/engine/aistate.md |
+| 推断 | `组队招人/TeamTemplate.AllowRecruitUnitsInCombat` | 9 | AI 模型代码里读了这个名字 |
+| 推断 | `组队招人/TeamTemplate.Priority=HIGH` | 9 | AI 模型代码里读了这个名字 |
+| 不涉及 | `表现/StrategicDirectiveFeedback.Event` | 9 | 纯表现（语音、视频、画面） |
+| 不涉及 | `表现/StrategicDirectiveFeedback.FeedbackKey` | 9 | 纯表现（语音、视频、画面） |
+| 不涉及 | `表现/StrategicDirectiveFeedback.StrategicDirective` | 9 | 纯表现（语音、视频、画面） |
+| 推断 | `启发条件/EnemyNearbyHeuristic.MinEnemyValue` | 8 | AI 模型代码里读了这个名字 |
+| 推断 | `启发条件/ObjectOfTypeExistsHeuristic.Location` | 8 | AI 模型代码里读了这个名字 |
+| 推断 | `目标/AITargetingHeuristic.ForbiddenObjectStatus` | 8 | AI 模型代码里读了这个名字 |
+| 推断 | `目标/AITargetingHeuristic.SortType=ThreatToAir` | 8 | AI 模型代码里读了这个名字 |
+| 推断 | `目标/AITargetingHeuristic.Beacon` | 7 | AI 模型代码里读了这个名字 |
+| 推断 | `目标/AITargetingHeuristic.HeuristicType=Beacon` | 7 | AI 模型代码里读了这个名字 |
+| 推断 | `组队招人/TeamTemplate.MaxTypesOfUnits` | 7 | AI 模型代码里读了这个名字 |
+| 已对拍 | `人格/AIPersonalityDefinition.BaseCompactness` | 6 | AI 模型代码里读了这个名字；台上量过：checks/engine_aitower.py |
+| 未做 | `人格/AIPersonalityDefinition.RepairBuildingsAtDifficulty` | 6 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.UsePlayerPowersAtDifficulty` | 6 | AI 模型代码里没有这个名字 |
+| 未做 | `启发条件/BeaconExistsHeuristic` | 6 | AI 模型代码里没有这个名字 |
+| 未做 | `启发条件/BeaconExistsHeuristic.Exists` | 6 | AI 模型代码里没有这个名字 |
+| 未做 | `启发条件/BeaconExistsHeuristic.Type` | 6 | AI 模型代码里没有这个名字 |
+| 未做 | `启发条件/PathToTargetHeuristic.Surface` | 6 | AI 模型代码里没有这个名字 |
+| 未做 | `启发条件/ResourceNodeShareHeuristic` | 6 | AI 模型代码里没有这个名字 |
+| 未做 | `启发条件/ResourceNodeShareHeuristic.Above` | 6 | AI 模型代码里没有这个名字 |
+| 未做 | `启发条件/ResourceNodeShareHeuristic.PercentOfFairShare` | 6 | AI 模型代码里没有这个名字 |
+| 未做 | `微操/AIMicroManagerData.DodgeThreatsReactionTimeMax` | 6 | AI 模型代码里没有这个名字 |
+| 未做 | `微操/AIMicroManagerData.DodgeThreatsReactionTimeMin` | 6 | AI 模型代码里没有这个名字 |
+| 推断 | `微操/SpecificSpecialPowerDelay.MaximumDelay` | 6 | AI 模型代码里读了这个名字 |
+| 推断 | `微操/SpecificSpecialPowerDelay.MinimumDelay` | 6 | AI 模型代码里读了这个名字 |
+| 推断 | `微操/SpecificSpecialPowerDelay.PowerType` | 6 | AI 模型代码里读了这个名字 |
+| 推断 | `微操/SpecificSpecialPowerDelay.TogglePowerSubType` | 6 | AI 模型代码里读了这个名字 |
+| 推断 | `战术/Tactic.Tactic=ExactExpansion` | 6 | AI 模型代码里读了这个名字 |
+| 推断 | `战术/Tactic.Tactic=GarrisonBuilding` | 6 | AI 模型代码里读了这个名字 |
+| 已对拍 | `战术/Tactic.Targetless` | 6 | AI 模型代码里读了这个名字；台上量过：checks/engine_aimicro.py |
+| 未做 | `战略状态/AIStrategicStateDefinition.PathfindingCheckType` | 6 | AI 模型代码里没有这个名字 |
+| 推断 | `组队招人/TeamTemplate.Priority=DEFENSE_HIGH` | 6 | AI 模型代码里读了这个名字 |
+| 未做 | `组队招人/TeamTemplate.RequireCanAttackTarget` | 6 | AI 模型代码里没有这个名字 |
+| 已对拍 | `经济/AccountShare.Account=DEFENSE` | 6 | AI 模型代码里读了这个名字；台上量过：checks/engine_aitower.py |
+| 已对拍 | `经济/AccountShare.Account=PRODUCTION` | 6 | AI 模型代码里读了这个名字；台上量过：checks/engine_aiopen.py |
+| 未做 | `经济/AccountShare.Account=SLUSH_FUND` | 6 | AI 模型代码里没有这个名字 |
+| 不涉及 | `表现/SkirmishGameEventFeedback.Event` | 6 | 纯表现（语音、视频、画面） |
+| 不涉及 | `表现/SkirmishGameEventFeedback.FeedbackKey` | 6 | 纯表现（语音、视频、画面） |
+| 未做 | `人格/EnemyFilter.Include` | 5 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/EnemyFilter.Relationship` | 5 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/EnemyFilter.Rule` | 5 | AI 模型代码里没有这个名字 |
+| 未做 | `微操/AIMicroManagerData.MinDistanceFromBaseToIgnoreTargets` | 5 | AI 模型代码里没有这个名字 |
+| 未做 | `微操/AIMicroManagerData.PassiveTargetSearchDistance` | 5 | AI 模型代码里没有这个名字 |
+| 未做 | `微操/AIMicroManagerData.SiegeWeaponBuffer` | 5 | AI 模型代码里没有这个名字 |
+| 推断 | `微操/AIMicroManagerData.SpecialPowerDelayMaximum` | 5 | AI 模型代码里读了这个名字 |
+| 推断 | `微操/AIMicroManagerData.SpecialPowerDelayMinimum` | 5 | AI 模型代码里读了这个名字 |
+| 未做 | `微操/IgnoreTargets.Include` | 5 | AI 模型代码里没有这个名字 |
+| 未做 | `微操/SpecificSpecialPowerDelay.TogglePowerSubType=TOGGLE_LOCKDOWN` | 5 | AI 模型代码里没有这个名字 |
+| 未做 | `战略状态/AIStrategicStateDefinition.PathfindingCheckType=None` | 5 | AI 模型代码里没有这个名字 |
+| 推断 | `目标/AITargetingHeuristic.HeuristicType=EnemyStructureCloseToShore` | 5 | AI 模型代码里读了这个名字 |
+| 推断 | `目标/AITargetingHeuristic.HeuristicType=TechBuilding` | 5 | AI 模型代码里读了这个名字 |
+| 推断 | `目标/AITargetingHeuristic.MaxDistanceToShore` | 5 | AI 模型代码里读了这个名字 |
+| 推断 | `目标/AITargetingHeuristic.SortType=ClosestToEnemy` | 5 | AI 模型代码里读了这个名字 |
+| 推断 | `目标/AITargetingHeuristic.UnderAttack` | 5 | AI 模型代码里读了这个名字 |
+| 推断 | `经济/BudgetState.Difficulty` | 5 | AI 模型代码里读了这个名字 |
+| 推断 | `经济/BudgetState.State` | 5 | AI 模型代码里读了这个名字 |
+| 推断 | `人格/UnitCap.Cap` | 4 | AI 模型代码里读了这个名字 |
+| 推断 | `人格/UnitCap.Difficulty` | 4 | AI 模型代码里读了这个名字 |
+| 未做 | `启发条件/IncomeAdvantageHeuristic` | 4 | AI 模型代码里没有这个名字 |
+| 未做 | `启发条件/IncomeAdvantageHeuristic.Above` | 4 | AI 模型代码里没有这个名字 |
+| 未做 | `启发条件/IncomeAdvantageHeuristic.Value` | 4 | AI 模型代码里没有这个名字 |
+| 未做 | `启发条件/OpenNodeHeuristic` | 4 | AI 模型代码里没有这个名字 |
+| 未做 | `启发条件/OpenNodeHeuristic.Exists` | 4 | AI 模型代码里没有这个名字 |
+| 未做 | `启发条件/OpenNodeHeuristic.MinDistanceFromEnemy` | 4 | AI 模型代码里没有这个名字 |
+| 未做 | `微操/AIMicroManagerData.CanUseSiegeState` | 4 | AI 模型代码里没有这个名字 |
+| 未做 | `微操/AIMicroManagerData.GatherTempVisionRangeBonus` | 4 | AI 模型代码里没有这个名字 |
+| 未做 | `微操/AIMicroManagerData.RetreatTempVisionRangeBonus` | 4 | AI 模型代码里没有这个名字 |
+| 未做 | `微操/IgnoreTargets.Exclude` | 4 | AI 模型代码里没有这个名字 |
+| 推断 | `目标/AITargetingHeuristic.VitalObjectStatus` | 4 | AI 模型代码里读了这个名字 |
+| 未做 | `造兵/CountAsStructureForBuildPurposesFilter.Include` | 4 | AI 模型代码里没有这个名字 |
+| 未做 | `造兵/CountAsStructureForBuildPurposesFilter.Rule` | 4 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.EmergencyManagerHandleConyardInDangerAtDifficulty` | 3 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/PersonalityMap.Personality` | 3 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/PersonalityMap.Side` | 3 | AI 模型代码里没有这个名字 |
+| 未做 | `战术/Tactic.AestheticsManagerMinDistanceFromHarvester` | 3 | AI 模型代码里没有这个名字 |
+| 未做 | `战术/Tactic.AestheticsManagerPatrolIdleTime` | 3 | AI 模型代码里没有这个名字 |
+| 推断 | `战术/Tactic.Tactic=NullTactic` | 3 | AI 模型代码里读了这个名字 |
+| 未做 | `目标/AITargetingHeuristic.HeuristicType=Point` | 3 | AI 模型代码里没有这个名字 |
+| 未做 | `目标/AITargetingHeuristic.HeuristicType=UnpackBuildingPlacement` | 3 | AI 模型代码里没有这个名字 |
+| 未做 | `阵营/ArmyDefinition.AircraftRepairFacility` | 3 | AI 模型代码里没有这个名字 |
+| 未做 | `阵营/ArmyDefinition.EnergyProducer` | 3 | AI 模型代码里没有这个名字 |
+| 未做 | `阵营/ArmyDefinition.ExpanderTemplate` | 3 | AI 模型代码里没有这个名字 |
+| 未做 | `阵营/ArmyDefinition.GathererTemplate` | 3 | AI 模型代码里没有这个名字 |
+| 未做 | `阵营/ArmyDefinition.MCVTemplate` | 3 | AI 模型代码里没有这个名字 |
+| 未做 | `阵营/ArmyDefinition.NavalRepairFacility` | 3 | AI 模型代码里没有这个名字 |
+| 未做 | `阵营/ArmyDefinition.PrimaryResourceNodeCollector` | 3 | AI 模型代码里没有这个名字 |
+| 未做 | `阵营/ArmyDefinition.PrimaryResourceThingToBuild` | 3 | AI 模型代码里没有这个名字 |
+| 未做 | `阵营/ArmyDefinition.Side` | 3 | AI 模型代码里没有这个名字 |
+| 未做 | `阵营/ArmyDefinition.VehicleRepairFacility` | 3 | AI 模型代码里没有这个名字 |
+| 未做 | `阵营/ArmyDefinition.WallPiece` | 3 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.BuildTechEfficiencyThreshold` | 2 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.BuildTechMinPowerAdvantage` | 2 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.DesiredExcessPowerBuffer` | 2 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.EmergencyManagerHandleNoConyardAtDifficulty` | 2 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.EmergencyManagerHandleNoIncomeAtDifficulty` | 2 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.EmergencyManagerHandleUnderAttackAtDifficulty` | 2 | AI 模型代码里没有这个名字 |
+| 推断 | `人格/BaseSelection.SortOrder=PREFER_NEWEST` | 2 | AI 模型代码里读了这个名字 |
+| 未做 | `启发条件/CanBuildBuildingsOnSurfaceHeuristic` | 2 | AI 模型代码里没有这个名字 |
+| 未做 | `启发条件/CanBuildBuildingsOnSurfaceHeuristic.MaxPlacementGridCells` | 2 | AI 模型代码里没有这个名字 |
+| 未做 | `启发条件/CanBuildBuildingsOnSurfaceHeuristic.MinPlacementGridCells` | 2 | AI 模型代码里没有这个名字 |
+| 未做 | `启发条件/CanBuildBuildingsOnSurfaceHeuristic.Surfaces` | 2 | AI 模型代码里没有这个名字 |
+| 推断 | `微操/AIMicroManagerData.MaxUnitIdleDistanceChange` | 2 | AI 模型代码里读了这个名字 |
+| 推断 | `战术/Tactic.Tactic=Hunt` | 2 | AI 模型代码里读了这个名字 |
+| 推断 | `目标/AITargetingHeuristic.HeuristicType=Husk` | 2 | AI 模型代码里读了这个名字 |
+| 未做 | `目标/AITargetingHeuristic.HeuristicType=Team` | 2 | AI 模型代码里没有这个名字 |
+| 已对拍 | `目标/AITargetingHeuristic.HeuristicType=UnderAttackBy` | 2 | AI 模型代码里读了这个名字；台上量过：docs/engine/aitactics.md |
+| 未做 | `目标/AITargetingHeuristic.IgnoreMinDistanceFromConyardEntranceForTime` | 2 | AI 模型代码里没有这个名字 |
+| 未做 | `目标/AITargetingHeuristic.MinDistanceFromConyardEntrance` | 2 | AI 模型代码里没有这个名字 |
+| 未做 | `组队招人/ObjectFilter.Exclude` | 2 | AI 模型代码里没有这个名字 |
+| 未做 | `经济/ResourceMultiplierCheat.Difficulty` | 2 | AI 模型代码里没有这个名字 |
+| 未做 | `经济/ResourceMultiplierCheat.Percentage` | 2 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.AssaultBeaconRadius` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.CleanupRefineries` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.ConyardInDangerEmergencyEngineerDistance` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.ConyardInDangerEmergencyHealthPercent` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.ConyardInDangerEmergencyUnderAttackTime` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.CoopPersonality` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.DefaultThreatFindRadius` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.EnemyResortingTime` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.EnemySortingBrutalDifficulty` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.EnemySortingEasyDifficulty` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.EnemySortingHardDifficulty` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.EnemySortingMediumDifficulty` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.HoldObjectBeaconRadius` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.HoldPositionBeaconRadius` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.MaxWallDestroyTimeToCountAsGoThroughWalls` | 1 | AI 模型代码里没有这个名字 |
+| 已对拍 | `人格/AIPersonalityDefinition.ReactiveDefenseRadius` | 1 | AI 模型代码里读了这个名字；台上量过：docs/engine/aitactics.md |
+| 未做 | `人格/AIPersonalityDefinition.RefineryPlacementIncreaseTickAmount` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.RefineryPlacementNumberOfIncreaseTicksBeforeGivingUp` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.RefineryPlacementStartDistanceDelta` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.ResourceNodeSearchRadius` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.ResourceNodeValueRemainingForExpansion` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.SecondsTillTargetsExpire` | 1 | AI 模型代码里没有这个名字 |
+| 不涉及 | `人格/AIPersonalityDefinition.SkirmishTimeTillGreeting` | 1 | 纯表现（语音、视频、画面） |
+| 未做 | `人格/AIPersonalityDefinition.UnitBuilderEnemyNearbyDistance` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.UnitBuilderEnemyNearbyMultiplier` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/AIPersonalityDefinition.UnitBuilderOverallDefensivePreference` | 1 | AI 模型代码里没有这个名字 |
+| 推断 | `人格/DefaultTacticHomeBaseCriteria.PreferredNotBaseTypes` | 1 | AI 模型代码里读了这个名字 |
+| 推断 | `人格/DefaultTacticHomeBaseCriteria.SortOrder` | 1 | AI 模型代码里读了这个名字 |
+| 未做 | `人格/Filter.Exclude` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/Filter.Include` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `人格/Filter.Rule` | 1 | AI 模型代码里没有这个名字 |
+| 推断 | `人格/RetreatBaseCriteria.PreferredNotBaseTypes` | 1 | AI 模型代码里读了这个名字 |
+| 推断 | `人格/RetreatBaseCriteria.SortOrder` | 1 | AI 模型代码里读了这个名字 |
+| 未做 | `全局常量/AIData.AICrushesInfantry` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.AIDozerBoredRadiusModifier` | 1 | AI 模型代码里没有这个名字 |
+| 不涉及 | `全局常量/AIData.AllowForestFires` | 1 | 纯表现（语音、视频、画面） |
+| 不涉及 | `全局常量/AIData.AltCameraPitchOverride` | 1 | 纯表现（语音、视频、画面） |
+| 不涉及 | `全局常量/AIData.AltCameraZoomOverride` | 1 | 纯表现（语音、视频、画面） |
+| 未做 | `全局常量/AIData.AttackMoveUsesFormations` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.AttackUsesLineOfSight` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.CastleSiegeStandBackDistance` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.ChaseFromBehindLimit` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.DeepWaterDepth` | 1 | AI 模型代码里没有这个名字 |
+| 不涉及 | `全局常量/AIData.DisableTrees` | 1 | 纯表现（语音、视频、画面） |
+| 未做 | `全局常量/AIData.EnableRepulsors` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.ForceSkirmishAI` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.FormationColumnWidth` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.FormationEnemyDistance` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.FormationRowDepth` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.FormationSquadSpacing` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.GuardChaseUnitFrames` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.GuardEnemyReturnScanRate` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.GuardEnemyScanRate` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.HordesWaitForHordes` | 1 | AI 模型代码里没有这个名字 |
+| 不涉及 | `全局常量/AIData.LowLodTree` | 1 | 纯表现（语音、视频、画面） |
+| 不涉及 | `全局常量/AIData.LowLodTreeNoGrab` | 1 | 纯表现（语音、视频、画面） |
+| 不涉及 | `全局常量/AIData.LowLodTreeNoHarvest` | 1 | 纯表现（语音、视频、画面） |
+| 不涉及 | `全局常量/AIData.LowLodTreeScale` | 1 | 纯表现（语音、视频、画面） |
+| 未做 | `全局常量/AIData.MaxRecruitDistance` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.MaxRetaliateDistance` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.MaxSquadWidth` | 1 | AI 模型代码里没有这个名字 |
+| 不涉及 | `全局常量/AIData.MaximumCraterDepth` | 1 | 纯表现（语音、视频、画面） |
+| 未做 | `全局常量/AIData.MeleeApproachDist` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.MeleeApproachTolerance` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.MinDistanceForGroup` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.NarrowPassageScale` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.Optimization_NumEfficiencyUpdates` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.Optimization_NumTeamsToRecruit` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.Optimization_TacticsEmergencyKickPeriod` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.Optimization_TimeToCacheCanEnterTransport` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.Optimization_TimeToCacheCanReachImmobileTarget` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.Optimization_TimeToCacheCanReachMobileTarget` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.RebuildDelaySeconds` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.RepulsedDistance` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.ResourcesPoor` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.ResourcesWealthy` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.RetaliateFriendsRadius` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.RotateSkirmishBases` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.SkirmishGroupFudgeValue` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.StructureSeconds` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.StructuresPoorMod` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.StructuresWealthyMod` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.SupplyCenterSafeRadius` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.TeamPoorMod` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.TeamResourcesToBuild` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.TeamSeconds` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.TeamWealthyMod` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.UseFormations` | 1 | AI 模型代码里没有这个名字 |
+| 不涉及 | `全局常量/AIData.UseLowLODTrees` | 1 | 纯表现（语音、视频、画面） |
+| 未做 | `全局常量/AIData.WadeWaterDepth` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.WaitForOthers` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `全局常量/AIData.WallHeight` | 1 | AI 模型代码里没有这个名字 |
+| 已对拍 | `启发条件/ScriptedFlagHeuristic` | 1 | AI 模型代码里读了这个名字；台上量过：checks/engine_aistate.py |
+| 已对拍 | `启发条件/ScriptedFlagHeuristic.FlagName` | 1 | AI 模型代码里读了这个名字；台上量过：checks/engine_aistate.py |
+| 未做 | `微操/AIMicroManagerData.CanCollectCratesWhenIdle` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `微操/AIMicroManagerData.FractionBlockedToDestroyWalls` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `微操/AIMicroManagerData.IsHarvesterManager` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `微操/AIMicroManagerData.MaxSecondaryDamageFraction` | 1 | AI 模型代码里没有这个名字 |
+| 推断 | `微操/AIMicroManagerData.MaxTeamIdleDistanceChange` | 1 | AI 模型代码里读了这个名字 |
+| 已对拍 | `微操/AIMicroManagerData.MaxTeamIdleTime` | 1 | AI 模型代码里读了这个名字；台上量过：checks/engine_aitarget.py |
+| 已对拍 | `微操/AIMicroManagerData.MaxUnitIdleTime` | 1 | AI 模型代码里读了这个名字；台上量过：checks/engine_aitarget.py |
+| 未做 | `微操/AIMicroManagerData.MinTimeToKeepTempVisionRangeBonus` | 1 | AI 模型代码里没有这个名字 |
+| 未做 | `微操/IgnoreTargets.StatusBitFlags` | 1 | AI 模型代码里没有这个名字 |
+| 推断 | `微操/SpecificSpecialPowerDelay.TogglePowerSubType=TOGGLE_DEFENSE_SELF_ONLY` | 1 | AI 模型代码里读了这个名字 |
+| 已对拍 | `战术/Tactic.EndBehavior=RETURN_HOME_AND_DISBAND` | 1 | AI 模型代码里读了这个名字；台上量过：checks/engine_aistate.py |
+| 已对拍 | `战术/Tactic.Tactic=ReactiveDefense` | 1 | AI 模型代码里读了这个名字；台上量过：docs/engine/aitactics.md |
+| 推断 | `战略状态/AIStrategicStateDefinition.MaxInactiveCopies` | 1 | AI 模型代码里读了这个名字 |
+| 未做 | `战略状态/AIStrategicStateDefinition.PathfindingCheckType=QuickDoesAttackPathExist` | 1 | AI 模型代码里没有这个名字 |
+| 推断 | `目标/AITargetingHeuristic.HeuristicType=Bridge` | 1 | AI 模型代码里读了这个名字 |
+| 推断 | `目标/AITargetingHeuristic.HeuristicType=Crate` | 1 | AI 模型代码里读了这个名字 |
+| 推断 | `目标/AITargetingHeuristic.HeuristicType=EnemyGarrison` | 1 | AI 模型代码里读了这个名字 |
+| 未做 | `目标/AITargetingHeuristic.HeuristicType=Help` | 1 | AI 模型代码里没有这个名字 |
+| 推断 | `目标/AITargetingHeuristic.HeuristicType=NeutralGarrison` | 1 | AI 模型代码里读了这个名字 |
+| 未做 | `组队招人/TeamTemplate.BaseDefenseMaxDistance` | 1 | AI 模型代码里没有这个名字 |
+| 推断 | `组队招人/TeamTemplate.IsBaseDefenseTeam` | 1 | AI 模型代码里读了这个名字 |
+| 推断 | `组队招人/TeamTemplate.Priority=HOTSPOT` | 1 | AI 模型代码里读了这个名字 |
+| 推断 | `组队招人/TeamTemplate.Priority=SCRIPTED` | 1 | AI 模型代码里读了这个名字 |
+| 不涉及 | `表现/InTroubleSkirmishFeedbackControl.MinPowerAdvantageEnemiesInMyBaseVsAllMyUnits` | 1 | 纯表现（语音、视频、画面） |
+| 不涉及 | `表现/InTroubleSkirmishFeedbackControl.NumberOfObjectsRecentlyLost` | 1 | 纯表现（语音、视频、画面） |
+| 不涉及 | `表现/InTroubleSkirmishFeedbackControl.ObjectLostFilter` | 1 | 纯表现（语音、视频、画面） |
+| 不涉及 | `表现/InTroubleSkirmishFeedbackControl.OnlyIfLocalPlayerIs` | 1 | 纯表现（语音、视频、画面） |
+| 不涉及 | `表现/InTroubleSkirmishFeedbackControl.TimeBetweenScans` | 1 | 纯表现（语音、视频、画面） |
+| 不涉及 | `表现/InTroubleSkirmishFeedbackControl.TimeForNumberOfObjectLost` | 1 | 纯表现（语音、视频、画面） |
+| 不涉及 | `表现/InTroubleSkirmishFeedbackControl.TimeThatConditionsMustBeMet` | 1 | 纯表现（语音、视频、画面） |
+| 不涉及 | `表现/InTroubleSkirmishFeedbackControl.TimeoutAfterPlaying` | 1 | 纯表现（语音、视频、画面） |
+| 未做 | `造兵/BuildEntry.Score` | 1 | AI 模型代码里没有这个名字 |
