@@ -321,6 +321,18 @@ def test_team_filters_take_whom_the_bench_sent(lib, build, tanks, inf):
     assert (rows[39]['坦克在家'], rows[39]['步兵在家']) == (tanks, inf), [(r['坦克在家'], r['步兵在家']) for r in rows]
 
 
+# bench 2026-11-09 checks/engine_aiteamfilter.py a (B round 81): (build, Guardians home, the other type home) at s40
+@pytest.mark.parametrize('build,tanks,other', [('aitfland', 0, 4), ('aitfamph', 4, 0), ('aitfwat', 4, 4),
+                                               ('aitfosi', 4, 0), ('aitfosv', 0, 4), ('aitfosc', 0, 0)])
+def test_locomotor_types_and_object_sets_take_whom_the_bench_sent(lib, build, tanks, other):
+    """AllowedLocomotorTypes LAND: only the Guardians; AMPHIBIOUS: only the Riptide ACVs; WATER: nobody (an
+    amphibious unit is not WATER). RegisteredObjectSet INFANTRY: only the Peacekeepers; VEHICLES: only the
+    Guardians; SKIRMISH_AI_NORMAL_COMBAT_UNITS: both."""
+    _, rows = _switch_run(build, lib, until=41.0)
+    got = [tuple(r.values()) for r in rows]
+    assert got[39] == (tanks, other), got
+
+
 # bench 2026-11-09 checks/engine_aidiff.py a: (build, tanks home, infantry home) from s17 on; the bench walks normal
 @pytest.mark.parametrize('build,tanks,inf', [('aidiff', 0, 4), ('aidiffx', 4, 0)])
 def test_only_the_states_listed_for_the_difficulty_run(lib, build, tanks, inf):

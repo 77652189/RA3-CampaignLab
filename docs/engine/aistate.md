@@ -71,6 +71,23 @@
 - `MaxUnits` 是一队的人数上限；同一个目标只派一队（`MaxTargets` 1），所以多出来的兵留在家里。
 - 模型原先把 NONE 当"不筛"，台上否了，已改（私有 `ai/teams.py`）；模拟器六组都对上（`tests/test_simai.py::test_team_filters_take_whom_the_bench_sent`）。
 
+### 移动方式和对象集（第 81 轮）
+
+同一探针再加六组（移动方式那三组把维和换成 4 艘激流气垫船，种类 AMPHIBIOUS）：
+
+| build | 队伍模板 | 出门的（测） |
+| --- | --- | --- |
+| `aitfland` | `AllowedLocomotorTypes="LAND"` | 只有守护者 |
+| `aitfamph` | `AllowedLocomotorTypes="AMPHIBIOUS"` | 只有气垫船 |
+| `aitfwat` | `AllowedLocomotorTypes="WATER"` | 谁都不走——两栖的不算 WATER |
+| `aitfosi` | `RegisteredObjectSet="INFANTRY"` | 只有维和 |
+| `aitfosv` | `RegisteredObjectSet="VEHICLES"` | 只有守护者 |
+| `aitfosc` | `RegisteredObjectSet="SKIRMISH_AI_NORMAL_COMBAT_UNITS"` | 两种都走，但比别组晚约 6 秒（第 20～23 秒） |
+
+给关卡线（测）：
+- 想让海军队伍也带上两栖单位，要写 `WATER AMPHIBIOUS`（原版就这么写）；只写 WATER 不收两栖的。
+- `RegisteredObjectSet` 也是一道筛选：INFANTRY 只收步兵、VEHICLES 只收车。模型原先没用它，已补（私有 `ai/teams.py`；AIRCRAFT、HARVESTERS 按名字推断，没量）；模拟器六组对上（`tests/test_simai.py::test_locomotor_types_and_object_sets_take_whom_the_bench_sent`）。"普通作战单位"那组晚 6 秒的原因没查，模拟器没做。
+
 ## 按难度挂的状态（StrategicState 的 Difficulty）
 
 引擎线 B 第 79 轮（2026-11-09）。探针 `checks/engine_aidiff.py`（任务 `missions/aidiff_bench.py`）：同上的图和 AI，家里 4 辆守护者 + 4 个维和，两个常开状态，一个挂 `Difficulty="MEDIUM"`、一个挂 `Difficulty="EASY HARD BRUTAL"`，各只招一种兵；玩家放两座电厂（一个目标只给一个状态，两队都能走）。另用三条各只开一个难度位的任务脚本把战役难度写进计数器。
