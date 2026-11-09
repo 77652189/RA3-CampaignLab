@@ -4,11 +4,11 @@
 
 | 部分 | 按用量已对拍 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|
-| 脚本动作 | **71%** | 427 | 69 | 31 | 231 | 96 | 83% |
-| 脚本条件 | **77%** | 89 | 24 | 5 | 60 | 0 | 94% |
-| 物体模块 | **32%** | 184 | 17 | 10 | 138 | 19 | 53% |
+| 脚本动作 | **76%** | 427 | 77 | 25 | 229 | 96 | 83% |
+| 脚本条件 | **93%** | 89 | 27 | 2 | 60 | 0 | 94% |
+| 物体模块 | **36%** | 184 | 19 | 10 | 136 | 19 | 56% |
 | 武器效果 | **47%** | 25 | 2 | 3 | 20 | 0 | 53% |
-| AI | **52%** | 415 | 69 | 160 | 152 | 34 | 88% |
+| AI | **60%** | 415 | 89 | 140 | 152 | 34 | 88% |
 
 ## 脚本动作
 
@@ -19,14 +19,14 @@
 | 已对拍 | `SET_FLAG` | 4105 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aimicro.py |
 | 已对拍 | `ALLOW_DISALLOW_ONE_BUILDING` | 3466 | tests/test_simbench.py::test_a_ban_holds_the_queue_and_does_not_cancel |
 | 已对拍 | `PLAYER_LOCK_PLAYER_TECH` | 1887 | tests/test_simbench.py::test_protocol_a_computer_player_spends_unless_locked |
-| 推断 | `DISABLE_SCRIPT` | 1099 | 引擎模型核心 |
+| 已对拍 | `DISABLE_SCRIPT` | 1099 | 引擎模型核心；台上量过：checks/engine_scripts6.py |
 | 已对拍 | `MOVE_NAMED_UNIT_TO` | 1000 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aidefense.py |
 | 已对拍 | `LINK_MISSION_OBJECTIVE_TO_OBJECT` | 950 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts5.py |
 | 已对拍 | `NAMED_DELETE` | 908 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_attack.py |
 | 未做 | `CREATE_REINFORCEMENT_TEAM` | 753 | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `SET_MISSION_OBJECTIVE_STATUS` | 732 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts5.py |
 | 不涉及 | `PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT` | 640 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
-| 推断 | `CALL_SUBROUTINE` | 533 | 引擎模型核心 |
+| 已对拍 | `CALL_SUBROUTINE` | 533 | 引擎模型核心；台上量过：checks/engine_scripts6.py |
 | 推断 | `UNIT_IDLE_FOR_FRAMECOUNT` | 504 | Sim.stand：和 UNIT_IDLE_FOR_SECONDS 同一个处理函数，秒版台上量过（命令清掉，不是暂停） |
 | 不涉及 | `PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT_WITH_SUBTITLE` | 445 | 纯表现（名字规则） |
 | 不涉及 | `MOVIE_PLAY_RADAR` | 433 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
@@ -75,7 +75,7 @@
 | 不涉及 | `SOUND_PLAY_NAMED` | 137 | 纯表现（名字规则） |
 | 已对拍 | `UNIT_AI_TRANSFER_ALL` | 137 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aidefense.py |
 | 已对拍 | `ENABLE_INPUT` | 132 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts3.py |
-| 推断 | `NO_OP` | 130 | 引擎模型核心 |
+| 已对拍 | `NO_OP` | 130 | 引擎模型核心；台上量过：checks/engine_scripts6.py |
 | 推断 | `TEAM_AFFECT_OBJECT_PANEL_FLAGS` | 130 | Sim.act / Sim.cond 有分支 |
 | 推断 | `UNIT_AI_TRANSFER` | 129 | 程序读到：人类玩家的单位无效、不清命令；交给 AI 后的行为归引擎 B，碰到记 Sim.unmodeled（台上没量） |
 | 未做 | `TELEPORT_STRUCTURE` | 128 | Sim.act / Sim.cond 不认识 |
@@ -83,7 +83,7 @@
 | 已对拍 | `UNIT_SET_STANCE` | 124 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_crush.py |
 | 未做 | `TEAM_DELETE` | 122 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_KILL` | 121 | Sim.act / Sim.cond 不认识 |
-| 推断 | `SET_TIMER` | 119 | 引擎模型核心 |
+| 已对拍 | `SET_TIMER` | 119 | 引擎模型核心；台上量过：checks/engine_scripts6.py |
 | 已对拍 | `NAMED_STOP` | 118 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_runoffmap.py |
 | 已对拍 | `UNIT_TELEPORT_TO_WAYPOINT` | 118 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aidefense.py |
 | 不涉及 | `PLAYER_CAMERA_MOVE_TO` | 117 | 纯表现（名字规则） |
@@ -102,7 +102,7 @@
 | 已对拍 | `SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER` | 101 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_kingref.py |
 | 不涉及 | `RESET_CAMERA` | 100 | 纯表现（名字规则） |
 | 不涉及 | `CAMERA_LETTERBOX_BEGIN_WITH_RADAR` | 98 | 纯表现（名字规则） |
-| 推断 | `SET_RANDOM_COUNTER` | 97 | 引擎模型核心 |
+| 已对拍 | `SET_RANDOM_COUNTER` | 97 | 引擎模型核心；台上量过：checks/engine_scripts6.py |
 | 已对拍 | `PLAYER_SET_PLAYER_POWER_POINTS` | 95 | tests/test_simbench.py::test_protocol_set_points_follows_the_programs_rule |
 | 推断 | `SET_REF_TO_NEREST_TEAM_OF_TYPE_OWNED_BY_PLAYER` | 94 | Sim.act / Sim.cond 有分支 |
 | 已对拍 | `MAP_REVEAL_ALL_PERM` | 89 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_acquire.py |
@@ -111,7 +111,7 @@
 | 不涉及 | `NAMED_REMOVE_INFOBOX` | 83 | 纯表现（名字规则） |
 | 未做 | `TEAM_FOLLOW_WAYPOINTS` | 83 | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `SKIRMISH_AI_MAKE_BASE` | 82 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aistate.py |
-| 推断 | `SET_RANDOM_MSEC_TIMER` | 77 | 引擎模型核心 |
+| 已对拍 | `SET_RANDOM_MSEC_TIMER` | 77 | 引擎模型核心；台上量过：checks/engine_scripts6.py |
 | 已对拍 | `TEAM_ATTACK_NAMED` | 76 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_reorder.py |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ActivateEjectPassengersSpecialPowerUntargeted` | 75 | 只记进时间线，没有效果 |
 | 已对拍 | `SKIRMISH_AI_USE_REPAIRS` | 75 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aipullback.py |
@@ -147,7 +147,7 @@
 | 未做 | `TEAM_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT` | 51 | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `DECREMENT_COUNTER` | 50 | 引擎模型核心；台上量过：checks/engine_scripts3.py |
 | 已对拍 | `DISPLAY_COUNTDOWN_TIMER` | 50 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts4.py |
-| 未做 | `SELL_OBJECT` | 50 | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `SELL_OBJECT` | 50 | tests/test_simbench.py::test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames |
 | 未做 | `TEAM_ATTACK_TEAM` | 50 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `FLASH_UI_BUILD_BUTTON` | 48 | 纯表现（名字规则） |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JAAVT1_Transform` | 48 | 只记进时间线，没有效果 |
@@ -169,7 +169,7 @@
 | 未做 | `UNIT_CONTEXT_SENSITIVE_ATTACK` | 35 | Sim.act / Sim.cond 不认识 |
 | 未做 | `FOR_EACH_TEAM_MEMBER_EXECUTE_SCRIPT` | 34 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `LINK_MISSION_HOT_SPOT_TO_WAYPOINT` | 34 | 纯表现（名字规则） |
-| 未做 | `NAMED_DAMAGE` | 34 | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `NAMED_DAMAGE` | 34 | tests/test_simbench.py::test_sell_a_killed_building_stays_paid_and_a_building_unpacking_is_not_sold |
 | 不涉及 | `FLASH_MOUSE_HUD_FIXED_ELEMENT` | 33 | 纯表现（名字规则） |
 | 未做 | `GATE_OPEN` | 33 | Sim.act / Sim.cond 不认识 |
 | 未做 | `MAP_REVEAL_PERMANENTLY_IN_TRIGGER` | 33 | Sim.act / Sim.cond 不认识 |
@@ -448,7 +448,7 @@
 |---|---|---|---|
 | 已对拍 | `FLAG` | 5099 | 引擎模型核心；台上量过：checks/engine_aimicro.py |
 | 已对拍 | `TIMER_EXPIRED` | 3917 | 引擎模型核心；台上量过：checks/engine_acquire.py |
-| 推断 | `CONDITION_TRUE` | 2947 | 引擎模型核心 |
+| 已对拍 | `CONDITION_TRUE` | 2947 | 引擎模型核心；台上量过：checks/engine_scripts6.py |
 | 已对拍 | `NAMED_DESTROYED` | 922 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aispecial.py |
 | 已对拍 | `PLAYER_HAS_OBJECT_COMPARISON` | 628 | tests/test_simbench.py::test_scripts2_a_relation_is_one_way_and_turns_back |
 | 已对拍 | `COUNTER` | 577 | 引擎模型核心；台上量过：checks/engine_aimicro.py |
@@ -462,7 +462,7 @@
 | 已对拍 | `PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA` | 278 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aistate.py |
 | 已对拍 | `NAMED_ATTACKED_BY_PLAYER` | 150 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_attack.py |
 | 已对拍 | `UNIT_HAS_OBJECT_STATUS` | 142 | tests/test_simbench.py::test_scripts1_conditions_as_the_bench |
-| 推断 | `COUNTER_SECONDS` | 141 | 引擎模型核心 |
+| 已对拍 | `COUNTER_SECONDS` | 141 | 引擎模型核心；台上量过：checks/engine_scripts6.py |
 | 已对拍 | `UNIT_HEALTH` | 134 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_air.py |
 | 未做 | `MISSION_HOT_SPOT_ACTIVE` | 110 | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `NAMED_DISCOVERED` | 104 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_see.py |
@@ -473,7 +473,7 @@
 | 未做 | `IS_OBJECT_OF_TYPE` | 69 | Sim.act / Sim.cond 不认识 |
 | 推断 | `CAMERA_ENTERED_AREA` | 60 | Sim.act / Sim.cond 有分支 |
 | 未做 | `ENEMY_SIGHTED` | 59 | Sim.act / Sim.cond 不认识 |
-| 推断 | `COUNTER_COUNTER` | 55 | 引擎模型核心 |
+| 已对拍 | `COUNTER_COUNTER` | 55 | 引擎模型核心；台上量过：checks/engine_scripts6.py |
 | 未做 | `NAMED_SELECTED` | 50 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_DISCOVERED` | 47 | Sim.act / Sim.cond 不认识 |
 | 未做 | `SKIRMISH_PLAYER_HAS_BEEN_ATTACKED_BY_PLAYER` | 44 | Sim.act / Sim.cond 不认识 |
@@ -558,7 +558,7 @@
 | 已对拍 | `Behaviors/ProductionUpdate` | 351 (465) | tests/test_simbench.py::test_production_pays_as_it_builds_and_comes_out_after_the_door；例：AlliedAirfield, AlliedBarracks |
 | 未做 | `Behaviors/ToppleUpdate` | 347 (410) | 倒伏：车压过的灯笼、栏杆、路灯倒下即死（OK_Lantern01 KillWhenStartToppled）。碾压本身已做（Sim.crush_along，台上对过），倒伏还没有：OK_LANTERN01 在模拟器里不是物体（不挡路），platprops.STRUCTURE 里的栏杆路灯是永久障碍（游戏里车能压倒）；台上没量过灯笼，要先写探针；例：BaseTopple, BaseTree |
 | 未做 | `Behaviors/ModelConditionUpgrade` | 341 (465) | 模拟器代码里没有这个名字；例：AlliedAntiInfantryInfantry, AlliedAntiVehicleInfantry |
-| 未做 | `Behaviors/BuildingBehavior` | 334 (440) | 已核（11-08）：模拟器没有这个效果（没有出售建筑）；例：AlliedAirfield, AlliedBarracks |
+| 已对拍 | `Behaviors/BuildingBehavior` | 334 (440) | tests/test_simbench.py::test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames；例：AlliedAirfield, AlliedBarracks |
 | 已对拍 | `Behaviors/AttributeModifierAuraUpdate` | 311 (420) | 模拟器代码里有这个名字；台上量过：checks/engine_invuln.py；例：A09_IronCurtainEffect, BaseCivilianStructure |
 | 未做 | `Behaviors/InvisibilityBehavior` | 305 (412) | 已核（11-08）：模拟器没有这个效果（没有隐身）；例：BaseCivilianStructure, BaseCivilianStructureLarge |
 | 未做 | `Behaviors/ContestableGarrisonContain` | 305 (411) | 已核（11-08）：模拟器没有这个效果（没有驻军）；例：BaseCivilianStructure, BaseCivilianStructureLarge |
@@ -580,7 +580,7 @@
 | 未做 | `Behaviors/RepairUpdate` | 66 (91) | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |
 | 推断 | `Behaviors/StatusBitsUpgrade` | 66 (85) | 模拟器代码里有这个名字；例：AlliedBaseDefense, AlliedAntiAirShip |
 | 已对拍 | `Behaviors/StructureUnpackUpdate` | 59 (96) | tests/test_simbench.py::test_power_back_after_the_plant_unpacks；例：AlliedAirfield, AlliedBarracks |
-| 未做 | `Behaviors/StructureSellUpdate` | 52 (72) | 已核（11-08）：模拟器没有这个效果（没有出售、返还金钱）；例：AlliedAirfield, AlliedBarracks |
+| 已对拍 | `Behaviors/StructureSellUpdate` | 52 (72) | tests/test_simbench.py::test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames；例：AlliedAirfield, AlliedBarracks |
 | 不涉及 | `ClientBehaviors/AnimationSoundClientBehavior` | 48 (67) | 纯表现（ClientBehaviors）；例：AlliedTimeBombLvl3, AlliedRefinery |
 | 不涉及 | `Draws/TruckDraw` | 35 (51) | 纯表现（Draws）；例：AlliedTimeBombLvl1, AlliedTimeBombLvl2 |
 | 未做 | `Behaviors/InfiltratorContain` | 34 (38) | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |
@@ -729,7 +729,7 @@
 
 | 状态 | 名字 | 用量 | 说明 |
 |---|---|---|---|
-| 已对拍 | `DamageNugget` | 183 | 模拟器代码里有这个名字；台上量过：checks/engine_fire.py；例：BaseExplodingPropVehicleWeapon, MountRushmoreHeadEyeWeapon |
+| 已对拍 | `DamageNugget` | 183 | 模拟器代码里有这个名字；台上量过：checks/engine_clip.py；例：BaseExplodingPropVehicleWeapon, MountRushmoreHeadEyeWeapon |
 | 已对拍 | `ProjectileNugget` | 88 | 模拟器代码里有这个名字；台上量过：checks/engine_shot.py；例：BB_EuropeCoastalGunWeapon, KremlinArtilleryDomeMissle |
 | 未做 | `InformTargetNugget` | 69 | 模拟器代码里没有这个名字；例：BB_EuropeCoastalGunWeapon, AlliedPrecisionBomb |
 | 未做 | `SuppressionNugget` | 64 | 模拟器代码里没有这个名字；例：BB_EuropeCoastalGunWeapon, KremlinArtilleryDomeMissle |
@@ -775,7 +775,7 @@
 | 推断 | `组队招人/TeamTemplate.AlwaysRecruit` | 182 | 读了，出发后继续招人的门默认关（防御队吸兵和台上对不上，handoff-b 第 50、51 节） |
 | 推断 | `组队招人/TeamTemplate.MicroManager` | 182 | AI 模型代码里读了这个名字 |
 | 已对拍 | `组队招人/TeamTemplate.MinUnits` | 182 | AI 模型代码里读了这个名字；台上量过：checks/engine_aiskirm.py |
-| 推断 | `组队招人/TeamTemplate.Priority` | 182 | AI 模型代码里读了这个名字 |
+| 已对拍 | `组队招人/TeamTemplate.Priority` | 182 | docs/engine/aistate.md#两队抢兵和 MinPowerAdvantage（第 82 轮） |
 | 已对拍 | `战略状态/TargetHeuristic.Priority` | 170 | docs/engine/aitactics.md#目标挑哪个（aitpphi / aitpplo：同一状态两条目标启发，Priority 高的先试，两向都上台） |
 | 已对拍 | `组队招人/TeamTemplate.ExcludeKindOf` | 170 | AI 模型代码里读了这个名字；台上量过：checks/engine_aiteamfilter.py |
 | 已对拍 | `组队招人/TeamTemplate.IncludeKindOf` | 170 | AI 模型代码里读了这个名字；台上量过：checks/engine_aiteamfilter.py |
@@ -790,7 +790,7 @@
 | 已对拍 | `目标/AITargetingHeuristic.HeuristicType=NamedObject` | 145 | AI 模型代码里读了这个名字；台上量过：checks/engine_ainamed.py |
 | 已对拍 | `组队招人/TeamTemplate.AllowedLocomotorTypes` | 145 | docs/engine/aistate.md#移动方式和对象集（第 81 轮） |
 | 已对拍 | `目标/AITargetingHeuristic.VitalKindOf` | 129 | AI 模型代码里读了这个名字；台上量过：checks/engine_aitargetpick.py |
-| 推断 | `组队招人/TeamTemplate.Priority=STANDARD` | 126 | AI 模型代码里读了这个名字 |
+| 已对拍 | `组队招人/TeamTemplate.Priority=STANDARD` | 126 | docs/engine/aistate.md#两队抢兵和 MinPowerAdvantage（第 82 轮） |
 | 已对拍 | `启发条件/ConstantHeuristic` | 119 | AI 模型代码里读了这个名字；台上量过：checks/engine_aipoweradv.py |
 | 已对拍 | `人格/PowerChoice.PlayerPower` | 117 | AI 模型代码里读了这个名字；台上量过：docs/engine/aiopen.md |
 | 已对拍 | `人格/PowerChoice.Weight` | 117 | docs/engine/aiopen.md#买协议（aipwrb 权重 0 的不买） |
@@ -820,14 +820,14 @@
 | 推断 | `组队招人/TeamTemplate.ReleaseType` | 71 | AI 模型代码里读了这个名字 |
 | 推断 | `微操/AIMicroManagerData.EnemySearchDistanceVisionMultiplier` | 70 | AI 模型代码里读了这个名字 |
 | 不涉及 | `表现/FeedbackEntry.EvaEvent` | 70 | 纯表现（语音、视频、画面） |
-| 推断 | `启发条件/EnemyNearbyHeuristic` | 68 | AI 模型代码里读了这个名字 |
-| 推断 | `启发条件/EnemyNearbyHeuristic.Distance` | 68 | AI 模型代码里读了这个名字 |
-| 推断 | `启发条件/EnemyNearbyHeuristic.EnemyNearby` | 68 | AI 模型代码里读了这个名字 |
-| 推断 | `启发条件/ObjectOfTypeExistsHeuristic` | 67 | AI 模型代码里读了这个名字 |
-| 推断 | `启发条件/ObjectOfTypeExistsHeuristic.PassIfExists` | 67 | AI 模型代码里读了这个名字 |
-| 推断 | `组队招人/ObjectFilter.Relationship` | 67 | AI 模型代码里读了这个名字 |
+| 已对拍 | `启发条件/EnemyNearbyHeuristic` | 68 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
+| 已对拍 | `启发条件/EnemyNearbyHeuristic.Distance` | 68 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
+| 已对拍 | `启发条件/EnemyNearbyHeuristic.EnemyNearby` | 68 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
+| 已对拍 | `启发条件/ObjectOfTypeExistsHeuristic` | 67 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
+| 已对拍 | `启发条件/ObjectOfTypeExistsHeuristic.PassIfExists` | 67 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
+| 已对拍 | `组队招人/ObjectFilter.Relationship` | 67 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
 | 推断 | `开局/SkirmishOpeningMove.Side` | 64 | AI 模型代码里读了这个名字 |
-| 推断 | `组队招人/TeamTemplate.MinPowerAdvantage` | 64 | AI 模型代码里读了这个名字 |
+| 已对拍 | `组队招人/TeamTemplate.MinPowerAdvantage` | 64 | docs/engine/aistate.md#两队抢兵和 MinPowerAdvantage（第 82 轮） |
 | 推断 | `人格/SpecificUnitCap.Cap` | 60 | AI 模型代码里读了这个名字 |
 | 推断 | `人格/SpecificUnitCap.Difficulty` | 60 | AI 模型代码里读了这个名字 |
 | 推断 | `人格/SpecificUnitCap.Unit` | 60 | AI 模型代码里读了这个名字 |
@@ -839,8 +839,8 @@
 | 未做 | `造兵/BuildEntry.PercentHigh` | 54 | AI 模型代码里没有这个名字 |
 | 未做 | `造兵/BuildEntry.PercentLow` | 54 | AI 模型代码里没有这个名字 |
 | 已对拍 | `微操/AIMicroManagerData.UseGatherState` | 51 | AI 模型代码里读了这个名字；台上量过：checks/engine_aipullback.py |
-| 推断 | `启发条件/OpeningMoveHeuristic` | 47 | AI 模型代码里读了这个名字 |
-| 推断 | `启发条件/OpeningMoveHeuristic.Complete` | 47 | AI 模型代码里读了这个名字 |
+| 已对拍 | `启发条件/OpeningMoveHeuristic` | 47 | AI 模型代码里读了这个名字；台上量过：checks/engine_aiomove.py |
+| 已对拍 | `启发条件/OpeningMoveHeuristic.Complete` | 47 | AI 模型代码里读了这个名字；台上量过：checks/engine_aiomove.py |
 | 推断 | `开局/OpeningMove.Difficulty` | 46 | AI 模型代码里读了这个名字 |
 | 推断 | `开局/OpeningMove.Name` | 46 | AI 模型代码里读了这个名字 |
 | 推断 | `开局/OpeningMove.Weight` | 46 | AI 模型代码里读了这个名字 |
@@ -871,16 +871,16 @@
 | 未做 | `造兵/BlockIfThingNearFactory.Rule` | 28 | AI 模型代码里没有这个名字 |
 | 推断 | `目标/AITargetingHeuristic.HeuristicType=FriendlyUnit` | 27 | AI 模型代码里读了这个名字 |
 | 已对拍 | `微操/AIMicroManagerData.UpdateTime` | 26 | AI 模型代码里读了这个名字；台上量过：checks/engine_aidefense.py |
-| 推断 | `启发条件/TimerHeuristic` | 25 | AI 模型代码里读了这个名字 |
-| 推断 | `启发条件/TimerHeuristic.EndTime` | 25 | AI 模型代码里读了这个名字 |
-| 推断 | `启发条件/TimerHeuristic.StartTime` | 25 | AI 模型代码里读了这个名字 |
+| 已对拍 | `启发条件/TimerHeuristic` | 25 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
+| 已对拍 | `启发条件/TimerHeuristic.EndTime` | 25 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
+| 已对拍 | `启发条件/TimerHeuristic.StartTime` | 25 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
 | 已对拍 | `目标/AITargetingHeuristic.HeuristicType=EnemyStructure` | 25 | docs/engine/aitactics.md#读数（ClosestStructureHeuristic、SafestToGroundStructureHeuristic：aitargetnear / aitargetsafe） |
 | 推断 | `组队招人/TeamTemplate.ReleaseType=NEVER_RELEASE` | 25 | AI 模型代码里读了这个名字 |
 | 推断 | `战术/Tactic.Tactic=Engineer` | 24 | AI 模型代码里读了这个名字 |
 | 已对拍 | `微操/AIMicroManagerData.EnterBaseDefensesWhenIdle` | 23 | AI 模型代码里读了这个名字；台上量过：docs/engine/aiteamstate.md |
-| 推断 | `启发条件/IntervalHeuristic` | 22 | AI 模型代码里读了这个名字 |
-| 推断 | `启发条件/IntervalHeuristic.ActiveTime` | 22 | AI 模型代码里读了这个名字 |
-| 推断 | `启发条件/IntervalHeuristic.IntervalTime` | 22 | AI 模型代码里读了这个名字 |
+| 已对拍 | `启发条件/IntervalHeuristic` | 22 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
+| 已对拍 | `启发条件/IntervalHeuristic.ActiveTime` | 22 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
+| 已对拍 | `启发条件/IntervalHeuristic.IntervalTime` | 22 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
 | 推断 | `微操/AIMicroManagerData.EnterGarrisonableStructureDistance` | 21 | AI 模型代码里读了这个名字 |
 | 未做 | `人格/AIPersonalityDefinition.SkirmishPersonality` | 20 | AI 模型代码里没有这个名字 |
 | 已对拍 | `战术/Tactic.EndIfStateTurnsOff` | 19 | AI 模型代码里读了这个名字；台上量过：checks/engine_aistate.py |
@@ -888,7 +888,7 @@
 | 推断 | `经济/AccountShare.Percent` | 18 | AI 模型代码里读了这个名字 |
 | 推断 | `人格/BaseSelection.PreferredNotBaseTypes` | 17 | AI 模型代码里读了这个名字 |
 | 推断 | `人格/BaseSelection.SortOrder` | 17 | AI 模型代码里读了这个名字 |
-| 推断 | `启发条件/TimerHeuristic.CountFrom` | 16 | AI 模型代码里读了这个名字 |
+| 已对拍 | `启发条件/TimerHeuristic.CountFrom` | 16 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
 | 未做 | `战略状态/AIStrategicStateDefinition.CannotAttackTargetReaction` | 16 | AI 模型代码里没有这个名字 |
 | 已对拍 | `战略状态/AIStrategicStateDefinition.MaxRunningCopies` | 16 | AI 模型代码里读了这个名字；台上量过：checks/engine_aistate.py |
 | 未做 | `造兵/BuildEntry.Upgrade` | 16 | AI 模型代码里没有这个名字 |
@@ -904,7 +904,7 @@
 | 已对拍 | `微操/IgnoreTargets.IncludeThing` | 15 | AI 模型代码里读了这个名字；台上量过：checks/engine_aiteamfilter.py |
 | 推断 | `目标/AITargetingHeuristic.HighestPriorityEnemyPlayersOnly` | 15 | AI 模型代码里读了这个名字 |
 | 推断 | `目标/AITargetingHeuristic.MinDistanceFromEnemy` | 15 | AI 模型代码里读了这个名字 |
-| 推断 | `组队招人/TeamTemplate.Priority=LOW` | 15 | AI 模型代码里读了这个名字 |
+| 已对拍 | `组队招人/TeamTemplate.Priority=LOW` | 15 | docs/engine/aistate.md#两队抢兵和 MinPowerAdvantage（第 82 轮） |
 | 未做 | `造兵/BuildEntry.CountModifier` | 15 | AI 模型代码里没有这个名字 |
 | 不涉及 | `人格/AIPersonalityDefinition.PersonalityUIName` | 14 | 纯表现（语音、视频、画面） |
 | 推断 | `目标/AITargetingHeuristic.SortType=ThreatToWater` | 14 | AI 模型代码里读了这个名字 |
@@ -937,7 +937,7 @@
 | 推断 | `启发条件/TimeSinceLastExpansionHeuristic.Time` | 10 | AI 模型代码里读了这个名字 |
 | 已对拍 | `目标/AITargetingHeuristic.SearchRange` | 10 | AI 模型代码里读了这个名字；台上量过：docs/engine/aistate.md |
 | 推断 | `组队招人/TeamTemplate.AllowRecruitUnitsInCombat` | 9 | AI 模型代码里读了这个名字 |
-| 推断 | `组队招人/TeamTemplate.Priority=HIGH` | 9 | AI 模型代码里读了这个名字 |
+| 已对拍 | `组队招人/TeamTemplate.Priority=HIGH` | 9 | docs/engine/aistate.md#两队抢兵和 MinPowerAdvantage（第 82 轮） |
 | 不涉及 | `表现/StrategicDirectiveFeedback.Event` | 9 | 纯表现（语音、视频、画面） |
 | 不涉及 | `表现/StrategicDirectiveFeedback.FeedbackKey` | 9 | 纯表现（语音、视频、画面） |
 | 不涉及 | `表现/StrategicDirectiveFeedback.StrategicDirective` | 9 | 纯表现（语音、视频、画面） |
