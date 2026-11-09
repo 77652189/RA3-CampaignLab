@@ -52,6 +52,25 @@
 
 给关卡线：用这个条件的 AI 状态**数的是双方整支军队**（不是附近的），玩家在家里囤兵也会让 AI 不出门；玩家只有矿车等不能打的单位时，AI 一定判自己占优。模拟器 `simai.Brain.power_advantage` 四组都对上（`tests/test_simai.py::test_power_advantage_gates_the_state_as_on_the_bench`）。没测：`Above="false"`、Value 不是 1、算上防御建筑、多个敌人时看哪一个。
 
+## 队伍招谁（TeamTemplate 的筛选）
+
+引擎线 B 第 78 轮（2026-11-09）。探针 `checks/engine_aiteamfilter.py`（任务 `missions/aiteamfilter_bench.py`）：同上的图和 AI，家里 4 辆守护者 + 4 个维和步兵，一个常开状态派一队（MinUnits 1）打 750 外的玩家电厂，每个 build 只换队伍模板的筛选。看第 40 秒谁还在家。
+
+| build | 筛选 | 出门的（测） |
+| --- | --- | --- |
+| `aitfany` | `ObjectFilter Rule="ANY"` + `IncludeThing` 守护者 | 只有 4 辆守护者 |
+| `aitfnone` | `Rule="NONE"` + `IncludeThing` 守护者 | 只有 4 辆守护者（和 ANY 一样） |
+| `aitfall` | `Rule="ALL"` + `ExcludeThing` 守护者 | 只有 4 个维和 |
+| `aitfki` | 不写 ObjectFilter，`IncludeKindOf="INFANTRY"` | 只有 4 个维和 |
+| `aitfke` | `IncludeKindOf="CAN_ATTACK" ExcludeKindOf="INFANTRY"` | 只有 4 辆守护者 |
+| `aitfmax` | `MaxUnits="3"`，家里 8 辆守护者 | 3 辆，5 辆留家 |
+
+给关卡线（测）：
+- **点名要哪几种兵**：`Rule="ANY"` 或 `Rule="NONE"` 加一串 `IncludeThing`，都是"只要这几种"。原版 `CaptureLandHusks`（"派 1 个基础步兵去占残骸"）就是 NONE 加步兵名单。**点名不要哪几种**：`Rule="ALL"` 加 `ExcludeThing`。
+- 按种类：`IncludeKindOf` 只收带这个种类的，`ExcludeKindOf` 把带这个种类的排掉。写了几个 IncludeKindOf 时是"有一个就行"还是"都得有"，这次只写一个，没分出来。
+- `MaxUnits` 是一队的人数上限；同一个目标只派一队（`MaxTargets` 1），所以多出来的兵留在家里。
+- 模型原先把 NONE 当"不筛"，台上否了，已改（私有 `ai/teams.py`）；模拟器六组都对上（`tests/test_simai.py::test_team_filters_take_whom_the_bench_sent`）。
+
 ## 没测的
 
 - `EndIfStateTurnsOff` 到底在什么时候起作用：出门前、出门后关旗都不管用，程序里也没找到判据。队伍凑不齐 MinUnits、一直在家等人时关旗会怎样，没测。

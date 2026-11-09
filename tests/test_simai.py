@@ -311,6 +311,16 @@ def test_power_advantage_gates_the_state_as_on_the_bench(lib, build, n, home):
     assert rows[5]['坦克在家'] == n and rows[29]['坦克在家'] == home, [r['坦克在家'] for r in rows]
 
 
+# bench 2026-11-09 checks/engine_aiteamfilter.py a: (build, tanks home, infantry home) from s15 on
+@pytest.mark.parametrize('build,tanks,inf', [('aitfany', 0, 4), ('aitfnone', 0, 4), ('aitfall', 4, 0),
+                                             ('aitfki', 4, 0), ('aitfke', 0, 4), ('aitfmax', 5, 0)])
+def test_team_filters_take_whom_the_bench_sent(lib, build, tanks, inf):
+    """ObjectFilter ANY / NONE + IncludeThing Guardian: only the Guardians; ALL + ExcludeThing Guardian: only the
+    Peacekeepers; IncludeKindOf INFANTRY / ExcludeKindOf INFANTRY; MaxUnits 3 of 8 Guardians: 5 stay."""
+    _, rows = _switch_run(build, lib, until=41.0)
+    assert (rows[39]['坦克在家'], rows[39]['步兵在家']) == (tanks, inf), [(r['坦克在家'], r['步兵在家']) for r in rows]
+
+
 def test_path_to_target_is_asked_on_the_simulators_grid(lib):
     """PathToTargetHeuristic (work/re l4_states.md 3): the opening and the states ask the brain; the skirmish map is
     one piece of land, so infantry has a way and a ship finds no water spot (= no way). At 300 s the player's base
