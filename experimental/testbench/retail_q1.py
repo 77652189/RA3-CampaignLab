@@ -5,22 +5,19 @@ It checks two things at once: the bench's world <-> screen mapping on a retail m
 the squad must end where the world click said, not where a flat island mapping would put it) and one key time of the
 retail game (the walk's duration), which the simulator is to reproduce once it can play the map.
 
-  python -I -X utf8 experimental/testbench/retail_q1.py            -> work/testbench/retail_q/a01_q1.json (+ frames)
+  python -X utf8 experimental/testbench/retail_q1.py            -> work/testbench/retail_q/a01_q1.json (+ frames)
 
 The squad is found by colour (the team's blue on the lawn and road, inside ROI: the fence posts, the pavilion and the
 HUD are outside it); selected by a box over the start formation; the camera stays at the mission's start camera.
 """
 import json
 import os
-import sys
 import time
 
 import numpy as np
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, HERE)
-import calib  # noqa: E402
-import harness  # noqa: E402
+import calib  # this folder: first on the path when run as a script (guard G4: no sys.path edits)
+import harness
 
 OUT = os.path.join(calib.ROOT, 'work', 'testbench', 'retail_q')
 ROI = (230, 262, 1000, 700)               # screen box where only the squad is blue (start camera)

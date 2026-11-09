@@ -1,18 +1,19 @@
 """The bench on a retail campaign map without the game: the map is read from the game's MapsCampaign.big by name, its
 borders come from the map itself, and the camera fitted from landmarks on a frame of it (retail_cam/<map>.json) puts
 those landmarks where they were drawn (bench 2026-11-08, first Allied mission)."""
+import importlib.util
 import json
 import os
-import sys
 
 import numpy as np
 import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(ROOT, 'experimental', 'cnv'))
-sys.path.insert(1, os.path.join(ROOT, 'experimental', 'testbench'))
-import calib  # noqa: E402
-import harness  # noqa: E402
+# loaded by file (guard G4: no new sys.path edits); harness puts its own folder on the path
+_spec = importlib.util.spec_from_file_location('harness', os.path.join(ROOT, 'experimental', 'testbench', 'harness.py'))
+harness = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(harness)
+import calib  # noqa: E402  (on the path now)
 
 A01 = harness.RETAIL_DEFAULT
 

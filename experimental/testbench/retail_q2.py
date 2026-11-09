@@ -11,13 +11,10 @@ done marks); the frame ids and mission seconds go in the json, the pictures are 
 import argparse
 import json
 import os
-import sys
 import time
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, HERE)
-import calib  # noqa: E402
-import harness  # noqa: E402
+import calib  # this folder: first on the path when run as a script (guard G4: no sys.path edits)
+import harness
 
 OUT = os.path.join(calib.ROOT, 'work', 'testbench', 'retail_q')
 
