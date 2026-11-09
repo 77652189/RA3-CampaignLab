@@ -39,6 +39,17 @@ def test_states_are_legal_and_parts_are_all_there():
     assert all(isinstance(i['uses'], int) and i['uses'] >= 0 for i in xs)
 
 
+def test_the_summary_leads_with_the_benched_share_by_use():
+    """The main number is 按用量已对拍 (first column, every part, a share 0..100); today's values are not pinned."""
+    assert inventory.SUMMARY_COLUMNS[0] == inventory.MAIN == '按用量已对拍'
+    rows = inventory.summary(items())
+    assert [p for p, _ in rows] == list(inventory.PARTS)
+    for part, row in rows:
+        assert 0 <= row[inventory.MAIN] <= row['按用量已有（已对拍+推断）'] <= 100, part
+    header = next(x for x in inventory.render(items()).splitlines() if x.startswith('| 部分 |'))
+    assert header.split('|')[2].strip() == inventory.MAIN
+
+
 def test_every_retail_script_name_is_an_item():
     catalog = json.load(open(inventory.CATALOG, encoding='utf-8'))
     names = {i['name'].split(':')[0] for i in items() if i['part'] in (inventory.ACTION, inventory.CONDITION)}

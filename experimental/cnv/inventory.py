@@ -333,6 +333,30 @@ def order(items):
     return sorted(items, key=lambda i: (PARTS.index(i['part']), -i['uses'], -i.get('all', 0), i['name']))
 
 
+MAIN = '按用量已对拍'
+SUMMARY_COLUMNS = (MAIN, '项数', BENCHED, GUESSED, TODO, NA, '按用量已有（已对拍+推断）')
+
+
+def summary(items):
+    """[(part, {column: value})], the summary table's rows. The main number is MAIN: the share of the retail uses that
+    are 已对拍 (推断 does not count; 不涉及 is left out of the total)."""
+    by = collections.defaultdict(list)
+    for it in items:
+        by[it['part']].append(it)
+    rows = []
+    for part in PARTS:
+        xs = by.get(part, [])
+        if not xs:
+            continue
+        c = collections.Counter(i['state'] for i in xs)
+        rel = [i for i in xs if i['state'] != NA]
+        w = sum(i['uses'] for i in rel) or 1
+        pct = lambda states: 100 * sum(i['uses'] for i in rel if i['state'] in states) / w  # noqa: E731
+        rows.append((part, {MAIN: pct({BENCHED}), '项数': len(xs), BENCHED: c[BENCHED], GUESSED: c[GUESSED],
+                            TODO: c[TODO], NA: c[NA], '按用量已有（已对拍+推断）': pct({BENCHED, GUESSED})}))
+    return rows
+
+
 def render(items):
     by = collections.defaultdict(list)
     for it in order(items):
@@ -341,17 +365,13 @@ def render(items):
            '由 `experimental/cnv/inventory.py` 从原版数据生成，**别手改**；`tests/test_inventory.py` 在它过期时变红。'
            '状态与判定规则见脚本 docstring（ADR 0026）。用量：脚本 = 原版战役脚本里出现的次数；模块 = 原版战役地图里摆了的、'
            '用到它的物体种数（括号里是全部物体种数）；武器效果 = 用到它的原版武器数；'
-           'AI = 原版 AI 数据（SDK SkirmishAI，含战役关的 AI 状态）里写它的次数，判定规则见 `inventory_ai.py`。', '',
-           '| 部分 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |', '|---|---|---|---|---|---|---|']
-    for part in PARTS:
-        xs = by.get(part, [])
-        if not xs:
-            continue
-        c = collections.Counter(i['state'] for i in xs)
-        rel = [i for i in xs if i['state'] != NA]
-        w = sum(i['uses'] for i in rel) or 1
-        done = sum(i['uses'] for i in rel if i['state'] in (BENCHED, GUESSED))
-        out.append(f'| {part} | {len(xs)} | {c[BENCHED]} | {c[GUESSED]} | {c[TODO]} | {c[NA]} | {100 * done / w:.0f}% |')
+           'AI = 原版 AI 数据（SDK SkirmishAI，含战役关的 AI 状态）里写它的次数，判定规则见 `inventory_ai.py`。'
+           '**主数字是"按用量已对拍"**：已对拍项的用量占全部用量的比例，推断不算，不涉及不进分母；目标每部分 90%。', '',
+           '| 部分 | ' + ' | '.join(SUMMARY_COLUMNS) + ' |', '|---' * (len(SUMMARY_COLUMNS) + 1) + '|']
+    for part, row in summary(items):
+        cells = [f'**{row[c]:.0f}%**' if c == MAIN else f'{row[c]:.0f}%' if c.startswith('按用量') else str(row[c])
+                 for c in SUMMARY_COLUMNS]
+        out.append(f'| {part} | ' + ' | '.join(cells) + ' |')
     for part in PARTS:
         xs = by.get(part, [])
         if not xs:
