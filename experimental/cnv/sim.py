@@ -35,12 +35,15 @@ A script (剧本), one event a line (or ';' between them), times in seconds or m
                             barracks' (bench 2026-11-08 engine_production e: a script's press = the player's click)
   <t> 造 <单位> 在 <地点> [角度]  the player makes one (a unit id of the mission's, a cast part's template, a retail
                             template): an engineer's ice -- '40 造 CNV_IceWall 在 inside 1 1.57'
+  <t> 买 <协议>             the player buys a protocol (simtech.Book.buy: known, not held, not locked, its dependencies
+                            held, the points there) -- '400 买 PlayerTech_Allied_SatelliteSweep'
   自动打掉 <秒>             every enemy that has been that long within REACH (300) of something of the player's is
                             destroyed (the player fights back where the enemy comes to them)
   不打                      the fight model off (a check of the wiring alone)
   高地不挡                  the high-ground rule off: low ground sees high ground (the Generals way)
   <谁>: a cast part ('yuriko'), a group of them ('tank' = tank 1, tank 2 ...), an object's name, 名字含 <text>
-  (every object whose name holds it: '名字含 W1-' a plan's first wave), 敌人 在 <地点> (the enemy's there).
+  (every object whose name holds it: '名字含 W1-' a plan's first wave), 敌人 在 <地点> (the enemy's there), 队 <队名>
+  (a team's members: 'player/team' or the bare name -- a retail map's unnamed units, retail.py).
 """
 import argparse
 import collections.abc
@@ -151,6 +154,10 @@ LAG = 0.0                       # the readings' clock: mission seconds, as the b
 # by the Generals / Zero Hour source (docs/engine/script-semantics.md, the section given) unless marked 未对齐: those
 # the source cannot tell for RA3, for the bench to settle last
 ALIGN = {
+    'protocols': '未对齐: protocol points as the program keeps them (simtech.py: rank experience 1 a second, 360 a '
+                 'rank, the cap, the set-points rule; bench 11-08 engine_protocol pts / ailock); no experience from '
+                 'kills, no red alert multiplier; a computer player spends its points at once on a protocol of its '
+                 'faction, which one a guess (its personality\'s choice: engine line B)',
     'timer unset': 'TIMER_EXPIRED of a timer never set: false (源码 3)',
     'destroyed unborn': 'NAMED_DESTROYED / NAMED_NOT_DESTROYED of a named object never made: both false (源码 4.2)',
     'deleted': 'NAMED_DELETE: destroyed for NAMED_DESTROYED from the next frame, never "attacked" (源码 4.2)',
@@ -297,7 +304,7 @@ AUDIO_LEAD, AUDIO_GUESS, VIDEO_GUESS = 0.9, 2.5, 4.0
 SOUND_PLAYS = ('PLAY_SOUND_EFFECT', 'PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT')
 # the skirmish AI's script switches, kept per player for simai (work/re l4_aiswitches.md; docs/engine/aiswitches.md)
 AI_SWITCHES = ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', 'SKIRMISH_AI_USE_REPAIRS', 'SKIRMISH_AI_USE_REBUILD_SYSTEM')
-IGNORED = {'PLAYER_SET_MAX_PLAYER_POWER_POINTS', 'PLAYER_SET_PLAYER_POWER_POINTS', 'DISPLAY_COUNTER', 'HIDE_COUNTER',
+IGNORED = {'DISPLAY_COUNTER', 'HIDE_COUNTER',
            'CAMERA_LETTERBOX_BEGIN', 'CAMERA_LETTERBOX_END',
            'CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT', 'SET_COOP_AI_COMMAND_UI_ENABLED'}
 
@@ -475,6 +482,12 @@ class Body:
         self.hp = self.max_hp * float(pct) / 100.0
 
 
+def same_team(have, asked):
+    """A team as a script names it: 'player/team' or the bare team name (the game looks either up: work/re
+    l2_scripts1.md 1); a body's team is kept as 'player/team' where the map or the script gave the player."""
+    return have == asked or ('/' not in asked and have.split('/', 1)[-1] == asked)
+
+
 def inside(pts, x, y):
     """Point in polygon (even-odd)."""
     c, n = False, len(pts)
@@ -562,7 +575,7 @@ class Ground:
 
     def __init__(self, mapmod):
         import platmap
-        dims = platmap.CONTAINER
+        dims = getattr(mapmod, 'DIMS', platmap.CONTAINER)       # a retail map's own size (retail.Terrain)
         w, h, b = dims
         if hasattr(mapmod, 'LAYOUT'):
             e, _ = platmap.heights(mapmod.LAYOUT, w, h, b)
@@ -571,12 +584,13 @@ class Ground:
         else:
             e = mapmod.ground().e
             import newmap
-            walk = (e > newmap.WATERLINE + 10) & (platmap.slope_of(e) <= platmap.STEEP)
+            walk = (e > getattr(mapmod, 'WATERLINE', newmap.WATERLINE) + 10) & (platmap.slope_of(e) <= platmap.STEEP)
             if hasattr(mapmod, 'impassable'):                   # a probe's field-0 cells (maps/probe_block.py)
                 walk &= ~mapmod.impassable()
             bridge = np.zeros_like(walk)
         import newmap
-        water = e < newmap.WATERLINE - 5
+        waterline = getattr(mapmod, 'WATERLINE', newmap.WATERLINE)
+        water = e < waterline - 5
         d = int(GRID // platmap.CELL)
         hh, ww = h // d, w // d
         fold = lambda a: a[:hh * d, :ww * d].reshape(hh, d, ww, d)            # noqa: E731
@@ -586,7 +600,7 @@ class Ground:
         self.grids ={'ground': fold(walk).all(axis=(1, 3)), 'water': fold(water).all(axis=(1, 3))}
         # the shore's shallows (between the water's edge and 'dry'): platmap.apply blocks only steep ground, so an
         # amphibian goes ashore through them; left out they cut every slip (a5, 2026-11-04)
-        shallow = (e >= newmap.WATERLINE - 5) & (e <= newmap.WATERLINE + 10) & (platmap.slope_of(e) <= platmap.STEEP)
+        shallow = (e >= waterline - 5) & (e <= waterline + 10) & (platmap.slope_of(e) <= platmap.STEEP)
         # R7: an amphibian does not take a bridge -- its deck is up over the water, it swims under (bench 2026-11-07
         # engine_land: the A4 transport went straight at the quay, 89 frames to the shore area, where the simulator
         # had it drive out of the water onto the southern bridge's deck and round, 346)
@@ -741,7 +755,8 @@ class Sim:
     def __init__(self, mission, test=None, level='normal', script='', model=True):
         """model: run the scripts in the engine line's model where it is on this computer (False: the older loop)."""
         self.m = mission
-        self.mm = parts.merged(mission, test)
+        self.retail = getattr(mission, 'RETAIL', False)      # a retail campaign map (retail.py): its own scripts
+        self.mm = mission.merged(test) if self.retail else parts.merged(mission, test)
         self.test = test
         self.level = LEVELS[level]
         self.t = 0.0
@@ -779,10 +794,19 @@ class Sim:
         self.money = {}
         self.nodes = {}                     # ore node name -> {'free': frame it takes a miner from, 'gathered', 'at'}
         self.mined_to = None                # the last frame mine_due ran
-        self.relations = {}
+        self.relations = dict(getattr(mission, 'relations', {}))   # (a, b) -> Enemy / Neutral / Friend
         self.players = dict(mission.map.PLAYERS)
         self.human = self.players['p1']
         self.foe = self.players.get('s1')
+        import simtech
+        sides = getattr(mission, 'sides', {}) if self.retail else {}
+        self.books = {}                     # player -> simtech.Book: protocols, protocol points (a playable faction's)
+        for p in dict.fromkeys(self.players.values()):
+            f = simtech.faction_of(p, sides.get(p))
+            if f:
+                self.books[p] = simtech.Book(f, simunits.LIFE_FPS)
+        self.tech_to = 0                    # the last frame tech_due ran
+        self.tech_read = False              # a script has read the points or the protocols (pending: a rank to come)
         self.ground = Ground(mission.map)
         self.own = {u.id: u.xml for u in self.mm.units}
         self.bodies = {}                    # name -> Body (named ones), plus unnamed under '#k'
@@ -841,8 +865,8 @@ class Sim:
             # bit ignored; one list, the run's difficulty; this Sim is the engine's World (condition / action)
             mod, cls = got
             self.fps = mod.FPS
-            self.eng = cls(mod.from_cnv(parts.unnot(self.mm.scripts)), world=self, difficulty=self.level,
-                           honor_inverted=False)
+            lists = mission.script_lists(mod) if self.retail else mod.from_cnv(parts.unnot(self.mm.scripts))
+            self.eng = cls(lists, world=self, difficulty=self.level, honor_inverted=False)
             self.flags, self.counters, self.timers = self.eng.flags, Counters(self.eng), Timers(self, mod.FPS)
             if any(c and c[-1] == parts.NOT for s in self.mm.scripts for c in s.when):
                 self.used.add('inverted')
@@ -928,7 +952,31 @@ class Sim:
 
     # ---- orders: one unit's, and a team's (the same for each member: ctx.order gives teams only)
     def members(self, team):
-        return [b for b in self.living() if b.team == team]
+        return [b for b in self.living() if same_team(b.team, team)]
+
+    def team_active(self, team):
+        return any(same_team(t, team) for t in self.active)
+
+    def books_of(self, player):
+        """The protocol books a script's player names (the game's player mask: work/re l2_scripts1.md 1); a player
+        without one (civilian, neutral) or a name that is no player: none."""
+        names = list(self.books) if player == '<All Players>' else \
+            [self.human] if player in ('<All Human Players>', '<1st Human Player>') else [player]
+        return [self.books[n] for n in names if n in self.books]
+
+    def tech_due(self, frame):
+        """Rank experience frame by frame up to `frame` (simtech.Book.frame); the player's rank goes on the timeline
+        where the scripts deal in protocols."""
+        for f in range(self.tech_to + 1, frame + 1):
+            for p, book in self.books.items():
+                n = len(book.log)
+                book.frame(f)
+                if p != self.human:
+                    book.ai_buy(f)
+                if p == self.human and 'protocols' in self.used:
+                    for _, what in book.log[n:]:
+                        self.note('协议', f'玩家：{what}')
+        self.tech_to = max(self.tech_to, frame)
 
     def order_move(self, b, where, attacking):
         if b:
@@ -1641,10 +1689,17 @@ class Sim:
     def condition(self, eng, name, args):
         if name in RA3_ONLY:
             self.ra3_only.add(name)
-        return self.cond(name, list(args))
+        return self.cond(name, self.this_player(eng, args))
 
     def action(self, eng, name, args):
-        self.act(name, list(args), eng.script)
+        self.act(name, self.this_player(eng, args), eng.script)
+
+    @staticmethod
+    def this_player(eng, args):
+        """'<This Player>' as the game reads it: the player whose script list the script is in (the engine's side;
+        retail maps' lists are per player, ours have one unnamed list and never use it)."""
+        side = getattr(eng, '_side', '')
+        return [side if a == '<This Player>' and side else a for a in args]
 
     def update(self, eng):
         """Units move and fight in step(), once a DT tick."""
@@ -1688,6 +1743,14 @@ class Sim:
     def cond(self, name, a):
         if name == 'FLAG':
             return int(self.flags.get(a[0], 0)) == int(a[1])
+        if name == 'PLAYER_HAS_COMPARISON_POWER_POINTS':     # (player, comparison, n): the points to spend
+            self.used.add('protocols')
+            self.tech_read = True
+            return int(a[1]) in CMP and any(CMP[int(a[1])](b.points, int(a[2])) for b in self.books_of(a[0]))
+        if name == 'PLAYER_HAS_PLAYER_TECH':                 # (player, protocol): held (a rank's, bought, the default)
+            self.used.add('protocols')
+            self.tech_read = True
+            return any(b.has(str(a[1])) for b in self.books_of(a[0]))
         if name == 'TIMER_EXPIRED':
             if a[0] not in self.timers:
                 self.used.add('timer unset')
@@ -1936,7 +1999,7 @@ class Sim:
             self.active.add(a[1])                   # ... and the team has an instance from then on, the unit there or not (E3)
             if b and b.alive:
                 b.team = a[1]
-        elif name in TEAM_COMMANDS and a[0] not in self.active:
+        elif name in TEAM_COMMANDS and not self.team_active(a[0]):
             # the game looks the team up without making it: nobody joined it, so the order does nothing (E3)
             self.lost_orders.append((self.t, script.name, name, a[0]))
             self.note('无效命令', f'{name} {a[0]}：这个队还没有人加入，命令落空')
@@ -2063,6 +2126,15 @@ class Sim:
             r = a[2]
             self.relations[(a[0], a[1])] = r if isinstance(r, str) else \
                 {0: 'Enemy', 1: 'Neutral', 2: 'Friend'}[r[0]]
+        elif name in ('PLAYER_SET_MAX_PLAYER_POWER_POINTS', 'PLAYER_SET_PLAYER_POWER_POINTS', 'PLAYER_LOCK_PLAYER_TECH'):
+            self.used.add('protocols')                  # (player, n) / (player, protocol, on): simtech.Book
+            for book in self.books_of(a[0]):
+                if name == 'PLAYER_SET_MAX_PLAYER_POWER_POINTS':
+                    book.set_cap(a[1])
+                elif name == 'PLAYER_SET_PLAYER_POWER_POINTS':
+                    book.set_points(a[1])
+                elif not book.lock(str(a[1]), bool(int(a[2]))):
+                    self.gap(GAP_ACTION, name, f'{a[1]} 不是协议：游戏也不管')
         elif name in AI_SWITCHES:                       # (player, value): the skirmish AI's script switches; what
             self.ai_switches.setdefault(a[0], {})[name] = int(a[1])     # they do is simai's (engine line B)
         elif name in ('UNIT_AI_TRANSFER_ALL', 'SKIRMISH_AI_MAKE_BASE'):
@@ -2207,6 +2279,8 @@ class Sim:
         if who.startswith('名字含 '):
             part = who[4:].strip()
             return [b for b in self.living() if part in b.name]
+        if who.startswith('队 '):                    # a team's living members ('player/team' or the bare name)
+            return self.members(who[2:].strip())
         if who.startswith('敌人 在 '):
             p = self.point(who[5:].strip())
             sites = getattr(self.m.map, 'SITES', {})
@@ -2251,6 +2325,13 @@ class Sim:
             for b in self.pick(rest[0]):
                 b.health = float(rest[1])
                 b.last_hit, b.last_by = self.human, None
+        elif verb == '买':                          # the player buys a protocol (simtech.Book.buy: points, not locked)
+            book = self.books.get(self.human)
+            if book and book.buy(rest[0], self.frame_now()):
+                self.note('协议', f'玩家买了 {rest[0]}（剩 {book.points} 点）')
+                self.change()
+            else:
+                self.note('剧本', f'买不了 {rest[0]}' + (f'（{book.points} 点）' if book else '（玩家没有协议）'))
         elif verb == '打':
             for b in self.pick(rest[0]):
                 b.last_hit, b.last_by = self.human, None
@@ -2316,7 +2397,8 @@ class Sim:
             self.release()
             while self.events and self.events[0][0] <= self.t + 1e-9:
                 self.happen(self.events.pop(0))
-            eng.step()
+            self.tech_due(eng.frame + 1)        # before the frame's scripts (bench 11-08 engine_protocol rank: rank
+            eng.step()                          # 2 read by the scripts of frame 5400 = 360 s x 15)
             self.expire(eng.frame)
             self.build_due(eng.frame)
             self.blast_due(eng.frame)
@@ -2360,6 +2442,7 @@ class Sim:
         self.deposit_due(self.frame_now())
         self.mine_due(self.frame_now())
         self.produce_due(self.frame_now())
+        self.tech_due(self.frame_now())
         if self.ending:
             return
         self.aura_tick()
@@ -2751,9 +2834,11 @@ class Sim:
         self.known_at.append((self.t, round(float((self.known & inb).sum()) * GRID * GRID / 1e6, 2)))
 
     def pending(self):
-        """Something still to come: a timer running, a unit moving, a script event."""
+        """Something still to come: a timer running, a unit moving, a script event, a rank to come where a script
+        reads the points or the protocols."""
         return bool(self.events) or bool(self.anchored) or any(v > self.t for v in self.timers.values()) or \
-            bool(self.due) or any(b.path or b.building or b.life_end is not None for b in self.living())
+            bool(self.due) or any(b.path or b.building or b.life_end is not None for b in self.living()) or \
+            (self.tech_read and any(b.grows() for b in self.books.values()))
 
     def run(self, until=UNTIL):
         self.used |= {'engine model' if self.eng else 'frame rate', 'difficulty side'}
@@ -2928,8 +3013,8 @@ def parse_script(text):
             out.append((when(t), '造', what.strip(), where.strip(), angle))
         else:
             verb, _, who = rest.partition(' ')
-            if verb not in ('摧毁', '删除', '打', '占领'):
-                raise ValueError(f'剧本 {line!r}: 动作是 派 / 攻击 / 放 / 摧毁 / 删除 / 血量 / 打 / 占领 / 旗标 / 生产 / 造 之一')
+            if verb not in ('摧毁', '删除', '打', '占领', '买'):
+                raise ValueError(f'剧本 {line!r}: 动作是 派 / 攻击 / 放 / 摧毁 / 删除 / 血量 / 打 / 占领 / 旗标 / 生产 / 造 / 买 之一')
             out.append((when(t), verb, who.strip()))
     return out
 

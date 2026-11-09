@@ -995,3 +995,30 @@ def test_audio_a_dubbed_line_is_done_its_length_after_it_is_heard(tmp_path):
     assert not s.cond('HAS_FINISHED_AUDIO', ['CNV_Line'])
     s.t = start + 5.3
     assert s.cond('HAS_FINISHED_AUDIO', ['CNV_Line'])
+
+
+# ---- protocol points (experimental/cnv/simtech.py): bench 2026-11-08 `cnv_check engine_protocol <variant>`, readings
+# in checks/engine_protocol.py
+def _protocol(variant, until):
+    return {round(sec): vals for sec, vals in _sim_run('engine_protocol', variant, until).series}
+
+
+def test_protocol_set_points_follows_the_programs_rule():
+    """pts: 点数 1 -> 2 (cap 2) -> 2 (SET_POINTS 1: 2 + 1 passes the cap) -> 0 -> 5 (cap 0 does not limit) -> 3 (SET_POINTS
+    0 under cap 3 with 5 held) -> 7; Player_1 holds rank 1's and the Allied default (3), Soviet_1 rank 1's and the Soviet
+    default (5); Soviet_1's starting point spent at once (0)."""
+    by = _protocol('pts', 16.0)
+    assert [by[s][0] for s in (3, 5, 7, 9, 11, 13)] == [2, 2, 0, 5, 3, 7], by
+    assert all(v[1:] == [3, 0, 5] for s, v in by.items() if s >= 1), by
+
+
+def test_protocol_a_computer_player_spends_unless_locked():
+    """ailock: everything locked for Soviet_1 keeps its point (1), Soviet_2 unlocked spends it (0)."""
+    assert all(v == [1, 0] for s, v in _protocol('ailock', 20.0).items() if s >= 1)
+
+
+def test_protocol_rank_two_at_frame_5400():
+    """rank: Player_1's rank experience reaches 360 in frame 5400 (360 s at 1 a second): 2 points, rank 2 for Player_1 and
+    Soviet_2 (cap 2) not Soviet_1 (cap 0): 二级 5; Soviet_2's points spent at once."""
+    last = _protocol('rank', 380.0)[380]
+    assert last == [2, 0, 5, 5400], last

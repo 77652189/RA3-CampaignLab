@@ -55,6 +55,15 @@ BENCHED_TESTS = {
         'tests/test_simbench.py::test_video_a_radar_clip_is_done_after_its_length_full_screen_never',
     (ACTION, 'TEAM_TRANSFER_TO_PLAYER'): 'tests/test_simbench.py::test_scripts1_a_team_handed_over_drops_its_move',
     (ACTION, 'UNIT_IDLE_FOR_SECONDS'): 'tests/test_simbench.py::test_scripts1_idle_for_seconds_drops_the_move',
+    # protocol points (simtech.py, checks/engine_protocol.py, bench 11-08)
+    (ACTION, 'PLAYER_SET_MAX_PLAYER_POWER_POINTS'):
+        'tests/test_simbench.py::test_protocol_set_points_follows_the_programs_rule',
+    (ACTION, 'PLAYER_SET_PLAYER_POWER_POINTS'):
+        'tests/test_simbench.py::test_protocol_set_points_follows_the_programs_rule',
+    (ACTION, 'PLAYER_LOCK_PLAYER_TECH'): 'tests/test_simbench.py::test_protocol_a_computer_player_spends_unless_locked',
+    (CONDITION, 'PLAYER_HAS_COMPARISON_POWER_POINTS'):
+        'tests/test_simbench.py::test_protocol_set_points_follows_the_programs_rule',
+    (CONDITION, 'PLAYER_HAS_PLAYER_TECH'): 'tests/test_simbench.py::test_protocol_rank_two_at_frame_5400',
 }
 
 # (part, name) -> (state, why): where the name rule above is wrong (a module read under another name ...)
@@ -98,8 +107,6 @@ NOTES = {
     (ACTION, 'UNIT_AI_TRANSFER'): (GUESSED, '程序读到：人类玩家的单位无效、不清命令；交给 AI 后的行为归引擎 B，'
                                             '碰到记 Sim.unmodeled（台上没量）'),
     (ACTION, 'TEAM_AI_TRANSFER'): (GUESSED, '同 UNIT_AI_TRANSFER，对队里每个成员（台上没量）'),
-    (ACTION, 'PLAYER_LOCK_PLAYER_TECH'): (TODO, '程序读到：把协议（PlayerTech）加进 / 移出玩家的锁表；模拟器没有协议，'
-                                                '有协议模型前补它没有效果（work/re/l2_scripts1.md 5）'),
 }
 
 # presentation only: script actions that move the camera, play sound / film, draw on screen (conditions are never NA:

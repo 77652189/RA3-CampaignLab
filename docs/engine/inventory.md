@@ -4,8 +4,8 @@
 
 | 部分 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|
-| 脚本动作 | 427 | 46 | 52 | 284 | 45 | 73% |
-| 脚本条件 | 89 | 19 | 5 | 65 | 0 | 93% |
+| 脚本动作 | 427 | 49 | 52 | 281 | 45 | 78% |
+| 脚本条件 | 89 | 21 | 5 | 63 | 0 | 93% |
 | 物体模块 | 184 | 9 | 13 | 148 | 14 | 26% |
 | 武器效果 | 25 | 2 | 2 | 21 | 0 | 52% |
 | AI | 415 | 27 | 142 | 212 | 34 | 76% |
@@ -18,7 +18,7 @@
 | 已对拍 | `SET_MILLISECOND_TIMER` | 4153 | 引擎模型核心；台上量过：checks/engine_acquire.py |
 | 已对拍 | `SET_FLAG` | 4105 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aimicro.py |
 | 推断 | `ALLOW_DISALLOW_ONE_BUILDING` | 3466 | Sim.act / Sim.cond 有分支 |
-| 未做 | `PLAYER_LOCK_PLAYER_TECH` | 1887 | 程序读到：把协议（PlayerTech）加进 / 移出玩家的锁表；模拟器没有协议，有协议模型前补它没有效果（work/re/l2_scripts1.md 5） |
+| 已对拍 | `PLAYER_LOCK_PLAYER_TECH` | 1887 | tests/test_simbench.py::test_protocol_a_computer_player_spends_unless_locked |
 | 推断 | `DISABLE_SCRIPT` | 1099 | 引擎模型核心 |
 | 已对拍 | `MOVE_NAMED_UNIT_TO` | 1000 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aidefense.py |
 | 推断 | `LINK_MISSION_OBJECTIVE_TO_OBJECT` | 950 | Sim.act / Sim.cond 有分支 |
@@ -49,7 +49,7 @@
 | 已对拍 | `NAMED_TRANSFER_OWNERSHIP_PLAYER` | 231 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_invuln.py |
 | 已对拍 | `INCREMENT_COUNTER` | 229 | 引擎模型核心；台上量过：checks/engine_aimicro.py |
 | 未做 | `UNIT_CHANGE_OBJECT_STATUS:SHROUD_REVEAL_TO_ALL` | 218 | 状态位 SHROUD_REVEAL_TO_ALL 只记下来 |
-| 未做 | `PLAYER_SET_MAX_PLAYER_POWER_POINTS` | 206 | sim.IGNORED 明确丢掉 |
+| 已对拍 | `PLAYER_SET_MAX_PLAYER_POWER_POINTS` | 206 | tests/test_simbench.py::test_protocol_set_points_follows_the_programs_rule |
 | 已对拍 | `NAMED_KILL` | 204 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_attack.py |
 | 推断 | `TEAM_HUNT` | 203 | 没交给 AI 的玩家（含玩家自己）：不动，台上量过（engine_scripts1 hunt 60 s）；AI 玩家的 HuntTactic 不模拟（引擎 B），碰到记 Sim.unmodeled |
 | 未做 | `CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT` | 196 | sim.IGNORED 明确丢掉 |
@@ -103,7 +103,7 @@
 | 不涉及 | `RESET_CAMERA` | 100 | 纯表现（名字规则） |
 | 不涉及 | `CAMERA_LETTERBOX_BEGIN_WITH_RADAR` | 98 | 纯表现（名字规则） |
 | 推断 | `SET_RANDOM_COUNTER` | 97 | 引擎模型核心 |
-| 未做 | `PLAYER_SET_PLAYER_POWER_POINTS` | 95 | sim.IGNORED 明确丢掉 |
+| 已对拍 | `PLAYER_SET_PLAYER_POWER_POINTS` | 95 | tests/test_simbench.py::test_protocol_set_points_follows_the_programs_rule |
 | 未做 | `SET_REF_TO_NEREST_TEAM_OF_TYPE_OWNED_BY_PLAYER` | 94 | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `MAP_REVEAL_ALL_PERM` | 89 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_acquire.py |
 | 推断 | `MAP_SWITCH_BORDER` | 87 | Sim.act / Sim.cond 有分支 |
@@ -286,7 +286,7 @@
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleAlliedEngineerHeal` | 8 | 只记进时间线，没有效果 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_UnPackJapanBaseDefenseEgg` | 8 | 只记进时间线，没有效果 |
 | 推断 | `RESTART_TIMER` | 8 | 引擎模型核心 |
-| 已对拍 | `SET_COUNTER_TO_COUNTER` | 8 | 引擎模型核心；台上量过：checks/engine_script.py |
+| 已对拍 | `SET_COUNTER_TO_COUNTER` | 8 | 引擎模型核心；台上量过：checks/engine_protocol.py |
 | 未做 | `SET_PLAYER_KILLS_OF_TYPE_TO_COUNTER` | 8 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `CAMERA_STOP_FOLLOW` | 7 | 纯表现（名字规则） |
 | 未做 | `FIRE_SPECIAL_POWER_ON_UNIT` | 7 | Sim.act / Sim.cond 不认识 |
@@ -485,7 +485,7 @@
 | 未做 | `DISTANCE_BETWEEN_TEAM` | 32 | Sim.act / Sim.cond 不认识 |
 | 未做 | `PLAYER_HAS_KILLED_TYPE_UNITS` | 29 | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA` | 28 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_spawn.py |
-| 未做 | `PLAYER_HAS_PLAYER_TECH` | 26 | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `PLAYER_HAS_PLAYER_TECH` | 26 | tests/test_simbench.py::test_protocol_rank_two_at_frame_5400 |
 | 未做 | `DISTANCE_BETWEEN_OBJ` | 25 | Sim.act / Sim.cond 不认识 |
 | 未做 | `CURRENT_PLATFORM` | 24 | Sim.act / Sim.cond 不认识 |
 | 未做 | `PLAYER_HAS_KILLED_NAMED_UNIT` | 24 | Sim.act / Sim.cond 不认识 |
@@ -499,7 +499,7 @@
 | 未做 | `TEAM_HAS_FEWER_THAN_X_UNITS_WITH_KINDOF` | 12 | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_ATTACKED_BY_OBJECTTYPE` | 10 | Sim.act / Sim.cond 不认识 |
 | 未做 | `OBJECT_IS_DISGUISED_AS_TYPE` | 10 | Sim.act / Sim.cond 不认识 |
-| 未做 | `PLAYER_HAS_COMPARISON_POWER_POINTS` | 10 | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `PLAYER_HAS_COMPARISON_POWER_POINTS` | 10 | tests/test_simbench.py::test_protocol_set_points_follows_the_programs_rule |
 | 未做 | `TEAM_ATTACKED_BY_OBJECTTYPE` | 10 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_COMPARE_NUM_MEMBERS` | 10 | Sim.act / Sim.cond 不认识 |
 | 未做 | `PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA_WITH_MODELCONDITION` | 9 | Sim.act / Sim.cond 不认识 |
