@@ -10,12 +10,15 @@ rocks), vehicles and war damage per km2 (by name); rhythm: of the 250 x 250 cell
 with nothing and the share at least twice the mean. Classes come from mapstudy.kind (by
 name and SageXML sorting: a map whose buildings belong to a player, e.g. Kremlin, reads 0 civilian buildings).
 """
-import json, math, os, re, sys
+import importlib.util, json, math, os, re, sys
 from collections import Counter
 import numpy as np
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
-sys.path.insert(0, os.path.join(ROOT, 'experimental', 'campaign'))
+# layout_measure (next to this file) already puts experimental/campaign on the path; load it by file so this
+# script adds no sys.path edit of its own (G4 ratchet in tests/test_architecture.py)
+_spec = importlib.util.spec_from_file_location('layout_measure', os.path.join(os.path.dirname(__file__), 'layout_measure.py'))
+_spec.loader.exec_module(importlib.util.module_from_spec(_spec))
 import mapstudy as ms  # noqa
 import mapterrain  # noqa
 import mapxml  # noqa

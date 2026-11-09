@@ -1,23 +1,16 @@
 # 交接
 
 总控会话的交接。各线有自己的交接：
-- 关卡 [docs/story/handoff-phase3.md](docs/story/handoff-phase3.md)
-- 外壳 [docs/shell/handoff.md](docs/shell/handoff.md)
-- 音乐 [docs/music/handoff.md](docs/music/handoff.md)
-- 单位 [docs/units/handoff.md](docs/units/handoff.md)
-- 策划从 [docs/design/README.md](docs/design/README.md) 进
-- 引擎线的交接和反编译参考在本机 `work/re/handoff.md`、`work/re/ra3-script-reference.md`。仓库在 GitHub 上是公开的，这些不进仓库。
+- 各线的交接文档和现状见 [docs/plan.md](docs/plan.md)「当前状态」的线表（关卡 `docs/story/handoff-phase4.md`、策划 `docs/story/planning-handoff.md`、模拟器界面 `docs/simui/handoff.md` 等）。
+- 引擎线的交接和反编译参考在本机 `work/re/handoff.md`、`work/re/handoff-b.md`、`work/re/ra3-script-reference.md`。仓库在 GitHub 上是公开的，这些不进仓库。
 
 ## 当前目标
 
-**尽快把 27 关做成草稿，进入玩法验证**（用户 2026-11-04："尽可能把制作一关的摩擦降到最小，尽可能一次解决一类问题，尽快推进到玩法验证阶段"）。
+**引擎优先：原版功能总清单达标，再统一实装盟军 9 关**（[ADR 0026](docs/adr/0026-engine-first-retail-inventory.md)；状态在 [docs/plan.md](docs/plan.md)）。仍有效的用户原话：
 - 美术不提前、不返工。
 - 第一个发布版本（用户 2026-11-04）："第一个发布版本至少盟军的9关做完"。
 - git 历史里那份反编译试探报告（23c4071）："可以暂时不删"。
-- 引擎线优先（用户 2026-11-04）："接下来你先自主完成引擎线的开发，如果额度充足，就把地形编辑器也做出来"；"可以，地形编辑器升级成能画新地图"。
 - 引擎整体移植（用户 2026-11-05）："碰到什么查什么可能不太可行，我们能整体重构成python代码吗？"→"可以按这个顺序做"：游戏逻辑层按层移植成 Python 模型，每层开工前向用户报对拍结果和额度（[ADR 0019](docs/adr/0019-port-game-logic-by-layer.md)）。
-- 草稿关的完成标准和摩擦怎么量，见 [docs/plan.md](docs/plan.md) 的"先把 27 关做成草稿"一行。
-- 架构整改（[ADR 0016](docs/adr/0016-one-outlet-per-class.md)）已经做到第 3 阶段，状态在 plan.md 的"架构整改"一行。
 
 ## 下一步
 

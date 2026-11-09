@@ -1,626 +1,71 @@
-# 关卡线·ADR 0016 第 4 阶段交接（2026-11-04，第十一个会话，24 万上下文时写）
+# 关卡线交接（ADR 0016 第 4 阶段起；2026-11-08 夜瘦身重写，上一个会话是第四十六个）
 
-总控令（local_79408d22）：第 4 阶段做生成器 K4 资源（I6、I9）、K3 施法点（I3）、K7 挡路（I8）。每类四样：生成器或出口、对全部关卡生效的产物规则（放 `contract.py`）、守卫（`tests/test_architecture.py`，含变异检验）、`docs/issues.md` 标"修了待验"。每类做完：`fingerprint.py record p4_k<N>` 对上一次比；`pytest -q tests`；`cnv_preview`。不许改 plan.md、ADR、HANDOFF.md，删文件先问，05:45 收到收尾通知就停（06:00 关机）。
+## 现状（一句话）
 
-另有三件新规矩（总控 11-04）还**没做**：
-1. 引擎行为先查 `docs/engine/ra3-script-reference.md`（引擎线在写）；查不到就写进汇报交给引擎线，别在测试台试错。
-2. **K1 补"功能句不能晚"**：功能句不光不丢，还要在事件发生后一个上限内播出（上限写成常量），"号角响了！"曾比号角晚 14 秒。要加产物规则并在 sim 里断言；可以让闲话让路或让功能句插队。（`cnv/ctx.py` 的 `Talk`、`contract.said_lines_kept`、`tests/test_talk_queue.py`。）
-3. **策划案和代码同源**：策划稿里写的停车点 x=2980、地图里是 2830。要查策划稿里还有哪些手写坐标 / 数值，改成引用地图公开的地点名，或者加检查让两边对不上就报错。
+按 [ADR 0026](../adr/0026-engine-first-retail-inventory.md)（引擎优先）关卡线**暂停推新关**：A4 对照局收尾，然后做"原版战役关验收题"和"自动玩家框架"，题卡和数值区间只做纸面打磨。9 关都已有草稿（各关状态见下），但"可试玩"标准（ADR 0023 第 3 条）没有一关全部满足，所以不交用户试玩。
 
-## 第十二个会话（11-04 凌晨，引擎线 E1～E4、E6 做完，K3、K7 还没动）
+## 当前目标与下一步（总控 11-08 晚定，按顺序）
 
-总控令（local_79408d22）：按 E6 → E1 → E3 → E2/E4（只改 sim）→ K3 → K7 做。依据 `work/re/ra3-script-reference.md` 第 1 节（本机文件，不进仓库）。
+1. **A4 对照局收尾**（归因 2 已做完，见下"A4 对照局"）：剩的差异归战斗模型，不是关卡规则；`a4` 的 `play` 不进 `EXPECT`。把已有结论提交即可，不再继续归因关卡侧。
+2. **原版战役关验收题**（第一步已查）：测试台跑 mod 战役任务**不写录像**（`Last Replay.RA3Replay` 修改时间仍是 2025-09-25，5 个手工录像是 10-15～11-05 留档）；原版战役关本身没直接试过（要手动玩一局原版战役再看 `Documents/Red Alert 3/Replays/` 有没有新文件，约几分钟）。默认走"测试台脚本驱动的检查"。**第二步已查（Sonnet 子 Agent 试盟军第一关，我核对了帧存档 `work/testbench/runs/RA3_mcp_1108_165118`）：部分能。** 不用放进 mod：`bench_start(mod="")` 起无 mod 原版游戏（`experimental/testbench/harness.py` `Session.start`），按 `nav.json` 走战役菜单约 60 秒进盟军第一关。能：`bench_status` 读任务秒、暂停保持、`bench_wait` 推进、`bench_menu` 读任务目标、`bench_look`、`bench_box` / `bench_click(world=false, right=true)` 屏幕像素框选和右键移动（部队确实动了）。不能：`bench_counters` 返回 `? ?`（原版图没有 DISPLAY_COUNTER）、`bench_caption` 无信号、**世界坐标标定无效**（`bench_where(1000,1000)` 给出 (1414,-3587)；原版图没有 `cnv_map.json`，`bench_click` / `bench_ability` 的 world 模式和 `bench_camera` 不能信）。只试了第一关；`bench_start` 的 `chapter` 参数只对 CampShell 有效，选原版第 N 关的办法没定。**下一步路径（推荐序）**：① 先按"屏幕像素 + 任务秒 + `bench_menu` 目标状态"做第一道验收题（比结局和关键时间点；派兵靠看图定位，脚本化弱）；② 给原版图补世界坐标标定（用 `map_study` 已有的边界 / 地形生成 `cnv_map.json`，让 `calib.Ground` 读原版图；测试台线的活，经总控约接口）；③ 要读内部状态才做带计数脚本的 mod 副本（会改地图，最后手段）。再从 `docs/engine/inventory.md` 挑用量大、"未做 / 推断"的项、覆盖面广的几关；录像比对工具归引擎 A（`experimental/replay/`），需约接口（经总控）。
+3. **自动玩家框架 `experimental/autoplay/`**（目录还不存在；ADR 0026 第 4 条）：只看玩家看得见的信息；命令走剧本动词；几种性格（平推、按兵种克制、照题卡巧解）带随机扰动；每局可导出剧本上测试台复跑；先在 A4 和 a3 上出胜率与时长分布；结论在引擎清单达标前只作参考。可与引擎线并行搭。
+4. 纸面：题卡"几句话"和各关数值区间（暂定 8～15 分钟，各关题卡可另定）的打磨。
 
-- **E6 台词通道（推翻了 K1 的一个假设）**：屏幕上有两条字幕。上方军事字幕框是单行的，新句顶掉旧句，每句到自己的秒数就没；下方对白面板累积（只有带字幕的配音句进去，约 5.4 秒后整条清）。出口现在是（`cnv/ctx.py` 的 `Talk`、`Line`）：
-  - **功能句**＝军事字幕，事件那一帧发（脚本 `Now k`，条件只有"要显示"旗、没有别的），配音（如果有）进功能队首；配音事件**不带**字幕。两条功能句同一时刻：后一条等前一条显示满 `FUNC_HOLD`=2 秒再顶掉它，三条同时刚好卡在 `FUNC_LATE`=4 秒内，第四条会被 sim 报晚（`Sim.late_captions()`）。
-  - **配音的闲话**（和过场里所有配音句）＝只放配音、带自己的字幕走对白面板，**不发军事字幕**。`plan.py` 登记 `m.subtitles[事件]=字串`、`voice.subtitled`，`experimental/voice/pack.py` 的 `xml(subtitles=<集合>)` 只给这些事件写 `SubtitleStringName`。同一个录音既当功能句又当闲话会报 PlanError。
-  - **没录音的闲话**＝军事字幕，排队，等"字幕框空着"（旗 `Box`）再放，占框 4 秒（`CAPTION_TURN`），不会顶掉还在读的功能句。
-  - 去掉了 `STRIP_CLEAR`（6.5 秒下限）：配音句占地板＝录音长度＋`SPEECH_GAP`，纯字幕句＝它自己的阅读时长；过场里一句接一句，同样按各自的时长（`plan.py scene_steps`）。
-  - sim：军事字幕单槽（`box_log`、`box_at(t)`），对白面板累积（`panel_log`、`panel_at(t)`，`ctx.PANEL_CLEAR`=5.4），`late_captions()`（过场的秒数不算晚）。
-  - 产物规则 `contract.said_once_and_on_time`（并进 `contract()`）：同一脚本既放带字幕的录音又发字幕＝错；字幕文字和某个带字幕录音的文字相同＝错；`Now k` 只许等自己的旗、过场结束和上一条功能句；功能队的 `Say k` 里不许有字幕；录音包带字幕的事件集合必须等于任务登记的。守卫：`tests/test_architecture.py::test_g3b_*`（所有关的产物规则、变异检验、sim 里没有晚的功能字幕）。
-  - A4 sim：配音闲话进面板（47 个带字幕事件，8 组面板），军事字幕框 9 句，丢 3 句闲话（以前 8 句），"号角响了！"在 104.5 秒（号角那一刻）出，不再晚 14 秒。
-  - **没在游戏里验过**：①配音事件带字幕后，对白面板里中文的显示和 20 秒保留（引擎线说 HoldTime=20s，和量到的 5.4 秒对不上）；②过场里配音句只有面板字幕、没有上方字幕，小窗头像和面板是否打架；③用户 11-03 嫌的"字幕叠"现在回来了，是面板的原版观感，要不要换由用户看了定。**注意**：之前的代码（da56a2e 起）配音事件本来就不带字幕，所以"显示两遍"只在更早的构建里有，这次是反过来让闲话重新走面板。
-  - 指纹 `p4_e6` 对 `p4_k4`：a4、shell、shell_intl 三个目标各变 7 个文件（`camp_cnv01_probe.map`、`static.12/static_l.12/static_m.12` 的 bin 和 manifest）加 47 个带内容哈希的 cdata（47 个配音事件的字幕属性变了），音频视频纹理模型没变。
-- **E1**：`devices/carrier.py` 的自由号落点改成"玩家在区里没有单位"取反（`SKIRMISH_PLAYER_HAS_UNITS_IN_AREA p1 区 NOT`）；`空虚` 参数保留但不再起作用（引擎数不出"玩家的单位少于几个"）。**语义变了**：以前"武装单位少于 3"，现在"一个单位也没有"（建筑也算），A7 的落点 `base edge / base ore / front` 靠近玩家基地，可能很少选到前两个——要策划线和测试台看一眼 `a7 jumps` 的选点是否还合设计。产物规则 `contract.kind_counts_in_area`：正式脚本不许用"按种类数区内单位"（检查里的 `Test ...` 脚本可用，已注明是"所有人"）。
-- **E3**：`contract.team_orders_land`：每条整队命令前，同脚本里要有 `UNIT_SET_TEAM`/`CREATE…ON_TEAM` 入同一个队，或这个队是地图自带的队、或地图上放了成员；`TEAM_STOP` 只要求关里别的脚本给这个队下过入队。sim：`active` 队集合，对没人加入的队下整队命令记 `lost_orders`、不执行，日志里一条 `无效命令`。
-- **E2**：sim 的"打 X"改成记最后一个打它的对象（`Body.last_by`），条件＝那个对象还在名字缓存里且主人是这个玩家；剧本里的"打/摧毁"仍按玩家算（没有对象）。还没上测试台核对技能伤害的来源对象。**E4**：`UNIT_HEALTH` 先向下取整再比。测试：`tests/test_engine_rules.py`。
+## A4 对照局（11-08 结论，详见 `docs/story/sim-vs-bench-a4.md`、`docs/story/sim-vs-bench-plays.md`）
 
-## 总控 11-04 补的：K4 提交后先做引擎线查出的 4 处对不上，再做 K3、K7（详情 `work/re/ra3-script-reference.md` 第 1 节）；额度可能 04:10 前用完，所以每做完一小步就提交，并更新本文
+- 模拟器完整播开场过场（s0～79.9，锁操作），测试台跳过它：**测试台时刻 = 模拟器时刻 − 79 秒**；`playcheck.SCENE['a4']` 已按此对齐。
+- 测试台 `cnv_check a4 win` PASS（重跑一次的那次；第一次 FAIL 是阶段过场里 Esc 暂停失败，老毛病，失败先重跑）。
+- 测试台 a4 `play` 比模拟器早输：连跑 4 次，1 号车首次掉血在 s126～151，模拟器要到 ~s221（对齐后）。原因读到的是第二声号角的 3 个坦克杀手 + 3 个武士在路东 x≈1850 与护卫交火，其中一个坦克杀手打到车，模拟器里同一批敌兵被护卫更早杀光。**差在"最后一个坦克杀手死得早几秒"（击杀速度、索敌优先级、护卫站位），归引擎 B（AI）/ 引擎 A（武器），不是冰、号角、护卫调度。**
+- 没查：坦克杀手射程是否真是 175、是否优先打车；s249～259 车的死因；测试台单局间有差异（首伤 s130 vs s151），对拍应看区间。
+- 探针做法：临时把 `playcheck.BENCH_ENDS['a4']` 改成 `[118]`，`cnv_check a4 play build=false keep=true` 停在 s117，`bench_camera 1650 2500` + `bench_watch seconds=14 every=2 world=true x0=1250 x1=2050 y0=2300 y1=2750`；用完 `git checkout experimental/cnv/playcheck.py`。
 
-- **E1**：`devices/carrier.py:118`（A7 自由号机关）用"按种类数区内单位"，引擎会把所有玩家的都算进去（测试台 probe count 已核）。改成"玩家在区里没有单位"取反，或按模板逐个比；`contract.py` 加一条产物规则：正式脚本（非 `Test`）不许用"按种类数区内单位"这类条件。
-- **E2**：条件"打 X"（`plan.py:382`、`sim.py:604`）引擎只看最后一个打它的单位，那个单位一死或被删，条件变假。`sim.py` 改成记录"最后一个打它的单位"；策划稿别指望靠自爆单位或技能伤害触发"打 X"。还没上测试台核对。
-- **E3**：只有一个成员、还没激活的队，下整队命令什么都不会发生，只有入队命令会先激活它。所以 K6 的"下令前先给每个名字发 UNIT_SET_TEAM"必须保留。`contract` 的 G6 要加一条：每条整队命令前面必须有入队，或者该队在地图上本来就放了成员；`ctx.order('stop')` 前面要保证已下过别的命令；`sim.py` 里对没激活的队下命令也应无效。
-- **E4**：血量百分比向下取整，`sim.py` 判断血量先取整再比。
+## A4 当前状态（ADR 0023 验收三条）
 
-## K4 资源：做完，等验证结果提交（I6、I9 已标修了待验）
+- 放冰明显长于不放冰：成立（模拟器：放冰 5:11 完成丢 1 辆，不放冰 3:12 输）。巧解能赢：成立，全程 `experimental/cnv/plays/a4.txt` 模拟器 14:48 赢，丢 1 辆（落在 8～15 分钟）。"自然打法明显更难但不必输"：放宽后基本成立（不放冰输在 3:00～4:00，一种接力站位活到底）。
+- 容错窄的真因是**兵只认车、路过军队不理，车尾后面的街出来的兵从后面扑车**，不是兵数 / 车血 / 冰寿命。已改规则（`docs/story/plans/a4.md`）：`雪祭.收`（过场前停号角并删场上兵）、新键 `止: k`、`每口一波`、会场每街一波 2 武士 + 1 坦克杀手；绕路表 25/35/25/45/35/45 秒（落在两声号角中间）。
+- 测试台已验这批规则编出的脚本无报错（`cnv_check a4 win` PASS）。
+- **没做**：`plays/*.txt` 里 `造` 换 `生产`（2342aca；a4 北营 14 行 `造`，换后重跑 a4 看时间落在 8～15 分钟）；最后一程有冰版 / `hard` 难度；电视塔奖励目标；a3 为什么 1:25 赢的归因（剧本绕开时停区，还是规则太易，题卡设计约 16 分钟；B 线 a24c6c0 已把时停区补进模拟器）；按难度分绕路表（`25/25/20` 写法）。
 
-- **原版量出来的关系**（`work/retailref` 缓存，40 张图）：矿场朝向正前方 180 处是它采的矿（171 座里 138 座正好 (180,0)，朝向都是 45+k·90 度）；成对时第二块在第一块侧面约 150；矿单个 153 处、成对 75 处、三个以上只有 10 处；油井 96% 离任何建造厂 ≥ 400（第 5 百分位 497，中位 1687）；基地 1000 以内有一组矿。
-- **出口**：新文件 `experimental/cnv/resources.py`（只依赖 `model`）：`Field(name, x, y, facing, twin, base, owner, build)`、`sites`（发布 `<name> refinery` 矿场点，带 `Site.facing`）、`objects`（出矿和油井）、`bases`。`model.Site` 加了 `facing` 和 `cast` 两个字段（`cast` 给 K3 用，还没用上）。`Mission.put`：把矿厂放在有朝向的矿场点上时，矿厂自动朝着矿。
-- **迁移**：九张图里的 aso、baikonur、festival、niagara、panama、sapporo、siberia 七张有矿，全迁到 `FIELDS` / `DERRICKS`（himeji、island 没矿）。迁移脚本是一次性的，不进仓库。节日图（festival）的北高原油井挪到了 (1500,3900)（原来在敌营里，会触发新规则）；A4 的北高原油井挪到西岭 (1120,3860)，南坡脚的 (2120,1660) 没动。A4 敌方矿厂原来按 north base 偏移摆，现在写 `在: north refinery`（plans/a4.md 和 missions/a4_before.md 两处）。
-- **产物规则**（`contract.py`，在 `contract()` 里每次构建都跑）：`ore_faces_refinery`（每座矿厂/矿场点正前方 180±40 有矿，矿厂没朝向也报）、`ore_in_groups`（一块矿必须是某矿场点生成的；300 内最多 2 块）、`oil_off_the_camps`（油井离敌方基地和敌方物件 ≥ 400）、`base_has_ore`（基地 1000 内有矿）、`map_design`（`platmap.lint` + `platprops.lint` + `ore_lint`，按地图模块缓存；`build.py --preview` 也改成调它，同一份）。87 个构建产物规则零问题。
-- **守卫**：`tests/test_architecture.py::test_g12_ore_and_oil_come_from_relations`（任何地图文件手写 `'OreNode'`、`'OilDerrick'` 或 `'<x> refinery': Site(` 就失败，白名单 `G12_LEFT=()` 固定为空；六个变异：手摆矿、三块矿、敌营里的油井、矿厂背对矿、矿厂离矿太远走 map_design、矿厂没朝向）。
-- **验证**：见下面的提交信息；指纹 p4_k4 对 p3_k6 是 Sonnet 子 Agent 跑的，结果在汇报里。**没做**：`cnv_preview` 看图（A4 `--preview` 的 LINT 是 ok）、独立验收。
-- **要告诉策划线**：`docs/story/plans/a4.md` 里"北高原上有矿和油井，拆干净了就是你的"这句通报现在不准（油井不在北高原了）；电视塔还在（I9 说"电视塔删掉"，是策划线的决定，没动）。
+## 其它关的全程脚本与缺口（`experimental/cnv/plays/<关>.txt`，命令 `python -I -X utf8 experimental/cnv/simshow.py <关> --script experimental/cnv/plays/<关>.txt`）
 
-## K3 施法点（I3）：做完（第十三个会话，11-04 04:30～05:00）
+- a1 6:54 赢、a8 4:24 赢、a3 1:25 赢、a6 12:56 赢、a7 6:27 赢、a9 3:42 赢（不可信）、j7 2:01 赢（模拟器数值会随引擎线变，以重跑为准；引擎 A 44b9bc5 后 j7 7:00 输、a7 / a8 的"赢"不再成立）。`playcheck.EXPECT` 只放两边一致过的，现在只有 a3。
+- 对照局：a3 对上；a1 / j7 走路阶段对上，最后一仗对不上（模拟器过乐观）；a6、a9 的测试台 `play` 没跑；a7、a8 的 `play` 检查没注册（等模拟器稳）。
+- 覆盖清单：`python -I -X utf8 experimental/cnv/simcoverage.py`，最近一次 293 项全已登记；`Sim.unmodeled` / `Sim.gap` 由引擎 A 线加。关卡线后续：a7 剧本把"派 engineer 去 station"换成 `占领 engineer 进 station` 并更新 simcoverage 登记；A 线 `fire_spot` 提交后隔墙 `攻击` 结果可能变，要重跑 `test_sim -k wiring`。
+- a6 脆弱：撤出段是惊险的仗，内圈段命令时间按塔倒的时间估，参数变了要重调。
+- 剧本动词：`派`、`造`（造出来就在，没有造价和建造时间）、`攻击 <谁> 打 <目标>`、`占领 <谁> 进 <建筑>`、`放 <谁> <技能> 在 <地点>`、时间可写 `旗标+秒`。
 
-- **后巷口放不下的原因**（量出来的）：`lane foot` 原在 (1200, 2540)，正好是后巷坡道的起点（坡从 y=2540 开始升）。以点为中心的 104 见方起伏 17、120 见方起伏 20；另外五个点（inside 1/2/3、north mouth）周围是平地（起伏 0）。测试台 11-03：五个放得出，只有这一个放不出。**所以放置规则里"平地"这一条是真的：不能放在斜坡起点。** 量出的东西不能解释到"多平才行"（`lane foot` 在 40 见方内起伏 7，没超过建筑的 8 也放不出），所以施法圈取整圈（2×半径见方）起伏 ≤ 8，比建筑规则严。
-- **东街口**（`east mouth`）：街（3500～3620）宽 120，施法圈如果取 60 会压到运河岸（起伏 13），所以圈取 52（= 32+20，不另加余量），3575 刚好放得下，位置没动。测试台 `placem` 在 x=3565 时三个口子（北坡口、三号广场、东街口）全 PASS（11-04 04:51，`work/testbench/runs/CampA4Placem_mcp_1104_045116`）；最终位置 3575 比测的偏东 10，没再测。**x 不能再往西挪 5 以上**：`tests/test_graybox.py::test_old_a4_can_be_pushed_through_every_stage` 会因为旧 A4 走查在"布防"阶段多撞上一批敌人而失败（量过：偏 5 就败，偏 2.5 过）。
-- **后巷口 V1：已解决**（第十六个会话 11-04 重跑）。原先 FAIL 不是关卡的问题：测试台在高台边上把工兵点偏了 26 像素（查清过程见 `docs/engine/terrain.md` 第 4 节），引擎线 4fe6cb0 按地形修正了世界点击；修正后 `a4 place` V1/V2/V3 全 PASS（`work/testbench/runs/CampA4Place_mcp_1104_152808`）。上面"信息框挡着""落点在坡的投影内"这些猜测都不成立，不用再试。
-- **做了什么**：①`platmap.CAST_CLEAR=52`（= 技能的 `ForbiddenObjectRange` 32 + 冰核 `SEED_SIZE` 20）、`platmap.cast_lint`：每个 `Site.cast>0` 的点，圆内全可走、整圈 ≤ FLAT、圆内没有地图物件（墙段按矩形量），并进 `platmap.lint`（所以 `contract.map_design` 每次构建都跑）；②`platprops.clearance` 把施法圈 +20 算进保持空旷的圈；③`Mission.waypoint(..., cast=True)` 登记到 `Mission.spells`，`devices/horn.py` 的冰标记都传 `cast=True`；④产物规则 `contract.cast_points_clear`：登记的点必须是 cast 点、标记就在点上、任务自己的物件不进圈；⑤`maps/sapporo.py`：`lane foot` 挪到 (1200, 2470)（坡脚往南 70，平地），inside 1/2/3、north mouth、east mouth 标 `cast=CAST_CLEAR`；⑥守卫 `tests/test_architecture.py::test_g13_a_cast_point_is_level_open_ground`（含 6 个变异：标在非施法点、物件压进圈、旧位置在坡上、圆压到水、墙进圈、干净点不报；`CAST_CLEAR == 技能禁物范围 + 冰核` 这条数字守住；设备里的冰标记不传 cast 就失败）。节日图 J4 的冰是地图自带的、不是玩家放的，没有施法点。
-- **后巷出兵点跟着南移了 70**（`出: lane foot` 偏移 [0,160]，现在出在 y=2630，仍在坡上）；冰雕偏移不变。策划线复核时看一眼。
-- 检查"一律走玩家点击"：已由 `contract.observes`（G11）保证，只观测的检查才能当验收；`place`/`placem` 用传送把工兵放到点边上，再由测试台点技能按钮和落点。
+## 各关现状（草稿标准：能打通、地图看得懂、新单位机关能用、K 规则全过、题卡写清好玩假设）
 
-## 第十四个会话（11-04）：E7 做完（总控令 ADR 0017 后改顺序：E7 → 等引擎线查后巷 V1 → K7 等外壳线的地图页）
+设计侧总表见 `docs/design/draft-inventory.md`（A7/A8 行已过时）。有草稿：A1 金门、A2 胡佛坝、A3 格林尼治、A4 札幌、A5 巴拿马、A6 巨石阵、A7 尼亚加拉、A8 海岛（占位图）、A9 布鲁塞尔（S9、J9 共用此图）。**A5 水位升降引擎里没有对应动作**，草稿用按时出现 / 消失的实体代替，向引擎线问的三件事（改水面 / 地形高度办法；物体按时出现且步兵能走上去；船当梯子）总控一直没回，仍未知。
 
-- **配乐**：任何 `音乐 <提示词>` 都会把战况音乐挂起且不自己恢复（引擎线第 5 轮测过）。`plan.Compiler.resume_music()` 在编译末尾，给"战况音乐开了之后的段（`Phase n` 开场脚本）和条件里带 `段 X` 旗的规则"里的每个非收尾 cue 后面紧跟再发一次 `PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM`（cue 在前、开在后，同一动作列表：和 `music_dyn` 里测过能响的顺序一样）。A4 现在：`Phase 4`（布防）、`Phase 5`（最后一程）各补一次；`Phase 3` 本来就是 cue 后开；`Rule 5`（伏击，只等号角、不挂段）在开之前，不补。判定函数 `contract.unresumed_cues` 编译器和产物规则共用。**没在游戏里听过**布防、最后一程里战况音乐是否真的接得上（要录音：`musicdyncue` 一类的构建加一个"开之后再发 cue + 开"的对照）。
-- **胜负 cue 删了**：`plan.py` 的 `胜利`、`失败` 不再自己放 `S_EndMissionWin/Lose`，库脚本 `Lib_End_Mission` 设旗标时自己放（E7-7）。`失败` 的字幕从停 10 秒改成 `ENDING_LIBRARY_AT['Mission Lost']`（3 秒，库脚本 3 秒后 `DEFEAT()`）。手写关 a8、j4 的结局字幕同样改成引用这个常量（赢 5 秒、输 3 秒）。**没测**：①删掉我们那一发后游戏里胜负音乐是否照样响（库脚本发的是同一个事件名，理论上一样）；②旗标设下后 `HIDE_UI` 会不会把字幕框一起收掉（会的话 3 秒也看不到）。
-- **产物规则**（并进 `contract()`，每次构建都查）：`music_resumes`（战况音乐开了之后的 cue 后面没再开＝错；结局脚本自己放结束音乐＝错）、`ending_line_fits`（设 `Mission Won/Lost` 的脚本里的字幕：停留不超过库脚本的 5/3 秒，字数按每秒 9 个汉字 / 17 个英文字母读得完）。守卫 `tests/test_architecture.py::test_ge7_...`（全部 92 个构建过；三个变异：A4 拿掉最后一次再开、结局自己放音乐、10 秒字幕；`plan.py` 里不得再有 `self.cue('胜利')` / `self.cue('失败')`）。测试 `tests/test_plans.py` 三条：结局不放 cue、cue 后补开（含段旗规则、不重复）、结局字幕。
-- **`技能` 不用改**：第 5 轮实测脚本按按钮不看冷却（冷却只拦玩家点），所以 A4 `derrick` 等"发了就放"的写法是对的；反过来脚本连发拦不住，想要冷却得自己计时。其余 E7 条目（CREATE 朝向恒 0、AI 单玩家、建造中不数）核对过，我们的用法没有冲突。
-- **验证**：`pytest -q tests` 428 passed 1 skipped；指纹 `p4_e7` 对 `p4_k3`：a4、shell、shell_intl 各只变 `camp_cnv01_probe.map` 一个文件（脚本里多两次再开、少两个结局 cue、失败字幕 3 秒），字符串、配音、模型没变。没做：游戏里听、`cnv_check` 整关走查（改的只是脚本动作，sim 不模拟音乐）。
+## 模拟器在其中的位置（ADR 0022～0026 约束，勿改）
 
-## 第十五个会话（11-04）：平地检查按游戏规则、A7 当摩擦探针
+- 对齐优先、修改同步（用户 2026-11-08 原话）："最重要的一点是模拟器和游戏需要对齐，这是最优先事项，否则模拟器会成为新的bug来源"；"不能只在模拟器修好，模拟器必须完全和游戏行为一致，修改要同步"。关卡问题只改游戏与模拟器共用的源头，不许出现"只在模拟器里好了"。
+- 用户 11-08 关于引擎：（"引擎线给关卡线服务是依赖倒置的设计，我们应该先确保引擎线有实现原版各个功能的能力，然后再去做关卡，不然就得反复回头重做"）。
+- 模拟器结论要有三个前提才可信：规则有对拍、覆盖可查、对照局复核（差 ≥15% 停下归因）。试玩放游戏里（ADR 0025），攒一批再交。
+- 文件所有权：`sim.py` / `simunits.py` / `simcoverage.py` 归引擎 A；`simproxy.py` / `ra3model` 归 B；关卡线只提供关卡侧数据、剧本和对照局。**不要带进提交别的线没提交的改动**（现工作区有 `docs/engine/inventory.md`、`experimental/cnv/inventory.py`、`sim.py`、`tests/test_simbench.py` 等）。
 
-- **平地检查**：`platmap.level_enough(e, x, y, side)` = `terrain_rules.flat_enough`（高差 3 个世界单位 = 我们的 4.8）。`Site.build` 和 `Site.cast` 的 lint 现在用它（报的数换成世界单位）；`platmap.FLAT = 8` 只留给地图自己摆的物件（矿、科技建筑、桥端）。现有所有地图的 build/cast 点高差都是 0，所以**构建一点没变**（只是 lint 规则，没跑指纹）。测试 `tests/test_terrain_rules.py::test_site_lint_holds_build_and_cast_squares_to_the_game_rule`（6 ours 的起伏过旧规则、不过新规则）。`horn.py` 注释、`issues.md` I3 已改：V1 的原因写成"工兵选不中"，V1 过之前 I3 不标完成。K7 没动。
-- **探针选了 A7，不选 A5**：A5 要水位升降（panama 只有一级闸，类 ⑥），平台缺的更多；A7 的自由号设备、尼亚加拉图、东岸 AI 都现成。**用了 1 个会话。**
-- **做了什么（按题卡改 A7 的第 3 段）**：`devices/carrier.py` 加 `迫降: <地点>`、`迫降血量`（默认 10）、事件 `迫降`/`落地`，以及"不跳回上次的落点"（计数器 `Jump_Last`，选点脚本多一条不等于）；`plans/a7.md` 第 3 段"它要飞走"换成"它困住了"（去掉飞走倒计时和航线；断电后它原地不动，打到一成血锁住、朝 `base edge` 迫降，`胜利: [自由号.落地, 进入 base edge]`）；`checks/a7.py` 的 `power`（不再飞走）、`win`（开局 1% 血，迫降，基地边有我方兵）改了。sim：断电后把它打到 5%、派兵去基地边，1:35 赢（`sim.py a7 --script ...`，实际命令在会话里，约 70 秒是它飞到基地边）；`plan_show` 接口检查 ok；`pytest` 相关文件过（见下）。**没在测试台跑过**（`power`/`win`/`pick` 要重跑）。
-- **哪些步骤还得改平台代码（摩擦清单）**：
-  1. "挑最空的一段跳"：引擎的"区域里有某类单位"对所有玩家数（E1），数不出"玩家的兵少于几个"，所以只能"按顺序挑第一个空的"。要按段比多少得先有"只数玩家的"的计数办法（或逐单位类型计）。
-  2. 闸刀推回去：电站只有"毁/占"两个不可逆状态，没有"拉闸/推回"开关。要加一类"占着闸房的一方说了算"的开关机关。
-  3. 一成血后"朝全场最空的地方滑"：现在固定落到 `base edge`；要选最空点同样卡在第 1 条。
-  4. 登舰不分工程师：现在是"迫降后我方任意单位在落点"。要"工程师进舰"得有进入单位的条件。
-  5. 保底援军（工程师援军、防空援军）、北岸哨所翻脸的补救：策划案里还没写，词表里有 `保底`/`给`，没试。
-  6. sim 不认 `objectInitialHealth`，所以 `win` 检查只能上测试台；sim 里要靠 `血量 carrier 5` 的脚本事件。`plan_sim` 的 MCP 每次回 7000 多字符的"待对齐"清单，浪费上下文；以后用命令行 `sim.py` 再 grep。
-  7. 题卡"好玩假设"A7 没有（策划线的盘点里就缺）；叛军轰炸机"越来越稀"等"断电"段的戏没做。
-- **提交前 pytest**：全量跑过一次（改 A7 之前）434 passed 1 failed；失败的 `test_g4_sys_path_ratchet`（130 个文件改 sys.path，天花板 129）**在 HEAD 上就是红的**，不是这轮造成的（`git grep` HEAD 就是 130），多半是引擎线 88ce082 新增的文件，由总控或引擎线定是抬高天花板还是去掉一个。改完 A7 之后又跑了 test_architecture、test_plans、test_sim、test_terrain_rules、test_maps、test_check_model，除上面这条外全过。
+## 仍有效的规矩与坑
 
-### 第十五个会话收尾（11-04，上下文 22.7 万）：下一步
+- 引擎行为先查 `docs/engine/` 下各篇（脚本参考原在本机 `work/re/ra3-script-reference.md`）；查不到写进汇报交引擎线，别在测试台试错。
+- 字幕：游戏里军事字幕与配音字幕进同一累积框；功能句靠 `ctx.py` 的 `Talk`、`FUNC_HOLD`、`FUNC_LATE`、产物规则 `contract.said_once_and_on_time`；展示层 K1 / K5 检查在 `experimental/cnv/simshow.py`。没在游戏里验过的：对白面板里中文显示与保留时间、过场里只有面板字幕时小窗头像是否打架。
+- 策划案与代码同源（用户要求）：策划稿里手写坐标 / 数值要改成引用地图公开地点名或加检查（曾有停车点 x=2980 与地图 2830 对不上）；还没系统查过其它策划稿。
+- 过场画面是梯形（`model.LETTERBOX_BAND`、`in_letterbox`），不是矩形；`plans/a4.md` 里"约 820×345"是旧数，下次动该文件时改成"梯形，远边 1125 宽、近边 733、带高约 500"。
+- `stance` 类命令（停火姿态）在测试台试过没用，兵照样开火（`docs/engine/terrain.md`）；时间 0 的镜头移动会被游戏重置，要延后（`plan.opening_camera`）。
+- 房子行（`platmap.house_row`）挡不挡得住步兵没单独在测试台验；其它图（brussels、greenwich、hoover、siberia、niagara）仍有大片垫高、同类地形问题，G15 守卫只管声明了 `Block` 的图（现 4 张）。
+- `a4 win` 测试台失败先重跑一次（阶段过场里 Esc 暂停失败会被当"任务结束"）；`bench_watch` 的段尾别落在阶段过场里（阶段起止时间漂 ±15 秒，留余量）；手动 `bench_wait` 进过场后游戏不再暂停，要 `bench_stop`。
+- 装 mod / 测试台前单独检查游戏是否在运行（`RA3_1.13.game`），在运行就停下问；Steam 重启可解"menus stuck at main menu"。
+- 全量测试写 `pytest -q tests`（不带目录会扫进 `work/downloads/blender`）；全量约 26 分钟，输出写 `work/logs/`；本机 8 核，并行跑 `a4waves` 超过 8 个会很慢。
+- Bash 钩子会拦 heredoc / `sed -i` 里带反斜杠的写文件，改文件用 Edit / Write；Git Bash 里 `pgrep` 看不到 Windows 进程，用日志首行判断后台任务是否结束。
+- 已知未结的 smash 谜：鬼王"每帧重下攻击令 + 目标要绕路"时不开火，机制没弄清（`horn.py` 每面墙只下一次令的写法保留）；G16 守卫是否恢复由 `contract.py` 主人定，见 `docs/story/sim-vs-bench-a4.md`。
 
-- **A4 地图页提议 1 已做**（86a5171）：`harbour refinery` 挪到 (2801, 1814)、朝向 315°；lint ok、相关测试过；没上测试台。
-- **I3 / V1**：引擎线 9086bc0 查清：关卡没问题，是测试台在高台边上点偏了。等引擎线改好测试台工具，再重跑 `a4 place`（V1→V2→V3）；V1 过了就把 `docs/issues.md` I3 标完成（并把 `docs/engine/terrain.md` 第 4 节"后巷口 V1"和 K3 一节里"没查清"的话改掉）。
-- **A7（摩擦探针）做到哪了**：编出来、`plan_show` 接口检查 ok、sim 能赢（见上一节）。**下一步**：测试台重跑 `cnv_check a7 power`、`win`、`pick`（`jumps` 也跑一遍，选点脚本多了"不等于上次"）；`win` 只能上测试台（sim 不认开局血量）。测试台共享，工具会自己排队。过了再往下补：保底援军、断电段的戏；上一节摩擦清单 1～4 条是平台缺的，不在这里补。
-- **K7**：仍等外壳线的地形编辑器，在地图页上和用户定；现在别排。
-- **没提交的别线改动**：`docs/engine/terrain.md`、`experimental/mappage/`、`tests/test_mappage_terrain.py` 不是我的。`test_g4_sys_path_ratchet` 在 HEAD 就红（130 > 129），要总控或引擎线定。
-- **提醒**：`plan_sim` 的 MCP 每次回 7000 多字符，改用 `python -I -X utf8 experimental/cnv/sim.py a7 --script "..." > work/logs/x.log` 再 grep；改文件用 Edit（Bash 钩子拦带反斜杠的内联写文件）。
+## 指针（只给位置，不抄正文）
 
-## 第十六个会话（11-04）：I3 收尾、A7 测试台全过、保底援军
+- 总方向：`docs/adr/0022-simulator-before-levels.md`、`0023-simulator-as-daily-verifier.md`、`0024-playable-simulator.md`、`0025-playtest-in-game-replays-check-sim.md`、`0026-engine-first-retail-inventory.md`；归类修法 `0015`；一类一个出口 `0016`；分层移植 `0019`。
+- 引擎清单：`docs/engine/inventory.md`（脚本生成，勿手改）。
+- A4：`docs/story/plans/a4.md`（规则）、`experimental/cnv/plays/a4.txt`（全程剧本）、`experimental/cnv/checks/a4.py`、`experimental/cnv/playcheck.py`、`experimental/cnv/simbench.py`、`docs/story/sim-vs-bench-a4.md`、`docs/story/sim-vs-bench-plays.md`、`docs/story/map-diagnosis-a4.md`（地图设计感诊断）。
+- 设计：`docs/design/principles.md`（P36 地形）、`docs/design/draft-inventory.md`、`docs/story/map-language.md`、`docs/story/graybox-cards.md`。
+- 缺陷台账：`docs/issues.md`（I19 A4 不操作约 60 秒战败仍等用户，不动）。
+- 本机临时工具（`work/` 不进 git，可能已变）：`work/re/scripts/a4plays.py`、`a4rules.py`、`a4climb.py`、`a4probe.py`、`a4pos.py`、`a4kills.py`、`a4waves.py`、`simall.py`；日志 `work/logs/`、测试台 run `work/testbench/runs/`。
 
-- **I3 / V1 收尾**：引擎线 4fe6cb0 修了测试台后，我重跑 `a4 place`：V1/V2/V3 全 PASS（`work/testbench/runs/CampA4Place_mcp_1104_152808`）。`docs/issues.md` I3 的话改成"V1 原先过不了是测试台点偏，已修好；测试台验证完成，只差独立验收者在 CampShell 上验"（状态仍写`修了待验`：`验过`要独立验收者）。`docs/engine/terrain.md` 第 4 节引擎线已经改过，K3 一节的"V1 还没放出来"改成"已解决"。
-- **A7 测试台**（`cnv_check a7 …`）：`power` PASS、`pick` PASS、`jumps` PASS、`win` PASS（改了检查，见下）、新增 `relief` PASS。
-  - `win` 原先 FAIL 有两个检查自己的问题，不是机关坏：①`LAND_BY=60` 比飞行时间短（货舰 s66 才进基地边的检测区，s72 左右胜利），改成 110；②**货舰迫降飞近时会开火，把基地边那辆测试坦克打掉了**（读数 1→0 在 s63），"进入 base edge"就不成立；检查改成放 3 辆（剩 2 辆，胜利）。`win` 现在带两个诊断读数（货舰进 150 区、我方坦克在基地边），counters 只有 4 行（`counters.MAX_LINES`），所以它只剩 `base edge` 一个地点。**策划线要知道**：迫降段货舰会打基地边的兵，"登舰"得有扛得住的人，目前题卡没写。
-  - **保底**（`docs/story/plans/a7.md` 规则）：用现成的 `兵少于` + `给` 写了两条，都没动平台代码：工程师全死了，第 2 段 + 1:00 在 `start` 送 2 个；第 3 段 + 0:30，标枪兵和多功能步兵车少于 3，在 `start` 送 2 辆多功能步兵车。`relief` 检查：开场杀光工程师和哨所步兵，测试台上 s55 冒出 2 个（步兵数 0→2），通报也出了。防空那条只编译过、没在测试台跑。
-- **摩擦清单补充**（接上一节 1～7）：8. 按**模板**数区域里的单位，看不到脚本 `给` 出来的零售单位（`PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA` 一直是 0，按兵种 `INFANTRY` 数就看得到），`relief` 因此按兵种数；以后"检查要数给出来的单位"一律先用兵种。9. 货舰第一次跃迁到达时步兵数会多出来（s38 +1，s65 +4，是它自己带的兵，不是我们的），数兵种的检查要避开。10. `兵少于` 够用做保底，**第 5 条（保底援军）不再是平台缺口**，只剩北岸哨所翻脸的补救没写。
-- **没做**：断电段的戏（叛军轰炸机越来越稀）和题卡"好玩假设"仍是策划线的活，没排；A7 以外还没动。
-- **验证**：A7 五个检查 + `a4 place` 都是测试台跑的；`pytest -q tests`见提交信息。
-
-## 第十七个会话（11-04）：A7 草稿收尾、"不可通行"位审计、摩擦按类修
-
-总控令：A7 按草稿标准收尾；检查地图生成器写"不可通行"位有没有漏；余力挑下一关报缺口。
-- **A7 草稿标准**：能打通（测试台 power/pick/jumps/win/relief 全 PASS，上一节）；地图看得懂（`cnv_preview a7` LINT ok，范围偏离只有隘口/墙段/空地块，是 niagara 图本来的样子）；新机关能用；`plan_show a7` 接口检查 ok；K 规则在 `contract()` 里，全量 pytest 过（见提交信息）；**题卡的好玩假设补上了**（`docs/design/cards/all.md` A7 一节，含成立/不成立的读数）。顺手改了 a7 策划案和题卡里过时的话：自由号落点是"玩家一个单位也没有的第一处"（E1 以后），不是"最空"；去掉了不起作用的 `空虚: 3`。
-- **不可通行位审计（总控第 2 条）**：写这个位的只有 `platmap.apply`（所有平台地图）和 `newmap.paint_terrain`（island），都按"干地坡度 > STEEP"置位。把 aso/baikonur/festival/himeji/island/niagara/panama/sapporo/siberia 九张图真的编进容器图再读回第 0 个位图、和 `terrain_rules.impassable_bits` 比：**缺位 0、多位 0**（`probe_ground` 是故意缺/多的对照，不算）。所以没有"陡坡没标位"的漏，**没改生成器**。唯一的缺口是没有守卫：以前测试只比纯函数，没读回写出来的图。已加 `tests/test_maps.py::test_every_platform_map_is_written_with_the_impassable_bit_the_rule_gives`（编图读回，约 50 秒，没游戏就跳过）和它的变异检验 `test_field0_check_names_a_cliff_without_its_bit`。后面谁改了写位的代码或者在 `apply` 之后再动高度，这条会红。注意：陡但在水面下的格子不置位（交给水域），这是对的。
-- **摩擦按类修**：①"按模板数看不到脚本给出来的单位"（摩擦 8）：**没修，原因没查清**。我试着写成产物规则（脚本不许按模板数本关脚本给同一玩家创建的模板），全量 pytest 马上抓到两处现成检查违反：`a4_before harbour`（数的是地图摆的坦克，别处给过同模板）和 `a7 revenge`（`Test Gate Guardians` 按模板数脚本刷出的敌方守护者，**测试台 2026-10-26 pincer 读到 5，是看得到的**）。所以"按模板数一律看不到脚本创建的单位"不成立，规则会误伤，已整个撤掉。relief 那次读数不动的真正原因还不知道（疑点：`给` 出的单位和被数的模板名是否一致、给的是玩家阵营还是别的队、有没有走和 CREATE_NAMED 同一条路）。**列给引擎线**：用 `relief` 检查换成按模板数，打印被数的模板和 `给` 的模板，对一对。在原因查清前，检查里数给出来的单位继续按兵种（`relief` 已是）。②"货舰落地时开火"：不是平台缺口，是关卡事实——迫降段货舰会打基地边的兵，登舰得有扛得住的人；已写进 A7 题卡现状栏，检查放 3 辆坦克。要不要让落地货舰停火是策划决定，列给总控。
-- **下一关候选（只列缺口，没动手）**：见汇报。
-
-## 第十八个会话（11-04）：A8 纸面 + 最小可编（总控令：下一关做 A8，落地货舰开火记进试玩清单不改）
-
-- **做了什么**：①`docs/story/plans/a8.md` 重写（去掉"击落"）：自由号归玩家，三座平台（原版电厂 + 每座 2 座浪涌炮塔 + 2 个标枪兵），12 分钟预热倒计时，三段、护航机一股；`plan_show a8` 接口检查 ok，`build.py a8 --show` contract ok。②**通用设备 `节律`**（`devices/rhythm.py`，类 ⑦）：一批单位按节拍在两种状态间切换，每组自己的相位；状态 = 单位自己的两个升级（`on`/`off`），设备给一个、拿掉另一个（`NAMED_RECEIVE_UPGRADE`/`REMOVE_UPGRADE`）。设备不认识状态是什么：S2 冰甲、A9 球、S8 喷口、A3 时停区只要各自的单位公开 `on/off` 两个升级（升级里装 INVULNERABLE / DAMAGE_MULT / 区域效果的属性修改器）就能用，策划案写 `{类型: 节律, 单位: <名册名>, 周期, 开, 组: [{角色, 相位}]}`。事件 `开 <角色>`/`关 <角色>`/`开始`，动作 `停`/`继续`。③单位 `units/platform.py` `tide_gun`：原版 SovietBaseDefenseGround（哨戒炮，单武器）去掉依赖，加两个 AttributeModifierUpgrade（RANGE x2 / x0.6，原版属性修改器里有 RANGE 类型：Unit_Heroic、Garrisoned 用过）。④名册加 `浪涌炮塔`、`自由号空天航母`（玩家的，复用 `units/liberty.py`，45 秒冷却，甲板造守护者）。⑤`island.TEAMS` 加了敌方队 `s1`（和 niagara 一样，是容器图自带的队，值没变，只是登记成"地图公开"）。⑥旧手写粗模改名：`missions/a8_rough.py`、`checks/a8_rough.py`，构建名 `a8_rough` / `a8_rough_control`（模组名 CampA8R / CampA8RC），`tests/test_cnv_parts.py` 跟着改；`a8` 现在是计划编的。⑦检查 `a8 beat`（`checks/a8.py`）：三组炮按 25/60 秒、相隔 20 秒轮流"浪高"，读脚本旗，模拟器版 PASS（`simchecks.py` 登记，因预热倒计时 12 分钟，推演到头是输，读数在这之前）。⑧sim 认识了 `NAMED_RECEIVE/REMOVE_UPGRADE`（只记在单位上，不模拟效果）。测试 `tests/test_rhythm.py`。
-- **没做、要测试台答的（拆成清单）**：
-  1. **升级撤销后修正还在不在**（`AttributeModifierUpgrade` 的修正会不会随 `NAMED_REMOVE_UPGRADE` 去掉）；设备现在是"拿掉另一个 + 给这个"，若修正不撤销，两个倍率会叠（x2 再 x0.6），要改成同 Category 互相替换或改机制。**写 `a8 swell` 检查**：一个标靶单位站在平台炮 150～300 之间，读炮在"高"和"低"时有没有开火（计数标靶掉血）。
-  2. **RANGE 改不改索敌距离**（只改武器射程、炮塔不主动打更远的目标就白改）。
-  3. 12 分钟预热、三座平台血量、标枪兵 `守:` 的写法、护航机 2 架够不够；周期 60/开 25/倍率 2.0/0.6 都是占位。
-  4. 玩家要的"提示高低"：炮塔高低现在**玩家看不出来**（题卡"看懂"层）。要加看得见的东西：模型换（单位线）、或雷达提示/通报"北平台浪高了"（`节律` 的 `开 <角色>` 事件可以直接挂通报，策划案还没写，等 swell 测过再加）。
-  5. 自由号载兵跳平台、"跳上去的兵要接走"是玩家操作，计划里没有脚本；草稿靠玩家自己做。
-  6. 地图：island 东端当占位，真公海平台要一张海图（地图线）；黑匣子小目标没做。
-  7. 外观：平台=原版电厂，炮塔=原版哨戒炮；换模型归单位线。
-- **各线接口**：单位线接炮塔外观：`units/platform.py` 的 `tide_gun(id, high, low, health)`，`roster` 名 `浪涌炮塔`；高/低的视觉差（升级触发的 SubObjects/ModelCondition）由它定。落地货舰开火：已记题卡，不改（总控令）。
-
-### 第十八个会话续（11-04）：swell 验过、"高"加了 VISION
-
-- 总控转引擎线结论（`docs/engine/upgrades.md`）：撤升级时修正跟着撤，节律设备"先撤再给"不叠，设备不用改；RANGE 只改武器射程、索敌看视野（哨戒炮视野 300）。所以 `units/platform.py` `tide_gun` 的"高"修正里加了 `VISION` x2（参数 `vision=2.0`，`None` 去掉；引擎线 `checks/engine_range.py` 的对照炮改成 `vision=None`，视野版用 `vision=2.0`，不再靠字符串替换）。
-- **`a8 swell` 写好并上测试台，连跑两次 PASS**（`checks/a8.py`，`work/testbench/runs/CampA8Swell_mcp_1104_171857`、`…_172050`）：中间平台第一门炮西边 250、450 处各一个中立工程师；s15 把 250 的转给玩家（浪低：射程 180，看得到打不着）→ 到 s28 没受伤；s33 把 450 的转给玩家（浪高：射程 600、视野 600）→ s34 受伤，250 的也在浪高开始后受伤。读数 `s1-s25: 0 0 0 | s28: 0 0 1 | s31: 1 0 1 | s34-s52: 1 1 1`。
-- 注意：同一个原版文件在一个 mod 里拷两份会重复定义 Define 让构建停（`platform.py` 文档串已写）；a8 里只有一份，没事。
-- 还没做：整关一局实打（自由号载兵跳平台、12 分钟够不够）；炮塔高低玩家看不出来的提示；真公海图；下一轮总控说做"一队一起走"（引擎线测过 SPEED 33% 升级让快慢单位同时到，`docs/engine/pathing.md` 第 5 节）。
-
-### 第十八个会话续二（11-04）："一队一起走"进编译器（`齐步`）
-
-- **写法**：策划案 `进攻` 条目加 `齐步: 是`（`docs/story/plans/README.md` 进攻一行）。出口只有一个：`plan.Compiler.pace_plan` → `units/pace.py`。编译器按本波各兵种速度（`simunits.stats`）找最慢者，比它快的每种造一个升级副本（`CNV_Pace<百分比>_<原模板>`，原版文件拷一份加 `AttributeModifierUpgrade`，SPEED 修正 = 最慢/自己，向上取整），出生后马上给升级；每个被压速的单位一个脚本：它进了 `打`/`守` 地点的圈（半径取地点自己的、至少 250 `PACE_ARRIVE`）就把本批所有压速升级撤掉。空军、建筑不算；全队同速不加东西；`出动` 暂不支持（摆的是原版模板，写了会报错）。
-- **产物规则**：`contract.pace_released`（接在 `contract()` 里）：每个 `NAMED_RECEIVE_UPGRADE Upgrade_CNV_Pace…` 必须有一个以 `NAMED_INSIDE_AREA` 为条件的脚本撤掉同一对（升级、单位）。变异检验在 `tests/test_pace.py`（删掉撤销脚本、或把条件换成别的，规则报出来）。没单独加 `test_architecture` 守卫（规则对每一关都在 `contract()` 里跑，`parts.contract(m) == []` 的测试已经全覆盖）。
-- **模拟器**：`sim.py` 认 SPEED 修正（`simunits.speed_scale` 读单位自己的 XML）：给升级速度变、撤掉恢复；别的升级效果仍不模拟。`tests/test_pace.py` 里模拟器验过：不压速坦克先到，压速后两个同时进圈，进圈后速度恢复。
-- **用在 S5 `反扑`**（`docs/story/plans/s5.md`，守护者 80 + 维和步兵 50 → 坦克压到 63%）。选它是因为没有按名字读它的检查，也不像 A7 夹击那样踩着航母预警的时间。模拟器里整关跑过：第一批 6 个单位 35.5 秒出生，都进了圈、升级撤净、速度回 80。
-- **测试台验过了**（重置后）：`cnv_check s5 pace`（读数两行：`齐步` 1 坦克进圈、10 步兵进圈、100 坦克独自在前；`限速` 1 = 敌方有单位带着限速升级，用 `PLAYER_HAS_NUM_UNITS_WITH_UPGRADE(玩家, 1, 升级)` 读）。压速：限速 s35–s55 为 1、s57 撤净；坦克 s59、步兵 s61 进圈。对照（临时写 `齐步: 否`，已改回）：坦克 s51、步兵 s61，差 10 秒。所以：脚本创建的单位立刻收得到升级；同时到（差 ≤ 4 秒）；到圈就撤。没测：交火时是否仍同时到、撤后速度本身（读不到，信引擎线 upgrades.md）。顺手修了：`齐步` 只认 `是`/真，写 `否` 不再被当成开。
-- **没有 A4/A8 要用齐步的进攻**：A8 只有护航机（空军不算），A4 的进攻波来自 horn 机关（没有混编地面波）。别的关里混编的有 A5（V4+铁锤、钻地车+动员兵）、J3、J5、S6，各自按设计要不要齐步由那几关的返工时定，我没动。
-- **绕路上限 lint 做了**（总控令，引擎线 a2f4abf 的 1 400）：`simstatic.long_detours`，报告里多"绕路"一行，`tests/test_detours.py` 对每一关守卫（名单 `LEFT` 只删不加，变异检验在里面）。规则只查同一脚本里造兵（或地图里摆好的命名单位）后的整队 `MOVE_TEAM_TO`/`ATTACK_MOVE_TEAM_TO`，路长 > 1 400 且 > 直线 1.5 倍；其余下令方式不查。**现状只有一处：A4 鬼王运输车（海 → 岸）绕 2 420 对直线 630**（模拟器的两栖格；真实游戏里船能不能到岸没读过）。已列名单。**列给 A4 的线**：开 A4 时测一次 boats 到岸；若到不了就分段路点。S2 有两处长直路（直线 3 346、3 857，绕比 1.3～1.4）不在规则内，但引擎线没量过长直路，想放心也要分段。
-- 已知限制：中途被拦住、进不了圈的兵一直慢着；SPEED 修正只压平地速度，坡度、地形造成的减速不在内（引擎线原结论：大致同速）。
-- 验证：`pytest tests/test_architecture.py tests/test_docs.py tests/test_pace.py tests/test_plans.py tests/test_sim.py tests/test_rhythm.py` 99 passed。完整 pytest 没跑（6 分半，没改别的模块）。
-- 接下来按总控令：A8 按草稿标准做。
-
-### 盟军 9 关现状表（11-04，第十九个会话，总控令；设计侧总表见 `docs/design/draft-inventory.md`，那张的 A7/A8 行已过时）
-
-草稿标准：能打通、地图看得懂、新单位机关能用、K 规则全过、题卡写清好玩假设。"检查"指测试台检查。
-
-| 关 | 策划稿 | 题卡 / 好玩假设 | 地图 | 单位、机关 | 检查 | 离草稿还差 |
-|---|---|---|---|---|---|---|
-| A1 金门不锁 | — | 有 / 缺 | — 金门大桥要新做 | 游隼（原版，A1 的新东西）；"看见自己人倒下就引爆"（类 ③）没有 | — | 地图、策划稿、引爆机关、假设；全部从头 |
-| A2 坝上风云 | — | 有 / 缺 | — 胡佛坝要新做 | 坝体挨溅射掉血、缩小的车（收缩射线车名册里没有，类 ⑨） | — | 同上，机关独有，最费 |
-| A3 格林尼治时差 | — | 有 / 缺 | — 格林尼治要新做 | 时停区往西扩（区域内无敌加不能动，类 ⑦；`节律` 管的是一批单位，不是一块区域，要看能不能改） | — | 同上 |
-| A4 冰雕里的兵 | ✓ | 有 / 有 | sapporo | 冰墙、车队、鬼王全有 | 一整套 | **草稿已有**（遗留：鬼王运输车到岸测一次，见第十八节） |
-| A5 巴拿马之锁 | **11-04 已改成草稿版**（见第二十个会话） | 有 / 有 | panama（加了背阶、两处滑道） | 超时空信标兵 ✓、闸门 ✓；**水位升降没有**；题卡说"信标兵沿坡道摸上去一露头就死"，旧稿没做成这样 | hold、win | 改写策划稿对上题卡、好玩假设、水位怎么做（见下"列给总控"）、`plan_sim` 报波次"到不了" chamber（ground 没路）要看一眼 |
-| A6 古代的服务器 | — | 有 / 缺 | — 巨石阵要新做 | 光棱折射、谭雅当眼睛（类 ⑨），没有 | — | 同 A1，机关独有 |
-| A7 鹰派 | ✓ | 有 / 有 | niagara | 自由号设备、东岸 AI | jumps、pick、defend、power、win、relief… | **草稿已有** |
-| A8 海上发布会 | ✓ | 有 / 有 | island（占位） | `节律`、浪涌炮塔、自由号 | beat、swell、win、lose | **草稿已有**（一局实打待玩家） |
-| A9 布鲁塞尔，1927 | — | 有 / 缺 | — 布鲁塞尔要新做（S9、J9 共用，做一次用三次） | `节律`（九个球轮流充能 ✓）、冰墙 ✓、信标兵 ✓、时滞炮车 ✓；收缩射线车没有、"光沿钢管跑"是特效可不做 | — | 地图（最大）、策划稿、假设；设备基本现成 |
-
-**差得最少**：A5 已有策划稿、地图、单位、两条检查，但要把策划稿改成题卡的玩法，并且被"水位"卡住。无地图的 5 关（A1、A2、A3、A6、A9）都要先做地图（现有地图每张 100～370 行）；其中 A9 的设备最全，地图还能给 S9、J9 用。
-
-**列给总控（引擎问题）**：A5 水位升降。脚本目录里没有任何改水面或地形高度的动作（`script_catalog.json` 里没有 WATER、TERRAIN 一类），所以"水位到顶、船贴高台边当梯子"在游戏里很可能做不到。草稿退路：用一个按时出现、消失的实体（浮桥或升降平台，名册里已有"船闸闸门"摆设做样子）代替水位，脚本按时开关，船当梯子的画面放弃。请引擎线答三件事：①有没有改水面、地形高度的办法（原版 retail_scripts 里有没有用到）；②能不能让一个物体按时出现并让步兵走得上去（`engine_block` 在测挡路，是不是同一类）；③船在水位变化时的行为是否值得做。
-
-**下一步（我的选择：做 A5，不等引擎答复）**：把 `docs/story/plans/a5.md` 改成题卡的玩法。①读 `cards/all.md` A5、`flow/a5.md`、旧稿里"滩头在高台南边、激流 ZX 载信标兵过河"那条路——它已经满足"找守军没看着的那一边"；②水位用脚本退路（按时出现消失的实体或直接省略，等引擎线答复再换），别为水位停下；③写好玩假设进题卡；④`plan_show a5`、`plan_sim a5`（先看"到不了 chamber"的波次是不是地图或设计的问题）、`build.py a5 --show`、测试台跑 hold/win 和新写的信标兵检查。
-
-### 第十九个会话（11-04）：A8 草稿收尾（总控令：A8 按草稿标准做完）
-
-- **草稿标准对照**：能打通——赢、到点输的接线测试台验过：`a8 win`（三座平台由脚本相隔 5 秒摧毁，约 s18 结束、没有输的旗）、`a8 lose`（12 分钟预热倒计时压成 40 秒，约 s38 结束），再加 `swell`、`beat`、`plan_sim a8`（能赢能输、浪高通报按时出）。地图看得懂——island 东端占位，真公海图归地图线。新单位机关能用——`swell` 验过。K 规则——`contract ok`，`pytest` 架构、文档、计划、模拟器、节律、绕路、cnv_parts 共 131 过。题卡好玩假设在 `cards/all.md` A8，现状栏已更新。
-- **新加**：三条规则，每座平台浪第一次升起时通报一句（`当: 浪.开 gun north` 等，规则只做一次，是"炮会忽远忽近"的教学，之后靠玩家自己看）；段 2、3 的通报改成按真实次序（第一座断电、第二座没了）。
-- **检查的读法（摩擦）**：任务结束后计数器读不到（`counters gone`），所以"输了"旗没法在结束后读；`win`/`lose` 靠"结束的时间点"区分是谁结束的（win ~s18，lose ~s38，窗口里计数器仍为 0）。**平台代码缺口**：想直接读"赢/输"需要测试台在结束帧留一次读数或读结局类型，列给引擎线；现在这样够用。
-- **要玩家试的（攒进试玩清单）**：一局实打——自由号载兵跳平台、12 分钟够不够、平台血量（原版电厂）、标枪兵专打自由号会不会太狠、护航机 2 架、浪的周期 60/开 25/倍率 2.0、0.6 是占位。炮塔高低玩家看不出来（只有首次通报），真提示等单位线换模型。
-- **摩擦探针汇总（A8）**：①节律设备、齐步、绕路 lint 都用上了，没改平台代码；②只有上一条的"结束帧读数"；③`plan_show`/`plan_sim` 的参数名叫 `level` 其实是关卡名（`plan_show` 的 `name` 是空的）——容易用错，列给总控看要不要改。
-- 下一关由总控定；盟军 9 关里 A8 现在够草稿标准。
-
-## 第十三个会话收尾（11-04 05:40，上下文 23 万）：K3 提交 41e0c73，K7、E7 没动
-
-**下一步按顺序**：
-1. **后巷 V1 放不出冰墙**：先看上面 K3 一节最后一条。测试台空了就跑 `place`（`PLACE_AT` 已推到 20 秒，没测）。I3 在 issues.md 里仍是"修了待验"但写明 V1 未过，V1 过了才算完。
-2. **K7（I8）**：设计见下面"K7 挡路"一节，没动手。现状量数（`platmap.heights` 算的，A4 当前）：陆地里高度 ≥455（第二层）占 39.4%，坡度 >9 的占陆地 15.0%（原版城市图 1.4～3.4%，目标 ≤4%）。垫高的块：北街区（含后巷）、南街区、北坡口两侧的 ward、西岭、西南山、北南高原、神社丘（`sapporo.py` 的 `SHAPES`）。要改的是前四个（街区和 ward），南北高原留。改完后后巷的两个坡口要重新定位，`lane foot`/`lane end` 以及 horn 的后巷出兵点、`Gap`、`tests/test_sapporo.py`、graybox 走查（见下条坑）都要跟着看。产物规则要一条：非悬崖的大片坡地（坡度 >1.5 且面积 ≥ 阈值）出现在路上就报，阈值先量原版（`docs/design/teardowns/data/edge_measure.py`）。守卫 G14 + 变异检验，I8 标"修了待验"。
-3. ~~**E7**~~ 第十四个会话做完，见上面那节。原记录（`work/re/ra3-script-reference.md` E7-6、E7-4）：①配乐 cue（`PATH_MUSIC_PLAY_EVENT`）会把战况音乐挂起，之后不自己恢复：`plan.py` 里 `战况音乐` 的 PlanError 文字和 `plan.py:521` 一带注释说"没有关的动作"不对，A4 `战况音乐 开`（plans/a4.md:203）之后再有 `音乐`/`胜利` cue 的地方要核对顺序，必要时在 cue 后再发 `战况音乐 开`（要先在 sim/测试台确认再 ENABLE 会不会把刚放的 cue 盖掉；`music_dyn` 里是先 PLAY_EVENT 再 ENABLE）；②`NAMED_USE_COMMANDBUTTON_ABILITY`（`plan.py:630` 的 `技能`）技能用不了（冷却、没就绪）时静默什么也不做：靠它"一定放"的地方（A4 `derrick` 等）要在放之前确认冷却，测试台连发两次看第二次有没有效果。
-4. 小心：①跑 pytest 要 6 分半，指纹约 6 分，都交给 Sonnet 子 Agent，别和任何构建同时跑；②`tests/test_graybox.py::test_old_a4_can_be_pushed_through_every_stage` 很脆，动 sapporo 的站点坐标几个单位就会因"布防"阶段多撞到敌人失败（东街口偏 5 就败）；③测试台是共享的：音乐线可能占着游戏，`bench_start` 会拒绝，别杀别人的进程；④Bash 钩子拦"heredoc 里带反斜杠写文件"，改文件用 Edit。
-
-## K3 施法点（原设计，留作参考）
-
-- 现状：冰墙落点是 horn 设备的 `点:` 里写的地点：`lane foot`、`inside 1`、`inside 2`、`north mouth`、`inside 3`、`east mouth`（plans/a4.md:125-135）。设备在 `devices/horn.py:265` 用 `ctx.waypoint(f'ice {wid}', ...)` 发布成标记。玩家点的是 `AssembleStructureSpecialAbilityUpdate` 放"冰核"（`units/icewall.py`，`SEED_SIZE=20`，`ForbiddenObjectRange=32`，`PATHABLE_ONLY`）；脚本放技能完全不检查位置（引擎线 11-04 从代码确认），所以旧检查 PASS 不代表玩家放得下。玩家点击的检查已有：`checks/a4.py` 的 `place`（街口）和 `placem`（口子），走 bench_click/bench_ability。
-- 做法（照 K4）：①地图点标 `Site(..., cast=CAST_CLEAR)`（常量 = 32 禁物范围 + 20 冰核 + 余量，约 60），`platprops.clearance`（`experimental/campaign/platprops.py:88`）把 `cast` 也算进保持空旷的圈，布景生成器就不会压上去；②`platmap.lint` 加施法点检查：圆内全是可走格（`walkable`）、起伏不超过 `FLAT`（P36 第 6 条：平地）、圆内没有地图物件（墙段按 `platmap.WALLS`，其他按 `platprops.radius`）；③`contract.py` 加产物规则：任务里所有 `ice ...` 标记必须落在 `cast>0` 的地点上，任务摆的物件（标志、冰雕、建筑）不压施法圈（半径 + 32）；④守卫 G13 + 变异检验；⑤`lane foot` 在坡脚（`Ramp` 起点），大概率不平，lint 会报，到时候改 plans/a4.md 的 `点:`。⑥issues.md I3 标修了待验，依据写产物规则名；"检查必须走玩家点击"那条已由 `contract.observes`（G11）保证：只观测的检查才能当验收。
-- 要把冰墙标记点设成 `cast` 的是 sapporo.py 的 SITES 字面量（`lane foot`、`inside k`、`north mouth`、`east mouth`）；festival.py 同名点同样要标。
-
-## K7 挡路（I8）：还没动手，设计
-
-- 准则 P36（`docs/design/principles.md:151`）和 A4 逐块处理表（`docs/design/maps/a4.md:136`）。要做的是生成器默认值：①`platmap` 加"成排房子"生成函数（沿线一栋挨一栋、缝里补宫墙，进地图 `OBJECTS`，算进 `walkable`：现在只算 `WALLS` 里的墙段，房子要加半径）；②产物规则：除声明了"要高处视野"的块外，不许垫高（`Block` 用途加一个"高地"标记，`SHAPES` 里 tier>1 的块必须对应一块高地）；陡面占陆地 ≤ 4%（原版 1.4～3.4%）、陡面边上每公里 ≥ 15 件包边物件（量法 `docs/design/teardowns/data/edge_measure.py`）；③A4 的北侧街区、后巷、南侧街区、北坡口两边要改成不垫高（这是地图改动，会动 `LAYOUT`，要走 `cnv_preview` 看图）；④守卫 G14 + 变异检验；⑤I8 标修了待验。
-- 注意：这一类改动最大，改的是 A4 地图本身；预计要一整个会话。先量现状（`map_study a4` 或 `cnv_preview a4` 的 TERRAIN 行），再定做多少。
-
-## 做事顺序
-
-1. 读本文、`docs/adr/0016-one-outlet-per-class.md`、`resources.py`、`contract.py` 里 K4 那一段（照它的写法做 K3、K7）。
-2. 先做 K3（小），再做 K7；K1 的"功能句不能晚"和"策划案同源"两条规矩穿插做，每条独立提交。
-3. 验证类的活（指纹、pytest、测试台）仍交给 Sonnet 子 Agent，正斜杠绝对路径，用完让它停后台任务；跑指纹时自己别改代码、别同时构建。
-4. 小心：本仓库 Bash 钩子会拦"内联写文件里带反斜杠"和 `sed -i` 带反斜杠，改文件用 Edit/Write；工作目录会因 `cd` 漂移，命令开头总是 `cd` 到仓库根；工作区里 README.md、docs/design/ 下有别的线没提交的改动，不要带进提交。
-
-### 第二十个会话（11-04）：A5 草稿版（总控令：按草稿标准做 A5，水位列成问题，不在测试台试错）
-
-- **做了什么**：①`docs/story/plans/a5.md` 改成题卡的玩法：守军的炮全朝东边大坡道，南面西头多一条没人守的**背阶**（`back stair`），信标兵由激流 ZX 载过河、从滩头走背阶上高台、把西岸的队拉上去；开场通报只说"炮盯着东边"，4 分钟后每 3 分钟提示背阶。②**旧稿的三路进攻原本全是废的**：东岸的兵走不到西岸和舰队（运河上没有桥），`plan_sim` 报的"到不了 chamber"就是这个。现在：V4 开到闸室东北岸（`north bank`，射程 500 对舰队的炮 150，激流 ZX 得过河去打掉它）、钻地车从西岸南边（`dig out`）钻出来打基地，南段伏击不变。③题卡 A5 写好了好玩假设（`docs/design/cards/all.md`）。④检查 `a5 route`（`checks/a5.py`）：激流从西岸开到东岸滩头、信标兵从滩头走到背阶顶。
-- **地图 `maps/panama.py` 的发现（类问题）**：两岸坡度 22～35（上限 9），**水陆两栖单位上不了岸**；A5/S5 旧稿里"激流载信标兵过河"在游戏里本来就走不通。修法：两岸各开一条滑道（`Ramp`，坡度 6），一对，在闸室南边 y=1850。其它有水的图（A4 sapporo 的鬼王运输车、A7 niagara、A8 island）**是不是同样没有上岸点，没查**，列给地图线。
-- **测试台**：`cnv_check a5 route` PASS（`work/testbench/runs/CampA5Route_mcp_1104_193658`）：激流 s18 到东岸滩头，信标兵 s14 到背阶顶。第 1 段边界是西岸（x<2730），滩头在边界外，所以玩家要等第 2 段才能过河（第 1 段守闸，正合设计）。没测：激流装信标兵（原版运输 5 座，只读了 XML）、守军视野看不看得到背阶顶（只在第 1 段测，东岸守军那时不在场）、整局。
-- **水位升降（列给总控 → 引擎线，我没在测试台试）**：①脚本里有没有改水面或地形高度的办法（原版 `retail_scripts` 有没有用到）；②能不能让一个物体按时出现、步兵走得上去；③船在水位变化时的行为。草稿用背阶代替，不等答复。
-- **模拟器改动**：`sim.py` 的两栖格把岸边的浅滩（水位线上下）也算上——`platmap.apply` 只封坡度过陡的格子，浅滩在游戏里能走；原先浅滩既不算水也不算地，任何滑道都被切断。
-- **摩擦探针**：①战斗模型里 V4 一辆几十秒打沉舰队，激流 ZX 一只就拆光控制室守军（`plan_sim` 的战斗数值不可信，数值要上测试台或玩家试）；②沿岸陡坡让两栖路在模拟器里看不出来，改了模拟器；③`plan_sim` 的脚本时间单位是秒不是 mm:ss（"150"= 2:30）。
-- **要玩家试的**：V4 的开始时间 3:00 / 隔水间隔 / 数量是占位；舰队只能被 V4 打沉的节奏、钻地突袭压力；背阶顶守军看得到看不到。
-- **类修：两栖上岸规则（总控令，ADR 0015）**：`simstatic.landings`——任务里的两栖单位（模拟器分类 `both`：摆在地图里或脚本在路点造出的）要能经水陆走到本图"靠水那块陆地"上的每个干地点（有悬崖围着、不靠水的陆地不算；空军点不算）。`plan_sim` 报告里多一行"上岸"；`tests/test_landings.py` 对每一关守卫（名单 `LEFT` 只删不加），变异检验：panama 去掉两条滑道，A5/S5 都被点名。**跑了全部 11 关：只有 A5（已修）那一类，A4 sapporo、A7 niagara、A8 island 没有被点名**（A8 没有两栖单位）。注意：这只证明模拟器的通行格上能到；A4 鬼王运输车到岸的 2 420 绕路和"真游戏里能不能到"仍是旧遗留，没动。已知局限：规则看的是任务开局摆的/脚本造的两栖单位，玩家自己造的两栖单位（船坞出的）不在内；"两栖"按单位运动表里同时有 GROUND 和 WATER 判，工程师、动员兵之类也被判成 `both`（模拟器把它们当能游泳，是旧的模型问题，没动）。
-
-### 第二十个会话收尾（11-04）：A5 草稿、两栖上岸规则做完；A9 还没动
-
-- 已提交：A5 草稿版 `049636f`，上岸规则 `0bb3f80`。工作区里 `experimental/mappage/` 的未提交改动是外壳线的，不要带进去。
-- **下一步：做 A9 布鲁塞尔，1927**（总控令 11-04）：
-  1. 用外壳线的新地图编辑器画布鲁塞尔图：`python -I -X utf8 experimental/mappage/serve.py --new brussels [--from <最接近的图>]`，浏览器开 http://127.0.0.1:8765/，用法见 `docs/shell/handoff.md` 第一节（"从零画新地图"）。出的地图模块草稿在 `work/mappage/brussels/`，审过再搬进 `experimental/cnv/maps/`。**这是编辑器第一次正式用**：把缺什么、哪里别扭记下来报总控（外壳线已知缺：新图上没有画刷、画不了桥、没有景物、BLOCKS/GAPS 画不了）。
-  2. 地图要给 A9、S9、J9 三关共用，按三关共用来设计；中文名、轮廓按"神似、按玩法设计"（记忆 maps-serve-gameplay）。
-  3. 地图有水的话要有两栖上岸点（新规则 `tests/test_landings.py`；两岸陡坡不开 `Ramp` 滑道，水陆两栖单位上不了岸；panama 的两条滑道是现成的例子）。
-  4. 然后写 A9 策划稿（`docs/story/plans/a9.md`，参照 a7/a8/a5 的写法）：题卡 `docs/design/cards/all.md` A9、流程稿 `docs/design/flow/a9.md`；设备基本现成（`节律`九个球轮流充能、冰墙、信标兵、时滞炮车；收缩射线车没有、"光沿钢管跑"是特效可不做）；补好玩假设进题卡；`plan_show a9`、`plan_sim a9`。
-  5. 提交前至少跑 `tests/test_architecture.py`、`tests/test_docs.py`；提交后 push。15 万交接。
-- ~~水位升降三问已由总控转引擎线，等答复~~：**已答（引擎线 b22d640，`docs/engine/terrain.md` 第 4b 节）：脚本改不了水位和地形高度**，A5 船闸的升降只做外观和叙事（背阶草稿不变），不再等引擎。
-
-### 第二十一个会话（11-04）：布鲁塞尔图做完（A9、S9、J9 共用），A9 策划稿还没写
-
-- **地图** `experimental/cnv/maps/brussels.py` + `brussels_names.py`（中文名）：4000×2400，流程稿示意图格 → 世界 `x = gx*40, y = (60-gy)*40`。西郊（A9 基地地）→ 西环路（两块楼之间 540 宽的口子，A9 防线）→ 原子球塔（高地第 2 层圆台，东南西北四条坡道，护盾四段地点在坡脚）；北街、南街绕楼而过；东边河（x 3380～3560）+ 桥（y 1000～1240 一条陆地"堤"）、东岸（S9 基地地）；北边海（y>2150）+ 三条滑道到海滩（J9 登陆，两栖单位能上岸）、河两岸各一条滑道。19 个地点（`plan_vocab brussels`）：start、west suburb、ring road、tv tower、tower、garage、shield west/east/north/south、north street、south street、airport、east bridge、east bank、relay、beach、beach camp、fleet + 6 个精炼厂地。边界 8 个：`whole`，A9 `a9 open`/`a9 first`/`a9 charge`，S9 `s9 open`/`s9 follow`，J9 `j9 open`/`j9 street`（按三份流程稿的可玩区换算）。lint ok、contract ok、连通区无走不到的地点、`.map` 写得出。
-- **怎么画的**：草图 `work/mappage/brussels/sketch.json` 由 `work/mappage/brussels/mk_sketch.py`（不进 git）写出，编辑器页面只加载和检查（`.claude/launch.json` 新增 `mapsketch-brussels`，端口 8767）；搬进 maps/ 后**模块本身是源**，改图直接改模块，不要再从草图重生成覆盖。
-- **引擎寻路模型读数**（`sketch2map.py brussels --pathing`）：起点到西环路、塔、车库、南街、滩头营地"通"；到北街、机场、东桥、东岸、中继站、海滩都是"budget"（长距离搜索预算用完，单位会半路停住）。**策划稿里派兵跨半张图要分段下令**（比如 西郊 → 西环路 → tower → 东桥）。
-- **编辑器的毛病（报给总控/外壳线）**：①`launch.json` 的 `mapsketch` 写死图名 trial，新图要自己加一项；②桥画不了：现在用"两块河水夹一条陆地堤"代替，没有桥的外观；③没有画刷、景物、BLOCKS/GAPS（楼只能用第 3 层矩形，生成图里是空心灰框）；④页面上点着画 10 块地 + 20 个地点太费劲，我是写脚本直接出 sketch.json，页面只拿来看——建议：页面能粘贴/导入 JSON，地点和地块能直接输数；⑤默认缩放下地点名全叠在一起，小窗里看不清（地点密时要自动避让或可折叠）；⑥lint 的话好用，抓出了坡道太短（6.5/格上限）、建造方块压到河岸/悬崖、矿点落在河边不平，都是报告里直接看得懂的；⑦`start` 地点和同位置的 `west suburb` 重复，新图应该自动不让 start 另占一个名字。
-- **验证**：`pytest -q tests/test_architecture.py tests/test_docs.py tests/test_mappage.py tests/test_mappage_sketch.py tests/test_maps.py tests/test_landings.py` 71 passed；去掉一个站在坡边的地点后 `test_mappage.py test_maps.py` 16 passed。没跑完整 pytest。
-- **下一步**：①写 `docs/story/plans/a9.md`（参照 a8.md：定位/yaml 一关/开局/机关/节拍/目标/进攻/规则/输赢/检查），读题卡、流程稿 `flow/a9.md`；**节律设备要一个"球"单位**（现在名册里只有 `浪涌炮塔` 有 on/off 升级对，要在 `units/` 新写 `tower_ball`：off = INVULNERABLE，on = 去掉，参考 `units/platform.py` 的 `tide_gun`）；收缩射线车不存在，草稿用别的反制（标枪兵、时滞炮车）代替并在策划稿注明；"光沿钢管跑"当特效不做，改成通报提示；"每拆一个剩下的充得更快"= 节律的 `周期` 要能随事件变，先查 `倒计时提前` / 节律有没有改周期的动作，没有就在每拆一个球时用规则重开一个周期更短的节律；②`plan_show a9`、`plan_sim a9`；③测试台能赢（`a9 win`）。
-
-### 第二十二个会话（11-04）：A9 草稿做完（能编、模拟器赢、测试台赢）
-
-- **做了什么**：①新单位 `units/tower_ball.py`（`原子球`，进名册）：暗着时 `INVULNERABLE 100%`（暗升级的属性修正，带铁幕 shader），亮着撤掉；`look.py` 有名字。名册同时加了 `时滞炮车`（chronolag，原来不在名册里）。②`docs/story/plans/a9.md` 策划稿 + `missions/a9.py` + `checks/a9.py`。球摆在 `tower` 上：中心一个、东西南北靠中间四个（离中心 150）、斜角四个（270）；亮的顺序 西→西北→北→东北→东→东南→南→西南→中心。③**"每拆一个剩下的亮得更短"= 换档**：节律不能中途改周期，用四台节律：`首亮`（西球一直亮、其余整局暗，靠 1990 秒的相位排到任务结束之后）、`轮一`（拆了西球起，45 秒/个）、`轮二`（拆了 4 个起，32 秒）、`轮三`（拆了 6 个起，22 秒）。缺陷：节律是九个固定座位，碎了的球留空窗；要紧时写"跳过已碎的球"的专门设备。④苏联军是 `其他` 里的一方，开局摆在东桥，第 3 段 `出动`；基洛夫不投天启坦克，直接飞过去（草稿）。收缩射线车没有，用标枪兵 + 时滞炮车；冰幕工兵不在名册，**草稿没有冰墙**。
-- **验证**：`plan_show a9` 编译 234 脚本、接口检查 ok；`plan_sim a9`（脚本相隔摧毁九个球）赢于 7:30；`cnv_check a9 win` 测试台 PASS（九个球由脚本依次摧毁，任务结束且没有输的旗；整条编译链含新单位、地图 lint 0 项）。
-- **没验、要引擎线答**（我按令没在测试台试错）：`INVULNERABLE` 经 `AttributeModifierUpgrade` 给、撤是否生效（暗着炮打不掉血、撤了能打碎、再给又无敌）。`docs/engine/upgrades.md` 只有 RANGE/VISION。验不过的备选写在 a9.md "待做"第 1 条（开局 `无敌: 是` + 规则 `取消无敌`）。
-- **A5 水位**：已关（引擎线答"脚本改不了"，见上一节划掉的那条）。
-- **没做**：冰幕工兵进名册、电视塔奖励目标、先驱者炮艇、基洛夫投放、黑尔/科尔台词和过场、整局打一遍（松紧）；`beat` 接线检查（四台节律的旗怎么区分，要从 `devices/rhythm.py` 的 key 读）。长距离派兵要分段（写在 a9.md 待做第 4 条）。
-- **下一步**：①引擎线验 `INVULNERABLE`；②补 `a9 beat` 和一个 `dark` 探针（暗球挨炮不掉血）；③冰幕工兵进名册后给 a9 加冰墙封街；④整局试玩清单：球的血量/亮窗、回援节奏、苏联坦克数。
-
-### 第二十三个会话（11-04）：A1 草稿做完（金门大桥图、三条规则、测试台赢和输都过）
-
-- **挑了 A1**（A1、A2、A3、A6 里地图最简单、机关只是规则；A2/A6 要缩小车、光棱折射，A3 要时停区，都要新设备）。**做了什么**：①地图 `maps/golden.py` + `golden_names.py`（3600×2400，南岸营地、一座 1100 宽海峡、一条桥面 `bridges`、两座沙洲桥塔、海湾水道浅滩、北岸码头、直升机坪；11 个地点、3 个边界）；sketch 是 `sketch2map.py golden --check --sketch 文件.json` 一次写出，**没开页面**，lint ok、contract ok、全图一个连通区。②策划稿 `docs/story/plans/a1.md`：爆破手是动员兵，三条"谁看见谁"规则（桥面守军倒 / 南塔爆破手倒 且北塔还活着 → 输；南岸巡逻倒 且南塔还活着 → 输）；三段、压桥头 + 双刃炸桥两路进攻、防空援军保底。③`missions/a1.py`、`checks/a1.py`。题卡 A1 补了好玩假设。
-- **验证**：`plan_show a1` 87 脚本、接口 ok；`plan_sim a1` 能赢（2:40）能输（规则 1，0:20）；测试台 `cnv_check a1 win` PASS、`a1 trap` PASS（桥面守军先倒，s20 内任务结束、输的旗之前为 0）；`cnv_preview a1` lint ok；pytest 架构、文档、地图、上岸、绕路、计划共 104 过。
-- **写策划稿踩的坑**：`还没` 只认一次成立就一直成立的事（`段 …`），不认 `摧毁 角色`——"北塔还活着"写成"还没进第 2 段"，"南塔还活着"写成"还没进第 3 段"。
-- **没做**：游隼进名册（守护者顶位）、桥断即失败（原版桥不是单位，没血量，候选见 a1.md 待做第 2 条）、三辆卡车和北岸建筑、台词过场、整局实打；"看见"是摧毁条件，不是真视野。
-- **编辑器/sketch 格式缺什么（报总控）**：①**水里的沙洲/浅滩**：层 0↔1 交界自动成悬崖，所以沙洲、浅滩外圈都是陡崖，只靠和岸连着才能走；没有"浅滩"这种能涉水的类型；②**桥的两端要离岸线里面至少约 100**：我把 a 放在离岸线 20 处，桥面整个成了孤立连通区，"走不到的地点"才暴露，格式文档没写这条距离；③**坡道的 `high` 点必须落在上层形状里面**：落在外面就是一个孤立的小区（桥塔顶走不到），报告只说"走不到的地点"，不说是坡道 high 点出圈；④没有物件：桥塔、炸药箱画不出来，塔顶只是一块圆台；⑤没有画刷/景物（已知）。
-- **下一步**（路径）：①A3 格林尼治（时停区向西扩，要看 `节律` 能不能改成"一块区域"）；②A6 巨石阵（谭雅当眼睛 + 光棱折射，机关独有，最费）；③A2 胡佛坝（缩小车 + 坝体掉血，机关独有）。**推荐 ①**：区域、倒计时设备已有，机关最接近现成。
-
-- **A9 暗球无敌修实（11-04，总控令）**：`units/tower_ball.py` 暗修正加 `ObjectStatusToSet="NO_BRIBE UNDER_IRON_CURTAIN"`（INVULNERABLE 留着，没 Duration），按引擎线 44bb8f5。新检查 `a9 dark`（`checks/a9.py`）：我方哨戒炮各守暗球 6 号和亮球 1 号，读 `受伤暗`（始终 0）和 `受伤亮`（s7 起 1）。**两个坑**：哨戒炮要电（放了两座我方苏联电厂）、塔上的维和步兵会先打掉炮（检查开头摧毁 `peace tower`）；头两轮没做这两条，亮球也读 0，所以别单看"暗球不掉血"那一行。`a9 win` 重跑 PASS。
-
-### 第二十四个会话（11-04）：A2 草稿做完（胡佛坝图、四段四路进攻、测试台赢和输都过）
-
-- **挑了 A2 而不是上一节推荐的 A3**：A3 的时停区（区域里的单位全停、追兵也停）脚本里没有"给一块区域里所有单位加状态"的动作（`script_catalog` 只有 `NAMED_*`、`TEAM_*`、`UNIT_KILL_ALL_IN_AREA`），`节律` 管的是一批有名字的单位，追兵是波次里刷的、玩家的兵也不在一个队里——要新写区域光环类设备，要引擎线先答能不能做，比 A2 费得多。A2 的机关只是中立建筑 + 波次 + 地图。
-- **做了什么**：①地图 `maps/hoover.py` + `hoover_names.py`（3600×2400，坝顶一条第 2 层长台、北边湖、南边河、西坝头营地、东坝头公路、对岸、西岸一条下到南岸的坡道；10 个地点、3 个边界）；sketch 是 `sketch2map.py hoover --check --sketch 文件.json`，lint ok、contract ok、一个连通区，只有河里两个地点"走不到"（本来是水）。②策划稿 `docs/story/plans/a2.md`：坝 = 三座原版电厂（中立方 `坝`），倒两段输；四段（坝顶步兵、铁锤坦克、牛蛙走河里、最后一波对岸火箭车 + 东路又来一队）；火箭车开局摆在对岸，最后一段 `出动`，要拆它们才赢（`[段 最后一波, 摧毁 rocket]`，所以提前拆不会提前赢）。③`missions/a2.py`、`checks/a2.py`。题卡 A2 补了好玩假设。
-- **验证**：`plan_show a2` 117 脚本、接口 ok；`plan_sim a2` 能赢能输、上岸 ok；`cnv_preview a2` lint ok；测试台 `cnv_check a2 lose` PASS（脚本摧毁两段坝，s24 内结束、输的旗之前为 0）、`a2 win` PASS（所有计时压成 1/20，最后一段开始后摧毁火箭车，结束且没有输的旗）。
-- **踩的坑**：名册里没有黄貂鱼，水路只用牛蛙；`目标` 的 `完成` 写成 `[段 最后一波, 摧毁 rocket]`（两个都成立）；钩子拦"python 内联写文件带反斜杠"，写文件用 Write。
-- **没做 / 要引擎线或玩家答**：玩家的溅射会不会算到中立坝上（要测试台量，a2.md 待做第 1 条；不会的话题卡"自己溅射掉坝血"这条规则要用脚本替）；收缩射线车；牛蛙贴不贴坝；整局实打；`rocket` 是对岸的火箭车，西岸坡道下去的路 1600+ 长，要分段下令（寻路模型报 budget）。
-- **编辑器 / sketch 的摩擦（报总控）**：①**河不是"可走区域外的东西"**：连通区检查把水里的地点（river mouth、dam foot）算成"走不到"、`ok` 为假，但这是故意的（水兵出生点）；建议地点标一个 `water: true`，不进连通检查；②**对岸要靠坡道接回主区**才算连通，我加了一条"勤务路"坡道（西岸下到南岸）凑数，设计上其实多了一条敌人能绕到基地的路；③坝（大面积直边长台）画得出来，但没有"坝的外观"，只是灰色长条；④对岸的地块用默认层 1，"远景"没画，预览看着空；⑤sketch2map 命令行这次很顺：一次写出 JSON，一次 `--check --pathing`，没开页面。
-- **下一步**（路径）：①A3 格林尼治——先请引擎线答"能不能给一块区域里所有单位加状态"（区域光环物件），再做设备；②A6 巨石阵（谭雅当眼睛 + 光棱折射，也是机关独有）；③回头验 A2 玩家溅射和牛蛙贴坝（要测试台一局）。**推荐 ①先把引擎问题抛出去，同时做 ②**。
-
-### 第二十五个会话（11-04）：A6 草稿做完（巨石阵图、机关改写成高地视野、测试台赢和输都过）
-
-- **机关改写（总控令：先判断能不能用现成的改写）**：题卡的"光棱打巨石折射"游戏里没有（折射要新写弹道和特效），而这一关的题是"先看见、再打到"——**改写成高地视野**：巨石换成两层高台（外圈第 2 层、内圈第 3 层），哨塔站在上面，低处看不见高处（P26，用户 2026-10-27 确认），塔又看得见低处；谭雅走东北暗坡（警犬巡逻）上去当眼睛，外面的雅典娜炮当炮。折射的"斜打石头拐过去"这一版没有，换成"绕到暗坡上去"。光棱坦克不在名册，用雅典娜炮。
-- **做了什么**：①地图 `maps/stonehenge.py` + `stonehenge_names.py`（3600×2400，外圈 r720 第 2 层、内圈 r380 第 3 层，东北暗坡和北坡口两条坡道，北公路；12 个地点、3 个边界）；sketch2map 命令行，lint ok、contract ok、一个连通区。②策划稿 `docs/story/plans/a6.md`：三段（外圈一座塔 → 内圈三座塔 → 撤出，东边一队守护者和幻影坦克）；塔要电，敌方电厂放在外圈东侧；外圈塔倒给基地车；"下到坑口"是奖励。③`missions/a6.py`、`checks/a6.py`。题卡 A6 补了好玩假设。
-- **验证**：`plan_show a6` 87 脚本、接口 ok；`plan_sim a6` 赢（脚本摧毁四座塔）；测试台 `cnv_check a6 win`、`a6 lose` 都 PASS。
-- **最大风险（没验，要引擎线或测试台答，a6.md 待做第 1 条）**：①**低处单位真的看不见高处的塔吗**（`missions/sight_bench.py` 量过一张图，principles P26 已按用户确认写成规则，我没重测）；②**谭雅看见塔以后，别的单位能不能点着打**：`docs/engine/know-how.md` 写"单位只打自己视野里的目标，友军视野不算"，指的是自动索敌，玩家点着打没查。②不成立，A6 的"谭雅当眼睛"就不成立，要换成游隼/空军当眼睛，或加大炮的视野。建议先让引擎线测这两条再往下做 A6。
-- **没做**：升降台"拆一座换位置"、坑底光谱塔反打（"石头掉头"）、工棚奖励、警犬"别被闻到"奖励、台词过场、整局实打；塔要电，拆电厂能让塔哑火（这是不是第二条解法要不要保留，没定）。
-- **摩擦探针（A6）**：①`摧毁` 多个角色要写 `摧毁 a、b、c 3 个`（顿号加个数），写成逗号编译报"no named part"，错误信息只列了角色名没提语法，列给总控看要不要改报错；②两个坑和 A2 一样：钩子拦内联写文件、`python -` 空 heredoc 会起交互解释器卡住（已停）；③sketch2map 一次就出图，圆形地块 + 两条坡道够做"两层高台"；④坡道的 `high` 点要落在上层里面（A1 已记），这次按"边缘内 100"摆就对了；⑤建造方块（营地）离高台边太近会"升 72"，把高台往北挪 150 解决，报告里这句看得懂。
-- **盟军 9 关里 8 关有草稿**（A1、A2、A4、A5、A6、A7、A8、A9；只剩 A3，等引擎线答"区域时停"）。
-
-### 第二十六个会话（11-04）：验 A2 的两个假设，A6 的报错改清楚
-
-- **玩家溅射会不会算到中立坝上**（测试台 `a2 splash`）：**只有雅典娜炮会**。打紧贴坝段的靶，坝段血 100 → 25 → 2；靶离坝心 90 就不伤；铁锤坦克的炮弹溅射不伤坝（靶打没了坝还是 100）。所以"别用雅典娜炮对着坝开火"成立，普通炮弹不用管，策划稿 a2.md 已改。
-- **牛蛙贴不贴坝**（`a2 frog`，另有 `ray` 魟鱼、`dread` 无畏舰）：贴得到（停在坝南悬崖下），**但打不到坝**，坝血 100 不动：牛蛙只有对空高射炮，魟鱼电磁炮射程 125 又看不见高处（坝第 2 层、水面第 0 层，低处看不见高处），无畏舰接了命令也不动。双刃直升机从河口接令只飞到河中就停，坝血也不动（没查原因）。**"坝脚"这一波现在没有威胁**，只是摆设；候选改法写在 a2.md 待做第 3 条（推荐水路单位改去打玩家的海豚/岸边兵，坝不当目标）。这条要策划拍板，我没改波次。
-- **摩擦探针**：`摧毁 a, b, c`（逗号、没写个数）的报错现在会说语法（`plan.py` 摧毁分支，`tests/test_plans.py` 加了一条）。
-- 检查台限四行计数器（`counters.MAX_LINES`），splash 里为此没放"对照的东段"。
-- **下一步**：①坝脚一波改法定下来后改 a2 波次 + 重跑 `a2 win`；②A3、A6 仍等引擎线。
-
-- **A6 看见两问已由引擎线答（e302191）**：成立，炮要玩家手动点；谭雅自己 C4 炸塔决定保留当第二条解法（理由和没验的部分写在 a6.md 定位一节），外圈开场通报加了"选炮、右键点塔"，待做第 1 条已勾掉。
-
-### 第二十七个会话（11-05）：A3 草稿做完（时停区设备、格林尼治图、测试台赢和冻住都过）
-
-- **设备**：`units/stasis_zone.py`（引擎线 a16150e 探针 `zone()` 的拷贝；探针不能 import 内容层，G5，所以是拷贝，`tests/test_stasis.py` 守两份 XML 一致）+ `devices/stasis.py` 设备 `时停区`：`圈: [{名, 地点: [圆心地点…], 开始, 结束}]`，每个圆一个物体，到点 `CREATE_NAMED_ON_TEAM_AT_WAYPOINT` 造出来；事件 `圈 <名>`、动作 `收圈 <名>`。
-- **地图** `maps/greenwich.py` + `greenwich_names.py`（3600×2400：泰晤士河在北、沿河一条路、一排楼三个豁口、窄教堂巷；31 个地点，其中 `zone <圈> <a b c d>` 是圈心）。草图脚本在 scratchpad（不进 git），**模块是源**。观测台地点已手改到 (2200, 1050)（圈二的圆够不到）。
-- **策划稿** `plans/a3.md`：五圈（圈一开局东边一整片，停着一队盟军和一队苏联突击队当铜像；圈二 段1+2:00；圈三 段1+4:30 吞码头；圈四 段2+3:30 只盖河岸街口，冻住的铁锤坦克堵教堂巷口；圈五 段3+5:00 盖船坞，船开走）；平民 = 盟军工程师；三段、四路进攻、计时失败。**圈是累计的，不收**（圈里的平民停了回不来，保底是计时失败）。题卡 A3 补了好玩假设。
-- **验证**：`plan_show a3` 153 脚本、接口 ok；`cnv_check a3 win` PASS、`a3 freeze` PASS（圈一：我方 3、敌方 3 停住，圈外开局部队不停；圈二 2:00 长出来，停住数涨到我方 5、敌方 4～6）；pytest 架构、文档、stasis、地图、上岸、计划、节律共 100 过。
-- **发现**：圈二的圆 (2760, 900) 连观测台（2350, 1000）都盖得到，所以平民被冻在山上——已把观测台挪西；`plan_sim` 的战斗模型会在第 3 段开始前把教堂的工程师打死（`摧毁 civ c` 一直成立，段 3 一开始就判输），真游戏里要看追兵会不会绕去教堂。
-- **没做**：地上的亮线（用通报）、河上接应、游隼、整局实打（追兵数、圈的时间都是占位）、圈四冻路障靠不靠得住（要整局看铁锤冻在哪）、"停一阵自己化开"（`收圈` 已有，没用）。
-- **下一步**（路径）：①A3 整局试玩，看圈四路障和东路压力；②盟军 9 关草稿齐了（A1～A9 全有）→ 按总控令做 S/J 线或回头验旧待做；③`a3 route` 检查：工程师从教堂走西豁口到船坞（长路分段）。
-
-- **提交前要跑什么（总控 11-05 令）**：除了 `tests/test_architecture.py`、`tests/test_docs.py`，还要跑 `tests/test_level_cards.py`、`tests/test_look.py`、`tests/test_plans.py`。11-05 全量 pytest 红过 4 条，都是草稿累积出来的：`build.LEVELS` 没加 a1/a2/a3/a6/a9、`levels.md` 没有这几关的卡片；a2/a5/a9/s5 策划稿的 `检查` 和 `checks/*.py` 登记的对不上（补了 a2 的 splash/frog/ray/dread、a5 的 route、s5 的 pace，a9 的 `beat` 没做所以从策划稿删掉、记进待做 1b）；A9 的原子球用了原版头像（现在是 `CNTowerBall`：`ability_icons.BADGED` + `ui_kit.UNITS`，护盾徽标，图在 `work/units/badged/CNTowerBall`，要 `python -I -X utf8 experimental/units/ability_icons.py badges` 生成，work/ 不进 git）。**新关卡草稿完成时顺手做三件事**：`build.LEVELS` 加、`levels.md` 加卡片、新单位进 `look.py` 带自己的头像。
-
-### 第二十二个会话（11-05，总控令：CampShell 验收打回 I1、I4；I19 先不动；别改 sim.py，引擎线在改）
-
-- **I1 做完（c30d18f，已推）**：根因是游戏里军事字幕、配音字幕、播报文字进的是**同一个累积字幕框**（最后一行出现约 5.4 秒后整摞清），E6 在测试台量到的"上方单行框 + 下方面板"和 CampShell 里看到的不是一回事（验收截图里 `下一声号角…/冰只撑半分钟…/又补来一个…` 三条功能字幕叠在下方同一个框里就是证据），离线规则按两条通道各算各的，所以全绿。修法：`ctx.py` 的 `STRIP_MAX=2`、`STRIP_HOLD=6.0`（计数器 `CNV_<tag>_Strip` + 计时器，`Strip done` 清零；排队句、功能字幕 `Now k`、过场里的句子都要等"框里不足两行"；`plan.py scene_steps` 里第三句让过场空等到框清）；`FUNC_LATE` 改成 `FUNC_HOLD+STRIP_HOLD+0.5`（三条功能句同时是上限）。离线能抓：`cnv/strip.py` 读 sim 的 `log` 算每摞深度（**没碰 sim.py**），G3B 守卫（`tests/test_architecture.py`）对全部关卡断言 ≤2 + 变异检验，`tests/test_talk_queue.py` 新增单测。A4 策划稿把车队出发后的两句功能句错开（`+0:08`、`+0:16`）。**代价**：一口气三句闲话只说前两句（A4 仍丢 3 句）。**待验**：CampShell 里 A4 第 70～120 秒字幕框最多 2 行。**未覆盖**：国际版没单独回放（用的是同一队列）；sim 里没有玩家放冰墙触发的"冰墙已就位 / 冰墙即将融化"播报，它们在游戏里进同一个框，由门限制，但没回放过。
-- **I4 没做，下一步**（验收截图 `work/acceptance/2026-11-05/zh_a4_demo_*.png`，注意验收里的秒数是录像时间，不是任务时间，演示在开场过场里）：①帝国步兵消失：`devices/horn.py demo_scripts` 的 `Demo down` 是在兵走回 `spawn 一号` 标记后 `NAMED_DELETE`，那个标记在空雪地上，只有出兵雕塑在旁边，所以玩家看到的还是"凭空消失"。想法（推荐 A）：消失那一刻在那里放冒烟 + 碎冰（`fx(shut, smoke=True, crack=False)` 已有，现在只有绕路口 `fx(to)` 有），让它读成钻进地道；（B）不删，让兵留在墙边直到过场收走，只演"挡住"，绕路另外演；（C）给兵一个真的地道口物件。②冰墙直接冒出来：`Demo engineer` 把玩家的工兵传到 `Clear 一号` 后 1 秒就放冻结，工兵可能在镜头到之前就造完、或镜头没对准；先用 `cnv_check a4 demo` 的帧看工兵造的 5 秒镜头在不在、`过场 会场` 里 `停` 够不够（`plans/a4.md` 第 154～171 行附近的镜头顺序），再决定调镜头顺序还是把冻结延后到镜头到位。测试台被别的线占着时先排队，不要杀别人的进程。③做完在 `docs/issues.md` I4 标"修了待验"，写证据（帧号或计数）。
-- **提醒（别丢）**：issues.md 里 I4 现在仍是"待修"；工作区里 `docs/issues.md` 第 43～45 行、`sim.py`、`package.py`、`shell.py` 等是别的线没提交的改动，不要带进提交（我提交 issues.md 时是用 `git apply --cached` 只放了自己的那一块）。
-
-### 第二十三个会话（11-05，总控令：I4 演示）：做完，标"修了待验"
-
-- **根因**（量验收截图）：过场画面是电影黑边下的一条带，约 820×345 地图单位（`model.LETTERBOX_HALF`；黑边下相机实际渲染 820×461，`LETTERBOX_UNDER`）。演示从出兵冰雕到工兵站位 288 单位，镜头摆在广场 1，工兵站位在画面下沿外（看不到施法）、冰雕和出生点在上沿边（兵出来、被删都在画面里的空雪地上）。
-- **修法**（源头）：演示分三段各带镜头，`devices/horn.py frame_for` 解镜头位置（要看的留 40、画面外出现的留 40）：A1 工兵从画面外走进来、站定才施法；A2 冰立住后镜头上移到出兵冰雕，兵冒烟出来、走到冰前折回、在冰雕口冒烟下去（`DEMO_ARM` 之后且进 `Demo Hole` 才删，`退` 秒兜底）；B 新动作 `雪祭.演示绕`，镜头转后巷，一对兵冒烟出来往画面外走，`演示收` 在画面外收走。`plan.camera(..., tight=True)`：演示镜头按过场画面（`LETTERBOX_UNDER`）夹边界，不用 K5 的玩法画面 `VIEW_HALF`。`plans/a4.md` 的演示步骤：`演示` → `停 21` → `演示绕` → 台词 → `停 6` → `演示收`（原来的 `镜头: lane foot` 删了，B 段自带）；演示总长约比原来多 5 s。
-- **离线能抓**：`ctx.stage` 声明各段（镜头、要看的、画面外的点、在画面里造/删单位的脚本要放烟），`contract.demo_unframed` 查产物，`tests/test_architecture.py` G14 五个变异。`tests/test_horn.py` 演示那条按新设计改了（演示要求两条街都有冰雕，没有就编译报错）。
-- **测试台**：`cnv_check a4 demo` PASS（检查改用自己的时钟 `DEMO_AT/DEMO_A/DEMO_B`，开场过场被测试台跳过，所以演示放在首帧之后；A 段量到约 18～19 s）。帧里镜头跟着走、冰雕冒红烟、兵在画面中走。测试台看到的是游戏画面不是电影黑边——带高 345 是从验收截图量的，没复现。
-- **提交前跑过**：`tests/test_architecture.py test_docs.py test_level_cards.py test_plans.py test_a4_plan.py test_horn.py test_talk_queue.py` 共 105 过。
-- **待验（要在 CampShell 里看开场）**：工兵走进来施法、兵冒烟出来折回冒烟下去、后巷冒烟出兵；兵走路比预想慢，若兵没走到冰前就折回，调 `plans/a4.md` 的 `等`（现 6）。其它关卡用 `演示` 的暂时没有（只有 A4）。
-
-### 第二十三个会话收尾（11-05，上下文 40 万，已超 15 万）：I4 和两个修补已推（acc4849、3076bd9），第二轮验收三条还没动
-
-总控令（第二轮 CampShell 验收，`work/acceptance/2026-11-05b/report.md`，issues.md 928b4a2）按顺序做，**每条独立提交**，提交前跑 `tests/test_architecture.py test_docs.py test_level_cards.py test_plans.py`，改完 issues.md 的 I20 / I1 / I23 为"修了待验"并写证据：
-
-1. **I20（最急）**：A1 开局全选、右键往右上桥头 (1503,2806) 开，约 38 秒关卡直接结束跳统计页，部队一个没少（`a1_zh_s38_ended_stats.png`）。查哪条结局被误触（多半是 `docs/story/plans/a1.md` 的"谁看见谁"三条规则：桥面守军倒 / 南塔爆破手倒且北塔还活着 → 输；南岸巡逻倒且南塔还活着 → 输，里的条件在开局往桥头走时就满足，注意 `还没` 只认 `段 …`，写法见第二十三个会话（A1）一节的坑），从源头修，加一条检查：开局往桥头走不该结束（`checks/a1.py`，`plan_sim a1` 带 `派 … 去 …` 的剧本能复现，先在模拟器复现再上测试台）。
-2. **I1 仍不过**：游戏里有两个字幕位——上方单行军事字幕框和下方面板——同时各显示一句不同的话；而且同一句"车停着就是活靶子"先在上方、约 7 秒后又在下方出现一次（`a4_zh_s40_two_captions.png`、`a4_zh_s46_caption_late.png`、国际版 `en_a4_s1_two_captions.png`）。用户要求：任何时候屏幕上最多一句。上次（c30d18f）我把两个位置当成同一个累积字幕框、`STRIP_MAX=2`，验收说不对：要重新量真实布局（一句可能同时占上方框和下方面板，一句话配音字幕 + 军事字幕各出一次 = 重复），把两个位置共用一个出口（`ctx.py` Talk 队列：`SHOW_MILITARY_CAPTION` 与配音字幕事件 `PLAY_SOUND_EFFECT` 对同一句只许出一个位置、`STRIP_MAX` 改为 1 的话要看过场里的台词会不会拖长），去掉重复，离线检查（`cnv/strip.py`、G3B）按真实的两个位置算。先对着三张截图读清楚：哪一句进了哪个框、几秒后重复的是哪个脚本。
-3. **I23**：A2 开局镜头上沿和左上角一大块地图外的黑（第 1～62 秒，`a2_zh_s31_black_edge.png`），A9 左上角小块黑三角（`a9_zh_s36.png`）。同 I5 一类，查为什么 `contract.camera_outside_the_view` 没抓到。我的猜测（没验）：K5 只夹脚本里的 `MOVE_CAMERA_TO`，开局默认镜头（玩家基地所在处，不是脚本移的）和 `MAP_SWITCH_BORDER` 之后的当前相机位置都没夹；A2 的黑是第 1～62 秒一直在，更像开局镜头落在离边界不到半屏的地方。要查开局镜头怎么定的（`ctx`/`plan.py` 的开局相机、地图的默认相机点），再按 `plan.VIEW_HALF`（玩法画面半宽高 950×540）检查它离边界够不够。
-- I19（A4 不操作约 60 秒战败）仍等用户，不动。I21、I22 是外壳线的。
-- 上次留下的待验：I4 的演示（CampShell 里看开场）；G14 守卫在 `tests/test_architecture.py`；`sim.py` 脚本时间可写 `旗标+秒`，`offline.WALK` 已改成挂事件。
-- 本会话上下文已到 40 万，下个会话读本节开始。
-
-### 第二十四个会话（11-05，总控令：第二轮验收 I20 → I1 → I23）：I20 做完（175dba0，已推），I1、I23 没动（上下文 21 万时交接）
-
-- **I20 做完，标"修了待验"**：根因不是条件写错，是兵路过**自己开火**把南岸巡逻打倒（第 3 条规则成立）；巡逻原来站桥头离出生点 420，一走近就开火。**停火姿态试过没用**：`UNIT_SET_STANCE` 3、`UNIT_ALLOW_AI_AUTOACQUIRE` 0、`TEAM_SET_STANCE`、`PLAYER_ALLOW_AI_AUTOACQUIRE` 0 测试台四次，兵照样开火（写进 `docs/engine/terrain.md` 补记；别再试）。改法：巡逻挪上桥 160、新增地点 `patrol watch`（半径 450）走进先通报"停下"。检查：`cnv_check a1 walk`（测试台）、`simchecks` 的 a1 walk、`tests/test_a1_plan.py` 三条。**遗留**：玩家右键点到桥面上仍会输（有警告，到开火至少 5 秒）；若用户觉得还是不公平，下一招是 `无敌`（但规则 1、3 就成了死规则）或地形挡路。
-- **I1 下一步**（报告 `work/acceptance/2026-11-05b/report.md` 第 10 行，三张截图 `a4_zh_s40_two_captions.png`、`a4_zh_s46_caption_late.png`、`en_a4_s1_two_captions.png`）：先读截图弄清哪一句进哪个位置、7 秒后重复的是哪个脚本；`ctx.py` Talk 队列、`cnv/strip.py`、`tests/test_architecture.py` G3B、`tests/test_talk_queue.py` 是上次（c30d18f）的实现，用户要求"任何时候屏幕上最多一句"，同一句话不许在两个位置各出一次。
-- **I23** 没动：A2 开局镜头上沿黑（第 1～62 秒）、A9 左上角小黑三角；查开局默认相机点离边界够不够（`plan.VIEW_HALF` 950×540），`contract.camera_outside_the_view` 为什么没抓到。
-- 工作区里 `experimental/cnv/shell.py`、`tests/test_shell.py` 是外壳线没提交的改动，别带进提交。
-
-### 第二十五个会话（11-05，总控令：G4 红 → I1 → I23）：G4 红修了、I1 做完（c858229，已推），I23 没动（上下文约 19 万时交接）
-
-- **G4 红**：`tests/test_a1_plan.py` 改成 `from test_plans import small`（照 `test_stasis.py` 的做法拿路径），不再改 sys.path，棘轮回到绿（63a770e）。
-- **I1 做完，标"修了待验"**（证据写在 `docs/issues.md` I1 行）：根因两个。①游戏按字符串表里的标签 `DIALOGEVENT:<事件>` 找配音字幕，AudioFile 不写 `SubtitleStringName` 也照出，所以功能句（上方字幕）的录音 7 秒后又在下方面板出一次；改 `voice_link.Later.strings`（只给带字幕的事件写标签，`texts` 是全部）。②军事字幕和面板是真的两处，规则改成一次最多 `STRIP_MAX=1` 句（`ctx.py` 头部注释；`strip.py` 改成按两处同时读）。A4 在 CampShell 里 3.7～25 秒六帧每帧一句。
-- **I1 没看到的**：A4 第 40～47 秒"车停着……"（要车被打）。过场里的句子也跟着 STRIP_MAX=1，最少隔 6 秒，过场可能变长，离线测试都过，没单独量。
-- **I23 下一步**（没动）：报告 `work/acceptance/2026-11-05b/report.md` K5 一条，截图 `a2_zh_s31_black_edge.png`、`a9_zh_s36.png`；查开局默认相机点离地图边界够不够（`plan.VIEW_HALF` 950×540）、`contract.camera_outside_the_view` 为什么没抓到。测试台现在能 `bench_start(menu_frames=2)` 存开场过场帧。
-- **别带进提交**：工作区里 `docs/engine/air.md`、`spawn.md`、`experimental/cnv/checks/engine_float.py`、`engine_spawn.py`、`maps/probe_range.py` 是引擎线没提交的改动。
-
-### 第二十六个会话（11-05，总控令：I23）：I23 做完，标"修了待验"
-- 根因和改法写在 `docs/issues.md` I23 行：开局镜头看 `start` 点，没人查；`plan.opening_camera` 在开局 0.5 秒切镜头，`contract.start_camera_inside_the_view` 查全关卡。时间 0 的镜头移动会被游戏随后重置，要延后。
-- 没做：A9、A1、A6 没单独进游戏看（同一机制）；开局头 0.5 秒仍是默认镜头。
-
-### 第二十七个会话（11-05，总控令：K7 / I8 A4 地形大改）：地图改完、lint 过，graybox 一条红和测试台检查还没收完
-
-- **做了什么**：①生成器 `platmap.py`：`HOUSES`（几种近方形民房的占地半边，SageXML 量的）、`bar_box`、`house_row`（沿折线一栋挨一栋，口子留给定宽度，口边各贴一栋），`walkable`/`_gap_to` 把房子也当挡路物（以前只有宫墙）。②`maps/sapporo.py`：北街区、南街区、北坡口两侧 ward 不再垫高（`SHAPES` 里删了）；大街北沿 `ROW_N`、南沿 `ROW_S` 各一排房子，北沿留三个 120 宽口（`lane foot` x=1200、后巷东口 x=2610、北坡口 x=3050）；街区后沿 y=3170 和东沿 x=2760 一道宫墙，南街区东头一道墙；一、三号广场也四面砌宫墙；`lane foot`、`north mouth` 搬到口子上，`gun north` 搬到 ROW_N+270，`lane depot` 搬到 y=3030，`LANE`/`NB_BACK` 改 3170，两条后巷坡道删了。③`tests/test_sapporo.py`：后巷改成"两个口"、加"南街区走不到"；`test_architecture.py` G13 的"在坡上"变异改用北高原西坡道。④`docs/design/maps/a4.md` 逐块表标了已做。
-- **量数**：陡面 8.3%→5.8%（原版中位 3.7%，P36 目标 ≤4% 没到：剩下是两块高原、西岭、西南山、小丘和海岸）；民房 110→243。`cnv_preview a4` lint ok；test_architecture、test_docs、test_level_cards、test_plans 74 过，test_sapporo 10 过。
-- **没收完（下个会话先做）**：
-  1. `tests/test_graybox.py::test_old_a4_can_be_pushed_through_every_stage` 红：走查的"布防"阶段多撞到敌人（该测试本来就脆，见前面几节）。试过把 `gun north` 挪到 +315，没用。要看是哪个敌人、哪条路线（`graybox.stages('a4')`），可能是后巷口/北坡口移位。
-  2. 子 Agent 的回归没出完：`work/logs/k7_b.log`（landings、horn、detours、maps、platmap_terrain、lint、sim、a4_plan、offline、ownmap、mappage*、cnv_parts）有一条红，名字还没拿到；`work/logs/k7_graybox.log` 是上面那条。测试台 `cnv_check a4 place/placem/horn/detour/queue/smash/derrick/melt/smoke/win` 一条都没确认（`place`、`placem` 最要紧：冰核落点在新口子上）。
-  3. 守卫（没做）：声明了 `Block` 的地图，`Shape.tier≥2` 的块必须被一块写了"为什么要高处视野"（新字段 `Block.high`）或用途是 `远景` 的 Block 盖住；放 `platmap.lint`，守卫编号用 G15（G14 已被占），变异：把 sapporo 北高原那块 Block 的 `high` 去掉要红。现在只有 sapporo 声明了 Block，别的图不会被连累。
-  4. 房子行在真游戏里挡不挡得住步兵没单独验（模型按占地盒算；宫墙已在测试台验过）。建议在测试台摆一排 `MJ_Structure_02` 让步兵冲，或看 A4 `detour`/`queue` 的结果。
-- **同类问题还在别的图里（没动）**：brussels（A9/S9/J9：ring road gate、四块 city block 垫高）、greenwich（18 块 "a row of buildings"）、hoover、siberia、niagara 等。`Layout.cliff` 默认 2 让悬崖 4～5 格宽，改 1 对 A4 只降约 2 个点，会动全部关卡地形，没改默认值。
-- **坑**：Bash 钩子拦 heredoc 里带反斜杠写文件（用 Edit/Write 或 scratchpad 脚本）；`cnv_list` 输出巨大，别调；`issues.md` 里有总控没提交的 I14 行改动，一并带进了提交。
-
-#### 第二十七个会话补记（graybox 红修好）
-
-- **graybox "布防" 红的根因**：开局 `出动: harbour guard, 守: north camp`，守卫从港口沿大街往西走到北坡口再北上，路过停在 halt 的车队 266 远（REACH 300），走查把它算成"撞到敌人"。真游戏里也是这么走，所以不是测试脆，是计划有问题：**改 `plans/a4.md` 第 230 行，港口守卫改守 `gun east`**（走东街，离车队 700 以上），不动断言。
-- **同时修的**：`offline.a4_sight` 里三条"后巷高处看得见大街/大街看不见后巷高处"声明随后巷压平删掉（后巷不再是高地，a4.md 表里本来就写了"俯瞰大街没有玩法用处"）；`test_offline` 里"过"的条数 6→3（只剩两块高原波能塔的 3 条，仍要求全部"过"、没有"不对"）。
-- **全部测试**：543 过、8 红。8 红都不是 K7 引起：`test_mappage_sketch` 6 条是 trial 图的开局镜头规则（I23 那次提交的 `start_camera_inside_the_view`，地图页的试验图没跟上，外壳线/地图线的事）；`test_cnv_parts::test_every_build_keeps_the_contract` 是引擎线没提交的 `checks/engine_missile.py`（`CampMslS` 缺 'base jump' 标记）。**我没有用 stash 对照验证**，判断依据是失败信息指向的文件。
-- **测试台**：`a4 place`、`placem`、`horn` PASS（冰核落在三个新口子上、号角兵数对）；`detour/queue/smash/derrick/melt/smoke/win` 没跑，下个会话在测试台空时跑（每条 3～5 分钟，交给 Sonnet 子 Agent）。
-- **还欠**：G15 守卫（见上节第 3 条）；房子行对步兵的实测；`plans/a4.md` 改了守卫位置后 `flow/a4.md` 若写了"港口守卫守北营地"要同步。
-
-### 第二十八个会话（11-06，总控令：关卡线试一次"只靠模拟器、不开测试台"）：7 项检查都用模拟器重做了，G15 做完
-
-- **报告**：[`docs/story/sim-vs-bench-a4.md`](sim-vs-bench-a4.md)（表：detour、smoke 能；queue 能但墙的消失靠脚本；melt、smash、win 部分；derrick 不能，只判走得到；末尾 R1～R6 是给引擎线的缺规则清单）。
-- **工具**：`experimental/cnv/simbench.py`（新，没动 `sim.py`）：`python -I -X utf8 experimental/cnv/simbench.py [检查名]`，把检查的任务放进模拟器、玩家的冰墙用剧本 `造`、读数按开场过场长度（80 秒）前移，再用检查自己的期望判；读不了的读数写 SKIP。`tests/test_simbench.py` 守着（6 项过 + 3 个"没墙必须红"的变异 + SKIP 不算 PASS）。
-- **G15**：`platmap.Block.high` + `platmap.high_lint`（并进 `block_lint`，所以 `cnv_preview` / `build.py` 都会跑）：声明了 Block 的地图里，`Shape.tier≥2` 要被带 `high` 或 `远景` 的 Block 盖住（至多 10% 例外）。守卫 `test_architecture.py::test_g15_*` 带变异（去掉北高原的 `high` 变红、改成远景不红、没盖住的高地变红、没有 Block 的图不管）；`tests/test_platmap_terrain.py` 一条单元测试。sapporo 三块高地写了 `high`（来自 `docs/design/maps/a4.md` 逐块表的用途栏）。`experimental/mappage/sketch2map.py` 跟着带 `high`（否则地图页的往返对比红）。
-- **全量测试**（`work/logs/full_tests.log`，改动前的一次）：559 过、3 红：`test_mappage_sketch[sapporo]`（G15 引起的，已修）、`test_platmap_terrain` 的夹具（高地没盖，已修）、`test_maps::test_nothing_a_build_places_stands_on_scenery`——**不是关卡线的**：引擎线的 `aidefense_bench`（`checks/engine_aidefense.py`）里 waypoint `CNV AI Far`（2662, 3230）落在 sapporo 的两棵树 `MR_Tree06` 上，要引擎线挪点。上轮的 8 红（mappage_sketch 6 条、`test_cnv_parts`）这次都过了，我没有改它们，什么时候、被谁修好的没查。
-- **测试台对照已做（11-07，第二十九个会话）**：7 项里 6 项 PASS，读数和模拟器对得上；**`smash` 第一次 FAIL，改后 PASS**：`horn.py` 的 `smashes` 改成每面墙只下一次令（`Hit` 旗），测试台 PASS。**原来写的"真因是每帧重下令"11-07 被 A 线的测试台推翻**（`engine_reorder` 探针：每帧重下令单位照走），真因没查到（线索：目标是 SET_REF 引用；水边出生点连移动令都不动，上岸点在水边），G16 守卫已撤，detour / queue / melt 复跑 PASS。详见 [`sim-vs-bench-a4.md`](sim-vs-bench-a4.md) 末节；R7（运输船速度）已记进规则清单。
-- **还欠**：房子行挡不挡步兵；A4 以外各图的 G15（只有声明了 Block 的图被管，目前 4 张，都干净）。
-
-### 第三十个会话（11-07，总控令：代理玩家两种打法都输，查是不是关卡的事）：A4 数据没改，结论和要别人做的事写在 sim-vs-bench-a4.md 末节
-
-- **结论**：三条（放冰早输、开局兵种、没回血）都不是 A4 该改的。放冰早输 = 号角表里的"晚 10 秒"在（detour 检查验过），代理玩家的兵贴着车被动等，两股兵合在一处来；开局兵种和没回血是用户 / 流程稿定的设计（10-31 删修理厂、11-02 会场护卫不换）。
-- **模拟器缺 R8**（空闲 / 攻击移动的单位不追，射程短的一方站着挨打）：同样的兵、同样的站位，改成逐个下 `attack` 后第一声 8 个兵 15 秒全灭、车一点没伤。要 A 补，补完 B 重跑 `--compare`。
-- **代理玩家在开场过场里下令**（`Sim.input` 为假时真人不能动）：会打死演示的兵、车队提前 30 秒出发。给 B。
-- **没做**：把 `绕路` 表加倍试过，没有数据支持，已放回。手写"题卡打法"的玩家没打通整段（第三声丢车），不能当"打得赢"的证据。
-- **工具**：`work/re/a4_trace.py`（逐秒出兵 / 车血）、`work/re/a4_intended_play.py`（手写打法），不进 git。`--compare` 一次约 25 秒。
-- **下一步**：等 A 补 R8 + B 改打法后重跑 `simproxy.py a4 --compare`；再看是否要把脚本打法固化成测试（要先有一个能整段打通的版本）。
-
-#### 第三十个会话补记（11-07 早，总控转告两件事）
-
-- **G16 撤了，smash 的"真因"改正**：A 线 `engine_reorder` 探针（公开 5d5e4ef）量到每帧重下同一道令单位照走，"每帧重下令会卡"不成立；`contract.ref_orders_once` 和两条 g16 测试删了，`sim-vs-bench-a4.md` 相应几处改成"已撤回"。`horn.py` 的"每面墙只下一次令"保留（smash 测试台 PASS，无害），但它为什么有效没弄清。**smash 当时不动的真因没查**，线索：① 目标是 `SET_REF…` 引用（探针打的是有名字的墙）；② 水边出生点连移动令都不动，鬼王上岸点 `CNV A4 Shore` 在水边。下一步要查就上测试台：用一个有名字的墙 + 上岸点离水边远一点，各试一次。
-#### 第三十一个会话（11-07，总控令：查 smash 鬼王不动的真因）
-
-- **结论**（详见 [`sim-vs-bench-a4.md`](sim-vs-bench-a4.md) "smash 当时鬼王为什么不开火"）：A 给的两条线索都排除（水边出生点、SET_REF 引用都不是；King 类型也不是）。**触发条件是"每帧重下攻击令 + 目标要绕路"**：同一道每帧令，直路开火，从东岛上岸要过桥时鬼王站在桥上不开火；只下一次令在同一座桥上开火。机制没查清，要查是 A 的事。`horn.py` 的"每面墙只下一次令"保留且有道理。**没改地图数据**。
-- **工具**：`checks/a4.py` 里 `smash_probe` 和检查 `smpos`（对照）、`smev`（旧写法复现，会 FAIL）、`smwest`（鬼王放西岸）、`smdecoy`（有名字的目标，会 FAIL）；`missions/kingref_bench.py` + `checks/engine_kingref.py`（海岛，King）。
-- **要总控 / A 定**：G16 撤得太急——对"引用"的说法错了，但"每帧给要绕路的目标重下攻击令会卡"在真地图上成立。要不要恢复一条守卫（不分引用与否，要求带 `Hit` 旗）归 `contract.py` 的主人。
-
-- **给 B 的接点**：`simproxy.CHOKES['a4']['road'] = 'convoy start'`（车队路的 y），`SimWorld.junctions()` 返回 `{路名: (x, y)}`，x 取各路 `block` 点的 x、y 取路的 y（后巷 1200、一号 2015、二号 2830、北坡口 3050、三号广场 3370、东街口 3575，y 都是 2500）。代理玩家预站位站这里，别站冰的位置（在街里）也别贴车。没改 `ra3model`，所以 `Observation.chokes` 里的 `Choke` 还没带它，B 读 `world.junctions()` 即可。测试 `test_a4_every_way_has_a_junction_on_the_convoys_road`。
-
-#### 第三十一个会话收尾：下一步是"展示逻辑层"（总控令，ADR 0022，关卡制作暂缓）
-
-- 在 `experimental/cnv/` 新开 `simshow.py`，让模拟器回答"玩家第几秒看到什么、听到什么、能做什么"：① 镜头（过场镜头位置、取景里的目标、是否拍到可玩区外，接 K5）；② 台词 / 字幕时间线（第几秒播、是否被盖、带玩法信息的句子是否太晚，接 K1）；③ 过场流程（时长、何时交还操作，`Sim.input` 已有）；④ 界面状态（目标出现 / 打勾、计数器、小地图闪点）。
-- 先盘点这些脚本动作在 `sim.py` 里现在是"执行了没记录"还是"直接跳过"，再定先做哪项；时间和行为照 ADR 0019 必要时上测试台量（`bench_menu`、`bench_caption`）。`sim.py` / `simunits.py` 归 A，要钩子写清发总控；`simproxy.py` / `ra3model` 归 B。
-- 完成标准：A4 跑一遍出一份"玩家时间线"（镜头、台词、操作锁、目标），K1、K5 的规则检查改在模拟器上跑，有测试。
-- 本会话上下文约 17 万，已超 15 万，所以交接。
-
-### 第三十二个会话（11-07，总控令，ADR 0022）：展示逻辑层 `experimental/cnv/simshow.py` 做完，A4 出了玩家时间线
-
-- **做法**：没动 `sim.py`。`ShowSim(sim.Sim)` 只多记录、不改规则（每个动作仍交给模拟器自己的 `act`）；读数函数都在 `simshow.py`：`black_runs`（K5）、`late_lines`（K1，就是 `Sim.late_captions`）、`pushed_out`（字幕被顶掉没读完）、`too_many`（I1，`strip.too_deep`）、`input_spans` / `first_control`（过场锁操作和交还）、`timeline` / `report`（玩家时间线）。命令：`python -I -X utf8 experimental/cnv/simshow.py a4 [--check win --until 900] --out work/player_timeline/a4.md`（`work/` 不进 git；`--check win` 是模拟器里整局打到赢，约 45 秒）。测试 `tests/test_simshow.py`（14 条：小任务里镜头靠边 / 平移 / 黑条 / 边界收窄 / 检查自己的镜头不算；台词 6 条才晚；被顶掉；锁操作；计数器；A4 开场时间线；A4 去掉镜头脚本变异；全部 16 关 K5 和 K1 on 模拟器）。
-- **盘点结果（模拟器里这些脚本动作原来的状态）**：
-  | 动作 | 原来 | 现在 |
-  | --- | --- | --- |
-  | `MOVE_CAMERA_TO` / `_NAMED` | 执行，只存目标点（`Sim.camera`），不记秒数、起点、时间 | `ShowSim.moves`，平移按线性、缓入缓出不模拟 |
-  | `CAMERA_FOLLOW_NAMED` / `STOP_FOLLOW` | 当成跳一下 / 忽略 | `follows`，镜头坐在单位上（真游戏落后 300，没模拟） |
-  | `CAMERA_LETTERBOX_BEGIN/END` | `IGNORED`，没有任何痕迹 | `bars`；取景半宽高用 `model.LETTERBOX_HALF`（过场）/ `VIEW_HALF`（玩法） |
-  | 游戏默认开局镜头 | 没有 | `cam0` = 地图 `start` 点（K5 的 I23 就是这个） |
-  | 取景里有哪些单位 | 没有 | `shots`（每个 DT 一张：中心、出界量、框里的非平民单位）；雾不管 |
-  | `DISABLE/ENABLE_INPUT` | 只留最后状态和一条备注 | `locks` 历史 |
-  | 字幕框 / 对白面板 / `late_captions` | 已有 | 沿用；多记了脚本要求的秒数（`asked_caps`），用来判"被顶掉" |
-  | `DISPLAY_COUNTER` | 引擎模型自己处理，模拟器看不见 | 读 `eng.log`，加每秒读数变化（`shown_ui`） |
-  | `HIDE_COUNTER` / `HIDE_COUNTDOWN_TIMER` | 忽略 | 记（每帧重复收起只记一次） |
-  | 目标、小地图闪点、信息框、倒计时 | 已记在 `Sim.log` | 沿用，并进时间线 |
-  | 配音 | 记事件时刻 | 不变。**录音自身长度和引擎的对白队列没模拟**（音频何时真播不知道） |
-- **没验、或者是猜的**（ADR 0019 该上测试台量，这次没量）：平移缓动、跟随偏移、开局头 ~1 秒用游戏默认镜头（模型的 flag 链决定的，所以 `BLACK_MIN`=2 秒不算黑边；真游戏头几帧到底显示什么没量）、`LETTERBOX_HALF` 用的是 11-05 量的 410×170。
-- **A4 跑出来的东西**：开场过场 0:00～1:19 锁操作（`InScene` 旗同段），1:19 交还；5:11～6:41 又有两段过场（赢之前的收尾）。K5 没有黑边。**K1 有一处**（`--check win` 整局打赢那一遍）：9:03 一口气来 4 条功能字幕（`CNV_A4_Show_65/66/74/80`），排队到 9:12～9:18 才出，"号角响了！"晚了约 10 秒。是结局前一堆事件挤在一起，不是 A4 的闲话。原来 `test_architecture` 的 G3B 只跑"玩家什么都不做"那一遍，抓不到。**没改 A4 数据**（关卡制作暂缓）；要不要错开或合并，归后面恢复出关时定。
-- **给 A（总控转）的钩子**，`sim.py` 里做成原生的话 `ShowSim` 能变薄（现在都不急）：① `act` 里 `MOVE_CAMERA_TO` 存 `(t, 起点, 终点, 秒数)` 而不只存终点；② `CAMERA_LETTERBOX_*`、`CAMERA_FOLLOW_NAMED`、`HIDE_COUNTER` 别放进 `IGNORED`；③ `show_caption` 保留脚本要的秒数；④ 开局把 `Sim.camera` 设成地图 `start`。清单也写在 `simshow.HOOKS`。
-- **下一步（建议）**：① 把 `simshow.problems` 并进 `simproxy` 的 `--compare` 输出（B 的文件，要总控转告）；② 测试台量一次开局头几帧的镜头和 `LETTERBOX_HALF`（`bench_start(menu_frames=2)` 存帧）；③ 同样的"整局打赢"再对 A4 以外的关跑（需要各关有能打赢的剧本）。
-
-#### 第三十二个会话收尾（11-07，全量 pytest：616 过、5 红，已处理 2 条，其余 3 条不是展示逻辑层引起的）
-
-- 全量（`work/logs/levels_full.log`，23 分钟）：**我们这边的两条已修**：`test_architecture::test_g3a_caption_action_has_one_outlet`（`simshow.py` 不再自己写字幕动作名，取 `sim.SHOWN`，984db90）；`test_level_cards::test_plans_compile_against_the_published_interfaces`（`plans/a4.md` 的 `检查` 漏列上个会话加的 `smpos/smev/smwest/smdecoy`，补上）。
-- **不是我们的、已转给 A 线**：`test_simproxy::test_the_ice_goes_where_the_player_put_it`、`test_architecture` G5（总控说已转）。**没报过的两条**：`test_a1_plan::test_walking_to_the_bridge_end_does_not_end_the_mission` 和 `test_sim::test_the_wiring_checks_in_the_simulator`（`a1 walk`）：A1 走查在模拟器里 0:13 被 `CNV A1 - Rule 3` 判输，应该不结束。没动过 A1 数据，嫌疑是 `ef4a7d7` R8（空闲单位追着看到的目标打）之后 A1 的桥头单位提前交火；**没查**，归 A 线 / A1 的主人（关卡线暂缓出关，要查的话先看 A1 桥头两边的单位是不是互相看得见）。
-- 跑全量时必须写 `pytest -q tests`（不带目录会扫进 `work/downloads/blender` 的库而中断）。
-- **下一步第一项**：用 `simshow.problems` 并进 `simproxy --compare`（B 的文件，要总控转告）；其次测试台量开局头几帧镜头与 `LETTERBOX_HALF`；再次各关写"整局打赢"剧本后跑 `simshow`。A4 的 K1：整局打赢结尾 9:03 四条功能字幕挤在一起（见上节），等恢复出关再定。
-
-#### 第三十三个会话（11-07，总控批准改 `simproxy.py` 的 `--compare` 部分，只做加法）
-
-- **第一项做完**：`simproxy.py` 的 `SimWorld` / `play` 加 `show=False`；`show=True` 时世界用 `simshow.ShowSim`（只多记录、不改规则），`rep['world']['show']` 放 `simshow.problems` 的行。`--compare` 的两局都开 `show`，末尾各打一段"玩家看到的"。代理玩家逻辑没动。测试：`test_simproxy.py::test_a4_show_run_reads_the_presentation_and_changes_no_rule`（同一局开关 `show` 结局相同）。`pytest -q tests/test_simproxy.py tests/test_architecture.py tests/test_simshow.py` 41 过。
-- **首个读数**（`work/logs/simproxy_compare.log`）：A4 代理默认局 3:15 输，报 `K1 2:58 功能字幕 CNV_A4_Show_45 3:08 才出`；不用关卡技能那局没有问题。代理打输得早，这条是不是真问题要看正常打法下同一句。
-- **第二项没做**：测试台起不来，`RA3_1.13.game` 正在运行（`bench_start` 拒绝）。游戏退出后再 `bench_start(mod='CampA4'，menu_frames=2)` 存开局帧，量头几帧镜头和 `LETTERBOX_HALF`（现 410×170，11-05 量的）。
-
-#### 第三十四个会话（11-07，测试台量了开局镜头；复验了 A 线挪 A1 巡逻的改动）
-
-- **A1 南岸巡逻 310（624d950）验过，不用回退**：`cnv_check a1 walk` PASS（输了 0、巡逻倒 0，全程 49 秒）；另手动开 `CampA1Walk` 逐秒取帧，队伍 11.6 秒到桥头，"停下！再往桥头走……"通报正好在这时出现、巡逻没倒（`tests/test_a1_plan.py` 3 过）。
-- **A4 开局头几帧（`bench_start(CampA4, menu_frames=2)`，帧 15 起是过场）**：过场**第一帧就已经有黑边**，镜头直接在一号街口，**没有"头 ~1 秒默认镜头 / 黑屏"**（模型里 `cam0` = 地图 `start`、`BLACK_MIN`=2 秒的假设，真游戏头几帧没出现；采样间隔 2 秒，所以"头 1 秒内"仍没量到）。过场帧与 1.0 秒的玩法帧（有 HUD）同一个镜头同一个缩放（两尊冰雕间距 357 / 355 像素）。过场结束后镜头静止在同一处至少 28 秒，没有自动平移。
-- **`LETTERBOX_HALF` 改为 (410, 190)（旧 410×170）**，`LETTERBOX_UNDER` 改为 (410, 254)（旧 230）。过场画面是 1280×720 里高约 540 像素的带；在演示镜头的过场帧（`CampA4_mcp_1107_195947` 帧 38）里用两个已知坐标的标记量，竖直约 1.42 像素/单位，带高约 380 地图单位（旧 345 是把横向比例当竖向用了）；宽仍按 11-05 的 ~820。镜头中心在过场帧里基本居中（偏约 13 像素），**没有偏移**。**教训：`bench_where` 是玩法镜头的拟合，在这里偏约 50 像素，量画面范围别用它**（我第一次用它得出 877×525 和 (+57,+32) 偏移，都是错的，已撤回）。验证：`pytest -q` simshow/architecture/simproxy/production/level_cards/horn 72 过；`cnv_check a4 demo` PASS（演示镜头在新尺寸下重解成功）；演示帧里冰墙和雕像在画面带内、工兵在带外。
-- **第③项（`simshow.py <关> --check win` 跑 A1 A2 A3 A5 A6 A7 A8 A9，日志 `work/logs/show_<关>_win.log`）**：A1 A3 A5 A6 A8 A9 都赢、展示层 0 问题。**A2 有 6 条 K1**（字幕 1 秒或更短就被下一条顶掉：0:09 0:10 0:18 0:19 0:27 0:28）——这局打赢剧本把整关压在 33 秒里，字幕按真实节奏本来隔得更开，**先当压缩剧本的假象，不当 A2 的问题**；要确认需要 A2 的"真实节奏"剧本（现在没有）。**A7 的"打赢"在模拟器里输了**：8:44 "建造厂和基地车都没了"（`CNV A7 - Lose 1`），我方 3 辆坦克在基地边读数 2→1→0→1→0，测试台那局 `ENDED` 判据不分输赢所以没抓到。可能是模拟器和测试台不一致（R8 之后单位自动开火），也可能 A7 的 `win` 检查本来就没赢；**没查，归 A 线 / A7 的主人**（`experimental/cnv/checks/a7.py:271` 起的 `win`，要看 `LAND_BY` 之前航母有没有落到基地边、坦克是不是被谁打掉）。
-
-#### 第三十五个会话（11-07，总控令：重量横向宽度；A2 真实节奏）
-
-- **过场画面的范围上一节量错了，已改（5858b6d）**：上一节的 410×190 矩形（820×380）是把"画面是梯形"漏了。这次在测试台做了一次正经测量：新检查 `engine_letterbox`（`cnv_check engine_letterbox g`，A4 地图平坦大街上，过场黑边开着、镜头摆在 C，一次传 7×5 张卫士网格，前后两帧差分），`experimental/testbench/letterbox_fit.py <run> <前帧> <后帧>` 拟合地面→屏幕单应（11 个点残差 2.9 像素；跑 `CampLbxG_mcp_1107_202615` 的帧 8、14）。结果（相对镜头对准点）：**过场带顶行 290 单位北、宽 1125；中行宽 887；底行 207 单位南、宽 733；带高约 497，带的中线在对准点北 42**（整个 720 行：424 北～258 南，宽 1236～692）。与玩法镜头的 `calib` 拟合（行 90/630 宽 1126/710）、也与 A4 一号广场两尊小冰雕（相距 240 = 1.6 像素/单位）吻合。**所以横向"~820"只是带中下部的宽度，垂直 380 也不对**（`bench_where` 报 525 反而更接近，上一节把它撤回是错的；竖直 1.42 像素/单位也不对，实际 0.8～1.2，随远近变）。
-- **模型改了**：`model.LETTERBOX_BAND`（north 290 / south 207 / half_top 562 / half_bottom 366）、`letterbox_half_width`、`letterbox_depth`（点在画面里多深，负数=在外面多远）、`in_letterbox(dx,dy,margin)` 取代 `LETTERBOX_HALF`；`LETTERBOX_UNDER` 改为 (618, 424)（视角矩形要对称，用最宽最远的）。`horn.frame_for`、`contract.demo_unframed`、`simshow`（`reach_at` / `in_picture`，原 `half_at`）都按梯形算。`test_simshow` 里那条"黑边带不碰边界"的测试点从 (800,2500) 挪到 (900,2500)（梯形远边现在够到 62 单位黑）。
-- **复验**：`cnv_check a4 demo` PASS（演示帧里工兵、冰墙、雕像都在带里；演示镜头重解成功）；pytest：simshow、horn、plan_scenes、architecture、simproxy、production、level_cards 全过（后一批 55 过 3 分钟）。**没跑全量**（上次 23 分钟）；其他关的"过场摆镜头"约束没因 UNDER 变大而红（`test_architecture`/`level_cards` 过了）。
-- **第③项（A2 真实节奏）做了**：新检查 `a2 real`（`experimental/cnv/checks/a2.py`，不压缩，三段 3:00、最后一段 4 秒时炸火箭车）；`simshow.py a2 --check real --until 700` → **赢 9:06，展示层 0 问题**（日志 `work/logs/show_a2_real.log`）。**A2 那 6 条 K1 确认是压缩 20 倍造成的假象，不是 A2 的问题**。顺带看到：没有玩家时坝中段 3:43 "已经裂了"但没塌，整局到 9:06 才赢——也说明 A2 没人操作时坝撑得住（只是个读数，不是问题）。`real` 没配测试台跑（9 分钟），只给模拟器用。
-- **没做/下一步**：①`docs/issues.md` I4 的"量出来要 410×170"之类的旧数没改（那是历史记录）；`docs/story/plans/a4.md:100` 里"约 820×345"的说法是旧数，下次动 a4.md 时改成"梯形，远边 1125 宽、近边 733、带高约 500"。②A7 `win` 在模拟器里输了那条仍归 A 线。③下一个自然的活：整局全量 pytest（后台、`pytest -q tests`），确认梯形没动别的。
-- **B 线转来的"模拟器里 A4 演示敌兵打死玩家工兵"（11-07 追加）**：测试台上**不死**。新检查 `a4 demoeng`（`demo` 去掉"绕路出的兵"计数、换成 `工兵活着` 计数，一屏只放得下四行）：整段演示（run `CampA4Demoeng_mcp_1107_204215`，61 帧 s0.7～s60.7）工兵始终 = 1，s60 == 1 PASS，演示敌兵 2 个出来、被收走。所以真游戏里"move 命令下的步兵路过会开火"和模拟器不一致（或至少这条演示路线上不开火）；读数转给 A 线（`DEMO_KILL` strict xfail 的依据）。`devices/horn.py` 的演示路线不用改。注意：这是 `demo` 检查的时钟版演示（play 中、非开场过场锁操作期），敌兵路线和命令相同。
-- **全量 `pytest -q tests`（11-07 晚，26 分钟）**：648 过、2 红，**都是我们的，已修**：`test_level_cards::test_plans_compile_against_the_published_interfaces`（a4.md 漏列 `demoeng`、a2.md 漏列 `real`，已补进各自 `检查`）、`test_maps::test_nothing_a_build_places_stands_on_scenery`（`engine_letterbox` 网格有一点压在树上，去掉该点；同一条里列的 `engine_super` 几处也在树/围栏上，不是我们的，复跑时已不红，可能 B 线已修）。`plans/a4.md` 的"约 820×345"已改成梯形说法。
-
-#### 第三十六个会话（11-07，总控转 B 线 proxy.md 17：A4 冻街反而更难守）：选了改法 ①，绕路表拉长到落在号角中间
-- **选 ①（绕路晚到的秒数盖过路程差、落在两声号角中间）**。原因：只改 `docs/story/plans/a4.md` 的 `绕路` 表，不动机关代码；不依赖冰墙挡不挡步兵；题卡改法最自然（"冻住的街的兵晚 25 秒以上出"，一句话）。②（减员/攒墙后）要么改了"冻街不减兵"的设定、要么把街做得和口一样；③（改去离车最近的街）试了更糟（3:27）。
-- **新表**（几何顺序：离车越远绕得越晚，去同一条街的两条仍相差 ≥ 10 秒）：后巷 {一号 25, 二号 35}、一号 {后巷 25, 二号 45}、二号 {一号 35, 后巷 45}（原来 10/20、10/10、20/30）。
-- **数字**（`a4waves.py`，单局确定性，代理局，日志 `work/logs/r42_*.log`，未入 git）：
-
-| | 放冰（旧表） | 放冰（新表） | 不放冰 |
-|---|---|---|---|
-| 冰墙不占路（`a4waves.py 1`，原版规则） | 3:27 | **5:16** | 4:38 |
-| 冰墙全挡（`a4waves.py 0`，现模拟器） | 3:50 | 4:07 | 4:51 |
-
-  原版规则下放冰比不放冰长 38 秒，翻过来了。**现模拟器（冰墙对所有单位一律挡路）下放冰 4:07 仍比不放冰 4:51 短**：那局记了 18 条"卡住"，是 A 线要修的"中途立起的冰墙不挡步兵"那条造成的，不是新表的问题；A 线修完后请重跑 `a4waves.py 0` 和 `a4waves.py 0 block=0` 对照（预期放冰 ≥ 5:00 左右）。
-- **试过的别的表**（冰墙不占路 / 全挡）：10/20 旧表 3:27 / 3:50；15/25 循环 3:35 / 4:01；20/30 循环 3:35 / 4:01；**25/35 循环 5:05 / 4:07；25/40 循环 5:05 / 4:07；25/35/45 几何 5:16 / 4:07**；34/22 4:41 / 4:05。绕路晚到 ≤ 20 秒就不行，25 秒起翻过来：晚到的那股落在两声号角正中间（时间线：H2 的一号街那股 3:09.9，夹在 2:44.9 和 3:24.9 两声号角之间），不再叠上街自己的兵。绕路兵减员到一半：全挡 4:07、不挡 3:35，没用。
-- **注意**：25 秒是按"普通"难度（间隔 35～50 秒）定的；困难难度间隔 30～45，25 秒几乎贴着下一声。这次没按难度分表（`绕路` 表目前一个数），要的话下一步让表支持 `25/25/20` 这种按难度写。
-- **测试台**：`cnv_check a4 detour` PASS（一号街的兵 s59 在后巷口出，号角 s36，晚 25 秒）；`checks/a4.py` 的 detour 期望按新延迟改了（`DETOUR = 25`，"号角后 21 秒前一号街不出兵"也加了断言）。pytest（horn、level_cards、architecture、simproxy、a4_plan）54 过。
-- **没做/下一步**：①A 线修完冰墙后重跑上表那行"冰墙全挡"；②按难度分表（上一条）；③`docs/design/cards/a4-layer3.md` 里"三条绕路长短差 ≥ 10 秒"是旧设计稿，没改（约束还成立）。
-- **下一步（总控 11-08 建议，ADR 0022）**：A4 改完绕路表后，用 `experimental/cnv/simshow.py a4 --check win`（和 `simproxy.py`）把 A4 在模拟器里从头跑通当验收，完成判据是"一关全程在模拟器里跑"；跑完列出还缺的规则（比如冰墙不挡步兵那条等 A 线、按难度分绕路表）。踩过的坑：本机 8 核，并行跑 `a4waves` 超过 8 个会很慢（每局 1～5 分钟）；Git Bash 里 `pgrep` 看不到 Windows 进程，别拿它判断后台任务是否结束，用日志文件首行判断。
-
-#### 第三十七个会话（11-08，总控令：ADR 0022 验收，`simshow.py a4 --check win` 从头跑通）
-- **结果**：模拟器里 A4 整局能赢；改前 9:23 赢、展示层 2 条 K1（结局 9:03 挤一堆功能字幕，字幕晚 9～15 秒）；改后 **11:07 赢、展示层 0 问题**（`work/player_timeline/a4.md`，未入 git）。完成判据"一关全程在模拟器里跑"在 A4 上达到。
-- **挖出一个真 bug（关卡脚本，不是模拟器缺规则）**：车队的 3 辆车共用一个队（ADR 0016 K6 的 `crew`），每辆车出发时的 `MOVE_TEAM_TO` 把整队带走，`分批 0/50/110` 形同虚设，三辆车只隔 5 秒（车距 60 ÷ 速度 12）到港口。真实游戏里同样。改了：`Convoy.order`（`experimental/cnv/missions/festival_parts.py`）在分批时一车一队（`crew` 名 `Convoy<tag>1/2/3`，机关 `devices/convoy.py` 置 `cv.split`）；`Release j after truck i lost` 加 `Safe_i = 0`（到终点的车是被删掉的，不算损失）。到达时间 8:53 / 9:46 / 10:52。`tests/test_plan_allies.py` 里"整队一个队"的断言改成一车一队。
-- **测试台**：`cnv_check a4 win` 三次里 2 次 PASS（第一辆车 s445 到、第二辆 s505 到，约隔 60 秒，真实游戏也错开了；任务 s540 左右赢），1 次第 322 秒游戏里"任务已结束"没读到计数（FAIL，画面停在港口过场），子 Agent 另跑的一次 FAIL（到港口车数一直 0）。失败的两次原因没查清，像测试台掉线，不像逻辑（PASS 的两次读数完全一致）；`a4 lose` PASS。以后 `a4 win` 失败先重跑一次。
-- **全量 pytest（671 过 7 失败）**，7 个都不是这次改的：`test_graybox_cards` 2 个（`mine` 射程 300 = 钩子 300）、`test_simai::test_skirmish_ai_builds_makes_units_and_attacks`（攻击没毁玩家东西）、`test_simbench` 4 个（detour/queue/smash 的墙计数是 0；`r3` 墙没被打伤）。simbench 那 4 个在干净的 HEAD 副本上同样失败，A 线（冰墙）的事。
-- **还缺的规则 / 要别人做的**：①A 线：中途立起的冰墙不挡步兵（`a4waves.py 0` 对照还没重跑）；②上面 7 个失败归引擎 A/B 线、`graybox_cards` 归写它的线；③按难度分绕路表（上一节）。属于引擎规则的新缺口：**这次没发现新的**。
-- **没做**：`a4waves` 重跑（这次改的是最后一程的车队，会场段不受影响）；A4 其它检查（`hold`、`smoke` 等）没重跑测试台，只跑了 `win`、`lose`。
-- **11-08 补：按引擎 A 线 2bf447b（造出来的墙对新命令一律挡路，已在走的不改路）重跑 `a4waves.py`**（日志 `work/logs/r43_*.log`，未入 git）：冰墙挡 + 放冰 **4:15 输**；冰墙挡 + 不放冰（`block=0`）**4:51 输**；旧假设（`a4waves.py 1`，冰墙不占路）放冰 5:16。**放冰仍比不放冰早输 36 秒，"放冰更划算"在现模拟器下不成立**（和 0b4c4c2 时的 4:07 vs 4:51 差不多，2bf447b 没改变结论）。**没再调绕路表**：那一局仍有 18 条"卡住"，全是号角兵（HV2 V2 在 2:52/2:56/3:16，HV2 V1 在 3:16）`到不了 目标（ground 没有路）`，`Sim.route(..., closest=True)` 也返回 None——兵出生后找不到哪怕"最近能到的点"。像是兵出生的格子被冰墙盖住（或整条街封死时起点所在的格子被占），真实游戏里这批兵会走到墙前、打墙或站着，不会原地不动。这是引擎规则缺口（`sim.py` `route` / `send`），**要 A/B 线先定"没路时兵怎么办"并量真实行为，再拿现模拟器重调表**，不然是在错的规则上调数字。重跑命令不变：`python -I -X utf8 work/re/scripts/a4waves.py 0` 和 `... 0 block=0`。
-- **A4 全程验收现状（11-08 末）**：`python -I -X utf8 experimental/cnv/simshow.py a4 --check win --out work/player_timeline/a4.md`（约 1 分钟）→ 赢 11:07、展示层 0 问题。**K1 结局字幕那两条（`CNV_A4_Show_66`、`_80`，原来 9:03 挤在一起晚 9～15 秒）已消失**：根因是三辆车只隔 5 秒到，不是字幕本身，车队分批修好后到达 8:53 / 9:46 / 10:52，结局那三句"货收到了"等不再和别的功能字幕叠。A4 数据没为 K1 改过。
-- **接下来**：①等总控通知引擎 A 线补完"没路时兵怎么办"（`sim.py` `route` / `send`，`closest=True` 对被冰墙盖住的起点返回 None，18 条卡住）→ 重跑 `a4waves.py 0` 与 `0 block=0`，放冰须明显长于不放冰（预期 ≥ 5:00），不成立再调 `a4.md` 的 `绕路` 表；②按难度分绕路表（`25/25/20` 写法）；③总控下一个活：A4 之外各关 `simshow.py <关> --check win` 跑一遍、列缺的规则（前次 A1 A3 A5 A6 A8 A9 已 0 问题、A2 `real` 0 问题，见第三十五节上下；A7 及其它没跑过）。
-- **全量 pytest 有 7 个别人的失败**（`test_graybox_cards` 2、`test_simai` 1、`test_simbench` 4），不是 A4 这线改的，见上。
-
-#### 第三十八个会话（11-08，总控令：A4 以外各关在模拟器里 `simshow.py <关> --check win` 跑一遍）
-- **结论**：所有现有关卡的"赢"类检查在模拟器里都能走到结局，**展示层 0 问题**（唯一例外见下），**没有关卡脚本问题要修，没有新的引擎规则缺口**。`simchecks.py`（只测接线的 25 条）25/25 过（约 4 分钟）。
-- **每关一行**（`simshow.py <关> --check <检查>`，各自 2～20 秒；时间线在 `work/player_timeline/<关>_<检查>.md`，未入 git）：
-
-| 关 / 检查 | 结局 | 展示层问题 | 卡住 |
-| --- | --- | --- | --- |
-| a1 win | 赢 0:26 | 0 | 0 |
-| a2 win | 赢 0:33 | **6**（K1：字幕被下一句顶掉，0:09～0:28） | 0 |
-| a2 real | 赢 9:06 | 0 | 0 |
-| a3 win | 赢 0:16 | 0 | 0 |
-| a5 win | 赢 3:17 | 0 | 0 |
-| a6 win | 赢 0:21 | 0 | 0 |
-| a7 win | 赢 1:10 | 0 | 0 |
-| a8 win | 赢 0:22 | 0 | 0 |
-| a9 win / dark | 赢 0:32 / 赢 4:01 | 0 | 0 |
-| j3 run | 赢 2:14 | 0 | 0 |
-| j4 play | 赢 1:52 | 0 | 0 |
-| j5 hold | 赢 9:00 | 0 | 0 |
-| j7 win | 赢 0:10 | 0 | 0 |
-| s2 catch / escape | 赢 1:11 / 输 3:12（escape 本该输） | 0 | 0 / 2 |
-| s5 trap / pace / escape | 赢 5:05 / 赢 5:05 / 输 3:53（escape 本该输） | 0 | 0 |
-| s6 hold | 赢 9:30 | 0 | 0 |
-| a4 win（上一节） | 赢 11:07 | 0 | 0 |
-
-- **要读懂的三点**：
-  1. **`a2 win` 那 6 条是检查的快进造成的，不是关卡问题**：这个检查 33 秒就让一波波来，字幕自然被顶掉；同一关全程的 `a2 real`（9:06）展示层 0 问题。
-  2. **a1 / a3 / a6 / a7 / a8 / a9 / j7 / a2 的 `win` 是"检查脚本替玩家完成目标"的快进（10～70 秒），不是整局**。只有 a2 real、a4 win、a5 win、a9 dark、j3 run、j4 play、j5 hold、s2 catch、s5 trap/pace、s6 hold 是接近整局的跑法。要证明"整局能赢"，a1 a3 a6 a7 a8 a9 j7 还缺一份按玩家打法的全程脚本（`sim.py` 的 `script`），这是下一件值得做的事，但要不要做、做到多细，等总控定。
-  3. **没有结局的检查不是故障**：`a1 walk`、`a3 freeze`、`a7 jumps/pick/relief/east/nag/faster/revenge/pincer/power`、`a2 splash/frog`、`j4 breach` 本来就没写输赢（只看计数），simshow 显示"30:00 内没有结束"或"卡住（什么都不会再发生）"；`a7 power` 那条"120 秒没有任何变化"是跑到头没事可做，不是兵卡住；`a8 beat/swell` 12:00 输是计时终点，`a2 ray/dread` 3:46 输是检查里没人守坝。计数的对错由 `simchecks.py` 管（它已含 a1 walk、a5、a8 beat、a7 nag/revenge/pincer、j3 j4 j5 j7、s2 s5 s6）。没进 simchecks 的（a1 win/trap、a2 全部、a3、a6、a7 的 jumps/pick/defend/power/relief/east/faster、a8 swell/win/lose、a9、j4 breach/play、s5 pace）靠引擎，只在测试台上验过计数。
-- **卡住条数**：全部关卡只有两处，都不是缺口：`j4 breach` 的 `troop 2-1 到不了 Test Road Point`（2 号冰墙本来就没倒，兵被挡，是检查要的）；`s2 escape` 的 `river guard 3 到不了 目标（ground 没有路）` ×2（第 97 秒，守护者坦克打掉两列车后追一个轨道上的目标，没有地面路，**引擎小瑕疵**：真实游戏里坦克会停在原地，模拟器里记一条"卡住"然后不动，结果一样，不影响结局）。复现：`python -I -X utf8 work/re/scripts/simall.py s2:escape`（打印结局、展示层问题数、卡住条数和前几条；`work/` 未入 git，脚本在 `work/re/scripts/simall.py`，一次可传多个 `关:检查`）。
-- **没做**：a4 的其它检查（上一节已说）；整局打法脚本；`a5 hold` 在 30 分钟内没有结局（它的计数期望由 simchecks 过，`在闸室` 在 155 秒后归 0），没发现问题。
-- **11-08 补（总控令：a1、a8 按玩家打法跑全程）**：`python -I -X utf8 experimental/cnv/simshow.py a1 --script experimental/cnv/plays/a1.txt`（a8 同理）；`simshow.py` 新加 `--script`，`simchecks.py` 新增 `('a1', '')`、`('a8', '')` 两条（check 为空 = 关卡本身，`tests/test_sim.py` 跑到，全过）。剧本只下命令（派、造），**不摧毁、不删除目标**（只在 a1 里删掉自己的基地车来"展开"），打仗是模拟器的；a1 的后两段按 `CNV_A1_Phase_2/3+秒` 走，关卡开场变长时剧本跟着走（ADR 0015）。
-
-| 关 | 快进 win | 按玩家打法 | 展示层问题 |
-| --- | --- | --- | --- |
-| a1 | 赢 0:26 | **赢 6:54** | 0 |
-| a8 | 赢 0:22 | **赢 4:24** | 0 |
-
-  - **A1 打法**：全队走海湾水道，守护者/维和清北塔脚下 2 个防空哨，谭雅上北塔（约 1:00 倒北爆破手）→ 谭雅绕南边矿区上南塔（约 2:35 倒南爆破手，全程没碰巡逻圈）→ 基地车展开成建造厂，兵守南桥头，每 30 秒一辆守护者 → 第二波铁锤倒后带防空车过桥，清桥面、码头。没发现关卡问题。读到的现象：①兵守在营地（不守桥头）时，第一波铁锤 4:41 就打掉刚展开的建造厂（兵要守桥头，题意如此）；②谭雅留在营地不动，第三波铁锤约 8:00 把她打倒（输）——玩家得把她撤到后面；③双刃（W2）在 5:20 来，没有防空车的步兵队在桥上会掉兵，**防空车 5:07 由规则送到**，推进要等它——这条"按防空步兵/多功能车送到"的节奏是对的。
-  - **A8 打法**：甲板每 20 秒一辆守护者（`造` 代替，造出来就在）+ 6 个维和 + 2 辆防空车，**自由号留在西岸不动**，3 分钟后全队打平台 1→2→3，4:24 赢，阿波罗战机（3:00）被防空车 3:11 打掉。**这一局没有测到的**：浪的升降（模拟器不模拟升级，哨戒炮射程是固定的）、超时空甲板的跃迁（模拟器没有这个技能，岛东端地面直接走得过去）、甲板工厂自己的节奏。**把自由号派去平台 1，3:03 被标枪兵打下来（输）**，所以"自由号别跟着上"在模拟器里是成立的。
-  - **模拟器的小毛病（只影响日志）**：击杀归属几乎都记在一个单位头上（a1 的 `peace 4`、a8 的 `SIM Made 39`），不影响结局，看日志时别当成谁真打得多。
-  - **没做**：a3 a6 a7 a9 j7（等总控看这两关的结果再定）。
-
-#### 第三十九个会话（11-08，总控令：a3 a6 a7 a9 j7 按玩家打法跑全程）
-- 五份剧本 `experimental/cnv/plays/{a3,a6,a7,a9,j7}.txt`（只下派、造命令；a6、a7、a9 像 a1 一样删自己的基地车来展开），`simchecks.py` 登记 `('a3'|'a6'|'a7'|'a9'|'j7', '')`，`tests/test_sim.py` 跑到，20 过。命令：`python -I -X utf8 experimental/cnv/simshow.py <关> --script experimental/cnv/plays/<关>.txt`。
-
-| 关 | 快进 win | 按玩家打法 | 展示层问题 | 卡住 |
-| --- | --- | --- | --- | --- |
-| a3 | 赢 0:16 | **赢 1:25** | 0 | 0 |
-| a6 | 赢 0:21 | **赢 12:56** | 0 | 0 |
-| a7 | 赢 1:10 | **赢 6:27** | 1（K1：3:24"自由号跳回来救电站"只显示 1.5 秒，被 3:25 下一段开场字幕顶掉；守护者几乎同时把电站打爆。规则在 a7.md，没改） | 0 |
-| a9 | 赢 0:32 | **赢 3:42（不可信）** | 0 | 0 |
-| j7 | 赢 0:10 | **赢 2:01** | 0 | 0 |
-
-- **关卡问题（已修）**：
-  - a3：第二段 `结束` 原为 `[进入 trapped squad, eng 进入 deptford dock]`（瞬时条件），玩家把兵全带走时两个条件不同时成立，第三段不开始，6:52 判输。改成 `[目标 接出被困的部队 完成, 目标 护送工程师到船坞 完成]`（`docs/story/plans/a3.md`）。另：教堂四人若留着，0:52 的巷口铁锤约 1:01 打死他们（第三段 1:07 输），剧本一开始就撤走了，没测"守教堂"。
-  - a6：模拟器最短路沿内圈高台走，同时进三座塔射程，谭雅 1:13 倒。加了外圈最外侧三个路标点 `ring north / northwest / west`（`maps/stonehenge.py`、`stonehenge_names.py`），没改关卡数据。
-- **引擎规则缺口（报给总控，不是关卡问题；没动 sim.py）**：
-  1. **a9 球的暗护盾没模拟**：升级给球加的 INVULNERABLE 状态位，模拟器只对超武铁幕（`CURTAIN` 表）有无敌。暗着的球 8、9 在 1:56、2:37 就被打掉，6 个球 1 分钟拆完，"只打亮的、提前到位"没测到，3:42 偏短。复现：`python -I -X utf8 experimental/cnv/sim.py a9 --script experimental/cnv/plays/a9.txt --until 900 | grep "摧毁\] ball"`。
-  2. **a3 时停区没模拟**：圈里单位不冻、圈不挡追兵，开局 3 秒圈一里"停着"的守护者还开火打掉圈物体 `Beatc5bb8 0-1`。1:25 赢（策划稿 16 分钟）是因为圈的计时没起作用。复现：`python -I -X utf8 experimental/cnv/sim.py a3 --script experimental/cnv/plays/a3.txt | grep Beatc5bb8`。
-  3. **a6 雅典娜炮没有武器**：`AlliedAntiStructureVehicle` 的武器是轨道打击（`WeaponOCLNugget`），`simunits.read_fight` 读出来为空，核心玩法"谭雅看、炮点着打"跑不到，塔是被守护者和维和步兵拆的。复现：`python -I -X utf8 experimental/cnv/sim.py a6 --script experimental/cnv/plays/a6.txt --until 400 --all`，炮从不开火。
-  4. **a6 谭雅被"卡死在对建筑开火"**：派她到敌方建筑附近，她一直对建筑开火（手枪对建筑伤害 0%），攻击移动在交战中不放她走，换新命令也走不了。复现：脚本 `2 派 tanya 去 dog route; 30 派 tanya 去 outer ramp; 50 派 tanya 去 outer east; 150 派 tanya 去 south camp` 跑 260 秒，她始终停在 (2420, 1438)。
-  5. **a7 玩家没法下"占领"命令**：`派` 到电站不会占领，`order_capture` 只由脚本动作触发；闲置守护者会自己追着打建筑，清完守军 6 秒内打爆电站，所以"完好占领电站"奖励目标在剧本里必然失败，断电靠炸达成（目标说明允许）。复现：a7 的命令，看 3:25 的"奖励目标失败"。
-  6. **j7 干扰没模拟**：`sim.py` 完全没有干扰规则，干扰车只是一辆敌车，"先拔干扰车还是绕开"的判断不成立，2:01 赢偏轻松。
-- **剧本没测到的玩法**：a3 五个圈的冻结；a6 雅典娜炮、谭雅 C4、塔要电；a7 工程师占领、东岸基地没拆（靠断电迫降通关）、报复波；a9 节律亮暗、超时空信标兵；j7 纸鹤隐身、式神护卫技能、中路/南路；各关的 `造` 都是造出来就在，没有造价和建造时间。
-- **a6 脆弱**：撤出段是惊险的仗（最后造的守护者才打赢），内圈段命令时间按这一局塔倒的时间估，参数变了要重调。
-- **没做**：A4 冰墙重调照旧等总控通知（引擎 A 线补"没路时兵怎么办"）。
-
-#### 第四十个会话（11-08，总控令：覆盖检查；A4 重调）
-- **路线（ADR 0023，总控 11-08）**：覆盖检查 → "对照局"（几关固定打法同时在模拟器和测试台跑，比结局和关键时间，差 15% 以上停下归因）→ 按"可试玩"标准逐关推：覆盖清零、2～3 份全程脚本（巧解能赢、自然打法明显更难但不必输）、时长 8～15 分钟、测试台全程验收；9 关攒一批交用户。
-- **覆盖检查做完**：`experimental/cnv/simcoverage.py` + `tests/test_simcoverage.py`（10 过，全部关卡 5～11 秒，不跑模拟只编关卡）。`python -I -X utf8 experimental/cnv/simcoverage.py [关…] [--verbose]` 列每关"模拟器不认识的东西"，八类：武器（读空或找不到）、升级的状态位/属性修改器、脚本动作、脚本条件、被忽略的动作、设备、玩家命令、对打不动的组合。**清单必须全是登记在案的**（`KNOWN`，每项带 owner / repro / note），新出现的未登记项让测试变红，登记过期（修好了没删）也变红。16 关共 293 项（104 种），已全登记，owner 先都填"总控分派"，由总控按线改。完整清单：`work/logs/simcoverage_summary.txt`（未入 git，重跑命令即可再生成）。
-- **清单要点（按影响面）**：
-  1. **苏联征召兵（`SovietAntiInfantryInfantry`）在 a1 a2 a3 a5 j7 s2 s5 读成没有武器**：战役覆盖武器文件 inheritFrom 指向自己，射程读 0。影响面比已知 6 个缺口都大，该最先派给引擎线。同类：`AlliedFighterAircraft`（a7 a8）、`AlliedAntiAirVehicleTech1` 的机枪（6 关）。
-  2. 武器模板找不到：`CNV_Liberty`（a7 a8）、`CNV_ChronoLag`（a3 a9）、`CNV_S2ArmouredTrain`、`CNV_S2CryoTrain`、`CNV_Pace63_…`。轨道打击：`AlliedAntiStructureVehicle`（a2 a6）、`AlliedAntiStructureShip`（a5）。
-  3. 升级 32 种：时停区（a3）、球 INVULNERABLE（a9）、干扰车（j7 s6）、掘进车（a5 s5）、列车 IMMOBILE（s2）、纸鹤/式神 ARMOR（j5 j7）、浪涌炮 RANGE/VISION（a8）、ComboParent（j4）等，模拟器只读"升级触发的速度"。
-  4. 脚本动作真不认识 3 种：a7 `SpecialPower_CNV_ChronoDeck`、`UNIT_SET_MODELCONDITION_GENERIC`，j7 `Command_CNV_Jammer_jam`；条件 0 项。被忽略的动作里 `CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT`（a4）是造单位，可能掩盖玩法。
-  5. 设备 3 种没有对应规则：时停区（a3）、自由号跳跃（a7）、列车刹车（s2）。
-  6. 玩家命令 41 种：停止/守卫/停火站位（代理玩家下不了，几乎每关）、占领（a3 a4 a7）、技能只记日志（Command_CNV_* 一批、雅典娜炮、`PaintTarget` 10 关、`ToggleRiotShield` 等）。
-  7. 对打不动：`AlliedCommandoTech1`（谭雅，a1 a6 a9）、`JapanInfiltrationInfantry`（j3）。
-- **没做到**：原版单位的指令按钮只取了 `SpecialPowerTemplate` 一种；带减速/状态的武器额外效果没查；设备那张表（`MECHANISMS`）是人工整理的。
-
-#### 第四十个会话续（11-08，总控令：A4 重调，建筑挡射击线 0f96196 之后）：归因做完，**绕路表没改**，额度到 88% 停
-- **现模拟器重跑**（`work/logs/r44_*.log`；`python -I -X utf8 work/re/scripts/a4waves.py 0` 和 `0 block=0`）：**放冰 3:52 输，不放冰 5:20 输**，卡住 0 条（256d0ab 起号角兵不再卡）。改前（只有"没路站最近处"）是放冰 4:15 / 不放冰 4:51。**放冰比不放冰早输 88 秒，比以前更糟**。代理玩家两局都输（`simproxy.py a4 --compare`：巧解 1/3，只打通会场冻街口，最后一程和拆北营没打通），所以验收"巧解能赢"代理测不了，只能比"撑多久"。
-- **归因（实验证明）**：`sim.Sim.shot_blocked` 关掉后（脚本里 `sim.Sim.shot_blocked = lambda self, a, t, w: False`）又回到放冰 4:15 / 不放冰 4:51。所以变化**全是建筑挡射击线引起的**：不放冰变好 29 秒（地图上的建筑也挡敌人的射线），放冰变差 23 秒——冰墙立在街口，我方守护者 / 维和 / 标枪的直射武器（全都带 los）隔墙打不到墙后的兵，兵却还在（放冰那局第 1 波后巷的兵 2:59 才死，不放冰 2:10），我方在 3:30 前整队打光，第 2 波二号街的兵 3:32～3:42 把 3 辆车打掉（不放冰那局车 4:59、5:09 才被第 5 波打掉）。敌方火箭兵（`JapanAntiVehicleInfantry`）、征召兵武器也带 los，所以墙对两边对称——不是规则不对，是代理玩家的站位/出击没考虑"墙挡我自己的炮"（放冰局出击 8 次，我方损失 6350、敌方 4050；不放冰我方 8900、敌方 10500）。
-- **试了一条旋钮**：绕路表拉长到 40/50/40/60/50/60 秒（原 25/35/25/45/35/45）：放冰 3:52 → 4:01，只多 9 秒，**不是主杠杆**，已还原（`docs/story/plans/a4.md` 无改动，`git diff` 为空）。试法脚本 `work/re/scripts/a4trial.sh "<后巷→一号>" "<后巷→二号>" "<一号→后巷>" "<一号→二号>" "<二号→一号>" "<二号→后巷>"`（改表、跑 a4waves 0、还原）；谁死谁的时间线 `python -I -X utf8 work/re/scripts/a4kills.py [block=0]`（`work/` 未入 git）。
-- **下一步（给接手的会话，推荐顺序）**：
-  1. 先判断"冰墙挡我方射击"算不算设计问题：真实游戏里玩家会把兵站在墙前面、等墙化或让兵绕出去，不会隔墙站着。**别急着调表**，先让总控 / A 线定代理玩家要不要学会"墙后的兵别去打、站到墙这边的开阔处"（代理是引擎线的 `ra3model/proxy`），或者拿**人写的打法脚本**（像 plays/a4.txt：派兵站在冰墙的这一侧、墙化时打涌出的兵）在模拟器里跑，替代代理测"冰能不能帮玩家赢"。
-  2. 若要调规则：冰墙寿命（`CNV_A4IceSeed` 的寿命）、冰墙位置离街口的距离（让我方炮能站在墙前、打到墙化后涌出的兵）比绕路时间更可能是杠杆；调前先用 `a4kills.py` 看哪一波先压垮我方。
-  3. 验收（ADR 0023）：放冰明显长于不放冰，巧解能赢、自然打法明显更难但不必输；最后上测试台 `cnv_check a4 win`（失败先重跑一次）验一次。
-- **总控已知**：覆盖检查已交（a8c2ede）；A4 其它没动。
-
-#### 第四十一个会话（11-08，总控令：覆盖检查报告、sys.path 棘轮、对照局）
-- **覆盖检查**：上一轮已交（a8c2ede），本轮重跑全部关卡 `python -I -X utf8 experimental/cnv/simcoverage.py`：**293 项（104 种），未登记 0、过期 0**（38 秒）；清单要点见上一节"清单要点"七条。引擎 A 线 44b9bc5（征召兵等三类"读成没武器"）之后清单会变，以重跑为准。
-- **sys.path 棘轮**：不用做。130 > 129 是 `music3_probe` 带来的，音乐线 ca0c8a5 已改成按文件加载，现在是 129，`test_architecture` 19 过。
-- **对照局做完第一版**：`experimental/cnv/playcheck.py`（把 `plays/<关>.txt` 编译成关卡脚本动作，模拟器和测试台跑同一份）、`tests/test_playcheck.py`（17 过）、a1 a3 a6 a9 j7 各加了 `play` 检查。读数、判法、没翻译的东西、第一轮结论都在 `docs/story/sim-vs-bench-plays.md`。要点：**a3 对上（PASS）；a1、j7 走路阶段对上（差 ≤10%），最后一仗对不上（模拟器赢、测试台没赢；j7 测试台全军覆没）**；规律是模拟器对玩家一方过乐观，这个读数该给引擎线。胜负不能用计数器读（胜负旗一升界面就藏），要看最后几帧结算牌。
-- **注意：模拟器在变**：引擎 A 线 44b9bc5 之后 j7 同一份打法 7:00 输，a7（30 分钟没结束）、a8（12:00 输）早先的"赢"也不成立；`EXPECT` 只放两边一致过的（现在只有 a3）。
-- **下一步（推荐顺序）**：1. 测试台跑 a6、a9 的 `play`（各约 6～8 分钟）；2. j7 把监视时间拉到 7:30，看测试台是不是也在倒计时输；3. 引擎 A 线通知"空闲单位打建筑"修好后：`a4waves.py 0` / `0 block=0` + `a4kills.py` 重调 A4，测试台验一次（A4 还没动）。
-- **没提交的不是我的**：`sim.py`、`simunits.py`、`simcoverage.py` 等是引擎 A 线在改的，没带进我的提交。
-
-#### 第四十一个会话续（11-08，总控令：A 线 d4297bd 之后重调 A4）
-- **A 线 d4297bd 后重跑，读数没变**：放冰 **3:52 输**，不放冰 **5:20 输**（`work/logs/r45_*.log`；`a4waves.py 0` / `0 block=0`，`a4kills.py`）。和 0f96196 后一致——d4297bd 管的是"空闲不自己选建筑"，A4 的差别来自冰墙挡我方射线（见上一节归因），不来自选目标。归因表没动，**还没调参**。
-- **下一步（给接手的会话）**：上一节"下一步"第 1 条：代理玩家（`simproxy`）站位不会躲墙，测"冰能不能帮玩家赢"代理测不了；写一份**人的打法剧本** `plays/a4.txt`（兵站在冰墙这一侧、墙化时打涌出的兵，用 `派` + 新动词 `攻击`，见下），放冰 / 不放冰各跑，比"撑多久 / 能不能赢"，再决定调冰墙寿命、位置还是什么都不调。验收（ADR 0023）：放冰明显长于不放冰，巧解能赢，自然打法明显更难但不必输；最后 `cnv_check a4 win` 验一次。
-
-#### 第四十一个会话收尾（11-08，总控令：交接）各件做到哪
-- **simcoverage 登记清理**：不用我做，引擎 B 线已提交，`test_simcoverage` 10 过（11-08 现测）。
-- **sys.path 棘轮**：不用做，音乐线 ca0c8a5 已修，现在 129，`test_architecture` 19 过。
-- **剧本跟规则（a8 / a7 / j7）**：做完，提交 9ef770d。新脚本动词 `攻击 <谁> 打 <目标>`（`sim.py` 的 `parse_script` / `happen`，`playcheck.py` 编译成 `NAMED_ATTACK_NAMED`）；a8 4:26、a7 6:40、j7 2:02 又赢；`test_sim -k wiring`、`test_playcheck` 过。
-- **对照局**：第一版做完（15fad94），`docs/story/sim-vs-bench-plays.md`；a3 测试台对上，a1 / j7 走路对上、最后一仗对不上。**没做**：a6、a9 的测试台 `play`；规则变了（d4297bd）之后 a1 / j7 的模拟器读数要重读、再跑测试台比一次（`EXPECT` 现在只有 a3）；a7、a8 的 `play` 检查还没注册（等模拟器稳了）。
-- **A4 重调**：只重跑了读数（d4297bd 后不变：放冰 3:52 / 不放冰 5:20），**没调参**；下一步见上一节：写人的打法剧本 `plays/a4.txt` 再比。
-- **引擎 A 线 11-08 来信（没有异议，按他们的做）**：`Sim.unmodeled` / `Sim.gap(类别, 名字, what)` 接口由他们加，simcoverage 以后跑剧本读 `s.unmodeled` 拿运行时缺口。剧本新动词 `<t> 占领 <谁> 进 <建筑>` 已落地（玩家占领命令，df1f582 一起提交；`playcheck` 编成 `Command_CaptureBuilding`）。**归关卡线的后续**：a7 剧本把 `CNV_A7_Phase_2+125 派 engineer 去 station` 换成 `占领 engineer 进 station`、删掉三条"攻击 … 打 station"（他们试过：3:30 完成"完好占领电站"，6:27 赢），并更新 simcoverage 里 A7 / capture 命令的登记；另外"对空射击不受建筑挡、点名攻击被挡会绕位 `Sim.fire_spot`"提交后，a8 / a7 / j7 剧本里隔墙的 `攻击` 结果可能变，需重跑 `test_sim -k wiring`。
-
-#### 第四十二个会话（11-08，总控令：A4 重调 ①、a7 占领 ②、wiring ③、a6/a9 对照 ④）做到哪
-- **③ 做完**：A 线 fire_spot（59f0bdd）之后 `test_sim -k wiring` 过，`test_playcheck` 15 过。
-- **新剧本动词 `放 <谁> <技能名> 在 <地点>`**（如 `90 放 engineer freeze 在 lane foot`）：模拟器走 `Sim.order_power`（玩家点技能：冷却、禁区、够不够得着都按玩家算，被拒会记 `技能 … 不行：原因`），`playcheck` 编成 `NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT`。`<谁>` 可以是角色名，也可以是 `名字含 IceEngineer`（第二个冰幕工兵是 A4 的 `给` 出来的，名字 `UNIT - CNV A4 Give <序号>-CNV_IceEngineer-1`）。
-- **① A4 重调：`plays/a4.txt` 写到第二版，还没赢**（只覆盖第 1 段会场，没写北营 / 布防 / 最后一程）。读数工具 `python -I -X utf8 work/re/scripts/a4probe.py experimental/cnv/plays/a4.txt <秒> [打印位置的时刻…] > work/logs/x.log`（`work/` 未入 git；打印我方位置、技能、摧毁、结局；注意"摧毁"行里凶手名带 HV 的会被我过滤掉的那一版漏看己方死亡，看 `=== late log` 段）。
-- **会场的时间表（普通档，模拟器）**：车 1:34 出发，车头 x(t)=496+12(t-110) 秒：x=1200（后巷）2:49，2015（一号广场）3:57，2830（二号）5:05，到停车点 5:17。号角 1:55（后巷+一号）、2:45（+二号，同时在入口给一队护卫 3 守护者 4 维和 2 标枪，要走 1100 才到车）、3:25、4:15、4:55。冰墙：走到位约 13 秒 + 5 秒建 + 站 30 秒，冷却 40 秒；同一处墙没倒前再放会被拒（too near an object）。第二个工兵 1:39 在入口 (80,2500) 出现。
-- **读到的**：(a) 军队站在车队**前方**对"车头东边的街"有效，但**车尾后面的街**（H3 起的后巷、H4 的一号）出来的兵直接扑车，前方的军队来不及回；(b) 第一个工兵（cast 角色 `engineer`）站在后巷放冰，H1 / H2 的战斗里就死了（3:01 放冰报 `gone`），冰靠它放的 H3 没冰、3:36 车被打；(c) 第 2 版脚本（army 前置 + 每号角放一次冰）输在 4:00（H3 的后巷兵），不放冰的代理版 5:20 输。**下一版要改的**：工兵别在街口等死（放完就回军队里，放冰点离军队近）；军队别全前置，留一半在车尾；`派 名字含 -AlliedAnti`（给的援军）要在 2:45 就迎上去；放冰时间要对着 `H-25` 秒，同点两次放要隔 30 秒以上。比较写法：放冰版 = `plays/a4.txt`，不放冰版把所有 `放` 行删掉另存 `work/a4_noice.txt`，两份跑同一个 `a4probe.py`，比"输在几点 / 赢没赢"。
-- **② 没做**（a7 剧本换占领、simcoverage 登记）；**④ 没做**（a6 / a9 测试台 `play`）。**验收仍是**：放冰明显长于不放冰、巧解能赢、自然打法明显更难但不必输，最后测试台 `cnv_check a4 win` 验一次；整关要赢还得写北营（`造` 基地、拆指挥所）、布防、最后一程的剧本，量不小，必要时拆给 Sonnet 子 Agent 写北营之后的几段。
-
-#### 第四十三个会话（11-08 上午，总控令：A4 归因、改规则、写全程剧本）归因做完，**规则只加一条 `雪祭.收`**
-- **归因：放冰仍输主要是剧本打得不好，不是关卡设计不让放冰划算。** 同一份规则下比了五类打法（`work/re/scripts/a4plays.py` 变体表，读数 `a4plays.py <名字…>`，`a4wavestats.py` 看每一波谁死谁）：不放冰、军队站定在前方（3:12 输，第二声号角后巷的兵出生在车头上，2:54 三辆车没了）；军队跟车走（2:35 输：兵只认车、路过军队不理，军队站在车边挡不住）；固定站位 + 放冰（4:02～4:08 输）；冻后巷和一号让军队守二号（最好，见下）；工兵无敌实验（没变化，工兵不是瓶颈）。随机 320 个打法（`a4search.py`）：没一个活下来，最好 4:13；爬山（`a4climb.py`，从"冻后巷+一号、军队守二号"出发）：**会场通过，丢一辆车（5:05），到 5:11 完成，军队 22 个活着**。三辆全保要把每街一波改成"2 武士 + 1 坦克杀手"（`a4rules.py wave3`：爬山 3 条线里 2 条丢 0 辆），**没改，留给总控 / 用户拍板**（丢一辆正好对上奖励目标"三辆车全部送到"留给完美打法）。
-- **读到的四条（写进了 `plays/a4.txt` 开头）**：① 车速 12，第二声号角（2:45）时车头正在后巷口（x 1156 对 1200），后巷的兵出生在车上，**这一声必须冻后巷**，军队挡不住；② 车尾后面的街出来的兵从后面扑车，军队在前面够不着：每声都冻后巷和一号，只留车前方的二号开着，军队站在它的门口（`halt`），绕路来的兵也先撞军队；③ 兵被下了"打这辆车"的命令，路过军队不还手，所以军队要站在兵出生 / 必经处，**不是陪着车**；④ 工兵放完墙立刻退到静处（第一个工兵曾死在后巷）。
-- **改了的规则（设计问题，唯一一处）**：`港口生变` 一开始的 `雪祭.停` 改成新动作 **`雪祭.收`**（`devices/horn.py`：停号角 + 把已经出来的兵 `NAMED_DELETE` 掉）。原因：过场里停火、车无敌，**会场的最后几波没打完的兵留在车边，过场一结束 1 秒内两辆车没了**（模拟器：同一份打法 5:56 / 6:00 车被打光，结局"输"）；加了 `收` 之后同一份打法到北营正常往下走（5:57 目标亮出"拆掉北营的指挥所"）。**这一条没上测试台验过**：`NAMED_DELETE` 几十个还没创建的名字在游戏里是否安静无事，要 `cnv_check a4 …`（hold / win）确认。
-- **验收（ADR 0023）现状**：放冰（5:11 完成，丢 1 辆）明显长于不放冰（3:12 输）✓；巧解能赢——会场 ✓，**整关还没写完**（北营 → 布防 → 最后一程的剧本在 `work/a4_tail.txt`，由 Sonnet 子 Agent 起草，见下）；"自然打法明显更难但不必输"：不放冰必输（后巷那一声），**这条不满足，但那一声正是教冰的地方**，要不要放宽（比如第二声号角后巷不放兵、或车在后巷口时晚一点）等总控定。
-- **工具（`work/` 未入 git）**：`work/re/scripts/` 下 `a4plays.py`（变体表）、`a4rules.py <规则集> <变体…>`（拿 `docs/story/plans/a4.md` 的临时副本改文字再跑，仓库文件不动；规则集 base / wave3 / wave2 / gap60 / relief_each…）、`a4climb.py <规则集> <种子> <步数> [起点日志]`（爬山）、`a4search.py`+`a4sum.py`（随机搜索与汇总）、`a4mk.py <爬山日志> <输出剧本> [重发间隔]`（把最好一条变成剧本文件）、`a4later.py <剧本> <秒> <起始秒>`（跑整关只打目标 / 段 / 结局）、`a4pos.py`（几个时刻的车、我方、敌方位置）。
-- **总控 11-08 交代、A4 之后做**：B 线已把 a3 时停区补进模拟器（a24c6c0），但 a3 剧本（`plays/a3.txt`）仍 1:25 赢，题卡设计约 16 分钟。要归因：剧本绕开了机关、赢的条件不依赖时停区，还是关卡规则本身太易。
-- **全程剧本做完（第四十三个会话续）**：`plays/a4.txt` 第二部分（北营 → 布防 → 最后一程，Sonnet 子 Agent 起草、我在模拟器里复跑核过）：**模拟器 13:56 赢（`CNV A4 - Win (2)`），北营 10:27 拆指挥所，全程只丢会场那一辆车**，落在 8～15 分钟区间 ✓。打法：北营先清桥头守军、造兵集合在 `ridge ramp`，走后坡先拆 `north power` 再打指挥所；布防摆三组兵在三个炮位；最后一程**靠三组兵守口子赢，冰幕工兵没放冰**（要补一版有冰的：`Phase_5+10` 冻 `north mouth` / `east mouth`，比丢车概率）。`test_playcheck` 16 过（a4 能编成关卡脚本动作）。
-- **没做 / 待办（给接手的）**：① **测试台 `cnv_check a4 win` 没跑**（11-08 09:00 游戏进程 `RA3_1.13.game` 正在运行，按"装 mod 前查游戏"的规矩没动）；`雪祭.收` 的 `NAMED_DELETE` 几十个未创建名字在游戏里的表现要靠它验；② 最后一程补有冰版、`hard` 难度再跑；③ 电视塔奖励目标没写；④ simcoverage 登记（引擎线 2194e16 的 `Sim.unmodeled` 已可接）、a7 换占领、a6 / a9 测试台对照都没做；⑤ a3 归因（见上一条总控交代）。
-- **给下一轮的设计问题（总控 11-08 定）：A4 容错太窄，按 ADR 0023 "自然打法明显更难但不必输"不成立。** 证据：不放冰的 80 种随机站位全输（最晚 3:23，死在第二声号角后巷那一声）；320 种随机放冰全输（最好 4:13）；只有爬山法找到的精确打法能过（丢 1 辆）。用户的打法是按兵种换兵、能平推（见题卡"几句话"原则），按这种打法 A4 太容易输。**下一轮：先归因再放宽**——让"每声冻后巷和一号、守二号口"这一思路的多种合理变体都能赢；不放冰的认真打法输得明显，但不至于第二声号角就必输。可动的旋钮：每街一波的兵数（`a4rules.py wave3` 已量过：爬山 3 条里 2 条丢 0 辆）、第二声号角时后巷兵的出生点 / 出生时间（车头正压在后巷口是死因）、绕路表、间隔、冰墙寿命。测试台 `cnv_check a4 win`（验 `雪祭.收`）也留给下一轮。
-
-#### 第四十四个会话（11-08，总控令：A4 归因放宽、测试台验、a3 归因、`生产` 评估）A4 放宽做完，测试台没验成，a3 / `生产` 没做
-- **归因（模拟器，`work/re/scripts/a4rules.py` 规则集 + `a4plays.py` 变体 `k_*`＝持续补冰、`nl_*`＝不放冰军队守街口）**：容错窄的主因**不是兵数、车血、冰寿命**：每街减到 1+1、车血翻 2.5 倍、冰墙寿命 45/60 秒、冷却 30 都救不了（读数仍 3:12～4:45 输）。真因是**兵只认车、路过军队不理，车尾后面的街（后巷过了之后、一号过了之后）出来的兵从后面扑车，军队在前面够不着**；加上绕路兵晚 25 秒出，正好落在车经过那条街的时刻。早补护卫（号角 1/3）更差。
-- **改了的规则（`docs/story/plans/a4.md`）**：① 新键 **`止: k`**（`devices/horn.py`，街从第 k 声起关：不出兵也不接兵，对称于 `从`）：后巷 `止: 3`、一号 `止: 4`（车队过了它们之后再出兵只会打车尾）；② 新键 **`每口一波`**（最后一程口子自己的兵数，不写同 `每街一波`）；会场 `每街一波` 改 **2 武士 + 1 坦克杀手**，口子仍 2+2；③ 新键 `冰墙寿命`（默认 30，**没用**，plan 里没写）。`test_horn` +1（共 19 过）、`test_a4_plan` / `test_plans` / `test_playcheck` / docs / architecture 共 111 过。
-- **读数（模拟器，普通档，29 个玩家模型）**：旧规则每个"持续补冰、守二号口"的变体都输（3:12～4:45，只有爬山找出的精确剧本能过）；新规则 **9 个活到 5:30 且丢车 0～1 辆**（冻后巷+一号或只冻后巷、军队守二号/`halt`/先一号再二号，三种站位全活；旧的定点放冰 `s0_2_150`、`s1_2_150` 也活）。**不放冰**：军队跟车 3:02 输、定点站前方 3:27、守街口三种 3:29 / 4:00 / 2:33 输、**一种（后巷→二号接力）活到底丢一辆**——"认真打不放冰输得明显、但不都是第二声号角就输"基本成立（输在 3:00～4:00，第二声 2:45 之后）。冰幕工兵"二号工兵守后巷、一号工兵守一号"的换位变体仍输（`_1_` 系列），那是剧本模型里工兵走位问题，没追。全程 `plays/a4.txt` 仍赢：**14:48**（原 13:56），丢一辆（14:43 鬼王）。
-- **测试台 `cnv_check a4 win` 没验成**：11-08 14:47～14:56 连试四次（`a4 win` 带构建 / 不带构建各一次再一次、`a4 melt` 不构建）全是 `bench_start: menus stuck at "main menu" after ~155 s`，`RA3_1.13.game` 进程起来了但菜单走不进去；`a4 melt` 是以前过的检查，**说明台子本身卡了，不是这次改动**（没人占：tasklist 里无游戏进程残留）。`雪祭.收` 的 `NAMED_DELETE` 和这次 `止` / `每口一波` 编出来的脚本都**还没在游戏里验过**。下一步：排台子（可能是屏幕锁了 / 另一线开着游戏 / 菜单走位变了）再跑 `cnv_check a4 win`。
-- **没做**：a3 为什么 1:25 赢的归因；评估 `plays/*.txt` 里 `造` 换 `生产`（2342aca）——a4 的北营造兵用的是 `造`，换了之后要重跑 a4 全程看时间是否变长（落在 8～15 分钟内才行）；最后一程有冰版；电视塔奖励目标；simcoverage 登记；a7 换占领。
-- **工具**：`work/re/scripts/a4rules.py <规则集> <变体…>`（现在 `base` 就是仓库里的新 plan；`stop34` 等旧集的文本替换已因 plan 改动失效，别用）、`a4tab.py '<日志通配>'` 汇总成"活/输+几点/丢几辆车"、`a4plays.py` 新增 `k_<站位>_<工兵分工>_<冻哪些街>` 与 `nl_a..d`；全程 `a4later.py experimental/cnv/plays/a4.txt 1000`。
-
-#### 第四十五个会话（11-08，总控令：测试台 a4 win、A4 对照局、a3 归因、`造`→`生产`）测试台通了，A4 对照局搭好并**查出模拟器和测试台差一个开场过场**；a3 / `生产` 没做
-- **台子通了**（Steam 重启后）。`cnv_check a4 win`：第一次 FAIL（s322 在阶段过场里按 Esc 暂停失败，被当成"任务结束"，交接 460 行记过的老毛病），不构建重跑 **PASS**：第一辆 s443 到港、三辆 s568 到齐、任务 s584 结束；`雪祭.收`、`止` / `每口一波` 编出来的脚本在游戏里没报错。
-- **a4 对照局接上了**：`checks/a4.py` 加 `'play': playcheck.make('a4')`；`playcheck.py` 三处改动：① `放` 对"计划脚本自己造出来的单位"（`Give …-CNV_IceEngineer-1`）从 CREATE 动作取模板找技能名（之前 contract 报 `freeze` 未发布）；② `BENCH_ENDS['a4']`：长剧本分段看（每段 ≤120 秒，段尾避开阶段过场，不然 Esc 暂停失败，后面全被跳过），只读数不断言（a4 不在 `EXPECT`，没有对拍基线）；③ `WATCH['a4']`＝三辆车血量（车没了＝到港或被毁，血量读 0）。④ **新 `SCENE['a4']=('CNV_A4_Scene_1', 79.9)`**：剧本的绝对时间改成"开场过场结束旗标 + (τ−79.9)"（模拟器里旗标正好 s79.9 升起，读数不变：仍赢 14:48、阶段 312/356/627/734）。
-- **归因 1（已查实）：模拟器完整播开场过场（s0～79.9，锁操作，镜头扫街、工兵演示），测试台跳过它**（`checks/a4.py` OPENING=1.0 的注释）。所以同一份 `plays/a4.txt`、同一个 `win` 检查，两边的"第几秒"差一个常数约 80 秒：`a4 win` 模拟器 阶段3 356 / 到港 534 / 587 / 652 / 结束 669，测试台 ~292 / 443 / 503 / 568 / 584，**减去 79 秒后两边差 ≤3%**（对得上，不是车速的问题）。以后拿模拟器的时刻和测试台比，**测试台时刻＝模拟器时刻 − 79**。
-- **归因 2（没查完，卡在这）：加了 SCENE 对齐后，测试台 a4 play 仍输得很早**。三次读数：
-  1. 对齐前（冰比号角晚 80 秒）：阶段 3 在 ~s300、4 在 ≤s614、5 在 ~s671，**s785 战败**（模拟器 s888 赢）。
-  2. 对齐后（`cnv_check a4 play`，run 目录 `work/testbench/runs/CampA4Play_mcp_1108_154646/`）：**1 号车 s131 就被打到 68、s143 52、s212 34、s216 死；2 号车 s220 起掉血、s236 剩 7；s244 左右任务结束（战败）**。模拟器同一份剧本里 1 号车要到 s300（＝测试台 s221）才第一次掉血（100→63），2 号车 s804（测试台 s725）才没。**测试台的车早挨打了约 90 秒、打得更狠。**
-  3. 画面（该 run 帧 31～36，s121～143）：车队在路东头，一大群紫色敌兵围着车；后巷口的冰墙 s127 "即将融化"、s134 没了；字幕"车停着就是活靶子！护卫快去接！"。
-  - **没分清的**：是冰没按时放成（`放 engineer freeze 在 lane foot` 在测试台是脚本强行放，模拟器是玩家规则，地方够不够得着、禁区），还是号角出的兵比模拟器早/猛（测试台第一声号角 ≈ 开场结束后 35 秒 ＝ 模拟器 115 秒，对得上；但车 s131 被围说明 1 号街的兵到车边比模拟器快），还是护卫（`派 … 去 view start` 等）在测试台没到位。下一步（按先归因再改）：**同一帧位对拍**——测试台加 `bench_look` / 每 2 秒帧看冰墙和护卫在不在、位置对不对，模拟器 `work/re/scripts/a4pos.py experimental/cnv/plays/a4.txt 140 126 134 …` 打印同时刻车、我方、敌 HV 位置；先对 s100～135（测试台）／s180～215（模拟器）这一段。
-- **没做**：a3 为什么 1:25 赢的归因；`plays/*.txt` 里 `造` 换 `生产`（a4 北营造兵 14 行 `造` 要换，换完重跑 a4 看时间落在 8～15 分钟）；a4 `play` 不在 `EXPECT`（测试台没对上，别登记）；最后一程有冰版 / 电视塔奖励 / simcoverage 登记 / a7 换占领照旧。
-- **工具/坑**：`python -I -X utf8 experimental/cnv/playcheck.py a4 sim` 看模拟器读数；`work/logs/a4_winsim.py <检查名> <秒>`、`a4_early.py`（模拟器前 130 秒日志）、`a4_series.py`（play 的计数器时间序列）是临时脚本（`work/` 不进 git）；`bench_watch` 的段尾落在阶段过场里会把后面全跳过（每次阶段起止时间会漂 ±15 秒，段尾要留余量）；帧拼图脚本 `/tmp/sheet.py` 一次看 6 帧省上下文。
-- **可以清空：读 `docs/story/handoff-phase4.md` 第四十五个会话，接着做"归因 2：对 s100～135 的冰、护卫、敌兵位置"。**
-- **总控 11-08 晚改令（用户定"引擎优先"，`docs/adr/0026-engine-first-retail-inventory.md` 必读）**：取代"阶段存档点清单"和"游戏里表现检查"（等关卡恢复再做；存档点格式草案：`docs/levels/checkpoints/<关>.json`，每段含模拟器秒 / 游戏关卡秒 / 过场秒 / 旗与计数器 / 钱 / 玩家单位 / 敌方剩余 / 变体，已发给界面线，标明暂缓）。新顺序：① A4 对照局（上面的归因 2）收尾提交；② 暂停推新关，做"原版战役关验收题"：先查原版战役关能不能存录像（不能就用测试台脚本驱动的检查），挑功能覆盖面广的几关，同一份操作在游戏和模拟器各跑一遍比对，录像比对工具归引擎 A，约接口；③ 自动玩家框架 `experimental/autoplay/`（ADR 0026 第 4 条）：只看玩家看得见的、命令走剧本动词、几种性格带随机扰动、每局可导出剧本，先在 A4 和 a3 上出胜率和时长分布，结论在引擎清单达标前只作参考。
-
-#### 第四十六个会话（11-08 夜，总控令：A4 归因 2 → 原版战役关验收题 → 自动玩家框架）只做完归因 2；②③ 没开始
-- **归因 2 结论（测试台 a4 play 比模拟器早输，不是冰/护卫没到位）**：测试台连跑 4 次（run `work/testbench/runs/CampA4Play_mcp_1108_161111`、`…161445`、`…161725`、`…160328`），**1 号车第一次掉血都在 s126～151**（两次 s130/131 掉到 68，一次 s151 掉到 69、s163 到 52），之后 s249 剩 18、s253 死、2 号车 s259 剩 7、~s275 战败；模拟器同一份剧本 1 号车要到 τ300（测试台 ~s221）才第一次掉血，全程赢。**s126～137 逐 2 秒帧（161725 帧 31～38）看清：第二声号角（2:45）出的 3 个坦克杀手（`JapanAntiVehicleInfantry`）+ 3 个武士，在路东 x≈1850 和护卫队交火，其中一个坦克杀手（黄色光束）打到领头的 1 号车（车在 x≈1700，护卫队挤在车旁，不在车前）**，几秒内 −30～46 血。模拟器里同一批敌兵 3:12～3:27（τ192～207）被护卫队在 x≈1860 杀光，末尾一个（hp93，x1864，距车 ~250，坦克杀手射程 175）在 3:23～3:27 之间死，车没挨打。**即：差的是"最后一个坦克杀手死得早几秒"（击杀速度 / 谁先打谁 / 护卫的站位），不是冰、号角、护卫调度。**
-- **没查的**：① 坦克杀手在模拟器里是不是优先打车（路径终点 (1660,2560)，目标是车）而护卫队的索敌是否按"最近"；原版坦克杀手射程是否真是 175（模拟器里 `weapons[0].range`）；② 后面 s249～259 车的死因（第四声/第五声号角附近，没看）；③ 测试台两次单局间有差异（首伤 s130 vs s151），模拟器是确定性的，对拍应看区间不看单点。**这属于战斗模型（索敌优先级、杀伤速度），归引擎 B（AI）/ 引擎 A（武器），不是关卡规则问题；a4 play 不进 `EXPECT`（保持现状）。**
-- **探针做法（可复用）**：临时把 `playcheck.BENCH_ENDS['a4']` 改成 `[118]`，`cnv_check a4 play build=false keep=true` 停在 s117，再 `bench_camera 1650 2500` + `bench_watch seconds=14 every=2 world=true x0=1250 x1=2050 y0=2300 y1=2750`（世界坐标框，一张拼图）；用完 `git checkout experimental/cnv/playcheck.py` 还原（已还原）。**坑**：手动 bench_wait 一旦段尾落进阶段过场（~s230 以后），Esc 失败，游戏不再暂停、台子要 `bench_stop`。模拟器同时刻位置：`work/logs/a4pos2.py`（`a4pos` 加了我方坐标，`work/` 不进 git）。
-- **②第一步（录像能不能存，已查）**：`Documents/Red Alert 3/Replays/` 里 `Last Replay.RA3Replay` 的修改时间是 2025-09-25，今天 11-08 测试台跑的 mod 战役任务（a4 play 四次）**没有更新它**；其余 5 个录像是 10-15～11-05 的手工/压测留档。证据只覆盖 mod 里的战役任务，**原版战役关没有直接试**（要手动玩一局原版战役再看这个目录有没有新文件，成本约几分钟）。RA3 已知战役不存录像，所以**默认走"测试台脚本驱动的检查"**；还没定的是：原版战役地图能不能被放进一个 mod 由测试台 `bench_start` 起（`docs/adr/0014`），这决定验收题怎么起局。下一步先查这一点，再从 `docs/engine/inventory.md` 挑关。
-- **没做**：②原版战役关验收题（先查原版战役能否存录像）、③`experimental/autoplay/` 框架、a3 归因、`造`→`生产`。
-- **可以清空：读 `docs/story/handoff-phase4.md` 第四十六个会话 + `docs/adr/0026-engine-first-retail-inventory.md`，接着做②：先查原版战役关能不能存录像（查 `.rep` 是否含战役、`docs/engine/inventory.md` 里用量大且"未做/推断"的项，挑覆盖面广的几关），再与引擎 A 约录像比对接口；然后 ③。**
+**可以清空：读本文 + `docs/adr/0026-engine-first-retail-inventory.md`，接着做"当前目标与下一步"第 2 条：先查原版战役地图能否放进 mod 由测试台起局，再挑验收关并与引擎 A 约录像比对接口；然后第 3 条。**

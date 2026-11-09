@@ -1,126 +1,58 @@
 # 音乐线交接
 
-会话："游戏音乐生成系统"。进度状态只在 [plan.md](../plan.md)「游戏音乐」那一行，这里不重复。为什么自己逆向 Pathfinder 见 [ADR 0005](../adr/0005-own-pathfinder-music.md)。
+会话："游戏音乐生成系统"。进度状态只在 [plan.md](../plan.md)「游戏音乐」那一行，这里不重复。为什么自己逆向 Pathfinder 见 [ADR 0005](../adr/0005-own-pathfinder-music.md)。过程细节（五版配乐的迭代、录音实测、提交）在 git log。
 
 ## 当前目标
 
-把 A4 的配乐接进 A4 关卡 mod，并在游戏里验证优劣势切换（用户 2026-10-26："第二版可以，接进 A4 关卡 mod，进游戏验证优劣势切换"）。
+A4 配乐已接进 A4 关卡并提交；等用户在关卡线装的试玩版里听过后给反馈（用户 2026-10-26："第二版可以，接进 A4 关卡 mod，进游戏验证优劣势切换"）。当前项目阶段（2026-11-08）引擎优先，关卡暂停推新内容，亲手试玩改在游戏里。
 
 已经定下、不用再讨论的：
-- 作曲路线：代码写谱，用我们自己的合成器出声（用户 2026-10-26 定）。谱面在 `experimental/music/a4.py`，音色在 `synth.py`（纯 numpy，无采样）。
-- A4 第二版用户已认可。
-- 接口：关卡 mod 通过 `parts.Mission.music` 带音乐（`pack.py`，2026-10-25 和内容会话商定）。策划案用词由我们实现，内容会话已审过 diff。
-
-## 接手时的状态
-
-音乐用词（`plan.py` 的 `音乐:` / `音乐 <提示词>` / `战况音乐 开` / 胜负先放收尾）、A4 第二版（`a4.py`、`synth.py`）、`ownmap` 的变量和条件、音乐测试关 musicdyn / musicroute 已提交（用户 2026-10-26 同意）。
-
-同一工作区里关卡线也在改文件（`a4.md`、`checks/a4.py`、`devices/` 等）：提交时只暂存音乐线自己的文件；`build.py`、`plan.py` 两边都改，用补丁只暂存自己那几块（这里 `git add -p` 不能交互）。`docs/plan.md` 归总控。
+- 作曲路线：代码写谱，自己的合成器 + 采样出声（用户 2026-10-26 定）。谱面 `experimental/music/a4.py`，音色 `synth.py`（纯 numpy）、`sampler.py` + `sf2.py`（真乐器采样，库在才用，没有就退回合成器）。
+- 接口：关卡通过 `parts.Mission.music` 带音乐（`pack.py`）。计划里的用词（`音乐: a4` / `音乐 <提示词>` / `战况音乐 开`，胜负由编译器自动接收尾）由我们实现，内容会话审过。
 
 ## 下一步
 
-1. **路由规则已查清（2026-10-26）**：路由偏移表的最后一项是表尾，不是一张路由表（原版 132 个偏移、131 张表）。我们以前不写表尾，引擎就丢了最后一张表：路由测试关里用最后一张表的 G 一直重放第一小段（互换事件、补全路由表都一样），A4 的激烈段（也是最后一张）乱跳到最后一程。`pfdx.build` 现在补上表尾。起点路由表里没有目标时，直接跳到目标（P1 → F 实测）。
-   - 修好后游戏里已验证（`work/music/probe/musroute_run3.txt`）：G 6、7 交替；CampMusDynT 布防 →（Combat）激烈段完整循环 →（SetAdvantageEnemy）经"激烈→劣势"过渡进劣势段 →（平息）经过渡回行进段，全按设计。
-2. **已提交**（用户 2026-10-26 同意）：第 1 条的修正、静音录音、A4 策划案的配乐。`a4.md` 的 6 处是关卡线同意后音乐线加的。
-3. **A4 已接上配乐（2026-10-26，离线编译通过）**：
-   - 顶层写 `音乐: a4`。
-   - 布防开场写 `音乐 布防`。
-   - 第一程加 `开场: [音乐 行进, 战况音乐 开]`。
-   - 规则：每个广场一条 `{当: 广场.伏兵出来 k, 做: [音乐 伏击]}`（写成"任一"只会响第一次）。布防时玩家打碎冰雕也会触发，进激烈段，到第一程再回行进。
-   - 港口生变开场写 `音乐 港口`，最后一程开场写 `音乐 最后一程`。胜负收尾编译器自动加。
-   - A4 最近的变化（关卡线 2026-10-26）：车队普通难度 1:00 出发（布防段变短）；港口生变 30 秒后，遭遇战 AI（多一个 AI 玩家 Soviet_2）接管北营，北营有矿厂、矿车。录音时间按 `plan_show(a4)` 的节拍表来定。
-   - **游戏里录过整关（2026-10-26，`build.py a4 --check win`，录音 `work/music/probe/a4win_run3.txt` / `CampA4Win_1.0.wav`，`a4.py heard` 认段落）**：布防 → 伏击（1 号）→ 激烈 → 伏击（2 号）→ 激烈 → 港口 → 最后一程 → 伏击（3 号）→ 激烈 → 胜利，按设计切换。
-     - 坑：**脚本只能触发 SDK 脚本事件表里的事件**（`SageXML/PathMusic/ScriptPathMusicEvents.xml`）。原来的 `S_A04GibraltarExplore`、`S_A04Threat1`、`BigReveal`、`S_A04Threat1_1` 不在表里，脚本发了游戏不认（第一次录音只有胜利生效）。已换成表里的事件，`test_every_cue_is_an_event_a_script_can_fire` 守着。
-     - 坑：在锁里编 mod 要确认编译跑完（输出有 `PLAN` 行、写进了 Mods），否则游戏跑的是旧 mod（第二次录音就是这样白录的）。`CampA4Win` 和关卡线的 win 检查同名，用之前重编。
-     - 观察：这局"行进"没响：`win` 检查里车队一出发 1 号广场就伏击，带 PREP 的伏击抢在"行进"之前。伏击后激烈段会一直放到下一个剧情点（伏兵太少，游戏不进交战状态，也就不发平息），这局最长约 14 秒。要是真实对局里显得别扭，可以加一个提示词 `平息`（和游戏的平息同一套按程回去的动作），再让关卡在车队开到 `approach 2` 时触发——要先和关卡线商量。
-     - 这局之后关卡线改了后半段（2026-10-26）：港口生变要清港口、再拆掉北营的兵营和战车工厂才进最后一程，"4 分钟后车队自己走"的兜底删了。港口段会长很多，期间是"港口 → 激烈"，北营 AI 打过来时战况音乐也会起作用。下次整关录音前重编 `CampA4Win`。
-     - 战况音乐（劣势、平息）这局没出现：脚本一拦车就清伏兵，仗太小。要验证就得真打，或者在测试关 `musicdyntr` 里看。
-   - **用户试玩（2026-10-26）**：大厅、简报、游戏里全成了我们的曲子（以前把 MenuTrack / BriefingTrack 接到布防段），具体哪段没听出来。
-   - **大厅、简报、结算恢复原版（2026-10-26，未提交）**：`a4.SHELL` 四个界面事件改用 `ownmap.Builder.keep`，把原版这几个事件经分支走得到的节点（132 个，不带路由表）连同 58 条原版曲子搬进我们的图，排在我们 29 条之后（`extract.retail_streams`，第 0 轨 87 条、48 MB）。原版第 1 轨（Track_Mem，handle 0x11000002）是叠在主音乐上的短插曲，不能拿来放我们的曲子。测试 `test_the_shell_plays_retail_music_as_retail_does` 等。
-     - 游戏里录过（`work/music/probe/a4listen.txt` / `CampA4_1.0.wav`）：菜单、简报时认出原版第 4、11、6、7 条（都在保留的 58 条里）；进任务后是我们的布防，之后伏击、激烈。我们的曲子在录音里约 -55 dB，votes 12～36，低于 `a4.heard` 的 40 门槛，要用 `heard_raw` 式逐块看。
-   - **听辨版（2026-10-26，未提交）**：`CNV_MUSIC_CAPTIONS=1 python -I -X utf8 experimental/cnv/build.py a4` 编出的 CampA4，每个提示词同时在屏幕计数器上显示"音乐：<提示词>"、藏掉别的（`plan.cue`，用计数器不用字幕，免得和剧情字幕互相顶掉）。游戏自己发的战况切换（激烈 / 劣势 / 平息）显示不了。不设变量时编出来和原来一样。屏幕上是否真显示还没在游戏里看到（那次截图被关卡线下一局清掉了）。
-   - **用户试玩第二版（2026-10-28）**："音乐和原版风格差异很大"。和原版同类曲子量过（布防对 A04 第 569、570 条，行进对 571，劣势对盟军 226、227，优势对 229、230，交战对 141；`a4.REFERENCE_STREAMS`）。最大的几处差异：
-     - 低频：原版交战 40%～60% 的能量在 80 Hz 以下，我们的布防只有 1%。
-     - 高频：原版优势段 2.5～6 kHz 占 10%，我们只有 2%～3%，布防完全没有。
-     - 声像：我们布防的侧声道比中间还响，原版的侧声道比中间低 2～8 dB。
-     - 动态：原版探索段的起伏（LRA）有 8～18 dB，我们只有 3～4 dB。
-     - 打击乐：原版探索段的打击乐占比约 35%，我们 10%～20%。
-     - 循环长度：原版一首 30～130 秒、不断变化，我们 20 秒一循环。
-     - 调性（D 小调 / F 大调一带）和速度（90～100 拍）本来就接近，没改。
-     - 剩下最大的差别是音色：原版是录音的管弦乐队加乐队，我们是 numpy 合成器。
-   - **第三版（2026-10-28，未提交）**：
-     - 混音：每段按原版同类曲子的整体频谱和声像校正（`synth.match`：先把两边三分之一倍频程的曲线平滑成大致走向再比，每段最多拉 9 dB，用整段循环 FFT 做，所以循环处没有接缝）。目标数字记在 `a4.REFERENCE`，由 `a4.py reference` 从解码出的原版曲子量出来。
-     - 编曲：布防、行进都改成 16 小节（40 秒）。前半照旧；后半加入低音弦乐脉动、太鼓和嗵鼓走点、沙锤、小军鼓过门，越来越满，回到开头时落回冰的声音。
-     - 对比试听页：`work/music/a4/compare.html`，每种情境依次是原版、第二版（`work/music/a4_v2`）、第三版。
-     - 用户听后（2026-10-28）：比第二版近了一些，风格差距还是很大；同意下载采样库。
-   - **第四版（2026-10-28，未提交）**：
-     - 乐器：弦乐、铜管、定音鼓、大鼓、镲、小军鼓换成真乐器录音，用的是 VSCO-2 社区版（CC0，`experimental/music/fetch_samples.py` 下载，取 478 个文件、约 570 MB，放在 `work/music/vsco2`）。
-     - 接法：`sampler.py` 的接口和 `synth.py` 的同名乐器一样，`a4.ORCH` 在库存在时用录音，没有库时退回合成器。弦乐、铜管按音区自动分到大提琴 / 中提琴 / 小提琴、大号 / 长号 / 圆号 / 小号，短音用跳弓或断奏。
-     - 两个实测结论：
-       - 库的文件名比科学音高低一个八度（`sampler.OCTAVE`）。
-       - 每个文件统一到同一响度后，由力度控制音量，和合成器版只差约 1 dB。测试见 `tests/test_sampler.py`。
-     - 帝国的琴、三味线、尺八，以及电吉他、合成器、冰的声音仍用我们自己的合成器。合唱目前也还是合成的。
-     - 对比页改成原版、第三版（`work/music/a4_v3`）、第四版。
-     - 用户听后（2026-10-28）：用真乐器以后好听一些，希望再多加乐器录音和合唱。
-   - **第五版（2026-10-28 做，2026-10-31 提交）**：
-     - 采样来源：
-       - VSCO 再取木管（长笛、双簧管、单簧管、大管）、竖琴、钟琴，共 698 个文件，约 790 MB。
-       - 合唱和帝国乐器来自 MuseScore 官方音色库 `MuseScore_General.sf2`：215 MB，MIT 许可，从 ftp.osuosl.org 下载，放在 `work/music/musescore`。用户 2026-10-28 同意下载。
-     - 读取：`sf2.py` 是自己写的 SoundFont 读取器（音区和力度分区、调音、循环、声像、音量包络）。`sampler.py` 用它出合唱（ah / oo）、筝（带按弦升音）、三味线、尺八（带滑音）、太鼓、钢片琴、八音盒、失真吉他，音量都对齐合成器版（`tests/test_sampler.py`）。
-     - 新加的声部只在有采样库时才写（`a4.RECORDED`）：
-       - 布防：竖琴琶音、长笛接钢片琴旋律；后半加大管、单簧管和合唱 oo。
-       - 行进：大管踩步点、双簧管和长笛高八度叠主题。
-       - 劣势：低声合唱、大管踩持续低音。
-       - 优势、最后一程：木管叠主题；最后一程再加竖琴扫和弦。
-     - 仍是合成的：低音合成器、摇滚鼓组、合成脉冲、铺底音色、冰的声音。
-     - **发布时要带上** `MuseScore_General_License.md`（MIT 要求随衍生作品附上版权声明），VSCO 部分是 CC0，不要求署名。
-     - 对比页：原版、第四版（`work/music/a4_v4`）、第五版。
-     - 用户听后（2026-10-28）：更好听了，但没听到合唱。
-       - 量过：合唱比其他声部低 20～34 dB，原因是它沿用了合成合唱的音量，那个音量本来就只是用来加厚和弦的。
-       - 改法：`a4.CHOIR_GAIN` 提高 18 dB，交战段的合唱从低八度移到和弦本位。
-       - 现在合唱最响的半秒只比其余声部低 2～6 dB，由测试 `test_the_choir_is_heard` 守住。
-     - 接进新 A4（2026-10-31，关卡线按流程稿重写的六段计划 `docs/story/plans/a4.md`）：计划顶上 `音乐: a4`，各段用的提示词是 a4 现有的 `CUES`，不用改配乐代码。
-       - 会场开场：`音乐 布防`。北营开场：`音乐 港口` 加 `战况音乐 开`。最后一程开场：`音乐 最后一程`。二号广场冰雕裂开：`音乐 伏击`。胜负由计划编译器自动接 `胜利` / `失败`。
-       - 港口生变（过场）和布防段不换曲，接着放当时的曲子。建议过关卡线：布防段开场也可以加 `音乐 布防`，那段曲子后半在加鼓，配倒计时合适。
-       - 编带屏幕标记的试听版：`CNV_MUSIC_CAPTIONS=1 python -I -X utf8 experimental/cnv/build.py a4`。装进 Mods 由关卡线统一做。
-       - 编译日志只打印含 `CNV` 的脚本行，换曲指令（原版事件名）不会出现在日志里，不是丢了。要核对时把计划编出来列 `PATH_MUSIC_*`。
-       - **下一步**：等用户在关卡线装的试玩版里听过 A4 配乐后给反馈。要问的四件事：像不像红警 3、合唱听不听得出来、哪段刺耳或太吵、激战曲打完后会不会一直拖着不停。反馈来了按意见调 `a4.py`，跑 `tests/test_a4music.py` 和 `tests/test_sampler.py`，再提交。之后接着做第 4 条"扳回来"。
-4. **还差"扳回来"**（可以放在 A4 之后）：24 辆援军打赢了，游戏仍不发 `ResetAdvantage`，劣势段一直放到平息。条件（SDK `DisadvantageCombat_to_EvenCombat_Allowed`）：进劣势满 20 秒，且 20 秒内我方击杀 ≥ 损失 × 2、击杀 ≥ 3。猜测：援军到场时 16 个维和步兵还在大批阵亡，损失太多，比例不够。下一步：让援军直接在交战点出现、或等维和步兵死光再到（`music_dyn.py` 的 `HELP_AT` / 出生点），`build.py musicdyntr` 再录一次。还不发的话，考虑自己写一个状态组（PathMusicGameDynamicStateSet），放进 `pack.include` 那份 XML。
-5. **测试台**：关卡线常常一连跑几十局，锁只在两局之间放几秒，`run_bench.ps1` 见锁就放弃、不排队。要用先约好，等它回"测试台空了"；开跑前锁空了也再等几秒，免得两边同时用 SDK 构建（关卡线 2026-10-26 提醒过）。跨会话消息有上限，用户不说话时最多发 10 条。
+1. **等用户听 A4 配乐后的反馈**，要问四件事：像不像红警 3、合唱听不听得出来、哪段刺耳或太吵、激战曲打完后会不会一直拖着不停。反馈来了按意见调 `a4.py`，跑 `tests/test_a4music.py`、`tests/test_sampler.py`，再提交。
+2. **"扳回来"**（可放在 A4 反馈之后）：24 辆援军打赢了，游戏仍不发 `ResetAdvantage`，劣势段一直放到平息。条件（SDK `DisadvantageCombat_to_EvenCombat_Allowed`）：进劣势满 20 秒，且 20 秒内我方击杀 ≥ 损失 × 2、击杀 ≥ 3。猜测：援军到场时 16 个维和步兵还在大批阵亡，比例不够。做法：让援军直接在交战点出现、或等维和步兵死光再到（`music_dyn.py` 的 `HELP_AT` / 出生点），`build.py musicdyntr` 再录一次；还不发就自己写一个状态组（PathMusicGameDynamicStateSet）放进 `pack.include` 的 XML。
+3. 可选改进（要先和关卡线商量）：真实对局里若"激烈段"拖得别扭（伏兵太少，游戏不进交战状态、不发平息，约 14 秒），加提示词 `平息`，让关卡在车队到 `approach 2` 时触发；布防段开场也可加 `音乐 布防`。
+4. 发布时要带上 `MuseScore_General_License.md`（MIT 要求随衍生作品附版权声明）；VSCO 部分是 CC0，不要求署名。
 
-## 已经实测的（2026-10-25～26）
+## 现状要点（A4 接线，计划 `docs/story/plans/a4.md`）
+
+- 会场开场 `音乐 布防`；北营开场 `音乐 港口` + `战况音乐 开`；最后一程开场 `音乐 最后一程`；二号广场冰雕裂开 `音乐 伏击`；港口生变（过场）和布防段接着放当时的曲子。提示词用 a4 现有的 `CUES`，不用改配乐代码。
+- 听辨版：`CNV_MUSIC_CAPTIONS=1 python -I -X utf8 experimental/cnv/build.py a4`，每个提示词同时在屏幕计数器显示"音乐：<提示词>"；游戏自己发的战况切换显示不了。装进 Mods 由关卡线统一做。
+- 大厅、简报、结算用原版音乐：`a4.SHELL` 四个界面事件走 `ownmap.Builder.keep`，把原版节点和 58 条原版曲子搬进我们的图（`extract.retail_streams`）；原版第 1 轨（Track_Mem）是叠在主音乐上的短插曲，不能拿来放我们的曲子。
+- 混音按原版同类曲子校正（`synth.match`，目标数字 `a4.REFERENCE`，`a4.py reference` 量出；对照曲 `a4.REFERENCE_STREAMS`）；合唱音量 `a4.CHOIR_GAIN`，`test_the_choir_is_heard` 守着。采样库没有时 `a4.RECORDED` 里的声部不写。
+- 编译日志只打印含 `CNV` 的脚本行，换曲指令不会出现在日志里，不是丢了；要核对就把计划编出来列 `PATH_MUSIC_*`。
+- 整关曾在游戏里录过（布防→伏击→激烈→港口→最后一程→胜利，按设计切换）；战况（劣势、平息）在测试关 `musicdyntr` 里验过，A4 整关里仗太小没出现。关卡线后来改了后半段（要清港口、拆北营兵营和战车工厂才进最后一程），整关录音前要重编。
+
+## 已经实测的引擎规则
 
 - 音频：EA-XAS，22.05 kHz 单声道和 44.1 kHz 立体声都行；条目编号和校验码用我们自己的（`mus.pack`）。
-- 跳转：带 PREP 立刻切；不带的等当前小段放完，再走路由表的过渡（CampMusic）；路由表里没有这个目标就直接去（CampMusRoute）。路由值 v 对应 `routers[v-1]`；路由偏移表要多写一项表尾（见上面第 1 条）。
-- 录音：游戏会话音量压到 0.0001（-80 dB，用户 2026-10-26 要求录音时听不到），`proc_capture` 用浮点采集、放大后写 16 位。
-- 战况（测试关 CampMusDyn / CampMusDynS，状态组 `Standard_NoLeadIn`）：
-  - 任务第 26 秒：小规模接触。第 45 秒：`Combat`。第 65 秒：`SetAdvantageEnemy`。第 142 秒：战斗平息。
-  - 12 辆援军打赢了，游戏也没有发 `ResetAdvantage`。
-- 我们所有地图（A4 也是）的地图流里都带着海德堡关的 BaseBuilding / ThreatLevel1 / ThreatLevel1_1 状态，所以游戏发的是 `S_A03HeidelbergThreat1` / `S_A03HeidelbergThreat1_1`，不是通用的 Threat1 / Threat1_1。`a4.EVENTS['calm']` 已按这个名字接，`CALM_TOO` 是保险。
-- 曲谱图变量有效：借用原版变量 3（`a05incoming`，`a4.PHASE_VAR`），事件里 SET，平息事件里 IF / ELSE。平息以后经过渡回到行进段（CampMusDynT）。
-- 原版战况的门槛在 SDK `SageXML/PathMusic/StandardPathMusicGameDynamicState.xml`：
-  - 每个状态至少待 20 秒才能离开。
-  - 劣势：20 秒内击杀比 ≤ 0.5，且敌方击杀 ≥ 3。
-  - 优势：2 分钟内拆掉 5 座重要建筑，护送关里基本碰不到，所以 a4 把均势、优势都接到激烈段。
+- 跳转：带 PREP 立刻切；不带的等当前小段放完（每小段 2 小节、5 秒），再走路由表过渡；路由表里没有目标就直接去。路由值 v 对应 `routers[v-1]`。**路由偏移表必须多写一项表尾**（原版 132 个偏移、131 张表），不写引擎会丢最后一张表（`pfdx.build` 已补）。
+- **脚本只能触发 SDK 脚本事件表里的事件**（`SageXML/PathMusic/ScriptPathMusicEvents.xml`），不在表里游戏不认；`test_every_cue_is_an_event_a_script_can_fire` 守着。
+- 战况：状态组 `Standard_NoLeadIn`（测试关 CampMusDyn / CampMusDynS）。门槛在 SDK `StandardPathMusicGameDynamicState.xml`：每状态至少待 20 秒；劣势＝20 秒内击杀比 ≤ 0.5 且敌方击杀 ≥ 3；优势＝2 分钟拆 5 座重要建筑，护送关里碰不到，所以 a4 把均势、优势都接到激烈段。12 辆援军打赢了游戏也不发 `ResetAdvantage`（见下一步 2）。
+- 我们所有地图的地图流里带着海德堡关的 BaseBuilding / ThreatLevel1 / ThreatLevel1_1 状态，所以游戏发的是 `S_A03HeidelbergThreat1` / `_1`；`a4.EVENTS['calm']` 已按这个名字接，`CALM_TOO` 是保险。
+- 曲谱图变量有效：借原版变量 3（`a05incoming`，`a4.PHASE_VAR`），事件里 SET，平息事件里 IF / ELSE。
+- 录音：游戏会话音量压到 0.0001（-80 dB，用户 2026-10-26 要求录音时听不到），`proc_capture` 浮点采集、放大后写 16 位。
 
-## 试过、没采用的：MiniMax Music 3 文生音乐（2026-11-08）
+## 试过、没采用：MiniMax Music 3 文生音乐（2026-11-08）
 
-结论：替代不了 synth.py。脚本 `experimental/music/music3_probe.py`（gen / measure / vocals），产物和报告在 `work/music/music3/`（`report.txt`、`vocals.txt`、`compare/`）。
-- 6 段（激烈 3、布防 3，各 40 秒）都生成成功，每段 9.5～12 分钟，本进程显存约 8～10.6 GB（`--reserve-vram 6`）。
-- 不听拍号：提示词写 96 拍，测出 83～142 拍，节拍漂 100～170 毫秒（a4 是 5～51）；会自带前奏渐强。
-- 切不出无缝循环：最好的接缝 5.9～11.7 dB（a4 是 0.7～3.7）。频谱离原版 7.8～32.7 dB（a4 < 4）。
-- 写了"不要人声"，6 段里仍有 1 段在唱（fierce_1，人声轨只比整体低 4 dB）。
-- 许可证：MiniMax-Music3 社区许可，可商用，但产品界面要显著标"MiniMax-Music3"；年收入超 2000 万美元要另外授权；公开发布的内容要注明是机器生成的；没有地区限制。
-- 模型留在配音线 ComfyUI 的 models 里（约 14.3 GB），没升级 ComfyUI（0.43.0 自带 Music 3 节点）。
+结论：替代不了 `synth.py`。脚本 `experimental/music/music3_probe.py`，产物和报告在 `work/music/music3/`（`report.txt`、`vocals.txt`、`compare/`）。
+- 6 段（激烈 3、布防 3，各 40 秒）都生成成功，每段 9.5～12 分钟，显存约 8～10.6 GB。
+- 不听拍号：写 96 拍测出 83～142 拍，节拍漂 100～170 ms（a4 是 5～51）；自带前奏渐强。
+- 切不出无缝循环：最好接缝 5.9～11.7 dB（a4 是 0.7～3.7）；频谱离原版 7.8～32.7 dB（a4 < 4）；写了"不要人声"仍有 1 段在唱。
+- 许可：社区许可可商用，但产品界面要显著标"MiniMax-Music3"，年收入超 2000 万美元要另授权，公开内容要注明机器生成。模型留在配音线 ComfyUI 的 models 里（约 14.3 GB）。
 
 ## A4 配乐的写法
 
 规矩都在 `a4.py` 开头：
-- D 小调，96 拍每分。每小段 2 小节，5 秒，这是不带 PREP 的跳转最多要等的时间。
+- D 小调，96 拍每分。每小段 2 小节、5 秒，这是不带 PREP 的跳转最多要等的时间。
 - 卡准时机的剧情点（伏击、港口、胜负）用带 PREP 的事件。
 - 过渡段写在路由表里，开头要和上一段一样响。
 - 帝国用筝、三味线、尺八、太鼓；盟军用圆号进行曲主题，赢的时候加摇滚鼓、失真吉他、合成器。
-- 整关流程的频谱要和原版相近。我们自己听不到，所以靠测量：各频段能量、段落交界处的响度、循环接缝。
+- 整关流程的频谱要和原版相近。我们自己听不到，所以靠测量：各频段能量、段落交界处响度、循环接缝。
+- 用户对第二版的批评（"和原版风格差异很大"）已逐项量过并改进：低频、高频、声像、动态、打击乐占比、循环长度；剩下最大差别是音色（原版是录音的管弦乐队，我们是采样 + 合成）。
 
 ## 必读
 
@@ -129,32 +61,28 @@
 - 原版状态机：SDK `SageXML/PathMusic/` 下的 `StandardPathMusicGameDynamicState.xml`、`ScriptedPathMusicGameDynamicState.xml`、`PathMusicEvents.xml`。脚本动作见 `experimental/campaign/script_catalog.json` 的 `PATH_MUSIC_*`。
 - 注入：`experimental/campaign/splice_assets.py` 开头（为什么要拼进 static 流）。
 - 剧情：[outline.md](../story/outline.md) 第四节、[plans/a4.md](../story/plans/a4.md)「节拍」。
-- 本地数据（不进 git）：
-  - `work/music/retail/`：原版曲谱图、wav、指纹、`event_hashes.json`。
-  - `work/music/a4/`：试听页、各段，`streams/` 是各段音频和指纹，`a4.py heard` 用。
-  - `work/music/probe/`：录音和报告，`musdyn_*.txt`。
+- 采样库来源：`experimental/music/fetch_samples.py`（VSCO-2 CC0，`work/music/vsco2`；MuseScore_General.sf2 MIT，`work/music/musescore`；下载要用户同意）。
+- 本地数据（不进 git）：`work/music/retail/`（原版曲谱图、wav、指纹、`event_hashes.json`）；`work/music/a4/`（试听页、`streams/`）；`work/music/probe/`（录音和报告）。
 
 ## 验证方式
 
-- 离线：`python -m pytest tests/test_pfdx.py tests/test_mus.py tests/test_tracer.py tests/test_ownmap.py tests/test_a4music.py tests/test_plans.py`。全部：`python -m pytest -q tests`。
+- 离线：`python -m pytest tests/test_pfdx.py tests/test_mus.py tests/test_tracer.py tests/test_ownmap.py tests/test_a4music.py tests/test_sampler.py tests/test_plans.py`。全部：`python -m pytest -q tests`。
 - A4 样品：`python -I -X utf8 experimental/music/a4.py`，约 25 秒，输出到 `work/music/a4/`。
-- 游戏里：`python -I -X utf8 experimental/music/bench_listen.py --nav <任务秒数> <录音秒数> <skudef>`。
-  - 只出文字报告。录音时会一直告诉游戏"你在前台"，否则它不放音乐。
-  - `tracer:` 行的 stream 号就是曲谱图的流号。
-  - 任务开始时间：看报告里第一段属于任务的示踪音，菜单的 NAV 时间不准。
-- 认我们自己的音乐：`python -I -X utf8 experimental/music/a4.py heard <录音.wav>`。激烈段和最后一程听着像，会认混，要确证就用示踪音版。
+- 游戏里：`python -I -X utf8 experimental/music/bench_listen.py --nav <任务秒数> <录音秒数> <skudef>`。只出文字报告；录音时会一直告诉游戏"你在前台"，否则它不放音乐；`tracer:` 行的 stream 号就是曲谱图的流号；任务开始时间看报告里第一段属于任务的示踪音，菜单的 NAV 时间不准。
+- 认我们自己的音乐：`python -I -X utf8 experimental/music/a4.py heard <录音.wav>`。我们的曲子在录音里约 -55 dB、votes 偏低，激烈段和最后一程会认混，要确证就用示踪音版。
 
-## 动手前
+## 坑
 
-- 分工（用户 2026-10-26 定，按线分会话）：
-  - 总控（原内容会话，"红色警戒3 游戏内容与工具链"）管路线、接口、审查和 `docs/plan.md`。**plan.md 只由总控改**，音乐那一行的进度发给它，由它来写。
-  - 关卡线（会话 local_3846ee54-ebdf-4bbd-b2e4-0a3ec2535997）管关卡策划案、`plan.py`、`build.py`。要改这些，先找关卡线说好；涉及接口的，抄送总控一句。
-  - 地图线（local_4e108d07-fd01-483c-8ea4-e79e9e35c081）在自己的工作目录里改 `experimental/cnv/maps/`。
-  - 音乐线自己的改动由音乐线提交，关卡线不会帮着暂存。提交前要用户同意。
-- 测试台按锁排队（`run_bench.ps1` 自己拿锁）：用之前先约，用完回一声；单独查一下红警3有没有在运行。A4 的检查现在由关卡线跑，它用完会通知。游戏在运行时编 mod 会自动写到 `work/staging`。
-- `build.py` 只用 Edit 改，不要整文件覆盖。
+- **在锁里编 mod 要确认编译跑完**（输出有 `PLAN` 行、写进了 Mods），否则游戏跑的是旧 mod，录音白录。`CampA4Win` 和关卡线 win 检查同名，用之前重编。
+- 测试台按锁排队（`run_bench.ps1` 自己拿锁，见锁就放弃、不排队）：用之前先约，用完回一声；开跑前锁空了也再等几秒；单独查红警 3 有没有在运行。游戏在运行时编 mod 会自动写到 `work/staging`。
+- 提交只暂存音乐线自己的文件；`build.py`、`plan.py` 两边都改，用补丁只暂存自己那几块（这里 `git add -p` 不能交互）；`build.py` 只用 Edit 改，不要整文件覆盖。
 - mod 名字不超过 15 个字符，只用字母和数字。
-- 长时间的显卡任务开跑前，先问用户要不要限流；下载模型要用户同意。
+- 长时间显卡任务开跑前先问用户要不要限流；下载模型要用户同意。
+
+## 分工
+
+- 总控管路线、接口、审查和 `docs/plan.md`（**plan.md 只由总控改**，音乐那一行的进度发给它）。关卡线管策划案、`plan.py`、`build.py`，要改先找它说好，涉及接口的抄送总控；地图线改 `experimental/cnv/maps/`。
+- 音乐线自己的改动由音乐线提交（按仓库规则做完、测过就提交）。
 
 ## 硬约束原文
 
