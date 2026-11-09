@@ -10,6 +10,14 @@ Expectations are the model's (l4_micro_engage.md 1.7); a FAIL is a reading too:
   aigar1    the house turns the AI's (someone of the team went in)
   aigar0    the house never the AI's
   aigarfar  the house never the AI's
+
+Readings (11-09, all PASS; counters 步兵在家 到远厂 步兵数 楼归AI, 步兵数 counts the ones inside too):
+  aigar1    s17 0 4 4 0 | s18-s75 0 3 3 1   -- one dead on the way in, the house the AI's at s18, the 3 alive to s75
+                                               (aigar0's die by s28): read as all three went in
+  aigar0    s17 0 4 4 0 | s18 3 3 | s24 2 2 | s27 1 1 | s28-s75 0 0 0 0
+  aigarfar  (house 450 south) s17 0 4 4 0 | s19 3 3 | s22 2 2 | s24 1 1 | s30-s75 0 0 0 0
+            (first made 450 north, on the way in: s20 楼归AI 1, 到远厂 2 / 步兵数 3 -- ONE went in, the northernmost
+            fighter within 150: the distance is each member's own)
 """
 from checks import engine_aitarget as at
 from parts import Script, Test, counted, square

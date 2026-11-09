@@ -8,7 +8,7 @@
 | 脚本条件 | 89 | 22 | 6 | 61 | 0 | 94% |
 | 物体模块 | 184 | 9 | 15 | 143 | 17 | 42% |
 | 武器效果 | 25 | 2 | 3 | 20 | 0 | 53% |
-| AI | 415 | 30 | 197 | 154 | 34 | 87% |
+| AI | 415 | 31 | 196 | 154 | 34 | 87% |
 
 ## 脚本动作
 
@@ -802,7 +802,7 @@
 | 推断 | `人格/UnitModifier.OffensiveModifier` | 92 | AI 模型代码里读了这个名字 |
 | 推断 | `人格/UnitModifier.Unit` | 92 | AI 模型代码里读了这个名字 |
 | 推断 | `战术/Tactic.DisbandAfterRetreatTeamSize` | 86 | AI 模型代码里读了这个名字 |
-| 推断 | `微操/AIMicroManagerData.EnterGarrisons` | 84 | AI 模型代码里读了这个名字（探针 engine_aigarrison 写好，还没上台） |
+| 已对拍 | `微操/AIMicroManagerData.EnterGarrisons` | 84 | AI 模型代码里读了这个名字；台上量过：checks/engine_aigarrison.py |
 | 未做 | `造兵/BuildState.Difficulty` | 84 | AI 模型代码里没有这个名字 |
 | 未做 | `造兵/BuildState.State` | 84 | AI 模型代码里没有这个名字 |
 | 推断 | `微操/AIMicroManagerData.UseSpecialPowers` | 83 | AI 模型代码里读了这个名字 |

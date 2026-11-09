@@ -2,11 +2,11 @@
 
 由 `experimental/cnv/inventory_ai.py levels` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）里由遭遇战 AI 带的敌人：它的人格（`enemy_ai.py` 生成）沿继承、战略状态、战术、组队、目标启发、微操、造兵 / 预算状态、开局一路引用到的原版 AI 数据项，加上全局常量 AIData 和本阵营的 ArmyDefinition；再加关卡脚本里点了 AI 玩家名字的脚本动作 / 条件。状态取自 [inventory.md](inventory.md)。"AI 做完"的第一条：下表全部已对拍。
 
-**已对拍 33 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
+**已对拍 34 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
 
 | 部分 | 已对拍 | 推断 | 未做 |
 |---|---|---|---|
-| AI | 24 | 186 | 147 |
+| AI | 25 | 185 | 147 |
 | 脚本动作 | 9 | 2 | 0 |
 | 脚本条件 | 0 | 1 | 0 |
 
@@ -192,7 +192,6 @@
 | 推断 | AI | `人格/UnitModifier.OffensiveModifier` | 92 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/UnitModifier.Unit` | 92 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `战术/Tactic.DisbandAfterRetreatTeamSize` | 86 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `微操/AIMicroManagerData.EnterGarrisons` | 84 | a4 a5 a7 | AI 模型代码里读了这个名字（探针 engine_aigarrison 写好，还没上台） |
 | 推断 | AI | `微操/AIMicroManagerData.UseSpecialPowers` | 83 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `微操/AIMicroManagerData.EngageHostileTargets` | 82 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `开局/Order.Account` | 81 | a4 a5 a7 | AI 模型代码里读了这个名字 |
@@ -354,6 +353,7 @@
 | 已对拍 | AI | `目标/AITargetingHeuristic.RequireUniqueTarget` | 154 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aistate.py |
 | 已对拍 | AI | `战术/Tactic.EndBehavior` | 152 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aistate.py |
 | 已对拍 | AI | `微操/AIMicroManagerData.RetreatPowerAdvantage` | 94 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_airetreat.py |
+| 已对拍 | AI | `微操/AIMicroManagerData.EnterGarrisons` | 84 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aigarrison.py |
 | 已对拍 | AI | `微操/AIMicroManagerData.EngagePassiveTargets` | 82 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_airetreat.py |
 | 已对拍 | AI | `战术/Tactic.Tactic=SimpleAttack` | 59 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aitarget.py |
 | 已对拍 | AI | `战术/Tactic.EndBehavior=RAMPAGE` | 46 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_ainamed.py |

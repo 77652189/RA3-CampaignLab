@@ -8,14 +8,16 @@ docs/engine/garrison.md) on the team's way in:
   aigar1    the house 200 north of the far plant (where the team stands to fight, within 150), EnterGarrisons true
             (retail MEDIUM) -> the model: the team's Peacekeepers go into the house (it turns the AI's) and leave the team
   aigar0    the same, EnterGarrisons false -> nobody goes in
-  aigarfar  EnterGarrisons true, the house 450 north (passed on the walk, state 8; beyond 150 of the fight) -> nobody
+  aigarfar  EnterGarrisons true, the house 450 SOUTH (behind the plant from the team's way in; beyond 150 of the fight)
+            -> nobody. (First made 450 north, on the way in: the northernmost fighter stood within 150 of it and one
+            Peacekeeper went in at s20 -- per member, as the model has it, but not the 'too far' case.)
 Facts: wake at, house (name).
 """
 from missions import airetreat_bench as ar
 
 HOUSE = 'AM_Apartments_01'
 HOUSE_NAME = 'UNIT - CNV AI House'
-NEAR, FAR = 200.0, 450.0                 # north of the far plant (3700, 2400); the AI's base is north (3850, 3400)
+NEAR, FAR = 200.0, -450.0                # north (+) of the far plant (3700, 2400); the AI's base is north (3850, 3400)
 EAST = 40.0                              # towards the team's line from its base
 
 
