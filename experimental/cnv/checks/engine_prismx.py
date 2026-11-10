@@ -22,7 +22,12 @@ all of them together) does not make the mirage tank fire again. Runs c, d (same 
   tgt (Soviet Tech1 tank, 550 hp, the clone unchanged) 27; nodel / dtype / nofd (no 0.1 s damage delay / damage type EXPLOSIVE /
   firing duration 0) 47 47 47; clip3 / noaim / range 47 47 47; nomv (CanFireWhileMoving false) '?' (the counter unreadable
   from about s3 -- probably the Tsunami was KILLED; not yet confirmed).
-Reading: Tsunami (380 hp) stops at 47 % = ~179 hp left = ONE 200 shot taken; the Soviet tank (550 hp) stops at 27 % = ~148 hp
+CASE CLOSED (run e, same day, health + alive counters on the ctrl and tgt lanes): s1 73 1 27 0, s2-s31 73 0 27 0 -- both
+targets are DEAD (alive 0) and their health counters stay at the last value read before death. There is no one-shot
+mystery: a health counter freezes when its object dies (engine line A r130 found the same). The mirage tank, the
+guardian and the rest fire on until the target is dead; nothing in the cannon stops it. The reading below is the
+first guess, kept for the record.
+First guess: Tsunami (380 hp) stops at 47 % = ~179 hp left = ONE 200 shot taken; the Soviet tank (550 hp) stops at 27 % = ~148 hp
 = TWO shots taken. Both stop with less health left than one shot deals (200), as engine_prism's guardian lane did (stopped at
 5 %, a shot of 16 %). So it looks like "no shot that would kill a held target" (or CanFireWhileMoving true holds the last
 shot), not a flaw of the prism cannon. Next: a high-hp target (does it fire on until < 200 left?), nomv over time, the
@@ -59,7 +64,9 @@ VARIANTS = {
     'range': (('range',), False, '射程 125 改 300'),
 }
 RUNS = {'a': ('ctrl', 'ocl', 'los', 'fx'), 'b': ('dis', 'bare', 'reacq', 'all'),
-        'c': ('tgt', 'nodel', 'dtype', 'nofd'), 'd': ('clip3', 'noaim', 'nomv', 'range')}
+        'c': ('tgt', 'nodel', 'dtype', 'nofd'), 'd': ('clip3', 'noaim', 'nomv', 'range'),
+        'e': ('ctrl', 'tgt')}
+ALIVE = ('e',)              # runs that also count whether the target is still alive (health + alive per lane)
 TARGETS = {'tgt': 'SovietAntiVehicleVehicleTech1'}
 
 
@@ -122,8 +129,12 @@ def prism_clone(k):
 
 def mission():
     m = Mission(name='CampPrismX', map=probe_range, units=[prism_clone(k) for k in VARIANTS], facts={})
+    placed = set()
     for run, ks in RUNS.items():
         for lane, k in zip(LANES, ks):
+            if k in placed:                     # run e reuses ctrl and tgt: placed once
+                continue
+            placed.add(k)
             m.put(_uid(k), f'{lane} gun', side='p1', role=f'prismx {k}', name=_n(k, 'Man'))
             m.put(TARGETS.get(k, TANK), f'{lane} gun', 0.0, 100.0, side='s1', role=f'prismx {k} target', name=_n(k, 'Tank'))
     return m
@@ -142,6 +153,11 @@ def prismx_test(m, run):
                             [('NAMED_ATTACK_NAMED', _n(k, 'Man'), _n(k, 'Tank')) for k in ks]))
     for k in ks:
         counted(f'CNV_PrismX_{k.title()}Hp', k, t, health=_n(k, 'Tank'))
+        if run in ALIVE:                        # a dead target's health counter freezes at its last reading (engine line A r130)
+            c = f'CNV_PrismX_{k.title()}Alive'
+            t.counters.append((c, k + ' 活'))
+            t.scripts += [Script(f'Test - {c} one', [], [('SET_COUNTER', c, 1)], once=False),
+                          Script(f'Test - {c} dead', [('NAMED_DESTROYED', _n(k, 'Tank'))], [('SET_COUNTER', c, 0)], once=False)]
     t.expect = [(ks[0], 0, 'ever<=', 99, RUN)]
     t.bench = [('bench_watch', dict(seconds=RUN, every=1, sheet=False, lines=len(t.counters)))]
     return t
