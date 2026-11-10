@@ -75,6 +75,11 @@ BENCHED_TESTS = {
     (MODULE, 'Behaviors/SpecialPower'): 'tests/test_simbench.py::test_super_a_scripts_cast_starts_the_retail_reload',
     (MODULE, 'AI/AIUpdate'): 'tests/test_simbench.py::test_r8_idle_within_sight_walks_up_fires_and_comes_back',
     # engine line C round 3: the crush / slow-death family (checks/engine_crush.py, docs/engine/crush.md, bench 11-06)
+    # engine line C round 7: the superweapon benches (engine_super) read health % of 1000-health defenses and the
+    # Iron Curtain's expiry frame -- MaxHealth through the damage, the modifier pool through the 23 s it holds
+    (MODULE, 'Body/ActiveBody'): 'tests/test_simbench.py::test_super_the_proton_collider_ends_as_the_bench',
+    (MODULE, 'Behaviors/AttributeModifierPoolUpdate'):
+        'tests/test_simbench.py::test_super_the_iron_curtain_holds_off_fire_some_23_seconds',
     (MODULE, 'Behaviors/SquishCollide'):
         'tests/test_simbench.py::test_crush_a_tank_drives_over_a_lower_level_and_leaves_an_equal_one',
     (MODULE, 'Behaviors/CrushDie'):
