@@ -105,6 +105,9 @@ BENCHED_TESTS = {
         'tests/test_simbench_c.py::test_weapon_set_the_status_picks_the_gun_molotov_under_the_toggle_and_the_painter_does_no_harm',
     (MODULE, 'Behaviors/StatusBitsUpgrade'):
         'tests/test_simbench_c.py::test_status_bits_upgrade_the_heroic_grant_sets_weapon_upgraded_and_a_removal_clears_it',
+    # topple a / b, bench 11-09: neutral props, delayed removal without DYING; all five readings within one frame
+    (MODULE, 'Behaviors/ToppleUpdate'):
+        'tests/test_simbench_c.py::test_topple_the_five_props_disappear_at_the_bench_frames_without_ever_dying',
     # engine line C round 5: selling (checks/engine_sell.py, docs/engine/sell.md, bench 11-06)
     (MODULE, 'Behaviors/BuildingBehavior'):
         'tests/test_simbench.py::test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames',
@@ -173,10 +176,6 @@ NOTES = {
     (MODULE, 'Behaviors/BuildingDestructionBehavior'): (NA, '纯表现：建筑死后按骨骼放特效、甩碎块（CreationObject '
                                                             '如 AlliedBarracks_Debris：只有画法、寿命和碎片体积，'
                                                             '没有身体和武器）、烟尘'),
-    (MODULE, 'Behaviors/ToppleUpdate'): (TODO, '倒伏：车压过的灯笼、栏杆、路灯倒下即死（OK_Lantern01 '
-                                              'KillWhenStartToppled）。碾压本身已做（Sim.crush_along，台上对过），倒伏还没有：'
-                                              'OK_LANTERN01 在模拟器里不是物体（不挡路），platprops.STRUCTURE 里的'
-                                              '栏杆路灯是永久障碍（游戏里车能压倒）；台上没量过灯笼，要先写探针'),
 }
 
 # Uprising only: actions / conditions only Uprising's campaign maps use, whose content type there is past the last

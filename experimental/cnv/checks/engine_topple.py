@@ -1,4 +1,4 @@
-"""Engine unit test: topple module -- do the crushable props (lanterns, street lamps, fences, trees) fall when a vehicle
+"""Engine unit test: ToppleUpdate -- do the crushable props (lanterns, street lamps, fences, trees) fall when a vehicle
 drives through them, and who can topple them (engine line C round 10; docs/engine/crush.md). Retail data (SDK SageXML):
 OK_Lantern01 / SA_Fence09 inherit BaseSimulatedProp (prop body, CrusherInfo CrushableLevel 0, KindOf CRUSHABLE_OBSTACLE
 ...) with a topple module `KillWhenStartToppled=true` (ToppleFX FX_WoodCrush / FX_StreetLampCrush); trees (CS_Tree01,
@@ -22,8 +22,16 @@ the 1x part stops, dying never counted): a -- the Hammer reaches its goal at fra
 lantern destroyed at frame 162, street lamp 118, fence 163. b -- Hammer: tree destroyed at 119; conscript (level 0): lantern
 NEVER destroyed (still counting at frame 710), it walks to its goal at frame ~111; Apocalypse (level 30): lantern destroyed
 at frame 170 (it reaches the goal at ~110). The NAMED_DYING part stays 0 everywhere: the props die at once (no dying
-state), 47-80 frames AFTER the vehicle has passed (the vehicle crosses the prop at about frame 53). Not yet in the
-simulator (props are no objects there).
+state), well AFTER the vehicle has passed (the vehicle crosses the prop at about frame 53).
+
+Simulator comparison: tests/test_simbench_c.py::test_topple_the_five_props_disappear_at_the_bench_frames_without_ever_dying.
+simtopple reads the inherited Geometry, ToppleUpdate and SlowDeath fields. KillWhenStartToppled starts the lantern /
+fence's 8 s (120-frame) DestructionDelay at contact. The lamp / tree first fall and settle (20% initial velocity,
+1% acceleration, 20% bounce), then wait their 4 s (60 frames). DynamicsDraw.Lifetime is visual debris, not this delay.
+Paths through topple props move frame by frame, using the NORMAL LocomotorSet and AccelerationSeconds; the Hammer's
+CampaignOverrides speed is 60, not its base 75. Simulated undestroyed counts: a 163 / 119 / 164, b 120 / still alive /
+171 (each destruction 1 frame later than the bench); arrivals: a 91 / 91 / 91, b 91 / 110 / 111 (within 1 frame).
+All dying counts are zero. This comparison covers these props and crossings, not general dynamics or debris physics.
 """
 from maps import festival
 from parts import Mission, Script, Test, square

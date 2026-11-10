@@ -509,6 +509,11 @@ class Body:
     lies: float = 0.0                                           # seconds it lies dying once killed (SlowDeath's
                                                                 # DestructionDelay), the crush's death only (R9)
     linger: float = 0.0                                         # ... the lie this death has (LINGER, or `lies`)
+    topple: object = None                                       # simtopple.rules: prop removal after contact / settling
+    toppled: bool = False
+    topple_end: int = None
+    frame_move: bool = False                                    # paths through topple props need frame-sized collision steps
+    drive_speed: float = 0.0
     hold_fire: bool = False                                     # UNIT_SET_STANCE 3 (HOLD_FIRE): fires only at a
                                                                 # target it was ordered on (stance.md a / b / d / e)
 
@@ -906,6 +911,8 @@ class Sim:
         self.ground = Ground(mission.map)
         self.own = {u.id: u.xml for u in self.mm.units}
         self.bodies = {}                    # name -> Body (named ones), plus unnamed under '#k'
+        self.topples = []                   # ToppleUpdate objects; neutral props can be knocked over too
+        self.frame_movers = {}              # bodies whose current path crosses a topple object's footprint
         self.refs = {}                      # reference name (UNITRef - ...) -> the Body a SET_REF_TO_... pointed it at
         self.object_lists = {}              # OBJECTLIST_ADDOBJECTTYPE: list name -> {template}, both lower case
         self.base_power = {}                # PLAYER_SET_BASE_POWER: player -> supply added to its objects' (INFERRED)
@@ -975,6 +982,8 @@ class Sim:
 
     def blocks(self, b):
         """What of the way a body takes up: a wall of ours its bar (or disc, square), a building its round."""
+        if b.topple:
+            return None                    # engine_topple: vehicles drive straight through, infantry can pass too
         if b.template in self.walls:
             p = self.walls[b.template]
             if p.get('shape') == 'disc':
@@ -1019,6 +1028,13 @@ class Sim:
         b.crusher, b.crushable = simunits.crush(template, self.own)
         b.lies = simunits.slow_death(template, self.own)
         b.linger = LINGER
+        import simtopple
+        b.topple = simtopple.rules(template, self.own)
+        if b.topple:
+            a, c, _, _ = simtopple.shape(template, self.own)
+            b.radius = math.hypot(a, c)
+            b.vision = b.sight = 0.0         # a prop has no sight (stats' unit-only table otherwise guesses 100)
+            self.topples.append(b)
         if not b.weapons:                     # its XML names guns and none was read: a gap, not a unit without guns
             if template not in self.declared:
                 self.declared[template] = simunits.declared_weapons(template, self.own)
@@ -1046,6 +1062,9 @@ class Sim:
         from areas at once -- bench 2026-11-07 engine_life, no body lingers) and leaves what its death makes, made
         that frame (the ice core's wall)."""
         for b in self.living():
+            if b.topple_end is not None and frame >= b.topple_end:
+                self.destroy(b, '倒伏后消失', delete=True)     # PropBody never exposes NAMED_DYING, even for one frame
+                continue
             if b.sell_end is not None and frame >= b.sell_end:
                 self.destroy(b, '卖掉了', delete=True)          # StructureSellUpdate: deleted, no death, no ruin
                 continue
@@ -1918,6 +1937,17 @@ class Sim:
             self.note('够不着', f'{self.label(b)} 走不到 {target if isinstance(target, str) else "目标"}，'
                                 f'原地就是能到的最近处，站着')
             b.stood_for = b.dest
+        import simtopple
+        points = [(b.x, b.y)] + path
+        b.frame_move = self.eng is not None and any(o.alive and simtopple.crosses(b, o, a, z, self.own)
+                                                  for o in self.topples if o is not b
+                                                  for a, z in zip(points, points[1:]))
+        if b.frame_move:
+            if not b.path:
+                b.drive_speed = 0.0
+            self.frame_movers[b.name] = b
+        else:
+            self.frame_movers.pop(b.name, None)
         b.path = path
         self.change()
 
@@ -2854,6 +2884,8 @@ class Sim:
             self.autoheal(eng.frame)
             self.flee_due(eng.frame)
             self.expire(eng.frame)
+            if self.frame_movers:
+                self.move(1.0 / self.fps, precise=True)
             self.build_due(eng.frame)
             self.blast_due(eng.frame)
             self.deposit_due(eng.frame)
@@ -3410,7 +3442,8 @@ class Sim:
         seg = dx * dx + dy * dy
         pool = self._crushable_pool
         if pool is None:                        # once a tick: the crushable ones, as arrays (a big map's tanks all drive)
-            low = [o for o in self.living() if o.crushable is not None and not o.scenery and o.surface == 'ground']
+            low = [o for o in self.living() if o.crushable is not None and not o.scenery and not o.topple
+                   and o.surface == 'ground']
             pool = self._crushable_pool = (low, np.array([o.x for o in low]), np.array([o.y for o in low]),
                                            np.array([o.radius for o in low]), np.array([o.crushable for o in low]))
         low, ox, oy, orad, olevel = pool
@@ -3429,9 +3462,12 @@ class Sim:
 
     _crushable_pool = None
 
-    def move(self):
+    def move(self, dt=DT, precise=False):
+        """Move one coarse tick, or one frame on paths crossing ToppleUpdate props (collision / removal timing)."""
         self._crushable_pool = None
-        for b in self.living():
+        for b in list(self.frame_movers.values()) if precise else self.living():
+            if not b.alive or b.frame_move != precise:
+                continue
             if isinstance(b.goal, Body):
                 g = b.goal
                 if not g.alive:
@@ -3443,9 +3479,19 @@ class Sim:
                         self.send(b, (g.x, g.y), reach=self.reach(b, g) if b.mode == 'attack' else 0.0)
             if b.building and self.at_site(b, 0.0):
                 continue
+            if b.frame_move != precise:          # chasing a moving target may have replanned into / out of prop contact
+                continue
             if not b.path or 'IMMOBILE' in b.status or b.engaged:
                 continue
-            left = b.speed * DT
+            left = b.speed * dt
+            if precise:
+                import simtopple
+                speed, acceleration = simtopple.motion(b.template, self.own)
+                base = simunits.stats(b.template, self.own)['speed']
+                speed = speed * b.speed / base if speed is not None and base else b.speed
+                b.drive_speed = min(speed, b.drive_speed + speed * dt / acceleration) if acceleration else speed
+                left = b.drive_speed * dt
+            walked = left
             x0, y0 = b.x, b.y
             while left > 0 and b.path:
                 tx, ty = b.path[0]
@@ -3455,7 +3501,7 @@ class Sim:
                     b.x += (tx - b.x) * step / d
                     b.y += (ty - b.y) * step / d
                     left -= step
-                    if self.at_site(b, b.speed * DT - left):
+                    if self.at_site(b, walked - left):
                         break
                     continue
                 if d <= left:
@@ -3466,10 +3512,24 @@ class Sim:
                     b.y += (ty - b.y) * left / d
                     left = 0
             if b.building:
-                self.at_site(b, b.speed * DT - left)
+                self.at_site(b, walked - left)
             if b.crusher > 0 and b.surface == 'ground' and (b.x, b.y) != (x0, y0):
                 self.crush_along(b, x0, y0)
+                if precise or self.eng is None:
+                    import simtopple
+                    for o in self.topples:
+                        if not o.alive or o.toppled or o.crushable is None or b.crusher <= o.crushable:
+                            continue
+                        if not simtopple.crosses(b, o, (x0, y0), (b.x, b.y), self.own):
+                            continue
+                        o.toppled = True
+                        speed = b.drive_speed if precise else b.speed
+                        fall = simtopple.fall_frames(speed / simunits.LIFE_FPS, o.topple)
+                        if fall is not None and (o.topple['start'] or o.topple['finish']):
+                            o.topple_end = self.frame_now() + fall + o.topple['delay']
             self.change()
+        if precise:
+            return
         self.capture_due()
         if self.auto_kill is not None:
             mine = [b for b in self.living() if b.owner == self.human]
@@ -3532,7 +3592,8 @@ class Sim:
         """Something still to come: a timer running, a unit moving, a script event, a rank to come where a script
         reads the points or the protocols."""
         return bool(self.events) or bool(self.anchored) or any(v > self.t for v in self.timers.values()) or \
-            bool(self.due) or any(b.path or b.building or b.life_end is not None for b in self.living()) or \
+            bool(self.due) or any(b.path or b.building or b.life_end is not None or b.topple_end is not None
+                                 for b in self.living()) or \
             (self.tech_read and any(b.grows() for b in self.books.values()))
 
     def run(self, until=UNTIL):

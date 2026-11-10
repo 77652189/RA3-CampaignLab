@@ -546,9 +546,8 @@ def test_one_goes_into_the_first_turret(lib):
     assert [e[2] for e in got] == ['UNIT - CNV AI Turret 1']
 
 
-@pytest.mark.xfail(strict=True, reason='bench aigar1: the house the AI\'s at s18, three alive inside to s75; in the '
-                                       'simulator the men are sent at s24-28 and die ~2.5x faster than on the bench, '
-                                       'within a few steps of the door')
+# bench aigar1: the house the AI's at s18, three alive inside to s75. Passes since the topple props (188 lamp posts on
+# this map) stopped being walls: the men no longer walk round them under fire (codex/topple, 2026-11-09).
 def test_the_team_goes_into_the_house(lib):
     _, got = _garrison_run('aigar1', lib, until=75.0)
     assert len(got) == 3

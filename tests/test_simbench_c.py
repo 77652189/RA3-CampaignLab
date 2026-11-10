@@ -94,3 +94,29 @@ def test_status_bits_upgrade_the_heroic_grant_sets_weapon_upgraded_and_a_removal
     assert [b[k][-1] for k in ('CNV_Sbits_HighBit', 'CNV_Sbits_OrderBit', 'CNV_Sbits_RemovedBit', 'CNV_Sbits_Other')] == \
         [1, 1, 0, 11], b                                                      # bench s7-s41: 1 1 0 11 (s1-s6: 1 0 1 11)
     assert (b['CNV_Sbits_OrderBit'][3], b['CNV_Sbits_RemovedBit'][3]) == (0, 1)
+
+
+# ---- ToppleUpdate: engine_topple a / b, bench 2026-11-09 (docs/engine/crush.md).
+# Each row is undestroyed frames + 1000 * dying frames + 1000000 * frames at the goal.
+def test_topple_the_five_props_disappear_at_the_bench_frames_without_ever_dying():
+    for build_name, check, destroyed, arrivals in (
+            ('engine_topple', 'a', (162, 118, 163), (91, 91, 91)),
+            ('engine_topple_b', 'b', (119, None, 170), (91, 111, 110))):
+        s = _sim_run(build_name, check, 50.0)
+        frames, *rows = s.series[-1][1]
+        assert 710 <= frames < 1000, frames                  # the conscript's control outlasts the bench's 710
+        for row, gone, arrived in zip(rows, destroyed, arrivals):
+            undestroyed, dying, at_goal = row % 1000, row // 1000 % 1000, row // 1000000
+            assert dying == 0, (check, row)
+            assert undestroyed == frames if gone is None else abs(undestroyed - gone) <= 2, (check, row, gone)
+            assert abs((frames - at_goal + 1) - arrived) <= 2, (check, row, arrived)
+
+
+def test_topple_the_legacy_loop_still_drives_through_and_removes_the_props():
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_topple', 'a')
+    s = sim.Sim(m, t, model=False).run(50.0)
+    _, *rows = s.series[-1][1]
+    assert all(row // 1000000 > 0 and row // 1000 % 1000 == 0 for row in rows), rows
+    assert all(not s.body(f'UNIT - CNV Topple Prop {k}').alive for k in range(1, 4))
