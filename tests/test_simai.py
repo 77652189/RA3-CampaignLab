@@ -387,15 +387,13 @@ def test_end_behavior_disband_goes_to_the_next_target_as_on_the_bench(lib, build
     assert _end_at_75(build, lib) == (0, 4, 0, 0)
 
 
-@pytest.mark.xfail(strict=True, reason='bench aiendr RAMPAGE: all 4 at the barracks from s40, never the tank; '
-                                       'simai sends them at the tank (nearest enemy unit) -- handoff-b 87')
 def test_end_behavior_rampage_as_on_the_bench(lib):
+    """RAMPAGE: the nearest enemy STRUCTURE (0x8e2980's KindOf filter) -- the barracks, never the nearer tank."""
     assert _end_at_75('aiendr', lib) == (0, 4, 0, 0)
 
 
-@pytest.mark.xfail(strict=True, reason='bench aiendp PICK_NEW_TARGET: all 4 stay where the plant was to s85; '
-                                       'simai re-picks the slot and goes to the barracks -- handoff-b 87')
 def test_end_behavior_pick_new_target_as_on_the_bench(lib):
+    """PICK_NEW_TARGET: 0x8f7aa0 just returns -- the team stands where the plant was (bench to s85)."""
     assert _end_at_75('aiendp', lib) == (4, 0, 0, 0)
 
 
