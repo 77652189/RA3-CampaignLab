@@ -11,20 +11,26 @@ On the range probe map, at 'base gun' (the player's): PROBES probe units and one
 control: it stays 1 either way). Counters: 探针 (probes the player owns), 对照 (plain conscripts). Every second.
 The dll's own lines (ra3ext loaded / create / update) are in the run folder's ra3ext.log; cnv_check prints their count.
 """
+import os
+
+import labpaths
 from maps import probe_range
 from parts import Mission, Test, Unit, counted
-from units.icewall import sub1
-from units.pace import retail_xml
 
 CONSCRIPT, PROBE, PROBES = 'SovietAntiInfantryInfantry', 'CNVExtProbe', 2
 EVERY, LINES, RUN = 30, 40, 20.0
 
 
+def _sub1(x, old, new):
+    assert x.count(old) == 1, (old[:60], x.count(old))
+    return x.replace(old, new, 1)
+
+
 def probe_unit():
-    x = retail_xml(CONSCRIPT)
-    x = sub1(x, f'id="{CONSCRIPT}"', f'id="{PROBE}"')
+    x = open(os.path.join(labpaths.SDK3, 'SageXML', 'Soviet', 'Units', CONSCRIPT + '.xml'), encoding='utf-8').read()
+    x = _sub1(x, f'id="{CONSCRIPT}"', f'id="{PROBE}"')
     x = x.replace(f'EditorName="{CONSCRIPT}"', f'EditorName="{PROBE}"')
-    x = sub1(x, '<Behaviors>', f'''<Behaviors>
+    x = _sub1(x, '<Behaviors>', f'''<Behaviors>
 			<DeletionUpdate id="ModuleTag_CNVLog" MinFrames="{EVERY}" MaxFrames="{LINES}"/>''')
     return Unit(PROBE, x, names=dict(unit=PROBE),
                 what=f'动员兵的复制（探针）：多一个 ra3ext 的 CNVLog 模块（载体 DeletionUpdate）；没注入时 {EVERY}..{LINES} 帧后被删',

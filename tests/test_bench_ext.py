@@ -1,16 +1,30 @@
 """The bench's ra3ext switch (engine line D, ADR 0027/0028): a mod starts through ra3ext_launch only when its folder
 holds ra3ext.allow, which a build writes exactly for a mission with ext=True; every other start is the plain Popen,
 as before -- without the game."""
+import importlib.util
 import os
 import subprocess
 import sys
 
 import pytest
 
+import test_plans  # noqa: F401  (puts experimental/cnv on the path: package, checks)
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(ROOT, 'experimental', 'testbench'))
-sys.path.insert(0, os.path.join(ROOT, 'experimental', 'cnv'))
-import harness  # noqa: E402
+
+
+def _load(name):
+    """A testbench module by its path (as test_bench_boxes.py does), not by editing the import path."""
+    if name in sys.modules:
+        return sys.modules[name]
+    spec = importlib.util.spec_from_file_location(name, os.path.join(ROOT, 'experimental', 'testbench', name + '.py'))
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+harness = _load('harness')
 
 
 def game_args(sku):
