@@ -343,6 +343,9 @@ class Brain:
         # so they see the slots of the last think (INFERRED one-think lag)
         self.ai.teams.has_target = lambda ai, key, n: self.targets.slot_target(
             self.tactics.state_of(ai, key), n) is not None
+        # a gathering team whose slot's target is gone ends (teams.TeamMaker._slots, 0x8c6d10 / 0x8c7020)
+        self.ai.teams.target_of = lambda ai, key, n: self.targets.slot_target(self.tactics.state_of(ai, key), n)
+        self.ai.teams.alive = lambda ai, i: i in self.targets.points or any(t.id == i for t in self.view.things)
         if 'defense' in which:
             self.base = df.Base(1, self.home, (), frozenset({'MAIN_BASE'}))
             self.defense = df.DefenseBlock(self.tactics, lambda ai, f: self.view, bases=lambda ai, f: [self.base],
