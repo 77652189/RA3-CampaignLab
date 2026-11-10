@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|---|---|
 | 脚本动作 | **85%** | 427 | 96 | 23 | 193 | 115 | 87% |
 | 脚本条件 | **94%** | 89 | 27 | 2 | 57 | 3 | 94% |
-| 物体模块 | **61%** | 184 | 28 | 5 | 132 | 19 | 61% |
+| 物体模块 | **64%** | 184 | 29 | 5 | 131 | 19 | 64% |
 | 武器效果 | **51%** | 25 | 3 | 2 | 20 | 0 | 53% |
 | AI | **65%** | 415 | 96 | 133 | 152 | 34 | 88% |
 
@@ -556,7 +556,7 @@
 | 不涉及 | `Behaviors/BuildingDestructionBehavior` | 493 (650) | 纯表现：建筑死后按骨骼放特效、甩碎块（CreationObject 如 AlliedBarracks_Debris：只有画法、寿命和碎片体积，没有身体和武器）、烟尘；例：AlliedAirfield, AlliedBarracks |
 | 不涉及 | `ClientBehaviors/ModelConditionAudioLoopClientBehavior` | 466 (649) | 纯表现（ClientBehaviors）；例：AlliedSatelliteSweepShroudRevealer, AlliedAirfield |
 | 已对拍 | `Behaviors/ProductionUpdate` | 351 (465) | tests/test_simbench.py::test_production_pays_as_it_builds_and_comes_out_after_the_door；例：AlliedAirfield, AlliedBarracks |
-| 未做 | `Behaviors/ToppleUpdate` | 347 (410) | 倒伏：车压过的灯笼、栏杆、路灯倒下即死（OK_Lantern01 KillWhenStartToppled）。碾压本身已做（Sim.crush_along，台上对过），倒伏还没有：OK_LANTERN01 在模拟器里不是物体（不挡路），platprops.STRUCTURE 里的栏杆路灯是永久障碍（游戏里车能压倒）；台上没量过灯笼，要先写探针；例：BaseTopple, BaseTree |
+| 已对拍 | `Behaviors/ToppleUpdate` | 347 (410) | tests/test_simbench_c.py::test_topple_the_five_props_disappear_at_the_bench_frames_without_ever_dying；例：BaseTopple, BaseTree |
 | 未做 | `Behaviors/ModelConditionUpgrade` | 341 (465) | 模拟器代码里没有这个名字；例：AlliedAntiInfantryInfantry, AlliedAntiVehicleInfantry |
 | 已对拍 | `Behaviors/BuildingBehavior` | 334 (440) | tests/test_simbench.py::test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames；例：AlliedAirfield, AlliedBarracks |
 | 已对拍 | `Behaviors/AttributeModifierAuraUpdate` | 311 (420) | 模拟器代码里有这个名字；台上量过：checks/engine_invuln.py；例：A09_IronCurtainEffect, BaseCivilianStructure |
@@ -732,10 +732,10 @@
 | 已对拍 | `DamageNugget` | 183 | 模拟器代码里有这个名字；台上量过：checks/engine_clip.py；例：BaseExplodingPropVehicleWeapon, MountRushmoreHeadEyeWeapon |
 | 已对拍 | `ProjectileNugget` | 88 | 模拟器代码里有这个名字；台上量过：checks/engine_shot.py；例：BB_EuropeCoastalGunWeapon, KremlinArtilleryDomeMissle |
 | 未做 | `InformTargetNugget` | 69 | 模拟器代码里没有这个名字；例：BB_EuropeCoastalGunWeapon, AlliedPrecisionBomb |
-| 未做 | `SuppressionNugget` | 64 | 模拟器代码里没有这个名字；例：BB_EuropeCoastalGunWeapon, KremlinArtilleryDomeMissle |
+| 未做 | `SuppressionNugget` | 64 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_prismx.py），可能用别的名字实现了；例：BB_EuropeCoastalGunWeapon, KremlinArtilleryDomeMissle |
 | 未做 | `MetaImpactNugget` | 36 | 模拟器代码里没有这个名字；例：KremlinArtilleryDomeMissleWarhead, AlliedTimeBomb_Level1 |
 | 未做 | `ActivateLaserNugget` | 27 | 已核（11-08）：模拟器没有这个效果（没有激光束）；例：MountRushmoreHeadEyeWeapon, JapanAntiVehicleInfantryTech3LockDownGun |
-| 已对拍 | `WeaponOCLNugget` | 26 | 模拟器代码里有这个名字；台上量过：checks/engine_prism.py；例：MountRushmoreHeadEyeWeapon, AlliedPrecisionBombWarhead |
+| 已对拍 | `WeaponOCLNugget` | 26 | 模拟器代码里有这个名字；台上量过：checks/engine_prismx.py；例：MountRushmoreHeadEyeWeapon, AlliedPrecisionBombWarhead |
 | 未做 | `AttributeModifierNugget` | 20 | 模拟器代码里没有这个名字；例：NanoHiveSwarmEffectTrigger, JapanCommandoSoftLanding |
 | 未做 | `ParalyzeNugget` | 11 | 模拟器代码里没有这个名字；例：JapanAntiVehicleInfantryTech3LockDownGun, AlliedAntiStructureShipEMPCruiseMissleWarhead |
 | 未做 | `TintObjectsNugget` | 9 | 模拟器代码里没有这个名字；例：SovietCommandoCallBombingRun, AlliedCommandoAttachWeapon |
