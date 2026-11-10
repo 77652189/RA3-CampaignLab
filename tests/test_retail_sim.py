@@ -42,6 +42,17 @@ def test_the_map_reads_as_a_mission(mission):
     assert mission.map.DIMS == (575, 575, 50)
 
 
+def test_the_map_reads_its_waypoint_paths(mission):
+    """WaypointsList's 56 links by waypoint name, the path labels (waypointPathLabel1..3, none empty), both in what
+    the simulator takes (merged): the intro bear's path runs Waypoint 98 -> 99 -> 100 -> 101 (a01)."""
+    mm = mission.merged()
+    assert len(mm.links) == 56 and all(a in mm.waypoints and b in mm.waypoints for a, b in mm.links)
+    bear = [w for w, labels in mm.labels.items() if 'WPP - Soviet Intro Bear Path' in labels]
+    assert {('Waypoint 98', 'Waypoint 99'), ('Waypoint 99', 'Waypoint 100'), ('Waypoint 100', 'Waypoint 101')} <= set(mm.links)
+    assert {'Waypoint 98', 'Waypoint 99', 'Waypoint 100', 'Waypoint 101'} <= set(bear)
+    assert all(labels and all(labels) for labels in mm.labels.values())
+
+
 def test_each_computer_player_draws_from_its_own_personality(mission):
     """A player's protocol lottery is its map personality's PowerChoice lines (simtech.Book): DefaultPersonality has
     none (never buys); the map's own AIP_... ones are not in the SDK and take their faction's solo base lines."""

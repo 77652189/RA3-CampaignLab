@@ -225,6 +225,28 @@ class Part:
     areas: dict = dataclasses.field(default_factory=dict)
     scripts: list = dataclasses.field(default_factory=list)
     strings: dict = dataclasses.field(default_factory=dict)
+    links: list = dataclasses.field(default_factory=list)       # waypoint paths: [(from, to)] waypoint names, one way
+                                                                # (the map's WaypointsList); a loop links back to its first
+    labels: dict = dataclasses.field(default_factory=dict)      # {waypoint name: [path label]} at most 3 each (its
+                                                                # waypointPathLabel1..3): *_FOLLOW_WAYPOINTS name the label
+
+    def path(self, label, *names, loop=False):
+        """A waypoint path: the waypoints `names` (in self.waypoints, or the mission's for a check) labelled `label`,
+        each linked to the next; loop: the last back to the first."""
+        assert len(names) >= 1 and len(set(names)) == len(names), names
+        for n in names:
+            have = self.labels.setdefault(n, [])
+            assert label not in have and len(have) < 3, f'waypoint {n}: labels {have} + {label!r} (3 at most)'
+            have.append(label)
+        self.links += list(zip(names, names[1:])) + ([(names[-1], names[0])] if loop and len(names) > 1 else [])
+
+
+def merge_labels(a, b):
+    """Two {waypoint: [path label]} as one: a waypoint on paths of both carries the labels of both."""
+    out = {k: list(v) for k, v in a.items()}
+    for k, v in b.items():
+        out.setdefault(k, []).extend(x for x in v if x not in out[k])
+    return out
 
 
 @dataclasses.dataclass
@@ -561,6 +583,7 @@ def side_by_side(a, b, dx, suffix=''):
     out.cast = {**a.cast, **{k + suffix: dataclasses.replace(r, name=r.name and r.name + suffix)
                              for k, r in b.cast.items()}}
     out.waypoints = {**a.waypoints, **{k: (x + dx, y) for k, (x, y) in b.waypoints.items()}}
+    out.links, out.labels = a.links + b.links, merge_labels(a.labels, b.labels)
     out.areas = {**a.areas, **{k: [(x + dx, y) for x, y in pts] for k, pts in b.areas.items()}}
     out.scripts, out.strings = a.scripts + b.scripts, {**a.strings, **b.strings}
     return out
@@ -578,6 +601,7 @@ def merged(mission, test=None):
         m.scripts = m.scripts + [Script('Test - countdowns off', [], [('HIDE_COUNTDOWN_TIMER', c) for c in m.countdowns],
                                         once=False)]
     m.waypoints = {**mission.waypoints, **test.waypoints}
+    m.links, m.labels = mission.links + test.links, merge_labels(mission.labels, test.labels)
     m.areas = {**mission.areas, **test.areas}
     m.strings = {**mission.strings, **test.strings}
     assert len(test.counters) <= 4, 'only four counter lines fit above the bottom bar (counters.MAX_LINES)'

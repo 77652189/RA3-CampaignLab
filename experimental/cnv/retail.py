@@ -9,7 +9,9 @@ What is read off the map (mapstudy / mapxml / mapscript / mapterrain, the reader
   objects   ObjectsList: every object of a player that is not a civilian one, every named object, every structure
             (a civilian building, a tech building, ore) -- props, decals, sounds and waypoints are not bodies. Owner =
             originalOwner's player, team = its team
-  waypoints the waypoint objects by waypointName; trigger areas (TriggerAreas); the borders (HeightMapData)
+  waypoints the waypoint objects by waypointName; their paths (labels: waypointPathLabel1..3, two_way:
+            waypointPathBiDirectional, links: WaypointsList by name); trigger areas (TriggerAreas); the borders
+            (HeightMapData)
   terrain   the height field (elevation / 16, as the cnv maps'), the water height (GlobalWaterSettings), the engine's
             own impassable cells (BlendTileData bit field 0)
   scripts   PlayerScriptsList as the engine model reads a .map (ra3model scripts.from_mapfile), one list per side in
@@ -72,6 +74,19 @@ class Terrain:
         return self._blocked
 
 
+def waypoint_links(m, ids):
+    """The map's waypoint path links [(from name, to name)] in file order: WaypointsList's head is u32 count, then
+    (u32 from, u32 to) waypointIDs; `ids` {waypointID: waypointName}. A link naming no waypoint object is dropped
+    (none in retail's 27 campaign maps)."""
+    node = next((n for _, n in m.walk() if n.name == 'WaypointsList'), None)
+    if node is None:
+        return []
+    count = struct.unpack_from('<I', node.head)[0]
+    assert len(node.head) == 4 + 8 * count, f'WaypointsList: {len(node.head)} bytes for {count} links'
+    pairs = (struct.unpack_from('<II', node.head, 4 + 8 * k) for k in range(count))
+    return [(ids[a], ids[b]) for a, b in pairs if a in ids and b in ids]
+
+
 class RetailMission:
     """Duck-types what sim.Sim reads of a cnv Mission (RETAIL tells it apart): .map (PLAYERS, TEAMS, OBJECTS,
     SCENERY, BORDERS and the terrain), objectives, cast / marks / endings (none), sides, relations, merged(),
@@ -98,10 +113,19 @@ class RetailMission:
                     self.relations.setdefault((a, b), 'Neutral')
         civilian = {n for n, p in props.items() if p.get('playerFaction') == CIVILIAN or n == 'PlyrNeutral'}
         objs, self.waypoints, self.skipped = [], {}, 0
+        self.labels, self.two_way, ids = {}, set(), {}
         for o in mapxml.objects(m):
             pr = o['props']
             if o['template'] == WAYPOINT:
-                self.waypoints[str(pr.get('waypointName', ''))] = (o['x'], o['y'])
+                wname = str(pr.get('waypointName', ''))
+                self.waypoints[wname] = (o['x'], o['y'])
+                ids[pr.get('waypointID')] = wname
+                labels = [str(pr[k]) for k in ('waypointPathLabel1', 'waypointPathLabel2', 'waypointPathLabel3')
+                          if pr.get(k)]
+                if labels:
+                    self.labels[wname] = labels
+                if pr.get('waypointPathBiDirectional'):
+                    self.two_way.add(wname)
                 continue
             owner, _, team = str(pr.get('originalOwner', '')).partition('/')
             name = str(pr.get('objectName', '') or '')
@@ -116,6 +140,7 @@ class RetailMission:
                 extra['originalOwner'] = f'{owner}/{team}'
             objs.append(Obj(o['template'], o['x'], o['y'], side=owner if owner in props else '', name=name,
                             angle=o['angle'], props=extra))
+        self.links = waypoint_links(m, ids)
         self.areas = m.trigger_areas()
         terrain = Terrain(m)
         self.map = terrain
@@ -136,8 +161,8 @@ class RetailMission:
         cnv scripts (script_lists runs the map's own), the map's areas and waypoints."""
         assert test is None, 'a retail mission takes no cnv check'
         return dataclasses.make_dataclass('Merged', ['units', 'objects', 'scripts', 'areas', 'waypoints', 'strings',
-                                                     'subtitles', 'templates'])([], [], [], self.areas, self.waypoints,
-                                                                                {}, {}, self.templates)
+                                                     'subtitles', 'templates', 'links', 'labels', 'two_way'])(
+            [], [], [], self.areas, self.waypoints, {}, {}, self.templates, self.links, self.labels, self.two_way)
 
     def script_lists(self, scripts):
         """The map's scripts for the engine model (scripts = ra3model.scripts), one list per side, every name a

@@ -392,6 +392,53 @@ def test_container_libraries_are_the_containers():
     assert model.handed_to_ai(None) == {'Player_2', 'Soviet_1', 'Soviet_2', 'Soviet_3'}
 
 
+def test_a_waypoint_path_is_written_as_retail_writes_it_and_read_back():
+    """Part.path -> package.write_map: a path's waypoints carry waypointPathLabel1..3 (the unused ones empty, as a01
+    writes them), the others none; the links go after the container's own in WaypointsList, by waypointID;
+    retail.waypoint_links (what the simulator reads of a retail map) reads them back by name; contract holds a
+    *_FOLLOW_WAYPOINTS label to the paths published and every link to a waypoint."""
+    import make_campnew18 as c18
+    import mapxml
+    import package
+    import pytest
+    import retail
+    from maps import island
+    from mapscript import MapFile
+    m = parts.Mission(name='X', map=island)
+    for k, site in enumerate(('east 1', 'east 2', 'east 3', 'west shore')):
+        m.waypoints[f'WP {k}'] = m.site(site)
+    m.path('Ring', 'WP 0', 'WP 1', 'WP 2', loop=True)
+    m.path('Line', 'WP 2', 'WP 0')
+    with pytest.raises(AssertionError, match='3 at most'):
+        for label in ('A', 'B'):
+            m.path(label, 'WP 0')
+    m.labels['WP 0'].remove('A')
+    assert m.links == [('WP 0', 'WP 1'), ('WP 1', 'WP 2'), ('WP 2', 'WP 0'), ('WP 2', 'WP 0')]
+    assert m.labels == {'WP 0': ['Ring', 'Line'], 'WP 1': ['Ring'], 'WP 2': ['Ring', 'Line']}
+
+    data = next(d for p, d in c18.c6._map_files() if p.lower().endswith('.map'))
+    built = MapFile(data)
+    before = retail.waypoint_links(built, {})                   # ids of nothing: the container's links, none named
+    head = next(n for _, n in built.walk() if n.name == 'WaypointsList').head
+    package.write_map(built, parts.merged(m))
+    after = next(n for _, n in built.walk() if n.name == 'WaypointsList').head
+    assert before == [] and after[4:len(head)] == head[4:]      # the container's links stay, ours after
+    wps = {o['props']['waypointName']: o['props'] for o in mapxml.objects(built) if o['template'] == retail.WAYPOINT}
+    ids = {p['waypointID']: n for n, p in wps.items()}
+    assert retail.waypoint_links(built, ids)[-4:] == m.links
+    assert [wps['WP 0'].get(f'waypointPathLabel{k}') for k in (1, 2, 3)] == ['Ring', 'Line', '']
+    assert [wps['WP 1'].get(f'waypointPathLabel{k}') for k in (1, 2, 3)] == ['Ring', '', '']
+    assert not any(k.startswith('waypointPathLabel') for k in wps['WP 3'])
+
+    m.put('AlliedAntiVehicleVehicleTech1', 'east 1', name='UNIT - T')
+    m.scripts.append(parts.Script('Go', [], [('NAMED_FOLLOW_WAYPOINTS', 'UNIT - T', 'Ring'),
+                                             ('NAMED_FOLLOW_WAYPOINTS', 'UNIT - T', 'Nowhere')]))
+    m.links.append(('WP 3', 'WP 9'))
+    got = [p for p in parts.contract(m) if 'path' in p]
+    assert got == ["path link 'WP 3' -> 'WP 9': no waypoint 'WP 9'",
+                   "Go: NAMED_FOLLOW_WAYPOINTS waypoint path 'Nowhere' not published"], got
+
+
 def test_a_reinforcement_team_is_written_as_a_template_and_read_back():
     """Mission.reinforcement -> mapxml.add_team writes a team template (not a singleton, the unit lines, retail's other
     properties); retail.team_templates (what the simulator reads of a retail map) reads the same lines back; contract
