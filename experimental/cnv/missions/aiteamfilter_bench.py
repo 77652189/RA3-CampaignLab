@@ -36,7 +36,8 @@ KINDS = 'IncludeKindOf="CAN_ATTACK" ExcludeKindOf="IGNORES_SELECT_ALL HARVESTER"
 # aimicbuilth), by aimicro_bench's opener (Time 0s with a Deposit, the Builds, Time 90s: both built there)
 LATE_MONEY, LATE_DEPOSIT, LATE_CHECK_AT = 10000, 5000, 60.0
 OPENER = 'CNVTeamFOpener'
-FACTORY_DY, PLANT_DY = -400.0, 400.0
+FACTORY_DY, PLANT_DY = -250.0, 400.0   # round 90: factory -400 -> -250, inside the yard's Tech2 reach (~300)
+TECH2 = 'Upgrade_AlliedTech2'
 
 
 def personality_xml(pid, kinds, filt, max_units, locos='LAND AMPHIBIOUS', objset='', always=False, late=0,
@@ -120,7 +121,10 @@ def mission(name, kinds=KINDS, filt='', max_units=8, tanks=4, inf=4, tanks_home=
     base = 'CNV AI Base'
     m.waypoint('ai base', base, 'east base')
     m.scripts += [
-        Script('CNV AI - Start', [], [('PLAYER_SET_MONEY', s1, 0), ('SET_MILLISECOND_TIMER', 'CNV AI Wake', WAKE_AT)]),
+        Script('CNV AI - Start', [], [('PLAYER_SET_MONEY', s1, 0), ('SET_MILLISECOND_TIMER', 'CNV AI Wake', WAKE_AT),
+                                      # round 90: the Guardian needs Upgrade_AlliedTech2 (its GameDependency); the
+                                      # yard holding it lends it to a war factory within ~300 (engine_tech c / d)
+                                      *([('NAMED_RECEIVE_UPGRADE', TECH2, 'UNIT - CNV AI Yard')] if late else [])]),
         Script('CNV AI - Wake', [('TIMER_EXPIRED', 'CNV AI Wake')],
                [('UNIT_AI_TRANSFER_ALL', s1, 1), ('SKIRMISH_AI_MAKE_BASE', s1, base),
                 ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', s1, 20), ('SKIRMISH_AI_USE_REPAIRS', s1, 0),
@@ -157,8 +161,13 @@ MISSION = {
     # round 89: aiar0-2 owned 4 Guardians throughout -- the opener built none. Why: the script-placed war factory
     # (aiar3: no Guardians placed, does it build the 2) or owning that template already (aiar4: 4 Guardians, the
     # opener builds 2 Riptides). Guesses: both built, then out with the team (homes 0).
+    # Bench round 90 (factory still at -400, no Tech2): aiar3 owned 0 Guardians to s75 -- the Guardian needs
+    # Upgrade_AlliedTech2, nobody had it. From round 90 every late build gives the yard Tech2, factory at -250.
+    # Then (round 90, 坦克在家 / 坦克拥有): aiar0 built s20 / s30, both stay home (2/6); aiar1 built s19 -> taken s29,
+    # s30 -> taken s56 (0/6): the gone team recruits on; aiar2 (full at 4) both stay (2/6); aiar3 (none placed) the
+    # first s21 forms a team and goes s30, the second s32 stays (expectation 0 was a guess; reading 1).
     'aiar3': lambda: mission('CampAITFAr3', filt=objfilter('ANY', inc=(TANK,)), tanks=0, inf=0, inf_home=0, late=2,
-                             tanks_home=0),
+                             tanks_home=1),
     'aiar4': lambda: mission('CampAITFAr4', filt=objfilter('ANY', inc=(TANK, RIPTIDE)), second=RIPTIDE, inf=0,
                              inf_home=0, late=2, late_unit=RIPTIDE, tanks_home=0),
 }

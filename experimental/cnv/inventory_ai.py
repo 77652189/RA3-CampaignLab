@@ -84,6 +84,11 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '组队招人/ObjectFilter.Relationship': 'docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮）',
               '开局/Order.Time':'docs/engine/aiopen.md#开局里的 Time 从什么时候算（aiotime：从唤醒起的绝对时刻）',
               '开局/Order.Build': 'docs/engine/aiopen.md#读数（aiopen f1～f3：造的顺序和 AlliedStandard 单子一样）',
+              **{f'开局/{k}': f'docs/engine/aiopen.md#开局怎么抽、哪些单子会作废（OpeningMove Weight / Difficulty，第 89～90 轮）（{v}）'
+                 for k, v in (('OpeningMove.Weight', 'aiowt / aiowt2：0% 永远抽不到'),
+                              ('OpeningMove.Difficulty', 'aiodf / aiodf2：只留 MEDIUM 的'),
+                              ('OpeningMove.Name', '每个探针按名字挂自写开局，都照它造'),
+                              ('Order.Deposit', 'aiom15：带 Deposit 2000 照造、晚 4 秒'))},
               '战略状态/StrategicState.State': 'docs/engine/aistate.md#读数（人格只留台上写的状态，AI 只跑这些：aistateconst / aistateslash 等）',
               '战略状态/TargetHeuristic.TargetHeuristic': 'docs/engine/aitactics.md#读数（aitargetnear / aitargetsafe：按状态写的目标启发挑楼）',
               '战术/Tactic.Tactic': 'docs/engine/aitactics.md#读数（SimpleAttack / DefenseAvoidanceAttack / FlankAttack / StaticDefense 上台）',
@@ -104,7 +109,7 @@ NOTES = {
     '微操/AIMicroManagerData.PullbackInjured': (BENCHED, '只认车能开进去的维修设施：苏联 AI + 吊车，残血坦克回去被回收（aipullsov PASS）；盟军 / 日本工厂找不到（aiteamstate.md 第 6 节）'),
     '微操/AIMicroManagerData.PullbackInjuredHealthPct': (GUESSED, '30% 低于 0.35 时苏联坦克会撤（aipullsov），阈值边界没量'),
     '微操/AIMicroManagerData.ReverseMove': (GUESSED, '推断（台上未复现）：锤子 airev / airevp / airevt 都不倒车；剩门队员有没有当前攻击目标，量法见 handoff-b 第 73 节'),
-    '组队招人/TeamTemplate.AlwaysRecruit': (GUESSED,'读了，出发后继续招人的门默认关（防御队吸兵和台上对不上，handoff-b 第 50、51 节）'),
+    '组队招人/TeamTemplate.AlwaysRecruit': (GUESSED,'台上证实（aiar0～3，第 90 轮）：SimpleAttack 队出门后开着才继续招新造的兵、MaxUnits 满了不招；模型的门仍默认关（防御队吸兵和台上对不上，handoff-b 第 50、51 节），差在哪没找到'),
 }
 
 

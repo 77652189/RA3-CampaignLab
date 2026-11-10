@@ -68,6 +68,17 @@
 - 已经过了的时刻不拦人：`Time 20s` 写在 `Time 30s` 后面，等于没写。
 - 模拟器的间隔对上，但三座都晚 3 秒（`tests/test_simai.py` 里绝对时刻那条是 strict xfail，原因没找到）。
 
+## 开局怎么抽、哪些单子会作废（OpeningMove Weight / Difficulty，第 89～90 轮）
+
+引擎线 B 第 89、90 轮（2026-11-09）。探针 `checks/engine_aiomove.py`（任务 `missions/aiomove_bench.py`），第 10 秒唤醒，读数全在检查的 docstring 里。
+
+给关卡线（测）：
+- **`Weight="0%"` 的那条开局永远抽不到**，放前面放后面都一样（aiowt / aiowt2）；两条都写 100% 时同权重的抽法见上面"买协议"一节。
+- **`Difficulty` 只留当前难度的开局**，测试台是普通难度 = MEDIUM（aiodf / aiodf2，同 aidiff）。
+- **开局太短会把建造单子吃掉**：最后一个 `Time` 点（从唤醒算）不到约 10 秒（8 < X ≤ 10），就只造最后一个 `Build`；整条开局只有一个 `Build` 时一样都不造。最后一个 `Time` ≥ 10 秒就全留（aiom1～20）。自写开局在末尾加一条 `Time 30s` 就稳。机制没读，是拟合出来的规则（推断）。
+- `Account="PRODUCTION" Deposit="2000"` 的 `Time`：照样都造，只是晚约 4 秒（aiom15）。别的账户没测。
+- 开局造守护者坦克要 **Tech2**（守护者的 `GameDependency` 是 `Upgrade_AlliedTech2`）：建造场拿到 Tech2、战车工厂在约 300 以内才能造（`engine_tech` c / d）；没有就一辆不造，也不报错（aiar3，第 90 轮）。
+
 ## 没测的
 
 - 有采矿收入时钱不够的样子（这次没让矿车出来）；收入怎么按预算分进各账户（程序没读通）。

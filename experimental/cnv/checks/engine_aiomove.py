@@ -53,6 +53,11 @@ Bench 2026-11-09 (B round 89): the whole opening's end decides, not each Build's
 Rule fitted to aiom1-20, aiotime T and aiopen AlliedStandard (private ai/opening.py kept_orders, mechanism not
 read): the last Time point >= X s after the wake (8 < X <= 10; the model takes 10) keeps every order; a shorter
 opening keeps only its last Build, worked as if alone, and none when it has one Build.
+Bench 2026-11-09 (B round 90, the two lines now Build + Time 30s, CNVOpenPT30 / CNVOpenBT30; all PASS):
+  aiowt  (P 0%, B 100%): barracks s19, no plant.     aiowt2 (P 100%, B 0%): plant s20, no barracks.
+  aiodf  (P EASY, B MEDIUM HARD BRUTAL): barracks s19.  aiodf2 (P MEDIUM HARD BRUTAL, B EASY): plant s19.
+Read: a 0% line is never drawn, either order (not "the first / last line"); lines are kept by Difficulty and the
+bench plays MEDIUM (as aidiff). The round-83 nothing was the lone-Build rule, not the draw.
 """
 from parts import Script, Test, counted, square
 

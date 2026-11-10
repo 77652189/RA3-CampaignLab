@@ -2,15 +2,15 @@
 
 由 `experimental/cnv/inventory_ai.py levels` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）里由遭遇战 AI 带的敌人：它的人格（`enemy_ai.py` 生成）沿继承、战略状态、战术、组队、目标启发、微操、造兵 / 预算状态、开局一路引用到的原版 AI 数据项，加上全局常量 AIData 和本阵营的 ArmyDefinition；再加关卡脚本里点了 AI 玩家名字的脚本动作 / 条件。状态取自 [inventory.md](inventory.md)。"AI 做完"的第一条：下表全部已对拍。
 
-**已对拍 97 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
+**已对拍 101 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
 
 | 部分 | 已对拍 | 推断 | 未做 |
 |---|---|---|---|
-| AI | 85 | 127 | 145 |
+| AI | 89 | 123 | 145 |
 | 脚本动作 | 11 | 0 | 0 |
 | 脚本条件 | 1 | 0 | 0 |
 
-按原版用量加权：已对拍 74%，已有（已对拍+推断）91%。
+按原版用量加权：已对拍 75%，已有（已对拍+推断）91%。
 
 | 状态 | 部分 | 项 | 原版用量 | 关 | 说明 |
 |---|---|---|---|---|---|
@@ -159,7 +159,7 @@
 | 未做 | AI | `微操/IgnoreTargets.StatusBitFlags` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `战略状态/AIStrategicStateDefinition.PathfindingCheckType=QuickDoesAttackPathExist` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `组队招人/TeamTemplate.BaseDefenseMaxDistance` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 推断 | AI | `组队招人/TeamTemplate.AlwaysRecruit` | 182 | a4 a5 a7 | 读了，出发后继续招人的门默认关（防御队吸兵和台上对不上，handoff-b 第 50、51 节） |
+| 推断 | AI | `组队招人/TeamTemplate.AlwaysRecruit` | 182 | a4 a5 a7 | 台上证实（aiar0～3，第 90 轮）：SimpleAttack 队出门后开着才继续招新造的兵、MaxUnits 满了不招；模型的门仍默认关（防御队吸兵和台上对不上，handoff-b 第 50、51 节），差在哪没找到 |
 | 推断 | AI | `组队招人/TeamTemplate.MicroManager` | 182 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/UnitModifier.DefensiveModifier` | 92 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/UnitModifier.OffensiveModifier` | 92 | a4 a5 a7 | AI 模型代码里读了这个名字 |
@@ -168,7 +168,6 @@
 | 推断 | AI | `微操/AIMicroManagerData.UseSpecialPowers` | 83 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `微操/AIMicroManagerData.EngageHostileTargets` | 82 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `开局/Order.Account` | 81 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `开局/Order.Deposit` | 81 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `微操/AIMicroManagerData.EngageTacticalTarget` | 79 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `组队招人/TeamTemplate.SortByDistance` | 75 | a4 a5 a7 | AI 模型代码里读了这个名字（台上没单独量：engine_aiskirm 里是推测） |
 | 推断 | AI | `微操/AIMicroManagerData.ReverseMove` | 74 | a4 a5 a7 | 推断（台上未复现）：锤子 airev / airevp / airevt 都不倒车；剩门队员有没有当前攻击目标，量法见 handoff-b 第 73 节 |
@@ -181,9 +180,6 @@
 | 推断 | AI | `人格/SpecificUnitCap.Unit` | 60 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `组队招人/CreateUnits.MinUnits` | 60 | a4 a5 a7 | AI 模型代码里读了这个名字（台上量的是 TeamTemplate.MinUnits，不是现造兵） |
 | 推断 | AI | `组队招人/CreateUnits.UnitName` | 60 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `开局/OpeningMove.Difficulty` | 46 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `开局/OpeningMove.Name` | 46 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `开局/OpeningMove.Weight` | 46 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `组队招人/TeamTemplate.ReleaseType=RELEASE_TO_PRIORITY` | 46 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `启发条件/PathToTargetHeuristic.LocomotorConditionToUseForTest` | 45 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `战术/Tactic.Distance` | 41 | a4 a5 a7 | AI 模型代码里读了这个名字 |
@@ -317,6 +313,7 @@
 | 已对拍 | AI | `微操/AIMicroManagerData.RetreatPowerAdvantage` | 94 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_airetreat.py |
 | 已对拍 | AI | `微操/AIMicroManagerData.EnterGarrisons` | 84 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aigarrison.py |
 | 已对拍 | AI | `微操/AIMicroManagerData.EngagePassiveTargets` | 82 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_airetreat.py |
+| 已对拍 | AI | `开局/Order.Deposit` | 81 | a4 a5 a7 | docs/engine/aiopen.md#开局怎么抽、哪些单子会作废（OpeningMove Weight / Difficulty，第 89～90 轮）（aiom15：带 Deposit 2000 照造、晚 4 秒） |
 | 已对拍 | AI | `微操/AIMicroManagerData.PullbackInjured` | 78 | a4 a5 a7 | 只认车能开进去的维修设施：苏联 AI + 吊车，残血坦克回去被回收（aipullsov PASS）；盟军 / 日本工厂找不到（aiteamstate.md 第 6 节） |
 | 已对拍 | AI | `微操/AIMicroManagerData.Crush` | 77 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aicrush.py |
 | 已对拍 | AI | `目标/AITargetingHeuristic.SortType` | 76 | a4 a5 a7 | docs/engine/aitactics.md#目标挑哪个（Distance：aitpnear / aitpmt2 最近、次近；ThreatToGround：aitargetsafe） |
@@ -332,6 +329,9 @@
 | 已对拍 | AI | `微操/AIMicroManagerData.UseGatherState` | 51 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aipullback.py |
 | 已对拍 | AI | `启发条件/OpeningMoveHeuristic` | 47 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aiomove.py |
 | 已对拍 | AI | `启发条件/OpeningMoveHeuristic.Complete` | 47 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aiomove.py |
+| 已对拍 | AI | `开局/OpeningMove.Difficulty` | 46 | a4 a5 a7 | docs/engine/aiopen.md#开局怎么抽、哪些单子会作废（OpeningMove Weight / Difficulty，第 89～90 轮）（aiodf / aiodf2：只留 MEDIUM 的） |
+| 已对拍 | AI | `开局/OpeningMove.Name` | 46 | a4 a5 a7 | docs/engine/aiopen.md#开局怎么抽、哪些单子会作废（OpeningMove Weight / Difficulty，第 89～90 轮）（每个探针按名字挂自写开局，都照它造） |
+| 已对拍 | AI | `开局/OpeningMove.Weight` | 46 | a4 a5 a7 | docs/engine/aiopen.md#开局怎么抽、哪些单子会作废（OpeningMove Weight / Difficulty，第 89～90 轮）（aiowt / aiowt2：0% 永远抽不到） |
 | 已对拍 | AI | `战术/Tactic.EndBehavior=RAMPAGE` | 46 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_ainamed.py |
 | 已对拍 | AI | `启发条件/PathToTargetHeuristic` | 45 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aiopath.py |
 | 已对拍 | AI | `启发条件/PathToTargetHeuristic.ObjectTypeToUseForTest` | 45 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aiopath.py |

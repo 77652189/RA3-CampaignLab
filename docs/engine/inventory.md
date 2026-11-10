@@ -8,7 +8,7 @@
 | 脚本条件 | **94%** | 89 | 27 | 2 | 57 | 3 | 94% |
 | 物体模块 | **61%** | 184 | 28 | 5 | 132 | 19 | 61% |
 | 武器效果 | **51%** | 25 | 3 | 2 | 20 | 0 | 53% |
-| AI | **63%** | 415 | 92 | 137 | 152 | 34 | 88% |
+| AI | **65%** | 415 | 96 | 133 | 152 | 34 | 88% |
 
 ## 脚本动作
 
@@ -772,7 +772,7 @@
 | 不涉及 | `表现/FeedbackEntry.FeedbackTo` | 238 | 纯表现（语音、视频、画面） |
 | 已对拍 | `开局/Order.Time` | 237 | docs/engine/aiopen.md#开局里的 Time 从什么时候算（aiotime：从唤醒起的绝对时刻） |
 | 已对拍 | `战术/Tactic.Tactic` | 184 | docs/engine/aitactics.md#读数（SimpleAttack / DefenseAvoidanceAttack / FlankAttack / StaticDefense 上台） |
-| 推断 | `组队招人/TeamTemplate.AlwaysRecruit` | 182 | 读了，出发后继续招人的门默认关（防御队吸兵和台上对不上，handoff-b 第 50、51 节） |
+| 推断 | `组队招人/TeamTemplate.AlwaysRecruit` | 182 | 台上证实（aiar0～3，第 90 轮）：SimpleAttack 队出门后开着才继续招新造的兵、MaxUnits 满了不招；模型的门仍默认关（防御队吸兵和台上对不上，handoff-b 第 50、51 节），差在哪没找到 |
 | 推断 | `组队招人/TeamTemplate.MicroManager` | 182 | AI 模型代码里读了这个名字 |
 | 已对拍 | `组队招人/TeamTemplate.MinUnits` | 182 | AI 模型代码里读了这个名字；台上量过：checks/engine_aiskirm.py |
 | 已对拍 | `组队招人/TeamTemplate.Priority` | 182 | docs/engine/aistate.md#两队抢兵和 MinPowerAdvantage（第 82 轮） |
@@ -809,7 +809,7 @@
 | 推断 | `微操/AIMicroManagerData.EngageHostileTargets` | 82 | AI 模型代码里读了这个名字 |
 | 已对拍 | `微操/AIMicroManagerData.EngagePassiveTargets` | 82 | AI 模型代码里读了这个名字；台上量过：checks/engine_airetreat.py |
 | 推断 | `开局/Order.Account` | 81 | AI 模型代码里读了这个名字 |
-| 推断 | `开局/Order.Deposit` | 81 | AI 模型代码里读了这个名字 |
+| 已对拍 | `开局/Order.Deposit` | 81 | docs/engine/aiopen.md#开局怎么抽、哪些单子会作废（OpeningMove Weight / Difficulty，第 89～90 轮）（aiom15：带 Deposit 2000 照造、晚 4 秒） |
 | 推断 | `微操/AIMicroManagerData.EngageTacticalTarget` | 79 | AI 模型代码里读了这个名字 |
 | 已对拍 | `微操/AIMicroManagerData.PullbackInjured` | 78 | 只认车能开进去的维修设施：苏联 AI + 吊车，残血坦克回去被回收（aipullsov PASS）；盟军 / 日本工厂找不到（aiteamstate.md 第 6 节） |
 | 已对拍 | `微操/AIMicroManagerData.Crush` | 77 | AI 模型代码里读了这个名字；台上量过：checks/engine_aicrush.py |
@@ -841,9 +841,9 @@
 | 已对拍 | `微操/AIMicroManagerData.UseGatherState` | 51 | AI 模型代码里读了这个名字；台上量过：checks/engine_aipullback.py |
 | 已对拍 | `启发条件/OpeningMoveHeuristic` | 47 | AI 模型代码里读了这个名字；台上量过：checks/engine_aiomove.py |
 | 已对拍 | `启发条件/OpeningMoveHeuristic.Complete` | 47 | AI 模型代码里读了这个名字；台上量过：checks/engine_aiomove.py |
-| 推断 | `开局/OpeningMove.Difficulty` | 46 | AI 模型代码里读了这个名字 |
-| 推断 | `开局/OpeningMove.Name` | 46 | AI 模型代码里读了这个名字 |
-| 推断 | `开局/OpeningMove.Weight` | 46 | AI 模型代码里读了这个名字 |
+| 已对拍 | `开局/OpeningMove.Difficulty` | 46 | docs/engine/aiopen.md#开局怎么抽、哪些单子会作废（OpeningMove Weight / Difficulty，第 89～90 轮）（aiodf / aiodf2：只留 MEDIUM 的） |
+| 已对拍 | `开局/OpeningMove.Name` | 46 | docs/engine/aiopen.md#开局怎么抽、哪些单子会作废（OpeningMove Weight / Difficulty，第 89～90 轮）（每个探针按名字挂自写开局，都照它造） |
+| 已对拍 | `开局/OpeningMove.Weight` | 46 | docs/engine/aiopen.md#开局怎么抽、哪些单子会作废（OpeningMove Weight / Difficulty，第 89～90 轮）（aiowt / aiowt2：0% 永远抽不到） |
 | 已对拍 | `战术/Tactic.EndBehavior=RAMPAGE` | 46 | AI 模型代码里读了这个名字；台上量过：checks/engine_ainamed.py |
 | 推断 | `组队招人/TeamTemplate.ReleaseType=RELEASE_TO_PRIORITY` | 46 | AI 模型代码里读了这个名字 |
 | 已对拍 | `启发条件/PathToTargetHeuristic` | 45 | AI 模型代码里读了这个名字；台上量过：checks/engine_aiopath.py |
