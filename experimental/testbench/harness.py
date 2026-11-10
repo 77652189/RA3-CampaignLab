@@ -345,14 +345,16 @@ def parse_launch(text):
 
 
 def ext_summary(path):
-    """One line on ra3ext's log: 'ra3ext: <status>; N create, M update (log)', or None without a log."""
+    """One line on ra3ext's log: 'ra3ext: <status>; N create, M update[, K sweep] (log)', or None without a log."""
     if not path or not os.path.isfile(path):
         return None
     lines = open(path, encoding='utf-8', errors='replace').read().splitlines()
     status = next((x.split(': ', 1)[-1] for x in lines if x.startswith('ra3ext loaded')), 'no load line')
     creates = sum(x.startswith('create ') for x in lines)
     updates = sum(x.startswith('update ') for x in lines)
-    return f'ra3ext: {status}; {creates} create, {updates} update ({path})'
+    sweeps = sum(x.startswith('sweep ') for x in lines)
+    more = f', {sweeps} sweep' if sweeps else ''
+    return f'ra3ext: {status}; {creates} create, {updates} update{more} ({path})'
 
 
 class GameProcess:

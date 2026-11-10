@@ -154,7 +154,10 @@ def test_ext_summary_counts_the_dll_lines(tmp_path):
     log.write_text('ra3ext loaded pid=1 exe=x.game: ok: patched\r\n'
                    'create #1 module=0 object=0 type=42409853 tag=bef51f8e every=30 limit=40 frame=3\r\n'
                    'update module=0 object=0 n=30 frame=33\r\nupdate module=0 object=0 n=60 frame=63\r\n')
-    assert harness.ext_summary(str(log)).startswith('ra3ext: ok: patched; 1 create, 2 update')
+    assert harness.ext_summary(str(log)).startswith('ra3ext: ok: patched; 1 create, 2 update (')
+    with open(log, 'a') as f:
+        f.write('sweep module=0 object=0 node=1 at=1.0,2.0,3.0 laser=0 frame=9\r\n')
+    assert harness.ext_summary(str(log)).startswith('ra3ext: ok: patched; 1 create, 2 update, 1 sweep (')
 
 
 def test_the_probe_check_asks_for_ra3ext_and_its_control_does_not():

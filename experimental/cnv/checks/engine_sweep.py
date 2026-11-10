@@ -17,9 +17,13 @@ engine_missile's) between, at ROW north -- counted, never aimed at:
   high   CNV_SweepHold   FiringDuration LIFE (the update sleeps once the weapon slot says it stopped: does it?)
 
 Counter per row Hammer: frames from the order until its first hit (stops counting at the hit). Near < mid < far =
-the line walks outward; the gaps say the speed (SPEED / 15 a frame, so 100 apart = 100 x 15 / SPEED frames).
+the line walks outward; the gaps say the speed. Speed is a Velocity: BinaryAssetBuilder stores XML / 5 as units a
+logic frame (retail dolphin 170 -> 34, ours 60 -> 12), the logic runs 15 frames a second ([0xcb8510] = 15), so the line
+walks SPEED x 3 a second: 100 apart = 100 x 5 / SPEED frames (60: ~8; bench 11-10 03:50: 9 / 18 / 26 frames to near / mid / far). It stops at
+min(Lifetime x 15, ceil(LENGTH / (SPEED / 5))) frames (0x71c730), one hit every 2 x RADIUS.
 
-  engine_sweep     Mission(ext=True)   the dll's sweep module (once written: handoff-d round 10 step 2) logs nodes
+  engine_sweep     Mission(ext=True)   the dll's sweep module: the laser's end follows the line's node; ra3ext.log
+                                       has one 'sweep ... node=N at=x,y,z' line per new node (60 at most)
   engine_sweepoff  Mission(ext=False)  plain retail: the damage line alone, the beam stays on the aimed Hammer
 """
 from maps import probe_range
@@ -29,9 +33,9 @@ from checks.engine_shot import _nuggets, shot_v4
 
 # the V4's clip is empty at birth and loads ClipReloadTime later (fire_state.md round 27): round 10's reload of 60 s
 # never let it fire in a 20 s run (bench 11-10 03:39, no row Hammer hit). Loaded at RELOAD, ordered at ORDER after it;
-# the next clip comes RELOAD after the first shot, past the far row's hit (ORDER + (350 - START) / SPEED)
+# the next clip comes RELOAD after the first shot, past the far row's hit (ORDER + (350 - START) / (3 x SPEED))
 ORDER, RUN, RELOAD = 8.0, 22.0, 6.0
-START, RADIUS, LENGTH, SPEED = 50.0, 10.0, 450.0, 60.0     # covers 50 .. 500 north in 7.5 s, 4 a frame
+START, RADIUS, LENGTH, SPEED = 50.0, 10.0, 450.0, 60.0     # covers 50 .. 500 north in 38 frames (2.5 s), 12 a frame
 LIFE = 8.0
 ROW, AIM = (150.0, 250.0, 350.0), 450.0
 TAG, HIT = 'ModuleTag_CNVSweep', 'CNV_SweepHit'
