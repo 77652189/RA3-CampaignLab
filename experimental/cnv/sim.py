@@ -61,6 +61,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign')) if p not in sys.path]
 
 import parts  # noqa: E402
+import simgarrison  # noqa: E402
 import simunits  # noqa: E402
 from ctx import FUNC_LATE, PANEL_CLEAR  # noqa: E402
 from model import coord, facing  # noqa: E402
@@ -949,6 +950,7 @@ class Sim:
         self.tech_read = False              # a script has read the points or the protocols (pending: a rank to come)
         self.ground = Ground(mission.map)
         self.own = {u.id: u.xml for u in self.mm.units}
+        self.garrison = simgarrison.Garrisons(self)    # GarrisonContain / ContestableGarrisonContain
         self.bodies = {}                    # name -> Body (named ones), plus unnamed under '#k'
         self.topples = []                   # ToppleUpdate objects; neutral props can be knocked over too
         self.frame_movers = {}              # bodies whose current path crosses a topple object's footprint
@@ -1062,7 +1064,7 @@ class Sim:
         f = simunits.fight(template, self.own)
         b.immortal, immortal_hp = simunits.immortal_body(template, self.own)
         b.suppression_rule = simunits.suppression(template, self.own)
-        hp = immortal_hp if b.immortal else f['hp']
+        hp = immortal_hp if b.immortal else (f['hp'] or simunits.max_health(template, self.own))
         if hp:
             b.max_hp = b.hp = hp
         else:                                   # no health in the data: a building's or a unit's usual (a guess)
@@ -2156,9 +2158,10 @@ class Sim:
         and not already sold is paid at once -- round(round(cost x 50%) x health share) -- and carries SOLD; 30 frames
         later it is deleted (no death, no ruin); meanwhile it still counts as power and can still be killed (then the
         money stays paid and it is just dead). Anything else: nothing happens. Not read: a template's RefundValue,
-        NOT_SELLABLE, the factory's queue, the garrison (the simulator has none)."""
+        NOT_SELLABLE, the factory's queue. The garrison empties (simgarrison, INFERRED: Generals' onSelling)."""
         if b is None or not b.alive or 'STRUCTURE' not in b.kinds or b.sell_end is not None:
             return
+        self.garrison.empty(b)
         if b.unpack_end is not None and self.frame_now() < b.unpack_end:
             return                                                  # engine_sell c: refused while it unpacks
         self.used.add('sell')
@@ -2186,6 +2189,7 @@ class Sim:
                 b.toppled, b.topple_end = True, self.frame_now() + b.topple['delay']
             return
         b.alive, b.deleted, b.path, b.died_at = False, delete, [], self.t
+        self.garrison.died(b, delete)       # passengers out alive / killed with it (simgarrison, garrison.md 4)
         if not delete:
             b.hp = 0.0
             # FireWeaponWhenDead (simunits.death_weapons; bench 11-05 engine_spawn_refill): its weapon goes off where it
@@ -2724,6 +2728,8 @@ class Sim:
                 if b.hp <= 0.0:
                     self.destroy(b, '脚本伤害')
                     b.read_until = self.frame_now()
+                else:                           # under REALLYDAMAGED: out in this frame (engine_garrison 伤争敌 1230)
+                    self.garrison.hurt(b)
         elif name in ('NAMED_KILL', 'NAMED_DELETE'):
             b = self.body(a[0])
             if b:
@@ -2781,8 +2787,8 @@ class Sim:
             b = self.body(a[0])
             if b:
                 self.used.add('health of the dead')
-                if b.alive:
-                    self.counters[a[1]] = int(round(b.health))
+                if b.alive:                     # whole percent, rounded down (engine_garrison hp: 200 of 3000 reads 6)
+                    self.counters[a[1]] = math.floor(b.health + 1e-6)
                 elif b.died_at == self.t and not b.deleted:
                     # killed by a script earlier this frame: it is still there, at 0 (a NAMED_DELETE leaves the last
                     # value: engine_immortal b, bench 11-09, health 1 beside gone 1)
@@ -2800,9 +2806,15 @@ class Sim:
         elif name == 'PLAYER_GIVE_MONEY':
             self.money[a[0]] = self.money.get(a[0], 0) + a[1]
         elif name == 'NAMED_GARRISON_SPECIFIC_BUILDING':
-            b = self.body(a[0])
-            if b and self.body(a[1]):
+            b, g = self.body(a[0]), self.body(a[1])
+            if b and g and self.garrison.spec(g) is not None:      # walks to it, in if it may (simgarrison; INFERRED)
+                self.garrison.send(b, g)
+            elif b and g:
                 self.send(b, a[1])
+        elif name == 'NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY':      # (unit, building) engine_garrison: no
+            self.garrison.put(self.body(a[0]), self.body(a[1]), script=True)    # relation, no room (garrison.md 1)
+        elif name == 'NAMED_EXIT_BUILDING':      # (unit) engine_garrison base: out where the building stands
+            self.garrison.out(self.body(a[0]))
         elif name == 'SET_MISSION_OBJECTIVE_STATUS':
             if a[1] not in (0, 1, 2, 3):                # script-semantics.md 8: only 0..3, any other does nothing
                 return                                  # (inferred; checks/engine_scripts5.py goals O5 asks the bench)
@@ -3141,6 +3153,7 @@ class Sim:
             self.suppression_tick()
             self.flee_due(eng.frame)
             self.expire(eng.frame)
+            self.garrison.due()
             if self.frame_movers:
                 self.move(1.0 / self.fps, precise=True)
             self.build_due(eng.frame)
@@ -3252,6 +3265,7 @@ class Sim:
                 if s.once:
                     self.done.add(s.name)
         self.expire(self.frame_now())
+        self.garrison.due()
         self.suppression_tick()
         self.build_due(self.frame_now())
         self.deposit_due(self.frame_now())

@@ -490,3 +490,23 @@ def test_weapon_ocl_lifetime_damage_reads_the_fire_delay_before_counting_updates
     m,t,_=build.resolve('engine_oclone','a')
     e=sim.Sim(m,t);e.shot_clock=True
     assert tuple(e.run(16).series[-1][1])==(99,1,40,1)
+
+
+# ---- ContestableGarrisonContain (simgarrison.Garrisons, sim.Sim.garrison): bench 2026-11-05 engine_garrison in / hp
+# (checks/engine_garrison.py, docs/engine/garrison.md 1-5). The script's _INSTANTLY entry skips the room and the
+# relation (six in, 16), the owner is the first passenger's and back to the civilians when empty (15, 0); 3000 health
+# (BaseCivilianStructureMedium's), out at 13 % in the damage's frame (伤争敌 1230), the contesting conscript bounces one
+# and stays out (1220); a killing hit and a script kill both eject them alive (炸杀 33 -> 0, 存活 33 throughout).
+def _garrison_series(check):
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_garrison', check)
+    return {s: row for s, row in sim.Sim(m, t).run(24.0).series}
+
+
+def test_garrison_script_entry_skips_room_and_relation_owner_follows_and_damage_or_kill_ejects_alive_at_the_bench():
+    a = _garrison_series('in')
+    got = [tuple(a[s]) for s in (4, 10, 16)]
+    assert got == [(16, 1123, 33, 33), (15, 1230, 0, 33), (0, 1220, 0, 33)], got   # bench s4-7 / s10-13 / s16-
+    hp = _garrison_series('hp')
+    assert [hp[s][:2] for s in (4, 10, 16)] == [[100, 100], [0, 13], [0, 6]], hp   # bench 炸楼血 / 伤楼血

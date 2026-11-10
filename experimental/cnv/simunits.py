@@ -1028,6 +1028,24 @@ def prop_body(template, own=None):
     return _prop_memo[key]
 
 
+_hp_memo = {}
+
+
+def max_health(template, own=None):
+    """MaxHealth from the nearest template up the inheritFrom chain that writes it (a define spelled out), None when
+    none does: a civilian house writes none of its own (AM_Apartments_01 -> BaseCivilianStructureMedium's
+    =$CIV_HEALTH_MEDIUM, 3000; bench 11-05 engine_garrison hp: NAMED_DAMAGE 2600 left 13 %)."""
+    key = (template, (own or {}).get(template))
+    if key not in _hp_memo:
+        def read(xml):
+            return number(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'MaxHealth')
+        try:
+            _hp_memo[key] = _chain(template, own, read)
+        except (OSError, ValueError):
+            _hp_memo[key] = None
+    return _hp_memo[key]
+
+
 _death_memo, _weapon_blocks = {}, None
 
 
@@ -1356,6 +1374,11 @@ def stats(template, own=None):
         e = read_xml(template, own)
     else:
         e = dict(table().get(template.lower()) or {})
+        if not e:                       # outside the unit table (not sorted UNIT / STRUCTURE: S02_ExplodingMig, a
+            try:                        # prop vehicle): its own chain, so its KindOf (NOT_AUTOACQUIRABLE) is read
+                e = read_xml(template) if _xml(template) else {}
+            except (OSError, ValueError):
+                e = {}
     guessed = []
     kinds = set(e.get('kinds') or [])
     speed, vision = DEFAULTS[kind_of(kinds)]
