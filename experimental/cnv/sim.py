@@ -360,6 +360,17 @@ def engine_model():
     return _MODEL[path]
 
 
+def skirmish_setup(map_module, players):
+    """The published players the container gives Lib_Skirmish_Setup (model.handed_to_ai: Soviet_1 / 2 / 3 unless the
+    map module changes them). Its start-up UNIT_AI_TRANSFER_ALL takes their units off every team after the first
+    frame's mission scripts -- the container's SidesList has our list (Player_1's) before theirs (bench 11-09
+    engine_scripts9 memb2: a start-up UNIT_SET_TEAM does not survive it): Sim.off_teams. The library's other start-up
+    scripts (SKIRMISH_AI_MAKE_BASE ...) are not run: engine line B's simai wakes an AI at the mission's own wake, as
+    its bench readings were matched (tests/test_simai); the container's other libraries (Lib_End_Mission ...) neither."""
+    from model import handed_to_ai
+    return tuple(sorted(p for p in handed_to_ai(map_module) if p in players))
+
+
 def _engine_class(scripts):
     class SimEngine(scripts.Engine):
         """The model's engine with the simulator as its World, watching the core actions it reports on (a flag's
@@ -893,6 +904,7 @@ class Sim:
         self.ra3_only = set()               # RA3-only action / condition names the run used
         self.last_change = 0.0
         self.ai = {}                        # player -> woken at
+        self.handed = ()                    # skirmish_setup: players taken off their teams after the first frame
         self.ai_switches = {}               # player -> {AI_SWITCHES name: value} (simai.Brain reads them)
         self.audio_end = {}                 # sound event -> when HAS_FINISHED_AUDIO holds again (Sim.played)
         self.video_end = {}                 # clip -> when HAS_FINISHED_VIDEO holds (None: never, a full-screen one)
@@ -980,6 +992,8 @@ class Sim:
             mod, cls = got
             self.fps = mod.FPS
             lists = mission.script_lists(mod) if self.retail else mod.from_cnv(parts.unnot(self.mm.scripts))
+            if not self.retail:
+                self.handed = skirmish_setup(mission.map, set(self.players.values()))
             # a retail map's own scripts keep their inverted bit (the engine model: honored for retail's compiled
             # scripts; a02's 'NOT units in the convention center' completed objective 1 at 0:04 with it ignored)
             self.eng = cls(lists, world=self, difficulty=self.level, honor_inverted=self.retail)
@@ -1094,6 +1108,14 @@ class Sim:
     # ---- orders: one unit's, and a team's (the same for each member: ctx.order gives teams only)
     def members(self, team):
         return [b for b in self.living() if same_team(b.team, team)]
+
+    def off_teams(self, players):
+        """UNIT_AI_TRANSFER_ALL(p, 1): p's units now are taken off every team (its default one too); units made later
+        join theirs as ever (bench 11-09 engine_scripts9 memb3: teamSoviet_1 counts 0 while its placed dummy lives;
+        memb11 / memb12: with Lib_Skirmish_Setup the crews go empty, without it they die)."""
+        for b in self.living():
+            if b.owner in players:
+                b.team = ''
 
     def team_active(self, team):
         return any(same_team(t, team) for t in self.active)
@@ -2628,6 +2650,8 @@ class Sim:
             self.ai_switches.setdefault(a[0], {})[name] = int(a[1])     # they do is simai's (engine line B)
         elif name in ('UNIT_AI_TRANSFER_ALL', 'SKIRMISH_AI_MAKE_BASE'):
             self.used.add('ai')
+            if name == 'UNIT_AI_TRANSFER_ALL' and int(a[1]):
+                self.off_teams((a[0],))
             if a[0] not in self.ai:
                 self.ai[a[0]] = self.t
                 self.note('AI', f'{self.who(a[0])} 交给遭遇战 AI（造兵、进攻不模拟）')
@@ -2900,6 +2924,9 @@ class Sim:
                 self.happen(self.events.pop(0))
             self.tech_due(eng.frame + 1)        # before the frame's scripts (bench 11-08 engine_protocol rank: rank
             eng.step()                          # 2 read by the scripts of frame 5400 = 360 s x 15)
+            if self.handed:                     # the container's Lib_Skirmish_Setup, after the first frame's scripts
+                self.off_teams(self.handed)
+                self.handed = ()
             self.autoheal(eng.frame)
             self.flee_due(eng.frame)
             self.expire(eng.frame)

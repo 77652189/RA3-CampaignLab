@@ -370,3 +370,54 @@ def test_ctx_forwards_the_missions_own_writes():
     assert (m.strings['K'], m.areas['A'], m.waypoints['P'], m.countdowns) == ('a', 'area', (1.0, 2.0), ['timer'])
     assert {'u1', 'u2'} <= set(m.spawns)
     assert ctx.voice_has('anything')          # no voice pack: nothing is missing
+
+
+def test_container_libraries_are_the_containers():
+    """model.CONTAINER_LIBRARIES (what the simulator and contract G6c take the container to hand the skirmish AI) is
+    the container map's LibraryMapLists; package.set_libraries writes the same bytes for the same names."""
+    import make_campnew18 as c18
+    import mapstudy
+    import model
+    import package
+    import retail
+    from mapscript import MapFile
+    data = next(d for p, d in c18.c6._map_files() if p.lower().endswith('.map'))
+    m = MapFile(data)
+    order = [''] + list(mapstudy.players(m))
+    have = dict(zip(order, retail.library_names(m)))
+    assert have == {p: tuple(n.lower() for n in model.libraries(None).get(p, ())) for p in order}
+    before = [n.head for _, n in m.walk() if n.name == 'LibraryMaps']
+    package.set_libraries(m, model.CONTAINER_LIBRARIES)
+    assert [n.head for _, n in m.walk() if n.name == 'LibraryMaps'] == before
+    assert model.handed_to_ai(None) == {'Player_2', 'Soviet_1', 'Soviet_2', 'Soviet_3'}
+
+
+def test_contract_g6c_placed_ai_units_take_no_team_order():
+    """G6c: a placed unit of Soviet_1 (handed to the skirmish AI by the container) is on no team after the start, so a
+    level order to its team is an error -- not on s4, not once a level script (not a first-frame one) fills the team."""
+    import types
+    import contract
+    import mapscript
+    from maps import island
+    cat = mapscript.catalog()
+
+    def broken(side, *more, libraries=None, placed=True):
+        mp = types.SimpleNamespace(**{k: getattr(island, k) for k in ('PLAYERS', 'TEAMS')})
+        if libraries is not None:
+            mp.LIBRARIES = libraries
+        team = f'{island.PLAYERS[side]}/team{island.PLAYERS[side]}'
+        m = types.SimpleNamespace(name='CampG6c', map=mp, objects=[parts.Obj('SovietWarFactory', 1, 1, side=side,
+                                                                              name='UNIT - G6c')][:int(placed)],
+                                  scripts=[parts.Script('CNV G6c - Go', [('TIMER_EXPIRED', 'g')], [('TEAM_HUNT', team)]),
+                                           *more])
+        return contract.placed_ai_units_unordered(m, cat)
+    assert broken('s1') and 'teamSoviet_1' in broken('s1')[0]
+    assert broken('s4') == []
+    assert broken('s1', libraries={'Soviet_1': ()}) == []
+    fill = ('UNIT_SET_TEAM', 'UNIT - G6c', 'Soviet_1/teamSoviet_1')
+    assert broken('s1', parts.Script('CNV G6c - Join', [('TIMER_EXPIRED', 'j')], [fill])) == []
+    assert broken('s1', parts.Script('CNV G6c - Join', [], [fill]))       # the first frame's join is undone
+    made = parts.Script('CNV G6c - Made', [], [('CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT', 'SovietWarFactory',
+                                                'Soviet_1/teamSoviet_1', 'W')])
+    assert broken('s1', made, placed=False)                    # made in the first frame: taken off alike
+    assert broken('s1', placed=False) == []

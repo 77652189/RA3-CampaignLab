@@ -18,6 +18,28 @@ MAX_NAME = 15                           # mod folder names longer than this cras
 TEAM_ORDERS = {'attack': 'TEAM_ATTACK_NAMED', 'guard': 'TEAM_GUARD_AREA', 'hunt': 'TEAM_HUNT', 'move': 'MOVE_TEAM_TO',
                'attack_move': 'ATTACK_MOVE_TEAM_TO', 'stop': 'TEAM_STOP'}      # Mission.order: kind -> whole-team action
 COUNTER_LINES = 4                      # counter / countdown lines that fit on the bench's screen (counters.MAX_LINES)
+# The container map (package.write_map writes every mission into it) carries script libraries per side (LibraryMapLists,
+# SidesList order, the nameless side '' first; tests/test_cnv_parts holds this to the container's bytes). Player_2 and
+# Soviet_1 / 2 / 3 get Lib_Skirmish_Setup, which at the start runs UNIT_AI_TRANSFER_ALL and SKIRMISH_AI_MAKE_BASE on
+# its player: in EVERY mission that player's skirmish AI is woken and its placed units are taken off every team (bench
+# 11-09 engine_scripts9 memb / memb11 / memb12, work/re round 135). A map module's LIBRARIES (player -> names) changes
+# a side's list (package.write_map writes it; the simulator runs it).
+SKIRMISH_SETUP = 'Lib_Skirmish_Setup'
+CONTAINER_LIBRARIES = {'': ('Lib_Camp_Restrictions', 'Lib_Object_Lists', 'Lib_Power_Restrictions'),
+                       'Player_1': ('Lib_End_Mission', 'Lib_Victory_Relevance'),
+                       **{p: (SKIRMISH_SETUP,) for p in ('Player_2', 'Soviet_1', 'Soviet_2', 'Soviet_3')}}
+
+
+def libraries(map_module):
+    """player -> the script libraries its list carries in the built map: the container's, as the map module changes
+    them (LIBRARIES)."""
+    return dict(CONTAINER_LIBRARIES, **getattr(map_module, 'LIBRARIES', {}))
+
+
+def handed_to_ai(map_module):
+    """The players the container hands to the skirmish AI at the start (Lib_Skirmish_Setup): their placed units are
+    on no team after the first frame, so a team order reaches none of them (contract.placed_ai_units_unordered)."""
+    return {p for p, names in libraries(map_module).items() if SKIRMISH_SETUP in names}
 # K8 (I4): the ground a camera shows while a scene runs (letterbox on: the picture is a band 1280 x 540 of the 1280 x 720
 # screen, the rest bars). The ground is seen at an angle, so the band is a TRAPEZOID on the map, not a rectangle: wider at
 # its far (north) edge. Measured 2026-11-07 on the bench (checks/engine_letterbox.py 'g': a 7 x 5 grid of guardians

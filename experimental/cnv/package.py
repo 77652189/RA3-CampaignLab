@@ -10,6 +10,7 @@ parts.py (ADR 0016).
 """
 import copy
 import os
+import struct
 import sys
 from dataclasses import dataclass, field, replace
 
@@ -29,6 +30,7 @@ def write_map(m, mm):
     mm.map.terrain(m)
     for side, props in mm.sides.items():
         mapxml.set_player(m, mm.player(side), **props)
+    set_libraries(m, getattr(mm.map, 'LIBRARIES', {}))
     for team in mm.teams.values():          # the mission's own teams (Mission.crew), 'Owner/teamName'
         owner, name = team.split('/')
         mapxml.add_team(m, name, owner)
@@ -51,6 +53,18 @@ def write_map(m, mm):
     m.set_trigger_areas(mm.areas)           # the base map's areas went with its scripts
     m.set_objectives([dict(name=g.name, title=g.title, desc=g.desc, bonus=int(g.bonus), flags=1)
                       for g in mm.objectives])
+
+
+def set_libraries(m, libraries):
+    """LibraryMaps (one chunk per side, SidesList order, the nameless side first): `libraries` (player -> library
+    names, model.libraries) written over the container's -- u32 count, then each path u16-prefixed."""
+    import mapstudy
+    order = [''] + list(mapstudy.players(m))
+    chunks = [n for _, n in m.walk() if n.name == 'LibraryMaps']
+    for player, names in libraries.items():
+        paths = [f'Libraries\\{n}\\{n}.map'.encode('ascii') for n in names]
+        chunks[order.index(player)].head = struct.pack('<I', len(paths)) + b''.join(
+            struct.pack('<H', len(p)) + p for p in paths)
 
 
 def write_more(m, waypoints, objects, scripts, areas):

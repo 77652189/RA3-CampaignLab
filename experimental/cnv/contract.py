@@ -245,6 +245,64 @@ def team_orders_land(m):
     return out
 
 
+# G6c's known case, kept as the record of a method that fails (mission names, matched from their start): only ever
+# deleted from. A new probe that must address an AI player's placed units goes through s4..s6 or makes them by script.
+AI_PROBES_LEFT = ('CampAITFAr5', 'CampAITFAr6', 'CampAITFAr7', 'CampAITFAr8')
+
+
+def placed_ai_units_unordered(m, cat):
+    """G6c (bench 11-09 engine_scripts9 memb / memb11 / memb12, work/re round 135): the container hands Soviet_1 / 2 / 3
+    to the skirmish AI at the start (model.handed_to_ai: its Lib_Skirmish_Setup runs UNIT_AI_TRANSFER_ALL), which takes
+    their PLACED units off every team -- the crew the map put them in (originalOwner) and their player's own team. A
+    level script (a check's `Test ...` own are not) that names such a team -- an order, a kill, a relation -- reaches
+    none of them, unless the team gets members by script: some level script puts units on it (UNIT_SET_TEAM / CREATE_*;
+    Mission.order does, before its order -- which also takes them out of the AI's hands, aidefense_bench round 61). A
+    join in a script of no conditions (the first frame) does not count: the transfer runs after it (memb2), so what
+    such a script makes or puts on a team of that player is taken off alike, and only that script's own orders after
+    the join reach it (INFERRED from memb2; the order is given before the transfer). B line's aiar5..8 (their
+    TEAM_TELEPORT_TO_WAYPOINT on teamSoviet_1 moved nothing, bench round 91) are the known case: AI_PROBES_LEFT."""
+    import model
+    handed = model.handed_to_ai(m.map)
+    players, default = getattr(m.map, 'PLAYERS', {}), getattr(m.map, 'TEAMS', {})
+    crews = {}                                      # bare team name -> a placed unit on it
+    for o in m.objects:
+        if players.get(o.side) in handed:
+            team = (getattr(o, 'props', None) or {}).get('originalOwner')
+            team = team if isinstance(team, str) else default.get(o.side)
+            if team:
+                crews.setdefault(team.split('/')[-1], o.name or o.template)
+    mine = [s for s in m.scripts if not s.name.startswith('Test')]
+
+    def team_of(name, a, whole=False):
+        types = cat[name]['args']
+        return None if TEAM_ARG not in types else str(a[types.index(TEAM_ARG)]) if whole else \
+            str(a[types.index(TEAM_ARG)]).split('/')[-1]
+
+    def joins(name):
+        return name in JOINS_TEAM or 'CREATE' in name or 'SPAWN' in name
+    for s in mine:                                  # made or put on such a team in the first frame: taken off alike
+        if not s.when:                              # (INFERRED from memb2's UNIT_SET_TEAM; test_sim)
+            for name, *a in s.do:
+                team = team_of(name, a, whole=True)
+                if team and joins(name) and team.split('/')[0] in handed:
+                    crews.setdefault(team.split('/')[-1], f'what {s.name!r} makes / puts on it')
+    if not crews or str(m.name).startswith(AI_PROBES_LEFT):
+        return []
+    filled = {team_of(name, a) for s in mine if s.when for name, *a in s.do if joins(name)}
+    out = []
+    for s in mine:
+        here = set()                                # a first-frame script's own order after its join: before the transfer
+        for name, *a in s.do:
+            team = team_of(name, a)
+            if joins(name):
+                here.add(team)
+            elif team in crews and team not in filled and team not in here:
+                out.append(f'{s.name}: {name} {team}: its member ({crews[team]}) belongs to a player the container '
+                           f'hands to the skirmish AI at the start ({"/".join(sorted(handed))}: Lib_Skirmish_Setup), '
+                           f'which takes it off every team -- place it on s4..s6, or make it by script')
+    return out
+
+
 def pace_released(m):
     """齐步 (units/pace.py): every pace upgrade a unit is granted is taken away again by a script of the level that
     waits for that unit to be inside an area (where the force was sent). A slowed unit nobody releases stays slow for
@@ -569,7 +627,7 @@ def contract(mission):
     out += said_outside_the_outlet(m, cat)
     out += said_lines_kept(m)
     out += said_once_and_on_time(m)
-    out += team_orders_land(m) + kind_counts_in_area(m)
+    out += team_orders_land(m) + placed_ai_units_unordered(m, cat) + kind_counts_in_area(m)
     out += camera_outside_the_view(m) + start_camera_inside_the_view(m) + demo_unframed(m)
     out += music_resumes(m) + ending_line_fits(m)
     out += single_orders(m) + pace_released(m)

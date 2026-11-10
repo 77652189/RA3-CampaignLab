@@ -79,7 +79,11 @@ BENCH 11-09 (round 135): the cause. SidesList decoded whole (u8 1, u32 12 sides,
   takes the player's placed units off every team (memb2's start-up UNIT_SET_TEAM did not survive it).
   memb11 (9i: Soviet_1's library list emptied): 留 16 from s1 -- the s1 crews die like Soviet_4's.
   memb12 (9j: 9b's sides with Lib_Skirmish_Setup copied onto Soviet_4 and 5): 留 23 -- their crews go empty.
-  Simulator: neither runs the container's libraries nor takes units off teams on UNIT_AI_TRANSFER_ALL (16 on s1).
+  Simulator before round 136: neither ran the container's libraries nor took units off teams on UNIT_AI_TRANSFER_ALL
+  (16 on s1). Round 136: sim.skirmish_setup runs Lib_Skirmish_Setup for model.handed_to_ai's players after the
+  mission's list, and UNIT_AI_TRANSFER_ALL takes the player's units off every team: memb 23, memb3 23, memb4 16,
+  memb11 16, memb12 23 -- the bench's. The product side: contract G6c (placed_ai_units_unordered) refuses a level
+  order to such a team.
 """
 from maps import probe_border
 from parts import Mission, Script, Test, status
@@ -297,21 +301,14 @@ def memb12(m):
 
 
 def _libraries(players):
-    """probe_border with the container's LibraryMaps (one per side, SidesList order, the nameless side first) changed:
-    {player: 'none' | 'skirmish'} -- 'skirmish' copies Soviet_1's list (Lib_Skirmish_Setup)."""
+    """probe_border with the container's script libraries changed (a map module's LIBRARIES, model.libraries: written
+    by package.write_map, run by the simulator): {player: 'none' | 'skirmish'} -- 'skirmish' gives it Soviet_1's
+    list (Lib_Skirmish_Setup). Rounds 135's builds wrote the same bytes by editing LibraryMaps in terrain()."""
     import types
-    import mapstudy
+    from model import SKIRMISH_SETUP
     mod = types.ModuleType(probe_border.__name__)
     mod.__dict__.update({k: v for k, v in vars(probe_border).items() if not k.startswith('__')})
-
-    def terrain(m):
-        probe_border.terrain(m)
-        names = [''] + list(mapstudy.players(m))
-        libs = [n for _, n in m.walk() if n.name == 'LibraryMaps']
-        skirmish = libs[names.index('Soviet_1')].head
-        for player, what in players.items():
-            libs[names.index(player)].head = bytes(4) if what == 'none' else skirmish
-    mod.terrain = terrain
+    mod.LIBRARIES = {p: () if what == 'none' else (SKIRMISH_SETUP,) for p, what in players.items()}
     return mod
 
 

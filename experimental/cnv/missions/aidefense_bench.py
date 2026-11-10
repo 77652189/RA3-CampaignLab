@@ -29,6 +29,12 @@ moves them out to FAR itself, with no UNIT_SET_TEAM:
   teleport to FAR at 1150 moved no one -- both builds 4 4 4 4 from s9 to the end; FAR sits on the river bank. 11-06's
   readings were teleports to FAR at 1200 west, the same distance.)
   aidefmv     D=250, U=1 s: MOVE_NAMED_UNIT_TO FAR, one by one (the AI's attack-move against a plain script move)
+KNOWN PIT (engine line A round 136): s1 is one of the players the container hands to the skirmish AI at the start
+(model.handed_to_ai, Lib_Skirmish_Setup), which takes the four placed Peacekeepers off every team. aidef250 / 450 /
+upd4 / slack's 'CNV AI - Move' (m.order: UNIT_SET_TEAM, then MOVE_TEAM_TO) does reach them -- a join after the start
+holds -- but puts them on a script team, out of the AI's (round 61's "nobody pulled back"): those four builds read no
+pull-back. Use the far=True builds (no mission order; the check moves them by name), or put AI-run units the mission
+must order on s4..s6 / make them by script (contract G6c refuses a team order that reaches none).
 """
 from maps import niagara
 from missions import aistate_bench as ab
