@@ -27,7 +27,8 @@ every frame (the simulator moves in DT ticks; the AI is ticked for each frame of
               'enemy nearby' (enemy value within the distance of its yard), 'path to target' (PathToTargetHeuristic:
               the last enemy with a structure, both base objects by states.base_object, spots by states.spot on
               the simulator's grids, a route for the test template's surface; cached PATH_EVERY), 'harvesters',
-              'money', 'opponent funds' (the first enemy's), 'beacons' (none), 'power advantage' (tactics'
+              'money', 'opponent funds' (the first enemy's), 'income' (each side's harvesters while a refinery
+              stands -- INFERRED), 'beacons' (none), 'power advantage' (tactics'
               rule over the whole armies -- INFERRED); the other strategic facts stay unmodelled (states.strategic).
   blocks      A's TargetsBlock + TacticsBlock (orders: 'move' / 'attack-move' -> Sim.order_move, 'enter' -> Garrisons;
               houses / defenses = Brain.garrisons, full ones listed too), DefenseBlock (one
@@ -494,9 +495,19 @@ class Brain:
                'attacked': self.attacked, 'energy': self.energy}
         if foes:                                     # INFERRED: 0x8b3a00's enemy = the first of the enemies here
             out['opponent funds'] = self.sim.money.get(foes[0], 0)
+            out['income'] = (self.income(self.player), self.income(foes[0]))
         if 'targets' in self.host.blocks:
             out['target'] = self.has_target
         return out
+
+    def income(self, owner):
+        """ctx 'income' (IncomeAdvantageHeuristic, 0x8c5100, read: player +0x38 -> [0] +0x34 of each side x 1/90; both
+        0 -> 1, the enemy's <= 0 -> 9999): what +0x34 holds is not read -- INFERRED a rate that grows with the miners
+        at work, so here the owner's harvesters while it has a refinery (only the ratio of the two sides counts)."""
+        mine = [b for b in self.sim.living() if b.owner == owner]
+        if not any('REFINERY' in b.kinds for b in mine):
+            return 0
+        return sum('HARVESTER' in b.kinds for b in mine)
 
     def power_advantage(self, own_kindof, enemy_kindof, own_defenses, enemy_defenses):
         """ctx 'power advantage' (PowerAdvantageHeuristic, 0x8c4910, read): (the enemy's time to kill all of ours,

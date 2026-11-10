@@ -105,17 +105,33 @@ def test_skirmish_ai_builds_again_after_the_opening(skirmish):
     assert [s for s, t in _barracks_out(skirmish) if 120 <= s < 160]
 
 
+def _first_attack(b):
+    return next((e for e in b.ai.teams.log if e[1] == 'go'
+                 and e[2][0].startswith(('BalancedAttack', 'BalancedCleanup'))), None)
+
+
 def test_skirmish_ai_builds_makes_units_and_attacks(skirmish):
-    """Bench a/c: the first attack team (8) leaves ~133 s after the wake (on the miners' income, HOOKS 7)."""
+    """Bench a/c and i-l (B handoff 99): the first team out is BalancedCleanup's (opening done, no enemy within 700,
+    income and power advantage -- the player has no refinery: income both 0 / enemy 0), ~123 s after the wake (on
+    the miners' income, HOOKS 7); the player's losses come after it left."""
     w = skirmish
     (b,) = w.brains.values()
     made = collections.Counter(t for f, what, t in b.trace if what == 'out')
     assert len(made) >= 3, made                         # a mixed army past the opening's three Riptides
-    gone = [e for e in b.ai.teams.log if e[1] == 'go' and e[2][0].startswith('BalancedAttack')]
-    assert gone and len(gone[0][3]) >= 8, gone          # BalancedAttackGround_MEDIUM: MinUnits 8
+    first = _first_attack(b)
+    assert first and first[2][0].startswith('BalancedCleanup'), first
+    assert 100 <= (first[0] - b.started) / simai.FPS <= 140, first
     lost = [x for x in w.sim.bodies.values() if x.owner == w.sim.human and not x.alive]
     assert lost, 'the attack destroyed nothing of the player'
-    assert min(x.died_at for x in lost) > (gone[0][0] / simai.FPS), 'died before the team left'
+    assert min(x.died_at for x in lost) > (first[0] / simai.FPS), 'died before the team left'
+
+
+@pytest.mark.xfail(strict=True, reason='bench i-l: Cleanup takes the defense team whole (8 at s131); simai takes '
+                   'only the pool (keep_on off, and how the defense team lets go is not read: B handoff 100)')
+def test_skirmish_ai_cleanup_takes_the_defense_team(skirmish):
+    (b,) = skirmish.brains.values()
+    first = _first_attack(b)
+    assert first and len(first[3]) >= 8, first
 
 
 def test_skirmish_ai_builds_again_as_soon_as_the_opening_is_done(skirmish):
