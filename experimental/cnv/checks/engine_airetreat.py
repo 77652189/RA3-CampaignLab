@@ -1,6 +1,9 @@
 """Engine probe: the skirmish AI team's retreat and its EngagePassiveTargets switch (missions/airetreat_bench.py;
 docs/engine/aiteamstate.md; the simulator against these readings: tests/test_simai.py).
 
+The probe's micro manager: StandardMicroManager_MEDIUM flattened, RetreatPowerAdvantage 0.2 and
+<AIMicroManagerData RetreatMinDistanceFromBase> 300 instead of retail 900 (missions/airetreat_bench.py).
+
 Bench 2026-11-08 (all four PASS; wake at s10):
   airet   (步兵在家, 到远厂, 步兵数) 4 0 4 to s9 | out s10-s12 | 到远厂 2 @ s15-s16, 1 @ s17-s18 | home 1 @ s20 ... 4 @
           s26-s41 | out s42-s46 | 到远厂 2 @ s47-s48 | home 1 @ s49 ... 4 @ s54-s68 | out s69-s73 | 到远厂 2 @ s74-s76 |

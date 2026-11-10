@@ -45,6 +45,8 @@ Bench 2026-11-06 aihunt hunt (CampAIHuntHunt, Targetless Hunt, a team of one, no
   4 -> 0 @ s13; 在家4帧 / 3 / 2 stop at 59 / 60 / 60. aihunt2 hunt (CampAIHunt2Hunt, MaxRunningCopies 2) PASS:
   4 -> 2 @ s13 and 2 to s55; 在家4帧 / 3 stop at 59 / 60, 在家2帧 grows to the end. So a targetless state runs as
   many copies as it may (one team each), all within a few frames of the wake, and MaxRunningCopies caps them.
+aistatefar is the SearchRange test: the enemy structure / unit heuristics measure no distance, only the tech
+heuristic reads <AITargetingHeuristic SearchRange> (missions/aistate_bench.py); its readings follow.
 Bench 2026-11-07 aistatefar a (CampAIFarA, Sonnet, one run): both states always on, only the player's yard ~2600
   away -- 坦克在家 4 -> 3 @ s13, -> 0 @ s14 (as aistateconst), 步兵在家 4 all run (FAIL 2 of 3 as expected for the
   tanks, not for the infantry). So 2600 does not stop a team (A round 67's read holds for the tanks). Why the
