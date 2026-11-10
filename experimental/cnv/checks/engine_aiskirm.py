@@ -122,6 +122,20 @@ RESULTS g / h (bench 2026-11-10, aiskirm g / h and aiskirmnl g, all PASS (weak);
   aiskirmnl g: the same story ~2-8 s earlier (8 in defense at s62, 0 at s128): the library does not change it.
   Reading: the defense team DOES take every new unit (the model's keep_on=True is right about the pool); the first
     attack team is made of the defense team's eight, released all at once at ~132 s after the wake.
+
+  i / j / k / l  other instances and states (aiskirm; bench 2026-11-10, all PASS (weak); bench s). Labels are words:
+     '进攻0_1'-style labels read back as '?' on the bench.
+     i / j: BalancedAttackGround_MEDIUM_DefenseAvoidanceAttack and LandDefense_MEDIUM_StaticDefense _0_1 / _1_0 /
+       _0_2 / _1_1: 99 the whole run (no such team). 0x8d8f25 names '<state>_<tactic type>_<the tactic's index in
+       the state>_<copy>' -- both states have one tactic, so the first index is 0.
+     k: BalancedAttackOverwhelm_MEDIUM _0_0 flickers 0 / 99 every ~5 s (never a member), BalancedDefense and
+       LandEmergencyDefense_MEDIUM 99; **BalancedCleanup_SimpleAttack_0_0 99 -> 8 at s131** (the defense team's
+       eight at once), 9 s138, 10 s139, 11 s149, 12 s155, 13 s159, 14 s161 (MaxUnits 14) and stays.
+     l: AlliedScout _0_0 1 from s72 (the defense team drops 8 -> 7 -> 6 then: a dog leaves for it), _1_0 and
+       EscortMCV 99; LandDefense _0_0 8 -> 0 at s128 in this run.
+  Reading: the first team out is BalancedCleanup (OpeningMove complete, no enemy within 700, income and power
+    advantage >= 3: the player has no army and no refinery), not BalancedAttackGround; it takes the LandDefense
+    team's members whole the moment it is drawn (~123 s after the wake).
 """
 from parts import Script, Test, counted, square
 
@@ -343,6 +357,20 @@ def _teams(m, which):
         _members(t, 'CNV_AK_DefT', '防御型', ai['defense type'])
         _members(t, 'CNV_AK_DefI', '防御名', ai['defense id'])
         _sum(t, m, s1, 'CNV_AK_Army', '兵数', ARMY)
+    elif which in ('i', 'j'):          # other instances of the same tactic type: '<state>_<type>_<a>_<b>'
+        kind = 'attack type' if which == 'i' else 'defense type'
+        word = '进攻' if which == 'i' else '防御'
+        # labels in words: '进攻0_1'-style labels read back as '?' on the bench (2026-11-10)
+        for idx, say in (('0_1', '二份'), ('1_0', '乙头'), ('0_2', '三份'), ('1_1', '乙二')):
+            _members(t, f'CNV_AK_{which.upper()}{idx.replace("_", "")}', f'{word}{say}', ai[f'{kind} {idx}'])
+    elif which == 'k':
+        for key, ctr, say in (('overwhelm', 'Ovw', '压倒'), ('bal defense', 'BDef', '均防'),
+                              ('cleanup', 'Cln', '清扫'), ('emergency', 'Emg', '急防')):
+            _members(t, f'CNV_AK_{ctr}', say, ai[key])
+    elif which == 'l':
+        for key, ctr, say in (('scout', 'Sct', '侦察'), ('scout 2', 'Sct2', '侦察乙'), ('escort', 'Esc', '护送')):
+            _members(t, f'CNV_AK_{ctr}', say, ai[key])
+        _members(t, 'CNV_AK_DefT', '防御型', ai['defense type'])
     else:
         _members(t, 'CNV_AK_PoolAll', '池全', pool, most=40)
         _members(t, 'CNV_AK_Map', '地图队', f'{s1}/team{s1}')
@@ -364,7 +392,27 @@ def h(m):
     return _teams(m, 'h')
 
 
-CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h},
+def i(m):
+    """BalancedAttackGround_MEDIUM_DefenseAvoidanceAttack _0_1 / _1_0 / _0_2 / _1_1: who takes the defense team's 8."""
+    return _teams(m, 'i')
+
+
+def j(m):
+    """LandDefense_MEDIUM_StaticDefense _0_1 / _1_0 / _0_2 / _1_1: the defense team's other copies."""
+    return _teams(m, 'j')
+
+
+def k(m):
+    """_0_0 of the other MEDIUM land states: Overwhelm / BalancedDefense / BalancedCleanup / LandEmergencyDefense."""
+    return _teams(m, 'k')
+
+
+def l(m):  # noqa: E743
+    """AlliedScout _0_0 / _1_0 / EscortMCV _0_0 / LandDefense _0_0 (the time base: 8 -> 0 at ~s136)."""
+    return _teams(m, 'l')
+
+
+CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j': j, 'k': k, 'l': l},
           'aiskirmnl': {'g': g, 'h': h},
           'aiskjav': {'e': e},
           'aiskirmlow': {'d': d, 'f': f}}

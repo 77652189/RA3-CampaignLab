@@ -27,6 +27,18 @@ AI_TEAMS = {'pool': 'Soviet_1/defaultSkirmishTeamSoviet_1',
             'defense id': 'Soviet_1/LandDefense_MEDIUM_Defense_0_0',
             'attack type': 'Soviet_1/BalancedAttackGround_MEDIUM_DefenseAvoidanceAttack_0_0',
             'attack id': 'Soviet_1/BalancedAttackGround_MEDIUM_Attack_0_0'}
+INDICES = ('0_1', '1_0', '0_2', '1_1')  # the other instances checks i / j count ('<state>_<type>_<a>_<b>')
+AI_TEAMS.update({f'{k} {i}': v[:-len('0_0')] + i for k in ('defense type', 'attack type') for i in INDICES
+                 for v in [AI_TEAMS[k]]})
+# other strategic states 1AlliedBalanced runs at MEDIUM (SDK States/*.xml: state -> its tactic types), checks k / l
+OTHER_STATES = {'overwhelm': 'BalancedAttackOverwhelm_MEDIUM_DefenseAvoidanceAttack_0_0',
+                'bal defense': 'BalancedDefense_StaticDefense_0_0',
+                'cleanup': 'BalancedCleanup_SimpleAttack_0_0',
+                'emergency': 'LandEmergencyDefense_MEDIUM_SimpleAttack_0_0',
+                'scout': 'AlliedScout_DefenseAvoidanceAttack_0_0',
+                'scout 2': 'AlliedScout_DefenseAvoidanceAttack_1_0',
+                'escort': 'EscortMCV_StaticDefense_0_0'}
+AI_TEAMS.update({k: 'Soviet_1/' + v for k, v in OTHER_STATES.items()})
 
 
 def ai_map(base, library=True, player='Soviet_1'):
