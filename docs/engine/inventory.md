@@ -7,7 +7,7 @@
 | 脚本动作 | **87%** | 451 | 101 | 29 | 204 | 117 | 90% |
 | 脚本条件 | **94%** | 89 | 27 | 5 | 54 | 3 | 94% |
 | 物体模块 | **78%** | 184 | 31 | 6 | 128 | 19 | 79% |
-| 武器效果 | **38%** | 25 | 5 | 4 | 16 | 0 | 70% |
+| 武器效果 | **54%** | 25 | 6 | 3 | 16 | 0 | 70% |
 | AI | **60%** | 415 | 79 | 151 | 151 | 34 | 88% |
 
 ## 脚本动作
@@ -754,7 +754,7 @@
 | 状态 | 名字 | 用量 | 说明 |
 |---|---|---|---|
 | 已对拍 | `DamageNugget` | 183 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_clip.py；例：BaseExplodingPropVehicleWeapon, MountRushmoreHeadEyeWeapon |
-| 推断 | `ProjectileNugget` | 88 | 模拟器代码里有这个名字；台上量过（checks/engine_shot.py），没有测试跑这个台子；例：BB_EuropeCoastalGunWeapon, KremlinArtilleryDomeMissle |
+| 已对拍 | `ProjectileNugget` | 88 | tests/test_simbench_c.py::test_projectile_nugget_flight_uses_retail_shell_speed_and_resolved_warhead；例：BB_EuropeCoastalGunWeapon, KremlinArtilleryDomeMissle |
 | 未做 | `InformTargetNugget` | 69 | engine_inform仅隔离并用伤害；目标对来弹的响应尚未模拟，不以HP隔离检查登记整项已对拍；例：BB_EuropeCoastalGunWeapon, AlliedPrecisionBomb |
 | 推断 | `SuppressionNugget` | 64 | 部分：长3s贡献48/50阈值已实测；1s贡献与恢复时序未解释，不登记整项已对拍；例：BB_EuropeCoastalGunWeapon, KremlinArtilleryDomeMissle |
 | 未做 | `MetaImpactNugget` | 36 | 模拟器代码里没有这个名字；例：KremlinArtilleryDomeMissleWarhead, AlliedTimeBomb_Level1 |

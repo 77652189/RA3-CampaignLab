@@ -276,7 +276,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v10.json')    # v10: suppression contributions; v9: whole-frame clip cycle
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v11.json')    # v11: replayed weapon effect fields and projectile references
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -351,6 +351,7 @@ def _weapons(texts, base_table=None):
             dmg = [(_num(_attr(h, 'Damage')), _attr(h, 'DamageType', '')) for tag in HIT_NUGGETS
                    for h, _ in _blocks(bare, tag) if _attr(h, 'Damage') is not None]
             war = [_attr(h, 'WarheadTemplate') for h, _ in _blocks(bare, 'ProjectileNugget')]
+            projectiles = [_attr(h, 'ProjectileTemplate') for h, _ in _blocks(bare, 'ProjectileNugget')]
             fire = re.search(r'<FiringDuration\b[^>]*MinSeconds="([^"]+)"', body)
             reload_ = re.search(r'<ClipReloadTime\b[^>]*MinSeconds="([^"]+)"', body)
             delay = re.search(r'<DelayBetweenShots\b[^>]*MinSeconds="([^"]+)"', body)
@@ -361,6 +362,8 @@ def _weapons(texts, base_table=None):
             sd = [_num(_attr(h, 'Amount')) for h, i in _blocks(bare, 'SecondaryDamageNugget')
                   if '<RequiredUpgrade' not in (i or '')]
             got = {}                                            # only what this template writes
+            if any(projectiles):
+                got['projectile'] = next(p for p in projectiles if p)
             supp = [(_num(_attr(h, 'Radius')), _num(_attr(h, 'Suppression')),
                      _secs(_attr(h, 'DurationSeconds', '0s')))
                     for h, _ in _blocks(bare, 'SuppressionNugget')]
@@ -488,7 +491,7 @@ def _resolve(w, weapons):
     sd = w.get('sd', 0.0)
     return dict(range=w['range'], dps=round(dmg * shots / cycle, 2) if dmg else 0.0, type=typ, anti=w['anti'],
                 los=w['los'], sdps=round(sd * shots / cycle, 2) if sd > 0 else 0.0,
-                dmg=dmg, cycle=cycle, sched=_shot_times(w, shots),
+                dmg=dmg, cycle=cycle, sched=_shot_times(w, shots), projectile=w.get('projectile'),
                 suppression=w.get('suppression', weapons.get(w.get('warhead'), {}).get('suppression', [])),
                 hit_modifiers=w.get('hit_modifiers', weapons.get(w.get('warhead'), {}).get('hit_modifiers', [])),
                 line=w.get('line', weapons.get(w.get('warhead'), {}).get('line')),

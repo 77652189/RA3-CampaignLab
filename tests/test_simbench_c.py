@@ -449,7 +449,8 @@ def test_prop_body_no_health_a_kill_leaves_the_street_and_topples_the_tree_and_l
 def test_weapon_bench_register_points_to_replayed_engine_probes():
     import inspect
     import inventory
-    pairs={'AttributeModifierNugget':('test_weaponfx_predictions_and_finite_bursts','engine_weaponfx'),
+    pairs={'ProjectileNugget':('test_projectile_nugget_flight_uses_retail_shell_speed_and_resolved_warhead','engine_projectile'),
+           'AttributeModifierNugget':('test_weaponfx_predictions_and_finite_bursts','engine_weaponfx'),
            'LineDamageNugget':('test_weaponfx_predictions_and_finite_bursts','engine_weaponfx'),
            'ParalyzeNugget':('test_weapon_first_hit_is_observed_one_frame_after_the_order_script','engine_emp'),
            'StripMaxHealthPercentNugget':('test_strip_max_health_percent_uses_maximum_at_full_and_half_health','engine_strip')}
@@ -458,3 +459,14 @@ def test_weapon_bench_register_points_to_replayed_engine_probes():
         assert probe in inspect.getsource(globals()[test])
         assert 'checks/'+probe+'.py' in inventory.tested_probes()
     assert inventory.NOTES[inventory.NUGGET,'InformTargetNugget'][0]==inventory.TODO
+
+
+def test_projectile_nugget_flight_uses_retail_shell_speed_and_resolved_warhead():
+    import build
+    import sim
+    import simunits
+    assert any(w.get('projectile')=='SovietAntiVehicleVehicleTech1TankProjectile'
+               for w in simunits.weapon_table().values())
+    m,t,_=build.resolve('engine_projectile','flight')
+    e=sim.Sim(m,t);e.shot_clock=True
+    assert tuple(e.run(16).series[-1][1])==(7,95,11,95)

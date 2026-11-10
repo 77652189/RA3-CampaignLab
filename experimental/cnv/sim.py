@@ -3463,6 +3463,13 @@ class Sim:
         frame's damage, so only a frame's fire of the whole maximum kills (A4 win: bench 2026-11-07 against the 0.5 s
         tick that killed the trucks at 4:23). Bodies at 0 die, the last hit their killer's."""
         hurt = {}
+        pending = self.__dict__.setdefault('projectile_hits', [])
+        due = [hit for hit in pending if self.frame_now() >= hit[0]]
+        pending[:] = [hit for hit in pending if self.frame_now() < hit[0]]
+        for when, target, damage, attacker in due:
+            if target.alive:
+                h = hurt.setdefault(id(target), [target, 0.0, attacker])
+                h[1] += damage
         for t, rate, by in self.firing:
             if t.alive and by.alive:
                 h = hurt.setdefault(id(t), [t, 0.0, by])
@@ -3472,6 +3479,34 @@ class Sim:
             if t.alive and by.alive:
                 n = self.shots_due(by, w, dt)
                 if n:
+                    projectile = w.get('projectile')
+                    if projectile:
+                        speeds = self.__dict__.setdefault('projectile_speeds', {})
+                        if projectile not in speeds:
+                            try:
+                                xml = simunits._xml(projectile, self.own)
+                                update = next(simunits._blocks(xml or '', 'ProjectileUpdate'), ('', ''))
+                                movement = next(simunits._blocks(update[1] or '', 'MoveInStraightLine'), ('', ''))
+                                speeds[projectile] = (simunits._num(simunits._attr(movement[0], 'MuzzleVelocity'))
+                                    if simunits._attr(update[0], 'StateMachine') == 'StraightLineProjectile' else 0)
+                            except (OSError, ValueError):
+                                speeds[projectile] = 0
+                        speed = speeds[projectile]
+                        complex_effect = any(w.get(k) for k in ('suppression', 'hit_modifiers', 'line', 'emp_seconds', 'strip_max_health'))
+                        if speed > 0 and not complex_effect:
+                            # GUESSED collision boundary, rechecked for the two probe distances: full
+                            # distance steps before impact. No fitted per-distance delays.
+                            frames = int(math.hypot(t.x - by.x, t.y - by.y) / speed)
+                            armor = 1.0 if w['type'] == 'UNRESISTABLE' else simunits.percent(t.armor, w['type']) / 100 * t.taken
+                            # GUESSED until dynamic-armor bench: snapshot scalars at launch.
+                            damage = n * w['dmg'] * by.dealt * armor
+                            if frames:
+                                pending.append((self.frame_now() + frames, t, damage, by))
+                            else:
+                                h = hurt.setdefault(id(t), [t, 0.0, by])
+                                h[1] += damage
+                            continue
+                        self.gap(GAP_WEAPON, 'ProjectileNugget', '仅无复合效果的直线弹飞行已建模；曲线弹/复合弹/自制弹体待核')
                     for radius, value, seconds in w.get('suppression', []):
                         for target in self.living():
                             if target.suppression_rule and math.hypot(target.x - t.x, target.y - t.y) <= radius:
