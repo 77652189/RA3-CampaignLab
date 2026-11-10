@@ -26,6 +26,10 @@ CONTAINERS = {'PlayerScriptsList', 'ScriptList', 'OrCondition', 'MPPositionList'
               'WaypointsList', 'ObjectsList', 'TriggerAreas', 'BuildLists', 'SidesList'}
 CONTENT = {'Condition', 'ScriptAction', 'ScriptActionFalse'}
 COORD3D = 16
+# a relation argument: the game reads the index (0 Enemy, 1 Neutral, 2 Friend); retail writes index and name. A bare
+# name went out as index 0 -- every Neutral / Friend was Enemy (cnv plan.RELATION_INDEX; bench 11-09 pend_scripts9 rel)
+RELATION = 19
+RELATION_INDEX = {'Enemy': 0, 'Neutral': 1, 'Friend': 2}
 
 
 class Node:
@@ -394,6 +398,8 @@ def encode_arg(t, v):
     the slot its Python type picks (retail never sets more than one; selftest re-encodes every retail argument)."""
     if t == COORD3D:
         return struct.pack('<Ifff', t, *v)
+    if t == RELATION and isinstance(v, str):
+        v = (RELATION_INDEX[v], 0.0, v)
     i, f, s = v if isinstance(v, tuple) else (0, 0.0, v) if isinstance(v, str) else (0, float(v), '') if isinstance(v, float) else (int(v), 0.0, '')
     return struct.pack('<Iif', t, i, f) + _pstr(s)
 

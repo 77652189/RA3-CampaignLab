@@ -254,7 +254,9 @@ ALIGN = {
     'guard': 'UNIT_GUARD_AREA: goes to the area\'s middle and stays',
     'bridge deck': 'a bridge is walkable deck from its start to its end object (BRIDGE_DECK wide); bench '
                    '2026-10-27 (reroute): a wall on a deck stops nobody',
-    'health of the dead': 'SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER of a dead object: 0 (bench 2026-10-28, probe death)',
+    'health of the dead': 'SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER of a dead object: 0 in the frame a script killed it '
+                          '(bench 2026-10-28, probe death), else the counter keeps its last value (bench 11-09 '
+                          'pend_scripts9 rel; engine_float / engine_spawn / engine_super)',
     'combat': '未对齐: the fight model -- each armed unit fires each weapon (its PRIMARY one a slot) at the nearest '
               'enemy in that weapon\'s range it can hit, damage per second (one clip, then the reload) x the '
               'target\'s armour percent (a type its armour does not name: 100 %); an attack-mover holds while it '
@@ -2522,7 +2524,13 @@ class Sim:
             b = self.body(a[0])
             if b:
                 self.used.add('health of the dead')
-                self.counters[a[1]] = int(round(b.health)) if b.alive else 0
+                if b.alive:
+                    self.counters[a[1]] = int(round(b.health))
+                elif b.died_at == self.t:       # killed by a script earlier this frame: it is still there, at 0
+                    self.counters[a[1]] = 0
+                # dead before this frame (a weapon's kill lands after the frame's scripts): the counter keeps the last
+                # value read (bench 11-09 pend_scripts9 rel: 12 to the end, the tank gone on the minimap; engine_float,
+                # engine_spawn, engine_super saw the same freeze)
         elif name == 'SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER':
             self.counters[a[2]] = sum(1 for b in self.living() if b.owner == a[1] and
                                       b.template.lower() == a[0].lower())

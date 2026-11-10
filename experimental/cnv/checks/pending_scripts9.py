@@ -22,6 +22,16 @@ predicts is in brackets.
           [simulator 11-09 PASS: 31 to s20; 24 from s21 (Att's two kill Tgt's two side by side, solo kills Tg2 1);
           16 from s38 (solo goes on to Tg2 2: an attack on a team takes the next member); dummy untouched. Without
           the 'next member' rule solo stopped after one (24 to the end): that is what the bench decides]
+
+BENCH 11-09 (round 130). rel, the relation argument fixed (mapscript.encode_arg now writes index + name; before it a bare
+  'Neutral' went out as 0 = Enemy): still 甲乙丙丁 all alike, 87 at s1, 12 from s12 (= dead: the minimap shows each read
+  tank gone; a weapon-killed unit's health counter keeps its last value, sim.py now does so too).
+  memb: 留 23 from s1 -- TEAM_KILL of the player's crew MeC killed it, of the enemy crews FoeA / Tgt killed nobody: the
+  units placed on an ENEMY crew are not members of it (the map has them: originalOwner 'Soviet_1/teamCNVFoeA', the team
+  in Teams). atk / atkr (health read, with and without MAP_REVEAL_ALL_PERM): all 100 to s61 -- the target crews are
+  empty, so the attacks have nobody to attack. Not an answer on the five actions yet.
+  Next: write an enemy crew as retail's AI teams are (teamIsSingleton 0, teamMaxInstances 1 and the rest: a02 'TEAM -
+  Dock 01'; ours are three-key singletons, which hold on Player_1 only), rerun memb, then rel / atk.
 """
 from maps import probe_border
 from parts import Mission, Script, Test, status
@@ -89,17 +99,40 @@ def rel(m):
     return t
 
 
-def atk(m):
+def atk(m, reveal=False):
     t = Test()
-    t.scripts.append(Script('Test - S9 hold', [], _hold(m, ['Tgt 1', 'Tgt 2', 'Tg2 1', 'Tg2 2', 'dummy'])))
+    t.scripts.append(Script('Test - S9 hold', [], _hold(m, ['Tgt 1', 'Tgt 2', 'Tg2 1', 'Tg2 2', 'dummy']) +
+                            ([('MAP_REVEAL_ALL_PERM', m.player())] if reveal else [])))
     s8.at(t, 'attack', 1.0, [('TEAM_ATTACK_TEAM', m.teams['Att'], m.teams['Tgt']),
                              ('NAMED_ATTACK_TEAM', m.role('solo').name, m.teams['Tg2'])])
-    names = [m.role(r).name for r in ('Tgt 1', 'Tgt 2', 'Tg2 1', 'Tg2 2', 'dummy')]
-    s8.total(t, 'CNV_S9_Left', '靶', [(2 ** k, ('NAMED_NOT_DESTROYED', n)) for k, n in enumerate(names)])
-    t.expect += [('靶', RUN['atk'] - 2, '==', 16)]
+    for k, (role, label) in enumerate(zip(('Tgt 1', 'Tg2 1', 'Tg2 2', 'dummy'), '甲乙丙丁')):  # a dead one's counter keeps its last value
+        counter = f'CNV_S9_H{k}'
+        t.counters.append((counter, label))
+        t.scripts.append(Script(f'Test - {counter}', [], [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER',
+                                                           m.role(role).name, counter)], once=False))
+    t.expect += [('甲', 20, '<', 100), ('乙', 20, '<', 100), ('丙', RUN['atk'] - 2, '<', 100), ('丁', 0, '==', 100)]
     s8.watch(t, RUN['atk'])
     return t
 
 
+def atkr(m):
+    return atk(m, reveal=True)
+
+
+def memb(m):
+    """Are the placed units members of their crews? Everyone holds fire; at 2 s TEAM_KILL the enemy crews FoeA and Tgt
+    and the player's crew MeC. 留 = alive: A foe x1, Tgt 1 x2, Tgt 2 x4, C me x8, dummy (no crew) x16. Members: 16."""
+    t = Test()
+    every = [f'{k} {w}' for k in REL for w in ('me', 'foe')] + [f'{c} {k}' for c in ATK for k in (1, 2)] + \
+        ['solo', 'idle', 'dummy']
+    t.scripts.append(Script('Test - S9 hold all', [], _hold(m, every)))
+    s8.at(t, 'kill', 2.0, [('TEAM_KILL', m.teams[c]) for c in ('FoeA', 'Tgt', 'MeC')])
+    names = [m.role(r).name for r in ('A foe', 'Tgt 1', 'Tgt 2', 'C me', 'dummy')]
+    s8.total(t, 'CNV_S9_Alive', '留', [(2 ** k, ('NAMED_NOT_DESTROYED', n)) for k, n in enumerate(names)])
+    t.expect += [('留', 0, '==', 31, 2), ('留', 4, '==', 16)]
+    s8.watch(t, 10.0)
+    return t
+
+
 MISSION = {'pend_scripts9': mission}
-CHECKS = {'pend_scripts9': {'rel': rel, 'atk': atk}}
+CHECKS = {'pend_scripts9': {'rel': rel, 'atk': atk, 'atkr': atkr, 'memb': memb}}
