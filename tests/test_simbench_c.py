@@ -346,3 +346,19 @@ def test_suppression_predictions():
         assert (b.suppressed_until > s.frame_now()) is suppressed
         assert b.speed == (37.5 if suppressed else 50)
         assert b.taken == (.75 if suppressed else 1)
+
+
+def test_suppression_contributions_require_discrete_hit_events():
+    """Continuous DPS must not invent suppression hits on a second weapon clock."""
+    import build
+    import sim
+    for clock in (False, True):
+        m, t, _ = build.resolve('engine_suppression', 'threshold')
+        s = sim.Sim(m, t)
+        s.shot_clock = clock
+        s.run(9)
+        high = s.body('UNIT - CNV Supp high man')
+        assert bool(high.suppression_hits) is clock
+        assert high.speed == (37.5 if clock else 50)
+        assert high.taken == (.75 if clock else 1)
+        assert ((sim.GAP_WEAPON, 'SuppressionNugget') in s.unmodeled) is not clock

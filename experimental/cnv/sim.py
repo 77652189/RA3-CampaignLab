@@ -3300,12 +3300,14 @@ class Sim:
                 if a.vision and w['range'] > a.vision:
                     a.fired_at = self.t                 # a bombarder firing shows itself
                 if w['dps'] or w.get('suppression'):
-                    if 'sched' in w and (self.shot_clock or w.get('suppression')):
+                    if 'sched' in w and self.shot_clock:
                         self.volleys.append((pick, w, a))
-                        if not self.shot_clock:     # pressure is discrete; preserve the default damage model
-                            self.firing.append((pick, w['dps'] * a.dealt * (1.0 if w['type'] == 'UNRESISTABLE' else
-                                                simunits.percent(pick.armor, w['type']) / 100.0 * pick.taken), a))
                     else:
+                        # Continuous DPS has no individual hit events. Do not run a second
+                        # clip clock just for pressure (A4 guardians falsely suppressed at F1980).
+                        if w.get('suppression'):
+                            self.gap(GAP_WEAPON, 'SuppressionNugget',
+                                     '连续DPS没有逐发命中事件；压制贡献仅在离散命中时钟中模拟')
                         self.firing.append((pick, w['dps'] * a.dealt * (1.0 if w['type'] == 'UNRESISTABLE' else
                                             simunits.percent(pick.armor, w['type']) / 100.0 * pick.taken), a))
                 if w.get('sdps'):
