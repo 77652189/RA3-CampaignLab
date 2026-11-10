@@ -30,8 +30,18 @@ BENCH 11-09 (round 130). rel, the relation argument fixed (mapscript.encode_arg 
   units placed on an ENEMY crew are not members of it (the map has them: originalOwner 'Soviet_1/teamCNVFoeA', the team
   in Teams). atk / atkr (health read, with and without MAP_REVEAL_ALL_PERM): all 100 to s61 -- the target crews are
   empty, so the attacks have nobody to attack. Not an answer on the five actions yet.
-  Next: write an enemy crew as retail's AI teams are (teamIsSingleton 0, teamMaxInstances 1 and the rest: a02 'TEAM -
-  Dock 01'; ours are three-key singletons, which hold on Player_1 only), rerun memb, then rel / atk.
+BENCH 11-09 (round 131): why the enemy crews are empty. (The bench's s1 is past the 2 s kill: memb's 23 is the kill's.)
+  memb again with every crew written as retail's a02 'TEAM - Dock 01' (24 keys, teamIsSingleton 0, byte for byte):
+    23, the same -- the team's shape is not it (mapxml.add_team left as it was).
+  memb2 (UNIT_SET_TEAM of each onto its crew at the start, as Mission.order does): 23, the same.
+  memb3 (member counts): 甲 (FoeA + 10 x Tgt) 0, 丙 teamSoviet_1 0 while the dummy (placed on it) lives: Soviet_1's
+    units are on none of the map's teams.
+  memb4 (pend_scripts9b: FoeX on Soviet_4, Tgt / Tg2 on Soviet_5, both DefaultPersonality): 留 16 -- TEAM_KILL takes
+    the enemy crews. Soviet_4's AI modules are all 255 like Soviet_1's, so it is the personality: the container
+    (Heidelberg, maps/island.py) gives Soviet_1 retail's AIP_A03_Soviet01BaseMarshall, which takes its player's units
+    off every team at the start. Retail a02's scripted Soviet04 (whose 'TEAM - Dock 01' its TEAM_KILL takes) is
+    DefaultPersonality, base / unit builder 240.
+  Next: rel / atk / atkr on the 9b sides (or Soviet_1 made DefaultPersonality at its source), then rename engine_.
 """
 from maps import probe_border
 from parts import Mission, Script, Test, status
@@ -55,15 +65,17 @@ def _put(m, template, x, y, **kw):
     m.put(template, 'stop row', x - O[0], y - O[1], **kw)
 
 
-def mission(name='CampPend9'):
+def mission(name='CampPend9', foe='s1', moved=None):
+    """foe: the side of the FoeX crews; moved: {crew: side} for an ATK crew moved off its side (pend_scripts9b)."""
     m = Mission(name=name, map=probe_border, units=[], facts={})
     m.spawns |= {TANK}
     for k, y in REL.items():
-        me, foe = m.crew(f'Me{k}'), m.crew(f'Foe{k}', side='s1')
+        me, foe_c = m.crew(f'Me{k}'), m.crew(f'Foe{k}', side=foe)
         _put(m, TANK, 1000.0, y, angle=0.0, name=_n(f'{k} Me'), role=f'{k} me', props={'originalOwner': me})
-        _put(m, TANK, 1120.0, y, side='s1', angle=3.1416, name=_n(f'{k} Foe'), role=f'{k} foe',
-             props={'originalOwner': foe})
+        _put(m, TANK, 1120.0, y, side=foe, angle=3.1416, name=_n(f'{k} Foe'), role=f'{k} foe',
+             props={'originalOwner': foe_c})
     for crew, (side, x, ys) in ATK.items():
+        side = (moved or {}).get(crew, side)
         c = m.crew(crew, side=side)
         for k, y in enumerate(ys, 1):
             kw = {'side': side} if side != 'p1' else {}
@@ -134,5 +146,51 @@ def memb(m):
     return t
 
 
-MISSION = {'pend_scripts9': mission}
-CHECKS = {'pend_scripts9': {'rel': rel, 'atk': atk, 'atkr': atkr, 'memb': memb}}
+def memb2(m):
+    """memb with every crew's units put on their crew by script at the start (UNIT_SET_TEAM, as Mission.order does
+    before an order): does a script-made membership of an enemy crew hold where the placed originalOwner did not?
+    Members: 16, as in memb."""
+    t = memb(m)
+    crews = {'A foe': 'FoeA', 'Tgt 1': 'Tgt', 'Tgt 2': 'Tgt', 'C me': 'MeC'}
+    t.scripts.insert(0, Script('Test - S9 set teams', [],
+                               [('UNIT_SET_TEAM', m.role(r).name, m.teams[c]) for r, c in crews.items()]))
+    return t
+
+
+def memb3(m):
+    """memb2 and each crew's member count read every frame (TEAM_COMPARE_NUM_MEMBERS ==): 甲 = FoeA's (1 placed) +
+    10 x Tgt's (2), 乙 MeC's (1), 丙 the enemy's default team teamSoviet_1's (dummy, and whoever is not on a crew).
+    Before the kill at 2 s a member count says whether the enemy crews have members at all; after it, whether
+    TEAM_KILL emptied them."""
+    return _members(m, [m.teams['MeC'], _default(m, 's1')])
+
+
+def _default(m, side):
+    p = m.player(side)
+    return f'{p}/team{p}'
+
+
+def _members(m, teams):
+    """memb2 with 甲 = FoeA's members + 10 x Tgt's, and 乙 / 丙 the member counts of `teams`."""
+    t = memb2(m)
+    s8.total(t, 'CNV_S9_NA', '甲', [(w * n, ('TEAM_COMPARE_NUM_MEMBERS', m.teams[c], 2, n))
+                                    for c, w in (('FoeA', 1), ('Tgt', 10)) for n in range(1, 10)])
+    for team, counter, label in zip(teams, ('CNV_S9_NC', 'CNV_S9_ND'), '乙丙'):
+        t.counters.append((counter, label))
+        t.scripts += [Script(f'Test - {counter} {n}', [('TEAM_COMPARE_NUM_MEMBERS', team, 2, n)],
+                             [('SET_COUNTER', counter, n)], once=False) for n in range(10)]
+    return t
+
+
+def memb4(m):
+    """pend_scripts9b: the FoeX crews on Soviet_4 (DefaultPersonality, AI modules 255), Tgt / Tg2 on Soviet_5
+    (DefaultPersonality, base / unit builder 240 like retail a02's scripted Soviet04); the dummy stays on Soviet_1
+    (the container's BaseMarshall). 甲 = FoeA's + 10 x Tgt's members, 乙 MeC's, 丙 teamSoviet_1's (as memb3; the
+    spare players' default teams are not published)."""
+    return memb3(m)
+
+
+MISSION = {'pend_scripts9': mission,
+           'pend_scripts9b': lambda: mission('CampP9b',foe='s4', moved={'Tgt': 's5', 'Tg2': 's5'})}
+CHECKS = {'pend_scripts9': {'rel': rel, 'atk': atk, 'atkr': atkr, 'memb': memb, 'memb2': memb2, 'memb3': memb3},
+          'pend_scripts9b': {'memb4': memb4}}
