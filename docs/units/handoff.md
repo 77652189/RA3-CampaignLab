@@ -102,6 +102,7 @@ Tripo 订阅：用户买的是包月（专业版，推测），2026-10-20 04:00�
 - **测试台**：
   - 场景别放在 `west field` 西边（x < −100 是浅水，工兵会骑水上摩托过去），也别压着别的单位摆。
   - 暂停状态下 `bench_look` 可能拍到菜单，先 `bench_wait 0.5`。
+  - 拍近景（2026-11-06 演示截图摸出来的）：MCP 没有缩放。要用 `bench_start(hold=false)`，再给游戏窗口发 `WM_MOUSEWHEEL`，写法照 `run_bench.ps1` 的 `Wheel`，正数是拉近，约 20 格到底；拉到底单位约 120 像素宽。拉近后 `bench_click` 的地图坐标会点偏，要改用 `world=false` 的屏幕坐标。截图从存档帧裁 16:9、Lanczos 放大，避开四角的界面。旧单位的 mod 要从 `experimental/archive/campaign` 临时复制回 `experimental/campaign` 才编得过（相对路径），编完删掉；游隼特写用 `CNV_CLOSEUP=1 make_campnew25.py`。
   - 暂停模式（`hold=true`）下脚本计时器和带时长的模型状态照样按真实时间走，两次调用之间的空档也会算进去。要按秒对时间的效果，用 `bench_start(hold=false)` 连续跑，或者只用一次 `bench_watch`。
   - 脚本化检查（`build.py --check`、`bench_client`）默认 8 倍速（ADR 0007）；用脚本化检查看动画、特效时设 `RA3_BENCH_SPEED=1`。手动驾驶（`bench_start`）仍是 1 倍。
   - `cnv_check` 用的是主仓库的代码。要测本分支的改动，先在本工作目录跑 `build.py <名> --check <项> --plan`（编译并装进 Mods），再 `cnv_check(build=false)`；主仓库还没有这个检查时，手动 `bench_start` + `bench_watch(lines=n)` + `bench_counters`，再用本分支的 `build.py <名> --check <项> --no-build --judge "<计数文本>"` 判定。
