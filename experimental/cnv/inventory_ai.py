@@ -119,6 +119,11 @@ NOTES = {
                                                         '没人进炮塔，只对上总开关关着的情形（strict xfail）'),
     '人格/AIPersonalityDefinition.BaseCompactness': (GUESSED, '台上量过（engine_aitower：0.5 / 0.75 / 1.0 塔落在不同圈）；'
                                                      '模拟器只对上 0.5，0.75 / 1.0 和 0.5 一样（strict xfail）'),
+    # B round 110: the A/B pairs of engine_airetreat change one field of the data the team's MicroManager names
+    '组队招人/TeamTemplate.MicroManager': (BENCHED, '台上量过（engine_airetreat：airet / airet0 只差 MicroManager 指名的'
+                                        '那份数据里的 RetreatPowerAdvantage，一个撤一个不撤；aipas1 / aipas0 只差 '
+                                        'EngagePassiveTargets）、测试对拍 tests/test_simai.py——队伍跑的是 MicroManager '
+                                        '指名的那份微操数据；指名不存在的 id 会怎样没量'),
     # B round 109: the gate is on in the model since round 100 (keep_on); aiar0-3 replayed on the simulator
     '组队招人/TeamTemplate.AlwaysRecruit': (BENCHED, '台上量过（engine_aiteamfilter aiar0～3，第 90 轮）、测试对拍 '
                                          'tests/test_simai_bench_b.py：关着新造的车留家、开着出门的队把它招走、'
