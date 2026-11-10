@@ -113,7 +113,10 @@ def main():
                        os.path.join(os.environ.get('APPDATA', ''), 'Red Alert 3')]
     base = os.path.splitext(a.brief)[0]
     out, events = base + '.answer.md', base + '.events.jsonl'
-    cmd = [exe, 'exec', '-m', a.model, '-c', f'model_reasoning_effort="{a.effort}"', '-s', 'workspace-write',
+    # windows.sandbox="mxc": from 2026-11-09 21:28 the "unelevated" sandbox refused every process (CreateProcessAsUserW
+    # 5, even `python --version`, across worktrees and a Codex restart); mxc runs them -- still a sandbox
+    cmd = [exe, 'exec', '-m', a.model, '-c', f'model_reasoning_effort="{a.effort}"', '-c', 'windows.sandbox="mxc"',
+           '-s', 'workspace-write',
            '-C', a.dir, *sum((['--add-dir', d] for d in a.read_dir), []), '--json', '-o', out, prompt]
     before = changed(a.dir)
     t0, ended, usage = time.time(), 'ok', None
