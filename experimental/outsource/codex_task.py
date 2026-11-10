@@ -5,10 +5,13 @@ coordinator runs the long regressions, reads the diff, then commits).
 
   python -I -X utf8 experimental/outsource/codex_task.py BRIEF.md --dir WORKTREE [--minutes 30] [--effort medium]
 
-  BRIEF.md   the task: goal, files to read, done criteria, and a "Tests:" section naming the exact commands to run
-             (one focused test file, or -k tests; never the whole suite) -- the rules below are added
+  BRIEF.md   the task contract: goal, files to read, done criteria, a "Files:" section (the paths / globs it may
+             change, or "none" for a read-only task; a change outside them marks the run) and a "Tests:" section
+             naming the exact commands to run (one focused test file, or -k tests; never the whole suite) -- the
+             rules below are added (stop after the tests pass, at most two fix rounds, then report)
   --dir      the git worktree Codex edits (never the main checkout: other lines work there)
-  --minutes  hard limit; at the limit Codex is killed and what it changed stays for the coordinator to judge
+  --minutes  safety stop only (default 60): the stop condition is the tests plus two fix rounds, not the clock --
+             Codex's own review of this contract (2026-11-09): a short kill cuts work off half done
   --effort   reasoning effort, default medium (2026-11-09: high on a rule-plus-readings task spent 30+ min, most of it
              re-running long regressions); high only for a task that needs real design judgment
   --model    default gpt-6.1-sol (2026-11-09 comparison: Astra no better at 4.5x the price)
@@ -20,7 +23,7 @@ fixes the tests and the scope, and runs the long regressions itself.
 
 Every call is logged to <LAB>\shared\outsource\log.jsonl, like agy_task.py.
 """
-import argparse, datetime, glob, json, os, subprocess, sys, time
+import argparse, datetime, fnmatch, glob, json, os, subprocess, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 LAB = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
@@ -29,14 +32,17 @@ LOG = os.path.join(LAB, 'shared', 'outsource', 'log.jsonl')
 RULES = """
 ---
 Rules for this task (from the project; they override anything above):
-- Scope: change only what the done criteria need. No compatibility paths, extra options, refactors or tests beyond
-  the ones the brief asks for. If you think something more is needed, say so in the report instead of doing it.
+- Scope: change only what the done criteria need, and only the files the brief's "Files:" section allows (new files
+  too). No compatibility paths, extra options, refactors, dependency changes or tests beyond the ones the brief asks
+  for. If you think something more is needed, say so in the report instead of doing it.
 - Quality: the done criteria must hold exactly. A rule comes from the data or the code, not from fitting each number;
   say what explains each expected value. If something cannot be explained, stop and report it, do not force it.
 - Tests: while working, run only the single focused test you are changing (pytest -k). At the end, run the commands
   in the brief's "Tests:" section once each. Do not run any other suite or the full regression: the coordinator runs
   those. Long output goes to work/logs/<name>.log; read only its tail.
-- Time: aim to finish in about {aim} minutes; you are stopped at {limit}.
+- Stop: once the "Tests:" commands pass, stop and report. If they fail, at most two rounds of fixing; still failing
+  after that, stop and report what fails and why you think so -- the coordinator decides whether to go on. Aim for
+  about {aim} minutes; {limit} is only a safety stop.
 - Do not commit, push, install anything, start Red Alert 3 or the test bench, or touch the shared locks folder.
 - Follow AGENTS.md / CLAUDE.md for everything else.
 - End with a short report in Chinese: files changed, how each done criterion is met (and what explains each value),
@@ -50,6 +56,24 @@ def changed(folder):
     return r.stdout.splitlines() if r.returncode == 0 else None
 
 
+def files_allowed(brief):
+    """The globs under the brief's "Files:" line (one per line, or comma separated; "none" = no changes), or None
+    when the brief has no such section."""
+    lines = brief.splitlines()
+    at = next((i for i, l in enumerate(lines) if l.strip().lower().startswith('files:')), None)
+    if at is None:
+        return None
+    globs, first = [], lines[at].split(':', 1)[1]
+    for l in [first] + lines[at + 1:]:
+        l = l.strip().lstrip('-* ').strip()
+        if not l and globs:
+            break
+        if l.endswith(':') or l.lower().startswith('tests:'):
+            break
+        globs += [g.strip().strip('`') for g in l.split(',') if g.strip()]
+    return [] if [g.lower() for g in globs] == ['none'] else globs
+
+
 def codex():
     found = sorted(glob.glob(os.path.join(os.environ.get('LOCALAPPDATA', ''), 'OpenAI', 'Codex', 'bin', '*', 'codex.exe')),
                    key=os.path.getmtime)
@@ -60,7 +84,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('brief')
     ap.add_argument('--dir', required=True)
-    ap.add_argument('--minutes', type=float, default=30)
+    ap.add_argument('--minutes', type=float, default=60)
     ap.add_argument('--effort', default='medium', choices=['low', 'medium', 'high'])
     ap.add_argument('--model', default='gpt-6.1-sol')
     ap.add_argument('--read-dir', action='append', default=[])
@@ -69,9 +93,11 @@ def main():
     if not exe:
         sys.exit('Codex desktop not installed (no codex.exe under %LOCALAPPDATA%\\OpenAI\\Codex\\bin)')
     brief = open(a.brief, encoding='utf-8').read()
-    if 'Tests:' not in brief:
-        sys.exit('the brief needs a "Tests:" section naming the exact test commands')
-    prompt = brief + RULES.format(aim=int(a.minutes * 0.7), limit=int(a.minutes))
+    allowed = files_allowed(brief)
+    if 'Tests:' not in brief or allowed is None:
+        sys.exit('the brief needs a "Files:" section (the paths / globs it may change, or "none") and a "Tests:" '
+                 'section naming the exact test commands')
+    prompt = brief + RULES.format(aim=int(a.minutes / 3), limit=int(a.minutes))
     base = os.path.splitext(a.brief)[0]
     out, events = base + '.answer.md', base + '.events.jsonl'
     cmd = [exe, 'exec', '-m', a.model, '-c', f'model_reasoning_effort="{a.effort}"', '-s', 'workspace-write',
@@ -95,18 +121,22 @@ def main():
                     pass
     after = changed(a.dir)
     touched = sorted(set(after) - set(before)) if before is not None and after is not None else []
+    outside = [t for t in touched if not any(fnmatch.fnmatch(t[3:].strip().strip('"'), g) for g in allowed)]
+    if outside and ended == 'ok':
+        ended = 'changed files outside "Files:"'
     if not os.path.exists(out):
         with open(out, 'w', encoding='utf-8') as fh:
             fh.write(f'(no final answer: {ended})\n')
     with open(out, 'a', encoding='utf-8') as fh:
         fh.write('\n\n---\nFiles changed in ' + a.dir + ' (git status):\n' + '\n'.join(touched) + '\n'
-                 + f'Usage: {usage}\n')
+                 + (('OUTSIDE "Files:":\n' + '\n'.join(outside) + '\n') if outside else '') + f'Usage: {usage}\n')
     os.makedirs(os.path.dirname(LOG), exist_ok=True)
     with open(LOG, 'a', encoding='utf-8') as fh:
         fh.write(json.dumps({'at': datetime.datetime.now().isoformat(timespec='seconds'), 'tool': 'codex',
                              'dir': a.dir, 'brief': a.brief, 'task': brief.strip().splitlines()[0][:120],
                              'model': a.model, 'effort': a.effort, 'seconds': round(time.time() - t0),
-                             'usage': usage, 'changed': len(touched), 'ended': ended, 'out': out},
+                             'usage': usage, 'changed': len(touched), 'outside': outside, 'ended': ended,
+                             'out': out},
                             ensure_ascii=False) + '\n')
     print(f'{ended}; {round(time.time() - t0)} s; answer -> {out}')
     sys.exit(0 if ended == 'ok' else 1)
