@@ -444,3 +444,17 @@ def test_prop_body_no_health_a_kill_leaves_the_street_and_topples_the_tree_and_l
     assert street == frames and (tree, lantern) == (61, 121), (frames, street, tree, lantern)   # bench 332 332 61 121
     c = _sim_run('engine_propbody_c', 'c', 21.0).series[-1][1]
     assert c[1:] == [c[0]] * 3, c                                           # bench 332 x 4: none shot, none dying
+
+
+def test_weapon_bench_register_points_to_replayed_engine_probes():
+    import inspect
+    import inventory
+    pairs={'AttributeModifierNugget':('test_weaponfx_predictions_and_finite_bursts','engine_weaponfx'),
+           'LineDamageNugget':('test_weaponfx_predictions_and_finite_bursts','engine_weaponfx'),
+           'ParalyzeNugget':('test_weapon_first_hit_is_observed_one_frame_after_the_order_script','engine_emp'),
+           'StripMaxHealthPercentNugget':('test_strip_max_health_percent_uses_maximum_at_full_and_half_health','engine_strip')}
+    for name,(test,probe) in pairs.items():
+        assert inventory.BENCHED_TESTS[inventory.NUGGET,name].endswith('::'+test)
+        assert probe in inspect.getsource(globals()[test])
+        assert 'checks/'+probe+'.py' in inventory.tested_probes()
+    assert inventory.NOTES[inventory.NUGGET,'InformTargetNugget'][0]==inventory.TODO

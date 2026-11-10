@@ -7,7 +7,7 @@
 | 脚本动作 | **87%** | 451 | 101 | 29 | 204 | 117 | 90% |
 | 脚本条件 | **94%** | 89 | 27 | 5 | 54 | 3 | 94% |
 | 物体模块 | **78%** | 184 | 31 | 6 | 128 | 19 | 79% |
-| 武器效果 | **32%** | 25 | 1 | 8 | 16 | 0 | 70% |
+| 武器效果 | **38%** | 25 | 5 | 4 | 16 | 0 | 70% |
 | AI | **60%** | 415 | 79 | 151 | 151 | 34 | 88% |
 
 ## 脚本动作
@@ -760,16 +760,16 @@
 | 未做 | `MetaImpactNugget` | 36 | 模拟器代码里没有这个名字；例：KremlinArtilleryDomeMissleWarhead, AlliedTimeBomb_Level1 |
 | 未做 | `ActivateLaserNugget` | 27 | 已核（11-08）：模拟器没有这个效果（没有激光束）；例：MountRushmoreHeadEyeWeapon, JapanAntiVehicleInfantryTech3LockDownGun |
 | 推断 | `WeaponOCLNugget` | 26 | 模拟器代码里有这个名字；台上量过（checks/engine_prismx.py），没有测试跑这个台子；例：MountRushmoreHeadEyeWeapon, AlliedPrecisionBombWarhead |
-| 推断 | `AttributeModifierNugget` | 20 | 部分：engine_weaponfx attribute实测PASS，涂靶ARMOR150%、9s前到期（数据1.1s，到期帧未测）；owner/筛选/范围形式未验证，整项不登记已对拍；例：NanoHiveSwarmEffectTrigger, JapanCommandoSoftLanding |
-| 推断 | `ParalyzeNugget` | 11 | 部分：engine_emp phase实测PASS16051/31066/61096、hit1，首发对象帧1与独立定时器ceil解释旧差值；仅无筛选EMP移动期限，攻击禁用/其他类型/筛选未验证；例：JapanAntiVehicleInfantryTech3LockDownGun, AlliedAntiStructureShipEMPCruiseMissleWarhead |
+| 已对拍 | `AttributeModifierNugget` | 20 | tests/test_simbench_c.py::test_weaponfx_predictions_and_finite_bursts；例：NanoHiveSwarmEffectTrigger, JapanCommandoSoftLanding |
+| 已对拍 | `ParalyzeNugget` | 11 | tests/test_simbench_c.py::test_weapon_first_hit_is_observed_one_frame_after_the_order_script；例：JapanAntiVehicleInfantryTech3LockDownGun, AlliedAntiStructureShipEMPCruiseMissleWarhead |
 | 未做 | `TintObjectsNugget` | 9 | 模拟器代码里没有这个名字；例：SovietCommandoCallBombingRun, AlliedCommandoAttachWeapon |
 | 未做 | `ActivateLiftObjectNugget` | 6 | 模拟器代码里没有这个名字；例：JapanCommandoTech1PsyonicCrush, JapanCommandoTech1AirborneKiller |
-| 推断 | `LineDamageNugget` | 6 | 部分：engine_weaponfx line探针；实测PASS90/90/90/100验证动态线长及穿透，圆形边界GUESSED，筛选与静态线未模拟；例：SovietCommandoSniperRifle, AAAVT1_SovietCommandoSniperRifle |
+| 已对拍 | `LineDamageNugget` | 6 | tests/test_simbench_c.py::test_weaponfx_predictions_and_finite_bursts；例：SovietCommandoSniperRifle, AAAVT1_SovietCommandoSniperRifle |
 | 未做 | `SpecialPowerNugget` | 6 | 模拟器代码里没有这个名字；例：SovietCommandoCallBombingRun, AlliedAntiVehicleVehicleTech1TargetPainter |
 | 未做 | `FireOnObjectsNugget` | 5 | 模拟器代码里没有这个名字；例：PlayerPowerJapanEmperorsResolveWeapon_L1, PlayerPowerJapanEmperorsResolveWeapon_L2 |
 | 推断 | `SecondaryDamageNugget` | 5 | simunits._weapons 读 Amount（不要升级的那条）→ sdps，Sim.chill；例：MountRushmoreHeadEyeWeapon, AlliedCryoSatelliteLvl1 |
 | 未做 | `AttachNugget` | 4 | 模拟器代码里没有这个名字；例：AlliedCommandoAttachWeapon, SovietAntiVehicleInfantryMagneticBombAttachWeapon |
-| 推断 | `StripMaxHealthPercentNugget` | 3 | 部分：engine_strip exact实测PASS95/45/74，4%满血/半血与25%满血按最大血量扣减；筛选、护甲倍率、无标记伤害形式未验证，最大血量不变仍推断；例：JapanCommandoTech1PsyonicCrush, AAAVT1_JapanCommandoTech1PsyonicCrush |
+| 已对拍 | `StripMaxHealthPercentNugget` | 3 | tests/test_simbench_c.py::test_strip_max_health_percent_uses_maximum_at_full_and_half_health；例：JapanCommandoTech1PsyonicCrush, AAAVT1_JapanCommandoTech1PsyonicCrush |
 | 未做 | `ActivateLinearDamageNugget` | 2 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_sweep.py），可能用别的名字实现了；例：AlliedAntiNavalScoutSonar, AlliedAntiNavalScoutSonarForBridges |
 | 未做 | `DamageContainedNugget` | 2 | 模拟器代码里没有这个名字；例：SovietAntiInfantryInfantryMolotovCocktailWarhead, Weapon_DesolatorBombFieldUpdate |
 | 未做 | `LeechPercentMaxHealthDamageNugget` | 2 | 模拟器代码里没有这个名字；例：SovietCrushWeapon, SovietHarpoonCrushWeapon |

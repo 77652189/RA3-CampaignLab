@@ -45,6 +45,11 @@ PARTS = (ACTION, CONDITION, MODULE, NUGGET, AI)     # AI: engine B's part, its o
 
 # (part, name) -> 'tests/<file>.py::<test>': the bench comparison that backs the item (the guard checks the test exists)
 BENCHED_TESTS = {
+    # Weapon C: replayed bench variants; tests name the actual engine_X build (A line rule).
+    (NUGGET, 'AttributeModifierNugget'): 'tests/test_simbench_c.py::test_weaponfx_predictions_and_finite_bursts',
+    (NUGGET, 'LineDamageNugget'): 'tests/test_simbench_c.py::test_weaponfx_predictions_and_finite_bursts',
+    (NUGGET, 'ParalyzeNugget'): 'tests/test_simbench_c.py::test_weapon_first_hit_is_observed_one_frame_after_the_order_script',
+    (NUGGET, 'StripMaxHealthPercentNugget'): 'tests/test_simbench_c.py::test_strip_max_health_percent_uses_maximum_at_full_and_half_health',
     (MODULE, 'Behaviors/OreMinerBehavior'): 'tests/test_simbench.py::test_mining_pays_8_a_frame_and_a_trip_takes_269',
     (MODULE, 'Behaviors/OreNodeBehavior'): 'tests/test_simbench.py::test_mining_a_second_miner_on_one_node_adds_nothing',
     # batch 1 (work/re/l2_scripts1.md, checks/engine_scripts1.py, bench 11-08)
@@ -134,8 +139,8 @@ NOTES = {
     (NUGGET, 'InformTargetNugget'): (TODO, 'engine_inform仅隔离并用伤害；目标对来弹的响应尚未模拟，不以HP隔离检查登记整项已对拍'),
     (NUGGET, 'ParalyzeNugget'): (GUESSED, '部分：engine_emp phase实测PASS16051/31066/61096、hit1，首发对象帧1与独立定时器ceil解释旧差值；仅无筛选EMP移动期限，攻击禁用/其他类型/筛选未验证'),
     (NUGGET, 'StripMaxHealthPercentNugget'): (GUESSED, '部分：engine_strip exact实测PASS95/45/74，4%满血/半血与25%满血按最大血量扣减；筛选、护甲倍率、无标记伤害形式未验证，最大血量不变仍推断'),
-    # Weapon round 1: register measured subfeatures honestly, not whole-item coverage.
-    (NUGGET, 'AttributeModifierNugget'): (GUESSED, '部分：engine_weaponfx attribute实测PASS，涂靶ARMOR150%、9s前到期（数据1.1s，到期帧未测）；owner/筛选/范围形式未验证，整项不登记已对拍'),
+    # Weapon round 1: scope limitations retained; explicit replay register above sets the bench state.
+    (NUGGET, 'AttributeModifierNugget'): (GUESSED, '部分：engine_weaponfx attribute实测PASS，涂靶ARMOR150%、9s前到期（数据1.1s，到期帧未测）；owner/筛选/范围形式未验证，其余形式仍未验证'),
     (NUGGET, 'LineDamageNugget'): (GUESSED, '部分：engine_weaponfx line探针；实测PASS90/90/90/100验证动态线长及穿透，圆形边界GUESSED，筛选与静态线未模拟'),
     # Suppression is only partly explained. Override name-based bench promotion;
     # BENCHED_TESTS cannot register only threshold / SPEED / ARMOR fields.
