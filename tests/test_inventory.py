@@ -132,3 +132,24 @@ def test_a_missing_ai_source_stops_it(monkeypatch, tmp_path):
     monkeypatch.setattr(inventory_ai, 'AI_DATA', str(tmp_path))
     with pytest.raises(SystemExit):
         inventory_ai.census()
+
+
+def test_only_a_probe_a_test_holds_the_simulator_to_makes_an_item_benched(tmp_path):
+    """已对拍 = a test replays that bench (round 140): a probe a test names (its build, or a variant of it that is not
+    a probe of its own) counts; one only read on the bench, or a docs/engine line, leaves the item 推断."""
+    checks, tests = tmp_path / 'checks', tmp_path / 'tests'
+    checks.mkdir()
+    tests.mkdir()
+    for p in ('engine_seal', 'engine_seal_ext', 'engine_script', 'engine_scripts5'):
+        (checks / f'{p}.py').write_text('', encoding='utf-8')
+    (tests / 'test_x.py').write_text("_sim_resolve('engine_seal_move', c)  # bench engine_scripts5 e\n",
+                                     encoding='utf-8')
+    tested = inventory.tested_probes(str(tests), str(checks))
+    assert tested == {'checks/engine_seal.py', 'checks/engine_scripts5.py'}
+    src = [('checks/engine_script.py', 'ENABLE_SCRIPT read'), ('checks/engine_scripts5.py', 'NAMED_KILL read'),
+           ('docs/engine/x.md', 'ENABLE_SCRIPT NAMED_KILL')]
+    items = [dict(part=inventory.ACTION, name='ENABLE_SCRIPT', state=inventory.GUESSED, why='w'),
+             dict(part=inventory.ACTION, name='NAMED_KILL', state=inventory.GUESSED, why='w')]
+    inventory.benched(items, src, tested)
+    assert items[0]['state'] == inventory.GUESSED and '没有测试跑这个台子' in items[0]['why']
+    assert items[1]['state'] == inventory.BENCHED and 'engine_scripts5' in items[1]['why']
