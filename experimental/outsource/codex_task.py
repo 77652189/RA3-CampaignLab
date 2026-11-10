@@ -43,7 +43,7 @@ Rules for this task (from the project; they override anything above):
 - Stop: once the "Tests:" commands pass, stop and report. If they fail, at most two rounds of fixing; still failing
   after that, stop and report what fails and why you think so -- the coordinator decides whether to go on. Aim for
   about {aim} minutes; {limit} is only a safety stop.
-- Do not commit, push, install anything, start Red Alert 3 or the test bench, or touch the shared locks folder.
+- {bench}
 - Follow AGENTS.md / CLAUDE.md for everything else.
 - End with a short report in Chinese: files changed, how each done criterion is met (and what explains each value),
   the tests you ran with their result lines, and anything left open.
@@ -54,6 +54,14 @@ def changed(folder):
     r = subprocess.run(['git', 'status', '--porcelain', '--untracked-files=all', '.'], cwd=folder,
                        capture_output=True, text=True, encoding='utf-8', errors='replace')
     return r.stdout.splitlines() if r.returncode == 0 else None
+
+
+NO_BENCH = 'Do not commit, push, install anything, start Red Alert 3 or the test bench, or touch the shared locks folder.'
+BENCH = ('Do not commit, push or install anything. The test bench: only through '
+         '`python -I -X utf8 experimental/testbench/run_queue.py <mission:check> ... --jobs 2` (it takes the bench '
+         'locks, queues behind other lines and refuses at once when the user is playing -- then stop and report, do '
+         'not retry in a loop); never start Red Alert 3 any other way, never touch the Steam game folder or the lock '
+         'files yourself. Results land in work/bench_results/<mission>__<check>.json.')
 
 
 def files_allowed(brief):
@@ -88,6 +96,7 @@ def main():
     ap.add_argument('--effort', default='medium', choices=['low', 'medium', 'high'])
     ap.add_argument('--model', default='gpt-6.1-sol')
     ap.add_argument('--read-dir', action='append', default=[])
+    ap.add_argument('--bench', action='store_true', help='may run the bench through run_queue.py (a line task)')
     a = ap.parse_args()
     exe = codex()
     if not exe:
@@ -97,7 +106,11 @@ def main():
     if 'Tests:' not in brief or allowed is None:
         sys.exit('the brief needs a "Files:" section (the paths / globs it may change, or "none") and a "Tests:" '
                  'section naming the exact test commands')
-    prompt = brief + RULES.format(aim=int(a.minutes / 3), limit=int(a.minutes))
+    prompt = brief + RULES.format(aim=int(a.minutes / 3), limit=int(a.minutes), bench=BENCH if a.bench else NO_BENCH)
+    if a.bench:                # what the bench writes: the game copy and results (work), the mods, the locks, the SDK
+        a.read_dir += [os.path.join(LAB, 'RA3-CampaignLab', 'work'), os.path.join(LAB, 'shared'),
+                       os.path.join(LAB, 'sdk'), os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3'),
+                       os.path.join(os.environ.get('APPDATA', ''), 'Red Alert 3')]
     base = os.path.splitext(a.brief)[0]
     out, events = base + '.answer.md', base + '.events.jsonl'
     cmd = [exe, 'exec', '-m', a.model, '-c', f'model_reasoning_effort="{a.effort}"', '-s', 'workspace-write',
