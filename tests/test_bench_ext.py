@@ -166,3 +166,17 @@ def test_the_probe_check_asks_for_ra3ext_and_its_control_does_not():
     xml = on.units[0].xml
     assert xml.count('<DeletionUpdate id="ModuleTag_CNVLog"') == 1 and 'id="CNVExtProbe"' in xml
     assert {e[0]: e[3] for e in engine_ext.ext_test(off, False).expect}['探针'] == 0
+
+
+def test_the_sweep_check_carries_one_tagged_linear_damage_and_a_laser():
+    from checks import engine_sweep
+    on, off = engine_sweep.MISSION['engine_sweep'](), engine_sweep.MISSION['engine_sweepoff']()
+    assert on.ext is True and off.ext is False
+    for m in (on, off):
+        assert len(m.name) + 1 <= 15 and '_' not in m.name
+        for check in engine_sweep.CHECKS['engine_sweep'].values():
+            assert len(check(m).counters) <= 4
+    for u in on.units[:2]:
+        assert u.xml.count(f'<LinearDamageUpdate id="{engine_sweep.TAG}"') == 1
+        assert u.xml.count('<LaserState id=') == 1 and u.xml.count('LaserStateID="1"') == 1
+        assert 'ActivateLinearDamageNugget' in u.xml and 'ActivateLaserNugget' in u.xml
