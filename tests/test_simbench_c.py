@@ -362,3 +362,36 @@ def test_suppression_contributions_require_discrete_hit_events():
         assert high.speed == (37.5 if clock else 50)
         assert high.taken == (.75 if clock else 1)
         assert ((sim.GAP_WEAPON, 'SuppressionNugget') in s.unmodeled) is not clock
+
+
+# ---- FireWeaponWhenDead (simunits.death_weapons; Sim.destroy / death_blast_due): bench 2026-11-05 engine_spawn_refill
+# (checks/engine_spawn.py, docs/engine/spawn.md 5). Two S02_ExplodingMig (1000 GRENADE, radius 100, .3 s) killed by
+# script, at 8 s and 11 s, each beside a Guardian at 20 % health 57 off its centre: each Guardian dies with its mig and
+# its health counter freezes there; the keep factory (its edge > 100 from either) stands.
+def test_fire_weapon_when_dead_a_scripted_kill_blows_the_mig_and_the_guardian_beside_it():
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_spawn_refill', 'refill')
+    s = sim.Sim(m, t).run(32.0)
+    north, west = s.body('UNIT - CNV Refill North'), s.body('UNIT - CNV Refill West')
+    assert not north.alive and not west.alive, (north.hp, west.hp)
+    assert 8.0 <= north.died_at <= 9.0 and 11.0 - 1.0 <= west.died_at <= 11.5, (north.died_at, west.died_at)
+    assert s.body('UNIT - CNV Refill Keep').alive
+    by = [row[1][1] for row in s.series]                       # 车旁: hundreds / thousands = the north / west mig
+    assert by[3] == 1100 and by[-1] == 3300, by                # bench: both gone by s11, as here
+
+
+# ---- PropBody (simunits.prop_body; Body.damage / health, Sim.destroy): bench 2026-11-10 engine_propbody a / b / c
+# (checks/engine_propbody.py). A street segment AM_StreetSegment01, a tree CS_Tree01 and a lantern OK_Lantern01, neutral.
+# a: NAMED_DAMAGE 10 -- the health percent reads 0 throughout, all three stay. b: NAMED_KILL -- the segment stays for
+# good, the tree / lantern are gone 61 / 121 frames after (their ToppleUpdate delay), never dying. c: a Hammer told to
+# attack each never fires. Rows: frames not destroyed + 1000 x frames dying (a: 存 1000^(k-1) a frame for each left).
+def test_prop_body_no_health_a_kill_leaves_the_street_and_topples_the_tree_and_lantern_at_the_bench_frames():
+    a = _sim_run('engine_propbody', 'a', 21.0).series
+    assert all(row[1][:3] == [0, 0, 0] for row in a), a                     # bench 血1..3: 0 0 0 throughout
+    left = a[-1][1][3]
+    assert left == (left % 1000) * 1001001, left                            # bench 存 333333333: all three there
+    frames, street, tree, lantern = _sim_run('engine_propbody_b', 'b', 21.0).series[-1][1]
+    assert street == frames and (tree, lantern) == (61, 121), (frames, street, tree, lantern)   # bench 332 332 61 121
+    c = _sim_run('engine_propbody_c', 'c', 21.0).series[-1][1]
+    assert c[1:] == [c[0]] * 3, c                                           # bench 332 x 4: none shot, none dying

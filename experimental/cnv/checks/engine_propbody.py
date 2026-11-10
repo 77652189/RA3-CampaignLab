@@ -21,8 +21,15 @@ Counters (four lines at most), read every 0.5 s:
         each lane k whose prop is not destroyed
   b, c  帧数 frames since Go; 行k 1 x frames the prop is not destroyed + 1000 x frames it is dying
 
-PREDICTED (the simulator today, before the bench): it gives a body without MaxHealth 300 HP (Sim.add's default);
-see the readings once run.
+PREDICTED before the bench (the simulator then gave a body without MaxHealth 300 HP): a 97 x 3, all left; b each
+destroyed the frame of the kill and dying one frame; c none shot.
+Read (测, 2026-11-10, run_queue, all PASS; work/bench_results/engine_propbody*__*.json):
+  a  血1..3 0 0 0 throughout, 存 333333333 at s21 (all three there): no health to read or take
+  b  帧数 332, 行1 332 (the street segment never goes), 行2 61, 行3 121 (the tree / lantern gone 61 / 121 frames after
+     the kill -- their ToppleUpdate removal delay, 60 / 120 -- and never dying)
+  c  332 x 4: the Hammers never fire, nothing goes
+Simulated since (simunits.prop_body, sim Body.damage / health, Sim.destroy):
+tests/test_simbench_c.py::test_prop_body_no_health_a_kill_leaves_the_street_and_topples_the_tree_and_lantern_at_the_bench_frames.
 """
 from maps import festival
 from parts import Mission, Script, Test

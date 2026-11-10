@@ -108,6 +108,12 @@ BENCHED_TESTS = {
     # immortal a / b / c, bench 11-09 (checks/engine_immortal.py): damage floor 1 %, script kill clamped, delete removes
     (MODULE, 'Body/ImmortalBody'):
         'tests/test_simbench_c.py::test_immortal_damage_stops_at_one_hp_kill_is_damage_and_delete_removes',
+    # engine_propbody a / b / c, bench 11-10: no health, a kill leaves the street segment, topples the tree / lantern
+    (MODULE, 'Body/PropBody'):
+        'tests/test_simbench_c.py::test_prop_body_no_health_a_kill_leaves_the_street_and_topples_the_tree_and_lantern_at_the_bench_frames',
+    # engine_spawn_refill, bench 11-05: a scripted kill sets off the exploding mig's death weapon, the Guardian beside it dies
+    (MODULE, 'Behaviors/FireWeaponWhenDead'):
+        'tests/test_simbench_c.py::test_fire_weapon_when_dead_a_scripted_kill_blows_the_mig_and_the_guardian_beside_it',
     # topple a / b, bench 11-09: neutral props, delayed removal without DYING; all five readings within one frame
     (MODULE, 'Behaviors/ToppleUpdate'):
         'tests/test_simbench_c.py::test_topple_the_five_props_disappear_at_the_bench_frames_without_ever_dying',
@@ -173,8 +179,6 @@ NOTES = {
                                                             '消散、按生命值分档减速、满档冻住（CryoBeamFrozenArmor '
                                                             '90000%，一碰就碎）；规则读自 SDK 数据，程序和台上都没对'),
     (NUGGET, 'SecondaryDamageNugget'): (GUESSED, 'simunits._weapons 读 Amount（不要升级的那条）→ sdps，Sim.chill'),
-    (MODULE, 'Body/PropBody'): (TODO, '弹体和特效道具的身体（9 关 22 个模板里 16 个是弹体）：模拟器没有弹体'
-                                      '（同 BezierProjectile），道具能不能挨打没读'),
     (MODULE, 'Behaviors/Physics'): (TODO, '移动物理（坠落、弹跳、被击飞、倾倒）：模拟器走路按速度直走，没有物理'),
     # engine A round 108: read in the SDK data
     (MODULE, 'Behaviors/ObjectDefectionHelper'): (NA, '没人触发：原版只在 BaseObject 挂一个空的（所以每个物体都有），'

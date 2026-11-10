@@ -946,6 +946,77 @@ def slow_death(template, own=None):
     return _slow_memo[key]
 
 
+_prop_memo = {}
+
+
+def prop_body(template, own=None):
+    """None unless its Body (nearest up the chain) is a PropBody; then 'dies' when a DestroyDie / SlowDeath up the
+    chain takes a NORMAL death (a script kill), else 'stays'. Bench 11-10 engine_propbody a / b / c: a PropBody has no
+    health (the percent reads 0, NAMED_DAMAGE 10 changes nothing), a Hammer told to attack never fires (UNATTACKABLE),
+    and NAMED_KILL leaves a street segment (PropBody only) standing for good; a tree / lantern (SlowDeath only for
+    TOPPLED) topples where it stands and is gone its ToppleUpdate delay + 1 frames later (61 / 121), never dying."""
+    key = (template, (own or {}).get(template))
+    if key not in _prop_memo:
+        def body(xml):
+            got = list(_blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'Body'))
+            return ('<PropBody' in got[0][1]) if got else None
+
+        def destroyer(xml):
+            text = re.sub(r'<!--.*?-->', '', xml or '', flags=re.S)
+            for tag in ('DestroyDie', 'SlowDeath'):
+                for _, inner in _blocks(text, tag):
+                    if _dies_of(next((h for h, _ in _blocks(inner, 'DieMuxData')), ''), 'NORMAL'):
+                        return True
+            return None
+        _prop_memo[key] = None if not _chain(template, own, body) else \
+            ('dies' if _chain(template, own, destroyer) else 'stays')
+    return _prop_memo[key]
+
+
+_death_memo, _weapon_blocks = {}, None
+
+
+def death_weapons(template, own=None, death='NORMAL'):
+    """[(damage, damage type, radius, delay s, affects)] -- each DamageNugget of each FireWeaponWhenDead's DeathWeapon
+    (InitiallyActive, its DieMuxData taking the death type) from the nearest template up the chain that has the module:
+    the weapon goes off where the body died, `delay` after (the nugget's DelayTimeSeconds), hurting what of `affects`
+    (RadiusDamageAffects: ALLIES ENEMIES NEUTRALS, relative to the dead one's owner) lies within the radius, centre to
+    centre. Bench 11-05 engine_spawn_refill: S02_ExplodingMig (1000 GRENADE, 100, .3 s) killed by script takes the
+    Guardian 40 + 69 off its centre with it. INFERRED: no falloff inside the radius (the game's DamageNugget has none
+    without DamageArc / a ScalarFalloff), SpecialObjectFilter not read, an upgrade-activated module (InitiallyActive
+    false) never fires."""
+    global _weapon_blocks
+    key = (template, (own or {}).get(template), death)
+    if key in _death_memo:
+        return _death_memo[key]
+    if _weapon_blocks is None:
+        _weapon_blocks = {}
+        for text in _weapon_files():
+            for head, body in _blocks(re.sub(r'<!--.*?-->', '', text, flags=re.S), 'WeaponTemplate'):
+                _weapon_blocks.setdefault(_attr(head, 'id'), (head, body))
+    mine = {}
+    for text in (own or {}).values():
+        for head, body in _blocks(text or '', 'WeaponTemplate'):
+            mine[_attr(head, 'id')] = (head, body)
+
+    def read(xml):
+        mods = list(_blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'FireWeaponWhenDead'))
+        return mods or None
+    out = []
+    for head, inner in _chain(template, own, read) or []:
+        if (_attr(head, 'InitiallyActive') or 'false').lower() != 'true':
+            continue
+        if not _dies_of(next((h for h, _ in _blocks(inner, 'DieMuxData')), ''), death):
+            continue
+        whead, wbody = mine.get(_attr(head, 'DeathWeapon')) or _weapon_blocks.get(_attr(head, 'DeathWeapon'), ('', ''))
+        affects = frozenset((_attr(whead, 'RadiusDamageAffects') or 'ENEMIES NEUTRALS').split())
+        for nh, _ in _blocks(wbody, 'DamageNugget'):
+            out.append((_num(_attr(nh, 'Damage'), 0.0), _attr(nh, 'DamageType') or '', _num(_attr(nh, 'Radius'), 0.0),
+                        _secs(_attr(nh, 'DelayTimeSeconds') or '0s'), affects))
+    _death_memo[key] = out
+    return out
+
+
 _retail_files = None
 
 
