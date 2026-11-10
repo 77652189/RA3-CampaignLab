@@ -103,6 +103,25 @@ RESULTS e (bench 2026-11-08, aiskjav, CampAISkJavE; PASS (weak); bench s, which 
     re-recruit), which is candidate 2 of handoff-b 50, not a gate on AlwaysRecruit. The preplaced soldier also moves
     the first team out from s139 to s158-166 (it gets Javelins: the type mix changed). Not proven: which team it left
     with (no team read on the bench).
+
+  g / h  AI teams counted by name (missions/aiskirm_bench.AI_TEAMS; 99 = no team of that name answered that frame).
+     g: 池兵 = the pool's CAN_ATTACK members, 防御型 / 防御名 = LandDefense_MEDIUM_<StaticDefense | Defense>_0_0,
+     兵数 = army owned (as d). h: 池全 = all the pool's members, 地图队 = teamSoviet_1, 进攻型 / 进攻名 =
+     BalancedAttackGround_MEDIUM_<DefenseAvoidanceAttack | Attack>_0_0. aiskirmnl = aiskirm with Soviet_1's
+     Lib_Skirmish_Setup emptied.
+RESULTS g / h (bench 2026-11-10, aiskirm g / h and aiskirmnl g, all PASS (weak); bench s):
+  names: the tactic's TYPE is the name ('..._StaticDefense_0_0', '..._DefenseAvoidanceAttack_0_0' answer), the
+    Tactic id never does (防御名 / 进攻名 99 the whole run). An empty team flickers 0 / 99 (instance made and gone).
+  aiskirm g: every new combat unit goes into LandDefense _0_0 within ~1-2 s (池兵 1 for a second, then 0):
+    防御型 = 兵数 from s26 (1) to s69 (8); 7 at s79, 6 from s80 (two leave it -- dogs, b's scouts, likely), 7 at
+    s121, 8 at s131-134; then 0 at s136 (all eight at once, ~the second the first attack team leaves: a a/c) and
+    it stays 0 / 99 to s203; new units after s136 sit in the pool 1-2 s and go to some other team (not _0_0).
+  aiskirm h: pool = 2 at the start (the yard + one more), grows with the buildings and the passing units (14 at
+    s150); 地图队 0 the whole run (the library's transfer: handoff.md round 135); 进攻型 _0_0 0 / 99 every ~5 s and
+    never a member, also when the attack leaves -- the team that leaves is another instance (other indices).
+  aiskirmnl g: the same story ~2-8 s earlier (8 in defense at s62, 0 at s128): the library does not change it.
+  Reading: the defense team DOES take every new unit (the model's keep_on=True is right about the pool); the first
+    attack team is made of the defense team's eight, released all at once at ~132 s after the wake.
 """
 from parts import Script, Test, counted, square
 
@@ -285,6 +304,67 @@ def e(m):
     return t
 
 
-CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d},
+UNKNOWN = 99                        # g / h: a team count shows this when no team of that name answered this frame
+POOL_MOST = 20
+
+
+def _members(t, counter, label, team, most=POOL_MOST):
+    """`team`'s member count (TEAM_COMPARE_NUM_MEMBERS ==), UNKNOWN when it is none of 0 .. most-1."""
+    t.counters.append((counter, label))
+    t.scripts.append(Script(f'Test - {counter} unknown', [], [('SET_COUNTER', counter, UNKNOWN)], once=False))
+    t.scripts += [Script(f'Test - {counter} {n}', [('TEAM_COMPARE_NUM_MEMBERS', team, 2, n)],
+                         [('SET_COUNTER', counter, n)], once=False) for n in range(most)]
+
+
+def _kind_members(t, counter, label, team, kind, most=POOL_MOST):
+    """How many of `team`'s members have KindOf `kind` (TEAM_HAS_FEWER_THAN_X_UNITS_WITH_KINDOF, tried from `most`
+    down: the last that holds is n = count + 1); UNKNOWN when none holds (count >= most, or no such team)."""
+    from model import kindof
+    t.counters.append((counter, label))
+    t.scripts.append(Script(f'Test - {counter} unknown', [], [('SET_COUNTER', counter, UNKNOWN)], once=False))
+    t.scripts += [Script(f'Test - {counter} <{n}', [('TEAM_HAS_FEWER_THAN_X_UNITS_WITH_KINDOF', team, n, kindof(kind))],
+                         [('SET_COUNTER', counter, n - 1)], once=False) for n in range(most, 0, -1)]
+
+
+def _teams(m, which):
+    """g / h: AI team sizes read by name. The engine names a strategic state's team instances '%s_%s_%u_%u'
+    (0x8d8f25: state, a tactic string, two indices; retail maps query e.g. 'Player_2/AIState_J09_LandAttack_
+    SimpleAttack_0_0'); the pool is 'defaultSkirmishTeam' + player (0x87e320). Which tactic string (the Tactic id
+    'Defense' / 'Attack' or its type 'StaticDefense' / 'DefenseAvoidanceAttack') is what g / h tell apart."""
+    t = Test()
+    for tpl in ARMY:
+        m.spawns.add(tpl)
+    s1 = m.player('s1')
+    ai = {k[3:]: v for k, v in m.map.TEAMS.items() if k.startswith('ai ')}      # missions/aiskirm_bench.AI_TEAMS
+    pool = ai['pool']
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    if which == 'g':
+        _kind_members(t, 'CNV_AK_Pool', '池兵', pool, 'CAN_ATTACK')
+        _members(t, 'CNV_AK_DefT', '防御型', ai['defense type'])
+        _members(t, 'CNV_AK_DefI', '防御名', ai['defense id'])
+        _sum(t, m, s1, 'CNV_AK_Army', '兵数', ARMY)
+    else:
+        _members(t, 'CNV_AK_PoolAll', '池全', pool, most=40)
+        _members(t, 'CNV_AK_Map', '地图队', f'{s1}/team{s1}')
+        _members(t, 'CNV_AK_AtkT', '进攻型', ai['attack type'])
+        _members(t, 'CNV_AK_AtkI', '进攻名', ai['attack id'])
+    w = m.facts['wake at']
+    t.expect += [(t.counters[0][1], w + 20.0, '>=', 0, w + 21.0)]      # weak: the readings exist
+    t.bench = [('bench_watch', dict(seconds=w + 160.0, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+def g(m):
+    """Pool CAN_ATTACK members / LandDefense_MEDIUM team by tactic type / by tactic id / army owned (as d)."""
+    return _teams(m, 'g')
+
+
+def h(m):
+    """Pool all members / the map team teamSoviet_1 / BalancedAttackGround_MEDIUM by tactic type / by tactic id."""
+    return _teams(m, 'h')
+
+
+CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h},
+          'aiskirmnl': {'g': g, 'h': h},
           'aiskjav': {'e': e},
           'aiskirmlow': {'d': d, 'f': f}}

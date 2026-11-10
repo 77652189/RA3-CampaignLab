@@ -19,8 +19,40 @@ WAKE_AT, MONEY = 10.0, 50000        # the simulator's miners gather nothing: the
 PERSONALITY = 'AIPersonalityDefinition:1AlliedBalanced'
 
 
-def mission(name='CampAISkirm', money=MONEY, jav=False):
-    m = Mission(name=name, map=niagara, facts={'wake at': WAKE_AT, 'money': money})
+# the AI's own teams, by the engine's names (published so checks may count them; nothing is written into the map):
+# the pool 'defaultSkirmishTeam' + player (0x87e320) and a strategic state's instances '%s_%s_%u_%u' (0x8d8f25:
+# state, a tactic string, two indices -- the tactic's id or its type is what checks g / h tell apart)
+AI_TEAMS = {'pool': 'Soviet_1/defaultSkirmishTeamSoviet_1',
+            'defense type': 'Soviet_1/LandDefense_MEDIUM_StaticDefense_0_0',
+            'defense id': 'Soviet_1/LandDefense_MEDIUM_Defense_0_0',
+            'attack type': 'Soviet_1/BalancedAttackGround_MEDIUM_DefenseAvoidanceAttack_0_0',
+            'attack id': 'Soviet_1/BalancedAttackGround_MEDIUM_Attack_0_0'}
+
+
+def ai_map(base, library=True, player='Soviet_1'):
+    """`base` (a map module) with AI_TEAMS published; library=False also empties `player`'s script library list: the
+    container gives Player_2 and Soviet_1/2/3 Lib_Skirmish_Setup, whose start-up scripts (MAKE_BASE,
+    UNIT_AI_TRANSFER_ALL, USE_REPAIRS 1 ...) run at frame 0, before this mission's own wake (handoff.md round 135).
+    Same trick as engine_scripts9 _libraries."""
+    import types
+    import mapstudy
+    mod = types.ModuleType(base.__name__)
+    mod.__dict__.update({k: v for k, v in vars(base).items() if not k.startswith('__')})
+    mod.TEAMS = dict(base.TEAMS, **{f'ai {k}': v for k, v in AI_TEAMS.items()})
+    if not library:
+        mod.LIBRARIES = dict(getattr(base, 'LIBRARIES', {}), **{player: ()})    # what model.libraries reads (line A)
+
+        def terrain(m):
+            base.terrain(m)
+            names = [''] + list(mapstudy.players(m))
+            libs = [n for _, n in m.walk() if n.name == 'LibraryMaps']
+            libs[names.index(player)].head = bytes(4)
+        mod.terrain = terrain
+    return mod
+
+
+def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True):
+    m = Mission(name=name, map=ai_map(niagara, lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
     s1 = m.player('s1')
     m.put('AlliedConstructionYard', 'east base', 0, 0, side='s1', name='UNIT - CNV AI Yard', role='ai yard')
@@ -44,4 +76,5 @@ def mission(name='CampAISkirm', money=MONEY, jav=False):
 
 # the builds this module makes (cnv/registry.py): build name -> mission factory
 MISSION = {'aiskirm': mission, 'aiskirmlow': lambda: mission('CampAISkLow', money=15000),
-           'aiskjav': lambda: mission('CampAISkJav', jav=True)}
+           'aiskjav': lambda: mission('CampAISkJav', jav=True),
+           'aiskirmnl': lambda: mission('CampAISkNoLib', lib=False)}   # s1 without the container's Lib_Skirmish_Setup
