@@ -399,8 +399,6 @@ def test_condition_heuristics_gate_the_state_as_on_the_bench(lib, build, home, g
     assert abs(last - home) <= 3 and seq[gone + 2] == 0, (last, seq)
 
 
-@pytest.mark.xfail(strict=True, reason='ObjectOfTypeExists: the simulator looks at its own templates only; the bench '
-                                       'counts the filter Relationship (ENEMIES: the player\'s collector) -- handoff-b 85')
 @pytest.mark.parametrize('build,out', [('aihoe1', True), ('aihoef', False)])
 def test_object_of_type_exists_counts_the_relationship_as_on_the_bench(lib, build, out):
     _, rows = _switch_run(build, lib, until=41.0)

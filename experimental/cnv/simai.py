@@ -22,7 +22,8 @@ every frame (the simulator moves in DT ticks; the AI is ticked for each frame of
   money       the player's money now (Sim.money) = ai.money: an account spends its Deposits + its budget share of it.
   teams      ai.units = the AI's own movers (not HARVESTER, not IGNORES_SELECT_ALL) as stable Unit wrappers;
               team_point = the closest enemy structure to the AI's yard.
-  states      ctx: the mission's flags (ScriptedFlagHeuristic), 'has' (its templates), 'building' (the kinds queued),
+  states      ctx: the mission's flags (ScriptedFlagHeuristic), 'has' (its templates; 'has enemy' / 'has ally' /
+              'has neutral' by owner for ObjectOfTypeExists' Relationship), 'building' (the kinds queued),
               'enemy nearby' (enemy value within the distance of its yard), 'path to target' (PathToTargetHeuristic:
               the last enemy with a structure, both base objects by states.base_object, spots by states.spot on
               the simulator's grids, a route for the test template's surface; cached PATH_EVERY), 'harvesters',
@@ -481,6 +482,11 @@ class Brain:
         foes = sorted(self.view.enemies)
         out = {'flags': self.host.flags(self.player), 'has': {b.template for b in mine}, 'building': building,
                'enemy nearby': near,
+               # ObjectOfTypeExists by the filter's Relationship (bench aihoe*): the enemies' / allies' / neutral's
+               'has enemy': {t.template for t in self.view.things if t.owner in self.view.enemies},
+               'has ally': {t.template for t in self.view.things
+                            if t.owner and t.owner != self.player and t.owner not in self.view.enemies},
+               'has neutral': {t.template for t in self.view.things if not t.owner},
                'harvesters': sum('HARVESTER' in b.kinds for b in mine),               # INFERRED category 0x14
                'money': lambda account: self.sim.money.get(self.player, 0),          # one account in the simulator
                'beacons': set(),                                                     # no beacons in the simulator

@@ -123,7 +123,7 @@
 给关卡线（测）：
 - 定时类全按读法：Timer 从开局或唤醒算、EndTime 是开着的时长；Interval 先等再开。
 - `ObjectOfTypeExists` 看的是 ObjectFilter 的 Relationship（原版用 ENEMIES 看玩家有没有某建筑），ALLIES 包括 AI 自己。
-- 模拟器：前三种对上（`tests/test_simai.py::test_condition_heuristics_gate_the_state_as_on_the_bench`）；ObjectOfTypeExists 模拟器只看自己的东西，ENEMIES 两组对不上（`test_object_of_type_exists_counts_the_relationship_as_on_the_bench` strict xfail）。
+- 模拟器：前三种对上（`tests/test_simai.py::test_condition_heuristics_gate_the_state_as_on_the_bench`）；ObjectOfTypeExists 按 Relationship 取哪些玩家的东西（SAME_PLAYER 自己、ALLIES 自己 + 盟友、ENEMIES 敌人、NEUTRAL 中立；不写 = 全算，推断，原版没有不写的），五组都对上（`test_object_of_type_exists_counts_the_relationship_as_on_the_bench`）。
 
 ## 按难度挂的状态（StrategicState 的 Difficulty）
 
