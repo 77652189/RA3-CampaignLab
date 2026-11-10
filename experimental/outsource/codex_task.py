@@ -94,6 +94,13 @@ def files_allowed(brief):
     return [] if [g.lower() for g in globs] == ['none'] else globs
 
 
+def bench_dirs():
+    """What the bench writes: the game copy and results (work), the mods, the locks, the SDK."""
+    return [os.path.join(LAB, 'RA3-CampaignLab', 'work'), os.path.join(LAB, 'shared'),
+            os.path.join(LAB, 'sdk'), os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3'),
+            os.path.join(os.environ.get('APPDATA', ''), 'Red Alert 3')]
+
+
 def codex():
     found = sorted(glob.glob(os.path.join(os.environ.get('LOCALAPPDATA', ''), 'OpenAI', 'Codex', 'bin', '*', 'codex.exe')),
                    key=os.path.getmtime)
@@ -123,10 +130,8 @@ def main():
         sys.exit('the brief needs a "Files:" section (the paths / globs it may change, or "none") and a "Tests:" '
                  'section naming the exact test commands')
     prompt = brief + RULES.format(aim=int(a.minutes / 3), limit=int(a.minutes), bench=(BENCH + (FULL if a.full else '')) if a.bench else NO_BENCH)
-    if a.bench:                # what the bench writes: the game copy and results (work), the mods, the locks, the SDK
-        a.read_dir += [os.path.join(LAB, 'RA3-CampaignLab', 'work'), os.path.join(LAB, 'shared'),
-                       os.path.join(LAB, 'sdk'), os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3'),
-                       os.path.join(os.environ.get('APPDATA', ''), 'Red Alert 3')]
+    if a.bench:
+        a.read_dir += bench_dirs()
     base = os.path.splitext(a.brief)[0]
     out, events = base + '.answer.md', base + '.events.jsonl'
     # windows.sandbox="mxc": from 2026-11-09 21:28 the "unelevated" sandbox refused every process (CreateProcessAsUserW
