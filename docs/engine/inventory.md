@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|---|---|
 | 脚本动作 | **84%** | 427 | 93 | 21 | 198 | 115 | 87% |
 | 脚本条件 | **94%** | 89 | 27 | 2 | 57 | 3 | 94% |
-| 物体模块 | **60%** | 184 | 27 | 6 | 132 | 19 | 61% |
+| 物体模块 | **59%** | 184 | 26 | 7 | 132 | 19 | 61% |
 | 武器效果 | **47%** | 25 | 2 | 3 | 20 | 0 | 53% |
 | AI | **63%** | 415 | 92 | 137 | 152 | 34 | 88% |
 
@@ -574,7 +574,7 @@
 | 未做 | `Behaviors/LevelUpUpgrade` | 88 (124) | 模拟器代码里没有这个名字；例：AlliedSatelliteSweepShroudRevealer, AlliedAntiAirShip |
 | 已对拍 | `Behaviors/AutoHealBehavior` | 88 (123) | tests/test_simbench.py::test_autoheal_an_apocalypse_mends_two_points_every_7_frames_after_a_15_frame_wait；例：AlliedSatelliteSweepShroudRevealer, AlliedAntiAirShip |
 | 已对拍 | `Behaviors/RunOffMapBehavior` | 88 (123) | tests/test_simbench_c.py::test_run_off_map_the_peacekeeper_is_gone_64_and_304_frames_after_the_order_never_dying；例：AlliedSatelliteSweepShroudRevealer, AlliedAntiAirShip |
-| 已对拍 | `Behaviors/WeaponSetUpdate` | 82 (110) | 模拟器代码里有这个名字；台上量过：checks/engine_weaponset.py；例：AlliedBaseDefense, AlliedBaseDefenseAdvanced |
+| 推断 | `Behaviors/WeaponSetUpdate` | 82 (110) | 模拟器代码里有这个名字；例：AlliedBaseDefense, AlliedBaseDefenseAdvanced |
 | 已对拍 | `Behaviors/SpecialPower` | 74 (95) | tests/test_simbench.py::test_super_a_scripts_cast_starts_the_retail_reload；例：AlliedConstructionYard, AlliedAntiAirShip |
 | 未做 | `Behaviors/EngineerContain` | 70 (105) | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |
 | 未做 | `Behaviors/RepairUpdate` | 66 (91) | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |
