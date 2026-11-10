@@ -34,6 +34,7 @@ AI_TEAMS.update({f'{k} {i}': v[:-len('0_0')] + i for k in ('defense type', 'atta
 OTHER_STATES = {'overwhelm': 'BalancedAttackOverwhelm_MEDIUM_DefenseAvoidanceAttack_0_0',
                 'bal defense': 'BalancedDefense_StaticDefense_0_0',
                 'cleanup': 'BalancedCleanup_SimpleAttack_0_0',
+                'cleanup 0_1': 'BalancedCleanup_SimpleAttack_0_1',
                 'emergency': 'LandEmergencyDefense_MEDIUM_SimpleAttack_0_0',
                 'scout': 'AlliedScout_DefenseAvoidanceAttack_0_0',
                 'scout 2': 'AlliedScout_DefenseAvoidanceAttack_1_0',

@@ -147,6 +147,13 @@ RESULTS g / h (bench 2026-11-10, aiskirm g / h and aiskirmnl g, all PASS (weak);
     reselected: 0x8c7020 returns false while +0x14 started; handoff-b 95 / aiar9-10: a quiet base never releases),
     the release is caused by Cleanup turning on: Cleanup (STANDARD, RELEASE_TO_PRIORITY) takes the DEFENSE team's
     members in one commit, and wins the pool over the defense team until full.
+
+  n  防御型 (LandDefense _0_0) / 清扫 (BalancedCleanup _0_0) / 清扫二 (BalancedCleanup _0_1) / 防御二 (LandDefense _0_1)
+     to s203. Bench 2026-11-10, aiskirm n PASS (weak; the first try hung at bench_stop, log b102_n.log; this is
+     b102_n2.log): 防御型 8 at s126, 0 from s130; 清扫 8 s130, 10 s137, 14 s158 and stays; 防御型 1 at s165 only;
+     **清扫二 and 防御二 99 the whole run** -- no second copy of either team is ever made.
+  Reading: once Cleanup _0_0 is full nothing opens a Cleanup _0_1; the model (b100_keep.log) opens it and fills it
+    (1 at ~s160, 7 by s185). Mismatch, not yet in a test.
 """
 from parts import Script, Test, counted, square
 
@@ -394,6 +401,11 @@ def _teams(m, which):
         t.scripts += [Script(f'Test - peak {n}', [('TIMER_EXPIRED', 'Test Peak From'), ('COUNTER', 'CNV_AK_Pool', 3, n),
                                                   ('COUNTER', 'CNV_AK_Peak', 0, n), ('COUNTER', 'CNV_AK_Pool', 0, UNKNOWN)],
                              [('SET_COUNTER', 'CNV_AK_Peak', n)], once=False) for n in range(1, POOL_MOST)]
+    elif which == 'n':                 # Cleanup full (14 at s161): does the next unit go to Cleanup _0_1 or to defense?
+        _members(t, 'CNV_AK_DefT', '防御型', ai['defense type'])
+        _members(t, 'CNV_AK_Cln', '清扫', ai['cleanup'])
+        _members(t, 'CNV_AK_Cln2', '清扫二', ai['cleanup 0_1'])
+        _members(t, 'CNV_AK_Def2', '防御二', ai['defense type 0_1'])
     else:
         _members(t, 'CNV_AK_PoolAll', '池全', pool, most=40)
         _members(t, 'CNV_AK_Map', '地图队', f'{s1}/team{s1}')
@@ -401,7 +413,8 @@ def _teams(m, which):
         _members(t, 'CNV_AK_AtkI', '进攻名', ai['attack id'])
     w = m.facts['wake at']
     t.expect += [(t.counters[0][1], w + 20.0, '>=', 0, w + 21.0)]      # weak: the readings exist
-    t.bench = [('bench_watch', dict(seconds=w + 160.0, every=1, sheet=False, lines=len(t.counters)))]
+    t.bench = [('bench_watch', dict(seconds=w + (175.0 if which == 'n' else 160.0), every=1, sheet=False,
+                                    lines=len(t.counters)))]
     return t
 
 
@@ -440,7 +453,14 @@ def m(mm):
     return _teams(mm, 'm')
 
 
-CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j': j, 'k': k, 'l': l, 'm': m},
+def n(m):
+    """LandDefense _0_0 / BalancedCleanup _0_0 / BalancedCleanup _0_1 / LandDefense _0_1 to s185: where the unit
+    after Cleanup's 14th goes (the model: Cleanup _0_1; m saw one in defense at s166)."""
+    return _teams(m, 'n')
+
+
+CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j': j, 'k': k, 'l': l, 'm': m,
+                      'n': n},
           'aiskirmnl': {'g': g, 'h': h},
           'aiskjav': {'e': e},
           'aiskirmlow': {'d': d, 'f': f}}
