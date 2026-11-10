@@ -30,7 +30,10 @@ MOVES = {'CNVOpenP': (('Build', PLANT),), 'CNVOpenB': (('Build', BARRACKS),), 'C
          'CNVOpenBT': (('Build', BARRACKS), ('Time', '5s')), 'CNVOpenPP': (('Build', PLANT), ('Build', PLANT)),
          'CNVOpenPPP': (('Build', PLANT),) * 3, 'CNVOpenPT': (('Build', PLANT), ('Time', '5s')),
          'CNVOpenTP': (('Time', '5s'), ('Build', PLANT)), 'CNVOpenBP': (('Build', BARRACKS), ('Build', PLANT)),
-         'CNVOpenPB': (('Build', PLANT), ('Build', BARRACKS))}
+         'CNVOpenPB': (('Build', PLANT), ('Build', BARRACKS)),
+         'CNVOpenPT30': (('Build', PLANT), ('Time', '30s')), 'CNVOpenPT15': (('Build', PLANT), ('Time', '15s')),
+         'CNVOpenPPT30': (('Build', PLANT), ('Build', PLANT), ('Time', '30s')),
+         'CNVOpenT30P': (('Time', '30s'), ('Build', PLANT))}
 
 
 def personality_xml(pid, lines, gate=None):
@@ -128,4 +131,9 @@ MISSION = {
     'aiom8': lambda: mission('CampAIOM8', [('CNVOpenTP', '100%', ALL)], 1, 0),             # Time 5s, Build plant
     'aiom9': lambda: mission('CampAIOM9', [('CNVOpenBP', '100%', ALL)], 1, 1),             # barracks, plant
     'aiom10': lambda: mission('CampAIOM10', [('CNVOpenPB', '100%', ALL)], 1, 1),           # plant, barracks
+    # round 86: does the wait after a lone Build matter (T's first plant, 30 s before its next order, is built)
+    'aiom11': lambda: mission('CampAIOM11', [('CNVOpenPT30', '100%', ALL)], 1, 0),         # plant, Time 30s
+    'aiom12': lambda: mission('CampAIOM12', [('CNVOpenPT15', '100%', ALL)], 1, 0),         # plant, Time 15s
+    'aiom13': lambda: mission('CampAIOM13', [('CNVOpenPPT30', '100%', ALL)], 2, 0),        # plant, plant, Time 30s
+    'aiom14': lambda: mission('CampAIOM14', [('CNVOpenT30P', '100%', ALL)], 1, 0),         # Time 30s, plant
 }

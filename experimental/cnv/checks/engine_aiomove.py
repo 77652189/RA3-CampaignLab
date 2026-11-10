@@ -33,6 +33,9 @@ Read: several Builds issued in one go -> only the last is built; a Build alone i
 nothing; yet T's first plant (alone at the wake, 30 s before the next order) is built, and its two at s40 both are.
 Guesses not tried: the build orders share one slot and a newer one replaces an unstarted older one (but then the
 lone one should stand); the opening's done-ness or how long before the next order matters (P + Time 30s untried).
+Round 86: aiom11 (P, Time 30s), aiom12 (P, Time 15s), aiom13 (P, P, Time 30s), aiom14 (Time 30s, P) written; the
+first run (17:22) all ERROR -- the game's DirectX error box at start (another game, gamemd, held the screen), not read.
+Guess they test: the plant takes ~9 s; a lone Build survives only if the opening is not over before it stands.
 """
 from parts import Script, Test, counted, square
 
@@ -64,4 +67,5 @@ def a(m):
 
 CHECKS = {k: {'a': a} for k in ('aiowt', 'aiowt2', 'aiodf', 'aiodf2', 'aiohc1', 'aiohc0',
                                   'aiom1', 'aiom2', 'aiom3', 'aiom4', 'aiom5',
-                                  'aiom6', 'aiom7', 'aiom8', 'aiom9', 'aiom10')}
+                                  'aiom6', 'aiom7', 'aiom8', 'aiom9', 'aiom10',
+                                  'aiom11', 'aiom12', 'aiom13', 'aiom14')}
