@@ -45,6 +45,14 @@ Bench 2026-11-09 (B round 88, run_queue --jobs 2, the bench free again; counters
   aiom16 (one P, the money given before SKIRMISH_AI_MAKE_BASE) FAIL: nothing, as aiom1 -- not the money at the wake.
 Not settled; what the eight lone-Build readings fit: a Build stands if a Time >= 15 s follows it, or if it is
 issued >= 30 s after the wake; a Build alone in the first seconds with the opening ending within ~5 s is dropped.
+Bench 2026-11-09 (B round 89): the whole opening's end decides, not each Build's own wait --
+  aiom17 (B, Time 3s, P, Time 30s) PASS: barracks s19, plant s29 -- both (the barracks' own wait is 3 s).
+  aiom18 (B, P, Time 5s) PASS: plant s19, no barracks -- the last Build, begun at the wake.
+  aiom19 (P, P, Time 8s) one plant s19 (guessed 2; the expectation is the bench's now).
+  aiom20 (P, Time 10s) PASS: plant s19.
+Rule fitted to aiom1-20, aiotime T and aiopen AlliedStandard (private ai/opening.py kept_orders, mechanism not
+read): the last Time point >= X s after the wake (8 < X <= 10; the model takes 10) keeps every order; a shorter
+opening keeps only its last Build, worked as if alone, and none when it has one Build.
 """
 from parts import Script, Test, counted, square
 
@@ -77,4 +85,5 @@ def a(m):
 CHECKS = {k: {'a': a} for k in ('aiowt', 'aiowt2', 'aiodf', 'aiodf2', 'aiohc1', 'aiohc0',
                                   'aiom1', 'aiom2', 'aiom3', 'aiom4', 'aiom5',
                                   'aiom6', 'aiom7', 'aiom8', 'aiom9', 'aiom10',
-                                  'aiom11', 'aiom12', 'aiom13', 'aiom14', 'aiom15', 'aiom16')}
+                                  'aiom11', 'aiom12', 'aiom13', 'aiom14', 'aiom15', 'aiom16',
+                                  'aiom17', 'aiom18', 'aiom19', 'aiom20')}

@@ -39,14 +39,15 @@ OPENER = 'CNVTeamFOpener'
 FACTORY_DY, PLANT_DY = -400.0, 400.0
 
 
-def personality_xml(pid, kinds, filt, max_units, locos='LAND AMPHIBIOUS', objset='', always=False, late=0):
+def personality_xml(pid, kinds, filt, max_units, locos='LAND AMPHIBIOUS', objset='', always=False, late=0,
+                    late_unit=TANK):
     removed = [f'    <StrategicState id="{k}" xai:joinAction="Remove"/>' for k in INHERITED]
     opener, first = [], []
     if late:
         removed += ['    <BuildState id="AlliedNeededUnits" xai:joinAction="Remove"/>']
         opener = [f'  <SkirmishOpeningMove id="{OPENER}" Side="PlayerTemplate:Allies">',
                   f'    <Order Time="0s" Account="PRODUCTION" Deposit="{LATE_DEPOSIT}" />',
-                  *[f'    <Order Build="{TANK}" />'] * late, '    <Order Time="90s"/>', '  </SkirmishOpeningMove>']
+                  *[f'    <Order Build="{late_unit}" />'] * late, '    <Order Time="90s"/>', '  </SkirmishOpeningMove>']
         first = [f'    <OpeningMove Name="{OPENER}" Weight="100%">', '      <Heuristic>',
                  '        <ConstantHeuristic/>', '      </Heuristic>', '    </OpeningMove>']
     return '\n'.join([
@@ -85,9 +86,10 @@ def objfilter(rule, inc=(), exc=()):
 
 
 def mission(name, kinds=KINDS, filt='', max_units=8, tanks=4, inf=4, tanks_home=0, inf_home=4, second=INF,
-            locos='LAND AMPHIBIOUS', objset='', always=False, late=0):
+            locos='LAND AMPHIBIOUS', objset='', always=False, late=0, late_unit=TANK):
     """second: the other unit type (Peacekeepers, or Riptide ACVs in the locomotor builds); inf / inf_home count it.
-    always: the team's AlwaysRecruit; late: Guardians the AI builds itself (a war factory, a plant, the opener)."""
+    always: the team's AlwaysRecruit; late: Guardians the AI builds itself (a war factory, a plant, the opener);
+    late_unit: what the opener builds instead (round 89: aiar4 Riptides)."""
     pid = PID + name[-1]
     facts = {'wake at': WAKE_AT, 'ai tanks': tanks, 'ai infantry': inf,
              'expect tanks home': tanks_home, 'expect infantry home': inf_home}
@@ -96,7 +98,7 @@ def mission(name, kinds=KINDS, filt='', max_units=8, tanks=4, inf=4, tanks_home=
     m = Mission(name=name, map=niagara, facts=facts)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{pid}'}
     xml = personality_xml(pid, kinds, filt, max_units, locos, f' RegisteredObjectSet="{objset}"' if objset else '',
-                          always, late)
+                          always, late, late_unit)
     m.assets.append((f'{pid}.xml', xml, f'AIPersonalityDefinition:{pid}'))
     m.cnv_units = (TANK, second)
     m.cnv_labels = ('坦克在家', '步兵在家' if second == INF else '气垫船在家')
@@ -152,4 +154,11 @@ MISSION = {
                              always=True, tanks_home=0),
     'aiar2': lambda: mission('CampAITFAr2', filt=objfilter('ANY', inc=(TANK,)), inf=0, inf_home=0, late=2,
                              always=True, max_units=4, tanks_home=2),     # full at 4: no room for the late ones
+    # round 89: aiar0-2 owned 4 Guardians throughout -- the opener built none. Why: the script-placed war factory
+    # (aiar3: no Guardians placed, does it build the 2) or owning that template already (aiar4: 4 Guardians, the
+    # opener builds 2 Riptides). Guesses: both built, then out with the team (homes 0).
+    'aiar3': lambda: mission('CampAITFAr3', filt=objfilter('ANY', inc=(TANK,)), tanks=0, inf=0, inf_home=0, late=2,
+                             tanks_home=0),
+    'aiar4': lambda: mission('CampAITFAr4', filt=objfilter('ANY', inc=(TANK, RIPTIDE)), second=RIPTIDE, inf=0,
+                             inf_home=0, late=2, late_unit=RIPTIDE, tanks_home=0),
 }

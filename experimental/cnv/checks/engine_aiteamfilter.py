@@ -31,6 +31,10 @@ Bench 2026-11-09 (B round 88): aiar0 / aiar1 / aiar2 (AlwaysRecruit false / true
 the AI to build 2 more by an opener in an Allied war factory): all three 坦克在家 4 to s13, 3 @ s14, 0 from s15 to
 s75 -- no third tank ever seen at home: the opener most likely built nothing (no owned counter, not told apart).
 Not read for AlwaysRecruit. Next: count s1's owned Guardians (SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER, as aimicro).
+Bench 2026-11-09 (B round 89, 坦克拥有 = owned anywhere): aiar0 / aiar1 / aiar2 owned 4 from s1 to the end -- the
+opener built no Guardian at all (not the home box). aimicro's same opener (2 infantry, a script-placed barracks)
+built both. Told apart next by aiar3 (no Guardians placed: can the script-placed war factory build them) and aiar4
+(4 Guardians, the opener builds 2 Riptides: is it owning that template already) -- written, not benched.
 """
 from parts import Test, counted, square, Script
 
@@ -48,6 +52,9 @@ def a(m):
     lt, lo = getattr(m, 'cnv_labels', ('坦克在家', '步兵在家'))
     counted('CNV_TF_Tanks', lt, t, template=tank, area=AREA, player=s1)
     counted('CNV_TF_Inf', lo, t, template=other, area=AREA, player=s1)
+    if 'late tanks' in m.facts:           # aiar*: did the opener build them at all (owned, anywhere)
+        counted('CNV_TF_Owned', '坦克拥有', t, template=tank, player=s1)
+        counted('CNV_TF_Owned2', '另一种拥有', t, template=other, player=s1)
     at = m.facts.get('check at', AT)      # aiar*: later, after the AI has built its own tanks
     t.expect += [(lt, at, '==', m.facts['expect tanks home'], at + 1),
                  (lo, at, '==', m.facts['expect infantry home'], at + 1)]
@@ -57,4 +64,5 @@ def a(m):
 
 
 CHECKS = {k: {'a': a} for k in ('aitfany', 'aitfnone', 'aitfall', 'aitfki', 'aitfke', 'aitfmax',
-                                 'aitfland', 'aitfamph', 'aitfwat', 'aitfosi', 'aitfosv', 'aitfosc', 'aiar0', 'aiar1', 'aiar2')}
+                                 'aitfland', 'aitfamph', 'aitfwat', 'aitfosi', 'aitfosv', 'aitfosc', 'aiar0', 'aiar1', 'aiar2',
+                                 'aiar3', 'aiar4')}

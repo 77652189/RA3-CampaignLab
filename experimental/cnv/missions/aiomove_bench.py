@@ -36,7 +36,13 @@ MOVES = {'CNVOpenP': (('Build', PLANT),), 'CNVOpenB': (('Build', BARRACKS),), 'C
          'CNVOpenT30P': (('Time', '30s'), ('Build', PLANT)),
          # round 88: a Time carrying an Account / Deposit, as retail AlliedStandard's does
          'CNVOpenPPTD': (('Build', PLANT), ('Build', PLANT),
-                         ('Time', '30s', {'Account': 'PRODUCTION', 'Deposit': '2000'}))}
+                         ('Time', '30s', {'Account': 'PRODUCTION', 'Deposit': '2000'})),
+         # round 89: is it the whole opening's end (the last Time point) or each Build's own wait?
+         'CNVOpenBT3PT30': (('Build', BARRACKS), ('Time', '3s'), ('Build', PLANT), ('Time', '30s')),
+         'CNVOpenBPT5': (('Build', BARRACKS), ('Build', PLANT), ('Time', '5s')),
+         'CNVOpenPPT8': (('Build', PLANT), ('Build', PLANT), ('Time', '8s')),
+         'CNVOpenPT10': (('Build', PLANT), ('Time', '10s')),
+         'CNVOpenBT30': (('Build', BARRACKS), ('Time', '30s'))}
 
 
 def _order(o):
@@ -122,11 +128,14 @@ def mission(name, lines, plants, barracks, gate=None, home_until=None, out_by=No
 
 
 MISSION = {
-    'aiowt': lambda: mission('CampAIOMWt', [('CNVOpenP', '0%', ALL), ('CNVOpenB', '100%', ALL)], 0, 1),
-    'aiowt2': lambda: mission('CampAIOMWt2', [('CNVOpenP', '100%', ALL), ('CNVOpenB', '0%', ALL)], 1, 0),
-    'aiodf': lambda: mission('CampAIOMDf', [('CNVOpenP', '100%', 'EASY'), ('CNVOpenB', '100%', 'MEDIUM HARD BRUTAL')],
+    # round 89: each opening a Build + Time 30s (a lone Build is dropped, aiom1 / aiom7; Build + Time 30s stands, aiom11)
+    'aiowt': lambda: mission('CampAIOMWt', [('CNVOpenPT30', '0%', ALL), ('CNVOpenBT30', '100%', ALL)], 0, 1),
+    'aiowt2': lambda: mission('CampAIOMWt2', [('CNVOpenPT30', '100%', ALL), ('CNVOpenBT30', '0%', ALL)], 1, 0),
+    'aiodf': lambda: mission('CampAIOMDf', [('CNVOpenPT30', '100%', 'EASY'),
+                                            ('CNVOpenBT30', '100%', 'MEDIUM HARD BRUTAL')],
                              0, 1),
-    'aiodf2': lambda: mission('CampAIOMDf2', [('CNVOpenP', '100%', 'MEDIUM HARD BRUTAL'), ('CNVOpenB', '100%', 'EASY')],
+    'aiodf2': lambda: mission('CampAIOMDf2', [('CNVOpenPT30', '100%', 'MEDIUM HARD BRUTAL'),
+                                              ('CNVOpenBT30', '100%', 'EASY')],
                               1, 0),
     'aiohc1': lambda: mission('CampAIOMHc1', [('CNVOpenT', '100%', ALL)], 1, 0, gate=True, home_until=42, out_by=46),
     'aiohc0': lambda: mission('CampAIOMHc0', [('CNVOpenT', '100%', ALL)], 1, 0, gate=False, home_until=None,
@@ -151,4 +160,9 @@ MISSION = {
     # round 88: the retail difference (a Deposit on the Time) and the money at the wake
     'aiom15': lambda: mission('CampAIOM15', [('CNVOpenPPTD', '100%', ALL)], 2, 0),         # aiom13 + Deposit 2000
     'aiom16': lambda: mission('CampAIOM16', [('CNVOpenP', '100%', ALL)], 1, 0, money_first=True),  # aiom1, money 1st
+    # round 89 (guesses by "the opening ends >= X s after the wake keeps all, else only the last Build", 5 < X <= 10)
+    'aiom17': lambda: mission('CampAIOM17', [('CNVOpenBT3PT30', '100%', ALL)], 1, 1),     # B, Time 3s, P, Time 30s
+    'aiom18': lambda: mission('CampAIOM18', [('CNVOpenBPT5', '100%', ALL)], 1, 0),        # B, P, Time 5s
+    'aiom19': lambda: mission('CampAIOM19', [('CNVOpenPPT8', '100%', ALL)], 1, 0),        # P, P, Time 8s (X): bench 1
+    'aiom20': lambda: mission('CampAIOM20', [('CNVOpenPT10', '100%', ALL)], 1, 0),        # P, Time 10s (edge)
 }
