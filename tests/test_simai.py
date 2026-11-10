@@ -374,6 +374,31 @@ def test_team_priority_as_on_the_bench(lib, build):
     assert (rows[39]['到电厂'], rows[39]['到兵营'], rows[39]['在家']) == (0, 4, 0)
 
 
+# bench 2026-11-09 checks/engine_aitargetpick.py a, the plant killed at s35, at s75: (到电厂, 到兵营, 到坦克, 在家)
+def _end_at_75(build, lib):
+    _, rows = _switch_run(build, lib, until=76.0)
+    r = rows[74]
+    return r['到电厂'], r['到兵营'], r['到坦克'], r['在家']
+
+
+@pytest.mark.parametrize('build', ['aiendd', 'aiendh'])
+def test_end_behavior_disband_goes_to_the_next_target_as_on_the_bench(lib, build):
+    """DISBAND / RETURN_HOME_AND_DISBAND: the plant gone, the 4 tanks stand at the barracks (handoff-b 87)."""
+    assert _end_at_75(build, lib) == (0, 4, 0, 0)
+
+
+@pytest.mark.xfail(strict=True, reason='bench aiendr RAMPAGE: all 4 at the barracks from s40, never the tank; '
+                                       'simai sends them at the tank (nearest enemy unit) -- handoff-b 87')
+def test_end_behavior_rampage_as_on_the_bench(lib):
+    assert _end_at_75('aiendr', lib) == (0, 4, 0, 0)
+
+
+@pytest.mark.xfail(strict=True, reason='bench aiendp PICK_NEW_TARGET: all 4 stay where the plant was to s85; '
+                                       'simai re-picks the slot and goes to the barracks -- handoff-b 87')
+def test_end_behavior_pick_new_target_as_on_the_bench(lib):
+    assert _end_at_75('aiendp', lib) == (4, 0, 0, 0)
+
+
 @pytest.mark.parametrize('build,n', [('aipadm1', 8), ('aipadm0', 4), ('aipadm5', 8)])
 def test_team_min_power_advantage_holds_nobody_back(lib, build, n):
     """bench (B round 82): MinPowerAdvantage 1.0 / 5.0 on the team, 8 v 4 and 4 v 8 -- all leave home by s16."""
