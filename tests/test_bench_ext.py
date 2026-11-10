@@ -132,3 +132,23 @@ def test_a_build_marks_ext_exactly_when_asked(tmp_path):
     assert not (tmp_path / 'ra3ext.allow').exists()
     package.mark_ext(str(tmp_path), False)           # nothing to remove: fine
     assert package.ModSpec(name='x').ext is False
+
+
+def test_ext_summary_counts_the_dll_lines(tmp_path):
+    log = tmp_path / 'ra3ext.log'
+    assert harness.ext_summary(None) is None and harness.ext_summary(str(log)) is None
+    log.write_text('ra3ext loaded pid=1 exe=x.game: ok: patched\r\n'
+                   'create #1 module=0 object=0 type=42409853 tag=bef51f8e every=30 limit=40 frame=3\r\n'
+                   'update module=0 object=0 n=30 frame=33\r\nupdate module=0 object=0 n=60 frame=63\r\n')
+    assert harness.ext_summary(str(log)).startswith('ra3ext: ok: patched; 1 create, 2 update')
+
+
+def test_the_probe_check_asks_for_ra3ext_and_its_control_does_not():
+    from checks import engine_ext
+    on, off = engine_ext.MISSION['engine_ext'](), engine_ext.MISSION['engine_extoff']()
+    assert on.ext is True and off.ext is False
+    for m in (on, off):
+        assert len(m.name) + 1 <= 15 and '_' not in m.name      # the build adds the check's letter
+    xml = on.units[0].xml
+    assert xml.count('<DeletionUpdate id="ModuleTag_CNVLog"') == 1 and 'id="CNVExtProbe"' in xml
+    assert {e[0]: e[3] for e in engine_ext.ext_test(off, False).expect}['探针'] == 0

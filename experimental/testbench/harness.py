@@ -343,6 +343,17 @@ def parse_launch(text):
     return dict(m.groups() for m in re.finditer(r'(\w+)=(.*?)(?= \w+=|$)', line))
 
 
+def ext_summary(path):
+    """One line on ra3ext's log: 'ra3ext: <status>; N create, M update (log)', or None without a log."""
+    if not path or not os.path.isfile(path):
+        return None
+    lines = open(path, encoding='utf-8', errors='replace').read().splitlines()
+    status = next((x.split(': ', 1)[-1] for x in lines if x.startswith('ra3ext loaded')), 'no load line')
+    creates = sum(x.startswith('create ') for x in lines)
+    updates = sum(x.startswith('update ') for x in lines)
+    return f'ra3ext: {status}; {creates} create, {updates} update ({path})'
+
+
 class GameProcess:
     """The bits of Popen the Session uses (pid, poll, returncode, kill, wait) for a game another program started (the
     ra3ext launcher). A game already gone when opened polls as exited, code -1."""
@@ -384,6 +395,7 @@ class Session:
         self.slot = None            # the bench slot held (slots.py) while a game runs
         self.mod = None
         self.run_dir = None
+        self.ext_log = None         # ra3ext's log in the run folder, while a game started through ra3ext_launch
         self.frames = []
         self.t0 = None              # mission start (time.monotonic)
         self.view = None            # None: the start camera; else the world point the last minimap jump centred
@@ -494,6 +506,7 @@ class Session:
     def _start(self, args, env):
         """The game's process: Popen, or -- for a mod that asks for ra3ext (ext_wanted) -- the launcher's child, held
         as a GameProcess (the launcher prints the game's pid and exits). ra3ext's log goes to the run folder."""
+        self.ext_log = None
         if not ext_wanted(args):
             return subprocess.Popen(args, cwd=BENCH, env=env)
         if not os.path.isfile(EXT_LAUNCH):

@@ -618,6 +618,9 @@ def _cnv_run(name, check, build, keep, shell=()):
             if tool == 'bench_watch':           # nothing more to wait for: the condition came, or the game ended
                 done = next((w for w in ('UNTIL met', 'mission has ended', 'stopped:') if w in text), '')
     finally:
+        ext = harness.ext_summary(S.ext_log)    # engine line D: the dll's create / update lines, read before the stop
+        if ext:
+            lines.append(ext)
         if not keep and S.p is not None:
             lines.append(bench_stop())
     code, out = lab(*args, '--judge', counted, timeout=120)
