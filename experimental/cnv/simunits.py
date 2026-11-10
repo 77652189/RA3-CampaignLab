@@ -1,8 +1,10 @@
 r"""What the plan simulator (sim.py) needs of a unit, from the game's own data: how fast it goes, on what (ground,
 water, both, air), how far it sees, its KindOf. Retail templates from the SDK's SageXML (the index mapstudy keeps:
 work\sagexml_gameobjects.json gives each template's file and KindOf; the file its LocomotorSet's NORMAL Speed and its
-VisionRange / ShroudClearingRange, defines resolved), cached in work\sim_units_v2.json. Our own units (a mission's Unit: its XML) are read
-the same way from their XML; a template found nowhere gets its kind's default (DEFAULTS) and is listed as guessed.
+VisionRange / ShroudClearingRange, defines resolved; each field from the nearest template up the inheritFrom chain that
+writes it, resolve()), cached in work\sim_units_v6.json. Our own units (a mission's Unit: its XML) are read the same
+way, over the retail templates they inherit from; a template found nowhere gets its kind's default (DEFAULTS) and is
+listed as guessed.
 """
 import json
 import math
@@ -14,8 +16,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'campaign'))
 import labpaths  # noqa: E402
 
-CACHE = os.path.join(labpaths.WORK, 'sim_units_v5.json')     # v2: defines resolved (2026-10-29); v3: + ShroudClearingHeight;
+CACHE = os.path.join(labpaths.WORK, 'sim_units_v6.json')     # v2: defines resolved (2026-10-29); v3: + ShroudClearingHeight;
                                                             # v4: + radius (R8); v5: radius read through 'Type= "BOX"'
+                                                            # v6: inherited fields resolved up inheritFrom (eggs, 11-10)
 CLEAR_HEIGHT = 50.0             # ShroudClearingHeight when a unit does not write one (docs/engine/vision.md: retail units
                                 # nearly all leave it out)
 INDEX = os.path.join(labpaths.WORK, 'sagexml_gameobjects.json')
@@ -40,7 +43,9 @@ def number(text, name):
         if _globals is None:
             _globals = dict(DEFINE.findall(open(GLOBAL_DEFINES, encoding='utf-8', errors='replace').read())) \
                 if os.path.exists(GLOBAL_DEFINES) else {}
-        v = {**_globals, **dict(DEFINE.findall(text))}.get(v[2:], '')
+        name = v[2:]
+        v = {**_globals, **dict(DEFINE.findall(text))}.get(name)
+        v = defines().get(name, '') if v is None else v     # a block cut from its file: the file's defines
     try:
         return float(v.lstrip('='))
     except ValueError:
@@ -51,8 +56,18 @@ DEFAULTS = {'INFANTRY': (50.0, 200.0), 'VEHICLE': (90.0, 250.0), 'AIRCRAFT': (15
             'STRUCTURE': (0.0, 250.0), '': (0.0, 100.0)}
 
 
+_surf_memo = None
+
+
 def _surfaces():
     """Locomotor template id -> its Surfaces (GROUND, WATER, AIR ...)."""
+    global _surf_memo
+    if _surf_memo is None:
+        _surf_memo = _read_surfaces()
+    return _surf_memo
+
+
+def _read_surfaces():
     if not os.path.exists(LOCOMOTORS):
         return {}
     text = open(LOCOMOTORS, encoding='utf-8', errors='replace').read()
@@ -65,10 +80,10 @@ def _surfaces():
     return out
 
 
-def read_xml(text, kindof='', surfaces=None):
-    """One unit's numbers from its XML text: speed (the NORMAL LocomotorSet), surface, vision, kinds."""
-    surfaces = surfaces if surfaces is not None else {}
-    speed, surf = None, []
+def _own_fields(text, surfaces):
+    """What one GameObject block writes itself (None: left to what it inherits): speed and its locomotor's surfaces
+    (the NORMAL LocomotorSet), vision, shroud, clear height, radius."""
+    speed, surf = None, None
     for m in re.finditer(r'<LocomotorSet\b(.*?)/?>', text, re.S):
         a = m.group(1)
         cond = re.search(r'\bCondition="([^"]+)"', a)
@@ -78,13 +93,113 @@ def read_xml(text, kindof='', surfaces=None):
         if sp and speed is None:
             speed = float(sp.group(1))
             surf = surfaces.get(lo.group(1), []) if lo else []
-    kinds = set(kindof.split())
-    if not kindof:
-        k = re.search(r'\bKindOf="([^"]+)"', text)
-        kinds = set(k.group(1).split()) if k else set()
-    return dict(speed=speed, surface=surface_of(surf, kinds), vision=number(text, 'VisionRange'),
-                shroud=number(text, 'ShroudClearingRange'), kinds=sorted(kinds),
+    return dict(speed=speed, surf=surf, vision=number(text, 'VisionRange'), shroud=number(text, 'ShroudClearingRange'),
                 clear_height=number(text, 'ShroudClearingHeight'), radius=radius(text))
+
+
+_all_defines = None
+
+
+def defines():
+    """Every <Define> in SageXML (197 names, none defined twice -- 11-10): an egg's KindOf '=$EGG_KINDOFS' is
+    defined in BaseEgg.xml, which the egg's file includes; GameObject blocks cut out of their file lose that."""
+    global _all_defines
+    if _all_defines is None:
+        _all_defines = {}
+        for root, _, files in os.walk(SAGEXML):
+            for f in files:
+                if f.endswith('.xml'):
+                    text = open(os.path.join(root, f), encoding='utf-8', errors='replace').read()
+                    _all_defines.update(DEFINE.findall(text))
+    return _all_defines
+
+
+def expand(value, depth=0, extra=None):
+    """A SageXML attribute value with its defines spelled out: "=$EGG_KINDOFS+' SCORE'" -> the define's text, then
+    ' SCORE'; a value not starting with '=' as it is."""
+    if not value.startswith('=') or depth > 5:
+        return value
+    out = []
+    for name, lit in re.findall(r"\$([A-Za-z_0-9]+)|'([^']*)'", value[1:]):
+        got = (extra or {}).get(name)
+        out.append(expand(defines().get(name, '') if got is None else got, depth + 1, extra) if name else lit)
+    return ''.join(out)
+
+
+def edit_kinds(base, value, extra=None):
+    """KindOf over the inherited set: '+X -Y' edits it (A04_ExplodingTengu: -VEHICLE +INFANTRY); a plain list
+    (BaseStructure's, an egg's =$EGG_KINDOFS) replaces it."""
+    toks = expand(value, extra=extra).split()
+    if not any(t[0] in '+-' for t in toks):
+        return set(toks)
+    out = set(base)
+    for t in toks:
+        (out.discard if t[0] == '-' else out.add)(t.lstrip('+-'))
+    return out
+
+
+def _head(xml, template):
+    """The <GameObject ...> tag of `template` in xml (case blind), else the first; '' when none."""
+    heads = re.findall(r'<GameObject\b[^>]*>', xml or '')
+    mine = [h for h in heads if re.search(rf'\bid="{re.escape(template)}"', h, re.I)]
+    return (mine or heads or [''])[0]
+
+
+def _block_of(text, template):
+    """The <GameObject id=template> block of a file's text (case blind), '' when none."""
+    for m in re.finditer(r'<GameObject\b.*?</GameObject>', text or '', re.S):
+        if re.search(rf'\bid="{re.escape(template)}"', _head(m.group(0), template), re.I):
+            return m.group(0)
+    return ''
+
+
+_resolved = {}
+
+
+def resolve(template, own=None, surfaces=None, xml=None, depth=0):
+    """{sorting, kinds, speed, surface, vision, shroud, clear_height, radius} of a template, each from the nearest
+    template up its inheritFrom chain that writes it (KindOf edited down the chain, edit_kinds): a Nanocore egg
+    writes its LocomotorSet and KindOf define but not EditorSorting (BaseEgg's UNIT). own: {id: xml} of a mission's
+    units, read over the retail templates they inherit from. A campaign override (the same id inheriting itself)
+    reads over the block of its own name's file."""
+    surfaces = surfaces if surfaces is not None else _surfaces()
+    key = template.lower()
+    mine = xml is not None or bool((own or {}).get(template))
+    if not mine and key in _resolved:
+        return _resolved[key]
+    if xml is None:
+        xml = _xml(template, own)
+    head = _head(xml, template)
+    up = parent(xml, template) if depth < 10 else None
+    if not up:
+        base = dict(sorting=None, kinds=set(), speed=None, surf=None, vision=None, shroud=None, clear_height=None,
+                    radius=None)
+    elif up.lower() == key:
+        text = retail_xml(up)
+        base = resolve(up, None, surfaces, _block_of(text, up) or text, depth + 1)
+    else:
+        base = resolve(up, own, surfaces, None, depth + 1)
+    out = dict(base)
+    sort, kind = _attr(head, 'EditorSorting'), _attr(head, 'KindOf')
+    if sort:
+        out['sorting'] = sort
+    if kind is not None:
+        out['kinds'] = edit_kinds(base['kinds'], kind, dict(DEFINE.findall(xml)))
+    for k, v in _own_fields(xml or '', surfaces).items():
+        if v is not None:
+            out[k] = v
+    if not mine:
+        _resolved[key] = out
+    return out
+
+
+def read_xml(template, own=None, surfaces=None):
+    """One unit's table entry: speed (the NORMAL LocomotorSet), surface, vision, kinds -- resolve()d up its chain;
+    a building (sorted STRUCTURE) counts STRUCTURE among its kinds."""
+    r = resolve(template, own, surfaces)
+    kinds = set(r['kinds']) | ({'STRUCTURE'} if r['sorting'] == 'STRUCTURE' else set())
+    return dict(speed=r['speed'], surface=surface_of(r['surf'] or [], kinds), vision=r['vision'],
+                shroud=r['shroud'], kinds=sorted(kinds), clear_height=r['clear_height'], radius=r['radius'])
 
 
 def radius(text):
@@ -118,39 +233,31 @@ def surface_of(surf, kinds):
 
 
 def units():
-    """(template lower case, its index entry, its XML file) for every unit and building: the index's file, or --
-    where the index points at a campaign override (Includes/CampaignOverrides: an edit, not the unit) -- the
-    SageXML file of the template's own name."""
+    """(template lower case, its index entry with EditorSorting resolved up the chain, its XML file) for every unit
+    and building: the index's file, or -- where the index points at a campaign override (Includes/CampaignOverrides:
+    an edit, not the unit) -- the SageXML file of the template's own name. A template that does not write its
+    EditorSorting takes its base's (the Nanocore eggs: BaseEgg's UNIT)."""
     idx = json.load(open(INDEX, encoding='utf-8')) if os.path.exists(INDEX) else {}
     by_name = {}
     for root, _, files in os.walk(SAGEXML):
         for f in files:
             if f.endswith('.xml'):
                 by_name.setdefault(f[:-4].lower(), os.path.join(root, f))
+    surfaces = _surfaces()
     for t, e in idx.items():
         f = e.get('file', '')
         path = os.path.join(SAGEXML, *f[5:].split('/')) if f.startswith('DATA:') else ''
-        if 'CampaignOverrides' in f or not e.get('EditorSorting'):
-            own = by_name.get(t)
-            if not own:
-                continue
-            path = own
-            text = open(own, encoding='utf-8', errors='replace').read()
-            sort = re.search(r'\bEditorSorting="([^"]+)"', text)
-            e = dict(e, EditorSorting=sort.group(1) if sort else '')
-        if e.get('EditorSorting') in ('UNIT', 'STRUCTURE') and path and os.path.exists(path):
+        if 'CampaignOverrides' in f:
+            path = by_name.get(t, '')
+        sort = e.get('EditorSorting') if 'CampaignOverrides' not in f else None
+        e = dict(e, EditorSorting=sort or resolve(t, surfaces=surfaces)['sorting'] or '')
+        if e['EditorSorting'] in ('UNIT', 'STRUCTURE') and path and os.path.exists(path):
             yield t, e, path
 
 
 def _build():
     surfaces = _surfaces()
-    out = {}
-    for t, e, path in units():
-        # the index writes inherited KindOf as +X / -X edits: keep the added ones; a building is sorted STRUCTURE
-        kindof = ' '.join([k.lstrip('+') for k in e.get('KindOf', '').split() if not k.startswith('-')]
-                          + (['STRUCTURE'] if e.get('EditorSorting') == 'STRUCTURE' else []))
-        out[t] = read_xml(open(path, encoding='utf-8', errors='replace').read(), kindof, surfaces)
-    return out
+    return {t: read_xml(t, surfaces=surfaces) for t, _, _ in units()}
 
 
 _table = None
@@ -1096,7 +1203,7 @@ def _retail_radius(template):
 def stats(template, own=None):
     """{speed, surface, vision, shroud, kinds, radius, guessed} for a template; own: {id: xml text} of the mission's units."""
     if own and template in own:
-        e = read_xml(own[template], surfaces=_surfaces())
+        e = read_xml(template, own)
     else:
         e = dict(table().get(template.lower()) or {})
     guessed = []

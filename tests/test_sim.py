@@ -63,7 +63,9 @@ def test_a_cryo_beam_slows_by_steps_then_freezes_and_a_frozen_unit_breaks_at_a_t
     s.add('cop', 'AlliedSupportAircraft', s.foe, a.x, a.y)
     tank = s.add('tank', 'SovietAntiVehicleVehicleTech1', s.human, a.x + 100, a.y)
     s.run(3)
-    assert tank.cold_step == 0 and abs(tank.speed - 0.8 * 75.0) < 1e-6
+    # the Hammer's campaign speed (CampaignOverrides: 60, not its base 75 -- engine_topple; the unit table reads
+    # the override since round 139)
+    assert tank.cold_step == 0 and abs(tank.speed - 0.8 * 60.0) < 1e-6
     s.run(13)
     assert 'UNDER_FROZEN' in tank.status and tank.speed == 0 and tank.alive and tank.hp == tank.max_hp
     s.add('gi', 'AlliedAntiInfantryInfantry', s.foe, a.x + 130, a.y)

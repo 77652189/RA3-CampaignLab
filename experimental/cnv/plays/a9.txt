@@ -15,10 +15,10 @@
 45 派 javelin 去 shield west
 55 派 lag 去 shield west
 55 派 tanya 去 shield west
-85 派 guardian 去 ball 1
-85 派 javelin 去 ball 1
-85 派 lag 去 ball 1
-85 派 tanya 去 ball 1
+85 攻击 guardian 打 ball 1
+85 攻击 javelin 打 ball 1
+85 攻击 lag 打 ball 1
+85 攻击 tanya 打 ball 1
 # 2. the rotation: the yard goes up at once (anti-air for the bombers and the Kirov), the team stands at the ball that
 #    lights next, a few seconds before it (the rotation: ball k at 8 + 45 (k-2) s after the west ball falls)
 CNV_A9_Phase_2+3 删除 名字含 AlliedMCV
@@ -26,26 +26,26 @@ CNV_A9_Phase_2+3 造 AlliedConstructionYard 在 west suburb
 CNV_A9_Phase_2+10 造 AlliedAntiAirVehicleTech1 在 west suburb
 CNV_A9_Phase_2+30 造 AlliedAntiAirVehicleTech1 在 west suburb
 CNV_A9_Phase_2+50 造 AlliedAntiAirVehicleTech1 在 west suburb
-CNV_A9_Phase_2+3 派 guardian 去 ball 2
-CNV_A9_Phase_2+3 派 javelin 去 ball 2
-CNV_A9_Phase_2+3 派 lag 去 ball 2
-CNV_A9_Phase_2+3 派 tanya 去 ball 2
-CNV_A9_Phase_2+50 派 guardian 去 ball 3
-CNV_A9_Phase_2+50 派 javelin 去 ball 3
-CNV_A9_Phase_2+50 派 lag 去 ball 3
-CNV_A9_Phase_2+50 派 tanya 去 ball 3
-CNV_A9_Phase_2+95 派 guardian 去 ball 4
-CNV_A9_Phase_2+95 派 javelin 去 ball 4
-CNV_A9_Phase_2+95 派 lag 去 ball 4
-CNV_A9_Phase_2+95 派 tanya 去 ball 4
-CNV_A9_Phase_2+140 派 guardian 去 ball 5
-CNV_A9_Phase_2+140 派 javelin 去 ball 5
-CNV_A9_Phase_2+140 派 lag 去 ball 5
-CNV_A9_Phase_2+140 派 tanya 去 ball 5
-CNV_A9_Phase_2+185 派 guardian 去 ball 6
-CNV_A9_Phase_2+185 派 javelin 去 ball 6
-CNV_A9_Phase_2+185 派 lag 去 ball 6
-CNV_A9_Phase_2+185 派 tanya 去 ball 6
+CNV_A9_Phase_2+3 攻击 guardian 打 ball 2
+CNV_A9_Phase_2+3 攻击 javelin 打 ball 2
+CNV_A9_Phase_2+3 攻击 lag 打 ball 2
+CNV_A9_Phase_2+3 攻击 tanya 打 ball 2
+CNV_A9_Phase_2+50 攻击 guardian 打 ball 3
+CNV_A9_Phase_2+50 攻击 javelin 打 ball 3
+CNV_A9_Phase_2+50 攻击 lag 打 ball 3
+CNV_A9_Phase_2+50 攻击 tanya 打 ball 3
+CNV_A9_Phase_2+95 攻击 guardian 打 ball 4
+CNV_A9_Phase_2+95 攻击 javelin 打 ball 4
+CNV_A9_Phase_2+95 攻击 lag 打 ball 4
+CNV_A9_Phase_2+95 攻击 tanya 打 ball 4
+CNV_A9_Phase_2+140 攻击 guardian 打 ball 5
+CNV_A9_Phase_2+140 攻击 javelin 打 ball 5
+CNV_A9_Phase_2+140 攻击 lag 打 ball 5
+CNV_A9_Phase_2+140 攻击 tanya 打 ball 5
+CNV_A9_Phase_2+185 攻击 guardian 打 ball 6
+CNV_A9_Phase_2+185 攻击 javelin 打 ball 6
+CNV_A9_Phase_2+185 攻击 lag 打 ball 6
+CNV_A9_Phase_2+185 攻击 tanya 打 ball 6
 # 3. the last three: the Soviets come over the east bridge (apocalypse tanks, a Kirov). Swap like for like: javelin men
 #    and guardians hold the plaza centre against the tanks, the time-lag cars stop them, the anti-air cars (the yard's)
 #    come up for the Kirov and the bombers, Tanya stays back with them. Then the last balls in the rotation's order.
@@ -54,12 +54,24 @@ CNV_A9_Phase_3+2 派 guardian 去 tower
 CNV_A9_Phase_3+2 派 lag 去 tower
 CNV_A9_Phase_3+2 派 tanya 去 shield west
 CNV_A9_Phase_3+2 派 名字含 SIM Made 去 tower
-CNV_A9_Phase_3+100 派 javelin 去 ball 7
-CNV_A9_Phase_3+100 派 guardian 去 ball 7
-CNV_A9_Phase_3+100 派 lag 去 ball 7
-CNV_A9_Phase_3+122 派 javelin 去 ball 8
-CNV_A9_Phase_3+122 派 guardian 去 ball 8
-CNV_A9_Phase_3+122 派 lag 去 ball 8
-CNV_A9_Phase_3+144 派 javelin 去 ball 9
-CNV_A9_Phase_3+144 派 guardian 去 ball 9
-CNV_A9_Phase_3+144 派 lag 去 ball 9
+# the balls are buildings (BaseStructure: STRUCTURE NOT_AUTOACQUIRABLE): nobody shoots one unordered, so every ball
+# is an attack order on it, and the last three take whoever is left at the tower (the reinforcements, Tanya, the anti-air cars -- round 139:
+# before the unit table read the ball's inherited kinds the cars razed them by themselves)
+CNV_A9_Phase_3+100 攻击 javelin 打 ball 7
+CNV_A9_Phase_3+100 攻击 guardian 打 ball 7
+CNV_A9_Phase_3+100 攻击 lag 打 ball 7
+CNV_A9_Phase_3+100 攻击 名字含 SIM Made 打 ball 7
+CNV_A9_Phase_3+100 攻击 名字含 Give 打 ball 7
+CNV_A9_Phase_3+100 攻击 tanya 打 ball 7
+CNV_A9_Phase_3+122 攻击 javelin 打 ball 8
+CNV_A9_Phase_3+122 攻击 guardian 打 ball 8
+CNV_A9_Phase_3+122 攻击 lag 打 ball 8
+CNV_A9_Phase_3+122 攻击 名字含 SIM Made 打 ball 8
+CNV_A9_Phase_3+122 攻击 名字含 Give 打 ball 8
+CNV_A9_Phase_3+122 攻击 tanya 打 ball 8
+CNV_A9_Phase_3+144 攻击 javelin 打 ball 9
+CNV_A9_Phase_3+144 攻击 guardian 打 ball 9
+CNV_A9_Phase_3+144 攻击 lag 打 ball 9
+CNV_A9_Phase_3+144 攻击 名字含 SIM Made 打 ball 9
+CNV_A9_Phase_3+144 攻击 名字含 Give 打 ball 9
+CNV_A9_Phase_3+144 攻击 tanya 打 ball 9

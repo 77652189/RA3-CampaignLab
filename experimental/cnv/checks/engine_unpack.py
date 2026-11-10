@@ -22,8 +22,10 @@ Bench 11-10 (round 138), last reading s41 (帧数 车帧 场帧 名字帧):
        (场帧's thousands 0) while the area count did -- not looked into (still unfolding: not counted as owned?).
 Simulator (sim: NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT with SpecialPower_UnpackReplaceSelf, REPLACE_FRAMES 6;
 tests/test_simbench.py test_mcv_deploys_at_a_far_waypoint_as_the_bench): mcv 586 44128 458458 586 (the yard from
-frame 128). egg NOT matched: the eggs are missing from the unit table (EditorSorting / KindOf inherited from BaseEgg,
-JapanEggLocomotor writes no Speed), the sim's egg has speed 0 and never gets there.
+frame 128). egg 586 39108 478478 586 (round 139: the defense from frame 108; the egg came into the unit table once
+simunits.resolve read EditorSorting / KindOf up its chain from BaseEgg -- its own LocomotorSet writes Speed 60;
+test_nanocore_deploys_at_a_far_waypoint_as_the_bench). The bench's owned count of the defense (场帧's thousands 0)
+is not modelled: the sim counts it owned.
 """
 from maps import niagara
 from parts import Mission, Script, Test, square

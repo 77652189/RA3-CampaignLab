@@ -1330,8 +1330,23 @@ def test_reinforcement_teams_as_the_bench():
 def test_mcv_deploys_at_a_far_waypoint_as_the_bench():
     """NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT(mcv, Command_UnPackAlliedMCV, 400 east) (bench 11-10 engine_unpack
     mcv): the MCV drives there and is the yard from frame 121 on (sim 128), the yard on the point, the name passed on
-    (名字帧 = 帧数). The egg variant is not held: eggs are not in the unit table, the sim's egg does not move."""
+    (名字帧 = 帧数)."""
     frames, unit, yard, name = _sim_run('engine_unpack_mcv', 'go', 40.0).series[-1][1]
     assert 115 <= unit % 1000 <= 135 and unit // 1000 > 0, unit
     assert yard % 1000 == frames - unit % 1000 and yard // 1000 == yard % 1000, (frames, unit, yard)
+    assert name == frames
+
+
+def test_nanocore_deploys_at_a_far_waypoint_as_the_bench():
+    """The egg variant (bench 11-10 engine_unpack egg: JapanBaseDefenseEgg -> JapanBaseDefense, replaced at frame 112,
+    sim 108). The egg is in the unit table through its chain (simunits.resolve: BaseEgg's EditorSorting UNIT, KindOf
+    =$BASE_DEFENSE_EGG_KINDOFS defined in BaseEgg.xml, its own LocomotorSet Speed 60 -- round 139). Not held: the
+    bench's PLAYER_HAS_OBJECT_COMPARISON(JapanBaseDefense) stayed 0 while the area count held (场帧 522); the sim
+    counts it owned."""
+    import simunits
+    egg = simunits.stats('JapanBaseDefenseEgg')
+    assert egg['speed'] == 60.0 and egg['surface'] == 'both' and 'VEHICLE' in egg['kinds'] and not egg['guessed']
+    frames, unit, yard, name = _sim_run('engine_unpack_egg', 'go', 40.0).series[-1][1]
+    assert 102 <= unit % 1000 <= 122 and unit // 1000 > 0, unit
+    assert yard % 1000 == frames - unit % 1000, (frames, unit, yard)
     assert name == frames
