@@ -501,6 +501,26 @@ def freeze(template, own=None):
     return t, (_fight_data()['armors'].get(a) if a else None)
 
 
+def autoheal(template, own=None):
+    """(amount, every, wait): AutoHealBehavior of a template that mends from the start, with no state or rank in the
+    way -- HealingAmount points every `every` frames, the first `wait` frames after a hurt (engine_heal a / b, bench
+    11-06, docs/engine/heal.md 1: the intervals are floor(15 x seconds) frames, 0.5 s is 7). None without one (the
+    state-gated and rank-gated ones are not modelled: InitiallyActive false or an ObjectStatusValidation)."""
+    def read(xml):
+        for head, _ in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'AutoHealBehavior'):
+            if _attr(head, 'InitiallyActive') == 'false' or _attr(head, 'ObjectStatusValidation') or \
+                    _num(_attr(head, 'Radius'), 0.0) > 0:
+                continue
+            return (int(_num(_attr(head, 'HealingAmount'), 0.0)),
+                    int(15 * _secs(_attr(head, 'HealingDelay') or '1s')),
+                    int(15 * _secs(_attr(head, 'StartHealingDelay') or '0s')))
+        return None
+    try:
+        return _inherited(template, own, read, None)
+    except (OSError, ValueError):
+        return None
+
+
 def tracker(text):
     """A SecondaryDamageTracker (the freeze): {'every': UpdateDuration s, 'melt': DissipateAmount taken off each
     UpdateDuration, 'cap': MaxDamageClampScaler (the most it holds, x max health), 'steps': [[Fraction of max health,

@@ -2735,6 +2735,7 @@ class Sim:
                 self.happen(self.events.pop(0))
             self.tech_due(eng.frame + 1)        # before the frame's scripts (bench 11-08 engine_protocol rank: rank
             eng.step()                          # 2 read by the scripts of frame 5400 = 360 s x 15)
+            self.autoheal(eng.frame)
             self.expire(eng.frame)
             self.build_due(eng.frame)
             self.blast_due(eng.frame)
@@ -2752,6 +2753,34 @@ class Sim:
             if self.combat and self.ending is None:
                 self.deal(1.0 / self.fps)       # R6: the aimed fire frame by frame, after the frame's scripts
         self.t = t0
+
+    def autoheal(self, frame):
+        """AutoHealBehavior (simunits.autoheal; engine line C round 7, engine_heal a / b): a hurt body (health below
+        what it was last frame) is mended `amount` every `every` frames, the first `wait` frames after the latest hurt;
+        full health stops it. The state- and rank-gated ones are not modelled."""
+        cache = self.__dict__.setdefault('_heal_of', {})
+        for b in self.bodies.values():
+            if not b.alive:
+                continue
+            if b.template not in cache:
+                cache[b.template] = simunits.autoheal(b.template, self.own)
+            rule = cache[b.template]
+            if not rule or not rule[0]:
+                continue
+            amount, every, wait = rule
+            seen = getattr(b, 'heal_seen', None)
+            if seen is not None and b.hp < seen - 1e-9:
+                b.heal_at = frame + max(wait, 1)
+            if b.hp < b.max_hp - 1e-9:
+                if getattr(b, 'heal_at', None) is None:
+                    b.heal_at = frame + every
+                if frame >= b.heal_at:
+                    b.hp = min(b.max_hp, b.hp + amount)
+                    b.heal_at = frame + every
+            else:
+                b.heal_at = None
+            b.heal_seen = b.hp
+            self.used.add('autoheal')
 
     def release(self):
         """The script events anchored to a flag that is up now: due `delta` after this moment."""

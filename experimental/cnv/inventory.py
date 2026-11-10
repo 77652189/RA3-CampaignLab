@@ -80,6 +80,10 @@ BENCHED_TESTS = {
     (MODULE, 'Body/ActiveBody'): 'tests/test_simbench.py::test_super_the_proton_collider_ends_as_the_bench',
     (MODULE, 'Behaviors/AttributeModifierPoolUpdate'):
         'tests/test_simbench.py::test_super_the_iron_curtain_holds_off_fire_some_23_seconds',
+    (MODULE, 'Behaviors/SecondaryDamageTracker'):
+        'tests/test_simbench.py::test_cryo_a_frozen_tank_melts_334_frames_after_the_beam_whatever_the_beam',
+    (MODULE, 'Behaviors/AutoHealBehavior'):
+        'tests/test_simbench.py::test_autoheal_an_apocalypse_mends_two_points_every_7_frames_after_a_15_frame_wait',
     (MODULE, 'Behaviors/SquishCollide'):
         'tests/test_simbench.py::test_crush_a_tank_drives_over_a_lower_level_and_leaves_an_equal_one',
     (MODULE, 'Behaviors/CrushDie'):
@@ -112,7 +116,6 @@ NOTES = {
     (MODULE, 'Behaviors/ContestableGarrisonContain'): (TODO, f'{_NOT_IN_SIM}（没有驻军）'),
     (MODULE, 'Behaviors/GarrisonContain'): (TODO, f'{_NOT_IN_SIM}（没有驻军；NAMED_GARRISON_SPECIFIC_BUILDING 另算）'),
     (MODULE, 'Behaviors/StancesBehavior'): (TODO, f'{_NOT_IN_SIM}（没有姿态）'),
-    (MODULE, 'Behaviors/AutoHealBehavior'): (TODO, f'{_NOT_IN_SIM}（没有自动回血）'),
     (MODULE, 'Behaviors/RunOffMapBehavior'): (TODO, f'{_NOT_IN_SIM}（没有逃离地图）'),
     (MODULE, 'Behaviors/ToggleStatusSpecialAbilityUpdate'): (TODO, f'{_NOT_IN_SIM}（没有按钮切换状态）'),
     (MODULE, 'Behaviors/ReplaceSelfSpecialAbility'): (TODO, f'{_NOT_IN_SIM}（没有换形态）'),

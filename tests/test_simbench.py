@@ -1238,3 +1238,42 @@ def test_scripts6_else_random_and_timers_as_the_bench():
     assert [by[k][0] for k in (1, 3, 19)] == [1, 11, 21], by
     assert by[19][1] == 14, by
     assert by[3][2] == 1 and by[5][2] == 41 and by[7][2] == 43 and by[11][2] == 63, by
+
+
+# ---- self-healing (sim.Sim.autoheal, simunits.autoheal): bench 2026-11-06 engine_heal (docs/engine/heal.md): an
+# Apocalypse (3000 health, AutoHealBehavior 2 points every 7 frames, waits 15 frames after a hurt) hurt 600 at Go:
+# 低血 = 1 x frames below 81 % + 1000 x frames below 82 % -> 219114 (81 % again after 114 frames, 82 % after 219);
+# b: 30 more at frame 40 -> 230 frames below 81 %, below 82 % to the end. (The state / rank-gated heals c, d, e are not
+# modelled.)
+def test_autoheal_an_apocalypse_mends_two_points_every_7_frames_after_a_15_frame_wait():
+    a = _sim_run('engine_heal', 'a', 18.0).series[-1][1]
+    assert a[1] == 219114, a
+    b = _sim_run('engine_heal', 'b', 18.0).series[-1][1]
+    assert b[1] % 1000 == 230 and b[1] // 1000 == b[0], b          # below 82 % every frame to the end
+
+
+# ---- the freeze (sim.Sim.chill, SecondaryDamageTracker): bench 2026-11-09 engine_cryo (checks/engine_cryo.py; the bench ran
+# it on probe_range, the simulator on Niagara's west field -- the copter's flight differs, the tracker does not):
+# one cryocopter / two on a Hammer (550), the beam cut by script 34 s after the order. 先冻 / 冻住 / 化冰 = 139 / 705 / 334
+# (one), 79 / 765 / 334 (two): frozen until 844 frames after the order either way, melting 334 frames (= (1100 - 550) / 25
+# a second, the 200 % cap) once the beam is gone. The simulator's flight to the target is slower (first frozen 189 / 90).
+def test_cryo_a_frozen_tank_melts_334_frames_after_the_beam_whatever_the_beam():
+    one = _sim_run('engine_cryo', 'one', 90.0).series[-1][1]
+    two = _sim_run('engine_cryo', 'two', 90.0).series[-1][1]
+    for first, held, melt in (one, two):
+        assert abs(first + held - 844) <= 10 and abs(melt - 334) <= 6, (one, two)
+    assert two[0] < one[0], (one, two)          # two beams freeze it sooner
+
+
+def test_scripts7_idle_for_frames_drops_the_order_as_the_bench():
+    """Bench 2026-11-09 engine_scripts7 idle: UNIT_IDLE_FOR_FRAMECOUNT 15 and 1 on a moving Guardian -- neither got
+    to its goal (25 s), the control did (二到 1 from s14): the order is dropped, as the seconds version's."""
+    last = _sim_run('engine_scripts7', 'idle', 25.0).series[-1][1]
+    assert last == [0, 1, 0], last
+
+
+def test_scripts7_objects_made_with_an_angle_as_the_bench():
+    """Bench 2026-11-09 engine_scripts7 face: two CREATE_NAMED_..._WITH_ORIENTATION and two CREATE_UNNAMED_..._WITH_
+    ORIENTATION made at 1 s, 造出 4 from s1 (the facing not read: the camera did not show the row)."""
+    last = _sim_run('engine_scripts7', 'face', 8.0).series[-1][1]
+    assert last == [4], last
