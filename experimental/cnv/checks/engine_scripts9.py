@@ -71,6 +71,15 @@ BENCH 11-09 (round 134): rel / atk / atkr on engine_scripts9b (FoeX on Soviet_4,
     (Att's two take Tgt's two side by side: Tgt 1 falls at one tank's rate, like Tg2 1 under solo); 丙 Tg2 2 from s20,
     12 from s32 -- solo goes on to the team's next member; 丁 the dummy 100 to s61. Simulator: the same order, the
     kills at s20 / s37 (first fire s6), 2-4 s behind the bench.
+BENCH 11-09 (round 135): the cause. SidesList decoded whole (u8 1, u32 12 sides, each the property dict + u32 0: no
+  build list, nothing else per side); Teams ordinary (teamSoviet_1 like teamSoviet_4). LibraryMapLists (one per side,
+  SidesList order) gives Player_2 and Soviet_1 / 2 / 3 Lib_Skirmish_Setup, Soviet_4 / 5 / 6 none -- and
+  package.write_map clears every side's scripts but not their libraries. The library's 'Skirmish AI - Transfer Units'
+  runs UNIT_AI_TRANSFER_ALL('<This Player>', 1) at the start (with SKIRMISH_AI_MAKE_BASE, _USE_REPAIRS, ...), which
+  takes the player's placed units off every team (memb2's start-up UNIT_SET_TEAM did not survive it).
+  memb11 (9i: Soviet_1's library list emptied): 留 16 from s1 -- the s1 crews die like Soviet_4's.
+  memb12 (9j: 9b's sides with Lib_Skirmish_Setup copied onto Soviet_4 and 5): 留 23 -- their crews go empty.
+  Simulator: neither runs the container's libraries nor takes units off teams on UNIT_AI_TRANSFER_ALL (16 on s1).
 """
 from maps import probe_border
 from parts import Mission, Script, Test, status
@@ -94,9 +103,9 @@ def _put(m, template, x, y, **kw):
     m.put(template, 'stop row', x - O[0], y - O[1], **kw)
 
 
-def mission(name='CampPend9', foe='s1', moved=None):
+def mission(name='CampPend9', foe='s1', moved=None, map=probe_border):
     """foe: the side of the FoeX crews; moved: {crew: side} for an ATK crew moved off its side (pend_scripts9b)."""
-    m = Mission(name=name, map=probe_border, units=[], facts={})
+    m = Mission(name=name, map=map, units=[], facts={})
     m.spawns |= {TANK}
     for k, y in REL.items():
         me, foe_c = m.crew(f'Me{k}'), m.crew(f'Foe{k}', side=foe)
@@ -161,7 +170,7 @@ def atkr(m):
 
 
 LEFT = {'memb': 23, 'memb2': 23, 'memb3': 23, 'memb4': 16, 'memb5': 17, 'memb6': 23, 'memb7': 23, 'memb8': 23,
-        'memb9': 23, 'memb10': 17}        # 留 on the bench (rounds 130-133); members everywhere would be 16
+        'memb9': 23, 'memb10': 17, 'memb11': 16, 'memb12': 23}        # 留 on the bench (rounds 130-133); members everywhere would be 16
 
 
 def memb(m, left=23):
@@ -275,6 +284,37 @@ def owner(m):
     return t
 
 
+def memb11(m):
+    """engine_scripts9i: memb with Soviet_1's library list emptied (the container gives Soviet_1 / 2 / 3 and Player_2
+    Lib_Skirmish_Setup, whose 'Skirmish AI - Transfer Units' runs UNIT_AI_TRANSFER_ALL on its player at the start)."""
+    return memb(m, LEFT['memb11'])
+
+
+def memb12(m):
+    """engine_scripts9j: memb on engine_scripts9b's sides (FoeX Soviet_4, Tgt / Tg2 Soviet_5) with Soviet_1's library
+    list (Lib_Skirmish_Setup) given to Soviet_4 and Soviet_5 as well: the other half of memb11."""
+    return memb(m, LEFT['memb12'])
+
+
+def _libraries(players):
+    """probe_border with the container's LibraryMaps (one per side, SidesList order, the nameless side first) changed:
+    {player: 'none' | 'skirmish'} -- 'skirmish' copies Soviet_1's list (Lib_Skirmish_Setup)."""
+    import types
+    import mapstudy
+    mod = types.ModuleType(probe_border.__name__)
+    mod.__dict__.update({k: v for k, v in vars(probe_border).items() if not k.startswith('__')})
+
+    def terrain(m):
+        probe_border.terrain(m)
+        names = [''] + list(mapstudy.players(m))
+        libs = [n for _, n in m.walk() if n.name == 'LibraryMaps']
+        skirmish = libs[names.index('Soviet_1')].head
+        for player, what in players.items():
+            libs[names.index(player)].head = bytes(4) if what == 'none' else skirmish
+    mod.terrain = terrain
+    return mod
+
+
 def _sides(name, **sides):
     m = mission(name)
     for side, props in sides.items():
@@ -296,10 +336,14 @@ MISSION = {'engine_scripts9': mission,
            'engine_scripts9g': lambda: _sides('CampP9g', **{s: {'playerAllies': '', 'aiPersonality':
                                                               'AIPersonalityDefinition:DefaultPersonality'}
                                                           for s in ('s1', 's2', 's3')}),
-           'engine_scripts9h': lambda: mission('CampP9h', foe='s3', moved={'Tgt': 's6', 'Tg2': 's6'})}
+           'engine_scripts9h': lambda: mission('CampP9h', foe='s3', moved={'Tgt': 's6', 'Tg2': 's6'}),
+           'engine_scripts9i': lambda: mission('CampP9i', map=_libraries({'Soviet_1': 'none'})),
+           'engine_scripts9j': lambda: mission('CampP9j', foe='s4', moved={'Tgt': 's5', 'Tg2': 's5'},
+                                               map=_libraries({'Soviet_4': 'skirmish', 'Soviet_5': 'skirmish'}))}
 CHECKS = {'engine_scripts9': {'memb': memb, 'memb2': memb2, 'memb3': memb3,
                             'owner': owner},
           'engine_scripts9b': {'memb4': memb4, 'rel': rel, 'atk': atk, 'atkr': atkr},
           'engine_scripts9c': {'memb5': memb5}, 'engine_scripts9d': {'memb6': memb6},
           'engine_scripts9e': {'memb7': memb7}, 'engine_scripts9f': {'memb8': memb8},
-          'engine_scripts9g': {'memb9': memb9}, 'engine_scripts9h': {'memb10': memb10}}
+          'engine_scripts9g': {'memb9': memb9}, 'engine_scripts9h': {'memb10': memb10},
+          'engine_scripts9i': {'memb11': memb11}, 'engine_scripts9j': {'memb12': memb12}}
