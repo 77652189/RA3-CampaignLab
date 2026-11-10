@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DOCS = ROOT / 'docs'
 ADR = DOCS / 'adr'
 
-ROOT_DOCS = {'README.md', 'HANDOFF.md', 'CLAUDE.md'}   # CLAUDE.md: how every session here spends quota (2026-10-30)
+ROOT_DOCS = {'README.md', 'HANDOFF.md', 'CLAUDE.md', 'AGENTS.md'}   # CLAUDE.md: how every session here spends quota (2026-10-30); AGENTS.md: points Codex at CLAUDE.md (2026-11-09)
 ACTIVE_DOCS = {'architecture.md', 'issues.md', 'plan.md', 'requirements.md'}
 
 HARD_CONSTRAINTS = [
@@ -30,7 +30,7 @@ STATE_FIELDS = {
 }
 ENGINE_DOCS = {'script-semantics.md', 'know-how.md', 'terrain.md', 'pathing.md', 'upgrades.md', 'spawn.md', 'air.md', 'aircraft.md',
                'missile.md', 'weapons.md', 'garrison.md', 'stealth.md',
-               'production.md', 'mining.md', 'construction.md', 'specialpower.md', 'sell.md', 'heal.md', 'stance.md', 'transform.md', 'vision.md', 'runoffmap.md', 'teleport.md', 'crush.md', 'aiopen.md', 'aistate.md', 'aispecial.md', 'aimicro.md', 'aitactics.md', 'inventory.md', 'ainamed.md', 'inventory-levels.md', 'inventory-levels-a.md', 'aiswitches.md', 'aiteamstate.md', 'uprising-gap.md'}   # reverse-engineering notes stay in work/re/ (repo is public)
+               'production.md', 'mining.md', 'construction.md', 'specialpower.md', 'sell.md', 'heal.md', 'stance.md', 'transform.md', 'vision.md', 'runoffmap.md', 'teleport.md', 'crush.md', 'aiopen.md', 'aistate.md', 'aispecial.md', 'aimicro.md', 'aitactics.md', 'inventory.md', 'ainamed.md', 'inventory-levels.md', 'inventory-levels-a.md', 'aiswitches.md', 'aiteamstate.md', 'uprising-gap.md', 'weaponset.md'}   # reverse-engineering notes stay in work/re/ (repo is public)
 PLAN_MAX_KB = 40        # status only (2026-10-28 it was 115 KB of history and know-how: archive/, engine/)
 
 
