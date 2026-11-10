@@ -396,6 +396,15 @@ def _weapons(texts, base_table=None):
                                    _attr(h, 'DamageType', 'UNDEFINED')))
             if strips:
                 got['strip_max_health'] = strips
+            paralysis = []
+            for h, inner in _blocks(bare, 'ParalyzeNugget'):
+                if (inner or '').strip() or _attr(h, 'ParalyzeType') != 'EMP':
+                    unsupported.append('ParalyzeNugget')
+                else:
+                    paralysis.append(_secs(_attr(h, 'DurationSeconds', '0s')))
+            if paralysis:
+                got['emp_seconds'] = paralysis
+
             if unsupported:
                 got['unmodeled_effects'] = unsupported
             if sd:
@@ -484,6 +493,7 @@ def _resolve(w, weapons):
                 hit_modifiers=w.get('hit_modifiers', weapons.get(w.get('warhead'), {}).get('hit_modifiers', [])),
                 line=w.get('line', weapons.get(w.get('warhead'), {}).get('line')),
                 strip_max_health=w.get('strip_max_health', weapons.get(w.get('warhead'), {}).get('strip_max_health', [])),
+                emp_seconds=w.get('emp_seconds', weapons.get(w.get('warhead'), {}).get('emp_seconds', [])),
                 unmodeled_effects=w.get('unmodeled_effects', weapons.get(w.get('warhead'), {}).get('unmodeled_effects', [])))
 
 

@@ -7,7 +7,7 @@
 | 脚本动作 | **88%** | 451 | 105 | 27 | 204 | 115 | 90% |
 | 脚本条件 | **94%** | 89 | 27 | 2 | 57 | 3 | 94% |
 | 物体模块 | **65%** | 184 | 30 | 6 | 129 | 19 | 65% |
-| 武器效果 | **51%** | 25 | 3 | 5 | 17 | 0 | 68% |
+| 武器效果 | **51%** | 25 | 3 | 6 | 16 | 0 | 70% |
 | AI | **65%** | 415 | 97 | 132 | 152 | 34 | 88% |
 
 ## 脚本动作
@@ -755,13 +755,13 @@
 |---|---|---|---|
 | 已对拍 | `DamageNugget` | 183 | 模拟器代码里有这个名字；台上量过：checks/engine_clip.py；例：BaseExplodingPropVehicleWeapon, MountRushmoreHeadEyeWeapon |
 | 已对拍 | `ProjectileNugget` | 88 | 模拟器代码里有这个名字；台上量过：checks/engine_shot.py；例：BB_EuropeCoastalGunWeapon, KremlinArtilleryDomeMissle |
-| 未做 | `InformTargetNugget` | 69 | 模拟器代码里没有这个名字；例：BB_EuropeCoastalGunWeapon, AlliedPrecisionBomb |
+| 未做 | `InformTargetNugget` | 69 | engine_inform仅隔离并用伤害；目标对来弹的响应尚未模拟，不以HP隔离检查登记整项已对拍；例：BB_EuropeCoastalGunWeapon, AlliedPrecisionBomb |
 | 推断 | `SuppressionNugget` | 64 | 部分：长3s贡献48/50阈值已实测；1s贡献与恢复时序未解释，不登记整项已对拍；例：BB_EuropeCoastalGunWeapon, KremlinArtilleryDomeMissle |
 | 未做 | `MetaImpactNugget` | 36 | 模拟器代码里没有这个名字；例：KremlinArtilleryDomeMissleWarhead, AlliedTimeBomb_Level1 |
 | 未做 | `ActivateLaserNugget` | 27 | 已核（11-08）：模拟器没有这个效果（没有激光束）；例：MountRushmoreHeadEyeWeapon, JapanAntiVehicleInfantryTech3LockDownGun |
 | 已对拍 | `WeaponOCLNugget` | 26 | 模拟器代码里有这个名字；台上量过：checks/engine_prismx.py；例：MountRushmoreHeadEyeWeapon, AlliedPrecisionBombWarhead |
 | 推断 | `AttributeModifierNugget` | 20 | 部分：engine_weaponfx attribute实测PASS，涂靶ARMOR150%、9s前到期（数据1.1s，到期帧未测）；owner/筛选/范围形式未验证，整项不登记已对拍；例：NanoHiveSwarmEffectTrigger, JapanCommandoSoftLanding |
-| 未做 | `ParalyzeNugget` | 11 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_emp.py），可能用别的名字实现了；例：JapanAntiVehicleInfantryTech3LockDownGun, AlliedAntiStructureShipEMPCruiseMissleWarhead |
+| 推断 | `ParalyzeNugget` | 11 | 部分：engine_emp phase实测PASS16051/31066/61096、hit1，首发对象帧1与独立定时器ceil解释旧差值；仅无筛选EMP移动期限，攻击禁用/其他类型/筛选未验证；例：JapanAntiVehicleInfantryTech3LockDownGun, AlliedAntiStructureShipEMPCruiseMissleWarhead |
 | 未做 | `TintObjectsNugget` | 9 | 模拟器代码里没有这个名字；例：SovietCommandoCallBombingRun, AlliedCommandoAttachWeapon |
 | 未做 | `ActivateLiftObjectNugget` | 6 | 模拟器代码里没有这个名字；例：JapanCommandoTech1PsyonicCrush, JapanCommandoTech1AirborneKiller |
 | 推断 | `LineDamageNugget` | 6 | 部分：engine_weaponfx line探针；实测PASS90/90/90/100验证动态线长及穿透，圆形边界GUESSED，筛选与静态线未模拟；例：SovietCommandoSniperRifle, AAAVT1_SovietCommandoSniperRifle |

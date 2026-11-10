@@ -395,3 +395,19 @@ def test_strip_max_health_percent_uses_maximum_at_full_and_half_health():
     m,t,_=build.resolve('engine_strip','exact')
     engine=sim.Sim(m,t);engine.shot_clock=True
     assert tuple(engine.run(16).series[-1][1])==(100095,100045,100074,3)
+
+
+def test_weapon_first_hit_is_observed_one_frame_after_the_order_script():
+    import build
+    import sim
+    m,t,_=build.resolve('engine_emp','phase')
+    engine=sim.Sim(m,t);engine.shot_clock=True
+    assert tuple(engine.run(16).series[-1][1])==(16051,31066,61096,1)
+
+
+def test_inform_target_does_not_add_damage_to_the_separate_damage_nugget():
+    import build
+    import sim
+    m,t,_=build.resolve('engine_inform','damage')
+    engine=sim.Sim(m,t);engine.shot_clock=True
+    assert tuple(engine.run(16).series[-1][1])==(79,1,79,1)

@@ -3301,8 +3301,8 @@ class Sim:
                     a.fired_at = self.t                 # a bombarder firing shows itself
                 for effect in w.get('unmodeled_effects', []):
                     self.gap(GAP_WEAPON, effect, '武器第1轮尚未解释此效果的筛选、几何或时序')
-                if not self.shot_clock and (w.get('hit_modifiers') or w.get('line') or w.get('strip_max_health')):
-                    self.gap(GAP_WEAPON, 'weapon effects', '命中修正与穿线仅在离散命中时钟中模拟')
+                if not self.shot_clock and (w.get('hit_modifiers') or w.get('line') or w.get('strip_max_health') or w.get('emp_seconds')):
+                    self.gap(GAP_WEAPON, 'weapon effects', '逐发武器效果仅在离散命中时钟中模拟')
                 if w['dps'] or w.get('suppression'):
                     if 'sched' in w and self.shot_clock:
                         self.volleys.append((pick, w, a))
@@ -3435,6 +3435,9 @@ class Sim:
                         for target in self.living():
                             if target.suppression_rule and math.hypot(target.x - t.x, target.y - t.y) <= radius:
                                 target.suppression_hits.append((self.frame_now() + simunits._frames(seconds), n * value))
+                    for seconds in w.get('emp_seconds', []):
+                        deadlines = self.__dict__.setdefault('emp_until', {})
+                        deadlines[id(t)] = max(deadlines.get(id(t), 0), self.frame_now() + simunits._frames(seconds))
                     victims = [t]
                     # GUESSED edge geometry: circle extent; round 1 centres avoid edges.
                     line = w.get('line')
@@ -3513,8 +3516,8 @@ class Sim:
         c = clocks.get(key)
         cycle = w['cycle']
         if c is None or (t0 - c[1] > dt * 1.5 and c[0] + cycle <= t0 + eps):
-            c = [t0 + 2 / 15, t0]                       # [this cycle's start, the last window with a target]; the first
-            #                                             shot of a fresh start comes 2 frames late (engine_clip)
+            c = [t0 + 1 / 15, t0]                       # [this cycle's start, the last window with a target]; the first
+            #                                             object hit is1 frame after order; scripts observe it next frame (engine_emp)
         else:
             c[1] = t0
             while c[0] + cycle <= t0 + eps:             # chained: the next cycle starts where this one ends
@@ -3677,7 +3680,7 @@ class Sim:
                 continue
             if b.frame_move != precise:          # chasing a moving target may have replanned into / out of prop contact
                 continue
-            if not b.path or 'IMMOBILE' in b.status or b.engaged:
+            if not b.path or 'IMMOBILE' in b.status or b.engaged or self.frame_now() < self.__dict__.get('emp_until', {}).get(id(b), 0):
                 continue
             left = b.speed * dt
             if precise:
