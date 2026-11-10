@@ -3344,7 +3344,7 @@ class Sim:
                     self.gap(GAP_WEAPON, effect, '武器第1轮尚未解释此效果的筛选、几何或时序')
                 if not self.shot_clock and (w.get('hit_modifiers') or w.get('line') or w.get('strip_max_health') or w.get('emp_seconds')):
                     self.gap(GAP_WEAPON, 'weapon effects', '逐发武器效果仅在离散命中时钟中模拟')
-                if w['dps'] or w.get('suppression'):
+                if w['dps'] or w.get('suppression') or (self.shot_clock and w.get('sdps')):
                     if 'sched' in w and self.shot_clock:
                         self.volleys.append((pick, w, a))
                     else:
@@ -3355,7 +3355,7 @@ class Sim:
                                      '连续DPS没有逐发命中事件；压制贡献仅在离散命中时钟中模拟')
                         self.firing.append((pick, w['dps'] * a.dealt * (1.0 if w['type'] == 'UNRESISTABLE' else
                                             simunits.percent(pick.armor, w['type']) / 100.0 * pick.taken), a))
-                if w.get('sdps'):
+                if w.get('sdps') and not self.shot_clock:
                     self.chilling.append((pick, w['sdps'] * a.dealt, a))
                 fired = True
                 if a.mode == 'attack':
@@ -3492,7 +3492,7 @@ class Sim:
                             except (OSError, ValueError):
                                 speeds[projectile] = 0
                         speed = speeds[projectile]
-                        complex_effect = any(w.get(k) for k in ('suppression', 'hit_modifiers', 'line', 'emp_seconds', 'strip_max_health'))
+                        complex_effect = any(w.get(k) for k in ('suppression', 'hit_modifiers', 'line', 'emp_seconds', 'strip_max_health', 'sd'))
                         if speed > 0 and not complex_effect:
                             # GUESSED collision boundary, rechecked for the two probe distances: full
                             # distance steps before impact. No fitted per-distance delays.
@@ -3507,6 +3507,14 @@ class Sim:
                                 h[1] += damage
                             continue
                         self.gap(GAP_WEAPON, 'ProjectileNugget', '仅无复合效果的直线弹飞行已建模；曲线弹/复合弹/自制弹体待核')
+                    # SecondaryDamageNugget.Amount is per hit, not a partial clip's mean DPS.
+                    if w.get('sd'):
+                        if projectile:
+                            self.gap(GAP_WEAPON, 'SecondaryDamageNugget', '弹体冷冻值的到达事件尚未建模')
+                        elif not t.shielded and self.cold_of(t)[0] is not None:
+                            t.cold += n * w['sd'] * by.dealt
+                            self.__dict__.setdefault('_cold_on', {})[id(t)] = (t, by)
+                            self.used.add('freeze')
                     for radius, value, seconds in w.get('suppression', []):
                         for target in self.living():
                             if target.suppression_rule and math.hypot(target.x - t.x, target.y - t.y) <= radius:

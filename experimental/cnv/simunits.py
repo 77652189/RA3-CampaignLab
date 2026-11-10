@@ -276,7 +276,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v12.json')    # v12: OCL lifetime damage reads FireWeaponNugget.FireDelay
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v13.json')    # v13: preserve per-hit SecondaryDamageNugget.Amount
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -490,7 +490,7 @@ def _resolve(w, weapons):
     cycle = _clip_frames(w, shots) / FPS        # whole frames, each part rounded up (engine line C round 6, engine_clip)
     sd = w.get('sd', 0.0)
     return dict(range=w['range'], dps=round(dmg * shots / cycle, 2) if dmg else 0.0, type=typ, anti=w['anti'],
-                los=w['los'], sdps=round(sd * shots / cycle, 2) if sd > 0 else 0.0,
+                los=w['los'], sd=sd, sdps=round(sd * shots / cycle, 2) if sd > 0 else 0.0,
                 dmg=dmg, cycle=cycle, sched=_shot_times(w, shots), projectile=w.get('projectile'),
                 suppression=w.get('suppression', weapons.get(w.get('warhead'), {}).get('suppression', [])),
                 hit_modifiers=w.get('hit_modifiers', weapons.get(w.get('warhead'), {}).get('hit_modifiers', [])),

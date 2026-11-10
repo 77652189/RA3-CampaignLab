@@ -7,7 +7,7 @@
 | 脚本动作 | **87%** | 451 | 101 | 29 | 204 | 117 | 90% |
 | 脚本条件 | **94%** | 89 | 27 | 5 | 54 | 3 | 94% |
 | 物体模块 | **78%** | 184 | 31 | 6 | 128 | 19 | 79% |
-| 武器效果 | **62%** | 25 | 7 | 2 | 14 | 2 | 75% |
+| 武器效果 | **63%** | 25 | 8 | 1 | 14 | 2 | 75% |
 | AI | **64%** | 415 | 90 | 140 | 151 | 34 | 88% |
 
 ## 脚本动作
@@ -766,8 +766,8 @@
 | 未做 | `ActivateLiftObjectNugget` | 6 | 模拟器代码里没有这个名字；例：JapanCommandoTech1PsyonicCrush, JapanCommandoTech1AirborneKiller |
 | 已对拍 | `LineDamageNugget` | 6 | tests/test_simbench_c.py::test_weaponfx_predictions_and_finite_bursts；例：SovietCommandoSniperRifle, AAAVT1_SovietCommandoSniperRifle |
 | 未做 | `SpecialPowerNugget` | 6 | 模拟器代码里没有这个名字；例：SovietCommandoCallBombingRun, AlliedAntiVehicleVehicleTech1TargetPainter |
-| 未做 | `FireOnObjectsNugget` | 5 | 模拟器代码里没有这个名字；例：PlayerPowerJapanEmperorsResolveWeapon_L1, PlayerPowerJapanEmperorsResolveWeapon_L2 |
-| 推断 | `SecondaryDamageNugget` | 5 | simunits._weapons 读 Amount（不要升级的那条）→ sdps，Sim.chill；例：MountRushmoreHeadEyeWeapon, AlliedCryoSatelliteLvl1 |
+| 未做 | `FireOnObjectsNugget` | 5 | 未实现：子武器派发条件与空间锚点尚未解释；失败诊断不作为已对拍依据；例：PlayerPowerJapanEmperorsResolveWeapon_L1, PlayerPowerJapanEmperorsResolveWeapon_L2 |
+| 已对拍 | `SecondaryDamageNugget` | 5 | tests/test_simbench_c.py::test_secondary_damage_delivers_one_amount_at_hit_without_damaging_health；例：MountRushmoreHeadEyeWeapon, AlliedCryoSatelliteLvl1 |
 | 未做 | `AttachNugget` | 4 | 模拟器代码里没有这个名字；例：AlliedCommandoAttachWeapon, SovietAntiVehicleInfantryMagneticBombAttachWeapon |
 | 已对拍 | `StripMaxHealthPercentNugget` | 3 | tests/test_simbench_c.py::test_strip_max_health_percent_uses_maximum_at_full_and_half_health；例：JapanCommandoTech1PsyonicCrush, AAAVT1_JapanCommandoTech1PsyonicCrush |
 | 未做 | `ActivateLinearDamageNugget` | 2 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_sweep.py），可能用别的名字实现了；例：AlliedAntiNavalScoutSonar, AlliedAntiNavalScoutSonarForBridges |

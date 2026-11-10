@@ -501,3 +501,11 @@ def test_tint_changes_no_health_or_hit_timing_beyond_the_separate_damage_nugget(
     e=sim.Sim(m,t);e.shot_clock=True
     assert tuple(e.run(16).series[-1][1])==(2,90,2,90)
     assert 'TintObjectsNugget' in next(u.xml for u in m.units if u.id=='CNV_LaserHigh')
+
+
+def test_secondary_damage_delivers_one_amount_at_hit_without_damaging_health():
+    import build
+    import sim
+    m,t,_=build.resolve('engine_secondary','single')
+    e=sim.Sim(m,t);e.shot_clock=True
+    assert tuple(e.run(16).series[-1][1])==(1099,0,1099,1)
