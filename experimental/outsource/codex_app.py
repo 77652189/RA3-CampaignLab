@@ -38,11 +38,14 @@ and leave a readable trail. The cost is a 0.5 s poll, nothing next to a model tu
 Experimental API: app-server and its schema are marked [experimental] and change between Codex builds -- when a call
 fails, regenerate the schema and compare the method names above.
 """
-import argparse, ctypes, datetime, fnmatch, glob, json, os, queue, subprocess, sys, threading, time
+import argparse, ctypes, datetime, fnmatch, glob, importlib.util, json, os, queue, subprocess, sys, threading, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, HERE)
-import codex_task as ct  # noqa: E402  (RULES, files_allowed, changed, codex, bench_dirs, LOG)
+# the sibling by path, not by sys.path (test_architecture G4 caps sys.path edits): RULES, files_allowed, changed,
+# codex, bench_dirs, LOG
+_spec = importlib.util.spec_from_file_location('codex_task', os.path.join(HERE, 'codex_task.py'))
+ct = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(ct)
 
 APPS = os.path.join(os.path.dirname(ct.LOG), 'app')
 POLL = 0.5
