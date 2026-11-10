@@ -1,7 +1,7 @@
 """Engine unit test: why does the mirage tank fire ONE shot and stop (engine line C round 12; docs/engine/weaponset.md 4).
 Bench 11-09: a mirage tank told to attack a held Tsunami tank (380 hp, NO_ATTACK) hit it once (200 -> 47 % left) and never
 fired again for 40 s, though its cannon is a single shot (1.5 s firing, 0.1 s reload, auto) that should repeat every 1.6 s.
-The simulator fires on. Candidates: the cannon's WeaponOCLNugget makes a prism node object at the target that blocks the
+The simulator fires on. Candidates: the cannon's OCL nugget makes a prism node object at the target that blocks the
 line of sight; the one attack order is spent by a clip (ReAcquireDetailType PER_CLIP); a Tsunami target in particular.
 
 On the range probe map, four lanes (the lane names are the map's; the counter bar holds four lines), each an attacker of
