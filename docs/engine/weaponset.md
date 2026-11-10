@@ -25,4 +25,6 @@
 
 ## 4. 没解释的：幻影坦克只开一炮（engine_weaponset b 的 棱镜 / 老兵 车道，engine_statusbits a）
 
-台上幻影坦克对不还手的海啸（380 血）只开**一炮就停**：普通炮 200 → 血 47，老兵炮（WEAPON_UPGRADED_01，250）→ 血 34，之后 40 秒不变。武器数据是单发、FiringDuration 1.5 s、ClipReloadTime 0.1 s、自动装填，理应每 1.6 s 一炮；模拟器照数据打，3~5 秒打死。**原因没查出来**（候选：武器 `WeaponOCLNugget` 在目标处生出棱镜节点物体，挡住了后续直线视线；`ReAcquireDetailType=PER_CLIP`；与 NAMED_ATTACK_NAMED 的交互）。要分清需要再一个探针：同一只幻影坦克 ① 自动索敌（不下攻击令）② 打征召兵 ③ 对照守护者炮。选武器本身（普通 → 老兵）已由单炮伤害 200 / 250 证明。
+台上幻影坦克对不还手的海啸（380 血）只开**一炮就停**：普通炮 200 → 血 47，老兵炮（WEAPON_UPGRADED_01，250）→ 血 34，之后 40 秒不变。武器数据是单发、FiringDuration 1.5 s、ClipReloadTime 0.1 s、自动装填，理应每 1.6 s 一炮；模拟器照数据打，3~5 秒打死。**原因没查出来**（候选：武器 `WeaponOCLNugget` 在目标处生出棱镜节点物体，挡住了后续直线视线；`ReAcquireDetailType=PER_CLIP`；与 NAMED_ATTACK_NAMED 的交互）。选武器本身（普通 → 老兵）已由单炮伤害 200 / 250 证明。
+
+**第二个探针 `engine_prism` a（台上，同日）**：四条车道，第 1 秒起海啸血 基准（幻影坦克，一道攻击令）47 / 自动（不下令，自动索敌）47 / 对照守护者炮 84→68→52→36→21→5（连发，每 3 秒约 16 %，打到 5 不动是坦克血量只剩一炮前的数）/ 重令（每 3 秒重下一次攻击令）47。结论：**① 不是攻击令的事**（自动索敌也只一炮；重下令也不重新开火）；**② 不是目标的事**（守护者对同一辆坦克连发）；**是幻影坦克这把炮自己的毛病**：开一炮后在这个场景里再不开火。排除了"棱镜节点挡视线"的简单版本：节点物体（AlliedAntiVehicleVehicleTech3CannonNodeRegular）是 INERT / NO_COLLIDE、半径 0.8，自带 WeaponScatterEffectUpdate（对附近敌人再放 CannonNode 武器，散射 5）。**下一步**（要自己的单位 XML 改一下炮）：克隆幻影坦克的炮，分别 ① 去掉 WeaponOCLNugget ② 去掉 ATTACK_NEEDS_LINE_OF_SIGHT ③ 去掉 SuppressionNugget / ActivateLaserNugget，看哪一个让它连发；做法参照 `units/crane.py` 这类改 XML 的单位。模拟器暂时不动（战役里幻影坦克要不要连发，得先知道真相）。
