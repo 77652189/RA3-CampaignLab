@@ -276,7 +276,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v11.json')    # v11: replayed weapon effect fields and projectile references
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v12.json')    # v12: OCL lifetime damage reads FireWeaponNugget.FireDelay
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -583,23 +583,29 @@ def ocl_round(ocl, weapons):
     """(damage, damage type) of one firing of a weapon whose WeaponOCLNugget makes `ocl`: each object it makes that
     lives LifetimeUpdate's MinLifetime and fires a FireWeaponUpdate weapon all that time (every frame for a weapon
     with no firing duration or shot delay; its own pre-attack is not waited for) and its FireWeaponWhenDead weapon once.
-    Bench engine_ocl a 2026-11-08: the Athena's effect (2 s of AthenaCannonWeapon 20, + 20 when it dies) takes ~600
-    raw a round off a building; this gives 620. An object with no FireWeaponUpdate (a drone with weapons of its own,
+    Bench engine_oclone a 2026-11-10: FireDelay0.1s rounds to2frames; firing
+    frames2..30 gives29x20, plus20 on death=600raw on a1000HP Hammer (40% left). An object with no FireWeaponUpdate (a drone with weapons of its own,
     the carrier's) gives 0: a unit the simulator would have to make (simcoverage lists it)."""
     dmg, typ = 0.0, ''
     for count, template in _ocl_table().get(ocl, []):
         body = re.sub(r'<!--.*?-->', '', _game_object(template), flags=re.S)
         life = re.search(r'<LifetimeUpdate\b[^>]*MinLifetime="([^"]+)"', body)
-        fire = [_attr(h, 'WeaponName') for h, _ in _blocks(body, 'FireWeaponNugget')]
+        fire = [(_attr(h, 'WeaponName'), _secs(_attr(h, 'FireDelay', '0s')))
+                for h, _ in _blocks(body, 'FireWeaponNugget')]
         dead = [_attr(h, 'DeathWeapon') for h, _ in _blocks(body, 'FireWeaponWhenDead')]
-        if not (life and any(w in weapons for w in fire)):
+        if not (life and any(w in weapons for w, _ in fire)):
             continue
         each = 0.0
-        for wid in fire:
+        for wid, delay in fire:
             if wid in weapons:
                 w = weapons[wid]
-                every = max(w['fire'], w['delay'], 1.0 / LIFE_FPS)
-                each += round(_secs(life.group(1)) / every) * w['damage']
+                every = max(1, _frames(max(w['fire'], w['delay'], 1.0 / LIFE_FPS)))
+                first = max(1, _frames(delay))
+                end = _frames(_secs(life.group(1)))
+                # GUESSED endpoint convention beyond the Athena case: final lifetime
+                # frame is included, then death weapon; engine_oclone replays600 total.
+                shots = max(0, 1 + (end - first) // every)
+                each += shots * w['damage']
                 typ = typ or w['type']
         for wid in dead:
             if wid in weapons:
