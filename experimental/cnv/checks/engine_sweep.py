@@ -25,9 +25,13 @@ min(Lifetime x 15, ceil(LENGTH / (SPEED / 5))) frames (0x71c730), one hit every 
   engine_sweep     Mission(ext=True)   the dll's sweep module: the laser's end follows the line's node; ra3ext.log
                                        has one 'sweep ... node=N at=x,y,z' line per new node (60 at most)
   engine_sweepoff  Mission(ext=False)  plain retail: the damage line alone, the beam stays on the aimed Hammer
+
+Checks: a the base lane's sweep; b the shooter stopped STOP s after the order; c deletion (delete_test): killed mid-sweep,
+a second one made, swept and deleted (bench 11-10 12:46 / 12:48 / 12:50: 9 / 158 / 167 with and without ra3ext -- the
+killed one's line stops with it, the rest is the second one's; ra3ext.log has no line of a module after its object went).
 """
 from maps import probe_range
-from parts import Mission, Script, Test
+from parts import Mission, Script, Test, counted
 from checks.engine_missile import TARGET_ID, _sub1, target
 from checks.engine_shot import _nuggets, shot_v4
 
@@ -43,6 +47,10 @@ LANES = {'base': ('CNV_Sweep', 0.0), 'high': ('CNV_SweepHold', LIFE)}
 LABELS = ('近', '中', '远')
 AIM_LABEL, AIM_DAMAGE = '瞄', 200.0      # the shot's own hit on the aimed Hammer: did the V4 fire at all
 
+# check c's second probe: ra3ext's CNVLog (engine_ext's carrier) on the base shooter, ext only -- without the dll the
+# carrier is a real DeletionUpdate and would delete the shooter
+CNV_LOG = '''
+			<DeletionUpdate id="ModuleTag_CNVLog" MinFrames="30" MaxFrames="40"/>'''
 LASER_DRAW = '''
 			<LaserDraw id="ModuleTag_CNVSweepLaserDraw" Texture1_UTile="1" Texture1_VTile="1" Texture1_UScrollRate="0"
 				Texture1_VScrollRate=".2" Texture1_NumFrames="1" Texture1_FrameRate="30" Texture2_UTile="1"
@@ -65,7 +73,7 @@ def hit_weapon():
             + '\n\t</WeaponTemplate>\n')
 
 
-def sweeper(id, firing):
+def sweeper(id, firing, log=False):
     nug = _nuggets(f'<DamageNugget Damage="{AIM_DAMAGE:g}" Radius="1.0" DamageType="MAGIC" DeathType="NORMAL" />',
                    f'<ActivateLinearDamageNugget id="CNVSweepActivate" Lifetime="{LIFE:g}s" />',
                    f'<ActivateLaserNugget id="CNVSweepLaser" Lifetime="{LIFE:g}s" LaserId="1" />')
@@ -79,7 +87,7 @@ def sweeper(id, firing):
     u.xml = _sub1(u.xml, '<Behaviors>', f'''<Behaviors>
 			<LinearDamageUpdate id="{TAG}" StartDistanceOffset="{START:g}" Radius="{RADIUS:g}" Length="{LENGTH:g}"
 				SweepWeapon="{HIT}" Speed="{SPEED:g}" FollowTerrain="true" />
-			<LaserState id="ModuleTag_CNVSweepLaser" LaserId="1" />''')
+			<LaserState id="ModuleTag_CNVSweepLaser" LaserId="1" />''' + (CNV_LOG if log else ''))
     u.xml = _sub1(u.xml, '</Draws>', LASER_DRAW + '</Draws>')
     u.link.append(f'WeaponTemplate:{HIT}')
     u.names.update(hit=HIT, tag=TAG)
@@ -93,7 +101,9 @@ def _n(lane, part):
 
 def mission(ext=True):
     m = Mission(name='CampSweep' if ext else 'CampSweepOff', map=probe_range,
-                units=[sweeper(tpl, firing) for tpl, firing in LANES.values()] + [target()], facts={}, ext=ext)
+                units=[sweeper(tpl, firing, log=ext and lane == 'base') for lane, (tpl, firing) in LANES.items()]
+                + [target()], facts={}, ext=ext)
+    m.waypoint('sweep spare', SPARE_WP, 'base gun', 0.0, -40.0)     # check c's second shooter
     for lane, (tpl, _) in LANES.items():
         site = f'{lane} gun'
         m.put(tpl, site, side='p1', role=f'{lane} sweeper', name=_n(lane, 'Shooter'))
@@ -103,7 +113,7 @@ def mission(ext=True):
     return m
 
 
-def sweep_test(m, lane='base', stop=None):
+def sweep_test(m, lane='base', stop=None, then=(), run=RUN):
     """Check a: the base lane; b: the same, the shooter told NAMED_STOP `stop` s after the order (the near row is hit
     at ~9 frames, mid / far at ~18 / 26): does the damage line stop with the fire (mid / far never hit), and with
     ra3ext does the beam go out with it (ra3ext.log 'sweep ... end' line). Four counter lines at most; the other lane
@@ -117,7 +127,9 @@ def sweep_test(m, lane='base', stop=None):
     t.scripts.append(Script('Test - order', [('TIMER_EXPIRED', 'Test Order')],
                             [('UNIT_CHANGE_OBJECT_STATUS', shooter, 'NO_ATTACK', 0),
                              ('NAMED_ATTACK_NAMED', shooter, _n(lane, 'Aim')), ('SET_FLAG', 'Test Ordered', 1)]
-                            + ([('SET_MILLISECOND_TIMER', 'Test Stop', stop)] if stop else [])))
+                            + ([('SET_MILLISECOND_TIMER', 'Test Stop', stop)] if stop else [])
+                            + [('SET_MILLISECOND_TIMER', f'Test Then {k}', secs) for k, (secs, _) in enumerate(then)]))
+    t.scripts += [Script(f'Test - then {k}', [('TIMER_EXPIRED', f'Test Then {k}')], do) for k, (_, do) in enumerate(then)]
     if stop:
         t.scripts.append(Script('Test - stop', [('TIMER_EXPIRED', 'Test Stop')],
                                 [('UNIT_CHANGE_OBJECT_STATUS', shooter, 'NO_ATTACK', 1), ('NAMED_STOP', shooter)]))
@@ -127,14 +139,45 @@ def sweep_test(m, lane='base', stop=None):
         t.scripts.append(Script(f'Test - {c} frames', [('FLAG', 'Test Ordered', 1), ('UNIT_HEALTH', tg, 2, 100)],
                                 [('INCREMENT_COUNTER', 1, c)], once=False))
     # check a: every row Hammer is hit before the end (a counter that never stops reads ~15 a second); b only reads
-    never = (RUN - ORDER - 2.0) * 15
-    t.expect = ([(label, RUN - 1, '<', never) for label in LABELS + (AIM_LABEL,)] if not stop
+    never = (run - ORDER - 2.0) * 15
+    t.expect = ([(label, run - 1, '<', never) for label in LABELS + (AIM_LABEL,)] if not stop
                 else [(x, RUN - 1, '<', never) for x in (LABELS[0], AIM_LABEL)])
-    t.bench = [('bench_watch', dict(seconds=RUN, every=1, sheet=False, lines=len(t.counters)))]
+    t.bench = [('bench_watch', dict(seconds=run, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+# check c (deletion): the shooter killed KILL s after the order (the line walking, the beam on ours), a second one made
+# at SPARE_WP SPARE s after it (loaded RELOAD later), ordered at ORDER2 and deleted at DELETE (s after the first order)
+KILL, SPARE, ORDER2, DELETE, RUN_C, LAG = 0.9, 2.0, 9.0, 13.0, 26.0, 2.0
+SPARE_WP, ALIVE = 'Test Sweep Spare', '射手'
+
+
+def delete_test(m):
+    """Check c: an object holding our modules (the sweep's damage line and laser, the CNVLog) killed mid-sweep, a new
+    one made, swept once and deleted: the run ends, the counters read, and ra3ext.log has no line of a module after its
+    object went (split by the create lines: heap addresses come back). The rows mid / far are hit by the second shooter
+    (~ORDER2 x 15 frames) unless the killed one's line walks on (18 / 26). 射手: the base shooters alive."""
+    first, spare, tpl = _n('base', 'Shooter'), _n('base', 'Spare'), LANES['base'][0]
+    t = sweep_test(m, run=RUN_C, then=[
+        (KILL, [('NAMED_KILL', first)]),
+        (SPARE, [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', spare, tpl, m.team('p1'), m.mark('sweep spare')),
+                 ('UNIT_CHANGE_OBJECT_STATUS', spare, 'NO_ATTACK', 1)]),
+        (ORDER2, [('UNIT_CHANGE_OBJECT_STATUS', spare, 'NO_ATTACK', 0), ('NAMED_ATTACK_NAMED', spare, _n('base', 'Aim'))]),
+        (DELETE, [('NAMED_DELETE', spare)])])
+    aim = f'CNV_Sweep_{len(LABELS)}'            # four counter lines at most: 射手 takes 瞄's (the rows say it fired)
+    t.counters = [c for c in t.counters if c[0] != aim]
+    t.scripts = [s for s in t.scripts if s.name != f'Test - {aim} frames']
+    t.expect = [e for e in t.expect if e[0] != AIM_LABEL]
+    counted('CNV_Sweep_Alive', ALIVE, t, template=tpl)
+    # the watch's seconds run LAG behind the mission's (bench 11-10 12:46: the kill at mission 8.9 read at s7, the make
+    # at 10 at s9, the delete at 21 at s19)
+    t.expect += [(ALIVE, 2, '==', 1, ORDER + KILL - LAG), (ALIVE, ORDER + SPARE - LAG + 1, '==', 1, ORDER + DELETE - LAG),
+                 (ALIVE, ORDER + DELETE - LAG + 1, '==', 0)]
+    t.bench = [('bench_watch', dict(seconds=RUN_C, every=1, sheet=False, lines=len(t.counters)))]
     return t
 
 
 STOP = 0.9
-_CHECKS = {'a': sweep_test, 'b': lambda m: sweep_test(m, stop=STOP)}
+_CHECKS = {'a': sweep_test, 'b': lambda m: sweep_test(m, stop=STOP), 'c': delete_test}
 MISSION = {'engine_sweep': mission, 'engine_sweepoff': lambda: mission(False)}
 CHECKS = {'engine_sweep': _CHECKS, 'engine_sweepoff': _CHECKS}
