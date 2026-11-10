@@ -36,6 +36,15 @@ lone one should stand); the opening's done-ness or how long before the next orde
 Round 86: aiom11 (P, Time 30s), aiom12 (P, Time 15s), aiom13 (P, P, Time 30s), aiom14 (Time 30s, P) written; the
 first run (17:22) all ERROR -- the game's DirectX error box at start (another game, gamemd, held the screen), not read.
 Guess they test: the plant takes ~9 s; a lone Build survives only if the opening is not over before it stands.
+Bench 2026-11-09 (B round 88, run_queue --jobs 2, the bench free again; counters 电厂 兵营, wake s10):
+  aiom11 (P, Time 30s) PASS: plant s19.   aiom12 (P, Time 15s) PASS: plant s19.   (aiom7, P + Time 5s: none)
+  aiom13 (P, P, Time 30s) PASS: plants s19 and s29 -- both, where P, P with no Time (aiom5) gave one.
+  aiom14 (Time 30s, P) FAIL by timing only: the plant stands at s49 (ordered at s40, the opening's last order) --
+    where Time 5s, P (aiom8) gave none.
+  aiom15 (P, P, Time 30s Account PRODUCTION Deposit 2000) PASS: plants s23 and s33 -- both, 4 s later than aiom13.
+  aiom16 (one P, the money given before SKIRMISH_AI_MAKE_BASE) FAIL: nothing, as aiom1 -- not the money at the wake.
+Not settled; what the eight lone-Build readings fit: a Build stands if a Time >= 15 s follows it, or if it is
+issued >= 30 s after the wake; a Build alone in the first seconds with the opening ending within ~5 s is dropped.
 """
 from parts import Script, Test, counted, square
 

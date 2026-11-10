@@ -27,6 +27,10 @@ Bench 2026-11-09 (B round 81, run_queue --jobs 2, all PASS; the second type: Rip
             s22, 0 from s23 (not modelled: the ~6 s).
 The model had the object set as no filter (private ai/teams.py OBJECT_SET_KIND now); simai gives these six
 (tests/test_simai.py test_locomotor_types_and_object_sets_take_whom_the_bench_sent).
+Bench 2026-11-09 (B round 88): aiar0 / aiar1 / aiar2 (AlwaysRecruit false / true / true MaxUnits 4; 4 Guardians,
+the AI to build 2 more by an opener in an Allied war factory): all three 坦克在家 4 to s13, 3 @ s14, 0 from s15 to
+s75 -- no third tank ever seen at home: the opener most likely built nothing (no owned counter, not told apart).
+Not read for AlwaysRecruit. Next: count s1's owned Guardians (SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER, as aimicro).
 """
 from parts import Test, counted, square, Script
 
