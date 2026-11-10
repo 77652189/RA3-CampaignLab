@@ -120,3 +120,29 @@ def test_topple_the_legacy_loop_still_drives_through_and_removes_the_props():
     _, *rows = s.series[-1][1]
     assert all(row // 1000000 > 0 and row // 1000 % 1000 == 0 for row in rows), rows
     assert all(not s.body(f'UNIT - CNV Topple Prop {k}').alive for k in range(1, 4))
+
+
+# PREDICTED only: the retail dummy's 100 HP, 200 script damage, 1 HP floor.
+# KILL is MaxHealth damage in the reference; DELETE bypasses the body.
+def test_immortal_damage_stops_at_one_hp_kill_is_damage_and_delete_removes():
+    import build
+    import sim
+    for lane in 'ab':
+        m, t, _ = build.resolve('engine_immortal', lane)
+        s = sim.Sim(m, t)
+        readings = []
+        for half in range(29):
+            s.run(half * 0.5)
+            readings.append([s.counters.get(c, 0) for c, _ in t.counters])
+            dummy = s.body('UNIT - CNV Immortal Dummy')
+            if 2 <= half < 24 or lane == 'a':
+                assert dummy.max_hp == 100 and dummy.alive
+                assert dummy.hp == (100 if half < 2 else 1)
+        assert readings[:2] == [[100, 0]] * 2, readings
+        # 1..11.5 s: ten seconds after damage, then KILL at 11 s still leaves 1 HP.
+        assert readings[2:24] == [[1, 0]] * 22, readings
+        if lane == 'a':
+            assert readings[24:] == [[1, 0]] * 5, readings
+        else:
+            assert not dummy.alive and dummy.deleted
+            assert readings[24:] == [[0, 1]] * 5, readings

@@ -437,6 +437,7 @@ class Body:
     surface: str = 'ground'
     vision: float = 0.0
     kinds: frozenset = frozenset()
+    immortal: bool = False          # body module: health changes cannot take it below 1 HP
     max_hp: float = 100.0
     hp: float = 100.0
     immune_until: int = -1          # the frame an Iron Curtain's protection ends (weapons and superweapons, not scripts)
@@ -517,6 +518,10 @@ class Body:
     hold_fire: bool = False                                     # UNIT_SET_STANCE 3 (HOLD_FIRE): fires only at a
                                                                 # target it was ordered on (stance.md a / b / d / e)
 
+    def damage(self, amount):
+        """The body's health floor (Generals reference: internalChangeHealth)."""
+        self.hp = max(1.0 if self.immortal else 0.0, self.hp - amount)
+
     @property
     def health(self):
         """Health in percent of its maximum (what the scripts read)."""
@@ -525,6 +530,8 @@ class Body:
     @health.setter
     def health(self, pct):
         self.hp = self.max_hp * float(pct) / 100.0
+        if self.immortal:
+            self.hp = max(1.0, self.hp)
 
 
 def same_team(have, asked):
@@ -1015,8 +1022,10 @@ class Sim:
         b.radius = st.get('radius') or 0.0
         b.sight = st['vision'] or 0.0
         f = simunits.fight(template, self.own)
-        if f['hp']:
-            b.max_hp = b.hp = f['hp']
+        b.immortal, immortal_hp = simunits.immortal_body(template, self.own)
+        hp = immortal_hp if b.immortal else f['hp']
+        if hp:
+            b.max_hp = b.hp = hp
         else:                                   # no health in the data: a building's or a unit's usual (a guess)
             b.max_hp = b.hp = 2000.0 if 'STRUCTURE' in b.kinds else 300.0
         b.armor, b.weapons = f['armor'], f['weapons']
@@ -1994,6 +2003,11 @@ class Sim:
     def destroy(self, b, why, delete=False):
         if not b.alive:
             return
+        if b.immortal and not delete:
+            # Object::kill (also script KILL, crushing etc.) is lethal damage;
+            # only direct deletion bypasses the body's internalChangeHealth.
+            b.damage(b.max_hp)
+            return
         b.alive, b.deleted, b.path, b.died_at = False, delete, [], self.t
         if not delete:
             b.hp = 0.0
@@ -2493,7 +2507,7 @@ class Sim:
             b = self.body(a[0])                  # the Indestructible panel flag does not stop it (engine_scripts7 panel)
             if b and b.alive:
                 b.last_hit = b.last_by = None
-                b.hp = max(0.0, b.hp - float(a[1]))
+                b.damage(float(a[1]))
                 if b.hp <= 0.0:
                     self.destroy(b, '脚本伤害')
                     b.read_until = self.frame_now()
@@ -3306,7 +3320,7 @@ class Sim:
         for t, dmg, by in hurt.values():
             if self.frame_now() < t.immune_until or t.shielded or t.indestructible:
                 continue
-            t.hp -= dmg
+            t.damage(dmg)
             t.last_hit, t.last_by = by.owner, by.name
             if t.hp <= 0 and t.alive:
                 if self.first_death is None:
@@ -3424,7 +3438,7 @@ class Sim:
                 dmg = hit_at(table, math.hypot(t.x - x, t.y - y))
                 if dmg <= 0 or frame < t.immune_until or t.shielded or t.indestructible:
                     continue
-                t.hp -= dmg
+                t.damage(dmg)
                 t.last_hit, t.last_by = owner, by.name
                 if t.hp <= 0 and t.alive:
                     if self.first_death is None:

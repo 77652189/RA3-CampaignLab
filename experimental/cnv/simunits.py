@@ -501,6 +501,21 @@ def freeze(template, own=None):
     return t, (_fight_data()['armors'].get(a) if a else None)
 
 
+def immortal_body(template, own=None):
+    """(immortal, MaxHealth) from the nearest Body in the XML inheritance chain.
+    A different body overrides an inherited immortal body. Retail props may be
+    absent from the combat cache, so read their MaxHealth here too.
+    """
+    def read(xml):
+        xml = re.sub(r'<!--.*?-->', '', xml or '', flags=re.S)
+        body = next(_blocks(xml, 'Body'), None)
+        if body is None:
+            return None
+        immortal = bool(list(_blocks(body[1], 'ImmortalBody')))
+        return immortal, number(xml, 'MaxHealth') if immortal else None
+    return _chain(template, own, read) or (False, None)
+
+
 def autoheal(template, own=None):
     """(amount, every, wait): AutoHealBehavior of a template that mends from the start, with no state or rank in the
     way -- HealingAmount points every `every` frames, the first `wait` frames after a hurt (engine_heal a / b, bench
