@@ -470,3 +470,15 @@ def test_projectile_nugget_flight_uses_retail_shell_speed_and_resolved_warhead()
     m,t,_=build.resolve('engine_projectile','flight')
     e=sim.Sim(m,t);e.shot_clock=True
     assert tuple(e.run(16).series[-1][1])==(7,95,11,95)
+
+
+def test_activate_laser_uses_separate_damage_nugget_without_delaying_the_hit():
+    import inventory
+    assert inventory.NOTES[inventory.NUGGET,'ActivateLaserNugget'][0]==inventory.NA
+    import build
+    import sim
+    m,t,_=build.resolve('engine_laser','pair')
+    e=sim.Sim(m,t);e.shot_clock=True
+    assert tuple(e.run(16).series[-1][1])==(2,90,2,90)
+    assert all('LaserStateID="201"' in u.xml and 'LaserId="201"' in u.xml
+               for u in m.units if u.id.startswith('CNV_Laser'))

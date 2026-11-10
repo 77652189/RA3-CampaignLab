@@ -7,7 +7,7 @@
 | 脚本动作 | **87%** | 451 | 101 | 29 | 204 | 117 | 90% |
 | 脚本条件 | **94%** | 89 | 27 | 5 | 54 | 3 | 94% |
 | 物体模块 | **78%** | 184 | 31 | 6 | 128 | 19 | 79% |
-| 武器效果 | **54%** | 25 | 6 | 3 | 16 | 0 | 70% |
+| 武器效果 | **56%** | 25 | 6 | 3 | 15 | 1 | 73% |
 | AI | **60%** | 415 | 79 | 151 | 151 | 34 | 88% |
 
 ## 脚本动作
@@ -616,7 +616,7 @@
 | 已对拍 | `Behaviors/CrushDie` | 22 (28) | tests/test_simbench.py::test_crush_a_tank_drives_over_a_lower_level_and_leaves_an_equal_one；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
 | 推断 | `Behaviors/SuppressionUpdate` | 22 (28) | 部分：阈值>=50、SPEED/ARMOR 75%已实测；短贡献寿命与晚恢复56帧未解释，不登记整项已对拍；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
 | 不涉及 | `Draws/LaserDraw` | 21 (37) | 纯表现（Draws）；例：AlliedAntiVehicleVehicleTech3CannonNodeBase, AlliedAntiVehicleVehicleTech3CannonNodeEnd |
-| 未做 | `Behaviors/LaserState` | 19 (25) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_sweep.py），可能用别的名字实现了；例：AlliedBaseDefense, AlliedBaseDefenseAdvanced |
+| 未做 | `Behaviors/LaserState` | 19 (25) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_laser.py），可能用别的名字实现了；例：AlliedBaseDefense, AlliedBaseDefenseAdvanced |
 | 未做 | `Behaviors/QueueProductionExitUpdate` | 19 (20) | 模拟器代码里没有这个名字；例：AlliedBarracks, AlliedConstructionYard |
 | 未做 | `Behaviors/ReplaceSelfSpecialAbility` | 18 (24) | 已核（11-08）：模拟器没有这个效果（没有换形态）；例：AlliedConstructionYard, AlliedMCV |
 | 不涉及 | `Draws/TracerModelDraw` | 18 (22) | 纯表现（Draws）；例：AlliedAntiAirShip, AlliedAntiAirVehicleTech1 |
@@ -758,7 +758,7 @@
 | 未做 | `InformTargetNugget` | 69 | engine_inform仅隔离并用伤害；目标对来弹的响应尚未模拟，不以HP隔离检查登记整项已对拍；例：BB_EuropeCoastalGunWeapon, AlliedPrecisionBomb |
 | 推断 | `SuppressionNugget` | 64 | 部分：长3s贡献48/50阈值已实测；1s贡献与恢复时序未解释，不登记整项已对拍；例：BB_EuropeCoastalGunWeapon, KremlinArtilleryDomeMissle |
 | 未做 | `MetaImpactNugget` | 36 | 模拟器代码里没有这个名字；例：KremlinArtilleryDomeMissleWarhead, AlliedTimeBomb_Level1 |
-| 未做 | `ActivateLaserNugget` | 27 | 已核（11-08）：模拟器没有这个效果（没有激光束）；例：MountRushmoreHeadEyeWeapon, JapanAntiVehicleInfantryTech3LockDownGun |
+| 不涉及 | `ActivateLaserNugget` | 27 | 纯表现：Lifetime/LaserId/HitGroundFX/OverShootDistance驱动LaserState/LaserDraw；engine_laser pair实测2/90/2/90，无附加伤害或首发延迟，test_simbench_c重放；例：MountRushmoreHeadEyeWeapon, JapanAntiVehicleInfantryTech3LockDownGun |
 | 推断 | `WeaponOCLNugget` | 26 | 模拟器代码里有这个名字；台上量过（checks/engine_prismx.py），没有测试跑这个台子；例：MountRushmoreHeadEyeWeapon, AlliedPrecisionBombWarhead |
 | 已对拍 | `AttributeModifierNugget` | 20 | tests/test_simbench_c.py::test_weaponfx_predictions_and_finite_bursts；例：NanoHiveSwarmEffectTrigger, JapanCommandoSoftLanding |
 | 已对拍 | `ParalyzeNugget` | 11 | tests/test_simbench_c.py::test_weapon_first_hit_is_observed_one_frame_after_the_order_script；例：JapanAntiVehicleInfantryTech3LockDownGun, AlliedAntiStructureShipEMPCruiseMissleWarhead |
