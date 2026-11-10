@@ -1,8 +1,9 @@
-"""Inventory batch 4, NOT yet on the bench (the user is playing Red Alert 2, 11-09): the relation overrides
-(TEAM_SET_OVERRIDE_RELATION_TO_PLAYER, PLAYER_SET_OVERRIDE_RELATION_TO_TEAM, TEAM_SET_OVERRIDE_RELATION_TO_TEAM) and
-the attacks on a team (TEAM_ATTACK_TEAM, NAMED_ATTACK_TEAM). Not an engine_ file on purpose: inventory.bench_sources
-reads only checks/engine_*.py, so nothing here counts as measured. Run with run_queue pend_scripts9:rel
-pend_scripts9:atk, write the readings in, then move it to checks/engine_scripts9.py (build name engine_scripts9).
+"""Inventory batch 4: the relation overrides (TEAM_SET_OVERRIDE_RELATION_TO_PLAYER,
+PLAYER_SET_OVERRIDE_RELATION_TO_TEAM, TEAM_SET_OVERRIDE_RELATION_TO_TEAM) and the attacks on a team (TEAM_ATTACK_TEAM,
+NAMED_ATTACK_TEAM), benched in round 134 on engine_scripts9b (the enemy crews on Soviet_4 / 5: placed units on a
+Soviet_1 / 2 / 3 crew are on no team, rounds 130-133 below). Was checks/pending_scripts9.py, builds pend_scripts9*
+(the bench_results files of rounds 130-133 carry those names); now engine_scripts9*. Run with run_queue
+engine_scripts9b:rel engine_scripts9b:atk engine_scripts9b:atkr.
 Mission on maps/probe_border.py (level ground; every place absolute, scenes >= 1000 apart). What the simulator
 (sim.py hostile / the two attack branches, INFERRED from Generals' Team::getRelationship and groupAttackTeam)
 predicts is in brackets.
@@ -41,7 +42,6 @@ BENCH 11-09 (round 131): why the enemy crews are empty. (The bench's s1 is past 
     (Heidelberg, maps/island.py) gives Soviet_1 retail's AIP_A03_Soviet01BaseMarshall, which takes its player's units
     off every team at the start. Retail a02's scripted Soviet04 (whose 'TEAM - Dock 01' its TEAM_KILL takes) is
     DefaultPersonality, base / unit builder 240.
-  Next: rel / atk / atkr on the 9b sides (or Soviet_1 made DefaultPersonality at its source), then rename engine_.
 BENCH 11-09 (round 132): the personality is NOT it. Soviet_1 (and every crew owner) written DefaultPersonality by
   package.write_map (tried, reverted): the change took (engine_protocol pts 敌方点数 1 from s1, was 0: a Default
   player keeps its point), yet memb 23, memb3 甲 0 / 丙 0, rel 甲乙丙丁 alike (87 -> dead), atk / atkr 100 to s61 --
@@ -57,6 +57,20 @@ BENCH 11-09 (round 133): it is Soviet_1 / 2 / 3 as such, not personality or alli
   (engine_reorder / kingref: CREATE_NAMED_ON_TEAM teamSoviet_1 + UNIT_SET_TEAM, PASS). The container's BuildLists
   are per faction (no player names); its other files name no player. Left: what places Soviet_1..3 apart from 4..6
   -- their place in SidesList (before PlyrCivilian), anything SidesList carries per side past the property dict.
+  The memb family's expectations are these readings (留 from s4; the bench's s1 is past the 2 s kill, so the 31
+  before it is not read): they pin the Soviet_1..3 crews' emptiness, the simulator (16 on any side) differs there.
+  rel / atk / atkr left the Soviet_1 build (their readings there are above) for engine_scripts9b.
+BENCH 11-09 (round 134): rel / atk / atkr on engine_scripts9b (FoeX on Soviet_4, Tgt / Tg2 on Soviet_5): PASS, all
+  five actions as the simulator has them.
+  rel: 甲乙丙 100 to s8, 87 at s9 (the bench's seconds run one ahead of the timers, engine_scripts8b), then ~6 a second,
+    12 (= dead) from s21: each of the three overrides holds fire at Neutral and lets it go at Enemy. 丁 (no override)
+    87 at s1, 12 from s13. Simulator before this round: 丁 100 to the end -- its fallback took Soviet_2..6 as the
+    player's enemies only once their AI was woken; the container's Player_1 has all six in playerEnemies (and they
+    fire unprompted), so sim.Sim.enemy now takes every published player as the human's enemy.
+  atk / atkr alike (MAP_REVEAL_ALL_PERM changes nothing): 甲 Tgt 1 and 乙 Tg2 1 from s4, ~6 a second, 12 from s16
+    (Att's two take Tgt's two side by side: Tgt 1 falls at one tank's rate, like Tg2 1 under solo); 丙 Tg2 2 from s20,
+    12 from s32 -- solo goes on to the team's next member; 丁 the dummy 100 to s61. Simulator: the same order, the
+    kills at s20 / s37 (first fire s6), 2-4 s behind the bench.
 """
 from maps import probe_border
 from parts import Mission, Script, Test, status
@@ -146,9 +160,14 @@ def atkr(m):
     return atk(m, reveal=True)
 
 
-def memb(m):
+LEFT = {'memb': 23, 'memb2': 23, 'memb3': 23, 'memb4': 16, 'memb5': 17, 'memb6': 23, 'memb7': 23, 'memb8': 23,
+        'memb9': 23, 'memb10': 17}        # 留 on the bench (rounds 130-133); members everywhere would be 16
+
+
+def memb(m, left=23):
     """Are the placed units members of their crews? Everyone holds fire; at 2 s TEAM_KILL the enemy crews FoeA and Tgt
-    and the player's crew MeC. 留 = alive: A foe x1, Tgt 1 x2, Tgt 2 x4, C me x8, dummy (no crew) x16. Members: 16."""
+    and the player's crew MeC. 留 = alive: A foe x1, Tgt 1 x2, Tgt 2 x4, C me x8, dummy (no crew) x16. Members: 16.
+    left: the bench's 留 (LEFT)."""
     t = Test()
     every = [f'{k} {w}' for k in REL for w in ('me', 'foe')] + [f'{c} {k}' for c in ATK for k in (1, 2)] + \
         ['solo', 'idle', 'dummy']
@@ -156,16 +175,16 @@ def memb(m):
     s8.at(t, 'kill', 2.0, [('TEAM_KILL', m.teams[c]) for c in ('FoeA', 'Tgt', 'MeC')])
     names = [m.role(r).name for r in ('A foe', 'Tgt 1', 'Tgt 2', 'C me', 'dummy')]
     s8.total(t, 'CNV_S9_Alive', '留', [(2 ** k, ('NAMED_NOT_DESTROYED', n)) for k, n in enumerate(names)])
-    t.expect += [('留', 0, '==', 31, 2), ('留', 4, '==', 16)]
+    t.expect += [('留', 4, '==', left)]
     s8.watch(t, 10.0)
     return t
 
 
-def memb2(m):
+def memb2(m, left=23):
     """memb with every crew's units put on their crew by script at the start (UNIT_SET_TEAM, as Mission.order does
     before an order): does a script-made membership of an enemy crew hold where the placed originalOwner did not?
     Members: 16, as in memb."""
-    t = memb(m)
+    t = memb(m, left)
     crews = {'A foe': 'FoeA', 'Tgt 1': 'Tgt', 'Tgt 2': 'Tgt', 'C me': 'MeC'}
     t.scripts.insert(0, Script('Test - S9 set teams', [],
                                [('UNIT_SET_TEAM', m.role(r).name, m.teams[c]) for r, c in crews.items()]))
@@ -177,7 +196,7 @@ def memb3(m):
     10 x Tgt's (2), 乙 MeC's (1), 丙 the enemy's default team teamSoviet_1's (dummy, and whoever is not on a crew).
     Before the kill at 2 s a member count says whether the enemy crews have members at all; after it, whether
     TEAM_KILL emptied them."""
-    return _members(m, [m.teams['MeC'], _default(m, 's1')])
+    return _members(m, [m.teams['MeC'], _default(m, 's1')], LEFT['memb3'])
 
 
 def _default(m, side):
@@ -185,9 +204,9 @@ def _default(m, side):
     return f'{p}/team{p}'
 
 
-def _members(m, teams):
+def _members(m, teams, left):
     """memb2 with 甲 = FoeA's members + 10 x Tgt's, and 乙 / 丙 the member counts of `teams`."""
-    t = memb2(m)
+    t = memb2(m, left)
     s8.total(t, 'CNV_S9_NA', '甲', [(w * n, ('TEAM_COMPARE_NUM_MEMBERS', m.teams[c], 2, n))
                                     for c, w in (('FoeA', 1), ('Tgt', 10)) for n in range(1, 10)])
     for team, counter, label in zip(teams, ('CNV_S9_NC', 'CNV_S9_ND'), '乙丙'):
@@ -202,39 +221,39 @@ def memb4(m):
     (DefaultPersonality, base / unit builder 240 like retail a02's scripted Soviet04); the dummy stays on Soviet_1
     (the container's BaseMarshall). 甲 = FoeA's + 10 x Tgt's members, 乙 MeC's, 丙 teamSoviet_1's (as memb3; the
     spare players' default teams are not published)."""
-    return memb3(m)
+    return _members(m, [m.teams['MeC'], _default(m, 's1')], LEFT['memb4'])
 
 
 def memb5(m):
     """pend_scripts9c: FoeX on Soviet_2 (the container's Marshall, allied to Soviet_1 / 3), Tgt / Tg2 on Soviet_6
     (a Marshall too, no allies). 留's bits split them: A foe x1 is Soviet_2's, Tgt x2 / x4 Soviet_6's."""
-    return memb(m)
+    return memb(m, LEFT['memb5'])
 
 
 def memb6(m):
     """pend_scripts9d: memb with Soviet_1's playerAllies emptied (the container: 'Soviet_2 Soviet_3')."""
-    return memb(m)
+    return memb(m, LEFT['memb6'])
 
 
 def memb7(m):
     """pend_scripts9e: memb with playerAllies emptied on Soviet_1, 2 and 3 (nobody allied to Soviet_1 either way)."""
-    return memb(m)
+    return memb(m, LEFT['memb7'])
 
 
 def memb8(m):
     """pend_scripts9f: memb with Soviet_2 and 3 (Soviet_1's allies) made DefaultPersonality, the alliances kept."""
-    return memb(m)
+    return memb(m, LEFT['memb8'])
 
 
 def memb9(m):
     """pend_scripts9g: memb with Soviet_1, 2 and 3 all DefaultPersonality and none allied (9e and 9f at once)."""
-    return memb(m)
+    return memb(m, LEFT['memb9'])
 
 
 def memb10(m):
     """pend_scripts9h: FoeX on Soviet_3 (InnerBaseMarshall like Soviet_6, but allied to Soviet_1 / 2), Tgt / Tg2 on
     Soviet_6 again (the control). A foe x1 is Soviet_3's."""
-    return memb(m)
+    return memb(m, LEFT['memb10'])
 
 
 OWNERS = ['Player_1', 'Soviet_1', 'Soviet_2', 'Soviet_3', 'Soviet_4', 'Soviet_5', 'Soviet_6']    # the published ones
@@ -267,19 +286,20 @@ def _no_allies():
     return _sides('CampP9d', s1={'playerAllies': ''})
 
 
-MISSION = {'pend_scripts9': mission,
-           'pend_scripts9b': lambda: mission('CampP9b', foe='s4', moved={'Tgt': 's5', 'Tg2': 's5'}),
-           'pend_scripts9c': lambda: mission('CampP9c', foe='s2', moved={'Tgt': 's6', 'Tg2': 's6'}),
-           'pend_scripts9d': _no_allies,
-           'pend_scripts9e': lambda: _sides('CampP9e', **{s: {'playerAllies': ''} for s in ('s1', 's2', 's3')}),
-           'pend_scripts9f': lambda: _sides('CampP9f', **{s: {'aiPersonality': 'AIPersonalityDefinition:DefaultPersonality'}
+MISSION = {'engine_scripts9': mission,
+           'engine_scripts9b': lambda: mission('CampP9b', foe='s4', moved={'Tgt': 's5', 'Tg2': 's5'}),
+           'engine_scripts9c': lambda: mission('CampP9c', foe='s2', moved={'Tgt': 's6', 'Tg2': 's6'}),
+           'engine_scripts9d': _no_allies,
+           'engine_scripts9e': lambda: _sides('CampP9e', **{s: {'playerAllies': ''} for s in ('s1', 's2', 's3')}),
+           'engine_scripts9f': lambda: _sides('CampP9f', **{s: {'aiPersonality': 'AIPersonalityDefinition:DefaultPersonality'}
                                                           for s in ('s2', 's3')}),
-           'pend_scripts9g': lambda: _sides('CampP9g', **{s: {'playerAllies': '', 'aiPersonality':
+           'engine_scripts9g': lambda: _sides('CampP9g', **{s: {'playerAllies': '', 'aiPersonality':
                                                               'AIPersonalityDefinition:DefaultPersonality'}
                                                           for s in ('s1', 's2', 's3')}),
-           'pend_scripts9h': lambda: mission('CampP9h', foe='s3', moved={'Tgt': 's6', 'Tg2': 's6'})}
-CHECKS = {'pend_scripts9': {'rel': rel, 'atk': atk, 'atkr': atkr, 'memb': memb, 'memb2': memb2, 'memb3': memb3,
+           'engine_scripts9h': lambda: mission('CampP9h', foe='s3', moved={'Tgt': 's6', 'Tg2': 's6'})}
+CHECKS = {'engine_scripts9': {'memb': memb, 'memb2': memb2, 'memb3': memb3,
                             'owner': owner},
-          'pend_scripts9b': {'memb4': memb4}, 'pend_scripts9c': {'memb5': memb5}, 'pend_scripts9d': {'memb6': memb6},
-          'pend_scripts9e': {'memb7': memb7}, 'pend_scripts9f': {'memb8': memb8},
-          'pend_scripts9g': {'memb9': memb9}, 'pend_scripts9h': {'memb10': memb10}}
+          'engine_scripts9b': {'memb4': memb4, 'rel': rel, 'atk': atk, 'atkr': atkr},
+          'engine_scripts9c': {'memb5': memb5}, 'engine_scripts9d': {'memb6': memb6},
+          'engine_scripts9e': {'memb7': memb7}, 'engine_scripts9f': {'memb8': memb8},
+          'engine_scripts9g': {'memb9': memb9}, 'engine_scripts9h': {'memb10': memb10}}

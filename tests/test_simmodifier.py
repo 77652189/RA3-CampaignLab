@@ -44,7 +44,7 @@ def test_a_retail_modifier_is_found_and_shields_for_its_duration():
 def _world(own):
     s = sim.Sim.__new__(sim.Sim)
     s.own, s.bodies, s.eng, s.t, s.used = own, {}, None, 0.0, set()
-    s.relations, s.human, s.foe, s.ai = {}, 'PlyrHuman', 'PlyrEnemy', set()
+    s.relations, s.human, s.foe, s.ai, s.players = {}, 'PlyrHuman', 'PlyrEnemy', set(), {}
     return s
 
 

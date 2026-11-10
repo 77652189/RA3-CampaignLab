@@ -1825,8 +1825,11 @@ class Sim:
         """Player a takes player b as an enemy."""
         if (a, b) in self.relations:
             return self.relations[(a, b)] == 'Enemy'
+        # the container (Heidelberg, maps/island.py) has Soviet_1..6 all in Player_1's playerEnemies, and they fire
+        # unprompted, woken or not (bench 11-09 engine_scripts9b rel 丁: Soviet_4's tank, no AI script, shoots at s1)
+        players = set(self.players.values())
         return {a, b} == {self.human, self.foe} or (a != b and CIV not in (a, b) and self.human in (a, b)
-                                                   and (a in self.ai or b in self.ai))
+                                                   and (a in self.ai or b in self.ai or {a, b} <= players))
 
     def hostile(self, a, t):
         """Body a takes body t as an enemy: the team overrides first, then the players (Generals Team::getRelationship:
