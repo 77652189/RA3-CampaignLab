@@ -85,4 +85,4 @@ def mission(name='CampSuper'):
     return m
 
 
-MISSION = {'engine_super': mission}
+MISSION = {'engine_super': mission, 'engine_scripts8bs': lambda: mission('CampS8bS')}   # checks/engine_scripts8b

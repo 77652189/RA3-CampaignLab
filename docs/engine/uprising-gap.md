@@ -9,7 +9,7 @@
 - 两边编好的游戏数据（`StaticStream.big` 里的 static 流；起义时刻的 manifest 是第 7 版，头部多一个字）里，每个 GameObject 的数据里存着它每个模块的类型名哈希。拿两个 exe 里所有模块名算哈希去扫，就知道哪个单位用了哪个模块（RA3 自己的数据扫出来全都在 RA3 exe 里，说明方法可靠）。
 - 每张枚举表在两个 exe 里各找一份、整表比较，再用 SDK 的 xsd 认出它是哪个字段的取值。
 
-**"RA3 mod 能不能用"的依据**：下表"不能用"的东西，RA3 1.13 的 exe 里没有对应的类或取值，SDK 的 schema 里也没有。预计 BinaryAssetBuilder 编译时就会报错（**还没上台实测**，台子空了就测一个，见文末）。
+**"RA3 mod 能不能用"的依据**：下表"不能用"的东西，RA3 1.13 的 exe 里没有对应的类或取值，SDK 的 schema 里也没有。**实测过（2026-11-09）：BinaryAssetBuilder 编译时直接拒绝**，mod 根本编不出来（见文末"实测"）。
 
 ## 第一层：脚本动作和条件（29 个）
 
@@ -68,8 +68,14 @@ RA3 有、起义时刻删掉的几个是 C&C3 的遗留（`HIJACKED`、`TIBERIUM
 - 对我们的意思：做"多武器、会扫射的大家伙"RA3 mod 能做，扫射路线只能用 RA3 默认的那一种；做"会展开变形的单位"，要走 RA3 自己的变形办法（换运动器、换状态、换自身，见 [transform.md](transform.md)），不能照抄超级要塞。
 - 还没查清的：WeaponSetUpdate / 武器模板在起义时刻里有没有**新增字段**（类型哈希不同，但可能只是枚举扩充带来的）。要查得比较两边编好的同一个模块的结构大小，或上台试。
 
+## 实测：把起义时刻专有模块写进 RA3 mod 会怎样（2026-11-09）
+
+- 做法：原版哨戒炮（SovietBaseDefenseGround）的复制品，`<Behaviors>` 里加一个空的 `<UnitUnpackUpdate id="ModuleTag_CNV_UnitUnpack"/>`，放进探针地图走正常的 mod 编译。
+- 结果：**BinaryAssetBuilder 报 Critical，编译失败**——XML 校验说 `Behaviors` 里的 `UnitUnpackUpdate` 不是合法子元素，后面列出允许的模块名（ObjectSMCHelper、AttributeModifierUpgrade……）。没有生成 mod，所以轮不到"游戏忽略"或"崩溃"。
+- 意思：上面表里标"不能用"的模块，写进 RA3 mod 的后果是**编不出来**，不会悄悄失效，也不会进游戏才崩。新枚举取值（如扫射方式表）同理会在 schema 校验处被拒（按同一个机制推断，没单独测）。
+- 复现：探针没留在仓库里（它永远编不过，留着会让整批检查报错）。要重测就照上面一条写一个单位，`python -I -X utf8 experimental/cnv/build.py <任务名>`，看 SDK 目录下 `_build_<mod名>Map.log` 末尾的 Critical。
+
 ## 还没做的
 
-- **上台实测**：把一个起义时刻专有模块（打算用 UnitUnpackUpdate）写进一个 mod 单位，看 BinaryAssetBuilder 报错 / 游戏忽略 / 崩溃。台子被用户的红警2 占着，空了再做。
 - 字段级差别（见上一节最后一条）。
 - 只扫了 static 流里的 597 个起义时刻物体；地图自带流里的物体没扫。新 KindOf / 状态具体是哪些单位在用，也还没对（要把枚举位号对回数据）。

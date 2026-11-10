@@ -197,6 +197,9 @@ ALIGN = {
     'border reveal': 'a permanent reveal made before MAP_SWITCH_BORDER covers the new ground too (bench 2026-10-28, '
                      'probe reveal; the Generals source says the two go badly together: 源码 4.4)',
     'ra3 only': '未对齐: actions RA3 has and Generals does not, as we understand them (源码 6): ',
+    'superweapon': 'a script\'s superweapon cast (SUPERWEAPON_HITS rows, CURTAIN): fires though the power is not '
+                   'charged (bench engine_super p / q), but not again in the reload its own last cast started '
+                   '(bench engine_scripts8b pdis; INFERRED rule)',
     'special power': 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT / NAMED_USE_COMMANDBUTTON_ABILITY: logged, no effect '
                      '(a jump, a carrier\'s drop: the device\'s own scripts say what follows)',
     'ai': 'a skirmish AI (UNIT_AI_TRANSFER_ALL, SKIRMISH_AI_*): woken and logged; what it builds and when it '
@@ -467,6 +470,7 @@ class Body:
     up_since: dict = dataclasses.field(default_factory=dict)   # upgrade -> the frame it was given (a Duration runs)
     script_status: set = dataclasses.field(default_factory=set)  # UNIT_CHANGE_OBJECT_STATUS's bits; `status` is these
                                                                 # + the modifiers' (modify)
+    slots: object = None                                        # simunits.weapon_sets: the weapons chosen by status (None: fixed)
     auras_on: dict = dataclasses.field(default_factory=dict)   # modifier id -> (until frame, xml) an aura hung on it
     shielded: bool = False                                      # INVULNERABLE + Iron Curtain bits on it (simunits.effect)
     taken: float = 1.0                                          # ARMOR factor: damage taken x (INFERRED)
@@ -1005,6 +1009,11 @@ class Sim:
         else:                                   # no health in the data: a building's or a unit's usual (a guess)
             b.max_hp = b.hp = 2000.0 if 'STRUCTURE' in b.kinds else 300.0
         b.armor, b.weapons = f['armor'], f['weapons']
+        if template not in self.__dict__.setdefault('_wsets', {}):
+            self._wsets[template] = simunits.weapon_sets(template, self.own)
+        b.slots = self._wsets[template]
+        if b.slots:                             # the weapon lines name a status: the held one is chosen from it
+            b.weapons = simunits.pick_weapons(b.slots, b.status)
         b.crusher, b.crushable = simunits.crush(template, self.own)
         b.lies = simunits.slow_death(template, self.own)
         b.linger = LINGER
@@ -1604,6 +1613,8 @@ class Sim:
         e = simunits.effect(mods, on | b.script_status, off)
         if not mods and not on and not off and b.base is None:
             b.status = set(b.script_status)
+            if b.slots:
+                b.weapons = simunits.pick_weapons(b.slots, b.status)
             return
         if b.base is None:
             b.base = {'speed': b.speed, 'vision': b.vision, 'sight': b.sight, 'weapons': b.weapons, 'armor': b.armor}
@@ -1616,8 +1627,8 @@ class Sim:
         b.status = st
         b.speed = b.base['speed'] * e['SPEED']
         b.vision, b.sight = b.base['vision'] * e['VISION'], b.base['sight'] * e['VISION']
-        b.weapons = b.base['weapons'] if e['RANGE'] == 1.0 else \
-            [dict(w, range=w['range'] * e['RANGE']) for w in b.base['weapons']]
+        held = simunits.pick_weapons(b.slots, st) if b.slots else b.base['weapons']       # the status picks the guns
+        b.weapons = held if e['RANGE'] == 1.0 else [dict(w, range=w['range'] * e['RANGE']) for w in held]
         b.shielded = e['shielded']
         b.taken, b.dealt = e['ARMOR'], e['DAMAGE_MULT'] * e['RATE_OF_FIRE']
         if mods or on:
@@ -2640,10 +2651,18 @@ class Sim:
                 self.note('技能', f'{a[0]} 用 {a[1]}' + (f' 打 {a[2]}' if len(a) > 2 else ''))
                 q = self.point(a[2]) if len(a) > 2 and name == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT' else None
                 rules = simunits.power_rules(b.template, a[1], self.own) if b and b.alive else None
+                # bench 11-09 engine_scripts8b pdis: a second script cast ~20 s after the first (the collider's
+                # reload, set by that cast, not over) is seen as triggered but hurts nobody; the first cast of a
+                # collider never cast went though its power was not charged (engine_super p / q). INFERRED: a cast
+                # in the reload a cast started brings no blast
+                cooling = bool(b and b.alive and b.ready_at.get(a[1], 0) > self.frame_now())
                 if rules and rules['reload']:       # every cast starts the reload anew (RA3 1.13 0x7dea80, read;
                     b.ready_at[a[1]] = self.frame_now() + rules['reload'] + RELOAD_LAG.get(a[1], 0)   # SDK GlobalData)
                 hits = SUPERWEAPON_HITS.get(a[1]) if b and b.alive else None
-                if hits and q is not None:         # a script's cast fires though the power is not ready
+                if hits and q is not None and cooling:
+                    self.used.add('superweapon')
+                    self.note('技能', f'{self.label(b)} 的 {a[1]} 还在重装：没打出来')
+                elif hits and q is not None:       # a script's cast fires though the power is not ready
                     self.used.add('superweapon')
                     now = self.frame_now()
                     for after, table in hits:

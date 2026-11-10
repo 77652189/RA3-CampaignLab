@@ -2,8 +2,8 @@
 TEAM_DELETE / TEAM_KILL, TEAM_IDLE_FOR_SECONDS / TEAM_IDLE_FOR_FRAMECOUNT, TEAM_MERGE_INTO_TEAM,
 UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION. Mission here (build engine_scripts8) on maps/probe_border.py
 (level ground 5000 x 5000; every place absolute, the scenes >= 1000 apart where an enemy is). The rest of the batch
-(the team status, the base power, the player's superweapon cast and its availability) waits in checks/pending_scripts8.py
-for the bench (it crashed at start, 11-09): only measured names may stand in an engine_ file (inventory.bench_sources).
+(the team status, the base power, the player's superweapon cast and its availability) is checks/engine_scripts8b.py
+(the bench crashed at start on 11-09; measured the same evening).
 What the simulator (sim.py) predicts is in brackets.
 
   team    the player's crews Del, Kil, Liv (two Guardians each, row y 1000); at 2 s TEAM_DELETE Del, TEAM_KILL Kil,
