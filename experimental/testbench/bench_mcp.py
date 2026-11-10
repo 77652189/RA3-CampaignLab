@@ -414,7 +414,8 @@ def bench_status() -> str:
 def bench_stop() -> str:
     """Close the bench game and free the bench lock (frames stay in the run folder)."""
     r = S.stop()
-    return f'stopped {r["mod"]}: {r["frames"]} frames in {r["run_dir"]}'
+    return f'stopped {r["mod"]}: {r["frames"]} frames in {r["run_dir"]}' + (f' -- WARNING {r["warning"]}'
+                                                                          if r.get('warning') else '')
 
 
 # ------------------------------------------------------------- the decoupled builds (experimental/cnv), one call each
@@ -601,7 +602,7 @@ def _cnv_run(name, check, build, keep, shell=()):
         return '\n'.join(built + ['RA3 is running: built to work/staging, no bench run'])
     if not plan['steps']:
         return '\n'.join(built + ['built (no check: nothing to run)'])
-    lines, counted, done = built, '', ''
+    lines, counted, done, verdict = built, '', '', ''
     try:
         for tool, a in plan['steps']:
             # the condition came: the waits for it go; a watch without one (a look after it) still runs
@@ -617,17 +618,37 @@ def _cnv_run(name, check, build, keep, shell=()):
                 counted = text
             if tool == 'bench_watch':           # nothing more to wait for: the condition came, or the game ended
                 done = next((w for w in ('UNTIL met', 'mission has ended', 'stopped:') if w in text), '')
-    finally:
         ext = harness.ext_summary(S.ext_log)    # engine line D: the dll's create / update lines, read before the stop
         if ext:
             lines.append(ext)
+        # judged and written down while the game is still up: a stop that goes wrong (bench 2026-11-10: the game not
+        # out 10 s after its kill, TimeoutExpired) must not take the readings and the verdict with it
+        code, out = lab(*args, '--judge', counted, timeout=120)
+        if done == 'stopped:' and 'RESULT FAIL' in out:     # bench 2026-10-22: the shim went quiet, the rerun passed
+            out += ('\nBENCH DROPOUT: the capture stopped before the check was over -- "no reading" FAILs say nothing '
+                    'about the mission; run again with build=false')
+        verdict = out.strip()
+        save_result(S.run_dir, lines + [verdict])
+    finally:
         if not keep and S.p is not None:
-            lines.append(bench_stop())
-    code, out = lab(*args, '--judge', counted, timeout=120)
-    if done == 'stopped:' and 'RESULT FAIL' in out:     # bench 2026-10-22: the shim went quiet at s11.6, the rerun passed
-        out += ('\nBENCH DROPOUT: the capture stopped before the check was over -- "no reading" FAILs say nothing '
-                'about the mission; run again with build=false')
-    return '\n'.join(lines + [out.strip()])
+            lines.append(safe_stop())
+    return '\n'.join(lines + [verdict])
+
+
+def safe_stop():
+    """bench_stop at cnv_check's end: whatever goes wrong in the stop is a warning line, never the run's result."""
+    try:
+        return bench_stop()
+    except Exception as e:      # noqa: BLE001 -- the verdict is already out; the stop only reports
+        return f'bench_stop: WARNING {type(e).__name__}: {e}'
+
+
+def save_result(run_dir, lines):
+    """cnv_check's steps, readings and verdict as run_dir/cnv_result.txt -- written before the stop."""
+    if not run_dir or not os.path.isdir(run_dir):
+        return
+    with open(os.path.join(run_dir, 'cnv_result.txt'), 'w', encoding='utf-8') as f:
+        f.write('\n'.join(lines) + '\n')
 
 
 @server.tool(structured_output=False)

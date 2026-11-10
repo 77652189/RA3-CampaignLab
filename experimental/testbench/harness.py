@@ -40,6 +40,7 @@ SHOTS = os.path.join(BENCH, 'shots')
 # RA3_BENCH_SPEED=<x>: the mission runs x times as fast (the capture shim scales the game's clocks once the menus are
 # walked); mission seconds, waits and watches are all in mission time. 1 (default): the shim hooks no clock.
 SPEED = float(os.environ.get('RA3_BENCH_SPEED') or 1)
+STOP_WAIT = 20      # seconds stop() waits for the killed game to exit before it warns and frees the slot anyway
 FRAME_COST = 0.35           # real seconds a watched frame takes: capture, archive, counters (bench 2026-10-27, x8)
 RUNS = os.path.join(ROOT, 'work', 'testbench', 'runs')
 LOCK = slots.lock_path(1)
@@ -602,14 +603,25 @@ class Session:
                 time.sleep(a[1])
             time.sleep(0.25)
 
-    def stop(self):
+    def stop(self, wait=STOP_WAIT):
+        """Kill this session's own game (its pid only, never another line's) and free the slot. A game that has not
+        exited after `wait` seconds is a warning in the reply (dict 'warning'), not an exception: bench 2026-11-10 a
+        TimeoutExpired here lost a check's readings and verdict (engine_sweepoff, B's run the same night)."""
+        warning = None
         if self.p and self.p.poll() is None:
             self.p.kill()
-            self.p.wait(10)
+            try:
+                self.p.wait(wait)
+            except subprocess.TimeoutExpired:
+                warning = f'game pid {self.p.pid} still up {wait} s after kill (left to exit by itself)'
+                self._say(warning)
         if self.slot:
             slots.release(self.slot)
             self.slot = None
-        return dict(mod=self.mod, frames=len(self.frames), run_dir=self.run_dir)
+        r = dict(mod=self.mod, frames=len(self.frames), run_dir=self.run_dir)
+        if warning:
+            r['warning'] = warning
+        return r
 
     def _alive(self):
         if self.p is None:
