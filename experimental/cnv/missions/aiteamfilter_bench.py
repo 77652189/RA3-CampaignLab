@@ -41,8 +41,16 @@ TECH2 = 'Upgrade_AlliedTech2'
 
 
 def personality_xml(pid, kinds, filt, max_units, locos='LAND AMPHIBIOUS', objset='', always=False, late=0,
-                    late_unit=TANK):
-    removed = [f'    <StrategicState id="{k}" xai:joinAction="Remove"/>' for k in INHERITED]
+                    late_unit=TANK, static=False):
+    if static:      # round 91: LandDefense_MEDIUM's shape (AIStateLibrary.xml:495) with MaxTargets 1
+        target, tactic = 'FriendlyLandStructureHeuristic', \
+            '<Tactic id="Attack" Tactic="StaticDefense" Distance="450" EndBehavior="DISBAND">'
+        prio, micro = 'DEFENSE', 'DefenseMicroManager_MEDIUM'
+    else:
+        target, tactic = 'ClosestStructureHeuristic', \
+            '<Tactic id="Attack" Tactic="SimpleAttack" EndBehavior="RAMPAGE" EndIfStateTurnsOff="true">'
+        prio, micro = 'STANDARD', 'StandardMicroManager_MEDIUM'
+    removed =[f'    <StrategicState id="{k}" xai:joinAction="Remove"/>' for k in INHERITED]
     opener, first = [], []
     if late:
         removed += ['    <BuildState id="AlliedNeededUnits" xai:joinAction="Remove"/>']
@@ -63,11 +71,11 @@ def personality_xml(pid, kinds, filt, max_units, locos='LAND AMPHIBIOUS', objset
     <Heuristic>
       <ConstantHeuristic/>
     </Heuristic>
-    <TargetHeuristic TargetHeuristic="ClosestStructureHeuristic"/>
-    <Tactic id="Attack" Tactic="SimpleAttack" EndBehavior="RAMPAGE" EndIfStateTurnsOff="true">
+    <TargetHeuristic TargetHeuristic="{target}"/>
+    {tactic}
       <TeamTemplate MinUnits="1" MaxUnits="{max_units}" {kinds}
-                    AllowedLocomotorTypes="{locos}" Priority="STANDARD" AlwaysRecruit="{'true' if always else 'false'}"{objset}
-                    MicroManager="StandardMicroManager_MEDIUM">{filt}
+                    AllowedLocomotorTypes="{locos}" Priority="{prio}" AlwaysRecruit="{'true' if always else 'false'}"{objset}
+                    MicroManager="{micro}">{filt}
       </TeamTemplate>
     </Tactic>
   </AIStrategicStateDefinition>''',
@@ -87,7 +95,8 @@ def objfilter(rule, inc=(), exc=()):
 
 
 def mission(name, kinds=KINDS, filt='', max_units=8, tanks=4, inf=4, tanks_home=0, inf_home=4, second=INF,
-            locos='LAND AMPHIBIOUS', objset='', always=False, late=0, late_unit=TANK):
+            locos='LAND AMPHIBIOUS', objset='', always=False, late=0, late_unit=TANK, static=False, tp_at=None,
+            tanks_out=0):
     """second: the other unit type (Peacekeepers, or Riptide ACVs in the locomotor builds); inf / inf_home count it.
     always: the team's AlwaysRecruit; late: Guardians the AI builds itself (a war factory, a plant, the opener);
     late_unit: what the opener builds instead (round 89: aiar4 Riptides)."""
@@ -96,10 +105,12 @@ def mission(name, kinds=KINDS, filt='', max_units=8, tanks=4, inf=4, tanks_home=
              'expect tanks home': tanks_home, 'expect infantry home': inf_home}
     if late:
         facts |= {'late tanks': late, 'check at': LATE_CHECK_AT}
+    if tp_at:       # round 91: the default team teleported out -- only units no AI team holds go (read at tp + 2)
+        facts |= {'teleport at': tp_at, 'check at': tp_at + 2.0, 'expect tanks out': tanks_out}
     m = Mission(name=name, map=niagara, facts=facts)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{pid}'}
     xml = personality_xml(pid, kinds, filt, max_units, locos, f' RegisteredObjectSet="{objset}"' if objset else '',
-                          always, late, late_unit)
+                          always, late, late_unit, static)
     m.assets.append((f'{pid}.xml', xml, f'AIPersonalityDefinition:{pid}'))
     m.cnv_units = (TANK, second)
     m.cnv_labels = ('坦克在家', '步兵在家' if second == INF else '气垫船在家')
@@ -129,6 +140,11 @@ def mission(name, kinds=KINDS, filt='', max_units=8, tanks=4, inf=4, tanks_home=
                [('UNIT_AI_TRANSFER_ALL', s1, 1), ('SKIRMISH_AI_MAKE_BASE', s1, base),
                 ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', s1, 20), ('SKIRMISH_AI_USE_REPAIRS', s1, 0),
                 ('SKIRMISH_AI_USE_REBUILD_SYSTEM', s1, 0), ('PLAYER_SET_MONEY', s1, LATE_MONEY if late else 0)])]
+    if tp_at:
+        m.waypoint('out', 'CNV AI Out', 'east base', 0.0, -1200.0)
+        m.scripts += [Script('CNV AI - Tp timer', [], [('SET_MILLISECOND_TIMER', 'CNV AI Tp', tp_at)]),
+                      Script('CNV AI - Tp', [('TIMER_EXPIRED', 'CNV AI Tp')],
+                             [('TEAM_TELEPORT_TO_WAYPOINT', m.team('s1'), 'CNV AI Out')])]
     if late:
         m.put('AlliedWarFactory', 'east base', 0, FACTORY_DY, side='s1', name='UNIT - CNV AI Factory', role='ai factory')
         m.put('AlliedPowerPlant', 'east base', 0, PLANT_DY, side='s1', name='UNIT - CNV AI Plant', role='ai plant')
@@ -170,4 +186,22 @@ MISSION = {
                              tanks_home=1),
     'aiar4': lambda: mission('CampAITFAr4', filt=objfilter('ANY', inc=(TANK, RIPTIDE)), second=RIPTIDE, inf=0,
                              inf_home=0, late=2, late_unit=RIPTIDE, tanks_home=0),
+    # round 91: which units a gone team holds -- at 70 s s1's default team is teleported 1200 south; a unit an AI team
+    # took is no longer in it and stays (bench: does TEAM_TELEPORT move only the default team's?). 坦克在外 at 72 s
+    # = late tanks nobody holds. aiar5 / 6: aiar0 / 1 (SimpleAttack, AlwaysRecruit off / on: 2 / 0 out);
+    # aiar7 / 8: the same as LandDefense_MEDIUM's StaticDefense team (DEFENSE, DISBAND, at a friendly structure):
+    # does a gone defense team recruit on (private teams.keep_on)? Guesses 2 / 0.
+    # Bench round 91 (坦克在家 / 在外 / 拥有): 在外 0 in all four -- TEAM_TELEPORT_TO_WAYPOINT on teamSoviet_1 moved
+    # nothing (aiar5's 2 free tanks home s30-s81), so the method fails; expectations set to the reading 0. aiar7
+    # (off): 6 home and still s30-s81; aiar8 (on): home 6 -> 5 s42, 4 s43-58, 6 s60, 4 s69-78, 6 s80 -- the
+    # late ones joined and the team shifts (INFERRED: a gone StaticDefense AlwaysRecruit team recruits on in a
+    # quiet base; what holds LandDefense back in a skirmish is not this gate).
+    'aiar5': lambda: mission('CampAITFAr5', filt=objfilter('ANY', inc=(TANK,)), inf=0, inf_home=0, late=2,
+                             tp_at=70.0, tanks_out=0),
+    'aiar6': lambda: mission('CampAITFAr6', filt=objfilter('ANY', inc=(TANK,)), inf=0, inf_home=0, late=2,
+                             always=True, tp_at=70.0, tanks_out=0),
+    'aiar7': lambda: mission('CampAITFAr7', filt=objfilter('ANY', inc=(TANK,)), inf=0, inf_home=0, late=2,
+                             static=True, tp_at=70.0, tanks_out=0),
+    'aiar8': lambda: mission('CampAITFAr8', filt=objfilter('ANY', inc=(TANK,)), inf=0, inf_home=0, late=2,
+                             static=True, always=True, tp_at=70.0, tanks_out=0),
 }

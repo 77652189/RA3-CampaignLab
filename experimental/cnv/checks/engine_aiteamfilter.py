@@ -39,6 +39,7 @@ built both. Told apart next by aiar3 (no Guardians placed: can the script-placed
 from parts import Test, counted, square, Script
 
 AREA = 'CNV AI Base Area'
+OUT_AREA = 'CNV AI Out Area'
 LAG = 4.0
 AT, SECONDS = 40.0, 50.0
 
@@ -51,6 +52,15 @@ def a(m):
     tank, other = m.cnv_units
     lt, lo = getattr(m, 'cnv_labels', ('坦克在家', '步兵在家'))
     counted('CNV_TF_Tanks', lt, t, template=tank, area=AREA, player=s1)
+    if 'teleport at' in m.facts:          # aiar5-8: the late tanks no team holds, teleported (a 4th counter reads ?)
+        x, y = m.site('east base')
+        t.areas[OUT_AREA] = square(x, y - 1200.0, 300.0)
+        counted('CNV_TF_Out', '坦克在外', t, template=tank, area=OUT_AREA, player=s1)
+        counted('CNV_TF_Owned', '坦克拥有', t, template=tank, player=s1)
+        at = m.facts['check at']
+        t.expect += [('坦克在外', at, '==', m.facts['expect tanks out'], at + 1)]
+        t.bench = [('bench_watch', dict(seconds=at + 4 + LAG, every=1, sheet=False, lines=len(t.counters)))]
+        return t
     counted('CNV_TF_Inf', lo, t, template=other, area=AREA, player=s1)
     if 'late tanks' in m.facts:           # aiar*: did the opener build them at all (owned, anywhere)
         counted('CNV_TF_Owned', '坦克拥有', t, template=tank, player=s1)
@@ -65,4 +75,4 @@ def a(m):
 
 CHECKS = {k: {'a': a} for k in ('aitfany', 'aitfnone', 'aitfall', 'aitfki', 'aitfke', 'aitfmax',
                                  'aitfland', 'aitfamph', 'aitfwat', 'aitfosi', 'aitfosv', 'aitfosc', 'aiar0', 'aiar1', 'aiar2',
-                                 'aiar3', 'aiar4')}
+                                 'aiar3', 'aiar4', 'aiar5', 'aiar6', 'aiar7', 'aiar8')}
