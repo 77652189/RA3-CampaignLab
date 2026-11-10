@@ -48,6 +48,8 @@ Rules for this task (from the project; they override anything above):
   after that, stop and report what fails and why you think so -- the coordinator decides whether to go on. Aim for
   about {aim} minutes; {limit} is only a safety stop.
 - {bench}
+- Your final message IS the report (the harness saves it); do not write report files such as answer.md into the
+  worktree.
 - Progress notes: if the brief names a handoff file, append to it as you go (after each bench run or finding, one
   or two lines with the readings), not only at the end -- a run can be cut off (quota, crash) with no final report.
 - Follow AGENTS.md / CLAUDE.md for everything else.
