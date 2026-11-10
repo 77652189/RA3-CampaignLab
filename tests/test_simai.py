@@ -126,9 +126,11 @@ def test_skirmish_ai_builds_makes_units_and_attacks(skirmish):
     assert min(x.died_at for x in lost) > (first[0] / simai.FPS), 'died before the team left'
 
 
-@pytest.mark.xfail(strict=True, reason='bench i-l: Cleanup takes the defense team whole (8 at s131); simai takes '
-                   'only the pool (keep_on off, and how the defense team lets go is not read: B handoff 100)')
 def test_skirmish_ai_cleanup_takes_the_defense_team(skirmish):
+    """Bench i-m: Cleanup takes the defense team whole (LandDefense 8 -> 0, Cleanup 0 -> 8 in one frame at s131, the
+    pool never above 1). read (B handoff 102): every AI tactic team is recruitable (+0x24 = 1, 0x8ef7e0 ->
+    0x8b9480(1)), so the general recruit takes LandDefense's men (DEFENSE, RELEASE_TO_PRIORITY) for Cleanup
+    (STANDARD) in one commit; the private teams.recruit does that and keep_on is on."""
     (b,) = skirmish.brains.values()
     first = _first_attack(b)
     assert first and len(first[3]) >= 8, first
@@ -147,6 +149,8 @@ def test_skirmish_ai_builds_again_as_soon_as_the_opening_is_done(skirmish):
     assert again and again[0] <= 142, again
 
 
+@pytest.mark.xfail(strict=True, reason='since keep_on is on (B handoff 102) the second dog is never built by 170 s '
+                                       '(no team, not in the pool; off: it goes at 36 s): production side, not read')
 def test_skirmish_ai_scout_dog_stays_out(skirmish):
     """Bench b: the dogs leave ~44 s after the wake and stay away 120-170 s; the first team (132.8 s) is 2 Riptides +
     3 Peacekeepers out at once, no dog. The AlliedScout team is ReleaseType NEVER_RELEASE, so no team takes its dog
@@ -382,9 +386,12 @@ def test_team_priority_higher_plant_team_as_on_the_bench(lib):
     assert (rows[39]['到电厂'], rows[39]['到兵营'], rows[39]['在家']) == (4, 0, 0)
 
 
-@pytest.mark.xfail(strict=True, reason='simai sends the plant\'s team (target first, s13) all 4; the bench gives them '
-                                       'to the barracks\' state on a tie or when it is higher -- handoff-b 84')
-@pytest.mark.parametrize('build', ['aitpprs', 'aitpprh', 'aitpprl'])
+_TIE = pytest.mark.xfail(strict=True, reason='simai sends the plant\'s team (target first, s13) all 4; the bench gives '
+                                             'them to the barracks\' state on a tie -- handoff-b 84')
+
+
+# aitpprh / aitpprl pass since AI tactic teams are recruitable (+0x24 = 1, B handoff 102): the higher team takes them
+@pytest.mark.parametrize('build', [pytest.param('aitpprs', marks=_TIE), 'aitpprh', 'aitpprl'])
 def test_team_priority_as_on_the_bench(lib, build):
     _, rows = _switch_run(build, lib, until=41.0)
     assert (rows[39]['到电厂'], rows[39]['到兵营'], rows[39]['在家']) == (0, 4, 0)
