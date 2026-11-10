@@ -1,8 +1,9 @@
 r"""Watch the Codex task that is running now, live, in a terminal: what it says, what it runs, when it ends.
 
-  python -I -X utf8 experimental/outsource/codex_watch.py [FOLDER]
+  python -I -X utf8 experimental/outsource/codex_watch.py [FOLDER] [--steps]
 
-FOLDER is where the briefs and their <brief>.events.jsonl live (default: the newest events file anywhere under the
+By default it reads like a session: the task's title, then each progress note Codex writes, then the end. --steps
+adds every command and file change. FOLDER is where the briefs and their <brief>.events.jsonl live (default: the newest events file anywhere under the
 user's temp folder). It follows the newest events file, prints one short line per step, and moves on to the next
 task's file when one starts. Ctrl-C to stop. Read only: it never touches Codex or the files.
 """
@@ -12,7 +13,8 @@ import os
 import sys
 import time
 
-ROOT = sys.argv[1] if len(sys.argv) > 1 else os.environ.get('TEMP', '.')
+ARGS = [a for a in sys.argv[1:] if not a.startswith('--')]
+ROOT = ARGS[0] if ARGS else os.environ.get('TEMP', '.')
 
 
 def newest():
@@ -20,9 +22,20 @@ def newest():
     return max(files, key=os.path.getmtime) if files else None
 
 
+STEPS = '--steps' in sys.argv
+
+
 def line(e):
     t, it = e.get('type'), e.get('item') or {}
     kind = it.get('type')
+    if not STEPS:                       # the conversation view: only what Codex says, like a session's transcript
+        if t == 'item.completed' and kind == 'agent_message':
+            return '\n' + (it.get('text') or '').strip() + '\n'
+        if t == 'turn.completed':
+            return '—— 本轮结束 ——'
+        if t == 'turn.failed':
+            return '!! 失败：' + str(e.get('error') or e)[:200]
+        return None
     if t == 'turn.completed':
         u = e.get('usage') or {}
         return f'== 完成  输入 {u.get("input_tokens", 0):,}（缓存 {u.get("cached_input_tokens", 0):,}）输出 {u.get("output_tokens", 0):,}'
@@ -49,7 +62,9 @@ def main():
         f = newest()
         if f and f != current:
             current, pos = f, 0
-            print(f'\n### {time.strftime("%H:%M:%S")}  {os.path.basename(f)[:-len(".events.jsonl")]}')
+            brief = f[:-len('.events.jsonl')] + '.md'
+            title = open(brief, encoding='utf-8').readline().strip() if os.path.exists(brief) else ''
+            print(f'\n━━━━ {time.strftime("%H:%M:%S")}  {os.path.basename(brief)}\n任务：{title}')
         if current:
             with open(current, 'rb') as fh:          # bytes: the file has CRLF line ends on Windows
                 fh.seek(pos)
@@ -62,7 +77,7 @@ def main():
                     except ValueError:
                         continue
                     if out:
-                        print(time.strftime('%H:%M:%S'), out, flush=True)
+                        print(out if not STEPS else time.strftime('%H:%M:%S') + ' ' + out, flush=True)
         time.sleep(2)
 
 
