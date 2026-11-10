@@ -136,6 +136,17 @@ RESULTS g / h (bench 2026-11-10, aiskirm g / h and aiskirmnl g, all PASS (weak);
   Reading: the first team out is BalancedCleanup (OpeningMove complete, no enemy within 700, income and power
     advantage >= 3: the player has no army and no refinery), not BalancedAttackGround; it takes the LandDefense
     team's members whole the moment it is drawn (~123 s after the wake).
+
+  m  池兵 (pool CAN_ATTACK) / 防御型 (LandDefense _0_0) / 清扫 (BalancedCleanup _0_0) / 池峰 (the most CAN_ATTACK pool
+     members seen in any single frame from s110, latched by per-frame scripts). Bench 2026-11-10, aiskirm m PASS (weak):
+     防御型 8 at s128-130, **s131: 防御型 0, 清扫 8, 池峰 stays 1** (it reached 1 at s112, a new unit); the pool never
+     held more than 1 in any frame, so the eight went defense -> Cleanup within one frame (no script pass saw them in
+     the pool). After: the defense team exists empty (0, 99 every ~6 s as at s10-s22), new units sit 1-2 s in the
+     pool and go to Cleanup (10 s138, 14 s161 = MaxUnits); only then one goes to defense (1 at s166, gone at s167).
+  Reading: not a pool round trip a script could see. With the code (a running StaticDefense instance is never
+    reselected: 0x8c7020 returns false while +0x14 started; handoff-b 95 / aiar9-10: a quiet base never releases),
+    the release is caused by Cleanup turning on: Cleanup (STANDARD, RELEASE_TO_PRIORITY) takes the DEFENSE team's
+    members in one commit, and wins the pool over the defense team until full.
 """
 from parts import Script, Test, counted, square
 
@@ -320,6 +331,7 @@ def e(m):
 
 UNKNOWN = 99                        # g / h: a team count shows this when no team of that name answered this frame
 POOL_MOST = 20
+PEAK_FROM = 110.0                   # m: mission second the pool peak latch starts (the eight leave ~s128-136)
 
 
 def _members(t, counter, label, team, most=POOL_MOST):
@@ -371,6 +383,17 @@ def _teams(m, which):
         for key, ctr, say in (('scout', 'Sct', '侦察'), ('scout 2', 'Sct2', '侦察乙'), ('escort', 'Esc', '护送')):
             _members(t, f'CNV_AK_{ctr}', say, ai[key])
         _members(t, 'CNV_AK_DefT', '防御型', ai['defense type'])
+    elif which == 'm':                 # does the defense team's eight pass through the pool on the way to Cleanup?
+        _kind_members(t, 'CNV_AK_Pool', '池兵', pool, 'CAN_ATTACK')
+        _members(t, 'CNV_AK_DefT', '防御型', ai['defense type'])
+        _members(t, 'CNV_AK_Cln', '清扫', ai['cleanup'])
+        # 池峰: the most CAN_ATTACK pool members any single frame from PEAK_FROM s (scripts run every frame; the 1 s
+        # sheet would miss a pool that holds the eight for under a second)
+        t.counters.append(('CNV_AK_Peak', '池峰'))
+        t.scripts.append(Script('Test - peak timer', [], [('SET_MILLISECOND_TIMER', 'Test Peak From', PEAK_FROM)]))
+        t.scripts += [Script(f'Test - peak {n}', [('TIMER_EXPIRED', 'Test Peak From'), ('COUNTER', 'CNV_AK_Pool', 3, n),
+                                                  ('COUNTER', 'CNV_AK_Peak', 0, n), ('COUNTER', 'CNV_AK_Pool', 0, UNKNOWN)],
+                             [('SET_COUNTER', 'CNV_AK_Peak', n)], once=False) for n in range(1, POOL_MOST)]
     else:
         _members(t, 'CNV_AK_PoolAll', '池全', pool, most=40)
         _members(t, 'CNV_AK_Map', '地图队', f'{s1}/team{s1}')
@@ -412,7 +435,12 @@ def l(m):  # noqa: E743
     return _teams(m, 'l')
 
 
-CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j': j, 'k': k, 'l': l},
+def m(mm):
+    """Pool CAN_ATTACK members / LandDefense _0_0 / BalancedCleanup _0_0 / the pool's per-frame peak from PEAK_FROM s."""
+    return _teams(mm, 'm')
+
+
+CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j': j, 'k': k, 'l': l, 'm': m},
           'aiskirmnl': {'g': g, 'h': h},
           'aiskjav': {'e': e},
           'aiskirmlow': {'d': d, 'f': f}}
