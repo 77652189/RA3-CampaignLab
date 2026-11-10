@@ -40,7 +40,7 @@ HEURISTICS = {
 }
 
 
-def state_xml(sid, targets, max_targets, priority='STANDARD'):
+def state_xml(sid, targets, max_targets, priority='STANDARD', end='RAMPAGE'):
     th = ['    <TargetHeuristic TargetHeuristic="{}"{}/>'.format(h, '' if p is None else f' Priority="{p}"')
           for h, p in targets]
     return '\n'.join([
@@ -49,7 +49,7 @@ def state_xml(sid, targets, max_targets, priority='STANDARD'):
         '      <ConstantHeuristic/>',
         '    </Heuristic>',
         *th,
-        '''    <Tactic id="Attack" Tactic="SimpleAttack" EndBehavior="RAMPAGE" EndIfStateTurnsOff="true">
+        '''    <Tactic id="Attack" Tactic="SimpleAttack" EndBehavior="''' + end + '''" EndIfStateTurnsOff="true">
       <TeamTemplate MinUnits="1" MaxUnits="4" IncludeKindOf="CAN_ATTACK" ExcludeKindOf="IGNORES_SELECT_ALL HARVESTER"
                     AllowedLocomotorTypes="LAND AMPHIBIOUS" Priority="''' + priority + '''" AlwaysRecruit="false"
                     MicroManager="StandardMicroManager_MEDIUM"/>
@@ -57,14 +57,14 @@ def state_xml(sid, targets, max_targets, priority='STANDARD'):
   </AIStrategicStateDefinition>'''])
 
 
-def personality_xml(pid, targets, max_targets, priority='STANDARD', second=None):
+def personality_xml(pid, targets, max_targets, priority='STANDARD', second=None, end='RAMPAGE'):
     """second = (TargetHeuristic list, team Priority) of a second always-on state CNVStateTQ, or None."""
     removed = [f'    <StrategicState id="{k}" xai:joinAction="Remove"/>' for k in INHERITED]
     every = list(targets) + (list(second[0]) if second else [])
     own = sorted({h for h, _ in every if h in HEURISTICS})
     heur = ['  <AITargetingHeuristic id="{}" {} />'.format(
         h, ' '.join(f'{k}="{v}"' for k, v in HEURISTICS[h].items())) for h in own]
-    states = [state_xml('CNVStateTP', targets, max_targets, priority)]
+    states = [state_xml('CNVStateTP', targets, max_targets, priority, end)]
     if second:
         states.append(state_xml('CNVStateTQ', second[0], max_targets, second[1]))
     return '\n'.join([
@@ -85,15 +85,19 @@ def personality_xml(pid, targets, max_targets, priority='STANDARD', second=None)
         '</AssetDeclaration>', ''])
 
 
-def mission(name, targets, expect, max_targets=1, tanks=4, priority='STANDARD', second=None):
+def mission(name, targets, expect, max_targets=1, tanks=4, priority='STANDARD', second=None, end='RAMPAGE',
+            kill_at=None):
     """expect = (plant, barracks, tank, home): Guardians there at the end, the model's guess."""
     pid = PID + name[-3:]
     plant, barracks, tank, home = expect
     m = Mission(name=name, map=niagara, facts={'wake at': WAKE_AT, 'ai tanks': tanks, 'expect plant': plant,
                                                'expect barracks': barracks, 'expect tank': tank,
                                                'expect home': home})
+    if kill_at is not None:
+        m.facts['kill plant at'] = kill_at
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{pid}'}
-    m.assets.append((f'{pid}.xml', personality_xml(pid, targets, max_targets, priority, second), f'AIPersonalityDefinition:{pid}'))
+    m.assets.append((f'{pid}.xml', personality_xml(pid, targets, max_targets, priority, second, end),
+                     f'AIPersonalityDefinition:{pid}'))
     m.cnv_units = (TANK,)
     m.spawns |= {TANK}
     s1 = m.player('s1')
@@ -138,4 +142,15 @@ MISSION = {
                                second=(BARRACKS, 'STANDARD')),
     'aitpprl': lambda: mission('CampAITPPrL', [(CLOSEST, None)], (0, 4, 0, 0), priority='LOW',
                                second=(BARRACKS, 'STANDARD')),
+    # round 84: Tactic EndBehavior -- ClosestStructure's team at the plant, the check kills the plant at s35 (the
+    # barracks and the tank stay full). From the plant the tank is 700 off, the barracks 1055; from the AI's base the
+    # barracks is the closest structure left (1010; the player's yard 2740). The model (private ai/tactics.py _end):
+    # RAMPAGE = the nearest enemy of the team -> the tank; DISBAND = the team ends, the state's target re-picked ->
+    # a new team to the barracks; RETURN_HOME_AND_DISBAND = home first, then the barracks; PICK_NEW_TARGET = the
+    # barracks straight from the plant. expect = where they stand at the end.
+    'aiendr': lambda: mission('CampAIEndR', [(CLOSEST, None)], (0, 0, 4, 0), kill_at=35.0),
+    'aiendd': lambda: mission('CampAIEndD', [(CLOSEST, None)], (0, 4, 0, 0), end='DISBAND', kill_at=35.0),
+    'aiendh': lambda: mission('CampAIEndH', [(CLOSEST, None)], (0, 4, 0, 0), end='RETURN_HOME_AND_DISBAND',
+                              kill_at=35.0),
+    'aiendp': lambda: mission('CampAIEndP', [(CLOSEST, None)], (0, 4, 0, 0), end='PICK_NEW_TARGET', kill_at=35.0),
 }

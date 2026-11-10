@@ -16,6 +16,13 @@ Bench 2026-11-09 (B round 83, one run each):
     at s40 (wake + Time 30s: the orders after it are builds and Time points already passed), not when the last
     plant stands (s59). simai gives the same (out s44-45). Expectation set to the reading afterwards.
   aiohc0 (Complete false): PASS, out s14-15.
+Bench 2026-11-09 (B round 84, narrowing aiowt*'s nothing; one run each, 电厂 兵营):
+  aiom1  one line, opening = Build plant:                0 0 to s80 -- nothing
+  aiom2  two lines P / B both 100%:                      0 0 to s80 -- nothing
+  aiom3  T 100% + B 0%:                                  PASS (plants s19 / s49 / s59 as aiotime): a 0% line is harmless
+  aiom4  one line, Build barracks then Time 5s:          0 0 to s81 -- nothing
+  aiom5  one line, Build plant, Build plant (no Time):   1 plant from s19, never a second
+Not found why: one Build -> none, two Builds -> one, T (plant / Time / plant / Time / plant) -> all three.
 """
 from parts import Script, Test, counted, square
 
@@ -45,4 +52,5 @@ def a(m):
     return t
 
 
-CHECKS = {k: {'a': a} for k in ('aiowt', 'aiowt2', 'aiodf', 'aiodf2', 'aiohc1', 'aiohc0')}
+CHECKS = {k: {'a': a} for k in ('aiowt', 'aiowt2', 'aiodf', 'aiodf2', 'aiohc1', 'aiohc0',
+                                  'aiom1', 'aiom2', 'aiom3', 'aiom4', 'aiom5')}

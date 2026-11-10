@@ -42,28 +42,40 @@ AREAS = (('CNV TP Plant Area', 'plant', 'CNV_TP_Plant', '到电厂'),
          ('CNV TP Tank Area', 'tank', 'CNV_TP_Tank', '到坦克'))
 LAG = 4.0
 AT, SECONDS = 40.0, 50.0
+END = 75.0                    # the EndBehavior variants (aiend*): where they stand at s75 (the plant dies at s35)
 
 
 def a(m):
     t = Test()
     s1 = m.player('s1')
     t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
-    keep = [m.role(r).name for _, r, _, _ in AREAS]
+    kill = m.facts.get('kill plant at')
+    keep = [m.role(r).name for _, r, _, _ in AREAS if not (kill is not None and r == 'plant')]
     t.scripts.append(Script('Test - targets keep', [], [('UNIT_SET_HEALTH', n, 100.0) for n in keep], once=False))
+    if kill is not None:          # EndBehavior variants: the plant dies, where do they stand at the end
+        t.scripts += [Script('Test - kill set', [], [('SET_MILLISECOND_TIMER', 'Test Kill Plant', kill)]),
+                      Script('Test - kill', [('TIMER_EXPIRED', 'Test Kill Plant')],
+                             [('NAMED_KILL', m.role('plant').name)])]
+    end = END if kill is not None else AT
     (tank,) = m.cnv_units
     for area, role, counter, label in AREAS:
         o = m.find(m.role(role).name)
         t.areas[area] = square(o.x, o.y, 340.0)
         counted(counter, label, t, template=tank, area=area, player=s1)
         want = m.facts['expect ' + role]
-        t.expect.append((label, 1, 'ever>=', 3, AT) if want else (label, AT, '==', 0, AT + 1))
+        if kill is not None:
+            t.expect.append((label, end, '>=', 3, end + 1) if want else (label, end, '==', 0, end + 1))
+        else:
+            t.expect.append((label, 1, 'ever>=', 3, AT) if want else (label, AT, '==', 0, AT + 1))
     x, y = m.site('east base')        # every start spot (x -280..-200, y +160..+370), clear of the plant's square
     t.areas[HOME] = [(x - 300, y - 400), (x + 300, y - 400), (x + 300, y + 450), (x - 300, y + 450)]
     counted('CNV_TP_Home', '在家', t, template=tank, area=HOME, player=s1)
-    t.expect.append(('在家', AT, '==', m.facts['expect home'], AT + 1))
-    t.bench = [('bench_watch', dict(seconds=SECONDS + LAG, every=1, sheet=False, lines=len(t.counters)))]
+    t.expect.append(('在家', end, '==', m.facts['expect home'], end + 1))
+    secs = END + 5.0 if kill is not None else SECONDS
+    t.bench = [('bench_watch', dict(seconds=secs + LAG, every=1, sheet=False, lines=len(t.counters)))]
     return t
 
 
 CHECKS = {k: {'a': a} for k in ('aitpnear', 'aitpvk', 'aitpfk', 'aitpunit', 'aitpphi', 'aitpplo', 'aitpmt1',
-                                 'aitpmt2', 'aitpprs', 'aitpprh', 'aitpprp', 'aitpprl')}
+                                 'aitpmt2', 'aitpprs', 'aitpprh', 'aitpprp', 'aitpprl',
+                                 'aiendr', 'aiendd', 'aiendh', 'aiendp')}

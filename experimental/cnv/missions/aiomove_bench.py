@@ -26,7 +26,8 @@ from parts import Mission, Script
 WAKE_AT, MONEY = 10.0, 50000
 PLANT, BARRACKS, TANK = 'AlliedPowerPlant', 'AlliedBarracks', 'AlliedAntiVehicleVehicleTech1'
 ALL = 'EASY MEDIUM HARD BRUTAL'
-MOVES = {'CNVOpenP': (('Build', PLANT),), 'CNVOpenB': (('Build', BARRACKS),), 'CNVOpenT': T_ORDERS}
+MOVES = {'CNVOpenP': (('Build', PLANT),), 'CNVOpenB': (('Build', BARRACKS),), 'CNVOpenT': T_ORDERS,
+         'CNVOpenBT': (('Build', BARRACKS), ('Time', '5s')), 'CNVOpenPP': (('Build', PLANT), ('Build', PLANT))}
 
 
 def personality_xml(pid, lines, gate=None):
@@ -112,4 +113,10 @@ MISSION = {
     'aiohc1': lambda: mission('CampAIOMHc1', [('CNVOpenT', '100%', ALL)], 1, 0, gate=True, home_until=42, out_by=46),
     'aiohc0': lambda: mission('CampAIOMHc0', [('CNVOpenT', '100%', ALL)], 1, 0, gate=False, home_until=None,
                               out_by=25),
+    # round 84: why aiowt* / aiodf* built nothing -- narrow it down (one variable each)
+    'aiom1': lambda: mission('CampAIOM1', [('CNVOpenP', '100%', ALL)], 1, 0),              # one line, one Build
+    'aiom2': lambda: mission('CampAIOM2', [('CNVOpenP', '100%', ALL), ('CNVOpenB', '100%', ALL)], 1, 0),  # two lines
+    'aiom3': lambda: mission('CampAIOM3', [('CNVOpenT', '100%', ALL), ('CNVOpenB', '0%', ALL)], 1, 0),    # T + a 0%
+    'aiom4': lambda: mission('CampAIOM4', [('CNVOpenBT', '100%', ALL)], 0, 1),             # one Build then a Time
+    'aiom5': lambda: mission('CampAIOM5', [('CNVOpenPP', '100%', ALL)], 2, 0),             # two Builds, no Time
 }
