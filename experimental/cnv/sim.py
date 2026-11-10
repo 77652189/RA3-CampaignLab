@@ -65,7 +65,10 @@ import simunits  # noqa: E402
 from ctx import FUNC_LATE, PANEL_CLEAR  # noqa: E402
 from model import coord, facing  # noqa: E402
 
-TEAM_COMMANDS = ('MOVE_TEAM_TO', 'ATTACK_MOVE_TEAM_TO', 'TEAM_ATTACK_NAMED', 'TEAM_GUARD_AREA', 'TEAM_STOP')   # E3: need a live team
+TEAM_FOLLOWS = ('TEAM_FOLLOW_WAYPOINTS', 'TEAM_FOLLOW_WAYPOINTS_EXACT', 'TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS',
+                'TEAM_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT')      # Sim.order_follow
+TEAM_COMMANDS = ('MOVE_TEAM_TO', 'ATTACK_MOVE_TEAM_TO', 'TEAM_ATTACK_NAMED', 'TEAM_GUARD_AREA', 'TEAM_STOP') \
+    + TEAM_FOLLOWS                                                  # E3: need a live team
 SHOW_FLAG = re.compile(r'CNV_\w+_Show_\d+')       # ctx.Talk.show: a 功能 line's caption is asked for
 SCENE_FLAG = re.compile(r'CNV_\w+_InScene')       # ctx.Talk.scening
 
@@ -537,6 +540,8 @@ class Body:
     topple: object = None                                       # simtopple.rules: prop removal after contact / settling
     toppled: bool = False
     topple_end: int = None
+    follow: dict = None                                         # on a waypoint path (order_follow): label, the waypoint
+                                                                # it is going to, how; shared by a team that goes as one
     frame_move: bool = False                                    # paths through topple props need frame-sized collision steps
     drive_speed: float = 0.0
     hold_fire: bool = False                                     # UNIT_SET_STANCE 3 (HOLD_FIRE): fires only at a
@@ -1199,6 +1204,7 @@ class Sim:
         already handed out to a group being ordered, `skip` that group (its members' old goals are dropped first)."""
         if b:
             b.flee = None                       # INFERRED: any move order takes the run over, as STOP does
+            b.follow = None                     # ... and a waypoint path (order_follow sets it again after its legs)
             b.mode = 'attack' if attacking else 'move'
             p = self.point(where) if isinstance(where, str) else where
             if p is not None and b.alive and b.speed > 0:
@@ -1333,7 +1339,7 @@ class Sim:
         self.used.add('attack')
         target = self.body(target_name)
         if b and target and target.alive and b.alive and b.goal is not target:
-            b.goal, b.mode = target, 'attack'
+            b.goal, b.mode, b.follow = target, 'attack', None
             self.send(b, (target.x, target.y), reach=self.reach(b, target))
 
     def order_capture(self, b, target_name):
@@ -1846,6 +1852,8 @@ class Sim:
 
     def order_guard(self, b, area):
         self.used.add('guard')
+        if b:
+            b.follow = None
         if b and not inside(self.areas[area], b.x, b.y):
             self.send(b, area)
 
@@ -1892,12 +1900,93 @@ class Sim:
 
     def order_stop(self, b):
         if b:
-            b.path, b.goal = [], None
+            b.path, b.goal, b.follow = [], None, None
             b.flee = None                       # a later order takes the run over (engine_runoffmap d; the status stays)
 
     def stand(self, b):
         """Its order dropped, nothing new: idle where it is (the AI's command 5: l2_scripts1 3, 6)."""
-        b.path, b.goal, b.mode, b.move_to = [], None, 'idle', None
+        b.path, b.goal, b.mode, b.move_to, b.follow = [], None, 'idle', None, None
+
+    def path_start(self, label, at):
+        """The waypoint a path is joined at: of the waypoints carrying `label`, the nearest to `at` (2D; strictly
+        nearer replaces, so the first in map order wins a tie) -- Generals' TerrainLogic::getClosestWaypointOnPath.
+        None if no waypoint carries it."""
+        best, bd = None, None
+        for n, labels in self.mm.labels.items():
+            if label in labels and n in self.waypoints:
+                x, y = self.waypoints[n]
+                d = (x - at[0]) ** 2 + (y - at[1]) ** 2
+                if bd is None or d < bd:
+                    best, bd = n, d
+        return best
+
+    def path_next(self, at):
+        """The waypoint after `at` on its path (the map's WaypointsList, one way), None at the path's end. INFERRED:
+        Generals' AIFollowWaypointPathState::getNextWaypoint picks one of several links at random; this takes the
+        first (the runs stay repeatable) and marks the run. A loop goes round and round (INFERRED, not benched)."""
+        nxt = [z for a, z in self.mm.links if a == at]
+        if len(nxt) > 1:
+            self.used.add('path fork')
+        return nxt[0] if nxt else None
+
+    def order_follow(self, bodies, label, attacking, exact=False, start=None, as_team=False):
+        """NAMED_ / TEAM_ (ATTACK_) FOLLOW_WAYPOINTS (_EXACT, _STARTING_AT_WAYPOINT): each unit goes waypoint by
+        waypoint along the path `label`, from `start`, or else the path's waypoint nearest to it (a team: to its
+        middle, Generals' doTeamFollowWaypoints joins at getClosestWaypointOnPath of the team's estimated position);
+        at a waypoint it takes the next (path_next) and stops at the path's end. Each leg is a move (order_move;
+        attacking: an attack-move, it stops to fight and goes on). as_team: the team's legs are group moves
+        (order_group), the next leg once every member is there. INFERRED, to be benched: EXACT walks the same as
+        the plain one (no corner cut either way); the team version's fourth flag and BiDirectional do nothing."""
+        movers = [b for b in bodies if b and b.alive and b.speed > 0 and 'IMMOBILE' not in b.status]
+        if not movers:
+            return
+        self.used.add('follow path')
+        if start is None:
+            n = len(movers)
+            start = self.path_start(label, (sum(b.x for b in movers) / n, sum(b.y for b in movers) / n))
+        if start is None or start not in self.waypoints:
+            for b in movers:
+                self.note('卡住', f'{self.label(b)} 找不到路 {label}')
+            return
+        self.follow_leg(movers, {'label': label, 'at': start, 'attacking': attacking, 'exact': exact,
+                                 'team': as_team})
+
+    def follow_leg(self, movers, how):
+        """Sends `movers` to how['at'] and marks them as on the path (a team as one: one shared dict)."""
+        if how['team'] and len(movers) > 1:
+            self.order_group(movers, how['at'], how['attacking'])
+            for b in movers:
+                b.follow = how
+        else:
+            for b in movers:
+                self.order_move(b, how['at'], how['attacking'])
+                b.follow = dict(how, team=False)
+
+    def follow_due(self):
+        """The path followers that got where their leg went (no way left, not fighting): on to the next waypoint,
+        or off the path at its end. One waypoint per tick at most."""
+        done = set()
+        for b in self.living():
+            how = b.follow
+            if how is None or id(how) in done:
+                continue
+            if how['team']:
+                group = [o for o in self.living() if o.follow is how]
+                if any(o.path or o.engaged or isinstance(o.goal, Body) for o in group):
+                    continue
+                done.add(id(how))
+            else:
+                if b.path or b.engaged or isinstance(b.goal, Body):
+                    continue
+                group = [b]
+            nxt = self.path_next(how['at'])
+            if nxt is None or nxt not in self.waypoints:
+                for o in group:
+                    o.follow = None
+                continue
+            leg = dict(how, at=nxt)
+            done.add(id(leg))
+            self.follow_leg(group, leg)
 
     def enemy(self, a, b):
         """Player a takes player b as an enemy."""
@@ -2475,6 +2564,11 @@ class Sim:
             self.reinforce(a[0], a[1], script)
         elif name in ('MOVE_NAMED_UNIT_TO', 'ATTACK_MOVE_NAMED_UNIT_TO'):
             self.order_move(self.body(a[0]), a[1], name == 'ATTACK_MOVE_NAMED_UNIT_TO')
+        elif name in ('NAMED_FOLLOW_WAYPOINTS', 'NAMED_FOLLOW_WAYPOINTS_EXACT', 'NAMED_ATTACK_FOLLOW_WAYPOINTS',
+                      'NAMED_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT'):
+            # (unit, path[, start waypoint])
+            self.order_follow([self.body(a[0])], a[1], name == 'NAMED_ATTACK_FOLLOW_WAYPOINTS',
+                              exact=name.endswith('_EXACT'), start=a[2] if name.endswith('_AT_WAYPOINT') else None)
         elif name == 'NAMED_ATTACK_NAMED':
             self.order_attack(self.body(a[0]), a[1])
         elif name == 'UNIT_GUARD_AREA':
@@ -2501,6 +2595,11 @@ class Sim:
             self.note('无效命令', f'{name} {a[0]}：这个队还没有人加入，命令落空')
         elif name in ('MOVE_TEAM_TO', 'ATTACK_MOVE_TEAM_TO'):
             self.order_group(self.members(a[0]), a[1], name == 'ATTACK_MOVE_TEAM_TO')
+        elif name in TEAM_FOLLOWS:
+            # (team, path, asTeam[, ?][, start waypoint]); the fourth flag (handler 0x5a4c40) not read: ignored
+            self.order_follow(self.members(a[0]), a[1], name == 'TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS',
+                              exact=name.endswith('_EXACT'), as_team=bool(int(a[2])),
+                              start=a[-1] if name.endswith('_AT_WAYPOINT') else None)
         elif name == 'TEAM_ATTACK_NAMED':
             for b in self.members(a[0]):
                 self.order_attack(b, a[1])
@@ -3829,6 +3928,7 @@ class Sim:
             self.change()
         if precise:
             return
+        self.follow_due()
         self.capture_due()
         if self.auto_kill is not None:
             mine = [b for b in self.living() if b.owner == self.human]
