@@ -129,6 +129,9 @@ def compose(kind, render, out):
     render toward the retail look (dark tracks and seams, bright edges)."""
     from PIL import ImageEnhance
     (W, H), _, _, inset, fill, contrast, _ = KINDS[kind]
+    if not os.path.exists(frame_path(kind)):        # derived from retail (gitignored work/): rebuild, don't fail
+        os.makedirs(os.path.dirname(frame_path(kind)), exist_ok=True)
+        background(kind)
     bg = Image.open(frame_path(kind)).convert('RGBA')
     unit = Image.open(render).convert('RGBA')
     unit = unit.crop(unit.getbbox())

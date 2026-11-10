@@ -35,6 +35,7 @@
 - 只靠原版就能重建：冰墙、长条冰墙、冰核、碎冰、工兵贴图、工兵按钮和头像、雪堆、雪堆和闸门的头像（`ice_kit.py`，按钮头像还要再跑 `ui_kit.py CNIceEngineer CNSnowBank CNLockGate`），货柜（`convoy_kit.py`），女神像（`liberty_kit.py` 的一部分）。
 - 技能图标：`work/units/abilities/<阵营>.png` 在就只跑 `ability_icons.py write`、`badges`，再 `ui_kit.py`；图标格丢了要重新 `gen`（GPT 每次画得不一样）。
 - 只能从 `work/` 里的原件重建（gitignore，丢了要从 Tripo 账号重新导出）：冰雕和加固冰雕（`work/units/icesculpture/tripo/icesculpture_v1.glb` → Blender 跑 `tripo_unit.py icesculpture` → `ice_kit.py CNIceSculpt CNIceSculptHard`），时滞炮车（`tripo_unit.py chronolag` → `make_campchrono.py`；按钮、头像的图在 `work/units/chronolag/game/` → `ui_kit.py`），自由号平台（`work/units/libertyisle/tripo/libertyisle_v1.glb` → `tripo_unit.py libertyisle` → `liberty_kit.py`）。`ice_kit.py` 缺冰雕原件时跳过它、照做其余，并打印怎么补。
+- 2026-11-10 照上面重建过一次（work/ 被清空后，三个原件从用户的 Downloads 放回），顺序和补的几步：三个 `tripo_unit.py`（Blender 共约 6 分钟）→ `ice_kit.py CNIceSculpt CNIceSculptHard` → `liberty_kit.py` → 自由号和时滞炮车的按钮、头像要先 `button_icon.py compose button|portrait work/units/<单位>/game/icon.png work/units/<单位>/game/<Button_…/Portrait_….tga>`（文件名见 `ui_kit.UNITS`）→ `ui_kit.py CNChrono CNLiberty CNIceSculpt CNIceSculptHard` → `make_campchrono.py`。按钮、头像的底板 `work/reference/<kind>_frame.png` 是从原版图算出来的，缺了 `compose` 会自己重建。`make_campchrono.py` 写完 `CNChrono` 模型后，拼样例 mod CampChrono1 那步因为缺试验目录 `work/units/shrinkvehicle` 的按钮报错，不影响战役（`chronolag.py` 只用 Art 里的模型和按钮）；`chronolag hit` PASS。worktree 里跑 `tests/test_look.py` 也要设 `CNV_SDK`。
 
 花费：GPT 出图约 20 张（订阅额度内）；Tripo 用了 180 积分（时滞炮车 80、冰雕 50、自由号 50），剩 3025。
 
