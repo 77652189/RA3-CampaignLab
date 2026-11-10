@@ -4,9 +4,9 @@ starts it toward the weapon's target (flat, z dropped), from StartDistanceOffset
 Speed, one SweepWeapon hit every 2 x Radius. What retail lacks is a laser beam that follows the walking point; the
 ra3ext module tagged ModuleTag_CNVSweep is to write the point into the LaserState's end each frame (handoff-d round 9).
 
-The shooter is engine_shot's V4 (no scatter, no pre-attack) under its own id, its weapon: a DamageNugget of 0.01 (the
-dolphin's), ActivateLinearDamageNugget (Lifetime LIFE) and ActivateLaserNugget (LaserId 1, Lifetime LIFE); one clip a
-run (reload 60 s). Behaviors: LinearDamageUpdate id=ModuleTag_CNVSweep (StartDistanceOffset START, Radius RADIUS,
+The shooter is engine_shot's V4 (no scatter, no pre-attack) under its own id, its weapon: a DamageNugget of AIM_DAMAGE on the
+aimed Hammer (counted: did it fire), ActivateLinearDamageNugget (Lifetime LIFE) and ActivateLaserNugget (LaserId 1,
+Lifetime LIFE); the clip loads RELOAD after birth, the order comes after it, the next clip after the far row's hit. Behaviors: LinearDamageUpdate id=ModuleTag_CNVSweep (StartDistanceOffset START, Radius RADIUS,
 Length LENGTH, Speed SPEED, SweepWeapon CNV_SweepHit = 500 damage in RADIUS, FollowTerrain), LaserState LaserId 1;
 Draws: the prism tower's LaserDraw (LaserStateID 1).
 
@@ -27,13 +27,17 @@ from parts import Mission, Script, Test
 from checks.engine_missile import TARGET_ID, _sub1, target
 from checks.engine_shot import _nuggets, shot_v4
 
-ORDER, RUN = 6.0, 20.0
+# the V4's clip is empty at birth and loads ClipReloadTime later (fire_state.md round 27): round 10's reload of 60 s
+# never let it fire in a 20 s run (bench 11-10 03:39, no row Hammer hit). Loaded at RELOAD, ordered at ORDER after it;
+# the next clip comes RELOAD after the first shot, past the far row's hit (ORDER + (350 - START) / SPEED)
+ORDER, RUN, RELOAD = 8.0, 22.0, 6.0
 START, RADIUS, LENGTH, SPEED = 50.0, 10.0, 450.0, 60.0     # covers 50 .. 500 north in 7.5 s, 4 a frame
 LIFE = 8.0
 ROW, AIM = (150.0, 250.0, 350.0), 450.0
 TAG, HIT = 'ModuleTag_CNVSweep', 'CNV_SweepHit'
 LANES = {'base': ('CNV_Sweep', 0.0), 'high': ('CNV_SweepHold', LIFE)}
 LABELS = ('近', '中', '远')
+AIM_LABEL, AIM_DAMAGE = '瞄', 200.0      # the shot's own hit on the aimed Hammer: did the V4 fire at all
 
 LASER_DRAW = '''
 			<LaserDraw id="ModuleTag_CNVSweepLaserDraw" Texture1_UTile="1" Texture1_VTile="1" Texture1_UScrollRate="0"
@@ -58,11 +62,11 @@ def hit_weapon():
 
 
 def sweeper(id, firing):
-    nug = _nuggets('<DamageNugget Damage="0.01" Radius="1.0" DamageType="MAGIC" DeathType="NORMAL" />',
+    nug = _nuggets(f'<DamageNugget Damage="{AIM_DAMAGE:g}" Radius="1.0" DamageType="MAGIC" DeathType="NORMAL" />',
                    f'<ActivateLinearDamageNugget id="CNVSweepActivate" Lifetime="{LIFE:g}s" />',
                    f'<ActivateLaserNugget id="CNVSweepLaser" Lifetime="{LIFE:g}s" LaserId="1" />')
     hold = f'，开火持续 {firing:g} s' if firing else ''
-    u = shot_v4(id, nug, extra=hit_weapon(), reload=60.0,
+    u = shot_v4(id, nug, extra=hit_weapon(), reload=RELOAD,
                 what=f'竖扫载体 V4（探针）：武器开伤害线 + 激光，LinearDamageUpdate（{TAG}）由近 {START:g} 到远 '
                      f'{START + LENGTH:g}、速度 {SPEED:g}{hold}')
     if firing:
@@ -106,14 +110,15 @@ def sweep_test(m, lane='base'):
     t.scripts.append(Script('Test - order', [('TIMER_EXPIRED', 'Test Order')],
                             [('UNIT_CHANGE_OBJECT_STATUS', shooter, 'NO_ATTACK', 0),
                              ('NAMED_ATTACK_NAMED', shooter, _n(lane, 'Aim')), ('SET_FLAG', 'Test Ordered', 1)]))
-    for k, label in enumerate(LABELS):
-        c, tg = f'CNV_Sweep_{k}', _n(lane, f'Row{k}')
+    for k, label in list(enumerate(LABELS)) + [(len(LABELS), AIM_LABEL)]:
+        c, tg = f'CNV_Sweep_{k}', _n(lane, f'Row{k}' if k < len(LABELS) else 'Aim')
         t.counters.append((c, label))
         t.scripts.append(Script(f'Test - {c} frames', [('FLAG', 'Test Ordered', 1), ('UNIT_HEALTH', tg, 2, 100)],
                                 [('INCREMENT_COUNTER', 1, c)], once=False))
     # check a: every row Hammer is hit before the end (a counter that never stops reads ~15 a second); b only reads
     never = (RUN - ORDER - 2.0) * 15
-    t.expect = [(label, RUN - 1, '<', never) for label in LABELS] if lane == 'base' else [(LABELS[0], 0, '>=', 0)]
+    t.expect = ([(label, RUN - 1, '<', never) for label in LABELS + (AIM_LABEL,)] if lane == 'base'
+                else [(LABELS[0], 0, '>=', 0)])
     t.bench = [('bench_watch', dict(seconds=RUN, every=1, sheet=False, lines=len(t.counters)))]
     return t
 
