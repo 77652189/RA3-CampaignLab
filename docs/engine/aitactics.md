@@ -83,6 +83,19 @@
 
 给关卡：一个状态 `MaxTargets` 几就同时出几队、各打一个不同目标；同一状态里写几条目标启发时先用 `Priority` 高的，找不到才往下。模拟器（simai）八组都对上（`tests/test_simai.py::test_target_pick_as_on_the_bench`）。没测：同优先级时随机挑哪条、VitalKindOf 写多个是"全都"还是"任一"、MaxTargets 大于可用兵力时。
 
+### 目标没了以后（EndBehavior，2026-11-09 各一次）
+
+同一队 4 辆守护者打电厂，检查脚本 s35 杀掉电厂，看 s75 站在哪（`aiendd` / `aiendh` / `aiendr` / `aiendp`）：
+
+| EndBehavior | 台上 | 模型 |
+|---|---|---|
+| `DISBAND` | 去兵营（状态重新派队） | 对 |
+| `RETURN_HOME_AND_DISBAND` | 去兵营，没回家（回家半径 600，从电厂走一点就算到） | 对 |
+| `RAMPAGE` | 去兵营，没去打坦克 | 错（模型打最近的敌方单位） |
+| `PICK_NEW_TARGET` | 一直站在电厂原地到 s85 | 错（模型去兵营） |
+
+给关卡：目标被打掉后想让队伍接着打下一个，用 `DISBAND` 最稳；`PICK_NEW_TARGET` 实测会原地发呆。
+
 ## 没测 / 没建模
 
 - DA 怎么选"防御最弱的一侧"绕路，没进模型；所以 5 对 15 秒到达差的 193 帧（绕路多走的）模型对不上（模型里路点只有"队伍中心 → 目标"）。出发时刻已对上：都是唤醒就走。

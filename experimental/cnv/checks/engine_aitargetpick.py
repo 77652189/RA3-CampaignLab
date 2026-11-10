@@ -33,6 +33,14 @@ Bench 2026-11-09 (B round 82, TeamTemplate.Priority: two always-on states over t
 Read: the higher team Priority takes the units; on a tie the barracks' state (listed second) wins, though its target
 is found later (s19 in aitpvk) -- nobody went to the plant first. Not split: a tie by list order or by state draw.
 simai sends all four to the plant (strict xfail, tests/test_simai.py test_team_priority_as_on_the_bench).
+Bench 2026-11-09 (B round 85, EndBehavior, the check script kills the plant at s35; one run each; 到电厂 到兵营 到坦克 在家):
+  all four: out s13-s14, 到电厂 4 s15-s34 (the Guardians did not kill it by s32 as the simulator has).
+  aiendd   DISBAND:                 到电厂 2 @ s37, 0 s38-s39, 到兵营 2 @ s40, 4 from s42 -- PASS (as the model)
+  aiendh   RETURN_HOME_AND_DISBAND: the same, 到兵营 4 from s41, never home -- PASS (as the model)
+  aiendr   RAMPAGE: 到电厂 0 @ s37, 到兵营 1 @ s38, 4 from s40; 到坦克 0 -- FAIL: the barracks, not the nearest
+           enemy unit (the model's tank); RAMPAGE here looks like DISBAND (a nearer structure? the tank parked further?)
+  aiendp   PICK_NEW_TARGET: 到电厂 4 to s85 -- FAIL: they stay where the plant was; the model sends them to the
+           barracks (the slot re-picked). Not yet a strict xfail in tests/test_simai.py.
 """
 from parts import Test, counted, square, Script
 

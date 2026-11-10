@@ -27,7 +27,10 @@ WAKE_AT, MONEY = 10.0, 50000
 PLANT, BARRACKS, TANK = 'AlliedPowerPlant', 'AlliedBarracks', 'AlliedAntiVehicleVehicleTech1'
 ALL = 'EASY MEDIUM HARD BRUTAL'
 MOVES = {'CNVOpenP': (('Build', PLANT),), 'CNVOpenB': (('Build', BARRACKS),), 'CNVOpenT': T_ORDERS,
-         'CNVOpenBT': (('Build', BARRACKS), ('Time', '5s')), 'CNVOpenPP': (('Build', PLANT), ('Build', PLANT))}
+         'CNVOpenBT': (('Build', BARRACKS), ('Time', '5s')), 'CNVOpenPP': (('Build', PLANT), ('Build', PLANT)),
+         'CNVOpenPPP': (('Build', PLANT),) * 3, 'CNVOpenPT': (('Build', PLANT), ('Time', '5s')),
+         'CNVOpenTP': (('Time', '5s'), ('Build', PLANT)), 'CNVOpenBP': (('Build', BARRACKS), ('Build', PLANT)),
+         'CNVOpenPB': (('Build', PLANT), ('Build', BARRACKS))}
 
 
 def personality_xml(pid, lines, gate=None):
@@ -119,4 +122,10 @@ MISSION = {
     'aiom3': lambda: mission('CampAIOM3', [('CNVOpenT', '100%', ALL), ('CNVOpenB', '0%', ALL)], 1, 0),    # T + a 0%
     'aiom4': lambda: mission('CampAIOM4', [('CNVOpenBT', '100%', ALL)], 0, 1),             # one Build then a Time
     'aiom5': lambda: mission('CampAIOM5', [('CNVOpenPP', '100%', ALL)], 2, 0),             # two Builds, no Time
+    # round 85: is it the last Build, a Build in the wake frame, or the barracks?
+    'aiom6': lambda: mission('CampAIOM6', [('CNVOpenPPP', '100%', ALL)], 3, 0),            # three Builds
+    'aiom7': lambda: mission('CampAIOM7', [('CNVOpenPT', '100%', ALL)], 1, 0),             # Build plant, Time 5s
+    'aiom8': lambda: mission('CampAIOM8', [('CNVOpenTP', '100%', ALL)], 1, 0),             # Time 5s, Build plant
+    'aiom9': lambda: mission('CampAIOM9', [('CNVOpenBP', '100%', ALL)], 1, 1),             # barracks, plant
+    'aiom10': lambda: mission('CampAIOM10', [('CNVOpenPB', '100%', ALL)], 1, 1),           # plant, barracks
 }

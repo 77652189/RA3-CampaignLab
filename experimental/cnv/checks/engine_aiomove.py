@@ -23,6 +23,16 @@ Bench 2026-11-09 (B round 84, narrowing aiowt*'s nothing; one run each, 电厂 �
   aiom4  one line, Build barracks then Time 5s:          0 0 to s81 -- nothing
   aiom5  one line, Build plant, Build plant (no Time):   1 plant from s19, never a second
 Not found why: one Build -> none, two Builds -> one, T (plant / Time / plant / Time / plant) -> all three.
+Bench 2026-11-09 (B round 85, one run each, 电厂 兵营):
+  aiom6  P P P:              1 0 (s19) -- one of three
+  aiom7  P, Time 5s:         0 0 -- a trailing Time does not save the lone Build
+  aiom8  Time 5s, P:         0 0 -- nor does issuing it after the wake frame
+  aiom9  B, P:               1 0 -- the LAST Build of the batch is the one built
+  aiom10 P, B:               0 1 -- the same the other way round (so the barracks is buildable: aiom4 is not that)
+Read: several Builds issued in one go -> only the last is built; a Build alone in its batch (aiom1 / 4 / 7 / 8) ->
+nothing; yet T's first plant (alone at the wake, 30 s before the next order) is built, and its two at s40 both are.
+Guesses not tried: the build orders share one slot and a newer one replaces an unstarted older one (but then the
+lone one should stand); the opening's done-ness or how long before the next order matters (P + Time 30s untried).
 """
 from parts import Script, Test, counted, square
 
@@ -53,4 +63,5 @@ def a(m):
 
 
 CHECKS = {k: {'a': a} for k in ('aiowt', 'aiowt2', 'aiodf', 'aiodf2', 'aiohc1', 'aiohc0',
-                                  'aiom1', 'aiom2', 'aiom3', 'aiom4', 'aiom5')}
+                                  'aiom1', 'aiom2', 'aiom3', 'aiom4', 'aiom5',
+                                  'aiom6', 'aiom7', 'aiom8', 'aiom9', 'aiom10')}
