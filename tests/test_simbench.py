@@ -406,7 +406,8 @@ def test_super_the_iron_curtain_holds_off_fire_some_23_seconds():
     """j: both tanks (0 and 150 from the waypoint) whole until frame ~354 after the cast, then the enemy's fire takes
     them down (bench 86 / 73 / 60 % at 362 / 391 / 422: a volley, where the simulator's fire is steady, 72 at 422)."""
     by = {r[0]: r[1:] for _, r in _sim_run('engine_super', 'j', 34.0).series}
-    assert by[347] == [100, 100, 0] and by[362][0] < 100 and by[422][0] <= 75, by
+    # the third: 施放数, the cast seen by PLAYER_TRIGGERED_SPECIAL_POWER once (bench i / j: 1; 0 before sim knew it)
+    assert by[347] == [100, 100, 1] and by[362][0] < 100 and by[422][0] <= 75, by
 
 
 # ---- tech tiers: what lets a factory build a tier-2 unit (sim.Sim.holds_upgrade / can_build / upgrade_sellers)
@@ -1350,3 +1351,122 @@ def test_nanocore_deploys_at_a_far_waypoint_as_the_bench():
     assert 102 <= unit % 1000 <= 122 and unit // 1000 > 0, unit
     assert yard % 1000 == frames - unit % 1000, (frames, unit, yard)
     assert name == frames
+
+
+def _changes(build_name, check, until):
+    """[(second, readings)] at each change of the run's counters."""
+    out = []
+    for sec, v in _sim_run(build_name, check, until).series:
+        if not out or out[-1][1] != v:
+            out.append((sec, list(v)))
+    return out
+
+
+def _first(rows, k, test):
+    return next((sec for sec, v in rows if test(v[k])), None)
+
+
+# The bench's seconds run 1-2 s ahead of the mission's timers (checks/engine_scripts8.py): the simulator's readings,
+# in mission seconds, are asserted LAG later at most
+LAG = 2
+
+
+def test_scripts8_team_delete_and_kill_take_every_member_as_the_bench():
+    """bench 2026-11-09 engine_scripts8 team: TEAM_DELETE Del and TEAM_KILL Kil at 2 s -- 活着 48 to the end (both
+    crews gone at once, Liv whole), 甲死帧 1 (the killed one NAMED_DYING a frame). Not held: 乙死帧 (bench 1, the
+    deleted one dying a frame too; the simulator 0)."""
+    rows = _changes('engine_scripts8', 'team', 9.0)
+    assert rows[-1][1][:2] == [48, 1] and _first(rows, 0, lambda v: v == 48) <= 2 + LAG
+
+
+def test_scripts8_idle_drops_the_move_as_the_bench():
+    """bench engine_scripts8 idle: TEAM_IDLE_FOR_SECONDS 3 / _FRAMECOUNT 15 at 3 s drop the 1 s move order -- 到 100
+    (the control's) at s12, 200 from s13, never 211 (the idled crews never arrive)."""
+    rows = _changes('engine_scripts8', 'idle', 30.0)
+    assert [v[0] for _, v in rows] == [0, 100, 200]
+    assert 12 <= _first(rows, 0, lambda v: v == 100) <= 12 + LAG and 13 <= _first(rows, 0, lambda v: v == 200) <= 13 + LAG
+
+
+def test_scripts8_merge_moves_the_members_as_the_bench():
+    """bench engine_scripts8 merge: TEAM_MERGE_INTO_TEAM at 1 s -- 合 1 at s11, 12 from s13 (the source's two took the
+    target's order); 源 0 (an order to the emptied source moves nobody)."""
+    rows = _changes('engine_scripts8', 'merge', 30.0)
+    assert rows[-1][1] == [12, 0] and all(v[1] == 0 for _, v in rows)
+    assert 11 <= _first(rows, 0, lambda v: v == 1) <= 11 + LAG and 13 <= _first(rows, 0, lambda v: v == 12) <= 13 + LAG
+
+
+def test_scripts8_spawn_on_team_at_the_object_as_the_bench():
+    """bench engine_scripts8 spawn: UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION at 1 s -- 生 3 from s1."""
+    rows = _changes('engine_scripts8', 'spawn', 6.0)
+    assert rows[-1][1] == [3] and _first(rows, 0, lambda v: v == 3) <= 1 + LAG
+
+
+def test_scripts8b_team_status_holds_and_frees_the_fire_as_the_bench():
+    """bench engine_scripts8b status: TEAM_CHANGE_OBJECT_STATUS NO_ATTACK holds the crew's fire to 10 s (甲敌 100 to
+    s8), then 75 / 50 / 25 at s9 / s11 / s13 (12.5 a second); the control's enemy (乙敌) 87 at s1, down ~6 a second."""
+    rows = _changes('engine_scripts8b', 'status', 20.0)
+    assert all(v[0] == 100 for sec, v in rows if sec <= 10)
+    at75, at25 = _first(rows, 0, lambda v: v <= 75), _first(rows, 0, lambda v: v <= 25)
+    assert 10 <= at75 <= 10 + LAG and 3 <= at25 - at75 <= 5
+    down = [(sec, v[1]) for sec, v in rows if 0 < v[1] < 100]
+    (s0, h0), (s1, h1) = down[0], down[-1]
+    assert 5 <= (h0 - h1) / (s1 - s0) <= 8, down
+
+
+def test_scripts8b_base_power_sets_the_supply_as_the_bench():
+    """bench engine_scripts8b power: PLAYER_SET_BASE_POWER (1000) at 2 s, (300) at 6 s -- 电级 4 then 3: it sets the
+    supply, it does not add."""
+    rows = _changes('engine_scripts8b', 'power', 10.0)
+    assert [v[0] for _, v in rows][-2:] == [4, 3]
+    assert _first(rows, 0, lambda v: v == 4) <= 2 + LAG and 6 <= _first(rows, 0, lambda v: v == 3) <= 6 + LAG
+
+
+@pytest.mark.parametrize('variant, seen', [('pfire', 1), ('pdis', 2)])
+def test_scripts8b_the_players_cast_as_the_bench(variant, seen):
+    """bench engine_scripts8b pfire / pdis: PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT casts the player's collider -- target
+    0 whole 56 frames after the cast, then 44 %; PLAYER_TRIGGERED_SPECIAL_POWER sees it one frame (施放数 1). pdis:
+    with PLAYER_SPECIAL_POWER_AVAILABILITY Disabled the script's cast goes all the same; the named cast ~20 s later is
+    seen (施放数 2 from s26) and hurts nobody (血0 stays 44)."""
+    rows = _changes('engine_scripts8bs', variant, 40.0 if variant == 'pdis' else 20.0)
+    full, health, count = rows[-1][1][-3:]
+    assert abs(full - 56) <= 1 and health == 44 and count == seen
+    if variant == 'pdis':
+        assert 24 <= _first(rows, 2, lambda v: v == 2) <= 26
+
+
+@pytest.mark.parametrize('build_name', ['engine_invuln', 'engine_invuln_enemy'])
+def test_invuln_the_modifier_alone_keeps_nothing_whole_as_the_bench(build_name):
+    """bench 2026-11-04 engine_invuln (targets neutral, handed to the enemy at 8 s by NAMED_TRANSFER_OWNERSHIP_PLAYER)
+    and _enemy (enemy throughout): every lane hurt from s7 (A 1111, B 11), the kept-dark ones too; high's health falls
+    at one pace through dark, lit and dark again -- below 90 / 75 / 60 / 45 % at s15 / s23 / s33 / s43."""
+    rows = _changes(build_name, 'invuln', 50.0)
+    assert rows[-1][1][:2] == [1111, 11] and _first(rows, 0, lambda v: v == 1111) <= 7 + LAG
+    for k, bench in enumerate((15, 23, 33, 43)):
+        assert bench <= _first(rows, 2, lambda v, w=10 ** (k + 1) - 1: v >= w // 9) <= bench + LAG
+
+
+# bench 2026-11-04 engine_invuln_kinds: the box beside the A09 Iron Curtain aura object is never hurt -- it is a PropBody
+# (no health to take: engine_propbody a, simunits.prop_body), so no aura is needed to hold it (line E, 11-10)
+def test_invuln_kinds_the_aura_box_holds_as_the_bench():
+    rows = _changes('engine_invuln_kinds', 'invuln', 50.0)
+    assert rows[-1][1][:2] == [1100, 11]
+
+
+def test_area_counts_whose_units_as_the_bench():
+    """bench 2026-10-25 / 11-04 engine_area (E1): in the west field, three of the player's Guardians -- the player's
+    kind count 3, the enemy's kind count 3 too (a KindOf count takes every player's), the enemy's template count 0 and
+    SKIRMISH_PLAYER_HAS_UNITS_IN_AREA(enemy) false (those take only the named player's); at the north base the
+    player's kind count 2 (the enemy's warriors), the template count 0. The bench measured "has units" only where the
+    named player has none (the half that matters: it does not take another player's)."""
+    assert _changes('engine_area', 'field', 12.0)[-1][1] == [3, 3, 0, 0]
+    assert _changes('engine_area', 'camp', 12.0)[-1][1] == [2, 0]
+
+
+def test_attacked_by_player_holds_while_the_attacker_stands_as_the_bench():
+    """bench 2026-11-04 engine_attack gone (E2): NAMED_ATTACKED_BY_PLAYER holds while the last unit that hit the target
+    stands (between its shots too) and is false the frame it is deleted (A) or killed (B) at 6 s, the targets alive,
+    about a third of their health gone by then."""
+    rows = _changes('engine_attack', 'gone', 16.0)
+    assert all(v[:2] == [1, 1] for sec, v in rows if 1 <= sec <= 6)
+    assert all(v[:2] == [0, 0] for sec, v in rows if sec >= 7) and rows[-1][1][:2] == [0, 0]
+    assert all(55 <= h <= 75 for h in rows[-1][1][2:])

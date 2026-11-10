@@ -961,6 +961,7 @@ class Sim:
         self.walls = {u.id: u.params for u in self.mm.units if 'length' in u.params}   # our bars of ice, gates
         self.due = []                       # (frame, structure, owner, team, x, y, by): a builder's, to put down (R5)
         self.blasts = []                    # (frame, x, y, [(distance, damage)], owner, by): a superweapon's hits
+        self.casts = []                     # (frame, owner, power, caster, (x, y) or None): PLAYER_TRIGGERED_SPECIAL_POWER
         self.queues = {}                    # factory name -> [job]: production (order_build, produce_due)
         self.produced_to = None             # the last frame produce_due ran
         self.energies = {}                  # template -> EnergyProduction (simunits.energy; power)
@@ -2188,6 +2189,22 @@ class Sim:
             return self.t >= self.timers[a[0]]
         if name == 'COUNTER':
             return CMP[a[1]](self.counters.get(a[0], 0), a[2])
+        if name in ('PLAYER_TRIGGERED_SPECIAL_POWER', 'PLAYER_TRIGGERED_SPECIAL_POWER_FROM_NAMED',
+                    'PLAYER_TRIGGERED_SPECIAL_POWER_IN_AREA'):
+            # (player, power[, named / area]): a cast of the player's in the frame before (bench 11-09 engine_scripts8b
+            # pfire: 施放数 1 -- seen for one frame; pdis: 2, the second cast hurt nobody). Which frame sees it is
+            # INFERRED (the next frame's scripts, so a script after the caster's sees it once too); _FROM_NAMED /
+            # _IN_AREA (the caster, the cast's point inside the area) are INFERRED, not on the bench
+            now = self.frame_now()
+            for f, owner, power, who, q in self.casts:
+                if f != now - 1 or owner != a[0] or power != str(a[1]).lower():
+                    continue
+                if name.endswith('_FROM_NAMED') and who != a[2]:
+                    continue
+                if name.endswith('_IN_AREA') and not (q and inside(self.areas[a[2]], *q)):
+                    continue
+                return True
+            return False
         if name in ('NAMED_DESTROYED', 'NAMED_NOT_DESTROYED'):
             b = self.body(a[0])
             if b is None:
@@ -2802,6 +2819,11 @@ class Sim:
                     self.send(b, p)
         elif name in ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY'):
             b = self.body(a[0])
+            if b and b.alive and name == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT':
+                # bench 11-09 engine_scripts8b pfire / pdis: every script cast (the player-level one too, a second
+                # one in the reload that hurts nobody) is seen by PLAYER_TRIGGERED_SPECIAL_POWER for one frame
+                self.casts.append((self.frame_now(), b.owner, str(a[1]).lower(), b.name,
+                                   self.point(a[2]) if len(a) > 2 else None))
             got = b and b.alive and name == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT' and \
                 simunits.assemble(b.template, a[1], self.own)
             p = self.point(a[2]) if got and got[1] else None
