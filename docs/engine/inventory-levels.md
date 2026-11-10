@@ -2,11 +2,11 @@
 
 由 `experimental/cnv/inventory_ai.py levels` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）里由遭遇战 AI 带的敌人：它的人格（`enemy_ai.py` 生成）沿继承、战略状态、战术、组队、目标启发、微操、造兵 / 预算状态、开局一路引用到的原版 AI 数据项，加上全局常量 AIData 和本阵营的 ArmyDefinition；再加关卡脚本里点了 AI 玩家名字的脚本动作 / 条件。状态取自 [inventory.md](inventory.md)。"AI 做完"的第一条：下表全部已对拍。
 
-**已对拍 85 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
+**已对拍 86 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
 
 | 部分 | 已对拍 | 推断 | 未做 |
 |---|---|---|---|
-| AI | 73 | 139 | 145 |
+| AI | 74 | 139 | 144 |
 | 脚本动作 | 11 | 0 | 0 |
 | 脚本条件 | 1 | 0 | 0 |
 
@@ -97,7 +97,6 @@
 | 未做 | AI | `人格/AIPersonalityDefinition.RefineryPlacementStartDistanceDelta` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `人格/AIPersonalityDefinition.ResourceNodeSearchRadius` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `人格/AIPersonalityDefinition.ResourceNodeValueRemainingForExpansion` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 未做 | AI | `人格/AIPersonalityDefinition.SecondsTillTargetsExpire` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `人格/AIPersonalityDefinition.UnitBuilderEnemyNearbyDistance` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `人格/AIPersonalityDefinition.UnitBuilderEnemyNearbyMultiplier` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `人格/AIPersonalityDefinition.UnitBuilderOverallDefensivePreference` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
@@ -371,6 +370,7 @@
 | 已对拍 | AI | `战术/Tactic.Targetless` | 6 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aistate.py |
 | 已对拍 | AI | `经济/AccountShare.Account=DEFENSE` | 6 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |
 | 已对拍 | AI | `经济/AccountShare.Account=PRODUCTION` | 6 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiopen.py |
+| 已对拍 | AI | `人格/AIPersonalityDefinition.SecondsTillTargetsExpire` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |
 | 已对拍 | 脚本动作 | `ALLOW_DISALLOW_ONE_BUILDING` | 3466 | a4 a5 a7 | tests/test_simbench.py::test_a_ban_holds_the_queue_and_does_not_cancel |
 | 已对拍 | 脚本动作 | `PLAYER_SET_MONEY` | 345 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_mining.py |
 | 已对拍 | 脚本动作 | `PLAYER_RELATES_PLAYER` | 319 | a4 a5 a7 | tests/test_simbench.py::test_scripts2_a_relation_is_one_way_and_turns_back |

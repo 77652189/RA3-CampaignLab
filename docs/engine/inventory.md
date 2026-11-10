@@ -8,7 +8,7 @@
 | 脚本条件 | **94%** | 89 | 27 | 5 | 54 | 3 | 94% |
 | 物体模块 | **78%** | 184 | 31 | 6 | 128 | 19 | 79% |
 | 武器效果 | **32%** | 25 | 1 | 8 | 16 | 0 | 70% |
-| AI | **60%** | 415 | 78 | 151 | 152 | 34 | 88% |
+| AI | **60%** | 415 | 79 | 151 | 151 | 34 | 88% |
 
 ## 脚本动作
 
@@ -1093,7 +1093,7 @@
 | 未做 | `人格/AIPersonalityDefinition.RefineryPlacementStartDistanceDelta` | 1 | AI 模型代码里没有这个名字 |
 | 未做 | `人格/AIPersonalityDefinition.ResourceNodeSearchRadius` | 1 | AI 模型代码里没有这个名字 |
 | 未做 | `人格/AIPersonalityDefinition.ResourceNodeValueRemainingForExpansion` | 1 | AI 模型代码里没有这个名字 |
-| 未做 | `人格/AIPersonalityDefinition.SecondsTillTargetsExpire` | 1 | AI 模型代码里没有这个名字 |
+| 已对拍 | `人格/AIPersonalityDefinition.SecondsTillTargetsExpire` | 1 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |
 | 不涉及 | `人格/AIPersonalityDefinition.SkirmishTimeTillGreeting` | 1 | 纯表现（语音、视频、画面） |
 | 未做 | `人格/AIPersonalityDefinition.UnitBuilderEnemyNearbyDistance` | 1 | AI 模型代码里没有这个名字 |
 | 未做 | `人格/AIPersonalityDefinition.UnitBuilderEnemyNearbyMultiplier` | 1 | AI 模型代码里没有这个名字 |
