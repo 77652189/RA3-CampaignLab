@@ -42,6 +42,12 @@ BENCH 11-09 (round 131): why the enemy crews are empty. (The bench's s1 is past 
     off every team at the start. Retail a02's scripted Soviet04 (whose 'TEAM - Dock 01' its TEAM_KILL takes) is
     DefaultPersonality, base / unit builder 240.
   Next: rel / atk / atkr on the 9b sides (or Soviet_1 made DefaultPersonality at its source), then rename engine_.
+BENCH 11-09 (round 132): the personality is NOT it. Soviet_1 (and every crew owner) written DefaultPersonality by
+  package.write_map (tried, reverted): the change took (engine_protocol pts 敌方点数 1 from s1, was 0: a Default
+  player keeps its point), yet memb 23, memb3 甲 0 / 丙 0, rel 甲乙丙丁 alike (87 -> dead), atk / atkr 100 to s61 --
+  the enemy crews on Soviet_1 still empty. Only the test's own script names Soviet_1 in the merged mission. Left
+  between Soviet_1 and Soviet_4 / 5 in the container: playerAllies 'Soviet_2 Soviet_3' (4 / 5: none), the
+  container's own Soviet_1 teams / build lists (Teams, BuildLists chunks), Soviet_4 enemies also StartingUnits.
 """
 from maps import probe_border
 from parts import Mission, Script, Test, status
