@@ -259,6 +259,9 @@ class Mission(Part):
                                                                 # shown there or as a caption, never both (E6)
     teams: dict = dataclasses.field(default_factory=dict)       # {crew key: 'Owner/teamName'} the mission's own teams,
                                                                 # written into the map's Teams (Mission.crew, K6)
+    templates: dict = dataclasses.field(default_factory=dict)   # {'Owner/teamName': {'units': [(template, min, max)],
+                                                                # 'instances': n}} the teams of `teams` that are team
+                                                                # templates (Mission.reinforcement)
     sides: dict = dataclasses.field(default_factory=dict)       # {side: {player property: value}} changed in the
                                                                 # map's player list (a skirmish AI's faction, its
                                                                 # personality: mapxml.set_player)
@@ -374,6 +377,19 @@ class Mission(Part):
             assert key.isalnum(), f'crew {key!r}: letters and digits only (a team name goes through Latin-1 as a script argument)'
             self.teams[key] = f'{owner}/teamCNV{key}'
         return self.teams[key]
+
+    def reinforcement(self, key, units, side='p1', instances=1):
+        """A team template of `side` (written into the map's Teams with its unit lines: mapxml.add_team) that
+        CREATE_REINFORCEMENT_TEAM(team, waypoint) makes whole at a waypoint, a new instance each time. units:
+        [(template, count)] or [(template, min, max)], at most seven lines. Returns what a script calls it
+        ('Soviet_1/teamCNVRWave1'); the templates are published as spawns (made by script, nobody casts them)."""
+        assert key.isalnum(), f'reinforcement {key!r}: letters and digits only'
+        team = self.crew(f'R{key}', side)
+        lines = [(u[0], u[1], u[1]) if len(u) == 2 else tuple(u) for u in units]
+        assert lines and all(0 <= lo <= hi for _, lo, hi in lines), f'reinforcement {key!r}: units {units!r}'
+        self.templates[team] = {'units': lines, 'instances': instances}
+        self.spawns |= {t for t, _, _ in lines}
+        return team
 
     def order(self, kind, names, target=None, side='p1', crew=None):
         """K6, the one way to tell units what to do (Ctx.order forwards here; ADR 0016): the actions that give the

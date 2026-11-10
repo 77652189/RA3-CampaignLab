@@ -135,7 +135,8 @@ MINE_RETRY = 15                # no node / refinery found: the miner idles 1 s a
 MINE_DRIVE_EXTRA = 50          # frames a leg takes beyond straight distance / speed: fitted to engine_mining a (a trip of
                                # 269 = 2 x 104 + 30 + 30 + 1, the refinery 180 from its node, the miner 50 a second: 54)
 REACH = 300.0                  # 自动打掉: an enemy this close to something of the player's is being fought
-LINGER = 0.0                    # a killed unit's death (its slow death): still in the game's name cache, where it fell
+SPREAD = 30.0                   # a reinforcement team's units this far apart round its waypoint (Sim.reinforce, INFERRED)
+LINGER = 0.0                   # a killed unit's death (its slow death): still in the game's name cache, where it fell
                                 # (docs/engine/script-semantics.md 4.2) -- the bench (2026-10-28, probe death): out of
                                 # the area from the reading the kill shows in; the guess was 3 s
 GRID = 20.0                     # routing cells (world units)
@@ -473,6 +474,7 @@ class Body:
     made_at: float = 0.0
     scenery: bool = False
     team: str = ''
+    instance: int = 0                   # which instance of a team template (CREATE_REINFORCEMENT_TEAM: 1, 2, ...)
     guessed: list = dataclasses.field(default_factory=list)    # what of its numbers simunits only guessed
     clear_height: float = HIGH_STEP                             # its ShroudClearingHeight (simunits: 50 unless written)
     angle: float = 0.0
@@ -950,6 +952,8 @@ class Sim:
         self.produced_to = None             # the last frame produce_due ran
         self.energies = {}                  # template -> EnergyProduction (simunits.energy; power)
         self.player_ups = {}                # player -> upgrades GIVE_PLAYER_UPGRADE gave (a unit's NeededUpgrade)
+        self.templates = getattr(self.mm, 'templates', None) or {}     # team templates (Sim.reinforce)
+        self.instances = {}                 # team template -> instances made so far
         teams = getattr(mission.map, 'TEAMS', {})
         self.active = set(teams.values())               # teams with an instance: a whole-team order to any other is lost (E3)
         self.lost_orders = []                           # (t, script, order, team) given to a team nobody had joined
@@ -1107,7 +1111,38 @@ class Sim:
 
     # ---- orders: one unit's, and a team's (the same for each member: ctx.order gives teams only)
     def members(self, team):
-        return [b for b in self.living() if same_team(b.team, team)]
+        """A team's living members; a team template's (several instances: CREATE_REINFORCEMENT_TEAM) the OLDEST
+        instance's that still has any (bench 11-10 engine_reinf old: the order by the name moved the first instance,
+        not the one made since; an emptied instance giving the name to the next is INFERRED)."""
+        crew = [b for b in self.living() if same_team(b.team, team)]
+        first = min((b.instance for b in crew), default=0)
+        return [b for b in crew if b.instance == first]
+
+    def reinforce(self, team, waypoint, script):
+        """CREATE_REINFORCEMENT_TEAM(team, waypoint): a new instance of the team template (mission.templates:
+        {'Owner/name': {'units': [(template, min, max)], 'instances': n}}), every line's MAX count of its template, at
+        the waypoint -- made again on every call, teamMaxInstances or not (bench 11-10 engine_reinf two: 3 A + 2 B of
+        a min 2 / max 3, min 1 / max 2 template, a second call 6 / 4 with teamMaxInstances 1). The units stand on a
+        grid of SPREAD round the waypoint (INFERRED: the bench counts them inside 250 of it)."""
+        key = next((k for k in self.templates if same_team(k, team)), None)
+        p = self.point(waypoint)
+        if key is None or p is None:
+            self.used.add('reinforcement team unknown' if key is None else 'reinforcement waypoint unknown')
+            return
+        owner = key.split('/')[0]
+        self.instances[key] = k = self.instances.get(key, 0) + 1
+        made = [t for t, _, hi in self.templates[key]['units'] for _ in range(hi)]
+        side = math.ceil(math.sqrt(len(made)))
+        for i, t in enumerate(made):
+            dx, dy = (i % side - (side - 1) / 2) * SPREAD, (i // side - (side - 1) / 2) * SPREAD
+            b = self.add(f'#reinforcement {len(self.bodies)} {t}', t, owner, p[0] + dx, p[1] + dy, by=script.name,
+                         at=self.t)
+            b.team, b.instance = key, k
+            if self.blocks(b):
+                self.reblock()
+        self.active.add(key)
+        self.note('出现', f'增援 {key.split("/", 1)[-1]} 第 {k} 队（{len(made)} 个，{self.who(owner)}）在 {waypoint}')
+        self.change()
 
     def off_teams(self, players):
         """UNIT_AI_TRANSFER_ALL(p, 1): p's units now are taken off every team (its default one too); units made later
@@ -2384,6 +2419,10 @@ class Sim:
             self.note('出现', f'{a[0]}（{self.who(b.owner)}）在 {a[2]}'
                       + ('' if b.owner == self.human or self.sees(b.x, b.y, b.surface == 'air') else '，玩家看不见'))
             self.change()
+        elif name in ('CREATE_REINFORCEMENT_TEAM', 'CREATE_REINFORCEMENT_TEAM_AT_UNIT_POSITION'):
+            # (team, waypoint) / (team, named unit): one handler 0x5b7f50 for both (work/re actions_map.json); the
+            # unit's position as the waypoint is INFERRED (Sim.point reads a named object's)
+            self.reinforce(a[0], a[1], script)
         elif name in ('MOVE_NAMED_UNIT_TO', 'ATTACK_MOVE_NAMED_UNIT_TO'):
             self.order_move(self.body(a[0]), a[1], name == 'ATTACK_MOVE_NAMED_UNIT_TO')
         elif name == 'NAMED_ATTACK_NAMED':

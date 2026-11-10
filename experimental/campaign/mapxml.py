@@ -84,15 +84,33 @@ def set_player(m, name, **props):
     node.head = d[:p] + encode_props(m, pr) + d[end:]
 
 
-def add_team(m, name, owner):
+TEAM_UNIT_SLOTS = 7        # a team template's unit lines (teamUnitType1..7), as every retail one has
+
+
+def add_team(m, name, owner, units=None, instances=1):
     """A singleton team `name` of player `owner` added to the map's Teams chunk (u32 count, then one property dictionary
     per team: teamName, teamOwner, teamIsSingleton -- retail's player teams are exactly these three). A script names it
-    'owner/name' (CREATE_NAMED_ON_TEAM_AT_WAYPOINT, MOVE_TEAM_TO ...), a placed object by originalOwner 'owner/name'."""
+    'owner/name' (CREATE_NAMED_ON_TEAM_AT_WAYPOINT, MOVE_TEAM_TO ...), a placed object by originalOwner 'owner/name'.
+    With `units` [(template, min, max)], a team template instead (what CREATE_REINFORCEMENT_TEAM makes whole): not a
+    singleton, teamMaxInstances `instances`, the unit lines and the rest of a retail template's properties at retail's
+    most common values (a01 'TEAM - Wave 02 - Infantry Invaders 01'; work/logs/a137_teamkeys.log counts them all)."""
     node = next(x for _, x in m.walk() if x.name == 'Teams')
     d = node.head
     if any(t.get('teamName', (0, None))[1] == name for t in teams(m)):
         raise KeyError(f'team {name!r} is already in the map')
-    pr = {'teamName': (3, name), 'teamOwner': (3, owner), 'teamIsSingleton': (0, 1)}
+    pr = {'teamName': (3, name), 'teamOwner': (3, owner), 'teamIsSingleton': (0, 0 if units else 1)}
+    if units:
+        assert len(units) <= TEAM_UNIT_SLOTS, f'team {name!r}: {len(units)} unit lines, a template has {TEAM_UNIT_SLOTS}'
+        pr['teamProductionPriority'] = (1, 0)
+        for k in range(1, TEAM_UNIT_SLOTS + 1):
+            lo, hi = units[k - 1][1:] if k <= len(units) else (0, 0)
+            pr[f'teamUnitMaxCount{k}'], pr[f'teamUnitMinCount{k}'] = (1, hi), (1, lo)
+        pr.update({'teamDescription': (3, ''), 'teamMaxInstances': (1, instances),
+                   'teamProductionPrioritySuccessIncrease': (1, 0), 'teamProductionPriorityFailureDecrease': (1, 0),
+                   'teamInitialIdleSeconds': (1, 0), 'teamExecutesActionsOnCreate': (0, 0)})
+        for k, (template, _, _) in enumerate(units, 1):
+            pr[f'teamUnitType{k}'] = (5, f'GameObject:{template}')
+            pr[f'teamUnitUpgradeList{k}'], pr[f'teamUnitExperienceLevel{k}'] = (3, ''), (1, 1)
     node.head = struct.pack('<I', struct.unpack_from('<I', d, 0)[0] + 1) + d[4:] + encode_props(m, pr)
 
 

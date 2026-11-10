@@ -392,6 +392,33 @@ def test_container_libraries_are_the_containers():
     assert model.handed_to_ai(None) == {'Player_2', 'Soviet_1', 'Soviet_2', 'Soviet_3'}
 
 
+def test_a_reinforcement_team_is_written_as_a_template_and_read_back():
+    """Mission.reinforcement -> mapxml.add_team writes a team template (not a singleton, the unit lines, retail's other
+    properties); retail.team_templates (what the simulator reads of a retail map) reads the same lines back; contract
+    G6b counts CREATE_REINFORCEMENT_TEAM as a join (bench 11-10 engine_reinf)."""
+    import make_campnew18 as c18
+    import contract
+    import mapxml
+    import retail
+    from mapscript import MapFile
+    from maps import niagara
+    from parts import Mission
+    m = Mission(name='CampT', map=niagara, units=[], facts={})
+    team = m.reinforcement('Wave', [('AlliedAntiInfantryInfantry', 2, 3), ('AlliedAntiVehicleVehicleTech1', 2)], 's1')
+    assert team == 'Soviet_1/teamCNVRWave' and m.teams['RWave'] == team
+    assert {'AlliedAntiInfantryInfantry', 'AlliedAntiVehicleVehicleTech1'} <= m.spawns
+    data = next(d for p, d in c18.c6._map_files() if p.lower().endswith('.map'))
+    mf = MapFile(data)
+    spec = m.templates[team]
+    mapxml.add_team(mf, 'teamCNVRWave', 'Soviet_1', units=spec['units'], instances=spec['instances'])
+    got = next(t for t in mapxml.teams(mf) if t['teamName'][1] == 'teamCNVRWave')
+    assert got['teamIsSingleton'] == (0, 0) and got['teamUnitType1'] == (5, 'GameObject:AlliedAntiInfantryInfantry')
+    assert (got['teamUnitMinCount1'], got['teamUnitMaxCount1'], got['teamUnitMaxCount3']) == ((1, 2), (1, 3), (1, 0))
+    assert retail.team_templates(mf)[team] == {'units': [('AlliedAntiInfantryInfantry', 2, 3),
+                                                          ('AlliedAntiVehicleVehicleTech1', 2, 2)], 'instances': 1}
+    assert contract.JOINS_TEAM['CREATE_REINFORCEMENT_TEAM'] == 0
+
+
 def test_contract_g6c_placed_ai_units_take_no_team_order():
     """G6c: a placed unit of Soviet_1 (handed to the skirmish AI by the container) is on no team after the start, so a
     level order to its team is an error -- not on s4, not once a level script (not a first-frame one) fills the team."""

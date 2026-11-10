@@ -134,7 +134,8 @@ def said_once_and_on_time(m):
 # CREATE_*_ON_TEAM) or one placed in the map is its member.
 TEAM_COMMANDS = ('MOVE_TEAM_TO', 'ATTACK_MOVE_TEAM_TO', 'TEAM_ATTACK_NAMED', 'TEAM_GUARD_AREA', 'TEAM_STOP', 'TEAM_HUNT')
 JOINS_TEAM = {'UNIT_SET_TEAM': 1, 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT': 2,
-              'CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION': 2}      # action -> the index of the team it names
+              'CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION': 2,      # action -> the index of the team it names
+              'CREATE_REINFORCEMENT_TEAM': 0, 'CREATE_REINFORCEMENT_TEAM_AT_UNIT_POSITION': 0}
 
 
 # E7 (2026-11-04, ra3-script-reference E7-6, E7-7). PATH_MUSIC_PLAY_EVENT suspends the game's combat music (the dynamic

@@ -129,13 +129,15 @@ class RetailMission:
         # SidesList's first side is the unnamed neutral one (mapstudy.players leaves out the nameless)
         self.order = ([''] if lists == len(props) + 1 else []) + list(props)
         self.libraries = dict(zip(self.order, library_names(m)))
+        self.templates = team_templates(m)
 
     def merged(self, test=None):
         """What sim.Sim takes from parts.merged: no units or objects of our own (the map's are .map.OBJECTS), no
         cnv scripts (script_lists runs the map's own), the map's areas and waypoints."""
         assert test is None, 'a retail mission takes no cnv check'
         return dataclasses.make_dataclass('Merged', ['units', 'objects', 'scripts', 'areas', 'waypoints', 'strings',
-                                                     'subtitles'])([], [], [], self.areas, self.waypoints, {}, {})
+                                                     'subtitles', 'templates'])([], [], [], self.areas, self.waypoints,
+                                                                                {}, {}, self.templates)
 
     def script_lists(self, scripts):
         """The map's scripts for the engine model (scripts = ra3model.scripts), one list per side, every name a
@@ -148,6 +150,21 @@ class RetailMission:
 
 
 LIBRARIES = 'Libraries.big'
+
+
+def team_templates(m):
+    """The map's team templates as sim.Sim.reinforce reads them (model.Mission.templates): {'Owner/name': {'units':
+    [(template, min, max)], 'instances': teamMaxInstances}}, every team with a unit line."""
+    import mapxml
+    out = {}
+    for t in mapxml.teams(m):
+        pr = {k: v[1] for k, v in t.items()}
+        units = [(str(pr[f'teamUnitType{k}']).replace('GameObject:', ''), int(pr.get(f'teamUnitMinCount{k}', 0)),
+                  int(pr.get(f'teamUnitMaxCount{k}', 0)))
+                 for k in range(1, mapxml.TEAM_UNIT_SLOTS + 1) if pr.get(f'teamUnitType{k}')]
+        if units:
+            out[f'{pr["teamOwner"]}/{pr["teamName"]}'] = {'units': units, 'instances': int(pr.get('teamMaxInstances', 1))}
+    return out
 
 
 def library_names(m):

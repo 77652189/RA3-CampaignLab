@@ -1315,3 +1315,13 @@ def test_scripts7_object_lists_and_the_nearest_refs_as_the_bench():
 def test_scripts7_a_type_added_to_a_list_later_as_the_bench():
     by = {round(s): v for s, v in _sim_run('engine_scripts7', 'list', 10.0).series}
     assert by[9][0] == 4, by
+
+
+def test_reinforcement_teams_as_the_bench():
+    """CREATE_REINFORCEMENT_TEAM (sim.Sim.reinforce, bench 11-10 engine_reinf): every line's max count, a new instance
+    on every call (teamMaxInstances 1 or not), and an order by the team's name to the oldest instance only.
+    two (兵A 出生A 到达A 兵B) ends 6 3 3 4; old (兵A 出生A 到达A 远处A): the first instance stands at the goal (3 3 0 0
+    -> 3 0 3 0), the second is made at the spawn, the order to far takes the first: 6 3 0 3."""
+    assert _sim_run('engine_reinf_two', 'go', 30.0).series[-1][1] == [6, 3, 3, 4]
+    by = {s: v for s, v in _sim_run('engine_reinf_old', 'go', 45.0).series}
+    assert by[1] == [3, 3, 0, 0] and by[13] == [3, 0, 3, 0] and by[44] == [6, 3, 0, 3], by
