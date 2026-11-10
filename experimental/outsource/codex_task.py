@@ -16,6 +16,10 @@ coordinator runs the long regressions, reads the diff, then commits).
              re-running long regressions); high only for a task that needs real design judgment
   --model    default gpt-6.1-sol (2026-11-09 comparison: Astra no better at 4.5x the price)
   --read-dir extra folders Codex may write in besides --dir (e.g. the main checkout's work\ for logs)
+  --bench    may run the bench through run_queue.py
+  --full     no sandbox, so it can bench itself (the SDK compiler crashes in any sandbox); user-approved 2026-11-09
+             after line C's suppression probe took 10 blind rounds through the coordinator. The limits are then in
+             the prompt only (FULL), and the "Files:" check after the run still flags edits outside the worktree's list
 
 Why the rules: Codex is thorough but defensive -- it re-runs long regressions after every change and widens the
 scope (compatibility paths, extra tests). The user wants Claude's speed at no loss of quality, so the coordinator
@@ -62,6 +66,12 @@ BENCH = ('Do not commit, push or install anything. The test bench: only through 
          'locks, queues behind other lines and refuses at once when the user is playing -- then stop and report, do '
          'not retry in a loop); never start Red Alert 3 any other way, never touch the Steam game folder or the lock '
          'files yourself. Results land in work/bench_results/<mission>__<check>.json.')
+FULL = (' You run WITHOUT a sandbox (the user allowed it 2026-11-09 so you can bench yourself), so these limits are '
+        'yours to keep: write only inside your worktree and the main checkout\'s work/ folder (plus what the bench '
+        'itself writes); never touch the main checkout\'s other files, other worktrees, the Steam game folder, the '
+        'registry, system or Codex settings; never stop or kill a process you did not start (other lines and the '
+        'user\'s game run here); no network beyond what the tools already do. When readings do not explain '
+        'themselves, look: the bench archives frames under work/testbench/runs/ -- view them before guessing.')
 
 
 def files_allowed(brief):
@@ -97,7 +107,11 @@ def main():
     ap.add_argument('--model', default='gpt-6.1-sol')
     ap.add_argument('--read-dir', action='append', default=[])
     ap.add_argument('--bench', action='store_true', help='may run the bench through run_queue.py (a line task)')
+    ap.add_argument('--full', action='store_true',
+                    help='no sandbox (user-approved 2026-11-09): the SDK compiler crashes inside one, so a line task '
+                         'that benches itself needs this; implies --bench')
     a = ap.parse_args()
+    a.bench = a.bench or a.full
     exe = codex()
     if not exe:
         sys.exit('Codex desktop not installed (no codex.exe under %LOCALAPPDATA%\\OpenAI\\Codex\\bin)')
@@ -106,7 +120,7 @@ def main():
     if 'Tests:' not in brief or allowed is None:
         sys.exit('the brief needs a "Files:" section (the paths / globs it may change, or "none") and a "Tests:" '
                  'section naming the exact test commands')
-    prompt = brief + RULES.format(aim=int(a.minutes / 3), limit=int(a.minutes), bench=BENCH if a.bench else NO_BENCH)
+    prompt = brief + RULES.format(aim=int(a.minutes / 3), limit=int(a.minutes), bench=(BENCH + (FULL if a.full else '')) if a.bench else NO_BENCH)
     if a.bench:                # what the bench writes: the game copy and results (work), the mods, the locks, the SDK
         a.read_dir += [os.path.join(LAB, 'RA3-CampaignLab', 'work'), os.path.join(LAB, 'shared'),
                        os.path.join(LAB, 'sdk'), os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3'),
@@ -115,8 +129,8 @@ def main():
     out, events = base + '.answer.md', base + '.events.jsonl'
     # windows.sandbox="mxc": from 2026-11-09 21:28 the "unelevated" sandbox refused every process (CreateProcessAsUserW
     # 5, even `python --version`, across worktrees and a Codex restart); mxc runs them -- still a sandbox
-    cmd = [exe, 'exec', '-m', a.model, '-c', f'model_reasoning_effort="{a.effort}"', '-c', 'windows.sandbox="mxc"',
-           '-s', 'workspace-write',
+    box = ['-s', 'danger-full-access'] if a.full else ['-c', 'windows.sandbox="mxc"', '-s', 'workspace-write']
+    cmd = [exe, 'exec', '-m', a.model, '-c', f'model_reasoning_effort="{a.effort}"', *box,
            '-C', a.dir, *sum((['--add-dir', d] for d in a.read_dir), []), '--json', '-o', out, prompt]
     before = changed(a.dir)
     t0, ended, usage = time.time(), 'ok', None
