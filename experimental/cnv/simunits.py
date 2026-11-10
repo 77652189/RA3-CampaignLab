@@ -521,6 +521,29 @@ def autoheal(template, own=None):
         return None
 
 
+def invis_broadcast(template, own=None):
+    """The mirage tank's InvisibilityBroadcastUpdate (engine line C round 9, engine_stealth a / b, bench 11-05,
+    docs/engine/stealth.md 1-2): {'range': BroadcastRange, 'period': UpdatePeriod frames, 'self': AffectsSelf,
+    'relation' / 'include' / 'exclude' (the BroadcastObjectFilter: Relationship, Include KindOf, StatusBitFlagsExclude),
+    'needs': ObjectStatusValidation RequiredStatus -- the broadcaster must carry them}; None without the module."""
+    def read(xml):
+        for head, inner in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'InvisibilityBroadcastUpdate'):
+            f, _ = next(_blocks(inner, 'BroadcastObjectFilter'), ('', ''))
+            v, _ = next(_blocks(inner, 'ObjectStatusValidation'), ('', ''))
+            return {'range': _num(_attr(head, 'BroadcastRange'), 0.0),
+                    'period': max(1, int(round(_secs(_attr(head, 'UpdatePeriod') or '1s') * LIFE_FPS))),
+                    'self': (_attr(head, 'AffectsSelf', 'false') or '').lower() == 'true',
+                    'relation': set((_attr(f, 'Relationship') or 'ALLIES ENEMIES NEUTRAL').split()),
+                    'include': set((_attr(f, 'Include') or '').split()),
+                    'exclude': set((_attr(f, 'StatusBitFlagsExclude') or '').split()),
+                    'needs': set((_attr(v, 'RequiredStatus') or '').split())}
+        return None
+    try:
+        return _inherited(template, own, read, None)
+    except (OSError, ValueError):
+        return None
+
+
 _flee_memo = {}
 
 

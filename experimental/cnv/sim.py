@@ -296,7 +296,7 @@ GAP_WEAPON, GAP_UPGRADE, GAP_ACTION, GAP_CONDITION, GAP_COMMAND, GAP_STATUS = \
     '武器', '升级', '脚本动作', '脚本条件', '命令', '状态'
 # the object statuses sim.py acts on (tested with `in b.status`; IN_STASIS = IMMOBILE NO_ATTACK UNATTACKABLE in
 # Sim.modify); tests/test_sim.py checks the list against the source
-ACTED_STATUS = frozenset({'SOLD', 'IMMOBILE', 'NO_ATTACK', 'UNATTACKABLE', 'NON_AUTOACQUIRABLE', 'IN_STASIS', 'UNDER_FROZEN'})
+ACTED_STATUS = frozenset({'SOLD', 'GENERIC_TOGGLE_STATE', 'IMMOBILE', 'NO_ATTACK', 'UNATTACKABLE', 'NON_AUTOACQUIRABLE', 'IN_STASIS', 'UNDER_FROZEN'})
 # a script's power or button by itself, as simcoverage.refined names it
 BUTTON_ACTIONS = ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY',
                   'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED')
@@ -900,6 +900,8 @@ class Sim:
         self.bodies = {}                    # name -> Body (named ones), plus unnamed under '#k'
         self.refs = {}                      # reference name (UNITRef - ...) -> the Body a SET_REF_TO_... pointed it at
         self.object_lists = {}              # OBJECTLIST_ADDOBJECTTYPE: list name -> {template}, both lower case
+        self.base_power = {}                # PLAYER_SET_BASE_POWER: player -> supply added to its objects' (INFERRED)
+        self.powers_off = {}                # PLAYER_SPECIAL_POWER_AVAILABILITY: (player, power lower) -> its word
                                             # (one table for every player, names any case: retail.SCOPED_ARGS)
         self.series = []                    # (t, counter values) for a check's counters
         self.threat = []                    # (t, enemies near, countdowns) every 10 s
@@ -1675,7 +1677,7 @@ class Sim:
         """(supply, demand) of the owner: its living objects' EnergyProduction, > 0 summed into the supply, < 0 into
         the demand (RA3 1.13 0x7424a0 leaves out an object under construction or powered down: the simulator has
         neither -- a building stands built from the frame it appears)."""
-        sup = dem = 0
+        sup, dem = self.base_power.get(owner, 0), 0
         now = self.frame_now()
         for b in self.living():
             if b.owner == owner and not (b.unpack_end is not None and now < b.unpack_end):
@@ -1740,6 +1742,8 @@ class Sim:
             return 'not a power of his'
         if b.ready_at.get(power, 0) > self.frame_now():
             return 'reloading'
+        if any(self.powers_off.get((p, power.lower()), 'Available') != 'Available' for p in (b.owner, '<All Players>')):
+            return 'disabled'                   # PLAYER_SPECIAL_POWER_AVAILABILITY (INFERRED)
         if 'PATHABLE_ONLY' in rules['flags']:
             g, c = self.ground.grids.get(b.surface, self.ground.grids['ground']), self.ground.cell(x, y)
             if not (0 <= c[0] < g.shape[0] and 0 <= c[1] < g.shape[1] and g[c]):
@@ -2331,6 +2335,51 @@ class Sim:
                 b.owner = a[1]
                 self.note('易主', f'{self.label(b)} 归 {self.who(a[1])}')
                 self.change()
+        elif name in ('TEAM_DELETE', 'TEAM_KILL', 'TEAM_DELETE_LIVING'):
+            # (team) INFERRED (Generals doTeamDelete / doTeamKill): every living member removed / killed, as
+            # NAMED_DELETE / NAMED_KILL one by one; TEAM_DELETE_LIVING as TEAM_DELETE. engine_scripts8 team asks
+            for b in self.members(a[0]):
+                if name == 'TEAM_KILL':
+                    b.last_hit = b.last_by = None
+                self.destroy(b, '脚本' if name == 'TEAM_KILL' else '脚本删掉', delete=name != 'TEAM_KILL')
+        elif name in ('TEAM_IDLE_FOR_SECONDS', 'TEAM_IDLE_FOR_FRAMECOUNT'):
+            # (team, n) INFERRED: the unit version on every member (it drops the order: engine_scripts7 idle)
+            for b in self.members(a[0]):
+                if b.speed:
+                    self.stand(b)
+        elif name == 'TEAM_CHANGE_OBJECT_STATUS':     # (team, status, on) INFERRED: the unit version on every member
+            for b in self.members(a[0]):
+                self.act('UNIT_CHANGE_OBJECT_STATUS', [b.name, *a[1:]], script)
+        elif name == 'TEAM_MERGE_INTO_TEAM':          # (source, target) INFERRED (Generals doMergeTeamIntoTeam): the
+            for b in self.members(a[0]):              # source's members join the target, their orders kept
+                b.team = a[1]
+            self.active.add(a[1])
+            self.change()
+        elif name == 'UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION':
+            # (name, type, team, object) INFERRED: CREATE_NAMED_ON_TEAM_AT_WAYPOINT at the object's place, its facing
+            at = self.body(a[3])
+            if at and self.present(at):
+                spot = f'SIM spawn spot {len(self.waypoints)}'
+                self.waypoints[spot] = (at.x, at.y)
+                self.act('CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION', [a[0], a[1], a[2], spot, at.angle], script)
+        elif name == 'PLAYER_SET_BASE_POWER':         # (player, n) INFERRED: n supply on top of its objects'
+            self.base_power[a[0]] = int(a[1])
+            self.change()
+        elif name == 'PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT':
+            # (player, power, waypoint) INFERRED: the player's first living object that has the power casts it, as
+            # NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT (a script's cast: no reload asked); none, nothing. Retail fires
+            # protocols this way mostly (orbital refuse, final squadron): those have no source object, not simulated
+            power = next((k for k in (*SUPERWEAPON_HITS, *CURTAIN) if k.lower() == str(a[1]).lower()), a[1])
+            src = next((b for b in self.living() if b.owner == a[0]
+                        and simunits.power_rules(b.template, power, self.own)), None)
+            if src:
+                self.act('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', [src.name, power, a[2]], script)
+            else:
+                self.gap(GAP_ACTION, refined(name, a), f'{a[0]} 没有带 {a[1]} 的物体（协议类不模拟）')
+        elif name == 'PLAYER_SPECIAL_POWER_AVAILABILITY':
+            # (player, power, Available / Disabled / Hidden) INFERRED: the player's click refused unless Available
+            # (power_refusal); a script's cast goes all the same. engine_scripts8 pdis asks the bench
+            self.powers_off[(a[0], str(a[1]).lower())] = str(a[2])
         elif name == 'TEAM_TRANSFER_TO_PLAYER':
             # (team, player) l2_scripts1 6: each member goes to the player's own team, its order cleared. Bench 11-08
             # engine_scripts1 xfer: owned by the new player at once, the move it was on dropped, the team left empty
@@ -2987,7 +3036,8 @@ class Sim:
         live = [b for b in self.living() if not b.scenery and self.on_map(b)]     # off the border: out of the fight
         armed = [b for b in live if b.weapons and 'NO_ATTACK' not in b.status    # NO_ATTACK: holds its fire
                  and not self.unpowered(b) and not (b.hold_fire and not isinstance(b.goal, Body))]
-        targets = [b for b in live if 'UNATTACKABLE' not in b.status]
+        cloaked = self.cloaked(live)
+        targets = [b for b in live if 'UNATTACKABLE' not in b.status and id(b) not in cloaked]
         if not armed or not targets:
             return
         aimable = {id(t) for t in targets}
@@ -3058,6 +3108,33 @@ class Sim:
             self.used.add('freeze')
         if self.eng is None:                    # no frames: the tick's damage at once
             self.deal(DT)
+
+    def cloaked(self, live):
+        """ids of the bodies an InvisibilityBroadcastUpdate hides this tick (simunits.invis_broadcast; engine line C
+        round 9, engine_stealth a / b, bench 11-05, docs/engine/stealth.md 1-2): a broadcaster carrying the status its
+        ObjectStatusValidation wants (the mirage tank: GENERIC_TOGGLE_STATE, which a script gives) hides what its filter
+        takes within BroadcastRange, centre to centre (relation, KindOf, status exclusions; not itself unless AffectsSelf).
+        A hidden body is no target for the other side while the aura holds -- an attack order on it stays, fire starts
+        the moment it shows and stops the moment it hides (bench 开关血 / 后隐血). Taken every tick, not on the
+        UpdatePeriod (0.2 s, finer than the tick; the entry's own lifetime not read). Not modelled: a detector's
+        reveal (StealthDetectorUpdate, ~6 s in on the bench), the garrison's stealth template."""
+        cache = self.__dict__.setdefault('_invis', {})
+        out = set()
+        for e in live:
+            if e.template not in cache:
+                cache[e.template] = simunits.invis_broadcast(e.template, self.own)
+            r = cache[e.template]
+            if not r or not r['needs'] <= e.status:
+                continue
+            for t in live:
+                if (t is e and not r['self']) or t.scenery or (r['include'] and not r['include'] & t.kinds) \
+                        or r['exclude'] & t.status or self.relation(e.owner, t.owner) not in r['relation']:
+                    continue
+                if math.hypot(t.x - e.x, t.y - e.y) <= r['range']:
+                    out.add(id(t))
+        if out:
+            self.used.add('stealth')
+        return out
 
     def idle_chase(self, a, fired, near):
         """R8, bench 2026-11-07 engine_acquire (a Guardian, weapon 150, VisionRange 200, both tanks radius 23.3): an

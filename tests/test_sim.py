@@ -281,10 +281,12 @@ def test_a_placed_objects_starting_health():
 
 def test_acted_status_is_what_the_source_tests():
     """sim.ACTED_STATUS (what a status-bit gap is measured against) holds every `'X' in b.status` test in sim.py
-    (IN_STASIS, UNDER_FROZEN: tested on the modifiers' bits in Sim.modify; SOLD: set by Sim.sell)."""
+    (IN_STASIS, UNDER_FROZEN: tested on the modifiers' bits in Sim.modify; SOLD: set by Sim.sell; GENERIC_TOGGLE_STATE:
+    the mirage aura's ObjectStatusValidation, Sim.cloaked, tested through the module's own set)."""
     import re
     src = (ROOT / 'experimental' / 'cnv' / 'sim.py').read_text(encoding='utf-8')
-    assert set(re.findall(r"'([A-Z_]+)' (?:not )?in \w+\.status", src)) | {'IN_STASIS', 'UNDER_FROZEN', 'SOLD'} == \
+    assert set(re.findall(r"'([A-Z_]+)' (?:not )?in \w+\.status", src)) | \
+        {'IN_STASIS', 'UNDER_FROZEN', 'SOLD', 'GENERIC_TOGGLE_STATE'} == \
         sim.ACTED_STATUS
 
 

@@ -59,5 +59,13 @@ def terrain(m):
     c18.PREVIEWS.update(previews)
 
 
+def ground():
+    """The heights as the simulator asks them (sim.Ground): level ground, without the map."""
+    import numpy as np
+    import platprops
+    w, h, b = platmap.CONTAINER
+    return platprops.Ground(e=np.full((h, w), platmap.TIER[1], np.float32))
+
+
 def like(m, objs, tmpl):
     return island.like(m, objs, tmpl)

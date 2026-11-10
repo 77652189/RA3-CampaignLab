@@ -94,6 +94,11 @@ BENCHED_TESTS = {
     # engine line C round 8: running off the map (Sim.flee_start / flee_due, checks/engine_runoffmap.py, bench 11-06)
     (MODULE, 'Behaviors/RunOffMapBehavior'):
         'tests/test_simbench_c.py::test_run_off_map_the_peacekeeper_is_gone_64_and_304_frames_after_the_order_never_dying',
+    # engine line C round 9: the mirage aura (Sim.cloaked, simunits.invis_broadcast, checks/engine_stealth.py, bench 11-05)
+    (MODULE, 'Behaviors/InvisibilityBroadcastUpdate'):
+        'tests/test_simbench_c.py::test_invisibility_broadcast_the_aura_holds_its_guardian_at_full_health_and_the_control_dies',
+    (MODULE, 'Behaviors/InvisibilityBehavior'):
+        'tests/test_simbench_c.py::test_invisibility_behavior_a_house_given_garrison_can_stealth_by_script_is_shot_like_a_plain_one',
     # engine line C round 5: selling (checks/engine_sell.py, docs/engine/sell.md, bench 11-06)
     (MODULE, 'Behaviors/BuildingBehavior'):
         'tests/test_simbench.py::test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames',
@@ -113,8 +118,6 @@ NOTES = {
     # the 26 the bench measured but the name rule called 未做 (checked 11-08 against sim.py / simunits.py)
     (MODULE, 'Behaviors/FireWeaponUpdate'): (GUESSED, '部分：simunits.ocl_round 把召出物的 FireWeaponNugget + '
                                                       'LifetimeUpdate 折成伤害，不模拟召出物本身'),
-    (MODULE, 'Behaviors/InvisibilityBehavior'): (TODO, f'{_NOT_IN_SIM}（没有隐身）'),
-    (MODULE, 'Behaviors/InvisibilityBroadcastUpdate'): (TODO, f'{_NOT_IN_SIM}（没有隐身）'),
     (MODULE, 'Behaviors/StealthDetectorUpdate'): (TODO, f'{_NOT_IN_SIM}（没有反隐）'),
     (MODULE, 'Behaviors/ContestableGarrisonContain'): (TODO, f'{_NOT_IN_SIM}（没有驻军）'),
     (MODULE, 'Behaviors/GarrisonContain'): (TODO, f'{_NOT_IN_SIM}（没有驻军；NAMED_GARRISON_SPECIFIC_BUILDING 另算）'),
