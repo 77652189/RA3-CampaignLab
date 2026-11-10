@@ -47,6 +47,8 @@ SLOTS = int(os.environ.get('RA3_BENCH_SLOTS', '2'))
 WAIT = float(os.environ.get('RA3_BENCH_WAIT') or 600)     # seconds take_waiting queues for a slot
 INSTANCE_MUTEX = '41DAF790-16F5-4881-8754-59FD8CF3B8D2'
 GAME = re.compile(r'^(ra3_1\.\d+\.game|ra3\.exe|ra3ep1.*\.exe)$', re.I)
+# the user's other full-screen games (Red Alert 2 / Yuri's Revenge): never ours, they keep the bench out like a user RA3
+USER_GAME = re.compile(r'^(gamemd\.exe|game\.exe|ra2\.exe|ra2md\.exe|yuri\.exe)$', re.I)
 
 
 def lock_path(i):
@@ -97,10 +99,12 @@ def games(tasks=None):
 
 
 def foreign_games():
-    """RA3 processes no bench slot started (the user playing, or an older tool's game)."""
+    """RA3 processes no bench slot started (the user playing, or an older tool's game), and any other game of the
+    user's that holds the screen (USER_GAME: 2026-11-09 the user's Red Alert 2 was up and every bench start ended in a
+    DirectX error box, 6 runs in a row): the bench keeps out while they play."""
     tasks = _tasks()
     ours = {h.get('game') for i in range(1, SLOTS + 1) if (h := holder(i, tasks))}
-    return games(tasks) - ours
+    return (games(tasks) - ours) | {pid for pid, name in tasks.items() if USER_GAME.match(name)}
 
 
 def take(owner, note=''):

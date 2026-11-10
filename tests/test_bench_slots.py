@@ -134,6 +134,14 @@ def test_a_worktree_finds_the_main_checkouts_locks(tmp_path):
     assert slots.lab(str(main)) == str(lab_dir)        # the main checkout: its .git is a folder
 
 
+def test_the_users_red_alert_2_keeps_the_bench_out(bench):
+    bench[500] = 'gamemd.exe'           # 2026-11-09: Yuri's Revenge up, every bench start a DirectX error box
+    assert slots.foreign_games() == {500}
+    assert slots.take_waiting('a', wait=0) is None
+    del bench[500]
+    assert slots.foreign_games() == set()
+
+
 def test_note_game_marks_the_game_ours(bench):
     i = slots.take('a')
     bench[300] = 'RA3_1.13.game'
