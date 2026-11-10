@@ -48,6 +48,8 @@ Rules for this task (from the project; they override anything above):
   after that, stop and report what fails and why you think so -- the coordinator decides whether to go on. Aim for
   about {aim} minutes; {limit} is only a safety stop.
 - {bench}
+- Progress notes: if the brief names a handoff file, append to it as you go (after each bench run or finding, one
+  or two lines with the readings), not only at the end -- a run can be cut off (quota, crash) with no final report.
 - Follow AGENTS.md / CLAUDE.md for everything else.
 - End with a short report in Chinese: files changed, how each done criterion is met (and what explains each value),
   the tests you ran with their result lines, and anything left open.
@@ -154,9 +156,18 @@ def main():
     outside = [t for t in touched if not any(fnmatch.fnmatch(t[3:].strip().strip('"'), g) for g in allowed)]
     if outside and ended == 'ok':
         ended = 'changed files outside "Files:"'
-    if not os.path.exists(out):
+    if not os.path.exists(out):        # cut off (quota, crash): salvage the progress notes it wrote on the way
+        notes = []
+        with open(events, encoding='utf-8', errors='replace') as ev:
+            for line in ev:
+                try:
+                    it = json.loads(line).get('item') or {}
+                except ValueError:
+                    continue
+                if it.get('type') == 'agent_message':
+                    notes.append(it.get('text', '').strip())
         with open(out, 'w', encoding='utf-8') as fh:
-            fh.write(f'(no final answer: {ended})\n')
+            fh.write(f'(no final answer: {ended})\n\nProgress notes, in order:\n\n' + '\n\n'.join(notes) + '\n')
     with open(out, 'a', encoding='utf-8') as fh:
         fh.write('\n\n---\nFiles changed in ' + a.dir + ' (git status):\n' + '\n'.join(touched) + '\n'
                  + (('OUTSIDE "Files:":\n' + '\n'.join(outside) + '\n') if outside else '') + f'Usage: {usage}\n')
