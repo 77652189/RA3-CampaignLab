@@ -12,6 +12,9 @@ Expectations are the model's (l4_micro_engage.md 1.7); a FAIL is a reading too:
   aibdwho   (counters 进炮塔 旁1 旁2 旁3: Peacekeepers of s1 within NEXT of turret 1 / 2 / 3, in it too) 进炮塔 reaches 1
   aibdpre   (as aibdwho; turret 1 holds a fifth Peacekeeper from s0) 进炮塔 reaches 2 (the full turret skipped)
 
+aibdidle: <AIMicroManagerData EnterBaseDefensesWhenIdle> true with EnterBaseDefenses false; aibd1 / aibdwho:
+EnterBaseDefenses true, WhenIdle false (missions/aibasedef_bench.py).
+
 Readings (11-09, all PASS; counters 进炮塔 炮塔数 步兵数 到远厂; the AI's 4 AlliedBaseDefense 200 north of the far plant):
   aibd1     s1-s14 0 4 4 0 | s15-17 到远厂 2,3,4 | s18-s20 0 3 4 4 | s21-s25 1 3 4 4 | s26-s32 1 2 3 3 | s33-s75 1 2 2 2
             -- one Peacekeeper in a turret from s21 to the end (alive: the others die by s33, a turret lost per ~5 s)

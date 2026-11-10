@@ -109,6 +109,16 @@ NOTES = {
     '微操/AIMicroManagerData.PullbackInjured': (BENCHED, '只认车能开进去的维修设施：苏联 AI + 吊车，残血坦克回去被回收（aipullsov PASS）；盟军 / 日本工厂找不到（aiteamstate.md 第 6 节）'),
     '微操/AIMicroManagerData.PullbackInjuredHealthPct': (GUESSED, '30% 低于 0.35 时苏联坦克会撤（aipullsov），阈值边界没量'),
     '微操/AIMicroManagerData.ReverseMove': (GUESSED, '推断（台上未复现）：锤子 airev / airevp / airevt 都不倒车；剩门队员有没有当前攻击目标，量法见 handoff-b 第 73 节'),
+    # B round 108: a test names the probe but only the switch-off case matches; the effect itself is a strict xfail
+    '微操/AIMicroManagerData.Crush': (GUESSED, '台上量过（engine_aicrush：开了 s28 前碾光守军）；模拟器不会碾压，'
+                                     'tests/test_simai_bench_b.py 只对上"关着不碾"，开着是 strict xfail'),
+    '微操/AIMicroManagerData.CrushPreference': (GUESSED, '同 Crush：模拟器不会碾压（engine_aicrush，strict xfail）'),
+    '微操/AIMicroManagerData.UpdateTime': (GUESSED, '台上量过（engine_aidefense aidefctl4：每圈晚 1～2 s）；模拟器 4 s 与 '
+                                          '1 s 逐秒相同（tests/test_simai_bench_b.py strict xfail）'),
+    '微操/AIMicroManagerData.EnterBaseDefensesWhenIdle': (GUESSED, '台上量过（engine_aibasedef：s21 起 1 人进炮塔）；模拟器'
+                                                        '没人进炮塔，只对上总开关关着的情形（strict xfail）'),
+    '人格/AIPersonalityDefinition.BaseCompactness': (GUESSED, '台上量过（engine_aitower：0.5 / 0.75 / 1.0 塔落在不同圈）；'
+                                                     '模拟器只对上 0.5，0.75 / 1.0 和 0.5 一样（strict xfail）'),
     '组队招人/TeamTemplate.AlwaysRecruit': (GUESSED,'台上证实（aiar0～3，第 90 轮）：SimpleAttack 队出门后开着才继续招新造的兵、MaxUnits 满了不招；模型的门仍默认关（防御队吸兵和台上对不上，handoff-b 第 50、51 节），差在哪没找到'),
 }
 
