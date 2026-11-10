@@ -876,8 +876,8 @@ class Ground:
 
 
 class Sim:
-    shot_clock = False                  # engine line C round 2: fire by the clip's clock (shots_due); off until it
-                                        # is on the bench's numbers (work/re/handoff-c.md)
+    shot_clock = False                  # opt-in frame clock: discrete shots and movement between script frames;
+                                        # default movement retains its benched coarse tick (work/re/handoff-c.md)
 
     def __init__(self, mission, test=None, level='normal', script='', model=True):
         """model: run the scripts in the engine line's model where it is on this computer (False: the older loop)."""
@@ -2980,9 +2980,9 @@ class Sim:
     def step(self):
         """One DT tick from self.t (the caller moves self.t on). With the engine model: the tick's frames (those
         before self.t + DT, 7 or 8), the run script's events at the first frame at or after their second, a check's
-        counters read on each whole second's frame; units move after each frame's scripts.
-        Bench suppression controls: ceil(145 / speed * 15) = 44 (50), 40 (55).
-        Combat acquisition still runs once per coarse tick."""
+        counters read on each whole second's frame. Default movement and acquisition run
+        after the tick's first frame. The opt-in shot_clock integrates movement each frame:
+        suppression controls ceil(145 / speed * 15) = 44 (50), 40 (55)."""
         if self.eng is None:
             return self.step_old()
         t0, eng = self.t, self.eng
@@ -3016,7 +3016,10 @@ class Sim:
                 self.aura_tick()
                 if self.combat:
                     self.fight()
-            self.move(1.0 / self.fps)
+                if not self.shot_clock:
+                    self.move()
+            if self.shot_clock:
+                self.move(1.0 / self.fps)
             if self.combat and self.ending is None:
                 self.deal(1.0 / self.fps)       # R6: the aimed fire frame by frame, after the frame's scripts
         self.t = t0
@@ -3428,8 +3431,8 @@ class Sim:
                                 target.suppression_hits.append((self.frame_now() + simunits._frames(seconds), n * value))
                     h = hurt.setdefault(id(t), [t, 0.0, by])
                     if self.shot_clock:
-                        # Native damage scaling 0x785370 returns before armor for
-                        # UNRESISTABLE; suppression armor/armored benches separate it.
+                        # 0x785370 type6 skips the type table and ARMOR modifier, not
+                        # earlier DamageScalar/side factors; armor/armored bench separates it.
                         armor = 1.0 if w['type'] == 'UNRESISTABLE' else simunits.percent(t.armor, w['type']) / 100.0 * t.taken
                         h[1] += n * w['dmg'] * by.dealt * armor
                     h[2] = by
