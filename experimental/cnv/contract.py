@@ -15,6 +15,7 @@ ALL_PLAYERS = '<All Players>'           # the engine's own name for every player
 # the other argument types contract() holds against what was published
 TEAM_ARG, WAYPOINT_ARG, PLAYER_ARG, OBJECT_ARG, STRING_ARG, POWER_ARG, TEMPLATE_ARG = 3, 7, 11, 14, 25, 31, 61
 COMMAND_ARG = 34                        # a command button (NAMED_USE_COMMANDBUTTON_ABILITY)
+PATH_ARG = 24                           # a waypoint path's label (*_FOLLOW_WAYPOINTS): Part.labels
 # retail units' own command buttons a script may press (SageXML GlobalData/LogicCommandSet.xml): ours publish theirs
 RETAIL_COMMANDS = {'Command_CaptureBuilding',           # an engineer takes a building (AlliedEngineerCommandSet)
                    'Command_UnPackAlliedMCV',           # the MCV deploys (AlliedMCVCommandSet)
@@ -609,6 +610,10 @@ def contract(mission):
              TEMPLATE_ARG: ('template', {r.template for r in m.cast.values()} | {u.id for u in m.units} | m.spawns
                             | {args[1] for s in m.scripts for name, *args in s.do               # an object list
                                if name == 'OBJECTLIST_ADDOBJECTTYPE'})}                          # reads as a type
+    known[PATH_ARG] = ('waypoint path', {x for v in getattr(m, 'labels', {}).values() for x in v})
+    out += [f'path link {a!r} -> {b!r}: no waypoint {n!r}' for a, b in getattr(m, 'links', ())
+            for n in dict.fromkeys((a, b)) if n not in m.waypoints]
+    out += [f'path label on {w!r}: no such waypoint' for w in getattr(m, 'labels', {}) if w not in m.waypoints]
     if m.music:
         known[MUSIC_EVENT_ARG] = ('music event', m.music.events)
 
@@ -625,6 +630,7 @@ def contract(mission):
     out += [f'script name {k!r}: {n} scripts have it' for k, n in seen.items() if n > 1]
     out += [f'{kind} {v!r}: not Latin-1' for kind, vs in (('object', named), ('waypoint', m.waypoints),
                                                           ('area', m.areas)) for v in vs if not latin(v)]
+    out += [f'waypoint path {v!r}: not Latin-1' for v in known[PATH_ARG][1] if not latin(v)]
     out += [f'{s.name}: {name} argument {v!r}: not Latin-1' for s in m.scripts for name, *args in s.when + s.do
             for v in args if isinstance(v, str) and not latin(v)]
     out += said_outside_the_outlet(m, cat)

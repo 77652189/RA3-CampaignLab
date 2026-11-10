@@ -46,7 +46,8 @@ def write_map(m, mm):
     like = mm.map.like(m, objs, tmpl)
     m.cnv_like = like                       # a later map edit (a check as a layer: write_more) places with these too
     objs.kids = [k for k in objs.kids if tmpl(k) == '*Waypoints/Waypoint']        # the map's starts stay
-    _put_waypoints(m, objs, like, mm.waypoints)
+    _put_waypoints(m, objs, like, mm.waypoints, mm.labels)
+    _put_links(m, objs, mm.links)
     # the map's own objects (a bridge's two ends stay next to each other), its scenery (civilian props), the mission's
     _put_objects(m, objs, like, list(getattr(mm.map, 'OBJECTS', [])) + list(getattr(mm.map, 'SCENERY', [])) + mm.objects)
     ours = _script_nodes(m, unnot(mm.scripts))      # before clearing: chunk versions are read off existing nodes
@@ -68,24 +69,54 @@ def set_libraries(m, libraries):
             struct.pack('<H', len(p)) + p for p in paths)
 
 
-def write_more(m, waypoints, objects, scripts, areas):
-    """More written into a map write_map wrote (a check riding on a build as a layer, check_layer): waypoints and
-    objects after the mission's, placed like them; scripts (already unnot) after the mission's in the same list;
-    `areas` the map's trigger areas from now on (the mission's, then the new ones)."""
+def write_more(m, waypoints, objects, scripts, areas, labels=None, links=()):
+    """More written into a map write_map wrote (a check riding on a build as a layer, check_layer): waypoints (their
+    path labels) and objects after the mission's, placed like them, path links after the mission's; scripts (already
+    unnot) after the mission's in the same list; `areas` the map's trigger areas from now on (the mission's, then the
+    new ones)."""
     objs = next(n for _, n in m.walk() if n.name == 'ObjectsList')
-    _put_waypoints(m, objs, m.cnv_like, waypoints)
+    _put_waypoints(m, objs, m.cnv_like, waypoints, labels or {})
+    _put_links(m, objs, links)
     _put_objects(m, objs, m.cnv_like, objects)
     psl = next(n for _, n in m.walk() if n.name == 'PlayerScriptsList')
     psl.kids[2].kids += _script_nodes(m, scripts)       # newmap.clear_scripts: index 2 runs our scripts
     m.set_trigger_areas(areas)
 
 
-def _put_waypoints(m, objs, like, waypoints):
+def _put_waypoints(m, objs, like, waypoints, labels):
+    """Waypoint objects after the map's, ids after its largest; one on a path carries its labels as retail writes
+    them: waypointPathLabel1..3 all present, the unused ones empty (a01, every labelled waypoint)."""
     import newmap
     wid = 1 + max(newmap.typed_props_of(m, k)[0].get('waypointID', (1, 0))[1] for k in objs.kids)
+    props, flags = like['wp']
+    props = {k: v for k, v in props.items() if not k.startswith('waypointPathLabel')}    # not the model's paths
     for k, (wname, (x, y)) in enumerate(waypoints.items()):
-        objs.kids.append(newmap.object_node(m, *like['wp'], '*Waypoints/Waypoint', x, y, waypointName=wname,
-                                            waypointID=wid + k, uniqueID=f'Waypoint {wid + k}'))
+        have = labels.get(wname, [])
+        assert len(have) <= 3, f'waypoint {wname}: {len(have)} path labels (3 at most)'
+        path = {f'waypointPathLabel{j + 1}': (have + ['', '', ''])[j] for j in range(3)} if have else {}
+        objs.kids.append(newmap.object_node(m, props, flags, '*Waypoints/Waypoint', x, y, waypointName=wname,
+                                            waypointID=wid + k, uniqueID=f'Waypoint {wid + k}', **path))
+
+
+def _put_links(m, objs, links):
+    """Path links appended to the map's WaypointsList: its head is u32 count, then (u32 from, u32 to) waypointIDs
+    (retail's 27 campaign maps: 1056 links, every id a waypoint object's). Names resolve to the ids the map's
+    waypoint objects carry (ours, written by _put_waypoints, or the container's own)."""
+    if not links:
+        return
+    import newmap
+    ids = {}
+    for k in objs.kids:
+        pr = newmap.typed_props_of(m, k)[0]
+        if 'waypointID' in pr and 'waypointName' in pr:
+            ids[pr['waypointName'][1]] = pr['waypointID'][1]
+    missing = sorted({n for pair in links for n in pair if n not in ids})
+    assert not missing, f'path links name no waypoint: {missing}'
+    node = next(n for _, n in m.walk() if n.name == 'WaypointsList')
+    have = struct.unpack_from('<I', node.head)[0]
+    assert len(node.head) == 4 + 8 * have, f'WaypointsList: {len(node.head)} bytes for {have} links'
+    node.head = struct.pack('<I', have + len(links)) + node.head[4:] + b''.join(
+        struct.pack('<II', ids[a], ids[b]) for a, b in links)
 
 
 def _put_objects(m, objs, like, objects):
@@ -303,6 +334,10 @@ def check_layer(mission, test):
     assert whole.scripts[:len(plain.scripts)] == plain.scripts and whole.objects[:len(plain.objects)] == plain.objects
     objects = whole.objects[len(plain.objects):]
     waypoints = {k: v for k, v in whole.waypoints.items() if k not in plain.waypoints}
+    relabel = sorted(k for k in plain.waypoints if whole.labels.get(k, []) != plain.labels.get(k, []))
+    assert not relabel, f'the check puts the mission\'s waypoints on its paths (written already): {relabel}'
+    assert whole.links[:len(plain.links)] == plain.links
+    links = whole.links[len(plain.links):]
     # unnot(whole) = the mission's NOT scripts, the check's, the mission's scripts, the check's (unnot numbers the tests
     # in order, the mission's first); the mission's two parts are what write_map wrote
     full, mine = unnot(whole.scripts), unnot(plain.scripts)
@@ -314,7 +349,7 @@ def check_layer(mission, test):
     strings.update({key: v for key, v in whole.strings.items() if key not in plain.strings})
 
     def edit(m):
-        write_more(m, waypoints, objects, scripts, whole.areas)
+        write_more(m, waypoints, objects, scripts, whole.areas, whole.labels, links)
         print(f'check: {len(objects)} objects, {len(waypoints)} waypoints, {len(whole.areas) - len(plain.areas)} '
               f'areas, {len(scripts)} scripts more')
 

@@ -1,5 +1,6 @@
 """Engine probe: the protocol a computer player buys (missions/aipower_bench.py; simtech.Book.ai_buy). The enemy s1
-(Soviet, one starting point, AI not woken) with a personality of the probe's; X = PlayerTech_Soviet_MagneticSatellite_
+(Soviet, one starting point, AI not woken) with a personality of the probe's (its <PowerChoice PlayerPower Weight>
+lines); X = PlayerTech_Soviet_MagneticSatellite_
 Rank_1, Y = PlayerTech_Soviet_OrbitalRefuse_Rank1 (both 1 point, only PlayerTech_Soviet needed). Counters: 有X, 有Y
 (PLAYER_HAS_PLAYER_TECH of s1), 点数 (s1's protocol points, every frame). The model (program read) in brackets:
   aipwra  one PowerChoice X                      [X bought, 点数 1 -> 0 from frame 10]

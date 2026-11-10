@@ -281,6 +281,37 @@ def test_priorities_zero_do_not_stop_a_named_target(lib):
     assert far and near and far[0] < near[0]
 
 
+# bench 2026-11-08 checks/engine_ainamed.py a (readings in its docstring): where the team goes first, whether it stays
+def test_named_object_target_goes_to_the_named_plant_not_the_nearest(lib):
+    """ainmfar: NamedObject -> the far plant first (bench 到远厂 2 @ s15), the near one only after (RAMPAGE)."""
+    _, rows = _switch_run('ainmfar', lib, until=76.0)
+    far = [i for i, r in enumerate(rows) if r['到远厂'] >= 1]
+    near = [i for i, r in enumerate(rows) if r['到近厂'] >= 1]
+    assert far and near and far[0] < near[0] and not any(r['到路点'] for r in rows)
+
+
+def test_waypoint_target_walks_there_and_stays(lib):
+    """ainmwp: HeuristicType Waypoint -> all 4 at the waypoint and still there at s75 (bench 4 from s8 to s75); never
+    at either plant."""
+    _, rows = _switch_run('ainmwp', lib, until=76.0)
+    assert rows[74]['到路点'] == 4
+    assert not any(r['到近厂'] or r['到远厂'] for r in rows)
+
+
+@pytest.mark.parametrize('build', ['ainmrel', 'ainmnone'])
+def test_named_target_filtered_or_missing_sends_nobody(lib, build):
+    """ainmrel (Relationship NEUTRAL drops the player's plant) / ainmnone (no such name): 步兵在家 4 all 75 s."""
+    _, rows = _switch_run(build, lib, until=76.0)
+    assert all(r['步兵在家'] == 4 for r in rows)
+
+
+@pytest.mark.xfail(strict=True, reason='simai leaves home at s19 (4 -> 3), the bench at s10 (4 -> 2) -- the control '
+                                       'aitargetnear is only ~2 s late (s15 / s13); cause not found (B handoff 109)')
+def test_named_object_team_leaves_when_the_bench_did(lib):
+    _, rows = _switch_run('ainmfar', lib, until=20.0)
+    assert rows[11]['步兵在家'] < 4
+
+
 @pytest.mark.parametrize('build', ['aiswrep1', 'aiswrep0'])
 def test_the_ais_hurt_plant_is_not_repaired_either_way(lib, build):
     # bench aiswrep1 / aiswrep0: 电厂血量 50 all along (75 s / 107 s), repairs 1 or 0 -- why 1 does not repair is open
