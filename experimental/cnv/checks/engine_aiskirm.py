@@ -353,6 +353,19 @@ POOL_MOST = 20
 PEAK_FROM = 110.0                   # m: mission second the pool peak latch starts (the eight leave ~s128-136)
 
 
+def _built(t, m):
+    """我方建筑: how many of the player's yard / war factory / power plant are alive (0-3), as in a."""
+    p1 = m.player('p1')
+    t.counters.append(('CNV_AK_Built', '我方建筑'))
+    t.scripts.append(Script('Test - built zero', [], [('SET_COUNTER', 'CNV_AK_Built', 0)], once=False))
+    for i, tpl in enumerate(YOURS):
+        m.spawns.add(tpl)
+        t.scripts += [Script(f'Test - own {i}', [], [('SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER', tpl, p1, f'CNV_AK_Own{i}')],
+                             once=False),
+                      Script(f'Test - built {i}', [('COUNTER', f'CNV_AK_Own{i}', 3, 1)],
+                             [('INCREMENT_COUNTER', 1, 'CNV_AK_Built')], once=False)]
+
+
 def _members(t, counter, label, team, most=POOL_MOST):
     """`team`'s member count (TEAM_COMPARE_NUM_MEMBERS ==), UNKNOWN when it is none of 0 .. most-1."""
     t.counters.append((counter, label))
@@ -423,6 +436,11 @@ def _teams(m, which):
         _members(t, 'CNV_AK_Cln', '清扫', ai['cleanup'])
         _members(t, 'CNV_AK_DefT', '防御型', ai['defense type'])
         _kind_members(t, 'CNV_AK_Pool', '池兵', pool, 'CAN_ATTACK')
+    elif which == 'p':                 # past the player's last building: do the attack teams end and hand back?
+        _built(t, m)
+        _members(t, 'CNV_AK_Cln', '清扫', ai['cleanup'])
+        _members(t, 'CNV_AK_DefT', '防御型', ai['defense type'])
+        _sum(t, m, s1, 'CNV_AK_Army', '兵数', ARMY[:3])
     else:
         _members(t, 'CNV_AK_PoolAll', '池全', pool, most=40)
         _members(t, 'CNV_AK_Map', '地图队', f'{s1}/team{s1}')
@@ -430,7 +448,7 @@ def _teams(m, which):
         _members(t, 'CNV_AK_AtkI', '进攻名', ai['attack id'])
     w = m.facts['wake at']
     t.expect += [(t.counters[0][1], w + 20.0, '>=', 0, w + 21.0)]      # weak: the readings exist
-    t.bench = [('bench_watch', dict(seconds=w + (175.0 if which in ('n', 'o') else 160.0), every=1, sheet=False,
+    t.bench = [('bench_watch', dict(seconds=w + {'n': 175.0, 'o': 175.0, 'p': 232.0}.get(which, 160.0), every=1, sheet=False,
                                     lines=len(t.counters)))]
     return t
 
@@ -482,8 +500,15 @@ def o(m):
     return _teams(m, 'o')
 
 
+def p(m):
+    """我方建筑 / BalancedCleanup _0_0 / LandDefense _0_0 / army owned (no dogs) to ~s240: when the player's last
+    building dies, do the attack teams end at once and hand their units back to the defense team (the model, ~197 s
+    after the wake: AlliedScout target gone -> DISBAND, both Cleanups 'rampage: nobody left', LandDefense takes them)?"""
+    return _teams(m, 'p')
+
+
 CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j': j, 'k': k, 'l': l, 'm': m,
-                      'n': n, 'o': o},
+                      'n': n, 'o': o, 'p': p},
           'aiskirmnl': {'g': g, 'h': h},
           'aiskjav': {'e': e},
           'aiskirmlow': {'d': d, 'f': f}}
