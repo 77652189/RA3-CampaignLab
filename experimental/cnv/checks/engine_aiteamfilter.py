@@ -44,11 +44,13 @@ def a(m):
     lt, lo = getattr(m, 'cnv_labels', ('坦克在家', '步兵在家'))
     counted('CNV_TF_Tanks', lt, t, template=tank, area=AREA, player=s1)
     counted('CNV_TF_Inf', lo, t, template=other, area=AREA, player=s1)
-    t.expect += [(lt, AT, '==', m.facts['expect tanks home'], AT + 1),
-                 (lo, AT, '==', m.facts['expect infantry home'], AT + 1)]
-    t.bench = [('bench_watch', dict(seconds=SECONDS + LAG, every=1, sheet=False, lines=len(t.counters)))]
+    at = m.facts.get('check at', AT)      # aiar*: later, after the AI has built its own tanks
+    t.expect += [(lt, at, '==', m.facts['expect tanks home'], at + 1),
+                 (lo, at, '==', m.facts['expect infantry home'], at + 1)]
+    t.bench = [('bench_watch', dict(seconds=max(SECONDS, at + 10) + LAG, every=1, sheet=False,
+                                    lines=len(t.counters)))]
     return t
 
 
 CHECKS = {k: {'a': a} for k in ('aitfany', 'aitfnone', 'aitfall', 'aitfki', 'aitfke', 'aitfmax',
-                                 'aitfland', 'aitfamph', 'aitfwat', 'aitfosi', 'aitfosv', 'aitfosc')}
+                                 'aitfland', 'aitfamph', 'aitfwat', 'aitfosi', 'aitfosv', 'aitfosc', 'aiar0', 'aiar1', 'aiar2')}

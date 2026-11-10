@@ -68,4 +68,4 @@ def a(m):
 CHECKS = {k: {'a': a} for k in ('aiowt', 'aiowt2', 'aiodf', 'aiodf2', 'aiohc1', 'aiohc0',
                                   'aiom1', 'aiom2', 'aiom3', 'aiom4', 'aiom5',
                                   'aiom6', 'aiom7', 'aiom8', 'aiom9', 'aiom10',
-                                  'aiom11', 'aiom12', 'aiom13', 'aiom14')}
+                                  'aiom11', 'aiom12', 'aiom13', 'aiom14', 'aiom15', 'aiom16')}

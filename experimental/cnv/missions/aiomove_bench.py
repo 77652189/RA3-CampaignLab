@@ -33,7 +33,16 @@ MOVES = {'CNVOpenP': (('Build', PLANT),), 'CNVOpenB': (('Build', BARRACKS),), 'C
          'CNVOpenPB': (('Build', PLANT), ('Build', BARRACKS)),
          'CNVOpenPT30': (('Build', PLANT), ('Time', '30s')), 'CNVOpenPT15': (('Build', PLANT), ('Time', '15s')),
          'CNVOpenPPT30': (('Build', PLANT), ('Build', PLANT), ('Time', '30s')),
-         'CNVOpenT30P': (('Time', '30s'), ('Build', PLANT))}
+         'CNVOpenT30P': (('Time', '30s'), ('Build', PLANT)),
+         # round 88: a Time carrying an Account / Deposit, as retail AlliedStandard's does
+         'CNVOpenPPTD': (('Build', PLANT), ('Build', PLANT),
+                         ('Time', '30s', {'Account': 'PRODUCTION', 'Deposit': '2000'}))}
+
+
+def _order(o):
+    """(kind, value) or (kind, value, {more attributes}) -> the <Order .../> line."""
+    extra = ''.join(f' {k}="{v}"' for k, v in (o[2] if len(o) > 2 else {}).items())
+    return f'    <Order {o[0]}="{o[1]}"{extra} />'
 
 
 def personality_xml(pid, lines, gate=None):
@@ -49,7 +58,7 @@ def personality_xml(pid, lines, gate=None):
            '  </Includes>']
     for mid in used:
         out += [f'  <SkirmishOpeningMove id="{mid}" Side="PlayerTemplate:Allies">',
-                *[f'    <Order {k}="{v}" />' for k, v in MOVES[mid]],
+                *[_order(o) for o in MOVES[mid]],
                 '  </SkirmishOpeningMove>']
     if gate is not None:
         out.append(f'''  <AIStrategicStateDefinition id="CNVStateOM" MaxTargets="1">
@@ -76,7 +85,8 @@ def personality_xml(pid, lines, gate=None):
     return '\n'.join(out)
 
 
-def mission(name, lines, plants, barracks, gate=None, home_until=None, out_by=None):
+def mission(name, lines, plants, barracks, gate=None, home_until=None, out_by=None, money_first=False):
+    """money_first: give the money before SKIRMISH_AI_MAKE_BASE in the wake script (does the opening see 0?)."""
     pid = 'CNVOMove' + name[len('CampAIOM'):]
     facts = {'wake at': WAKE_AT, 'money': MONEY, 'plants': plants, 'barracks': barracks}
     tanks = 4 if gate is not None else 0
@@ -103,9 +113,11 @@ def mission(name, lines, plants, barracks, gate=None, home_until=None, out_by=No
     m.scripts += [
         Script('CNV AI - Start', [], [('PLAYER_SET_MONEY', s1, 0), ('SET_MILLISECOND_TIMER', 'CNV AI Wake', WAKE_AT)]),
         Script('CNV AI - Wake', [('TIMER_EXPIRED', 'CNV AI Wake')],
-               [('UNIT_AI_TRANSFER_ALL', s1, 1), ('SKIRMISH_AI_MAKE_BASE', s1, base),
-                ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', s1, 20), ('SKIRMISH_AI_USE_REPAIRS', s1, 0),
-                ('SKIRMISH_AI_USE_REBUILD_SYSTEM', s1, 0), ('PLAYER_SET_MONEY', s1, MONEY)])]
+               ([('PLAYER_SET_MONEY', s1, MONEY)] if money_first else [])
+               + [('UNIT_AI_TRANSFER_ALL', s1, 1), ('SKIRMISH_AI_MAKE_BASE', s1, base),
+                  ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', s1, 20), ('SKIRMISH_AI_USE_REPAIRS', s1, 0),
+                  ('SKIRMISH_AI_USE_REBUILD_SYSTEM', s1, 0)]
+               + ([] if money_first else [('PLAYER_SET_MONEY', s1, MONEY)]))]
     return m
 
 
@@ -136,4 +148,7 @@ MISSION = {
     'aiom12': lambda: mission('CampAIOM12', [('CNVOpenPT15', '100%', ALL)], 1, 0),         # plant, Time 15s
     'aiom13': lambda: mission('CampAIOM13', [('CNVOpenPPT30', '100%', ALL)], 2, 0),        # plant, plant, Time 30s
     'aiom14': lambda: mission('CampAIOM14', [('CNVOpenT30P', '100%', ALL)], 1, 0),         # Time 30s, plant
+    # round 88: the retail difference (a Deposit on the Time) and the money at the wake
+    'aiom15': lambda: mission('CampAIOM15', [('CNVOpenPPTD', '100%', ALL)], 2, 0),         # aiom13 + Deposit 2000
+    'aiom16': lambda: mission('CampAIOM16', [('CNVOpenP', '100%', ALL)], 1, 0, money_first=True),  # aiom1, money 1st
 }

@@ -32,8 +32,23 @@ RIPTIDE = 'AlliedAntiInfantryVehicle'           # KindOf AMPHIBIOUS (simai's sur
 KINDS = 'IncludeKindOf="CAN_ATTACK" ExcludeKindOf="IGNORES_SELECT_ALL HARVESTER"'
 
 
-def personality_xml(pid, kinds, filt, max_units, locos='LAND AMPHIBIOUS', objset=''):
+# aiar*: the AI builds `late` more Guardians itself (script-made units are never recruited: engine_aimicro
+# aimicbuilth), by aimicro_bench's opener (Time 0s with a Deposit, the Builds, Time 90s: both built there)
+LATE_MONEY, LATE_DEPOSIT, LATE_CHECK_AT = 10000, 5000, 60.0
+OPENER = 'CNVTeamFOpener'
+FACTORY_DY, PLANT_DY = -400.0, 400.0
+
+
+def personality_xml(pid, kinds, filt, max_units, locos='LAND AMPHIBIOUS', objset='', always=False, late=0):
     removed = [f'    <StrategicState id="{k}" xai:joinAction="Remove"/>' for k in INHERITED]
+    opener, first = [], []
+    if late:
+        removed += ['    <BuildState id="AlliedNeededUnits" xai:joinAction="Remove"/>']
+        opener = [f'  <SkirmishOpeningMove id="{OPENER}" Side="PlayerTemplate:Allies">',
+                  f'    <Order Time="0s" Account="PRODUCTION" Deposit="{LATE_DEPOSIT}" />',
+                  *[f'    <Order Build="{TANK}" />'] * late, '    <Order Time="90s"/>', '  </SkirmishOpeningMove>']
+        first = [f'    <OpeningMove Name="{OPENER}" Weight="100%">', '      <Heuristic>',
+                 '        <ConstantHeuristic/>', '      </Heuristic>', '    </OpeningMove>']
     return '\n'.join([
         '<?xml version="1.0" encoding="utf-8"?>',
         '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
@@ -49,12 +64,14 @@ def personality_xml(pid, kinds, filt, max_units, locos='LAND AMPHIBIOUS', objset
     <TargetHeuristic TargetHeuristic="ClosestStructureHeuristic"/>
     <Tactic id="Attack" Tactic="SimpleAttack" EndBehavior="RAMPAGE" EndIfStateTurnsOff="true">
       <TeamTemplate MinUnits="1" MaxUnits="{max_units}" {kinds}
-                    AllowedLocomotorTypes="{locos}" Priority="STANDARD" AlwaysRecruit="false"{objset}
+                    AllowedLocomotorTypes="{locos}" Priority="STANDARD" AlwaysRecruit="{'true' if always else 'false'}"{objset}
                     MicroManager="StandardMicroManager_MEDIUM">{filt}
       </TeamTemplate>
     </Tactic>
   </AIStrategicStateDefinition>''',
+        *opener,
         f'  <AIPersonalityDefinition id="{pid}" PersonalityType="{pid}" inheritFrom="{BASE}">',
+        *first,
         *removed,
         '    <StrategicState id="CNVStateTF" State="CNVStateTF"/>',
         '  </AIPersonalityDefinition>',
@@ -68,13 +85,18 @@ def objfilter(rule, inc=(), exc=()):
 
 
 def mission(name, kinds=KINDS, filt='', max_units=8, tanks=4, inf=4, tanks_home=0, inf_home=4, second=INF,
-            locos='LAND AMPHIBIOUS', objset=''):
-    """second: the other unit type (Peacekeepers, or Riptide ACVs in the locomotor builds); inf / inf_home count it."""
+            locos='LAND AMPHIBIOUS', objset='', always=False, late=0):
+    """second: the other unit type (Peacekeepers, or Riptide ACVs in the locomotor builds); inf / inf_home count it.
+    always: the team's AlwaysRecruit; late: Guardians the AI builds itself (a war factory, a plant, the opener)."""
     pid = PID + name[-1]
-    m = Mission(name=name, map=niagara, facts={'wake at': WAKE_AT, 'ai tanks': tanks, 'ai infantry': inf,
-                                               'expect tanks home': tanks_home, 'expect infantry home': inf_home})
+    facts = {'wake at': WAKE_AT, 'ai tanks': tanks, 'ai infantry': inf,
+             'expect tanks home': tanks_home, 'expect infantry home': inf_home}
+    if late:
+        facts |= {'late tanks': late, 'check at': LATE_CHECK_AT}
+    m = Mission(name=name, map=niagara, facts=facts)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{pid}'}
-    xml = personality_xml(pid, kinds, filt, max_units, locos, f' RegisteredObjectSet="{objset}"' if objset else '')
+    xml = personality_xml(pid, kinds, filt, max_units, locos, f' RegisteredObjectSet="{objset}"' if objset else '',
+                          always, late)
     m.assets.append((f'{pid}.xml', xml, f'AIPersonalityDefinition:{pid}'))
     m.cnv_units = (TANK, second)
     m.cnv_labels = ('坦克在家', '步兵在家' if second == INF else '气垫船在家')
@@ -100,7 +122,10 @@ def mission(name, kinds=KINDS, filt='', max_units=8, tanks=4, inf=4, tanks_home=
         Script('CNV AI - Wake', [('TIMER_EXPIRED', 'CNV AI Wake')],
                [('UNIT_AI_TRANSFER_ALL', s1, 1), ('SKIRMISH_AI_MAKE_BASE', s1, base),
                 ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', s1, 20), ('SKIRMISH_AI_USE_REPAIRS', s1, 0),
-                ('SKIRMISH_AI_USE_REBUILD_SYSTEM', s1, 0), ('PLAYER_SET_MONEY', s1, 0)])]
+                ('SKIRMISH_AI_USE_REBUILD_SYSTEM', s1, 0), ('PLAYER_SET_MONEY', s1, LATE_MONEY if late else 0)])]
+    if late:
+        m.put('AlliedWarFactory', 'east base', 0, FACTORY_DY, side='s1', name='UNIT - CNV AI Factory', role='ai factory')
+        m.put('AlliedPowerPlant', 'east base', 0, PLANT_DY, side='s1', name='UNIT - CNV AI Plant', role='ai plant')
     return m
 
 
@@ -119,4 +144,12 @@ MISSION = {
     'aitfosi': lambda: mission('CampAITFOsI', objset='INFANTRY', tanks_home=4, inf_home=0),
     'aitfosv': lambda: mission('CampAITFOsV', objset='VEHICLES', tanks_home=0, inf_home=4),
     'aitfosc': lambda: mission('CampAITFOsC', objset='SKIRMISH_AI_NORMAL_COMBAT_UNITS', tanks_home=0, inf_home=0),
+    # round 88: AlwaysRecruit -- 4 Guardians go at ~s14 (ANY Guardian, MaxUnits 8), 2 more the AI builds itself after:
+    # does the gone team take them (private ai/teams.py keep_recruiting, switched off: TeamMaker.keep_on False)?
+    'aiar0': lambda: mission('CampAITFAr0', filt=objfilter('ANY', inc=(TANK,)), inf=0, inf_home=0, late=2,
+                             tanks_home=2),
+    'aiar1': lambda: mission('CampAITFAr1', filt=objfilter('ANY', inc=(TANK,)), inf=0, inf_home=0, late=2,
+                             always=True, tanks_home=0),
+    'aiar2': lambda: mission('CampAITFAr2', filt=objfilter('ANY', inc=(TANK,)), inf=0, inf_home=0, late=2,
+                             always=True, max_units=4, tanks_home=2),     # full at 4: no room for the late ones
 }
