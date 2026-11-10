@@ -67,7 +67,13 @@ BENCH = ('Do not commit, push or install anything. The test bench: only through 
          '`python -I -X utf8 experimental/testbench/run_queue.py <mission:check> ... --jobs 2` (it takes the bench '
          'locks, queues behind other lines and refuses at once when the user is playing -- then stop and report, do '
          'not retry in a loop); never start Red Alert 3 any other way, never touch the Steam game folder or the lock '
-         'files yourself. Results land in work/bench_results/<mission>__<check>.json.')
+         'files yourself. Results land in work/bench_results/<mission>__<check>.json. You also have the ra3bench MCP '
+         'tools (run from your worktree): cnv_show (what a mission publishes, its contract -- check before benching), '
+         'cnv_map / cnv_preview (a built map from above, no game), cnv_check (build + run one check, PASS/FAIL), and '
+         'by hand bench_start / bench_wait / bench_look / bench_inspect / bench_counters / bench_stop (always '
+         'bench_stop when done: it frees the bench lock). When a reading does not explain itself, LOOK (bench_look / '
+         'bench_inspect on the frames) before you change code or guess, and design a run that tells your hypotheses '
+         'apart; keep a hypothesis table (hypothesis, run, result) in the handoff and read it before each round.')
 FULL = (' You run WITHOUT a sandbox (the user allowed it 2026-11-09 so you can bench yourself), so these limits are '
         'yours to keep: write only inside your worktree and the main checkout\'s work/ folder (plus what the bench '
         'itself writes); never touch the main checkout\'s other files, other worktrees, the Steam game folder, the '
@@ -99,6 +105,13 @@ def bench_dirs():
     return [os.path.join(LAB, 'RA3-CampaignLab', 'work'), os.path.join(LAB, 'shared'),
             os.path.join(LAB, 'sdk'), os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3'),
             os.path.join(os.environ.get('APPDATA', ''), 'Red Alert 3')]
+
+
+def bench_mcp(worktree):
+    """-c override: the ra3bench MCP server (declared in ~/.codex/config.toml) run from the worktree's own
+    bench_mcp.py, so cnv_check / cnv_show build the worktree's missions and checks, not main's."""
+    script = os.path.join(os.path.abspath(worktree), 'experimental', 'testbench', 'bench_mcp.py').replace('\\', '/')
+    return ['-c', 'mcp_servers.ra3bench.args=' + json.dumps(['-I', '-X', 'utf8', script])]
 
 
 def codex():
@@ -138,6 +151,7 @@ def main():
     # 5, even `python --version`, across worktrees and a Codex restart); mxc runs them -- still a sandbox
     box = ['-s', 'danger-full-access'] if a.full else ['-c', 'windows.sandbox="mxc"', '-s', 'workspace-write']
     cmd = [exe, 'exec', '-m', a.model, '-c', f'model_reasoning_effort="{a.effort}"', *box,
+           *(bench_mcp(a.dir) if a.bench else []),
            '-C', a.dir, *sum((['--add-dir', d] for d in a.read_dir), []), '--json', '-o', out, prompt]
     before = changed(a.dir)
     t0, ended, usage = time.time(), 'ok', None
