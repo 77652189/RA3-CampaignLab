@@ -149,8 +149,6 @@ def test_skirmish_ai_builds_again_as_soon_as_the_opening_is_done(skirmish):
     assert again and again[0] <= 142, again
 
 
-@pytest.mark.xfail(strict=True, reason='since keep_on is on (B handoff 102) the second dog is never built by 170 s '
-                                       '(no team, not in the pool; off: it goes at 36 s): production side, not read')
 def test_skirmish_ai_scout_dog_stays_out(skirmish):
     """Bench b: the dogs leave ~44 s after the wake and stay away 120-170 s; the first team (132.8 s) is 2 Riptides +
     3 Peacekeepers out at once, no dog. The AlliedScout team is ReleaseType NEVER_RELEASE, so no team takes its dog
@@ -159,13 +157,21 @@ def test_skirmish_ai_scout_dog_stays_out(skirmish):
     the first team" is not asserted: the bench's barracks drew 2 dogs, the sim's uniform draw 6 (round 35), and the
     dogs the scout team does not hold are free to join.
     Round 44: AlliedScout is MaxTargets 2 = two slots, two teams (read 0x8d72f0, work/re l4_states.md 7); the bench's
-    second dog left ~3 s after the first (s55), the sim's ~20 s after (not asserted: known difference)."""
+    second dog left ~3 s after the first (s55), the sim's ~20 s after (not asserted: known difference).
+    Round 101 (B handoff 103): how many dogs there are is the unit builder's uniform draw (one random number an
+    evaluation, teams.UnitBuilder), not a rule: seeds 1-8 draw 1-6 dogs by 170 s (work/logs/b101_seeds.log), and a
+    scout team goes ~3 s after each dog it gets is ordered. Seed 1 drew two before the recruit change (private
+    e828a5f) and one after -- that change ended a LandDefense copy less at 27 s, so one state draw less shifted the
+    random stream (work/logs/b101_rng_*.log); keep_on changes nothing in production (b101_prod_*.log). So the rule is
+    asserted, not the draw: every scout team that goes holds its dog to 170 s, and goes just after a dog's order."""
     (b,) = skirmish.brains.values()
     log = b.ai.teams.log
     until = b.started + 170 * simai.FPS
-    scout = [e for e in log if e[2][0] == 'AlliedScout' and e[1] in ('go', 'ended') and e[0] < until]
-    assert sorted((e[1], e[2]) for e in scout) == [('go', ('AlliedScout', 'Attack', 0)),
-                                                   ('go', ('AlliedScout', 'Attack', 0, 1))], scout
+    scout = [e for e in log if e[2][0] == 'AlliedScout' and e[1] in ('go', 'ended', 'disband') and e[0] < until]
+    assert scout and all(e[1] == 'go' for e in scout), scout
+    dogs = [e[0] for e in b.ai.log if e[1] == 'produce' and e[2] == 'AlliedScoutInfantry']
+    for e in scout:
+        assert any(0 <= e[0] - d <= 4 * simai.FPS for d in dogs), (e, dogs)
 
 
 # checks/engine_aistate.py (bench 2026-11-06): the probe's own personality (missions/aistate_bench.py, written into
