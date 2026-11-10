@@ -3301,7 +3301,7 @@ class Sim:
                     a.fired_at = self.t                 # a bombarder firing shows itself
                 for effect in w.get('unmodeled_effects', []):
                     self.gap(GAP_WEAPON, effect, '武器第1轮尚未解释此效果的筛选、几何或时序')
-                if not self.shot_clock and (w.get('hit_modifiers') or w.get('line')):
+                if not self.shot_clock and (w.get('hit_modifiers') or w.get('line') or w.get('strip_max_health')):
                     self.gap(GAP_WEAPON, 'weapon effects', '命中修正与穿线仅在离散命中时钟中模拟')
                 if w['dps'] or w.get('suppression'):
                     if 'sched' in w and self.shot_clock:
@@ -3455,6 +3455,9 @@ class Sim:
                         h = hurt.setdefault(id(victim), [victim, 0.0, by])
                         armor = 1.0 if w['type'] == 'UNRESISTABLE' else simunits.percent(victim.armor, w['type']) / 100.0 * victim.taken
                         h[1] += n * w['dmg'] * by.dealt * armor
+                        for fraction, damage_type in w.get('strip_max_health', []):
+                            scalar = 1.0 if damage_type == 'UNRESISTABLE' else simunits.percent(victim.armor, damage_type) / 100 * victim.taken
+                            h[1] += n * victim.max_hp * fraction * by.dealt * scalar
                         h[2] = by
                     for mid in w.get('hit_modifiers', []):
                         xml = self.xml_of(by.template)

@@ -4,10 +4,10 @@
 
 | 部分 | 按用量已对拍 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|
-| 脚本动作 | **88%** | 451 | 104 | 28 | 204 | 115 | 90% |
+| 脚本动作 | **88%** | 451 | 105 | 27 | 204 | 115 | 90% |
 | 脚本条件 | **94%** | 89 | 27 | 2 | 57 | 3 | 94% |
 | 物体模块 | **65%** | 184 | 30 | 6 | 129 | 19 | 65% |
-| 武器效果 | **51%** | 25 | 3 | 4 | 18 | 0 | 68% |
+| 武器效果 | **51%** | 25 | 3 | 5 | 17 | 0 | 68% |
 | AI | **65%** | 415 | 97 | 132 | 152 | 34 | 88% |
 
 ## 脚本动作
@@ -83,7 +83,7 @@
 | 已对拍 | `TEAM_DELETE` | 122 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts8.py |
 | 已对拍 | `TEAM_KILL` | 121 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts8.py |
 | 已对拍 | `SET_TIMER` | 119 | 引擎模型核心；台上量过：checks/engine_scripts6.py |
-| 已对拍 | `NAMED_STOP` | 118 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_runoffmap.py |
+| 已对拍 | `NAMED_STOP` | 118 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_emp.py |
 | 已对拍 | `UNIT_TELEPORT_TO_WAYPOINT` | 118 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aidefense.py |
 | 不涉及 | `PLAYER_CAMERA_MOVE_TO` | 117 | 纯表现（名字规则） |
 | 已对拍 | `ATTACK_MOVE_TEAM_TO` | 116 | Sim.act / Sim.cond 有分支；台上量过：docs/engine/pathing.md |
@@ -287,7 +287,7 @@
 | 已对拍 | `TEAM_GUARD_AREA` | 9 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts4.py |
 | 已对拍 | `TEAM_IDLE_FOR_FRAMECOUNT` | 9 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts8.py |
 | 未做 | `TEAM_MOVE_TO_NEAREST_OBJECT_OF_TYPE_OWNED_BY_PLAYER` | 9 | Sim.act / Sim.cond 不认识 |
-| 推断 | `COUNTER_MATH_VALUE` | 8 | 引擎模型核心 |
+| 已对拍 | `COUNTER_MATH_VALUE` | 8 | 引擎模型核心；台上量过：checks/engine_strip.py |
 | 未做 | `EXIT_SPECIFIC_BUILDING` | 8 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `FLASH_UI_PLAYER_POWER_BUTTON` | 8 | 纯表现（名字规则） |
 | 已对拍 | `MAP_REVEAL_AT_WAYPOINT` | 8 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_vision.py |
@@ -761,7 +761,7 @@
 | 未做 | `ActivateLaserNugget` | 27 | 已核（11-08）：模拟器没有这个效果（没有激光束）；例：MountRushmoreHeadEyeWeapon, JapanAntiVehicleInfantryTech3LockDownGun |
 | 已对拍 | `WeaponOCLNugget` | 26 | 模拟器代码里有这个名字；台上量过：checks/engine_prismx.py；例：MountRushmoreHeadEyeWeapon, AlliedPrecisionBombWarhead |
 | 推断 | `AttributeModifierNugget` | 20 | 部分：engine_weaponfx attribute实测PASS，涂靶ARMOR150%、9s前到期（数据1.1s，到期帧未测）；owner/筛选/范围形式未验证，整项不登记已对拍；例：NanoHiveSwarmEffectTrigger, JapanCommandoSoftLanding |
-| 未做 | `ParalyzeNugget` | 11 | 模拟器代码里没有这个名字；例：JapanAntiVehicleInfantryTech3LockDownGun, AlliedAntiStructureShipEMPCruiseMissleWarhead |
+| 未做 | `ParalyzeNugget` | 11 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_emp.py），可能用别的名字实现了；例：JapanAntiVehicleInfantryTech3LockDownGun, AlliedAntiStructureShipEMPCruiseMissleWarhead |
 | 未做 | `TintObjectsNugget` | 9 | 模拟器代码里没有这个名字；例：SovietCommandoCallBombingRun, AlliedCommandoAttachWeapon |
 | 未做 | `ActivateLiftObjectNugget` | 6 | 模拟器代码里没有这个名字；例：JapanCommandoTech1PsyonicCrush, JapanCommandoTech1AirborneKiller |
 | 推断 | `LineDamageNugget` | 6 | 部分：engine_weaponfx line探针；实测PASS90/90/90/100验证动态线长及穿透，圆形边界GUESSED，筛选与静态线未模拟；例：SovietCommandoSniperRifle, AAAVT1_SovietCommandoSniperRifle |
@@ -769,7 +769,7 @@
 | 未做 | `FireOnObjectsNugget` | 5 | 模拟器代码里没有这个名字；例：PlayerPowerJapanEmperorsResolveWeapon_L1, PlayerPowerJapanEmperorsResolveWeapon_L2 |
 | 推断 | `SecondaryDamageNugget` | 5 | simunits._weapons 读 Amount（不要升级的那条）→ sdps，Sim.chill；例：MountRushmoreHeadEyeWeapon, AlliedCryoSatelliteLvl1 |
 | 未做 | `AttachNugget` | 4 | 模拟器代码里没有这个名字；例：AlliedCommandoAttachWeapon, SovietAntiVehicleInfantryMagneticBombAttachWeapon |
-| 未做 | `StripMaxHealthPercentNugget` | 3 | 模拟器代码里没有这个名字；例：JapanCommandoTech1PsyonicCrush, AAAVT1_JapanCommandoTech1PsyonicCrush |
+| 推断 | `StripMaxHealthPercentNugget` | 3 | 部分：engine_strip exact实测PASS95/45/74，4%满血/半血与25%满血按最大血量扣减；筛选、护甲倍率、无标记伤害形式未验证，最大血量不变仍推断；例：JapanCommandoTech1PsyonicCrush, AAAVT1_JapanCommandoTech1PsyonicCrush |
 | 未做 | `ActivateLinearDamageNugget` | 2 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_sweep.py），可能用别的名字实现了；例：AlliedAntiNavalScoutSonar, AlliedAntiNavalScoutSonarForBridges |
 | 未做 | `DamageContainedNugget` | 2 | 模拟器代码里没有这个名字；例：SovietAntiInfantryInfantryMolotovCocktailWarhead, Weapon_DesolatorBombFieldUpdate |
 | 未做 | `LeechPercentMaxHealthDamageNugget` | 2 | 模拟器代码里没有这个名字；例：SovietCrushWeapon, SovietHarpoonCrushWeapon |

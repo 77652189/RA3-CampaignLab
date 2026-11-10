@@ -387,6 +387,15 @@ def _weapons(texts, base_table=None):
                 else:
                     got['line'] = dict(width=_num(_attr(h, 'LineWidth')), lead=_num(_attr(h, 'LineLengthLeadIn')),
                                        out=_num(_attr(h, 'OverShootDistance')), dynamic=True)
+            strips = []
+            for h, inner in _blocks(bare, 'StripMaxHealthPercentNugget'):
+                if (inner or '').strip() or _num(_attr(h, 'Radius', '0'), float('nan')) != 0:
+                    unsupported.append('StripMaxHealthPercentNugget')
+                else:
+                    strips.append((_num(_attr(h, 'AmountToStrip', '50%').rstrip('%')) / 100,
+                                   _attr(h, 'DamageType', 'UNDEFINED')))
+            if strips:
+                got['strip_max_health'] = strips
             if unsupported:
                 got['unmodeled_effects'] = unsupported
             if sd:
@@ -474,6 +483,7 @@ def _resolve(w, weapons):
                 suppression=w.get('suppression', weapons.get(w.get('warhead'), {}).get('suppression', [])),
                 hit_modifiers=w.get('hit_modifiers', weapons.get(w.get('warhead'), {}).get('hit_modifiers', [])),
                 line=w.get('line', weapons.get(w.get('warhead'), {}).get('line')),
+                strip_max_health=w.get('strip_max_health', weapons.get(w.get('warhead'), {}).get('strip_max_health', [])),
                 unmodeled_effects=w.get('unmodeled_effects', weapons.get(w.get('warhead'), {}).get('unmodeled_effects', [])))
 
 

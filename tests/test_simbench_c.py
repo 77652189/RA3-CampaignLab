@@ -387,3 +387,11 @@ def test_weaponfx_predictions_and_finite_bursts():
         assert tuple(readings)==expected,(variant,readings)
         if variant=='attribute':
             assert (89,1,84,1) in [tuple(row) for _,row in result.series]
+
+
+def test_strip_max_health_percent_uses_maximum_at_full_and_half_health():
+    import build
+    import sim
+    m,t,_=build.resolve('engine_strip','exact')
+    engine=sim.Sim(m,t);engine.shot_clock=True
+    assert tuple(engine.run(16).series[-1][1])==(100095,100045,100074,3)
