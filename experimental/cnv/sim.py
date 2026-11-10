@@ -497,6 +497,10 @@ class Body:
     taken: float = 1.0                                          # ARMOR factor: damage taken x (INFERRED)
     cold: float = 0.0                                           # the cryo beam's secondary damage held (deal, R freeze)
     cold_step: int = -1                                         # ... the highest EffectInfo reached (-1: none)
+    suppression_rule: object = None
+    suppression_hits: list = dataclasses.field(default_factory=list)  # (expiry frame, value)
+    suppressed_until: int = -1                                  # model condition, NOT an object status
+    suppression_next: int = 0
     dealt: float = 1.0                                          # DAMAGE_MULT x RATE_OF_FIRE: damage dealt x (INFERRED)
     base: dict = None                                           # speed, vision, sight, weapons before modifiers
     deposit: tuple = None                                       # R4: its AutoDepositUpdate (bonus, amount, frames)
@@ -1047,6 +1051,7 @@ class Sim:
         b.sight = st['vision'] or 0.0
         f = simunits.fight(template, self.own)
         b.immortal, immortal_hp = simunits.immortal_body(template, self.own)
+        b.suppression_rule = simunits.suppression(template, self.own)
         hp = immortal_hp if b.immortal else f['hp']
         if hp:
             b.max_hp = b.hp = hp
@@ -1690,6 +1695,8 @@ class Sim:
         now = self.frame_now()
         xml = self.xml_of(b.template)
         mods = []
+        if b.suppression_rule and now < b.suppressed_until:
+            mods.append(simunits.modifier(xml, b.suppression_rule['modifier']))
         for up, mid in simunits.upgrade_mods(xml, b.upgrades):
             m = simunits.modifier(xml, mid)
             if m and (m['frames'] is None or now < b.up_since.get(up, now) + m['frames']):
@@ -2971,7 +2978,9 @@ class Sim:
     def step(self):
         """One DT tick from self.t (the caller moves self.t on). With the engine model: the tick's frames (those
         before self.t + DT, 7 or 8), the run script's events at the first frame at or after their second, a check's
-        counters read on each whole second's frame; units move and fight after the tick's first frame."""
+        counters read on each whole second's frame; units move after each frame's scripts.
+        Bench suppression controls: ceil(145 / speed * 15) = 44 (50), 40 (55).
+        Combat acquisition still runs once per coarse tick."""
         if self.eng is None:
             return self.step_old()
         t0, eng = self.t, self.eng
@@ -2988,6 +2997,7 @@ class Sim:
                 self.off_teams(self.handed)
                 self.handed = ()
             self.autoheal(eng.frame)
+            self.suppression_tick()
             self.flee_due(eng.frame)
             self.expire(eng.frame)
             if self.frame_movers:
@@ -3004,7 +3014,7 @@ class Sim:
                 self.aura_tick()
                 if self.combat:
                     self.fight()
-                self.move()
+            self.move(1.0 / self.fps)
             if self.combat and self.ending is None:
                 self.deal(1.0 / self.fps)       # R6: the aimed fire frame by frame, after the frame's scripts
         self.t = t0
@@ -3097,6 +3107,7 @@ class Sim:
                 if s.once:
                     self.done.add(s.name)
         self.expire(self.frame_now())
+        self.suppression_tick()
         self.build_due(self.frame_now())
         self.deposit_due(self.frame_now())
         self.mine_due(self.frame_now())
@@ -3283,9 +3294,12 @@ class Sim:
                     continue
                 if a.vision and w['range'] > a.vision:
                     a.fired_at = self.t                 # a bombarder firing shows itself
-                if w['dps']:
-                    if 'sched' in w and self.shot_clock:    # by the clip's clock (deal), not a continuous rate
+                if w['dps'] or w.get('suppression'):
+                    if 'sched' in w and (self.shot_clock or w.get('suppression')):
                         self.volleys.append((pick, w, a))
+                        if not self.shot_clock:     # pressure is discrete; preserve the default damage model
+                            self.firing.append((pick, w['dps'] * simunits.percent(pick.armor, w['type']) / 100.0
+                                                * a.dealt * pick.taken, a))
                     else:
                         self.firing.append((pick, w['dps'] * simunits.percent(pick.armor, w['type']) / 100.0
                                             * a.dealt * pick.taken, a))
@@ -3406,8 +3420,13 @@ class Sim:
             if t.alive and by.alive:
                 n = self.shots_due(by, w, dt)
                 if n:
+                    for radius, value, seconds in w.get('suppression', []):
+                        for target in self.living():
+                            if target.suppression_rule and math.hypot(target.x - t.x, target.y - t.y) <= radius:
+                                target.suppression_hits.append((self.frame_now() + simunits._frames(seconds), n * value))
                     h = hurt.setdefault(id(t), [t, 0.0, by])
-                    h[1] += n * w['dmg'] * simunits.percent(t.armor, w['type']) / 100.0 * by.dealt * t.taken
+                    if self.shot_clock:
+                        h[1] += n * w['dmg'] * simunits.percent(t.armor, w['type']) / 100.0 * by.dealt * t.taken
                     h[2] = by
         for t, dmg, by in hurt.values():
             if self.frame_now() < t.immune_until or t.shielded or t.indestructible:
@@ -3419,6 +3438,27 @@ class Sim:
                     self.first_death = (self.t, t, by)
                 self.destroy(t, f'被 {self.label(by)} 打掉')
         self.chill(dt)
+
+    def suppression_tick(self):
+        """RA3-only prediction: sample at UpdateDelay, strict > Suppressability.
+
+        Expire each hit at DurationSeconds; no field specifies a linear decay.
+        INFERRED: each above-threshold sample refreshes SuppressionDuration.
+        SUPPRESSED is a model condition; do not invent a script object status.
+        """
+        now = self.frame_now()
+        for b in self.living():
+            rule = b.suppression_rule
+            if not rule:
+                continue
+            b.suppression_hits[:] = [(end, v) for end, v in b.suppression_hits if now < end]
+            before = now - 1 < b.suppressed_until
+            if now >= b.suppression_next:
+                b.suppression_next = now + rule['every']
+                if sum(v for _, v in b.suppression_hits) > rule['threshold']:
+                    b.suppressed_until = now + rule['duration']
+            if before or now < b.suppressed_until:
+                self.modify(b)
 
     def shots_due(self, b, w, dt):
         """How many of weapon `w`'s clip-clock shots of body `b` land in [self.t, self.t + dt): the clip is a

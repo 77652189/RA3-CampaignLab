@@ -146,3 +146,164 @@ def test_immortal_damage_stops_at_one_hp_kill_is_damage_and_delete_removes():
         else:
             assert not dummy.alive and dummy.deleted
             assert readings[24:] == [[1, 1]] * 5, readings      # bench 11-09: DELETE leaves the counter at 1
+
+
+def test_suppression_predictions():
+    """Pressure is PREDICTED; only unpressured controls use round 6 bench readings."""
+    import build
+    from checks import engine_clip, engine_suppression
+    import sim
+    import simunits
+    from parts import contract, merged
+    import struct
+    import package
+    import make_campnew18 as c18
+    import mapxml
+    import xml.etree.ElementTree as ET
+    from mapscript import MapFile
+    # Exercise the real pre-BinaryAssetBuilder map writer, not Sim's permissive
+    # conversion of Python ints to seconds/percentages.
+    _, source = next((p, d) for p, d in c18.c6._map_files() if p.lower().endswith('.map'))
+    expected = {'threshold': [44, 58, 44, 55], 'speed': [44, 55],
+                'armor': [73, 1, 80, 1], 'duration': [44, 45, 51, 45], 'immune': [44, 40]}
+    for lane, readings in expected.items():
+        m, t, mod = build.resolve('engine_suppression', lane)
+        assert len(mod) <= 15 and mod.isalnum()
+        assert not contract(merged(m, t))
+        built = MapFile(source)
+        package.write_map(built, merged(m, t))
+        objects = mapxml.objects(built)
+        placed = {o['props'].get('objectName') for o in objects}
+        named = {o['props'].get('objectName'): o for o in objects}
+        waypoints = {o['props'].get('waypointName'): (o['x'], o['y']) for o in objects
+                     if o['template'] == '*Waypoints/Waypoint'}
+        # Exercise what the engine receives: ownership, legal V4 distance,
+        # emitted trigger polygons and the exact waypoint/area references.
+        assert built.trigger_areas() == t.areas
+        for k in ('base', 'high', 'order', 'removed', 'low'):
+            man = named[f'UNIT - CNV Supp {k} man']
+            assert man['props']['originalOwner'] == m.team('s1')
+            for part in ('gun', 'armor') + (('second',) if k in ('base', 'high') else ()):
+                shooter = named[f'UNIT - CNV Supp {k} {part}']
+                assert shooter['props']['originalOwner'] == m.team('p1')
+                assert shooter['props']['originalOwner'] != man['props']['originalOwner']
+                assert abs(shooter['angle'] - 1.5708) < .00001
+                unit = next(u for u in m.units if u.id == shooter['template'])
+                weapon = next(e for e in ET.fromstring(unit.xml).iter()
+                              if e.tag.rsplit('}', 1)[-1] == 'WeaponTemplate')
+                distance = ((shooter['x'] - man['x']) ** 2 + (shooter['y'] - man['y']) ** 2) ** .5
+                assert man['y'] - shooter['y'] == 450
+                assert float(weapon.attrib['MinimumAttackRange']) <= distance <= float(weapon.attrib['AttackRange'])
+        for script in t.scripts:
+            for action, *args in script.do:
+                if action == 'MOVE_NAMED_UNIT_TO':
+                    assert args[1] in waypoints
+                    k = args[0].split()[-2]
+                    leg = 'late' if 'late' in script.name else 'goal'
+                    assert waypoints[args[1]] == m.point(k + ' ' + leg + ' runout')
+            for action, *args in script.when:
+                if action == 'NAMED_INSIDE_AREA':
+                    points = built.trigger_areas()[args[1]]
+                    k = args[0].split()[-2]
+                    leg = 'late' if 'late' in script.name else 'goal'
+                    x, y = m.point(k + ' ' + leg)
+                    assert points == [(x - 40, y - 5), (x + 40, y - 5),
+                                      (x + 40, y + 75), (x - 40, y + 75)]
+        revealed = []
+        for _, node in built.walk():
+            if node.name not in ('Condition', 'ScriptAction'):
+                continue
+            action, args, _ = built.content(node)
+            if action == 'MAP_REVEAL_ALL_PERM':
+                revealed.append(args[0][1])
+            for kind, value in args:
+                if kind == 14:               # named-object parameter, as written to the map
+                    assert value in placed, (lane, action, value)
+            if action in ('SET_MILLISECOND_TIMER', 'UNIT_SET_HEALTH'):
+                assert type(args[1][1]) is float, (lane, action, args)
+                # Decode raw argument slots too: the game consumes the real slot.
+                first_string = len(args[0][1].encode('latin-1'))
+                arg2 = 12 + 14 + first_string
+                _, integer, real = struct.unpack_from('<Iif', node.head, arg2)
+                assert integer == 0 and real == args[1][1] > 0
+        assert revealed == [m.player('p1')]
+        # The actual pre-BAB object-data list, not only permissive Sim bodies.
+        spec = package.spec_of(m, t, name=mod)
+        files = dict(spec.unit_files)
+        xml, unknown = mapxml.map_xml(built, c18.c7.GAME_MAP_ID, spec.templates, also=spec.extra_all)
+        root = ET.fromstring(xml)
+        ns = {'a': 'uri:ea.com:eala:asset'}
+        includes = {e.attrib['source'] for e in root.findall('a:Includes/a:Include', ns)}
+        emitted = {e.attrib['ThingTemplate'] for e in root.findall('.//a:Unit', ns)}
+        assert unknown == ['*Waypoints/Waypoint']
+        for u in m.units:
+            assert 'DATA:CNVUnits/Data/' + u.id + '.xml' in includes
+            assert u.id in emitted and ('GameObject:' + u.id).encode() in spec.extra_own
+            unit = ET.fromstring(files[u.id + '.xml'])
+            obj = unit.find('a:GameObject', ns)
+            weapon = unit.find('a:WeaponTemplate', ns)
+            assert obj.attrib['id'] == u.id
+            assert obj.find('.//a:Weapon', ns).attrib['Template'] == weapon.attrib['id']
+            assert ('WeaponTemplate:' + weapon.attrib['id']).encode() in spec.extra_own
+            nuggets = weapon.findall('a:Nuggets', ns)
+            assert len(nuggets) == 1 and len(nuggets[0].findall('a:DamageNugget', ns)) == 1
+            pressure = nuggets[0].findall('a:SuppressionNugget', ns)
+            assert len(pressure) == (0 if u.id.endswith('Armor') else 1)
+            k = next(k for k in ('base', 'high', 'order', 'removed', 'low') if u.id.startswith('CNV_Supp' + k.title()))
+            if pressure:
+                value, duration = (2, 3) if k in ('base', 'high') else (10, 1)
+                assert pressure[0].attrib == dict(Radius='20', Suppression=str(value), DurationSeconds=f'{duration}s')
+        # Main guns belong on the actual named pads, not 350 south of them.
+        for k in ('base', 'high', 'order', 'removed', 'low'):
+            o = named[f'UNIT - CNV Supp {k} gun']
+            assert (o['x'], o['y']) == m.site(k + ' gun')
+        assert len(t.counters) == len(readings) <= 4
+        assert [e[3] for e in t.expect] == readings
+        assert all(e[1:3] == (21, '==') and e[4] == 23 for e in t.expect)
+        assert all(ok for ok, _ in build.judge(t, [(21, readings), (22, readings)]))
+        actions = [a for script in t.scripts for a in script.do]
+        assert not any(a[0] in ('HIDE_COUNTER', 'DISPLAY_COUNTER') or
+                       any(isinstance(v, str) and '_GUNS' in v for v in a) for a in actions)
+        assert t.bench[0][1] == dict(seconds=23, every=.5, sheet=False, lines=len(readings))
+        # Match clip's hold/release/order/flag sequence and its absolute order time.
+        start = next(script for script in t.scripts if script.name == 'Test - start')
+        timers = {a[1]: a[2] for a in start.do if a[0] == 'SET_MILLISECOND_TIMER'}
+        assert timers == {'Supp Fire': engine_clip.ORDER, 'Supp Move': 10.0 if lane == 'duration' else 9.0,
+                          'Supp Late': 17.0, 'Supp Armor': 11.0}
+        fire = next(script for script in t.scripts if script.name == 'Test - fire')
+        assert fire.when == [('TIMER_EXPIRED', 'Supp Fire')]
+        assert fire.do[-1] == ('SET_FLAG', 'Supp Ordered', 1)
+        for release, attack in zip(fire.do[:-1:2], fire.do[1:-1:2]):
+            assert release == ('UNIT_CHANGE_OBJECT_STATUS', attack[1], 'NO_ATTACK', 0)
+            assert attack[0] == 'NAMED_ATTACK_NAMED'
+            assert ('UNIT_CHANGE_OBJECT_STATUS', attack[1], 'NO_ATTACK', 1) in start.do
+            assert ('UNIT_CHANGE_OBJECT_STATUS', attack[2], 'NO_ATTACK', 1) in start.do
+        # The previous never-ending frame counters / zero armor readings must fail.
+        bad = [0] * len(readings) if lane == 'armor' else [287] * len(readings)
+        assert not any(ok for ok, _ in build.judge(t, [(22, bad)]))
+        s = sim.Sim(m, t)
+        s.shot_clock = True                  # finite probe bursts, never change the shared default
+        ordinary = s.body('UNIT - CNV Supp removed man')
+        assert ordinary.max_hp == 150 and ordinary.speed == 50
+        assert ordinary.suppression_rule == dict(threshold=50, every=15, duration=75,
+                                                modifier='Modifier_Test_Suppression')
+        assert simunits.suppression('AlliedCommandoTech1') is None
+        s.run(9)
+        assert s.enemy(m.player('p1'), m.player('s1')) and s.enemy(m.player('s1'), m.player('p1'))
+        if lane != 'immune':
+            assert ordinary.speed == 37.5 and ordinary.taken == .75
+        assert 'SUPPRESSED' not in ordinary.status   # model condition is not an object status
+        s.run(engine_suppression.RUN)
+        assert s.series[-1][1] == readings, (lane, s.series[-1])
+        assert ordinary.alive and ordinary.speed == 50 and ordinary.taken == 1
+        assert not ordinary.suppression_hits
+        if lane != 'immune':
+            assert ordinary.suppressed_until == 181
+        if lane == 'threshold':
+            assert s.body('UNIT - CNV Supp base man').suppressed_until == -1
+            assert s.body('UNIT - CNV Supp high man').suppressed_until == 211
+        if lane == 'immune':
+            immune = s.body('UNIT - CNV Supp low man')
+            assert immune.suppressed_until == -1 and immune.speed == 55
+        assert s.body('UNIT - CNV Supp order man').suppressed_until == -1
+        assert s.eng is not None

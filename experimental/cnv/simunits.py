@@ -276,7 +276,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v9.json')     # v9: cycle in whole frames (ceil per part); v8: + dmg, cycle, sched (shot clock); v7: freeze (secondary damage), armour Default; v3: weapon inheritFrom (2026-11-08); v4: + los; v5: overrides, LineDamageNugget; v6: OCL, pre-attack
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v10.json')    # v10: suppression contributions; v9: whole-frame clip cycle
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -361,6 +361,11 @@ def _weapons(texts, base_table=None):
             sd = [_num(_attr(h, 'Amount')) for h, i in _blocks(bare, 'SecondaryDamageNugget')
                   if '<RequiredUpgrade' not in (i or '')]
             got = {}                                            # only what this template writes
+            supp = [(_num(_attr(h, 'Radius')), _num(_attr(h, 'Suppression')),
+                     _secs(_attr(h, 'DurationSeconds', '0s')))
+                    for h, _ in _blocks(bare, 'SuppressionNugget')]
+            if supp:
+                got['suppression'] = supp
             if sd:
                 got['sd'] = sd[0]
             if any(ocl):
@@ -442,7 +447,8 @@ def _resolve(w, weapons):
     sd = w.get('sd', 0.0)
     return dict(range=w['range'], dps=round(dmg * shots / cycle, 2) if dmg else 0.0, type=typ, anti=w['anti'],
                 los=w['los'], sdps=round(sd * shots / cycle, 2) if sd > 0 else 0.0,
-                dmg=dmg, cycle=cycle, sched=_shot_times(w, shots))
+                dmg=dmg, cycle=cycle, sched=_shot_times(w, shots),
+                suppression=w.get('suppression', weapons.get(w.get('warhead'), {}).get('suppression', [])))
 
 
 def _shot_times(w, shots):
@@ -621,6 +627,24 @@ def immortal_body(template, own=None):
         immortal = bool(list(_blocks(body[1], 'ImmortalBody')))
         return immortal, number(xml, 'MaxHealth') if immortal else None
     return _chain(template, own, read) or (False, None)
+
+
+def suppression(template, own=None):
+    """Nearest infantry suppression rule; an explicit Remove stops inheritance.
+
+    RA3 data only. No decay rate is specified: contributions expire individually
+    after DurationSeconds (INFERRED), rather than inventing a linear decay.
+    """
+    def read(xml):
+        for h, _ in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'SuppressionUpdate'):
+            if _attr(h, 'xai:joinAction') == 'Remove':
+                return False
+            return dict(threshold=_num(_attr(h, 'Suppressability')),
+                        every=max(1, _frames(_secs(_attr(h, 'UpdateDelay', '1s')))),
+                        duration=_frames(_secs(_attr(h, 'SuppressionDuration', '0s'))),
+                        modifier=_attr(h, 'AttributeModifierSuppressed'))
+        return None
+    return _chain(template, own, read) or None
 
 
 def autoheal(template, own=None):
