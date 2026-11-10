@@ -2364,8 +2364,8 @@ class Sim:
         elif name == 'SELL_OBJECT':              # (object) engine_sell: sell(), refused while unpacking
             self.sell(self.body(a[0]))
         elif name == 'NAMED_DAMAGE':             # (object, amount) health points off, no armour; engine_sell b / e
-            b = self.body(a[0])
-            if b and b.alive and not b.indestructible:
+            b = self.body(a[0])                  # the Indestructible panel flag does not stop it (engine_scripts7 panel)
+            if b and b.alive:
                 b.last_hit = b.last_by = None
                 b.hp = max(0.0, b.hp - float(a[1]))
                 if b.hp <= 0.0:
@@ -2402,7 +2402,9 @@ class Sim:
         elif name in ('UNIT_AFFECT_OBJECT_PANEL_FLAGS', 'TEAM_AFFECT_OBJECT_PANEL_FLAGS'):
             # (unit or team, flag, on). Indestructible: the body takes no damage at all (Generals ScriptActions
             # changeObjectPanelFlagForSingleObject -> ActiveBody::setIndestructible; attemptDamage returns at once;
-            # not read in RA3). Retail s01 keeps Natasha alive so ('Emergency - Natasha Indestructible'); the other
+            # not read in RA3). Bench 2026-11-09 engine_scripts7 panel: NAMED_DAMAGE and NAMED_KILL go through it (UNIT
+            # and TEAM alike); a weapon's damage not measured -- still refused here (INFERRED).
+            # Retail s01 keeps Natasha alive so ('Emergency - Natasha Indestructible'); the other
             # flags (Selectable, Enabled, AI Recruitable ...) are only noted
             flag = str(a[1][2] if isinstance(a[1], tuple) else a[1])
             if flag.lower() == 'indestructible':

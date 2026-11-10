@@ -1277,3 +1277,41 @@ def test_scripts7_objects_made_with_an_angle_as_the_bench():
     ORIENTATION made at 1 s, 造出 4 from s1 (the facing not read: the camera did not show the row)."""
     last = _sim_run('engine_scripts7', 'face', 8.0).series[-1][1]
     assert last == [4], last
+
+
+@pytest.mark.xfail(strict=True, reason='bench 2026-11-09 engine_scripts7 amove: the attack-mover leaves its enemy at '
+                   '12 % and arrives at s38; the simulator kills it (0 at 28 s) and has not arrived by 60 s')
+def test_scripts7_attack_move_leaves_a_beaten_enemy_as_the_bench():
+    by = {round(s): v for s, v in _sim_run('engine_scripts7', 'amove', 60.0).series}
+    assert by[59][0] == 1 and by[59][2] > 0, by
+
+
+def test_scripts7_a_moving_tank_fires_as_it_drives_by_as_the_bench():
+    """Bench 2026-11-09 engine_scripts7 amove: MOVE_NAMED_UNIT_TO's tank hurt the enemy beside its lane as it drove
+    by (乙敌 100 -> 60) and arrived (乙到 1 from s23). (The hit sizes are engine line C's: not compared.)"""
+    by = {round(s): v for s, v in _sim_run('engine_scripts7', 'amove', 60.0).series}
+    assert by[59][1] == 1 and 0 < by[59][3] < 100, by
+
+
+def test_scripts7_indestructible_stops_no_scripted_damage_as_the_bench():
+    """Bench 2026-11-09 engine_scripts7 panel: 甲血 乙血 丁血 58 58 58 after NAMED_DAMAGE 200 at 2 s (the UNIT- and the
+    TEAM-flagged ones as the control), 16 16 after another 200 at 8 s; 活着 15 -> 11 (NAMED_KILL of a flagged one)."""
+    by = {round(s): v for s, v in _sim_run('engine_scripts7', 'panel', 12.0).series}
+    assert by[3] == [58, 58, 58, 15] and by[5][3] == 11, by
+    h1, h2, h4, alive = by[11]                  # 16 on the bench, 17 here (the percent's rounding)
+    assert abs(h1 - 16) <= 1 and h2 == 58 and abs(h4 - 16) <= 1 and alive == 11, by
+
+
+def test_scripts7_object_lists_and_the_nearest_refs_as_the_bench():
+    """Bench 2026-11-09 engine_scripts7 list: 列表 4 (an object list read as a type), 单类 1 (a type added twice
+    counts once); 参考 1 (the named nearest, SET_REF_TO_NEREST_TEAM_OF_TYPE_OWNED_BY_PLAYER), 无名参考 2 (the
+    UNNAMED one skips it) from s5."""
+    by = {round(s): v for s, v in _sim_run('engine_scripts7', 'list', 10.0).series}
+    assert by[2][:2] == [4, 1] and by[9][1:] == [1, 1, 2], by
+
+
+@pytest.mark.xfail(strict=True, reason='bench 2026-11-09 engine_scripts7 list: a type added to an object list at 4 s '
+                   'is not counted (列表 stays 4); the simulator adds it (5) -- not found why')
+def test_scripts7_a_type_added_to_a_list_later_as_the_bench():
+    by = {round(s): v for s, v in _sim_run('engine_scripts7', 'list', 10.0).series}
+    assert by[9][0] == 4, by

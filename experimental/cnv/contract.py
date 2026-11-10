@@ -40,6 +40,7 @@ CREATES_NAMED = ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', 'CREATE_NAMED_ON_TEAM_AT_WA
 
 
 POINTS_AT_UNNAMED = 'SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER'    # (kind, player, team, name)
+POINTS_AT_ANY = 'SET_REF_TO_NEREST_TEAM_OF_TYPE_OWNED_BY_PLAYER'               # the same, named objects too
 
 
 OUTLET_SCRIPTS = re.compile(r'CNV \w+ - (Say \d+( chat)?|Now \d+|Phase \d+ line \d+)')    # ctx.talk's: a queued line, a scene's
@@ -535,7 +536,7 @@ def contract(mission):
     # an object a script creates by name is declared by that script (the first argument of the CREATE_NAMED_* ones)
     created = {args[0] for s in m.scripts for name, *args in s.do if name in CREATES_NAMED}
     # ... and so is a name a script points at an unnamed unit of a kind (the retail campaign names a building so)
-    created |= {args[3] for s in m.scripts for name, *args in s.do if name == POINTS_AT_UNNAMED}
+    created |= {args[3] for s in m.scripts for name, *args in s.do if name in (POINTS_AT_UNNAMED, POINTS_AT_ANY)}
     out += [f'cast {k}: no object named {r.name!r}' for k, r in m.cast.items()
             if r.name and r.name not in named and r.name not in created]
     out += [f'mark {k}: no waypoint {w!r}' for k, w in m.marks.items() if w not in m.waypoints]
@@ -544,7 +545,9 @@ def contract(mission):
              WAYPOINT_ARG: ('waypoint', m.waypoints), PLAYER_ARG: ('player', set(getattr(m.map, 'PLAYERS', {}).values()) | {ALL_PLAYERS}),
              OBJECT_ARG: ('object', set(named) | created), STRING_ARG: ('string', m.strings), POWER_ARG: ('power', set(powers) | RETAIL_POWERS),
              COMMAND_ARG: ('command button', set(powers) | RETAIL_COMMANDS), OBJECTIVE_ARG: ('objective', {g.name for g in m.objectives}),
-             TEMPLATE_ARG: ('template', {r.template for r in m.cast.values()} | {u.id for u in m.units} | m.spawns)}
+             TEMPLATE_ARG: ('template', {r.template for r in m.cast.values()} | {u.id for u in m.units} | m.spawns
+                            | {args[1] for s in m.scripts for name, *args in s.do               # an object list
+                               if name == 'OBJECTLIST_ADDOBJECTTYPE'})}                          # reads as a type
     if m.music:
         known[MUSIC_EVENT_ARG] = ('music event', m.music.events)
 
@@ -595,7 +598,7 @@ def contract(mission):
 OBSERVE = {
     'SET_COUNTER': 1, 'INCREMENT_COUNTER': -1, 'SET_MILLISECOND_TIMER': 1, 'SET_FLAG': 1,
     'SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER': -1, 'SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER': -1,
-    'SET_PLAYER_MONEY_TO_COUNTER': -1, POINTS_AT_UNNAMED: -1,
+    'SET_PLAYER_MONEY_TO_COUNTER': -1, POINTS_AT_UNNAMED: -1, POINTS_AT_ANY: -1,
     'MOVE_CAMERA_TO': None,
 }
 
