@@ -189,6 +189,14 @@ RESULTS g / h (bench 2026-11-10, aiskirm g / h and aiskirmnl g, all PASS (weak);
     SecondsTillTargetsExpire (0x8c7020's interval half, l4_states.md 1.2), the new draw in the same second; the
     draw is the weighted one (Overwhelm twice in a row at 12 s), not a turn-about. So BAG's gathering team is
     replaced every 5 s in a retail skirmish (Base writes 5; the XSD default 15 is never used by the stock AIs).
+
+  r  进攻型 / 进攻帧 / 压倒 / 压倒帧: 帧 = script passes the instance's team answered (0 when it appears, +1 a frame,
+     kept once it is gone, so a 99 row shows the last instance's whole life). Bench 2026-11-10, aiskirm r PASS (weak):
+     of ~34 instances to s174, most lived **76** frames, a few 75 / 74 / 73 (s34, s139, s159); the next state's team
+     is there in the same second (often the same frame) the old one goes.
+  Reading: life = 75 frames (5 s x 15) counted from the team's first frame, + 1 for counting both ends (the script
+    pass order against the AI update is not known); the 73-74 ones read as the slot assigned (+0x2c0) a frame or
+    two before its team appears. The model (Team.made = the team's frame, ends after 75) is within a frame.
 """
 from parts import Script, Test, counted, square
 
@@ -407,6 +415,19 @@ def _appearances(t, counter, n_counter, label):
                          once=False)]
 
 
+def _lifetime(t, counter, f_counter, label):
+    """Frames the team `counter` reads has answered since it last appeared (reset to 0 when it appears, +1 every frame
+    it answers, kept while it is gone): read while it shows 99, it is the last instance's whole life in frames."""
+    seen = f_counter + 'S'
+    t.counters.append((f_counter, label))
+    t.scripts += [Script(f'Test - {f_counter} new', [('COUNTER', counter, 0, UNKNOWN), ('COUNTER', seen, 2, 0)],
+                         [('SET_COUNTER', f_counter, 0), ('SET_COUNTER', seen, 1)], once=False),
+                  Script(f'Test - {f_counter} tick', [('COUNTER', counter, 0, UNKNOWN)],
+                         [('INCREMENT_COUNTER', 1, f_counter)], once=False),
+                  Script(f'Test - {f_counter} off', [('COUNTER', counter, 2, UNKNOWN)], [('SET_COUNTER', seen, 0)],
+                         once=False)]
+
+
 def _kind_members(t, counter, label, team, kind, most=POOL_MOST):
     """How many of `team`'s members have KindOf `kind` (TEAM_HAS_FEWER_THAN_X_UNITS_WITH_KINDOF, tried from `most`
     down: the last that holds is n = count + 1); UNKNOWN when none holds (count >= most, or no such team)."""
@@ -473,6 +494,10 @@ def _teams(m, which):
         for key, ctr, say, nsay in (('attack type', 'AtkT', '进攻型', '进攻次'), ('overwhelm', 'Ovw', '压倒', '压倒次')):
             _members(t, f'CNV_AK_{ctr}', say, ai[key])
             _appearances(t, f'CNV_AK_{ctr}', f'CNV_AK_{ctr}N', nsay)
+    elif which == 'r':                 # how many frames does one gathering instance last (team made -> gone)?
+        for key, ctr, say, fsay in (('attack type', 'AtkT', '进攻型', '进攻帧'), ('overwhelm', 'Ovw', '压倒', '压倒帧')):
+            _members(t, f'CNV_AK_{ctr}', say, ai[key])
+            _lifetime(t, f'CNV_AK_{ctr}', f'CNV_AK_{ctr}F', fsay)
     elif which == 'p':                 # past the player's last building: do the attack teams end and hand back?
         _built(t, m)
         _members(t, 'CNV_AK_Cln', '清扫', ai['cleanup'])
@@ -543,6 +568,12 @@ def q(m):
     return _teams(m, 'q')
 
 
+def r(m):
+    """BalancedAttackGround _0_0 / frames its last instance lived / Overwhelm _0_0 / the same: does a gathering
+    instance last exactly SecondsTillTargetsExpire x 15 = 75 frames from its team's first frame (the model's rule)?"""
+    return _teams(m, 'r')
+
+
 def p(m):
     """我方建筑 / BalancedCleanup _0_0 / LandDefense _0_0 / army owned (no dogs) to ~s240: when the player's last
     building dies, do the attack teams end at once and hand their units back to the defense team (the model, ~197 s
@@ -551,7 +582,7 @@ def p(m):
 
 
 CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j': j, 'k': k, 'l': l, 'm': m,
-                      'n': n, 'o': o, 'p': p, 'q': q},
+                      'n': n, 'o': o, 'p': p, 'q': q, 'r': r},
           'aiskexp': {'q': q},
           'aiskirmnl': {'g': g, 'h': h},
           'aiskjav': {'e': e},
