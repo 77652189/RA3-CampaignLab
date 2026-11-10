@@ -402,6 +402,7 @@ def test_a_waypoint_path_is_written_as_retail_writes_it_and_read_back():
     import package
     import pytest
     import retail
+    import struct
     from maps import island
     from mapscript import MapFile
     m = parts.Mission(name='X', map=island)
@@ -418,14 +419,16 @@ def test_a_waypoint_path_is_written_as_retail_writes_it_and_read_back():
 
     data = next(d for p, d in c18.c6._map_files() if p.lower().endswith('.map'))
     built = MapFile(data)
-    before = retail.waypoint_links(built, {})                   # ids of nothing: the container's links, none named
     head = next(n for _, n in built.walk() if n.name == 'WaypointsList').head
+    assert struct.unpack_from('<I', head)[0] == 111             # the container's links, to waypoints long gone
     package.write_map(built, parts.merged(m))
     after = next(n for _, n in built.walk() if n.name == 'WaypointsList').head
-    assert before == [] and after[4:len(head)] == head[4:]      # the container's links stay, ours after
     wps = {o['props']['waypointName']: o['props'] for o in mapxml.objects(built) if o['template'] == retail.WAYPOINT}
     ids = {p['waypointID']: n for n, p in wps.items()}
-    assert retail.waypoint_links(built, ids)[-4:] == m.links
+    raw = [struct.unpack_from('<II', after, 4 + 8 * k) for k in range(struct.unpack_from('<I', after)[0])]
+    # the container's dangling ones went (their ids, 4 on, are ours now: bench 11-10 engine_waypath); its one link
+    # between waypoints it still has stays, ours after
+    assert [(ids[a], ids[b]) for a, b in raw] == [('InitialCameraPosition', 'Player_2_Start')] + m.links
     assert [wps['WP 0'].get(f'waypointPathLabel{k}') for k in (1, 2, 3)] == ['Ring', 'Line', '']
     assert [wps['WP 1'].get(f'waypointPathLabel{k}') for k in (1, 2, 3)] == ['Ring', '', '']
     assert not any(k.startswith('waypointPathLabel') for k in wps['WP 3'])

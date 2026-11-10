@@ -415,7 +415,7 @@ def test_a_unit_follows_a_waypoint_path_from_the_nearest_waypoint_to_its_end():
 
 
 def test_a_loop_goes_round_and_a_new_order_takes_the_unit_off_the_path():
-    """A path that links back to its first waypoint goes round (INFERRED until benched); MOVE_NAMED_UNIT_TO
+    """A path that links back to its first waypoint goes round (bench 11-10 engine_waypath loop); MOVE_NAMED_UNIT_TO
     drops the path."""
     s = _road(loop=True)
     a = s.add('a', 'JapanAntiInfantryInfantry', s.foe, s.waypoints['R1'][0] - 300, s.waypoints['R1'][1])
@@ -429,8 +429,9 @@ def test_a_loop_goes_round_and_a_new_order_takes_the_unit_off_the_path():
 
 
 def test_a_team_follows_a_path_as_one_with_group_moves():
-    """TEAM_FOLLOW_WAYPOINTS with asTeam: the team joins at the waypoint nearest its middle, each leg a group move
-    (one shared leg), the next once all are there; asTeam off: each its own. An unused team: nothing (E3)."""
+    """TEAM_FOLLOW_WAYPOINTS with asTeam: the team joins at the waypoint nearest its middle, one shared leg, each
+    member to the waypoint plus its offset from the team's middle, the next once the first is there (Generals
+    m_moveAsGroup; bench 11-10 engine_waypath team); asTeam off: each its own. An unused team: nothing (E3)."""
     s = _road()
     team = 'Soviet_4/teamSoviet_4'          # Soviet_1's loses its members after the first frame (Lib_Skirmish_Setup)
     x, y = s.waypoints['R1']
@@ -438,7 +439,7 @@ def test_a_team_follows_a_path_as_one_with_group_moves():
     for u in crew:
         s.act('UNIT_SET_TEAM', [u.name, team], None)
     s.act('TEAM_FOLLOW_WAYPOINTS', [team, 'Road', 1, 0], None)
-    assert 'group move' in s.used and crew[0].follow is crew[1].follow is crew[2].follow
+    assert 'team path' in s.used and crew[0].follow is crew[1].follow is crew[2].follow
     seen = _legs(s, crew, 150)
     assert all(v == ['R1', 'R2', 'R3'] for v in seen.values())
     assert all(u.follow is None and abs(u.x - s.waypoints['R3'][0]) < 150 for u in crew)

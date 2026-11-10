@@ -17,8 +17,16 @@ Simulator 11-10 (round 143, work/logs/a143_waypath_sim.log; 段 boxes 40): line 
 near s5 1 (passing A on the way to N), s17 2, s23 3 (A never again: joined at B); loop 1 2 3 every ~20 s, round and
 round; team (boxes 40 then) truck 3 never in A's or B's box -- its group legs ran 100 aside: boxes 100 since.
 
-读数
-(not benched yet)
+读数 (bench 2026-11-10, after package._drop_dangling_links -- the first line / exact runs had the container's stale
+links on our waypoint ids, 10 -> 9, 8 -> 7 ...: line went C -> B -> C ..., exact forked at A to N -- the same fork,
+the two runs took different links: random -- and on through unlabelled waypoints N, C, B, A to the camera's)
+  line   段1 s3 1, s9 2 (近B 4), s15 3, stays.             exact  the same, second by second: no corner cut either.
+  near   段1 s3 1 (on the way to N), s15 2 (近B 3, s16 4), s21 3; A never again: joined at B.
+  loop   段1 1 2 3 at s3 9 15, s23 29 35, s43 49 55, s63 70 76, s84 90: a lap 20-21 s, round and round.
+  team   段2 s3 1, s10 2, s17 3; 段3 s5 1, s10 2, s14 3: both within 100 of every waypoint (each to the waypoint plus
+         its offset from the team's middle, ±75), the one ahead on the last leg (truck 3) there 3 s first.
+Simulator after the round-144 fix (Generals m_moveAsGroup offsets, the first there moves the team on): every reading
+LAG 2 s later (loop drifts to 3 s by the third lap); tests/test_simbench.py test_waypath_*.
 """
 from parts import Script, Test, square
 

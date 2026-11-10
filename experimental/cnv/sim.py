@@ -1925,9 +1925,10 @@ class Sim:
         return best
 
     def path_next(self, at):
-        """The waypoint after `at` on its path (the map's WaypointsList, one way), None at the path's end. INFERRED:
-        Generals' AIFollowWaypointPathState::getNextWaypoint picks one of several links at random; this takes the
-        first (the runs stay repeatable) and marks the run. A loop goes round and round (INFERRED, not benched)."""
+        """The waypoint after `at` on its path (the map's WaypointsList, one way, whatever the next one's label),
+        None at the path's end. Of several links the game takes either (Generals' getNextWaypoint: at random; bench
+        11-10 engine_waypath: two runs of one map forked two ways); this takes the first (the runs stay repeatable)
+        and marks the run. A loop goes round and round (bench 11-10 engine_waypath loop)."""
         nxt = [z for a, z in self.mm.links if a == at]
         if len(nxt) > 1:
             self.used.add('path fork')
@@ -1938,9 +1939,15 @@ class Sim:
         waypoint along the path `label`, from `start`, or else the path's waypoint nearest to it (a team: to its
         middle, Generals' doTeamFollowWaypoints joins at getClosestWaypointOnPath of the team's estimated position);
         at a waypoint it takes the next (path_next) and stops at the path's end. Each leg is a move (order_move;
-        attacking: an attack-move, it stops to fight and goes on). as_team: the team's legs are group moves
-        (order_group), the next leg once every member is there. INFERRED, to be benched: EXACT walks the same as
-        the plain one (no corner cut either way); the team version's fourth flag and BiDirectional do nothing."""
+        attacking: an attack-move, it stops to fight and goes on). as_team (Generals AIFollowWaypointPathState with
+        m_moveAsGroup): each member keeps where it stood from the team's middle (the mean, AIGroup::getCenter) when
+        ordered -- every leg's goal is the waypoint plus that, uncut -- and the team shares one waypoint: the first
+        member to get there sends them all on to the next (the team's current waypoint). Bench 11-10 engine_waypath
+        (checks/engine_waypath.py 读数): line = exact (both reach B within 10: no corner cut), a loop goes round and
+        round, a fork takes either link (random, the two runs took different ones), links lead on through waypoints
+        without the label, joined at the nearest; team: both trucks 75 off every waypoint, the one ahead on the last
+        leg there 3 s first. INFERRED: the team version's fourth flag, BiDirectional, the group's speed (the slowest
+        member's, AIGroup::getSpeed: the bench's trucks are one kind)."""
         movers = [b for b in bodies if b and b.alive and b.speed > 0 and 'IMMOBILE' not in b.status]
         if not movers:
             return
@@ -1952,14 +1959,24 @@ class Sim:
             for b in movers:
                 self.note('卡住', f'{self.label(b)} 找不到路 {label}')
             return
-        self.follow_leg(movers, {'label': label, 'at': start, 'attacking': attacking, 'exact': exact,
-                                 'team': as_team})
+        how = {'label': label, 'at': start, 'attacking': attacking, 'exact': exact, 'team': as_team}
+        if as_team and len(movers) > 1:
+            n = len(movers)
+            cx, cy = sum(b.x for b in movers) / n, sum(b.y for b in movers) / n
+            how['offset'] = {id(b): (b.x - cx, b.y - cy) for b in movers}
+            self.used.add('team path')
+        self.follow_leg(movers, how)
 
     def follow_leg(self, movers, how):
-        """Sends `movers` to how['at'] and marks them as on the path (a team as one: one shared dict)."""
+        """Sends `movers` to how['at'] and marks them as on the path (a team as one: one shared dict; each member
+        to the waypoint plus its own offset from the team's middle when ordered)."""
         if how['team'] and len(movers) > 1:
-            self.order_group(movers, how['at'], how['attacking'])
+            wx, wy = self.waypoints[how['at']]
+            given = []
             for b in movers:
+                ox, oy = how['offset'].get(id(b), (0.0, 0.0))
+                self.order_move(b, (wx + ox, wy + oy), how['attacking'], given=given, skip=movers)
+                given.append((wx + ox, wy + oy, b.radius))
                 b.follow = how
         else:
             for b in movers:
@@ -1974,9 +1991,9 @@ class Sim:
             how = b.follow
             if how is None or id(how) in done:
                 continue
-            if how['team']:
+            if how['team']:                     # the first member there moves the team's waypoint on
                 group = [o for o in self.living() if o.follow is how]
-                if any(o.path or o.engaged or isinstance(o.goal, Body) for o in group):
+                if all(o.path or o.engaged or isinstance(o.goal, Body) for o in group):
                     continue
                 done.add(id(how))
             else:

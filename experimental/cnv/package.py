@@ -46,6 +46,7 @@ def write_map(m, mm):
     like = mm.map.like(m, objs, tmpl)
     m.cnv_like = like                       # a later map edit (a check as a layer: write_more) places with these too
     objs.kids = [k for k in objs.kids if tmpl(k) == '*Waypoints/Waypoint']        # the map's starts stay
+    _drop_dangling_links(m, objs)
     _put_waypoints(m, objs, like, mm.waypoints, mm.labels)
     _put_links(m, objs, mm.links)
     # the map's own objects (a bridge's two ends stay next to each other), its scenery (civilian props), the mission's
@@ -96,6 +97,21 @@ def _put_waypoints(m, objs, like, waypoints, labels):
         path = {f'waypointPathLabel{j + 1}': (have + ['', '', ''])[j] for j in range(3)} if have else {}
         objs.kids.append(newmap.object_node(m, props, flags, '*Waypoints/Waypoint', x, y, waypointName=wname,
                                             waypointID=wid + k, uniqueID=f'Waypoint {wid + k}', **path))
+
+
+def _drop_dangling_links(m, objs):
+    """The container's WaypointsList keeps only links between waypoints it still has: its 111 name ids 4..172, long
+    gone, and ours are numbered from 4 on (_put_waypoints) -- left in, 8 -> 7, 10 -> 9 ... joined the mission's
+    waypoints into paths nobody wrote (bench 11-10 engine_waypath: the truck went C -> B -> C ... and forked at A)."""
+    import newmap
+    have = {newmap.typed_props_of(m, k)[0].get('waypointID', (0, None))[1] for k in objs.kids}
+    node = next((n for _, n in m.walk() if n.name == 'WaypointsList'), None)
+    if node is None:
+        return
+    count = struct.unpack_from('<I', node.head)[0]
+    pairs = [struct.unpack_from('<II', node.head, 4 + 8 * k) for k in range(count)]
+    keep = [(a, b) for a, b in pairs if a in have and b in have]
+    node.head = struct.pack('<I', len(keep)) + b''.join(struct.pack('<II', a, b) for a, b in keep)
 
 
 def _put_links(m, objs, links):
