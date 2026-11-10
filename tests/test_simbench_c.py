@@ -149,7 +149,7 @@ def test_immortal_damage_stops_at_one_hp_kill_is_damage_and_delete_removes():
 
 
 def test_suppression_predictions():
-    """Pressure is PREDICTED; only unpressured controls use round 6 bench readings."""
+    """Guard finite probe inputs and compare the model against the suppression bench."""
     import build
     from checks import engine_clip, engine_suppression
     import sim
@@ -164,8 +164,11 @@ def test_suppression_predictions():
     # Exercise the real pre-BinaryAssetBuilder map writer, not Sim's permissive
     # conversion of Python ints to seconds/percentages.
     _, source = next((p, d) for p, d in c18.c6._map_files() if p.lower().endswith('.map'))
-    expected = {'threshold': [44, 58, 44, 55], 'speed': [44, 55],
-                'armor': [73, 1, 80, 1], 'duration': [44, 45, 51, 45], 'immune': [44, 40]}
+    expected = {'threshold': [44, 59, 59, 59], 'expiry': [44, 44, 59, 59], 'speed': [44, 59],
+                'armor': [73, 1, 73, 1], 'armored': [73, 1, 80, 1],
+                'phasea': [44, 44], 'phaseb': [44, 44], 'lifetime': [44, 59], 'edge': [59, 59],
+                'fraction': [59, 59], 'fast': [37, 37], 'tail': [56, 56],
+                'duration': [44, 45, 44, 45], 'immune': [44, 40]}
     for lane, readings in expected.items():
         m, t, mod = build.resolve('engine_suppression', lane)
         assert len(mod) <= 15 and mod.isalnum()
@@ -207,8 +210,9 @@ def test_suppression_predictions():
                     k = args[0].split()[-2]
                     leg = 'late' if 'late' in script.name else 'goal'
                     x, y = m.point(k + ' ' + leg)
-                    assert points == [(x - 40, y - 5), (x + 40, y - 5),
-                                      (x + 40, y + 75), (x - 40, y + 75)]
+                    delta = -1 if lane == 'edge' else 0
+                    assert points == [(x - 40, y - 5 + delta), (x + 40, y - 5 + delta),
+                                      (x + 40, y + 75 + delta), (x - 40, y + 75 + delta)]
         revealed = []
         for _, node in built.walk():
             if node.name not in ('Condition', 'ScriptAction'):
@@ -241,17 +245,23 @@ def test_suppression_predictions():
             assert u.id in emitted and ('GameObject:' + u.id).encode() in spec.extra_own
             unit = ET.fromstring(files[u.id + '.xml'])
             obj = unit.find('a:GameObject', ns)
+            if u.id == 'CNV_SuppFastMan':
+                assert lane == 'fast' and simunits.stats(u.id, {u.id: u.xml})['speed'] == 80
+                continue
             weapon = unit.find('a:WeaponTemplate', ns)
             assert obj.attrib['id'] == u.id
             assert obj.find('.//a:Weapon', ns).attrib['Template'] == weapon.attrib['id']
             assert ('WeaponTemplate:' + weapon.attrib['id']).encode() in spec.extra_own
             nuggets = weapon.findall('a:Nuggets', ns)
             assert len(nuggets) == 1 and len(nuggets[0].findall('a:DamageNugget', ns)) == 1
+            damage = nuggets[0].find('a:DamageNugget', ns)
+            assert damage.attrib['DamageType'] == ('EXPLOSIVE' if lane == 'armored' and u.id.endswith('Armor')
+                                                    else 'UNRESISTABLE')
             pressure = nuggets[0].findall('a:SuppressionNugget', ns)
             assert len(pressure) == (0 if u.id.endswith('Armor') else 1)
             k = next(k for k in ('base', 'high', 'order', 'removed', 'low') if u.id.startswith('CNV_Supp' + k.title()))
             if pressure:
-                value, duration = (2, 3) if k in ('base', 'high') else (10, 1)
+                _, value, duration = engine_suppression.cases_for(lane)[k]
                 assert pressure[0].attrib == dict(Radius='20', Suppression=str(value), DurationSeconds=f'{duration}s')
         # Main guns belong on the actual named pads, not 350 south of them.
         for k in ('base', 'high', 'order', 'removed', 'low'):
@@ -268,7 +278,8 @@ def test_suppression_predictions():
         # Match clip's hold/release/order/flag sequence and its absolute order time.
         start = next(script for script in t.scripts if script.name == 'Test - start')
         timers = {a[1]: a[2] for a in start.do if a[0] == 'SET_MILLISECOND_TIMER'}
-        assert timers == {'Supp Fire': engine_clip.ORDER, 'Supp Move': 10.0 if lane == 'duration' else 9.0,
+        fire_at = engine_clip.ORDER + {'phasea': 1 / 3, 'phaseb': 2 / 3}.get(lane, 0)
+        assert {k: v for k, v in timers.items() if not k.startswith('Supp Stop ')} == {'Supp Fire': fire_at, 'Supp Move': 12.0 if lane == 'tail' else 10.0 if lane == 'duration' else 9.0,
                           'Supp Late': 17.0, 'Supp Armor': 11.0}
         fire = next(script for script in t.scripts if script.name == 'Test - fire')
         assert fire.when == [('TIMER_EXPIRED', 'Supp Fire')]
@@ -278,8 +289,29 @@ def test_suppression_predictions():
             assert attack[0] == 'NAMED_ATTACK_NAMED'
             assert ('UNIT_CHANGE_OBJECT_STATUS', attack[1], 'NO_ATTACK', 1) in start.do
             assert ('UNIT_CHANGE_OBJECT_STATUS', attack[2], 'NO_ATTACK', 1) in start.do
+            gun_lane, part = attack[1].split()[-2:]
+            uid = 'CNV_Supp' + gun_lane.title() + ('Second' if part == 'second' else '')
+            unit = next(u for u in m.units if u.id == uid)
+            hits = unit.params['clip']
+            assert unit.params['reload'] == 1.0 < engine_clip.ORDER
+            stop_at = timers['Supp Stop ' + gun_lane + part]
+            assert stop_at == fire_at + (2 * hits + 2) / 15
+            assert fire_at + 2 * hits / 15 < stop_at < fire_at + (2 * hits + 15) / 15
+            assert any(script.do == [('UNIT_CHANGE_OBJECT_STATUS', attack[1], 'NO_ATTACK', 1)]
+                       and script.when == [('TIMER_EXPIRED', 'Supp Stop ' + gun_lane + part)]
+                       for script in t.scripts)
+        if lane in ('armor', 'armored'):
+            assert timers['Supp Stop armor order'] == timers['Supp Stop armor high'] == 11.0 + 4 / 15
+        else:
+            # Health evidence shares the goal line only before movement starts.
+            for script in t.scripts:
+                if script.name.startswith('Test - burst health '):
+                    assert not script.once and script.when[0][0] == 'FLAG'
+                    counter = script.do[0][2]
+                    assert any(('SET_COUNTER', counter, 0) in move.do and
+                               ('SET_FLAG', script.when[0][1], 1) in move.do for move in t.scripts)
         # The previous never-ending frame counters / zero armor readings must fail.
-        bad = [0] * len(readings) if lane == 'armor' else [287] * len(readings)
+        bad = [0] * len(readings) if lane in ('armor', 'armored') else [287] * len(readings)
         assert not any(ok for ok, _ in build.judge(t, [(22, bad)]))
         s = sim.Sim(m, t)
         s.shot_clock = True                  # finite probe bursts, never change the shared default
@@ -290,20 +322,27 @@ def test_suppression_predictions():
         assert simunits.suppression('AlliedCommandoTech1') is None
         s.run(9)
         assert s.enemy(m.player('p1'), m.player('s1')) and s.enemy(m.player('s1'), m.player('p1'))
-        if lane != 'immune':
-            assert ordinary.speed == 37.5 and ordinary.taken == .75
         assert 'SUPPRESSED' not in ordinary.status   # model condition is not an object status
         s.run(engine_suppression.RUN)
-        assert s.series[-1][1] == readings, (lane, s.series[-1])
+        # Exact model/bench matches only where expiry and fractional entry do
+        # not intervene. The other expectations record the ENGINE, not Sim.
+        if lane in ('armor', 'armored', 'immune', 'fast'):
+            assert s.series[-1][1] == readings, (lane, s.series[-1][1], readings)
         assert ordinary.alive and ordinary.speed == 50 and ordinary.taken == 1
         assert not ordinary.suppression_hits
-        if lane != 'immune':
-            assert ordinary.suppressed_until == 181
-        if lane == 'threshold':
-            assert s.body('UNIT - CNV Supp base man').suppressed_until == -1
-            assert s.body('UNIT - CNV Supp high man').suppressed_until == 211
         if lane == 'immune':
             immune = s.body('UNIT - CNV Supp low man')
             assert immune.suppressed_until == -1 and immune.speed == 55
-        assert s.body('UNIT - CNV Supp order man').suppressed_until == -1
         assert s.eng is not None
+    # Directly isolate the settled threshold and modifier from open timing.
+    m, t, _ = build.resolve('engine_suppression', 'threshold')
+    s = sim.Sim(m, t)
+    b = s.body('UNIT - CNV Supp high man')
+    for points, suppressed in ((48, False), (50, True)):
+        b.suppression_hits = [(1000, points)]
+        b.suppression_next = 0
+        b.suppressed_until = -1
+        s.suppression_tick()
+        assert (b.suppressed_until > s.frame_now()) is suppressed
+        assert b.speed == (37.5 if suppressed else 50)
+        assert b.taken == (.75 if suppressed else 1)

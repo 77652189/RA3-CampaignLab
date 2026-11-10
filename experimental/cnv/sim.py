@@ -1725,11 +1725,13 @@ class Sim:
             st = st | {'IMMOBILE', 'NO_ATTACK'}
         b.armor = self.cold_of(b)[1] if step and step[3] and self.cold_of(b)[1] else b.base['armor']
         b.status = st
+        # Suppression SPEED75%:50->37.5 (bench44->59); retain fractional speed.
         b.speed = b.base['speed'] * e['SPEED']
         b.vision, b.sight = b.base['vision'] * e['VISION'], b.base['sight'] * e['VISION']
         held = simunits.pick_weapons(b.slots, st) if b.slots else b.base['weapons']       # the status picks the guns
         b.weapons = held if e['RANGE'] == 1.0 else [dict(w, range=w['range'] * e['RANGE']) for w in held]
         b.shielded = e['shielded']
+        # Suppression ARMOR75%: EXPLOSIVE40 on150HP reads80%; UNRESISTABLE bypasses it.
         b.taken, b.dealt = e['ARMOR'], e['DAMAGE_MULT'] * e['RATE_OF_FIRE']
         if mods or on:
             self.used.add('modifier')
@@ -3298,11 +3300,11 @@ class Sim:
                     if 'sched' in w and (self.shot_clock or w.get('suppression')):
                         self.volleys.append((pick, w, a))
                         if not self.shot_clock:     # pressure is discrete; preserve the default damage model
-                            self.firing.append((pick, w['dps'] * simunits.percent(pick.armor, w['type']) / 100.0
-                                                * a.dealt * pick.taken, a))
+                            self.firing.append((pick, w['dps'] * a.dealt * (1.0 if w['type'] == 'UNRESISTABLE' else
+                                                simunits.percent(pick.armor, w['type']) / 100.0 * pick.taken), a))
                     else:
-                        self.firing.append((pick, w['dps'] * simunits.percent(pick.armor, w['type']) / 100.0
-                                            * a.dealt * pick.taken, a))
+                        self.firing.append((pick, w['dps'] * a.dealt * (1.0 if w['type'] == 'UNRESISTABLE' else
+                                            simunits.percent(pick.armor, w['type']) / 100.0 * pick.taken), a))
                 if w.get('sdps'):
                     self.chilling.append((pick, w['sdps'] * a.dealt, a))
                 fired = True
@@ -3426,7 +3428,10 @@ class Sim:
                                 target.suppression_hits.append((self.frame_now() + simunits._frames(seconds), n * value))
                     h = hurt.setdefault(id(t), [t, 0.0, by])
                     if self.shot_clock:
-                        h[1] += n * w['dmg'] * simunits.percent(t.armor, w['type']) / 100.0 * by.dealt * t.taken
+                        # Native damage scaling 0x785370 returns before armor for
+                        # UNRESISTABLE; suppression armor/armored benches separate it.
+                        armor = 1.0 if w['type'] == 'UNRESISTABLE' else simunits.percent(t.armor, w['type']) / 100.0 * t.taken
+                        h[1] += n * w['dmg'] * by.dealt * armor
                     h[2] = by
         for t, dmg, by in hurt.values():
             if self.frame_now() < t.immune_until or t.shielded or t.indestructible:
@@ -3440,9 +3445,10 @@ class Sim:
         self.chill(dt)
 
     def suppression_tick(self):
-        """RA3-only prediction: sample at UpdateDelay, strict > Suppressability.
+        """Suppressability is inclusive: bench24x2=48 normal,25x2=50 suppressed.
 
-        Expire each hit at DurationSeconds; no field specifies a linear decay.
+        UNCONFIRMED timing: per-hit DurationSeconds expiry and UpdateDelay phase.
+        Short1s contributions / late recovery56 are not explained by this model.
         INFERRED: each above-threshold sample refreshes SuppressionDuration.
         SUPPRESSED is a model condition; do not invent a script object status.
         """
@@ -3455,7 +3461,7 @@ class Sim:
             before = now - 1 < b.suppressed_until
             if now >= b.suppression_next:
                 b.suppression_next = now + rule['every']
-                if sum(v for _, v in b.suppression_hits) > rule['threshold']:
+                if sum(v for _, v in b.suppression_hits) >= rule['threshold']:
                     b.suppressed_until = now + rule['duration']
             if before or now < b.suppressed_until:
                 self.modify(b)

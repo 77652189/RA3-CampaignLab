@@ -125,6 +125,10 @@ BENCHED_TESTS = {
 # (part, name) -> (state, why): where the name rule above is wrong (a module read under another name ...)
 _NOT_IN_SIM = '已核（11-08）：模拟器没有这个效果'
 NOTES = {
+    # Suppression is only partly explained. Override name-based bench promotion;
+    # BENCHED_TESTS cannot register only threshold / SPEED / ARMOR fields.
+    (MODULE, 'Behaviors/SuppressionUpdate'): (GUESSED, '部分：阈值>=50、SPEED/ARMOR 75%已实测；短贡献寿命与晚恢复56帧未解释，不登记整项已对拍'),
+    (NUGGET, 'SuppressionNugget'): (GUESSED, '部分：长3s贡献48/50阈值已实测；1s贡献与恢复时序未解释，不登记整项已对拍'),
     (MODULE, 'Body/ActiveBody'): (GUESSED, 'simunits.stats 读 MaxHealth（只有生命值；受伤状态、回血等另算）'),
     (MODULE, 'AI/AIUpdate'): (GUESSED, 'Sim.fight / 移动（单位 AI 的状态机细项按引擎 B 的 AI 清单推进）'),
     # the 26 the bench measured but the name rule called 未做 (checked 11-08 against sim.py / simunits.py)
