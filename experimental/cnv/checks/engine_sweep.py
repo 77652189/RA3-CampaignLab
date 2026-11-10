@@ -103,8 +103,11 @@ def mission(ext=True):
     return m
 
 
-def sweep_test(m, lane='base'):
-    """Check a: the base lane; b: the high lane (four counter lines at most). The other lane stays NO_ATTACK."""
+def sweep_test(m, lane='base', stop=None):
+    """Check a: the base lane; b: the same, the shooter told NAMED_STOP `stop` s after the order (the near row is hit
+    at ~9 frames, mid / far at ~18 / 26): does the damage line stop with the fire (mid / far never hit), and with
+    ra3ext does the beam go out with it (ra3ext.log 'sweep ... end' line). Four counter lines at most; the other lane
+    stays NO_ATTACK."""
     t = Test()
     held = [_n(x, p) for x in LANES for p in ['Shooter', 'Aim'] + [f'Row{k}' for k in range(len(ROW))]]
     t.scripts.append(Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]
@@ -113,7 +116,11 @@ def sweep_test(m, lane='base'):
     shooter = _n(lane, 'Shooter')
     t.scripts.append(Script('Test - order', [('TIMER_EXPIRED', 'Test Order')],
                             [('UNIT_CHANGE_OBJECT_STATUS', shooter, 'NO_ATTACK', 0),
-                             ('NAMED_ATTACK_NAMED', shooter, _n(lane, 'Aim')), ('SET_FLAG', 'Test Ordered', 1)]))
+                             ('NAMED_ATTACK_NAMED', shooter, _n(lane, 'Aim')), ('SET_FLAG', 'Test Ordered', 1)]
+                            + ([('SET_MILLISECOND_TIMER', 'Test Stop', stop)] if stop else [])))
+    if stop:
+        t.scripts.append(Script('Test - stop', [('TIMER_EXPIRED', 'Test Stop')],
+                                [('UNIT_CHANGE_OBJECT_STATUS', shooter, 'NO_ATTACK', 1), ('NAMED_STOP', shooter)]))
     for k, label in list(enumerate(LABELS)) + [(len(LABELS), AIM_LABEL)]:
         c, tg = f'CNV_Sweep_{k}', _n(lane, f'Row{k}' if k < len(LABELS) else 'Aim')
         t.counters.append((c, label))
@@ -121,12 +128,13 @@ def sweep_test(m, lane='base'):
                                 [('INCREMENT_COUNTER', 1, c)], once=False))
     # check a: every row Hammer is hit before the end (a counter that never stops reads ~15 a second); b only reads
     never = (RUN - ORDER - 2.0) * 15
-    t.expect = ([(label, RUN - 1, '<', never) for label in LABELS + (AIM_LABEL,)] if lane == 'base'
-                else [(LABELS[0], 0, '>=', 0)])
+    t.expect = ([(label, RUN - 1, '<', never) for label in LABELS + (AIM_LABEL,)] if not stop
+                else [(x, RUN - 1, '<', never) for x in (LABELS[0], AIM_LABEL)])
     t.bench = [('bench_watch', dict(seconds=RUN, every=1, sheet=False, lines=len(t.counters)))]
     return t
 
 
-_CHECKS = {'a': sweep_test, 'b': lambda m: sweep_test(m, 'high')}
+STOP = 0.9
+_CHECKS = {'a': sweep_test, 'b': lambda m: sweep_test(m, stop=STOP)}
 MISSION = {'engine_sweep': mission, 'engine_sweepoff': lambda: mission(False)}
 CHECKS = {'engine_sweep': _CHECKS, 'engine_sweepoff': _CHECKS}
