@@ -136,6 +136,21 @@ def test_skirmish_ai_cleanup_takes_the_defense_team(skirmish):
     assert first and len(first[3]) >= 8, first
 
 
+def test_skirmish_ai_cleanup_full_the_next_units_go_to_its_other_slot(skirmish):
+    """Bench o (checks/engine_aiskirm.py, B handoff 105): Cleanup _0_0 holds 14 (MaxUnits) from s157; the AI's army
+    grows 14 -> 21 by s189 with the defense team at 0 and the pool at 0-1, so the new units are in a team no name
+    reads: BalancedCleanup is MaxTargets 3, and every slot's team has the same name '_0_0' (0x8d8e30 names by state,
+    tactic and TeamTemplate index, not by slot; round 102's "no _0_1" read a name that does not exist). The model:
+    Cleanup's second slot team (key (..., 0, n > 0)) goes with its first unit after the first team is full; bench
+    first hidden unit ~s162 (wake ~s8: ~154 s after it)."""
+    (b,) = skirmish.brains.values()
+    first = _first_attack(b)
+    other = next((e for e in b.ai.teams.log if e[1] == 'go' and e[2][0] == 'BalancedCleanup' and len(e[2]) > 3), None)
+    assert first and first[2][0] == 'BalancedCleanup' and other, (first, other)
+    assert first[0] < other[0] <= b.started + 160 * simai.FPS, ((first[0] - b.started) / simai.FPS,
+                                                                (other[0] - b.started) / simai.FPS)
+
+
 def test_skirmish_ai_builds_again_as_soon_as_the_opening_is_done(skirmish):
     """Bench c: the 4th Peacekeeper out 125 s after the wake, i.e. the barracks restarts the moment the opening's
     budget ends (~120 s), and then hardly stops (9 infantry + engineer by 177 s). It spends its budget share of the

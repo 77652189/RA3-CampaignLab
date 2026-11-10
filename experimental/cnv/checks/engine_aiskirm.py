@@ -152,8 +152,20 @@ RESULTS g / h (bench 2026-11-10, aiskirm g / h and aiskirmnl g, all PASS (weak);
      to s203. Bench 2026-11-10, aiskirm n PASS (weak; the first try hung at bench_stop, log b102_n.log; this is
      b102_n2.log): 防御型 8 at s126, 0 from s130; 清扫 8 s130, 10 s137, 14 s158 and stays; 防御型 1 at s165 only;
      **清扫二 and 防御二 99 the whole run** -- no second copy of either team is ever made.
-  Reading: once Cleanup _0_0 is full nothing opens a Cleanup _0_1; the model (b100_keep.log) opens it and fills it
-    (1 at ~s160, 7 by s185). Mismatch, not yet in a test.
+  Reading (corrected round 103, B handoff 105): the second index is not a slot copy. 0x8d8e30 builds the AI's team
+    name table once: for each state, each tactic (index a), each of that tactic's TeamTemplates (index b, count at
+    tactic +0x38) one name '<state>_<tactic type>_<a>_<b>' (no TeamTemplate: '_default'). BalancedCleanup and
+    LandDefense have one TeamTemplate each, so their '_0_1' names do not exist (99 always): n says nothing about a
+    second slot, whose team would share the name '_0_0' (MaxTargets 3: the model's (..., 0, 1) / (..., 0, 2)).
+    A name answers for one of the same-named teams only; o counts around the names instead.
+
+  o  兵数 (the AI's Peacekeepers + Javelins + Riptides, no dogs) / 清扫 (Cleanup _0_0) / 防御型 / 池兵 to s203:
+     兵数 - 清扫 - 防御型 - 池兵 = units in teams no name reads (another Cleanup slot; a dog in Cleanup is noise).
+     The model (b100_keep.log): Cleanup's second slot team holds 1 at ~s157 (148.5 s after the wake), 7 by ~s183.
+     Bench 2026-11-10, aiskirm o PASS (weak): 清扫 8 s128, 14 from s157 and stays; 兵数 one behind 清扫 to s160 (a
+     dog in Cleanup), then 14 s161 -> 15 s166 -> 18 s178 -> 21 s189; 防御型 0 (1 at s162 only), 池兵 0-1.
+  Reading: after Cleanup _0_0 is full the new units go to a team no name reads -- about 1 at s162, 7 at s188 (dog
+    corrected), as the model's second Cleanup slot. Round 102's mismatch was the name, not the model.
 """
 from parts import Script, Test, counted, square
 
@@ -406,6 +418,11 @@ def _teams(m, which):
         _members(t, 'CNV_AK_Cln', '清扫', ai['cleanup'])
         _members(t, 'CNV_AK_Cln2', '清扫二', ai['cleanup 0_1'])
         _members(t, 'CNV_AK_Def2', '防御二', ai['defense type 0_1'])
+    elif which == 'o':                 # units outside every team a name reads (a second Cleanup slot shares _0_0)
+        _sum(t, m, s1, 'CNV_AK_Army', '兵数', ARMY[:3])
+        _members(t, 'CNV_AK_Cln', '清扫', ai['cleanup'])
+        _members(t, 'CNV_AK_DefT', '防御型', ai['defense type'])
+        _kind_members(t, 'CNV_AK_Pool', '池兵', pool, 'CAN_ATTACK')
     else:
         _members(t, 'CNV_AK_PoolAll', '池全', pool, most=40)
         _members(t, 'CNV_AK_Map', '地图队', f'{s1}/team{s1}')
@@ -413,7 +430,7 @@ def _teams(m, which):
         _members(t, 'CNV_AK_AtkI', '进攻名', ai['attack id'])
     w = m.facts['wake at']
     t.expect += [(t.counters[0][1], w + 20.0, '>=', 0, w + 21.0)]      # weak: the readings exist
-    t.bench = [('bench_watch', dict(seconds=w + (175.0 if which == 'n' else 160.0), every=1, sheet=False,
+    t.bench = [('bench_watch', dict(seconds=w + (175.0 if which in ('n', 'o') else 160.0), every=1, sheet=False,
                                     lines=len(t.counters)))]
     return t
 
@@ -459,8 +476,14 @@ def n(m):
     return _teams(m, 'n')
 
 
+def o(m):
+    """Army owned (no dogs) / BalancedCleanup _0_0 / LandDefense _0_0 / pool CAN_ATTACK to s185: the difference is
+    held by teams no name reads -- do Cleanup's other slots (same name _0_0) take the units after the 14th?"""
+    return _teams(m, 'o')
+
+
 CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j': j, 'k': k, 'l': l, 'm': m,
-                      'n': n},
+                      'n': n, 'o': o},
           'aiskirmnl': {'g': g, 'h': h},
           'aiskjav': {'e': e},
           'aiskirmlow': {'d': d, 'f': f}}
