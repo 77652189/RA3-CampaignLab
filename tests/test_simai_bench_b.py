@@ -318,3 +318,42 @@ def test_one_far_structure_goes_to_the_tank_team_alone(lib):
     """checks/engine_aistate.py aistatefar."""
     _, rows = _probe_run('aistatefar', lib, 30.0)
     assert rows[-1]['坦克在家'] == 0 and rows[-1]['步兵在家'] == 4
+
+
+# ---- checks/engine_aiteamfilter.py a, aiar0-3 (bench 2026-11-09, B round 90): AlwaysRecruit -- does a team that has
+# gone out take the tanks the AI builds after it (readings in missions/aiteamfilter_bench.py under aiar3)
+def test_without_always_recruit_the_late_tanks_stay_home(lib):
+    """checks/engine_aiteamfilter.py aiar0 (AlwaysRecruit false): the two built after the team left stay home (bench
+    built s20 / s30, 坦克在家 2 of 6 owned; the simulator builds them s23 / s34)."""
+    _, rows = _probe_run('aiar0', lib, 62.0)
+    assert rows[-1]['坦克在家'] == 2 and rows[-1]['坦克拥有'] == 6
+
+
+def test_always_recruit_the_gone_team_takes_the_late_tanks(lib):
+    """checks/engine_aiteamfilter.py aiar1 (AlwaysRecruit true): each late tank is home a while, then taken by the team
+    out there (bench built s19 -> taken s29, s30 -> taken s56; the simulator s23 -> s30, s34 -> s60)."""
+    _, rows = _probe_run('aiar1', lib, 62.0)
+    assert max(r['坦克在家'] for r in rows[19:35]) == 1
+    assert rows[-1]['坦克在家'] == 0 and rows[-1]['坦克拥有'] == 6
+
+
+def test_always_recruit_a_full_team_takes_no_more(lib):
+    """checks/engine_aiteamfilter.py aiar2 (AlwaysRecruit true, MaxUnits 4 already full): both late tanks stay home."""
+    _, rows = _probe_run('aiar2', lib, 62.0)
+    assert rows[-1]['坦克在家'] == 2 and rows[-1]['坦克拥有'] == 6
+
+
+def test_without_always_recruit_the_first_built_forms_a_team_the_second_stays(lib):
+    """checks/engine_aiteamfilter.py aiar3 (none placed, AlwaysRecruit false): the first one forms the team and goes
+    (bench built s21, out s30; the simulator s23 / s29), the second (bench s32) stays home."""
+    _, rows = _probe_run('aiar3', lib, 62.0)
+    assert max(r['坦克在家'] for r in rows[19:29]) == 1
+    assert rows[-1]['坦克在家'] == 1 and rows[-1]['坦克拥有'] == 2
+
+
+@pytest.mark.xfail(strict=True, reason='simai aiar0 builds a third Guardian s67 and a fourth s78 (owned 8 at s80); '
+                                       'bench aiar0-3 own 6 to the end (late=2: the opener builds two, nothing more)')
+def test_the_ai_builds_only_the_openers_two(lib):
+    """checks/engine_aiteamfilter.py aiar0."""
+    _, rows = _probe_run('aiar0', lib, 80.0)
+    assert rows[-1]['坦克拥有'] == 6

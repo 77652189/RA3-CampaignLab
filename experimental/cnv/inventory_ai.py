@@ -119,7 +119,11 @@ NOTES = {
                                                         '没人进炮塔，只对上总开关关着的情形（strict xfail）'),
     '人格/AIPersonalityDefinition.BaseCompactness': (GUESSED, '台上量过（engine_aitower：0.5 / 0.75 / 1.0 塔落在不同圈）；'
                                                      '模拟器只对上 0.5，0.75 / 1.0 和 0.5 一样（strict xfail）'),
-    '组队招人/TeamTemplate.AlwaysRecruit': (GUESSED,'台上证实（aiar0～3，第 90 轮）：SimpleAttack 队出门后开着才继续招新造的兵、MaxUnits 满了不招；模型的门仍默认关（防御队吸兵和台上对不上，handoff-b 第 50、51 节），差在哪没找到'),
+    # B round 109: the gate is on in the model since round 100 (keep_on); aiar0-3 replayed on the simulator
+    '组队招人/TeamTemplate.AlwaysRecruit': (BENCHED, '台上量过（engine_aiteamfilter aiar0～3，第 90 轮）、测试对拍 '
+                                         'tests/test_simai_bench_b.py：关着新造的车留家、开着出门的队把它招走、'
+                                         '满员不招、不预放时第一辆自己组队（模拟器每次晚 3～4 s）；模拟器多造'
+                                         '第 3、4 辆是造兵的缺口（strict xfail），不是这个开关'),
 }
 
 
