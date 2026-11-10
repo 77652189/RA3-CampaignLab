@@ -2,15 +2,15 @@
 
 由 `experimental/cnv/inventory_ai.py levels` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）里由遭遇战 AI 带的敌人：它的人格（`enemy_ai.py` 生成）沿继承、战略状态、战术、组队、目标启发、微操、造兵 / 预算状态、开局一路引用到的原版 AI 数据项，加上全局常量 AIData 和本阵营的 ArmyDefinition；再加关卡脚本里点了 AI 玩家名字的脚本动作 / 条件。状态取自 [inventory.md](inventory.md)。"AI 做完"的第一条：下表全部已对拍。
 
-**已对拍 95 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
+**已对拍 97 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
 
 | 部分 | 已对拍 | 推断 | 未做 |
 |---|---|---|---|
-| AI | 83 | 129 | 145 |
+| AI | 85 | 127 | 145 |
 | 脚本动作 | 11 | 0 | 0 |
 | 脚本条件 | 1 | 0 | 0 |
 
-按原版用量加权：已对拍 73%，已有（已对拍+推断）91%。
+按原版用量加权：已对拍 74%，已有（已对拍+推断）91%。
 
 | 状态 | 部分 | 项 | 原版用量 | 关 | 说明 |
 |---|---|---|---|---|---|
@@ -161,7 +161,6 @@
 | 未做 | AI | `组队招人/TeamTemplate.BaseDefenseMaxDistance` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 推断 | AI | `组队招人/TeamTemplate.AlwaysRecruit` | 182 | a4 a5 a7 | 读了，出发后继续招人的门默认关（防御队吸兵和台上对不上，handoff-b 第 50、51 节） |
 | 推断 | AI | `组队招人/TeamTemplate.MicroManager` | 182 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `战术/Tactic.EndBehavior=DISBAND` | 105 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/UnitModifier.DefensiveModifier` | 92 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/UnitModifier.OffensiveModifier` | 92 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/UnitModifier.Unit` | 92 | a4 a5 a7 | AI 模型代码里读了这个名字 |
@@ -189,7 +188,6 @@
 | 推断 | AI | `启发条件/PathToTargetHeuristic.LocomotorConditionToUseForTest` | 45 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `战术/Tactic.Distance` | 41 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `战术/Tactic.UseAestheticsManager` | 40 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `目标/AITargetingHeuristic.Relationship` | 40 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `微操/AIMicroManagerData.RetreatMinDistanceToFallback` | 38 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `启发条件/IsBuildingHeuristic` | 30 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `启发条件/IsBuildingHeuristic.KindOf` | 30 | a4 a5 a7 | AI 模型代码里读了这个名字 |
@@ -314,6 +312,7 @@
 | 已对拍 | AI | `启发条件/ConstantHeuristic` | 119 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aipoweradv.py |
 | 已对拍 | AI | `人格/PowerChoice.PlayerPower` | 117 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：docs/engine/aiopen.md |
 | 已对拍 | AI | `人格/PowerChoice.Weight` | 117 | a4 a5 a7 | docs/engine/aiopen.md#买协议（aipwrb 权重 0 的不买） |
+| 已对拍 | AI | `战术/Tactic.EndBehavior=DISBAND` | 105 | a4 a5 a7 | docs/engine/aitactics.md#目标没了以后（EndBehavior，2026-11-09 各一次）（aiendd：目标没了队伍解散、状态重派去兵营，和模型对上） |
 | 已对拍 | AI | `目标/AITargetingHeuristic.ForbiddenKindOf` | 102 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aitargetpick.py |
 | 已对拍 | AI | `微操/AIMicroManagerData.RetreatPowerAdvantage` | 94 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_airetreat.py |
 | 已对拍 | AI | `微操/AIMicroManagerData.EnterGarrisons` | 84 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aigarrison.py |
@@ -340,6 +339,7 @@
 | 已对拍 | AI | `目标/AITargetingHeuristic.HeuristicType=EnemyUnit` | 44 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aitargetpick.py |
 | 已对拍 | AI | `战术/Tactic.Tactic=DefenseAvoidanceAttack` | 43 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aitarget.py |
 | 已对拍 | AI | `微操/AIMicroManagerData.RetreatMinDistanceFromBase` | 40 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：docs/engine/aiteamstate.md |
+| 已对拍 | AI | `目标/AITargetingHeuristic.Relationship` | 40 | a4 a5 a7 | docs/engine/ainamed.md#给关卡线的结论（ainmrel：写了 Relationship 就按关系过滤，玩家的楼当 NEUTRAL 不算，不出门） |
 | 已对拍 | AI | `目标/AITargetingHeuristic.SortType=Distance` | 37 | a4 a5 a7 | docs/engine/aitactics.md#目标挑哪个（aitpnear 挑最近、aitpmt2 第二槽挑次近、aitpvk 显式写 Distance） |
 | 已对拍 | AI | `战术/Tactic.Tactic=StaticDefense` | 28 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aidefense.py |
 | 已对拍 | AI | `微操/AIMicroManagerData.UpdateTime` | 26 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aidefense.py |
