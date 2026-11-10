@@ -166,6 +166,29 @@ RESULTS g / h (bench 2026-11-10, aiskirm g / h and aiskirmnl g, all PASS (weak);
      dog in Cleanup), then 14 s161 -> 15 s166 -> 18 s178 -> 21 s189; 防御型 0 (1 at s162 only), 池兵 0-1.
   Reading: after Cleanup _0_0 is full the new units go to a team no name reads -- about 1 at s162, 7 at s188 (dog
     corrected), as the model's second Cleanup slot. Round 102's mismatch was the name, not the model.
+
+  p  我方建筑 / 清扫 (Cleanup _0_0) / 防御型 (LandDefense _0_0) / 兵数 (no dogs) to s249. Bench 2026-11-10, aiskirm p
+     PASS (weak; log work/logs/b104_p.log): 清扫 8 s129, 14 from s159; 兵数 26 by s230; player buildings 3 to s205,
+     2 s206, 1 s222, **0 s224**; 防御型 2 at s224 (the dogs' team ended), **s226: 清扫 99, 防御型 14** and so to s249.
+  Reading: the player's last building gone, the Cleanup teams end within ~2 s and their units go to the defense
+    team (to its MaxUnits 14); no Cleanup team holds anyone again for 23 s (a new one would answer to _0_0). The
+    model ends them the same way (B handoff 106), but its third Cleanup copy, still gathering, takes the 14 back
+    from defense at once -- not modelled yet (dropping gathering teams whose slot lost its target also killed
+    the defense teams: tried and reverted).
+
+  q  进攻型 (BalancedAttackGround _0_0) / 进攻次 (times it appeared, 99 -> a count, latched per frame) / 压倒
+     (BalancedAttackOverwhelm _0_0) / 压倒次, to s174. aiskirm (Base personality: SecondsTillTargetsExpire 5) and
+     aiskexp (CampAISkExp: a personality = 1AlliedBalanced with SecondsTillTargetsExpire 12). Bench 2026-11-10, both
+     PASS (weak; bench s):
+     aiskirm: from s9 (the wake) one of the two answers (0 members) for exactly 5 s, then the other: BAG s9-13,
+       Overwhelm s14-18, BAG s19-23 ... to s174 -- 17 BAG + 18 Overwhelm instances, each 5 s, never both, never a
+       member (LandDefense holds every unit).
+     aiskexp: the same with 12 s blocks: Overwhelm s9-20, BAG s21-32, Overwhelm s33-44, **Overwhelm again s45-56**
+       (a new instance: the count goes 2 -> 3), BAG s57-67 ... to s174.
+  Reading: a not-started instance (its team still gathering) is ended and its slot drawn again every
+    SecondsTillTargetsExpire (0x8c7020's interval half, l4_states.md 1.2), the new draw in the same second; the
+    draw is the weighted one (Overwhelm twice in a row at 12 s), not a turn-about. So BAG's gathering team is
+    replaced every 5 s in a retail skirmish (Base writes 5; the XSD default 15 is never used by the stock AIs).
 """
 from parts import Script, Test, counted, square
 
@@ -374,6 +397,16 @@ def _members(t, counter, label, team, most=POOL_MOST):
                          [('SET_COUNTER', counter, n)], once=False) for n in range(most)]
 
 
+def _appearances(t, counter, n_counter, label):
+    """How many times the team `counter` reads (_members) has appeared (99 -> a count), latched every frame."""
+    seen = n_counter + 'S'
+    t.counters.append((n_counter, label))
+    t.scripts += [Script(f'Test - {n_counter} on', [('COUNTER', counter, 0, UNKNOWN), ('COUNTER', seen, 2, 0)],
+                         [('INCREMENT_COUNTER', 1, n_counter), ('SET_COUNTER', seen, 1)], once=False),
+                  Script(f'Test - {n_counter} off', [('COUNTER', counter, 2, UNKNOWN)], [('SET_COUNTER', seen, 0)],
+                         once=False)]
+
+
 def _kind_members(t, counter, label, team, kind, most=POOL_MOST):
     """How many of `team`'s members have KindOf `kind` (TEAM_HAS_FEWER_THAN_X_UNITS_WITH_KINDOF, tried from `most`
     down: the last that holds is n = count + 1); UNKNOWN when none holds (count >= most, or no such team)."""
@@ -436,6 +469,10 @@ def _teams(m, which):
         _members(t, 'CNV_AK_Cln', '清扫', ai['cleanup'])
         _members(t, 'CNV_AK_DefT', '防御型', ai['defense type'])
         _kind_members(t, 'CNV_AK_Pool', '池兵', pool, 'CAN_ATTACK')
+    elif which == 'q':                 # is a gathering (not started) instance re-picked every SecondsTillTargetsExpire?
+        for key, ctr, say, nsay in (('attack type', 'AtkT', '进攻型', '进攻次'), ('overwhelm', 'Ovw', '压倒', '压倒次')):
+            _members(t, f'CNV_AK_{ctr}', say, ai[key])
+            _appearances(t, f'CNV_AK_{ctr}', f'CNV_AK_{ctr}N', nsay)
     elif which == 'p':                 # past the player's last building: do the attack teams end and hand back?
         _built(t, m)
         _members(t, 'CNV_AK_Cln', '清扫', ai['cleanup'])
@@ -500,6 +537,12 @@ def o(m):
     return _teams(m, 'o')
 
 
+def q(m):
+    """BalancedAttackGround _0_0 / its appearances / BalancedAttackOverwhelm _0_0 / its appearances to s170: is a
+    not-started instance re-picked every SecondsTillTargetsExpire (0x8c7020; Base writes 5 s; aiskexp writes 12)?"""
+    return _teams(m, 'q')
+
+
 def p(m):
     """我方建筑 / BalancedCleanup _0_0 / LandDefense _0_0 / army owned (no dogs) to ~s240: when the player's last
     building dies, do the attack teams end at once and hand their units back to the defense team (the model, ~197 s
@@ -508,7 +551,8 @@ def p(m):
 
 
 CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j': j, 'k': k, 'l': l, 'm': m,
-                      'n': n, 'o': o, 'p': p},
+                      'n': n, 'o': o, 'p': p, 'q': q},
+          'aiskexp': {'q': q},
           'aiskirmnl': {'g': g, 'h': h},
           'aiskjav': {'e': e},
           'aiskirmlow': {'d': d, 'f': f}}

@@ -455,6 +455,7 @@ class Body:
     vision: float = 0.0
     kinds: frozenset = frozenset()
     immortal: bool = False          # body module: health changes cannot take it below 1 HP
+    prop: str = None                # PropBody (simunits.prop_body): no health; 'stays' / 'dies' to a script kill
     max_hp: float = 100.0
     hp: float = 100.0
     immune_until: int = -1          # the frame an Iron Curtain's protection ends (weapons and superweapons, not scripts)
@@ -542,13 +543,15 @@ class Body:
                                                                 # target it was ordered on (stance.md a / b / d / e)
 
     def damage(self, amount):
-        """The body's health floor (Generals reference: internalChangeHealth)."""
+        """The body's health floor (Generals reference: internalChangeHealth). A PropBody takes none (engine_propbody a)."""
+        if self.prop:
+            return
         self.hp = max(1.0 if self.immortal else 0.0, self.hp - amount)
 
     @property
     def health(self):
-        """Health in percent of its maximum (what the scripts read)."""
-        return 100.0 * self.hp / self.max_hp if self.max_hp else 0.0
+        """Health in percent of its maximum (what the scripts read); a PropBody's reads 0 (engine_propbody a)."""
+        return 100.0 * self.hp / self.max_hp if self.max_hp and not self.prop else 0.0
 
     @health.setter
     def health(self, pct):
@@ -958,6 +961,7 @@ class Sim:
         self.walls = {u.id: u.params for u in self.mm.units if 'length' in u.params}   # our bars of ice, gates
         self.due = []                       # (frame, structure, owner, team, x, y, by): a builder's, to put down (R5)
         self.blasts = []                    # (frame, x, y, [(distance, damage)], owner, by): a superweapon's hits
+        self.casts = []                     # (frame, owner, power, caster, (x, y) or None): PLAYER_TRIGGERED_SPECIAL_POWER
         self.queues = {}                    # factory name -> [job]: production (order_build, produce_due)
         self.produced_to = None             # the last frame produce_due ran
         self.energies = {}                  # template -> EnergyProduction (simunits.energy; power)
@@ -993,6 +997,7 @@ class Sim:
         self.seen = {}                      # this tick: (side, id(body)) -> whether that side sees it
         self.firing = []                    # this tick's aimed fire: (target, damage per second, shooter) (fight, deal)
         self.first_death = None             # (t, body, killer): the fight's first death
+        self.death_blasts = []              # (frame, x, y, damage, type, radius, affects, owner, by): FireWeaponWhenDead
         self.events = sorted((e for e in self.script if isinstance(e[0], float)), key=lambda e: e[0])
         self.anchored = [e for e in self.script if isinstance(e[0], tuple)]       # (('@', flag, delta), verb, ...)
         self.areas = Areas(self.mm.areas)
@@ -1066,6 +1071,7 @@ class Sim:
         b.crusher, b.crushable = simunits.crush(template, self.own)
         b.lies = simunits.slow_death(template, self.own)
         b.linger = LINGER
+        b.prop = simunits.prop_body(template, self.own)
         import simtopple
         b.topple = simtopple.rules(template, self.own)
         if b.topple:
@@ -2083,9 +2089,22 @@ class Sim:
             # only direct deletion bypasses the body's internalChangeHealth.
             b.damage(b.max_hp)
             return
+        if b.prop and not delete and (b.topple or b.prop == 'stays'):
+            # engine_propbody b (bench 11-10): a killed topple prop falls where it stands (no fall time) and is gone
+            # its delay later, never dying (expire; 61 / 121 frames counted with the kill's); a PropBody with nothing
+            # to take its death stays for good
+            if b.topple and b.topple_end is None:
+                b.toppled, b.topple_end = True, self.frame_now() + b.topple['delay']
+            return
         b.alive, b.deleted, b.path, b.died_at = False, delete, [], self.t
         if not delete:
             b.hp = 0.0
+            # FireWeaponWhenDead (simunits.death_weapons; bench 11-05 engine_spawn_refill): its weapon goes off where it
+            # died; a deletion fires nothing (INFERRED, as Generals' destroyObject skips the die modules)
+            for dmg, typ, reach, after, affects in simunits.death_weapons(b.template, self.own):
+                self.used.add('death weapon')
+                self.death_blasts.append((self.frame_now() + simunits._frames(after), b.x, b.y, dmg, typ, reach,
+                                          affects, b.owner, b))
         self.note('删除' if delete else '摧毁', f'{self.label(b)}（{why}）')
         self.change()
         if self.blocks(b):
@@ -2170,6 +2189,22 @@ class Sim:
             return self.t >= self.timers[a[0]]
         if name == 'COUNTER':
             return CMP[a[1]](self.counters.get(a[0], 0), a[2])
+        if name in ('PLAYER_TRIGGERED_SPECIAL_POWER', 'PLAYER_TRIGGERED_SPECIAL_POWER_FROM_NAMED',
+                    'PLAYER_TRIGGERED_SPECIAL_POWER_IN_AREA'):
+            # (player, power[, named / area]): a cast of the player's in the frame before (bench 11-09 engine_scripts8b
+            # pfire: 施放数 1 -- seen for one frame; pdis: 2, the second cast hurt nobody). Which frame sees it is
+            # INFERRED (the next frame's scripts, so a script after the caster's sees it once too); _FROM_NAMED /
+            # _IN_AREA (the caster, the cast's point inside the area) are INFERRED, not on the bench
+            now = self.frame_now()
+            for f, owner, power, who, q in self.casts:
+                if f != now - 1 or owner != a[0] or power != str(a[1]).lower():
+                    continue
+                if name.endswith('_FROM_NAMED') and who != a[2]:
+                    continue
+                if name.endswith('_IN_AREA') and not (q and inside(self.areas[a[2]], *q)):
+                    continue
+                return True
+            return False
         if name in ('NAMED_DESTROYED', 'NAMED_NOT_DESTROYED'):
             b = self.body(a[0])
             if b is None:
@@ -2784,6 +2819,11 @@ class Sim:
                     self.send(b, p)
         elif name in ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY'):
             b = self.body(a[0])
+            if b and b.alive and name == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT':
+                # bench 11-09 engine_scripts8b pfire / pdis: every script cast (the player-level one too, a second
+                # one in the reload that hurts nobody) is seen by PLAYER_TRIGGERED_SPECIAL_POWER for one frame
+                self.casts.append((self.frame_now(), b.owner, str(a[1]).lower(), b.name,
+                                   self.point(a[2]) if len(a) > 2 else None))
             got = b and b.alive and name == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT' and \
                 simunits.assemble(b.template, a[1], self.own)
             p = self.point(a[2]) if got and got[1] else None
@@ -3006,6 +3046,7 @@ class Sim:
                 self.move(1.0 / self.fps, precise=True)
             self.build_due(eng.frame)
             self.blast_due(eng.frame)
+            self.death_blast_due(eng.frame)
             self.deposit_due(eng.frame)
             self.mine_due(eng.frame)
             self.produce_due(eng.frame)
@@ -3629,6 +3670,30 @@ class Sim:
                     if self.first_death is None:
                         self.first_death = (self.t, t, by)
                     self.destroy(t, f'被 {self.label(by)} 的超武打掉')
+
+    def death_blast_due(self, frame):
+        """A death weapon going off by `frame` (destroy, simunits.death_weapons): every living object within its
+        radius, centre to centre, whose owner stands to the dead one's as the weapon's RadiusDamageAffects takes
+        (ENEMIES / NEUTRALS / ALLIES, its own owner counted an ally), loses the damage through its armor. A death it
+        causes fires that one's weapon in turn (a chain of exploding props)."""
+        for d in [d for d in self.death_blasts if d[0] <= frame]:
+            self.death_blasts.remove(d)
+            _, x, y, dmg, typ, reach, affects, owner, by = d
+            for t in self.living():
+                if math.hypot(t.x - x, t.y - y) > reach or frame < t.immune_until or t.shielded or t.indestructible:
+                    continue
+                rel = self.relation(owner, t.owner)
+                if (rel + 'S' if rel == 'NEUTRAL' else rel) not in affects:
+                    continue
+                armor = 1.0 if typ == 'UNRESISTABLE' else simunits.percent(t.armor, typ) / 100.0 * t.taken
+                if dmg * armor <= 0:
+                    continue
+                t.damage(dmg * armor)
+                t.last_hit, t.last_by = owner, by.name
+                if t.hp <= 0 and t.alive:
+                    if self.first_death is None:
+                        self.first_death = (self.t, t, by)
+                    self.destroy(t, f'被 {self.label(by)} 的死亡武器炸掉')
 
     def crush_along(self, b, x0, y0):
         """R9: a driving crusher kills what its footprint passes over that is a lower level (docs/engine/crush.md,

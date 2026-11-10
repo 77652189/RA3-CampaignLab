@@ -191,8 +191,9 @@ def quoted(word, code):
     return re.search('[\'"]' + re.escape(word) + '[\'"]', code) is not None
 
 
-def ai_items(bench_sources):
-    """The AI items; bench_sources = inventory.bench_sources() ([(source, text)])."""
+def ai_items(bench_sources, tested):
+    """The AI items; bench_sources = inventory.bench_sources() ([(source, text)]), tested = inventory.tested_probes()
+    (the probes a test runs: only those make an item 已对拍, as inventory.bench_verdict)."""
     code = ai_code()
     src = [(s, t) for s, t in bench_sources if re.match(r'(checks/engine_ai|docs/engine/ai(?!r))', s)]
     items = []
@@ -208,9 +209,12 @@ def ai_items(bench_sources):
             state, why = TODO, 'AI 模型代码里没有这个名字'
         if state == GUESSED and word not in GENERIC and len(word) >= 5:
             rx = re.compile(r'(?<![A-Za-z0-9_])' + re.escape(word) + r'(?![A-Za-z0-9_])')
-            hit = next((s for s, t in src if rx.search(t)), None)
-            if hit:
-                state, why = BENCHED, f'{why}；台上量过：{hit}'
+            hits = [s for s, t in src if rx.search(t)]
+            run = next((s for s in hits if s in tested), None)
+            if run:
+                state, why = BENCHED, f'{why}；台上量过、测试对拍：{run}'
+            elif hits:
+                why = f'{why}；台上量过（{hits[0]}），没有测试跑这个台子'
         if name in NOTES:
             state, why = NOTES[name]
         if name in BENCHED_REG:

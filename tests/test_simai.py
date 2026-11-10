@@ -151,6 +151,23 @@ def test_skirmish_ai_cleanup_full_the_next_units_go_to_its_other_slot(skirmish):
                                                                 (other[0] - b.started) / simai.FPS)
 
 
+def test_skirmish_ai_after_the_last_building_no_cleanup_team_takes_men_back(skirmish):
+    """Bench p (checks/engine_aiskirm.py, B handoff 106-107): the player's last building down at s224, Cleanup _0_0
+    gone (99) at s226 and the defense team at 14 (MaxUnits) to s249 -- no Cleanup team takes anyone back. Read
+    (l4_states.md 1.2-3, 0x8c6d10 / 0x8c7020): a slot whose instance has not started (a gathering team) re-picks
+    once its target is gone and its instance ends; a started one keeps its target. So Cleanup's third-slot team,
+    still gathering at 0 when its building died, ends instead of recruiting the 14 the ended attack teams let go,
+    and LandDefense (started, own buildings) holds them. Rule only, no seconds (the sim's fight is ~20 s early)."""
+    (b,) = skirmish.brains.values()
+    end = next((f for f, what, d in b.tactics.log if what == 'end' and 'nobody left' in d), None)
+    assert end is not None, b.tactics.log[-10:]
+    back = [e for e in b.ai.teams.log if e[0] >= end and e[1] == 'go' and e[2][0] == 'BalancedCleanup']
+    assert not back, back
+    held = {k: len(t.members) for k, t in b.ai.teams.teams.items() if t.members}
+    assert not any(k[0] == 'BalancedCleanup' for k in held), held
+    assert sum(n for k, n in held.items() if k[0].startswith('LandDefense')) >= 14, held
+
+
 def test_skirmish_ai_builds_again_as_soon_as_the_opening_is_done(skirmish):
     """Bench c: the 4th Peacekeeper out 125 s after the wake, i.e. the barracks restarts the moment the opening's
     budget ends (~120 s), and then hardly stops (9 infantry + engineer by 177 s). It spends its budget share of the

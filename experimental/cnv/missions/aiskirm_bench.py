@@ -64,9 +64,31 @@ def ai_map(base, library=True, player='Soviet_1'):
     return mod
 
 
-def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True):
+EXPIRE_PID = 'CNVExpire'              # aiskexp: 1AlliedBalanced with SecondsTillTargetsExpire changed (Base writes 5)
+
+
+def expire_xml(secs):
+    """A personality = 1AlliedBalanced (SDK Personalities/AlliedBalanced.xml) with SecondsTillTargetsExpire=`secs`
+    (XSD default 15, BasePersonality.xml writes 5): the slot re-pick interval of l4_states.md 1.2 (0x8c7020)."""
+    return '\n'.join([
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+        '  <Tags></Tags>',
+        '  <Includes>',
+        '    <Include type="instance" source="DATA:SkirmishAI/Personalities/AlliedBalanced.xml" />',
+        '  </Includes>',
+        f'  <AIPersonalityDefinition id="{EXPIRE_PID}" PersonalityType="{EXPIRE_PID}" inheritFrom="1AlliedBalanced"'
+        f' SecondsTillTargetsExpire="{secs:g}"/>',
+        '</AssetDeclaration>', ''])
+
+
+def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None):
     m = Mission(name=name, map=ai_map(niagara, lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
+    if expire is not None:               # aiskexp (check q): the same AI with SecondsTillTargetsExpire = expire
+        m.facts['targets expire'] = expire
+        m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{EXPIRE_PID}'
+        m.assets.append((f'{EXPIRE_PID}.xml', expire_xml(expire), f'AIPersonalityDefinition:{EXPIRE_PID}'))
     s1 = m.player('s1')
     m.put('AlliedConstructionYard', 'east base', 0, 0, side='s1', name='UNIT - CNV AI Yard', role='ai yard')
     m.put('AlliedConstructionYard', 'base yard', name='UNIT - CNV AI Player Yard', role='player yard')
@@ -90,4 +112,5 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True):
 # the builds this module makes (cnv/registry.py): build name -> mission factory
 MISSION = {'aiskirm': mission, 'aiskirmlow': lambda: mission('CampAISkLow', money=15000),
            'aiskjav': lambda: mission('CampAISkJav', jav=True),
-           'aiskirmnl': lambda: mission('CampAISkNoLib', lib=False)}   # s1 without the container's Lib_Skirmish_Setup
+           'aiskirmnl': lambda: mission('CampAISkNoLib', lib=False),
+           'aiskexp': lambda: mission('CampAISkExp', expire=12.0)}     # check q: SecondsTillTargetsExpire 12, not 5   # s1 without the container's Lib_Skirmish_Setup

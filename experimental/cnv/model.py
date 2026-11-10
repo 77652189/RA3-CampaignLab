@@ -530,7 +530,7 @@ def counted(counter, label, test, template=None, status=None, area=None, kind=No
 def _enum(xsd, type_name):
     import re
     import labpaths
-    p = os.path.join(labpaths.WORK, 'downloads', 'ra3sdk_v3', 'sdk3', 'Schemas', 'xsd', 'Includes', xsd)
+    p = os.path.join(labpaths.SDK3, 'Schemas', 'xsd', 'Includes', xsd)
     x = open(p, encoding='utf-8').read()
     x = x[x.index(f'name="{type_name}"'):]
     return re.findall(r'value="([A-Z_0-9]+)"', x[:x.index('</xs:simpleType>')])

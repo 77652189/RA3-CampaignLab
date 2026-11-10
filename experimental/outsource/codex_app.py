@@ -202,7 +202,8 @@ class Session:
         exe = ct.codex()
         if not exe:
             raise RuntimeError('Codex desktop not installed (no codex.exe under %LOCALAPPDATA%\\OpenAI\\Codex\\bin)')
-        self.proc = subprocess.Popen([exe, 'app-server', '-c', 'windows.sandbox="mxc"'], stdin=subprocess.PIPE,
+        bench = ct.bench_mcp(self.cfg['dir']) if (self.cfg.get('full') or self.cfg.get('bench')) else []
+        self.proc = subprocess.Popen([exe, 'app-server', '-c', 'windows.sandbox="mxc"', *bench], stdin=subprocess.PIPE,
                                      stdout=subprocess.PIPE, stderr=open(self.paths['server'], 'ab'),
                                      cwd=self.cfg['dir'], creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         threading.Thread(target=self._read, daemon=True).start()

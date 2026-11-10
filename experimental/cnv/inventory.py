@@ -108,6 +108,12 @@ BENCHED_TESTS = {
     # immortal a / b / c, bench 11-09 (checks/engine_immortal.py): damage floor 1 %, script kill clamped, delete removes
     (MODULE, 'Body/ImmortalBody'):
         'tests/test_simbench_c.py::test_immortal_damage_stops_at_one_hp_kill_is_damage_and_delete_removes',
+    # engine_propbody a / b / c, bench 11-10: no health, a kill leaves the street segment, topples the tree / lantern
+    (MODULE, 'Body/PropBody'):
+        'tests/test_simbench_c.py::test_prop_body_no_health_a_kill_leaves_the_street_and_topples_the_tree_and_lantern_at_the_bench_frames',
+    # engine_spawn_refill, bench 11-05: a scripted kill sets off the exploding mig's death weapon, the Guardian beside it dies
+    (MODULE, 'Behaviors/FireWeaponWhenDead'):
+        'tests/test_simbench_c.py::test_fire_weapon_when_dead_a_scripted_kill_blows_the_mig_and_the_guardian_beside_it',
     # topple a / b, bench 11-09: neutral props, delayed removal without DYING; all five readings within one frame
     (MODULE, 'Behaviors/ToppleUpdate'):
         'tests/test_simbench_c.py::test_topple_the_five_props_disappear_at_the_bench_frames_without_ever_dying',
@@ -179,8 +185,6 @@ NOTES = {
                                                             '消散、按生命值分档减速、满档冻住（CryoBeamFrozenArmor '
                                                             '90000%，一碰就碎）；规则读自 SDK 数据，程序和台上都没对'),
     (NUGGET, 'SecondaryDamageNugget'): (GUESSED, 'simunits._weapons 读 Amount（不要升级的那条）→ sdps，Sim.chill'),
-    (MODULE, 'Body/PropBody'): (TODO, '弹体和特效道具的身体（9 关 22 个模板里 16 个是弹体）：模拟器没有弹体'
-                                      '（同 BezierProjectile），道具能不能挨打没读'),
     (MODULE, 'Behaviors/Physics'): (TODO, '移动物理（坠落、弹跳、被击飞、倾倒）：模拟器走路按速度直走，没有物理'),
     # engine A round 108: read in the SDK data
     (MODULE, 'Behaviors/ObjectDefectionHelper'): (NA, '没人触发：原版只在 BaseObject 挂一个空的（所以每个物体都有），'
@@ -351,17 +355,52 @@ def bench_sources():
     return out
 
 
-def benched(items):
-    """An implemented item (推断) whose name a bench source names becomes 已对拍, citing the first such source."""
-    src = bench_sources()
+TESTS = os.path.join(ROOT, 'tests')
+PROBE_NAME = re.compile(r'(?<![A-Za-z0-9_])(engine_[A-Za-z0-9_]+)')
+
+
+def tested_probes(tests=TESTS, checks=CHECKS):
+    """The bench probes a test holds the simulator to: {'checks/engine_X.py'} for each probe a test file names --
+    'engine_X', or a variant 'engine_X_<v>' that is not a probe of its own (the longest probe name it starts with).
+    Named, not only quoted as a build: tests replay a probe by its build name (_sim_resolve('engine_seal', ..)), by
+    its bench mission (simai.run('aiskirm') -- 'bench engine_aiskirm c' in the test) or by its layout rebuilt
+    (engine_mining's), and each cites the probe whose readings it asserts. A probe no test names is a reading only."""
+    stems = {f[:-3] for f in os.listdir(checks) if f.startswith('engine_') and f.endswith('.py')}
+    out = set()
+    for f in sorted(os.listdir(tests)):
+        if not f.endswith('.py'):
+            continue
+        for name in PROBE_NAME.findall(open(os.path.join(tests, f), encoding='utf-8').read()):
+            while name not in stems and '_' in name[len('engine_'):]:
+                name = name.rsplit('_', 1)[0]
+            if name in stems:
+                out.add(f'checks/{name}.py')
+    return out
+
+
+def bench_verdict(rx, src, tested):
+    """(tested, measured): the first bench source naming `rx` that a test runs (tested_probes), and the first naming it
+    at all. Only the first makes an item 已对拍 (ADR 0026: matched against the bench by a test); a reading on the bench
+    no test replays (a probe's docstring, a docs/engine line) leaves it 推断, noted 台上量过."""
+    hits = [s for s, text in src if rx.search(text)]
+    return next((s for s in hits if s in tested), None), (hits[0] if hits else None)
+
+
+def benched(items, src=None, tested=None):
+    """An implemented item (推断) whose name a bench probe a test runs names becomes 已对拍, citing that probe; one only
+    measured on the bench (no test runs that probe, or only a docs/engine line) stays 推断 with 台上量过 noted."""
+    src = bench_sources() if src is None else src
+    tested = tested_probes() if tested is None else tested
     for it in items:
         if it['state'] not in (GUESSED, TODO):
             continue
         name = it['name'].split('/')[-1].split(':')[-1] if it['part'] == MODULE else it['name'].split(':')[-1]
         rx = re.compile(r'(?<![A-Za-z0-9_])' + re.escape(name) + r'(?![A-Za-z0-9_])')
-        hit = next((s for s, text in src if rx.search(text)), None)
-        if hit and it['state'] == GUESSED:
-            it['state'], it['why'] = BENCHED, f'{it["why"]}；台上量过：{hit}'
+        run, hit = bench_verdict(rx, src, tested)
+        if run and it['state'] == GUESSED:
+            it['state'], it['why'] = BENCHED, f'{it["why"]}；台上量过、测试对拍：{run}'
+        elif hit and it['state'] == GUESSED:
+            it['why'] = f'{it["why"]}；台上量过（{hit}），没有测试跑这个台子'
         elif hit and it['part'] in (MODULE, NUGGET):       # measured, but the name rule finds no code: look (NOTES)
             it['why'] = f'{it["why"]}；**待核**：台上量过（{hit}），可能用别的名字实现了'
     return items
@@ -393,7 +432,7 @@ def collect(parts=PARTS):
     items = apply_registers(items)
     if AI in parts:                                 # engine B: its own state rules and registers (inventory_ai.py)
         import inventory_ai
-        items += inventory_ai.ai_items(bench_sources())
+        items += inventory_ai.ai_items(bench_sources(), tested_probes())
     return items
 
 
