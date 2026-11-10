@@ -166,6 +166,8 @@ class ModSpec:
     checks: tuple = ()              # more f(files) on the finished file list, after the packs'
     slot: dict = None               # the campaign shell's templates (make_campnew2.SHELL); None = the mission alone
     launcher: bool = True           # Play_<name>.bat next to the skudef (the shell has its own: launcher.py)
+    ext: bool = False               # ra3ext.allow next to the skudef (Mission.ext; ADR 0028): only then is ra3ext.dll
+                                    # injected; every other build removes the file
     bench: dict = field(default_factory=dict)           # more for the bench in the sidecar (a check on the shell: the
                                                         # slot to walk into); a release build has none
     goals: tuple = ()               # the mission's objectives where the player is sent, as published ((x, y) world
@@ -215,7 +217,7 @@ def spec_of(mission, test=None, shell=False, name=None, layers=()):
                    map_name=mm.map.__name__.split('.')[-1], map_edits=(edit,),
                    border_names=tuple(getattr(mm.map, 'BORDERS', {})), unit_files=tuple(unit_files),
                    templates=templates, extra_all=tuple(extra_all), extra_own=tuple(extra_own), strings=strings,
-                   packs=packs, goals=goal_points(mm))
+                   packs=packs, goals=goal_points(mm), ext=bool(getattr(mm, 'ext', False)))
     if shell:
         import shell as shell_layer
         spec = shell_layer.contribute(spec, shell if isinstance(shell, str) else 'zh')
@@ -439,6 +441,7 @@ def build_mod(spec, out):
         _restore(held)
     if not spec.launcher and os.path.isfile(os.path.join(out, f'Play_{name}.bat')):
         os.remove(os.path.join(out, f'Play_{name}.bat'))
+    mark_ext(out, spec.ext)
     more = dict(spec.bench)
     if spec.slot:                               # a shell build: the bench walks its chapter list (I18), not the faction menu
         more.setdefault('slot', spec.slot['slot'])
@@ -450,6 +453,15 @@ def build_mod(spec, out):
     else:
         write_sidecar(out, spec.map_name, borders, more)
     return out
+
+
+def mark_ext(out, on):
+    """ra3ext.allow in the mod folder `out` exactly when `on` (ADR 0028: the launcher and the bench inject by it)."""
+    path = os.path.join(out, 'ra3ext.allow')
+    if on:
+        open(path, 'w').close()
+    elif os.path.isfile(path):
+        os.remove(path)
 
 
 def _map_part(spec, c4, c6, c7, sdk):

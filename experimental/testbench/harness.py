@@ -44,6 +44,10 @@ FRAME_COST = 0.35           # real seconds a watched frame takes: capture, archi
 RUNS = os.path.join(ROOT, 'work', 'testbench', 'runs')
 LOCK = slots.lock_path(1)
 MODS = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods')
+# engine line D (ADR 0027/0028): a mod whose folder holds ra3ext.allow (a mission with ext=True writes it) starts
+# through this launcher, which injects ra3ext.dll; every other start is the plain Popen, as before
+EXT_LAUNCH = os.environ.get('RA3EXT_LAUNCH') or os.path.join(ROOT, 'work', 're', 'ext', 'ra3ext', 'bin',
+                                                             'ra3ext_launch.exe')
 W, H = 1280, 720
 AIR_LIFT = 170              # a hovering aircraft is drawn ~170 px above its ground point (select it there)
 CAPTION_BOX = (340, 125, 840, 185)     # the military caption (SHOW_MILITARY_CAPTION): where scripts report signals
@@ -320,6 +324,57 @@ class BenchError(RuntimeError):
     pass
 
 
+def ext_wanted(args):
+    """True when the game args carry -modConfig <skudef> and that skudef's folder holds ra3ext.allow (engine line D,
+    ADR 0028: the same rule ra3ext_launch injects by). Off for every mod that does not write the file."""
+    if '-modConfig' not in args or args.index('-modConfig') + 1 >= len(args):
+        return False
+    return os.path.isfile(os.path.join(os.path.dirname(args[args.index('-modConfig') + 1]), 'ra3ext.allow'))
+
+
+def ext_command(args, log):
+    """The launcher's command line for the game command `args`: ra3ext_launch [opts] -- <game> <args...>."""
+    return [EXT_LAUNCH, '--log', log, '--cwd', BENCH, '--verify-ms', '15000', '--'] + list(args)
+
+
+def parse_launch(text):
+    """{pid, inject, reason, dll_loaded} from the launcher's one line 'pid=<n> inject=<yes|no> reason=<...> ...'."""
+    line = next((x for x in text.splitlines() if x.startswith('pid=')), '')
+    return dict(m.groups() for m in re.finditer(r'(\w+)=(.*?)(?= \w+=|$)', line))
+
+
+class GameProcess:
+    """The bits of Popen the Session uses (pid, poll, returncode, kill, wait) for a game another program started (the
+    ra3ext launcher). A game already gone when opened polls as exited, code -1."""
+    _k32 = ctypes.WinDLL('kernel32', use_last_error=True) if os.name == 'nt' else None
+
+    def __init__(self, pid):
+        self.pid, self.returncode = pid, None
+        k = self._k32
+        k.OpenProcess.restype = wt.HANDLE
+        self._h = k.OpenProcess(0x00100000 | 0x0001 | 0x1000, False, pid)  # SYNCHRONIZE | TERMINATE | QUERY_LIMITED
+        if not self._h:
+            self.returncode = -1
+
+    def poll(self):
+        if self.returncode is None and self._k32.WaitForSingleObject(wt.HANDLE(self._h), 0) == 0:
+            code = wt.DWORD()
+            self._k32.GetExitCodeProcess(wt.HANDLE(self._h), ctypes.byref(code))
+            self.returncode = code.value
+        return self.returncode
+
+    def wait(self, timeout=None):
+        if self.returncode is None:
+            ms = 0xFFFFFFFF if timeout is None else int(timeout * 1000)
+            if self._k32.WaitForSingleObject(wt.HANDLE(self._h), ms) != 0:
+                raise subprocess.TimeoutExpired('game', timeout)
+        return self.poll()
+
+    def kill(self):
+        if self.poll() is None:
+            self._k32.TerminateProcess(wt.HANDLE(self._h), 1)
+
+
 class Session:
     """The one bench game. start() -> act / frame -> ... -> stop(). Frames go to work/testbench/runs/<mod>_mcp_<time>/
     as 0001.png ... with index.json (id, mission second, note)."""
@@ -420,7 +475,7 @@ class Session:
         if SPEED != 1:
             env['CNV_SPEED'] = '1'          # clocks hooked, the menus and videos at x1; the mission sped up in game
         for _ in range(tries):
-            self.p = subprocess.Popen(args, cwd=BENCH, env=env)
+            self.p = self._start(args, env)
             slots.note_game(self.slot, self.p.pid)
             for _ in range(60):
                 time.sleep(0.5)
@@ -435,6 +490,26 @@ class Session:
             self._say(f'slot {self.slot}: game exited at once (code {self.p.returncode}): another copy starting')
             time.sleep(3)
         raise BenchError(f'the game would not start next to the other bench games ({tries} tries)')
+
+    def _start(self, args, env):
+        """The game's process: Popen, or -- for a mod that asks for ra3ext (ext_wanted) -- the launcher's child, held
+        as a GameProcess (the launcher prints the game's pid and exits). ra3ext's log goes to the run folder."""
+        if not ext_wanted(args):
+            return subprocess.Popen(args, cwd=BENCH, env=env)
+        if not os.path.isfile(EXT_LAUNCH):
+            raise BenchError(f'the mod asks for ra3ext (ra3ext.allow) but {EXT_LAUNCH} is missing: build.bat in '
+                             'work/re/ext/ra3ext')
+        self.ext_log = os.path.join(self.run_dir, 'ra3ext.log')
+        r = subprocess.run(ext_command(args, self.ext_log), capture_output=True, text=True, errors='replace', env=env,
+                           timeout=60)
+        got = parse_launch(r.stdout)
+        self._say(f'ra3ext_launch: {r.stdout.strip()} {r.stderr.strip()}'.strip())
+        if 'pid' not in got:
+            raise BenchError(f'ra3ext_launch gave no game (rc {r.returncode}): {r.stdout.strip()} {r.stderr.strip()}')
+        if got.get('inject') != 'yes' or got.get('dll_loaded') != 'yes':
+            GameProcess(int(got['pid'])).kill()
+            raise BenchError(f'ra3ext not in the game: {r.stdout.strip()}')
+        return GameProcess(int(got['pid']))
 
     def _say(self, s):
         self.log.append(s)

@@ -273,6 +273,8 @@ class Mission(Part):
     voice: object = None                # our dubbed lines (experimental/voice/pack.Pack: include, files, events,
                                         # strings, check), compiled into the static stream the same way; a sound
                                         # named CNV_* (PLAY_SOUND_EFFECT, HAS_FINISHED_AUDIO) must be one of its events
+    ext: bool = False                   # engine line D (ADR 0027/0028): it uses a module of ra3ext.dll -- the build
+                                        # writes ra3ext.allow next to the skudef, and the bench / launcher inject the dll
 
     def find(self, name):
         return next(o for o in self.objects if o.name == name)
