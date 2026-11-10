@@ -5,6 +5,7 @@ VisionRange / ShroudClearingRange, defines resolved), cached in work\sim_units_v
 the same way from their XML; a template found nowhere gets its kind's default (DEFAULTS) and is listed as guessed.
 """
 import json
+import math
 import os
 import re
 import sys
@@ -168,7 +169,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v8.json')     # v8: + dmg, cycle, sched (shot clock); v7: freeze (secondary damage), armour Default; v3: weapon inheritFrom (2026-11-08); v4: + los; v5: overrides, LineDamageNugget; v6: OCL, pre-attack
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v9.json')     # v9: cycle in whole frames (ceil per part); v8: + dmg, cycle, sched (shot clock); v7: freeze (secondary damage), armour Default; v3: weapon inheritFrom (2026-11-08); v4: + los; v5: overrides, LineDamageNugget; v6: OCL, pre-attack
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -329,11 +330,8 @@ def _resolve(w, weapons):
         dmg, typ = h['damage'], h['type']
     if not dmg and w.get('ocl'):
         dmg, typ = ocl_round(w['ocl'], weapons)
-    if w['shots'] <= 0:                         # an unlimited clip: no reload
-        shots, cycle = 1, max(w['fire'], w['delay'], 0.1) + _pre_per_clip(w, 1)
-    else:
-        shots = w['shots']
-        cycle = shots * max(w['fire'], w['delay'], 0.1) + w['reload'] + _pre_per_clip(w, shots)
+    shots = max(w['shots'], 1)
+    cycle = _clip_frames(w, shots) / FPS        # whole frames, each part rounded up (engine line C round 6, engine_clip)
     sd = w.get('sd', 0.0)
     return dict(range=w['range'], dps=round(dmg * shots / cycle, 2) if dmg else 0.0, type=typ, anti=w['anti'],
                 los=w['los'], sdps=round(sd * shots / cycle, 2) if sd > 0 else 0.0,
@@ -345,16 +343,42 @@ def _shot_times(w, shots):
     pre-attack delay(s) and k gaps of max(FiringDuration, DelayBetweenShots) before it; the clip's cycle (the reload
     after the last gap) is `_resolve`'s `cycle`. Engine line C round 2: the fight fires by this clock, not a
     continuous damage per second (the mean rate is the same: dmg x shots / cycle)."""
-    gap = max(w['fire'], w['delay'], 0.1)
+    gap = _frames(max(w['fire'], w['delay'], 0.1))
     kind = w.get('pretype', 'PER_SHOT')
-    pre = w.get('pre', 0.0)
-    out, t = [], 0.0
+    pre = _frames(w.get('pre', 0.0))
+    out, t = [], 0
     for k in range(shots):
         if kind == 'PER_SHOT' or (kind == 'PER_CLIP' and k == 0):
             t += pre
-        out.append(round(t, 4))
+        out.append(round(t / FPS, 4))
         t += gap
     return out
+
+
+FPS = 15.0
+
+
+def _frames(seconds):
+    """A duration in whole frames, rounded up (engine_clip, bench 2026-11-09: every part of the weapon's rhythm is
+    ceil(seconds x 15): pre-attack, firing, reload). The 1e-6 keeps 1.2 x 15 = 18.000000000000004 at 18."""
+    return int(math.ceil(seconds * FPS - 1e-6))
+
+
+def _clip_frames(w, shots):
+    """Frames of one cycle of a clip of `shots` shots: each shot = its pre-attack (PER_SHOT; once for a PER_CLIP clip
+    -- the bench's coilpc reads as the coil) + max(FiringDuration, DelayBetweenShots, 0.1), then the reload after the
+    last. engine_clip: clip3p gap 13 = 8 + 5, the clip's end 43 = 13 + 30; coil 48 = 38 + 8 + 2."""
+    gap = _frames(max(w['fire'], w['delay'], 0.1))
+    kind = w.get('pretype', 'PER_SHOT')
+    pre = _frames(w.get('pre', 0.0))
+    if w['shots'] <= 0:                         # an unlimited clip: no reload
+        return gap + (pre if kind in ('PER_SHOT', 'PER_CLIP') else 0)
+    n = shots * gap + _frames(w['reload'])
+    if kind == 'PER_SHOT':
+        n += shots * pre
+    elif kind == 'PER_CLIP':
+        n += pre
+    return n
 
 
 _ocls = None

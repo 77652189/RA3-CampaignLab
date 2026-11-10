@@ -51,7 +51,7 @@ def test_athena_round_and_cycle():
     weapons = simunits._fight_data()['weapons']
     assert simunits.ocl_round('OCL_AthenaCannon', weapons) == (620.0, 'EXPLOSIVE')
     (gun,) = simunits.fight('AlliedAntiStructureVehicle')['weapons']
-    assert abs(gun['dps'] - 620 / 5.1) < 0.1 and gun['range'] == 500.0
+    assert abs(gun['dps'] - 620 / (77 / 15)) < 0.1      # 77 frames: 30 + 30 + 17 (round 6) and gun['range'] == 500.0
 
 
 def test_retail_conscript_fires():

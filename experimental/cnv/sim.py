@@ -3075,7 +3075,8 @@ class Sim:
         c = clocks.get(key)
         cycle = w['cycle']
         if c is None or (t0 - c[1] > dt * 1.5 and c[0] + cycle <= t0 + eps):
-            c = [t0, t0]                                # [this cycle's start, the last window with a target]
+            c = [t0 + 2 / 15, t0]                       # [this cycle's start, the last window with a target]; the first
+            #                                             shot of a fresh start comes 2 frames late (engine_clip)
         else:
             c[1] = t0
             while c[0] + cycle <= t0 + eps:             # chained: the next cycle starts where this one ends

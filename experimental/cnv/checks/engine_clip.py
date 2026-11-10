@@ -52,11 +52,11 @@ def _uid(k):
     return 'CNV_Clip' + k.title()
 
 
-def clip_v4(k):
+def clip_v4(k, hit=HIT, spec=None, uid=None):
     """Retail's V4 under CNV_Clip<K>, its rocket weapon swapped for a one-DamageNugget instant copy with the
     variant's timers (ADR 0016 G5: the probe builds it)."""
-    pre, firing, reload, clip, reacq, _, _, label = VARIANTS[k]
-    id = _uid(k)
+    pre, firing, reload, clip, reacq, _, _, label = spec or VARIANTS[k]
+    id = uid or _uid(k)
     wid = id + 'Weapon'
     x = open(os.path.join(SAGE, 'Soviet', 'Units', V4 + '.xml'), encoding='utf-8').read()
     x = _sub1(x, f'id="{V4}"', f'id="{id}"')
@@ -69,7 +69,7 @@ def clip_v4(k):
     s = _sub1(s, 'WeaponSpeed="200"', 'WeaponSpeed="999999"')
     s = _sub1(s, 'ClipSize="1"', f'ClipSize="{clip}"')
     s = _sub1(s, 'ReAcquireDetailType="PRE_FIRE"', f'ReAcquireDetailType="{reacq}"')
-    s, n = re.subn(r'<Nuggets>.*?</Nuggets>', INSTANT, s, flags=re.S)
+    s, n = re.subn(r'<Nuggets>.*?</Nuggets>', INSTANT.replace('Damage="%g"' % HIT, 'Damage="%g"' % hit), s, flags=re.S)
     assert n == 1, n
     s, n = re.subn(r'\s*<ScatterRadiusVsType\s+Radius="0\.1">.*?</ScatterRadiusVsType>', '', s, flags=re.S)
     assert n == 1, n
@@ -80,7 +80,7 @@ def clip_v4(k):
     assert n == 1, n
     x = _sub1(x, '</AssetDeclaration>', s + '</AssetDeclaration>')
     return Unit(id, x, link=[f'WeaponTemplate:{wid}'], names=dict(unit=id, weapon=wid),
-                what=f'弹夹节奏 V4（探针）：瞬发 {HIT:g} 伤害、预瞄 {pre:g} 秒、开火持续 {firing:g} 秒、装填 {reload:g} 秒、'
+                what=f'弹夹节奏 V4（探针）：瞬发 {hit:g} 伤害、预瞄 {pre:g} 秒、开火持续 {firing:g} 秒、装填 {reload:g} 秒、'
                      f'弹夹 {clip} 发、{reacq}，其余同原版',
                 params=dict(pre=pre, firing=firing, reload=reload, clip=clip, reacq=reacq))
 
