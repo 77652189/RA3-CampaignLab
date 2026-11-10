@@ -19,7 +19,10 @@ second); b: 英雄位 / 晚位 / 去位 -- 1 while the lane's mirage tank (high 
 UNIT_HAS_OBJECT_STATUS, else 0; 兵守位 = 1 x (conscript reads _01) + 10 x (guardian reads _02) + 100 x (guardian reads
 _01, the wrong bit: should stay 0). Sampled every 0.5 s.
 
-Bench: see the docstring's end (filled in when read).
+Bench 2026-11-09 (docs/engine/weaponset.md; StatusBitsUpgrade registered): b s1-s6 = 1 0 1 11, s7-s41 = 1 1 0 11 (the grant
+sets the bit, a late grant sets it from then on, a removal clears it; the conscript reads _01, the guardian _02 and not
+_01) -- as the simulator predicted. a = 47 34 47 34 from s1 on (the mirage tank's one shot: 200 / 250 of 380 hp, then
+no more; the late grant came after the fight had stopped, so it changes nothing).
 """
 from maps import probe_range
 from parts import Mission, Script, Test, counted, status

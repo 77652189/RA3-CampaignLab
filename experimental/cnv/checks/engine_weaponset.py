@@ -17,7 +17,10 @@ On the range probe map, one lane each, an attacker of the player's at '<lane> gu
 Counters: a: 基准血 / 毒瓶血 / 中途血 (the Tsunami's health in percent of the base / high / order lane); b: 棱镜血 /
 老兵血 / 涂靶血 (removed / switch / low lane). Every second.
 
-Bench: see the docstring's end (filled in when read).
+Bench 2026-11-09 (docs/engine/weaponset.md; WeaponSetUpdate registered): a at s41 基准 / 毒瓶 / 中途 = 42 / 9 / 21 (the Molotov
+lane loses ~2.2 %/s, the AK47 ~1.4 %/s; the order lane follows the base until the toggle at 12 s); b = 47 / 34 / 100: the
+mirage tank fires ONE shot (200 / veteran 250 of 380 hp) and then no more for 40 s (unexplained), the target painter
+does no harm. The simulator now picks the gun by status (simunits.weapon_sets); its mirage lanes still fire on.
 """
 from maps import probe_range
 from parts import Mission, Script, Test, counted

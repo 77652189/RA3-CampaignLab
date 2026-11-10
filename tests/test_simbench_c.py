@@ -66,3 +66,31 @@ def test_invisibility_broadcast_fire_stops_the_moment_it_hides_and_the_order_wai
 def test_invisibility_behavior_a_house_given_garrison_can_stealth_by_script_is_shot_like_a_plain_one():
     b = _stealth_series('b')                                              # bench 隐楼血 = 明楼血 (98 at s4 .. 45)
     assert b['CNV_Stealth_HiddenHp'] == b['CNV_Stealth_PlainHp'] and b['CNV_Stealth_HiddenHp'][-1] < 80, b
+
+
+# ---- WeaponSetUpdate / StatusBitsUpgrade (simunits.weapon_sets / pick_weapons, Sim.modify; bench 2026-11-09 engine_weaponset
+# a / b, engine_statusbits b; docs/engine/weaponset.md). A weapon line's ObjectStatus / ForbiddenObjectStatus choose the gun:
+# a conscript with GENERIC_TOGGLE_STATE throws Molotovs instead of firing the AK47 (changing in mid-fight when the script
+# gives it); a Guardian under the toggle holds only the target painter (no damage); the upgrade module's HEROIC grant
+# sets WEAPON_UPGRADED_01 / _02 and a removal takes it back. Bench 基准血 / 毒瓶血 / 中途血 at s41: 42 / 9 / 21.
+def _series(build_name, check, until):
+    import build
+    import sim
+    m, t, _ = build.resolve(build_name, check)
+    return {c: [row[1][i] for row in sim.Sim(m, t).run(until).series] for i, (c, _) in enumerate(t.counters)}
+
+
+def test_weapon_set_the_status_picks_the_gun_molotov_under_the_toggle_and_the_painter_does_no_harm():
+    a = _series('engine_weaponset', 'a', 41.0)
+    base, high, order = a['CNV_Wset_BaseHp'], a['CNV_Wset_HighHp'], a['CNV_Wset_OrderHp']
+    assert abs(base[-1] - 42) <= 3 and abs(high[-1] - 9) <= 3 and abs(order[-1] - 21) <= 3, (base[-1], high[-1], order[-1])
+    assert order[8] == base[8] and order[20] < base[20], (order, base)       # the same until the toggle, faster after it
+    b = _series('engine_weaponset', 'b', 20.0)
+    assert b['CNV_Wset_LowHp'] == [100] * len(b['CNV_Wset_LowHp']), b['CNV_Wset_LowHp']      # bench 涂靶血 100 throughout
+
+
+def test_status_bits_upgrade_the_heroic_grant_sets_weapon_upgraded_and_a_removal_clears_it():
+    b = _series('engine_statusbits', 'b', 20.0)
+    assert [b[k][-1] for k in ('CNV_Sbits_HighBit', 'CNV_Sbits_OrderBit', 'CNV_Sbits_RemovedBit', 'CNV_Sbits_Other')] == \
+        [1, 1, 0, 11], b                                                      # bench s7-s41: 1 1 0 11 (s1-s6: 1 0 1 11)
+    assert (b['CNV_Sbits_OrderBit'][3], b['CNV_Sbits_RemovedBit'][3]) == (0, 1)

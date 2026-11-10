@@ -648,6 +648,51 @@ def declared_weapons(template, own=None):
     return []
 
 
+def weapon_sets(template, own=None):
+    """The weapon choice a unit makes by its ObjectStatus (engine line C round 11, engine_weaponset a / b, bench 11-09,
+    docs/engine/weaponset.md): per WeaponSlot the list of [need, forbid, weapon] of its <Weapon> lines in XML order
+    (need = ObjectStatus bits all present, forbid = ForbiddenObjectStatus bits none present, weapon = the resolved
+    template, PRIMARY_WEAPON flagged). None where no weapon line carries a status condition (the unit's weapons are
+    read_fight's, whatever its status). Walks the inheritance like declared_weapons."""
+    try:
+        xml, table = _xml(template, own), weapon_table(own)
+    except (OSError, ValueError):
+        return None
+    for _ in range(5):
+        slots = []
+        for head, body in _blocks(xml or '', 'WeaponSetUpdate'):
+            for slot in re.finditer(r'<WeaponSlot\w*\b.*?</WeaponSlot\w*>', body, re.S):
+                slots.append([(set((_attr(h, 'ObjectStatus') or '').split()), set((_attr(h, 'ForbiddenObjectStatus') or '').split()),
+                               _attr(h, 'Ordering') == 'PRIMARY_WEAPON', _attr(h, 'Template'))
+                              for h, _ in _blocks(slot.group(0), 'Weapon')])
+        if slots:
+            if not any(need or forbid for s in slots for need, forbid, _, _ in s):
+                return None
+            return [[(need, forbid, prim, _resolve(table[t], table) if t in table else None)
+                     for need, forbid, prim, t in s] for s in slots]
+        up = parent(xml, template)
+        if not up or up.lower() == template.lower():
+            break
+        try:
+            xml = _xml(up, own)
+        except (OSError, ValueError):
+            break
+    return None
+
+
+def pick_weapons(slots, status):
+    """The weapons a unit holds under `status`: per slot the first line (a PRIMARY_WEAPON one before the rest) whose
+    need bits are all set and forbid bits none set; one that cannot hurt or reach (the target painter) is no gun."""
+    guns = []
+    for s in slots:
+        for need, forbid, prim, w in sorted(s, key=lambda e: not e[2]):
+            if need <= status and not (forbid & status):
+                if w and (w['dps'] > 0 or w.get('sdps', 0) > 0) and w['range'] > 0:
+                    guns.append(w)
+                break
+    return guns
+
+
 def fight(template, own=None):
     """{hp, armor {damage type: percent}, weapons [{range, dps, type, anti}]} for a template (own: the mission's
     units' XML, read with the retail weapons and armours and their own weapons); hp None when the data has none."""

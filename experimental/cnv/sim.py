@@ -1011,8 +1011,8 @@ class Sim:
         b.armor, b.weapons = f['armor'], f['weapons']
         if template not in self.__dict__.setdefault('_wsets', {}):
             self._wsets[template] = simunits.weapon_sets(template, self.own)
-        b.slots = self._wsets[template]
-        if b.slots:                             # the weapon lines name a status: the held one is chosen from it
+        b.slots = self._wsets[template] if b.weapons else None    # guns not read at all stay a gap (below)
+        if b.slots:                           # the weapon lines name a status: the held one is chosen from it
             b.weapons = simunits.pick_weapons(b.slots, b.status)
         b.crusher, b.crushable = simunits.crush(template, self.own)
         b.lies = simunits.slow_death(template, self.own)

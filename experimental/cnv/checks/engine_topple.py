@@ -17,7 +17,13 @@ Counters (four lines), counted from 'Test Go' on:
   行k   (k = 1..3 the lanes) 1 x frames the prop is not destroyed + 1000 x frames it is dying + 1000000 x frames the
         vehicle is at its goal (a square of half-side 40)
 
-Bench: see the docstring's end (filled in when read).
+Bench 2026-11-09 (every row's three parts read from the counter: arrival frame from the 1e6 part, destroyed = the frame
+the 1x part stops, dying never counted): a -- the Hammer reaches its goal at frame ~91 in every lane (no stop, no detour);
+lantern destroyed at frame 162, street lamp 118, fence 163. b -- Hammer: tree destroyed at 119; conscript (level 0): lantern
+NEVER destroyed (still counting at frame 710), it walks to its goal at frame ~111; Apocalypse (level 30): lantern destroyed
+at frame 170 (it reaches the goal at ~110). The NAMED_DYING part stays 0 everywhere: the props die at once (no dying
+state), 47-80 frames AFTER the vehicle has passed (the vehicle crosses the prop at about frame 53). Not yet in the
+simulator (props are no objects there).
 """
 from maps import festival
 from parts import Mission, Script, Test, square

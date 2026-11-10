@@ -506,8 +506,8 @@ def map_design(m):
             _DESIGN[mod.__name__] = platmap.lint(mod.LAYOUT, mod.SITES, getattr(mod, 'OBJECTS', []),
                                                  getattr(mod, 'SCENERY', []))
         elif hasattr(mod, 'ground'):
-            _DESIGN[mod.__name__] = platprops.lint(None, mod.SITES, getattr(mod, 'OBJECTS', []), mod.SCENERY,
-                                                   ground=mod.ground())
+            _DESIGN[mod.__name__] = platprops.lint(None, mod.SITES, getattr(mod, 'OBJECTS', []),
+                                                   getattr(mod, 'SCENERY', []), ground=mod.ground())
         else:
             _DESIGN[mod.__name__] = []
     return [f'map {mod.__name__}: {p}' for p in _DESIGN[mod.__name__]] + \
