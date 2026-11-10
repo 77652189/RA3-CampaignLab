@@ -48,6 +48,15 @@ BENCH 11-09 (round 132): the personality is NOT it. Soviet_1 (and every crew own
   the enemy crews on Soviet_1 still empty. Only the test's own script names Soviet_1 in the merged mission. Left
   between Soviet_1 and Soviet_4 / 5 in the container: playerAllies 'Soviet_2 Soviet_3' (4 / 5: none), the
   container's own Soviet_1 teams / build lists (Teams, BuildLists chunks), Soviet_4 enemies also StartingUnits.
+BENCH 11-09 (round 133): it is Soviet_1 / 2 / 3 as such, not personality or alliance. memb's 留 (16 = crews killed):
+  memb5 (9c: FoeX on Soviet_2, Tgt / Tg2 on Soviet_6, both Marshalls, only 2 allied) 17: Soviet_2's A foe lives,
+  Soviet_6's crew dies. memb10 (9h: FoeX on Soviet_3, InnerBaseMarshall like Soviet_6 but allied) 17, the same.
+  memb6 (9d: Soviet_1 playerAllies '') 23; memb7 (9e: allies '' on 1 / 2 / 3) 23; memb8 (9f: 2 / 3 Default) 23;
+  memb9 (9g: 1 / 2 / 3 Default and no allies) 23. owner (pend_scripts9): the placed A foe and dummy ARE Soviet_1's
+  (NAMED_OWNED_BY_PLAYER), so they are owned but on no team. Script-made Soviet_1 units do join a crew
+  (engine_reorder / kingref: CREATE_NAMED_ON_TEAM teamSoviet_1 + UNIT_SET_TEAM, PASS). The container's BuildLists
+  are per faction (no player names); its other files name no player. Left: what places Soviet_1..3 apart from 4..6
+  -- their place in SidesList (before PlyrCivilian), anything SidesList carries per side past the property dict.
 """
 from maps import probe_border
 from parts import Mission, Script, Test, status
@@ -196,7 +205,81 @@ def memb4(m):
     return memb3(m)
 
 
+def memb5(m):
+    """pend_scripts9c: FoeX on Soviet_2 (the container's Marshall, allied to Soviet_1 / 3), Tgt / Tg2 on Soviet_6
+    (a Marshall too, no allies). 留's bits split them: A foe x1 is Soviet_2's, Tgt x2 / x4 Soviet_6's."""
+    return memb(m)
+
+
+def memb6(m):
+    """pend_scripts9d: memb with Soviet_1's playerAllies emptied (the container: 'Soviet_2 Soviet_3')."""
+    return memb(m)
+
+
+def memb7(m):
+    """pend_scripts9e: memb with playerAllies emptied on Soviet_1, 2 and 3 (nobody allied to Soviet_1 either way)."""
+    return memb(m)
+
+
+def memb8(m):
+    """pend_scripts9f: memb with Soviet_2 and 3 (Soviet_1's allies) made DefaultPersonality, the alliances kept."""
+    return memb(m)
+
+
+def memb9(m):
+    """pend_scripts9g: memb with Soviet_1, 2 and 3 all DefaultPersonality and none allied (9e and 9f at once)."""
+    return memb(m)
+
+
+def memb10(m):
+    """pend_scripts9h: FoeX on Soviet_3 (InnerBaseMarshall like Soviet_6, but allied to Soviet_1 / 2), Tgt / Tg2 on
+    Soviet_6 again (the control). A foe x1 is Soviet_3's."""
+    return memb(m)
+
+
+OWNERS = ['Player_1', 'Soviet_1', 'Soviet_2', 'Soviet_3', 'Soviet_4', 'Soviet_5', 'Soviet_6']    # the published ones
+
+
+def owner(m):
+    """Who owns the placed enemy units (NAMED_OWNED_BY_PLAYER, every frame; the counter = 1 + the owner's place in
+    OWNERS, 0 = none of them): 甲 'A foe' (Soviet_1, crew FoeA), 乙 the dummy (Soviet_1's default team), 丙 'C me'
+    (the player's, crew MeC: the control, 1). Everyone holds fire, nobody is killed."""
+    t = Test()
+    every = [f'{k} {w}' for k in REL for w in ('me', 'foe')] + [f'{c} {k}' for c in ATK for k in (1, 2)] + \
+        ['solo', 'idle', 'dummy']
+    t.scripts.append(Script('Test - S9 hold all', [], _hold(m, every)))
+    for role, counter, label in (('A foe', 'CNV_S9_OA', '甲'), ('dummy', 'CNV_S9_OB', '乙'), ('C me', 'CNV_S9_OC', '丙')):
+        s8.total(t, counter, label, [(k + 1, ('NAMED_OWNED_BY_PLAYER', p, m.role(role).name))
+                                     for k, p in enumerate(OWNERS)])
+    t.expect += [('甲', 2, '==', 2), ('乙', 2, '==', 2), ('丙', 2, '==', 1)]
+    s8.watch(t, 6.0)
+    return t
+
+
+def _sides(name, **sides):
+    m = mission(name)
+    for side, props in sides.items():
+        m.sides[side] = dict(m.sides.get(side, {}), **props)
+    return m
+
+
+def _no_allies():
+    return _sides('CampP9d', s1={'playerAllies': ''})
+
+
 MISSION = {'pend_scripts9': mission,
-           'pend_scripts9b': lambda: mission('CampP9b',foe='s4', moved={'Tgt': 's5', 'Tg2': 's5'})}
-CHECKS = {'pend_scripts9': {'rel': rel, 'atk': atk, 'atkr': atkr, 'memb': memb, 'memb2': memb2, 'memb3': memb3},
-          'pend_scripts9b': {'memb4': memb4}}
+           'pend_scripts9b': lambda: mission('CampP9b', foe='s4', moved={'Tgt': 's5', 'Tg2': 's5'}),
+           'pend_scripts9c': lambda: mission('CampP9c', foe='s2', moved={'Tgt': 's6', 'Tg2': 's6'}),
+           'pend_scripts9d': _no_allies,
+           'pend_scripts9e': lambda: _sides('CampP9e', **{s: {'playerAllies': ''} for s in ('s1', 's2', 's3')}),
+           'pend_scripts9f': lambda: _sides('CampP9f', **{s: {'aiPersonality': 'AIPersonalityDefinition:DefaultPersonality'}
+                                                          for s in ('s2', 's3')}),
+           'pend_scripts9g': lambda: _sides('CampP9g', **{s: {'playerAllies': '', 'aiPersonality':
+                                                              'AIPersonalityDefinition:DefaultPersonality'}
+                                                          for s in ('s1', 's2', 's3')}),
+           'pend_scripts9h': lambda: mission('CampP9h', foe='s3', moved={'Tgt': 's6', 'Tg2': 's6'})}
+CHECKS = {'pend_scripts9': {'rel': rel, 'atk': atk, 'atkr': atkr, 'memb': memb, 'memb2': memb2, 'memb3': memb3,
+                            'owner': owner},
+          'pend_scripts9b': {'memb4': memb4}, 'pend_scripts9c': {'memb5': memb5}, 'pend_scripts9d': {'memb6': memb6},
+          'pend_scripts9e': {'memb7': memb7}, 'pend_scripts9f': {'memb8': memb8},
+          'pend_scripts9g': {'memb9': memb9}, 'pend_scripts9h': {'memb10': memb10}}
