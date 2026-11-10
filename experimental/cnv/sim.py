@@ -882,6 +882,8 @@ class Sim:
         self.nodes = {}                     # ore node name -> {'free': frame it takes a miner from, 'gathered', 'at'}
         self.mined_to = None                # the last frame mine_due ran
         self.relations = dict(getattr(mission, 'relations', {}))   # (a, b) -> Enemy / Neutral / Friend
+        self.team_team_rel, self.team_player_rel, self.player_team_rel = {}, {}, {}   # the overrides (hostile)
+        self.team_targets = {}                  # id(body) -> the team it was told to attack (TEAM_ATTACK_TEAM)
         self.players = dict(mission.map.PLAYERS)
         self.human = self.players['p1']
         self.foe = self.players.get('s1')
@@ -1785,6 +1787,19 @@ class Sim:
         return {a, b} == {self.human, self.foe} or (a != b and CIV not in (a, b) and self.human in (a, b)
                                                    and (a in self.ai or b in self.ai))
 
+    def hostile(self, a, t):
+        """Body a takes body t as an enemy: the team overrides first, then the players (Generals Team::getRelationship:
+        a's team to t's team, a's team to t's owner, a's owner to t's team, the players). INFERRED; pending_scripts9 rel"""
+        at, tt = a.team or '', t.team or ''
+        tests = ((self.team_team_rel, lambda x, y: same_team(at, x) and same_team(tt, y)),
+                 (self.team_player_rel, lambda x, y: same_team(at, x) and t.owner == y),
+                 (self.player_team_rel, lambda x, y: a.owner == x and same_team(tt, y)))
+        for table, hit in tests:
+            for (x, y), r in table.items():
+                if hit(x, y):
+                    return r == 'Enemy'
+        return self.enemy(a.owner, t.owner)
+
     def point(self, name):
         """A waypoint, a trigger area's middle, a site, a mark, a named object, map coordinates '@x,y' (model.coord)."""
         c = coord(name)
@@ -2355,6 +2370,23 @@ class Sim:
                 b.team = a[1]
             self.active.add(a[1])
             self.change()
+        elif name in ('TEAM_SET_OVERRIDE_RELATION_TO_TEAM', 'TEAM_SET_OVERRIDE_RELATION_TO_PLAYER',
+                      'PLAYER_SET_OVERRIDE_RELATION_TO_TEAM'):
+            # (team / player, team / player, Enemy / Neutral / Friend) INFERRED (Generals doTeam / doPlayer override
+            # relation): how the first takes the second from then on, over the players' relation (hostile)
+            table = {'TEAM_SET_OVERRIDE_RELATION_TO_TEAM': self.team_team_rel,
+                     'TEAM_SET_OVERRIDE_RELATION_TO_PLAYER': self.team_player_rel}.get(name, self.player_team_rel)
+            table[(a[0], a[1])] = a[2] if isinstance(a[2], str) else {0: 'Enemy', 1: 'Neutral', 2: 'Friend'}[a[2][0]]
+            self.change()
+        elif name in ('TEAM_ATTACK_TEAM', 'NAMED_ATTACK_TEAM'):
+            # (team / unit, team) INFERRED (Generals groupAttackTeam): each attacker on the target team's nearest
+            # living member; when that one dies the fight picks the next (auto target). pending_scripts9 atk
+            crew = self.members(a[0]) if name == 'TEAM_ATTACK_TEAM' else [b for b in [self.body(a[0])] if b and b.alive]
+            them = self.members(a[1])
+            for b in crew:
+                if them:
+                    self.order_attack(b, min(them, key=lambda t: math.hypot(t.x - b.x, t.y - b.y)).name)
+                    self.team_targets[id(b)] = a[1]     # the fight takes the next member when this one dies
         elif name == 'UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION':
             # (name, type, team, object) INFERRED: CREATE_NAMED_ON_TEAM_AT_WAYPOINT at the object's place, its facing
             at = self.body(a[3])
@@ -3043,11 +3075,18 @@ class Sim:
         aimable = {id(t) for t in targets}
         tx = np.array([b.x for b in targets])
         ty = np.array([b.y for b in targets])
+        for a in armed:                         # an attack on a team goes on to its next member (TEAM_ATTACK_TEAM)
+            if id(a) in self.team_targets and not (isinstance(a.goal, Body) and a.goal.alive):
+                them = self.members(self.team_targets[id(a)])
+                if them:
+                    self.order_attack(a, min(them, key=lambda t: math.hypot(t.x - a.x, t.y - a.y)).name)
+                else:
+                    del self.team_targets[id(a)]
         for a in armed:
             a.engaged = False
             if self.held_up(a):                 # stopped short on a plain move: still moving (DEMO_KILL)
                 continue
-            foes =[k for k, t in enumerate(targets) if t is not a and self.enemy(a.owner, t.owner)]
+            foes =[k for k, t in enumerate(targets) if t is not a and self.hostile(a, t)]
             if not foes:
                 self.idle_chase(a, False, [])
                 continue

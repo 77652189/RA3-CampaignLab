@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|
-| 脚本动作 | **84%** | 427 | 93 | 21 | 198 | 115 | 87% |
+| 脚本动作 | **84%** | 427 | 93 | 26 | 193 | 115 | 87% |
 | 脚本条件 | **94%** | 89 | 27 | 2 | 57 | 3 | 94% |
 | 物体模块 | **59%** | 184 | 26 | 7 | 132 | 19 | 61% |
 | 武器效果 | **47%** | 25 | 2 | 3 | 20 | 0 | 53% |
@@ -129,7 +129,7 @@
 | 已对拍 | `TEAM_MERGE_INTO_TEAM` | 67 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts8.py |
 | 推断 | `NAMED_HUNT` | 66 | 同 TEAM_HUNT：没交给 AI 不动（台上量过）；AI 玩家的猎杀不模拟（引擎 B） |
 | 不涉及 | `TEAM_FLASH` | 66 | 纯表现（名字规则） |
-| 未做 | `TEAM_SET_OVERRIDE_RELATION_TO_PLAYER` | 64 | Sim.act / Sim.cond 不认识 |
+| 推断 | `TEAM_SET_OVERRIDE_RELATION_TO_PLAYER` | 64 | Sim.act / Sim.cond 有分支 |
 | 未做 | `SET_MISSION_HOT_SPOT_ACTIVENESS` | 61 | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION` | 60 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts8.py |
 | 未做 | `NAMED_FORCE_ATTACK_NAMED` | 59 | Sim.act / Sim.cond 不认识 |
@@ -148,7 +148,7 @@
 | 已对拍 | `DECREMENT_COUNTER` | 50 | 引擎模型核心；台上量过：checks/engine_scripts3.py |
 | 已对拍 | `DISPLAY_COUNTDOWN_TIMER` | 50 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts4.py |
 | 已对拍 | `SELL_OBJECT` | 50 | tests/test_simbench.py::test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames |
-| 未做 | `TEAM_ATTACK_TEAM` | 50 | Sim.act / Sim.cond 不认识 |
+| 推断 | `TEAM_ATTACK_TEAM` | 50 | Sim.act / Sim.cond 有分支 |
 | 不涉及 | `FLASH_UI_BUILD_BUTTON` | 48 | 纯表现（名字规则） |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JAAVT1_Transform` | 48 | 只记进时间线，没有效果 |
 | 未做 | `SET_UNIT_REFERENCE` | 48 | Sim.act / Sim.cond 不认识 |
@@ -158,7 +158,7 @@
 | 不涉及 | `NAMED_CUSTOM_COLOR` | 44 | 纯表现（名字规则） |
 | 已对拍 | `HIDE_COUNTDOWN_TIMER` | 43 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts4.py |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_SovietAntiGroundAircraftEvacuate` | 43 | 只记进时间线，没有效果 |
-| 未做 | `PLAYER_SET_OVERRIDE_RELATION_TO_TEAM` | 43 | Sim.act / Sim.cond 不认识 |
+| 推断 | `PLAYER_SET_OVERRIDE_RELATION_TO_TEAM` | 43 | Sim.act / Sim.cond 有分支 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleSpiderHole` | 41 | 只记进时间线，没有效果 |
 | 未做 | `PLAYER_SET_SPECIAL_POWER_COUNTDOWN` | 41 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `FOR_EACH_PLAYER_OBJECT_EXECUTE_SCRIPT` | 39 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
@@ -175,10 +175,10 @@
 | 未做 | `MAP_REVEAL_PERMANENTLY_IN_TRIGGER` | 33 | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_DisguisedEvacuate` | 33 | 只记进时间线，没有效果 |
 | 推断 | `STOP_TIMER` | 33 | 引擎模型核心 |
-| 未做 | `TEAM_SET_OVERRIDE_RELATION_TO_TEAM` | 33 | Sim.act / Sim.cond 不认识 |
+| 推断 | `TEAM_SET_OVERRIDE_RELATION_TO_TEAM` | 33 | Sim.act / Sim.cond 有分支 |
 | 已对拍 | `UNIT_CHANGE_OBJECT_STATUS:NO_ATTACK` | 33 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_acquire.py |
 | 推断 | `ALLOW_DISALLOW_ONE_UPGRADE` | 32 | Sim.act / Sim.cond 有分支 |
-| 未做 | `NAMED_ATTACK_TEAM` | 32 | Sim.act / Sim.cond 不认识 |
+| 推断 | `NAMED_ATTACK_TEAM` | 32 | Sim.act / Sim.cond 有分支 |
 | 未做 | `UNIT_KILL_ALL_IN_AREA` | 32 | Sim.act / Sim.cond 不认识 |
 | 未做 | `ATTACK_MOVE_TEAM_TO_NAMED_OBJECT` | 31 | Sim.act / Sim.cond 不认识 |
 | 未做 | `CREATE_REINFORCEMENT_TEAM_AT_UNIT_POSITION` | 31 | Sim.act / Sim.cond 不认识 |
