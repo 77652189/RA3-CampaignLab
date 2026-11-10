@@ -18,6 +18,8 @@ COMMAND_ARG = 34                        # a command button (NAMED_USE_COMMANDBUT
 # retail units' own command buttons a script may press (SageXML GlobalData/LogicCommandSet.xml): ours publish theirs
 RETAIL_COMMANDS = {'Command_CaptureBuilding',           # an engineer takes a building (AlliedEngineerCommandSet)
                    'Command_UnPackAlliedMCV',           # the MCV deploys (AlliedMCVCommandSet)
+                   'Command_UnPackSovietMCV', 'Command_UnPackJapanMCV',     # the same ReplaceSelfSpecialAbility
+                   'Command_UnPackJapanBaseDefenseEgg', # a Japanese egg unfolds (engine_unpack egg)
                    'Command_JAIV_Transform',            # the Tengu transforms (JapanAntiInfantryVehicle)
                    'Command_JAAVT1_Transform',          # the VX transforms (JapanAntiAirVehicleTech1)
                    'Command_ToggleMirageField',         # the Mirage tank's field on / off (AlliedAntiVehicleVehicleTech3CommandSet)

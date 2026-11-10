@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|
-| 脚本动作 | **87%** | 427 | 102 | 19 | 191 | 115 | 89% |
+| 脚本动作 | **88%** | 451 | 104 | 28 | 204 | 115 | 90% |
 | 脚本条件 | **94%** | 89 | 27 | 2 | 57 | 3 | 94% |
 | 物体模块 | **65%** | 184 | 30 | 5 | 130 | 19 | 65% |
 | 武器效果 | **51%** | 25 | 3 | 2 | 20 | 0 | 53% |
@@ -40,7 +40,6 @@
 | 已对拍 | `MOVE_TEAM_TO` | 298 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_reinf.py |
 | 已对拍 | `CREATE_NAMED_ON_TEAM_AT_WAYPOINT` | 291 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_acquire.py |
 | 已对拍 | `NAMED_ATTACK_NAMED` | 271 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_attack.py |
-| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT` | 264 | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION` | 259 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts7.py |
 | 已对拍 | `MOVE_CAMERA_TO` | 255 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_camera.py |
 | 不涉及 | `OBJECT_CREATE_RADAR_EVENT` | 254 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
@@ -149,11 +148,13 @@
 | 已对拍 | `DISPLAY_COUNTDOWN_TIMER` | 50 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts4.py |
 | 已对拍 | `SELL_OBJECT` | 50 | tests/test_simbench.py::test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames |
 | 已对拍 | `TEAM_ATTACK_TEAM` | 50 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts9.py |
+| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateEjectPassengersSpecialPower` | 49 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `FLASH_UI_BUILD_BUTTON` | 48 | 纯表现（名字规则） |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JAAVT1_Transform` | 48 | 只记进时间线，没有效果 |
 | 未做 | `SET_UNIT_REFERENCE` | 48 | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_ATTACK_FOLLOW_WAYPOINTS` | 47 | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `NAMED_RECEIVE_UPGRADE` | 47 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_invuln.py |
+| 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanBaseDefenseEgg` | 46 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_unpack.py |
 | 未做 | `TEAM_SET_STANCE` | 45 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `NAMED_CUSTOM_COLOR` | 44 | 纯表现（名字规则） |
 | 已对拍 | `HIDE_COUNTDOWN_TIMER` | 43 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts4.py |
@@ -189,7 +190,9 @@
 | 未做 | `PLAYER_ALLOWED_TOBE_COOPAI` | 29 | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER` | 29 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aiopen.py |
 | 不涉及 | `DESELECT` | 28 | 纯表现（名字规则） |
+| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_CAMPAlliedBomberDrop2` | 28 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `SOUND_DISABLE_TYPE` | 28 | 纯表现（名字规则） |
+| 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackAlliedMCV` | 27 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_build.py |
 | 不涉及 | `PLAYER_CAMERA_MOVE_TO_NAMED` | 27 | 纯表现（名字规则） |
 | 未做 | `TEAM_GARRISON_SPECIFIC_BUILDING` | 27 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_SET_PLAYERS_NEAREST_UNIT_OF_TYPE_TO_REFERENCE` | 27 | Sim.act / Sim.cond 不认识 |
@@ -241,6 +244,7 @@
 | 推断 | `MARK_MISSION_OBJECTIVE_COMPLETED` | 14 | 引擎模型核心 |
 | 不涉及 | `MOVIE_PLAY_FULLSCREEN` | 14 | 纯表现（名字规则） |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleEnergizedArmorSpecialPower` | 14 | 只记进时间线，没有效果 |
+| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanEgg` | 14 | Sim.act / Sim.cond 不认识 |
 | 未做 | `PLAYER_KILL` | 14 | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `PLAYER_SET_ALL_UNITS_TO_FLEE` | 14 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_runoffmap.py |
 | 不涉及 | `SET_REFERENCE_TO_FIRST_TEAM_MEMBER_IN_AREA` | 14 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
@@ -263,12 +267,17 @@
 | 不涉及 | `FLASH_JOYPAD_HUD_FIXED_ELEMENT` | 11 | 纯表现（名字规则） |
 | 已对拍 | `NAMED_REMOVE_UPGRADE` | 11 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_invuln.py |
 | 不涉及 | `ORE_NODE_SET_MAX_GATHER_VALUE` | 11 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
+| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ArcherArrowBarrageSpecialPower` | 10 | Sim.act / Sim.cond 不认识 |
+| 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanMCV` | 10 | Sim.act / Sim.cond 有分支 |
+| 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackSovietMCV` | 10 | Sim.act / Sim.cond 有分支 |
 | 未做 | `PLAYER_ENABLE_BASE_CONSTRUCTION` | 10 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `ROTATE_CAMERA` | 10 | 纯表现（名字规则） |
 | 未做 | `SKIRMISH_AI_CONSIDER_ALL_ENEMIES_WHEN_BUILDING` | 10 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `ZOOM_CAMERA` | 10 | 纯表现（名字规则） |
 | 已对拍 | `MAP_SHROUD_SET_RESHROUD_TIME` | 9 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_vision.py |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleHarpoonSpecialPower` | 9 | 只记进时间线，没有效果 |
+| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateLaserGlaiveBlastSpecialPower` | 9 | Sim.act / Sim.cond 不认识 |
+| 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackAlliedMiner` | 9 | Sim.act / Sim.cond 有分支 |
 | 未做 | `PLAYER_DISABLE_UNIT_CONSTRUCTION` | 9 | Sim.act / Sim.cond 不认识 |
 | 未做 | `PLAYER_TOGGLE_SKIRMISH_AI` | 9 | Sim.act / Sim.cond 不认识 |
 | 未做 | `SET_COUNTER_TO_NUMBER_OBJECTS_PLAYER_OWNS_WITH_KINDOF` | 9 | Sim.act / Sim.cond 不认识 |
@@ -285,6 +294,8 @@
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_CivilianStructureEvacuate` | 8 | 只记进时间线，没有效果 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleAlliedEngineerHeal` | 8 | 只记进时间线，没有效果 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_UnPackJapanBaseDefenseEgg` | 8 | 只记进时间线，没有效果 |
+| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateJumpSpecialPower` | 8 | Sim.act / Sim.cond 不认识 |
+| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateLeapSpecialPower` | 8 | Sim.act / Sim.cond 不认识 |
 | 推断 | `RESTART_TIMER` | 8 | 引擎模型核心 |
 | 已对拍 | `SET_COUNTER_TO_COUNTER` | 8 | 引擎模型核心；台上量过：checks/engine_protocol.py |
 | 未做 | `SET_PLAYER_KILLS_OF_TYPE_TO_COUNTER` | 8 | Sim.act / Sim.cond 不认识 |
@@ -302,6 +313,7 @@
 | 不涉及 | `DISABLE_COUNTDOWN_TIMER_DISPLAY` | 6 | 纯表现（名字规则） |
 | 未做 | `NAMED_FACE_WAYPOINT` | 6 | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleBinaryWeapon` | 6 | 只记进时间线，没有效果 |
+| 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanPowerPlantEgg` | 6 | Sim.act / Sim.cond 有分支 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_ActivateRoarSpecialPower` | 6 | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_TriggerRushAttackSpecialPower` | 6 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `PLAYER_FIRE_MULTI_TARGET_SPECIAL_POWER_AT_WAYPOINTS` | 6 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
@@ -324,6 +336,10 @@
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleJapanFortressShipTransformMode` | 4 | 只记进时间线，没有效果 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleMagneticArmor` | 4 | 只记进时间线，没有效果 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleShortCircuit` | 4 | 只记进时间线，没有效果 |
+| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_TriggerRushAttackSpecialPower` | 4 | Sim.act / Sim.cond 不认识 |
+| 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanBarracksEgg` | 4 | Sim.act / Sim.cond 有分支 |
+| 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanRefineryEgg` | 4 | Sim.act / Sim.cond 有分支 |
+| 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanWarFactoryEgg` | 4 | Sim.act / Sim.cond 有分支 |
 | 未做 | `PLAYER_AI_CHANGEUNITBUILDER` | 4 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `PLAYER_SET_DISABLED` | 4 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `SET_BLOOM_INTENSITY` | 4 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
@@ -341,6 +357,7 @@
 | 推断 | `MAP_REVEAL_ALL` | 3 | Sim.act / Sim.cond 有分支 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JapanAntiInfantryInfantryBonzai` | 3 | 只记进时间线，没有效果 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleShieldSphere` | 3 | 只记进时间线，没有效果 |
+| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_CAMPAlliedBomberDrop1` | 3 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `PATH_MUSIC_FADE_IN_MUSIC` | 3 | 纯表现（名字规则） |
 | 不涉及 | `RESET_CAMERA_AT_OBJECT` | 3 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 未做 | `SKIRMISH_AI_CLEAR_ENEMY_PLAYER_PRIORITY` | 3 | Sim.act / Sim.cond 不认识 |
@@ -363,6 +380,10 @@
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_AlliedAntiInfantryVehicleEvacuate` | 2 | 只记进时间线，没有效果 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JASV_FireKiCannon` | 2 | 只记进时间线，没有效果 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JapanEngineerSprint` | 2 | 只记进时间线，没有效果 |
+| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateCryoLeapSpecialPower` | 2 | Sim.act / Sim.cond 不认识 |
+| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_DisguisedEvacuate` | 2 | Sim.act / Sim.cond 不认识 |
+| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_SovietAntiGroundAircraftEvacuate` | 2 | Sim.act / Sim.cond 不认识 |
+| 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanNavalYardEgg` | 2 | Sim.act / Sim.cond 有分支 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_ActivateDisguiseSpecialPower` | 2 | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_AlliedSupportAircraftShrinkRay` | 2 | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_CaptureBuilding` | 2 | 只记进时间线，没有效果 |
@@ -415,6 +436,9 @@
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleTargetPainter` | 1 | 只记进时间线，没有效果 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_UnPackAlliedMCV` | 1 | 只记进时间线，没有效果 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_UnPackJapanMCV` | 1 | 只记进时间线，没有效果 |
+| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_PackJapanMCV` | 1 | Sim.act / Sim.cond 不认识 |
+| 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackSovietSurveyor` | 1 | Sim.act / Sim.cond 有分支 |
+| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_VacuumBomb` | 1 | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_ActivateLaserGlaiveBlastSpecialPower` | 1 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `PATH_MUSIC_ENABLE_RESUME_SYSTEM` | 1 | 纯表现（名字规则） |
 | 不涉及 | `PITCH_CAMERA` | 1 | 纯表现（名字规则） |

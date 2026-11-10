@@ -374,7 +374,8 @@ def refined(name, args):
         st = args[1][2] if isinstance(args[1], tuple) else args[1]
         return f'{name}:{st}'
     if name in ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY',
-                'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED') and len(args) > 1:
+                'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED', 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT') and \
+            len(args) > 1:
         return f'{name}:{args[1]}'
     return name
 

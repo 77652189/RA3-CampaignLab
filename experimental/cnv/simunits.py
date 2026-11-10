@@ -1355,6 +1355,45 @@ def unpack_frames(template, own=None):
     return int(round(_secs(v.lstrip('=')) * LIFE_FPS))
 
 
+_command_powers = None
+
+
+def command_power(button, own=None):
+    """The special power a SPECIAL_POWER command button fires (LogicCommand's <SpecialPower>), else None."""
+    global _command_powers
+    if _command_powers is None:
+        _command_powers = {}
+        text = open(COMMANDS, encoding='utf-8', errors='replace').read() if os.path.exists(COMMANDS) else ''
+        for head, inner in _blocks(text, 'LogicCommand'):
+            m = re.search(r'<SpecialPower>\s*([^<\s]+)', inner)
+            if _attr(head, 'id') and m:
+                _command_powers[_attr(head, 'id')] = m.group(1)
+    for xml in (own or {}).values():
+        for head, inner in _blocks(xml or '', 'LogicCommand'):
+            m = re.search(r'<SpecialPower>\s*([^<\s]+)', inner)
+            if _attr(head, 'id') == button and m:
+                return m.group(1)
+    return _command_powers.get(button)
+
+
+def replace_self(template, button, own=None):
+    """(stand, replacement) of the template's ReplaceSelfSpecialAbility the button fires (the MCVs', the Japanese eggs',
+    the Allied miner's SpecialPower_UnpackReplaceSelf), else None: at a point it drives there and turns into the
+    replacement (bench 2026-11-10 engine_unpack, 2026-11-05 engine_build a)."""
+    power = command_power(button, own)
+    if not power:
+        return None
+
+    def read(xml):
+        for head, inner in _blocks(xml, 'ReplaceSelfSpecialAbility'):
+            if _attr(head, 'SpecialPowerTemplate') == power:
+                m = re.search(r'<ReplacementTemplate>\s*([^<\s]+)', inner)
+                if m:
+                    return _num(_attr(head, 'StartAbilityRange'), 0.0), m.group(1)
+        return None
+    return _inherited(template, own, read, None)
+
+
 def needs(template, own=None):
     """(objects, upgrades) its GameDependency asks for: every RequiredObject the player must own, every NeededUpgrade
     the player must hold (all of them: inference, the sidebar's lit buttons not measured)."""

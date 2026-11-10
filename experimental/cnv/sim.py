@@ -144,7 +144,9 @@ COLUMN_GAP = 44.0              # infantry column march's ends, across and back (
 HOLD_SPOTS = True              # every move's goal kept off other units' spots (Sim.claims): the game's (bench 11-09,
                                # a01's two infantry; checks/engine_spots.py, three trucks sent alone to one point)
 ARRIVE = 1.5 * GRID             # a plain move that ends farther than this from where it was sent stopped short (held_up)
-BUILD_STEP = 5.0                # a builder on his way (R5) moves in steps this long, to see where he gets within range
+UNPACK_POWER = 'SpecialPower_UnpackReplaceSelf'     # the deploy buttons' power (LogicCommand.xml: MCVs, eggs, miner)
+REPLACE_FRAMES = 6             # a ReplaceSelfSpecialAbility at its point: the replacement 6 frames on (engine_build a)
+BUILD_STEP = 5.0               # a builder on his way (R5) moves in steps this long, to see where he gets within range
 HIGH_STEP = 50.0                # ShroudClearingHeight's default: a viewer does not discover a cell this much above its own
                                 # (bench, docs/engine/vision.md; a unit's own value is Body.clear_height). Cell by cell,
                                 # no line of sight; ENEMY_SIGHTED is a range query and ignores it
@@ -201,6 +203,9 @@ ALIGN = {
     'superweapon': 'a script\'s superweapon cast (SUPERWEAPON_HITS rows, CURTAIN): fires though the power is not '
                    'charged (bench engine_super p / q), but not again in the reload its own last cast started '
                    '(bench engine_scripts8b pdis; INFERRED rule)',
+    'unpack': 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT with a ReplaceSelfSpecialAbility button (an MCV, a Japanese '
+              'egg): it drives to the point, 6 frames after it is there the replacement stands there with its name and '
+              'health share (bench engine_unpack mcv / egg, engine_build a)',
     'special power': 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT / NAMED_USE_COMMANDBUTTON_ABILITY: logged, no effect '
                      '(a jump, a carrier\'s drop: the device\'s own scripts say what follows)',
     'ai': 'a skirmish AI (UNIT_AI_TRANSFER_ALL, SKIRMISH_AI_*): woken and logged; what it builds and when it '
@@ -511,6 +516,7 @@ class Body:
                                                                 # scripts (simunits.lifetime, R1)
     leaves: list = dataclasses.field(default_factory=list)      # what that death makes where it stood
     building: tuple = None                                      # (structure, (x, y), stand): told to build there (R5)
+    replace: bool = False                                       # building = its ReplaceSelfSpecialAbility: it turns into it
     unpack_end: int = None                                      # a structure made in the run: unpacking until then
     read_until: int = None                                      # killed by NAMED_DAMAGE in this frame: bits still read
     sell_end: int = None                                        # SELL_OBJECT: the frame the sale deletes it (sell)
@@ -2752,6 +2758,21 @@ class Sim:
             tmpl = simunits.built(f.template, a[1], self.own, f.upgrades)
             if not self.order_build(f.owner, tmpl, factory=f, press=True):
                 self.note('生产', f'{self.label(f)} 按 {a[1]}：现在造不了 {tmpl}')
+        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and \
+                simunits.command_power(a[1], self.own) == UNPACK_POWER:
+            # an MCV / a Japanese egg deploys at the point: drives there, then turns into its replacement (bench
+            # engine_unpack mcv / egg: the yard stands on the point, the name passes on)
+            b, p = self.body(a[0]), self.point(a[2])
+            got = b and b.alive and p is not None and simunits.replace_self(b.template, a[1], self.own)
+            if not got:
+                self.note('技能', f'{a[0]} 按 {a[1]}：没有能展开的单位或路点')
+            else:
+                stand, into = got
+                self.used.add('unpack')
+                b.building, b.replace, b.goal, b.mode = (into, p, stand), True, None, 'move'
+                self.note('技能', f'{self.label(b)} 去 {a[2]} 展开成 {into}')
+                if not self.at_site(b, 0.0):
+                    self.send(b, p)
         elif name in ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY'):
             b = self.body(a[0])
             got = b and b.alive and name == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT' and \
@@ -3484,7 +3505,7 @@ class Sim:
         if math.hypot(b.x - x, b.y - y) > stand + 1e-6:
             return False
         got = self.frame_now() + (math.ceil(round(walked / b.speed * simunits.LIFE_FPS, 6)) if walked else 0)
-        self.due.append((got + 1, structure, b.owner, b.team, x, y, b.name))
+        self.due.append((got + (REPLACE_FRAMES if b.replace else 1), structure, b.owner, b.team, x, y, b.name))
         b.building, b.path, b.dest = None, [], None
         self.note('技能', f'{self.label(b)} 到位，造 {structure}')
         return True
@@ -3494,7 +3515,17 @@ class Sim:
         for d in [d for d in self.due if d[0] <= frame]:
             self.due.remove(d)
             _, structure, owner, team, x, y, by = d
-            n = self.add(f'#built {len(self.bodies)} by {by}', structure, owner, x, y, by=by, at=self.t)
+            was = self.bodies.get(by)
+            if was is not None and was.replace:     # engine_unpack: the replacement takes its name and health share
+                if not was.alive:
+                    continue
+                share = was.hp / was.max_hp if was.max_hp else 1.0
+                self.destroy(was, f'展开成 {structure}', delete=True)
+                self.bodies[f'#packed {len(self.bodies)} {by}'] = self.bodies.pop(by)
+                n = self.add(by, structure, owner, was.x, was.y, by=by, at=self.t)
+                n.hp = n.max_hp * share
+            else:
+                n = self.add(f'#built {len(self.bodies)} by {by}', structure, owner, x, y, by=by, at=self.t)
             n.team = team
             if self.blocks(n):
                 self.reblock()

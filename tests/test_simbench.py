@@ -1325,3 +1325,13 @@ def test_reinforcement_teams_as_the_bench():
     assert _sim_run('engine_reinf_two', 'go', 30.0).series[-1][1] == [6, 3, 3, 4]
     by = {s: v for s, v in _sim_run('engine_reinf_old', 'go', 45.0).series}
     assert by[1] == [3, 3, 0, 0] and by[13] == [3, 0, 3, 0] and by[44] == [6, 3, 0, 3], by
+
+
+def test_mcv_deploys_at_a_far_waypoint_as_the_bench():
+    """NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT(mcv, Command_UnPackAlliedMCV, 400 east) (bench 11-10 engine_unpack
+    mcv): the MCV drives there and is the yard from frame 121 on (sim 128), the yard on the point, the name passed on
+    (名字帧 = 帧数). The egg variant is not held: eggs are not in the unit table, the sim's egg does not move."""
+    frames, unit, yard, name = _sim_run('engine_unpack_mcv', 'go', 40.0).series[-1][1]
+    assert 115 <= unit % 1000 <= 135 and unit // 1000 > 0, unit
+    assert yard % 1000 == frames - unit % 1000 and yard // 1000 == yard % 1000, (frames, unit, yard)
+    assert name == frames
