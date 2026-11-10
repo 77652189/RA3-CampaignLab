@@ -4,9 +4,9 @@
 
 | 部分 | 按用量已对拍 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|
-| 脚本动作 | **80%** | 427 | 84 | 18 | 229 | 96 | 83% |
-| 脚本条件 | **93%** | 89 | 27 | 2 | 60 | 0 | 94% |
-| 物体模块 | **56%** | 184 | 23 | 7 | 135 | 19 | 57% |
+| 脚本动作 | **83%** | 427 | 86 | 17 | 209 | 115 | 85% |
+| 脚本条件 | **94%** | 89 | 27 | 2 | 57 | 3 | 94% |
+| 物体模块 | **56%** | 184 | 24 | 7 | 134 | 19 | 58% |
 | 武器效果 | **47%** | 25 | 2 | 3 | 20 | 0 | 53% |
 | AI | **60%** | 415 | 89 | 140 | 152 | 34 | 88% |
 
@@ -27,7 +27,7 @@
 | 已对拍 | `SET_MISSION_OBJECTIVE_STATUS` | 732 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts5.py |
 | 不涉及 | `PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT` | 640 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
 | 已对拍 | `CALL_SUBROUTINE` | 533 | 引擎模型核心；台上量过：checks/engine_scripts6.py |
-| 推断 | `UNIT_IDLE_FOR_FRAMECOUNT` | 504 | Sim.stand：和 UNIT_IDLE_FOR_SECONDS 同一个处理函数，秒版台上量过（命令清掉，不是暂停） |
+| 已对拍 | `UNIT_IDLE_FOR_FRAMECOUNT` | 504 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts7.py |
 | 不涉及 | `PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT_WITH_SUBTITLE` | 445 | 纯表现（名字规则） |
 | 不涉及 | `MOVIE_PLAY_RADAR` | 433 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
 | 已对拍 | `CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION` | 399 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts7.py |
@@ -78,7 +78,7 @@
 | 已对拍 | `NO_OP` | 130 | 引擎模型核心；台上量过：checks/engine_scripts6.py |
 | 已对拍 | `TEAM_AFFECT_OBJECT_PANEL_FLAGS` | 130 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_scripts7.py |
 | 推断 | `UNIT_AI_TRANSFER` | 129 | 程序读到：人类玩家的单位无效、不清命令；交给 AI 后的行为归引擎 B，碰到记 Sim.unmodeled（台上没量） |
-| 未做 | `TELEPORT_STRUCTURE` | 128 | Sim.act / Sim.cond 不认识 |
+| 不涉及 | `TELEPORT_STRUCTURE` | 128 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `CAMPAIGN_CREATE_AUTO_SAVE` | 127 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
 | 已对拍 | `UNIT_SET_STANCE` | 124 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_crush.py |
 | 未做 | `TEAM_DELETE` | 122 | Sim.act / Sim.cond 不认识 |
@@ -123,7 +123,7 @@
 | 未做 | `TEAM_CHANGE_OBJECT_STATUS` | 71 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_GARRISON_TEAM_INSTANTLY` | 68 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `UNIT_CLEAR_MODELCONDITION` | 68 | 纯表现：同 UNIT_SET_MODELCONDITION_GENERIC，清掉画法状态 |
-| 未做 | `CREATE_UNNAMED_ON_TEAM_AT_NAMED_OBJECT_LOCATION` | 67 | Sim.act / Sim.cond 不认识 |
+| 不涉及 | `CREATE_UNNAMED_ON_TEAM_AT_NAMED_OBJECT_LOCATION` | 67 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `LINK_MISSION_HOT_SPOT_TO_OBJECT` | 67 | 纯表现（名字规则） |
 | 已对拍 | `SKIRMISH_AI_USE_REBUILD_SYSTEM` | 67 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aiswitch.py |
 | 未做 | `TEAM_MERGE_INTO_TEAM` | 67 | Sim.act / Sim.cond 不认识 |
@@ -135,13 +135,13 @@
 | 未做 | `NAMED_FORCE_ATTACK_NAMED` | 59 | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_FORCE_ATTACK_WAYPOINT` | 59 | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM` | 59 | 只记进时间线（sim.SHOWN）；台上量过：docs/engine/script-semantics.md |
-| 未做 | `SET_REFERENCE_TO_RANDOM_TEAM_MEMBER` | 59 | Sim.act / Sim.cond 不认识 |
+| 不涉及 | `SET_REFERENCE_TO_RANDOM_TEAM_MEMBER` | 59 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 推断 | `MAP_REVEAL_ALL_UNDO_PERM` | 58 | Sim.act / Sim.cond 有分支 |
 | 不涉及 | `SHOW_MILITARY_CAPTION` | 58 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
 | 未做 | `NAMED_FOLLOW_WAYPOINTS_EXACT` | 56 | Sim.act / Sim.cond 不认识 |
 | 未做 | `UNIT_EXECUTE_SEQUENTIAL_SCRIPT` | 56 | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `NAMED_SET_MAX_HEALTH` | 53 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_missile.py |
-| 不涉及 | `TOGGLE_RADAR_UI` | 53 | 纯表现（名字规则） |
+| 不涉及 | `TOGGLE_RADAR_UI` | 53 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `DISPLAY_TUTORIAL_TEXT` | 52 | 纯表现（名字规则） |
 | 已对拍 | `PLAY_SOUND_EFFECT` | 51 | 只记进时间线（sim.SHOWN）；台上量过：checks/engine_dialog.py |
 | 未做 | `TEAM_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT` | 51 | Sim.act / Sim.cond 不认识 |
@@ -161,13 +161,13 @@
 | 未做 | `PLAYER_SET_OVERRIDE_RELATION_TO_TEAM` | 43 | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleSpiderHole` | 41 | 只记进时间线，没有效果 |
 | 未做 | `PLAYER_SET_SPECIAL_POWER_COUNTDOWN` | 41 | Sim.act / Sim.cond 不认识 |
-| 未做 | `FOR_EACH_PLAYER_OBJECT_EXECUTE_SCRIPT` | 39 | Sim.act / Sim.cond 不认识 |
+| 不涉及 | `FOR_EACH_PLAYER_OBJECT_EXECUTE_SCRIPT` | 39 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JAIV_Transform` | 38 | 只记进时间线，没有效果 |
 | 未做 | `TECHTREE_MODIFY_BUILDABILITY_OBJECT` | 38 | Sim.act / Sim.cond 不认识 |
-| 未做 | `EVALUATE_SCRIPT` | 35 | Sim.act / Sim.cond 不认识 |
+| 不涉及 | `EVALUATE_SCRIPT` | 35 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 未做 | `SKIRMISH_AI_TRANSFER_ALL` | 35 | Sim.act / Sim.cond 不认识 |
 | 未做 | `UNIT_CONTEXT_SENSITIVE_ATTACK` | 35 | Sim.act / Sim.cond 不认识 |
-| 未做 | `FOR_EACH_TEAM_MEMBER_EXECUTE_SCRIPT` | 34 | Sim.act / Sim.cond 不认识 |
+| 不涉及 | `FOR_EACH_TEAM_MEMBER_EXECUTE_SCRIPT` | 34 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `LINK_MISSION_HOT_SPOT_TO_WAYPOINT` | 34 | 纯表现（名字规则） |
 | 已对拍 | `NAMED_DAMAGE` | 34 | tests/test_simbench.py::test_sell_a_killed_building_stays_paid_and_a_building_unpacking_is_not_sold |
 | 不涉及 | `FLASH_MOUSE_HUD_FIXED_ELEMENT` | 33 | 纯表现（名字规则） |
@@ -199,7 +199,7 @@
 | 不涉及 | `NAMED_FLASH_WHITE` | 26 | 纯表现（名字规则） |
 | 不涉及 | `RADAR_CREATE_EVENT` | 26 | 纯表现（名字规则） |
 | 未做 | `TEAM_GUARD_AREA_FROM_POSITION` | 26 | Sim.act / Sim.cond 不认识 |
-| 未做 | `TEAM_SET_DISABLED` | 26 | Sim.act / Sim.cond 不认识 |
+| 不涉及 | `TEAM_SET_DISABLED` | 26 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `LINK_MISSION_OBJECTIVE_TO_OBJECT_WITH_CATEGORY` | 25 | 纯表现（名字规则） |
 | 推断 | `NAMED_GARRISON_SPECIFIC_BUILDING` | 25 | Sim.act / Sim.cond 有分支 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JapanBaseDefenseToggleBinaryWeapon` | 25 | 只记进时间线，没有效果 |
@@ -218,20 +218,20 @@
 | 未做 | `TEAM_MOVE_TO_NEAREST_OBJECT_OF_TYPE` | 23 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `HIDE_TUTORIAL_TEXT` | 22 | 纯表现（名字规则） |
 | 未做 | `UNIT_CHANGE_OBJECT_STATUS:NO_ATTACK_FROM_AI` | 22 | 状态位 NO_ATTACK_FROM_AI 只记下来 |
-| 未做 | `MOVE_NAMED_UNIT_TO_UNIT` | 21 | Sim.act / Sim.cond 不认识 |
-| 未做 | `NAMED_USE_LOGIC_COMMAND_ABILITY_ON_NAMED_POSITION` | 21 | Sim.act / Sim.cond 不认识 |
+| 不涉及 | `MOVE_NAMED_UNIT_TO_UNIT` | 21 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
+| 不涉及 | `NAMED_USE_LOGIC_COMMAND_ABILITY_ON_NAMED_POSITION` | 21 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `SELECT_OBJECT` | 21 | 纯表现（名字规则） |
 | 未做 | `TEAM_FOLLOW_WAYPOINTS_EXACT` | 21 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `MOVE_CAMERA_TO_NAMED` | 20 | 纯表现（名字规则）；Sim.act / Sim.cond 有分支 |
 | 未做 | `REDALERT_DISABLE_THREAT_LEVEL_BONUS` | 20 | Sim.act / Sim.cond 不认识 |
-| 未做 | `UNIT_EXECUTE_SEQUENTIAL_SCRIPT_COPY` | 20 | Sim.act / Sim.cond 不认识 |
+| 不涉及 | `UNIT_EXECUTE_SEQUENTIAL_SCRIPT_COPY` | 20 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `CAMERA_FOLLOW_NAMED` | 19 | 纯表现（名字规则）；Sim.act / Sim.cond 有分支 |
 | 已对拍 | `COUNTER_MATH_COUNTER` | 19 | 引擎模型核心；台上量过：checks/engine_scripts3.py |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_SmokeBombSpecialPower` | 19 | 只记进时间线，没有效果 |
 | 未做 | `PLAYER_DISABLE_BASE_CONSTRUCTION` | 16 | Sim.act / Sim.cond 不认识 |
 | 未做 | `PLAYER_ENABLE_UNIT_CONSTRUCTION` | 16 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `PLAY_SOUND_EFFECT_AT_TEAM` | 16 | 纯表现（名字规则） |
-| 未做 | `TOGGLE_LOCK_CURRENT_SELECTION` | 16 | Sim.act / Sim.cond 不认识 |
+| 不涉及 | `TOGGLE_LOCK_CURRENT_SELECTION` | 16 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 未做 | `UNIT_SET_MODELCONDITION_FOR_DURATION` | 16 | Sim.act / Sim.cond 不认识 |
 | 未做 | `UNIT_STOP_SEQUENTIAL_SCRIPT` | 16 | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_EXIT_BUILDING` | 15 | Sim.act / Sim.cond 不认识 |
@@ -242,12 +242,12 @@
 | 不涉及 | `MOVIE_PLAY_FULLSCREEN` | 14 | 纯表现（名字规则） |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleEnergizedArmorSpecialPower` | 14 | 只记进时间线，没有效果 |
 | 未做 | `PLAYER_KILL` | 14 | Sim.act / Sim.cond 不认识 |
-| 未做 | `PLAYER_SET_ALL_UNITS_TO_FLEE` | 14 | Sim.act / Sim.cond 不认识 |
-| 未做 | `SET_REFERENCE_TO_FIRST_TEAM_MEMBER_IN_AREA` | 14 | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `PLAYER_SET_ALL_UNITS_TO_FLEE` | 14 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_runoffmap.py |
+| 不涉及 | `SET_REFERENCE_TO_FIRST_TEAM_MEMBER_IN_AREA` | 14 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 已对拍 | `SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES` | 14 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aiswitch.py |
 | 未做 | `UNIT_EXECUTE_SEQUENTIAL_SCRIPT_LOOPING` | 14 | Sim.act / Sim.cond 不认识 |
 | 未做 | `DISABLE_MOUSE_HUD_FIXED_ELEMENT` | 13 | Sim.act / Sim.cond 不认识 |
-| 未做 | `SET_LAST_CREATED_UNIT_TO_REFERENCE` | 13 | Sim.act / Sim.cond 不认识 |
+| 不涉及 | `SET_LAST_CREATED_UNIT_TO_REFERENCE` | 13 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 未做 | `TEAM_EXIT_ALL_BUILDINGS` | 13 | Sim.act / Sim.cond 不认识 |
 | 未做 | `GATE_CLOSE` | 12 | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_GARRISON_NEAREST_BUILDING` | 12 | Sim.act / Sim.cond 不认识 |
@@ -262,7 +262,7 @@
 | 不涉及 | `FLASH_JOYPAD_COMMANDBAR_BUTTON` | 11 | 纯表现（名字规则） |
 | 不涉及 | `FLASH_JOYPAD_HUD_FIXED_ELEMENT` | 11 | 纯表现（名字规则） |
 | 已对拍 | `NAMED_REMOVE_UPGRADE` | 11 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_invuln.py |
-| 未做 | `ORE_NODE_SET_MAX_GATHER_VALUE` | 11 | Sim.act / Sim.cond 不认识 |
+| 不涉及 | `ORE_NODE_SET_MAX_GATHER_VALUE` | 11 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 未做 | `PLAYER_ENABLE_BASE_CONSTRUCTION` | 10 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `ROTATE_CAMERA` | 10 | 纯表现（名字规则） |
 | 未做 | `SKIRMISH_AI_CONSIDER_ALL_ENEMIES_WHEN_BUILDING` | 10 | Sim.act / Sim.cond 不认识 |
@@ -289,7 +289,7 @@
 | 已对拍 | `SET_COUNTER_TO_COUNTER` | 8 | 引擎模型核心；台上量过：checks/engine_protocol.py |
 | 未做 | `SET_PLAYER_KILLS_OF_TYPE_TO_COUNTER` | 8 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `CAMERA_STOP_FOLLOW` | 7 | 纯表现（名字规则） |
-| 未做 | `FIRE_SPECIAL_POWER_ON_UNIT` | 7 | Sim.act / Sim.cond 不认识 |
+| 不涉及 | `FIRE_SPECIAL_POWER_ON_UNIT` | 7 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 未做 | `NAMED_FACE_NAMED` | 7 | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ActivateRoarSpecialPower` | 7 | 只记进时间线，没有效果 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JAAS_Transform` | 7 | 只记进时间线，没有效果 |
@@ -304,10 +304,10 @@
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleBinaryWeapon` | 6 | 只记进时间线，没有效果 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_ActivateRoarSpecialPower` | 6 | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_TriggerRushAttackSpecialPower` | 6 | Sim.act / Sim.cond 不认识 |
-| 未做 | `PLAYER_FIRE_MULTI_TARGET_SPECIAL_POWER_AT_WAYPOINTS` | 6 | Sim.act / Sim.cond 不认识 |
+| 不涉及 | `PLAYER_FIRE_MULTI_TARGET_SPECIAL_POWER_AT_WAYPOINTS` | 6 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 未做 | `TEAM_LOAD_TRANSPORTS` | 6 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `UNIT_ENABLE_HOUSE_COLOR` | 6 | 纯表现（名字规则） |
-| 不涉及 | `BORDER_SHROUD_SET_OPACITY` | 5 | 纯表现（名字规则） |
+| 不涉及 | `BORDER_SHROUD_SET_OPACITY` | 5 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `CAMERA_STOP_TETHER_NAMED` | 5 | 纯表现（名字规则） |
 | 未做 | `FIRE_SPECIAL_POWER_ON_NEAREST_OBJECTTYPE_BY_PLAYER` | 5 | Sim.act / Sim.cond 不认识 |
 | 未做 | `FIRE_SPECIAL_POWER_ON_TEAM` | 5 | Sim.act / Sim.cond 不认识 |
@@ -325,10 +325,10 @@
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleMagneticArmor` | 4 | 只记进时间线，没有效果 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleShortCircuit` | 4 | 只记进时间线，没有效果 |
 | 未做 | `PLAYER_AI_CHANGEUNITBUILDER` | 4 | Sim.act / Sim.cond 不认识 |
-| 未做 | `PLAYER_SET_DISABLED` | 4 | Sim.act / Sim.cond 不认识 |
-| 不涉及 | `SET_BLOOM_INTENSITY` | 4 | 纯表现（名字规则） |
+| 不涉及 | `PLAYER_SET_DISABLED` | 4 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
+| 不涉及 | `SET_BLOOM_INTENSITY` | 4 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 未做 | `SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER_INCLUDE_DEAD` | 4 | Sim.act / Sim.cond 不认识 |
-| 不涉及 | `SET_TEXTURE_LOOKUP_TABLE` | 4 | 纯表现（名字规则） |
+| 不涉及 | `SET_TEXTURE_LOOKUP_TABLE` | 4 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 未做 | `SKIRMISH_AI_CLEAR_ALL_ENEMY_PLAYERS_PRIORITIES` | 4 | Sim.act / Sim.cond 不认识 |
 | 未做 | `SKIRMISH_FIRE_SPECIAL_POWER_AT_MOST_COST` | 4 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_CONTEXT_SENSITIVE_ATTACK` | 4 | Sim.act / Sim.cond 不认识 |
@@ -342,7 +342,7 @@
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JapanAntiInfantryInfantryBonzai` | 3 | 只记进时间线，没有效果 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleShieldSphere` | 3 | 只记进时间线，没有效果 |
 | 不涉及 | `PATH_MUSIC_FADE_IN_MUSIC` | 3 | 纯表现（名字规则） |
-| 不涉及 | `RESET_CAMERA_AT_OBJECT` | 3 | 纯表现（名字规则） |
+| 不涉及 | `RESET_CAMERA_AT_OBJECT` | 3 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 未做 | `SKIRMISH_AI_CLEAR_ENEMY_PLAYER_PRIORITY` | 3 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_ATTACK_MOVE_TOWARDS_NEAREST_OBJECT_TYPE` | 3 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_ENTER_NAMED` | 3 | Sim.act / Sim.cond 不认识 |
@@ -355,7 +355,7 @@
 | 推断 | `ADD_TO_MSEC_TIMER` | 2 | 引擎模型核心 |
 | 不涉及 | `AUDIO_FADE_VOLUME` | 2 | 纯表现（名字规则） |
 | 不涉及 | `AUDIO_POP_MUSIC` | 2 | 纯表现（名字规则） |
-| 不涉及 | `AUDIO_SET_SOUNDEFFECTS_SLIDER_FADEABLE` | 2 | 纯表现（名字规则） |
+| 不涉及 | `AUDIO_SET_SOUNDEFFECTS_SLIDER_FADEABLE` | 2 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `DISABLE_BORDER_SHROUD` | 2 | 纯表现（名字规则） |
 | 未做 | `DISABLE_UI_UNIT_ABILITY_BUTTON` | 2 | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT:specialpowercampalliedbomberdrop2` | 2 | 只记进时间线，没有效果 |
@@ -366,7 +366,7 @@
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_ActivateDisguiseSpecialPower` | 2 | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_AlliedSupportAircraftShrinkRay` | 2 | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_CaptureBuilding` | 2 | 只记进时间线，没有效果 |
-| 未做 | `OVERRIDE_GLOBAL_TERRAIN_HEIGHT` | 2 | Sim.act / Sim.cond 不认识 |
+| 不涉及 | `OVERRIDE_GLOBAL_TERRAIN_HEIGHT` | 2 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `PATH_MUSIC_FADE_OUT_MUSIC` | 2 | 纯表现（名字规则） |
 | 不涉及 | `PATH_MUSIC_STOP_MUSIC` | 2 | 纯表现（名字规则） |
 | 不涉及 | `PLAYER_CAMERA_TETHER_NAMED` | 2 | 纯表现（名字规则） |
@@ -392,7 +392,7 @@
 | 未做 | `DAMAGE_MEMBERS_OF_TEAM` | 1 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `FREEZE_TIME` | 1 | 纯表现（名字规则） |
 | 推断 | `MARK_MISSION_OBJECTIVE_NOT_COMPLETED` | 1 | 引擎模型核心 |
-| 未做 | `MOVE_TEAM_TO_UNIT` | 1 | Sim.act / Sim.cond 不认识 |
+| 不涉及 | `MOVE_TEAM_TO_UNIT` | 1 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `MUSIC_SET_TRACK` | 1 | 纯表现（名字规则） |
 | 不涉及 | `MUSIC_SET_VOLUME` | 1 | 纯表现（名字规则） |
 | 未做 | `NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT:specialpowernanoswarmhive` | 1 | 只记进时间线，没有效果 |
@@ -434,7 +434,7 @@
 | 未做 | `TEAM_FACE_NAMED` | 1 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_REMOVE_ALL_OVERRIDE_RELATIONS` | 1 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_SET_EXPERIENCE_POINTS` | 1 | Sim.act / Sim.cond 不认识 |
-| 不涉及 | `TOGGLE_SHADER_OVERRIDE` | 1 | 纯表现（名字规则） |
+| 不涉及 | `TOGGLE_SHADER_OVERRIDE` | 1 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `UNFREEZE_TIME` | 1 | 纯表现（名字规则） |
 | 未做 | `UNIT_CHANGE_OBJECT_STATUS:CAN_ATTACK` | 1 | 状态位 CAN_ATTACK 只记下来 |
 | 未做 | `UNIT_CHANGE_OBJECT_STATUS:NO_BRIBE` | 1 | 状态位 NO_BRIBE 只记下来 |
@@ -470,7 +470,7 @@
 | 未做 | `UNIT_HAS_MODELCONDITION` | 88 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_INSIDE_AREA_PARTIALLY` | 80 | Sim.act / Sim.cond 不认识 |
 | 未做 | `ENEMY_SIGHTED_BY_TEAM` | 69 | Sim.act / Sim.cond 不认识 |
-| 未做 | `IS_OBJECT_OF_TYPE` | 69 | Sim.act / Sim.cond 不认识 |
+| 不涉及 | `IS_OBJECT_OF_TYPE` | 69 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 推断 | `CAMERA_ENTERED_AREA` | 60 | Sim.act / Sim.cond 有分支 |
 | 未做 | `ENEMY_SIGHTED` | 59 | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `COUNTER_COUNTER` | 55 | 引擎模型核心；台上量过：checks/engine_scripts6.py |
@@ -498,11 +498,11 @@
 | 未做 | `NAMED_BUILDING_IS_EMPTY` | 13 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_HAS_FEWER_THAN_X_UNITS_WITH_KINDOF` | 12 | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_ATTACKED_BY_OBJECTTYPE` | 10 | Sim.act / Sim.cond 不认识 |
-| 未做 | `OBJECT_IS_DISGUISED_AS_TYPE` | 10 | Sim.act / Sim.cond 不认识 |
+| 不涉及 | `OBJECT_IS_DISGUISED_AS_TYPE` | 10 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 已对拍 | `PLAYER_HAS_COMPARISON_POWER_POINTS` | 10 | tests/test_simbench.py::test_protocol_set_points_follows_the_programs_rule |
 | 未做 | `TEAM_ATTACKED_BY_OBJECTTYPE` | 10 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_COMPARE_NUM_MEMBERS` | 10 | Sim.act / Sim.cond 不认识 |
-| 未做 | `PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA_WITH_MODELCONDITION` | 9 | Sim.act / Sim.cond 不认识 |
+| 不涉及 | `PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA_WITH_MODELCONDITION` | 9 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 未做 | `PLAYER_HAS_POWER` | 9 | Sim.act / Sim.cond 不认识 |
 | 未做 | `PLAYER_TRIGGERED_SPECIAL_POWER` | 9 | Sim.act / Sim.cond 不认识 |
 | 未做 | `BUILT_BY_PLAYER` | 8 | Sim.act / Sim.cond 不认识 |
@@ -573,7 +573,7 @@
 | 未做 | `Body/ImmortalBody` | 91 (111) | 模拟器代码里没有这个名字；例：BaseRock, CPDummyTarget |
 | 未做 | `Behaviors/LevelUpUpgrade` | 88 (124) | 模拟器代码里没有这个名字；例：AlliedSatelliteSweepShroudRevealer, AlliedAntiAirShip |
 | 已对拍 | `Behaviors/AutoHealBehavior` | 88 (123) | tests/test_simbench.py::test_autoheal_an_apocalypse_mends_two_points_every_7_frames_after_a_15_frame_wait；例：AlliedSatelliteSweepShroudRevealer, AlliedAntiAirShip |
-| 未做 | `Behaviors/RunOffMapBehavior` | 88 (123) | 已核（11-08）：模拟器没有这个效果（没有逃离地图）；例：AlliedSatelliteSweepShroudRevealer, AlliedAntiAirShip |
+| 已对拍 | `Behaviors/RunOffMapBehavior` | 88 (123) | tests/test_simbench_c.py::test_run_off_map_the_peacekeeper_is_gone_64_and_304_frames_after_the_order_never_dying；例：AlliedSatelliteSweepShroudRevealer, AlliedAntiAirShip |
 | 推断 | `Behaviors/WeaponSetUpdate` | 82 (110) | 模拟器代码里有这个名字；例：AlliedBaseDefense, AlliedBaseDefenseAdvanced |
 | 已对拍 | `Behaviors/SpecialPower` | 74 (95) | tests/test_simbench.py::test_super_a_scripts_cast_starts_the_retail_reload；例：AlliedConstructionYard, AlliedAntiAirShip |
 | 未做 | `Behaviors/EngineerContain` | 70 (105) | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |

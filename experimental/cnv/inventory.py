@@ -131,8 +131,6 @@ NOTES = {
     (MODULE, 'Behaviors/TeleportStoredObjectsUpdate'): (TODO, f'{_NOT_IN_SIM}（UNIT_TELEPORT_TO_WAYPOINT 另算）'),
     (NUGGET, 'ActivateLaserNugget'): (TODO, f'{_NOT_IN_SIM}（没有激光束）'),
     # batch 1 (work/re/l2_scripts1.md, checks/engine_scripts1.py, bench 11-08)
-    (ACTION, 'UNIT_IDLE_FOR_FRAMECOUNT'): (GUESSED, 'Sim.stand：和 UNIT_IDLE_FOR_SECONDS 同一个处理函数，'
-                                                     '秒版台上量过（命令清掉，不是暂停）'),
     (ACTION, 'TEAM_HUNT'): (GUESSED, '没交给 AI 的玩家（含玩家自己）：不动，台上量过（engine_scripts1 hunt 60 s）；'
                                      'AI 玩家的 HuntTactic 不模拟（引擎 B），碰到记 Sim.unmodeled'),
     (ACTION, 'NAMED_HUNT'): (GUESSED, '同 TEAM_HUNT：没交给 AI 不动（台上量过）；AI 玩家的猎杀不模拟（引擎 B）'),
@@ -171,6 +169,23 @@ NOTES = {
                                               'OK_LANTERN01 在模拟器里不是物体（不挡路），platprops.STRUCTURE 里的'
                                               '栏杆路灯是永久障碍（游戏里车能压倒）；台上没量过灯笼，要先写探针'),
 }
+
+# Uprising only: actions / conditions only Uprising's campaign maps use, whose content type there is past the last
+# case of RA3 1.13's dispatch (actions >= 573, RA3's last 572; conditions >= 156, RA3's last 155; read 11-09 from the
+# Uprising maps' chunks against work/re/actions_map.json / conds_map.json). An RA3 mod cannot run them: 不涉及.
+_UPRISING = '起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了'
+UPRISING_ONLY = {(ACTION, n) for n in (
+    'NAMED_USE_LOGIC_COMMAND_ABILITY_ON_NAMED_POSITION', 'TELEPORT_STRUCTURE', 'TOGGLE_RADAR_UI',
+    'TOGGLE_LOCK_CURRENT_SELECTION', 'SET_LAST_CREATED_UNIT_TO_REFERENCE', 'MOVE_NAMED_UNIT_TO_UNIT',
+    'SET_REFERENCE_TO_RANDOM_TEAM_MEMBER', 'SET_REFERENCE_TO_FIRST_TEAM_MEMBER_IN_AREA',
+    'CREATE_UNNAMED_ON_TEAM_AT_NAMED_OBJECT_LOCATION', 'TEAM_SET_DISABLED', 'EVALUATE_SCRIPT', 'PLAYER_SET_DISABLED',
+    'UNIT_EXECUTE_SEQUENTIAL_SCRIPT_COPY', 'FOR_EACH_TEAM_MEMBER_EXECUTE_SCRIPT', 'MOVE_TEAM_TO_UNIT',
+    'FOR_EACH_PLAYER_OBJECT_EXECUTE_SCRIPT', 'FIRE_SPECIAL_POWER_ON_UNIT', 'BORDER_SHROUD_SET_OPACITY',
+    'PLAYER_FIRE_MULTI_TARGET_SPECIAL_POWER_AT_WAYPOINTS', 'SET_TEXTURE_LOOKUP_TABLE', 'SET_BLOOM_INTENSITY',
+    'OVERRIDE_GLOBAL_TERRAIN_HEIGHT', 'TOGGLE_SHADER_OVERRIDE', 'AUDIO_SET_SOUNDEFFECTS_SLIDER_FADEABLE',
+    'ORE_NODE_SET_MAX_GATHER_VALUE', 'RESET_CAMERA_AT_OBJECT')} | {(CONDITION, n) for n in (
+    'PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA_WITH_MODELCONDITION', 'IS_OBJECT_OF_TYPE',
+    'OBJECT_IS_DISGUISED_AS_TYPE')}
 
 # presentation only: script actions that move the camera, play sound / film, draw on screen (conditions are never NA:
 # a script may wait on a camera); module groups that only draw
@@ -341,6 +356,8 @@ def apply_registers(items):
             it['state'], it['why'] = NOTES[k]
         if k in BENCHED_TESTS:
             it['state'], it['why'] = BENCHED, BENCHED_TESTS[k]
+        if (it['part'], it['name'].split(':')[0]) in UPRISING_ONLY:
+            it['state'], it['why'] = NA, _UPRISING
     return items
 
 

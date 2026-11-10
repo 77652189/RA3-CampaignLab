@@ -2,13 +2,13 @@
 
 由 `experimental/cnv/inventory_levels.py --write` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）编出的全部脚本（`parts.merged`，含目标显示脚本）里的动作和条件；地图和任务摆的物体、我们自己的单位、脚本点名的模板，连同模块点名的武器、武器点名的物体（抛射体）和武器，取生效的模块（继承、include、同 id 覆盖）和武器效果。没跟：模块点名的别的物体（多是能变成 / 能装的东西：多功能步兵车的乘客、锤子坦克吸来的车）、物体生成表（死亡碎片、OCL 技能）和命令表（工厂能造什么）。AI 部分（引擎 B）在 [inventory-levels.md](inventory-levels.md)。状态和原版用量取自 [inventory.md](inventory.md)。停止条件①：下表全部已对拍。
 
-**已对拍 89 / 200**（不涉及的不算）。
+**已对拍 90 / 200**（不涉及的不算）。
 
 | 部分 | 已对拍 | 推断 | 未做 | 不涉及 |
 |---|---|---|---|---|
 | 脚本动作 | 52 | 0 | 0 | 12 |
 | 脚本条件 | 12 | 0 | 0 | 0 |
-| 物体模块 | 23 | 7 | 85 | 15 |
+| 物体模块 | 24 | 7 | 84 | 15 |
 | 武器效果 | 2 | 3 | 16 | 0 |
 
 按原版用量加权：已对拍 89%，已有（已对拍+推断）89%。
@@ -29,7 +29,6 @@
 | 未做 | 物体模块 | `Behaviors/DynamicsUpdate` | 113 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAntiAirVehicleTech1, AlliedAntiInfantryVehicle |
 | 未做 | 物体模块 | `Behaviors/StancesBehavior` | 108 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 已核（11-08）：模拟器没有这个效果（没有姿态）；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
 | 未做 | 物体模块 | `Behaviors/LevelUpUpgrade` | 88 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAntiAirVehicleTech1, AlliedAntiInfantryInfantry |
-| 未做 | 物体模块 | `Behaviors/RunOffMapBehavior` | 88 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 已核（11-08）：模拟器没有这个效果（没有逃离地图）；例：AlliedAntiAirVehicleTech1, AlliedAntiInfantryInfantry |
 | 未做 | 物体模块 | `Behaviors/EngineerContain` | 70 | a1 a2 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |
 | 未做 | 物体模块 | `Behaviors/RepairUpdate` | 66 | a1 a2 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |
 | 未做 | 物体模块 | `Behaviors/InfiltratorContain` | 34 | a1 a2 a4 a5 a6 a7 a8 | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |
@@ -207,6 +206,7 @@
 | 已对拍 | 物体模块 | `Behaviors/FireWeaponWhenDead` | 146 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里有这个名字；台上量过：checks/engine_spawn.py；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
 | 已对拍 | 物体模块 | `AI/AIUpdate` | 136 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | tests/test_simbench.py::test_r8_idle_within_sight_walks_up_fires_and_comes_back；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
 | 已对拍 | 物体模块 | `Behaviors/AutoHealBehavior` | 88 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | tests/test_simbench.py::test_autoheal_an_apocalypse_mends_two_points_every_7_frames_after_a_15_frame_wait；例：AlliedAntiAirVehicleTech1, AlliedAntiInfantryInfantry |
+| 已对拍 | 物体模块 | `Behaviors/RunOffMapBehavior` | 88 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | tests/test_simbench_c.py::test_run_off_map_the_peacekeeper_is_gone_64_and_304_frames_after_the_order_never_dying；例：AlliedAntiAirVehicleTech1, AlliedAntiInfantryInfantry |
 | 已对拍 | 物体模块 | `Behaviors/SpecialPower` | 74 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | tests/test_simbench.py::test_super_a_scripts_cast_starts_the_retail_reload；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
 | 已对拍 | 物体模块 | `Behaviors/StructureUnpackUpdate` | 59 | a1 a2 a4 a5 a6 a7 a8 a9 | tests/test_simbench.py::test_power_back_after_the_plant_unpacks；例：AlliedAirfield, AlliedBarracks |
 | 已对拍 | 物体模块 | `Behaviors/StructureSellUpdate` | 52 | a1 a2 a4 a5 a6 a7 a8 a9 | tests/test_simbench.py::test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames；例：AlliedAirfield, AlliedBarracks |
