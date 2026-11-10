@@ -35,11 +35,15 @@ Bench 2026-11-09 (B round 89, 坦克拥有 = owned anywhere): aiar0 / aiar1 / ai
 opener built no Guardian at all (not the home box). aimicro's same opener (2 infantry, a script-placed barracks)
 built both. Told apart next by aiar3 (no Guardians placed: can the script-placed war factory build them) and aiar4
 (4 Guardians, the opener builds 2 Riptides: is it owning that template already) -- written, not benched.
+Bench 2026-11-09 (B round 92, PASS 1 of 1 each; aiar8's StaticDefense AlwaysRecruit team): aiar9 (new AI plant 1000
+south at s45) 坦克在新楼 0 to s107; aiar10 (placed tank 1 teleported 1200 south at s60 and s130) 坦克在外 1 for ~5 s /
+~10 s, home again ~10 s after each -- held both times, the guard keeps its first target.
 """
 from parts import Test, counted, square, Script
 
 AREA = 'CNV AI Base Area'
 OUT_AREA = 'CNV AI Out Area'
+PLANT_AREA = 'CNV AI Far Plant Area'
 LAG = 4.0
 AT, SECONDS = 40.0, 50.0
 
@@ -52,8 +56,22 @@ def a(m):
     tank, other = m.cnv_units
     lt, lo = getattr(m, 'cnv_labels', ('坦克在家', '步兵在家'))
     counted('CNV_TF_Tanks', lt, t, template=tank, area=AREA, player=s1)
+    x, y = m.site('east base')
+    if 'plant at' in m.facts or 'named teleport 1' in m.facts:   # aiar9 / 10: 3 counters (a 4th reads ?)
+        if 'plant at' in m.facts:
+            t.areas[PLANT_AREA] = square(*m.point('far plant'), 350.0)
+            counted('CNV_TF_Plant', '坦克在新楼', t, template=tank, area=PLANT_AREA, player=s1)
+            label, want = '坦克在新楼', m.facts['expect tanks at plant']
+        else:
+            t.areas[OUT_AREA] = square(x, y - 1200.0, 300.0)
+            counted('CNV_TF_Out', '坦克在外', t, template=tank, area=OUT_AREA, player=s1)
+            label, want = '坦克在外', m.facts['expect named out']
+        counted('CNV_TF_Owned', '坦克拥有', t, template=tank, player=s1)
+        at = m.facts['check at']
+        t.expect += [(label, at, '==', want, at + 1)]
+        t.bench = [('bench_watch', dict(seconds=at + 4 + LAG, every=1, sheet=False, lines=len(t.counters)))]
+        return t
     if 'teleport at' in m.facts:          # aiar5-8: the late tanks no team holds, teleported (a 4th counter reads ?)
-        x, y = m.site('east base')
         t.areas[OUT_AREA] = square(x, y - 1200.0, 300.0)
         counted('CNV_TF_Out', '坦克在外', t, template=tank, area=OUT_AREA, player=s1)
         counted('CNV_TF_Owned', '坦克拥有', t, template=tank, player=s1)
@@ -75,4 +93,4 @@ def a(m):
 
 CHECKS = {k: {'a': a} for k in ('aitfany', 'aitfnone', 'aitfall', 'aitfki', 'aitfke', 'aitfmax',
                                  'aitfland', 'aitfamph', 'aitfwat', 'aitfosi', 'aitfosv', 'aitfosc', 'aiar0', 'aiar1', 'aiar2',
-                                 'aiar3', 'aiar4', 'aiar5', 'aiar6', 'aiar7', 'aiar8')}
+                                 'aiar3', 'aiar4', 'aiar5', 'aiar6', 'aiar7', 'aiar8', 'aiar9', 'aiar10')}

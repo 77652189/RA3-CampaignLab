@@ -38,6 +38,7 @@ LATE_MONEY, LATE_DEPOSIT, LATE_CHECK_AT = 10000, 5000, 60.0
 OPENER = 'CNVTeamFOpener'
 FACTORY_DY, PLANT_DY = -250.0, 400.0   # round 90: factory -400 -> -250, inside the yard's Tech2 reach (~300)
 TECH2 = 'Upgrade_AlliedTech2'
+FAR_PLANT_DY = -1000.0                 # round 92: outside the 450 home box, on the open grass south (aiskirm's OUT)
 
 
 def personality_xml(pid, kinds, filt, max_units, locos='LAND AMPHIBIOUS', objset='', always=False, late=0,
@@ -96,7 +97,7 @@ def objfilter(rule, inc=(), exc=()):
 
 def mission(name, kinds=KINDS, filt='', max_units=8, tanks=4, inf=4, tanks_home=0, inf_home=4, second=INF,
             locos='LAND AMPHIBIOUS', objset='', always=False, late=0, late_unit=TANK, static=False, tp_at=None,
-            tanks_out=0):
+            tanks_out=0, plant_at=None, at_plant=0, tp_named=(), named_out=0):
     """second: the other unit type (Peacekeepers, or Riptide ACVs in the locomotor builds); inf / inf_home count it.
     always: the team's AlwaysRecruit; late: Guardians the AI builds itself (a war factory, a plant, the opener);
     late_unit: what the opener builds instead (round 89: aiar4 Riptides)."""
@@ -107,6 +108,11 @@ def mission(name, kinds=KINDS, filt='', max_units=8, tanks=4, inf=4, tanks_home=
         facts |= {'late tanks': late, 'check at': LATE_CHECK_AT}
     if tp_at:       # round 91: the default team teleported out -- only units no AI team holds go (read at tp + 2)
         facts |= {'teleport at': tp_at, 'check at': tp_at + 2.0, 'expect tanks out': tanks_out}
+    if plant_at:    # round 92: a new AI plant far out at plant_at -- does the defense team move its guard there
+        facts |= {'plant at': plant_at, 'check at': plant_at + 50.0, 'expect tanks at plant': at_plant}
+    if tp_named:    # round 92: placed tank 1 teleported out at each time -- back = still held, stays = released
+        facts |= {f'named teleport {k + 1}': at for k, at in enumerate(tp_named)}   # facts are numbers
+        facts |= {'check at': tp_named[-1] + 30.0, 'expect named out': named_out}
     m = Mission(name=name, map=niagara, facts=facts)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{pid}'}
     xml = personality_xml(pid, kinds, filt, max_units, locos, f' RegisteredObjectSet="{objset}"' if objset else '',
@@ -145,6 +151,18 @@ def mission(name, kinds=KINDS, filt='', max_units=8, tanks=4, inf=4, tanks_home=
         m.scripts += [Script('CNV AI - Tp timer', [], [('SET_MILLISECOND_TIMER', 'CNV AI Tp', tp_at)]),
                       Script('CNV AI - Tp', [('TIMER_EXPIRED', 'CNV AI Tp')],
                              [('TEAM_TELEPORT_TO_WAYPOINT', m.team('s1'), 'CNV AI Out')])]
+    if plant_at:
+        m.waypoint('far plant', 'CNV AI Far Plant', 'east base', 0.0, FAR_PLANT_DY)
+        m.scripts += [Script('CNV AI - Plant timer', [], [('SET_MILLISECOND_TIMER', 'CNV AI Plant', plant_at)]),
+                      Script('CNV AI - Plant', [('TIMER_EXPIRED', 'CNV AI Plant')],
+                             [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', 'UNIT - CNV AI Far Plant', 'AlliedPowerPlant',
+                               m.team('s1'), 'CNV AI Far Plant')])]
+    if tp_named:
+        m.waypoint('out', 'CNV AI Out', 'east base', 0.0, -1200.0)
+        for k, at in enumerate(tp_named):
+            m.scripts += [Script(f'CNV AI - Tpn timer {k}', [], [('SET_MILLISECOND_TIMER', f'CNV AI Tpn {k}', at)]),
+                          Script(f'CNV AI - Tpn {k}', [('TIMER_EXPIRED', f'CNV AI Tpn {k}')],
+                                 [('UNIT_TELEPORT_TO_WAYPOINT', 'UNIT - CNV AI Tank 1', 'CNV AI Out')])]
     if late:
         m.put('AlliedWarFactory', 'east base', 0, FACTORY_DY, side='s1', name='UNIT - CNV AI Factory', role='ai factory')
         m.put('AlliedPowerPlant', 'east base', 0, PLANT_DY, side='s1', name='UNIT - CNV AI Plant', role='ai plant')
@@ -204,4 +222,15 @@ MISSION = {
                              static=True, tp_at=70.0, tanks_out=0),
     'aiar8': lambda: mission('CampAITFAr8', filt=objfilter('ANY', inc=(TANK,)), inf=0, inf_home=0, late=2,
                              static=True, always=True, tp_at=70.0, tanks_out=0),
+    # round 92: when does a gone defense team let go (in a full skirmish the defense team gave its units back:
+    # round 51)? aiar9: aiar8 + at s45 a new AI plant 1000 south (FriendlyLandStructure, MaxTargets 1: does the guard
+    # move there?); aiar10: aiar8 + placed tank 1 teleported 1200 south at s60 and s130 (held = it comes back).
+    # Guesses: the team keeps its first target (0 at the plant); the tank is held both times (0 out at the end).
+    # Bench round 92 (both PASS): aiar9 (在家 / 在新楼 / 拥有) 在新楼 0 to s107, home swings 6-4-6 as aiar8 -- the
+    # guard never moved to the new plant. aiar10 (在家 / 在外 / 拥有): tank 1 out s60-64, home again by s70; out
+    # s130-139, home by s145 -- back in ~10 s both times: a quiet base's defense team holds its members >= 130 s.
+    'aiar9': lambda: mission('CampAITFAr9', filt=objfilter('ANY', inc=(TANK,)), inf=0, inf_home=0, late=2,
+                             static=True, always=True, plant_at=45.0, at_plant=0),
+    'aiar10': lambda: mission('CampAITFAr10', filt=objfilter('ANY', inc=(TANK,)), inf=0, inf_home=0, late=2,
+                              static=True, always=True, tp_named=(60.0, 130.0), named_out=0),
 }
