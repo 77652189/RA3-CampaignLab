@@ -1,4 +1,4 @@
-"""Engine unit test: WeaponSetUpdate -- which weapon a unit fires when the weapon's ObjectStatus / ForbiddenObjectStatus
+"""Engine unit test: weapon-set module -- which weapon a unit fires when the weapon's ObjectStatus / ForbiddenObjectStatus
 say so (engine line C round 9; docs/engine/weaponset.md). Retail writes the choice into the module: a Conscript's AK47
 is forbidden under GENERIC_TOGGLE_STATE and its Molotov needs it; a Guardian's cannon is forbidden under the toggle and
 its target painter (no damage) needs it; a mirage tank's cannon is replaced by the _Veteran one under WEAPON_UPGRADED_01.

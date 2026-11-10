@@ -1,0 +1,72 @@
+"""Engine unit test: topple module -- do the crushable props (lanterns, street lamps, fences, trees) fall when a vehicle
+drives through them, and who can topple them (engine line C round 10; docs/engine/crush.md). Retail data (SDK SageXML):
+OK_Lantern01 / SA_Fence09 inherit BaseSimulatedProp (prop body, CrusherInfo CrushableLevel 0, KindOf CRUSHABLE_OBSTACLE
+...) with a topple module `KillWhenStartToppled=true` (ToppleFX FX_WoodCrush / FX_StreetLampCrush); trees (CS_Tree01,
+BaseTree) have `KillWhenToppled=true` and a SlowDeath (SinkDelay 2 s, DestructionDelay 4 s). CrusherLevel of a Hammer is
+20, of an Apocalypse 30, of a conscript 0. Questions: does the Hammer drive straight through (reach its goal) or go
+round / stop; is the prop dead (NAMED_NOT_DESTROYED false) or dying (NAMED_DYING) afterwards, and when; can a conscript
+(level 0, not strictly above the prop's 0) topple one; does the simulator's rule "a crusher strictly above the crushable
+level kills it" (Sim.crush_along) apply to a prop at all.
+
+On the festival map, west field, lanes along +x, 300 apart; every unit on HOLD_FIRE. Per lane the player's vehicle 200
+west of the prop (the prop is neutral, 'civ'), ordered at 'Test Go' (1 s in) to a point 200 east of it:
+  a  lane 1 Hammer -> OK_Lantern01   lane 2 Hammer -> CS_StreetLight   lane 3 Hammer -> SA_Fence09
+  b  lane 1 Hammer -> CS_Tree01      lane 2 Conscript -> OK_Lantern01  lane 3 Apocalypse -> OK_Lantern01
+Counters (four lines), counted from 'Test Go' on:
+  帧数  frames since Go
+  行k   (k = 1..3 the lanes) 1 x frames the prop is not destroyed + 1000 x frames it is dying + 1000000 x frames the
+        vehicle is at its goal (a square of half-side 40)
+
+Bench: see the docstring's end (filled in when read).
+"""
+from maps import festival
+from parts import Mission, Script, Test, square
+
+HAMMER, APOC, CONSCRIPT = 'SovietAntiVehicleVehicleTech1', 'SovietAntiVehicleVehicleTech3', 'SovietAntiInfantryInfantry'
+LANTERN, LAMP, FENCE, TREE = 'OK_Lantern01', 'CS_StreetLight', 'SA_Fence09', 'CS_Tree01'
+LANES = {'a': {1: (HAMMER, LANTERN, -300.0), 2: (HAMMER, LAMP, 0.0), 3: (HAMMER, FENCE, 300.0)},
+         'b': {1: (HAMMER, TREE, -300.0), 2: (CONSCRIPT, LANTERN, 0.0), 3: (APOC, LANTERN, 300.0)}}
+RUN, HOLD_FIRE = 45.0, 3
+
+
+def _n(part):
+    return f'UNIT - CNV Topple {part}'
+
+
+def mission(which='a'):
+    m = Mission(name=f'CampTopple{which.upper()}', map=festival, units=[], facts={})
+    for k, (crusher, prop, dy) in LANES[which].items():
+        m.put(crusher, 'west field', -200.0, dy, angle=0.0, role=f'crusher {k}', name=_n(f'Crusher {k}'))
+        m.put(prop, 'west field', 0.0, dy, side='civ', role=f'prop {k}', name=_n(f'Prop {k}'))
+    return m
+
+
+def topple_test(m, which='a'):
+    t = Test()
+    p1 = m.player('p1')
+    x, y = m.site('west field')[:2]
+    for k, (_, _, dy) in LANES[which].items():
+        t.waypoints[f'Test Goal {k}'] = (x + 200.0, y + dy)
+        t.areas[f'Test Goal {k}'] = square(x + 200.0, y + dy, 40.0)
+    start = [('MAP_REVEAL_ALL_PERM', p1), ('SET_MILLISECOND_TIMER', 'Test Go', 1.0)]
+    start += [('UNIT_SET_STANCE', _n(f'Crusher {k}'), HOLD_FIRE) for k in LANES[which]]
+    t.scripts.append(Script('Test - start', [], start))
+    go = [('MOVE_NAMED_UNIT_TO', _n(f'Crusher {k}'), f'Test Goal {k}') for k in LANES[which]]
+    t.scripts.append(Script('Test - go', [('TIMER_EXPIRED', 'Test Go')], go + [('SET_FLAG', 'Test Going', 1)]))
+    going = ('FLAG', 'Test Going', 1)
+    t.counters.append(('CNV_Topple_Frames', '帧数'))
+    t.scripts.append(Script('Test - frames', [going], [('INCREMENT_COUNTER', 1, 'CNV_Topple_Frames')], once=False))
+    for k in LANES[which]:
+        prop, crusher = _n(f'Prop {k}'), _n(f'Crusher {k}')
+        t.counters.append((f'CNV_Topple_Row{k}', f'行{k}'))
+        for j, (cond, step) in enumerate([(('NAMED_NOT_DESTROYED', prop), 1), (('NAMED_DYING', prop), 1000),
+                                          (('NAMED_INSIDE_AREA', crusher, f'Test Goal {k}'), 1000000)]):
+            t.scripts.append(Script(f'Test - row {k} {j}', [going, cond],
+                                    [('INCREMENT_COUNTER', step, f'CNV_Topple_Row{k}')], once=False))
+    t.expect = [('帧数', 0, 'ever>=', 1, RUN)]
+    t.bench = [('bench_watch', dict(every=1.0, sheet=False, lines=len(t.counters), seconds=RUN))]
+    return t
+
+
+MISSION = {'engine_topple': mission, 'engine_topple_b': lambda: mission('b')}
+CHECKS = {'engine_topple': {'a': topple_test}, 'engine_topple_b': {'b': lambda m: topple_test(m, 'b')}}
