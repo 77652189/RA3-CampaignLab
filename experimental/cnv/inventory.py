@@ -91,6 +91,9 @@ BENCHED_TESTS = {
     (MODULE, 'Behaviors/SlowDeath'):
         'tests/test_simbench.py::test_slow_death_a_crushed_conscript_lies_127_frames_dying_and_in_its_spot',
     (MODULE, 'Behaviors/DestroyDie'): 'tests/test_simbench.py::test_destroy_die_a_building_killed_is_dying_one_frame_and_gone',
+    # engine line C round 8: running off the map (Sim.flee_start / flee_due, checks/engine_runoffmap.py, bench 11-06)
+    (MODULE, 'Behaviors/RunOffMapBehavior'):
+        'tests/test_simbench_c.py::test_run_off_map_the_peacekeeper_is_gone_64_and_304_frames_after_the_order_never_dying',
     # engine line C round 5: selling (checks/engine_sell.py, docs/engine/sell.md, bench 11-06)
     (MODULE, 'Behaviors/BuildingBehavior'):
         'tests/test_simbench.py::test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames',
@@ -116,7 +119,6 @@ NOTES = {
     (MODULE, 'Behaviors/ContestableGarrisonContain'): (TODO, f'{_NOT_IN_SIM}（没有驻军）'),
     (MODULE, 'Behaviors/GarrisonContain'): (TODO, f'{_NOT_IN_SIM}（没有驻军；NAMED_GARRISON_SPECIFIC_BUILDING 另算）'),
     (MODULE, 'Behaviors/StancesBehavior'): (TODO, f'{_NOT_IN_SIM}（没有姿态）'),
-    (MODULE, 'Behaviors/RunOffMapBehavior'): (TODO, f'{_NOT_IN_SIM}（没有逃离地图）'),
     (MODULE, 'Behaviors/ToggleStatusSpecialAbilityUpdate'): (TODO, f'{_NOT_IN_SIM}（没有按钮切换状态）'),
     (MODULE, 'Behaviors/ReplaceSelfSpecialAbility'): (TODO, f'{_NOT_IN_SIM}（没有换形态）'),
     (MODULE, 'Behaviors/SpawnBehavior'): (TODO, f'{_NOT_IN_SIM}（没有母体造随从）'),

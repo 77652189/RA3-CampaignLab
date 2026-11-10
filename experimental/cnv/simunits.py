@@ -521,6 +521,29 @@ def autoheal(template, own=None):
         return None
 
 
+_flee_memo = {}
+
+
+def run_off_map(template, own=None):
+    """The waypoint name a template's RunOffMapBehavior runs to (RunOffMapWaypointName), '' for the module with none
+    named, None without the module (a structure: it does not run -- docs/engine/runoffmap.md 1, bench 11-06 engine_runoffmap
+    c). BaseInfantry and BaseVehicle both carry it with RequiresSpecificTrigger true: PLAYER_SET_ALL_UNITS_TO_FLEE starts
+    it (RequiresSpecificTrigger false would start it at birth: nobody writes that, not modelled)."""
+    key = (template, (own or {}).get(template))
+    if key not in _flee_memo:
+        def read(xml):
+            for head, _ in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'RunOffMapBehavior'):
+                if _attr(head, 'RequiresSpecificTrigger') == 'false':
+                    return None
+                return _attr(head, 'RunOffMapWaypointName') or ''
+            return None
+        try:
+            _flee_memo[key] = _chain(template, own, read)
+        except (OSError, ValueError):
+            _flee_memo[key] = None
+    return _flee_memo[key]
+
+
 def tracker(text):
     """A SecondaryDamageTracker (the freeze): {'every': UpdateDuration s, 'melt': DissipateAmount taken off each
     UpdateDuration, 'cap': MaxDamageClampScaler (the most it holds, x max health), 'steps': [[Fraction of max health,

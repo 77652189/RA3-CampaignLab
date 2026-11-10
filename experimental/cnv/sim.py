@@ -1081,6 +1081,7 @@ class Sim:
         AIInternalMoveToState::onEnter adjusts every move's goal off the spots other units hold); `given` are spots
         already handed out to a group being ordered, `skip` that group (its members' old goals are dropped first)."""
         if b:
+            b.flee = None                       # INFERRED: any move order takes the run over, as STOP does
             b.mode = 'attack' if attacking else 'move'
             p = self.point(where) if isinstance(where, str) else where
             if p is not None and b.alive and b.speed > 0:
@@ -1767,6 +1768,7 @@ class Sim:
     def order_stop(self, b):
         if b:
             b.path, b.goal = [], None
+            b.flee = None                       # a later order takes the run over (engine_runoffmap d; the status stays)
 
     def stand(self, b):
         """Its order dropped, nothing new: idle where it is (the AI's command 5: l2_scripts1 3, 6)."""
@@ -2377,6 +2379,10 @@ class Sim:
                 if name == 'NAMED_KILL':
                     b.last_hit = b.last_by = None   # the game's kill damage comes from nobody (INVALID_ID)
                 self.destroy(b, '脚本' if name == 'NAMED_KILL' else '脚本删掉', delete=name == 'NAMED_DELETE')
+        elif name == 'PLAYER_SET_ALL_UNITS_TO_FLEE':     # (player) engine_runoffmap: every one with RunOffMapBehavior runs
+            for b in self.living():
+                if b.owner == a[0]:
+                    self.flee_start(b)
         elif name == 'UNIT_SET_STANCE':          # (name, stance): 3 is HOLD_FIRE; the others are not modelled
             b = self.body(a[0])
             if b and b.alive:
@@ -2738,6 +2744,7 @@ class Sim:
             self.tech_due(eng.frame + 1)        # before the frame's scripts (bench 11-08 engine_protocol rank: rank
             eng.step()                          # 2 read by the scripts of frame 5400 = 360 s x 15)
             self.autoheal(eng.frame)
+            self.flee_due(eng.frame)
             self.expire(eng.frame)
             self.build_due(eng.frame)
             self.blast_due(eng.frame)
@@ -2755,6 +2762,45 @@ class Sim:
             if self.combat and self.ending is None:
                 self.deal(1.0 / self.fps)       # R6: the aimed fire frame by frame, after the frame's scripts
         self.t = t0
+
+    FLEE_GONE = 3
+
+    def flee_start(self, b):
+        """RunOffMapBehavior (simunits.run_off_map; engine line C round 8, engine_runoffmap a-d, bench 11-06): from the
+        order's frame the body walks straight to the waypoint named `RunOffMap` (none: 1000 along its facing), at its
+        speed, carrying FLEE_OFF_MAP, and FLEE_GONE frames after it arrives it is removed without a death (not dying).
+        The counting scripts' frames give 64064 / 304304 and the 15 frames in the end's area at lag 0, gone 3 (a grid
+        of lag 0-4 x gone 0-5 had that one fit). Not modelled: the path (a straight line),
+        a way that cannot be walked, flying off."""
+        name = simunits.run_off_map(b.template, self.own)
+        if name is None or not b.alive or b.speed <= 0:
+            return
+        goal = self.waypoints.get(name or 'RunOffMap')
+        if goal is None:
+            goal = (b.x + 1000.0 * math.cos(b.angle), b.y + 1000.0 * math.sin(b.angle))
+        d = math.hypot(goal[0] - b.x, goal[1] - b.y)
+        b.flee = (self.frame_now(), b.x, b.y, goal[0], goal[1], d, b.speed / simunits.LIFE_FPS)
+        b.path, b.goal, b.mode, b.move_to = [], None, 'idle', None
+        b.script_status.add('FLEE_OFF_MAP')
+        self.modify(b)
+        self.used.add('flee off map')
+        self.change()
+
+    def flee_due(self, frame):
+        """One frame of every runner: its place on the straight line, the removal when its time comes."""
+        for b in self.living():
+            f = getattr(b, 'flee', None)
+            if not f:
+                continue
+            f0, x0, y0, x1, y1, d, step = f
+            k = frame - f0
+            walked = min(d, max(0, k) * step) / d if d else 1.0
+            b.x, b.y = x0 + (x1 - x0) * walked, y0 + (y1 - y0) * walked
+            if walked >= 1.0 and k - math.ceil(d / step - 1e-9) >= self.FLEE_GONE:
+                b.flee = None
+                self.destroy(b, '逃出地图', delete=True)
+            else:
+                self.change()
 
     def autoheal(self, frame):
         """AutoHealBehavior (simunits.autoheal; engine line C round 7, engine_heal a / b): a hurt body (health below
