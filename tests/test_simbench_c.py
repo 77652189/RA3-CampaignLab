@@ -362,3 +362,28 @@ def test_suppression_contributions_require_discrete_hit_events():
         assert high.speed == (37.5 if clock else 50)
         assert high.taken == (.75 if clock else 1)
         assert ((sim.GAP_WEAPON, 'SuppressionNugget') in s.unmodeled) is not clock
+
+
+def test_weaponfx_predictions_and_finite_bursts():
+    """Round1: attribute/line bench PASS."""
+    import build
+    import sim
+    for variant, expected in [('attribute', (79,1,74,1)),
+                              ('line', (90,90,90,100))]:
+        m,t,_=build.resolve('engine_weaponfx',variant)
+        assert len(t.counters)==4
+        timers={a[1]:a[2] for s in t.scripts for a in s.do if a[0]=='SET_MILLISECOND_TIMER'}
+        assert all(isinstance(v,float) for v in timers.values())
+        for key,at in timers.items():
+            if key.startswith('Wfx Fire '):
+                assert at>=6.0
+                assert abs(timers[key.replace('Fire','Stop')]-at-4/15)<1e-9
+        for u in m.units:
+            if 'CNV_Wfx' in u.id:
+                assert 'MinSeconds="1s"' in u.xml and 'ClipSize="1"' in u.xml
+        engine=sim.Sim(m,t); engine.shot_clock=True
+        result=engine.run(16.0)
+        readings=result.series[-1][1]
+        assert tuple(readings)==expected,(variant,readings)
+        if variant=='attribute':
+            assert (89,1,84,1) in [tuple(row) for _,row in result.series]

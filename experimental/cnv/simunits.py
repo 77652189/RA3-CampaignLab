@@ -366,6 +366,29 @@ def _weapons(texts, base_table=None):
                     for h, _ in _blocks(bare, 'SuppressionNugget')]
             if supp:
                 got['suppression'] = supp
+            # Only the unfiltered, single-target form is explained by round 1.
+            # Retain unsupported forms as gaps instead of applying them to everyone.
+            mods, unsupported = [], []
+            for h, inner in _blocks(bare, 'AttributeModifierNugget'):
+                if (inner or '').strip() or any(_attr(h, field) is not None for field in
+                        ('AttributeModifierOwnerName', 'ForbiddenTargetObjectStatus', 'RequiredTargetObjectStatus',
+                         'AntiCategories', 'DamageArc')) or _num(_attr(h, 'Radius', '0'), float('nan')) != 0:
+                    unsupported.append('AttributeModifierNugget')
+                elif _attr(h, 'AttributeModifierName'):
+                    mods.append(_attr(h, 'AttributeModifierName'))
+            if mods:
+                got['hit_modifiers'] = mods
+            lines = list(_blocks(bare, 'LineDamageNugget'))
+            if lines:
+                h, inner = lines[0]
+                if len(lines) != 1 or len(dmg) != 1 or (inner or '').strip() or _attr(h, 'UseDynamicLineLength') != 'true' or any(
+                        _num(_attr(h, field)) for field in ('OffsetAngle', 'LineLengthLeadOut', 'Radius')):
+                    unsupported.append('LineDamageNugget')
+                else:
+                    got['line'] = dict(width=_num(_attr(h, 'LineWidth')), lead=_num(_attr(h, 'LineLengthLeadIn')),
+                                       out=_num(_attr(h, 'OverShootDistance')), dynamic=True)
+            if unsupported:
+                got['unmodeled_effects'] = unsupported
             if sd:
                 got['sd'] = sd[0]
             if any(ocl):
@@ -448,7 +471,10 @@ def _resolve(w, weapons):
     return dict(range=w['range'], dps=round(dmg * shots / cycle, 2) if dmg else 0.0, type=typ, anti=w['anti'],
                 los=w['los'], sdps=round(sd * shots / cycle, 2) if sd > 0 else 0.0,
                 dmg=dmg, cycle=cycle, sched=_shot_times(w, shots),
-                suppression=w.get('suppression', weapons.get(w.get('warhead'), {}).get('suppression', [])))
+                suppression=w.get('suppression', weapons.get(w.get('warhead'), {}).get('suppression', [])),
+                hit_modifiers=w.get('hit_modifiers', weapons.get(w.get('warhead'), {}).get('hit_modifiers', [])),
+                line=w.get('line', weapons.get(w.get('warhead'), {}).get('line')),
+                unmodeled_effects=w.get('unmodeled_effects', weapons.get(w.get('warhead'), {}).get('unmodeled_effects', [])))
 
 
 def _shot_times(w, shots):

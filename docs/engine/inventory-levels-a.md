@@ -9,7 +9,7 @@
 | 脚本动作 | 52 | 0 | 0 | 12 |
 | 脚本条件 | 12 | 0 | 0 | 0 |
 | 物体模块 | 29 | 6 | 80 | 15 |
-| 武器效果 | 3 | 3 | 15 | 0 |
+| 武器效果 | 3 | 4 | 14 | 0 |
 
 按原版用量加权：已对拍 91%，已有（已对拍+推断）91%。
 
@@ -33,7 +33,7 @@
 | 未做 | 物体模块 | `Behaviors/LUAEventList` | 32 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
 | 未做 | 物体模块 | `Behaviors/ToggleStatusSpecialAbilityUpdate` | 27 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 已核（11-08）：模拟器没有这个效果（没有按钮切换状态）；例：AlliedAntiInfantryInfantry, AlliedAntiNavyShipTech1 |
 | 未做 | 物体模块 | `Behaviors/FreefallUpdate` | 24 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
-| 未做 | 物体模块 | `Behaviors/LaserState` | 19 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAntiAirVehicleTech1, AlliedAntiVehicleInfantry |
+| 未做 | 物体模块 | `Behaviors/LaserState` | 19 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_sweep.py），可能用别的名字实现了；例：AlliedAntiAirVehicleTech1, AlliedAntiVehicleInfantry |
 | 未做 | 物体模块 | `Behaviors/QueueProductionExitUpdate` | 19 | a1 a2 a4 a5 a6 a7 a8 | 模拟器代码里没有这个名字；例：AlliedBarracks, AlliedConstructionYard |
 | 未做 | 物体模块 | `Behaviors/ReplaceSelfSpecialAbility` | 18 | a1 a2 a4 a5 a6 a7 a9 | 已核（11-08）：模拟器没有这个效果（没有换形态）；例：AlliedConstructionYard, AlliedMCV |
 | 未做 | 物体模块 | `Behaviors/WeaponFireSpecialAbilityUpdate` | 16 | a1 a2 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedAntiNavalScout, AlliedAntiStructureShip |
@@ -83,7 +83,7 @@
 | 未做 | 物体模块 | `Behaviors/FireWeaponCollide` | 1 | a1 a2 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：JapanBalloonBomb, SovietAntiVehicleInfantry |
 | 未做 | 物体模块 | `Behaviors/GarrisonContain` | 1 | a6 a7 | 已核（11-08）：模拟器没有这个效果（没有驻军；NAMED_GARRISON_SPECIFIC_BUILDING 另算）；例：AlliedBaseDefense |
 | 未做 | 物体模块 | `Behaviors/GrapplingHookUpdate` | 1 | a1 a3 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：SovietAntiVehicleVehicleTech3 |
-| 未做 | 物体模块 | `Behaviors/LinearDamageUpdate` | 1 | a1 a2 a4 a6 a7 | 模拟器代码里没有这个名字；例：AlliedAntiNavalScout |
+| 未做 | 物体模块 | `Behaviors/LinearDamageUpdate` | 1 | a1 a2 a4 a6 a7 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_sweep.py），可能用别的名字实现了；例：AlliedAntiNavalScout |
 | 未做 | 物体模块 | `Behaviors/MagneticEffectUpdate` | 1 | a1 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedAntiNavyShipTech1 |
 | 未做 | 物体模块 | `Behaviors/MonitorConditionUpdate` | 1 | a1 a2 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：JapanMiner |
 | 未做 | 物体模块 | `Behaviors/OCLMonitorUpdate` | 1 | a1 a2 a4 a6 a7 | 模拟器代码里没有这个名字；例：SovietCommandoTech1 |
@@ -102,14 +102,13 @@
 | 未做 | 武器效果 | `InformTargetNugget` | 69 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AAAVT1_AlliedAntiVehicleInfantryMissileLauncher, ABD_AlliedAntiVehicleInfantryMissileLauncher |
 | 未做 | 武器效果 | `MetaImpactNugget` | 36 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AAAVT1_ShotgunWeapon, ABD_ShotgunWeapon |
 | 未做 | 武器效果 | `ActivateLaserNugget` | 27 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 已核（11-08）：模拟器没有这个效果（没有激光束）；例：AAAVT1_JapanAntiVehicleInfantryPlasmaBazooka, ABD_JapanAntiVehicleInfantryPlasmaBazooka |
-| 未做 | 武器效果 | `AttributeModifierNugget` | 20 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AAAVT1_RepairWeapon, AAGA_RepairWeapon |
 | 未做 | 武器效果 | `ParalyzeNugget` | 11 | a1 a2 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AAAVT1_RoarWeapon, ABD_RoarWeapon |
 | 未做 | 武器效果 | `TintObjectsNugget` | 9 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoAttachWeapon, AlliedSupportAircraftShrinkRay |
 | 未做 | 武器效果 | `ActivateLiftObjectNugget` | 6 | a1 a2 a4 a6 a7 | 模拟器代码里没有这个名字；例：AAAVT1_JapanCommandoTech1PsyonicAntiAirCrush, AAAVT1_JapanCommandoTech1PsyonicCrush |
 | 未做 | 武器效果 | `SpecialPowerNugget` | 6 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAntiVehicleVehicleTech1TargetPainter, CNV_DeckSendTrigger |
 | 未做 | 武器效果 | `AttachNugget` | 4 | a1 a2 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoAttachWeapon, SovietScoutVehicleMeleeAttachWeapon |
 | 未做 | 武器效果 | `StripMaxHealthPercentNugget` | 3 | a1 a2 a4 a6 a7 | 模拟器代码里没有这个名字；例：AAAVT1_JapanCommandoTech1PsyonicCrush, ABD_JapanCommandoTech1PsyonicCrush |
-| 未做 | 武器效果 | `ActivateLinearDamageNugget` | 2 | a1 a2 a4 a6 a7 | 模拟器代码里没有这个名字；例：AlliedAntiNavalScoutSonar, AlliedAntiNavalScoutSonarForBridges |
+| 未做 | 武器效果 | `ActivateLinearDamageNugget` | 2 | a1 a2 a4 a6 a7 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_sweep.py），可能用别的名字实现了；例：AlliedAntiNavalScoutSonar, AlliedAntiNavalScoutSonarForBridges |
 | 未做 | 武器效果 | `DamageContainedNugget` | 2 | a1 a2 a3 a5 | 模拟器代码里没有这个名字；例：SovietAntiInfantryInfantryMolotovCocktailWarhead |
 | 未做 | 武器效果 | `LeechPercentMaxHealthDamageNugget` | 2 | a1 a3 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：SovietHarpoonCrushWeapon |
 | 未做 | 武器效果 | `GrapplingHookNugget` | 1 | a1 a3 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：SovietAntiVehicleVehicleTech3Harpoon |
@@ -121,7 +120,8 @@
 | 推断 | 物体模块 | `Behaviors/TechUpgradeReceiver` | 4 | a2 a4 a5 a7 a8 | 模拟器代码里有这个名字；例：AlliedAirfield, AlliedBarracks |
 | 推断 | 物体模块 | `Behaviors/FireWeaponUpdate` | 1 | a1 a2 a4 a5 a6 a7 | 部分：simunits.ocl_round 把召出物的 FireWeaponNugget + LifetimeUpdate 折成伤害，不模拟召出物本身；例：SovietHeavyAntiVehicleInfantry |
 | 推断 | 武器效果 | `SuppressionNugget` | 64 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 部分：长3s贡献48/50阈值已实测；1s贡献与恢复时序未解释，不登记整项已对拍；例：AAAVT1_AlliedAntiVehicleInfantryMissileLauncher, AAAVT1_CommandoPistolWeapon |
-| 推断 | 武器效果 | `LineDamageNugget` | 6 | a1 a2 a3 a4 a5 a6 a7 | 模拟器代码里有这个名字；例：AAAVT1_SovietCommandoSniperRifle, ABD_SovietCommandoSniperRifle |
+| 推断 | 武器效果 | `AttributeModifierNugget` | 20 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 部分：engine_weaponfx attribute实测PASS，涂靶ARMOR150%、9s前到期（数据1.1s，到期帧未测）；owner/筛选/范围形式未验证，整项不登记已对拍；例：AAAVT1_RepairWeapon, AAGA_RepairWeapon |
+| 推断 | 武器效果 | `LineDamageNugget` | 6 | a1 a2 a3 a4 a5 a6 a7 | 部分：engine_weaponfx line探针；实测PASS90/90/90/100验证动态线长及穿透，圆形边界GUESSED，筛选与静态线未模拟；例：AAAVT1_SovietCommandoSniperRifle, ABD_SovietCommandoSniperRifle |
 | 推断 | 武器效果 | `SecondaryDamageNugget` | 5 | a7 | simunits._weapons 读 Amount（不要升级的那条）→ sdps，Sim.chill；例：AlliedSupportAircraftCryobeam |
 | 已对拍 | 脚本动作 | `SET_MILLISECOND_TIMER` | 4153 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 引擎模型核心；台上量过：checks/engine_acquire.py |
 | 已对拍 | 脚本动作 | `SET_FLAG` | 4105 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | Sim.act / Sim.cond 有分支；台上量过：checks/engine_aimicro.py |

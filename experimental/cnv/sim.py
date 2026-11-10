@@ -3299,6 +3299,10 @@ class Sim:
                     continue
                 if a.vision and w['range'] > a.vision:
                     a.fired_at = self.t                 # a bombarder firing shows itself
+                for effect in w.get('unmodeled_effects', []):
+                    self.gap(GAP_WEAPON, effect, '武器第1轮尚未解释此效果的筛选、几何或时序')
+                if not self.shot_clock and (w.get('hit_modifiers') or w.get('line')):
+                    self.gap(GAP_WEAPON, 'weapon effects', '命中修正与穿线仅在离散命中时钟中模拟')
                 if w['dps'] or w.get('suppression'):
                     if 'sched' in w and self.shot_clock:
                         self.volleys.append((pick, w, a))
@@ -3431,13 +3435,35 @@ class Sim:
                         for target in self.living():
                             if target.suppression_rule and math.hypot(target.x - t.x, target.y - t.y) <= radius:
                                 target.suppression_hits.append((self.frame_now() + simunits._frames(seconds), n * value))
-                    h = hurt.setdefault(id(t), [t, 0.0, by])
-                    if self.shot_clock:
-                        # 0x785370 type6 skips the type table and ARMOR modifier, not
-                        # earlier DamageScalar/side factors; armor/armored bench separates it.
-                        armor = 1.0 if w['type'] == 'UNRESISTABLE' else simunits.percent(t.armor, w['type']) / 100.0 * t.taken
+                    victims = [t]
+                    # GUESSED edge geometry: circle extent; round 1 centres avoid edges.
+                    line = w.get('line')
+                    if line and line['dynamic']:
+                        dx, dy = t.x - by.x, t.y - by.y
+                        length = math.hypot(dx, dy)
+                        if length:
+                            ux, uy = dx / length, dy / length
+                            victims = []
+                            for candidate in self.living():
+                                if candidate is by or not self.hostile(by, candidate) or not self.can_hit(w, candidate):
+                                    continue
+                                cx, cy = candidate.x - by.x, candidate.y - by.y
+                                along, across = cx * ux + cy * uy, abs(cx * uy - cy * ux)
+                                if -line['lead'] <= along <= length + line['out'] and across <= line['width'] / 2 + candidate.radius:
+                                    victims.append(candidate)
+                    for victim in victims:
+                        h = hurt.setdefault(id(victim), [victim, 0.0, by])
+                        armor = 1.0 if w['type'] == 'UNRESISTABLE' else simunits.percent(victim.armor, w['type']) / 100.0 * victim.taken
                         h[1] += n * w['dmg'] * by.dealt * armor
-                    h[2] = by
+                        h[2] = by
+                    for mid in w.get('hit_modifiers', []):
+                        xml = self.xml_of(by.template)
+                        modifier = simunits.modifier(xml, mid)
+                        if modifier and modifier['frames'] is not None:
+                            t.auras_on[mid] = (self.frame_now() + modifier['frames'], xml)
+                            self.modify(t)
+                        else:
+                            self.gap(GAP_WEAPON, mid, '命中修正未找到或缺少已解释的Duration')
         for t, dmg, by in hurt.values():
             if self.frame_now() < t.immune_until or t.shielded or t.indestructible:
                 continue

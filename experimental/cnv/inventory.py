@@ -125,6 +125,9 @@ BENCHED_TESTS = {
 # (part, name) -> (state, why): where the name rule above is wrong (a module read under another name ...)
 _NOT_IN_SIM = '已核（11-08）：模拟器没有这个效果'
 NOTES = {
+    # Weapon round 1: register measured subfeatures honestly, not whole-item coverage.
+    (NUGGET, 'AttributeModifierNugget'): (GUESSED, '部分：engine_weaponfx attribute实测PASS，涂靶ARMOR150%、9s前到期（数据1.1s，到期帧未测）；owner/筛选/范围形式未验证，整项不登记已对拍'),
+    (NUGGET, 'LineDamageNugget'): (GUESSED, '部分：engine_weaponfx line探针；实测PASS90/90/90/100验证动态线长及穿透，圆形边界GUESSED，筛选与静态线未模拟'),
     # Suppression is only partly explained. Override name-based bench promotion;
     # BENCHED_TESTS cannot register only threshold / SPEED / ARMOR fields.
     (MODULE, 'Behaviors/SuppressionUpdate'): (GUESSED, '部分：阈值>=50、SPEED/ARMOR 75%已实测；短贡献寿命与晚恢复56帧未解释，不登记整项已对拍'),

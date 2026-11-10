@@ -6,8 +6,8 @@
 |---|---|---|---|---|---|---|---|
 | 脚本动作 | **88%** | 451 | 104 | 28 | 204 | 115 | 90% |
 | 脚本条件 | **94%** | 89 | 27 | 2 | 57 | 3 | 94% |
-| 物体模块 | **65%** | 184 | 30 | 5 | 130 | 19 | 65% |
-| 武器效果 | **51%** | 25 | 3 | 2 | 20 | 0 | 53% |
+| 物体模块 | **65%** | 184 | 30 | 6 | 129 | 19 | 65% |
+| 武器效果 | **51%** | 25 | 3 | 4 | 18 | 0 | 68% |
 | AI | **65%** | 415 | 97 | 132 | 152 | 34 | 88% |
 
 ## 脚本动作
@@ -614,9 +614,9 @@
 | 未做 | `Behaviors/FreefallUpdate` | 24 (31) | 模拟器代码里没有这个名字；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
 | 已对拍 | `Behaviors/AttributeModifierUpgrade` | 22 (30) | 模拟器代码里有这个名字；台上量过：checks/engine_invuln.py；例：AlliedOutpost, AlliedAntiGroundAircraft |
 | 已对拍 | `Behaviors/CrushDie` | 22 (28) | tests/test_simbench.py::test_crush_a_tank_drives_over_a_lower_level_and_leaves_an_equal_one；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
-| 未做 | `Behaviors/SuppressionUpdate` | 22 (28) | 模拟器代码里没有这个名字；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
+| 推断 | `Behaviors/SuppressionUpdate` | 22 (28) | 部分：阈值>=50、SPEED/ARMOR 75%已实测；短贡献寿命与晚恢复56帧未解释，不登记整项已对拍；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
 | 不涉及 | `Draws/LaserDraw` | 21 (37) | 纯表现（Draws）；例：AlliedAntiVehicleVehicleTech3CannonNodeBase, AlliedAntiVehicleVehicleTech3CannonNodeEnd |
-| 未做 | `Behaviors/LaserState` | 19 (25) | 模拟器代码里没有这个名字；例：AlliedBaseDefense, AlliedBaseDefenseAdvanced |
+| 未做 | `Behaviors/LaserState` | 19 (25) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_sweep.py），可能用别的名字实现了；例：AlliedBaseDefense, AlliedBaseDefenseAdvanced |
 | 未做 | `Behaviors/QueueProductionExitUpdate` | 19 (20) | 模拟器代码里没有这个名字；例：AlliedBarracks, AlliedConstructionYard |
 | 未做 | `Behaviors/ReplaceSelfSpecialAbility` | 18 (24) | 已核（11-08）：模拟器没有这个效果（没有换形态）；例：AlliedConstructionYard, AlliedMCV |
 | 不涉及 | `Draws/TracerModelDraw` | 18 (22) | 纯表现（Draws）；例：AlliedAntiAirShip, AlliedAntiAirVehicleTech1 |
@@ -700,7 +700,7 @@
 | 未做 | `Behaviors/DieOnProducerDeathUpdate` | 1 (1) | 模拟器代码里没有这个名字；例：AlliedAttackDrone |
 | 未做 | `Behaviors/DominateEnemySpecialPower` | 1 (1) | 模拟器代码里没有这个名字；例：AlliedInfiltrationInfantry |
 | 未做 | `Behaviors/GrapplingHookUpdate` | 1 (1) | 模拟器代码里没有这个名字；例：SovietAntiVehicleVehicleTech3 |
-| 未做 | `Behaviors/LinearDamageUpdate` | 1 (1) | 模拟器代码里没有这个名字；例：AlliedAntiNavalScout |
+| 未做 | `Behaviors/LinearDamageUpdate` | 1 (1) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_sweep.py），可能用别的名字实现了；例：AlliedAntiNavalScout |
 | 未做 | `Behaviors/MagneticEffectUpdate` | 1 (1) | 模拟器代码里没有这个名字；例：AlliedAntiNavyShipTech1 |
 | 未做 | `Behaviors/ReconstituteStateSpecialAbility` | 1 (1) | 模拟器代码里没有这个名字；例：AlliedCommandoTech1 |
 | 未做 | `Behaviors/ShieldSphereUpdate` | 1 (1) | 模拟器代码里没有这个名字；例：AlliedAntiStructureVehicle |
@@ -756,21 +756,21 @@
 | 已对拍 | `DamageNugget` | 183 | 模拟器代码里有这个名字；台上量过：checks/engine_clip.py；例：BaseExplodingPropVehicleWeapon, MountRushmoreHeadEyeWeapon |
 | 已对拍 | `ProjectileNugget` | 88 | 模拟器代码里有这个名字；台上量过：checks/engine_shot.py；例：BB_EuropeCoastalGunWeapon, KremlinArtilleryDomeMissle |
 | 未做 | `InformTargetNugget` | 69 | 模拟器代码里没有这个名字；例：BB_EuropeCoastalGunWeapon, AlliedPrecisionBomb |
-| 未做 | `SuppressionNugget` | 64 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_prismx.py），可能用别的名字实现了；例：BB_EuropeCoastalGunWeapon, KremlinArtilleryDomeMissle |
+| 推断 | `SuppressionNugget` | 64 | 部分：长3s贡献48/50阈值已实测；1s贡献与恢复时序未解释，不登记整项已对拍；例：BB_EuropeCoastalGunWeapon, KremlinArtilleryDomeMissle |
 | 未做 | `MetaImpactNugget` | 36 | 模拟器代码里没有这个名字；例：KremlinArtilleryDomeMissleWarhead, AlliedTimeBomb_Level1 |
 | 未做 | `ActivateLaserNugget` | 27 | 已核（11-08）：模拟器没有这个效果（没有激光束）；例：MountRushmoreHeadEyeWeapon, JapanAntiVehicleInfantryTech3LockDownGun |
 | 已对拍 | `WeaponOCLNugget` | 26 | 模拟器代码里有这个名字；台上量过：checks/engine_prismx.py；例：MountRushmoreHeadEyeWeapon, AlliedPrecisionBombWarhead |
-| 未做 | `AttributeModifierNugget` | 20 | 模拟器代码里没有这个名字；例：NanoHiveSwarmEffectTrigger, JapanCommandoSoftLanding |
+| 推断 | `AttributeModifierNugget` | 20 | 部分：engine_weaponfx attribute实测PASS，涂靶ARMOR150%、9s前到期（数据1.1s，到期帧未测）；owner/筛选/范围形式未验证，整项不登记已对拍；例：NanoHiveSwarmEffectTrigger, JapanCommandoSoftLanding |
 | 未做 | `ParalyzeNugget` | 11 | 模拟器代码里没有这个名字；例：JapanAntiVehicleInfantryTech3LockDownGun, AlliedAntiStructureShipEMPCruiseMissleWarhead |
 | 未做 | `TintObjectsNugget` | 9 | 模拟器代码里没有这个名字；例：SovietCommandoCallBombingRun, AlliedCommandoAttachWeapon |
 | 未做 | `ActivateLiftObjectNugget` | 6 | 模拟器代码里没有这个名字；例：JapanCommandoTech1PsyonicCrush, JapanCommandoTech1AirborneKiller |
-| 推断 | `LineDamageNugget` | 6 | 模拟器代码里有这个名字；例：SovietCommandoSniperRifle, AAAVT1_SovietCommandoSniperRifle |
+| 推断 | `LineDamageNugget` | 6 | 部分：engine_weaponfx line探针；实测PASS90/90/90/100验证动态线长及穿透，圆形边界GUESSED，筛选与静态线未模拟；例：SovietCommandoSniperRifle, AAAVT1_SovietCommandoSniperRifle |
 | 未做 | `SpecialPowerNugget` | 6 | 模拟器代码里没有这个名字；例：SovietCommandoCallBombingRun, AlliedAntiVehicleVehicleTech1TargetPainter |
 | 未做 | `FireOnObjectsNugget` | 5 | 模拟器代码里没有这个名字；例：PlayerPowerJapanEmperorsResolveWeapon_L1, PlayerPowerJapanEmperorsResolveWeapon_L2 |
 | 推断 | `SecondaryDamageNugget` | 5 | simunits._weapons 读 Amount（不要升级的那条）→ sdps，Sim.chill；例：MountRushmoreHeadEyeWeapon, AlliedCryoSatelliteLvl1 |
 | 未做 | `AttachNugget` | 4 | 模拟器代码里没有这个名字；例：AlliedCommandoAttachWeapon, SovietAntiVehicleInfantryMagneticBombAttachWeapon |
 | 未做 | `StripMaxHealthPercentNugget` | 3 | 模拟器代码里没有这个名字；例：JapanCommandoTech1PsyonicCrush, AAAVT1_JapanCommandoTech1PsyonicCrush |
-| 未做 | `ActivateLinearDamageNugget` | 2 | 模拟器代码里没有这个名字；例：AlliedAntiNavalScoutSonar, AlliedAntiNavalScoutSonarForBridges |
+| 未做 | `ActivateLinearDamageNugget` | 2 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_sweep.py），可能用别的名字实现了；例：AlliedAntiNavalScoutSonar, AlliedAntiNavalScoutSonarForBridges |
 | 未做 | `DamageContainedNugget` | 2 | 模拟器代码里没有这个名字；例：SovietAntiInfantryInfantryMolotovCocktailWarhead, Weapon_DesolatorBombFieldUpdate |
 | 未做 | `LeechPercentMaxHealthDamageNugget` | 2 | 模拟器代码里没有这个名字；例：SovietCrushWeapon, SovietHarpoonCrushWeapon |
 | 未做 | `ReportWeaponFiredStatNugget` | 2 | 模拟器代码里没有这个名字；例：SovietVacuumBomb, ParticleCannonWeapon |
@@ -805,7 +805,7 @@
 | 已对拍 | `组队招人/TeamTemplate.IncludeKindOf` | 170 | AI 模型代码里读了这个名字；台上量过：checks/engine_aiteamfilter.py |
 | 已对拍 | `组队招人/TeamTemplate.MaxUnits` | 170 | AI 模型代码里读了这个名字；台上量过：checks/engine_aiskirm.py |
 | 不涉及 | `表现/FeedbackEntry.Video` | 168 | 纯表现（语音、视频、画面） |
-| 已对拍 | `战略状态/AIStrategicStateDefinition.MaxTargets` | 156 | AI 模型代码里读了这个名字；台上量过：checks/engine_aitargetpick.py |
+| 已对拍 | `战略状态/AIStrategicStateDefinition.MaxTargets` | 156 | AI 模型代码里读了这个名字；台上量过：checks/engine_aiskirm.py |
 | 已对拍 | `组队招人/ObjectFilter.Rule` | 155 | docs/engine/aistate.md#队伍招谁（aitfany / aitfnone / aitfall：ANY、NONE + 名单只要名单，ALL + 排除名单） |
 | 已对拍 | `目标/AITargetingHeuristic.RequireUniqueTarget` | 154 | AI 模型代码里读了这个名字；台上量过：checks/engine_aistate.py |
 | 已对拍 | `战术/Tactic.EndBehavior` | 152 | AI 模型代码里读了这个名字；台上量过：checks/engine_aistate.py |

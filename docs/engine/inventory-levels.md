@@ -295,7 +295,7 @@
 | 已对拍 | AI | `组队招人/TeamTemplate.ExcludeKindOf` | 170 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aiteamfilter.py |
 | 已对拍 | AI | `组队招人/TeamTemplate.IncludeKindOf` | 170 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aiteamfilter.py |
 | 已对拍 | AI | `组队招人/TeamTemplate.MaxUnits` | 170 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aiskirm.py |
-| 已对拍 | AI | `战略状态/AIStrategicStateDefinition.MaxTargets` | 156 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aitargetpick.py |
+| 已对拍 | AI | `战略状态/AIStrategicStateDefinition.MaxTargets` | 156 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aiskirm.py |
 | 已对拍 | AI | `组队招人/ObjectFilter.Rule` | 155 | a4 a5 a7 | docs/engine/aistate.md#队伍招谁（aitfany / aitfnone / aitfall：ANY、NONE + 名单只要名单，ALL + 排除名单） |
 | 已对拍 | AI | `目标/AITargetingHeuristic.RequireUniqueTarget` | 154 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aistate.py |
 | 已对拍 | AI | `战术/Tactic.EndBehavior` | 152 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过：checks/engine_aistate.py |
