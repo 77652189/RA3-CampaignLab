@@ -166,6 +166,15 @@ RESULTS g / h (bench 2026-11-10, aiskirm g / h and aiskirmnl g, all PASS (weak);
      dog in Cleanup), then 14 s161 -> 15 s166 -> 18 s178 -> 21 s189; 防御型 0 (1 at s162 only), 池兵 0-1.
   Reading: after Cleanup _0_0 is full the new units go to a team no name reads -- about 1 at s162, 7 at s188 (dog
     corrected), as the model's second Cleanup slot. Round 102's mismatch was the name, not the model.
+
+  p  我方建筑 / 清扫 (Cleanup _0_0) / 防御型 (LandDefense _0_0) / 兵数 (no dogs) to s249. Bench 2026-11-10, aiskirm p
+     PASS (weak; log work/logs/b104_p.log): 清扫 8 s129, 14 from s159; 兵数 26 by s230; player buildings 3 to s205,
+     2 s206, 1 s222, **0 s224**; 防御型 2 at s224 (the dogs' team ended), **s226: 清扫 99, 防御型 14** and so to s249.
+  Reading: the player's last building gone, the Cleanup teams end within ~2 s and their units go to the defense
+    team (to its MaxUnits 14); no Cleanup team holds anyone again for 23 s (a new one would answer to _0_0). The
+    model ends them the same way (B handoff 106), but its third Cleanup copy, still gathering, takes the 14 back
+    from defense at once -- not modelled yet (dropping gathering teams whose slot lost its target also killed
+    the defense teams: tried and reverted).
 """
 from parts import Script, Test, counted, square
 
