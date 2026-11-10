@@ -4,11 +4,11 @@
 
 | 部分 | 按用量已对拍 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|
-| 脚本动作 | **87%** | 451 | 101 | 29 | 204 | 117 | 90% |
+| 脚本动作 | **88%** | 451 | 106 | 34 | 194 | 117 | 91% |
 | 脚本条件 | **94%** | 89 | 27 | 5 | 54 | 3 | 94% |
-| 物体模块 | **78%** | 184 | 31 | 6 | 128 | 19 | 79% |
-| 武器效果 | **61%** | 25 | 7 | 2 | 15 | 1 | 73% |
-| AI | **64%** | 415 | 90 | 140 | 151 | 34 | 88% |
+| 物体模块 | **81%** | 184 | 33 | 7 | 125 | 19 | 82% |
+| 武器效果 | **61%** | 25 | 8 | 2 | 14 | 1 | 74% |
+| AI | **65%** | 415 | 91 | 137 | 153 | 34 | 87% |
 
 ## 脚本动作
 
@@ -53,9 +53,9 @@
 | 推断 | `TEAM_HUNT` | 203 | 没交给 AI 的玩家（含玩家自己）：不动，台上量过（engine_scripts1 hunt 60 s）；AI 玩家的 HuntTactic 不模拟（引擎 B），碰到记 Sim.unmodeled |
 | 已对拍 | `CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT` | 196 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_ref.py |
 | 已对拍 | `LINK_MISSION_OBJECTIVE_TO_WAYPOINT` | 194 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts5.py |
-| 未做 | `NAMED_FOLLOW_WAYPOINTS` | 192 | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `NAMED_FOLLOW_WAYPOINTS` | 192 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_waypath.py |
 | 未做 | `TEAM_GARRISON_SPECIFIC_BUILDING_INSTANTLY` | 186 | Sim.act / Sim.cond 不认识 |
-| 未做 | `TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS` | 184 | Sim.act / Sim.cond 不认识 |
+| 推断 | `TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS` | 184 | Sim.act / Sim.cond 有分支 |
 | 不涉及 | `FADE_OUT_TO_BLACK` | 177 | 纯表现（名字规则） |
 | 不涉及 | `FADE_IN_FROM_BLACK` | 176 | 纯表现（名字规则） |
 | 不涉及 | `NAMED_FLASH` | 173 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
@@ -96,7 +96,7 @@
 | 不涉及 | `TEAM_CREATE_RADAR_EVENT` | 107 | 纯表现（名字规则） |
 | 已对拍 | `MAP_REVEAL_PERMANENTLY_AT_WAYPOINT` | 105 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_vision.py |
 | 不涉及 | `CAMERA_LETTERBOX_BEGIN` | 104 | 纯表现（名字规则） |
-| 未做 | `NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY` | 103 | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY` | 103 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aibasedef.py |
 | 未做 | `TEAM_ALLOW_AI_AUTOACQUIRE` | 103 | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER` | 101 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_ref.py |
 | 不涉及 | `RESET_CAMERA` | 100 | 纯表现（名字规则） |
@@ -108,7 +108,7 @@
 | 已对拍 | `MAP_SWITCH_BORDER` | 87 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts4.py |
 | 未做 | `NAMED_SET_DISABLED` | 86 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `NAMED_REMOVE_INFOBOX` | 83 | 纯表现（名字规则） |
-| 未做 | `TEAM_FOLLOW_WAYPOINTS` | 83 | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `TEAM_FOLLOW_WAYPOINTS` | 83 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_waypath.py |
 | 已对拍 | `SKIRMISH_AI_MAKE_BASE` | 82 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiomove.py |
 | 已对拍 | `SET_RANDOM_MSEC_TIMER` | 77 | 引擎模型核心；台上量过、测试对拍：checks/engine_scripts6.py |
 | 已对拍 | `TEAM_ATTACK_NAMED` | 76 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_reorder.py |
@@ -137,7 +137,7 @@
 | 不涉及 | `SET_REFERENCE_TO_RANDOM_TEAM_MEMBER` | 59 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 推断 | `MAP_REVEAL_ALL_UNDO_PERM` | 58 | Sim.act / Sim.cond 有分支 |
 | 不涉及 | `SHOW_MILITARY_CAPTION` | 58 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
-| 未做 | `NAMED_FOLLOW_WAYPOINTS_EXACT` | 56 | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `NAMED_FOLLOW_WAYPOINTS_EXACT` | 56 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_waypath.py |
 | 未做 | `UNIT_EXECUTE_SEQUENTIAL_SCRIPT` | 56 | Sim.act / Sim.cond 不认识 |
 | 推断 | `NAMED_SET_MAX_HEALTH` | 53 | Sim.act / Sim.cond 有分支；台上量过（checks/engine_missile.py），没有测试跑这个台子 |
 | 不涉及 | `TOGGLE_RADAR_UI` | 53 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
@@ -152,7 +152,7 @@
 | 不涉及 | `FLASH_UI_BUILD_BUTTON` | 48 | 纯表现（名字规则） |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JAAVT1_Transform` | 48 | 只记进时间线，没有效果 |
 | 未做 | `SET_UNIT_REFERENCE` | 48 | Sim.act / Sim.cond 不认识 |
-| 未做 | `NAMED_ATTACK_FOLLOW_WAYPOINTS` | 47 | Sim.act / Sim.cond 不认识 |
+| 推断 | `NAMED_ATTACK_FOLLOW_WAYPOINTS` | 47 | Sim.act / Sim.cond 有分支 |
 | 已对拍 | `NAMED_RECEIVE_UPGRADE` | 47 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_invuln.py |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanBaseDefenseEgg` | 46 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_unpack.py |
 | 未做 | `TEAM_SET_STANCE` | 45 | Sim.act / Sim.cond 不认识 |
@@ -184,7 +184,7 @@
 | 未做 | `ATTACK_MOVE_TEAM_TO_NAMED_OBJECT` | 31 | Sim.act / Sim.cond 不认识 |
 | 推断 | `CREATE_REINFORCEMENT_TEAM_AT_UNIT_POSITION` | 31 | Sim.act / Sim.cond 有分支 |
 | 未做 | `SKIRMISH_AI_SET_FAVORED_ENEMY` | 31 | Sim.act / Sim.cond 不认识 |
-| 未做 | `NAMED_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT` | 30 | Sim.act / Sim.cond 不认识 |
+| 推断 | `NAMED_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT` | 30 | Sim.act / Sim.cond 有分支 |
 | 未做 | `UNIT_CHANGE_OBJECT_STATUS:SKIRMISH_AI_DO_NOT_TAKE` | 30 | 状态位 SKIRMISH_AI_DO_NOT_TAKE 只记下来 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleAlliedArtilleryVehicle` | 29 | 只记进时间线，没有效果 |
 | 未做 | `PLAYER_ALLOWED_TOBE_COOPAI` | 29 | Sim.act / Sim.cond 不认识 |
@@ -224,7 +224,7 @@
 | 不涉及 | `MOVE_NAMED_UNIT_TO_UNIT` | 21 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `NAMED_USE_LOGIC_COMMAND_ABILITY_ON_NAMED_POSITION` | 21 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `SELECT_OBJECT` | 21 | 纯表现（名字规则） |
-| 未做 | `TEAM_FOLLOW_WAYPOINTS_EXACT` | 21 | Sim.act / Sim.cond 不认识 |
+| 推断 | `TEAM_FOLLOW_WAYPOINTS_EXACT` | 21 | Sim.act / Sim.cond 有分支 |
 | 不涉及 | `MOVE_CAMERA_TO_NAMED` | 20 | 纯表现（名字规则）；Sim.act / Sim.cond 有分支 |
 | 未做 | `REDALERT_DISABLE_THREAT_LEVEL_BONUS` | 20 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `UNIT_EXECUTE_SEQUENTIAL_SCRIPT_COPY` | 20 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
@@ -237,7 +237,7 @@
 | 不涉及 | `TOGGLE_LOCK_CURRENT_SELECTION` | 16 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 未做 | `UNIT_SET_MODELCONDITION_FOR_DURATION` | 16 | Sim.act / Sim.cond 不认识 |
 | 未做 | `UNIT_STOP_SEQUENTIAL_SCRIPT` | 16 | Sim.act / Sim.cond 不认识 |
-| 未做 | `NAMED_EXIT_BUILDING` | 15 | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `NAMED_EXIT_BUILDING` | 15 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_garrison.py |
 | 未做 | `TEAM_UPGRADE` | 15 | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `UNIT_SET_HEALTH` | 15 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aipullback.py |
 | 已对拍 | `GIVE_PLAYER_UPGRADE` | 14 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_tech.py |
@@ -364,7 +364,7 @@
 | 未做 | `TEAM_ATTACK_MOVE_TOWARDS_NEAREST_OBJECT_TYPE` | 3 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_ENTER_NAMED` | 3 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `TEAM_FLASH_WHITE` | 3 | 纯表现（名字规则） |
-| 未做 | `TEAM_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT` | 3 | Sim.act / Sim.cond 不认识 |
+| 推断 | `TEAM_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT` | 3 | Sim.act / Sim.cond 有分支 |
 | 未做 | `TEAM_GUARD_OBJECT` | 3 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_SET_MODELCONDITION` | 3 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_STOP_SEQUENTIAL_SCRIPT` | 3 | Sim.act / Sim.cond 不认识 |
@@ -481,7 +481,7 @@
 | 已对拍 | `HAS_FINISHED_VIDEO` | 422 | tests/test_simbench.py::test_video_a_radar_clip_is_done_after_its_length_full_screen_never |
 | 已对拍 | `NAMED_INSIDE_AREA` | 413 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_block.py |
 | 已对拍 | `SKIRMISH_PLAYER_HAS_UNITS_IN_AREA` | 410 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_area.py |
-| 已对拍 | `NAMED_OWNED_BY_PLAYER` | 397 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts9.py |
+| 已对拍 | `NAMED_OWNED_BY_PLAYER` | 397 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_garrison.py |
 | 已对拍 | `NAMED_NOT_DESTROYED` | 374 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_crush.py |
 | 已对拍 | `PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA` | 278 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aistate.py |
 | 已对拍 | `NAMED_ATTACKED_BY_PLAYER` | 150 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attack.py |
@@ -585,7 +585,7 @@
 | 已对拍 | `Behaviors/BuildingBehavior` | 334 (440) | tests/test_simbench.py::test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames；例：AlliedAirfield, AlliedBarracks |
 | 已对拍 | `Behaviors/AttributeModifierAuraUpdate` | 311 (420) | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_invuln.py；例：A09_IronCurtainEffect, BaseCivilianStructure |
 | 已对拍 | `Behaviors/InvisibilityBehavior` | 305 (412) | tests/test_simbench_c.py::test_invisibility_behavior_a_house_given_garrison_can_stealth_by_script_is_shot_like_a_plain_one；例：BaseCivilianStructure, BaseCivilianStructureLarge |
-| 未做 | `Behaviors/ContestableGarrisonContain` | 305 (411) | 已核（11-08）：模拟器没有这个效果（没有驻军）；例：BaseCivilianStructure, BaseCivilianStructureLarge |
+| 已对拍 | `Behaviors/ContestableGarrisonContain` | 305 (411) | tests/test_simbench_c.py::test_garrison_script_entry_skips_room_and_relation_owner_follows_and_damage_or_kill_ejects_alive_at_the_bench；例：BaseCivilianStructure, BaseCivilianStructureLarge |
 | 不涉及 | `Draws/PropDraw` | 221 (301) | 纯表现（Draws）；例：AM_Trash01, AM_Debris01 |
 | 已对拍 | `Behaviors/FireWeaponWhenDead` | 146 (230) | tests/test_simbench_c.py::test_fire_weapon_when_dead_a_scripted_kill_blows_the_mig_and_the_guardian_beside_it；例：AlliedAntiGroundAircraft_Dying, AlliedAntiStructureVehicleCannonEffect |
 | 不涉及 | `ClientBehaviors/ModelConditionSoundSelectorClientBehavior` | 140 (195) | 纯表现（ClientBehaviors）；例：AlliedSatelliteSweepShroudRevealer, AlliedAirfield |
@@ -682,7 +682,7 @@
 | 未做 | `Behaviors/FireWeaponCollide` | 1 (4) | 模拟器代码里没有这个名字；例：SovietAntiVehicleInfantry, JapanAntiVehicleShipTorpedoSpreadProjectile |
 | 未做 | `Behaviors/StrafeAreaUpdate` | 1 (3) | 模拟器代码里没有这个名字；例：AlliedSatelliteSweepShroudRevealer, JapanFinalSquadronAircraft |
 | 不涉及 | `Behaviors/AudioLoopUpgrade` | 1 (2) | 纯表现（名字规则）；例：SovietAntiVehicleVehicleTech1, Tutorial_SovietTech1Tank |
-| 未做 | `Behaviors/GarrisonContain` | 1 (2) | 已核（11-08）：模拟器没有这个效果（没有驻军；NAMED_GARRISON_SPECIFIC_BUILDING 另算）；例：AlliedBaseDefense, SovietBunker |
+| 推断 | `Behaviors/GarrisonContain` | 1 (2) | simgarrison 同一套规则（不可争夺）；没单独上台对拍；例：AlliedBaseDefense, SovietBunker |
 | 未做 | `Behaviors/MoneyCrateCollide` | 1 (2) | 模拟器代码里没有这个名字；例：MoneyCrate, MoneyCrateMP |
 | 未做 | `Behaviors/MonitorConditionUpdate` | 1 (2) | 模拟器代码里没有这个名字；例：JapanMiner, JapanMiner_Naval |
 | 未做 | `Behaviors/OCLMonitorUpdate` | 1 (2) | 模拟器代码里没有这个名字；例：SovietCommandoTech1, Soviet_BombingRun |
@@ -700,7 +700,7 @@
 | 未做 | `Behaviors/DieOnProducerDeathUpdate` | 1 (1) | 模拟器代码里没有这个名字；例：AlliedAttackDrone |
 | 未做 | `Behaviors/DominateEnemySpecialPower` | 1 (1) | 模拟器代码里没有这个名字；例：AlliedInfiltrationInfantry |
 | 未做 | `Behaviors/GrapplingHookUpdate` | 1 (1) | 模拟器代码里没有这个名字；例：SovietAntiVehicleVehicleTech3 |
-| 未做 | `Behaviors/LinearDamageUpdate` | 1 (1) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_sweep.py），可能用别的名字实现了；例：AlliedAntiNavalScout |
+| 已对拍 | `Behaviors/LinearDamageUpdate` | 1 (1) | tests/test_simsweep.py::test_sweep_the_line_walks_out_and_a_stop_does_not_cut_it_at_the_bench_frames；例：AlliedAntiNavalScout |
 | 未做 | `Behaviors/MagneticEffectUpdate` | 1 (1) | 模拟器代码里没有这个名字；例：AlliedAntiNavyShipTech1 |
 | 未做 | `Behaviors/ReconstituteStateSpecialAbility` | 1 (1) | 模拟器代码里没有这个名字；例：AlliedCommandoTech1 |
 | 未做 | `Behaviors/ShieldSphereUpdate` | 1 (1) | 模拟器代码里没有这个名字；例：AlliedAntiStructureVehicle |
@@ -770,7 +770,7 @@
 | 推断 | `SecondaryDamageNugget` | 5 | simunits._weapons 读 Amount（不要升级的那条）→ sdps，Sim.chill；例：MountRushmoreHeadEyeWeapon, AlliedCryoSatelliteLvl1 |
 | 未做 | `AttachNugget` | 4 | 模拟器代码里没有这个名字；例：AlliedCommandoAttachWeapon, SovietAntiVehicleInfantryMagneticBombAttachWeapon |
 | 已对拍 | `StripMaxHealthPercentNugget` | 3 | tests/test_simbench_c.py::test_strip_max_health_percent_uses_maximum_at_full_and_half_health；例：JapanCommandoTech1PsyonicCrush, AAAVT1_JapanCommandoTech1PsyonicCrush |
-| 未做 | `ActivateLinearDamageNugget` | 2 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_sweep.py），可能用别的名字实现了；例：AlliedAntiNavalScoutSonar, AlliedAntiNavalScoutSonarForBridges |
+| 已对拍 | `ActivateLinearDamageNugget` | 2 | tests/test_simsweep.py::test_sweep_a_killed_shooters_line_stops_with_it_and_the_second_ones_rows_are_hit；例：AlliedAntiNavalScoutSonar, AlliedAntiNavalScoutSonarForBridges |
 | 未做 | `DamageContainedNugget` | 2 | 模拟器代码里没有这个名字；例：SovietAntiInfantryInfantryMolotovCocktailWarhead, Weapon_DesolatorBombFieldUpdate |
 | 未做 | `LeechPercentMaxHealthDamageNugget` | 2 | 模拟器代码里没有这个名字；例：SovietCrushWeapon, SovietHarpoonCrushWeapon |
 | 未做 | `ReportWeaponFiredStatNugget` | 2 | 模拟器代码里没有这个名字；例：SovietVacuumBomb, ParticleCannonWeapon |
@@ -796,7 +796,7 @@
 | 不涉及 | `表现/FeedbackEntry.FeedbackTo` | 238 | 纯表现（语音、视频、画面） |
 | 已对拍 | `开局/Order.Time` | 237 | docs/engine/aiopen.md#开局里的 Time 从什么时候算（aiotime：从唤醒起的绝对时刻） |
 | 已对拍 | `战术/Tactic.Tactic` | 184 | docs/engine/aitactics.md#读数（SimpleAttack / DefenseAvoidanceAttack / FlankAttack / StaticDefense 上台） |
-| 推断 | `组队招人/TeamTemplate.AlwaysRecruit` | 182 | 台上证实（aiar0～3，第 90 轮）：SimpleAttack 队出门后开着才继续招新造的兵、MaxUnits 满了不招；模型的门仍默认关（防御队吸兵和台上对不上，handoff-b 第 50、51 节），差在哪没找到 |
+| 已对拍 | `组队招人/TeamTemplate.AlwaysRecruit` | 182 | 台上量过（engine_aiteamfilter aiar0～3，第 90 轮）、测试对拍 tests/test_simai_bench_b.py：关着新造的车留家、开着出门的队把它招走、满员不招、不预放时第一辆自己组队（模拟器每次晚 3～4 s）；模拟器多造第 3、4 辆是造兵的缺口（strict xfail），不是这个开关 |
 | 推断 | `组队招人/TeamTemplate.MicroManager` | 182 | AI 模型代码里读了这个名字 |
 | 已对拍 | `组队招人/TeamTemplate.MinUnits` | 182 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |
 | 已对拍 | `组队招人/TeamTemplate.Priority` | 182 | docs/engine/aistate.md#两队抢兵和 MinPowerAdvantage（第 82 轮） |
@@ -948,7 +948,7 @@
 | 不涉及 | `战略状态/AIStrategicStateDefinition.ExecutionCanceledFeedbackKey` | 11 | 纯表现（语音、视频、画面） |
 | 不涉及 | `战略状态/AIStrategicStateDefinition.ExecutionCompleteFeedbackKey` | 11 | 纯表现（语音、视频、画面） |
 | 已对拍 | `目标/AITargetingHeuristic.HeuristicType=FriendlyStructure` | 11 | docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂） |
-| 推断 | `组队招人/ObjectFilter.Include` | 11 | AI 模型代码里读了这个名字 |
+| 未做 | `组队招人/ObjectFilter.Include` | 11 | AI 模型代码里没有这个名字 |
 | 推断 | `组队招人/TeamTemplate.Priority=COOP` | 11 | AI 模型代码里读了这个名字 |
 | 不涉及 | `人格/AIPersonalityDefinition.CommanderPortrait` | 10 | 纯表现（语音、视频、画面） |
 | 未做 | `其他/BuildingPlacementDistance.Distance` | 10 | AI 模型代码里没有这个名字 |
@@ -1007,7 +1007,7 @@
 | 推断 | `微操/AIMicroManagerData.SiegeWeaponBuffer` | 5 | AI 模型代码里读了这个名字 |
 | 推断 | `微操/AIMicroManagerData.SpecialPowerDelayMaximum` | 5 | AI 模型代码里读了这个名字 |
 | 推断 | `微操/AIMicroManagerData.SpecialPowerDelayMinimum` | 5 | AI 模型代码里读了这个名字 |
-| 推断 | `微操/IgnoreTargets.Include` | 5 | AI 模型代码里读了这个名字 |
+| 未做 | `微操/IgnoreTargets.Include` | 5 | AI 模型代码里没有这个名字 |
 | 未做 | `微操/SpecificSpecialPowerDelay.TogglePowerSubType=TOGGLE_LOCKDOWN` | 5 | AI 模型代码里没有这个名字 |
 | 未做 | `战略状态/AIStrategicStateDefinition.PathfindingCheckType=None` | 5 | AI 模型代码里没有这个名字 |
 | 推断 | `目标/AITargetingHeuristic.HeuristicType=EnemyStructureCloseToShore` | 5 | AI 模型代码里读了这个名字 |

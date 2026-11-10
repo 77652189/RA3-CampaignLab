@@ -62,6 +62,7 @@ sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign'
 
 import parts  # noqa: E402
 import simgarrison  # noqa: E402
+import simsweep  # noqa: E402
 import simunits  # noqa: E402
 from ctx import FUNC_LATE, PANEL_CLEAR  # noqa: E402
 from model import coord, facing  # noqa: E402
@@ -1005,6 +1006,7 @@ class Sim:
         self.firing = []                    # this tick's aimed fire: (target, damage per second, shooter) (fight, deal)
         self.first_death = None             # (t, body, killer): the fight's first death
         self.death_blasts = []              # (frame, x, y, damage, type, radius, affects, owner, by): FireWeaponWhenDead
+        self.sweeps = simsweep.Sweeps(self)  # ActivateLinearDamageNugget + LinearDamageUpdate: the lines walking
         self.events = sorted((e for e in self.script if isinstance(e[0], float)), key=lambda e: e[0])
         self.anchored = [e for e in self.script if isinstance(e[0], tuple)]       # (('@', flag, delta), verb, ...)
         self.areas = Areas(self.mm.areas)
@@ -3159,6 +3161,7 @@ class Sim:
             self.build_due(eng.frame)
             self.blast_due(eng.frame)
             self.death_blast_due(eng.frame)
+            self.sweeps.due(eng.frame)
             self.deposit_due(eng.frame)
             self.mine_due(eng.frame)
             self.produce_due(eng.frame)
@@ -3455,7 +3458,8 @@ class Sim:
                     a.fired_at = self.t                 # a bombarder firing shows itself
                 for effect in w.get('unmodeled_effects', []):
                     self.gap(GAP_WEAPON, effect, '武器第1轮尚未解释此效果的筛选、几何或时序')
-                if not self.shot_clock and (w.get('hit_modifiers') or w.get('line') or w.get('strip_max_health') or w.get('emp_seconds')):
+                if not self.shot_clock and (w.get('hit_modifiers') or w.get('line') or w.get('strip_max_health') or w.get('emp_seconds')
+                                           or w.get('sweep')):
                     self.gap(GAP_WEAPON, 'weapon effects', '逐发武器效果仅在离散命中时钟中模拟')
                 if w['dps'] or w.get('suppression'):
                     if 'sched' in w and self.shot_clock:
@@ -3627,6 +3631,8 @@ class Sim:
                     for seconds in w.get('emp_seconds', []):
                         deadlines = self.__dict__.setdefault('emp_until', {})
                         deadlines[id(t)] = max(deadlines.get(id(t), 0), self.frame_now() + simunits._frames(seconds))
+                    if w.get('sweep'):
+                        self.sweeps.fire(by, t, w['sweep'])
                     victims = [t]
                     # GUESSED edge geometry: circle extent; round 1 centres avoid edges.
                     line = w.get('line')

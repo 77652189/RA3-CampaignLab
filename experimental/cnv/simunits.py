@@ -407,6 +407,10 @@ def _weapons(texts, base_table=None):
                     paralysis.append(_secs(_attr(h, 'DurationSeconds', '0s')))
             if paralysis:
                 got['emp_seconds'] = paralysis
+            # a damage line (simsweep): the shooter's LinearDamageUpdate walks one out per shot, Lifetime caps its frames
+            sweeps = [_secs(_attr(h, 'Lifetime') or '0s') for h, _ in _blocks(bare, 'ActivateLinearDamageNugget')]
+            if sweeps:
+                got['sweep'] = sweeps[0]
 
             if unsupported:
                 got['unmodeled_effects'] = unsupported
@@ -497,6 +501,7 @@ def _resolve(w, weapons):
                 line=w.get('line', weapons.get(w.get('warhead'), {}).get('line')),
                 strip_max_health=w.get('strip_max_health', weapons.get(w.get('warhead'), {}).get('strip_max_health', [])),
                 emp_seconds=w.get('emp_seconds', weapons.get(w.get('warhead'), {}).get('emp_seconds', [])),
+                sweep=w.get('sweep'),
                 unmodeled_effects=w.get('unmodeled_effects', weapons.get(w.get('warhead'), {}).get('unmodeled_effects', [])))
 
 

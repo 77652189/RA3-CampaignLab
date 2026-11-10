@@ -91,7 +91,7 @@ def sweeper(id, firing, log=False):
     u.xml = _sub1(u.xml, '</Draws>', LASER_DRAW + '</Draws>')
     u.link.append(f'WeaponTemplate:{HIT}')
     u.names.update(hit=HIT, tag=TAG)
-    u.params.update(start=START, radius=RADIUS, length=LENGTH, sweep_speed=SPEED, life=LIFE, firing=firing)
+    u.params.update(start=START, radius=RADIUS, sweep_length=LENGTH, sweep_speed=SPEED, life=LIFE, firing=firing)
     return u
 
 

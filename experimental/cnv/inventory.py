@@ -110,6 +110,11 @@ BENCHED_TESTS = {
     # engine_statusbits.py, bench 11-09)
     (MODULE, 'Behaviors/WeaponSetUpdate'):
         'tests/test_simbench_c.py::test_weapon_set_the_status_picks_the_gun_molotov_under_the_toggle_and_the_painter_does_no_harm',
+    # engine line D: the damage line (simsweep, checks/engine_sweep.py engine_sweepoff a / b / c, bench 11-10)
+    (MODULE, 'Behaviors/LinearDamageUpdate'):
+        'tests/test_simsweep.py::test_sweep_the_line_walks_out_and_a_stop_does_not_cut_it_at_the_bench_frames',
+    (NUGGET, 'ActivateLinearDamageNugget'):
+        'tests/test_simsweep.py::test_sweep_a_killed_shooters_line_stops_with_it_and_the_second_ones_rows_are_hit',
     (MODULE, 'Behaviors/StatusBitsUpgrade'):
         'tests/test_simbench_c.py::test_status_bits_upgrade_the_heroic_grant_sets_weapon_upgraded_and_a_removal_clears_it',
     # immortal a / b / c, bench 11-09 (checks/engine_immortal.py): damage floor 1 %, script kill clamped, delete removes
