@@ -39,6 +39,8 @@
 
 ## 坑
 
+- **试验图 `work/mappage/trial`（及引擎线副本 trial2、trial3）是 11-10 重建的，不是原稿**：原稿随 work/ 误删丢失、没找到副本。照 `tests/test_mappage_sketch.py` 的 `_trial()` 夹具和 `experimental/cnv/checks/engine_trial.py`、`docs/engine/pathing.md` 的描述重画，补了"湖南岸"(1350,420)、"坡脚"(1400,2350) 两个地点；西墙南端 trial 到 y 70（留约 20 的缝）、trial2 伸出南边、trial3 到 y 400。三份草图备份在私有仓库 `work/re/backup/mappage/`；重生成：`sketch2map.py trial --check --sketch work/re/backup/mappage/trial.sketch.json`。台上读数（engine_trial 的停点）可能和 11-04 原图不同，要用时重跑。
+
 - 指纹比"某个提交前后"：`git worktree add --detach ../RA3-CampaignLab-fp <提交>`，`work` 用 `New-Item -ItemType Junction` 指回主仓库；用完**先** `[System.IO.Directory]::Delete(联接, $false)` 只删联接，再 `git worktree remove --force`，否则可能顺着联接删掉主仓库的 `work/`。临时 worktree `../RA3-CampaignLab-p2` 可能还在，同法处理（`cmd /c rmdir` 拆联接）。
 - 指纹跑着时别改活文件：三个目标是三个新进程，各自重新 import 工作区代码。
 - hold 模式下战败卡片会被暂停用的 Esc 跳过，看结局卡片用 `bench_watch(every=2, sheet=false)`，别用 `bench_wait`。
