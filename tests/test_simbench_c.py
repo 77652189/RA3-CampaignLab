@@ -145,4 +145,4 @@ def test_immortal_damage_stops_at_one_hp_kill_is_damage_and_delete_removes():
             assert readings[24:] == [[1, 0]] * 5, readings
         else:
             assert not dummy.alive and dummy.deleted
-            assert readings[24:] == [[0, 1]] * 5, readings
+            assert readings[24:] == [[1, 1]] * 5, readings      # bench 11-09: DELETE leaves the counter at 1

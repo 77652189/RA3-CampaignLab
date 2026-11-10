@@ -2570,7 +2570,9 @@ class Sim:
                 self.used.add('health of the dead')
                 if b.alive:
                     self.counters[a[1]] = int(round(b.health))
-                elif b.died_at == self.t:       # killed by a script earlier this frame: it is still there, at 0
+                elif b.died_at == self.t and not b.deleted:
+                    # killed by a script earlier this frame: it is still there, at 0 (a NAMED_DELETE leaves the last
+                    # value: engine_immortal b, bench 11-09, health 1 beside gone 1)
                     self.counters[a[1]] = 0
                 # dead before this frame (a weapon's kill lands after the frame's scripts): the counter keeps the last
                 # value read (bench 11-09 pend_scripts9 rel: 12 to the end, the tank gone on the minimap; engine_float,

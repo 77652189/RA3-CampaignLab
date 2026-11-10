@@ -1,6 +1,7 @@
 """Engine probe: damage floor and explicit removal of a retail dummy body.
 
-PREDICTED by the simulator; NOT BENCHED. No engine readings have been collected.
+BENCHED 2026-11-09 (engine line C round 14; the readings are at the end of this docstring). The prediction below held on
+everything but one thing: after the delete the health counter stays 1, it is not written 0 (a dead object's counter freezes).
 Retail CPDummyTarget is placeable (EditorName / EditorSorting SYSTEM), immobile,
 selectable with a health bar, NoArmor and MaxHealth=100. Unlike BaseRock it is
 not UNATTACKABLE; its invisible in-game model does not affect named script reads.
@@ -23,6 +24,12 @@ changes to leave at least 1 HP, so 100 - 200 becomes 1 HP = 1 percent.
 ScriptActions::doNamedKill calls Object::kill (MaxHealth unresistable damage),
 which is clamped too. doNamedDelete calls GameLogic::destroyObject directly;
 it bypasses health changes. RA3 behavior remains a prediction pending line C.
+
+Bench 2026-11-09 (the ImmortalBody module of CPDummyTarget; lanes a, b, c = the kill alone, no delete, 14 s):
+  a: health 1 (percent), gone 0, from the hit at 1 s to the end (s1-s13) -- the 200 hit leaves 1 %, the dummy lives on.
+  c: the same 1 / 0 through s15 after the NAMED_KILL at 11 s -- a script kill does not remove it either (floor of 1).
+  b: 1 / 0 to s10, then 1 / 1 from s11 (the bench clock labels run about a second behind the mission's): the delete
+     removes it; the health counter keeps 1 beside gone 1 (it froze), the predicted 0 was wrong.
 """
 from maps import niagara
 from parts import Mission, Script, Test
@@ -48,11 +55,11 @@ def build_test(m, which='a'):
     t.scripts.append(Script('Test - go', [('TIMER_EXPIRED', 'Test Go')], [
         ('NAMED_DAMAGE', UNIT, 2 * MAX_HEALTH),
         ('SET_MILLISECOND_TIMER', 'Test Kill', OBSERVE)]))
+    if which in 'bc':                   # c: the kill alone, no delete (bench 11-09 b: gone at s11.1, before the delete)
+        t.scripts.append(Script('Test - kill', [('TIMER_EXPIRED', 'Test Kill')], [
+            ('NAMED_KILL', UNIT)] + ([('SET_MILLISECOND_TIMER', 'Test Delete', 1.0)] if which == 'b' else [])))
     if which == 'b':
-        t.scripts += [
-            Script('Test - kill', [('TIMER_EXPIRED', 'Test Kill')], [
-                ('NAMED_KILL', UNIT), ('SET_MILLISECOND_TIMER', 'Test Delete', 1.0)]),
-            Script('Test - delete', [('TIMER_EXPIRED', 'Test Delete')], [('NAMED_DELETE', UNIT)])]
+        t.scripts.append(Script('Test - delete', [('TIMER_EXPIRED', 'Test Delete')], [('NAMED_DELETE', UNIT)]))
     t.scripts += [
         Script('Test - health', [], [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', UNIT,
                                      'CNV_Immortal_Health')], once=False),
@@ -66,4 +73,4 @@ def build_test(m, which='a'):
 
 
 MISSION = {'engine_immortal': mission}
-CHECKS = {'engine_immortal': {w: (lambda m, w=w: build_test(m, w)) for w in 'ab'}}
+CHECKS = {'engine_immortal': {w: (lambda m, w=w: build_test(m, w)) for w in 'abc'}}

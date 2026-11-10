@@ -105,6 +105,9 @@ BENCHED_TESTS = {
         'tests/test_simbench_c.py::test_weapon_set_the_status_picks_the_gun_molotov_under_the_toggle_and_the_painter_does_no_harm',
     (MODULE, 'Behaviors/StatusBitsUpgrade'):
         'tests/test_simbench_c.py::test_status_bits_upgrade_the_heroic_grant_sets_weapon_upgraded_and_a_removal_clears_it',
+    # immortal a / b / c, bench 11-09 (checks/engine_immortal.py): damage floor 1 %, script kill clamped, delete removes
+    (MODULE, 'Body/ImmortalBody'):
+        'tests/test_simbench_c.py::test_immortal_damage_stops_at_one_hp_kill_is_damage_and_delete_removes',
     # topple a / b, bench 11-09: neutral props, delayed removal without DYING; all five readings within one frame
     (MODULE, 'Behaviors/ToppleUpdate'):
         'tests/test_simbench_c.py::test_topple_the_five_props_disappear_at_the_bench_frames_without_ever_dying',
