@@ -227,7 +227,7 @@ def test_judge_mission_ended_before():
 
 def test_counter_reader_reads_its_calibration():
     import counters
-    frames = os.path.join(ROOT, 'work', 'testbench', 'runs')
+    frames = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'testbench', 'runs')
     shots = sorted(d for d in os.listdir(frames) if d.startswith('CampDigits_mcp_')) if os.path.isdir(frames) else []
     if not shots or len(counters.templates()) < 10:
         import pytest

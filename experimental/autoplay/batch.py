@@ -124,7 +124,7 @@ def main():
     ap.add_argument('--runs', type=int, default=20)
     ap.add_argument('--personality', nargs='*', default=list(players.PERSONALITIES))
     ap.add_argument('--procs', type=int, default=max(1, (os.cpu_count() or 2) - 1))
-    ap.add_argument('--out', default=os.path.join(ROOT, 'work', 'autoplay'))
+    ap.add_argument('--out', default=os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'autoplay'))
     ap.add_argument('--md', default='', help='write the tables here as markdown')
     ap.add_argument('--check-replay', type=int, default=0)
     ap.add_argument('--difficulty', default='normal', choices=list(sim.LEVELS))

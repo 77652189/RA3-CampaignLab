@@ -24,7 +24,7 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
-BENCH = os.environ.get('RA3_BENCH_DIR') or os.path.join(ROOT, 'work', 'testbench', 'RA3')    # the game copy
+BENCH = os.environ.get('RA3_BENCH_DIR') or os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'testbench', 'RA3')    # the game copy
 def lab(root=ROOT):
     """The folder the repository sits in (RA3Modding, where shared\\ is). From a git worktree, the main checkout's:
     the worktree's .git is a file 'gitdir: <main>/.git/worktrees/<name>' (2026-10-27: a build in the units line's

@@ -53,7 +53,7 @@ async def run(steps, out):
 def main():
     a = sys.argv[1]
     steps = json.load(open(a, encoding='utf-8')) if os.path.exists(a) else json.loads(a)
-    out = sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, 'work', 'testbench', 'client')
+    out = sys.argv[2] if len(sys.argv) > 2 else os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'testbench', 'client')
     os.makedirs(out, exist_ok=True)
     asyncio.run(run(steps, out))
 

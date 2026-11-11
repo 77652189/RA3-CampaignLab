@@ -16,7 +16,7 @@ import calib  # this folder: first on the path when run as a script (guard G4: n
 import harness
 from retail_q1 import ARRIVE_R, MAX_S, ROI, SELECT, STEP, TARGET_SCREEN, squad
 
-OUT = os.path.join(calib.ROOT, 'work', 'testbench', 'retail_q')
+OUT = os.path.join((os.environ.get('CNV_WORK') or os.path.join(calib.ROOT, 'work')), 'testbench', 'retail_q')
 SETTLE = 4.0                     # mission seconds sampled after the middle is near the point
 SECOND_SCREEN = (700, 600)       # the two lone orders' point: the lawn south of the start (inside ROI)
 MIN_PX = 60                      # a blob smaller than this is shading or a flower, not a unit

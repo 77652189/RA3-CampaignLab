@@ -35,7 +35,7 @@ WORLDBUILDER = [('WBData.big', 'data\\worldbuilder.')]
 
 
 def frame_path(kind):
-    return os.path.join(ROOT, 'work', 'reference', f'{kind}_frame.png')
+    return os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'reference', f'{kind}_frame.png')
 
 
 def retail_images(kind):

@@ -17,8 +17,8 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
-DL = os.path.join(ROOT, 'work', 'downloads')
-OUT = os.path.join(ROOT, 'work', 'units', 'lighttank_ai')
+DL = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'downloads')
+OUT = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'units', 'lighttank_ai')
 os.environ.setdefault('HF_HOME', os.path.join(DL, 'hf'))
 os.environ.setdefault('HY3DGEN_MODELS', os.path.join(DL, 'hf', 'hy3dgen'))
 sys.path.insert(0, ROOT)

@@ -23,7 +23,7 @@ del c7.EXTRA_TEMPLATES[c24.AI_UNIT]
 c24.AI_UNIT, c24.AI_MODEL = 'CNV_LightTank2', 'CNTankB'
 # 游隼's model: v3 (experimental/units/cnv_lighttank3.py, rebuilt after the second concept) unless CNV_TANK=2
 TANK = os.environ.get('CNV_TANK', '3')
-c24.AI_SRC = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'units', f'lighttank{TANK}')
+c24.AI_SRC = os.path.join((os.environ.get('CNV_WORK') or os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work')), 'units', f'lighttank{TANK}')
 c7.EXTRA_TEMPLATES[c24.AI_UNIT] = {'file': 'DATA:CNVUnits/Data/' + c24.AI_UNIT + '.xml', 'EditorSorting': 'UNIT'}
 c4.c3.STRINGS['Name:' + c24.AI_UNIT] = 'CNV 轻型坦克 v2'
 c24.AI_PARTS = dict(c23.PARTS)                  # HULL, TREADS, TURRET, BARREL like v1
@@ -70,6 +70,6 @@ if os.environ.get('CNV_CLOSEUP') == '1':
 
 if __name__ == '__main__':
     if c23.game_running():
-        c2.OUT = c4.OUT = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'staging', NAME)
+        c2.OUT = c4.OUT = os.path.join((os.environ.get('CNV_WORK') or os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work')), 'staging', NAME)
         print('RA3 is running -> staging at', c4.OUT)
     c4.main()

@@ -29,7 +29,7 @@ import numpy as np
 from mathutils import Matrix, Vector
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-WORK = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work')
+WORK = (os.environ.get('CNV_WORK') or os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work'))
 
 # unit: Tripo GLB (under work/), width over the tracks (game units), part indices per group (the rest is HULL),
 # triangle budgets, atlas size, the model / texture name

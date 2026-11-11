@@ -11,8 +11,8 @@ from parts import Mission
 RADAR_AT = 4.0
 FULL_AT = 14.0
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-CLIPS = {'CNVTEST01': os.path.join(ROOT, 'work', 'video_test', 'CNVTEST01.vp6'),
-         'CNVTEST02': os.path.join(ROOT, 'work', 'video_test', 'CNVTEST02.vp6')}
+CLIPS = {'CNVTEST01': os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'video_test', 'CNVTEST01.vp6'),
+         'CNVTEST02': os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'video_test', 'CNVTEST02.vp6')}
 
 
 class LazyPack:

@@ -35,7 +35,7 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign')) if p not in sys.path]
 
 CATALOG = os.path.join(ROOT, 'experimental', 'campaign', 'script_catalog.json')
-RETAIL_SCRIPTS = os.path.join(ROOT, 'work', 'retailref')
+RETAIL_SCRIPTS = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'retailref')
 OUT = os.path.join(ROOT, 'docs', 'engine', 'inventory.md')
 
 BENCHED, GUESSED, TODO, NA = '已对拍', '推断', '未做', '不涉及'

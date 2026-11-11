@@ -23,7 +23,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
-PAGES = os.path.join(ROOT, 'work', 'walkthrough')
+PAGES = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'walkthrough')
 DATA = os.path.join(HERE, 'teardowns', 'data')
 
 

@@ -66,7 +66,7 @@ terrain_edit = _load('terrain_edit', os.path.join(HERE, 'terrain_edit.py'))
 
 CELL = 10.0                                     # world units per map cell (mapterrain.CELL)
 PX = 2                                          # picture pixels per cell
-OUT = os.path.join(ROOT, 'work', 'mappage')
+OUT = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'mappage')
 
 # The rules the page draws, each one contract function (all of them run inside contract.contract too); the rest of the
 # contract's problems are listed without a place.

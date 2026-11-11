@@ -25,7 +25,7 @@ c2.BUILT = os.path.join(c2.SDK, 'BuiltMods', 'mods', NAME.lower(), 'data')
 c2.OUT = c4.OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods', NAME)
 c7.MAP_MOD = NAME + 'Map'
 UNIT, MODEL = 'CNV_LightTank', 'CNTankL'
-SRC = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'units', 'lighttank')
+SRC = os.path.join((os.environ.get('CNV_WORK') or os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work')), 'units', 'lighttank')
 UNIT_FILE = os.path.join(c2.SDK, 'Mods', 'CNVUnits', 'Data', UNIT + '.xml')
 c7.EXTRA_TEMPLATES[UNIT] = {'file': 'DATA:CNVUnits/Data/' + UNIT + '.xml', 'EditorSorting': 'UNIT'}
 c4.c3.STRINGS['Name:' + UNIT] = 'CNV 轻型坦克'
@@ -87,6 +87,6 @@ def game_running():
 
 if __name__ == '__main__':
     if game_running():      # never write into the Mods folder while the user plays: stage it, move it later
-        c2.OUT = c4.OUT = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'staging', NAME)
+        c2.OUT = c4.OUT = os.path.join((os.environ.get('CNV_WORK') or os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work')), 'staging', NAME)
         print('RA3 is running -> staging at', c4.OUT)
     c4.main()

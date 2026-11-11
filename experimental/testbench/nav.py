@@ -18,7 +18,7 @@ import sys
 from PIL import Image, ImageStat
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'testbench', 'nav')
+OUT = os.path.join((os.environ.get('CNV_WORK') or os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work')), 'testbench', 'nav')
 
 # (name, how, reference frame, box (x0, y0, x1, y1), threshold, actions); how: 'tpl' = patch matches the template
 # (diff below threshold), 'dark' / 'bright' = mean brightness of the box below / above threshold.

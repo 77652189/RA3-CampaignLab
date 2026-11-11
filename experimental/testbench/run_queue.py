@@ -32,7 +32,7 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
-RESULTS = os.path.join(ROOT, 'work', 'bench_results')
+RESULTS = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'bench_results')
 RUN_CHECK = os.path.join(HERE, 'run_check.py')
 # the interpreter ra3bench itself runs in (it has the mcp package bench_mcp imports)
 BENCH_PY = os.path.join(os.path.dirname(ROOT), 'envs', 'bench_mcp', 'Scripts', 'python.exe')

@@ -616,7 +616,7 @@ def main():
     a = ap.parse_args()
     f = facts()
     text = '\n'.join(lines(f))
-    path = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'logs', 'graybox_cards.log')
+    path = os.path.join((os.environ.get('CNV_WORK') or os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work')), 'logs', 'graybox_cards.log')
     os.makedirs(os.path.dirname(path), exist_ok=True)
     open(path, 'w', encoding='utf-8').write(text + '\n\n' + repr(f) + '\n')
     print(text if a.verbose else text.splitlines()[0] + f'\n（全文 {os.path.relpath(path, os.path.dirname(os.path.dirname(HERE)))}）')

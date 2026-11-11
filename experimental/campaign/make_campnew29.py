@@ -32,7 +32,7 @@ c2.OUT = c4.OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 
 c7.MAP_MOD = NAME + 'Map'
 
 UNIT, MODEL = 'CNV_ShrinkVehicle', 'CNShrink'
-SRC = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'units', 'shrinkvehicle')
+SRC = os.path.join((os.environ.get('CNV_WORK') or os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work')), 'units', 'shrinkvehicle')
 BUTTON, PORTRAIT = f'Button_{UNIT}_on', f'Portrait_{UNIT}'
 COMMANDS = f'{UNIT}CommandSet'
 c7.EXTRA_TEMPLATES[UNIT] = {'file': 'DATA:CNVUnits/Data/' + UNIT + '.xml', 'EditorSorting': 'UNIT'}
@@ -150,6 +150,6 @@ c6.edit = generate
 
 if __name__ == '__main__':
     if c23.game_running():
-        c2.OUT = c4.OUT = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'staging', NAME)
+        c2.OUT = c4.OUT = os.path.join((os.environ.get('CNV_WORK') or os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work')), 'staging', NAME)
         print('RA3 is running -> staging at', c4.OUT)
     c4.main()

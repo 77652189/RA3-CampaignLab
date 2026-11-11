@@ -32,7 +32,7 @@ c2.OUT = c4.OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 
 c7.MAP_MOD = NAME + 'Map'
 
 UNIT, MODEL = c35.UNIT, 'CNChrono'
-SRC = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'units', 'chronolag', 'game')
+SRC = os.path.join((os.environ.get('CNV_WORK') or os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work')), 'units', 'chronolag', 'game')
 BUTTON, PORTRAIT = f'Button_{UNIT}_on', f'Portrait_{UNIT}'
 PARTS = {'HULL': 'BODY', 'TURRET': 'Bone_Turret', 'BARREL': 'Bone_Turret_Pitch'}
 LEVEL = int(os.environ.get('CNV_CHRONO_LEVEL', 85))     # diffuse median (retail Allied vehicles 62..80); the bake's
@@ -112,6 +112,6 @@ c26.factory_xml = factory_xml
 
 if __name__ == '__main__':
     if c23.game_running():
-        c2.OUT = c4.OUT = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'staging', NAME)
+        c2.OUT = c4.OUT = os.path.join((os.environ.get('CNV_WORK') or os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work')), 'staging', NAME)
         print('RA3 is running -> staging at', c4.OUT)
     c4.main()

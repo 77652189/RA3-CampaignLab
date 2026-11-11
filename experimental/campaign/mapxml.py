@@ -28,8 +28,7 @@ from ra3voice import big, refpack              # noqa: E402
 import labpaths                                # noqa: E402
 SDK = labpaths.SDK3                            # Mod SDK v3.0, see make_campnew2
 SAGE = os.path.join(SDK, 'SageXML')
-INDEX = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work',
-                     'sagexml_gameobjects.json' if SDK.rstrip('\\').endswith('RA3ModSDK') else
+INDEX = os.path.join((os.environ.get('CNV_WORK') or os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work')), 'sagexml_gameobjects.json' if SDK.rstrip('\\').endswith('RA3ModSDK') else
                      f'sagexml_gameobjects_{os.path.basename(SDK.rstrip(chr(92)))}.json')
 GAME_ALL_TYPES_HASH = 1424942948
 

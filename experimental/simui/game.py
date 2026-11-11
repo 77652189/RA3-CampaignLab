@@ -32,7 +32,7 @@ import simshow  # noqa: E402
 
 PLAYS = os.path.join(CNV, 'plays')
 REPO = os.path.dirname(os.path.dirname(HERE))
-VOICE_DIRS = [os.path.join(HERE, 'voice'), os.path.join(REPO, 'work', 'voice')]   # <key>.wav / .mp3 / .ogg, if any
+VOICE_DIRS = [os.path.join(HERE, 'voice'), os.path.join((os.environ.get('CNV_WORK') or os.path.join(REPO, 'work')), 'voice')]   # <key>.wav / .mp3 / .ogg, if any
 AUDIO_EXT = ('.wav', '.mp3', '.ogg')
 SPEEDS = (0.0, 1.0, 2.0, 4.0, 8.0, -1.0)      # 0 paused, -1 as fast as it goes
 TICK_BUDGET = 0.25                             # seconds of wall time one worker turn may spend ticking (as fast)

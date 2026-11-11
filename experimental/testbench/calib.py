@@ -21,8 +21,8 @@ from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
-DIR = os.path.join(ROOT, 'work', 'testbench', 'calib')
-OUT = os.path.join(ROOT, 'work', 'testbench', 'calib.json')
+DIR = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'testbench', 'calib')
+OUT = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'testbench', 'calib.json')
 UI = [(1040, 0, 1280, 270), (1100, 575, 1280, 720), (0, 0, 140, 100), (0, 650, 200, 720),
       (345, 135, 835, 175)]                                  # minimap, panels, caption bar: never markers
 

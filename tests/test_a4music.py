@@ -1,6 +1,7 @@
 """A4's music (experimental/music/a4.py) and the jump rules it is played by (ownmap.timeline): the map sends every
 mission event to its section, a playthrough goes through the transitions the story needs, jumps without PREP land
 on a segment's end and PREP cuts at once; the synthesizer's loops have no seam."""
+import os
 import json
 import sys
 from pathlib import Path
@@ -12,7 +13,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from experimental.music import a4, ownmap, pfdx, synth  # noqa: E402
 
-RETAIL = ROOT / 'work' / 'music' / 'retail'
+RETAIL = Path(os.environ.get('CNV_WORK') or ROOT / 'work') / 'music' / 'retail'
 
 
 @pytest.fixture(scope='module')

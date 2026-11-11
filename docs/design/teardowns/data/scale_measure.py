@@ -34,7 +34,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..', '..', '..'))
-CACHE = os.path.join(ROOT, 'work', 'retailref')
+CACHE = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'retailref')
 TIMELINE = os.path.join(HERE, 'timeline.json')
 
 BASE = re.compile(r'(?i)mcv|constructionyard')

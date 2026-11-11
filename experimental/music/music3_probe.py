@@ -29,7 +29,7 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 LAB = os.path.dirname(ROOT)
 COMFY = os.path.join(LAB, 'RA3-ChineseVoice', 'third_party', 'comfyui')
 FFMPEG = os.path.join(LAB, 'RA3-ChineseVoice', 'third_party', 'ffmpeg', 'ffmpeg.exe')
-OUT = os.path.join(ROOT, 'work', 'music', 'music3')
+OUT = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'music', 'music3')
 URL = 'http://127.0.0.1:8189'
 GPU_LIMIT = os.path.join(LAB, 'shared', 'gpu_limit.json')
 

@@ -156,6 +156,6 @@ c6.edit = generate
 
 if __name__ == '__main__':
     if real.game_running():
-        c2.OUT = c4.OUT = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'staging', NAME)
+        c2.OUT = c4.OUT = os.path.join((os.environ.get('CNV_WORK') or os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work')), 'staging', NAME)
         print('RA3 is running -> staging at', c4.OUT)
     c4.main()

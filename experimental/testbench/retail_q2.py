@@ -16,7 +16,7 @@ import time
 import calib  # this folder: first on the path when run as a script (guard G4: no sys.path edits)
 import harness
 
-OUT = os.path.join(calib.ROOT, 'work', 'testbench', 'retail_q')
+OUT = os.path.join((os.environ.get('CNV_WORK') or os.path.join(calib.ROOT, 'work')), 'testbench', 'retail_q')
 
 
 def run(slot, until=90.0, step=5.0, mod='CampShRetail'):

@@ -8,7 +8,7 @@ import os
 import zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, 'work', 'demo', 'ra3sim_demo.zip')
+OUT = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'demo', 'ra3sim_demo.zip')
 TOP = 'ra3sim_demo'
 PATTERNS = [
     'demo/run_demo.py', 'demo/voice_snapshot.py',
@@ -43,9 +43,9 @@ def main():
         for f in SDK_FILES:
             z.write(os.path.join(sdk, *f.split('/')), f'{TOP}/sdk3/SageXML/{f}')
         # the voice repository's answers (voice_snapshot.py), made on a machine that has it; not in git
-        z.write(os.path.join(ROOT, 'work', 'demo', 'voice_snapshot.json'), f'{TOP}/demo/voice_snapshot.json')
+        z.write(os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'demo', 'voice_snapshot.json'), f'{TOP}/demo/voice_snapshot.json')
         # the readme also sits at the top of the folder, where it is found first
-        z.write(os.path.join(ROOT, 'work', 'demo', 'SIM_README.txt'), f'{TOP}/SIM_README.txt')
+        z.write(os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'demo', 'SIM_README.txt'), f'{TOP}/SIM_README.txt')
     print(f'{OUT}: {len(files)} files, {os.path.getsize(OUT) / 1e6:.1f} MB')
 
 

@@ -23,7 +23,7 @@ c2.BUILT = os.path.join(c2.SDK, 'BuiltMods', 'mods', NAME.lower(), 'data')
 c2.OUT = c4.OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods', NAME)
 c7.MAP_MOD = NAME + 'Map'
 AI_UNIT, AI_MODEL = 'CNV_LightTankAI', 'CNTankA'
-AI_SRC = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'units', 'lighttank_ai', 'blend')
+AI_SRC = os.path.join((os.environ.get('CNV_WORK') or os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work')), 'units', 'lighttank_ai', 'blend')
 c7.EXTRA_TEMPLATES[AI_UNIT] = {'file': 'DATA:CNVUnits/Data/' + AI_UNIT + '.xml', 'EditorSorting': 'UNIT'}
 c4.c3.STRINGS['Name:' + AI_UNIT] = 'CNV 轻型坦克（AI）'
 AI_AT = (c23.TANK_AT[0], c23.TANK_AT[1] - 45)          # just south of the parametric tank
@@ -95,6 +95,6 @@ c6.edit = generate
 
 if __name__ == '__main__':
     if c23.game_running():
-        c2.OUT = c4.OUT = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'staging', NAME)
+        c2.OUT = c4.OUT = os.path.join((os.environ.get('CNV_WORK') or os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work')), 'staging', NAME)
         print('RA3 is running -> staging at', c4.OUT)
     c4.main()

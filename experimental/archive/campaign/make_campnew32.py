@@ -34,7 +34,7 @@ c2.OUT = c4.OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 
 c7.MAP_MOD = NAME + 'Map'
 
 UNIT, FAST, SIGNAL = 'CNV_Narukami', 'CNNaruF', 'CNNaruS'
-WORK = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'units')
+WORK = os.path.join((os.environ.get('CNV_WORK') or os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work')), 'units')
 SRC = {FAST: os.path.join(WORK, 'narukami_fast'), SIGNAL: os.path.join(WORK, 'narukami_signal')}
 # cnv_narukami.py TURRET_AT / PITCH_AT per form, TIP_AT (v2: the turret is the head in the signal form)
 TURRET = {FAST: ((4.0, 0.0, 10.4), (1.0, 0.0, 1.2)), SIGNAL: ((0.0, 0.0, 6.0 + 18.6 * 1.3), (0.52, 0.0, 2.08))}
@@ -468,6 +468,6 @@ c6.edit = generate
 
 if __name__ == '__main__':
     if c23.game_running():
-        c2.OUT = c4.OUT = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'staging', NAME)
+        c2.OUT = c4.OUT = os.path.join((os.environ.get('CNV_WORK') or os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work')), 'staging', NAME)
         print('RA3 is running -> staging at', c4.OUT)
     c4.main()

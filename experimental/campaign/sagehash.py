@@ -17,8 +17,7 @@ import labpaths                                  # noqa: E402
 
 DLL = os.path.join(labpaths.SDK3, 'tools', 'EALA.Hash.dll')
 PS32 = r'C:\Windows\SysWOW64\WindowsPowerShell\v1.0\powershell.exe'
-CACHE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'work',
-                     'fasthash_cache.json')
+CACHE = os.path.join((os.environ.get('CNV_WORK') or os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'work')), 'fasthash_cache.json')
 
 
 def _load():

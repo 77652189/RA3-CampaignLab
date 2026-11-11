@@ -31,11 +31,11 @@ import apt_textures                                     # noqa: E402
 NAME = os.environ.get('CNV_SHELL_NAME', 'CampShell')    # at most 15 characters, letters and digits (parts.assemble asserts it)
 HEAD_ID = 'CNVHEAD01'               # the overview's talking head (OverviewTalkingHead), shared by every slot
 HEAD_SIZE = (512, 288)              # retail's AMB01..09.vp6 (MVhd), the frame on the overview is drawn at this ratio
-WORK = os.path.join(ROOT, 'work', 'shell')
+WORK = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'shell')
 TO_VP6 = os.path.join(ROOT, 'experimental', 'video', 'to_vp6.py')
 VOSS = os.path.join(os.path.dirname(ROOT), 'RA3-ChineseVoice', 'third_party', 'comfyui', 'input', 'voss_p1.png')
 # The built mission's map from above for players (ground only, no debug labels): maprender.py <built mod> --plain -o this
-MAP_PICTURE = os.path.join(ROOT, 'work', 'shell', 'map_plain.png')
+MAP_PICTURE = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'shell', 'map_plain.png')
 FONT = r'C:\Windows\Fonts\msyhbd.ttc'
 B = chr(92)
 APT = 'data' + B + 'aptui' + B

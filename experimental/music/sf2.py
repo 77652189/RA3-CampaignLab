@@ -18,7 +18,7 @@ import sys
 import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-FONT = os.path.join(ROOT, 'work', 'music', 'musescore', 'MuseScore_General.sf2')
+FONT = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'music', 'musescore', 'MuseScore_General.sf2')
 RATE = 44100
 
 # generator numbers (SoundFont 2.01, 8.1.2)

@@ -15,7 +15,7 @@ from PIL import Image                           # noqa: E402
 
 import button_icon                              # noqa: E402  (its STATIC layer list)
 
-OUT = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'reference')
+OUT = os.path.join((os.environ.get('CNV_WORK') or os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work')), 'reference')
 
 
 def main(names):

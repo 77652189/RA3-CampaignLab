@@ -17,7 +17,7 @@ KEEP = ("CampShell", "CampA4Demo")  # prefixes the player launches by hand
 
 HOME = os.path.expanduser("~")
 MODS = os.path.join(HOME, "Documents", "Red Alert 3", "Mods")
-RUNS = os.path.join(os.path.dirname(__file__), "..", "..", "work", "testbench", "runs")
+RUNS = os.path.join(os.environ.get('CNV_WORK') or os.path.join(os.path.dirname(__file__), '..', '..', 'work'), 'testbench', 'runs')
 
 
 def newest_and_size(path):

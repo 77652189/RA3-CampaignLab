@@ -627,7 +627,7 @@ def reference():
     for kind, streams in REFERENCE_STREAMS.items():
         e, sm = np.zeros(len(synth.BANDS)), []
         for s in streams:
-            sr, x = wavfile.read(os.path.join(ROOT, 'work', 'music', 'retail', 'wav', f'{s:03d}.wav'))
+            sr, x = wavfile.read(os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'music', 'retail', 'wav', f'{s:03d}.wav'))
             assert sr == synth.RATE
             bands, side_mid = synth.profile(x.astype(float) / 32768)
             e += 10 ** (bands / 10)
@@ -697,7 +697,7 @@ def music_map(base):
 
 # --- listening -----------------------------------------------------------------------------------------------------
 
-OUT = os.path.join(ROOT, 'work', 'music', 'a4')
+OUT = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'music', 'a4')
 
 
 def _write(path, x):
@@ -822,7 +822,7 @@ def main():
     import json
     from experimental.music import pfdx
     audio, owner = streams(sections_too=True)
-    retail = os.path.join(ROOT, 'work', 'music', 'retail')
+    retail = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'music', 'retail')
     names = json.load(open(os.path.join(retail, 'event_hashes.json')))
     base = pfdx.parse(open(os.path.join(retail, 'map.bin'), 'rb').read(), names)
     b, secs, lengths = music_map(base)

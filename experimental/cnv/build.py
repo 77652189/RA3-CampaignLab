@@ -318,7 +318,7 @@ def main():
         import contract                         # the map's own design lint first (it needs no map file): the one every
         problems = contract.map_design(m)       # build runs (contract.contract), K4e
         print('LINT ' + ('ok' if not problems else '; '.join(problems)))
-        path = parts.preview(m, t, out=os.path.join(ROOT, 'work', 'maps', mod + '.map'))
+        path = parts.preview(m, t, out=os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'maps', mod + '.map'))
         print('PREVIEW ' + path)
         return
     if a.judge is not None:

@@ -16,7 +16,7 @@ import sys
 import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-COPY = os.environ.get('RA3_PLAY_DIR') or os.path.join(ROOT, 'work', 'testbench', 'RA3play')
+COPY = os.environ.get('RA3_PLAY_DIR') or os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'testbench', 'RA3play')
 os.environ['RA3_BENCH_DIR'] = COPY              # before harness reads it (slots.BENCH): the playtest copy, not the bench's
 os.environ['RA3_BENCH_SPEED'] = '2'             # so the harness starts the game with the clocks hooked (never sped up here)
 os.environ['CNV_DEV_KEYS'] = '1'

@@ -7,16 +7,18 @@ authority (ADR 0008).
     python docs/design/flow/flowview.py            # every flow script
     python docs/design/flow/flowview.py a4 j7      # some of them
 """
+import os
 import html
 import json
 import re
 import subprocess
 import sys
+from pathlib import Path
 
 import flowcheck as fc
 
 TEMPLATE = fc.HERE / 'flowview.html'
-OUT = fc.HERE.parents[2] / 'work' / 'flowview' / 'flow.html'
+OUT = Path(os.environ.get('CNV_WORK') or fc.HERE.parents[2] / 'work') / 'flowview' / 'flow.html'
 CN = dict(zip('一二两三四五六七八九', (1, 2, 2, 3, 4, 5, 6, 7, 8, 9)))
 
 

@@ -187,8 +187,8 @@ def main():
             res.append(measure(mapscript.MapFile(big.read_files(arc, [n])[n]), short)); print(res[-1], flush=True)
         except Exception as ex:  # noqa
             print('ERR', short, ex, flush=True)
-    os.makedirs(os.path.join(ROOT, 'work', 'mapdiag'), exist_ok=True)
-    path = os.path.join(ROOT, 'work', 'mapdiag', 'measures%s.json' % ('_' + '_'.join(ours + args) if (ours or args) else ''))
+    os.makedirs(os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'mapdiag'), exist_ok=True)
+    path = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'mapdiag', 'measures%s.json' % ('_' + '_'.join(ours + args) if (ours or args) else ''))
     json.dump(res, open(path, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 
 

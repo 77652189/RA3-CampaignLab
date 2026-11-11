@@ -1,5 +1,6 @@
 """The Pathfinder music map reader/writer (experimental/music/pfdx.py): the retail map reads back byte for byte, every
 retail segment plays a stream that exists, and a map built from scratch reads back the same."""
+import os
 import sys
 from pathlib import Path
 
@@ -9,7 +10,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from experimental.music import pfdx  # noqa: E402
 
-RETAIL = ROOT / 'work' / 'music' / 'retail' / 'map.bin'
+RETAIL = Path(os.environ.get('CNV_WORK') or ROOT / 'work') / 'music' / 'retail' / 'map.bin'
 
 
 @pytest.fixture(scope='module')

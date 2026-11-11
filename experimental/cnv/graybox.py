@@ -191,7 +191,7 @@ def main():
     ap.add_argument('--verbose', action='store_true')
     a = ap.parse_args()
     text, summary = report(a.level, a.verbose)
-    path = os.path.join(ROOT, 'work', 'logs', f'graybox_{a.level}.log')
+    path = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'logs', f'graybox_{a.level}.log')
     os.makedirs(os.path.dirname(path), exist_ok=True)
     open(path, 'w', encoding='utf-8').write(text + '\n')
     print(text if a.verbose else '；'.join(summary) + f'\n（全文 {os.path.relpath(path, ROOT)}）')
