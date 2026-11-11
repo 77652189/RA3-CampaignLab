@@ -197,6 +197,14 @@ RESULTS g / h (bench 2026-11-10, aiskirm g / h and aiskirmnl g, all PASS (weak);
   Reading: life = 75 frames (5 s x 15) counted from the team's first frame, + 1 for counting both ends (the script
     pass order against the AI update is not known); the 73-74 ones read as the slot assigned (+0x2c0) a frame or
     two before its team appears. The model (Team.made = the team's frame, ends after 75) is within a frame.
+
+  u  维和总数 / 标枪总数 / 警犬总数 / 工程师总数 to 80 s after the wake. aiskmod (CampAISkMod: 1AlliedBalanced +
+     UnitModifier Peacekeeper and Javelin soldier at OffensiveModifier = DefensiveModifier = 0). Bench 2026-11-10,
+     aiskmod u PASS (bench s): dogs 1 s23, 2 s26; Javelins 1 s32, 2 s37, 3 s60; Peacekeepers 1 s43, 2 s49, 3 s54;
+     no Engineer -- the same seconds as aiskirm c's stock run.
+  Reading: UnitModifier at 0 changes nothing in what the barracks builds: the zeroed units are drawn as before. It
+    scales only the builder's score (0x8b9c30), which no SDK personality's draw uses (no UnitBuilderUnitChoiceStrategy;
+    l4_unitbuilder.md round 35). A level cannot steer or forbid a unit with it (caps / build states do that).
 """
 from parts import Script, Test, counted, square
 
@@ -284,6 +292,27 @@ def c(m):
     w = m.facts['wake at']
     t.expect += [('维和总数', w + 150.0, 'ever>=', 1, w + 170.0)]
     t.bench = [('bench_watch', dict(seconds=w + 174.0, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+def u(m):
+    """UnitModifier (aiskmod: Peacekeeper and Javelin soldier at OffensiveModifier = DefensiveModifier = 0; aiskirm
+    the stock one, same check): totals of the barracks' four -- Peacekeepers, Javelin soldiers, dogs, Engineers --
+    to 80 s after the wake. The model's guess: the zeros change nothing (no choice strategy in the SDK chain), so
+    both builds make Peacekeepers and Javelins in the first minute (aiskirm c: 3 + 3 by ~52 s after the wake)."""
+    t = Test()
+    PK, JAV, ENG = 'AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry', 'AlliedEngineer'
+    for tpl in (PK, JAV, ENG, DOG):
+        m.spawns.add(tpl)
+    s1 = m.player('s1')
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    counted('CNV_AK_UPk', '维和总数', t, template=PK, player=s1)
+    counted('CNV_AK_UJav', '标枪总数', t, template=JAV, player=s1)
+    counted('CNV_AK_UDog', '警犬总数', t, template=DOG, player=s1)
+    counted('CNV_AK_UEng', '工程师总数', t, template=ENG, player=s1)
+    w = m.facts['wake at']
+    t.expect += [('维和总数', w + 70.0, 'ever>=', 1, w + 80.0), ('标枪总数', w + 70.0, 'ever>=', 1, w + 80.0)]
+    t.bench = [('bench_watch', dict(seconds=w + 84.0, every=1, sheet=False, lines=len(t.counters)))]
     return t
 
 
@@ -582,8 +611,9 @@ def p(m):
 
 
 CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j': j, 'k': k, 'l': l, 'm': m,
-                      'n': n, 'o': o, 'p': p, 'q': q, 'r': r},
+                      'n': n, 'o': o, 'p': p, 'q': q, 'r': r, 'u': u},
           'aiskexp': {'q': q},
+          'aiskmod': {'u': u},
           'aiskirmnl': {'g': g, 'h': h},
           'aiskjav': {'e': e},
           'aiskirmlow': {'d': d, 'f': f}}
