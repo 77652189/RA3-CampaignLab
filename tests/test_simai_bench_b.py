@@ -162,10 +162,12 @@ def test_with_the_main_switch_off_nobody_goes_into_a_turret_idle_or_not(lib):
 
 @pytest.mark.xfail(strict=True, reason='simai: nobody garrisons a turret (进炮塔 0 all along; the gap '
                                        'test_the_team_goes_into_the_house is about too); bench aibd1 进炮塔 1 from s21 '
-                                       'to the end, aibdwho 旁1 1 from s21')
-@pytest.mark.parametrize('build,key', [('aibd1', '进炮塔'), ('aibdwho', '旁1')])
+                                       'to the end, aibdwho too')
+@pytest.mark.parametrize('build,key', [('aibd1', '进炮塔'), ('aibdwho', '进炮塔')])
 def test_one_peacekeeper_goes_into_the_first_turret(lib, build, key):
-    """checks/engine_aibasedef.py aibd1 / aibdwho."""
+    """checks/engine_aibasedef.py aibd1 / aibdwho. Not 旁1 (Peacekeepers near turret 1): since engine A round 146
+    (sim.Sim.attack_chase) an attack-moving one turns aside to an enemy in sight and passes turret 1, 旁1 1 without
+    going in."""
     _, rows = _probe_run(build, lib, 60.0)
     assert any(r[key] >= 1 for r in rows)
 

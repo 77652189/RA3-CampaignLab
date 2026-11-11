@@ -188,8 +188,6 @@ NOTES = {
     (MODULE, 'Behaviors/ModelConditionUpgrade'): (NA, '纯表现：只加模型状态（民房/步兵按阵营换画法、支援技能画法），'
                                                      '同模板的非画法模块和原版脚本 UNIT_HAS_MODELCONDITION 都不读'
                                                      '（E 线 work/re/e_na_physics_mcu.md）'),
-    (ACTION, 'TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS'):(GUESSED, 'Sim.act 有分支；台上量过（checks/engine_wayatk.py team），'
-                                                             '和模拟器不符：队里一人在打时全队等（模拟器先到的带全队走）'),
     (ACTION, 'NAMED_HUNT'): (GUESSED,'同 TEAM_HUNT：没交给 AI 不动（台上量过）；AI 玩家的猎杀不模拟（引擎 B）'),
     (ACTION, 'UNIT_AI_TRANSFER'): (GUESSED, '程序读到：人类玩家的单位无效、不清命令；交给 AI 后的行为归引擎 B，'
                                             '碰到记 Sim.unmodeled（台上没量）'),

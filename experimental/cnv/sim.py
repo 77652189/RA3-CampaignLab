@@ -472,6 +472,7 @@ class Body:
     chase: object = None                                        # R8 idle_chase: the enemy it went after by itself,
     home: tuple = None                                          # where it stood then (it walks back),
     auto_to: tuple = None                                       # and the way's end that rule gave it
+    resume: tuple = None                                        # attack_chase: where the attack-move was going
     stood_for: tuple = None                                     # the goal it was told and stands short of (send)
     spot: tuple = None                                          # (goal id, goal x, y): sent to a fire_spot for it
     engaged: bool = False                                       # an attack-mover with an enemy in range: holds
@@ -1993,12 +1994,12 @@ class Sim:
                 continue
             if how['team']:                     # the first member there moves the team's waypoint on
                 group = [o for o in self.living() if o.follow is how]
-                if all(o.path or o.engaged or isinstance(o.goal, Body) for o in group):
+                if all(o.path or o.engaged or o.resume is not None or isinstance(o.goal, Body) for o in group):
                     continue
                 done.add(id(how))
             else:
-                if b.path or b.engaged or isinstance(b.goal, Body):
-                    continue
+                if b.path or b.engaged or b.resume is not None or isinstance(b.goal, Body):
+                    continue                    # resume: turned aside to fight (attack_chase), the leg not done
                 group = [b]
             nxt = self.path_next(how['at'])
             if nxt is None or nxt not in self.waypoints:
@@ -3443,7 +3444,7 @@ class Sim:
                 continue
             foes =[k for k, t in enumerate(targets) if t is not a and self.hostile(a, t)]
             if not foes:
-                self.idle_chase(a, False, [])
+                self.chase_step(a, False, [])
                 continue
             idx = np.array(foes)
             d = np.hypot(tx[idx] - a.x, ty[idx] - a.y)
@@ -3494,6 +3495,9 @@ class Sim:
                 fired = True
                 if a.mode == 'attack':
                     a.engaged = True
+                    team = a.follow if a.follow is not None and a.follow.get('team') else None
+                    if team is not None and not (team.get('victim') and team['victim'].alive):
+                        team['victim'] = pick       # the team's target (attack_chase): the others go for it too
             g = a.goal
             if not fired and isinstance(g, Body) and g.alive and not a.path and id(g) in aimable and \
                     (a.spot is None or a.spot[0] != id(g) or math.hypot(g.x - a.spot[1], g.y - a.spot[2]) > 150) and \
@@ -3505,7 +3509,7 @@ class Sim:
                 if p is not None:
                     self.note('绕位', f'{self.label(a)} 打不着 {self.label(g)}（中间有建筑），绕到 ({p[0]:.0f},{p[1]:.0f})')
                     self.send(a, p)
-            self.idle_chase(a, fired, [(d[j], targets[idx[j]]) for j in np.argsort(d, kind='stable')])
+            self.chase_step(a, fired, [(d[j], targets[idx[j]]) for j in np.argsort(d, kind='stable')])
         if self.firing or self.volleys:
             self.used.add('combat')
         if self.chilling:
@@ -3539,6 +3543,69 @@ class Sim:
         if out:
             self.used.add('stealth')
         return out
+
+    def chase_step(self, a, fired, near):
+        """An attack-mover on its way (or turned aside) chases as `attack_chase`; anyone else as `idle_chase`."""
+        if a.mode == 'attack' and not isinstance(a.goal, Body) and (a.path or a.resume is not None):
+            self.attack_chase(a, fired, near)
+        else:
+            self.idle_chase(a, fired, near)
+
+    def attack_chase(self, a, fired, near):
+        """An attack-mover's own chase (bench 2026-11-10 engine_wayatk atk2, checks/engine_wayatk.py: a Guardian on an
+        attack path, an enemy 220 beside the leg -- beyond the weapon's 196.6 from the path, within VisionRange 200 +
+        its radius 23.3 -- steps up to it, fires from s6 (atk's, 150 off: s4), and goes on to B once it is dead (s22,
+        atk s21); engine_acquire am260 / am400: 260 / 400 beside the path, no turn). Generals AIAttackMoveToState /
+        AIAttackFollowWaypointPathState::update take getNextMoodTarget every frame their attack machine is idle: the
+        mood scan within the vision range (calledDuringIdle false: AutoAcquireEnemiesWhenIdle not asked), an attack on
+        what it finds, and the move again once that is done. The same reach as idle_chase's (the centre distance less
+        the target's radius within its VisionRange); Generals limits a human player's units to attack range
+        (WITHIN_ATTACK_RANGE) -- RA3 does not (the bench's tank is the human player's). It walks to `reach`, the fight
+        holds it there (engaged), and with nothing left it is sent on to where the move was going (`resume`).
+        A team on a path (order_follow as_team) shares one target, at any distance: the first a member fires at is the
+        team's (`victim` on the shared path dict), and the others go for it before their own scan (bench 11-10
+        engine_wayatk team: tank 2 fires from s4, tank 3 -- its A spot 270 from the enemy, beyond any scan -- from s7,
+        27 a second off the enemy with both; neither goes on, so the team holds at A until it is dead: B s14 / s15).
+        Generals getNextMoodTarget returns the team's target object (Team::getTeamTargetObject, set by the first
+        member's attack) before scanning when the team's AttackCommonTarget is on; our teams are written without that
+        key (mapxml.add_team), so RA3 does it regardless (INFERRED: read only for a team on a path).
+        INFERRED: the scan's rate (MoodAttackCheckRate) and the way back (straight to the leg's end, not to the path)."""
+        if a.chase is not None and a.path and a.dest != a.auto_to:      # an order since: its own way, not ours
+            a.chase = a.resume = a.auto_to = None
+        if a.building or a.speed <= 0 or 'IMMOBILE' in a.status or fired:
+            return
+        team = a.follow if a.follow is not None and a.follow.get('team') else None
+        v = team.get('victim') if team else None    # what a member of a team on a path is fighting (see below)
+        if v is not None and not (v.alive and self.side_sees(a.owner, v) and any(self.can_hit(w, v) for w in a.weapons)):
+            v = None
+        c = a.chase
+        if c is not None and c.alive and self.side_sees(a.owner, c) and \
+                (c is v or math.hypot(c.x - a.x, c.y - a.y) - c.radius <= a.sight):
+            if not a.path:                      # got there and it is still out of reach: after it again
+                self.send(a, (c.x, c.y), reach=self.reach(a, c))
+                a.auto_to = a.dest
+            return
+        a.chase = None
+        if v is not None:
+            near = [(0.0, v)]                   # the team's target first, at any distance
+        for dist, t in near:
+            if dist - t.radius > a.sight:
+                break                           # sorted by centre
+            if t.template in self.unshot or not self.takes_by_itself(a, t) or not self.side_sees(a.owner, t) or \
+                    'NON_AUTOACQUIRABLE' in t.status:
+                continue
+            if not any(self.can_hit(w, t) and not self.shot_blocked(a, t, w) for w in a.weapons):
+                continue
+            if a.resume is None:
+                a.resume = a.dest
+            a.chase = t
+            self.used.add('acquire')
+            self.send(a, (t.x, t.y), reach=self.reach(a, t))
+            a.auto_to = a.dest
+            return
+        if a.resume is not None:                # nothing left: on to where the move was going
+            r, a.resume, a.auto_to = a.resume, None, None
+            self.send(a, r)
 
     def idle_chase(self, a, fired, near):
         """R8, bench 2026-11-07 engine_acquire (a Guardian, weapon 150, VisionRange 200, both tanks radius 23.3): an

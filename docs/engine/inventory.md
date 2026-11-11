@@ -4,9 +4,9 @@
 
 | 部分 | 按用量已对拍 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|
-| 脚本动作 | **89%** | 451 | 108 | 32 | 194 | 117 | 91% |
+| 脚本动作 | **89%** | 451 | 109 | 31 | 194 | 117 | 91% |
 | 脚本条件 | **94%** | 89 | 27 | 5 | 54 | 3 | 94% |
-| 物体模块 | **88%** | 185 | 33 | 7 | 124 | 21 | 88% |
+| 物体模块 | **89%** | 185 | 34 | 7 | 123 | 21 | 90% |
 | 武器效果 | **63%** | 25 | 9 | 1 | 13 | 2 | 75% |
 | AI | **70%** | 415 | 96 | 132 | 153 | 34 | 87% |
 
@@ -55,7 +55,7 @@
 | 已对拍 | `LINK_MISSION_OBJECTIVE_TO_WAYPOINT` | 194 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts5.py |
 | 已对拍 | `NAMED_FOLLOW_WAYPOINTS` | 192 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_wayatk.py |
 | 未做 | `TEAM_GARRISON_SPECIFIC_BUILDING_INSTANTLY` | 186 | Sim.act / Sim.cond 不认识 |
-| 推断 | `TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS` | 184 | Sim.act 有分支；台上量过（checks/engine_wayatk.py team），和模拟器不符：队里一人在打时全队等（模拟器先到的带全队走） |
+| 已对拍 | `TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS` | 184 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_wayatk.py |
 | 不涉及 | `FADE_OUT_TO_BLACK` | 177 | 纯表现（名字规则） |
 | 不涉及 | `FADE_IN_FROM_BLACK` | 176 | 纯表现（名字规则） |
 | 不涉及 | `NAMED_FLASH` | 173 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
@@ -591,7 +591,7 @@
 | 未做 | `Behaviors/Physics` | 143 (206) | 移动物理（坠落、弹跳、被击飞、倾倒）：模拟器走路按速度直走，没有物理；例：AlliedAntiGroundAircraft_Dying, AlliedBomberAircraft_Dying |
 | 不涉及 | `ClientBehaviors/ModelConditionSoundSelectorClientBehavior` | 140 (195) | 纯表现（ClientBehaviors）；例：AlliedSatelliteSweepShroudRevealer, AlliedAirfield |
 | 不涉及 | `Draws/DynamicsDraw` | 138 (857) | 纯表现（Draws）；例：AlliedAirField_Collapse, AlliedAntiAirShip_Collapse |
-| 未做 | `Behaviors/EnableDynamicsCollide` | 137 (154) | 模拟器代码里没有这个名字；例：BaseSimulatedProp, AM_Boat01 |
+| 已对拍 | `Behaviors/EnableDynamicsCollide` | 137 (154) | tests/test_simbench_c.py::test_enable_dynamics_collide_a_lantern_without_it_is_crushed_and_gone_at_the_same_frames；例：BaseSimulatedProp, AM_Boat01 |
 | 已对拍 | `AI/AIUpdate` | 136 (237) | tests/test_simbench.py::test_r8_idle_within_sight_walks_up_fires_and_comes_back；例：AlliedSatelliteSweepShroudRevealer, AlliedSuperWeaponEffect |
 | 未做 | `Behaviors/DynamicsUpdate` | 113 (154) | 模拟器代码里没有这个名字；例：AlliedDynamicsImpact, AlliedSatelliteSweepShroudRevealer |
 | 未做 | `Behaviors/StancesBehavior` | 108 (148) | 已核（11-08）：模拟器没有这个效果（没有姿态）；例：AlliedSatelliteSweepShroudRevealer, AlliedAirfield |

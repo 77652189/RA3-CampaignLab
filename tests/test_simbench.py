@@ -1524,3 +1524,36 @@ def test_wayatk_an_attack_walker_stops_to_fight_and_goes_on_once_it_is_dead(chec
     at_b = _first(rows, 2, lambda v: v == 2)
     assert 4 <= hit <= 4 + LAG and dead is not None and at_b is not None and at_b > dead
     assert at_b - _first(_changes('engine_wayatk', 'plain', 50.0), 2, lambda v: v == 2) >= 10
+
+
+def test_wayatk_an_attack_walker_turns_aside_to_an_enemy_within_its_sight():
+    """atk2: the enemy 220 off the leg (beyond the weapon's 196.6 from the path, within VisionRange 200 + its radius):
+    bench first hit s6 (2 s after atk's), 近敌 0 (a step aside), B s22 once it is dead (sim.Sim.attack_chase; before
+    round 146 the simulator went by: B s8, 敌血 100). The fire model's GAP as atk's (sim: hit s7, B s25)."""
+    rows = _changes('engine_wayatk', 'atk2', 50.0)
+    hit = _first(rows, 0, lambda v: v < 100)
+    dead = _first(rows, 0, lambda v: v == 0)
+    at_b = _first(rows, 2, lambda v: v == 2)
+    assert 6 <= hit <= 6 + LAG and dead is not None and at_b is not None and at_b > dead
+    assert all(v[1] == 0 for _, v in rows)
+
+
+def _drops(rows):
+    """The enemy's health lost each second (rows: every change, a reading a second)."""
+    return [w[0] - v[0] for (s, v), (z, w) in zip(rows[1:], rows) if s == z + 1]
+
+
+def test_wayatk_a_team_on_an_attack_path_fights_as_one_and_holds_until_it_is_dead():
+    """team (TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS, tanks 2 and 3): bench 敌血 86 s4, 73 s6, 59 s7, 32 s8 -- tank 3 too
+    (its A spot 270 from the enemy: the team's common target, sim.Sim.attack_chase), dead ~s12; neither tank on to B
+    before that (tank 3 at A does not move the team on): B 段3 s14 / 段2 s15. Before round 146 the simulator's tank 3
+    went on to B at s9 while tank 2 fought alone. Asserted: first hit within LAG, a second's loss above one tank's
+    best (atk's), both to B only after the kill."""
+    rows = _changes('engine_wayatk', 'team', 50.0)
+    hit = _first(rows, 0, lambda v: v < 100)
+    dead = _first(rows, 0, lambda v: v == 0)
+    assert 4 <= hit <= 4 + LAG and dead is not None
+    assert max(_drops(rows)) > 1.5 * max(_drops(_changes('engine_wayatk', 'atk', 50.0)))
+    for k in (2, 3):
+        at_b = _first(rows, k, lambda v: v == 2)
+        assert at_b is not None and at_b > dead, (k, at_b, dead)
