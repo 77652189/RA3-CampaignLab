@@ -129,6 +129,10 @@ NOTES = {
                                  '造兵逐秒和原版 aiskirm c 一样）、测试对拍 tests/test_simai.py——没有选兵策略表时 '
                                  'UnitModifier 不影响造什么；有策略表时的打分没量（原版人格都没有）')
        for k in ('Unit', 'OffensiveModifier', 'DefensiveModifier')},
+    # B round 112: airetf / airetfd (the state on a flag, off once the team has its slot) differ only in this field
+    '战术/Tactic.DisbandAfterRetreatTeamSize': (BENCHED, '台上量过（engine_airetreat：airetf 0 撤回家后再出门，airetfd '
+                                             '999 撤回家后一直在家——撤退结束那轮人数 ≤ 它就结束战术、放人）、测试对拍 '
+                                             'tests/test_simai.py；1 / 4 / 5 这种"剩几人才散"的中间值没量'),
     # B round 109: the gate is on in the model since round 100 (keep_on); aiar0-3 replayed on the simulator
     '组队招人/TeamTemplate.AlwaysRecruit': (BENCHED, '台上量过（engine_aiteamfilter aiar0～3，第 90 轮）、测试对拍 '
                                          'tests/test_simai_bench_b.py：关着新造的车留家、开着出门的队把它招走、'

@@ -9,6 +9,7 @@
 - 规则（程序）：队伍看得见的敌方单位里，"敌人杀光我方要的时间 ÷ 我方杀光敌人要的时间"叫力量优势；它低于 RetreatPowerAdvantage（原版 MEDIUM 0.2）、我方不比敌人慢、离自己基地至少 RetreatMinDistanceFromBase（原版 900，探针改成 300）时，队伍撤回基地；至少走出 RetreatMinDistanceToFallback（默认 500）才重新判。撤退结束时队伍剩下的人 ≤ DisbandAfterRetreatTeamSize 就解散。
 - **测**（airet：远处电厂旁站 12 个玩家的维和步兵；RetreatPowerAdvantage 0.2、RetreatMinDistanceFromBase 300）：4 人到远厂边上（s15）就掉头，s26 全部回家，**一个没死**——撤退是**纯移动**，路上不还手。在家停约 15 秒（≈ 探针的 MaxTeamIdleTime / MaxUnitIdleTime）再出发，又在远厂边掉头……约 27～32 秒一个循环，85 秒里转了三圈。
 - **测**（airet0：同样的守军，RetreatPowerAdvantage 0）：不撤，4 人 s19～s25 在远厂死光。
+- **测**（airetf / airetfd，11-10：同 airet，但派兵的状态挂在地图旗标上，唤醒时开、8 秒后关——只组一队、不再组第二队；两组只差战术的 DisbandAfterRetreatTeamSize）：0（默认）那组 s31 回家、s49 再出门，照样循环；999 那组 s31 回家后**一直在家到 s85**——撤退一结束战术就结束、队伍解散。原版 71 处写 999（一撤就散），所以原版进攻队撤回家后是被放掉、由状态重新组队再来（状态常开时看不出差别，只晚一两秒）。1 / 4 / 5 这类"剩几人才散"的中间值没量。
 - 给关卡：敌方 AI 用原版微操（RetreatPowerAdvantage 0.2）时，**玩家在目标旁摆重兵，AI 进攻队会掉头回家、过一会儿再来**，不会送死；要让它死磕，得用自己的微操数据把 RetreatPowerAdvantage 设 0。原版的"离基地 900 以内不撤"意味着靠近 AI 家门的守点它不会撤。
 
 ## 2. EngagePassiveTargets（顺手打建筑）
