@@ -362,3 +362,20 @@ def test_the_ai_builds_only_the_openers_two(lib):
     """checks/engine_aiteamfilter.py aiar0."""
     _, rows = _probe_run('aiar0', lib, 80.0)
     assert rows[-1]['坦克拥有'] == 6
+
+
+# ---- checks/engine_aiskirm.py y (bench 2026-11-11, readings in its docstring): units of ours only when listed
+def test_the_stock_ai_builds_no_unit_of_ours_from_its_own_barracks(lib):
+    """aisknew: s1 owns a copied barracks that builds CNVNewPK; no build state of 1AlliedBalanced lists it -> 新维和 0
+    to s168 (the bench built 6 Peacekeepers and 12 Javelins beside)."""
+    _, rows = _probe_run('aisknew', lib, 170, 'y')
+    assert max(r['新维和'] for r in rows) == 0
+    assert rows[-1]['维和总数'] + rows[-1]['标枪总数'] >= 1
+
+
+@pytest.mark.xfail(strict=True, reason='simai aisknew2: the build state only gates the unit builder (uniform draw), '
+                   'its FEWEST_UNIT score is not modelled -- 新维和 well under half; bench: 1 at s27, 9 of 19 by s167')
+def test_listed_in_a_build_state_our_unit_takes_about_half_the_barracks(lib):
+    _, rows = _probe_run('aisknew2', lib, 170, 'y')
+    r = rows[166]
+    assert rows[27]['新维和'] >= 1 and r['新维和'] >= 0.4 * (r['新维和'] + r['维和总数'] + r['标枪总数'])
