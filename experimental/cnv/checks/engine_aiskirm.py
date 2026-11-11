@@ -460,7 +460,15 @@ def x(m):
       Reading: the post-opening buildings are two power plants (NonPathDependentStructure's POWER line) and an airfield
       (FACTORY or TECH); no refinery, barracks, war factory, tech structure. The towers come at 140 / 160 as the
       simulator; a d re-run the same day (b121_bench2.log) too: towers s150 / s170 with the money at s9 = 141 / 161 s,
-      建筑数 8 at s140 (131 s). The 2026-11-07 d run's 176 / 196 (8th building 163 s) is the one run that differs."""
+      建筑数 8 at s140 (131 s). The 2026-11-07 d run's 176 / 196 (8th building 163 s) is the one run that differs.
+
+    RESULTS x on aiskpw0 / aiskpw3 (bench 2026-11-10, both PASS; log work/logs/b122_bench.log): the same AI with
+      DesiredExcessPowerBuffer 0 / 300 (retail BasePersonality 100). The opening's six as above (1122 s99-s102).
+      aiskpw0: **no plant after the opening** (1122 to s228), 塔数 1 s154, 2 s174, **空军 0 to s228**.
+      aiskpw3: **four plants** -- 1123 s138, 1124 s148, 1125 s158, 1126 s168 (to s220); 塔数 1 s147, 2 s167; 空军 1 s219.
+      Reading: the post-opening plants follow the buffer: 0 -> 0, 100 -> 2, 300 -> 4. Excess after the opening = 250 -
+      175 = 75 (yard 50 counted) or 25 (not): "build while excess < buffer + 100" fits 100 and 300 either way, but not 0
+      (75 < 100 would build one) unless 0 turns POWER off; B handoff 124 has the table."""
     t = Test()
     s1 = m.player('s1')
     t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
@@ -721,4 +729,6 @@ CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j
           'aiskirmnl': {'g': g, 'h': h},
           'aiskjav': {'e': e},
           'aiskirmlow': {'d': d, 'f': f, 'w': w},
-          'aiskirm20': {'d': d}}
+          'aiskirm20': {'d': d},
+          'aiskpw0': {'x': x},
+          'aiskpw3': {'x': x}}

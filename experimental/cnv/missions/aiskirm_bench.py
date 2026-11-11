@@ -82,6 +82,26 @@ def expire_xml(secs):
         '</AssetDeclaration>', ''])
 
 
+POWER_PID = 'CNVPower'                # aiskpw0 / aiskpw3: 1AlliedBalanced with DesiredExcessPowerBuffer changed (x)
+
+
+def power_xml(buffer):
+    """A personality = 1AlliedBalanced with DesiredExcessPowerBuffer=`buffer` (XSD default 0; BasePersonality.xml
+    writes 100, DefaultPersonality.xml 10). B handoff 123: after the opening (power 250 = yard 50 + two plants, drain
+    175) the AI builds a 3rd and 4th AlliedPowerPlant; the buffer is the candidate for NonPathDependentStructure's
+    POWER line."""
+    return '\n'.join([
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+        '  <Tags></Tags>',
+        '  <Includes>',
+        '    <Include type="instance" source="DATA:SkirmishAI/Personalities/AlliedBalanced.xml" />',
+        '  </Includes>',
+        f'  <AIPersonalityDefinition id="{POWER_PID}" PersonalityType="{POWER_PID}" inheritFrom="1AlliedBalanced"'
+        f' DesiredExcessPowerBuffer="{buffer}"/>',
+        '</AssetDeclaration>', ''])
+
+
 UMOD_PID = 'CNVUMod'                  # aiskmod: 1AlliedBalanced plus UnitModifier lines (check u)
 UMOD_ZERO = ('AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry')   # Peacekeeper, Javelin soldier
 
@@ -147,7 +167,8 @@ def acct_xml(account):
         '</AssetDeclaration>', ''])
 
 
-def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None, account=None):
+def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None, account=None,
+            buffer=None):
     m = Mission(name=name, map=ai_map(niagara, lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
     if expire is not None:               # aiskexp (check q): the same AI with SecondsTillTargetsExpire = expire
@@ -158,6 +179,10 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
         m.facts['zeroed'] = len(umod)
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{UMOD_PID}'
         m.assets.append((f'{UMOD_PID}.xml', umod_xml(umod), f'AIPersonalityDefinition:{UMOD_PID}'))
+    if buffer is not None:               # aiskpw0 / aiskpw3 (check x): DesiredExcessPowerBuffer = buffer
+        m.facts['power buffer'] = buffer
+        m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{POWER_PID}'
+        m.assets.append((f'{POWER_PID}.xml', power_xml(buffer), f'AIPersonalityDefinition:{POWER_PID}'))
     if account is not None:              # aiskacp / aiskacd (check v): the opening's Deposit into `account`
         m.facts['production deposit'] = int(account == 'PRODUCTION')   # facts are numbers
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{ACCT_PID}'
@@ -190,4 +215,6 @@ MISSION = {'aiskirm': mission, 'aiskirmlow': lambda: mission('CampAISkLow', mone
            'aiskexp': lambda: mission('CampAISkExp', expire=12.0),
            'aiskmod': lambda: mission('CampAISkMod', umod=UMOD_ZERO),     # check q: SecondsTillTargetsExpire 12, not 5   # s1 without the container's Lib_Skirmish_Setup
            'aiskacp': lambda: mission('CampAISkAcP', account='PRODUCTION'),    # check v: the rebuilt AI, retail Account
-           'aiskacd': lambda: mission('CampAISkAcD', account='DEFENSE')}
+           'aiskacd': lambda: mission('CampAISkAcD', account='DEFENSE'),
+           'aiskpw0': lambda: mission('CampAISkPw0', buffer=0),       # check x: DesiredExcessPowerBuffer 0 (retail 100)
+           'aiskpw3': lambda: mission('CampAISkPw300', buffer=300)}   # check x: 300
