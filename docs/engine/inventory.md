@@ -8,7 +8,7 @@
 | 脚本条件 | **94%** | **100%** | 12 / 12 | 89 | 30 | 6 | 50 | 3 | 95% |
 | 物体模块 | **94%** | **95%** | 41 / 112 | 188 | 43 | 10 | 110 | 25 | 95% |
 | 武器效果 | **93%** | **95%** | 17 / 22 | 28 | 18 | 2 | 6 | 2 | 95% |
-| AI | **71%** | **70%** | 93 / 357 | 415 | 99 | 140 | 142 | 34 | 96% |
+| AI | **72%** | **71%** | 94 / 357 | 415 | 100 | 139 | 142 | 34 | 96% |
 
 ## 脚本动作
 
@@ -32,7 +32,7 @@
 | 不涉及 | `MOVIE_PLAY_RADAR` | 433 | a4 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
 | 已对拍 | `CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION` | 399 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts7.py |
 | 已对拍 | `OBJECTLIST_ADDOBJECTTYPE` | 383 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts7.py |
-| 已对拍 | `PLAYER_SET_MONEY` | 345 | 全部 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aitower.py |
+| 已对拍 | `PLAYER_SET_MONEY` | 345 | 全部 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aitactical.py |
 | 已对拍 | `SKIRMISH_AI_SET_ENEMY_PLAYER_PRIORITY` | 343 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiprio.py |
 | 已对拍 | `PLAYER_RELATES_PLAYER` | 319 | a2 a4 a5 a7 a9 | tests/test_simbench.py::test_scripts2_a_relation_is_one_way_and_turns_back |
 | 已对拍 | `UNIT_AFFECT_OBJECT_PANEL_FLAGS` | 317 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts7.py |
@@ -841,7 +841,7 @@
 | 已对拍 | `微操/AIMicroManagerData.EngagePassiveTargets` | 82 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_airetreat.py |
 | 已对拍 | `开局/Order.Account` | 81 | a4 a5 a7 | docs/engine/aiopen.md#开局存款进哪个账户（Order Account，第 116 轮）（aiskacp / aiskacd：PRODUCTION 兵营出兵、DEFENSE 兵营不出） |
 | 已对拍 | `开局/Order.Deposit` | 81 | a4 a5 a7 | docs/engine/aiopen.md#开局怎么抽、哪些单子会作废（OpeningMove Weight / Difficulty，第 89～90 轮）（aiom15：带 Deposit 2000 照造、晚 4 秒） |
-| 推断 | `微操/AIMicroManagerData.EngageTacticalTarget` | 79 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 已对拍 | `微操/AIMicroManagerData.EngageTacticalTarget` | 79 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aitactical.py |
 | 已对拍 | `微操/AIMicroManagerData.PullbackInjured` | 78 | a4 a5 a7 | 只认车能开进去的维修设施：苏联 AI + 吊车，残血坦克回去被回收（aipullsov PASS）；盟军 / 日本工厂找不到（aiteamstate.md 第 6 节） |
 | 推断 | `微操/AIMicroManagerData.Crush` | 77 | a4 a5 a7 | 台上量过（engine_aicrush：开了 s28 前碾光守军）；模拟器不会碾压，tests/test_simai_bench_b.py 只对上"关着不碾"，开着是 strict xfail |
 | 已对拍 | `目标/AITargetingHeuristic.SortType` | 76 | a4 a5 a7 | docs/engine/aitactics.md#目标挑哪个（Distance：aitpnear / aitpmt2 最近、次近；ThreatToGround：aitargetsafe） |
@@ -865,7 +865,7 @@
 | 已对拍 | `组队招人/CreateUnits.MaxUnits` | 60 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |
 | 推断 | `组队招人/CreateUnits.MinUnits` | 60 | a4 a5 a7 | AI 模型代码里读了这个名字（台上量的是 TeamTemplate.MinUnits，不是现造兵） |
 | 推断 | `组队招人/CreateUnits.UnitName` | 60 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 已对拍 | `战术/Tactic.Tactic=SimpleAttack` | 59 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aitarget.py |
+| 已对拍 | `战术/Tactic.Tactic=SimpleAttack` | 59 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aitactical.py |
 | 不涉及 | `表现/FeedbackEntry.Timeout` | 56 |  | 纯表现（语音、视频、画面） |
 | 推断 | `造兵/BuildEntry.PercentHigh` | 54 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | `造兵/BuildEntry.PercentLow` | 54 | a4 a5 a7 | AI 模型代码里读了这个名字 |
