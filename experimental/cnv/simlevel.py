@@ -1,7 +1,7 @@
 """Creation upgrade -> rank -> veterancy upgrades (engine_levelup a/b/c).
 
 Combat experience and rank modifiers except DAMAGE_MULT, elite HEALTH_MULT,
-heroic RANGE, Mirage SHROUD_CLEARING and the measured Mirage heroic clip rate
+heroic RANGE, Mirage SHROUD_CLEARING/ENEMY_SIGHTED and the measured Mirage heroic clip rate
 remain unmodeled. This module does not turn a direct Upgrade_Veterancy_HEROIC
 grant into a rank change.
 """
@@ -106,7 +106,7 @@ def receive(sim, b, up, on, newly_held):
 
 
 def damage_modifiers(sim, b, xml):
-    """Measured rank damage/range, Mirage shroud and heroic discrete-clock ROF."""
+    """Measured rank damage/range, Mirage shroud/sight query and discrete ROF."""
     if b.level_rank <= 1:
         return []
     out, seen = [], set()
@@ -129,16 +129,21 @@ def damage_modifiers(sim, b, xml):
             if (mid == 'Unit_Heroic' and m['types'].get('SHROUD_CLEARING') == [1.25]
                     and b.template == 'AlliedAntiVehicleVehicleTech3'):
                 supported.add('SHROUD_CLEARING')  # engine_levelshroud a: 500 -> 625
+            if (mid == 'Unit_Heroic' and m['types'].get('VISION') == [1.25]
+                    and b.template == 'AlliedAntiVehicleVehicleTech3'):
+                supported.add('VISION')  # engine_levelvision a: supports 200 -> 250
             if (mid == 'Unit_Heroic' and m['types'].get('RATE_OF_FIRE') == [1.2]
                     and b.template == 'AlliedAntiVehicleVehicleTech3' and sim.shot_clock):
                 supported.add('RATE_OF_FIRE')  # engine_levelrate a; other weapons remain gaps
             unsupported = sorted(set(m['types']) - supported)
+            if 'VISION' in supported:
+                unsupported.append('VISION/自动索敌及精确边界')  # only the script query was measured
             if m['status']:
                 unsupported.append('ObjectStatusToSet')
             if unsupported:
                 sim.gap('升级', 'LevelUpUpgrade/' + mid, '等级属性修正未模拟：' + ', '.join(unsupported))
             acting = {ty: values for ty, values in m['types'].items()
-                      if ty in supported & {'DAMAGE_MULT', 'RANGE', 'RATE_OF_FIRE', 'SHROUD_CLEARING'}}
+                      if ty in supported & {'DAMAGE_MULT', 'RANGE', 'RATE_OF_FIRE', 'SHROUD_CLEARING', 'VISION'}}
             if acting:
                 out.append(dict(m, types=acting, status=set()))
     return out

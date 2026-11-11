@@ -478,3 +478,72 @@ def shroud_check(m):
 
 MISSION['engine_levelshroud'] = shroud_mission
 CHECKS['engine_levelshroud'] = {'a': shroud_check}
+
+
+def vision_mission():
+    m = mission()
+    m.name = 'CampLevelEye'
+    for lane, distance in zip(SHROUD_LANES, (240, 240, 310, 310)):
+        for tag, dy in (('target', distance), ('near', 100)):
+            m.put('SovietEngineer', lane + ' gun', 0, dy,
+                  side='s1', role=lane + ' ' + tag, name='Level eye ' + lane + ' ' + tag)
+    return m
+
+
+def vision_check(m):
+    """Retail Mirage VisionRange200, Unit_Heroic VISION125 (no percent sign).
+
+    First bench310/430 with Tsunami targets rejected additive325 and raw125x:
+    neither heroic viewer sighted an enemy. This refined probe uses engineers
+    (radius5; Mirage24.41): ordinary200 cannot reach240 even with both radii,
+    percent250 reaches240 but not310; fixed125/no change reaches neither.
+    All lanes1500 apart; ENEMY_SIGHTED aggregates any enemy, so
+    positive controls100 away are deleted at6s, before promotion at12s.
+    Four counters: sighted +10*near alive +100*heroic +1000*ever moved.
+    All objects IMMOBILE/NO_ATTACK; no attacks, reveals or discovery query.
+    Nonempty windows2-4 positive,8-10 isolated baseline,20-24 promoted.
+    Prediction11/11/11/11 ->0/0/0/0 ->0/101/0/100 (percent candidate).
+    Precise boundaries and automatic acquisition are outside this probe.
+    Bench2026-11-11 x1 PASS: s1-s4 11/11/11/11; s5-s10 0/0/0/0;
+    s11-s25 0/101/0/100, all12 window assertions passed, no movement bits.
+    """
+    t = Test()
+    start = [('PLAYER_SET_MONEY', m.player('s1'), 0),
+             ('SET_MILLISECOND_TIMER', 'Level eye remove', 6.0),
+             ('SET_MILLISECOND_TIMER', 'Level eye promote', 12.0)]
+    remove, promote = [], []
+    for lane in SHROUD_LANES:
+        gun, near = m.role(lane).name, m.role(lane + ' near').name
+        remove.append(('NAMED_DELETE', near))
+        if lane in ('high', 'removed'):
+            promote += [('NAMED_RECEIVE_UPGRADE', up, gun) for up in CREATION]
+        c, moved = 'Level eye ' + lane, 'Level eye moved ' + lane
+        t.counters.append((c, lane + ' eye'))
+        for role in (lane, lane + ' target', lane + ' near'):
+            obj = m.role(role)
+            start += [('UNIT_CHANGE_OBJECT_STATUS', obj.name, bit, 1) for bit in ('IMMOBILE', 'NO_ATTACK')]
+            placed = next(o for o in m.objects if o.name == obj.name)
+            t.areas[obj.name] = square(placed.x, placed.y, 2.0)
+            t.scripts.append(Script('Test - eye latch ' + role,
+                                    [('NAMED_NOT_DESTROYED', obj.name), ('NAMED_OUTSIDE_AREA', obj.name, obj.name)],
+                                    [('SET_FLAG', moved, 1)]))
+        t.scripts.append(Script('Test - eye reset ' + lane, [], [('SET_COUNTER', c, 0)], once=False))
+        for tag, conditions, weight in (
+                ('sighted', [('ENEMY_SIGHTED', gun, 'Enemy', m.player('s1'))], 1),
+                ('near', [('NAMED_NOT_DESTROYED', near)], 10),
+                ('heroic', [('UNIT_HAS_OBJECT_STATUS', gun, status('WEAPON_UPGRADED_01'))], 100),
+                ('moved', [('FLAG', moved, 1)], 1000)):
+            t.scripts.append(Script('Test - eye ' + tag + lane, conditions,
+                                    [('INCREMENT_COUNTER', weight, c)], once=False))
+    t.scripts[:0] = [Script('Test - start', [], start),
+                     Script('Test - eye remove', [('TIMER_EXPIRED', 'Level eye remove')], remove),
+                     Script('Test - eye promote', [('TIMER_EXPIRED', 'Level eye promote')], promote)]
+    for first, last, values in ((2, 4, (11, 11, 11, 11)), (8, 10, (0, 0, 0, 0)),
+                                (20, 24, (0, 101, 0, 100))):
+        t.expect += [(lane + ' eye', first, '==', value, last) for lane, value in zip(SHROUD_LANES, values)]
+    t.bench = [('bench_watch', dict(seconds=24.0, every=1, sheet=False, lines=4))]
+    return t
+
+
+MISSION['engine_levelvision'] = vision_mission
+CHECKS['engine_levelvision'] = {'a': vision_check}

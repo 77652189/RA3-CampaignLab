@@ -19,6 +19,44 @@ def _sim_run(build_name, check, until):
     return sim.Sim(m, t).run(until)
 
 
+def test_levelup_heroic_vision_sights_inner_engineer_after_near_controls_are_deleted():
+    """engine_levelvision a:11/11/11/11 ->0/0/0/0 ->0/101/0/100 at240/310."""
+    import build
+    import sim
+    from checks.engine_levelup import SHROUD_LANES
+    m, t, _ = build.resolve('engine_levelvision', 'a')
+    e = sim.Sim(m, t)
+    e.shot_clock = True
+    rows = e.run(25).series
+    # Freeze actual bench readings independently of the check's predictions.
+    for first, last, values in ((2, 4, (11, 11, 11, 11)), (8, 10, (0, 0, 0, 0)),
+                                (20, 24, (0, 101, 0, 100))):
+        readings = [tuple(row) for at, row in rows if first <= at < last]
+        assert readings and all(row == values for row in readings), (readings, values)
+    guns = [e.body(m.role(lane).name) for lane in SHROUD_LANES]
+    assert [b.level_rank for b in guns] == [1, 4, 1, 4]
+    assert [b.level_vision for b in guns] == [1, 1.25, 1, 1.25]
+    assert [b.sight for b in guns] == [200] * 4  # automatic acquisition remains unmeasured
+    assert [b.vision for b in guns] == [500, 625, 500, 625]  # independent shroud modifier
+    for _ in range(3):
+        e.modify(guns[1])
+        assert guns[1].sight * guns[1].level_vision == 250
+        assert guns[1].vision == 625
+    for lane in SHROUD_LANES:
+        gun = e.body(m.role(lane).name)
+        target = e.body(m.role(lane + ' target').name)
+        assert gun.radius + target.radius < 40
+    assert 'ENEMY_SIGHTED' not in e.unknown
+    gap = e.unmodeled[sim.GAP_UPGRADE, 'LevelUpUpgrade/Unit_Heroic']['what']
+    assert 'VISION/自动索敌及精确边界' in gap
+    for obj in m.objects:
+        b = e.body(obj.name)
+        assert b.alive == (not obj.name.endswith(' near'))
+        if b.alive:
+            assert b.hp == b.max_hp and (b.x, b.y) == (obj.x, obj.y)
+    assert not e.reveal_all and not e.reveals and not getattr(e, 'clocks', {})
+
+
 def test_levelup_heroic_shroud_discovers_inner_target_only_without_changing_sight():
     """engine_levelshroud a:1/1/1/1 ->1/111/1/101; near controls stay visible."""
     import build

@@ -519,6 +519,7 @@ class Body:
     suppression_next: int = 0
     dealt: float = 1.0                                          # DAMAGE_MULT x RATE_OF_FIRE: damage dealt x (INFERRED)
     level_rate: float = 1.0                                     # measured heroic Mirage clip rate; never per-hit damage
+    level_vision: float = 1.0                                   # ENEMY_SIGHTED only; heroic auto-acquire not benched
     base: dict = None                                           # speed, vision, sight, weapons before modifiers
     deposit: tuple = None                                       # R4: its AutoDepositUpdate (bonus, amount, frames)
     deposit_at: int = None                                      # ... the frame of its next deposit
@@ -1787,10 +1788,11 @@ class Sim:
         level_mods = simlevel.damage_modifiers(self, b, xml)
         b.level_rate = simunits.stack([v for m in level_mods for v in m['types'].get('RATE_OF_FIRE', [])])
         level_shroud = simunits.stack([v for m in level_mods for v in m['types'].get('SHROUD_CLEARING', [])])
+        b.level_vision = simunits.stack([v for m in level_mods for v in m['types'].get('VISION', [])])
         # Measured rank ROF belongs to the clip clock. Other modifiers retain
         # their existing continuous-DPS approximation until separately benched.
         mods.extend(dict(m, types={ty: values for ty, values in m['types'].items()
-                                  if ty not in {'RATE_OF_FIRE', 'SHROUD_CLEARING'}})
+                                  if ty not in {'RATE_OF_FIRE', 'SHROUD_CLEARING', 'VISION'}})
                     for m in level_mods)
         if b.suppression_rule and b.suppressed:
             mods.append(simunits.modifier(xml, b.suppression_rule['modifier']))
@@ -2376,6 +2378,21 @@ class Sim:
         self.refs[ref] = min(cands, key=lambda c: math.hypot(c.x - mx, c.y - my))
 
     def cond(self, name, a):
+        if name == 'ENEMY_SIGHTED':
+            # engine_levelvision a: named viewer's range query, any enemy;
+            # neither shared shroud nor a named target. Other relations and
+            # stealth interactions remain unmeasured.
+            viewer = self.body(a[0])
+            if a[1] not in ('Enemy', 0):
+                self.gap(GAP_CONDITION, name, '非敌对关系的视野查询未对拍')
+                return False
+            live = list(self.living())
+            hidden = self.cloaked(live)
+            return bool(viewer and viewer.alive and any(
+                self.enemy(viewer.owner, target.owner) and id(target) not in hidden
+                # Centre-distance boundary/combined modifiers remain INFERRED.
+                and math.hypot(target.x - viewer.x, target.y - viewer.y) <= viewer.sight * viewer.level_vision
+                for target in live))
         if name == 'FLAG':
             return int(self.flags.get(a[0], 0)) == int(a[1])
         if name == 'PLAYER_HAS_COMPARISON_POWER_POINTS':     # (player, comparison, n): the points to spend
