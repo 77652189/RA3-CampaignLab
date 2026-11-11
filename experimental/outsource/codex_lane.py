@@ -124,7 +124,8 @@ def warnings(cmds, pushed, handoff_changed, minutes, limit):
     full = [c for c in cmds if full_suite(c)]
     if full:
         w.append(f'跑了全量测试 {len(full)} 次：' + full[0][-160:])
-    rep = [(c, n) for c, n in collections.Counter(cmds).items() if n >= 3]
+    # reading a log's tail while a test runs is waiting, not retrying
+    rep = [(c, n) for c, n in collections.Counter(cmds).items() if n >= 3 and not re.search(r'Get-Content|\btail\b', c)]
     for c, n in rep[:3]:
         w.append(f'同一个命令跑了 {n} 次：' + c[-160:])
     bench = sum(len(re.findall(r'run_queue\.py\s+\w+:\w+', c)) for c in cmds)  # a real queue run, not a read of the file
