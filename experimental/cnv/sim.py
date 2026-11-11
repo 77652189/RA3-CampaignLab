@@ -506,6 +506,7 @@ class Body:
     cold_step: int = -1                                         # ... the highest EffectInfo reached (-1: none)
     suppression_rule: object = None
     suppression_hits: list = dataclasses.field(default_factory=list)  # (expiry frame, value)
+    suppressed: bool = False                                    # sampled model condition; may outlive end frame
     suppressed_until: int = -1                                  # model condition, NOT an object status
     suppression_next: int = 0
     dealt: float = 1.0                                          # DAMAGE_MULT x RATE_OF_FIRE: damage dealt x (INFERRED)
@@ -959,6 +960,7 @@ class Sim:
         self.own = {u.id: u.xml for u in self.mm.units}
         self.garrison = simgarrison.Garrisons(self)    # GarrisonContain / ContestableGarrisonContain
         self.bodies = {}                    # name -> Body (named ones), plus unnamed under '#k'
+        self.suppression_fields = []        # (end, value, x, y, radius): stationary hit contributions
         self.topples = []                   # ToppleUpdate objects; neutral props can be knocked over too
         self.frame_movers = {}              # bodies whose current path crosses a topple object's footprint
         self.refs = {}                      # reference name (UNITRef - ...) -> the Body a SET_REF_TO_... pointed it at
@@ -1072,6 +1074,10 @@ class Sim:
         f = simunits.fight(template, self.own)
         b.immortal, immortal_hp = simunits.immortal_body(template, self.own)
         b.suppression_rule = simunits.suppression(template, self.own)
+        if b.suppression_rule:
+            b.suppressed_until = 0
+            b.suppression_next = max(1, self.eng.frame if getattr(self, 'eng', None)
+                                     else int(round(at * simunits.LIFE_FPS)))
         hp = immortal_hp if b.immortal else (f['hp'] or simunits.max_health(template, self.own))
         if hp:
             b.max_hp = b.hp = hp
@@ -1719,7 +1725,7 @@ class Sim:
         now = self.frame_now()
         xml = self.xml_of(b.template)
         mods = []
-        if b.suppression_rule and now < b.suppressed_until:
+        if b.suppression_rule and b.suppressed:
             mods.append(simunits.modifier(xml, b.suppression_rule['modifier']))
         for up, mid in simunits.upgrade_mods(xml, b.upgrades):
             m = simunits.modifier(xml, mid)
@@ -3765,9 +3771,9 @@ class Sim:
                             self.__dict__.setdefault('_cold_on', {})[id(t)] = (t, by)
                             self.used.add('freeze')
                     for radius, value, seconds in w.get('suppression', []):
-                        for target in self.living():
-                            if target.suppression_rule and math.hypot(target.x - t.x, target.y - t.y) <= radius:
-                                target.suppression_hits.append((self.frame_now() + simunits._frames(seconds), n * value))
+                        self.suppression_fields.extend(
+                            (self.frame_now() + simunits._frames(seconds), value, t.x, t.y, radius)
+                            for _ in range(n))
                     for seconds in w.get('emp_seconds', []):
                         deadlines = self.__dict__.setdefault('emp_until', {})
                         deadlines[id(t)] = max(deadlines.get(id(t), 0), self.frame_now() + simunits._frames(seconds))
@@ -3861,25 +3867,32 @@ class Sim:
         self.chill(dt)
 
     def suppression_tick(self):
-        """Suppressability is inclusive: bench24x2=48 normal,25x2=50 suppressed.
+        """engine_suppress_probe tail/lifetime/duration/expiry (bench 2026-11-10).
 
-        UNCONFIRMED timing: per-hit DurationSeconds expiry and UpdateDelay phase.
-        Short1s contributions / late recovery56 are not explained by this model.
-        INFERRED: each above-threshold sample refreshes SuppressionDuration.
-        SUPPRESSED is a model condition; do not invent a script object status.
+        Hits leave stationary 2D fields with individual lifetimes. Samples run
+        on the body's birth phase. Entering suppression leaves the old end
+        untouched; an already suppressed high sample refreshes it. Only a low
+        sample strictly after the end clears the condition. Fractional lifetime
+        ceil vs nearest is still INFERRED outside the measured 1.1s case.
         """
         now = self.frame_now()
+        self.suppression_fields[:] = [p for p in self.suppression_fields if now < p[0]]
         for b in self.living():
             rule = b.suppression_rule
             if not rule:
                 continue
-            b.suppression_hits[:] = [(end, v) for end, v in b.suppression_hits if now < end]
-            before = now - 1 < b.suppressed_until
+            b.suppression_hits[:] = [(end, v) for end, v, x, y, radius in self.suppression_fields
+                                    if math.hypot(b.x - x, b.y - y) <= radius]
+            before = b.suppressed
             if now >= b.suppression_next:
-                b.suppression_next = now + rule['every']
+                b.suppression_next += ((now - b.suppression_next) // rule['every'] + 1) * rule['every']
                 if sum(v for _, v in b.suppression_hits) >= rule['threshold']:
-                    b.suppressed_until = now + rule['duration']
-            if before or now < b.suppressed_until:
+                    if b.suppressed:
+                        b.suppressed_until = now + rule['duration']
+                    b.suppressed = True
+                elif now > b.suppressed_until:
+                    b.suppressed = False
+            if before != b.suppressed:
                 self.modify(b)
 
     def shots_due(self, b, w, dt):

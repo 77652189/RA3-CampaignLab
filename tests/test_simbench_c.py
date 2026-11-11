@@ -376,16 +376,18 @@ def test_suppression_predictions():
             immune = s.body('UNIT - CNV Supp low man')
             assert immune.suppressed_until == -1 and immune.speed == 55
         assert s.eng is not None
-    # Directly isolate the settled threshold and modifier from open timing.
+    # Isolate the threshold and modifier; entering does not set the end frame.
     m, t, _ = build.resolve('engine_suppression', 'threshold')
     s = sim.Sim(m, t)
     b = s.body('UNIT - CNV Supp high man')
     for points, suppressed in ((48, False), (50, True)):
-        b.suppression_hits = [(1000, points)]
+        s.suppression_fields = [(1000, points, b.x, b.y, 20)]
         b.suppression_next = 0
-        b.suppressed_until = -1
+        b.suppressed = False
+        b.suppressed_until = 0
         s.suppression_tick()
-        assert (b.suppressed_until > s.frame_now()) is suppressed
+        assert b.suppressed is suppressed
+        assert b.suppressed_until == 0
         assert b.speed == (37.5 if suppressed else 50)
         assert b.taken == (.75 if suppressed else 1)
 
@@ -404,6 +406,45 @@ def test_suppression_contributions_require_discrete_hit_events():
         assert high.speed == (37.5 if clock else 50)
         assert high.taken == (.75 if clock else 1)
         assert ((sim.GAP_WEAPON, 'SuppressionNugget') in s.unmodeled) is not clock
+
+
+def test_suppression_samples_entry_refresh_and_expiry_at_the_four_probe_readings():
+    """D's read-only engine_suppress_probe wraps engine_suppression unchanged.
+
+    Replay the underlying map without its injected logging carrier. Bench
+    2026-11-10: tail, lifetime, duration, expiry all PASS (D rounds 21/22).
+    """
+    import build
+    import sim
+    # Exact module state/end readings from the four runs. Final walking
+    # counters remain in engine_suppression: retail's lateral path drift is
+    # absent from the simulator, giving one frame less on suppressed legs.
+    expected={
+        'tail': {'base':{121:(True,0),136:(True,211),211:(True,211),226:(False,211)}},
+        'lifetime': {'order':{106:(True,0),121:(False,0)},
+                     'removed':{106:(True,0),121:(True,196),196:(True,196),211:(False,196)}},
+        'duration': {'order':{106:(True,0),121:(False,0)},
+                     'removed':{106:(True,0),121:(False,0)}},
+        'expiry': {'base':{106:(False,0),136:(False,0),226:(False,0)},
+                   'high':{106:(False,0),136:(False,0),226:(False,0)},
+                   'order':{106:(True,0),121:(True,196),136:(True,211),211:(True,211),226:(False,211)},
+                   'removed':{106:(True,0),121:(True,196),136:(True,211),211:(True,211),226:(False,211)}}}
+    for check, lanes in expected.items():
+        m,t,_=build.resolve('engine_suppression',check)
+        e=sim.Sim(m,t);e.shot_clock=True
+        got={lane:{} for lane in lanes}
+        tick=e.suppression_tick
+        def observe():
+            tick()
+            for lane, frames in lanes.items():
+                if e.frame_now() in frames:
+                    b=e.body('UNIT - CNV Supp '+lane+' man')
+                    got[lane][e.frame_now()]=(b.suppressed,b.suppressed_until)
+        e.suppression_tick=observe
+        e.run(23)
+        assert got==lanes, (check,got,lanes)
+        if check=='duration':
+            assert tuple(e.series[-1][1])==(44,45,44,45)
 
 
 def test_weaponfx_predictions_and_finite_bursts():

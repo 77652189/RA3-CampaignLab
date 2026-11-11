@@ -739,8 +739,8 @@ def immortal_body(template, own=None):
 def suppression(template, own=None):
     """Nearest infantry suppression rule; an explicit Remove stops inheritance.
 
-    RA3 data only. No decay rate is specified: contributions expire individually
-    after DurationSeconds (INFERRED), rather than inventing a linear decay.
+    RA3 data only. engine_suppress_probe 2026-11-10 confirms individual hit
+    lifetimes and birth-phased samples; no invented linear decay.
     """
     def read(xml):
         for h, _ in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'SuppressionUpdate'):

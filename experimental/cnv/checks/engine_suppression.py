@@ -16,17 +16,21 @@ SETTLED checks (strict == over the final two seconds):
     Speed50/55 explains ceil(145*15/speed)=44/40; Tanya removes the behavior.
   fast: long25/26x2 lanes37/37, from ceil(145/(80*.75/15)).
 
-UNCONFIRMED checks: recorded, not explained. Strict expectations record
-bench readings only; these are NOT simulator validation or fitted rules:
+Further bench counters (unchanged):
   expiry44/44/59/59 (48 long,52 short,50 long,60 long);
   phasea44/44, phaseb44/44 (1s, shots shifted1/3 or2/3s);
   lifetime44/59 (1.1s/2s), fraction59/59 (1.95s);
   duration44/45/44/45 (1s, early/late legs);
   tail56/56 (3s, move at12s; rejected predictions48/51/52).
-Short-lived contributions and late recovery still lack a common timing rule.
-edge59/59 is also recorded, not explained: moving the entry145->144
-rejected strict-boundary-only; fast37 rejected a uniform extra frame.
-Round12 archived fraction0030/tail0033 confirmed the counters.
+The read-only engine_suppress_probe tail/lifetime/duration/expiry runs
+(2026-11-10) resolve the common timing rule: born-phase samples, enter
+without setting the end, refresh only when already suppressed, low sample
+clears strictly after the end. The simulator replays the measured module
+state/end frames in all four checks. Duration counters also match exactly.
+Other suppressed arrival legs can remain one frame short: the bench's
+position trace has lateral walking drift (tail ends x806.7 from x800),
+while Sim walks a straight segment. Do not add a fitted frame to suppression.
+Fractional lifetime ceil vs nearest beyond the observed1.1s remains INFERRED.
 
 Probe contract: finite burst ordered at6s, guns initially load in1s and
 NO_ATTACK stops each before its next clip. Two guns split25/26 hits within
@@ -37,9 +41,9 @@ through a gate145 units away with the destination75 beyond the goal.
 SUPPRESSED is a model condition, not a script object status. ForceMove and
 Cover are out of scope. Timers/health parameters must be Python floats.
 
-Existing per-hit expiry, sample phase and5s refresh in Sim remain INFERRED;
-no new timing rule is selected here. BENCHED_TESTS has only whole-item
-registration, so neither SuppressionUpdate nor SuppressionNugget is registered.
+SuppressionUpdate and SuppressionNugget are registered to the four measured
+state/end replays, together with the earlier threshold/modifier controls.
+Arrival counters do not claim that generic walking drift has been modeled.
 """
 import os
 import re
