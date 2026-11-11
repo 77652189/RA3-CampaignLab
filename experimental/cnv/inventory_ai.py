@@ -130,6 +130,10 @@ NOTES = {
                                  '造兵逐秒和原版 aiskirm c 一样）、测试对拍 tests/test_simai.py——没有选兵策略表时 '
                                  'UnitModifier 不影响造什么；有策略表时的打分没量（原版人格都没有）')
        for k in ('Unit', 'OffensiveModifier', 'DefensiveModifier')},
+    # B round 118: aiskirm d / f -- CoopBudget's DEFENSE 5 % against the bank decides how many towers (simulator matches)
+    '经济/AccountShare.Percent': (BENCHED, '台上量过（engine_aiskirm d / f：开局后 CoopBudget 防御 5%，存款约 36000 两座塔、'
+                                 '约 17000 一座、15000 没有）、测试对拍 tests/test_simai.py——塔数对上；第一座的时刻'
+                                 '模拟器早 ~36 s（strict xfail），别的份额 / 状态没单独量'),
     # B round 113: aimicspon / aimicspoff PASS on the bench; round 114: the simulator runs them (tests/test_simai.py)
     '微操/AIMicroManagerData.UseSpecialPowers': (BENCHED, '台上量过（engine_aimicro：aimicspon 开 两个武士 s41 冲锋，'
                                               'aimicspoff 关 一直没冲、s51 前被打死，脚本按的对照照样冲）、测试对拍 '

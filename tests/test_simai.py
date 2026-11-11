@@ -768,3 +768,32 @@ def test_order_account_towers_leave_the_structures_on_time(acct):
     (d,), (p,) = acct['aiskacd'].brains.values(), acct['aiskacp'].brains.values()
     rest = lambda b: [(f, t) for f, what, t in b.trace if what == 'own' and 'Defense' not in t]
     assert rest(d) == rest(p), (rest(d), rest(p))
+
+
+@pytest.fixture(scope='module')
+def low(lib):
+    """aiskirmlow (15000 at the wake) with check d, and with f (+ PLAYER_GIVE_MONEY 20000 at ~157 s after the wake):
+    checks/engine_aiskirm.py d / f, B handoff 120."""
+    return {c: simai.run('aiskirmlow', c, until=245, lib=lib) for c in ('d', 'f')}
+
+
+def test_after_the_opening_the_defense_share_buys_towers_while_the_bank_covers_them(skirmish, low):
+    """bench 2026-11-07 engine_aiskirm d / f (PASS): after the opening (CoopBudget, DEFENSE 5 %) aiskirm (50000, ~36000
+    at the towers) builds two AlliedBaseDefense and no third to ~245 s; aiskirmlow + 20000 one, ~20 s after the gift
+    (177 s); aiskirmlow none. The sim (ai.player.available): what the DEFENSE share has paid counts against 5 % x the
+    money -- a tower needs 16000, a second 32000, a third 48000 (INFERRED from these three)."""
+    (b,) = skirmish.brains.values()
+    assert len([s for s in _towers(b) if s < 245]) == 2, _towers(b)
+    (g,), (n,) = low['f'].brains.values(), low['d'].brains.values()
+    got = _towers(g)
+    assert len(got) == 1 and 170 <= got[0] <= 185, got
+    assert not _towers(n), _towers(n)
+
+
+@pytest.mark.xfail(strict=True, reason='bench d: the first tower at 176 s after the wake (ordered ~156, ~36 s after '
+                   'the opening ends); simai orders it as the opening ends (~120) -> 140 / 160 s; the gate is not '
+                   'known (B handoff 120 hypothesis table)')
+def test_after_the_opening_the_first_tower_comes_at_176_s(skirmish):
+    (b,) = skirmish.brains.values()
+    got = _towers(b)
+    assert got and 170 <= got[0] <= 182, got

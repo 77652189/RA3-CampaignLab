@@ -8,7 +8,7 @@
 | 脚本条件 | **94%** | 89 | 28 | 5 | 53 | 3 | 94% |
 | 物体模块 | **92%** | 186 | 37 | 8 | 117 | 24 | 93% |
 | 武器效果 | **76%** | 25 | 14 | 2 | 7 | 2 | 78% |
-| AI | **71%** | 415 | 98 | 137 | 146 | 34 | 95% |
+| AI | **71%** | 415 | 99 | 136 | 146 | 34 | 95% |
 
 ## 脚本动作
 
@@ -911,7 +911,7 @@
 | 未做 | `人格/AIPersonalityDefinition.SkirmishPersonality` | 20 | AI 模型代码里没有这个名字 |
 | 已对拍 | `战术/Tactic.EndIfStateTurnsOff` | 19 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aistate.py |
 | 推断 | `经济/AccountShare.Account` | 18 | AI 模型代码里读了这个名字 |
-| 推断 | `经济/AccountShare.Percent` | 18 | AI 模型代码里读了这个名字 |
+| 已对拍 | `经济/AccountShare.Percent` | 18 | 台上量过（engine_aiskirm d / f：开局后 CoopBudget 防御 5%，存款约 36000 两座塔、约 17000 一座、15000 没有）、测试对拍 tests/test_simai.py——塔数对上；第一座的时刻模拟器早 ~36 s（strict xfail），别的份额 / 状态没单独量 |
 | 推断 | `人格/BaseSelection.PreferredNotBaseTypes` | 17 | AI 模型代码里读了这个名字 |
 | 推断 | `人格/BaseSelection.SortOrder` | 17 | AI 模型代码里读了这个名字 |
 | 已对拍 | `启发条件/TimerHeuristic.CountFrom` | 16 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
