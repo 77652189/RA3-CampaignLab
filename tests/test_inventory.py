@@ -66,6 +66,22 @@ def test_the_registers_point_at_real_items_and_tests():
         assert k in keys and state in inventory.STATES, k
 
 
+def test_spawn_closure_preserves_unmeasured_gaps_and_all_three_named_replays():
+    key = inventory.MODULE, 'Behaviors/SpawnBehavior'
+    rows = [i for i in items() if i['part'] == key[0] and i['name'].startswith(key[1])]
+    assert len(rows) == 1
+    row = rows[0]
+    assert (row['state'], row['uses'], row['all']) == (inventory.BENCHED, 10, 16)
+    assert inventory.BENCHED_TESTS[key] in row['why']
+    source = open(os.path.join(ROOT, 'tests', 'test_simspawn.py'), encoding='utf-8').read()
+    for probe in ('engine_spawn', 'engine_spawn_refill', 'engine_spawn_power'):
+        assert f"build.resolve('{probe}'," in source
+        assert probe in row['why']
+    for gap in ('gap：', '自主维修飞行', '子体直接删除', '真正禁用/占领',
+                '缺电时死亡补充', '展开时机', '其他完整配置', 'INFERRED', '不拆分分母'):
+        assert gap in row['why']
+
+
 def test_levelup_closure_registers_measured_effects_without_hiding_shared_template_gaps():
     """E30: close the measured module once, without counting its overlapping branches twice."""
     key = inventory.MODULE, 'Behaviors/LevelUpUpgrade'

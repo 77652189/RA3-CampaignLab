@@ -52,6 +52,9 @@ PARTS = (ACTION, CONDITION, MODULE, NUGGET, AI)     # AI: engine B's part, its o
 
 # (part, name) -> 'tests/<file>.py::<test>': the bench comparison that backs the item (the guard checks the test exists)
 BENCHED_TESTS = {
+    # E47 coordinator closure after three slices; NOTES preserves the shared-template gaps.
+    (MODULE, 'Behaviors/SpawnBehavior'):
+        'tests/test_simspawn.py::test_spawn_initial_burst_and_parent_kill_delete_match_named_bench',
     (MODULE, 'Behaviors/InfiltratorContain:ENERGY'):
         'tests/test_siminfiltrator.py::test_spy_power_plant_as_on_the_bench',
     # E30 closure: measured creation grants and rank modifiers; NOTES keeps the remaining gaps visible.
@@ -271,7 +274,8 @@ NOTES = {
                                          '人炮扔出的兵原版 / 改慢 / 改快三份读数一样（AIRBORNE_TARGET 1-125 帧、22 帧到点、降落伞约 96 帧），'
                                          '不归本模块。gap：被举起后落下（ActivateLiftObjectNugget / LiftObjectUpdate，C 线举升暂停）'
                                          '可能用到下落速度，落地时刻会影响逻辑，未上台；同 id 覆盖是否生效未排除'),
-    (MODULE, 'Behaviors/SpawnBehavior'): (GUESSED, '局部已测：engine_spawn:spawn开局3架及母体死亡/删除清随从；engine_spawn_refill:refill两架分别死亡10秒后补回（tests/test_simspawn.py显式预置贴车位置）；engine_spawn_power:power缺电及复电期间总数/厂旁均3；gap：自主维修飞行、子体直接删除、真正禁用/占领、缺电时死亡补充、展开时机及其他完整配置，生成位置和秒内相位INFERRED；不登记整模块'),
+    (MODULE, 'Behaviors/SpawnBehavior'): (BENCHED, '已测范围：engine_spawn:spawn开局3架及母体死亡/删除清随从；engine_spawn_refill:refill两架分别死亡10秒后补回（tests/test_simspawn.py显式预置贴车位置）；engine_spawn_power:power缺电及复电期间总数/厂旁均3；gap：自主维修飞行、子体直接删除、真正禁用/占领、缺电时死亡补充、展开时机及其他完整配置，生成位置和秒内相位INFERRED；按总控11-11三切片收尾决定登记模块已对拍，不表示这些gap已验证，不拆分分母'),
+    (MODULE, 'Behaviors/ProductionUpdateInfo'): (TODO, '完整配置盘点9用量/9模板均为空模块；schema无专属字段；模块专属可达操作及可观测接口待确认，不能用ProductionUpdate生产或ReplaceSelf展开smoke替代本模块对拍'),
     (MODULE, 'Behaviors/SlavedUpdate'): (TODO, f'{_NOT_IN_SIM}（没有随从跟随）'),
     (MODULE, 'Behaviors/BezierProjectile'): (TODO, f'{_NOT_IN_SIM}（开火按每秒伤害直接扣血，没有弹体）'),
     (MODULE, 'Behaviors/ProjectileUpdate'): (TODO, f'{_NOT_IN_SIM}（开火按每秒伤害直接扣血，没有弹体飞行时间）'),
