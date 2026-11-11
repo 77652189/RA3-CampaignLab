@@ -21,6 +21,8 @@ RETAIL_COMMANDS = {'Command_CaptureBuilding',           # an engineer takes a bu
                    'Command_ToggleArmorUp',            # retail SovietMiner's reactive armor (InformTarget control)
                    'Command_UnPackAlliedMCV',           # the MCV deploys (AlliedMCVCommandSet)
                    'Command_UnPackSovietMCV', 'Command_UnPackJapanMCV',     # the same ReplaceSelfSpecialAbility
+                   'Command_PackAlliedMCV', 'Command_PackSovietMCV',        # a yard packs back up (engine_pack)
+                   'Command_PackJapanMCV',
                    'Command_UnPackJapanBaseDefenseEgg', # a Japanese egg unfolds (engine_unpack egg)
                    'Command_JAIV_Transform',            # the Tengu transforms (JapanAntiInfantryVehicle)
                    'Command_JAAVT1_Transform',          # the VX transforms (JapanAntiAirVehicleTech1)

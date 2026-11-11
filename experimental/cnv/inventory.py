@@ -187,6 +187,16 @@ BENCHED_TESTS = {
     # relation, the men ride along, a killed transport kills them; the man cannon throws one every TimePerPassenger
     (MODULE, 'Behaviors/TransportContain'):
         'tests/test_simbench.py::test_transport_a_team_put_in_instantly_skips_the_room_and_the_relation_and_rides_along',
+    # engine_unpack mcv / egg (bench 11-10, round 138) and engine_pack a / s / j (bench 11-11, round 159): an MCV or
+    # an egg drives to its point and turns into the replacement, a yard packs into its MCV at once and the MCV stands
+    # ~44 frames -- tests/test_simbench.py test_*deploys_at_a_far_waypoint*, test_a_yard_packs_*
+    (MODULE, 'Behaviors/ReplaceSelfSpecialAbility'):
+        'tests/test_simbench.py::test_a_yard_packs_into_its_mcv_at_once_and_the_mcv_stands_before_it_drives',
+    # engine_production a / e (out at UnitCreatePoint, the door 10 frames), h / i and engine_rally tank (bench 11-11,
+    # round 159): the unit stops 40 beyond NaturalRallyPoint on the centre -> rally line (sim.RALLY_PUSH, fitted);
+    # gap: ExitDelaySeconds (0.07 s between two units), h's barracks stop 1-2 units off (strict xfail)
+    (MODULE, 'Behaviors/QueueProductionExitUpdate'):
+        'tests/test_simbench.py::test_a_new_unit_stops_beyond_the_natural_rally_point_as_the_bench',
     (MODULE, 'Behaviors/EjectPassengersSpecialAbilityUpdate'):
         'tests/test_simbench.py::test_transport_the_man_cannon_throws_one_every_half_second_and_a_killed_transport_kills_its_men',
     # engine line A round 156: engine_toggle a-f, bench 11-11 (Sim.toggle_press): six of our 9 levels' toggles -- a
@@ -240,7 +250,10 @@ NOTES = {
                                                       'LifetimeUpdate 折成伤害，不模拟召出物本身'),
     (MODULE, 'Behaviors/StealthDetectorUpdate'): (TODO, f'{_NOT_IN_SIM}（没有反隐）'),
     (MODULE, 'Behaviors/GarrisonContain'): (GUESSED, 'simgarrison 同一套规则（不可争夺）；没单独上台对拍'),
-    (MODULE, 'Behaviors/ReplaceSelfSpecialAbility'): (TODO, f'{_NOT_IN_SIM}（没有换形态）'),
+    (MODULE, 'Behaviors/ReplaceSelfSpecialAbility'): (BENCHED, '三类用法都上台：基地车 / 帝国蛋到点展开（engine_unpack mcv / egg，'
+                                                     '名字和血量比例跟过去）、三国建造场收起（engine_pack a/s/j，按下当帧就是基地车，'
+                                                     '先站 2 秒 + 约 14 帧再开，14 帧是拟合 INFERRED）；gap：盟军矿车、苏联勘探车的展开没上台，'
+                                                     '其余 8 种蛋按同一机制推'),
     (MODULE, 'Behaviors/FreefallUpdate'): (NA, '纯表现（总控 11-11 定）：配置只有 InitialVelocity / Acceleration / TerminalVelocity / '
                                          'ModelConditionsToSet=STUNNED_FLAILING，管空中死亡后尸体下落的画面；engine_freefall fall 已核'
                                          '人炮扔出的兵原版 / 改慢 / 改快三份读数一样（AIRBORNE_TARGET 1-125 帧、22 帧到点、降落伞约 96 帧），'

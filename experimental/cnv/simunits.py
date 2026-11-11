@@ -2233,6 +2233,27 @@ def replace_self(template, button, own=None):
     return _inherited(template, own, read, None)
 
 
+PACK_EXTRA_FRAMES = 14         # frames the packed MCV stands beyond NewObjectUnpackTime: INFERRED, fitted to
+                               # engine_pack a / s / j (bench 11-11: out of the 40 square at 50 / 51 / 54, sim
+                               # with 30 alone 38; arrival 14 frames late alike) -- not read in the code
+
+
+def replace_unpack_frames(template, button, own=None):
+    """Frames the replacement stands still after a ReplaceSelfSpecialAbility with DISABLE_NEW_OBJECT_DURING_UNPACK
+    (a yard packing into its MCV): NewObjectUnpackTime x 15 + PACK_EXTRA_FRAMES; 0 without the option."""
+    power = command_power(button, own)
+
+    def read(xml):
+        for head, _ in _blocks(xml, 'ReplaceSelfSpecialAbility'):
+            if _attr(head, 'SpecialPowerTemplate') == power:
+                if 'DISABLE_NEW_OBJECT_DURING_UNPACK' not in (_attr(head, 'ReplaceOptions') or ''):
+                    return 0
+                secs = _secs(expand(_attr(head, 'NewObjectUnpackTime', '0s')))     # the Allied yard's is a define
+                return int(round(secs * LIFE_FPS)) + PACK_EXTRA_FRAMES
+        return None
+    return _inherited(template, own, read, None) or 0
+
+
 def needs(template, own=None):
     """(objects, upgrades) its GameDependency asks for: every RequiredObject the player must own, every NeededUpgrade
     the player must hold (all of them: inference, the sidebar's lit buttons not measured)."""

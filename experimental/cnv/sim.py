@@ -154,6 +154,12 @@ HOLD_SPOTS = True              # every move's goal kept off other units' spots (
 ARRIVE = 1.5 * GRID             # a plain move that ends farther than this from where it was sent stopped short (held_up)
 UNPACK_POWER = 'SpecialPower_UnpackReplaceSelf'     # the deploy buttons' power (LogicCommand.xml: MCVs, eggs, miner)
 REPLACE_FRAMES = 6             # a ReplaceSelfSpecialAbility at its point: the replacement 6 frames on (engine_build a)
+RALLY_PUSH = 40.0              # a new unit stops this far beyond its factory's NaturalRallyPoint, on the line from
+                               # the factory's centre through it: INFERRED, fitted to bench 11-11 engine_production
+                               # h / i (barracks, (40, 18): stops ~(75-80, 24-33)) and engine_rally tank (war
+                               # factory, (80, 20): ~(112-127, 25-34); x 1.9 from the centre would be (152, 38))
+PACK_POWER = 'SpecialPower_PackReplaceSelf'         # a construction yard's pack button (Command_Pack...MCV)
+PACK_FRAMES = 0                # the yard is its MCV from the press frame on (engine_pack a / s / j)
 BUILD_STEP = 5.0               # a builder on his way (R5) moves in steps this long, to see where he gets within range
 HIGH_STEP = 50.0                # ShroudClearingHeight's default: a viewer does not discover a cell this much above its own
                                 # (bench, docs/engine/vision.md; a unit's own value is Body.clear_height). Cell by cell,
@@ -1964,9 +1970,11 @@ class Sim:
                      by=f.name, at=self.t)
         b.team, b.angle = f.team, f.angle
         self.note('生产', f'{self.label(f)} 出 {job["template"]}')
-        if rally is not None:
+        if rally is not None:               # pushed out RALLY_PUSH along the factory's centre -> rally line
+            r = math.hypot(*rally)
+            k = (r + RALLY_PUSH) / r if r else 1.0
             b.mode = 'move'
-            self.send(b, at(rally))
+            self.send(b, at((rally[0] * k, rally[1] * k)))
         self.change()
 
     def order_guard(self, b, area):
@@ -3135,6 +3143,18 @@ class Sim:
                 self.note('技能', f'{self.label(b)} 去 {a[2]} 展开成 {into}')
                 if not self.at_site(b, 0.0):
                     self.send(b, p)
+        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and self.body(a[0]) and self.body(a[0]).alive and \
+                simunits.command_power(a[1], self.own) == PACK_POWER and \
+                simunits.replace_self(self.body(a[0]).template, a[1], self.own):
+            # a construction yard packs back into its MCV where it stands (engine_pack a / s / j)
+            b = self.body(a[0])
+            _, into = simunits.replace_self(b.template, a[1], self.own)
+            self.used.add('unpack')
+            b.replace = True
+            self.__dict__.setdefault('pack_hold', {})[b.name] = simunits.replace_unpack_frames(b.template, a[1], self.own)
+            self.due.append((self.frame_now() + PACK_FRAMES, into, b.owner, b.team, b.x, b.y, b.name))
+            self.note('技能', f'{self.label(b)} 收起成 {into}')
+            self.build_due(self.frame_now())        # the press frame's later scripts already see the MCV
         elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and self.body(a[0]) and self.toggle_press(self.body(a[0]), a[1]):
             self.note('技能', f'{a[0]} 按 {a[1]} 切换状态')
         elif name in ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY'):
@@ -4465,6 +4485,9 @@ class Sim:
                 self.bodies[f'#packed {len(self.bodies)} {by}'] = self.bodies.pop(by)
                 n = self.add(by, structure, owner, was.x, was.y, by=by, at=self.t)
                 n.hp = n.max_hp * share
+                hold = self.__dict__.get('pack_hold', {}).pop(by, 0)
+                if hold:                    # DISABLE_NEW_OBJECT_DURING_UNPACK: stands still (engine_pack), as EMP'd
+                    self.__dict__.setdefault('emp_until', {})[id(n)] = self.frame_now() + hold
             else:
                 n = self.add(f'#built {len(self.bodies)} by {by}', structure, owner, x, y, by=by, at=self.t)
             n.team = team

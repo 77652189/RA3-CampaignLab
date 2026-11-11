@@ -214,6 +214,24 @@ def test_production_pays_as_it_builds_and_comes_out_after_the_door(check):
                            'AlliedEngineer']   # the barracks' tier-1 buttons; the spy needs Upgrade_AlliedTech2
 
 
+@pytest.mark.parametrize('build_name, check, until, last', [('engine_production', 'i', 24.0, 1010000),
+                                                             ('engine_rally', 'tank', 30.0, 1000010)])
+def test_a_new_unit_stops_beyond_the_natural_rally_point_as_the_bench(build_name, check, until, last):
+    """QueueProductionExitUpdate (sim.RALLY_PUSH, INFERRED fit): bench 11-11 -- the barracks' engineer (NaturalRallyPoint
+    (40, 18)) stops in x 75-90 / y 24-36 (engine_production i, CampProdI_mcp_1111_041259: 出口位 1010000), the war
+    factory's Riptide ((80, 20)) in x 112-127 / y 25-34 (engine_rally tank: 1000010): 40 beyond the point on the
+    line from the factory's centre (x 1.9 from the centre would put the Riptide at (152, 38)). ExitDelaySeconds (0.07 s,
+    one frame between two units of one factory) not modelled: a gap no level can see."""
+    assert _sim_run(build_name, check, until).series[-1][1][3] == last
+
+
+@pytest.mark.xfail(strict=True, reason='engine_production h (bench 11-11) read 1000 (x 65-80, y 3-33); the sim stops '
+                                       'the engineer at (76.5, 34.4), 1.4 past the strip -- the push is fitted to i '
+                                       'and the Riptide, the barracks stop is 1-2 units off')
+def test_the_engineer_stops_inside_the_far_strip_of_h():
+    assert _sim_run('engine_production', 'h', 24.0).series[-1][1][3] == 1000
+
+
 def test_a_scripts_press_of_the_build_button_builds_as_the_click():
     """engine_production e / f (bench 2026-11-08): the check's own script presses barracks 1's
     Command_ConstructAlliedEngineer at 2 s (NAMED_USE_COMMANDBUTTON_ABILITY) -- e paid 1506 at 帧数 148, the engineer at
@@ -1412,6 +1430,24 @@ def test_nanocore_deploys_at_a_far_waypoint_as_the_bench():
     assert 102 <= unit % 1000 <= 122 and unit // 1000 > 0, unit
     assert yard % 1000 == frames - unit % 1000, (frames, unit, yard)
     assert name == frames
+
+
+# bench 11-11 engine_pack (round 159): per yard, (last second read, frames out of the 40 square round where it stood,
+# frame it reached the 100 square 400 east) -- CampPackAGo / SGo / JGo, the 走帧 counter's units and 帧数 - thousands
+BENCH_PACK = {'a': (31.0, 50, 121), 's': (31.0, 51, 128), 'j': (46.0, 54, 150)}
+
+
+@pytest.mark.parametrize('variant', sorted(BENCH_PACK))
+def test_a_yard_packs_into_its_mcv_at_once_and_the_mcv_stands_before_it_drives(variant):
+    """NAMED_USE_COMMANDBUTTON_ABILITY(yard, Command_Pack...MCV) (bench 11-11 engine_pack a / s / j): the player owns
+    the MCV and not the yard from the press frame on (车帧 = 1000 x 帧数), the yard's name passes on (名字帧 = 帧数);
+    the move order given at once is kept, but the MCV stands NewObjectUnpackTime (2 s) and some more before it
+    drives (out of the 40 square at frame 50-54; sim.PACK_FRAMES 0, simunits.replace_unpack_frames 30 + 14 INFERRED).
+    The sim still counts the yard one frame (the press frame's count): held to at most 1."""
+    until, out, there = BENCH_PACK[variant]
+    frames, own, name, walk = _sim_run(f'engine_pack_{variant}', 'go', until).series[-1][1]
+    assert own // 1000 >= frames - 1 and own % 1000 <= 1 and name == frames, (frames, own, name)
+    assert abs(walk % 1000 - out) <= 6 and abs(frames - walk // 1000 - there) <= 10, (frames, walk, out, there)
 
 
 def _changes(build_name, check, until):

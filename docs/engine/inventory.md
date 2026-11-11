@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|---|---|---|---|
 | 脚本动作 | **92%** | **100%** | 50 / 50 | 451 | 123 | 20 | 191 | 117 | 93% |
 | 脚本条件 | **94%** | **100%** | 12 / 12 | 89 | 30 | 6 | 50 | 3 | 95% |
-| 物体模块 | **95%** | **95%** | 43 / 112 | 188 | 45 | 9 | 109 | 25 | 95% |
+| 物体模块 | **95%** | **95%** | 45 / 112 | 188 | 47 | 9 | 107 | 25 | 96% |
 | 武器效果 | **93%** | **95%** | 17 / 22 | 28 | 18 | 2 | 6 | 2 | 95% |
 | AI | **72%** | **71%** | 94 / 357 | 415 | 100 | 139 | 142 | 34 | 96% |
 
@@ -619,8 +619,8 @@
 | 已对拍 | `Behaviors/SuppressionUpdate` | 22 (28) | 全部 | tests/test_simbench_c.py::test_suppression_samples_entry_refresh_and_expiry_at_the_four_probe_readings；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
 | 不涉及 | `Draws/LaserDraw` | 21 (37) | 全部 | 纯表现（Draws）；例：AlliedAntiVehicleVehicleTech3CannonNodeBase, AlliedAntiVehicleVehicleTech3CannonNodeEnd |
 | 不涉及 | `Behaviors/LaserState` | 19 (25) | 全部 | 纯表现：LaserId关联光束，起止粒子/骨骼/EndOffset与ObjectStatusValidation只控制光束表现；LaserStateModule.xsd无伤害字段；engine_laser pair匹配LaserDraw/State 201，伤害由独立DamageNugget给出，test_simbench_c重放2/90/2/90；例：AlliedBaseDefense, AlliedBaseDefenseAdvanced |
-| 未做 | `Behaviors/QueueProductionExitUpdate` | 19 (20) | a1 a2 a4 a5 a6 a7 a8 | 模拟器代码里没有这个名字；例：AlliedBarracks, AlliedConstructionYard |
-| 未做 | `Behaviors/ReplaceSelfSpecialAbility` | 18 (24) | a1 a2 a4 a5 a6 a7 a9 | 已核（11-08）：模拟器没有这个效果（没有换形态）；例：AlliedConstructionYard, AlliedMCV |
+| 已对拍 | `Behaviors/QueueProductionExitUpdate` | 19 (20) | a1 a2 a4 a5 a6 a7 a8 | tests/test_simbench.py::test_a_new_unit_stops_beyond_the_natural_rally_point_as_the_bench；例：AlliedBarracks, AlliedConstructionYard |
+| 已对拍 | `Behaviors/ReplaceSelfSpecialAbility` | 18 (24) | a1 a2 a4 a5 a6 a7 a9 | tests/test_simbench.py::test_a_yard_packs_into_its_mcv_at_once_and_the_mcv_stands_before_it_drives；三类用法都上台：基地车 / 帝国蛋到点展开（engine_unpack mcv / egg，名字和血量比例跟过去）、三国建造场收起（engine_pack a/s/j，按下当帧就是基地车，先站 2 秒 + 约 14 帧再开，14 帧是拟合 INFERRED）；gap：盟军矿车、苏联勘探车的展开没上台，其余 8 种蛋按同一机制推；例：AlliedConstructionYard, AlliedMCV |
 | 不涉及 | `Draws/TracerModelDraw` | 18 (22) | 全部 | 纯表现（Draws）；例：AlliedAntiAirShip, AlliedAntiAirVehicleTech1 |
 | 未做 | `Behaviors/WeaponFireSpecialAbilityUpdate` | 16 (23) | a1 a2 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedSuperWeaponAdvanced, AlliedAntiNavalScout |
 | 已对拍 | `Body/ManagerBody` | 14 (32) | a1 a4 a7 | tests/test_simmanagerbody.py::test_manager_body_script_damage_preserves_retail_bridge_proxy；已测范围：engine_managerbody a/b原版HB_Bridge_02，270/700长度整体代理脚本伤害200后均80%、致命量后1%且存活，tests/test_simmanagerbody.py按名重放；gap：有效HP取CenterPiece及内部1%下限映射仍INFERRED，内部最大血量/伤害转发/显示下限待核；HV_Bridge_01等其他模板/配置、桥段共享血量/损毁/维修未对拍；按总控11-11收尾决定登记模块已对拍，不表示这些gap已验证，不拆分分母；例：BaseBridge, BaseCivilianBridge |
