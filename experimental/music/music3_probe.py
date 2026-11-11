@@ -23,13 +23,15 @@ import time
 import urllib.request
 
 import numpy as np
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 LAB = os.path.dirname(ROOT)
 COMFY = os.path.join(LAB, 'RA3-ChineseVoice', 'third_party', 'comfyui')
 FFMPEG = os.path.join(LAB, 'RA3-ChineseVoice', 'third_party', 'ffmpeg', 'ffmpeg.exe')
-OUT = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'music', 'music3')
+OUT = os.path.join(labpaths.WORK, 'music', 'music3')
 URL = 'http://127.0.0.1:8189'
 GPU_LIMIT = os.path.join(LAB, 'shared', 'gpu_limit.json')
 

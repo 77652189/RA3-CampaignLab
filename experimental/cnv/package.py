@@ -16,6 +16,8 @@ from dataclasses import dataclass, field, replace
 
 from contract import contract
 from model import MAX_NAME, merged, unnot
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CAMPAIGN = os.path.join(os.path.dirname(HERE), 'campaign')
@@ -167,7 +169,7 @@ def preview(mission, test=None, out=None):
     path, data = next((p, d) for p, d in c18.c6._map_files() if p.lower().endswith('.map'))
     m = MapFile(data)
     write_map(m, mm)
-    out = out or os.path.join((os.environ.get('CNV_WORK') or os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work')), 'maps', mm.name + '.map')
+    out = out or os.path.join(labpaths.WORK, 'maps', mm.name + '.map')
     os.makedirs(os.path.dirname(out), exist_ok=True)
     with open(out, 'wb') as f:
         f.write(m.map_file())
@@ -400,7 +402,7 @@ def mod_folder(name):
         return os.path.join(out_dir, name)
     why = mod_busy(name)
     if why:
-        out = os.path.join((os.environ.get('CNV_WORK') or os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work')), 'staging', name)
+        out = os.path.join(labpaths.WORK, 'staging', name)
         print(f'{why} -> staging at', out)
         return out
     return os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods', name)

@@ -29,10 +29,12 @@ import subprocess
 import sys
 import threading
 import time
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
-RESULTS = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'bench_results')
+RESULTS = os.path.join(labpaths.WORK, 'bench_results')
 RUN_CHECK = os.path.join(HERE, 'run_check.py')
 # the interpreter ra3bench itself runs in (it has the mcp package bench_mcp imports)
 BENCH_PY = os.path.join(os.path.dirname(ROOT), 'envs', 'bench_mcp', 'Scripts', 'python.exe')

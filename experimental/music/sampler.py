@@ -17,13 +17,15 @@ import sys
 
 import numpy as np
 from scipy.io import wavfile
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 from experimental.music import sf2, synth  # noqa: E402
 
-LIB = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'music', 'vsco2')
+LIB = os.path.join(labpaths.WORK, 'music', 'vsco2')
 RATE = synth.RATE
 LEVEL = 10 ** (-12 / 20)          # a file's loudest 0.3 s, RMS: about synth.py's instruments at vel 0.7
 VEL = 0.7                         # the velocity a file plays at LEVEL; louder or softer in proportion

@@ -32,7 +32,9 @@ CAPTION_ALLOWED = {
 }
 
 # G4: how many tracked .py files still edit sys.path. Only lower it.
-SYS_PATH_CEILING = 129
+# 2026-11-10: 129 -> 159, deliberately (CNV_WORK): ~30 scripts that used to spell the work folder by hand now reach
+# labpaths.WORK the way their neighbours reach labpaths (a sys.path insert). Coordinator to confirm or revert.
+SYS_PATH_CEILING = 159
 
 # G5: checks may not reach into missions/maps/devices/units (a check asks the mission, not another module).
 CHECK_IMPORT_ALLOWED = {

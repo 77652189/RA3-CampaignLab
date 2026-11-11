@@ -24,6 +24,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign')) if p not in sys.path]
 import offline  # noqa: E402
 import simunits  # noqa: E402
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 EASY = 1.5                                      # k* under this: a push with no thought
 TOUGH = 3.0                                     # k* over this: the stage wants more than a push
@@ -191,7 +193,7 @@ def main():
     ap.add_argument('--verbose', action='store_true')
     a = ap.parse_args()
     text, summary = report(a.level, a.verbose)
-    path = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'logs', f'graybox_{a.level}.log')
+    path = os.path.join(labpaths.WORK, 'logs', f'graybox_{a.level}.log')
     os.makedirs(os.path.dirname(path), exist_ok=True)
     open(path, 'w', encoding='utf-8').write(text + '\n')
     print(text if a.verbose else '；'.join(summary) + f'\n（全文 {os.path.relpath(path, ROOT)}）')

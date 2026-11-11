@@ -21,6 +21,8 @@ import math
 import os
 import struct
 import sys
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'campaign')))
+import labpaths  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -134,6 +136,6 @@ c6.edit = generate
 
 if __name__ == '__main__':
     if c23.game_running():
-        c2.OUT = c4.OUT = os.path.join((os.environ.get('CNV_WORK') or os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work')), 'staging', NAME)
+        c2.OUT = c4.OUT = os.path.join(labpaths.WORK, 'staging', NAME)
         print('RA3 is running -> staging at', c4.OUT)
     c4.main()

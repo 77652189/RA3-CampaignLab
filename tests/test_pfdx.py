@@ -9,8 +9,10 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from experimental.music import pfdx  # noqa: E402
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'experimental', 'campaign')))
+import labpaths  # noqa: E402
 
-RETAIL = Path(os.environ.get('CNV_WORK') or ROOT / 'work') / 'music' / 'retail' / 'map.bin'
+RETAIL = Path(labpaths.WORK) / 'music' / 'retail' / 'map.bin'
 
 
 @pytest.fixture(scope='module')

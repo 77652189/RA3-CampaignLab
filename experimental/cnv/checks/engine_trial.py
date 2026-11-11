@@ -17,9 +17,12 @@ import os
 
 from parts import Mission, Script, Test, square
 from checks.probe_view import open_in_view
+import sys
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'campaign')))
+import labpaths  # noqa: E402
 
 IFV = 'AlliedAntiAirVehicleTech1'
-MAPPAGE = os.path.join(os.environ.get('CNV_WORK') or os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'work')), 'mappage')
+MAPPAGE = os.path.join(labpaths.WORK, 'mappage')
 DRAFT = os.path.join(MAPPAGE, 'trial', 'trial.py')
 # the engine line's copies of the trial map (work/mappage/<v>/<v>.py, never the shell line's original):
 # trial2 -- the west cliff wall runs into the south map edge (no slit under its cap);

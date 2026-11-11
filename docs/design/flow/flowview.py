@@ -16,9 +16,11 @@ import sys
 from pathlib import Path
 
 import flowcheck as fc
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'experimental', 'campaign')))
+import labpaths  # noqa: E402
 
 TEMPLATE = fc.HERE / 'flowview.html'
-OUT = Path(os.environ.get('CNV_WORK') or fc.HERE.parents[2] / 'work') / 'flowview' / 'flow.html'
+OUT = Path(labpaths.WORK) / 'flowview' / 'flow.html'
 CN = dict(zip('一二两三四五六七八九', (1, 2, 2, 3, 4, 5, 6, 7, 8, 9)))
 
 

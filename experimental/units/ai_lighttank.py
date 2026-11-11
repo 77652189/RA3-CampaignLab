@@ -17,14 +17,16 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
-DL = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'downloads')
-OUT = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'units', 'lighttank_ai')
+DL = os.path.join(labpaths.WORK, 'downloads')
+OUT = os.path.join(labpaths.WORK, 'units', 'lighttank_ai')
 os.environ.setdefault('HF_HOME', os.path.join(DL, 'hf'))
 os.environ.setdefault('HY3DGEN_MODELS', os.path.join(DL, 'hf', 'hy3dgen'))
 sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(DL, 'hy3d_src', 'Hunyuan3D-2'))
 import torch                                     # noqa: E402
 from ra3voice import throttle                    # noqa: E402
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 # HunyuanDiT keeps only the first 60 characters of a prompt and appends ",白色背景,3D风格,最佳质量" itself
 PROMPT = os.environ.get('CNV_PROMPT') or '未来盟军轻型坦克,银白色金属装甲,宽大分段履带,低矮圆润炮塔,单根长炮管,青色发光灯,前侧方视角,完整车身'

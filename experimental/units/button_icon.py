@@ -21,6 +21,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'campaign'))
 from PIL import Image                           # noqa: E402
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 # kind: (size, retail name prefix, suffix, inset of the inner area, fill, contrast, agreement for a clean pixel)
 # (portraits: the unit fills nearly the whole plate, so a quarter of them agreeing already marks background)
@@ -35,7 +37,7 @@ WORLDBUILDER = [('WBData.big', 'data\\worldbuilder.')]
 
 
 def frame_path(kind):
-    return os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'reference', f'{kind}_frame.png')
+    return os.path.join(labpaths.WORK, 'reference', f'{kind}_frame.png')
 
 
 def retail_images(kind):

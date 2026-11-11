@@ -10,6 +10,8 @@ What goes (user 2026-11-08: "用不上的自动删"):
 - work/testbench/runs/*: archived frames of bench runs older than RUN_DAYS.
 """
 import os, shutil, sys, time
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 MOD_DAYS = 2
 RUN_DAYS = 7
@@ -17,7 +19,7 @@ KEEP = ("CampShell", "CampA4Demo")  # prefixes the player launches by hand
 
 HOME = os.path.expanduser("~")
 MODS = os.path.join(HOME, "Documents", "Red Alert 3", "Mods")
-RUNS = os.path.join(os.environ.get('CNV_WORK') or os.path.join(os.path.dirname(__file__), '..', '..', 'work'), 'testbench', 'runs')
+RUNS = os.path.joinlabpaths.WORK
 
 
 def newest_and_size(path):

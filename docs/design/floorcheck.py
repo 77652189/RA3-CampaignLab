@@ -20,10 +20,12 @@ import json
 import os
 import re
 import sys
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'experimental', 'campaign')))
+import labpaths  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
-PAGES = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'walkthrough')
+PAGES = os.path.join(labpaths.WORK, 'walkthrough')
 DATA = os.path.join(HERE, 'teardowns', 'data')
 
 

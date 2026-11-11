@@ -31,10 +31,12 @@ import os
 import re
 import statistics
 import sys
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', '..', 'experimental', 'campaign')))
+import labpaths  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..', '..', '..'))
-CACHE = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'retailref')
+CACHE = os.path.join(labpaths.WORK, 'retailref')
 TIMELINE = os.path.join(HERE, 'timeline.json')
 
 BASE = re.compile(r'(?i)mcv|constructionyard')

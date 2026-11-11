@@ -20,6 +20,8 @@ from mcp.server.mcpserver import Image, MCPServer
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import harness  # noqa: E402
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 server = MCPServer('ra3bench', instructions=(
     'Red Alert 3 test bench: one game at a time. Design through interfaces: cnv_show(name, check) tells, without '
@@ -453,7 +455,7 @@ def capped(text, name, cap=CAP):
     text = text.strip()
     if len(text) <= cap:
         return text
-    log = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'logs', f'mcp_{name}.log')
+    log = os.path.join(labpaths.WORK, 'logs', f'mcp_{name}.log')
     os.makedirs(os.path.dirname(log), exist_ok=True)
     with open(log, 'w', encoding='utf-8') as f:
         f.write(text + '\n')
@@ -656,7 +658,7 @@ def cnv_map(mod: str, x: float = 0, y: float = 0, r: float = 0, px: int = 2) -> 
     """A built mod's map from above, without the game (maprender): terrain, objects coloured by owner, waypoints,
     trigger areas, a world grid -- to check where a mission placed things. x, y, r (world units): only that square
     around (x, y). px: pixels per map cell."""
-    out_png = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'maps', f'{mod}_mcp.png')
+    out_png = os.path.join(labpaths.WORK, 'maps', f'{mod}_mcp.png')
     code, out = lab(MAPRENDER, mod, '-o', out_png, '--px', str(px), *(['--around', str(x), str(y), str(r)] if r else []),
                     timeout=300)
     if code or not os.path.exists(out_png):
@@ -710,7 +712,7 @@ def map_study(target: str) -> list:
     rows = [x for x in out.splitlines() if x.startswith('|')]
     if not ours and len(rows) == 1:
         short = rows[0].split('|')[1].strip()
-        path = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'mapstudy', short + '.png')
+        path = os.path.join(labpaths.WORK, 'mapstudy', short + '.png')
         return picture(path, out.strip()) if os.path.exists(path) else [out.strip()]
     pic = next((x[8:] for x in out.splitlines() if x.startswith('PICTURE ')), None)
     text = '\n'.join(x for x in out.splitlines() if not x.startswith('PICTURE '))

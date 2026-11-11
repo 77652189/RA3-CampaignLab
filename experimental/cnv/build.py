@@ -30,6 +30,8 @@ CLIENT = os.path.join(ROOT, 'experimental', 'testbench', 'bench_client.py')
 # An edition of a level (langs.py) is its own name: a4_intl (CampA4En) next to a4 (CampA4); `build.py a4 --lang intl`
 # is that name, and ra3bench's cnv_check takes it as it is
 import registry                                # noqa: E402
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 _REG = registry.get()
 MISSIONS = {n: (make, _REG.checks.get(n, {})) for n, make in _REG.builds.items()}
 PAIRS = _REG.pairs
@@ -318,7 +320,7 @@ def main():
         import contract                         # the map's own design lint first (it needs no map file): the one every
         problems = contract.map_design(m)       # build runs (contract.contract), K4e
         print('LINT ' + ('ok' if not problems else '; '.join(problems)))
-        path = parts.preview(m, t, out=os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'maps', mod + '.map'))
+        path = parts.preview(m, t, out=os.path.join(labpaths.WORK, 'maps', mod + '.map'))
         print('PREVIEW ' + path)
         return
     if a.judge is not None:

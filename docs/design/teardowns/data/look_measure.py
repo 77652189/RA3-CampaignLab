@@ -23,6 +23,8 @@ import mapstudy as ms  # noqa
 import mapterrain  # noqa
 import mapxml  # noqa
 from ra3voice import big  # noqa
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', '..', 'experimental', 'campaign')))
+import labpaths  # noqa: E402
 
 VEG = ('tree', 'bush', 'plant', 'grass', 'shrub', 'flower', 'palm', 'pine', 'weed', 'reed', 'fern', 'bamboo')
 WAR = re.compile(r'wreck|rubble|crater|debris|barricade|sandbag|burn|destroy|damag|tanktrap|hedgehog|ruin|broken|husk'
@@ -187,8 +189,8 @@ def main():
             res.append(measure(mapscript.MapFile(big.read_files(arc, [n])[n]), short)); print(res[-1], flush=True)
         except Exception as ex:  # noqa
             print('ERR', short, ex, flush=True)
-    os.makedirs(os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'mapdiag'), exist_ok=True)
-    path = os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'mapdiag', 'measures%s.json' % ('_' + '_'.join(ours + args) if (ours or args) else ''))
+    os.makedirs(os.path.join(labpaths.WORK, 'mapdiag'), exist_ok=True)
+    path = os.path.join(labpaths.WORK, 'mapdiag', 'measures%s.json' % ('_' + '_'.join(ours + args) if (ours or args) else ''))
     json.dump(res, open(path, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 
 

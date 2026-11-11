@@ -14,8 +14,10 @@ sys.path.insert(0, HERE)
 from PIL import Image                           # noqa: E402
 
 import button_icon                              # noqa: E402  (its STATIC layer list)
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
-OUT = os.path.join((os.environ.get('CNV_WORK') or os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work')), 'reference')
+OUT = os.path.join(labpaths.WORK, 'reference')
 
 
 def main(names):

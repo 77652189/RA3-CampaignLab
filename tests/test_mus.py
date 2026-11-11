@@ -12,8 +12,10 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from experimental.music import mus, pfdx  # noqa: E402
 from ra3voice import xas  # noqa: E402
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'experimental', 'campaign')))
+import labpaths  # noqa: E402
 
-RETAIL = Path(os.environ.get('CNV_WORK') or ROOT / 'work') / 'music' / 'retail' / 'track_mem.cdata'
+RETAIL = Path(labpaths.WORK) / 'music' / 'retail' / 'track_mem.cdata'
 
 
 def test_constant_matches_retail():

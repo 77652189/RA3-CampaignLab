@@ -15,7 +15,9 @@ import labpaths  # noqa: E402
 ALLOW = {
     'experimental/campaign/labpaths.py': 'the one definition',
     'experimental/voice/pack.py': "VOICE is the other repository (RA3-ChineseVoice); its work\\ is not this repo's WORK",
-    'experimental/simui/game.py': "VOICE_LINE points into RA3-ChineseVoice\\work (other repo); the REPO/work line uses CNV_WORK",
+    'experimental/simui/game.py': "VOICE_LINE points into RA3-ChineseVoice\\work (other repo)",
+    'demo/voice_snapshot.py': 'ships standalone inside the demo zip, which does not carry labpaths.py; keeps the CNV_WORK expression inline',
+    'experimental/outsource/codex_task.py': "bench_dirs() names the MAIN checkout's work (LAB/RA3-CampaignLab/work) as a writable dir for the Codex sandbox on purpose; CNV_WORK still overrides",
     'tests/test_work_path.py': 'this file spells the patterns',
 }
 HAND = re.compile(r"""os\.path\.join\([^\n]*?,\s*['"]work['"]|['"]work['"]\s*/|/\s*['"]work['"]""")
@@ -48,6 +50,6 @@ def test_no_hand_built_work_path():
         if f in ALLOW:
             continue
         for n, line in enumerate((ROOT / f).read_text(encoding='utf-8', errors='replace').splitlines(), 1):
-            if HAND.search(line) and 'CNV_WORK' not in line:
+            if HAND.search(line) or "environ.get('CNV_WORK')" in line:
                 bad.append(f'{f}:{n}: {line.strip()[:120]}')
     assert not bad, 'build the work path from labpaths.WORK / CNV_WORK:\n' + '\n'.join(bad)

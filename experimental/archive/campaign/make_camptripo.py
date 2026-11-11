@@ -15,6 +15,8 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import make_campnew24 as c24                    # noqa: E402
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'campaign')))
+import labpaths  # noqa: E402
 
 c23, c7, c4, c2 = c24.c23, c24.c7, c24.c4, c24.c2
 NAME = 'CampTripo1'                             # <= 15 characters, no underscore (skudef rule)
@@ -23,7 +25,7 @@ c2.SRC_DIR = os.path.join(c2.SDK, 'Mods', NAME, 'data')
 c2.BUILT = os.path.join(c2.SDK, 'BuiltMods', 'mods', NAME.lower(), 'data')
 c2.OUT = c4.OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods', NAME)
 c7.MAP_MOD = NAME + 'Map'
-c24.AI_SRC = os.path.join((os.environ.get('CNV_WORK') or os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work')), 'units', 'tripo',
+c24.AI_SRC = os.path.join(labpaths.WORK, 'units', 'tripo',
                           os.environ.get('CNV_TRIPO', 'blend5k'))
 c4.c3.STRINGS['Name:' + c24.AI_UNIT] = 'CNV 轻型坦克（Tripo）'
 # 游隼's close-up scale (CampNew25) unless CNV_TRIPO_SCALE (1.0 = v1's size, about the Guardian's: details readable)
@@ -53,6 +55,6 @@ c24.c6.edit = _with_guardian
 
 if __name__ == '__main__':
     if c23.game_running():
-        c2.OUT = c4.OUT = os.path.join((os.environ.get('CNV_WORK') or os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work')), 'staging', NAME)
+        c2.OUT = c4.OUT = os.path.join(labpaths.WORK, 'staging', NAME)
         print('RA3 is running -> staging at', c4.OUT)
     c4.main()
