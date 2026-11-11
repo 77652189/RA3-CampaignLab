@@ -4076,6 +4076,15 @@ class Sim:
                         self.attachments[by.name] = (by, t, rule)
                         self.attachment_tick()
                     for effect in w.get('special_powers', []):
+                        # engine_spng a: one OBJECT gate reads the caster, not the victim.
+                        required = effect.get('required_upgrade', '')
+                        forbidden = effect.get('forbidden_upgrade', '')
+                        if any(simunits.upgrade_type(up, self.own) != 'OBJECT' for up in (required, forbidden) if up):
+                            self.gap(GAP_WEAPON, 'SpecialPowerNugget', '升级门槛仅对拍单个OBJECT升级；PLAYER/未知类型待核')
+                            continue
+                        held = {up.lower() for up in by.upgrades}
+                        if (required and required.lower() not in held) or (forbidden and forbidden.lower() in held):
+                            continue
                         if ((effect['include'] and not set(effect['include']) & t.kinds)
                                 or set(effect['exclude']) & t.kinds):
                             continue

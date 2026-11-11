@@ -276,7 +276,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v25.json')    # v25: MetaImpact omitted ShockWaveZMult defaults to 1; partial effects retain gaps
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v27.json')    # v27: retain SpecialPowerNugget single upgrade gates; PLAYER gates remain unmodeled
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -464,7 +464,10 @@ def _weapons(texts, base_table=None):
             for h, inner in _blocks(bare, 'SpecialPowerNugget'):
                 filters = list(_blocks(inner, 'SpecialObjectFilter'))
                 rest = re.sub(r'<SpecialObjectFilter\b[^>]*/>', '', inner).strip()
-                if (rest or len(filters) > 1 or any(war)
+                required = re.findall(r'<RequiredUpgrade>\s*([^<>\s]+)\s*</RequiredUpgrade>', rest)
+                forbidden = re.findall(r'<ForbiddenUpgrade>\s*([^<>\s]+)\s*</ForbiddenUpgrade>', rest)
+                rest = re.sub(r'<(RequiredUpgrade|ForbiddenUpgrade)>\s*[^<>\s]+\s*</\1>', '', rest).strip()
+                if (rest or len(required) + len(forbidden) > 1 or len(filters) > 1 or any(war)
                         or set(re.findall(r'(\w+)\s*=', h)) - {'id', 'SpecialPowerTemplate'}
                         or (filters and (filters[0][1].strip() or _attr(filters[0][0], 'Rule', 'ANY') != 'ANY'
                             or set(re.findall(r'(\w+)\s*=', filters[0][0])) - {'Rule', 'Include', 'Exclude'}))):
@@ -473,7 +476,9 @@ def _weapons(texts, base_table=None):
                     f = filters[0][0] if filters else ''
                     special_powers.append(dict(power=_attr(h, 'SpecialPowerTemplate'),
                                                include=_attr(f, 'Include', '').split(),
-                                               exclude=_attr(f, 'Exclude', '').split()))
+                                               exclude=_attr(f, 'Exclude', '').split(),
+                                               required_upgrade=required[0] if required else '',
+                                               forbidden_upgrade=forbidden[0] if forbidden else ''))
             if special_powers:
                 got['special_powers'] = special_powers
             attachments = []
@@ -1886,8 +1891,12 @@ def _upgrade_table():
     return _upgrades
 
 
-def upgrade_type(upgrade):
-    """'OBJECT' (an object holds it: the tiers), 'PLAYER' (the player holds it) or '' (not in upgrade.xml)."""
+def upgrade_type(upgrade, own=None):
+    """'OBJECT', 'PLAYER' or ''; mission declarations precede retail upgrade.xml."""
+    for xml in (own or {}).values():
+        for head, _ in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'UpgradeTemplate'):
+            if (_attr(head, 'id') or '').lower() == upgrade.lower():
+                return (_attr(head, 'Type', '') or '').upper()
     return _upgrade_table().get(upgrade.lower(), (0, 0.0, [], [], ''))[4]
 
 
