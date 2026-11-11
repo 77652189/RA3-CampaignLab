@@ -313,15 +313,24 @@ class Brain:
         name = next((k for k, v in self.ids.items() if v == tid), None)
         return self.sim.bodies.get(name) if name else None
 
+    def living(self):
+        """What the AI perceives: the world's living bodies but SpawnBehavior's slaves (a war factory's repair drones,
+        AIRCRAFT NOT_AUTOACQUIRABLE SUMMONED). INFERRED from the bench: aiskirm (a/c/i-p) and aiskvinf z were read
+        with the player's map-placed war factory and its 3 drones up, and the AI built, ranked and attacked as if
+        they were not there; since sim.py spawns them (Codex E 7b9bb57) counting them turned the Peacekeeper's
+        expected efficiency against conscripts 0.033 -> 1e-5 (nothing it has hits them) and moved the Cleanup
+        attack. Whether 0x8bd780's unit category 0xd and the target scan skip slaves is NOT READ."""
+        return [b for b in self.sim.living() if getattr(b, 'spawn_parent', None) is None]
+
     def look(self, frame):
-        """The view's things (every living body but scenery: the AI sees the whole map, INFERRED) and who got hurt.
-        Rebuilt once a DT tick (bodies move and fight once a tick)."""
+        """The view's things (every living body but scenery and slaves, self.living: the AI sees the whole map,
+        INFERRED) and who got hurt. Rebuilt once a DT tick (bodies move and fight once a tick)."""
         s, tg = self.sim, self.host.mod['targets']
         if self.seen_t == s.t:
             return
         self.seen_t = s.t
         things = []
-        for b in s.living():
+        for b in self.living():
             if b.scenery:
                 continue
             i = self.tid(b)
@@ -340,7 +349,7 @@ class Brain:
 
     def facts(self):
         """The ctx the strategic states read, from the world."""
-        mine = [b for b in self.sim.living() if b.owner == self.player]
+        mine = [b for b in self.living() if b.owner == self.player]
         building = set()
         for t in [j['template'] for q in self.yard_q.values() for j in q] + self.unit_q:
             building |= self.host.kinds(t)
@@ -374,7 +383,7 @@ class Brain:
         """ctx 'income' (IncomeAdvantageHeuristic, 0x8c5100, read: player +0x38 -> [0] +0x34 of each side x 1/90; both
         0 -> 1, the enemy's <= 0 -> 9999): what +0x34 holds is not read -- INFERRED a rate that grows with the miners
         at work, so here the owner's harvesters while it has a refinery (only the ratio of the two sides counts)."""
-        mine = [b for b in self.sim.living() if b.owner == owner]
+        mine = [b for b in self.living() if b.owner == owner]
         if not any('REFINERY' in b.kinds for b in mine):
             return 0
         return sum('HARVESTER' in b.kinds for b in mine)
@@ -392,7 +401,7 @@ class Brain:
 
         def side(owner, kinds, defenses):
             kinds = set(kinds.split())
-            return [b for b in self.sim.living() if not b.scenery and b.owner == owner
+            return [b for b in self.living() if not b.scenery and b.owner == owner
                     and (b.weapons and defenses if 'STRUCTURE' in b.kinds else not kinds or kinds & set(b.kinds))]
         mine = self.fighters(side(self.player, own_kindof, own_defenses))
         theirs = self.fighters(side(foes[0], enemy_kindof, enemy_defenses))
@@ -452,7 +461,7 @@ class Brain:
         """TacticsBlock's fight hook (the team state, 0x8cdb70): the members and every living enemy body as
         Fighters; rate = the sum of the dps of the weapons that can hit the other, times its armour (Sim.can_hit /
         the firing rule); vision = its VisionRange alone (Body.sight, 0x725c80; not the shroud clearing range)."""
-        foes = [b for b in self.sim.living()
+        foes = [b for b in self.living()
                 if not b.scenery and b.owner != self.player and b.owner in self.view.enemies]
         live = [u for u in team.members if u.body.alive]
         mem = self.fighters([u.body for u in live])
@@ -510,7 +519,7 @@ class Brain:
         for t in (b.goal, getattr(b, 'chase', None)):
             if isinstance(t, sim.Body) and t.alive and t.owner in self.view.enemies:
                 return t
-        near = [(math.hypot(t.x - b.x, t.y - b.y), k, t) for k, t in enumerate(self.sim.living())
+        near = [(math.hypot(t.x - b.x, t.y - b.y), k, t) for k, t in enumerate(self.living())
                 if not t.scenery and t.owner in self.view.enemies]
         near = [n for n in near if n[0] - n[2].radius <= reach]
         return min(near)[2] if near else None
@@ -645,7 +654,7 @@ class Brain:
         tc, pl = self.host.mod['tactics'], self.host.mod['player']
         p = pl.efficiency_params(ai.personality)
         near, mult = p['UnitBuilderEnemyNearbyDistance'], p['UnitBuilderEnemyNearbyMultiplier']
-        live = [b for b in self.sim.living() if not b.scenery]
+        live = [b for b in self.living() if not b.scenery]
         hx, hy = self.home
         mine = self.fighters([b for b in live if b.owner == self.player and 'STRUCTURE' not in b.kinds])
         foe_units = [b for b in live if b.owner in self.view.enemies and 'STRUCTURE' not in b.kinds]
@@ -674,7 +683,7 @@ class Brain:
 
     def units(self, ai, frame):
         out = []
-        for b in self.sim.living():
+        for b in self.living():
             if b.owner != self.player or 'STRUCTURE' in b.kinds or b.speed <= 0:
                 continue
             if 'HARVESTER' in b.kinds or 'IGNORES_SELECT_ALL' in b.kinds:

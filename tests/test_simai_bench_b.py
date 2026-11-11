@@ -419,6 +419,10 @@ def test_the_expected_efficiency_ranks_the_counter_first(lib, build, best, other
     same one first (the orders it gives: the two tests below)."""
     w = simai.run(build, 'z', 25, lib=lib)
     b = next(iter(w.brains.values()))
+    # the player's map-placed war factory has its 3 repair drones (sim.py SpawnBehavior, Codex E 7b9bb57) and the
+    # AI does not count them (SimAI.living; counted, nothing of the barracks hits them and the ranking flips)
+    slaves = [x for x in w.sim.living() if getattr(x, 'spawn_parent', None) is not None]
+    assert len(slaves) == 3 and not set(map(id, slaves)) & set(map(id, b.living())), slaves
     ex = b.expected(b.ai, 0, [best, other])
     assert ex[best] > ex[other] > 0
 
@@ -433,11 +437,10 @@ def test_against_tanks_the_barracks_builds_javelins(lib, monkeypatch):
     assert rows[-1]['标枪总数'] >= 10 and rows[-1]['标枪总数'] >= 5 * rows[-1]['维和总数']
 
 
-@pytest.mark.xfail(strict=True, reason='simai aiskvinf builds 5 Peacekeepers and 9 Javelins by s170 (bench 7 / 0): '
-                                       'with ~5 Peacekeepers owned its expected efficiency ranks the Javelin first '
-                                       '(1.37 vs 1.34) -- the pair damage rate 0x8974b0 / 0x892310 is NOT READ')
 def test_against_conscripts_the_barracks_builds_no_javelin(lib, monkeypatch):
-    """aiskvinf (the player owns 10 conscripts): bench 维和 7 by s164, 标枪 0 to s169."""
+    """aiskvinf (the player owns 10 conscripts): bench 维和 7 by s164, 标枪 0 to s169. B round 129's strict xfail
+    (sim 5 / 9, the Javelin ranked first) was the player's war factory drones in the AI's count (aircraft: only the
+    Javelin hits them); without them (SimAI.living) the simulator builds no Javelin."""
     monkeypatch.setattr(simai.SimAI, 'efficiency', True)
     _, rows = _probe_run('aiskvinf', lib, 170, 'z')
     assert rows[-1]['维和总数'] >= 4 and rows[-1]['标枪总数'] == 0

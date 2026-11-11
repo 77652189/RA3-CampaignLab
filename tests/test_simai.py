@@ -395,10 +395,9 @@ def test_outgunned_team_walks_home_alive_and_goes_again(lib):
     assert any(r['到远厂'] >= 1 for r in rows[again:])
 
 
-@pytest.mark.xfail(strict=True, reason='bench airet: 16 s home before going again and 4 alive to s85; the simulator '
-                                       '9 s (members within READY_RADIUS of the base are ready at once, INFERRED) '
-                                       'and loses one on the second trip')
 def test_outgunned_team_home_stay_and_losses_match_the_bench(lib):
+    # bench airet: 16 s home before going again and 4 alive to s85. Was strict xfail (sim 9 s, one lost on the second
+    # trip); passes since the engine model's f67a739 (line C: retreat order readiness before the attack rejoins)
     _, rows = _switch_run('airet', lib, until=85.0)
     out = _left(rows)
     back = next(i for i in range(out, len(rows)) if rows[i]['步兵在家'] == 4)
