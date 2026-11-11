@@ -34,8 +34,9 @@ def test_pullback_threshold_high_returns_before_recycling(returns):
     assert all(r['坦克数'] == 4 for r in rows[14:home + 1])
 
 
-@pytest.mark.xfail(strict=True, reason='Crane recycling is not implemented; this slice models injured return only. '
-                   'Bench high0.5 has alive0 from s28. See work/re/handoff-c.md, next recycling slice.')
+@pytest.mark.xfail(strict=True, reason='Crane entry/deletion scheduling and refund basis lack implementation evidence; '
+                   'bench high0.5 has alive0 from s28, but area counters cannot identify that lifecycle. '
+                   'See work/re/handoff-c.md, Crane recycling evidence gap.')
 def test_pullback_threshold_high_is_recycled_after_return(returns):
     """checks/engine_aipullpct.py: high tanks disappear after reaching the Crane."""
     _, rows = returns['aipullpcthi']
