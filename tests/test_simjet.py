@@ -23,8 +23,7 @@ def test_jet_vindicator_ordinary_move_first_entry_and_survival(check):
     rows = [(sec, row) for sec, row in e.series if sec >= 2]
     assert rows and all(row[3] == 100 for _, row in rows)
     arrived = [row for _, row in rows if row[1] == 1]
-    # Bench a s6-s26: 97/1/1/100; b s3-s26: 47/1/1/100. Timing is checked separately;
-    # the coarse model's sample clock is not the bench's screenshot clock.
+    # Bench a s6-s26: 97/1/1/100; b s3-s26: 47/1/1/100.
     assert arrived and all(row[1:] == [1, 1, 100] for row in arrived)
     measured = 97 if check == 'a' else 47
     assert build.report(t, [(sec, [measured, 1, 1, 100]) for sec in range(6, 25)])[1] == 0
@@ -39,15 +38,10 @@ def test_jet_vindicator_ordinary_move_first_entry_and_survival(check):
 
 @pytest.mark.parametrize('check, measured', [('a', 97), ('b', 47)])
 @pytest.mark.parametrize('frame_clock', [False, True], ids=['default', 'frame-reference'])
-@pytest.mark.xfail(strict=True, reason='E40 engine_jet:a/b bench 97/47; default 91/39, '
-                   'frame reference 92/42 leaves common 5-frame timing gap; '
-                   'work/re/handoff-e.md 待答问题 E40')
 def test_jet_vindicator_first_entry_frame_matches_bench(check, measured, frame_clock):
     """Both movement clocks must eventually match the independent bench counters.
 
-    shot_clock changes the movement cadence here; it does not model Jet startup.
-    Keep the measured target unchanged in both cases, so fixing coarse phase
-    alone cannot silently close the engine timing gap.
+    Jet startup uses its own frame cadence under either global movement clock.
     """
     import build
     import sim
@@ -60,3 +54,80 @@ def test_jet_vindicator_first_entry_frame_matches_bench(check, measured, frame_c
     arrived = [row for _, row in e.series if row[1] == 1]
     assert arrived
     assert {row[0] for row in arrived} == {measured}
+
+
+@pytest.mark.parametrize('check, entry', [('a', 112), ('b', 62)])
+@pytest.mark.parametrize('frame_clock', [False, True])
+def test_jet_startup_replays_d43_frame_positions(check, entry, frame_clock):
+    """D43 a/b share the whole startup, not just a fitted endpoint counter."""
+    import build
+    import sim
+
+    m, t, _ = build.resolve('engine_jet', check)
+    e = sim.Sim(m, t)
+    e.shot_clock = frame_clock
+    jet = e.body(m.role('jet').name)
+    positions = {}
+    move = e.move
+
+    def record(dt=sim.DT, precise=False):
+        move(dt, precise)
+        if precise:
+            positions[e.eng.frame] = (jet.x, jet.y)
+
+    e.move = record
+    e.run(9)
+    # Public measurements from D43's read-only position probe, rounded to 0.1.
+    startup_x = [582.7, 586.2, 590.5, 595.6, 601.5, 608.2, 615.7,
+                 624.0, 633.1, 643.0, 653.7, 665.2, 677.2]
+    for frame, x in enumerate(startup_x, 16):
+        assert positions[frame] == pytest.approx((x, 2375), abs=.051)
+    assert positions[29][0] - positions[28][0] == pytest.approx(12)
+    edge = t.waypoints['Jet Goal'][0] - 100
+    assert positions[entry - 1][0] < edge <= positions[entry][0]
+    assert ('JetAIUpdate', jet.template) in e.unmodeled  # unmeasured states remain visible
+
+
+@pytest.mark.parametrize('variant', ['turn', 'configuration', 'repeated', 'speed-change'])
+def test_jet_unmeasured_motion_does_not_reuse_startup(variant):
+    import build
+    import sim
+
+    m, t, _ = build.resolve('engine_jet', 'a')
+    e = sim.Sim(m, t)
+    jet = e.body(m.role('jet').name)
+    if variant == 'turn':
+        jet.angle = 1
+    elif variant == 'configuration':
+        e.own[jet.template] = '<GameObject id="AlliedAntiGroundAircraft" inheritFrom="AlliedAntiGroundAircraft"/>'
+    e.order_move(jet, 'Jet Goal', False)
+    if variant == 'repeated':
+        assert jet.jet_motion is not None
+        e.order_move(jet, 'Jet Goal', False)
+        jet.path = []
+        e.order_move(jet, 'Jet Goal', False)
+        assert jet.jet_motion is None
+    elif variant == 'speed-change':
+        assert jet.jet_motion is not None
+        jet.speed = 90
+        import simjet
+        assert simjet.distance(e, jet) == 6
+        jet.speed = 180
+        assert simjet.distance(e, jet) == 12  # cannot restart the measured acceleration
+    else:
+        assert jet.jet_motion is None
+    assert ('jet movement', jet.template) in e.unmodeled
+
+
+def test_jet_routing_leaves_ground_movement_on_its_existing_clock():
+    import build
+    import sim
+
+    m, t, _ = build.resolve('engine_jet', 'a')
+    m.objects[0].template = 'AlliedAntiInfantryVehicle'
+    e = sim.Sim(m, t)
+    vehicle = e.body(m.role('jet').name)
+    e.order_move(vehicle, 'Jet Goal', False)
+    assert vehicle.path and not vehicle.frame_move and vehicle.jet_motion is None
+    assert not vehicle.jet_started and not e.frame_movers
+    assert not any(kind in ('jet movement', 'JetAIUpdate') for kind, _ in e.unmodeled)

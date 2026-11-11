@@ -565,8 +565,10 @@ class Body:
     topple_end: int = None
     follow: dict = None                                         # on a waypoint path (order_follow): label, the waypoint
                                                                 # it is going to, how; shared by a team that goes as one
-    frame_move: bool = False                                    # paths through topple props need frame-sized collision steps
+    frame_move: bool = False                                    # topple contact / measured Jet startup need frame-sized steps
     drive_speed: float = 0.0
+    jet_motion: dict = None                                     # simjet: measured first eastbound startup only
+    jet_started: bool = False
     health_floor: float = 1.0                               # ManagerBody proxy: inferred 1% effective HP; normal immortal 1 HP
     hold_fire: bool = False                                     # UNIT_SET_STANCE 3 (HOLD_FIRE): fires only at a
                                                                 # target it was ordered on (stance.md a / b / d / e)
@@ -996,7 +998,7 @@ class Sim:
         self.attachment_known_status = {'ATTACHED'}
         self.suppression_fields = []        # (end, value, x, y, radius): stationary hit contributions
         self.topples = []                   # ToppleUpdate objects; neutral props can be knocked over too
-        self.frame_movers = {}              # bodies whose current path crosses a topple object's footprint
+        self.frame_movers = {}              # topple contact paths and measured Jet startup
         self.refs = {}                      # reference name (UNITRef - ...) -> the Body a SET_REF_TO_... pointed it at
         self.object_lists = {}              # OBJECTLIST_ADDOBJECTTYPE: list name -> {template}, both lower case
         self.base_power = {}                # PLAYER_SET_BASE_POWER: player -> supply added to its objects' (INFERRED)
@@ -2322,10 +2324,12 @@ class Sim:
                                 f'原地就是能到的最近处，站着')
             b.stood_for = b.dest
         import simtopple
+        import simjet
+        b.jet_motion = simjet.start(self, b, path)
         points = [(b.x, b.y)] + path
-        b.frame_move = self.eng is not None and any(o.alive and simtopple.crosses(b, o, a, z, self.own)
+        b.frame_move = self.eng is not None and (b.jet_motion is not None or any(o.alive and simtopple.crosses(b, o, a, z, self.own)
                                                   for o in self.topples if o is not b
-                                                  for a, z in zip(points, points[1:]))
+                                                  for a, z in zip(points, points[1:])))
         if b.frame_move:
             if not b.path:
                 b.drive_speed = 0.0
@@ -4730,7 +4734,7 @@ class Sim:
     _crushable_pool = None
 
     def move(self, dt=DT, precise=False):
-        """Move one coarse tick, or one frame on paths crossing ToppleUpdate props (collision / removal timing)."""
+        """Move a coarse tick, or one frame for topple collisions / measured Jet startup."""
         self._crushable_pool = None
         for b in list(self.frame_movers.values()) if precise else self.living():
             if not b.alive or b.frame_move != precise:
@@ -4757,7 +4761,10 @@ class Sim:
             if not b.path or 'IMMOBILE' in b.status or b.engaged or self.emp_disabled(b):
                 continue
             left = b.speed * dt
-            if precise:
+            if precise and b.jet_motion is not None:
+                import simjet
+                left = simjet.distance(self, b)
+            elif precise:
                 import simtopple
                 speed, acceleration = simtopple.motion(b.template, self.own)
                 base = simunits.stats(b.template, self.own)['speed']

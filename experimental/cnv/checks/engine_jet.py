@@ -18,22 +18,22 @@ Bench 2026-11-11, CampJetA_mcp_1111_050503: PASS; s1-s5 flight counter
 30/42/57/72/88, then s6-s26 97/1/1/100. First-entry counter=97;
 thereafter inside=1 and health=100 throughout the observed run. Do not derive
 an absolute order-to-arrival time from screenshot seconds (their clock differs).
-Model: 91/1/1/100; endpoint/survival replay passes, exact counter strict xfail
+E53 model: 97/1/1/100; endpoint, survival and exact counter replay pass
 in tests/test_simjet.py. No claim about circling trajectory or whole module.
 
 600-distance control b, CampJetB_mcp_1111_053444: s1=29/0/0/100,
 s2=42/0/0/100, s3-s26=47/1/1/100. Engine distance delta 600 takes
 50 frames, consistent with speed 180. Ideal constant-speed entry references
 are 91.67 and 41.67; both measured counts exceed those by 5.33 frames.
-This supports a common startup contribution, but cannot separate takeoff,
-acceleration and initial circling. Model counts 91 and 39 have different
-coarse movement-step phase errors; do not add a constant to fit either one.
+The later D43 position probe separates horizontal acceleration from takeoff
+and circling; E53 models the measured startup instead of fitting either endpoint.
 
-Offline E40: shot_clock frame movement (same scripts and speed, no startup
-model) gives 92/42. Coarse phase therefore accounts for 1 and 3 frames of the
-respective 6/8-frame gaps, leaving 5 frames to each measured integer counter. Both
-clocks retain strict xfails against 97/47. This does not identify the engine's
-takeoff, acceleration or initial circling mechanism; no timing fit is applied.
+E53/D43: Go frame 16 moves 2.7 horizontally (mechanism INFERRED), then +0.8
+per frame to 12 at frame 28. The first 12 steps cover 85.2 instead of 144.
+Frame-based Jet movement under either global clock now replays a/b 97/47,
+including entry frames 112/62 and the shared startup positions. No third distance
+bench was run. Only the original Vindicator's first stationary eastbound plain
+move is enabled; modified configurations, turns and repeated orders report gaps.
 """
 from maps import festival
 from parts import Mission, Script, Test, counted, square
