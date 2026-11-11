@@ -5,10 +5,13 @@ contribution is born with 45 frames, 1.1 s with 17 (16.5), and engine_suppress_p
 (29.25 -- rounding would give 29): the entry born at frame 92 reads 0x1e and is gone at frame 122
 (run CampSPFraction_mcp_1110_224839, counters 59/59 PASS). The simulator stamps each hit with simunits._frames.
 """
-import sys
+import importlib.util
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'experimental' / 'cnv'))
+# loaded by file: simbench.py puts the cnv folders on the path itself (no new sys.path edit here: guard G4's ceiling)
+_spec = importlib.util.spec_from_file_location(
+    'simbench_sp', Path(__file__).resolve().parents[1] / 'experimental' / 'cnv' / 'simbench.py')
+_spec.loader.exec_module(importlib.util.module_from_spec(_spec))
 
 import simunits  # noqa: E402
 from checks import engine_suppression  # noqa: E402
