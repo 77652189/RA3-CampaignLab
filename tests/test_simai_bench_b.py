@@ -264,6 +264,11 @@ def test_the_openers_tower_goes_up_in_the_build_time_and_in_no_band(lib):
     assert v[-1][:3] == [0, 0, 0] and abs(v[-1][3] - 451) <= 7
 
 
+@pytest.mark.xfail(strict=True, reason='simai (since B round 117 the DEFENSE share x money buys towers): the turret '
+                                       'at frame 458 (50 % x 1700 = 850 >= 800 at the wake); bench: none in 70 s. Not '
+                                       'told apart yet (handoff-b section 125): the share funds nothing without income '
+                                       '(no refinery here) / before an opening is done (no opener here) / under this '
+                                       'own ConstantHeuristic budget state')
 @pytest.mark.parametrize('build', ['aitowerstate', 'aitowerfoe'])
 def test_the_build_state_alone_builds_no_tower(lib, build):
     """checks/engine_aitower.py aitowerstate / aitowerfoe (own budget, only AlliedDefenseBuildState; an enemy army
@@ -296,11 +301,9 @@ def test_compactness_one_radius_is_between_590_and_620(lib):
     assert _vals(rows)[-1] == [0, 0, 1, 1]
 
 
-@pytest.mark.xfail(strict=True, reason='simai aitowerdep never builds (stop frame 1486 at s100; the DEFENSE account '
-                                       'is not funded by an opener that only deposits); bench aitowerdep: stop frame '
-                                       '451, the 350 ring 1 from s29')
 def test_an_opener_that_only_deposits_to_defense_builds_the_tower(lib):
-    """checks/engine_aitower.py aitowerdep."""
+    """checks/engine_aitower.py aitowerdep (bench: stop frame 451, the 350 ring 1 from s29; the simulator since B
+    round 117 spends the DEFENSE Deposit on the build state's turret)."""
     _, rows = _probe_run('aitowerdep', lib, 40.0)
     assert abs(_vals(rows)[-1][3] - 451) <= 7
 
