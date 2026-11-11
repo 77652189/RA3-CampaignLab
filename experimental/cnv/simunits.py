@@ -1655,7 +1655,7 @@ def spawn_modules(template, own=None):
     """Nearest SpawnBehavior group; only the engine_spawn repair-drone configuration is supported.
 
     Compare the complete subtree so new flags or child variants remain explicit gaps.
-    Even the supported configuration only implements initial burst and parent removal.
+    Even the supported configuration only implements initial burst, death refill and parent removal.
     """
     import xml.etree.ElementTree as ET
 

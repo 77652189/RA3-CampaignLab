@@ -271,7 +271,7 @@ NOTES = {
                                          '人炮扔出的兵原版 / 改慢 / 改快三份读数一样（AIRBORNE_TARGET 1-125 帧、22 帧到点、降落伞约 96 帧），'
                                          '不归本模块。gap：被举起后落下（ActivateLiftObjectNugget / LiftObjectUpdate，C 线举升暂停）'
                                          '可能用到下落速度，落地时刻会影响逻辑，未上台；同 id 覆盖是否生效未排除'),
-    (MODULE, 'Behaviors/SpawnBehavior'): (GUESSED, '局部已测：engine_spawn:spawn盟军战车工厂开局3架、母体死亡/删除同秒清随从（tests/test_simspawn.py）；gap：补充、失电/占领、展开时机及其他完整配置未实现，生成位置INFERRED；不借SlavedUpdate/AttachUpdate维修或无人机计数特性登记整模块'),
+    (MODULE, 'Behaviors/SpawnBehavior'): (GUESSED, '局部已测：engine_spawn:spawn开局3架及母体死亡/删除清随从；engine_spawn_refill:refill两架分别死亡10秒后补回（tests/test_simspawn.py显式预置贴车位置）；gap：自主维修飞行、子体直接删除、失电/占领、展开时机及其他完整配置，生成位置和秒内相位INFERRED；不登记整模块'),
     (MODULE, 'Behaviors/SlavedUpdate'): (TODO, f'{_NOT_IN_SIM}（没有随从跟随）'),
     (MODULE, 'Behaviors/BezierProjectile'): (TODO, f'{_NOT_IN_SIM}（开火按每秒伤害直接扣血，没有弹体）'),
     (MODULE, 'Behaviors/ProjectileUpdate'): (TODO, f'{_NOT_IN_SIM}（开火按每秒伤害直接扣血，没有弹体飞行时间）'),

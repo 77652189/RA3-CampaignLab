@@ -152,7 +152,9 @@ def refill_test(m):
                                             (100, alive('north mig')), (1000, alive('west mig'))])
     counted('CNV_Refill_North', '北车血量', t, health=n('north'))
     counted('CNV_Refill_West', '西车血量', t, health=n('west'))
-    t.expect = [('无人机总数', 0, 'ever>=', 3, BLAST1 - 2)]
+    t.expect = [('无人机总数', 0, 'ever>=', 3, BLAST1 - 2),
+                ('无人机总数', 13, '==', 1, 16), ('无人机总数', 19, '==', 2, 20),
+                ('无人机总数', 24, '==', 3)]
     t.bench = [('bench_watch', dict(seconds=REFILL_RUN, every=1, sheet=False, lines=4))]
     return t
 

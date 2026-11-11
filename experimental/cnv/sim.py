@@ -576,6 +576,9 @@ class Body:
                                                                 # 2, HOLD_FIRE 3 (idle_chase reads 1 / 2)
     z: float = None                                         # None: on terrain; airborne MetaImpact sets world z
     spawned_children: list = dataclasses.field(default_factory=list)
+    spawn_parent: object = None
+    spawn_module: str = ''
+    spawn_refills: list = dataclasses.field(default_factory=list)
 
     def damage(self, amount):
         """The body's health floor (Generals reference: internalChangeHealth). A PropBody takes none (engine_propbody a)."""
@@ -1170,17 +1173,36 @@ class Sim:
             rules[template] = simunits.spawn_modules(template, self.own)
         for mid, child_template in rules[template].items():
             self.gap('SpawnBehavior', template,
-                     '仅盟军战车工厂配置开局3架及母体死亡/删除清随从已量；补充、失电、占领、'
+                     '仅盟军战车工厂配置开局3架、死亡10秒补充及母体清随从已量；子体直接删除、失电、占领、'
                      '展开时机、其他配置未建模；生成位置INFERRED；不含SlavedUpdate/AttachUpdate维修')
             if not child_template or by:  # construction/unpack and scripted creation have not been measured
                 continue
+            if not b.spawned_children:
+                self.__dict__.setdefault('_spawn_parents', []).append(b)
             for i in range(3):
-                child_name = f'#spawn {name} {mid} {i}'
-                while child_name in self.bodies:
-                    child_name += '#'
-                child = self.add(child_name, child_template, owner, x, y, by=name, at=at)
-                b.spawned_children.append(child)
+                self.spawn_child(b, mid, child_template, at)
         return b
+
+    def spawn_child(self, parent, mid, template, at):
+        """Measured drone group only; centre placement remains INFERRED (no autonomous repair flight)."""
+        name = f'#spawn {parent.name} {mid} {len(parent.spawned_children)}'
+        while name in self.bodies:
+            name += '#'
+        child = self.add(name, template, parent.owner, parent.x, parent.y, by=parent.name, at=at)
+        child.spawn_parent, child.spawn_module = parent, mid
+        parent.spawned_children.append(child)
+        return child
+
+    def spawn_due(self, frame):
+        """engine_spawn_refill: independent death + 10s replacements; subsecond phase INFERRED."""
+        for parent in self.__dict__.get('_spawn_parents', ()):
+            if not parent.alive:
+                continue
+            for item in list(parent.spawn_refills):
+                due, mid, template = item
+                if due <= frame:
+                    parent.spawn_refills.remove(item)
+                    self.spawn_child(parent, mid, template, self.t)
 
     def expire(self, frame):
         """R1: whatever's lifetime is up by `frame` dies (killed, as the game's LifetimeUpdate: NAMED_DESTROYED, gone
@@ -2349,6 +2371,15 @@ class Sim:
                 b.toppled, b.topple_end = True, self.frame_now() + b.topple['delay']
             return
         b.alive, b.deleted, b.path, b.died_at = False, delete, [], self.t
+        b.spawn_refills.clear()
+        parent = b.spawn_parent
+        if parent is not None and parent.alive:
+            if delete:
+                self.gap('SpawnBehavior', parent.template, '子体直接删除是否补充未测；不作为死亡通知')
+            else:
+                # The complete accepted configuration fixes SpawnReplaceDelayData at 10s.
+                parent.spawn_refills.append((self.frame_now() + simunits._frames(10.0),
+                                             b.spawn_module, b.template))
         for child in b.spawned_children:
             # engine_spawn: both script kill and delete remove all three in the same sample.
             # Removal via deletion (rather than a lethal hit) is INFERRED; child death effects unmeasured.
@@ -3416,6 +3447,7 @@ class Sim:
             self.blast_due(eng.frame)
             self.wfire_due(eng.frame)
             self.death_blast_due(eng.frame)
+            self.spawn_due(eng.frame)
             self.sweeps.due(eng.frame)
             self.deposit_due(eng.frame)
             self.mine_due(eng.frame)
@@ -3525,6 +3557,7 @@ class Sim:
                 if s.once:
                     self.done.add(s.name)
         self.expire(self.frame_now())
+        self.spawn_due(self.frame_now())
         self.garrison.due()
         self.suppression_tick()
         self.build_due(self.frame_now())

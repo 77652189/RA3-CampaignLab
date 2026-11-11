@@ -39,3 +39,64 @@ def test_spawn_unmeasured_flags_and_subtrees_do_not_generate_children():
                                 '<SpawnTemplate>AlliedAirfieldRepairDrone</SpawnTemplate>'),
                     xml.replace('DeathTypes="ALL"', 'DeathTypes="NORMAL"')):
         assert list(simunits.spawn_modules('AlliedWarFactory', {'AlliedWarFactory': changed}).values()) == [None]
+
+
+def test_spawn_refill_two_independent_deaths_match_named_bench_with_position_precondition():
+    """engine_spawn_refill:refill, isolated from unmodeled AttachUpdate/SlavedUpdate flight.
+
+    Place one initial drone at each repair target before replay; the named recipe's real
+    MiG death weapons must cause the deaths. Never inject death times or count offsets.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_spawn_refill', 'refill')
+    e = sim.Sim(m, t)
+    parent = e.body(m.role('keep factory').name)
+    first = list(parent.spawned_children)
+    for child, role in zip(first, ('north', 'west')):
+        target = e.body(m.role(role).name)
+        child.x, child.y = target.x, target.y
+    rows = e.run(30).series
+    for start, end, expected in ((2, 5, 3), (9, 9, 2), (12, 15, 1), (19, 19, 2), (24, 29, 3)):
+        got = [v[0] for at, v in rows if start <= at <= end]
+        assert got and all(v == expected for v in got), (expected, got)
+    changes = []
+    for at, values in rows:
+        if not changes or values[0] != changes[-1][1]:
+            changes.append((at, values[0]))
+    assert [count for _, count in changes] == [3, 2, 1, 2, 3]
+    # New bench: s7/s10 deaths, s17/s20 refill. Compare elapsed time, since the
+    # bench's whole-second sampling origin differs from the simulator's.
+    for dead, refill in ((1, 3), (2, 4)):
+        assert abs(changes[refill][0] - changes[dead][0] - 10) <= 1
+    assert all(not c.alive and not c.deleted for c in first[:2])
+    assert first[2].alive
+    assert len(parent.spawned_children) == 5
+    assert sum(c.alive for c in parent.spawned_children) == 3
+    assert all(c.spawn_parent is parent and c.owner == parent.owner for c in parent.spawned_children)
+
+
+def test_spawn_refill_tracks_actual_death_frame_and_parent_removal_cancels_pending():
+    import build
+    import sim
+    for delete in (False, True):
+        m, t, _ = build.resolve('engine_spawn_refill', 'refill')
+        e = sim.Sim(m, t)
+        parent = e.body(m.role('keep factory').name)
+        e.advance(45)  # arbitrary death time, unrelated to recipe's explosion timers
+        child = parent.spawned_children[0]
+        died = e.frame_now()
+        e.destroy(child, 'test death')
+        e.destroy(child, 'duplicate notification')
+        assert len(parent.spawn_refills) == 1
+        e.spawn_due(died + 149)
+        assert sum(c.alive for c in parent.spawned_children) == 2
+        e.spawn_due(died + 150)
+        assert sum(c.alive for c in parent.spawned_children) == 3
+        e.destroy(parent.spawned_children[-1], 'replacement death')
+        assert len(parent.spawn_refills) == 1
+        e.destroy(parent, 'parent removed', delete=delete)
+        assert not parent.spawn_refills
+        e.spawn_due(died + 1000)
+        assert len(parent.spawned_children) == 4
+        assert not any(c.alive for c in parent.spawned_children)
