@@ -89,3 +89,41 @@ def damage_check(m):
 
 MISSION['engine_leveldamage'] = damage_mission
 CHECKS['engine_leveldamage'] = {'a': damage_check}
+
+
+def health_mission():
+    m = mission()
+    m.name = 'CampLevelH'
+    return m
+
+
+def health_check(m):
+    """PREDICT: 500/500/625/625 max HP leaves 80/80/84/84% after NAMED_DAMAGE 100.
+
+    Freeze each reading immediately after script damage in the same script, before
+    heroic AutoHeal can tick. No enemy, weapon, armor or combat experience involved.
+    Only promotion from full health is measured; injured promotion remains unmodeled.
+    Bench 2026-11-10 PASS: frozen counters s4-s14 80/80/84/84.
+    """
+    t = Test()
+    start = [('MAP_REVEAL_ALL_PERM', m.player('p1')),
+             ('SET_MILLISECOND_TIMER', 'Level hurt', 6.0)]
+    hurt = []
+    for n, lane in enumerate(('base', 'high', 'order', 'removed')):
+        name, counter = m.role(lane).name, 'Level frozen ' + lane
+        start += [('UNIT_CHANGE_OBJECT_STATUS', name, 'NO_ATTACK', 1)]
+        start += [('NAMED_RECEIVE_UPGRADE', up, name) for up in CREATION[:n]]
+        start += [('SET_COUNTER', counter, -1)]
+        hurt += [('NAMED_DAMAGE', name, 100),
+                 ('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', name, counter)]
+        t.counters.append((counter, lane + ' frozen HP'))
+    t.scripts = [Script('Test - start', [], start),
+                 Script('Test - freeze damage', [('TIMER_EXPIRED', 'Level hurt')], hurt)]
+    t.expect = [(lane + ' frozen HP', 8, '==', hp, 12)
+                for lane, hp in zip(('base', 'high', 'order', 'removed'), (80, 80, 84, 84))]
+    t.bench = [('bench_watch', dict(seconds=12.0, every=.5, sheet=False, lines=4))]
+    return t
+
+
+MISSION['engine_levelhealth'] = health_mission
+CHECKS['engine_levelhealth'] = {'a': health_check}

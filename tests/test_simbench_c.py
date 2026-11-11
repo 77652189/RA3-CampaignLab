@@ -18,11 +18,28 @@ def _sim_run(build_name, check, until):
     return sim.Sim(m, t).run(until)
 
 
+def test_levelup_elite_health_persists_at_heroic_and_freezes_before_healing():
+    """engine_levelhealth a: script-frame readings 80/80/84/84 after 100 damage."""
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_levelhealth', 'a')
+    e = sim.Sim(m, t)
+    rows = e.run(12).series
+    assert tuple(rows[-1][1]) == (80, 80, 84, 84)
+    assert all(tuple(row) == (80, 80, 84, 84) for sec, row in rows if sec >= 8)
+    assert [e.body(m.role(lane).name).max_hp for lane in ('base', 'high', 'order', 'removed')] == [500, 500, 625, 625]
+    heroic = e.body(m.role('removed').name)
+    for upgrade in ('VETERAN', 'ELITE', 'HEROIC'):
+        e.give_upgrade(heroic, 'Upgrade_CreationVeterancy_' + upgrade)
+        e.modify(heroic)
+    assert heroic.max_hp == 625  # held grants and modifier refresh must not stack health
+
+
 def test_levelup_creation_grants_reach_heroic_only_after_three_distinct_triggers():
     """Bench 11-10 engine_levelup a: 0/0/1/0 early, 0/1/1/0 after late grants.
 
     A single CreationVeterancy_HEROIC adds one rank; repeated held grants add
-    none. Rank modifiers and remove/regrant are explicitly left unmodeled.
+    none. Heroic modifiers and remove/regrant are explicitly left unmodeled.
     """
     import build
     import sim
@@ -31,7 +48,7 @@ def test_levelup_creation_grants_reach_heroic_only_after_three_distinct_triggers
     rows = e.run(12).series
     assert any(tuple(row) == (0, 0, 1, 0) for _, row in rows)
     assert tuple(rows[-1][1]) == (0, 1, 1, 0)
-    assert 'HEALTH_MULT' in e.unmodeled[sim.GAP_UPGRADE, 'LevelUpUpgrade/Unit_Elite']['what']
+    assert (sim.GAP_UPGRADE, 'LevelUpUpgrade/Unit_Elite') not in e.unmodeled
     assert '创建升级触发' in '\n'.join(e.report())
 
 

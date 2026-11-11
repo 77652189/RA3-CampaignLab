@@ -1,6 +1,6 @@
 """Creation upgrade -> rank -> veterancy upgrades (engine_levelup a).
 
-Combat experience and rank modifiers except DAMAGE_MULT remain unmodeled. This module
+Combat experience and rank modifiers except DAMAGE_MULT and full-health HEALTH_MULT remain unmodeled. This module
 does not turn a direct Upgrade_Veterancy_HEROIC grant into a rank change.
 """
 import functools
@@ -73,8 +73,25 @@ def receive(sim, b, up, on, newly_held):
             continue
         b.level_modules.add(mid)
         b.level_rank = new
+        seen = {mid for rank, (_, mids) in profile.items() if rank <= old for mid in mids}
         for rank in range(old + 1, new + 1):
-            upgrades, _ = profile[rank]
+            upgrades, mids = profile[rank]
+            for modifier_id in mids:
+                if modifier_id in seen:
+                    continue
+                seen.add(modifier_id)
+                modifier = simunits.modifier(sim.xml_of(b.template), modifier_id)
+                multipliers = modifier['types'].get('HEALTH_MULT', []) if modifier else []
+                if multipliers:
+                    if modifier_id != 'Unit_Elite' or multipliers != [1.25]:
+                        sim.gap('升级', 'LevelUpUpgrade/' + modifier_id, '该等级血量倍率未对拍')
+                    elif abs(b.hp - b.max_hp) > 1e-9:
+                        sim.gap('升级', 'LevelUpUpgrade/injured-health', '残血升级的血量变化未对拍')
+                    else:
+                        # engine_levelhealth a: elite max HP 500 -> 625, retained at heroic.
+                        for multiplier in multipliers:
+                            b.max_hp *= multiplier
+                        b.hp = b.max_hp
             for upgrade in upgrades:
                 b.upgrades.add(upgrade)
                 b.up_since[upgrade] = sim.frame_now()
@@ -97,7 +114,10 @@ def damage_modifiers(sim, b, xml):
             if m is None:
                 sim.gap('升级', 'LevelUpUpgrade/' + mid, '等级属性修正数据缺失')
                 continue
-            unsupported = sorted(set(m['types']) - {'DAMAGE_MULT'})
+            supported = {'DAMAGE_MULT'}
+            if mid == 'Unit_Elite' and m['types'].get('HEALTH_MULT') == [1.25]:
+                supported.add('HEALTH_MULT')
+            unsupported = sorted(set(m['types']) - supported)
             if m['status']:
                 unsupported.append('ObjectStatusToSet')
             if unsupported:
