@@ -88,7 +88,8 @@ def test_inform_ai_response_is_reported_as_a_gap_including_retail_cache():
     assert tuple(rows[-1][1]) == (79, 1, 79, 1)
     assert (sim.GAP_WEAPON, 'InformTargetNugget') in engine.unmodeled
     import inventory
-    assert inventory.NOTES[(inventory.NUGGET, 'InformTargetNugget')][0] == inventory.TODO
+    # Retail target notifications are now registered by field form; the
+    # runtime gap and whole tracking module must still remain explicit.
     assert inventory.NOTES[(inventory.MODULE, 'Behaviors/TrackIncomingWeaponFireBehavior')][0] == inventory.TODO
 
 
@@ -213,6 +214,84 @@ def test_inform_incoming_table_drives_miner_armor_from_engine_inform_probe(check
         assert not base.armor_up and 'SPECIAL_ARMOR_ACTIVE' not in base.status
     clock[0] = 405
     assert e.expected_damage(bodies['removed'], 0, 2) == 0
+
+
+def test_inform_max_changes_only_base_factor_for_engine_inform_max():
+    import build
+
+    original, before, _ = build.resolve('engine_inform_probe', 'a')
+    changed, after, _ = build.resolve('engine_inform_max', 'a')
+    assert len(changed.name + 'A') <= 15 and changed.ext
+    assert original.objects == changed.objects and original.marks == changed.marks
+    assert before.scripts == after.scripts and before.bench == after.bench
+    assert before.counters == after.counters
+    assert before.expect[:-2] == after.expect[:-2]
+    assert after.expect[-2:] == [(label, 45, op, value) for label, _, op, value in before.expect[-2:]]
+    assert len(original.units) == len(changed.units) == 5
+    for i, (left, right) in enumerate(zip(original.units, changed.units)):
+        assert right.xml == (left.xml.replace('<InformTargetNugget/>',
+                            '<InformTargetNugget MaxTimeToImpactFudgeFactor="1.6"/>', 1)
+                            if i == 0 else left.xml)
+        assert right.files == left.files
+
+
+@pytest.mark.parametrize('run_name', ['CampIMaxA_mcp_1111_001917', 'CampIMaxA_mcp_1111_002132'])
+def test_inform_max_launch_matches_engine_inform_max_observed_deadline(run_name, monkeypatch):
+    """Recorded target notification, not full flight/AI or expiry-cleanup phase.
+
+    engine_inform_max:a retains the engine_inform_probe:a controls; only
+    base Max=1.6 changes expiry404 to444, not launch302/hit377/removal389.
+    The normalized fixture keeps runtime addresses/keys in private logs.
+    """
+    import build
+    import labpaths
+    import re
+    import sim
+
+    log = Path(labpaths.WORK) / 'testbench/runs' / run_name / 'ra3ext.log'
+    if log.exists():
+        lines = log.read_text(encoding='utf-8').splitlines()
+        entries = {}
+        for line in lines:
+            if not line.startswith('incoming ') or 'frame=302 n=1' not in line:
+                continue
+            row = re.search(r'object=(\w+).*src=(\d+) .*dmg=([\d.]+) hit=(\d+) exp=(\d+)', line)
+            assert row
+            obj, source, damage, hit, expiry = row.groups()
+            entries[int(source)] = (float(damage), int(hit), int(expiry))
+            removed = 304 if int(source) == 14 else 389
+            assert any(f'object={obj} frame={removed} n=0' in later for later in lines)
+        assert entries == {12: (150, 377, 444), 13: (150, 377, 404),
+                           14: (150, 302, 302), 15: (50, 377, 404)}
+    m, t, _ = build.resolve('engine_inform_max', 'a')
+    e = sim.Sim(m, t)
+    clock = [302]
+    monkeypatch.setattr(e, 'frame_now', lambda: clock[0])
+    for lane, damage, hit, expiry in (('base', 150, 377, 444),
+                                      ('high', 150, 377, 404),
+                                      ('removed', 50, 377, 404),
+                                      ('order', 150, 302, 302)):
+        gun = e.body('Info gun ' + lane)
+        # Representative distance within the default timing's constrained interval;
+        # actual muzzle/target offsets are still INFERRED, not replayed geometry.
+        e.add('Max replay ' + lane, 'SovietMiner', m.player('s1'), gun.x, gun.y + 442)
+        target = e.body('Max replay ' + lane)
+        weapon, = gun.weapons
+        assert weapon['inform'] == [dict(min=.85, max=1.6 if lane == 'base' else 1.15)]
+        e.inform_launch(target, gun, weapon)
+        assert e.incoming[id(target)] == [(id(gun), weapon['weapon_key'], damage, hit, expiry)]
+        assert target.hp == 500
+        if lane == 'order':
+            clock[0] = 304
+        else:
+            clock[0] = 346
+            assert e.expected_damage(target, 0, 2) == 0
+            clock[0] = 347
+            assert e.expected_damage(target, 0, 2) == damage
+            clock[0] = 389
+        e.incoming_hit(target, id(gun), weapon['weapon_key'])
+        assert not e.incoming[id(target)]
+        clock[0] = 302
 
 
 def test_inform_launch_formula_and_matching_hit_lifecycle(monkeypatch):

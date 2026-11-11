@@ -30,7 +30,11 @@ def test_nugget_form_split_rejects_unmeasured_fields_children_and_mixed_inherita
     assert forms == [ordinary, filtered]
     assert inventory.nugget_form_slice('MetaImpactNugget', forms) == ''
     assert inventory.nugget_form_slice('InformTargetNugget', [ET.fromstring('<InformTargetNugget/>')]) == ':默认系数目标通知'
-    for xml in ('<InformTargetNugget MaxTimeToImpactFudgeFactor="1.6"/>',
+    max16 = ET.fromstring('<InformTargetNugget MaxTimeToImpactFudgeFactor="1.6"/>')
+    assert inventory.nugget_form_slice('InformTargetNugget', [max16]) == ':Max1.6目标通知'
+    assert inventory.nugget_form_slice('InformTargetNugget', [max16, ET.fromstring('<InformTargetNugget/>')]) == ''
+    for xml in ('<InformTargetNugget MaxTimeToImpactFudgeFactor="1.7"/>',
+                '<InformTargetNugget MinTimeToImpactFudgeFactor=".5" MaxTimeToImpactFudgeFactor="1.6"/>',
                 '<InformTargetNugget Radius="10"/>', '<InformTargetNugget><Filter/></InformTargetNugget>'):
         assert inventory.nugget_form_slice('InformTargetNugget', [ET.fromstring(xml)]) == ''
 
@@ -58,15 +62,20 @@ def test_retail_nugget_partitions_conserve_uses_and_only_register_measured_forms
                 assert '仅' in i['why'] and 'engine_' in i['why']
                 field = 'inform' if kind == 'InformTargetNugget' else 'meta_impacts'
                 assert all(weapons[w].get(field) for w in i['weapon_ids'])
+                if kind == 'InformTargetNugget':
+                    maximum = 1.6 if i['name'].endswith(':Max1.6目标通知') else 1.15
+                    assert all(effect == dict(min=.85, max=maximum)
+                               for w in i['weapon_ids'] for effect in weapons[w][field])
             else:
                 assert i['state'] == inventory.TODO
     by = {i['name']: i for i in xs}
     assert 'SovietAntiStructureVehicleV4RocketWarhead' in by['MetaImpactNugget:省略Z默认值']['weapon_ids']
     assert 'JapanCommandoTech1PsyonicBlast' in by['MetaImpactNugget']['weapon_ids']
-    assert 'AlliedBaseDefenseRockets_Aircraft' in by['InformTargetNugget']['weapon_ids']
+    assert 'AlliedBaseDefenseRockets_Aircraft' in by['InformTargetNugget:Max1.6目标通知']['weapon_ids']
 
 
-def test_level_nugget_scope_uses_membership_and_keeps_custom_weapons_uncovered():
+@pytest.mark.parametrize('with_base', [True, False])
+def test_level_nugget_scope_uses_membership_and_keeps_custom_weapons_uncovered(with_base):
     import inventory_levels as levels
 
     kind = inventory.NUGGET
@@ -74,6 +83,8 @@ def test_level_nugget_scope_uses_membership_and_keeps_custom_weapons_uncovered()
                   why='remaining', weapon_ids=['Uncovered']),
              dict(part=kind, name='InformTargetNugget:默认系数目标通知', uses=1,
                   state=inventory.BENCHED, why='measured', weapon_ids=['Covered'])]
+    if not with_base:
+        items = items[1:]
     text = levels.render(items, {(kind, 'InformTargetNugget'): {'a1': {'Covered', 'Uncovered', 'Custom'}}}, {})
     rows = [line for line in text.splitlines() if '`InformTargetNugget' in line]
     assert len(rows) == 2

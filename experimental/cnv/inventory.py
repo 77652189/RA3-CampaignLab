@@ -54,6 +54,8 @@ BENCHED_TESTS = {
         'tests/test_meta_impact.py::test_meta_impact_collision_event_replays_engine_knock_probe_neighbour_five_frames',
     (NUGGET, 'InformTargetNugget:默认系数目标通知'):
         'tests/test_inform_ai.py::test_inform_incoming_table_drives_miner_armor_from_engine_inform_probe',
+    (NUGGET, 'InformTargetNugget:Max1.6目标通知'):
+        'tests/test_inform_ai.py::test_inform_max_launch_matches_engine_inform_max_observed_deadline',
     # engine_suppression under D's read-only engine_suppress_probe, four measured state/end traces.
     # Walking counters still expose the straight-path approximation; fractional lifetime rounding INFERRED.
     (MODULE, 'Behaviors/SuppressionUpdate'): 'tests/test_simbench_c.py::test_suppression_samples_entry_refresh_and_expiry_at_the_four_probe_readings',
@@ -196,7 +198,6 @@ NOTES = {
     (MODULE, 'Behaviors/OCLSpecialPower'): (TODO, '仅在SpecialPowerNugget处理器中识别并拒绝，未实现OCL技能执行'),
     (MODULE, 'Behaviors/ActivateModuleSpecialPower'): (TODO, '仅在SpecialPowerNugget处理器中识别并拒绝，未实现模块技能执行'),
     (NUGGET, 'TintObjectsNugget'): (NA, '纯表现：Color及Pre/Sustained/PostColorTime、Frequency/Amplitude仅控制染色动画；engine_tint pair实测2/90/2/90，独立DamageNugget解释全部伤害，test_simbench_c重放；不声称像素已验证'),
-    (NUGGET, 'InformTargetNugget'): (TODO, '剩余非默认系数写法：原版MaxTimeToImpactFudgeFactor=1.6（含继承）；公式单测不等于台上对拍。半径分发、历史伤害、海啸/忍者消费者、完整调度与思考相位另有gap；不把矿车局部回放当完整系统通过'),
     (NUGGET, 'MetaImpactNugget'): (TODO, '剩余复杂写法：延迟、筛选、Arc、Invert等；ShockWaveSpeed/Cyclonic本轮原版用量为0也未建模。非默认Physics、坡地及V4曲线弹到达仍gap'),
     (NUGGET, 'MetaImpactNugget:省略Z默认值'): (TODO, '普通无延迟但省略ShockWaveZMult；当前解析器要求显式Z，原版默认字段未接入，不能用已有轨迹回放登记'),
     (NUGGET, 'ParalyzeNugget'): (GUESSED, '部分：engine_emp phase实测PASS16051/31066/61096、hit1；engine_empfire a实测PASS901090/901100/901080/901090，失能窗口按令不开火、到期后新令恢复；仅无筛选EMP，其他类型/筛选/装填相位未验证'),
@@ -427,14 +428,19 @@ def nugget_form_slice(ntype, forms):
         allowed = {'id', 'MinTimeToImpactFudgeFactor', 'MaxTimeToImpactFudgeFactor'}
         if all(not list(n) and set(n.attrib) <= allowed
                and float(n.get('MinTimeToImpactFudgeFactor', '.85')) == .85
-               and float(n.get('MaxTimeToImpactFudgeFactor', '1.15')) == 1.15 for n in forms):
-            return ':默认系数目标通知'
+               for n in forms):
+            maxima = {float(n.get('MaxTimeToImpactFudgeFactor', '1.15')) for n in forms}
+            if maxima == {1.15}:
+                return ':默认系数目标通知'
+            if maxima == {1.6}:
+                return ':Max1.6目标通知'
     return ''
 
 
 NUGGET_SCOPES = {
     'MetaImpactNugget:普通无延迟显式Z': '仅普通弹头碰撞事件→默认Physics轨迹；engine_knock_probe land/late邻人5帧落(2380,3740)、目标99%/邻人100%。到达帧为台上输入，非完整V4曲线弹回放；直击方向/落点网格/选人仍INFERRED',
     'InformTargetNugget:默认系数目标通知': '仅默认Min=.85/Max=1.15的目标通知→来弹表/矿车预计伤害开甲；engine_inform_probe a/off录入302、hit377、exp404、删除389，347帧入窗。半径/历史/海啸/忍者及完整AI调度不在本登记范围，完整脚本仍xfail',
+    'InformTargetNugget:Max1.6目标通知': '仅Min=.85/Max=1.6目标通知→来弹表；engine_inform_max a单变量对照录入302、hit377不变、exp444（默认404）、受伤389删除，矿车提前开甲。自然过期清理边界/半径/历史/海啸/忍者/完整AI调度未对拍，完整脚本仍xfail',
 }
 
 

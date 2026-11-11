@@ -212,6 +212,11 @@ def render(items, scope, missing):
     rows, unknown = [], []
     for (part, name), lvs in scope.items():
         it = by.get((part, name))
+        if it is None and part == NUGGET and name in split:
+            # All retail forms can be measured while a custom weapon is not.
+            # Keep its TODO row; it adds no retail uses to the weighted total.
+            it = dict(part=part, name=name, uses=0, state=TODO,
+                      why='未覆盖的自制或未知武器写法；原版字段分片另行登记')
         if it is None:
             unknown.append((part, name, sorted(lvs)))
             continue

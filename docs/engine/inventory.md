@@ -7,7 +7,7 @@
 | 脚本动作 | **91%** | 451 | 122 | 20 | 192 | 117 | 92% |
 | 脚本条件 | **94%** | 89 | 30 | 5 | 51 | 3 | 94% |
 | 物体模块 | **93%** | 187 | 40 | 10 | 113 | 24 | 94% |
-| 武器效果 | **87%** | 28 | 16 | 2 | 8 | 2 | 89% |
+| 武器效果 | **91%** | 28 | 17 | 2 | 7 | 2 | 93% |
 | AI | **71%** | 415 | 99 | 136 | 146 | 34 | 95% |
 
 ## 脚本动作
@@ -762,7 +762,7 @@
 | 已对拍 | `InformTargetNugget:默认系数目标通知` | 47 | tests/test_inform_ai.py::test_inform_incoming_table_drives_miner_armor_from_engine_inform_probe；仅默认Min=.85/Max=1.15的目标通知→来弹表/矿车预计伤害开甲；engine_inform_probe a/off录入302、hit377、exp404、删除389，347帧入窗。半径/历史/海啸/忍者及完整AI调度不在本登记范围，完整脚本仍xfail；例：BB_EuropeCoastalGunWeapon, AlliedPrecisionBomb |
 | 不涉及 | `ActivateLaserNugget` | 27 | 纯表现：Lifetime/LaserId/HitGroundFX/OverShootDistance驱动LaserState/LaserDraw；engine_laser pair实测2/90/2/90，无附加伤害或首发延迟，test_simbench_c重放；例：MountRushmoreHeadEyeWeapon, JapanAntiVehicleInfantryTech3LockDownGun |
 | 已对拍 | `WeaponOCLNugget` | 26 | tests/test_simbench_c.py::test_weapon_ocl_lifetime_damage_reads_the_fire_delay_before_counting_updates；例：MountRushmoreHeadEyeWeapon, AlliedPrecisionBombWarhead |
-| 未做 | `InformTargetNugget` | 22 | 剩余非默认系数写法：原版MaxTimeToImpactFudgeFactor=1.6（含继承）；公式单测不等于台上对拍。半径分发、历史伤害、海啸/忍者消费者、完整调度与思考相位另有gap；不把矿车局部回放当完整系统通过；例：AlliedBaseDefenseRockets, AlliedBaseDefenseRockets_Aircraft |
+| 已对拍 | `InformTargetNugget:Max1.6目标通知` | 22 | tests/test_inform_ai.py::test_inform_max_launch_matches_engine_inform_max_observed_deadline；仅Min=.85/Max=1.6目标通知→来弹表；engine_inform_max a单变量对照录入302、hit377不变、exp444（默认404）、受伤389删除，矿车提前开甲。自然过期清理边界/半径/历史/海啸/忍者/完整AI调度未对拍，完整脚本仍xfail；例：AlliedBaseDefenseRockets, AlliedBaseDefenseRockets_Aircraft |
 | 已对拍 | `AttributeModifierNugget` | 20 | tests/test_simbench_c.py::test_weaponfx_predictions_and_finite_bursts；例：NanoHiveSwarmEffectTrigger, JapanCommandoSoftLanding |
 | 已对拍 | `MetaImpactNugget:普通无延迟显式Z` | 13 | tests/test_meta_impact.py::test_meta_impact_collision_event_replays_engine_knock_probe_neighbour_five_frames；仅普通弹头碰撞事件→默认Physics轨迹；engine_knock_probe land/late邻人5帧落(2380,3740)、目标99%/邻人100%。到达帧为台上输入，非完整V4曲线弹回放；直击方向/落点网格/选人仍INFERRED；例：KremlinArtilleryDomeMissleWarhead, AlliedTimeBomb_Level1 |
 | 未做 | `MetaImpactNugget` | 12 | 剩余复杂写法：延迟、筛选、Arc、Invert等；ShockWaveSpeed/Cyclonic本轮原版用量为0也未建模。非默认Physics、坡地及V4曲线弹到达仍gap；例：JapanCommandoTech1PsyonicBlast, JapanMechaKingKatana |
