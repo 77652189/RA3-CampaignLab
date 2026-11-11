@@ -600,7 +600,7 @@
 | 已对拍 | `Behaviors/RunOffMapBehavior` | 88 (123) | tests/test_simbench_c.py::test_run_off_map_the_peacekeeper_is_gone_64_and_304_frames_after_the_order_never_dying；例：AlliedSatelliteSweepShroudRevealer, AlliedAntiAirShip |
 | 已对拍 | `Behaviors/WeaponSetUpdate` | 82 (110) | tests/test_simbench_c.py::test_weapon_set_the_status_picks_the_gun_molotov_under_the_toggle_and_the_painter_does_no_harm；例：AlliedBaseDefense, AlliedBaseDefenseAdvanced |
 | 已对拍 | `Behaviors/SpecialPower` | 74 (95) | tests/test_simbench.py::test_super_a_scripts_cast_starts_the_retail_reload；例：AlliedConstructionYard, AlliedAntiAirShip |
-| 推断 | `Behaviors/EngineerContain` | 70 (105) | 部分：engine_engineer a四路验证中立/敌方占领保留血量、友军残血修满且不换主、非友军防御拒入及工程师消耗；tests/test_simengineer.py重放。ReplaceWith/桥修复、满血进入、其他工程师及状态/时序未对拍，不登记整项已对拍；例：AlliedAirfield, AlliedBarracks |
+| 推断 | `Behaviors/EngineerContain` | 70 (105) | 部分：engine_engineer a四路验证中立/敌方占领保留血量、友军残血修满且不换主、非友军防御拒入及工程师消耗；tests/test_simengineer.py重放。静态核查：ReplaceWith无原版声明；桥头堡虽无直接摆放，战役桥模板经BridgeBuilder.GateHouse可达（tests/test_inventory_engineer.py）。桥修复、满血进入、其他工程师及状态/时序未对拍，不登记整项已对拍；例：AlliedAirfield, AlliedBarracks |
 | 已对拍 | `Behaviors/DynamicsUpdate` | 69 (101) | tests/test_simbench_c.py::test_dynamics_update_a_hammer_without_it_crushes_and_goes_round_as_the_retail_one；例：AlliedDynamicsImpact, AlliedSatelliteSweepShroudRevealer |
 | 未做 | `Behaviors/RepairUpdate` | 66 (91) | 仅字段读取：engine_repair a两次未触发玩家维修，双方电厂血量50、资金5000；维修入口原因未明，不以schema默认10HP/s或预测费用登记已对拍；例：AlliedAirfield, AlliedBarracks |
 | 已对拍 | `Behaviors/StatusBitsUpgrade` | 66 (85) | tests/test_simbench_c.py::test_status_bits_upgrade_the_heroic_grant_sets_weapon_upgraded_and_a_removal_clears_it；例：AlliedBaseDefense, AlliedAntiAirShip |
