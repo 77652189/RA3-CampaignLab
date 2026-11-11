@@ -7,8 +7,15 @@ Each row = HP percent + 1000 if owned by p1 + 10000 if the engineer still lives.
 Expected final rows: 1050 / 1050 / 100 / 10050. Capture preserves health.
 Engineers start 180 south;
 entry at mission second 10, so loading cannot swallow the baseline.
-ReplaceWith/bridge repair, full-health entry and exact travel timing are outside
-this slice; this check alone does not register the whole module as benched.
+Check b: full-health allied plants, Allied/Soviet/Japan engineers in the first
+three lanes; fourth lane is a half-health Allied-engineer repair control.
+Prediction: 10100 / 10100 / 10100 / 100 after entry (baseline control 10050).
+Retail admits all three templates but has no full-health rule; refusal and
+survival are a hypothesis to measure, not a schema-derived fact.
+Bench 2026-11-10 b PASS: s1-s11 10100/10100/10100/10050;
+s12-s37 10100/10100/10100/100. Full-health engineers survive, all owners stay s2.
+ReplaceWith/bridge repair and exact travel timing remain outside this slice;
+these checks do not register the whole module as benched.
 
 Bench 2026-11-10: first run explained capture preserving HP and background
 computer-player repair (50->63 before capture; refused tower 50->100).
@@ -65,5 +72,23 @@ def check(m):
     return t
 
 
+def check_full_health(m):
+    """Three full-health allies plus a half-health positive control, ordinary entry."""
+    for role, engineer in zip(LANES, ('AlliedEngineer', 'SovietEngineer',
+                                      'JapanEngineer', 'AlliedEngineer')):
+        target, man = m.role(role), m.role(role + ' man')
+        target.template, target.side = 'AlliedPowerPlant', 's2'
+        m.find(target.name).template, m.find(target.name).side = target.template, target.side
+        man.template = engineer
+        m.find(man.name).template = engineer
+    t = check(m)
+    t.scripts[0].do = [
+        (a[0], a[1], 100.0) if a[0] == 'UNIT_SET_HEALTH'
+        and a[1] != m.role('refused').name else a for a in t.scripts[0].do]
+    t.expect = [(role, 30, '==', value, 34)
+                for role, value in zip(LANES, (10100, 10100, 10100, 100))]
+    return t
+
+
 MISSION = {'engine_engineer': mission}
-CHECKS = {'engine_engineer': {'a': check}}
+CHECKS = {'engine_engineer': {'a': check, 'b': check_full_health}}

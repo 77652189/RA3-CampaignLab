@@ -23,6 +23,24 @@ def test_engineer_four_routes_as_on_the_bench():
             for role in ('neutral', 'enemy', 'ally', 'refused')] == [False, False, False, True]
 
 
+def test_engineer_full_health_allies_as_on_the_bench():
+    """engine_engineer:b PASS 2026-11-10: s12-s37 10100/10100/10100/100.
+    Three nations, full-health allies and damaged control; travel INFERRED."""
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_engineer', 'b')
+    s = sim.Sim(m, t).run(36)
+    assert s.series[0][1] == [10100, 10100, 10100, 10050]
+    assert s.series[-1][1] == [10100, 10100, 10100, 100]
+    window = [values for second, values in s.series if 30 <= second <= 34]
+    assert window and all(values == [10100, 10100, 10100, 100] for values in window)
+    for role in ('neutral', 'enemy', 'ally', 'refused'):
+        assert s.body(m.role(role).name).owner == m.player('s2')
+        assert s.body(m.role(role).name).hp == s.body(m.role(role).name).max_hp
+        assert s.body(m.role(role + ' man').name).alive == (role != 'refused')
+    assert not any(key[0] == 'EngineerContain' for key in s.unmodeled)
+
+
 def test_engineer_filters_reject_wrong_template_and_enemy_defence_and_report_replacements():
     import build
     import sim

@@ -1429,7 +1429,8 @@ class Sim:
                 continue
             if self.relation(g.owner, b.owner) == 'ALLIES':
                 if g.hp >= g.max_hp:
-                    self.gap('EngineerContain', g.template, '友军满血进入未对拍')
+                    # engine_engineer:b: full-health allies keep their owner/HP
+                    # and all three nations' engineers survive. Travel INFERRED.
                     b.goal, b.mode, b.path = None, 'move', []
                     continue
                 g.hp = g.max_hp
