@@ -100,3 +100,28 @@ def test_spawn_refill_tracks_actual_death_frame_and_parent_removal_cancels_pendi
         e.spawn_due(died + 1000)
         assert len(parent.spawned_children) == 4
         assert not any(c.alive for c in parent.spawned_children)
+
+
+def test_spawn_power_outage_and_recovery_match_named_bench():
+    """engine_spawn_power:power; use real supply/demand and the recipe's plant lifecycle."""
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_spawn_power', 'power')
+    e = sim.Sim(m, t)
+    assert e.power(m.player('p1')) == (100, 50)
+    rows = e.run(60).series
+    for start, end, expected in ((2, 8, (3, 3, 101)), (16, 28, (3, 3, 12)),
+                                 (42, 59, (3, 3, 101))):
+        got = [tuple(v[:3]) for at, v in rows if start <= at <= end]
+        assert got and all(v == expected for v in got), (expected, got)
+    # Bench counts stay at 3 through BOTH transitions, not just at the endpoints.
+    assert all(v[:2] == [3, 3] for at, v in rows if at >= 2)
+    assert all(v[3] == 0 for at, v in rows if 2 <= at < 28)
+    assert all(v[3] >= 100 for at, v in rows if at >= 42)
+    # Implementation guard: identity was not observable on the bench. Keeping the
+    # original children is the minimal interpretation of its unchanged counts.
+    parent = e.body(m.role('factory').name)
+    assert len(parent.spawned_children) == 3
+    assert all(c.alive for c in parent.spawned_children)
+    assert not parent.spawn_refills
+    assert e.power(m.player('p1')) == (100, 50)

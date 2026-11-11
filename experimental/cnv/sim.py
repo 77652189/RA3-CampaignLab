@@ -1173,7 +1173,7 @@ class Sim:
             rules[template] = simunits.spawn_modules(template, self.own)
         for mid, child_template in rules[template].items():
             self.gap('SpawnBehavior', template,
-                     '仅盟军战车工厂配置开局3架、死亡10秒补充及母体清随从已量；子体直接删除、失电、占领、'
+                     '仅盟军战车工厂配置开局3架、死亡10秒补充、母体清随从及缺电保持3架已量；子体直接删除、真正禁用、占领、缺电时死亡补充、'
                      '展开时机、其他配置未建模；生成位置INFERRED；不含SlavedUpdate/AttachUpdate维修')
             if not child_template or by:  # construction/unpack and scripted creation have not been measured
                 continue
@@ -1194,7 +1194,12 @@ class Sim:
         return child
 
     def spawn_due(self, frame):
-        """engine_spawn_refill: independent death + 10s replacements; subsecond phase INFERRED."""
+        """engine_spawn_refill: independent death + 10s replacements; subsecond phase INFERRED.
+
+        engine_spawn_power: a supply shortage alone leaves the factory's drone
+        count at three. Do not equate short_of_power with KillSpawnsOnDisabled. Real module
+        disabling and death/refill during an outage are still unmeasured gaps.
+        """
         for parent in self.__dict__.get('_spawn_parents', ()):
             if not parent.alive:
                 continue
