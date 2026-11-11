@@ -37,6 +37,8 @@ import math
 import os
 import re
 import sys
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -66,7 +68,7 @@ terrain_edit = _load('terrain_edit', os.path.join(HERE, 'terrain_edit.py'))
 
 CELL = 10.0                                     # world units per map cell (mapterrain.CELL)
 PX = 2                                          # picture pixels per cell
-OUT = os.path.join(ROOT, 'work', 'mappage')
+OUT = os.path.join(labpaths.WORK, 'mappage')
 
 # The rules the page draws, each one contract function (all of them run inside contract.contract too); the rest of the
 # contract's problems are listed without a place.

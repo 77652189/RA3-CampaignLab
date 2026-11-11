@@ -16,12 +16,14 @@ import sys
 import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-COPY = os.environ.get('RA3_PLAY_DIR') or os.path.join(ROOT, 'work', 'testbench', 'RA3play')
+COPY = os.environ.get('RA3_PLAY_DIR') or os.path.join(labpaths.WORK, 'testbench', 'RA3play')
 os.environ['RA3_BENCH_DIR'] = COPY              # before harness reads it (slots.BENCH): the playtest copy, not the bench's
 os.environ['RA3_BENCH_SPEED'] = '2'             # so the harness starts the game with the clocks hooked (never sped up here)
 os.environ['CNV_DEV_KEYS'] = '1'
 
 import harness                                  # noqa: E402  (run from this folder: python puts it on the path)
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 
 def log_path():

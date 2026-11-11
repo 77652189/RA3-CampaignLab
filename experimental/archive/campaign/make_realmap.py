@@ -17,6 +17,8 @@ sys.path.insert(0, HERE)
 import make_campnew18 as c18                    # noqa: E402
 import newmap                                   # noqa: E402
 import realmap                                  # noqa: E402
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'campaign')))
+import labpaths  # noqa: E402
 
 c7, c4, c2 = c18.c7, c18.c4, c18.c2
 NAME = 'CampReal1'                              # <= 15 characters, no underscore (skudef rule)
@@ -60,6 +62,6 @@ def game_running():            # make_campnew23's check (importing it would re-p
 
 if __name__ == '__main__':
     if game_running():
-        c2.OUT = c4.OUT = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'staging', NAME)
+        c2.OUT = c4.OUT = os.path.join(labpaths.WORK, 'staging', NAME)
         print('RA3 is running -> staging at', c4.OUT)
     c4.main()

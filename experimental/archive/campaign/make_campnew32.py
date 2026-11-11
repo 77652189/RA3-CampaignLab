@@ -21,6 +21,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'units'))
 import make_campnew31 as c31                    # noqa: E402
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'campaign')))
+import labpaths  # noqa: E402
 
 c29, c28, c23, c26 = c31.c29, c31.c28, c31.c23, c31.c26
 c24 = c29.c24
@@ -34,7 +36,7 @@ c2.OUT = c4.OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 
 c7.MAP_MOD = NAME + 'Map'
 
 UNIT, FAST, SIGNAL = 'CNV_Narukami', 'CNNaruF', 'CNNaruS'
-WORK = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'units')
+WORK = os.path.join(labpaths.WORK, 'units')
 SRC = {FAST: os.path.join(WORK, 'narukami_fast'), SIGNAL: os.path.join(WORK, 'narukami_signal')}
 # cnv_narukami.py TURRET_AT / PITCH_AT per form, TIP_AT (v2: the turret is the head in the signal form)
 TURRET = {FAST: ((4.0, 0.0, 10.4), (1.0, 0.0, 1.2)), SIGNAL: ((0.0, 0.0, 6.0 + 18.6 * 1.3), (0.52, 0.0, 2.08))}
@@ -468,6 +470,6 @@ c6.edit = generate
 
 if __name__ == '__main__':
     if c23.game_running():
-        c2.OUT = c4.OUT = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'staging', NAME)
+        c2.OUT = c4.OUT = os.path.join(labpaths.WORK, 'staging', NAME)
         print('RA3 is running -> staging at', c4.OUT)
     c4.main()

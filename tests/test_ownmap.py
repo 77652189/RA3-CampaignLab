@@ -1,6 +1,7 @@
 """Our own Pathfinder map (experimental/music/ownmap.py): the spy map reads back through the writer, every event
 jumps to a section looping on its own stream, and the menu section's router pairs play the right transition into
 the right section."""
+import os
 import json
 import sys
 from pathlib import Path
@@ -10,8 +11,10 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from experimental.music import ownmap, pfdx  # noqa: E402
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'experimental', 'campaign')))
+import labpaths  # noqa: E402
 
-RETAIL = ROOT / 'work' / 'music' / 'retail'
+RETAIL = Path(labpaths.WORK) / 'music' / 'retail'
 
 
 @pytest.fixture(scope='module')

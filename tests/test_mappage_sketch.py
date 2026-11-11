@@ -2,6 +2,7 @@
 platmap format (experimental/mappage/sketch2map.py). The same sketch gives the same text; an existing map written out as
 a sketch and generated again reads the same to every rule (sapporo, the A4 map); a drawn map is linted, its cut-off
 sites found, its .map written; the server keeps the sketch and only takes writes from its own pages."""
+import os
 import importlib.util
 import json
 import re
@@ -11,10 +12,13 @@ import sys
 import threading
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 import pytest
 
 from test_mappage import ROOT, mappage
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'experimental', 'campaign')))
+import labpaths  # noqa: E402
 
 sys.modules.setdefault('mappage', mappage)
 sk = mappage._load('sketch2map', str(ROOT / 'experimental' / 'mappage' / 'sketch2map.py'))
@@ -344,10 +348,10 @@ def test_cli_checks_a_sketch_written_anywhere(tmp_path):
         lines = r.stdout.strip().split('\n')
         assert r.returncode == 0, r.stdout[-800:] + r.stderr[-800:]
         assert any('全部通过' in x for x in lines) and len(lines) <= 12, lines
-        saved = json.loads((ROOT / 'work' / 'mappage' / name / 'sketch.json').read_text(encoding='utf-8'))
+        saved = json.loads((Path(labpaths.WORK) / 'mappage' / name / 'sketch.json').read_text(encoding='utf-8'))
         assert saved['name'] == name and saved['bridges']
     finally:
-        shutil.rmtree(ROOT / 'work' / 'mappage' / name, ignore_errors=True)
+        shutil.rmtree(Path(labpaths.WORK) / 'mappage' / name, ignore_errors=True)
 
 
 @pytest.fixture

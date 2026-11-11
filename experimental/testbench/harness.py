@@ -34,6 +34,8 @@ sys.path.insert(0, HERE)
 import calib  # noqa: E402
 import nav  # noqa: E402
 import slots  # noqa: E402
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 BENCH = slots.BENCH
 SHOTS = os.path.join(BENCH, 'shots')
@@ -42,12 +44,12 @@ SHOTS = os.path.join(BENCH, 'shots')
 SPEED = float(os.environ.get('RA3_BENCH_SPEED') or 1)
 STOP_WAIT = 20      # seconds stop() waits for the killed game to exit before it warns and frees the slot anyway
 FRAME_COST = 0.35           # real seconds a watched frame takes: capture, archive, counters (bench 2026-10-27, x8)
-RUNS = os.path.join(ROOT, 'work', 'testbench', 'runs')
+RUNS = os.path.join(labpaths.WORK, 'testbench', 'runs')
 LOCK = slots.lock_path(1)
 MODS = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods')
 # engine line D (ADR 0027/0028): a mod whose folder holds ra3ext.allow (a mission with ext=True writes it) starts
 # through this launcher, which injects ra3ext.dll; every other start is the plain Popen, as before
-EXT_LAUNCH = os.environ.get('RA3EXT_LAUNCH') or os.path.join(ROOT, 'work', 're', 'ext', 'ra3ext', 'bin',
+EXT_LAUNCH = os.environ.get('RA3EXT_LAUNCH') or os.path.join(labpaths.WORK, 're', 'ext', 'ra3ext', 'bin',
                                                              'ra3ext_launch.exe')
 W, H = 1280, 720
 AIR_LIFT = 170              # a hovering aircraft is drawn ~170 px above its ground point (select it there)

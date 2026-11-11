@@ -27,9 +27,11 @@ import bmesh
 import bpy
 import numpy as np
 from mathutils import Matrix, Vector
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-WORK = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work')
+WORK = labpaths.WORK
 
 # unit: Tripo GLB (under work/), width over the tracks (game units), part indices per group (the rest is HULL),
 # triangle budgets, atlas size, the model / texture name

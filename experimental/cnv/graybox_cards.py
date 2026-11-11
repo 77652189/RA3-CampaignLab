@@ -20,6 +20,8 @@ import offline  # noqa: E402
 import plan  # noqa: E402
 import sim  # noqa: E402
 import simunits  # noqa: E402
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 T = glossary.template
 
@@ -616,7 +618,7 @@ def main():
     a = ap.parse_args()
     f = facts()
     text = '\n'.join(lines(f))
-    path = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'logs', 'graybox_cards.log')
+    path = os.path.join(labpaths.WORK, 'logs', 'graybox_cards.log')
     os.makedirs(os.path.dirname(path), exist_ok=True)
     open(path, 'w', encoding='utf-8').write(text + '\n\n' + repr(f) + '\n')
     print(text if a.verbose else text.splitlines()[0] + f'\n（全文 {os.path.relpath(path, os.path.dirname(os.path.dirname(HERE)))}）')

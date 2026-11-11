@@ -15,6 +15,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'units'))
 import make_campnew18 as c18                    # noqa: E402
 import newmap                                   # noqa: E402
 import to_w3x                                   # noqa: E402
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.')))
+import labpaths  # noqa: E402
 
 c18.install()                                   # importing c18 no longer wires the chain (ADR 0016, G7)
 c7, c6, c4, c2 = c18.c7, c18.c6, c18.c4, c18.c2
@@ -25,7 +27,7 @@ c2.BUILT = os.path.join(c2.SDK, 'BuiltMods', 'mods', NAME.lower(), 'data')
 c2.OUT = c4.OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods', NAME)
 c7.MAP_MOD = NAME + 'Map'
 UNIT, MODEL = 'CNV_LightTank', 'CNTankL'
-SRC = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'units', 'lighttank')
+SRC = os.path.join(labpaths.WORK, 'units', 'lighttank')
 UNIT_FILE = os.path.join(c2.SDK, 'Mods', 'CNVUnits', 'Data', UNIT + '.xml')
 c7.EXTRA_TEMPLATES[UNIT] = {'file': 'DATA:CNVUnits/Data/' + UNIT + '.xml', 'EditorSorting': 'UNIT'}
 c4.c3.STRINGS['Name:' + UNIT] = 'CNV 轻型坦克'
@@ -87,6 +89,6 @@ def game_running():
 
 if __name__ == '__main__':
     if game_running():      # never write into the Mods folder while the user plays: stage it, move it later
-        c2.OUT = c4.OUT = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'staging', NAME)
+        c2.OUT = c4.OUT = os.path.join(labpaths.WORK, 'staging', NAME)
         print('RA3 is running -> staging at', c4.OUT)
     c4.main()

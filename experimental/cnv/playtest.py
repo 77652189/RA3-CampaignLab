@@ -22,12 +22,14 @@ import shutil
 import subprocess
 import sys
 import time
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 TESTBENCH = os.path.join(ROOT, 'experimental', 'testbench')
 SHIM = os.path.join(TESTBENCH, 'd3d9.dll')
-COPY = os.environ.get('RA3_PLAY_DIR') or os.path.join(ROOT, 'work', 'testbench', 'RA3play')
+COPY = os.environ.get('RA3_PLAY_DIR') or os.path.join(labpaths.WORK, 'testbench', 'RA3play')
 MODS = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods')
 EDITIONS = {'zh': 'CampShell', 'intl': 'CampShellEn'}
 KEYS = ('Ctrl+Alt+= 加速（1→2→4→8 倍）  Ctrl+Alt+- 减速  Ctrl+Alt+0 回 1 倍\n'

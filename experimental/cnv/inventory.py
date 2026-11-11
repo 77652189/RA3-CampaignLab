@@ -29,13 +29,15 @@ import json
 import os
 import re
 import sys
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign')) if p not in sys.path]
 
 CATALOG = os.path.join(ROOT, 'experimental', 'campaign', 'script_catalog.json')
-RETAIL_SCRIPTS = os.path.join(ROOT, 'work', 'retailref')
+RETAIL_SCRIPTS = os.path.join(labpaths.WORK, 'retailref')
 OUT = os.path.join(ROOT, 'docs', 'engine', 'inventory.md')
 
 BENCHED, GUESSED, TODO, NA = '已对拍', '推断', '未做', '不涉及'

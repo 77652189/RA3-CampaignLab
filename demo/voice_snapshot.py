@@ -11,7 +11,7 @@ import os
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CANDIDATES = [os.path.join(ROOT, 'demo', 'voice_snapshot.json'), os.path.join(ROOT, 'work', 'demo', 'voice_snapshot.json')]
+CANDIDATES = [os.path.join(ROOT, 'demo', 'voice_snapshot.json'), os.path.join((os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')), 'demo', 'voice_snapshot.json')]
 KEYS = ('event', 'who', 'audio_lang', 'exists', 'interim', 'subtitle_lang', 'subtitle')
 LEVELS = ('A4', 'ICEENG')
 

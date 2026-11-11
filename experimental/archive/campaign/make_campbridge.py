@@ -20,6 +20,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import make_campnew29 as c29                    # noqa: E402  (units chain: 游隼, shrink vehicle, Cryocopter ...)
 import make_realmap as real                     # noqa: E402  (terrain: newmap.island_heights / paint_terrain)
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'campaign')))
+import labpaths  # noqa: E402
 
 c23 = c29.c23
 c18, c7, c6, c4, c2 = c23.c18, c23.c7, c23.c6, c23.c4, c23.c2
@@ -156,6 +158,6 @@ c6.edit = generate
 
 if __name__ == '__main__':
     if real.game_running():
-        c2.OUT = c4.OUT = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'staging', NAME)
+        c2.OUT = c4.OUT = os.path.join(labpaths.WORK, 'staging', NAME)
         print('RA3 is running -> staging at', c4.OUT)
     c4.main()

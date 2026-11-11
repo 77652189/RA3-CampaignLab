@@ -29,10 +29,12 @@ sys.path[:0] = [p for p in (CNV, os.path.join(os.path.dirname(HERE), 'campaign')
 import maprender  # noqa: E402  (experimental/campaign: the map pictures' orientation, SCREEN_Y)
 import sim  # noqa: E402
 import simshow  # noqa: E402
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 PLAYS = os.path.join(CNV, 'plays')
 REPO = os.path.dirname(os.path.dirname(HERE))
-VOICE_DIRS = [os.path.join(HERE, 'voice'), os.path.join(REPO, 'work', 'voice')]   # <key>.wav / .mp3 / .ogg, if any
+VOICE_DIRS = [os.path.join(HERE, 'voice'), os.path.join(labpaths.WORK, 'voice')]   # <key>.wav / .mp3 / .ogg, if any
 AUDIO_EXT = ('.wav', '.mp3', '.ogg')
 SPEEDS = (0.0, 1.0, 2.0, 4.0, 8.0, -1.0)      # 0 paused, -1 as fast as it goes
 TICK_BUDGET = 0.25                             # seconds of wall time one worker turn may spend ticking (as fast)

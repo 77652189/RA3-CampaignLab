@@ -21,10 +21,13 @@ import os
 import re
 import subprocess
 import time
+import sys
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
-BENCH = os.environ.get('RA3_BENCH_DIR') or os.path.join(ROOT, 'work', 'testbench', 'RA3')    # the game copy
+BENCH = os.environ.get('RA3_BENCH_DIR') or os.path.join(labpaths.WORK, 'testbench', 'RA3')    # the game copy
 def lab(root=ROOT):
     """The folder the repository sits in (RA3Modding, where shared\\ is). From a git worktree, the main checkout's:
     the worktree's .git is a file 'gitdir: <main>/.git/worktrees/<name>' (2026-10-27: a build in the units line's

@@ -15,8 +15,11 @@ import time
 
 import calib  # this folder: first on the path when run as a script (guard G4: no sys.path edits)
 import harness
+import sys
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
-OUT = os.path.join(calib.ROOT, 'work', 'testbench', 'retail_q')
+OUT = os.path.join(labpaths.WORK, 'testbench', 'retail_q')
 
 
 def run(slot, until=90.0, step=5.0, mod='CampShRetail'):

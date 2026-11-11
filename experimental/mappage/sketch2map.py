@@ -44,12 +44,14 @@ import math
 import os
 import subprocess
 import sys
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 CNV = os.path.join(ROOT, 'experimental', 'cnv')
 CAMPAIGN = os.path.join(ROOT, 'experimental', 'campaign')
-OUT = os.path.join(ROOT, 'work', 'mappage')
+OUT = os.path.join(labpaths.WORK, 'mappage')
 VERSION = 1
 START_WHAT = "the player's start; the start camera looks here"
 BRIDGE = 'HB_Bridge_02'                         # the bridge template a new bridge gets

@@ -4,6 +4,12 @@
 
 状态（2026-11-08）：引擎优先，关卡与外壳不推新内容，亲手试玩改在游戏里（ADR 0024～0026）。外壳线没有进行中的任务；下面是已交付物、没做完的项、必读指针。
 
+## 11-10 恢复片头视频和 nihav（总控派活，用户批准下载）
+
+- **已完成（17:30，test_shell.py 43 passed；cargo build --release 31 s）**。11-10 work/ 误删后 tests/test_shell.py 有 6 项红：缺 `work/shell/intro1.mp4` / `intro_en1.mp4` 和 `work/downloads/nihav`。
+- **mp4 不是素材**：`experimental/cnv/shell.py` 的 `intro_clip` 用代码画（深蓝渐变 + 标题 + 4 秒进度条），文件不在就重画；它们没过只是因为转 VP6 缺编码器。不需要用户提供任何东西。
+- **nihav 下载**：文件 `nihav-63ac44b.tar.gz`，来源 NihAV 官方 gitweb 快照 `https://git.nihav.org/?p=nihav.git;a=snapshot;h=63ac44b;sf=tgz`（`git://` 连不上，同 story/handoff.md 1g）；服务器不报大小（流式生成），实际 2,296,847 字节。nihav 仓库里没有编码器，另下 `nihav-encoder-df36346.tar.gz`（`https://git.nihav.org/?p=nihav-encoder.git;a=snapshot;h=df36346;sf=tgz`，编码器仓库 11-10 的 HEAD；nihav 的 HEAD 当天仍是 63ac44b，所以和当初那套对得上），放成 `nihav-HEAD-63ac44b/nihav-encoder`（它按 `../nihav-*` 找依赖）。解到 `work/downloads/nihav/src/nihav-HEAD-63ac44b/`（to_vp6.py 认这个目录名），在 `nihav-encoder` 里 `cargo build --release`。
+
 ## 当前状态：笔记本演示包（11-06 总控派活，git log 搜 "retail English"）
 
 - **交付物**在 `work/demo/`：`CampShellEn_demo.zip`（INSTALL.txt + CampShellEn 文件夹：skudef、big、`Play_CampShellEn.bat`）、`a4.mp4`（118 s，开场过场 + 字幕 + "NEW PRIMARY/BONUS OBJECTIVE"）。源文件在 `work/demo/src/`；打包、驱动、合成视频的脚本在当时会话的 scratchpad，没进仓库（要重做就照下面路子再写）。

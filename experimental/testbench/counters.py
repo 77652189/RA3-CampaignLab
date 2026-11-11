@@ -14,9 +14,11 @@ import sys
 
 import numpy as np
 from PIL import Image
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DIGITS = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'testbench', 'nav', 'digits')
+DIGITS = os.path.join(labpaths.WORK, 'testbench', 'nav', 'digits')
 TOP, LINE, HEIGHT = 578, 16, 15                # the first line's top row, the pitch, a line's height
 MAX_LINES = 4
 LEFT, RIGHT = 0, 330

@@ -19,6 +19,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'units'))
 import make_campnew28 as c28                    # noqa: E402
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.')))
+import labpaths  # noqa: E402
 
 c27, c26, c23 = c28.c27, c28.c26, c28.c23
 c24 = c23 and c26.c25.c24
@@ -32,7 +34,7 @@ c2.OUT = c4.OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 
 c7.MAP_MOD = NAME + 'Map'
 
 UNIT, MODEL = 'CNV_ShrinkVehicle', 'CNShrink'
-SRC = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'units', 'shrinkvehicle')
+SRC = os.path.join(labpaths.WORK, 'units', 'shrinkvehicle')
 BUTTON, PORTRAIT = f'Button_{UNIT}_on', f'Portrait_{UNIT}'
 COMMANDS = f'{UNIT}CommandSet'
 c7.EXTRA_TEMPLATES[UNIT] = {'file': 'DATA:CNVUnits/Data/' + UNIT + '.xml', 'EditorSorting': 'UNIT'}
@@ -150,6 +152,6 @@ c6.edit = generate
 
 if __name__ == '__main__':
     if c23.game_running():
-        c2.OUT = c4.OUT = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'staging', NAME)
+        c2.OUT = c4.OUT = os.path.join(labpaths.WORK, 'staging', NAME)
         print('RA3 is running -> staging at', c4.OUT)
     c4.main()

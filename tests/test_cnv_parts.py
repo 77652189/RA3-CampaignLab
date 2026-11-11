@@ -14,6 +14,8 @@ import parts  # noqa: E402
 import registry  # noqa: E402
 from missions import a8_rough as a8, liberty_bench  # noqa: E402
 from units import liberty as lib  # noqa: E402
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'experimental', 'campaign')))
+import labpaths  # noqa: E402
 
 
 def test_liberty_variants_keep_apart():
@@ -227,7 +229,7 @@ def test_judge_mission_ended_before():
 
 def test_counter_reader_reads_its_calibration():
     import counters
-    frames = os.path.join(ROOT, 'work', 'testbench', 'runs')
+    frames = os.path.join(labpaths.WORK, 'testbench', 'runs')
     shots = sorted(d for d in os.listdir(frames) if d.startswith('CampDigits_mcp_')) if os.path.isdir(frames) else []
     if not shots or len(counters.templates()) < 10:
         import pytest

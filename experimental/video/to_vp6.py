@@ -15,9 +15,11 @@ import tempfile
 
 import cv2
 import numpy as np
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-ENCODER = os.path.join(ROOT, 'work', 'downloads', 'nihav', 'src', 'nihav-HEAD-63ac44b', 'nihav-encoder', 'target', 'release',
+ENCODER = os.path.join(labpaths.WORK, 'downloads', 'nihav', 'src', 'nihav-HEAD-63ac44b', 'nihav-encoder', 'target', 'release',
                        'nihav-encoder.exe')
 SIZES = {'radar': (288, 288), 'full': (1280, 720), 'head': (512, 288)}     # head: the overview's talking head (retail AMB*.vp6)
 FPS = 23.976

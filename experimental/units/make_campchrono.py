@@ -21,6 +21,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'campaign'))
 os.environ.setdefault('CNV_DEPLOY', '0')
 import make_campnew35 as c35                    # noqa: E402
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 c29, c26, c23, c7, c4, c2 = c35.c29, c35.c26, c35.c23, c35.c7, c35.c4, c35.c2
 to_w3x = c23.to_w3x
@@ -32,7 +34,7 @@ c2.OUT = c4.OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 
 c7.MAP_MOD = NAME + 'Map'
 
 UNIT, MODEL = c35.UNIT, 'CNChrono'
-SRC = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'units', 'chronolag', 'game')
+SRC = os.path.join(labpaths.WORK, 'units', 'chronolag', 'game')
 BUTTON, PORTRAIT = f'Button_{UNIT}_on', f'Portrait_{UNIT}'
 PARTS = {'HULL': 'BODY', 'TURRET': 'Bone_Turret', 'BARREL': 'Bone_Turret_Pitch'}
 LEVEL = int(os.environ.get('CNV_CHRONO_LEVEL', 85))     # diffuse median (retail Allied vehicles 62..80); the bake's
@@ -112,6 +114,6 @@ c26.factory_xml = factory_xml
 
 if __name__ == '__main__':
     if c23.game_running():
-        c2.OUT = c4.OUT = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'staging', NAME)
+        c2.OUT = c4.OUT = os.path.join(labpaths.WORK, 'staging', NAME)
         print('RA3 is running -> staging at', c4.OUT)
     c4.main()

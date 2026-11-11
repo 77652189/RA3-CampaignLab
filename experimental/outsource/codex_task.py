@@ -104,7 +104,7 @@ def files_allowed(brief):
 
 def bench_dirs():
     """What the bench writes: the game copy and results (work), the mods, the locks, the SDK."""
-    return [os.path.join(LAB, 'RA3-CampaignLab', 'work'), os.path.join(LAB, 'shared'),
+    return [(os.environ.get('CNV_WORK') or os.path.join(LAB, 'RA3-CampaignLab', 'work')), os.path.join(LAB, 'shared'),
             os.path.join(LAB, 'sdk'), os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3'),
             os.path.join(os.environ.get('APPDATA', ''), 'Red Alert 3')]
 
