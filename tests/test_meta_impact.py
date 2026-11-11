@@ -207,6 +207,28 @@ def test_meta_impact_dispatch_retains_nondefault_physics_and_outside_radius_gaps
     assert (sim.GAP_WEAPON, 'MetaImpactNugget') in e.unmodeled
 
 
+@pytest.mark.parametrize('check', ['man', 'tank'])
+def test_physics_p3_knock_toward_water_stays_a_gap_not_a_level_landing(check):
+    """engine_knock_water (Physics P3, bench 11-11 CampKWMan_mcp_1111_151010 / CampKWTank_mcp_1111_151445): a body
+    whose own landing lies in the trench is not put there -- the engine moves the landing point to a standable cell
+    (man: 2232 -> 2080 on his bank, lives; Hammer: 2404 -> 2490 on the far bank's slope, gone the frame it lands).
+    Not modelled yet (which cell, why the slope kills): the simulator must not fly the wet one onto the level-ground
+    curve into the water, it records the terrain gap; the dry one flies as on level ground."""
+    import build
+    import sim
+    from checks.engine_knock_water import LANES, name
+
+    m, t, _ = build.resolve('engine_knock_water', check)
+    e = sim.Sim(m, t)
+    gun, wet, dry = (e.bodies[name(check, p)] for p in ('gun', 'wet', 'dry'))
+    weapon, = gun.weapons
+    x = 1700 + LANES[check][1]
+    e.meta_impact_detonate(weapon, (x, 3300, 219))
+    assert id(wet) not in e.impact_flights
+    assert id(dry) in e.impact_flights
+    assert e.unmodeled[(sim.GAP_WEAPON, 'MetaImpactNugget')]['n'] >= 1
+
+
 def test_meta_impact_omitted_z_replays_engine_knock_z_tall_neighbour():
     """engine_knock_z a: omitted Z=1, height93 makes vertical scaling observable.
 

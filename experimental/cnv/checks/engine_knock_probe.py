@@ -99,22 +99,22 @@ def yuri_shock():
     return found[0]
 
 
-def rocket_gun():
-    """Retail's V4 with its retail rocket (no scatter), the rocket's warhead swapped for CNV_KnockRocketWarhead:
-    the 1.5 hit and the strong MetaImpactNugget, retail warhead's collide / affects flags."""
+def rocket_gun(uid='CNV_KnockRocket', shock=None):
+    """Retail's V4 with its retail rocket (no scatter), the rocket's warhead swapped for <uid>Warhead: the 1.5 hit
+    and the strong MetaImpactNugget (or `shock` = (amount, radius, z mult)), retail warhead's collide / affects flags."""
     from checks.engine_missile import home_v4
-    amount, radius, zmult, _ = LANES['rocket']
-    u = home_v4('CNV_KnockRocket', adjust=10.0, scatter=False)
+    amount, radius, zmult = shock or LANES['rocket'][:3]
+    u = home_v4(uid, adjust=10.0, scatter=False)
     old = 'WarheadTemplate="SovietAntiStructureVehicleV4RocketWarhead"'
     assert u.xml.count(old) == 1
-    u.xml = u.xml.replace(old, 'WarheadTemplate="CNV_KnockRocketWarhead"')
-    warhead = ('\t<WeaponTemplate id="CNV_KnockRocketWarhead" ProjectileCollidesWith="ALLIES ENEMIES NEUTRAL STRUCTURES '
+    u.xml = u.xml.replace(old, f'WarheadTemplate="{uid}Warhead"')
+    warhead = (f'\t<WeaponTemplate id="{uid}Warhead" ProjectileCollidesWith="ALLIES ENEMIES NEUTRAL STRUCTURES '
                'WALLS" RadiusDamageAffects="ALLIES ENEMIES NEUTRALS SELF" Flags="ATTACK_NEEDS_LINE_OF_SIGHT '
                'NOT_ATTRACTED_BY_MAGNETS" RequiredAntiMask="ANTI_WATER ANTI_GROUND ANTI_STRUCTURE">'
                f'<Nuggets>{HIT}<MetaImpactNugget ShockWaveAmount="{amount}" ShockWaveRadius="{radius}" '
                f'ShockWaveZMult="{zmult}"/></Nuggets></WeaponTemplate>\n')
     u.xml = u.xml.replace('</AssetDeclaration>', warhead + '</AssetDeclaration>', 1)
-    u.link = list(u.link) + ['WeaponTemplate:CNV_KnockRocketWarhead']
+    u.link = list(u.link) + [f'WeaponTemplate:{uid}Warhead']
     u.what = f'击飞 V4（探针）：原版火箭弹体，弹头 1.5 伤害 + MetaImpactNugget 冲击 {amount} 半径 {radius} 竖直倍数 {zmult}'
     return u
 
