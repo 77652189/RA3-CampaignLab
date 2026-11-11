@@ -22,6 +22,10 @@ Round 25, `retail` (CampKPRetail): 'yuri' = the instant gun with retail PsyonicB
 'rocket' = the strong shock in the warhead of retail's V4 rocket. Bench 11-10 PASS (all four health readings as
 predicted); the yuri men stay put, the rocket's target flies (from frame 175, still airborne when the run ends at 266)
 and its neighbour hops ~20 away: MetaImpact pushes only from a detonation (a projectile's), not from an instant hit.
+Round 26, `land` (CampKPLand): the rocket lane alone, RUN = ORDER + 14 s. Bench 11-10 PASS (man 99, neighbour 100,
+not dead): the flung man lands at frame 300 at (2300, 3060), 690 back towards the gun, and lies still; no fall damage.
+This run's flight is higher than round 25's (vz 111 / frame against 65, horizontal 5.4 against 7.9), but both last
+~127 frames and both are a clean parabola, z - ground = c n (N - n) for flight frame n of N.
 """
 import os
 import re
@@ -49,6 +53,10 @@ YURI = 'JapanCommandoTech1PsyonicBlast'
 STOP = {k: 4 / 15 for k in LANES}
 STOP['rocket'] = 2.0                # retail's 0.5 s pre-attack must pass before NO_ATTACK; reload 4.5 s: one rocket
 RUN = ORDER + 8.0
+# round 26, `land`: the rocket lane alone, run long enough for the flung man to come down (round 25: apex ~frame 238
+# at z 2278, gravity ~1.02 / frame^2 -> ground 212.5 ~frame 302, the run ended at 266) and stand up again
+# (Physics ShockStandingTime 1.5 s default); the yuri / shot / tank lanes keep RUN
+RUNS = {'land': ORDER + 14.0}
 HIT = '<DamageNugget Damage="1.5" DamageType="UNRESISTABLE" DeathType="NORMAL" Radius="0"/>'
 
 
@@ -129,18 +137,24 @@ def mission():
 
 
 CHECK_LANES = {'shot': ('mild', 'strong'), 'tank': ('tank',),    # four counter lines at most: two lanes a check
-               'retail': ('yuri', 'rocket')}
+               'retail': ('yuri', 'rocket'), 'land': ('rocket',)}
+# `land` also counts whether the flung man died (a dead man's health counter keeps its last reading). Prediction from
+# the data: no fall damage -- PhysicsBehavior.xsd has no fall / splat damage field and the Peacekeeper's Physics is
+# all defaults -- so alive, 99.
+DEAD = {'land': ('rocket',)}
 
 
 def check(m, which):
     m.units = units()
     fired = CHECK_LANES[which]          # the other lanes stand there, every gun NO_ATTACK
+    run = RUNS.get(which, RUN)
     t = Test()
     start = [('MAP_REVEAL_ALL_PERM', m.player('p1'))]
     start += [('UNIT_CHANGE_OBJECT_STATUS', name(k, p), 'NO_ATTACK', 1) for k in LANES for p in ('gun', 'man', 'near')]
     stops = sorted({STOP[k] for k in fired})
     start += [('SET_MILLISECOND_TIMER', 'Knock Fire', float(ORDER))]
     start += [('SET_MILLISECOND_TIMER', f'Knock Stop {i}', ORDER + s) for i, s in enumerate(stops)]
+    start += [('SET_COUNTER', f'CNV_Knock_{k}_dead', 0) for k in DEAD.get(which, ())]
     t.scripts.append(Script('Test - start', [], start))
     fire = []
     for k in fired:
@@ -159,8 +173,13 @@ def check(m, which):
             t.scripts.append(Script(f'Test - health {k} {p}', [],
                                     [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', name(k, p), c)], once=False))
             expect[f'{k} {p}'] = hp
-    t.expect = [(label, RUN - 2, '==', expect[label], RUN) for _, label in t.counters]
-    t.bench = [('bench_watch', dict(seconds=RUN, every=.5, sheet=False, lines=len(t.counters)))]
+    for k in DEAD.get(which, ()):
+        c = f'CNV_Knock_{k}_dead'
+        t.counters.append((c, f'{k} dead'))
+        t.scripts.append(Script(f'Test - dead {k}', [('NAMED_DESTROYED', name(k, 'man'))], [('SET_COUNTER', c, 1)]))
+        expect[f'{k} dead'] = 0
+    t.expect = [(label, run - 2, '==', expect[label], run) for _, label in t.counters]
+    t.bench = [('bench_watch', dict(seconds=run, every=.5, sheet=False, lines=len(t.counters)))]
     return t
 
 
