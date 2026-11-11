@@ -307,7 +307,7 @@
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleMirageField` | 7 | 只记进时间线，没有效果 |
 | 不涉及 | `PATH_MUSIC_ENABLE_DYNAMIC_SYSTEM` | 7 | 纯表现（名字规则） |
 | 推断 | `TEAM_DELETE_LIVING` | 7 | Sim.act / Sim.cond 有分支 |
-| 已对拍 | `UNIT_CHANGE_OBJECT_STATUS:NON_AUTOACQUIRABLE` | 7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_stasis.py |
+| 已对拍 | `UNIT_CHANGE_OBJECT_STATUS:NON_AUTOACQUIRABLE` | 7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attach.py |
 | 已对拍 | `UNIT_CHANGE_OBJECT_STATUS:UNATTACKABLE` | 7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attach.py |
 | 未做 | `ATTACK_MOVE_TEAM_TO_NEAREST_OBJECT_OF_TYPE_OF_PLAYER` | 6 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `DISABLE_COUNTDOWN_TIMER_DISPLAY` | 6 | 纯表现（名字规则） |

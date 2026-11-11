@@ -44,25 +44,31 @@ def _module_contract(unit):
         raise ValueError(f'{unit.id}: unpublished AttachModuleId {sorted(missing)}')
 
 
-def mission():
-    m=Mission(name='CampAttach',map=probe_range,units=[],facts={})
+def mission(detach=False):
+    m=Mission(name='CampAttachD' if detach else 'CampAttach',map=probe_range,units=[],facts={})
     for lane in CASES:
-        kind='INFANTRY' if lane=='removed' else 'VEHICLE'
-        forbidden=' ForbiddenTargetObjectStatus="NO_ATTACK"' if lane=='order' else ''
+        kind='INFANTRY' if lane=='removed' and not detach else 'VEHICLE'
+        forbidden=' ForbiddenTargetObjectStatus="NO_ATTACK"' if lane=='order' and not detach else ''
         nugget=(f'<AttachNugget AttachModuleId="ModuleTag_Attach"{forbidden}><SpecialObjectFilter '
-                f'Rule="ANY" Include="{kind}"/></AttachNugget>' if lane!='base' else '')
+                f'Rule="ANY" Include="{kind}"/></AttachNugget>'
+                if (lane!='removed' if detach else lane!='base') else '')
         u=gun('CNV_Attach'+lane.title(),10,nugget)
         u.xml=u.xml.replace('DamageType="EXPLOSIVE"','DamageType="UNRESISTABLE"')
+        flags=' MOVE_ORDER_FORCES_DETACH' if detach and lane!='base' else ''
+        child_status='NON_AUTOACQUIRABLE NO_COLLISIONS' if detach else 'ENCLOSED UNATTACKABLE'
         u.xml=u.xml.replace('<Behaviors>','<Behaviors>'+
             '<AttachUpdate id="ModuleTag_Attach" Range="600" CloseEnoughRange="1" '
-            'ParentStatus="VEHICLE_ATTACHED" AttachedObjectStatus="ENCLOSED UNATTACKABLE" '
-            'Flags="ONE_ATTACH_PER_PARENT STICK_TO_PARENT TELEPORT"/>',1)
+            f'ParentStatus="VEHICLE_ATTACHED" AttachedObjectStatus="{child_status}" '
+            f'Flags="ONE_ATTACH_PER_PARENT STICK_TO_PARENT TELEPORT{flags}"/>',1)
         _module_contract(u)
         v=target('CNV_AttachVictim'+lane.title(),health=1000)
         m.units.extend((u,v))
-        m.put(u.id,lane+' gun',side='p1',angle=1.5708,name='Attach '+lane+' child')
+        m.put(u.id,lane+' gun',0,600 if detach and lane=='removed' else 0,
+              side='p1',angle=1.5708,name='Attach '+lane+' child')
         m.put(v.id,lane+' gun',0,450,side='s1',angle=4.7124,name='Attach '+lane+' parent')
         m.waypoint(lane+' goal','Attach goal '+lane,lane+' gun',0,600)
+        if detach:
+            m.waypoint(lane+' child goal','Attach child goal '+lane,lane+' gun',200,600)
     return m
 
 
@@ -102,5 +108,88 @@ def check(m):
     return t
 
 
-MISSION={'engine_attach':mission}
-CHECKS={'engine_attach':{'a':check}}
+def mission_detach():
+    return mission(detach=True)
+
+
+def check_detach(m):
+    """Retail JapanScoutInfantry's MOVE_ORDER_FORCES_DETACH, isolated from other handlers.
+
+    Second-run PREDICT: 1133111099/1133100199/1133111099/1100000199.
+    base: attached, no flag, child move; high: attached, flag, child move;
+    order: attached, flag, parent move only; removed: flag, no nugget, child move.
+    All parents move at9s; all but order children receive a plain move at16s.
+    Bits at8s prove attachment;14s proves following;24s tests release and arrival.
+    Packed=1e9*childAlive+1e8*parentAlive+2e7*everAttached+2e6*everParentStatus+
+    1e7*attached8+1e6*parentStatus8+
+    1e5*follow14+1e4*attached24+1e3*parentStatus24+100*childGoal24+parentHP%.
+    Only the flag's direct, simple-module contract; no retail beam/projectile,
+    geometry, alignment, leech, death or attack-move semantics claimed.
+
+    MEASURED 2026-11-10 (two-run stop; no model rule inferred):
+    First fixture, ENCLOSED UNATTACKABLE: 1111111099/1100000199/
+    1100000099/1100000099 (c_attach_detach_bench.log). Flagged lanes had
+    already cleared both statuses at8s, BEFORE the16s child move order.
+    Second fixture substitutes retail NON_AUTOACQUIRABLE NO_COLLISIONS and
+    latches ever-attached/ever-parent bits: 1133111099/1122000199/
+    1122000099/1100000200 (c_attach_detach_native_status_bench.log).
+    Both flagged lanes DID attach, then cleared before8s; neither followed
+    the9s parent move. An explicit child move at16s cannot explain that.
+    The removed control starts at y600 to shorten its walk: it faces away
+    from the y450 target and shows no hit (HP100), then reaches its own
+    goal. Orientation/command timing was not isolated; HP100 is not a rule.
+    expect below preserves OBSERVATIONS for diagnosis, not the rejected
+    prediction or whole-item evidence. Direct attack task/automatic move,
+    NO_ATTACK interruption, and retail projectile dispatch remain unseparated.
+    """
+    t=Test();start=[('MAP_REVEAL_ALL_PERM',m.player('p1'))]
+    for phase,at in (('Fire',6.),('Stop',6+4/15),('After',8.),('Move',9.),
+                     ('Follow',14.),('ChildMove',16.),('Late',24.)):
+        start.append(('SET_MILLISECOND_TIMER','Detach '+phase,at))
+    fire=[];stop=[];move=[];child_move=[]
+    for lane in CASES:
+        child,parent='Attach '+lane+' child','Attach '+lane+' parent';c='CNV_Detach_'+lane
+        start.extend(('UNIT_CHANGE_OBJECT_STATUS',v,'NO_ATTACK',1) for v in (child,parent))
+        fire.extend((('UNIT_CHANGE_OBJECT_STATUS',child,'NO_ATTACK',0),('NAMED_ATTACK_NAMED',child,parent)))
+        stop.append(('UNIT_CHANGE_OBJECT_STATUS',child,'NO_ATTACK',1))
+        move.append(('MOVE_NAMED_UNIT_TO',parent,m.mark(lane+' goal')))
+        if lane!='order':
+            child_move.append(('MOVE_NAMED_UNIT_TO',child,m.mark(lane+' child goal')))
+        parent_area,child_area='Detach parent '+lane,'Detach child '+lane
+        t.areas[parent_area]=square(*m.point(lane+' goal'),60)
+        t.areas[child_area]=square(*m.point(lane+' child goal'),60)
+        t.counters.append((c,lane+' detach'))
+        t.scripts.extend((Script('Test - detach hp '+lane,[],[('SET_COUNTER',c,0),
+            ('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER',parent,c),('COUNTER_MATH_COUNTER',c,0,c+'State')],once=False),
+            Script('Test - detach parent alive '+lane,[('NAMED_NOT_DESTROYED',parent)],
+                   [('INCREMENT_COUNTER',100000000,c)],once=False),
+            Script('Test - detach child alive '+lane,[('NAMED_NOT_DESTROYED',child)],
+                   [('INCREMENT_COUNTER',1000000000,c)],once=False)))
+        t.scripts.extend((
+            Script('Test - detach ever child '+lane,[('UNIT_HAS_OBJECT_STATUS',child,status('ATTACHED'))],
+                   [('INCREMENT_COUNTER',20000000,c+'State')]),
+            Script('Test - detach ever parent '+lane,[('UNIT_HAS_OBJECT_STATUS',parent,status('VEHICLE_ATTACHED'))],
+                   [('INCREMENT_COUNTER',2000000,c+'State')])))
+        snapshots=(('After',10000000,('UNIT_HAS_OBJECT_STATUS',child,status('ATTACHED'))),
+                   ('After',1000000,('UNIT_HAS_OBJECT_STATUS',parent,status('VEHICLE_ATTACHED'))),
+                   ('Follow',100000,('NAMED_INSIDE_AREA',child,parent_area)),
+                   ('Late',10000,('UNIT_HAS_OBJECT_STATUS',child,status('ATTACHED'))),
+                   ('Late',1000,('UNIT_HAS_OBJECT_STATUS',parent,status('VEHICLE_ATTACHED'))),
+                   ('Late',100,('NAMED_INSIDE_AREA',child,child_area)))
+        for i,(phase,weight,cond) in enumerate(snapshots):
+            t.scripts.append(Script(f'Test - detach sample {lane}{i}',[('TIMER_EXPIRED','Detach '+phase),
+                ('FLAG','Detach sampled '+phase,0),cond],[('INCREMENT_COUNTER',weight,c+'State')]))
+    for phase in ('After','Follow','Late'):
+        t.scripts.append(Script('Test - detach close '+phase,[('TIMER_EXPIRED','Detach '+phase)],
+                               [('SET_FLAG','Detach sampled '+phase,1)]))
+    t.scripts.insert(0,Script('Test - detach start',[],start))
+    for phase,actions in (('Fire',fire),('Stop',stop),('Move',move),('ChildMove',child_move)):
+        t.scripts.append(Script('Test - detach '+phase,[('TIMER_EXPIRED','Detach '+phase)],actions))
+    t.expect=[(label,26,'==',v,28) for (_,label),v in zip(t.counters,
+              (1133111099,1122000199,1122000099,1100000200))]
+    t.bench=[('bench_watch',dict(seconds=28.,every=.5,sheet=False,lines=4))]
+    return t
+
+
+MISSION={'engine_attach':mission,'engine_attach_detach':mission_detach}
+CHECKS={'engine_attach':{'a':check},'engine_attach_detach':{'a':check_detach}}

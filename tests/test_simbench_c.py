@@ -3,6 +3,7 @@ the simulator to it, so a module can be registered in inventory.BENCHED_TESTS ag
 test_simbench.py so line C's hunks never share a file with another line's uncommitted ones."""
 import importlib.util
 from pathlib import Path
+import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 # loaded by file: simbench.py puts the cnv folders on the path itself (no new sys.path edit here: guard G4's ceiling)
@@ -847,3 +848,22 @@ def test_attach_child_is_not_crushed_by_the_parent_it_travels_with():
     child.crushable=0;parent.crusher=100
     e.run(20)
     assert child.alive and child.status >= {'ATTACHED','ENCLOSED','UNATTACKABLE'}
+
+
+@pytest.mark.xfail(strict=True,raises=AssertionError,
+                   reason='Flagged direct dispatch attaches transiently before8s; two-run gate, cause unresolved')
+def test_attach_move_flag_transient_link_matches_engine_attach_detach_observation():
+    """Observed engine_attach_detach a; never treat the rejected16s-detach prediction as truth."""
+    import build
+    import sim
+    m,t,_=build.resolve('engine_attach_detach','a')
+    e=sim.Sim(m,t);e.shot_clock=True
+    rows=e.run(28).series
+    expected=(1133111099,1122000199,1122000099,1100000200)
+    assert all(tuple(row)==expected for sec,row in rows if sec>=26)
+    assert tuple(rows[-1][1])==expected
+    assert set(e.attachments)=={'Attach base child'}
+    child,parent=e.body('Attach high child'),e.body('Attach high parent')
+    assert child.alive and parent.alive
+    assert not child.status & {'ATTACHED','NON_AUTOACQUIRABLE','NO_COLLISIONS'}
+    assert 'VEHICLE_ATTACHED' not in parent.status
