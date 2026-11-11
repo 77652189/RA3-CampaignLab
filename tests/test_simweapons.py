@@ -46,12 +46,12 @@ def test_pre_attack_by_kind():
 
 
 def test_athena_round_and_cycle():
-    """Bench engine_ocl a 2026-11-08: ~600 raw a round (2 s of 20 every frame + 20 when the effect dies), a round
-    every ~5.3 s (pre-attack 2 + firing 2 + reload 1.1)."""
+    """engine_oclone a 2026-11-10: 600 raw per round (first update ceil(.1*15)=2,
+    offsets 2..30 give 29*20, plus 20 on death); cycle 77 frames (30+30+17)."""
     weapons = simunits._fight_data()['weapons']
-    assert simunits.ocl_round('OCL_AthenaCannon', weapons) == (620.0, 'EXPLOSIVE')
+    assert simunits.ocl_round('OCL_AthenaCannon', weapons) == (600.0, 'EXPLOSIVE')
     (gun,) = simunits.fight('AlliedAntiStructureVehicle')['weapons']
-    assert abs(gun['dps'] - 620 / (77 / 15)) < 0.1      # 77 frames: 30 + 30 + 17 (round 6) and gun['range'] == 500.0
+    assert abs(gun['dps'] - 600 / (77 / 15)) < 0.1
 
 
 def test_retail_conscript_fires():
