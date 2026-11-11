@@ -199,6 +199,13 @@ BENCHED_TESTS = {
     # gap: ExitDelaySeconds (0.07 s between two units), h's barracks stop 1-2 units off (strict xfail)
     (MODULE, 'Behaviors/QueueProductionExitUpdate'):
         'tests/test_simbench.py::test_a_new_unit_stops_beyond_the_natural_rally_point_as_the_bench',
+    # engine line A round 160: engine_wfire all (bench 11-11): Yuriko's blast (radius damage after the nugget's
+    # delay), Natasha's pilot snipe (walks till the target's edge is in StartAbilityRange, UnpackTime, the vehicle
+    # neutral), the dog's bark (EMP on enemy infantry in the radius); the caster stands Pack / Freeze. Gaps: the
+    # blast's MetaImpactNugget push, the ships' / Cryocopter's / superweapons' (WeaponSlot, FaceTarget), the sickle's
+    # leap (BezierProjectile), the player's click reload
+    (MODULE, 'Behaviors/WeaponFireSpecialAbilityUpdate'):
+        'tests/test_simbench.py::test_a_weapon_fire_ability_goes_off_after_its_unpack_and_holds_the_caster_through_its_pack',
     (MODULE, 'Behaviors/EjectPassengersSpecialAbilityUpdate'):
         'tests/test_simbench.py::test_transport_the_man_cannon_throws_one_every_half_second_and_a_killed_transport_kills_its_men',
     # engine line A round 156: engine_toggle a-f, bench 11-11 (Sim.toggle_press): six of our 9 levels' toggles -- a

@@ -33,7 +33,10 @@ RETAIL_COMMANDS = {'Command_CaptureBuilding',           # an engineer takes a bu
                    'Command_ToggleShortCircuit',                                              # engine_toggle f
                    'Command_ToggleRiotShieldSpecialPower',      # the Peacekeeper's riot shield (engine_aitoggle)
                    'Command_ActivateEjectPassengersSpecialPower',   # the Bullfrog's man cannon at a spot (engine_transport)
-                   'Command_ActivateEjectPassengersSpecialPowerUntargeted'}     # the bomber's paradrop (retail a01)
+                   'Command_ActivateEjectPassengersSpecialPowerUntargeted',     # the bomber's paradrop (retail a01)
+                   'Command_PsyonicBlastSpecialPower',          # Yuriko's blast (WeaponFireSpecialAbilityUpdate,
+                   'Command_ActivatePilotSnipeSpecialPower',    # engine_wfire); Natasha's pilot snipe
+                   'Command_ActivateBarkSpecialPower'}          # the dog's bark
 # a factory's build button (a UNIT_BUILD command: Command_ConstructAlliedEngineer, retail j07's
 # Command_ConstructJapanMinerFromRefinery): a script's press builds as the player's click does -- paid, the build time
 # (bench 2026-11-08 engine_production e / f); the simulator and playcheck take the button from the factory's CommandSet

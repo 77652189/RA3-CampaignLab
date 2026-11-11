@@ -2254,6 +2254,64 @@ def replace_unpack_frames(template, button, own=None):
     return _inherited(template, own, read, None) or 0
 
 
+def weapon_fire_ability(template, button, own=None):
+    """The template's WeaponFireSpecialAbilityUpdate the button fires (its SpecialPowerTemplate is the button's
+    power), else None: dict(weapon, unpack / pack / freeze frames, range (StartAbilityRange), options, busy_pack).
+    Yuriko's blast, Natasha's pilot snipe, the dog's bark (bench 11-11 engine_wfire)."""
+    power = command_power(button, own)
+    if not power:
+        return None
+
+    def read(xml):
+        for head, _ in _blocks(xml, 'WeaponFireSpecialAbilityUpdate'):
+            if _attr(head, 'SpecialPowerTemplate') == power and _attr(head, 'SpecialWeapon'):
+                opts = (_attr(head, 'Options') or '').split()
+                return dict(weapon=_attr(head, 'SpecialWeapon'), power=power,
+                            unpack=_frames(_secs(expand(_attr(head, 'UnpackTime', '0s')))),
+                            pack=_frames(_secs(expand(_attr(head, 'PackTime', '0s')))),
+                            freeze=_frames(_secs(expand(_attr(head, 'FreezeAfterTriggerDuration', '0s')))),
+                            range=_num(_attr(head, 'StartAbilityRange'), 0.0), options=opts,
+                            busy_pack='BUSY_DURING_PACK' in opts)
+        return None
+    return _chain(template, own, read)
+
+
+def special_weapon(weapon, own=None):
+    """What a special ability's weapon does where it goes off (weapon_fire_ability): dict(affects (RadiusDamageAffects),
+    damage [(damage, type, radius, delay s)] from its DamageNuggets, paralyze [dict(kind (ParalyzeType), radius,
+    seconds, include (KindOf), relation, exclude (templates, lower), forbidden_upgrade)] from its ParalyzeNuggets, the
+    one SpecialObjectFilter each). Not read: MetaImpactNugget (the blast's shockwave: a push, gap)."""
+    global _weapon_blocks
+    if _weapon_blocks is None:
+        _weapon_blocks = {}
+        for text in _weapon_files():
+            for head, body in _blocks(re.sub(r'<!--.*?-->', '', text, flags=re.S), 'WeaponTemplate'):
+                _weapon_blocks.setdefault(_attr(head, 'id'), (head, body))
+    mine = {}
+    for text in (own or {}).values():
+        for head, body in _blocks(text or '', 'WeaponTemplate'):
+            mine[_attr(head, 'id')] = (head, body)
+    whead, wbody = mine.get(weapon) or _weapon_blocks.get(weapon, ('', ''))
+    wbody = re.sub(r'<!--.*?-->', '', wbody or '', flags=re.S)
+    out = dict(affects=frozenset((_attr(whead, 'RadiusDamageAffects') or 'ENEMIES NEUTRALS').split()), damage=[],
+               paralyze=[])
+    for nh, _ in _blocks(wbody, 'DamageNugget'):
+        out['damage'].append((_num(_attr(nh, 'Damage'), 0.0), _attr(nh, 'DamageType') or '',
+                              _num(_attr(nh, 'Radius'), 0.0), _secs(_attr(nh, 'DelayTimeSeconds') or '0s')))
+    for nh, inner in _blocks(wbody, 'ParalyzeNugget'):
+        fh, fi = next(_blocks(inner or '', 'SpecialObjectFilter'), ('', ''))
+        forbidden = re.findall(r'<ForbiddenUpgrade>\s*([^<>\s]+)', inner or '')
+        required = re.findall(r'<RequiredUpgrade>\s*([^<>\s]+)', inner or '')
+        out['paralyze'].append(dict(
+            required_upgrade=required[0] if required else '',
+            kind=_attr(nh, 'ParalyzeType') or 'EMP', radius=_num(_attr(nh, 'Radius'), 0.0),
+            seconds=_secs(_attr(nh, 'DurationSeconds') or '0s'),
+            include=frozenset((_attr(fh, 'Include') or '').split()), relation=_attr(fh, 'Relationship') or '',
+            exclude=frozenset(x.lower() for x in re.findall(r'<ExcludeThing>\s*([^<>\s]+)', fi or '')),
+            forbidden_upgrade=forbidden[0] if forbidden else ''))
+    return out
+
+
 def needs(template, own=None):
     """(objects, upgrades) its GameDependency asks for: every RequiredObject the player must own, every NeededUpgrade
     the player must hold (all of them: inference, the sidebar's lit buttons not measured)."""

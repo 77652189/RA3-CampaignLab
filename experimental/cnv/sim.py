@@ -160,6 +160,7 @@ RALLY_PUSH = 40.0              # a new unit stops this far beyond its factory's 
                                # factory, (80, 20): ~(112-127, 25-34); x 1.9 from the centre would be (152, 38))
 PACK_POWER = 'SpecialPower_PackReplaceSelf'         # a construction yard's pack button (Command_Pack...MCV)
 PACK_FRAMES = 0                # the yard is its MCV from the press frame on (engine_pack a / s / j)
+WFIRE_LAG = 0                  # frames between a weapon-fire ability's UnpackTime and its weapon (engine_wfire)
 BUILD_STEP = 5.0               # a builder on his way (R5) moves in steps this long, to see where he gets within range
 HIGH_STEP = 50.0                # ShroudClearingHeight's default: a viewer does not discover a cell this much above its own
                                 # (bench, docs/engine/vision.md; a unit's own value is Body.clear_height). Cell by cell,
@@ -1004,6 +1005,7 @@ class Sim:
         self.walls = {u.id: u.params for u in self.mm.units if 'length' in u.params}   # our bars of ice, gates
         self.due = []                       # (frame, structure, owner, team, x, y, by): a builder's, to put down (R5)
         self.blasts = []                    # (frame, x, y, [(distance, damage)], owner, by): a superweapon's hits
+        self.wfires = []                    # a WeaponFireSpecialAbilityUpdate press waiting to go off (wfire_due)
         self.casts = []                     # (frame, owner, power, caster, (x, y) or None): PLAYER_TRIGGERED_SPECIAL_POWER
         self.queues = {}                    # factory name -> [job]: production (order_build, produce_due)
         self.produced_to = None             # the last frame produce_due ran
@@ -3155,6 +3157,10 @@ class Sim:
             self.due.append((self.frame_now() + PACK_FRAMES, into, b.owner, b.team, b.x, b.y, b.name))
             self.note('技能', f'{self.label(b)} 收起成 {into}')
             self.build_due(self.frame_now())        # the press frame's later scripts already see the MCV
+        elif name in ('NAMED_USE_COMMANDBUTTON_ABILITY', 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED') and \
+                self.body(a[0]) and self.body(a[0]).alive and \
+                simunits.weapon_fire_ability(self.body(a[0]).template, a[1], self.own):
+            self.wfire_press(self.body(a[0]), a[1], a[2] if len(a) > 2 else None)
         elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and self.body(a[0]) and self.toggle_press(self.body(a[0]), a[1]):
             self.note('技能', f'{a[0]} 按 {a[1]} 切换状态')
         elif name in ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY'):
@@ -3388,6 +3394,7 @@ class Sim:
                 self.move(1.0 / self.fps, precise=True)
             self.build_due(eng.frame)
             self.blast_due(eng.frame)
+            self.wfire_due(eng.frame)
             self.death_blast_due(eng.frame)
             self.sweeps.due(eng.frame)
             self.deposit_due(eng.frame)
@@ -4510,6 +4517,83 @@ class Sim:
                     if self.first_death is None:
                         self.first_death = (self.t, t, by)
                     self.destroy(t, f'被 {self.label(by)} 的超武打掉')
+
+    def wfire_press(self, b, button, target=None):
+        """A WeaponFireSpecialAbilityUpdate's button (simunits.weapon_fire_ability; bench 11-11 engine_wfire): the
+        caster walks to within StartAbilityRange of a named target first, then stands UnpackTime and the SpecialWeapon
+        goes off once (wfire_due); it stands on through PackTime when BUSY_DURING_PACK, FreezeAfterTriggerDuration
+        always. A target gone or missing: nothing."""
+        ab = simunits.weapon_fire_ability(b.template, button, self.own)
+        t = self.body(target) if target else None
+        if target and not (t and t.alive):
+            self.note('技能', f'{self.label(b)} 按 {button}：目标 {target} 不在')
+            return
+        self.used.add('weapon fire ability')
+        job = dict(by=b, ab=ab, eff=simunits.special_weapon(ab['weapon'], self.own), target=t, button=button,
+                   fire_at=None)
+        self.wfires.append(job)
+        self.note('技能', f'{self.label(b)} 按 {button}' + (f' 对 {self.label(t)}' if t else ''))
+        if t and math.hypot(t.x - b.x, t.y - b.y) - t.radius > ab['range']:
+            b.goal, b.mode = None, 'move'
+            self.send(b, (t.x, t.y))
+        else:
+            self.wfire_start(job)
+
+    def wfire_start(self, job):
+        b, ab = job['by'], job['ab']
+        now = self.frame_now()
+        job['fire_at'] = now + ab['unpack'] + WFIRE_LAG
+        b.path, b.dest = [], None
+        hold = job['fire_at'] + max(ab['freeze'], ab['pack'] if ab['busy_pack'] else 0)
+        deadlines = self.__dict__.setdefault('emp_until', {})       # stands still (INFERRED: as EMP'd)
+        deadlines[id(b)] = max(deadlines.get(id(b), 0), hold)
+
+    def wfire_due(self, frame):
+        """The weapon-fire abilities going off by `frame` (wfire_press): the weapon's DamageNuggets as a death blast
+        round the caster (radius, delay, RadiusDamageAffects), its ParalyzeNuggets on the target (radius 0) or on
+        what the filter takes within the radius: EMP pauses it (emp_until), UNMANNED hands a vehicle to the
+        civilian side (the pilot shot out)."""
+        for job in list(self.wfires):
+            b, ab, t = job['by'], job['ab'], job['target']
+            if not b.alive or (t is not None and not t.alive):
+                self.wfires.remove(job)
+                continue
+            if job['fire_at'] is None:
+                # the range to the target's edge (INFERRED: engine_wfire far, 74 frames; to its centre 81)
+                if math.hypot(t.x - b.x, t.y - b.y) - t.radius <= ab['range']:
+                    self.wfire_start(job)
+                elif not b.path:
+                    self.send(b, (t.x, t.y))
+                continue
+            if frame < job['fire_at']:
+                continue
+            self.wfires.remove(job)
+            eff = job['eff']
+            for dmg, typ, reach, after in eff['damage']:
+                self.death_blasts.append((frame + simunits._frames(after), b.x, b.y, dmg, typ, reach,
+                                          eff['affects'], b.owner, b))
+            ups = {u.lower() for u in b.upgrades | self.player_ups.get(b.owner, set())}
+            for p in eff['paralyze']:
+                if (p['required_upgrade'] and p['required_upgrade'].lower() not in ups) or \
+                        (p['forbidden_upgrade'] and p['forbidden_upgrade'].lower() in ups):
+                    continue
+                pool = [t] if t is not None and not p['radius'] else \
+                    [o for o in self.living() if math.hypot(o.x - b.x, o.y - b.y) <= p['radius']]
+                for o in pool:
+                    if o is b or (p['include'] and not o.kinds & p['include']) or o.template.lower() in p['exclude']:
+                        continue
+                    if p['relation'] and self.relation(b.owner, o.owner) != p['relation']:
+                        continue
+                    if p['kind'] == 'EMP':
+                        deadlines = self.__dict__.setdefault('emp_until', {})
+                        deadlines[id(o)] = max(deadlines.get(id(o), 0), frame + simunits._frames(p['seconds']))
+                    elif p['kind'] == 'UNMANNED' and o.owner != CIV:
+                        o.owner, o.path, o.dest, o.goal = CIV, [], None, None
+                        self.note('易主', f'{self.label(o)} 的驾驶员被打掉，归中立')
+                        self.change()
+                    else:
+                        self.gap(GAP_WEAPON, 'ParalyzeNugget', f'{p["kind"]} 没模拟')
+            self.note('技能', f'{self.label(b)} 的 {ab["weapon"]} 打出')
 
     def death_blast_due(self, frame):
         """A death weapon going off by `frame` (destroy, simunits.death_weapons): every living object within its

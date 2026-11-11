@@ -1450,6 +1450,26 @@ def test_a_yard_packs_into_its_mcv_at_once_and_the_mcv_stands_before_it_drives(v
     assert abs(walk % 1000 - out) <= 6 and abs(frames - walk // 1000 - there) <= 10, (frames, walk, out, there)
 
 
+def test_a_weapon_fire_ability_goes_off_after_its_unpack_and_holds_the_caster_through_its_pack():
+    """WeaponFireSpecialAbilityUpdate (Sim.wfire_press / wfire_due; bench 11-11 engine_wfire all, PASS, readings
+    尤活 走帧 狙 吠 = 310016016 36039 8074031 15160): Yuriko's blast kills the conscripts 100 / 200 off at frame 16 (the
+    DamageNugget's 1 s delay), not the one 300 off; she and the dog stand PackTime / FreezeAfterTriggerDuration (30)
+    and walk out of the 30 square at 39 / 36 (the sim, no acceleration, 37 / 35); Natasha's near Hammer is neutral at
+    31 (UnpackTime 2 s), the far one at 74 after she walks till the Hammer's edge is in range (sim 75; to its centre it
+    was 81), she leaves her start at 8; the bark holds the conscript 60 off 160 frames (EMP 10 s), the 150 one walks
+    at 15 (sim 14). Frame clock on (per-frame movement): the coarse tick moves a unit only every 7-8 frames."""
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_wfire', 'all')
+    s = sim.Sim(m, t)
+    s.shot_clock = True
+    yuri, stand, snipe, bark = s.run(22.0).series[-1][1]
+    assert yuri % 1000 == 16 and yuri // 1000 % 1000 == 16 and yuri // 1000000 >= 250, yuri
+    assert abs(stand % 1000 - 39) <= 3 and abs(stand // 1000 - 36) <= 2, stand
+    assert snipe % 1000 == 31 and abs(snipe // 1000 % 1000 - 74) <= 2 and snipe // 1000000 == 8, snipe
+    assert abs(bark % 1000 - 160) <= 2 and abs(bark // 1000 - 15) <= 2, bark
+
+
 def _changes(build_name, check, until):
     """[(second, readings)] at each change of the run's counters."""
     out = []
