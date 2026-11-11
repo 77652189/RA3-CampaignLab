@@ -560,6 +560,7 @@ class Body:
                                                                 # fired; back to another stance it fires again (a / f)
     stance: int = 0                                             # UNIT_SET_STANCE: GUARD 0, AGGRESSIVE 1, HOLD_POSITION
                                                                 # 2, HOLD_FIRE 3 (idle_chase reads 1 / 2)
+    z: float = None                                         # None: on terrain; airborne MetaImpact sets world z
 
     def damage(self, amount):
         """The body's health floor (Generals reference: internalChangeHealth). A PropBody takes none (engine_propbody a)."""
@@ -3595,9 +3596,9 @@ class Sim:
                 for effect in w.get('unmodeled_effects', []):
                     self.gap(GAP_WEAPON, effect, '武器第1轮尚未解释此效果的筛选、几何或时序')
                 if not self.shot_clock and (w.get('hit_modifiers') or w.get('line') or w.get('strip_max_health') or w.get('emp_seconds')
-                                           or w.get('sweep') or w.get('contained') or w.get('dot') or w.get('special_powers') or w.get('attach')):
+                                           or w.get('sweep') or w.get('contained') or w.get('dot') or w.get('special_powers') or w.get('attach') or w.get('meta_impacts')):
                     self.gap(GAP_WEAPON, 'weapon effects', '逐发武器效果仅在离散命中时钟中模拟')
-                if w['dps'] or w.get('suppression') or (self.shot_clock and (w.get('sdps') or w.get('dot') or w.get('special_powers') or w.get('attach'))):
+                if w['dps'] or w.get('suppression') or (self.shot_clock and (w.get('sdps') or w.get('dot') or w.get('special_powers') or w.get('attach') or w.get('meta_impacts'))):
                     if 'sched' in w and self.shot_clock:
                         self.volleys.append((pick, w, a))
                     else:
@@ -3772,6 +3773,87 @@ class Sim:
                 self.send(a, a.home)
                 a.auto_to = a.dest
 
+    def queue_projectile_hit(self, when, target, damage, attacker, weapon, centre=None):
+        """A projectile's arrival event, also usable to replay an observed collision.
+
+        Damage is the existing launch-time snapshot. An explicit collision centre
+        overrides the static target half-height fallback (INFERRED). Curved flight
+        cannot generate this event yet; an observed arrival does not model flight.
+        """
+        self.__dict__.setdefault('projectile_hits', []).append(
+            (when, target, damage, attacker, weapon, centre))
+
+    def impact_ground_z(self, x, y):
+        """Physics uses world z; routing heights retain mapterrain's legacy /16.
+
+        docs/engine/terrain.md: world height = legacy height * 0.625.
+        """
+        import terrain_rules
+        return float(terrain_rules.world(self.ground.z(x, y)))
+
+    def projectile_detonate(self, weapon, target, centre=None):
+        """Dispatch the non-damage payload of a projectile arrival."""
+        if not weapon.get('meta_impacts'):
+            return
+        if centre is None and target.alive:
+            height = simunits.meta_impact_body(target.template, self.own)
+            if height is not None:
+                centre = (target.x, target.y, self.impact_ground_z(target.x, target.y) + height/2)
+        if centre is None:
+            self.gap(GAP_WEAPON, 'MetaImpactNugget', '缺少弹体实际爆心，未派发冲击')
+        else:
+            self.meta_impact_detonate(weapon, centre)
+
+    def meta_impact_detonate(self, weapon, centre):
+        """Dispatch ordinary immediate warhead shocks, separately from damage radius.
+
+        First slice: default Physics, level terrain, grounded bodies. Other cases
+        stay explicit gaps; no airborne relaunch or post-landing standing model.
+        INFERRED selection: feet-centre sphere, without relation/arc filtering.
+        The whole nugget therefore retains its unmodeled registration.
+        """
+        flights = self.__dict__.setdefault('impact_flights', {})
+        cache = self.__dict__.setdefault('_impact_body', {})
+        for effect in weapon.get('meta_impacts', []):
+            if effect['radius'] <= 0:
+                self.gap(GAP_WEAPON, 'MetaImpactNugget', '非正冲击半径的选人范围未建模')
+                continue
+            for b in self.living():
+                ground = self.impact_ground_z(b.x, b.y)
+                position = (b.x, b.y, ground if b.z is None else b.z)
+                if math.dist(position, centre) > effect['radius']:
+                    continue
+                if b.template not in cache:
+                    cache[b.template] = simunits.meta_impact_body(b.template, self.own)
+                height = cache[b.template]
+                if height is None or b.surface != 'ground' or b.name in self.attachments or id(b) in flights:
+                    self.gap(GAP_WEAPON, 'MetaImpactNugget', '仅默认Physics的未附着地面起飞已接通；筛选/重入待核')
+                    continue
+                velocity = simunits.meta_impact_velocity(effect, position, centre, height, detonation=True)
+                points = simunits.meta_impact_trajectory(position, velocity)
+                # Nonlevel terrain needs the engine's along-line height queries.
+                if any(abs(self.impact_ground_z(x, y) - ground) > 1e-5 for x, y, _ in points):
+                    self.gap(GAP_WEAPON, 'MetaImpactNugget', '坡地轨迹和地形查询未建模')
+                    continue
+                if len(points) > 1:
+                    flights[id(b)] = (b, self.frame_now(), points)
+                    b.z = position[2]
+                    self.used.add('meta impact')
+
+    def meta_impact_tick(self):
+        """Advance each active trajectory by one sample per simulation frame."""
+        flights = self.__dict__.setdefault('impact_flights', {})
+        for key, (b, start, points) in list(flights.items()):
+            if not b.alive:
+                flights.pop(key)
+                continue
+            k = min(len(points)-1, max(0, self.frame_now()-start))
+            b.x, b.y, b.z = points[k]
+            if k == len(points)-1:
+                flights.pop(key)
+                b.z = None
+            self.change()
+
     def deal(self, dt):
         """R6: `dt` seconds of the aimed fire (`fight`) from shooters and at targets still alive. With the engine model
         once a frame, after that frame's scripts (Generals GameLogic::update runs the script engine before the objects'
@@ -3780,10 +3862,12 @@ class Sim:
         tick that killed the trucks at 4:23). Bodies at 0 die, the last hit their killer's."""
         hurt = {}
         leech_events = {}
+        self.meta_impact_tick()
         pending = self.__dict__.setdefault('projectile_hits', [])
         due = [hit for hit in pending if self.frame_now() >= hit[0]]
         pending[:] = [hit for hit in pending if self.frame_now() < hit[0]]
-        for when, target, damage, attacker in due:
+        for when, target, damage, attacker, weapon, centre in due:
+            self.projectile_detonate(weapon, target, centre)
             if target.alive:
                 h = hurt.setdefault(id(target), [target, 0.0, attacker])
                 h[1] += damage
@@ -3818,8 +3902,9 @@ class Sim:
                             # GUESSED until dynamic-armor bench: snapshot scalars at launch.
                             damage = n * w['dmg'] * by.dealt * armor
                             if frames:
-                                pending.append((self.frame_now() + frames, t, damage, by))
+                                self.queue_projectile_hit(self.frame_now() + frames, t, damage, by, w)
                             else:
+                                self.projectile_detonate(w, t)
                                 h = hurt.setdefault(id(t), [t, 0.0, by])
                                 h[1] += damage
                             continue
@@ -4240,6 +4325,8 @@ class Sim:
         self._crushable_pool = None
         for b in list(self.frame_movers.values()) if precise else self.living():
             if not b.alive or b.frame_move != precise:
+                continue
+            if id(b) in self.__dict__.get('impact_flights', {}):
                 continue
             if 'ATTACHED' in b.status and b.name in self.attachments:
                 continue

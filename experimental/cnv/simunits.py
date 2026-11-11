@@ -375,7 +375,8 @@ def _weapons(texts, base_table=None):
             impacts = []
             for h, inner in _blocks(bare, 'MetaImpactNugget'):
                 # Only the ordinary, immediate detonation form has a numerical
-                # interface here. Dispatch/trajectory remain an explicit gap.
+                # payload. Partial dispatch/default Physics are implemented;
+                # keep the whole nugget a gap for filters/delays/other variants.
                 unsupported.append('MetaImpactNugget')
                 fields = set(re.findall(r'(\w+)\s*=', h))
                 if not (inner or '').strip() and fields <= {
@@ -614,9 +615,8 @@ def meta_impact_velocity(effect, position, centre, height, *, detonation, resist
 
     engine_knock_probe land/late: the direction uses the victim's half-height,
     but radial attenuation uses its feet. Instant hits do not push. This is a
-    numerical interface for an already selected victim, not flight dispatch:
-    radius/arc selection, filters, delays, cyclonic/clear
-    variants and trajectory sampling are deliberately outside this slice.
+    numerical interface for an already selected victim. Filters, delays and
+    cyclonic/clear variants remain outside the ordinary execution slice.
     INFERRED: an exactly centred target uses the engine's vertical fallback;
     actual projectile collision noise can give it a different direction.
     """
@@ -637,8 +637,8 @@ def meta_impact_velocity(effect, position, centre, height, *, detonation, resist
 def meta_impact_ground_launch(position, velocity):
     """Grounded launch parameters, not the duration of flight.
 
-    INFERRED gravity multiplier 1 and floor-to-20 landing grid. The arc table's
-    step length is still unknown, so n must never be used as flight duration.
+    Default Physics gravity multiplier 1; floor-to-20 landing grid INFERRED.
+    n is a landing parameter, never the flight duration.
     No airborne relaunch, terrain search, standing time or fall damage here.
     """
     if not any(velocity):
@@ -649,6 +649,56 @@ def meta_impact_ground_launch(position, velocity):
                 landing=(math.floor((position[0] + velocity[0] * n) / 20) * 20,
                          math.floor((position[1] + velocity[1] * n) / 20) * 20,
                          position[2]))
+
+
+def meta_impact_trajectory(position, velocity):
+    """Default Physics on level ground, sampled once per frame (land/late).
+
+    Ordinary grounded launch only: no bounce, terrain obstruction or relaunch.
+    Length is integrated numerically; ceil(L/b)+1, clamped to 3..128 points.
+    The indent percentages are 33/66, not exact thirds.
+    """
+    plan = meta_impact_ground_launch(position, velocity)
+    if not plan['steps']:
+        return [tuple(position)]
+    end, a, n = plan['landing'], max(plan['height'], 0.5), plan['steps']
+    controls = [position,
+                (position[0] + .33 * (end[0] - position[0]),
+                 position[1] + .33 * (end[1] - position[1]), position[2] + 1.3 * a),
+                (position[0] + .66 * (end[0] - position[0]),
+                 position[1] + .66 * (end[1] - position[1]), position[2] + 1.3 * a), end]
+
+    def point(t):
+        weights = ((1-t)**3, 3*(1-t)**2*t, 3*(1-t)*t*t, t**3)
+        return tuple(sum(w*p[i] for w, p in zip(weights, controls)) for i in range(3))
+
+    # Converge the polyline length rather than choosing a duration from bench values.
+    count, previous = 16, 0.0
+    while True:
+        points = [point(i/count) for i in range(count+1)]
+        length = sum(math.dist(p, q) for p, q in zip(points, points[1:]))
+        if abs(length - previous) < 1e-5 or count >= 16384:
+            break
+        previous, count = length, count * 2
+    b = max(64 / FPS**2, (math.hypot(velocity[0]*n, velocity[1]*n) + 2*plan['height']) / n)
+    size = min(128, max(3, math.ceil(length/b) + 1))
+    return [point(i/(size-1)) for i in range(size)]
+
+
+def meta_impact_body(template, own=None):
+    """Height for an unmodified Physics module, None for unsupported/no Physics.
+
+    Restrict the first execution slice to the probe's default module. Overrides
+    (including resistance, gravity and alternate curve branches) remain gaps.
+    """
+    physics = _inherited(template, own, lambda xml: next(_blocks(xml, 'Physics'), None), None)
+    if physics is None or (physics[1] or '').strip() or set(re.findall(r'(\w+)\s*=', physics[0])) - {'id'}:
+        return None
+    def height(xml):
+        geometry = next(_blocks(xml, 'Geometry'), None)
+        shape = next(_blocks(geometry[1] or '', 'Shape'), None) if geometry else None
+        return _num(_attr(shape[0], 'Height')) if shape and _attr(shape[0], 'Height') is not None else None
+    return _inherited(template, own, height, None)
 
 
 def _shot_times(w, shots):
