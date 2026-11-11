@@ -1331,9 +1331,14 @@ def test_scripts7_idle_for_frames_drops_the_order_as_the_bench():
 
 def test_scripts7_objects_made_with_an_angle_as_the_bench():
     """Bench 2026-11-09 engine_scripts7 face: two CREATE_NAMED_..._WITH_ORIENTATION and two CREATE_UNNAMED_..._WITH_
-    ORIENTATION made at 1 s, 造出 4 from s1 (the facing not read: the camera did not show the row)."""
-    last = _sim_run('engine_scripts7', 'face', 8.0).series[-1][1]
-    assert last == [4], last
+    ORIENTATION made at 1 s, 造出 4 from s1. Bench 2026-11-10 (CampScr7Face_mcp_1110_232041 frame 11, s30): the hulls
+    face east, north, west, south-west for 0, pi/2, pi, -3pi/4 -- radians, 0 east, pi/2 north (the map's own)."""
+    s = _sim_run('engine_scripts7', 'face', 8.0)
+    assert s.series[-1][1] == [4], s.series[-1]
+    from checks import engine_scripts7 as p
+    made = {round(x) for x, _, _ in p.FACE}                # the panel row stands on the same line, further west
+    row = {round(b.x): b.angle for b in s.living() if abs(b.y - p.FACE_Y) < 1 and round(b.x) in made}
+    assert row == {round(x): pytest.approx(a) for x, a, _ in p.FACE}, row
 
 
 @pytest.mark.xfail(strict=True, reason='bench 2026-11-09 engine_scripts7 amove: the attack-mover leaves its enemy at '

@@ -35,8 +35,11 @@ the simulator (sim.py) predicts is in brackets.
   idle    PASS. 二到 1 from s14; 一到, 三到 0 all 25 s: UNIT_IDLE_FOR_FRAMECOUNT drops the order, 15 frames or 1 (as
           the seconds version). The simulator agrees.
   face    PASS. 造出 4 from s1: CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION and CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT_
-          WITH_ORIENTATION make their object at the waypoint. The facing NOT read: the bench_look frame (s17.7) showed
-          open ground, not the row (the camera did not go to (4000, 4700)? not found why) -- the angle stays 推断.
+          WITH_ORIENTATION make their object at the waypoint. The facing (bench 2026-11-10, CampScr7Face_mcp_1110_
+          232041 frame 11, s30; the hull by its two rear aerials, the turret turns on its own): east, north, west,
+          south-west for 0, pi/2, pi, -3pi/4 -- radians, 0 east, pi/2 north, as the simulator. The check's own look
+          (frame 5) again showed open ground: its bench_camera did not move the camera (the minimap box elsewhere);
+          a second bench_camera by hand did.
   panel   PASS (third run; the first two gave NAMED_DAMAGE 300.0 / 200.0, a float, which does nothing --
           engine_garrison). 甲血 乙血 丁血 58 58 58 from s1, 活着 15 -> 11 at s3, 甲血 丁血 16 from s7: NAMED_DAMAGE 200
           took 42 % off pan 1 (UNIT_AFFECT_OBJECT_PANEL_FLAGS Indestructible) and pan 4 (TEAM_..._FLAGS) as off the
