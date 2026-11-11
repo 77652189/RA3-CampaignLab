@@ -1,6 +1,6 @@
 """Creation upgrade -> rank -> veterancy upgrades (engine_levelup a).
 
-Combat experience and rank modifiers except DAMAGE_MULT and full-health HEALTH_MULT remain unmodeled. This module
+Combat experience and rank modifiers except DAMAGE_MULT and elite HEALTH_MULT remain unmodeled. This module
 does not turn a direct Upgrade_Veterancy_HEROIC grant into a rank change.
 """
 import functools
@@ -85,13 +85,11 @@ def receive(sim, b, up, on, newly_held):
                 if multipliers:
                     if modifier_id != 'Unit_Elite' or multipliers != [1.25]:
                         sim.gap('升级', 'LevelUpUpgrade/' + modifier_id, '该等级血量倍率未对拍')
-                    elif abs(b.hp - b.max_hp) > 1e-9:
-                        sim.gap('升级', 'LevelUpUpgrade/injured-health', '残血升级的血量变化未对拍')
                     else:
-                        # engine_levelhealth a: elite max HP 500 -> 625, retained at heroic.
+                        # engine_levelhealth a/b: 500 -> 625 max HP; keep health fraction.
                         for multiplier in multipliers:
                             b.max_hp *= multiplier
-                        b.hp = b.max_hp
+                            b.hp *= multiplier
             for upgrade in upgrades:
                 b.upgrades.add(upgrade)
                 b.up_since[upgrade] = sim.frame_now()

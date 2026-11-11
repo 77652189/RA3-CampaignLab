@@ -36,6 +36,31 @@ def test_levelup_elite_health_persists_at_heroic_and_freezes_before_healing():
     assert heroic.max_hp == 625  # held grants and modifier refresh must not stack health
 
 
+def test_levelup_injured_elite_promotion_preserves_fraction_and_scales_current_health():
+    """engine_levelhealth b: 50/80/50/20, then 30/64/34/4 after 100 damage.
+
+    Check absolute HP too: skipping the modifier also preserves percentages.
+    No heroic autoheal is present in this probe.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_levelhealth', 'b')
+    e = sim.Sim(m, t)
+    rows = e.run(16).series
+    assert all(tuple(row) == (50, 80, 50, 20) for sec, row in rows if 9 <= sec <= 10)
+    assert all(tuple(row) == (30, 64, 34, 4) for sec, row in rows if sec >= 14)
+    bodies = [e.body(m.role(lane).name) for lane in ('base', 'high', 'order', 'removed')]
+    assert [b.max_hp for b in bodies] == [500, 625, 625, 625]
+    assert [b.hp for b in bodies] == [150, 400, 212.5, 25]
+    assert (sim.GAP_UPGRADE, 'LevelUpUpgrade/injured-health') not in e.unmodeled
+    for b in bodies[1:]:
+        for upgrade in ('VETERAN', 'ELITE'):
+            e.give_upgrade(b, 'Upgrade_CreationVeterancy_' + upgrade)
+            e.modify(b)
+    assert [b.max_hp for b in bodies] == [500, 625, 625, 625]
+    assert [b.hp for b in bodies] == [150, 400, 212.5, 25]
+
+
 def test_levelup_creation_grants_reach_heroic_only_after_three_distinct_triggers():
     """Bench 11-10 engine_levelup a: 0/0/1/0 early, 0/1/1/0 after late grants.
 

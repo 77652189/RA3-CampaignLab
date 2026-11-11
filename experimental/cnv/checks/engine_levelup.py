@@ -102,7 +102,7 @@ def health_check(m):
 
     Freeze each reading immediately after script damage in the same script, before
     heroic AutoHeal can tick. No enemy, weapon, armor or combat experience involved.
-    Only promotion from full health is measured; injured promotion remains unmodeled.
+    This check measures promotion from full health; check b covers injured promotion.
     Bench 2026-11-10 PASS: frozen counters s4-s14 80/80/84/84.
     """
     t = Test()
@@ -127,3 +127,48 @@ def health_check(m):
 
 MISSION['engine_levelhealth'] = health_mission
 CHECKS['engine_levelhealth'] = {'a': health_check}
+
+
+def injured_health_check(m):
+    """PREDICT: injured elite promotion preserves health fraction: 50/80/50/20.
+
+    Base is an unpromoted half-health control. The other lanes start at
+    400/250/100 of 500 HP, then gain veteran and elite at six seconds.
+    HEALTH_MULT125 predicts 500/312.5/125 of 625 HP. Keeping absolute HP
+    would read 64/40/16; adding the max-HP delta would read 84/60/36.
+    No heroic grant, healing, enemy, combat experience or player input.
+    Freeze at eight seconds to allow upgrade dispatch to finish. At twelve
+    seconds deal another 100 damage and freeze again: 30/64/34/4. This second
+    reading proves max HP increased; unchanged percentages alone cannot.
+    Bench 2026-11-11 PASS: 50/80/50/20 before the hit, 30/64/34/4 after.
+    """
+    t = Test()
+    start = [('MAP_REVEAL_ALL_PERM', m.player('p1')),
+             ('SET_MILLISECOND_TIMER', 'Level promote injured', 6.0),
+             ('SET_MILLISECOND_TIMER', 'Level freeze injured', 8.0),
+             ('SET_MILLISECOND_TIMER', 'Level verify injured', 12.0)]
+    promote, freeze, verify = [], [], []
+    lanes = ('base', 'high', 'order', 'removed')
+    for lane, damage in zip(lanes, (250, 100, 250, 400)):
+        name, counter = m.role(lane).name, 'Level injured ' + lane
+        start += [('UNIT_CHANGE_OBJECT_STATUS', name, 'NO_ATTACK', 1),
+                  ('NAMED_DAMAGE', name, damage), ('SET_COUNTER', counter, -1)]
+        if lane != 'base':
+            promote += [('NAMED_RECEIVE_UPGRADE', up, name) for up in CREATION[:2]]
+        freeze += [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', name, counter)]
+        verify += [('NAMED_DAMAGE', name, 100),
+                   ('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', name, counter)]
+        t.counters.append((counter, lane + ' injured HP'))
+    t.scripts = [Script('Test - start', [], start),
+                 Script('Test - promote injured', [('TIMER_EXPIRED', 'Level promote injured')], promote),
+                 Script('Test - freeze injured', [('TIMER_EXPIRED', 'Level freeze injured')], freeze),
+                 Script('Test - verify injured', [('TIMER_EXPIRED', 'Level verify injured')], verify)]
+    t.expect = [(lane + ' injured HP', 9, '==', hp, 10)
+                for lane, hp in zip(lanes, (50, 80, 50, 20))]
+    t.expect += [(lane + ' injured HP', 14, '==', hp, 16)
+                 for lane, hp in zip(lanes, (30, 64, 34, 4))]
+    t.bench = [('bench_watch', dict(seconds=16.0, every=.5, sheet=False, lines=4))]
+    return t
+
+
+CHECKS['engine_levelhealth']['b'] = injured_health_check
