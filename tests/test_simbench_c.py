@@ -18,6 +18,23 @@ def _sim_run(build_name, check, until):
     return sim.Sim(m, t).run(until)
 
 
+def test_levelup_creation_grants_reach_heroic_only_after_three_distinct_triggers():
+    """Bench 11-10 engine_levelup a: 0/0/1/0 early, 0/1/1/0 after late grants.
+
+    A single CreationVeterancy_HEROIC adds one rank; repeated held grants add
+    none. Rank modifiers and remove/regrant are explicitly left unmodeled.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_levelup', 'a')
+    e = sim.Sim(m, t)
+    rows = e.run(12).series
+    assert any(tuple(row) == (0, 0, 1, 0) for _, row in rows)
+    assert tuple(rows[-1][1]) == (0, 1, 1, 0)
+    assert '等级属性修正' in e.unmodeled[sim.GAP_UPGRADE, 'LevelUpUpgrade']['what']
+    assert '创建升级触发' in '\n'.join(e.report())
+
+
 # ---- RunOffMapBehavior (sim.Sim.flee_start / flee_due; simunits.run_off_map): bench 2026-11-06 engine_runoffmap
 # (checks/engine_runoffmap.py, docs/engine/runoffmap.md): the peacekeeper runs to the waypoint `RunOffMap` (a, 200 off)
 # or 1000 along its facing (b), is gone 3 frames after it arrives and was never dying; a structure does not run (c);

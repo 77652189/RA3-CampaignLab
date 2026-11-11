@@ -64,6 +64,7 @@ import parts  # noqa: E402
 import simgarrison  # noqa: E402
 import simsweep  # noqa: E402
 import simunits  # noqa: E402
+import simlevel  # noqa: E402
 from ctx import FUNC_LATE, PANEL_CLEAR  # noqa: E402
 from model import coord, facing  # noqa: E402
 
@@ -165,6 +166,7 @@ LAG = 0.0                       # the readings' clock: mission seconds, as the b
 # by the Generals / Zero Hour source (docs/engine/script-semantics.md, the section given) unless marked 未对齐: those
 # the source cannot tell for RA3, for the bench to settle last
 ALIGN = {
+    'levelup': '部分对齐：创建升级触发升阶与老兵升级（engine_levelup a）；等级属性与经验成长未模拟',
     'protocols': '未对齐: protocol points as the program keeps them (simtech.py: rank experience 1 a second, 360 a '
                  'rank, the cap, the set-points rule; bench 11-08 engine_protocol pts / ailock); no experience from '
                  'kills, no red alert multiplier; a computer player spends its points at once on a protocol of its '
@@ -496,6 +498,8 @@ class Body:
     indestructible: bool = False                                # the Indestructible panel flag: takes no damage
     upgrades: set = dataclasses.field(default_factory=set)     # NAMED_RECEIVE_UPGRADE / _REMOVE_UPGRADE (modify)
     up_since: dict = dataclasses.field(default_factory=dict)   # upgrade -> the frame it was given (a Duration runs)
+    level_rank: int = 1                                      # LevelUpUpgrade creation grants; not combat XP
+    level_modules: set = dataclasses.field(default_factory=set)  # first activation only; regrant is unmodeled
     script_status: set = dataclasses.field(default_factory=set)  # UNIT_CHANGE_OBJECT_STATUS's bits; `status` is these
                                                                 # + the modifiers' (modify)
     slots: object = None                                        # simunits.weapon_sets: the weapons chosen by status (None: fixed)
@@ -1698,11 +1702,13 @@ class Sim:
         self._upgrade(b, up, True)
 
     def _upgrade(self, b, up, on):
+        newly_held = up not in b.upgrades
         (b.upgrades.add if on else b.upgrades.discard)(up)
         if on:
             b.up_since[up] = self.frame_now()
         else:
             b.up_since.pop(up, None)
+        simlevel.receive(self, b, up, on, newly_held)
         self.modify(b)
 
     def xml_of(self, template):
