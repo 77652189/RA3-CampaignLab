@@ -3,6 +3,9 @@ docs/engine/aiteamstate.md; the simulator against these readings: tests/test_sim
 
 The probe's micro manager: StandardMicroManager_MEDIUM flattened, RetreatPowerAdvantage 0.2 and
 <AIMicroManagerData RetreatMinDistanceFromBase> 300 instead of retail 900 (missions/airetreat_bench.py).
+It reaches the team only through the TeamTemplate's MicroManager="..." naming it: airet / airet0 and aipas1 / aipas0
+differ in one field of that data and nothing else, so the two pairs below are also the bench reading of TeamTemplate
+MicroManager (the team runs the micro data its MicroManager names; B round 110).
 
 Bench 2026-11-08 (all four PASS; wake at s10):
   airet   (步兵在家, 到远厂, 步兵数) 4 0 4 to s9 | out s10-s12 | 到远厂 2 @ s15-s16, 1 @ s17-s18 | home 1 @ s20 ... 4 @

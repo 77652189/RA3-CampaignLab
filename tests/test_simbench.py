@@ -1470,3 +1470,32 @@ def test_attacked_by_player_holds_while_the_attacker_stands_as_the_bench():
     assert all(v[:2] == [1, 1] for sec, v in rows if 1 <= sec <= 6)
     assert all(v[:2] == [0, 0] for sec, v in rows if sec >= 7) and rows[-1][1][:2] == [0, 0]
     assert all(55 <= h <= 75 for h in rows[-1][1][2:])
+
+
+# ---- waypoint paths (Sim.order_follow): bench 2026-11-10 engine_waypath (checks/engine_waypath.py 读数). Each
+# reading is (counter index, value, bench second); the simulator's first second at that value is LAG later at most.
+WAYPATH = {
+    'line': [(0, 1, 3), (0, 2, 9), (1, 4, 9), (0, 3, 15)],
+    'exact': [(0, 1, 3), (0, 2, 9), (1, 4, 9), (0, 3, 15)],
+    'near': [(0, 1, 3), (0, 2, 15), (1, 4, 16), (0, 3, 21)],
+    'team': [(0, 1, 3), (0, 2, 10), (0, 3, 17), (1, 1, 5), (1, 2, 10), (1, 3, 14)],
+}
+
+
+@pytest.mark.parametrize('check', sorted(WAYPATH))
+def test_waypath_follows_the_links_waypoint_by_waypoint_as_the_bench(check):
+    """line / exact walk A -> B (within 10 of it: no corner cut, the two alike) -> C and stay; near joins at B, the
+    nearest, A never again; team: each truck to the waypoint plus its offset from the team's middle (both within 100
+    of every one), the first there moves the team on -- truck 3, ahead on the last leg, at C 3 s before truck 2."""
+    rows = _changes('engine_waypath', check, 45.0 if check == 'team' else 50.0)
+    for k, value, bench in WAYPATH[check]:
+        got = _first(rows, k, lambda v, value=value: v == value)
+        assert got is not None and bench <= got <= bench + LAG, (check, k, value, bench, got)
+    assert rows[-1][1][0] == 3 and (check != 'near' or all(v[0] != 1 for sec, v in rows if sec >= 15))
+
+
+def test_waypath_loop_goes_round_and_round_a_lap_about_20_s():
+    """loop: C linked back to A -- bench 段1 back at A at s23 43 63 84 (laps 20-21 s); the simulator 2-3 s later."""
+    rows = _changes('engine_waypath', 'loop', 90.0)
+    back = [sec for (sec, v), (_, w) in zip(rows[1:], rows) if v[0] == 1 and w[0] == 3]
+    assert len(back) >= 4 and all(b <= s <= b + LAG + 1 for b, s in zip((23, 43, 63, 84), back)), back

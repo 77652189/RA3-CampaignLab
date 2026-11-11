@@ -407,6 +407,10 @@ def _weapons(texts, base_table=None):
                     paralysis.append(_secs(_attr(h, 'DurationSeconds', '0s')))
             if paralysis:
                 got['emp_seconds'] = paralysis
+            # a damage line (simsweep): the shooter's LinearDamageUpdate walks one out per shot, Lifetime caps its frames
+            sweeps = [_secs(_attr(h, 'Lifetime') or '0s') for h, _ in _blocks(bare, 'ActivateLinearDamageNugget')]
+            if sweeps:
+                got['sweep'] = sweeps[0]
 
             if unsupported:
                 got['unmodeled_effects'] = unsupported
@@ -497,6 +501,7 @@ def _resolve(w, weapons):
                 line=w.get('line', weapons.get(w.get('warhead'), {}).get('line')),
                 strip_max_health=w.get('strip_max_health', weapons.get(w.get('warhead'), {}).get('strip_max_health', [])),
                 emp_seconds=w.get('emp_seconds', weapons.get(w.get('warhead'), {}).get('emp_seconds', [])),
+                sweep=w.get('sweep'),
                 unmodeled_effects=w.get('unmodeled_effects', weapons.get(w.get('warhead'), {}).get('unmodeled_effects', [])))
 
 
@@ -1028,6 +1033,24 @@ def prop_body(template, own=None):
     return _prop_memo[key]
 
 
+_hp_memo = {}
+
+
+def max_health(template, own=None):
+    """MaxHealth from the nearest template up the inheritFrom chain that writes it (a define spelled out), None when
+    none does: a civilian house writes none of its own (AM_Apartments_01 -> BaseCivilianStructureMedium's
+    =$CIV_HEALTH_MEDIUM, 3000; bench 11-05 engine_garrison hp: NAMED_DAMAGE 2600 left 13 %)."""
+    key = (template, (own or {}).get(template))
+    if key not in _hp_memo:
+        def read(xml):
+            return number(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'MaxHealth')
+        try:
+            _hp_memo[key] = _chain(template, own, read)
+        except (OSError, ValueError):
+            _hp_memo[key] = None
+    return _hp_memo[key]
+
+
 _death_memo, _weapon_blocks = {}, None
 
 
@@ -1356,6 +1379,11 @@ def stats(template, own=None):
         e = read_xml(template, own)
     else:
         e = dict(table().get(template.lower()) or {})
+        if not e:                       # outside the unit table (not sorted UNIT / STRUCTURE: S02_ExplodingMig, a
+            try:                        # prop vehicle): its own chain, so its KindOf (NOT_AUTOACQUIRABLE) is read
+                e = read_xml(template) if _xml(template) else {}
+            except (OSError, ValueError):
+                e = {}
     guessed = []
     kinds = set(e.get('kinds') or [])
     speed, vision = DEFAULTS[kind_of(kinds)]

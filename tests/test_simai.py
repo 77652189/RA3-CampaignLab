@@ -641,5 +641,8 @@ def test_one_goes_into_the_first_turret(lib):
 # bench aigar1: the house the AI's at s18, three alive inside to s75. Passes since the topple props (188 lamp posts on
 # this map) stopped being walls: the men no longer walk round them under fire (codex/topple, 2026-11-09).
 def test_the_team_goes_into_the_house(lib):
-    _, got = _garrison_run('aigar1', lib, until=75.0)
-    assert len(got) == 3
+    w, got = _garrison_run('aigar1', lib, until=75.0)
+    # the bench's reading: three alive inside (one of the four dies about the door: here a shot taken just after it
+    # went in, so it is in the log -- simgarrison, engine E round 3)
+    assert len([u for u in w.garrison.inside.get('UNIT - CNV AI House', []) if u.alive]) == 3, got
+    assert 3 <= len(got) <= 4, got

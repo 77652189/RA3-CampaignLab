@@ -370,3 +370,80 @@ def test_a_mission_unit_whose_file_opens_with_a_long_preamble_still_inherits_its
     assert su.parent(xml, 'CNV_Probe') == 'BaseInfantry'
     tracker, frozen = su.freeze('CNV_Probe', {'CNV_Probe': xml})
     assert tracker and tracker['steps'] and frozen is not None
+
+
+def _road(loop=False):
+    """A three-waypoint path 'Road' along festival's road (R1 -> R2 -> R3, or round again), and a Sim on it."""
+    m = mission([])
+    pts = {'R1': festival.SITES['approach 1'], 'R2': festival.SITES['approach 2'], 'R3': festival.SITES['halt']}
+    m.waypoints = {n: (p.x, p.y) for n, p in pts.items()}
+    m.path('Road', 'R1', 'R2', 'R3', loop=loop)
+    return sim.Sim(m)
+
+
+def _legs(s, bodies, until):
+    """The waypoints each body was sent to on its path, in order, stepping the Sim to `until`."""
+    seen = {b.name: [] for b in bodies}
+    while s.t < until:
+        t = s.t
+        s.run(s.t)                                  # one tick (Sim.run steps while t <= until, then moves t on)
+        if s.t == t:                                # all quiet: Sim.run stops without a tick
+            break
+        for b in bodies:
+            at = b.follow and b.follow['at']
+            if at and (not seen[b.name] or seen[b.name][-1] != at):
+                seen[b.name].append(at)
+    return seen
+
+
+def test_a_unit_follows_a_waypoint_path_from_the_nearest_waypoint_to_its_end():
+    """NAMED_FOLLOW_WAYPOINTS (Sim.order_follow): joins the path at its waypoint nearest the unit (Generals'
+    getClosestWaypointOnPath), goes on by the links, off the path at its end; one made by R2 starts there;
+    _STARTING_AT_WAYPOINT starts where it is told."""
+    s = _road()
+    a = s.add('a', 'JapanAntiInfantryInfantry', s.foe, s.waypoints['R1'][0] - 300, s.waypoints['R1'][1])
+    b = s.add('b', 'JapanAntiInfantryInfantry', s.foe, s.waypoints['R2'][0] - 40, s.waypoints['R2'][1])
+    c = s.add('c', 'JapanAntiInfantryInfantry', s.foe, s.waypoints['R2'][0] + 40, s.waypoints['R2'][1])
+    s.act('NAMED_FOLLOW_WAYPOINTS', ['a', 'Road'], None)
+    s.act('NAMED_FOLLOW_WAYPOINTS_EXACT', ['b', 'Road'], None)
+    s.act('NAMED_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT', ['c', 'Road', 'R1'], None)
+    seen = _legs(s, [a, b, c], 120)
+    assert seen == {'a': ['R1', 'R2', 'R3'], 'b': ['R2', 'R3'], 'c': ['R1', 'R2', 'R3']}
+    end = s.waypoints['R3']
+    for u in (a, b, c):
+        assert u.follow is None and not u.path and ((u.x - end[0]) ** 2 + (u.y - end[1]) ** 2) ** 0.5 < 60
+
+
+def test_a_loop_goes_round_and_a_new_order_takes_the_unit_off_the_path():
+    """A path that links back to its first waypoint goes round (bench 11-10 engine_waypath loop); MOVE_NAMED_UNIT_TO
+    drops the path."""
+    s = _road(loop=True)
+    a = s.add('a', 'JapanAntiInfantryInfantry', s.foe, s.waypoints['R1'][0] - 300, s.waypoints['R1'][1])
+    s.act('NAMED_FOLLOW_WAYPOINTS', ['a', 'Road'], None)
+    seen = _legs(s, [a], 100)
+    assert seen['a'][:5] == ['R1', 'R2', 'R3', 'R1', 'R2'] and a.follow is not None
+    s.act('MOVE_NAMED_UNIT_TO', ['a', 'R3'], None)
+    assert a.follow is None
+    s.run(s.t + 60)
+    assert a.follow is None
+
+
+def test_a_team_follows_a_path_as_one_with_group_moves():
+    """TEAM_FOLLOW_WAYPOINTS with asTeam: the team joins at the waypoint nearest its middle, one shared leg, each
+    member to the waypoint plus its offset from the team's middle, the next once the first is there (Generals
+    m_moveAsGroup; bench 11-10 engine_waypath team); asTeam off: each its own. An unused team: nothing (E3)."""
+    s = _road()
+    team = 'Soviet_4/teamSoviet_4'          # Soviet_1's loses its members after the first frame (Lib_Skirmish_Setup)
+    x, y = s.waypoints['R1']
+    crew = [s.add(f'u{i}', 'JapanAntiInfantryInfantry', 'Soviet_4', x - 300 - 30 * i, y) for i in range(3)]
+    for u in crew:
+        s.act('UNIT_SET_TEAM', [u.name, team], None)
+    s.act('TEAM_FOLLOW_WAYPOINTS', [team, 'Road', 1, 0], None)
+    assert 'team path' in s.used and crew[0].follow is crew[1].follow is crew[2].follow
+    seen = _legs(s, crew, 150)
+    assert all(v == ['R1', 'R2', 'R3'] for v in seen.values())
+    assert all(u.follow is None and abs(u.x - s.waypoints['R3'][0]) < 150 for u in crew)
+    s.act('TEAM_FOLLOW_WAYPOINTS', [team, 'Road', 0, 0], None)
+    assert len({id(u.follow) for u in crew}) == 3
+    s.act('TEAM_FOLLOW_WAYPOINTS', ['Nobody/teamNobody', 'Road', 1, 0], Script('go', [], []))
+    assert s.lost_orders[-1][2] == 'TEAM_FOLLOW_WAYPOINTS'

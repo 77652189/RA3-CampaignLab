@@ -61,11 +61,16 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign')) if p not in sys.path]
 
 import parts  # noqa: E402
+import simgarrison  # noqa: E402
+import simsweep  # noqa: E402
 import simunits  # noqa: E402
 from ctx import FUNC_LATE, PANEL_CLEAR  # noqa: E402
 from model import coord, facing  # noqa: E402
 
-TEAM_COMMANDS = ('MOVE_TEAM_TO', 'ATTACK_MOVE_TEAM_TO', 'TEAM_ATTACK_NAMED', 'TEAM_GUARD_AREA', 'TEAM_STOP')   # E3: need a live team
+TEAM_FOLLOWS = ('TEAM_FOLLOW_WAYPOINTS', 'TEAM_FOLLOW_WAYPOINTS_EXACT', 'TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS',
+                'TEAM_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT')      # Sim.order_follow
+TEAM_COMMANDS = ('MOVE_TEAM_TO', 'ATTACK_MOVE_TEAM_TO', 'TEAM_ATTACK_NAMED', 'TEAM_GUARD_AREA', 'TEAM_STOP') \
+    + TEAM_FOLLOWS                                                  # E3: need a live team
 SHOW_FLAG = re.compile(r'CNV_\w+_Show_\d+')       # ctx.Talk.show: a 功能 line's caption is asked for
 SCENE_FLAG = re.compile(r'CNV_\w+_InScene')       # ctx.Talk.scening
 
@@ -537,6 +542,8 @@ class Body:
     topple: object = None                                       # simtopple.rules: prop removal after contact / settling
     toppled: bool = False
     topple_end: int = None
+    follow: dict = None                                         # on a waypoint path (order_follow): label, the waypoint
+                                                                # it is going to, how; shared by a team that goes as one
     frame_move: bool = False                                    # paths through topple props need frame-sized collision steps
     drive_speed: float = 0.0
     hold_fire: bool = False                                     # UNIT_SET_STANCE 3 (HOLD_FIRE): fires only at a
@@ -944,6 +951,7 @@ class Sim:
         self.tech_read = False              # a script has read the points or the protocols (pending: a rank to come)
         self.ground = Ground(mission.map)
         self.own = {u.id: u.xml for u in self.mm.units}
+        self.garrison = simgarrison.Garrisons(self)    # GarrisonContain / ContestableGarrisonContain
         self.bodies = {}                    # name -> Body (named ones), plus unnamed under '#k'
         self.topples = []                   # ToppleUpdate objects; neutral props can be knocked over too
         self.frame_movers = {}              # bodies whose current path crosses a topple object's footprint
@@ -998,6 +1006,7 @@ class Sim:
         self.firing = []                    # this tick's aimed fire: (target, damage per second, shooter) (fight, deal)
         self.first_death = None             # (t, body, killer): the fight's first death
         self.death_blasts = []              # (frame, x, y, damage, type, radius, affects, owner, by): FireWeaponWhenDead
+        self.sweeps = simsweep.Sweeps(self)  # ActivateLinearDamageNugget + LinearDamageUpdate: the lines walking
         self.events = sorted((e for e in self.script if isinstance(e[0], float)), key=lambda e: e[0])
         self.anchored = [e for e in self.script if isinstance(e[0], tuple)]       # (('@', flag, delta), verb, ...)
         self.areas = Areas(self.mm.areas)
@@ -1057,7 +1066,7 @@ class Sim:
         f = simunits.fight(template, self.own)
         b.immortal, immortal_hp = simunits.immortal_body(template, self.own)
         b.suppression_rule = simunits.suppression(template, self.own)
-        hp = immortal_hp if b.immortal else f['hp']
+        hp = immortal_hp if b.immortal else (f['hp'] or simunits.max_health(template, self.own))
         if hp:
             b.max_hp = b.hp = hp
         else:                                   # no health in the data: a building's or a unit's usual (a guess)
@@ -1199,6 +1208,7 @@ class Sim:
         already handed out to a group being ordered, `skip` that group (its members' old goals are dropped first)."""
         if b:
             b.flee = None                       # INFERRED: any move order takes the run over, as STOP does
+            b.follow = None                     # ... and a waypoint path (order_follow sets it again after its legs)
             b.mode = 'attack' if attacking else 'move'
             p = self.point(where) if isinstance(where, str) else where
             if p is not None and b.alive and b.speed > 0:
@@ -1333,7 +1343,7 @@ class Sim:
         self.used.add('attack')
         target = self.body(target_name)
         if b and target and target.alive and b.alive and b.goal is not target:
-            b.goal, b.mode = target, 'attack'
+            b.goal, b.mode, b.follow = target, 'attack', None
             self.send(b, (target.x, target.y), reach=self.reach(b, target))
 
     def order_capture(self, b, target_name):
@@ -1846,6 +1856,8 @@ class Sim:
 
     def order_guard(self, b, area):
         self.used.add('guard')
+        if b:
+            b.follow = None
         if b and not inside(self.areas[area], b.x, b.y):
             self.send(b, area)
 
@@ -1892,12 +1904,110 @@ class Sim:
 
     def order_stop(self, b):
         if b:
-            b.path, b.goal = [], None
+            b.path, b.goal, b.follow = [], None, None
             b.flee = None                       # a later order takes the run over (engine_runoffmap d; the status stays)
 
     def stand(self, b):
         """Its order dropped, nothing new: idle where it is (the AI's command 5: l2_scripts1 3, 6)."""
-        b.path, b.goal, b.mode, b.move_to = [], None, 'idle', None
+        b.path, b.goal, b.mode, b.move_to, b.follow = [], None, 'idle', None, None
+
+    def path_start(self, label, at):
+        """The waypoint a path is joined at: of the waypoints carrying `label`, the nearest to `at` (2D; strictly
+        nearer replaces, so the first in map order wins a tie) -- Generals' TerrainLogic::getClosestWaypointOnPath.
+        None if no waypoint carries it."""
+        best, bd = None, None
+        for n, labels in self.mm.labels.items():
+            if label in labels and n in self.waypoints:
+                x, y = self.waypoints[n]
+                d = (x - at[0]) ** 2 + (y - at[1]) ** 2
+                if bd is None or d < bd:
+                    best, bd = n, d
+        return best
+
+    def path_next(self, at):
+        """The waypoint after `at` on its path (the map's WaypointsList, one way, whatever the next one's label),
+        None at the path's end. Of several links the game takes either (Generals' getNextWaypoint: at random; bench
+        11-10 engine_waypath: two runs of one map forked two ways); this takes the first (the runs stay repeatable)
+        and marks the run. A loop goes round and round (bench 11-10 engine_waypath loop)."""
+        nxt = [z for a, z in self.mm.links if a == at]
+        if len(nxt) > 1:
+            self.used.add('path fork')
+        return nxt[0] if nxt else None
+
+    def order_follow(self, bodies, label, attacking, exact=False, start=None, as_team=False):
+        """NAMED_ / TEAM_ (ATTACK_) FOLLOW_WAYPOINTS (_EXACT, _STARTING_AT_WAYPOINT): each unit goes waypoint by
+        waypoint along the path `label`, from `start`, or else the path's waypoint nearest to it (a team: to its
+        middle, Generals' doTeamFollowWaypoints joins at getClosestWaypointOnPath of the team's estimated position);
+        at a waypoint it takes the next (path_next) and stops at the path's end. Each leg is a move (order_move;
+        attacking: an attack-move, it stops to fight and goes on). as_team (Generals AIFollowWaypointPathState with
+        m_moveAsGroup): each member keeps where it stood from the team's middle (the mean, AIGroup::getCenter) when
+        ordered -- every leg's goal is the waypoint plus that, uncut -- and the team shares one waypoint: the first
+        member to get there sends them all on to the next (the team's current waypoint). Bench 11-10 engine_waypath
+        (checks/engine_waypath.py 读数): line = exact (both reach B within 10: no corner cut), a loop goes round and
+        round, a fork takes either link (random, the two runs took different ones), links lead on through waypoints
+        without the label, joined at the nearest; team: both trucks 75 off every waypoint, the one ahead on the last
+        leg there 3 s first. INFERRED: the team version's fourth flag, BiDirectional, the group's speed (the slowest
+        member's, AIGroup::getSpeed: the bench's trucks are one kind)."""
+        movers = [b for b in bodies if b and b.alive and b.speed > 0 and 'IMMOBILE' not in b.status]
+        if not movers:
+            return
+        self.used.add('follow path')
+        if start is None:
+            n = len(movers)
+            start = self.path_start(label, (sum(b.x for b in movers) / n, sum(b.y for b in movers) / n))
+        if start is None or start not in self.waypoints:
+            for b in movers:
+                self.note('卡住', f'{self.label(b)} 找不到路 {label}')
+            return
+        how = {'label': label, 'at': start, 'attacking': attacking, 'exact': exact, 'team': as_team}
+        if as_team and len(movers) > 1:
+            n = len(movers)
+            cx, cy = sum(b.x for b in movers) / n, sum(b.y for b in movers) / n
+            how['offset'] = {id(b): (b.x - cx, b.y - cy) for b in movers}
+            self.used.add('team path')
+        self.follow_leg(movers, how)
+
+    def follow_leg(self, movers, how):
+        """Sends `movers` to how['at'] and marks them as on the path (a team as one: one shared dict; each member
+        to the waypoint plus its own offset from the team's middle when ordered)."""
+        if how['team'] and len(movers) > 1:
+            wx, wy = self.waypoints[how['at']]
+            given = []
+            for b in movers:
+                ox, oy = how['offset'].get(id(b), (0.0, 0.0))
+                self.order_move(b, (wx + ox, wy + oy), how['attacking'], given=given, skip=movers)
+                given.append((wx + ox, wy + oy, b.radius))
+                b.follow = how
+        else:
+            for b in movers:
+                self.order_move(b, how['at'], how['attacking'])
+                b.follow = dict(how, team=False)
+
+    def follow_due(self):
+        """The path followers that got where their leg went (no way left, not fighting): on to the next waypoint,
+        or off the path at its end. One waypoint per tick at most."""
+        done = set()
+        for b in self.living():
+            how = b.follow
+            if how is None or id(how) in done:
+                continue
+            if how['team']:                     # the first member there moves the team's waypoint on
+                group = [o for o in self.living() if o.follow is how]
+                if all(o.path or o.engaged or isinstance(o.goal, Body) for o in group):
+                    continue
+                done.add(id(how))
+            else:
+                if b.path or b.engaged or isinstance(b.goal, Body):
+                    continue
+                group = [b]
+            nxt = self.path_next(how['at'])
+            if nxt is None or nxt not in self.waypoints:
+                for o in group:
+                    o.follow = None
+                continue
+            leg = dict(how, at=nxt)
+            done.add(id(leg))
+            self.follow_leg(group, leg)
 
     def enemy(self, a, b):
         """Player a takes player b as an enemy."""
@@ -2067,9 +2177,10 @@ class Sim:
         and not already sold is paid at once -- round(round(cost x 50%) x health share) -- and carries SOLD; 30 frames
         later it is deleted (no death, no ruin); meanwhile it still counts as power and can still be killed (then the
         money stays paid and it is just dead). Anything else: nothing happens. Not read: a template's RefundValue,
-        NOT_SELLABLE, the factory's queue, the garrison (the simulator has none)."""
+        NOT_SELLABLE, the factory's queue. The garrison empties (simgarrison, INFERRED: Generals' onSelling)."""
         if b is None or not b.alive or 'STRUCTURE' not in b.kinds or b.sell_end is not None:
             return
+        self.garrison.empty(b)
         if b.unpack_end is not None and self.frame_now() < b.unpack_end:
             return                                                  # engine_sell c: refused while it unpacks
         self.used.add('sell')
@@ -2097,6 +2208,7 @@ class Sim:
                 b.toppled, b.topple_end = True, self.frame_now() + b.topple['delay']
             return
         b.alive, b.deleted, b.path, b.died_at = False, delete, [], self.t
+        self.garrison.died(b, delete)       # passengers out alive / killed with it (simgarrison, garrison.md 4)
         if not delete:
             b.hp = 0.0
             # FireWeaponWhenDead (simunits.death_weapons; bench 11-05 engine_spawn_refill): its weapon goes off where it
@@ -2475,6 +2587,11 @@ class Sim:
             self.reinforce(a[0], a[1], script)
         elif name in ('MOVE_NAMED_UNIT_TO', 'ATTACK_MOVE_NAMED_UNIT_TO'):
             self.order_move(self.body(a[0]), a[1], name == 'ATTACK_MOVE_NAMED_UNIT_TO')
+        elif name in ('NAMED_FOLLOW_WAYPOINTS', 'NAMED_FOLLOW_WAYPOINTS_EXACT', 'NAMED_ATTACK_FOLLOW_WAYPOINTS',
+                      'NAMED_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT'):
+            # (unit, path[, start waypoint])
+            self.order_follow([self.body(a[0])], a[1], name == 'NAMED_ATTACK_FOLLOW_WAYPOINTS',
+                              exact=name.endswith('_EXACT'), start=a[2] if name.endswith('_AT_WAYPOINT') else None)
         elif name == 'NAMED_ATTACK_NAMED':
             self.order_attack(self.body(a[0]), a[1])
         elif name == 'UNIT_GUARD_AREA':
@@ -2501,6 +2618,11 @@ class Sim:
             self.note('无效命令', f'{name} {a[0]}：这个队还没有人加入，命令落空')
         elif name in ('MOVE_TEAM_TO', 'ATTACK_MOVE_TEAM_TO'):
             self.order_group(self.members(a[0]), a[1], name == 'ATTACK_MOVE_TEAM_TO')
+        elif name in TEAM_FOLLOWS:
+            # (team, path, asTeam[, ?][, start waypoint]); the fourth flag (handler 0x5a4c40) not read: ignored
+            self.order_follow(self.members(a[0]), a[1], name == 'TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS',
+                              exact=name.endswith('_EXACT'), as_team=bool(int(a[2])),
+                              start=a[-1] if name.endswith('_AT_WAYPOINT') else None)
         elif name == 'TEAM_ATTACK_NAMED':
             for b in self.members(a[0]):
                 self.order_attack(b, a[1])
@@ -2625,6 +2747,8 @@ class Sim:
                 if b.hp <= 0.0:
                     self.destroy(b, '脚本伤害')
                     b.read_until = self.frame_now()
+                else:                           # under REALLYDAMAGED: out in this frame (engine_garrison 伤争敌 1230)
+                    self.garrison.hurt(b)
         elif name in ('NAMED_KILL', 'NAMED_DELETE'):
             b = self.body(a[0])
             if b:
@@ -2682,8 +2806,8 @@ class Sim:
             b = self.body(a[0])
             if b:
                 self.used.add('health of the dead')
-                if b.alive:
-                    self.counters[a[1]] = int(round(b.health))
+                if b.alive:                     # whole percent, rounded down (engine_garrison hp: 200 of 3000 reads 6)
+                    self.counters[a[1]] = math.floor(b.health + 1e-6)
                 elif b.died_at == self.t and not b.deleted:
                     # killed by a script earlier this frame: it is still there, at 0 (a NAMED_DELETE leaves the last
                     # value: engine_immortal b, bench 11-09, health 1 beside gone 1)
@@ -2701,9 +2825,15 @@ class Sim:
         elif name == 'PLAYER_GIVE_MONEY':
             self.money[a[0]] = self.money.get(a[0], 0) + a[1]
         elif name == 'NAMED_GARRISON_SPECIFIC_BUILDING':
-            b = self.body(a[0])
-            if b and self.body(a[1]):
+            b, g = self.body(a[0]), self.body(a[1])
+            if b and g and self.garrison.spec(g) is not None:      # walks to it, in if it may (simgarrison; INFERRED)
+                self.garrison.send(b, g)
+            elif b and g:
                 self.send(b, a[1])
+        elif name == 'NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY':      # (unit, building) engine_garrison: no
+            self.garrison.put(self.body(a[0]), self.body(a[1]), script=True)    # relation, no room (garrison.md 1)
+        elif name == 'NAMED_EXIT_BUILDING':      # (unit) engine_garrison base: out where the building stands
+            self.garrison.out(self.body(a[0]))
         elif name == 'SET_MISSION_OBJECTIVE_STATUS':
             if a[1] not in (0, 1, 2, 3):                # script-semantics.md 8: only 0..3, any other does nothing
                 return                                  # (inferred; checks/engine_scripts5.py goals O5 asks the bench)
@@ -3042,11 +3172,13 @@ class Sim:
             self.suppression_tick()
             self.flee_due(eng.frame)
             self.expire(eng.frame)
+            self.garrison.due()
             if self.frame_movers:
                 self.move(1.0 / self.fps, precise=True)
             self.build_due(eng.frame)
             self.blast_due(eng.frame)
             self.death_blast_due(eng.frame)
+            self.sweeps.due(eng.frame)
             self.deposit_due(eng.frame)
             self.mine_due(eng.frame)
             self.produce_due(eng.frame)
@@ -3153,6 +3285,7 @@ class Sim:
                 if s.once:
                     self.done.add(s.name)
         self.expire(self.frame_now())
+        self.garrison.due()
         self.suppression_tick()
         self.build_due(self.frame_now())
         self.deposit_due(self.frame_now())
@@ -3342,7 +3475,8 @@ class Sim:
                     a.fired_at = self.t                 # a bombarder firing shows itself
                 for effect in w.get('unmodeled_effects', []):
                     self.gap(GAP_WEAPON, effect, '武器第1轮尚未解释此效果的筛选、几何或时序')
-                if not self.shot_clock and (w.get('hit_modifiers') or w.get('line') or w.get('strip_max_health') or w.get('emp_seconds')):
+                if not self.shot_clock and (w.get('hit_modifiers') or w.get('line') or w.get('strip_max_health') or w.get('emp_seconds')
+                                           or w.get('sweep')):
                     self.gap(GAP_WEAPON, 'weapon effects', '逐发武器效果仅在离散命中时钟中模拟')
                 if w['dps'] or w.get('suppression') or (self.shot_clock and w.get('sdps')):
                     if 'sched' in w and self.shot_clock:
@@ -3522,6 +3656,8 @@ class Sim:
                     for seconds in w.get('emp_seconds', []):
                         deadlines = self.__dict__.setdefault('emp_until', {})
                         deadlines[id(t)] = max(deadlines.get(id(t), 0), self.frame_now() + simunits._frames(seconds))
+                    if w.get('sweep'):
+                        self.sweeps.fire(by, t, w['sweep'])
                     victims = [t]
                     # GUESSED edge geometry: circle extent; round 1 centres avoid edges.
                     line = w.get('line')
@@ -3837,6 +3973,7 @@ class Sim:
             self.change()
         if precise:
             return
+        self.follow_due()
         self.capture_due()
         if self.auto_kill is not None:
             mine = [b for b in self.living() if b.owner == self.human]
