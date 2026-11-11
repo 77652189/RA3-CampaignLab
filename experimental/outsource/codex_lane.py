@@ -71,6 +71,16 @@ def handoff_rev(lane):
     return rev, (os.path.getmtime(f) if os.path.exists(f) else 0)
 
 
+def sync_handoffs():
+    """Bring the shared private repo (work/re, where the lines' handoffs live) up to origin before Codex reads it: a
+    stale copy once sent a fresh session back to an already-answered question. Fast-forward only, keeping other lines'
+    uncommitted edits; returns '' or the reason it could not."""
+    subprocess.run(['git', 'fetch', '-q', 'origin'], cwd=PRIV)
+    r = subprocess.run(['git', 'merge', '-q', '--ff-only', 'origin/main'], cwd=PRIV, capture_output=True, text=True,
+                       encoding='utf-8', errors='replace')
+    return '' if r.returncode == 0 else 'work/re 没同步到远端，Codex 可能读到旧交接：' + (r.stderr.strip()[-200:])
+
+
 def analyse(events_path):
     cmds, msgs, usage = [], [], collections.Counter()
     for raw in open(events_path, encoding='utf-8', errors='replace'):
@@ -120,6 +130,7 @@ def main():
         sys.exit(f'no codex.exe ({exe}) or no worktree {wt}')
     stamp = datetime.datetime.now().strftime('%m%d_%H%M')
     events = os.path.join(LOGS, f'codex_{a.lane}_{stamp}.jsonl')
+    stale = sync_handoffs()
     before, h0, t0 = origin_main(wt), handoff_rev(a.lane), time.time()
     prompt = PROMPT.format(L=a.lane.upper(), lane=a.lane, wt=wt)
     cmd = [exe, 'exec', '--json', '--dangerously-bypass-approvals-and-sandbox', '-C', wt,
@@ -139,7 +150,8 @@ def main():
     rec = {'time': stamp, 'lane': a.lane, 'minutes': minutes, 'commands': len(cmds),
            'tokens_in': usage.get('input_tokens', 0), 'tokens_cached': usage.get('cached_input_tokens', 0),
            'tokens_out': usage.get('output_tokens', 0), 'pushed': pushed[:10],
-           'warnings': warnings(cmds, pushed, handoff_rev(a.lane) != h0, minutes, a.minutes),
+           'warnings': ([stale] if stale else []) + warnings(cmds, pushed, handoff_rev(a.lane) != h0, minutes,
+                                                            a.minutes),
            'events': events, 'last': (msgs[-1] if msgs else '')[:1500]}
     os.makedirs(os.path.dirname(SUMMARY), exist_ok=True)
     with open(SUMMARY, 'a', encoding='utf-8') as f:
