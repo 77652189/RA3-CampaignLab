@@ -573,6 +573,7 @@ def sdk_build_lock(name):
 
 
 def game_running():
-    import subprocess
-    out = subprocess.run(['tasklist'], capture_output=True, text=True, errors='replace').stdout.lower()
+    sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'testbench'))
+    import slots
+    out = ' '.join(slots._tasks().values()).lower()      # not a full `tasklist`: it hung inside Codex (11-11)
     return 'ra3_1.' in out or 'ra3.exe' in out or 'ra3ep1' in out

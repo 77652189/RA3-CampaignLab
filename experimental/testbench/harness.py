@@ -216,7 +216,8 @@ def mute(pid):
 
 
 def game_running():
-    out = subprocess.run(['tasklist'], capture_output=True, text=True, errors='replace').stdout.lower()
+    import slots      # the process list without a full `tasklist` (it hung inside Codex's sessions, 11-11)
+    out = ' '.join(slots._tasks().values()).lower()
     return bool(re.search(r'\bra3(_1\.\d+\.game|\.exe|ep1)', out))
 
 

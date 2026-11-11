@@ -63,8 +63,16 @@ def shots_dir(i):
 
 
 def _tasks():
-    """{pid: image name} of every process."""
-    out = subprocess.run(['tasklist', '/FO', 'CSV', '/NH'], capture_output=True, text=True, errors='replace').stdout
+    """{pid: image name} of every process. psutil reads the process list directly (0.02 s); a full `tasklist` hung
+    for minutes inside Codex's sessions (11-11: filtered queries fine, the full listing never returned), so it is
+    only the fallback, with a timeout."""
+    try:
+        import psutil
+        return {p.info['pid']: p.info['name'] or '' for p in psutil.process_iter(['pid', 'name'])}
+    except ImportError:
+        pass
+    out = subprocess.run(['tasklist', '/FO', 'CSV', '/NH'], capture_output=True, text=True, errors='replace',
+                         timeout=60).stdout
     procs = {}
     for line in out.splitlines():
         cols = [c.strip('"') for c in line.split('","')]
