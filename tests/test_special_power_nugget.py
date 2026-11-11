@@ -149,3 +149,23 @@ def test_retail_attribute_gates_reject_unmeasured_forms(inner):
     weapon = simunits._weapons([xml])['GateTest']
     assert not weapon.get('hit_modifiers')
     assert 'AttributeModifierNugget' in weapon['unmodeled_effects']
+
+
+def test_special_power_nugget_retail_scrambler_unresolved_consumers_remain_gaps():
+    """engine_spnscr a: measured fire-delay differs, final HP alone hides it.
+
+    Keep both unsupported consumers explicit until the expiry/script NO_ATTACK
+    interaction is explained. This is a gap guard, not a bench replay claim.
+    """
+    import build
+    import sim
+    import simunits
+    from checks.engine_spnscr import POWER
+    m, t, _ = build.resolve('engine_spnscr', 'a')
+    e = sim.Sim(m, t)
+    e.shot_clock = True
+    e.run(16)
+    assert (sim.GAP_WEAPON, 'SpecialPowerNugget') in e.unmodeled
+    assert (sim.GAP_WEAPON, 'AttributeModifierNugget') in e.unmodeled
+    # FX_None and CANNOT_LEAVE_ENCLOSURE are not yet a validated no-op boundary.
+    assert simunits.nugget_self_power(m.units[0].id, POWER, e.own) is False
