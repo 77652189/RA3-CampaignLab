@@ -3515,9 +3515,9 @@ class Sim:
                 for effect in w.get('unmodeled_effects', []):
                     self.gap(GAP_WEAPON, effect, '武器第1轮尚未解释此效果的筛选、几何或时序')
                 if not self.shot_clock and (w.get('hit_modifiers') or w.get('line') or w.get('strip_max_health') or w.get('emp_seconds')
-                                           or w.get('sweep') or w.get('contained') or w.get('dot')):
+                                           or w.get('sweep') or w.get('contained') or w.get('dot') or w.get('special_powers')):
                     self.gap(GAP_WEAPON, 'weapon effects', '逐发武器效果仅在离散命中时钟中模拟')
-                if w['dps'] or w.get('suppression') or (self.shot_clock and (w.get('sdps') or w.get('dot'))):
+                if w['dps'] or w.get('suppression') or (self.shot_clock and (w.get('sdps') or w.get('dot') or w.get('special_powers'))):
                     if 'sched' in w and self.shot_clock:
                         self.volleys.append((pick, w, a))
                     else:
@@ -3729,7 +3729,7 @@ class Sim:
                             except (OSError, ValueError):
                                 speeds[projectile] = 0
                         speed = speeds[projectile]
-                        complex_effect = any(w.get(k) for k in ('suppression', 'hit_modifiers', 'line', 'emp_seconds', 'strip_max_health', 'sd', 'dot', 'contained'))
+                        complex_effect = any(w.get(k) for k in ('suppression', 'hit_modifiers', 'line', 'emp_seconds', 'strip_max_health', 'sd', 'dot', 'contained', 'special_powers'))
                         if speed > 0 and not complex_effect:
                             # GUESSED collision boundary, rechecked for the two probe distances: full
                             # distance steps before impact. No fitted per-distance delays.
@@ -3807,6 +3807,29 @@ class Sim:
                             scalar = 1.0 if damage_type == 'UNRESISTABLE' else simunits.percent(victim.armor, damage_type) / 100 * victim.taken
                             h[1] += n * victim.max_hp * fraction * by.dealt * scalar
                         h[2] = by
+                    for effect in w.get('special_powers', []):
+                        if ((effect['include'] and not set(effect['include']) & t.kinds)
+                                or set(effect['exclude']) & t.kinds):
+                            continue
+                        cache = self.__dict__.setdefault('_nugget_powers', {})
+                        key = (by.template, effect['power'])
+                        if key not in cache:
+                            cache[key] = simunits.nugget_self_power(by.template, effect['power'], self.own)
+                        power = cache[key]
+                        if power is None:      # no matching module on caster: engine_spn order
+                            continue
+                        if not power or projectile or n != 1 or (power['reach'] and
+                                math.hypot(t.x - by.x, t.y - by.y) > power['reach']):
+                            self.gap(GAP_WEAPON, 'SpecialPowerNugget', '仅直接单发、零冷却自身修正已对拍；其他技能处理器/弹体/范围待核')
+                            continue
+                        xml = self.xml_of(by.template)
+                        modifier = simunits.modifier(xml, power['modifier'])
+                        if (modifier and modifier['frames'] is not None and not modifier['status']
+                                and set(modifier['types']) <= {'ARMOR'}):
+                            by.auras_on[power['modifier']] = (self.frame_now() + modifier['frames'], xml)
+                            self.modify(by)
+                        else:
+                            self.gap(GAP_WEAPON, 'SpecialPowerNugget', '仅有Duration的自身ARMOR修正已对拍')
                     for mid in w.get('hit_modifiers', []):
                         xml = self.xml_of(by.template)
                         modifier = simunits.modifier(xml, mid)

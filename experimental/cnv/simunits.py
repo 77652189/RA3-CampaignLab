@@ -276,7 +276,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v17.json')    # v17: direct DOT interval/duration fields
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v18.json')    # v18: direct SpecialPowerNugget dispatch fields
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -428,6 +428,22 @@ def _weapons(texts, base_table=None):
                 else:
                     dmg.append((_num(_attr(h, 'Damage')), _attr(h, 'DamageType', 'UNDEFINED')))
                     got['leech_health'] = _num(_attr(h, 'PercentDamageToHeal', '100%').rstrip('%')) / 100
+            special_powers = []
+            for h, inner in _blocks(bare, 'SpecialPowerNugget'):
+                filters = list(_blocks(inner, 'SpecialObjectFilter'))
+                rest = re.sub(r'<SpecialObjectFilter\b[^>]*/>', '', inner).strip()
+                if (rest or len(filters) > 1 or any(war)
+                        or set(re.findall(r'(\w+)\s*=', h)) - {'id', 'SpecialPowerTemplate'}
+                        or (filters and (filters[0][1].strip() or _attr(filters[0][0], 'Rule', 'ANY') != 'ANY'
+                            or set(re.findall(r'(\w+)\s*=', filters[0][0])) - {'Rule', 'Include', 'Exclude'}))):
+                    unsupported.append('SpecialPowerNugget')
+                else:
+                    f = filters[0][0] if filters else ''
+                    special_powers.append(dict(power=_attr(h, 'SpecialPowerTemplate'),
+                                               include=_attr(f, 'Include', '').split(),
+                                               exclude=_attr(f, 'Exclude', '').split()))
+            if special_powers:
+                got['special_powers'] = special_powers
             contained = []
             for h, inner in _blocks(bare, 'DamageContainedNugget'):
                 filters = list(_blocks(inner, 'DamageObjectFilter'))
@@ -549,6 +565,7 @@ def _resolve(w, weapons):
                 emp_seconds=w.get('emp_seconds', weapons.get(w.get('warhead'), {}).get('emp_seconds', [])),
                 leech_percent=w.get('leech_percent', 0.0), leech_health=w.get('leech_health', 0.0),
                 sweep=w.get('sweep'), contained=w.get('contained', []), dot=w.get('dot', []),
+                special_powers=w.get('special_powers', weapons.get(w.get('warhead'), {}).get('special_powers', [])),
                 unmodeled_effects=w.get('unmodeled_effects', weapons.get(w.get('warhead'), {}).get('unmodeled_effects', [])))
 
 
@@ -1253,6 +1270,29 @@ def power_rules(template, power, own=None):
                     'flags': set((_attr(head, 'Flags') or '').split()),
                     'reach': _num(_attr(head, 'MaxCastRange'), 0.0)}
     return None
+
+
+def nugget_self_power(template, power, own=None):
+    """engine_spn a: direct zero-reload SpecialPower with a timed self modifier.
+
+    None: no matching module (native no-op). False: present but its handler
+    is outside this probe. OCL/disguise/beam handlers must not become buffs.
+    """
+    def read(xml):
+        xml = re.sub(r'<!--.*?-->', '', xml or '', flags=re.S)
+        for tag in ('SpecialPower', 'ActivateModuleSpecialPower', 'OCLSpecialPower'):
+            for h, inner in _blocks(xml, tag):
+                if _attr(h, 'SpecialPowerTemplate') != power:
+                    continue
+                rules = power_rules(template, power, own)
+                if (tag != 'SpecialPower' or inner.strip() or not rules or rules['reload'] or rules['flags']
+                        or set(re.findall(r'(\w+)\s*=', h)) - {'id', 'SpecialPowerTemplate', 'AttributeModifier', 'AttributeModifierAffectsSelf'}
+                        or _attr(h, 'AttributeModifierAffectsSelf', 'false') != 'true'
+                        or not _attr(h, 'AttributeModifier')):
+                    return False
+                return dict(modifier=_attr(h, 'AttributeModifier'), reach=rules['reach'])
+        return None
+    return _chain(template, own, read)
 
 
 def kind_of(kinds):

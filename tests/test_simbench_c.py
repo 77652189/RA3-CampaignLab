@@ -411,11 +411,12 @@ def test_suppression_contributions_require_discrete_hit_events():
 def test_suppression_samples_entry_refresh_and_expiry_at_the_four_probe_readings():
     """D's read-only engine_suppress_probe wraps engine_suppression unchanged.
 
-    Replay the underlying map without its injected logging carrier. Bench
+    Replay the named probe without its injected read-only logging carrier. Bench
     2026-11-10: tail, lifetime, duration, expiry all PASS (D rounds 21/22).
     """
     import build
     import sim
+    import re
     # Exact module state/end readings from the four runs. Final walking
     # counters remain in engine_suppression: retail's lateral path drift is
     # absent from the simulator, giving one frame less on suppressed legs.
@@ -430,7 +431,13 @@ def test_suppression_samples_entry_refresh_and_expiry_at_the_four_probe_readings
                    'order':{106:(True,0),121:(True,196),136:(True,211),211:(True,211),226:(False,211)},
                    'removed':{106:(True,0),121:(True,196),136:(True,211),211:(True,211),226:(False,211)}}}
     for check, lanes in expected.items():
-        m,t,_=build.resolve('engine_suppression',check)
+        m,t,_=build.resolve('engine_suppress_probe',check)
+        # In the game ra3ext replaces this DeletionUpdate carrier with its
+        # read-only logger. The replay needs neither deletion nor injected I/O;
+        # keep all other target XML, placements and scripts from the real probe.
+        probe=next(u for u in m.units if u.id=='CNV_SuppProbeMan')
+        probe.xml,n=re.subn(r'<DeletionUpdate\b(?=[^>]*id="ModuleTag_CNVProbe")[^>]*/>', '', probe.xml)
+        assert n==1
         e=sim.Sim(m,t);e.shot_clock=True
         got={lane:{} for lane in lanes}
         tick=e.suppression_tick
@@ -744,3 +751,14 @@ def test_stance_aggressive_walks_in_and_stays():
     assert rows[-1]['坦克血'] < 50 and all(r['原地'] == 0 for r in rows[3:]) and rows[-1]['近敌'] == 1
     for v in ('agg240', 'agg260'):
         assert all(r['原地'] == 1 and r['坦克血'] == 100 for r in _acquire(v)), v
+
+
+def test_special_power_nugget_dispatches_the_casters_self_modifier_only_with_module_and_eligible_target():
+    import build
+    import sim
+    import simunits
+    retail=simunits._fight_data()['weapons']['JapanLightTransportVehicleDisguiser']
+    assert retail['special_powers'][0]['power']=='SpecialPower_JapanLightTransportVehicleDisguise'
+    m,t,_=build.resolve('engine_spn','a')
+    e=sim.Sim(m,t);e.shot_clock=True
+    assert tuple(e.run(16).series[-1][1])==(1001099080,1001099075,1001099080,1001099080)

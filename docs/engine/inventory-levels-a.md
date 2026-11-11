@@ -9,7 +9,7 @@
 | 脚本动作 | 50 | 0 | 0 | 14 |
 | 脚本条件 | 12 | 0 | 0 | 0 |
 | 物体模块 | 35 | 6 | 73 | 16 |
-| 武器效果 | 13 | 0 | 6 | 2 |
+| 武器效果 | 13 | 1 | 5 | 2 |
 
 按原版用量加权：已对拍 98%，已有（已对拍+推断）98%。
 
@@ -41,7 +41,7 @@
 | 未做 | 物体模块 | `Behaviors/EjectPassengersSpecialAbilityUpdate` | 7 | a2 a5 a9 | 模拟器代码里没有这个名字；例：AlliedBomberAircraft, CNV_Burrower |
 | 未做 | 物体模块 | `Behaviors/AssignSlavesTargetObjectSpecialPower` | 6 | a2 a4 a5 a7 a8 | 模拟器代码里没有这个名字；例：AlliedWarFactory, JapanNavalYard |
 | 未做 | 物体模块 | `Behaviors/BezierProjectile` | 6 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 已核（11-08）：模拟器没有这个效果（开火按每秒伤害直接扣血，没有弹体）；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
-| 未做 | 物体模块 | `Behaviors/OCLSpecialPower` | 6 | a1 a2 a4 a6 a7 | 模拟器代码里没有这个名字；例：SovietCommandoTech1 |
+| 未做 | 物体模块 | `Behaviors/OCLSpecialPower` | 6 | a1 a2 a4 a6 a7 | 仅在SpecialPowerNugget处理器中识别并拒绝，未实现OCL技能执行；例：SovietCommandoTech1 |
 | 未做 | 物体模块 | `Behaviors/SubStructureStorageBehavior` | 6 | a1 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedMCV, JapanMCV |
 | 未做 | 物体模块 | `Behaviors/TrackDamage` | 6 | a1 a2 a3 a4 a5 a6 a7 a8 | 模拟器代码里没有这个名字；例：AlliedAntiNavalScout, AlliedFighterAircraft |
 | 未做 | 物体模块 | `Behaviors/TrackIncomingWeaponFireBehavior` | 6 | a1 a2 a3 a4 a5 a6 a7 a8 | 模拟器代码里没有这个名字；例：AlliedAntiNavalScout, AlliedFighterAircraft |
@@ -50,7 +50,7 @@
 | 未做 | 物体模块 | `Behaviors/CaptureSpecialAbilityUpdate` | 5 | a1 a2 a3 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoTech1, AlliedEngineer |
 | 未做 | 物体模块 | `Behaviors/EmotionTrackerUpdate` | 5 | a1 a2 a3 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoTech1, AlliedEngineer |
 | 未做 | 物体模块 | `Behaviors/PassiveAreaEffectBehavior` | 5 | a3 a4 a7 | 模拟器代码里没有这个名字；例：AlliedEngineer, CNV_IceEngineer |
-| 未做 | 物体模块 | `Behaviors/ActivateModuleSpecialPower` | 4 | a1 a2 a4 a6 a7 | 模拟器代码里没有这个名字；例：AlliedAntiStructureVehicle, JapanAntiVehicleVehicleTech1 |
+| 未做 | 物体模块 | `Behaviors/ActivateModuleSpecialPower` | 4 | a1 a2 a4 a6 a7 | 仅在SpecialPowerNugget处理器中识别并拒绝，未实现模块技能执行；例：AlliedAntiStructureVehicle, JapanAntiVehicleVehicleTech1 |
 | 未做 | 物体模块 | `Behaviors/ParkingPlaceBehavior` | 4 | a4 a5 a7 a8 | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedAntiStructureShip |
 | 未做 | 物体模块 | `Behaviors/QueueDockBehavior` | 4 | a1 a2 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedRefinery, JapanRefinery |
 | 未做 | 物体模块 | `Behaviors/RadarBehavior` | 4 | a4 | 模拟器代码里没有这个名字；例：JapanConstructionYard |
@@ -95,7 +95,6 @@
 | 未做 | 武器效果 | `InformTargetNugget` | 69 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | engine_inform仅隔离并用伤害；目标对来弹的响应尚未模拟，不以HP隔离检查登记整项已对拍；例：AAAVT1_AlliedAntiVehicleInfantryMissileLauncher, ABD_AlliedAntiVehicleInfantryMissileLauncher |
 | 未做 | 武器效果 | `MetaImpactNugget` | 36 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_knock_probe.py），可能用别的名字实现了；例：AAAVT1_ShotgunWeapon, ABD_ShotgunWeapon |
 | 未做 | 武器效果 | `ActivateLiftObjectNugget` | 6 | a1 a2 a4 a6 a7 | 模拟器代码里没有这个名字；例：AAAVT1_JapanCommandoTech1PsyonicAntiAirCrush, AAAVT1_JapanCommandoTech1PsyonicCrush |
-| 未做 | 武器效果 | `SpecialPowerNugget` | 6 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAntiVehicleVehicleTech1TargetPainter, CNV_DeckSendTrigger |
 | 未做 | 武器效果 | `AttachNugget` | 4 | a1 a2 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoAttachWeapon, SovietScoutVehicleMeleeAttachWeapon |
 | 未做 | 武器效果 | `GrapplingHookNugget` | 1 | a1 a3 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：SovietAntiVehicleVehicleTech3Harpoon |
 | 推断 | 物体模块 | `Behaviors/CommandSetUpgrade` | 5 | a1 a4 a5 a7 | 模拟器代码里有这个名字；例：AlliedConstructionYard, CNVA4AlliedConstructionYard |
@@ -104,6 +103,7 @@
 | 推断 | 物体模块 | `Behaviors/TechUpgradeReceiver` | 4 | a2 a4 a5 a7 a8 | 模拟器代码里有这个名字；例：AlliedAirfield, AlliedBarracks |
 | 推断 | 物体模块 | `Behaviors/FireWeaponUpdate` | 1 | a1 a2 a4 a5 a6 a7 | 部分：simunits.ocl_round 把召出物的 FireWeaponNugget + LifetimeUpdate 折成伤害，不模拟召出物本身；例：SovietHeavyAntiVehicleInfantry |
 | 推断 | 物体模块 | `Behaviors/GarrisonContain` | 1 | a6 a7 | simgarrison 同一套规则（不可争夺）；没单独上台对拍；例：AlliedBaseDefense |
+| 推断 | 武器效果 | `SpecialPowerNugget` | 6 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 部分：engine_spn a实测自身ARMOR派发、缺模块/类型过滤对照；仅直接单发零冷却自制技能，原版六处的OCL/模块/变装及升级门槛未接通，不登记整项已对拍；例：AlliedAntiVehicleVehicleTech1TargetPainter, CNV_DeckSendTrigger |
 | 已对拍 | 脚本动作 | `SET_MILLISECOND_TIMER` | 4153 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 引擎模型核心；台上量过、测试对拍：checks/engine_acquire.py |
 | 已对拍 | 脚本动作 | `SET_FLAG` | 4105 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aimicro.py |
 | 已对拍 | 脚本动作 | `ALLOW_DISALLOW_ONE_BUILDING` | 3466 | a4 a5 a7 | tests/test_simbench.py::test_a_ban_holds_the_queue_and_does_not_cancel |

@@ -172,6 +172,9 @@ BENCHED_TESTS = {
 _NOT_IN_SIM = '已核（11-08）：模拟器没有这个效果'
 NOTES = {
     (NUGGET, 'FireOnObjectsNugget'): (TODO, '未实现：子武器派发条件与空间锚点尚未解释；失败诊断不作为已对拍依据'),
+    (NUGGET, 'SpecialPowerNugget'): (GUESSED, '部分：engine_spn a实测自身ARMOR派发、缺模块/类型过滤对照；仅直接单发零冷却自制技能，原版六处的OCL/模块/变装及升级门槛未接通，不登记整项已对拍'),
+    (MODULE, 'Behaviors/OCLSpecialPower'): (TODO, '仅在SpecialPowerNugget处理器中识别并拒绝，未实现OCL技能执行'),
+    (MODULE, 'Behaviors/ActivateModuleSpecialPower'): (TODO, '仅在SpecialPowerNugget处理器中识别并拒绝，未实现模块技能执行'),
     (NUGGET, 'TintObjectsNugget'): (NA, '纯表现：Color及Pre/Sustained/PostColorTime、Frequency/Amplitude仅控制染色动画；engine_tint pair实测2/90/2/90，独立DamageNugget解释全部伤害，test_simbench_c重放；不声称像素已验证'),
     (NUGGET, 'InformTargetNugget'): (TODO, 'engine_inform仅隔离并用伤害；目标对来弹的响应尚未模拟，不以HP隔离检查登记整项已对拍'),
     (NUGGET, 'ParalyzeNugget'): (GUESSED, '部分：engine_emp phase实测PASS16051/31066/61096、hit1；engine_empfire a实测PASS901090/901100/901080/901090，失能窗口按令不开火、到期后新令恢复；仅无筛选EMP，其他类型/筛选/装填相位未验证'),
