@@ -4086,7 +4086,8 @@ class Sim:
         """Dispatch ordinary immediate warhead shocks, separately from damage radius.
 
         First slice: default Physics, level terrain, grounded bodies. Other cases
-        stay explicit gaps; no airborne relaunch or post-landing standing model.
+        stay explicit gaps; no airborne relaunch. After landing the body keeps still meta_impact_landing_hold frames
+        (meta_impact_tick: knock_hold, read by move).
         INFERRED selection: feet-centre sphere, without relation/arc filtering.
         The whole nugget therefore retains its unmodeled registration.
         """
@@ -4130,6 +4131,9 @@ class Sim:
             if k == len(points)-1:
                 flights.pop(key)
                 b.z = None
+                # on the ground: lies, then gets up (Physics ShockStunnedTime + ShockStandingTime); a kept move
+                # order resumes after it (bench 11-11 engine_knock_probe stand)
+                self.__dict__.setdefault('knock_hold', {})[key] = self.frame_now() + simunits.meta_impact_landing_hold()
             self.change()
 
     def deal(self, dt):
@@ -4732,6 +4736,8 @@ class Sim:
             if not b.alive or b.frame_move != precise:
                 continue
             if id(b) in self.__dict__.get('impact_flights', {}):
+                continue
+            if self.frame_now() < self.__dict__.get('knock_hold', {}).get(id(b), 0):
                 continue
             if 'ATTACHED' in b.status and b.name in self.attachments:
                 continue

@@ -71,6 +71,19 @@ RUNS = {'land': ORDER + 14.0, 'late': ORDER + 14.0, 'late1': ORDER + 14.0}
 # the hit frame decides (hypothesis 7: the man's own state at that frame); if it flies land's way one frame later, what
 # else fires in the mission does (hypothesis 6: shared state such as the random sequence)
 FIRE = {'late': 1 / 15, 'late1': 0.03}
+# engine line A round 162, `stand` / `standlate` (CampKPStand / CampKPStandlate): `land`, and at ORDER + MOVE the flung
+# man is sent east (MOVE_STAND: off his landing spot, clear ground) and, on the same frame, the mild lane's man (not
+# shot at: the control) the same 400 east -- the control's first move frame is the order's frame plus the start
+# latency, so how long the flung man is held after landing reads off the probe log. Prediction from the data: the
+# Peacekeeper's Physics is all defaults, ShockStunnedTimeLow / High 1 s + ShockStandingTime 1.5 s (PhysicsBehavior.xsd):
+# held 15 + 22.5 frames after landing. Bench 11-11 `stand` PASS: the order came at frame 248 (the control moves at
+# 249; script frame = mission seconds x 15), the man still in the air (lift 174, last airborne frame 299, on the
+# ground at (2300, 3060) from 300), and he kept it: first step at 338 = landing + 38. `standair` (ORDER + 5, frame
+# 165) came before the rocket's hit at 174: the man walked off and the rocket missed -- replaced by `standlate`,
+# the order 10 frames after the landing (frame 310): the same 338 = a lock from the landing, not from the order.
+MOVE = {'stand': 10.5, 'standlate': 310 / 15 - ORDER}
+RUNS.update({k: ORDER + 20.0 for k in MOVE})
+MOVE_STAND, MOVE_CONTROL = 'Test Knock Stand Away', 'Test Knock Control Away'
 # bench 11-10: ORDER + 1/15 came out two frames late (lift 176 against land's 174); `late1` (+0.03 s) aimed at one
 # frame, retail's hit frame (lift 175), and came out two frames late as well
 HIT = '<DamageNugget Damage="1.5" DamageType="UNRESISTABLE" DeathType="NORMAL" Radius="0"/>'
@@ -154,11 +167,11 @@ def mission():
 
 CHECK_LANES = {'shot': ('mild', 'strong'), 'tank': ('tank',),    # four counter lines at most: two lanes a check
                'retail': ('yuri', 'rocket'), 'land': ('rocket',), 'late': ('rocket',),
-               'late1': ('rocket',)}
+               'late1': ('rocket',), 'stand': ('rocket',), 'standlate': ('rocket',)}
 # `land` also counts whether the flung man died (a dead man's health counter keeps its last reading). Prediction from
 # the data: no fall damage -- PhysicsBehavior.xsd has no fall / splat damage field and the Peacekeeper's Physics is
 # all defaults -- so alive, 99.
-DEAD = {'land': ('rocket',), 'late': ('rocket',), 'late1': ('rocket',)}
+DEAD = {'land': ('rocket',), 'late': ('rocket',), 'late1': ('rocket',), 'stand': ('rocket',), 'standlate': ('rocket',)}
 
 
 def check(m, which):
@@ -179,6 +192,13 @@ def check(m, which):
         fire += [('UNIT_CHANGE_OBJECT_STATUS', name(k, 'gun'), 'NO_ATTACK', 0),
                  ('NAMED_ATTACK_NAMED', name(k, 'gun'), name(k, 'man'))]
     t.scripts.append(Script('Test - fire', [('TIMER_EXPIRED', 'Knock Fire')], fire))
+    if which in MOVE:
+        t.waypoints[MOVE_STAND] = (2700.0, 3060.0)          # `land`'s landing spot (2300, 3060), 400 east
+        t.waypoints[MOVE_CONTROL] = tuple(m.site(SITE['mild'], 400.0, 450.0))
+        t.scripts[0].do.append(('SET_MILLISECOND_TIMER', 'Knock Move', float(ORDER + late + MOVE[which])))
+        t.scripts.append(Script('Test - move', [('TIMER_EXPIRED', 'Knock Move')],
+                                [('MOVE_NAMED_UNIT_TO', name('rocket', 'man'), MOVE_STAND),
+                                 ('MOVE_NAMED_UNIT_TO', name('mild', 'man'), MOVE_CONTROL)]))
     for i, s in enumerate(stops):
         t.scripts.append(Script(f'Test - stop {i}', [('TIMER_EXPIRED', f'Knock Stop {i}')],
                                 [('UNIT_CHANGE_OBJECT_STATUS', name(k, 'gun'), 'NO_ATTACK', 1)

@@ -310,7 +310,11 @@ NOTES = {
                                                             '消散、按生命值分档减速、满档冻住（CryoBeamFrozenArmor '
                                                             '90000%，一碰就碎）；规则读自 SDK 数据，程序和台上都没对'),
     (NUGGET, 'SecondaryDamageNugget'): (GUESSED, 'simunits._weapons 读 Amount（不要升级的那条）→ sdps，Sim.chill'),
-    (MODULE, 'Behaviors/Physics'): (TODO, '移动物理（坠落、弹跳、被击飞、倾倒）：模拟器走路按速度直走，没有物理'),
+    (MODULE, 'Behaviors/Physics'): (TODO, 'RA3 的 Physics 只有击飞曲线、反弹、落地后倒地/起身、重力倍数（没有 Generals 的 '
+                                          'Mass/摩擦/推挤），会动的战役模板全是默认字段（仅 6 个改 GravityMultiplier）。'
+                                          '已测：落地后锁 38 帧再走移动令（engine_knock_probe stand / standlate，'
+                                          'tests/test_meta_impact.py::test_physics_a_knocked_man_keeps_still_38_frames_after_landing_then_walks_his_order）；'
+                                          '未测：落水/悬崖/出图即死、击飞和倒地时能否开火、反弹、坠机重力'),
     # engine A round 108: read in the SDK data
     (MODULE, 'Behaviors/ObjectDefectionHelper'): (NA, '没人触发：原版只在 BaseObject 挂一个空的（所以每个物体都有），'
                                                       'SageXML 里没有一处 DefectorSpecialPower，脚本动作表里也没有'

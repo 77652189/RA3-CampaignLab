@@ -791,6 +791,19 @@ def meta_impact_trajectory(position, velocity):
     return [point(i/(size-1)) for i in range(size)]
 
 
+# PhysicsBehavior.xsd defaults (every campaign template's Physics: work/re/a_physics_plan.md): after a knock-back
+# lands the body lies ShockStunnedTimeLow..High, then gets up for ShockStandingTime
+SHOCK_STUNNED, SHOCK_STANDING = 1.0, 1.5
+
+
+def meta_impact_landing_hold():
+    """Frames a knocked-back body keeps still from its first frame on the ground (default Physics only, as
+    meta_impact_body): bench 11-11 engine_knock_probe stand, a move order given in the air is kept and the first step
+    comes 38 frames after the landing = ceil((1 + 1.5) x 15). ceil of the sum and the sum of the ceils (15 + 23) are
+    both 38 here: which one RA3 takes is not told apart. Holds moving only; firing while knocked is not measured."""
+    return _frames(SHOCK_STUNNED + SHOCK_STANDING)
+
+
 def meta_impact_body(template, own=None):
     """Height for an unmodified Physics module, None for unsupported/no Physics.
 

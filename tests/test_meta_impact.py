@@ -369,3 +369,42 @@ def test_meta_impact_delay_queue_keeps_other_events_and_rejects_unmodeled_varian
             </Nuggets></WeaponTemplate>'''])['unsupported']
         assert not w.get('meta_impacts') and not w.get('delayed_meta_impacts')
         assert 'MetaImpactNugget' in w['unmodeled_effects']
+
+
+@pytest.mark.parametrize('check', ['stand', 'standlate'])
+def test_physics_a_knocked_man_keeps_still_38_frames_after_landing_then_walks_his_order(check):
+    """engine_knock_probe stand / standlate (CampKPStand_mcp_1111_082909, ra3ext.log): the man flung by the V4's shock
+    lifts at 174, is on the ground at (2300, 3060) from 300 and takes his first step east at 338 = landing + 38
+    (Physics defaults ShockStunnedTime 1 s + ShockStandingTime 1.5 s), whether the move order came in the air
+    (stand: frame 248, the unshot control steps at 249) or on the ground (standlate: frame 310). The flight is the
+    bench's own launch vector (the direct hit's direction is collision noise, not simulated)."""
+    import build
+    import sim
+    import simunits
+    from checks.engine_knock_probe import MOVE, ORDER, name
+
+    m, t, _ = build.resolve('engine_knock_probe', check)
+    e = sim.Sim(m, t)
+    man = e.bodies[name('rocket', 'man')]
+    e.firing, e.volleys = [], []
+    points = simunits.meta_impact_trajectory((2300, 3750, 212.5), (0, -2.1463, 45.6088))
+    assert len(points) == 128 and points[-1] == (2300, 3060, 212.5)
+    e.impact_flights = {id(man): (man, 173, points)}
+    order = round((ORDER + MOVE[check]) * 15)
+    assert order == {'stand': 248, 'standlate': 310}[check]
+    e.eng.frame = 173
+    first = None
+    while e.eng.frame < 345:
+        e.eng.frame += 1
+        if e.eng.frame == order:
+            man.path = [(2700, 3060)]
+        before = (man.x, man.y)
+        e.move(1/15)
+        e.deal(1/15)
+        if e.eng.frame == 300:
+            assert id(man) not in e.impact_flights and (man.x, man.y) == (2300, 3060)
+        if first is None and e.eng.frame > 300 and (man.x, man.y) != before:
+            first = e.eng.frame
+    assert simunits.meta_impact_landing_hold() == 38
+    assert first == 338
+    assert man.x > 2300 and man.y == pytest.approx(3060)
