@@ -344,3 +344,72 @@ def range_check(m):
 
 MISSION['engine_levelrange'] = range_mission
 CHECKS['engine_levelrange'] = {'a': range_check}
+
+
+def rate_mission():
+    m = mission()
+    m.name = 'CampLevelRate'
+    for lane in ('base', 'high', 'order', 'removed'):
+        m.put('SovietConstructionYard', lane + ' gun', 0, 150,
+              side='s1', role=lane + ' target', name='Level rate target ' + lane)
+    return m
+
+
+def rate_check(m):
+    """Four retail Mirage guns: normal, direct heroic upgrade, rank4, rank3.
+
+    PREDICT: both retail guns fire1.5/reload0.1 = 23+2 = 25 frames.
+    Initial ceil-parts candidate21 predicted four heroic hits, but the first
+    run read68% (five). Its reversed span conditions made intervals unreadable.
+    Corrected run distinguishes effective20 (five hits) from21 (four hits).
+    Bench2026-11-11 at x1 PASS:252525/252525/202020/252525, then84/80/68/80.
+    This only distinguishes the effective cycle, not individual timing parts.
+    Counter packs three successive inter-hit spans as a + 100*b + 10000*c;
+    after second14 switches to final target HP (84/80/68/80). Four/five shots,
+    no kill/XP, repair or target healing; order6, stop11.5, both IMMOBILE.
+    Exact first-hit timing is outside this probe's claim.
+    """
+    t = Test()
+    start = [('MAP_REVEAL_ALL_PERM', m.player('p1')),
+             ('PLAYER_SET_MONEY', m.player('s1'), 0),
+             ('SET_MILLISECOND_TIMER', 'Level rate fire', 6.0),
+             ('SET_MILLISECOND_TIMER', 'Level rate stop', 11.5),
+             ('SET_MILLISECOND_TIMER', 'Level rate hp', 14.0)]
+    fire, stop = [], []
+    for lane, grants, loss in zip(('base', 'high', 'order', 'removed'),
+                                  ((), ('Upgrade_Veterancy_HEROIC',), CREATION, CREATION[:2]),
+                                  (4, 5, 6.25, 5)):
+        gun, target = m.role(lane).name, m.role(lane + ' target').name
+        start += [('UNIT_CHANGE_OBJECT_STATUS', n, bit, 1)
+                  for n in (gun, target) for bit in ('NO_ATTACK', 'IMMOBILE')]
+        start.append(('UNIT_SET_STANCE', gun, 3))
+        start += [('NAMED_RECEIVE_UPGRADE', up, gun) for up in grants]
+        fire += [('UNIT_CHANGE_OBJECT_STATUS', gun, 'NO_ATTACK', 0), ('NAMED_ATTACK_NAMED', gun, target)]
+        stop.append(('UNIT_CHANGE_OBJECT_STATUS', gun, 'NO_ATTACK', 1))
+        counter = 'Level rate ' + lane
+        t.counters.append((counter, lane + ' timing'))
+        # Integer-percent plateaux uniquely identify shots1..3; unlike total
+        # damage this holds all three intervals independently to the readings.
+        for shot, weight in ((1, 1), (2, 100), (3, 10000)):
+            upper = int(100 - shot * loss)
+            lower = int(100 - (shot + 1) * loss)
+            t.scripts.append(Script('Test - rate span ' + lane + str(shot),
+                                    [('UNIT_HEALTH', target, 0, upper + 1),
+                                     ('UNIT_HEALTH', target, 4, lower)],
+                                    [('INCREMENT_COUNTER', weight, counter)], once=False))
+        t.scripts.append(Script('Test - rate final HP ' + lane,
+                                [('TIMER_EXPIRED', 'Level rate hp')],
+                                [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', target, counter)], once=False))
+    t.scripts[:0] = [Script('Test - start', [], start),
+                     Script('Test - rate fire', [('TIMER_EXPIRED', 'Level rate fire')], fire),
+                     Script('Test - rate stop', [('TIMER_EXPIRED', 'Level rate stop')], stop)]
+    for first, last, values in ((12, 13, (252525, 252525, 202020, 252525)),
+                                (15, 17, (84, 80, 68, 80))):
+        t.expect += [(lane + ' timing', first, '==', value, last)
+                     for lane, value in zip(('base', 'high', 'order', 'removed'), values)]
+    t.bench = [('bench_watch', dict(seconds=17.0, every=.5, sheet=False, lines=4))]
+    return t
+
+
+MISSION['engine_levelrate'] = rate_mission
+CHECKS['engine_levelrate'] = {'a': rate_check}

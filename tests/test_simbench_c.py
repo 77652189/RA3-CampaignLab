@@ -19,6 +19,39 @@ def _sim_run(build_name, check, until):
     return sim.Sim(m, t).run(until)
 
 
+def test_levelup_heroic_rate_changes_three_intershot_spans_without_scaling_each_hit():
+    """engine_levelrate a: spans25/25/20/25, then HP84/80/68/80 (4/4/5/4 hits)."""
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_levelrate', 'a')
+    e = sim.Sim(m, t)
+    e.shot_clock = True
+    rows = e.run(18).series
+    for label, first, op, value, last in t.expect:
+        idx = [label for _, label in t.counters].index(label)
+        readings = [row[idx] for at, row in rows if first <= at <= last]
+        assert readings and all(v == value for v in readings), (label, readings, value)
+    guns = [e.body(m.role(lane).name) for lane in ('base', 'high', 'order', 'removed')]
+    targets = [e.body(m.role(lane + ' target').name) for lane in ('base', 'high', 'order', 'removed')]
+    assert [b.level_rank for b in guns] == [1, 1, 4, 3]
+    assert [b.level_rate for b in guns] == [1, 1, 1.2, 1]
+    assert [b.hp for b in targets] == [4200, 4000, 3437.5, 4000]
+    assert [b.dealt for b in guns] == [1, 1, 1.25, 1.25]
+    for obj in m.objects:
+        b = e.body(obj.name)
+        assert b.alive
+        assert (b.x, b.y) == (obj.x, obj.y)
+    gun = guns[2]
+    for _ in range(3):
+        e.modify(gun)
+        assert gun.dealt == 1.25
+        assert gun.level_rate == 1.2
+    # Range refreshes copy the heroic weapon; copies must share its one clock.
+    assert all(sum(key[0] == id(b) for key in e.clocks) == 1 for b in guns)
+    gap = e.unmodeled[sim.GAP_UPGRADE, 'LevelUpUpgrade/Unit_Heroic']['what']
+    assert 'RATE_OF_FIRE' not in gap and 'VISION' in gap
+
+
 def test_levelup_elite_health_persists_at_heroic_and_freezes_before_healing():
     """engine_levelhealth a: script-frame readings 80/80/84/84 after 100 damage."""
     import build
@@ -168,14 +201,14 @@ def test_levelup_heroic_range_reaches_only_the_inner_target_without_moving():
         e.modify(gun)
         assert gun.weapons[0]['range'] == 187.5
     gap = e.unmodeled[sim.GAP_UPGRADE, 'LevelUpUpgrade/Unit_Heroic']['what']
-    assert 'RANGE' not in gap and 'RATE_OF_FIRE' in gap and 'VISION' in gap
+    assert 'RANGE' not in gap and 'RATE_OF_FIRE' not in gap and 'VISION' in gap
 
 
 def test_levelup_veteran_damage_persists_at_elite_and_heroic_without_gated_target_healing():
     """Bench 11-10 engine_leveldamage a: 47/34/34/17 through s15.
 
     Level DAMAGE_MULT125 persists at elite and heroic. Heroic uses its 250 gun;
-    its unmeasured RATE_OF_FIRE modifier must not enlarge this single hit.
+    Its measured RATE_OF_FIRE modifier must not enlarge this single hit.
     The Tsunami's state-gated heal stays off with no GENERIC_TOGGLE_STATE.
     """
     import build
@@ -186,7 +219,7 @@ def test_levelup_veteran_damage_persists_at_elite_and_heroic_without_gated_targe
     rows = e.run(14).series
     assert tuple(rows[-1][1]) == (47, 34, 34, 17)
     assert all(tuple(row) == (47, 34, 34, 17) for sec, row in rows if sec >= 10)
-    assert 'RATE_OF_FIRE' in e.unmodeled[sim.GAP_UPGRADE, 'LevelUpUpgrade/Unit_Heroic']['what']
+    assert 'RATE_OF_FIRE' not in e.unmodeled[sim.GAP_UPGRADE, 'LevelUpUpgrade/Unit_Heroic']['what']
 
 
 # ---- RunOffMapBehavior (sim.Sim.flee_start / flee_due; simunits.run_off_map): bench 2026-11-06 engine_runoffmap

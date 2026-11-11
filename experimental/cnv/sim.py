@@ -167,7 +167,7 @@ LAG = 0.0                       # the readings' clock: mission seconds, as the b
 # by the Generals / Zero Hour source (docs/engine/script-semantics.md, the section given) unless marked 未对齐: those
 # the source cannot tell for RA3, for the bench to settle last
 ALIGN = {
-    'levelup': '部分对齐：创建升级触发升阶、移除重给、等级伤害/血量及英雄射程RANGE125%（engine_levelup a/b/c、engine_leveldamage a、engine_levelhealth a/b、engine_levelrange a）；其余等级属性与经验成长未模拟',
+    'levelup': '部分对齐：创建升级触发升阶、移除重给、等级伤害/血量、英雄射程RANGE125%及幻影英雄离散射速120%有效周期25→20帧（engine_levelup a/b/c、engine_leveldamage a、engine_levelhealth a/b、engine_levelrange a、engine_levelrate a）；其他武器射速、计时分段、其余等级属性与经验成长未模拟',
     'protocols': '未对齐: protocol points as the program keeps them (simtech.py: rank experience 1 a second, 360 a '
                  'rank, the cap, the set-points rule; bench 11-08 engine_protocol pts / ailock); no experience from '
                  'kills, no red alert multiplier; a computer player spends its points at once on a protocol of its '
@@ -518,6 +518,7 @@ class Body:
     suppressed_until: int = -1                                  # model condition, NOT an object status
     suppression_next: int = 0
     dealt: float = 1.0                                          # DAMAGE_MULT x RATE_OF_FIRE: damage dealt x (INFERRED)
+    level_rate: float = 1.0                                     # measured heroic Mirage clip rate; never per-hit damage
     base: dict = None                                           # speed, vision, sight, weapons before modifiers
     deposit: tuple = None                                       # R4: its AutoDepositUpdate (bonus, amount, frames)
     deposit_at: int = None                                      # ... the frame of its next deposit
@@ -1783,7 +1784,12 @@ class Sim:
         now = self.frame_now()
         xml = self.xml_of(b.template)
         mods = []
-        mods.extend(simlevel.damage_modifiers(self, b, xml))
+        level_mods = simlevel.damage_modifiers(self, b, xml)
+        b.level_rate = simunits.stack([v for m in level_mods for v in m['types'].get('RATE_OF_FIRE', [])])
+        # Measured rank ROF belongs to the clip clock. Other modifiers retain
+        # their existing continuous-DPS approximation until separately benched.
+        mods.extend(dict(m, types={ty: values for ty, values in m['types'].items() if ty != 'RATE_OF_FIRE'})
+                    for m in level_mods)
         if b.suppression_rule and b.suppressed:
             mods.append(simunits.modifier(xml, b.suppression_rule['modifier']))
         for up, mid in simunits.upgrade_mods(xml, b.upgrades):
@@ -4251,9 +4257,21 @@ class Sim:
         t0, t1 = self.t, self.t + dt
         eps = 1e-6
         clocks = self.__dict__.setdefault('clocks', {})
-        key = (id(b), id(w))
+        # Attribute refresh may copy a weapon to scale its range. Keep that
+        # weapon's clip running across copies; distinct retail guns stay apart.
+        key = (id(b), w.get('weapon_key') or id(w))
         c = clocks.get(key)
         cycle = w['cycle']
+        if b.level_rate != 1.0:
+            if (w.get('weapon_key') == 'AlliedAntiVehicleVehicleTech3PrismCannon_Veteran'
+                    and w['sched'] == [0.0] and abs(cycle * 15 - 25) < eps):
+                # engine_levelrate a measures the effective cycle only. The
+                # 25 -> 20 frames does not identify which sub-timer scales or
+                # how it rounds. Pre-delays, other clips and mid-cycle changes
+                # are unmeasured; do not extrapolate a general rounding rule.
+                cycle = 20 / 15
+            else:
+                self.gap(GAP_UPGRADE, 'LevelUpUpgrade/rate-clock', '该武器的等级射速计时未对拍')
         if c is None or (t0 - c[1] > dt * 1.5 and c[0] + cycle <= t0 + eps):
             c = [t0 + 1 / 15, t0]                       # [this cycle's start, the last window with a target]; the first
             #                                             object hit is1 frame after order; scripts observe it next frame (engine_emp)
