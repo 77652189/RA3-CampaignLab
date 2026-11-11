@@ -114,7 +114,9 @@ NOTES = {
     '组队招人/TeamTemplate.SortByDistance': (GUESSED, 'AI 模型代码里读了这个名字（台上没单独量：engine_aiskirm 里是推测）'),
     '组队招人/CreateUnits.MinUnits': (GUESSED, 'AI 模型代码里读了这个名字（台上量的是 TeamTemplate.MinUnits，不是现造兵）'),
     '微操/AIMicroManagerData.PullbackInjured': (BENCHED, '只认车能开进去的维修设施：苏联 AI + 吊车，残血坦克回去被回收（aipullsov PASS）；盟军 / 日本工厂找不到（aiteamstate.md 第 6 节）'),
-    '微操/AIMicroManagerData.PullbackInjuredHealthPct': (GUESSED, '30% 低于 0.35 时苏联坦克会撤（aipullsov），阈值边界没量'),
+    '微操/AIMicroManagerData.PullbackInjuredHealthPct': (GUESSED,
+        'engine_aipullpct 固定30%血量、苏联吊车，仅阈值0.2/0.5不同；完整回放缺伤员回收消费者，'
+        'tests/test_simai_pullpct.py 高阈值 strict xfail，不登记闭环；接口缺口见 handoff-c'),
     '微操/AIMicroManagerData.ReverseMove': (GUESSED, '推断（台上未复现）：锤子 airev / airevp / airevt 都不倒车；剩门队员有没有当前攻击目标，量法见 handoff-b 第 73 节'),
     # B round 108: a test names the probe but only the switch-off case matches; the effect itself is a strict xfail
     '微操/AIMicroManagerData.Crush': (GUESSED, '台上量过（engine_aicrush：开了 s28 前碾光守军）；模拟器已验证派发，'
