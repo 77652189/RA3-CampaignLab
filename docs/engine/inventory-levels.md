@@ -2,15 +2,15 @@
 
 由 `experimental/cnv/inventory_ai.py levels` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）里由遭遇战 AI 带的敌人：它的人格（`enemy_ai.py` 生成）沿继承、战略状态、战术、组队、目标启发、微操、造兵 / 预算状态、开局一路引用到的原版 AI 数据项，加上全局常量 AIData 和本阵营的 ArmyDefinition；再加关卡脚本里点了 AI 玩家名字的脚本动作 / 条件。状态取自 [inventory.md](inventory.md)。"AI 做完"的第一条：下表全部已对拍。
 
-**已对拍 106 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
+**已对拍 107 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
 
 | 部分 | 已对拍 | 推断 | 未做 |
 |---|---|---|---|
-| AI | 94 | 129 | 134 |
+| AI | 95 | 128 | 134 |
 | 脚本动作 | 11 | 0 | 0 |
 | 脚本条件 | 1 | 0 | 0 |
 
-按原版用量加权：已对拍 80%，已有（已对拍+推断）97%。
+按原版用量加权：已对拍 81%，已有（已对拍+推断）97%。
 
 | 状态 | 部分 | 项 | 原版用量 | 关 | 说明 |
 |---|---|---|---|---|---|
@@ -153,12 +153,11 @@
 | 推断 | AI | `造兵/BuildState.Difficulty` | 84 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `造兵/BuildState.State` | 84 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `微操/AIMicroManagerData.EngageHostileTargets` | 82 | a4 a5 a7 | 台上 aimicspon（开）/ aimicengoff（关）两个武士都在家跟征召兵打、都冲锋活到最后——关掉不让队伍躲开战斗；差别只在首次冲锋：关 ~258 帧、开 ~362 帧（各两次一致）。模拟器开关都冲，但先后相反（关 ~457、开 ~275），tests/test_simai.py strict xfail；私有模型里的打分式没读（按"杀死所需秒数"推断） |
-| 推断 | AI | `微操/AIMicroManagerData.Crush` | 77 | a4 a5 a7 | 台上量过（engine_aicrush：开了 s28 前碾光守军）；模拟器不会碾压，tests/test_simai_bench_b.py 只对上"关着不碾"，开着是 strict xfail |
+| 推断 | AI | `微操/AIMicroManagerData.Crush` | 77 | a4 a5 a7 | 台上量过（engine_aicrush：开了 s28 前碾光守军）；模拟器已验证派发，碾压移动意图未建模，原场景 strict xfail 保留；跨线移动修复暂停（handoff-c） |
 | 推断 | AI | `组队招人/TeamTemplate.SortByDistance` | 75 | a4 a5 a7 | AI 模型代码里读了这个名字（台上没单独量：engine_aiskirm 里是推测） |
 | 推断 | AI | `微操/AIMicroManagerData.ReverseMove` | 74 | a4 a5 a7 | 推断（台上未复现）：锤子 airev / airevp / airevt 都不倒车；剩门队员有没有当前攻击目标，量法见 handoff-b 第 73 节 |
 | 推断 | AI | `目标/AITargetingHeuristic.Location` | 74 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `组队招人/TeamTemplate.ReleaseType` | 71 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `微操/AIMicroManagerData.EnemySearchDistanceVisionMultiplier` | 70 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `开局/SkirmishOpeningMove.Side` | 64 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/SpecificUnitCap.Cap` | 60 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/SpecificUnitCap.Difficulty` | 60 | a4 a5 a7 | AI 模型代码里读了这个名字 |
@@ -198,7 +197,7 @@
 | 推断 | AI | `人格/AIPersonalityDefinition.Side` | 13 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `微操/IgnoreTargets.Rule` | 13 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `启发条件/AllNearbyNodesFullHeuristic` | 12 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `微操/AIMicroManagerData.CrushPreference` | 12 | a4 a5 a7 | 同 Crush：模拟器不会碾压（engine_aicrush，strict xfail） |
+| 推断 | AI | `微操/AIMicroManagerData.CrushPreference` | 12 | a4 a5 a7 | 同 Crush：派发已验证，碾压移动意图未建模；engine_aicrush 原场景 strict xfail 保留，跨线移动修复暂停（handoff-c） |
 | 推断 | AI | `微操/AIMicroManagerData.RandomTargetScoreModifier` | 12 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `微操/AIMicroManagerData.TimeToKeepTargetMax` | 12 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `微操/AIMicroManagerData.TimeToKeepTargetMin` | 12 | a4 a5 a7 | AI 模型代码里读了这个名字 |
@@ -320,6 +319,7 @@
 | 已对拍 | AI | `微操/AIMicroManagerData.EngageTacticalTarget` | 79 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aitactical.py |
 | 已对拍 | AI | `微操/AIMicroManagerData.PullbackInjured` | 78 | a4 a5 a7 | 只认车能开进去的维修设施：苏联 AI + 吊车，残血坦克回去被回收（aipullsov PASS）；盟军 / 日本工厂找不到（aiteamstate.md 第 6 节） |
 | 已对拍 | AI | `目标/AITargetingHeuristic.SortType` | 76 | a4 a5 a7 | docs/engine/aitactics.md#目标挑哪个（Distance：aitpnear / aitpmt2 最近、次近；ThreatToGround：aitargetsafe） |
+| 已对拍 | AI | `微操/AIMicroManagerData.EnemySearchDistanceVisionMultiplier` | 70 | a4 a5 a7 | engine_aisearch aisrchhi/aisrchlo 仅倍率1.5/0.25不同：高先打旁厂、到远厂0；低旁厂100且到远厂4；tests/test_simai_search.py 回放；仅被动建筑搜索，精确边界、敌军目标取得和揭雾未量 |
 | 已对拍 | AI | `启发条件/EnemyNearbyHeuristic` | 68 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
 | 已对拍 | AI | `启发条件/EnemyNearbyHeuristic.Distance` | 68 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
 | 已对拍 | AI | `启发条件/EnemyNearbyHeuristic.EnemyNearby` | 68 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |

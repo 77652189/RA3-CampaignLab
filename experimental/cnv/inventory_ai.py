@@ -105,15 +105,19 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '微操/AIMicroManagerData.EnemySearchDistanceVisionMultiplier': (BENCHED,
+        'engine_aisearch aisrchhi/aisrchlo 仅倍率1.5/0.25不同：高先打旁厂、到远厂0；低旁厂100且到远厂4；'
+        'tests/test_simai_search.py 回放；仅被动建筑搜索，精确边界、敌军目标取得和揭雾未量'),
     '组队招人/TeamTemplate.SortByDistance': (GUESSED, 'AI 模型代码里读了这个名字（台上没单独量：engine_aiskirm 里是推测）'),
     '组队招人/CreateUnits.MinUnits': (GUESSED, 'AI 模型代码里读了这个名字（台上量的是 TeamTemplate.MinUnits，不是现造兵）'),
     '微操/AIMicroManagerData.PullbackInjured': (BENCHED, '只认车能开进去的维修设施：苏联 AI + 吊车，残血坦克回去被回收（aipullsov PASS）；盟军 / 日本工厂找不到（aiteamstate.md 第 6 节）'),
     '微操/AIMicroManagerData.PullbackInjuredHealthPct': (GUESSED, '30% 低于 0.35 时苏联坦克会撤（aipullsov），阈值边界没量'),
     '微操/AIMicroManagerData.ReverseMove': (GUESSED, '推断（台上未复现）：锤子 airev / airevp / airevt 都不倒车；剩门队员有没有当前攻击目标，量法见 handoff-b 第 73 节'),
     # B round 108: a test names the probe but only the switch-off case matches; the effect itself is a strict xfail
-    '微操/AIMicroManagerData.Crush': (GUESSED, '台上量过（engine_aicrush：开了 s28 前碾光守军）；模拟器不会碾压，'
-                                     'tests/test_simai_bench_b.py 只对上"关着不碾"，开着是 strict xfail'),
-    '微操/AIMicroManagerData.CrushPreference': (GUESSED, '同 Crush：模拟器不会碾压（engine_aicrush，strict xfail）'),
+    '微操/AIMicroManagerData.Crush': (GUESSED, '台上量过（engine_aicrush：开了 s28 前碾光守军）；模拟器已验证派发，'
+                                     '碾压移动意图未建模，原场景 strict xfail 保留；跨线移动修复暂停（handoff-c）'),
+    '微操/AIMicroManagerData.CrushPreference': (GUESSED, '同 Crush：派发已验证，碾压移动意图未建模；'
+                                               'engine_aicrush 原场景 strict xfail 保留，跨线移动修复暂停（handoff-c）'),
     '微操/AIMicroManagerData.UpdateTime': (GUESSED, '台上量过（engine_aidefense aidefctl4：每圈晚 1～2 s）；模拟器 4 s 与 '
                                           '1 s 逐秒相同（tests/test_simai_bench_b.py strict xfail）'),
     '微操/AIMicroManagerData.EnterBaseDefensesWhenIdle': (GUESSED, '台上量过（engine_aibasedef：s21 起 1 人进炮塔）；模拟器'
