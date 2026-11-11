@@ -1213,6 +1213,37 @@ def retail_xml(template):
     return open(p, encoding='utf-8', errors='replace').read() if p else ''
 
 
+def engineer_contain(template, own=None):
+    """Nearest EngineerContain, including retail xi:includes, or None.
+
+    Only the three-engineer NONE filter (optionally Relationship=ALLIES) is
+    implemented. Other filters/replacements are surfaced as unsupported.
+    """
+    def read(xml):
+        text = re.sub(r'<!--.*?-->', '', xml or '', flags=re.S)
+        def include(m):
+            path = os.path.join(SAGEXML, *m.group(1).split('/'))
+            return open(path, encoding='utf-8').read() if os.path.isfile(path) else m.group(0)
+        text = re.sub(r'<xi:include\b[^>]*href="DATA:([^"]+)"[^>]*/>', include, text)
+        block = next(_blocks(text, 'EngineerContain'), None)
+        if block is None:
+            return None
+        head, inner = block
+        fh, fi = next(_blocks(inner, 'CanEnterFilter'), ('', ''))
+        allowed = frozenset(x.strip().lower() for x in re.findall(r'<IncludeThing>([^<]+)</IncludeThing>', fi))
+        relations = frozenset((_attr(fh, 'Relationship') or '').split())
+        supported = (_attr(fh, 'Rule') == 'NONE' and bool(allowed)
+                     and set(re.findall(r'(\w+)\s*=', fh)) <= {'Rule', 'Relationship'}
+                     and not re.sub(r'<IncludeThing>[^<]+</IncludeThing>', '', fi).strip()
+                     and relations <= {'ALLIES'}
+                     and not _attr(head, 'ReplaceWith')
+                     and _attr(head, 'id') != 'ModuleTag_EngineerContainBridge')
+        return dict(enabled=_attr(head, 'ImmediatelyEnabled', 'false').lower() == 'true',
+                    allowed=allowed, relations=relations, supported=supported,
+                    status=frozenset(_attr(head, 'ObjectStatusToSet', 'NO_REFUND').split()))
+    return _chain(template, own, read)
+
+
 def deposit(template, own=None):
     """(bonus, amount, frames) of an AutoDepositUpdate (the oil derrick: 500 when taken, 15 every 2 s), else None.
     When it pays (Generals' AutoDepositUpdate, R4): the capture pays the bonus and sets the next deposit `frames` on;

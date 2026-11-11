@@ -172,6 +172,7 @@ BENCHED_TESTS = {
 _NOT_IN_SIM = '已核（11-08）：模拟器没有这个效果'
 NOTES = {
     (MODULE, 'Behaviors/RepairUpdate'): (TODO, '仅字段读取：engine_repair a两次未触发玩家维修，双方电厂血量50、资金5000；维修入口原因未明，不以schema默认10HP/s或预测费用登记已对拍'),
+    (MODULE, 'Behaviors/EngineerContain'): (GUESSED, '部分：engine_engineer a四路验证中立/敌方占领保留血量、友军残血修满且不换主、非友军防御拒入及工程师消耗；tests/test_simengineer.py重放。ReplaceWith/桥修复、满血进入、其他工程师及状态/时序未对拍，不登记整项已对拍'),
     (MODULE, 'Behaviors/LevelUpUpgrade'): (GUESSED, '部分：engine_levelup a创建升级触发升阶、重复持有不升级；engine_leveldamage a等级DAMAGE_MULT125保持到精英/英雄，单发血量47/34/34/17；engine_levelhealth a满血升级HEALTH_MULT125保持到英雄，100脚本伤害同帧冻结80/80/84/84，simlevel重放；残血升级、其余等级属性、经验成长、上限及移除重给未对拍，不登记整项已对拍'),
     (NUGGET, 'FireOnObjectsNugget'): (TODO, '未实现：子武器派发条件与空间锚点尚未解释；失败诊断不作为已对拍依据'),
     (NUGGET, 'ActivateLiftObjectNugget'): (TODO, 'engine_lift两轮确认需LiftObjectUpdate且SoftLanding影响清位，但Lifetime/续期释放规则未解释；保留诊断、不登记已对拍'),

@@ -944,6 +944,7 @@ class Sim:
         self.audio_end = {}                 # sound event -> when HAS_FINISHED_AUDIO holds again (Sim.played)
         self.video_end = {}                 # clip -> when HAS_FINISHED_VIDEO holds (None: never, a full-screen one)
         self.money = {}
+        self._engineer_rules = {}           # template -> EngineerContain rule (mission XML is fixed)
         self.nodes = {}                     # ore node name -> {'free': frame it takes a miner from, 'gathered', 'at'}
         self.mined_to = None                # the last frame mine_due ran
         self.relations = dict(getattr(mission, 'relations', {}))   # (a, b) -> Enemy / Neutral / Friend
@@ -1381,14 +1382,33 @@ class Sim:
         building; at its side it takes it (capture_due)."""
         self.used.add('capture')
         target = self.body(target_name)
-        if b and b.alive and target and target.alive:
+        if b and b.alive and target and target.alive and self.engineer_entry(b, target):
             b.goal, b.mode = target, 'capture'
             self.send(b, (target.x, target.y))
 
+    def engineer_entry(self, b, target):
+        """The target building's EngineerContain admits the entering template/relation.
+        Unmeasured replacement/filters are gaps, never unconditional captures."""
+        cache = self._engineer_rules
+        if target.template not in cache:
+            cache[target.template] = simunits.engineer_contain(target.template, self.own)
+        rule = cache[target.template]
+        if rule is None or not rule['enabled']:
+            return None
+        if not rule['supported']:
+            self.gap('EngineerContain', target.template, '替换或复杂进入筛选未对拍')
+            return None
+        if b.template.lower() not in rule['allowed']:
+            return None
+        if rule['relations'] and self.relation(target.owner, b.owner) not in rule['relations']:
+            return None
+        return rule
+
     def capture_due(self):
-        """R4: an engineer at the side of the building it was told to take (within the building's round + CAPTURE_REACH,
-        or stopped as near as the way lets it within twice that): the building is his player's from then, the
-        engineer gone into it (a guess: RA3's engineer is used up), a deposit building pays its bonus now and its next
+        """R4 / E15: an engineer at the building's side (reach and travel timing INFERRED).
+        EngineerContain admits capture or allied repair; the entering engineer is consumed
+        (engine_engineer:a). Capture preserves HP, allied repair fills HP without changing owner.
+        A deposit building pays its bonus now and its next
         deposit an interval on (Generals' AutoDepositUpdate.awardInitialCaptureBonus). Bench 2026-11-07 a4 derrick:
         the derrick the player's at the first reading after the order (s4), 500, then 15 every 2 s (s7 515 -> s46 800)."""
         for b in self.living():
@@ -1398,10 +1418,24 @@ class Sim:
             if not g.alive:
                 b.goal, b.mode, b.path = None, 'move', []
                 continue
+            rule = self.engineer_entry(b, g)
+            if not rule:
+                b.goal, b.mode, b.path = None, 'move', []
+                continue
             shape = self.blocks(g)
             r = (shape[2] if shape and len(shape) == 3 else 40.0) + CAPTURE_REACH
             d = math.hypot(g.x - b.x, g.y - b.y)
             if d > r and (b.path or d > 2 * r):
+                continue
+            if self.relation(g.owner, b.owner) == 'ALLIES':
+                if g.hp >= g.max_hp:
+                    self.gap('EngineerContain', g.template, '友军满血进入未对拍')
+                    b.goal, b.mode, b.path = None, 'move', []
+                    continue
+                g.hp = g.max_hp
+                self.note('修理', f'{self.label(b)} 修复 {self.label(g)}')
+                self.destroy(b, '进楼修理', delete=True)
+                self.change()
                 continue
             g.owner = b.owner
             self.note('占领', f'{self.label(b)} 占下 {self.label(g)}，归 {self.who(b.owner)}')
@@ -2889,7 +2923,9 @@ class Sim:
             self.money[a[0]] = self.money.get(a[0], 0) + a[1]
         elif name == 'NAMED_GARRISON_SPECIFIC_BUILDING':
             b, g = self.body(a[0]), self.body(a[1])
-            if b and g and self.garrison.spec(g) is not None:      # walks to it, in if it may (simgarrison; INFERRED)
+            if b and g and simunits.engineer_contain(g.template, self.own) is not None:
+                self.order_capture(b, a[1])
+            elif b and g and self.garrison.spec(g) is not None:      # walks to it, in if it may (simgarrison; INFERRED)
                 self.garrison.send(b, g)
             elif b and g:
                 self.send(b, a[1])

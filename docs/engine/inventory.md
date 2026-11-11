@@ -4,9 +4,9 @@
 
 | 部分 | 按用量已对拍 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|
-| 脚本动作 | **90%** | 451 | 119 | 21 | 194 | 117 | 91% |
+| 脚本动作 | **90%** | 451 | 120 | 20 | 194 | 117 | 91% |
 | 脚本条件 | **94%** | 89 | 28 | 5 | 53 | 3 | 94% |
-| 物体模块 | **92%** | 186 | 37 | 8 | 117 | 24 | 93% |
+| 物体模块 | **92%** | 186 | 37 | 9 | 116 | 24 | 94% |
 | 武器效果 | **76%** | 25 | 14 | 2 | 7 | 2 | 78% |
 | AI | **71%** | 415 | 99 | 136 | 146 | 34 | 95% |
 
@@ -204,7 +204,7 @@
 | 未做 | `TEAM_GUARD_AREA_FROM_POSITION` | 26 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `TEAM_SET_DISABLED` | 26 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `LINK_MISSION_OBJECTIVE_TO_OBJECT_WITH_CATEGORY` | 25 | 纯表现（名字规则） |
-| 推断 | `NAMED_GARRISON_SPECIFIC_BUILDING` | 25 | Sim.act / Sim.cond 有分支 |
+| 已对拍 | `NAMED_GARRISON_SPECIFIC_BUILDING` | 25 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_engineer.py |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JapanBaseDefenseToggleBinaryWeapon` | 25 | 只记进时间线，没有效果 |
 | 未做 | `PLAYER_SET_MONEY_CAP` | 25 | Sim.act / Sim.cond 不认识 |
 | 未做 | `UNIT_ALLOW_AI_AUTOACQUIRE` | 25 | Sim.act / Sim.cond 不认识 |
@@ -481,7 +481,7 @@
 | 已对拍 | `HAS_FINISHED_VIDEO` | 422 | tests/test_simbench.py::test_video_a_radar_clip_is_done_after_its_length_full_screen_never |
 | 已对拍 | `NAMED_INSIDE_AREA` | 413 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aixfer.py |
 | 已对拍 | `SKIRMISH_PLAYER_HAS_UNITS_IN_AREA` | 410 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_area.py |
-| 已对拍 | `NAMED_OWNED_BY_PLAYER` | 397 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_garrison.py |
+| 已对拍 | `NAMED_OWNED_BY_PLAYER` | 397 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_engineer.py |
 | 已对拍 | `NAMED_NOT_DESTROYED` | 374 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attach.py |
 | 已对拍 | `PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA` | 278 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aistate.py |
 | 已对拍 | `NAMED_ATTACKED_BY_PLAYER` | 150 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attack.py |
@@ -600,7 +600,7 @@
 | 已对拍 | `Behaviors/RunOffMapBehavior` | 88 (123) | tests/test_simbench_c.py::test_run_off_map_the_peacekeeper_is_gone_64_and_304_frames_after_the_order_never_dying；例：AlliedSatelliteSweepShroudRevealer, AlliedAntiAirShip |
 | 已对拍 | `Behaviors/WeaponSetUpdate` | 82 (110) | tests/test_simbench_c.py::test_weapon_set_the_status_picks_the_gun_molotov_under_the_toggle_and_the_painter_does_no_harm；例：AlliedBaseDefense, AlliedBaseDefenseAdvanced |
 | 已对拍 | `Behaviors/SpecialPower` | 74 (95) | tests/test_simbench.py::test_super_a_scripts_cast_starts_the_retail_reload；例：AlliedConstructionYard, AlliedAntiAirShip |
-| 未做 | `Behaviors/EngineerContain` | 70 (105) | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |
+| 推断 | `Behaviors/EngineerContain` | 70 (105) | 部分：engine_engineer a四路验证中立/敌方占领保留血量、友军残血修满且不换主、非友军防御拒入及工程师消耗；tests/test_simengineer.py重放。ReplaceWith/桥修复、满血进入、其他工程师及状态/时序未对拍，不登记整项已对拍；例：AlliedAirfield, AlliedBarracks |
 | 已对拍 | `Behaviors/DynamicsUpdate` | 69 (101) | tests/test_simbench_c.py::test_dynamics_update_a_hammer_without_it_crushes_and_goes_round_as_the_retail_one；例：AlliedDynamicsImpact, AlliedSatelliteSweepShroudRevealer |
 | 未做 | `Behaviors/RepairUpdate` | 66 (91) | 仅字段读取：engine_repair a两次未触发玩家维修，双方电厂血量50、资金5000；维修入口原因未明，不以schema默认10HP/s或预测费用登记已对拍；例：AlliedAirfield, AlliedBarracks |
 | 已对拍 | `Behaviors/StatusBitsUpgrade` | 66 (85) | tests/test_simbench_c.py::test_status_bits_upgrade_the_heroic_grant_sets_weapon_upgraded_and_a_removal_clears_it；例：AlliedBaseDefense, AlliedAntiAirShip |
