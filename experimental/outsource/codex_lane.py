@@ -51,7 +51,7 @@ PROMPT = """你是引擎 {L} 线。工作区 {wt}（这是你的独立工作区�
 """
 
 NOT_A_RUN = ('Get-CimInstance', 'CommandLine', 'Select-String', 'grep ', 'rg ')  # only names pytest
-NARROW = re.compile(r'tests[/\\]\w+\.py|::|\s-k\s|\s[@$]\w')  # @name / $name: a PowerShell list of test files
+NARROW = re.compile(r'tests[/\\][\w*]+\.py|::|\s-k\s|\s[@$]\w')  # @name / $name: a PowerShell list of test files
 
 
 def full_suite(cmd):
