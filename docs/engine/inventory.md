@@ -4,9 +4,9 @@
 
 | 部分 | 按用量已对拍 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|
-| 脚本动作 | **90%** | 451 | 120 | 20 | 194 | 117 | 91% |
+| 脚本动作 | **91%** | 451 | 122 | 20 | 192 | 117 | 92% |
 | 脚本条件 | **94%** | 89 | 28 | 5 | 53 | 3 | 94% |
-| 物体模块 | **92%** | 186 | 37 | 9 | 116 | 24 | 94% |
+| 物体模块 | **92%** | 186 | 39 | 9 | 114 | 24 | 94% |
 | 武器效果 | **76%** | 25 | 14 | 2 | 7 | 2 | 78% |
 | AI | **71%** | 415 | 99 | 136 | 146 | 34 | 95% |
 
@@ -54,7 +54,7 @@
 | 已对拍 | `CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT` | 196 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_ref.py |
 | 已对拍 | `LINK_MISSION_OBJECTIVE_TO_WAYPOINT` | 194 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts5.py |
 | 已对拍 | `NAMED_FOLLOW_WAYPOINTS` | 192 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_wayatk.py |
-| 未做 | `TEAM_GARRISON_SPECIFIC_BUILDING_INSTANTLY` | 186 | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `TEAM_GARRISON_SPECIFIC_BUILDING_INSTANTLY` | 186 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_transport.py |
 | 已对拍 | `TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS` | 184 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_wayatk.py |
 | 不涉及 | `FADE_OUT_TO_BLACK` | 177 | 纯表现（名字规则） |
 | 不涉及 | `FADE_IN_FROM_BLACK` | 176 | 纯表现（名字规则） |
@@ -148,7 +148,7 @@
 | 已对拍 | `DISPLAY_COUNTDOWN_TIMER` | 50 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts4.py |
 | 已对拍 | `SELL_OBJECT` | 50 | tests/test_simbench.py::test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames |
 | 已对拍 | `TEAM_ATTACK_TEAM` | 50 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts9.py |
-| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateEjectPassengersSpecialPower` | 49 | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateEjectPassengersSpecialPower` | 49 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_transport.py |
 | 不涉及 | `FLASH_UI_BUILD_BUTTON` | 48 | 纯表现（名字规则） |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JAAVT1_Transform` | 48 | 只记进时间线，没有效果 |
 | 未做 | `SET_UNIT_REFERENCE` | 48 | Sim.act / Sim.cond 不认识 |
@@ -626,10 +626,10 @@
 | 未做 | `Body/ManagerBody` | 14 (32) | 模拟器代码里没有这个名字；例：BaseBridge, BaseCivilianBridge |
 | 未做 | `Behaviors/BridgeBuilder` | 14 (30) | 模拟器代码里没有这个名字；例：AM_Bridge_01, AM_Bridge_01a |
 | 未做 | `AI/JetAIUpdate` | 13 (17) | 模拟器代码里没有这个名字；例：AlliedAntiGroundAircraft, AlliedAttackDrone |
-| 未做 | `Behaviors/TransportContain` | 13 (16) | 模拟器代码里没有这个名字；例：AlliedAntiAirVehicleTech1, AlliedAntiInfantryVehicle |
+| 已对拍 | `Behaviors/TransportContain` | 13 (16) | tests/test_simbench.py::test_transport_a_team_put_in_instantly_skips_the_room_and_the_relation_and_rides_along；例：AlliedAntiAirVehicleTech1, AlliedAntiInfantryVehicle |
 | 未做 | `Behaviors/SpawnBehavior` | 10 (16) | 已核（11-08）：模拟器没有这个效果（没有母体造随从）；例：AlliedAirfield, AlliedConstructionYardRepairBay |
 | 未做 | `Behaviors/ProductionUpdateInfo` | 9 (9) | 模拟器代码里没有这个名字；例：AlliedConstructionYard, AlliedMCV |
-| 未做 | `Behaviors/EjectPassengersSpecialAbilityUpdate` | 7 (8) | 模拟器代码里没有这个名字；例：AlliedBomberAircraft, A08_CenturyTransportAircraft |
+| 已对拍 | `Behaviors/EjectPassengersSpecialAbilityUpdate` | 7 (8) | tests/test_simbench.py::test_transport_the_man_cannon_throws_one_every_half_second_and_a_killed_transport_kills_its_men；例：AlliedBomberAircraft, A08_CenturyTransportAircraft |
 | 未做 | `Behaviors/BezierProjectile` | 6 (78) | 已核（11-08）：模拟器没有这个效果（开火按每秒伤害直接扣血，没有弹体）；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
 | 未做 | `Behaviors/AssignSlavesTargetObjectSpecialPower` | 6 (10) | 模拟器代码里没有这个名字；例：AlliedConstructionYardRepairBay, AlliedNavalYard |
 | 未做 | `Behaviors/TrackDamage` | 6 (9) | 模拟器代码里没有这个名字；例：AlliedAntiNavalScout, AlliedFighterAircraft |

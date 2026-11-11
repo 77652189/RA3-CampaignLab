@@ -20,6 +20,15 @@ RA3 1.13), held to the bench (checks/engine_garrison.py in / hp, bench 11-05; do
   the end      the building killed (a hit or a script's kill, garrison.md 4): KillPassengersOnDeath kills them (the
                Multigunner turret), else they come out alive (DamagePercentToUnits: none of the retail houses writes
                it, not modelled); a deleted building takes them with it (INFERRED, Generals' onDelete)
+Transports (TransportContain: the Bullfrog, the Riptide, the bomber; bench 11-10 checks/engine_transport.py load):
+  in           the script's TEAM_ / NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY as into a house -- no room, no relation
+               (six into the five-place Bullfrog, Soviet_4's two into the player's); the AI never picks one (places)
+  ride         a passenger stands where its transport is, every frame (inside an area with it, ENCLOSED all along)
+  eject        a button whose power an EjectPassengersSpecialAbilityUpdate serves, at a waypoint: one out every
+               TimePerPassenger from the moment it is pressed (within StartAbilityRange; farther, the transport drives
+               in first -- INFERRED), each landing on the spot EJECT_FLIGHT later (out of ENCLOSED at once)
+  the end      KillPassengersOnDeath (every retail transport): a killed transport kills them (NAMED_KILL too)
+  not          the REALLYDAMAGED walk-out (a house's only), the passengers' fire, the parachute (untargeted) eject
 Not modelled: fire from inside (the passengers keep their own weapons; a turret's weapon set by its passenger), the
 garrison aura, clearing weapons, the exit point (they come out where the building stands), EjectSpeed."""
 import math
@@ -28,6 +37,9 @@ import re
 import simunits
 
 TAGS = ('GarrisonContain', 'ContestableGarrisonContain')
+TRANSPORT = ('TransportContain',)
+EJECT_FLIGHT = 2.0              # INFERRED from bench 11-10 engine_transport load 跳 (ENCLOSED 3 1 0 at s2-s4, inside
+                                # the far square 0 2 3 at s4-s6: out 0.5 s apart, down ~2 s later, 500 away)
 REALLY_DAMAGED = 33.333333      # ActiveBody.xsd MaxHealthReallyDamagedPercentage's default (percent)
 ENTER_REACH = 20.0              # INFERRED: in at the building's side (its round + this; as Sim.capture_due's)
 INSIDE_STATUS = frozenset({'IMMOBILE', 'UNATTACKABLE'})     # INFERRED: a passenger neither walks nor is shot at
@@ -42,19 +54,19 @@ def _yes(v, default):
 _memo = {}
 
 
-def spec(template, own=None):
+def spec(template, own=None, tags=TAGS):
     """The template's garrison, None without one: {'tag', 'max', 'allow' {ENEMIES, NEUTRAL, ALLIES}, 'own', 'kill',
     'status', 'clearing', 'rule', 'kinds', 'exclude', 'really'}. A module's attributes are merged down the inheritFrom
     chain by its id (BaseCivilianStructureMedium writes only ContainMax over BaseCivilianStructure's); the
     PassengerFilter is the nearest one written."""
-    key = (template, (own or {}).get(template))
+    key = (template, (own or {}).get(template), tags)
     if key in _memo:
         return _memo[key]
     found, bodies = [], []
 
     def walk(xml):
         text = re.sub(r'<!--.*?-->', '', xml or '', flags=re.S)
-        for tag in TAGS:
+        for tag in tags:
             for head, inner in simunits._blocks(text, tag):
                 found.append((tag, head, inner))
         for head, _ in simunits._blocks(text, 'ActiveBody'):
@@ -102,6 +114,11 @@ def spec(template, own=None):
     return out
 
 
+def ejects(command, own=None):
+    """The button fires an eject-the-passengers power (SpecialPower_EjectPassengers*: the man cannon, the paradrop)."""
+    return str(simunits.command_power(command, own) or '').startswith('SpecialPower_EjectPassengers')
+
+
 class Garrisons:
     def __init__(self, sim_):
         self.sim = sim_
@@ -111,9 +128,18 @@ class Garrisons:
         self.going = {}             # body name -> building body it was sent into (the AI's walk)
         self.home = {}              # building name -> its owner before the first passenger
         self.log = []               # (sim seconds, passenger name, building name, script)
+        self.ejecting = {}          # transport name -> [the spot, seconds between, reach, next out at]
+        self.flying = []            # [lands at, passenger body, the spot]
 
     def spec(self, b):
+        """A building's garrison (what the AI and the walk-in look at)."""
         return spec(b.template, self.sim.own) if b is not None and 'STRUCTURE' in b.kinds else None
+
+    def box(self, b):
+        """Anything a script may put a unit into: a building's garrison, else a TransportContain."""
+        if b is None:
+            return None
+        return self.spec(b) or spec(b.template, self.sim.own, TRANSPORT)
 
     # ---- who
     def fits(self, u, sp):
@@ -165,7 +191,7 @@ class Garrisons:
     def put(self, u, g, script=False):
         """u into g now; True when it is inside. script: the script's ..._INSTANTLY (no relation, no room)."""
         s = self.sim
-        sp = self.spec(g) if g is not None and g.alive else None
+        sp = (self.box(g) if script else self.spec(g)) if g is not None and g.alive else None
         if sp is None or u is None or not u.alive or u is g or u.name in self.where or not self.fits(u, sp):
             return False
         held = self.inside.setdefault(g.name, [])
@@ -178,7 +204,8 @@ class Garrisons:
                     self.out(p)
                     s.note('驻军', f'{s.label(u)} 把 {s.label(p)} 挤出 {s.label(g)}，自己也没进去')
                     return False
-        if not held:
+        house = sp['tag'] in TAGS                       # a transport keeps its owner
+        if not held and house:
             self.home.setdefault(g.name, g.owner)
         held.append(u)
         self.where[u.name] = g
@@ -187,7 +214,8 @@ class Garrisons:
         self.log.append((s.t, u.name, g.name, script))
         u.x, u.y, u.path, u.goal = g.x, g.y, [], None
         u.script_status |= self.added[u.name]
-        g.owner = held[0].owner
+        if house:
+            g.owner = held[0].owner
         s.modify(u)
         s.note('驻军', f'{s.label(u)} 进 {s.label(g)}')
         s.change()
@@ -222,13 +250,66 @@ class Garrisons:
         held = list(self.inside.get(g.name, []))
         if not held:
             return
-        sp = self.spec(g) or {}
+        sp = self.box(g) or {}
         s = self.sim
+        self.ejecting.pop(g.name, None)
         for u in held:
             self.out(u)
             if u.alive and (delete or sp.get('kill')):
                 s.destroy(u, '随楼删掉' if delete else '楼毁乘员同死', delete=delete)
         self.inside.pop(g.name, None)
+
+    def eject(self, g, command, where):
+        """The button `command` pressed on g at the spot `where`: True when an EjectPassengersSpecialAbilityUpdate of
+        g serves its power (then the passengers go out one by one in due())."""
+        power = simunits.command_power(command, self.sim.own)
+        found = []
+
+        def walk(xml):
+            for head, _ in simunits._blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S),
+                                            'EjectPassengersSpecialAbilityUpdate'):
+                if power and simunits._attr(head, 'SpecialPowerTemplate') == power:
+                    found.append(head)
+        try:
+            simunits._chain(g.template, self.sim.own, walk)
+        except (OSError, ValueError):
+            pass
+        if not found or g is None or not g.alive:
+            return False
+        h = found[0]
+        per = simunits._secs(simunits._attr(h, 'TimePerPassenger') or '0.5s')
+        reach = simunits._num(simunits._attr(h, 'StartAbilityRange'), 0.0)
+        self.ejecting[g.name] = [where, per, reach, None]
+        if reach and math.hypot(where[0] - g.x, where[1] - g.y) > reach:
+            self.sim.send(g, where)                     # INFERRED: drives in, then throws
+        self.sim.note('驻军', f'{self.sim.label(g)} 往外弹乘员')
+        return True
+
+    def _throw(self):
+        s = self.sim
+        for gname, job in list(self.ejecting.items()):
+            g, held = s.bodies.get(gname), [u for u in self.inside.get(gname, []) if u.alive]
+            if g is None or not g.alive or not held:
+                del self.ejecting[gname]
+                continue
+            where, per, reach, at = job
+            if at is None:
+                if reach and math.hypot(where[0] - g.x, where[1] - g.y) > reach:
+                    continue
+                at = job[3] = s.t
+            if s.t + 1e-9 >= at:
+                u = held[0]
+                self.out(u)
+                self.flying.append([s.t + EJECT_FLIGHT, u, where])
+                job[3] = at + per
+        for f in list(self.flying):
+            if s.t + 1e-9 >= f[0]:
+                self.flying.remove(f)
+                u = f[1]
+                if u.alive:
+                    u.x, u.y, u.path, u.goal = f[2][0], f[2][1], [], None
+                    s.modify(u)
+                    s.change()
 
     def due(self):
         """Once a frame: the ones sent in that have got there; a building at or under its REALLYDAMAGED line empties;
@@ -257,7 +338,10 @@ class Garrisons:
             if not g.alive:
                 self.died(g, g.deleted)
                 continue
+            for u in held:                              # riding: where the transport is
+                u.x, u.y = g.x, g.y
             self.hurt(g)
+        self._throw()
 
     def hurt(self, g):
         """At or under the REALLYDAMAGED line (and not GARRISONABLE_UNTIL_DESTROYED): everyone out. A script's damage

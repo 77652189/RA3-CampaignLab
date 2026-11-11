@@ -1162,6 +1162,30 @@ def test_aixfer_a_move_under_way_stops_at_the_hand_over_and_the_players_crew_is_
     assert 12 <= arrived <= 18, by
 
 
+def _transport():
+    return {round(sec): vals for sec, vals in _sim_run('engine_transport', 'load', 30.0).series}
+
+
+def test_transport_a_team_put_in_instantly_skips_the_room_and_the_relation_and_rides_along():
+    """load (bench 11-10 engine_transport, CampTransLoad_mcp_1110_215316): 装 326 = six into the five-place Bullfrog,
+    Soviet_4's two into the player's, three into a house; 乘 3 -> 133 when the Bullfrog reaches the far square (bench
+    s12, the men inside it with the vehicle, still ENCLOSED). Before round 152 the simulator read 装 0, 乘 0 -> 100."""
+    by = _transport()
+    assert all(v[0] == 326 for s, v in by.items() if s >= 3), by
+    assert by[3][1] == 3 and by[30][1] == 133, by
+    arrived = min(s for s, v in by.items() if v[1] == 133)
+    assert 12 <= arrived <= 12 + 3, by
+
+
+def test_transport_the_man_cannon_throws_one_every_half_second_and_a_killed_transport_kills_its_men():
+    """load: 跳 bench 3 3 1 0 20 30 at s1-s6 (eject at the far J waypoint pressed at 4 s: one out every 0.5 s, down
+    on the spot ~2 s later); 存 33 -> 0 at s3 (NAMED_KILL on the Bullfrog at 4 s kills the three inside)."""
+    by = _transport()
+    jump = [by[s][2] for s in range(4, 9)]
+    assert jump == [3, 1, 0, 20, 30], by           # the bench's s2-s6 two seconds later
+    assert by[3][3] == 33 and all(v[3] == 0 for s, v in by.items() if s >= 5), by
+
+
 def test_scripts1_idle_for_seconds_drops_the_move():
     """idle: the tank without the idle order arrives (bench s7, about 9 game s), the one told UNIT_IDLE_FOR_SECONDS 3
     at 3 s never does in 45 s -- the order dropped, not a 3 s pause."""

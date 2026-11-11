@@ -121,6 +121,7 @@
 | `MOVE_NAMED_UNIT_TO` / `NAMED_ATTACK_NAMED` / `NAMED_STOP` / `NAMED_HUNT` | `SA` 里的 `doNamedMoveToWaypoint` / `doNamedAttack` / `doNamedStop` / `doNamedHunt` | 只下命令（`aiMoveToPosition` 等）。位置在后面的物体更新里才变，**脚本下一帧起才看得到**。 |
 | `TEAM_ATTACK_NAMED`、`NAMED_GARRISON_SPECIFIC_BUILDING`、`NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT`、`NAMED_USE_COMMANDBUTTON_ABILITY` | `SA` 里的 `doTeamAttackNamed` / `doUnitGarrisonSpecificBuilding` / `doNamedFireSpecialPowerAtWaypoint` / `doNamedUseCommandButtonAbility` | 同上，都只是下命令。 |
 | `NAMED_TRANSFER_OWNERSHIP_PLAYER` | `SA` 里的 `doNamedTransferAssetsToPlayer` | 立即 `setTeam(目标玩家默认队伍)`，同一帧后面的脚本就能看到。 |
+| `TEAM_GARRISON_SPECIFIC_BUILDING_INSTANTLY`、运输载具弹射 | 台上 11-10 `engine_transport` load（没读程序） | 整队每人照 `NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY` 进去：**不管座位数、不管敌我**（6 人进 5 座牛蛙、敌方的队进玩家的车），民房、运输载具都行。乘客跟着车走（在车所在的区域里、一直 ENCLOSED）。牛蛙的定点弹射（`NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT` + `Command_ActivateEjectPassengersSpecialPower`）从按下起每 0.5 秒（TimePerPassenger）扔出一个，约 2 秒后落在路点上。车被 `NAMED_KILL` 乘客全死（KillPassengersOnDeath；民房里的是活着出来）。做关卡：运兵波次不用担心超员，但车一死整波没了。 |
 
 ### 4.3 目标、计数器显示
 

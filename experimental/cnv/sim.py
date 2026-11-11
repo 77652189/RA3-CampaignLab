@@ -2932,6 +2932,10 @@ class Sim:
                 self.send(b, a[1])
         elif name == 'NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY':      # (unit, building) engine_garrison: no
             self.garrison.put(self.body(a[0]), self.body(a[1]), script=True)    # relation, no room (garrison.md 1)
+        elif name == 'TEAM_GARRISON_SPECIFIC_BUILDING_INSTANTLY':     # (team, building or transport) each member as
+            g = self.body(a[1])                                         # the named one (bench 11-10 engine_transport
+            for b in self.members(a[0]):                                # load: six into the five-place Bullfrog)
+                self.garrison.put(b, g, script=True)
         elif name == 'NAMED_EXIT_BUILDING':      # (unit) engine_garrison base: out where the building stands
             self.garrison.out(self.body(a[0]))
         elif name == 'SET_MISSION_OBJECTIVE_STATUS':
@@ -3039,6 +3043,11 @@ class Sim:
             tmpl = simunits.built(f.template, a[1], self.own, f.upgrades)
             if not self.order_build(f.owner, tmpl, factory=f, press=True):
                 self.note('生产', f'{self.label(f)} 按 {a[1]}：现在造不了 {tmpl}')
+        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and simgarrison.ejects(a[1], self.own):
+            # a transport's eject at the spot (simgarrison; bench 11-10 engine_transport load 跳)
+            b, p = self.body(a[0]), self.point(a[2])
+            if not (b and p is not None and self.garrison.eject(b, a[1], p)):
+                self.note('技能', f'{a[0]} 按 {a[1]}：没有能弹出乘员的载具或路点')
         elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and \
                 simunits.command_power(a[1], self.own) == UNPACK_POWER:
             # an MCV / a Japanese egg deploys at the point: drives there, then turns into its replacement (bench

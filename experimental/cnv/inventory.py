@@ -157,6 +157,12 @@ BENCHED_TESTS = {
     # first passenger, out at 13 % in the damage's frame, the contester bounces one, kill / hit eject them alive
     (MODULE, 'Behaviors/ContestableGarrisonContain'):
         'tests/test_simbench_c.py::test_garrison_script_entry_skips_room_and_relation_owner_follows_and_damage_or_kill_ejects_alive_at_the_bench',
+    # engine_transport load, bench 11-10 round 152 (simgarrison's transports): the script's entry skips room and
+    # relation, the men ride along, a killed transport kills them; the man cannon throws one every TimePerPassenger
+    (MODULE, 'Behaviors/TransportContain'):
+        'tests/test_simbench.py::test_transport_a_team_put_in_instantly_skips_the_room_and_the_relation_and_rides_along',
+    (MODULE, 'Behaviors/EjectPassengersSpecialAbilityUpdate'):
+        'tests/test_simbench.py::test_transport_the_man_cannon_throws_one_every_half_second_and_a_killed_transport_kills_its_men',
     # engine line C round 5: selling (checks/engine_sell.py, docs/engine/sell.md, bench 11-06)
     (MODULE, 'Behaviors/BuildingBehavior'):
         'tests/test_simbench.py::test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames',
