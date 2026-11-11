@@ -13,14 +13,17 @@ _spec.loader.exec_module(_module)
 @pytest.mark.parametrize('check, template, plant_template', [
     ('a', 'AlliedInfiltrationInfantry', 'AlliedPowerPlant'),
     ('b', 'JapanInfiltrationInfantry', 'AlliedPowerPlant'),
-    ('c', 'AlliedInfiltrationInfantry', 'SovietPowerPlant')])
+    ('c', 'AlliedInfiltrationInfantry', 'SovietPowerPlant'),
+    ('d', 'AlliedInfiltrationInfantry', 'JapanPowerPlant')])
 def test_spy_power_plant_as_on_the_bench(check, template, plant_template):
-    """engine_infiltrator:a/b/c: enemy consumed/20s outage; ally refused, owners stay.
+    """engine_infiltrator:a/b/c/d: enemy consumed/20s outage; ally refused, owners stay.
 
     Bench s1-s10 11100/11100/101/101; s11-s30 1100/11100/12/101;
     s31-s56 1100/11100/101/101. Travel timing INFERRED: stable windows only.
     b: s1-s9 baseline; s10-s29 outage; s30-s56 recovered, same values.
     c (Soviet plant): s1-s10 baseline; s11-s30 outage; s31-s56 recovered.
+    d (Japan plant): s1-s10 baseline; s12-s30 outage; s31-s60 recovered;
+    s11 absent from sampled frames, so no exact entry-frame claim.
     """
     import build
     import sim

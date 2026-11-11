@@ -37,6 +37,24 @@ def engineer_capture_share():
     return dict(campaign=sum(bool(r['maps']) for r in rows), templates=len(rows))
 
 
+def infiltrator_energy_share(with_templates=False):
+    """ENERGY form closed by coordinator after retail a/b/c/d comparisons.
+
+    This credits the form, not every power level or repeated infiltration.
+    Match the complete module so different fields/filters remain gaps.
+    """
+    measured = rm.ET.fromstring('''<InfiltratorContain id="ModuleTag_InfiltratorContain"
+        Effect="ENERGY" Amount="0.2" ObjectRef="EnergyDisabler"
+        StructureFilter="InfiltrationEnergyStructuresFilter"/>''')
+    wanted = (signature(measured),)
+    rows = [r for r in engineer_audit.audit('InfiltratorContain')['rows']
+            if tuple(sorted(signature(rm.ET.fromstring(m['xml'])) for m in r['modules'])) == wanted]
+    share = dict(campaign=sum(bool(r['maps']) for r in rows), templates=len(rows))
+    if with_templates:
+        share['template_ids'] = [r['template'] for r in rows]
+    return share
+
+
 def audit():
     result = {}
     for kind in ('EngineerContain', 'InfiltratorContain'):

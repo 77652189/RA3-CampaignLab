@@ -193,14 +193,25 @@ def level_scope(levels=LEVELS):
 def expand_forms(items, scope):
     """(scope, split): the scope with a nugget the inventory splits by field form (an item's weapon_ids) attributed
     to its forms' items, each reached weapon once; a weapon no form lists (our own, an unknown one) keeps the base
-    name. split: {nugget type: {lower weapon id: form item name}}."""
+    name. Modules with template_ids are partitioned by exact template membership;
+    unknown/custom templates keep the base gap. The returned split only contains
+    {nugget type: {lower weapon id: form item name}}."""
     split = collections.defaultdict(dict)
+    module_split = collections.defaultdict(dict)
     for it in items:
+        if it['part'] == MODULE and 'template_ids' in it:
+            for template in it['template_ids']:
+                module_split[it['name'].split(':')[0]][template.lower()] = it['name']
         if it['part'] == NUGGET and 'weapon_ids' in it:
             for w in it['weapon_ids']:
                 split[it['name'].split(':')[0]][w.lower()] = it['name']
     expanded = collections.defaultdict(lambda: collections.defaultdict(set))
     for (part, name), lvs in scope.items():
+        if part == MODULE and name in module_split:
+            for lv, examples in lvs.items():
+                for template in examples:
+                    expanded[(part, module_split[name].get(template.lower(), name))][lv].add(template)
+            continue
         if part == NUGGET and name in split:
             for lv, examples in lvs.items():
                 for w in examples:

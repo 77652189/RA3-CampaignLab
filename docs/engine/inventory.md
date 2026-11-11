@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|---|---|---|---|
 | 脚本动作 | **92%** | **100%** | 50 / 50 | 451 | 123 | 20 | 191 | 117 | 93% |
 | 脚本条件 | **94%** | **100%** | 12 / 12 | 89 | 30 | 6 | 50 | 3 | 95% |
-| 物体模块 | **94%** | **94%** | 40 / 112 | 187 | 42 | 9 | 112 | 24 | 95% |
+| 物体模块 | **94%** | **94%** | 41 / 113 | 188 | 43 | 9 | 112 | 24 | 95% |
 | 武器效果 | **93%** | **95%** | 17 / 22 | 28 | 18 | 2 | 6 | 2 | 95% |
 | AI | **71%** | **70%** | 93 / 357 | 415 | 99 | 136 | 146 | 34 | 95% |
 
@@ -609,8 +609,8 @@
 | 不涉及 | `ClientBehaviors/AnimationSoundClientBehavior` | 48 (67) | 全部 | 纯表现（ClientBehaviors）；例：AlliedTimeBombLvl3, AlliedRefinery |
 | 不涉及 | `Behaviors/DynamicsUpdate:起义专有` | 44 (53) |  | 起义时刻专有模板：继承链上的父模板 RA3 数据里没有（SS_Fling* 的 BaseClientFlingableProp），RA3 的 mod 编不过（engine_dynamics c，11-10 地图编译报 Critical），玩家在 RA3 里见不到 |
 | 不涉及 | `Draws/TruckDraw` | 35 (51) | 全部 | 纯表现（Draws）；例：AlliedTimeBombLvl1, AlliedTimeBombLvl2 |
-| 推断 | `Behaviors/InfiltratorContain` | 34 (38) | a1 a2 a4 a5 a6 a7 a8 | 部分：engine_infiltrator a盟军间谍/b帝国忍者普通进入敌方原版盟军电厂，c盟军间谍进入敌方原版苏联普通电厂，进入者消耗、建筑满血不换主、单座100电量停电约20秒后恢复；友军拒入且进入者存活；b台上s1-s9基线、s10-s29停电、s30-s56恢复；c台上s1-s10基线、s11-s30停电、s31-s56恢复，tests/test_siminfiltrator.py按名字重放a/b/c。E20完整配置盘点：11种配置/34用量，ENERGY 4、KILL 1、STEAL_MONEY 3、VISION 5+港口阻断型1、PARALYZE 3、VISION_UNITS飞机2/步兵3/舰船3/车辆4、RESET 5；ENERGY仍缺其他电厂/电量缩放/重复进入，其余配置无效果对拍，完整配置已对拍0/34，不登记整项已对拍（tests/test_inventory_contain.py）；例：AlliedAirfield, AlliedBarracks |
 | 不涉及 | `Behaviors/LUAEventList` | 32 (44) | 全部 | 纯表现：EventListName连接原版ScriptEvents.xml与Scripts.lua；RA3声明可达的事件处理函数只调用模型部件显隐（及tostring），含继承；未定义的AlliedInfantryFightingFunctions无可达处理函数；C&C3升级/状态函数不可达。tests/test_inventory_lua.py静态核对游戏包与SDK声明，非上台对拍；例：AlliedAirfield, AlliedBarracks |
+| 推断 | `Behaviors/InfiltratorContain` | 30 (32) | a1 a2 a4 a5 a6 a7 a8 | ENERGY已按总控11-11决定拆分登记4用量/6模板；本行剩余10种配置30用量/32模板：KILL 1、STEAL_MONEY 3、VISION 5+港口阻断型1、PARALYZE 3、VISION_UNITS飞机2/步兵3/舰船3/车辆4、RESET 5，效果均未对拍；不登记整模块已对拍；例：AlliedAirfield, AlliedBarracks |
 | 已对拍 | `Behaviors/ToggleStatusSpecialAbilityUpdate` | 27 (34) | 全部 | tests/test_simbench_c.py::test_toggle_status_a_press_moves_to_the_next_state_unpack_delays_it_and_a_held_state_takes_no_press；例：AlliedAntiAirShip, AlliedAntiInfantryInfantry |
 | 不涉及 | `Behaviors/SubObjectsUpgrade` | 26 (30) | 全部 | 纯表现（名字规则）；例：AlliedAirfield, AlliedBarracks |
 | 未做 | `Behaviors/FreefallUpdate` | 24 (31) | 全部 | 已核（11-11 engine_freefall fall）：人炮扔出的动员兵，原版 / 下落改慢 / 改快三份读数一样（AIRBORNE_TARGET 1-125 帧、22 帧到点、随后降落伞约 96 帧），下落不归本模块管；剩下的作用对象是空中死亡（表现）和被举起的单位（C 线举升暂停），未上台；同 id 覆盖是否生效未排除；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
@@ -646,6 +646,7 @@
 | 推断 | `Behaviors/CommandSetUpgrade` | 5 (5) | a1 a4 a5 a7 | 模拟器代码里有这个名字；例：AlliedConstructionYard, AlliedOutpost |
 | 未做 | `Behaviors/QueueDockBehavior` | 4 (12) | a1 a2 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedRefinery, AlliedRefinery_NoHarvester |
 | 推断 | `Behaviors/AutoDepositUpdate` | 4 (8) | a1 a4 a5 a7 | 模拟器代码里有这个名字；例：GE_SwissBank, NY_NYStockExchange |
+| 已对拍 | `Behaviors/InfiltratorContain:ENERGY` | 4 (6) | a2 a4 a5 a6 a7 a8 | tests/test_siminfiltrator.py::test_spy_power_plant_as_on_the_bench；总控11-11授权按配置组收尾：engine_infiltrator a/b/c/d按名字重放，盟军间谍对盟/苏/帝普通电厂及帝国忍者对盟军电厂，敌方进入者消耗、建筑满血不换主、100电量停电约20秒并恢复，友军拒入且存活；gap：其他电量/苏联超级电厂、重复进入续期、精确时序和默认状态分支仍未对拍，不表示全字段全模板已验证；例：JapanPowerPlant |
 | 未做 | `Behaviors/ActivateModuleSpecialPower` | 4 (5) | a1 a2 a4 a6 a7 | 仅在SpecialPowerNugget处理器中识别并拒绝，未实现模块技能执行；例：AlliedAntiStructureVehicle, JapanAntiVehicleVehicleTech1 |
 | 未做 | `Behaviors/RadarBehavior` | 4 (5) | a4 | 模拟器代码里没有这个名字；例：AlliedRadarDish, PlayerSpellBook |
 | 推断 | `Behaviors/SpecialAbilityUpdate` | 4 (5) | a1 a4 a6 a7 | 模拟器代码里有这个名字；例：JapanAntiInfantryInfantry, JapanAntiVehicleVehicleTech1 |

@@ -110,4 +110,21 @@ def check_soviet(m):
     return isolated_check(m)
 
 
-CHECKS = {'engine_infiltrator': {'a': check, 'b': check_ninja, 'c': check_soviet}}
+def check_japan(m):
+    """d: Allied spy vs enemy/allied retail JapanPowerPlant, each 100 energy.
+
+    Same ENERGY/.2 configuration as a/c. Predict enemy consumption, unchanged
+    plant HP/owner and ~20s outage; mutually allied plant refuses entry.
+    Precise arrival and other energy amounts remain INFERRED.
+    Bench 2026-11-11: s1-s10 11100/11100/101/101;
+    s12-s30 1100/11100/12/101; s31-s60 1100/11100/101/101.
+    Sample s11 absent; stable windows support approximately twenty seconds.
+    """
+    for role in ROLES:
+        plant = m.role(role)
+        plant.template = 'JapanPowerPlant'
+        m.find(plant.name).template = plant.template
+    return isolated_check(m)
+
+
+CHECKS = {'engine_infiltrator': {'a': check, 'b': check_ninja, 'c': check_soviet, 'd': check_japan}}

@@ -89,3 +89,36 @@ def test_engineer_generic_split_does_not_credit_changed_fields(monkeypatch):
             module['xml'] = module['xml'].replace('ImmediatelyEnabled="true"',
                                                  'ImmediatelyEnabled="false"')
     assert contain_audit.engineer_capture_share() == {'campaign': 0, 'templates': 0}
+
+
+def test_infiltrator_energy_split_preserves_weight_and_other_effect_gaps():
+    if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
+        pytest.skip('needs SDK and retail placement cache')
+    assert contain_audit.infiltrator_energy_share() == {'campaign': 4, 'templates': 6}
+    rows = [r for r in inventory.collect((inventory.MODULE,))
+            if r['name'].startswith('Behaviors/InfiltratorContain')]
+    assert len(rows) == 2
+    assert sum(r['uses'] for r in rows) == 34
+    assert sum(r['all'] for r in rows) == 38
+    measured = next(r for r in rows if r['name'].endswith(':ENERGY'))
+    gap = next(r for r in rows if r['name'] == 'Behaviors/InfiltratorContain')
+    assert (measured['uses'], measured['all'], measured['state']) == (4, 6, inventory.BENCHED)
+    assert (gap['uses'], gap['all'], gap['state']) == (30, 32, inventory.GUESSED)
+    assert measured['why'].startswith('tests/test_siminfiltrator.py::test_spy_power_plant_as_on_the_bench')
+    import inventory_levels
+    scope, _ = inventory_levels.expand_forms(rows, {
+        (inventory.MODULE, 'Behaviors/InfiltratorContain'): {
+            'a1': {'JapanPowerPlant', 'AlliedBarracks', 'UnknownPlant'}}})
+    assert scope[(inventory.MODULE, measured['name'])]['a1'] == {'JapanPowerPlant'}
+    assert scope[(inventory.MODULE, gap['name'])]['a1'] == {'AlliedBarracks', 'UnknownPlant'}
+
+
+def test_infiltrator_energy_split_does_not_credit_changed_fields(monkeypatch):
+    if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
+        pytest.skip('needs SDK and retail placement cache')
+    raw = contain_audit.engineer_audit.audit('InfiltratorContain')
+    monkeypatch.setattr(contain_audit.engineer_audit, 'audit', lambda kind: raw)
+    for row in raw['rows']:
+        for module in row['modules']:
+            module['xml'] = module['xml'].replace('Amount="0.2"', 'Amount="0.3"')
+    assert contain_audit.infiltrator_energy_share() == {'campaign': 0, 'templates': 0}

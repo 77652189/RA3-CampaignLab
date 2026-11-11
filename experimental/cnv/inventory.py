@@ -52,6 +52,8 @@ PARTS = (ACTION, CONDITION, MODULE, NUGGET, AI)     # AI: engine B's part, its o
 
 # (part, name) -> 'tests/<file>.py::<test>': the bench comparison that backs the item (the guard checks the test exists)
 BENCHED_TESTS = {
+    (MODULE, 'Behaviors/InfiltratorContain:ENERGY'):
+        'tests/test_siminfiltrator.py::test_spy_power_plant_as_on_the_bench',
     # E30 closure: measured creation grants and rank modifiers; NOTES keeps the remaining gaps visible.
     (MODULE, 'Behaviors/LevelUpUpgrade'):
         'tests/test_simbench_c.py::test_levelup_creation_grants_reach_heroic_only_after_three_distinct_triggers',
@@ -203,7 +205,8 @@ BENCHED_TESTS = {
 _NOT_IN_SIM = '已核（11-08）：模拟器没有这个效果'
 NOTES = {
     (CONDITION, 'ENEMY_SIGHTED'): (GUESSED, '部分：engine_levelvision a普通/英雄幻影在近点移除后对工程师240/310距离四路0/101/0/100，test_simbench_c重放；仅敌对关系范围查询已量，其他关系、隐形与精确边界未对拍，不登记整项'),
-    (MODULE, 'Behaviors/InfiltratorContain'): (GUESSED, '部分：engine_infiltrator a盟军间谍/b帝国忍者普通进入敌方原版盟军电厂，c盟军间谍进入敌方原版苏联普通电厂，进入者消耗、建筑满血不换主、单座100电量停电约20秒后恢复；友军拒入且进入者存活；b台上s1-s9基线、s10-s29停电、s30-s56恢复；c台上s1-s10基线、s11-s30停电、s31-s56恢复，tests/test_siminfiltrator.py按名字重放a/b/c。E20完整配置盘点：11种配置/34用量，ENERGY 4、KILL 1、STEAL_MONEY 3、VISION 5+港口阻断型1、PARALYZE 3、VISION_UNITS飞机2/步兵3/舰船3/车辆4、RESET 5；ENERGY仍缺其他电厂/电量缩放/重复进入，其余配置无效果对拍，完整配置已对拍0/34，不登记整项已对拍（tests/test_inventory_contain.py）'),
+    (MODULE, 'Behaviors/InfiltratorContain'): (GUESSED, 'ENERGY已按总控11-11决定拆分登记4用量/6模板；本行剩余10种配置30用量/32模板：KILL 1、STEAL_MONEY 3、VISION 5+港口阻断型1、PARALYZE 3、VISION_UNITS飞机2/步兵3/舰船3/车辆4、RESET 5，效果均未对拍；不登记整模块已对拍'),
+    (MODULE, 'Behaviors/InfiltratorContain:ENERGY'): (BENCHED, '总控11-11授权按配置组收尾：engine_infiltrator a/b/c/d按名字重放，盟军间谍对盟/苏/帝普通电厂及帝国忍者对盟军电厂，敌方进入者消耗、建筑满血不换主、100电量停电约20秒并恢复，友军拒入且存活；gap：其他电量/苏联超级电厂、重复进入续期、精确时序和默认状态分支仍未对拍，不表示全字段全模板已验证'),
     (MODULE, 'Behaviors/TrackIncomingWeaponFireBehavior'): (TODO, '部分：engine_inform_probe a/off通知记录回放验证录入、30帧窗口、来源与武器匹配删除和过期清理；精确过期边界INFERRED，原版完整调度/历史伤害仍gap，不靠名字命中晋升整项'),
     (MODULE, 'Behaviors/RepairUpdate'): (TODO, '仅字段读取：engine_repair a两次未触发玩家维修，双方电厂血量50、资金5000；维修入口原因未明，不以schema默认10HP/s或预测费用登记已对拍'),
     (MODULE, 'Behaviors/EngineerContain'): (GUESSED, '通用三国完整配置已拆分63用量并由engine_engineer a/b/c/d重放登记；本行保留三国ALLIES防御型6、日本单工程师ALLIES型TH_TombBuilding02为1及间接可达桥头堡0，共7用量/18模板；e重放三国友军半血防御修满及盟军满血拒入，仍缺苏联/帝国满血与敌方拒入、日本单人筛选维修、桥修复。ReplaceWith和ObjectStatusToSet无原版显式声明；精确进入帧仍INFERRED，不登记整模块已对拍（tests/test_simengineer.py、tests/test_inventory_contain.py、tests/test_inventory_engineer.py）'),
@@ -416,6 +419,15 @@ def module_items():
             items.append(dict(part=MODULE, name='Behaviors/EngineerContain:通用三国',
                               uses=share['campaign'], all=share['templates'], state=GUESSED,
                               why='完整通用配置：engine_engineer a/b/c/d；精确进入帧仍INFERRED', eg='AlliedPowerPlant'))
+        if (group, mtype) == ('Behaviors', 'InfiltratorContain'):
+            import contain_audit
+            share = contain_audit.infiltrator_energy_share(with_templates=True)
+            v = dict(v, campaign=v['campaign'] - share['campaign'],
+                     templates=v['templates'] - share['templates'])
+            items.append(dict(part=MODULE, name='Behaviors/InfiltratorContain:ENERGY',
+                              uses=share['campaign'], all=share['templates'], state=GUESSED,
+                              template_ids=share['template_ids'],
+                              why='三国普通电厂敌友对照：engine_infiltrator a/b/c/d', eg='JapanPowerPlant'))
         items.append(dict(part=MODULE, name=f'{group}/{mtype}', uses=v['campaign'], all=v['templates'], state=state,
                           why=why, eg=', '.join(v.get('examples', [])[:2])))
     return items
