@@ -10,6 +10,7 @@ import json
 import math
 import os
 import re
+import struct
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -276,7 +277,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v30.json')    # v30: unresolved grappling consumers remain explicit gaps
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v31.json')    # v31: delayed MetaImpact payload, separate from immediate Physics
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -379,23 +380,35 @@ def _weapons(texts, base_table=None):
             for effect in ('ActivateLiftObjectNugget', 'GrapplingHookNugget'):
                 if list(_blocks(bare, effect)):
                     unsupported.append(effect)
-            impacts = []
+            impacts, delayed_impacts = [], []
             for h, inner in _blocks(bare, 'MetaImpactNugget'):
-                # Only the ordinary, immediate detonation form has a numerical
-                # payload. Partial dispatch/default Physics are implemented;
-                # keep the whole nugget a gap for filters/delays/other variants.
+                # Retail Omega writes Amount/Radius/Z with spaces around '='.
+                h = re.sub(r'(\w+)\s*=\s*"', r'\1="', h)
+                # Delayed payloads feed only the isolated expiry interface.
+                # Never send them through immediate Physics: observation and
+                # landing phases remain unresolved, as do other variants.
                 unsupported.append('MetaImpactNugget')
                 fields = set(re.findall(r'(\w+)\s*=', h))
                 if not (inner or '').strip() and fields <= {
-                        'id', 'ShockWaveAmount', 'ShockWaveRadius', 'ShockWaveZMult', 'ShockWaveTaperOff'} and all(
+                        'id', 'ShockWaveAmount', 'ShockWaveRadius', 'ShockWaveZMult', 'ShockWaveTaperOff',
+                        'ShockwaveDelaySeconds'} and all(
                         _attr(h, field) is not None for field in
                         ('ShockWaveAmount', 'ShockWaveRadius')):
-                    impacts.append(dict(amount=_num(_attr(h, 'ShockWaveAmount')),
-                                        radius=_num(_attr(h, 'ShockWaveRadius')),
-                                        zmult=_num(_attr(h, 'ShockWaveZMult', '1')),
-                                        taper=_num(_attr(h, 'ShockWaveTaperOff', '0'))))
+                    seconds = _secs(_attr(h, 'ShockwaveDelaySeconds', '0s'))
+                    if not math.isfinite(seconds) or seconds < 0:
+                        continue
+                    effect = dict(amount=_num(_attr(h, 'ShockWaveAmount')),
+                                  radius=_num(_attr(h, 'ShockWaveRadius')),
+                                  zmult=_num(_attr(h, 'ShockWaveZMult', '1')),
+                                  taper=_num(_attr(h, 'ShockWaveTaperOff', '0')))
+                    if seconds > 0:
+                        delayed_impacts.append(dict(effect, delay_seconds=seconds))
+                    else:
+                        impacts.append(effect)
             if impacts:
                 got['meta_impacts'] = impacts
+            if delayed_impacts:
+                got['delayed_meta_impacts'] = delayed_impacts
             informs = []
             for h, inner in _blocks(bare, 'InformTargetNugget'):
                 # Ordinary target-only launch notification. Radius/filter variants
@@ -639,8 +652,46 @@ def _resolve(w, weapons):
                 inform=w.get('inform', []), weapon_speed=w.get('weapon_speed', 999999.0),
                 weapon_key=w.get('weapon_key'),
                 meta_impacts=w.get('meta_impacts', weapons.get(w.get('warhead'), {}).get('meta_impacts', [])),
+                delayed_meta_impacts=w.get('delayed_meta_impacts',
+                    weapons.get(w.get('warhead'), {}).get('delayed_meta_impacts', [])),
                 unmodeled_effects=list(dict.fromkeys(w.get('unmodeled_effects', []) +
                     weapons.get(w.get('warhead'), {}).get('unmodeled_effects', []))))
+
+
+def meta_impact_delay_frames(seconds):
+    """D39: float32 seconds * 15, rounded to float32 before ceil.
+
+    In particular 1.2s gives 18, not ceil(double(float32(1.2))*15)=19.
+    Only ordinary positive delays at normal game speed are supported.
+    """
+    if not math.isfinite(seconds) or seconds <= 0:
+        raise ValueError('MetaImpact delay must be finite and positive')
+    def f32(value):
+        return struct.unpack('<f', struct.pack('<f', value))[0]
+    return math.ceil(f32(f32(seconds) * FPS))
+
+
+class MetaImpactDelayQueue:
+    """Isolated phase-1 expiry output, never a Physics/landing replay.
+
+    Supply collision frame and selected payload explicitly. At c the entry is
+    inserted after phase 1; c+1 first decrements D, and strict-negative expiry
+    emits at c+D+1. due(frame) consumes ready events once, including skipped
+    frames. Returned tuples are (expiry frame, effect, caller payload).
+    Filters, Speed, time scaling, victim lifetime and Physics remain gaps.
+    """
+
+    def __init__(self):
+        self.pending = []
+
+    def enqueue(self, collision_frame, effect, payload):
+        when = collision_frame + meta_impact_delay_frames(effect['delay_seconds']) + 1
+        self.pending.append((when, dict(effect), payload))
+
+    def due(self, frame):
+        ready = sorted((event for event in self.pending if event[0] <= frame), key=lambda event: event[0])
+        self.pending[:] = [event for event in self.pending if event[0] > frame]
+        return ready
 
 
 def meta_impact_velocity(effect, position, centre, height, *, detonation, resistance=0.0):

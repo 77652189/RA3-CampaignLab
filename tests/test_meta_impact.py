@@ -65,6 +65,7 @@ def test_meta_impact_partial_interface_retains_unsupported_variants_and_retail_g
         </Nuggets></WeaponTemplate>'''])
     launch = simunits._resolve(weapons['launch'], weapons)
     assert launch['meta_impacts'] == []
+    assert launch['delayed_meta_impacts'][0]['delay_seconds'] == 1
     assert set(launch['unmodeled_effects']) == {'MetaImpactNugget', 'InformTargetNugget'}
     assert any('MetaImpactNugget' in w.get('unmodeled_effects', [])
                for w in simunits._fight_data()['weapons'].values())
@@ -263,8 +264,8 @@ def test_meta_impact_omitted_z_replays_engine_knock_z_tall_neighbour():
 def test_meta_impact_delay_probe_keeps_phase_gap_and_publishes_projectiles(lane, seconds):
     """engine_knock_delay a diagnostic: corrected bench1174/100/1173/100.
 
-    Shock frames204/192; the full-health script counts174/173. Mapping that
-    script count to the collision's engine frame is still unverified. Delayed
+    Shock frames204/192; full-health counts174/173 are collision inputs for
+    the isolated queue interface (their script phase remains INFERRED). Delayed
     Physics also exposes sample1 in the shock frame, holds it next frame,
     then advances: do not register an immediate-shock replay as delayed cover.
     Both projectile assets must exist; the initial short copy omitted its file.
@@ -287,7 +288,7 @@ def test_meta_impact_delay_probe_keeps_phase_gap_and_publishes_projectiles(lane,
     assert weapon['meta_impacts'] == []
     assert 'MetaImpactNugget' in weapon['unmodeled_effects']
     # Existing spatial solver agrees with both observed neighbour paths; this
-    # does not assert the missing delay/update-phase conversion.
+    # does not assert the missing Physics observation/update phase.
     effect = dict(amount=89, radius=250, zmult=1, taper=0)
     y = 3750 if lane == 'rocket' else 850
     velocity = simunits.meta_impact_velocity(effect, (2360,y,212.5),
@@ -296,3 +297,75 @@ def test_meta_impact_delay_probe_keeps_phase_gap_and_publishes_projectiles(lane,
     assert len(points) == 15
     assert points[1] == pytest.approx((2364.2,y-.7,215.24), abs=.051)
     assert points[-1] == (2420,y-10,212.5)
+
+
+@pytest.mark.parametrize('lane,collision,shock,delay_frames', [
+    ('rocket', 174, 204, 29), ('strong', 173, 192, 18),
+])
+def test_meta_impact_delay_queue_replays_engine_knock_delay_due_frames(lane, collision, shock, delay_frames):
+    """Replay dispatch only, with collision frames supplied from the bench.
+
+    CampKDA_mcp_1111_005836 engine_knock_delay a: counters1174/100/1173/100,
+    raw neighbour shock frames204/192. D39 establishes float32 ceil and
+    decrement-before-strict-negative expiry; count=collision is INFERRED.
+    The returned event is not fed to Physics: shock+1 sampling/landing is a gap.
+    """
+    import build
+    import sim
+    import simunits
+    from checks.engine_knock_probe import name
+
+    m, t, _ = build.resolve('engine_knock_delay', 'a')
+    e = sim.Sim(m, t)
+    by, victim, near = (e.bodies[name(lane, part)] for part in ('gun', 'man', 'near'))
+    weapon, = by.weapons
+    effect, = weapon['delayed_meta_impacts']
+    assert simunits.meta_impact_delay_frames(effect['delay_seconds']) == delay_frames
+    assert weapon['meta_impacts'] == []
+    queue = simunits.MetaImpactDelayQueue()
+    centre = (2300, 3750 if lane == 'rocket' else 850, 219)
+    queue.enqueue(collision, effect, centre)
+    # Ordinary collision damage still lands immediately; no delayed Physics.
+    e.firing, e.volleys = [], []
+    e.eng.frame = collision
+    e.queue_projectile_hit(collision, victim, weapon['dmg'], by, weapon, centre)
+    e.deal(1/15)
+    assert victim.hp == pytest.approx(148.5)
+    assert near.hp == 150
+    for frame in range(collision, shock):
+        assert queue.due(frame) == []
+    assert queue.due(shock) == [(shock, effect, centre)]
+    assert queue.due(shock) == queue.due(shock+1) == []
+    assert not e.impact_flights
+    assert 'MetaImpactNugget' in weapon['unmodeled_effects']
+    # Retail cache must retain both original delays too, never as instant shocks.
+    retail = simunits.weapon_table()
+    key = 'JapanMechaKingKatana' if lane == 'rocket' else 'JapanMechaKingOmegaShockwave'
+    assert retail[key]['delayed_meta_impacts'][0]['delay_seconds'] == effect['delay_seconds']
+    assert not retail[key].get('meta_impacts')
+
+
+def test_meta_impact_delay_queue_keeps_other_events_and_rejects_unmodeled_variants():
+    import simunits
+
+    queue = simunits.MetaImpactDelayQueue()
+    effect = dict(amount=89, radius=250, zmult=1, taper=0, delay_seconds=1.9)
+    queue.enqueue(174, effect, 'long')
+    effect['delay_seconds'] = 1.2
+    queue.enqueue(173, effect, 'short')
+    queue.enqueue(173, effect, 'same-frame')
+    assert queue.due(191) == []
+    assert [(f, e['delay_seconds'], p) for f, e, p in queue.due(193)] == [
+        (192, 1.2, 'short'), (192, 1.2, 'same-frame')]
+    assert [(f, e['delay_seconds'], p) for f, e, p in queue.due(204)] == [(204, 1.9, 'long')]
+    assert queue.due(300) == []
+    for seconds in (0, -1, float('inf'), float('nan')):
+        with pytest.raises(ValueError):
+            simunits.meta_impact_delay_frames(seconds)
+    for extra in ('ShockWaveSpeed="10"', 'ShockWaveArc="90"', 'ShockwaveDelaySeconds="-1s"'):
+        delay = '' if extra.startswith('ShockwaveDelaySeconds') else 'ShockwaveDelaySeconds="1.2s"'
+        w = simunits._weapons([f'''<WeaponTemplate id="unsupported"><Nuggets>
+            <MetaImpactNugget ShockWaveAmount="89" ShockWaveRadius="250" {delay} {extra}/>
+            </Nuggets></WeaponTemplate>'''])['unsupported']
+        assert not w.get('meta_impacts') and not w.get('delayed_meta_impacts')
+        assert 'MetaImpactNugget' in w['unmodeled_effects']

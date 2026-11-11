@@ -6,8 +6,8 @@ Prediction before bench: 15fps gives 28.5 / 18 delay frames (integer rounding
 of 28.5 must be read, not assumed). Collision damage remains immediate99%,
 neighbours100%; no push before delay, then the same14-frame trajectory as Z.
 Observed corrected bench: health-frame counters174/173, shocks204/192.
-Delay/collision phase conversion is not settled; this is a diagnostic check,
-not an inventory replay. Delayed sample1 occurs in the shock frame, is held
+An isolated expiry queue now reproduces these frames with recorded collision
+inputs; this remains a diagnostic, not a complete inventory replay. Delayed sample1 occurs in the shock frame, is held
 next frame, then samples2..14 follow. See the private C handoff for evidence.
 """
 import copy
