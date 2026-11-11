@@ -11,16 +11,9 @@ _spec.loader.exec_module(_module)
 def test_manager_body_script_damage_preserves_retail_bridge_proxy():
     """engine_managerbody:a: untouched / NAMED_DAMAGE 200, HP and live retail proxy."""
     import build
-    import inventory
     import sim
     import simunits
     from parts import contract, merged
-
-    # E35's separate count-only baseline must not promote the whole dependency.
-    assert inventory.NOTES[inventory.MODULE, 'Behaviors/BridgeBuilder'][0] == inventory.GUESSED
-    assert (inventory.MODULE, 'Behaviors/BridgeBuilder') not in inventory.BENCHED_TESTS
-    assert inventory.NOTES[inventory.MODULE, 'Body/ManagerBody'][0] == inventory.GUESSED
-    assert (inventory.MODULE, 'Body/ManagerBody') not in inventory.BENCHED_TESTS
 
     m, t, mod = build.resolve('engine_managerbody', 'a')
     assert len(mod) <= 15 and mod.isalnum()

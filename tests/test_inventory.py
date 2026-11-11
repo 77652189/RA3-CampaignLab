@@ -88,6 +88,32 @@ def test_levelup_closure_registers_measured_effects_without_hiding_shared_templa
     assert sight['state'] == inventory.GUESSED
 
 
+def test_bridge_closure_registers_replays_without_hiding_unmeasured_gaps():
+    """E37: coordinator closes measured interfaces; no new split or implied geometry support."""
+    cases = (
+        ('Body/ManagerBody', 32, 'tests/test_simmanagerbody.py',
+         ('engine_managerbody', 'engine_managerbody_b'),
+         ('内部最大血量', '伤害转发', '显示下限', 'INFERRED')),
+        ('Behaviors/BridgeBuilder', 30, 'tests/test_simbridgebuilder.py',
+         ('engine_bridgebuilder', 'engine_bridgebuilder_b'),
+         ('世界物体生成/位置', '通行', '其他桥型/配置/长度')),
+    )
+    for name, all_templates, path, probes, gaps in cases:
+        key = inventory.MODULE, name
+        rows = [i for i in items() if i['part'] == key[0] and i['name'].startswith(name)]
+        assert len(rows) == 1  # shared templates are not counted as disjoint branches
+        row = rows[0]
+        assert (row['state'], row['uses'], row['all']) == (inventory.BENCHED, 14, all_templates)
+        assert inventory.BENCHED_TESTS[key].split('::')[0] == path
+        assert inventory.BENCHED_TESTS[key] in row['why']
+        source = open(os.path.join(ROOT, path), encoding='utf-8').read()
+        for probe in probes:
+            assert f"build.resolve('{probe}'," in source
+            assert probe in row['why'] or name == 'Body/ManagerBody'
+        for gap in ('gap：', 'HV_Bridge_01', '共享血量', '损毁', '维修', *gaps):
+            assert gap in row['why']
+
+
 def test_a_missing_source_stops_it_instead_of_an_empty_list(monkeypatch, tmp_path):
     monkeypatch.setattr(inventory, 'RETAIL_SCRIPTS', str(tmp_path / 'nowhere'))
     with pytest.raises(SystemExit):

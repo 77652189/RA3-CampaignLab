@@ -57,6 +57,11 @@ BENCHED_TESTS = {
     # E30 closure: measured creation grants and rank modifiers; NOTES keeps the remaining gaps visible.
     (MODULE, 'Behaviors/LevelUpUpgrade'):
         'tests/test_simbench_c.py::test_levelup_creation_grants_reach_heroic_only_after_three_distinct_triggers',
+    # E37 coordinator closure: measured proxy/count interfaces; NOTES retains unmeasured bridge gaps.
+    (MODULE, 'Body/ManagerBody'):
+        'tests/test_simmanagerbody.py::test_manager_body_script_damage_preserves_retail_bridge_proxy',
+    (MODULE, 'Behaviors/BridgeBuilder'):
+        'tests/test_simbridgebuilder.py::test_bridgebuilder_counts_short_and_long_retail_bridges',
     (MODULE, 'Behaviors/EngineerContain:通用三国'):
         'tests/test_simengineer.py::test_engineer_soviet_japan_captures_as_on_the_bench',
     # Field-form coverage only: recorded collision / incoming-event replay, not full retail flight or every consumer.
@@ -227,8 +232,8 @@ NOTES = {
     (NUGGET, 'AttributeModifierNugget'): (GUESSED, '部分：engine_weaponfx attribute实测涂靶ARMOR150%；engine_spnret a实测单个PLAYER升级Required/Forbidden读取施法者玩家，普通/高科技ARMOR150/200%、晚段74/69%血，tests/test_special_power_nugget.py回放；数据1.1s且9s前到期，到期帧未测；OBJECT升级/owner/筛选/范围形式仍未验证'),
     (NUGGET, 'LineDamageNugget'): (GUESSED, '部分：engine_weaponfx line探针；实测PASS90/90/90/100验证动态线长及穿透，圆形边界GUESSED，筛选与静态线未模拟'),
     (MODULE, 'Body/ActiveBody'): (GUESSED, 'simunits.stats 读 MaxHealth（只有生命值；受伤状态、回血等另算）'),
-    (MODULE, 'Body/ManagerBody'): (GUESSED, '部分：engine_managerbody a/b原版HB_Bridge_02，270/700长度整体代理脚本伤害200后均80%、致命量后1%且存活，tests/test_simmanagerbody.py按名重放；有效HP取CenterPiece及内部1%下限映射INFERRED；其他模板/配置、桥段生成/共享血量/损毁/维修未对拍，不登记整模块已对拍'),
-    (MODULE, 'Behaviors/BridgeBuilder'): (GUESSED, '部分：engine_bridgebuilder:a已量HB_Bridge_02长度270/700，EndCap/EndCap2/CenterPiece/CenterPieceB/GateHouse数量1/1/1/0/2及1/1/2/2/2；engine_bridgebuilder_b:b已量原版HB桥首16+Bridge1a桥尾32混合构型，两长度HB数量不变、五类Bridge1物件均0；tests/test_simbridgebuilder.py按名核计数模型与读数编码，simunits仅有限数量模型；世界物体生成/位置、其他模板/长度、通行、损毁、共享血量与维修未建模，不登记整模块已对拍'),
+    (MODULE, 'Body/ManagerBody'): (BENCHED, '已测范围：engine_managerbody a/b原版HB_Bridge_02，270/700长度整体代理脚本伤害200后均80%、致命量后1%且存活，tests/test_simmanagerbody.py按名重放；gap：有效HP取CenterPiece及内部1%下限映射仍INFERRED，内部最大血量/伤害转发/显示下限待核；HV_Bridge_01等其他模板/配置、桥段共享血量/损毁/维修未对拍；按总控11-11收尾决定登记模块已对拍，不表示这些gap已验证，不拆分分母'),
+    (MODULE, 'Behaviors/BridgeBuilder'): (BENCHED, '已测范围：engine_bridgebuilder:a已量HB_Bridge_02长度270/700，EndCap/EndCap2/CenterPiece/CenterPieceB/GateHouse数量1/1/1/0/2及1/1/2/2/2；engine_bridgebuilder_b:b已量原版HB桥首16+Bridge1a桥尾32混合构型，两长度HB数量不变、五类Bridge1物件均0；tests/test_simbridgebuilder.py按名核计数模型与读数编码，simunits仅有限数量模型；gap：HV_Bridge_01等其他桥型/配置/长度、世界物体生成/位置、通行、损毁、共享血量与维修未建模；按总控11-11收尾决定登记模块已对拍，不表示这些gap已验证，不拆分分母'),
     (MODULE, 'AI/AIUpdate'): (GUESSED, 'Sim.fight / 移动（单位 AI 的状态机细项按引擎 B 的 AI 清单推进）'),
     # the 26 the bench measured but the name rule called 未做 (checked 11-08 against sim.py / simunits.py)
     (MODULE, 'Behaviors/FireWeaponUpdate'): (GUESSED, '部分：simunits.ocl_round 把召出物的 FireWeaponNugget + '
