@@ -152,6 +152,7 @@ class Brain:
         self.ai.units = self.units
         self.ai.team_point = self.team_point
         self.ai.offers = self.offers
+        self.ai.build_offers = self.build_offers
         self.yard_q = {}                # yard name -> [job]
         self.yard_rest = {}             # yard name -> the last frame it starts nothing (the one after a put)
         self.unit_q = []                # [template] waiting for a free, unpacked factory that makes it
@@ -529,6 +530,32 @@ class Brain:
     def yards(self):
         return [b for b in self.sim.living() if b.owner == self.player and 'CONSTRUCTION_YARD' in b.kinds]
 
+    def queue_of(self, template):
+        """fn(yard) -> the yard_q key a structure goes in: a base defence (FS_BASE_DEFENSE) in the yard's own
+        defence queue beside the structures' (bench 2026-11-10 engine_aiskirm v: aiskacd's two towers, s49 / s69,
+        leave the opening's structures on aiskacp's timeline, 4th s50 -> s49, 5th s71 -> s69 -- INFERRED a second
+        queue, the sidebar's defence tab); anything else in the yard's name."""
+        if 'FS_BASE_DEFENSE' in self.host.kinds(template):
+            return lambda y: (y.name, 'defense')
+        return lambda y: y.name
+
+    def build_offers(self, ai, frame, templates):
+        """AIPlayer.build_offers: of `templates`, the structures the AI could order now -- a yard, can_build, and
+        nothing waiting in that template's queue (one order a queue at a time, INFERRED) -- as (template, cost,
+        kinds)."""
+        s, ys = self.sim, self.yards()
+        if not ys:
+            return []
+        out = []
+        for t in templates:
+            if not self.is_structure(t) or not s.can_build(self.player, t):
+                continue
+            q = self.queue_of(t)
+            if all(self.yard_q.get(q(y)) for y in ys):
+                continue
+            out.append((t, simunits.production(t, s.own)[0], frozenset(self.host.kinds(t))))
+        return out
+
     def build(self, template):
         """AIPlayer.builder: True once the order is taken (queued), False when nothing of the AI's can make it now."""
         s = self.sim
@@ -536,9 +563,10 @@ class Brain:
             ys = self.yards()
             if not ys or not s.can_build(self.player, template):
                 return False
-            y = min(ys, key=lambda y: len(self.yard_q.get(y.name, [])))
+            q = self.queue_of(template)
+            y = min(ys, key=lambda y: len(self.yard_q.get(q(y), [])))
             cost, secs = simunits.production(template, s.own)
-            self.yard_q.setdefault(y.name, []).append(
+            self.yard_q.setdefault(q(y), []).append(
                 {'template': template, 'cost': cost, 'frames': max(1, int(round(secs * FPS))), 'progress': 0.0,
                  'paid': 0, 'full': None})
             s.note('AI', f'{s.who(self.player)} 建造场排 {template}（{cost}，{secs:g} 秒）')
@@ -616,7 +644,7 @@ class Brain:
     def yard_due(self, frame):
         s = self.sim
         for name in list(self.yard_q):
-            y, q = s.bodies.get(name), self.yard_q[name]
+            y, q = s.bodies.get(name[0] if isinstance(name, tuple) else name), self.yard_q[name]
             if y is None or not y.alive or not q:
                 del self.yard_q[name]
                 continue

@@ -8,7 +8,7 @@
 | 脚本条件 | **94%** | 89 | 27 | 5 | 54 | 3 | 94% |
 | 物体模块 | **92%** | 186 | 37 | 6 | 121 | 22 | 92% |
 | 武器效果 | **76%** | 25 | 14 | 1 | 8 | 2 | 77% |
-| AI | **71%** | 415 | 98 | 133 | 150 | 34 | 88% |
+| AI | **71%** | 415 | 98 | 137 | 146 | 34 | 95% |
 
 ## 脚本动作
 
@@ -787,8 +787,8 @@
 |---|---|---|---|
 | 已对拍 | `开局/Order.Build` | 635 | docs/engine/aiopen.md#读数（aiopen f1～f3：造的顺序和 AlliedStandard 单子一样） |
 | 已对拍 | `目标/AITargetingHeuristic.HeuristicType` | 392 | docs/engine/aitactics.md#读数（ClosestStructure / SafestToGroundStructure 是 EnemyStructure，FriendlyLandStructure 是 FriendlyStructure，都上台） |
-| 未做 | `造兵/BuildEntry.Heuristic` | 380 | AI 模型代码里没有这个名字 |
-| 未做 | `造兵/BuildEntry.Build` | 364 | AI 模型代码里没有这个名字 |
+| 推断 | `造兵/BuildEntry.Heuristic` | 380 | AI 模型代码里读了这个名字 |
+| 推断 | `造兵/BuildEntry.Build` | 364 | AI 模型代码里读了这个名字 |
 | 已对拍 | `组队招人/ObjectFilter.ExcludeThing` | 288 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiteamfilter.py |
 | 已对拍 | `战略状态/TargetHeuristic.TargetHeuristic` | 287 | docs/engine/aitactics.md#读数（aitargetnear / aitargetsafe：按状态写的目标启发挑楼） |
 | 已对拍 | `战略状态/StrategicState.Difficulty` | 268 | docs/engine/aistate.md#按难度挂的状态（aidiff / aidiffx：普通 = MEDIUM，没挂 MEDIUM 的状态不跑） |
@@ -829,8 +829,8 @@
 | 已对拍 | `人格/UnitModifier.Unit` | 92 | 台上量过（engine_aiskirm u：aiskmod 把维和、标枪的 UnitModifier 两个系数都设 0，造兵逐秒和原版 aiskirm c 一样）、测试对拍 tests/test_simai.py——没有选兵策略表时 UnitModifier 不影响造什么；有策略表时的打分没量（原版人格都没有） |
 | 已对拍 | `战术/Tactic.DisbandAfterRetreatTeamSize` | 86 | 台上量过（engine_airetreat：airetf 0 撤回家后再出门，airetfd 999 撤回家后一直在家——撤退结束那轮人数 ≤ 它就结束战术、放人）、测试对拍 tests/test_simai.py；1 / 4 / 5 这种"剩几人才散"的中间值没量 |
 | 已对拍 | `微操/AIMicroManagerData.EnterGarrisons` | 84 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aigarrison.py |
-| 未做 | `造兵/BuildState.Difficulty` | 84 | AI 模型代码里没有这个名字 |
-| 未做 | `造兵/BuildState.State` | 84 | AI 模型代码里没有这个名字 |
+| 推断 | `造兵/BuildState.Difficulty` | 84 | AI 模型代码里读了这个名字 |
+| 推断 | `造兵/BuildState.State` | 84 | AI 模型代码里读了这个名字 |
 | 已对拍 | `微操/AIMicroManagerData.UseSpecialPowers` | 83 | 台上量过（engine_aimicro：aimicspon 开 两个武士 s41 冲锋，aimicspoff 关 一直没冲、s51 前被打死，脚本按的对照照样冲）、测试对拍 tests/test_simai.py（模拟器读进探针自写的微操数据：开的想冲、关的从不冲；技能本身模拟器没接，只记"想用"） |
 | 推断 | `微操/AIMicroManagerData.EngageHostileTargets` | 82 | 台上 aimicspon（开）/ aimicengoff（关）两个武士都在家跟征召兵打、都冲锋活到最后——关掉不让队伍躲开战斗；差别只在首次冲锋：关 ~258 帧、开 ~362 帧（各两次一致）。模拟器开关都冲，但先后相反（关 ~457、开 ~275），tests/test_simai.py strict xfail；私有模型里的打分式没读（按"杀死所需秒数"推断） |
 | 已对拍 | `微操/AIMicroManagerData.EngagePassiveTargets` | 82 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_airetreat.py |

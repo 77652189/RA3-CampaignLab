@@ -746,10 +746,25 @@ def test_order_account_defense_deposit_leaves_the_barracks_idle(acct):
     assert not _barracks_out(acct['aiskacd'])
 
 
-@pytest.mark.xfail(strict=True, reason='bench aiskacd v: a DEFENSE Deposit buys towers in the opening (1 at s49, 2 at '
-                   's69, ~40 / ~60 s after the wake; aiskacp none); the model keeps the DEFENSE balance unspent (who '
-                   'spends the DEFENSE account NOT READ, private ai/defense.py)')
+def _towers(b):
+    return [(f - b.started) / simai.FPS for f, what, t in b.trace
+            if what == 'own' and t in ('AlliedBaseDefense', 'AlliedBaseDefenseAdvanced')]
+
+
 def test_order_account_defense_deposit_buys_towers(acct):
-    (b,) = acct['aiskacd'].brains.values()
-    towers = [f for f, what, t in b.trace if what == 'out' and t in ('AlliedBaseDefense', 'AlliedBaseDefenseAdvanced')]
-    assert len(towers) >= 2, b.trace[-10:]
+    """bench aiskacd v (2026-11-10, PASS): a DEFENSE Deposit 2000 buys two AlliedBaseDefense in the opening, 1 at s49,
+    2 at s69 (~40 / ~60 s after the wake), no third (2 x 800 <= 2000); aiskacp none. The sim: the personality's
+    AlliedDefenseBuildState (ai.player.build_defense) orders a tower while the DEFENSE account affords it, one at a
+    time, in the yard's own defence queue (simai.queue_of) -- towers ~40.4 / ~60.5 s after the wake."""
+    (d,), (p,) = acct['aiskacd'].brains.values(), acct['aiskacp'].brains.values()
+    got = _towers(d)
+    assert len(got) == 2 and 35 <= got[0] <= 45 and 55 <= got[1] <= 65, got
+    assert not _towers(p), _towers(p)
+
+
+def test_order_account_towers_leave_the_structures_on_time(acct):
+    """bench v: aiskacd's structures keep aiskacp's timeline (4th s50 -> s49, 5th s71 -> s69): the towers build
+    beside the opening's structures, not in their queue."""
+    (d,), (p,) = acct['aiskacd'].brains.values(), acct['aiskacp'].brains.values()
+    rest = lambda b: [(f, t) for f, what, t in b.trace if what == 'own' and 'Defense' not in t]
+    assert rest(d) == rest(p), (rest(d), rest(p))

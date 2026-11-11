@@ -87,7 +87,7 @@
 - **存进 `PRODUCTION`（原版全是这个）**：开局期间兵营照出兵，约 52 秒出 8 个步兵，和原版人格一模一样（aiskacp）。
 - **存进 `DEFENSE`**：整个开局兵营一个兵不出（开局预算给 PRODUCTION 0%），这 2000 换成了两座防御塔（唤醒后约 40 s、60 s 各一座）（aiskacd）。
 - 想让 AI 开局先修塔、不出兵：存款写 `DEFENSE`；想开局就有步兵骚扰：写 `PRODUCTION`，钱多给。
-- 模拟器：步兵对上；塔对不上（模拟器里 DEFENSE 的 2000 没人花，`tests/test_simai.py` 里是 strict xfail）。
+- 模拟器：步兵和塔都对上（第 119 轮）。模拟器按人格的 `<阵营>DefenseBuildState` 造塔：DEFENSE 账户够一座塔的钱就下一单，一次一座，塔走建造场单独的防御队列，不耽误开局的建筑（台上 aiskacd 的建筑时间线和 aiskacp 一样）；模拟器两座塔在唤醒后约 40.4 s、60.5 s。`BEST_UNIT_EXPECTED` 的打分没建模（按文件顺序取第一个买得起的，推断）。
 
 ## 没测的
 
