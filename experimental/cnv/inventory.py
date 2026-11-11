@@ -64,6 +64,8 @@ BENCHED_TESTS = {
         'tests/test_simbridgebuilder.py::test_bridgebuilder_counts_short_and_long_retail_bridges',
     (MODULE, 'Behaviors/EngineerContain:通用三国'):
         'tests/test_simengineer.py::test_engineer_soviet_japan_captures_as_on_the_bench',
+    (MODULE, 'Behaviors/EngineerContain:三国ALLIES'):
+        'tests/test_simengineer.py::test_engineer_allied_defence_refusal_soviet_japan_as_on_the_bench',
     # Field-form coverage only: recorded collision / incoming-event replay, not full retail flight or every consumer.
     (NUGGET, 'MetaImpactNugget:普通无延迟显式Z'):
         'tests/test_meta_impact.py::test_meta_impact_collision_event_replays_engine_knock_probe_neighbour_five_frames',
@@ -224,7 +226,7 @@ NOTES = {
     (MODULE, 'Behaviors/InfiltratorContain:ENERGY'): (BENCHED, '总控11-11授权按配置组收尾：engine_infiltrator a/b/c/d按名字重放，盟军间谍对盟/苏/帝普通电厂及帝国忍者对盟军电厂，敌方进入者消耗、建筑满血不换主、100电量停电约20秒并恢复，友军拒入且存活；gap：其他电量/苏联超级电厂、重复进入续期、精确时序和默认状态分支仍未对拍，不表示全字段全模板已验证'),
     (MODULE, 'Behaviors/TrackIncomingWeaponFireBehavior'): (TODO, '部分：engine_inform_probe a/off通知记录回放验证录入、30帧窗口、来源与武器匹配删除和过期清理；精确过期边界INFERRED，原版完整调度/历史伤害仍gap，不靠名字命中晋升整项'),
     (MODULE, 'Behaviors/RepairUpdate'): (TODO, '仅字段读取：engine_repair a两次未触发玩家维修；repairai a已开AI维修、全难度人格、资金5000仍半血且只读探针未见维修激活；AI派发/资格门禁待核，tests/test_simrepair_ai.py保留strict xfail；不以schema默认10HP/s或预测费用登记已对拍'),
-    (MODULE, 'Behaviors/EngineerContain'): (GUESSED, '通用三国完整配置已拆分63用量并由engine_engineer a/b/c/d重放登记；本行保留三国ALLIES防御型6、日本单工程师ALLIES型TH_TombBuilding02为1及间接可达桥头堡0，共7用量/18模板；e重放三国友军半血防御修满及盟军满血拒入，仍缺苏联/帝国满血与敌方拒入、日本单人筛选维修、桥修复。ReplaceWith和ObjectStatusToSet无原版显式声明；精确进入帧仍INFERRED，不登记整模块已对拍（tests/test_simengineer.py、tests/test_inventory_contain.py、tests/test_inventory_engineer.py）'),
+    (MODULE, 'Behaviors/EngineerContain'): (GUESSED, '通用三国完整配置63用量由engine_engineer a/b/c/d登记；三国ALLIES完整配置6用量由a/e/f登记：三国友军半血防御修满消耗、满血及敌方拒入存活，目标归属不变；本行仅保留日本单工程师ALLIES型TH_TombBuilding02为1及间接可达桥头堡0，共1用量/11模板，尚缺日本单人筛选维修和桥修复。ReplaceWith和ObjectStatusToSet无原版显式声明；精确进入帧仍INFERRED，不登记整模块已对拍（tests/test_simengineer.py、tests/test_inventory_contain.py、tests/test_inventory_engineer.py）'),
     (MODULE, 'Behaviors/LevelUpUpgrade'): (BENCHED, '已测范围：engine_levelup a创建升级触发升阶、重复持有不升级；b移除创建升级保留等级，老兵创建升级移除重给可再次升阶，英雄位0/0/0/1→0/0/1/1→0/1/1/1；c独立精英/英雄创建升级各自移除重给两次，首次仍0/0/0/1、第二次0/1/1/1；engine_leveldamage a等级DAMAGE_MULT125保持到精英/英雄，单发血量47/34/34/17；engine_levelhealth a满血升级HEALTH_MULT125保持到英雄，100脚本伤害同帧冻结80/80/84/84；b残血升精英保留血量比例50/80/50/20，再扣100血为30/64/34/4，当前和最大血量均乘1.25，simlevel及test_simbench_c重放；engine_levelrange a原版幻影普通炮125、英雄炮150叠加RANGE125%为187.5，220距离仅英雄命中、260距离均未命中，四路100/10100/100/10100→100/10017/100/10100，离位异常均0；engine_levelrate a幻影普通/直接英雄武器/创建英雄/创建精英三段周期25/25/20/25帧，最终血量84/80/68/80，ROF不增加单发伤害；仅此离散单发炮配置已量，射速分段取整/其他武器仍未对拍；engine_levelshroud a原版幻影基础揭雾500、创建英雄SHROUD_CLEARING125%预测625，580/750距离普通/英雄四路1/1/1/1→1/111/1/101，近点始终可见且无离位；仅此模板配置已量，精确边界未对拍；engine_levelvision a原版幻影普通/创建英雄对小包围体工程师240/310距离ENEMY_SIGHTED四路11/11/11/11→0/0/0/0→0/101/0/100，近点在正式窗口前删除且无离位，支持VISION125按1.25倍率为250的预测；仅脚本范围查询已量，精确边界/自动索敌未对拍；gap：英雄自动索敌、精确射程/揭雾/视野边界、射速分段取整/其他武器、其余模板/等级属性、经验成长、额外上限及Permanent=true未对拍；按总控11-11收尾决定登记模块已对拍，不表示这些gap已验证；这些分支与已测效果共用模板，不能按SPLIT_STILL互斥拆分用量'),
     (NUGGET, 'FireOnObjectsNugget'): (TODO, '未实现：子武器派发条件与空间锚点尚未解释；失败诊断不作为已对拍依据'),
     (MODULE, 'Behaviors/GrapplingHookUpdate'): (TODO, '仅engine_grapple a最小消费者诊断；模块派发/拉拽/释放未解释，未实现，不作为已对拍证据'),
@@ -436,12 +438,17 @@ def module_items():
                               state=NA, why=SPLIT_STILL[mtype], eg=''))
         if (group, mtype) == ('Behaviors', 'EngineerContain'):
             import contain_audit
-            share = contain_audit.engineer_capture_share()
-            v = dict(v, campaign=v['campaign'] - share['campaign'],
-                     templates=v['templates'] - share['templates'])
-            items.append(dict(part=MODULE, name='Behaviors/EngineerContain:通用三国',
-                              uses=share['campaign'], all=share['templates'], state=GUESSED,
-                              why='完整通用配置：engine_engineer a/b/c/d；精确进入帧仍INFERRED', eg='AlliedPowerPlant'))
+            for allies, label, checks, example in (
+                    (False, '通用三国', 'a/b/c/d', 'AlliedPowerPlant'),
+                    (True, '三国ALLIES', 'a/e/f', 'SovietBaseDefenseGround')):
+                share = contain_audit.engineer_capture_share(allies=allies, with_templates=True)
+                v = dict(v, campaign=v['campaign'] - share['campaign'],
+                         templates=v['templates'] - share['templates'])
+                items.append(dict(part=MODULE, name='Behaviors/EngineerContain:' + label,
+                                  uses=share['campaign'], all=share['templates'], state=GUESSED,
+                                  template_ids=share['template_ids'],
+                                  why=f'完整配置：engine_engineer {checks}；精确进入帧仍INFERRED', eg=example))
+            v = dict(v, examples=['TH_TombBuilding02'])
         if (group, mtype) == ('Behaviors', 'InfiltratorContain'):
             import contain_audit
             share = contain_audit.infiltrator_energy_share(with_templates=True)

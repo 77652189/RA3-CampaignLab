@@ -114,6 +114,42 @@ def test_engineer_allied_defence_repair_three_nations_as_on_the_bench():
     assert not any(key[0] == 'EngineerContain' for key in s.unmodeled)
 
 
+def test_engineer_allied_defence_refusal_soviet_japan_as_on_the_bench():
+    """engine_engineer:f: stable refusal endpoints; exact entry timing INFERRED."""
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_engineer', 'f')
+    roles = ('neutral', 'enemy', 'ally', 'refused')
+    assert [m.role(role + ' man').template for role in roles] == [
+        'SovietEngineer', 'JapanEngineer', 'SovietEngineer', 'JapanEngineer']
+    assert [m.role(role).side for role in roles] == ['s2', 's2', 's1', 's1']
+    assert all(m.role(role).template == 'SovietBaseDefenseGround' for role in roles)
+    start = t.scripts[0].do
+    assert all(('UNIT_CHANGE_OBJECT_STATUS', m.role(name).name, 'NO_ATTACK', 1) in start
+               for role in roles for name in (role, role + ' man'))
+    entry = next(script for script in t.scripts if script.name == 'Test - enter')
+    assert entry.when == [('TIMER_EXPIRED', 'Engineer enter')]
+    assert entry.do == [('NAMED_GARRISON_SPECIFIC_BUILDING', m.role(role + ' man').name,
+                         m.role(role).name) for role in roles]
+    for role in roles:
+        owner = next(script for script in t.scripts if script.name == 'Test - owner ' + role)
+        from parts import NOT
+        assert owner.when == [('NAMED_OWNED_BY_PLAYER', m.player(m.role(role).side),
+                                m.role(role).name, NOT)]
+    s = sim.Sim(m, t).run(36)
+    expected = [10100, 10100, 10050, 10050]
+    assert s.series[0][1] == expected
+    window = [values for second, values in s.series if 30 <= second <= 34]
+    assert window and all(values == expected for values in window)
+    assert s.series[-1][1] == expected
+    for role in roles:
+        target, man = s.body(m.role(role).name), s.body(m.role(role + ' man').name)
+        assert target.owner == m.player(m.role(role).side)
+        assert target.hp == target.max_hp * (1 if role in roles[:2] else .5)
+        assert man.alive
+    assert not any(key[0] == 'EngineerContain' for key in s.unmodeled)
+
+
 def test_engineer_filters_reject_wrong_template_and_enemy_defence_and_report_replacements():
     import build
     import sim

@@ -159,6 +159,37 @@ def check_allied_defence_repair(m):
     return t
 
 
+def check_allied_defence_refusal(m):
+    """f: Soviet/Japan full-health allied and half-health hostile defence refusal.
+
+    Same retail ALLIES configuration as a/e, with zero AI repair budgets and
+    NO_ATTACK on every participant. Ordinary entry at second 10. Predict
+    10100/10100/10050/10050 throughout, owners unchanged and engineers alive.
+    Bench 2026-11-11 PASS: s1-s37 exactly the predicted four rows.
+    Exact entry timing remains INFERRED.
+    """
+    t = check_allied_defence_repair(m)
+    for role, engineer, side in zip(
+            LANES, ('SovietEngineer', 'JapanEngineer', 'SovietEngineer', 'JapanEngineer'),
+            ('s2', 's2', 's1', 's1')):
+        target, man = m.role(role), m.role(role + ' man')
+        target.side = m.find(target.name).side = side
+        man.template = m.find(man.name).template = engineer
+    full = {m.role(role).name for role in LANES[:2]}
+    t.scripts[0].do = [
+        (a[0], a[1], 100.0 if a[1] in full else 50.0)
+        if a[0] == 'UNIT_SET_HEALTH' else a for a in t.scripts[0].do]
+    for script in t.scripts:
+        if script.name.startswith('Test - owner '):
+            role = script.name.removeprefix('Test - owner ')
+            script.when = [('NAMED_OWNED_BY_PLAYER', m.player(m.role(role).side),
+                            m.role(role).name, NOT)]
+    t.expect = [(role, 30, '==', value, 34)
+                for role, value in zip(LANES, (10100, 10100, 10050, 10050))]
+    return t
+
+
 MISSION = {'engine_engineer': mission}
 CHECKS = {'engine_engineer': {'a': check, 'b': check_full_health, 'c': check_damaged_allies,
-                             'd': check_other_captures, 'e': check_allied_defence_repair}}
+                             'd': check_other_captures, 'e': check_allied_defence_repair,
+                             'f': check_allied_defence_refusal}}

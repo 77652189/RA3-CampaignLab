@@ -16,8 +16,8 @@ def signature(element):
             (element.text or '').strip(), tuple(sorted(signature(c) for c in element)))
 
 
-def engineer_capture_share():
-    """Only the complete generic configuration measured by engineer a/b/c/d.
+def engineer_capture_share(allies=False, with_templates=False):
+    """Exact generic (a/b/c/d) or three-engineer ALLIES (a/e/f) configuration.
 
     Match every field and child, so new filters or values stay in the gap.
     Counts use the same placed-template weight as module_census.
@@ -31,10 +31,18 @@ def engineer_capture_share():
         <CanEnterFilter Rule="NONE"><IncludeThing>SovietEngineer</IncludeThing>
         <IncludeThing>JapanEngineer</IncludeThing><IncludeThing>AlliedEngineer</IncludeThing>
         </CanEnterFilter></EngineerContain>''')
+    if allies:
+        # a/e/f measure the entire three-engineer ALLIES filter. This form has
+        # no capture EVA event; keep all other fields and children exact.
+        measured.attrib.pop('EvaEventForCapture')
+        measured.find('CanEnterFilter').set('Relationship', 'ALLIES')
     wanted = (signature(measured),)
     rows = [r for r in engineer_audit.audit()['rows']
             if tuple(sorted(signature(rm.ET.fromstring(m['xml'])) for m in r['modules'])) == wanted]
-    return dict(campaign=sum(bool(r['maps']) for r in rows), templates=len(rows))
+    share = dict(campaign=sum(bool(r['maps']) for r in rows), templates=len(rows))
+    if with_templates:
+        share['template_ids'] = [r['template'] for r in rows]
+    return share
 
 
 def infiltrator_energy_share(with_templates=False):

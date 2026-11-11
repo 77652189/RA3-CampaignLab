@@ -68,13 +68,17 @@ def test_engineer_generic_split_preserves_weight_and_other_configuration_gaps():
     assert contain_audit.engineer_capture_share() == {'campaign': 63, 'templates': 87}
     rows = [r for r in inventory.collect((inventory.MODULE,))
             if r['name'].startswith('Behaviors/EngineerContain')]
-    assert len(rows) == 2
+    assert len(rows) == 3
     assert sum(r['uses'] for r in rows) == 70
     assert sum(r['all'] for r in rows) == 105
     generic = next(r for r in rows if r['name'].endswith(':通用三国'))
     gap = next(r for r in rows if r['name'] == 'Behaviors/EngineerContain')
     assert (generic['uses'], generic['all'], generic['state']) == (63, 87, inventory.BENCHED)
-    assert (gap['uses'], gap['all'], gap['state']) == (7, 18, inventory.GUESSED)
+    allies = next(r for r in rows if r['name'].endswith(':三国ALLIES'))
+    assert (allies['uses'], allies['all'], allies['state']) == (6, 7, inventory.BENCHED)
+    assert (gap['uses'], gap['all'], gap['state']) == (1, 11, inventory.GUESSED)
+    assert allies['why'] == ('tests/test_simengineer.py::'
+                             'test_engineer_allied_defence_refusal_soviet_japan_as_on_the_bench')
     assert generic['why'] == ('tests/test_simengineer.py::'
                               'test_engineer_soviet_japan_captures_as_on_the_bench')
 
@@ -89,6 +93,27 @@ def test_engineer_generic_split_does_not_credit_changed_fields(monkeypatch):
             module['xml'] = module['xml'].replace('ImmediatelyEnabled="true"',
                                                  'ImmediatelyEnabled="false"')
     assert contain_audit.engineer_capture_share() == {'campaign': 0, 'templates': 0}
+
+
+def test_engineer_allies_split_matches_complete_filter_and_preserves_level_scope(monkeypatch):
+    if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
+        pytest.skip('needs SDK and retail placement cache')
+    assert contain_audit.engineer_capture_share(allies=True) == {'campaign': 6, 'templates': 7}
+    rows = [r for r in inventory.collect((inventory.MODULE,))
+            if r['name'].startswith('Behaviors/EngineerContain')]
+    import inventory_levels
+    scope, _ = inventory_levels.expand_forms(rows, {
+        (inventory.MODULE, 'Behaviors/EngineerContain'): {'a1': {
+            'AlliedPowerPlant', 'SovietBaseDefenseGround', 'TH_TombBuilding02', 'CustomBuilding'}}})
+    assert scope[(inventory.MODULE, 'Behaviors/EngineerContain:通用三国')]['a1'] == {'AlliedPowerPlant'}
+    assert scope[(inventory.MODULE, 'Behaviors/EngineerContain:三国ALLIES')]['a1'] == {'SovietBaseDefenseGround'}
+    assert scope[(inventory.MODULE, 'Behaviors/EngineerContain')]['a1'] == {'TH_TombBuilding02', 'CustomBuilding'}
+    raw = contain_audit.engineer_audit.audit()
+    monkeypatch.setattr(contain_audit.engineer_audit, 'audit', lambda: raw)
+    for row in raw['rows']:
+        for module in row['modules']:
+            module['xml'] = module['xml'].replace('Relationship="ALLIES"', 'Relationship="ENEMIES"')
+    assert contain_audit.engineer_capture_share(allies=True) == {'campaign': 0, 'templates': 0}
 
 
 def test_infiltrator_energy_split_preserves_weight_and_other_effect_gaps():
