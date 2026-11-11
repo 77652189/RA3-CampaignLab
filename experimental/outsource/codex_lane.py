@@ -11,14 +11,23 @@ pushes, and warnings the coordinator reports to the user -- a full-suite pytest 
 hour), the same command run 3+ times (retrying instead of thinking), many bench runs, no push, no handoff change.
 The raw events are in work\logs\codex_<lane>_<stamp>.jsonl.
 """
-import argparse, collections, datetime, json, os, re, subprocess, sys, time
+import argparse, collections, datetime, importlib.util, json, os, re, subprocess, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, HERE)
-from codex_task import codex, bench_mcp  # noqa: E402
 
-sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'campaign'))
-from labpaths import LAB, WORK  # noqa: E402
+
+def _load(name, path):
+    """Import a sibling module by its file (no sys.path edit: tests/test_architecture.py G4 only lets that count fall)."""
+    spec = importlib.util.spec_from_file_location(name, path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+_task = _load('codex_task', os.path.join(HERE, 'codex_task.py'))
+codex, bench_mcp = _task.codex, _task.bench_mcp
+_paths = _load('labpaths', os.path.join(os.path.dirname(HERE), 'campaign', 'labpaths.py'))
+LAB, WORK = _paths.LAB, _paths.WORK
 
 LOGS = os.path.join(WORK, 'logs')
 SUMMARY = os.path.join(LAB, 'shared', 'outsource', 'lanes.jsonl')
