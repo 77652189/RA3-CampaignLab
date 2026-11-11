@@ -605,3 +605,13 @@ def test_dot_counts_interval_ticks_for_two_durations_and_observes_first_damage_f
     m,t,_=build.resolve('engine_dot','a')
     e=sim.Sim(m,t);e.shot_clock=True
     assert tuple(e.run(16).series[-1][1])==(2,1088,2,1078)
+
+
+def test_emp_blocks_an_ordered_shot_and_allows_a_new_shot_after_expiry():
+    import build
+    import sim
+    m,t,_=build.resolve('engine_empfire','a')
+    e=sim.Sim(m,t);e.shot_clock=True
+    assert all('Armor="NoArmor"' in u.xml for u in m.units if
+               u.id.startswith(('CNV_EmpFireGun','CNV_EmpFireTarget')))
+    assert tuple(e.run(16).series[-1][1])==(901090,901100,901080,901090)

@@ -3440,7 +3440,8 @@ class Sim:
         self._fire_obstacles = None             # `shot_blocked`'s footprints, taken once a tick when first asked
         live = [b for b in self.living() if not b.scenery and self.on_map(b)]     # off the border: out of the fight
         armed = [b for b in live if b.weapons and 'NO_ATTACK' not in b.status    # NO_ATTACK: holds its fire
-                 and not self.unpowered(b) and not (b.hold_fire and (b.hold_paused or not isinstance(b.goal, Body)))]
+                 and not self.emp_disabled(b) and not self.unpowered(b)
+                 and not (b.hold_fire and (b.hold_paused or not isinstance(b.goal, Body)))]
         cloaked = self.cloaked(live)
         targets = [b for b in live if 'UNATTACKABLE' not in b.status and id(b) not in cloaked]
         if not armed or not targets:
@@ -3679,12 +3680,12 @@ class Sim:
                 h = hurt.setdefault(id(target), [target, 0.0, attacker])
                 h[1] += damage
         for t, rate, by in self.firing:
-            if t.alive and by.alive:
+            if t.alive and by.alive and not self.emp_disabled(by):
                 h = hurt.setdefault(id(t), [t, 0.0, by])
                 h[1] += rate * dt
                 h[2] = by
         for t, w, by in self.volleys:           # engine line C round 2: a shot lands when its clock says (shots_due)
-            if t.alive and by.alive:
+            if t.alive and by.alive and not self.emp_disabled(by):
                 n = self.shots_due(by, w, dt)
                 if n:
                     projectile = w.get('projectile')
@@ -3904,7 +3905,7 @@ class Sim:
         a change of the highest step reached re-sets the body (modify); a DIE_ON_ENTER step kills."""
         cold = self.__dict__.setdefault('_cold_on', {})
         for t, rate, by in getattr(self, 'chilling', ()):
-            if not (t.alive and by.alive) or t.shielded:     # shielded: the Iron Curtain (the nugget's filter)
+            if not (t.alive and by.alive) or self.emp_disabled(by) or t.shielded:     # shielded: the Iron Curtain (the nugget's filter)
                 continue
             if self.cold_of(t)[0] is None:
                 continue
@@ -3935,6 +3936,14 @@ class Sim:
 
     def frame_now(self):
         return self.eng.frame if self.eng else int(round(self.t * simunits.LIFE_FPS))
+
+    def emp_disabled(self, b):
+        """EMP pauses movement and new fire (engine_emp phase / engine_empfire a).
+
+        Recheck at each damage frame too: fight's cached aim may predate the hit.
+        Already launched projectiles and DOTs keep their own delivery events.
+        """
+        return self.frame_now() < self.__dict__.get('emp_until', {}).get(id(b), 0)
 
     def at_site(self, b, walked):
         """R5: a builder within his stand of the spot he was told to build at stops; the structure is made there the
@@ -4060,7 +4069,7 @@ class Sim:
                 continue
             if b.frame_move != precise:          # chasing a moving target may have replanned into / out of prop contact
                 continue
-            if not b.path or 'IMMOBILE' in b.status or b.engaged or self.frame_now() < self.__dict__.get('emp_until', {}).get(id(b), 0):
+            if not b.path or 'IMMOBILE' in b.status or b.engaged or self.emp_disabled(b):
                 continue
             left = b.speed * dt
             if precise:

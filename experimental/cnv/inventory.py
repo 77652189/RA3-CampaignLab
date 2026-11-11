@@ -166,7 +166,7 @@ NOTES = {
     (NUGGET, 'FireOnObjectsNugget'): (TODO, '未实现：子武器派发条件与空间锚点尚未解释；失败诊断不作为已对拍依据'),
     (NUGGET, 'TintObjectsNugget'): (NA, '纯表现：Color及Pre/Sustained/PostColorTime、Frequency/Amplitude仅控制染色动画；engine_tint pair实测2/90/2/90，独立DamageNugget解释全部伤害，test_simbench_c重放；不声称像素已验证'),
     (NUGGET, 'InformTargetNugget'): (TODO, 'engine_inform仅隔离并用伤害；目标对来弹的响应尚未模拟，不以HP隔离检查登记整项已对拍'),
-    (NUGGET, 'ParalyzeNugget'): (GUESSED, '部分：engine_emp phase实测PASS16051/31066/61096、hit1，首发对象帧1与独立定时器ceil解释旧差值；仅无筛选EMP移动期限，攻击禁用/其他类型/筛选未验证'),
+    (NUGGET, 'ParalyzeNugget'): (GUESSED, '部分：engine_emp phase实测PASS16051/31066/61096、hit1；engine_empfire a实测PASS901090/901100/901080/901090，失能窗口按令不开火、到期后新令恢复；仅无筛选EMP，其他类型/筛选/装填相位未验证'),
     (NUGGET, 'StripMaxHealthPercentNugget'): (GUESSED, '部分：engine_strip exact实测PASS95/45/74，4%满血/半血与25%满血按最大血量扣减；筛选、护甲倍率、无标记伤害形式未验证，最大血量不变仍推断'),
     # Weapon round 1: scope limitations retained; explicit replay register above sets the bench state.
     (NUGGET, 'AttributeModifierNugget'): (GUESSED, '部分：engine_weaponfx attribute实测PASS，涂靶ARMOR150%、9s前到期（数据1.1s，到期帧未测）；owner/筛选/范围形式未验证，其余形式仍未验证'),
