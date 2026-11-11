@@ -276,7 +276,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v19.json')    # v19: direct AttachNugget module references/guards
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v20.json')    # v20: InformTarget response is an explicit gap
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -372,6 +372,11 @@ def _weapons(texts, base_table=None):
             # Only the unfiltered, single-target form is explained by round 1.
             # Retain unsupported forms as gaps instead of applying them to everyone.
             mods, unsupported = [], []
+            if any(_blocks(bare, 'InformTargetNugget')):
+                # engine_inform_ai: an AI miner can react before the slow shell hits.
+                # Ignoring it silently is not a modeled no-op. The arrival estimate
+                # and the AI's self-defense dispatch are not explained yet.
+                unsupported.append('InformTargetNugget')
             for h, inner in _blocks(bare, 'AttributeModifierNugget'):
                 if (inner or '').strip() or any(_attr(h, field) is not None for field in
                         ('AttributeModifierOwnerName', 'ForbiddenTargetObjectStatus', 'RequiredTargetObjectStatus',
@@ -583,7 +588,8 @@ def _resolve(w, weapons):
                 sweep=w.get('sweep'), contained=w.get('contained', []), dot=w.get('dot', []),
                 special_powers=w.get('special_powers', weapons.get(w.get('warhead'), {}).get('special_powers', [])),
                 attach=w.get('attach', weapons.get(w.get('warhead'), {}).get('attach', [])),
-                unmodeled_effects=w.get('unmodeled_effects', weapons.get(w.get('warhead'), {}).get('unmodeled_effects', [])))
+                unmodeled_effects=list(dict.fromkeys(w.get('unmodeled_effects', []) +
+                    weapons.get(w.get('warhead'), {}).get('unmodeled_effects', []))))
 
 
 def _shot_times(w, shots):

@@ -18,6 +18,7 @@ COMMAND_ARG = 34                        # a command button (NAMED_USE_COMMANDBUT
 PATH_ARG = 24                           # a waypoint path's label (*_FOLLOW_WAYPOINTS): Part.labels
 # retail units' own command buttons a script may press (SageXML GlobalData/LogicCommandSet.xml): ours publish theirs
 RETAIL_COMMANDS = {'Command_CaptureBuilding',           # an engineer takes a building (AlliedEngineerCommandSet)
+                   'Command_ToggleArmorUp',            # retail SovietMiner's reactive armor (InformTarget control)
                    'Command_UnPackAlliedMCV',           # the MCV deploys (AlliedMCVCommandSet)
                    'Command_UnPackSovietMCV', 'Command_UnPackJapanMCV',     # the same ReplaceSelfSpecialAbility
                    'Command_UnPackJapanBaseDefenseEgg', # a Japanese egg unfolds (engine_unpack egg)
