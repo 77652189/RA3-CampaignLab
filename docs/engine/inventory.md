@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|
-| 脚本动作 | **90%** | 451 | 114 | 26 | 194 | 117 | 91% |
+| 脚本动作 | **90%** | 451 | 119 | 21 | 194 | 117 | 91% |
 | 脚本条件 | **94%** | 89 | 28 | 5 | 53 | 3 | 94% |
 | 物体模块 | **92%** | 186 | 37 | 7 | 119 | 23 | 93% |
 | 武器效果 | **76%** | 25 | 14 | 1 | 8 | 2 | 77% |
@@ -175,7 +175,7 @@
 | 未做 | `GATE_OPEN` | 33 | Sim.act / Sim.cond 不认识 |
 | 未做 | `MAP_REVEAL_PERMANENTLY_IN_TRIGGER` | 33 | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_DisguisedEvacuate` | 33 | 只记进时间线，没有效果 |
-| 推断 | `STOP_TIMER` | 33 | 引擎模型核心 |
+| 已对拍 | `STOP_TIMER` | 33 | 引擎模型核心；台上量过、测试对拍：checks/engine_timer.py |
 | 已对拍 | `TEAM_SET_OVERRIDE_RELATION_TO_TEAM` | 33 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts9.py |
 | 已对拍 | `UNIT_CHANGE_OBJECT_STATUS:NO_ATTACK` | 33 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acquire.py |
 | 推断 | `ALLOW_DISALLOW_ONE_UPGRADE` | 32 | Sim.act / Sim.cond 有分支 |
@@ -184,7 +184,7 @@
 | 未做 | `ATTACK_MOVE_TEAM_TO_NAMED_OBJECT` | 31 | Sim.act / Sim.cond 不认识 |
 | 推断 | `CREATE_REINFORCEMENT_TEAM_AT_UNIT_POSITION` | 31 | Sim.act / Sim.cond 有分支 |
 | 未做 | `SKIRMISH_AI_SET_FAVORED_ENEMY` | 31 | Sim.act / Sim.cond 不认识 |
-| 推断 | `NAMED_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT` | 30 | Sim.act / Sim.cond 有分支 |
+| 已对拍 | `NAMED_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT` | 30 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_waypath.py |
 | 未做 | `UNIT_CHANGE_OBJECT_STATUS:SKIRMISH_AI_DO_NOT_TAKE` | 30 | 状态位 SKIRMISH_AI_DO_NOT_TAKE 只记下来 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleAlliedArtilleryVehicle` | 29 | 只记进时间线，没有效果 |
 | 未做 | `PLAYER_ALLOWED_TOBE_COOPAI` | 29 | Sim.act / Sim.cond 不认识 |
@@ -224,7 +224,7 @@
 | 不涉及 | `MOVE_NAMED_UNIT_TO_UNIT` | 21 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `NAMED_USE_LOGIC_COMMAND_ABILITY_ON_NAMED_POSITION` | 21 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `SELECT_OBJECT` | 21 | 纯表现（名字规则） |
-| 推断 | `TEAM_FOLLOW_WAYPOINTS_EXACT` | 21 | Sim.act / Sim.cond 有分支 |
+| 已对拍 | `TEAM_FOLLOW_WAYPOINTS_EXACT` | 21 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_waypath.py |
 | 不涉及 | `MOVE_CAMERA_TO_NAMED` | 20 | 纯表现（名字规则）；Sim.act / Sim.cond 有分支 |
 | 未做 | `REDALERT_DISABLE_THREAT_LEVEL_BONUS` | 20 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `UNIT_EXECUTE_SEQUENTIAL_SCRIPT_COPY` | 20 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
@@ -283,7 +283,7 @@
 | 未做 | `SET_COUNTER_TO_NUMBER_OBJECTS_PLAYER_OWNS_WITH_KINDOF` | 9 | Sim.act / Sim.cond 不认识 |
 | 未做 | `SKIRMISH_AI_START` | 9 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `SOUND_ENABLE_TYPE` | 9 | 纯表现（名字规则） |
-| 推断 | `SUB_FROM_MSEC_TIMER` | 9 | 引擎模型核心 |
+| 已对拍 | `SUB_FROM_MSEC_TIMER` | 9 | 引擎模型核心；台上量过、测试对拍：checks/engine_timer.py |
 | 已对拍 | `TEAM_GUARD_AREA` | 9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts4.py |
 | 已对拍 | `TEAM_IDLE_FOR_FRAMECOUNT` | 9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts8.py |
 | 未做 | `TEAM_MOVE_TO_NEAREST_OBJECT_OF_TYPE_OWNED_BY_PLAYER` | 9 | Sim.act / Sim.cond 不认识 |
@@ -296,7 +296,7 @@
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_UnPackJapanBaseDefenseEgg` | 8 | 只记进时间线，没有效果 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateJumpSpecialPower` | 8 | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateLeapSpecialPower` | 8 | Sim.act / Sim.cond 不认识 |
-| 推断 | `RESTART_TIMER` | 8 | 引擎模型核心 |
+| 已对拍 | `RESTART_TIMER` | 8 | 引擎模型核心；台上量过、测试对拍：checks/engine_timer.py |
 | 已对拍 | `SET_COUNTER_TO_COUNTER` | 8 | 引擎模型核心；台上量过、测试对拍：checks/engine_contained.py |
 | 未做 | `SET_PLAYER_KILLS_OF_TYPE_TO_COUNTER` | 8 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `CAMERA_STOP_FOLLOW` | 7 | 纯表现（名字规则） |

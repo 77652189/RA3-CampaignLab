@@ -3241,7 +3241,9 @@ class Sim:
             self.mine_due(eng.frame)
             self.produce_due(eng.frame)
             if self.test and self.test.counters and (eng.frame - 1) % self.fps == 0 and self.t >= LAG:
-                self.series.append((int(round(self.t - LAG)), [self.counters.get(c, 0) for c, _ in self.test.counters]))
+                # DISPLAY_COUNTER shows the table's value, a running timer's frames left too (bench 11-10
+                # engine_timer stop: 109 94 80 ... after RESTART_TIMER; self.counters hides running timers)
+                self.series.append((int(round(self.t - LAG)), [eng.value(c) for c, _ in self.test.counters]))
             if not moved and self.ending is None and self.t >= t0 - 1e-9:
                 moved = True
                 self.aura_tick()

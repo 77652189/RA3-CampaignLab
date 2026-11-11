@@ -1511,6 +1511,8 @@ WAYPATH = {
     'exact': [(0, 1, 3), (0, 2, 9), (1, 4, 9), (0, 3, 15)],
     'near': [(0, 1, 3), (0, 2, 15), (1, 4, 16), (0, 3, 21)],
     'team': [(0, 1, 3), (0, 2, 10), (0, 3, 17), (1, 1, 5), (1, 2, 10), (1, 3, 14)],
+    'texact': [(0, 1, 3), (0, 2, 10), (0, 3, 17), (1, 1, 5), (1, 2, 10), (1, 3, 14)],   # = team, second by second
+    'start': [(0, 2, 9), (0, 3, 15)],         # truck 2 from B: A, its nearest, never
 }
 
 
@@ -1518,12 +1520,39 @@ WAYPATH = {
 def test_waypath_follows_the_links_waypoint_by_waypoint_as_the_bench(check):
     """line / exact walk A -> B (within 10 of it: no corner cut, the two alike) -> C and stay; near joins at B, the
     nearest, A never again; team: each truck to the waypoint plus its offset from the team's middle (both within 100
-    of every one), the first there moves the team on -- truck 3, ahead on the last leg, at C 3 s before truck 2."""
-    rows = _changes('engine_waypath', check, 45.0 if check == 'team' else 50.0)
+    of every one), the first there moves the team on -- truck 3, ahead on the last leg, at C 3 s before truck 2;
+    texact (TEAM_FOLLOW_WAYPOINTS_EXACT) the same as team; start (NAMED_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT from
+    B) straight to B, A never."""
+    rows = _changes('engine_waypath', check, 45.0 if check in ('team', 'texact', 'start') else 50.0)
     for k, value, bench in WAYPATH[check]:
         got = _first(rows, k, lambda v, value=value: v == value)
         assert got is not None and bench <= got <= bench + LAG, (check, k, value, bench, got)
     assert rows[-1][1][0] == 3 and (check != 'near' or all(v[0] != 1 for sec, v in rows if sec >= 15))
+    assert check != 'start' or all(v[0] != 1 for sec, v in rows)
+
+
+# ---- the timers paused and shifted: bench 2026-11-10 checks/engine_timer.py (the lines show a timer's frames left)
+def test_timer_stop_holds_the_frames_and_a_stopped_timer_is_not_expired():
+    """stop: bench 停表帧 120 to s3 (STOP_TIMER at 2 s holds it), 109 94 ... from s4 (RESTART_TIMER at 5 s), -1 and
+    停表到 1 from s12; 过期停 (E out at 2 s, stopped at 4 s) 1 to s2, 0 from s3 -- a stopped timer is no countdown,
+    TIMER_EXPIRED false though its frames are out. The old readout (running timers hidden) read 0 while P ran."""
+    rows = _changes('engine_timer', 'stop', 18.0)
+    held = [v[0] for sec, v in rows if 2 <= sec <= 4]
+    assert held and all(x == 120 for x in held), rows
+    again = _first(rows, 0, lambda v: 0 < v < 120)
+    assert again is not None and 4 <= again <= 4 + LAG, rows
+    out = _first(rows, 1, lambda v: v == 1)
+    assert out is not None and 12 <= out <= 12 + LAG and rows[-1][1][:2] == [-1, 1], rows
+    gone = [sec for (sec, v), (_, w) in zip(rows[1:], rows) if v[2] == 0 and w[2] == 1]
+    assert gone and 3 <= gone[0] <= 3 + LAG and rows[-1][1][2] == 0, rows
+
+
+def test_timer_sub_from_msec_takes_the_frames_off():
+    """shift: SUB_FROM_MSEC_TIMER 5 s at 2 s off a 10 s timer -- bench 减帧 32 17 3 at s1-3, out (-1, 减到 1) from s4."""
+    rows = _changes('engine_timer', 'shift', 12.0)
+    out = _first(rows, 1, lambda v: v == 1)
+    assert out is not None and 4 <= out <= 4 + LAG and rows[-1][1] == [-1, 1], rows
+    assert any(30 <= v[0] <= 45 for sec, v in rows if 2 <= sec <= 3), rows
 
 
 def test_waypath_loop_goes_round_and_round_a_lap_about_20_s():

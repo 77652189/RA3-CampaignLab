@@ -12,6 +12,9 @@ truck 1 came to B: 4 within 10, 3 within 25, 2 within 50, 1 within 100 (nested s
   loop   the path linked C -> A as well (a ring), truck 1 at 1 s. [sim: 段1 1 2 3 1 2 3 ... round and round]
   team   TEAM_FOLLOW_WAYPOINTS team W23 (trucks 2, 3) 'CNVRoad' asTeam=1 at 1 s; boxes 100 half-side here. [sim:
          joined at A (nearest the team's middle), group legs: both 1 -> 2 -> 3]
+  start  NAMED_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT truck 2 'CNVRoad' from B at 1 s (A is nearest it, 250 off; its
+         straight run to B passes 50 north of A's box). [sim: 段2 0 -> 2 -> 3, A never]
+  texact TEAM_FOLLOW_WAYPOINTS_EXACT team W23 'CNVRoad' asTeam=1 at 1 s; boxes 100. [sim: as team]
 
 Simulator 11-10 (round 143, work/logs/a143_waypath_sim.log; 段 boxes 40): line / exact s5 段1 1, s11 2 (近B 4), s17 3;
 near s5 1 (passing A on the way to N), s17 2, s23 3 (A never again: joined at B); loop 1 2 3 every ~20 s, round and
@@ -25,6 +28,9 @@ the two runs took different links: random -- and on through unlabelled waypoints
   loop   段1 1 2 3 at s3 9 15, s23 29 35, s43 49 55, s63 70 76, s84 90: a lap 20-21 s, round and round.
   team   段2 s3 1, s10 2, s17 3; 段3 s5 1, s10 2, s14 3: both within 100 of every waypoint (each to the waypoint plus
          its offset from the team's middle, ±75), the one ahead on the last leg (truck 3) there 3 s first.
+  start  (round 151) CampPathStart_mcp_1110_211156: 段2 0 s1-s8, 2 s9, 3 s15 on: straight to B, A never.
+  texact (round 151) CampPathTexact_mcp_1110_211438: 段2 s3 1, s10 2, s17 3; 段3 s5 1, s10 2, s14 3 -- team's
+         readings second by second: _EXACT changes nothing here either.
 Simulator after the round-144 fix (Generals m_moveAsGroup offsets, the first there moves the team on): every reading
 LAG 2 s later (loop drifts to 3 s by the third lap); tests/test_simbench.py test_waypath_*.
 """
@@ -32,7 +38,7 @@ from parts import Script, Test, square
 
 PATH = ('A', 'B', 'C')
 RINGS = (100.0, 50.0, 25.0, 10.0)
-RUN = {'line': 40.0, 'exact': 40.0, 'near': 50.0, 'loop': 90.0, 'team': 45.0}
+RUN = {'line': 40.0, 'exact': 40.0, 'near': 50.0, 'loop': 90.0, 'team': 45.0, 'start': 45.0, 'texact': 45.0}
 
 
 def _at(t, key, secs, actions):
@@ -121,4 +127,24 @@ def team(m):
     return t
 
 
-CHECKS = {'engine_waypath': {'line': line, 'exact': exact, 'near': near, 'loop': loop, 'team': team}}
+def start(m):
+    t = Test()
+    _road(t, m, 'CNVRoad')
+    _at(t, 'go', 1.0, [('NAMED_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT', m.role('truck 2').name, 'CNVRoad',
+                        'Test Waypath B')])
+    _legs(t, m, (2,))
+    _watch(t, RUN['start'])
+    return t
+
+
+def texact(m):
+    t = Test()
+    _road(t, m, 'CNVRoad')
+    _at(t, 'go', 1.0, [('TEAM_FOLLOW_WAYPOINTS_EXACT', m.crew('W23'), 'CNVRoad', 1)])
+    _legs(t, m, (2, 3), half=100.0)
+    _watch(t, RUN['texact'])
+    return t
+
+
+CHECKS = {'engine_waypath': {'line': line, 'exact': exact, 'near': near, 'loop': loop, 'team': team,
+                             'start': start, 'texact': texact}}

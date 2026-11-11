@@ -69,7 +69,8 @@
 - 每帧在评估脚本**之前**：`if (value >= 0) value--`，减到 -1 就停。
 - `TIMER_EXPIRED`：计时器从没启动过（`isCountdownTimer` 为假）→ 假；否则判定是 `value < 1`，即剩余帧数 ≤ 0。
 - 推出来的精确时间：第 F 帧设成 N 帧，同一帧后面的脚本看到的值是 N，没到期（除非 N=0，0 秒计时器同帧就到期）。第 F+k 帧看到的值是 N−k，**第 F+N 帧首次到期**，正好 N 帧之后，按时间算就是"≥"。到期之后一直保持到期（值停在 -1），直到被重设或暂停。
-- 暂停 `STOP_TIMER` 只清 `isCountdownTimer`，于是 `TIMER_EXPIRED` 变假；`RESTART_TIMER` 只在剩余帧数 >0 时才恢复。
+- 暂停 `STOP_TIMER` 只清 `isCountdownTimer`，于是 `TIMER_EXPIRED` 变假；`RESTART_TIMER` 只在剩余帧数 >0 时才恢复。台上 11-10 `engine_timer` 证实：停住的剩余帧数原样保持，重开后接着减；**已经到点的计时器一停就不再算到点**（值停在 -1 也一样），所以"停表"不能当"记住它到过点"用，要记住就另设旗标。`SUB_FROM_MSEC_TIMER` 直接扣掉剩余帧数（10 秒的扣 5 秒，提前 5 秒到点）。
+- `DISPLAY_COUNTER` 显示一个正在走的计时器时，显示的是剩余**帧数**（每秒减 15），不是秒。
 - OpenSAGE 与此不同：它在脚本**之后**才减，并且只在 `== -1` 时算到期，会晚 1 帧（`OS/Scripting/ScriptingSystem.cs` 里的 `ScriptingTick`、`HasTimerExpired`）。以《将军》为准。
 
 **计数器**（`SE` 里的 `evaluateCounter`、`setCounter`、`addCounter`、`subCounter`）
