@@ -13,7 +13,7 @@ import labpaths
 import retailmodules as rm
 
 
-def audit():
+def audit(module_type='EngineerContain'):
     objects = {}
     skipped = []
     for path in sorted(Path(rm.SAGEXML).rglob('*.xml')):
@@ -23,7 +23,7 @@ def audit():
         root = rm._parse(str(path))
         if root is None:
             skipped.append(str(path.relative_to(rm.SAGEXML)))
-            assert 'EngineerContain' not in text, path
+            assert module_type not in text, path
             continue
         for obj in root.iter():
             if rm._tag(obj) != 'GameObject' or not obj.get('id'):
@@ -56,12 +56,13 @@ def audit():
     assert placements and objects
     rows = []
     for key, (name, _, _) in sorted(objects.items()):
-        modules = [m for m in effective(key).values() if rm._tag(m) == 'EngineerContain']
+        modules = [m for m in effective(key).values() if rm._tag(m) == module_type]
         if not modules:
             continue
         rows.append(dict(template=name, maps=dict(placements[key]),
                          modules=[dict(attributes=dict(m.attrib),
-                                       children=[rm._tag(c) for c in m]) for m in modules]))
+                                       children=[rm._tag(c) for c in m],
+                                       xml=rm.ET.tostring(m, encoding='unicode')) for m in modules]))
     bridge = [r for r in rows if any(m['attributes'].get('id') ==
               'ModuleTag_EngineerContainBridge' for m in r['modules'])]
     replace = [r for r in rows if any('ReplaceWith' in m['attributes'] or
