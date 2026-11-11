@@ -575,6 +575,7 @@ class Body:
     stance: int = 0                                             # UNIT_SET_STANCE: GUARD 0, AGGRESSIVE 1, HOLD_POSITION
                                                                 # 2, HOLD_FIRE 3 (idle_chase reads 1 / 2)
     z: float = None                                         # None: on terrain; airborne MetaImpact sets world z
+    spawned_children: list = dataclasses.field(default_factory=list)
 
     def damage(self, amount):
         """The body's health floor (Generals reference: internalChangeHealth). A PropBody takes none (engine_propbody a)."""
@@ -1164,6 +1165,21 @@ class Sim:
             b.deposit_at = (self.eng.frame if getattr(self, 'eng', None) else int(round(at * simunits.LIFE_FPS))) \
                 + b.deposit[2]
         self.bodies[name] = b
+        rules = self.__dict__.setdefault('_spawn_rules', {})
+        if template not in rules:
+            rules[template] = simunits.spawn_modules(template, self.own)
+        for mid, child_template in rules[template].items():
+            self.gap('SpawnBehavior', template,
+                     '仅盟军战车工厂配置开局3架及母体死亡/删除清随从已量；补充、失电、占领、'
+                     '展开时机、其他配置未建模；生成位置INFERRED；不含SlavedUpdate/AttachUpdate维修')
+            if not child_template or by:  # construction/unpack and scripted creation have not been measured
+                continue
+            for i in range(3):
+                child_name = f'#spawn {name} {mid} {i}'
+                while child_name in self.bodies:
+                    child_name += '#'
+                child = self.add(child_name, child_template, owner, x, y, by=name, at=at)
+                b.spawned_children.append(child)
         return b
 
     def expire(self, frame):
@@ -2333,6 +2349,10 @@ class Sim:
                 b.toppled, b.topple_end = True, self.frame_now() + b.topple['delay']
             return
         b.alive, b.deleted, b.path, b.died_at = False, delete, [], self.t
+        for child in b.spawned_children:
+            # engine_spawn: both script kill and delete remove all three in the same sample.
+            # Removal via deletion (rather than a lethal hit) is INFERRED; child death effects unmeasured.
+            self.destroy(child, 'SpawnedRequireSpawner', delete=True)
         self.garrison.died(b, delete)       # passengers out alive / killed with it (simgarrison, garrison.md 4)
         if not delete:
             b.hp = 0.0

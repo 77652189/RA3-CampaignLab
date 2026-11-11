@@ -1651,6 +1651,38 @@ def power_rules(template, power, own=None):
     return None
 
 
+def spawn_modules(template, own=None):
+    """Nearest SpawnBehavior group; only the engine_spawn repair-drone configuration is supported.
+
+    Compare the complete subtree so new flags or child variants remain explicit gaps.
+    Even the supported configuration only implements initial burst and parent removal.
+    """
+    import xml.etree.ElementTree as ET
+
+    expected = dict(SpawnNumberData='3', InitialBurst='3', SpawnReplaceDelayData='10s',
+                    SpawnedRequireSpawner='true', KillSpawnsOnCaptured='true',
+                    SpawnInsideBuilding='true', KillSpawnsOnDisabled='true')
+
+    def read(xml):
+        out = {}
+        for head, inner in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'SpawnBehavior'):
+            try:
+                node = ET.fromstring('<SpawnBehavior ' + head + '>' + inner + '</SpawnBehavior>')
+            except ET.ParseError:
+                out[_attr(head, 'id', '')] = None
+                continue
+            attrs = dict(node.attrib)
+            mid = attrs.pop('id', '')
+            children = [(c.tag, dict(c.attrib), (c.text or '').strip(), len(c)) for c in node]
+            valid = attrs == expected and children == [
+                ('Die', {'DeathTypes': 'ALL'}, '', 0),
+                ('SpawnTemplate', {}, 'AlliedWarFactoryRepairDrone', 0)]
+            out[mid] = 'AlliedWarFactoryRepairDrone' if valid else None
+        return out or None
+
+    return _chain(template, own, read) or {}
+
+
 def attach_modules(template, own=None):
     """Nearest AttachUpdate group: direct teleport/stick/status subset (engine_attach a).
 
