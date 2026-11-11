@@ -66,6 +66,28 @@ def test_the_registers_point_at_real_items_and_tests():
         assert k in keys and state in inventory.STATES, k
 
 
+def test_levelup_closure_registers_measured_effects_without_hiding_shared_template_gaps():
+    """E30: close the measured module once, without counting its overlapping branches twice."""
+    key = inventory.MODULE, 'Behaviors/LevelUpUpgrade'
+    rows = [i for i in items() if i['part'] == key[0] and i['name'].startswith(key[1])]
+    assert len(rows) == 1
+    row = rows[0]
+    assert (row['state'], row['uses'], row['all']) == (inventory.BENCHED, 88, 124)
+    assert row['levels'] == [f'a{k}' for k in range(1, 10)]
+    assert inventory.BENCHED_TESTS[key] in row['why']
+    test_source = open(os.path.join(ROOT, 'tests', 'test_simbench_c.py'), encoding='utf-8').read()
+    # All seven build names are registered by checks/engine_levelup.py, rather than seven source files.
+    assert 'checks/engine_levelup.py' in inventory.tested_probes()
+    for probe in ('engine_levelup', 'engine_leveldamage', 'engine_levelhealth', 'engine_levelrange',
+                  'engine_levelrate', 'engine_levelshroud', 'engine_levelvision'):
+        assert probe in row['why']
+        assert f"build.resolve('{probe}'," in test_source
+    for gap in ('gap：', '自动索敌', '精确射程/揭雾/视野边界', '其他武器', '经验成长', '上限', 'Permanent=true'):
+        assert gap in row['why']
+    sight = next(i for i in items() if (i['part'], i['name']) == (inventory.CONDITION, 'ENEMY_SIGHTED'))
+    assert sight['state'] == inventory.GUESSED
+
+
 def test_a_missing_source_stops_it_instead_of_an_empty_list(monkeypatch, tmp_path):
     monkeypatch.setattr(inventory, 'RETAIL_SCRIPTS', str(tmp_path / 'nowhere'))
     with pytest.raises(SystemExit):
