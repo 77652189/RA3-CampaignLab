@@ -909,7 +909,7 @@
 | 已对拍 | `目标/AITargetingHeuristic.HeuristicType=EnemyStructure` | 25 | a4 a5 a7 | docs/engine/aitactics.md#读数（ClosestStructureHeuristic、SafestToGroundStructureHeuristic：aitargetnear / aitargetsafe） |
 | 推断 | `组队招人/TeamTemplate.ReleaseType=NEVER_RELEASE` | 25 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | `战术/Tactic.Tactic=Engineer` | 24 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | `微操/AIMicroManagerData.EnterBaseDefensesWhenIdle` | 23 | a4 a5 a7 | 台上量过（engine_aibasedef：s21 起 1 人进炮塔）；模拟器没人进炮塔，只对上总开关关着的情形（strict xfail） |
+| 推断 | `微操/AIMicroManagerData.EnterBaseDefensesWhenIdle` | 23 | a4 a5 a7 | engine_aibasedef aibd1 是战斗中总开关开、idle关的正例（s21起1人进炮塔）；aibd0/aibdidle 总开关均关且无人进驻，不是idle分支正例；tests/test_simai_basedef_idle.py 直接计数回放，aibd1仍strict xfail；消费者已调用，到达/炮塔存活差异待A/B接口；见 handoff-c |
 | 已对拍 | `启发条件/IntervalHeuristic` | 22 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
 | 已对拍 | `启发条件/IntervalHeuristic.ActiveTime` | 22 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
 | 已对拍 | `启发条件/IntervalHeuristic.IntervalTime` | 22 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
