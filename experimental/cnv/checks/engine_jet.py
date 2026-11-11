@@ -28,6 +28,12 @@ are 91.67 and 41.67; both measured counts exceed those by 5.33 frames.
 This supports a common startup contribution, but cannot separate takeoff,
 acceleration and initial circling. Model counts 91 and 39 have different
 coarse movement-step phase errors; do not add a constant to fit either one.
+
+Offline E40: shot_clock frame movement (same scripts and speed, no startup
+model) gives 92/42. Coarse phase therefore accounts for 1 and 3 frames of the
+respective 6/8-frame gaps, leaving 5 frames to each measured integer counter. Both
+clocks retain strict xfails against 97/47. This does not identify the engine's
+takeoff, acceleration or initial circling mechanism; no timing fit is applied.
 """
 from maps import festival
 from parts import Mission, Script, Test, counted, square

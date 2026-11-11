@@ -38,15 +38,25 @@ def test_jet_vindicator_ordinary_move_first_entry_and_survival(check):
 
 
 @pytest.mark.parametrize('check, measured', [('a', 97), ('b', 47)])
-@pytest.mark.xfail(strict=True, reason='E39 engine_jet:a/b bench 97/47 vs model 91/39; '
-                   'startup mechanism and coarse movement phase unresolved; work/re/handoff-e.md 当前入口 E39')
-def test_jet_vindicator_first_entry_frame_matches_bench(check, measured):
-    """Replay each named bench's independently measured first-entry counter."""
+@pytest.mark.parametrize('frame_clock', [False, True], ids=['default', 'frame-reference'])
+@pytest.mark.xfail(strict=True, reason='E40 engine_jet:a/b bench 97/47; default 91/39, '
+                   'frame reference 92/42 leaves common 5-frame timing gap; '
+                   'work/re/handoff-e.md 待答问题 E40')
+def test_jet_vindicator_first_entry_frame_matches_bench(check, measured, frame_clock):
+    """Both movement clocks must eventually match the independent bench counters.
+
+    shot_clock changes the movement cadence here; it does not model Jet startup.
+    Keep the measured target unchanged in both cases, so fixing coarse phase
+    alone cannot silently close the engine timing gap.
+    """
     import build
     import sim
 
     m, t, _ = build.resolve('engine_jet', check)
-    e = sim.Sim(m, t).run(15)
+    e = sim.Sim(m, t)
+    assert e.eng is not None, 'This replay requires the frame-based script model'
+    e.shot_clock = frame_clock
+    e.run(15)
     arrived = [row for _, row in e.series if row[1] == 1]
     assert arrived
     assert {row[0] for row in arrived} == {measured}
