@@ -808,11 +808,22 @@ def test_after_the_opening_an_early_gift_buys_a_tower_20_s_later(lib):
     assert len(got) == 1 and 142 <= got[0] <= 153, got
 
 
-@pytest.mark.xfail(strict=True, reason='bench d: the first tower at 176 s after the wake (ordered ~156, ~36 s after '
-                   'the opening ends); simai orders it as the opening ends (~120) -> 140 / 160 s; no fixed gate (w) '
-                   'and no build-up (aiskirm20); the bench tower follows the post-opening buildings the sim does not '
-                   'build (B handoff 122 hypothesis table)')
-def test_after_the_opening_the_first_tower_comes_at_176_s(skirmish):
+def test_after_the_opening_the_towers_come_at_140_and_160_s(skirmish):
+    """bench 2026-11-10 engine_aiskirm x (twice) and d (re-run), all PASS: the first tower ~140 s after the wake, the
+    second ~160 s (x s148 / s168, wake s8; d s150 / s170, wake s9). The 2026-11-07 d run's 176 / 196 is the one run
+    that differs (it was this test's strict xfail until round 121). The sim orders the first as the opening ends."""
     (b,) = skirmish.brains.values()
-    got = _towers(b)
-    assert got and 170 <= got[0] <= 182, got
+    got = [s for s in _towers(b) if s < 245]
+    assert len(got) == 2 and 136 <= got[0] <= 145 and 156 <= got[1] <= 165, got
+
+
+@pytest.mark.xfail(strict=True, reason='bench x: after the opening a 3rd and 4th AlliedPowerPlant (~130 / ~140 s) and '
+                   'an AlliedAirfield (~194 s); simai builds no structure after the opening but towers (the '
+                   'NonPathDependentStructure / Tech build states are not modelled; B handoff 123)')
+def test_after_the_opening_two_power_plants_and_an_airfield(skirmish):
+    (b,) = skirmish.brains.values()
+    own = [((f - b.started) / simai.FPS, t) for f, what, t in b.trace if what == 'own']
+    power = [s for s, t in own if t == 'AlliedPowerPlant' and s > 100]
+    air = [s for s, t in own if t == 'AlliedAirfield']
+    assert len(power) == 2 and 125 <= power[0] <= 136 and 135 <= power[1] <= 146, own
+    assert air and 185 <= air[0] <= 203, own

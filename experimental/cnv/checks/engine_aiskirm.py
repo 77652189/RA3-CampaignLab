@@ -69,7 +69,8 @@ RESULTS d (bench 2026-11-07; PASS; after-wake seconds = bench s minus the first-
   aiskirm d, AI钱 at 0/60/100/110/120/130/140/160/180/200 s after wake: 49996, 43050, 41063, 40810, 40790, 40389,
     39740, 38300, 35685, 33608. Per 10 s: ~1160 (0-60 s), ~500 (60-100), ~260 (100-110), ~0-20 (110-120), ~400 (120-130),
     ~650 (130-140), ~720 (140-160), ~1300 (160-180), ~1040 (180-200). No cliff at 120 s: money goes out steadily.
-    Towers: first at s184 (176 s after wake), second at s204 (196 s). 建筑数 1, 2 at 11 s, 3 at 21, 4 at 41, 5 at 61,
+    Towers: first at s184 (176 s after wake), second at s204 (196 s) [re-run 2026-11-10 (b121_bench2.log, PASS): towers
+    s150 / s170 = 141 / 161 s after the wake s9, 建筑数 8 at 131 s, 10 at 142 s, 11 at 161 s; see x]. 建筑数 1, 2 at 11 s, 3 at 21, 4 at 41, 5 at 61,
     6 at 71, 7 at 95, 8 at 163, 10 at 176 (a tower + one more), 11 at 196. 兵数: 8 from 52 s to 114 s, 9 at 115, 10 at 129,
     11 at 145, 12 at 147, 13 at 170, ... 18 at 201, 26 at 237.
   aiskirmlow d: AI钱 at 0/60/100/110/120/130/140/160/180/200: 14966, 8089, 5989, 5700, 5670, 5405, 4830, 2400, 1183,
@@ -369,19 +370,21 @@ ARMY = ('AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry', RIPTIDE, DOG)
 CAP = 24                            # a sum reads at most this many per template
 
 
-def _sum(t, m, s1, counter, label, templates):
+def _sum(t, m, s1, counter, label, templates, weights=None, cap=CAP):
     """A shown counter that is the total of what s1 owns over `templates`: each template is counted into a hidden
-    counter every frame, the shown one is zeroed first and gets +1 per unit (hidden >= n for n = 1..CAP)."""
+    counter every frame, the shown one is zeroed first and gets +weight per unit (hidden >= n for n = 1..cap;
+    weights default 1 each)."""
     t.counters.append((counter, label))
     t.scripts.append(Script(f'Test - {counter} zero', [], [('SET_COUNTER', counter, 0)], once=False))
     for i, tpl in enumerate(templates):
         m.spawns.add(tpl)
         h = f'{counter}_H{i}'
+        wt = weights[i] if weights else 1
         t.scripts.append(Script(f'Test - {counter} own {i}', [], [('SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER', tpl, s1, h)],
                                 once=False))
-        for n in range(1, CAP + 1):
+        for n in range(1, cap + 1):
             t.scripts.append(Script(f'Test - {counter} {i} >= {n}', [('COUNTER', h, 3, n)],
-                                    [('INCREMENT_COUNTER', 1, counter)], once=False))
+                                    [('INCREMENT_COUNTER', wt, counter)], once=False))
 
 
 def _spend(m, give=None):
@@ -433,6 +436,42 @@ def w(m):
       gift), as the simulator. aiskirm d's late first tower (176 s with the money there from 120) is something else:
       there the 8th building is at 163 s, here at 129 -- the tower follows the post-opening buildings (round 120)."""
     return _spend(m, give=128.0)
+
+
+KINDS = ('AlliedPowerPlant', 'AlliedRefinery', 'AlliedBarracks', 'AlliedWarFactory')   # 建筑码 digits, ones first
+TECH = ('AlliedTechStructure', 'AlliedSuperWeaponAdvanced', 'AlliedNavalYard')
+
+
+def x(m):
+    """Which buildings s1 builds after the opening (B handoff 122 (1): aiskirm d's 8th building at 163 s and the one
+    with the first tower at 176 s are not known). 建筑码 = power plants + 10 x refineries + 100 x barracks + 1000 x war
+    factories (each read to 9; four counters at most, so the four kinds share one), 空军 = AlliedAirfield, 科技 =
+    AlliedTechStructure + AlliedSuperWeaponAdvanced + AlliedNavalYard, 塔数 as d. To ~200 s after the wake. The
+    candidates are 1AlliedBalanced's build states after OpeningMove Complete (private ai/data.py):
+    NonPathDependentStructure (power POWER, refinery REFINERY, barracks / airfield FACTORY) and Tech (airfield /
+    tech structure / superweapon TECH, no enemy within 700); the simulator builds none of them (towers only):
+    建筑码 1122 from ~91 s after the wake, towers 140.1 / 160.2 s (work/logs/b121_pred.log).
+
+    RESULTS x (bench 2026-11-10, aiskirm, CampAISkirmX; two runs, both PASS and the same to the second; wake ~s8, so
+      after-wake = bench s minus 8; logs work/logs/b121_bench.log, b121_bench2.log):
+      建筑码 100 s19 (barracks), 101 s29, 111 s49, 121 s69, 122 s79, 1122 s99 (war factory: the opening's six, as the
+      simulator), **1123 s138, 1124 s148** (a 3rd and 4th power plant, ~130 / ~140 s after the wake); 塔数 1 s148, 2
+      s168 (~140 / ~160 s); **空军 1 at s202** (~194 s); 科技 0 to s219.
+      Reading: the post-opening buildings are two power plants (NonPathDependentStructure's POWER line) and an airfield
+      (FACTORY or TECH); no refinery, barracks, war factory, tech structure. The towers come at 140 / 160 as the
+      simulator; a d re-run the same day (b121_bench2.log) too: towers s150 / s170 with the money at s9 = 141 / 161 s,
+      建筑数 8 at s140 (131 s). The 2026-11-07 d run's 176 / 196 (8th building 163 s) is the one run that differs."""
+    t = Test()
+    s1 = m.player('s1')
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    _sum(t, m, s1, 'CNV_AK_XKind', '建筑码', KINDS, weights=(1, 10, 100, 1000), cap=9)
+    _sum(t, m, s1, 'CNV_AK_XAir', '空军', ('AlliedAirfield',), cap=9)
+    _sum(t, m, s1, 'CNV_AK_XTech', '科技', TECH, cap=9)
+    _sum(t, m, s1, 'CNV_AK_XTow', '塔数', TOWERS, cap=9)
+    w = m.facts['wake at']
+    t.expect += [('建筑码', w + 100.0, 'ever>=', 1, w + 200.0)]
+    t.bench = [('bench_watch', dict(seconds=w + 204.0, every=1, sheet=False, lines=len(t.counters)))]
+    return t
 
 
 JAV_OUT_AT = 100.0                  # mission second the named Javelin soldier is teleported out (e)
@@ -674,7 +713,7 @@ def p(m):
 
 
 CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j': j, 'k': k, 'l': l, 'm': m,
-                      'n': n, 'o': o, 'p': p, 'q': q, 'r': r, 'u': u},
+                      'n': n, 'o': o, 'p': p, 'q': q, 'r': r, 'u': u, 'x': x},
           'aiskexp': {'q': q},
           'aiskmod': {'u': u},
           'aiskacp': {'v': v},
