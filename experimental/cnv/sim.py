@@ -4209,12 +4209,17 @@ class Sim:
                         if isinstance(hit_modifier, dict):
                             required = hit_modifier['required_upgrade']
                             forbidden = hit_modifier['forbidden_upgrade']
-                            gate_type = simunits.upgrade_type(required or forbidden, self.own)
-                            if gate_type != 'PLAYER':
+                            gate_type = simunits.upgrade_type(required or forbidden, self.own) if required or forbidden else None
+                            if (required or forbidden) and gate_type != 'PLAYER':
                                 self.gap(GAP_WEAPON, 'AttributeModifierNugget', '仅PLAYER升级门槛已对拍')
                                 continue
                             held = {up.lower() for up in self.player_ups.get(by.owner, ())}
                             if (required and required.lower() not in held) or (forbidden and forbidden.lower() in held):
+                                continue
+                            flt = hit_modifier.get('target_filter')
+                            if flt and (not self.garrison.fits(t, dict(flt, kinds=set(flt['kinds']),
+                                                                 unkinds=set(flt['unkinds'])))
+                                    or set(flt['status_exclude']) & (t.status | t.script_status)):
                                 continue
                             mid = hit_modifier['modifier']
                         xml = self.xml_of(by.template)

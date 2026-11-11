@@ -154,8 +154,9 @@ def test_retail_attribute_gates_reject_unmeasured_forms(inner):
 def test_special_power_nugget_retail_scrambler_unresolved_consumers_remain_gaps():
     """engine_spnscr a: measured fire-delay differs, final HP alone hides it.
 
-    Isolated expiry clearing is covered separately. Attack-order retention,
-    retail filter dispatch and the active SPN consumer remain unresolved.
+    Isolated expiry clearing is covered separately. Attack-order retention
+    and the active SPN consumer remain unresolved. Retail filter dispatch
+    has a separate isolated interface test below.
     This is a gap guard, not a bench replay claim.
     """
     import build
@@ -167,9 +168,87 @@ def test_special_power_nugget_retail_scrambler_unresolved_consumers_remain_gaps(
     e.shot_clock = True
     e.run(16)
     assert (sim.GAP_WEAPON, 'SpecialPowerNugget') in e.unmodeled
-    assert (sim.GAP_WEAPON, 'AttributeModifierNugget') in e.unmodeled
+    assert (sim.GAP_WEAPON, 'AttributeModifierNugget') not in e.unmodeled
     # FX_None and CANNOT_LEAVE_ENCLOSURE are not yet a validated no-op boundary.
     assert simunits.nugget_self_power(m.units[0].id, POWER, e.own) is False
+
+
+@pytest.mark.parametrize('status_source', ['status', 'script_status'])
+@pytest.mark.parametrize('kinds,template,status,allowed', [
+    ({'VEHICLE'}, 'Target', set(), True),
+    ({'SHIP'}, 'Target', set(), True),
+    ({'AIRCRAFT'}, 'Target', set(), True),
+    ({'FS_BASE_DEFENSE'}, 'Target', set(), True),
+    ({'STRUCTURE'}, 'Target', set(), False),
+    ({'VEHICLE', 'INFANTRY'}, 'Target', set(), False),
+    ({'VEHICLE'}, 'Target', {'UNDER_IRON_CURTAIN'}, False),
+    ({'VEHICLE'}, 'Target', {'IMMOBILE'}, True),
+    ({'AIRCRAFT'}, 'JapanRisingBalloon', set(), False),
+    ({'AIRCRAFT'}, 'japanfallingballoonbomb', set(), False),
+    ({'AIRCRAFT'}, 'JapanBalloonBomb', set(), False),
+])
+def test_retail_scrambler_filter_dispatch(kinds, template, status, allowed, status_source):
+    """Retail filter -> selected target -> timed modifier, no attack-order replay.
+
+    Categories/template exclusion reuse Garrisons.fits; the status mask uses
+    current object bits. Frame90 is supplied input, not measured collision.
+    """
+    import build
+    import sim
+    import simunits
+    m, t, _ = build.resolve('engine_spnscr', 'a')
+    e = sim.Sim(m, t)
+    caster, victim = [e.body('SCR base ' + role) for role in ('caster', 'victim')]
+    weapon = next(w for w in caster.weapons if w.get('hit_modifiers'))
+    mid = weapon['hit_modifiers'][0]['modifier']
+    victim.kinds, victim.template = kinds, template
+    victim.status, victim.script_status = set(), set()
+    setattr(victim, status_source, set(status))
+    now = [90]
+    e.frame_now = lambda: now[0]
+    e.shots_due = lambda *_: 1
+    e.firing, e.volleys = [], [(victim, weapon, caster)]
+    e.deal(1 / 15)
+    assert (mid in victim.auras_on) == allowed
+    assert mid not in caster.auras_on
+    if allowed:
+        assert victim.auras_on[mid][0] == 105
+        assert {'NO_ATTACK', 'SCRAMBLED'} <= victim.status
+        now[0] = 104
+        e.modify(victim)
+        assert mid in victim.auras_on
+        now[0] = 105
+        e.modify(victim)
+        assert mid not in victim.auras_on
+        assert not {'NO_ATTACK', 'SCRAMBLED'} & victim.status
+
+
+def test_retail_scrambler_filter_survives_retail_cache():
+    import simunits
+    w = simunits._fight_data()['weapons']['AlliedAntiAirShipWeaponScrambler']
+    assert w['hit_modifiers'][0]['target_filter']['status_exclude'] == ['UNDER_IRON_CURTAIN']
+
+
+@pytest.mark.parametrize('change', ['rule', 'relationship', 'child', 'gate', 'duplicate'])
+def test_retail_scrambler_filter_unknown_combinations_remain_gaps(change):
+    import simunits
+    import re
+    from checks.engine_spnscr import retail_parts
+    nugget = re.search(r'<AttributeModifierNugget\b.*?</AttributeModifierNugget>', retail_parts()[1], re.S).group()
+    if change == 'rule':
+        nugget = nugget.replace('Rule="ANY"', 'Rule="ALL"')
+    elif change == 'relationship':
+        nugget = nugget.replace('Rule="ANY"', 'Rule="ANY" Relationship="ENEMIES"')
+    elif change == 'child':
+        nugget = nugget.replace('</SpecialObjectFilter>', '<IncludeThing>Other</IncludeThing></SpecialObjectFilter>')
+    elif change == 'gate':
+        nugget = nugget.replace('</AttributeModifierNugget>', '<RequiredUpgrade>Other</RequiredUpgrade></AttributeModifierNugget>')
+    else:
+        f = re.search(r'<SpecialObjectFilter\b.*?</SpecialObjectFilter>', nugget, re.S).group()
+        nugget = nugget.replace('</AttributeModifierNugget>', f + '</AttributeModifierNugget>')
+    w = simunits._weapons(['<WeaponTemplate id="Unknown"><Nuggets>' + nugget + '</Nuggets></WeaponTemplate>'])['Unknown']
+    assert not w.get('hit_modifiers')
+    assert 'AttributeModifierNugget' in w['unmodeled_effects']
 
 
 @pytest.mark.parametrize('script_frame', [None, 0, 6.5 * 15 + 4])

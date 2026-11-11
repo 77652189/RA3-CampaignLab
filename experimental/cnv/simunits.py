@@ -277,7 +277,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v31.json')    # v31: delayed MetaImpact payload, separate from immediate Physics
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v32.json')    # v32: retail scrambler target filter
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -425,6 +425,26 @@ def _weapons(texts, base_table=None):
                 # history and radius/filter variants remain gaps.
                 unsupported.append('InformTargetNugget')
             for h, inner in _blocks(bare, 'AttributeModifierNugget'):
+                target_filter = None
+                filters = list(_blocks(inner, 'SpecialObjectFilter'))
+                if len(filters) == 1:
+                    fh, fi = filters[0]
+                    attrs = dict(re.findall(r'(\w+)\s*=\s*"([^"]*)"', fh))
+                    excluded = re.findall(r'<ExcludeThing>\s*([^<>\s]+)\s*</ExcludeThing>', fi)
+                    leftover = re.sub(r'<ExcludeThing>\s*[^<>\s]+\s*</ExcludeThing>', '', fi).strip()
+                    # Only this retail recipe is explained. Do not broaden to
+                    # other rules, relationships, nested selectors or gates.
+                    if (attrs == dict(Rule='ANY', Exclude='INFANTRY',
+                            Include='VEHICLE SHIP AIRCRAFT FS_BASE_DEFENSE',
+                            StatusBitFlagsExclude='UNDER_IRON_CURTAIN')
+                            and len(excluded) == 3 and set(excluded) == {
+                                'JapanRisingBalloon', 'JapanFallingBalloonBomb', 'JapanBalloonBomb'}
+                            and not leftover and _attr(h, 'AttributeModifierName') == 'AttributeMod_WeaponScrambler'
+                            and not re.sub(r'<SpecialObjectFilter\b.*?</SpecialObjectFilter>', '', inner, flags=re.S).strip()):
+                        target_filter = dict(rule='ANY', kinds=attrs['Include'].split(),
+                                             unkinds=['INFANTRY'], exclude=[v.lower() for v in excluded],
+                                             status_exclude=['UNDER_IRON_CURTAIN'])
+                        inner = ''
                 required = re.findall(r'<RequiredUpgrade>\s*([^<>\s]+)\s*</RequiredUpgrade>', inner)
                 forbidden = re.findall(r'<ForbiddenUpgrade>\s*([^<>\s]+)\s*</ForbiddenUpgrade>', inner)
                 rest = re.sub(r'<(RequiredUpgrade|ForbiddenUpgrade)>\s*[^<>\s]+\s*</\1>', '', inner).strip()
@@ -436,7 +456,9 @@ def _weapons(texts, base_table=None):
                     mid = _attr(h, 'AttributeModifierName')
                     mods.append(dict(modifier=mid, required_upgrade=required[0] if required else '',
                                      forbidden_upgrade=forbidden[0] if forbidden else '')
-                                if required or forbidden else mid)
+                                if required or forbidden else
+                                dict(modifier=mid, required_upgrade='', forbidden_upgrade='',
+                                     target_filter=target_filter) if target_filter else mid)
             if mods:
                 got['hit_modifiers'] = mods
             lines = list(_blocks(bare, 'LineDamageNugget'))
