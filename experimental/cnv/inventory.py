@@ -227,6 +227,8 @@ NOTES = {
     (NUGGET, 'AttributeModifierNugget'): (GUESSED, '部分：engine_weaponfx attribute实测涂靶ARMOR150%；engine_spnret a实测单个PLAYER升级Required/Forbidden读取施法者玩家，普通/高科技ARMOR150/200%、晚段74/69%血，tests/test_special_power_nugget.py回放；数据1.1s且9s前到期，到期帧未测；OBJECT升级/owner/筛选/范围形式仍未验证'),
     (NUGGET, 'LineDamageNugget'): (GUESSED, '部分：engine_weaponfx line探针；实测PASS90/90/90/100验证动态线长及穿透，圆形边界GUESSED，筛选与静态线未模拟'),
     (MODULE, 'Body/ActiveBody'): (GUESSED, 'simunits.stats 读 MaxHealth（只有生命值；受伤状态、回血等另算）'),
+    (MODULE, 'Body/ManagerBody'): (GUESSED, '部分：engine_managerbody a/b原版HB_Bridge_02，270/700长度整体代理脚本伤害200后均80%、致命量后1%且存活，tests/test_simmanagerbody.py按名重放；有效HP取CenterPiece及内部1%下限映射INFERRED；其他模板/配置、桥段生成/共享血量/损毁/维修未对拍，不登记整模块已对拍'),
+    (MODULE, 'Behaviors/BridgeBuilder'): (TODO, 'ManagerBody仅读CenterPiece血量作有效HP推断；未实现桥段/桥头堡生成、通行、损毁与维修，不因读取配置名登记已有'),
     (MODULE, 'AI/AIUpdate'): (GUESSED, 'Sim.fight / 移动（单位 AI 的状态机细项按引擎 B 的 AI 清单推进）'),
     # the 26 the bench measured but the name rule called 未做 (checked 11-08 against sim.py / simunits.py)
     (MODULE, 'Behaviors/FireWeaponUpdate'): (GUESSED, '部分：simunits.ocl_round 把召出物的 FireWeaponNugget + '

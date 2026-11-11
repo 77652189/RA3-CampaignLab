@@ -991,6 +991,36 @@ def immortal_body(template, own=None):
     return _chain(template, own, read) or (False, None)
 
 
+def manager_body(template, own=None):
+    """Whether the nearest explicit Body is ManagerBody, respecting body overrides."""
+    def read(xml):
+        xml = re.sub(r'<!--.*?-->', '', xml or '', flags=re.S)
+        body = next(_blocks(xml, 'Body'), None)
+        return bool(list(_blocks(body[1], 'ManagerBody'))) if body is not None else None
+    return bool(_chain(template, own, read))
+
+
+def manager_proxy_health(template, own=None):
+    """Whole-proxy effective HP; INFERRED from engine_managerbody a / b.
+
+    HB_Bridge_02 at lengths 270 / 700 loses 20 percent to 200 script damage,
+    independent of length, and lethal damage leaves a live 1-percent proxy.
+    Use the retail center body's MaxHealth (1000), not ManagerBody's XML 1.
+    Mapping that observable floor to exactly 1% HP is INFERRED (a counter-side
+    minimum of 1 could hide lower internal HP); internal HP,
+    other bridge configurations, segment damage/sharing and repairs are unbenched.
+    This creates no bridge pieces and does not sum their health.
+    """
+    if not manager_body(template, own):
+        return None
+    def read(xml):
+        for head, _ in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'BridgeBuilder'):
+            center = _attr(head, 'CenterPiece')
+            return max_health(center, own) if center else None
+        return None
+    return _chain(template, own, read)
+
+
 def suppression(template, own=None):
     """Nearest infantry suppression rule; an explicit Remove stops inheritance.
 

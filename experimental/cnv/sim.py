@@ -560,6 +560,7 @@ class Body:
                                                                 # it is going to, how; shared by a team that goes as one
     frame_move: bool = False                                    # paths through topple props need frame-sized collision steps
     drive_speed: float = 0.0
+    health_floor: float = 1.0                               # ManagerBody proxy: inferred 1% effective HP; normal immortal 1 HP
     hold_fire: bool = False                                     # UNIT_SET_STANCE 3 (HOLD_FIRE): fires only at a
                                                                 # target it was ordered on (stance.md a / b / d / e)
     hold_paused: bool = False                                   # an attack order taken BEFORE HOLD_FIRE: kept, not
@@ -572,7 +573,7 @@ class Body:
         """The body's health floor (Generals reference: internalChangeHealth). A PropBody takes none (engine_propbody a)."""
         if self.prop:
             return
-        self.hp = max(1.0 if self.immortal else 0.0, self.hp - amount)
+        self.hp = max(self.health_floor if self.immortal else 0.0, self.hp - amount)
 
     @property
     def health(self):
@@ -583,7 +584,7 @@ class Body:
     def health(self, pct):
         self.hp = self.max_hp * float(pct) / 100.0
         if self.immortal:
-            self.hp = max(1.0, self.hp)
+            self.hp = max(self.health_floor, self.hp)
 
 
 def same_team(have, asked):
@@ -1093,6 +1094,12 @@ class Sim:
         b.sight = st['vision'] or 0.0
         f = simunits.fight(template, self.own)
         b.immortal, immortal_hp = simunits.immortal_body(template, self.own)
+        if simunits.manager_body(template, self.own):
+            proxy_hp = simunits.manager_proxy_health(template, self.own)
+            if proxy_hp:
+                b.immortal, immortal_hp = True, proxy_hp
+                b.health_floor = proxy_hp * 0.01
+            self.gap('ManagerBody', template, '仅HB_Bridge_02整体代理脚本伤害已量；有效HP/内部下限映射INFERRED，其他配置、桥段生成、共享血量与维修未建模')
         b.suppression_rule = simunits.suppression(template, self.own)
         if template not in self._attachment_rules:
             self._attachment_rules[template] = simunits.attach_modules(template, self.own)

@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|---|---|---|---|
 | 脚本动作 | **92%** | **100%** | 50 / 50 | 451 | 123 | 20 | 191 | 117 | 93% |
 | 脚本条件 | **94%** | **100%** | 12 / 12 | 89 | 30 | 6 | 50 | 3 | 95% |
-| 物体模块 | **94%** | **95%** | 41 / 112 | 188 | 43 | 9 | 111 | 25 | 95% |
+| 物体模块 | **94%** | **95%** | 41 / 112 | 188 | 43 | 10 | 110 | 25 | 95% |
 | 武器效果 | **93%** | **95%** | 17 / 22 | 28 | 18 | 2 | 6 | 2 | 95% |
 | AI | **71%** | **70%** | 93 / 357 | 415 | 99 | 140 | 142 | 34 | 96% |
 
@@ -623,8 +623,8 @@
 | 未做 | `Behaviors/ReplaceSelfSpecialAbility` | 18 (24) | a1 a2 a4 a5 a6 a7 a9 | 已核（11-08）：模拟器没有这个效果（没有换形态）；例：AlliedConstructionYard, AlliedMCV |
 | 不涉及 | `Draws/TracerModelDraw` | 18 (22) | 全部 | 纯表现（Draws）；例：AlliedAntiAirShip, AlliedAntiAirVehicleTech1 |
 | 未做 | `Behaviors/WeaponFireSpecialAbilityUpdate` | 16 (23) | a1 a2 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedSuperWeaponAdvanced, AlliedAntiNavalScout |
-| 未做 | `Body/ManagerBody` | 14 (32) | a1 a4 a7 | 模拟器代码里没有这个名字；例：BaseBridge, BaseCivilianBridge |
-| 未做 | `Behaviors/BridgeBuilder` | 14 (30) | a1 a4 a7 | 模拟器代码里没有这个名字；例：AM_Bridge_01, AM_Bridge_01a |
+| 推断 | `Body/ManagerBody` | 14 (32) | a1 a4 a7 | 部分：engine_managerbody a/b原版HB_Bridge_02，270/700长度整体代理脚本伤害200后均80%、致命量后1%且存活，tests/test_simmanagerbody.py按名重放；有效HP取CenterPiece及内部1%下限映射INFERRED；其他模板/配置、桥段生成/共享血量/损毁/维修未对拍，不登记整模块已对拍；例：BaseBridge, BaseCivilianBridge |
+| 未做 | `Behaviors/BridgeBuilder` | 14 (30) | a1 a4 a7 | ManagerBody仅读CenterPiece血量作有效HP推断；未实现桥段/桥头堡生成、通行、损毁与维修，不因读取配置名登记已有；例：AM_Bridge_01, AM_Bridge_01a |
 | 未做 | `AI/JetAIUpdate` | 13 (17) | 全部 | 模拟器代码里没有这个名字；例：AlliedAntiGroundAircraft, AlliedAttackDrone |
 | 已对拍 | `Behaviors/TransportContain` | 13 (16) | a1 a2 a4 a5 a7 a9 | tests/test_simbench.py::test_transport_a_team_put_in_instantly_skips_the_room_and_the_relation_and_rides_along；例：AlliedAntiAirVehicleTech1, AlliedAntiInfantryVehicle |
 | 未做 | `Behaviors/SpawnBehavior` | 10 (16) | a1 a2 a4 a5 a6 a7 a8 | 已核（11-08）：模拟器没有这个效果（没有母体造随从）；例：AlliedAirfield, AlliedConstructionYardRepairBay |
