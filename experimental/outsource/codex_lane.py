@@ -109,7 +109,7 @@ def warnings(cmds, pushed, handoff_changed, minutes, limit):
     rep = [(c, n) for c, n in collections.Counter(cmds).items() if n >= 3]
     for c, n in rep[:3]:
         w.append(f'同一个命令跑了 {n} 次：' + c[-160:])
-    bench = sum('run_queue.py' in c or 'cnv_check' in c for c in cmds)
+    bench = sum(len(re.findall(r'run_queue\.py\s+\w+:\w+', c)) for c in cmds)  # a real queue run, not a read of the file
     if bench >= 6:
         w.append(f'上台 {bench} 次')
     if not pushed:
