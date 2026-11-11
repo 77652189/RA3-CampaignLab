@@ -384,7 +384,7 @@ def _sum(t, m, s1, counter, label, templates):
                                     [('INCREMENT_COUNTER', 1, counter)], once=False))
 
 
-def _spend(m, give=False):
+def _spend(m, give=None):
     """d / f: money, towers, buildings, army of s1."""
     t = Test()
     s1 = m.player('s1')
@@ -400,7 +400,7 @@ def _spend(m, give=False):
                          [('SET_FLAG', 'Test Woke', 1)])]
     run = 230.0 if give else 200.0
     if give:
-        t.scripts += [Script('Test - give set', [('FLAG', 'Test Woke', 1)], [('SET_MILLISECOND_TIMER', 'Test Give', 160.0)]),
+        t.scripts += [Script('Test - give set', [('FLAG', 'Test Woke', 1)], [('SET_MILLISECOND_TIMER', 'Test Give', give)]),
                       Script('Test - give', [('FLAG', 'Test Woke', 1), ('TIMER_EXPIRED', 'Test Give')],
                              [('PLAYER_GIVE_MONEY', s1, 20000)])]
     t.expect += [('兵数', w + 150.0, 'ever>=', 1, w + run)]
@@ -416,7 +416,23 @@ def d(m):
 
 def f(m):
     """Same as d, plus PLAYER_GIVE_MONEY 20000 to s1 160 s after the wake; to ~230 s after the wake."""
-    return _spend(m, give=True)
+    return _spend(m, give=160.0)
+
+
+def w(m):
+    """Same as f with the gift earlier: PLAYER_GIVE_MONEY 20000 at timer 128 s (~125 s after the wake, f's 160 gave at
+    ~157). B handoff 121 hypothesis 1: a tower ~20 s after the gift (~145 s) = no fixed gate after the opening; still
+    ~176 s = a gate (in f the tower came 20 s after the gift, at the same ~176 s as aiskirm d). Simulator (round 120,
+    before the bench): the tower at 148.1 s.
+
+    RESULTS w (bench 2026-11-10, aiskirmlow, CampAISkLowW; PASS; first money at s9, after-wake = bench s minus 9):
+      the gift: 4292 -> 24063 at s135 (126 s after wake). The tower: 塔数 1 at s156 (147 s after wake, 21 s after the
+      gift), one only to s253 (244 s). 建筑数 8 at s138 (129 s), 9 at s149 (140), 10 at s156 (the tower). Money after:
+      ~20770 at the tower, ~16450 at 191 s, ~9950 at 244 s.
+      Reading: no fixed gate after the opening -- the tower comes ~20 s after the money is there (as f: 20 s after its
+      gift), as the simulator. aiskirm d's late first tower (176 s with the money there from 120) is something else:
+      there the 8th building is at 163 s, here at 129 -- the tower follows the post-opening buildings (round 120)."""
+    return _spend(m, give=128.0)
 
 
 JAV_OUT_AT = 100.0                  # mission second the named Javelin soldier is teleported out (e)
@@ -665,5 +681,5 @@ CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j
           'aiskacd': {'v': v},
           'aiskirmnl': {'g': g, 'h': h},
           'aiskjav': {'e': e},
-          'aiskirmlow': {'d': d, 'f': f},
+          'aiskirmlow': {'d': d, 'f': f, 'w': w},
           'aiskirm20': {'d': d}}

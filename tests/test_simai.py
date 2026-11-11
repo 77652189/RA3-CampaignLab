@@ -799,9 +799,19 @@ def test_after_the_opening_20000_at_the_wake_buys_no_tower(lib):
     assert not _towers(b), _towers(b)
 
 
+def test_after_the_opening_an_early_gift_buys_a_tower_20_s_later(lib):
+    """bench 2026-11-10 engine_aiskirm w on aiskirmlow (PASS): PLAYER_GIVE_MONEY 20000 ~126 s after the wake, one
+    tower at ~147 s (21 s after the gift; f's gift at ~157 gave one at ~177) -- no fixed gate after the opening. The
+    sim: the share affords it at the gift, built in ~20 s -> 148.1 s (B handoff 122)."""
+    (b,) = simai.run('aiskirmlow', 'w', until=245, lib=lib).brains.values()
+    got = _towers(b)
+    assert len(got) == 1 and 142 <= got[0] <= 153, got
+
+
 @pytest.mark.xfail(strict=True, reason='bench d: the first tower at 176 s after the wake (ordered ~156, ~36 s after '
-                   'the opening ends); simai orders it as the opening ends (~120) -> 140 / 160 s; the gate is not '
-                   'known (B handoff 120 hypothesis table)')
+                   'the opening ends); simai orders it as the opening ends (~120) -> 140 / 160 s; no fixed gate (w) '
+                   'and no build-up (aiskirm20); the bench tower follows the post-opening buildings the sim does not '
+                   'build (B handoff 122 hypothesis table)')
 def test_after_the_opening_the_first_tower_comes_at_176_s(skirmish):
     (b,) = skirmish.brains.values()
     got = _towers(b)
