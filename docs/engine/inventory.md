@@ -7,7 +7,7 @@
 | 脚本动作 | **92%** | 451 | 123 | 20 | 191 | 117 | 93% |
 | 脚本条件 | **94%** | 89 | 30 | 5 | 51 | 3 | 94% |
 | 物体模块 | **93%** | 187 | 40 | 10 | 113 | 24 | 94% |
-| 武器效果 | **91%** | 28 | 17 | 2 | 7 | 2 | 93% |
+| 武器效果 | **93%** | 28 | 18 | 2 | 6 | 2 | 95% |
 | AI | **71%** | 415 | 99 | 136 | 146 | 34 | 95% |
 
 ## 脚本动作
@@ -766,7 +766,7 @@
 | 已对拍 | `AttributeModifierNugget` | 20 | tests/test_simbench_c.py::test_weaponfx_predictions_and_finite_bursts；例：NanoHiveSwarmEffectTrigger, JapanCommandoSoftLanding |
 | 已对拍 | `MetaImpactNugget:普通无延迟显式Z` | 13 | tests/test_meta_impact.py::test_meta_impact_collision_event_replays_engine_knock_probe_neighbour_five_frames；仅普通弹头碰撞事件→默认Physics轨迹；engine_knock_probe land/late邻人5帧落(2380,3740)、目标99%/邻人100%。到达帧为台上输入，非完整V4曲线弹回放；直击方向/落点网格/选人仍INFERRED；例：KremlinArtilleryDomeMissleWarhead, AlliedTimeBomb_Level1 |
 | 未做 | `MetaImpactNugget` | 12 | 剩余复杂写法：延迟、筛选、Arc、Invert等；ShockWaveSpeed/Cyclonic本轮原版用量为0也未建模。非默认Physics、坡地及V4曲线弹到达仍gap；例：JapanCommandoTech1PsyonicBlast, JapanMechaKingKatana |
-| 未做 | `MetaImpactNugget:省略Z默认值` | 11 | 普通无延迟但省略ShockWaveZMult；当前解析器要求显式Z，原版默认字段未接入，不能用已有轨迹回放登记；例：JapanCommandoTech1AirplaneCrashWeapon, AlliedBomberAircraftBombWarhead |
+| 已对拍 | `MetaImpactNugget:省略Z默认值` | 11 | tests/test_meta_impact.py::test_meta_impact_omitted_z_replays_engine_knock_z_tall_neighbour；仅普通无延迟弹头省略ShockWaveZMult→SDK默认1及默认Physics轨迹；engine_knock_z a高度93邻人14帧落(2420,3740)、目标99%/邻人100%。碰撞时刻/爆心为台上输入；直击噪声方向/网格/选人仍INFERRED，完整曲线弹/坡地/筛选未对拍；例：JapanCommandoTech1AirplaneCrashWeapon, AlliedBomberAircraftBombWarhead |
 | 已对拍 | `ParalyzeNugget` | 11 | tests/test_simbench_c.py::test_weapon_first_hit_is_observed_one_frame_after_the_order_script；例：JapanAntiVehicleInfantryTech3LockDownGun, AlliedAntiStructureShipEMPCruiseMissleWarhead |
 | 不涉及 | `TintObjectsNugget` | 9 | 纯表现：Color及Pre/Sustained/PostColorTime、Frequency/Amplitude仅控制染色动画；engine_tint pair实测2/90/2/90，独立DamageNugget解释全部伤害，test_simbench_c重放；不声称像素已验证；例：SovietCommandoCallBombingRun, AlliedCommandoAttachWeapon |
 | 未做 | `ActivateLiftObjectNugget` | 6 | engine_lift两轮确认需LiftObjectUpdate且SoftLanding影响清位，但Lifetime/续期释放规则未解释；保留诊断、不登记已对拍；例：JapanCommandoTech1PsyonicCrush, JapanCommandoTech1AirborneKiller |

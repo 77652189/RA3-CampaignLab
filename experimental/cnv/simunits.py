@@ -276,7 +276,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v24.json')    # v24: InformTarget launch estimates; partial effects retain explicit gaps
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v25.json')    # v25: MetaImpact omitted ShockWaveZMult defaults to 1; partial effects retain gaps
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -382,10 +382,10 @@ def _weapons(texts, base_table=None):
                 if not (inner or '').strip() and fields <= {
                         'id', 'ShockWaveAmount', 'ShockWaveRadius', 'ShockWaveZMult', 'ShockWaveTaperOff'} and all(
                         _attr(h, field) is not None for field in
-                        ('ShockWaveAmount', 'ShockWaveRadius', 'ShockWaveZMult')):
+                        ('ShockWaveAmount', 'ShockWaveRadius')):
                     impacts.append(dict(amount=_num(_attr(h, 'ShockWaveAmount')),
                                         radius=_num(_attr(h, 'ShockWaveRadius')),
-                                        zmult=_num(_attr(h, 'ShockWaveZMult')),
+                                        zmult=_num(_attr(h, 'ShockWaveZMult', '1')),
                                         taper=_num(_attr(h, 'ShockWaveTaperOff', '0'))))
             if impacts:
                 got['meta_impacts'] = impacts

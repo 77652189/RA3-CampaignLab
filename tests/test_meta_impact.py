@@ -204,3 +204,56 @@ def test_meta_impact_dispatch_retains_nondefault_physics_and_outside_radius_gaps
     e.meta_impact_detonate(weapon, (2300, 3750, 219))
     assert not e.impact_flights
     assert (sim.GAP_WEAPON, 'MetaImpactNugget') in e.unmodeled
+
+
+def test_meta_impact_omitted_z_replays_engine_knock_z_tall_neighbour():
+    """engine_knock_z a: omitted Z=1, height93 makes vertical scaling observable.
+
+    Collision event supplied separately from V4 arrival/noisy direct-hit vector.
+    Expected health99/100, fourteen neighbour flight frames, landing2420/3740.
+    Observed CampKZA_mcp_1111_004210: shock173, positions174..187,
+    apex222.85. The fourteen positions below match that run's ra3ext.log.
+    Delays/filters/nondefault Physics still retain the whole-nugget gap.
+    """
+    import build
+    import sim
+    import simunits
+    from checks.engine_knock_probe import name
+
+    m, t, _ = build.resolve('engine_knock_z', 'a')
+    gun = next(u for u in m.units if u.id == 'CNV_KnockRocket')
+    assert 'ShockWaveZMult' not in gun.xml
+    e = sim.Sim(m, t)
+    by, victim, near = (e.bodies[name('rocket', part)] for part in ('gun', 'man', 'near'))
+    weapon, = by.weapons
+    effect, = weapon['meta_impacts']
+    assert effect['zmult'] == 1
+    assert simunits.meta_impact_body(near.template, e.own) == 93
+    v = simunits.meta_impact_velocity(effect, (2360, 3750, 212.5),
+                                     (2300, 3750, 219), 93, detonation=True)
+    assert v == pytest.approx((3.7451, 0, 2.4967), abs=.0001)
+    expected = [(2364.2, 3749.3, 215.24), (2368.5, 3748.6, 217.57),
+                (2372.7, 3747.9, 219.47), (2377.0, 3747.2, 220.95),
+                (2381.2, 3746.5, 222.00), (2385.5, 3745.7, 222.63),
+                (2389.8, 3745.0, 222.85), (2394.1, 3744.3, 222.63),
+                (2398.3, 3743.6, 222.00), (2402.6, 3742.9, 220.95),
+                (2407.0, 3742.2, 219.47), (2411.3, 3741.5, 217.57),
+                (2415.6, 3740.7, 215.24), (2420, 3740, 212.50)]
+    e.firing, e.volleys = [], []
+    e.eng.frame = 173
+    e.queue_projectile_hit(e.frame_now(), victim, weapon['dmg'], by, weapon, (2300, 3750, 219))
+    e.deal(1/15)
+    assert victim.hp == pytest.approx(148.5)
+    assert near.hp == 150
+    for k, xyz in enumerate(expected, 1):
+        e.eng.frame += 1
+        e.move(1/15)
+        e.deal(1/15)
+        got = (near.x, near.y, e.impact_ground_z(near.x, near.y) if near.z is None else near.z)
+        assert got == pytest.approx(xyz, abs=.051), (k, got)
+        assert (id(near) in e.impact_flights) == (k < 14)
+    assert near.hp == 150
+    # Rebuilding the retail cache must also populate an omitted-Z warhead.
+    retail = simunits.weapon_table()['AlliedBomberAircraftBombWarhead']
+    assert retail['meta_impacts'][0]['zmult'] == 1
+    assert 'MetaImpactNugget' in retail['unmodeled_effects']
