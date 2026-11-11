@@ -4107,6 +4107,8 @@ class Sim:
                                 math.hypot(t.x - by.x, t.y - by.y) > power['reach']):
                             self.gap(GAP_WEAPON, 'SpecialPowerNugget', '仅直接单发、零冷却自身修正已对拍；其他技能处理器/弹体/范围待核')
                             continue
+                        if power.get('noop'):
+                            continue
                         xml = self.xml_of(by.template)
                         modifier = simunits.modifier(xml, power['modifier'])
                         if (modifier and modifier['frames'] is not None and not modifier['status']
@@ -4115,7 +4117,19 @@ class Sim:
                             self.modify(by)
                         else:
                             self.gap(GAP_WEAPON, 'SpecialPowerNugget', '仅有Duration的自身ARMOR修正已对拍')
-                    for mid in w.get('hit_modifiers', []):
+                    for hit_modifier in w.get('hit_modifiers', []):
+                        mid = hit_modifier
+                        if isinstance(hit_modifier, dict):
+                            required = hit_modifier['required_upgrade']
+                            forbidden = hit_modifier['forbidden_upgrade']
+                            gate_type = simunits.upgrade_type(required or forbidden, self.own)
+                            if gate_type != 'PLAYER':
+                                self.gap(GAP_WEAPON, 'AttributeModifierNugget', '仅PLAYER升级门槛已对拍')
+                                continue
+                            held = {up.lower() for up in self.player_ups.get(by.owner, ())}
+                            if (required and required.lower() not in held) or (forbidden and forbidden.lower() in held):
+                                continue
+                            mid = hit_modifier['modifier']
                         xml = self.xml_of(by.template)
                         modifier = simunits.modifier(xml, mid)
                         if modifier and modifier['frames'] is not None:

@@ -276,7 +276,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v27.json')    # v27: retain SpecialPowerNugget single upgrade gates; PLAYER gates remain unmodeled
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v28.json')    # v28: retail painter AttributeModifierNugget single upgrade gates
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -405,12 +405,18 @@ def _weapons(texts, base_table=None):
                 # history and radius/filter variants remain gaps.
                 unsupported.append('InformTargetNugget')
             for h, inner in _blocks(bare, 'AttributeModifierNugget'):
-                if (inner or '').strip() or any(_attr(h, field) is not None for field in
+                required = re.findall(r'<RequiredUpgrade>\s*([^<>\s]+)\s*</RequiredUpgrade>', inner)
+                forbidden = re.findall(r'<ForbiddenUpgrade>\s*([^<>\s]+)\s*</ForbiddenUpgrade>', inner)
+                rest = re.sub(r'<(RequiredUpgrade|ForbiddenUpgrade)>\s*[^<>\s]+\s*</\1>', '', inner).strip()
+                if rest or len(required) + len(forbidden) > 1 or any(_attr(h, field) is not None for field in
                         ('AttributeModifierOwnerName', 'ForbiddenTargetObjectStatus', 'RequiredTargetObjectStatus',
                          'AntiCategories', 'DamageArc')) or _num(_attr(h, 'Radius', '0'), float('nan')) != 0:
                     unsupported.append('AttributeModifierNugget')
                 elif _attr(h, 'AttributeModifierName'):
-                    mods.append(_attr(h, 'AttributeModifierName'))
+                    mid = _attr(h, 'AttributeModifierName')
+                    mods.append(dict(modifier=mid, required_upgrade=required[0] if required else '',
+                                     forbidden_upgrade=forbidden[0] if forbidden else '')
+                                if required or forbidden else mid)
             if mods:
                 got['hit_modifiers'] = mods
             lines = list(_blocks(bare, 'LineDamageNugget'))
@@ -1501,11 +1507,17 @@ def attach_modules(template, own=None):
 
 
 def nugget_self_power(template, power, own=None):
-    """engine_spn a: direct zero-reload SpecialPower with a timed self modifier.
+    """engine_spn/spnret: direct zero-reload self modifier or passive retail module.
 
     None: no matching module (native no-op). False: present but its handler
     is outside this probe. OCL/disguise/beam handlers must not become buffs.
     """
+    def companion(xml):
+        xml = re.sub(r'<!--.*?-->', '', xml or '', flags=re.S)
+        return True if any(other != 'SpecialPower' and _attr(attrs, 'SpecialPowerTemplate') == power
+                           for _, behaviors in _blocks(xml, 'Behaviors')
+                           for other, attrs in re.findall(r'<(\w+)\b([^<>]*)>', behaviors)) else None
+
     def read(xml):
         xml = re.sub(r'<!--.*?-->', '', xml or '', flags=re.S)
         for tag in ('SpecialPower', 'ActivateModuleSpecialPower', 'OCLSpecialPower'):
@@ -1513,6 +1525,15 @@ def nugget_self_power(template, power, own=None):
                 if _attr(h, 'SpecialPowerTemplate') != power:
                     continue
                 rules = power_rules(template, power, own)
+                # engine_spnret: the retail painter's active module has no effect
+                # consumer; its BeamSpecialAbilityUpdate is commented out. Never
+                # infer a no-op when an active companion handler names this power.
+                if (tag == 'SpecialPower' and not inner.strip() and rules and not rules['reload']
+                        and not rules['flags'] and _attr(h, 'UpdateModuleStartsAttack') == 'false'
+                        and not (set(re.findall(r'(\w+)\s*=', h)) -
+                                 {'id', 'SpecialPowerTemplate', 'UpdateModuleStartsAttack'})
+                        and not _chain(template, own, companion)):
+                    return dict(noop=True, reach=rules['reach'])
                 if (tag != 'SpecialPower' or inner.strip() or not rules or rules['reload'] or rules['flags']
                         or set(re.findall(r'(\w+)\s*=', h)) - {'id', 'SpecialPowerTemplate', 'AttributeModifier', 'AttributeModifierAffectsSelf'}
                         or _attr(h, 'AttributeModifierAffectsSelf', 'false') != 'true'

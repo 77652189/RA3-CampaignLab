@@ -97,3 +97,55 @@ def test_special_power_nugget_upgrade_gates_survive_retail_cache():
     weapon = simunits._fight_data()['weapons']['AlliedAntiVehicleVehicleTech1TargetPainter']
     assert [(p['required_upgrade'], p['forbidden_upgrade']) for p in weapon['special_powers']] == [
         ('', 'Upgrade_AlliedHighTechnology'), ('Upgrade_AlliedHighTechnology', '')]
+
+
+def test_special_power_nugget_retail_painter_consumer():
+    """engine_spnret a: retail modifier gates, SPN kept/removed, early/late HP."""
+    import build
+    import sim
+    from checks.engine_spnret import VALUES
+    m, t, _ = build.resolve('engine_spnret', 'a')
+    e = sim.Sim(m, t)
+    e.shot_clock = True
+    result = e.run(16)
+    assert tuple(result.series[-1][1]) == VALUES
+    assert all(tuple(row) == VALUES for sec, row in result.series if sec >= 14)
+    assert (sim.GAP_WEAPON, 'SpecialPowerNugget') not in e.unmodeled
+    assert (sim.GAP_WEAPON, 'AttributeModifierNugget') not in e.unmodeled
+    import simunits
+    weapon = simunits._fight_data()['weapons']['AlliedAntiVehicleVehicleTech1TargetPainter']
+    assert [(p['required_upgrade'], p['forbidden_upgrade']) for p in weapon['hit_modifiers']] == [
+        ('', 'Upgrade_AlliedHighTechnology'), ('Upgrade_AlliedHighTechnology', '')]
+
+
+def test_special_power_nugget_retail_active_consumer_is_not_silently_ignored():
+    """A real active companion must remain a gap, unlike the commented retail beam."""
+    import build
+    import simunits
+    m, _, _ = build.resolve('engine_spnret', 'a')
+    caster = m.units[0]
+    power = 'SpecialPower_PaintTargetTrigger'
+    own = {caster.id: caster.xml}
+    assert simunits.nugget_self_power(caster.id, power, own)['noop']
+    own[caster.id] = caster.xml.replace('<Behaviors>', '<Behaviors>' +
+        f'<BeamSpecialAbilityUpdate id="ActiveConsumer" SpecialPowerTemplate="{power}"/>', 1)
+    assert simunits.nugget_self_power(caster.id, power, own) is False
+    own[caster.id] = caster.xml
+    own['BaseVehicle'] = ('<GameObject id="BaseVehicle"><Behaviors>' +
+        f'<BeamSpecialAbilityUpdate id="InheritedConsumer" SpecialPowerTemplate="{power}"/>' +
+        '</Behaviors></GameObject>')
+    assert simunits.nugget_self_power(caster.id, power, own) is False
+
+
+@pytest.mark.parametrize('inner', [
+    '<RequiredUpgrade>A</RequiredUpgrade><ForbiddenUpgrade>B</ForbiddenUpgrade>',
+    '<RequiredUpgrade id="unexpected">A</RequiredUpgrade>',
+    '<SpecialObjectFilter Rule="ANY" Include="VEHICLE"/>',
+])
+def test_retail_attribute_gates_reject_unmeasured_forms(inner):
+    import simunits
+    xml = ('<WeaponTemplate id="GateTest"><Nuggets><AttributeModifierNugget '
+           'AttributeModifierName="Paint">' + inner + '</AttributeModifierNugget></Nuggets></WeaponTemplate>')
+    weapon = simunits._weapons([xml])['GateTest']
+    assert not weapon.get('hit_modifiers')
+    assert 'AttributeModifierNugget' in weapon['unmodeled_effects']
