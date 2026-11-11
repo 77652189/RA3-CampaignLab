@@ -3680,7 +3680,9 @@ class Sim:
                         armor = 1.0 if w['type'] == 'UNRESISTABLE' else simunits.percent(victim.armor, w['type']) / 100.0 * victim.taken
                         h[1] += n * w['dmg'] * by.dealt * armor
                         if w.get('leech_percent'):
-                            leech_events.setdefault(id(victim), []).append((by, w['leech_percent']))
+                            leech_events.setdefault(id(victim), []).append((by, 'maximum', w['leech_percent'], 0.0))
+                        if w.get('leech_health'):
+                            leech_events.setdefault(id(victim), []).append((by, 'damage', w['leech_health'], n * w['dmg'] * by.dealt * armor))
                         for fraction, damage_type in w.get('strip_max_health', []):
                             scalar = 1.0 if damage_type == 'UNRESISTABLE' else simunits.percent(victim.armor, damage_type) / 100 * victim.taken
                             h[1] += n * victim.max_hp * fraction * by.dealt * scalar
@@ -3696,16 +3698,24 @@ class Sim:
         for t, dmg, by in hurt.values():
             if self.frame_now() < t.immune_until or t.shielded or t.indestructible:
                 continue
+            before_hp = t.hp
             t.damage(dmg)
             events = leech_events.get(id(t), [])
             if events:
-                if t.hp <= 0 and len(events) == 1:
-                    healer, fraction = events[0]
+                if len(events) == 1:
+                    healer, basis, fraction, raw = events[0]
+                    amount = 0.0
+                    if basis == 'maximum' and t.hp <= 0:
+                        amount = t.max_hp * fraction
+                    elif basis == 'damage' and t.hp > 0:
+                        amount = min(raw, max(0.0, before_hp - t.hp)) * fraction
+                    else:
+                        tag = 'LeechPercentMaxHealthDamageNugget' if basis == 'maximum' else 'LeechHealthDamageNugget'
+                        self.gap(GAP_WEAPON, tag, '最大血量吸取仅致死、实伤吸取仅非致死场景已验证')
                     if healer.alive:
-                        healer.hp = min(healer.max_hp, healer.hp + t.max_hp * fraction)
+                        healer.hp = min(healer.max_hp, healer.hp + amount)
                 else:
-                    self.gap(GAP_WEAPON, 'LeechPercentMaxHealthDamageNugget',
-                             '仅单施法者致死吸取已验证；非致死/并发吸取尚未建模')
+                    self.gap(GAP_WEAPON, 'leech', '并发吸取的伤害归属与回补尚未建模')
             t.last_hit, t.last_by = by.owner, by.name
             if t.hp <= 0 and t.alive:
                 if self.first_death is None:

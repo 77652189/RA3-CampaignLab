@@ -7,7 +7,7 @@
 | 脚本动作 | **88%** | 451 | 106 | 34 | 194 | 117 | 91% |
 | 脚本条件 | **94%** | 89 | 27 | 5 | 54 | 3 | 94% |
 | 物体模块 | **81%** | 184 | 33 | 7 | 125 | 19 | 82% |
-| 武器效果 | **64%** | 25 | 10 | 1 | 12 | 2 | 75% |
+| 武器效果 | **64%** | 25 | 11 | 1 | 11 | 2 | 76% |
 | AI | **69%** | 415 | 95 | 133 | 153 | 34 | 87% |
 
 ## 脚本动作
@@ -229,7 +229,7 @@
 | 未做 | `REDALERT_DISABLE_THREAT_LEVEL_BONUS` | 20 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `UNIT_EXECUTE_SEQUENTIAL_SCRIPT_COPY` | 20 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `CAMERA_FOLLOW_NAMED` | 19 | 纯表现（名字规则）；Sim.act / Sim.cond 有分支 |
-| 已对拍 | `COUNTER_MATH_COUNTER` | 19 | 引擎模型核心；台上量过、测试对拍：checks/engine_scripts3.py |
+| 已对拍 | `COUNTER_MATH_COUNTER` | 19 | 引擎模型核心；台上量过、测试对拍：checks/engine_leechhealth.py |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_SmokeBombSpecialPower` | 19 | 只记进时间线，没有效果 |
 | 未做 | `PLAYER_DISABLE_BASE_CONSTRUCTION` | 16 | Sim.act / Sim.cond 不认识 |
 | 未做 | `PLAYER_ENABLE_UNIT_CONSTRUCTION` | 16 | Sim.act / Sim.cond 不认识 |
@@ -287,7 +287,7 @@
 | 已对拍 | `TEAM_GUARD_AREA` | 9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts4.py |
 | 已对拍 | `TEAM_IDLE_FOR_FRAMECOUNT` | 9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts8.py |
 | 未做 | `TEAM_MOVE_TO_NEAREST_OBJECT_OF_TYPE_OWNED_BY_PLAYER` | 9 | Sim.act / Sim.cond 不认识 |
-| 已对拍 | `COUNTER_MATH_VALUE` | 8 | 引擎模型核心；台上量过、测试对拍：checks/engine_strip.py |
+| 已对拍 | `COUNTER_MATH_VALUE` | 8 | 引擎模型核心；台上量过、测试对拍：checks/engine_leechhealth.py |
 | 未做 | `EXIT_SPECIFIC_BUILDING` | 8 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `FLASH_UI_PLAYER_POWER_BUTTON` | 8 | 纯表现（名字规则） |
 | 已对拍 | `MAP_REVEAL_AT_WAYPOINT` | 8 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_vision.py |
@@ -777,7 +777,7 @@
 | 未做 | `ActivateCircularDamageNugget` | 1 | 模拟器代码里没有这个名字；例：SovietAntiNavyShipTech1TeslaNova |
 | 未做 | `DOTNugget` | 1 | 模拟器代码里没有这个名字；例：PlayerPowerIrradiateTargetWeapon |
 | 未做 | `GrapplingHookNugget` | 1 | 模拟器代码里没有这个名字；例：SovietAntiVehicleVehicleTech3Harpoon |
-| 未做 | `LeechHealthDamageNugget` | 1 | 模拟器代码里没有这个名字；例：SovietAntiVehicleVehicleTech1LeechBeamWeapon |
+| 已对拍 | `LeechHealthDamageNugget` | 1 | tests/test_simbench_c.py::test_leech_health_heals_from_damage_and_respects_the_heal_fraction；例：SovietAntiVehicleVehicleTech1LeechBeamWeapon |
 
 ## AI
 

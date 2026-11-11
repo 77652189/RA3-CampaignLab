@@ -537,3 +537,11 @@ def test_leech_percent_uses_victim_maximum_not_current_health_or_caster_maximum(
     m,t,_=build.resolve('engine_leechpct','a')
     e=sim.Sim(m,t);e.shot_clock=True
     assert tuple(e.run(16).series[-1][1])==(1000025,1000025,1000030,1000020)
+
+
+def test_leech_health_heals_from_damage_and_respects_the_heal_fraction():
+    import build
+    import sim
+    m,t,_=build.resolve('engine_leechhealth','a')
+    e=sim.Sim(m,t);e.shot_clock=True
+    assert tuple(e.run(16).series[-1][1])==(1001095045,1001090050,1001090045,1001090040)
