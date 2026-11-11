@@ -32,15 +32,52 @@ Paths through topple props move frame by frame, using the NORMAL LocomotorSet an
 CampaignOverrides speed is 60, not its base 75. Simulated undestroyed counts: a 163 / 119 / 164, b 120 / still alive /
 171 (each destruction 1 frame later than the bench); arrivals: a 91 / 91 / 91, b 91 / 110 / 111 (within 1 frame).
 All dying counts are zero. This comparison covers these props and crossings, not general dynamics or debris physics.
+
+  c  EnableDynamicsCollide (no fields; 137 retail campaign uses, nearly all through BaseSimulatedProp): three Hammers,
+     lane 1 -> OK_Lantern01, lane 2 -> CNVLanternNoDyn (the lantern flattened -- BaseSimulatedProp's parts written in,
+     no inheritFrom -- WITHOUT the module), lane 3 -> CNVLanternCopy (the same copy WITH it: the control for the copy).
+     PREDICTED: the three alike (the module only lets the draw's debris collide). Bench 2026-11-10 (engine_topple_c,
+     PASS): the three rows identical every second -- each Hammer at its goal at frame 91, each lantern gone at 162,
+     never dying. Simulated: tests/test_simbench_c.py::test_enable_dynamics_collide_a_lantern_without_it_is_crushed_and_gone_at_the_same_frames.
 """
+import os
+
+import labpaths
 from maps import festival
-from parts import Mission, Script, Test, square
+from parts import Mission, Script, Test, Unit, square
 
 HAMMER, APOC, CONSCRIPT = 'SovietAntiVehicleVehicleTech1', 'SovietAntiVehicleVehicleTech3', 'SovietAntiInfantryInfantry'
 LANTERN, LAMP, FENCE, TREE = 'OK_Lantern01', 'CS_StreetLight', 'SA_Fence09', 'CS_Tree01'
 LANES = {'a': {1: (HAMMER, LANTERN, -300.0), 2: (HAMMER, LAMP, 0.0), 3: (HAMMER, FENCE, 300.0)},
-         'b': {1: (HAMMER, TREE, -300.0), 2: (CONSCRIPT, LANTERN, 0.0), 3: (APOC, LANTERN, 300.0)}}
+         'b': {1: (HAMMER, TREE, -300.0), 2: (CONSCRIPT, LANTERN, 0.0), 3: (APOC, LANTERN, 300.0)},
+         'c': {1: (HAMMER, LANTERN, -300.0), 2: (HAMMER, 'CNVLanternNoDyn', 0.0), 3: (HAMMER, 'CNVLanternCopy', 300.0)}}
 RUN, HOLD_FIRE = 45.0, 3
+
+
+def _sub1(x, old, new):
+    assert x.count(old) == 1, (old[:60], x.count(old))
+    return x.replace(old, new, 1)
+
+
+def lantern_copy(dyn):
+    """OK_Lantern01 flattened: BaseSimulatedProp's parts written into the copy (no inheritFrom), with or without its
+    EnableDynamicsCollide -- a child cannot take an inherited module out, so both copies stand alone."""
+    name = 'CNVLanternCopy' if dyn else 'CNVLanternNoDyn'
+    x = open(os.path.join(labpaths.SDK3, 'SageXML', 'Civilian', 'Osaka_OK', 'Props', 'OK_Lantern01.xml'),
+             encoding='utf-8').read()
+    x = _sub1(x, 'id="OK_Lantern01"', f'id="{name}"')
+    x = _sub1(x, 'EditorName="OK_Lantern01"', f'EditorName="{name}"')
+    x = _sub1(x, 'inheritFrom="BaseSimulatedProp"', 'IsTrainable="false"')
+    x = _sub1(x, 'source="DATA:BaseObjects/BaseSimulatedProp.xml"', 'source="DATA:GlobalData/GlobalDefines.xml"')
+    x = _sub1(x, '<Draws>', '<DisplayName>Prop</DisplayName>\n    <ArmorSet Armor="NoArmor" />\n    <Draws>')
+    base = ('\n\t\t\t<SlowDeath id="ModuleTag_SlowDeath" SinkDelay="0.0s" SinkRate="3.0" DestructionDelay="8s">'
+            '\n\t\t\t\t<DieMuxData DeathTypes="TOPPLED" />\n\t\t\t</SlowDeath>')
+    if dyn:
+        base = '\n\t\t\t<EnableDynamicsCollide id="ModuleTag_EnableDynamics"/>' + base
+    x = _sub1(x, '<Behaviors>', '<Behaviors>' + base)
+    x = _sub1(x, '<Geometry', '<Body>\n      <PropBody id="DefaultBody"/>\n    </Body>\n    <Geometry')
+    x = _sub1(x, '</Geometry>', '</Geometry>\n    <CrusherInfo id="id_CrusherInfo" CrushableLevel="0" />')
+    return Unit(name, x, what='灯笼的扁平复制（' + ('保留' if dyn else '去掉') + ' EnableDynamicsCollide）')
 
 
 def _n(part):
@@ -48,7 +85,8 @@ def _n(part):
 
 
 def mission(which='a'):
-    m = Mission(name=f'CampTopple{which.upper()}', map=festival, units=[], facts={})
+    units = [lantern_copy(False), lantern_copy(True)] if which == 'c' else []
+    m = Mission(name=f'CampTopple{which.upper()}', map=festival, units=units, facts={})
     for k, (crusher, prop, dy) in LANES[which].items():
         m.put(crusher, 'west field', -200.0, dy, angle=0.0, role=f'crusher {k}', name=_n(f'Crusher {k}'))
         m.put(prop, 'west field', 0.0, dy, side='civ', role=f'prop {k}', name=_n(f'Prop {k}'))
@@ -82,5 +120,6 @@ def topple_test(m, which='a'):
     return t
 
 
-MISSION = {'engine_topple': mission, 'engine_topple_b': lambda: mission('b')}
-CHECKS = {'engine_topple': {'a': topple_test}, 'engine_topple_b': {'b': lambda m: topple_test(m, 'b')}}
+MISSION = {'engine_topple': mission, 'engine_topple_b': lambda: mission('b'), 'engine_topple_c': lambda: mission('c')}
+CHECKS = {'engine_topple': {'a': topple_test}, 'engine_topple_b': {'b': lambda m: topple_test(m, 'b')},
+          'engine_topple_c': {'c': lambda m: topple_test(m, 'c')}}

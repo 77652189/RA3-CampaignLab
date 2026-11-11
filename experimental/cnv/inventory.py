@@ -130,6 +130,9 @@ BENCHED_TESTS = {
     # topple a / b, bench 11-09: neutral props, delayed removal without DYING; all five readings within one frame
     (MODULE, 'Behaviors/ToppleUpdate'):
         'tests/test_simbench_c.py::test_topple_the_five_props_disappear_at_the_bench_frames_without_ever_dying',
+    # topple c, bench 11-10: lantern copies with / without EnableDynamicsCollide crushed and gone at the same frames
+    (MODULE, 'Behaviors/EnableDynamicsCollide'):
+        'tests/test_simbench_c.py::test_enable_dynamics_collide_a_lantern_without_it_is_crushed_and_gone_at_the_same_frames',
     # engine_garrison in / hp, bench 11-05 (simgarrison): script entry skips room and relation, owner follows the
     # first passenger, out at 13 % in the damage's frame, the contester bounces one, kill / hit eject them alive
     (MODULE, 'Behaviors/ContestableGarrisonContain'):

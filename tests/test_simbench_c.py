@@ -112,6 +112,20 @@ def test_topple_the_five_props_disappear_at_the_bench_frames_without_ever_dying(
             assert abs((frames - at_goal + 1) - arrived) <= 2, (check, row, arrived)
 
 
+def test_enable_dynamics_collide_a_lantern_without_it_is_crushed_and_gone_at_the_same_frames():
+    """engine_topple c, bench 11-10: the retail lantern, its flattened copy without EnableDynamicsCollide and the copy
+    with it -- every Hammer at its goal at frame 91, every lantern gone at 162, never dying. The module (no fields)
+    changes nothing a script reads; the simulator has no such module and gives the same frames."""
+    s = _sim_run('engine_topple_c', 'c', 50.0)
+    frames, *rows = s.series[-1][1]
+    assert len(rows) == 3 and frames >= 700, (frames, rows)
+    for row in rows:
+        undestroyed, dying, at_goal = row % 1000, row // 1000 % 1000, row // 1000000
+        assert dying == 0 and abs(undestroyed - 162) <= 2, row
+        assert abs((frames - at_goal + 1) - 91) <= 2, row
+    assert len({row % 1000 for row in rows}) == 1, rows      # the three lanes alike, as on the bench
+
+
 def test_topple_the_legacy_loop_still_drives_through_and_removes_the_props():
     import build
     import sim
