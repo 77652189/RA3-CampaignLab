@@ -138,6 +138,13 @@ NOTES = {
                                                'engine_aicrush 原场景 strict xfail 保留（handoff A 161）'),
     '微操/AIMicroManagerData.UpdateTime': (GUESSED, '台上量过（engine_aidefense aidefctl4：每圈晚 1～2 s）；模拟器 4 s 与 '
                                           '1 s 逐秒相同（tests/test_simai_bench_b.py strict xfail）'),
+    '微操/SpecificSpecialPowerDelay.MaximumDelay': (GUESSED,
+        '模型按成功施放后同类冷却消费上限；tests/test_simai_delay.py 验证上端点和真实冲锋执行接线；'
+        'engine_aidelay 0/999配对卡在构建前tasklist，尚无台上读数；'
+        '旧aimicmed全0不能验证延迟，随机分布及原版TOGGLE两种子类未对拍；见handoff-c'),
+    **{f'微操/SpecificSpecialPowerDelay.{field}': (GUESSED,
+        '模型已读取；engine_aidelay仅预测配方、未取得台上读数，不因探针出现字段名登记已对拍')
+       for field in ('MinimumDelay', 'PowerType')},
     '微操/AIMicroManagerData.EnterBaseDefensesWhenIdle': (GUESSED,
         'engine_aibasedef aibd1 是战斗中总开关开、idle关的正例（s21起1人进炮塔）；'
         'aibd0/aibdidle 总开关均关且无人进驻，不是idle分支正例；'

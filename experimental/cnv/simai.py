@@ -45,7 +45,7 @@ HOOKS (what this file would rather have from sim.py; for A through the coordinat
   3. Sim.produce_due starts a factory's next job the frame after the last is full; the AI bench (aiopen) shows the
      next starting when the last has left the door -- which holds for a human's queue is not measured;
   4. a factory's UnpackTime in Sim (no unit before it has unpacked);
-  5. unit abilities and superweapon charge for an AI player (micro / PlayerPowers only record what they would fire);
+  5. AI unit powers: toggles and the bounded Bonzai bridge execute; other unit powers / player powers record intent;
   6. simunits' table misses the second GameObject of a file (AlliedAntiInfantryVehicle_Ground, the Riptide the war
      factory makes: speed 0, no KindOf, no weapons); fill() patches the AI's own such units from the model's library.
   8. garrisons: the simulator's (sim.Sim.garrison, simgarrison.Garrisons) -- the AI's 'enter' orders walk its men
@@ -69,6 +69,7 @@ import labpaths  # noqa: E402
 import sim  # noqa: E402
 import simproxy  # noqa: E402
 import simunits  # noqa: E402
+import simmicro  # noqa: E402
 
 FPS = 15
 PLACE_DELAY = 1                     # bench aiopen f1-f3 (opening.PLACE_DELAY): owned 1 frame after the head is full
@@ -532,7 +533,8 @@ class Brain:
                     cache[b.template] = mc.parse_toggle(ET.fromstring('<update>' + inner + '</update>'))
                 toggles = cache[b.template]
             units.append(mc.Unit(b.name, (b.x, b.y), b.hp, b.max_hp,
-                                 [powers[c] for c in self.host.command_set(b.template) if c in powers],
+                                 [powers[c] for c in self.host.command_set(b.template)
+                                  if c in powers and simmicro.ready(self.sim, b, c)],
                                  target=None if t is None else sp.Thing((t.x, t.y), t.kinds, 0, name=t.name),
                                  weapon_range=reach, cost=self.host.cost(b.template),
                                  damage=lambda behind, ahead, b=b: self.sim.expected_damage(b, behind, ahead, now=frame),
@@ -542,11 +544,13 @@ class Brain:
         return mc.Team(units, enemies=enemies)
 
     def fire_unit(self, ai, key, u, info):
-        """Execute the miner armor toggle; other unit powers are recorded (HOOKS 5)."""
+        """Execute toggles and C's bounded self-power bridge; otherwise record intent."""
         self.fired.append((self.frame, key, u.name, info.command))
         b = self.sim.body(u.name)
         if b and b.owner == self.player and self.sim.toggle_miner_armor(b, info.command):
             self.sim.note('AI', f'{u.name} 执行 {info.command}')
+            return
+        if b and b.owner == self.player and simmicro.fire(self.sim, b, info.command):
             return
         self.sim.note('AI', f'{self.sim.who(self.player)} 微操想用 {info.command}（{u.name}；模拟器未接技能）')
 
