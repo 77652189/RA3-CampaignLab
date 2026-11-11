@@ -52,7 +52,18 @@ RESULTS c (bench 2026-11-07; PASS; after-wake seconds = bench s minus 8.1; templ
 
   d  AI钱 / 塔数 / 建筑数 / 兵数   (AI钱 = s1's money each frame; 塔数 = AlliedBaseDefense + AlliedBaseDefenseAdvanced;
      建筑数 = yard + power + barracks + refinery + war factory + towers; 兵数 = Peacekeeper + Javelin + Riptide + dog.
-     Mission aiskirm (50000) and aiskirmlow (15000, CampAISkLow). f = d + PLAYER_GIVE_MONEY 20000 to s1, aiskirmlow only.)
+     Mission aiskirm (50000) and aiskirmlow (15000, CampAISkLow). f = d + PLAYER_GIVE_MONEY 20000 to s1, aiskirmlow only.
+     aiskirm20 (20000, CampAISk20): B handoff 120 hypothesis 3 -- does the DEFENSE share build up from the budget
+     switch (a tower some time after the opening although 5 % x the money stays under 800), or is it 5 % x the money
+     now (no tower: the opening leaves ~11000)? Simulator (round 119, before the bench): no tower.
+RESULTS d aiskirm20 (bench 2026-11-10, CampAISk20D; PASS; first money at s8, so after-wake = bench s minus 8):
+  NO tower in the whole run (塔数 0 to s229 = ~221 s after wake). AI钱 at 0/60/100/120/140/160/180/200 s after wake:
+    19993, 13089, 10949, ~10314, 6936, 5098, 3118, 770; under 100 at s214, 2 at s215-217, then income only (~945 at
+    s229). 建筑数 2 at 10 s, 3 at 21, 4 at 41, 5 at 61, 6 at 70, 7 at 91,
+    8 at 130, 9 at 140 (not towers). 兵数 8 from 52 s to 104, 10 at 114, 12 at 126, 15 at 148, 18 at 164, 24 at 189,
+    26 at 203.
+  Reading: 5 % x the money is under 800 from the opening's end on and no tower comes in ~90 s after it -- the share
+    does not build up from the budget switch fast enough to matter; the simulator (5 % x the money now) agrees.)
 RESULTS d (bench 2026-11-07; PASS; after-wake seconds = bench s minus the first-money second: s8 for aiskirm, s9 for
   aiskirmlow; the run ends ~245 s after wake, longer than the 200 s asked):
   aiskirm d, AI钱 at 0/60/100/110/120/130/140/160/180/200 s after wake: 49996, 43050, 41063, 40810, 40790, 40389,
@@ -654,4 +665,5 @@ CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j
           'aiskacd': {'v': v},
           'aiskirmnl': {'g': g, 'h': h},
           'aiskjav': {'e': e},
-          'aiskirmlow': {'d': d, 'f': f}}
+          'aiskirmlow': {'d': d, 'f': f},
+          'aiskirm20': {'d': d}}

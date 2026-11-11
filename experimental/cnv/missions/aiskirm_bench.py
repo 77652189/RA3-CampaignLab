@@ -184,6 +184,7 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
 
 # the builds this module makes (cnv/registry.py): build name -> mission factory
 MISSION = {'aiskirm': mission, 'aiskirmlow': lambda: mission('CampAISkLow', money=15000),
+           'aiskirm20': lambda: mission('CampAISk20', money=20000),    # check d: the first tower's time vs 50000
            'aiskjav': lambda: mission('CampAISkJav', jav=True),
            'aiskirmnl': lambda: mission('CampAISkNoLib', lib=False),
            'aiskexp': lambda: mission('CampAISkExp', expire=12.0),

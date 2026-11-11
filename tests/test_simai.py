@@ -790,6 +790,15 @@ def test_after_the_opening_the_defense_share_buys_towers_while_the_bank_covers_t
     assert not _towers(n), _towers(n)
 
 
+def test_after_the_opening_20000_at_the_wake_buys_no_tower(lib):
+    """bench 2026-11-10 engine_aiskirm d on aiskirm20 (20000 at the wake, PASS): no tower to ~221 s after the wake --
+    the opening leaves ~10300 at its end (~120 s) and the money only falls (~5100 at 160 s, under 100 at ~206 s). So the
+    DEFENSE share does not build up from the budget switch to a tower in ~90 s: it reads 5 % x the money now
+    (ai.player.available), as the sim does (B handoff 121)."""
+    (b,) = simai.run('aiskirm20', 'd', until=230, lib=lib).brains.values()
+    assert not _towers(b), _towers(b)
+
+
 @pytest.mark.xfail(strict=True, reason='bench d: the first tower at 176 s after the wake (ordered ~156, ~36 s after '
                    'the opening ends); simai orders it as the opening ends (~120) -> 140 / 160 s; the gate is not '
                    'known (B handoff 120 hypothesis table)')
