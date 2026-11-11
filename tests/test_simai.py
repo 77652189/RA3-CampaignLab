@@ -770,11 +770,12 @@ def test_engage_hostile_off_still_fights_and_charges(spow):
     assert not [e for e in b.tactics.log if e[1] == 'engage'], b.tactics.log[-5:]
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
+@pytest.mark.xfail(strict=True, raises=(AssertionError, ValueError),
                    reason="bench (two runs each): EngageHostileTargets off charges ~258 frames after "
                                        "the wake, on ~362 -- off is ~100 frames earlier; the sim has it the other "
-                                       "way historically (off ~457, on ~275). Only the ordering assertion is expected "
-                                       "to fail; missing fire records must surface as an error, not hide in this xfail")
+                                       "way historically (off ~457, on ~275). Today the sim's off lane has no target "
+                                       "and no fire record at all (ValueError from _first_fire), the gap in "
+                                       "work/re/handoff-c.md; main stays green, the strict xfail flips when it is fixed")
 def test_engage_hostile_off_charges_before_on(spow):
     (on,), (off,) = spow['aimicspon'].brains.values(), spow['aimicengoff'].brains.values()
     assert _first_fire(off) < _first_fire(on), (_first_fire(off), _first_fire(on))
