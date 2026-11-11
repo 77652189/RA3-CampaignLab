@@ -2,24 +2,34 @@
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parent.parent
 _spec = importlib.util.spec_from_file_location('simbench_infiltrator', ROOT / 'experimental/cnv/simbench.py')
 _module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_module)
 
 
-def test_spy_power_plant_as_on_the_bench():
-    """engine_infiltrator:a: enemy consumed/20s outage; ally refused, owners stay.
+@pytest.mark.parametrize('check, template', [('a', 'AlliedInfiltrationInfantry'),
+                                          ('b', 'JapanInfiltrationInfantry')])
+def test_spy_power_plant_as_on_the_bench(check, template):
+    """engine_infiltrator:a/b: enemy consumed/20s outage; ally refused, owners stay.
 
     Bench s1-s10 11100/11100/101/101; s11-s30 1100/11100/12/101;
     s31-s56 1100/11100/101/101. Travel timing INFERRED: stable windows only.
+    b: s1-s9 baseline; s10-s29 outage; s30-s56 recovered, same values.
     """
     import build
     import sim
-    m, t, _ = build.resolve('engine_infiltrator', 'a')
+    m, t, mod = build.resolve('engine_infiltrator', check)
+    assert len(mod) <= 15 and '_' not in mod
+    assert all(m.role(role + ' spy').template == template for role in ('enemy', 'ally'))
     s = sim.Sim(m, t).run(55)
+    assert all(s.body(m.role(role + ' spy').name).template == template
+               for role in ('enemy', 'ally'))
     assert s.series[0][1] == [11100, 11100, 101, 101]
-    for start, end, wanted in ((15, 27, [1100, 11100, 12, 101]),
+    for start, end, wanted in ((1, 7, [11100, 11100, 101, 101]),
+                               (15, 27, [1100, 11100, 12, 101]),
                                (35, 55, [1100, 11100, 101, 101])):
         rows = [values for second, values in s.series if start <= second <= end]
         assert rows and all(row == wanted for row in rows), rows

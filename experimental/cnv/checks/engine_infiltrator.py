@@ -65,4 +65,28 @@ def check(m):
 
 
 MISSION = {'engine_infiltrator': mission}
-CHECKS = {'engine_infiltrator': {'a': check}}
+
+
+def check_ninja(m):
+    """b: retail ninja ENERGY entry, enemy vs mutually allied plant.
+
+    Same distance and isolated 100-energy grids as a. Disable firing and
+    computer budgets so the ninja's weapons and repair cannot affect HP.
+    Bench 2026-11-11: s1-s9 11100/11100/101/101;
+    s10-s29 1100/11100/12/101; s30-s56 1100/11100/101/101.
+    Twenty-second enemy outage; ally refused. Exact entry remains INFERRED.
+    """
+    for role in ROLES:
+        spy = m.role(role + ' spy')
+        spy.template = 'JapanInfiltrationInfantry'
+        m.find(spy.name).template = spy.template
+    t = check(m)
+    t.scripts[0].do += [
+        ('UNIT_CHANGE_OBJECT_STATUS', m.role(name).name, 'NO_ATTACK', 1)
+        for role in ROLES for name in (role, role + ' spy')]
+    t.scripts.insert(1, Script('Test - no repair budget', [], [
+        ('PLAYER_SET_MONEY', m.player(side), 0) for side in ('s1', 's2')], once=False))
+    return t
+
+
+CHECKS = {'engine_infiltrator': {'a': check, 'b': check_ninja}}
