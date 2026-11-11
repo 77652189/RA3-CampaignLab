@@ -603,7 +603,7 @@
 | 已对拍 | `Behaviors/DynamicsUpdate` | 69 (101) | 全部 | tests/test_simbench_c.py::test_dynamics_update_a_hammer_without_it_crushes_and_goes_round_as_the_retail_one；例：AlliedDynamicsImpact, AlliedSatelliteSweepShroudRevealer |
 | 未做 | `Behaviors/RepairUpdate` | 66 (91) | a1 a2 a4 a5 a6 a7 a8 a9 | 仅字段读取：engine_repair a两次未触发玩家维修；repairai a已开AI维修、全难度人格、资金5000仍半血且只读探针未见维修激活；AI派发/资格门禁待核，tests/test_simrepair_ai.py保留strict xfail；不以schema默认10HP/s或预测费用登记已对拍；例：AlliedAirfield, AlliedBarracks |
 | 已对拍 | `Behaviors/StatusBitsUpgrade` | 66 (85) | 全部 | tests/test_simbench_c.py::test_status_bits_upgrade_the_heroic_grant_sets_weapon_upgraded_and_a_removal_clears_it；例：AlliedBaseDefense, AlliedAntiAirShip |
-| 已对拍 | `Behaviors/EngineerContain:通用三国` | 63 (87) | a1 a2 a4 a5 a6 a7 a8 | tests/test_simengineer.py::test_engineer_soviet_japan_captures_as_on_the_bench；例：AlliedPowerPlant |
+| 已对拍 | `Behaviors/EngineerContain:通用三国` | 63 (87) | a1 a2 a4 a5 a6 a7 a8 | tests/test_simengineer.py::test_engineer_soviet_japan_captures_as_on_the_bench；已测范围：engine_engineer a/b/c/d普通进入，三国工程师中立/敌方半血电厂占领并消耗、友军半血修满并消耗、满血拒入且存活；按完整配置匹配登记63用量/87模板；gap：精确进入帧仍INFERRED；日本单人ALLIES和桥配置保留在未对拍残余行，不借本组登记；例：AlliedPowerPlant |
 | 已对拍 | `Behaviors/StructureUnpackUpdate` | 59 (96) | a1 a2 a4 a5 a6 a7 a8 a9 | tests/test_simbench.py::test_power_back_after_the_plant_unpacks；例：AlliedAirfield, AlliedBarracks |
 | 已对拍 | `Behaviors/StructureSellUpdate` | 52 (72) | a1 a2 a4 a5 a6 a7 a8 a9 | tests/test_simbench.py::test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames；例：AlliedAirfield, AlliedBarracks |
 | 不涉及 | `ClientBehaviors/AnimationSoundClientBehavior` | 48 (67) | 全部 | 纯表现（ClientBehaviors）；例：AlliedTimeBombLvl3, AlliedRefinery |
@@ -634,7 +634,7 @@
 | 未做 | `Behaviors/AssignSlavesTargetObjectSpecialPower` | 6 (10) | a2 a4 a5 a7 a8 | 模拟器代码里没有这个名字；例：AlliedConstructionYardRepairBay, AlliedNavalYard |
 | 未做 | `Behaviors/TrackDamage` | 6 (9) | a1 a2 a3 a4 a5 a6 a7 a8 | 模拟器代码里没有这个名字；例：AlliedAntiNavalScout, AlliedFighterAircraft |
 | 未做 | `Behaviors/TrackIncomingWeaponFireBehavior` | 6 (9) | a1 a2 a3 a4 a5 a6 a7 a8 | 部分：engine_inform_probe a/off通知记录回放验证录入、30帧窗口、来源与武器匹配删除和过期清理；精确过期边界INFERRED，原版完整调度/历史伤害仍gap，不靠名字命中晋升整项；例：AlliedAntiNavalScout, AlliedFighterAircraft |
-| 已对拍 | `Behaviors/EngineerContain:三国ALLIES` | 6 (7) | a1 a2 a4 a5 a6 a7 a9 | tests/test_simengineer.py::test_engineer_allied_defence_refusal_soviet_japan_as_on_the_bench；例：SovietBaseDefenseGround |
+| 已对拍 | `Behaviors/EngineerContain:三国ALLIES` | 6 (7) | a1 a2 a4 a5 a6 a7 a9 | tests/test_simengineer.py::test_engineer_allied_defence_refusal_soviet_japan_as_on_the_bench；已测范围：engine_engineer a/e/f普通进入，三国工程师友军半血防御修满并消耗、满血及敌方拒入且存活，目标归属不变；按完整配置匹配登记6用量/7模板；gap：精确进入帧仍INFERRED；日本单人ALLIES和桥配置保留在未对拍残余行，不借本组登记；例：SovietBaseDefenseGround |
 | 未做 | `Behaviors/OCLSpecialPower` | 6 (7) | a1 a2 a4 a6 a7 | 仅在SpecialPowerNugget处理器中识别并拒绝，未实现OCL技能执行；例：AlliedSuperWeaponAdvanced, CAMP_PowerStore_AlliedBomberDrop |
 | 未做 | `Behaviors/SubStructureStorageBehavior` | 6 (6) | a1 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedMCV, AlliedMCV_Naval |
 | 未做 | `Behaviors/WallBuilderBehavior` | 6 (6) | a1 a2 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedWallPiece, AlliedWallSegmentPiece |
@@ -680,7 +680,7 @@
 | 已对拍 | `Behaviors/TechUpgrade` | 2 (2) | a1 a4 a5 a7 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_tech.py；例：AlliedConstructionYard, AlliedOutpost |
 | 已对拍 | `Behaviors/LifetimeUpdate` | 1 (855) | a1 a2 a3 a4 a5 a6 a7 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_crush.py；例：AlliedAirField_Collapse, AlliedAntiAirShip_Collapse |
 | 推断 | `Behaviors/FireWeaponUpdate` | 1 (21) | a1 a2 a4 a5 a6 a7 | 部分：simunits.ocl_round 把召出物的 FireWeaponNugget + LifetimeUpdate 折成伤害，不模拟召出物本身；例：AlliedAntiStructureVehicleCannonEffect, AlliedAntiStructureVehicleCannonEffect_Vet |
-| 推断 | `Behaviors/EngineerContain` | 1 (11) | a4 a5 a8 | 通用三国完整配置63用量由engine_engineer a/b/c/d登记；三国ALLIES完整配置6用量由a/e/f登记：三国友军半血防御修满消耗、满血及敌方拒入存活，目标归属不变；本行仅保留日本单工程师ALLIES型TH_TombBuilding02为1及间接可达桥头堡0，共1用量/11模板，尚缺日本单人筛选维修和桥修复。ReplaceWith和ObjectStatusToSet无原版显式声明；精确进入帧仍INFERRED，不登记整模块已对拍（tests/test_simengineer.py、tests/test_inventory_contain.py、tests/test_inventory_engineer.py）；例：TH_TombBuilding02 |
+| 推断 | `Behaviors/EngineerContain` | 1 (11) | a4 a5 a8 | 总控11-11授权工程师组收尾、不再上台；已测通用三国63用量及三国ALLIES6用量分别登记；gap：日本单人ALLIES型TH_TombBuilding02为1用量/1模板，筛选与维修未对拍；间接可达桥头堡为0用量/10模板，桥修复未对拍；本行共1用量/11模板。ReplaceWith和ObjectStatusToSet无原版显式声明；精确进入帧仍INFERRED，不登记整模块已对拍（tests/test_simengineer.py、tests/test_inventory_contain.py、tests/test_inventory_engineer.py）；例：TH_TombBuilding02 |
 | 已对拍 | `Behaviors/OreNodeBehavior` | 1 (8) | a1 a2 a4 a5 a6 a7 a9 | tests/test_simbench.py::test_mining_a_second_miner_on_one_node_adds_nothing；例：BaseOreNode, OreNode |
 | 未做 | `Behaviors/AssistedPlacementInfoBehavior` | 1 (7) | a1 a2 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；例：OreNode, OreNode2a |
 | 已对拍 | `Behaviors/OreMinerBehavior` | 1 (7) | a1 a2 a4 a5 a6 a7 | tests/test_simbench.py::test_mining_pays_8_a_frame_and_a_trip_takes_269；例：AlliedMiner, AlliedMiner_Naval |

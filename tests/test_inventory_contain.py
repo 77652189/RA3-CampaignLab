@@ -77,10 +77,20 @@ def test_engineer_generic_split_preserves_weight_and_other_configuration_gaps():
     allies = next(r for r in rows if r['name'].endswith(':三国ALLIES'))
     assert (allies['uses'], allies['all'], allies['state']) == (6, 7, inventory.BENCHED)
     assert (gap['uses'], gap['all'], gap['state']) == (1, 11, inventory.GUESSED)
-    assert allies['why'] == ('tests/test_simengineer.py::'
-                             'test_engineer_allied_defence_refusal_soviet_japan_as_on_the_bench')
-    assert generic['why'] == ('tests/test_simengineer.py::'
-                              'test_engineer_soviet_japan_captures_as_on_the_bench')
+    for measured, checks in ((generic, 'a/b/c/d'), (allies, 'a/e/f')):
+        key = inventory.MODULE, measured['name']
+        assert measured['why'].startswith(inventory.BENCHED_TESTS[key] + '；')
+        assert 'engine_engineer ' + checks in measured['why']
+        assert '普通进入' in measured['why']
+        assert 'gap：精确进入帧仍INFERRED' in measured['why']
+    assert 'gap：日本单人ALLIES型TH_TombBuilding02' in gap['why']
+    assert '1用量/1模板' in gap['why']
+    assert '0用量/10模板' in gap['why']
+    assert '桥修复未对拍' in gap['why']
+    # Keep the scope beside the replay link in the published artifact too.
+    rendered = inventory.render(rows)
+    for row in rows:
+        assert row['why'] in rendered
 
 
 def test_engineer_generic_split_does_not_credit_changed_fields(monkeypatch):
