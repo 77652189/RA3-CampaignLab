@@ -2,13 +2,13 @@
 
 由 `experimental/cnv/inventory_levels.py --write` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）编出的全部脚本（`parts.merged`，含目标显示脚本）里的动作和条件；地图和任务摆的物体、我们自己的单位、脚本点名的模板，连同模块点名的武器、武器点名的物体（抛射体）和武器，取生效的模块（继承、include、同 id 覆盖）和武器效果。没跟：模块点名的别的物体（多是能变成 / 能装的东西：多功能步兵车的乘客、锤子坦克吸来的车）、物体生成表（死亡碎片、OCL 技能）和命令表（工厂能造什么）。AI 部分（引擎 B）在 [inventory-levels.md](inventory-levels.md)。状态和原版用量取自 [inventory.md](inventory.md)。停止条件①：下表全部已对拍。
 
-**已对拍 129 / 199**（不涉及的不算）。
+**已对拍 130 / 199**（不涉及的不算）。
 
 | 部分 | 已对拍 | 推断 | 未做 | 不涉及 |
 |---|---|---|---|---|
 | 脚本动作 | 50 | 0 | 0 | 14 |
 | 脚本条件 | 12 | 0 | 0 | 0 |
-| 物体模块 | 50 | 10 | 54 | 19 |
+| 物体模块 | 51 | 9 | 54 | 19 |
 | 武器效果 | 17 | 2 | 4 | 2 |
 
 按原版用量加权：已对拍 99%，已有（已对拍+推断）99%。
@@ -78,7 +78,6 @@
 | 未做 | 武器效果 | `GrapplingHookNugget` | 1 | a1 a3 a4 a6 a7 a9 | engine_grapple a最小消费者诊断；GrapplingHookUpdate派发/拉拽/释放未解释，显式报告gap；tests/test_grapple_nugget.py守卫直接命中/继承/弹头及原版缓存，不登记已对拍；例：SovietAntiVehicleVehicleTech3Harpoon |
 | 未做 | 武器效果 | `InformTargetNugget` | 0 | a3 a7 a8 a9 | 未覆盖的自制或未知武器写法；原版字段分片另行登记；例：CNV_ChronoLag_Shell, CNV_LibertyDrones |
 | 推断 | 物体模块 | `Behaviors/InfiltratorContain` | 30 | a1 a2 a4 a5 a6 a7 a8 | ENERGY已按总控11-11决定拆分登记4用量/6模板；本行剩余10种配置30用量/32模板：KILL 1、STEAL_MONEY 3、VISION 5+港口阻断型1、PARALYZE 3、VISION_UNITS飞机2/步兵3/舰船3/车辆4、RESET 5，效果均未对拍；不登记整模块已对拍；例：AlliedAirfield, AlliedBarracks |
-| 推断 | 物体模块 | `AI/JetAIUpdate` | 13 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | E53/D43静止正东起步：engine_jet:a/b原版维和轰炸机距离1200/600，首次入框97/47，框内1且血100%；simjet按逐帧位置实现首步2.7（机制INFERRED）、每帧+0.8至12；tests/test_simjet.py按名回放两种时钟均97/47，并核D43启动位置和入框112/62帧，已移除计时xfail；未新增上台；gap：其他配置/机型、重复命令/转弯、MinSpeed、起飞高度/盘旋、机场/跑道/停车位、返场补弹/耗尽伤害及攻击状态，配置与动作门禁保留，不登记整模块已对拍；例：AlliedBomberAircraft, AlliedFighterAircraft |
 | 推断 | 物体模块 | `Behaviors/CommandSetUpgrade` | 5 | a1 a4 a5 a7 | 模拟器代码里有这个名字；例：AlliedConstructionYard, CNVA4AlliedConstructionYard |
 | 推断 | 物体模块 | `Behaviors/AutoDepositUpdate` | 4 | a1 a4 a5 a7 | 模拟器代码里有这个名字；例：OilDerrick |
 | 推断 | 物体模块 | `Behaviors/SpecialAbilityUpdate` | 4 | a1 a4 a6 a7 | 模拟器代码里有这个名字；例：JapanAntiInfantryInfantry, JapanAntiVehicleVehicleTech1 |
@@ -189,6 +188,7 @@
 | 已对拍 | 物体模块 | `Behaviors/WeaponFireSpecialAbilityUpdate` | 16 | a1 a2 a4 a5 a6 a7 | tests/test_simbench.py::test_a_weapon_fire_ability_goes_off_after_its_unpack_and_holds_the_caster_through_its_pack；例：AlliedAntiNavalScout, AlliedAntiStructureShip |
 | 已对拍 | 物体模块 | `Behaviors/BridgeBuilder` | 14 | a1 a4 a7 | tests/test_simbridgebuilder.py::test_bridgebuilder_counts_short_and_long_retail_bridges；已测范围：engine_bridgebuilder:a已量HB_Bridge_02长度270/700，EndCap/EndCap2/CenterPiece/CenterPieceB/GateHouse数量1/1/1/0/2及1/1/2/2/2；engine_bridgebuilder_b:b已量原版HB桥首16+Bridge1a桥尾32混合构型，两长度HB数量不变、五类Bridge1物件均0；tests/test_simbridgebuilder.py按名核计数模型与读数编码，simunits仅有限数量模型；gap：HV_Bridge_01等其他桥型/配置/长度、世界物体生成/位置、通行、损毁、共享血量与维修未建模；按总控11-11收尾决定登记模块已对拍，不表示这些gap已验证，不拆分分母；例：HB_Bridge_02 |
 | 已对拍 | 物体模块 | `Body/ManagerBody` | 14 | a1 a4 a7 | tests/test_simmanagerbody.py::test_manager_body_script_damage_preserves_retail_bridge_proxy；已测范围：engine_managerbody a/b原版HB_Bridge_02，270/700长度整体代理脚本伤害200后均80%、致命量后1%且存活，tests/test_simmanagerbody.py按名重放；gap：有效HP取CenterPiece及内部1%下限映射仍INFERRED，内部最大血量/伤害转发/显示下限待核；HV_Bridge_01等其他模板/配置、桥段共享血量/损毁/维修未对拍；按总控11-11收尾决定登记模块已对拍，不表示这些gap已验证，不拆分分母；例：HB_Bridge_02 |
+| 已对拍 | 物体模块 | `AI/JetAIUpdate` | 13 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | tests/test_simjet.py::test_jet_vindicator_first_entry_frame_matches_bench；已测范围：engine_jet:a/b原版维和轰炸机静止正东起步，距离1200/600，首次入框97/47，框内1且血100%；simjet按逐帧位置实现首步2.7（机制INFERRED）、每帧+0.8至12；tests/test_simjet.py按名回放两种时钟均97/47，并核启动位置和入框112/62帧；未新增上台；gap：其他配置/机型、重复命令/转弯、MinSpeed、起飞高度/盘旋/降落、机场/跑道/停车位、返场补弹/耗尽伤害及攻击状态，配置与动作门禁保留；按总控11-11收尾决定登记模块已对拍，不表示这些gap已验证，不拆分分母；例：AlliedBomberAircraft, AlliedFighterAircraft |
 | 已对拍 | 物体模块 | `Behaviors/TransportContain` | 13 | a1 a2 a4 a5 a7 a9 | tests/test_simbench.py::test_transport_a_team_put_in_instantly_skips_the_room_and_the_relation_and_rides_along；例：AlliedAntiAirVehicleTech1, AlliedAntiInfantryVehicle |
 | 已对拍 | 物体模块 | `Behaviors/SpawnBehavior` | 10 | a1 a2 a4 a5 a6 a7 a8 | tests/test_simspawn.py::test_spawn_initial_burst_and_parent_kill_delete_match_named_bench；已测范围：engine_spawn:spawn开局3架及母体死亡/删除清随从；engine_spawn_refill:refill两架分别死亡10秒后补回（tests/test_simspawn.py显式预置贴车位置）；engine_spawn_power:power缺电及复电期间总数/厂旁均3；gap：自主维修飞行、子体直接删除、真正禁用/占领、缺电时死亡补充、展开时机及其他完整配置，生成位置和秒内相位INFERRED；按总控11-11三切片收尾决定登记模块已对拍，不表示这些gap已验证，不拆分分母；例：AlliedAirfield, AlliedRefinery |
 | 已对拍 | 物体模块 | `Behaviors/EjectPassengersSpecialAbilityUpdate` | 7 | a2 a5 a9 | tests/test_simbench.py::test_transport_the_man_cannon_throws_one_every_half_second_and_a_killed_transport_kills_its_men；例：AlliedBomberAircraft, CNV_Burrower |
