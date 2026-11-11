@@ -39,6 +39,8 @@ def questions():
     for f in files:
         text = f.read_text(encoding='utf-8', errors='replace')
         m = re.search(r'^## 待答问题\s*\n(.*?)(?=^## |\Z)', text, re.M | re.S)
+        if not m and re.fullmatch(r'handoff(-[a-z]+)?\.md', f.name) and f.name != 'handoff-archive.md':
+            rows.append('  [%s] 没有 "## 待答问题" 标题，它的问题汇总不到这里（AGENTS.md：写在交接开头）' % f.name)
         if m and m.group(1).strip():
             rows.append('  [%s]' % f.name)
             rows += ['    ' + line for line in m.group(1).strip().splitlines()]
