@@ -116,7 +116,8 @@ def test_ai_repair_rate_and_unmeasured_configuration_gate():
 @pytest.mark.parametrize('initial_health', [10, 90])
 def test_ai_repair_unmeasured_initial_health_is_refused(initial_health):
     import sim
-    from checks.engine_repair_ai import mission, check
+    from missions.repair_bench import mission
+    from checks.engine_repair_ai import check
 
     m = mission(True, initial_health)
     e = sim.Sim(m, check(m))

@@ -66,6 +66,21 @@ def test_the_registers_point_at_real_items_and_tests():
         assert k in keys and state in inventory.STATES, k
 
 
+def test_repair_closure_retains_three_health_slices_and_unmeasured_gaps():
+    key = inventory.MODULE, 'Behaviors/RepairUpdate'
+    rows = [i for i in items() if i['part'] == key[0] and i['name'].startswith(key[1])]
+    assert len(rows) == 1  # shared configuration branches do not split the denominator
+    row = rows[0]
+    assert row['state'] == inventory.BENCHED
+    assert inventory.BENCHED_TESTS[key] in row['why']
+    source = open(os.path.join(ROOT, 'tests/test_simrepair_ai.py'), encoding='utf-8').read()
+    for probe in ('repairai', 'repairq', 'repairt', 'repairzero'):
+        assert probe in row['why'] and f"'{probe}'" in source
+    for gap in ('gap：', '玩家入口', '废墟维修', '受伤停修', '其他初始血量/造价/速率',
+                '资金耗尽', 'INFERRED', '不拆分分母'):
+        assert gap in row['why']
+
+
 def test_spawn_closure_preserves_unmeasured_gaps_and_all_three_named_replays():
     key = inventory.MODULE, 'Behaviors/SpawnBehavior'
     rows = [i for i in items() if i['part'] == key[0] and i['name'].startswith(key[1])]

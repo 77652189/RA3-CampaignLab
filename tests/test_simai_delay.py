@@ -13,9 +13,9 @@ from test_simai_bench_b import simai
 @pytest.mark.parametrize('maximum, second', [(0, 8), (999, 15000)])
 def test_maximum_endpoint_is_consumed_after_first_success(maximum, second):
     """Deterministic upper endpoint, not an assertion about the game's RNG sample."""
-    from checks import engine_aidelay
+    from missions import aidelay_bench
     mc, sp = simai.model()['micro'], simai.model()['specials']
-    m = engine_aidelay.mission(maximum)
+    m = aidelay_bench.mission(maximum)
     data = mc.load_micro(texts=[a[1] for a in m.assets])['CNVMicroSpow']
     power = mc.load_unit_powers()['Command_JapanAntiInfantryInfantryBonzai']
     foe = sp.Thing((50, 0), frozenset({'INFANTRY'}))
