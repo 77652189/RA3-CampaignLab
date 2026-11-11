@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|---|---|
 | 脚本动作 | **90%** | 451 | 114 | 26 | 194 | 117 | 91% |
 | 脚本条件 | **94%** | 89 | 28 | 5 | 53 | 3 | 94% |
-| 物体模块 | **92%** | 186 | 37 | 6 | 121 | 22 | 92% |
+| 物体模块 | **92%** | 186 | 37 | 6 | 120 | 23 | 92% |
 | 武器效果 | **76%** | 25 | 14 | 1 | 8 | 2 | 77% |
 | AI | **71%** | 415 | 98 | 137 | 146 | 34 | 95% |
 
@@ -618,7 +618,7 @@
 | 已对拍 | `Behaviors/CrushDie` | 22 (28) | tests/test_simbench.py::test_crush_a_tank_drives_over_a_lower_level_and_leaves_an_equal_one；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
 | 已对拍 | `Behaviors/SuppressionUpdate` | 22 (28) | tests/test_simbench_c.py::test_suppression_samples_entry_refresh_and_expiry_at_the_four_probe_readings；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
 | 不涉及 | `Draws/LaserDraw` | 21 (37) | 纯表现（Draws）；例：AlliedAntiVehicleVehicleTech3CannonNodeBase, AlliedAntiVehicleVehicleTech3CannonNodeEnd |
-| 未做 | `Behaviors/LaserState` | 19 (25) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_laser.py），可能用别的名字实现了；例：AlliedBaseDefense, AlliedBaseDefenseAdvanced |
+| 不涉及 | `Behaviors/LaserState` | 19 (25) | 纯表现：LaserId关联光束，起止粒子/骨骼/EndOffset与ObjectStatusValidation只控制光束表现；LaserStateModule.xsd无伤害字段；engine_laser pair匹配LaserDraw/State 201，伤害由独立DamageNugget给出，test_simbench_c重放2/90/2/90；例：AlliedBaseDefense, AlliedBaseDefenseAdvanced |
 | 未做 | `Behaviors/QueueProductionExitUpdate` | 19 (20) | 模拟器代码里没有这个名字；例：AlliedBarracks, AlliedConstructionYard |
 | 未做 | `Behaviors/ReplaceSelfSpecialAbility` | 18 (24) | 已核（11-08）：模拟器没有这个效果（没有换形态）；例：AlliedConstructionYard, AlliedMCV |
 | 不涉及 | `Draws/TracerModelDraw` | 18 (22) | 纯表现（Draws）；例：AlliedAntiAirShip, AlliedAntiAirVehicleTech1 |

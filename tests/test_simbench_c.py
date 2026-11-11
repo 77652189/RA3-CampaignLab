@@ -565,6 +565,7 @@ def test_projectile_nugget_flight_uses_retail_shell_speed_and_resolved_warhead()
 def test_activate_laser_uses_separate_damage_nugget_without_delaying_the_hit():
     import inventory
     assert inventory.NOTES[inventory.NUGGET,'ActivateLaserNugget'][0]==inventory.NA
+    assert inventory.NOTES[inventory.MODULE,'Behaviors/LaserState'][0]==inventory.NA
     import build
     import sim
     m,t,_=build.resolve('engine_laser','pair')
