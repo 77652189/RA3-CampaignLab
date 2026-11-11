@@ -26,6 +26,10 @@ Round 26, `land` (CampKPLand): the rocket lane alone, RUN = ORDER + 14 s. Bench 
 not dead): the flung man lands at frame 300 at (2300, 3060), 690 back towards the gun, and lies still; no fall damage.
 This run's flight is higher than round 25's (vz 111 / frame against 65, horizontal 5.4 against 7.9), but both last
 ~127 frames and both are a clean parabola, z - ground = c n (N - n) for flight frame n of N.
+Round 27: not chance -- four `land` runs and two `retail` runs repeat their own check's trajectory frame for frame
+(retail's man lands at frame 301 at (2300, 2740)), and the neighbour's hop is the same in both checks, so the
+detonation point is the same too; what differs is the mission (retail also fires the yuri lane, 1 500 away, and its
+rocket man lifts a frame later).
 """
 import os
 import re
