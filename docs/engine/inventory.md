@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|
-| 脚本动作 | **89%** | 451 | 110 | 30 | 194 | 117 | 91% |
+| 脚本动作 | **89%** | 451 | 112 | 28 | 194 | 117 | 91% |
 | 脚本条件 | **94%** | 89 | 27 | 5 | 54 | 3 | 94% |
 | 物体模块 | **91%** | 186 | 36 | 7 | 121 | 22 | 92% |
 | 武器效果 | **64%** | 25 | 13 | 1 | 9 | 2 | 76% |
@@ -135,7 +135,7 @@
 | 未做 | `NAMED_FORCE_ATTACK_WAYPOINT` | 59 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM` | 59 | 纯表现（名字规则）；只记进时间线（sim.SHOWN）；台上量过（docs/engine/inventory-levels-a.md），没有测试跑这个台子 |
 | 不涉及 | `SET_REFERENCE_TO_RANDOM_TEAM_MEMBER` | 59 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
-| 推断 | `MAP_REVEAL_ALL_UNDO_PERM` | 58 | Sim.act / Sim.cond 有分支 |
+| 已对拍 | `MAP_REVEAL_ALL_UNDO_PERM` | 58 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_vision.py |
 | 不涉及 | `SHOW_MILITARY_CAPTION` | 58 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
 | 已对拍 | `NAMED_FOLLOW_WAYPOINTS_EXACT` | 56 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_waypath.py |
 | 未做 | `UNIT_EXECUTE_SEQUENTIAL_SCRIPT` | 56 | Sim.act / Sim.cond 不认识 |
@@ -354,7 +354,7 @@
 | 未做 | `UNIT_CHANGE_OBJECT_STATUS:NO_COLLISIONS` | 4 | 状态位 NO_COLLISIONS 只记下来 |
 | 已对拍 | `UNIT_GUARD_AREA` | 4 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts4.py |
 | 未做 | `UNIT_GUARD_OBJECT` | 4 | Sim.act / Sim.cond 不认识 |
-| 推断 | `MAP_REVEAL_ALL` | 3 | Sim.act / Sim.cond 有分支 |
+| 已对拍 | `MAP_REVEAL_ALL` | 3 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_vision.py |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JapanAntiInfantryInfantryBonzai` | 3 | 只记进时间线，没有效果 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleShieldSphere` | 3 | 只记进时间线，没有效果 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_CAMPAlliedBomberDrop1` | 3 | Sim.act / Sim.cond 不认识 |

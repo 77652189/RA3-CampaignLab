@@ -918,7 +918,8 @@ class Sim:
         self.banned = set()                 # (player, template in lower case): ALLOW_DISALLOW_ONE_BUILDING 0
         self.banned_ups = set()             # (player, upgrade in lower case): ALLOW_DISALLOW_ONE_UPGRADE 0
         self.border = 0
-        self.reveal_all = False             # the player's MAP_REVEAL_ALL
+        self.reveal_all = False             # the player's MAP_REVEAL_ALL_PERM
+        self.reveal_all_until = -1          # the player's MAP_REVEAL_ALL: the whole map open until this frame
         self.revealed_to = set()            # other players given MAP_REVEAL_ALL (side_sees: they see everything)
         self.reveals = {}                   # name -> (x, y, r)
         self.peeks = []                     # (x, y, r, until frame): MAP_REVEAL_AT_WAYPOINT, back to fog at `until`
@@ -2427,9 +2428,13 @@ class Sim:
         self.gap(GAP_CONDITION, name, 'Sim.cond 不认识：当成不成立')
         return False
 
+    def all_revealed(self):
+        """Whether the whole map is open to the player this frame (MAP_REVEAL_ALL_PERM, or a MAP_REVEAL_ALL not lapsed)."""
+        return self.reveal_all or self.frame_now() < self.reveal_all_until
+
     def sees(self, x, y, air=False):
         """Whether the player sees a point (a body there, airborne or not)."""
-        if self.reveal_all:
+        if self.all_revealed():
             return True
         if any(math.hypot(x - rx, y - ry) <= r for rx, ry, r in list(self.reveals.values()) + self.peeking()):
             return True
@@ -2895,15 +2900,22 @@ class Sim:
                 self.ai[a[0]] = self.t
                 self.note('AI', f'{self.who(a[0])} 交给遭遇战 AI（造兵、进攻不模拟）')
         elif name == 'MAP_SWITCH_BORDER':
-            if self.reveal_all or self.reveals:
+            if self.all_revealed() or self.reveals:
                 self.used.add('border reveal')
             self.border = int(a[0])
             names = list(getattr(self.m.map, 'BORDERS', {}))
             self.note('边界', f'可玩区换成 {names[self.border] if self.border < len(names) else self.border}')
             self.change()
         elif name in ('MAP_REVEAL_ALL', 'MAP_REVEAL_ALL_PERM'):
+            # Bench 11-10 engine_vision all / allundo (docs/engine/vision.md 2): MAP_REVEAL_ALL lapses as a waypoint
+            # reveal does (137 frames by default, 15 x N - 13); _PERM holds until MAP_REVEAL_ALL_UNDO_PERM, which
+            # shuts it the frame it runs (no reshroud delay). Another side's: kept for good (INFERRED, not benched)
             if a and a[0] != self.human and a[0] in self.players.values():   # another side's: its own sight
                 self.revealed_to.add(a[0])
+            elif name == 'MAP_REVEAL_ALL':
+                hold = max(0, int(round(self.reshroud * 15)) - 13)
+                self.reveal_all_until = max(self.reveal_all_until, self.frame_now() + hold)
+                self.note('揭图', '全图（暂时）')
             else:
                 self.reveal_all = True
                 self.note('揭图', '全图')
@@ -4172,7 +4184,7 @@ class Sim:
             jj, ii = np.mgrid[0:g.shape[0], 0:g.shape[1]]
             self._xy = self.ground.world((jj, ii))
         x, y = self._xy
-        if self.reveal_all:
+        if self.all_revealed():
             self.known[:] = True
         for rx, ry, r in list(self.reveals.values()) + self.peeking():
             self.known |= (x - rx) ** 2 + (y - ry) ** 2 <= r * r

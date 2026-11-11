@@ -1111,6 +1111,15 @@ def test_vision_a_permanent_reveal_holds_and_its_undo_shuts_at_once():
     assert perm[0] == perm[1] > 400 and undo[0] == 151 and undo[2] == 0, (perm, undo)
 
 
+def test_vision_reveal_all_lapses_unless_perm_and_its_undo_shuts_at_once():
+    """Bench 11-10 (engine line A round 149): all -- MAP_REVEAL_ALL lapses as a waypoint reveal, 揭开 137 then still
+    (CampVisAll_mcp_1110_192524); allundo -- MAP_REVEAL_ALL_PERM, MAP_REVEAL_ALL_UNDO_PERM at Go + 10 s: 揭开 stops at
+    151, 撤后 0 (CampVisAllundo_mcp_1110_192316). The old model kept MAP_REVEAL_ALL for good (揭开 436)."""
+    whole = _sim_run('engine_vision', 'all', 30.0).series[-1][1]
+    undo = _sim_run('engine_vision', 'allundo', 30.0).series[-1][1]
+    assert whole[0] == 137 < whole[1] and undo[0] == 151 and undo[2] == 0, (whole, undo)
+
+
 # checks/engine_scripts1.py
 def _scripts1(variant, until):
     return {round(sec): vals for sec, vals in _sim_run('engine_scripts1', variant, until).series}
