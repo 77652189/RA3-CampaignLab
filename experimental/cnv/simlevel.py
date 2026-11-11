@@ -1,6 +1,6 @@
 """Creation upgrade -> rank -> veterancy upgrades (engine_levelup a/b/c).
 
-Combat experience and rank modifiers except DAMAGE_MULT and elite HEALTH_MULT remain unmodeled. This module
+Combat experience and rank modifiers except DAMAGE_MULT, elite HEALTH_MULT and heroic RANGE remain unmodeled. This module
 does not turn a direct Upgrade_Veterancy_HEROIC grant into a rank change.
 """
 import functools
@@ -104,7 +104,7 @@ def receive(sim, b, up, on, newly_held):
 
 
 def damage_modifiers(sim, b, xml):
-    """Only the measured rank DAMAGE_MULT; never multiply ROF into one shot."""
+    """Measured rank DAMAGE_MULT and heroic RANGE; leave unmeasured ROF out."""
     if b.level_rank <= 1:
         return []
     out, seen = [], set()
@@ -122,11 +122,15 @@ def damage_modifiers(sim, b, xml):
             supported = {'DAMAGE_MULT'}
             if mid == 'Unit_Elite' and m['types'].get('HEALTH_MULT') == [1.25]:
                 supported.add('HEALTH_MULT')
+            if mid == 'Unit_Heroic' and m['types'].get('RANGE') == [1.25]:
+                supported.add('RANGE')  # engine_levelrange a: heroic gun 150 -> 187.5
             unsupported = sorted(set(m['types']) - supported)
             if m['status']:
                 unsupported.append('ObjectStatusToSet')
             if unsupported:
                 sim.gap('升级', 'LevelUpUpgrade/' + mid, '等级属性修正未模拟：' + ', '.join(unsupported))
-            if 'DAMAGE_MULT' in m['types']:
-                out.append(dict(m, types={'DAMAGE_MULT': m['types']['DAMAGE_MULT']}, status=set()))
+            acting = {ty: values for ty, values in m['types'].items()
+                      if ty in supported & {'DAMAGE_MULT', 'RANGE'}}
+            if acting:
+                out.append(dict(m, types=acting, status=set()))
     return out

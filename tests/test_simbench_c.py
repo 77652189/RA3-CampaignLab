@@ -138,6 +138,39 @@ def test_levelup_elite_and_heroic_creation_regrants_each_need_two_reactivations(
     assert [b.max_hp for b in bodies] == [500, 625, 625, 625]
 
 
+def test_levelup_heroic_range_reaches_only_the_inner_target_without_moving():
+    """engine_levelrange a: 100/10100/100/10100 -> 100/10017/100/10100.
+
+    The heroic weapon alone is 150, insufficient at 220 centre distance;
+    RANGE125% makes it 187.5. No kill, movement, XP or repeated range stacking.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_levelrange', 'a')
+    e = sim.Sim(m, t)
+    e.shot_clock = True
+    rows = e.run(14).series
+    for first, last, expected in ((2, 4, (100, 10100, 100, 10100)),
+                                  (10, 14, (100, 10017, 100, 10100))):
+        window = [tuple(row) for sec, row in rows if first <= sec <= last]
+        assert window and all(row == expected for row in window), window
+    guns = [e.body(m.role(lane).name) for lane in ('base', 'high', 'order', 'removed')]
+    assert [b.level_rank for b in guns] == [1, 4, 1, 4]
+    assert [b.weapons[0]['range'] for b in guns] == [125, 187.5, 125, 187.5]
+    for obj in m.objects:
+        b = e.body(obj.name)
+        assert b.alive and (b.x, b.y) == (obj.x, obj.y)
+    gun, target = guns[1], e.body(m.role('high target').name)
+    assert not e.in_range(gun, target, dict(gun.weapons[0], range=150))
+    assert e.in_range(gun, target, gun.weapons[0])
+    assert target.hp == 67.5  # one 250 * DAMAGE_MULT125 hit, no XP from a kill
+    for _ in range(3):
+        e.modify(gun)
+        assert gun.weapons[0]['range'] == 187.5
+    gap = e.unmodeled[sim.GAP_UPGRADE, 'LevelUpUpgrade/Unit_Heroic']['what']
+    assert 'RANGE' not in gap and 'RATE_OF_FIRE' in gap and 'VISION' in gap
+
+
 def test_levelup_veteran_damage_persists_at_elite_and_heroic_without_gated_target_healing():
     """Bench 11-10 engine_leveldamage a: 47/34/34/17 through s15.
 

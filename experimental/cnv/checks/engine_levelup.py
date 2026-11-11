@@ -7,7 +7,7 @@ Bench 2026-11-10 PASS: s1-s4 0/0/1/0, s5-s13 0/1/1/0.
 These are heroic-state booleans, not numeric rank readings.
 """
 from maps import probe_range
-from parts import Mission, Script, Test, status, counted
+from parts import Mission, Script, Test, status, counted, square
 
 CREATION = tuple('Upgrade_CreationVeterancy_' + x for x in ('VETERAN', 'ELITE', 'HEROIC'))
 
@@ -272,3 +272,75 @@ def injured_health_check(m):
 
 
 CHECKS['engine_levelhealth']['b'] = injured_health_check
+
+
+def range_mission():
+    m = mission()
+    m.name = 'CampLevelR'
+    for lane, distance in zip(('base', 'high', 'order', 'removed'), (220, 220, 260, 260)):
+        m.put('JapanAntiVehicleVehicleTech1', lane + ' gun', 0, distance,
+              side='s1', role=lane + ' target', name='Level range target ' + lane)
+        m.waypoint(lane + ' target', 'Level range mark ' + lane, lane + ' gun', 0, distance)
+    return m
+
+
+def range_check(m):
+    """PREDICT: normal/heroic at 220, normal/heroic at 260: only heroic 220 hits.
+
+    Retail normal/heroic guns have AttackRange 125/150; Unit_Heroic RANGE125%
+    makes the latter 187.5. Bounding radii total 49.01, so even the heroic gun
+    without the modifier cannot reach 220 (limit 199.01); with it 260 is out.
+    All objects IMMOBILE, shooters HOLD_FIRE; only named orders may shoot.
+    Four-frame fire window, no kills or XP. Counter = target HP percent +
+    10000*heroic + 1000*ever-gun-moved + 100000*ever-target-moved. Movement
+    means leaving a 2-unit square, latched throughout; margins exceed 20 units.
+    Stable prediction: 100/10100/100/10100 -> 100/10017/100/10100.
+    Bench 2026-11-11 PASS: s1-s4 initial, s5-s16 final, no movement flags.
+    Exact activation/shot frames and the precise range boundary remain INFERRED.
+    """
+    t = Test()
+    start = [('MAP_REVEAL_ALL_PERM', m.player('p1')),
+             ('PLAYER_SET_MONEY', m.player('s1'), 0),
+             ('SET_MILLISECOND_TIMER', 'Level range fire', 6.0),
+             ('SET_MILLISECOND_TIMER', 'Level range stop', 6 + 4 / 15)]
+    fire, stop = [], []
+    for lane in ('base', 'high', 'order', 'removed'):
+        gun, target = m.role(lane).name, m.role(lane + ' target').name
+        start += [('UNIT_CHANGE_OBJECT_STATUS', n, bit, 1)
+                  for n in (gun, target) for bit in ('NO_ATTACK', 'IMMOBILE')]
+        start.append(('UNIT_SET_STANCE', gun, 3))  # HOLD_FIRE, explicit orders still fire
+        if lane in ('high', 'removed'):
+            start += [('NAMED_RECEIVE_UPGRADE', up, gun) for up in CREATION]
+        fire += [('UNIT_CHANGE_OBJECT_STATUS', gun, 'NO_ATTACK', 0), ('NAMED_ATTACK_NAMED', gun, target)]
+        stop.append(('UNIT_CHANGE_OBJECT_STATUS', gun, 'NO_ATTACK', 1))
+        counter = 'Level range ' + lane
+        t.counters.append((counter, lane + ' range'))
+        for name, point in ((gun, m.site(lane + ' gun')[:2]),
+                            (target, m.point(lane + ' target'))):
+            area = 'Level range pad ' + name
+            flag = area + ' moved'
+            t.areas[area] = square(*point, 2.0)
+            t.scripts.append(Script('Test - latch ' + name, [('NAMED_OUTSIDE_AREA', name, area)],
+                                    [('SET_FLAG', flag, 1)]))
+        t.scripts.append(Script('Test - range HP ' + lane, [],
+                                [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', target, counter)], once=False))
+        for name, weight in ((gun, 1000), (target, 100000)):
+            t.scripts.append(Script('Test - range moved ' + name,
+                                    [('FLAG', 'Level range pad ' + name + ' moved', 1)],
+                                    [('INCREMENT_COUNTER', weight, counter)], once=False))
+        t.scripts.append(Script('Test - range heroic ' + lane,
+                                [('UNIT_HAS_OBJECT_STATUS', gun, status('WEAPON_UPGRADED_01'))],
+                                [('INCREMENT_COUNTER', 10000, counter)], once=False))
+    t.scripts[:0] = [Script('Test - start', [], start),
+                     Script('Test - range fire', [('TIMER_EXPIRED', 'Level range fire')], fire),
+                     Script('Test - range stop', [('TIMER_EXPIRED', 'Level range stop')], stop)]
+    for first, last, values in ((2, 4, (100, 10100, 100, 10100)),
+                                (10, 14, (100, 10017, 100, 10100))):
+        t.expect += [(lane + ' range', first, '==', value, last)
+                     for lane, value in zip(('base', 'high', 'order', 'removed'), values)]
+    t.bench = [('bench_watch', dict(seconds=14.0, every=.5, sheet=False, lines=4))]
+    return t
+
+
+MISSION['engine_levelrange'] = range_mission
+CHECKS['engine_levelrange'] = {'a': range_check}

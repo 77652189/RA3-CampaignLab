@@ -167,7 +167,7 @@ LAG = 0.0                       # the readings' clock: mission seconds, as the b
 # by the Generals / Zero Hour source (docs/engine/script-semantics.md, the section given) unless marked 未对齐: those
 # the source cannot tell for RA3, for the bench to settle last
 ALIGN = {
-    'levelup': '部分对齐：创建升级触发升阶、老兵升级与等级伤害（engine_levelup a / engine_leveldamage a）；其余等级属性与经验成长未模拟',
+    'levelup': '部分对齐：创建升级触发升阶、移除重给、等级伤害/血量及英雄射程RANGE125%（engine_levelup a/b/c、engine_leveldamage a、engine_levelhealth a/b、engine_levelrange a）；其余等级属性与经验成长未模拟',
     'protocols': '未对齐: protocol points as the program keeps them (simtech.py: rank experience 1 a second, 360 a '
                  'rank, the cap, the set-points rule; bench 11-08 engine_protocol pts / ailock); no experience from '
                  'kills, no red alert multiplier; a computer player spends its points at once on a protocol of its '
