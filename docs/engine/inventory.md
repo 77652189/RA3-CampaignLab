@@ -593,7 +593,7 @@
 | 不涉及 | `Draws/DynamicsDraw` | 138 (857) | 纯表现（Draws）；例：AlliedAirField_Collapse, AlliedAntiAirShip_Collapse |
 | 已对拍 | `Behaviors/EnableDynamicsCollide` | 137 (154) | tests/test_simbench_c.py::test_enable_dynamics_collide_a_lantern_without_it_is_crushed_and_gone_at_the_same_frames；例：BaseSimulatedProp, AM_Boat01 |
 | 已对拍 | `AI/AIUpdate` | 136 (237) | tests/test_simbench.py::test_r8_idle_within_sight_walks_up_fires_and_comes_back；例：AlliedSatelliteSweepShroudRevealer, AlliedSuperWeaponEffect |
-| 未做 | `Behaviors/DynamicsUpdate` | 113 (154) | 模拟器代码里没有这个名字；例：AlliedDynamicsImpact, AlliedSatelliteSweepShroudRevealer |
+| 未做 | `Behaviors/DynamicsUpdate` | 113 (154) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_dynamics.py），可能用别的名字实现了；例：AlliedDynamicsImpact, AlliedSatelliteSweepShroudRevealer |
 | 未做 | `Behaviors/StancesBehavior` | 108 (148) | 已核（11-08）：模拟器没有这个效果（没有姿态）；例：AlliedSatelliteSweepShroudRevealer, AlliedAirfield |
 | 已对拍 | `Body/ImmortalBody` | 91 (111) | tests/test_simbench_c.py::test_immortal_damage_stops_at_one_hp_kill_is_damage_and_delete_removes；例：BaseRock, CPDummyTarget |
 | 未做 | `Behaviors/LevelUpUpgrade` | 88 (124) | 模拟器代码里没有这个名字；例：AlliedSatelliteSweepShroudRevealer, AlliedAntiAirShip |
