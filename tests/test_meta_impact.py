@@ -257,3 +257,42 @@ def test_meta_impact_omitted_z_replays_engine_knock_z_tall_neighbour():
     retail = simunits.weapon_table()['AlliedBomberAircraftBombWarhead']
     assert retail['meta_impacts'][0]['zmult'] == 1
     assert 'MetaImpactNugget' in retail['unmodeled_effects']
+
+
+@pytest.mark.parametrize('lane,seconds', [('rocket', 1.9), ('strong', 1.2)])
+def test_meta_impact_delay_probe_keeps_phase_gap_and_publishes_projectiles(lane, seconds):
+    """engine_knock_delay a diagnostic: corrected bench1174/100/1173/100.
+
+    Shock frames204/192; the full-health script counts174/173. Mapping that
+    script count to the collision's engine frame is still unverified. Delayed
+    Physics also exposes sample1 in the shock frame, holds it next frame,
+    then advances: do not register an immediate-shock replay as delayed cover.
+    Both projectile assets must exist; the initial short copy omitted its file.
+    """
+    import build
+    import sim
+    import simunits
+    from checks.engine_knock_probe import name
+
+    m, t, _ = build.resolve('engine_knock_delay', 'a')
+    e = sim.Sim(m, t)
+    gun_id = 'CNV_KnockRocket' if lane == 'rocket' else 'CNV_DelayShort'
+    gun = next(u for u in m.units if u.id == gun_id)
+    assert f'ShockwaveDelaySeconds="{seconds}s"' in gun.xml
+    assert gun.names['rocket']+'.xml' in gun.files
+    assert f'id="{gun.names["rocket"]}"' in gun.files[gun.names['rocket']+'.xml']
+    if lane == 'strong':
+        assert all('CNV_KnockRocket' not in v for v in gun.files.values())
+    weapon, = e.bodies[name(lane, 'gun')].weapons
+    assert weapon['meta_impacts'] == []
+    assert 'MetaImpactNugget' in weapon['unmodeled_effects']
+    # Existing spatial solver agrees with both observed neighbour paths; this
+    # does not assert the missing delay/update-phase conversion.
+    effect = dict(amount=89, radius=250, zmult=1, taper=0)
+    y = 3750 if lane == 'rocket' else 850
+    velocity = simunits.meta_impact_velocity(effect, (2360,y,212.5),
+                                             (2300,y,219), 93, detonation=True)
+    points = simunits.meta_impact_trajectory((2360,y,212.5), velocity)
+    assert len(points) == 15
+    assert points[1] == pytest.approx((2364.2,y-.7,215.24), abs=.051)
+    assert points[-1] == (2420,y-10,212.5)
