@@ -788,6 +788,26 @@ def suppression(template, own=None):
     return _chain(template, own, read) or None
 
 
+def repair_update(template, own=None):
+    """RepairUpdate fields (schema defaults); player repair, distinct from AutoHeal.
+
+    Includes and inheritance are resolved. Rebuild/dead and non-toggleable paths
+    are read so the caller can report them as unmeasured rather than heal them.
+    """
+    def read(xml):
+        clean = re.sub(r'<!--.*?-->', '', _with_includes(xml), flags=re.S)
+        head, inner = next(_blocks(clean, 'RepairUpdate'), (None, ''))
+        if head is None:
+            return None
+        cost, _ = next(_blocks(inner, 'PercentOfBuildCostToRebuildInfo'), ('', ''))
+        return {'rate': _num(_attr(head, 'HealAmountPerSecond'), 10),
+                'toggleable': _attr(head, 'Toggleable', 'true').lower() == 'true',
+                'dead': _attr(head, 'RepairableWhenDead', 'false').lower() == 'true',
+                'cost': tuple(_num(_attr(cost, state), 50) / 100
+                              for state in ('Pristine', 'Damaged', 'ReallyDamaged', 'Rubble'))}
+    return _inherited(template, own, read, None)
+
+
 def autoheal(template, own=None):
     """(amount, every, wait): AutoHealBehavior of a template that mends from the start, with no state or rank in the
     way -- HealingAmount points every `every` frames, the first `wait` frames after a hurt (engine_heal a / b, bench
