@@ -1,4 +1,4 @@
-"""Creation upgrade -> rank -> veterancy upgrades (engine_levelup a/b).
+"""Creation upgrade -> rank -> veterancy upgrades (engine_levelup a/b/c).
 
 Combat experience and rank modifiers except DAMAGE_MULT and elite HEALTH_MULT remain unmodeled. This module
 does not turn a direct Upgrade_Veterancy_HEROIC grant into a rank change.
@@ -58,7 +58,7 @@ def receive(sim, b, up, on, newly_held):
         if up not in triggers:
             continue
         if not on:
-            # engine_levelup b: deactivation rearms the retail module without
+            # engine_levelup b/c: deactivation rearms each retail module without
             # undoing rank, veterancy upgrades or already applied HP scaling.
             if permanent:
                 sim.gap('升级', 'LevelUpUpgrade/permanent', 'Permanent=true的移除重给未对拍')

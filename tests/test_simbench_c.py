@@ -109,6 +109,35 @@ def test_levelup_creation_remove_keeps_rank_and_regrant_can_trigger_twice():
         assert b.level_rank == 4 and b.max_hp == 625
 
 
+def test_levelup_elite_and_heroic_creation_regrants_each_need_two_reactivations():
+    """engine_levelup c: 0/0/0/1 through first regrant, then 0/1/1/1.
+
+    The two triggers are isolated; neither borrows the veteran trigger's evidence.
+    Check nonempty windows before/after both removals and both regrants.
+    """
+    import build
+    import sim
+    from checks.engine_levelup import CREATION
+    m, t, _ = build.resolve('engine_levelup', 'c')
+    e = sim.Sim(m, t)
+    rows = e.run(28).series
+    for first, last, expected in ((2, 4, (0, 0, 0, 1)), (8, 10, (0, 0, 0, 1)),
+                                   (14, 16, (0, 0, 0, 1)), (20, 22, (0, 0, 0, 1)),
+                                   (26, 28, (0, 1, 1, 1))):
+        window = [tuple(row) for sec, row in rows if first <= sec <= last]
+        assert window and all(row == expected for row in window), (first, window)
+    bodies = [e.body(m.role(lane).name) for lane in ('base', 'high', 'order', 'removed')]
+    assert [b.level_rank for b in bodies] == [2, 4, 4, 4]
+    assert [b.max_hp for b in bodies] == [500, 625, 625, 625]
+    assert [set(CREATION) & b.upgrades for b in bodies] == [
+        {CREATION[0]}, {CREATION[1]}, {CREATION[2]}, set()]
+    for b, up in zip(bodies[:3], CREATION):
+        e.give_upgrade(b, up)
+        e.modify(b)
+    assert [b.level_rank for b in bodies] == [2, 4, 4, 4]
+    assert [b.max_hp for b in bodies] == [500, 625, 625, 625]
+
+
 def test_levelup_veteran_damage_persists_at_elite_and_heroic_without_gated_target_healing():
     """Bench 11-10 engine_leveldamage a: 47/34/34/17 through s15.
 
