@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|---|---|
 | 脚本动作 | **90%** | 451 | 119 | 21 | 194 | 117 | 91% |
 | 脚本条件 | **94%** | 89 | 28 | 5 | 53 | 3 | 94% |
-| 物体模块 | **92%** | 186 | 37 | 8 | 118 | 23 | 93% |
+| 物体模块 | **92%** | 186 | 37 | 8 | 117 | 24 | 93% |
 | 武器效果 | **76%** | 25 | 14 | 2 | 7 | 2 | 78% |
 | AI | **71%** | 415 | 98 | 137 | 146 | 34 | 95% |
 
@@ -610,7 +610,7 @@
 | 不涉及 | `Behaviors/DynamicsUpdate:起义专有` | 44 (53) | 起义时刻专有模板：继承链上的父模板 RA3 数据里没有（SS_Fling* 的 BaseClientFlingableProp），RA3 的 mod 编不过（engine_dynamics c，11-10 地图编译报 Critical），玩家在 RA3 里见不到 |
 | 不涉及 | `Draws/TruckDraw` | 35 (51) | 纯表现（Draws）；例：AlliedTimeBombLvl1, AlliedTimeBombLvl2 |
 | 未做 | `Behaviors/InfiltratorContain` | 34 (38) | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |
-| 未做 | `Behaviors/LUAEventList` | 32 (44) | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |
+| 不涉及 | `Behaviors/LUAEventList` | 32 (44) | 纯表现：EventListName连接原版ScriptEvents.xml与Scripts.lua；RA3声明可达的事件处理函数只调用模型部件显隐（及tostring），含继承；未定义的AlliedInfantryFightingFunctions无可达处理函数；C&C3升级/状态函数不可达。tests/test_inventory_lua.py静态核对游戏包与SDK声明，非上台对拍；例：AlliedAirfield, AlliedBarracks |
 | 未做 | `Behaviors/ToggleStatusSpecialAbilityUpdate` | 27 (34) | 已核（11-08）：模拟器没有这个效果（没有按钮切换状态）；例：AlliedAntiAirShip, AlliedAntiInfantryInfantry |
 | 不涉及 | `Behaviors/SubObjectsUpgrade` | 26 (30) | 纯表现（名字规则）；例：AlliedAirfield, AlliedBarracks |
 | 未做 | `Behaviors/FreefallUpdate` | 24 (31) | 模拟器代码里没有这个名字；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |

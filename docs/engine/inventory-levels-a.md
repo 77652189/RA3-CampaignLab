@@ -2,13 +2,13 @@
 
 由 `experimental/cnv/inventory_levels.py --write` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）编出的全部脚本（`parts.merged`，含目标显示脚本）里的动作和条件；地图和任务摆的物体、我们自己的单位、脚本点名的模板，连同模块点名的武器、武器点名的物体（抛射体）和武器，取生效的模块（继承、include、同 id 覆盖）和武器效果。没跟：模块点名的别的物体（多是能变成 / 能装的东西：多功能步兵车的乘客、锤子坦克吸来的车）、物体生成表（死亡碎片、OCL 技能）和命令表（工厂能造什么）。AI 部分（引擎 B）在 [inventory-levels.md](inventory-levels.md)。状态和原版用量取自 [inventory.md](inventory.md)。停止条件①：下表全部已对拍。
 
-**已对拍 111 / 194**（不涉及的不算）。
+**已对拍 111 / 193**（不涉及的不算）。
 
 | 部分 | 已对拍 | 推断 | 未做 | 不涉及 |
 |---|---|---|---|---|
 | 脚本动作 | 50 | 0 | 0 | 14 |
 | 脚本条件 | 12 | 0 | 0 | 0 |
-| 物体模块 | 36 | 8 | 69 | 17 |
+| 物体模块 | 36 | 8 | 68 | 18 |
 | 武器效果 | 13 | 2 | 4 | 2 |
 
 按原版用量加权：已对拍 98%，已有（已对拍+推断）98%。
@@ -23,7 +23,6 @@
 | 未做 | 物体模块 | `Behaviors/EngineerContain` | 70 | a1 a2 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |
 | 未做 | 物体模块 | `Behaviors/RepairUpdate` | 66 | a1 a2 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |
 | 未做 | 物体模块 | `Behaviors/InfiltratorContain` | 34 | a1 a2 a4 a5 a6 a7 a8 | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |
-| 未做 | 物体模块 | `Behaviors/LUAEventList` | 32 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
 | 未做 | 物体模块 | `Behaviors/ToggleStatusSpecialAbilityUpdate` | 27 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 已核（11-08）：模拟器没有这个效果（没有按钮切换状态）；例：AlliedAntiInfantryInfantry, AlliedAntiNavyShipTech1 |
 | 未做 | 物体模块 | `Behaviors/FreefallUpdate` | 24 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
 | 未做 | 物体模块 | `Behaviors/QueueProductionExitUpdate` | 19 | a1 a2 a4 a5 a6 a7 a8 | 模拟器代码里没有这个名字；例：AlliedBarracks, AlliedConstructionYard |
@@ -238,6 +237,7 @@
 | 不涉及 | 物体模块 | `Draws/DynamicsDraw` | 138 | a4 | 纯表现（Draws）；例：OK_Lantern01 |
 | 不涉及 | 物体模块 | `ClientBehaviors/AnimationSoundClientBehavior` | 48 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 纯表现（ClientBehaviors）；例：AlliedAntiInfantryInfantry, AlliedAntiStructureShip |
 | 不涉及 | 物体模块 | `Draws/TruckDraw` | 35 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 纯表现（Draws）；例：AlliedAntiAirVehicleTech1, AlliedAntiInfantryVehicle |
+| 不涉及 | 物体模块 | `Behaviors/LUAEventList` | 32 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 纯表现：EventListName连接原版ScriptEvents.xml与Scripts.lua；RA3声明可达的事件处理函数只调用模型部件显隐（及tostring），含继承；未定义的AlliedInfantryFightingFunctions无可达处理函数；C&C3升级/状态函数不可达。tests/test_inventory_lua.py静态核对游戏包与SDK声明，非上台对拍；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
 | 不涉及 | 物体模块 | `Behaviors/SubObjectsUpgrade` | 26 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 纯表现（名字规则）；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
 | 不涉及 | 物体模块 | `Draws/LaserDraw` | 21 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 纯表现（Draws）；例：AlliedAntiAirVehicleTech1, AlliedAntiStructureVehicle |
 | 不涉及 | 物体模块 | `Behaviors/LaserState` | 19 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 纯表现：LaserId关联光束，起止粒子/骨骼/EndOffset与ObjectStatusValidation只控制光束表现；LaserStateModule.xsd无伤害字段；engine_laser pair匹配LaserDraw/State 201，伤害由独立DamageNugget给出，test_simbench_c重放2/90/2/90；例：AlliedAntiAirVehicleTech1, AlliedAntiVehicleInfantry |
