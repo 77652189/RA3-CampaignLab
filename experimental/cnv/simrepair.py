@@ -1,4 +1,4 @@
-"""Measured AI-funded half/quarter-health power-plant repair.
+"""Measured AI-funded quarter/half/three-quarter-health power-plant repair.
 
 The economy latch, dispatch phase and accumulator arithmetic follow D's
 observations; general AI economy, player input and other repair configurations
@@ -77,8 +77,8 @@ class Repairs:
                 cost = simunits.production(b.template, s.own)[0]
                 if (not measured or rule != {'rate': 10, 'toggleable': True, 'dead': False, 'cost': (.5,) * 4}
                         or b.max_hp != 1000 or cost != 800
-                        or not any(abs(b.hp / b.max_hp - fraction) <= 1e-6 for fraction in (.25, .5))):
-                    s.gap('物体模块', 'RepairUpdate', '仅测1000血800造价25%/50%初始血量默认维修；其他配置/受损档未测')
+                        or not any(abs(b.hp / b.max_hp - fraction) <= 1e-6 for fraction in (.25, .5, .75))):
+                    s.gap('物体模块', 'RepairUpdate', '仅测1000血800造价25%/50%/75%初始血量默认维修；其他配置/受损档未测')
                     continue
                 state = self.active[b.name] = dict(owner=b.owner, cost=int((1 - b.hp / b.max_hp) * cost * .5),
                                                   r=f32(rule['rate'] / b.max_hp / 15), money=0., hp=0., last_hp=b.hp)

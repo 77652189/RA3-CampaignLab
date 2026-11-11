@@ -58,8 +58,6 @@ def test_ai_repair_quarter_health_cost_prediction_and_bench_readings():
     assert 10000 - e.money[plant.owner] == 800 * .5 * .75 ** 2
 
 
-@pytest.mark.xfail(strict=True, reason='E50: repairt:a blocked before build by hung tasklist; '
-                   '75% initial health remains unmeasured/refused; see work/re/handoff-e.md 待答问题')
 def test_ai_repair_three_quarter_health_cost_prediction_and_bench_readings():
     import build
     import sim
@@ -115,7 +113,7 @@ def test_ai_repair_rate_and_unmeasured_configuration_gate():
     assert ('物体模块', 'RepairUpdate') in e.unmodeled
 
 
-@pytest.mark.parametrize('initial_health', [10, 75])
+@pytest.mark.parametrize('initial_health', [10, 90])
 def test_ai_repair_unmeasured_initial_health_is_refused(initial_health):
     import sim
     from checks.engine_repair_ai import mission, check

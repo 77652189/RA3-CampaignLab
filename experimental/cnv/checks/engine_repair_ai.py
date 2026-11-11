@@ -14,6 +14,8 @@ Zero-credit control measures that latch, not inability to pay an active repair.
 Unmeasured repair configurations and player input remain separate gaps.
 E49 repairq:a starts at 25% health: cost=300, active frame 5 to 1131;
 the bench reaches 100/50/9775 at s74 and holds through s103.
+E51 repairt:a starts at 75% health: cost=100, active frame 5 to 381;
+the bench reaches 100/50/9975 at s24 and holds through s51.
 """
 from pathlib import Path
 
