@@ -2,16 +2,16 @@
 
 由 `experimental/cnv/inventory_levels.py --write` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）编出的全部脚本（`parts.merged`，含目标显示脚本）里的动作和条件；地图和任务摆的物体、我们自己的单位、脚本点名的模板，连同模块点名的武器、武器点名的物体（抛射体）和武器，取生效的模块（继承、include、同 id 覆盖）和武器效果。没跟：模块点名的别的物体（多是能变成 / 能装的东西：多功能步兵车的乘客、锤子坦克吸来的车）、物体生成表（死亡碎片、OCL 技能）和命令表（工厂能造什么）。AI 部分（引擎 B）在 [inventory-levels.md](inventory-levels.md)。状态和原版用量取自 [inventory.md](inventory.md)。停止条件①：下表全部已对拍。
 
-**已对拍 106 / 195**（不涉及的不算）。
+**已对拍 107 / 195**（不涉及的不算）。
 
 | 部分 | 已对拍 | 推断 | 未做 | 不涉及 |
 |---|---|---|---|---|
 | 脚本动作 | 50 | 0 | 0 | 14 |
 | 脚本条件 | 12 | 0 | 0 | 0 |
-| 物体模块 | 33 | 7 | 74 | 16 |
+| 物体模块 | 34 | 7 | 73 | 16 |
 | 武器效果 | 11 | 1 | 7 | 2 |
 
-按原版用量加权：已对拍 97%，已有（已对拍+推断）97%。
+按原版用量加权：已对拍 97%，已有（已对拍+推断）98%。
 
 摆了、但原版数据和我们的单位里都找不到的模板（模块没算）：a9 `AlliedFutureTank`。
 
@@ -20,7 +20,6 @@
 | 状态 | 部分 | 项 | 原版用量 | 关 | 说明 |
 |---|---|---|---|---|---|
 | 未做 | 物体模块 | `Behaviors/Physics` | 143 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 移动物理（坠落、弹跳、被击飞、倾倒）：模拟器走路按速度直走，没有物理；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
-| 未做 | 物体模块 | `Behaviors/DynamicsUpdate` | 113 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_dynamics.py），可能用别的名字实现了；例：AlliedAntiAirVehicleTech1, AlliedAntiInfantryVehicle |
 | 未做 | 物体模块 | `Behaviors/StancesBehavior` | 108 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 已核（11-08）：模拟器没有这个效果（没有姿态）；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
 | 未做 | 物体模块 | `Behaviors/LevelUpUpgrade` | 88 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAntiAirVehicleTech1, AlliedAntiInfantryInfantry |
 | 未做 | 物体模块 | `Behaviors/EngineerContain` | 70 | a1 a2 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |
@@ -191,6 +190,7 @@
 | 已对拍 | 物体模块 | `Behaviors/RunOffMapBehavior` | 88 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | tests/test_simbench_c.py::test_run_off_map_the_peacekeeper_is_gone_64_and_304_frames_after_the_order_never_dying；例：AlliedAntiAirVehicleTech1, AlliedAntiInfantryInfantry |
 | 已对拍 | 物体模块 | `Behaviors/WeaponSetUpdate` | 82 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | tests/test_simbench_c.py::test_weapon_set_the_status_picks_the_gun_molotov_under_the_toggle_and_the_painter_does_no_harm；例：AlliedAntiAirVehicleTech1, AlliedAntiInfantryInfantry |
 | 已对拍 | 物体模块 | `Behaviors/SpecialPower` | 74 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | tests/test_simbench.py::test_super_a_scripts_cast_starts_the_retail_reload；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
+| 已对拍 | 物体模块 | `Behaviors/DynamicsUpdate` | 69 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | tests/test_simbench_c.py::test_dynamics_update_a_hammer_without_it_crushes_and_goes_round_as_the_retail_one；例：AlliedAntiAirVehicleTech1, AlliedAntiInfantryVehicle |
 | 已对拍 | 物体模块 | `Behaviors/StatusBitsUpgrade` | 66 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | tests/test_simbench_c.py::test_status_bits_upgrade_the_heroic_grant_sets_weapon_upgraded_and_a_removal_clears_it；例：AlliedAntiAirVehicleTech1, AlliedAntiInfantryVehicle |
 | 已对拍 | 物体模块 | `Behaviors/StructureUnpackUpdate` | 59 | a1 a2 a4 a5 a6 a7 a8 a9 | tests/test_simbench.py::test_power_back_after_the_plant_unpacks；例：AlliedAirfield, AlliedBarracks |
 | 已对拍 | 物体模块 | `Behaviors/StructureSellUpdate` | 52 | a1 a2 a4 a5 a6 a7 a8 a9 | tests/test_simbench.py::test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames；例：AlliedAirfield, AlliedBarracks |

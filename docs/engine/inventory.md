@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|---|---|
 | 脚本动作 | **89%** | 451 | 110 | 30 | 194 | 117 | 91% |
 | 脚本条件 | **94%** | 89 | 27 | 5 | 54 | 3 | 94% |
-| 物体模块 | **89%** | 185 | 34 | 7 | 123 | 21 | 90% |
+| 物体模块 | **90%** | 186 | 35 | 7 | 122 | 22 | 91% |
 | 武器效果 | **64%** | 25 | 11 | 1 | 11 | 2 | 76% |
 | AI | **70%** | 415 | 97 | 134 | 150 | 34 | 88% |
 
@@ -593,7 +593,6 @@
 | 不涉及 | `Draws/DynamicsDraw` | 138 (857) | 纯表现（Draws）；例：AlliedAirField_Collapse, AlliedAntiAirShip_Collapse |
 | 已对拍 | `Behaviors/EnableDynamicsCollide` | 137 (154) | tests/test_simbench_c.py::test_enable_dynamics_collide_a_lantern_without_it_is_crushed_and_gone_at_the_same_frames；例：BaseSimulatedProp, AM_Boat01 |
 | 已对拍 | `AI/AIUpdate` | 136 (237) | tests/test_simbench.py::test_r8_idle_within_sight_walks_up_fires_and_comes_back；例：AlliedSatelliteSweepShroudRevealer, AlliedSuperWeaponEffect |
-| 未做 | `Behaviors/DynamicsUpdate` | 113 (154) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_dynamics.py），可能用别的名字实现了；例：AlliedDynamicsImpact, AlliedSatelliteSweepShroudRevealer |
 | 未做 | `Behaviors/StancesBehavior` | 108 (148) | 已核（11-08）：模拟器没有这个效果（没有姿态）；例：AlliedSatelliteSweepShroudRevealer, AlliedAirfield |
 | 已对拍 | `Body/ImmortalBody` | 91 (111) | tests/test_simbench_c.py::test_immortal_damage_stops_at_one_hp_kill_is_damage_and_delete_removes；例：BaseRock, CPDummyTarget |
 | 未做 | `Behaviors/LevelUpUpgrade` | 88 (124) | 模拟器代码里没有这个名字；例：AlliedSatelliteSweepShroudRevealer, AlliedAntiAirShip |
@@ -602,11 +601,13 @@
 | 已对拍 | `Behaviors/WeaponSetUpdate` | 82 (110) | tests/test_simbench_c.py::test_weapon_set_the_status_picks_the_gun_molotov_under_the_toggle_and_the_painter_does_no_harm；例：AlliedBaseDefense, AlliedBaseDefenseAdvanced |
 | 已对拍 | `Behaviors/SpecialPower` | 74 (95) | tests/test_simbench.py::test_super_a_scripts_cast_starts_the_retail_reload；例：AlliedConstructionYard, AlliedAntiAirShip |
 | 未做 | `Behaviors/EngineerContain` | 70 (105) | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |
+| 已对拍 | `Behaviors/DynamicsUpdate` | 69 (101) | tests/test_simbench_c.py::test_dynamics_update_a_hammer_without_it_crushes_and_goes_round_as_the_retail_one；例：AlliedDynamicsImpact, AlliedSatelliteSweepShroudRevealer |
 | 未做 | `Behaviors/RepairUpdate` | 66 (91) | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |
 | 已对拍 | `Behaviors/StatusBitsUpgrade` | 66 (85) | tests/test_simbench_c.py::test_status_bits_upgrade_the_heroic_grant_sets_weapon_upgraded_and_a_removal_clears_it；例：AlliedBaseDefense, AlliedAntiAirShip |
 | 已对拍 | `Behaviors/StructureUnpackUpdate` | 59 (96) | tests/test_simbench.py::test_power_back_after_the_plant_unpacks；例：AlliedAirfield, AlliedBarracks |
 | 已对拍 | `Behaviors/StructureSellUpdate` | 52 (72) | tests/test_simbench.py::test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames；例：AlliedAirfield, AlliedBarracks |
 | 不涉及 | `ClientBehaviors/AnimationSoundClientBehavior` | 48 (67) | 纯表现（ClientBehaviors）；例：AlliedTimeBombLvl3, AlliedRefinery |
+| 不涉及 | `Behaviors/DynamicsUpdate:起义专有` | 44 (53) | 起义时刻专有模板：继承链上的父模板 RA3 数据里没有（SS_Fling* 的 BaseClientFlingableProp），RA3 的 mod 编不过（engine_dynamics c，11-10 地图编译报 Critical），玩家在 RA3 里见不到 |
 | 不涉及 | `Draws/TruckDraw` | 35 (51) | 纯表现（Draws）；例：AlliedTimeBombLvl1, AlliedTimeBombLvl2 |
 | 未做 | `Behaviors/InfiltratorContain` | 34 (38) | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |
 | 未做 | `Behaviors/LUAEventList` | 32 (44) | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |

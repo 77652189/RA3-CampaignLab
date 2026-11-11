@@ -229,6 +229,31 @@ def without_ai(mtype):
     return out
 
 
+_orphans = None
+
+
+def orphaned(mtype):
+    """{'templates': n, 'campaign': n}: the templates carrying module `mtype` whose inheritance reaches a parent the
+    data lacks (Uprising's SS_Fling* props: BaseClientFlingableProp is not in RA3's) -- an RA3 mod cannot build them
+    (engine_dynamics c: the map compile stops); inventory.module_items splits every module on it."""
+    global _orphans
+    st = _load()
+    camp = _campaign_templates()
+    if _orphans is None:
+        def broken(k, seen=()):
+            if k not in st['objs'] or k in seen:
+                return True
+            parent = st['objs'][k][2]
+            return bool(parent) and broken(parent, seen + (k,))
+        _orphans = {k: {t for _, t, _ in _effective(k, st)} for k in st['objs'] if broken(k)}
+    out = {'templates': 0, 'campaign': 0}
+    for k, types in _orphans.items():
+        if mtype in types:
+            out['templates'] += 1
+            out['campaign'] += k in camp
+    return out
+
+
 def _weapon_nuggets(k, st, seen=()):
     if k not in st['weapons'] or k in seen:
         return []

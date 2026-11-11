@@ -137,6 +137,10 @@ BENCHED_TESTS = {
     # topple c, bench 11-10: lantern copies with / without EnableDynamicsCollide crushed and gone at the same frames
     (MODULE, 'Behaviors/EnableDynamicsCollide'):
         'tests/test_simbench_c.py::test_enable_dynamics_collide_a_lantern_without_it_is_crushed_and_gone_at_the_same_frames',
+    # engine_dynamics a / b, bench 11-10: Hammers with / without BaseVehicle's DynamicsUpdate crush, go round and
+    # arrive at the same frames (the Uprising fling props' share is split off: SPLIT_ORPHAN)
+    (MODULE, 'Behaviors/DynamicsUpdate'):
+        'tests/test_simbench_c.py::test_dynamics_update_a_hammer_without_it_crushes_and_goes_round_as_the_retail_one',
     # engine_garrison in / hp, bench 11-05 (simgarrison): script entry skips room and relation, owner follows the
     # first passenger, out at 13 % in the damage's frame, the contester bounces one, kill / hit eject them alive
     (MODULE, 'Behaviors/ContestableGarrisonContain'):
@@ -342,6 +346,11 @@ def module_items():
             state, why = GUESSED, '模拟器代码里有这个名字'
         else:
             state, why = TODO, '模拟器代码里没有这个名字'
+        orphan = retailmodules.orphaned(mtype)
+        if orphan['campaign'] and state != NA:  # the share on templates RA3 cannot build: its own item, 不涉及
+            v = dict(v, campaign=v['campaign'] - orphan['campaign'], templates=v['templates'] - orphan['templates'])
+            items.append(dict(part=MODULE, name=f'{group}/{mtype}:起义专有', uses=orphan['campaign'],
+                              all=orphan['templates'], state=NA, why=SPLIT_ORPHAN, eg=''))
         if mtype in SPLIT_STILL:                # the share on templates no AI moves: its own item, 不涉及
             still = retailmodules.without_ai(mtype)
             v = dict(v, campaign=v['campaign'] - still['campaign'], templates=v['templates'] - still['templates'])
@@ -350,6 +359,11 @@ def module_items():
         items.append(dict(part=MODULE, name=f'{group}/{mtype}', uses=v['campaign'], all=v['templates'], state=state,
                           why=why, eg=', '.join(v.get('examples', [])[:2])))
     return items
+
+
+# why a module's share on templates whose inheritance reaches a parent RA3's data lacks (retailmodules.orphaned) is 不涉及
+SPLIT_ORPHAN = ('起义时刻专有模板：继承链上的父模板 RA3 数据里没有（SS_Fling* 的 BaseClientFlingableProp），RA3 的 mod '
+                '编不过（engine_dynamics c，11-10 地图编译报 Critical），玩家在 RA3 里见不到')
 
 
 # module type -> why its share on templates without an AI update module (retailmodules.without_ai) is 不涉及
