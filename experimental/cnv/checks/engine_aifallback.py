@@ -13,11 +13,14 @@ Bench 2026-11-11, both positive-control checks PASS (home/far/alive/midway):
             home2 s53 (leaves again), alive4 through s60, 3 from s61.
   long500:  home0 s21-28; far2 s24-25; midway4 s26-28; home4 s31-48;
             home2 s49 (leaves again), alive4 through s56, 3 from s57.
-Both stay home about 18 seconds. The model returns all four in either build,
-but departs again short before long (rows38/42), opposite to the bench s53/49.
-tests/test_simai_fallback.py retains this as strict xfail. Do not register the
-field as benched: departure includes the already known home-readiness gap,
-and neither retreat exit position nor its cause was observed.
+Both stay home about 18 seconds. The old model departed short before long
+(rows38/42). Recording the outstanding retreat order fixes premature readiness:
+the model now returns at rows36/32 and departs at rows53/49, waiting 17 samples
+in both builds. Row indices are not exact engine seconds.
+tests/test_simai_fallback.py asserts alive return, a 15..20 sample home wait
+and long-before-short departure. Registration covers this fixed FromBase=300
+behavioral replay; internal exit position, exact-distance boundaries and other
+base choices remain unmeasured.
 """
 from checks import engine_airetreat as ar
 from parts import counted, square

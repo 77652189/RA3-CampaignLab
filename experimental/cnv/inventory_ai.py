@@ -105,9 +105,10 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
-    '微操/AIMicroManagerData.RetreatMinDistanceToFallback': (GUESSED,
-        'engine_aifallback aifbshort100/aifblong500 诊断；区域计数不能分离撤退起终点、FromBase 条件与回家后再出发；'
-        'tests/test_simai_fallback.py 保留有限回放，不登记字段闭环；接口缺口见 handoff-c'),
+    '微操/AIMicroManagerData.RetreatMinDistanceToFallback': (BENCHED,
+        'engine_aifallback aifbshort100/aifblong500：四人存活回齐、在家约18秒、长组先于短组再出发；'
+        'tests/test_simai_fallback.py::test_fallback_distance_first_return_and_departure；'
+        '仅此固定FromBase=300场景的行为回放，未量内部退出位置、精确距离边界或其他基地选择'),
     '微操/AIMicroManagerData.EnemySearchDistanceVisionMultiplier': (BENCHED,
         'engine_aisearch aisrchhi/aisrchlo 仅倍率1.5/0.25不同：高先打旁厂、到远厂0；低旁厂100且到远厂4；'
         'tests/test_simai_search.py 回放；仅被动建筑搜索，精确边界、敌军目标取得和揭雾未量'),
