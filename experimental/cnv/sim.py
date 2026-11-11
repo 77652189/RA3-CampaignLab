@@ -143,6 +143,7 @@ MINE_DRIVE_EXTRA = 50          # frames a leg takes beyond straight distance / s
                                # 269 = 2 x 104 + 30 + 30 + 1, the refinery 180 from its node, the miner 50 a second: 54)
 REACH = 300.0                  # 自动打掉: an enemy this close to something of the player's is being fought
 SPREAD = 30.0                   # a reinforcement team's units this far apart round its waypoint (Sim.reinforce, INFERRED)
+TOGGLE_UNPACK_LAG = 0          # frames past UnpackTime x 15 a toggle's new state is first read (engine_toggle d: 16)
 LINGER = 0.0                   # a killed unit's death (its slow death): still in the game's name cache, where it fell
                                 # (docs/engine/script-semantics.md 4.2) -- the bench (2026-10-28, probe death): out of
                                 # the area from the reading the kill shows in; the guess was 3 s
@@ -508,6 +509,7 @@ class Body:
     slots: object = None                                        # simunits.weapon_sets: the weapons chosen by status (None: fixed)
     auras_on: dict = dataclasses.field(default_factory=dict)   # modifier id -> (until frame, xml) an aura hung on it
     armor_up: bool = False                                    # retail miner toggle, owned separately from script bits
+    toggle_at: dict = dataclasses.field(default_factory=dict)  # toggle module index -> its ToggleState (0 at the start)
     shielded: bool = False                                      # INVULNERABLE + Iron Curtain bits on it (simunits.effect)
     taken: float = 1.0                                          # ARMOR factor: damage taken x (INFERRED)
     cold: float = 0.0                                           # the cryo beam's secondary damage held (deal, R freeze)
@@ -1111,6 +1113,9 @@ class Sim:
         if template not in self.__dict__.setdefault('_wsets', {}):
             self._wsets[template] = simunits.weapon_sets(template, self.own)
         b.slots = self._wsets[template] if b.weapons else None    # guns not read at all stay a gap (below)
+        for tm in self.toggles_of(b):         # a first ToggleState's bits hold from the start (engine_toggle c / e;
+            b.status = set(b.status) | tm['states'][0]['status']      # Sim.modify keeps them; retail first states
+                                                                      # have no AttributeModifier)
         if b.slots:                           # the weapon lines name a status: the held one is chosen from it
             b.weapons = simunits.pick_weapons(b.slots, b.status)
         b.crusher, b.crushable = simunits.crush(template, self.own)
@@ -1805,8 +1810,12 @@ class Sim:
                 del b.auras_on[mid]
             else:
                 mods.append(simunits.modifier(src, mid))
-        if b.armor_up:
-            mods.append(simunits.modifier(xml, 'AttributeModifier_ArmorUp'))
+        toggle_bits = set()
+        for i, tm in enumerate(self.toggles_of(b)):              # each toggle module's current ToggleState
+            st = tm['states'][b.toggle_at.get(i, 0) % len(tm['states'])]
+            toggle_bits |= st['status']
+            if st['modifier'] and simunits.modifier(xml, st['modifier']):
+                mods.append(simunits.modifier(xml, st['modifier']))
         step = self.cold_of(b)[0]['steps'][b.cold_step] if b.cold_step >= 0 else None
         if step and step[1]:
             mods.append(simunits.modifier(xml, step[1]))
@@ -1814,10 +1823,9 @@ class Sim:
         player_bits = {up for up in self.player_ups.get(b.owner, ())
                        if simunits.upgrade_type(up, self.own) == 'PLAYER'}
         on, off = simunits.status_bits(xml, b.upgrades | player_bits)
-        armor_bits = {'GENERIC_TOGGLE_STATE', 'SPECIAL_ARMOR_ACTIVE'} if b.armor_up else set()
-        e = simunits.effect(mods, on | b.script_status | b.attachment_status | armor_bits, off)
+        e = simunits.effect(mods, on | b.script_status | b.attachment_status | toggle_bits, off)
         if not mods and not on and not off and b.base is None:
-            b.status = set(b.script_status | b.attachment_status)
+            b.status = set(b.script_status | b.attachment_status | toggle_bits)
             if b.slots:
                 b.weapons = simunits.pick_weapons(b.slots, b.status)
             return
@@ -3114,8 +3122,8 @@ class Sim:
                 self.note('技能', f'{self.label(b)} 去 {a[2]} 展开成 {into}')
                 if not self.at_site(b, 0.0):
                     self.send(b, p)
-        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and self.body(a[0]) and self.toggle_miner_armor(self.body(a[0]), a[1]):
-            self.note('技能', f'{a[0]} 切换矿车装甲')
+        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and self.body(a[0]) and self.toggle_press(self.body(a[0]), a[1]):
+            self.note('技能', f'{a[0]} 按 {a[1]} 切换状态')
         elif name in ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY'):
             b = self.body(a[0])
             if b and b.alive and name == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT':
@@ -3340,6 +3348,7 @@ class Sim:
             self.autoheal(eng.frame)
             self.suppression_tick()
             self.flee_due(eng.frame)
+            self.toggles_run(eng.frame)
             self.expire(eng.frame)
             self.garrison.due()
             if self.frame_movers:
@@ -3872,18 +3881,60 @@ class Sim:
                                   self.frame_now() + int(duration * effect['min']),
                                   self.frame_now() + int(duration * effect['max'] + 0.99))
 
-    def toggle_miner_armor(self, b, command):
-        """Execute the retail miner's two-state armor button; other powers stay gaps."""
-        xml = self.xml_of(b.template)
-        if not b.alive or command != 'Command_ToggleArmorUp' or not any(
-                simunits._attr(h, 'SpecialPowerTemplate') == 'SpecialPower_ToggleArmorUp'
-                for h, _ in simunits._blocks(xml, 'ToggleStatusSpecialAbilityUpdate')):
+    def toggles_of(self, b):
+        """simunits.template_toggles for b's template, kept."""
+        cache = self.__dict__.setdefault('_toggles', {})
+        if b.template not in cache:
+            cache[b.template] = simunits.template_toggles(b.template, self.own)
+        return cache[b.template]
+
+    def toggle_press(self, b, command):
+        """A toggle button (ToggleStatusSpecialAbilityUpdate whose SpecialPowerTemplate the button fires): the module
+        goes to its next ToggleState, the old state's ObjectStatus and AttributeModifier off, the new one's on
+        (Sim.modify). False when b has no toggle for that button.
+        Bench 11-11 engine_toggle a-f: the new state's bits are read the press's frame (as here) with PackTime 0 or
+        1 s alike (b); UnpackTime 1 s puts them off 16 frames (d: the engineer's tent); a state with a DisabledType
+        (the engineer's tent, the Tesla trooper's short circuit: HELD) takes no further press (d, f: presses 45 and
+        60 frames later change nothing; INFERRED that DisabledType is the cause, not read in the program)."""
+        power = simunits.command_power(command, self.own)
+        i = next((i for i, tm in enumerate(self.toggles_of(b)) if power and tm['power'] == power), None)
+        if not b.alive or i is None:
             return False
-        b.armor_up = not b.armor_up
-        self.modify(b)
-        self.used.add('miner armor')
-        self.change()
+        tm = self.toggles_of(b)[i]
+        if tm['states'][b.toggle_at.get(i, 0) % len(tm['states'])]['disabled'] or (b.name, i) in self.toggles_due:
+            self.note('技能', f'{self.label(b)} 按 {command}：当前状态不接受（DisabledType / 正在展开）')
+            return True
+        delay = int(round(tm['unpack'] * simunits.LIFE_FPS))
+        if delay:
+            self.toggles_due[(b.name, i)] = (self.frame_now() + delay + TOGGLE_UNPACK_LAG, b, command)
+            return True
+        self.toggle_enter(b, i, power)
         return True
+
+    @property
+    def toggles_due(self):
+        """{(body name, toggle module index): (frame, body, button)}: presses waiting out their UnpackTime."""
+        return self.__dict__.setdefault('_toggles_due', {})
+
+    def toggles_run(self, frame):
+        """The toggles whose UnpackTime ran out by this frame enter their next state."""
+        for key, (due, b, command) in list(self.toggles_due.items()):
+            if frame >= due:
+                del self.toggles_due[key]
+                if b.alive:
+                    self.toggle_enter(b, key[1], simunits.command_power(command, self.own))
+
+    def toggle_enter(self, b, i, power):
+        tm = self.toggles_of(b)[i]
+        b.toggle_at[i] = (b.toggle_at.get(i, 0) + 1) % len(tm['states'])
+        if power == 'SpecialPower_ToggleArmorUp':
+            b.armor_up = b.toggle_at[i] == 1
+            self.used.add('miner armor')
+        self.modify(b)
+        self.used.add('toggle')
+        self.change()
+
+    toggle_miner_armor = toggle_press           # simai's name (the AI micro's toggles)
 
     def queue_projectile_hit(self, when, target, damage, attacker, weapon, centre=None):
         """A projectile's arrival event, also usable to replay an observed collision.

@@ -1092,3 +1092,18 @@ def test_attach_move_flag_transient_link_matches_engine_attach_detach_observatio
     assert child.alive and parent.alive
     assert not child.status & {'ATTACHED','NON_AUTOACQUIRABLE','NO_COLLISIONS'}
     assert 'VEHICLE_ATTACHED' not in parent.status
+
+
+# ---- ToggleStatusSpecialAbilityUpdate: engine_toggle a-f, bench 2026-11-11 (round 156, Sim.toggle_press). Rows at
+# frame n since Go: 第二行 frames A + 1000 x frames B held, 第三行 / 第四行 frames before A / B first seen on / off
+# (第四行 reads the NOT flag of the frame's top, so a bit turned on by the press frame reads 'lost' then: 1001).
+def test_toggle_status_a_press_moves_to_the_next_state_unpack_delays_it_and_a_held_state_takes_no_press():
+    bench = {'a': lambda n: (59059, 1001, 1001),                  # Peacekeeper: on 1-59, off by the press at 60
+             'b': lambda n: (59059, 1001, 1001),                  # Conscript: PackTime 1 s changes nothing
+             'c': lambda n: (60000 + n - 60, 30001, 30031),       # Hammer: the first state's bit from the start
+             'd': lambda n: (n - 16, n * 1000 + 17, n * 1000 + n),  # Engineer: UnpackTime 1 s, then HELD for good
+             'e': lambda n: (60000 + n - 60, 30001, 30031),       # Sickle: WEAPON_UPGRADED_01 -> _02 -> _01
+             'f': lambda n: (n * 1001, 1001, 1001)}               # Tesla trooper: HELD, the press at 60 does nothing
+    for which, rows in bench.items():
+        n, *got = _sim_run('engine_toggle', which, 12.0).series[-1][1]
+        assert n > 150 and tuple(got) == rows(n), (which, n, got)

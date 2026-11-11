@@ -2,13 +2,13 @@
 
 由 `experimental/cnv/inventory_levels.py --write` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）编出的全部脚本（`parts.merged`，含目标显示脚本）里的动作和条件；地图和任务摆的物体、我们自己的单位、脚本点名的模板，连同模块点名的武器、武器点名的物体（抛射体）和武器，取生效的模块（继承、include、同 id 覆盖）和武器效果。没跟：模块点名的别的物体（多是能变成 / 能装的东西：多功能步兵车的乘客、锤子坦克吸来的车）、物体生成表（死亡碎片、OCL 技能）和命令表（工厂能造什么）。AI 部分（引擎 B）在 [inventory-levels.md](inventory-levels.md)。状态和原版用量取自 [inventory.md](inventory.md)。停止条件①：下表全部已对拍。
 
-**已对拍 118 / 197**（不涉及的不算）。
+**已对拍 119 / 197**（不涉及的不算）。
 
 | 部分 | 已对拍 | 推断 | 未做 | 不涉及 |
 |---|---|---|---|---|
 | 脚本动作 | 50 | 0 | 0 | 14 |
 | 脚本条件 | 12 | 0 | 0 | 0 |
-| 物体模块 | 39 | 9 | 64 | 18 |
+| 物体模块 | 40 | 9 | 63 | 18 |
 | 武器效果 | 17 | 2 | 4 | 2 |
 
 按原版用量加权：已对拍 99%，已有（已对拍+推断）99%。
@@ -21,7 +21,6 @@
 |---|---|---|---|---|---|
 | 未做 | 物体模块 | `Behaviors/Physics` | 143 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 移动物理（坠落、弹跳、被击飞、倾倒）：模拟器走路按速度直走，没有物理；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
 | 未做 | 物体模块 | `Behaviors/RepairUpdate` | 66 | a1 a2 a4 a5 a6 a7 a8 a9 | 仅字段读取：engine_repair a两次未触发玩家维修，双方电厂血量50、资金5000；维修入口原因未明，不以schema默认10HP/s或预测费用登记已对拍；例：AlliedAirfield, AlliedBarracks |
-| 未做 | 物体模块 | `Behaviors/ToggleStatusSpecialAbilityUpdate` | 27 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 已核（11-08）：模拟器没有这个效果（没有按钮切换状态）；例：AlliedAntiInfantryInfantry, AlliedAntiNavyShipTech1 |
 | 未做 | 物体模块 | `Behaviors/FreefallUpdate` | 24 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
 | 未做 | 物体模块 | `Behaviors/QueueProductionExitUpdate` | 19 | a1 a2 a4 a5 a6 a7 a8 | 模拟器代码里没有这个名字；例：AlliedBarracks, AlliedConstructionYard |
 | 未做 | 物体模块 | `Behaviors/ReplaceSelfSpecialAbility` | 18 | a1 a2 a4 a5 a6 a7 a9 | 已核（11-08）：模拟器没有这个效果（没有换形态）；例：AlliedConstructionYard, AlliedMCV |
@@ -187,6 +186,7 @@
 | 已对拍 | 物体模块 | `Behaviors/StatusBitsUpgrade` | 66 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | tests/test_simbench_c.py::test_status_bits_upgrade_the_heroic_grant_sets_weapon_upgraded_and_a_removal_clears_it；例：AlliedAntiAirVehicleTech1, AlliedAntiInfantryVehicle |
 | 已对拍 | 物体模块 | `Behaviors/StructureUnpackUpdate` | 59 | a1 a2 a4 a5 a6 a7 a8 a9 | tests/test_simbench.py::test_power_back_after_the_plant_unpacks；例：AlliedAirfield, AlliedBarracks |
 | 已对拍 | 物体模块 | `Behaviors/StructureSellUpdate` | 52 | a1 a2 a4 a5 a6 a7 a8 a9 | tests/test_simbench.py::test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames；例：AlliedAirfield, AlliedBarracks |
+| 已对拍 | 物体模块 | `Behaviors/ToggleStatusSpecialAbilityUpdate` | 27 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | tests/test_simbench_c.py::test_toggle_status_a_press_moves_to_the_next_state_unpack_delays_it_and_a_held_state_takes_no_press；例：AlliedAntiInfantryInfantry, AlliedAntiNavyShipTech1 |
 | 已对拍 | 物体模块 | `Behaviors/AttributeModifierUpgrade` | 22 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_invuln.py；例：AlliedAntiStructureShip, AlliedAntiVehicleVehicleTech1 |
 | 已对拍 | 物体模块 | `Behaviors/CrushDie` | 22 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | tests/test_simbench.py::test_crush_a_tank_drives_over_a_lower_level_and_leaves_an_equal_one；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
 | 已对拍 | 物体模块 | `Behaviors/SuppressionUpdate` | 22 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | tests/test_simbench_c.py::test_suppression_samples_entry_refresh_and_expiry_at_the_four_probe_readings；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |

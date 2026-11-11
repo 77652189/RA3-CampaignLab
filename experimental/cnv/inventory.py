@@ -182,6 +182,12 @@ BENCHED_TESTS = {
         'tests/test_simbench.py::test_transport_a_team_put_in_instantly_skips_the_room_and_the_relation_and_rides_along',
     (MODULE, 'Behaviors/EjectPassengersSpecialAbilityUpdate'):
         'tests/test_simbench.py::test_transport_the_man_cannon_throws_one_every_half_second_and_a_killed_transport_kills_its_men',
+    # engine line A round 156: engine_toggle a-f, bench 11-11 (Sim.toggle_press): six of our 9 levels' toggles -- a
+    # press moves to the next ToggleState (its ObjectStatus / AttributeModifier), the first state's bits from the
+    # start, UnpackTime delays, PackTime does not, a DisabledType state takes no press (INFERRED cause). Not modelled:
+    # ModelConditions, ArmorSet / LocomotorSet (the VX's / Tengu's jet form), TriggerAttributeModifier
+    (MODULE, 'Behaviors/ToggleStatusSpecialAbilityUpdate'):
+        'tests/test_simbench_c.py::test_toggle_status_a_press_moves_to_the_next_state_unpack_delays_it_and_a_held_state_takes_no_press',
     # engine line C round 5: selling (checks/engine_sell.py, docs/engine/sell.md, bench 11-06)
     (MODULE, 'Behaviors/BuildingBehavior'):
         'tests/test_simbench.py::test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames',
@@ -224,7 +230,6 @@ NOTES = {
                                                       'LifetimeUpdate 折成伤害，不模拟召出物本身'),
     (MODULE, 'Behaviors/StealthDetectorUpdate'): (TODO, f'{_NOT_IN_SIM}（没有反隐）'),
     (MODULE, 'Behaviors/GarrisonContain'): (GUESSED, 'simgarrison 同一套规则（不可争夺）；没单独上台对拍'),
-    (MODULE, 'Behaviors/ToggleStatusSpecialAbilityUpdate'): (TODO, f'{_NOT_IN_SIM}（没有按钮切换状态）'),
     (MODULE, 'Behaviors/ReplaceSelfSpecialAbility'): (TODO, f'{_NOT_IN_SIM}（没有换形态）'),
     (MODULE, 'Behaviors/SpawnBehavior'): (TODO, f'{_NOT_IN_SIM}（没有母体造随从）'),
     (MODULE, 'Behaviors/SlavedUpdate'): (TODO, f'{_NOT_IN_SIM}（没有随从跟随）'),

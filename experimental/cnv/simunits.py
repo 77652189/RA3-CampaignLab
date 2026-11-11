@@ -1685,6 +1685,37 @@ def upgrade_mods(xml, upgrades):
     return out
 
 
+def toggle_modules(xml):
+    """The template's ToggleStatusSpecialAbilityUpdate modules, in order: [{power, pack, unpack (seconds), states:
+    [{status: set, modifier: id or None}]}]. A press moves a module to its next state, modulo the count (work/re
+    l2_ability.md 3: the old state's ObjectStatus / AttributeModifier off, the new one's on); the first state holds
+    from the start; disabled: the state's DisabledType (engine_toggle d / f: a script press then does nothing).
+    ModelConditions / ArmorSet / LocomotorSet are not read here."""
+    out = []
+    xml = re.sub(r'<!--.*?-->', '', xml or '', flags=re.S)        # retail keeps old ToggleStates in comments
+    for head, inner in _blocks(xml, 'ToggleStatusSpecialAbilityUpdate'):
+        states = [dict(status=set((_attr(h, 'ObjectStatus') or '').split()), modifier=_attr(h, 'AttributeModifier'),
+                       disabled=_attr(h, 'DisabledType'))
+                  for h, _ in _blocks(inner, 'ToggleState')]
+        if states:
+            out.append(dict(power=_attr(head, 'SpecialPowerTemplate'), pack=_secs(_attr(head, 'PackTime') or '0s'),
+                            unpack=_secs(_attr(head, 'UnpackTime') or '0s'), states=states))
+    return out
+
+
+def template_toggles(template, own=None, depth=0):
+    """toggle_modules of the template, else of what it inherits from (retail's CampaignOverrides.xml redefines the
+    Hammer as inheriting from itself: its parent is then the retail file)."""
+    xml = _xml(template, own)
+    found = toggle_modules(xml)
+    parent = _attr(re.match(r'<GameObject\b[^>]*>', xml).group(0), 'inheritFrom') if xml.startswith('<GameObject') else None
+    if found or not parent or depth > 4:
+        return found
+    if parent.lower() == template.lower():
+        return toggle_modules(retail_xml(template))
+    return template_toggles(parent, own, depth + 1)
+
+
 def status_bits(xml, upgrades):
     """(set, clear): the bits the held upgrades' StatusBitsUpgrade modules set and clear (Generals StatusBitsUpgrade:
     on upgrade sets StatusToSet, clears StatusToClear; INFERRED for RA3, not on the bench)."""

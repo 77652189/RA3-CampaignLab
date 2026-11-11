@@ -26,6 +26,9 @@ RETAIL_COMMANDS = {'Command_CaptureBuilding',           # an engineer takes a bu
                    'Command_JAAVT1_Transform',          # the VX transforms (JapanAntiAirVehicleTech1)
                    'Command_ToggleMirageField',         # the Mirage tank's field on / off (AlliedAntiVehicleVehicleTech3CommandSet)
                    'Command_JapanAntiInfantryInfantryBonzai',   # the Imperial Warrior's Bonzai charge (engine_aimicro)
+                   'Command_ToggleMolotovCocktailSpecialPower', 'Command_ToggleLeechBeam',     # engine_toggle b / c
+                   'Command_ToggleAlliedEngineerHeal', 'Command_ToggleBinaryWeapon',          # engine_toggle d / e
+                   'Command_ToggleShortCircuit',                                              # engine_toggle f
                    'Command_ToggleRiotShieldSpecialPower',      # the Peacekeeper's riot shield (engine_aitoggle)
                    'Command_ActivateEjectPassengersSpecialPower',   # the Bullfrog's man cannon at a spot (engine_transport)
                    'Command_ActivateEjectPassengersSpecialPowerUntargeted'}     # the bomber's paradrop (retail a01)
