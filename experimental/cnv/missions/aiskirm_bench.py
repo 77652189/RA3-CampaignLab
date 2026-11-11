@@ -82,13 +82,39 @@ def expire_xml(secs):
         '</AssetDeclaration>', ''])
 
 
-def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None):
+UMOD_PID = 'CNVUMod'                  # aiskmod: 1AlliedBalanced plus UnitModifier lines (check u)
+UMOD_ZERO = ('AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry')   # Peacekeeper, Javelin soldier
+
+
+def umod_xml(zero):
+    """A personality = 1AlliedBalanced with <UnitModifier Unit=x OffensiveModifier=0 DefensiveModifier=0/> for each x
+    in `zero` (all difficulties). The model (private ai/teams.py UnitBuilder, l4_unitbuilder.md 6 / round 35): the
+    modifier scales only the score 0x8b9c30, which shapes the draw only under a UnitBuilderUnitChoiceStrategy -- no
+    SDK personality has one, so the barracks still draws the zeroed units uniformly."""
+    return '\n'.join([
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+        '  <Tags></Tags>',
+        '  <Includes>',
+        '    <Include type="instance" source="DATA:SkirmishAI/Personalities/AlliedBalanced.xml" />',
+        '  </Includes>',
+        f'  <AIPersonalityDefinition id="{UMOD_PID}" PersonalityType="{UMOD_PID}" inheritFrom="1AlliedBalanced">',
+        *[f'    <UnitModifier Unit="{u}" OffensiveModifier="0" DefensiveModifier="0"/>' for u in zero],
+        '  </AIPersonalityDefinition>',
+        '</AssetDeclaration>', ''])
+
+
+def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None):
     m = Mission(name=name, map=ai_map(niagara, lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
     if expire is not None:               # aiskexp (check q): the same AI with SecondsTillTargetsExpire = expire
         m.facts['targets expire'] = expire
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{EXPIRE_PID}'
         m.assets.append((f'{EXPIRE_PID}.xml', expire_xml(expire), f'AIPersonalityDefinition:{EXPIRE_PID}'))
+    if umod is not None:                 # aiskmod (check u): the same AI with the umod units' UnitModifier at 0
+        m.facts['zeroed'] = len(umod)
+        m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{UMOD_PID}'
+        m.assets.append((f'{UMOD_PID}.xml', umod_xml(umod), f'AIPersonalityDefinition:{UMOD_PID}'))
     s1 = m.player('s1')
     m.put('AlliedConstructionYard', 'east base', 0, 0, side='s1', name='UNIT - CNV AI Yard', role='ai yard')
     m.put('AlliedConstructionYard', 'base yard', name='UNIT - CNV AI Player Yard', role='player yard')
@@ -113,4 +139,5 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None):
 MISSION = {'aiskirm': mission, 'aiskirmlow': lambda: mission('CampAISkLow', money=15000),
            'aiskjav': lambda: mission('CampAISkJav', jav=True),
            'aiskirmnl': lambda: mission('CampAISkNoLib', lib=False),
-           'aiskexp': lambda: mission('CampAISkExp', expire=12.0)}     # check q: SecondsTillTargetsExpire 12, not 5   # s1 without the container's Lib_Skirmish_Setup
+           'aiskexp': lambda: mission('CampAISkExp', expire=12.0),
+           'aiskmod': lambda: mission('CampAISkMod', umod=UMOD_ZERO)}     # check q: SecondsTillTargetsExpire 12, not 5   # s1 without the container's Lib_Skirmish_Setup

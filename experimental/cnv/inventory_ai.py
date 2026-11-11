@@ -124,6 +124,11 @@ NOTES = {
                                         '那份数据里的 RetreatPowerAdvantage，一个撤一个不撤；aipas1 / aipas0 只差 '
                                         'EngagePassiveTargets）、测试对拍 tests/test_simai.py——队伍跑的是 MicroManager '
                                         '指名的那份微操数据；指名不存在的 id 会怎样没量'),
+    # B round 111: aiskmod u -- zeroed modifiers, the same build seconds as the stock aiskirm c
+    **{f'人格/UnitModifier.{k}': (BENCHED, '台上量过（engine_aiskirm u：aiskmod 把维和、标枪的 UnitModifier 两个系数都设 0，'
+                                 '造兵逐秒和原版 aiskirm c 一样）、测试对拍 tests/test_simai.py——没有选兵策略表时 '
+                                 'UnitModifier 不影响造什么；有策略表时的打分没量（原版人格都没有）')
+       for k in ('Unit', 'OffensiveModifier', 'DefensiveModifier')},
     # B round 109: the gate is on in the model since round 100 (keep_on); aiar0-3 replayed on the simulator
     '组队招人/TeamTemplate.AlwaysRecruit': (BENCHED, '台上量过（engine_aiteamfilter aiar0～3，第 90 轮）、测试对拍 '
                                          'tests/test_simai_bench_b.py：关着新造的车留家、开着出门的队把它招走、'

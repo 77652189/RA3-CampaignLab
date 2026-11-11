@@ -99,6 +99,20 @@ def test_skirmish_ai_barracks_mix_matches_the_bench(skirmish):
     assert set(made) == {'AlliedScoutInfantry', 'AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry'}, made
 
 
+def test_unit_modifier_zero_changes_nothing_as_on_the_bench(lib, skirmish):
+    """bench engine_aiskirm u (aiskmod: 1AlliedBalanced + UnitModifier Peacekeeper / Javelin soldier at Offensive = Defensive
+    = 0, B handoff 113): the bench built the same second by second as aiskirm c -- dogs s23 / s26, Javelins s32 / s37 /
+    s60, Peacekeepers s43 / s49 / s54. UnitModifier scales only the score (0x8b9c30), which no SDK personality's draw
+    uses (no choice strategy): the zeroed units are still drawn. The simulator reads the zeros and builds the same."""
+    w = simai.run('aiskmod', until=100, lib=lib)
+    (b,) = w.brains.values()
+    assert b.ai.unit_builder.rules['modifiers']['AlliedAntiInfantryInfantry'] == (0.0, 0.0)
+    out = [((f - b.started) / simai.FPS, t) for f, what, t in b.trace if what == 'out' and t in BARRACKS]
+    assert {t for s, t in out if s < 80} == {'AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry',
+                                            'AlliedScoutInfantry'}, out
+    assert out == [x for x in _barracks_out(skirmish) if x[0] < 100], out
+
+
 def test_skirmish_ai_builds_again_after_the_opening(skirmish):
     """After the opening the unit builder lives on income (CoopBudget PRODUCTION 85 %): the miners' (sim.mine_due,
     HOOKS 7) -- bench c: Peacekeepers again at 125 / 142 / 154 s."""
