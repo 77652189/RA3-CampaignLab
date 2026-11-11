@@ -2,10 +2,12 @@
 only in work/re/ (the private repo); this repo is public. This guard scans every tracked file under experimental/,
 tests/ and docs/ for what reads as one:
 
-- a code address of the game: 0x + six hex digits in 0x400000-0xCFFFFF (optionally zero-padded to 7-8 digits);
+- a code address of the game: 0x + six hex digits whose first is 4 to C, the game's code range (optionally
+  zero-padded to 7-8 digits);
 - a module offset: `<something>.game+0x...`;
-- a struct / vtable offset: `+0x...` with no space after the plus (`template +0xdc`, `vtable+0x40`, `(+0x24 = 1`);
-  arithmetic in code is written `x + 0x10`.
+- a struct / vtable offset: a plus glued to 0x and hex digits (`template +0x..`, `vtable+0x..`, `(+0x.. = 1`);
+  arithmetic in code is written with a space after the plus.
+(This file spells no example out: it is scanned too.)
 
 Crash codes (0xC0000005), hashes (8 digits, not zero-padded), masks and file-format words are none of these. Files
 whose own subject is a file format full of such words are allowed whole (FORMAT_FILES); add one only for that reason.
@@ -17,7 +19,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SCANNED = ('experimental', 'tests', 'docs')
 
-ADDRESS = re.compile(r'\b0x0{0,2}[4-9a-cA-C][0-9a-fA-F]{5}\b'      # code address 0x400000-0xCFFFFF
+ADDRESS = re.compile(r'\b0x0{0,2}[4-9a-cA-C][0-9a-fA-F]{5}\b'      # code address, first digit 4 to C
                      r'|\.game\+0x[0-9a-fA-F]+'                     # RA3_1.13.game+0x...
                      r'|\+0x[0-9a-fA-F]+\b')                        # struct / vtable offset: '+0x' glued
 
