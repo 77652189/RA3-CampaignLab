@@ -32,10 +32,25 @@
 - 禁火不自动开火（d），被打也不还手（e）。
 - 默认姿态（GUARD）不下命令也会自己打射程内的敌人（c）。
 
+## 3b. 原地（HOLD_POSITION）和进攻（AGGRESSIVE）（测，2026-11-10）
+
+探针 `checks/engine_acquire.py` 加了 hold180 / hold220 / agg220 / agg240 / agg260 五个变体（敌方守护者出生时设姿态，玩家坦克在正北 d 处、NO_ATTACK）。对照 GUARD：180 原地开火，220 走过去打、第 16 秒走回原位，240 以外不动。
+
+| 变体 | 结果 |
+| --- | --- |
+| hold180 | 原地开火，和 GUARD 一样 |
+| hold220 | 一直不动、不开火（GUARD 会走过去） |
+| agg220 | 走过去打，打完**不回原位**（到第 26 秒都在敌人旁边） |
+| agg240 / agg260 | 不动、不开火：索敌距离和 GUARD 一样 |
+
+- 原地：只打武器够得着的，不追。进攻：追的距离不比 GUARD 远，只是不回去。
+- 原版战役脚本设的姿态：GUARD 25 次、AGGRESSIVE 68、HOLD_POSITION 11、HOLD_FIRE 65（含 TEAM_SET_STANCE）。四种都量过了。
+- 模拟器：`Body.stance`，`Sim.idle_chase` 里原地不追、进攻不回；禁火见第 3 节（`hold_paused`：进禁火前的攻击命令保留不打）。测试 `tests/test_simbench_c.py::test_stance_*`。追到一半换姿态是推断。
+
 ## 4. 没进模型的部分
 
 - 闲时自动找目标（c）、还手、HOLD_POSITION 不追、GUARD 和 AGGRESSIVE 的区别都是 AI 层的事，模型现在没有 AI 层。读程序只读到"闲时自动找目标只在 GUARD / AGGRESSIVE 下"、"HOLD_POSITION 和禁火不追"，GUARD 与 AGGRESSIVE 的距离数值没读到。
 
 ## 对不上
 
-- c：测试台上默认姿态的 A 第 13 帧自己开火，模型里不下命令就不开火（自动索敌没建模，写成 strict xfail）。
+- c：测试台上默认姿态的 A 第 13 帧自己开火，模型里不下命令就不开火（自动索敌没建模，写成 strict xfail）。这里的"模型"是引擎模型；战役模拟器（`experimental/cnv/sim.py`）有闲时索敌（R8），a 到 f 六个变体都对上（`test_stance_*`，打击节奏是战斗模型的事，不在这里断言）。

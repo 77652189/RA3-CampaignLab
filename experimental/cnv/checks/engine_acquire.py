@@ -27,12 +27,21 @@ RESULTS (bench 2026-11-07; the s1 side has no reveal: it sees with its own visio
   back to its spot; guarding / attack-moving at 260+ nothing. The simulator (sim.Sim.in_range / idle_chase, R8)
   holds all ten (tests/test_simbench.py 'R8'); its fire is steadier (no clips) and kills the tank (the bench's
   stays at 3: not explained), so it walks home at s18 against the bench's s16.
+STANCES (bench 2026-11-10, UNIT_SET_STANCE on the attacker at its birth; GUARD 0 is the default above):
+  hold180   (HOLD_POSITION 2) 起点 1 原地 1 近敌 1 all along; 坦克血 100 -> 86 s2, -14 per 2 s, 3 from s14: as idle180.
+  hold220   (HOLD_POSITION) 起点 1 原地 1 近敌 0 坦克血 100 all 27 s: where GUARD walks in, it never moves nor fires.
+  agg220    (AGGRESSIVE 1) 原地 0 and 近敌 1 from s1 to s26; 坦克血 86 s2 ... 3 from s14: walks in, fires and STAYS
+            (GUARD walks home at s16).
+  agg240 / agg260  (AGGRESSIVE) 起点 1 原地 1 近敌 0 坦克血 100 all along: the same acquire reach as GUARD.
+  The simulator (Body.stance in idle_chase): the same five (tests/test_simbench_c.py test_stance_*).
 """
 from parts import Script, Test, counted, square
 
-VARIANTS = ('idle180', 'idle260', 'idle400', 'guard260', 'guard400', 'am260', 'am400', 'idle200', 'idle220', 'idle240')
+VARIANTS = ('idle180', 'idle260', 'idle400', 'guard260', 'guard400', 'am260', 'am400', 'idle200', 'idle220', 'idle240',
+            'hold180', 'hold220', 'agg220', 'agg240', 'agg260')
 ATK, TANK = 'UNIT - CNV Aq Atk', 'UNIT - CNV Aq Tank'
 RUN = 25.0
+STANCE = {'hol': 2, 'agg': 1}   # UNIT_SET_STANCE at birth: HOLD_POSITION / AGGRESSIVE (GUARD 0 is the default)
 
 
 def frames(m):
@@ -51,7 +60,8 @@ def frames(m):
                                                  ('SET_MILLISECOND_TIMER', 'Test Go', 2.0)]))
     t.scripts.append(Script('Test - make', [('TIMER_EXPIRED', 'Test Make')],
                             [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', ATK, 'AlliedAntiVehicleVehicleTech1',
-                              m.team('s1'), m.mark('s')), ('UNIT_SET_TEAM', ATK, team)]))
+                              m.team('s1'), m.mark('s')), ('UNIT_SET_TEAM', ATK, team)]
+                            + ([('UNIT_SET_STANCE', ATK, STANCE[v[:3]])] if v[:3] in STANCE else [])))
     go = ('TIMER_EXPIRED', 'Test Go')
     if v.startswith('guard'):
         t.scripts.append(Script('Test - order', [go], m.order('guard', [ATK], 'Test Guard', 's1', crew='Aq')))

@@ -145,6 +145,10 @@ BENCHED_TESTS = {
     # arrive at the same frames (the Uprising fling props' share is split off: SPLIT_ORPHAN)
     (MODULE, 'Behaviors/DynamicsUpdate'):
         'tests/test_simbench_c.py::test_dynamics_update_a_hammer_without_it_crushes_and_goes_round_as_the_retail_one',
+    # all four stances the retail scripts set: engine_stance a-f (HOLD_FIRE, bench 11-06) and engine_acquire hold / agg
+    # (HOLD_POSITION goes after nothing, AGGRESSIVE never walks back; bench 11-10) -- tests/test_simbench_c.py test_stance_*
+    (MODULE, 'Behaviors/StancesBehavior'):
+        'tests/test_simbench_c.py::test_stance_hold_fire_stops_a_standing_attack_order',
     # engine_garrison in / hp, bench 11-05 (simgarrison): script entry skips room and relation, owner follows the
     # first passenger, out at 13 % in the damage's frame, the contester bounces one, kill / hit eject them alive
     (MODULE, 'Behaviors/ContestableGarrisonContain'):
@@ -182,7 +186,6 @@ NOTES = {
                                                       'LifetimeUpdate 折成伤害，不模拟召出物本身'),
     (MODULE, 'Behaviors/StealthDetectorUpdate'): (TODO, f'{_NOT_IN_SIM}（没有反隐）'),
     (MODULE, 'Behaviors/GarrisonContain'): (GUESSED, 'simgarrison 同一套规则（不可争夺）；没单独上台对拍'),
-    (MODULE, 'Behaviors/StancesBehavior'): (TODO, f'{_NOT_IN_SIM}（没有姿态）'),
     (MODULE, 'Behaviors/ToggleStatusSpecialAbilityUpdate'): (TODO, f'{_NOT_IN_SIM}（没有按钮切换状态）'),
     (MODULE, 'Behaviors/ReplaceSelfSpecialAbility'): (TODO, f'{_NOT_IN_SIM}（没有换形态）'),
     (MODULE, 'Behaviors/SpawnBehavior'): (TODO, f'{_NOT_IN_SIM}（没有母体造随从）'),

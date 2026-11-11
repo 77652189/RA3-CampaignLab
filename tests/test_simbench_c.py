@@ -615,3 +615,91 @@ def test_emp_blocks_an_ordered_shot_and_allows_a_new_shot_after_expiry():
     assert all('Armor="NoArmor"' in u.xml for u in m.units if
                u.id.startswith(('CNV_EmpFireGun','CNV_EmpFireTarget')))
     assert tuple(e.run(16).series[-1][1])==(901090,901100,901080,901090)
+
+
+# ---- StancesBehavior (sim.Sim.act UNIT_SET_STANCE, Sim.fight's armed list; Body.hold_fire / hold_paused): bench
+# 2026-11-06 engine_stance (checks/engine_stance.py, docs/engine/stance.md): a Guardian A, an enemy Guardian T 150 in
+# front (NO_ATTACK but in e), each hit 12.5 %. The rhythm (the bench's ~30-45 frames a shot against the simulator's
+# damage rate) is the fight model's, not the stance's: asserted here only who fires and when it stops / starts again.
+def _stance(which):
+    s = _sim_run('engine_stance', which, 13.0)
+    labs = ['帧数', 'T状态', 'T血量', 'A血量']
+    return [dict(zip(labs, r[1])) for r in s.series]
+
+
+def _drops(rows, key):
+    return [r['帧数'] for i, r in enumerate(rows) if i and r[key] < rows[i - 1][key]]
+
+
+def test_stance_hold_fire_stops_a_standing_attack_order():
+    """a: ordered at Go, HOLD_FIRE at frame 45: the bench's T 87 -> 75 (a shot fired by the stance frame), then 75 to
+    frame 179. The simulator: hurt by frame 46, not one point after frame 50."""
+    rows = _stance('a')
+    assert rows[-1]['帧数'] >= 179 and 0 < len(_drops(rows, 'T血量'))
+    assert all(f <= 50 for f in _drops(rows, 'T血量')), _drops(rows, 'T血量')
+    assert rows[-1]['T血量'] == next(r['T血量'] for r in rows if r['帧数'] >= 50)
+
+
+def test_stance_back_to_guard_the_same_order_fires_again():
+    """f: as a, GUARD at frame 90: the bench's T quiet from ~52 to 90, 62 by frame 98, then 50, 37 -- the order kept
+    under HOLD_FIRE, no new order needed."""
+    rows = _stance('f')
+    drops = _drops(rows, 'T血量')
+    assert not [f for f in drops if 50 < f <= 90], drops
+    assert any(90 < f <= 110 for f in drops) and len([f for f in drops if f > 90]) >= 3, drops
+
+
+def test_stance_an_order_given_under_hold_fire_fires():
+    """b: HOLD_FIRE before Go, ordered at Go: the bench's first drop frame 16, a hit every 30-50 frames to 12 % by
+    frame 200. The simulator: the percent down by frame 20 and still going down at the end (its damage starts at the
+    order, frame 2 by T状态: the fight model's dealing, not the stance)."""
+    rows = _stance('b')
+    drops = _drops(rows, 'T血量')
+    assert drops[0] <= 20 and drops[-1] >= 160 and rows[-1]['T血量'] <= 37, drops
+
+
+def test_stance_held_it_takes_nothing_by_itself_and_does_not_hit_back():
+    """d: held, no order: T 100 all the way (T状态 = 帧数). e: held, T ordered on A: A hurt, T 100 all the way."""
+    d = _stance('d')
+    assert all(r['T血量'] == 100 for r in d) and d[-1]['T状态'] == d[-1]['帧数']
+    e = _stance('e')
+    assert all(r['T血量'] == 100 for r in e) and e[-1]['A血量'] <= 50
+
+
+def test_stance_the_default_stance_fires_by_itself():
+    """c: no order, no stance set: the bench's A fires by itself (first drop frame 13, then on to 25 %). The simulator
+    (idle acquire, R8): T hurt by frame 20 and hit all the run."""
+    rows = _stance('c')
+    drops = _drops(rows, 'T血量')
+    assert drops[0] <= 20 and rows[-1]['T血量'] <= 37, drops
+
+
+# bench 2026-11-10 engine_acquire with a stance set at birth (readings in checks/engine_acquire.py): an enemy Guardian
+# (weapon 150, VisionRange 200) and the player's NO_ATTACK tank d north. GUARD (idle180 / 220 in test_simbench.py):
+# fires in place at 180, walks in at 220 and back home by s16.
+def _acquire(variant):
+    import build
+    import sim
+    m, t, _ = build.resolve(f'acquire_{variant}', 'frames')
+    s = sim.Sim(m, t)
+    s.run(26.0)
+    labels = [lab for _, lab in t.counters]
+    return [dict(zip(labels, row)) for k, row in s.series if k >= 1]
+
+
+def test_stance_hold_position_fires_in_reach_and_goes_after_nothing():
+    """hold180: 原地 1 all along, 坦克血 100 -> 86 s2 ... 3 (as GUARD's idle180). hold220: 原地 1, 近敌 0, 坦克血 100 all
+    26 s -- where GUARD walks in and fires."""
+    near = _acquire('hold180')
+    assert all(r['原地'] == 1 for r in near) and near[-1]['坦克血'] < 50
+    far = _acquire('hold220')
+    assert all(r['原地'] == 1 and r['近敌'] == 0 and r['坦克血'] == 100 for r in far)
+
+
+def test_stance_aggressive_walks_in_and_stays():
+    """agg220: 原地 0 and 近敌 1 from s1 to s26, 坦克血 down to 3 by s14 -- it never walks back (GUARD home s16).
+    agg240 / agg260: 原地 1, 坦克血 100 all along: the same reach as GUARD."""
+    rows = _acquire('agg220')
+    assert rows[-1]['坦克血'] < 50 and all(r['原地'] == 0 for r in rows[3:]) and rows[-1]['近敌'] == 1
+    for v in ('agg240', 'agg260'):
+        assert all(r['原地'] == 1 and r['坦克血'] == 100 for r in _acquire(v)), v

@@ -551,6 +551,8 @@ class Body:
                                                                 # target it was ordered on (stance.md a / b / d / e)
     hold_paused: bool = False                                   # an attack order taken BEFORE HOLD_FIRE: kept, not
                                                                 # fired; back to another stance it fires again (a / f)
+    stance: int = 0                                             # UNIT_SET_STANCE: GUARD 0, AGGRESSIVE 1, HOLD_POSITION
+                                                                # 2, HOLD_FIRE 3 (idle_chase reads 1 / 2)
 
     def damage(self, amount):
         """The body's health floor (Generals reference: internalChangeHealth). A PropBody takes none (engine_propbody a)."""
@@ -2769,7 +2771,7 @@ class Sim:
             for b in self.living():
                 if b.owner == a[0]:
                     self.flee_start(b)
-        elif name == 'UNIT_SET_STANCE':          # (name, stance): 3 is HOLD_FIRE; the others are not modelled
+        elif name == 'UNIT_SET_STANCE':          # (name, stance): GUARD 0, AGGRESSIVE 1, HOLD_POSITION 2, HOLD_FIRE 3
             # Bench 11-06 engine_stance (docs/engine/stance.md): going HOLD_FIRE stops a standing attack order without
             # dropping it (a: no hit after the stance frame; f: back to GUARD, the same order fires again); an order
             # given while held fires (b); held, nothing by itself (d) and no hitting back (e)
@@ -2778,7 +2780,7 @@ class Sim:
                 hold = int(a[1]) == 3
                 if hold != b.hold_fire:
                     b.hold_paused = hold and isinstance(b.goal, Body)
-                b.hold_fire = hold
+                b.hold_fire, b.stance = hold, int(a[1])
         elif name == 'UNIT_SET_HEALTH':
             b = self.body(a[0])
             if b and b.alive:
@@ -3622,7 +3624,11 @@ class Sim:
         sees, when the centre distance less the target's radius is within its own VisionRange (220 < limit < 240:
         200 + 23.3; INFERRED, the scan itself not read), walks to `reach` of it, and goes home when it has none left.
         Idle = not building, no goal, no way of its own (a way this rule gave it does not count); any order since
-        (another way) drops the chase and the home. `near`: [(centre distance, enemy)] nearest first."""
+        (another way) drops the chase and the home. `near`: [(centre distance, enemy)] nearest first.
+        Stances (bench 2026-11-10 engine_acquire hold180 / hold220 / agg220 / agg240 / agg260): HOLD_POSITION fires
+        in place at 180 as GUARD does but at 220 never moves nor fires -- it walks after nothing; AGGRESSIVE takes the
+        same reach (220 yes, 240 / 260 nothing) but stays where the chase ended, never walking back (near 1 to s26
+        against GUARD's home at s16). A stance set in the middle of a chase: INFERRED from these."""
         mine = a.path and a.dest is not None and a.dest == a.auto_to
         if a.path and not mine:                 # an order of its own since: not idle, nothing of ours to keep
             a.chase = a.home = a.auto_to = None
@@ -3632,6 +3638,8 @@ class Sim:
         if a.home is not None and a.chase is None and not a.path:
             a.home = a.auto_to = None           # back home
         if fired:
+            return
+        if a.stance == 2:                       # HOLD_POSITION: goes after nothing (hold220)
             return
         sight = a.sight
         c = a.chase
@@ -3659,6 +3667,8 @@ class Sim:
             self.send(a, (t.x, t.y), reach=self.reach(a, t))
             a.auto_to = a.dest
             return
+        if a.stance == 1:                       # AGGRESSIVE: stays where the chase ended (agg220)
+            a.home = None
         if a.home is not None and (a.path or math.hypot(a.home[0] - a.x, a.home[1] - a.y) > 1.0):
             if a.dest != a.home:
                 self.send(a, a.home)
