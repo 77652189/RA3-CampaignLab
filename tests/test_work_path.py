@@ -1,5 +1,5 @@
-"""WORK (the big local folder) can be redirected with CNV_WORK, so a git worktree reads the main checkout's
-work\\ without a directory junction (a junction + recursive delete wiped work\\ on 2026-11-10)."""
+"""WORK (the big local folder): a line's worktree next to the main checkout uses the main checkout's work\\, and
+CNV_WORK overrides it, so no directory junction is needed (a junction + recursive delete wiped work\\ on 2026-11-10)."""
 import importlib
 import os
 import re
@@ -23,13 +23,38 @@ ALLOW = {
 HAND = re.compile(r"""os\.path\.join\([^\n]*?,\s*['"]work['"]|['"]work['"]\s*/|/\s*['"]work['"]""")
 
 
-def test_default_is_root_work(monkeypatch):
+def _work_for(monkeypatch, root, main):
     monkeypatch.delenv('CNV_WORK', raising=False)
-    try:
-        importlib.reload(labpaths)
-        assert labpaths.WORK == os.path.join(labpaths.ROOT, 'work')
-    finally:
-        importlib.reload(labpaths)
+    monkeypatch.setattr(labpaths, 'ROOT', str(root))
+    monkeypatch.setattr(labpaths, 'MAIN', str(main))
+    return labpaths._work()
+
+
+def test_main_checkout_uses_its_own_work(monkeypatch, tmp_path):
+    main = tmp_path / 'RA3-CampaignLab'
+    (main / 'work').mkdir(parents=True)
+    assert _work_for(monkeypatch, main, main) == str(main / 'work')
+
+
+def test_line_worktree_without_work_uses_the_main_checkouts(monkeypatch, tmp_path):
+    main, line = tmp_path / 'RA3-CampaignLab', tmp_path / 'RA3-CampaignLab-codexe'
+    (main / 'work').mkdir(parents=True)
+    line.mkdir()
+    assert _work_for(monkeypatch, line, main) == str(main / 'work')
+
+
+def test_line_worktree_with_its_own_work_keeps_it(monkeypatch, tmp_path):
+    main, line = tmp_path / 'RA3-CampaignLab', tmp_path / 'RA3-CampaignLab-codexc'
+    (main / 'work').mkdir(parents=True)
+    (line / 'work').mkdir(parents=True)
+    assert _work_for(monkeypatch, line, main) == str(line / 'work')
+
+
+def test_other_folder_names_keep_root_work(monkeypatch, tmp_path):
+    main, other = tmp_path / 'RA3-CampaignLab', tmp_path / 'agent-x'
+    (main / 'work').mkdir(parents=True)
+    other.mkdir()
+    assert _work_for(monkeypatch, other, main) == str(other / 'work')
 
 
 def test_env_overrides(monkeypatch, tmp_path):

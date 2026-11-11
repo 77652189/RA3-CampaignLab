@@ -8,13 +8,25 @@ r"""Where things live, worked out from this file's place (no absolute paths in t
     sdk\RA3ModSDK3\           Mod SDK v3.0 (1.12 layouts), the one the builders use; CNV_SDK overrides it
     sdk\RA3ModSDK\            the 1.10-era SDK the first probes (make_campnew, make_campnew3) were built with
 
-CNV_WORK overrides WORK (a git worktree points it at the main checkout's work\, so no junction is needed).
+CNV_WORK overrides WORK. A line's own worktree next to the main checkout (<LAB>\RA3-CampaignLab-<line>) that has
+no work\ of its own uses the main checkout's, so no junction and no environment variable is needed (2026-11-10).
 """
 import os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 LAB = os.path.dirname(ROOT)
-WORK = os.environ.get('CNV_WORK') or os.path.join(ROOT, 'work')
+MAIN = os.path.join(LAB, 'RA3-CampaignLab')
+
+
+def _work():
+    if os.environ.get('CNV_WORK'):
+        return os.environ['CNV_WORK']
+    own = os.path.join(ROOT, 'work')
+    sibling = os.path.basename(ROOT).startswith('RA3-CampaignLab-') and os.path.isdir(os.path.join(MAIN, 'work'))
+    return os.path.join(MAIN, 'work') if sibling and not os.path.exists(own) else own
+
+
+WORK = _work()
 SHARED = os.path.join(LAB, 'shared')
 ENVS = os.path.join(LAB, 'envs')
 SDK3 = os.environ.get('CNV_SDK', os.path.join(LAB, 'sdk', 'RA3ModSDK3'))
