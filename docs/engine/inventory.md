@@ -7,7 +7,7 @@
 | 脚本动作 | **89%** | 451 | 109 | 31 | 194 | 117 | 91% |
 | 脚本条件 | **94%** | 89 | 27 | 5 | 54 | 3 | 94% |
 | 物体模块 | **89%** | 185 | 34 | 7 | 123 | 21 | 90% |
-| 武器效果 | **64%** | 25 | 12 | 1 | 10 | 2 | 76% |
+| 武器效果 | **64%** | 25 | 13 | 1 | 9 | 2 | 76% |
 | AI | **70%** | 415 | 96 | 135 | 150 | 34 | 88% |
 
 ## 脚本动作
@@ -776,7 +776,7 @@
 | 已对拍 | `LeechPercentMaxHealthDamageNugget` | 2 | tests/test_simbench_c.py::test_leech_percent_uses_victim_maximum_not_current_health_or_caster_maximum；例：SovietCrushWeapon, SovietHarpoonCrushWeapon |
 | 未做 | `ReportWeaponFiredStatNugget` | 2 | 模拟器代码里没有这个名字；例：SovietVacuumBomb, ParticleCannonWeapon |
 | 未做 | `ActivateCircularDamageNugget` | 1 | 模拟器代码里没有这个名字；例：SovietAntiNavyShipTech1TeslaNova |
-| 未做 | `DOTNugget` | 1 | 模拟器代码里没有这个名字；例：PlayerPowerIrradiateTargetWeapon |
+| 已对拍 | `DOTNugget` | 1 | tests/test_simbench_c.py::test_dot_counts_interval_ticks_for_two_durations_and_observes_first_damage_frame；engine_dot：直接单发，首次立即跳伤、含到期端点；叠加/治疗/弹体未验证；例：PlayerPowerIrradiateTargetWeapon |
 | 未做 | `GrapplingHookNugget` | 1 | 模拟器代码里没有这个名字；例：SovietAntiVehicleVehicleTech3Harpoon |
 | 已对拍 | `LeechHealthDamageNugget` | 1 | tests/test_simbench_c.py::test_leech_health_heals_from_damage_and_respects_the_heal_fraction；例：SovietAntiVehicleVehicleTech1LeechBeamWeapon |
 

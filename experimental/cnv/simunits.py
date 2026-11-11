@@ -276,7 +276,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v16.json')    # v16: direct contained-passenger damage fields
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v17.json')    # v17: direct DOT interval/duration fields
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -434,7 +434,7 @@ def _weapons(texts, base_table=None):
                 if (len(filters) != 1 or re.sub(r'<DamageObjectFilter\b[^>]*/>', '', inner).strip()
                         or _attr(filters[0][0], 'Rule', 'NONE') != 'NONE'
                         or set(re.findall(r'(\w+)\s*=', filters[0][0])) - {'Rule', 'Include', 'Exclude'}
-                        or set(re.findall(r'(\w+)\s*=', h)) - {'Damage', 'DamageType', 'DeathType', 'MaxUnitsToDamage', 'Radius', 'DelayTimeSeconds'}
+                        or set(re.findall(r'(\w+)\s*=', h)) - {'id', 'Damage', 'DamageType', 'DeathType', 'MaxUnitsToDamage', 'Radius', 'DelayTimeSeconds'}
                         or _num(_attr(h, 'Radius', '0'), float('nan')) != 0
                         or any(war) or _secs(_attr(h, 'DelayTimeSeconds', '0s'))):
                     unsupported.append('DamageContainedNugget')
@@ -445,6 +445,19 @@ def _weapons(texts, base_table=None):
                                           include=_attr(f, 'Include', '').split(), exclude=_attr(f, 'Exclude', '').split()))
             if contained:
                 got['contained'] = contained
+            dots = []
+            for h, inner in _blocks(bare, 'DOTNugget'):
+                if (inner.strip() or any(war) or _num(_attr(h, 'Radius', '0'), float('nan')) != 0
+                        or set(re.findall(r'(\w+)\s*=', h)) - {'id', 'Damage', 'DamageType', 'DamageFXType', 'DeathType', 'DamageInterval', 'DamageDuration', 'RemoveIfHealed', 'Radius'}
+                        or _secs(_attr(h, 'DamageInterval')) <= 0 or _secs(_attr(h, 'DamageDuration')) < 0):
+                    unsupported.append('DOTNugget')
+                else:
+                    dots.append(dict(damage=_num(_attr(h, 'Damage')), type=_attr(h, 'DamageType', 'UNDEFINED'),
+                                     interval=_frames(_secs(_attr(h, 'DamageInterval'))),
+                                     duration=_frames(_secs(_attr(h, 'DamageDuration'))),
+                                     remove_healed=_attr(h, 'RemoveIfHealed', 'true') == 'true'))
+            if dots:
+                got['dot'] = dots
             if unsupported:
                 got['unmodeled_effects'] = unsupported
             if sd:
@@ -535,7 +548,7 @@ def _resolve(w, weapons):
                 strip_max_health=w.get('strip_max_health', weapons.get(w.get('warhead'), {}).get('strip_max_health', [])),
                 emp_seconds=w.get('emp_seconds', weapons.get(w.get('warhead'), {}).get('emp_seconds', [])),
                 leech_percent=w.get('leech_percent', 0.0), leech_health=w.get('leech_health', 0.0),
-                sweep=w.get('sweep'), contained=w.get('contained', []),
+                sweep=w.get('sweep'), contained=w.get('contained', []), dot=w.get('dot', []),
                 unmodeled_effects=w.get('unmodeled_effects', weapons.get(w.get('warhead'), {}).get('unmodeled_effects', [])))
 
 
@@ -689,7 +702,7 @@ def read_fight(text, weapons, armors):
             if pick in weapons:
                 guns.append(_resolve(weapons[pick], weapons))
     return dict(hp=number(text, 'MaxHealth'), armor=armors.get(arm.group(1), {}) if arm else {},
-                weapons=[g for g in guns if (g['dps'] > 0 or g.get('sdps', 0) > 0) and g['range'] > 0])
+                weapons=[g for g in guns if (g['dps'] > 0 or g.get('sdps', 0) > 0 or g.get('dot')) and g['range'] > 0])
 
 
 def freeze(template, own=None):
@@ -927,7 +940,7 @@ def pick_weapons(slots, status):
     for s in slots:
         for need, forbid, prim, w in sorted(s, key=lambda e: not e[2]):
             if need <= status and not (forbid & status):
-                if w and (w['dps'] > 0 or w.get('sdps', 0) > 0) and w['range'] > 0:
+                if w and (w['dps'] > 0 or w.get('sdps', 0) > 0 or w.get('dot')) and w['range'] > 0:
                     guns.append(w)
                 break
     return guns

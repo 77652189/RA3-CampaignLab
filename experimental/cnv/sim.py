@@ -3477,9 +3477,9 @@ class Sim:
                 for effect in w.get('unmodeled_effects', []):
                     self.gap(GAP_WEAPON, effect, '武器第1轮尚未解释此效果的筛选、几何或时序')
                 if not self.shot_clock and (w.get('hit_modifiers') or w.get('line') or w.get('strip_max_health') or w.get('emp_seconds')
-                                           or w.get('sweep') or w.get('contained')):
+                                           or w.get('sweep') or w.get('contained') or w.get('dot')):
                     self.gap(GAP_WEAPON, 'weapon effects', '逐发武器效果仅在离散命中时钟中模拟')
-                if w['dps'] or w.get('suppression') or (self.shot_clock and w.get('sdps')):
+                if w['dps'] or w.get('suppression') or (self.shot_clock and (w.get('sdps') or w.get('dot'))):
                     if 'sched' in w and self.shot_clock:
                         self.volleys.append((pick, w, a))
                     else:
@@ -3694,7 +3694,7 @@ class Sim:
                             except (OSError, ValueError):
                                 speeds[projectile] = 0
                         speed = speeds[projectile]
-                        complex_effect = any(w.get(k) for k in ('suppression', 'hit_modifiers', 'line', 'emp_seconds', 'strip_max_health', 'sd'))
+                        complex_effect = any(w.get(k) for k in ('suppression', 'hit_modifiers', 'line', 'emp_seconds', 'strip_max_health', 'sd', 'dot', 'contained'))
                         if speed > 0 and not complex_effect:
                             # GUESSED collision boundary, rechecked for the two probe distances: full
                             # distance steps before impact. No fitted per-distance delays.
@@ -3709,6 +3709,13 @@ class Sim:
                                 h[1] += damage
                             continue
                         self.gap(GAP_WEAPON, 'ProjectileNugget', '仅无复合效果的直线弹飞行已建模；曲线弹/复合弹/自制弹体待核')
+                    for effect in w.get('dot', []):
+                        dots = self.__dict__.setdefault('dots', [])
+                        if projectile or n != 1 or any(d['target'] is t for d in dots):
+                            self.gap(GAP_WEAPON, 'DOTNugget', '仅直接单发首次DOT已对拍；弹体/叠加/刷新未建模')
+                        else:
+                            dots.append(dict(target=t, by=by, effect=effect, next=self.frame_now(),
+                                             end=self.frame_now() + effect['duration'], hp=t.hp))
                     # DamageContainedNugget damages eligible passengers, not the house.
                     # GUESSED priority: entry order; the bench asserts only aggregate HP.
                     for effect in w.get('contained', []):
@@ -3773,6 +3780,29 @@ class Sim:
                             self.modify(t)
                         else:
                             self.gap(GAP_WEAPON, mid, '命中修正未找到或缺少已解释的Duration')
+        dots = self.__dict__.setdefault('dots', [])
+        keep = []
+        for dot in dots:
+            t, by, effect = dot['target'], dot['by'], dot['effect']
+            if not t.alive:
+                continue
+            # GUESSED outside the no-healing probe: detect healing from a net HP increase.
+            if t.hp > dot['hp'] + 1e-6:
+                self.gap(GAP_WEAPON, 'DOTNugget', '治疗取消与再次施加未对拍')
+                if effect['remove_healed']:
+                    continue
+            # Inclusive expiry: floor(duration / interval) + 1 ticks, starting on impact.
+            while dot['next'] <= self.frame_now() and dot['next'] <= dot['end']:
+                # GUESSED for changing modifiers / dead casters: read scalars on each tick.
+                armor = (1.0 if effect['type'] == 'UNRESISTABLE' else
+                         simunits.percent(t.armor, effect['type']) / 100 * t.taken)
+                h = hurt.setdefault(id(t), [t, 0.0, by])
+                h[1] += effect['damage'] * by.dealt * armor
+                dot['next'] += effect['interval']
+            dot['hp'] = t.hp
+            if dot['next'] <= dot['end']:
+                keep.append(dot)
+        dots[:] = keep
         for t, dmg, by in hurt.values():
             if self.frame_now() < t.immune_until or t.shielded or t.indestructible:
                 continue

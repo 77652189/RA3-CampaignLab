@@ -569,3 +569,11 @@ def test_damage_contained_limits_eligible_passengers_without_damaging_the_others
     for lane in ('base','high','order','removed'):
         assert e.body('Contained '+lane+' gun').y>=0
     assert tuple(e.run(16).series[-1][1])==(992002200,992002180,992002160,992002200)
+
+
+def test_dot_counts_interval_ticks_for_two_durations_and_observes_first_damage_frame():
+    import build
+    import sim
+    m,t,_=build.resolve('engine_dot','a')
+    e=sim.Sim(m,t);e.shot_clock=True
+    assert tuple(e.run(16).series[-1][1])==(2,1088,2,1078)
