@@ -58,7 +58,8 @@ def full_suite(cmd):
     """A pytest run with no test file, node or -k: the arguments up to the next pipe / ; / & name none."""
     if any(n in cmd for n in NOT_A_RUN):
         return False
-    for m in re.finditer(r'\bpytest\b', cmd):
+    # an invocation (`-m pytest` or a command starting with pytest), not pytest.mark / pytest.skip inside test code
+    for m in re.finditer(r'(?:-m\s+pytest|(?:^|[;&|]\s*)pytest)(?![\w.])', cmd, re.M):
         args = re.split(r'[|;&>]', cmd[m.end():], maxsplit=1)[0]
         if not NARROW.search(args + ' '):
             return True
@@ -90,6 +91,14 @@ def sync_handoffs():
     subprocess.run(['git', 'fetch', '-q', 'origin'], cwd=PRIV)
     r = subprocess.run(['git', 'merge', '-q', '--ff-only', 'origin/main'], cwd=PRIV, capture_output=True, text=True,
                        encoding='utf-8', errors='replace')
+    if r.returncode:
+        # local commits that are already on origin (a line pushed them from a temporary worktree): move past them,
+        # keeping uncommitted edits (--keep refuses rather than overwrite one)
+        cherry = subprocess.run(['git', 'cherry', 'origin/main', 'HEAD'], cwd=PRIV, capture_output=True,
+                                text=True).stdout.split('\n')
+        if all(line.startswith('-') for line in cherry if line.strip()):
+            r = subprocess.run(['git', 'reset', '-q', '--keep', 'origin/main'], cwd=PRIV, capture_output=True,
+                               text=True, encoding='utf-8', errors='replace')
     return '' if r.returncode == 0 else 'work/re 没同步到远端，Codex 可能读到旧交接：' + (r.stderr.strip()[-200:])
 
 
