@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|
-| 脚本动作 | **88%** | 451 | 106 | 34 | 194 | 117 | 91% |
+| 脚本动作 | **89%** | 451 | 108 | 32 | 194 | 117 | 91% |
 | 脚本条件 | **94%** | 89 | 27 | 5 | 54 | 3 | 94% |
 | 物体模块 | **81%** | 184 | 33 | 7 | 125 | 19 | 82% |
 | 武器效果 | **61%** | 25 | 8 | 2 | 14 | 1 | 74% |
@@ -53,9 +53,9 @@
 | 推断 | `TEAM_HUNT` | 203 | 没交给 AI 的玩家（含玩家自己）：不动，台上量过（engine_scripts1 hunt 60 s）；AI 玩家的 HuntTactic 不模拟（引擎 B），碰到记 Sim.unmodeled |
 | 已对拍 | `CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT` | 196 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_ref.py |
 | 已对拍 | `LINK_MISSION_OBJECTIVE_TO_WAYPOINT` | 194 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts5.py |
-| 已对拍 | `NAMED_FOLLOW_WAYPOINTS` | 192 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_waypath.py |
+| 已对拍 | `NAMED_FOLLOW_WAYPOINTS` | 192 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_wayatk.py |
 | 未做 | `TEAM_GARRISON_SPECIFIC_BUILDING_INSTANTLY` | 186 | Sim.act / Sim.cond 不认识 |
-| 推断 | `TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS` | 184 | Sim.act / Sim.cond 有分支 |
+| 推断 | `TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS` | 184 | Sim.act 有分支；台上量过（checks/engine_wayatk.py team），和模拟器不符：队里一人在打时全队等（模拟器先到的带全队走） |
 | 不涉及 | `FADE_OUT_TO_BLACK` | 177 | 纯表现（名字规则） |
 | 不涉及 | `FADE_IN_FROM_BLACK` | 176 | 纯表现（名字规则） |
 | 不涉及 | `NAMED_FLASH` | 173 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
@@ -86,7 +86,7 @@
 | 已对拍 | `NAMED_STOP` | 118 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_emp.py |
 | 已对拍 | `UNIT_TELEPORT_TO_WAYPOINT` | 118 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aidefense.py |
 | 不涉及 | `PLAYER_CAMERA_MOVE_TO` | 117 | 纯表现（名字规则） |
-| 推断 | `ATTACK_MOVE_TEAM_TO` | 116 | Sim.act / Sim.cond 有分支；台上量过（docs/engine/inventory-levels-a.md），没有测试跑这个台子 |
+| 已对拍 | `ATTACK_MOVE_TEAM_TO` | 116 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_wayatk.py |
 | 已对拍 | `PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT` | 116 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts8b.py |
 | 已对拍 | `TEAM_IDLE_FOR_SECONDS` | 114 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts8.py |
 | 已对拍 | `PLAYER_SET_BASE_POWER` | 112 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts8b.py |
@@ -152,7 +152,7 @@
 | 不涉及 | `FLASH_UI_BUILD_BUTTON` | 48 | 纯表现（名字规则） |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JAAVT1_Transform` | 48 | 只记进时间线，没有效果 |
 | 未做 | `SET_UNIT_REFERENCE` | 48 | Sim.act / Sim.cond 不认识 |
-| 推断 | `NAMED_ATTACK_FOLLOW_WAYPOINTS` | 47 | Sim.act / Sim.cond 有分支 |
+| 已对拍 | `NAMED_ATTACK_FOLLOW_WAYPOINTS` | 47 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_wayatk.py |
 | 已对拍 | `NAMED_RECEIVE_UPGRADE` | 47 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_invuln.py |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanBaseDefenseEgg` | 46 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_unpack.py |
 | 未做 | `TEAM_SET_STANCE` | 45 | Sim.act / Sim.cond 不认识 |
