@@ -9,12 +9,13 @@ _module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_module)
 
 
-def test_jet_vindicator_ordinary_move_first_entry_and_survival():
+@pytest.mark.parametrize('check', ['a', 'b'])
+def test_jet_vindicator_ordinary_move_first_entry_and_survival(check):
     import build
     import sim
     from parts import contract, merged
 
-    m, t, mod = build.resolve('engine_jet', 'a')
+    m, t, mod = build.resolve('engine_jet', check)
     assert len(mod) <= 15 and mod.isalnum()
     assert not contract(merged(m, t))
     assert len(m.objects) == 1 and len(t.counters) == 4
@@ -22,27 +23,30 @@ def test_jet_vindicator_ordinary_move_first_entry_and_survival():
     rows = [(sec, row) for sec, row in e.series if sec >= 2]
     assert rows and all(row[3] == 100 for _, row in rows)
     arrived = [row for _, row in rows if row[1] == 1]
-    # Bench s6-s26: 97 / 1 / 1 / 100. Timing is checked separately below;
+    # Bench a s6-s26: 97/1/1/100; b s3-s26: 47/1/1/100. Timing is checked separately;
     # the coarse model's sample clock is not the bench's screenshot clock.
     assert arrived and all(row[1:] == [1, 1, 100] for row in arrived)
-    assert build.report(t, [(sec, [97, 1, 1, 100]) for sec in range(6, 25)])[1] == 0
+    measured = 97 if check == 'a' else 47
+    assert build.report(t, [(sec, [measured, 1, 1, 100]) for sec in range(6, 25)])[1] == 0
+    assert build.report(t, [(sec, [measured + 1, 1, 1, 100]) for sec in range(6, 25)])[1] > 0
     assert e.body(m.role('jet').name).alive
     # Mutation: without the move order there must be no first-entry signal.
-    m, t, _ = build.resolve('engine_jet', 'a')
+    m, t, _ = build.resolve('engine_jet', check)
     t.scripts = [s for s in t.scripts if s.name != 'Jet - move']
     blind = sim.Sim(m, t).run(25)
     assert not any(row[1] for _, row in blind.series)
 
 
-@pytest.mark.xfail(strict=True, reason='E38 engine_jet:a first-entry counter 97 vs model 91; '
-                   'takeoff/acceleration/turning unresolved; work/re/handoff-e.md E38')
-def test_jet_vindicator_first_entry_frame_matches_bench():
-    """engine_jet:a latched 97 on the bench, constant-speed model currently 91."""
+@pytest.mark.parametrize('check, measured', [('a', 97), ('b', 47)])
+@pytest.mark.xfail(strict=True, reason='E39 engine_jet:a/b bench 97/47 vs model 91/39; '
+                   'startup mechanism and coarse movement phase unresolved; work/re/handoff-e.md 当前入口 E39')
+def test_jet_vindicator_first_entry_frame_matches_bench(check, measured):
+    """Replay each named bench's independently measured first-entry counter."""
     import build
     import sim
 
-    m, t, _ = build.resolve('engine_jet', 'a')
+    m, t, _ = build.resolve('engine_jet', check)
     e = sim.Sim(m, t).run(15)
     arrived = [row for _, row in e.series if row[1] == 1]
     assert arrived
-    assert {row[0] for row in arrived} == {97}
+    assert {row[0] for row in arrived} == {measured}

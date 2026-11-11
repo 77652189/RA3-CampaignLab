@@ -245,7 +245,7 @@ NOTES = {
     (MODULE, 'Body/ManagerBody'): (BENCHED, '已测范围：engine_managerbody a/b原版HB_Bridge_02，270/700长度整体代理脚本伤害200后均80%、致命量后1%且存活，tests/test_simmanagerbody.py按名重放；gap：有效HP取CenterPiece及内部1%下限映射仍INFERRED，内部最大血量/伤害转发/显示下限待核；HV_Bridge_01等其他模板/配置、桥段共享血量/损毁/维修未对拍；按总控11-11收尾决定登记模块已对拍，不表示这些gap已验证，不拆分分母'),
     (MODULE, 'Behaviors/BridgeBuilder'): (BENCHED, '已测范围：engine_bridgebuilder:a已量HB_Bridge_02长度270/700，EndCap/EndCap2/CenterPiece/CenterPieceB/GateHouse数量1/1/1/0/2及1/1/2/2/2；engine_bridgebuilder_b:b已量原版HB桥首16+Bridge1a桥尾32混合构型，两长度HB数量不变、五类Bridge1物件均0；tests/test_simbridgebuilder.py按名核计数模型与读数编码，simunits仅有限数量模型；gap：HV_Bridge_01等其他桥型/配置/长度、世界物体生成/位置、通行、损毁、共享血量与维修未建模；按总控11-11收尾决定登记模块已对拍，不表示这些gap已验证，不拆分分母'),
     (MODULE, 'AI/AIUpdate'): (GUESSED, 'Sim.fight / 移动（单位 AI 的状态机细项按引擎 B 的 AI 清单推进）'),
-    (MODULE, 'AI/JetAIUpdate'): (GUESSED, 'E38最小基线：engine_jet:a原版维和轰炸机普通移动1200，首次进目标框计数97、之后框内1且血100%；tests/test_simjet.py按名重放到点/存活；模拟器恒速计数91，精确计时strict xfail，起飞/加速/转向影响未分离；gap：其他机型/距离、盘旋轨迹、机场/跑道/停车位、返场补弹/耗尽伤害及攻击状态未对拍，保留推断不登记整模块已对拍'),
+    (MODULE, 'AI/JetAIUpdate'): (GUESSED, 'E39普通移动对照：engine_jet:a/b原版维和轰炸机距离1200/600，首次进目标框计数97/47，随后框内1且血100%；距离差600耗50帧支持速度180，启动贡献约5帧仍INFERRED；tests/test_simjet.py按名重放到点/存活和精确计时，模拟器91/39，计时strict xfail，默认半秒移动相位及起飞/加速/盘旋未分离；gap：其他机型/距离、盘旋轨迹、机场/跑道/停车位、返场补弹/耗尽伤害及攻击状态未对拍，保留推断不登记整模块已对拍'),
     # the 26 the bench measured but the name rule called 未做 (checked 11-08 against sim.py / simunits.py)
     (MODULE, 'Behaviors/FireWeaponUpdate'): (GUESSED, '部分：simunits.ocl_round 把召出物的 FireWeaponNugget + '
                                                       'LifetimeUpdate 折成伤害，不模拟召出物本身'),
