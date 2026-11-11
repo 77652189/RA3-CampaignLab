@@ -80,6 +80,11 @@ def check_ninja(m):
         spy = m.role(role + ' spy')
         spy.template = 'JapanInfiltrationInfantry'
         m.find(spy.name).template = spy.template
+    return isolated_check(m)
+
+
+def isolated_check(m):
+    """No firing or AI repairs on either isolated grid."""
     t = check(m)
     t.scripts[0].do += [
         ('UNIT_CHANGE_OBJECT_STATUS', m.role(name).name, 'NO_ATTACK', 1)
@@ -89,4 +94,20 @@ def check_ninja(m):
     return t
 
 
-CHECKS = {'engine_infiltrator': {'a': check, 'b': check_ninja}}
+def check_soviet(m):
+    """c: Allied spy vs enemy/allied retail SovietPowerPlant, each 100 energy.
+
+    Same ENERGY/.2 configuration and enter filter as AlliedPowerPlant.
+    Predict consumed enemy spy, unchanged plant HP/owner and ~20s outage;
+    mutually allied plant refuses entry. Scaling/precise arrival INFERRED.
+    Bench 2026-11-11: s1-s10 11100/11100/101/101;
+    s11-s30 1100/11100/12/101; s31-s56 1100/11100/101/101.
+    """
+    for role in ROLES:
+        plant = m.role(role)
+        plant.template = 'SovietPowerPlant'
+        m.find(plant.name).template = plant.template
+    return isolated_check(m)
+
+
+CHECKS = {'engine_infiltrator': {'a': check, 'b': check_ninja, 'c': check_soviet}}

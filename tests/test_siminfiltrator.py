@@ -10,20 +10,24 @@ _module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_module)
 
 
-@pytest.mark.parametrize('check, template', [('a', 'AlliedInfiltrationInfantry'),
-                                          ('b', 'JapanInfiltrationInfantry')])
-def test_spy_power_plant_as_on_the_bench(check, template):
-    """engine_infiltrator:a/b: enemy consumed/20s outage; ally refused, owners stay.
+@pytest.mark.parametrize('check, template, plant_template', [
+    ('a', 'AlliedInfiltrationInfantry', 'AlliedPowerPlant'),
+    ('b', 'JapanInfiltrationInfantry', 'AlliedPowerPlant'),
+    ('c', 'AlliedInfiltrationInfantry', 'SovietPowerPlant')])
+def test_spy_power_plant_as_on_the_bench(check, template, plant_template):
+    """engine_infiltrator:a/b/c: enemy consumed/20s outage; ally refused, owners stay.
 
     Bench s1-s10 11100/11100/101/101; s11-s30 1100/11100/12/101;
     s31-s56 1100/11100/101/101. Travel timing INFERRED: stable windows only.
     b: s1-s9 baseline; s10-s29 outage; s30-s56 recovered, same values.
+    c (Soviet plant): s1-s10 baseline; s11-s30 outage; s31-s56 recovered.
     """
     import build
     import sim
     m, t, mod = build.resolve('engine_infiltrator', check)
     assert len(mod) <= 15 and '_' not in mod
     assert all(m.role(role + ' spy').template == template for role in ('enemy', 'ally'))
+    assert all(m.role(role).template == plant_template for role in ('enemy', 'ally'))
     s = sim.Sim(m, t).run(55)
     assert all(s.body(m.role(role + ' spy').name).template == template
                for role in ('enemy', 'ally'))
@@ -37,6 +41,7 @@ def test_spy_power_plant_as_on_the_bench(check, template):
     assert s.body(m.role('ally spy').name).alive
     for role, side in (('enemy', 's1'), ('ally', 's2')):
         plant = s.body(m.role(role).name)
+        assert plant.template == plant_template
         assert plant.owner == m.player(side)
         assert plant.hp == plant.max_hp
     assert not any(key[0] == 'InfiltratorContain' for key in s.unmodeled)
