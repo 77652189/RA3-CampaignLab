@@ -276,7 +276,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v28.json')    # v28: retail painter AttributeModifierNugget single upgrade gates
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v29.json')    # v29: unresolved lift effects remain explicit gaps
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -372,6 +372,11 @@ def _weapons(texts, base_table=None):
             # Only the unfiltered, single-target form is explained by round 1.
             # Retain unsupported forms as gaps instead of applying them to everyone.
             mods, unsupported = [], []
+            # engine_lift a/landing: activation needs LiftObjectUpdate, but the
+            # short Lifetime does not explain release. Do not silently drop it
+            # or pretend that the independent marker damage models the lift.
+            if list(_blocks(bare, 'ActivateLiftObjectNugget')):
+                unsupported.append('ActivateLiftObjectNugget')
             impacts = []
             for h, inner in _blocks(bare, 'MetaImpactNugget'):
                 # Only the ordinary, immediate detonation form has a numerical
