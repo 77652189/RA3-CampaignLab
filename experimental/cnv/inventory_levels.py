@@ -190,9 +190,10 @@ def level_scope(levels=LEVELS):
     return scope, missing
 
 
-def render(items, scope, missing):
-    # Field-form partitions carry exact retail weapon membership. Attribute each
-    # reached weapon once; unknown/custom weapons conservatively keep the TODO base.
+def expand_forms(items, scope):
+    """(scope, split): the scope with a nugget the inventory splits by field form (an item's weapon_ids) attributed
+    to its forms' items, each reached weapon once; a weapon no form lists (our own, an unknown one) keeps the base
+    name. split: {nugget type: {lower weapon id: form item name}}."""
     split = collections.defaultdict(dict)
     for it in items:
         if it['part'] == NUGGET and 'weapon_ids' in it:
@@ -207,7 +208,13 @@ def render(items, scope, missing):
         else:
             for lv, examples in lvs.items():
                 expanded[(part, name)][lv].update(examples)
-    scope = expanded
+    return expanded, split
+
+
+def render(items, scope, missing):
+    # Field-form partitions carry exact retail weapon membership. Attribute each
+    # reached weapon once; unknown/custom weapons conservatively keep the TODO base.
+    scope, split = expand_forms(items, scope)
     by = {(i['part'], i['name']): i for i in items}
     rows, unknown = [], []
     for (part, name), lvs in scope.items():

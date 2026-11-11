@@ -31,7 +31,8 @@ def inventory():
     """The summary rows of the committed inventory (tests/test_inventory.py keeps it fresh), read only: running
     inventory.py here rewrote docs/engine/inventory.md in whatever checkout the report ran in."""
     out = (ROOT / 'docs' / 'engine' / 'inventory.md').read_text(encoding='utf-8', errors='replace')
-    return ['  ' + line for line in out.splitlines() if re.match(r'\| \S+ \| \*\*\d+%\*\*', line)]
+    return ['  ' + line for line in out.splitlines()
+            if line.startswith('| 部分 |') or re.match(r'\| \S+ \| \*\*\d+%\*\*', line)]
 
 
 def questions():
@@ -55,7 +56,7 @@ def main():
     print('# 每日汇报（最近 %d 小时）\n' % a.hours)
     print('## 提交：本仓库'); print('\n'.join(commits(ROOT, a.hours)))
     print('\n## 提交：work/re（私有）'); print('\n'.join(commits(WORK / 're', a.hours)))
-    print('\n## 清单（按用量已对拍）'); print('\n'.join(inventory()))
+    print('\n## 清单（按用量已对拍；9 关用到的那栏是当前主攻）'); print('\n'.join(inventory()))
     print('\n## 待答问题'); print('\n'.join(questions()))
 
 

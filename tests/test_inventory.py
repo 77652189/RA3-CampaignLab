@@ -153,3 +153,36 @@ def test_only_a_probe_a_test_holds_the_simulator_to_makes_an_item_benched(tmp_pa
     inventory.benched(items, src, tested)
     assert items[0]['state'] == inventory.GUESSED and '没有测试跑这个台子' in items[0]['why']
     assert items[1]['state'] == inventory.BENCHED and 'engine_scripts5' in items[1]['why']
+
+
+# ---- our 9 levels' column (the user, 11-11: finish what our 9 levels use first)
+def test_every_item_says_which_of_our_levels_use_it_as_the_level_inventories_count():
+    """'9 关用到' is the level inventories' scope: engine A's parts as inventory_levels.py (nugget forms split as there),
+    the AI part as inventory_ai.py levels -- an item is marked iff that scope has it."""
+    import inventory_levels
+    xs = items()
+    assert all(isinstance(i['levels'], list) for i in xs)
+    scope, _ = inventory_levels.expand_forms(xs, inventory_levels.level_scope()[0])
+    ai = {k for k in inventory_ai.level_scope() if k[0] == inventory.AI}
+    keys = {(i['part'], i['name']) for i in xs}
+    assert {(i['part'], i['name']) for i in xs if i['levels']} == (set(scope) | ai) & keys
+    assert any(i['levels'] for i in xs if i['part'] == inventory.AI)
+
+
+def test_the_level_share_counts_only_the_items_our_levels_use():
+    xs = [dict(part=inventory.ACTION, name='A', uses=30, state=inventory.BENCHED, why=''),
+          dict(part=inventory.ACTION, name='B', uses=10, state=inventory.TODO, why=''),
+          dict(part=inventory.ACTION, name='C', uses=60, state=inventory.TODO, why=''),
+          dict(part=inventory.ACTION, name='D', uses=99, state=inventory.NA, why=''),
+          dict(part=inventory.CONDITION, name='E', uses=5, state=inventory.BENCHED, why='')]
+    inventory.mark_levels(xs, {(inventory.ACTION, 'A'): {'a2', 'a1'}, (inventory.ACTION, 'B'): {'a3'},
+                               (inventory.ACTION, 'D'): {'a1'}})
+    assert xs[0]['levels'] == ['a1', 'a2'] and xs[2]['levels'] == []
+    rows = dict(inventory.summary(xs))
+    assert rows[inventory.ACTION][inventory.MAIN] == 30
+    assert rows[inventory.ACTION][inventory.LEVEL_MAIN] == 75                 # 30 of 40: C unused, D 不涉及
+    assert rows[inventory.ACTION][inventory.LEVEL_COUNT] == '1 / 2'
+    assert rows[inventory.CONDITION][inventory.LEVEL_MAIN] is None             # no level uses the part: '—'
+    text = inventory.render(xs)
+    assert '| 已对拍 | `A` | 30 | a1 a2 |' in text and '| 未做 | `C` | 60 |  |' in text
+    assert inventory.levels_cell([f'a{k}' for k in range(1, 10)]) == '全部'

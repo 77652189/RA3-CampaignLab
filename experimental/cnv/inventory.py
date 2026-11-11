@@ -22,6 +22,11 @@ How "has code" is told:
 
   python -I -X utf8 experimental/cnv/inventory.py            regenerate docs/engine/inventory.md, print the summary
   python -I -X utf8 experimental/cnv/inventory.py --check    exit 1 when the file is stale
+
+Our 9 levels (LEVEL_COLUMN): each item is marked with the levels that use it -- engine A's parts as inventory_levels.py
+counts them (the scripts as built, the templates and weapons reached), the AI part as inventory_ai.py levels (what the
+enemy AI's personality reaches) -- and the summary's LEVEL_MAIN is 按用量已对拍 over those items only (the user, 11-11:
+finish what our 9 levels use first).
 """
 import ast
 import collections
@@ -575,7 +580,37 @@ def collect(parts=PARTS):
     if AI in parts:                                 # engine B: its own state rules and registers (inventory_ai.py)
         import inventory_ai
         items += inventory_ai.ai_items(bench_sources(), tested_probes())
+    return mark_levels(items)
+
+
+def level_marks(items):
+    """{(part, name): {level}}: what our 9 levels use -- engine A's parts by inventory_levels.level_scope (a nugget
+    split by field form attributed to its forms, as inventory-levels-a.md), the AI part by inventory_ai.level_scope
+    (its '?' keys, script names aimed at the AI player, are in engine A's scope already)."""
+    import inventory_ai
+    import inventory_levels
+    marks = collections.defaultdict(set)
+    scope, _ = inventory_levels.expand_forms(items, inventory_levels.level_scope()[0])
+    for key, lvs in scope.items():
+        marks[key] |= set(lvs)
+    for (part, name), lvs in inventory_ai.level_scope().items():
+        if part == AI:
+            marks[(part, name)] |= set(lvs)
+    return marks
+
+
+def mark_levels(items, marks=None):
+    """Each item gets 'levels': the levels (a1 ... a9, in order) that use it, [] when none does."""
+    import inventory_levels
+    marks = level_marks(items) if marks is None else marks
+    for it in items:
+        it['levels'] = sorted(marks.get((it['part'], it['name']), ()), key=inventory_levels.LEVELS.index)
     return items
+
+
+def levels_cell(levels):
+    import inventory_levels
+    return '全部' if list(levels) == inventory_levels.LEVELS else ' '.join(levels)
 
 
 def order(items):
@@ -583,12 +618,16 @@ def order(items):
 
 
 MAIN = '按用量已对拍'
-SUMMARY_COLUMNS = (MAIN, '项数', BENCHED, GUESSED, TODO, NA, '按用量已有（已对拍+推断）')
+LEVEL_COLUMN = '9 关用到'
+LEVEL_MAIN = '9 关用到的按用量已对拍'
+LEVEL_COUNT = '9 关用到（已对拍 / 项）'
+SUMMARY_COLUMNS = (MAIN, LEVEL_MAIN, LEVEL_COUNT, '项数', BENCHED, GUESSED, TODO, NA, '按用量已有（已对拍+推断）')
 
 
 def summary(items):
     """[(part, {column: value})], the summary table's rows. The main number is MAIN: the share of the retail uses that
-    are 已对拍 (推断 does not count; 不涉及 is left out of the total)."""
+    are 已对拍 (推断 does not count; 不涉及 is left out of the total); LEVEL_MAIN the same over the items our 9 levels
+    use (None when they use none of the part), LEVEL_COUNT how many of those are 已对拍 (不涉及 left out)."""
     by = collections.defaultdict(list)
     for it in items:
         by[it['part']].append(it)
@@ -601,8 +640,13 @@ def summary(items):
         rel = [i for i in xs if i['state'] != NA]
         w = sum(i['uses'] for i in rel) or 1
         pct = lambda states: 100 * sum(i['uses'] for i in rel if i['state'] in states) / w  # noqa: E731
-        rows.append((part, {MAIN: pct({BENCHED}), '项数': len(xs), BENCHED: c[BENCHED], GUESSED: c[GUESSED],
-                            TODO: c[TODO], NA: c[NA], '按用量已有（已对拍+推断）': pct({BENCHED, GUESSED})}))
+        ours = [i for i in rel if i.get('levels')]
+        ow = sum(i['uses'] for i in ours)
+        mine = 100 * sum(i['uses'] for i in ours if i['state'] == BENCHED) / ow if ow else None
+        count = f"{sum(i['state'] == BENCHED for i in ours)} / {len(ours)}"
+        rows.append((part, {MAIN: pct({BENCHED}), LEVEL_MAIN: mine, LEVEL_COUNT: count, '项数': len(xs),
+                            BENCHED: c[BENCHED], GUESSED: c[GUESSED], TODO: c[TODO], NA: c[NA],
+                            '按用量已有（已对拍+推断）': pct({BENCHED, GUESSED})}))
     return rows
 
 
@@ -615,27 +659,31 @@ def render(items):
            '状态与判定规则见脚本 docstring（ADR 0026）。用量：脚本 = 原版战役脚本里出现的次数；模块 = 原版战役地图里摆了的、'
            '用到它的物体种数（括号里是全部物体种数）；武器效果 = 用到它的原版武器数；'
            'AI = 原版 AI 数据（SDK SkirmishAI，含战役关的 AI 状态）里写它的次数，判定规则见 `inventory_ai.py`。'
-           '**主数字是"按用量已对拍"**：已对拍项的用量占全部用量的比例，推断不算，不涉及不进分母；目标每部分 90%。', '',
+           '**主数字是"按用量已对拍"**：已对拍项的用量占全部用量的比例，推断不算，不涉及不进分母；目标每部分 90%。'
+           '"9 关用到"：我们 9 关（`missions/a1.py`～`a9.py`）里用到这项的关（脚本、物体模块、武器效果按 '
+           '`inventory_levels.py`，AI 按 `inventory_ai.py levels`；"全部" = 9 关都用）；"9 关用到的按用量已对拍"只算这些项'
+           '（用户 11-11 定：先做完 9 关用到的）。', '',
            '| 部分 | ' + ' | '.join(SUMMARY_COLUMNS) + ' |', '|---' * (len(SUMMARY_COLUMNS) + 1) + '|']
     for part, row in summary(items):
-        cells = [f'**{row[c]:.0f}%**' if c == MAIN else f'{row[c]:.0f}%' if c.startswith('按用量') else str(row[c])
-                 for c in SUMMARY_COLUMNS]
+        cells = ['—' if row[c] is None else f'**{row[c]:.0f}%**' if c in (MAIN, LEVEL_MAIN) else
+                 f'{row[c]:.0f}%' if c.startswith('按用量') else str(row[c]) for c in SUMMARY_COLUMNS]
         out.append(f'| {part} | ' + ' | '.join(cells) + ' |')
     for part in PARTS:
         xs = by.get(part, [])
         if not xs:
             continue
-        out += ['', f'## {part}', '', '| 状态 | 名字 | 用量 | 说明 |', '|---|---|---|---|']
+        out += ['', f'## {part}', '', f'| 状态 | 名字 | 用量 | {LEVEL_COLUMN} | 说明 |', '|---|---|---|---|---|']
         for i in xs:
             n = f"{i['uses']}" + (f" ({i['all']})" if 'all' in i else '')
             why = i['why'] + (f"；例：{i['eg']}" if i.get('eg') else '')
-            out.append(f"| {i['state']} | `{i['name']}` | {n} | {why} |")
+            out.append(f"| {i['state']} | `{i['name']}` | {n} | {levels_cell(i.get('levels', []))} | {why} |")
     return '\n'.join(out) + '\n'
 
 
-def gaps(items, k=20):
-    """The k most used items not done, across the parts."""
-    return sorted((i for i in items if i['state'] == TODO), key=lambda i: (-i['uses'], i['name']))[:k]
+def gaps(items, k=20, ours=False):
+    """The k most used items not done, across the parts; with ours, only those our 9 levels use."""
+    return sorted((i for i in items if i['state'] == TODO and (i.get('levels') or not ours)),
+                  key=lambda i: (-i['uses'], i['name']))[:k]
 
 
 def main():
@@ -649,9 +697,9 @@ def main():
     with open(OUT, 'w', encoding='utf-8', newline='\n') as f:
         f.write(text)
     print('\n'.join(text.splitlines()[4:4 + 2 + len(PARTS)]))
-    print('top gaps:')
-    for i in gaps(items):
-        print(f"  {i['part']} {i['name']} {i['uses']}")
+    print('top gaps our 9 levels use:')
+    for i in gaps(items, ours=True):
+        print(f"  {i['part']} {i['name']} {i['uses']} ({levels_cell(i['levels'])})")
     return 0
 
 
