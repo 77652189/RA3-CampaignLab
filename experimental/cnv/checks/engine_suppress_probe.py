@@ -48,7 +48,7 @@ def _probed(m):
 
 def mission():
     m = supp.mission()
-    m.name, m.ext = 'CampSuProbe', True
+    m.name, m.ext = 'CampSP', True     # + the check's name stays <= 15 (CampSPThreshold); longer crashes the game
     return _probed(m)
 
 
