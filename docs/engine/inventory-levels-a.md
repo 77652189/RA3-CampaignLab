@@ -20,7 +20,7 @@
 | 状态 | 部分 | 项 | 原版用量 | 关 | 说明 |
 |---|---|---|---|---|---|
 | 未做 | 物体模块 | `Behaviors/Physics` | 143 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 移动物理（坠落、弹跳、被击飞、倾倒）：模拟器走路按速度直走，没有物理；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
-| 未做 | 物体模块 | `Behaviors/RepairUpdate` | 66 | a1 a2 a4 a5 a6 a7 a8 a9 | 仅字段读取：engine_repair a两次未触发玩家维修，双方电厂血量50、资金5000；维修入口原因未明，不以schema默认10HP/s或预测费用登记已对拍；例：AlliedAirfield, AlliedBarracks |
+| 未做 | 物体模块 | `Behaviors/RepairUpdate` | 66 | a1 a2 a4 a5 a6 a7 a8 a9 | 仅字段读取：engine_repair a两次未触发玩家维修；repairai a已开AI维修、全难度人格、资金5000仍半血且只读探针未见维修激活；AI派发/资格门禁待核，tests/test_simrepair_ai.py保留strict xfail；不以schema默认10HP/s或预测费用登记已对拍；例：AlliedAirfield, AlliedBarracks |
 | 未做 | 物体模块 | `Behaviors/WeaponFireSpecialAbilityUpdate` | 16 | a1 a2 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedAntiNavalScout, AlliedAntiStructureShip |
 | 未做 | 物体模块 | `Behaviors/SpawnBehavior` | 10 | a1 a2 a4 a5 a6 a7 a8 | 已核（11-08）：模拟器没有这个效果（没有母体造随从）；例：AlliedAirfield, AlliedRefinery |
 | 未做 | 物体模块 | `Behaviors/ProductionUpdateInfo` | 9 | a1 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedConstructionYard, AlliedMCV |
