@@ -1407,7 +1407,7 @@ class Sim:
     def capture_due(self):
         """R4 / E15: an engineer at the building's side (reach and travel timing INFERRED).
         EngineerContain admits capture or allied repair; the entering engineer is consumed
-        (engine_engineer:a). Capture preserves HP, allied repair fills HP without changing owner.
+        (engine_engineer:a/c, all three nations). Capture preserves HP, allied repair fills HP without changing owner.
         A deposit building pays its bonus now and its next
         deposit an interval on (Generals' AutoDepositUpdate.awardInitialCaptureBonus). Bench 2026-11-07 a4 derrick:
         the derrick the player's at the first reading after the order (s4), 500, then 15 every 2 s (s7 515 -> s46 800)."""

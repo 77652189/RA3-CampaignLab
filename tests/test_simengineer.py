@@ -41,6 +41,30 @@ def test_engineer_full_health_allies_as_on_the_bench():
     assert not any(key[0] == 'EngineerContain' for key in s.unmodeled)
 
 
+def test_engineer_damaged_allies_three_nations_as_on_the_bench():
+    """engine_engineer:c PASS 2026-11-10: s12-s38 100/100/100/10100.
+
+    Arrival timing is INFERRED; assert the stable endpoint window only.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_engineer', 'c')
+    roles = ('neutral', 'enemy', 'ally', 'refused')
+    assert [m.role(role + ' man').template for role in roles] == [
+        'AlliedEngineer', 'SovietEngineer', 'JapanEngineer', 'AlliedEngineer']
+    s = sim.Sim(m, t).run(36)
+    assert s.series[0][1] == [10050, 10050, 10050, 10100]
+    window = [values for second, values in s.series if 30 <= second <= 34]
+    assert window and all(values == [100, 100, 100, 10100] for values in window)
+    assert s.series[-1][1] == [100, 100, 100, 10100]
+    for role in roles:
+        target, man = s.body(m.role(role).name), s.body(m.role(role + ' man').name)
+        assert target.owner == m.player('s2')
+        assert target.hp == target.max_hp
+        assert man.alive == (role == 'refused')
+    assert not any(key[0] == 'EngineerContain' for key in s.unmodeled)
+
+
 def test_engineer_filters_reject_wrong_template_and_enemy_defence_and_report_replacements():
     import build
     import sim

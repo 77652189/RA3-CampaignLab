@@ -90,5 +90,23 @@ def check_full_health(m):
     return t
 
 
+def check_damaged_allies(m):
+    """c: Allied/Soviet/Japan repair half-health allies; full-health control.
+
+    Retail GenericEngineerContain admits all three templates. Predict all three
+    fill the allied plant without changing owner and are consumed; fourth lane
+    repeats the measured full-health refusal. Exact travel timing is INFERRED.
+    Baseline 10050/10050/10050/10100; expected final 100/100/100/10100.
+    Bench 2026-11-10 PASS: s1-s11 baseline; s12-s38 expected final.
+    """
+    t = check_full_health(m)
+    t.scripts[0].do = [
+        (a[0], a[1], 100.0 if a[1] == m.role('refused').name else 50.0)
+        if a[0] == 'UNIT_SET_HEALTH' else a for a in t.scripts[0].do]
+    t.expect = [(role, 30, '==', value, 34)
+                for role, value in zip(LANES, (100, 100, 100, 10100))]
+    return t
+
+
 MISSION = {'engine_engineer': mission}
-CHECKS = {'engine_engineer': {'a': check, 'b': check_full_health}}
+CHECKS = {'engine_engineer': {'a': check, 'b': check_full_health, 'c': check_damaged_allies}}
