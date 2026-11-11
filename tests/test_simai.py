@@ -724,6 +724,42 @@ def _first_fire(b):
     return min(f for f, _, _, _ in b.fired) - b.started
 
 
+@pytest.mark.parametrize('has_target', [False, True])
+def test_engage_hostile_same_view_has_same_power_decision(has_target):
+    """Isolate the power consumer from the unresolved aimicspon / aimicengoff timing gap.
+
+    Replay the same injured warrior view through both probes' real micro data. A change
+    to EngageHostileTargets alone must not disable or postpone its power; with no target
+    neither may charge. This is an interface check, not a bench timing replay. The existing
+    strict xfail below still owns the observed off-before-on ordering.
+    """
+    import build
+
+    model = simai.model()
+    mc, sp = model['micro'], model['specials']
+    power = mc.load_unit_powers()['Command_JapanAntiInfantryInfantryBonzai']
+    fires = {}
+    for name, engage in (('aimicspon', True), ('aimicengoff', False), ('aimicspoff', True)):
+        mission, _, _ = build.resolve(name, 'r')
+        texts = [text for _, text, _ in mission.assets if 'AIMicroManagerData' in text]
+        tactics = model['tactics'].MicroData()
+        for text in texts:
+            tactics.add_text(text)
+        assert tactics.flag('CNVMicroSpow', 'EngageHostileTargets') is engage
+        data = mc.load_micro(texts=texts)['CNVMicroSpow']
+        target = sp.Thing((300.0, 0.0), frozenset({'INFANTRY'}), name='conscript')
+        unit = mc.Unit('warrior', health=70.0, max_health=100.0, powers=[power],
+                       target=target if has_target else None, weapon_range=150.0)
+        view = mc.Team([unit], enemies=[target])
+        manager = mc.MicroManager(data, rng=lambda lo, hi: lo)
+        for frame in range(1, simai.FPS + 1):
+            manager.tick(frame, view)
+        fires[name] = manager.fired
+    assert fires['aimicspon'] == fires['aimicengoff']
+    assert bool(fires['aimicspon']) is has_target
+    assert not fires['aimicspoff']
+
+
 def test_engage_hostile_off_still_fights_and_charges(spow):
     """checks/engine_aimicro.py aimicengoff (bench B round 115): aimicspon with EngageHostileTargets="false" -- on
     the bench the warriors still fight the conscripts at home (在家 2 to s41) and charge (first ~258 frames after the
@@ -734,10 +770,11 @@ def test_engage_hostile_off_still_fights_and_charges(spow):
     assert not [e for e in b.tactics.log if e[1] == 'engage'], b.tactics.log[-5:]
 
 
-@pytest.mark.xfail(strict=True, reason="bench (two runs each): EngageHostileTargets off charges ~258 frames after "
+@pytest.mark.xfail(strict=True, raises=AssertionError,
+                   reason="bench (two runs each): EngageHostileTargets off charges ~258 frames after "
                                        "the wake, on ~362 -- off is ~100 frames earlier; the sim has it the other "
-                                       "way (off ~457, on ~275): state 2's pick brings the fight forward in the sim, "
-                                       "on the bench it holds the charge back (why not known)")
+                                       "way historically (off ~457, on ~275). Only the ordering assertion is expected "
+                                       "to fail; missing fire records must surface as an error, not hide in this xfail")
 def test_engage_hostile_off_charges_before_on(spow):
     (on,), (off,) = spow['aimicspon'].brains.values(), spow['aimicengoff'].brains.values()
     assert _first_fire(off) < _first_fire(on), (_first_fire(off), _first_fire(on))
