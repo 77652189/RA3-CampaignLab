@@ -154,8 +154,9 @@ def test_retail_attribute_gates_reject_unmeasured_forms(inner):
 def test_special_power_nugget_retail_scrambler_unresolved_consumers_remain_gaps():
     """engine_spnscr a: measured fire-delay differs, final HP alone hides it.
 
-    Keep both unsupported consumers explicit until the expiry/script NO_ATTACK
-    interaction is explained. This is a gap guard, not a bench replay claim.
+    Isolated expiry clearing is covered separately. Attack-order retention,
+    retail filter dispatch and the active SPN consumer remain unresolved.
+    This is a gap guard, not a bench replay claim.
     """
     import build
     import sim
@@ -169,3 +170,52 @@ def test_special_power_nugget_retail_scrambler_unresolved_consumers_remain_gaps(
     assert (sim.GAP_WEAPON, 'AttributeModifierNugget') in e.unmodeled
     # FX_None and CANNOT_LEAVE_ENCLOSURE are not yet a validated no-op boundary.
     assert simunits.nugget_self_power(m.units[0].id, POWER, e.own) is False
+
+
+@pytest.mark.parametrize('script_frame', [None, 0, 6.5 * 15 + 4])
+def test_retail_scrambler_modifier_expiry_clears_script_status(script_frame):
+    """Isolated expiry input, not engine_spnscr attack-order replay.
+
+    Retail Duration=1s; use frame90 as supplied application time and105 as
+    expiry. The old bench exposes only coarse HP snapshots, not exact impact
+    or expiry frames. D40 establishes clearing semantics independently.
+    """
+    import build
+    import sim
+    import simunits
+    m, t, _ = build.resolve('engine_spnscr', 'a')
+    e = sim.Sim(m, t)
+    b = e.body('SCR base victim')
+    # Read the actual retail nugget's modifier rather than copying its bits.
+    import re
+    from checks.engine_spnscr import retail_parts
+    mid = re.search(r'AttributeModifierName="([^"]+)"', retail_parts()[1]).group(1)
+    modifier = simunits.modifier('', mid)
+    assert modifier['frames'] == 15
+    assert modifier['status'] == {'NO_ATTACK', 'SCRAMBLED'}
+    now = [90]
+    e.frame_now = lambda: now[0]
+    b.script_status.clear()
+    e.act('UNIT_CHANGE_OBJECT_STATUS', [b.name, 'IMMOBILE', 1], 'expiry interface')
+    if script_frame == 0:
+        e.act('UNIT_CHANGE_OBJECT_STATUS', [b.name, 'NO_ATTACK', 1], 'expiry interface')
+    b.auras_on[mid] = (105, '')
+    e.modify(b)
+    assert modifier['status'] <= b.status
+    if script_frame and script_frame > 0:
+        now[0] = script_frame
+        e.act('UNIT_CHANGE_OBJECT_STATUS', [b.name, 'NO_ATTACK', 1], 'expiry interface')
+    now[0] = 104
+    e.modify(b)
+    assert modifier['status'] <= b.status
+    now[0] = 105
+    e.aura_tick()
+    assert not modifier['status'] & b.status
+    assert not modifier['status'] & b.script_status
+    assert 'IMMOBILE' in b.status
+    assert mid not in b.auras_on
+    # A later script write must work: expiry is a one-time clear, not a mask.
+    now[0] = 106
+    e.act('UNIT_CHANGE_OBJECT_STATUS', [b.name, 'NO_ATTACK', 1], 'expiry interface')
+    e.aura_tick()
+    assert {'NO_ATTACK', 'IMMOBILE'} <= b.status

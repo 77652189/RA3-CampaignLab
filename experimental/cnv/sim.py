@@ -1807,6 +1807,12 @@ class Sim:
                 mods.append(m)
         for mid, (until, src) in list(b.auras_on.items()):
             if now >= until:
+                # Expiry clears the template's bits even if a script set the
+                # same bit later; it is not source-counted. This isolated
+                # timed-modifier path makes no attack-order retention claim.
+                expired = simunits.modifier(src, mid)
+                if expired:
+                    b.script_status.difference_update(expired['status'])
                 del b.auras_on[mid]
             else:
                 mods.append(simunits.modifier(src, mid))
