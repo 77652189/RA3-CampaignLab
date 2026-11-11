@@ -1545,10 +1545,10 @@ def _drops(rows):
 
 def test_wayatk_a_team_on_an_attack_path_fights_as_one_and_holds_until_it_is_dead():
     """team (TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS, tanks 2 and 3): bench 敌血 86 s4, 73 s6, 59 s7, 32 s8 -- tank 3 too
-    (its A spot 270 from the enemy: the team's common target, sim.Sim.attack_chase), dead ~s12; neither tank on to B
-    before that (tank 3 at A does not move the team on): B 段3 s14 / 段2 s15. Before round 146 the simulator's tank 3
-    went on to B at s9 while tank 2 fought alone. Asserted: first hit within LAG, a second's loss above one tank's
-    best (atk's), both to B only after the kill."""
+    (each walks to A itself, 212 from the enemy: within its own scan; round 146 read it as the team's common
+    target, refuted by cut below), dead ~s12; neither tank on to B before that: B 段3 s14 / 段2 s15. Before round
+    146 the simulator's tank 3 kept a place 75 north of A and went on to B at s9 while tank 2 fought alone.
+    Asserted: first hit within LAG, a second's loss above one tank's best (atk's), both to B only after the kill."""
     rows = _changes('engine_wayatk', 'team', 50.0)
     hit = _first(rows, 0, lambda v: v < 100)
     dead = _first(rows, 0, lambda v: v == 0)
@@ -1557,6 +1557,23 @@ def test_wayatk_a_team_on_an_attack_path_fights_as_one_and_holds_until_it_is_dea
     for k in (2, 3):
         at_b = _first(rows, k, lambda v: v == 2)
         assert at_b is not None and at_b > dead, (k, at_b, dead)
+
+
+def test_wayatk_a_team_on_an_attack_path_shares_no_target_and_each_member_walks_its_own():
+    """cut (engine_wayatk3, the team's own road P -> Q, the enemy 150 / 211 off tank 2's leg, never within 351 of
+    tank 3's): bench 11-10 敌血 86 s3, then a shot every ~2 s (13 %) to 8 at s14 -- tank 2 alone (atk's rate); 近3
+    0 throughout (tank 3 never within 190 of it); tank 3 at P (within 60: no place kept, it stood 150 from the
+    team's middle) s6 and Q s11 while tank 2 fought; tank 2 P s20, Q s25 after the kill. Round 146's model (the
+    team's target taken at any distance) had tank 3 within 190 from s7 and both firing. Asserted: 近3 never, one
+    tank's loss a second (atk's best at most), tank 3 at Q before the kill, tank 2 at P after it."""
+    rows = _changes('engine_wayatk3', 'cut', 50.0)
+    hit = _first(rows, 0, lambda v: v < 100)
+    dead = _first(rows, 0, lambda v: v == 0)
+    assert 3 <= hit <= 3 + LAG and dead is not None
+    assert all(v[1] == 0 for _, v in rows)
+    assert max(_drops(rows)) <= max(_drops(_changes('engine_wayatk', 'atk', 50.0)))
+    q3, p2 = _first(rows, 3, lambda v: v == 2), _first(rows, 2, lambda v: v == 1)
+    assert q3 is not None and q3 < dead and p2 is not None and p2 > dead, (q3, p2, dead)
 
 
 def test_maxhealth_keeps_the_hit_points_unless_full_as_the_bench():

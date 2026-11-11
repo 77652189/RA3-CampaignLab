@@ -549,6 +549,8 @@ class Body:
     drive_speed: float = 0.0
     hold_fire: bool = False                                     # UNIT_SET_STANCE 3 (HOLD_FIRE): fires only at a
                                                                 # target it was ordered on (stance.md a / b / d / e)
+    hold_paused: bool = False                                   # an attack order taken BEFORE HOLD_FIRE: kept, not
+                                                                # fired; back to another stance it fires again (a / f)
 
     def damage(self, amount):
         """The body's health floor (Generals reference: internalChangeHealth). A PropBody takes none (engine_propbody a)."""
@@ -1343,6 +1345,8 @@ class Sim:
     def order_attack(self, b, target_name):
         self.used.add('attack')
         target = self.body(target_name)
+        if b and target and target.alive and b.alive:
+            b.hold_paused = False               # an order given under HOLD_FIRE fires (stance.md b)
         if b and target and target.alive and b.alive and b.goal is not target:
             b.goal, b.mode, b.follow = target, 'attack', None
             self.send(b, (target.x, target.y), reach=self.reach(b, target))
@@ -2620,9 +2624,14 @@ class Sim:
         elif name in ('MOVE_TEAM_TO', 'ATTACK_MOVE_TEAM_TO'):
             self.order_group(self.members(a[0]), a[1], name == 'ATTACK_MOVE_TEAM_TO')
         elif name in TEAM_FOLLOWS:
-            # (team, path, asTeam[, ?][, start waypoint]); the fourth flag (handler 0x5a4c40) not read: ignored
-            self.order_follow(self.members(a[0]), a[1], name == 'TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS',
-                              exact=name.endswith('_EXACT'), as_team=bool(int(a[2])),
+            # (team, path, asTeam[, ?][, start waypoint]); the fourth flag (handler 0x5a4c40) not read: ignored.
+            # The attack version is each member's own walk whatever asTeam says (bench 11-10 engine_wayatk3 cut:
+            # both tanks within 60 of P though they stood 300 apart, tank 3 on to Q while tank 2 fought; INFERRED
+            # why); the team only picks the join (the waypoint nearest its middle: the first try, P and Q 427 off
+            # the middle each, both went to Q)
+            attack = name == 'TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS'
+            self.order_follow(self.members(a[0]), a[1], attack,
+                              exact=name.endswith('_EXACT'), as_team=bool(int(a[2])) and not attack,
                               start=a[-1] if name.endswith('_AT_WAYPOINT') else None)
         elif name == 'TEAM_ATTACK_NAMED':
             for b in self.members(a[0]):
@@ -2761,9 +2770,15 @@ class Sim:
                 if b.owner == a[0]:
                     self.flee_start(b)
         elif name == 'UNIT_SET_STANCE':          # (name, stance): 3 is HOLD_FIRE; the others are not modelled
+            # Bench 11-06 engine_stance (docs/engine/stance.md): going HOLD_FIRE stops a standing attack order without
+            # dropping it (a: no hit after the stance frame; f: back to GUARD, the same order fires again); an order
+            # given while held fires (b); held, nothing by itself (d) and no hitting back (e)
             b = self.body(a[0])
             if b and b.alive:
-                b.hold_fire = int(a[1]) == 3
+                hold = int(a[1]) == 3
+                if hold != b.hold_fire:
+                    b.hold_paused = hold and isinstance(b.goal, Body)
+                b.hold_fire = hold
         elif name == 'UNIT_SET_HEALTH':
             b = self.body(a[0])
             if b and b.alive:
@@ -3425,7 +3440,7 @@ class Sim:
         self._fire_obstacles = None             # `shot_blocked`'s footprints, taken once a tick when first asked
         live = [b for b in self.living() if not b.scenery and self.on_map(b)]     # off the border: out of the fight
         armed = [b for b in live if b.weapons and 'NO_ATTACK' not in b.status    # NO_ATTACK: holds its fire
-                 and not self.unpowered(b) and not (b.hold_fire and not isinstance(b.goal, Body))]
+                 and not self.unpowered(b) and not (b.hold_fire and (b.hold_paused or not isinstance(b.goal, Body)))]
         cloaked = self.cloaked(live)
         targets = [b for b in live if 'UNATTACKABLE' not in b.status and id(b) not in cloaked]
         if not armed or not targets:
@@ -3497,9 +3512,6 @@ class Sim:
                 fired = True
                 if a.mode == 'attack':
                     a.engaged = True
-                    team = a.follow if a.follow is not None and a.follow.get('team') else None
-                    if team is not None and not (team.get('victim') and team['victim'].alive):
-                        team['victim'] = pick       # the team's target (attack_chase): the others go for it too
             g = a.goal
             if not fired and isinstance(g, Body) and g.alive and not a.path and id(g) in aimable and \
                     (a.spot is None or a.spot[0] != id(g) or math.hypot(g.x - a.spot[1], g.y - a.spot[2]) > 150) and \
@@ -3564,32 +3576,24 @@ class Sim:
         the target's radius within its VisionRange); Generals limits a human player's units to attack range
         (WITHIN_ATTACK_RANGE) -- RA3 does not (the bench's tank is the human player's). It walks to `reach`, the fight
         holds it there (engaged), and with nothing left it is sent on to where the move was going (`resume`).
-        A team on a path (order_follow as_team) shares one target, at any distance: the first a member fires at is the
-        team's (`victim` on the shared path dict), and the others go for it before their own scan (bench 11-10
-        engine_wayatk team: tank 2 fires from s4, tank 3 -- its A spot 270 from the enemy, beyond any scan -- from s7,
-        27 a second off the enemy with both; neither goes on, so the team holds at A until it is dead: B s14 / s15).
-        Generals getNextMoodTarget returns the team's target object (Team::getTeamTargetObject, set by the first
-        member's attack) before scanning when the team's AttackCommonTarget is on; our teams are written without that
-        key (mapxml.add_team), so RA3 does it regardless (INFERRED: read only for a team on a path).
+        A team on an attack path shares no target: each member takes only what its own scan finds (bench 11-10
+        engine_wayatk3 cut: tank 2 fights an enemy 150 off its leg alone, ~13.5 % a shot; tank 3, never within 351 of
+        it, goes on to P and Q meanwhile -- round 146's reading of engine_wayatk team, the team's target taken at any
+        distance (Team::getTeamTargetObject), was wrong: there tank 3 walked to A itself, 212 from the enemy, within
+        its own scan 223.3; order_follow keeps no places for the attack version).
         INFERRED: the scan's rate (MoodAttackCheckRate) and the way back (straight to the leg's end, not to the path)."""
         if a.chase is not None and a.path and a.dest != a.auto_to:      # an order since: its own way, not ours
             a.chase = a.resume = a.auto_to = None
         if a.building or a.speed <= 0 or 'IMMOBILE' in a.status or fired:
             return
-        team = a.follow if a.follow is not None and a.follow.get('team') else None
-        v = team.get('victim') if team else None    # what a member of a team on a path is fighting (see below)
-        if v is not None and not (v.alive and self.side_sees(a.owner, v) and any(self.can_hit(w, v) for w in a.weapons)):
-            v = None
         c = a.chase
         if c is not None and c.alive and self.side_sees(a.owner, c) and \
-                (c is v or math.hypot(c.x - a.x, c.y - a.y) - c.radius <= a.sight):
+                math.hypot(c.x - a.x, c.y - a.y) - c.radius <= a.sight:
             if not a.path:                      # got there and it is still out of reach: after it again
                 self.send(a, (c.x, c.y), reach=self.reach(a, c))
                 a.auto_to = a.dest
             return
         a.chase = None
-        if v is not None:
-            near = [(0.0, v)]                   # the team's target first, at any distance
         for dist, t in near:
             if dist - t.radius > a.sight:
                 break                           # sorted by centre

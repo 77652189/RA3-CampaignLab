@@ -48,4 +48,5 @@ def attack_mission(name='CampWayAtk', rows=ROWS):     # + the check's name: 15 c
 
 
 MISSION = {'engine_waypath': mission, 'engine_wayatk': attack_mission,
-           'engine_wayatk2': lambda: attack_mission('CampWayAtk2', rows=(-150.0, 0.0, 450.0))}
+           'engine_wayatk2': lambda: attack_mission('CampWayAtk2', rows=(-150.0, 0.0, 450.0)),
+           'engine_wayatk3': lambda: attack_mission('CampWayAtk3', rows=(600.0, 0.0, 300.0))}

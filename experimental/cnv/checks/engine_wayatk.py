@@ -36,14 +36,24 @@ Simulator round 146 (work/logs/a146_wayatk_sim.log; sim.Sim.attack_chase): atk2 
          146): Generals moves the team's waypoint on when any member's move ends (AIFollowWaypointPathState::update,
          Team::setCurrentWaypoint) -- no hold for a fighter -- so tank 3 was fighting too: its A spot is 270 from F,
          beyond any scan, so it took the team's target (getNextMoodTarget returns Team::getTeamTargetObject, the first
-         member's victim, at any distance) and walked up (first hit s7). sim.Sim.attack_chase: the team's `victim`.
+         member's victim, at any distance) and walked up (first hit s7). WRONG (round 148, cut): no place is kept on
+         the attack version, tank 3 walked to A itself, 212 from F, within its own scan.
   far    (engine_wayatk2, round 147: tank 3 starts at +450) bench 11-10 CampWayAtk2Far_mcp_1110_173620 (a slow run:
          the popup at 37 s): 段2 1 s6; 敌血 86 s11, 72 s15 (tank 2 alone, ~4 s a hit); 段3 1 s17; 58 s19, 45 s20,
          31 s26, 18 s27, 5 s31 (two shooters from tank 3's arrival); B 段3 s38 / 段2 s40, C s49 / s51 -- the team
          held until the kill. Simulator (work/logs/a147_far_sim.log): tank 3 at A s9, both firing s11, dead s17.
-         NOT yet an answer on the common target: tank 3 entered A's 100 box, ~212 from F, within its own scan --
-         where it stood when it first fired is not read (next: a frame at s17-s19, or a far spot that keeps it out).
-Tested (tests/test_simbench.py test_wayatk_*): plain, atk, amove, atk2, team.
+         No answer on the common target by itself: tank 3 entered A's 100 box, ~212 from F, within its own scan.
+  cut    (engine_wayatk3, round 148: the team's own road P (+350, +150) -> Q (+350, +500), F at A) bench 11-10
+         CampWayAtk3Cut_mcp_1110_183430: 敌血 86 s3, 73 s5, 60 s7, 47 s8, 34 s11, 21 s13, 8 s14 (tank 2 alone, a shot
+         every ~2 s); 近3 0 throughout; 段3 1 s6, 2 s11 (tank 3 on while tank 2 fought); 段2 1 s20, 2 s25. So the
+         team shares NO target (round 146's Team::getTeamTargetObject reading refuted: in team and far tank 3 found F
+         by its own scan at A) and keeps NO places (both within 60 of P, standing 300 apart) nor one waypoint: each
+         member walks its own (sim.py TEAM_FOLLOWS: the attack version not as_team). First try (CampWayAtk3Cut_mcp_
+         1110_183020, P (+350, 0), Q (+350, +300): both 427 from the team's middle) both went straight to Q, F never
+         seen -- the join is the waypoint nearest the team's middle, a tie the game broke the other way.
+         Simulator (work/logs/a148_sim.log): hit s4, 近3 0, 段3 1 s7 / 2 s13, dead s20, 段2 1 s24 / 2 s28 (the
+         fire model's GAP as atk's).
+Tested (tests/test_simbench.py test_wayatk_*): plain, atk, amove, atk2, team, cut.
 """
 from parts import Script, Test, counted, square
 from checks.engine_waypath import PATH, _at, _road
@@ -114,5 +124,40 @@ def far(m):
     return team(m)
 
 
+def cut(m):
+    """engine_wayatk3 (tank 1 parked at +600, tank 2 at 0, tank 3 at +300; the team's middle (-50, +150)): the team
+    W23 attack-walks its own road P (+350, +150) -> Q (+350, +500) (P the nearest to the middle, 400 to Q's 566:
+    the first try had P, Q both 427 off and the game joined at Q). F at A (+150, -150): tank 2's leg passes 150 off
+    it (each member keeping its place from the middle) or 211 (all to P) -- within its scan 223.3 either way, its
+    start 250 off; tank 3's legs never come within 351 of F, either way. 近3 = tank 3 within 190 of F (square): only
+    if it takes the team's target (Team::getTeamTargetObject) -- its own scan never reaches F."""
+    t = Test()
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    ax, ay = m.point('A')                           # A is (+150, -150) from the field
+    road = {'P': (ax + 200.0, ay + 300.0), 'Q': (ax + 200.0, ay + 650.0)}
+    for k, xy in road.items():
+        t.waypoints[f'Test Wayatk {k}'] = xy
+    t.path('CNVCut', *[f'Test Wayatk {k}' for k in road])
+    fx, fy = ax, ay
+    t.waypoints['Test Wayatk F'] = (fx, fy)
+    t.areas['Test Wayatk Near'] = square(fx, fy, 190.0)
+    t.scripts.append(Script('Test - foe', [], [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', FOE, FOE_TEMPLATE, m.team('s1'),
+                                                'Test Wayatk F'),
+                                               ('UNIT_CHANGE_OBJECT_STATUS', FOE, 'NO_ATTACK', 1)]))
+    counted('CNV_Wayatk_Hp', '敌血', t, health=FOE)
+    counted('CNV_Wayatk_Near3', '近3', t, named=m.role('tank 3').name, area='Test Wayatk Near')
+    _at(t, 'go', 2.0, [('TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS', m.crew('W23'), 'CNVCut', 1, 0)])
+    for k in (2, 3):
+        name, counter = m.role(f'tank {k}').name, f'CNV_Wayatk_Leg{k}'
+        t.counters.append((counter, f'段{k}'))
+        for i, (p, xy) in enumerate(road.items(), 1):
+            area = f'Test Wayatk Box {p}'
+            t.areas[area] = square(*xy, 60.0)
+            t.scripts.append(Script(f'Test - {counter} {p}', [('NAMED_INSIDE_AREA', name, area)],
+                                    [('SET_COUNTER', counter, i)], once=False))
+    t.bench = [('bench_watch', dict(seconds=RUN, every=1.0, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 CHECKS = {'engine_wayatk': {'atk': atk, 'plain': plain, 'atk2': atk2, 'team': team, 'amove': amove},
-          'engine_wayatk2': {'far': far}}
+          'engine_wayatk2': {'far': far}, 'engine_wayatk3': {'cut': cut}}
