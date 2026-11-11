@@ -66,3 +66,58 @@ def test_bridgebuilder_counts_short_and_long_retail_bridges():
     override = {'HB_Bridge_02': '<GameObject id="HB_Bridge_02"><Behaviors>'
                                '<BridgeBuilder EndCap="other" /></Behaviors></GameObject>'}
     assert simunits.bridge_generation_counts('HB_Bridge_02', 270, override) is None
+
+
+def test_bridgebuilder_mixed_retail_end_marker_counts():
+    """engine_bridgebuilder_b:b: HB start / Bridge1a end, four measured rows."""
+    import build
+    import simunits
+    from parts import contract, merged
+
+    m, t, mod = build.resolve('engine_bridgebuilder_b', 'b')
+    assert len(mod) <= 15 and mod.isalnum()
+    assert not contract(merged(m, t))
+    assert [(o.template, o.flags) for o in m.objects] == [
+        ('HB_Bridge_02', 16), ('Bridge1a', 32)] * 2
+    assert [m.cast[role].template for role in ('short 1', 'long 1')] == ['Bridge1a'] * 2
+    assert len(t.counters) == 4
+    foreign = tuple('Bridge1_' + s for s in ('End', 'End2', 'Center', 'Center2', 'GateHouse'))
+    counts = {}
+    for role, k, wanted in (('short', 0, [1, 1, 1, 0, 2]), ('long', 2, [1, 1, 2, 2, 2])):
+        length = m.objects[k+1].x - m.objects[k].x
+        got = simunits.bridge_pair_generation_counts('HB_Bridge_02', 'Bridge1a', length)
+        assert list(got.values()) == wanted + [0] * 5
+        assert set(got) == set(foreign) | {'HB_Bridge_02_' + s for s in
+                                         ('End', 'End2', 'Center', 'Center2', 'GateHouse')}
+        counts['Bridge ' + role] = got
+    def readout(missing=None, unexpected=None):
+        counters = {}
+        for script in t.scripts:
+            ok = True
+            for _, _, comparison, n, template, area in script.when:
+                assert comparison == 2
+                value = 1 if (area, template) == unexpected else counts[area][template]
+                ok &= (area, template) != missing and value == n
+            if not ok:
+                continue
+            for action in script.do:
+                if action[0] == 'SET_COUNTER':
+                    counters[action[1]] = action[2]
+                elif action[0] == 'INCREMENT_COUNTER':
+                    counters[action[2]] += action[1]
+        return [counters[name] for name, _ in t.counters]
+    rows = readout()
+    assert rows == [1322, 12, 1322, 33] == [e[3] for e in t.expect]
+    assert build.report(t, [(s, rows) for s in range(4, 19)])[1] == 0
+    for template in foreign:
+        for broken in (readout(missing=('Bridge short', template)),
+                       readout(unexpected=('Bridge short', template))):
+            assert broken == [322, 12, 1322, 33]
+            assert build.report(t, [(s, broken) for s in range(4, 19)])[1] != 0
+    assert simunits.bridge_pair_generation_counts('HB_Bridge_02', 'Bridge1a', 400) is None
+    assert simunits.bridge_pair_generation_counts('Bridge1a', 'HB_Bridge_02', 270) is None
+    # A changed width or different end configuration is outside the observed pair.
+    for template, field in (('Bridge1a', 'Width="180.0"'), ('HB_Bridge_02', 'Width="190.0"')):
+        xml = simunits._xml(template).replace(field, 'Width="181.0"')
+        assert simunits.bridge_pair_generation_counts('HB_Bridge_02', 'Bridge1a', 270,
+                                                       {template: xml}) is None

@@ -228,7 +228,7 @@ NOTES = {
     (NUGGET, 'LineDamageNugget'): (GUESSED, '部分：engine_weaponfx line探针；实测PASS90/90/90/100验证动态线长及穿透，圆形边界GUESSED，筛选与静态线未模拟'),
     (MODULE, 'Body/ActiveBody'): (GUESSED, 'simunits.stats 读 MaxHealth（只有生命值；受伤状态、回血等另算）'),
     (MODULE, 'Body/ManagerBody'): (GUESSED, '部分：engine_managerbody a/b原版HB_Bridge_02，270/700长度整体代理脚本伤害200后均80%、致命量后1%且存活，tests/test_simmanagerbody.py按名重放；有效HP取CenterPiece及内部1%下限映射INFERRED；其他模板/配置、桥段生成/共享血量/损毁/维修未对拍，不登记整模块已对拍'),
-    (MODULE, 'Behaviors/BridgeBuilder'): (GUESSED, '部分：engine_bridgebuilder:a已量HB_Bridge_02长度270/700，EndCap/EndCap2/CenterPiece/CenterPieceB/GateHouse数量1/1/1/0/2及1/1/2/2/2，tests/test_simbridgebuilder.py按名核计数模型与读数编码；simunits.bridge_generation_counts仅两长度数量模型；世界物体生成/位置、其他模板/长度、通行、损毁、共享血量与维修未建模，不登记整模块已对拍'),
+    (MODULE, 'Behaviors/BridgeBuilder'): (GUESSED, '部分：engine_bridgebuilder:a已量HB_Bridge_02长度270/700，EndCap/EndCap2/CenterPiece/CenterPieceB/GateHouse数量1/1/1/0/2及1/1/2/2/2；engine_bridgebuilder_b:b已量原版HB桥首16+Bridge1a桥尾32混合构型，两长度HB数量不变、五类Bridge1物件均0；tests/test_simbridgebuilder.py按名核计数模型与读数编码，simunits仅有限数量模型；世界物体生成/位置、其他模板/长度、通行、损毁、共享血量与维修未建模，不登记整模块已对拍'),
     (MODULE, 'AI/AIUpdate'): (GUESSED, 'Sim.fight / 移动（单位 AI 的状态机细项按引擎 B 的 AI 清单推进）'),
     # the 26 the bench measured but the name rule called 未做 (checked 11-08 against sim.py / simunits.py)
     (MODULE, 'Behaviors/FireWeaponUpdate'): (GUESSED, '部分：simunits.ocl_round 把召出物的 FireWeaponNugget + '

@@ -1004,7 +1004,7 @@ def bridge_generation_counts(template, length, own=None):
         for head, _ in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'BridgeBuilder'):
             return {key: _attr(head, key) for key in (
                 'EndCap', 'EndCap2', 'EndCapLen', 'CenterPiece', 'CenterPieceLen',
-                'CenterPieceB', 'CenterPieceBLen', 'GateHouse', 'GateHouse2')}
+                'CenterPieceB', 'CenterPieceBLen', 'GateHouse', 'GateHouse2', 'Width')}
         return None
     data = _chain(template, own, read)
     fields = ('EndCap', 'EndCap2', 'CenterPiece', 'CenterPieceB', 'GateHouse')
@@ -1012,11 +1012,42 @@ def bridge_generation_counts(template, length, own=None):
     if not data or any(data[k] != 'HB_Bridge_02_' + v for k, v in zip(fields, suffixes)):
         return None
     if tuple(_num(data[k]) for k in ('EndCapLen', 'CenterPieceLen', 'CenterPieceBLen')) != (75, 150, 150) \
-            or data['GateHouse2'] not in (None, data['GateHouse']):
+            or data['GateHouse2'] not in (None, data['GateHouse']) or _num(data['Width']) != 190:
         return None
     # Only the measured sample points; no unmeasured rounding law is assumed.
     counts = (1, 1, 1, 0, 2) if length == 270 else (1, 1, 2, 2, 2)
     return {data[k]: n for k, n in zip(fields, counts)}
+
+
+def bridge_pair_generation_counts(start, end, length, own=None):
+    """Count-only retail mixed-pair baseline, HB start / Bridge1a end, 270/700.
+
+    No world creation or geometry. Only the exact measured pair/configuration is
+    supported; end-marker template usage does not imply its builder creates parts.
+    engine_bridgebuilder_b:b reads 1322/12/1322/33 (2026-11-11); Bridge1 parts zero.
+    """
+    if (start, end) != ('HB_Bridge_02', 'Bridge1a'):
+        return None
+    counts = bridge_generation_counts(start, length, own)
+    if counts is None:
+        return None
+    def read(xml):
+        for head, _ in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'BridgeBuilder'):
+            return {key: _attr(head, key) for key in (
+                'EndCap', 'EndCap2', 'EndCapLen', 'CenterPiece', 'CenterPieceLen',
+                'CenterPieceB', 'CenterPieceBLen', 'GateHouse', 'GateHouse2', 'Width')}
+        return None
+    data = _chain(end, own, read)
+    expected = dict(EndCap='Bridge1_End', EndCap2='Bridge1_End2',
+                    CenterPiece='Bridge1_Center2', CenterPieceB='Bridge1_Center2',
+                    GateHouse='Bridge1_GateHouse')
+    if not data or any(data[k] != v for k, v in expected.items()):
+        return None
+    if tuple(_num(data[k]) for k in ('EndCapLen', 'CenterPieceLen', 'CenterPieceBLen', 'Width')) \
+            != (25, 50, 50, 180) or data['GateHouse2'] not in (None, data['GateHouse']):
+        return None
+    return dict(counts, **{'Bridge1_' + suffix: 0 for suffix in
+                          ('End', 'End2', 'Center', 'Center2', 'GateHouse')})
 
 
 def manager_body(template, own=None):
