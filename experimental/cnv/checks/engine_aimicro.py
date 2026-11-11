@@ -61,6 +61,10 @@ Bench 2026-11-07 (Sonnet, one run each, no dropout):
     team walks the two warriors west from s21, before the conscripts set out, so they never fight (work/logs
     b113_sim3.log) -- and its micro block reads only the retail micro library (a probe's own AIMicroManagerData
     reaches only 'tactics micro', simai.own_personalities).
+    Simulator since B round 114 (tests/test_simai.py): the probe's micro data reaches the micro block, and state 2's
+    per-member pick (EngageHostileTargets; tactics._assign) turns the Hunt team on the conscripts from ~s28 -- on:
+    the micro wants the charge from 275 frames after the wake (bench ~362), off: never. The charge itself is not
+    applied in the simulator (recorded only), so its warriors still lose the fight.
 """
 from parts import Script, Test, counted, square, status
 

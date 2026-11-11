@@ -129,10 +129,15 @@ NOTES = {
                                  '造兵逐秒和原版 aiskirm c 一样）、测试对拍 tests/test_simai.py——没有选兵策略表时 '
                                  'UnitModifier 不影响造什么；有策略表时的打分没量（原版人格都没有）')
        for k in ('Unit', 'OffensiveModifier', 'DefensiveModifier')},
-    # B round 113: aimicspon / aimicspoff PASS on the bench; the simulator does not run them yet (no public test)
-    '微操/AIMicroManagerData.UseSpecialPowers': (GUESSED, '台上量过（engine_aimicro：aimicspon 开 两个武士 s41 冲锋，'
-                                              'aimicspoff 关 一直没冲、s51 前被打死，脚本按的对照照样冲），私有模型测试对拍；'
-                                              '模拟器没跑出（Hunt 队 s21 就把武士带走、没交火；微操块读不到探针自写的微操数据）'),
+    # B round 113: aimicspon / aimicspoff PASS on the bench; round 114: the simulator runs them (tests/test_simai.py)
+    '微操/AIMicroManagerData.UseSpecialPowers': (BENCHED, '台上量过（engine_aimicro：aimicspon 开 两个武士 s41 冲锋，'
+                                              'aimicspoff 关 一直没冲、s51 前被打死，脚本按的对照照样冲）、测试对拍 '
+                                              'tests/test_simai.py（模拟器读进探针自写的微操数据：开的想冲、关的从不冲；'
+                                              '技能本身模拟器没接，只记"想用"）'),
+    # B round 114: state 2's per-member pick (tactics._assign) -- the field on only; off not benched
+    '微操/AIMicroManagerData.EngageHostileTargets': (GUESSED, '开着时台上 aimicspon 的 Hunt 队转打路上看见的征召兵，'
+                                                  '模拟器加了状态 2 逐人分配后也打（tests/test_simai.py）；'
+                                                  '关掉的对照没上台，私有模型里的打分式没读（按"杀死所需秒数"推断）'),
     # B round 112: airetf / airetfd (the state on a flag, off once the team has its slot) differ only in this field
     '战术/Tactic.DisbandAfterRetreatTeamSize': (BENCHED, '台上量过（engine_airetreat：airetf 0 撤回家后再出门，airetfd '
                                              '999 撤回家后一直在家——撤退结束那轮人数 ≤ 它就结束战术、放人）、测试对拍 '
