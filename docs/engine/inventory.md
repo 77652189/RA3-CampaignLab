@@ -759,7 +759,7 @@
 | 已对拍 | `ProjectileNugget` | 88 | tests/test_simbench_c.py::test_projectile_nugget_flight_uses_retail_shell_speed_and_resolved_warhead；例：BB_EuropeCoastalGunWeapon, KremlinArtilleryDomeMissle |
 | 未做 | `InformTargetNugget` | 69 | engine_inform_ai a黑盒观察到AI矿车命中前开甲，玩家/低伤慢弹不自动开甲、瞬发在受伤后开甲；预计到达/约2.4s提前量及AI技能执行尚未模拟，严格回放xfail且显式报告gap，不晋升整项；例：BB_EuropeCoastalGunWeapon, AlliedPrecisionBomb |
 | 已对拍 | `SuppressionNugget` | 64 | tests/test_simbench_c.py::test_suppression_samples_entry_refresh_and_expiry_at_the_four_probe_readings；例：BB_EuropeCoastalGunWeapon, KremlinArtilleryDomeMissle |
-| 未做 | `MetaImpactNugget` | 36 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_knock_probe.py），可能用别的名字实现了；例：KremlinArtilleryDomeMissleWarhead, AlliedTimeBomb_Level1 |
+| 未做 | `MetaImpactNugget` | 36 | 部分数值接口：engine_knock_probe land/late的邻人起速4.5010和地面起飞参数已回放；直击方向、重力倍率和落点网格含INFERRED，逐帧轨迹/命中派发/筛选及延迟变体未接通，显式gap，不晋升整项；例：KremlinArtilleryDomeMissleWarhead, AlliedTimeBomb_Level1 |
 | 不涉及 | `ActivateLaserNugget` | 27 | 纯表现：Lifetime/LaserId/HitGroundFX/OverShootDistance驱动LaserState/LaserDraw；engine_laser pair实测2/90/2/90，无附加伤害或首发延迟，test_simbench_c重放；例：MountRushmoreHeadEyeWeapon, JapanAntiVehicleInfantryTech3LockDownGun |
 | 已对拍 | `WeaponOCLNugget` | 26 | tests/test_simbench_c.py::test_weapon_ocl_lifetime_damage_reads_the_fire_delay_before_counting_updates；例：MountRushmoreHeadEyeWeapon, AlliedPrecisionBombWarhead |
 | 已对拍 | `AttributeModifierNugget` | 20 | tests/test_simbench_c.py::test_weaponfx_predictions_and_finite_bursts；例：NanoHiveSwarmEffectTrigger, JapanCommandoSoftLanding |

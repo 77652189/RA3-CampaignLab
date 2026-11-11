@@ -276,7 +276,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v21.json')    # v21: InformTarget plus merged launch/warhead gaps
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v22.json')    # v22: partial MetaImpact input and explicit trajectory gap
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -372,6 +372,22 @@ def _weapons(texts, base_table=None):
             # Only the unfiltered, single-target form is explained by round 1.
             # Retain unsupported forms as gaps instead of applying them to everyone.
             mods, unsupported = [], []
+            impacts = []
+            for h, inner in _blocks(bare, 'MetaImpactNugget'):
+                # Only the ordinary, immediate detonation form has a numerical
+                # interface here. Dispatch/trajectory remain an explicit gap.
+                unsupported.append('MetaImpactNugget')
+                fields = set(re.findall(r'(\w+)\s*=', h))
+                if not (inner or '').strip() and fields <= {
+                        'id', 'ShockWaveAmount', 'ShockWaveRadius', 'ShockWaveZMult', 'ShockWaveTaperOff'} and all(
+                        _attr(h, field) is not None for field in
+                        ('ShockWaveAmount', 'ShockWaveRadius', 'ShockWaveZMult')):
+                    impacts.append(dict(amount=_num(_attr(h, 'ShockWaveAmount')),
+                                        radius=_num(_attr(h, 'ShockWaveRadius')),
+                                        zmult=_num(_attr(h, 'ShockWaveZMult')),
+                                        taper=_num(_attr(h, 'ShockWaveTaperOff', '0'))))
+            if impacts:
+                got['meta_impacts'] = impacts
             if any(_blocks(bare, 'InformTargetNugget')):
                 # engine_inform_ai: an AI miner can react before the slow shell hits.
                 # Ignoring it silently is not a modeled no-op. The arrival estimate
@@ -588,8 +604,51 @@ def _resolve(w, weapons):
                 sweep=w.get('sweep'), contained=w.get('contained', []), dot=w.get('dot', []),
                 special_powers=w.get('special_powers', weapons.get(w.get('warhead'), {}).get('special_powers', [])),
                 attach=w.get('attach', weapons.get(w.get('warhead'), {}).get('attach', [])),
+                meta_impacts=w.get('meta_impacts', weapons.get(w.get('warhead'), {}).get('meta_impacts', [])),
                 unmodeled_effects=list(dict.fromkeys(w.get('unmodeled_effects', []) +
                     weapons.get(w.get('warhead'), {}).get('unmodeled_effects', []))))
+
+
+def meta_impact_velocity(effect, position, centre, height, *, detonation, resistance=0.0):
+    """Ordinary immediate shock, world units/frame, before grounded lift.
+
+    engine_knock_probe land/late: the direction uses the victim's half-height,
+    but radial attenuation uses its feet. Instant hits do not push. This is a
+    numerical interface for an already selected victim, not flight dispatch:
+    radius/arc selection, filters, delays, cyclonic/clear
+    variants and trajectory sampling are deliberately outside this slice.
+    INFERRED: an exactly centred target uses the engine's vertical fallback;
+    actual projectile collision noise can give it a different direction.
+    """
+    if not detonation or resistance >= 1:
+        return (0.0, 0.0, 0.0)
+    delta = [position[i] - centre[i] for i in range(3)]
+    delta[2] += height / 2
+    if all(abs(x) <= 1e-4 for x in delta):
+        delta = [0.0, 0.0, 1.0]
+    length = math.sqrt(sum(x * x for x in delta))
+    radius = effect['radius']
+    distance = math.dist(position, centre)
+    falloff = min(1.0, 1 - distance / radius + effect['taper']) if radius > 0 else 1.0
+    scale = effect['amount'] / FPS * (1 - resistance) * falloff / length
+    return (delta[0] * scale, delta[1] * scale, delta[2] * scale * effect['zmult'])
+
+
+def meta_impact_ground_launch(position, velocity):
+    """Grounded launch parameters, not the duration of flight.
+
+    INFERRED gravity multiplier 1 and floor-to-20 landing grid. The arc table's
+    step length is still unknown, so n must never be used as flight duration.
+    No airborne relaunch, terrain search, standing time or fall damage here.
+    """
+    if not any(velocity):
+        return dict(steps=0, height=0.0, landing=tuple(position))
+    vz = max(velocity[2], math.sqrt(sum(v * v for v in velocity)) / 4)
+    n = max(1, int(2 * vz / (64 / FPS ** 2)))
+    return dict(steps=n, height=n * vz / 4,
+                landing=(math.floor((position[0] + velocity[0] * n) / 20) * 20,
+                         math.floor((position[1] + velocity[1] * n) / 20) * 20,
+                         position[2]))
 
 
 def _shot_times(w, shots):

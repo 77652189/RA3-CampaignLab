@@ -87,7 +87,7 @@
 | 未做 | 物体模块 | `Behaviors/HeightDieUpdate` | 0 | a1 a2 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：JapanBalloonBomb |
 | 未做 | 物体模块 | `Behaviors/ProjectileUpdate` | 0 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 已核（11-08）：模拟器没有这个效果（开火按每秒伤害直接扣血，没有弹体飞行时间）；例：AlliedAntiVehicleVehicleTech1Projectile, AlliedBomberAircraftBombProjectile |
 | 未做 | 武器效果 | `InformTargetNugget` | 69 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | engine_inform_ai a黑盒观察到AI矿车命中前开甲，玩家/低伤慢弹不自动开甲、瞬发在受伤后开甲；预计到达/约2.4s提前量及AI技能执行尚未模拟，严格回放xfail且显式报告gap，不晋升整项；例：AAAVT1_AlliedAntiVehicleInfantryMissileLauncher, ABD_AlliedAntiVehicleInfantryMissileLauncher |
-| 未做 | 武器效果 | `MetaImpactNugget` | 36 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_knock_probe.py），可能用别的名字实现了；例：AAAVT1_ShotgunWeapon, ABD_ShotgunWeapon |
+| 未做 | 武器效果 | `MetaImpactNugget` | 36 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 部分数值接口：engine_knock_probe land/late的邻人起速4.5010和地面起飞参数已回放；直击方向、重力倍率和落点网格含INFERRED，逐帧轨迹/命中派发/筛选及延迟变体未接通，显式gap，不晋升整项；例：AAAVT1_ShotgunWeapon, ABD_ShotgunWeapon |
 | 未做 | 武器效果 | `ActivateLiftObjectNugget` | 6 | a1 a2 a4 a6 a7 | engine_lift两轮确认需LiftObjectUpdate且SoftLanding影响清位，但Lifetime/续期释放规则未解释；保留诊断、不登记已对拍；例：AAAVT1_JapanCommandoTech1PsyonicAntiAirCrush, AAAVT1_JapanCommandoTech1PsyonicCrush |
 | 未做 | 武器效果 | `GrapplingHookNugget` | 1 | a1 a3 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：SovietAntiVehicleVehicleTech3Harpoon |
 | 推断 | 物体模块 | `Behaviors/LevelUpUpgrade` | 88 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 部分：engine_levelup a创建升级触发升阶、重复持有不升级；engine_leveldamage a等级DAMAGE_MULT125保持到精英/英雄，单发血量47/34/34/17；engine_levelhealth a满血升级HEALTH_MULT125保持到英雄，100脚本伤害同帧冻结80/80/84/84，simlevel重放；残血升级、其余等级属性、经验成长、上限及移除重给未对拍，不登记整项已对拍；例：AlliedAntiAirVehicleTech1, AlliedAntiInfantryInfantry |
