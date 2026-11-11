@@ -176,6 +176,8 @@ class Brain:
 
     # ---- A's blocks (targets, tactics, defence, micro; the player's superweapons beside them)
     def attach(self, which):
+        import simcrush
+
         h, m = self.host, self.host.mod
         tg, tc, df, mc = m['targets'], m['tactics'], m['defense'], m['micro']
         if 'targets' not in which:
@@ -183,7 +185,8 @@ class Brain:
         self.tactics = tc.TacticsBlock(None, lambda ai, f: self.view, self.order, lambda ai: self.home,
                                        micro=h.data_of('tactics micro'), fight=self.fight,
                                        houses=lambda ai, u: self.garrisons(u, False),
-                                       defenses=lambda ai, u: self.garrisons(u, True))
+                                       defenses=lambda ai, u: self.garrisons(u, True),
+                                       crush=lambda ai, f, foe: simcrush.eligible(self.sim, f, foe))
         self.tactics.rng = random.Random(h.seed)    # state 2's RandomTargetScoreModifier / TimeToKeepTarget
         self.targets = tg.TargetsBlock(h.data_of('targets'), self.active, lambda ai, f: self.view,
                                        lambda ai, st: self.home, home=self.home, base_of=self.base_of,
