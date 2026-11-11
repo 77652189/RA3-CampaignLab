@@ -213,6 +213,22 @@ def module_census():
     return res
 
 
+def without_ai(mtype):
+    """{'templates': n, 'campaign': n}: the templates carrying module `mtype` but no AI update module (no *AIUpdate:
+    nothing orders them, no locomotor) -- inventory.module_items splits Physics on it (engine line E, work/re
+    e_na_physics_mcu.md: a still thing's default physics moves nothing the simulator plays; a fling is DynamicsUpdate's,
+    a knock MetaImpactNugget's, items of their own)."""
+    st = _load()
+    camp = _campaign_templates()
+    out = {'templates': 0, 'campaign': 0}
+    for k in st['objs']:
+        names = {t for _, t, _ in _effective(k, st)}
+        if mtype in names and not any(t.endswith('AIUpdate') for t in names):
+            out['templates'] += 1
+            out['campaign'] += k in camp
+    return out
+
+
 def _weapon_nuggets(k, st, seen=()):
     if k not in st['weapons'] or k in seen:
         return []

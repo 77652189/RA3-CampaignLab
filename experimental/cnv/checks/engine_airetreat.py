@@ -17,8 +17,15 @@ Bench 2026-11-08 (all four PASS; wake at s10):
           (到旁厂 0: it shoots from beyond 120); 到远厂 0 to s85
   aipas0  out s10-s12 | 到远厂 2 @ s15, 4 @ s17-s34 | 旁厂血量 100 to s35, then (RAMPAGE: the nearest) 97 @ s36 ... 2 @
           s50; 到旁厂 3-4 @ s55-s57
+Bench 2026-11-10 (B round 112, both PASS; the state on a map flag at the wake s10, off at s18; the two differ only in
+the tactic's DisbandAfterRetreatTeamSize):
+  airetf  (0, xsd default) out s19-s21 | 到远厂 2 @ s24-s25 | home 4 @ s31-s48 | out again s49-s54 | 到远厂 2-3 @
+          s54-s58 | home 3 @ s64-s79 (步兵数 3 from s57) | out again s80-s84: the tactic goes on with its state off
+  airetfd (999) out s18-s20 | 到远厂 2 @ s24-s25 | home 1 @ s29, 2 @ s30, 4 from s31 to s85: the retreat's end ended
+          the tactic, the team was let go, and with the state off no new team -- DisbandAfterRetreatTeamSize as read
+          (0x8fbb40: was state 1, now 8, members <= the size -> end)
 
-  a  步兵在家 / 到远厂     Peacekeepers of s1 within 450 of the AI's base / 300 of the far power plant
+  a  步兵在家 / 到远厂    Peacekeepers of s1 within 450 of the AI's base / 300 of the far power plant
      步兵数 (airet*)      Peacekeepers s1 owns
      到旁厂 / 旁厂血量 (aipas*)   s1's Peacekeepers within 120 of the side plant; its health in percent
      once a second, AFTER seconds after the wake
@@ -26,6 +33,10 @@ Bench 2026-11-08 (all four PASS; wake at s10):
 Expectations are the model's (RA3-EngineModel ra3model/ai/tactics.py TacticsBlock._team_state, simai.Brain.fight); a
 FAIL is a reading too:
   airet   the team leaves, then some of it is back home (retreat) while alive
+  airetd  as airet (DisbandAfterRetreatTeamSize 999 under an always-on state: a new team at once, no reading)
+  airetf  the state on a flag, off 8 s after the wake: the team comes home, then out again (simulator s32 home, s42 out)
+  airetfd airetf + DisbandAfterRetreatTeamSize 999: home, and all four home from wake + 35 to the end (simulator: the
+          tactic ends at s36, no new team)
   airet0  the team leaves and nobody comes home (no retreat with RetreatPowerAdvantage 0)
   aipas1  the side plant is hurt (the team attacked the passive target on its way)
   aipas0  the side plant stays at 100 (EngagePassiveTargets off) and the team reaches the far plant
@@ -52,8 +63,12 @@ def a(m, build):
     if build.startswith('airet'):
         counted('CNV_AR_Count', '步兵数', t, template=inf, player=s1)
         t.expect += [('步兵在家', wake + 5, 'ever==', 0, end)]          # it left
-        if build == 'airet':
+        if build in ('airet', 'airetd'):
             t.expect += [('步兵在家', wake + 15, 'ever>=', 1, end)]     # and some came back
+        elif build == 'airetf':                                         # back, then out again (the tactic goes on)
+            t.expect += [('步兵在家', wake + 15, 'ever==', 4, end), ('步兵在家', wake + 35, 'ever==', 0, end)]
+        elif build == 'airetfd':                                        # back, and home for good (the tactic ended)
+            t.expect += [('步兵在家', wake + 15, 'ever==', 4, end), ('步兵在家', wake + 35, '==', 4, end)]
         else:
             t.expect += [('步兵在家', wake + 15, '==', 0, end)]
     else:
@@ -70,4 +85,4 @@ def a(m, build):
     return t
 
 
-CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('airet', 'airet0', 'aipas1', 'aipas0')}
+CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('airet', 'airetd', 'airetf', 'airetfd', 'airet0', 'aipas1', 'aipas0')}

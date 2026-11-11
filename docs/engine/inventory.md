@@ -4,11 +4,11 @@
 
 | 部分 | 按用量已对拍 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|
-| 脚本动作 | **88%** | 451 | 106 | 34 | 194 | 117 | 91% |
+| 脚本动作 | **89%** | 451 | 108 | 32 | 194 | 117 | 91% |
 | 脚本条件 | **94%** | 89 | 27 | 5 | 54 | 3 | 94% |
-| 物体模块 | **81%** | 184 | 33 | 7 | 125 | 19 | 82% |
+| 物体模块 | **89%** | 185 | 34 | 7 | 123 | 21 | 90% |
 | 武器效果 | **64%** | 25 | 11 | 1 | 11 | 2 | 76% |
-| AI | **69%** | 415 | 95 | 133 | 153 | 34 | 87% |
+| AI | **70%** | 415 | 96 | 132 | 153 | 34 | 87% |
 
 ## 脚本动作
 
@@ -53,9 +53,9 @@
 | 推断 | `TEAM_HUNT` | 203 | 没交给 AI 的玩家（含玩家自己）：不动，台上量过（engine_scripts1 hunt 60 s）；AI 玩家的 HuntTactic 不模拟（引擎 B），碰到记 Sim.unmodeled |
 | 已对拍 | `CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT` | 196 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_ref.py |
 | 已对拍 | `LINK_MISSION_OBJECTIVE_TO_WAYPOINT` | 194 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts5.py |
-| 已对拍 | `NAMED_FOLLOW_WAYPOINTS` | 192 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_waypath.py |
+| 已对拍 | `NAMED_FOLLOW_WAYPOINTS` | 192 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_wayatk.py |
 | 未做 | `TEAM_GARRISON_SPECIFIC_BUILDING_INSTANTLY` | 186 | Sim.act / Sim.cond 不认识 |
-| 推断 | `TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS` | 184 | Sim.act / Sim.cond 有分支 |
+| 推断 | `TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS` | 184 | Sim.act 有分支；台上量过（checks/engine_wayatk.py team），和模拟器不符：队里一人在打时全队等（模拟器先到的带全队走） |
 | 不涉及 | `FADE_OUT_TO_BLACK` | 177 | 纯表现（名字规则） |
 | 不涉及 | `FADE_IN_FROM_BLACK` | 176 | 纯表现（名字规则） |
 | 不涉及 | `NAMED_FLASH` | 173 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
@@ -86,7 +86,7 @@
 | 已对拍 | `NAMED_STOP` | 118 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_emp.py |
 | 已对拍 | `UNIT_TELEPORT_TO_WAYPOINT` | 118 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aidefense.py |
 | 不涉及 | `PLAYER_CAMERA_MOVE_TO` | 117 | 纯表现（名字规则） |
-| 推断 | `ATTACK_MOVE_TEAM_TO` | 116 | Sim.act / Sim.cond 有分支；台上量过（docs/engine/inventory-levels-a.md），没有测试跑这个台子 |
+| 已对拍 | `ATTACK_MOVE_TEAM_TO` | 116 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_wayatk.py |
 | 已对拍 | `PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT` | 116 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts8b.py |
 | 已对拍 | `TEAM_IDLE_FOR_SECONDS` | 114 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts8.py |
 | 已对拍 | `PLAYER_SET_BASE_POWER` | 112 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts8b.py |
@@ -152,7 +152,7 @@
 | 不涉及 | `FLASH_UI_BUILD_BUTTON` | 48 | 纯表现（名字规则） |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JAAVT1_Transform` | 48 | 只记进时间线，没有效果 |
 | 未做 | `SET_UNIT_REFERENCE` | 48 | Sim.act / Sim.cond 不认识 |
-| 推断 | `NAMED_ATTACK_FOLLOW_WAYPOINTS` | 47 | Sim.act / Sim.cond 有分支 |
+| 已对拍 | `NAMED_ATTACK_FOLLOW_WAYPOINTS` | 47 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_wayatk.py |
 | 已对拍 | `NAMED_RECEIVE_UPGRADE` | 47 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_invuln.py |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanBaseDefenseEgg` | 46 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_unpack.py |
 | 未做 | `TEAM_SET_STANCE` | 45 | Sim.act / Sim.cond 不认识 |
@@ -572,25 +572,26 @@
 | 不涉及 | `Behaviors/ObjectSMCHelper` | 640 (1059) | 纯表现：《将军》ObjectSMCHelper 到时清掉"定时模型状态"（UNIT_SET_MODELCONDITION_GENERIC 的秒数），只换画法；例：AlliedSatelliteSweepShroudRevealer, AlliedTimeBombLvl1 |
 | 已对拍 | `Behaviors/AttributeModifierPoolUpdate` | 622 (910) | tests/test_simbench.py::test_super_the_iron_curtain_holds_off_fire_some_23_seconds；例：AlliedAntiVehicleVehicleTech3CannonNodeBase, AlliedAntiVehicleVehicleTech3CannonNodeEnd |
 | 已对拍 | `Behaviors/SecondaryDamageTracker` | 617 (852) | tests/test_simbench.py::test_cryo_a_frozen_tank_melts_334_frames_after_the_beam_whatever_the_beam；例：AlliedSatelliteSweepShroudRevealer, AlliedTimeBombLvl1 |
-| 未做 | `Behaviors/Physics` | 597 (836) | 移动物理（坠落、弹跳、被击飞、倾倒）：模拟器走路按速度直走，没有物理；例：AlliedAntiGroundAircraft_Dying, AlliedBomberAircraft_Dying |
 | 已对拍 | `Behaviors/CreateObjectDie` | 591 (838) | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_crush.py；例：AlliedAntiGroundAircraft_Dying, AlliedBomberAircraft_Dying |
 | 已对拍 | `Behaviors/DestroyDie` | 578 (1006) | tests/test_simbench.py::test_destroy_die_a_building_killed_is_dying_one_frame_and_gone；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
 | 已对拍 | `Behaviors/SquishCollide` | 569 (749) | tests/test_simbench.py::test_crush_a_tank_drives_over_a_lower_level_and_leaves_an_equal_one；例：AlliedSatelliteSweepShroudRevealer, AlliedWallPiece |
 | 已对拍 | `Behaviors/SlowDeath` | 565 (1480) | tests/test_simbench.py::test_slow_death_a_crushed_conscript_lies_127_frames_dying_and_in_its_spot；例：AlliedAirField_Collapse, AlliedAntiAirShip_Collapse |
 | 不涉及 | `Behaviors/BuildingDestructionBehavior` | 493 (650) | 纯表现：建筑死后按骨骼放特效、甩碎块（CreationObject 如 AlliedBarracks_Debris：只有画法、寿命和碎片体积，没有身体和武器）、烟尘；例：AlliedAirfield, AlliedBarracks |
 | 不涉及 | `ClientBehaviors/ModelConditionAudioLoopClientBehavior` | 466 (649) | 纯表现（ClientBehaviors）；例：AlliedSatelliteSweepShroudRevealer, AlliedAirfield |
+| 不涉及 | `Behaviors/Physics:不动` | 454 (630) | 模板上没有 AIUpdate 类模块（不能下命令、没有移动器）：默认物理不让它自己动，被甩飞、击飞另算（DynamicsUpdate、MetaImpactNugget）；原版字段全是默认（E 线 work/re/e_na_physics_mcu.md） |
 | 已对拍 | `Behaviors/ProductionUpdate` | 351 (465) | tests/test_simbench.py::test_production_pays_as_it_builds_and_comes_out_after_the_door；例：AlliedAirfield, AlliedBarracks |
 | 已对拍 | `Behaviors/ToppleUpdate` | 347 (410) | tests/test_simbench_c.py::test_topple_the_five_props_disappear_at_the_bench_frames_without_ever_dying；例：BaseTopple, BaseTree |
-| 未做 | `Behaviors/ModelConditionUpgrade` | 341 (465) | 模拟器代码里没有这个名字；例：AlliedAntiInfantryInfantry, AlliedAntiVehicleInfantry |
+| 不涉及 | `Behaviors/ModelConditionUpgrade` | 341 (465) | 纯表现：只加模型状态（民房/步兵按阵营换画法、支援技能画法），同模板的非画法模块和原版脚本 UNIT_HAS_MODELCONDITION 都不读（E 线 work/re/e_na_physics_mcu.md）；例：AlliedAntiInfantryInfantry, AlliedAntiVehicleInfantry |
 | 已对拍 | `Behaviors/BuildingBehavior` | 334 (440) | tests/test_simbench.py::test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames；例：AlliedAirfield, AlliedBarracks |
 | 已对拍 | `Behaviors/AttributeModifierAuraUpdate` | 311 (420) | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_invuln.py；例：A09_IronCurtainEffect, BaseCivilianStructure |
 | 已对拍 | `Behaviors/InvisibilityBehavior` | 305 (412) | tests/test_simbench_c.py::test_invisibility_behavior_a_house_given_garrison_can_stealth_by_script_is_shot_like_a_plain_one；例：BaseCivilianStructure, BaseCivilianStructureLarge |
 | 已对拍 | `Behaviors/ContestableGarrisonContain` | 305 (411) | tests/test_simbench_c.py::test_garrison_script_entry_skips_room_and_relation_owner_follows_and_damage_or_kill_ejects_alive_at_the_bench；例：BaseCivilianStructure, BaseCivilianStructureLarge |
 | 不涉及 | `Draws/PropDraw` | 221 (301) | 纯表现（Draws）；例：AM_Trash01, AM_Debris01 |
 | 已对拍 | `Behaviors/FireWeaponWhenDead` | 146 (230) | tests/test_simbench_c.py::test_fire_weapon_when_dead_a_scripted_kill_blows_the_mig_and_the_guardian_beside_it；例：AlliedAntiGroundAircraft_Dying, AlliedAntiStructureVehicleCannonEffect |
+| 未做 | `Behaviors/Physics` | 143 (206) | 移动物理（坠落、弹跳、被击飞、倾倒）：模拟器走路按速度直走，没有物理；例：AlliedAntiGroundAircraft_Dying, AlliedBomberAircraft_Dying |
 | 不涉及 | `ClientBehaviors/ModelConditionSoundSelectorClientBehavior` | 140 (195) | 纯表现（ClientBehaviors）；例：AlliedSatelliteSweepShroudRevealer, AlliedAirfield |
 | 不涉及 | `Draws/DynamicsDraw` | 138 (857) | 纯表现（Draws）；例：AlliedAirField_Collapse, AlliedAntiAirShip_Collapse |
-| 未做 | `Behaviors/EnableDynamicsCollide` | 137 (154) | 模拟器代码里没有这个名字；例：BaseSimulatedProp, AM_Boat01 |
+| 已对拍 | `Behaviors/EnableDynamicsCollide` | 137 (154) | tests/test_simbench_c.py::test_enable_dynamics_collide_a_lantern_without_it_is_crushed_and_gone_at_the_same_frames；例：BaseSimulatedProp, AM_Boat01 |
 | 已对拍 | `AI/AIUpdate` | 136 (237) | tests/test_simbench.py::test_r8_idle_within_sight_walks_up_fires_and_comes_back；例：AlliedSatelliteSweepShroudRevealer, AlliedSuperWeaponEffect |
 | 未做 | `Behaviors/DynamicsUpdate` | 113 (154) | 模拟器代码里没有这个名字；例：AlliedDynamicsImpact, AlliedSatelliteSweepShroudRevealer |
 | 未做 | `Behaviors/StancesBehavior` | 108 (148) | 已核（11-08）：模拟器没有这个效果（没有姿态）；例：AlliedSatelliteSweepShroudRevealer, AlliedAirfield |
@@ -825,7 +826,7 @@
 | 已对拍 | `人格/UnitModifier.DefensiveModifier` | 92 | 台上量过（engine_aiskirm u：aiskmod 把维和、标枪的 UnitModifier 两个系数都设 0，造兵逐秒和原版 aiskirm c 一样）、测试对拍 tests/test_simai.py——没有选兵策略表时 UnitModifier 不影响造什么；有策略表时的打分没量（原版人格都没有） |
 | 已对拍 | `人格/UnitModifier.OffensiveModifier` | 92 | 台上量过（engine_aiskirm u：aiskmod 把维和、标枪的 UnitModifier 两个系数都设 0，造兵逐秒和原版 aiskirm c 一样）、测试对拍 tests/test_simai.py——没有选兵策略表时 UnitModifier 不影响造什么；有策略表时的打分没量（原版人格都没有） |
 | 已对拍 | `人格/UnitModifier.Unit` | 92 | 台上量过（engine_aiskirm u：aiskmod 把维和、标枪的 UnitModifier 两个系数都设 0，造兵逐秒和原版 aiskirm c 一样）、测试对拍 tests/test_simai.py——没有选兵策略表时 UnitModifier 不影响造什么；有策略表时的打分没量（原版人格都没有） |
-| 推断 | `战术/Tactic.DisbandAfterRetreatTeamSize` | 86 | AI 模型代码里读了这个名字 |
+| 已对拍 | `战术/Tactic.DisbandAfterRetreatTeamSize` | 86 | 台上量过（engine_airetreat：airetf 0 撤回家后再出门，airetfd 999 撤回家后一直在家——撤退结束那轮人数 ≤ 它就结束战术、放人）、测试对拍 tests/test_simai.py；1 / 4 / 5 这种"剩几人才散"的中间值没量 |
 | 已对拍 | `微操/AIMicroManagerData.EnterGarrisons` | 84 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aigarrison.py |
 | 未做 | `造兵/BuildState.Difficulty` | 84 | AI 模型代码里没有这个名字 |
 | 未做 | `造兵/BuildState.State` | 84 | AI 模型代码里没有这个名字 |

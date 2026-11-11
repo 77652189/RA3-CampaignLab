@@ -370,6 +370,16 @@ def test_outgunned_team_home_stay_and_losses_match_the_bench(lib):
     assert 14 <= again - back <= 18 and all(r['步兵数'] == 4 for r in rows)
 
 
+@pytest.mark.parametrize('build,again', [('airetf', True), ('airetfd', False)])
+def test_disband_after_retreat_team_size_ends_the_tactic_as_on_the_bench(lib, build, again):
+    # bench 2026-11-10 (checks/engine_airetreat.py; the state on a flag, off 8 s after the wake): airetf (size 0) home
+    # 4 @ s31-s48, out again s49; airetfd (999) home 4 from s31 to s85 -- the retreat's end ended the tactic
+    _, rows = _switch_run(build, lib, until=85.0)
+    out = _left(rows)
+    back = next(i for i in range(out, len(rows)) if rows[i]['步兵在家'] == 4)
+    assert any(r['步兵在家'] < 4 for r in rows[back:]) == again
+
+
 def test_no_retreat_at_power_advantage_zero(lib):
     # bench airet0: 到远厂 4 s17-s18, 步兵数 3 @ s19 ... 0 from s25; nobody home again
     _, rows = _switch_run('airet0', lib, until=85.0)

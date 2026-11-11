@@ -132,6 +132,9 @@ BENCHED_TESTS = {
     # topple a / b, bench 11-09: neutral props, delayed removal without DYING; all five readings within one frame
     (MODULE, 'Behaviors/ToppleUpdate'):
         'tests/test_simbench_c.py::test_topple_the_five_props_disappear_at_the_bench_frames_without_ever_dying',
+    # topple c, bench 11-10: lantern copies with / without EnableDynamicsCollide crushed and gone at the same frames
+    (MODULE, 'Behaviors/EnableDynamicsCollide'):
+        'tests/test_simbench_c.py::test_enable_dynamics_collide_a_lantern_without_it_is_crushed_and_gone_at_the_same_frames',
     # engine_garrison in / hp, bench 11-05 (simgarrison): script entry skips room and relation, owner follows the
     # first passenger, out at 13 % in the damage's frame, the contester bounces one, kill / hit eject them alive
     (MODULE, 'Behaviors/ContestableGarrisonContain'):
@@ -184,7 +187,12 @@ NOTES = {
     # batch 1 (work/re/l2_scripts1.md, checks/engine_scripts1.py, bench 11-08)
     (ACTION, 'TEAM_HUNT'): (GUESSED, '没交给 AI 的玩家（含玩家自己）：不动，台上量过（engine_scripts1 hunt 60 s）；'
                                      'AI 玩家的 HuntTactic 不模拟（引擎 B），碰到记 Sim.unmodeled'),
-    (ACTION, 'NAMED_HUNT'): (GUESSED, '同 TEAM_HUNT：没交给 AI 不动（台上量过）；AI 玩家的猎杀不模拟（引擎 B）'),
+    (MODULE, 'Behaviors/ModelConditionUpgrade'): (NA, '纯表现：只加模型状态（民房/步兵按阵营换画法、支援技能画法），'
+                                                     '同模板的非画法模块和原版脚本 UNIT_HAS_MODELCONDITION 都不读'
+                                                     '（E 线 work/re/e_na_physics_mcu.md）'),
+    (ACTION, 'TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS'):(GUESSED, 'Sim.act 有分支；台上量过（checks/engine_wayatk.py team），'
+                                                             '和模拟器不符：队里一人在打时全队等（模拟器先到的带全队走）'),
+    (ACTION, 'NAMED_HUNT'): (GUESSED,'同 TEAM_HUNT：没交给 AI 不动（台上量过）；AI 玩家的猎杀不模拟（引擎 B）'),
     (ACTION, 'UNIT_AI_TRANSFER'): (GUESSED, '程序读到：人类玩家的单位无效、不清命令；交给 AI 后的行为归引擎 B，'
                                             '碰到记 Sim.unmodeled（台上没量）'),
     (ACTION, 'TEAM_AI_TRANSFER'): (GUESSED, '同 UNIT_AI_TRANSFER，对队里每个成员（台上没量）'),
@@ -334,9 +342,19 @@ def module_items():
             state, why = GUESSED, '模拟器代码里有这个名字'
         else:
             state, why = TODO, '模拟器代码里没有这个名字'
+        if mtype in SPLIT_STILL:                # the share on templates no AI moves: its own item, 不涉及
+            still = retailmodules.without_ai(mtype)
+            v = dict(v, campaign=v['campaign'] - still['campaign'], templates=v['templates'] - still['templates'])
+            items.append(dict(part=MODULE, name=f'{group}/{mtype}:不动', uses=still['campaign'], all=still['templates'],
+                              state=NA, why=SPLIT_STILL[mtype], eg=''))
         items.append(dict(part=MODULE, name=f'{group}/{mtype}', uses=v['campaign'], all=v['templates'], state=state,
                           why=why, eg=', '.join(v.get('examples', [])[:2])))
     return items
+
+
+# module type -> why its share on templates without an AI update module (retailmodules.without_ai) is 不涉及
+SPLIT_STILL = {'Physics': '模板上没有 AIUpdate 类模块（不能下命令、没有移动器）：默认物理不让它自己动，被甩飞、击飞'
+                          '另算（DynamicsUpdate、MetaImpactNugget）；原版字段全是默认（E 线 work/re/e_na_physics_mcu.md）'}
 
 
 def nugget_items():

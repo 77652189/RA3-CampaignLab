@@ -1499,3 +1499,28 @@ def test_waypath_loop_goes_round_and_round_a_lap_about_20_s():
     rows = _changes('engine_waypath', 'loop', 90.0)
     back = [sec for (sec, v), (_, w) in zip(rows[1:], rows) if v[0] == 1 and w[0] == 3]
     assert len(back) >= 4 and all(b <= s <= b + LAG + 1 for b, s in zip((23, 43, 63, 84), back)), back
+
+
+# bench 2026-11-10 checks/engine_wayatk.py (counters 敌血, 近敌, 段1): a Guardian on the path A -> B -> C, an enemy
+# Guardian (NO_ATTACK) 150 beside the A -> B leg
+def test_wayatk_a_plain_path_walker_fires_on_the_way_and_does_not_stop():
+    """plain (NAMED_FOLLOW_WAYPOINTS): bench 段1 1 s3, 2 s7, 3 s10, two hits on the way (敌血 73 at the end)."""
+    rows = _changes('engine_wayatk', 'plain', 50.0)
+    for value, bench in ((1, 3), (2, 7), (3, 10)):
+        got = _first(rows, 2, lambda v, value=value: v == value)
+        assert got is not None and bench <= got <= bench + LAG, (value, bench, got)
+    assert 0 < rows[-1][1][0] < 100
+
+
+@pytest.mark.parametrize('check', ['atk', 'amove'])
+def test_wayatk_an_attack_walker_stops_to_fight_and_goes_on_once_it_is_dead(check):
+    """atk (NAMED_ATTACK_FOLLOW_WAYPOINTS) = amove (ATTACK_MOVE_TEAM_TO to B), second by second on the bench: first
+    hit s4, a shot every 2 s (13.9 %) to 3 at s16 (the counter keeps a dead unit's last value), on to B at s21 --
+    14 s after plain's. GAP (the fire model, not the path): the simulator's continuous fire (6.25 %/s from s6) kills
+    at s21 and reaches B at s24; asserted: the first hit within LAG, B only after the kill, 10+ s after plain's."""
+    rows = _changes('engine_wayatk', check, 50.0)
+    hit = _first(rows, 0, lambda v: v < 100)
+    dead = _first(rows, 0, lambda v: v == 0)
+    at_b = _first(rows, 2, lambda v: v == 2)
+    assert 4 <= hit <= 4 + LAG and dead is not None and at_b is not None and at_b > dead
+    assert at_b - _first(_changes('engine_wayatk', 'plain', 50.0), 2, lambda v: v == 2) >= 10

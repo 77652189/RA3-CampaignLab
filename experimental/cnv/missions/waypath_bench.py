@@ -6,6 +6,11 @@ Island map, offsets from 'west field': truck 1-3 (units/convoy.truck, speed 50, 
 -150), C (+450, +150) -- an L the paths run along (the checks label them: the paths are each check's own) -- and N
 (+420, -40), by B, where truck 1 is first sent to join a path there.
 Published (the cast): truck 1-3; marks A, B, C, N; teams W1, W23.
+
+engine_wayatk (checks/engine_wayatk.py, the ATTACK versions): the same field and marks with the player's Guardian
+tanks (AlliedAntiVehicleVehicleTech1: weapon 150, vision 200) for trucks -- tank 1-3, tank 1 on crew W1, 2 and 3 on
+W23; the check makes the enemy tank (s1) beside the A -> B leg itself (its distance is the check's question).
+Published (the cast): tank 1-3; marks A, B, C, N; teams W1, W23.
 """
 from maps import island
 from parts import Mission
@@ -27,4 +32,18 @@ def mission(name='CampPath'):              # + the check's name: 15 characters a
     return m
 
 
-MISSION = {'engine_waypath': mission}
+TANK = 'AlliedAntiVehicleVehicleTech1'
+
+
+def attack_mission(name='CampWayAtk'):     # + the check's name: 15 characters at most ('CampWayAtkPlain')
+    m = Mission(name=name, map=island, units=[], facts={})
+    m.spawns |= {TANK}
+    for k, dy in enumerate(ROWS, 1):
+        m.put(TANK, 'west field', START_X, dy, angle=0.0, name=f'UNIT - CNV Wayatk Tank {k}', role=f'tank {k}',
+              props={'originalOwner': m.crew('W1' if k == 1 else 'W23')})
+    for part, (dx, dy) in MARKS.items():
+        m.waypoint(part, f'CNV Wayatk {part}', 'west field', dx, dy)
+    return m
+
+
+MISSION = {'engine_waypath': mission, 'engine_wayatk': attack_mission}
