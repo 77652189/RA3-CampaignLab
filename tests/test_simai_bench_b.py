@@ -416,9 +416,28 @@ def test_a_level_personality_lists_our_units_in_a_build_state_of_its_own():
 def test_the_expected_efficiency_ranks_the_counter_first(lib, build, best, other):
     """aiskvinf (the player owns 10 conscripts): bench Peacekeepers only; aiskvveh (10 Hammers): Javelins only.
     The simulator's expected efficiency (0x8bd780, l4_efficiency.md: B/A with the unit over B/A without) ranks the
-    same one first. Not yet ordering by it (Brain: host.efficiency off -- the unit builder fills the barracks
-    first, B handoff 130 H1), so only the ranking is asserted."""
+    same one first (the orders it gives: the two tests below)."""
     w = simai.run(build, 'z', 25, lib=lib)
     b = next(iter(w.brains.values()))
     ex = b.expected(b.ai, 0, [best, other])
     assert ex[best] > ex[other] > 0
+
+
+# the build states order by the expected efficiency (SimAI.efficiency on here only, B round 129): the barracks' counter
+def test_against_tanks_the_barracks_builds_javelins(lib, monkeypatch):
+    """aiskvveh (the player owns 10 Hammers): bench 标枪 14 by s185, 维和 0. The simulator (B round 129, the Land
+    build state on once ObjectOfTypeExists Rule=ALL reads any enemy object): 标枪 12, 维和 1 (the unit builder's, s68,
+    while the states order nothing) by s170."""
+    monkeypatch.setattr(simai.SimAI, 'efficiency', True)
+    _, rows = _probe_run('aiskvveh', lib, 170, 'z')
+    assert rows[-1]['标枪总数'] >= 10 and rows[-1]['标枪总数'] >= 5 * rows[-1]['维和总数']
+
+
+@pytest.mark.xfail(strict=True, reason='simai aiskvinf builds 5 Peacekeepers and 9 Javelins by s170 (bench 7 / 0): '
+                                       'with ~5 Peacekeepers owned its expected efficiency ranks the Javelin first '
+                                       '(1.37 vs 1.34) -- the pair damage rate 0x8974b0 / 0x892310 is NOT READ')
+def test_against_conscripts_the_barracks_builds_no_javelin(lib, monkeypatch):
+    """aiskvinf (the player owns 10 conscripts): bench 维和 7 by s164, 标枪 0 to s169."""
+    monkeypatch.setattr(simai.SimAI, 'efficiency', True)
+    _, rows = _probe_run('aiskvinf', lib, 170, 'z')
+    assert rows[-1]['维和总数'] >= 4 and rows[-1]['标枪总数'] == 0

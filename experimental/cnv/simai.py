@@ -154,9 +154,9 @@ class Brain:
         self.ai.team_point = self.team_point
         self.ai.offers = self.offers
         self.ai.build_offers = self.build_offers
-        # BEST_UNIT_* scores (expected below) only with host.efficiency: on, the unit builder still fills the
-        # barracks first and the states order almost nothing -- the bench (engine_aiskirm z) builds only the counter,
-        # so the unit builder must step back first (B handoff 130, H1); off = the readings as before
+        # BEST_UNIT_* scores (expected below) with host.efficiency (SimAI.efficiency): the build states then
+        # take the idle barracks every second and the unit builder (every 10 s) finds it busy -- the bench (engine_
+        # aiskirm z) builds only the counter (B handoff 131); off = the unit builder alone, as before round 129
         self.ai.expected = self.expected if getattr(host, 'efficiency', False) else None
         self._protos = {}               # template -> a Body never placed (expected: the candidate)
         self.yard_q = {}                # yard name -> [job]
@@ -802,6 +802,10 @@ class Brain:
 
 class SimAI:
     """sim.Sim with every player the mission hands to the skirmish AI played by the layer-4 model."""
+
+    # Brain: the build states' BEST_UNIT_* entries scored by the expected efficiency. Off by default: on, 8 simai
+    # tests move (cleanup teams, scout dog, barracks mix, aisknew2 -- work/logs/b129_simai.log, B handoff 131)
+    efficiency = False
 
     def __init__(self, s, level='normal', seed=1, lib=None, data=None, blocks=BLOCKS):
         mod = model()
