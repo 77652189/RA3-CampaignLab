@@ -62,6 +62,7 @@ sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign'
 
 import parts  # noqa: E402
 import simgarrison  # noqa: E402
+import siminfiltrator  # noqa: E402
 import simsweep  # noqa: E402
 import simunits  # noqa: E402
 import simlevel  # noqa: E402
@@ -967,6 +968,7 @@ class Sim:
         self.ground = Ground(mission.map)
         self.own = {u.id: u.xml for u in self.mm.units}
         self.garrison = simgarrison.Garrisons(self)    # GarrisonContain / ContestableGarrisonContain
+        self.infiltrators = siminfiltrator.Infiltrators(self)
         self.bodies = {}                    # name -> Body (named ones), plus unnamed under '#k'
         self.attachments = {}              # child name -> (child, parent, module rule)
         self._attachment_rules = {}
@@ -1885,11 +1887,11 @@ class Sim:
                 if e is None:
                     e = self.energies[b.template] = simunits.energy(b.template, self.own)
                 sup, dem = (sup + e, dem) if e > 0 else (sup, dem - e)
-        return sup, dem
+        return (0 if self.infiltrators.disabled(owner) else sup), dem
 
     def short_of_power(self, owner):
         sup, dem = self.power(owner)
-        return sup < dem
+        return self.infiltrators.disabled(owner) or sup < dem
 
     def unpowered(self, b):
         """Holds its fire: still unpacking, or POWERED while its owner is short of power (bench 2026-11-07
@@ -2405,6 +2407,9 @@ class Sim:
             sup, dem = self.power(a[0])                     # world.py reads it so; not measured)
             self.used.add('power')
             return CMP[a[1]](sup - dem, a[2])
+        if name in ('PLAYER_HAS_POWER', 'PLAYER_HAS_NO_POWER'):
+            has_power = not self.infiltrators.disabled(a[0]) and not self.short_of_power(a[0])
+            return has_power if name == 'PLAYER_HAS_POWER' else not has_power
         if name == 'PLAYER_HAS_OBJECT_COMPARISON':
             # the dying counted too (Team::countObjectsByThingTemplate, ignoreDead false); a type or an object list
             want = self.of_types(a[3])
@@ -2925,7 +2930,9 @@ class Sim:
             self.money[a[0]] = self.money.get(a[0], 0) + a[1]
         elif name == 'NAMED_GARRISON_SPECIFIC_BUILDING':
             b, g = self.body(a[0]), self.body(a[1])
-            if b and g and simunits.engineer_contain(g.template, self.own) is not None:
+            if b and g and 'INFILTRATOR' in b.kinds and self.infiltrators.spec(g) is not None:
+                self.infiltrators.send(b, g)
+            elif b and g and simunits.engineer_contain(g.template, self.own) is not None:
                 self.order_capture(b, a[1])
             elif b and g and self.garrison.spec(g) is not None:      # walks to it, in if it may (simgarrison; INFERRED)
                 self.garrison.send(b, g)
@@ -4395,6 +4402,7 @@ class Sim:
             return
         self.follow_due()
         self.capture_due()
+        self.infiltrators.tick()
         if self.auto_kill is not None:
             mine = [b for b in self.living() if b.owner == self.human]
             for b in self.living():

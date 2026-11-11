@@ -5,8 +5,8 @@
 | 部分 | 按用量已对拍 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|
 | 脚本动作 | **91%** | 451 | 122 | 20 | 192 | 117 | 92% |
-| 脚本条件 | **94%** | 89 | 28 | 5 | 53 | 3 | 94% |
-| 物体模块 | **92%** | 186 | 39 | 9 | 114 | 24 | 94% |
+| 脚本条件 | **94%** | 89 | 30 | 5 | 51 | 3 | 94% |
+| 物体模块 | **92%** | 186 | 39 | 10 | 113 | 24 | 94% |
 | 武器效果 | **76%** | 25 | 14 | 2 | 7 | 2 | 78% |
 | AI | **71%** | 415 | 99 | 136 | 146 | 34 | 95% |
 
@@ -527,7 +527,7 @@
 | 未做 | `TEAM_ATTACKED_BY_OBJECTTYPE` | 10 | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `TEAM_COMPARE_NUM_MEMBERS` | 10 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiskirm.py |
 | 不涉及 | `PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA_WITH_MODELCONDITION` | 9 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
-| 未做 | `PLAYER_HAS_POWER` | 9 | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `PLAYER_HAS_POWER` | 9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_infiltrator.py |
 | 已对拍 | `PLAYER_TRIGGERED_SPECIAL_POWER` | 9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts8b.py |
 | 未做 | `BUILT_BY_PLAYER` | 8 | Sim.act / Sim.cond 不认识 |
 | 未做 | `GATE_IS_OPEN` | 8 | Sim.act / Sim.cond 不认识 |
@@ -536,8 +536,8 @@
 | 未做 | `SKIRMISH_PLAYER_HAS_COMPARISON_GARRISONED` | 8 | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_EXITED_AREA` | 7 | Sim.act / Sim.cond 不认识 |
 | 未做 | `UNIT_SPECIAL_POWER_READY` | 7 | Sim.act / Sim.cond 不认识 |
-| 未做 | `PLAYER_HAS_NO_POWER` | 6 | Sim.act / Sim.cond 不认识 |
-| 已对拍 | `PLAYER_EXCESS_POWER_COMPARE_VALUE` | 5 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_sell.py |
+| 已对拍 | `PLAYER_HAS_NO_POWER` | 6 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_infiltrator.py |
+| 已对拍 | `PLAYER_EXCESS_POWER_COMPARE_VALUE` | 5 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_infiltrator.py |
 | 推断 | `PLAYER_TRIGGERED_SPECIAL_POWER_FROM_NAMED` | 5 | Sim.act / Sim.cond 有分支 |
 | 未做 | `PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS` | 4 | Sim.act / Sim.cond 不认识 |
 | 推断 | `PLAYER_TRIGGERED_SPECIAL_POWER_IN_AREA` | 4 | Sim.act / Sim.cond 有分支 |
@@ -609,7 +609,7 @@
 | 不涉及 | `ClientBehaviors/AnimationSoundClientBehavior` | 48 (67) | 纯表现（ClientBehaviors）；例：AlliedTimeBombLvl3, AlliedRefinery |
 | 不涉及 | `Behaviors/DynamicsUpdate:起义专有` | 44 (53) | 起义时刻专有模板：继承链上的父模板 RA3 数据里没有（SS_Fling* 的 BaseClientFlingableProp），RA3 的 mod 编不过（engine_dynamics c，11-10 地图编译报 Critical），玩家在 RA3 里见不到 |
 | 不涉及 | `Draws/TruckDraw` | 35 (51) | 纯表现（Draws）；例：AlliedTimeBombLvl1, AlliedTimeBombLvl2 |
-| 未做 | `Behaviors/InfiltratorContain` | 34 (38) | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedBarracks |
+| 推断 | `Behaviors/InfiltratorContain` | 34 (38) | 部分：engine_infiltrator a盟军间谍普通进入敌方原版盟军电厂，间谍消耗、建筑不换主、单座100电量停电约20秒后恢复；友军拒入且间谍存活，tests/test_siminfiltrator.py重放。其余效果、帝国忍者、时长缩放与重复进入未对拍，不登记整项已对拍；例：AlliedAirfield, AlliedBarracks |
 | 不涉及 | `Behaviors/LUAEventList` | 32 (44) | 纯表现：EventListName连接原版ScriptEvents.xml与Scripts.lua；RA3声明可达的事件处理函数只调用模型部件显隐（及tostring），含继承；未定义的AlliedInfantryFightingFunctions无可达处理函数；C&C3升级/状态函数不可达。tests/test_inventory_lua.py静态核对游戏包与SDK声明，非上台对拍；例：AlliedAirfield, AlliedBarracks |
 | 未做 | `Behaviors/ToggleStatusSpecialAbilityUpdate` | 27 (34) | 已核（11-08）：模拟器没有这个效果（没有按钮切换状态）；例：AlliedAntiAirShip, AlliedAntiInfantryInfantry |
 | 不涉及 | `Behaviors/SubObjectsUpgrade` | 26 (30) | 纯表现（名字规则）；例：AlliedAirfield, AlliedBarracks |
