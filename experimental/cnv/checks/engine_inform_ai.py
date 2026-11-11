@@ -7,8 +7,15 @@ scalar (raw150/50, 500HP), rather than the nominal70/90 percent.
 The51->87 advance is2.4s, not exactly the original2s-window prediction;
 arrival estimation and micro phase remain unmodeled. PASS only means the
 broad before/after-hit controls below, not the original exact-window claim.
-No matched no-InformTarget lane was run, so the nugget's necessity is not
-independently isolated. Do not promote whole-item coverage.
+Check ``off`` is the matched third-run ablation: only base's launching
+InformTargetNugget is removed; all other lanes and scripts stay unchanged.
+Original prediction: base loses its before-damage shield but can still
+react after damage (100M <= packed < 200M). Observed third run:
+87135068/87135068/101003068/87135089; base hit87, no shield through freeze.
+The no-advance prediction holds, but the extra post-hit prediction FAILS.
+Keep that failed expectation as evidence; do not silently tune it to PASS.
+This supports necessity in this recipe, not the exact arrival formula or
+the cause of the absent post-hit response. Do not promote whole coverage.
 
 PREDICTION before the first run:
 
@@ -145,5 +152,16 @@ def check(m):
     return t
 
 
+def check_without_inform(m):
+    """Matched ablation; preserve the second run's three control lanes."""
+    unit = m.units[LANES.index('base')]
+    assert unit.xml.count('<InformTargetNugget/>') == 1
+    unit.xml = unit.xml.replace('<InformTargetNugget/>', '', 1)
+    t = check(m)
+    t.expect = [('base info', 31.0, '>=', 100000000, 34.0),
+                ('base info', 31.0, '<', 200000000, 34.0)] + t.expect[1:]
+    return t
+
+
 MISSION = {'engine_inform_ai': mission}
-CHECKS = {'engine_inform_ai': {'a': check}}
+CHECKS = {'engine_inform_ai': {'a': check, 'off': check_without_inform}}

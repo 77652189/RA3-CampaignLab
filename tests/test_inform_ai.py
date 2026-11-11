@@ -10,21 +10,22 @@ _module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_module)
 
 
-def test_inform_ai_has_one_slow_projectile_and_instant_player_low_controls():
+@pytest.mark.parametrize('check_name', ['a', 'off'])
+def test_inform_ai_has_one_slow_projectile_and_instant_player_low_controls(check_name):
     import build
     from contract import RETAIL_COMMANDS
     from checks import engine_inform_ai as probe
 
-    m, t, _ = build.resolve('engine_inform_ai', 'a')
+    m, t, _ = build.resolve('engine_inform_ai', check_name)
     ns = {'a': 'uri:ea.com:eala:asset'}
-    assert len(m.name + 'A') <= 15 and '_' not in m.name
+    assert len(m.name + check_name.title()) <= 15 and '_' not in m.name
     assert probe.COMMAND in RETAIL_COMMANDS
     assert [x[1] for x in t.counters] == [lane + ' info' for lane in probe.LANES]
     for lane, unit in zip(probe.LANES, m.units):
         root = ET.fromstring(unit.xml)
         weapons = root.findall('a:WeaponTemplate', ns)
         launch = next(w for w in weapons if w.get('id') == unit.names['weapon'])
-        assert len(launch.findall('a:Nuggets/a:InformTargetNugget', ns)) == 1
+        assert len(launch.findall('a:Nuggets/a:InformTargetNugget', ns)) == (0 if check_name == 'off' and lane == 'base' else 1)
         damage = root.find('.//a:DamageNugget', ns)
         assert damage.get('DamageType') == 'UNRESISTABLE'
         assert float(damage.get('Damage')) == (50 if lane == 'removed' else 150)
@@ -45,6 +46,23 @@ def test_inform_ai_has_one_slow_projectile_and_instant_player_low_controls():
     for lane in probe.LANES:
         hit = next(s for s in t.scripts if s.name == 'Test - hit ' + lane)
         assert ('UNIT_HEALTH', 'Info miner ' + lane, 0, 100) in hit.when
+
+
+def test_inform_ai_off_changes_only_the_base_launch_nugget_and_expectation():
+    import build
+
+    original, before, _ = build.resolve('engine_inform_ai', 'a')
+    ablated, after, _ = build.resolve('engine_inform_ai', 'off')
+    for i, (left, right) in enumerate(zip(original.units, ablated.units)):
+        assert right.xml == (left.xml.replace('<InformTargetNugget/>', '', 1) if i == 0 else left.xml)
+        assert right.files == left.files
+    assert original.objects == ablated.objects
+    assert original.marks == ablated.marks
+    assert before.scripts == after.scripts
+    assert before.counters == after.counters and before.bench == after.bench
+    assert after.expect[2:] == before.expect[1:]
+    assert after.expect[:2] == [('base info', 31.0, '>=', 100000000, 34.0),
+                              ('base info', 31.0, '<', 200000000, 34.0)]
 
 
 def test_inform_ai_response_is_reported_as_a_gap_including_retail_cache():
@@ -73,8 +91,12 @@ def test_inform_ai_response_is_reported_as_a_gap_including_retail_cache():
 
 @pytest.mark.xfail(strict=True, raises=AssertionError,
                    reason='InformTarget advance notification and AI self-defense execution are not modeled')
-def test_inform_ai_advance_response_matches_engine_inform_ai_observation():
-    """Second bench: first damage87/87/1/87, first shield51/none/3/none.
+@pytest.mark.parametrize('check_name, expected', [
+    ('a', (1187051068, 87135068, 101003068, 87135089)),
+    ('off', (87135068, 87135068, 101003068, 87135089)),
+])
+def test_inform_ai_advance_response_matches_engine_inform_ai_observation(check_name, expected):
+    """Second: hit87/87/1/87, shield51/none/3/none; third: base shield absent.
 
     Frozen automatic readings, before manual controls; no scalar fitting of
     the unexplained ~2.4s advance window or projectile muzzle collision.
@@ -82,10 +104,9 @@ def test_inform_ai_advance_response_matches_engine_inform_ai_observation():
     import build
     import sim
 
-    m, t, _ = build.resolve('engine_inform_ai', 'a')
+    m, t, _ = build.resolve('engine_inform_ai', check_name)
     engine = sim.Sim(m, t)
     engine.shot_clock = True
     rows = engine.run(36).series
-    expected = (1187051068, 87135068, 101003068, 87135089)
     assert tuple(rows[-1][1]) == expected
     assert all(tuple(row) == expected for sec, row in rows if sec >= 31)

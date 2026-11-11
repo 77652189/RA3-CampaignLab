@@ -181,7 +181,7 @@ NOTES = {
     (MODULE, 'Behaviors/OCLSpecialPower'): (TODO, '仅在SpecialPowerNugget处理器中识别并拒绝，未实现OCL技能执行'),
     (MODULE, 'Behaviors/ActivateModuleSpecialPower'): (TODO, '仅在SpecialPowerNugget处理器中识别并拒绝，未实现模块技能执行'),
     (NUGGET, 'TintObjectsNugget'): (NA, '纯表现：Color及Pre/Sustained/PostColorTime、Frequency/Amplitude仅控制染色动画；engine_tint pair实测2/90/2/90，独立DamageNugget解释全部伤害，test_simbench_c重放；不声称像素已验证'),
-    (NUGGET, 'InformTargetNugget'): (TODO, 'engine_inform_ai a黑盒观察到AI矿车命中前开甲，玩家/低伤慢弹不自动开甲、瞬发在受伤后开甲；预计到达/约2.4s提前量及AI技能执行尚未模拟，严格回放xfail且显式报告gap，不晋升整项'),
+    (NUGGET, 'InformTargetNugget'): (TODO, 'engine_inform_ai a矿车命中前开甲；off仅去掉该Nugget后87帧受伤、观察窗内不开甲，支持提前自保依赖它，但受伤后开甲的附加预测FAIL；玩家/低伤/瞬发对照不变。预计/历史伤害及AI技能执行未模拟，严格回放xfail并显式gap，不晋升整项'),
     (NUGGET, 'MetaImpactNugget'): (TODO, '部分数值接口：engine_knock_probe land/late的邻人起速4.5010和地面起飞参数已回放；直击方向、重力倍率和落点网格含INFERRED，逐帧轨迹/命中派发/筛选及延迟变体未接通，显式gap，不晋升整项'),
     (NUGGET, 'ParalyzeNugget'): (GUESSED, '部分：engine_emp phase实测PASS16051/31066/61096、hit1；engine_empfire a实测PASS901090/901100/901080/901090，失能窗口按令不开火、到期后新令恢复；仅无筛选EMP，其他类型/筛选/装填相位未验证'),
     (NUGGET, 'StripMaxHealthPercentNugget'): (GUESSED, '部分：engine_strip exact实测PASS95/45/74，4%满血/半血与25%满血按最大血量扣减；筛选、护甲倍率、无标记伤害形式未验证，最大血量不变仍推断'),
