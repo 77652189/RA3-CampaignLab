@@ -10,10 +10,11 @@ Bench 2026-11-11, both checks PASS (health, alive, far, home):
           after further injury one survivor home s34-39, alive0 from s40.
   high0.5: health30 s9-25; far0 throughout; home1 s19-20, home4 s23;
            alive3 s24-25, 2 s26, 1 s27, 0 from s28 (Crane recycling).
-The simulator sends both to the far plant (max4) with home0 after row14;
-its pullback facility hook is absent. High full replay is strict xfail in
-tests/test_simai_pullpct.py; the low passing test covers only the initial
-non-trigger control. Neither late return nor recycling is modelled here.
+The simulator's live facility hook now distinguishes the initial return:
+high sends four vehicles home without reaching the far plant; low reaches
+the far plant first. tests/test_simai_pullpct.py separates the passing return
+from the strict-xfail Crane recycling. Exact seconds, late return and
+recycling are not claimed by the passing threshold tests.
 """
 from checks.engine_aipullback import a as original
 

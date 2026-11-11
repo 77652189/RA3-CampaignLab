@@ -113,10 +113,14 @@ NOTES = {
         'tests/test_simai_search.py 回放；仅被动建筑搜索，精确边界、敌军目标取得和揭雾未量'),
     '组队招人/TeamTemplate.SortByDistance': (GUESSED, 'AI 模型代码里读了这个名字（台上没单独量：engine_aiskirm 里是推测）'),
     '组队招人/CreateUnits.MinUnits': (GUESSED, 'AI 模型代码里读了这个名字（台上量的是 TeamTemplate.MinUnits，不是现造兵）'),
-    '微操/AIMicroManagerData.PullbackInjured': (BENCHED, '只认车能开进去的维修设施：苏联 AI + 吊车，残血坦克回去被回收（aipullsov PASS）；盟军 / 日本工厂找不到（aiteamstate.md 第 6 节）'),
-    '微操/AIMicroManagerData.PullbackInjuredHealthPct': (GUESSED,
-        'engine_aipullpct 固定30%血量、苏联吊车，仅阈值0.2/0.5不同；完整回放缺伤员回收消费者，'
-        'tests/test_simai_pullpct.py 高阈值 strict xfail，不登记闭环；接口缺口见 handoff-c'),
+    '微操/AIMicroManagerData.PullbackInjured': (BENCHED,
+        'engine_aipullback aipullsov 残血坦克离队回吊车；tests/test_simai_bench_b.py::'
+        'test_a_hurt_soviet_tank_team_is_pulled_back_to_the_crane 回放；普通盟军/日本工厂不可进入；'
+        '仅地面车辆回撤，吊车回收仍 strict xfail，未验证空海军/精确时间'),
+    '微操/AIMicroManagerData.PullbackInjuredHealthPct': (BENCHED,
+        'engine_aipullpct 固定30%血量、苏联吊车，仅阈值0.2/0.5不同；'
+        'tests/test_simai_pullpct.py::test_pullback_threshold_high_returns_before_recycling 完整回放四车回家且不到远厂；'
+        '同文件 low 对照先到远厂；仅初次回撤阈值，精确边界/晚段/吊车回收未闭环（回收 strict xfail）'),
     '微操/AIMicroManagerData.AlphaStrikeTargetHealthPct': (GUESSED,
         'engine_aialphahp 固定远厂70%血量，仅阈值0.01/0.9不同；有限诊断不等于字段闭环；'
         'tests/test_simai_alphahp.py 保留完整回放，AlphaStrike目标可用条件待证实，见 handoff-c'),

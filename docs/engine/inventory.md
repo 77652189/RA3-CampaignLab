@@ -8,7 +8,7 @@
 | 脚本条件 | **94%** | **100%** | 12 / 12 | 89 | 30 | 6 | 50 | 3 | 95% |
 | 物体模块 | **95%** | **95%** | 48 / 114 | 189 | 49 | 11 | 104 | 25 | 96% |
 | 武器效果 | **93%** | **95%** | 17 / 22 | 28 | 18 | 2 | 6 | 2 | 95% |
-| AI | **72%** | **72%** | 95 / 357 | 415 | 101 | 141 | 139 | 34 | 96% |
+| AI | **73%** | **72%** | 96 / 357 | 415 | 102 | 140 | 139 | 34 | 96% |
 
 ## 脚本动作
 
@@ -843,7 +843,7 @@
 | 已对拍 | `开局/Order.Account` | 81 | a4 a5 a7 | docs/engine/aiopen.md#开局存款进哪个账户（Order Account，第 116 轮）（aiskacp / aiskacd：PRODUCTION 兵营出兵、DEFENSE 兵营不出） |
 | 已对拍 | `开局/Order.Deposit` | 81 | a4 a5 a7 | docs/engine/aiopen.md#开局怎么抽、哪些单子会作废（OpeningMove Weight / Difficulty，第 89～90 轮）（aiom15：带 Deposit 2000 照造、晚 4 秒） |
 | 已对拍 | `微操/AIMicroManagerData.EngageTacticalTarget` | 79 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aitactical.py |
-| 已对拍 | `微操/AIMicroManagerData.PullbackInjured` | 78 | a4 a5 a7 | 只认车能开进去的维修设施：苏联 AI + 吊车，残血坦克回去被回收（aipullsov PASS）；盟军 / 日本工厂找不到（aiteamstate.md 第 6 节） |
+| 已对拍 | `微操/AIMicroManagerData.PullbackInjured` | 78 | a4 a5 a7 | engine_aipullback aipullsov 残血坦克离队回吊车；tests/test_simai_bench_b.py::test_a_hurt_soviet_tank_team_is_pulled_back_to_the_crane 回放；普通盟军/日本工厂不可进入；仅地面车辆回撤，吊车回收仍 strict xfail，未验证空海军/精确时间 |
 | 推断 | `微操/AIMicroManagerData.Crush` | 77 | a4 a5 a7 | 台上量过（engine_aicrush：开了 s28 前碾光守军）；模拟器已验证派发，碾压移动意图未建模，原场景 strict xfail 保留；跨线移动修复暂停（handoff-c） |
 | 已对拍 | `目标/AITargetingHeuristic.SortType` | 76 | a4 a5 a7 | docs/engine/aitactics.md#目标挑哪个（Distance：aitpnear / aitpmt2 最近、次近；ThreatToGround：aitargetsafe） |
 | 推断 | `组队招人/TeamTemplate.SortByDistance` | 75 | a4 a5 a7 | AI 模型代码里读了这个名字（台上没单独量：engine_aiskirm 里是推测） |
@@ -896,7 +896,7 @@
 | 推断 | `启发条件/IsBuildingHeuristic` | 30 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/IsBuildingHeuristic.KindOf` | 30 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/IsBuildingHeuristic.PassIfBuilding` | 30 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | `微操/AIMicroManagerData.PullbackInjuredHealthPct` | 30 | a4 a5 a7 | engine_aipullpct 固定30%血量、苏联吊车，仅阈值0.2/0.5不同；完整回放缺伤员回收消费者，tests/test_simai_pullpct.py 高阈值 strict xfail，不登记闭环；接口缺口见 handoff-c |
+| 已对拍 | `微操/AIMicroManagerData.PullbackInjuredHealthPct` | 30 | a4 a5 a7 | engine_aipullpct 固定30%血量、苏联吊车，仅阈值0.2/0.5不同；tests/test_simai_pullpct.py::test_pullback_threshold_high_returns_before_recycling 完整回放四车回家且不到远厂；同文件 low 对照先到远厂；仅初次回撤阈值，精确边界/晚段/吊车回收未闭环（回收 strict xfail） |
 | 推断 | `微操/AIMicroManagerData.AlphaStrikeTargetHealthPct` | 28 | a4 a5 a7 | engine_aialphahp 固定远厂70%血量，仅阈值0.01/0.9不同；有限诊断不等于字段闭环；tests/test_simai_alphahp.py 保留完整回放，AlphaStrike目标可用条件待证实，见 handoff-c |
 | 已对拍 | `战术/Tactic.Tactic=StaticDefense` | 28 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aidefense.py |
 | 未做 | `造兵/BlockIfThingNearFactory.Relationship` | 28 | a4 a5 a7 | AI 模型代码里没有这个名字 |

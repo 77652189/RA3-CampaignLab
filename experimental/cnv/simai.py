@@ -191,7 +191,8 @@ class Brain:
                                        micro=h.data_of('tactics micro'), fight=self.fight,
                                        houses=lambda ai, u: self.garrisons(u, False),
                                        defenses=lambda ai, u: self.garrisons(u, True),
-                                       crush=lambda ai, f, foe: simcrush.eligible(self.sim, f, foe))
+                                       crush=lambda ai, f, foe: simcrush.eligible(self.sim, f, foe),
+                                       pullback=lambda ai, u: h.pullback.query(self, u))
         self.tactics.rng = random.Random(h.seed)    # state 2's RandomTargetScoreModifier / TimeToKeepTarget
         self.targets = tg.TargetsBlock(h.data_of('targets'), self.active, lambda ai, f: self.view,
                                        lambda ai, st: self.home, home=self.home, base_of=self.base_of,
@@ -440,7 +441,8 @@ class Brain:
         if kind == 'enter':                     # EnterGarrisons / EnterBaseDefenses: into a building (a Thing id)
             t = self.body_of(arg)
             if t is not None:
-                self.host.garrison.send(b, t)
+                if not self.host.pullback.send(b, t):
+                    self.host.garrison.send(b, t)
             return
         b.goal = None
         self.sim.order_move(b, (float(arg[0]), float(arg[1])), kind == 'attack-move')
@@ -673,7 +675,7 @@ class Brain:
                 continue
             if 'HARVESTER' in b.kinds or 'IGNORES_SELECT_ALL' in b.kinds:
                 continue
-            if self.host.garrison.busy(b):  # inside or on its way in (INFERRED: not taken into a team again)
+            if self.host.garrison.busy(b) or self.host.pullback.busy(b):
                 continue
             if b.name not in self.wrappers:
                 self.wrappers[b.name] = Unit(b)
@@ -813,6 +815,8 @@ class SimAI:
         self.done_to = None             # the last frame the AI ran
         self._data, self._cost, self._menu, self._cs, self._kinds, self._std = {}, {}, {}, {}, {}, {}
         self.garrison = s.garrison      # HOOKS 8: the simulator's garrisons (simgarrison) take the 'enter' orders
+        import simpullback
+        self.pullback = simpullback.Pullbacks(s)
 
     @property
     def frame(self):

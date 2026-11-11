@@ -121,8 +121,6 @@ def test_a_hurt_allied_tank_team_drives_on_instead_of_home(lib):
     assert rows[-1]['坦克数'] == 0
 
 
-@pytest.mark.xfail(strict=True, reason='simai aipullsov = aipulli1: 回家 0 all along, the tanks die s26-s36; bench: '
-                                       'the Soviet AI pulls its hurt tanks into the Crane, 回家 1 @ s19 .. 4 @ s23')
 def test_a_hurt_soviet_tank_team_is_pulled_back_to_the_crane(lib):
     """checks/engine_aipullback.py aipullsov."""
     _, rows = _probe_run('aipullsov', lib, 40.0)
