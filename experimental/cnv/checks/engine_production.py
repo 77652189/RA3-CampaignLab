@@ -37,6 +37,10 @@ Bench 11-09 (g: the engineer banned at the start, ALLOW_DISALLOW_ONE_BUILDING(p1
     first engineer at 帧数 160 (as a); the second job 1500 -> 1286 by s20, 1286 from s20 to s28 (banned halfway: it
     stands, nothing refunded or cancelled), paying again from s29, the second engineer at s35; the third 1000 -> 500
     by s45. A ban stops the building, not the queueing (docs/engine/production.md section 4).
+Bench 11-11 (round 158, h: where the engineer stops -- strips 35-45 / 45-55 / 55-65 / 65-80 west of the barracks):
+  h CampProdH_mcp_1111_034429 (PASS): 帧数 160 out (as a); 出口位 0 -> 10 -> 1100 -> 1000 from s13 to s25: it walks
+    past the natural rally point (40) and stops 65-80 west, 25-40 beyond it; never sampled in 35-45 (2 Hz watch).
+    The simulator stops at 40 (reads 1): not yet fixed (round 159; the extra distance not pinned, INFERRED).
 Against the model (RA3-EngineModel production.py, round 41; tests/test_objects_bench.py, tools/objsidebyside.py with
 orders): every pair and every 帧数 the same, once the model divides the seconds before x 15 (c: 495, not 500), keeps
 the progress in float32 (10 s takes 151 updates; b owes 251 at k 75) and opens the door 10 frames (DoorOpeningTime
@@ -47,13 +51,16 @@ from parts import Mission, Script, Test, counted, square
 
 ENGINEER, BARRACKS = 'AlliedEngineer', 'AlliedBarracks'
 MONEY, SHORT, GIVE, BONUS = 2000, 250, 4.0, 2000     # b: GIVE s after the money reaches 0
-RUN = {'a': 22.0, 'b': 30.0, 'c': 48.0, 'd': 34.0, 'e': 24.0, 'f': 30.0, 'g': 44.0}
+RUN = {'a': 22.0, 'b': 30.0, 'c': 48.0, 'd': 34.0, 'e': 24.0, 'f': 30.0, 'g': 44.0, 'h': 24.0}
 PRESS_AT, BUTTON_NAME = 2.0, 'Command_ConstructAlliedEngineer'   # e, f: a script presses the factory's button
 FACTORY = (1550.0, 2560.0)              # niagara 'base factory'; the barracks turned 180 degrees (exit to the west)
 CREATE, RALLY = (FACTORY[0], FACTORY[1] - 18.0), (FACTORY[0] - 40.0, FACTORY[1] - 18.0)   # (0, 18), (40, 18) turned
 DELETE = {'a': ('Barracks 2', 'Barracks 3'), 'b': ('Barracks 2', 'Barracks 3'),
           'c': ('Yard', 'Power', 'Barracks 2', 'Barracks 3'), 'd': ('Power',), 'e': ('Barracks 2', 'Barracks 3'), 'f': ('Barracks 2', 'Barracks 3'),
-          'g': ('Barracks 2', 'Barracks 3')}
+          'g': ('Barracks 2', 'Barracks 3'), 'h': ('Barracks 2', 'Barracks 3')}
+# h: where the engineer stops -- strips across the exit line, (from, to) map units west of the barracks, y within 15
+# of the exit line; 出口位 adds the step of each strip it stands in
+STRIPS_H = (('Rally', 35.0, 45.0, 1), ('Past10', 45.0, 55.0, 10), ('Past20', 55.0, 65.0, 100), ('Far', 65.0, 80.0, 1000))
 # g: ALLOW_DISALLOW_ONE_BUILDING(p1, 'alliedengineer', allow) at the start (0) and these seconds; presses at PRESS_G
 BAN_G = ((6.0, 1), (21.0, 0), (30.0, 1))
 PRESS_G = (2.0, 8.0, 19.0)
@@ -81,6 +88,13 @@ def production_test(m, which='a'):
     t.areas['Test Create'] = square(*CREATE, 10.0)
     t.areas['Test Rally'] = square(*RALLY, 10.0)
     t.areas['Test Near'] = square(*FACTORY, 80.0)
+    exits = (('Create', 1), ('Rally', 10), ('Near', 100))
+    if which == 'h':
+        exits = []
+        for name, a, b, step in STRIPS_H:
+            x0, x1, y = FACTORY[0] - b, FACTORY[0] - a, CREATE[1]
+            t.areas[f'Test {name}'] = [(x0, y - 15.0), (x1, y - 15.0), (x1, y + 15.0), (x0, y + 15.0)]
+            exits.append((name, step))
     start = SHORT if which == 'b' else 0 if which == 'f' else MONEY
     t.scripts.append(Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', p1), ('PLAYER_SET_MONEY', p1, start)] + [
         ('NAMED_DELETE', _n(p)) for p in DELETE[which]] + (
@@ -104,8 +118,8 @@ def production_test(m, which='a'):
     t.scripts += [Script(f'Test - exit {a}', [('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', 'Player_1', 3, 1,
                                                 ENGINEER, f'Test {a}')],
                          [('INCREMENT_COUNTER', step, 'CNV_Prod_Exit')], once=False)
-                  for a, step in (('Create', 1), ('Rally', 10), ('Near', 100))]
-    if which in 'ef':                       # no clicks: a script presses barracks 1's engineer button
+                  for a, step in exits]
+    if which in 'efh':                       # no clicks: a script presses barracks 1's engineer button
         t.scripts += [Script('Test - press set', [], [('SET_MILLISECOND_TIMER', 'Test Press', PRESS_AT)]),
                       Script('Test - press', [('TIMER_EXPIRED', 'Test Press')],
                              [('NAMED_USE_COMMANDBUTTON_ABILITY', _n('Barracks 1'), BUTTON_NAME)])]
@@ -121,7 +135,7 @@ def production_test(m, which='a'):
                       for k, (_, allow) in enumerate(BAN_G)]
     t.expect = [('工程师', 0, 'ever>=', 1, RUN[which])] if which != 'f' else []
     watch = dict(every=0.5, sheet=False, lines=len(t.counters))
-    if which in 'efg':
+    if which in 'efgh':
         t.bench = [('bench_watch', dict(watch, seconds=RUN[which]))]
     elif TAB[0] is None:                     # the buttons not found yet: run, look by hand (keep=true)
         t.bench = [('bench_watch', dict(watch, seconds=2.0))]
@@ -134,4 +148,4 @@ def production_test(m, which='a'):
 
 
 MISSION = {'engine_production': mission}
-CHECKS = {'engine_production': {w: (lambda m, w=w: production_test(m, w)) for w in 'abcdefg'}}
+CHECKS = {'engine_production': {w: (lambda m, w=w: production_test(m, w)) for w in 'abcdefgh'}}

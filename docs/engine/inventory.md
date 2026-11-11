@@ -6,9 +6,9 @@
 |---|---|---|---|---|---|---|---|---|---|
 | 脚本动作 | **92%** | **100%** | 50 / 50 | 451 | 123 | 20 | 191 | 117 | 93% |
 | 脚本条件 | **94%** | **100%** | 12 / 12 | 89 | 30 | 6 | 50 | 3 | 95% |
-| 物体模块 | **94%** | **94%** | 41 / 113 | 188 | 43 | 9 | 112 | 24 | 95% |
+| 物体模块 | **94%** | **95%** | 41 / 112 | 188 | 43 | 9 | 111 | 25 | 95% |
 | 武器效果 | **93%** | **95%** | 17 / 22 | 28 | 18 | 2 | 6 | 2 | 95% |
-| AI | **71%** | **70%** | 93 / 357 | 415 | 99 | 136 | 146 | 34 | 95% |
+| AI | **71%** | **70%** | 93 / 357 | 415 | 99 | 140 | 142 | 34 | 96% |
 
 ## 脚本动作
 
@@ -613,7 +613,7 @@
 | 推断 | `Behaviors/InfiltratorContain` | 30 (32) | a1 a2 a4 a5 a6 a7 a8 | ENERGY已按总控11-11决定拆分登记4用量/6模板；本行剩余10种配置30用量/32模板：KILL 1、STEAL_MONEY 3、VISION 5+港口阻断型1、PARALYZE 3、VISION_UNITS飞机2/步兵3/舰船3/车辆4、RESET 5，效果均未对拍；不登记整模块已对拍；例：AlliedAirfield, AlliedBarracks |
 | 已对拍 | `Behaviors/ToggleStatusSpecialAbilityUpdate` | 27 (34) | 全部 | tests/test_simbench_c.py::test_toggle_status_a_press_moves_to_the_next_state_unpack_delays_it_and_a_held_state_takes_no_press；例：AlliedAntiAirShip, AlliedAntiInfantryInfantry |
 | 不涉及 | `Behaviors/SubObjectsUpgrade` | 26 (30) | 全部 | 纯表现（名字规则）；例：AlliedAirfield, AlliedBarracks |
-| 未做 | `Behaviors/FreefallUpdate` | 24 (31) | 全部 | 已核（11-11 engine_freefall fall）：人炮扔出的动员兵，原版 / 下落改慢 / 改快三份读数一样（AIRBORNE_TARGET 1-125 帧、22 帧到点、随后降落伞约 96 帧），下落不归本模块管；剩下的作用对象是空中死亡（表现）和被举起的单位（C 线举升暂停），未上台；同 id 覆盖是否生效未排除；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
+| 不涉及 | `Behaviors/FreefallUpdate` | 24 (31) | 全部 | 纯表现（总控 11-11 定）：配置只有 InitialVelocity / Acceleration / TerminalVelocity / ModelConditionsToSet=STUNNED_FLAILING，管空中死亡后尸体下落的画面；engine_freefall fall 已核人炮扔出的兵原版 / 改慢 / 改快三份读数一样（AIRBORNE_TARGET 1-125 帧、22 帧到点、降落伞约 96 帧），不归本模块。gap：被举起后落下（ActivateLiftObjectNugget / LiftObjectUpdate，C 线举升暂停）可能用到下落速度，落地时刻会影响逻辑，未上台；同 id 覆盖是否生效未排除；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
 | 已对拍 | `Behaviors/AttributeModifierUpgrade` | 22 (30) | 全部 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_invuln.py；例：AlliedOutpost, AlliedAntiGroundAircraft |
 | 已对拍 | `Behaviors/CrushDie` | 22 (28) | 全部 | tests/test_simbench.py::test_crush_a_tank_drives_over_a_lower_level_and_leaves_an_equal_one；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
 | 已对拍 | `Behaviors/SuppressionUpdate` | 22 (28) | 全部 | tests/test_simbench_c.py::test_suppression_samples_entry_refresh_and_expiry_at_the_four_probe_readings；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
@@ -867,8 +867,8 @@
 | 推断 | `组队招人/CreateUnits.UnitName` | 60 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 已对拍 | `战术/Tactic.Tactic=SimpleAttack` | 59 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aitarget.py |
 | 不涉及 | `表现/FeedbackEntry.Timeout` | 56 |  | 纯表现（语音、视频、画面） |
-| 未做 | `造兵/BuildEntry.PercentHigh` | 54 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 未做 | `造兵/BuildEntry.PercentLow` | 54 | a4 a5 a7 | AI 模型代码里没有这个名字 |
+| 推断 | `造兵/BuildEntry.PercentHigh` | 54 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 推断 | `造兵/BuildEntry.PercentLow` | 54 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 已对拍 | `微操/AIMicroManagerData.UseGatherState` | 51 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aipullback.py |
 | 已对拍 | `启发条件/OpeningMoveHeuristic` | 47 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiomove.py |
 | 已对拍 | `启发条件/OpeningMoveHeuristic.Complete` | 47 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiomove.py |
@@ -936,7 +936,7 @@
 | 推断 | `目标/AITargetingHeuristic.HighestPriorityEnemyPlayersOnly` | 15 |  | AI 模型代码里读了这个名字 |
 | 推断 | `目标/AITargetingHeuristic.MinDistanceFromEnemy` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 已对拍 | `组队招人/TeamTemplate.Priority=LOW` | 15 | a4 a5 a7 | docs/engine/aistate.md#两队抢兵和 MinPowerAdvantage（第 82 轮） |
-| 未做 | `造兵/BuildEntry.CountModifier` | 15 |  | AI 模型代码里没有这个名字 |
+| 推断 | `造兵/BuildEntry.CountModifier` | 15 |  | AI 模型代码里读了这个名字 |
 | 不涉及 | `人格/AIPersonalityDefinition.PersonalityUIName` | 14 |  | 纯表现（语音、视频、画面） |
 | 推断 | `目标/AITargetingHeuristic.SortType=ThreatToWater` | 14 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | `人格/AIPersonalityDefinition.Side` | 13 | a4 a5 a7 | AI 模型代码里读了这个名字 |
@@ -1204,4 +1204,4 @@
 | 不涉及 | `表现/InTroubleSkirmishFeedbackControl.TimeForNumberOfObjectLost` | 1 | a4 a5 a7 | 纯表现（语音、视频、画面） |
 | 不涉及 | `表现/InTroubleSkirmishFeedbackControl.TimeThatConditionsMustBeMet` | 1 | a4 a5 a7 | 纯表现（语音、视频、画面） |
 | 不涉及 | `表现/InTroubleSkirmishFeedbackControl.TimeoutAfterPlaying` | 1 | a4 a5 a7 | 纯表现（语音、视频、画面） |
-| 未做 | `造兵/BuildEntry.Score` | 1 |  | AI 模型代码里没有这个名字 |
+| 推断 | `造兵/BuildEntry.Score` | 1 |  | AI 模型代码里读了这个名字 |
