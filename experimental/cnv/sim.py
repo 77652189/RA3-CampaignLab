@@ -502,7 +502,7 @@ class Body:
     upgrades: set = dataclasses.field(default_factory=set)     # NAMED_RECEIVE_UPGRADE / _REMOVE_UPGRADE (modify)
     up_since: dict = dataclasses.field(default_factory=dict)   # upgrade -> the frame it was given (a Duration runs)
     level_rank: int = 1                                      # LevelUpUpgrade creation grants; not combat XP
-    level_modules: set = dataclasses.field(default_factory=set)  # first activation only; regrant is unmodeled
+    level_modules: set = dataclasses.field(default_factory=set)  # active creation modules; removal rearms, keeps rank
     script_status: set = dataclasses.field(default_factory=set)  # UNIT_CHANGE_OBJECT_STATUS's bits; `status` is these
                                                                 # + the modifiers' (modify)
     slots: object = None                                        # simunits.weapon_sets: the weapons chosen by status (None: fixed)

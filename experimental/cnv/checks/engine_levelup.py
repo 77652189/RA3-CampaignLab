@@ -50,6 +50,57 @@ MISSION = {'engine_levelup': mission}
 CHECKS = {'engine_levelup': {'a': check}}
 
 
+def regrant_check(m):
+    """PREDICT: removing creation grants keeps rank; regrant adds another level.
+
+    Retail BaseVehicle's three modules each gain one level, cap four, and use
+    UpgradeModuleData's Permanent=false default. This is a prediction from data,
+    not from the simulator's existing first-activation-only approximation.
+    Lanes: one veteran grant; veteran removed/regranted twice; veteran+elite
+    then veteran removed/regranted; all three grants then all three removed.
+    Heroic bits: 0/0/0/1 initially and after removal, 0/0/1/1 after the first
+    regrant, 0/1/1/1 after the second. No enemies, attacks or combat XP.
+    Stable windows allow dispatch; exact activation frames remain INFERRED.
+    Bench 2026-11-11 PASS: 0/0/0/1 -> 0/0/1/1 -> 0/1/1/1.
+    """
+    t = Test()
+    lanes = ('base', 'high', 'order', 'removed')
+    action = lambda kind, lane, up: ('NAMED_' + kind + '_UPGRADE', up, m.role(lane).name)
+    start = [('MAP_REVEAL_ALL_PERM', m.player('p1'))]
+    for sec, timer in ((6, 'remove'), (12, 'regrant'), (18, 'remove again'), (24, 'regrant again')):
+        start.append(('SET_MILLISECOND_TIMER', 'Level ' + timer, float(sec)))
+    for lane, count in zip(lanes, (1, 1, 2, 3)):
+        start.append(('UNIT_CHANGE_OBJECT_STATUS', m.role(lane).name, 'NO_ATTACK', 1))
+        start += [action('RECEIVE', lane, up) for up in CREATION[:count]]
+    steps = [
+        ('remove', [action('REMOVE', lane, CREATION[0]) for lane in ('high', 'order')]
+         + [action('REMOVE', 'removed', up) for up in CREATION]),
+        ('regrant', [action('RECEIVE', lane, CREATION[0]) for lane in ('high', 'order')]),
+        ('remove again', [action('REMOVE', 'high', CREATION[0])]),
+        ('regrant again', [action('RECEIVE', 'high', CREATION[0])])]
+    t.scripts = [Script('Test - start', [], start)] + [
+        Script('Test - ' + timer, [('TIMER_EXPIRED', 'Level ' + timer)], actions)
+        for timer, actions in steps]
+    for lane in lanes:
+        counter = 'Level regrant ' + lane
+        t.counters.append((counter, lane + ' heroic'))
+        t.scripts += [
+            Script('Test - zero ' + lane, [], [('SET_COUNTER', counter, 0)], once=False),
+            Script('Test - heroic ' + lane,
+                   [('UNIT_HAS_OBJECT_STATUS', m.role(lane).name, status('WEAPON_UPGRADED_01'))],
+                   [('SET_COUNTER', counter, 1)], once=False)]
+    for first, last, values in ((2, 4, (0, 0, 0, 1)), (8, 10, (0, 0, 0, 1)),
+                                (14, 16, (0, 0, 1, 1)), (20, 22, (0, 0, 1, 1)),
+                                (26, 28, (0, 1, 1, 1))):
+        t.expect += [(lane + ' heroic', first, '==', value, last)
+                     for lane, value in zip(lanes, values)]
+    t.bench = [('bench_watch', dict(seconds=28.0, every=.5, sheet=False, lines=4))]
+    return t
+
+
+CHECKS['engine_levelup']['b'] = regrant_check
+
+
 def damage_mission():
     m = mission()
     m.name = 'CampLevelD'

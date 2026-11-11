@@ -1,4 +1,4 @@
-"""Creation upgrade -> rank -> veterancy upgrades (engine_levelup a).
+"""Creation upgrade -> rank -> veterancy upgrades (engine_levelup a/b).
 
 Combat experience and rank modifiers except DAMAGE_MULT and elite HEALTH_MULT remain unmodeled. This module
 does not turn a direct Upgrade_Veterancy_HEROIC grant into a rank change.
@@ -21,7 +21,8 @@ def rules(template, own):
             if mid not in found:
                 found[mid] = (simunits._triggers(inner),
                               int(simunits._attr(head, 'LevelsToGain', '0')),
-                              int(simunits._attr(head, 'LevelCap', '0')))
+                              int(simunits._attr(head, 'LevelCap', '0')),
+                              simunits._attr(head, 'Permanent', 'false').lower() == 'true')
         template = simunits.parent(xml, template)
     return found
 
@@ -53,12 +54,18 @@ def receive(sim, b, up, on, newly_held):
     cache = sim.__dict__.setdefault('_levelup_rules', {})
     if b.template not in cache:
         cache[b.template] = rules(b.template, sim.own)
-    for mid, (triggers, gain, cap) in cache[b.template].items():
+    for mid, (triggers, gain, cap, permanent) in cache[b.template].items():
         if up not in triggers:
             continue
-        if not on or mid in b.level_modules:
-            if not on or newly_held:
-                sim.gap('升级', 'LevelUpUpgrade/regrant', '移除后重给的等级行为未对拍')
+        if not on:
+            # engine_levelup b: deactivation rearms the retail module without
+            # undoing rank, veterancy upgrades or already applied HP scaling.
+            if permanent:
+                sim.gap('升级', 'LevelUpUpgrade/permanent', 'Permanent=true的移除重给未对拍')
+            else:
+                b.level_modules.discard(mid)
+            continue
+        if mid in b.level_modules:
             continue
         if not newly_held:
             continue

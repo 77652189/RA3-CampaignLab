@@ -65,7 +65,7 @@ def test_levelup_creation_grants_reach_heroic_only_after_three_distinct_triggers
     """Bench 11-10 engine_levelup a: 0/0/1/0 early, 0/1/1/0 after late grants.
 
     A single CreationVeterancy_HEROIC adds one rank; repeated held grants add
-    none. Heroic modifiers and remove/regrant are explicitly left unmodeled.
+    none. Heroic modifiers remain partial; check b covers creation remove/regrant.
     """
     import build
     import sim
@@ -76,6 +76,37 @@ def test_levelup_creation_grants_reach_heroic_only_after_three_distinct_triggers
     assert tuple(rows[-1][1]) == (0, 1, 1, 0)
     assert (sim.GAP_UPGRADE, 'LevelUpUpgrade/Unit_Elite') not in e.unmodeled
     assert '创建升级触发' in '\n'.join(e.report())
+
+
+def test_levelup_creation_remove_keeps_rank_and_regrant_can_trigger_twice():
+    """engine_levelup b: removal keeps heroic; two veteran regrants reach heroic.
+
+    Hold the simulator to every stable window, not just the final heroic bit.
+    The one-grant control never upgrades, while the two-grant lane turns heroic
+    on the first regrant and the one-grant lane only on the second regrant.
+    """
+    import build
+    import sim
+    from checks.engine_levelup import CREATION
+    m, t, _ = build.resolve('engine_levelup', 'b')
+    e = sim.Sim(m, t)
+    rows = e.run(28).series
+    for first, last, expected in ((2, 4, (0, 0, 0, 1)), (8, 10, (0, 0, 0, 1)),
+                                   (14, 16, (0, 0, 1, 1)), (20, 22, (0, 0, 1, 1)),
+                                   (26, 28, (0, 1, 1, 1))):
+        window = [tuple(row) for sec, row in rows if first <= sec <= last]
+        assert window and all(row == expected for row in window), (first, window)
+    bodies = [e.body(m.role(lane).name) for lane in ('base', 'high', 'order', 'removed')]
+    assert [b.level_rank for b in bodies] == [2, 4, 4, 4]
+    assert not (set(CREATION) & bodies[-1].upgrades)
+    assert [b.max_hp for b in bodies] == [500, 625, 625, 625]
+    assert (sim.GAP_UPGRADE, 'LevelUpUpgrade/regrant') not in e.unmodeled
+    # Grants that are still held must remain idempotent after reactivation too.
+    e.give_upgrade(bodies[0], CREATION[0])
+    assert bodies[0].level_rank == 2
+    for b in bodies[1:3]:
+        e.give_upgrade(b, CREATION[0])
+        assert b.level_rank == 4 and b.max_hp == 625
 
 
 def test_levelup_veteran_damage_persists_at_elite_and_heroic_without_gated_target_healing():
@@ -626,7 +657,14 @@ def test_weapon_bench_register_points_to_replayed_engine_probes():
         assert inventory.BENCHED_TESTS[inventory.NUGGET,name].endswith('::'+test)
         assert probe in inspect.getsource(globals()[test])
         assert 'checks/'+probe+'.py' in inventory.tested_probes()
-    assert inventory.NOTES[inventory.NUGGET,'InformTargetNugget'][0]==inventory.TODO
+    for form, test, probe in (
+            ('默认系数目标通知', 'test_inform_incoming_table_drives_miner_armor_from_engine_inform_probe',
+             'engine_inform_probe'),
+            ('Max1.6目标通知', 'test_inform_max_launch_matches_engine_inform_max_observed_deadline',
+             'engine_inform_max')):
+        assert inventory.BENCHED_TESTS[inventory.NUGGET, 'InformTargetNugget:' + form] == (
+            'tests/test_inform_ai.py::' + test)
+        assert 'checks/' + probe + '.py' in inventory.tested_probes()
 
 
 def test_projectile_nugget_flight_uses_retail_shell_speed_and_resolved_warhead():
