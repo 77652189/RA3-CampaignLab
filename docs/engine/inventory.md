@@ -8,7 +8,7 @@
 | 脚本条件 | **94%** | **100%** | 12 / 12 | 89 | 30 | 6 | 50 | 3 | 95% |
 | 物体模块 | **95%** | **95%** | 45 / 112 | 188 | 47 | 9 | 107 | 25 | 96% |
 | 武器效果 | **93%** | **95%** | 17 / 22 | 28 | 18 | 2 | 6 | 2 | 95% |
-| AI | **72%** | **71%** | 94 / 357 | 415 | 100 | 139 | 142 | 34 | 96% |
+| AI | **72%** | **71%** | 94 / 357 | 415 | 100 | 142 | 139 | 34 | 96% |
 
 ## 脚本动作
 
@@ -1102,9 +1102,9 @@
 | 未做 | `人格/AIPersonalityDefinition.ResourceNodeValueRemainingForExpansion` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 已对拍 | `人格/AIPersonalityDefinition.SecondsTillTargetsExpire` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |
 | 不涉及 | `人格/AIPersonalityDefinition.SkirmishTimeTillGreeting` | 1 | a4 a5 a7 | 纯表现（语音、视频、画面） |
-| 未做 | `人格/AIPersonalityDefinition.UnitBuilderEnemyNearbyDistance` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 未做 | `人格/AIPersonalityDefinition.UnitBuilderEnemyNearbyMultiplier` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 未做 | `人格/AIPersonalityDefinition.UnitBuilderOverallDefensivePreference` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
+| 推断 | `人格/AIPersonalityDefinition.UnitBuilderEnemyNearbyDistance` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 推断 | `人格/AIPersonalityDefinition.UnitBuilderEnemyNearbyMultiplier` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 推断 | `人格/AIPersonalityDefinition.UnitBuilderOverallDefensivePreference` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | `人格/DefaultTacticHomeBaseCriteria.PreferredNotBaseTypes` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | `人格/DefaultTacticHomeBaseCriteria.SortOrder` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 未做 | `人格/Filter.Exclude` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
