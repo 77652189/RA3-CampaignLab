@@ -19,7 +19,7 @@
 
 | 状态 | 部分 | 项 | 原版用量 | 关 | 说明 |
 |---|---|---|---|---|---|
-| 未做 | 物体模块 | `Behaviors/Physics` | 143 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 移动物理（坠落、弹跳、被击飞、倾倒）：模拟器走路按速度直走，没有物理；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
+| 未做 | 物体模块 | `Behaviors/Physics` | 143 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | RA3 的 Physics 只有击飞曲线、反弹、落地后倒地/起身、重力倍数（没有 Generals 的 Mass/摩擦/推挤），会动的战役模板全是默认字段（仅 6 个改 GravityMultiplier）。已测：落地后锁 38 帧再走移动令（engine_knock_probe stand / standlate，tests/test_meta_impact.py::test_physics_a_knocked_man_keeps_still_38_frames_after_landing_then_walks_his_order）；未测：落水/悬崖/出图即死、击飞和倒地时能否开火、反弹、坠机重力；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
 | 未做 | 物体模块 | `Behaviors/ProductionUpdateInfo` | 9 | a1 a4 a5 a6 a7 a9 | 完整配置盘点9用量/9模板均为空模块；schema无专属字段；模块专属可达操作及可观测接口待确认，不能用ProductionUpdate生产或ReplaceSelf展开smoke替代本模块对拍；例：AlliedConstructionYard, AlliedMCV |
 | 未做 | 物体模块 | `Behaviors/AssignSlavesTargetObjectSpecialPower` | 6 | a2 a4 a5 a7 a8 | 模拟器代码里没有这个名字；例：AlliedWarFactory, JapanNavalYard |
 | 未做 | 物体模块 | `Behaviors/BezierProjectile` | 6 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 已核（11-08）：模拟器没有这个效果（开火按每秒伤害直接扣血，没有弹体）；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
