@@ -1493,10 +1493,16 @@ _index = None
 
 def _xml(template, own=None):
     """The template's own XML: a mission's, else its GameObject in the file the SageXML index names (a file may hold
-    several, AlliedAntiInfantryVehicle.xml the Riptide's two), else the file of its own name."""
+    several, AlliedAntiInfantryVehicle.xml the Riptide's two), else the file of its own name. A mission file may also
+    hold another GameObject (engine_dynamics: a copy of BaseVehicle the unit inherits): the unit's text leaves the
+    others out, and a template defined only inside a mission file is that GameObject."""
     global _index
     if (own or {}).get(template):
-        return own[template]
+        return _own_only(own[template], template)
+    for text in (own or {}).values():
+        for m in re.finditer(r'<GameObject\b.*?</GameObject>', text or '', re.S):
+            if re.search(rf'\bid="{re.escape(template)}"', re.match(r'<GameObject\b[^>]*>', m.group(0)).group(0), re.I):
+                return m.group(0)
     if _index is None:
         _index = {k.lower(): v for k, v in json.load(open(INDEX, encoding='utf-8')).items()} \
             if os.path.exists(INDEX) else {}
@@ -1508,6 +1514,14 @@ def _xml(template, own=None):
             if re.search(rf'\bid="{re.escape(template)}"', m.group(0)[:2000], re.I):
                 return m.group(0)
     return retail_xml(template)
+
+
+def _own_only(text, template):
+    """A mission unit's file without the GameObjects that are not `template` (its includes, weapons and the rest kept)."""
+    def keep(m):
+        head = re.match(r'<GameObject\b[^>]*>', m.group(0)).group(0)
+        return m.group(0) if re.search(rf'\bid="{re.escape(template)}"', head, re.I) else ''
+    return re.sub(r'<GameObject\b.*?</GameObject>', keep, text, flags=re.S) if text.count('<GameObject') > 1 else text
 
 
 def parent(xml, template=None):

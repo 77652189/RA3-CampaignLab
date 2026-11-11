@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DOCS = ROOT / 'docs'
 ADR = DOCS / 'adr'
 
-ROOT_DOCS = {'README.md', 'HANDOFF.md', 'CLAUDE.md', 'AGENTS.md'}   # CLAUDE.md: how every session here spends quota (2026-10-30); AGENTS.md: points Codex at CLAUDE.md (2026-11-09)
+ROOT_DOCS = {'README.md', 'HANDOFF.md', 'CLAUDE.md', 'AGENTS.md'}   # AGENTS.md: the one rule file for every harness (red lines + map, 2026-11-10); CLAUDE.md: imports it + Claude-only mechanics
 ACTIVE_DOCS = {'architecture.md', 'issues.md', 'plan.md', 'requirements.md'}
 
 HARD_CONSTRAINTS = [
@@ -110,3 +110,19 @@ def test_engine_docs_are_the_reviewed_set():
 def test_local_data_stays_ignored():
     rules = (ROOT / '.gitignore').read_text(encoding='utf-8').splitlines()
     assert '/work/' in rules
+
+
+def test_agents_md_is_rules_and_map_only():
+    """AGENTS.md is the one rule file every harness reads (user 2026-11-10): red lines + map, kept short;
+    CLAUDE.md only imports it and adds Claude-only mechanics; every repo path the map names exists."""
+    agents = (ROOT / 'AGENTS.md').read_text(encoding='utf-8')
+    assert len(agents.splitlines()) <= 60, 'AGENTS.md over 60 lines: move area know-how into that area\'s file'
+    for head in ('## 红线', '## 提交', '## 干活', '## 地图'):
+        assert head in agents, head
+    claude = (ROOT / 'CLAUDE.md').read_text(encoding='utf-8').splitlines()
+    assert claude[0].strip() == '@AGENTS.md'
+    assert len(claude) <= 15, 'CLAUDE.md is an adapter; rules go in AGENTS.md'
+    paths = re.findall(r'`((?:docs|experimental|tests)/[^`\s<*]+?\.(?:md|py))', agents)
+    assert paths, 'AGENTS.md map names no repo paths'
+    for p in paths:
+        assert (ROOT / p).is_file(), p

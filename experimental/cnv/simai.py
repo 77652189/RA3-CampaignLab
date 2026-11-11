@@ -182,6 +182,7 @@ class Brain:
                                        micro=h.data_of('tactics micro'), fight=self.fight,
                                        houses=lambda ai, u: self.garrisons(u, False),
                                        defenses=lambda ai, u: self.garrisons(u, True))
+        self.tactics.rng = random.Random(h.seed)    # state 2's RandomTargetScoreModifier / TimeToKeepTarget
         self.targets = tg.TargetsBlock(h.data_of('targets'), self.active, lambda ai, f: self.view,
                                        lambda ai, st: self.home, home=self.home, base_of=self.base_of,
                                        held=self.tactics.held)
@@ -434,7 +435,11 @@ class Brain:
         the firing rule); vision = its VisionRange alone (Body.sight, 0x725c80; not the shroud clearing range)."""
         foes = [b for b in self.sim.living()
                 if not b.scenery and b.owner != self.player and b.owner in self.view.enemies]
-        return self.fighters([u.body for u in team.members if u.body.alive]), self.fighters(foes)
+        live = [u for u in team.members if u.body.alive]
+        mem = self.fighters([u.body for u in live])
+        for f, u in zip(mem, live):
+            f.unit = u                          # the member it stands for (state 2's pick, Crush, ReverseMove)
+        return mem, self.fighters(foes)
 
     def fighters(self, bodies):
         """Bodies as tactics.Fighter (fight's rule: rate by Sim.can_hit and the armour, vision = VisionRange)."""
@@ -479,6 +484,18 @@ class Brain:
         sh = self.sim.blocks(b) if b else None
         return sh[2] if sh and len(sh) == 3 else 40.0
 
+    def aim_of(self, b, reach):
+        """The unit's current target for the micro (0x706e20 -> 0x852b70; RUSH_ATTACK reads it): its ordered or
+        chased enemy, else the nearest living enemy within its longest weapon range (INFERRED: what the world's
+        fire scan takes; the simulator keeps no per-unit target)."""
+        for t in (b.goal, getattr(b, 'chase', None)):
+            if isinstance(t, sim.Body) and t.alive and t.owner in self.view.enemies:
+                return t
+        near = [(math.hypot(t.x - b.x, t.y - b.y), k, t) for k, t in enumerate(self.sim.living())
+                if not t.scenery and t.owner in self.view.enemies]
+        near = [n for n in near if n[0] - n[2].radius <= reach]
+        return min(near)[2] if near else None
+
     def micro_team(self, ai, frame, team):
         mc, sp = self.host.mod['micro'], self.host.mod['specials']
         powers = self.host.data_of('unit powers')
@@ -486,8 +503,10 @@ class Brain:
         for u in team.members:
             b = u.body
             reach = max((w.get('range') or 0.0 for w in b.weapons), default=0.0)
+            t = self.aim_of(b, reach)
             units.append(mc.Unit(b.name, (b.x, b.y), b.hp, b.max_hp,
                                  [powers[c] for c in self.host.command_set(b.template) if c in powers],
+                                 target=None if t is None else sp.Thing((t.x, t.y), t.kinds, 0, name=t.name),
                                  weapon_range=reach, cost=self.host.cost(b.template)))
         enemies = [sp.Thing((t.x, t.y), t.kindof, int(t.value), name=str(t.id)) for t in self.view.things
                    if t.owner in self.view.enemies]
@@ -807,6 +826,8 @@ class SimAI:
                     self.data_of('targets').add_text(a[1])                        # (missions/ainamed_bench.py)
                 if 'AIMicroManagerData' in a[1] and 'targets' in self.blocks:      # a probe's own micro manager
                     self.data_of('tactics micro').add_text(a[1])                  # (missions/airetreat_bench.py)
+                    self.data_of('micro').update(self.mod['micro'].load_micro(texts=[a[1]]))   # its unit powers'
+                    #                                                              rounds too (aimicro_bench _spow_xml)
 
     def attach(self):
         """Brains for the players the mission has handed to the AI since the last call."""

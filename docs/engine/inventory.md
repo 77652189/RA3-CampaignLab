@@ -4,11 +4,11 @@
 
 | 部分 | 按用量已对拍 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|
-| 脚本动作 | **89%** | 451 | 109 | 31 | 194 | 117 | 91% |
+| 脚本动作 | **89%** | 451 | 110 | 30 | 194 | 117 | 91% |
 | 脚本条件 | **94%** | 89 | 27 | 5 | 54 | 3 | 94% |
 | 物体模块 | **89%** | 185 | 34 | 7 | 123 | 21 | 90% |
 | 武器效果 | **64%** | 25 | 13 | 1 | 9 | 2 | 76% |
-| AI | **70%** | 415 | 96 | 135 | 150 | 34 | 88% |
+| AI | **70%** | 415 | 97 | 134 | 150 | 34 | 88% |
 
 ## 脚本动作
 
@@ -16,7 +16,7 @@
 |---|---|---|---|
 | 已对拍 | `ENABLE_SCRIPT` | 5727 | 引擎模型核心；台上量过、测试对拍：checks/engine_script.py |
 | 已对拍 | `SET_MILLISECOND_TIMER` | 4153 | 引擎模型核心；台上量过、测试对拍：checks/engine_acquire.py |
-| 已对拍 | `SET_FLAG` | 4105 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiopen.py |
+| 已对拍 | `SET_FLAG` | 4105 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aimicro.py |
 | 已对拍 | `ALLOW_DISALLOW_ONE_BUILDING` | 3466 | tests/test_simbench.py::test_a_ban_holds_the_queue_and_does_not_cancel |
 | 已对拍 | `PLAYER_LOCK_PLAYER_TECH` | 1887 | tests/test_simbench.py::test_protocol_a_computer_player_spends_unless_locked |
 | 已对拍 | `DISABLE_SCRIPT` | 1099 | 引擎模型核心；台上量过、测试对拍：checks/engine_scripts6.py |
@@ -46,7 +46,7 @@
 | 已对拍 | `UNIT_IDLE_FOR_SECONDS` | 237 | tests/test_simbench.py::test_scripts1_idle_for_seconds_drops_the_move |
 | 已对拍 | `TEAM_TRANSFER_TO_PLAYER` | 235 | tests/test_simbench.py::test_scripts1_a_team_handed_over_drops_its_move |
 | 已对拍 | `NAMED_TRANSFER_OWNERSHIP_PLAYER` | 231 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_invuln.py |
-| 已对拍 | `INCREMENT_COUNTER` | 229 | 引擎模型核心；台上量过、测试对拍：checks/engine_aiopen.py |
+| 已对拍 | `INCREMENT_COUNTER` | 229 | 引擎模型核心；台上量过、测试对拍：checks/engine_aimicro.py |
 | 未做 | `UNIT_CHANGE_OBJECT_STATUS:SHROUD_REVEAL_TO_ALL` | 218 | 状态位 SHROUD_REVEAL_TO_ALL 只记下来 |
 | 已对拍 | `PLAYER_SET_MAX_PLAYER_POWER_POINTS` | 206 | tests/test_simbench.py::test_protocol_set_points_follows_the_programs_rule |
 | 已对拍 | `NAMED_KILL` | 204 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aitargetpick.py |
@@ -139,7 +139,7 @@
 | 不涉及 | `SHOW_MILITARY_CAPTION` | 58 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
 | 已对拍 | `NAMED_FOLLOW_WAYPOINTS_EXACT` | 56 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_waypath.py |
 | 未做 | `UNIT_EXECUTE_SEQUENTIAL_SCRIPT` | 56 | Sim.act / Sim.cond 不认识 |
-| 推断 | `NAMED_SET_MAX_HEALTH` | 53 | Sim.act / Sim.cond 有分支；台上量过（checks/engine_missile.py），没有测试跑这个台子 |
+| 已对拍 | `NAMED_SET_MAX_HEALTH` | 53 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_maxhealth.py |
 | 不涉及 | `TOGGLE_RADAR_UI` | 53 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `DISPLAY_TUTORIAL_TEXT` | 52 | 纯表现（名字规则） |
 | 已对拍 | `PLAY_SOUND_EFFECT` | 51 | 只记进时间线（sim.SHOWN）；台上量过、测试对拍：checks/engine_dialog.py |
@@ -239,7 +239,7 @@
 | 未做 | `UNIT_STOP_SEQUENTIAL_SCRIPT` | 16 | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `NAMED_EXIT_BUILDING` | 15 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_garrison.py |
 | 未做 | `TEAM_UPGRADE` | 15 | Sim.act / Sim.cond 不认识 |
-| 已对拍 | `UNIT_SET_HEALTH` | 15 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aipullback.py |
+| 已对拍 | `UNIT_SET_HEALTH` | 15 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aimicro.py |
 | 已对拍 | `GIVE_PLAYER_UPGRADE` | 14 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_tech.py |
 | 推断 | `MARK_MISSION_OBJECTIVE_COMPLETED` | 14 | 引擎模型核心 |
 | 不涉及 | `MOVIE_PLAY_FULLSCREEN` | 14 | 纯表现（名字规则） |
@@ -470,12 +470,12 @@
 
 | 状态 | 名字 | 用量 | 说明 |
 |---|---|---|---|
-| 已对拍 | `FLAG` | 5099 | 引擎模型核心；台上量过、测试对拍：checks/engine_aiopen.py |
+| 已对拍 | `FLAG` | 5099 | 引擎模型核心；台上量过、测试对拍：checks/engine_aimicro.py |
 | 已对拍 | `TIMER_EXPIRED` | 3917 | 引擎模型核心；台上量过、测试对拍：checks/engine_acquire.py |
 | 已对拍 | `CONDITION_TRUE` | 2947 | 引擎模型核心；台上量过、测试对拍：checks/engine_scripts6.py |
 | 已对拍 | `NAMED_DESTROYED` | 922 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_immortal.py |
 | 已对拍 | `PLAYER_HAS_OBJECT_COMPARISON` | 628 | tests/test_simbench.py::test_scripts2_a_relation_is_one_way_and_turns_back |
-| 已对拍 | `COUNTER` | 577 | 引擎模型核心；台上量过、测试对拍：checks/engine_aiopen.py |
+| 已对拍 | `COUNTER` | 577 | 引擎模型核心；台上量过、测试对拍：checks/engine_aimicro.py |
 | 已对拍 | `HAS_FINISHED_AUDIO` | 495 | tests/test_simbench.py::test_audio_a_dubbed_line_is_done_its_length_after_it_is_heard |
 | 已对拍 | `PLAYER_IS_HUMAN_OR_AI_PERSONALITY` | 470 | tests/test_simbench.py::test_scripts1_conditions_as_the_bench |
 | 已对拍 | `HAS_FINISHED_VIDEO` | 422 | tests/test_simbench.py::test_video_a_radar_clip_is_done_after_its_length_full_screen_never |
@@ -593,7 +593,7 @@
 | 不涉及 | `Draws/DynamicsDraw` | 138 (857) | 纯表现（Draws）；例：AlliedAirField_Collapse, AlliedAntiAirShip_Collapse |
 | 已对拍 | `Behaviors/EnableDynamicsCollide` | 137 (154) | tests/test_simbench_c.py::test_enable_dynamics_collide_a_lantern_without_it_is_crushed_and_gone_at_the_same_frames；例：BaseSimulatedProp, AM_Boat01 |
 | 已对拍 | `AI/AIUpdate` | 136 (237) | tests/test_simbench.py::test_r8_idle_within_sight_walks_up_fires_and_comes_back；例：AlliedSatelliteSweepShroudRevealer, AlliedSuperWeaponEffect |
-| 未做 | `Behaviors/DynamicsUpdate` | 113 (154) | 模拟器代码里没有这个名字；例：AlliedDynamicsImpact, AlliedSatelliteSweepShroudRevealer |
+| 未做 | `Behaviors/DynamicsUpdate` | 113 (154) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_dynamics.py），可能用别的名字实现了；例：AlliedDynamicsImpact, AlliedSatelliteSweepShroudRevealer |
 | 未做 | `Behaviors/StancesBehavior` | 108 (148) | 已核（11-08）：模拟器没有这个效果（没有姿态）；例：AlliedSatelliteSweepShroudRevealer, AlliedAirfield |
 | 已对拍 | `Body/ImmortalBody` | 91 (111) | tests/test_simbench_c.py::test_immortal_damage_stops_at_one_hp_kill_is_damage_and_delete_removes；例：BaseRock, CPDummyTarget |
 | 未做 | `Behaviors/LevelUpUpgrade` | 88 (124) | 模拟器代码里没有这个名字；例：AlliedSatelliteSweepShroudRevealer, AlliedAntiAirShip |
@@ -830,8 +830,8 @@
 | 已对拍 | `微操/AIMicroManagerData.EnterGarrisons` | 84 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aigarrison.py |
 | 未做 | `造兵/BuildState.Difficulty` | 84 | AI 模型代码里没有这个名字 |
 | 未做 | `造兵/BuildState.State` | 84 | AI 模型代码里没有这个名字 |
-| 推断 | `微操/AIMicroManagerData.UseSpecialPowers` | 83 | 台上量过（engine_aimicro：aimicspon 开 两个武士 s41 冲锋，aimicspoff 关 一直没冲、s51 前被打死，脚本按的对照照样冲），私有模型测试对拍；模拟器没跑出（Hunt 队 s21 就把武士带走、没交火；微操块读不到探针自写的微操数据） |
-| 推断 | `微操/AIMicroManagerData.EngageHostileTargets` | 82 | AI 模型代码里读了这个名字 |
+| 已对拍 | `微操/AIMicroManagerData.UseSpecialPowers` | 83 | 台上量过（engine_aimicro：aimicspon 开 两个武士 s41 冲锋，aimicspoff 关 一直没冲、s51 前被打死，脚本按的对照照样冲）、测试对拍 tests/test_simai.py（模拟器读进探针自写的微操数据：开的想冲、关的从不冲；技能本身模拟器没接，只记"想用"） |
+| 推断 | `微操/AIMicroManagerData.EngageHostileTargets` | 82 | 开着时台上 aimicspon 的 Hunt 队转打路上看见的征召兵，模拟器加了状态 2 逐人分配后也打（tests/test_simai.py）；关掉的对照没上台，私有模型里的打分式没读（按"杀死所需秒数"推断） |
 | 已对拍 | `微操/AIMicroManagerData.EngagePassiveTargets` | 82 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_airetreat.py |
 | 推断 | `开局/Order.Account` | 81 | AI 模型代码里读了这个名字 |
 | 已对拍 | `开局/Order.Deposit` | 81 | docs/engine/aiopen.md#开局怎么抽、哪些单子会作废（OpeningMove Weight / Difficulty，第 89～90 轮）（aiom15：带 Deposit 2000 照造、晚 4 秒） |
@@ -991,7 +991,7 @@
 | 推断 | `微操/SpecificSpecialPowerDelay.TogglePowerSubType` | 6 | AI 模型代码里读了这个名字 |
 | 推断 | `战术/Tactic.Tactic=ExactExpansion` | 6 | AI 模型代码里读了这个名字 |
 | 推断 | `战术/Tactic.Tactic=GarrisonBuilding` | 6 | AI 模型代码里读了这个名字 |
-| 已对拍 | `战术/Tactic.Targetless` | 6 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aistate.py |
+| 已对拍 | `战术/Tactic.Targetless` | 6 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aimicro.py |
 | 未做 | `战略状态/AIStrategicStateDefinition.PathfindingCheckType` | 6 | AI 模型代码里没有这个名字 |
 | 推断 | `组队招人/TeamTemplate.Priority=DEFENSE_HIGH` | 6 | AI 模型代码里读了这个名字 |
 | 未做 | `组队招人/TeamTemplate.RequireCanAttackTarget` | 6 | AI 模型代码里没有这个名字 |

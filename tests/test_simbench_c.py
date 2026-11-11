@@ -126,6 +126,34 @@ def test_enable_dynamics_collide_a_lantern_without_it_is_crushed_and_gone_at_the
     assert len({row % 1000 for row in rows}) == 1, rows      # the three lanes alike, as on the bench
 
 
+def test_dynamics_update_a_hammer_without_it_crushes_and_goes_round_as_the_retail_one():
+    """engine_dynamics a / b, bench 11-10: the retail Hammer, a copy whose BaseVehicle copy lacks DynamicsUpdate and the
+    copy with it -- the three rows identical every second. a: conscript crushed at frame 43, dying 127, tank at its
+    goal from 92; b: the Guardian never crushed, the tank round it, at its goal from 97. The simulator (no such module;
+    the copies' crush levels read from their own GameObject in a file holding two -- simunits._own_only) gives the
+    three lanes alike; its frames are the known no-acceleration bands (test_simbench.py, crush)."""
+    for build, check in (('engine_dynamics', 'a'), ('engine_dynamics_b', 'b')):
+        s = _sim_run(build, check, 50.0)
+        frames, *rows = s.series[-1][1]
+        assert len(rows) == 3 and len(set(rows)) == 1, (check, rows)
+        row = rows[0]
+        undestroyed, dying, at_goal = row % 1000, row // 1000 % 1000, row // 1000000
+        if check == 'a':
+            assert 39 <= undestroyed <= 55 and abs(dying - 127) <= 2, row
+        else:
+            assert undestroyed == frames and dying == 0, row
+        assert 80 <= frames - at_goal + 1 <= 100, row
+
+
+def test_a_mission_file_holding_two_game_objects_gives_each_its_own_crush_levels():
+    import build
+    import simunits
+    m, _, _ = build.resolve('engine_dynamics', 'a')
+    own = {u.id: u.xml for u in m.units}
+    assert simunits.crush('CNVHammerNoDyn', own) == (20, 20)        # its own CrusherInfo, not its base copy's 10
+    assert simunits.crush('CNVBaseVehicleNoDyn', own) == (10, 20)   # the base copy, found inside the unit's file
+
+
 def test_topple_the_legacy_loop_still_drives_through_and_removes_the_props():
     import build
     import sim
