@@ -6,8 +6,8 @@
 |---|---|---|---|---|---|---|---|
 | 脚本动作 | **90%** | 451 | 119 | 21 | 194 | 117 | 91% |
 | 脚本条件 | **94%** | 89 | 28 | 5 | 53 | 3 | 94% |
-| 物体模块 | **92%** | 186 | 37 | 7 | 119 | 23 | 93% |
-| 武器效果 | **76%** | 25 | 14 | 1 | 8 | 2 | 77% |
+| 物体模块 | **92%** | 186 | 37 | 8 | 118 | 23 | 93% |
+| 武器效果 | **76%** | 25 | 14 | 2 | 7 | 2 | 78% |
 | AI | **71%** | 415 | 98 | 137 | 146 | 34 | 95% |
 
 ## 脚本动作
@@ -39,7 +39,7 @@
 | 不涉及 | `SET_MISSION_HOT_SPOT_VISIBILITY` | 300 | 纯表现（名字规则） |
 | 已对拍 | `MOVE_TEAM_TO` | 298 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aixfer.py |
 | 已对拍 | `CREATE_NAMED_ON_TEAM_AT_WAYPOINT` | 291 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acquire.py |
-| 已对拍 | `NAMED_ATTACK_NAMED` | 271 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attack.py |
+| 已对拍 | `NAMED_ATTACK_NAMED` | 271 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attach.py |
 | 已对拍 | `CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION` | 259 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts7.py |
 | 已对拍 | `MOVE_CAMERA_TO` | 255 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_camera.py |
 | 不涉及 | `OBJECT_CREATE_RADAR_EVENT` | 254 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
@@ -229,7 +229,7 @@
 | 未做 | `REDALERT_DISABLE_THREAT_LEVEL_BONUS` | 20 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `UNIT_EXECUTE_SEQUENTIAL_SCRIPT_COPY` | 20 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `CAMERA_FOLLOW_NAMED` | 19 | 纯表现（名字规则）；Sim.act / Sim.cond 有分支 |
-| 已对拍 | `COUNTER_MATH_COUNTER` | 19 | 引擎模型核心；台上量过、测试对拍：checks/engine_contained.py |
+| 已对拍 | `COUNTER_MATH_COUNTER` | 19 | 引擎模型核心；台上量过、测试对拍：checks/engine_attach.py |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_SmokeBombSpecialPower` | 19 | 只记进时间线，没有效果 |
 | 未做 | `PLAYER_DISABLE_BASE_CONSTRUCTION` | 16 | Sim.act / Sim.cond 不认识 |
 | 未做 | `PLAYER_ENABLE_UNIT_CONSTRUCTION` | 16 | Sim.act / Sim.cond 不认识 |
@@ -308,7 +308,7 @@
 | 不涉及 | `PATH_MUSIC_ENABLE_DYNAMIC_SYSTEM` | 7 | 纯表现（名字规则） |
 | 推断 | `TEAM_DELETE_LIVING` | 7 | Sim.act / Sim.cond 有分支 |
 | 已对拍 | `UNIT_CHANGE_OBJECT_STATUS:NON_AUTOACQUIRABLE` | 7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_stasis.py |
-| 已对拍 | `UNIT_CHANGE_OBJECT_STATUS:UNATTACKABLE` | 7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_crush.py |
+| 已对拍 | `UNIT_CHANGE_OBJECT_STATUS:UNATTACKABLE` | 7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attach.py |
 | 未做 | `ATTACK_MOVE_TEAM_TO_NEAREST_OBJECT_OF_TYPE_OF_PLAYER` | 6 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `DISABLE_COUNTDOWN_TIMER_DISPLAY` | 6 | 纯表现（名字规则） |
 | 未做 | `NAMED_FACE_WAYPOINT` | 6 | Sim.act / Sim.cond 不认识 |
@@ -482,7 +482,7 @@
 | 已对拍 | `NAMED_INSIDE_AREA` | 413 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aixfer.py |
 | 已对拍 | `SKIRMISH_PLAYER_HAS_UNITS_IN_AREA` | 410 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_area.py |
 | 已对拍 | `NAMED_OWNED_BY_PLAYER` | 397 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_garrison.py |
-| 已对拍 | `NAMED_NOT_DESTROYED` | 374 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_contained.py |
+| 已对拍 | `NAMED_NOT_DESTROYED` | 374 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attach.py |
 | 已对拍 | `PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA` | 278 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aistate.py |
 | 已对拍 | `NAMED_ATTACKED_BY_PLAYER` | 150 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attack.py |
 | 已对拍 | `UNIT_HAS_OBJECT_STATUS` | 142 | tests/test_simbench.py::test_scripts1_conditions_as_the_bench |
@@ -652,7 +652,7 @@
 | 未做 | `Behaviors/HealCrateCollide` | 4 (4) | 模拟器代码里没有这个名字；例：SS_SecretFile1, SS_SecretFile2 |
 | 未做 | `Behaviors/ParkingPlaceBehavior` | 4 (4) | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedAntiStructureShip |
 | 未做 | `Behaviors/SpecialDisguiseUpdate` | 4 (4) | 模拟器代码里没有这个名字；例：AlliedAntiVehicleVehicleTech3, AlliedInfiltrationInfantry |
-| 未做 | `Behaviors/AttachUpdate` | 3 (24) | 已核（11-08）：模拟器没有这个效果（没有附着）；例：ChronoTargetMarker, AlliedAirfieldRepairDrone |
+| 推断 | `Behaviors/AttachUpdate` | 3 (24) | 部分：engine_attach a验证瞬移/跟随/父子状态；只支持简单直接附着模块，死亡/维修/吸血/解除/自主扫描未建模；例：ChronoTargetMarker, AlliedAirfieldRepairDrone |
 | 未做 | `Behaviors/StealthDetectorUpdate` | 3 (8) | 已核（11-08）：模拟器没有这个效果（没有反隐）；例：AlliedScoutInfantry, A08_Dog1 |
 | 未做 | `Behaviors/SlaughterHordeContain` | 3 (6) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_aipullback.py），可能用别的名字实现了；例：AlliedAntiStructureShip, S08_AlliedAntiStructureShip |
 | 未做 | `AI/AnimalAIUpdate` | 3 (4) | 模拟器代码里没有这个名字；例：BaseCivilian, CivilianFemale1 |
@@ -662,7 +662,7 @@
 | 未做 | `Behaviors/SecondaryObjectListenerModule` | 3 (4) | 模拟器代码里没有这个名字；例：AlliedBaseDefense, AlliedAntiAirVehicleTech1 |
 | 未做 | `Behaviors/StructurePlacementBehavior` | 3 (4) | 模拟器代码里没有这个名字；例：AlliedRefinery, AlliedRefinery_NoHarvester |
 | 未做 | `Behaviors/HitReactionBehavior` | 3 (3) | 模拟器代码里没有这个名字；例：AlliedAntiInfantryInfantry, JapanEmperor |
-| 未做 | `Behaviors/LiftObjectUpdate` | 3 (3) | 模拟器代码里没有这个名字；例：AlliedBaseDefense, AlliedAntiAirVehicleTech1 |
+| 未做 | `Behaviors/LiftObjectUpdate` | 3 (3) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_lift.py），可能用别的名字实现了；例：AlliedBaseDefense, AlliedAntiAirVehicleTech1 |
 | 未做 | `Behaviors/ReturnToProducerSpecialPower` | 3 (3) | 模拟器代码里没有这个名字；例：AlliedAntiGroundAircraft, AlliedFighterAircraft |
 | 未做 | `Behaviors/SubStructureBehavior` | 2 (11) | 模拟器代码里没有这个名字；例：AlliedConstructionYardRepairBay, AlliedCrane |
 | 未做 | `Behaviors/AttributeCrateCollide` | 2 (3) | 模拟器代码里没有这个名字；例：SS_SecretFile1, SS_SecretFile2 |
@@ -765,12 +765,12 @@
 | 已对拍 | `AttributeModifierNugget` | 20 | tests/test_simbench_c.py::test_weaponfx_predictions_and_finite_bursts；例：NanoHiveSwarmEffectTrigger, JapanCommandoSoftLanding |
 | 已对拍 | `ParalyzeNugget` | 11 | tests/test_simbench_c.py::test_weapon_first_hit_is_observed_one_frame_after_the_order_script；例：JapanAntiVehicleInfantryTech3LockDownGun, AlliedAntiStructureShipEMPCruiseMissleWarhead |
 | 不涉及 | `TintObjectsNugget` | 9 | 纯表现：Color及Pre/Sustained/PostColorTime、Frequency/Amplitude仅控制染色动画；engine_tint pair实测2/90/2/90，独立DamageNugget解释全部伤害，test_simbench_c重放；不声称像素已验证；例：SovietCommandoCallBombingRun, AlliedCommandoAttachWeapon |
-| 未做 | `ActivateLiftObjectNugget` | 6 | 模拟器代码里没有这个名字；例：JapanCommandoTech1PsyonicCrush, JapanCommandoTech1AirborneKiller |
+| 未做 | `ActivateLiftObjectNugget` | 6 | engine_lift两轮确认需LiftObjectUpdate且SoftLanding影响清位，但Lifetime/续期释放规则未解释；保留诊断、不登记已对拍；例：JapanCommandoTech1PsyonicCrush, JapanCommandoTech1AirborneKiller |
 | 已对拍 | `LineDamageNugget` | 6 | tests/test_simbench_c.py::test_weaponfx_predictions_and_finite_bursts；例：SovietCommandoSniperRifle, AAAVT1_SovietCommandoSniperRifle |
 | 推断 | `SpecialPowerNugget` | 6 | 部分：engine_spn a实测自身ARMOR派发、缺模块/类型过滤对照；仅直接单发零冷却自制技能，原版六处的OCL/模块/变装及升级门槛未接通，不登记整项已对拍；例：SovietCommandoCallBombingRun, AlliedAntiVehicleVehicleTech1TargetPainter |
 | 未做 | `FireOnObjectsNugget` | 5 | 未实现：子武器派发条件与空间锚点尚未解释；失败诊断不作为已对拍依据；例：PlayerPowerJapanEmperorsResolveWeapon_L1, PlayerPowerJapanEmperorsResolveWeapon_L2 |
 | 已对拍 | `SecondaryDamageNugget` | 5 | tests/test_simbench_c.py::test_secondary_damage_delivers_one_amount_at_hit_without_damaging_health；例：MountRushmoreHeadEyeWeapon, AlliedCryoSatelliteLvl1 |
-| 未做 | `AttachNugget` | 4 | 模拟器代码里没有这个名字；例：AlliedCommandoAttachWeapon, SovietAntiVehicleInfantryMagneticBombAttachWeapon |
+| 推断 | `AttachNugget` | 4 | 部分：engine_attach a实测直接单发、父子状态、随父移动及目标状态/类型拒绝；仅零半径简单模块，原版复杂筛选/维修/吸血/解除/弹体未接通，不登记整项已对拍；例：AlliedCommandoAttachWeapon, SovietAntiVehicleInfantryMagneticBombAttachWeapon |
 | 已对拍 | `StripMaxHealthPercentNugget` | 3 | tests/test_simbench_c.py::test_strip_max_health_percent_uses_maximum_at_full_and_half_health；例：JapanCommandoTech1PsyonicCrush, AAAVT1_JapanCommandoTech1PsyonicCrush |
 | 已对拍 | `ActivateLinearDamageNugget` | 2 | tests/test_simsweep.py::test_sweep_a_killed_shooters_line_stops_with_it_and_the_second_ones_rows_are_hit；例：AlliedAntiNavalScoutSonar, AlliedAntiNavalScoutSonarForBridges |
 | 已对拍 | `DamageContainedNugget` | 2 | tests/test_simbench_c.py::test_damage_contained_limits_eligible_passengers_without_damaging_the_others；例：SovietAntiInfantryInfantryMolotovCocktailWarhead, Weapon_DesolatorBombFieldUpdate |
