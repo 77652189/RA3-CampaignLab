@@ -24,6 +24,11 @@ Bench 2026-11-10 (both PASS; the three rows identical every second): a (CampDynA
 (CampDynBB_mcp_1110_173513) 613000709 at frame 709 -- each Guardian alive all along, never dying, each Hammer round it
 and at its goal from 97. Without DynamicsUpdate a vehicle crushes, goes round and arrives as with it.
 Simulated: tests/test_simbench_c.py::test_dynamics_update_a_hammer_without_it_crushes_and_goes_round_as_the_retail_one.
+
+  c  an Uprising fling prop (SS_FlingContainer01) between a Hammer and an enemy conscript: does the flung prop hurt.
+     11-10: it does not build -- the map compile stops (Critical: GameObject:SS_FlingContainer01 inherits the
+     non-existing BaseClientFlingableProp). The 44 SS_Fling* campaign templates are Uprising's alone: an RA3 mod
+     cannot place them (inventory: `...:起义专有`, 不涉及; retailmodules.orphaned). Kept as that evidence; never PASSes.
 """
 import os
 import re
@@ -72,7 +77,9 @@ def _n(part):
 
 
 def mission(which='a'):
-    m = Mission(name=f'CampDyn{which.upper()}', map=festival, units=[hammer_copy(False), hammer_copy(True)], facts={})
+    if which == 'c':
+        return fling_mission()
+    m =Mission(name=f'CampDyn{which.upper()}', map=festival, units=[hammer_copy(False), hammer_copy(True)], facts={})
     for k, (tank, dy) in TANKS.items():
         m.put(tank, 'west field', -200.0, dy, angle=0.0, role=f'tank {k}', name=_n(f'Tank {k}'))
         m.put(TARGETS[which], 'west field', 0.0, dy, angle=180.0, side='s1', role=f'target {k}', name=_n(f'Target {k}'))
@@ -83,18 +90,27 @@ def dyn_test(m, which='a'):
     t = Test()
     p1 = m.player('p1')
     x, y = m.site('west field')[:2]
-    for k, (_, dy) in TANKS.items():
-        t.waypoints[f'Test Goal {k}'] = (x + 200.0, y + dy)
-        t.areas[f'Test Goal {k}'] = square(x + 200.0, y + dy, 40.0)
+    lanes = {1: TANKS[1]} if which == 'c' else TANKS
+    gx = -20.0 if which == 'c' else 200.0      # c: the tank stops past the prop, short of the man (only the prop hits)
+    for k, (_, dy) in lanes.items():
+        t.waypoints[f'Test Goal {k}'] = (x + gx, y + dy)
+        t.areas[f'Test Goal {k}'] = square(x + gx, y + dy, 40.0)
     start = [('MAP_REVEAL_ALL_PERM', p1), ('SET_MILLISECOND_TIMER', 'Test Go', 1.0)]
-    start += [('UNIT_SET_STANCE', _n(f'{w} {k}'), HOLD_FIRE) for k in TANKS for w in ('Tank', 'Target')]
+    start += [('UNIT_SET_STANCE', _n(f'{w} {k}'), HOLD_FIRE) for k in lanes for w in ('Tank', 'Target')]
     t.scripts.append(Script('Test - start', [], start))
-    go = [('MOVE_NAMED_UNIT_TO', _n(f'Tank {k}'), f'Test Goal {k}') for k in TANKS]
+    go = [('MOVE_NAMED_UNIT_TO', _n(f'Tank {k}'), f'Test Goal {k}') for k in lanes]
     t.scripts.append(Script('Test - go', [('TIMER_EXPIRED', 'Test Go')], go + [('SET_FLAG', 'Test Going', 1)]))
     going = ('FLAG', 'Test Going', 1)
     t.counters.append(('CNV_Dyn_Frames', '帧数'))
     t.scripts.append(Script('Test - frames', [going], [('INCREMENT_COUNTER', 1, 'CNV_Dyn_Frames')], once=False))
-    for k in TANKS:
+    if which == 'c':
+        t.counters.append(('CNV_Dyn_Health', '血量'))
+        t.scripts.append(Script('Test - health', [], [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', _n('Target 1'),
+                                                       'CNV_Dyn_Health')], once=False))
+        t.counters.append(('CNV_Dyn_Prop', '道具'))
+        t.scripts.append(Script('Test - prop', [going, ('NAMED_NOT_DESTROYED', _n('Prop'))],
+                                [('INCREMENT_COUNTER', 1, 'CNV_Dyn_Prop')], once=False))
+    for k in lanes:
         target, tank = _n(f'Target {k}'), _n(f'Tank {k}')
         t.counters.append((f'CNV_Dyn_Row{k}', f'行{k}'))
         for j, (cond, step) in enumerate([(('NAMED_NOT_DESTROYED', target), 1), (('NAMED_DYING', target), 1000),
@@ -106,5 +122,19 @@ def dyn_test(m, which='a'):
     return t
 
 
-MISSION = {'engine_dynamics': mission, 'engine_dynamics_b': lambda: mission('b')}
-CHECKS = {'engine_dynamics': {'a': dyn_test}, 'engine_dynamics_b': {'b': lambda m: dyn_test(m, 'b')}}
+FLING = 'SS_FlingContainer01'
+
+
+def fling_mission():
+    """c: an Uprising fling prop (SS_FlingContainer01, its name in RA3's WorldBuilder hashes) 40 in front of an enemy
+    conscript, a retail Hammer driving through both: does RA3 know the prop, does the flung prop hurt the man."""
+    m = Mission(name='CampDynC', map=festival, units=[], facts={})
+    m.put(HAMMER, 'west field', -200.0, 0.0, angle=0.0, role='tank 1', name=_n('Tank 1'))
+    m.put(FLING, 'west field', -40.0, 0.0, side='civ', role='prop', name=_n('Prop'))
+    m.put(CONSCRIPT, 'west field', 0.0, 0.0, angle=180.0, side='s1', role='target 1', name=_n('Target 1'))
+    return m
+
+
+MISSION = {'engine_dynamics': mission, 'engine_dynamics_b': lambda: mission('b'), 'engine_dynamics_c': lambda: mission('c')}
+CHECKS = {'engine_dynamics': {'a': dyn_test}, 'engine_dynamics_b': {'b': lambda m: dyn_test(m, 'b')},
+          'engine_dynamics_c': {'c': lambda m: dyn_test(m, 'c')}}
