@@ -30,6 +30,11 @@ Round 27: not chance -- four `land` runs and two `retail` runs repeat their own 
 (retail's man lands at frame 301 at (2300, 2740)), and the neighbour's hop is the same in both checks, so the
 detonation point is the same too; what differs is the mission (retail also fires the yuri lane, 1 500 away, and its
 rocket man lifts a frame later).
+Round 28, `late` / `late1` (CampKPLate / CampKPLate1): `land` with the rocket fired ORDER + 1/15 s / + 0.03 s. Bench
+11-10 PASS both (99 / 100 / alive); both lift at 176, two frames after `land` (the script timer moves the shot in steps
+of two frames, so retail's 175 is out of its reach), and the two runs are the same frame for frame: a third flight,
+33 frames, apex 62 above the ground, landing at (2300, 3500). The neighbour's hop is the same as ever. Three hit frames,
+three flights; the same hit frame, the same flight: the hit frame decides (hypothesis 7), the flight time is not fixed.
 """
 import os
 import re
@@ -60,7 +65,14 @@ RUN = ORDER + 8.0
 # round 26, `land`: the rocket lane alone, run long enough for the flung man to come down (round 25: apex ~frame 238
 # at z 2278, gravity ~1.02 / frame^2 -> ground 212.5 ~frame 302, the run ended at 266) and stand up again
 # (Physics ShockStandingTime 1.5 s default); the yuri / shot / tank lanes keep RUN
-RUNS = {'land': ORDER + 14.0}
+RUNS = {'land': ORDER + 14.0, 'late': ORDER + 14.0, 'late1': ORDER + 14.0}
+# round 28, `late`: `land` with the rocket fired one frame later (ORDER + 1/15; the stop timer moves with it). Round 27:
+# retail's rocket man lifts at 175 and flies lower (vz0 64.55) than land's (174, 111.16). If `late` flies retail's way,
+# the hit frame decides (hypothesis 7: the man's own state at that frame); if it flies land's way one frame later, what
+# else fires in the mission does (hypothesis 6: shared state such as the random sequence)
+FIRE = {'late': 1 / 15, 'late1': 0.03}
+# bench 11-10: ORDER + 1/15 came out two frames late (lift 176 against land's 174); `late1` (+0.03 s) aimed at one
+# frame, retail's hit frame (lift 175), and came out two frames late as well
 HIT = '<DamageNugget Damage="1.5" DamageType="UNRESISTABLE" DeathType="NORMAL" Radius="0"/>'
 
 
@@ -141,23 +153,25 @@ def mission():
 
 
 CHECK_LANES = {'shot': ('mild', 'strong'), 'tank': ('tank',),    # four counter lines at most: two lanes a check
-               'retail': ('yuri', 'rocket'), 'land': ('rocket',)}
+               'retail': ('yuri', 'rocket'), 'land': ('rocket',), 'late': ('rocket',),
+               'late1': ('rocket',)}
 # `land` also counts whether the flung man died (a dead man's health counter keeps its last reading). Prediction from
 # the data: no fall damage -- PhysicsBehavior.xsd has no fall / splat damage field and the Peacekeeper's Physics is
 # all defaults -- so alive, 99.
-DEAD = {'land': ('rocket',)}
+DEAD = {'land': ('rocket',), 'late': ('rocket',), 'late1': ('rocket',)}
 
 
 def check(m, which):
     m.units = units()
     fired = CHECK_LANES[which]          # the other lanes stand there, every gun NO_ATTACK
     run = RUNS.get(which, RUN)
+    late = FIRE.get(which, 0.0)
     t = Test()
     start = [('MAP_REVEAL_ALL_PERM', m.player('p1'))]
     start += [('UNIT_CHANGE_OBJECT_STATUS', name(k, p), 'NO_ATTACK', 1) for k in LANES for p in ('gun', 'man', 'near')]
     stops = sorted({STOP[k] for k in fired})
-    start += [('SET_MILLISECOND_TIMER', 'Knock Fire', float(ORDER))]
-    start += [('SET_MILLISECOND_TIMER', f'Knock Stop {i}', ORDER + s) for i, s in enumerate(stops)]
+    start += [('SET_MILLISECOND_TIMER', 'Knock Fire', float(ORDER + late))]
+    start += [('SET_MILLISECOND_TIMER', f'Knock Stop {i}', ORDER + late + s) for i, s in enumerate(stops)]
     start += [('SET_COUNTER', f'CNV_Knock_{k}_dead', 0) for k in DEAD.get(which, ())]
     t.scripts.append(Script('Test - start', [], start))
     fire = []
