@@ -108,5 +108,31 @@ def check_damaged_allies(m):
     return t
 
 
+def check_other_captures(m):
+    """d: Soviet/Japan engineers capture neutral/enemy half-health plants.
+
+    Reuse a's zero repair budget and ordinary entry at second 10.
+    Predict baseline 10050 in every lane, stable 1050 after capture;
+    health stays half, ownership becomes p1 and each engineer is consumed.
+    Bench 2026-11-10: s1-s11 all 10050; s12-s37 all 1050, PASS.
+    Exact arrival timing remains INFERRED.
+    """
+    for role, engineer, side in zip(
+            LANES, ('SovietEngineer', 'SovietEngineer', 'JapanEngineer', 'JapanEngineer'),
+            ('neutral', 's1', 'neutral', 's1')):
+        target, man = m.role(role), m.role(role + ' man')
+        target.template, target.side = 'AlliedPowerPlant', side
+        m.find(target.name).template, m.find(target.name).side = target.template, side
+        man.template = engineer
+        m.find(man.name).template = engineer
+    t = check(m)
+    t.expect = [(role, 30, '==', 1050, 34) for role in LANES]
+    # Soviet engineers carry pistols: isolate capture from pre-entry gunfire.
+    t.scripts[0].do += [('UNIT_CHANGE_OBJECT_STATUS', m.role(role + ' man').name, 'NO_ATTACK', 1)
+                        for role in LANES]
+    return t
+
+
 MISSION = {'engine_engineer': mission}
-CHECKS = {'engine_engineer': {'a': check, 'b': check_full_health, 'c': check_damaged_allies}}
+CHECKS = {'engine_engineer': {'a': check, 'b': check_full_health, 'c': check_damaged_allies,
+                             'd': check_other_captures}}

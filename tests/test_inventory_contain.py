@@ -60,3 +60,32 @@ def test_containment_signature_keeps_gameplay_fields_but_ignores_formatting():
     assert sig(parse('<M A="1" B="2"><F> x </F></M>')) == sig(parse('<M B="2" A="1">\n<F>x</F></M>'))
     assert sig(parse('<M Amount=".2"/>')) != sig(parse('<M Amount=".3"/>'))
     assert sig(parse('<M><F Relationship="ALLIES"/></M>')) != sig(parse('<M><F/></M>'))
+
+
+def test_engineer_generic_split_preserves_weight_and_other_configuration_gaps():
+    if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
+        pytest.skip('needs SDK and retail placement cache')
+    assert contain_audit.engineer_capture_share() == {'campaign': 63, 'templates': 87}
+    rows = [r for r in inventory.collect((inventory.MODULE,))
+            if r['name'].startswith('Behaviors/EngineerContain')]
+    assert len(rows) == 2
+    assert sum(r['uses'] for r in rows) == 70
+    assert sum(r['all'] for r in rows) == 105
+    generic = next(r for r in rows if r['name'].endswith(':通用三国'))
+    gap = next(r for r in rows if r['name'] == 'Behaviors/EngineerContain')
+    assert (generic['uses'], generic['all'], generic['state']) == (63, 87, inventory.BENCHED)
+    assert (gap['uses'], gap['all'], gap['state']) == (7, 18, inventory.GUESSED)
+    assert generic['why'] == ('tests/test_simengineer.py::'
+                              'test_engineer_soviet_japan_captures_as_on_the_bench')
+
+
+def test_engineer_generic_split_does_not_credit_changed_fields(monkeypatch):
+    if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
+        pytest.skip('needs SDK and retail placement cache')
+    raw = contain_audit.engineer_audit.audit()
+    monkeypatch.setattr(contain_audit.engineer_audit, 'audit', lambda: raw)
+    for row in raw['rows']:
+        for module in row['modules']:
+            module['xml'] = module['xml'].replace('ImmediatelyEnabled="true"',
+                                                 'ImmediatelyEnabled="false"')
+    assert contain_audit.engineer_capture_share() == {'campaign': 0, 'templates': 0}

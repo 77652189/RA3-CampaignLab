@@ -16,6 +16,27 @@ def signature(element):
             (element.text or '').strip(), tuple(sorted(signature(c) for c in element)))
 
 
+def engineer_capture_share():
+    """Only the complete generic configuration measured by engineer a/b/c/d.
+
+    Match every field and child, so new filters or values stay in the gap.
+    Counts use the same placed-template weight as module_census.
+    """
+    measured = rm.ET.fromstring('''<EngineerContain id="ModuleTag_EngineerContain"
+        NameOfVoiceToUseForFriendlyEnter="VoiceEngineerRepair"
+        NameOfVoiceToUseForHostileEnter="VoiceCaptureBuilding"
+        EvaEventForRepair="BuildingRepaired" EvaEventForCapture="EnemyBuildingCaptured"
+        FXForRepair="FX_Building_Repaired" FXForCapture="FX_Building_Captured"
+        FXForCaptureAndReplace="FX_Building_Captured" ImmediatelyEnabled="true">
+        <CanEnterFilter Rule="NONE"><IncludeThing>SovietEngineer</IncludeThing>
+        <IncludeThing>JapanEngineer</IncludeThing><IncludeThing>AlliedEngineer</IncludeThing>
+        </CanEnterFilter></EngineerContain>''')
+    wanted = (signature(measured),)
+    rows = [r for r in engineer_audit.audit()['rows']
+            if tuple(sorted(signature(rm.ET.fromstring(m['xml'])) for m in r['modules'])) == wanted]
+    return dict(campaign=sum(bool(r['maps']) for r in rows), templates=len(rows))
+
+
 def audit():
     result = {}
     for kind in ('EngineerContain', 'InfiltratorContain'):

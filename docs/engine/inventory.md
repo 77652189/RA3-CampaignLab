@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|---|---|
 | 脚本动作 | **91%** | 451 | 122 | 20 | 192 | 117 | 92% |
 | 脚本条件 | **94%** | 89 | 30 | 5 | 51 | 3 | 94% |
-| 物体模块 | **92%** | 186 | 39 | 10 | 113 | 24 | 94% |
+| 物体模块 | **93%** | 187 | 40 | 10 | 113 | 24 | 94% |
 | 武器效果 | **76%** | 25 | 14 | 2 | 7 | 2 | 78% |
 | AI | **71%** | 415 | 99 | 136 | 146 | 34 | 95% |
 
@@ -600,10 +600,10 @@
 | 已对拍 | `Behaviors/RunOffMapBehavior` | 88 (123) | tests/test_simbench_c.py::test_run_off_map_the_peacekeeper_is_gone_64_and_304_frames_after_the_order_never_dying；例：AlliedSatelliteSweepShroudRevealer, AlliedAntiAirShip |
 | 已对拍 | `Behaviors/WeaponSetUpdate` | 82 (110) | tests/test_simbench_c.py::test_weapon_set_the_status_picks_the_gun_molotov_under_the_toggle_and_the_painter_does_no_harm；例：AlliedBaseDefense, AlliedBaseDefenseAdvanced |
 | 已对拍 | `Behaviors/SpecialPower` | 74 (95) | tests/test_simbench.py::test_super_a_scripts_cast_starts_the_retail_reload；例：AlliedConstructionYard, AlliedAntiAirShip |
-| 推断 | `Behaviors/EngineerContain` | 70 (105) | 部分：engine_engineer a四路验证中立/敌方占领保留血量、友军残血修满且不换主、非友军防御拒入及工程师消耗；b验证三国工程师面对满血友军电厂均存活、血量归属不变，半血对照修满且消耗工程师；tests/test_simengineer.py重放。静态核查：ReplaceWith无原版声明；桥头堡虽无直接摆放，战役桥模板经BridgeBuilder.GateHouse可达（tests/test_inventory_engineer.py）。c验证三国工程师修满半血友军电厂、不换主且消耗工程师，满血对照拒入；E20完整配置盘点：通用三国型63、三国ALLIES型6、日本单工程师ALLIES型TH_TombBuilding02为1，另桥头堡直接用量0但间接可达；分别缺苏联/帝国占领、防御友军维修、日本单人筛选维修、桥修复；完整配置已对拍0/70。原版无ObjectStatusToSet显式声明，默认状态/精确时序未量，不登记整项已对拍（tests/test_inventory_contain.py）；例：AlliedAirfield, AlliedBarracks |
 | 已对拍 | `Behaviors/DynamicsUpdate` | 69 (101) | tests/test_simbench_c.py::test_dynamics_update_a_hammer_without_it_crushes_and_goes_round_as_the_retail_one；例：AlliedDynamicsImpact, AlliedSatelliteSweepShroudRevealer |
 | 未做 | `Behaviors/RepairUpdate` | 66 (91) | 仅字段读取：engine_repair a两次未触发玩家维修，双方电厂血量50、资金5000；维修入口原因未明，不以schema默认10HP/s或预测费用登记已对拍；例：AlliedAirfield, AlliedBarracks |
 | 已对拍 | `Behaviors/StatusBitsUpgrade` | 66 (85) | tests/test_simbench_c.py::test_status_bits_upgrade_the_heroic_grant_sets_weapon_upgraded_and_a_removal_clears_it；例：AlliedBaseDefense, AlliedAntiAirShip |
+| 已对拍 | `Behaviors/EngineerContain:通用三国` | 63 (87) | tests/test_simengineer.py::test_engineer_soviet_japan_captures_as_on_the_bench；例：AlliedPowerPlant |
 | 已对拍 | `Behaviors/StructureUnpackUpdate` | 59 (96) | tests/test_simbench.py::test_power_back_after_the_plant_unpacks；例：AlliedAirfield, AlliedBarracks |
 | 已对拍 | `Behaviors/StructureSellUpdate` | 52 (72) | tests/test_simbench.py::test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames；例：AlliedAirfield, AlliedBarracks |
 | 不涉及 | `ClientBehaviors/AnimationSoundClientBehavior` | 48 (67) | 纯表现（ClientBehaviors）；例：AlliedTimeBombLvl3, AlliedRefinery |
@@ -629,6 +629,7 @@
 | 已对拍 | `Behaviors/TransportContain` | 13 (16) | tests/test_simbench.py::test_transport_a_team_put_in_instantly_skips_the_room_and_the_relation_and_rides_along；例：AlliedAntiAirVehicleTech1, AlliedAntiInfantryVehicle |
 | 未做 | `Behaviors/SpawnBehavior` | 10 (16) | 已核（11-08）：模拟器没有这个效果（没有母体造随从）；例：AlliedAirfield, AlliedConstructionYardRepairBay |
 | 未做 | `Behaviors/ProductionUpdateInfo` | 9 (9) | 模拟器代码里没有这个名字；例：AlliedConstructionYard, AlliedMCV |
+| 推断 | `Behaviors/EngineerContain` | 7 (18) | 通用三国完整配置已拆分63用量并由engine_engineer a/b/c/d重放登记；本行保留三国ALLIES防御型6、日本单工程师ALLIES型TH_TombBuilding02为1及间接可达桥头堡0，共7用量/18模板；分别缺防御友军维修、日本单人筛选维修、桥修复。ReplaceWith和ObjectStatusToSet无原版显式声明；精确进入帧仍INFERRED，不登记整模块已对拍（tests/test_inventory_contain.py、tests/test_inventory_engineer.py）；例：AlliedAirfield, AlliedBarracks |
 | 已对拍 | `Behaviors/EjectPassengersSpecialAbilityUpdate` | 7 (8) | tests/test_simbench.py::test_transport_the_man_cannon_throws_one_every_half_second_and_a_killed_transport_kills_its_men；例：AlliedBomberAircraft, A08_CenturyTransportAircraft |
 | 未做 | `Behaviors/BezierProjectile` | 6 (78) | 已核（11-08）：模拟器没有这个效果（开火按每秒伤害直接扣血，没有弹体）；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
 | 未做 | `Behaviors/AssignSlavesTargetObjectSpecialPower` | 6 (10) | 模拟器代码里没有这个名字；例：AlliedConstructionYardRepairBay, AlliedNavalYard |

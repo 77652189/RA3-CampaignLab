@@ -47,6 +47,8 @@ PARTS = (ACTION, CONDITION, MODULE, NUGGET, AI)     # AI: engine B's part, its o
 
 # (part, name) -> 'tests/<file>.py::<test>': the bench comparison that backs the item (the guard checks the test exists)
 BENCHED_TESTS = {
+    (MODULE, 'Behaviors/EngineerContain:通用三国'):
+        'tests/test_simengineer.py::test_engineer_soviet_japan_captures_as_on_the_bench',
     # engine_suppression under D's read-only engine_suppress_probe, four measured state/end traces.
     # Walking counters still expose the straight-path approximation; fractional lifetime rounding INFERRED.
     (MODULE, 'Behaviors/SuppressionUpdate'): 'tests/test_simbench_c.py::test_suppression_samples_entry_refresh_and_expiry_at_the_four_probe_readings',
@@ -180,7 +182,7 @@ NOTES = {
     (MODULE, 'Behaviors/InfiltratorContain'): (GUESSED, '部分：engine_infiltrator a盟军间谍普通进入敌方原版盟军电厂，间谍消耗、建筑不换主、单座100电量停电约20秒后恢复；友军拒入且间谍存活，tests/test_siminfiltrator.py重放。E20完整配置盘点：11种配置/34用量，ENERGY 4、KILL 1、STEAL_MONEY 3、VISION 5+港口阻断型1、PARALYZE 3、VISION_UNITS飞机2/步兵3/舰船3/车辆4、RESET 5；ENERGY仍缺忍者/电量缩放/重复进入，其余配置无效果对拍，完整配置已对拍0/34，不登记整项已对拍（tests/test_inventory_contain.py）'),
     (MODULE, 'Behaviors/TrackIncomingWeaponFireBehavior'): (TODO, '部分：engine_inform_probe a/off通知记录回放验证录入、30帧窗口、来源与武器匹配删除和过期清理；精确过期边界INFERRED，原版完整调度/历史伤害仍gap，不靠名字命中晋升整项'),
     (MODULE, 'Behaviors/RepairUpdate'): (TODO, '仅字段读取：engine_repair a两次未触发玩家维修，双方电厂血量50、资金5000；维修入口原因未明，不以schema默认10HP/s或预测费用登记已对拍'),
-    (MODULE, 'Behaviors/EngineerContain'): (GUESSED, '部分：engine_engineer a四路验证中立/敌方占领保留血量、友军残血修满且不换主、非友军防御拒入及工程师消耗；b验证三国工程师面对满血友军电厂均存活、血量归属不变，半血对照修满且消耗工程师；tests/test_simengineer.py重放。静态核查：ReplaceWith无原版声明；桥头堡虽无直接摆放，战役桥模板经BridgeBuilder.GateHouse可达（tests/test_inventory_engineer.py）。c验证三国工程师修满半血友军电厂、不换主且消耗工程师，满血对照拒入；E20完整配置盘点：通用三国型63、三国ALLIES型6、日本单工程师ALLIES型TH_TombBuilding02为1，另桥头堡直接用量0但间接可达；分别缺苏联/帝国占领、防御友军维修、日本单人筛选维修、桥修复；完整配置已对拍0/70。原版无ObjectStatusToSet显式声明，默认状态/精确时序未量，不登记整项已对拍（tests/test_inventory_contain.py）'),
+    (MODULE, 'Behaviors/EngineerContain'): (GUESSED, '通用三国完整配置已拆分63用量并由engine_engineer a/b/c/d重放登记；本行保留三国ALLIES防御型6、日本单工程师ALLIES型TH_TombBuilding02为1及间接可达桥头堡0，共7用量/18模板；分别缺防御友军维修、日本单人筛选维修、桥修复。ReplaceWith和ObjectStatusToSet无原版显式声明；精确进入帧仍INFERRED，不登记整模块已对拍（tests/test_inventory_contain.py、tests/test_inventory_engineer.py）'),
     (MODULE, 'Behaviors/LevelUpUpgrade'): (GUESSED, '部分：engine_levelup a创建升级触发升阶、重复持有不升级；engine_leveldamage a等级DAMAGE_MULT125保持到精英/英雄，单发血量47/34/34/17；engine_levelhealth a满血升级HEALTH_MULT125保持到英雄，100脚本伤害同帧冻结80/80/84/84，simlevel重放；残血升级、其余等级属性、经验成长、上限及移除重给未对拍，不登记整项已对拍'),
     (NUGGET, 'FireOnObjectsNugget'): (TODO, '未实现：子武器派发条件与空间锚点尚未解释；失败诊断不作为已对拍依据'),
     (NUGGET, 'ActivateLiftObjectNugget'): (TODO, 'engine_lift两轮确认需LiftObjectUpdate且SoftLanding影响清位，但Lifetime/续期释放规则未解释；保留诊断、不登记已对拍'),
@@ -379,6 +381,14 @@ def module_items():
             v = dict(v, campaign=v['campaign'] - still['campaign'], templates=v['templates'] - still['templates'])
             items.append(dict(part=MODULE, name=f'{group}/{mtype}:不动', uses=still['campaign'], all=still['templates'],
                               state=NA, why=SPLIT_STILL[mtype], eg=''))
+        if (group, mtype) == ('Behaviors', 'EngineerContain'):
+            import contain_audit
+            share = contain_audit.engineer_capture_share()
+            v = dict(v, campaign=v['campaign'] - share['campaign'],
+                     templates=v['templates'] - share['templates'])
+            items.append(dict(part=MODULE, name='Behaviors/EngineerContain:通用三国',
+                              uses=share['campaign'], all=share['templates'], state=GUESSED,
+                              why='完整通用配置：engine_engineer a/b/c/d；精确进入帧仍INFERRED', eg='AlliedPowerPlant'))
         items.append(dict(part=MODULE, name=f'{group}/{mtype}', uses=v['campaign'], all=v['templates'], state=state,
                           why=why, eg=', '.join(v.get('examples', [])[:2])))
     return items

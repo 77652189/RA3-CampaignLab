@@ -65,6 +65,29 @@ def test_engineer_damaged_allies_three_nations_as_on_the_bench():
     assert not any(key[0] == 'EngineerContain' for key in s.unmodeled)
 
 
+def test_engineer_soviet_japan_captures_as_on_the_bench():
+    """engine_engineer:d: stable endpoints, exact arrival timing INFERRED."""
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_engineer', 'd')
+    roles = ('neutral', 'enemy', 'ally', 'refused')
+    assert [m.role(role + ' man').template for role in roles] == [
+        'SovietEngineer', 'SovietEngineer', 'JapanEngineer', 'JapanEngineer']
+    assert [m.role(role).side for role in roles] == ['neutral', 's1', 'neutral', 's1']
+    assert all(m.role(role).template == 'AlliedPowerPlant' for role in roles)
+    s = sim.Sim(m, t).run(36)
+    assert s.series[0][1] == [10050] * 4
+    window = [values for second, values in s.series if 30 <= second <= 34]
+    assert window and all(values == [1050] * 4 for values in window)
+    assert s.series[-1][1] == [1050] * 4
+    for role in roles:
+        target, man = s.body(m.role(role).name), s.body(m.role(role + ' man').name)
+        assert target.owner == m.player('p1')
+        assert target.hp == target.max_hp / 2
+        assert not man.alive
+    assert not any(key[0] == 'EngineerContain' for key in s.unmodeled)
+
+
 def test_engineer_filters_reject_wrong_template_and_enemy_defence_and_report_replacements():
     import build
     import sim
