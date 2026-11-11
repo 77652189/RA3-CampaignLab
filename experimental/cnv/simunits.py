@@ -276,7 +276,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v22.json')    # v22: partial MetaImpact input and explicit trajectory gap
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v24.json')    # v24: InformTarget launch estimates; partial effects retain explicit gaps
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -389,10 +389,20 @@ def _weapons(texts, base_table=None):
                                         taper=_num(_attr(h, 'ShockWaveTaperOff', '0'))))
             if impacts:
                 got['meta_impacts'] = impacts
+            informs = []
+            for h, inner in _blocks(bare, 'InformTargetNugget'):
+                # Ordinary target-only launch notification. Radius/filter variants
+                # and the whole AI response remain explicitly incomplete.
+                if not (inner or '').strip() and set(re.findall(r'(\w+)\s*=', h)) <= {
+                        'id', 'MinTimeToImpactFudgeFactor', 'MaxTimeToImpactFudgeFactor'}:
+                    informs.append(dict(min=_num(_attr(h, 'MinTimeToImpactFudgeFactor', '0.85')),
+                                        max=_num(_attr(h, 'MaxTimeToImpactFudgeFactor', '1.15'))))
+            if informs:
+                got['inform'] = informs
             if any(_blocks(bare, 'InformTargetNugget')):
                 # engine_inform_ai: an AI miner can react before the slow shell hits.
-                # Ignoring it silently is not a modeled no-op. The arrival estimate
-                # and the AI's self-defense dispatch are not explained yet.
+                # Partial launch/table/armor execution is modeled; full replay,
+                # history and radius/filter variants remain gaps.
                 unsupported.append('InformTargetNugget')
             for h, inner in _blocks(bare, 'AttributeModifierNugget'):
                 if (inner or '').strip() or any(_attr(h, field) is not None for field in
@@ -522,6 +532,9 @@ def _weapons(texts, base_table=None):
                 got['pre'] = _secs(pre.group(1))
             if _attr(head, 'PreAttackType'):
                 got['pretype'] = _attr(head, 'PreAttackType')
+            if _attr(head, 'WeaponSpeed'):
+                got['weapon_speed'] = _num(_attr(head, 'WeaponSpeed'))
+            got['weapon_key'] = wid
             if _attr(head, 'AttackRange'):
                 got['range'] = _num(_attr(head, 'AttackRange'))
             if dmg:
@@ -605,6 +618,8 @@ def _resolve(w, weapons):
                 sweep=w.get('sweep'), contained=w.get('contained', []), dot=w.get('dot', []),
                 special_powers=w.get('special_powers', weapons.get(w.get('warhead'), {}).get('special_powers', [])),
                 attach=w.get('attach', weapons.get(w.get('warhead'), {}).get('attach', [])),
+                inform=w.get('inform', []), weapon_speed=w.get('weapon_speed', 999999.0),
+                weapon_key=w.get('weapon_key'),
                 meta_impacts=w.get('meta_impacts', weapons.get(w.get('warhead'), {}).get('meta_impacts', [])),
                 unmodeled_effects=list(dict.fromkeys(w.get('unmodeled_effects', []) +
                     weapons.get(w.get('warhead'), {}).get('unmodeled_effects', []))))

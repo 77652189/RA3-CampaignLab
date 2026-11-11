@@ -178,6 +178,7 @@ BENCHED_TESTS = {
 _NOT_IN_SIM = '已核（11-08）：模拟器没有这个效果'
 NOTES = {
     (MODULE, 'Behaviors/InfiltratorContain'): (GUESSED, '部分：engine_infiltrator a盟军间谍普通进入敌方原版盟军电厂，间谍消耗、建筑不换主、单座100电量停电约20秒后恢复；友军拒入且间谍存活，tests/test_siminfiltrator.py重放。E20完整配置盘点：11种配置/34用量，ENERGY 4、KILL 1、STEAL_MONEY 3、VISION 5+港口阻断型1、PARALYZE 3、VISION_UNITS飞机2/步兵3/舰船3/车辆4、RESET 5；ENERGY仍缺忍者/电量缩放/重复进入，其余配置无效果对拍，完整配置已对拍0/34，不登记整项已对拍（tests/test_inventory_contain.py）'),
+    (MODULE, 'Behaviors/TrackIncomingWeaponFireBehavior'): (TODO, '部分：engine_inform_probe a/off通知记录回放验证录入、30帧窗口、来源与武器匹配删除和过期清理；精确过期边界INFERRED，原版完整调度/历史伤害仍gap，不靠名字命中晋升整项'),
     (MODULE, 'Behaviors/RepairUpdate'): (TODO, '仅字段读取：engine_repair a两次未触发玩家维修，双方电厂血量50、资金5000；维修入口原因未明，不以schema默认10HP/s或预测费用登记已对拍'),
     (MODULE, 'Behaviors/EngineerContain'): (GUESSED, '部分：engine_engineer a四路验证中立/敌方占领保留血量、友军残血修满且不换主、非友军防御拒入及工程师消耗；b验证三国工程师面对满血友军电厂均存活、血量归属不变，半血对照修满且消耗工程师；tests/test_simengineer.py重放。静态核查：ReplaceWith无原版声明；桥头堡虽无直接摆放，战役桥模板经BridgeBuilder.GateHouse可达（tests/test_inventory_engineer.py）。c验证三国工程师修满半血友军电厂、不换主且消耗工程师，满血对照拒入；E20完整配置盘点：通用三国型63、三国ALLIES型6、日本单工程师ALLIES型TH_TombBuilding02为1，另桥头堡直接用量0但间接可达；分别缺苏联/帝国占领、防御友军维修、日本单人筛选维修、桥修复；完整配置已对拍0/70。原版无ObjectStatusToSet显式声明，默认状态/精确时序未量，不登记整项已对拍（tests/test_inventory_contain.py）'),
     (MODULE, 'Behaviors/LevelUpUpgrade'): (GUESSED, '部分：engine_levelup a创建升级触发升阶、重复持有不升级；engine_leveldamage a等级DAMAGE_MULT125保持到精英/英雄，单发血量47/34/34/17；engine_levelhealth a满血升级HEALTH_MULT125保持到英雄，100脚本伤害同帧冻结80/80/84/84，simlevel重放；残血升级、其余等级属性、经验成长、上限及移除重给未对拍，不登记整项已对拍'),
@@ -188,7 +189,7 @@ NOTES = {
     (MODULE, 'Behaviors/OCLSpecialPower'): (TODO, '仅在SpecialPowerNugget处理器中识别并拒绝，未实现OCL技能执行'),
     (MODULE, 'Behaviors/ActivateModuleSpecialPower'): (TODO, '仅在SpecialPowerNugget处理器中识别并拒绝，未实现模块技能执行'),
     (NUGGET, 'TintObjectsNugget'): (NA, '纯表现：Color及Pre/Sustained/PostColorTime、Frequency/Amplitude仅控制染色动画；engine_tint pair实测2/90/2/90，独立DamageNugget解释全部伤害，test_simbench_c重放；不声称像素已验证'),
-    (NUGGET, 'InformTargetNugget'): (TODO, 'engine_inform_ai a矿车命中前开甲；off仅去掉该Nugget后87帧受伤、观察窗内不开甲，支持提前自保依赖它，但受伤后开甲的附加预测FAIL；玩家/低伤/瞬发对照不变。预计/历史伤害及AI技能执行未模拟，严格回放xfail并显式gap，不晋升整项'),
+    (NUGGET, 'InformTargetNugget'): (TODO, 'engine_inform_ai a矿车命中前开甲；off仅去掉该Nugget后87帧受伤、观察窗内不开甲，支持提前自保依赖它，但受伤后开甲的附加预测FAIL；玩家/低伤/瞬发对照不变。普通目标来弹表/预计窗口及矿车开甲已接，a/off原始通知接口回放通过；脚本创建位置/独立弹体文件/矿车AI归队、历史伤害及精确思考相位仍gap，完整回放严格xfail，不晋升整项'),
     (NUGGET, 'MetaImpactNugget'): (TODO, '部分执行：engine_knock_probe land/late实机碰撞事件回放接入伤害派发及默认Physics逐帧轨迹，邻人5帧落(2380,3740)；直线弹到达事件已接线，V4曲线弹命中时刻仍gap；直击方向/落点网格/半径选人含INFERRED，筛选/延迟及非默认Physics仍gap，不晋升整项'),
     (NUGGET, 'ParalyzeNugget'): (GUESSED, '部分：engine_emp phase实测PASS16051/31066/61096、hit1；engine_empfire a实测PASS901090/901100/901080/901090，失能窗口按令不开火、到期后新令恢复；仅无筛选EMP，其他类型/筛选/装填相位未验证'),
     (NUGGET, 'StripMaxHealthPercentNugget'): (GUESSED, '部分：engine_strip exact实测PASS95/45/74，4%满血/半血与25%满血按最大血量扣减；筛选、护甲倍率、无标记伤害形式未验证，最大血量不变仍推断'),

@@ -33,8 +33,8 @@ every frame (the simulator moves in DT ticks; the AI is ticked for each frame of
   blocks      A's TargetsBlock + TacticsBlock (orders: 'move' / 'attack-move' -> Sim.order_move, 'enter' -> Garrisons;
               houses / defenses = Brain.garrisons, full ones listed too), DefenseBlock (one
               MAIN_BASE round the first yard; hurt = the body's hp fell; aesthetics = a circle round the point),
-              MicroBlock (unit powers from the CommandSet; a use is only recorded: the simulator gives the AI's units
-              no abilities), PlayerPowers (none yet: the simulator has no superweapon charge). The AI sees the whole
+              MicroBlock (unit powers from the CommandSet; the retail miner armor toggle executes; other uses
+              are only recorded), PlayerPowers (none yet: the simulator has no superweapon charge). The AI sees the whole
               map (INFERRED; the view's things are every living body that is not scenery).
 
 HOOKS (what this file would rather have from sim.py; for A through the coordinator, not urgent):
@@ -59,6 +59,7 @@ import os
 import random
 import re
 import struct
+import xml.etree.ElementTree as ET
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -505,17 +506,32 @@ class Brain:
             b = u.body
             reach = max((w.get('range') or 0.0 for w in b.weapons), default=0.0)
             t = self.aim_of(b, reach)
+            toggles = []
+            if 'Command_ToggleArmorUp' in self.host.command_set(b.template):
+                cache = self.__dict__.setdefault('_miner_toggles', {})
+                if b.template not in cache:
+                    inner = next((inner for h, inner in simunits._blocks(self.sim.xml_of(b.template),
+                                  'ToggleStatusSpecialAbilityUpdate') if simunits._attr(h, 'SpecialPowerTemplate') ==
+                                  'SpecialPower_ToggleArmorUp'), '')
+                    cache[b.template] = mc.parse_toggle(ET.fromstring('<update>' + inner + '</update>'))
+                toggles = cache[b.template]
             units.append(mc.Unit(b.name, (b.x, b.y), b.hp, b.max_hp,
                                  [powers[c] for c in self.host.command_set(b.template) if c in powers],
                                  target=None if t is None else sp.Thing((t.x, t.y), t.kinds, 0, name=t.name),
-                                 weapon_range=reach, cost=self.host.cost(b.template)))
+                                 weapon_range=reach, cost=self.host.cost(b.template),
+                                 damage=lambda behind, ahead, b=b: self.sim.expected_damage(b, behind, ahead, now=frame),
+                                 toggles=toggles, toggle_index=int(b.armor_up)))
         enemies = [sp.Thing((t.x, t.y), t.kindof, int(t.value), name=str(t.id)) for t in self.view.things
                    if t.owner in self.view.enemies]
         return mc.Team(units, enemies=enemies)
 
     def fire_unit(self, ai, key, u, info):
-        """A unit power the micro wants used: recorded only (HOOKS 5)."""
+        """Execute the miner armor toggle; other unit powers are recorded (HOOKS 5)."""
         self.fired.append((self.frame, key, u.name, info.command))
+        b = self.sim.body(u.name)
+        if b and b.owner == self.player and self.sim.toggle_miner_armor(b, info.command):
+            self.sim.note('AI', f'{u.name} 执行 {info.command}')
+            return
         self.sim.note('AI', f'{self.sim.who(self.player)} 微操想用 {info.command}（{u.name}；模拟器未接技能）')
 
     # ---- what the AI asks of the world

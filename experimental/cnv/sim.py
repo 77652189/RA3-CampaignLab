@@ -315,7 +315,7 @@ GAP_WEAPON, GAP_UPGRADE, GAP_ACTION, GAP_CONDITION, GAP_COMMAND, GAP_STATUS = \
     '武器', '升级', '脚本动作', '脚本条件', '命令', '状态'
 # the object statuses sim.py acts on (tested with `in b.status`; IN_STASIS = IMMOBILE NO_ATTACK UNATTACKABLE in
 # Sim.modify); tests/test_sim.py checks the list against the source
-ACTED_STATUS = frozenset({'SOLD', 'GENERIC_TOGGLE_STATE', 'IMMOBILE', 'NO_ATTACK', 'UNATTACKABLE', 'NON_AUTOACQUIRABLE', 'IN_STASIS', 'UNDER_FROZEN', 'ATTACHED'})
+ACTED_STATUS = frozenset({'SOLD', 'GENERIC_TOGGLE_STATE', 'IMMOBILE', 'NO_ATTACK', 'UNATTACKABLE', 'NON_AUTOACQUIRABLE', 'IN_STASIS', 'UNDER_FROZEN', 'ATTACHED', 'SPECIAL_ARMOR_ACTIVE'})
 # a script's power or button by itself, as simcoverage.refined names it
 BUTTON_ACTIONS = ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY',
                   'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED')
@@ -507,6 +507,7 @@ class Body:
                                                                 # + the modifiers' (modify)
     slots: object = None                                        # simunits.weapon_sets: the weapons chosen by status (None: fixed)
     auras_on: dict = dataclasses.field(default_factory=dict)   # modifier id -> (until frame, xml) an aura hung on it
+    armor_up: bool = False                                    # retail miner toggle, owned separately from script bits
     shielded: bool = False                                      # INVULNERABLE + Iron Curtain bits on it (simunits.effect)
     taken: float = 1.0                                          # ARMOR factor: damage taken x (INFERRED)
     cold: float = 0.0                                           # the cryo beam's secondary damage held (deal, R freeze)
@@ -1793,11 +1794,14 @@ class Sim:
                 del b.auras_on[mid]
             else:
                 mods.append(simunits.modifier(src, mid))
+        if b.armor_up:
+            mods.append(simunits.modifier(xml, 'AttributeModifier_ArmorUp'))
         step = self.cold_of(b)[0]['steps'][b.cold_step] if b.cold_step >= 0 else None
         if step and step[1]:
             mods.append(simunits.modifier(xml, step[1]))
         on, off = simunits.status_bits(xml, b.upgrades)
-        e = simunits.effect(mods, on | b.script_status | b.attachment_status, off)
+        armor_bits = {'GENERIC_TOGGLE_STATE', 'SPECIAL_ARMOR_ACTIVE'} if b.armor_up else set()
+        e = simunits.effect(mods, on | b.script_status | b.attachment_status | armor_bits, off)
         if not mods and not on and not off and b.base is None:
             b.status = set(b.script_status | b.attachment_status)
             if b.slots:
@@ -3071,6 +3075,8 @@ class Sim:
                 self.note('技能', f'{self.label(b)} 去 {a[2]} 展开成 {into}')
                 if not self.at_site(b, 0.0):
                     self.send(b, p)
+        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and self.body(a[0]) and self.toggle_miner_armor(self.body(a[0]), a[1]):
+            self.note('技能', f'{a[0]} 切换矿车装甲')
         elif name in ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY'):
             b = self.body(a[0])
             if b and b.alive and name == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT':
@@ -3780,6 +3786,66 @@ class Sim:
                 self.send(a, a.home)
                 a.auto_to = a.dest
 
+    def incoming_add(self, target, source, key, damage, hit, expiry):
+        """Record one observed/predicted notification on a tracking target."""
+        if '<TrackIncomingWeaponFireBehavior' not in self.xml_of(target.template):
+            return
+        table = self.__dict__.setdefault('incoming', {})
+        table.setdefault(id(target), []).append((source, key, damage, hit, expiry))
+
+    def incoming_hit(self, target, source, key):
+        """Damage notification deletes matching source + weapon entries."""
+        table = self.__dict__.setdefault('incoming', {})
+        rows = table.get(id(target), [])
+        rows[:] = [r for r in rows if r[:2] != (source, key)]
+
+    def expected_damage(self, target, behind, ahead, now=None):
+        """Micro damage callback, seconds -> ceil frames; no facing multiplier.
+
+        This slice supplies incoming damage only. History remains a gap; the
+        miner's TrackDamage.InstantWeaponsOnly path is not inferred from HP loss.
+        INFERRED expiry boundary: keep entries on expiry, remove strictly after.
+        """
+        now = self.frame_now() if now is None else now
+        rows = self.__dict__.setdefault('incoming', {}).get(id(target), [])
+        rows[:] = [r for r in rows if now <= r[4]]
+        if behind:
+            self.gap(GAP_WEAPON, 'InformTargetNugget', '历史伤害入口未接；当前只提供来弹预计伤害')
+        return sum(r[2] for r in rows if r[3] <= now + math.ceil(ahead * simunits.LIFE_FPS)) if ahead > 0 else 0.0
+
+    def inform_launch(self, target, attacker, weapon, count=1):
+        """Ordinary launch notification. INFERRED: centre positions, time scale 1.
+
+        WeaponSpeed is units/second, independent of projectile muzzle speed.
+        The default fudge factors deliberately predict earlier than collision.
+        """
+        if not weapon.get('inform'):
+            return
+        speed = weapon.get('weapon_speed', 999999.0) / simunits.LIFE_FPS
+        distance = math.dist((attacker.x, attacker.y, attacker.z or 0),
+                             (target.x, target.y, target.z or 0))
+        duration = distance / speed if speed >= 1e-4 else 0.0
+        armor = 1.0 if weapon['type'] == 'UNRESISTABLE' else simunits.percent(target.armor, weapon['type']) / 100 * target.taken
+        for effect in weapon.get('inform', []):
+            for _ in range(count):
+                self.incoming_add(target, id(attacker), weapon.get('weapon_key'),
+                                  weapon['dmg'] * attacker.dealt * armor,
+                                  self.frame_now() + int(duration * effect['min']),
+                                  self.frame_now() + int(duration * effect['max'] + 0.99))
+
+    def toggle_miner_armor(self, b, command):
+        """Execute the retail miner's two-state armor button; other powers stay gaps."""
+        xml = self.xml_of(b.template)
+        if not b.alive or command != 'Command_ToggleArmorUp' or not any(
+                simunits._attr(h, 'SpecialPowerTemplate') == 'SpecialPower_ToggleArmorUp'
+                for h, _ in simunits._blocks(xml, 'ToggleStatusSpecialAbilityUpdate')):
+            return False
+        b.armor_up = not b.armor_up
+        self.modify(b)
+        self.used.add('miner armor')
+        self.change()
+        return True
+
     def queue_projectile_hit(self, when, target, damage, attacker, weapon, centre=None):
         """A projectile's arrival event, also usable to replay an observed collision.
 
@@ -3876,6 +3942,7 @@ class Sim:
         for when, target, damage, attacker, weapon, centre in due:
             self.projectile_detonate(weapon, target, centre)
             if target.alive:
+                self.incoming_hit(target, id(attacker), weapon.get('weapon_key'))
                 h = hurt.setdefault(id(target), [target, 0.0, attacker])
                 h[1] += damage
         for t, rate, by in self.firing:
@@ -3887,6 +3954,7 @@ class Sim:
             if t.alive and by.alive and not self.emp_disabled(by):
                 n = self.shots_due(by, w, dt)
                 if n:
+                    self.inform_launch(t, by, w, n)
                     projectile = w.get('projectile')
                     if projectile:
                         speeds = self.__dict__.setdefault('projectile_speeds', {})
@@ -3912,10 +3980,13 @@ class Sim:
                                 self.queue_projectile_hit(self.frame_now() + frames, t, damage, by, w)
                             else:
                                 self.projectile_detonate(w, t)
+                                self.incoming_hit(t, id(by), w.get('weapon_key'))
                                 h = hurt.setdefault(id(t), [t, 0.0, by])
                                 h[1] += damage
                             continue
                         self.gap(GAP_WEAPON, 'ProjectileNugget', '仅无复合效果的直线弹飞行已建模；曲线弹/复合弹/自制弹体待核')
+                    if not projectile:
+                        self.incoming_hit(t, id(by), w.get('weapon_key'))
                     for effect in w.get('dot', []):
                         dots = self.__dict__.setdefault('dots', [])
                         if projectile or n != 1 or any(d['target'] is t for d in dots):

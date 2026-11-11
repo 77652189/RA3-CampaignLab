@@ -1,4 +1,4 @@
-"""Controls for the InformTarget black-box fixture; no claim of simulator coverage."""
+"""InformTarget controls and partial notification-to-armor execution; full replay stays a gap."""
 import importlib.util
 from pathlib import Path
 import xml.etree.ElementTree as ET
@@ -87,10 +87,13 @@ def test_inform_ai_response_is_reported_as_a_gap_including_retail_cache():
     rows = engine.run(16).series
     assert tuple(rows[-1][1]) == (79, 1, 79, 1)
     assert (sim.GAP_WEAPON, 'InformTargetNugget') in engine.unmodeled
+    import inventory
+    assert inventory.NOTES[(inventory.NUGGET, 'InformTargetNugget')][0] == inventory.TODO
+    assert inventory.NOTES[(inventory.MODULE, 'Behaviors/TrackIncomingWeaponFireBehavior')][0] == inventory.TODO
 
 
 @pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason='InformTarget advance notification and AI self-defense execution are not modeled')
+                   reason='Full script placement, custom projectile flight, miner AI enrollment/history and micro phase remain gaps')
 @pytest.mark.parametrize('check_name, expected', [
     ('a', (1187051068, 87135068, 101003068, 87135089)),
     ('off', (87135068, 87135068, 101003068, 87135089)),
@@ -110,3 +113,194 @@ def test_inform_ai_advance_response_matches_engine_inform_ai_observation(check_n
     rows = engine.run(36).series
     assert tuple(rows[-1][1]) == expected
     assert all(tuple(row) == expected for sec, row in rows if sec >= 31)
+
+
+@pytest.mark.parametrize('check_name, run_name', [
+    ('a', 'CampIPA_mcp_1110_231923'), ('off', 'CampIPOff_mcp_1110_231533'),
+])
+def test_inform_incoming_table_drives_miner_armor_from_engine_inform_probe(check_name, run_name, monkeypatch):
+    """Replay observed notifications, not collision/micro phase or full Sim.run.
+
+    Slow lanes: launch302, damage150/150/50, hit377, expiry404, removal389.
+    The 2s window first sees the damage at347. Player and low controls stay off.
+    Instant history is outside this slice; full packed replay stays strict xfail.
+    """
+    import re
+    from types import SimpleNamespace
+    import build
+    import sim
+    import simai
+    import labpaths
+
+    log = Path(labpaths.WORK) / 'testbench/runs' / run_name / 'ra3ext.log'
+    if not simai.available():
+        pytest.skip('ra3model.ai unavailable')
+    m, t, _ = build.resolve('engine_inform_ai', check_name)
+    e = sim.Sim(m, t)
+    ai = m.player('s1')
+    bodies = {}
+    for lane in ('base', 'high', 'removed'):
+        e.add('Replay ' + lane, 'SovietMiner', m.player('p1') if lane == 'high' else ai, 0, 0)
+        bodies[lane] = e.body('Replay ' + lane)
+    clock = [302]
+    monkeypatch.setattr(e, 'frame_now', lambda: clock[0])
+    # Runtime identifiers remain in the private log. Map source numbers, not addresses.
+    # Sanitized event fixture keeps the replay runnable without private artifacts.
+    observed = {13: ('high', 150.0, 377, 404), 14: ('instant', 150.0, 302, 302),
+                15: ('low', 50.0, 377, 404)}
+    if check_name == 'a':
+        observed[12] = ('base', 150.0, 377, 404)
+    lines = log.read_text(encoding='utf-8').splitlines() if log.exists() else []
+    actual = {}
+    for line in lines:
+        if 'frame=302 n=1' not in line:
+            continue
+        row = re.search(r'src=(\d+) w=(\w+) dmg=([\d.]+) hit=(\d+) exp=(\d+)', line)
+        assert row
+        source, key, damage, hit, expiry = row.groups()
+        actual[int(source)] = (key, float(damage), int(hit), int(expiry))
+    if lines:
+        assert {src: row[1:] for src, row in actual.items()} == {src: row[1:] for src, row in observed.items()}
+        observed = actual
+    for source, lane in ((12, 'base'), (13, 'high'), (15, 'removed')):
+        if source in observed:
+            key, damage, hit, expiry = observed[source]
+            assert (damage, hit, expiry) == (50 if lane == 'removed' else 150, 377, 404)
+            e.incoming_add(bodies[lane], source, key, damage, hit, expiry)
+    assert (12 in observed) == (check_name == 'a')
+    host = simai.SimAI(e)
+    brain = object.__new__(simai.Brain)
+    brain.host, brain.sim, brain.player = host, e, ai
+    brain.view = SimpleNamespace(things=[], enemies=frozenset())
+    brain.aim_of = lambda b, reach: None
+    brain.fired = []
+    team = SimpleNamespace(members=[simai.Unit(b) for b in bodies.values()])
+    mc = host.mod['micro']
+    manager = mc.MicroManager(mc.MicroInfo('replay'),
+                             fire=lambda u, info: brain.fire_unit(None, 'replay', u, info))
+    clock[0] = brain.frame = 346
+    before = brain.micro_team(None, 346, team)
+    assert all(u.damage(0, 2) == 0 for u in before.units)
+    manager.round(346, before)
+    assert not brain.fired
+    clock[0] = brain.frame = 347
+    visible = brain.micro_team(None, 347, team)
+    assert [u.damage(0, 2) for u in visible.units] == ([150, 150, 50] if check_name == 'a' else [0, 150, 50])
+    manager.round(347, visible)
+    assert bodies['base'].armor_up == (check_name == 'a')
+    assert not bodies['high'].armor_up and not bodies['removed'].armor_up
+    if check_name == 'a':
+        base = bodies['base']
+        assert {'SPECIAL_ARMOR_ACTIVE', 'GENERIC_TOGGLE_STATE'} <= base.status
+        assert base.taken < 1 and base.hp == 500
+        e.modify(base)
+        assert 'SPECIAL_ARMOR_ACTIVE' in base.status
+        # New wrappers must preserve the already active state.
+        again = brain.micro_team(None, 347, team)
+        assert again.units[0].toggle_index == 1
+        manager.round(347, again)
+        assert base.armor_up
+        # Wrong source/key cannot delete it; the original removal does.
+        e.incoming_hit(base, 99, observed[12][0])
+        assert e.expected_damage(base, 0, 2) == 150
+        clock[0] = 389
+        if lines:
+            assert sum('frame=389 n=0' in line for line in lines) == 3
+        e.incoming_hit(base, 12, observed[12][0])
+        assert e.expected_damage(base, 0, 2) == 0
+        clock[0] = brain.frame = 390
+        manager.round(390, brain.micro_team(None, 390, team))
+        assert not base.armor_up and 'SPECIAL_ARMOR_ACTIVE' not in base.status
+    clock[0] = 405
+    assert e.expected_damage(bodies['removed'], 0, 2) == 0
+
+
+def test_inform_launch_formula_and_matching_hit_lifecycle(monkeypatch):
+    import build
+    import sim
+    import simunits
+
+    m, t, _ = build.resolve('engine_inform_ai', 'a')
+    e = sim.Sim(m, t)
+    gun = e.body('Info gun base')
+    e.add('Replay target', 'SovietMiner', m.player('s1'), gun.x, gun.y + 442)
+    target = e.body('Replay target')
+    clock = [302]
+    monkeypatch.setattr(e, 'frame_now', lambda: clock[0])
+    weapon, = gun.weapons
+    assert weapon['inform'] == [dict(min=0.85, max=1.15)]
+    assert weapon['weapon_speed'] == 75
+    e.inform_launch(target, gun, weapon)
+    assert e.incoming[id(target)] == [(id(gun), weapon['weapon_key'], 150, 377, 404)]
+    # No tracking module, no table entry; no damage or HP mutation on notification.
+    e.inform_launch(gun, gun, weapon)
+    assert id(gun) not in e.incoming and target.hp == 500
+    e.incoming_add(target, 999, 'other', 10, 377, 450)
+    clock[0] = 347
+    assert e.expected_damage(target, 0, 2) == 160
+    assert e.expected_damage(target, 0, 0) == 0
+    e.queue_projectile_hit(389, target, 150, gun, weapon)
+    gun.alive = False
+    e.firing, e.volleys = [], []
+    clock[0] = 389
+    e.deal(1/15)
+    assert target.hp == 350
+    assert e.expected_damage(target, 0, 2) == 10
+    clock[0] = 451
+    assert e.expected_damage(target, 0, 2) == 0
+    # Retail cache was rebuilt with the new launch fields, preserving whole gap.
+    retail = simunits._fight_data()['weapons']['SovietAntiVehicleVehicleTech1CannonWeapon']
+    assert retail['inform'] and 'InformTargetNugget' in retail['unmodeled_effects']
+    # Override factors and fractional duration distinguish truncation from rounding.
+    clock[0] = 302
+    target.y = gun.y + 103.75
+    custom = dict(weapon, inform=[dict(min=0.5, max=1.6)], weapon_key='custom', dmg=100)
+    e.inform_launch(target, gun, custom)
+    assert e.incoming[id(target)] == [(id(gun), 'custom', 100, 312, 336)]
+    assert e.expected_damage(target, 0, 10/15) / target.max_hp == 0.2
+    e.incoming_hit(target, id(gun), 'custom')
+    instant = dict(custom, weapon_speed=0)
+    e.inform_launch(target, gun, instant)
+    assert e.incoming[id(target)] == [(id(gun), 'custom', 100, 302, 302)]
+
+
+@pytest.mark.parametrize('check_name', ['a', 'off'])
+def test_inform_normal_fire_records_launch_and_deletes_on_arrival(check_name, monkeypatch):
+    """Synthetic shot_clock dispatch, not script placement/collision phase replay."""
+    import build
+    import sim
+
+    m, t, _ = build.resolve('engine_inform_ai', check_name)
+    # As in the MetaImpact wiring test, use the modeled retail straight shell.
+    # Sim.own currently omits Unit.files; this is not the original slow flight.
+    import re
+    from checks.engine_shot import SHELL
+    for unit in m.units:
+        unit.xml = re.sub(r'ProjectileTemplate="[^"]+"', f'ProjectileTemplate="{SHELL}"', unit.xml)
+    e = sim.Sim(m, t)
+    e.shot_clock = True
+    clock = [302]
+    monkeypatch.setattr(e, 'frame_now', lambda: clock[0])
+    e.firing, e.volleys = [], []
+    for lane in ('base', 'high', 'removed'):
+        gun = e.body('Info gun ' + lane)
+        e.add('Dispatch ' + lane, 'SovietMiner', m.player('s1'), gun.x, gun.y + 442)
+        e.volleys.append((e.body('Dispatch ' + lane), gun.weapons[0], gun))
+    e.t = 20
+    e.deal(1/15)
+    clock[0] += 1
+    e.t += 1/15
+    e.deal(1/15)
+    notified = {b.name for b in e.bodies.values() if e.__dict__.get('incoming', {}).get(id(b))}
+    assert notified == {'Dispatch high', 'Dispatch removed'} | ({'Dispatch base'} if check_name == 'a' else set())
+    for target, weapon, gun in e.volleys:
+        rows = e.incoming.get(id(target), [])
+        if rows:
+            assert rows == [(id(gun), weapon['weapon_key'], weapon['dmg'], clock[0] + 75, clock[0] + 102)]
+    assert len(e.projectile_hits) == 3
+    arrival = max(hit[0] for hit in e.projectile_hits)
+    e.volleys = []
+    clock[0] = arrival
+    e.deal(1/15)
+    assert all(not rows for rows in e.incoming.values())
+    assert [e.body('Dispatch ' + lane).hp for lane in ('base', 'high', 'removed')] == [350, 350, 450]

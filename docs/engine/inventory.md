@@ -633,7 +633,7 @@
 | 未做 | `Behaviors/BezierProjectile` | 6 (78) | 已核（11-08）：模拟器没有这个效果（开火按每秒伤害直接扣血，没有弹体）；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
 | 未做 | `Behaviors/AssignSlavesTargetObjectSpecialPower` | 6 (10) | 模拟器代码里没有这个名字；例：AlliedConstructionYardRepairBay, AlliedNavalYard |
 | 未做 | `Behaviors/TrackDamage` | 6 (9) | 模拟器代码里没有这个名字；例：AlliedAntiNavalScout, AlliedFighterAircraft |
-| 未做 | `Behaviors/TrackIncomingWeaponFireBehavior` | 6 (9) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_inform_ai.py），可能用别的名字实现了；例：AlliedAntiNavalScout, AlliedFighterAircraft |
+| 未做 | `Behaviors/TrackIncomingWeaponFireBehavior` | 6 (9) | 部分：engine_inform_probe a/off通知记录回放验证录入、30帧窗口、来源与武器匹配删除和过期清理；精确过期边界INFERRED，原版完整调度/历史伤害仍gap，不靠名字命中晋升整项；例：AlliedAntiNavalScout, AlliedFighterAircraft |
 | 未做 | `Behaviors/OCLSpecialPower` | 6 (7) | 仅在SpecialPowerNugget处理器中识别并拒绝，未实现OCL技能执行；例：AlliedSuperWeaponAdvanced, CAMP_PowerStore_AlliedBomberDrop |
 | 未做 | `Behaviors/SubStructureStorageBehavior` | 6 (6) | 模拟器代码里没有这个名字；例：AlliedMCV, AlliedMCV_Naval |
 | 未做 | `Behaviors/WallBuilderBehavior` | 6 (6) | 模拟器代码里没有这个名字；例：AlliedWallPiece, AlliedWallSegmentPiece |
@@ -757,7 +757,7 @@
 |---|---|---|---|
 | 已对拍 | `DamageNugget` | 183 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_clip.py；例：BaseExplodingPropVehicleWeapon, MountRushmoreHeadEyeWeapon |
 | 已对拍 | `ProjectileNugget` | 88 | tests/test_simbench_c.py::test_projectile_nugget_flight_uses_retail_shell_speed_and_resolved_warhead；例：BB_EuropeCoastalGunWeapon, KremlinArtilleryDomeMissle |
-| 未做 | `InformTargetNugget` | 69 | engine_inform_ai a矿车命中前开甲；off仅去掉该Nugget后87帧受伤、观察窗内不开甲，支持提前自保依赖它，但受伤后开甲的附加预测FAIL；玩家/低伤/瞬发对照不变。预计/历史伤害及AI技能执行未模拟，严格回放xfail并显式gap，不晋升整项；例：BB_EuropeCoastalGunWeapon, AlliedPrecisionBomb |
+| 未做 | `InformTargetNugget` | 69 | engine_inform_ai a矿车命中前开甲；off仅去掉该Nugget后87帧受伤、观察窗内不开甲，支持提前自保依赖它，但受伤后开甲的附加预测FAIL；玩家/低伤/瞬发对照不变。普通目标来弹表/预计窗口及矿车开甲已接，a/off原始通知接口回放通过；脚本创建位置/独立弹体文件/矿车AI归队、历史伤害及精确思考相位仍gap，完整回放严格xfail，不晋升整项；例：BB_EuropeCoastalGunWeapon, AlliedPrecisionBomb |
 | 已对拍 | `SuppressionNugget` | 64 | tests/test_simbench_c.py::test_suppression_samples_entry_refresh_and_expiry_at_the_four_probe_readings；例：BB_EuropeCoastalGunWeapon, KremlinArtilleryDomeMissle |
 | 未做 | `MetaImpactNugget` | 36 | 部分执行：engine_knock_probe land/late实机碰撞事件回放接入伤害派发及默认Physics逐帧轨迹，邻人5帧落(2380,3740)；直线弹到达事件已接线，V4曲线弹命中时刻仍gap；直击方向/落点网格/半径选人含INFERRED，筛选/延迟及非默认Physics仍gap，不晋升整项；例：KremlinArtilleryDomeMissleWarhead, AlliedTimeBomb_Level1 |
 | 不涉及 | `ActivateLaserNugget` | 27 | 纯表现：Lifetime/LaserId/HitGroundFX/OverShootDistance驱动LaserState/LaserDraw；engine_laser pair实测2/90/2/90，无附加伤害或首发延迟，test_simbench_c重放；例：MountRushmoreHeadEyeWeapon, JapanAntiVehicleInfantryTech3LockDownGun |
