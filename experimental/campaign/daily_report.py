@@ -28,8 +28,9 @@ def commits(repo, hours):
 
 
 def inventory():
-    out = subprocess.run([sys.executable, '-I', '-X', 'utf8', str(ROOT / 'experimental/cnv/inventory.py')],
-                         capture_output=True, text=True, encoding='utf-8', env=dict(os.environ)).stdout
+    """The summary rows of the committed inventory (tests/test_inventory.py keeps it fresh), read only: running
+    inventory.py here rewrote docs/engine/inventory.md in whatever checkout the report ran in."""
+    out = (ROOT / 'docs' / 'engine' / 'inventory.md').read_text(encoding='utf-8', errors='replace')
     return ['  ' + line for line in out.splitlines() if re.match(r'\| \S+ \| \*\*\d+%\*\*', line)]
 
 
