@@ -85,11 +85,44 @@ def handoff_rev(lane):
     return rev, (os.path.getmtime(f) if os.path.exists(f) else 0)
 
 
+def set_aside_copies():
+    """An untracked file in work/re that origin now tracks with the same text (a line wrote its evidence here and
+    committed it from a temporary worktree) blocks the merge. Move such copies to backup/sync-aside/ -- never delete
+    (deleting is the user's call); a file whose text differs is left where it is and the merge reports it."""
+    names = subprocess.run(['git', 'ls-files', '--others', '--exclude-standard'], cwd=PRIV, capture_output=True,
+                           text=True, encoding='utf-8', errors='replace').stdout.split('\n')
+    for name in filter(None, names):
+        theirs = subprocess.run(['git', 'show', f'origin/main:{name}'], cwd=PRIV, capture_output=True)
+        if theirs.returncode:
+            continue
+        path = os.path.join(PRIV, name)
+        with open(path, 'rb') as f:
+            mine = f.read()
+        if mine.replace(b'\r', b'') == theirs.stdout.replace(b'\r', b''):
+            dest = os.path.join(PRIV, 'backup', 'sync-aside', name)
+            os.makedirs(os.path.dirname(dest), exist_ok=True)
+            os.replace(path, dest)
+    # a tracked file edited here whose text is already what origin has (the edit was pushed from elsewhere): take
+    # origin's copy, nothing is lost; an edit origin does not have stays and the merge reports it
+    names = subprocess.run(['git', 'diff', '--name-only'], cwd=PRIV, capture_output=True, text=True,
+                           encoding='utf-8', errors='replace').stdout.split('\n')
+    for name in filter(None, names):
+        theirs = subprocess.run(['git', 'show', f'origin/main:{name}'], cwd=PRIV, capture_output=True)
+        path = os.path.join(PRIV, name)
+        if theirs.returncode or not os.path.exists(path):
+            continue
+        with open(path, 'rb') as f:
+            mine = f.read()
+        if mine.replace(b'\r', b'') == theirs.stdout.replace(b'\r', b''):
+            subprocess.run(['git', 'checkout', '-q', 'origin/main', '--', name], cwd=PRIV)
+
+
 def sync_handoffs():
     """Bring the shared private repo (work/re, where the lines' handoffs live) up to origin before Codex reads it: a
     stale copy once sent a fresh session back to an already-answered question. Fast-forward only, keeping other lines'
     uncommitted edits; returns '' or the reason it could not."""
     subprocess.run(['git', 'fetch', '-q', 'origin'], cwd=PRIV)
+    set_aside_copies()
     r = subprocess.run(['git', 'merge', '-q', '--ff-only', 'origin/main'], cwd=PRIV, capture_output=True, text=True,
                        encoding='utf-8', errors='replace')
     if r.returncode:
