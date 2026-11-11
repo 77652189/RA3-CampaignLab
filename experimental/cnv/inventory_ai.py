@@ -89,6 +89,7 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
                               ('OpeningMove.Difficulty', 'aiodf / aiodf2：只留 MEDIUM 的'),
                               ('OpeningMove.Name', '每个探针按名字挂自写开局，都照它造'),
                               ('Order.Deposit', 'aiom15：带 Deposit 2000 照造、晚 4 秒'))},
+              '开局/Order.Account': 'docs/engine/aiopen.md#开局存款进哪个账户（Order Account，第 116 轮）（aiskacp / aiskacd：PRODUCTION 兵营出兵、DEFENSE 兵营不出）',
               '战略状态/StrategicState.State': 'docs/engine/aistate.md#读数（人格只留台上写的状态，AI 只跑这些：aistateconst / aistateslash 等）',
               '战略状态/TargetHeuristic.TargetHeuristic': 'docs/engine/aitactics.md#读数（aitargetnear / aitargetsafe：按状态写的目标启发挑楼）',
               '战术/Tactic.Tactic': 'docs/engine/aitactics.md#读数（SimpleAttack / DefenseAvoidanceAttack / FlankAttack / StaticDefense 上台）',

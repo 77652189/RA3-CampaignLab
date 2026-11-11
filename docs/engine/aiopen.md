@@ -79,6 +79,16 @@
 - `Account="PRODUCTION" Deposit="2000"` 的 `Time`：照样都造，只是晚约 4 秒（aiom15）。别的账户没测。
 - 开局造守护者坦克要 **Tech2**（守护者的 `GameDependency` 是 `Upgrade_AlliedTech2`）：建造场拿到 Tech2、战车工厂在约 300 以内才能造（`engine_tech` c / d）；没有就一辆不造，也不报错（aiar3，第 90 轮）。
 
+## 开局存款进哪个账户（Order Account，第 116 轮）
+
+引擎线 B 第 116 轮（2026-11-10）。探针 `checks/engine_aiskirm.py` 的 v（任务 `missions/aiskirm_bench.py` aiskacp / aiskacd）：把 1AlliedBalanced 照抄成自写人格，开局 = 原版 AlliedStandard，只改 `Time 10s` 那行 `Deposit 2000` 存进哪个账户。读数在检查的 docstring 里，两组都 PASS。
+
+给关卡线（测）：
+- **存进 `PRODUCTION`（原版全是这个）**：开局期间兵营照出兵，约 52 秒出 8 个步兵，和原版人格一模一样（aiskacp）。
+- **存进 `DEFENSE`**：整个开局兵营一个兵不出（开局预算给 PRODUCTION 0%），这 2000 换成了两座防御塔（唤醒后约 40 s、60 s 各一座）（aiskacd）。
+- 想让 AI 开局先修塔、不出兵：存款写 `DEFENSE`；想开局就有步兵骚扰：写 `PRODUCTION`，钱多给。
+- 模拟器：步兵对上；塔对不上（模拟器里 DEFENSE 的 2000 没人花，`tests/test_simai.py` 里是 strict xfail）。
+
 ## 没测的
 
 - 有采矿收入时钱不够的样子（这次没让矿车出来）；收入怎么按预算分进各账户（程序没读通）。

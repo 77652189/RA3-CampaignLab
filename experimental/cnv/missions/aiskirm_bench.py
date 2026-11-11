@@ -104,7 +104,50 @@ def umod_xml(zero):
         '</AssetDeclaration>', ''])
 
 
-def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None):
+ACCT_PID = 'CNVAcct'                  # aiskacp / aiskacd: 1AlliedBalanced rebuilt with its opening's Account changed
+# 1AlliedBalanced's own strategic-state lines (SDK Personalities/AlliedBalanced.xml lines 46-68, copied as written)
+BALANCED_STATES = (
+    ('BalancedDefense', 'EASY MEDIUM HARD BRUTAL'), ('BalancedCleanup', 'EASY MEDIUM HARD'),
+    ('AlliedScout', 'MEDIUM HARD BRUTAL'), ('ACVHarrassment', 'HARD BRUTAL'),
+    ('BalancedAttackGround', 'HARD BRUTAL'), ('BalancedAttackWater', 'HARD BRUTAL'),
+    ('BalancedAttackOverwhelm', 'HARD BRUTAL'), ('BalancedAttackGround_MEDIUM', 'MEDIUM'),
+    ('BalancedAttackWater_MEDIUM', 'MEDIUM'), ('BalancedAttackOverwhelm_MEDIUM', 'MEDIUM'),
+    ('BalancedAttackGround_EASY', 'EASY'), ('BalancedAttackWater_EASY', 'EASY'))
+# retail AlliedStandard (SDK OpeningMoves/AlliedOpeningMoves.xml), the Time 10s line's Account left to the variant
+STANDARD = ('<Order Build="AlliedBarracks" />', None, '<Order Build="AlliedPowerPlant" />',
+            '<Order Build="AlliedRefinery" />', '<Order Build="AlliedRefinery" />', '<Order Build="AlliedPowerPlant" />',
+            '<Order Build="AlliedWarFactory" />', *['<Order Build="AlliedAntiInfantryVehicle_Ground" />'] * 3,
+            '<Order Time="120s" />')
+
+
+def acct_xml(account):
+    """1AlliedBalanced rebuilt on its parent AlliedCoopBaseSkirmishPersonality (which has no OpeningMove), with one
+    opening = retail AlliedStandard except `<Order Time="10s" Account=account Deposit="2000"/>` (retail: PRODUCTION).
+    Rebuilt, not inheritFrom 1AlliedBalanced: its five OpeningMove lines have no id to remove. The model (private
+    ai/player.py UNIT_ACCOUNT): the barracks spends the PRODUCTION account only; the opening's budget gives it 0 %, so a
+    DEFENSE deposit leaves the barracks idle until the opening ends (~120 s after the wake)."""
+    orders = [o or f'<Order Time="10s" Account="{account}" Deposit="2000" />' for o in STANDARD]
+    return '\n'.join([
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
+        ' xmlns:xai="uri:ea.com:eala:asset:instance">',
+        '  <Tags></Tags>',
+        '  <Includes>',
+        '    <Include type="instance" source="DATA:SkirmishAI/Personalities/AlliedCoopBaseSkirmishPersonality.xml" />',
+        '  </Includes>',
+        '  <SkirmishOpeningMove id="CNVAcctOpen" Side="PlayerTemplate:Allies">',
+        *[f'    {o}' for o in orders],
+        '  </SkirmishOpeningMove>',
+        f'  <AIPersonalityDefinition id="{ACCT_PID}" PersonalityType="{ACCT_PID}"'
+        ' inheritFrom="AlliedCoopBaseSkirmishPersonality" SkirmishPersonality="true">',
+        '    <OpeningMove Name="CNVAcctOpen" Weight="100%" Difficulty="EASY MEDIUM HARD BRUTAL"/>',
+        '    <StrategicState id="Cleanup" xai:joinAction="Remove"/>',
+        *[f'    <StrategicState id="{s}" State="{s}" Difficulty="{d}"/>' for s, d in BALANCED_STATES],
+        '  </AIPersonalityDefinition>',
+        '</AssetDeclaration>', ''])
+
+
+def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None, account=None):
     m = Mission(name=name, map=ai_map(niagara, lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
     if expire is not None:               # aiskexp (check q): the same AI with SecondsTillTargetsExpire = expire
@@ -115,6 +158,10 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
         m.facts['zeroed'] = len(umod)
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{UMOD_PID}'
         m.assets.append((f'{UMOD_PID}.xml', umod_xml(umod), f'AIPersonalityDefinition:{UMOD_PID}'))
+    if account is not None:              # aiskacp / aiskacd (check v): the opening's Deposit into `account`
+        m.facts['production deposit'] = int(account == 'PRODUCTION')   # facts are numbers
+        m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{ACCT_PID}'
+        m.assets.append((f'{ACCT_PID}.xml', acct_xml(account), f'AIPersonalityDefinition:{ACCT_PID}'))
     s1 = m.player('s1')
     m.put('AlliedConstructionYard', 'east base', 0, 0, side='s1', name='UNIT - CNV AI Yard', role='ai yard')
     m.put('AlliedConstructionYard', 'base yard', name='UNIT - CNV AI Player Yard', role='player yard')
@@ -140,4 +187,6 @@ MISSION = {'aiskirm': mission, 'aiskirmlow': lambda: mission('CampAISkLow', mone
            'aiskjav': lambda: mission('CampAISkJav', jav=True),
            'aiskirmnl': lambda: mission('CampAISkNoLib', lib=False),
            'aiskexp': lambda: mission('CampAISkExp', expire=12.0),
-           'aiskmod': lambda: mission('CampAISkMod', umod=UMOD_ZERO)}     # check q: SecondsTillTargetsExpire 12, not 5   # s1 without the container's Lib_Skirmish_Setup
+           'aiskmod': lambda: mission('CampAISkMod', umod=UMOD_ZERO),     # check q: SecondsTillTargetsExpire 12, not 5   # s1 without the container's Lib_Skirmish_Setup
+           'aiskacp': lambda: mission('CampAISkAcP', account='PRODUCTION'),    # check v: the rebuilt AI, retail Account
+           'aiskacd': lambda: mission('CampAISkAcD', account='DEFENSE')}

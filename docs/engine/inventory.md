@@ -8,7 +8,7 @@
 | 脚本条件 | **94%** | 89 | 27 | 5 | 54 | 3 | 94% |
 | 物体模块 | **92%** | 186 | 37 | 6 | 121 | 22 | 92% |
 | 武器效果 | **76%** | 25 | 14 | 1 | 8 | 2 | 77% |
-| AI | **70%** | 415 | 97 | 134 | 150 | 34 | 88% |
+| AI | **71%** | 415 | 98 | 133 | 150 | 34 | 88% |
 
 ## 脚本动作
 
@@ -834,7 +834,7 @@
 | 已对拍 | `微操/AIMicroManagerData.UseSpecialPowers` | 83 | 台上量过（engine_aimicro：aimicspon 开 两个武士 s41 冲锋，aimicspoff 关 一直没冲、s51 前被打死，脚本按的对照照样冲）、测试对拍 tests/test_simai.py（模拟器读进探针自写的微操数据：开的想冲、关的从不冲；技能本身模拟器没接，只记"想用"） |
 | 推断 | `微操/AIMicroManagerData.EngageHostileTargets` | 82 | 台上 aimicspon（开）/ aimicengoff（关）两个武士都在家跟征召兵打、都冲锋活到最后——关掉不让队伍躲开战斗；差别只在首次冲锋：关 ~258 帧、开 ~362 帧（各两次一致）。模拟器开关都冲，但先后相反（关 ~457、开 ~275），tests/test_simai.py strict xfail；私有模型里的打分式没读（按"杀死所需秒数"推断） |
 | 已对拍 | `微操/AIMicroManagerData.EngagePassiveTargets` | 82 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_airetreat.py |
-| 推断 | `开局/Order.Account` | 81 | AI 模型代码里读了这个名字 |
+| 已对拍 | `开局/Order.Account` | 81 | docs/engine/aiopen.md#开局存款进哪个账户（Order Account，第 116 轮）（aiskacp / aiskacd：PRODUCTION 兵营出兵、DEFENSE 兵营不出） |
 | 已对拍 | `开局/Order.Deposit` | 81 | docs/engine/aiopen.md#开局怎么抽、哪些单子会作废（OpeningMove Weight / Difficulty，第 89～90 轮）（aiom15：带 Deposit 2000 照造、晚 4 秒） |
 | 推断 | `微操/AIMicroManagerData.EngageTacticalTarget` | 79 | AI 模型代码里读了这个名字 |
 | 已对拍 | `微操/AIMicroManagerData.PullbackInjured` | 78 | 只认车能开进去的维修设施：苏联 AI + 吊车，残血坦克回去被回收（aipullsov PASS）；盟军 / 日本工厂找不到（aiteamstate.md 第 6 节） |

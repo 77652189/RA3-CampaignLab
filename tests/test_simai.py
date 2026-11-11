@@ -724,3 +724,32 @@ def test_hunt_team_turns_on_the_conscripts_it_sees(spow):
     engaged = [e for e in b.tactics.log if e[1] == 'engage']
     assert engaged, b.tactics.log[-5:]
     assert any(f - b.started < 30 * simai.FPS for f, _, _ in engaged), engaged[:3]
+
+
+@pytest.fixture(scope='module')
+def acct(lib):
+    """aiskacp / aiskacd (checks/engine_aiskirm.py v, B handoff 118): 1AlliedBalanced rebuilt, its opening's Time 10s
+    Deposit 2000 into PRODUCTION (retail) / DEFENSE."""
+    return {b: simai.run(b, until=110, lib=lib) for b in ('aiskacp', 'aiskacd')}
+
+
+def test_order_account_production_deposit_feeds_the_barracks(acct):
+    """bench aiskacp v (2026-11-10, PASS): the barracks' infantry 1 at s25 ... 8 at s62 (= aiskirm c's), the rebuilt
+    personality plays as the stock one."""
+    out = _barracks_out(acct['aiskacp'])
+    assert len([s for s, t in out if s < 60]) >= 6, out
+
+
+def test_order_account_defense_deposit_leaves_the_barracks_idle(acct):
+    """bench aiskacd v (2026-11-10, PASS): the same AI with the Deposit into DEFENSE builds no infantry to s109
+    (~100 s after the wake): the barracks spends only PRODUCTION, which the opening's budget gives 0 %."""
+    assert not _barracks_out(acct['aiskacd'])
+
+
+@pytest.mark.xfail(strict=True, reason='bench aiskacd v: a DEFENSE Deposit buys towers in the opening (1 at s49, 2 at '
+                   's69, ~40 / ~60 s after the wake; aiskacp none); the model keeps the DEFENSE balance unspent (who '
+                   'spends the DEFENSE account NOT READ, private ai/defense.py)')
+def test_order_account_defense_deposit_buys_towers(acct):
+    (b,) = acct['aiskacd'].brains.values()
+    towers = [f for f, what, t in b.trace if what == 'out' and t in ('AlliedBaseDefense', 'AlliedBaseDefenseAdvanced')]
+    assert len(towers) >= 2, b.trace[-10:]

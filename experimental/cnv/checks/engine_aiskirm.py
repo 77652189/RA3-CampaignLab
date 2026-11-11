@@ -205,6 +205,17 @@ RESULTS g / h (bench 2026-11-10, aiskirm g / h and aiskirmnl g, all PASS (weak);
   Reading: UnitModifier at 0 changes nothing in what the barracks builds: the zeroed units are drawn as before. It
     scales only the builder's score (0x8b9c30), which no SDK personality's draw uses (no UnitBuilderUnitChoiceStrategy;
     l4_unitbuilder.md round 35). A level cannot steer or forbid a unit with it (caps / build states do that).
+
+  v  步兵 / 塔数 / 建筑数 / AI钱 to ~110 s after the wake. aiskacp / aiskacd (1AlliedBalanced rebuilt on
+     AlliedCoopBaseSkirmishPersonality, its one opening = retail AlliedStandard with the Time 10s Deposit 2000 into
+     PRODUCTION / DEFENSE). Bench 2026-11-10, both PASS (bench s):
+  aiskacp: 步兵 1 s25, 2 s26, 3 s33, 4 s38, 5 s44, 6 s50, 7 s56, 8 s62, then 8 to s134 (9 s136); 塔数 0 throughout;
+    建筑数 2 s20, 3 s30, 4 s50, 5 s71, 6 s81, 7 s100, 8 s144 -- aiskirm c's timeline: the rebuilt AI is the stock one.
+  aiskacd: 步兵 0 to the end (s128); 塔数 1 at s49, 2 at s69 (2 x 800 of the 2000), no third; 建筑数 2 s19, 3 s29,
+    5 s49, 7 s69, 8 s85, 9 s106; AI钱 ~41100 at s128 (aiskacp ~41000 at s128: the same spend, towers for infantry).
+  Reading: the opening's Account picks what the Deposit buys: PRODUCTION feeds the barracks, DEFENSE buys towers
+    (the base defense builder spends DEFENSE) and the barracks stays idle through the opening (its budget gives
+    PRODUCTION 0 %). The simulator matches the infantry, not the towers (keeps the DEFENSE 2000).
 """
 from parts import Script, Test, counted, square
 
@@ -313,6 +324,31 @@ def u(m):
     w = m.facts['wake at']
     t.expect += [('维和总数', w + 70.0, 'ever>=', 1, w + 80.0), ('标枪总数', w + 70.0, 'ever>=', 1, w + 80.0)]
     t.bench = [('bench_watch', dict(seconds=w + 84.0, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+def v(m):
+    """Order Account (aiskacp / aiskacd: 1AlliedBalanced rebuilt with retail AlliedStandard as its one opening, the
+    `Time 10s` line's Deposit 2000 into PRODUCTION (retail) / DEFENSE): 步兵 = the barracks' four (Peacekeeper, Javelin,
+    dog, Engineer) s1 owns, 塔数 (the two Allied towers), 建筑数 (yard, power, barracks, refinery, war factory, towers),
+    AI钱, to 110 s after the wake. The model's guess (private ai/player.py UNIT_ACCOUNT, the barracks spends PRODUCTION
+    only; OpeningMoveBudget gives PRODUCTION / DEFENSE 0 %): PRODUCTION builds as aiskirm c (8 infantry by ~52 s after
+    the wake), DEFENSE builds no infantry while the opening runs (to ~120 s)."""
+    t = Test()
+    s1 = m.player('s1')
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    _sum(t, m, s1, 'CNV_AK_VInf', '步兵', ('AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry', DOG,
+                                           'AlliedEngineer'))
+    _sum(t, m, s1, 'CNV_AK_VTow', '塔数', TOWERS)
+    _sum(t, m, s1, 'CNV_AK_VBlt', '建筑数', BUILDINGS + TOWERS)
+    t.counters.append(('CNV_AK_VMoney', 'AI钱'))
+    t.scripts.append(Script('Test - money', [], [('SET_PLAYER_MONEY_TO_COUNTER', s1, 'CNV_AK_VMoney')], once=False))
+    w = m.facts['wake at']
+    if m.facts['production deposit']:
+        t.expect += [('步兵', w + 10.0, 'ever>=', 6, w + 70.0)]
+    else:
+        t.expect += [('步兵', w + 5.0, '<=', 0, w + 100.0)]
+    t.bench = [('bench_watch', dict(seconds=w + 114.0, every=1, sheet=False, lines=len(t.counters)))]
     return t
 
 
@@ -614,6 +650,8 @@ CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j
                       'n': n, 'o': o, 'p': p, 'q': q, 'r': r, 'u': u},
           'aiskexp': {'q': q},
           'aiskmod': {'u': u},
+          'aiskacp': {'v': v},
+          'aiskacd': {'v': v},
           'aiskirmnl': {'g': g, 'h': h},
           'aiskjav': {'e': e},
           'aiskirmlow': {'d': d, 'f': f}}
