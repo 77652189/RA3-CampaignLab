@@ -276,7 +276,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v15.json')    # v15: direct ungated damage-proportional leech fields
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v16.json')    # v16: direct contained-passenger damage fields
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -428,6 +428,23 @@ def _weapons(texts, base_table=None):
                 else:
                     dmg.append((_num(_attr(h, 'Damage')), _attr(h, 'DamageType', 'UNDEFINED')))
                     got['leech_health'] = _num(_attr(h, 'PercentDamageToHeal', '100%').rstrip('%')) / 100
+            contained = []
+            for h, inner in _blocks(bare, 'DamageContainedNugget'):
+                filters = list(_blocks(inner, 'DamageObjectFilter'))
+                if (len(filters) != 1 or re.sub(r'<DamageObjectFilter\b[^>]*/>', '', inner).strip()
+                        or _attr(filters[0][0], 'Rule', 'NONE') != 'NONE'
+                        or set(re.findall(r'(\w+)\s*=', filters[0][0])) - {'Rule', 'Include', 'Exclude'}
+                        or set(re.findall(r'(\w+)\s*=', h)) - {'Damage', 'DamageType', 'DeathType', 'MaxUnitsToDamage', 'Radius', 'DelayTimeSeconds'}
+                        or _num(_attr(h, 'Radius', '0'), float('nan')) != 0
+                        or any(war) or _secs(_attr(h, 'DelayTimeSeconds', '0s'))):
+                    unsupported.append('DamageContainedNugget')
+                else:
+                    f = filters[0][0]
+                    contained.append(dict(damage=_num(_attr(h, 'Damage')), type=_attr(h, 'DamageType', 'UNDEFINED'),
+                                          maximum=int(_num(_attr(h, 'MaxUnitsToDamage', '100'))),
+                                          include=_attr(f, 'Include', '').split(), exclude=_attr(f, 'Exclude', '').split()))
+            if contained:
+                got['contained'] = contained
             if unsupported:
                 got['unmodeled_effects'] = unsupported
             if sd:
@@ -518,7 +535,7 @@ def _resolve(w, weapons):
                 strip_max_health=w.get('strip_max_health', weapons.get(w.get('warhead'), {}).get('strip_max_health', [])),
                 emp_seconds=w.get('emp_seconds', weapons.get(w.get('warhead'), {}).get('emp_seconds', [])),
                 leech_percent=w.get('leech_percent', 0.0), leech_health=w.get('leech_health', 0.0),
-                sweep=w.get('sweep'),
+                sweep=w.get('sweep'), contained=w.get('contained', []),
                 unmodeled_effects=w.get('unmodeled_effects', weapons.get(w.get('warhead'), {}).get('unmodeled_effects', [])))
 
 

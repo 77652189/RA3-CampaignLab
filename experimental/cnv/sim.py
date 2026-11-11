@@ -3477,7 +3477,7 @@ class Sim:
                 for effect in w.get('unmodeled_effects', []):
                     self.gap(GAP_WEAPON, effect, '武器第1轮尚未解释此效果的筛选、几何或时序')
                 if not self.shot_clock and (w.get('hit_modifiers') or w.get('line') or w.get('strip_max_health') or w.get('emp_seconds')
-                                           or w.get('sweep')):
+                                           or w.get('sweep') or w.get('contained')):
                     self.gap(GAP_WEAPON, 'weapon effects', '逐发武器效果仅在离散命中时钟中模拟')
                 if w['dps'] or w.get('suppression') or (self.shot_clock and w.get('sdps')):
                     if 'sched' in w and self.shot_clock:
@@ -3709,6 +3709,17 @@ class Sim:
                                 h[1] += damage
                             continue
                         self.gap(GAP_WEAPON, 'ProjectileNugget', '仅无复合效果的直线弹飞行已建模；曲线弹/复合弹/自制弹体待核')
+                    # DamageContainedNugget damages eligible passengers, not the house.
+                    # GUESSED priority: entry order; the bench asserts only aggregate HP.
+                    for effect in w.get('contained', []):
+                        eligible = [p for p in self.garrison.inside.get(t.name, []) if p.alive
+                                    and (not effect['include'] or set(effect['include']) & p.kinds)
+                                    and not set(effect['exclude']) & p.kinds]
+                        for passenger in eligible[:max(0, effect['maximum'])]:
+                            armor = (1.0 if effect['type'] == 'UNRESISTABLE' else
+                                     simunits.percent(passenger.armor, effect['type']) / 100 * passenger.taken)
+                            h = hurt.setdefault(id(passenger), [passenger, 0.0, by])
+                            h[1] += n * effect['damage'] * by.dealt * armor
                     # SecondaryDamageNugget.Amount is per hit, not a partial clip's mean DPS.
                     if w.get('sd'):
                         if projectile:

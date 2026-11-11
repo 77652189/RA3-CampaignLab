@@ -559,3 +559,13 @@ def test_leech_health_heals_from_damage_and_respects_the_heal_fraction():
     m,t,_=build.resolve('engine_leechhealth','a')
     e=sim.Sim(m,t);e.shot_clock=True
     assert tuple(e.run(16).series[-1][1])==(1001095045,1001090050,1001090045,1001090040)
+
+
+def test_damage_contained_limits_eligible_passengers_without_damaging_the_others():
+    import build
+    import sim
+    m,t,_=build.resolve('engine_contained','a')
+    e=sim.Sim(m,t);e.shot_clock=True
+    for lane in ('base','high','order','removed'):
+        assert e.body('Contained '+lane+' gun').y>=0
+    assert tuple(e.run(16).series[-1][1])==(992002200,992002180,992002160,992002200)

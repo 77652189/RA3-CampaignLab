@@ -2,14 +2,14 @@
 
 由 `experimental/cnv/inventory_levels.py --write` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）编出的全部脚本（`parts.merged`，含目标显示脚本）里的动作和条件；地图和任务摆的物体、我们自己的单位、脚本点名的模板，连同模块点名的武器、武器点名的物体（抛射体）和武器，取生效的模块（继承、include、同 id 覆盖）和武器效果。没跟：模块点名的别的物体（多是能变成 / 能装的东西：多功能步兵车的乘客、锤子坦克吸来的车）、物体生成表（死亡碎片、OCL 技能）和命令表（工厂能造什么）。AI 部分（引擎 B）在 [inventory-levels.md](inventory-levels.md)。状态和原版用量取自 [inventory.md](inventory.md)。停止条件①：下表全部已对拍。
 
-**已对拍 105 / 195**（不涉及的不算）。
+**已对拍 106 / 195**（不涉及的不算）。
 
 | 部分 | 已对拍 | 推断 | 未做 | 不涉及 |
 |---|---|---|---|---|
 | 脚本动作 | 49 | 1 | 0 | 14 |
 | 脚本条件 | 12 | 0 | 0 | 0 |
 | 物体模块 | 33 | 7 | 74 | 16 |
-| 武器效果 | 11 | 1 | 7 | 2 |
+| 武器效果 | 12 | 1 | 6 | 2 |
 
 按原版用量加权：已对拍 97%，已有（已对拍+推断）97%。
 
@@ -98,7 +98,6 @@
 | 未做 | 武器效果 | `ActivateLiftObjectNugget` | 6 | a1 a2 a4 a6 a7 | 模拟器代码里没有这个名字；例：AAAVT1_JapanCommandoTech1PsyonicAntiAirCrush, AAAVT1_JapanCommandoTech1PsyonicCrush |
 | 未做 | 武器效果 | `SpecialPowerNugget` | 6 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAntiVehicleVehicleTech1TargetPainter, CNV_DeckSendTrigger |
 | 未做 | 武器效果 | `AttachNugget` | 4 | a1 a2 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoAttachWeapon, SovietScoutVehicleMeleeAttachWeapon |
-| 未做 | 武器效果 | `DamageContainedNugget` | 2 | a1 a2 a3 a5 | 模拟器代码里没有这个名字；例：SovietAntiInfantryInfantryMolotovCocktailWarhead |
 | 未做 | 武器效果 | `GrapplingHookNugget` | 1 | a1 a3 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：SovietAntiVehicleVehicleTech3Harpoon |
 | 推断 | 脚本动作 | `NAMED_SET_MAX_HEALTH` | 53 | a4 | Sim.act / Sim.cond 有分支；台上量过（checks/engine_missile.py），没有测试跑这个台子 |
 | 推断 | 物体模块 | `Behaviors/SuppressionUpdate` | 22 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 部分：阈值>=50、SPEED/ARMOR 75%已实测；短贡献寿命与晚恢复56帧未解释，不登记整项已对拍；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
@@ -150,13 +149,13 @@
 | 已对拍 | 脚本动作 | `HIDE_COUNTDOWN_TIMER` | 43 | a4 a7 a8 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts4.py |
 | 已对拍 | 脚本动作 | `SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER` | 29 | a1 a2 a3 a4 a6 a7 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiopen.py |
 | 已对拍 | 脚本动作 | `TEAM_STOP` | 27 | a4 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts4.py |
-| 已对拍 | 脚本动作 | `COUNTER_MATH_COUNTER` | 19 | a1 a2 a3 a6 a7 a9 | 引擎模型核心；台上量过、测试对拍：checks/engine_leechhealth.py |
+| 已对拍 | 脚本动作 | `COUNTER_MATH_COUNTER` | 19 | a1 a2 a3 a6 a7 a9 | 引擎模型核心；台上量过、测试对拍：checks/engine_contained.py |
 | 已对拍 | 脚本动作 | `UNIT_SET_HEALTH` | 15 | a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aipullback.py |
 | 已对拍 | 脚本动作 | `SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES` | 14 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiswitch.py |
 | 已对拍 | 脚本动作 | `NAMED_REMOVE_UPGRADE` | 11 | a8 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_invuln.py |
 | 已对拍 | 脚本动作 | `TEAM_GUARD_AREA` | 9 | a1 a4 a5 a6 a7 a8 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts4.py |
 | 已对拍 | 脚本动作 | `MAP_REVEAL_AT_WAYPOINT` | 8 | a1 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_vision.py |
-| 已对拍 | 脚本动作 | `SET_COUNTER_TO_COUNTER` | 8 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 引擎模型核心；台上量过、测试对拍：checks/engine_protocol.py |
+| 已对拍 | 脚本动作 | `SET_COUNTER_TO_COUNTER` | 8 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 引擎模型核心；台上量过、测试对拍：checks/engine_contained.py |
 | 已对拍 | 脚本动作 | `UNIT_CHANGE_OBJECT_STATUS:UNATTACKABLE` | 7 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_crush.py |
 | 已对拍 | 脚本条件 | `FLAG` | 5099 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 引擎模型核心；台上量过、测试对拍：checks/engine_aiopen.py |
 | 已对拍 | 脚本条件 | `TIMER_EXPIRED` | 3917 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 引擎模型核心；台上量过、测试对拍：checks/engine_acquire.py |
@@ -166,7 +165,7 @@
 | 已对拍 | 脚本条件 | `NAMED_INSIDE_AREA` | 413 | a3 a4 a5 a6 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_block.py |
 | 已对拍 | 脚本条件 | `SKIRMISH_PLAYER_HAS_UNITS_IN_AREA` | 410 | a1 a3 a4 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_area.py |
 | 已对拍 | 脚本条件 | `NAMED_OWNED_BY_PLAYER` | 397 | a4 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_garrison.py |
-| 已对拍 | 脚本条件 | `NAMED_NOT_DESTROYED` | 374 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_crush.py |
+| 已对拍 | 脚本条件 | `NAMED_NOT_DESTROYED` | 374 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_contained.py |
 | 已对拍 | 脚本条件 | `PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA` | 278 | a4 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aistate.py |
 | 已对拍 | 脚本条件 | `NAMED_ATTACKED_BY_PLAYER` | 150 | a4 a5 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attack.py |
 | 已对拍 | 脚本条件 | `UNIT_HEALTH` | 134 | a2 a4 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_air.py |
@@ -212,6 +211,7 @@
 | 已对拍 | 武器效果 | `SecondaryDamageNugget` | 5 | a7 | tests/test_simbench_c.py::test_secondary_damage_delivers_one_amount_at_hit_without_damaging_health；例：AlliedSupportAircraftCryobeam |
 | 已对拍 | 武器效果 | `StripMaxHealthPercentNugget` | 3 | a1 a2 a4 a6 a7 | tests/test_simbench_c.py::test_strip_max_health_percent_uses_maximum_at_full_and_half_health；例：AAAVT1_JapanCommandoTech1PsyonicCrush, ABD_JapanCommandoTech1PsyonicCrush |
 | 已对拍 | 武器效果 | `ActivateLinearDamageNugget` | 2 | a1 a2 a4 a6 a7 | tests/test_simsweep.py::test_sweep_a_killed_shooters_line_stops_with_it_and_the_second_ones_rows_are_hit；例：AlliedAntiNavalScoutSonar, AlliedAntiNavalScoutSonarForBridges |
+| 已对拍 | 武器效果 | `DamageContainedNugget` | 2 | a1 a2 a3 a5 | tests/test_simbench_c.py::test_damage_contained_limits_eligible_passengers_without_damaging_the_others；engine_contained：单发、NONE KindOf过滤、cap1/2；选择顺序GUESSED，范围/弹体/死亡未验证；例：SovietAntiInfantryInfantryMolotovCocktailWarhead |
 | 已对拍 | 武器效果 | `LeechPercentMaxHealthDamageNugget` | 2 | a1 a3 a4 a6 a7 a9 | tests/test_simbench_c.py::test_leech_percent_uses_victim_maximum_not_current_health_or_caster_maximum；例：SovietHarpoonCrushWeapon |
 | 已对拍 | 武器效果 | `LeechHealthDamageNugget` | 1 | a1 a2 a3 a4 a5 a6 a7 | tests/test_simbench_c.py::test_leech_health_heals_from_damage_and_respects_the_heal_fraction；例：SovietAntiVehicleVehicleTech1LeechBeamWeapon |
 | 不涉及 | 脚本动作 | `PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT` | 640 | a4 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |

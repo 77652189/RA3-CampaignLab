@@ -7,8 +7,8 @@
 | 脚本动作 | **89%** | 451 | 109 | 31 | 194 | 117 | 91% |
 | 脚本条件 | **94%** | 89 | 27 | 5 | 54 | 3 | 94% |
 | 物体模块 | **89%** | 185 | 34 | 7 | 123 | 21 | 90% |
-| 武器效果 | **64%** | 25 | 11 | 1 | 11 | 2 | 76% |
-| AI | **70%** | 415 | 96 | 132 | 153 | 34 | 87% |
+| 武器效果 | **64%** | 25 | 12 | 1 | 10 | 2 | 76% |
+| AI | **70%** | 415 | 96 | 135 | 150 | 34 | 88% |
 
 ## 脚本动作
 
@@ -229,7 +229,7 @@
 | 未做 | `REDALERT_DISABLE_THREAT_LEVEL_BONUS` | 20 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `UNIT_EXECUTE_SEQUENTIAL_SCRIPT_COPY` | 20 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `CAMERA_FOLLOW_NAMED` | 19 | 纯表现（名字规则）；Sim.act / Sim.cond 有分支 |
-| 已对拍 | `COUNTER_MATH_COUNTER` | 19 | 引擎模型核心；台上量过、测试对拍：checks/engine_leechhealth.py |
+| 已对拍 | `COUNTER_MATH_COUNTER` | 19 | 引擎模型核心；台上量过、测试对拍：checks/engine_contained.py |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_SmokeBombSpecialPower` | 19 | 只记进时间线，没有效果 |
 | 未做 | `PLAYER_DISABLE_BASE_CONSTRUCTION` | 16 | Sim.act / Sim.cond 不认识 |
 | 未做 | `PLAYER_ENABLE_UNIT_CONSTRUCTION` | 16 | Sim.act / Sim.cond 不认识 |
@@ -287,7 +287,7 @@
 | 已对拍 | `TEAM_GUARD_AREA` | 9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts4.py |
 | 已对拍 | `TEAM_IDLE_FOR_FRAMECOUNT` | 9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts8.py |
 | 未做 | `TEAM_MOVE_TO_NEAREST_OBJECT_OF_TYPE_OWNED_BY_PLAYER` | 9 | Sim.act / Sim.cond 不认识 |
-| 已对拍 | `COUNTER_MATH_VALUE` | 8 | 引擎模型核心；台上量过、测试对拍：checks/engine_leechhealth.py |
+| 已对拍 | `COUNTER_MATH_VALUE` | 8 | 引擎模型核心；台上量过、测试对拍：checks/engine_contained.py |
 | 未做 | `EXIT_SPECIFIC_BUILDING` | 8 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `FLASH_UI_PLAYER_POWER_BUTTON` | 8 | 纯表现（名字规则） |
 | 已对拍 | `MAP_REVEAL_AT_WAYPOINT` | 8 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_vision.py |
@@ -297,7 +297,7 @@
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateJumpSpecialPower` | 8 | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateLeapSpecialPower` | 8 | Sim.act / Sim.cond 不认识 |
 | 推断 | `RESTART_TIMER` | 8 | 引擎模型核心 |
-| 已对拍 | `SET_COUNTER_TO_COUNTER` | 8 | 引擎模型核心；台上量过、测试对拍：checks/engine_protocol.py |
+| 已对拍 | `SET_COUNTER_TO_COUNTER` | 8 | 引擎模型核心；台上量过、测试对拍：checks/engine_contained.py |
 | 未做 | `SET_PLAYER_KILLS_OF_TYPE_TO_COUNTER` | 8 | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `CAMERA_STOP_FOLLOW` | 7 | 纯表现（名字规则） |
 | 不涉及 | `FIRE_SPECIAL_POWER_ON_UNIT` | 7 | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
@@ -482,7 +482,7 @@
 | 已对拍 | `NAMED_INSIDE_AREA` | 413 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_block.py |
 | 已对拍 | `SKIRMISH_PLAYER_HAS_UNITS_IN_AREA` | 410 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_area.py |
 | 已对拍 | `NAMED_OWNED_BY_PLAYER` | 397 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_garrison.py |
-| 已对拍 | `NAMED_NOT_DESTROYED` | 374 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_crush.py |
+| 已对拍 | `NAMED_NOT_DESTROYED` | 374 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_contained.py |
 | 已对拍 | `PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA` | 278 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aistate.py |
 | 已对拍 | `NAMED_ATTACKED_BY_PLAYER` | 150 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attack.py |
 | 已对拍 | `UNIT_HAS_OBJECT_STATUS` | 142 | tests/test_simbench.py::test_scripts1_conditions_as_the_bench |
@@ -772,7 +772,7 @@
 | 未做 | `AttachNugget` | 4 | 模拟器代码里没有这个名字；例：AlliedCommandoAttachWeapon, SovietAntiVehicleInfantryMagneticBombAttachWeapon |
 | 已对拍 | `StripMaxHealthPercentNugget` | 3 | tests/test_simbench_c.py::test_strip_max_health_percent_uses_maximum_at_full_and_half_health；例：JapanCommandoTech1PsyonicCrush, AAAVT1_JapanCommandoTech1PsyonicCrush |
 | 已对拍 | `ActivateLinearDamageNugget` | 2 | tests/test_simsweep.py::test_sweep_a_killed_shooters_line_stops_with_it_and_the_second_ones_rows_are_hit；例：AlliedAntiNavalScoutSonar, AlliedAntiNavalScoutSonarForBridges |
-| 未做 | `DamageContainedNugget` | 2 | 模拟器代码里没有这个名字；例：SovietAntiInfantryInfantryMolotovCocktailWarhead, Weapon_DesolatorBombFieldUpdate |
+| 已对拍 | `DamageContainedNugget` | 2 | tests/test_simbench_c.py::test_damage_contained_limits_eligible_passengers_without_damaging_the_others；engine_contained：单发、NONE KindOf过滤、cap1/2；选择顺序GUESSED，范围/弹体/死亡未验证；例：SovietAntiInfantryInfantryMolotovCocktailWarhead, Weapon_DesolatorBombFieldUpdate |
 | 已对拍 | `LeechPercentMaxHealthDamageNugget` | 2 | tests/test_simbench_c.py::test_leech_percent_uses_victim_maximum_not_current_health_or_caster_maximum；例：SovietCrushWeapon, SovietHarpoonCrushWeapon |
 | 未做 | `ReportWeaponFiredStatNugget` | 2 | 模拟器代码里没有这个名字；例：SovietVacuumBomb, ParticleCannonWeapon |
 | 未做 | `ActivateCircularDamageNugget` | 1 | 模拟器代码里没有这个名字；例：SovietAntiNavyShipTech1TeslaNova |
@@ -938,9 +938,9 @@
 | 已对拍 | `组队招人/TeamTemplate.Priority=DEFENSE` | 13 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |
 | 推断 | `启发条件/AllNearbyNodesFullHeuristic` | 12 | AI 模型代码里读了这个名字 |
 | 推断 | `微操/AIMicroManagerData.CrushPreference` | 12 | 同 Crush：模拟器不会碾压（engine_aicrush，strict xfail） |
-| 未做 | `微操/AIMicroManagerData.RandomTargetScoreModifier` | 12 | AI 模型代码里没有这个名字 |
-| 未做 | `微操/AIMicroManagerData.TimeToKeepTargetMax` | 12 | AI 模型代码里没有这个名字 |
-| 未做 | `微操/AIMicroManagerData.TimeToKeepTargetMin` | 12 | AI 模型代码里没有这个名字 |
+| 推断 | `微操/AIMicroManagerData.RandomTargetScoreModifier` | 12 | AI 模型代码里读了这个名字 |
+| 推断 | `微操/AIMicroManagerData.TimeToKeepTargetMax` | 12 | AI 模型代码里读了这个名字 |
+| 推断 | `微操/AIMicroManagerData.TimeToKeepTargetMin` | 12 | AI 模型代码里读了这个名字 |
 | 推断 | `战术/Tactic.Tactic=SimpleExpansion` | 12 | AI 模型代码里读了这个名字 |
 | 未做 | `目标/AITargetingHeuristic.HeuristicType=Expansion` | 12 | AI 模型代码里没有这个名字 |
 | 已对拍 | `目标/AITargetingHeuristic.SortType=ThreatToGround` | 12 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aitarget.py |
