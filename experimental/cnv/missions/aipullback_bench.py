@@ -22,7 +22,7 @@ FACTORY_AT = (0.0, 300.0)              # off the yard's east base site, clear of
 CLOSE_AT = (-360.0, 0.0)               # airevp*: the far plant moved here off 'east base' -- 100 west of the tanks'
                                        # column (-260, -90..90): every tank 100-135 from its centre, well in range
 TURRET = 'AlliedBaseDefense'           # airevt*: a hostile target -- the plant is only a tactical one (state 6), and
-TURRET_NAME = 'UNIT - CNV AI Rev Turret'   # 0x8dec40 runs in states 2 and 4 only (work/re l4_micro_engage 1.4)
+TURRET_NAME = 'UNIT - CNV AI Rev Turret'   # the reverse-move routine runs in states 2 and 4 only (work/re l4_micro_engage 1.4)
 TURRET_AT = (-340.0, 0.0)              # 80-120 from the tanks
 TURRET_PLANT_AT = (-480.0, 0.0)        # the plant behind it, out of the way
 
@@ -31,7 +31,7 @@ def mission(mod, factory=False, faction=None, close=False, **fields):
     """faction 'Soviet' / 'Japan': s1 that faction's player, its repair place that faction's VehicleRepairFacility
     (REPAIR) -- the pull-back looks the ArmyDefinition up by the player's faction (its Side; work/re handoff-b 71).
     close: no guards, and the team's target (the far plant) stands beside the tanks at the start (CLOSE_AT) -- the
-    ReverseMove read (0x8dec40): a member 0 < d < range - 10 from its target backs off to range - 10.
+    ReverseMove read (work/re/l4_micro_engage.md 1.4): a member 0 < d < range - 10 from its target backs off to range - 10.
     close='turret': a player's turret beside the tanks instead (TURRET_AT), the plant behind it."""
     m = ac.mission(mod, Crush='false', **fields)
     if close:
@@ -74,7 +74,7 @@ MISSION = {
     'aipullh0': lambda: mission('CampAIPullH0', factory=True, PullbackInjured='false'),
     # aipullh1 too: no tank went home -- the same with the AI's own faction's tank (an Allied AI, Soviet Hammers)
     'aipullga': lambda: guardians(mission('CampAIPullGa', factory=True)),
-    # 0x8df430's gates all pass statically (work/re handoff-b 69): hurt the tanks at the wake, ~1000 from any enemy
+    # the garrison routine's gates all pass statically (work/re handoff-b 69): hurt the tanks at the wake, ~1000 from any enemy
     # (no AlphaStrike state 0), with a health counter (did UNIT_SET_HEALTH take?); aipullr1 also turns the AI's
     # repair switch on (aitarget_bench's wake sets SKIRMISH_AI_USE_REPAIRS 0)
     'aipulli1': lambda: mission('CampAIPullI1', factory=True),

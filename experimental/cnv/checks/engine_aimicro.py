@@ -29,11 +29,11 @@ Bench 2026-11-07 (Sonnet, one run each, no dropout):
   aimicmade r (Sonnet): 冲1 冲2 再冲1 all 0 through 帧数 939 -- warriors created on s1's team after the wake did not
     charge either: not the hand-over. Same in engine_aitoggle (no shield). INFERRED: StaticDefense runs no micro.
   aimichunt r (Sonnet, round 18): 冲1 冲2 再冲1 all 0 through 帧数 943 -- a Targetless Hunt team did not charge either:
-    not the tactic. Left: the units never joined the team, or a gate of 0x9028e0 / the power registration.
+    not the tactic. Left: the units never joined the team, or a gate of the power-use routine (work/re/l4_specials.md) / the power registration.
     (engine_aitoggle aitogglehunt: the Hunt team never took the script-made units -- they stood at their spots.)
   aimicxfer r / aimicnearx r (Sonnet, round 18): 冲1 冲2 再冲1 all 0 through 帧数 951 / 943 -- UNIT_AI_TRANSFER_ALL
     run again right after the make / hand-over did not help. Program (work/re l4_micro_gate.md): the recruiter
-    refuses a unit whose team's +0x24 is 0 (teamSoviet_1; only defaultSkirmishTeam is 1), the powers live in the
+    refuses a unit whose team's recruitable flag is 0 (teamSoviet_1; only defaultSkirmishTeam is 1), the powers live in the
     unit's own team's library -- so (INFERRED) aimicpre (placed s1's, recruited at the wake, powers never registered: made
     with the AI asleep) and the made / handed-over builds (registered, never recruited) each miss one half.
     Next: the AI produces the warriors itself.
@@ -46,18 +46,18 @@ Bench 2026-11-07 (Sonnet, one run each, no dropout):
   aimicbuilth r PASS (Sonnet, round 19, mod CampAIMicBltHR; counters 帧数 造出 在家 曾冲): 造出 2 from s21, 在家 2 -> 1
     @ s31 -> 0 @ s41 -- the Targetless Hunt team took the AI-built warriors and walked them off: AI-built units ARE
     recruited (unlike the script-made ones). So the aimicbuilt silence is past recruitment: the power entry check
-    (0x8ce710 / the heuristic's vtable+0x40) or the power registration, not the team.
+    (the tactic's power-use routine / the heuristic's virtual method, work/re/l4_specials.md) or the power registration, not the team.
   aimicbuiltf r PASS (B, round 20, mod CampAIMicBltFR; counters 帧数 造出 冲 曾冲): 造出 2 from s21; 冲 2 @ s41,
     曾冲 145 @ 帧数 499 -> first charge at frame ~354 after the wake; the control read at s61. AI-built warriors that a
     Hunt team took, hurt by conscripts, DO charge. Read (work/re l4_micro_gate.md 7): a team change carries the
-    unit's power entries along (0x7b5df0 -> 0x863310 / 0x863290), so the aimicbuilt silence is the StaticDefense team
+    unit's power entries along (the team-building routines, work/re/l4_specials.md), so the aimicbuilt silence is the StaticDefense team
     (not taking them, or not running the round there) -- not followed (the layer 4 closing line).
   aimicspon / aimicspoff r PASS both (B, round 113, 2026-11-10; mods CampAIMicSpOnR / CampAIMicSpOffR): aimicbuiltf
     on this probe's own micro manager (StandardMicroManager flattened, missions/aimicro_bench.py _spow_xml), only
     UseSpecialPowers differing. On: 造出 2 from s21, 冲 2 @ s41, 曾冲 127 @ 帧数 489 (first charge ~362 frames after
     the wake), the warriors alive to the end (造出 3 from s61). Off: 造出 2 s21-s41 -> 0 @ s51 (both died fighting),
     曾冲 0 until the control (冲 1 @ s61, 曾冲 108) -- a scripted press still fires. UseSpecialPowers false = the micro
-    manager never uses a unit power (the model: no round, 0x8f5d30). The simulator (simai) fires in neither: its Hunt
+    manager never uses a unit power (the model: no round, work/re/l4_specials.md). The simulator (simai) fires in neither: its Hunt
     team walks the two warriors west from s21, before the conscripts set out, so they never fight (work/logs
     b113_sim3.log) -- and its micro block reads only the retail micro library (a probe's own AIMicroManagerData
     reaches only 'tactics micro', simai.own_personalities).

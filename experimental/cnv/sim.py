@@ -677,7 +677,7 @@ LOW_POWER = {'penalty': 1.0, 'min': 0.3, 'max': 0.5}   # GameData LowEnergyPenal
 
 
 def power_factor(supply, demand, rules=LOW_POWER):
-    """A player's low-power speed (RA3 1.13 0x864560; docs/engine/production.md): 1 - (1 - min(1, supply / demand))
+    """A player's low-power speed (RA3 1.13, work/re/l2_production.md; docs/engine/production.md): 1 - (1 - min(1, supply / demand))
     x penalty, at least min, and while short at most max (retail: short of power is 0.3 to 0.5 whatever the
     shortfall); <= 0 -> 0.01. 1.0 with enough power."""
     r = 1.0 if demand == 0 else min(1.0, f32(supply / demand))
@@ -1162,7 +1162,7 @@ class Sim:
             b.life_end = made + frames
         unpack = simunits.unpack_frames(template, self.own) if by and 'STRUCTURE' in b.kinds else 0
         if unpack:                              # made in the run (a map's own skip it): unpacks first -- adds no power
-            v = np.float32(power_factor(*self.power(owner)))       # and does not fire meanwhile; RA3 1.13 0x720100:
+            v = np.float32(power_factor(*self.power(owner)))       # and does not fire meanwhile; RA3 1.13, work/re/l2_construction.md:
             extra = np.float32(np.float32(1.0) - v) * np.float32(unpack)   # trunc((1 - v) F + F), v the owner's
             b.unpack_end = self.frame_now() + int(np.float32(extra + np.float32(unpack)))   # factor then
         b.deposit = simunits.deposit(template, self.own)
@@ -1988,7 +1988,7 @@ class Sim:
 
     def power(self, owner):
         """(supply, demand) of the owner: its living objects' EnergyProduction, > 0 summed into the supply, < 0 into
-        the demand (RA3 1.13 0x7424a0 leaves out an object under construction or powered down: the simulator has
+        the demand (RA3 1.13 (work/re/l2_construction.md) leaves out an object under construction or powered down: the simulator has
         neither -- a building stands built from the frame it appears)."""
         sup, dem = self.base_power.get(owner, 0), 0
         now = self.frame_now()
@@ -2014,7 +2014,7 @@ class Sim:
         return 'POWERED' in b.kinds and self.short_of_power(b.owner)
 
     def build_frames(self, secs, owner):
-        """A unit's build frames, worked out again every frame (RA3 1.13 0x71ddc0): BuildTime x 15 with enough power;
+        """A unit's build frames, worked out again every frame (RA3 1.13, work/re/l2_construction.md): BuildTime x 15 with enough power;
         short of it 15 x trunc(BuildTime / power_factor) -- the division and its truncation on the seconds (bench
         2026-11-05 engine_production c: supply 0, f 0.3, 10 s -> 495 frames; d: 50 / 75, f 0.5 -> 300)."""
         f = power_factor(*self.power(owner))
@@ -2803,7 +2803,7 @@ class Sim:
                       + ('' if b.owner == self.human or self.sees(b.x, b.y, b.surface == 'air') else '，玩家看不见'))
             self.change()
         elif name in ('CREATE_REINFORCEMENT_TEAM', 'CREATE_REINFORCEMENT_TEAM_AT_UNIT_POSITION'):
-            # (team, waypoint) / (team, named unit): one handler 0x5b7f50 for both (work/re actions_map.json); the
+            # (team, waypoint) / (team, named unit): one handler for both (work/re actions_map.json); the
             # unit's position as the waypoint is INFERRED (Sim.point reads a named object's)
             self.reinforce(a[0], a[1], script)
         elif name in ('MOVE_NAMED_UNIT_TO', 'ATTACK_MOVE_NAMED_UNIT_TO'):
@@ -2840,7 +2840,7 @@ class Sim:
         elif name in ('MOVE_TEAM_TO', 'ATTACK_MOVE_TEAM_TO'):
             self.order_group(self.members(a[0]), a[1], name == 'ATTACK_MOVE_TEAM_TO')
         elif name in TEAM_FOLLOWS:
-            # (team, path, asTeam[, ?][, start waypoint]); the fourth flag (handler 0x5a4c40) not read: ignored.
+            # (team, path, asTeam[, ?][, start waypoint]); the fourth flag (work/re/handoff-archive.md) not read: ignored.
             # The attack version is each member's own walk whatever asTeam says (bench 11-10 engine_wayatk3 cut:
             # both tanks within 60 of P though they stood 300 apart, tank 3 on to Q while tank 2 fought; INFERRED
             # why); the team only picks the join (the waypoint nearest its middle: the first try, P and Q 427 off
@@ -3011,7 +3011,7 @@ class Sim:
             if b and b.alive:
                 b.health = float(a[1])
         elif name == 'NAMED_SET_MAX_HEALTH':
-            # (name, INT max, full too): retail Iga's trucks by difficulty. RA3 0x5b0280: setMaxHealth(max,
+            # (name, INT max, full too): retail Iga's trucks by difficulty. RA3 (work/re/ra3-script-reference.md): setMaxHealth(max,
             # SAME_CURRENTHEALTH) -- the hit points stay (clamped to a lower max), then 100 % if `full`. Bench 11-10
             # engine_maxhealth mh: 480 -> 240 hp, max 960 full 0: 25 %; full 1: 100 %; max 240 full 0, 120 off: 50 %
             b = self.body(a[0])
@@ -3249,7 +3249,7 @@ class Sim:
                 self.used.add('assemble')           # a script's cast heeds neither reload nor placing rules
                 rules = simunits.power_rules(b.template, a[1], self.own)    # (bench engine_skill a-c, w); it
                 if rules and rules['reload']:                               # starts the reload all the same
-                    b.ready_at[a[1]] = self.frame_now() + rules['reload']   # (RA3 1.13 0x7dea80, read)
+                    b.ready_at[a[1]] = self.frame_now() + rules['reload']   # (RA3 1.13, read, work/re/l2_ability.md)
                 b.building, b.goal, b.mode = (got[1], p, got[0]), None, 'move'
                 self.note('技能', f'{self.label(b)} 去 {a[2]} 造 {got[1]}')
                 if not self.at_site(b, 0.0):
@@ -3264,7 +3264,7 @@ class Sim:
                 # collider never cast went though its power was not charged (engine_super p / q). INFERRED: a cast
                 # in the reload a cast started brings no blast
                 cooling = bool(b and b.alive and b.ready_at.get(a[1], 0) > self.frame_now())
-                if rules and rules['reload']:       # every cast starts the reload anew (RA3 1.13 0x7dea80, read;
+                if rules and rules['reload']:       # every cast starts the reload anew (RA3 1.13, read, work/re/l2_ability.md;
                     b.ready_at[a[1]] = self.frame_now() + rules['reload'] + RELOAD_LAG.get(a[1], 0)   # SDK GlobalData)
                 hits = SUPERWEAPON_HITS.get(a[1]) if b and b.alive else None
                 if hits and q is not None and cooling:

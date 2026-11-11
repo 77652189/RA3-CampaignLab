@@ -18,7 +18,7 @@ Bench 2026-11-08 (one run each; Sonnet ran, B read):
   aisw0far   PASS. 步兵在家 0 from s12; 到远厂 2 @ s15, 4 s17-s33, 0 from s35 (the plant down); then 到近厂 1 @ s42,
              4 s44-s51 (RAMPAGE), 0 from s66: a NamedObject target ignores the enemy table, RAMPAGE too.
   aiswrep1   FAIL against the first expectation (>= 51): 电厂血量 50 s1-s75 -- repairs 1 did not repair in 60 s
-             (money 0 at the time? brain +0x861? the personality bit? open). The team went to the near plant at s13.
+             (money 0 at the time? a brain flag? the personality bit? open). The team went to the near plant at s13.
   aiswrep0   电厂血量 50 s1-s107 (the watch ran slow after s75, so the s69 reading was missing: FAIL by no row).
   aiswreb1   PASS. 电厂数 1 to s12, 0 from s14 to s120 (5000 money): rebuild 1 did not put the plant back in 105 s.
   aiswreb0   PASS. 电厂数 0 from s14 to s119, as reb1.

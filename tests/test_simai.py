@@ -92,7 +92,7 @@ def test_skirmish_ai_spends_the_deposit_before_70_s(skirmish):
 
 
 def test_skirmish_ai_barracks_mix_matches_the_bench(skirmish):
-    """0x8f1490 (read, work/re/l4_unitbuilder.md B): with no UnitBuilderUnitChoiceStrategy -- no SDK personality has
+    """The unit-choice rule (read, work/re/l4_unitbuilder.md B): with no UnitBuilderUnitChoiceStrategy -- no SDK personality has
     one -- every idle candidate weighs 1, so the barracks draws uniformly among its standard units. Bench c's one run
     (2 dogs, 3 Javelins, 3 Peacekeepers) is one such draw; the exact counts are chance, so only the set is asserted."""
     made = collections.Counter(t for s, t in _barracks_out(skirmish) if s < 120)
@@ -102,7 +102,7 @@ def test_skirmish_ai_barracks_mix_matches_the_bench(skirmish):
 def test_unit_modifier_zero_changes_nothing_as_on_the_bench(lib, skirmish):
     """bench engine_aiskirm u (aiskmod: 1AlliedBalanced + UnitModifier Peacekeeper / Javelin soldier at Offensive = Defensive
     = 0, B handoff 113): the bench built the same second by second as aiskirm c -- dogs s23 / s26, Javelins s32 / s37 /
-    s60, Peacekeepers s43 / s49 / s54. UnitModifier scales only the score (0x8b9c30), which no SDK personality's draw
+    s60, Peacekeepers s43 / s49 / s54. UnitModifier scales only the score (work/re/l4_unitbuilder.md), which no SDK personality's draw
     uses (no choice strategy): the zeroed units are still drawn. The simulator reads the zeros and builds the same."""
     w = simai.run('aiskmod', until=100, lib=lib)
     (b,) = w.brains.values()
@@ -142,8 +142,8 @@ def test_skirmish_ai_builds_makes_units_and_attacks(skirmish):
 
 def test_skirmish_ai_cleanup_takes_the_defense_team(skirmish):
     """Bench i-m: Cleanup takes the defense team whole (LandDefense 8 -> 0, Cleanup 0 -> 8 in one frame at s131, the
-    pool never above 1). read (B handoff 102): every AI tactic team is recruitable (+0x24 = 1, 0x8ef7e0 ->
-    0x8b9480(1)), so the general recruit takes LandDefense's men (DEFENSE, RELEASE_TO_PRIORITY) for Cleanup
+    pool never above 1). read (B handoff 102): every AI tactic team is recruitable (work/re/l4_recruit.md),
+    so the general recruit takes LandDefense's men (DEFENSE, RELEASE_TO_PRIORITY) for Cleanup
     (STANDARD) in one commit; the private teams.recruit does that and keep_on is on."""
     (b,) = skirmish.brains.values()
     first = _first_attack(b)
@@ -153,7 +153,7 @@ def test_skirmish_ai_cleanup_takes_the_defense_team(skirmish):
 def test_skirmish_ai_cleanup_full_the_next_units_go_to_its_other_slot(skirmish):
     """Bench o (checks/engine_aiskirm.py, B handoff 105): Cleanup _0_0 holds 14 (MaxUnits) from s157; the AI's army
     grows 14 -> 21 by s189 with the defense team at 0 and the pool at 0-1, so the new units are in a team no name
-    reads: BalancedCleanup is MaxTargets 3, and every slot's team has the same name '_0_0' (0x8d8e30 names by state,
+    reads: BalancedCleanup is MaxTargets 3, and every slot's team has the same name '_0_0' (the engine names by state, work/re/l4_states.md,
     tactic and TeamTemplate index, not by slot; round 102's "no _0_1" read a name that does not exist). The model:
     Cleanup's second slot team (key (..., 0, n > 0)) goes with its first unit after the first team is full; bench
     first hidden unit ~s162 (wake ~s8: ~154 s after it)."""
@@ -168,7 +168,7 @@ def test_skirmish_ai_cleanup_full_the_next_units_go_to_its_other_slot(skirmish):
 def test_skirmish_ai_after_the_last_building_no_cleanup_team_takes_men_back(skirmish):
     """Bench p (checks/engine_aiskirm.py, B handoff 106-107): the player's last building down at s224, Cleanup _0_0
     gone (99) at s226 and the defense team at 14 (MaxUnits) to s249 -- no Cleanup team takes anyone back. Read
-    (l4_states.md 1.2-3, 0x8c6d10 / 0x8c7020): a slot whose instance has not started (a gathering team) re-picks
+    (l4_states.md 1.2-3): a slot whose instance has not started (a gathering team) re-picks
     once its target is gone and its instance ends; a started one keeps its target. So Cleanup's third-slot team,
     still gathering at 0 when its building died, ends instead of recruiting the 14 the ended attack teams let go,
     and LandDefense (started, own buildings) holds them. Rule only, no seconds (the sim's fight is ~20 s early)."""
@@ -198,11 +198,11 @@ def test_skirmish_ai_builds_again_as_soon_as_the_opening_is_done(skirmish):
 def test_skirmish_ai_scout_dog_stays_out(skirmish):
     """Bench b: the dogs leave ~44 s after the wake and stay away 120-170 s; the first team (132.8 s) is 2 Riptides +
     3 Peacekeepers out at once, no dog. The AlliedScout team is ReleaseType NEVER_RELEASE, so no team takes its dog
-    (teams.releases, read 0x8a9a90); before that rule the scout team ended the frame after it went (BalancedAttack-
+    (teams.releases, read, work/re/l4_recruit.md); before that rule the scout team ended the frame after it went (BalancedAttack-
     Ground, STANDARD > LOW, took the dog) and was made again every few seconds (simai.md round 39). "No dog at all in
     the first team" is not asserted: the bench's barracks drew 2 dogs, the sim's uniform draw 6 (round 35), and the
     dogs the scout team does not hold are free to join.
-    Round 44: AlliedScout is MaxTargets 2 = two slots, two teams (read 0x8d72f0, work/re l4_states.md 7); the bench's
+    Round 44: AlliedScout is MaxTargets 2 = two slots, two teams (read, work/re l4_states.md 7); the bench's
     second dog left ~3 s after the first (s55), the sim's ~20 s after (not asserted: known difference).
     Round 101 (B handoff 103): how many dogs there are is the unit builder's uniform draw (one random number an
     evaluation, teams.UnitBuilder), not a rule: seeds 1-8 draw 1-6 dogs by 170 s (work/logs/b101_seeds.log), and a
@@ -518,7 +518,7 @@ _TIE = pytest.mark.xfail(strict=True, reason='simai sends the plant\'s team (tar
                                              'them to the barracks\' state on a tie -- handoff-b 84')
 
 
-# aitpprh / aitpprl pass since AI tactic teams are recruitable (+0x24 = 1, B handoff 102): the higher team takes them
+# aitpprh / aitpprl pass since AI tactic teams are recruitable (B handoff 102, work/re/l4_recruit.md): the higher team takes them
 @pytest.mark.parametrize('build', [pytest.param('aitpprs', marks=_TIE), 'aitpprh', 'aitpprl'])
 def test_team_priority_as_on_the_bench(lib, build):
     _, rows = _switch_run(build, lib, until=41.0)
@@ -539,12 +539,12 @@ def test_end_behavior_disband_goes_to_the_next_target_as_on_the_bench(lib, build
 
 
 def test_end_behavior_rampage_as_on_the_bench(lib):
-    """RAMPAGE: the nearest enemy STRUCTURE (0x8e2980's KindOf filter) -- the barracks, never the nearer tank."""
+    """RAMPAGE: the nearest enemy STRUCTURE (the engine's KindOf filter, work/re/l4_tactics.md) -- the barracks, never the nearer tank."""
     assert _end_at_75('aiendr', lib) == (0, 4, 0, 0)
 
 
 def test_end_behavior_pick_new_target_as_on_the_bench(lib):
-    """PICK_NEW_TARGET: 0x8f7aa0 just returns -- the team stands where the plant was (bench to s85)."""
+    """PICK_NEW_TARGET: the engine just returns (work/re/l4_tactics.md) -- the team stands where the plant was (bench to s85)."""
     assert _end_at_75('aiendp', lib) == (4, 0, 0, 0)
 
 
@@ -634,7 +634,7 @@ def test_strategic_facts_the_brain_gives(lib):
     theirs, ours = b.power_advantage('CAN_ATTACK', 'CAN_ATTACK', True, True)
     assert theirs >= 0.0 and ours >= 0.0
     want = 1.0 if theirs > 9999 else 0.0 if ours > 9999 else float(ours <= 0 or theirs / ours > -1)
-    assert st.value('PowerAdvantageHeuristic', {'Value': '-1'}, f) == want                # 0x8c4910's caps
+    assert st.value('PowerAdvantageHeuristic', {'Value': '-1'}, f) == want                # the engine's caps (work/re/l4_states.md)
     assert st.value('RedAlertHeuristic', {}, f) is None
     # 'energy': ours by SAME_PLAYER, else the first enemy's; 'attacked': a structure / harvester of ours hurt lately
     sup, dem = b.sim.power(b.player)

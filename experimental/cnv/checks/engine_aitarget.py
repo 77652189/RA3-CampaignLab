@@ -32,7 +32,7 @@ Bench 2026-11-07 b (frames from frame 0; 出发帧 = 1000 x last out of the star
   aitargetstill              出发帧 192175, 到达帧 548, 离家帧 443 -- MaxTeamIdleTime and MaxUnitIdleTime 600 s,
                              to the frame as 15 s: neither idle time lets the team go
   Every team leaves the start box 20-25 frames after the wake (frame 150): the first leg goes at once (members with
-  no order are idle, 0x8d4e90); the 5 s team then sends the rest at once (straight), the others walk leg by leg.
+  no order are idle, work/re/l4_micro_engage.md); the 5 s team then sends the rest at once (straight), the others walk leg by leg.
   The 193 frames at the plant are the DA route's extra walk (RA3-EngineModel tests/test_ai_tactics.py, strict xfail).
 """
 from parts import Script, Test, counted, square

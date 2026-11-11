@@ -18,7 +18,7 @@ engineer (unarmed infantry; the check keeps it at full health) stands D west of 
 >= 134 away). Money 0. The AI wakes at WAKE_AT (the retail wake set, as aispecial_bench.py).
 The warriors start as the player's (friends of the engineers, nothing fights) and are handed to s1 at HAND_AT, one
 second after the wake: the program registers a unit's AISpecialPowerInfo only when it is made or changes hands while
-the AI brain is not paused (work/re l4_specials.md, 0x9025e0), and aimicpre -- the warriors s1's from the start, the
+the AI brain is not paused (work/re l4_specials.md), and aimicpre -- the warriors s1's from the start, the
 AI asleep then -- never charged in 60 s.
 Builds:
   aimicpre    D = 90,  StandardMicroManager, the warriors s1's from the start (no hand-over)

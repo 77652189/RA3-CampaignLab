@@ -18,9 +18,9 @@ engine_missile's) between, at ROW north -- counted, never aimed at:
 
 Counter per row Hammer: frames from the order until its first hit (stops counting at the hit). Near < mid < far =
 the line walks outward; the gaps say the speed. Speed is a Velocity: BinaryAssetBuilder stores XML / 5 as units a
-logic frame (retail dolphin 170 -> 34, ours 60 -> 12), the logic runs 15 frames a second ([0xcb8510] = 15), so the line
+logic frame (retail dolphin 170 -> 34, ours 60 -> 12), the logic runs 15 frames a second (a fixed rate, work/re/l2_scripts1.md), so the line
 walks SPEED x 3 a second: 100 apart = 100 x 5 / SPEED frames (60: ~8; bench 11-10 03:50: 9 / 18 / 26 frames to near / mid / far). It stops at
-min(Lifetime x 15, ceil(LENGTH / (SPEED / 5))) frames (0x71c730), one hit every 2 x RADIUS.
+min(Lifetime x 15, ceil(LENGTH / (SPEED / 5))) frames (work/re/handoff-archive.md, the sweep rounds), one hit every 2 x RADIUS.
 
   engine_sweep     Mission(ext=True)   the dll's sweep module: the laser's end follows the line's node; ra3ext.log
                                        has one 'sweep ... node=N at=x,y,z' line per new node (60 at most)

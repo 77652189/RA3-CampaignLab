@@ -29,7 +29,7 @@ aitower100 c (two runs): 560 / 590 内 0, 620 / 650 内 1 from s31 -> r in (590,
   TOWER_LIST_R, INFERRED: who fills the radius list is not read).
 aitower50 d (two runs), aitower100 d (one): FAIL -- 塔在厂南 and 塔在厂南带 0 throughout; 0.5's 塔距场 350 内 1 (s29 /
   s31), 1.0's 0 (its r ~600). Revealed for the AI too, the turret still stands round the yard, not by the plant:
-  not the fog (0xb38d70 reads none either, l4_tower_r.md Q3). The model's centre / angle is a strict xfail.
+  not the fog (the fog routine reads none either, work/re/l4_tower_r.md Q3). The model's centre / angle is a strict xfail.
 Round 71 (bench 2026-11-07):
 aitowerfoe e (own budget 50 / 50, only AlliedDefenseBuildState, 4 Guardians 600 south of the AI plant, revealed for
   both; 120 s): FAIL -- no turret anywhere (塔在基地 0 to s139, 落塔帧 never stops). An enemy army does not wake the
@@ -153,7 +153,7 @@ def d(m):
       塔在厂南带      south of the AI plant by 100 or more, x within 400 (any of the 5 tries' angles round south)
       塔距场 350 内   round the yard as b (the no-enemy spot at 0.5)
       落塔帧          as a
-    Revealed and still round the yard -> the fog is not why (the opener's own placement path, or 0xb38d70's filter)."""
+    Revealed and still round the yard -> the fog is not why (the opener's own placement path, or the fog routine's filter, work/re/l4_tower_r.md Q3)."""
     t = Test()
     s1 = m.player('s1')
     t.scripts += [Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]),

@@ -415,7 +415,7 @@ def test_a_level_personality_lists_our_units_in_a_build_state_of_its_own():
                                                 ('aiskvveh', 'AlliedAntiVehicleInfantry', 'AlliedAntiInfantryInfantry')])
 def test_the_expected_efficiency_ranks_the_counter_first(lib, build, best, other):
     """aiskvinf (the player owns 10 conscripts): bench Peacekeepers only; aiskvveh (10 Hammers): Javelins only.
-    The simulator's expected efficiency (0x8bd780, l4_efficiency.md: B/A with the unit over B/A without) ranks the
+    The simulator's expected efficiency (work/re/l4_efficiency.md: B/A with the unit over B/A without) ranks the
     same one first (the orders it gives: the two tests below)."""
     w = simai.run(build, 'z', 25, lib=lib)
     b = next(iter(w.brains.values()))

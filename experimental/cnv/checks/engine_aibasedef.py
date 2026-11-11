@@ -28,7 +28,7 @@ Readings (11-09, all PASS; counters 进炮塔 炮塔数 步兵数 到远厂; the
             s18-19 1 1 3 0 | s20-25 1 2 3 0 | s26-29 0 1 3 0 (turret 1 lost, the sitter with it) | ... | s46-75 0 0 0 0
             -- 进炮塔 never passes 1: with turret 1 full nobody goes into turret 2 or 3, though 3 stand by turret 2
             (s18-25); one walks up to the full turret 1 (旁1 2, s20-25). Read: the full turret is NOT skipped -- the
-            pass still takes the list's first turret (0x8de960's 0x864100 'can the order be done' does not look at
+            pass still takes the list's first turret (the turret-order routine's 'can the order be done' check, work/re/l4_micro_engage.md 1.7, does not look at
             room, INFERRED), the men leave the team for it and stay out. Not a 'one per pass' rule: then one would have
             gone into turret 2.
 """

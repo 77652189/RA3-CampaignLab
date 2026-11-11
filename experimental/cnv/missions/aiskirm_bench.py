@@ -20,7 +20,7 @@ PERSONALITY = 'AIPersonalityDefinition:1AlliedBalanced'
 
 
 # the AI's own teams, by the engine's names (published so checks may count them; nothing is written into the map):
-# the pool 'defaultSkirmishTeam' + player (0x87e320) and a strategic state's instances '%s_%s_%u_%u' (0x8d8f25:
+# the pool 'defaultSkirmishTeam' + player (work/re/l4_states.md) and a strategic state's instances '%s_%s_%u_%u' (work/re/l4_states.md:
 # state, a tactic string, two indices -- the tactic's id or its type is what checks g / h tell apart)
 AI_TEAMS = {'pool': 'Soviet_1/defaultSkirmishTeamSoviet_1',
             'defense type': 'Soviet_1/LandDefense_MEDIUM_StaticDefense_0_0',
@@ -69,7 +69,7 @@ EXPIRE_PID = 'CNVExpire'              # aiskexp: 1AlliedBalanced with SecondsTil
 
 def expire_xml(secs):
     """A personality = 1AlliedBalanced (SDK Personalities/AlliedBalanced.xml) with SecondsTillTargetsExpire=`secs`
-    (XSD default 15, BasePersonality.xml writes 5): the slot re-pick interval of l4_states.md 1.2 (0x8c7020)."""
+    (XSD default 15, BasePersonality.xml writes 5): the slot re-pick interval of l4_states.md 1.2."""
     return '\n'.join([
         '<?xml version="1.0" encoding="utf-8"?>',
         '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
@@ -109,7 +109,7 @@ UMOD_ZERO = ('AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry')   # Peac
 def umod_xml(zero):
     """A personality = 1AlliedBalanced with <UnitModifier Unit=x OffensiveModifier=0 DefensiveModifier=0/> for each x
     in `zero` (all difficulties). The model (private ai/teams.py UnitBuilder, l4_unitbuilder.md 6 / round 35): the
-    modifier scales only the score 0x8b9c30, which shapes the draw only under a UnitBuilderUnitChoiceStrategy -- no
+    modifier scales only the builder's score (work/re/l4_unitbuilder.md), which shapes the draw only under a UnitBuilderUnitChoiceStrategy -- no
     SDK personality has one, so the barracks still draws the zeroed units uniformly."""
     return '\n'.join([
         '<?xml version="1.0" encoding="utf-8"?>',

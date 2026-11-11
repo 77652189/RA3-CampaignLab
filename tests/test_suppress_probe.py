@@ -1,6 +1,6 @@
 """Suppression contribution lifetime in whole frames: ceil(DurationSeconds x 15), not round.
 
-Bench (engine line D rounds 21, 22, 33; ra3ext CNVProbe reads the manager's entries, +0x14 = frames left): a 3 s
+Bench (engine line D rounds 21, 22, 33; ra3ext CNVProbe reads the manager's entries, a frames-left field): a 3 s
 contribution is born with 45 frames, 1.1 s with 17 (16.5), and engine_suppress_probe fraction's 1.95 s with 30
 (29.25 -- rounding would give 29): the entry born at frame 92 reads 0x1e and is gone at frame 122
 (run CampSPFraction_mcp_1110_224839, counters 59/59 PASS). The simulator stamps each hit with simunits._frames.

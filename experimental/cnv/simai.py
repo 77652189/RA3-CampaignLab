@@ -204,7 +204,7 @@ class Brain:
         # so they see the slots of the last think (INFERRED one-think lag)
         self.ai.teams.has_target = lambda ai, key, n: self.targets.slot_target(
             self.tactics.state_of(ai, key), n) is not None
-        # a gathering team whose slot's target is gone ends (teams.TeamMaker._slots, 0x8c6d10 / 0x8c7020)
+        # a gathering team whose slot's target is gone ends (teams.TeamMaker._slots, work/re/l4_states.md)
         self.ai.teams.target_of = lambda ai, key, n: self.targets.slot_target(self.tactics.state_of(ai, key), n)
         self.ai.teams.alive = lambda ai, i: i in self.targets.points or any(t.id == i for t in self.view.things)
         if 'defense' in which:
@@ -222,7 +222,7 @@ class Brain:
             self.powers = m['specials'].PlayerPowers([], DIFFICULTY.get(h.level, 'MEDIUM'))
 
     def active(self, ai, frame):
-        """The states whose target slots are picked this think. INFERRED from 0x8c7020 (a slot with a busy team does
+        """The states whose target slots are picked this think. INFERRED from the slot-pick rule, work/re/l4_states.md (a slot with a busy team does
         not re-pick; targets.TargetsBlock keeps what a team holds through tactics.held): a state whose team runs
         with a target picks no more. Without it the AlliedScout state (MaxTargets 2, unique targets) took two more
         of the player's three structures every think while its dog walked to the third, and BalancedAttackGround
@@ -275,7 +275,7 @@ class Brain:
         return st.base_object(ys, lambda b: 'CONSTRUCTION_YARD' in b.kinds, lambda b: self.host.cost(b.template))
 
     def path_to_target(self, surface, template, cond):
-        """ctx 'path to target' (read 0x8c56b0, l4_states.md 3): None when it cannot judge (no base of ours, no enemy
+        """ctx 'path to target' (read, work/re/l4_states.md 3): None when it cannot judge (no base of ours, no enemy
         with one); False when a spot is not found; True when the template has no locomotor (bench aiopath1 /
         aiopathr, checks/engine_aiopath.py: AlliedPowerPlant as the tester picks the PathExists="true" opening in
         either order -- the program read "no locomotor -> no way" is wrong or misread); else whether the simulator's
@@ -319,7 +319,7 @@ class Brain:
         with the player's map-placed war factory and its 3 drones up, and the AI built, ranked and attacked as if
         they were not there; since sim.py spawns them (Codex E 7b9bb57) counting them turned the Peacekeeper's
         expected efficiency against conscripts 0.033 -> 1e-5 (nothing it has hits them) and moved the Cleanup
-        attack. Whether 0x8bd780's unit category 0xd and the target scan skip slaves is NOT READ."""
+        attack. Whether the engine's unit category and the target scan skip slaves (work/re/l4_efficiency.md) is NOT READ."""
         return [b for b in self.sim.living() if getattr(b, 'spawn_parent', None) is None]
 
     def look(self, frame):
@@ -372,7 +372,7 @@ class Brain:
                'beacons': set(),                                                     # no beacons in the simulator
                'power advantage': self.power_advantage,
                'attacked': self.attacked, 'energy': self.energy}
-        if foes:                                     # INFERRED: 0x8b3a00's enemy = the first of the enemies here
+        if foes:                                     # INFERRED (work/re/l4_states.md): the engine's enemy = the first of the enemies here
             out['opponent funds'] = self.sim.money.get(foes[0], 0)
             out['income'] = (self.income(self.player), self.income(foes[0]))
         if 'targets' in self.host.blocks:
@@ -380,8 +380,8 @@ class Brain:
         return out
 
     def income(self, owner):
-        """ctx 'income' (IncomeAdvantageHeuristic, 0x8c5100, read: player +0x38 -> [0] +0x34 of each side x 1/90; both
-        0 -> 1, the enemy's <= 0 -> 9999): what +0x34 holds is not read -- INFERRED a rate that grows with the miners
+        """ctx 'income' (IncomeAdvantageHeuristic, read, work/re/l4_states.md: a per-player value of each side x 1/90; both
+        0 -> 1, the enemy's <= 0 -> 9999): what that per-player value holds is not read -- INFERRED a rate that grows with the miners
         at work, so here the owner's harvesters while it has a refinery (only the ratio of the two sides counts)."""
         mine = [b for b in self.living() if b.owner == owner]
         if not any('REFINERY' in b.kinds for b in mine):
@@ -389,11 +389,11 @@ class Brain:
         return sum('HARVESTER' in b.kinds for b in mine)
 
     def power_advantage(self, own_kindof, enemy_kindof, own_defenses, enemy_defenses):
-        """ctx 'power advantage' (PowerAdvantageHeuristic, 0x8c4910, read): (the enemy's time to kill all of ours,
+        """ctx 'power advantage' (PowerAdvantageHeuristic, read, work/re/l4_states.md): (the enemy's time to kill all of ours,
         ours to kill all of theirs), tactics.army_time -- template health, not what is left. A side = its units of
         the KindOf (category 0xd: INFERRED every unit, armed or not) and, if asked, its defences (category 0x2e,
         no KindOf: INFERRED structures with a weapon). The enemy is one player: INFERRED the first of the enemies,
-        as 'opponent funds' (0x8b39b0's list order not read)."""
+        as 'opponent funds' (the engine's list order not read, work/re/l4_states.md)."""
         foes = sorted(self.view.enemies)
         if not foes:
             return None
@@ -408,7 +408,7 @@ class Brain:
         return tc.army_time(theirs, mine), tc.army_time(mine, theirs)
 
     def attacked(self, seconds):
-        """ctx 'attacked' (StructureOrHarvesterUnderAttackHeuristic, 0x8e0c50 -> 0x8da000 / 0x8da170 -> 0x741b70,
+        """ctx 'attacked' (StructureOrHarvesterUnderAttackHeuristic, work/re/l4_states.md,
         read): one of our structures (category 0xb) or harvesters (0x14) last hurt no longer than 15 x seconds
         frames ago. The program also wants the one who hurt it still there (not modelled: the simulator keeps no
         attacker)."""
@@ -417,7 +417,7 @@ class Brain:
                    and self.hurt_at.get(t.id, -10 ** 9) >= due for t in self.view.things)
 
     def energy(self, relationship):
-        """ctx 'energy' (EnergyHeuristic, 0x8c52a0, read): produced - used of us (Relationship SAME_PLAYER) or else
+        """ctx 'energy' (EnergyHeuristic, read, work/re/l4_states.md): produced - used of us (Relationship SAME_PLAYER) or else
         of the enemy (the first, as 'opponent funds'); None = no enemy. Sim.power (EnergyProduction)."""
         if relationship == 'SAME_PLAYER':
             who = self.player
@@ -458,9 +458,9 @@ class Brain:
         self.sim.order_move(b, (float(arg[0]), float(arg[1])), kind == 'attack-move')
 
     def fight(self, ai, team):
-        """TacticsBlock's fight hook (the team state, 0x8cdb70): the members and every living enemy body as
+        """TacticsBlock's fight hook (the team state, work/re/l4_gather.md): the members and every living enemy body as
         Fighters; rate = the sum of the dps of the weapons that can hit the other, times its armour (Sim.can_hit /
-        the firing rule); vision = its VisionRange alone (Body.sight, 0x725c80; not the shroud clearing range)."""
+        the firing rule); vision = its VisionRange alone (Body.sight, work/re/l2_vision.md; not the shroud clearing range)."""
         foes = [b for b in self.living()
                 if not b.scenery and b.owner != self.player and b.owner in self.view.enemies]
         live = [u for u in team.members if u.body.alive]
@@ -490,7 +490,7 @@ class Brain:
 
     def garrisons(self, u, own_defenses):
         """TacticsBlock's houses / defenses hooks: [(id, (x, y))] u could be sent into, the list's order; [] when it
-        cannot garrison (INFANTRY, not SKIRMISH_AI_DONT_GARRISON: template +0xc0 bit 10 / +0xdc bit 12). Full ones
+        cannot garrison (INFANTRY, not SKIRMISH_AI_DONT_GARRISON: template flag bits, work/re/l4_gather.md). Full ones
         are listed too (bench aibdpre)."""
         b = u.body
         if not b.alive or 'INFANTRY' not in b.kinds or 'SKIRMISH_AI_DONT_GARRISON' in b.kinds:
@@ -513,7 +513,7 @@ class Brain:
         return sh[2] if sh and len(sh) == 3 else 40.0
 
     def aim_of(self, b, reach):
-        """The unit's current target for the micro (0x706e20 -> 0x852b70; RUSH_ATTACK reads it): its ordered or
+        """The unit's current target for the micro (work/re/l4_micro_heur.md; RUSH_ATTACK reads it): its ordered or
         chased enemy, else the nearest living enemy within its longest weapon range (INFERRED: what the world's
         fire scan takes; the simulator keeps no per-unit target)."""
         for t in (b.goal, getattr(b, 'chase', None)):
@@ -624,7 +624,7 @@ class Brain:
 
     def offers(self, ai, frame):
         """AIPlayer.offers: the units the AI's live factories can build now (Sim.offers), as teams.Offer with the unit
-        builder's candidate state (0x8c7910): 0 = an unpacked factory that makes it has an empty queue and nothing of
+        builder's candidate state (work/re/l4_unitbuilder.md): 0 = an unpacked factory that makes it has an empty queue and nothing of
         unit_q it would take, 1 = all such factories are busy; a unit only unpacking factories make is left out
         (state 2, cannot build now)."""
         tm = self.host.mod['teams']
@@ -645,12 +645,12 @@ class Brain:
         return out
 
     def expected(self, ai, frame, templates):
-        """AIPlayer.expected: {template: tactics.expected_efficiency} (0x8bd780, work/re/l4_efficiency.md). Mine =
+        """AIPlayer.expected: {template: tactics.expected_efficiency} (work/re/l4_efficiency.md). Mine =
         the AI's living units (category 0xd: INFERRED every non-structure, harvesters too); foes = every enemy
         player's units, weight UnitBuilderEnemyNearbyMultiplier within UnitBuilderEnemyNearbyDistance of the AI's
-        home (the engine's "in my base area" test 0x8bd0e0 NOT READ -- INFERRED), else 1; defences = their armed
+        home (the engine's "in my base area" test NOT READ, work/re/l4_efficiency.md -- INFERRED), else 1; defences = their armed
         structures (category 0x2e: INFERRED); the candidate = a Body of the template never placed. Every enemy, seen
-        or not (no vision test read). UnitModifier from the unit builder's rules (0x8af810 / 0x8af8a0)."""
+        or not (no vision test read). UnitModifier from the unit builder's rules (work/re/l4_unitbuilder.md)."""
         tc, pl = self.host.mod['tactics'], self.host.mod['player']
         p = pl.efficiency_params(ai.personality)
         near, mult = p['UnitBuilderEnemyNearbyDistance'], p['UnitBuilderEnemyNearbyMultiplier']

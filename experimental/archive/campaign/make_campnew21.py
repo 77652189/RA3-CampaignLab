@@ -4,7 +4,7 @@
       -> Documents\\Red Alert 3\\Mods\\CampNew21
 
 CampNew19 (our tank model on the Guardian's XML) crashes at mission load whenever the Guardian's draw references
-an animation of ours -- heap corruption (crash inside the allocator, RA3_1.13.game+0x607873), with any of our
+an animation of ours -- heap corruption (crash inside the allocator, in the game's allocator), with any of our
 animations and even with CampNew17's saucer model, while the same saucer + spin animation on the hydrofoil's XML
 runs and visibly spins. So the hierarchy here is built from whatever bones the chosen base XML names
 (TurretNameKey / TurretPitch / BoneName / ExtraPublicBone / track bones), hull / turret / barrel / radar meshes

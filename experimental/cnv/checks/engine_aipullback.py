@@ -22,8 +22,8 @@ Readings (11-09; 4 Hammers vs 12 Peacekeepers, Crush false; tanks reach the plan
   aipullh1 FAIL: the 4 tanks set to 30 % at s12 on the road -- they drive on, 到远厂 4 by s15-16, 3 @ s17-20, 2 @ s21,
            1 @ s22-24, 0 from s25; 回家 0 from s4 to the end. Not the shot-down-too-fast window.
   aipullga FAIL: the same with Allied Guardian tanks (the AI's own faction): 4 at the plant s12, 0 by s20, 回家 0. Not the
-           faction either. Not settled: the member KindOf filter 0x808990 (masks 0xc000 / 0x1000, not read), the
-           template +0xdc bit 13 test, the path test 0x6d9130, or 0x8df430 never reached in these states.
+           faction either. Not settled: the member KindOf filter (masks 0xc000 / 0x1000, not read), the
+           template flag bit 13 test, the path test, or the garrison routine never reached in these states.
   aipullh0 not run (aipull0 already shows no-one goes home).
   (11-09, round 69; 血量 = tank 1's health %, read 30 from the set on: UNIT_SET_HEALTH does take)
   aipulli1 FAIL: hurt 0.5 s after the wake, ~1000 from any enemy (no AlphaStrike) -- 血量 30 s9-12, the 4 drive on,
@@ -32,9 +32,9 @@ Readings (11-09; 4 Hammers vs 12 Peacekeepers, Crush false; tanks reach the plan
   aipullp1 FAIL: hurt before the wake (idle, ~400 from the factory): they join the team at 30 % and leave steadily,
            近家 (600) 4 @ s1-5, 3 @ s6-7, 2 @ s8, 1 @ s9-10, 0 from s11 -- no lingering (not sent home and re-recruited)
   aipullbig FAIL, the same as aipullp1 with PullbackInjuredHealthPct 100000: not the health ratio's scale
-  So 0x8df430 is reached (EnterGarrisons, in the same state functions, worked) and the member gates pass; left: the
-  facility search -- the ArmyDef map lookup (key at team / brain + 0x24), template +8 against ArmyDef +0x28, or the
-  path test 0x6d9130.
+  So the garrison routine is reached (EnterGarrisons, in the same state functions, worked) and the member gates pass; left: the
+  facility search -- the ArmyDef map lookup (key stored on the team / brain), the template's field against the ArmyDef's field, or the
+  path test (work/re/l4_micro_engage.md 1.4).
   (11-09, round 70) The ArmyDefinition is found by the player's faction (its Side), so s1 Allied -> AlliedWarFactory
   as the probe has it. aipulli1 with the faction changed:
   aipullsov PASS (Soviet AI, a SovietCrane): 血量 30 from s9, 回家 1 @ s19 .. 4 @ s23, then 坦克数 4 -> 0 by s29 with
@@ -48,12 +48,12 @@ Readings (11-09; 4 Hammers vs 12 Peacekeepers, Crush false; tanks reach the plan
   (11-09, round 71; the target beside the tanks, 80-135 off, healed to 100 every frame)
   airevp1 / airevp0 (the far plant): first runs, unhealed, the tanks shot it to 2 % by s8 and both left s19-24 alike
            (target gone). Healed: airevp0 PASS 近厂 4 all 85 s; airevp1 FAIL, the same -- 近厂 4 all along. A plant is a
-           tactical target (state 6), and 0x8dec40 runs in states 2 and 4 only.
+           tactical target (state 6), and the reverse-move routine runs in states 2 and 4 only.
   airevt1  FAIL (a player's AlliedBaseDefense instead, CleanupPowerAdvantage 1000, UseGatherState off -> state 2):
            no tank moves, 近塔 = 坦克数 = 中圈 all along; the turret kills them one by one 4 @ s1-10, 3 @ s11-22,
            2 @ s23-34, 1 @ s35-46, 0 from s47. airevt0 not run (airevt1 already shows no back-up).
-  Left (work/re handoff-b 72): 0x8dec40's first gate 0x7069a0 -- the member's +0x374 -> +0x21c -> +4 -> +4, byte
-  +0x179 (read as a locomotor template flag, not named); the weapon flag 0x8a8db0 (+0xfc -> +9) skips too.
+  Left (work/re handoff-b 72): the reverse-move routine's first gate -- a byte flag reached through the member's locomotor data
+  (read as a locomotor template flag, not named); the weapon flag check skips too.
 """
 from checks import engine_aitarget as at
 from parts import Script, Test, counted, square

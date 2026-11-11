@@ -1,5 +1,5 @@
 """Engine probe: the skirmish AI team's EnterGarrisons (engine line B, layer 4; read back by
-checks/engine_aigarrison.py; program: work/re l4_micro_engage.md 1.7 -- 0x8de960, called in team states 2 / 4 / 5
+checks/engine_aigarrison.py; program: work/re l4_micro_engage.md 1.7 -- the turret-order routine, called in team states 2 / 4 / 5
 only; model: RA3-EngineModel ra3model/ai/tactics.py, simai.Brain).
 
 airetreat_bench's airet0 (12 of the player's Peacekeepers round the far plant, RetreatPowerAdvantage 0: the team

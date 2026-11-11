@@ -1,4 +1,4 @@
-"""Engine probe: the skirmish AI's team state (0x8cdb70) -- retreat on a lost power advantage and the
+"""Engine probe: the skirmish AI's team state (work/re/l4_states.md) -- retreat on a lost power advantage and the
 EngagePassiveTargets switch (engine line B, layer 4; read back by checks/engine_airetreat.py; program: work/re
 l4_micro_retreat.md, l4_micro_engage.md; model: RA3-EngineModel ra3model/ai/tactics.py TacticsBlock._team_state,
 simai.Brain.fight).
@@ -12,7 +12,7 @@ the far plant is too near the base for a retreat by the retail number) and:
            model: the team turns round to the AI's base (state 1, attack-move home), then stands where the retreat
            ends (RetreatMinDistanceToFallback 500 from where it began, or 300 from the base)
   airetd   airet with the tactic's DisbandAfterRetreatTeamSize 999 (retail 999 x71, 1 x10, 4 x3, 5, 0; xsd 0): the
-           team ends its tactic the update its retreat ends (0x8fbb40: was state 1, now 8, members <= the size);
+           team ends its tactic the update its retreat ends (work/re/l4_states.md: was state 1, now 8, members <= the size);
            the always-on state makes a new team at once -- the simulator: out again 2 s later than airet, no reading
   airetf   airet with the state on a map flag: on at the wake, off FLAG_OFF later (one team, no second) -> the
            model: the team cycles as airet's (the tactic goes on with its state off: bench aistateoff1)

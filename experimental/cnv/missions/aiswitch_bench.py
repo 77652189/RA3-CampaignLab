@@ -9,7 +9,7 @@ north of its yard:
   aisw0near  aitargetnear (ClosestStructureHeuristic) with priorities 0: read, the enemy table is emptied -> no
              enemy player -> no target, no team leaves (the control aitargetnear went to the near plant at s13)
   aisw0far   ainmfar (NamedObject, the far plant) with priorities 0: does a named target look at the enemy table?
-             (0x8d11e0 reads no relationship tier: the model says the team still goes)
+             (the program, work/re/l4_states.md, reads no relationship tier: the model says the team still goes)
   aiswrep1 / aiswrep0  the AI's plant at 50 % health from the start, repairs 1 / 0: read, repairing needs the switch
              and the personality's RepairBuildingsAtDifficulty (MEDIUM HARD BRUTAL); the model says 1 heals, 0 not
   aiswreb1 / aiswreb0  the AI's plant killed 5 s after the wake, 5000 money at the wake, rebuild 1 / 0: is it put

@@ -1,6 +1,6 @@
 """NAMED_SET_MAX_HEALTH(object, max, full) on the bench (engine line A round 147): what happens to the current health.
 
-RA3 1.13 (work/re ra3-script-reference, action 551 at 0x5b0280): the body's setMaxHealth (slot 0x84) is called with
+RA3 1.13 (work/re ra3-script-reference, action 551): the body's setMaxHealth is called with
 (max, 0) and, when `full` is set, setHealth 1.0 (slot 0x80). In Generals the 0 is MaxHealthChangeType
 SAME_CURRENTHEALTH: the hit points stay, only the ceiling moves (clamped down to a lower ceiling). The argument types
 are retail's (script_catalog: object, INT, BOOLEAN) -- the 11-05 engine_missile try passed 10000.0, a REAL, in the

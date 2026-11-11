@@ -1667,7 +1667,7 @@ def _retail_power_heads():
 
 def power_rules(template, power, own=None):
     """The SpecialPowerTemplate for `power` of unit `template`: {'reload': frames (ReloadTime x 15, rounded twice --
-    RA3 1.13 0x863050, docs/engine/specialpower.md 1 -- at least 1), 'forbidden': ForbiddenObjectRange, 'flags': set of
+    RA3 1.13, work/re/l2_specialpower.md; docs/engine/specialpower.md 1 -- at least 1), 'forbidden': ForbiddenObjectRange, 'flags': set of
     Flags, 'reach': MaxCastRange or 0}, else None. A mission unit's own XML first; else a retail power (the SDK's
     GlobalData/SpecialPowerTemplates.xml -- the superweapons: proton collider 360 s ...) when the template's XML (own or
     retail) names it, so a unit without the power still gets None."""
@@ -2243,7 +2243,7 @@ def energy(template, own=None):
 
 
 def unpack_frames(template, own=None):
-    """StructureUnpackUpdate's UnpackTime x 15 rounded (RA3 1.13 0x720100: F = round(UnpackTime x 15)); 0 where it
+    """StructureUnpackUpdate's UnpackTime x 15 rounded (RA3 1.13, work/re/l2_construction.md: F = round(UnpackTime x 15)); 0 where it
     has none. A '=$NAME' value is the define of the template's file (SovietPowerPlant: 10 s) or GlobalDefines."""
     def read(xml):
         head, _ = next(_blocks(xml, 'StructureUnpackUpdate'), (None, ''))

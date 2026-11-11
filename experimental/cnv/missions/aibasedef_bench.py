@@ -1,5 +1,5 @@
 """Engine probe: the skirmish AI team's EnterBaseDefenses (engine line B, layer 4; read back by
-checks/engine_aibasedef.py; program: work/re l4_micro_engage.md 1.7 -- 0x8de960, called in team states 2 / 4 / 5 with
+checks/engine_aibasedef.py; program: work/re l4_micro_engage.md 1.7 -- the turret-order routine, called in team states 2 / 4 / 5 with
 the AI player's object list of class 0x2e; state 8 only with EnterBaseDefensesWhenIdle).
 
 Retail data: AlliedBaseDefense (the Multigunner turret; KindOf FS_BASE_DEFENSE GARRISONABLE_UNTIL_DESTROYED) carries a
@@ -12,7 +12,7 @@ team stands to fight within 150 of them, one place each):
   aibd1     EnterBaseDefenses true  -> the model: Peacekeepers go into the turrets (ENCLOSED), leave the team
   aibd0     EnterBaseDefenses false -> nobody goes in
   aibdidle  EnterBaseDefenses false, EnterBaseDefensesWhenIdle true -> nobody (the team fights, never idle at a turret)
-  aibdwho   as aibd1, counted by turret (who stands next to which): why only one went in. 0x8de960 takes, for each
+  aibdwho   as aibd1, counted by turret (who stands next to which): why only one went in. The turret-order routine takes, for each
             member in one pass, the FIRST turret of the list within 150 that it can be ordered into -- if 'can' does
             not see where the earlier members of the same pass were sent, all four go to the same turret
   aibdpre   as aibdwho, with a fifth Peacekeeper of s1 put into turret 1 by script at the start (full from s0): does

@@ -23,7 +23,7 @@ the tactic's DisbandAfterRetreatTeamSize):
           s54-s58 | home 3 @ s64-s79 (步兵数 3 from s57) | out again s80-s84: the tactic goes on with its state off
   airetfd (999) out s18-s20 | 到远厂 2 @ s24-s25 | home 1 @ s29, 2 @ s30, 4 from s31 to s85: the retreat's end ended
           the tactic, the team was let go, and with the state off no new team -- DisbandAfterRetreatTeamSize as read
-          (0x8fbb40: was state 1, now 8, members <= the size -> end)
+          (retreat check, work/re/l4_states.md: was state 1, now 8, members <= the size -> end)
 
   a  步兵在家 / 到远厂    Peacekeepers of s1 within 450 of the AI's base / 300 of the far power plant
      步兵数 (airet*)      Peacekeepers s1 owns

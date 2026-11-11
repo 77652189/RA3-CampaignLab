@@ -368,7 +368,7 @@ def test_super_the_proton_collider_hits_56_frames_after_the_cast():
 def test_super_a_scripts_cast_starts_the_retail_reload():
     """The proton collider's script cast (p) starts its reload: bench engine_super f -- ready again 5550 frames after the
     cast (ReloadTime 360 s = 5400 from the SDK's GlobalData SpecialPowerTemplates.xml + sim.RELOAD_LAG 150; every cast
-    restarts it, RA3 1.13 0x7dea80, read): the player's click refused (order_power, INFERRED) until it is over."""
+    restarts it, RA3 1.13, read, work/re/l2_ability.md): the player's click refused (order_power, INFERRED) until it is over."""
     import build
     import sim
     m, t, _ = build.resolve('engine_super', 'p')
@@ -606,7 +606,7 @@ def test_power_cut_the_coil_stops():
 
 
 def test_power_back_after_the_plant_unpacks():
-    """A plant made short of power unpacks trunc((2 - 0.3) x 150) = 255 frames before it counts (RA3 0x720100); the
+    """A plant made short of power unpacks trunc((2 - 0.3) x 150) = 255 frames before it counts (RA3, work/re/l2_construction.md); the
     coil fires after that: no loss before, the first after (bench: 475, ~325 after the plant)."""
     s, rows = _powerdef('back')
     plant = next(b for b in s.bodies.values() if b.template == 'SovietPowerPlant')
@@ -1746,7 +1746,7 @@ def test_wayatk_a_team_on_an_attack_path_shares_no_target_and_each_member_walks_
 
 
 def test_maxhealth_keeps_the_hit_points_unless_full_as_the_bench():
-    """NAMED_SET_MAX_HEALTH (sim.Sim.act; RA3 0x5b0280 setMaxHealth SAME_CURRENTHEALTH): bench 2026-11-10
+    """NAMED_SET_MAX_HEALTH (sim.Sim.act; RA3 setMaxHealth (work/re/ra3-script-reference.md) SAME_CURRENTHEALTH): bench 2026-11-10
     `cnv_check engine_maxhealth mh` s2-s11: 甲 25 (240 of 480 hp, max 960 full 0: the hit points stay), 乙 100 (full 1),
     丙 95 (max 9600 full 1, 480 off), 丁 50 (max 240 full 0: clamped, 120 off). Before round 147 the simulator kept the
     ratio (甲 50)."""

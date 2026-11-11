@@ -36,7 +36,7 @@ Bench 2026-11-06 (one run each; fired at / ready at = 帧数 - 放帧 / 帧数 -
   d CampAIHidD (5 defenses at west field, s1 not revealed, countdown 0): ready ~2, fired at 61 (951-890); 受损 5 =
     all five hit. The model "unseen -> not fired" is REFUTED here: the AI fires at structures it was never shown
     (not chased: whether s1 shares the map's initial vision / sees all structures).
-    Round 13: the program's test (0x741880) is "stealthed and not detected", nothing about the shroud -- so this fits.
+    Round 13: the program's test (work/re/l4_specials.md) is "stealthed and not detected", nothing about the shroud -- so this fits.
 Round 13 (2026-11-06, one run each; countdown 60 at frame 1 holds the power, then the late setting):
   e  0 at frame 201: ready 202, fired 256      f  0 at 208: ready 209, fired 256      g  0 at 214: ready 215, fired 271
   h  5 at frame 201: READY never seen, fired 331                                       受损 500 in all four

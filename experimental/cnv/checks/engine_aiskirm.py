@@ -138,7 +138,7 @@ RESULTS g / h (bench 2026-11-10, aiskirm g / h and aiskirmnl g, all PASS (weak);
   i / j / k / l  other instances and states (aiskirm; bench 2026-11-10, all PASS (weak); bench s). Labels are words:
      '进攻0_1'-style labels read back as '?' on the bench.
      i / j: BalancedAttackGround_MEDIUM_DefenseAvoidanceAttack and LandDefense_MEDIUM_StaticDefense _0_1 / _1_0 /
-       _0_2 / _1_1: 99 the whole run (no such team). 0x8d8f25 names '<state>_<tactic type>_<the tactic's index in
+       _0_2 / _1_1: 99 the whole run (no such team). the program (work/re/l4_states.md) names '<state>_<tactic type>_<the tactic's index in
        the state>_<copy>' -- both states have one tactic, so the first index is 0.
      k: BalancedAttackOverwhelm_MEDIUM _0_0 flickers 0 / 99 every ~5 s (never a member), BalancedDefense and
        LandEmergencyDefense_MEDIUM 99; **BalancedCleanup_SimpleAttack_0_0 99 -> 8 at s131** (the defense team's
@@ -156,7 +156,7 @@ RESULTS g / h (bench 2026-11-10, aiskirm g / h and aiskirmnl g, all PASS (weak);
      the pool). After: the defense team exists empty (0, 99 every ~6 s as at s10-s22), new units sit 1-2 s in the
      pool and go to Cleanup (10 s138, 14 s161 = MaxUnits); only then one goes to defense (1 at s166, gone at s167).
   Reading: not a pool round trip a script could see. With the code (a running StaticDefense instance is never
-    reselected: 0x8c7020 returns false while +0x14 started; handoff-b 95 / aiar9-10: a quiet base never releases),
+    reselected: the re-pick check returns false while the instance has started; handoff-b 95 / aiar9-10: a quiet base never releases),
     the release is caused by Cleanup turning on: Cleanup (STANDARD, RELEASE_TO_PRIORITY) takes the DEFENSE team's
     members in one commit, and wins the pool over the defense team until full.
 
@@ -164,9 +164,9 @@ RESULTS g / h (bench 2026-11-10, aiskirm g / h and aiskirmnl g, all PASS (weak);
      to s203. Bench 2026-11-10, aiskirm n PASS (weak; the first try hung at bench_stop, log b102_n.log; this is
      b102_n2.log): 防御型 8 at s126, 0 from s130; 清扫 8 s130, 10 s137, 14 s158 and stays; 防御型 1 at s165 only;
      **清扫二 and 防御二 99 the whole run** -- no second copy of either team is ever made.
-  Reading (corrected round 103, B handoff 105): the second index is not a slot copy. 0x8d8e30 builds the AI's team
+  Reading (corrected round 103, B handoff 105): the second index is not a slot copy. the team-naming routine builds the AI's team
     name table once: for each state, each tactic (index a), each of that tactic's TeamTemplates (index b, count at
-    tactic +0x38) one name '<state>_<tactic type>_<a>_<b>' (no TeamTemplate: '_default'). BalancedCleanup and
+    tactic's index field) one name '<state>_<tactic type>_<a>_<b>' (no TeamTemplate: '_default'). BalancedCleanup and
     LandDefense have one TeamTemplate each, so their '_0_1' names do not exist (99 always): n says nothing about a
     second slot, whose team would share the name '_0_0' (MaxTargets 3: the model's (..., 0, 1) / (..., 0, 2)).
     A name answers for one of the same-named teams only; o counts around the names instead.
@@ -198,7 +198,7 @@ RESULTS g / h (bench 2026-11-10, aiskirm g / h and aiskirmnl g, all PASS (weak);
      aiskexp: the same with 12 s blocks: Overwhelm s9-20, BAG s21-32, Overwhelm s33-44, **Overwhelm again s45-56**
        (a new instance: the count goes 2 -> 3), BAG s57-67 ... to s174.
   Reading: a not-started instance (its team still gathering) is ended and its slot drawn again every
-    SecondsTillTargetsExpire (0x8c7020's interval half, l4_states.md 1.2), the new draw in the same second; the
+    SecondsTillTargetsExpire (the re-pick check's interval half, l4_states.md 1.2), the new draw in the same second; the
     draw is the weighted one (Overwhelm twice in a row at 12 s), not a turn-about. So BAG's gathering team is
     replaced every 5 s in a retail skirmish (Base writes 5; the XSD default 15 is never used by the stock AIs).
 
@@ -207,7 +207,7 @@ RESULTS g / h (bench 2026-11-10, aiskirm g / h and aiskirmnl g, all PASS (weak);
      of ~34 instances to s174, most lived **76** frames, a few 75 / 74 / 73 (s34, s139, s159); the next state's team
      is there in the same second (often the same frame) the old one goes.
   Reading: life = 75 frames (5 s x 15) counted from the team's first frame, + 1 for counting both ends (the script
-    pass order against the AI update is not known); the 73-74 ones read as the slot assigned (+0x2c0) a frame or
+    pass order against the AI update is not known); the 73-74 ones read as the slot assigned (work/re/l4_states.md) a frame or
     two before its team appears. The model (Team.made = the team's frame, ends after 75) is within a frame.
 
   u  维和总数 / 标枪总数 / 警犬总数 / 工程师总数 to 80 s after the wake. aiskmod (CampAISkMod: 1AlliedBalanced +
@@ -215,7 +215,7 @@ RESULTS g / h (bench 2026-11-10, aiskirm g / h and aiskirmnl g, all PASS (weak);
      aiskmod u PASS (bench s): dogs 1 s23, 2 s26; Javelins 1 s32, 2 s37, 3 s60; Peacekeepers 1 s43, 2 s49, 3 s54;
      no Engineer -- the same seconds as aiskirm c's stock run.
   Reading: UnitModifier at 0 changes nothing in what the barracks builds: the zeroed units are drawn as before. It
-    scales only the builder's score (0x8b9c30), which no SDK personality's draw uses (no UnitBuilderUnitChoiceStrategy;
+    scales only the builder's score (work/re/l4_unitbuilder.md), which no SDK personality's draw uses (no UnitBuilderUnitChoiceStrategy;
     l4_unitbuilder.md round 35). A level cannot steer or forbid a unit with it (caps / build states do that).
 
   v  步兵 / 塔数 / 建筑数 / AI钱 to ~110 s after the wake. aiskacp / aiskacd (1AlliedBalanced rebuilt on
@@ -488,7 +488,7 @@ def y(m):
     Javelin soldiers, and 兵营码 = retail barracks + 10 x copied ones, to 150 s after the wake.
     Data's prediction (B handoff 126, l4_buildstate.md, l4_unitbuilder.md): the build states list units by template
     (none lists CNVNewPK), so aisknew builds none of it -- unless the UnitBuilder, whose candidates are 'the templates
-    the player can build' (0x8f10f0), takes it from the copied barracks; aisknew2 lists it in a build state of its own
+    the player can build' (work/re/l4_unitready.md), takes it from the copied barracks; aisknew2 lists it in a build state of its own
     (FEWEST_UNIT), so >= 1 there.
 
     RESULTS y (bench 2026-11-11, both PASS; log work/logs/b125_bench.log, work/bench_results/aisknew*__y.json; wake
@@ -642,8 +642,8 @@ def _kind_members(t, counter, label, team, kind, most=POOL_MOST):
 
 def _teams(m, which):
     """g / h: AI team sizes read by name. The engine names a strategic state's team instances '%s_%s_%u_%u'
-    (0x8d8f25: state, a tactic string, two indices; retail maps query e.g. 'Player_2/AIState_J09_LandAttack_
-    SimpleAttack_0_0'); the pool is 'defaultSkirmishTeam' + player (0x87e320). Which tactic string (the Tactic id
+    (work/re/l4_states.md: state, a tactic string, two indices; retail maps query e.g. 'Player_2/AIState_J09_LandAttack_
+    SimpleAttack_0_0'); the pool is 'defaultSkirmishTeam' + player (work/re/l4_states.md). Which tactic string (the Tactic id
     'Defense' / 'Attack' or its type 'StaticDefense' / 'DefenseAvoidanceAttack') is what g / h tell apart."""
     t = Test()
     for tpl in ARMY:
@@ -766,7 +766,7 @@ def o(m):
 
 def q(m):
     """BalancedAttackGround _0_0 / its appearances / BalancedAttackOverwhelm _0_0 / its appearances to s170: is a
-    not-started instance re-picked every SecondsTillTargetsExpire (0x8c7020; Base writes 5 s; aiskexp writes 12)?"""
+    not-started instance re-picked every SecondsTillTargetsExpire (work/re/l4_states.md 1.2; Base writes 5 s; aiskexp writes 12)?"""
     return _teams(m, 'q')
 
 

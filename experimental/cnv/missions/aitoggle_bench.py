@@ -3,7 +3,7 @@ TOGGLE_DEFENSE_SELF_ONLY; read back by checks/engine_aitoggle.py; engine line B)
 
 The data (SDK AlliedAntiInfantryInfantry): SpecialPower_ToggleRiotShield, two toggle states, TOGGLE_DEFAULT then
 TOGGLE_DEFENSE_SELF_ONLY with DontUseIfInRange; shield on = ObjectStatus GENERIC_TOGGLE_STATE (the check reads it with
-UNIT_HAS_OBJECT_STATUS). The program (work/re l4_toggle.md, 0x8c3600): on when an enemy targets the unit and (with
+UNIT_HAS_OBJECT_STATUS). The program (work/re l4_toggle.md): on when an enemy targets the unit and (with
 DontUseIfInRange) its own target is not in its range; off on the same test negated, no hysteresis -- off the next micro
 round after nobody targets it. The model: RA3-EngineModel ra3model/ai/micro.py toggle / self_defence.
 
@@ -13,7 +13,7 @@ The attacker is a player Twinblade (SovietAntiGroundAircraft, gun 150): a Peacek
 (AntiMask ANTI_GROUND ...), so it has no target of its own in range and DontUseIfInRange never blocks the shield.
 At ATTACK_AT the script creates it 250 west of Peacekeeper 1 and orders it to attack Peacekeeper 1; at STOP_AT it is
 deleted (nobody targets anyone). Peacekeeper 2 is never targeted: its shield should stay down.
-The Peacekeepers must be known to the AI as units with powers (l4_specials.md 0x9025e0: registered when made or
+The Peacekeepers must be known to the AI as units with powers (l4_specials.md: registered when made or
 changed hands with the AI awake; yet aimicro's hand-over 1 s after the wake did not make the warriors charge), so
 two builds:
   aitogglehand  the Peacekeepers start as the player's, handed to s1 at GIVE_AT (as aimicro_bench.py)

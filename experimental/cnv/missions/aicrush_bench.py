@@ -1,5 +1,5 @@
 """Engine probe: the skirmish AI team's Crush and CrushPreference (engine line B, layer 4; read back by
-checks/engine_aicrush.py; program: work/re l4_micro_engage.md 1.5 -- 0x8b1760: Crush on and (seconds to reach the
+checks/engine_aicrush.py; program: work/re l4_micro_engage.md 1.5 -- the crush routine: Crush on and (seconds to reach the
 target) < CrushPreference x (...time to kill it by gun) -> drive over it, else shoot).
 
 airetreat_bench's airet0 (12 of the player's Peacekeepers round the far plant, RetreatPowerAdvantage 0) with the AI's

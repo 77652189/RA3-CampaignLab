@@ -108,7 +108,7 @@ def unit_xml():
     assert not anim or f'AnimationName="{ANIM.upper()}" AnimationMode="LOOP" />' in x, 'default animation state'
     x = x.replace('>Name:AlliedAntiVehicleVehicleTech1<', f'>Name:{UNIT}<')
     # tread scrolling needs tread *meshes* named Bone_Tread_*; with bones only the mission crashed while loading
-    # (0xc0000005 at RA3_1.13.game+0xcee55, first CampNew19 run)
+    # (0xc0000005 inside the game's code, first CampNew19 run)
     x, n = re.subn(r'\s*<TreadScrollingMap\b[^>]*/>', '', x)
     assert n == 2, n
     # with TruckDraw any animation of ours crashed the mission at load (even a still one-frame one); the same
