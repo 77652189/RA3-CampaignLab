@@ -664,6 +664,29 @@ def test_crush_levels_come_from_the_data_and_the_greater_wins():
     assert apoc[0] > guardian[1] and not apoc[0] > sickle[1] and not apoc[0] > apoc[1]     # all 3 dies, b 1 lives
 
 
+def test_a_crushers_move_onto_a_crushable_enemy_keeps_its_goal_and_allies_still_hold_theirs():
+    """Sim.claims (Generals' Pathfinder::checkDestination): a Hammer's spot search holds its allies' spots and a
+    standing enemy it cannot crush (the guardian, 20 against 20), not a crushable one (the conscript, 10) -- sent onto
+    the conscript, it keeps the conscript's spot as its goal (aicrush1's first Crush move had it moved 31.6 aside,
+    work/re/c_crush_path_report.md). An ally sent there is moved off the Hammer's goal."""
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_crush', 'all')
+    s = sim.Sim(m, t)
+    ground = [b for b in s.living() if b.speed > 0 and b.surface == 'ground']
+    hammer = next(b for b in ground if b.template == 'SovietAntiVehicleVehicleTech1' and b.crusher)
+    conscript = next(b for b in ground if b.template == 'SovietAntiInfantryInfantry' and s.enemy(hammer.owner, b.owner))
+    guardian = next(b for b in ground if b.template == 'AlliedAntiVehicleVehicleTech1' and s.enemy(hammer.owner, b.owner))
+    allies = [b for b in ground if b is not hammer and b.owner == hammer.owner]
+    held = {(x, y) for x, y, _ in s.claims(hammer)}
+    assert (conscript.x, conscript.y) not in held and (guardian.x, guardian.y) in held
+    assert allies and all((b.x, b.y) in held for b in allies)
+    s.order_move(hammer, (conscript.x, conscript.y), False)
+    assert tuple(hammer.dest) == (conscript.x, conscript.y)
+    s.order_move(allies[0], (conscript.x, conscript.y), False)
+    assert tuple(allies[0].dest) != (conscript.x, conscript.y)
+
+
 def test_crush_a_tank_drives_over_a_lower_level_and_leaves_an_equal_one():
     s, r = _crush('engine_crush', 'all')
     frames = r['帧数']

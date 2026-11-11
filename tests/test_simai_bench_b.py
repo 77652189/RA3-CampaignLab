@@ -45,9 +45,10 @@ def test_without_crush_the_guards_are_not_run_over(lib, build):
     assert all(r['守军数'] >= 8 for r in rows)
 
 
-@pytest.mark.xfail(strict=True, reason='Crush dispatch is connected, but aicrush1 still has 8 guards at row 32; '
-                                       'bench has 0 from s28-s33. First move misses its original target footprint; '
-                                       'movement interface investigation: work/re/handoff-c.md (Crush path).')
+@pytest.mark.xfail(strict=True, reason='aicrush1 still has 8 guards at row 32 (bench 0 from s28-s33). The first '
+                                       'Crush move keeps the guard spot now (Sim.claims, A round 161); the tanks '
+                                       'reach the plant s21-24 (bench s15) and a member re-picks only on the '
+                                       'tactics update (~4 s), not when its target dies (bench 8 dead s19-s22).')
 def test_crush_runs_the_guards_over_at_once(lib):
     """checks/engine_aicrush.py aicrush1."""
     _, rows = _probe_run('aicrush1', lib, 35.0)

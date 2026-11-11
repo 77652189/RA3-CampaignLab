@@ -153,7 +153,7 @@
 | 推断 | AI | `造兵/BuildState.Difficulty` | 84 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `造兵/BuildState.State` | 84 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `微操/AIMicroManagerData.EngageHostileTargets` | 82 | a4 a5 a7 | 台上 aimicspon（开）/ aimicengoff（关）两个武士都在家跟征召兵打、都冲锋活到最后——关掉不让队伍躲开战斗；差别只在首次冲锋：关 ~258 帧、开 ~362 帧（各两次一致）。模拟器开关都冲，但先后相反（关 ~457、开 ~275），tests/test_simai.py strict xfail；私有模型里的打分式没读（按"杀死所需秒数"推断） |
-| 推断 | AI | `微操/AIMicroManagerData.Crush` | 77 | a4 a5 a7 | 台上量过（engine_aicrush：开了 s28 前碾光守军）；模拟器已验证派发，碾压移动意图未建模，原场景 strict xfail 保留；跨线移动修复暂停（handoff-c） |
+| 推断 | AI | `微操/AIMicroManagerData.Crush` | 77 | a4 a5 a7 | 台上量过（engine_aicrush：开了 s28 前碾光守军）；模拟器已验证派发，碾压 move 终点不再被避让挪开（A 161 Sim.claims）；原场景仍 strict xfail：到厂晚约 6 s、目标死后等 UpdateTime 才重选（handoff A 161） |
 | 推断 | AI | `组队招人/TeamTemplate.SortByDistance` | 75 | a4 a5 a7 | AI 模型代码里读了这个名字（台上没单独量：engine_aiskirm 里是推测） |
 | 推断 | AI | `微操/AIMicroManagerData.ReverseMove` | 74 | a4 a5 a7 | 推断（台上未复现）：锤子 airev / airevp / airevt 都不倒车；剩门队员有没有当前攻击目标，量法见 handoff-b 第 73 节 |
 | 推断 | AI | `目标/AITargetingHeuristic.Location` | 74 | a4 a5 a7 | AI 模型代码里读了这个名字 |
@@ -195,7 +195,7 @@
 | 推断 | AI | `人格/AIPersonalityDefinition.Side` | 13 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `微操/IgnoreTargets.Rule` | 13 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `启发条件/AllNearbyNodesFullHeuristic` | 12 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `微操/AIMicroManagerData.CrushPreference` | 12 | a4 a5 a7 | 同 Crush：派发已验证，碾压移动意图未建模；engine_aicrush 原场景 strict xfail 保留，跨线移动修复暂停（handoff-c） |
+| 推断 | AI | `微操/AIMicroManagerData.CrushPreference` | 12 | a4 a5 a7 | 同 Crush：派发已验证，碾压 move 终点已不挪；engine_aicrush 原场景 strict xfail 保留（handoff A 161） |
 | 推断 | AI | `微操/AIMicroManagerData.RandomTargetScoreModifier` | 12 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `微操/AIMicroManagerData.TimeToKeepTargetMax` | 12 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `微操/AIMicroManagerData.TimeToKeepTargetMin` | 12 | a4 a5 a7 | AI 模型代码里读了这个名字 |

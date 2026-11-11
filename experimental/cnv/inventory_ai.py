@@ -128,9 +128,10 @@ NOTES = {
     '微操/AIMicroManagerData.ReverseMove': (GUESSED, '推断（台上未复现）：锤子 airev / airevp / airevt 都不倒车；剩门队员有没有当前攻击目标，量法见 handoff-b 第 73 节'),
     # B round 108: a test names the probe but only the switch-off case matches; the effect itself is a strict xfail
     '微操/AIMicroManagerData.Crush': (GUESSED, '台上量过（engine_aicrush：开了 s28 前碾光守军）；模拟器已验证派发，'
-                                     '碾压移动意图未建模，原场景 strict xfail 保留；跨线移动修复暂停（handoff-c）'),
-    '微操/AIMicroManagerData.CrushPreference': (GUESSED, '同 Crush：派发已验证，碾压移动意图未建模；'
-                                               'engine_aicrush 原场景 strict xfail 保留，跨线移动修复暂停（handoff-c）'),
+                                     '碾压 move 终点不再被避让挪开（A 161 Sim.claims）；原场景仍 strict xfail：'
+                                     '到厂晚约 6 s、目标死后等 UpdateTime 才重选（handoff A 161）'),
+    '微操/AIMicroManagerData.CrushPreference': (GUESSED, '同 Crush：派发已验证，碾压 move 终点已不挪；'
+                                               'engine_aicrush 原场景 strict xfail 保留（handoff A 161）'),
     '微操/AIMicroManagerData.UpdateTime': (GUESSED, '台上量过（engine_aidefense aidefctl4：每圈晚 1～2 s）；模拟器 4 s 与 '
                                           '1 s 逐秒相同（tests/test_simai_bench_b.py strict xfail）'),
     '微操/AIMicroManagerData.EnterBaseDefensesWhenIdle': (GUESSED, '台上量过（engine_aibasedef：s21 起 1 人进炮塔）；模拟器'

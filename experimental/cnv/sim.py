@@ -1331,11 +1331,25 @@ class Sim:
         to-do, docs/story/handoff-phase4.md). j7 / a3's compiled plays ended 0.5-3.6 s off their own scripts
         (j7 126.9 vs 130.5): the script's 派 went straight to `send`, past this; it is order_move now, as its compiled
         ATTACK_MOVE_NAMED_UNIT_TO (test_playcheck). The script's 走 is a group move (order_group) but compiles to one
-        MOVE_NAMED_UNIT_TO per unit -- no play has 走 for several units yet."""
+        MOVE_NAMED_UNIT_TO per unit -- no play has 走 for several units yet.
+        Whose spots (Generals' Pathfinder::checkDestination, refs AIPathfind.cpp 4924): an ally's (own units too) goal
+        always; an enemy's or a neutral's only where it stands still (UNIT_PRESENT_FIXED) and b cannot crush it --
+        a moving enemy's goal and a crushable one's spot are b's to take. Until 11-11 every unit's spot was held:
+        aicrush1's first Crush move (checks/engine_aicrush.py, work/re/c_crush_path_report.md) had its goal, the
+        guard's own spot, moved 31.6 aside, and the tank drove past the guard it was sent over. INFERRED for RA3
+        (its adjustDestination not read)."""
         if b.surface == 'air' or not HOLD_SPOTS:
             return []
-        return [tuple(o.dest if o.path and o.dest else (o.x, o.y)) + (o.radius,) for o in self.living()
-                if o is not b and o not in skip and o.speed > 0 and o.surface != 'air' and not o.scenery]
+        out = []
+        for o in self.living():
+            if o is b or o in skip or o.speed <= 0 or o.surface == 'air' or o.scenery:
+                continue
+            moving = bool(o.path and o.dest)
+            if self.relation(b.owner, o.owner) != 'ALLIES' and (
+                    moving or (b.crusher is not None and o.crushable is not None and b.crusher > o.crushable)):
+                continue
+            out.append(tuple(o.dest if moving else (o.x, o.y)) + (o.radius,))
+        return out
 
     def order_group(self, bodies, where, attacking):
         """A move order to several units at once (a team's MOVE_TEAM_TO, a selection's click): Generals'
