@@ -138,8 +138,11 @@ NOTES = {
                                                'engine_aicrush 原场景 strict xfail 保留（handoff A 161）'),
     '微操/AIMicroManagerData.UpdateTime': (GUESSED, '台上量过（engine_aidefense aidefctl4：每圈晚 1～2 s）；模拟器 4 s 与 '
                                           '1 s 逐秒相同（tests/test_simai_bench_b.py strict xfail）'),
-    '微操/AIMicroManagerData.EnterBaseDefensesWhenIdle': (GUESSED, '台上量过（engine_aibasedef：s21 起 1 人进炮塔）；模拟器'
-                                                        '没人进炮塔，只对上总开关关着的情形（strict xfail）'),
+    '微操/AIMicroManagerData.EnterBaseDefensesWhenIdle': (GUESSED,
+        'engine_aibasedef aibd1 是战斗中总开关开、idle关的正例（s21起1人进炮塔）；'
+        'aibd0/aibdidle 总开关均关且无人进驻，不是idle分支正例；'
+        'tests/test_simai_basedef_idle.py 直接计数回放，aibd1仍strict xfail；'
+        '消费者已调用，到达/炮塔存活差异待A/B接口；见 handoff-c'),
     '人格/AIPersonalityDefinition.BaseCompactness': (GUESSED, '台上量过（engine_aitower：0.5 / 0.75 / 1.0 塔落在不同圈）；'
                                                      '模拟器只对上 0.5，0.75 / 1.0 和 0.5 一样（strict xfail）'),
     # B round 110: the A/B pairs of engine_airetreat change one field of the data the team's MicroManager names
