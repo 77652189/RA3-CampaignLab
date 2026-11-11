@@ -944,6 +944,7 @@ class Sim:
         self.ai = {}                        # player -> woken at
         self.handed = ()                    # skirmish_setup: players taken off their teams after the first frame
         self.ai_switches = {}               # player -> {AI_SWITCHES name: value} (simai.Brain reads them)
+        self.ai_priorities = {}             # player -> [(enemy, n)] SET_ENEMY_PLAYER_PRIORITY calls (simai.Brain)
         self.audio_end = {}                 # sound event -> when HAS_FINISHED_AUDIO holds again (Sim.played)
         self.video_end = {}                 # clip -> when HAS_FINISHED_VIDEO holds (None: never, a full-screen one)
         self.money = {}
@@ -2983,6 +2984,8 @@ class Sim:
                     self.gap(GAP_ACTION, name, f'{a[1]} 不是协议：游戏也不管')
         elif name in AI_SWITCHES:                       # (player, value): the skirmish AI's script switches; what
             self.ai_switches.setdefault(a[0], {})[name] = int(a[1])     # they do is simai's (engine line B)
+        elif name == 'SKIRMISH_AI_SET_ENEMY_PLAYER_PRIORITY':   # (player, enemy, n): one entry of the AI's enemy
+            self.ai_priorities.setdefault(a[0], []).append((a[1], int(a[2])))     # table, in order (simai)
         elif name in ('UNIT_AI_TRANSFER_ALL', 'SKIRMISH_AI_MAKE_BASE'):
             self.used.add('ai')
             if name == 'UNIT_AI_TRANSFER_ALL' and int(a[1]):

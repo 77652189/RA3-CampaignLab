@@ -12,6 +12,16 @@
 - 给关卡：只有一个敌方玩家（玩家本人）时，传 20 和不传结果一样；想让 AI 暂时"不主动找玩家打"，传 0 有效，但点名目标仍会去。
 - 没测：调用之后才变成敌人的玩家不会补进表（程序推断，没上台）。
 
+## 1b. SKIRMISH_AI_SET_ENEMY_PLAYER_PRIORITY（玩家, 敌方玩家, n）（原版 343 次，多是开局一个敌人一行）
+
+- 程序：同一张敌方玩家表，只改点到的那一个：关掉周期重排，先把这个玩家从表里删掉，n > 0 就以分数 n 放回去（不查他是不是"敌人列表"里的人）。表按分数分档，AI 先只在最高档里找目标。n ≤ 0 = 从表里拿掉。
+- **测**（探针 `missions/aiprio_bench.py` + `checks/engine_aiprio.py`，地图同 `aitarget_bench`，近处电厂和两座炮塔改归 Soviet_4，开局脚本设成和 Soviet_1 互敌）：
+  - aiprio1：Soviet_4 30、玩家 10（不调全体版）→ s14 到 Soviet_4 的近厂，从没去玩家的远厂。分档生效。
+  - aiprio0：全体版 20 后再把玩家设 0 → s15 去近厂，从没去远厂。0 = 拿掉。
+  - aipriorm：只把 Soviet_4 设 0（不调全体版）→ 75 秒没人出门：醒来时表还是空的，**没点到的敌人（这里是玩家本人）不在表里**。
+  - aipriodef（对照，只调全体版 20）：先去玩家的远厂（s25），远厂倒了才 RAMPAGE 去近厂。两个敌人同一档时游戏挑了远的，模拟器挑近的——原因没读到（`tests/test_simai.py` 严格 xfail）。
+- 给关卡：用这个动作就要**把每个想让 AI 打的敌人都写一行**（或先调全体版再改），漏掉的那个 AI 不会主动找他打（点名目标和 RAMPAGE 不受影响）。
+
 ## 2. SKIRMISH_AI_USE_REPAIRS（玩家, 开关）
 
 - 程序：写 AI 的修理总闸；真正修理还要人格的 RepairBuildingsAtDifficulty 含当前难度、另一个内部字节为 0。战役里总闸默认关（推断）。
@@ -27,4 +37,4 @@
 
 ## 模拟器怎么做
 
-`sim.py` 把三个动作按玩家记进 `Sim.ai_switches`；`simai.Brain.switches` 每帧把变化转成命令交给 AI 模型：优先级定下敌方玩家表（空表 = 没有可打的敌方玩家），修理和重建只记开关，不修、不重盖。
+`sim.py` 把三个动作按玩家记进 `Sim.ai_switches`；`simai.Brain.switches` 每帧把变化转成命令交给 AI 模型：优先级定下敌方玩家表（空表 = 没有可打的敌方玩家），修理和重建只记开关，不修、不重盖。单个玩家的优先级按调用顺序记进 `Sim.ai_priorities`，模型的表是 {玩家: 分数}，按分数分档（RA3-EngineModel `AIPlayer.set_enemy_priority`、`targets.table_tiers`）。

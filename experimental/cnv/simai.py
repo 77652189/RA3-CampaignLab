@@ -244,6 +244,12 @@ class Brain:
                        if b.owner == self.player and 'STRUCTURE' in b.kinds and not b.scenery]
                 self.ai.tell(Command('use rebuild', {'on': v, 'structures': own}))
         self._switched = dict(got)
+        # SET_ENEMY_PLAYER_PRIORITY, each call once in order (bench 11-10 checks/engine_aiprio.py); a frame's calls
+        # after its SET_ALL (one before it in the same frame is not ordered: INFERRED rare)
+        calls = self.sim.ai_priorities.get(self.player, [])
+        for enemy, n in calls[getattr(self, '_prio_seen', 0):]:
+            self.ai.tell(Command('enemy priority', {'player': enemy, 'n': n}))
+        self._prio_seen = len(calls)
 
     def base_of(self, player):
         ys = [b for b in self.sim.living() if b.owner == player and 'STRUCTURE' in b.kinds and not b.scenery]
@@ -407,8 +413,8 @@ class Brain:
     def has_target(self, st):
         """ctx 'target' (states._draw): one of the state's target heuristics finds a Thing now (claims count)."""
         tg, td = self.host.mod['targets'], self.host.data_of('targets')
-        table = self.ai.enemy_table             # fixed by script: one tier ([[]] = no enemy), as TargetsBlock
-        tiers = None if table is None else [[p for p in table if p in self.view.enemies]]
+        table = self.ai.enemy_table             # fixed by script: tiers by score ([[]] = no enemy), as TargetsBlock
+        tiers = None if table is None else tg.table_tiers(table, self.view.enemies)
         return any(tg.find(td.heuristic(hid), self.view, self.home, tiers, None, self.home) is not None
                    for hid, _ in st.targets)
 

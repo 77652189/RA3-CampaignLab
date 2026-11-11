@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|
-| 脚本动作 | **91%** | 451 | 122 | 20 | 192 | 117 | 92% |
+| 脚本动作 | **92%** | 451 | 123 | 20 | 191 | 117 | 93% |
 | 脚本条件 | **94%** | 89 | 30 | 5 | 51 | 3 | 94% |
 | 物体模块 | **93%** | 187 | 40 | 10 | 113 | 24 | 94% |
 | 武器效果 | **91%** | 28 | 17 | 2 | 7 | 2 | 93% |
@@ -33,7 +33,7 @@
 | 已对拍 | `CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION` | 399 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts7.py |
 | 已对拍 | `OBJECTLIST_ADDOBJECTTYPE` | 383 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts7.py |
 | 已对拍 | `PLAYER_SET_MONEY` | 345 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aitower.py |
-| 未做 | `SKIRMISH_AI_SET_ENEMY_PLAYER_PRIORITY` | 343 | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `SKIRMISH_AI_SET_ENEMY_PLAYER_PRIORITY` | 343 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiprio.py |
 | 已对拍 | `PLAYER_RELATES_PLAYER` | 319 | tests/test_simbench.py::test_scripts2_a_relation_is_one_way_and_turns_back |
 | 已对拍 | `UNIT_AFFECT_OBJECT_PANEL_FLAGS` | 317 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts7.py |
 | 不涉及 | `SET_MISSION_HOT_SPOT_VISIBILITY` | 300 | 纯表现（名字规则） |

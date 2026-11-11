@@ -283,8 +283,44 @@ def test_priorities_zero_send_no_team_to_the_nearest_structure(lib):
     # bench aisw0near: 步兵在家 4 from s1 to s75, nobody at either plant (the control aitargetnear went at s13)
     w, rows = _switch_run('aisw0near', lib)
     (b,) = w.brains.values()
-    assert b.ai.enemy_table == []
+    assert b.ai.enemy_table == {}
     assert all(r['步兵在家'] == 4 and r['到近厂'] == 0 and r['到远厂'] == 0 for r in rows)
+
+
+# ---- SKIRMISH_AI_SET_ENEMY_PLAYER_PRIORITY (checks/engine_aiprio.py, bench 2026-11-10): the near plant Soviet_4's
+def _first(rows, label):
+    return next((i for i, r in enumerate(rows) if r[label] >= 1), None)
+
+
+def test_one_priority_puts_the_top_scored_enemy_first(lib):
+    # bench aiprio1 (Soviet_4 30, Player_1 10, no SET_ALL): 到近厂 2 @ s14, 4 s15-s21, never 到远厂
+    _, rows = _switch_run('aiprio1', lib)
+    near = _first(rows, '到近厂')
+    assert near is not None and abs(near - 14) <= 2 and _first(rows, '到远厂') is None
+
+
+def test_one_priority_zero_takes_that_enemy_out(lib):
+    # bench aiprio0 (SET_ALL 20, then Player_1 0): 到近厂 2 @ s15, never 到远厂
+    w, rows = _switch_run('aiprio0', lib)
+    (b,) = w.brains.values()
+    assert b.ai.enemy_table == {'Soviet_4': 20}
+    near = _first(rows, '到近厂')
+    assert near is not None and abs(near - 15) <= 2 and _first(rows, '到远厂') is None
+
+
+def test_one_priority_alone_leaves_the_unnamed_enemies_out(lib):
+    # bench aipriorm (only Soviet_4 0 at the wake): 步兵在家 4 s1-s75 -- the player was not in the table either
+    _, rows = _switch_run('aipriorm', lib)
+    assert all(r['步兵在家'] == 4 and r['到近厂'] == 0 and r['到远厂'] == 0 for r in rows)
+
+
+@pytest.mark.xfail(strict=True, reason='bench aipriodef: two enemies in one tier, the game went for the farther plant '
+                   '(the player\'s, s25) -- the simulator takes the nearest (Soviet_4\'s, s14); why NOT READ')
+def test_two_enemies_in_one_tier_go_for_the_far_plant_first(lib):
+    # bench aipriodef (SET_ALL 20): 到远厂 2 @ s25, 4 s26-s44; 到近厂 only from s55 (RAMPAGE after the plant fell)
+    _, rows = _switch_run('aipriodef', lib)
+    far, near = _first(rows, '到远厂'), _first(rows, '到近厂')
+    assert far is not None and (near is None or far < near)
 
 
 def test_priorities_zero_do_not_stop_a_named_target(lib):
