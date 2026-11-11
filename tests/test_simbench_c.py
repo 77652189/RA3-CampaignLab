@@ -815,3 +815,35 @@ def test_special_power_nugget_dispatches_the_casters_self_modifier_only_with_mod
     m,t,_=build.resolve('engine_spn','a')
     e=sim.Sim(m,t);e.shot_clock=True
     assert tuple(e.run(16).series[-1][1])==(1001099080,1001099075,1001099080,1001099080)
+
+
+def test_attach_nugget_sets_parent_child_status_and_follows_the_moving_parent():
+    import build
+    import sim
+    import simunits
+    retail=simunits._fight_data()['weapons']['JapanScoutInfantryAttachWeaponWarhead']
+    assert retail['attach'][0]['module']=='ModuleTag_Attach'
+    m,t,_=build.resolve('engine_attach','a')
+    e=sim.Sim(m,t);e.shot_clock=True
+    assert tuple(e.run(20).series[-1][1])==(1000001099,1001111099,1000001099,1000001099)
+
+
+def test_attach_probe_rejects_an_unpublished_module_before_building():
+    from types import SimpleNamespace
+    import pytest
+    from checks.engine_attach import _module_contract
+    bad=SimpleNamespace(id='bad',xml='<AssetDeclaration><AttachNugget AttachModuleId="Missing"/></AssetDeclaration>')
+    with pytest.raises(ValueError,match='unpublished AttachModuleId'):
+        _module_contract(bad)
+
+
+def test_attach_child_is_not_crushed_by_the_parent_it_travels_with():
+    """A linked child has no independent collision along its carrier's path."""
+    import build
+    import sim
+    m,t,_=build.resolve('engine_attach','a')
+    e=sim.Sim(m,t);e.shot_clock=True
+    child=e.body('Attach high child');parent=e.body('Attach high parent')
+    child.crushable=0;parent.crusher=100
+    e.run(20)
+    assert child.alive and child.status >= {'ATTACHED','ENCLOSED','UNATTACKABLE'}

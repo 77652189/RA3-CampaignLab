@@ -276,7 +276,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v18.json')    # v18: direct SpecialPowerNugget dispatch fields
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v19.json')    # v19: direct AttachNugget module references/guards
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -444,6 +444,22 @@ def _weapons(texts, base_table=None):
                                                exclude=_attr(f, 'Exclude', '').split()))
             if special_powers:
                 got['special_powers'] = special_powers
+            attachments = []
+            for h, inner in _blocks(bare, 'AttachNugget'):
+                filters = list(_blocks(inner, 'SpecialObjectFilter'))
+                if (re.sub(r'<SpecialObjectFilter\b[^>]*/>', '', inner).strip() or len(filters) > 1
+                        or set(re.findall(r'(\w+)\s*=', h)) - {'id', 'AttachModuleId', 'ForbiddenTargetObjectStatus', 'Radius'}
+                        or _num(_attr(h, 'Radius', '0'), float('nan')) != 0
+                        or (filters and (filters[0][1].strip() or _attr(filters[0][0], 'Rule', 'ANY') != 'ANY'
+                            or set(re.findall(r'(\w+)\s*=', filters[0][0])) - {'Rule', 'Include', 'Exclude'}))):
+                    unsupported.append('AttachNugget')
+                else:
+                    f = filters[0][0] if filters else ''
+                    attachments.append(dict(module=_attr(h, 'AttachModuleId'),
+                                            forbidden=_attr(h, 'ForbiddenTargetObjectStatus', '').split(),
+                                            include=_attr(f, 'Include', '').split(), exclude=_attr(f, 'Exclude', '').split()))
+            if attachments:
+                got['attach'] = attachments
             contained = []
             for h, inner in _blocks(bare, 'DamageContainedNugget'):
                 filters = list(_blocks(inner, 'DamageObjectFilter'))
@@ -566,6 +582,7 @@ def _resolve(w, weapons):
                 leech_percent=w.get('leech_percent', 0.0), leech_health=w.get('leech_health', 0.0),
                 sweep=w.get('sweep'), contained=w.get('contained', []), dot=w.get('dot', []),
                 special_powers=w.get('special_powers', weapons.get(w.get('warhead'), {}).get('special_powers', [])),
+                attach=w.get('attach', weapons.get(w.get('warhead'), {}).get('attach', [])),
                 unmodeled_effects=w.get('unmodeled_effects', weapons.get(w.get('warhead'), {}).get('unmodeled_effects', [])))
 
 
@@ -1271,6 +1288,30 @@ def power_rules(template, power, own=None):
                     'flags': set((_attr(head, 'Flags') or '').split()),
                     'reach': _num(_attr(head, 'MaxCastRange'), 0.0)}
     return None
+
+
+def attach_modules(template, own=None):
+    """Nearest AttachUpdate group: direct teleport/stick/status subset (engine_attach a).
+
+    Unsupported modules stay False, so recognizing an id cannot silently
+    implement leech, death, repair, idle-detach or autonomous scanning.
+    Multiple inherited module groups and distance boundaries are unbenched.
+    """
+    def read(xml):
+        out = {}
+        for h, inner in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'AttachUpdate'):
+            flags = set(_attr(h, 'Flags', 'STICK_TO_PARENT TELEPORT USE_GEOMETRY').split())
+            mid = _attr(h, 'id')
+            if (inner.strip() or not {'STICK_TO_PARENT', 'TELEPORT'} <= flags
+                    or flags - {'STICK_TO_PARENT', 'TELEPORT', 'ONE_ATTACH_PER_PARENT'}
+                    or set(re.findall(r'(\w+)\s*=', h)) - {'id', 'Flags', 'Range', 'CloseEnoughRange', 'ParentStatus', 'AttachedObjectStatus'}):
+                out[mid] = False
+            else:
+                out[mid] = dict(flags=flags, range=_num(_attr(h, 'Range')),
+                                child=set(_attr(h, 'AttachedObjectStatus', '').split()) | {'ATTACHED'},
+                                parent=set(_attr(h, 'ParentStatus', '').split()))
+        return out or None
+    return _chain(template, own, read) or {}
 
 
 def nugget_self_power(template, power, own=None):

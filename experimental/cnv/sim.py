@@ -314,7 +314,7 @@ GAP_WEAPON, GAP_UPGRADE, GAP_ACTION, GAP_CONDITION, GAP_COMMAND, GAP_STATUS = \
     '武器', '升级', '脚本动作', '脚本条件', '命令', '状态'
 # the object statuses sim.py acts on (tested with `in b.status`; IN_STASIS = IMMOBILE NO_ATTACK UNATTACKABLE in
 # Sim.modify); tests/test_sim.py checks the list against the source
-ACTED_STATUS = frozenset({'SOLD', 'GENERIC_TOGGLE_STATE', 'IMMOBILE', 'NO_ATTACK', 'UNATTACKABLE', 'NON_AUTOACQUIRABLE', 'IN_STASIS', 'UNDER_FROZEN'})
+ACTED_STATUS = frozenset({'SOLD', 'GENERIC_TOGGLE_STATE', 'IMMOBILE', 'NO_ATTACK', 'UNATTACKABLE', 'NON_AUTOACQUIRABLE', 'IN_STASIS', 'UNDER_FROZEN', 'ATTACHED'})
 # a script's power or button by itself, as simcoverage.refined names it
 BUTTON_ACTIONS = ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY',
                   'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED')
@@ -495,6 +495,8 @@ class Body:
     dest: object = None                                         # where it was sent (rerouted when the way changes)
     status: set = dataclasses.field(default_factory=set)       # IMMOBILE (stays put), UNATTACKABLE (the player
                                                                 # cannot destroy it) ...
+    attachment_status: set = dataclasses.field(default_factory=set)  # owned by direct attachment links, not scripts
+    attachment_rules: dict = dataclasses.field(default_factory=dict)
     indestructible: bool = False                                # the Indestructible panel flag: takes no damage
     upgrades: set = dataclasses.field(default_factory=set)     # NAMED_RECEIVE_UPGRADE / _REMOVE_UPGRADE (modify)
     up_since: dict = dataclasses.field(default_factory=dict)   # upgrade -> the frame it was given (a Duration runs)
@@ -964,6 +966,10 @@ class Sim:
         self.own = {u.id: u.xml for u in self.mm.units}
         self.garrison = simgarrison.Garrisons(self)    # GarrisonContain / ContestableGarrisonContain
         self.bodies = {}                    # name -> Body (named ones), plus unnamed under '#k'
+        self.attachments = {}              # child name -> (child, parent, module rule)
+        self._attachment_rules = {}
+        self._attachment_marked = set()
+        self.attachment_known_status = {'ATTACHED'}
         self.suppression_fields = []        # (end, value, x, y, radius): stationary hit contributions
         self.topples = []                   # ToppleUpdate objects; neutral props can be knocked over too
         self.frame_movers = {}              # bodies whose current path crosses a topple object's footprint
@@ -1078,6 +1084,12 @@ class Sim:
         f = simunits.fight(template, self.own)
         b.immortal, immortal_hp = simunits.immortal_body(template, self.own)
         b.suppression_rule = simunits.suppression(template, self.own)
+        if template not in self._attachment_rules:
+            self._attachment_rules[template] = simunits.attach_modules(template, self.own)
+        b.attachment_rules = self._attachment_rules[template]
+        for rule in b.attachment_rules.values():
+            if rule:
+                self.attachment_known_status.update(rule['child'] | rule['parent'])
         if b.suppression_rule:
             b.suppressed_until = 0
             b.suppression_next = max(1, self.eng.frame if getattr(self, 'eng', None)
@@ -1747,9 +1759,9 @@ class Sim:
         if step and step[1]:
             mods.append(simunits.modifier(xml, step[1]))
         on, off = simunits.status_bits(xml, b.upgrades)
-        e = simunits.effect(mods, on | b.script_status, off)
+        e = simunits.effect(mods, on | b.script_status | b.attachment_status, off)
         if not mods and not on and not off and b.base is None:
-            b.status = set(b.script_status)
+            b.status = set(b.script_status | b.attachment_status)
             if b.slots:
                 b.weapons = simunits.pick_weapons(b.slots, b.status)
             return
@@ -1775,7 +1787,7 @@ class Sim:
         for m in mods:
             for ty in sorted(set(m['types']) - simunits.ACTING_TYPES) if m else ():
                 self.gap(GAP_UPGRADE, m['id'], f'修正类型 {ty} 没模拟')
-        for bit in sorted(e['status'] - b.script_status - ACTED_STATUS - ({'UNDER_IRON_CURTAIN'} if b.shielded else set())):
+        for bit in sorted(e['status'] - b.script_status - b.attachment_status - ACTED_STATUS - ({'UNDER_IRON_CURTAIN'} if b.shielded else set())):
             self.gap(GAP_STATUS, bit, f'{b.template} 身上的修正 / 升级给的，只记下来')
 
     def relation(self, a, b):
@@ -2429,7 +2441,7 @@ class Sim:
             # script set reads at once, cleared at once, and a killed unit reads false from the kill
             b = self.body(a[0])
             st = a[1][2] if isinstance(a[1], tuple) else a[1]
-            if st not in ACTED_STATUS and st not in getattr(b, 'status', ()):
+            if st not in ACTED_STATUS and st not in self.attachment_known_status and st not in getattr(b, 'status', ()):
                 self.gap(GAP_CONDITION, name, f'状态位 {st}：模拟器只知道脚本设的和 {"、".join(sorted(ACTED_STATUS))}')
             if b and not b.alive and b.read_until == self.frame_now():     # engine_sell e: a damage kill still reads
                 return st in b.status                                      # its bits in that frame
@@ -3537,9 +3549,9 @@ class Sim:
                 for effect in w.get('unmodeled_effects', []):
                     self.gap(GAP_WEAPON, effect, '武器第1轮尚未解释此效果的筛选、几何或时序')
                 if not self.shot_clock and (w.get('hit_modifiers') or w.get('line') or w.get('strip_max_health') or w.get('emp_seconds')
-                                           or w.get('sweep') or w.get('contained') or w.get('dot') or w.get('special_powers')):
+                                           or w.get('sweep') or w.get('contained') or w.get('dot') or w.get('special_powers') or w.get('attach')):
                     self.gap(GAP_WEAPON, 'weapon effects', '逐发武器效果仅在离散命中时钟中模拟')
-                if w['dps'] or w.get('suppression') or (self.shot_clock and (w.get('sdps') or w.get('dot') or w.get('special_powers'))):
+                if w['dps'] or w.get('suppression') or (self.shot_clock and (w.get('sdps') or w.get('dot') or w.get('special_powers') or w.get('attach'))):
                     if 'sched' in w and self.shot_clock:
                         self.volleys.append((pick, w, a))
                     else:
@@ -3751,7 +3763,7 @@ class Sim:
                             except (OSError, ValueError):
                                 speeds[projectile] = 0
                         speed = speeds[projectile]
-                        complex_effect = any(w.get(k) for k in ('suppression', 'hit_modifiers', 'line', 'emp_seconds', 'strip_max_health', 'sd', 'dot', 'contained', 'special_powers'))
+                        complex_effect = any(w.get(k) for k in ('suppression', 'hit_modifiers', 'line', 'emp_seconds', 'strip_max_health', 'sd', 'dot', 'contained', 'special_powers', 'attach'))
                         if speed > 0 and not complex_effect:
                             # GUESSED collision boundary, rechecked for the two probe distances: full
                             # distance steps before impact. No fitted per-distance delays.
@@ -3829,6 +3841,28 @@ class Sim:
                             scalar = 1.0 if damage_type == 'UNRESISTABLE' else simunits.percent(victim.armor, damage_type) / 100 * victim.taken
                             h[1] += n * victim.max_hp * fraction * by.dealt * scalar
                         h[2] = by
+                    for effect in w.get('attach', []):
+                        if (set(effect['forbidden']) & t.status
+                                or (effect['include'] and not set(effect['include']) & t.kinds)
+                                or set(effect['exclude']) & t.kinds):
+                            continue
+                        rule = by.attachment_rules.get(effect['module'])
+                        if not rule or projectile or n != 1:
+                            self.gap(GAP_WEAPON, 'AttachNugget', '仅匹配已发布模块的直接单发附着已对拍；复杂模块/弹体未建模')
+                            continue
+                        if 'VEHICLE' not in t.kinds or t.surface != 'ground':
+                            self.gap(GAP_WEAPON, 'AttachNugget', '目前仅地面车辆父对象已对拍')
+                            continue
+                        if by is t or t.name in self.attachments or by.name in self.attachments:
+                            self.gap(GAP_WEAPON, 'AttachNugget', '重复、换父与嵌套附着未对拍')
+                            continue
+                        if math.hypot(t.x - by.x, t.y - by.y) > rule['range']:
+                            self.gap(GAP_WEAPON, 'AttachNugget', 'AttachUpdate距离边界未对拍')
+                            continue
+                        if 'ONE_ATTACH_PER_PARENT' in rule['flags'] and any(p is t for _, p, _ in self.attachments.values()):
+                            continue
+                        self.attachments[by.name] = (by, t, rule)
+                        self.attachment_tick()
                     for effect in w.get('special_powers', []):
                         if ((effect['include'] and not set(effect['include']) & t.kinds)
                                 or set(effect['exclude']) & t.kinds):
@@ -3910,6 +3944,31 @@ class Sim:
                     self.first_death = (self.t, t, by)
                 self.destroy(t, f'被 {self.label(by)} 打掉')
         self.chill(dt)
+
+    def attachment_tick(self):
+        """engine_attach a: teleport the child and keep it with its moving parent.
+
+        Death cleanup is INFERRED and reports a gap; no detach/leech/repair
+        contract is claimed. Attachment status has its own owner so ordinary
+        modifier recalculation cannot erase it or pollute script-set bits.
+        """
+        if not self.attachments and not self._attachment_marked:
+            return
+        bits = {}
+        for key, (child, parent, rule) in list(self.attachments.items()):
+            if not child.alive or not parent.alive:
+                del self.attachments[key]
+                self.gap(GAP_WEAPON, 'AttachNugget', '父子死亡时的解除/死亡规则未对拍；清理链接为INFERRED')
+                continue
+            child.x, child.y, child.path = parent.x, parent.y, []
+            bits.setdefault(child.name, set()).update(rule['child'])
+            bits.setdefault(parent.name, set()).update(rule['parent'])
+        for name in self._attachment_marked | set(bits):
+            b = self.bodies.get(name)
+            if b and b.attachment_status != bits.get(name, set()):
+                b.attachment_status = bits.get(name, set())
+                self.modify(b)
+        self._attachment_marked = set(bits)
 
     def suppression_tick(self):
         """engine_suppress_probe tail/lifetime/duration/expiry (bench 2026-11-10).
@@ -4111,7 +4170,7 @@ class Sim:
         pool = self._crushable_pool
         if pool is None:                        # once a tick: the crushable ones, as arrays (a big map's tanks all drive)
             low = [o for o in self.living() if o.crushable is not None and not o.scenery and not o.topple
-                   and o.surface == 'ground']
+                   and o.surface == 'ground' and o.name not in self.attachments]
             pool = self._crushable_pool = (low, np.array([o.x for o in low]), np.array([o.y for o in low]),
                                            np.array([o.radius for o in low]), np.array([o.crushable for o in low]))
         low, ox, oy, orad, olevel = pool
@@ -4135,6 +4194,8 @@ class Sim:
         self._crushable_pool = None
         for b in list(self.frame_movers.values()) if precise else self.living():
             if not b.alive or b.frame_move != precise:
+                continue
+            if 'ATTACHED' in b.status and b.name in self.attachments:
                 continue
             if isinstance(b.goal, Body):
                 g = b.goal
@@ -4196,6 +4257,7 @@ class Sim:
                         if fall is not None and (o.topple['start'] or o.topple['finish']):
                             o.topple_end = self.frame_now() + fall + o.topple['delay']
             self.change()
+        self.attachment_tick()
         if precise:
             return
         self.follow_due()
