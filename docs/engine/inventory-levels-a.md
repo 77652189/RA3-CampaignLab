@@ -21,7 +21,7 @@
 |---|---|---|---|---|---|
 | 未做 | 物体模块 | `Behaviors/Physics` | 143 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 移动物理（坠落、弹跳、被击飞、倾倒）：模拟器走路按速度直走，没有物理；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
 | 未做 | 物体模块 | `Behaviors/RepairUpdate` | 66 | a1 a2 a4 a5 a6 a7 a8 a9 | 仅字段读取：engine_repair a两次未触发玩家维修，双方电厂血量50、资金5000；维修入口原因未明，不以schema默认10HP/s或预测费用登记已对拍；例：AlliedAirfield, AlliedBarracks |
-| 未做 | 物体模块 | `Behaviors/FreefallUpdate` | 24 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
+| 未做 | 物体模块 | `Behaviors/FreefallUpdate` | 24 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 已核（11-11 engine_freefall fall）：人炮扔出的动员兵，原版 / 下落改慢 / 改快三份读数一样（AIRBORNE_TARGET 1-125 帧、22 帧到点、随后降落伞约 96 帧），下落不归本模块管；剩下的作用对象是空中死亡（表现）和被举起的单位（C 线举升暂停），未上台；同 id 覆盖是否生效未排除；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
 | 未做 | 物体模块 | `Behaviors/QueueProductionExitUpdate` | 19 | a1 a2 a4 a5 a6 a7 a8 | 模拟器代码里没有这个名字；例：AlliedBarracks, AlliedConstructionYard |
 | 未做 | 物体模块 | `Behaviors/ReplaceSelfSpecialAbility` | 18 | a1 a2 a4 a5 a6 a7 a9 | 已核（11-08）：模拟器没有这个效果（没有换形态）；例：AlliedConstructionYard, AlliedMCV |
 | 未做 | 物体模块 | `Behaviors/WeaponFireSpecialAbilityUpdate` | 16 | a1 a2 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedAntiNavalScout, AlliedAntiStructureShip |

@@ -613,7 +613,7 @@
 | 不涉及 | `Behaviors/LUAEventList` | 32 (44) | 全部 | 纯表现：EventListName连接原版ScriptEvents.xml与Scripts.lua；RA3声明可达的事件处理函数只调用模型部件显隐（及tostring），含继承；未定义的AlliedInfantryFightingFunctions无可达处理函数；C&C3升级/状态函数不可达。tests/test_inventory_lua.py静态核对游戏包与SDK声明，非上台对拍；例：AlliedAirfield, AlliedBarracks |
 | 已对拍 | `Behaviors/ToggleStatusSpecialAbilityUpdate` | 27 (34) | 全部 | tests/test_simbench_c.py::test_toggle_status_a_press_moves_to_the_next_state_unpack_delays_it_and_a_held_state_takes_no_press；例：AlliedAntiAirShip, AlliedAntiInfantryInfantry |
 | 不涉及 | `Behaviors/SubObjectsUpgrade` | 26 (30) | 全部 | 纯表现（名字规则）；例：AlliedAirfield, AlliedBarracks |
-| 未做 | `Behaviors/FreefallUpdate` | 24 (31) | 全部 | 模拟器代码里没有这个名字；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
+| 未做 | `Behaviors/FreefallUpdate` | 24 (31) | 全部 | 已核（11-11 engine_freefall fall）：人炮扔出的动员兵，原版 / 下落改慢 / 改快三份读数一样（AIRBORNE_TARGET 1-125 帧、22 帧到点、随后降落伞约 96 帧），下落不归本模块管；剩下的作用对象是空中死亡（表现）和被举起的单位（C 线举升暂停），未上台；同 id 覆盖是否生效未排除；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
 | 已对拍 | `Behaviors/AttributeModifierUpgrade` | 22 (30) | 全部 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_invuln.py；例：AlliedOutpost, AlliedAntiGroundAircraft |
 | 已对拍 | `Behaviors/CrushDie` | 22 (28) | 全部 | tests/test_simbench.py::test_crush_a_tank_drives_over_a_lower_level_and_leaves_an_equal_one；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
 | 已对拍 | `Behaviors/SuppressionUpdate` | 22 (28) | 全部 | tests/test_simbench_c.py::test_suppression_samples_entry_refresh_and_expiry_at_the_four_probe_readings；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
