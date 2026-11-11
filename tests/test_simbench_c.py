@@ -492,6 +492,25 @@ def test_weapon_ocl_lifetime_damage_reads_the_fire_delay_before_counting_updates
     assert tuple(e.run(16).series[-1][1])==(99,1,40,1)
 
 
+def test_tint_changes_no_health_or_hit_timing_beyond_the_separate_damage_nugget():
+    import inventory
+    assert inventory.NOTES[inventory.NUGGET,'TintObjectsNugget'][0]==inventory.NA
+    import build
+    import sim
+    m,t,_=build.resolve('engine_tint','pair')
+    e=sim.Sim(m,t);e.shot_clock=True
+    assert tuple(e.run(16).series[-1][1])==(2,90,2,90)
+    assert 'TintObjectsNugget' in next(u.xml for u in m.units if u.id=='CNV_LaserHigh')
+
+
+def test_secondary_damage_delivers_one_amount_at_hit_without_damaging_health():
+    import build
+    import sim
+    m,t,_=build.resolve('engine_secondary','single')
+    e=sim.Sim(m,t);e.shot_clock=True
+    assert tuple(e.run(16).series[-1][1])==(1099,0,1099,1)
+
+
 # ---- ContestableGarrisonContain (simgarrison.Garrisons, sim.Sim.garrison): bench 2026-11-05 engine_garrison in / hp
 # (checks/engine_garrison.py, docs/engine/garrison.md 1-5). The script's _INSTANTLY entry skips the room and the
 # relation (six in, 16), the owner is the first passenger's and back to the civilians when empty (15, 0); 3000 health
