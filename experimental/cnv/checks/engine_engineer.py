@@ -24,7 +24,7 @@ s12-s38 1050 / 1050 / 100 / 10050. Captures consume the engineers without
 healing their targets; repair consumes its engineer and preserves the ally owner.
 """
 from maps import probe_range
-from parts import Mission, Script, Test, counted
+from parts import NOT, Mission, Script, Test, counted
 
 LANES = ('neutral', 'enemy', 'ally', 'refused')
 
@@ -133,6 +133,32 @@ def check_other_captures(m):
     return t
 
 
+def check_allied_defence_repair(m):
+    """e: three nations repair allied half-health defence; full-health refusal.
+
+    Retail RepairAlliesEngineerContain admits all three engineers with ALLIES.
+    Predict baseline 10050/10050/10050/10100, final 100/100/100/10100;
+    all owners remain s2. Ordinary entry, exact arrival timing INFERRED.
+    Bench 2026-11-11 PASS: s1-s11 baseline; s12 100/10050/100/10100;
+    s13-s37 100/100/100/10100. The Soviet engineer arrives one sample later.
+    This does not cover Soviet/Japan full-health or hostile refusal.
+    """
+    t = check_damaged_allies(m)
+    for role in LANES:
+        target = m.role(role)
+        target.template = 'SovietBaseDefenseGround'
+        m.find(target.name).template = target.template
+    t.scripts[0].do += [
+        ('UNIT_CHANGE_OBJECT_STATUS', m.role(name).name, 'NO_ATTACK', 1)
+        for role in LANES for name in (role, role + ' man')]
+    # In e the 1000 digit flags any owner other than s2, including neutral.
+    for script in t.scripts:
+        if script.name.startswith('Test - owner '):
+            role = script.name.removeprefix('Test - owner ')
+            script.when = [('NAMED_OWNED_BY_PLAYER', m.player('s2'), m.role(role).name, NOT)]
+    return t
+
+
 MISSION = {'engine_engineer': mission}
 CHECKS = {'engine_engineer': {'a': check, 'b': check_full_health, 'c': check_damaged_allies,
-                             'd': check_other_captures}}
+                             'd': check_other_captures, 'e': check_allied_defence_repair}}

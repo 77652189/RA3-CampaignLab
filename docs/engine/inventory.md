@@ -629,7 +629,7 @@
 | 已对拍 | `Behaviors/TransportContain` | 13 (16) | tests/test_simbench.py::test_transport_a_team_put_in_instantly_skips_the_room_and_the_relation_and_rides_along；例：AlliedAntiAirVehicleTech1, AlliedAntiInfantryVehicle |
 | 未做 | `Behaviors/SpawnBehavior` | 10 (16) | 已核（11-08）：模拟器没有这个效果（没有母体造随从）；例：AlliedAirfield, AlliedConstructionYardRepairBay |
 | 未做 | `Behaviors/ProductionUpdateInfo` | 9 (9) | 模拟器代码里没有这个名字；例：AlliedConstructionYard, AlliedMCV |
-| 推断 | `Behaviors/EngineerContain` | 7 (18) | 通用三国完整配置已拆分63用量并由engine_engineer a/b/c/d重放登记；本行保留三国ALLIES防御型6、日本单工程师ALLIES型TH_TombBuilding02为1及间接可达桥头堡0，共7用量/18模板；分别缺防御友军维修、日本单人筛选维修、桥修复。ReplaceWith和ObjectStatusToSet无原版显式声明；精确进入帧仍INFERRED，不登记整模块已对拍（tests/test_inventory_contain.py、tests/test_inventory_engineer.py）；例：AlliedAirfield, AlliedBarracks |
+| 推断 | `Behaviors/EngineerContain` | 7 (18) | 通用三国完整配置已拆分63用量并由engine_engineer a/b/c/d重放登记；本行保留三国ALLIES防御型6、日本单工程师ALLIES型TH_TombBuilding02为1及间接可达桥头堡0，共7用量/18模板；e重放三国友军半血防御修满及盟军满血拒入，仍缺苏联/帝国满血与敌方拒入、日本单人筛选维修、桥修复。ReplaceWith和ObjectStatusToSet无原版显式声明；精确进入帧仍INFERRED，不登记整模块已对拍（tests/test_simengineer.py、tests/test_inventory_contain.py、tests/test_inventory_engineer.py）；例：AlliedAirfield, AlliedBarracks |
 | 已对拍 | `Behaviors/EjectPassengersSpecialAbilityUpdate` | 7 (8) | tests/test_simbench.py::test_transport_the_man_cannon_throws_one_every_half_second_and_a_killed_transport_kills_its_men；例：AlliedBomberAircraft, A08_CenturyTransportAircraft |
 | 未做 | `Behaviors/BezierProjectile` | 6 (78) | 已核（11-08）：模拟器没有这个效果（开火按每秒伤害直接扣血，没有弹体）；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
 | 未做 | `Behaviors/AssignSlavesTargetObjectSpecialPower` | 6 (10) | 模拟器代码里没有这个名字；例：AlliedConstructionYardRepairBay, AlliedNavalYard |
