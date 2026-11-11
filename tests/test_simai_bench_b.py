@@ -373,9 +373,38 @@ def test_the_stock_ai_builds_no_unit_of_ours_from_its_own_barracks(lib):
     assert rows[-1]['维和总数'] + rows[-1]['标枪总数'] >= 1
 
 
-@pytest.mark.xfail(strict=True, reason='simai aisknew2: the build state only gates the unit builder (uniform draw), '
-                   'its FEWEST_UNIT score is not modelled -- 新维和 well under half; bench: 1 at s27, 9 of 19 by s167')
 def test_listed_in_a_build_state_our_unit_takes_about_half_the_barracks(lib):
+    """aisknew2: CNVNewPK listed FEWEST_UNIT in a ConstantHeuristic build state of the personality -> bench: the first
+    at s27, 9 of 19 barracks units by s167. The simulator (RA3-EngineModel AIPlayer.build_units, B round 127): the
+    first at s27, 10 of 14 by s167 -- a higher share than the bench's (the unit builder's own Peacekeepers and
+    Javelins are fewer than the bench's, as in aisknew: 8 vs 18), so only the rule is asserted."""
     _, rows = _probe_run('aisknew2', lib, 170, 'y')
     r = rows[166]
     assert rows[27]['新维和'] >= 1 and r['新维和'] >= 0.4 * (r['新维和'] + r['维和总数'] + r['标枪总数'])
+
+
+def test_a_level_personality_lists_our_units_in_a_build_state_of_its_own():
+    """enemy_ai.personality(new_units=...) writes what aisknew2 benched (a ConstantHeuristic state, FEWEST_UNIT,
+    the unit's file included): read by the engine model, the personality's build states list it with its
+    CountModifier, and its AI orders it from an idle factory that makes it."""
+    spec = importlib.util.spec_from_file_location('enemy_ai', ROOT / 'experimental' / 'cnv' / 'enemy_ai.py')
+    enemy_ai = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(enemy_ai)
+    m = simai.model()
+    xml = enemy_ai.personality('CNVTestNew', '盟军', new_units={'CNVNewPK': 2})
+    assert 'DATA:CNVUnits/Data/CNVNewPK.xml' in xml and 'UnitModifier' not in xml
+    data = m['data'].AIData()
+    data.add_text(xml.split('\n', 1)[1])
+    states = {b.id: b for b in data.personality_build_states('CNVTestNew', 'MEDIUM')}
+    assert states['CNVTestNewNew'].entries == [('CNVNewPK', 'FEWEST_UNIT')]
+    assert states['CNVTestNewNew'].params[0]['CountModifier'] == '2'
+    ai = m['player'].AIPlayer(data, 'CNVTestNew')
+    made = []
+    ai.builder = lambda t: made.append(t) or True
+    ai.units = lambda ai, f: []
+    ai.offers = lambda ai, f: [m['teams'].Offer('CNVNewPK', state=0, cost=200)]
+    ai.accounts['PRODUCTION'] = 1000
+    ai.tell(m['player'].Command('make base'))
+    ai.tick(0)
+    assert 'CNVNewPK' in made
+    assert enemy_ai.new_units_state('x', None) == '' and 'BuildState' not in enemy_ai.personality('y', '盟军')
