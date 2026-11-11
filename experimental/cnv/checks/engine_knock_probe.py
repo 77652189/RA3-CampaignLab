@@ -17,6 +17,11 @@ yet a knock-back trajectory -- see the line's private handoff for what to try ne
 Round 24 adds a third lane, 'tank' (its own check, `cnv_check engine_knock_probe tank`, CampKPTank: four counter
 lines at most, so a check fires two lanes; the others stand by NO_ATTACK): the 'strong' shot at a Hammer copy carrying the same probe (CNV_KnockHammer,
 MaxHealth 550: 1.5 reads 99), a second Hammer 80 to its side -- does a vehicle move where the infantry did not?
+Bench 11-10 PASS, and neither tank moved either.
+Round 25, `retail` (CampKPRetail): 'yuri' = the instant gun with retail PsyonicBlast's MetaImpactNugget verbatim,
+'rocket' = the strong shock in the warhead of retail's V4 rocket. Bench 11-10 PASS (all four health readings as
+predicted); the yuri men stay put, the rocket's target flies (from frame 175, still airborne when the run ends at 266)
+and its neighbour hops ~20 away: MetaImpact pushes only from a detonation (a projectile's), not from an instant hit.
 """
 import os
 import re
@@ -29,11 +34,52 @@ from checks.engine_suppress_probe import EVERY, LINES, PROBE, probe_man
 
 # amount, radius, z mult, neighbour offset; 'tank' (round 24) = 'strong' aimed at a vehicle (hypothesis: RA3 pushes
 # only vehicles), its neighbour a second tank
-LANES = {'mild': (89, 50, 1.5, 30), 'strong': (89, 250, 8.5, 60), 'tank': (89, 250, 8.5, 80)}
-SITE = {'mild': 'base gun', 'strong': 'high gun', 'tank': 'order gun'}   # probe_range sites
+# 'yuri' (round 25): the MetaImpactNugget of retail's JapanCommandoTech1PsyonicBlast copied as it is (the same 89 /
+# 250 / 8.5 plus ShockwaveDelaySeconds 1 s and an INFANTRY SpecialObjectFilter; retail flings infantry with it), on
+# the instant gun; 'rocket' (round 25): 'strong' fired the retail way, retail's V4 rocket projectile whose warhead
+# carries the 1.5 hit and the strong MetaImpactNugget
+LANES = {'mild': (89, 50, 1.5, 30), 'strong': (89, 250, 8.5, 60), 'tank': (89, 250, 8.5, 80),
+         'yuri': (89, 250, 8.5, 60), 'rocket': (89, 250, 8.5, 60)}
+SITE = {'mild': 'base gun', 'strong': 'high gun', 'tank': 'order gun',   # probe_range sites
+        'yuri': 'removed gun', 'rocket': 'switch gun'}
 TANK, PROBE_TANK = 'SovietAntiVehicleVehicleTech1', 'CNV_KnockHammer'    # the Hammer, MaxHealth 550
-TARGET = {'mild': PROBE, 'strong': PROBE, 'tank': PROBE_TANK}
+TARGET = {k: PROBE for k in LANES}
+TARGET['tank'] = PROBE_TANK
+YURI = 'JapanCommandoTech1PsyonicBlast'
+STOP = {k: 4 / 15 for k in LANES}
+STOP['rocket'] = 2.0                # retail's 0.5 s pre-attack must pass before NO_ATTACK; reload 4.5 s: one rocket
 RUN = ORDER + 8.0
+HIT = '<DamageNugget Damage="1.5" DamageType="UNRESISTABLE" DeathType="NORMAL" Radius="0"/>'
+
+
+def yuri_shock():
+    """Retail's PsyonicBlast MetaImpactNugget, verbatim."""
+    with open(os.path.join(labpaths.SDK3, 'SageXML', 'GlobalData', 'Weapon.xml'), encoding='utf-8') as f:
+        w = f.read()
+    s = re.search(rf'<WeaponTemplate\s+id="{YURI}".*?</WeaponTemplate>', w, re.S).group(0)
+    found = re.findall(r'<MetaImpactNugget.*?</MetaImpactNugget>', s, re.S)
+    assert len(found) == 1 and 'ShockwaveDelaySeconds="1.0s"' in found[0] and 'Include="INFANTRY"' in found[0]
+    return found[0]
+
+
+def rocket_gun():
+    """Retail's V4 with its retail rocket (no scatter), the rocket's warhead swapped for CNV_KnockRocketWarhead:
+    the 1.5 hit and the strong MetaImpactNugget, retail warhead's collide / affects flags."""
+    from checks.engine_missile import home_v4
+    amount, radius, zmult, _ = LANES['rocket']
+    u = home_v4('CNV_KnockRocket', adjust=10.0, scatter=False)
+    old = 'WarheadTemplate="SovietAntiStructureVehicleV4RocketWarhead"'
+    assert u.xml.count(old) == 1
+    u.xml = u.xml.replace(old, 'WarheadTemplate="CNV_KnockRocketWarhead"')
+    warhead = ('\t<WeaponTemplate id="CNV_KnockRocketWarhead" ProjectileCollidesWith="ALLIES ENEMIES NEUTRAL STRUCTURES '
+               'WALLS" RadiusDamageAffects="ALLIES ENEMIES NEUTRALS SELF" Flags="ATTACK_NEEDS_LINE_OF_SIGHT '
+               'NOT_ATTRACTED_BY_MAGNETS" RequiredAntiMask="ANTI_WATER ANTI_GROUND ANTI_STRUCTURE">'
+               f'<Nuggets>{HIT}<MetaImpactNugget ShockWaveAmount="{amount}" ShockWaveRadius="{radius}" '
+               f'ShockWaveZMult="{zmult}"/></Nuggets></WeaponTemplate>\n')
+    u.xml = u.xml.replace('</AssetDeclaration>', warhead + '</AssetDeclaration>', 1)
+    u.link = list(u.link) + ['WeaponTemplate:CNV_KnockRocketWarhead']
+    u.what = f'击飞 V4（探针）：原版火箭弹体，弹头 1.5 伤害 + MetaImpactNugget 冲击 {amount} 半径 {radius} 竖直倍数 {zmult}'
+    return u
 
 
 def probe_tank():
@@ -57,15 +103,18 @@ def name(lane, part):
 
 
 def gun(lane):
+    if lane == 'rocket':
+        return rocket_gun()
     amount, radius, zmult, _ = LANES[lane]
     uid = 'CNV_Knock' + lane.title()
     u = clip_v4('bare', hit=1.5, uid=uid, spec=(0, 1 / 15, 1.0, 1, 'PRE_FIRE', (), RUN, 'knock'))
-    u.xml, n = re.subn(r'<Nuggets>.*?</Nuggets>',
-                       '<Nuggets><DamageNugget Damage="1.5" DamageType="UNRESISTABLE" DeathType="NORMAL" Radius="0"/>'
-                       f'<MetaImpactNugget ShockWaveAmount="{amount}" ShockWaveRadius="{radius}" '
-                       f'ShockWaveZMult="{zmult}"/></Nuggets>', u.xml, flags=re.S)
+    shock = yuri_shock() if lane == 'yuri' else (f'<MetaImpactNugget ShockWaveAmount="{amount}" '
+                                                 f'ShockWaveRadius="{radius}" ShockWaveZMult="{zmult}"/>')
+    u.xml, n = re.subn(r'<Nuggets>.*?</Nuggets>', lambda _: f'<Nuggets>{HIT}{shock}</Nuggets>', u.xml, flags=re.S)
     assert n == 1
-    u.what = f'击飞 V4（探针）：瞬发 1.5 伤害 + MetaImpactNugget 冲击 {amount} 半径 {radius} 竖直倍数 {zmult}'
+    u.what = (f'击飞 V4（探针）：瞬发 1.5 伤害 + ' +
+              ('原版百合子念力爆的 MetaImpactNugget 原样（延迟 1 秒、只含步兵）' if lane == 'yuri' else
+               f'MetaImpactNugget 冲击 {amount} 半径 {radius} 竖直倍数 {zmult}'))
     return u
 
 
@@ -79,7 +128,8 @@ def mission():
     return m
 
 
-CHECK_LANES = {'shot': ('mild', 'strong'), 'tank': ('tank',)}   # four counter lines at most: two lanes a check
+CHECK_LANES = {'shot': ('mild', 'strong'), 'tank': ('tank',),    # four counter lines at most: two lanes a check
+               'retail': ('yuri', 'rocket')}
 
 
 def check(m, which):
@@ -88,16 +138,19 @@ def check(m, which):
     t = Test()
     start = [('MAP_REVEAL_ALL_PERM', m.player('p1'))]
     start += [('UNIT_CHANGE_OBJECT_STATUS', name(k, p), 'NO_ATTACK', 1) for k in LANES for p in ('gun', 'man', 'near')]
-    start += [('SET_MILLISECOND_TIMER', 'Knock Fire', float(ORDER)),
-              ('SET_MILLISECOND_TIMER', 'Knock Stop', ORDER + 4 / 15)]
+    stops = sorted({STOP[k] for k in fired})
+    start += [('SET_MILLISECOND_TIMER', 'Knock Fire', float(ORDER))]
+    start += [('SET_MILLISECOND_TIMER', f'Knock Stop {i}', ORDER + s) for i, s in enumerate(stops)]
     t.scripts.append(Script('Test - start', [], start))
-    fire, stop = [], []
+    fire = []
     for k in fired:
         fire += [('UNIT_CHANGE_OBJECT_STATUS', name(k, 'gun'), 'NO_ATTACK', 0),
                  ('NAMED_ATTACK_NAMED', name(k, 'gun'), name(k, 'man'))]
-        stop.append(('UNIT_CHANGE_OBJECT_STATUS', name(k, 'gun'), 'NO_ATTACK', 1))
     t.scripts.append(Script('Test - fire', [('TIMER_EXPIRED', 'Knock Fire')], fire))
-    t.scripts.append(Script('Test - stop', [('TIMER_EXPIRED', 'Knock Stop')], stop))
+    for i, s in enumerate(stops):
+        t.scripts.append(Script(f'Test - stop {i}', [('TIMER_EXPIRED', f'Knock Stop {i}')],
+                                [('UNIT_CHANGE_OBJECT_STATUS', name(k, 'gun'), 'NO_ATTACK', 1)
+                                 for k in fired if STOP[k] == s]))
     expect = {}
     for k in fired:
         for p, hp in (('man', 99), ('near', 100)):
