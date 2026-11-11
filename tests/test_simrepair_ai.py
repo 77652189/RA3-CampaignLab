@@ -37,6 +37,27 @@ def test_ai_repair_funded_activation_and_cost_prediction():
     assert 'repair' in w.sim.used
 
 
+def test_ai_repair_quarter_health_cost_prediction_and_bench_readings():
+    import build
+    import sim
+    from parts import contract, merged
+
+    m, t, _ = build.resolve('repairq', 'a')
+    assert not contract(merged(m, t))
+    e = sim.Sim(m, t)
+    e.advance(15 * 25)
+    plant = e.body(m.role('repair').name)
+    assert plant.hp == pytest.approx(500, abs=6)
+    assert e.money[plant.owner] == pytest.approx(9925, abs=1)
+    assert e.repairs.active[plant.name]['cost'] == 300
+    assert e.repairs.active[plant.name]['r'] == pytest.approx(1 / 1500)
+    e.advance(15 * 76)
+    rows = [row for sec, row in e.series if 90 <= sec <= 95]
+    assert rows and all(row == [100, 50, 9775] for row in rows), rows
+    assert build.report(t, e.series)[1] == 0
+    assert 10000 - e.money[plant.owner] == 800 * .5 * .75 ** 2
+
+
 def test_ai_repair_rate_and_unmeasured_configuration_gate():
     import build
     import sim
@@ -67,5 +88,19 @@ def test_ai_repair_rate_and_unmeasured_configuration_gate():
     assert 'RepopThreshold' in e.own[plant.template]
     e.advance(15 * 80)
     assert plant.hp == 500
+    assert e.money[plant.owner] == 10000
+    assert ('物体模块', 'RepairUpdate') in e.unmodeled
+
+
+@pytest.mark.parametrize('initial_health', [10, 75])
+def test_ai_repair_unmeasured_initial_health_is_refused(initial_health):
+    import sim
+    from checks.engine_repair_ai import mission, check
+
+    m = mission(True, initial_health)
+    e = sim.Sim(m, check(m))
+    e.advance(15 * 80)
+    plant = e.body(m.role('repair').name)
+    assert plant.hp == initial_health * 10
     assert e.money[plant.owner] == 10000
     assert ('物体模块', 'RepairUpdate') in e.unmodeled

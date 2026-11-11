@@ -12,6 +12,8 @@ active at frame 5, cost=200, r=1/1500; stopped at frame 756.
 E41's late funding failed because the no-economy AI latch was already set.
 Zero-credit control measures that latch, not inability to pay an active repair.
 Unmeasured repair configurations and player input remain separate gaps.
+E49 repairq:a starts at 25% health: cost=300, active frame 5 to 1131;
+the bench reaches 100/50/9775 at s74 and holds through s103.
 """
 from pathlib import Path
 
@@ -49,9 +51,9 @@ def personality_xml():
 '''
 
 
-def mission(funded):
-    m = Mission(name='CampRepAI' if funded else 'CampRepZero', map=probe_range,
-                units=[probe_plant()], facts={'funded': funded, 'wake at': WAKE}, ext=True)
+def mission(funded, initial_health=50):
+    m = Mission(name='CampRepQ' if initial_health == 25 else 'CampRepAI' if funded else 'CampRepZero', map=probe_range,
+                units=[probe_plant()], facts={'funded': funded, 'initial health': initial_health, 'wake at': WAKE}, ext=True)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies',
                      'aiPersonality': f'AIPersonalityDefinition:{PID}'}
     m.assets.append((PID + '.xml', personality_xml(), f'AIPersonalityDefinition:{PID}'))
@@ -62,7 +64,7 @@ def mission(funded):
     ai = m.player('s1')
     m.scripts = [
         Script('Repair start', [], [('PLAYER_SET_MONEY', ai, 10000 if funded else 0),
-                                    ('UNIT_SET_HEALTH', m.role('repair').name, 50.0),
+                                    ('UNIT_SET_HEALTH', m.role('repair').name, float(initial_health)),
                                     ('UNIT_SET_HEALTH', m.role('control').name, 50.0),
                                     ('SET_MILLISECOND_TIMER', 'Repair Wake', WAKE)]),
         Script('Repair wake', [('TIMER_EXPIRED', 'Repair Wake')],
@@ -79,12 +81,16 @@ def check(m):
     t.counters.append(('AI Repair Money', '资金'))
     t.scripts.append(Script('Repair money', [],
                             [('SET_PLAYER_MONEY_TO_COUNTER', m.player('s1'), 'AI Repair Money')], once=False))
-    t.expect = [('repair HP', 75, '==', 100 if m.facts['funded'] else 50, 80),
-                ('control HP', 1, '==', 50, 80),
-                ('资金', 75, '==', 9900 if m.facts['funded'] else 0, 80)]
-    t.bench = [('bench_watch', dict(seconds=80, every=1, sheet=False, lines=3))]
+    quarter = m.facts['initial health'] == 25
+    start, end = (90, 95) if quarter else (75, 80)
+    money = 9775 if quarter else 9900 if m.facts['funded'] else 0
+    t.expect = [('repair HP', start, '==', 100 if m.facts['funded'] else 50, end),
+                ('control HP', 1, '==', 50, end),
+                ('资金', start, '==', money, end)]
+    t.bench = [('bench_watch', dict(seconds=100 if quarter else 80, every=1, sheet=False, lines=3))]
     return t
 
 
-MISSION = {'repairai': lambda: mission(True), 'repairzero': lambda: mission(False)}
+MISSION = {'repairai': lambda: mission(True), 'repairzero': lambda: mission(False),
+           'repairq': lambda: mission(True, 25)}
 CHECKS = {key: {'a': check} for key in MISSION}
