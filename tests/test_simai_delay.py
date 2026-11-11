@@ -4,10 +4,29 @@ Read body status directly: the inherited player-status script condition is
 currently unmodeled, so its zero counters cannot prove execution failure.
 """
 import collections
+import xml.etree.ElementTree as ET
 import pytest
 
 from test_simai_bench_b import lib, _probe_run, pytestmark  # noqa: F401
 from test_simai_bench_b import simai
+
+
+@pytest.mark.parametrize('maximum', [0, 999])
+def test_maximum_delay_probe_obeys_sdk_child_sequence(maximum):
+    """SDK AIMicroManagerData requires delays before retreat/ignore filters.
+
+    The parser accepts either order, but the real map compiler rejected the
+    original pair before it could reach the game (2026-11-11).
+    """
+    import build
+    m, t, _ = build.resolve('aidelay999' if maximum else 'aidelay0', 'a')
+    ns = {'a': 'uri:ea.com:eala:asset'}
+    micro = ET.fromstring(m.assets[0][1]).find('a:AIMicroManagerData', ns)
+    assert [node.tag.rsplit('}', 1)[-1] for node in micro] == [
+        'SpecificSpecialPowerDelay', 'RetreatBaseCriteria', 'IgnoreTargets']
+    assert micro[0].attrib == {'PowerType': 'RUSH_ATTACK', 'MinimumDelay': '0s',
+                               'MaximumDelay': f'{maximum}s'}
+    assert not any(s.name in ('Test - control make', 'Test - control press') for s in t.scripts)
 
 
 @pytest.mark.parametrize('maximum, second', [(0, 8), (999, 15000)])
@@ -55,3 +74,14 @@ def test_specific_maximum_delay_probe_trace(lib, build, monkeypatch):
         for frame, key, _, _ in rush:
             by_team[key].append(frame)
         assert all(len(v) == 1 for v in by_team.values()), by_team
+
+
+@pytest.mark.parametrize('build, peak', [('aidelay0', 2), ('aidelay999', 1)])
+@pytest.mark.xfail(strict=True, reason='engine_aidelay pair bench 2026-11-11 has charging peaks 2/1; '
+                   'sim.py does not implement PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS, so script '
+                   'counters stay zero despite real body execution. See work/re/handoff-c.md, MaximumDelay gate.')
+def test_maximum_delay_replays_bench_script_counters(lib, build, peak):
+    """Keep both successful engine_aidelay observations as explicit replay gaps."""
+    _, rows = _probe_run(build, lib, 50)
+    assert max(r['冲'] for r in rows) == peak
+    assert max(r['曾冲'] for r in rows) > 0

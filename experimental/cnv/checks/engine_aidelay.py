@@ -7,6 +7,14 @@ but that is a sampled prediction, NOT a deterministic lower-bound guarantee.
 Both builds keep MinimumDelay=0, no team delay, the same update/health/targets.
 The old aimicmed all-zero run is not a successful delay control.
 Only the automatic window is measured; remove the inherited manual warrior.
+
+Bench 2026-11-11, aidelay0:a PASS: two warriors from s20, charging one at
+s33 and two at s34-s42; Ever grows from 11 at s33 to 146 at s42.
+aidelay999:a PASS: two warriors from s20, one charging at s33-s42,
+none from s43; Ever 11 at s33 and 142 at s42. Both first-seen clocks
+are frame 362 after wake. This single pair does not measure the RNG distribution.
+The simulator's body-state trace is separate from these script counters:
+PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS is still unmodeled.
 """
 from checks import engine_aimicro as ac
 

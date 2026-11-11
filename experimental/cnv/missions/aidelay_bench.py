@@ -16,7 +16,11 @@ def mission(maximum):
     filename, xml, asset = m.assets[0]
     tag = (f'<SpecificSpecialPowerDelay PowerType="RUSH_ATTACK" '
            f'MinimumDelay="0s" MaximumDelay="{maximum}s"/>')
-    xml = xml.replace('  </AIMicroManagerData>', '    ' + tag + '\n  </AIMicroManagerData>')
+    # SDK sequence: TargetBias*, SpecificSpecialPowerDelay*, RetreatBaseCriteria,
+    # IgnoreTargets. Appending after IgnoreTargets fails BinaryAssetBuilder.
+    anchor = '    <RetreatBaseCriteria'
+    assert xml.count(anchor) == 1
+    xml = xml.replace(anchor, '    ' + tag + '\n' + anchor)
     assert tag in xml
     m.assets[0] = filename, xml, asset
     m.facts['specific maximum'] = maximum
