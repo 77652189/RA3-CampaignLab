@@ -1800,7 +1800,10 @@ class Sim:
         step = self.cold_of(b)[0]['steps'][b.cold_step] if b.cold_step >= 0 else None
         if step and step[1]:
             mods.append(simunits.modifier(xml, step[1]))
-        on, off = simunits.status_bits(xml, b.upgrades)
+        # engine_spngp a: a PLAYER grant triggers the owner's StatusBitsUpgrade.
+        player_bits = {up for up in self.player_ups.get(b.owner, ())
+                       if simunits.upgrade_type(up, self.own) == 'PLAYER'}
+        on, off = simunits.status_bits(xml, b.upgrades | player_bits)
         armor_bits = {'GENERIC_TOGGLE_STATE', 'SPECIAL_ARMOR_ACTIVE'} if b.armor_up else set()
         e = simunits.effect(mods, on | b.script_status | b.attachment_status | armor_bits, off)
         if not mods and not on and not off and b.base is None:
@@ -2969,6 +2972,9 @@ class Sim:
         elif name == 'GIVE_PLAYER_UPGRADE':             # (player, upgrade): a PLAYER upgrade; an OBJECT one (the tiers)
                                                         # it gives unlocks nothing (bench 11-07 engine_tech b)
             self.player_ups.setdefault(a[0], set()).add(a[1])
+            for b in self.living():
+                if b.owner == a[0]:
+                    self.modify(b)
         elif name == 'PLAYER_RELATES_PLAYER':           # (index, 0, name): the game reads the index (plan.relates)
             r = a[2]
             self.relations[(a[0], a[1])] = r if isinstance(r, str) else \
@@ -4076,13 +4082,15 @@ class Sim:
                         self.attachments[by.name] = (by, t, rule)
                         self.attachment_tick()
                     for effect in w.get('special_powers', []):
-                        # engine_spng a: one OBJECT gate reads the caster, not the victim.
+                        # engine_spng / engine_spngp: a single gate reads caster/object or owner.
                         required = effect.get('required_upgrade', '')
                         forbidden = effect.get('forbidden_upgrade', '')
-                        if any(simunits.upgrade_type(up, self.own) != 'OBJECT' for up in (required, forbidden) if up):
-                            self.gap(GAP_WEAPON, 'SpecialPowerNugget', '升级门槛仅对拍单个OBJECT升级；PLAYER/未知类型待核')
+                        gate_type = simunits.upgrade_type(required or forbidden, self.own) if required or forbidden else 'OBJECT'
+                        if gate_type not in ('OBJECT', 'PLAYER'):
+                            self.gap(GAP_WEAPON, 'SpecialPowerNugget', '升级门槛未知类型待核')
                             continue
-                        held = {up.lower() for up in by.upgrades}
+                        held = {up.lower() for up in (self.player_ups.get(by.owner, ())
+                                                     if gate_type == 'PLAYER' else by.upgrades)}
                         if (required and required.lower() not in held) or (forbidden and forbidden.lower() in held):
                             continue
                         if ((effect['include'] and not set(effect['include']) & t.kinds)

@@ -40,20 +40,56 @@ def test_special_power_nugget_upgrade_gates_reject_unmeasured_forms(inner):
     assert 'SpecialPowerNugget' in w['unmodeled_effects']
 
 
-def test_special_power_nugget_upgrade_gates_leave_player_upgrades_unmodeled():
+def test_special_power_nugget_player_upgrade_gates_use_caster_owner():
+    """engine_spngp a: PLAYER grants, distinct templates and status proof per lane."""
     import build
     import sim
-    import simunits
-    from checks.engine_spng import UPGRADE
-    m, t, _ = build.resolve('engine_spng', 'a')
-    for u in m.units:
-        u.xml = u.xml.replace(f'id="{UPGRADE}" Type="OBJECT"', f'id="{UPGRADE}" Type="PLAYER"')
+    m, t, _ = build.resolve('engine_spngp', 'a')
+    grants = next(s.do for s in t.scripts if s.name == 'Test - grant upgrades')
+    assert len({a[2] for a in grants}) == 4
+    assert all(a[0] == 'GIVE_PLAYER_UPGRADE' for a in grants)
     e = sim.Sim(m, t)
     e.shot_clock = True
-    assert simunits.upgrade_type(UPGRADE, e.own) == 'PLAYER'
     result = e.run(16)
-    assert tuple(result.series[-1][1]) == (1011099080,)*4
-    assert (sim.GAP_WEAPON, 'SpecialPowerNugget') in e.unmodeled
+    expected = (1011099075, 1011099080, 1011099080, 1011099075)
+    assert all(tuple(row) == expected for sec, row in result.series if sec >= 14)
+    assert tuple(result.series[-1][1]) == expected
+    assert (sim.GAP_WEAPON, 'SpecialPowerNugget') not in e.unmodeled
+    from checks.engine_spng import UPGRADE
+    for lane in ('base', 'high', 'order', 'removed'):
+        caster, victim = [e.body('SPN ' + lane + ' ' + role) for role in ('caster', 'victim')]
+        owner = caster.owner if lane in ('base', 'order') else victim.owner
+        assert UPGRADE + lane.title() in e.player_ups[owner]
+        assert not caster.upgrades and not victim.upgrades
+        receiver, other = (caster, victim) if lane in ('base', 'order') else (victim, caster)
+        assert 'WEAPON_UPGRADED_01' in receiver.status
+        assert 'WEAPON_UPGRADED_01' not in other.status
+
+
+@pytest.mark.parametrize('mode,expected', [
+    ('object_grant', (1011099080, 1011099080, 1011099075, 1011099075)),
+    ('unknown_type', (1011099080,)*4),
+])
+def test_special_power_nugget_player_gate_does_not_accept_object_or_unknown(mode, expected):
+    """Synthetic guards: object grants cannot substitute for PLAYER ownership."""
+    import build
+    import sim
+    import re
+    from checks.engine_spng import UPGRADE
+    m, t, _ = build.resolve('engine_spngp', 'a')
+    grant = next(s for s in t.scripts if s.name == 'Test - grant upgrades')
+    grant.do = [('NAMED_RECEIVE_UPGRADE', UPGRADE + lane.title(),
+                 'SPN ' + lane + (' caster' if lane in ('base', 'order') else ' victim'))
+                for lane in ('base', 'high', 'order', 'removed')]
+    if mode == 'unknown_type':
+        for u in m.units:
+            u.xml = re.sub(r'<(RequiredUpgrade|ForbiddenUpgrade)>[^<]+</',
+                           r'<\1>Upgrade_CNVUnknown</', u.xml)
+    e = sim.Sim(m, t)
+    e.shot_clock = True
+    result = e.run(16)
+    assert tuple(result.series[-1][1]) == expected
+    assert ((sim.GAP_WEAPON, 'SpecialPowerNugget') in e.unmodeled) == (mode == 'unknown_type')
 
 
 def test_special_power_nugget_upgrade_gates_survive_retail_cache():

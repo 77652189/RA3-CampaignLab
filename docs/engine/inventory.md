@@ -240,7 +240,7 @@
 | 已对拍 | `NAMED_EXIT_BUILDING` | 15 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_garrison.py |
 | 未做 | `TEAM_UPGRADE` | 15 | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `UNIT_SET_HEALTH` | 15 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aimicro.py |
-| 已对拍 | `GIVE_PLAYER_UPGRADE` | 14 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_tech.py |
+| 已对拍 | `GIVE_PLAYER_UPGRADE` | 14 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_spngp.py |
 | 推断 | `MARK_MISSION_OBJECTIVE_COMPLETED` | 14 | 引擎模型核心 |
 | 不涉及 | `MOVIE_PLAY_FULLSCREEN` | 14 | 纯表现（名字规则） |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleEnergizedArmorSpecialPower` | 14 | 只记进时间线，没有效果 |
@@ -771,7 +771,7 @@
 | 不涉及 | `TintObjectsNugget` | 9 | 纯表现：Color及Pre/Sustained/PostColorTime、Frequency/Amplitude仅控制染色动画；engine_tint pair实测2/90/2/90，独立DamageNugget解释全部伤害，test_simbench_c重放；不声称像素已验证；例：SovietCommandoCallBombingRun, AlliedCommandoAttachWeapon |
 | 未做 | `ActivateLiftObjectNugget` | 6 | engine_lift两轮确认需LiftObjectUpdate且SoftLanding影响清位，但Lifetime/续期释放规则未解释；保留诊断、不登记已对拍；例：JapanCommandoTech1PsyonicCrush, JapanCommandoTech1AirborneKiller |
 | 已对拍 | `LineDamageNugget` | 6 | tests/test_simbench_c.py::test_weaponfx_predictions_and_finite_bursts；例：SovietCommandoSniperRifle, AAAVT1_SovietCommandoSniperRifle |
-| 推断 | `SpecialPowerNugget` | 6 | 部分：engine_spn a实测自身ARMOR派发、缺模块/类型过滤；engine_spng a实测单个OBJECT升级Required/Forbidden读取施法者而非受害者，tests/test_special_power_nugget.py回放；仅直接单发零冷却自制技能，PLAYER/多重升级及原版六处OCL/模块/变装未接通，不登记整项已对拍；例：SovietCommandoCallBombingRun, AlliedAntiVehicleVehicleTech1TargetPainter |
+| 推断 | `SpecialPowerNugget` | 6 | 部分：engine_spn a实测自身ARMOR派发、缺模块/类型过滤；engine_spng a / engine_spngp a实测单个OBJECT/PLAYER升级Required/Forbidden读取施法者/其玩家而非受害者，tests/test_special_power_nugget.py回放；仅直接单发零冷却自制技能，未知类型/多重升级及原版六处OCL/模块/变装未接通，不登记整项已对拍；例：SovietCommandoCallBombingRun, AlliedAntiVehicleVehicleTech1TargetPainter |
 | 未做 | `FireOnObjectsNugget` | 5 | 未实现：子武器派发条件与空间锚点尚未解释；失败诊断不作为已对拍依据；例：PlayerPowerJapanEmperorsResolveWeapon_L1, PlayerPowerJapanEmperorsResolveWeapon_L2 |
 | 已对拍 | `SecondaryDamageNugget` | 5 | tests/test_simbench_c.py::test_secondary_damage_delivers_one_amount_at_hit_without_damaging_health；例：MountRushmoreHeadEyeWeapon, AlliedCryoSatelliteLvl1 |
 | 推断 | `AttachNugget` | 4 | 部分：engine_attach a实测直接单发、父子状态、随父移动及目标状态/类型拒绝；仅零半径简单模块，原版复杂筛选/维修/吸血/解除/弹体未接通，不登记整项已对拍；例：AlliedCommandoAttachWeapon, SovietAntiVehicleInfantryMagneticBombAttachWeapon |
