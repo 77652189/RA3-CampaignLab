@@ -23,7 +23,8 @@ Read (测, 2026-11-05, docs/engine/missile.md 1):
   miss   run CampMslMiss_mcp_1105_074535: near 5108, far 5108 (first hit 108 frames after the order at 250 and at 450
          alike, 5 % a hit), dodge 5117, home 5116 (the jump at +30 frames came before the launch: both hit); later
          hits about every 6.5 s. (Runs 1-2 that morning set the targets' health by script and read 60000 from s1:
-         NAMED_SET_MAX_HEALTH keeps the current health -- hence target().)
+         the max passed as a REAL where the action takes an INT, so it did nothing -- hence target(); the action
+         itself: checks/engine_maxhealth.py.)
   flight run CampMslFlight_mcp_1105_074901: near / far never saw their rocket (the type-in-area count does not count
          it); dodge 5210, home 5212: jumped at +90 frames (JUMP_LATE), the first rocket of both missed -- homing 300
          did not follow a 150 jump ~1.2 s before impact.
@@ -92,8 +93,8 @@ def home_v4(id=HOME, adjust=HOME_ADJUST, scatter=True):
 
 def target(id=TARGET_ID, health=TARGET_HP):
     """Retail's Hammer under `id` with MaxHealth = health (retail 550): a 500 hit is a few percent. Built in the XML:
-    by script it did not work (run 2, 11-05: NAMED_SET_MAX_HEALTH(.., 10000, 1) then UNIT_SET_HEALTH(.., 100) left
-    the Hammer below 41 % from the start)."""
+    by script it did not work (run 2, 11-05: NAMED_SET_MAX_HEALTH(.., 10000.0, 1) -- a REAL in the INT slot -- left the
+    Hammer below 41 % from the start)."""
     x = open(os.path.join(SAGE, 'Soviet', 'Units', TARGET + '.xml'), encoding='utf-8').read()
     x = _sub1(x, f'id="{TARGET}"', f'id="{id}"')
     x = _sub1(x, f'EditorName="{TARGET}"', f'EditorName="{id}"')

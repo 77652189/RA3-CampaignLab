@@ -35,10 +35,11 @@ def mission(name='CampPath'):              # + the check's name: 15 characters a
 TANK = 'AlliedAntiVehicleVehicleTech1'
 
 
-def attack_mission(name='CampWayAtk'):     # + the check's name: 15 characters at most ('CampWayAtkPlain')
+def attack_mission(name='CampWayAtk', rows=ROWS):     # + the check's name: 15 characters at most ('CampWayAtkPlain')
+    """rows: the tanks' start rows (engine_wayatk2: tank 3 at +450, its team spot far beyond any scan of F)."""
     m = Mission(name=name, map=island, units=[], facts={})
     m.spawns |= {TANK}
-    for k, dy in enumerate(ROWS, 1):
+    for k, dy in enumerate(rows, 1):
         m.put(TANK, 'west field', START_X, dy, angle=0.0, name=f'UNIT - CNV Wayatk Tank {k}', role=f'tank {k}',
               props={'originalOwner': m.crew('W1' if k == 1 else 'W23')})
     for part, (dx, dy) in MARKS.items():
@@ -46,4 +47,5 @@ def attack_mission(name='CampWayAtk'):     # + the check's name: 15 characters a
     return m
 
 
-MISSION = {'engine_waypath': mission, 'engine_wayatk': attack_mission}
+MISSION = {'engine_waypath': mission, 'engine_wayatk': attack_mission,
+           'engine_wayatk2': lambda: attack_mission('CampWayAtk2', rows=(-150.0, 0.0, 450.0))}

@@ -37,6 +37,12 @@ Simulator round 146 (work/logs/a146_wayatk_sim.log; sim.Sim.attack_chase): atk2 
          Team::setCurrentWaypoint) -- no hold for a fighter -- so tank 3 was fighting too: its A spot is 270 from F,
          beyond any scan, so it took the team's target (getNextMoodTarget returns Team::getTeamTargetObject, the first
          member's victim, at any distance) and walked up (first hit s7). sim.Sim.attack_chase: the team's `victim`.
+  far    (engine_wayatk2, round 147: tank 3 starts at +450) bench 11-10 CampWayAtk2Far_mcp_1110_173620 (a slow run:
+         the popup at 37 s): 段2 1 s6; 敌血 86 s11, 72 s15 (tank 2 alone, ~4 s a hit); 段3 1 s17; 58 s19, 45 s20,
+         31 s26, 18 s27, 5 s31 (two shooters from tank 3's arrival); B 段3 s38 / 段2 s40, C s49 / s51 -- the team
+         held until the kill. Simulator (work/logs/a147_far_sim.log): tank 3 at A s9, both firing s11, dead s17.
+         NOT yet an answer on the common target: tank 3 entered A's 100 box, ~212 from F, within its own scan --
+         where it stood when it first fired is not read (next: a frame at s17-s19, or a far spot that keeps it out).
 Tested (tests/test_simbench.py test_wayatk_*): plain, atk, amove, atk2, team.
 """
 from parts import Script, Test, counted, square
@@ -102,4 +108,11 @@ def amove(m):
     return _probe(m, 150.0, m.order('attack_move', [m.role('tank 1').name], m.mark('B'), crew='W1'))
 
 
-CHECKS = {'engine_wayatk': {'atk': atk, 'plain': plain, 'atk2': atk2, 'team': team, 'amove': amove}}
+def far(m):
+    """team on engine_wayatk2 (tank 3 starts at +450, 300 further from F than in team): is the team's common target
+    taken at any distance (Team::getTeamTargetObject), or did team's tank 3 find F by some reach of its own?"""
+    return team(m)
+
+
+CHECKS = {'engine_wayatk': {'atk': atk, 'plain': plain, 'atk2': atk2, 'team': team, 'amove': amove},
+          'engine_wayatk2': {'far': far}}

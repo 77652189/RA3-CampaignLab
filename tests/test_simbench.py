@@ -1557,3 +1557,12 @@ def test_wayatk_a_team_on_an_attack_path_fights_as_one_and_holds_until_it_is_dea
     for k in (2, 3):
         at_b = _first(rows, k, lambda v: v == 2)
         assert at_b is not None and at_b > dead, (k, at_b, dead)
+
+
+def test_maxhealth_keeps_the_hit_points_unless_full_as_the_bench():
+    """NAMED_SET_MAX_HEALTH (sim.Sim.act; RA3 0x5b0280 setMaxHealth SAME_CURRENTHEALTH): bench 2026-11-10
+    `cnv_check engine_maxhealth mh` s2-s11: 甲 25 (240 of 480 hp, max 960 full 0: the hit points stay), 乙 100 (full 1),
+    丙 95 (max 9600 full 1, 480 off), 丁 50 (max 240 full 0: clamped, 120 off). Before round 147 the simulator kept the
+    ratio (甲 50)."""
+    run = _sim_run('engine_maxhealth', 'mh', 8.0)
+    assert run.series[-1][1] == [25, 100, 95, 50]

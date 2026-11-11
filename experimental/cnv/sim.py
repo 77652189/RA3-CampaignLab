@@ -2769,11 +2769,13 @@ class Sim:
             if b and b.alive:
                 b.health = float(a[1])
         elif name == 'NAMED_SET_MAX_HEALTH':
-            b = self.body(a[0])                 # (name, max, full too): retail Iga's trucks by difficulty
+            # (name, INT max, full too): retail Iga's trucks by difficulty. RA3 0x5b0280: setMaxHealth(max,
+            # SAME_CURRENTHEALTH) -- the hit points stay (clamped to a lower max), then 100 % if `full`. Bench 11-10
+            # engine_maxhealth mh: 480 -> 240 hp, max 960 full 0: 25 %; full 1: 100 %; max 240 full 0, 120 off: 50 %
+            b = self.body(a[0])
             if b and b.alive:
-                pct = b.health
                 b.max_hp = float(a[1])
-                b.health = 100.0 if a[2] else pct
+                b.hp = b.max_hp if a[2] else min(b.hp, b.max_hp)
         elif name == 'UNIT_CHANGE_OBJECT_STATUS':
             b = self.body(a[0])
             st = a[1][2] if isinstance(a[1], tuple) else a[1]
