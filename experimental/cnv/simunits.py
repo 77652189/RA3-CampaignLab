@@ -991,6 +991,34 @@ def immortal_body(template, own=None):
     return _chain(template, own, read) or (False, None)
 
 
+def bridge_generation_counts(template, length, own=None):
+    """Count-only model for the two measured HB_Bridge_02 lengths (270/700).
+
+    No world bodies/positions, pathing, health sharing or repair are generated.
+    Other lengths/configurations return None: rounding beyond these samples is
+    INFERRED. Read the XML so overrides cannot silently reuse retail results.
+    """
+    if template != 'HB_Bridge_02' or length not in (270, 700):
+        return None
+    def read(xml):
+        for head, _ in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'BridgeBuilder'):
+            return {key: _attr(head, key) for key in (
+                'EndCap', 'EndCap2', 'EndCapLen', 'CenterPiece', 'CenterPieceLen',
+                'CenterPieceB', 'CenterPieceBLen', 'GateHouse', 'GateHouse2')}
+        return None
+    data = _chain(template, own, read)
+    fields = ('EndCap', 'EndCap2', 'CenterPiece', 'CenterPieceB', 'GateHouse')
+    suffixes = ('End', 'End2', 'Center', 'Center2', 'GateHouse')
+    if not data or any(data[k] != 'HB_Bridge_02_' + v for k, v in zip(fields, suffixes)):
+        return None
+    if tuple(_num(data[k]) for k in ('EndCapLen', 'CenterPieceLen', 'CenterPieceBLen')) != (75, 150, 150) \
+            or data['GateHouse2'] not in (None, data['GateHouse']):
+        return None
+    # Only the measured sample points; no unmeasured rounding law is assumed.
+    counts = (1, 1, 1, 0, 2) if length == 270 else (1, 1, 2, 2, 2)
+    return {data[k]: n for k, n in zip(fields, counts)}
+
+
 def manager_body(template, own=None):
     """Whether the nearest explicit Body is ManagerBody, respecting body overrides."""
     def read(xml):

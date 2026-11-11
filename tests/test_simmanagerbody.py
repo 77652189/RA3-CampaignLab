@@ -16,8 +16,9 @@ def test_manager_body_script_damage_preserves_retail_bridge_proxy():
     import simunits
     from parts import contract, merged
 
-    # Reading a dependency's config must not promote its unimplemented behavior.
-    assert inventory.NOTES[inventory.MODULE, 'Behaviors/BridgeBuilder'][0] == inventory.TODO
+    # E35's separate count-only baseline must not promote the whole dependency.
+    assert inventory.NOTES[inventory.MODULE, 'Behaviors/BridgeBuilder'][0] == inventory.GUESSED
+    assert (inventory.MODULE, 'Behaviors/BridgeBuilder') not in inventory.BENCHED_TESTS
     assert inventory.NOTES[inventory.MODULE, 'Body/ManagerBody'][0] == inventory.GUESSED
     assert (inventory.MODULE, 'Body/ManagerBody') not in inventory.BENCHED_TESTS
 
