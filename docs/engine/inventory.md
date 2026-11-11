@@ -832,7 +832,7 @@
 | 未做 | `造兵/BuildState.Difficulty` | 84 | AI 模型代码里没有这个名字 |
 | 未做 | `造兵/BuildState.State` | 84 | AI 模型代码里没有这个名字 |
 | 已对拍 | `微操/AIMicroManagerData.UseSpecialPowers` | 83 | 台上量过（engine_aimicro：aimicspon 开 两个武士 s41 冲锋，aimicspoff 关 一直没冲、s51 前被打死，脚本按的对照照样冲）、测试对拍 tests/test_simai.py（模拟器读进探针自写的微操数据：开的想冲、关的从不冲；技能本身模拟器没接，只记"想用"） |
-| 推断 | `微操/AIMicroManagerData.EngageHostileTargets` | 82 | 开着时台上 aimicspon 的 Hunt 队转打路上看见的征召兵，模拟器加了状态 2 逐人分配后也打（tests/test_simai.py）；关掉的对照没上台，私有模型里的打分式没读（按"杀死所需秒数"推断） |
+| 推断 | `微操/AIMicroManagerData.EngageHostileTargets` | 82 | 台上 aimicspon（开）/ aimicengoff（关）两个武士都在家跟征召兵打、都冲锋活到最后——关掉不让队伍躲开战斗；差别只在首次冲锋：关 ~258 帧、开 ~362 帧（各两次一致）。模拟器开关都冲，但先后相反（关 ~457、开 ~275），tests/test_simai.py strict xfail；私有模型里的打分式没读（按"杀死所需秒数"推断） |
 | 已对拍 | `微操/AIMicroManagerData.EngagePassiveTargets` | 82 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_airetreat.py |
 | 推断 | `开局/Order.Account` | 81 | AI 模型代码里读了这个名字 |
 | 已对拍 | `开局/Order.Deposit` | 81 | docs/engine/aiopen.md#开局怎么抽、哪些单子会作废（OpeningMove Weight / Difficulty，第 89～90 轮）（aiom15：带 Deposit 2000 照造、晚 4 秒） |

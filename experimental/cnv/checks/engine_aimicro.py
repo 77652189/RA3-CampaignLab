@@ -65,6 +65,13 @@ Bench 2026-11-07 (Sonnet, one run each, no dropout):
     per-member pick (EngageHostileTargets; tactics._assign) turns the Hunt team on the conscripts from ~s28 -- on:
     the micro wants the charge from 275 frames after the wake (bench ~362), off: never. The charge itself is not
     applied in the simulator (recorded only), so its warriors still lose the fight.
+  aimicengoff r FAIL against the prediction (B, round 115, 2026-11-10; mod CampAIMicEgOffR): aimicspon with only
+    EngageHostileTargets="false". Predicted: the Hunt team walks on, never fights, no charge. Bench: 造出 2 from
+    s21, 曾冲 75 @ 帧数 333 -> first charge ~258 frames after the wake (on: ~362), the warriors alive to the end (造出 3
+    from s61). w (where; 在家 in place of 冲): aimicengoff 在家 2 at s21-s41, 0 @ s51, 曾冲 81 @ 帧数 339; aimicspon w
+    PASS the same way (在家 2 s21-s41, 0 @ s51, 曾冲 130 @ 帧数 492). So on the bench the Hunt team does not walk
+    its warriors off before the conscripts arrive (they fight at home, on or off) and EngageHostileTargets off does
+    not keep them out of the fight or the charge -- the fight is not the micro manager's engage pick.
 """
 from parts import Script, Test, counted, square, status
 
@@ -87,7 +94,9 @@ def names(m, group):
 FIRES = {'aimicpre': False, 'aimicnear': True, 'aimicmed': True, 'aimicfar': False, 'aimichurt': True,
          'aimicmade': True, 'aimichunt': True, 'aimicxfer': True, 'aimicnearx': True, 'aimicbuilt': True,
          'aimicbuilth': False, 'aimicbuiltf': True,
-         'aimicspon': True, 'aimicspoff': False}   # round 113: aimicbuiltf on this probe's micro manager, UseSpecialPowers on / off     # builth: the Hunt walks them off to no infantry -- nothing to charge at
+         'aimicspon': True, 'aimicspoff': False,
+         'aimicengoff': True}   # round 115: aimicspon, EngageHostileTargets off -- predicted False, the bench charges
+         # round 113 (aimicspon / aimicspoff): aimicbuiltf on this probe's micro manager, UseSpecialPowers on / off; builth: the Hunt walks them off to no infantry -- nothing to charge at
 HOME, HOME_R = 'CNV AM Home Area', 400.0   # aimicbuilth: round the barracks (the units come out within it)
 
 
@@ -136,7 +145,7 @@ CTRL_S = 45.0      # built: seconds after the wake at which the check makes a na
 CONTROL = 'UNIT - CNV AM Control'
 
 
-def probe_built(m, build='aimicbuilt'):
+def probe_built(m, build='aimicbuilt', where=False):
     """aimicbuilt (round 19): the AI's own warriors are unnamed, so count by player. Counters from the wake:
       帧数  frames since the wake
       造出  warriors s1 owns (the opener built them: >= 2)
@@ -144,7 +153,8 @@ def probe_built(m, build='aimicbuilt'):
       曾冲  frames since s1 first had one charging -> first charge at frame 帧数 - 曾冲
     Control: CTRL_S after the wake the check makes a named warrior on s1's team at the control spot and presses its
     charge one second later -- 冲 must read it (the by-player count sees the status), and 曾冲 starting only then
-    means the AI's own never charged."""
+    means the AI's own never charged. where (check w, round 115): 冲 gives way to 在家 (as aimicbuilth) and only
+    曾冲 is judged -- did the Hunt team walk its warriors off before the fight."""
     t = Test()
     p1, s1 = m.player('p1'), m.player('s1')
     wake = m.facts['wake at']
@@ -159,7 +169,7 @@ def probe_built(m, build='aimicbuilt'):
                             once=False))
     counted('CNV_AM_Owned', '造出', t, template=m.cnv_units[0], player=s1)
     hunt = bool(m.facts.get('hunt')) and not m.facts.get('foes')
-    if hunt:   # aimicbuilth: 冲 gives way to 在家 -- s1's warriors within HOME_R of the barracks (left = recruited)
+    if hunt or where:   # aimicbuilth: 冲 gives way to 在家 -- s1's warriors within HOME_R of the barracks (left = recruited)
         x, y = m.point('factory spot')
         t.areas[HOME] = square(x, y, HOME_R)
         counted('CNV_AM_Home', '在家', t, template=m.cnv_units[0], area=HOME, player=s1)
@@ -181,7 +191,8 @@ def probe_built(m, build='aimicbuilt'):
     t.expect += [('帧数', wake + LAG, 'ever>=', 1, wake + RUN), ('造出', wake + LAG, 'ever>=', 2, wake + CTRL_S),
                  ('曾冲', wake + LAG, 'ever>=' if fires else '==', 1 if fires else 0, wake + CTRL_S)]
     # hunt: the model recruits the built warriors -- they leave (在家 0 while 造出 is 2); else the control's charge
-    t.expect += [('在家', wake + LAG, 'ever==', 0, wake + CTRL_S)] if hunt else [('冲', wake + CTRL_S + 2, 'ever>=', 1)]
+    t.expect += ([] if where else [('在家', wake + LAG, 'ever==', 0, wake + CTRL_S)] if hunt
+                 else [('冲', wake + CTRL_S + 2, 'ever>=', 1)])
     t.bench = [('bench_watch', dict(seconds=wake + RUN + LAG, every=10, sheet=False, lines=len(t.counters)))]
     return t
 
@@ -192,4 +203,7 @@ CHECKS['aimicbuilth'] = {'r': lambda m: probe_built(m, 'aimicbuilth')}
 CHECKS['aimicbuiltf'] = {'r': lambda m: probe_built(m, 'aimicbuiltf')}
 CHECKS['aimicspon'] = {'r': lambda m: probe_built(m, 'aimicspon')}
 CHECKS['aimicspoff'] = {'r': lambda m: probe_built(m, 'aimicspoff')}
+CHECKS['aimicengoff'] = {'r': lambda m: probe_built(m, 'aimicengoff'),
+                         'w': lambda m: probe_built(m, 'aimicengoff', where=True)}
+CHECKS['aimicspon']['w'] = lambda m: probe_built(m, 'aimicspon', where=True)
 CHECKS['aimicnear']['c'] = lambda m: probe(m, press=True)

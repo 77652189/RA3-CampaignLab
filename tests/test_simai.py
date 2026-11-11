@@ -681,7 +681,30 @@ def test_one_of_the_four_dies_at_the_house_door(lib):
 
 @pytest.fixture(scope='module')
 def spow():
-    return {b: simai.run(b, 'r', until=60.0) for b in ('aimicspon', 'aimicspoff')}
+    return {b: simai.run(b, 'r', until=60.0) for b in ('aimicspon', 'aimicspoff', 'aimicengoff')}
+
+
+def _first_fire(b):
+    return min(f for f, _, _, _ in b.fired) - b.started
+
+
+def test_engage_hostile_off_still_fights_and_charges(spow):
+    """checks/engine_aimicro.py aimicengoff (bench B round 115): aimicspon with EngageHostileTargets="false" -- on
+    the bench the warriors still fight the conscripts at home (在家 2 to s41) and charge (first ~258 frames after the
+    wake), alive to the end: the field off does not keep the team out of the fight. The sim's warriors fight and
+    want the charge too (by their own fire, not state 2's pick: no 'engage' in the tactics log)."""
+    (b,) = spow['aimicengoff'].brains.values()
+    assert any('Bonzai' in c for _, _, _, c in b.fired), b.fired[:3]
+    assert not [e for e in b.tactics.log if e[1] == 'engage'], b.tactics.log[-5:]
+
+
+@pytest.mark.xfail(strict=True, reason="bench (two runs each): EngageHostileTargets off charges ~258 frames after "
+                                       "the wake, on ~362 -- off is ~100 frames earlier; the sim has it the other "
+                                       "way (off ~457, on ~275): state 2's pick brings the fight forward in the sim, "
+                                       "on the bench it holds the charge back (why not known)")
+def test_engage_hostile_off_charges_before_on(spow):
+    (on,), (off,) = spow['aimicspon'].brains.values(), spow['aimicengoff'].brains.values()
+    assert _first_fire(off) < _first_fire(on), (_first_fire(off), _first_fire(on))
 
 
 def test_use_special_powers_the_micro_charges_only_when_on(spow):

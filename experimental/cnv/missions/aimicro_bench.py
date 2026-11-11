@@ -107,14 +107,15 @@ def _opener(unit, n=2):
 SPOW_ID = 'CNVMicroSpow'
 
 
-def _spow_xml(use):
+def _spow_xml(use, engage=True):
     """B round 113 (UseSpecialPowers): StandardMicroManager with its chain (Base) flattened -- the type cannot be
-    inherited from (aitarget_bench._micro_xml) -- only UseSpecialPowers set by the build."""
+    inherited from (aitarget_bench._micro_xml) -- only UseSpecialPowers set by the build; round 115: and
+    EngageHostileTargets (aimicengoff)."""
     return f'''  <AIMicroManagerData id="{SPOW_ID}" UpdateTime="0.5s" MaxTeamIdleTime="15s"
     MaxTeamIdleDistanceChange="50.0" MaxUnitIdleTime="10s" MaxUnitIdleDistanceChange="30.0"
     EnemySearchDistanceVisionMultiplier="1.8" MinTimeToKeepTempVisionRangeBonus="10s" SiegeWeaponBuffer="1.5"
     DodgeThreatsReactionTimeMin="0.5s" DodgeThreatsReactionTimeMax="0.5s" GatherTempVisionRangeBonus="1.5"
-    RetreatTempVisionRangeBonus="1.5" MaxSecondaryDamageFraction="1.3" EngageHostileTargets="true"
+    RetreatTempVisionRangeBonus="1.5" MaxSecondaryDamageFraction="1.3" EngageHostileTargets="{'true' if engage else 'false'}"
     EngagePassiveTargets="true" EngageTacticalTarget="true" RetreatPowerAdvantage="0.2"
     RetreatMinDistanceFromBase="900.0" RetreatMinDistanceToFallback="500.0" AlphaStrikeTargetHealthPct="0.5"
     AlphaStrikeTargetTimeToKill="4.0" Crush="true" EnterGarrisons="true" EnterGarrisonableStructureDistance="150"
@@ -125,7 +126,7 @@ def _spow_xml(use):
   </AIMicroManagerData>'''
 
 
-def personality_xml(micro, unit=WARRIOR, tactic='StaticDefense', built=False, spow=None):
+def personality_xml(micro, unit=WARRIOR, tactic='StaticDefense', built=False, spow=None, engage=True):
     """built (round 19): the AI builds two `unit`s itself by an opening move. spow (round 113): None, or the
     UseSpecialPowers of this probe's own flattened StandardMicroManager (micro must then be SPOW_ID)."""
     removed = [f'    <StrategicState id="{k}" xai:joinAction="Remove"/>' for k in ab.INHERITED]
@@ -142,7 +143,7 @@ def personality_xml(micro, unit=WARRIOR, tactic='StaticDefense', built=False, sp
         '  <Includes>',
         f'    <Include type="instance" source="DATA:SkirmishAI/Personalities/{ab.BASE}.xml" />',
         '  </Includes>',
-        *([_spow_xml(spow)] if spow is not None else []),
+        *([_spow_xml(spow, engage)] if spow is not None else []),
         _state(micro, unit, tactic),
         *(_opener(unit) if built else []),
         f'  <AIPersonalityDefinition id="{PID}" PersonalityType="{PID}" inheritFrom="{ab.BASE}">',
@@ -228,11 +229,12 @@ def built_base(m, factory, money=BUILT_MONEY):
                once=False)]
 
 
-def built(name, tactic='StaticDefense', foes=None, spow=None):
+def built(name, tactic='StaticDefense', foes=None, spow=None, engage=True):
     """tactic 'Hunt' (aimicbuilth): a membership test -- a Targetless Hunt team that takes the built warriors walks
     them off (the check counts them home round the barracks); no conscripts. foes (default: not Hunt) puts the
     conscripts in (aimicbuiltf: Hunt and conscripts -- recruited, with something to fight). spow (round 113,
-    aimicspon / aimicspoff): the team's micro manager is SPOW_ID with UseSpecialPowers = spow."""
+    aimicspon / aimicspoff): the team's micro manager is SPOW_ID with UseSpecialPowers = spow; engage (round 115,
+    aimicengoff): its EngageHostileTargets."""
     hunt = tactic == 'Hunt'
     foes = not hunt if foes is None else foes
     facts = {'wake at': WAKE_AT, 'hand at': 0.0, 'distance': 0.0, 'health': 100.0, 'hunt': float(hunt), 'built': 1.0,
@@ -242,7 +244,8 @@ def built(name, tactic='StaticDefense', foes=None, spow=None):
     micro = 'StandardMicroManager' if spow is None else SPOW_ID
     if spow is not None:
         facts['use powers'] = float(spow)
-    m.assets.append((f'{PID}.xml', personality_xml(micro, tactic=tactic, built=True, spow=spow),
+        facts['engage hostile'] = float(engage)
+    m.assets.append((f'{PID}.xml', personality_xml(micro, tactic=tactic, built=True, spow=spow, engage=engage),
                      f'AIPersonalityDefinition:{PID}'))
     m.cnv_units = (WARRIOR,)
     m.spawns |= {WARRIOR}
@@ -265,6 +268,7 @@ MISSION = {'aimicbuilt': lambda: built('CampAIMicBuilt'),
            'aimicbuiltf': lambda: built('CampAIMicBltF', tactic='Hunt', foes=True),
            'aimicspon': lambda: built('CampAIMicSpOn', tactic='Hunt', foes=True, spow=True),
            'aimicspoff': lambda: built('CampAIMicSpOff', tactic='Hunt', foes=True, spow=False),
+           'aimicengoff': lambda: built('CampAIMicEgOff', tactic='Hunt', foes=True, spow=True, engage=False),
            'aimicpre':lambda: mission('CampAIMicPre', 90.0, hand=False),
            'aimicnear': lambda: mission('CampAIMicNear', 90.0),
            'aimicmed': lambda: mission('CampAIMicMed', 90.0, 'StandardMicroManager_MEDIUM'),
