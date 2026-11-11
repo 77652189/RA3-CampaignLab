@@ -6,11 +6,12 @@ fraction enters twice). No build states, combat or income can spend money.
 CNVProbe reads repair activation and accumulators; it does not start repair.
 The legacy engine_repair:a UI activation diagnostic is kept separately.
 
-Bench 2026-11-11, funded: HP 50/50, money 5000 from s9 through s82.
-CNVProbe never reports active repair. Funding alone does not fix activation.
-Zero-credit control: HP 50/50, money 0 from s1 through s81; also inactive.
-Keep the prediction visible; this is not a measured repair-rate comparison.
-Pending AI dispatch/eligibility observations: work/re/handoff-e.md E41.
+Bench 2026-11-11 E48: starting funded with 10000 and no later money reset
+reaches 100/50/9900 at s49 and remains there. The read-only probe reports
+active at frame 5, cost=200, r=1/1500; stopped at frame 756.
+E41's late funding failed because the no-economy AI latch was already set.
+Zero-credit control measures that latch, not inability to pay an active repair.
+Unmeasured repair configurations and player input remain separate gaps.
 """
 from pathlib import Path
 
@@ -60,14 +61,13 @@ def mission(funded):
     m.waypoint('ai base', 'Repair AI Base', 'high gun')
     ai = m.player('s1')
     m.scripts = [
-        Script('Repair start', [], [('PLAYER_SET_MONEY', ai, 0),
+        Script('Repair start', [], [('PLAYER_SET_MONEY', ai, 10000 if funded else 0),
                                     ('UNIT_SET_HEALTH', m.role('repair').name, 50.0),
                                     ('UNIT_SET_HEALTH', m.role('control').name, 50.0),
                                     ('SET_MILLISECOND_TIMER', 'Repair Wake', WAKE)]),
         Script('Repair wake', [('TIMER_EXPIRED', 'Repair Wake')],
                [('UNIT_AI_TRANSFER_ALL', ai, 1), ('SKIRMISH_AI_MAKE_BASE', ai, m.mark('ai base')),
-                ('SKIRMISH_AI_USE_REBUILD_SYSTEM', ai, 0), ('SKIRMISH_AI_USE_REPAIRS', ai, 1),
-                ('PLAYER_SET_MONEY', ai, 5000 if funded else 0)])]
+                ('SKIRMISH_AI_USE_REBUILD_SYSTEM', ai, 0), ('SKIRMISH_AI_USE_REPAIRS', ai, 1)])]
     return m
 
 
@@ -81,7 +81,7 @@ def check(m):
                             [('SET_PLAYER_MONEY_TO_COUNTER', m.player('s1'), 'AI Repair Money')], once=False))
     t.expect = [('repair HP', 75, '==', 100 if m.facts['funded'] else 50, 80),
                 ('control HP', 1, '==', 50, 80),
-                ('资金', 75, '==', 4900 if m.facts['funded'] else 0, 80)]
+                ('资金', 75, '==', 9900 if m.facts['funded'] else 0, 80)]
     t.bench = [('bench_watch', dict(seconds=80, every=1, sheet=False, lines=3))]
     return t
 

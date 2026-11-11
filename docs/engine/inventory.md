@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|---|---|---|---|
 | 脚本动作 | **92%** | **100%** | 50 / 50 | 451 | 123 | 20 | 191 | 117 | 93% |
 | 脚本条件 | **94%** | **100%** | 12 / 12 | 89 | 30 | 6 | 50 | 3 | 95% |
-| 物体模块 | **95%** | **96%** | 49 / 114 | 189 | 50 | 10 | 104 | 25 | 96% |
+| 物体模块 | **95%** | **96%** | 49 / 114 | 189 | 50 | 11 | 103 | 25 | 97% |
 | 武器效果 | **93%** | **95%** | 17 / 22 | 28 | 18 | 2 | 6 | 2 | 95% |
 | AI | **73%** | **72%** | 97 / 357 | 415 | 103 | 139 | 139 | 34 | 96% |
 
@@ -601,7 +601,7 @@
 | 已对拍 | `Behaviors/WeaponSetUpdate` | 82 (110) | 全部 | tests/test_simbench_c.py::test_weapon_set_the_status_picks_the_gun_molotov_under_the_toggle_and_the_painter_does_no_harm；例：AlliedBaseDefense, AlliedBaseDefenseAdvanced |
 | 已对拍 | `Behaviors/SpecialPower` | 74 (95) | 全部 | tests/test_simbench.py::test_super_a_scripts_cast_starts_the_retail_reload；例：AlliedConstructionYard, AlliedAntiAirShip |
 | 已对拍 | `Behaviors/DynamicsUpdate` | 69 (101) | 全部 | tests/test_simbench_c.py::test_dynamics_update_a_hammer_without_it_crushes_and_goes_round_as_the_retail_one；例：AlliedDynamicsImpact, AlliedSatelliteSweepShroudRevealer |
-| 未做 | `Behaviors/RepairUpdate` | 66 (91) | a1 a2 a4 a5 a6 a7 a8 a9 | 仅字段读取：engine_repair a两次未触发玩家维修；repairai a已开AI维修、全难度人格、资金5000仍半血且只读探针未见维修激活；AI派发/资格门禁待核，tests/test_simrepair_ai.py保留strict xfail；不以schema默认10HP/s或预测费用登记已对拍；例：AlliedAirfield, AlliedBarracks |
+| 推断 | `Behaviors/RepairUpdate` | 66 (91) | a1 a2 a4 a5 a6 a7 a8 a9 | repairai a/repairzero a按名重放：开局足额资金、默认半血1000HP/800造价电厂约10HP/s修满、实扣100；零资金无经济不修；tests/test_simrepair_ai.py。只支持已测配置，完整配置门禁保留；玩家入口、废墟维修、受伤停修、其他受损档/造价/速率及资金耗尽未测，整模块不登记BENCHED；AI启动相位INFERRED；例：AlliedAirfield, AlliedBarracks |
 | 已对拍 | `Behaviors/StatusBitsUpgrade` | 66 (85) | 全部 | tests/test_simbench_c.py::test_status_bits_upgrade_the_heroic_grant_sets_weapon_upgraded_and_a_removal_clears_it；例：AlliedBaseDefense, AlliedAntiAirShip |
 | 已对拍 | `Behaviors/EngineerContain:通用三国` | 63 (87) | a1 a2 a4 a5 a6 a7 a8 | tests/test_simengineer.py::test_engineer_soviet_japan_captures_as_on_the_bench；已测范围：engine_engineer a/b/c/d普通进入，三国工程师中立/敌方半血电厂占领并消耗、友军半血修满并消耗、满血拒入且存活；按完整配置匹配登记63用量/87模板；gap：精确进入帧仍INFERRED；日本单人ALLIES和桥配置保留在未对拍残余行，不借本组登记；例：AlliedPowerPlant |
 | 已对拍 | `Behaviors/StructureUnpackUpdate` | 59 (96) | a1 a2 a4 a5 a6 a7 a8 a9 | tests/test_simbench.py::test_power_back_after_the_plant_unpacks；例：AlliedAirfield, AlliedBarracks |

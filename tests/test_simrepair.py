@@ -19,7 +19,7 @@ def test_repair_update_defaults_do_not_claim_the_failed_activation_as_implemente
     plant, control = (e.body(m.role(role).name) for role in ('repair', 'control'))
     assert plant.hp == control.hp == 500
     assert e.money[plant.owner] == 5000
-    assert inventory.NOTES[inventory.MODULE, 'Behaviors/RepairUpdate'][0] == inventory.TODO
+    assert inventory.NOTES[inventory.MODULE, 'Behaviors/RepairUpdate'][0] == inventory.GUESSED
     assert (inventory.MODULE, 'Behaviors/RepairUpdate') not in inventory.BENCHED_TESTS
     assert ('repair HP', 90, '==', 100, 100) in t.expect  # keep the failed prediction visible
     # The include and inherited copy must both supply the schema defaults.

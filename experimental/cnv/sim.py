@@ -985,6 +985,8 @@ class Sim:
         self.tech_read = False              # a script has read the points or the protocols (pending: a rank to come)
         self.ground = Ground(mission.map)
         self.own = {u.id: u.xml for u in self.mm.units}
+        import simrepair
+        self.repairs = simrepair.Repairs(self)
         self.garrison = simgarrison.Garrisons(self)    # GarrisonContain / ContestableGarrisonContain
         self.infiltrators = siminfiltrator.Infiltrators(self)
         self.bodies = {}                    # name -> Body (named ones), plus unnamed under '#k'
@@ -3455,6 +3457,7 @@ class Sim:
                 self.off_teams(self.handed)
                 self.handed = ()
             self.autoheal(eng.frame)
+            self.repairs.due(eng.frame)
             self.suppression_tick()
             self.flee_due(eng.frame)
             self.toggles_run(eng.frame)

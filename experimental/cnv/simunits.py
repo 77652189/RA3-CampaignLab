@@ -1118,6 +1118,29 @@ def repair_update(template, own=None):
     return _inherited(template, own, read, None)
 
 
+def repair_measured_config(template, own=None):
+    """Reject unmeasured RepairUpdate fields, including fields outside repair_update's summary."""
+    def read(xml):
+        clean = re.sub(r'<!--.*?-->', '', _with_includes(xml), flags=re.S)
+        blocks = list(_blocks(clean, 'RepairUpdate'))
+        if not blocks:
+            return None
+        if len(blocks) != 1:
+            return False
+        head, inner = blocks[0]
+        attrs = set(re.findall(r'([\w:]+)\s*=', head)) - {'xmlns', 'id'}
+        if attrs - {'HealAmountPerSecond', 'Toggleable', 'RepairableWhenDead'}:
+            return False
+        tags = set(re.findall(r'<(?!/)(\w+)', inner))
+        if tags - {'PercentOfBuildCostToRebuildInfo', 'SelfAudio'}:
+            return False
+        for h, _ in _blocks(inner, 'PercentOfBuildCostToRebuildInfo'):
+            if set(re.findall(r'([\w:]+)\s*=', h)) - {'Pristine', 'Damaged', 'ReallyDamaged', 'Rubble'}:
+                return False
+        return True
+    return bool(_inherited(template, own, read, None))
+
+
 def autoheal(template, own=None):
     """(amount, every, wait): AutoHealBehavior of a template that mends from the start, with no state or rank in the
     way -- HealingAmount points every `every` frames, the first `wait` frames after a hurt (engine_heal a / b, bench

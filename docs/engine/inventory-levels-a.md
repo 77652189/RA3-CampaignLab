@@ -8,7 +8,7 @@
 |---|---|---|---|---|
 | 脚本动作 | 50 | 0 | 0 | 14 |
 | 脚本条件 | 12 | 0 | 0 | 0 |
-| 物体模块 | 49 | 10 | 55 | 19 |
+| 物体模块 | 49 | 11 | 54 | 19 |
 | 武器效果 | 17 | 2 | 4 | 2 |
 
 按原版用量加权：已对拍 99%，已有（已对拍+推断）99%。
@@ -20,7 +20,6 @@
 | 状态 | 部分 | 项 | 原版用量 | 关 | 说明 |
 |---|---|---|---|---|---|
 | 未做 | 物体模块 | `Behaviors/Physics` | 143 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 移动物理（坠落、弹跳、被击飞、倾倒）：模拟器走路按速度直走，没有物理；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
-| 未做 | 物体模块 | `Behaviors/RepairUpdate` | 66 | a1 a2 a4 a5 a6 a7 a8 a9 | 仅字段读取：engine_repair a两次未触发玩家维修；repairai a已开AI维修、全难度人格、资金5000仍半血且只读探针未见维修激活；AI派发/资格门禁待核，tests/test_simrepair_ai.py保留strict xfail；不以schema默认10HP/s或预测费用登记已对拍；例：AlliedAirfield, AlliedBarracks |
 | 未做 | 物体模块 | `Behaviors/ProductionUpdateInfo` | 9 | a1 a4 a5 a6 a7 a9 | 完整配置盘点9用量/9模板均为空模块；schema无专属字段；模块专属可达操作及可观测接口待确认，不能用ProductionUpdate生产或ReplaceSelf展开smoke替代本模块对拍；例：AlliedConstructionYard, AlliedMCV |
 | 未做 | 物体模块 | `Behaviors/AssignSlavesTargetObjectSpecialPower` | 6 | a2 a4 a5 a7 a8 | 模拟器代码里没有这个名字；例：AlliedWarFactory, JapanNavalYard |
 | 未做 | 物体模块 | `Behaviors/BezierProjectile` | 6 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 已核（11-08）：模拟器没有这个效果（开火按每秒伤害直接扣血，没有弹体）；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
@@ -78,6 +77,7 @@
 | 未做 | 武器效果 | `ActivateLiftObjectNugget` | 6 | a1 a2 a4 a6 a7 | engine_lift两轮确认需LiftObjectUpdate且SoftLanding影响清位，但Lifetime/续期释放规则未解释；模拟器显式报告gap，tests/test_lift_nugget.py守卫直接命中/继承/弹头不静默忽略；暂停等模块时序证据，不登记已对拍；例：AAAVT1_JapanCommandoTech1PsyonicAntiAirCrush, AAAVT1_JapanCommandoTech1PsyonicCrush |
 | 未做 | 武器效果 | `GrapplingHookNugget` | 1 | a1 a3 a4 a6 a7 a9 | engine_grapple a最小消费者诊断；GrapplingHookUpdate派发/拉拽/释放未解释，显式报告gap；tests/test_grapple_nugget.py守卫直接命中/继承/弹头及原版缓存，不登记已对拍；例：SovietAntiVehicleVehicleTech3Harpoon |
 | 未做 | 武器效果 | `InformTargetNugget` | 0 | a3 a7 a8 a9 | 未覆盖的自制或未知武器写法；原版字段分片另行登记；例：CNV_ChronoLag_Shell, CNV_LibertyDrones |
+| 推断 | 物体模块 | `Behaviors/RepairUpdate` | 66 | a1 a2 a4 a5 a6 a7 a8 a9 | repairai a/repairzero a按名重放：开局足额资金、默认半血1000HP/800造价电厂约10HP/s修满、实扣100；零资金无经济不修；tests/test_simrepair_ai.py。只支持已测配置，完整配置门禁保留；玩家入口、废墟维修、受伤停修、其他受损档/造价/速率及资金耗尽未测，整模块不登记BENCHED；AI启动相位INFERRED；例：AlliedAirfield, AlliedBarracks |
 | 推断 | 物体模块 | `Behaviors/InfiltratorContain` | 30 | a1 a2 a4 a5 a6 a7 a8 | ENERGY已按总控11-11决定拆分登记4用量/6模板；本行剩余10种配置30用量/32模板：KILL 1、STEAL_MONEY 3、VISION 5+港口阻断型1、PARALYZE 3、VISION_UNITS飞机2/步兵3/舰船3/车辆4、RESET 5，效果均未对拍；不登记整模块已对拍；例：AlliedAirfield, AlliedBarracks |
 | 推断 | 物体模块 | `AI/JetAIUpdate` | 13 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | E39普通移动对照：engine_jet:a/b原版维和轰炸机距离1200/600，首次进目标框计数97/47，随后框内1且血100%；距离差600耗50帧支持速度180，启动贡献约5帧仍INFERRED；tests/test_simjet.py按名重放到点/存活和精确计时，模拟器91/39，计时strict xfail，默认半秒移动相位及起飞/加速/盘旋未分离；gap：其他机型/距离、盘旋轨迹、机场/跑道/停车位、返场补弹/耗尽伤害及攻击状态未对拍，保留推断不登记整模块已对拍；例：AlliedBomberAircraft, AlliedFighterAircraft |
 | 推断 | 物体模块 | `Behaviors/CommandSetUpgrade` | 5 | a1 a4 a5 a7 | 模拟器代码里有这个名字；例：AlliedConstructionYard, CNVA4AlliedConstructionYard |
