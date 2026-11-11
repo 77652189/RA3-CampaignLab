@@ -2,14 +2,14 @@
 
 由 `experimental/cnv/inventory_levels.py --write` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）编出的全部脚本（`parts.merged`，含目标显示脚本）里的动作和条件；地图和任务摆的物体、我们自己的单位、脚本点名的模板，连同模块点名的武器、武器点名的物体（抛射体）和武器，取生效的模块（继承、include、同 id 覆盖）和武器效果。没跟：模块点名的别的物体（多是能变成 / 能装的东西：多功能步兵车的乘客、锤子坦克吸来的车）、物体生成表（死亡碎片、OCL 技能）和命令表（工厂能造什么）。AI 部分（引擎 B）在 [inventory-levels.md](inventory-levels.md)。状态和原版用量取自 [inventory.md](inventory.md)。停止条件①：下表全部已对拍。
 
-**已对拍 113 / 193**（不涉及的不算）。
+**已对拍 115 / 196**（不涉及的不算）。
 
 | 部分 | 已对拍 | 推断 | 未做 | 不涉及 |
 |---|---|---|---|---|
 | 脚本动作 | 50 | 0 | 0 | 14 |
 | 脚本条件 | 12 | 0 | 0 | 0 |
 | 物体模块 | 38 | 10 | 64 | 18 |
-| 武器效果 | 13 | 2 | 4 | 2 |
+| 武器效果 | 15 | 2 | 5 | 2 |
 
 按原版用量加权：已对拍 98%，已有（已对拍+推断）99%。
 
@@ -83,8 +83,9 @@
 | 未做 | 物体模块 | `Behaviors/TeleportStoredObjectsUpdate` | 1 | a7 a8 | 已核（11-08）：模拟器没有这个效果（UNIT_TELEPORT_TO_WAYPOINT 另算）；例：CNV_Liberty |
 | 未做 | 物体模块 | `Behaviors/HeightDieUpdate` | 0 | a1 a2 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：JapanBalloonBomb |
 | 未做 | 物体模块 | `Behaviors/ProjectileUpdate` | 0 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 已核（11-08）：模拟器没有这个效果（开火按每秒伤害直接扣血，没有弹体飞行时间）；例：AlliedAntiVehicleVehicleTech1Projectile, AlliedBomberAircraftBombProjectile |
-| 未做 | 武器效果 | `InformTargetNugget` | 69 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | engine_inform_ai a矿车命中前开甲；off仅去掉该Nugget后87帧受伤、观察窗内不开甲，支持提前自保依赖它，但受伤后开甲的附加预测FAIL；玩家/低伤/瞬发对照不变。普通目标来弹表/预计窗口及矿车开甲已接，a/off原始通知接口回放通过；脚本创建位置/独立弹体文件/矿车AI归队、历史伤害及精确思考相位仍gap，完整回放严格xfail，不晋升整项；例：AAAVT1_AlliedAntiVehicleInfantryMissileLauncher, ABD_AlliedAntiVehicleInfantryMissileLauncher |
-| 未做 | 武器效果 | `MetaImpactNugget` | 36 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 部分执行：engine_knock_probe land/late实机碰撞事件回放接入伤害派发及默认Physics逐帧轨迹，邻人5帧落(2380,3740)；直线弹到达事件已接线，V4曲线弹命中时刻仍gap；直击方向/落点网格/半径选人含INFERRED，筛选/延迟及非默认Physics仍gap，不晋升整项；例：AAAVT1_ShotgunWeapon, ABD_ShotgunWeapon |
+| 未做 | 武器效果 | `InformTargetNugget` | 22 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 剩余非默认系数写法：原版MaxTimeToImpactFudgeFactor=1.6（含继承）；公式单测不等于台上对拍。半径分发、历史伤害、海啸/忍者消费者、完整调度与思考相位另有gap；不把矿车局部回放当完整系统通过；例：AAAVT1_AlliedAntiVehicleInfantryMissileLauncher, ABD_AlliedAntiVehicleInfantryMissileLauncher |
+| 未做 | 武器效果 | `MetaImpactNugget` | 12 | a1 a2 a3 a4 a5 a6 a7 a9 | 剩余复杂写法：延迟、筛选、Arc、Invert等；ShockWaveSpeed/Cyclonic本轮原版用量为0也未建模。非默认Physics、坡地及V4曲线弹到达仍gap；例：AAAVT1_ShotgunWeapon, ABD_ShotgunWeapon |
+| 未做 | 武器效果 | `MetaImpactNugget:省略Z默认值` | 11 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 普通无延迟但省略ShockWaveZMult；当前解析器要求显式Z，原版默认字段未接入，不能用已有轨迹回放登记；例：AlliedBomberAircraftBombWarhead, JapanCommandoTech1AirplaneCrashWeapon |
 | 未做 | 武器效果 | `ActivateLiftObjectNugget` | 6 | a1 a2 a4 a6 a7 | engine_lift两轮确认需LiftObjectUpdate且SoftLanding影响清位，但Lifetime/续期释放规则未解释；保留诊断、不登记已对拍；例：AAAVT1_JapanCommandoTech1PsyonicAntiAirCrush, AAAVT1_JapanCommandoTech1PsyonicCrush |
 | 未做 | 武器效果 | `GrapplingHookNugget` | 1 | a1 a3 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：SovietAntiVehicleVehicleTech3Harpoon |
 | 推断 | 物体模块 | `Behaviors/LevelUpUpgrade` | 88 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 部分：engine_levelup a创建升级触发升阶、重复持有不升级；engine_leveldamage a等级DAMAGE_MULT125保持到精英/英雄，单发血量47/34/34/17；engine_levelhealth a满血升级HEALTH_MULT125保持到英雄，100脚本伤害同帧冻结80/80/84/84，simlevel重放；残血升级、其余等级属性、经验成长、上限及移除重给未对拍，不登记整项已对拍；例：AlliedAntiAirVehicleTech1, AlliedAntiInfantryInfantry |
@@ -202,8 +203,10 @@
 | 已对拍 | 武器效果 | `DamageNugget` | 183 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_clip.py；例：AAAVT1_CommandoPistolWeapon, AAAVT1_JapanAntiVehicleInfantryPlasmaBazooka |
 | 已对拍 | 武器效果 | `ProjectileNugget` | 88 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | tests/test_simbench_c.py::test_projectile_nugget_flight_uses_retail_shell_speed_and_resolved_warhead；例：AAAVT1_AlliedAntiVehicleInfantryMissileLauncher, AAAVT1_JapanInfiltrationShiruken |
 | 已对拍 | 武器效果 | `SuppressionNugget` | 64 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | tests/test_simbench_c.py::test_suppression_samples_entry_refresh_and_expiry_at_the_four_probe_readings；例：AAAVT1_AlliedAntiVehicleInfantryMissileLauncher, AAAVT1_CommandoPistolWeapon |
+| 已对拍 | 武器效果 | `InformTargetNugget:默认系数目标通知` | 47 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | tests/test_inform_ai.py::test_inform_incoming_table_drives_miner_armor_from_engine_inform_probe；仅默认Min=.85/Max=1.15的目标通知→来弹表/矿车预计伤害开甲；engine_inform_probe a/off录入302、hit377、exp404、删除389，347帧入窗。半径/历史/海啸/忍者及完整AI调度不在本登记范围，完整脚本仍xfail；例：AlliedAntiInfantryVehicleTorpedoLauncher, AlliedAntiInfantryVehicleTorpedoLauncherForBridges |
 | 已对拍 | 武器效果 | `WeaponOCLNugget` | 26 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | tests/test_simbench_c.py::test_weapon_ocl_lifetime_damage_reads_the_fire_delay_before_counting_updates；例：AlliedAntiStructureAttackDrones, AlliedAntiStructureSolarTargeter |
 | 已对拍 | 武器效果 | `AttributeModifierNugget` | 20 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | tests/test_simbench_c.py::test_weaponfx_predictions_and_finite_bursts；例：AAAVT1_RepairWeapon, AAGA_RepairWeapon |
+| 已对拍 | 武器效果 | `MetaImpactNugget:普通无延迟显式Z` | 13 | a1 a2 a4 a5 a6 a7 | tests/test_meta_impact.py::test_meta_impact_collision_event_replays_engine_knock_probe_neighbour_five_frames；仅普通弹头碰撞事件→默认Physics轨迹；engine_knock_probe land/late邻人5帧落(2380,3740)、目标99%/邻人100%。到达帧为台上输入，非完整V4曲线弹回放；直击方向/落点网格/选人仍INFERRED；例：OilDerrickExplosion, SovietBombingRunWeaponWarhead |
 | 已对拍 | 武器效果 | `ParalyzeNugget` | 11 | a1 a2 a4 a5 a6 a7 | tests/test_simbench_c.py::test_weapon_first_hit_is_observed_one_frame_after_the_order_script；例：AAAVT1_RoarWeapon, ABD_RoarWeapon |
 | 已对拍 | 武器效果 | `LineDamageNugget` | 6 | a1 a2 a3 a4 a5 a6 a7 | tests/test_simbench_c.py::test_weaponfx_predictions_and_finite_bursts；例：AAAVT1_SovietCommandoSniperRifle, ABD_SovietCommandoSniperRifle |
 | 已对拍 | 武器效果 | `SecondaryDamageNugget` | 5 | a7 | tests/test_simbench_c.py::test_secondary_damage_delivers_one_amount_at_hit_without_damaging_health；例：AlliedSupportAircraftCryobeam |

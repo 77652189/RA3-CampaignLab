@@ -191,6 +191,23 @@ def level_scope(levels=LEVELS):
 
 
 def render(items, scope, missing):
+    # Field-form partitions carry exact retail weapon membership. Attribute each
+    # reached weapon once; unknown/custom weapons conservatively keep the TODO base.
+    split = collections.defaultdict(dict)
+    for it in items:
+        if it['part'] == NUGGET and 'weapon_ids' in it:
+            for w in it['weapon_ids']:
+                split[it['name'].split(':')[0]][w.lower()] = it['name']
+    expanded = collections.defaultdict(lambda: collections.defaultdict(set))
+    for (part, name), lvs in scope.items():
+        if part == NUGGET and name in split:
+            for lv, examples in lvs.items():
+                for w in examples:
+                    expanded[(part, split[name].get(w.lower(), name))][lv].add(w)
+        else:
+            for lv, examples in lvs.items():
+                expanded[(part, name)][lv].update(examples)
+    scope = expanded
     by = {(i['part'], i['name']): i for i in items}
     rows, unknown = [], []
     for (part, name), lvs in scope.items():

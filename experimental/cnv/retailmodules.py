@@ -117,6 +117,7 @@ def _load():
     _check_dirs()
     objs = {}      # lower id -> (id, own modules {group: [(type, id)]}, parent lower or None)
     weapons = {}   # lower id -> (id, nugget types, parent lower or None)
+    weapon_forms = {}  # same source/override precedence as the census, retain fields for scope splits
     for root_dir, _, files in sorted(os.walk(SAGEXML)):
         for f in sorted(files):
             if not f.endswith('.xml'):
@@ -148,7 +149,8 @@ def _load():
                         continue
                     nug = [_tag(n) for n in e.iter() if _tag(n).endswith('Nugget')]
                     weapons[k] = (e.get('id'), nug, (e.get('inheritFrom') or '').lower() or None)
-    _state = {'objs': objs, 'weapons': weapons, 'eff': {}}
+                    weapon_forms[k] = [n for n in e.iter() if _tag(n).endswith('Nugget')]
+    _state = {'objs': objs, 'weapons': weapons, 'weapon_forms': weapon_forms, 'eff': {}}
     return _state
 
 
@@ -259,6 +261,17 @@ def _weapon_nuggets(k, st, seen=()):
         return []
     _, nug, parent = st['weapons'][k]
     return (_weapon_nuggets(parent, st, seen + (k,)) if parent else []) + nug
+
+
+def effective_weapon_forms(k, st=None, seen=()):
+    """Nugget elements using exactly weapon_census's additive inheritance rule."""
+    st = _load() if st is None else st
+    k = k.lower()
+    if k not in st['weapons'] or k in seen:
+        return []
+    parent = st['weapons'][k][2]
+    inherited = effective_weapon_forms(parent, st, seen + (k,)) if parent else []
+    return inherited + st['weapon_forms'][k]
 
 
 def weapon_census():

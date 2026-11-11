@@ -7,7 +7,7 @@
 | 脚本动作 | **91%** | 451 | 122 | 20 | 192 | 117 | 92% |
 | 脚本条件 | **94%** | 89 | 30 | 5 | 51 | 3 | 94% |
 | 物体模块 | **93%** | 187 | 40 | 10 | 113 | 24 | 94% |
-| 武器效果 | **76%** | 25 | 14 | 2 | 7 | 2 | 78% |
+| 武器效果 | **87%** | 28 | 16 | 2 | 8 | 2 | 89% |
 | AI | **71%** | 415 | 99 | 136 | 146 | 34 | 95% |
 
 ## 脚本动作
@@ -758,12 +758,15 @@
 |---|---|---|---|
 | 已对拍 | `DamageNugget` | 183 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_clip.py；例：BaseExplodingPropVehicleWeapon, MountRushmoreHeadEyeWeapon |
 | 已对拍 | `ProjectileNugget` | 88 | tests/test_simbench_c.py::test_projectile_nugget_flight_uses_retail_shell_speed_and_resolved_warhead；例：BB_EuropeCoastalGunWeapon, KremlinArtilleryDomeMissle |
-| 未做 | `InformTargetNugget` | 69 | engine_inform_ai a矿车命中前开甲；off仅去掉该Nugget后87帧受伤、观察窗内不开甲，支持提前自保依赖它，但受伤后开甲的附加预测FAIL；玩家/低伤/瞬发对照不变。普通目标来弹表/预计窗口及矿车开甲已接，a/off原始通知接口回放通过；脚本创建位置/独立弹体文件/矿车AI归队、历史伤害及精确思考相位仍gap，完整回放严格xfail，不晋升整项；例：BB_EuropeCoastalGunWeapon, AlliedPrecisionBomb |
 | 已对拍 | `SuppressionNugget` | 64 | tests/test_simbench_c.py::test_suppression_samples_entry_refresh_and_expiry_at_the_four_probe_readings；例：BB_EuropeCoastalGunWeapon, KremlinArtilleryDomeMissle |
-| 未做 | `MetaImpactNugget` | 36 | 部分执行：engine_knock_probe land/late实机碰撞事件回放接入伤害派发及默认Physics逐帧轨迹，邻人5帧落(2380,3740)；直线弹到达事件已接线，V4曲线弹命中时刻仍gap；直击方向/落点网格/半径选人含INFERRED，筛选/延迟及非默认Physics仍gap，不晋升整项；例：KremlinArtilleryDomeMissleWarhead, AlliedTimeBomb_Level1 |
+| 已对拍 | `InformTargetNugget:默认系数目标通知` | 47 | tests/test_inform_ai.py::test_inform_incoming_table_drives_miner_armor_from_engine_inform_probe；仅默认Min=.85/Max=1.15的目标通知→来弹表/矿车预计伤害开甲；engine_inform_probe a/off录入302、hit377、exp404、删除389，347帧入窗。半径/历史/海啸/忍者及完整AI调度不在本登记范围，完整脚本仍xfail；例：BB_EuropeCoastalGunWeapon, AlliedPrecisionBomb |
 | 不涉及 | `ActivateLaserNugget` | 27 | 纯表现：Lifetime/LaserId/HitGroundFX/OverShootDistance驱动LaserState/LaserDraw；engine_laser pair实测2/90/2/90，无附加伤害或首发延迟，test_simbench_c重放；例：MountRushmoreHeadEyeWeapon, JapanAntiVehicleInfantryTech3LockDownGun |
 | 已对拍 | `WeaponOCLNugget` | 26 | tests/test_simbench_c.py::test_weapon_ocl_lifetime_damage_reads_the_fire_delay_before_counting_updates；例：MountRushmoreHeadEyeWeapon, AlliedPrecisionBombWarhead |
+| 未做 | `InformTargetNugget` | 22 | 剩余非默认系数写法：原版MaxTimeToImpactFudgeFactor=1.6（含继承）；公式单测不等于台上对拍。半径分发、历史伤害、海啸/忍者消费者、完整调度与思考相位另有gap；不把矿车局部回放当完整系统通过；例：AlliedBaseDefenseRockets, AlliedBaseDefenseRockets_Aircraft |
 | 已对拍 | `AttributeModifierNugget` | 20 | tests/test_simbench_c.py::test_weaponfx_predictions_and_finite_bursts；例：NanoHiveSwarmEffectTrigger, JapanCommandoSoftLanding |
+| 已对拍 | `MetaImpactNugget:普通无延迟显式Z` | 13 | tests/test_meta_impact.py::test_meta_impact_collision_event_replays_engine_knock_probe_neighbour_five_frames；仅普通弹头碰撞事件→默认Physics轨迹；engine_knock_probe land/late邻人5帧落(2380,3740)、目标99%/邻人100%。到达帧为台上输入，非完整V4曲线弹回放；直击方向/落点网格/选人仍INFERRED；例：KremlinArtilleryDomeMissleWarhead, AlliedTimeBomb_Level1 |
+| 未做 | `MetaImpactNugget` | 12 | 剩余复杂写法：延迟、筛选、Arc、Invert等；ShockWaveSpeed/Cyclonic本轮原版用量为0也未建模。非默认Physics、坡地及V4曲线弹到达仍gap；例：JapanCommandoTech1PsyonicBlast, JapanMechaKingKatana |
+| 未做 | `MetaImpactNugget:省略Z默认值` | 11 | 普通无延迟但省略ShockWaveZMult；当前解析器要求显式Z，原版默认字段未接入，不能用已有轨迹回放登记；例：JapanCommandoTech1AirplaneCrashWeapon, AlliedBomberAircraftBombWarhead |
 | 已对拍 | `ParalyzeNugget` | 11 | tests/test_simbench_c.py::test_weapon_first_hit_is_observed_one_frame_after_the_order_script；例：JapanAntiVehicleInfantryTech3LockDownGun, AlliedAntiStructureShipEMPCruiseMissleWarhead |
 | 不涉及 | `TintObjectsNugget` | 9 | 纯表现：Color及Pre/Sustained/PostColorTime、Frequency/Amplitude仅控制染色动画；engine_tint pair实测2/90/2/90，独立DamageNugget解释全部伤害，test_simbench_c重放；不声称像素已验证；例：SovietCommandoCallBombingRun, AlliedCommandoAttachWeapon |
 | 未做 | `ActivateLiftObjectNugget` | 6 | engine_lift两轮确认需LiftObjectUpdate且SoftLanding影响清位，但Lifetime/续期释放规则未解释；保留诊断、不登记已对拍；例：JapanCommandoTech1PsyonicCrush, JapanCommandoTech1AirborneKiller |

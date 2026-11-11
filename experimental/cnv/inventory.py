@@ -49,6 +49,11 @@ PARTS = (ACTION, CONDITION, MODULE, NUGGET, AI)     # AI: engine B's part, its o
 BENCHED_TESTS = {
     (MODULE, 'Behaviors/EngineerContain:通用三国'):
         'tests/test_simengineer.py::test_engineer_soviet_japan_captures_as_on_the_bench',
+    # Field-form coverage only: recorded collision / incoming-event replay, not full retail flight or every consumer.
+    (NUGGET, 'MetaImpactNugget:普通无延迟显式Z'):
+        'tests/test_meta_impact.py::test_meta_impact_collision_event_replays_engine_knock_probe_neighbour_five_frames',
+    (NUGGET, 'InformTargetNugget:默认系数目标通知'):
+        'tests/test_inform_ai.py::test_inform_incoming_table_drives_miner_armor_from_engine_inform_probe',
     # engine_suppression under D's read-only engine_suppress_probe, four measured state/end traces.
     # Walking counters still expose the straight-path approximation; fractional lifetime rounding INFERRED.
     (MODULE, 'Behaviors/SuppressionUpdate'): 'tests/test_simbench_c.py::test_suppression_samples_entry_refresh_and_expiry_at_the_four_probe_readings',
@@ -191,8 +196,9 @@ NOTES = {
     (MODULE, 'Behaviors/OCLSpecialPower'): (TODO, '仅在SpecialPowerNugget处理器中识别并拒绝，未实现OCL技能执行'),
     (MODULE, 'Behaviors/ActivateModuleSpecialPower'): (TODO, '仅在SpecialPowerNugget处理器中识别并拒绝，未实现模块技能执行'),
     (NUGGET, 'TintObjectsNugget'): (NA, '纯表现：Color及Pre/Sustained/PostColorTime、Frequency/Amplitude仅控制染色动画；engine_tint pair实测2/90/2/90，独立DamageNugget解释全部伤害，test_simbench_c重放；不声称像素已验证'),
-    (NUGGET, 'InformTargetNugget'): (TODO, 'engine_inform_ai a矿车命中前开甲；off仅去掉该Nugget后87帧受伤、观察窗内不开甲，支持提前自保依赖它，但受伤后开甲的附加预测FAIL；玩家/低伤/瞬发对照不变。普通目标来弹表/预计窗口及矿车开甲已接，a/off原始通知接口回放通过；脚本创建位置/独立弹体文件/矿车AI归队、历史伤害及精确思考相位仍gap，完整回放严格xfail，不晋升整项'),
-    (NUGGET, 'MetaImpactNugget'): (TODO, '部分执行：engine_knock_probe land/late实机碰撞事件回放接入伤害派发及默认Physics逐帧轨迹，邻人5帧落(2380,3740)；直线弹到达事件已接线，V4曲线弹命中时刻仍gap；直击方向/落点网格/半径选人含INFERRED，筛选/延迟及非默认Physics仍gap，不晋升整项'),
+    (NUGGET, 'InformTargetNugget'): (TODO, '剩余非默认系数写法：原版MaxTimeToImpactFudgeFactor=1.6（含继承）；公式单测不等于台上对拍。半径分发、历史伤害、海啸/忍者消费者、完整调度与思考相位另有gap；不把矿车局部回放当完整系统通过'),
+    (NUGGET, 'MetaImpactNugget'): (TODO, '剩余复杂写法：延迟、筛选、Arc、Invert等；ShockWaveSpeed/Cyclonic本轮原版用量为0也未建模。非默认Physics、坡地及V4曲线弹到达仍gap'),
+    (NUGGET, 'MetaImpactNugget:省略Z默认值'): (TODO, '普通无延迟但省略ShockWaveZMult；当前解析器要求显式Z，原版默认字段未接入，不能用已有轨迹回放登记'),
     (NUGGET, 'ParalyzeNugget'): (GUESSED, '部分：engine_emp phase实测PASS16051/31066/61096、hit1；engine_empfire a实测PASS901090/901100/901080/901090，失能窗口按令不开火、到期后新令恢复；仅无筛选EMP，其他类型/筛选/装填相位未验证'),
     (NUGGET, 'StripMaxHealthPercentNugget'): (GUESSED, '部分：engine_strip exact实测PASS95/45/74，4%满血/半血与25%满血按最大血量扣减；筛选、护甲倍率、无标记伤害形式未验证，最大血量不变仍推断'),
     # Weapon round 1: scope limitations retained; explicit replay register above sets the bench state.
@@ -404,12 +410,54 @@ SPLIT_STILL = {'Physics': '模板上没有 AIUpdate 类模块（不能下命令�
                           '另算（DynamicsUpdate、MetaImpactNugget）；原版字段全是默认（E 线 work/re/e_na_physics_mcu.md）'}
 
 
+def nugget_form_slice(ntype, forms):
+    """Partition weapons, never occurrences. Every effective form must fit the measured slice.
+
+    This classifies the nugget's field spelling, not every projectile, terrain or AI consumer.
+    Unrecognized fields/children stay in the unsuffixed TODO remainder (fail closed).
+    """
+    if not forms:
+        return ''
+    if ntype == 'MetaImpactNugget':
+        allowed = {'id', 'ShockWaveAmount', 'ShockWaveRadius', 'ShockWaveZMult', 'ShockWaveTaperOff'}
+        if all(not list(n) and set(n.attrib) <= allowed
+               and {'ShockWaveAmount', 'ShockWaveRadius'} <= set(n.attrib) for n in forms):
+            return ':普通无延迟显式Z' if all('ShockWaveZMult' in n.attrib for n in forms) else ':省略Z默认值'
+    elif ntype == 'InformTargetNugget':
+        allowed = {'id', 'MinTimeToImpactFudgeFactor', 'MaxTimeToImpactFudgeFactor'}
+        if all(not list(n) and set(n.attrib) <= allowed
+               and float(n.get('MinTimeToImpactFudgeFactor', '.85')) == .85
+               and float(n.get('MaxTimeToImpactFudgeFactor', '1.15')) == 1.15 for n in forms):
+            return ':默认系数目标通知'
+    return ''
+
+
+NUGGET_SCOPES = {
+    'MetaImpactNugget:普通无延迟显式Z': '仅普通弹头碰撞事件→默认Physics轨迹；engine_knock_probe land/late邻人5帧落(2380,3740)、目标99%/邻人100%。到达帧为台上输入，非完整V4曲线弹回放；直击方向/落点网格/选人仍INFERRED',
+    'InformTargetNugget:默认系数目标通知': '仅默认Min=.85/Max=1.15的目标通知→来弹表/矿车预计伤害开甲；engine_inform_probe a/off录入302、hit377、exp404、删除389，347帧入窗。半径/历史/海啸/忍者及完整AI调度不在本登记范围，完整脚本仍xfail',
+}
+
+
 def nugget_items():
     import retailmodules
     import simcoverage
     code = simcoverage.sim_code()
     items = []
     for ntype, v in retailmodules.weapon_census().items():
+        if ntype in ('MetaImpactNugget', 'InformTargetNugget'):
+            groups = collections.defaultdict(list)
+            st = retailmodules._load()
+            for k, (name, _, _) in st['weapons'].items():
+                forms = [n for n in retailmodules.effective_weapon_forms(k, st) if retailmodules._tag(n) == ntype]
+                if forms:
+                    groups[nugget_form_slice(ntype, forms)].append(name)
+            assert sum(map(len, groups.values())) == v['weapons'], (ntype, groups)
+            for suffix, names in groups.items():
+                name = ntype + suffix
+                items.append(dict(part=NUGGET, name=name, uses=len(names), state=TODO,
+                                  why=NUGGET_SCOPES.get(name, '未覆盖的原版字段写法'),
+                                  eg=', '.join(names[:2]), weapon_ids=names))
+            continue
         hit = any(ntype in s for s in code)
         items.append(dict(part=NUGGET, name=ntype, uses=v['weapons'], state=GUESSED if hit else TODO,
                           why='模拟器代码里有这个名字' if hit else '模拟器代码里没有这个名字',
@@ -500,7 +548,8 @@ def apply_registers(items):
         if k in NOTES:
             it['state'], it['why'] = NOTES[k]
         if k in BENCHED_TESTS:
-            it['state'], it['why'] = BENCHED, BENCHED_TESTS[k]
+            scope = NUGGET_SCOPES.get(it['name']) if it['part'] == NUGGET else None
+            it['state'], it['why'] = BENCHED, BENCHED_TESTS[k] + ('；' + scope if scope else '')
         if (it['part'], it['name'].split(':')[0]) in UPRISING_ONLY:
             it['state'], it['why'] = NA, _UPRISING
     return items
