@@ -1,6 +1,6 @@
 """Creation upgrade -> rank -> veterancy upgrades (engine_levelup a).
 
-Combat experience and rank attribute modifiers remain unmodeled. This module
+Combat experience and rank modifiers except DAMAGE_MULT remain unmodeled. This module
 does not turn a direct Upgrade_Veterancy_HEROIC grant into a rank change.
 """
 import functools
@@ -74,10 +74,34 @@ def receive(sim, b, up, on, newly_held):
         b.level_modules.add(mid)
         b.level_rank = new
         for rank in range(old + 1, new + 1):
-            upgrades, modifiers = profile[rank]
+            upgrades, _ = profile[rank]
             for upgrade in upgrades:
                 b.upgrades.add(upgrade)
                 b.up_since[upgrade] = sim.frame_now()
-            if modifiers:
-                sim.gap('升级', 'LevelUpUpgrade', '等级属性修正尚未模拟：' + ', '.join(modifiers))
         sim.used.add('levelup')
+
+
+def damage_modifiers(sim, b, xml):
+    """Only the measured rank DAMAGE_MULT; never multiply ROF into one shot."""
+    if b.level_rank <= 1:
+        return []
+    out, seen = [], set()
+    for rank, (_, mids) in profiles().get(b.template.lower(), {}).items():
+        if rank > b.level_rank:
+            continue
+        for mid in mids:
+            if mid in seen:
+                continue
+            seen.add(mid)
+            m = simunits.modifier(xml, mid)
+            if m is None:
+                sim.gap('升级', 'LevelUpUpgrade/' + mid, '等级属性修正数据缺失')
+                continue
+            unsupported = sorted(set(m['types']) - {'DAMAGE_MULT'})
+            if m['status']:
+                unsupported.append('ObjectStatusToSet')
+            if unsupported:
+                sim.gap('升级', 'LevelUpUpgrade/' + mid, '等级属性修正未模拟：' + ', '.join(unsupported))
+            if 'DAMAGE_MULT' in m['types']:
+                out.append(dict(m, types={'DAMAGE_MULT': m['types']['DAMAGE_MULT']}, status=set()))
+    return out

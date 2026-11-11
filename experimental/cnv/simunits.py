@@ -777,8 +777,9 @@ def autoheal(template, own=None):
     11-06, docs/engine/heal.md 1: the intervals are floor(15 x seconds) frames, 0.5 s is 7). None without one (the
     state-gated and rank-gated ones are not modelled: InitiallyActive false or an ObjectStatusValidation)."""
     def read(xml):
-        for head, _ in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'AutoHealBehavior'):
+        for head, inner in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'AutoHealBehavior'):
             if _attr(head, 'InitiallyActive') == 'false' or _attr(head, 'ObjectStatusValidation') or \
+                    '<ObjectStatusValidation' in inner or \
                     _num(_attr(head, 'Radius'), 0.0) > 0:
                 continue
             return (int(_num(_attr(head, 'HealingAmount'), 0.0)),

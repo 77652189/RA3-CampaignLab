@@ -166,7 +166,7 @@ LAG = 0.0                       # the readings' clock: mission seconds, as the b
 # by the Generals / Zero Hour source (docs/engine/script-semantics.md, the section given) unless marked 未对齐: those
 # the source cannot tell for RA3, for the bench to settle last
 ALIGN = {
-    'levelup': '部分对齐：创建升级触发升阶与老兵升级（engine_levelup a）；等级属性与经验成长未模拟',
+    'levelup': '部分对齐：创建升级触发升阶、老兵升级与等级伤害（engine_levelup a / engine_leveldamage a）；其余等级属性与经验成长未模拟',
     'protocols': '未对齐: protocol points as the program keeps them (simtech.py: rank experience 1 a second, 360 a '
                  'rank, the cap, the set-points rule; bench 11-08 engine_protocol pts / ailock); no experience from '
                  'kills, no red alert multiplier; a computer player spends its points at once on a protocol of its '
@@ -1731,6 +1731,7 @@ class Sim:
         now = self.frame_now()
         xml = self.xml_of(b.template)
         mods = []
+        mods.extend(simlevel.damage_modifiers(self, b, xml))
         if b.suppression_rule and b.suppressed:
             mods.append(simunits.modifier(xml, b.suppression_rule['modifier']))
         for up, mid in simunits.upgrade_mods(xml, b.upgrades):

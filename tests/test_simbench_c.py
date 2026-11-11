@@ -31,8 +31,26 @@ def test_levelup_creation_grants_reach_heroic_only_after_three_distinct_triggers
     rows = e.run(12).series
     assert any(tuple(row) == (0, 0, 1, 0) for _, row in rows)
     assert tuple(rows[-1][1]) == (0, 1, 1, 0)
-    assert '等级属性修正' in e.unmodeled[sim.GAP_UPGRADE, 'LevelUpUpgrade']['what']
+    assert 'HEALTH_MULT' in e.unmodeled[sim.GAP_UPGRADE, 'LevelUpUpgrade/Unit_Elite']['what']
     assert '创建升级触发' in '\n'.join(e.report())
+
+
+def test_levelup_veteran_damage_persists_at_elite_and_heroic_without_gated_target_healing():
+    """Bench 11-10 engine_leveldamage a: 47/34/34/17 through s15.
+
+    Level DAMAGE_MULT125 persists at elite and heroic. Heroic uses its 250 gun;
+    its unmeasured RATE_OF_FIRE modifier must not enlarge this single hit.
+    The Tsunami's state-gated heal stays off with no GENERIC_TOGGLE_STATE.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_leveldamage', 'a')
+    e = sim.Sim(m, t)
+    e.shot_clock = True
+    rows = e.run(14).series
+    assert tuple(rows[-1][1]) == (47, 34, 34, 17)
+    assert all(tuple(row) == (47, 34, 34, 17) for sec, row in rows if sec >= 10)
+    assert 'RATE_OF_FIRE' in e.unmodeled[sim.GAP_UPGRADE, 'LevelUpUpgrade/Unit_Heroic']['what']
 
 
 # ---- RunOffMapBehavior (sim.Sim.flee_start / flee_due; simunits.run_off_map): bench 2026-11-06 engine_runoffmap

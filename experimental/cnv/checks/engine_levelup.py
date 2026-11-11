@@ -7,7 +7,7 @@ Bench 2026-11-10 PASS: s1-s4 0/0/1/0, s5-s13 0/1/1/0.
 These are heroic-state booleans, not numeric rank readings.
 """
 from maps import probe_range
-from parts import Mission, Script, Test, status
+from parts import Mission, Script, Test, status, counted
 
 CREATION = tuple('Upgrade_CreationVeterancy_' + x for x in ('VETERAN', 'ELITE', 'HEROIC'))
 
@@ -48,3 +48,44 @@ def check(m):
 
 MISSION = {'engine_levelup': mission}
 CHECKS = {'engine_levelup': {'a': check}}
+
+
+def damage_mission():
+    m = mission()
+    m.name = 'CampLevelD'
+    for lane in ('base', 'high', 'order', 'removed'):
+        m.put('JapanAntiVehicleVehicleTech1', lane + ' gun', 0, 100,
+              side='s1', role=lane + ' target', name='Level target ' + lane)
+    return m
+
+
+def damage_check(m):
+    """PREDICT: one shot, 200/250/250/312.5 damage into 380 HP, 100% armor.
+
+    Creation grants add the veteran DAMAGE_MULT125 as well as the heroic gun.
+    Direct veterancy upgrades (engine_statusbits a) only selected the gun.
+    Bench 11-10 PASS: s5-s15 47/34/34/17, with no Tsunami healing.
+    """
+    t = Test()
+    lanes = ('base', 'high', 'order', 'removed')
+    start = [('MAP_REVEAL_ALL_PERM', m.player('p1')),
+             ('SET_MILLISECOND_TIMER', 'Level fire', 6.0),
+             ('SET_MILLISECOND_TIMER', 'Level stop', 6 + 4 / 15)]
+    fire, stop = [], []
+    for n, lane in enumerate(lanes):
+        gun, target = m.role(lane).name, m.role(lane + ' target').name
+        start += [('UNIT_CHANGE_OBJECT_STATUS', name, 'NO_ATTACK', 1) for name in (gun, target)]
+        start += [('NAMED_RECEIVE_UPGRADE', up, gun) for up in CREATION[:n]]
+        fire += [('UNIT_CHANGE_OBJECT_STATUS', gun, 'NO_ATTACK', 0), ('NAMED_ATTACK_NAMED', gun, target)]
+        stop += [('UNIT_CHANGE_OBJECT_STATUS', gun, 'NO_ATTACK', 1)]
+        counted('Level hp ' + lane, lane + ' HP', t, health=target)
+    t.scripts[:0] = [Script('Test - start', [], start),
+                     Script('Test - fire', [('TIMER_EXPIRED', 'Level fire')], fire),
+                     Script('Test - stop', [('TIMER_EXPIRED', 'Level stop')], stop)]
+    t.expect = [(lane + ' HP', 10, '==', hp, 14) for lane, hp in zip(lanes, (47, 34, 34, 17))]
+    t.bench = [('bench_watch', dict(seconds=14.0, every=.5, sheet=False, lines=4))]
+    return t
+
+
+MISSION['engine_leveldamage'] = damage_mission
+CHECKS['engine_leveldamage'] = {'a': damage_check}
