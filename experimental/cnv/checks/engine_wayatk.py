@@ -18,6 +18,8 @@ health (percent); 近敌 = 1 while tank 1 (team: tank 2) is within 100 of F (it 
 Simulator 11-10 (round 145, work/logs/a145_wayatk_sim.log): atk / amove 段1 1 s4, 敌血 from s6 6.25 %/s, 0 s21, B
 s24 (atk C s28); plain B s8, C s12 (81 at the end); atk2 passes by (B s8, C s12, 敌血 100); team tank 3 on to B s9 /
 C s12 while tank 2 fights, tank 2 B s27.
+Simulator round 146 (work/logs/a146_wayatk_sim.log; sim.Sim.attack_chase): atk2 敌血 from s7, 0 s23, B s25, C s29,
+近敌 0; team 敌血 from s6, both firing from s8 (12 %/s), 0 s15, B s18 / s18, C s21 / s22 (the fire model's 3 s, as atk).
 
 读数 (bench 2026-11-10; 敌血 stays at a dead unit's last value: SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER of the dead)
   atk    段1 s3 1; 敌血 86 s4, a shot every 2 s (13.9 %): 72 58 45 31 17, 3 at s16 (the 8th kills ~s18); B s21, C s25.
@@ -28,13 +30,14 @@ C s12 while tank 2 fights, tank 2 B s27.
          a shot to 8 at s18; B s22, C s26; 近敌 0 (a step aside, not within 100). Generals AIAttackFollowWaypointPathState
          ::update (and AIAttackMoveToState) takes getNextMoodTarget every idle frame: the mood scan, an idle unit's
          reach (VisionRange + the target's radius, engine_acquire: 223.3 here). The simulator's attack-move only takes
-         what its weapon reaches from where it is: GAP (round 146: an attack-mover's own chase, as idle_chase, then on).
+         what its weapon reached from where it was until round 146 (now its own chase: sim.Sim.attack_chase).
   team   敌血 86 s4, 73 s6, 59 s7, 32 s8 (both firing), 5 at s11 (dead ~s12); 段2 1 s2, 段3 1 s4; then B 段3 s14 /
-         段2 s15, C s18 / s19: the team waits while one fights (tank 3 at A did not move the team on). GAP: the
-         simulator's first-there rule moves tank 3 on (round 146: a member fighting holds the team's waypoint? or tank 3
-         took the target too -- the mood scan of a team member: read AIUpdate::getNextMoodTarget).
-Tested (tests/test_simbench.py test_wayatk_*): plain, atk, amove; atk2 and team not yet (inventory NOTES keeps
-TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS 推断).
+         段2 s15, C s18 / s19: the team waits while one fights (tank 3 at A did not move the team on). Read (round
+         146): Generals moves the team's waypoint on when any member's move ends (AIFollowWaypointPathState::update,
+         Team::setCurrentWaypoint) -- no hold for a fighter -- so tank 3 was fighting too: its A spot is 270 from F,
+         beyond any scan, so it took the team's target (getNextMoodTarget returns Team::getTeamTargetObject, the first
+         member's victim, at any distance) and walked up (first hit s7). sim.Sim.attack_chase: the team's `victim`.
+Tested (tests/test_simbench.py test_wayatk_*): plain, atk, amove, atk2, team.
 """
 from parts import Script, Test, counted, square
 from checks.engine_waypath import PATH, _at, _road

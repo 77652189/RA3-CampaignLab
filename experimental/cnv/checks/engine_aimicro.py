@@ -52,6 +52,15 @@ Bench 2026-11-07 (Sonnet, one run each, no dropout):
     Hunt team took, hurt by conscripts, DO charge. Read (work/re l4_micro_gate.md 7): a team change carries the
     unit's power entries along (0x7b5df0 -> 0x863310 / 0x863290), so the aimicbuilt silence is the StaticDefense team
     (not taking them, or not running the round there) -- not followed (the layer 4 closing line).
+  aimicspon / aimicspoff r PASS both (B, round 113, 2026-11-10; mods CampAIMicSpOnR / CampAIMicSpOffR): aimicbuiltf
+    on this probe's own micro manager (StandardMicroManager flattened, missions/aimicro_bench.py _spow_xml), only
+    UseSpecialPowers differing. On: 造出 2 from s21, 冲 2 @ s41, 曾冲 127 @ 帧数 489 (first charge ~362 frames after
+    the wake), the warriors alive to the end (造出 3 from s61). Off: 造出 2 s21-s41 -> 0 @ s51 (both died fighting),
+    曾冲 0 until the control (冲 1 @ s61, 曾冲 108) -- a scripted press still fires. UseSpecialPowers false = the micro
+    manager never uses a unit power (the model: no round, 0x8f5d30). The simulator (simai) fires in neither: its Hunt
+    team walks the two warriors west from s21, before the conscripts set out, so they never fight (work/logs
+    b113_sim3.log) -- and its micro block reads only the retail micro library (a probe's own AIMicroManagerData
+    reaches only 'tactics micro', simai.own_personalities).
 """
 from parts import Script, Test, counted, square, status
 
@@ -73,7 +82,8 @@ def names(m, group):
 # what the model (RA3-EngineModel ra3model/ai/micro.py) expects of each build: does each warrior charge within the run
 FIRES = {'aimicpre': False, 'aimicnear': True, 'aimicmed': True, 'aimicfar': False, 'aimichurt': True,
          'aimicmade': True, 'aimichunt': True, 'aimicxfer': True, 'aimicnearx': True, 'aimicbuilt': True,
-         'aimicbuilth': False, 'aimicbuiltf': True}     # builth: the Hunt walks them off to no infantry -- nothing to charge at
+         'aimicbuilth': False, 'aimicbuiltf': True,
+         'aimicspon': True, 'aimicspoff': False}   # round 113: aimicbuiltf on this probe's micro manager, UseSpecialPowers on / off     # builth: the Hunt walks them off to no infantry -- nothing to charge at
 HOME, HOME_R = 'CNV AM Home Area', 400.0   # aimicbuilth: round the barracks (the units come out within it)
 
 
@@ -172,8 +182,10 @@ def probe_built(m, build='aimicbuilt'):
     return t
 
 
-CHECKS = {b: {'r': lambda m, b=b: probe(m, build=b)} for b in FIRES if not b.startswith('aimicbuilt')}
+CHECKS = {b: {'r': lambda m, b=b: probe(m, build=b)} for b in FIRES if not b.startswith(('aimicbuilt', 'aimicsp'))}
 CHECKS['aimicbuilt'] = {'r': probe_built}
 CHECKS['aimicbuilth'] = {'r': lambda m: probe_built(m, 'aimicbuilth')}
 CHECKS['aimicbuiltf'] = {'r': lambda m: probe_built(m, 'aimicbuiltf')}
+CHECKS['aimicspon'] = {'r': lambda m: probe_built(m, 'aimicspon')}
+CHECKS['aimicspoff'] = {'r': lambda m: probe_built(m, 'aimicspoff')}
 CHECKS['aimicnear']['c'] = lambda m: probe(m, press=True)
