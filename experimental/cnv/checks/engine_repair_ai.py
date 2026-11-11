@@ -52,7 +52,8 @@ def personality_xml():
 
 
 def mission(funded, initial_health=50):
-    m = Mission(name='CampRepQ' if initial_health == 25 else 'CampRepAI' if funded else 'CampRepZero', map=probe_range,
+    name = {25: 'CampRepQ', 75: 'CampRepT'}.get(initial_health, 'CampRepAI' if funded else 'CampRepZero')
+    m = Mission(name=name, map=probe_range,
                 units=[probe_plant()], facts={'funded': funded, 'initial health': initial_health, 'wake at': WAKE}, ext=True)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies',
                      'aiPersonality': f'AIPersonalityDefinition:{PID}'}
@@ -81,16 +82,19 @@ def check(m):
     t.counters.append(('AI Repair Money', '资金'))
     t.scripts.append(Script('Repair money', [],
                             [('SET_PLAYER_MONEY_TO_COUNTER', m.player('s1'), 'AI Repair Money')], once=False))
-    quarter = m.facts['initial health'] == 25
-    start, end = (90, 95) if quarter else (75, 80)
-    money = 9775 if quarter else 9900 if m.facts['funded'] else 0
-    t.expect = [('repair HP', start, '==', 100 if m.facts['funded'] else 50, end),
+    initial = m.facts['initial health']
+    start, end, seconds, money = {25: (90, 95, 100, 9775),
+                                  50: (75, 80, 80, 9900),
+                                  75: (40, 45, 50, 9975)}.get(initial, (75, 80, 80, 9900))
+    if not m.facts['funded']:
+        money = 0
+    t.expect = [('repair HP', start, '==', 100 if m.facts['funded'] else initial, end),
                 ('control HP', 1, '==', 50, end),
                 ('资金', start, '==', money, end)]
-    t.bench = [('bench_watch', dict(seconds=100 if quarter else 80, every=1, sheet=False, lines=3))]
+    t.bench = [('bench_watch', dict(seconds=seconds, every=1, sheet=False, lines=3))]
     return t
 
 
 MISSION = {'repairai': lambda: mission(True), 'repairzero': lambda: mission(False),
-           'repairq': lambda: mission(True, 25)}
+           'repairq': lambda: mission(True, 25), 'repairt': lambda: mission(True, 75)}
 CHECKS = {key: {'a': check} for key in MISSION}

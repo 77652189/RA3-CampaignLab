@@ -58,6 +58,29 @@ def test_ai_repair_quarter_health_cost_prediction_and_bench_readings():
     assert 10000 - e.money[plant.owner] == 800 * .5 * .75 ** 2
 
 
+@pytest.mark.xfail(strict=True, reason='E50: repairt:a blocked before build by hung tasklist; '
+                   '75% initial health remains unmeasured/refused; see work/re/handoff-e.md 待答问题')
+def test_ai_repair_three_quarter_health_cost_prediction_and_bench_readings():
+    import build
+    import sim
+    from parts import contract, merged
+
+    m, t, _ = build.resolve('repairt', 'a')
+    assert not contract(merged(m, t))
+    e = sim.Sim(m, t)
+    e.advance(15 * 10)
+    plant = e.body(m.role('repair').name)
+    assert plant.hp == pytest.approx(850, abs=12)
+    assert e.money[plant.owner] == pytest.approx(9990, abs=1)
+    assert e.repairs.active[plant.name]['cost'] == 100
+    assert e.repairs.active[plant.name]['r'] == pytest.approx(1 / 1500)
+    e.advance(15 * 41)
+    rows = [row for sec, row in e.series if 40 <= sec <= 45]
+    assert rows and all(row == [100, 50, 9975] for row in rows), rows
+    assert build.report(t, e.series)[1] == 0
+    assert 10000 - e.money[plant.owner] == 800 * .5 * .25 ** 2
+
+
 def test_ai_repair_rate_and_unmeasured_configuration_gate():
     import build
     import sim
