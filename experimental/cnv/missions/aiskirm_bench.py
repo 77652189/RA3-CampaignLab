@@ -167,8 +167,52 @@ def acct_xml(account):
         '</AssetDeclaration>', ''])
 
 
+NEW_PK = 'CNVNewPK'                   # aisknew / aisknew2 (check y): retail Peacekeeper under a new id = "a unit of ours"
+NEW_BARRACKS = 'CNVAIBarracks'        # retail AlliedBarracks copied with a NEW_PK button (units/production.py), s1's
+NEW_PID, NEW_STATE = 'CNVNew', 'CNVNewBuild'
+NEW_AT = (0.0, 300.0)                 # the copied barracks, from the east base (clear of the yard)
+
+
+def new_pk():
+    """The Peacekeeper (SDK Allied/Units/AlliedAntiInfantryInfantry.xml) under NEW_PK, nothing else changed: the way a
+    level's own unit reaches the game (its own template, built from a copied barracks)."""
+    import os
+    import labpaths
+    from parts import Unit
+    path = os.path.join(labpaths.SDK3, 'SageXML', 'Allied', 'Units', 'AlliedAntiInfantryInfantry.xml')
+    x = open(path, encoding='utf-8').read()
+    for old in ('id="AlliedAntiInfantryInfantry"', 'EditorName="AlliedAntiInfantryInfantry"'):
+        assert x.count(old) == 1, old
+        x = x.replace(old, old.replace('AlliedAntiInfantryInfantry', NEW_PK))
+    return Unit(NEW_PK, x, what='对照：原版维和换了 id（AI 会不会造"我们的"单位）')
+
+
+def new_xml():
+    """1AlliedBalanced plus one build state of its own (CNVNewBuild: ConstantHeuristic, BuildEntry NEW_PK FEWEST_UNIT,
+    the shape of SDK States/AlliedBaseStates.xml AlliedBarracksBuildState_FEWEST) -- what a level's personality would
+    need to list for the AI to build a unit of ours (B handoff 126)."""
+    return '\n'.join([
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+        '  <Tags></Tags>',
+        '  <Includes>',
+        '    <Include type="instance" source="DATA:SkirmishAI/Personalities/AlliedBalanced.xml" />',
+        f'    <Include type="all" source="DATA:CNVUnits/Data/{NEW_PK}.xml" />',
+        '  </Includes>',
+        f'  <AIBuildStateDefinition id="{NEW_STATE}">',
+        '    <Heuristic>',
+        '      <ConstantHeuristic/>',
+        '    </Heuristic>',
+        f'    <BuildEntry Build="{NEW_PK}" Heuristic="FEWEST_UNIT"/>',
+        '  </AIBuildStateDefinition>',
+        f'  <AIPersonalityDefinition id="{NEW_PID}" PersonalityType="{NEW_PID}" inheritFrom="1AlliedBalanced">',
+        f'    <BuildState id="{NEW_STATE}" State="{NEW_STATE}" Difficulty="EASY MEDIUM HARD BRUTAL"/>',
+        '  </AIPersonalityDefinition>',
+        '</AssetDeclaration>', ''])
+
+
 def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None, account=None,
-            buffer=None):
+            buffer=None, new=None):
     m = Mission(name=name, map=ai_map(niagara, lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
     if expire is not None:               # aiskexp (check q): the same AI with SecondsTillTargetsExpire = expire
@@ -187,6 +231,16 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
         m.facts['production deposit'] = int(account == 'PRODUCTION')   # facts are numbers
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{ACCT_PID}'
         m.assets.append((f'{ACCT_PID}.xml', acct_xml(account), f'AIPersonalityDefinition:{ACCT_PID}'))
+    if new is not None:                  # aisknew / aisknew2 (check y): s1 owns a barracks that builds NEW_PK too
+        from units import production
+        pk = new_pk()
+        m.units += [pk, production.building('AlliedBarracks', [pk.id], NEW_BARRACKS)]
+        m.facts['own build state'] = int(new)
+        if new:                          # aisknew2: the personality lists NEW_PK in a build state of its own
+            m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{NEW_PID}'
+            m.assets.append((f'{NEW_PID}.xml', new_xml(), f'AIPersonalityDefinition:{NEW_PID}'))
+        m.put(NEW_BARRACKS, 'east base', NEW_AT[0], NEW_AT[1], side='s1', angle=3.1416, name='UNIT - CNV AI New Barracks',
+              role='ai new barracks')
     s1 = m.player('s1')
     m.put('AlliedConstructionYard', 'east base', 0, 0, side='s1', name='UNIT - CNV AI Yard', role='ai yard')
     m.put('AlliedConstructionYard', 'base yard', name='UNIT - CNV AI Player Yard', role='player yard')
@@ -217,4 +271,6 @@ MISSION = {'aiskirm': mission, 'aiskirmlow': lambda: mission('CampAISkLow', mone
            'aiskacp': lambda: mission('CampAISkAcP', account='PRODUCTION'),    # check v: the rebuilt AI, retail Account
            'aiskacd': lambda: mission('CampAISkAcD', account='DEFENSE'),
            'aiskpw0': lambda: mission('CampAISkPw0', buffer=0),       # check x: DesiredExcessPowerBuffer 0 (retail 100)
-           'aiskpw3': lambda: mission('CampAISkPw300', buffer=300)}   # check x: 300
+           'aiskpw3': lambda: mission('CampAISkPw300', buffer=300),   # check x: 300
+           'aisknew': lambda: mission('CampAISkNew', new=False),      # check y: a barracks of s1's builds our unit too
+           'aisknew2': lambda: mission('CampAISkNew2', new=True)}     # check y: + a build state listing it

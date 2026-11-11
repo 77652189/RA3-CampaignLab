@@ -482,6 +482,41 @@ def x(m):
     return t
 
 
+def y(m):
+    """Does the AI build a unit of ours (aisknew / aisknew2: s1 owns, besides what it builds, a copied barracks that
+    also builds CNVNewPK = the Peacekeeper under a new id)? Totals of s1's new Peacekeepers, retail Peacekeepers,
+    Javelin soldiers, and 兵营码 = retail barracks + 10 x copied ones, to 150 s after the wake.
+    Data's prediction (B handoff 126, l4_buildstate.md, l4_unitbuilder.md): the build states list units by template
+    (none lists CNVNewPK), so aisknew builds none of it -- unless the UnitBuilder, whose candidates are 'the templates
+    the player can build' (0x8f10f0), takes it from the copied barracks; aisknew2 lists it in a build state of its own
+    (FEWEST_UNIT), so >= 1 there.
+
+    RESULTS y (bench 2026-11-11, both PASS; log work/logs/b125_bench.log, work/bench_results/aisknew*__y.json; wake
+      ~s9; 兵营码 10 from s1 = the copied barracks, 11 from s19 = the opening's retail one too):
+      aisknew (stock personality): **新维和 0 to s168**; 维和 6, 标枪 12 by s168 (from both barracks).
+      aisknew2 (+ CNVNewBuild): 新维和 1 at s27 (the first infantry), 4 by s44, **9 by s167**; 维和 4, 标枪 6.
+      Reading: the AI builds a unit of ours only when a build state of its personality lists it by template -- owning
+      a factory that builds it is not enough (the UnitBuilder's candidates do not take it either). With one listed it
+      takes about half the barracks' output (FEWEST_UNIT among four). So a level's 偏好 / UnitModifier cannot make it
+      build our units (aiskmod u: no effect at all); plan.py would need a BuildState line, and the AI a factory of its
+      own that builds the unit (the copies are the player's only)."""
+    NEW_PK, NEW_BARRACKS = 'CNVNewPK', 'CNVAIBarracks'      # missions/aiskirm_bench.py's (G5: no content import)
+    t = Test()
+    PK, JAV = 'AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry'
+    for tpl in (PK, JAV):
+        m.spawns.add(tpl)
+    s1 = m.player('s1')
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    counted('CNV_AK_YNew', '新维和', t, template=NEW_PK, player=s1)
+    counted('CNV_AK_YPk', '维和总数', t, template=PK, player=s1)
+    counted('CNV_AK_YJav', '标枪总数', t, template=JAV, player=s1)
+    _sum(t, m, s1, 'CNV_AK_YBar', '兵营码', ('AlliedBarracks', NEW_BARRACKS), weights=(1, 10), cap=9)
+    w = m.facts['wake at']
+    t.expect += [('兵营码', w + 140.0, 'ever>=', 10, w + 150.0)]
+    t.bench = [('bench_watch', dict(seconds=w + 154.0, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 JAV_OUT_AT = 100.0                  # mission second the named Javelin soldier is teleported out (e)
 
 
@@ -731,4 +766,6 @@ CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j
           'aiskirmlow': {'d': d, 'f': f, 'w': w},
           'aiskirm20': {'d': d},
           'aiskpw0': {'x': x},
-          'aiskpw3': {'x': x}}
+          'aiskpw3': {'x': x},
+          'aisknew': {'y': y},
+          'aisknew2': {'y': y}}
