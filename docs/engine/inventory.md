@@ -6,8 +6,8 @@
 |---|---|---|---|---|---|---|---|
 | 脚本动作 | **89%** | 451 | 112 | 28 | 194 | 117 | 91% |
 | 脚本条件 | **94%** | 89 | 27 | 5 | 54 | 3 | 94% |
-| 物体模块 | **91%** | 186 | 36 | 7 | 121 | 22 | 92% |
-| 武器效果 | **64%** | 25 | 13 | 1 | 9 | 2 | 76% |
+| 物体模块 | **92%** | 186 | 37 | 6 | 121 | 22 | 92% |
+| 武器效果 | **76%** | 25 | 14 | 1 | 8 | 2 | 77% |
 | AI | **70%** | 415 | 97 | 134 | 150 | 34 | 88% |
 
 ## 脚本动作
@@ -616,7 +616,7 @@
 | 未做 | `Behaviors/FreefallUpdate` | 24 (31) | 模拟器代码里没有这个名字；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
 | 已对拍 | `Behaviors/AttributeModifierUpgrade` | 22 (30) | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_invuln.py；例：AlliedOutpost, AlliedAntiGroundAircraft |
 | 已对拍 | `Behaviors/CrushDie` | 22 (28) | tests/test_simbench.py::test_crush_a_tank_drives_over_a_lower_level_and_leaves_an_equal_one；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
-| 推断 | `Behaviors/SuppressionUpdate` | 22 (28) | 部分：阈值>=50、SPEED/ARMOR 75%已实测；短贡献寿命与晚恢复56帧未解释，不登记整项已对拍；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
+| 已对拍 | `Behaviors/SuppressionUpdate` | 22 (28) | tests/test_simbench_c.py::test_suppression_samples_entry_refresh_and_expiry_at_the_four_probe_readings；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
 | 不涉及 | `Draws/LaserDraw` | 21 (37) | 纯表现（Draws）；例：AlliedAntiVehicleVehicleTech3CannonNodeBase, AlliedAntiVehicleVehicleTech3CannonNodeEnd |
 | 未做 | `Behaviors/LaserState` | 19 (25) | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_laser.py），可能用别的名字实现了；例：AlliedBaseDefense, AlliedBaseDefenseAdvanced |
 | 未做 | `Behaviors/QueueProductionExitUpdate` | 19 (20) | 模拟器代码里没有这个名字；例：AlliedBarracks, AlliedConstructionYard |
@@ -634,7 +634,7 @@
 | 未做 | `Behaviors/AssignSlavesTargetObjectSpecialPower` | 6 (10) | 模拟器代码里没有这个名字；例：AlliedConstructionYardRepairBay, AlliedNavalYard |
 | 未做 | `Behaviors/TrackDamage` | 6 (9) | 模拟器代码里没有这个名字；例：AlliedAntiNavalScout, AlliedFighterAircraft |
 | 未做 | `Behaviors/TrackIncomingWeaponFireBehavior` | 6 (9) | 模拟器代码里没有这个名字；例：AlliedAntiNavalScout, AlliedFighterAircraft |
-| 未做 | `Behaviors/OCLSpecialPower` | 6 (7) | 模拟器代码里没有这个名字；例：AlliedSuperWeaponAdvanced, CAMP_PowerStore_AlliedBomberDrop |
+| 未做 | `Behaviors/OCLSpecialPower` | 6 (7) | 仅在SpecialPowerNugget处理器中识别并拒绝，未实现OCL技能执行；例：AlliedSuperWeaponAdvanced, CAMP_PowerStore_AlliedBomberDrop |
 | 未做 | `Behaviors/SubStructureStorageBehavior` | 6 (6) | 模拟器代码里没有这个名字；例：AlliedMCV, AlliedMCV_Naval |
 | 未做 | `Behaviors/WallBuilderBehavior` | 6 (6) | 模拟器代码里没有这个名字；例：AlliedWallPiece, AlliedWallSegmentPiece |
 | 未做 | `Behaviors/PassiveAreaEffectBehavior` | 5 (14) | 模拟器代码里没有这个名字；例：AlliedAirfieldRepairDrone, AlliedEngineer |
@@ -645,7 +645,7 @@
 | 推断 | `Behaviors/CommandSetUpgrade` | 5 (5) | 模拟器代码里有这个名字；例：AlliedConstructionYard, AlliedOutpost |
 | 未做 | `Behaviors/QueueDockBehavior` | 4 (12) | 模拟器代码里没有这个名字；例：AlliedRefinery, AlliedRefinery_NoHarvester |
 | 推断 | `Behaviors/AutoDepositUpdate` | 4 (8) | 模拟器代码里有这个名字；例：GE_SwissBank, NY_NYStockExchange |
-| 未做 | `Behaviors/ActivateModuleSpecialPower` | 4 (5) | 模拟器代码里没有这个名字；例：AlliedAntiStructureVehicle, JapanAntiVehicleVehicleTech1 |
+| 未做 | `Behaviors/ActivateModuleSpecialPower` | 4 (5) | 仅在SpecialPowerNugget处理器中识别并拒绝，未实现模块技能执行；例：AlliedAntiStructureVehicle, JapanAntiVehicleVehicleTech1 |
 | 未做 | `Behaviors/RadarBehavior` | 4 (5) | 模拟器代码里没有这个名字；例：AlliedRadarDish, PlayerSpellBook |
 | 推断 | `Behaviors/SpecialAbilityUpdate` | 4 (5) | 模拟器代码里有这个名字；例：JapanAntiInfantryInfantry, JapanAntiVehicleVehicleTech1 |
 | 推断 | `Behaviors/TechUpgradeReceiver` | 4 (5) | 模拟器代码里有这个名字；例：AlliedAirfield, AlliedBarracks |
@@ -758,7 +758,7 @@
 | 已对拍 | `DamageNugget` | 183 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_clip.py；例：BaseExplodingPropVehicleWeapon, MountRushmoreHeadEyeWeapon |
 | 已对拍 | `ProjectileNugget` | 88 | tests/test_simbench_c.py::test_projectile_nugget_flight_uses_retail_shell_speed_and_resolved_warhead；例：BB_EuropeCoastalGunWeapon, KremlinArtilleryDomeMissle |
 | 未做 | `InformTargetNugget` | 69 | engine_inform仅隔离并用伤害；目标对来弹的响应尚未模拟，不以HP隔离检查登记整项已对拍；例：BB_EuropeCoastalGunWeapon, AlliedPrecisionBomb |
-| 推断 | `SuppressionNugget` | 64 | 部分：长3s贡献48/50阈值已实测；1s贡献与恢复时序未解释，不登记整项已对拍；例：BB_EuropeCoastalGunWeapon, KremlinArtilleryDomeMissle |
+| 已对拍 | `SuppressionNugget` | 64 | tests/test_simbench_c.py::test_suppression_samples_entry_refresh_and_expiry_at_the_four_probe_readings；例：BB_EuropeCoastalGunWeapon, KremlinArtilleryDomeMissle |
 | 未做 | `MetaImpactNugget` | 36 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_knock_probe.py），可能用别的名字实现了；例：KremlinArtilleryDomeMissleWarhead, AlliedTimeBomb_Level1 |
 | 不涉及 | `ActivateLaserNugget` | 27 | 纯表现：Lifetime/LaserId/HitGroundFX/OverShootDistance驱动LaserState/LaserDraw；engine_laser pair实测2/90/2/90，无附加伤害或首发延迟，test_simbench_c重放；例：MountRushmoreHeadEyeWeapon, JapanAntiVehicleInfantryTech3LockDownGun |
 | 已对拍 | `WeaponOCLNugget` | 26 | tests/test_simbench_c.py::test_weapon_ocl_lifetime_damage_reads_the_fire_delay_before_counting_updates；例：MountRushmoreHeadEyeWeapon, AlliedPrecisionBombWarhead |
@@ -767,7 +767,7 @@
 | 不涉及 | `TintObjectsNugget` | 9 | 纯表现：Color及Pre/Sustained/PostColorTime、Frequency/Amplitude仅控制染色动画；engine_tint pair实测2/90/2/90，独立DamageNugget解释全部伤害，test_simbench_c重放；不声称像素已验证；例：SovietCommandoCallBombingRun, AlliedCommandoAttachWeapon |
 | 未做 | `ActivateLiftObjectNugget` | 6 | 模拟器代码里没有这个名字；例：JapanCommandoTech1PsyonicCrush, JapanCommandoTech1AirborneKiller |
 | 已对拍 | `LineDamageNugget` | 6 | tests/test_simbench_c.py::test_weaponfx_predictions_and_finite_bursts；例：SovietCommandoSniperRifle, AAAVT1_SovietCommandoSniperRifle |
-| 未做 | `SpecialPowerNugget` | 6 | 模拟器代码里没有这个名字；例：SovietCommandoCallBombingRun, AlliedAntiVehicleVehicleTech1TargetPainter |
+| 推断 | `SpecialPowerNugget` | 6 | 部分：engine_spn a实测自身ARMOR派发、缺模块/类型过滤对照；仅直接单发零冷却自制技能，原版六处的OCL/模块/变装及升级门槛未接通，不登记整项已对拍；例：SovietCommandoCallBombingRun, AlliedAntiVehicleVehicleTech1TargetPainter |
 | 未做 | `FireOnObjectsNugget` | 5 | 未实现：子武器派发条件与空间锚点尚未解释；失败诊断不作为已对拍依据；例：PlayerPowerJapanEmperorsResolveWeapon_L1, PlayerPowerJapanEmperorsResolveWeapon_L2 |
 | 已对拍 | `SecondaryDamageNugget` | 5 | tests/test_simbench_c.py::test_secondary_damage_delivers_one_amount_at_hit_without_damaging_health；例：MountRushmoreHeadEyeWeapon, AlliedCryoSatelliteLvl1 |
 | 未做 | `AttachNugget` | 4 | 模拟器代码里没有这个名字；例：AlliedCommandoAttachWeapon, SovietAntiVehicleInfantryMagneticBombAttachWeapon |
