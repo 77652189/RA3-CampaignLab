@@ -413,3 +413,68 @@ def rate_check(m):
 
 MISSION['engine_levelrate'] = rate_mission
 CHECKS['engine_levelrate'] = {'a': rate_check}
+
+
+SHROUD_LANES = ('base', 'high', 'order', 'removed')
+
+
+def shroud_mission():
+    m = mission()
+    m.name = 'CampLevelFog'
+    for lane, distance in zip(SHROUD_LANES, (580, 580, 750, 750)):
+        for tag, dy in (('target', distance), ('near', 200)):
+            m.put('JapanAntiVehicleVehicleTech1', lane + ' gun', 0, dy,
+                  side='s1', role=lane + ' ' + tag, name='Level fog ' + lane + ' ' + tag)
+    return m
+
+
+def shroud_check(m):
+    """PREDICT: retail Mirage shroud500 -> heroic625; baseline VisionRange200.
+
+    Normal/heroic at580, normal/heroic at750; an enemy at200 is the positive
+    visibility control in each lane. Creation grants at6s, no attack/reveal.
+    Counter=near discovered +10*target discovered +100*heroic status,
+    +1000*ever moved (any of the lane's three objects). All IMMOBILE/NO_ATTACK.
+    Lanes1500 apart, flat ground; even combined bounding radii (<60) cannot
+    bridge the normal580 or heroic750 gaps. Precise fog cell edges and heroic
+    VISION/auto-acquire are unmeasured; discovery cannot establish their values.
+    Stable windows2-4:1/1/1/1;18-22:1/111/1/101. No discovery latch.
+    Bench2026-11-11 x1 PASS: s1-s4 1/1/1/1; s5-s23 1/111/1/101.
+    """
+    t = Test()
+    start = [('PLAYER_SET_MONEY', m.player('s1'), 0),
+             ('SET_MILLISECOND_TIMER', 'Level fog promote', 6.0)]
+    promote = []
+    for lane in SHROUD_LANES:
+        gun = m.role(lane).name
+        if lane in ('high', 'removed'):
+            promote += [('NAMED_RECEIVE_UPGRADE', up, gun) for up in CREATION]
+        c, moved = 'Level fog ' + lane, 'Level fog moved ' + lane
+        t.counters.append((c, lane + ' fog'))
+        for role in (lane, lane + ' target', lane + ' near'):
+            obj = m.role(role)
+            start += [('UNIT_CHANGE_OBJECT_STATUS', obj.name, bit, 1) for bit in ('IMMOBILE', 'NO_ATTACK')]
+            placed = next(o for o in m.objects if o.name == obj.name)
+            t.areas[obj.name] = square(placed.x, placed.y, 2.0)
+            t.scripts.append(Script('Test - fog latch ' + role, [('NAMED_OUTSIDE_AREA', obj.name, obj.name)],
+                                    [('SET_FLAG', moved, 1)]))
+        t.scripts.append(Script('Test - fog reset ' + lane, [], [('SET_COUNTER', c, 0)], once=False))
+        for tag, weight in (('near', 1), ('target', 10)):
+            t.scripts.append(Script('Test - fog see ' + lane + tag,
+                                    [('NAMED_DISCOVERED', m.player('p1'), m.role(lane + ' ' + tag).name)],
+                                    [('INCREMENT_COUNTER', weight, c)], once=False))
+        t.scripts.append(Script('Test - fog heroic ' + lane,
+                                [('UNIT_HAS_OBJECT_STATUS', gun, status('WEAPON_UPGRADED_01'))],
+                                [('INCREMENT_COUNTER', 100, c)], once=False))
+        t.scripts.append(Script('Test - fog moved ' + lane, [('FLAG', moved, 1)],
+                                [('INCREMENT_COUNTER', 1000, c)], once=False))
+    t.scripts[:0] = [Script('Test - start', [], start),
+                     Script('Test - fog promote', [('TIMER_EXPIRED', 'Level fog promote')], promote)]
+    for first, last, values in ((2, 4, (1, 1, 1, 1)), (18, 22, (1, 111, 1, 101))):
+        t.expect += [(lane + ' fog', first, '==', value, last) for lane, value in zip(SHROUD_LANES, values)]
+    t.bench = [('bench_watch', dict(seconds=22.0, every=1, sheet=False, lines=4))]
+    return t
+
+
+MISSION['engine_levelshroud'] = shroud_mission
+CHECKS['engine_levelshroud'] = {'a': shroud_check}

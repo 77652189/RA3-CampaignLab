@@ -1,8 +1,9 @@
 """Creation upgrade -> rank -> veterancy upgrades (engine_levelup a/b/c).
 
 Combat experience and rank modifiers except DAMAGE_MULT, elite HEALTH_MULT,
-heroic RANGE and the measured Mirage heroic clip rate remain unmodeled. This module
-does not turn a direct Upgrade_Veterancy_HEROIC grant into a rank change.
+heroic RANGE, Mirage SHROUD_CLEARING and the measured Mirage heroic clip rate
+remain unmodeled. This module does not turn a direct Upgrade_Veterancy_HEROIC
+grant into a rank change.
 """
 import functools
 import os
@@ -105,7 +106,7 @@ def receive(sim, b, up, on, newly_held):
 
 
 def damage_modifiers(sim, b, xml):
-    """Measured rank damage/range and Mirage heroic ROF in the discrete clock."""
+    """Measured rank damage/range, Mirage shroud and heroic discrete-clock ROF."""
     if b.level_rank <= 1:
         return []
     out, seen = [], set()
@@ -125,6 +126,9 @@ def damage_modifiers(sim, b, xml):
                 supported.add('HEALTH_MULT')
             if mid == 'Unit_Heroic' and m['types'].get('RANGE') == [1.25]:
                 supported.add('RANGE')  # engine_levelrange a: heroic gun 150 -> 187.5
+            if (mid == 'Unit_Heroic' and m['types'].get('SHROUD_CLEARING') == [1.25]
+                    and b.template == 'AlliedAntiVehicleVehicleTech3'):
+                supported.add('SHROUD_CLEARING')  # engine_levelshroud a: 500 -> 625
             if (mid == 'Unit_Heroic' and m['types'].get('RATE_OF_FIRE') == [1.2]
                     and b.template == 'AlliedAntiVehicleVehicleTech3' and sim.shot_clock):
                 supported.add('RATE_OF_FIRE')  # engine_levelrate a; other weapons remain gaps
@@ -134,7 +138,7 @@ def damage_modifiers(sim, b, xml):
             if unsupported:
                 sim.gap('升级', 'LevelUpUpgrade/' + mid, '等级属性修正未模拟：' + ', '.join(unsupported))
             acting = {ty: values for ty, values in m['types'].items()
-                      if ty in supported & {'DAMAGE_MULT', 'RANGE', 'RATE_OF_FIRE'}}
+                      if ty in supported & {'DAMAGE_MULT', 'RANGE', 'RATE_OF_FIRE', 'SHROUD_CLEARING'}}
             if acting:
                 out.append(dict(m, types=acting, status=set()))
     return out

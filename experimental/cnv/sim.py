@@ -1786,9 +1786,11 @@ class Sim:
         mods = []
         level_mods = simlevel.damage_modifiers(self, b, xml)
         b.level_rate = simunits.stack([v for m in level_mods for v in m['types'].get('RATE_OF_FIRE', [])])
+        level_shroud = simunits.stack([v for m in level_mods for v in m['types'].get('SHROUD_CLEARING', [])])
         # Measured rank ROF belongs to the clip clock. Other modifiers retain
         # their existing continuous-DPS approximation until separately benched.
-        mods.extend(dict(m, types={ty: values for ty, values in m['types'].items() if ty != 'RATE_OF_FIRE'})
+        mods.extend(dict(m, types={ty: values for ty, values in m['types'].items()
+                                  if ty not in {'RATE_OF_FIRE', 'SHROUD_CLEARING'}})
                     for m in level_mods)
         if b.suppression_rule and b.suppressed:
             mods.append(simunits.modifier(xml, b.suppression_rule['modifier']))
@@ -1829,6 +1831,11 @@ class Sim:
         # Suppression SPEED75%:50->37.5 (bench44->59); retain fractional speed.
         b.speed = b.base['speed'] * e['SPEED']
         b.vision, b.sight = b.base['vision'] * e['VISION'], b.base['sight'] * e['VISION']
+        if level_shroud != 1.0:
+            # engine_levelshroud a measures discovery, not VISION/auto-acquire.
+            # Recompute from retail shroud, never from last frame's scaled value.
+            shroud = simunits.stats(b.template, self.own)['shroud'] or 0.0
+            b.vision = max(b.vision, shroud * level_shroud)
         held = simunits.pick_weapons(b.slots, st) if b.slots else b.base['weapons']       # the status picks the guns
         b.weapons = held if e['RANGE'] == 1.0 else [dict(w, range=w['range'] * e['RANGE']) for w in held]
         b.shielded = e['shielded']

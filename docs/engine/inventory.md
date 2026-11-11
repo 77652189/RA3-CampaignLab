@@ -489,7 +489,7 @@
 | 已对拍 | `COUNTER_SECONDS` | 141 | 引擎模型核心；台上量过、测试对拍：checks/engine_scripts6.py |
 | 已对拍 | `UNIT_HEALTH` | 134 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_air.py |
 | 未做 | `MISSION_HOT_SPOT_ACTIVE` | 110 | Sim.act / Sim.cond 不认识 |
-| 已对拍 | `NAMED_DISCOVERED` | 104 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_vision.py |
+| 已对拍 | `NAMED_DISCOVERED` | 104 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_levelup.py |
 | 未做 | `TEAM_ATTACKED_BY_PLAYER` | 93 | Sim.act / Sim.cond 不认识 |
 | 未做 | `UNIT_HAS_MODELCONDITION` | 88 | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_INSIDE_AREA_PARTIALLY` | 80 | Sim.act / Sim.cond 不认识 |
@@ -595,7 +595,7 @@
 | 已对拍 | `AI/AIUpdate` | 136 (237) | tests/test_simbench.py::test_r8_idle_within_sight_walks_up_fires_and_comes_back；例：AlliedSatelliteSweepShroudRevealer, AlliedSuperWeaponEffect |
 | 已对拍 | `Behaviors/StancesBehavior` | 108 (148) | tests/test_simbench_c.py::test_stance_hold_fire_stops_a_standing_attack_order；例：AlliedSatelliteSweepShroudRevealer, AlliedAirfield |
 | 已对拍 | `Body/ImmortalBody` | 91 (111) | tests/test_simbench_c.py::test_immortal_damage_stops_at_one_hp_kill_is_damage_and_delete_removes；例：BaseRock, CPDummyTarget |
-| 推断 | `Behaviors/LevelUpUpgrade` | 88 (124) | 部分：engine_levelup a创建升级触发升阶、重复持有不升级；b移除创建升级保留等级，老兵创建升级移除重给可再次升阶，英雄位0/0/0/1→0/0/1/1→0/1/1/1；c独立精英/英雄创建升级各自移除重给两次，首次仍0/0/0/1、第二次0/1/1/1；engine_leveldamage a等级DAMAGE_MULT125保持到精英/英雄，单发血量47/34/34/17；engine_levelhealth a满血升级HEALTH_MULT125保持到英雄，100脚本伤害同帧冻结80/80/84/84；b残血升精英保留血量比例50/80/50/20，再扣100血为30/64/34/4，当前和最大血量均乘1.25，simlevel及test_simbench_c重放；engine_levelrange a原版幻影普通炮125、英雄炮150叠加RANGE125%为187.5，220距离仅英雄命中、260距离均未命中，四路100/10100/100/10100→100/10017/100/10100，离位异常均0；engine_levelrate a幻影普通/直接英雄武器/创建英雄/创建精英三段周期25/25/20/25帧，最终血量84/80/68/80，ROF不增加单发伤害；仅此离散单发炮配置已量，射速分段取整/其他武器仍未对拍；其余等级属性、经验成长、上限及Permanent=true未对拍，不登记整项已对拍；例：AlliedSatelliteSweepShroudRevealer, AlliedAntiAirShip |
+| 推断 | `Behaviors/LevelUpUpgrade` | 88 (124) | 部分：engine_levelup a创建升级触发升阶、重复持有不升级；b移除创建升级保留等级，老兵创建升级移除重给可再次升阶，英雄位0/0/0/1→0/0/1/1→0/1/1/1；c独立精英/英雄创建升级各自移除重给两次，首次仍0/0/0/1、第二次0/1/1/1；engine_leveldamage a等级DAMAGE_MULT125保持到精英/英雄，单发血量47/34/34/17；engine_levelhealth a满血升级HEALTH_MULT125保持到英雄，100脚本伤害同帧冻结80/80/84/84；b残血升精英保留血量比例50/80/50/20，再扣100血为30/64/34/4，当前和最大血量均乘1.25，simlevel及test_simbench_c重放；engine_levelrange a原版幻影普通炮125、英雄炮150叠加RANGE125%为187.5，220距离仅英雄命中、260距离均未命中，四路100/10100/100/10100→100/10017/100/10100，离位异常均0；engine_levelrate a幻影普通/直接英雄武器/创建英雄/创建精英三段周期25/25/20/25帧，最终血量84/80/68/80，ROF不增加单发伤害；仅此离散单发炮配置已量，射速分段取整/其他武器仍未对拍；engine_levelshroud a原版幻影基础揭雾500、创建英雄SHROUD_CLEARING125%预测625，580/750距离普通/英雄四路1/1/1/1→1/111/1/101，近点始终可见且无离位；仅此模板配置已量，精确边界与VISION/自动索敌未对拍；其余等级属性、经验成长、上限及Permanent=true未对拍，不登记整项已对拍；例：AlliedSatelliteSweepShroudRevealer, AlliedAntiAirShip |
 | 已对拍 | `Behaviors/AutoHealBehavior` | 88 (123) | tests/test_simbench.py::test_autoheal_an_apocalypse_mends_two_points_every_7_frames_after_a_15_frame_wait；例：AlliedSatelliteSweepShroudRevealer, AlliedAntiAirShip |
 | 已对拍 | `Behaviors/RunOffMapBehavior` | 88 (123) | tests/test_simbench_c.py::test_run_off_map_the_peacekeeper_is_gone_64_and_304_frames_after_the_order_never_dying；例：AlliedSatelliteSweepShroudRevealer, AlliedAntiAirShip |
 | 已对拍 | `Behaviors/WeaponSetUpdate` | 82 (110) | tests/test_simbench_c.py::test_weapon_set_the_status_picks_the_gun_molotov_under_the_toggle_and_the_painter_does_no_harm；例：AlliedBaseDefense, AlliedBaseDefenseAdvanced |

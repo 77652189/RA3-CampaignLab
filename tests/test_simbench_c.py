@@ -19,6 +19,35 @@ def _sim_run(build_name, check, until):
     return sim.Sim(m, t).run(until)
 
 
+def test_levelup_heroic_shroud_discovers_inner_target_only_without_changing_sight():
+    """engine_levelshroud a:1/1/1/1 ->1/111/1/101; near controls stay visible."""
+    import build
+    import sim
+    from checks.engine_levelup import SHROUD_LANES
+    m, t, _ = build.resolve('engine_levelshroud', 'a')
+    e = sim.Sim(m, t)
+    e.shot_clock = True
+    rows = e.run(23).series
+    for label, first, op, value, last in t.expect:
+        idx = [label for _, label in t.counters].index(label)
+        readings = [row[idx] for at, row in rows if first <= at < last]
+        assert readings and all(v == value for v in readings), (label, readings, value)
+    guns = [e.body(m.role(lane).name) for lane in SHROUD_LANES]
+    assert [b.level_rank for b in guns] == [1, 4, 1, 4]
+    assert [b.vision for b in guns] == [500, 625, 500, 625]
+    assert [b.sight for b in guns] == [200] * 4
+    for obj in m.objects:
+        b = e.body(obj.name)
+        assert b.alive and b.hp == b.max_hp
+        assert (b.x, b.y) == (obj.x, obj.y)
+    assert not e.reveal_all and not e.reveals and not getattr(e, 'clocks', {})
+    for _ in range(3):
+        e.modify(guns[1])
+        assert (guns[1].vision, guns[1].sight) == (625, 200)
+    gap = e.unmodeled[sim.GAP_UPGRADE, 'LevelUpUpgrade/Unit_Heroic']['what']
+    assert 'SHROUD_CLEARING' not in gap and 'VISION' in gap
+
+
 def test_levelup_heroic_rate_changes_three_intershot_spans_without_scaling_each_hit():
     """engine_levelrate a: spans25/25/20/25, then HP84/80/68/80 (4/4/5/4 hits)."""
     import build
