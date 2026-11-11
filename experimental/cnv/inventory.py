@@ -45,6 +45,7 @@ PARTS = (ACTION, CONDITION, MODULE, NUGGET, AI)     # AI: engine B's part, its o
 
 # (part, name) -> 'tests/<file>.py::<test>': the bench comparison that backs the item (the guard checks the test exists)
 BENCHED_TESTS = {
+    (NUGGET, 'LeechPercentMaxHealthDamageNugget'): 'tests/test_simbench_c.py::test_leech_percent_uses_victim_maximum_not_current_health_or_caster_maximum',
     (NUGGET, 'SecondaryDamageNugget'): 'tests/test_simbench_c.py::test_secondary_damage_delivers_one_amount_at_hit_without_damaging_health',
     (NUGGET, 'WeaponOCLNugget'): 'tests/test_simbench_c.py::test_weapon_ocl_lifetime_damage_reads_the_fire_delay_before_counting_updates',
     (NUGGET, 'ProjectileNugget'): 'tests/test_simbench_c.py::test_projectile_nugget_flight_uses_retail_shell_speed_and_resolved_warhead',

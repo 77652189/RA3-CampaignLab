@@ -276,7 +276,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v13.json')    # v13: preserve per-hit SecondaryDamageNugget.Amount
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v14.json')    # v14: direct ungated maximum-health leech fields
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -412,6 +412,14 @@ def _weapons(texts, base_table=None):
             if sweeps:
                 got['sweep'] = sweeps[0]
 
+            for h, inner in _blocks(bare, 'LeechPercentMaxHealthDamageNugget'):
+                if ((inner or '').strip() or any(d for d, _ in dmg) or any(war)
+                        or _num(_attr(h, 'Radius', '0'), float('nan')) != 0
+                        or _secs(_attr(h, 'DelayTimeSeconds', '0s'))):
+                    unsupported.append('LeechPercentMaxHealthDamageNugget')
+                else:
+                    dmg.append((_num(_attr(h, 'Damage')), _attr(h, 'DamageType', 'UNDEFINED')))
+                    got['leech_percent'] = _num(_attr(h, 'PercentMaxHealthToTake', '100%').rstrip('%')) / 100
             if unsupported:
                 got['unmodeled_effects'] = unsupported
             if sd:
@@ -501,6 +509,7 @@ def _resolve(w, weapons):
                 line=w.get('line', weapons.get(w.get('warhead'), {}).get('line')),
                 strip_max_health=w.get('strip_max_health', weapons.get(w.get('warhead'), {}).get('strip_max_health', [])),
                 emp_seconds=w.get('emp_seconds', weapons.get(w.get('warhead'), {}).get('emp_seconds', [])),
+                leech_percent=w.get('leech_percent', 0.0),
                 sweep=w.get('sweep'),
                 unmodeled_effects=w.get('unmodeled_effects', weapons.get(w.get('warhead'), {}).get('unmodeled_effects', [])))
 

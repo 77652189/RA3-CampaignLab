@@ -529,3 +529,11 @@ def test_garrison_script_entry_skips_room_and_relation_owner_follows_and_damage_
     assert got == [(16, 1123, 33, 33), (15, 1230, 0, 33), (0, 1220, 0, 33)], got   # bench s4-7 / s10-13 / s16-
     hp = _garrison_series('hp')
     assert [hp[s][:2] for s in (4, 10, 16)] == [[100, 100], [0, 13], [0, 6]], hp   # bench 炸楼血 / 伤楼血
+
+
+def test_leech_percent_uses_victim_maximum_not_current_health_or_caster_maximum():
+    import build
+    import sim
+    m,t,_=build.resolve('engine_leechpct','a')
+    e=sim.Sim(m,t);e.shot_clock=True
+    assert tuple(e.run(16).series[-1][1])==(1000025,1000025,1000030,1000020)

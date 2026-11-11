@@ -3597,6 +3597,7 @@ class Sim:
         frame's damage, so only a frame's fire of the whole maximum kills (A4 win: bench 2026-11-07 against the 0.5 s
         tick that killed the trucks at 4:23). Bodies at 0 die, the last hit their killer's."""
         hurt = {}
+        leech_events = {}
         pending = self.__dict__.setdefault('projectile_hits', [])
         due = [hit for hit in pending if self.frame_now() >= hit[0]]
         pending[:] = [hit for hit in pending if self.frame_now() < hit[0]]
@@ -3678,6 +3679,8 @@ class Sim:
                         h = hurt.setdefault(id(victim), [victim, 0.0, by])
                         armor = 1.0 if w['type'] == 'UNRESISTABLE' else simunits.percent(victim.armor, w['type']) / 100.0 * victim.taken
                         h[1] += n * w['dmg'] * by.dealt * armor
+                        if w.get('leech_percent'):
+                            leech_events.setdefault(id(victim), []).append((by, w['leech_percent']))
                         for fraction, damage_type in w.get('strip_max_health', []):
                             scalar = 1.0 if damage_type == 'UNRESISTABLE' else simunits.percent(victim.armor, damage_type) / 100 * victim.taken
                             h[1] += n * victim.max_hp * fraction * by.dealt * scalar
@@ -3694,6 +3697,15 @@ class Sim:
             if self.frame_now() < t.immune_until or t.shielded or t.indestructible:
                 continue
             t.damage(dmg)
+            events = leech_events.get(id(t), [])
+            if events:
+                if t.hp <= 0 and len(events) == 1:
+                    healer, fraction = events[0]
+                    if healer.alive:
+                        healer.hp = min(healer.max_hp, healer.hp + t.max_hp * fraction)
+                else:
+                    self.gap(GAP_WEAPON, 'LeechPercentMaxHealthDamageNugget',
+                             '仅单施法者致死吸取已验证；非致死/并发吸取尚未建模')
             t.last_hit, t.last_by = by.owner, by.name
             if t.hp <= 0 and t.alive:
                 if self.first_death is None:

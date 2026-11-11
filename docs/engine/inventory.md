@@ -7,7 +7,7 @@
 | 脚本动作 | **88%** | 451 | 106 | 34 | 194 | 117 | 91% |
 | 脚本条件 | **94%** | 89 | 27 | 5 | 54 | 3 | 94% |
 | 物体模块 | **81%** | 184 | 33 | 7 | 125 | 19 | 82% |
-| 武器效果 | **63%** | 25 | 9 | 1 | 13 | 2 | 75% |
+| 武器效果 | **64%** | 25 | 10 | 1 | 12 | 2 | 75% |
 | AI | **69%** | 415 | 95 | 133 | 153 | 34 | 87% |
 
 ## 脚本动作
@@ -772,7 +772,7 @@
 | 已对拍 | `StripMaxHealthPercentNugget` | 3 | tests/test_simbench_c.py::test_strip_max_health_percent_uses_maximum_at_full_and_half_health；例：JapanCommandoTech1PsyonicCrush, AAAVT1_JapanCommandoTech1PsyonicCrush |
 | 已对拍 | `ActivateLinearDamageNugget` | 2 | tests/test_simsweep.py::test_sweep_a_killed_shooters_line_stops_with_it_and_the_second_ones_rows_are_hit；例：AlliedAntiNavalScoutSonar, AlliedAntiNavalScoutSonarForBridges |
 | 未做 | `DamageContainedNugget` | 2 | 模拟器代码里没有这个名字；例：SovietAntiInfantryInfantryMolotovCocktailWarhead, Weapon_DesolatorBombFieldUpdate |
-| 未做 | `LeechPercentMaxHealthDamageNugget` | 2 | 模拟器代码里没有这个名字；例：SovietCrushWeapon, SovietHarpoonCrushWeapon |
+| 已对拍 | `LeechPercentMaxHealthDamageNugget` | 2 | tests/test_simbench_c.py::test_leech_percent_uses_victim_maximum_not_current_health_or_caster_maximum；例：SovietCrushWeapon, SovietHarpoonCrushWeapon |
 | 未做 | `ReportWeaponFiredStatNugget` | 2 | 模拟器代码里没有这个名字；例：SovietVacuumBomb, ParticleCannonWeapon |
 | 未做 | `ActivateCircularDamageNugget` | 1 | 模拟器代码里没有这个名字；例：SovietAntiNavyShipTech1TeslaNova |
 | 未做 | `DOTNugget` | 1 | 模拟器代码里没有这个名字；例：PlayerPowerIrradiateTargetWeapon |
