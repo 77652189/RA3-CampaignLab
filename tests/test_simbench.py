@@ -1139,6 +1139,29 @@ def test_scripts1_a_team_handed_over_drops_its_move():
     assert last[:3] == [1, 0, 2], last
 
 
+def _aixfer(variant):
+    return {round(sec): vals for sec, vals in _sim_run('engine_aixfer', variant, 25.0).series}
+
+
+def test_aixfer_a_computer_players_units_handed_to_its_ai_leave_their_crew_and_drop_the_move():
+    """xfer (bench 11-10 engine_aixfer, Soviet_4's AI not woken; order and hand-over in one script, as retail a01):
+    到 8 = only the player's tank arrives, 队 8 = only the player's crew keeps its member, 默 0 = the handed-over
+    units are not on Soviet_4's default team either. Before round 150 the simulator kept both (到 14, 队 14)."""
+    by = _aixfer('xfer')
+    assert by[0][1] == 14 and all(v[1] == 8 and v[2] == 0 for s, v in by.items() if s >= 2), by
+    assert by[25][0] == 8, by
+
+
+def test_aixfer_a_move_under_way_stops_at_the_hand_over_and_the_players_crew_is_untouched():
+    """late (bench 11-10): the moves at 1 s, the hand-overs at 4 s. 离 6 (A and B had set off), 队 30 -> 24 at the
+    hand-over, 到 24 at the end = the player's C and the never-handed-over control D; A and B never arrive."""
+    by = _aixfer('late')
+    assert by[2][1] == 30 and all(v[1] == 24 for s, v in by.items() if s >= 5), by
+    assert by[25][0] == 24 and by[25][3] == 6 and by[25][2] == 0, by
+    arrived = min(s for s, v in by.items() if v[0] == 24)
+    assert 12 <= arrived <= 18, by
+
+
 def test_scripts1_idle_for_seconds_drops_the_move():
     """idle: the tank without the idle order arrives (bench s7, about 9 game s), the one told UNIT_IDLE_FOR_SECONDS 3
     at 3 s never does in 45 s -- the order dropped, not a 3 s pause."""

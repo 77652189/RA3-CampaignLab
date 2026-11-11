@@ -263,6 +263,7 @@
 - `UNIT_TELEPORT_TO_WAYPOINT` 直接设位置，同样不判断能不能站。
 - `SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER` 和 `PLAYER_HAS_OBJECT_COMPARISON` 只数条件里那个玩家自己的单位，不数已毁的，也不数还在建造中的；模板列表按各类型的总数算。计数器的值是整个覆盖写进去的，不是累加。`PLAYER_HAS_OBJECT_COMPARISON` 每帧只算一次，所以同一帧里刚造出来的单位要到下一帧才数得到。
 - 遭遇战 AI 那几条（`SKIRMISH_AI_*`），玩家参数必须正好是一个玩家，写成"所有玩家"之类的整条不做。`UNIT_AI_TRANSFER_ALL` 除了把单位交给 AI，也让 AI 从这一刻开始运转，所以要放在其它 AI 设置之前（我们的出口就是这样排的）。`SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES` 传 0 不会清掉已经设过的优先级。
+- `UNIT_AI_TRANSFER` / `TEAM_AI_TRANSFER`（开关 1）对人类玩家的单位什么也不做。电脑玩家的单位交出去后**离开原来的队**（脚本叫得出名字的队都不在，默认队也不在），**手上的命令也丢了**——同一条脚本里先下的移动、或几秒前下的移动都不再走完（台上 11-10 `engine_aixfer`，AI 没唤醒时单位就停在原地）。所以先下命令再移交，命令只在 AI 已唤醒、会自己接手时才有意义；之后按队名下的命令、数队员的条件也找不到这些单位了。开关 0（收回）没量过。
 - `PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM` 写了一个不存在的名字时，战况音乐算开着，但什么也不放；名字留空时用默认的那套。
 - `NAMED_USE_COMMANDBUTTON_ABILITY` 在单位的命令集里没有这个按钮时什么也不做。`..._ON_NAMED` 找不到目标时整条不做。
 - `SET_MISSION_OBJECTIVE_STATUS` 只认 0～3，其它值不做；`MOVE_CAMERA_TO_NAMED` 的第 3 个参数没有用到。

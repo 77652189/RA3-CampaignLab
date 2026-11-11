@@ -2363,6 +2363,8 @@ class Sim:
             if not self.team_active(a[0]):
                 return False
             return not any(same_team(b.team, a[0]) and self.present(b) for b in self.bodies.values())
+        if name == 'TEAM_COMPARE_NUM_MEMBERS':  # (team, op, n) the living members (bench 11-08 engine_scripts1 xfer
+            return CMP[a[1]](len(self.members(a[0])), a[2])     # 队里几个 2 -> 0 at the hand-over; engine_aixfer 队)
         if name == 'CURRENT_PLATFORM':          # the game we run is the PC one
             return str(a[0]).upper() == 'PC'
         if name == 'PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA':
@@ -2750,10 +2752,21 @@ class Sim:
             if any(b.owner in self.ai for b in crew):
                 self.gap(GAP_ACTION, name, 'AI 玩家的猎杀战术（HuntTactic）不模拟（引擎 B 的 AI）')
         elif name in ('UNIT_AI_TRANSFER', 'TEAM_AI_TRANSFER'):
-            # (unit / team, on) l2_scripts1 7: a computer player's units into / out of its AI's hands (no order
-            # cleared); a human player's: nothing. What the AI then does with them is engine B's (AI not simulated)
+            # (unit / team, on) l2_scripts1 7: a computer player's units into / out of its AI's hands; a human
+            # player's: nothing. Bench 11-10 engine_aixfer xfer / late (Soviet_4, AI not woken): handed over (on)
+            # each leaves its crew (onto no team a script names: teamSoviet_4 stays 0) and drops its order -- the
+            # notes read no order cleared, yet a move given in the same script or 3 s before never arrived; the
+            # player's crew kept both. Handed back (off): not benched, nothing done. What a woken AI then does with
+            # them is engine B's (AI not simulated)
             crew = self.members(a[0]) if name == 'TEAM_AI_TRANSFER' else [b for b in [self.body(a[0])] if b and b.alive]
-            if any(b.owner != self.human for b in crew):
+            theirs = [b for b in crew if b.owner not in (self.human, CIV)]
+            if theirs and int(a[1]):
+                for b in theirs:
+                    b.team = ''
+                    self.stand(b)
+            elif theirs:
+                self.gap(GAP_ACTION, name, '收回（开关 0）没上台量过，不模拟')
+            if any(b.owner in self.ai for b in theirs):
                 self.gap(GAP_ACTION, name, '交给 AI 后的行为不模拟（引擎 B 的 AI）')
         elif name == 'TEAM_USE_COMMANDBUTTON_ABILITY':
             # (team, button) l2_scripts1 8: the button on every living member, no target. Bench 11-08 button: both

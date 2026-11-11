@@ -207,9 +207,6 @@ NOTES = {
                                                      '同模板的非画法模块和原版脚本 UNIT_HAS_MODELCONDITION 都不读'
                                                      '（E 线 work/re/e_na_physics_mcu.md）'),
     (ACTION, 'NAMED_HUNT'): (GUESSED,'同 TEAM_HUNT：没交给 AI 不动（台上量过）；AI 玩家的猎杀不模拟（引擎 B）'),
-    (ACTION, 'UNIT_AI_TRANSFER'): (GUESSED, '程序读到：人类玩家的单位无效、不清命令；交给 AI 后的行为归引擎 B，'
-                                            '碰到记 Sim.unmodeled（台上没量）'),
-    (ACTION, 'TEAM_AI_TRANSFER'): (GUESSED, '同 UNIT_AI_TRANSFER，对队里每个成员（台上没量）'),
     # engine A round 106: judged by what reads them
     (ACTION, 'UNIT_SET_MODELCONDITION_GENERIC'): (NA, '纯表现：设模型状态只换画法。原版脚本设的是 SUPPRESSED（a01 '
                                                       '摆拍枪战的趴下动作），SDK 数据里读 SUPPRESSED 的只有绘制模块的 '

@@ -19,7 +19,7 @@ SITES['guard row'] = Site(1300.0, 4600.0, 700.0, 'open ground west to east (600 
 PLAYERS = probe_range.PLAYERS
 OBJECTS = probe_range.OBJECTS                   # its ore node
 LAYOUT = probe_range._LAYOUT                    # the level ground (the simulator's ground)
-TEAMS = probe_range.TEAMS
+TEAMS = dict(probe_range.TEAMS, s4='Soviet_4/teamSoviet_4')    # the container has it (engine_aixfer 默 reads it)
 BORDERS = {'whole': (0.0, 0.0, 5000.0, 5000.0), 'west half': (0.0, 0.0, LINE_X, 5000.0)}
 
 terrain = probe_range.terrain
