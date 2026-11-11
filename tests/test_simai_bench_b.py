@@ -409,3 +409,17 @@ def test_a_level_personality_lists_our_units_in_a_build_state_of_its_own():
     ai.tick(0)
     assert 'CNVNewPK' in made
     assert enemy_ai.new_units_state('x', None) == '' and 'BuildState' not in enemy_ai.personality('y', '盟军')
+
+
+# ---- checks/engine_aiskirm.py z (bench 2026-11-11, readings in z's RESULTS): the barracks builds only the counter
+@pytest.mark.parametrize('build, best, other', [('aiskvinf', 'AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry'),
+                                                ('aiskvveh', 'AlliedAntiVehicleInfantry', 'AlliedAntiInfantryInfantry')])
+def test_the_expected_efficiency_ranks_the_counter_first(lib, build, best, other):
+    """aiskvinf (the player owns 10 conscripts): bench Peacekeepers only; aiskvveh (10 Hammers): Javelins only.
+    The simulator's expected efficiency (0x8bd780, l4_efficiency.md: B/A with the unit over B/A without) ranks the
+    same one first. Not yet ordering by it (Brain: host.efficiency off -- the unit builder fills the barracks
+    first, B handoff 130 H1), so only the ranking is asserted."""
+    w = simai.run(build, 'z', 25, lib=lib)
+    b = next(iter(w.brains.values()))
+    ex = b.expected(b.ai, 0, [best, other])
+    assert ex[best] > ex[other] > 0

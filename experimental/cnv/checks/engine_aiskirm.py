@@ -517,7 +517,35 @@ def y(m):
     return t
 
 
-JAV_OUT_AT = 100.0                  # mission second the named Javelin soldier is teleported out (e)
+def z(m):
+    """Does the AI build against the player's army (aiskvinf: the player owns 10 conscripts, aiskvveh: 10 Hammer
+    tanks, idle behind its yard on the west bank; otherwise aiskirm)? Totals of s1's Peacekeepers, Javelin soldiers,
+    Guardian tanks and Riptides, to 150 s after the wake. Data's prediction (l4_buildstate.md 1): 1AlliedBalanced
+    at MEDIUM lists those in AlliedLandUnitBuildState as BEST_UNIT_EXPECTED (score = the expected efficiency against
+    the enemy), so vs conscripts more Peacekeepers, vs tanks more Javelins (and Guardians once a war factory stands)
+    than the other build -- beside the UnitBuilder's uniform draw (l4_unitbuilder.md)."""
+    t = Test()
+    s1 = m.player('s1')
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    names = (('AlliedAntiInfantryInfantry', 'CNV_AK_ZPk', '维和总数'), ('AlliedAntiVehicleInfantry', 'CNV_AK_ZJav', '标枪总数'),
+             ('AlliedAntiVehicleVehicleTech1', 'CNV_AK_ZGrd', '守护者总数'),
+             ('AlliedAntiInfantryVehicle', 'CNV_AK_ZRip', '激流总数'))     # four counter lines at most
+    for tpl, counter, label in names:
+        m.spawns.add(tpl)
+        counted(counter, label, t, template=tpl, player=s1, most=16)
+    w = m.facts['wake at']
+    t.expect += [('标枪总数' if m.facts['player vehicles'] else '维和总数', w + 140.0, 'ever>=', 4, w + 150.0)]
+    t.bench = [('bench_watch', dict(seconds=w + 154.0, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+# RESULTS z (bench 2026-11-11, work/logs/b128_counter.log, work/bench_results/aiskv*__z.json; wake ~s10):
+#   aiskvinf (10 conscripts): 维和 1 s32, 4 s60, 7 s164; **标枪 0 to s169**; 守护者 0; 激流 1 s111 .. 6 s165.
+#   aiskvveh (10 Hammers):    **维和 0 to s185**; 标枪 1 s29, 6 s57, 14 s185; 守护者 0; 激流 1 s112 .. 3 s133.
+#   Reading: the barracks builds only the counter -- no draw among its units (the unit builder's uniform pick would
+#   give ~1/3 Peacekeepers vs the tanks): BEST_UNIT_EXPECTED decides the barracks (l4_efficiency.md). (The first
+#   aiskvinf run expected a Javelin and FAILed on it; the expectation is now the counter's.)
+
+
+JAV_OUT_AT = 100.0                 # mission second the named Javelin soldier is teleported out (e)
 
 
 def e(m):
@@ -768,4 +796,6 @@ CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j
           'aiskpw0': {'x': x},
           'aiskpw3': {'x': x},
           'aisknew': {'y': y},
-          'aisknew2': {'y': y}}
+          'aisknew2': {'y': y},
+          'aiskvinf': {'z': z},
+          'aiskvveh': {'z': z}}

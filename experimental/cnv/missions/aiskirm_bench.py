@@ -211,8 +211,12 @@ def new_xml():
         '</AssetDeclaration>', ''])
 
 
+ARMY_INF, ARMY_VEH = 'SovietAntiInfantryInfantry', 'SovietAntiVehicleVehicleTech1'   # conscript / Hammer tank
+ARMY_N = 10                            # aiskvinf / aiskvveh (check z): what the player owns, idle behind its yard
+
+
 def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None, account=None,
-            buffer=None, new=None):
+            buffer=None, new=None, army=None):
     m = Mission(name=name, map=ai_map(niagara, lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
     if expire is not None:               # aiskexp (check q): the same AI with SecondsTillTargetsExpire = expire
@@ -248,6 +252,12 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
     m.put('AlliedPowerPlant', 'base power', angle=0.0, role='player power')
     base = 'CNV AI Base'
     m.waypoint('ai base', base, 'east base')
+    if army is not None:                 # aiskvinf / aiskvveh (check z): the player owns ARMY_N of `army` at home
+        m.facts['player vehicles'] = int(army == ARMY_VEH)
+        m.spawns.add(army)
+        for k in range(ARMY_N):
+            m.put(army, 'base yard', -150.0 - 60.0 * (k % 5), -150.0 + 60.0 * (k // 5), angle=0.0,
+                  role=f'player army {k}')
     if jav:                              # aiskjav: one named Javelin soldier of s1's, 100 west of the yard (check e)
         m.spawns.add(JAV)
         m.put(JAV, 'east base', -100.0, 0.0, side='s1', angle=3.1416, name='UNIT - CNV AI Jav', role='ai jav')
@@ -273,4 +283,6 @@ MISSION = {'aiskirm': mission, 'aiskirmlow': lambda: mission('CampAISkLow', mone
            'aiskpw0': lambda: mission('CampAISkPw0', buffer=0),       # check x: DesiredExcessPowerBuffer 0 (retail 100)
            'aiskpw3': lambda: mission('CampAISkPw300', buffer=300),   # check x: 300
            'aisknew': lambda: mission('CampAISkNew', new=False),      # check y: a barracks of s1's builds our unit too
-           'aisknew2': lambda: mission('CampAISkNew2', new=True)}     # check y: + a build state listing it
+           'aisknew2': lambda: mission('CampAISkNew2', new=True),     # check y: + a build state listing it
+           'aiskvinf': lambda: mission('CampAISkVInf', army=ARMY_INF),   # check z: the player owns 10 conscripts
+           'aiskvveh': lambda: mission('CampAISkVVeh', army=ARMY_VEH)}   # check z: 10 Hammer tanks

@@ -154,6 +154,11 @@ class Brain:
         self.ai.team_point = self.team_point
         self.ai.offers = self.offers
         self.ai.build_offers = self.build_offers
+        # BEST_UNIT_* scores (expected below) only with host.efficiency: on, the unit builder still fills the
+        # barracks first and the states order almost nothing -- the bench (engine_aiskirm z) builds only the counter,
+        # so the unit builder must step back first (B handoff 130, H1); off = the readings as before
+        self.ai.expected = self.expected if getattr(host, 'efficiency', False) else None
+        self._protos = {}               # template -> a Body never placed (expected: the candidate)
         self.yard_q = {}                # yard name -> [job]
         self.yard_rest = {}             # yard name -> the last frame it starts nothing (the one after a put)
         self.unit_q = []                # [template] waiting for a free, unpacked factory that makes it
@@ -623,6 +628,43 @@ class Brain:
             out.append(tm.Offer(t, frozenset(kinds), surface, state=0 if idle else 1,
                                 standard=self.host.standard(t), cost=self.host.cost(t)))
         return out
+
+    def expected(self, ai, frame, templates):
+        """AIPlayer.expected: {template: tactics.expected_efficiency} (0x8bd780, work/re/l4_efficiency.md). Mine =
+        the AI's living units (category 0xd: INFERRED every non-structure, harvesters too); foes = every enemy
+        player's units, weight UnitBuilderEnemyNearbyMultiplier within UnitBuilderEnemyNearbyDistance of the AI's
+        home (the engine's "in my base area" test 0x8bd0e0 NOT READ -- INFERRED), else 1; defences = their armed
+        structures (category 0x2e: INFERRED); the candidate = a Body of the template never placed. Every enemy, seen
+        or not (no vision test read). UnitModifier from the unit builder's rules (0x8af810 / 0x8af8a0)."""
+        tc, pl = self.host.mod['tactics'], self.host.mod['player']
+        p = pl.efficiency_params(ai.personality)
+        near, mult = p['UnitBuilderEnemyNearbyDistance'], p['UnitBuilderEnemyNearbyMultiplier']
+        live = [b for b in self.sim.living() if not b.scenery]
+        hx, hy = self.home
+        mine = self.fighters([b for b in live if b.owner == self.player and 'STRUCTURE' not in b.kinds])
+        foe_units = [b for b in live if b.owner in self.view.enemies and 'STRUCTURE' not in b.kinds]
+        foes = [(f, mult if math.hypot(b.x - hx, b.y - hy) < near else 1.0)
+                for f, b in zip(self.fighters(foe_units), foe_units)]
+        defences = self.fighters([b for b in live if b.owner in self.view.enemies and 'STRUCTURE' in b.kinds
+                                  and b.weapons])
+        ub = getattr(ai, 'unit_builder', None)
+        mods = ub.rules.get('modifiers', {}) if ub else {}
+        out = {}
+        for t in templates:
+            if t not in self._protos:
+                self._protos[t] = self._proto(t)
+            cand = self.fighters([self._protos[t]])[0]
+            cost, secs = simunits.production(t, self.sim.own)
+            off, dfn = mods.get(t, (1.0, 1.0))
+            out[t] = tc.expected_efficiency(cand, mine, foes, defences, p, cost, secs, off, dfn)
+        return out
+
+    def _proto(self, template):
+        """A Body of the template that is not in the world (Sim.add, then taken out again)."""
+        name = f'__proto_{self.player}_{template}'
+        b = self.sim.add(name, template, self.player, -1e6, -1e6)
+        self.sim.bodies.pop(name, None)
+        return b
 
     def units(self, ai, frame):
         out = []
