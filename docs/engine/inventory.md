@@ -702,7 +702,7 @@
 | 未做 | `Behaviors/CircularDamageUpdate` | 1 (1) |  | 模拟器代码里没有这个名字；例：SovietAntiNavyShipTech1 |
 | 未做 | `Behaviors/DieOnProducerDeathUpdate` | 1 (1) |  | 模拟器代码里没有这个名字；例：AlliedAttackDrone |
 | 未做 | `Behaviors/DominateEnemySpecialPower` | 1 (1) |  | 模拟器代码里没有这个名字；例：AlliedInfiltrationInfantry |
-| 未做 | `Behaviors/GrapplingHookUpdate` | 1 (1) | a1 a3 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：SovietAntiVehicleVehicleTech3 |
+| 未做 | `Behaviors/GrapplingHookUpdate` | 1 (1) | a1 a3 a4 a6 a7 a9 | 仅engine_grapple a最小消费者诊断；模块派发/拉拽/释放未解释，未实现，不作为已对拍证据；例：SovietAntiVehicleVehicleTech3 |
 | 已对拍 | `Behaviors/LinearDamageUpdate` | 1 (1) | a1 a2 a4 a6 a7 | tests/test_simsweep.py::test_sweep_the_line_walks_out_and_a_stop_does_not_cut_it_at_the_bench_frames；例：AlliedAntiNavalScout |
 | 未做 | `Behaviors/MagneticEffectUpdate` | 1 (1) | a1 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedAntiNavyShipTech1 |
 | 未做 | `Behaviors/ReconstituteStateSpecialAbility` | 1 (1) | a1 a2 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoTech1 |
@@ -782,7 +782,7 @@
 | 未做 | `ReportWeaponFiredStatNugget` | 2 |  | 模拟器代码里没有这个名字；例：SovietVacuumBomb, ParticleCannonWeapon |
 | 未做 | `ActivateCircularDamageNugget` | 1 |  | 模拟器代码里没有这个名字；例：SovietAntiNavyShipTech1TeslaNova |
 | 已对拍 | `DOTNugget` | 1 |  | tests/test_simbench_c.py::test_dot_counts_interval_ticks_for_two_durations_and_observes_first_damage_frame；例：PlayerPowerIrradiateTargetWeapon |
-| 未做 | `GrapplingHookNugget` | 1 | a1 a3 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：SovietAntiVehicleVehicleTech3Harpoon |
+| 未做 | `GrapplingHookNugget` | 1 | a1 a3 a4 a6 a7 a9 | engine_grapple a最小消费者诊断；GrapplingHookUpdate派发/拉拽/释放未解释，显式报告gap；tests/test_grapple_nugget.py守卫直接命中/继承/弹头及原版缓存，不登记已对拍；例：SovietAntiVehicleVehicleTech3Harpoon |
 | 已对拍 | `LeechHealthDamageNugget` | 1 | a1 a2 a3 a4 a5 a6 a7 | tests/test_simbench_c.py::test_leech_health_heals_from_damage_and_respects_the_heal_fraction；例：SovietAntiVehicleVehicleTech1LeechBeamWeapon |
 
 ## AI

@@ -276,7 +276,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v29.json')    # v29: unresolved lift effects remain explicit gaps
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v30.json')    # v30: unresolved grappling consumers remain explicit gaps
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -374,9 +374,11 @@ def _weapons(texts, base_table=None):
             mods, unsupported = [], []
             # engine_lift a/landing: activation needs LiftObjectUpdate, but the
             # short Lifetime does not explain release. Do not silently drop it
-            # or pretend that the independent marker damage models the lift.
-            if list(_blocks(bare, 'ActivateLiftObjectNugget')):
-                unsupported.append('ActivateLiftObjectNugget')
+            # or pretend that independent marker damage models the consumer.
+            # Grappling also needs its caster update; dispatch/pull/release are unresolved.
+            for effect in ('ActivateLiftObjectNugget', 'GrapplingHookNugget'):
+                if list(_blocks(bare, effect)):
+                    unsupported.append(effect)
             impacts = []
             for h, inner in _blocks(bare, 'MetaImpactNugget'):
                 # Only the ordinary, immediate detonation form has a numerical
