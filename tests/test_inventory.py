@@ -257,6 +257,51 @@ def test_only_a_probe_a_test_holds_the_simulator_to_makes_an_item_benched(tmp_pa
     assert items[1]['state'] == inventory.BENCHED and 'engine_scripts5' in items[1]['why']
 
 
+def test_a_reading_of_one_check_counts_only_when_a_test_runs_that_check(tmp_path):
+    """engine_aiskirm has thirty checks; MinTime was read only in check mt's docstring (B round 151-152: not matched),
+    yet a test running checks c / y made it 已对拍. A probe of several checks is split by check (probe_parts): the
+    module text counts for any test naming the probe, a check's own function only for a test that runs that check
+    (after the name, quoted after it, a build variant, a parametrize list); a line saying it was not measured counts
+    for nothing."""
+    checks, tests = tmp_path / 'checks', tmp_path / 'tests'
+    checks.mkdir()
+    tests.mkdir()
+    (checks / 'engine_multi.py').write_text(
+        '"""Shared: TEAM_COMPARE_NUM_MEMBERS read.\nPrediction: Speed outside the observation."""\n'
+        'def c(m):\n    """MaxUnits measured."""\n\n\ndef mt(m):\n    """MinTime measured."""\n\n\n'
+        "def y(m):\n    pass\n\n\ndef z(m):\n    pass\n\n\n"
+        "CHECKS = {'multi': {'c': c, 'y': y, 'z': z}, 'multimt': {'mt': mt}}\n", encoding='utf-8')
+    (checks / 'engine_one.py').write_text('"""Range read."""\nCHECKS = {\'one\': {\'a\': lambda m: m}}\n',
+                                          encoding='utf-8')
+    (tests / 'test_x.py').write_text(
+        '"""bench engine_multi c / q; checks/engine_one.py"""\n'
+        "@pytest.mark.parametrize('k', ['z'])\ndef test_a(k):\n    _sim_run('engine_multi', k)\n\n\n"
+        "def test_b():\n    simai.run('multi', 'y')\n", encoding='utf-8')
+    tested = inventory.tested_probes(str(tests), str(checks))
+    assert tested == {'checks/engine_multi.py', 'checks/engine_one.py', 'checks/engine_multi.py:c',
+                      'checks/engine_multi.py:y', 'checks/engine_multi.py:z'}
+    src = [(s, inventory.measured(t)) for p in ('engine_multi', 'engine_one')
+           for s, t in inventory.probe_parts(p, (checks / f'{p}.py').read_text(encoding='utf-8'))]
+    assert [s for s, _ in src] == ['checks/engine_multi.py', 'checks/engine_multi.py:c', 'checks/engine_multi.py:y',
+                                   'checks/engine_multi.py:z', 'checks/engine_multi.py:mt', 'checks/engine_one.py']
+    names = ('TEAM_COMPARE_NUM_MEMBERS', 'MaxUnits', 'MinTime', 'Speed', 'Range')
+    items = [dict(part=inventory.ACTION, name=n, state=inventory.GUESSED, why='w') for n in names]
+    inventory.benched(items, src, tested)
+    got = {i['name']: (i['state'], i['why']) for i in items}
+    assert got['TEAM_COMPARE_NUM_MEMBERS'] == (inventory.BENCHED, 'w；台上量过、测试对拍：checks/engine_multi.py')
+    assert got['MaxUnits'] == (inventory.BENCHED, 'w；台上量过、测试对拍：checks/engine_multi.py:c')
+    assert got['MinTime'] == (inventory.GUESSED, 'w；台上量过（checks/engine_multi.py:mt），没有测试跑这个台子')
+    assert got['Speed'] == (inventory.GUESSED, 'w')
+    assert got['Range'][0] == inventory.BENCHED
+
+
+def test_mintime_is_not_benched_by_a_check_no_test_runs():
+    """The live case: no test runs engine_aiskirm's check mt, and engine_aiupgrade says MinTime is outside its
+    observation -- MinTime is not 已对拍 until a test replays a MinTime bench (or B registers one)."""
+    row = next(i for i in items() if (i['part'], i['name']) == (inventory.AI, '造兵/BuildEntry.MinTime'))
+    assert not re.search(r'checks/engine_(?:aiupgrade\.py|aiskirm\.py(?!:mt))', row['why']), row['why']
+
+
 # ---- our 9 levels' column (the user, 11-11: finish what our 9 levels use first)
 def test_every_item_says_which_of_our_levels_use_it_as_the_level_inventories_count():
     """'9 关用到' is the level inventories' scope: engine A's parts as inventory_levels.py (nugget forms split as there),

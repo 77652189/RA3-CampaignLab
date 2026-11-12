@@ -601,20 +601,76 @@ CHECKS = os.path.join(HERE, 'checks')
 ENGINE_DOCS = os.path.join(ROOT, 'docs', 'engine')
 
 
+def probe_checks(text):
+    """(missions, {check key: [function name]}) of a probe's source: its CHECKS = {mission: {key: function}} read from
+    the syntax tree (a probe is not imported: it builds missions)."""
+    missions, keys = set(), collections.defaultdict(list)
+    for node in ast.parse(text).body:
+        if not (isinstance(node, ast.Assign) and isinstance(node.value, ast.Dict)
+                and any(getattr(g, 'id', None) in ('CHECKS', 'MISSION') for g in node.targets)):
+            continue
+        for mk, mv in zip(node.value.keys, node.value.values):
+            if isinstance(mk, ast.Constant) and isinstance(mk.value, str):
+                missions.add(mk.value)
+            if any(getattr(g, 'id', None) == 'CHECKS' for g in node.targets) and isinstance(mv, ast.Dict):
+                for k, v in zip(mv.keys, mv.values):
+                    if isinstance(k, ast.Constant) and isinstance(k.value, str) and isinstance(v, ast.Name):
+                        if v.id not in keys[k.value]:
+                            keys[k.value].append(v.id)
+    return missions, dict(keys)
+
+
+def probe_parts(name, text):
+    """[(source, text)] of one probe. A probe with one check is one source, 'checks/engine_X.py'. A probe with several
+    (engine_aiskirm's thirty) is split: each check's own function (its docstring holds that check's readings) is
+    'checks/engine_X.py:<key>', the rest (module docstring, shared helpers, constants) 'checks/engine_X.py'. A word only
+    a check's own function names was read by that check: only a test that runs that check makes it 已对拍
+    (tested_probes), not one that runs another check of the same probe."""
+    src = f'checks/{name}.py'
+    _, keys = probe_checks(text)
+    if len(keys) < 2:
+        return [(src, text)]
+    fns = {node.name: node for node in ast.parse(text).body if isinstance(node, ast.FunctionDef)}
+    lines, cut, out = text.splitlines(keepends=True), set(), []
+    for key, names in keys.items():
+        body = []
+        for n in names:
+            node = fns.get(n)
+            if node is not None:
+                first = min([node.lineno] + [d.lineno for d in node.decorator_list]) - 1
+                body.append(''.join(lines[first:node.end_lineno]))
+                cut.update(range(first, node.end_lineno))
+        out.append((f'{src}:{key}', ''.join(body)))
+    return [(src, ''.join(x for i, x in enumerate(lines) if i not in cut))] + out
+
+
+# a line saying what it names was not measured (a prediction, a gap, a run not made) is no reading of it
+NOT_MEASURED = re.compile(r'未实测|没(?:单独)?量|未量|not (?:yet )?(?:measured|run)|unmeasured|outside the observation'
+                          r'|remain gaps?', re.I)
+
+
+def measured(text):
+    """`text` without the lines NOT_MEASURED marks."""
+    return ''.join(x for x in text.splitlines(keepends=True) if not NOT_MEASURED.search(x))
+
+
 def bench_sources():
     """[(source, text)] where bench measurements live: the engine probes (checks/engine_*.py, run with cnv_check on the
-    bench, their readings in the docstrings) and the lines of docs/engine/*.md marked measured (**测**, not 未实测)."""
+    bench, their readings in the docstrings; a probe of several checks split by check, probe_parts) and the lines of
+    docs/engine/*.md marked measured (**测**). In both a line NOT_MEASURED marks is left out (engine_aiupgrade's
+    'Retail tech entries have MinTime >=180s, outside the observation' made MinTime 已对拍)."""
     need(CHECKS, 'the bench checks')
     need(ENGINE_DOCS, 'the engine docs')
     out = []
     for f in sorted(os.listdir(CHECKS)):
         if f.startswith('engine_') and f.endswith('.py'):
-            out.append((f'checks/{f}', open(os.path.join(CHECKS, f), encoding='utf-8').read()))
+            text = open(os.path.join(CHECKS, f), encoding='utf-8').read()
+            out += [(s, measured(t)) for s, t in probe_parts(f[:-3], text)]
     for f in sorted(os.listdir(ENGINE_DOCS)):
         if f.endswith('.md') and f != os.path.basename(OUT):
             lines = [x for x in open(os.path.join(ENGINE_DOCS, f), encoding='utf-8')
-                     if '测' in x.replace('未实测', '').replace('推断', '') and '未实测' not in x]
-            out.append((f'docs/engine/{f}', ''.join(lines)))
+                     if '测' in x.replace('未实测', '').replace('推断', '')]
+            out.append((f'docs/engine/{f}', measured(''.join(lines))))
     if not out:
         raise SystemExit('inventory: no bench sources found')
     return out
@@ -629,18 +685,57 @@ def tested_probes(tests=TESTS, checks=CHECKS):
     'engine_X', or a variant 'engine_X_<v>' that is not a probe of its own (the longest probe name it starts with).
     Named, not only quoted as a build: tests replay a probe by its build name (_sim_resolve('engine_seal', ..)), by
     its bench mission (simai.run('aiskirm') -- 'bench engine_aiskirm c' in the test) or by its layout rebuilt
-    (engine_mining's), and each cites the probe whose readings it asserts. A probe no test names is a reading only."""
+    (engine_mining's), and each cites the probe whose readings it asserts. A probe no test names is a reading only.
+    For a probe of several checks (probe_parts) also 'checks/engine_X.py:<key>' for each check the naming test file
+    runs (tested_checks); naming the probe alone runs none of its checks' own readings."""
     stems = {f[:-3] for f in os.listdir(checks) if f.startswith('engine_') and f.endswith('.py')}
+    info = {}
     out = set()
     for f in sorted(os.listdir(tests)):
         if not f.endswith('.py'):
             continue
-        for name in PROBE_NAME.findall(open(os.path.join(tests, f), encoding='utf-8').read()):
+        text = open(os.path.join(tests, f), encoding='utf-8').read()
+        named = {}
+        for name in PROBE_NAME.findall(text):
+            full = name
             while name not in stems and '_' in name[len('engine_'):]:
                 name = name.rsplit('_', 1)[0]
             if name in stems:
                 out.add(f'checks/{name}.py')
+                named.setdefault(name, set()).add(full)
+        for name, variants in named.items():
+            if name not in info:
+                info[name] = probe_checks(open(os.path.join(checks, f'{name}.py'), encoding='utf-8').read())
+            missions, keys = info[name]
+            if len(keys) >= 2:
+                out |= {f'checks/{name}.py:{k}' for k in tested_checks(text, name, variants, missions, set(keys))}
     return out
+
+
+_WORD_LIST = r'(?:\.py)?(?:\s*[:.]\s*|\s+)(\w+(?:\s*[/,]\s*\w+)*)'
+_PARAMETRIZE = re.compile(r'parametrize\((.*?)\)\s*\n\s*(?:@|def )', re.S)
+
+
+def tested_checks(text, probe, variants, missions, keys):
+    """The checks of `probe` (keys) that the test file `text` runs: a key written after the probe's or one of its
+    missions' name ('bench engine_aiskirm d / f', 'engine_engineer:c', 'checks/engine_aiskirm.py y'), quoted as the
+    argument after it (_sim_run('engine_scripts7', 'idle'), simai.run('aiskirmlow', 'd')), a build variant
+    'engine_seal_move', or -- when the check is a variable (_sim_resolve('engine_seal', check)) -- quoted in the
+    file's pytest parametrize lists."""
+    names = sorted({probe, *missions, *variants}, key=len, reverse=True)
+    alt = '|'.join(re.escape(n) for n in names)
+    found = set()
+    for v in variants:
+        if v != probe and v[len(probe) + 1:] in keys:
+            found.add(v[len(probe) + 1:])
+    for m in re.finditer(r'(?<![\w/])(?:checks/)?(?:' + alt + r')(?![\w])' + _WORD_LIST, text):
+        found |= set(re.split(r'\s*[/,]\s*', m.group(1))) & keys
+    quoted = r'[\'"](?:' + alt + r')[\'"]\s*,\s*'
+    found |= set(re.findall(quoted + r'[\'"](\w+)[\'"]', text)) & keys
+    if re.search(quoted + r'[A-Za-z_]\w*\s*[,)]', text):
+        for block in _PARAMETRIZE.findall(text):
+            found |= set(re.findall(r'[\'"](\w+)[\'"]', block)) & keys
+    return found
 
 
 def bench_verdict(rx, src, tested):

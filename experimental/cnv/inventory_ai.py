@@ -13,8 +13,9 @@ Left out: bookkeeping (ids, inheritance, includes). 不涉及: speech / video / 
 
 States: 推断 -- the name is a quoted string in the AI model (the private engine model's ra3model/ai/*.py, or the public
 simai.py, simtech.py for the protocol lottery): a first cut, "read" is not "acts on" -- NOTES corrects it; 未做 -- not there; 已对拍 -- an implemented item
-whose last word a measured (测) line of docs/engine/ai*.md or a checks/engine_ai*.py names (generic words excluded),
-or the BENCHED register.
+whose last word a checks/engine_ai*.py a test runs names (generic words excluded; of a probe of several checks, the
+check that names it, inventory.probe_parts; a line saying it was not measured does not count, inventory.measured), or
+the BENCHED register. Named only by a probe no test runs, or a measured (测) line of docs/engine/ai*.md: 推断, 台上量过.
 """
 import collections
 import os
