@@ -45,14 +45,19 @@ def test_without_crush_the_guards_are_not_run_over(lib, build):
     assert all(r['守军数'] >= 8 for r in rows)
 
 
-@pytest.mark.xfail(strict=True, reason='aicrush1 still has 8 guards at row 32 (bench 0 from s28-s33). The first '
-                                       'Crush move keeps the guard spot now (Sim.claims, A round 161); the tanks '
-                                       'reach the plant s21-24 (bench s15) and a member re-picks only on the '
-                                       'tactics update (~4 s), not when its target dies (bench 8 dead s19-s22).')
+@pytest.mark.xfail(strict=True, reason='aicrush1 has 11/9/9/9/8/8 guards at s28-s33, bench has zero with '
+                                       '4 tanks alive. First Crush goal now matches the guard spot, but arrival '
+                                       'and target selection timing remain unresolved; hypothesis table and '
+                                       'current replay: work/re/c_crush_revisit_report.md; work/re/handoff-c.md.')
 def test_crush_runs_the_guards_over_at_once(lib):
-    """checks/engine_aicrush.py aicrush1."""
-    _, rows = _probe_run('aicrush1', lib, 35.0)
-    assert rows[32]['守军数'] < 8
+    """checks/engine_aicrush.py aicrush1: no guards at s28-s33, all four tanks survive."""
+    w, rows = _probe_run('aicrush1', lib, 35.0)
+    samples = [(t, r) for (t, _), r in zip(w.sim.series, rows) if 28 <= t <= 33]
+    # The series includes t=0; use its mission clock, not row i ~ second i+1.
+    assert [t for t, _ in samples] == list(range(28, 34))
+    window = [r for _, r in samples]
+    assert [r['坦克数'] for r in window] == [4] * 6
+    assert [r['守军数'] for r in window] == [0] * 6
 
 
 # ---- checks/engine_aitarget.py a (bench 2026-11-06): which structure an attack team goes for first
