@@ -163,6 +163,7 @@ class Brain:
         self.ai.team_point = self.team_point
         self.ai.offers = self.offers
         self.ai.build_offers = self.build_offers
+        self.ai.near_factory = self.near_factory
         # BEST_UNIT_* scores (expected below) with host.efficiency (SimAI.efficiency): the build states then
         # take the idle barracks every second and the unit builder (every 10 s) finds it busy -- the bench (engine_
         # aiskirm z) builds only the counter (B handoff 131); off = the unit builder alone, as before round 129
@@ -673,6 +674,29 @@ class Brain:
             out.append(tm.Offer(t, frozenset(kinds), surface, state=0 if idle else 1,
                                 standard=self.host.standard(t), cost=self.host.cost(t)))
         return out
+
+    def near_factory(self, ai, frame, template, distance):
+        """AIPlayer.near_factory (BuildEntry.BlockIfThingNearFactory, work/re/d59_b_fields.md 2): for each ready,
+        idle factory of the player that builds `template` (as offers' state 0), the living things (the factory
+        itself too, scenery not) whose 2D distance to its centre <= distance + their radius, each with its
+        relationship to the player: SAME_PLAYER, NEUTRAL (the civilian player or a Neutral relation), ENEMIES,
+        else ALLIES. bench 2026-11-12 engine_aiskirm y aiskblkn / aiskblkf / aiskblkr."""
+        s = self.sim
+        ready = [f for f in self.factories() if self.frame >= self.made.get(f.name, -10 ** 9)
+                 + self.host.unpack(f.template) and template in self.host.menu(f.template)
+                 and not s.queues.get(f.name) and not any(q in self.host.menu(f.template) for q in self.unit_q)]
+        if not ready:
+            return []
+        live = [b for b in self.living() if not b.scenery]
+
+        def rel(owner):
+            if owner == self.player:
+                return 'SAME_PLAYER'
+            if owner == sim.CIV or s.relations.get((self.player, owner)) == 'Neutral':
+                return 'NEUTRAL'
+            return 'ENEMIES' if owner in self.view.enemies else 'ALLIES'
+        return [[(b.template, rel(b.owner)) for b in live
+                 if math.hypot(b.x - f.x, b.y - f.y) <= distance + (b.radius or 0.0)] for f in ready]
 
     def expected(self, ai, frame, templates):
         """AIPlayer.expected: {template: tactics.expected_efficiency} (work/re/l4_efficiency.md). Mine =

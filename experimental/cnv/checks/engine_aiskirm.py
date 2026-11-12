@@ -507,7 +507,17 @@ def y(m):
       4 s44) while 标枪 went 1 -> 6 and 维和 0 -> 2; then **3 at s150, 4 from s155** to s168 (维和 5, 标枪 9).
       Reading: the cap binds (template match, the MEDIUM bit, the value) -- the barracks' other units take the
       capped one's turns; after ~s150 the capped unit is built again with none lost, so what the engine counts
-      against the cap is not simply the units owned (not known; tests/test_simai_bench_b.py strict xfail)."""
+      against the cap is not simply the units owned (not known; tests/test_simai_bench_b.py strict xfail).
+
+    RESULTS y on aiskblk* (bench 2026-11-12, all three PASS; runs work/testbench/runs/CampAISkBlk{N,F,R}Y_mcp_1112_*):
+      aisknew2 whose CNVNewPK entry carries BlockIfThingNearFactory Rule ANY Relationship NEUTRAL IncludeThing <a
+      neutral blocker north of the copied barracks>, default distance 150.
+      aiskblkn (bear 120 away): **新维和 0 to s168**; 维和 6, 标枪 11 (the barracks build the rest).
+      aiskblkf (bear 400 away): 新维和 1 s28, 4 s45, **9 s167** -- as aisknew2 (1 s27, 9 s167).
+      aiskblkr (an allied power plant whose centre is 190 away): **新维和 0 to s168**; 维和 9, 标枪 9.
+      Reading: as D59 read it -- an entry scores 0 while a thing passing the filter is within the distance of the
+      factory; 'within' adds the thing's bounding circle (centre 190 > 150, circle in reach), and NEUTRAL matches a
+      neutral thing."""
     NEW_PK, NEW_BARRACKS = 'CNVNewPK', 'CNVAIBarracks'      # missions/aiskirm_bench.py's (G5: no content import)
     t = Test()
     PK, JAV = 'AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry'
