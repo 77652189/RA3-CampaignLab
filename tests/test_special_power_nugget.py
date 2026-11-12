@@ -359,3 +359,43 @@ def test_retail_scrambler_modifier_expiry_clears_script_status(script_frame):
     e.act('UNIT_CHANGE_OBJECT_STATUS', [b.name, 'NO_ATTACK', 1], 'expiry interface')
     e.aura_tick()
     assert {'NO_ATTACK', 'IMMOBILE'} <= b.status
+
+
+def test_special_power_nugget_bombing_diagnostic_bench_replay():
+    """engine_spnbomb a measured 1199 in all lanes; no bombing was observed.
+
+    This only replays marker/liveness and guards the unresolved OCL consumer.
+    The original death prediction remains FAIL in the check; see
+    work/re/c_spnbomb_report.md. It does not validate bombing dispatch.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_spnbomb', 'a')
+    e = sim.Sim(m, t)
+    e.shot_clock = True
+    result = e.run(16)
+    measured = (1199, 1199, 1199, 1199)
+    assert tuple(result.series[-1][1]) == measured
+    assert all(tuple(row) == measured for sec, row in result.series if sec >= 14)
+    assert (sim.GAP_WEAPON, 'SpecialPowerNugget') in e.unmodeled
+
+
+@pytest.mark.xfail(strict=True, reason=(
+    'Retail SPN bombing OCL consumer is unsupported; native host kills while '
+    'extended synthetic host does not. See work/re/c_spnbomb_report.md and handoff-c.md.'))
+def test_special_power_nugget_native_bombing_consumer_bench_replay():
+    """engine_spnbombnative a: measured native kill vs three live controls.
+
+    The check's original synthetic-host death prediction remains FAIL.
+    This replay asserts the observed consumer boundary, not that prediction.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_spnbombnative', 'a')
+    e = sim.Sim(m, t)
+    e.shot_clock = True
+    result = e.run(24)
+    measured = (1010, 1110, 1110, 1110)
+    assert tuple(result.series[-1][1]) == measured
+    assert all(tuple(row) == measured for sec, row in result.series if sec >= 22)
+    assert (sim.GAP_WEAPON, 'SpecialPowerNugget') not in e.unmodeled
