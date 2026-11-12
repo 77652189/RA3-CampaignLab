@@ -378,8 +378,10 @@ class Brain:
                'beacons': set(),                                                     # no beacons in the simulator
                'power advantage': self.power_advantage,
                'attacked': self.attacked, 'energy': self.energy,
-               # the private AIPlayer.available: no income -> the budget share pays nothing (bench engine_aitower e)
-               'own income': self.income(self.player)}
+               # the private AIPlayer.available: no income -> the budget share pays nothing (bench engine_aitower e).
+               # A refinery counts: the retail one brings its own miner (SpawnBehavior SpawnOnUnpack), which the
+               # simulator's skirmish runs (aiskirm) do not show -- B handoff 137
+               'own income': int(any('REFINERY' in b.kinds for b in mine)) or self.income(self.player)}
         if foes:                                     # INFERRED (work/re/l4_states.md): the engine's enemy = the first of the enemies here
             out['opponent funds'] = self.sim.money.get(foes[0], 0)
             out['income'] = (self.income(self.player), self.income(foes[0]))
