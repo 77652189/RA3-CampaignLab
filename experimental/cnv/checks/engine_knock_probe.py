@@ -41,7 +41,7 @@ import re
 
 import labpaths
 from maps import probe_range
-from parts import Mission, Script, Test, Unit
+from parts import Mission, Obj, Script, Test, Unit
 from checks.engine_clip import ORDER, clip_v4
 from checks.engine_suppress_probe import EVERY, LINES, PROBE, probe_man
 
@@ -84,6 +84,19 @@ FIRE = {'late': 1 / 15, 'late1': 0.03}
 MOVE = {'stand': 10.5, 'standlate': 310 / 15 - ORDER}
 RUNS.update({k: ORDER + 20.0 for k in MOVE})
 MOVE_STAND, MOVE_CONTROL = 'Test Knock Stand Away', 'Test Knock Control Away'
+# engine line A round 165, `fire` (CampKPFire): Physics P4, can a knocked man shoot? `land`, and at ORDER + SHOOT
+# (frame 240, the man in the air: lift 174, down at 300) the flung man is ordered to attack a Hammer standing 100 east
+# of his landing spot (in his 150 range there, out of it at the start and most of the flight), and on the same frame
+# the mild lane's man (not shot at: the control) a Hammer 100 east of him -- the control's first hit is the order's
+# frame plus the Peacekeeper's own aim / fire delay. Everyone else stays NO_ATTACK; the Hammers too (no return fire).
+# Prediction from the data (Generals: a stunned body's AI does not run; INFERRED for RA3): no shot in the air nor lying,
+# the first hit at the end of the landing hold (338) plus the control's delay. Bench 11-11 PASS, and not so: this
+# man lands at (2300, 3180) at 300 (not land's 3060) and stays there; his Hammer first drops ~frame 300-316 (timed
+# by the rocket hit, frame 173), the control's within ~1 s of the order: he fires lying, before he stands (the hold
+# stops his feet only), on the order he got in the air. Whether he can fire in the air is not told (out of range).
+SHOOT = {'fire': 10.0}
+RUNS.update({k: ORDER + 20.0 for k in SHOOT})
+SHOOT_AT = {'target': ('rocket', (2400.0, 3060.0)), 'control': ('mild', (100.0, 450.0))}   # landing + 100 / site offset
 # bench 11-10: ORDER + 1/15 came out two frames late (lift 176 against land's 174); `late1` (+0.03 s) aimed at one
 # frame, retail's hit frame (lift 175), and came out two frames late as well
 HIT = '<DamageNugget Damage="1.5" DamageType="UNRESISTABLE" DeathType="NORMAL" Radius="0"/>'
@@ -167,7 +180,7 @@ def mission():
 
 CHECK_LANES = {'shot': ('mild', 'strong'), 'tank': ('tank',),    # four counter lines at most: two lanes a check
                'retail': ('yuri', 'rocket'), 'land': ('rocket',), 'late': ('rocket',),
-               'late1': ('rocket',), 'stand': ('rocket',), 'standlate': ('rocket',)}
+               'late1': ('rocket',), 'stand': ('rocket',), 'standlate': ('rocket',), 'fire': ('rocket',)}
 # `land` also counts whether the flung man died (a dead man's health counter keeps its last reading). Prediction from
 # the data: no fall damage -- PhysicsBehavior.xsd has no fall / splat damage field and the Peacekeeper's Physics is
 # all defaults -- so alive, 99.
@@ -199,6 +212,16 @@ def check(m, which):
         t.scripts.append(Script('Test - move', [('TIMER_EXPIRED', 'Knock Move')],
                                 [('MOVE_NAMED_UNIT_TO', name('rocket', 'man'), MOVE_STAND),
                                  ('MOVE_NAMED_UNIT_TO', name('mild', 'man'), MOVE_CONTROL)]))
+    if which in SHOOT:
+        shoot = []
+        for part, (lane, at) in SHOOT_AT.items():
+            x, y = at if lane == 'rocket' else m.site(SITE[lane], *at)
+            t.objects.append(Obj(TANK, x, y, side='p1', name=name('fire', part), site=SITE[lane]))
+            t.scripts[0].do.append(('UNIT_CHANGE_OBJECT_STATUS', name('fire', part), 'NO_ATTACK', 1))
+            shoot += [('UNIT_CHANGE_OBJECT_STATUS', name(lane, 'man'), 'NO_ATTACK', 0),
+                      ('NAMED_ATTACK_NAMED', name(lane, 'man'), name('fire', part))]
+        t.scripts[0].do.append(('SET_MILLISECOND_TIMER', 'Knock Shoot', float(ORDER + late + SHOOT[which])))
+        t.scripts.append(Script('Test - shoot', [('TIMER_EXPIRED', 'Knock Shoot')], shoot))
     for i, s in enumerate(stops):
         t.scripts.append(Script(f'Test - stop {i}', [('TIMER_EXPIRED', f'Knock Stop {i}')],
                                 [('UNIT_CHANGE_OBJECT_STATUS', name(k, 'gun'), 'NO_ATTACK', 1)
@@ -216,7 +239,15 @@ def check(m, which):
         t.counters.append((c, f'{k} dead'))
         t.scripts.append(Script(f'Test - dead {k}', [('NAMED_DESTROYED', name(k, 'man'))], [('SET_COUNTER', c, 1)]))
         expect[f'{k} dead'] = 0
-    t.expect = [(label, run - 2, '==', expect[label], run) for _, label in t.counters]
+    hit = set()
+    for part in SHOOT_AT if which in SHOOT else ():     # each Hammer's health: hit by the end (when: the series)
+        c = f'CNV_Knock_fire_{part}'
+        t.counters.append((c, f'fire {part}'))
+        t.scripts.append(Script(f'Test - health fire {part}', [],
+                                [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', name('fire', part), c)], once=False))
+        expect[f'fire {part}'] = 100
+        hit.add(f'fire {part}')
+    t.expect = [(label, run - 2, '<' if label in hit else '==', expect[label], run) for _, label in t.counters]
     t.bench = [('bench_watch', dict(seconds=run, every=.5, sheet=False, lines=len(t.counters)))]
     return t
 

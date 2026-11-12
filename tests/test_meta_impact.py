@@ -459,3 +459,40 @@ def test_physics_a_knocked_man_keeps_still_38_frames_after_landing_then_walks_hi
     assert simunits.meta_impact_landing_hold() == 38
     assert first == 338
     assert man.x > 2300 and man.y == pytest.approx(3060)
+
+
+def test_physics_p4_a_knocked_man_fires_his_order_while_lying_before_he_stands():
+    """engine_knock_probe fire (bench 11-11 CampKPFire_mcp_1111_163338 PASS): the flung man (lift 174, on the ground at
+    (2300, 3180) from 300, still there to the end) is ordered at frame 240, in the air, to attack a Hammer 100 east of
+    the landing spot ((2400, 3060)); the unshot control, ordered on the same frame at a Hammer 100 east of him, first
+    hits it within ~1 s. Timed against the rocket man's own hit (frame 173, his counter drops at bench s10.1), the
+    flung man's Hammer first drops ~9.0 s of bench samples later: frame ~300-316 -- from the landing, well before the
+    landing hold ends at 338: the hold stops his feet, not his gun, and the attack order given in the air is kept.
+    The simulator's 2-D reach has the target from frame 292, ~840 up: no fire in the air (INFERRED, not told apart)."""
+    import build
+    import sim
+    import simunits
+    from checks.engine_knock_probe import name
+
+    m, t, _ = build.resolve('engine_knock_probe', 'fire')
+    e = sim.Sim(m, t)
+    man, target = e.bodies[name('rocket', 'man')], e.bodies[name('fire', 'target')]
+    man.status.discard('NO_ATTACK')
+    man.script_status.discard('NO_ATTACK')
+    points = simunits.meta_impact_trajectory((2300, 3750, 212.5), (0, -1.7730, 45.6088), (2300, 3180, 212.5))
+    assert points[-1] == (2300, 3180, 212.5)
+    e.impact_flights = {id(man): (man, 173, points)}
+    man.x, man.y = points[0][:2]
+    e.eng.frame = 173
+    full, first = target.health, None
+    while e.eng.frame < 345:
+        e.eng.frame += 1
+        if e.eng.frame == 240:
+            e.order_attack(man, target.name)
+        e.move(1 / 15)
+        e.fight()
+        e.deal(1 / 15)
+        if first is None and target.health < full:
+            first = e.eng.frame
+    assert (man.x, man.y) == (2300, 3180)
+    assert first is not None and 300 <= first <= 316 < 338, first

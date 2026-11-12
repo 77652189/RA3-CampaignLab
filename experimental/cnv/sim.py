@@ -3752,7 +3752,11 @@ class Sim:
         self.chilling = []
         self._fire_obstacles = None             # `shot_blocked`'s footprints, taken once a tick when first asked
         live = [b for b in self.living() if not b.scenery and self.on_map(b)]     # off the border: out of the fight
+        flying = self.__dict__.get('impact_flights', {})
+        # a knocked body fires its kept order lying (landing hold: feet only), not in the air (Physics P4, bench 11-11
+        # engine_knock_probe fire: first hit ~300-316, the landing 300; in 2-D reach from 292 -- no air fire INFERRED)
         armed = [b for b in live if b.weapons and 'NO_ATTACK' not in b.status    # NO_ATTACK: holds its fire
+                 and id(b) not in flying
                  and not self.emp_disabled(b) and not self.unpowered(b)
                  and not (b.hold_fire and (b.hold_paused or not isinstance(b.goal, Body)))]
         cloaked = self.cloaked(live)
