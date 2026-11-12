@@ -865,10 +865,35 @@ def test_mining_the_refinery_s_own_collector_s_first_money_as_the_bench(name):
     assert abs(_full_mining(name)['首笔'] - MINE_TURN_FIRST[name][0]) <= 2
 
 
-@pytest.mark.xfail(strict=True, reason='round 177: at retail facing the sim first money is 122, the bench 111; the '
-                                       'first leg from the spawn spot is 11 frames shorter there than the sim leg')
 def test_mining_retail_facing_first_money_as_the_bench():
+    """Round 179: at retail's facing the node's own cycle (151) bounds the trip, the drive is shorter (a leg 36), so
+    the first trip, at a node that waits for nobody, pays at 111 (was 122 with a drive-bound leg of 45)."""
     assert abs(_full_mining('mineniag')['首笔'] - MINE_NIAGARA_BENCH[0]) <= 2
+    assert abs(_full_mining('mineturn0')['首笔'] - MINE_TURN_FIRST['mineturn0'][0]) <= 2
+
+
+MINE_LEGS_0 = {'首笔': 111, '到矿': 23, '离矿': 96, '二到矿': 156}    # bench 2026-11-12 mineturn0 q (CampMineT0Q)
+
+
+def test_mining_retail_facing_legs_as_the_bench():
+    """mineturn0 q: the collector in c's node square at 23 (from where it faded in), out at 96 (73 frames: a node
+    that waits for nobody), back in at 156 (15 after its unloading ends) -- each within 3."""
+    r = _full_mining('mineturn0', 'q', until=30.0)
+    assert all(abs(r[k] - v) <= 3 for k, v in MINE_LEGS_0.items()), r
+
+
+MINE_FAR_BENCH = {'首笔': 133, '二笔': 288, '三笔': 443}   # bench 2026-11-12 minefar p (refinery 38 further back)
+MINE_FAR_LEGS = {'首笔': 133, '到矿': 34, '离矿': 107, '二到矿': 190}   # minefar q
+
+
+def test_mining_retail_facing_drive_bound_once_the_refinery_is_further():
+    """minefar p / q (round 179, the prediction told apart): the refinery 38 further back at retail's facing, the
+    legs 36 + 11 make the drive bound again -- a trip of 155 (the old drive-bound 45-frame leg said 144 / 317 / 490);
+    the sim's 133 / 288 / 443 to the frame, the legs within 3."""
+    r = _full_mining('minefar')
+    assert all(r[k] == v for k, v in MINE_FAR_BENCH.items()), r
+    q = _full_mining('minefar', 'q', until=30.0)
+    assert all(abs(q[k] - v) <= 3 for k, v in MINE_FAR_LEGS.items()), q
 
 
 def test_mining_engine_mining_a_with_the_refinery_s_own_collector():

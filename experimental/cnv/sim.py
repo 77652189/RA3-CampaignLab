@@ -137,10 +137,11 @@ CAPTURE_REACH = 20.0           # R4: an engineer this far outside a building's r
 # HOOKS 7, ore mining (docs/engine/mining.md, bench 2026-11-05 engine_mining a-e): a load 250 (retail miners'
 # DeliveryCapacity), loaded at the node in 30 frames starting the frame after the miner docks, unloaded at the refinery
 # in 30 frames from its arrival, 8 a frame and the rest on the last; past MaximumGatheredValue (30000) a load is 60.
-# The node then plays MINE_REST frames before it takes the next miner: the data's 60 + 30 + 60 (move to extract,
-# extract, move to deliver) would hold a node to one load in 180 frames, but mineturn0 p trips in 151 -- so at most
-# 120 (INFERRED: that bound, the animations' overlap with the loading not read)
-MINE_LOAD, MINE_DOCK, MINE_REST, MINE_FULL, MINE_EMPTY = 250, 30, 120, 30000, 60
+# The node then plays MINE_REST frames before it takes the next miner, a load every 30 + 121 = 151 frames: what
+# bounds retail's facing (mineturn0 p / mineniag p trip 151, the drive alone 133; round 179 below). The data's 60 +
+# 30 + 60 (move to extract, extract, move to deliver) + 1 is 151 when they start with the loading (INFERRED: that
+# overlap, not read)
+MINE_LOAD, MINE_DOCK, MINE_REST, MINE_FULL, MINE_EMPTY = 250, 30, 121, 30000, 60
 MINE_RETRY = 15                # no node / refinery found: the miner idles 1 s and looks again
 # A leg (node <-> refinery) takes straight distance / speed + MINE_TURN_EXTRA frames, by how far the node is turned off
 # facing the leg's other end (degrees, either way alike): the miner docks at the node's front, so a node turned away
@@ -149,18 +150,33 @@ MINE_RETRY = 15                # no node / refinery found: the miner idles 1 s a
 # its node, an Allied miner at 50 = 54 frames straight): trips 151 / 186-187 / 241 / 323 at 0 / 45 / 90 / 180, and
 # engine_mining a 269 at 135 (its node at angle 0); a trip = 2 legs + 30 + 30 + 1. Between readings linear (INFERRED);
 # niagara's east pad (45 off) trips 185 on the bench (aitowerinc5 f, an AI's miner): the same rule, 45's 8 set to it.
-MINE_TURN_EXTRA = ((0.0, -9.0), (45.0, 8.0), (90.0, 36.0), (135.0, 50.0), (180.0, 77.0))
+# Round 179 (checks/engine_mining.py mineturn0 q, minefar p): at 0 the trip is the node's (151, MINE_REST), not the
+# drive's -- the first visit, at a node that waits, is in c's node square 73 frames (2 x 36 + 1), the later ones 91;
+# so the leg there is 36 (-18), not the 45 (-9) a drive-bound 151 gave.
+MINE_TURN_EXTRA = ((0.0, -18.0), (45.0, 8.0), (90.0, 36.0), (135.0, 50.0), (180.0, 77.0))
+# A refinery's own collector's first leg, from where it fades in (the refinery's spot, INFERRED) rather than from the
+# refinery's dock: mineturn0 q has it in the node square at 23, the later legs at 15 from the dock (+8; its first
+# money 111 = +7); from 45 on the first money is the period's - 29 within 2 (0). Between linear (INFERRED).
+MINE_SPAWN_EXTRA = ((0.0, 7.0), (45.0, 0.0))
+
+
+def _turned_off(node, far):
+    """How far (degrees, 0 .. 180) `node`'s facing is turned off the direction to `far`."""
+    want = math.degrees(math.atan2(far[1] - node.y, far[0] - node.x))
+    return abs((math.degrees(node.angle) - want + 180.0) % 360.0 - 180.0)
+
+
+def _by_turn(table, turn):
+    for (k0, v0), (k1, v1) in zip(table, table[1:]):
+        if turn <= k1:
+            return v0 + (v1 - v0) * (turn - k0) / (k1 - k0)
+    return table[-1][1]
 
 
 def mine_extra(node, far):
     """Frames (float) a miner's leg to or from `node` takes beyond straight distance / speed: by how far the node's
     facing is turned off the direction to the leg's other end `far` (MINE_TURN_EXTRA)."""
-    want = math.degrees(math.atan2(far[1] - node.y, far[0] - node.x))
-    turn = abs((math.degrees(node.angle) - want + 180.0) % 360.0 - 180.0)        # 0 .. 180
-    for (k0, v0), (k1, v1) in zip(MINE_TURN_EXTRA, MINE_TURN_EXTRA[1:]):
-        if turn <= k1:
-            return v0 + (v1 - v0) * (turn - k0) / (k1 - k0)
-    return MINE_TURN_EXTRA[-1][1]
+    return _by_turn(MINE_TURN_EXTRA, _turned_off(node, far))
 REACH = 300.0                  # 自动打掉: an enemy this close to something of the player's is being fought
 SPREAD = 30.0                   # a reinforcement team's units this far apart round its waypoint (Sim.reinforce, INFERRED)
 TOGGLE_UNPACK_LAG = 0          # frames past UnpackTime x 15 a toggle's new state is first read (engine_toggle d: 16)
@@ -1678,7 +1694,10 @@ class Sim:
         d = math.hypot(to[0] - b.x, to[1] - b.y)
         node = self.bodies.get(b.mine['node']) if b.mine.get('node') else None
         far = (b.x, b.y) if state == 'to node' else to          # the leg's end away from the node
-        frames = int(round(d / b.speed * simunits.LIFE_FPS + (mine_extra(node, far) if node else 0.0)))
+        extra = mine_extra(node, far) if node else 0.0
+        if b.mine.pop('spawned', False) and node and state == 'to node':     # from where it faded in
+            extra += _by_turn(MINE_SPAWN_EXTRA, _turned_off(node, far))
+        frames = int(round(d / b.speed * simunits.LIFE_FPS + extra))
         b.mine.update(state=state, due=fr + frames, leg=((b.x, b.y), to, fr, fr + frames))
 
     def _mine(self, b, fr, nodes):
@@ -1690,7 +1709,9 @@ class Sim:
                 b.mine = None
             return
         if m is None:
-            m = b.mine = {'state': 'locate', 'node': None, 'ref': None, 'due': fr, 'load': 0, 'n': 0, 'leg': None}
+            m = b.mine = {'state': 'locate', 'node': None, 'ref': None, 'due': fr, 'load': 0, 'n': 0, 'leg': None,
+                          'spawned': b.unpack_parent is not None
+                          and (b.x, b.y) == (b.unpack_parent.x, b.unpack_parent.y)}
         if m['leg']:                                # drawn along its drive
             (x0, y0), (x1, y1), f0, f1 = m['leg']
             k = min(1.0, (fr - f0) / max(1, f1 - f0))

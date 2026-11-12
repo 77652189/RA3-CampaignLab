@@ -174,6 +174,47 @@ def turned_test(m):
     return t
 
 
+FAR = 38.0              # minefar: the refinery this much further back from its node (contract: 180 +- 40, AXIS_SLACK)
+
+
+def far_mission():
+    """mineturn0 with the refinery FAR further back (240 from its node, still facing it): a longer drive at retail's
+    facing -- does the trip grow by the drive (2 x 11 frames), or is the node's own cycle (151) what bounds it?
+    Bench 2026-11-12 (work/bench_results/minefar__p.json / __q.json): p 133 / 288 / 443 (a trip of 155) -- the
+    round-179 sim's prediction to the frame (a 36-frame leg at 0 and the node's 151; the old 45-frame leg said 144 /
+    317 / 490); q 133 / 34 / 107 / 190."""
+    m = Mission(name='CampMineFar', map=_turned(0), units=[], facts={})
+    back = math.radians(probe_range.FIELDS[0].facing)
+    dx, dy = -FAR * math.cos(back), -FAR * math.sin(back)
+    m.put(REFINERY, SITE, dx, dy, role='refinery', name=_n('Refinery'))
+    m.put(MINER, SITE, dx + PLACED[0], dy + PLACED[1], angle=0.0, role='miner', name=_n('Miner'))   # deleted
+    m.spawns.add(MINER)
+    return m
+
+
+def legs_test(m):
+    """q (round 179): p's start with the legs apart -- 首笔; 到矿 / 离矿 frames until the collector is first in / out
+    of c's node square; 二到矿 until it is in it again (the second leg starts as the unloading ends, 首笔 + 30).
+    Bench 2026-11-12: mineturn0 q (CampMineT0Q_mcp_1112_101613) 111 / 23 / 96 / 156 -- 73 frames at the node the
+    first time, 91 after: the node's cycle (151) bounds retail's facing, a leg is 36; the first leg 8 longer from
+    where the collector faded in (15 from the dock). At 45 / 90 / 180 the drive round the node goes in and out of the
+    square (90: 77 / 151 / 191 before its 首笔 214): no legs to read there."""
+    t = mining_test(m, 'a')
+    t.counters = [c for c in t.counters if c[0] == 'CNV_Mine_Money']
+    t.scripts = [s for s in t.scripts if s.name in ('Test - start', 'Test - money')]
+    _below(t, 'CNV_Mine_First', '首笔', 1)
+    t.areas['Test Node'] = square(*NODE, NODE_R)
+    has = lambda k=1, op=3: ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', 'Player_1', op, k,  # noqa: E731
+                             MINER, 'Test Node')
+    _until(t, 'CNV_Mine_AtNode', '到矿', 'Test At Node', has())
+    _until(t, 'CNV_Mine_LeftNode', '离矿', 'Test Left Node', has(0, 2), after='Test At Node')
+    _until(t, 'CNV_Mine_AtNode2', '二到矿', 'Test At Node 2', has(), after='Test Left Node')
+    t.counters = t.counters[1:]                 # the money's own counter not shown: four lines
+    t.expect = [('首笔', 0, 'ever>=', 1, 30.0)]
+    t.bench = [('bench_watch', dict(every=0.5, sheet=False, lines=len(t.counters), seconds=30.0))]
+    return t
+
+
 # mineniag (round 176): niagara as the generator now makes it (round 175: its nodes at retail's facing, not the
 # benches' resources.measured copy), the player's refinery on the east pad (A7's ore), check p as mineturn's. The
 # simulator's prediction: the trip of mineturn0 p, 151 (tests/test_simbench.py niagara_at_retail).
@@ -191,7 +232,8 @@ def niagara_mission():
     return m
 
 
-MISSION = {'engine_mining': mission, 'mineniag': niagara_mission,
+MISSION = {'engine_mining': mission, 'mineniag': niagara_mission, 'minefar': far_mission,
            **{f'mineturn{_tag(k)}': (lambda k=k: turned_mission(k)) for k in TURNS}}
 CHECKS = {'engine_mining': {w: (lambda m, w=w: mining_test(m, w)) for w in 'abcdef'}, 'mineniag': {'p': turned_test},
-          **{f'mineturn{_tag(k)}': {'p': turned_test} for k in TURNS}}
+          'minefar': {'p': turned_test, 'q': legs_test},
+          **{f'mineturn{_tag(k)}': {'p': turned_test, 'q': legs_test} for k in TURNS}}
