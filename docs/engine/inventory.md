@@ -8,7 +8,7 @@
 | 脚本条件 | **94%** | **100%** | 12 / 12 | 89 | 32 | 6 | 48 | 3 | 95% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **93%** | **95%** | 17 / 22 | 28 | 18 | 3 | 5 | 2 | 96% |
-| AI | **87%** | **86%** | 118 / 357 | 415 | 124 | 128 | 129 | 34 | 97% |
+| AI | **87%** | **87%** | 119 / 357 | 415 | 125 | 128 | 128 | 34 | 97% |
 
 ## 脚本动作
 
@@ -891,7 +891,7 @@
 | 已对拍 | `造兵/BlockIfThingNearFactory.IncludeThing` | 40 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |
 | 已对拍 | `微操/AIMicroManagerData.RetreatMinDistanceToFallback` | 38 | a4 a5 a7 | engine_aifallback aifbshort100/aifblong500：四人存活回齐、在家约18秒、长组先于短组再出发；tests/test_simai_fallback.py::test_fallback_distance_first_return_and_departure；仅此固定FromBase=300场景的行为回放，未量内部退出位置、精确距离边界或其他基地选择 |
 | 已对拍 | `目标/AITargetingHeuristic.SortType=Distance` | 37 | a4 a5 a7 | docs/engine/aitactics.md#目标挑哪个（aitpnear 挑最近、aitpmt2 第二槽挑次近、aitpvk 显式写 Distance） |
-| 未做 | `人格/AIPersonalityDefinition.PersonalityType` | 35 | a4 a5 a7 | AI 模型代码里没有这个名字 |
+| 已对拍 | `人格/AIPersonalityDefinition.PersonalityType` | 35 | a4 a5 a7 | tests/test_simai_bench_b.py::test_the_personality_condition_matches_the_id_not_the_personality_type（engine_aiskirm pt aiskpt / aiskpti：脚本条件 PLAYER_IS_HUMAN_OR_AI_PERSONALITY 只认人格 id，PersonalityType 写成别的名字或不写都不影响；AI 行为不读它；B 第 150 轮） |
 | 未做 | `造兵/BuildEntry.MinTime` | 34 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 已对拍 | `启发条件/IsBuildingHeuristic` | 30 | a4 a5 a7 | E83 engine_aibuilding a：STRUCTURE空队列、现成基地1；PassIfBuilding=false时s40到陆厂4/在家0，true时0/4，两组PASS；tests/test_simai_bench_e.py::test_is_building_idle按名回放通过。只验空队列边界，建造中的行为未量；见 work/re/e_building_e83.md |
 | 推断 | `启发条件/IsBuildingHeuristic.KindOf` | 30 | a4 a5 a7 | E83 engine_aibuilding只测STRUCTURE空队列，无法区分KindOf匹配与忽略此字段；有效建造队列、匹配/不匹配、多个token仍gap，不晋升；见 work/re/e_building_e83.md |
@@ -1172,7 +1172,7 @@
 | 未做 | `全局常量/AIData.WadeWaterDepth` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | `全局常量/AIData.WaitForOthers` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | `全局常量/AIData.WallHeight` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 已对拍 | `启发条件/ScriptedFlagHeuristic` | 1 |  | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aistate.py |
+| 已对拍 | `启发条件/ScriptedFlagHeuristic` | 1 |  | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |
 | 已对拍 | `启发条件/ScriptedFlagHeuristic.FlagName` | 1 |  | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aistate.py |
 | 未做 | `微操/AIMicroManagerData.CanCollectCratesWhenIdle` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | `微操/AIMicroManagerData.FractionBlockedToDestroyWalls` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |

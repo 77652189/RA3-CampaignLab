@@ -891,6 +891,37 @@ def p(m):
     return _teams(m, 'p')
 
 
+def pt(m):
+    """Which name does PLAYER_IS_HUMAN_OR_AI_PERSONALITY match (aiskpt: s1's personality has the id CNVPtId and the
+    PersonalityType CNVPtType; aiskpti: the same id, no PersonalityType written)? 人格位 = the sum, every frame, of
+    1 (s1, CNVPtType), 2 (s1, CNVPtId), 4 (s1, 1AlliedBalanced = the parent's id and type), 8 (Player_1, Human);
+    to 30 s after the wake.
+    Data's prediction (D59, work/re/d59_b_fields.md 1: the condition compares the AI's PersonalityType by name; what
+    a child that writes none holds was not read): aiskpt 1 + 8 = 9 (the simulator, comparing the side's asset id,
+    says 2 + 8 = 10); aiskpti 8 if an unwritten type is empty, 4 + 8 if it inherits, 2 + 8 if it falls back to the
+    id. Before the wake the bits may differ (Lib_Skirmish_Setup hands s1 to its AI at frame 0).
+
+    RESULTS pt (bench 2026-11-12, both PASS; runs work/testbench/runs/CampAISkPtPt_mcp_1112_115516,
+      CampAISkPtIPt_mcp_1112_115743): aiskpt **人格位 10 every second s1-s41**, aiskpti **10 s1-s42** -- (s1, CNVPtId)
+      and (Player_1, Human) hold, (s1, CNVPtType) and (s1, 1AlliedBalanced) never. Reading: the condition matches the
+      personality's asset id (the side's aiPersonality), not its PersonalityType (D59's reading does not hold), and
+      whether PersonalityType is written changes nothing; the simulator (comparing the id) gives 10 on both."""
+    t = Test()
+    s1, p1 = m.player('s1'), m.player('p1')
+    counter = 'CNV_AK_PtBits'
+    t.counters.append((counter, '人格位'))
+    parts = [(1, ('PLAYER_IS_HUMAN_OR_AI_PERSONALITY', s1, 'CNVPtType')),
+             (2, ('PLAYER_IS_HUMAN_OR_AI_PERSONALITY', s1, 'CNVPtId')),
+             (4, ('PLAYER_IS_HUMAN_OR_AI_PERSONALITY', s1, '1AlliedBalanced')),
+             (8, ('PLAYER_IS_HUMAN_OR_AI_PERSONALITY', p1, 'Human'))]
+    t.scripts.append(Script(f'Test - {counter} zero', [], [('SET_COUNTER', counter, 0)], once=False))
+    t.scripts += [Script(f'Test - {counter} {k}', [c], [('INCREMENT_COUNTER', wt, counter)], once=False)
+                  for k, (wt, c) in enumerate(parts)]
+    w = m.facts['wake at']
+    t.expect += [('人格位', w + 5.0, '>=', 8)]          # Player_1 is Human the whole run (scripts1 cond)
+    t.bench = [('bench_watch', dict(seconds=w + 30.0, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
 CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j': j, 'k': k, 'l': l, 'm': m,
                       'n': n, 'o': o, 'p': p, 'q': q, 'r': r, 'u': u, 'x': x},
           'aiskirmc': {'m': m},  # opt-in carrier diagnostic; stock aiskirm stays unchanged
@@ -911,6 +942,8 @@ CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j
           'aiskblkf': {'y': y},
           'aiskblkr': {'y': y},
           'aiskoff': {'y': y},
+          'aiskpt': {'pt': pt},
+          'aiskpti': {'pt': pt},
           'aiskrand': {'s': s},
           'aiskdiff': {'s': s},
           'aiskvinf': {'z': z, 't': t},

@@ -76,6 +76,10 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               **{f'造兵/BlockIfThingNearFactory.{k}': 'tests/test_simai_bench_b.py::test_a_thing_near_the_factory_'
                  'blocks_the_entry（engine_aiskirm y aiskblkn / aiskblkr：Rule ANY + Relationship NEUTRAL 挡住，'
                  'aiskblkf 400 外不挡；ENEMIES 走同一段代码没单独上台；B 第 149 轮）' for k in ('Relationship', 'Rule')},
+              '人格/AIPersonalityDefinition.PersonalityType': 'tests/test_simai_bench_b.py::test_the_personality_'
+                 'condition_matches_the_id_not_the_personality_type（engine_aiskirm pt aiskpt / aiskpti：脚本条件 '
+                 'PLAYER_IS_HUMAN_OR_AI_PERSONALITY 只认人格 id，PersonalityType 写成别的名字或不写都不影响；'
+                 'AI 行为不读它；B 第 150 轮）',
               '组队招人/ObjectFilter.Rule':'docs/engine/aistate.md#队伍招谁（aitfany / aitfnone / aitfall：ANY、NONE + 名单只要名单，ALL + 排除名单）',
               '战略状态/StrategicState.Difficulty': 'docs/engine/aistate.md#按难度挂的状态（aidiff / aidiffx：普通 = MEDIUM，没挂 MEDIUM 的状态不跑）',
               **{f'启发条件/{k}': 'docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮）'

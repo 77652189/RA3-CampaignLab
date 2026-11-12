@@ -106,6 +106,26 @@ def power_xml(buffer):
         '</AssetDeclaration>', ''])
 
 
+PT_PID, PT_TYPE = 'CNVPtId', 'CNVPtType'   # aiskpt / aiskpti (check pt): a personality's id and its PersonalityType
+
+
+def ptype_xml(write_type=True):
+    """aiskpt: 1AlliedBalanced under the id PT_PID whose PersonalityType is PT_TYPE (not its id: in retail and our
+    own data the two are always the same); aiskpti: the same id with no PersonalityType written (does it inherit
+    1AlliedBalanced's?). D59 (work/re/d59_b_fields.md 1): PLAYER_IS_HUMAN_OR_AI_PERSONALITY compares the AI's
+    PersonalityType, not the asset id."""
+    ptype = f' PersonalityType="{PT_TYPE}"' if write_type else ''
+    return '\n'.join([
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+        '  <Tags></Tags>',
+        '  <Includes>',
+        '    <Include type="instance" source="DATA:SkirmishAI/Personalities/AlliedBalanced.xml" />',
+        '  </Includes>',
+        f'  <AIPersonalityDefinition id="{PT_PID}"{ptype} inheritFrom="1AlliedBalanced"/>',
+        '</AssetDeclaration>', ''])
+
+
 UMOD_PID = 'CNVUMod'                  # aiskmod: 1AlliedBalanced plus UnitModifier lines (check u)
 UMOD_ZERO = ('AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry')   # Peacekeeper, Javelin soldier
 
@@ -295,7 +315,8 @@ ARMY_N = 10                            # aiskvinf / aiskvveh (check z): what the
 
 
 def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None, account=None,
-            buffer=None, new=None, army=None, two=None, observe=False, cap=None, block=None, off=False):
+            buffer=None, new=None, army=None, two=None, observe=False, cap=None, block=None, off=False,
+            ptype=None):
     m = Mission(name=name, map=ai_map(resources.measured(niagara), lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
     if expire is not None:               # aiskexp (check q): the same AI with SecondsTillTargetsExpire = expire
@@ -306,6 +327,10 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
         m.facts['zeroed'] = len(umod)
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{UMOD_PID}'
         m.assets.append((f'{UMOD_PID}.xml', umod_xml(umod), f'AIPersonalityDefinition:{UMOD_PID}'))
+    if ptype is not None:                # aiskpt / aiskpti (check pt): id CNVPtId, PersonalityType CNVPtType / unwritten
+        m.facts['type written'] = int(ptype)
+        m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{PT_PID}'
+        m.assets.append((f'{PT_PID}.xml', ptype_xml(ptype), f'AIPersonalityDefinition:{PT_PID}'))
     if buffer is not None:               # aiskpw0 / aiskpw3 (check x): DesiredExcessPowerBuffer = buffer
         m.facts['power buffer'] = buffer
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{POWER_PID}'
@@ -407,6 +432,8 @@ MISSION = {'aiskirm': mission, 'aiskirmc': lambda: mission(observe=True),
            'aiskblkf': lambda: mission('CampAISkBlkF', new=True, block='far'),     # check y: 400 away
            'aiskblkr': lambda: mission('CampAISkBlkR', new=True, block='radius'),  # check y: a plant at 190
            'aiskoff': lambda: mission('CampAISkOff', new=True, off=True),   # check y: the state's heuristic 0
+           'aiskpt': lambda: mission('CampAISkPt', ptype=True),      # check pt: PersonalityType != id
+           'aiskpti': lambda: mission('CampAISkPtI', ptype=False),   # check pt: PersonalityType not written
            'aiskrand': lambda: mission('CampAISkRand', two='rand'),   # check s: RANDOM_UNIT 0%-30% / bare 30-100
            'aiskdiff': lambda: mission('CampAISkDiff', two='diff'),   # check s: a HARD-only state at MEDIUM
            'aiskvinf': lambda: mission('CampAISkVInf', army=ARMY_INF),   # check z: the player owns 10 conscripts

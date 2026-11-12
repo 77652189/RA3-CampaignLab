@@ -474,6 +474,15 @@ def test_a_unit_listed_only_by_the_missions_own_state_never_comes_from_the_unit_
     assert rows[166]['维和总数'] + rows[166]['标枪总数'] >= 3
 
 
+@pytest.mark.parametrize('build', ['aiskpt', 'aiskpti'])
+def test_the_personality_condition_matches_the_id_not_the_personality_type(lib, build):
+    """checks/engine_aiskirm.py pt (bench 2026-11-12, both PASS): s1's personality id CNVPtId, PersonalityType
+    CNVPtType (aiskpt) / unwritten (aiskpti) -> 人格位 10 every second: (s1, CNVPtId) 2 + (Player_1, Human) 8;
+    (s1, CNVPtType) 1 and (s1, 1AlliedBalanced) 4 never."""
+    _, rows = _probe_run(build, lib, 40, 'pt')
+    assert {r['人格位'] for r in rows} == {10}
+
+
 def test_a_thing_beyond_the_distance_does_not_block(lib):
     """aiskblkf (the bear 400 away): bench 新维和 1 at s28, 9 by s167 -- as aisknew2 without the filter."""
     _, rows = _probe_run('aiskblkf', lib, 170, 'y')
