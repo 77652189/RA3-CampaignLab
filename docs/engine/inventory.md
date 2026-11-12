@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|---|---|---|---|
 | 脚本动作 | **92%** | **100%** | 50 / 50 | 451 | 123 | 20 | 191 | 117 | 93% |
 | 脚本条件 | **94%** | **100%** | 12 / 12 | 89 | 31 | 6 | 49 | 3 | 95% |
-| 物体模块 | **96%** | **96%** | 51 / 113 | 189 | 52 | 9 | 102 | 26 | 97% |
+| 物体模块 | **96%** | **96%** | 51 / 113 | 189 | 52 | 10 | 101 | 26 | 97% |
 | 武器效果 | **93%** | **95%** | 17 / 22 | 28 | 18 | 2 | 6 | 2 | 95% |
 | AI | **73%** | **72%** | 98 / 357 | 415 | 104 | 138 | 139 | 34 | 96% |
 
@@ -637,7 +637,7 @@
 | 已对拍 | `Behaviors/EngineerContain:三国ALLIES` | 6 (7) | a1 a2 a4 a5 a6 a7 a9 | tests/test_simengineer.py::test_engineer_allied_defence_refusal_soviet_japan_as_on_the_bench；已测范围：engine_engineer a/e/f普通进入，三国工程师友军半血防御修满并消耗、满血及敌方拒入且存活，目标归属不变；按完整配置匹配登记6用量/7模板；gap：精确进入帧仍INFERRED；日本单人ALLIES和桥配置保留在未对拍残余行，不借本组登记；例：SovietBaseDefenseGround |
 | 未做 | `Behaviors/OCLSpecialPower` | 6 (7) | a1 a2 a4 a6 a7 | 仅在SpecialPowerNugget处理器中识别并拒绝，未实现OCL技能执行；例：AlliedSuperWeaponAdvanced, CAMP_PowerStore_AlliedBomberDrop |
 | 未做 | `Behaviors/SubStructureStorageBehavior` | 6 (6) | a1 a4 a5 a6 a7 a9 | 6用量/6模板为三国MCV及海军继承型，模块无专用字段；有效配置没有SubStructureBuild，未找到可生成待存子结构的原版入口；gap：保存/恢复专属读数及合法触发待接口核实，未上台、不登记已对拍，也不据此排除运行时用途；普通展开及COPY_UPGRADES不能归因；见 work/re/e_substorage_e57.md；例：AlliedMCV, AlliedMCV_Naval |
-| 未做 | `Behaviors/WallBuilderBehavior` | 6 (6) | a1 a2 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedWallPiece, AlliedWallSegmentPiece |
+| 推断 | `Behaviors/WallBuilderBehavior` | 6 (6) | a1 a2 a4 a6 a7 a9 | 部分：engine_wallinit:a有/无模块对照10/11/10，仅StartInSecondaryModel默认WALL_SEGMENT初始化；6/6权重保留，建墙/连接/段数上限/生死联动及自定义配置仍gap，未登记完整已对拍；见 work/re/e_wallbuilder_e58.md；例：AlliedWallPiece, AlliedWallSegmentPiece |
 | 未做 | `Behaviors/PassiveAreaEffectBehavior` | 5 (14) | a3 a4 a7 | 模拟器代码里没有这个名字；例：AlliedAirfieldRepairDrone, AlliedEngineer |
 | 未做 | `Behaviors/EmotionTrackerUpdate` | 5 (7) | a1 a2 a3 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoTech1, AlliedEngineer |
 | 未做 | `Behaviors/MonitorSpecialPowerTimerUpdate` | 5 (6) |  | 模拟器代码里没有这个名字；例：AlliedSuperWeapon, AlliedSuperWeaponAdvanced |
