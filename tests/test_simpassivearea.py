@@ -38,3 +38,24 @@ def test_engineer_area_frame_thresholds_match_named_bench():
     assert tuple(b - a for a, b in zip(counts, counts[1:])) == (20, 20, 20), counts
     verdicts = build.judge(t, engine.series)
     assert verdicts and all(ok for ok, _ in verdicts), verdicts
+
+
+@pytest.mark.xfail(strict=True, reason=(
+    'E73 engine_passivearea:g reads 16/36/56/76 frames after a 15-frame start shift; '
+    'continuous integration reads 2/21/42/62. Fixed phase supported, scheduler '
+    'source unresolved; see work/re/e_passive_e73.md and work/re/handoff-e.md.'))
+def test_engineer_area_shifted_frame_thresholds_match_named_bench():
+    """E73 engine_passivearea:g shifts activation/damage by 15 script frames.
+
+    Bench 16/36/56/76 matches the pre-run fixed-phase prediction;
+    the scheduler source remains unresolved. See work/re/e_passive_e73.md.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_passivearea', 'g')
+    engine = sim.Sim(m, t).run(25)
+    counts = tuple(engine.series[-1][1])
+    assert counts == (16, 36, 56, 76)
+    assert tuple(b - a for a, b in zip(counts, counts[1:])) == (20, 20, 20), counts
+    verdicts = build.judge(t, engine.series)
+    assert verdicts and all(ok for ok, _ in verdicts), verdicts

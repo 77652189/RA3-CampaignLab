@@ -53,7 +53,7 @@ def check(m):
     return t
 
 
-def frames(m):
+def frames(m, start=8.0):
     """E72: intermediate heal crossings counted in game-script frames.
 
     Count frames after damage while HP is below 51/64/78/91. At 15 fps,
@@ -68,7 +68,7 @@ def frames(m):
     source, target = m.role('on').name, m.role('near').name
     t.scripts = [Script('Test - start', [], [
         ('MAP_REVEAL_ALL_PERM', m.player('p1')),
-        ('SET_MILLISECOND_TIMER', 'Area frame hurt', 8.0)]),
+        ('SET_MILLISECOND_TIMER', 'Area frame hurt', start)]),
         Script('Test - frame hurt', [('TIMER_EXPIRED', 'Area frame hurt')], [
             ('UNIT_CHANGE_OBJECT_STATUS', source, 'GENERIC_TOGGLE_STATE', 1),
             ('UNIT_SET_HEALTH', target, 50.0),
@@ -86,5 +86,15 @@ def frames(m):
     return t
 
 
+def shifted_frames(m):
+    """E73 phase control: shift only activation/damage from 8 to 9 seconds.
+
+    Pre-run hypotheses: fixed 20-frame phase predicts 16/36/56/76;
+    fixed activation delay predicts 11/31/51/71. Bench: 16/36/56/76.
+    Scheduler source remains a gap; see work/re/e_passive_e73.md.
+    """
+    return frames(m, start=9.0)
+
+
 MISSION = {'engine_passivearea': mission}
-CHECKS = {'engine_passivearea': {'a': check, 'f': frames}}
+CHECKS = {'engine_passivearea': {'a': check, 'f': frames, 'g': shifted_frames}}
