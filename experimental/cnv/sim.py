@@ -3571,6 +3571,7 @@ class Sim:
                 self.off_teams(self.handed)
                 self.handed = ()
             self.autoheal(eng.frame)
+            self.passive_area_heal()
             self.repairs.due(eng.frame)
             self.assignments.due(eng.frame)
             self.suppression_tick()
@@ -3672,6 +3673,46 @@ class Sim:
                 b.heal_at = None
             b.heal_seen = b.hp
             self.used.add('autoheal')
+
+    def passive_area_heal(self):
+        """E70 single engineer, same-owner infantry, scripted status on/off.
+
+        INFERRED: continuous per-frame integration of the SDK's 10%/second.
+        The bench validates late plateaus only, not survey phase or heal ticks.
+        Other relationships, overlapping auras and self-healing remain gaps.
+        """
+        cache = self.__dict__.setdefault('_passive_area_of', {})
+        sources = []
+        for b in self.bodies.values():
+            if not b.alive:
+                continue
+            if b.template not in cache:
+                cache[b.template] = simunits.passive_area(b.template, self.own)
+            rule = cache[b.template]
+            if rule is False:
+                self.gap('物体模块', 'PassiveAreaEffectBehavior configuration', '未测的范围效果配置')
+            elif rule and 'GENERIC_TOGGLE_STATE' in b.status:
+                sources.append((b, rule))
+        if not sources:
+            return
+        self.gap('物体模块', 'PassiveAreaEffectBehavior timing',
+                 'INFERRED: 按SDK百分比逐帧积分；调查相位、精确治疗帧未测')
+        for target in self.bodies.values():
+            if not target.alive or target.hp >= target.max_hp or 'INFANTRY' not in target.kinds:
+                continue
+            if target.template == 'SovietScoutVehicle':
+                continue
+            eligible = [(source, rule) for source, rule in sources
+                        if math.hypot(target.x - source.x, target.y - source.y) <= rule[0]]
+            if any(source.owner != target.owner for source, _ in eligible):
+                self.gap('物体模块', 'PassiveAreaEffectBehavior relationship', '跨玩家关系过滤未测')
+            eligible = [(source, rule) for source, rule in eligible if source.owner == target.owner]
+            if len(eligible) > 1 or any(source is target for source, _ in eligible):
+                self.gap('物体模块', 'PassiveAreaEffectBehavior overlap/self', '重叠范围和自身受益未测')
+                continue
+            if eligible:
+                target.hp = min(target.max_hp, target.hp + target.max_hp * eligible[0][1][1] / self.fps)
+                self.used.add('passive area heal')
 
     def release(self):
         """The script events anchored to a flag that is up now: due `delta` after this moment."""

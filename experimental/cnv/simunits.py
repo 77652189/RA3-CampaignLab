@@ -1886,6 +1886,48 @@ def assigned_repair_rate(template, command, own=None):
     return _chain('AlliedWarFactoryRepairDrone', own, healing)
 
 
+def passive_area(template, own=None):
+    """E70 retail engineer aura only; other PassiveAreaEffect configurations are gaps.
+
+    Return (radius, fraction/second) only for the measured complete module shape.
+    Nearest group wins, including unsupported overrides. Attachment/drone healing
+    is deliberately outside this independent area-healing slice.
+    """
+    import xml.etree.ElementTree as ET
+
+    def read(xml):
+        blocks = list(_blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S),
+                              'PassiveAreaEffectBehavior'))
+        if not blocks:
+            return None
+        if len(blocks) != 1:
+            return False
+        head, inner = blocks[0]
+        node = ET.fromstring('<PassiveAreaEffectBehavior ' + head + '>' + inner +
+                             '</PassiveAreaEffectBehavior>')
+        attrs = dict(node.attrib)
+        attrs.pop('id', None)
+        radius = attrs.pop('EffectRadius', None)
+        if attrs != dict(HealingPercentPerSecond='10%', AffectWoundedOnly='true',
+                         AffectUnderAttack='true', DisabledTypesToProcess='HELD'):
+            return False
+        children = list(node)
+        if len(children) != 2:
+            return False
+        filt, state = children
+        if (filt.tag != 'AllowFilter' or dict(filt.attrib) != dict(
+                Rule='ANY', Relationship='ALLIES', Include='INFANTRY') or
+                [(c.tag, (c.text or '').strip(), dict(c.attrib), len(c)) for c in filt] != [
+                    ('ExcludeThing', 'SovietScoutVehicle', {}, 0)] or
+                state.tag != 'ObjectStatusValidation' or len(state) or
+                dict(state.attrib) != dict(RequiredStatus='GENERIC_TOGGLE_STATE')):
+            return False
+        value = number('EffectRadius="' + (radius or '') + '"', 'EffectRadius')
+        return (value, .1) if value == 100 else False
+
+    return _chain(template, own, read)
+
+
 def spawn_modules(template, own=None):
     """Nearest SpawnBehavior group; only the engine_spawn repair-drone configuration is supported.
 
