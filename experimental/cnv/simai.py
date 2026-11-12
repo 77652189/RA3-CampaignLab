@@ -1085,6 +1085,8 @@ class SimAI:
         for a in getattr(self.sim.m, 'assets', None) or []:
             if len(a) >= 3 and str(a[2]).startswith('AIPersonalityDefinition:'):
                 self.data.add_text(a[1])
+                if 'defense' in self.blocks:
+                    self.data_of('tactic attrs').add_text(a[1])
                 if 'AITargetingHeuristic' in a[1] and 'targets' in self.blocks:    # a probe's own heuristic
                     self.data_of('targets').add_text(a[1])                        # (missions/ainamed_bench.py)
                 if 'AIMicroManagerData' in a[1] and 'targets' in self.blocks:      # a probe's own micro manager

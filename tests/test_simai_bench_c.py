@@ -396,10 +396,12 @@ def test_tactic_aesthetics_displacement_and_survival(build):
     assert (at65['传送出圈'], at65['坦克总数']) == (1, 1), at65
 
 
-@pytest.mark.parametrize('build', ['aiaeson', 'aiaesoff'])
-@pytest.mark.xfail(strict=True, reason='Fixed Distance 2000 aesthetics pair: model stays outside after teleport; '
-                  'retail enabled excursion / disabled return needs B stand-point and readiness investigation. '
-                  'No timing or model fit. See work/re/handoff-c.md and work/re/c_aesthetics_report.md.')
+@pytest.mark.parametrize('build', [
+    pytest.param('aiaeson', marks=pytest.mark.xfail(strict=True, reason=(
+        'Enabled aesthetics stand-point selection remains unresolved; disabled return now replays. '
+        'Exact random stream and stand-point observations are missing. See work/re/e_aesthetics_e89.md.'))),
+    'aiaesoff',
+])
 def test_tactic_aesthetics_replays_named_location_transitions(build):
     """Compare ordered occupancy changes, without fitting capture seconds."""
     w = simai.run(build, 'a', until=76, lib=simai.model()['xmldata'].Library())

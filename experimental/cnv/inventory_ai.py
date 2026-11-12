@@ -209,8 +209,8 @@ NOTES = {
     '战术/Tactic.UseAestheticsManager': (GUESSED,
         '专用engine_aiaesthetics aiaeson/aiaesoff固定Distance=2000，仅切美学开关；'
         '两组各5条PASS：on先离300、传送后回900再离，off回双圈，存活/锁存均1；'
-        'tests/test_simai_bench_c.py按名回放2条strict xfail，模型站位/ready仍gap，不晋升；'
-        '见 work/re/c_aesthetics_report.md'),
+        'tests/test_simai_bench_c.py关闭组完整轨迹已回放；探针战术附加属性现传入消费者；'
+        '开启组站位仍strict xfail，不晋升；见 work/re/c_aesthetics_report.md、work/re/e_aesthetics_e89.md'),
     '微操/AIMicroManagerData.PullbackInjured': (BENCHED,
         'engine_aipullback aipullsov 残血坦克离队回吊车；tests/test_simai_bench_b.py::'
         'test_a_hurt_soviet_tank_team_is_pulled_back_to_the_crane 回放；普通盟军/日本工厂不可进入；'
