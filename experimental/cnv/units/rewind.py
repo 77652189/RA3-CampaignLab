@@ -152,19 +152,59 @@ def warp_fx(id, scale=WARP_SCALE, lift=WARP_LIFT):
 '''}, [f'FXParticleSystemTemplate:{ps}', f'FXList:{fx}']
 
 
-def swap_carrier(id='CNV_LibRwS', wreck_id='CNV_LibRwW', model=lib.LOOK[0]):
+HIDDEN, WARPING = 'USER_2', 'USER_3'     # model conditions: carrier not drawn (its crash plays); warp lightning on it
+
+
+def _after_state(x, draw):
+    """The index just past the first ModelConditionState of the ScriptedModelDraw `draw`."""
+    i = x.index(f'id="{draw}"')
+    return x.index('</ModelConditionState>', i) + len('</ModelConditionState>')
+
+
+def revivable(u, scale=WARP_SCALE, lift=WARP_LIFT):
+    """Round 58 (user 11-11: revive in place, no fixed spot): the dressed carrier `u` drawn as nothing while HIDDEN
+    (platform, statue, rings: each an empty model) and with the time-warp lightning `scale` times larger on it while
+    WARPING (the platform's state carries warp_fx's particle system on bone None: entered, it bursts once). The
+    mission sets / clears them by script (UNIT_SET_MODELCONDITION_GENERIC 0 + UNIT_CLEAR_MODELCONDITION: game time;
+    the _FOR_DURATION one counts real time, liberty.charging)."""
+    fx, files, link = warp_fx(u.id, scale, lift)
+    ps = link[0].split(':', 1)[1]
+    x = u.xml
+    for draw in ('ModuleTag_Draw', 'ModuleTag_Draw_Statue', 'ModuleTag_Draw_Rings'):
+        j = _after_state(x, draw)
+        x = x[:j] + f'''
+				<ModelConditionState ParseCondStateType="PARSE_NORMAL" ConditionsYes="{HIDDEN}">
+					<Model Name="" />
+				</ModelConditionState>''' + x[j:]
+    j = _after_state(x, 'ModuleTag_Draw')
+    model = u.params['look'].upper()
+    x = x[:j] + f'''
+				<ModelConditionState ParseCondStateType="PARSE_NORMAL" ConditionsYes="{WARPING}">
+					<Model Name="{model}" />
+					<WeaponLaunchBone WeaponSlotType="PRIMARY_WEAPON" BoneName="FX_WEAPON" />
+					<ParticleSysBone BoneName="None" FXParticleSystemTemplate="{ps}" FollowBone="true" />
+				</ModelConditionState>''' + x[j:]
+    u.xml = x
+    u.files.update(files)
+    u.also += list(files)
+    u.link += link
+    u.names.update(warp_fx=fx, warp_ps=ps)
+    u.params.update(hidden=HIDDEN, warping=WARPING)
+    return u
+
+
+def swap_carrier(id='CNV_LibRwS', wreck_id='CNV_LibRwW', model=lib.LOOK[0], scale=WARP_SCALE):
     """The carrier of the show version, which stays on as "the new one" (round 49: its spot, facing and name are
     the old one's by construction; round 47 spawned a new one, which faced east whatever the old one did):
     ImmortalBody (bench CampRwSSwap_mcp_1111_163449: with retail's ActiveBody a 5200 blow at 56 % killed it before
     the mission's swap ran; ImmortalBody holds it at 1 hp, so the swap always runs). Its button `wreck` (an
     OCLSpecialPower, CreateLocation USE_OWNER_OBJECT) drops `wreck_id` on its spot and facing (CreateObject
-    Disposition LIKE_EXISTING): the wreck plays the time-warp FX and crashes (wreck()). Round 54: its deck jump
-    (liberty's TeleportSpecialAbilityUpdate, published `jump`) takes it aside off the wreck and back -- reload 1 s
-    and a deck of radius 1, so it carries no one along; the wreck left out of the deck's filter (riders: an
-    ExcludeThing): bench CampRwSJump_mcp_1111_203929 frames 18-20, it sat at distance 0, ours and a VEHICLE, and
-    jumped along and fell at the far spot. model: its look (dress; None: the Kirov's)."""
-    u = lib.liberty(id, tag='RwS', drone_range=1, drones_home=False, model=model, reload='1s', deck_radius=1,
-                    riders=wreck_id)
+    Disposition LIKE_EXISTING), which crashes there (wreck()). Round 58 (user 11-11: revive in place, a fixed spot
+    makes no sense): round 54's jump aside and back is gone; dressed, it is hidden while the wreck crashes and comes
+    back in the time-warp lightning (revivable). model: its look (dress; None: the Kirov's, not revivable)."""
+    u = lib.liberty(id, tag='RwS', drone_range=1, drones_home=False, model=model)
+    if model:
+        revivable(u, scale)
     u.xml = sub1(u.xml, '<ActiveBody\n\t\t\t\tid="ModuleTag_Body"', '<ImmortalBody\n\t\t\t\tid="ModuleTag_Body"')
     ids = dict(shed=f'SpecialPower_{id}_Wreck', shed_cmd=f'Command_{id}_Wreck', shed_button=f'Button_{id}_Wreck',
                shed_ocl=f'OCL_{id}_Wreck')
@@ -195,7 +235,7 @@ def swap_carrier(id='CNV_LibRwS', wreck_id='CNV_LibRwW', model=lib.LOOK[0]):
                f'LogicCommand:{ids["shed_cmd"]}', f'UnitAbilityButtonTemplate:{ids["shed_button"]}']
     u.names.update(ids)
     u.abilities['wreck'] = ids['shed_cmd']
-    u.what = '自由号（演出版回溯）：换船时它自己留下当新船，按钮 wreck 在原地按原朝向丢下一具残骸，jump 跳开再跳回'
+    u.what = '自由号（演出版回溯）：按钮 wreck 在原地按原朝向丢下一具坠毁的残骸；自己藏起，坠毁完在原地的放大时空特效里复活'
     return u
 
 
@@ -234,6 +274,30 @@ def falling(id, model=lib.LOOK[0]):
 	</ObjectCreationList>
 </AssetDeclaration>''')
     return ocl, {f'{id}.xml': x}, [f'GameObject:{id}', f'ObjectCreationList:{ocl}']
+
+
+CRASH_LIFE = 0.5    # s: round 58, the wreck starts falling at once (the carrier hidden the same frame)
+# Round 58 (user 11-11: crash like the Giga Fortress's): its death is Uprising's compiled data only (no XML in the
+# SDK, docs/engine/uprising-gap.md), and we copy none of it. Tried RA3's own HelicopterSlowDeath (schema in the SDK,
+# name in the 1.13 exe, no retail object uses it: spiral, self spin, fall, ground FX): no effect -- the wreck was gone
+# the frame it died, at FallHowFast 0.1 and 0.01 alike (bench CampRwSRevive_mcp_1111_211904 frames 15-16,
+# _212455 frames 24-25). So the crash is falling()'s (round 53: the Kirov's falling body drawing the carrier).
+
+
+def crashing(id='CNV_LibRwC', life=CRASH_LIFE, model=lib.LOOK[0]):
+    """Round 58's wreck: wreck() without the time-warp FX (the revive plays it on the carrier, revivable), alive
+    `life` s, then its death: FX_SOV_KirovExplode (the carrier's own) and falling(), its burning body sinking."""
+    u = lib.liberty(id, tag='RwC', drone_range=1, drones_home=False, model=model)
+    ocl, files, link = falling(f'{id}_Fall', model)
+    u.xml = sub1(u.xml, f'CreationList="{KIROV_FALL}"', f'CreationList="{ocl}"')
+    u.files.update(files)
+    u.also += list(files)
+    u.link += link
+    u.xml = sub1(u.xml, '\t\t</Behaviors>', f'''			<LifetimeUpdate id="ModuleTag_CNV_WreckLife" MinLifetime="{life:g}s" MaxLifetime="{life:g}s"/>
+		</Behaviors>''')
+    u.what = f'自由号残骸（坠毁版）：{life:g} 秒后爆炸，着火平着坠落（falling）'
+    u.params.update(life=life)
+    return u
 
 
 def wreck(id='CNV_LibRwW', scale=WARP_SCALE, life=WRECK_LIFE, model=lib.LOOK[0]):
