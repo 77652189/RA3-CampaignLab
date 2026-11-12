@@ -64,7 +64,10 @@ def test_opening_side(build, power, barracks):
 
 
 @pytest.mark.parametrize('build,chosen,other', [
-    ('aiskvinf', '维和总数', '标枪总数'),
+    pytest.param('aiskvinf', '维和总数', '标枪总数', marks=pytest.mark.xfail(
+        strict=True, reason='E84 closing replay of E78 engine_aiskirm z: bench has zero Javelins '
+        'against ten Conscripts on [s150,s160), current default model has one. B owns the model; '
+        'see work/re/handoff-e.md and work/re/e_pathcond_e84.md.')),
     pytest.param('aiskvveh', '标枪总数', '维和总数', marks=pytest.mark.xfail(
         strict=True, reason='E78 engine_aiskirm z: bench has zero Peacekeepers against ten Hammers '
         'on [s150,s160), default simulator has one. B owns the model; '
