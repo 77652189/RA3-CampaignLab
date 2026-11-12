@@ -160,9 +160,10 @@ NOTES = {
         '专用engine_aicreate点名守护者，MinUnits=1仍有两名维和离家、=3四名维和均留家；'
         '不能当作排他兵种过滤；命名队均99、模型strict xfail，保留推断；见 work/re/c_create_report.md'),
     '战术/Tactic.Distance': (GUESSED,
-        'engine_aidefense:a的250/450对照用UNIT_SET_TEAM移出AI队，不能独立判定Distance；'
-        'b/c保留AI队但只有Distance=250，未量距离边界或独立对照；不晋升；'
-        '见 work/re/c_recruit_gate_report.md'),
+        '专用engine_aidistance aidist250/aidist2000保留AI队、同次传送1200，仅Distance不同；'
+        's65小组圈300/900=1/1，大组0/0，存活均1；两组各5条PASS、模型末态匹配；'
+        '大组实机传送前离300、传送后回900再离，模型美学轨迹strict xfail；'
+        '精确边界/动态队成员仍gap，不晋升；tests/test_simai_bench_c.py；见 work/re/c_distance_report.md'),
     '微操/AIMicroManagerData.PullbackInjured': (BENCHED,
         'engine_aipullback aipullsov 残血坦克离队回吊车；tests/test_simai_bench_b.py::'
         'test_a_hurt_soviet_tank_team_is_pulled_back_to_the_crane 回放；普通盟军/日本工厂不可进入；'

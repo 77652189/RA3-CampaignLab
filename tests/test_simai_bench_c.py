@@ -80,3 +80,37 @@ def test_sort_by_distance_replays_named_departure(build, expected):
     at35 = next(row for t, row in rows if 35 <= t < 36)
     assert tuple(at35[k] for k in ('远在原位', '近在原位', '首离身份')) == expected, at35
     assert at35['首离帧'] > 0
+
+
+@pytest.mark.parametrize('build, home', [('aidist250', 1), ('aidist2000', 0)])
+def test_tactic_distance_replays_displaced_guardian(build, home):
+    """Observed s20/s65 endpoints only; aesthetics trajectory has a separate gap."""
+    w = simai.run(build, 'a', until=67, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    rows = [(t, dict(zip(labels, values))) for t, values in w.sim.series]
+    at20 = next(row for t, row in rows if 20 <= t < 21)
+    at65 = next(row for t, row in rows if 65 <= t < 66)
+    assert at20['圈900'] == 1, at20
+    assert at65['曾出圈'] == 1, at65
+    assert at65['坦克总数'] == 1, at65
+    assert (at65['圈300'], at65['圈900']) == (home, home), at65
+
+
+@pytest.mark.xfail(strict=True, reason='Distance 2000 retail leaves the 300 square before the push, '
+                  're-enters the 900 square after displacement, then leaves it again. '
+                  'B aesthetics stand-point selection is not replayed; endpoint agreement alone '
+                  'does not close Distance. See work/re/handoff-c.md and work/re/c_distance_report.md.')
+def test_tactic_distance_large_replays_observed_excursion():
+    """Assert measured location transitions, independent of capture-clock seconds."""
+    w = simai.run('aidist2000', 'a', until=76, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    rows = [dict(zip(labels, values)) for _, values in w.sim.series]
+    before = [row for row in rows if not row['曾出圈']]
+    assert any((r['圈300'], r['圈900']) == (0, 1) for r in before), before[-3:]
+    after = [row for row in rows if row['曾出圈']]
+    transitions = []
+    for row in after:
+        pos = row['圈300'], row['圈900']
+        if not transitions or pos != transitions[-1]:
+            transitions.append(pos)
+    assert transitions == [(0, 0), (0, 1), (0, 0)], transitions
