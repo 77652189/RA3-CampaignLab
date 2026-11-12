@@ -12,6 +12,31 @@ _spec.loader.exec_module(simai)
 pytestmark = pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
 
 
+def test_never_release_pair_changes_only_release_type():
+    """Fixed candidates, states, target and clock; only release policy changes."""
+    from missions.airelease_bench import mission
+    never, priority = mission(True), mission(False)
+    assert never.assets[0][1].replace('NEVER_RELEASE', 'RELEASE_TO_PRIORITY') == priority.assets[0][1]
+    assert never.objects == priority.objects
+    assert never.scripts == priority.scripts
+
+
+@pytest.mark.parametrize('build', ['airelnever', 'airelprio'])
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+    'Independent release pair lacks callable dynamic-team observations: retail '
+    'defense/attack counters 99/99, model 0/0. This does not establish release '
+    'behavior. B/D must expose actual team names and member IDs. '
+    'See work/re/handoff-c.md and work/re/c_never_release_report.md.'))
+def test_never_release_named_team_observation_replays_bench(build):
+    """Replay raw diagnostic readings; absent instances cannot prove retention."""
+    w = simai.run(build, 'a', until=66, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    rows = [(t, dict(zip(labels, values))) for t, values in w.sim.series]
+    for second in (25, 55, 65):
+        row = next(row for t, row in rows if second <= t < second + 1)
+        assert tuple(row[k] for k in ('防御人数', '进攻人数', '坦克总数', '曾防御量')) == (99, 99, 2, 0), (build, second, row)
+
+
 @pytest.fixture(scope='module', params=['aialcloselo', 'aialclosehi'])
 def alpha_close_rows(request):
     w = simai.run(request.param, 'a', until=66, lib=simai.model()['xmldata'].Library())
