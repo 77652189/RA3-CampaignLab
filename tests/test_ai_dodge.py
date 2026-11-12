@@ -32,26 +32,42 @@ def test_micro_dodge_fixture_changes_only_the_switch():
     assert views[0] == views[1]
 
 
-@pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
-@pytest.mark.parametrize('name,limit', [
+@pytest.fixture(scope='module')
+def dodge_replay(request):
+    if not simai.available():
+        pytest.skip('no ra3model.ai (labpaths.ENGINE_MODEL)')
+    return simai.run(request.param, 'r', until=34.0)
+
+
+@pytest.mark.parametrize('dodge_replay', ['aidodgeon', 'aidodgeoff'], indirect=True)
+def test_micro_dodge_replay_has_living_members_and_named_threat(dodge_replay):
+    # These prerequisites must fail normally, even when dodge movement is xfailed.
+    # Align by the displayed game-frame counter, not capture wall seconds.
+    series = dodge_replay.sim.series
+    before = [values for _, values in series if 27 * simai.FPS <= values[0] < 29 * simai.FPS]
+    assert before and all(values[1:] == [2, 2, 0] for values in before), before
+    rows = [values for _, values in series if 31 * simai.FPS <= values[0] < 34 * simai.FPS]
+    assert rows and all(values[1] == 2 for values in rows), rows
+    assert any(values[3] == 1 for values in rows), rows
+
+
+@pytest.mark.parametrize('dodge_replay,limit', [
     pytest.param('aidodgeon', 1, marks=pytest.mark.xfail(strict=True, raises=AssertionError,
                  reason='native beacon: two living warriors leave the sample square with DodgeThreats on; '
                         'micro has no dodge consumer and simai.micro_team supplies no threat view/move hook. '
-                        'See work/re/handoff-c.md and work/re/c_dodge_report.md')),
+                        'See work/re/handoff-e.md and work/re/e105_dodge_inputs.md')),
     ('aidodgeoff', 2),
-])
-def test_micro_dodge_replays_named_beacon_observation(name, limit):
-    w = simai.run(name, 'r', until=34.0)
-    # Use the displayed game-frame counter, as with the native readings; capture
-    # wall seconds drift and made the on probe's automatic window report FAIL.
-    before = [values for _, values in w.sim.series if 27 * simai.FPS <= values[0] < 29 * simai.FPS]
-    assert before and all(values[1:3] == [2, 2] for values in before), before
-    rows = [(s, values) for s, values in w.sim.series if 31 * simai.FPS <= values[0] < 34 * simai.FPS]
-    assert rows
-    assert all(values[1] == 2 for _, values in rows), rows  # leaving must not be death
-    assert any(values[3] == 1 for _, values in rows), rows
-    near = [values[2] for _, values in rows]
-    if name == 'aidodgeon':
+], indirect=['dodge_replay'])
+def test_micro_dodge_replays_named_beacon_observation(dodge_replay, limit):
+    # Native on: f468 [2,1,1], f479..509 [2,0,1]; off: f456..501 [2,2,1].
+    # work/re/c_dodge_logs/aidodge{on,off}__r.json. This proves movement in the
+    # threat's presence, not an exact reaction clock, member filter or safety circle.
+    rows = [values for _, values in dodge_replay.sim.series
+            if 31 * simai.FPS <= values[0] < 34 * simai.FPS and values[3] == 1]
+    assert rows, 'named threat must be present in the movement observation'
+    assert all(values[1] == 2 for values in rows), rows
+    near = [values[2] for values in rows]
+    if limit == 1:
         assert min(near) <= limit, rows
     else:
         assert set(near) == {limit}, rows
