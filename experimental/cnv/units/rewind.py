@@ -53,8 +53,8 @@ def rewind(id='CNV_LibRw', back='3s', reload='20s', body='HighlanderBody', store
     return u
 
 
-# The show version (user 11-11: no real rewind): a new carrier spawned where the old one was, with the belt's
-# time-warp FX as it is made, and a wreck of the old one that crashes there.
+# The show version (user 11-11: no real rewind): the carrier stays on as "the new one" and drops a wreck of the old
+# one on its spot, which plays the belt's time-warp FX as it is made and crashes there.
 WARP_SCALE = 3.0    # bench CampRwSSwap_mcp_1111_163719 s11.5: retail's FX_TanyaTimeWarp covered ~1/3 of the hull
 
 
@@ -135,13 +135,57 @@ def warp_fx(id, scale=WARP_SCALE):
 '''}, [f'FXParticleSystemTemplate:{ps}', f'FXList:{fx}']
 
 
-def swap_carrier(id='CNV_LibRwS', scale=WARP_SCALE):
-    """The carrier of the show version: ImmortalBody (bench CampRwSSwap_mcp_1111_163449: with retail's ActiveBody
-    a 5200 blow at 56 % killed it before the mission's swap ran; ImmortalBody holds it at 1 hp, so the swap always
-    runs -- and deletes it: NAMED_KILL cannot kill this body), the time-warp FX `scale` times larger as it is made
-    (FXListBehavior onCreate; scale 1: retail's FX_TanyaTimeWarp)."""
+def swap_carrier(id='CNV_LibRwS', wreck_id='CNV_LibRwW'):
+    """The carrier of the show version, which stays on as "the new one" (round 49: its spot, facing and name are
+    the old one's by construction; round 47 spawned a new one, which faced east whatever the old one did):
+    ImmortalBody (bench CampRwSSwap_mcp_1111_163449: with retail's ActiveBody a 5200 blow at 56 % killed it before
+    the mission's swap ran; ImmortalBody holds it at 1 hp, so the swap always runs). Its button `wreck` (an
+    OCLSpecialPower, CreateLocation USE_OWNER_OBJECT) drops `wreck_id` on its spot and facing (CreateObject
+    Disposition LIKE_EXISTING): the wreck plays the time-warp FX and crashes (wreck())."""
     u = lib.liberty(id, tag='RwS', drone_range=1, drones_home=False, model=None)
     u.xml = sub1(u.xml, '<ActiveBody\n\t\t\t\tid="ModuleTag_Body"', '<ImmortalBody\n\t\t\t\tid="ModuleTag_Body"')
+    ids = dict(shed=f'SpecialPower_{id}_Wreck', shed_cmd=f'Command_{id}_Wreck', shed_button=f'Button_{id}_Wreck',
+               shed_ocl=f'OCL_{id}_Wreck')
+    u.xml = sub1(u.xml, '\t\t</Behaviors>', f'''			<OCLSpecialPower id="ModuleTag_CNV_Wreck" SpecialPowerTemplate="{ids['shed']}"
+				UpdateModuleStartsAttack="false" AvailableAtStart="true" OCL="{ids['shed_ocl']}"
+				CreateLocation="USE_OWNER_OBJECT"/>
+		</Behaviors>''')
+    u.xml = sub1(u.xml, '<Cmd>Command_AttackMove</Cmd>', f'<Cmd>Command_AttackMove</Cmd>\n\t\t<Cmd>{ids["shed_cmd"]}</Cmd>')
+    u.xml = sub1(u.xml, '</AssetDeclaration>', f'''	<ObjectCreationList id="{ids['shed_ocl']}">
+		<CreateObject Options="IGNORE_ALL_OBJECTS" Disposition="LIKE_EXISTING RELATIVE_ANGLE" DispositionAngle="0d"
+			Count="1">
+			<CreateObject>{wreck_id}</CreateObject>
+		</CreateObject>
+	</ObjectCreationList>
+	<SpecialPowerTemplate id="{ids['shed']}" ReloadTime="1s" TargetType="NONE" WaypointModeTerminal="false"/>
+	<LogicCommand Type="SPECIAL_POWER" id="{ids['shed_cmd']}">
+		<SpecialPower>{ids['shed']}</SpecialPower>
+	</LogicCommand>
+</AssetDeclaration>''')
+    ui = next(iter(u.files))
+    u.files[ui] = sub1(u.files[ui], '</AssetDeclaration>', f'''	<UnitAbilityButtonTemplate id="{ids['shed_button']}" LogicCommand="{ids['shed_cmd']}">
+		<Data>
+			<SpecialPower StateData="ButtonStateAbilityTimeBelt"/>
+		</Data>
+	</UnitAbilityButtonTemplate>
+</AssetDeclaration>''')
+    u.link += [f'ObjectCreationList:{ids["shed_ocl"]}', f'SpecialPowerTemplate:{ids["shed"]}',
+               f'LogicCommand:{ids["shed_cmd"]}', f'UnitAbilityButtonTemplate:{ids["shed_button"]}']
+    u.names.update(ids)
+    u.abilities['wreck'] = ids['shed_cmd']
+    u.what = '自由号（演出版回溯）：换船时它自己留下当新船，按钮 wreck 在原地按原朝向丢下一具残骸'
+    return u
+
+
+WRECK_LIFE = 1.5    # s: a once-a-second counter sees it alive, then retail's death plays (the crash)
+
+
+def wreck(id='CNV_LibRwW', scale=WARP_SCALE, life=WRECK_LIFE):
+    """The old carrier's wreck: the same Kirov with retail's body and death (it falls and crashes), no drones; the
+    carrier's wreck button drops it on its spot (swap_carrier). It plays the time-warp FX `scale` times larger as it
+    is made (FXListBehavior onCreate; scale 1: retail's FX_TanyaTimeWarp) and dies `life` s later (LifetimeUpdate:
+    it has no name, so no NAMED_KILL)."""
+    u = lib.liberty(id, tag='RwW', drone_range=1, drones_home=False, model=None)
     fx = 'FX_TanyaTimeWarp'
     if scale != 1:
         fx, files, link = warp_fx(id, scale)
@@ -152,15 +196,8 @@ def swap_carrier(id='CNV_LibRwS', scale=WARP_SCALE):
 				<DieMuxData DeathTypes="ALL"/>
 				<Event Index="onCreate" FX="{fx}"/>
 			</FXListBehavior>
+			<LifetimeUpdate id="ModuleTag_CNV_WreckLife" MinLifetime="{life:g}s" MaxLifetime="{life:g}s"/>
 		</Behaviors>''')
-    u.what = f'自由号（演出版回溯）：出生时播谭雅时空腰带的特效（放大 {scale:g} 倍）'
-    u.params.update(scale=scale)
-    return u
-
-
-def wreck(id='CNV_LibRwW'):
-    """The old carrier's wreck: the same Kirov with retail's body and death (it falls and crashes), no drones; the
-    mission spawns it where the old carrier was and kills it at once."""
-    u = lib.liberty(id, tag='RwW', drone_range=1, drones_home=False, model=None)
-    u.what = '自由号残骸：换船时原地生成并立即击毁，播原版坠毁'
+    u.what = f'自由号残骸：旧船按钮原地丢下，播谭雅时空腰带特效（放大 {scale:g} 倍），{life:g} 秒后播原版坠毁'
+    u.params.update(scale=scale, life=life)
     return u

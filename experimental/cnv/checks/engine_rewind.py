@@ -97,39 +97,38 @@ def fire(m):
 
 
 def swap(m):
-    """rewind_swap (the show version): ours at 1 s for CONTROL s; our two Multigunners, 100 south of it, ordered at
-    5 s to force-attack it (旧血 falling while 旧归我 1 = they shoot an aircraft of their own); at 24 s NAMED_DAMAGE
-    5200 (whatever is left: the swap comes then at the latest). 新归我 / 新血: the new carrier's owner and health
-    (50 % expected; its owner is whoever held the old one at the swap)."""
-    new = m.role("new carrier").name
+    """rewind_swap (the show version; round 49: the carrier stays on as the new one): ours at 1 s for CONTROL s;
+    our two Multigunners, 100 south of it, ordered at 5 s to force-attack it (血 falling while 归我 1 = they shoot an
+    aircraft of their own) and stopped at the swap; at 10 s NAMED_DAMAGE 99999 (ImmortalBody: 1 hp, the swap
+    comes then). After it: 血 50 (the mission's top-up), 归我 1 to the end (ours at the swap: ours for good, the
+    control's end at 16 s leaves it), 残骸 = presses of its wreck button (Rw Wrecks)."""
+    car = m.role("carrier").name
+    guns = [m.role(f'gun {k}').name for k in (1, 2)]
     t = Test()
     t.scripts.append(Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1')),
                                                  ('SET_MILLISECOND_TIMER', 'Test Go', 0.01)]))
     t.scripts.append(_control(1.0))
-    _at(t, 'shoot', 5.0, [('NAMED_FORCE_ATTACK_NAMED', m.role(f'gun {k}').name, m.role("carrier").name) for k in (1, 2)])
-    _at(t, 'finish', 10.0, [('NAMED_DAMAGE', m.role("carrier").name, 99999)])
-    counted('Test Health', '旧血', t, health=m.role("carrier").name)
-    counted('Test Ours', '旧归我', t, owner=m.role("carrier").name)
-    counted('Test New Ours', '新归我', t, owner=new)
-    counted('Test New Health', '新血', t, health=new)
-    # bench CampRwSSwap_mcp_1111_163719: 旧血 98 -> 90 while ours (s1-s10: our guns shoot their own aircraft), the
-    # swap at s12 (old deleted, its counters frozen), 新归我 1 and 新血 48-49 to the end (s37)
-    t.expect += [('旧归我', 4, '==', 1, 10), ('旧血', 10, '<', 95), ('新血', 14, '>=', 45), ('新归我', 20, '==', 1)]
-    t.bench = [('bench_watch', dict(seconds=34, every=1, sheet=False, lines=4))]
+    _at(t, 'shoot', 5.0, [('NAMED_FORCE_ATTACK_NAMED', g, car) for g in guns])
+    _at(t, 'finish', 10.0, [('NAMED_DAMAGE', car, 99999)])
+    t.scripts.append(Script('Test - hold fire', [('COUNTER', 'Rw Wrecks', 3, 1)], [('NAMED_STOP', g) for g in guns]))
+    counted('Test Health', '血', t, health=car)
+    counted('Test Ours', '归我', t, owner=car)
+    t.counters.append(('Rw Wrecks', '残骸'))
+    # bench CampRwSSwap_mcp_1111_163719 (round 46): 98 -> 90 while ours (s1-s10: our guns shoot their own aircraft)
+    t.expect += [('归我', 4, '==', 1, 10), ('血', 8, '<', 98, 9), ('残骸', 12, '==', 1), ('血', 12, '>=', 45),
+                 ('血', 12, '<', 56), ('归我', 20, '==', 1)]
+    t.bench = [('bench_watch', dict(seconds=26, every=1, sheet=False, lines=4))]
     return t
 
 
 def wreck(m):
-    """rewind_swap, the swap's look (round 47): the same run as swap with the old carrier's counters traded for the
-    wreck's -- 残骸 = wrecks spawned (Rw Wrecks), 残骸血 = its health (0 once killed: retail's death, the crash); the
-    camera is on it, so the frames from the swap on show the crash and the enlarged time-warp FX."""
+    """rewind_swap, the swap's look: swap's run plus 残骸数 = the wrecks of ours on the map (the OCL really made one:
+    it is dropped by our carrier, so it is ours; it dies units/rewind.py WRECK_LIFE s later). The camera is on the
+    carrier, so the frames from the swap on show the enlarged time-warp FX, the crash, and whether the wreck faces
+    the way the carrier does."""
     t = swap(m)
-    t.counters = [c for c in t.counters if c[1] not in ('旧血', '旧归我')]
-    t.scripts = [s for s in t.scripts if not s.name.startswith(('Test - count Test Health', 'Test - count Test Ours'))]
-    t.counters.append(('Rw Wrecks', '残骸'))
-    counted('Test Wreck Health', '残骸血', t, health=m.role("wreck").name)
-    t.expect = [e for e in t.expect if e[0] in ('新血', '新归我')]
-    t.expect += [('残骸', 14, '==', 1), ('残骸血', 14, '==', 0)]
+    counted('Test Wrecks', '残骸数', t, template=m.role("wreck").template)
+    t.expect.append(('残骸数', 9, 'ever>=', 1, 14))
     return t
 
 

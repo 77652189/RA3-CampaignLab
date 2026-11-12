@@ -77,32 +77,31 @@ def mission(name='CampRw', body='HighlanderBody'):
     return m
 
 
-NEW = 'UNIT - CNV Liberty Rw New'
-WRECK = 'UNIT - CNV Liberty Rw Wreck'
-SWAP_AT, NEW_HURT = 15, 3000            # health % that swaps it; damage to the new one (6000 hp: 50 %)
+SWAP_AT, MAX_HP, NEW_HURT = 15, 6000, 3000     # health % that swaps it; its max hp; then 3000 off: 50 %
 
 
 def swapped(name='CampRwS', scale=rw.WARP_SCALE):
-    """The show the user chose instead of a real rewind (11-11): at SWAP_AT % a new carrier is spawned where the old
-    one was (UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION), playing the time-warp FX `scale` times larger
-    as it is made, on the player's team if the old one was the player's then, else Soviet_1's, and hurt to 50 %;
-    the old one is replaced by a wreck (units/rewind.py wreck: retail's body) spawned on its spot and killed at once,
-    so the crash plays there (Rw Wrecks + 1). Our Multigunners stand 100 south of it (gun 1 / gun 2)."""
-    u, w = rw.swap_carrier(scale=scale), rw.wreck()
+    """The show the user chose instead of a real rewind (11-11). Round 49: the carrier itself stays on as "the new
+    one" (its spot, facing and name the old one's by construction; round 47's spawned new one faced east whatever
+    the old one did). At SWAP_AT % the mission presses its wreck button (units/rewind.py swap_carrier: an OCL drops
+    a wreck on its spot and facing, the wreck plays the time-warp FX `scale` times larger and crashes after
+    rw.WRECK_LIFE s; Rw Wrecks + 1) and puts it back at 50 % (NAMED_SET_MAX_HEALTH MAX_HP full -- bench
+    engine_maxhealth: 100 % --, then NAMED_DAMAGE NEW_HURT; UNIT_SET_HEALTH did nothing to it, round 45). Ours at
+    the swap = ours for good (Rw Perm: the control's end leaves it ours). Our Multigunners stand 100 south of it."""
+    w = rw.wreck(scale=scale)
+    u = rw.swap_carrier(wreck_id=w.id)
     m = Mission(name=name, map=island, units=[u, w])
     m.put(u.id, 'west field', 0, -60, side='s1', name=CARRIER, role='carrier')
     for k, dx in ((1, -40), (2, 40)):
         m.put(GUN, 'west field', dx, 40, name=f'UNIT - CNV Rw Gun {k}', role=f'gun {k}')
     low = ('UNIT_HEALTH', CARRIER, 1, SWAP_AT)
-    for side, cond in (('p1', [('NAMED_OWNED_BY_PLAYER', m.player('p1'), CARRIER)]), ('s1', [])):
-        team = island.TEAMS[side]
-        m.scripts.append(Script(f'Rw - swap {side}', [low, ('FLAG', 'Rw Swapped', 0)] + cond,
-                                [('UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION', WRECK, w.id, team, CARRIER),
-                                 ('UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION', NEW, u.id, team, CARRIER),
-                                 ('NAMED_DELETE', CARRIER), ('NAMED_KILL', WRECK), ('NAMED_DAMAGE', NEW, NEW_HURT),
-                                 ('INCREMENT_COUNTER', 1, 'Rw Wrecks'), ('SET_FLAG', 'Rw Swapped', 1)]))
-    m.cast['new carrier'] = Role(u.id, name=NEW, side='p1')     # spawned at the swap (on either side)
-    m.cast['wreck'] = Role(w.id, name=WRECK, side='s1')         # spawned and killed at the swap
+    swap = [('NAMED_USE_COMMANDBUTTON_ABILITY', CARRIER, m.ability('carrier', 'wreck')),
+            ('NAMED_SET_MAX_HEALTH', CARRIER, MAX_HP, 1), ('NAMED_DAMAGE', CARRIER, NEW_HURT),
+            ('INCREMENT_COUNTER', 1, 'Rw Wrecks'), ('SET_FLAG', 'Rw Swapped', 1)]
+    m.scripts += [Script('Rw - swap p1', [low, ('FLAG', 'Rw Swapped', 0), ('NAMED_OWNED_BY_PLAYER', m.player('p1'), CARRIER)],
+                         [('SET_FLAG', 'Rw Perm', 1)] + swap),
+                  Script('Rw - swap s1', [low, ('FLAG', 'Rw Swapped', 0)], swap)]
+    m.cast['wreck'] = Role(w.id, side='p1')     # dropped by the carrier at the swap (its owner's), no name
     m.scripts += control(m)
     return m
 
