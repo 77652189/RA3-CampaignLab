@@ -922,6 +922,38 @@ def pt(m):
     t.bench = [('bench_watch', dict(seconds=w + 30.0, every=1, sheet=False, lines=len(t.counters)))]
     return t
 
+def mt(m):
+    """When does s1 start its first AlliedTechStructure (aiskmt: its own ConstantHeuristic state's one entry, TECH
+    MinTime 150 s ForceTime 151 s; aiskmto: MinTime 250 s ForceTime 151 s; s1 owns an airfield and a refinery from
+    s0, the tech building's prerequisites)? 科技楼 = how many s1 owns; 科技帧 = frames from the wake (+30) while it
+    owns none (stops at the first); 电厂 = power plants owned (3 placed); AI钱. To 300 s after the wake.
+    First run (2026-11-12, without the 3 plants, run CampAISkMTMt_mcp_1112_122317): no tech building to s322 -- the
+    opening + the airfield + the refinery draw 275 against 250, so the power gate held it (the plants added since).
+    Second run (with the 3 plants, run CampAISkMTMt_mcp_1112_123106, PASS): **still no tech building to s377**
+    (~365 s after the wake, past ForceTime 151); 电厂 3 -> 4 at s29 -> 5 at s80 (the opening's two), money 50000 ->
+    8900 on units. Power is not what holds it: some other gate (B handoff 154's table). aiskmto not run yet.
+    Data's prediction (D59, work/re/d59_b_fields.md 3): aiskmt forced (200) from t > 151 s after the wake -> 科技帧
+    stops at ~151 x 15 (plus the yard's queue: the opening may still hold it); aiskmto: if t < MinTime is tested
+    first, ~250 s; if ForceTime first, ~151 s as aiskmt. The stock tech state (MinTime 360 s) cannot come first. The
+    simulator scores no TECH entry: none in either."""
+    t = Test()
+    s1 = m.player('s1')
+    _sum(t, m, s1, 'CNV_AK_Tech', '科技楼', ('AlliedTechStructure',))
+    _sum(t, m, s1, 'CNV_AK_Pow', '电厂', ('AlliedPowerPlant',))
+    t.counters.append(('CNV_AK_Money', 'AI钱'))
+    t.counters.append(('CNV_AK_TechF', '科技帧'))
+    t.scripts += [Script('Test - money', [], [('SET_PLAYER_MONEY_TO_COUNTER', s1, 'CNV_AK_Money')], once=False),
+                  Script('Test - tick', [], [('INCREMENT_COUNTER', 1, 'CNV_AK_Tick')], once=False),
+                  Script('Test - woke', [('TIMER_EXPIRED', 'CNV AI Wake'), ('COUNTER', 'CNV_AK_Tick', 3, 30)],
+                         [('SET_FLAG', 'Test Woke', 1)]),
+                  Script('Test - tech frames', [('FLAG', 'Test Woke', 1), ('COUNTER', 'CNV_AK_Tech', 0, 1)],
+                         [('INCREMENT_COUNTER', 1, 'CNV_AK_TechF')], once=False)]
+    w = m.facts['wake at']
+    t.expect += [('电厂', w + 5.0, '>=', 3)]
+    t.bench = [('bench_watch', dict(seconds=w + 300.0, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j': j, 'k': k, 'l': l, 'm': m,
                       'n': n, 'o': o, 'p': p, 'q': q, 'r': r, 'u': u, 'x': x},
           'aiskirmc': {'m': m},  # opt-in carrier diagnostic; stock aiskirm stays unchanged
@@ -944,6 +976,8 @@ CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j
           'aiskoff': {'y': y},
           'aiskpt': {'pt': pt},
           'aiskpti': {'pt': pt},
+          'aiskmt': {'mt': mt},
+          'aiskmto': {'mt': mt},
           'aiskrand': {'s': s},
           'aiskdiff': {'s': s},
           'aiskvinf': {'z': z, 't': t},

@@ -126,6 +126,40 @@ def ptype_xml(write_type=True):
         '</AssetDeclaration>', ''])
 
 
+MT_PID, MT_STATE = 'CNVMinT', 'CNVMinTBuild'   # aiskmt / aiskmto (check mt): BuildEntry.MinTime on a TECH entry
+MT_TECH = 'AlliedTechStructure'       # TECH, needs an airfield + a refinery (SDK Allied/Structures, GameDependency)
+MT_TIMES = {'aiskmt': (150, 151), 'aiskmto': (250, 151)}   # build -> (MinTime, ForceTime), seconds
+MT_OWNED = (('AlliedAirfield', 'east airfield'), ('AlliedRefinery', 'east refinery'))   # s1's from s0, by site
+# + three power plants (+300): without them the opening's buildings and these two draw 275 against 250 and the
+# tech building's 75 never passes the power gate (work/re/l4_buildstate.md "电力门"; first aiskmt run, B handoff 154)
+MT_POWER = ((-300.0, -150.0), (-300.0, -350.0), (-500.0, -250.0))   # from the east base (D's aiskcapp spots + one)
+
+
+def mintime_xml(min_time, force_time):
+    """1AlliedBalanced plus one ConstantHeuristic build state of its own with one entry MT_TECH TECH MinTime /
+    ForceTime (retail writes MinTime on TECH / UPGRADE_TECH entries only, SDK States/AlliedBaseStates.xml; ForceTime
+    is the XSD's, default 99999s). D59 (work/re/d59_b_fields.md 3): t = seconds since the AI woke; t < MinTime -> 0,
+    t > ForceTime -> 200 (forced), between -> 140 or 0 by efficiency. aiskmto writes ForceTime < MinTime: which gate
+    comes first? The stock tech state (MinTime 360 s at MEDIUM) cannot build it earlier."""
+    return '\n'.join([
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+        '  <Tags></Tags>',
+        '  <Includes>',
+        '    <Include type="instance" source="DATA:SkirmishAI/Personalities/AlliedBalanced.xml" />',
+        '  </Includes>',
+        f'  <AIBuildStateDefinition id="{MT_STATE}">',
+        '    <Heuristic>',
+        '      <ConstantHeuristic/>',
+        '    </Heuristic>',
+        f'    <BuildEntry Build="{MT_TECH}" Heuristic="TECH" MinTime="{min_time}s" ForceTime="{force_time}s"/>',
+        '  </AIBuildStateDefinition>',
+        f'  <AIPersonalityDefinition id="{MT_PID}" PersonalityType="{MT_PID}" inheritFrom="1AlliedBalanced">',
+        f'    <BuildState id="{MT_STATE}" State="{MT_STATE}" Difficulty="EASY MEDIUM HARD BRUTAL"/>',
+        '  </AIPersonalityDefinition>',
+        '</AssetDeclaration>', ''])
+
+
 UMOD_PID = 'CNVUMod'                  # aiskmod: 1AlliedBalanced plus UnitModifier lines (check u)
 UMOD_ZERO = ('AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry')   # Peacekeeper, Javelin soldier
 
@@ -316,7 +350,7 @@ ARMY_N = 10                            # aiskvinf / aiskvveh (check z): what the
 
 def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None, account=None,
             buffer=None, new=None, army=None, two=None, observe=False, cap=None, block=None, off=False,
-            ptype=None):
+            ptype=None, mintime=None):
     m = Mission(name=name, map=ai_map(resources.measured(niagara), lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
     if expire is not None:               # aiskexp (check q): the same AI with SecondsTillTargetsExpire = expire
@@ -331,6 +365,16 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
         m.facts['type written'] = int(ptype)
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{PT_PID}'
         m.assets.append((f'{PT_PID}.xml', ptype_xml(ptype), f'AIPersonalityDefinition:{PT_PID}'))
+    if mintime is not None:              # aiskmt / aiskmto (check mt): a TECH entry with MinTime / ForceTime
+        lo, hi = mintime
+        m.facts['min time'], m.facts['force time'] = lo, hi
+        m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{MT_PID}'
+        m.assets.append((f'{MT_PID}.xml', mintime_xml(lo, hi), f'AIPersonalityDefinition:{MT_PID}'))
+        for k, (tpl, site) in enumerate(MT_OWNED):
+            m.put(tpl, site, side='s1', name=f'UNIT - CNV AI Owned {k}', role=f'ai owned {k}')
+        for k, (x, y) in enumerate(MT_POWER):
+            m.put('AlliedPowerPlant', 'east base', x, y, side='s1', angle=0.0, name=f'UNIT - CNV AI Power {k}',
+                  role=f'ai power {k}')
     if buffer is not None:               # aiskpw0 / aiskpw3 (check x): DesiredExcessPowerBuffer = buffer
         m.facts['power buffer'] = buffer
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{POWER_PID}'
@@ -434,6 +478,8 @@ MISSION = {'aiskirm': mission, 'aiskirmc': lambda: mission(observe=True),
            'aiskoff': lambda: mission('CampAISkOff', new=True, off=True),   # check y: the state's heuristic 0
            'aiskpt': lambda: mission('CampAISkPt', ptype=True),      # check pt: PersonalityType != id
            'aiskpti': lambda: mission('CampAISkPtI', ptype=False),   # check pt: PersonalityType not written
+           'aiskmt': lambda: mission('CampAISkMT', mintime=MT_TIMES['aiskmt']),      # check mt: MinTime 150 Force 151
+           'aiskmto': lambda: mission('CampAISkMTO', mintime=MT_TIMES['aiskmto']),   # check mt: MinTime 250 Force 151
            'aiskrand': lambda: mission('CampAISkRand', two='rand'),   # check s: RANDOM_UNIT 0%-30% / bare 30-100
            'aiskdiff': lambda: mission('CampAISkDiff', two='diff'),   # check s: a HARD-only state at MEDIUM
            'aiskvinf': lambda: mission('CampAISkVInf', army=ARMY_INF),   # check z: the player owns 10 conscripts
