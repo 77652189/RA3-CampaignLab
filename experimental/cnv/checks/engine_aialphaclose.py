@@ -30,10 +30,12 @@ def probe(m):
 def observe(m):
     """Check observer equivalence against the original measured plateaus.
 
-    E98's per-frame carrier failed this qualification: the capture ended before
-    the guard/Alpha confrontation. Do not use it to prove Alpha eligibility or shift
-    its clock to fit the original bench. Evidence and open clock questions:
-    work/re/e98_alpha_observer.md.
+    D81 fixed the observer overhead and added a shared logic-frame anchor.
+    Record changes plus a one-second heartbeat to cover the guard/Alpha
+    confrontation. Qualify both lanes before using their internal states;
+    never shift the clock to fit the original bench. E99 reproduced both plateaus;
+    the high lane required RA3_BENCH_SPEED=1 to sustain 15 logic frames per
+    sampled second. See work/re/e99_alpha_observer.md.
     """
     t = probe(m)
     hp, home, live = (34, 0, 0) if m.facts['alpha high'] else (59, 4, 4)

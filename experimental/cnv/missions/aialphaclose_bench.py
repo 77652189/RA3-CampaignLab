@@ -44,8 +44,8 @@ def mission(high, observe=False):
         xml = (Path(labpaths.SDK3) / 'SageXML/Allied/Structures' / (original + '.xml')).read_text(encoding='utf-8')
         assert xml.count('<Behaviors>') == xml.count(f'id="{original}"') == 1
         xml = xml.replace(f'id="{original}"', f'id="{host}"').replace(
-            '<Behaviors>', '<Behaviors>\n  <DeletionUpdate id="ModuleTag_CNVTeams" MinFrames="1" MaxFrames="4000"/>')
-        m.units.append(Unit(host, xml, names=dict(unit=host), what='原建造厂附带每帧被动队伍日志', params=dict(every=1)))
+            '<Behaviors>', '<Behaviors>\n  <DeletionUpdate id="ModuleTag_CNVTeams" MinFrames="15" MaxFrames="4000"/>')
+        m.units.append(Unit(host, xml, names=dict(unit=host), what='原建造厂附带变化日志与每秒心跳', params=dict(every=15)))
         m.find(yard.name).template = yard.template = host
         m.name = 'CampAlObsHi' if high else 'CampAlObsLo'
         m.ext = True

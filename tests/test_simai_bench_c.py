@@ -100,7 +100,7 @@ def test_alpha_observer_preserves_the_measured_scenario(high):
             for o in observed.objects] == stock.objects
     host, = observed.units
     original = (Path(labpaths.SDK3) / 'SageXML/Allied/Structures' / (yard.template + '.xml')).read_text(encoding='utf-8')
-    behavior = '\n  <DeletionUpdate id="ModuleTag_CNVTeams" MinFrames="1" MaxFrames="4000"/>'
+    behavior = '\n  <DeletionUpdate id="ModuleTag_CNVTeams" MinFrames="15" MaxFrames="4000"/>'
     assert host.xml.count(behavior) == 1
     assert host.xml.replace(behavior, '').replace(f'id="{host.id}"', f'id="{yard.template}"') == original
     assert observed.role('ai yard').template == observed.find(yard.name).template == host.id
@@ -108,14 +108,16 @@ def test_alpha_observer_preserves_the_measured_scenario(high):
     assert ('目标血量', 39, '==', 34 if high else 59, 55) in test.expect
 
 
+@pytest.mark.parametrize('build', ['aialobslo', 'aialobshi'])
 @pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'E98 aialobshi observer reports micro state 6 at frame 230; model reports 8. '
-    'The observer did not reproduce the original counters and its clock relation '
-    'to script time is unresolved. This is an upstream observation gap, not an '
-    'Alpha threshold verdict. See work/re/e98_alpha_observer.md and work/re/handoff-e.md.'))
-def test_alpha_observer_replays_measured_same_frame_state():
-    """Assert the actual observer reading without shifting either timeline."""
-    w = simai.run('aialobshi', 'a', until=16, lib=simai.model()['xmldata'].Library(), record=True)
+    'E99 qualified observer pair: both lanes enter micro state 6 at logic frame 230; '
+    'model reports 8 at the same unshifted frame. D81 shared-clock anchors and '
+    'full guard/retreat coverage replace the invalid slow E98 observation. '
+    'Target selection/dispatch chronology remains a gap; no threshold fitting. '
+    'See work/re/e99_alpha_observer.md and work/re/handoff-e.md.'))
+def test_alpha_observer_replays_measured_same_frame_state(build):
+    """Assert the qualified observer reading on its original shared logic frame."""
+    w = simai.run(build, 'a', until=16, lib=simai.model()['xmldata'].Library(), record=True)
     brain, = w.brains.values()
     row, = [r for r in brain.rec['frames'] if r['frame'] == 230]
     assert row['state'] == 6
@@ -133,9 +135,9 @@ def test_alpha_close_arrives_with_target_at_seventy_percent(alpha_close_rows):
     'E90 shares actual firing geometry with Alpha eligibility: high HP37/home0/live0; '
     'low remains HP64/home3/live3. Exact firing/retreat chronology still needs '
     'same-frame engine target/member/eligibility evidence. No threshold fitting or '
-    'inventory promotion. E98 per-frame observer failed baseline qualification '
-    'before the guard/Alpha confrontation; it cannot close this gap. See work/re/handoff-e.md, '
-    'work/re/e_alpha_e90.md and work/re/e98_alpha_observer.md.'))
+    'inventory promotion. E99 observer qualification restores guard/retreat coverage; '
+    'the same-frame target/dispatch gap remains. See work/re/handoff-e.md, '
+    'work/re/e_alpha_e90.md and work/re/e99_alpha_observer.md.'))
 def test_alpha_close_replays_measured_outcome(alpha_close_rows):
     """Stable s39-55 bench plateaus; no exact dispatch-frame inference."""
     build, rows = alpha_close_rows
