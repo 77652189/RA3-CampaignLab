@@ -67,3 +67,21 @@ def test_specific_unit_cap(build, active):
     if active:
         assert all(row['维和总数'] >= 5 for _, row in late), late
         assert max(row['维和总数'] for _, row in late) == 9, late
+
+
+@pytest.mark.parametrize('build,land,water', [
+    ('ailocland', 4, 0),
+    ('ailocboth', 4, 0),
+    pytest.param('ailocwater', 0, 4, marks=pytest.mark.xfail(
+        strict=True, reason='E81 engine_ailocation a: Water has four Twinblades at the water plant '
+        'and zero at the land plant at s40; default model has zero at both. '
+        'B owns the model; see work/re/handoff-e.md and work/re/e_location_e81.md.')),
+])
+def test_target_location(build, land, water):
+    """Replay engine_ailocation a's displayed arrival counters at s40."""
+    w = simai.run(build, 'a', 41, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    samples = [dict(zip(labels, values)) for t, values in w.sim.series if t == 40]
+    assert len(samples) == 1
+    assert samples[0]['到陆厂'] == land, samples
+    assert samples[0]['到水厂'] == water, samples
