@@ -98,7 +98,7 @@
 | 不涉及 | `CAMERA_LETTERBOX_BEGIN` | 104 | a4 | 纯表现（名字规则） |
 | 已对拍 | `NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY` | 103 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aibasedef.py |
 | 未做 | `TEAM_ALLOW_AI_AUTOACQUIRE` | 103 |  | Sim.act / Sim.cond 不认识 |
-| 已对拍 | `SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER` | 101 | a4 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_infmon.py |
+| 已对拍 | `SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER` | 101 | a4 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_ref.py |
 | 不涉及 | `RESET_CAMERA` | 100 |  | 纯表现（名字规则） |
 | 不涉及 | `CAMERA_LETTERBOX_BEGIN_WITH_RADAR` | 98 |  | 纯表现（名字规则） |
 | 已对拍 | `SET_RANDOM_COUNTER` | 97 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_scripts6.py |
@@ -508,7 +508,7 @@
 | 未做 | `TEAM_INSIDE_AREA_ENTIRELY` | 33 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `DISTANCE_BETWEEN_TEAM` | 32 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `PLAYER_HAS_KILLED_TYPE_UNITS` | 29 |  | Sim.act / Sim.cond 不认识 |
-| 已对拍 | `PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA` | 28 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_infmon.py |
+| 已对拍 | `PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA` | 28 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_spawn.py |
 | 已对拍 | `PLAYER_HAS_PLAYER_TECH` | 26 |  | tests/test_simbench.py::test_protocol_rank_two_at_frame_5400 |
 | 未做 | `DISTANCE_BETWEEN_OBJ` | 25 |  | Sim.act / Sim.cond 不认识 |
 | 推断 | `CURRENT_PLATFORM` | 24 |  | Sim.act / Sim.cond 有分支 |
