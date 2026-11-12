@@ -779,3 +779,21 @@ def test_physics_p4b_an_attack_order_kept_through_the_knock_walks_at_landing_plu
         if e.eng.frame > 199 and (man.x, man.y) != (1560, 3280):
             first = e.eng.frame
     assert first == 249
+
+
+@pytest.mark.parametrize('lane', ['plain', 'gm30'])
+def test_physics_p5_a_shot_down_wreck_falls_the_knock_curve_under_its_own_gravity(lane):
+    """Bench 11-11 engine_crash_fall (CampCFFall_mcp_1111_221320): an Apollo copy killed 175 up drops its wreck
+    copy; the wreck's own GravityMultiplier (1 / 30) sets the fall, the logged landing, N 30 / 8 and every probe z."""
+    import build
+    import simunits
+    from checks.engine_crash_fall import BENCH, LANES
+    m, t, name = build.resolve('engine_crash_fall', 'fall')
+    assert name == 'CampCFFall'
+    wreck = next(u for u in m.units if u.id == LANES[lane][0] + 'Dying')
+    gm = wreck.params['gm']
+    assert (gm == 30) == ('GravityMultiplier="30"' in wreck.xml)
+    start, v, landing, n, zs = BENCH[lane]
+    points, end = simunits.meta_impact_fall(start, v, 212.5, gravity=gm)
+    assert end == landing and len(points) == n
+    assert [round(p[2], 2) for p in points[2:]] == pytest.approx(zs, abs=0.06)

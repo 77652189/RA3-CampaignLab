@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|---|---|---|---|
 | 脚本动作 | **92%** | **100%** | 50 / 50 | 451 | 123 | 20 | 191 | 117 | 93% |
 | 脚本条件 | **94%** | **100%** | 12 / 12 | 89 | 32 | 6 | 48 | 3 | 95% |
-| 物体模块 | **96%** | **97%** | 53 / 113 | 189 | 54 | 13 | 96 | 26 | 97% |
+| 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **93%** | **95%** | 17 / 22 | 28 | 18 | 3 | 5 | 2 | 96% |
 | AI | **73%** | **72%** | 98 / 357 | 415 | 104 | 138 | 139 | 34 | 96% |
 
@@ -473,7 +473,7 @@
 | 已对拍 | `FLAG` | 5099 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_aimicro.py |
 | 已对拍 | `TIMER_EXPIRED` | 3917 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_acquire.py |
 | 已对拍 | `CONDITION_TRUE` | 2947 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_scripts6.py |
-| 已对拍 | `NAMED_DESTROYED` | 922 | 全部 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_immortal.py |
+| 已对拍 | `NAMED_DESTROYED` | 922 | 全部 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_crash_fall.py |
 | 已对拍 | `PLAYER_HAS_OBJECT_COMPARISON` | 628 | a1 a4 a5 a7 | tests/test_simbench.py::test_scripts2_a_relation_is_one_way_and_turns_back |
 | 已对拍 | `COUNTER` | 577 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_aimicro.py |
 | 已对拍 | `HAS_FINISHED_AUDIO` | 495 |  | tests/test_simbench.py::test_audio_a_dubbed_line_is_done_its_length_after_it_is_heard |
@@ -572,7 +572,7 @@
 | 不涉及 | `Behaviors/ObjectSMCHelper` | 640 (1059) | 全部 | 纯表现：《将军》ObjectSMCHelper 到时清掉"定时模型状态"（UNIT_SET_MODELCONDITION_GENERIC 的秒数），只换画法；例：AlliedSatelliteSweepShroudRevealer, AlliedTimeBombLvl1 |
 | 已对拍 | `Behaviors/AttributeModifierPoolUpdate` | 622 (910) | 全部 | tests/test_simbench.py::test_super_the_iron_curtain_holds_off_fire_some_23_seconds；例：AlliedAntiVehicleVehicleTech3CannonNodeBase, AlliedAntiVehicleVehicleTech3CannonNodeEnd |
 | 已对拍 | `Behaviors/SecondaryDamageTracker` | 617 (852) | 全部 | tests/test_simbench.py::test_cryo_a_frozen_tank_melts_334_frames_after_the_beam_whatever_the_beam；例：AlliedSatelliteSweepShroudRevealer, AlliedTimeBombLvl1 |
-| 已对拍 | `Behaviors/CreateObjectDie` | 591 (838) | 全部 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_crush.py；例：AlliedAntiGroundAircraft_Dying, AlliedBomberAircraft_Dying |
+| 已对拍 | `Behaviors/CreateObjectDie` | 591 (838) | 全部 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_crash_fall.py；例：AlliedAntiGroundAircraft_Dying, AlliedBomberAircraft_Dying |
 | 已对拍 | `Behaviors/DestroyDie` | 578 (1006) | 全部 | tests/test_simbench.py::test_destroy_die_a_building_killed_is_dying_one_frame_and_gone；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
 | 已对拍 | `Behaviors/SquishCollide` | 569 (749) | 全部 | tests/test_simbench.py::test_crush_a_tank_drives_over_a_lower_level_and_leaves_an_equal_one；例：AlliedSatelliteSweepShroudRevealer, AlliedWallPiece |
 | 已对拍 | `Behaviors/SlowDeath` | 565 (1480) | 全部 | tests/test_simbench.py::test_slow_death_a_crushed_conscript_lies_127_frames_dying_and_in_its_spot；例：AlliedAirField_Collapse, AlliedAntiAirShip_Collapse |
@@ -588,7 +588,7 @@
 | 已对拍 | `Behaviors/ContestableGarrisonContain` | 305 (411) | a4 | tests/test_simbench_c.py::test_garrison_script_entry_skips_room_and_relation_owner_follows_and_damage_or_kill_ejects_alive_at_the_bench；例：BaseCivilianStructure, BaseCivilianStructureLarge |
 | 不涉及 | `Draws/PropDraw` | 221 (301) |  | 纯表现（Draws）；例：AM_Trash01, AM_Debris01 |
 | 已对拍 | `Behaviors/FireWeaponWhenDead` | 146 (230) | 全部 | tests/test_simbench_c.py::test_fire_weapon_when_dead_a_scripted_kill_blows_the_mig_and_the_guardian_beside_it；例：AlliedAntiGroundAircraft_Dying, AlliedAntiStructureVehicleCannonEffect |
-| 未做 | `Behaviors/Physics` | 143 (206) | 全部 | RA3 的 Physics 只有击飞曲线、反弹、落地后倒地/起身、重力倍数（没有 Generals 的 Mass/摩擦/推挤），会动的战役模板全是默认字段（仅 6 个改 GravityMultiplier）。已测：落地后锁 38 帧再走移动令（engine_knock_probe stand / standlate，tests/test_meta_impact.py::test_physics_a_knocked_man_keeps_still_38_frames_after_landing_then_walks_his_order）；人的落点站不住（落水）挪到最近能站的格、按新落点重画曲线（engine_knock_water man / far，tests/test_meta_impact.py::test_physics_p3_a_man_knocked_toward_water_lands_on_the_nearest_cell_he_can_stand_on）；车的落点按 20 取整再加 10、不能落（水）挪到最近的水上格、落点格离水 10 以内落地即死（斜坡本身不致死），落到低处的曲线（engine_knock_water tank / ramp / edge，tests/test_meta_impact.py::test_physics_p3_a_hammer_lands_on_the_plus_10_grid_and_drowns_within_10_of_the_water；门槛 10、搜索格网 INFERRED）；冲击量（弹头原值，不算距离衰减）小于物体的 ShockwaveResistance（车 90、步兵 0）就完全不击飞，等于照飞（engine_knock_water gate89 / gate90 / gate91，tests/test_meta_impact.py::test_physics_p3_a_shock_under_the_hammers_resistance_90_launches_nothing）；倒地时照样开火、空中下的攻击令保留（engine_knock_probe fire，tests/test_meta_impact.py::test_physics_p4_a_knocked_man_fires_his_order_while_lying_before_he_stands）；空中不开火：低飞 20 高、靶子在 2D 射程内十几帧也不打（engine_knock_water farfire，tests/test_meta_impact.py::test_physics_p4b_a_knocked_man_does_not_fire_in_the_air_with_the_target_in_reach）；空中下的攻击令、落地够不着时落地 + 50 帧才起步（移动令 + 38，不是转身；farfire / farwalk，tests/test_meta_impact.py::test_physics_p4b_an_attack_order_kept_through_the_knock_walks_at_landing_plus_50；多等的 12 帧是哪个等待 INFERRED，走进射程多深未建模）；落到高处（车被推上坡、落在高 56 的台面）的曲线：两个控制点都在落点高 + 1.3a（engine_knock_water climb，同上 test_physics_p3_a_hammer_lands_on_the_plus_10_grid…[climb]）；出图不死、默认不反弹（台上读过）；未测：坠机重力；例：AlliedAntiGroundAircraft_Dying, AlliedBomberAircraft_Dying |
+| 已对拍 | `Behaviors/Physics` | 143 (206) | 全部 | tests/test_meta_impact.py::test_physics_p5_a_shot_down_wreck_falls_the_knock_curve_under_its_own_gravity；例：AlliedAntiGroundAircraft_Dying, AlliedBomberAircraft_Dying |
 | 不涉及 | `ClientBehaviors/ModelConditionSoundSelectorClientBehavior` | 140 (195) | 全部 | 纯表现（ClientBehaviors）；例：AlliedSatelliteSweepShroudRevealer, AlliedAirfield |
 | 不涉及 | `Draws/DynamicsDraw` | 138 (857) | a4 | 纯表现（Draws）；例：AlliedAirField_Collapse, AlliedAntiAirShip_Collapse |
 | 已对拍 | `Behaviors/EnableDynamicsCollide` | 137 (154) | a4 | tests/test_simbench_c.py::test_enable_dynamics_collide_a_lantern_without_it_is_crushed_and_gone_at_the_same_frames；例：BaseSimulatedProp, AM_Boat01 |

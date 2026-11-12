@@ -151,6 +151,10 @@ BENCHED_TESTS = {
     (MODULE, 'Behaviors/SlowDeath'):
         'tests/test_simbench.py::test_slow_death_a_crushed_conscript_lies_127_frames_dying_and_in_its_spot',
     (MODULE, 'Behaviors/DestroyDie'): 'tests/test_simbench.py::test_destroy_die_a_building_killed_is_dying_one_frame_and_gone',
+    # engine A rounds 162-173: knock-back curve, landing, hold, gates, fire, the crash's fall (checks/engine_knock_probe,
+    # engine_knock_water, engine_crash_fall; the whole list in NOTES' Physics line)
+    (MODULE, 'Behaviors/Physics'):
+        'tests/test_meta_impact.py::test_physics_p5_a_shot_down_wreck_falls_the_knock_curve_under_its_own_gravity',
     # engine line C round 8: running off the map (Sim.flee_start / flee_due, checks/engine_runoffmap.py, bench 11-06)
     (MODULE, 'Behaviors/RunOffMapBehavior'):
         'tests/test_simbench_c.py::test_run_off_map_the_peacekeeper_is_gone_64_and_304_frames_after_the_order_never_dying',
@@ -346,7 +350,14 @@ NOTES = {
                                           '多等的 12 帧是哪个等待 INFERRED，走进射程多深未建模）；'
                                           '落到高处（车被推上坡、落在高 56 的台面）的曲线：两个控制点都在落点高 + 1.3a'
                                           '（engine_knock_water climb，同上 test_physics_p3_a_hammer_lands_on_the_plus_10_grid…[climb]）；'
-                                          '出图不死、默认不反弹（台上读过）；未测：坠机重力'),
+                                          '出图不死、默认不反弹（台上读过）；'
+                                          '坠机：空中打死的飞机本体立刻没了，下落的是 OCL 生成的残骸，残骸走同一条击飞曲线、'
+                                          '重力看残骸自己的 GravityMultiplier（活飞机的 30 不进坠机；默认 1 从 175 高 30 点、'
+                                          '改 30 只 8 点；落点 = 起点 + 水平速度 × 自由落体时间、向上取 20 格，'
+                                          'engine_crash_fall fall，tests/test_meta_impact.py::'
+                                          'test_physics_p5_a_shot_down_wreck_falls_the_knock_curve_under_its_own_gravity，'
+                                          'simunits.meta_impact_fall；向上取整 INFERRED）。模拟器还不在空中死亡时生成残骸'
+                                          '（CreateObjectDie RequiredStatus AIRBORNE_TARGET），坠机砸伤的时刻没接进 Sim'),
     # engine A round 108: read in the SDK data
     (MODULE, 'Behaviors/ObjectDefectionHelper'): (NA, '没人触发：原版只在 BaseObject 挂一个空的（所以每个物体都有），'
                                                       'SageXML 里没有一处 DefectorSpecialPower，脚本动作表里也没有'

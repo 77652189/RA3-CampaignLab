@@ -832,6 +832,37 @@ def meta_impact_trajectory(position, velocity, landing=None):
     if not plan['steps']:
         return [tuple(position)]
     end, a, n = plan['landing'] if landing is None else landing, max(plan['height'], 0.5), plan['steps']
+    b = max(64 / FPS**2, (math.hypot(velocity[0]*n, velocity[1]*n) + 2*plan['height']) / n)
+    return _knock_curve(position, end, a, b)
+
+
+def meta_impact_fall(position, velocity, ground, gravity=1.0):
+    """A body set falling in the air (Physics P5, bench 11-11 engine_crash_fall: a shot-down Apollo's wreck, made
+    LIKE_EXISTING INHERIT_VELOCITY x 0.5 175 over level ground, ra3ext's `shock` / `build` lines and its probe
+    points): the same curve as a knock-back, its numbers from the fall. T = the free fall's frames from the drop d
+    under g = 64/225 x the body's OWN GravityMultiplier (the wreck's: the live plane's 30 never comes in, it is gone);
+    the landing = start + horizontal velocity x T, rounded UP to the 20 grid (plain 3148 -> 3160, GM 30 2933 -> 2940;
+    up rather than floor + 20: INFERRED); n = ceil(landing distance / horizontal speed) (37 / 8), a = n vz / 4, the
+    step b = (horizontal speed x n + 2a + d) / n (12.2286 / 29.3680 as logged). Plain lands in 30 points (29 frames),
+    GM 30 in 8 (7 frames). A fall with no horizontal speed was not measured. Returns (points, landing)."""
+    d = max(0.0, position[2] - ground)
+    g = 64 / FPS**2 * gravity
+    vz = velocity[2]
+    t = (vz + math.sqrt(vz * vz + 2 * g * d)) / g
+    h = math.hypot(velocity[0], velocity[1])
+    if h <= 0:
+        return [tuple(position), (position[0], position[1], ground)], (position[0], position[1], ground)
+    end = tuple(math.ceil((position[i] + velocity[i] * t) / 20) * 20 if abs(velocity[i]) > 0.01 else
+                round(position[i] / 20) * 20 for i in (0, 1)) + (ground,)
+    n = math.ceil(math.hypot(end[0] - position[0], end[1] - position[1]) / h)
+    a = n * vz / 4
+    return _knock_curve(position, end, max(a, 0.5), (h * n + 2 * a + d) / n), end   # a's floor 0.5 as a knock's
+
+
+def _knock_curve(position, end, a, b):
+    """The knock curve from `position` to `end`: a cubic, its controls at 33 / 66 of the way, the first 1.3 a over
+    the start, the second 1.3 max(0, a - drop) over it (both 1.3 a over a higher end), sampled at ceil(length / b)
+    + 1 points (3 .. 128)."""
     drop = max(0.0, position[2] - end[2])
     first, second = position[2] + 1.3 * a, position[2] + 1.3 * max(0.0, a - drop)
     if end[2] > position[2]:
@@ -854,7 +885,6 @@ def meta_impact_trajectory(position, velocity, landing=None):
         if abs(length - previous) < 1e-5 or count >= 16384:
             break
         previous, count = length, count * 2
-    b = max(64 / FPS**2, (math.hypot(velocity[0]*n, velocity[1]*n) + 2*plan['height']) / n)
     size = min(128, max(3, math.ceil(length/b) + 1))
     return [point(i/(size-1)) for i in range(size)]
 
