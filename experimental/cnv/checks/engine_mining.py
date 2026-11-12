@@ -31,6 +31,9 @@ Against the model (RA3-EngineModel mining.py, round 43; tests/test_objects_bench
 drives fitted (spawn -> node 101, node <-> refinery 104, placed -> node 153); b's period and the stuck collector are
 predictions. c and d need motion (not compared).
 """
+import dataclasses
+import math
+
 from maps import probe_range
 from parts import Mission, Script, Test, counted, square
 
@@ -113,5 +116,49 @@ def mining_test(m, which='a'):
     return t
 
 
-MISSION = {'engine_mining': mission}
-CHECKS = {'engine_mining': {w: (lambda m, w=w: mining_test(m, w)) for w in 'abcde'}}
+# Round 174 (the miner's drive by the node's facing): retail stands every node facing its refinery (node angle =
+# the refinery's + 180: heidelberg, gibraltar, north sea, all six pairs), the generator (resources.objects) puts it
+# at 0 -- 135 off on this pad (a's 104-frame leg), 45 off on niagara's east pad (aitowerinc5 f: a trip of 185).
+# mineturn<k>: this pad with its node turned to retail's facing + k degrees (m: minus), nothing else changed; check p
+# = a's start (the refinery's own collector) with b's three counters (the period twice).
+# Bench 2026-11-12 (work/bench_results/mineturn*__p.json, runs CampMineT<k>P_mcp_1112_01*): 首笔 / 二笔 / 三笔
+#   0: 111 / 262 / 413 (trip 151)    45: 156 / 342 / 528 (186)    -45: 157 / 344 / 531 (187)
+#   90: 214 / 455 / 696 (241)        -90: 214 / 455 / 696 (241)   180: 296 / 619 / 942 (323)
+# with a's 269 at 135: the drive round a node turned away (sim.MINE_TURN_EXTRA; tests/test_simbench.py mining).
+TURNS = (0, 45, 90, 180, -45, -90)
+
+
+def _turned(k):
+    """probe_range with its one node turned to face the refinery + k degrees."""
+    import types
+    mp = types.ModuleType(probe_range.__name__)
+    mp.__dict__.update({n: v for n, v in vars(probe_range).items() if not n.startswith('__')})
+    face = math.radians(probe_range.FIELDS[0].facing + 180.0 + k)
+    mp.OBJECTS = [dataclasses.replace(o, angle=face) if o.template == 'OreNode' else o for o in probe_range.OBJECTS]
+    assert sum(o.template == 'OreNode' for o in mp.OBJECTS) == 1
+    return mp
+
+
+def _tag(k):
+    return f'{k}' if k >= 0 else f'm{-k}'
+
+
+def turned_mission(k):
+    m = mission()
+    m.map, m.name = _turned(k), f'CampMineT{_tag(k)}'
+    return m
+
+
+def turned_test(m):
+    t = mining_test(m, 'a')
+    t.counters = [c for c in t.counters if c[0] == 'CNV_Mine_Money']
+    t.scripts = [s for s in t.scripts if s.name in ('Test - start', 'Test - money')]
+    _below(t, 'CNV_Mine_First', '首笔', 1)
+    _below(t, 'CNV_Mine_Second', '二笔', LOAD + 1)
+    _below(t, 'CNV_Mine_Third', '三笔', 2 * LOAD + 1)
+    return t
+
+
+MISSION = {'engine_mining': mission, **{f'mineturn{_tag(k)}': (lambda k=k: turned_mission(k)) for k in TURNS}}
+CHECKS = {'engine_mining': {w: (lambda m, w=w: mining_test(m, w)) for w in 'abcde'},
+          **{f'mineturn{_tag(k)}': {'p': turned_test} for k in TURNS}}

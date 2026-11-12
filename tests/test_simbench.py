@@ -2,6 +2,7 @@
 the simulator can stand in for pass on the current plan and map, and fail when the player does nothing (so they
 are judging something); a reading the simulator has no rule for is listed as SKIP, never as PASS."""
 import importlib.util
+import math
 from pathlib import Path
 
 import pytest
@@ -739,12 +740,14 @@ def test_sell_a_killed_building_stays_paid_and_a_building_unpacking_is_not_sold(
 
 # ---- mining (HOOKS 7): engine_mining's layout -- the refinery 180 from a lone node -- on Niagara's bluff ore (the
 # probe map has no ground for the simulator); the loop alone (mine_due), frames from 0
-def _mining(miners=1, frames=1200):
+def _mining(miners=1, frames=1200, turn=135.0):
+    """turn: the node turned this many degrees off facing the refinery (retail 0; engine_mining a's pad 135)."""
     import build
     import sim
     m, _, _ = build.resolve('aiskirm', None)
     s = sim.Sim(m, None)
     node = next(b for b in s.living() if b.template == 'OreNode' and b.x > 3300 and b.y < 1400)
+    node.angle = math.radians(turn)                 # the refinery stands east of it
     p = s.human
     s.add('test refinery', 'AlliedRefinery', p, node.x + 180.0, node.y)
     for k in range(miners):
@@ -765,6 +768,43 @@ def test_mining_pays_8_a_frame_and_a_trip_takes_269():
     first = starts[0]
     assert [got[first + k] - got[first - 1] for k in (0, 1, 8, 28, 29)] == [8, 16, 72, 232, 250]
     assert [b - a for a, b in zip(starts, starts[1:])] == [269] * (len(starts) - 1) and len(starts) >= 3
+
+
+def _trips(got):
+    starts = [f for f in range(1, len(got)) if got[f] > got[f - 1] and got[f - 1] % 250 == 0]
+    return [b - a for a, b in zip(starts, starts[1:])]
+
+
+# bench 2026-11-12 checks/engine_mining.py mineturn<k> p (work/bench_results/mineturn*__p.json): the node turned k
+# degrees off facing its refinery -> the period (二笔 - 首笔 = 三笔 - 二笔)
+MINE_TURN_BENCH = {0: (151,), 45: (186,), -45: (187,), 90: (241,), -90: (241,), 180: (323,)}
+
+
+@pytest.mark.parametrize('turn', sorted(MINE_TURN_BENCH))
+def test_mining_a_trip_goes_by_how_far_the_node_is_turned_off_its_refinery(turn):
+    """mineturn<k> p: retail's facing (0) trips in 151, the further the node is turned away the longer the drive round
+    it, either way alike; 45 within 2 (the bench 186 / 187, niagara's 185)."""
+    trips = _trips(_mining(frames=1600, turn=float(turn)))
+    want = MINE_TURN_BENCH[turn][0]
+    assert len(trips) >= 3 and all(abs(t - want) <= (2 if abs(turn) == 45 else 0) for t in trips), trips
+
+
+def test_mining_niagara_east_ore_trips_in_185_as_the_ai_s_miner_did():
+    """checks/engine_aitower.py aitowerinc5 f (bench 2026-11-11, b138_bench2): the AI's miner on niagara's east pad
+    (the node at angle 0, 45 off facing its refinery) pays 250 every 185 frames (the 落塔帧 clock) -- ~20.3 a second,
+    not the 14.7 the 269 trip gave."""
+    import build
+    import sim
+    m, _, _ = build.resolve('aitowerinc5', None)
+    s = sim.Sim(m, None)
+    miner = s.bodies[m.cast['ai miner'].name]
+    s.money[miner.owner] = 0
+    got = []
+    for fr in range(1500):
+        s.mine_due(fr)
+        got.append(s.money[miner.owner])
+    trips = _trips(got)
+    assert len(trips) >= 5 and set(trips) == {185}, trips
 
 
 def test_mining_a_second_miner_on_one_node_adds_nothing():
