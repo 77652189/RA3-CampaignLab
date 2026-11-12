@@ -237,11 +237,10 @@ def test_release_eight_named_model_replays_carrier_partial_transfer():
 
 
 @pytest.mark.parametrize('build', ['aicr1', 'aicr3'])
-@pytest.mark.xfail(strict=True, reason='CreateUnits slot recruitment/readiness is not consumed by B model; '
-                  'retail aicr1:a has 3 owned Guardians, 2 home and 2 Peacekeepers home at s70, '
-                  'while the model sends three Peacekeepers at wake and overproduces Guardians. '
-                  'CNVTeams follow-up confirms the membership/gate gap. '
-                  'See work/re/handoff-c.md and work/re/c_create_teams_report.md.')
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+    'CreateUnits membership/activation now replay, but s70 production remains four Guardians '
+    'instead of retail three (one extra at home in both builds). Production consumer remains '
+    'a separate B gap; see work/re/handoff-e.md and work/re/e_create_e88.md.'))
 def test_create_units_slot_replays_observed_counters(build):
     """Replay the dedicated CreateUnits check; exact counters, no timing fit.
 
@@ -298,8 +297,6 @@ def _create_units_team_go(build):
 
 
 @pytest.mark.parametrize('build', ['aicr1c', 'aicr3c'])
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason='B model dispatches at f152; engine first active samples are f316/f646 '
-                  'with the preceding sample inactive. See work/re/handoff-c.md and c_create_teams_report.md.')
 def test_create_units_replays_observed_activation_interval(build):
     rows = _create_units_observation(build)
     first = next(i for i, (_, team) in enumerate(rows) if team['active'])
@@ -307,9 +304,6 @@ def test_create_units_replays_observed_activation_interval(build):
 
 
 @pytest.mark.parametrize('build', ['aicr1c', 'aicr3c'])
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason='B model dispatches three Peacekeepers; engine IDs show mixed membership '
-                  'at minimum 1 and three newly produced members at minimum 3. Template attribution from '
-                  'fixed cast/production is INFERRED. See work/re/handoff-c.md and c_create_teams_report.md.')
 def test_create_units_replays_observed_first_members(build):
     # Initial Peacekeeper IDs are fixed by their placed positions; new Guardian
     # attribution uses the isolated opener and total counters (INFERRED).

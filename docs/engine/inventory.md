@@ -8,7 +8,7 @@
 | 脚本条件 | **94%** | **100%** | 12 / 12 | 89 | 32 | 6 | 48 | 3 | 95% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **93%** | **95%** | 17 / 22 | 28 | 18 | 3 | 5 | 2 | 96% |
-| AI | **80%** | **80%** | 108 / 357 | 415 | 114 | 128 | 139 | 34 | 96% |
+| AI | **81%** | **81%** | 110 / 357 | 415 | 116 | 126 | 139 | 34 | 96% |
 
 ## 脚本动作
 
@@ -864,8 +864,8 @@
 | 推断 | `人格/SpecificUnitCap.Difficulty` | 60 | a4 a5 a7 | E80 engine_aicap a/b：普通难度维和MEDIUM上限2仍在s54达到3，延长到[s150,s200)从5增至9，标枪3至7；HARD掩码和无条目为对照。原始上限断言保留FAIL，tests/test_simai_bench_e.py按台上读数strict xfail；模型归B，两轮未解释不晋升，见 work/re/e_aicap_e80.md |
 | 推断 | `人格/SpecificUnitCap.Unit` | 60 | a4 a5 a7 | E80 engine_aicap a/b：普通难度维和MEDIUM上限2仍在s54达到3，延长到[s150,s200)从5增至9，标枪3至7；HARD掩码和无条目为对照。原始上限断言保留FAIL，tests/test_simai_bench_e.py按台上读数strict xfail；模型归B，两轮未解释不晋升，见 work/re/e_aicap_e80.md |
 | 已对拍 | `组队招人/CreateUnits.MaxUnits` | 60 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |
-| 推断 | `组队招人/CreateUnits.MinUnits` | 60 | a4 a5 a7 | 专用engine_aicreate：aicr1首辆s29出门、后两辆留家；aicr3等s41造齐三辆才出门；命名队计数均99、tests/test_simai_bench_c.py strict xfail，模型槽位未对上，不晋升；见 work/re/c_create_report.md |
-| 推断 | `组队招人/CreateUnits.UnitName` | 60 | a4 a5 a7 | 专用engine_aicreate点名守护者，MinUnits=1仍有两名维和离家、=3四名维和均留家；不能当作排他兵种过滤；命名队均99、模型strict xfail，保留推断；见 work/re/c_create_report.md |
+| 已对拍 | `组队招人/CreateUnits.MinUnits` | 60 | a4 a5 a7 | engine_aicreate aicr1c/aicr3c：最低1在(301,316]帧激活，最低3在(631,646]帧激活；后者f316一人/f481两人均未激活；tests/test_simai_bench_c.py按名回放激活区间和成员；仅孤立单槽位最低数1/3，多槽位/替补/MaxUnits仍gap；s70额外造兵另有strict xfail；见 work/re/e_create_e88.md |
+| 已对拍 | `组队招人/CreateUnits.UnitName` | 60 | a4 a5 a7 | engine_aicreate aicr1c/aicr3c：最低1是一名新成员加两名已知预摆维和，最低3等三名新成员；tests/test_simai_bench_c.py按名回放首次组成；新成员兵种由固定生产归属仍INFERRED；仅指定最低数优先再普通补位，不是排他过滤；其他兵种/多槽位/替补仍gap；见 work/re/e_create_e88.md |
 | 已对拍 | `战术/Tactic.Tactic=SimpleAttack` | 59 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aitarget.py |
 | 不涉及 | `表现/FeedbackEntry.Timeout` | 56 |  | 纯表现（语音、视频、画面） |
 | 已对拍 | `造兵/BuildEntry.PercentHigh` | 54 | a4 a5 a7 | 台上量过（engine_aiskirm s aiskrand：RANDOM_UNIT "0%–30%" 和不带百分号的 "30–100" 两条都造出来——不带 % 的数也按百分比读，原版 _RANDOM 状态就这么写），测试对拍 tests/test_simai_bench_b.py；两条的比例（预测 3:7，台上 4:4）样本太少没定 |

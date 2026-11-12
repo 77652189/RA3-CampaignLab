@@ -2,15 +2,15 @@
 
 由 `experimental/cnv/inventory_ai.py levels` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）里由遭遇战 AI 带的敌人：它的人格（`enemy_ai.py` 生成）沿继承、战略状态、战术、组队、目标启发、微操、造兵 / 预算状态、开局一路引用到的原版 AI 数据项，加上全局常量 AIData 和本阵营的 ArmyDefinition；再加关卡脚本里点了 AI 玩家名字的脚本动作 / 条件。状态取自 [inventory.md](inventory.md)。"AI 做完"的第一条：下表全部已对拍。
 
-**已对拍 120 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
+**已对拍 122 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
 
 | 部分 | 已对拍 | 推断 | 未做 |
 |---|---|---|---|
-| AI | 108 | 115 | 134 |
+| AI | 110 | 113 | 134 |
 | 脚本动作 | 11 | 0 | 0 |
 | 脚本条件 | 1 | 0 | 0 |
 
-按原版用量加权：已对拍 86%，已有（已对拍+推断）97%。
+按原版用量加权：已对拍 87%，已有（已对拍+推断）97%。
 
 | 状态 | 部分 | 项 | 原版用量 | 关 | 说明 |
 |---|---|---|---|---|---|
@@ -157,8 +157,6 @@
 | 推断 | AI | `人格/SpecificUnitCap.Cap` | 60 | a4 a5 a7 | E80 engine_aicap a/b：普通难度维和MEDIUM上限2仍在s54达到3，延长到[s150,s200)从5增至9，标枪3至7；HARD掩码和无条目为对照。原始上限断言保留FAIL，tests/test_simai_bench_e.py按台上读数strict xfail；模型归B，两轮未解释不晋升，见 work/re/e_aicap_e80.md |
 | 推断 | AI | `人格/SpecificUnitCap.Difficulty` | 60 | a4 a5 a7 | E80 engine_aicap a/b：普通难度维和MEDIUM上限2仍在s54达到3，延长到[s150,s200)从5增至9，标枪3至7；HARD掩码和无条目为对照。原始上限断言保留FAIL，tests/test_simai_bench_e.py按台上读数strict xfail；模型归B，两轮未解释不晋升，见 work/re/e_aicap_e80.md |
 | 推断 | AI | `人格/SpecificUnitCap.Unit` | 60 | a4 a5 a7 | E80 engine_aicap a/b：普通难度维和MEDIUM上限2仍在s54达到3，延长到[s150,s200)从5增至9，标枪3至7；HARD掩码和无条目为对照。原始上限断言保留FAIL，tests/test_simai_bench_e.py按台上读数strict xfail；模型归B，两轮未解释不晋升，见 work/re/e_aicap_e80.md |
-| 推断 | AI | `组队招人/CreateUnits.MinUnits` | 60 | a4 a5 a7 | 专用engine_aicreate：aicr1首辆s29出门、后两辆留家；aicr3等s41造齐三辆才出门；命名队计数均99、tests/test_simai_bench_c.py strict xfail，模型槽位未对上，不晋升；见 work/re/c_create_report.md |
-| 推断 | AI | `组队招人/CreateUnits.UnitName` | 60 | a4 a5 a7 | 专用engine_aicreate点名守护者，MinUnits=1仍有两名维和离家、=3四名维和均留家；不能当作排他兵种过滤；命名队均99、模型strict xfail，保留推断；见 work/re/c_create_report.md |
 | 推断 | AI | `启发条件/PathToTargetHeuristic.LocomotorConditionToUseForTest` | 45 | a4 a5 a7 | E84 engine_aiopathcond a：同JapanAntiAirShip仅切NORMAL深水/SUPERSONIC空中；两组s22-s24均兵营1/电厂0，水组原始Island预测FAIL、空中PASS。tests/test_simai_bench_e.py按名回放实际计数通过，但不能区分条件生效与路径判定边界；保持gap不晋升，未改B模型；见 work/re/e_pathcond_e84.md |
 | 推断 | AI | `战术/Tactic.Distance` | 41 | a4 a5 a7 | 专用engine_aidistance aidist250/aidist2000保留AI队、同次传送1200，仅Distance不同；s65小组圈300/900=1/1，大组0/0，存活均1；两组各5条PASS、模型末态匹配；大组实机传送前离300、传送后回900再离，模型美学轨迹strict xfail；精确边界/动态队成员仍gap，不晋升；tests/test_simai_bench_c.py；见 work/re/c_distance_report.md |
 | 推断 | AI | `战术/Tactic.UseAestheticsManager` | 40 | a4 a5 a7 | 专用engine_aiaesthetics aiaeson/aiaesoff固定Distance=2000，仅切美学开关；两组各5条PASS：on先离300、传送后回900再离，off回双圈，存活/锁存均1；tests/test_simai_bench_c.py按名回放2条strict xfail，模型站位/ready仍gap，不晋升；见 work/re/c_aesthetics_report.md |
@@ -320,6 +318,8 @@
 | 已对拍 | AI | `组队招人/ObjectFilter.Relationship` | 67 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
 | 已对拍 | AI | `组队招人/TeamTemplate.MinPowerAdvantage` | 64 | a4 a5 a7 | docs/engine/aistate.md#两队抢兵和 MinPowerAdvantage（第 82 轮） |
 | 已对拍 | AI | `组队招人/CreateUnits.MaxUnits` | 60 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |
+| 已对拍 | AI | `组队招人/CreateUnits.MinUnits` | 60 | a4 a5 a7 | engine_aicreate aicr1c/aicr3c：最低1在(301,316]帧激活，最低3在(631,646]帧激活；后者f316一人/f481两人均未激活；tests/test_simai_bench_c.py按名回放激活区间和成员；仅孤立单槽位最低数1/3，多槽位/替补/MaxUnits仍gap；s70额外造兵另有strict xfail；见 work/re/e_create_e88.md |
+| 已对拍 | AI | `组队招人/CreateUnits.UnitName` | 60 | a4 a5 a7 | engine_aicreate aicr1c/aicr3c：最低1是一名新成员加两名已知预摆维和，最低3等三名新成员；tests/test_simai_bench_c.py按名回放首次组成；新成员兵种由固定生产归属仍INFERRED；仅指定最低数优先再普通补位，不是排他过滤；其他兵种/多槽位/替补仍gap；见 work/re/e_create_e88.md |
 | 已对拍 | AI | `战术/Tactic.Tactic=SimpleAttack` | 59 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aitarget.py |
 | 已对拍 | AI | `造兵/BuildEntry.PercentHigh` | 54 | a4 a5 a7 | 台上量过（engine_aiskirm s aiskrand：RANDOM_UNIT "0%–30%" 和不带百分号的 "30–100" 两条都造出来——不带 % 的数也按百分比读，原版 _RANDOM 状态就这么写），测试对拍 tests/test_simai_bench_b.py；两条的比例（预测 3:7，台上 4:4）样本太少没定 |
 | 已对拍 | AI | `造兵/BuildEntry.PercentLow` | 54 | a4 a5 a7 | 台上量过（engine_aiskirm s aiskrand：RANDOM_UNIT "0%–30%" 和不带百分号的 "30–100" 两条都造出来——不带 % 的数也按百分比读，原版 _RANDOM 状态就这么写），测试对拍 tests/test_simai_bench_b.py；两条的比例（预测 3:7，台上 4:4）样本太少没定 |

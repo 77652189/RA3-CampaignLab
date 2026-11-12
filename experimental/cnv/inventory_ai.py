@@ -191,13 +191,16 @@ NOTES = {
         'test_sort_by_distance_replays_named_departure按名断言两组台内计数并回放匹配；'
         '已对拍限具名候选离开顺序；招走解释仍INFERRED，同帧动态队成员ID/实际距离和等距规则仍gap；'
         '见 work/re/c_sort_report.md'),
-    '组队招人/CreateUnits.MinUnits': (GUESSED,
-        '专用engine_aicreate：aicr1首辆s29出门、后两辆留家；aicr3等s41造齐三辆才出门；'
-        '命名队计数均99、tests/test_simai_bench_c.py strict xfail，模型槽位未对上，不晋升；'
-        '见 work/re/c_create_report.md'),
-    '组队招人/CreateUnits.UnitName': (GUESSED,
-        '专用engine_aicreate点名守护者，MinUnits=1仍有两名维和离家、=3四名维和均留家；'
-        '不能当作排他兵种过滤；命名队均99、模型strict xfail，保留推断；见 work/re/c_create_report.md'),
+    '组队招人/CreateUnits.MinUnits': (BENCHED,
+        'engine_aicreate aicr1c/aicr3c：最低1在(301,316]帧激活，最低3在(631,646]帧激活；'
+        '后者f316一人/f481两人均未激活；tests/test_simai_bench_c.py按名回放激活区间和成员；'
+        '仅孤立单槽位最低数1/3，多槽位/替补/MaxUnits仍gap；s70额外造兵另有strict xfail；'
+        '见 work/re/e_create_e88.md'),
+    '组队招人/CreateUnits.UnitName': (BENCHED,
+        'engine_aicreate aicr1c/aicr3c：最低1是一名新成员加两名已知预摆维和，最低3等三名新成员；'
+        'tests/test_simai_bench_c.py按名回放首次组成；新成员兵种由固定生产归属仍INFERRED；'
+        '仅指定最低数优先再普通补位，不是排他过滤；其他兵种/多槽位/替补仍gap；'
+        '见 work/re/e_create_e88.md'),
     '战术/Tactic.Distance': (GUESSED,
         '专用engine_aidistance aidist250/aidist2000保留AI队、同次传送1200，仅Distance不同；'
         's65小组圈300/900=1/1，大组0/0，存活均1；两组各5条PASS、模型末态匹配；'
