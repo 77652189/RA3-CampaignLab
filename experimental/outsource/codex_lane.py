@@ -98,7 +98,7 @@ def handoff_rev(lane):
 def set_aside_copies():
     """An untracked file in work/re that origin now tracks with the same text (a line wrote its evidence here and
     committed it from a temporary worktree) blocks the merge. Move such copies to backup/sync-aside/ -- never delete
-    (deleting is the user's call); a file whose text differs is left where it is and the merge reports it."""
+    (deleting is the user's call); one whose text differs is set aside under a time stamp."""
     names = subprocess.run(['git', 'ls-files', '--others', '--exclude-standard'], cwd=PRIV, capture_output=True,
                            text=True, encoding='utf-8', errors='replace').stdout.split('\n')
     # only the ones origin tracks (one listing): thousands of untracked decompiler outputs made one `git show` each
@@ -111,10 +111,12 @@ def set_aside_copies():
         path = os.path.join(PRIV, name)
         with open(path, 'rb') as f:
             mine = f.read()
-        if mine.replace(b'\r', b'') == theirs.stdout.replace(b'\r', b''):
-            dest = os.path.join(PRIV, 'backup', 'sync-aside', name)
-            os.makedirs(os.path.dirname(dest), exist_ok=True)
-            os.replace(path, dest)
+        # a differing copy is an earlier write the line later committed from its own worktree (11-11 c_dodge_*.json
+        # blocked two launches): set it aside too, under its own stamp -- moved, never deleted
+        same = mine.replace(b'\r', b'') == theirs.stdout.replace(b'\r', b'')
+        dest = os.path.join(PRIV, 'backup', 'sync-aside', name if same else name + time.strftime('.%m%d_%H%M%S'))
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        os.replace(path, dest)
     # a tracked file edited here whose text is already what origin has (the edit was pushed from elsewhere): take
     # origin's copy, nothing is lost; an edit origin does not have stays and the merge reports it
     names = subprocess.run(['git', 'diff', '--name-only'], cwd=PRIV, capture_output=True, text=True,
