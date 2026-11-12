@@ -1752,6 +1752,22 @@ def _retail_power_heads():
     return _retail_powers
 
 
+def ocl_power(template, power, own=None):
+    """The matching host OCLSpecialPower attributes, or None (nearest module group).
+
+    Only Iron Curtain's CREATE_AT_LOCATION/OCL_IronCurtain dispatch is replayed;
+    callers must keep other OCL configurations as explicit gaps.
+    """
+    def read(xml):
+        xml = re.sub(r'<!--.*?-->', '', xml or '', flags=re.S)
+        heads = [head for head, _ in _blocks(xml, 'OCLSpecialPower')]
+        return [{key: _attr(head, key) for key in
+                 ('SpecialPowerTemplate', 'OCL', 'CreateLocation', 'CanAffectObjectFilter')}
+                for head in heads] or None
+    modules = _inherited(template, own, read, None) or []
+    return next((module for module in modules if module['SpecialPowerTemplate'] == power), None)
+
+
 def power_rules(template, power, own=None):
     """The SpecialPowerTemplate for `power` of unit `template`: {'reload': frames (ReloadTime x 15, rounded twice --
     RA3 1.13, work/re/l2_specialpower.md; docs/engine/specialpower.md 1 -- at least 1), 'forbidden': ForbiddenObjectRange, 'flags': set of

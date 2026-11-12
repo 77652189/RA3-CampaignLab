@@ -3288,6 +3288,12 @@ class Sim:
             self.note('技能', f'{a[0]} 按 {a[1]} 切换状态')
         elif name in ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY'):
             b = self.body(a[0])
+            # engine_oclnone / engine_oclwrong: no matching host module means
+            # neither protection nor PLAYER_TRIGGERED_SPECIAL_POWER event.
+            if b and b.alive and a[1] == 'SpecialPowerIronCurtain' and \
+                    not simunits.ocl_power(b.template, a[1], self.own):
+                self.note('技能', f'{self.label(b)} 没有匹配的铁幕 OCLSpecialPower')
+                return
             if b and b.alive and name == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT':
                 # bench 11-09 engine_scripts8b pfire / pdis: every script cast (the player-level one too, a second
                 # one in the reload that hurts nobody) is seen by PLAYER_TRIGGERED_SPECIAL_POWER for one frame
@@ -3326,7 +3332,16 @@ class Sim:
                     now = self.frame_now()
                     for after, table in hits:
                         self.blasts.append((now + after, q[0], q[1], table, b.owner, b))
-                if a[1] in CURTAIN and q is not None and b and b.alive:
+                curtain_host = True
+                if a[1] == 'SpecialPowerIronCurtain' and b and b.alive:
+                    module = simunits.ocl_power(b.template, a[1], self.own)
+                    curtain_host = bool(module and module['OCL'] == 'OCL_IronCurtain' and
+                                        module['CreateLocation'] == 'CREATE_AT_LOCATION' and
+                                        module['CanAffectObjectFilter'] ==
+                                        'SovietIronCurtainSpecialPowerObjectFilter')
+                    if module and not curtain_host:
+                        self.gap(GAP_ACTION, refined(name, a), 'OCLSpecialPower 配置未对拍，见 work/re/e_ocl_e62.md')
+                if a[1] in CURTAIN and q is not None and b and b.alive and curtain_host:
                     self.used.add('superweapon')
                     reach, lasts, kinds = CURTAIN[a[1]]
                     for t in self.living():
