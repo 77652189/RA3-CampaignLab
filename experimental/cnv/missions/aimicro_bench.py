@@ -263,7 +263,34 @@ def built(name, tactic='StaticDefense', foes=None, spow=None, engage=True):
     return m
 
 
-MISSION = {'aimicbuilt': lambda: built('CampAIMicBuilt'),
+def dodge(name, enabled):
+    """DodgeThreats only: recruited warriors fighting the same immortal conscripts.
+
+    Native precision-strike beacon at 30 s, lifetime 4 s, DodgeSafetyDistance 200.
+    No aircraft/bomb is dispatched: the beacon itself deals no damage or knockback.
+    The check samples a published square before/during the beacon; this is not an
+    exact reaction-time or safety-circle boundary measurement.
+    """
+    m = built(name, tactic='Hunt', foes=True, spow=False)
+    m.assets = [(path, text.replace('DodgeThreats="true"',
+                                   f'DodgeThreats="{str(enabled).lower()}"')
+                          .replace('PullbackInjured="true"', 'PullbackInjured="false"'), key)
+                for path, text, key in m.assets]
+    m.facts.update({'dodge enabled': float(enabled), 'threat at': 30.0, 'threat lifetime': 4.0,
+                    'sample half size': 150.0})
+    m.cnv_named = {'beacon': 'CNV Dodge Beacon'}
+    m.waypoint('dodge spot', 'CNV Dodge Spot', 'east base', 0, BARRACKS_DY - 100)
+    m.spawns.add('AlliedPrecisionStrikeBeacon')
+    m.scripts.append(Script('CNV Dodge - timer', [], [('SET_MILLISECOND_TIMER', 'CNV Dodge At', 30.0)]))
+    m.scripts.append(Script('CNV Dodge - beacon', [('TIMER_EXPIRED', 'CNV Dodge At')],
+                            [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', m.cnv_named['beacon'],
+                              'AlliedPrecisionStrikeBeacon', m.team('p1'), m.mark('dodge spot'))]))
+    return m
+
+
+MISSION = {'aidodgeon': lambda: dodge('CampAIDodgeOn', True),
+           'aidodgeoff': lambda: dodge('CampAIDodgeOff', False),
+           'aimicbuilt': lambda: built('CampAIMicBuilt'),
            'aimicbuilth': lambda: built('CampAIMicBltH', tactic='Hunt'),
            'aimicbuiltf': lambda: built('CampAIMicBltF', tactic='Hunt', foes=True),
            'aimicspon': lambda: built('CampAIMicSpOn', tactic='Hunt', foes=True, spow=True),

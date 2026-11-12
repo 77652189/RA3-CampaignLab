@@ -105,6 +105,11 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '微操/AIMicroManagerData.DodgeThreats': (TODO,
+        'engine_aidodge aidodgeon/aidodgeoff 原版精确打击信标开关对照；'
+        'tests/test_ai_dodge.py 按名回放，开启组 strict xfail：模型无躲避消费者，'
+        'simai.micro_team 缺威胁视图与移动回调（归B）；见 work/re/c_dodge_report.md；'
+        '固定0.5秒反应，截图秒窗与游戏帧漂移亦留gap；未量精确时间、圆边界、过滤和多威胁，不晋升已对拍'),
     '微操/AIMicroManagerData.EnterGarrisonableStructureDistance': (BENCHED,
         'engine_aigarrison aigar1/aigar0/aigarfar：默认150、旧楼EAST=40，近楼归AI、关闭或远楼不进；'
         'tests/test_simai_garrison_distance.py::test_garrison_distance_replays_recorded_near_far_and_disabled；'
