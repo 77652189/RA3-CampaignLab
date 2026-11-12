@@ -1,4 +1,4 @@
-"""Replay retail spy ENERGY/VISION readings; do not claim whole-module coverage."""
+"""Replay retail spy readings; do not claim whole-module coverage."""
 import importlib.util
 from pathlib import Path
 
@@ -135,4 +135,34 @@ def test_spy_ordinary_vision_as_on_the_bench():
         yard = s.body(m.role(role).name)
         assert yard.owner == m.player(side) and yard.hp == yard.max_hp
     assert not s.infiltrators.off_until
+    assert not any(key[0] == 'InfiltratorContain' for key in s.unmodeled)
+
+
+@pytest.mark.xfail(strict=True, reason='E60 STEAL_MONEY转账与矿车收入未闭环，清除匿名矿车无效；见 work/re/handoff-e.md 和 e_infmoney_e60.md')
+def test_spy_refinery_money_as_on_the_bench():
+    """engine_infmon:a: 2000 transfer followed by miner income, failed cleanup.
+
+    Measured second run: no-miner bits stay zero; enemy bank recovers 250 twice.
+    Both transfer and the failed unnamed-miner cleanup remain unimplemented.
+    """
+    import build
+    import sim
+    import siminfiltrator
+    m, t, mod = build.resolve('engine_infmon', 'a')
+    assert len(mod) <= 15 and '_' not in mod
+    assert all(m.role(role).template == 'AlliedRefinery' for role in ('enemy', 'ally'))
+    rule = siminfiltrator.spec('AlliedRefinery')
+    assert (rule['Effect'], rule['Amount'], rule['BlockedDuration']) == ('STEAL_MONEY', '2000', '30s')
+    s = sim.Sim(m, t).run(35)
+    for start, end, wanted in ((2, 7, [11100, 11100, 1000, 5000]),
+                               (11, 13, [1100, 11100, 3000, 3000]),
+                               (18, 30, [1100, 11100, 3000, 3250]),
+                               (35, 35, [1100, 11100, 3000, 3500])):
+        rows = [values for second, values in s.series if start <= second <= end]
+        assert rows and all(row == wanted for row in rows), rows
+    assert not s.body(m.role('enemy spy').name).alive
+    assert s.body(m.role('ally spy').name).alive
+    for role, side in (('enemy', 's1'), ('ally', 's2')):
+        refinery = s.body(m.role(role).name)
+        assert refinery.owner == m.player(side) and refinery.hp == refinery.max_hp
     assert not any(key[0] == 'InfiltratorContain' for key in s.unmodeled)
