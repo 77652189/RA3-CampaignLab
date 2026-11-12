@@ -3691,8 +3691,9 @@ class Sim:
         """E70 single engineer, same-owner infantry, scripted status on/off.
 
         INFERRED fallback: continuous integration of the SDK's 10%/second.
-        E71 rejects this timing (strict xfail); E70 late plateaus still pass.
-        Survey/heal scheduling unresolved: see work/re/e_passive_e71.md.
+        E71/E72 reject this timing (strict xfail); E70 late plateaus still pass.
+        E72 crossing gaps are 20/20/20 frames; initial phase unresolved.
+        See work/re/e_passive_e72.md; no fixed first delay is inferred.
         Other relationships, overlapping auras and self-healing remain gaps.
         """
         cache = self.__dict__.setdefault('_passive_area_of', {})
@@ -3710,7 +3711,7 @@ class Sim:
         if not sources:
             return
         self.gap('物体模块', 'PassiveAreaEffectBehavior timing',
-                 'INFERRED fallback: 逐帧积分被E71阈值帧否定；调查/治疗调度待解，见work/re/e_passive_e71.md')
+                 'INFERRED fallback: E72中间跨越间隔20/20/20帧否定逐帧积分；首跳相位待解，见work/re/e_passive_e72.md')
         for target in self.bodies.values():
             if not target.alive or target.hp >= target.max_hp or 'INFANTRY' not in target.kinds:
                 continue

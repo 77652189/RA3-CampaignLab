@@ -19,19 +19,22 @@ def test_engineer_area_healing_matches_named_bench():
 
 
 @pytest.mark.xfail(strict=True, reason=(
-    'E71 engine_passivearea:f reads 11/11/11/71 frames; continuous integration '
-    'reads 2/8/15/75. Survey/heal scheduling unresolved; see work/re/e_passive_e71.md '
-    'and work/re/handoff-e.md.'))
+    'E72 engine_passivearea:f reads 11/31/51/71 frames (20/20/20 gaps); '
+    'continuous integration reads 2/21/42/62. Initial survey phase unresolved; '
+    'see work/re/e_passive_e72.md and work/re/handoff-e.md.'))
 def test_engineer_area_frame_thresholds_match_named_bench():
-    """E71 engine_passivearea:f: simultaneous early thresholds, then full HP.
+    """E72 engine_passivearea:f: intermediate heal crossings.
 
-    These are latched game-script frames, not screenshot seconds. See
-    work/re/e_passive_e71.md for the original readings and timing gap.
+    Bench readings: 51/64/78/91 cross at 11/31/51/71 script frames,
+    matching the pre-run 20/20/20 gap prediction. First phase remains a gap.
+    See work/re/e_passive_e72.md.
     """
     import build
     import sim
     m, t, _ = build.resolve('engine_passivearea', 'f')
     engine = sim.Sim(m, t).run(25)
-    assert tuple(engine.series[-1][1]) == (11, 11, 11, 71)
+    counts = tuple(engine.series[-1][1])
+    assert counts == (11, 31, 51, 71)
+    assert tuple(b - a for a, b in zip(counts, counts[1:])) == (20, 20, 20), counts
     verdicts = build.judge(t, engine.series)
     assert verdicts and all(ok for ok, _ in verdicts), verdicts

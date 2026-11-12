@@ -54,17 +54,15 @@ def check(m):
 
 
 def frames(m):
-    """E71: latched script-frame counts, independent of screenshot time.
+    """E72: intermediate heal crossings counted in game-script frames.
 
-    Count frames after damage while HP is below 51/55/60/100. At 15 fps,
-    continuous 10%/s healing separates the first three crossings; a 20-frame
-    batch of 13 1/3 percentage points crosses all three together. Absolute
-    first-crossing phase is unknown; do not fit it from capture timestamps.
-    The full-health counter also shows whether the run actually completed.
-
-    E71 bench: final below-51/55/60/100 counts = 11/11/11/71. This rejects
-    continuous integration; a 20-frame batch is compatible, still INFERRED.
-    See work/re/e_passive_e71.md. The model replay is a strict xfail.
+    Count frames after damage while HP is below 51/64/78/91. At 15 fps,
+    continuous 10%/s predicts crossing gaps near 19-21 frames. A
+    20-frame batch of 13 1/3 percentage points predicts 20/20/20 gaps.
+    The absolute first-crossing phase is unknown; never fit it from captures.
+    E72 bench: 11/31/51/71, gaps 20/20/20; first phase remains unresolved.
+    See work/re/e_passive_e72.md; the model replay remains a strict xfail.
+    E71's earlier 51/55/60/100 readings remain in work/re/e_passive_e71.md.
     """
     t = Test()
     source, target = m.role('on').name, m.role('near').name
@@ -75,7 +73,7 @@ def frames(m):
             ('UNIT_CHANGE_OBJECT_STATUS', source, 'GENERIC_TOGGLE_STATE', 1),
             ('UNIT_SET_HEALTH', target, 50.0),
             ('SET_FLAG', 'Area frame started', 1)])]
-    for threshold in (51, 55, 60, 100):
+    for threshold, upper in ((51, 30), (64, 50), (78, 70), (91, 90)):
         counter, label = f'CNV_Area_Below{threshold}', f'below {threshold}'
         t.counters.append((counter, label))
         t.scripts.append(Script(f'Test - below {threshold}', [
@@ -83,7 +81,7 @@ def frames(m):
             [('INCREMENT_COUNTER', 1, counter)], once=False))
         # Pre-run bounds: allow unknown survey phase, require eventual healing.
         t.expect += [(label, 20, '>=', 1, 24),
-                     (label, 20, '<=', 100 if threshold == 100 else 30, 24)]
+                     (label, 20, '<=', upper, 24)]
     t.bench = [('bench_watch', dict(seconds=24, every=1, sheet=False, lines=4))]
     return t
 
