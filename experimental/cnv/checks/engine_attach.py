@@ -341,7 +341,58 @@ def check_child_delete(m):
     return t
 
 
+def mission_parent_delete():
+    """Established simple module: live control versus directly deleted parent."""
+    m=mission_child_death();m.name='CampAttachPD'
+    return m
+
+
+def check_parent_delete(m):
+    """PREDICT3871/3856: links8s, delete high parent10s, live-child bits14s.
+
+    Before3840 = 32*(ATTACHED64 + parent VEHICLE_ATTACHED32 + ENCLOSED16
+    + UNATTACKABLE8). Late: childAlive16,parentAlive8,ATTACHED4,ENCLOSED2,
+    UNATTACKABLE1, each queried independently. No deleted-parent status read.
+    MEASURED2026-11-11: before3840/3840, late3871/3856, one run PASS.
+    See work/re/c_attach_parent_delete_report.md; no retail-module, collision,
+    exact cleanup-frame or whole-item bench claim.
+    """
+    t=Test();start=[('MAP_REVEAL_ALL_PERM',m.player('p1'))];fire=[];stop=[]
+    for phase,at in (('Fire',6.),('Stop',6+4/15),('Before',8.),('Delete',10.),('Late',14.)):
+        start.append(('SET_MILLISECOND_TIMER','ParentDelete '+phase,at))
+    for lane in ('base','high'):
+        child,parent='Attach '+lane+' child','Attach '+lane+' parent'
+        c='CNV_ParentDelete_'+lane;t.counters.append((c,lane+' parent delete'))
+        start.extend(('UNIT_CHANGE_OBJECT_STATUS',v,'NO_ATTACK',1) for v in (child,parent))
+        fire.extend((('UNIT_CHANGE_OBJECT_STATUS',child,'NO_ATTACK',0),('NAMED_ATTACK_NAMED',child,parent)))
+        stop.append(('UNIT_CHANGE_OBJECT_STATUS',child,'NO_ATTACK',1))
+        for phase,samples in (
+                ('Before',((2048,('UNIT_HAS_OBJECT_STATUS',child,status('ATTACHED'))),
+                           (1024,('UNIT_HAS_OBJECT_STATUS',parent,status('VEHICLE_ATTACHED'))),
+                           (512,('UNIT_HAS_OBJECT_STATUS',child,status('ENCLOSED'))),
+                           (256,('UNIT_HAS_OBJECT_STATUS',child,status('UNATTACKABLE'))))),
+                ('Late',((16,('NAMED_NOT_DESTROYED',child)),(8,('NAMED_NOT_DESTROYED',parent)),
+                         (4,('UNIT_HAS_OBJECT_STATUS',child,status('ATTACHED'))),
+                         (2,('UNIT_HAS_OBJECT_STATUS',child,status('ENCLOSED'))),
+                         (1,('UNIT_HAS_OBJECT_STATUS',child,status('UNATTACKABLE')))))):
+            for weight,cond in samples:
+                t.scripts.append(Script(f'Test - parent delete {lane} {phase}{weight}',
+                    [('TIMER_EXPIRED','ParentDelete '+phase),('FLAG','ParentDelete sampled '+phase,0),cond],
+                    [('INCREMENT_COUNTER',weight,c)]))
+    for phase in ('Before','Late'):
+        t.scripts.append(Script('Test - parent delete close '+phase,[('TIMER_EXPIRED','ParentDelete '+phase)],
+                               [('SET_FLAG','ParentDelete sampled '+phase,1)]))
+    t.scripts.insert(0,Script('Test - start',[],start))
+    for phase,actions in (('Fire',fire),('Stop',stop),('Delete',[('NAMED_DELETE','Attach high parent')])):
+        t.scripts.append(Script('Test - parent delete '+phase,[('TIMER_EXPIRED','ParentDelete '+phase)],actions))
+    t.expect=[(label,16,'==',value,18) for (_,label),value in zip(t.counters,(3871,3856))]
+    t.bench=[('bench_watch',dict(seconds=18.,every=.5,sheet=False,lines=2))]
+    return t
+
+
 MISSION={'engine_attach':mission,'engine_attach_detach':mission_detach,'engine_attach_parent':mission_parent_death,
-         'engine_attach_child':mission_child_death,'engine_attach_child_delete':mission_child_delete}
+         'engine_attach_child':mission_child_death,'engine_attach_child_delete':mission_child_delete,
+         'engine_attach_parent_delete':mission_parent_delete}
 CHECKS={'engine_attach':{'a':check},'engine_attach_detach':{'a':check_detach},'engine_attach_parent':{'a':check_parent_death},
-        'engine_attach_child':{'a':check_child_death},'engine_attach_child_delete':{'a':check_child_delete}}
+        'engine_attach_child':{'a':check_child_death},'engine_attach_child_delete':{'a':check_child_delete},
+        'engine_attach_parent_delete':{'a':check_parent_delete}}

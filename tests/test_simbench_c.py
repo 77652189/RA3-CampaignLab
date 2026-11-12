@@ -1117,6 +1117,24 @@ def test_attach_child_delete_clears_the_surviving_parents_status():
     assert (sim.GAP_WEAPON,'AttachNugget') not in e.unmodeled
 
 
+def test_attach_parent_delete_clears_the_surviving_childs_status():
+    """engine_attach_parent_delete a: live3871/deleted3856; work/re/c_attach_parent_delete_report.md."""
+    import build
+    import sim
+    m,t,_=build.resolve('engine_attach_parent_delete','a')
+    e=sim.Sim(m,t);e.shot_clock=True
+    rows=e.run(18).series
+    assert tuple(rows[-1][1])==(3871,3856)
+    assert all(tuple(row)==(3871,3856) for sec,row in rows if sec>=16)
+    assert all(tuple(row)==(3840,3840) for sec,row in rows if 9<=sec<10)
+    child,parent=e.body('Attach high child'),e.body('Attach high parent')
+    assert child.alive and parent.deleted and not parent.alive
+    assert not child.status & {'ATTACHED','ENCLOSED','UNATTACKABLE'}
+    assert e.body('Attach base child').status >= {'ATTACHED','ENCLOSED','UNATTACKABLE'}
+    assert set(e.attachments)=={'Attach base child'}
+    assert (sim.GAP_WEAPON,'AttachNugget') not in e.unmodeled
+
+
 def test_attach_probe_rejects_an_unpublished_module_before_building():
     from types import SimpleNamespace
     import pytest
