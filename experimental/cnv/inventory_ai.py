@@ -105,6 +105,14 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    **{f'启发条件/{k}': (BENCHED,
+        'E83 engine_aibuilding a：STRUCTURE空队列、现成基地1；PassIfBuilding=false时s40到陆厂4/在家0，'
+        'true时0/4，两组PASS；tests/test_simai_bench_e.py::test_is_building_idle按名回放通过。'
+        '只验空队列边界，建造中的行为未量；见 work/re/e_building_e83.md')
+       for k in ('IsBuildingHeuristic', 'IsBuildingHeuristic.PassIfBuilding')},
+    '启发条件/IsBuildingHeuristic.KindOf': (GUESSED,
+        'E83 engine_aibuilding只测STRUCTURE空队列，无法区分KindOf匹配与忽略此字段；'
+        '有效建造队列、匹配/不匹配、多个token仍gap，不晋升；见 work/re/e_building_e83.md'),
     '开局/SkirmishOpeningMove.Side': (GUESSED,
         'E82 engine_aiopenside a：固定盟军玩家显式挂载三电厂开局，仅切Side。'
         'Allies在[s55,s60)电厂3/兵营0，Soviet电厂2/兵营1；默认模型均3/0。'

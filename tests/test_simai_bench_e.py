@@ -20,6 +20,18 @@ _spec.loader.exec_module(simai)
 pytestmark = pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
 
 
+@pytest.mark.parametrize('build,target,home', [('aibldtrue', 0, 4), ('aibldfalse', 4, 0)])
+def test_is_building_idle(build, target, home):
+    """Replay engine_aibuilding a's displayed s40 readings; idle queue only."""
+    w = simai.run(build, 'a', 41, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    samples = [dict(zip(labels, values)) for t, values in w.sim.series if t == 40]
+    assert len(samples) == 1
+    assert samples[0]['到陆厂'] == target, samples
+    assert samples[0]['在家'] == home, samples
+    assert samples[0]['基地数'] == 1, samples
+
+
 @pytest.mark.parametrize('build,power,barracks', [
     ('aiosallies', 3, 0),
     pytest.param('aiossoviet', 2, 1, marks=pytest.mark.xfail(
