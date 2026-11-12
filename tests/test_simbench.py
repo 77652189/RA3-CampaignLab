@@ -1774,3 +1774,10 @@ def test_rewind_swap_as_the_bench():
     swapped for a new one of ours at ~50 %; the simulator reads the same."""
     old_hp, old_ours, new_ours, new_hp = _sim_run('rewind_swap', 'swap', 20.0).series[-1][1]
     assert (old_ours, new_ours) == (0, 1) and 45 <= new_hp <= 50 and old_hp <= 1
+
+
+def test_rewind_wreck_as_the_bench():
+    """Bench CampRwSWreck_mcp_1111_165940 (the swap's look): from s9 新归我 1, 新血 48-50, 残骸 1, 残骸血 0 -- the old
+    carrier's wreck spawned on its spot and killed (its crash played, frames s10-s13); the simulator reads the same."""
+    new_ours, new_hp, wrecks, wreck_hp = _sim_run('rewind_swap', 'wreck', 20.0).series[-1][1]
+    assert (new_ours, wrecks, wreck_hp) == (1, 1, 0) and 45 <= new_hp <= 50

@@ -51,3 +51,116 @@ def rewind(id='CNV_LibRw', back='3s', reload='20s', body='HighlanderBody', store
     u.what = f'不死的自由号（试验）：{body}，rewind 退回 {back} 前的位置和血量（谭雅时空腰带的两个模块）'
     u.params.update(back=back, reload=reload, body=body)
     return u
+
+
+# The show version (user 11-11: no real rewind): a new carrier spawned where the old one was, with the belt's
+# time-warp FX as it is made, and a wreck of the old one that crashes there.
+WARP_SCALE = 3.0    # bench CampRwSSwap_mcp_1111_163719 s11.5: retail's FX_TanyaTimeWarp covered ~1/3 of the hull
+
+
+def warp_fx(id, scale=WARP_SCALE):
+    """Tanya's time-warp FX made `scale` times larger: retail's particle system Allied_Tanya_Chrono (20 lightning
+    models, FXChronoSphereLightning) with StartSize / SizeRate times scale and its cylinder's lift too -- the FXList
+    nugget has no size of its own (AssetTypeFXList.xsd). Returns (FXList id, {file: text})."""
+    ps, fx = f'{id}_Chrono', f'FX_{id}_Warp'
+    v = lambda a: f'<x High="{a:g}" Low="{a:g}"/>\n\t\t\t\t\t<y High="{a:g}" Low="{a:g}"/>\n\t\t\t\t\t<z High="{a:g}" Low="{a:g}"/>'
+    return fx, {f'{ps}.xml': f'''<?xml version="1.0" encoding="UTF-8"?>
+<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<Includes>
+		<Include source="art:fxchronospherelightning.w3x" type="instance"/>
+	</Includes>
+	<FXParticleSystemTemplate Drawable="FXChronoSphereLightning" PerParticleAttachedSystem="" Priority="ALWAYS_RENDER" Shader="W3D_ALPHA" SystemLifetime="1" Type="DRAWABLE" id="{ps}">
+		<Lifetime High="15" Low="10"/>
+		<BurstCount High="20" Low="20"/>
+		<Alphas>
+			<Alpha Frame="1" High="1" Low="1" RelativeAge="0"/>
+			<Alpha Frame="2" High="0" Low="0" RelativeAge="100"/>
+		</Alphas>
+		<Physics>
+			<Default>
+				<VelocityDamping High="1" Low="1"/>
+			</Default>
+		</Physics>
+		<Draw>
+			<RenderObject>
+				<ObjectSet/>
+				<ObjectSet/>
+				<ObjectSet/>
+			</RenderObject>
+		</Draw>
+		<Volume>
+			<Cylinder>
+				<Offset x="0" y="0" z="{15 * scale:g}"/>
+			</Cylinder>
+		</Volume>
+		<Velocity>
+			<Ortho>
+				<Position>
+					<x High="0" Low="0"/>
+					<y High="0" Low="0"/>
+					<z High="0" Low="0"/>
+				</Position>
+			</Ortho>
+		</Velocity>
+		<Event/>
+		<Update>
+			<RenderObject Rotation="ROTATE_IN_WORLD_SPACE">
+				<AngleX High="7" Low="0"/>
+				<AngleY High="7" Low="0"/>
+				<AngleZ High="7" Low="-7"/>
+				<AngularDamping High="1" Low="1"/>
+				<StartSize>
+					{v(scale)}
+				</StartSize>
+				<SizeRate>
+					{v(-0.1 * scale)}
+				</SizeRate>
+				<SizeDamping>
+					<x High="1.1" Low="0.5"/>
+					<y High="1.1" Low="0.5"/>
+					<z High="1.1" Low="0.5"/>
+				</SizeDamping>
+			</RenderObject>
+		</Update>
+	</FXParticleSystemTemplate>
+	<FXList id="{fx}">
+		<NuggetList>
+			<Sound Value="ALL_Commando_TimeBeltMS"/>
+			<ParticleSystem Particle="{ps}" OrientToObject="true">
+				<Offset x="0.0" y="0.0" z="0.0"/>
+			</ParticleSystem>
+		</NuggetList>
+	</FXList>
+</AssetDeclaration>
+'''}, [f'FXParticleSystemTemplate:{ps}', f'FXList:{fx}']
+
+
+def swap_carrier(id='CNV_LibRwS', scale=WARP_SCALE):
+    """The carrier of the show version: ImmortalBody (bench CampRwSSwap_mcp_1111_163449: with retail's ActiveBody
+    a 5200 blow at 56 % killed it before the mission's swap ran; ImmortalBody holds it at 1 hp, so the swap always
+    runs -- and deletes it: NAMED_KILL cannot kill this body), the time-warp FX `scale` times larger as it is made
+    (FXListBehavior onCreate; scale 1: retail's FX_TanyaTimeWarp)."""
+    u = lib.liberty(id, tag='RwS', drone_range=1, drones_home=False, model=None)
+    u.xml = sub1(u.xml, '<ActiveBody\n\t\t\t\tid="ModuleTag_Body"', '<ImmortalBody\n\t\t\t\tid="ModuleTag_Body"')
+    fx = 'FX_TanyaTimeWarp'
+    if scale != 1:
+        fx, files, link = warp_fx(id, scale)
+        u.files.update(files)
+        u.also += list(files)
+        u.link += link
+    u.xml = sub1(u.xml, '\t\t</Behaviors>', f'''			<FXListBehavior id="ModuleTag_CNV_RewindFX">
+				<DieMuxData DeathTypes="ALL"/>
+				<Event Index="onCreate" FX="{fx}"/>
+			</FXListBehavior>
+		</Behaviors>''')
+    u.what = f'自由号（演出版回溯）：出生时播谭雅时空腰带的特效（放大 {scale:g} 倍）'
+    u.params.update(scale=scale)
+    return u
+
+
+def wreck(id='CNV_LibRwW'):
+    """The old carrier's wreck: the same Kirov with retail's body and death (it falls and crashes), no drones; the
+    mission spawns it where the old carrier was and kills it at once."""
+    u = lib.liberty(id, tag='RwW', drone_range=1, drones_home=False, model=None)
+    u.what = '自由号残骸：换船时原地生成并立即击毁，播原版坠毁'
+    return u

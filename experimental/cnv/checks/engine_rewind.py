@@ -119,5 +119,19 @@ def swap(m):
     return t
 
 
+def wreck(m):
+    """rewind_swap, the swap's look (round 47): the same run as swap with the old carrier's counters traded for the
+    wreck's -- 残骸 = wrecks spawned (Rw Wrecks), 残骸血 = its health (0 once killed: retail's death, the crash); the
+    camera is on it, so the frames from the swap on show the crash and the enlarged time-warp FX."""
+    t = swap(m)
+    t.counters = [c for c in t.counters if c[1] not in ('旧血', '旧归我')]
+    t.scripts = [s for s in t.scripts if not s.name.startswith(('Test - count Test Health', 'Test - count Test Ours'))]
+    t.counters.append(('Rw Wrecks', '残骸'))
+    counted('Test Wreck Health', '残骸血', t, health=m.role("wreck").name)
+    t.expect = [e for e in t.expect if e[0] in ('新血', '新归我')]
+    t.expect += [('残骸', 14, '==', 1), ('残骸血', 14, '==', 0)]
+    return t
+
+
 _ALL = {'fire': fire,'auto': auto, 'still': still, 'own': own, 'ctrl': ctrl, 'trick': trick}
-CHECKS = {'rewind': _ALL, 'rewind_imm': _ALL, 'rewind_swap': {'swap': swap}}
+CHECKS = {'rewind': _ALL, 'rewind_imm': _ALL, 'rewind_swap': {'swap': swap, 'wreck': wreck}}
