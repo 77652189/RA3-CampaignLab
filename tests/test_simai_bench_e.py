@@ -134,9 +134,9 @@ def test_against_conscripts_dogs():
     ('aicapctrl', False), ('aicapmed', True), ('aicaphard', False),
 ])
 @pytest.mark.xfail(strict=True, reason='E80 engine_aicap a/b: engine makes three Peacekeepers and three '
-    'Javelins on [s70,s100); model makes one and two. MEDIUM cap two also fails on the engine '
-    'after the opening (five to nine Peacekeepers). B owns the model; '
-    'see work/re/handoff-e.md and work/re/e_aicap_e80.md.')
+    'Javelins on [s70,s100); model makes two and one, and 3 -> 5 Peacekeepers on [s150,s200) against the '
+    'engine\'s 5 -> 9 -- the build rate, not the cap (the MEDIUM cap two no longer binds in the model either: '
+    'test_a_child_cap_under_the_parents_line_does_not_bind). B owns the model; see work/re/handoff-b.md 144.')
 def test_specific_unit_cap(build, active):
     """engine_aicap b: replay observed counts, including the violated MEDIUM cap.
 
@@ -156,6 +156,21 @@ def test_specific_unit_cap(build, active):
     if active:
         assert all(row['维和总数'] >= 5 for _, row in late), late
         assert max(row['维和总数'] for _, row in late) == 9, late
+
+
+def test_a_child_cap_under_the_parents_line_does_not_bind():
+    """engine_aicap b (E80): a MEDIUM Peacekeeper Cap 2 in a personality inheriting 1AlliedBalanced does not hold --
+    the bench's MEDIUM run made 5 Peacekeepers by s150 (9 by s199), on the control's track (5 -> 9). SpecificUnitCap
+    takes the first matching line, the parent's Peacekeeper Cap 20 first (B round 141, work/re/d65_b_fields.md).
+    The rule only: the two runs alike and past 2; how fast they build is test_specific_unit_cap's (xfail)."""
+    lib = simai.model()['xmldata'].Library()
+    runs = {}
+    for build in ('aicapmed', 'aicapctrl'):
+        w = simai.run(build, 'b', 151, lib=lib)
+        labels = [label for _, label in w.sim.test.counters]
+        runs[build] = [(t, dict(zip(labels, v))) for t, v in w.sim.series]
+    assert runs['aicapmed'] == runs['aicapctrl']
+    assert max(r['维和总数'] for _, r in runs['aicapmed']) > 2, runs['aicapmed'][-1]
 
 
 @pytest.mark.parametrize('build,land,water', [
