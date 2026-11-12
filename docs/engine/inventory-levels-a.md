@@ -8,7 +8,7 @@
 |---|---|---|---|---|
 | 脚本动作 | 50 | 0 | 0 | 14 |
 | 脚本条件 | 12 | 0 | 0 | 0 |
-| 物体模块 | 52 | 11 | 50 | 20 |
+| 物体模块 | 52 | 13 | 48 | 20 |
 | 武器效果 | 17 | 3 | 3 | 2 |
 
 按原版用量加权：已对拍 99%，已有（已对拍+推断）99%。
@@ -20,15 +20,13 @@
 | 状态 | 部分 | 项 | 原版用量 | 关 | 说明 |
 |---|---|---|---|---|---|
 | 未做 | 物体模块 | `Behaviors/Physics` | 143 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | RA3 的 Physics 只有击飞曲线、反弹、落地后倒地/起身、重力倍数（没有 Generals 的 Mass/摩擦/推挤），会动的战役模板全是默认字段（仅 6 个改 GravityMultiplier）。已测：落地后锁 38 帧再走移动令（engine_knock_probe stand / standlate，tests/test_meta_impact.py::test_physics_a_knocked_man_keeps_still_38_frames_after_landing_then_walks_his_order）；人的落点站不住（落水）挪到最近能站的格、按新落点重画曲线（engine_knock_water man / far，tests/test_meta_impact.py::test_physics_p3_a_man_knocked_toward_water_lands_on_the_nearest_cell_he_can_stand_on）；车的落点按 20 取整再加 10、不能落（水）挪到最近的水上格、落点格离水 10 以内落地即死（斜坡本身不致死），落到低处的曲线（engine_knock_water tank / ramp / edge，tests/test_meta_impact.py::test_physics_p3_a_hammer_lands_on_the_plus_10_grid_and_drowns_within_10_of_the_water；门槛 10、搜索格网 INFERRED）；倒地时照样开火、空中下的攻击令保留（engine_knock_probe fire，tests/test_meta_impact.py::test_physics_p4_a_knocked_man_fires_his_order_while_lying_before_he_stands；空中不开火 INFERRED）；出图不死、默认不反弹（台上读过）；未测：落到高处的曲线、冲击太小不击飞的门槛（60 不飞、130 飞）、空中能否开火、坠机重力；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
-| 未做 | 物体模块 | `Behaviors/AssignSlavesTargetObjectSpecialPower` | 6 | a2 a4 a5 a7 a8 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_assignslaves.py），可能用别的名字实现了；例：AlliedWarFactory, JapanNavalYard |
 | 未做 | 物体模块 | `Behaviors/BezierProjectile` | 6 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 已核（11-08）：模拟器没有这个效果（开火按每秒伤害直接扣血，没有弹体）；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
 | 未做 | 物体模块 | `Behaviors/SubStructureStorageBehavior` | 6 | a1 a4 a5 a6 a7 a9 | 6用量/6模板为三国MCV及海军继承型，模块无专用字段；有效配置没有SubStructureBuild，未找到可生成待存子结构的原版入口；gap：保存/恢复专属读数及合法触发待接口核实，未上台、不登记已对拍，也不据此排除运行时用途；普通展开及COPY_UPGRADES不能归因；见 work/re/e_substorage_e57.md；例：AlliedMCV, JapanMCV |
-| 未做 | 物体模块 | `Behaviors/TrackDamage` | 6 | a1 a2 a3 a4 a5 a6 a7 a8 | 模拟器代码里没有这个名字；例：AlliedAntiNavalScout, AlliedFighterAircraft |
+| 未做 | 物体模块 | `Behaviors/TrackDamage` | 6 | a1 a2 a3 a4 a5 a6 a7 a8 | E69静态核实：6个SDK配置均InstantWeaponsOnly=true，TimeToTrack为0/1/2s；现有expected_damage只接来弹，历史伤害仍gap。与C线瞬发历史接口工单重叠，E暂停独立探针；尚无本模块具名实测回放，不登记已对拍、不改分母；见work/re/e_trackdamage_e69.md；例：AlliedAntiNavalScout, AlliedFighterAircraft |
 | 未做 | 物体模块 | `Behaviors/TrackIncomingWeaponFireBehavior` | 6 | a1 a2 a3 a4 a5 a6 a7 a8 | 部分：engine_inform_probe a/off通知记录回放验证录入、30帧窗口、来源与武器匹配删除和过期清理；精确过期边界INFERRED，原版完整调度/历史伤害仍gap，不靠名字命中晋升整项；例：AlliedAntiNavalScout, AlliedFighterAircraft |
 | 未做 | 物体模块 | `Behaviors/AttackAssistResponseBehavior` | 5 | a1 a2 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedBaseDefenseAdvanced, SovietBaseDefenseAdvanced |
 | 未做 | 物体模块 | `Behaviors/CaptureSpecialAbilityUpdate` | 5 | a1 a2 a3 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoTech1, AlliedEngineer |
 | 未做 | 物体模块 | `Behaviors/EmotionTrackerUpdate` | 5 | a1 a2 a3 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoTech1, AlliedEngineer |
-| 未做 | 物体模块 | `Behaviors/PassiveAreaEffectBehavior` | 5 | a3 a4 a7 | 模拟器代码里没有这个名字；例：AlliedEngineer, CNV_IceEngineer |
 | 未做 | 物体模块 | `Behaviors/ActivateModuleSpecialPower` | 4 | a1 a2 a4 a6 a7 | 仅在SpecialPowerNugget处理器中识别并拒绝，未实现模块技能执行；例：AlliedAntiStructureVehicle, JapanAntiVehicleVehicleTech1 |
 | 未做 | 物体模块 | `Behaviors/ParkingPlaceBehavior` | 4 | a4 a5 a7 a8 | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedAntiStructureShip |
 | 未做 | 物体模块 | `Behaviors/QueueDockBehavior` | 4 | a1 a2 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedRefinery, JapanRefinery |
@@ -73,8 +71,10 @@
 | 未做 | 武器效果 | `GrapplingHookNugget` | 1 | a1 a3 a4 a6 a7 a9 | engine_grapple a最小消费者诊断；GrapplingHookUpdate派发/拉拽/释放未解释，显式报告gap；tests/test_grapple_nugget.py守卫直接命中/继承/弹头及原版缓存，不登记已对拍；例：SovietAntiVehicleVehicleTech3Harpoon |
 | 未做 | 武器效果 | `InformTargetNugget` | 0 | a3 a7 a8 a9 | 未覆盖的自制或未知武器写法；原版字段分片另行登记；例：CNV_ChronoLag_Shell, CNV_LibertyDrones |
 | 推断 | 物体模块 | `Behaviors/InfiltratorContain` | 30 | a1 a2 a4 a5 a6 a7 a8 | ENERGY已按总控11-11决定拆分登记4用量/6模板；本行剩余10种配置30用量/32模板：KILL 1、STEAL_MONEY 3、VISION 5+港口阻断型1、PARALYZE 3、VISION_UNITS飞机2/步兵3/舰船3/车辆4、RESET 5；普通VISION仅engine_infvis a盟军间谍/建造场最小对照：敌方消耗不换主、友军拒入、近处可见而远处及第三方不可见，tests/test_siminfiltrator.py::test_spy_ordinary_vision_as_on_the_bench；约5秒生效延迟/视野半径映射/宿主死亡清理INFERRED；STEAL_MONEY的engine_infmon a两次量到2000转账和后续矿车收入，匿名矿车清除无效、未闭环且暂停；tests/test_siminfiltrator.py::test_spy_refinery_money_as_on_the_bench为严格xfail，未实现该效果；其他模板/间谍、精确时序、持久性/重复进入及其余效果仍gap，不登记整组或整模块已对拍；例：AlliedAirfield, AlliedBarracks |
+| 推断 | 物体模块 | `Behaviors/AssignSlavesTargetObjectSpecialPower` | 6 | a2 a4 a5 a7 a8 | 模拟器代码里有这个名字；台上量过（checks/engine_assignslaves.py），没有测试跑这个台子；例：AlliedWarFactory, JapanNavalYard |
 | 推断 | 物体模块 | `Behaviors/WallBuilderBehavior` | 6 | a1 a2 a4 a6 a7 a9 | 部分：engine_wallinit:a有/无模块对照10/11/10，仅StartInSecondaryModel默认WALL_SEGMENT初始化；6/6权重保留，建墙/连接/段数上限/生死联动及自定义配置仍gap，未登记完整已对拍；见 work/re/e_wallbuilder_e58.md；例：AlliedWallPiece, JapanWallPiece |
 | 推断 | 物体模块 | `Behaviors/CommandSetUpgrade` | 5 | a1 a4 a5 a7 | 模拟器代码里有这个名字；例：AlliedConstructionYard, CNVA4AlliedConstructionYard |
+| 推断 | 物体模块 | `Behaviors/PassiveAreaEffectBehavior` | 5 | a3 a4 a7 | 模拟器代码里有这个名字；例：AlliedEngineer, CNV_IceEngineer |
 | 推断 | 物体模块 | `Behaviors/AutoDepositUpdate` | 4 | a1 a4 a5 a7 | 模拟器代码里有这个名字；例：OilDerrick |
 | 推断 | 物体模块 | `Behaviors/SpecialAbilityUpdate` | 4 | a1 a4 a6 a7 | 模拟器代码里有这个名字；例：JapanAntiInfantryInfantry, JapanAntiVehicleVehicleTech1 |
 | 推断 | 物体模块 | `Behaviors/TechUpgradeReceiver` | 4 | a2 a4 a5 a7 a8 | 模拟器代码里有这个名字；例：AlliedAirfield, AlliedBarracks |
