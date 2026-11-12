@@ -10,6 +10,88 @@ _module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_module)
 
 
+def test_meta_impact_arc_probe_has_one_retail_payload_and_one_unfiltered_control():
+    """Keep the negative lane interpretable: both shots must actually arrive.
+
+    The first diagnostic accidentally retained restrictions in both lanes
+    because retail XML uses newlines before attributes. This protects the
+    experiment's independent variable, not evidence of arc implementation.
+    """
+    import re
+    import xml.etree.ElementTree as ET
+    import build
+    import sim
+    from checks.engine_knock_arc import retail_shock
+    from checks.engine_knock_probe import ORDER, name
+
+    m, t, _ = build.resolve('engine_knock_arc', 'a')
+    e = sim.Sim(m, t)
+    original = ET.fromstring(retail_shock()).attrib
+    for lane, uid in (('yuri', 'CNV_KnockYuri'), ('rocket', 'CNV_KnockRocket')):
+        gun = next(u for u in m.units if u.id == uid)
+        nugget, = re.findall(r'<MetaImpactNugget\b[^>]*/>', gun.xml)
+        expected = dict(original)
+        if lane == 'rocket':
+            expected.pop('ShockWaveArc')
+            expected.pop('ForbiddenTargetModelCondition')
+        assert ET.fromstring(nugget).attrib == expected
+        weapon, = e.bodies[name(lane, 'gun')].weapons
+        assert weapon['projectile']
+        assert gun.names['rocket'] + '.xml' in gun.files
+        if lane == 'rocket':
+            assert weapon['meta_impacts'] == [dict(amount=50, radius=40, zmult=1, taper=1)]
+        else:
+            # Fail closed: retaining the gap is not successful filter coverage.
+            assert weapon['meta_impacts'] == []
+            assert 'MetaImpactNugget' in weapon['unmodeled_effects']
+    stop_timers = [a[2] for script in t.scripts for a in script.do
+                   if a[0] == 'SET_MILLISECOND_TIMER' and a[1].startswith('Knock Stop')]
+    assert stop_timers == [ORDER + 2, ORDER + 2]
+
+
+def test_meta_impact_arc_probe_replays_plain_neighbour_and_retains_filter_gap():
+    """CampKArcA_mcp_1111_192408: health99/100/99/100, both arrivals seen.
+
+    Raw plain neighbour samples175..177 below, restricted pair stationary
+    through255. Arrival174/centre are replay inputs (phase INFERRED), not a
+    full curved-projectile prediction. A rejected parser producing no motion
+    is NOT evidence of implemented retail filtering: retain that explicit gap.
+    """
+    import build
+    import sim
+    from checks.engine_knock_probe import name
+
+    m, t, _ = build.resolve('engine_knock_arc', 'a')
+    e = sim.Sim(m, t)
+    e.firing, e.volleys = [], []
+    e.eng.frame = 174
+    for lane in ('yuri', 'rocket'):
+        by, victim, near = (e.bodies[name(lane, part)] for part in ('gun', 'man', 'near'))
+        weapon, = by.weapons
+        e.queue_projectile_hit(174, victim, weapon['dmg'], by, weapon, (victim.x,3750,219))
+    e.deal(1/15)
+    for lane in ('yuri', 'rocket'):
+        assert e.bodies[name(lane, 'man')].hp == pytest.approx(148.5)
+        assert e.bodies[name(lane, 'near')].hp == 150
+    near = e.bodies[name('rocket', 'near')]
+    for frame, xyz in enumerate([(2320,3746.7,213.40), (2320,3743.4,213.40),
+                                 (2320,3740,212.50)], 175):
+        e.eng.frame = frame
+        e.move(1/15)
+        e.deal(1/15)
+        z = e.impact_ground_z(near.x, near.y) if near.z is None else near.z
+        assert (near.x, near.y, z) == pytest.approx(xyz, abs=.051)
+    assert id(near) not in e.impact_flights
+    restricted, = e.bodies[name('yuri', 'gun')].weapons
+    assert 'MetaImpactNugget' in restricted['unmodeled_effects']
+    assert restricted['meta_impacts'] == []
+    # These match the recorded negative, but are fail-closed parser behaviour.
+    for part, x in (('man',800), ('near',820)):
+        b = e.bodies[name('yuri', part)]
+        assert id(b) not in e.impact_flights
+        assert (b.x,b.y,e.impact_ground_z(b.x,b.y) if b.z is None else b.z) == (x,3750,212.5)
+
+
 @pytest.mark.parametrize('check', ['land', 'late'])
 def test_meta_impact_neighbour_velocity_and_ground_launch_match_engine_knock_probe(check):
     """Both bench runs: neighbour v.x=4.5010, a=1.9692, landing=(2380,3740).
