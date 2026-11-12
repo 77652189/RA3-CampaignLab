@@ -140,7 +140,41 @@ def wreck(m):
 
 
 ZOOM_OUT = 1.4      # ZOOM_CAMERA's first argument: > 1 farther (_201029: 2.0 showed the map's black edge)
+JUMP_ZOOM = 1.7     # jump: both spots in sight (ASIDE 330 apart, the hull 280 across)
+
+
+def jump(m):
+    """rewind_swap, round 54 (user 11-11): at the swap the carrier jumps aside, the wreck falls on its spot, then it
+    jumps back. swap's run (ours at 1 s, our guns shoot it from 5 s, fatal at 10 s) with counters 原处 / 旁边 = the
+    carrier within 150 of the mission's marks home / aside, 残骸 = presses of the wreck button, 残骸数 = the wrecks
+    on the map. The camera stands between the two marks; frames 2 a second for the three the coordinator wants (the
+    swap, the wreck falling, back home)."""
+    car = m.role("carrier").name
+    guns = [m.role(f'gun {k}').name for k in (1, 2)]
+    home, aside = m.waypoints[m.mark('home')], m.waypoints[m.mark('aside')]
+    t = Test()
+    t.waypoints['Test Camera'] = ((home[0] + aside[0]) / 2, home[1])
+    t.scripts.append(Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1')),
+                                                 ('SET_MILLISECOND_TIMER', 'Test Go', 0.01),
+                                                 ('MOVE_CAMERA_TO', 'Test Camera', 0.1, 0.0, 0.0, 0.0),
+                                                 ('ZOOM_CAMERA', JUMP_ZOOM, 0.1, 0.0, 0.0)]))
+    t.scripts.append(_control(1.0))
+    _at(t, 'shoot', 5.0, [('NAMED_FORCE_ATTACK_NAMED', g, car) for g in guns])
+    _at(t, 'finish', 10.0, [('NAMED_DAMAGE', car, 99999)])
+    t.scripts.append(Script('Test - hold fire', [('COUNTER', 'Rw Wrecks', 3, 1)], [('NAMED_STOP', g) for g in guns]))
+    for tag, label, at in (('Home', '原处', home), ('Aside', '旁边', aside)):
+        t.areas[f'Test {tag}'] = square(*at, 150.0)
+        counted(f'Test {tag} N', label, t, named=car, area=f'Test {tag}')
+    # the wreck must stay on the spot: 残骸在旁 = wrecks in the aside area (the area a jump lands in counts at once,
+    # the one it left can stay 1, model.counted) -- _203929: the wreck jumped along with the carrier
+    counted('Test Wreck Aside', '残骸在旁', t, template=m.role("wreck").template, area='Test Aside')
+    counted('Test Wrecks', '残骸数', t, template=m.role("wreck").template)
+    t.expect += [('残骸在旁', 9, '==', 0, 12),
+                 ('原处', 8, '==', 1, 9), ('旁边', 8, '==', 0, 9), ('残骸数', 9, 'ever>=', 1, 14),
+                 ('旁边', 11, 'ever>=', 1, 16), ('原处', 13, '==', 0, 14), ('原处', 18, 'ever>=', 1, 23)]
+    t.bench = [('bench_watch', dict(seconds=24, every=0.5, sheet=False, lines=4))]
+    return t
 
 
 _ALL = {'fire': fire,'auto': auto, 'still': still, 'own': own, 'ctrl': ctrl, 'trick': trick}
-CHECKS = {'rewind': _ALL, 'rewind_imm': _ALL, 'rewind_swap': {'swap': swap, 'wreck': wreck}}
+CHECKS = {'rewind': _ALL, 'rewind_imm': _ALL, 'rewind_swap': {'swap': swap, 'wreck': wreck, 'jump': jump}}

@@ -67,7 +67,9 @@ def rewind(id='CNV_LibRw', back='3s', reload='20s', body='HighlanderBody', store
 # half the body's height.
 LIGHTNING_D = 47.1                  # the time-warp lightning's diameter at size 1
 HULL_W, HULL_H = 280.0, 156.3       # CNLiberty: platform width, body height (its origin at the bottom)
-WARP_SCALE = round(HULL_W / LIGHTNING_D, 2)     # 5.94 (round 47-49: 3, on the Kirov)
+WARP_FILL = 1.5     # round 54: at width / 47.1 (5.94) the ball covered ~2/3 of the deck (bench CampRwSWreck_mcp_1111_201655
+                    # frame 21: the drawn lightning reaches less far than the mesh's box) -- so 1.5 times that
+WARP_SCALE = round(HULL_W / LIGHTNING_D * WARP_FILL, 2)     # 8.92 (round 53: 5.94; round 47-49: 3, on the Kirov)
 WARP_LIFT = round(HULL_H / 2, 1)
 
 
@@ -156,9 +158,13 @@ def swap_carrier(id='CNV_LibRwS', wreck_id='CNV_LibRwW', model=lib.LOOK[0]):
     ImmortalBody (bench CampRwSSwap_mcp_1111_163449: with retail's ActiveBody a 5200 blow at 56 % killed it before
     the mission's swap ran; ImmortalBody holds it at 1 hp, so the swap always runs). Its button `wreck` (an
     OCLSpecialPower, CreateLocation USE_OWNER_OBJECT) drops `wreck_id` on its spot and facing (CreateObject
-    Disposition LIKE_EXISTING): the wreck plays the time-warp FX and crashes (wreck()). model: its look (dress;
-    None: the Kirov's)."""
-    u = lib.liberty(id, tag='RwS', drone_range=1, drones_home=False, model=model)
+    Disposition LIKE_EXISTING): the wreck plays the time-warp FX and crashes (wreck()). Round 54: its deck jump
+    (liberty's TeleportSpecialAbilityUpdate, published `jump`) takes it aside off the wreck and back -- reload 1 s
+    and a deck of radius 1, so it carries no one along; the wreck left out of the deck's filter (riders: an
+    ExcludeThing): bench CampRwSJump_mcp_1111_203929 frames 18-20, it sat at distance 0, ours and a VEHICLE, and
+    jumped along and fell at the far spot. model: its look (dress; None: the Kirov's)."""
+    u = lib.liberty(id, tag='RwS', drone_range=1, drones_home=False, model=model, reload='1s', deck_radius=1,
+                    riders=wreck_id)
     u.xml = sub1(u.xml, '<ActiveBody\n\t\t\t\tid="ModuleTag_Body"', '<ImmortalBody\n\t\t\t\tid="ModuleTag_Body"')
     ids = dict(shed=f'SpecialPower_{id}_Wreck', shed_cmd=f'Command_{id}_Wreck', shed_button=f'Button_{id}_Wreck',
                shed_ocl=f'OCL_{id}_Wreck')
@@ -189,7 +195,7 @@ def swap_carrier(id='CNV_LibRwS', wreck_id='CNV_LibRwW', model=lib.LOOK[0]):
                f'LogicCommand:{ids["shed_cmd"]}', f'UnitAbilityButtonTemplate:{ids["shed_button"]}']
     u.names.update(ids)
     u.abilities['wreck'] = ids['shed_cmd']
-    u.what = '自由号（演出版回溯）：换船时它自己留下当新船，按钮 wreck 在原地按原朝向丢下一具残骸'
+    u.what = '自由号（演出版回溯）：换船时它自己留下当新船，按钮 wreck 在原地按原朝向丢下一具残骸，jump 跳开再跳回'
     return u
 
 

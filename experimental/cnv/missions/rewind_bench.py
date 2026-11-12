@@ -78,6 +78,8 @@ def mission(name='CampRw', body='HighlanderBody'):
 
 
 SWAP_AT, MAX_HP, NEW_HURT = 15, 6000, 3000     # health % that swaps it; its max hp; then 3000 off: 50 %
+ASIDE, BACK_AFTER = -330.0, 6.0  # round 54 (user 11-11): at the swap it jumps ASIDE (west: away from the base's pads; hull 280 across: off
+                                # the wreck), BACK_AFTER s later -- the wreck's crash seen -- back to its spot
 
 
 def swapped(name='CampRwS', scale=rw.WARP_SCALE):
@@ -87,20 +89,30 @@ def swapped(name='CampRwS', scale=rw.WARP_SCALE):
     a wreck on its spot and facing, the wreck plays the time-warp FX `scale` times larger and crashes after
     rw.WRECK_LIFE s; Rw Wrecks + 1) and puts it back at 50 % (NAMED_SET_MAX_HEALTH MAX_HP full -- bench
     engine_maxhealth: 100 % --, then NAMED_DAMAGE NEW_HURT; UNIT_SET_HEALTH did nothing to it, round 45). Ours at
-    the swap = ours for good (Rw Perm: the control's end leaves it ours). Our Multigunners stand 100 south of it."""
+    the swap = ours for good (Rw Perm: the control's end leaves it ours). Our Multigunners stand 100 south of it.
+    Round 54: at the swap it also jumps (its deck jump) to mark aside, ASIDE west, so the wreck falls in sight, and
+    BACK_AFTER s later back to mark home, where it stood (the bench's carrier does not move; a moving one would need
+    its spot kept, which no script action does)."""
     w = rw.wreck(scale=scale)
     u = rw.swap_carrier(wreck_id=w.id)
     m = Mission(name=name, map=island, units=[u, w])
     m.put(u.id, 'west field', 0, -60, side='s1', name=CARRIER, role='carrier')
+    m.waypoint('home', 'CNV Rw Home', 'west field', 0, -60)
+    m.waypoint('aside', 'CNV Rw Aside', 'west field', ASIDE, -60)
     for k, dx in ((1, -40), (2, 40)):
         m.put(GUN, 'west field', dx, 40, name=f'UNIT - CNV Rw Gun {k}', role=f'gun {k}')
     low = ('UNIT_HEALTH', CARRIER, 1, SWAP_AT)
+    jump = m.ability('carrier', 'jump')
     swap = [('NAMED_USE_COMMANDBUTTON_ABILITY', CARRIER, m.ability('carrier', 'wreck')),
             ('NAMED_SET_MAX_HEALTH', CARRIER, MAX_HP, 1), ('NAMED_DAMAGE', CARRIER, NEW_HURT),
-            ('INCREMENT_COUNTER', 1, 'Rw Wrecks'), ('SET_FLAG', 'Rw Swapped', 1)]
+            ('INCREMENT_COUNTER', 1, 'Rw Wrecks'), ('SET_FLAG', 'Rw Swapped', 1),
+            ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', CARRIER, jump, m.mark('aside')),
+            ('SET_MILLISECOND_TIMER', 'Rw Back', BACK_AFTER)]
     m.scripts += [Script('Rw - swap p1', [low, ('FLAG', 'Rw Swapped', 0), ('NAMED_OWNED_BY_PLAYER', m.player('p1'), CARRIER)],
                          [('SET_FLAG', 'Rw Perm', 1)] + swap),
-                  Script('Rw - swap s1', [low, ('FLAG', 'Rw Swapped', 0)], swap)]
+                  Script('Rw - swap s1', [low, ('FLAG', 'Rw Swapped', 0)], swap),
+                  Script('Rw - back', [('FLAG', 'Rw Swapped', 1), ('TIMER_EXPIRED', 'Rw Back')],
+                         [('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', CARRIER, jump, m.mark('home'))])]
     m.cast['wreck'] = Role(w.id, side='p1')     # dropped by the carrier at the swap (its owner's), no name
     m.scripts += control(m)
     return m
