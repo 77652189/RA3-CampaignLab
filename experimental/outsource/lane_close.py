@@ -6,7 +6,8 @@ Run it from the line's own worktree after committing. The closing tests are the 
 (the ones the item touched), the two guards (tests/test_architecture.py, tests/test_docs.py) and -- only when the
 item changed the inventory or its generated pages -- the inventory tests. The output goes to
 work/logs/<lane>_close_<stamp>.log; the screen gets the last lines only. Exit 0 = pushed; 1 = red tests (fix and run
-again); 2 = uncommitted changes or a rebase conflict (resolve as AGENTS.md says, then run again); 3 = push refused.
+again); 2 = uncommitted changes or a rebase conflict (resolve as AGENTS.md says, then run again); 3 = push refused. A refused push (another line landed first) is retried by itself after a rebase, without
+rerunning the tests, unless what landed touched a file the item changed.
 """
 import datetime, glob, importlib.util, os, subprocess, sys
 
@@ -47,6 +48,39 @@ def inventory_tests():
     return out
 
 
+def rebase_on_main():
+    """Rebase on origin/main. A conflict only in the generated pages (two lines both regenerated them) is settled
+    here -- take main's copy and let regenerate() rewrite them -- so it no longer stops the close. True = done."""
+    r = git('rebase', '-q', 'origin/main')
+    for _ in range(20):
+        if not r.returncode:
+            return True
+        conflicts = git('diff', '--name-only', '--diff-filter=U').stdout.split()
+        if not conflicts or not all(c.startswith('docs/engine/inventory') for c in conflicts):
+            return False
+        git('checkout', '--ours', '--', *conflicts)   # during a rebase "ours" is main
+        git('add', '--', *conflicts)
+        empty = not git('diff', '--cached', '--quiet').returncode   # a regenerate-only commit with nothing left
+        r = git('rebase', '--skip') if empty else git('-c', 'core.editor=true', 'rebase', '--continue')
+    return False
+
+
+def regenerate():
+    """The generated pages go stale whenever main moved under the item: regenerate them, never hand-edit."""
+    for gen in GENERATORS:
+        subprocess.run([sys.executable, '-I', '-X', 'utf8', *gen], capture_output=True)
+    git('add', '--', 'docs/engine', check=True)
+    # staged text, not `status`: a rewrite that only changes line endings stages nothing and an empty commit
+    # failed the whole close (exit 1)
+    if git('diff', '--cached', '--quiet', '--', 'docs/engine').returncode:
+        msg = 'Regenerate the inventory pages on top of main'
+        again = git('log', '-1', '--format=%s').stdout.strip() == msg   # a rerun after a refused push: one commit
+        git('commit', '-q', *(['--amend', '--no-edit'] if again else ['-m', msg]), check=True)
+        print('清单页面已按最新 main 重新生成并提交')
+    else:
+        git('checkout', '--', 'docs/engine')   # nothing but line endings: leave the tree clean
+
+
 def main():
     if len(sys.argv) < 2 or sys.argv[1] not in ('c', 'e', 'a', 'b', 'd'):
         sys.exit(__doc__)
@@ -58,24 +92,13 @@ def main():
     git('fetch', '-q', 'origin', check=True)
     base = git('merge-base', 'HEAD', 'origin/main', check=True).stdout.strip()
     changed = git('diff', '--name-only', base, 'HEAD').stdout.split()
-    if git('rebase', '-q', 'origin/main').returncode:
+    if not rebase_on_main():
         conflicts = git('diff', '--name-only', '--diff-filter=U').stdout.split()
         print('rebase 冲突（生成的清单取一边重跑三个生成器，其余照 AGENTS.md）：', ' '.join(conflicts) or '?')
         sys.exit(2)
     inv = any(c.startswith(INVENTORY_PATHS) for c in changed)
-    if inv:   # the generated pages go stale whenever main moved under the item: regenerate them, never hand-edit
-        for gen in GENERATORS:
-            subprocess.run([sys.executable, '-I', '-X', 'utf8', *gen], capture_output=True)
-        git('add', '--', 'docs/engine', check=True)
-        # staged text, not `status`: a rewrite that only changes line endings stages nothing and an empty commit
-        # failed the whole close (exit 1)
-        if git('diff', '--cached', '--quiet', '--', 'docs/engine').returncode:
-            msg = 'Regenerate the inventory pages on top of main'
-            again = git('log', '-1', '--format=%s').stdout.strip() == msg   # a rerun after a refused push: one commit
-            git('commit', '-q', *(['--amend', '--no-edit'] if again else ['-m', msg]), check=True)
-            print('清单页面已按最新 main 重新生成并提交')
-        else:
-            git('checkout', '--', 'docs/engine')   # nothing but line endings: leave the tree clean
+    if inv:
+        regenerate()
     tests = list(dict.fromkeys(touched + GUARDS + (inventory_tests() if inv else [])))
     skip = [] if any(c.startswith(CONTENT_PATHS) for c in changed) else [
         a for g in CONTENT_GUARDS for a in ('--deselect', f'tests/test_architecture.py::{g}')]
@@ -89,9 +112,26 @@ def main():
     print('\n'.join(tail))
     if r.returncode:
         sys.exit(1)
-    p = git('push', 'origin', 'HEAD:main')
-    if p.returncode:
-        print('推送被拒（别人刚推过），再跑一次本命令：\n' + p.stderr.strip()[-400:])
+    # a refused push is another line landing first (11-12 E closed three times, ~4 min of tests each): rebase and
+    # push again without rerunning the tests -- unless what landed touched a file this item changed
+    for _ in range(4):
+        p = git('push', 'origin', 'HEAD:main')
+        if not p.returncode:
+            break
+        head = git('rev-parse', 'origin/main').stdout.strip()
+        git('fetch', '-q', 'origin', check=True)
+        landed = set(git('diff', '--name-only', head, 'origin/main').stdout.split())
+        if not rebase_on_main():
+            print('推送被拒后 rebase 冲突，照 AGENTS.md 解决后再跑本命令')
+            sys.exit(2)
+        if landed & (set(changed) - {c for c in changed if c.startswith('docs/engine/')}):
+            print('推送被拒，别人刚改了本项也改的文件，再跑一次本命令（会重跑测试）：' + ' '.join(sorted(landed & set(changed))))
+            sys.exit(3)
+        if inv:
+            regenerate()
+        print('推送被拒（别人刚推过），已 rebase，不重跑测试，再推一次')
+    else:
+        print('推送连续被拒，再跑一次本命令：\n' + p.stderr.strip()[-400:])
         sys.exit(3)
     print('已推 main：' + git('log', '--oneline', '-1').stdout.strip())
 
