@@ -239,7 +239,7 @@
 | 未做 | `UNIT_STOP_SEQUENTIAL_SCRIPT` | 16 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `NAMED_EXIT_BUILDING` | 15 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_garrison.py |
 | 未做 | `TEAM_UPGRADE` | 15 |  | Sim.act / Sim.cond 不认识 |
-| 已对拍 | `UNIT_SET_HEALTH` | 15 | a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aimicro.py |
+| 已对拍 | `UNIT_SET_HEALTH` | 15 | a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_ailocation.py |
 | 已对拍 | `GIVE_PLAYER_UPGRADE` | 14 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_spngp.py |
 | 推断 | `MARK_MISSION_OBJECTIVE_COMPLETED` | 14 |  | 引擎模型核心 |
 | 不涉及 | `MOVIE_PLAY_FULLSCREEN` | 14 |  | 纯表现（名字规则） |
