@@ -151,11 +151,30 @@ def test_retail_attribute_gates_reject_unmeasured_forms(inner):
     assert 'AttributeModifierNugget' in weapon['unmodeled_effects']
 
 
+def test_scrambler_expiry_resumes_kept_order_bench_replay():
+    """engine_spnscr a: measured snapshots, without changing the original orders.
+
+    The early snapshot already precedes the late command. It requires the
+    original in-range order to survive NO_ATTACK and resume after expiry.
+    Exact impact frames and the active SPN companion remain gaps; see
+    work/re/d50_scramble_expiry3.md for the order-state evidence.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_spnscr', 'a')
+    e = sim.Sim(m, t)
+    e.shot_clock = True
+    result = e.run(16)
+    expected = (300999080,) * 4
+    assert tuple(result.series[-1][1]) == expected
+    assert all(tuple(row) == expected for sec, row in result.series if sec >= 14)
+
+
 def test_special_power_nugget_retail_scrambler_unresolved_consumers_remain_gaps():
     """engine_spnscr a: measured fire-delay differs, final HP alone hides it.
 
-    Isolated expiry clearing is covered separately. Attack-order retention
-    and the active SPN consumer remain unresolved. Retail filter dispatch
+    Expiry clearing and in-range attack-order retention are covered separately.
+    The active SPN consumer remains unresolved. Retail filter dispatch
     has a separate isolated interface test below.
     This is a gap guard, not a bench replay claim.
     """
@@ -171,6 +190,48 @@ def test_special_power_nugget_retail_scrambler_unresolved_consumers_remain_gaps(
     assert (sim.GAP_WEAPON, 'AttributeModifierNugget') not in e.unmodeled
     # FX_None and CANNOT_LEAVE_ENCLOSURE are not yet a validated no-op boundary.
     assert simunits.nugget_self_power(m.units[0].id, POWER, e.own) is False
+
+
+def test_scrambler_kept_order_stops_cached_fire_and_resumes_after_expiry():
+    """Isolated frame boundary; exact retail impact timing is not a bench claim."""
+    import build
+    import sim
+    import re
+    from checks.engine_spnscr import retail_parts
+    m, t, _ = build.resolve('engine_spnscr', 'a')
+    e = sim.Sim(m, t)
+    e.shot_clock = True
+    e.run(16)
+    victim, sink = [e.body('SCR base ' + role) for role in ('victim', 'sink')]
+    assert victim.goal is sink and victim.mode == 'attack'
+    e.act('UNIT_CHANGE_OBJECT_STATUS', [victim.name, 'NO_ATTACK', 0], 'frame interface')
+    now = [300]
+    e.frame_now = lambda: now[0]
+    e.t = 20
+    e.fight()
+    assert any(by is victim for _, _, by in e.volleys)
+    hp = sink.hp
+    mid = re.search(r'AttributeModifierName="([^"]+)"', retail_parts()[1]).group(1)
+    victim.auras_on[mid] = (315, '')
+    e.modify(victim)
+    e.act('UNIT_CHANGE_OBJECT_STATUS', [victim.name, 'NO_ATTACK', 1], 'frame interface')
+    # Reuse fight's cached aim: the object status must gate each fire frame.
+    for frame in range(300, 315):
+        now[0], e.t = frame, frame / 15
+        e.deal(1 / 15)
+        assert sink.hp == hp
+        assert victim.goal is sink and victim.mode == 'attack'
+    now[0], e.t = 315, 21
+    e.aura_tick()
+    assert 'NO_ATTACK' not in victim.status
+    assert victim.goal is sink
+    # No NAMED_ATTACK or order_attack here: only expiry releases the old order.
+    e.fight()
+    for frame in range(315, 330):
+        now[0], e.t = frame, frame / 15
+        e.deal(1 / 15)
+    assert sink.hp == hp - 100
+    assert victim.goal is sink and victim.mode == 'attack'
 
 
 @pytest.mark.parametrize('status_source', ['status', 'script_status'])

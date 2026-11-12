@@ -18,8 +18,9 @@ MEASURED 2026-11-11: fixed-static CampSPNScrA_mcp_1111_021038,
 order/removed sink reaches90 earlier; base/high reaches90 later, before
 the8s snapshot; final sink80 in all four lanes, packed300999080.
 Thus AttributeModifier delays fire independently of SPN, but the final HP
-cannot discriminate it. Expiry clearing a script-added NO_ATTACK versus
-queued attack resumption is unresolved. Predictions below intentionally
+cannot discriminate it. Expiry clearing and in-range order resumption now
+have separate simulator tests (work/re/d50_scramble_expiry3.md); exact fire
+phase and the active SPN companion remain gaps. Predictions below intentionally
 remain diagnostic FAIL; do not register this check as a passing replay.
 Earlier runs had minimum-range/geometry and possible idle-pursuit confounders;
 evidence and hypothesis table live in the private C handoff.

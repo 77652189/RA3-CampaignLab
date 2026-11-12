@@ -4242,13 +4242,17 @@ class Sim:
                 self.incoming_hit(target, id(attacker), weapon.get('weapon_key'))
                 h = hurt.setdefault(id(target), [target, 0.0, attacker])
                 h[1] += damage
+        # A cached aim is not permission to fire after a script/modifier stops
+        # the shooter. Keep its order; expiry lets fight select it again.
+        # Existing-order evidence: work/re/d50_scramble_expiry3.md.
+        # INFERRED: exact within-tick stop phase; the bench has coarse snapshots.
         for t, rate, by in self.firing:
-            if t.alive and by.alive and not self.emp_disabled(by):
+            if t.alive and by.alive and 'NO_ATTACK' not in by.status and not self.emp_disabled(by):
                 h = hurt.setdefault(id(t), [t, 0.0, by])
                 h[1] += rate * dt
                 h[2] = by
         for t, w, by in self.volleys:           # engine line C round 2: a shot lands when its clock says (shots_due)
-            if t.alive and by.alive and not self.emp_disabled(by):
+            if t.alive and by.alive and 'NO_ATTACK' not in by.status and not self.emp_disabled(by):
                 n = self.shots_due(by, w, dt)
                 if n:
                     self.inform_launch(t, by, w, n)
