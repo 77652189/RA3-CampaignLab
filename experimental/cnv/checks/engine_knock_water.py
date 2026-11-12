@@ -103,11 +103,13 @@ FIRE_AT = {'farfire': ('dry', (1730.0, 3350.0)),              # the shooter, the
 SHOOT = 5.7                                                   # after ORDER: frame ~176 (the lift is 173)
 AIR_BY = 14.0                                                 # his landing ~13.3 s: hit before = in the air
 # climb (Physics, the curve up to higher ground): ramp's layout moved 560 east, so the wet Hammer stands on the flat
-# east of the table's east ramp (3000..3060) and the burst pushes it west, up onto the table. NOT RUN YET (round
-# 171): from the data (burst ~10.7 west of the target, as ramp / edge) its level-ground landing is ~2920, the +10
-# grid 2930 on the table top (268.75, 56 over its launch); man and dry land on the flat east (3450 / 3350). The
-# simulator calls a curve ending higher a gap (Sim.meta_impact_detonate): the run's `build` / `built` / probe lines
-# are what to model it from.
+# east of the table's east ramp (3000..3060) and the burst pushes it west, up onto the table. From the data (burst
+# ~10.7 west of the target, as ramp / edge) its level-ground landing is ~2920, the +10 grid 2930 on the table top
+# (268.75, 56 over its launch); man and dry land on the flat east. Bench 11-11 CampKWClimb_mcp_1111_214128 PASS (all
+# live): the wet one's `build` land=(2930, 850, 268.75) a 9.49, N 18, its own landing not moved; the curve climbs
+# over the ramp (no dip into it) to an apex 275.00 at frame 185 and comes down onto the top at 190 -- both controls
+# at the landing + 1.3 a (281.09, the probe points fitted to 0.005; simunits.meta_impact_trajectory). The direct hit
+# lands (3290, 1030) N 21, the dry one (3350, 830) N 14.
 CHECK_LANES['climb'] = ('ramp', SHOCK)
 SHIFT['climb'] = 560.0
 DEAD['climb'] = 0

@@ -344,7 +344,9 @@ NOTES = {
                                           '空中下的攻击令、落地够不着时落地 + 50 帧才起步（移动令 + 38，不是转身；farfire / farwalk，'
                                           'tests/test_meta_impact.py::test_physics_p4b_an_attack_order_kept_through_the_knock_walks_at_landing_plus_50；'
                                           '多等的 12 帧是哪个等待 INFERRED，走进射程多深未建模）；'
-                                          '出图不死、默认不反弹（台上读过）；未测：落到高处的曲线、坠机重力'),
+                                          '落到高处（车被推上坡、落在高 56 的台面）的曲线：两个控制点都在落点高 + 1.3a'
+                                          '（engine_knock_water climb，同上 test_physics_p3_a_hammer_lands_on_the_plus_10_grid…[climb]）；'
+                                          '出图不死、默认不反弹（台上读过）；未测：坠机重力'),
     # engine A round 108: read in the SDK data
     (MODULE, 'Behaviors/ObjectDefectionHelper'): (NA, '没人触发：原版只在 BaseObject 挂一个空的（所以每个物体都有），'
                                                       'SageXML 里没有一处 DefectorSpecialPower，脚本动作表里也没有'

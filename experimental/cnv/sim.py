@@ -4268,7 +4268,7 @@ class Sim:
     def meta_impact_detonate(self, weapon, centre):
         """Dispatch ordinary immediate warhead shocks, separately from damage radius.
 
-        First slice: default Physics, grounded bodies, landings on level or lower ground (Physics P3: a landing
+        First slice: default Physics, grounded bodies, landings on level, lower or higher ground (Physics P3: a landing
         moved off the water, a vehicle's drowning, knock_landing / knock_landing_vehicle). Other cases
         stay explicit gaps; no airborne relaunch. After landing the body keeps still meta_impact_landing_hold frames
         (meta_impact_tick: knock_hold, read by move).
@@ -4320,11 +4320,12 @@ class Sim:
                     self.__dict__.setdefault('knock_drowns', set()).add(id(b))
                     self.used.add('knock landing drowns')
                 else:
-                    # the curve may cross lower ground (far: over the trench to the far bank) and end lower (ramp:
-                    # down the slope, simunits.meta_impact_trajectory); one that ends higher, off its landing's ground
-                    # (a man's own landing on other ground) or dips into the terrain needs the engine's height queries
+                    # the curve may cross lower ground (far: over the trench to the far bank), end lower (ramp:
+                    # down the slope) or higher (climb: up the table's ramp, simunits.meta_impact_trajectory); one
+                    # off its landing's ground (a man's own landing on other ground) or dipping into the terrain
+                    # needs the engine's height queries
                     end_ground = self.impact_ground_z(*points[-1][:2])
-                    if (end_ground > ground + 1e-5 or abs(points[-1][2] - end_ground) > 1e-5 or
+                    if (abs(points[-1][2] - end_ground) > 1e-5 or
                             any(z < terrain_rules.world(self.ground.z_smooth(x, y)) - 1e-5 for x, y, z in points)):
                         self.gap(GAP_WEAPON, 'MetaImpactNugget', '坡地轨迹和地形查询未建模')
                         continue

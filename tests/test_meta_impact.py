@@ -343,12 +343,19 @@ KNOCK_WATER_TANK = {
     'edge': ((2629.330, 3281.000, 218.216),
              {'man': ((2690, 3390, 212.5), 13, None, False),
               'wet': ((2510, 3310, 212.5), 9, None, False),
-              'dry': ((2770, 3310, 212.5), 10, None, False)})}
+              'dry': ((2770, 3310, 212.5), 10, None, False)}),
+    # climb CampKWClimb_mcp_1111_214128: the wet one up the table's east ramp onto its top (56.25 higher), apex 275.00
+    'climb': ((3149.330, 781.000, 218.216),
+              {'man': ((3290, 1030, 212.5), 21, None, False),
+               'wet': ((2930, 850, 268.75), 18, (185, (2974.6, 835.1, 275.00)), False),
+               'dry': ((3350, 830, 212.5), 14, None, False)})}
 
 
-@pytest.mark.parametrize('check', ['tank', 'ramp', 'edge'])
+@pytest.mark.parametrize('check', ['tank', 'ramp', 'edge', 'climb'])
 def test_physics_p3_a_hammer_lands_on_the_plus_10_grid_and_drowns_within_10_of_the_water(check):
-    """engine_knock_water tank / ramp / edge (bench 11-11): a knocked Hammer lands on the 20 grid + 10 (all nine);
+    """engine_knock_water tank / ramp / edge / climb (bench 11-11): a knocked Hammer lands on the 20 grid + 10;
+    climb's wet one is pushed up the table's ramp and lands on its top, 56.25 higher, where its own landing says
+    (2930, 850), the curve's controls 1.3 a over the landing;
     tank's wet one, its landing 2410 in the trench, goes to the nearest cell over the water, (2490, 3330) on the
     far bank's slope (Sim.knock_landing_vehicle, Ground.stand_vehicle); a landing cell within 10 of the water kills
     the frame it lands -- tank's wet one 178, its direct hit 192 (Ground.drowns) -- while ramp's dry slope (65 over)

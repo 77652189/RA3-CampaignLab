@@ -824,19 +824,23 @@ def meta_impact_trajectory(position, velocity, landing=None):
     engine's `build ... a= b=` line) -- man 2060 -> 2080, 5 points, apex 223.0; far 2060 -> 2500, 28 points.
     A landing lower than the launch by d (bench 11-11 engine_knock_water tank / ramp, ra3ext.log probe lines fitted to
     0.005): the first control stays 1.3 a over the launch, the second is 1.3 max(0, a - d) over it -- tank's direct
-    hit (a 16.3, d 9.4) 221.47, ramp's and tank's wet ones (a < d) at the launch height. A higher landing is not
-    measured (the caller records it as a gap).
+    hit (a 16.3, d 9.4) 221.47, ramp's and tank's wet ones (a < d) at the launch height. A landing higher than the
+    launch (bench 11-11 engine_knock_water climb, the wet Hammer up the table's ramp, 212.5 -> 268.75, a 9.49): both
+    controls 1.3 a over the LANDING (281.09; its 18 probe points fitted to 0.005), the curve over the ramp's slope.
     """
     plan = meta_impact_ground_launch(position, velocity)
     if not plan['steps']:
         return [tuple(position)]
     end, a, n = plan['landing'] if landing is None else landing, max(plan['height'], 0.5), plan['steps']
     drop = max(0.0, position[2] - end[2])
+    first, second = position[2] + 1.3 * a, position[2] + 1.3 * max(0.0, a - drop)
+    if end[2] > position[2]:
+        first = second = end[2] + 1.3 * a
     controls = [position,
                 (position[0] + .33 * (end[0] - position[0]),
-                 position[1] + .33 * (end[1] - position[1]), position[2] + 1.3 * a),
+                 position[1] + .33 * (end[1] - position[1]), first),
                 (position[0] + .66 * (end[0] - position[0]),
-                 position[1] + .66 * (end[1] - position[1]), position[2] + 1.3 * max(0.0, a - drop)), end]
+                 position[1] + .66 * (end[1] - position[1]), second), end]
 
     def point(t):
         weights = ((1-t)**3, 3*(1-t)**2*t, 3*(1-t)*t*t, t**3)
