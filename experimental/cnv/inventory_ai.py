@@ -221,6 +221,13 @@ NOTES = {
                     '占兵营约一半；z aiskvinf / aiskvveh：BEST_UNIT_EXPECTED 兵营只造克制兵），测试对拍 '
                     'tests/test_simai_bench_b.py（B 第 126–131 轮）；RANDOM_UNIT（PercentLow/High）、MinTime 没单独量')
        for k in ('造兵/BuildEntry.Build', '造兵/BuildState.State')},
+    # B round 138: aiskrand / aiskdiff (check s)
+    **{k: (BENCHED, '台上量过（engine_aiskirm s aiskrand：RANDOM_UNIT "0%–30%" 和不带百分号的 "30–100" 两条都造出来'
+                    '——不带 % 的数也按百分比读，原版 _RANDOM 状态就这么写），测试对拍 tests/test_simai_bench_b.py；'
+                    '两条的比例（预测 3:7，台上 4:4）样本太少没定')
+       for k in ('造兵/BuildEntry.PercentLow', '造兵/BuildEntry.PercentHigh')},
+    '造兵/BuildState.Difficulty': (BENCHED, '台上量过（engine_aiskirm s aiskdiff：只挂 HARD 的建造状态在普通难度一个不造，'
+                                    '挂 MEDIUM 的照造），测试对拍 tests/test_simai_bench_b.py'),
     '组队招人/TeamTemplate.AlwaysRecruit': (BENCHED,'台上量过（engine_aiteamfilter aiar0～3，第 90 轮）、测试对拍 '
                                          'tests/test_simai_bench_b.py：关着新造的车留家、开着出门的队把它招走、'
                                          '满员不招、不预放时第一辆自己组队（模拟器每次晚 3～4 s）；模拟器多造'

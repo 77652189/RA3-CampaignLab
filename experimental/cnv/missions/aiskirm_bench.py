@@ -211,12 +211,65 @@ def new_xml():
         '</AssetDeclaration>', ''])
 
 
+NEW_JAV = 'CNVNewJav'                 # aiskrand / aiskdiff (check s): the Javelin soldier under a new id, the same way
+RAND_PID, RAND_STATE = 'CNVRand', 'CNVRandBuild'
+DIFF_PID = 'CNVDiff'
+
+
+def new_jav():
+    """The Javelin soldier (SDK Allied/Units/AlliedAntiVehicleInfantry.xml) under NEW_JAV, as new_pk."""
+    import os
+    import labpaths
+    from parts import Unit
+    path = os.path.join(labpaths.SDK3, 'SageXML', 'Allied', 'Units', 'AlliedAntiVehicleInfantry.xml')
+    x = open(path, encoding='utf-8').read()
+    for old in ('id="AlliedAntiVehicleInfantry"', 'EditorName="AlliedAntiVehicleInfantry"'):
+        assert x.count(old) == 1, old
+        x = x.replace(old, old.replace('AlliedAntiVehicleInfantry', NEW_JAV))
+    return Unit(NEW_JAV, x, what='对照：原版标枪换了 id（随机打分 / 难度门）')
+
+
+def _two_new_xml(pid, states):
+    """1AlliedBalanced plus build states of its own: states = [(id, difficulty, [BuildEntry attribute strings])]."""
+    out = ['<?xml version="1.0" encoding="utf-8"?>',
+           '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+           '  <Tags></Tags>',
+           '  <Includes>',
+           '    <Include type="instance" source="DATA:SkirmishAI/Personalities/AlliedBalanced.xml" />',
+           f'    <Include type="all" source="DATA:CNVUnits/Data/{NEW_PK}.xml" />',
+           f'    <Include type="all" source="DATA:CNVUnits/Data/{NEW_JAV}.xml" />',
+           '  </Includes>']
+    for sid, _, entries in states:
+        out += [f'  <AIBuildStateDefinition id="{sid}">', '    <Heuristic>', '      <ConstantHeuristic/>',
+                '    </Heuristic>', *[f'    <BuildEntry {e}/>' for e in entries], '  </AIBuildStateDefinition>']
+    out.append(f'  <AIPersonalityDefinition id="{pid}" PersonalityType="{pid}" inheritFrom="1AlliedBalanced">')
+    out += [f'    <BuildState id="{sid}" State="{sid}" Difficulty="{d}"/>' for sid, d, _ in states]
+    out += ['  </AIPersonalityDefinition>', '</AssetDeclaration>', '']
+    return '\n'.join(out)
+
+
+def rand_xml():
+    """aiskrand: one ConstantHeuristic state, NEW_PK RANDOM_UNIT 0%..30% and NEW_JAV RANDOM_UNIT "30".."100" -- the
+    second written without '%' as retail AlliedBarracksBuildState_RANDOM is (SDK States/AlliedBaseStates.xml), so
+    the bench tells whether a bare 30 is 30 % or 30 (never under a [0, 1) roll)."""
+    return _two_new_xml(RAND_PID, [(RAND_STATE, 'EASY MEDIUM HARD BRUTAL',
+                                    [f'Build="{NEW_PK}" Heuristic="RANDOM_UNIT" PercentLow="0%" PercentHigh="30%"',
+                                     f'Build="{NEW_JAV}" Heuristic="RANDOM_UNIT" PercentLow="30" PercentHigh="100"'])])
+
+
+def diff_xml():
+    """aiskdiff: NEW_PK FEWEST_UNIT in a state hung at HARD only, NEW_JAV FEWEST_UNIT in one hung at MEDIUM only
+    (the bench's skirmish AI plays MEDIUM): BuildState.Difficulty gates the state."""
+    return _two_new_xml(DIFF_PID, [('CNVHardBuild', 'HARD', [f'Build="{NEW_PK}" Heuristic="FEWEST_UNIT"']),
+                                   ('CNVMedBuild', 'MEDIUM', [f'Build="{NEW_JAV}" Heuristic="FEWEST_UNIT"'])])
+
+
 ARMY_INF, ARMY_VEH = 'SovietAntiInfantryInfantry', 'SovietAntiVehicleVehicleTech1'   # conscript / Hammer tank
 ARMY_N = 10                            # aiskvinf / aiskvveh (check z): what the player owns, idle behind its yard
 
 
 def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None, account=None,
-            buffer=None, new=None, army=None):
+            buffer=None, new=None, army=None, two=None):
     m = Mission(name=name, map=ai_map(niagara, lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
     if expire is not None:               # aiskexp (check q): the same AI with SecondsTillTargetsExpire = expire
@@ -243,6 +296,16 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
         if new:                          # aisknew2: the personality lists NEW_PK in a build state of its own
             m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{NEW_PID}'
             m.assets.append((f'{NEW_PID}.xml', new_xml(), f'AIPersonalityDefinition:{NEW_PID}'))
+        m.put(NEW_BARRACKS, 'east base', NEW_AT[0], NEW_AT[1], side='s1', angle=3.1416, name='UNIT - CNV AI New Barracks',
+              role='ai new barracks')
+    if two is not None:                  # aiskrand / aiskdiff (check s): a copied barracks building NEW_PK and NEW_JAV
+        from units import production
+        pk, jav = new_pk(), new_jav()
+        m.units += [pk, jav, production.building('AlliedBarracks', [pk.id, jav.id], NEW_BARRACKS)]
+        pid, xml = {'rand': (RAND_PID, rand_xml), 'diff': (DIFF_PID, diff_xml)}[two]
+        m.facts['difficulty gate'] = int(two == 'diff')
+        m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{pid}'
+        m.assets.append((f'{pid}.xml', xml(), f'AIPersonalityDefinition:{pid}'))
         m.put(NEW_BARRACKS, 'east base', NEW_AT[0], NEW_AT[1], side='s1', angle=3.1416, name='UNIT - CNV AI New Barracks',
               role='ai new barracks')
     s1 = m.player('s1')
@@ -284,5 +347,7 @@ MISSION = {'aiskirm': mission, 'aiskirmlow': lambda: mission('CampAISkLow', mone
            'aiskpw3': lambda: mission('CampAISkPw300', buffer=300),   # check x: 300
            'aisknew': lambda: mission('CampAISkNew', new=False),      # check y: a barracks of s1's builds our unit too
            'aisknew2': lambda: mission('CampAISkNew2', new=True),     # check y: + a build state listing it
+           'aiskrand': lambda: mission('CampAISkRand', two='rand'),   # check s: RANDOM_UNIT 0%-30% / bare 30-100
+           'aiskdiff': lambda: mission('CampAISkDiff', two='diff'),   # check s: a HARD-only state at MEDIUM
            'aiskvinf': lambda: mission('CampAISkVInf', army=ARMY_INF),   # check z: the player owns 10 conscripts
            'aiskvveh': lambda: mission('CampAISkVVeh', army=ARMY_VEH)}   # check z: 10 Hammer tanks

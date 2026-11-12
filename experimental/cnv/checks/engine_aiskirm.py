@@ -517,6 +517,38 @@ def y(m):
     return t
 
 
+def s(m):
+    """RANDOM_UNIT percents and BuildState.Difficulty (aiskrand / aiskdiff: s1 owns, besides what it builds, a copied
+    barracks that also builds CNVNewPK / CNVNewJav = Peacekeeper / Javelin under new ids). Totals of s1's new
+    Peacekeepers, new Javelins, retail Peacekeepers and Javelins, to 150 s after the wake.
+    Data's prediction (l4_buildstate.md 2: RANDOM 10000 when PercentLow < roll < PercentHigh, one roll in [0, 1) an
+    evaluation): aiskrand -- 新维和 (0%..30%) wins about 3 evaluations in 10; 新标枪 ("30".."100", no '%') never if a
+    bare number is read as itself (the engine model's _percent), about 7 in 10 if it is a percent. aiskdiff -- the
+    HARD-only state never runs at MEDIUM: 新维和 0; the MEDIUM one does: 新标枪 >= 1 (FEWEST_UNIT, as aisknew2).
+
+    RESULTS s (bench 2026-11-11, both PASS; runs CampAISkRandS_mcp_1111_223512, CampAISkDiffS_mcp_1111_223815):
+      aiskrand: 新维和 1 s38, 4 s161; **新标枪 1 s27, 4 s167**; 维和 4, 标枪 7 beside (the retail barracks).
+      Reading: a bare "30" is 30 % (the Percentage type), not 30 -- retail AlliedBarracksBuildState_RANDOM's bare
+      0..100 are percents. The split 4 : 4 (30 : 70 predicted) is too few to tell more.
+      aiskdiff: **新维和 0 to s169**; 新标枪 1 s27, 8 s167; 维和 5, 标枪 6.
+      Reading: a build state hung at HARD only does not run at MEDIUM; Difficulty gates the state."""
+    NEW_PK, NEW_JAV = 'CNVNewPK', 'CNVNewJav'      # missions/aiskirm_bench.py's (G5: no content import)
+    t = Test()
+    PK, JAV = 'AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry'
+    for tpl in (PK, JAV):
+        m.spawns.add(tpl)
+    s1 = m.player('s1')
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    counted('CNV_AK_SPk', '新维和', t, template=NEW_PK, player=s1)
+    counted('CNV_AK_SJav', '新标枪', t, template=NEW_JAV, player=s1)
+    counted('CNV_AK_SRPk', '维和总数', t, template=PK, player=s1)
+    counted('CNV_AK_SRJav', '标枪总数', t, template=JAV, player=s1)
+    w = m.facts['wake at']
+    t.expect += [('新标枪' if m.facts['difficulty gate'] else '新维和', w + 140.0, 'ever>=', 1, w + 150.0)]
+    t.bench = [('bench_watch', dict(seconds=w + 154.0, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 def z(m):
     """Does the AI build against the player's army (aiskvinf: the player owns 10 conscripts, aiskvveh: 10 Hammer
     tanks, idle behind its yard on the west bank; otherwise aiskirm)? Totals of s1's Peacekeepers, Javelin soldiers,
@@ -797,5 +829,7 @@ CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j
           'aiskpw3': {'x': x},
           'aisknew': {'y': y},
           'aisknew2': {'y': y},
+          'aiskrand': {'s': s},
+          'aiskdiff': {'s': s},
           'aiskvinf': {'z': z},
           'aiskvveh': {'z': z}}

@@ -430,6 +430,24 @@ def test_listed_in_a_build_state_our_unit_takes_about_half_the_barracks(lib):
     assert rows[27]['新维和'] >= 1 and r['新维和'] >= 0.4 * (r['新维和'] + r['维和总数'] + r['标枪总数'])
 
 
+# ---- checks/engine_aiskirm.py s (bench 2026-11-11, readings in the check's RESULTS): RANDOM_UNIT and Difficulty
+def test_a_bare_random_percent_is_a_percent(lib):
+    """aiskrand: NEW_PK RANDOM_UNIT "0%".."30%", NEW_JAV RANDOM_UNIT "30".."100" (bare, as retail writes them) ->
+    bench: 新维和 4, 新标枪 4 by s168 (the first new Javelin at s27) -- a bare 30 is 30 %; read as 30 the Javelin
+    entry would never win a [0, 1) roll."""
+    _, rows = _probe_run('aiskrand', lib, 170, 's')
+    r = rows[166]
+    assert r['新标枪'] >= 1 and r['新维和'] >= 1
+
+
+def test_a_build_state_hung_at_hard_does_not_build_at_medium(lib):
+    """aiskdiff: NEW_PK FEWEST_UNIT in a state Difficulty="HARD", NEW_JAV FEWEST_UNIT in one Difficulty="MEDIUM"
+    -> bench (MEDIUM): 新维和 0 to s169, 新标枪 1 at s27, 8 by s167."""
+    _, rows = _probe_run('aiskdiff', lib, 170, 's')
+    assert max(r['新维和'] for r in rows) == 0
+    assert rows[166]['新标枪'] >= 1
+
+
 def test_a_level_personality_lists_our_units_in_a_build_state_of_its_own():
     """enemy_ai.personality(new_units=...) writes what aisknew2 benched (a ConstantHeuristic state, FEWEST_UNIT,
     the unit's file included): read by the engine model, the personality's build states list it with its
