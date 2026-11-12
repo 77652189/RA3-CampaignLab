@@ -12,6 +12,31 @@ _spec.loader.exec_module(simai)
 pytestmark = pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
 
 
+def test_engineer_pair_isolates_tactic_with_named_capture_candidate():
+    """The experiment fixes candidates, geometry, micro and the wake clock."""
+    from missions.aiengineer_bench import mission
+    engineer, control = mission(True), mission(False)
+    assert engineer.assets[0][1].replace('Tactic="Engineer"', 'Tactic="SimpleAttack"') == control.assets[0][1]
+    assert engineer.objects == control.objects
+    assert engineer.scripts == control.scripts
+    assert engineer.waypoints == control.waypoints
+    candidates = [o for o in engineer.objects if o.template == 'AlliedEngineer']
+    assert len(candidates) == 1
+    assert candidates[0].name == engineer.cnv_named['engineer']
+
+
+@pytest.mark.parametrize('build', ['aieng', 'aiengctl'])
+def test_engineer_replays_observed_no_capture_without_claiming_recruitment(build):
+    """Retail s1-63 / s1-74 plateau; shared absence does not prove a tactic."""
+    w = simai.run(build, 'a', until=63, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    rows = [(t, dict(zip(labels, values))) for t, values in w.sim.series]
+    observed = [row for t, row in rows if 1 <= t <= 62]
+    assert observed
+    assert {tuple(row[k] for k in ('目标归属', '到目标量', '工程师量', '目标血量'))
+            for row in observed} == {(0, 0, 1, 100)}, build
+
+
 def test_never_release_pair_changes_only_release_type():
     """Fixed candidates, states, target and clock; only release policy changes."""
     from missions.airelease_bench import mission
