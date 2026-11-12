@@ -160,7 +160,7 @@
 | 推断 | AI | `启发条件/TechBuildingShareHeuristic.Above` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `启发条件/TechBuildingShareHeuristic.PercentOfFairShare` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `微操/AIMicroManagerData.AlphaStrikeTargetTimeToKill` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `目标/AITargetingHeuristic.MinDistanceFromEnemy` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 推断 | AI | `目标/AITargetingHeuristic.MinDistanceFromEnemy` | 15 | a4 a5 a7 | C按名台子engine_aimindist：同一中立油井，TechBuilding阈值0组采样s6起目标区4，2000组采样s1-55在家4/目标区0；NamedObject阳性对照同0组。tests/test_min_enemy_distance.py断言原计数并按名回放；无同帧实际距离/候选资格，采样时钟未对齐游戏帧，边界与敌人物体资格仍gap，保持推断；见work/re/c_mindist_report.md |
 | 推断 | AI | `目标/AITargetingHeuristic.SortType=ThreatToWater` | 14 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/AIPersonalityDefinition.Side` | 13 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `微操/IgnoreTargets.Rule` | 13 | a4 a5 a7 | AI 模型代码里读了这个名字 |

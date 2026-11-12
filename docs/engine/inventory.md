@@ -935,7 +935,7 @@
 | 未做 | `微操/AIMicroManagerData.DodgeThreats` | 15 | a4 a5 a7 | engine_aidodge aidodgeon/aidodgeoff 原版精确打击信标开关对照；tests/test_ai_dodge.py 按名回放，开启组 strict xfail：模型无躲避消费者，simai.micro_team 缺威胁视图与移动回调（归B）；见 work/re/c_dodge_report.md；固定0.5秒反应，截图秒窗与游戏帧漂移亦留gap；未量精确时间、圆边界、过滤和多威胁，不晋升已对拍 |
 | 已对拍 | `微操/IgnoreTargets.IncludeThing` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py:y |
 | 推断 | `目标/AITargetingHeuristic.HighestPriorityEnemyPlayersOnly` | 15 |  | C按名台子engine_aitoponly：显式s4=30/p1=10，高档仅建造场、低档有兵营；true组s40在家4/兵营0，false组在家0/兵营4；把兵营给高档的true阳性对照同false。tests/test_top_enemy_only.py断言原计数并按名回放；无同帧实际优先级表/候选资格，同档多玩家及动态优先级仍gap，保持推断；见work/re/c_toponly_report.md |
-| 推断 | `目标/AITargetingHeuristic.MinDistanceFromEnemy` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 推断 | `目标/AITargetingHeuristic.MinDistanceFromEnemy` | 15 | a4 a5 a7 | C按名台子engine_aimindist：同一中立油井，TechBuilding阈值0组采样s6起目标区4，2000组采样s1-55在家4/目标区0；NamedObject阳性对照同0组。tests/test_min_enemy_distance.py断言原计数并按名回放；无同帧实际距离/候选资格，采样时钟未对齐游戏帧，边界与敌人物体资格仍gap，保持推断；见work/re/c_mindist_report.md |
 | 已对拍 | `组队招人/TeamTemplate.Priority=LOW` | 15 | a4 a5 a7 | docs/engine/aistate.md#两队抢兵和 MinPowerAdvantage（第 82 轮） |
 | 推断 | `造兵/BuildEntry.CountModifier` | 15 |  | AI 模型代码里读了这个名字 |
 | 不涉及 | `人格/AIPersonalityDefinition.PersonalityUIName` | 14 |  | 纯表现（语音、视频、画面） |
