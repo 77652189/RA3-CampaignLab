@@ -53,5 +53,40 @@ def check(m):
     return t
 
 
+def frames(m):
+    """E71: latched script-frame counts, independent of screenshot time.
+
+    Count frames after damage while HP is below 51/55/60/100. At 15 fps,
+    continuous 10%/s healing separates the first three crossings; a 20-frame
+    batch of 13 1/3 percentage points crosses all three together. Absolute
+    first-crossing phase is unknown; do not fit it from capture timestamps.
+    The full-health counter also shows whether the run actually completed.
+
+    E71 bench: final below-51/55/60/100 counts = 11/11/11/71. This rejects
+    continuous integration; a 20-frame batch is compatible, still INFERRED.
+    See work/re/e_passive_e71.md. The model replay is a strict xfail.
+    """
+    t = Test()
+    source, target = m.role('on').name, m.role('near').name
+    t.scripts = [Script('Test - start', [], [
+        ('MAP_REVEAL_ALL_PERM', m.player('p1')),
+        ('SET_MILLISECOND_TIMER', 'Area frame hurt', 8.0)]),
+        Script('Test - frame hurt', [('TIMER_EXPIRED', 'Area frame hurt')], [
+            ('UNIT_CHANGE_OBJECT_STATUS', source, 'GENERIC_TOGGLE_STATE', 1),
+            ('UNIT_SET_HEALTH', target, 50.0),
+            ('SET_FLAG', 'Area frame started', 1)])]
+    for threshold in (51, 55, 60, 100):
+        counter, label = f'CNV_Area_Below{threshold}', f'below {threshold}'
+        t.counters.append((counter, label))
+        t.scripts.append(Script(f'Test - below {threshold}', [
+            ('FLAG', 'Area frame started', 1), ('UNIT_HEALTH', target, 0, threshold)],
+            [('INCREMENT_COUNTER', 1, counter)], once=False))
+        # Pre-run bounds: allow unknown survey phase, require eventual healing.
+        t.expect += [(label, 20, '>=', 1, 24),
+                     (label, 20, '<=', 100 if threshold == 100 else 30, 24)]
+    t.bench = [('bench_watch', dict(seconds=24, every=1, sheet=False, lines=4))]
+    return t
+
+
 MISSION = {'engine_passivearea': mission}
-CHECKS = {'engine_passivearea': {'a': check}}
+CHECKS = {'engine_passivearea': {'a': check, 'f': frames}}

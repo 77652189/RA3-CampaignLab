@@ -3677,8 +3677,9 @@ class Sim:
     def passive_area_heal(self):
         """E70 single engineer, same-owner infantry, scripted status on/off.
 
-        INFERRED: continuous per-frame integration of the SDK's 10%/second.
-        The bench validates late plateaus only, not survey phase or heal ticks.
+        INFERRED fallback: continuous integration of the SDK's 10%/second.
+        E71 rejects this timing (strict xfail); E70 late plateaus still pass.
+        Survey/heal scheduling unresolved: see work/re/e_passive_e71.md.
         Other relationships, overlapping auras and self-healing remain gaps.
         """
         cache = self.__dict__.setdefault('_passive_area_of', {})
@@ -3696,7 +3697,7 @@ class Sim:
         if not sources:
             return
         self.gap('物体模块', 'PassiveAreaEffectBehavior timing',
-                 'INFERRED: 按SDK百分比逐帧积分；调查相位、精确治疗帧未测')
+                 'INFERRED fallback: 逐帧积分被E71阈值帧否定；调查/治疗调度待解，见work/re/e_passive_e71.md')
         for target in self.bodies.values():
             if not target.alive or target.hp >= target.max_hp or 'INFANTRY' not in target.kinds:
                 continue
