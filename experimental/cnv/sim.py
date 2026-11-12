@@ -3339,7 +3339,11 @@ class Sim:
                                         module['CreateLocation'] == 'CREATE_AT_LOCATION' and
                                         module['CanAffectObjectFilter'] ==
                                         'SovietIronCurtainSpecialPowerObjectFilter')
-                    if module and not curtain_host:
+                    empty_dispatch = bool(module and simunits.empty_ocl(module['OCL'], self.own) and
+                                          module['CreateLocation'] == 'CREATE_AT_LOCATION' and
+                                          module['CanAffectObjectFilter'] ==
+                                          'SovietIronCurtainSpecialPowerObjectFilter')
+                    if module and not curtain_host and not empty_dispatch:
                         self.gap(GAP_ACTION, refined(name, a), 'OCLSpecialPower 配置未对拍，见 work/re/e_ocl_e62.md')
                 if a[1] in CURTAIN and q is not None and b and b.alive and curtain_host:
                     self.used.add('superweapon')

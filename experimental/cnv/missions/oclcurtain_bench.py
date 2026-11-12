@@ -22,6 +22,12 @@ def mission(mode):
     elif mode == 'wrong':
         xml = xml.replace(modules[0], modules[0].replace(
             'SpecialPowerIronCurtain', 'SpecialPowerVacuumBomb'))
+    elif mode == 'empty':
+        xml = xml.replace(modules[0], modules[0].replace(
+            'OCL="OCL_IronCurtain"', 'OCL="CNVOclEmptyList"'))
+        # AssetTypeObjectCreationList.xsd: every nugget has minOccurs=0.
+        xml = xml.replace('</AssetDeclaration>',
+                          '<ObjectCreationList id="CNVOclEmptyList" /></AssetDeclaration>')
     m.units.append(Unit(ident, xml, what='Iron Curtain module control ' + mode))
     m.role('curtain').template = ident
     for obj in m.objects:
@@ -31,5 +37,6 @@ def mission(mode):
 
 
 MISSION = {'engine_oclcurtain': lambda: mission('valid'),
+           'engine_oclempty': lambda: mission('empty'),
            'engine_oclnone': lambda: mission('none'),
            'engine_oclwrong': lambda: mission('wrong')}

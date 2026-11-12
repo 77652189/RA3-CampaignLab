@@ -1755,8 +1755,8 @@ def _retail_power_heads():
 def ocl_power(template, power, own=None):
     """The matching host OCLSpecialPower attributes, or None (nearest module group).
 
-    Only Iron Curtain's CREATE_AT_LOCATION/OCL_IronCurtain dispatch is replayed;
-    callers must keep other OCL configurations as explicit gaps.
+    Only Iron Curtain's retail reference and a locally declared empty OCL are
+    replayed; callers must keep other OCL configurations as explicit gaps.
     """
     def read(xml):
         xml = re.sub(r'<!--.*?-->', '', xml or '', flags=re.S)
@@ -1766,6 +1766,23 @@ def ocl_power(template, power, own=None):
                 for head in heads] or None
     modules = _inherited(template, own, read, None) or []
     return next((module for module in modules if module['SpecialPowerTemplate'] == power), None)
+
+
+def empty_ocl(ocl, own=None):
+    """E63: a resolved local OCL with no nuggets and default flags does nothing.
+
+    A missing reference is not an empty list. Nonempty lists remain unmodeled;
+    this does not infer behavior from their names or just their object count.
+    Explicit NONE flags and equivalent local declarations are INFERRED from
+    schema defaults; the bench uses one self-closing list with omitted flags.
+    """
+    for xml in (own or {}).values():
+        xml = re.sub(r'<!--.*?-->', '', xml, flags=re.S)
+        for head, inner in _blocks(xml, 'ObjectCreationList'):
+            if _attr(head, 'id') == ocl:
+                return (not inner.strip() and _attr(head, 'Flags', 'NONE') == 'NONE' and
+                        set(re.findall(r'(\w+)\s*=', head)) <= {'id', 'Flags'})
+    return False
 
 
 def power_rules(template, power, own=None):
