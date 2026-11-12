@@ -878,9 +878,30 @@ def test_mining_engine_mining_a_with_the_refinery_s_own_collector():
     assert (r['首笔'] - 239, r['收满'] - 268, r['二笔'] - 508) == (1, 1, 1)
 
 
+MINE_F_BENCH = {'首笔': 290, '名到矿': 107, '自到矿': 121}    # bench 2026-11-12 CampMineF_mcp_1112_095956
+
+
+def test_mining_engine_mining_f_the_placed_collector_comes_as_on_the_bench():
+    """engine_mining f (round 178): the placed collector is in the node's square at 107 on the bench, 102 in the
+    sim (no acceleration)."""
+    r = _full_mining('engine_mining', 'f', until=30.0)
+    assert abs(r['名到矿'] - MINE_F_BENCH['名到矿']) <= 6, r
+
+
+@pytest.mark.xfail(strict=True, reason='round 178, bench engine_mining f: the refinery own collector is in the node '
+                                       'square at 121 with the placed one beside the refinery (56 alone, c): held '
+                                       'up ~65 frames by it (collision), it comes second; the sim has no '
+                                       'collisions (49)')
+def test_mining_engine_mining_f_the_refinery_s_own_is_held_up():
+    r = _full_mining('engine_mining', 'f', until=30.0)
+    assert abs(r['自到矿'] - MINE_F_BENCH['自到矿']) <= 6, r
+
+
 @pytest.mark.xfail(strict=True, reason='round 177: in b the bench has the placed collector working and the '
                                        'refinery own one stuck (first money 290, period 269); the sim own one '
-                                       'reaches the node first (105 vs 153) and both work (240 / 390 / 540)')
+                                       'reaches the node first (105 vs 153) and both work (240 / 390 / 540). '
+                                       'Round 178 (f): the own one is held up by the placed one (collision), '
+                                       'not a dock rule -- the sim rule (first come works, no queue) stands')
 def test_mining_engine_mining_b_the_refinery_s_own_collector_waits():
     r = _full_mining('engine_mining', 'b')
     assert (r['首笔'], r['二笔'] - r['首笔'], r['三笔'] - r['二笔']) == (290, 269, 269), r

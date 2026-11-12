@@ -17,6 +17,8 @@ Counters (four lines), frames from the mission's first frame:
   d  as b; frames (summed) with: 名车 the placed collector in c's node square, 一车 at least one collector there,
      两车 both there (which of the two works?)
   e  as d, the placed collector deleted once the money reaches LOAD (does the waiting one get the dock then?)
+  f  as b; 首笔; 自到矿 frames until a collector other than the placed one is first in c's node square; 名到矿 until
+     the placed one is (does the refinery's own come later, or come first and still wait?)
 
 Bench 11-05 (round 43; docs/engine/mining.md):
   a CampMineA_mcp_1105_201253: 首笔 239, 收满 268 (8 a frame: 16 / 72 / 128 / 200 at 2 / 9 / 16 / 25 frames, then 250),
@@ -27,6 +29,10 @@ Bench 11-05 (round 43; docs/engine/mining.md):
   d CampMineD_mcp_1105_203036: 名车 64 frames in a row each trip, 一车 - 名车 9 frames in 45 s, 两车 0: the placed one
     works; the refinery's own reaches the node later and waits outside for good.
   e CampMineE_mcp_1105_203435: the placed one deleted at s19: the money stays 250 to s61, nobody in the square.
+Bench 2026-11-12 (round 178):
+  f CampMineF_mcp_1112_095956: 首笔 290 (b's), 名到矿 107, 自到矿 121 -- alone (c) the refinery's own is in the square
+    at 56: the placed one, standing by the refinery, holds it up ~65 frames, so it comes second and waits for good.
+    Not who looked for the node first: the order they come in, changed by the drive (no collisions in the sim).
 Against the model (RA3-EngineModel mining.py, round 43; tests/test_objects_bench.py mining): a, b, e the same with the
 drives fitted (spawn -> node 101, node <-> refinery 104, placed -> node 153); b's period and the stuck collector are
 predictions. c and d need motion (not compared).
@@ -40,7 +46,7 @@ from parts import Mission, Script, Test, counted, square
 MINER, REFINERY = 'AlliedMiner', 'AlliedRefinery'
 SITE = 'probe refinery'
 LOAD = 250                                  # OreMinerBehavior DeliveryCapacity / OreNodeBehavior DeliveryAmount
-RUN = {'a': 75.0, 'b': 75.0, 'c': 45.0, 'd': 45.0, 'e': 60.0}
+RUN = {'a': 75.0, 'b': 75.0, 'c': 45.0, 'd': 45.0, 'e': 60.0, 'f': 30.0}
 PLACED = (-110.0, 0.0)                      # b, d: the second collector, from the pad
 PAD = (probe_range.SITES[SITE].x, probe_range.SITES[SITE].y)
 NODE = probe_range.OBJECTS[0].x, probe_range.OBJECTS[0].y
@@ -78,7 +84,7 @@ def mining_test(m, which='a'):
     t = Test()
     p1 = m.player('p1')
     start = [('MAP_REVEAL_ALL_PERM', p1), ('PLAYER_SET_MONEY', p1, 0)]
-    if which not in 'bde':
+    if which not in 'bdef':
         start.append(('NAMED_DELETE', _n('Miner')))
     t.scripts.append(Script('Test - start', [], start))
     t.counters.append(('CNV_Mine_Money', '资金'))
@@ -91,6 +97,14 @@ def mining_test(m, which='a'):
         _below(t, 'CNV_Mine_First', '首笔', 1)
         _below(t, 'CNV_Mine_Second', '二笔', LOAD + 1)
         _below(t, 'CNV_Mine_Third', '三笔', 2 * LOAD + 1)
+    elif which == 'f':
+        t.areas['Test Node'] = square(*NODE, NODE_R)
+        placed_in = ('NAMED_INSIDE_AREA', _n('Miner'), 'Test Node')
+        _below(t, 'CNV_Mine_First', '首笔', 1)
+        _until(t, 'CNV_Mine_OwnAt', '自到矿', 'Test Own At',
+               ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', 'Player_1', 3, 1, MINER, 'Test Node'))
+        t.scripts[-1].when.append(placed_in + ('NOT',))
+        _until(t, 'CNV_Mine_PlacedAt', '名到矿', 'Test Placed At', placed_in)
     elif which in 'de':
         if which == 'e':                    # the worker (d: the placed one) goes once the first load is in
             t.scripts.append(Script('Test - worker gone', [('COUNTER', 'CNV_Mine_Money', 3, LOAD)],
@@ -179,5 +193,5 @@ def niagara_mission():
 
 MISSION = {'engine_mining': mission, 'mineniag': niagara_mission,
            **{f'mineturn{_tag(k)}': (lambda k=k: turned_mission(k)) for k in TURNS}}
-CHECKS = {'engine_mining': {w: (lambda m, w=w: mining_test(m, w)) for w in 'abcde'}, 'mineniag': {'p': turned_test},
+CHECKS = {'engine_mining': {w: (lambda m, w=w: mining_test(m, w)) for w in 'abcdef'}, 'mineniag': {'p': turned_test},
           **{f'mineturn{_tag(k)}': {'p': turned_test} for k in TURNS}}
