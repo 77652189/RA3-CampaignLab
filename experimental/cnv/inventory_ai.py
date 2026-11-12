@@ -114,10 +114,10 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
     '目标/AITargetingHeuristic.HeuristicType=Expansion': (TODO,
-        'C接口门禁：原版12个定义带BaseSelection，引用于扩张/MCV撤退状态；'
-        '模型丢弃基地选择子节点，目标视图无扩张候选/基地类型数据，未知类型落入通用实体选择。'
-        '缺C独立候选/目标回写接口，需目标模块提供接线或明确改派；'
-        '未上台、未实现、不晋升；见 work/re/c_expansion_report.md'),
+        'C已上台：aiexpc:a东矿区4、崖矿区0、普通实体0，命令指向东矿点；'
+        '模型已保留BaseSelection，增加显式候选回调和槽位点，Expansion不再回退普通实体。'
+        '自动候选资格/基地发现与排序尚未证实，模型按名回放strict xfail；'
+        '仅接口实现，不晋升；见 work/re/c_expansion_probe_report.md'),
     '造兵/CountAsStructureForBuildPurposesFilter.ExcludeThing': (TODO,
         'C静态核查：原版过滤器用于建造优先级，排除矿车/勘探车/日本矿厂核心；'
         '不是现有建筑计数。模型未消费该过滤器，候选分类需接B共享build_units，'
