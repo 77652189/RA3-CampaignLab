@@ -66,10 +66,16 @@ def main():
     if inv:   # the generated pages go stale whenever main moved under the item: regenerate them, never hand-edit
         for gen in GENERATORS:
             subprocess.run([sys.executable, '-I', '-X', 'utf8', *gen], capture_output=True)
-        if git('status', '--porcelain', '--untracked-files=no', '--', 'docs/engine').stdout.strip():
-            git('add', '--', 'docs/engine', check=True)
-            git('commit', '-q', '-m', 'Regenerate the inventory pages on top of main', check=True)
+        git('add', '--', 'docs/engine', check=True)
+        # staged text, not `status`: a rewrite that only changes line endings stages nothing and an empty commit
+        # failed the whole close (exit 1)
+        if git('diff', '--cached', '--quiet', '--', 'docs/engine').returncode:
+            msg = 'Regenerate the inventory pages on top of main'
+            again = git('log', '-1', '--format=%s').stdout.strip() == msg   # a rerun after a refused push: one commit
+            git('commit', '-q', *(['--amend', '--no-edit'] if again else ['-m', msg]), check=True)
             print('清单页面已按最新 main 重新生成并提交')
+        else:
+            git('checkout', '--', 'docs/engine')   # nothing but line endings: leave the tree clean
     tests = list(dict.fromkeys(touched + GUARDS + (inventory_tests() if inv else [])))
     skip = [] if any(c.startswith(CONTENT_PATHS) for c in changed) else [
         a for g in CONTENT_GUARDS for a in ('--deselect', f'tests/test_architecture.py::{g}')]
