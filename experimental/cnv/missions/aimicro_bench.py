@@ -263,6 +263,20 @@ def built(name, tactic='StaticDefense', foes=None, spow=None, engage=True):
     return m
 
 
+def update_time(name, seconds):
+    """Recruited, AI-built charge users; only AIMicroManagerData.UpdateTime differs.
+
+    No claim that the period is a fixed first-response delay: qualification and
+    the phase of the team's micro update also affect the first observed charge.
+    """
+    m = built(name, tactic='Hunt', foes=True, spow=True)
+    m.assets = [(path, text.replace(f'id="{SPOW_ID}" UpdateTime="0.5s"',
+                                   f'id="{SPOW_ID}" UpdateTime="{seconds}s"'), key)
+                for path, text, key in m.assets]
+    m.facts['micro update seconds'] = float(seconds)
+    return m
+
+
 def dodge(name, enabled):
     """DodgeThreats only: recruited warriors fighting the same immortal conscripts.
 
@@ -319,7 +333,9 @@ def ignore_distance(name, distance):
     return m
 
 
-MISSION = {'aiignzero': lambda: ignore_distance('CampAIIgnZero', 0),
+MISSION = {'aimicupfast': lambda: update_time('CampMicUpFast', 0.5),
+           'aimicupslow': lambda: update_time('CampMicUpSlow', 4),
+           'aiignzero': lambda: ignore_distance('CampAIIgnZero', 0),
            'aiignnear': lambda: ignore_distance('CampAIIgnNear', 2000),
            'aidodgeon': lambda: dodge('CampAIDodgeOn', True),
            'aidodgeoff': lambda: dodge('CampAIDodgeOff', False),

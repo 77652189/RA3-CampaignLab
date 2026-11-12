@@ -297,7 +297,7 @@
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateJumpSpecialPower` | 8 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateLeapSpecialPower` | 8 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `RESTART_TIMER` | 8 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_timer.py |
-| 已对拍 | `SET_COUNTER_TO_COUNTER` | 8 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_contained.py |
+| 已对拍 | `SET_COUNTER_TO_COUNTER` | 8 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_aimicro.py |
 | 未做 | `SET_PLAYER_KILLS_OF_TYPE_TO_COUNTER` | 8 |  | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `CAMERA_STOP_FOLLOW` | 7 |  | 纯表现（名字规则） |
 | 不涉及 | `FIRE_SPECIAL_POWER_ON_UNIT` | 7 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
@@ -902,7 +902,7 @@
 | 未做 | `造兵/BlockIfThingNearFactory.Relationship` | 28 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | `造兵/BlockIfThingNearFactory.Rule` | 28 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 推断 | `目标/AITargetingHeuristic.HeuristicType=FriendlyUnit` | 27 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | `微操/AIMicroManagerData.UpdateTime` | 26 | a4 a5 a7 | 台上量过（engine_aidefense aidefctl4：每圈晚 1～2 s）；模拟器 4 s 与 1 s 逐秒相同（tests/test_simai_bench_b.py strict xfail） |
+| 推断 | `微操/AIMicroManagerData.UpdateTime` | 26 | a4 a5 a7 | engine_aimicro aimicupfast/aimicupslow:a 仅切微操0.5/4s；台内首冲帧363/317、首活均2；tests/test_simai_bench_c.py 按名回放存活通过，精确时钟strict xfail（模型271/309）；资格/更新相位仍gap，不能解释为固定延迟；旧aidefctl4改的是Tactic.UpdateTime，非本字段证据；见work/re/c_update_time_report.md，不晋升 |
 | 已对拍 | `启发条件/TimerHeuristic` | 25 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
 | 已对拍 | `启发条件/TimerHeuristic.EndTime` | 25 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
 | 已对拍 | `启发条件/TimerHeuristic.StartTime` | 25 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |

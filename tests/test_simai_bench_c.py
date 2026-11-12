@@ -12,6 +12,37 @@ _spec.loader.exec_module(simai)
 pytestmark = pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
 
 
+@pytest.fixture(scope='module', params=['aimicupfast', 'aimicupslow'])
+def micro_update_rows(request):
+    build = request.param
+    w = simai.run(build, 'a', until=56, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    rows = [dict(zip(labels, values)) for _, values in w.sim.series]
+    return build, rows
+
+
+def test_micro_update_time_charge_and_survival(micro_update_rows):
+    """Named micro-period pair; first skill and live units use the map clock."""
+    build, rows = micro_update_rows
+    charged = [r for r in rows if r['首冲帧'] > 0]
+    print(build, 'first', charged[:1], 'final', rows[-1])
+    assert charged, rows[-1]
+    assert {r['首活'] for r in charged} == {2}
+    assert max(r['造出'] for r in rows) >= 2
+
+
+@pytest.mark.xfail(strict=True, reason='Micro UpdateTime-only pair: retail first-charge latch fast363/slow317, '
+                  'model271/309; eligibility and update phase need B observations. '
+                  'No fixed-delay inference or model fit. See work/re/handoff-c.md '
+                  'and work/re/c_update_time_report.md.')
+def test_micro_update_time_first_clock_replays_bench(micro_update_rows):
+    """Assert the measured script latch, independent of capture wall time."""
+    build, rows = micro_update_rows
+    expected = 363 if build == 'aimicupfast' else 317
+    seen = {r['首冲帧'] for r in rows if r['首冲帧']}
+    assert seen == {expected}, (build, seen)
+
+
 @pytest.mark.xfail(strict=True, reason='aiskirm:m replay has no populated Cleanup counter through 170s; '
                   'retail transfers defense 8 -> Cleanup 8. Named-team observation or release consumer '
                   'needs B investigation; no model change or inventory promotion. '

@@ -197,7 +197,36 @@ def probe_built(m, build='aimicbuilt', where=False):
     return t
 
 
+def probe_update_time(m):
+    """Latch the first AI charge on the script clock, with live-unit controls.
+
+    There is no scripted power press in this check. A positive first charge
+    proves the AI-built units entered a functioning micro/power path. This does
+    not expose team identity or the internal dispatch frame. Only the micro
+    UpdateTime differs between builds; no Tactic.UpdateTime is changed.
+
+    MEASURED aimicupfast:a / aimicupslow:a: first latch 363 / 317, alive 2
+    in both (three checks PASS each). Model latch 271 / 309: precise replay
+    remains strict xfail. Eligibility/update phase unresolved; see
+    work/re/c_update_time_report.md. Longer period is not a fixed delay.
+    """
+    t = probe_built(m, 'aimicspon')
+    t.scripts = [s for s in t.scripts if not s.name.startswith('Test - control')]
+    t.counters = [('CNV_AM_Frames', '帧数'), ('CNV_AM_Owned', '造出'),
+                  ('CNV_UP_First', '首冲帧'), ('CNV_UP_Alive', '首活')]
+    t.scripts.append(Script('Test - latch first charge',
+                            [('PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS', m.player('s1'), 3, 1, status(CHARGE))],
+                            [('SET_COUNTER_TO_COUNTER', 'CNV_UP_First', 'CNV_AM_Frames'),
+                             ('SET_COUNTER_TO_COUNTER', 'CNV_UP_Alive', 'CNV_AM_Owned')]))
+    t.expect = [('造出', 14, 'ever>=', 2, 45), ('首冲帧', 14, 'ever>=', 1, 55),
+                ('首活', 14, 'ever>=', 2, 55)]
+    t.bench = [('bench_watch', dict(seconds=56, every=5, sheet=False, lines=4))]
+    return t
+
+
 CHECKS = {b: {'r': lambda m, b=b: probe(m, build=b)} for b in FIRES if not b.startswith(('aimicbuilt', 'aimicsp'))}
+CHECKS['aimicupfast'] = {'a': probe_update_time}
+CHECKS['aimicupslow'] = {'a': probe_update_time}
 CHECKS['aimicbuilt'] = {'r': probe_built}
 CHECKS['aimicbuilth'] = {'r': lambda m: probe_built(m, 'aimicbuilth')}
 CHECKS['aimicbuiltf'] = {'r': lambda m: probe_built(m, 'aimicbuiltf')}
