@@ -19,8 +19,8 @@
 
 | 状态 | 部分 | 项 | 原版用量 | 关 | 说明 |
 |---|---|---|---|---|---|
-| 未做 | 物体模块 | `Behaviors/Physics` | 143 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | RA3 的 Physics 只有击飞曲线、反弹、落地后倒地/起身、重力倍数（没有 Generals 的 Mass/摩擦/推挤），会动的战役模板全是默认字段（仅 6 个改 GravityMultiplier）。已测：落地后锁 38 帧再走移动令（engine_knock_probe stand / standlate，tests/test_meta_impact.py::test_physics_a_knocked_man_keeps_still_38_frames_after_landing_then_walks_his_order）；人的落点站不住（落水）挪到最近能站的格、按新落点重画曲线（engine_knock_water man / far，tests/test_meta_impact.py::test_physics_p3_a_man_knocked_toward_water_lands_on_the_nearest_cell_he_can_stand_on）；倒地时照样开火、空中下的攻击令保留（engine_knock_probe fire，tests/test_meta_impact.py::test_physics_p4_a_knocked_man_fires_his_order_while_lying_before_he_stands；空中不开火 INFERRED）；出图不死、默认不反弹（台上读过）；未测：车落斜坡即死（缺口）、空中能否开火、坠机重力；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
-| 未做 | 物体模块 | `Behaviors/AssignSlavesTargetObjectSpecialPower` | 6 | a2 a4 a5 a7 a8 | 模拟器代码里没有这个名字；例：AlliedWarFactory, JapanNavalYard |
+| 未做 | 物体模块 | `Behaviors/Physics` | 143 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | RA3 的 Physics 只有击飞曲线、反弹、落地后倒地/起身、重力倍数（没有 Generals 的 Mass/摩擦/推挤），会动的战役模板全是默认字段（仅 6 个改 GravityMultiplier）。已测：落地后锁 38 帧再走移动令（engine_knock_probe stand / standlate，tests/test_meta_impact.py::test_physics_a_knocked_man_keeps_still_38_frames_after_landing_then_walks_his_order）；人的落点站不住（落水）挪到最近能站的格、按新落点重画曲线（engine_knock_water man / far，tests/test_meta_impact.py::test_physics_p3_a_man_knocked_toward_water_lands_on_the_nearest_cell_he_can_stand_on）；车的落点按 20 取整再加 10、不能落（水）挪到最近的水上格、落点格离水 10 以内落地即死（斜坡本身不致死），落到低处的曲线（engine_knock_water tank / ramp / edge，tests/test_meta_impact.py::test_physics_p3_a_hammer_lands_on_the_plus_10_grid_and_drowns_within_10_of_the_water；门槛 10、搜索格网 INFERRED）；倒地时照样开火、空中下的攻击令保留（engine_knock_probe fire，tests/test_meta_impact.py::test_physics_p4_a_knocked_man_fires_his_order_while_lying_before_he_stands；空中不开火 INFERRED）；出图不死、默认不反弹（台上读过）；未测：落到高处的曲线、冲击太小不击飞的门槛（60 不飞、130 飞）、空中能否开火、坠机重力；例：AlliedAirfield, AlliedAntiAirVehicleTech1 |
+| 未做 | 物体模块 | `Behaviors/AssignSlavesTargetObjectSpecialPower` | 6 | a2 a4 a5 a7 a8 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_assignslaves.py），可能用别的名字实现了；例：AlliedWarFactory, JapanNavalYard |
 | 未做 | 物体模块 | `Behaviors/BezierProjectile` | 6 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 已核（11-08）：模拟器没有这个效果（开火按每秒伤害直接扣血，没有弹体）；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
 | 未做 | 物体模块 | `Behaviors/SubStructureStorageBehavior` | 6 | a1 a4 a5 a6 a7 a9 | 6用量/6模板为三国MCV及海军继承型，模块无专用字段；有效配置没有SubStructureBuild，未找到可生成待存子结构的原版入口；gap：保存/恢复专属读数及合法触发待接口核实，未上台、不登记已对拍，也不据此排除运行时用途；普通展开及COPY_UPGRADES不能归因；见 work/re/e_substorage_e57.md；例：AlliedMCV, JapanMCV |
 | 未做 | 物体模块 | `Behaviors/TrackDamage` | 6 | a1 a2 a3 a4 a5 a6 a7 a8 | 模拟器代码里没有这个名字；例：AlliedAntiNavalScout, AlliedFighterAircraft |
@@ -90,7 +90,7 @@
 | 已对拍 | 脚本动作 | `SET_FLAG` | 4105 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aimicro.py |
 | 已对拍 | 脚本动作 | `ALLOW_DISALLOW_ONE_BUILDING` | 3466 | a4 a5 a7 | tests/test_simbench.py::test_a_ban_holds_the_queue_and_does_not_cancel |
 | 已对拍 | 脚本动作 | `LINK_MISSION_OBJECTIVE_TO_OBJECT` | 950 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts5.py |
-| 已对拍 | 脚本动作 | `NAMED_DELETE` | 908 | a2 a4 a5 a6 a7 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attack.py |
+| 已对拍 | 脚本动作 | `NAMED_DELETE` | 908 | a2 a4 a5 a6 a7 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attach.py |
 | 已对拍 | 脚本动作 | `SET_MISSION_OBJECTIVE_STATUS` | 732 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts5.py |
 | 已对拍 | 脚本动作 | `PLAYER_SET_MONEY` | 345 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aitower.py |
 | 已对拍 | 脚本动作 | `PLAYER_RELATES_PLAYER` | 319 | a2 a4 a5 a7 a9 | tests/test_simbench.py::test_scripts2_a_relation_is_one_way_and_turns_back |

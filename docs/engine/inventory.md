@@ -22,7 +22,7 @@
 | 已对拍 | `DISABLE_SCRIPT` | 1099 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_scripts6.py |
 | 已对拍 | `MOVE_NAMED_UNIT_TO` | 1000 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aidefense.py |
 | 已对拍 | `LINK_MISSION_OBJECTIVE_TO_OBJECT` | 950 | 全部 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts5.py |
-| 已对拍 | `NAMED_DELETE` | 908 | a2 a4 a5 a6 a7 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attack.py |
+| 已对拍 | `NAMED_DELETE` | 908 | a2 a4 a5 a6 a7 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attach.py |
 | 已对拍 | `CREATE_REINFORCEMENT_TEAM` | 753 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_reinf.py |
 | 已对拍 | `SET_MISSION_OBJECTIVE_STATUS` | 732 | 全部 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts5.py |
 | 不涉及 | `PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT` | 640 | a4 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
@@ -631,7 +631,7 @@
 | 不涉及 | `Behaviors/ProductionUpdateInfo` | 9 (9) | a1 a4 a5 a6 a7 a9 | 纯界面状态：保存七个生产类别的侧栏子页签编号；读写限于侧栏编号维护、变形时保留编号和存档传递，没有游戏逻辑读者，模拟器不建模；9用量/9模板保留；读者闭包证据见 work/re/e_production_e56.md，非上台对拍；例：AlliedConstructionYard, AlliedMCV |
 | 已对拍 | `Behaviors/EjectPassengersSpecialAbilityUpdate` | 7 (8) | a2 a5 a9 | tests/test_simbench.py::test_transport_the_man_cannon_throws_one_every_half_second_and_a_killed_transport_kills_its_men；例：AlliedBomberAircraft, A08_CenturyTransportAircraft |
 | 未做 | `Behaviors/BezierProjectile` | 6 (78) | 全部 | 已核（11-08）：模拟器没有这个效果（开火按每秒伤害直接扣血，没有弹体）；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
-| 未做 | `Behaviors/AssignSlavesTargetObjectSpecialPower` | 6 (10) | a2 a4 a5 a7 a8 | 模拟器代码里没有这个名字；例：AlliedConstructionYardRepairBay, AlliedNavalYard |
+| 未做 | `Behaviors/AssignSlavesTargetObjectSpecialPower` | 6 (10) | a2 a4 a5 a7 a8 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_assignslaves.py），可能用别的名字实现了；例：AlliedConstructionYardRepairBay, AlliedNavalYard |
 | 未做 | `Behaviors/TrackDamage` | 6 (9) | a1 a2 a3 a4 a5 a6 a7 a8 | 模拟器代码里没有这个名字；例：AlliedAntiNavalScout, AlliedFighterAircraft |
 | 未做 | `Behaviors/TrackIncomingWeaponFireBehavior` | 6 (9) | a1 a2 a3 a4 a5 a6 a7 a8 | 部分：engine_inform_probe a/off通知记录回放验证录入、30帧窗口、来源与武器匹配删除和过期清理；精确过期边界INFERRED，原版完整调度/历史伤害仍gap，不靠名字命中晋升整项；例：AlliedAntiNavalScout, AlliedFighterAircraft |
 | 已对拍 | `Behaviors/EngineerContain:三国ALLIES` | 6 (7) | a1 a2 a4 a5 a6 a7 a9 | tests/test_simengineer.py::test_engineer_allied_defence_refusal_soviet_japan_as_on_the_bench；已测范围：engine_engineer a/e/f普通进入，三国工程师友军半血防御修满并消耗、满血及敌方拒入且存活，目标归属不变；按完整配置匹配登记6用量/7模板；gap：精确进入帧仍INFERRED；日本单人ALLIES和桥配置保留在未对拍残余行，不借本组登记；例：SovietBaseDefenseGround |
