@@ -146,7 +146,10 @@ NOTES = {
     '微操/AIMicroManagerData.EnemySearchDistanceVisionMultiplier': (BENCHED,
         'engine_aisearch aisrchhi/aisrchlo 仅倍率1.5/0.25不同：高先打旁厂、到远厂0；低旁厂100且到远厂4；'
         'tests/test_simai_search.py 回放；仅被动建筑搜索，精确边界、敌军目标取得和揭雾未量'),
-    '组队招人/TeamTemplate.SortByDistance': (GUESSED, 'AI 模型代码里读了这个名字（台上没单独量：engine_aiskirm 里是推测）'),
+    '组队招人/TeamTemplate.SortByDistance': (GUESSED,
+        '专用engine_aisort aisort0/aisort1：容量1，关闭远候选f177先离、开启近候选f178先离，另一名留原位；'
+        '固定到目标距离约985/700、到基地顺序相反；tests/test_simai_bench_c.py按名回放；'
+        '招走仅INFERRED，缺同帧动态队成员ID/实际距离，不晋升；见 work/re/c_sort_report.md'),
     '组队招人/CreateUnits.MinUnits': (GUESSED,
         '专用engine_aicreate：aicr1首辆s29出门、后两辆留家；aicr3等s41造齐三辆才出门；'
         '命名队计数均99、tests/test_simai_bench_c.py strict xfail，模型槽位未对上，不晋升；'

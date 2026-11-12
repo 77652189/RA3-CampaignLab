@@ -61,3 +61,22 @@ def test_create_units_slot_replays_observed_counters(build):
         partial = [row for _, row in rows if row['坦克总数'] in (1, 2)]
         assert partial, 'the replay never exposed partial production'
         assert all(row['坦克总数'] == row['坦克在家'] for row in partial)
+
+
+@pytest.mark.parametrize('build, expected', [('aisort0', (0, 1, 1)), ('aisort1', (1, 0, 2))])
+def test_sort_by_distance_replays_named_departure(build, expected):
+    """Fixed candidates, capacity one: compare identities, not departure totals.
+
+    Named departure is indirect recruitment evidence. Dynamic team membership,
+    the engine's distance metric and ties remain gaps (work/re/c_sort_report.md).
+    Exact timing is intentionally not fitted to the engine's departure frame.
+    """
+    w = simai.run(build, 'a', until=36, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    rows = [(t, dict(zip(labels, values))) for t, values in w.sim.series]
+    before = [row for t, row in rows if 1 <= t < 9]
+    assert before
+    assert all((row['远在原位'], row['近在原位'], row['首离身份']) == (1, 1, 0) for row in before)
+    at35 = next(row for t, row in rows if 35 <= t < 36)
+    assert tuple(at35[k] for k in ('远在原位', '近在原位', '首离身份')) == expected, at35
+    assert at35['首离帧'] > 0
