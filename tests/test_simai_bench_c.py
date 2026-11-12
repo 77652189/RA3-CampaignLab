@@ -114,3 +114,36 @@ def test_tactic_distance_large_replays_observed_excursion():
         if not transitions or pos != transitions[-1]:
             transitions.append(pos)
     assert transitions == [(0, 0), (0, 1), (0, 0)], transitions
+
+
+@pytest.mark.parametrize('build', ['aiaeson', 'aiaesoff'])
+def test_tactic_aesthetics_displacement_and_survival(build):
+    """Both switch settings expose a successful displacement and one live tank."""
+    w = simai.run(build, 'a', until=67, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    at65 = next(dict(zip(labels, values)) for t, values in w.sim.series if 65 <= t < 66)
+    assert (at65['传送出圈'], at65['坦克总数']) == (1, 1), at65
+
+
+@pytest.mark.parametrize('build', ['aiaeson', 'aiaesoff'])
+@pytest.mark.xfail(strict=True, reason='Fixed Distance 2000 aesthetics pair: model stays outside after teleport; '
+                  'retail enabled excursion / disabled return needs B stand-point and readiness investigation. '
+                  'No timing or model fit. See work/re/handoff-c.md and work/re/c_aesthetics_report.md.')
+def test_tactic_aesthetics_replays_named_location_transitions(build):
+    """Compare ordered occupancy changes, without fitting capture seconds."""
+    w = simai.run(build, 'a', until=76, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    rows = [dict(zip(labels, values)) for _, values in w.sim.series]
+    before = [row for row in rows if not row['传送出圈']]
+    pre_positions = {(row['圈300'], row['圈900']) for row in before}
+    expected_pre = {(1, 1), (0, 1)} if build == 'aiaeson' else {(1, 1)}
+    assert pre_positions == expected_pre, pre_positions
+    transitions = []
+    for row in rows:
+        if not row['传送出圈']:
+            continue
+        pos = row['圈300'], row['圈900']
+        if not transitions or pos != transitions[-1]:
+            transitions.append(pos)
+    expected = [(0, 0), (0, 1), (0, 0)] if build == 'aiaeson' else [(0, 0), (0, 1), (1, 1)]
+    assert transitions == expected, transitions
