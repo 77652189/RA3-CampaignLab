@@ -191,7 +191,15 @@ def new_pk():
     return Unit(NEW_PK, x, what='对照：原版维和换了 id（AI 会不会造"我们的"单位）')
 
 
-def new_xml(cap=None):
+# aiskblk* (check y): the new state's NEW_PK entry gets a BlockIfThingNearFactory filter (SDK States/AlliedBaseStates.xml
+# writes it on the barracks' BEST_UNIT_EXPECTED entries: Rule ANY Relationship ENEMIES, IncludeThing dogs / bears),
+# here NEUTRAL so nobody fights the blocker; build -> (blocker template, its distance north of the copied barracks)
+BLOCK = {'near': ('SovietScoutInfantry', 120.0),      # bear radius 5: inside the default 150
+         'far': ('SovietScoutInfantry', 400.0),       # outside
+         'radius': ('AlliedPowerPlant', 190.0)}       # centre outside 150, inside 150 + the plant's ~54 circle
+
+
+def new_xml(cap=None, block=None):
     """1AlliedBalanced plus one build state of its own (CNVNewBuild: ConstantHeuristic, BuildEntry NEW_PK FEWEST_UNIT,
     the shape of SDK States/AlliedBaseStates.xml AlliedBarracksBuildState_FEWEST) -- what a level's personality would
     need to list for the AI to build a unit of ours (B handoff 126). cap (aiskcap): + a SpecificUnitCap on NEW_PK at
@@ -210,7 +218,12 @@ def new_xml(cap=None):
         '    <Heuristic>',
         '      <ConstantHeuristic/>',
         '    </Heuristic>',
-        f'    <BuildEntry Build="{NEW_PK}" Heuristic="FEWEST_UNIT"/>',
+        *([f'    <BuildEntry Build="{NEW_PK}" Heuristic="FEWEST_UNIT"/>'] if block is None else [
+            f'    <BuildEntry Build="{NEW_PK}" Heuristic="FEWEST_UNIT">',
+            '      <BlockIfThingNearFactory Rule="ANY" Relationship="NEUTRAL">',
+            f'        <IncludeThing>{BLOCK[block][0]}</IncludeThing>',
+            '      </BlockIfThingNearFactory>',
+            '    </BuildEntry>']),
         '  </AIBuildStateDefinition>',
         f'  <AIPersonalityDefinition id="{NEW_PID}" PersonalityType="{NEW_PID}" inheritFrom="1AlliedBalanced">',
         f'    <BuildState id="{NEW_STATE}" State="{NEW_STATE}" Difficulty="EASY MEDIUM HARD BRUTAL"/>',
@@ -277,7 +290,7 @@ ARMY_N = 10                            # aiskvinf / aiskvveh (check z): what the
 
 
 def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None, account=None,
-            buffer=None, new=None, army=None, two=None, observe=False, cap=None):
+            buffer=None, new=None, army=None, two=None, observe=False, cap=None, block=None):
     m = Mission(name=name, map=ai_map(resources.measured(niagara), lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
     if expire is not None:               # aiskexp (check q): the same AI with SecondsTillTargetsExpire = expire
@@ -305,7 +318,14 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
             m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{NEW_PID}'
             if cap is not None:          # aiskcap (check y): + SpecificUnitCap NEW_PK = cap
                 m.facts['new cap'] = cap
-            m.assets.append((f'{NEW_PID}.xml', new_xml(cap), f'AIPersonalityDefinition:{NEW_PID}'))
+            if block is not None:        # aiskblk* (check y): + a BlockIfThingNearFactory, a neutral blocker
+                thing, dist = BLOCK[block]
+                m.facts['block distance'] = dist
+                m.facts['block radius'] = int(block == 'radius')
+                m.spawns.add(thing)
+                m.put(thing, 'east base', NEW_AT[0], NEW_AT[1] + dist, side='neutral', angle=0.0,
+                      name='UNIT - CNV AI Blocker', role='ai blocker')
+            m.assets.append((f'{NEW_PID}.xml', new_xml(cap, block), f'AIPersonalityDefinition:{NEW_PID}'))
         m.put(NEW_BARRACKS, 'east base', NEW_AT[0], NEW_AT[1], side='s1', angle=3.1416, name='UNIT - CNV AI New Barracks',
               role='ai new barracks')
     if two is not None:                  # aiskrand / aiskdiff (check s): a copied barracks building NEW_PK and NEW_JAV
@@ -376,6 +396,9 @@ MISSION = {'aiskirm': mission, 'aiskirmc': lambda: mission(observe=True),
            'aisknew': lambda: mission('CampAISkNew', new=False),      # check y: a barracks of s1's builds our unit too
            'aisknew2': lambda: mission('CampAISkNew2', new=True),     # check y: + a build state listing it
            'aiskcap': lambda: mission('CampAISkCap', new=True, cap=2),   # check y: + SpecificUnitCap 2 on it
+           'aiskblkn': lambda: mission('CampAISkBlkN', new=True, block='near'),    # check y: blocker 120 away
+           'aiskblkf': lambda: mission('CampAISkBlkF', new=True, block='far'),     # check y: 400 away
+           'aiskblkr': lambda: mission('CampAISkBlkR', new=True, block='radius'),  # check y: a plant at 190
            'aiskrand': lambda: mission('CampAISkRand', two='rand'),   # check s: RANDOM_UNIT 0%-30% / bare 30-100
            'aiskdiff': lambda: mission('CampAISkDiff', two='diff'),   # check s: a HARD-only state at MEDIUM
            'aiskvinf': lambda: mission('CampAISkVInf', army=ARMY_INF),   # check z: the player owns 10 conscripts
