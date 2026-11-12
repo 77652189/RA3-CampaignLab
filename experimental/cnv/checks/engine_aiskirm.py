@@ -517,7 +517,13 @@ def y(m):
       aiskblkr (an allied power plant whose centre is 190 away): **新维和 0 to s168**; 维和 9, 标枪 9.
       Reading: as D59 read it -- an entry scores 0 while a thing passing the filter is within the distance of the
       factory; 'within' adds the thing's bounding circle (centre 190 > 150, circle in reach), and NEUTRAL matches a
-      neutral thing."""
+      neutral thing.
+
+    RESULTS y on aiskoff (bench 2026-11-12, PASS; run work/testbench/runs/CampAISkOffY_mcp_1112_111724): aisknew2
+      whose build state's heuristic is ScriptedFlagHeuristic on a flag nobody sets (the state never scores, CNVNewPK
+      still listed): **新维和 0 to s168**; 维和 6, 标枪 12 (as aisknew). Reading: the unit builder never takes our
+      unit, even listed in a build state of the mission's own -- every new Peacekeeper of aisknew2 / aiskblkf is the
+      build state's, and aiskblkn / aiskblkr's 0 is the block alone."""
     NEW_PK, NEW_BARRACKS = 'CNVNewPK', 'CNVAIBarracks'      # missions/aiskirm_bench.py's (G5: no content import)
     t = Test()
     PK, JAV = 'AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry'
@@ -904,6 +910,7 @@ CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j
           'aiskblkn': {'y': y},
           'aiskblkf': {'y': y},
           'aiskblkr': {'y': y},
+          'aiskoff': {'y': y},
           'aiskrand': {'s': s},
           'aiskdiff': {'s': s},
           'aiskvinf': {'z': z, 't': t},

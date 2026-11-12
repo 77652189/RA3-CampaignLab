@@ -455,15 +455,21 @@ def test_after_s150_the_capped_unit_is_built_again(aiskcap_rows):
 
 # ---- checks/engine_aiskirm.py y on aiskblk* (bench 2026-11-12, readings in the check's RESULTS): BuildEntry.
 # BlockIfThingNearFactory -- aisknew2's CNVNewPK entry blocked by a NEUTRAL thing north of the copied barracks
-@pytest.mark.xfail(strict=True, reason='the build-state entry is blocked (s20 on), but the simulator unit builder '
-                                       '(produce) draws CNVNewPK at s20 / s26 (it takes any template a build state '
-                                       'lists); bench 0 to s168 in both runs -- whether the engine unit builder '
-                                       'honours the block or never takes CNVNewPK is not known (B handoff 151)')
 @pytest.mark.parametrize('build', ['aiskblkn', 'aiskblkr'])
 def test_a_thing_near_the_factory_blocks_the_entry(lib, build):
     """aiskblkn (a neutral bear 120 away) / aiskblkr (a neutral power plant whose centre is 190 away, its circle
-    within the default 150): bench 新维和 0 to s168 -- the entry scores 0; the barracks build the rest."""
+    within the default 150): bench 新维和 0 to s168 -- the entry scores 0; the barracks build the rest (and the unit
+    builder never takes CNVNewPK: aiskoff below)."""
     _, rows = _probe_run(build, lib, 170, 'y')
+    assert max(r['新维和'] for r in rows) == 0
+    assert rows[166]['维和总数'] + rows[166]['标枪总数'] >= 3
+
+
+def test_a_unit_listed_only_by_the_missions_own_state_never_comes_from_the_unit_builder(lib):
+    """aiskoff (bench 2026-11-12, PASS, run work/testbench/runs/CampAISkOffY_mcp_1112_111724): aisknew2 whose build
+    state's heuristic is a flag nobody sets -> 新维和 0 to s168 while 维和 6, 标枪 12 -- the unit builder does not
+    take a template only the mission's own build state lists (RA3-EngineModel AIData.listed_templates, INFERRED)."""
+    _, rows = _probe_run('aiskoff', lib, 170, 'y')
     assert max(r['新维和'] for r in rows) == 0
     assert rows[166]['维和总数'] + rows[166]['标枪总数'] >= 3
 

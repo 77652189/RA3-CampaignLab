@@ -199,11 +199,16 @@ BLOCK = {'near': ('SovietScoutInfantry', 120.0),      # bear radius 5: inside th
          'radius': ('AlliedPowerPlant', 190.0)}       # centre outside 150, inside 150 + the plant's ~54 circle
 
 
-def new_xml(cap=None, block=None):
+OFF_FLAG = 'CNVNever'                 # aiskoff (check y): a flag no script sets -> the new state's heuristic is 0
+
+
+def new_xml(cap=None, block=None, off=False):
     """1AlliedBalanced plus one build state of its own (CNVNewBuild: ConstantHeuristic, BuildEntry NEW_PK FEWEST_UNIT,
     the shape of SDK States/AlliedBaseStates.xml AlliedBarracksBuildState_FEWEST) -- what a level's personality would
     need to list for the AI to build a unit of ours (B handoff 126). cap (aiskcap): + a SpecificUnitCap on NEW_PK at
-    all four difficulties, a unit no parent personality caps (after the BuildState lines, as retail writes them)."""
+    all four difficulties, a unit no parent personality caps (after the BuildState lines, as retail writes them).
+    off (aiskoff): the heuristic is a ScriptedFlagHeuristic on a flag nobody sets (0 for good) -- NEW_PK stays listed
+    in a build state that never builds, so a new Peacekeeper can only come from the unit builder (B handoff 151)."""
     caps = [] if cap is None else [
         f'    <SpecificUnitCap Unit="{NEW_PK}" Cap="{cap}" Difficulty="EASY MEDIUM HARD BRUTAL"/>']
     return '\n'.join([
@@ -216,7 +221,7 @@ def new_xml(cap=None, block=None):
         '  </Includes>',
         f'  <AIBuildStateDefinition id="{NEW_STATE}">',
         '    <Heuristic>',
-        '      <ConstantHeuristic/>',
+        f'      <ScriptedFlagHeuristic FlagName="{OFF_FLAG}"/>' if off else '      <ConstantHeuristic/>',
         '    </Heuristic>',
         *([f'    <BuildEntry Build="{NEW_PK}" Heuristic="FEWEST_UNIT"/>'] if block is None else [
             f'    <BuildEntry Build="{NEW_PK}" Heuristic="FEWEST_UNIT">',
@@ -290,7 +295,7 @@ ARMY_N = 10                            # aiskvinf / aiskvveh (check z): what the
 
 
 def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None, account=None,
-            buffer=None, new=None, army=None, two=None, observe=False, cap=None, block=None):
+            buffer=None, new=None, army=None, two=None, observe=False, cap=None, block=None, off=False):
     m = Mission(name=name, map=ai_map(resources.measured(niagara), lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
     if expire is not None:               # aiskexp (check q): the same AI with SecondsTillTargetsExpire = expire
@@ -325,7 +330,9 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
                 m.spawns.add(thing)
                 m.put(thing, 'east base', NEW_AT[0], NEW_AT[1] + dist, side='neutral', angle=0.0,
                       name='UNIT - CNV AI Blocker', role='ai blocker')
-            m.assets.append((f'{NEW_PID}.xml', new_xml(cap, block), f'AIPersonalityDefinition:{NEW_PID}'))
+            if off:                      # aiskoff (check y): the state never scores, NEW_PK still listed
+                m.facts['state off'] = 1
+            m.assets.append((f'{NEW_PID}.xml', new_xml(cap, block, off), f'AIPersonalityDefinition:{NEW_PID}'))
         m.put(NEW_BARRACKS, 'east base', NEW_AT[0], NEW_AT[1], side='s1', angle=3.1416, name='UNIT - CNV AI New Barracks',
               role='ai new barracks')
     if two is not None:                  # aiskrand / aiskdiff (check s): a copied barracks building NEW_PK and NEW_JAV
@@ -399,6 +406,7 @@ MISSION = {'aiskirm': mission, 'aiskirmc': lambda: mission(observe=True),
            'aiskblkn': lambda: mission('CampAISkBlkN', new=True, block='near'),    # check y: blocker 120 away
            'aiskblkf': lambda: mission('CampAISkBlkF', new=True, block='far'),     # check y: 400 away
            'aiskblkr': lambda: mission('CampAISkBlkR', new=True, block='radius'),  # check y: a plant at 190
+           'aiskoff': lambda: mission('CampAISkOff', new=True, off=True),   # check y: the state's heuristic 0
            'aiskrand': lambda: mission('CampAISkRand', two='rand'),   # check s: RANDOM_UNIT 0%-30% / bare 30-100
            'aiskdiff': lambda: mission('CampAISkDiff', two='diff'),   # check s: a HARD-only state at MEDIUM
            'aiskvinf': lambda: mission('CampAISkVInf', army=ARMY_INF),   # check z: the player owns 10 conscripts

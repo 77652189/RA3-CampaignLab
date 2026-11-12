@@ -73,7 +73,10 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '组队招人/TeamTemplate.Priority=LOW': 'docs/engine/aistate.md#两队抢兵和 MinPowerAdvantage（第 82 轮）',
               '组队招人/TeamTemplate.Priority=HIGH': 'docs/engine/aistate.md#两队抢兵和 MinPowerAdvantage（第 82 轮）',
               '组队招人/TeamTemplate.MinPowerAdvantage': 'docs/engine/aistate.md#两队抢兵和 MinPowerAdvantage（第 82 轮）',
-              '组队招人/ObjectFilter.Rule': 'docs/engine/aistate.md#队伍招谁（aitfany / aitfnone / aitfall：ANY、NONE + 名单只要名单，ALL + 排除名单）',
+              **{f'造兵/BlockIfThingNearFactory.{k}': 'tests/test_simai_bench_b.py::test_a_thing_near_the_factory_'
+                 'blocks_the_entry（engine_aiskirm y aiskblkn / aiskblkr：Rule ANY + Relationship NEUTRAL 挡住，'
+                 'aiskblkf 400 外不挡；ENEMIES 走同一段代码没单独上台；B 第 149 轮）' for k in ('Relationship', 'Rule')},
+              '组队招人/ObjectFilter.Rule':'docs/engine/aistate.md#队伍招谁（aitfany / aitfnone / aitfall：ANY、NONE + 名单只要名单，ALL + 排除名单）',
               '战略状态/StrategicState.Difficulty': 'docs/engine/aistate.md#按难度挂的状态（aidiff / aidiffx：普通 = MEDIUM，没挂 MEDIUM 的状态不跑）',
               **{f'启发条件/{k}': 'docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮）'
                  for k in ('TimerHeuristic', 'TimerHeuristic.StartTime', 'TimerHeuristic.EndTime',

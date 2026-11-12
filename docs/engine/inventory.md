@@ -8,7 +8,7 @@
 | 脚本条件 | **94%** | **100%** | 12 / 12 | 89 | 32 | 6 | 48 | 3 | 95% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **93%** | **95%** | 17 / 22 | 28 | 18 | 3 | 5 | 2 | 96% |
-| AI | **86%** | **86%** | 116 / 357 | 415 | 122 | 130 | 129 | 34 | 97% |
+| AI | **87%** | **86%** | 118 / 357 | 415 | 124 | 128 | 129 | 34 | 97% |
 
 ## 脚本动作
 
@@ -899,8 +899,8 @@
 | 已对拍 | `微操/AIMicroManagerData.PullbackInjuredHealthPct` | 30 | a4 a5 a7 | engine_aipullpct 固定30%血量、苏联吊车，仅阈值0.2/0.5不同；tests/test_simai_pullpct.py::test_pullback_threshold_high_returns_before_recycling 完整回放四车回家且不到远厂；同文件 low 对照先到远厂；仅初次回撤阈值，精确边界/晚段/吊车回收未闭环（回收 strict xfail） |
 | 推断 | `微操/AIMicroManagerData.AlphaStrikeTargetHealthPct` | 28 | a4 a5 a7 | engine_aialphahp 旧固定70%对照；engine_aialphaclose 独立延迟守军、仅阈值0.01/0.9不同；tests/test_simai_bench_c.py 保留读数回放，有限诊断不等于字段闭环；目标适用条件与回放差异仍gap，见 work/re/c_alpha_close_report.md |
 | 已对拍 | `战术/Tactic.Tactic=StaticDefense` | 28 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aidefense.py |
-| 推断 | `造兵/BlockIfThingNearFactory.Relationship` | 28 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | `造兵/BlockIfThingNearFactory.Rule` | 28 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 已对拍 | `造兵/BlockIfThingNearFactory.Relationship` | 28 | a4 a5 a7 | tests/test_simai_bench_b.py::test_a_thing_near_the_factory_blocks_the_entry（engine_aiskirm y aiskblkn / aiskblkr：Rule ANY + Relationship NEUTRAL 挡住，aiskblkf 400 外不挡；ENEMIES 走同一段代码没单独上台；B 第 149 轮） |
+| 已对拍 | `造兵/BlockIfThingNearFactory.Rule` | 28 | a4 a5 a7 | tests/test_simai_bench_b.py::test_a_thing_near_the_factory_blocks_the_entry（engine_aiskirm y aiskblkn / aiskblkr：Rule ANY + Relationship NEUTRAL 挡住，aiskblkf 400 外不挡；ENEMIES 走同一段代码没单独上台；B 第 149 轮） |
 | 推断 | `目标/AITargetingHeuristic.HeuristicType=FriendlyUnit` | 27 | a4 a5 a7 | E85 engine_aifriendly a：仅切FriendlyUnit/EnemyUnit、同挂StaticDefense与SAME_PLAYER，两组s40到友车/到敌车均0/0、MCV存活1/1，原始预测均FAIL；tests/test_simai_bench_e.py::test_friendly_unit_target按名回放strict xfail。目标选择与招人/站位边界未分，保持gap不晋升；见 work/re/e_friendly_e85.md |
 | 推断 | `微操/AIMicroManagerData.UpdateTime` | 26 | a4 a5 a7 | engine_aimicro aimicupfast/aimicupslow:a 仅切微操0.5/4s；台内首冲帧363/317、首活均2；tests/test_simai_bench_c.py 按名回放存活通过，精确时钟strict xfail（模型271/309）；资格/更新相位仍gap，不能解释为固定延迟；旧aidefctl4改的是Tactic.UpdateTime，非本字段证据；见work/re/c_update_time_report.md，不晋升 |
 | 已对拍 | `启发条件/TimerHeuristic` | 25 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
