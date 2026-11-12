@@ -525,6 +525,35 @@ def y(m):
     return t
 
 
+def yb(m):
+    """aiskcap diagnosis (B handoff 148): is the SpecificUnitCap overrun at s150 / s155 (check y: 新维和 3, 4) a second
+    barracks? Counters, each as owned objects of s1 by template (counted(); whether one under construction counts is
+    what the reading shows): 兵营 = retail AlliedBarracks, 复制兵营 = CNVAIBarracks (the player's copy), 新维和 =
+    CNVNewPK, 标枪总数. Per second to 170 s after the wake (read from the watch rows).
+    RESULTS (bench 2026-11-12, run CampAISkCapYb_mcp_1112_095845, PASS): 兵营 0 to s18, 1 from s19 to the end; 复制兵营 1
+    throughout; 新维和 2 from s33 to s149, 3 at s150, 4 at s156; 标枪 6 at s150, 7-9 by s172. No barracks appears near the
+    overrun: the AI has the same two (retail + copy) from s19 on."""
+    NEW_PK, NEW_BARRACKS = 'CNVNewPK', 'CNVAIBarracks'
+    t = Test()
+    JAV = 'AlliedAntiVehicleInfantry'
+    m.spawns.add(JAV)
+    for tpl in ('AlliedBarracks', NEW_BARRACKS):
+        try:
+            m.spawns.add(tpl)
+        except Exception:
+            pass
+    s1 = m.player('s1')
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    counted('CNV_AK_YBBar', '兵营', t, template='AlliedBarracks', player=s1)
+    counted('CNV_AK_YBCopy', '复制兵营', t, template=NEW_BARRACKS, player=s1)
+    counted('CNV_AK_YBNew', '新维和', t, template=NEW_PK, player=s1)
+    counted('CNV_AK_YBJav', '标枪总数', t, template=JAV, player=s1)
+    w = m.facts['wake at']
+    t.expect += [('兵营', w + 140.0, 'ever>=', 1, w + 150.0)]
+    t.bench = [('bench_watch', dict(seconds=w + 170.0, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 def s(m):
     """RANDOM_UNIT percents and BuildState.Difficulty (aiskrand / aiskdiff: s1 owns, besides what it builds, a copied
     barracks that also builds CNVNewPK / CNVNewJav = Peacekeeper / Javelin under new ids). Totals of s1's new
@@ -861,7 +890,7 @@ CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j
           'aiskpw3': {'x': x},
           'aisknew': {'y': y},
           'aisknew2': {'y': y},
-          'aiskcap': {'y': y},
+          'aiskcap': {'y': y, 'yb': yb},
           'aiskrand': {'s': s},
           'aiskdiff': {'s': s},
           'aiskvinf': {'z': z, 't': t},
