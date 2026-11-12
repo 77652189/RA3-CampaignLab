@@ -1046,6 +1046,8 @@ class Sim:
         self.own = {u.id: u.xml for u in self.mm.units}
         import simrepair
         self.repairs = simrepair.Repairs(self)
+        import simassign
+        self.assignments = simassign.Assignments(self)
         self.garrison = simgarrison.Garrisons(self)    # GarrisonContain / ContestableGarrisonContain
         self.infiltrators = siminfiltrator.Infiltrators(self)
         self.bodies = {}                    # name -> Body (named ones), plus unnamed under '#k'
@@ -3316,6 +3318,10 @@ class Sim:
             self.due.append((self.frame_now() + PACK_FRAMES, into, b.owner, b.team, b.x, b.y, b.name))
             self.note('技能', f'{self.label(b)} 收起成 {into}')
             self.build_due(self.frame_now())        # the press frame's later scripts already see the MCV
+        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED' and \
+                self.body(a[0]) and self.body(a[0]).alive and \
+                self.assignments.press(self.body(a[0]), a[1], self.body(a[2])):
+            self.note('技能', f'{a[0]} 显式派发维修到 {a[2]}')
         elif name in ('NAMED_USE_COMMANDBUTTON_ABILITY', 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED') and \
                 self.body(a[0]) and self.body(a[0]).alive and \
                 simunits.weapon_fire_ability(self.body(a[0]).template, a[1], self.own):
@@ -3566,6 +3572,7 @@ class Sim:
                 self.handed = ()
             self.autoheal(eng.frame)
             self.repairs.due(eng.frame)
+            self.assignments.due(eng.frame)
             self.suppression_tick()
             self.flee_due(eng.frame)
             self.toggles_run(eng.frame)

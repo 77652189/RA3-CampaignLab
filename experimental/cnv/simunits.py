@@ -1857,6 +1857,35 @@ def power_rules(template, power, own=None):
     return None
 
 
+def assigned_repair_rate(template, command, own=None):
+    """E67 explicit dispatch only; retail drone configuration, no allocation model.
+
+    Custom drone XML/dispatch flags remain unmeasured. The rate comes from the
+    retail passive healing module, rather than the observed final percentage.
+    """
+    power = command_power(command, own)
+    if power != 'SpecialPower_TargetedRepairVehicle':
+        return None
+    def read(xml):
+        blocks = list(_blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S),
+                              'AssignSlavesTargetObjectSpecialPower'))
+        if not blocks:
+            return None
+        return any(not inner.strip() and _attr(head, 'SpecialPowerTemplate') == power
+                   and set(re.findall(r'(\w+)\s*=', head)) == {'id', 'SpecialPowerTemplate'}
+                   for head, inner in blocks)
+    if not _chain(template, own, read) or not spawn_modules(template, own):
+        return None
+    if any(k in (own or {}) for k in ('AlliedWarFactoryRepairDrone', 'BaseRepairDrone')):
+        return None
+    def healing(xml):
+        for head, _ in _blocks(xml or '', 'PassiveAreaEffectBehavior'):
+            if _attr(head, 'AffectAttached') == 'true':
+                return _num(_attr(head, 'HealingPointsPerSecond'))
+        return None
+    return _chain('AlliedWarFactoryRepairDrone', own, healing)
+
+
 def spawn_modules(template, own=None):
     """Nearest SpawnBehavior group; only the engine_spawn repair-drone configuration is supported.
 
