@@ -181,7 +181,10 @@ class Brain:
         self.home = (yards[0].x, yards[0].y) if yards else (0.0, 0.0)
         tg = m['targets']
         foes = frozenset(p for p in self.sim.players.values() if p != player and self.sim.enemy(player, p))
-        self.view = tg.View(player, [], enemies=foes, waypoints=self.sim.waypoints)   # Waypoint targets
+        self.view = tg.View(player, [], enemies=foes, waypoints=self.sim.waypoints,
+                            # E81/E87: Location uses terrain, including stationary water structures.
+                            # INFERRED at shorelines, bridges and for airborne targets.
+                            water_at=lambda x, y: self.sim.ground.z(x, y) < self.sim.ground.water)
         self.base = self.powers = None
         self.attach(host.blocks)
         self.ai.tell(m['player'].Command('make base'))

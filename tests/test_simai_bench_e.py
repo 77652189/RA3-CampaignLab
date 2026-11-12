@@ -176,10 +176,7 @@ def test_a_child_cap_under_the_parents_line_does_not_bind():
 @pytest.mark.parametrize('build,land,water', [
     ('ailocland', 4, 0),
     ('ailocboth', 4, 0),
-    pytest.param('ailocwater', 0, 4, marks=pytest.mark.xfail(
-        strict=True, reason='E81 engine_ailocation a: Water has four Twinblades at the water plant '
-        'and zero at the land plant at s40; default model has zero at both. '
-        'B owns the model; see work/re/handoff-e.md and work/re/e_location_e81.md.')),
+    ('ailocwater', 0, 4),
 ])
 def test_target_location(build, land, water):
     """Replay engine_ailocation a's displayed arrival counters at s40."""

@@ -3,8 +3,8 @@
 Targets stay at full health. At s40 the selected plant must have all four
 Twinblades nearby and the other none. Engine E81, one run each, all PASS:
 Land and Water Land: land=4/water=0 from s13-s51; Water: 0/4 from s16-s51.
-The default simulator has 0/0 for Water (strict xfail); Location stays a gap.
-Evidence and limits: work/re/e_location_e81.md.
+E87 replays all three with terrain-backed Location filtering. Shorelines, bridges
+and airborne targets remain INFERRED. Evidence: work/re/e_location_e87.md.
 """
 from parts import Script, Test, counted, square
 

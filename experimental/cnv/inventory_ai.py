@@ -105,6 +105,12 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '目标/AITargetingHeuristic.Location': (BENCHED,
+        'E81/E87 engine_ailocation a：同型电厂一陆一水、四架双刃，仅切Land/Water/Water Land；'
+        's40到陆厂/到水厂分别4/0、0/4、4/0；'
+        'tests/test_simai_bench_e.py::test_target_location按名回放三组通过。'
+        'Location按位置地形过滤；只验证EnemyStructure/Distance，浅滩、桥面及空中目标仍INFERRED；'
+        '见 work/re/e_location_e87.md'),
     '目标/AITargetingHeuristic.HeuristicType=FriendlyUnit': (GUESSED,
         'E85 engine_aifriendly a：仅切FriendlyUnit/EnemyUnit、同挂StaticDefense与SAME_PLAYER，'
         '两组s40到友车/到敌车均0/0、MCV存活1/1，原始预测均FAIL；'
