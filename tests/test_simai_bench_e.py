@@ -109,17 +109,31 @@ def test_best_unit_expected_infantry_choice(build, chosen, other, draws):
     samples = [(t, dict(zip(labels, values))) for t, values in w.sim.series if 150 <= t < 160]
     assert [t for t, _ in samples] == list(range(150, 160))
     assert all(row[chosen] >= 4 for _, row in samples), samples
-    states, drawn = _orders(w, 'state build', 160), _orders(w, 'produce', 160)
+    states, every = _orders(w, 'state build', 160), _orders(w, 'produce', 160)
     assert not [o for o in states if o[1] == COUNTED[other]], states
+    # the war factory draws too (B round 143: an IFV s135 in aiskvinf) -- t / z count only the barracks' infantry
+    drawn = [(s, t) for s, t in every if t in BARRACKS_INFANTRY]
     assert all(row[other] == sum(1 for _, t in drawn if t == COUNTED[other]) for _, row in samples), (samples, drawn)
-    assert all(t in BARRACKS_INFANTRY for _, t in drawn), drawn
     if draws is not None:
         assert len(drawn) == draws, drawn
 
 
-@pytest.mark.xfail(strict=True, reason='B round 140 bench t: against ten Conscripts the barracks makes 9 attack dogs '
-    'by s152 (6 by s43); the model makes one (a draw) -- AlliedAntiInfantryOnlyBuildState (ObjectOfTypeExists '
-    'ENEMIES INFANTRY, only the dog) weighs 0 in the model. B owns the model; see work/re/handoff-b.md 143.')
+def test_against_conscripts_the_dogs_reach_their_cap_of_six():
+    """engine_aiskirm t, aiskvinf (bench 2026-11-12, B round 140): 警犬 6 by s43, held at 6 to s145 -- the
+    AlliedAntiInfantryOnlyBuildState (ENEMIES ANY INFANTRY) dogs, BEST_UNIT_EXPECTED, scored with the dog's whole
+    bite (its Maul's own 1 and its warhead's 200: simunits ai_parts), up to the parent personality's cap of 6."""
+    w = simai.run('aiskvinf', 't', 146, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    rows = [(t, dict(zip(labels, values))) for t, values in w.sim.series if 43 <= t < 146]
+    assert [t for t, _ in rows] == list(range(43, 146))
+    assert all(r['警犬总数'] == 6 for _, r in rows), rows
+    assert sum(1 for _, t in _orders(w, 'state build', 146) if t == 'AlliedScoutInfantry') >= 5
+
+
+@pytest.mark.xfail(strict=True, reason='B round 143 bench t: after s145 the engine builds dogs 7-9 (s146-s152) over the '
+    'cap of six, and an engineer (s144); the model holds six (and draws a Javelin) -- as aiskcap past s150 '
+    '(test_after_s150_the_capped_unit_is_built_again): what the cap counts. B owns the model; see '
+    'work/re/handoff-b.md 146.')
 def test_against_conscripts_dogs():
     """engine_aiskirm t, aiskvinf (bench 2026-11-12, B round 140): 维和 5 / 标枪 0 / 警犬 9 / 工程师 1 on [s152,s157)."""
     w = simai.run('aiskvinf', 't', 157, lib=simai.model()['xmldata'].Library())

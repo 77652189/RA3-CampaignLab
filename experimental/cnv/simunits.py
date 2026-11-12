@@ -278,7 +278,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v33.json')    # v33: lift dispatch, separate from nugget Lifetime
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v34.json')    # v34: ai_parts (a weapon's nuggets + warhead for the AI's rate); v33: lift dispatch
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -663,6 +663,13 @@ def _resolve(w, weapons):
     """A weapon's damage per second: its own damage, else its warhead's, else the round of the objects its OCL makes
     (ocl_round); one clip of `shots` (each after its pre-attack) then the reload."""
     dmg, typ = w['damage'], w['type']
+    # the AI's per-weapon damage (CampaignLab work/re l4_efficiency.md 3, read): every damage nugget on the weapon
+    # summed, then its child weapon's -- so a weapon with its own small nugget and a warhead counts both (the attack
+    # dog's Maul: 1 UNRESISTABLE + its warhead's 200 MELEE). The combat below keeps "own, else the warhead's".
+    parts = [(dmg, typ)] if dmg else []
+    if w['warhead'] in weapons and weapons[w['warhead']]['damage']:
+        h = weapons[w['warhead']]
+        parts.append((h['damage'], h['type']))
     if not dmg and w['warhead'] in weapons:
         h = weapons[w['warhead']]
         dmg, typ = h['damage'], h['type']
@@ -671,7 +678,10 @@ def _resolve(w, weapons):
     shots = max(w['shots'], 1)
     cycle = _clip_frames(w, shots) / FPS        # whole frames, each part rounded up (engine line C round 6, engine_clip)
     sd = w.get('sd', 0.0)
+    if not parts and dmg:
+        parts = [(dmg, typ)]
     return dict(range=w['range'], dps=round(dmg * shots / cycle, 2) if dmg else 0.0, type=typ, anti=w['anti'],
+                ai_parts=[(round(d * shots / cycle, 2), t) for d, t in parts],
                 los=w['los'], sd=sd, sdps=round(sd * shots / cycle, 2) if sd > 0 else 0.0,
                 dmg=dmg, cycle=cycle, sched=_shot_times(w, shots), projectile=w.get('projectile'),
                 suppression=w.get('suppression', weapons.get(w.get('warhead'), {}).get('suppression', [])),
