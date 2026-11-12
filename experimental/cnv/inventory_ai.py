@@ -129,10 +129,17 @@ NOTES = {
         '原始上限断言保留FAIL，tests/test_simai_bench_e.py按台上读数strict xfail；'
         '模型归B，两轮未解释不晋升，见 work/re/e_aicap_e80.md')
        for k in ('Unit', 'Difficulty', 'Cap')},
+    '组队招人/TeamTemplate.ReleaseType=NEVER_RELEASE': (BENCHED,
+        'engine_airelease airelnever/airelprio仅ReleaseType不同；CNVTeams两组f166防御激活持3166/3167，'
+        'priority在(526,541]同两ID转进攻，never保留至末样本；'
+        'tests/test_simai_bench_c.py::test_never_release_engine_members_and_model_replay按名跑两台、'
+        '断言实机ID/n/active及模型f301/601/976成员归属；仅固定两辆车的保留/转队，'
+        '精确激活/转队时钟、priority后段短暂第三ID及其他释放模式仍gap；见 work/re/c_release_teams_report.md'),
     '组队招人/TeamTemplate.ReleaseType': (GUESSED,
         'engine_aiskirm aiskirm:m 实机s128防御8/清扫99，s129防御0/清扫8，转队时逐帧兵池峰1；'
         '后续s134峰2，不能宣称全程峰1；tests/test_simai_bench_c.py 按名回放至170秒无非空清扫计数，'
-        'strict xfail，需B区分命名队伍观测与释放消费者；其他释放模式仍gap，未晋升；见 work/re/c_release_report.md'),
+        'strict xfail；新airelnever/airelprio的CNVTeams已证原两ID保留/转队且模型阶段归属匹配，'
+        '但精确时钟、后段第三ID和其他模式仍gap，整个字段未晋升；见 work/re/c_release_teams_report.md、c_release_report.md'),
     '微操/AIMicroManagerData.PassiveTargetSearchDistance': (TODO,
         'C接口闸门阻塞：被动目标分类/选择在B的tactics._team_state；'
         'micro.Team.enemies无被动分类，MicroBlock仅有技能回调，缺候选与距离基准及选敌回写；'

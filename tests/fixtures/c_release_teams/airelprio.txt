@@ -1,0 +1,166 @@
+# CampAIRelPrioA_mcp_1112_030810: complete selected samples; pointer tokens redacted.
+# Source ra3ext.log SHA256: aa603f83ee0de3906263916c34901c0ce4414d63ffa980d4c9974f4e7ddc9284
+team: frame=1 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=1 ids=36@0:0
+team: frame=1 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=4 ids=3163@3850:3400,3166@3650:3560,3167@3650:3630,3168@4100:3800
+teams: frame=1 player=redacted index=4 ai=redacted protos=4 teams=2
+team: frame=16 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=1 ids=36@0:0
+team: frame=16 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=4 ids=3163@3850:3400,3166@3650:3560,3167@3650:3630,3168@4100:3800
+teams: frame=16 player=redacted index=4 ai=redacted protos=4 teams=2
+team: frame=31 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_StaticDefense_0_0' rel=1 slot=0 team=redacted active=0 n=0 ids=
+team: frame=31 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=1 ids=36@0:0
+team: frame=31 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=4 ids=3163@3850:3400,3166@3650:3560,3167@3650:3630,3168@4100:3800
+teams: frame=31 player=redacted index=4 ai=redacted protos=4 teams=3
+team: frame=151 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_StaticDefense_0_0' rel=1 slot=0 team=redacted active=0 n=0 ids=
+team: frame=151 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=5 ids=36@0:0,3163@3850:3400,3166@3650:3560,3167@3650:3630,3168@4100:3800
+team: frame=151 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=151 player=redacted index=4 ai=redacted protos=4 teams=3
+team: frame=166 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_StaticDefense_0_0' rel=1 slot=0 team=redacted active=1 n=2 ids=3166@3658:3540,3167@3663:3620
+team: frame=166 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=166 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=166 player=redacted index=4 ai=redacted protos=4 teams=3
+team: frame=301 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_StaticDefense_0_0' rel=1 slot=0 team=redacted active=1 n=2 ids=3166@3821:3321,3167@3841:3481
+team: frame=301 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=301 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=301 player=redacted index=4 ai=redacted protos=4 teams=3
+team: frame=526 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_StaticDefense_0_0' rel=1 slot=0 team=redacted active=1 n=2 ids=3166@3781:3261,3167@3841:3241
+team: frame=526 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=526 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=526 player=redacted index=4 ai=redacted protos=4 teams=3
+team: frame=541 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=2 ids=3166@3777:3265,3167@3841:3241
+team: frame=541 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=541 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=541 player=redacted index=4 ai=redacted protos=4 teams=3
+team: frame=556 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_StaticDefense_0_0' rel=1 slot=0 team=redacted active=0 n=0 ids=
+team: frame=556 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=2 ids=3166@3699:3274,3167@3766:3246
+team: frame=556 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=556 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=556 player=redacted index=4 ai=redacted protos=4 teams=4
+team: frame=601 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_StaticDefense_0_0' rel=1 slot=0 team=redacted active=0 n=0 ids=
+team: frame=601 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=2 ids=3166@3471:3291,3167@3527:3261
+team: frame=601 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=601 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=601 player=redacted index=4 ai=redacted protos=4 teams=4
+team: frame=616 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_StaticDefense_0_0' rel=1 slot=0 team=redacted active=0 n=0 ids=
+team: frame=616 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=2 ids=3166@3391:3299,3167@3447:3267
+team: frame=616 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=616 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=616 player=redacted index=4 ai=redacted protos=4 teams=4
+team: frame=631 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=2 ids=3166@3311:3306,3167@3367:3272
+team: frame=631 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=631 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=631 player=redacted index=4 ai=redacted protos=4 teams=3
+team: frame=646 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_StaticDefense_0_0' rel=1 slot=0 team=redacted active=0 n=0 ids=
+team: frame=646 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=2 ids=3166@3232:3313,3167@3288:3277
+team: frame=646 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=646 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=646 player=redacted index=4 ai=redacted protos=4 teams=4
+team: frame=676 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_StaticDefense_0_0' rel=1 slot=0 team=redacted active=0 n=0 ids=
+team: frame=676 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=2 ids=3166@3072:3327,3167@3128:3288
+team: frame=676 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=676 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=676 player=redacted index=4 ai=redacted protos=4 teams=4
+team: frame=691 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_StaticDefense_0_0' rel=1 slot=0 team=redacted active=0 n=0 ids=
+team: frame=691 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=3 ids=3166@3046:3330,3167@3070:3283,3170@2983:3285
+team: frame=691 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=691 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=691 player=redacted index=4 ai=redacted protos=4 teams=4
+team: frame=706 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_StaticDefense_0_0' rel=1 slot=0 team=redacted active=0 n=0 ids=
+team: frame=706 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=2 ids=3166@3046:3330,3167@3070:3283
+team: frame=706 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=706 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=706 player=redacted index=4 ai=redacted protos=4 teams=4
+team: frame=721 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=3 ids=3166@3046:3330,3167@3070:3283,3173@2983:3290
+team: frame=721 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=721 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=721 player=redacted index=4 ai=redacted protos=4 teams=3
+team: frame=736 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_StaticDefense_0_0' rel=1 slot=0 team=redacted active=0 n=0 ids=
+team: frame=736 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=2 ids=3166@3046:3330,3167@3070:3283
+team: frame=736 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=736 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=736 player=redacted index=4 ai=redacted protos=4 teams=4
+team: frame=751 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_StaticDefense_0_0' rel=1 slot=0 team=redacted active=0 n=0 ids=
+team: frame=751 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=3 ids=3166@3046:3330,3167@3070:3283,3175@2983:3286
+team: frame=751 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=751 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=751 player=redacted index=4 ai=redacted protos=4 teams=4
+team: frame=766 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_StaticDefense_0_0' rel=1 slot=0 team=redacted active=0 n=0 ids=
+team: frame=766 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=2 ids=3166@3046:3330,3167@3070:3283
+team: frame=766 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=766 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=766 player=redacted index=4 ai=redacted protos=4 teams=4
+team: frame=781 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_StaticDefense_0_0' rel=1 slot=0 team=redacted active=0 n=0 ids=
+team: frame=781 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=3 ids=3166@3046:3330,3167@3070:3283,3178@2983:3286
+team: frame=781 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=781 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=781 player=redacted index=4 ai=redacted protos=4 teams=4
+team: frame=796 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_StaticDefense_0_0' rel=1 slot=0 team=redacted active=0 n=0 ids=
+team: frame=796 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=2 ids=3166@3046:3330,3167@3070:3283
+team: frame=796 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=796 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=796 player=redacted index=4 ai=redacted protos=4 teams=4
+team: frame=811 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=3 ids=3166@3046:3330,3167@3070:3283,3181@2982:3293
+team: frame=811 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=811 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=811 player=redacted index=4 ai=redacted protos=4 teams=3
+team: frame=826 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_StaticDefense_0_0' rel=1 slot=0 team=redacted active=0 n=0 ids=
+team: frame=826 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=2 ids=3166@3046:3330,3167@3070:3283
+team: frame=826 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=826 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=826 player=redacted index=4 ai=redacted protos=4 teams=4
+team: frame=841 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_StaticDefense_0_0' rel=1 slot=0 team=redacted active=0 n=0 ids=
+team: frame=841 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=3 ids=3166@3046:3330,3167@3070:3283,3184@2983:3293
+team: frame=841 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=841 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=841 player=redacted index=4 ai=redacted protos=4 teams=4
+team: frame=856 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_StaticDefense_0_0' rel=1 slot=0 team=redacted active=0 n=0 ids=
+team: frame=856 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=2 ids=3166@3046:3330,3167@3070:3283
+team: frame=856 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=856 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=856 player=redacted index=4 ai=redacted protos=4 teams=4
+team: frame=871 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_StaticDefense_0_0' rel=1 slot=0 team=redacted active=0 n=0 ids=
+team: frame=871 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=3 ids=3166@3046:3330,3167@3070:3283,3188@2983:3288
+team: frame=871 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=871 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=871 player=redacted index=4 ai=redacted protos=4 teams=4
+team: frame=886 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_StaticDefense_0_0' rel=1 slot=0 team=redacted active=0 n=0 ids=
+team: frame=886 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=2 ids=3166@3046:3330,3167@3070:3283
+team: frame=886 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=886 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=886 player=redacted index=4 ai=redacted protos=4 teams=4
+team: frame=901 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=3 ids=3166@3046:3330,3167@3070:3283,3191@2983:3288
+team: frame=901 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=901 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=901 player=redacted index=4 ai=redacted protos=4 teams=3
+team: frame=916 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_StaticDefense_0_0' rel=1 slot=0 team=redacted active=0 n=0 ids=
+team: frame=916 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=2 ids=3166@3046:3330,3167@3070:3283
+team: frame=916 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=916 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=916 player=redacted index=4 ai=redacted protos=4 teams=4
+team: frame=976 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_StaticDefense_0_0' rel=1 slot=0 team=redacted active=0 n=0 ids=
+team: frame=976 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=2 ids=3166@3029:3096,3167@3032:3046
+team: frame=976 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=976 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=976 player=redacted index=4 ai=redacted protos=4 teams=4
+team: frame=991 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=2 ids=3166@3023:3016,3167@3009:2971
+team: frame=991 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=991 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=991 player=redacted index=4 ai=redacted protos=4 teams=3
+team: frame=1006 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_StaticDefense_0_0' rel=1 slot=0 team=redacted active=0 n=0 ids=
+team: frame=1006 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=2 ids=3166@2988:2948,3167@2944:2929
+team: frame=1006 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=1006 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=1006 player=redacted index=4 ai=redacted protos=4 teams=4
+team: frame=1066 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_StaticDefense_0_0' rel=1 slot=0 team=redacted active=0 n=0 ids=
+team: frame=1066 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=2 ids=3166@2684:2862,3167@2638:2841
+team: frame=1066 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=1066 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=1066 player=redacted index=4 ai=redacted protos=4 teams=4
+team: frame=1081 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=2 ids=3166@2604:2861,3167@2558:2841
+team: frame=1081 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=1081 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=1081 player=redacted index=4 ai=redacted protos=4 teams=3
+team: frame=1096 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_StaticDefense_0_0' rel=1 slot=0 team=redacted active=0 n=0 ids=
+team: frame=1096 list=0 proto=redacted name1='Soviet_1' name2='c7da9d3c_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=2 ids=3166@2530:2841,3167@2478:2841
+team: frame=1096 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=3 ids=36@0:0,3163@3850:3400,3168@4100:3800
+team: frame=1096 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=1096 player=redacted index=4 ai=redacted protos=4 teams=4

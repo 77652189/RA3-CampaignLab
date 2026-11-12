@@ -8,7 +8,11 @@ RESULTS (2026-11-12): both diagnostic checks FAIL. Defense/attack remain
 99/99, live tanks 2, initial-hold latch 0 throughout (never s1-70,
 priority s1-73). Recruitment is unobserved; no release conclusion follows.
 Model reads 0/0 instead; strict xfails retain the observation gap.
-See work/re/c_never_release_report.md; B/D team/member interface needed.
+CNVTeams follow-up: both first defend with IDs 3166/3167 at f166;
+priority transfers the same IDs to active attack at f541, NEVER retains them.
+Tests replay logged membership and model at f301/601/976. Legacy HUD FAILs
+remain diagnostics; transient additional attack IDs are an unmodelled gap.
+See work/re/c_release_teams_report.md and c_never_release_report.md.
 """
 from model import Script, Test, counted
 

@@ -1,8 +1,12 @@
 """C independent release pair: two fixed Guardians, defense then timed attack.
 
-Only the defense TeamTemplate.ReleaseType differs. Named team counters must
-show initial recruitment before any later absence can mean release.
+Only the defense TeamTemplate.ReleaseType differs. A passive CNVTeams host
+records actual team identity and members; legacy named counters are diagnostic.
 """
+import os
+
+import labpaths
+from parts import Unit
 from missions.aiteamfilter_bench import mission as team_mission
 from missions.aiskirm_bench import ai_map
 
@@ -34,6 +38,20 @@ def mission(never):
     m.map.TEAMS.update({'release defense': 'Soviet_1/CNVStateTF_StaticDefense_0_0',
                         'release attack': 'Soviet_1/CNVReleaseAttack_SimpleAttack_0_0'})
     m.facts.update({'never release': int(never), 'attack at': 35.0})
+    # Same passive carrier as D's engine_aiteams.host_unit; keep content here
+    # so the C check consumes only the mission interface (G5).
+    plant, host = 'AlliedPowerPlant', 'CNVReleaseHost'
+    with open(os.path.join(labpaths.SDK3, 'SageXML', 'Allied', 'Structures', plant + '.xml'),
+              encoding='utf-8') as f:
+        xml = f.read()
+    assert xml.count(f'id="{plant}"') == 1 and xml.count('<Behaviors>') == 1
+    xml = xml.replace(f'id="{plant}"', f'id="{host}"').replace(f'EditorName="{plant}"', f'EditorName="{host}"')
+    xml = xml.replace('<Behaviors>', '<Behaviors>\n'
+                      '  <DeletionUpdate id="ModuleTag_CNVTeams" MinFrames="15" MaxFrames="4000"/>')
+    m.units.append(Unit(host, xml, names=dict(unit=host),
+                        what='被动队伍日志电厂：每15帧记录AI队员和激活状态', params=dict(of=plant, every=15)))
+    m.put(host, 'east base', 250.0, 400.0, side='s1', role='teams host')
+    m.ext = True
     return m
 
 

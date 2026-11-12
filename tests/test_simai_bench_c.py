@@ -50,9 +50,9 @@ def test_never_release_pair_changes_only_release_type():
 
 @pytest.mark.parametrize('build', ['airelnever', 'airelprio'])
 @pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'Independent release pair lacks callable dynamic-team observations: retail '
+    'Legacy script-team counters remain unresolved: retail '
     'defense/attack counters 99/99, model 0/0. This does not establish release '
-    'behavior. B/D must expose actual team names and member IDs. '
+    'behavior. CNVTeams follow-up resolves actual membership; legacy script counters remain a naming gap. '
     'See work/re/handoff-c.md and work/re/c_never_release_report.md.'))
 def test_never_release_named_team_observation_replays_bench(build):
     """Replay raw diagnostic readings; absent instances cannot prove retention."""
@@ -326,3 +326,35 @@ def test_tactic_aesthetics_replays_named_location_transitions(build):
             transitions.append(pos)
     expected = [(0, 0), (0, 1), (0, 0)] if build == 'aiaeson' else [(0, 0), (0, 1), (1, 1)]
     assert transitions == expected, transitions
+
+
+@pytest.mark.parametrize('build', ['airelnever', 'airelprio'])
+def test_never_release_engine_members_and_model_replay(build):
+    """Same retail member IDs first defend, then stay/transfer; no HUD-name inference."""
+    import teamlog
+    source = ROOT / 'tests/fixtures/c_release_teams' / (build + '.txt')
+    defense = 'CNVStateTF_StaticDefense'
+    attack = 'CNVReleaseAttack_SimpleAttack'
+    initial = teamlog.members(source, defense, 301)
+    assert len(initial) == 1 and {m[0] for m in initial[0]} == {3166, 3167}
+    never = build == 'airelnever'
+    for frame in (601, 976):
+        assert teamlog.team_sizes(source, defense if never else attack, frame) == [2]
+        # Empty instances are periodically removed; absence is not the primary evidence.
+        assert teamlog.team_sizes(source, attack if never else defense, frame) in ([], [0])
+        held = teamlog.members(source, defense if never else attack, frame)
+        assert {m[0] for m in held[0]} == {3166, 3167}
+        teams = teamlog.at(source, frame)
+        actual = [t for t in teams if t['names'][1].lower().startswith(teamlog._hashed(defense if never else attack))]
+        assert len(actual) == 1 and actual[0]['active'] == 1
+    w = simai.run(build, 'a', until=66, record=True, lib=simai.model()['xmldata'].Library())
+    brain, = w.brains.values()
+    original = {'UNIT - CNV AI Tank 1', 'UNIT - CNV AI Tank 2'}
+    for frame in (301, 601, 976):
+        observed = {state: set() for state in ('CNVStateTF', 'CNVReleaseAttack')}
+        for row in brain.rec['frames']:
+            if row['frame'] == frame and row['phase'] != 'done':
+                observed[row['state_key']].update(m['name'] for m in row['members'])
+        destination = 'CNVStateTF' if frame == 301 or never else 'CNVReleaseAttack'
+        assert observed[destination] == original
+        assert observed['CNVReleaseAttack' if destination == 'CNVStateTF' else 'CNVStateTF'] == set()
