@@ -20,6 +20,20 @@ _spec.loader.exec_module(simai)
 pytestmark = pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
 
 
+@pytest.mark.xfail(strict=True, reason='E85 engine_aifriendly a: both types yield zero arrivals with both MCVs alive; '
+                  'default model sends four to the selected MCV. StaticDefense/selection boundary unresolved; '
+                  'see work/re/handoff-e.md and work/re/e_friendly_e85.md.')
+@pytest.mark.parametrize('build,friendly,enemy', [('aifriend', 0, 0), ('aienemy', 0, 0)])
+def test_friendly_unit_target(build, friendly, enemy):
+    """E85 engine_aifriendly a: arrivals plus independent target survival."""
+    w = simai.run(build, 'a', 41, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    samples = [dict(zip(labels, values)) for t, values in w.sim.series if t == 40]
+    assert len(samples) == 1
+    assert (samples[0]['友车存活'], samples[0]['敌车存活']) == (1, 1), samples
+    assert (samples[0]['到友车'], samples[0]['到敌车']) == (friendly, enemy), samples
+
+
 @pytest.mark.parametrize('build', ['aiopwater', 'aiopair'])
 def test_path_locomotor_condition(build):
     """E84 engine_aiopathcond a: both conditions gave barracks=1, power=0.
