@@ -690,7 +690,7 @@
 | 推断 | `Behaviors/GarrisonContain` | 1 (2) | a6 a7 | simgarrison 同一套规则（不可争夺）；没单独上台对拍；例：AlliedBaseDefense, SovietBunker |
 | 未做 | `Behaviors/MoneyCrateCollide` | 1 (2) |  | 模拟器代码里没有这个名字；例：MoneyCrate, MoneyCrateMP |
 | 未做 | `Behaviors/MonitorConditionUpdate` | 1 (2) | a1 a2 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：JapanMiner, JapanMiner_Naval |
-| 未做 | `Behaviors/OCLMonitorUpdate` | 1 (2) | a1 a2 a4 a6 a7 | 模拟器代码里没有这个名字；例：SovietCommandoTech1, Soviet_BombingRun |
+| 未做 | `Behaviors/OCLMonitorUpdate` | 1 (2) | a1 a2 a4 a6 a7 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_spnbomb.py），可能用别的名字实现了；例：SovietCommandoTech1, Soviet_BombingRun |
 | 未做 | `Behaviors/ObjectCreationUpgrade` | 1 (2) | a1 a2 a3 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：SovietAntiVehicleVehicleTech1, Tutorial_SovietTech1Tank |
 | 未做 | `Behaviors/SlaveWatcherBehavior` | 1 (2) | a1 a2 a3 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：SovietAntiVehicleVehicleTech1, Tutorial_SovietTech1Tank |
 | 未做 | `Behaviors/StoreObjectsSpecialPower` | 1 (2) | a7 a8 | 已核（11-08）：模拟器没有这个效果（没有存放单位）；例：AlliedSuperWeapon, PlayerSpellBook |
