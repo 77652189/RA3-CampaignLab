@@ -20,6 +20,20 @@ _spec.loader.exec_module(simai)
 pytestmark = pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
 
 
+@pytest.mark.parametrize('build', ['aiopwater', 'aiopair'])
+def test_path_locomotor_condition(build):
+    """E84 engine_aiopathcond a: both conditions gave barracks=1, power=0.
+
+    The water check retains its failed Island prediction. Equal observations
+    cannot verify condition selection; see work/re/e_pathcond_e84.md.
+    """
+    w = simai.run(build, 'a', 25, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    samples = [(t, dict(zip(labels, values))) for t, values in w.sim.series if 22 <= t < 25]
+    assert [t for t, _ in samples] == [22, 23, 24]
+    assert all(row['兵营'] == 1 and row['电厂'] == 0 for _, row in samples), samples
+
+
 @pytest.mark.parametrize('build,target,home', [('aibldtrue', 0, 4), ('aibldfalse', 4, 0)])
 def test_is_building_idle(build, target, home):
     """Replay engine_aibuilding a's displayed s40 readings; idle queue only."""

@@ -19,9 +19,10 @@ from missions import aiopen_bench
 BASE = 'AlliedCoopBaseSkirmishPersonality'
 
 
-def personality_xml(pid, tester, moves=(('AlliedStandard', 'true'), ('AlliedIsland', 'false'))):
+def personality_xml(pid, tester, moves=(('AlliedStandard', 'true'), ('AlliedIsland', 'false')),
+                    condition='NORMAL'):
     test = (f'<PathToTargetHeuristic PathExists="{{}}" ObjectTypeToUseForTest="{tester}"'
-            ' LocomotorConditionToUseForTest="NORMAL" />')
+            f' LocomotorConditionToUseForTest="{condition}" />')
     lines = []
     for move, exists in moves:
         lines += [f'    <OpeningMove Name="{move}" Weight="100%" Difficulty="EASY MEDIUM HARD BRUTAL">',
@@ -49,6 +50,9 @@ def mission(name, pid, tester, **kw):
 
 
 MISSION = {
+    # Same tester and land endpoints: deep-water NORMAL versus flying SUPERSONIC.
+    'aiopwater': lambda: mission('CampPathWater', 'CNVPathWater', 'JapanAntiAirShip'),
+    'aiopair': lambda: mission('CampPathAir', 'CNVPathAir', 'JapanAntiAirShip', condition='SUPERSONIC'),
     'aiopath1': lambda: mission('CampAIPath1', 'CNVPathP', 'AlliedPowerPlant'),
     'aiopath0': lambda: mission('CampAIPath0', 'CNVPathI', 'SovietAntiInfantryInfantry'),
     'aiopathi': lambda: mission('CampAIPathI', 'CNVPathO', 'SovietAntiInfantryInfantry',

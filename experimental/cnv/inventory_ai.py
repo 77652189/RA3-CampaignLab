@@ -105,6 +105,11 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '启发条件/PathToTargetHeuristic.LocomotorConditionToUseForTest': (GUESSED,
+        'E84 engine_aiopathcond a：同JapanAntiAirShip仅切NORMAL深水/SUPERSONIC空中；'
+        '两组s22-s24均兵营1/电厂0，水组原始Island预测FAIL、空中PASS。'
+        'tests/test_simai_bench_e.py按名回放实际计数通过，但不能区分条件生效与路径判定边界；'
+        '保持gap不晋升，未改B模型；见 work/re/e_pathcond_e84.md'),
     **{f'启发条件/{k}': (BENCHED,
         'E83 engine_aibuilding a：STRUCTURE空队列、现成基地1；PassIfBuilding=false时s40到陆厂4/在家0，'
         'true时0/4，两组PASS；tests/test_simai_bench_e.py::test_is_building_idle按名回放通过。'
