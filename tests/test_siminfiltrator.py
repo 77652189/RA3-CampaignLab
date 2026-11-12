@@ -138,6 +138,41 @@ def test_spy_ordinary_vision_as_on_the_bench():
     assert not any(key[0] == 'InfiltratorContain' for key in s.unmodeled)
 
 
+@pytest.mark.xfail(strict=True, reason='E61 RESET就绪条件与真实冷却未闭环；见 work/re/handoff-e.md 和 e_infreset_e61.md')
+@pytest.mark.parametrize('check, until, windows', [
+    ('a', 35, ((1, 8, [1011100, 1011100]), (9, 10, [1111100, 1111100]),
+               (11, 20, [1001100, 1111100]), (21, 35, [1101100, 1111100]))),
+    ('b', 55, ((1, 7, [1011100, 1011100]), (8, 30, [1111100, 1111100]),
+               (31, 40, [1001100, 1111100]), (41, 55, [1101100, 1111100])))])
+def test_spy_superweapon_reset_as_on_the_bench(check, until, windows):
+    """engine_infreset:a/b: measured readings, not failed initial predictions.
+
+    s1-s8 1011100/1011100; s9-s10 1111100/1111100;
+    s11-s20 1001100/1111100; s21-s36 1101100/1111100.
+    b: s1-s7 1011100/1011100; s8-s30 1111100/1111100;
+    s31-s40 1001100/1111100; s41-s56 1101100/1111100.
+    The condition returns true again too soon to prove a full retail reload.
+    No cooldown rule or initial ready delay is fitted to these samples.
+    """
+    import build
+    import sim
+    import siminfiltrator
+    m, t, mod = build.resolve('engine_infreset', check)
+    assert len(mod) <= 15 and '_' not in mod
+    assert siminfiltrator.spec('SovietSuperWeapon')['Effect'] == 'RESET'
+    assert all(m.role(role).template == 'SovietSuperWeapon' for role in ('enemy', 'ally'))
+    s = sim.Sim(m, t).run(until)
+    for start, end, wanted in windows:
+        rows = [values for second, values in s.series if start <= second <= end]
+        assert rows and all(row == wanted for row in rows), rows
+    assert not s.body(m.role('enemy spy').name).alive
+    assert s.body(m.role('ally spy').name).alive
+    for role, side in (('enemy', 's1'), ('ally', 's2')):
+        building = s.body(m.role(role).name)
+        assert building.owner == m.player(side) and building.hp == building.max_hp
+        assert not s.short_of_power(building.owner)
+
+
 @pytest.mark.xfail(strict=True, reason='E60 STEAL_MONEY转账与矿车收入未闭环，清除匿名矿车无效；见 work/re/handoff-e.md 和 e_infmoney_e60.md')
 def test_spy_refinery_money_as_on_the_bench():
     """engine_infmon:a: 2000 transfer followed by miner income, failed cleanup.
