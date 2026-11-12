@@ -48,6 +48,10 @@ HOOKS (what this file would rather have from sim.py; for A through the coordinat
   5. AI unit powers: toggles and the bounded Bonzai bridge execute; other unit powers / player powers record intent;
   6. simunits' table misses the second GameObject of a file (AlliedAntiInfantryVehicle_Ground, the Riptide the war
      factory makes: speed 0, no KindOf, no weapons); fill() patches the AI's own such units from the model's library.
+  9. RECORD (read only, off by default): SimAI(record=True) / run(..., record=True) fills each Brain.rec with a
+     frame-by-frame trail of its teams for the other lines to read (Brain.snap, after each AI frame): rec['frames'],
+     rec['orders'], rec['deaths']. It reads what the AI already holds and asks nothing new of the world (no Thing
+     id is handed out, no random drawn), so a run is bit-for-bit the same on or off (tests/test_simai_record.py).
   8. garrisons: the simulator's (sim.Sim.garrison, simgarrison.Garrisons) -- the AI's 'enter' orders walk its men
      into houses / turrets through it; the older tests read Garrisons.log (sim.py counts
      PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS, ENCLOSED among them, since A round 164); no fire from inside.
@@ -171,6 +175,8 @@ class Brain:
         self.ids, self.hp, self.hurt_at = {}, {}, {}     # body name -> Thing id; last hp; id -> frame last hurt
         self.seen_t = None              # the sim time the view was last built at
         self.fired = []                 # (frame, team key, unit, command): unit powers the micro wanted
+        self.rec = {'frames': [], 'orders': [], 'deaths': {}}   # HOOKS 9: filled only with SimAI(record=True)
+        self._rec_runs, self._rec_mem, self._rec_bodies = {}, {}, {}
         yards = self.yards()
         self.home = (yards[0].x, yards[0].y) if yards else (0.0, 0.0)
         tg = m['targets']
@@ -441,6 +447,13 @@ class Brain:
     def order(self, u, kind, arg):
         """TacticsBlock / DefenseBlock: 'move' or 'attack-move' to a point -> Sim.order_move."""
         b = u.body
+        if self.host.record:                    # HOOKS 9: every order the blocks give, as given
+            by_id = kind in ('attack', 'enter')
+            t = self.body_of(arg) if by_id else None
+            self.rec['orders'].append({'frame': self.frame, 'member': b.name, 'alive': b.alive, 'kind': kind,
+                                       'target': t.name if t is not None else None,
+                                       'target_id': arg if by_id else None,
+                                       'point': None if by_id else (float(arg[0]), float(arg[1]))})
         if not b.alive:
             return
         if kind == 'attack':                    # the team state's 0 / 6: attack the current enemy (a Thing id)
@@ -811,6 +824,130 @@ class Brain:
             self.look(frame)
             self.ai.ctx.update(self.facts())
         self.ai.tick(frame)
+        if self.host.record:
+            self.snap(frame)
+
+    # ---- HOOKS 9: the read-only trail (SimAI(record=True)); nothing below changes the run
+    def _name(self, tid):
+        b = self.body_of(tid) if tid is not None else None
+        return b.name if b is not None else None
+
+    def _places(self, b, own_defenses):
+        """garrisons() without handing out Thing ids: [(name, x, y)] in the list's order."""
+        if not b.alive or 'INFANTRY' not in b.kinds or 'SKIRMISH_AI_DONT_GARRISON' in b.kinds:
+            return []
+        return [(g.name, g.x, g.y) for g in self.host.garrison.places(b, own_defenses)]
+
+    def snap(self, frame):
+        """One row a team run a frame into rec['frames'] (a finished run once, the frame it ended):
+          run (this brain's run number, first seen first), state_key / tactic / copy (the team), phase, state and
+          prev_state (the team state now / at the micro update before: Run.state / Run.was), updated (a micro update
+          ran this frame: state, foe, power, hostiles and cond are from it), target / target_id (the tactical
+          target), foe / foe_id (the team's current enemy, Run.foe), power, hostiles (the hostile list's names);
+          members: name, id (None while it has no Thing id), pos, hp, alive, goal (a body's name or a point), chase,
+          aim (the micro's current target, aim_of), going / inside (the garrison it walks to / is in);
+          cond (only when updated): the terms of the team state's tests as that micro update saw them -- alpha
+          (AlphaStrike), retreat (the retreat test), engage (able, the flags), garrisons (EnterBaseDefenses / EnterGarrisons:
+          each member's places with distance and alive, the reach).
+        rec['deaths'][name] = the first frame a body once in a team was seen dead. Bodies move once a DT tick, so
+        positions and deaths step by a tick while the frames go one by one."""
+        tactics = getattr(self, 'tactics', None)
+        if tactics is None:
+            return
+        tc, g = self.host.mod['tactics'], self.host.garrison
+        for r in list(tactics.runs.values()):
+            n = self._rec_runs.setdefault(id(r), (len(self._rec_runs) + 1, r))[0]
+            if r.phase == 'done' and r.since < frame:
+                continue
+            for u in r.team.members:
+                self._rec_bodies.setdefault(u.body.name, u.body)
+            last = self._rec_mem.get(n)
+            updated = r.was is not None and last is not None and r.mem is not last
+            self._rec_mem[n] = r.mem
+            mem = []
+            for u in r.team.members:
+                b = u.body
+                reach = max((w.get('range') or 0.0 for w in b.weapons), default=0.0)
+                aim = self.aim_of(b, reach) if b.alive else None
+                goal, chase = b.goal, getattr(b, 'chase', None)
+                going, inside = g.going.get(b.name), g.where.get(b.name)
+                mem.append({'name': b.name, 'id': self.ids.get(b.name), 'pos': (b.x, b.y), 'hp': b.hp,
+                            'alive': b.alive, 'goal': goal.name if isinstance(goal, sim.Body) else goal,
+                            'chase': chase.name if isinstance(chase, sim.Body) else chase,
+                            'aim': aim.name if aim is not None else None,
+                            'going': getattr(going, 'name', going), 'inside': getattr(inside, 'name', inside)})
+            foe = r.foe
+            self.rec['frames'].append({
+                'frame': frame, 'run': n, 'state_key': r.team.state, 'tactic': r.team.tactic,
+                'copy': getattr(r.team, 'copy', 0), 'phase': r.phase, 'state': r.state, 'prev_state': r.was,
+                'updated': updated, 'target': self._name(r.target), 'target_id': r.target,
+                'foe': self._name(foe.id) if foe is not None else None, 'foe_id': foe.id if foe is not None else None,
+                'power': r.power, 'hostiles': [self._name(h.id) for h in r.hostile], 'members': mem,
+                'cond': self._conds(tc, r) if updated else None})
+        for name, b in self._rec_bodies.items():
+            if not b.alive and name not in self.rec['deaths']:
+                self.rec['deaths'][name] = frame
+
+    def _conds(self, tc, r):
+        """The terms of tactics._team_state / _retreat / the garrison pass over the Fighters of the micro update just
+        run (Run.mem / hostile / foe): the model's own tests, recomputed for reading, no new rule."""
+        md, name, mem, hostile, foe = self.tactics.micro, r.team.template.micro, r.mem, r.hostile, r.foe
+        if not mem:
+            return {}
+        c = tc.centre(mem)
+        army = [m for m in mem if tc._dist(m.pos, c) < md.num(name, 'MaxDistanceFromTeamToIncludeInArmy')]
+        if foe is not None and foe.id == r.target and md.flag(name, 'EngageTacticalTarget'):
+            army = list(mem)
+
+        def hurts(f):
+            return any(m.dps(f) > 0 for m in mem)
+        out = {'centre': c, 'army': [self._name(m.id) for m in army],
+               'engage': {'able': any(hurts(h) for h in hostile),
+                          'EngageHostileTargets': md.flag(name, 'EngageHostileTargets'),
+                          'EngageTacticalTarget': md.flag(name, 'EngageTacticalTarget'),
+                          'EngagePassiveTargets': md.flag(name, 'EngagePassiveTargets'),
+                          'UseGatherState': md.flag(name, 'UseGatherState'),
+                          'CleanupPowerAdvantage': md.num(name, 'CleanupPowerAdvantage')}}
+        out['alpha'] = None
+        if foe is not None and foe.max_hp:
+            ratio, kill = foe.hp / foe.max_hp, tc.kill_time(army, foe)
+            past = min(tc._dist(m.pos, foe.pos) - max(m.reach, 100) for m in mem)
+            a = {'ratio': ratio, 'kill_time': kill, 'ratio_x_kill': ratio * kill,
+                 'AlphaStrikeTargetHealthPct': md.num(name, 'AlphaStrikeTargetHealthPct'),
+                 'AlphaStrikeTargetTimeToKill': md.num(name, 'AlphaStrikeTargetTimeToKill'),
+                 'nearest_past_reach': past, 'in_reach': past <= 0}
+            a['pass'] = (ratio <= a['AlphaStrikeTargetHealthPct'] and a['in_reach']
+                         and a['ratio_x_kill'] < a['AlphaStrikeTargetTimeToKill'])
+            out['alpha'] = a
+        base = self.tactics.home(self.ai)
+        far = math.inf if base is None else tc._dist(c, base)
+        back = r.retreat_from
+        rt = {'from_fallback': None if back is None else tc._dist(c, back),
+              'RetreatMinDistanceToFallback': md.num(name, 'RetreatMinDistanceToFallback'),
+              'mine_speed': sum(m.speed for m in mem) / len(mem),
+              'their_speed': sum(h.speed for h in hostile) / len(hostile) if hostile else None,
+              'RetreatSpeedBuffer': md.num(name, 'RetreatSpeedBuffer'), 'from_base': far,
+              'RetreatMinDistanceFromBase': md.num(name, 'RetreatMinDistanceFromBase'), 'power': r.power,
+              'RetreatPowerAdvantage': md.num(name, 'RetreatPowerAdvantage')}
+        rt['falling_back'] = (r.was == 1 and back is not None
+                              and rt['from_fallback'] < rt['RetreatMinDistanceToFallback'])
+        rt['pass'] = rt['falling_back'] or (bool(hostile) and rt['RetreatSpeedBuffer'] * rt['their_speed']
+                                            <= rt['mine_speed'] and far >= rt['RetreatMinDistanceFromBase']
+                                            and r.power < rt['RetreatPowerAdvantage'])
+        out['retreat'] = rt
+        gar = {'EnterBaseDefenses': md.flag(name, 'EnterBaseDefenses'),
+               'EnterBaseDefensesWhenIdle': md.flag(name, 'EnterBaseDefensesWhenIdle'),
+               'EnterGarrisons': md.flag(name, 'EnterGarrisons'),
+               'reach': md.num(name, 'EnterGarrisonableStructureDistance'), 'members': {}}
+        for m in mem:
+            b = m.unit.body if m.unit is not None else getattr(m, 'body', None)
+            if b is None:
+                continue
+            gar['members'][b.name] = {kind: [(gn, math.hypot(gx - b.x, gy - b.y), self.sim.bodies[gn].hp)
+                                             for gn, gx, gy in self._places(b, own)]
+                                      for kind, own in (('defenses', True), ('houses', False))}
+        out['garrisons'] = gar
+        return out
 
 
 class SimAI:
@@ -822,7 +959,7 @@ class SimAI:
     # builder alone, as before round 129.
     efficiency = True
 
-    def __init__(self, s, level='normal', seed=1, lib=None, data=None, blocks=BLOCKS):
+    def __init__(self, s, level='normal', seed=1, lib=None, data=None, blocks=BLOCKS, record=False):
         mod = model()
         if mod is None:
             raise RuntimeError(f'ra3model.ai not found under {labpaths.ENGINE_MODEL}')
@@ -836,6 +973,7 @@ class SimAI:
         self.garrison = s.garrison      # HOOKS 8: the simulator's garrisons (simgarrison) take the 'enter' orders
         import simpullback
         self.pullback = simpullback.Pullbacks(s)
+        self.record = record            # HOOKS 9: each Brain.rec gets the read-only trail (Brain.snap); off: none
 
     @property
     def frame(self):
@@ -979,11 +1117,11 @@ class SimAI:
         return {self.sim.who(p): b.ai.thoughts() for p, b in self.brains.items()}
 
 
-def run(build, check='', until=200.0, level='normal', seed=1, lib=None, data=None, blocks=BLOCKS):
-    """Build `build` (a cnv build name), run it with the AI `until` seconds: the SimAI."""
+def run(build, check='', until=200.0, level='normal', seed=1, lib=None, data=None, blocks=BLOCKS, record=False):
+    """Build `build` (a cnv build name), run it with the AI `until` seconds: the SimAI. record: HOOKS 9."""
     import build as bld
     m, t, _ = bld.resolve(build, check)
-    w = SimAI(sim.Sim(m, t, level), level, seed, lib, data, blocks)
+    w = SimAI(sim.Sim(m, t, level), level, seed, lib, data, blocks, record)
     w.advance(int(until * FPS))
     return w
 
