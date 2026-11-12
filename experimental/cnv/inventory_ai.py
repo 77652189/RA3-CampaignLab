@@ -200,10 +200,11 @@ NOTES = {
         '宿主等价性/精确时钟/后段第三ID和其他模式仍gap，整个字段未晋升；'
         '见 work/re/c_release_eight_report.md、c_release_teams_report.md、c_release_report.md'),
     '微操/AIMicroManagerData.PassiveTargetSearchDistance': (TODO,
-        'C接口闸门阻塞：被动目标分类/选择在B的tactics._team_state；'
-        'micro.Team.enemies无被动分类，MicroBlock仅有技能回调，缺候选与距离基准及选敌回写；'
-        'SDK显式600/650/0、默认400，距离基准和零值语义未证实；'
-        '本轮未上台、不实现消费者、不晋升已对拍；见 work/re/c_passive_distance_report.md'),
+        'E104 engine_aipassive_distance aipsdz/aipsdt/aipsds/aipsdl：0/1/200/600均f140状态6选四人旁厂，'
+        'f320状态0；中心距350.3、逐兵至少324.3，微操目标不同于战术目标。两轮未出现距离分离；'
+        'tests/test_ai_passive_distance.py按台名回放选择/移动/存活，精确首选时钟strict xfail；'
+        '本入口未显现消费者，零值全局语义/距离基准/其他入口仍gap，暂停、不加猜测消费者、不晋升；'
+        '见 work/re/e104_passive_distance.md、work/re/handoff-e.md'),
     '微操/AIMicroManagerData.MinDistanceFromBaseToIgnoreTargets': (TODO,
         'E103 engine_aiignore aiignzt/aiignnt：同run逻辑时钟配对，0/2000首伤397/396；'
         'f406/421零组状态8无目标、高组状态0有目标。消费者已接被动选敌、敌对可攻击及逐人分配过滤；'
