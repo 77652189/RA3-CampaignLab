@@ -110,6 +110,24 @@ def test_alpha_observer_preserves_the_measured_scenario(high):
 
 @pytest.mark.parametrize('build', ['aialobslo', 'aialobshi'])
 @pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+    'E101 early dispatch gap: E99 named-team readings have four members at logic '
+    'frame 21, before the owner formation-move messages at frames 26 and 74. '
+    'Model team recording starts at 152 and movement at 153. Recruitment/wake '
+    'ownership and command source need resolution before changing E tactics; '
+    'no clock shifting or Alpha threshold fitting. See work/re/e101_early_dispatch.md '
+    'and work/re/handoff-e.md.'))
+def test_alpha_observer_replays_measured_early_team_membership(build):
+    """Earliest nonempty named-team sample, on the original shared logic frame."""
+    w = simai.run(build, 'a', until=11, lib=simai.model()['xmldata'].Library(), record=True)
+    brain, = w.brains.values()
+    rows = [r for r in brain.rec['frames'] if r['frame'] == 21]
+    assert len(rows) == 1, ('missing measured team at frame 21',
+                            min((r['frame'] for r in brain.rec['frames']), default=None))
+    assert len(rows[0]['members']) == 4
+
+
+@pytest.mark.parametrize('build', ['aialobslo', 'aialobshi'])
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
     'E99 qualified observer pair: both lanes enter micro state 6 at logic frame 230; '
     'model reports 8 at the same unshifted frame. D81 shared-clock anchors and '
     'full guard/retreat coverage replace the invalid slow E98 observation. '
