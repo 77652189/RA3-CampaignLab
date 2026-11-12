@@ -828,6 +828,30 @@ def test_mining_niagara_at_retail_s_facing_trips_as_mineturn0_did():
     assert len(trips) >= 5 and set(trips) == {MINE_TURN_BENCH[0][0]}, trips
 
 
+MINE_NIAGARA_BENCH = (111, 262, 413)    # bench 2026-11-12 checks/engine_mining.py mineniag p: 首笔 / 二笔 / 三笔
+
+
+def test_mining_mineniag_trips_as_the_bench_read():
+    """checks/engine_mining.py mineniag p (bench CampMineNiagP_mcp_1112_045758): the player's refinery on niagara's
+    east pad at retail's facing (the generator's default since round 175) -- a trip of 151, the 二笔 - 首笔 and
+    三笔 - 二笔 the bench read. The full Sim does not make the refinery's own collector (SpawnOnUnpack), so a miner is
+    put at the refinery, as _mining does."""
+    import build
+    import sim
+    m, _, _ = build.resolve('mineniag', None)
+    assert getattr(m.map, 'NODES', 'retail') == 'retail'
+    s = sim.Sim(m, None)
+    ref = s.bodies[m.cast['refinery'].name]
+    s.add('test miner', 'AlliedMiner', ref.owner, ref.x, ref.y)
+    s.money[ref.owner] = 0
+    got = []
+    for fr in range(1200):
+        s.mine_due(fr)
+        got.append(s.money[ref.owner])
+    first, second, third = MINE_NIAGARA_BENCH
+    assert len(_trips(got)) >= 3 and set(_trips(got)) == {second - first} == {third - second}, _trips(got)
+
+
 def test_mining_a_second_miner_on_one_node_adds_nothing():
     """bench engine_mining b / d: two miners on one node earn what one does -- the other waits there for good (the
     retail node has no queue place)."""

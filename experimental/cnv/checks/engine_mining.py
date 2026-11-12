@@ -160,6 +160,24 @@ def turned_test(m):
     return t
 
 
-MISSION = {'engine_mining': mission, **{f'mineturn{_tag(k)}': (lambda k=k: turned_mission(k)) for k in TURNS}}
-CHECKS = {'engine_mining': {w: (lambda m, w=w: mining_test(m, w)) for w in 'abcde'},
+# mineniag (round 176): niagara as the generator now makes it (round 175: its nodes at retail's facing, not the
+# benches' resources.measured copy), the player's refinery on the east pad (A7's ore), check p as mineturn's. The
+# simulator's prediction: the trip of mineturn0 p, 151 (tests/test_simbench.py niagara_at_retail).
+# Bench 2026-11-12 (work/bench_results/mineniag__p.json, run CampMineNiagP_mcp_1112_045758): 首笔 / 二笔 / 三笔
+#   111 / 262 / 413 -- a trip of 151, as predicted (mineturn0 p's very numbers); 1910 by s77.
+NIAGARA_SITE = 'east refinery'
+
+
+def niagara_mission():
+    from maps import niagara
+    m = Mission(name='CampMineNiag', map=niagara, units=[], facts={})
+    m.put(REFINERY, NIAGARA_SITE, role='refinery', name=_n('Refinery'))
+    m.put(MINER, NIAGARA_SITE, *PLACED, angle=0.0, role='miner', name=_n('Miner'))   # deleted at the start
+    m.spawns.add(MINER)
+    return m
+
+
+MISSION = {'engine_mining': mission, 'mineniag': niagara_mission,
+           **{f'mineturn{_tag(k)}': (lambda k=k: turned_mission(k)) for k in TURNS}}
+CHECKS = {'engine_mining': {w: (lambda m, w=w: mining_test(m, w)) for w in 'abcde'}, 'mineniag': {'p': turned_test},
           **{f'mineturn{_tag(k)}': {'p': turned_test} for k in TURNS}}
