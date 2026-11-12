@@ -150,7 +150,10 @@ NOTES = {
         'engine_aiskirm aiskirm:m 实机s128防御8/清扫99，s129防御0/清扫8，转队时逐帧兵池峰1；'
         '后续s134峰2，不能宣称全程峰1；tests/test_simai_bench_c.py 按名回放至170秒无非空清扫计数，'
         'strict xfail；新airelnever/airelprio的CNVTeams已证原两ID保留/转队且模型阶段归属匹配，'
-        '但精确时钟、后段第三ID和其他模式仍gap，整个字段未晋升；见 work/re/c_release_teams_report.md、c_release_report.md'),
+        '原八人补测的独立建造厂日志宿主实测防御9→2、清扫0→7，同名空实例并存；'
+        'tests/test_simai_bench_c.py::test_release_eight_named_model_replays_carrier_partial_transfer为strict xfail，'
+        '宿主等价性/精确时钟/后段第三ID和其他模式仍gap，整个字段未晋升；'
+        '见 work/re/c_release_eight_report.md、c_release_teams_report.md、c_release_report.md'),
     '微操/AIMicroManagerData.PassiveTargetSearchDistance': (TODO,
         'C接口闸门阻塞：被动目标分类/选择在B的tactics._team_state；'
         'micro.Team.enemies无被动分类，MicroBlock仅有技能回调，缺候选与距离基准及选敌回写；'

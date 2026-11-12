@@ -10,8 +10,11 @@ scripts beyond the wake. Not run on the bench yet (no check): the readings it wo
 
 Facts: wake at, money.
 """
+import os
+
+import labpaths
 from maps import niagara
-from parts import Mission, Script
+from parts import Mission, Script, Unit
 
 JAV = 'AlliedAntiVehicleInfantry'
 OUT_DIST = 1200.0                    # aiskjav's OUT: straight south of the yard on open grass (as aidefense_bench)
@@ -269,7 +272,7 @@ ARMY_N = 10                            # aiskvinf / aiskvveh (check z): what the
 
 
 def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None, account=None,
-            buffer=None, new=None, army=None, two=None):
+            buffer=None, new=None, army=None, two=None, observe=False):
     m = Mission(name=name, map=ai_map(niagara, lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
     if expire is not None:               # aiskexp (check q): the same AI with SecondsTillTargetsExpire = expire
@@ -309,7 +312,24 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
         m.put(NEW_BARRACKS, 'east base', NEW_AT[0], NEW_AT[1], side='s1', angle=3.1416, name='UNIT - CNV AI New Barracks',
               role='ai new barracks')
     s1 = m.player('s1')
-    m.put('AlliedConstructionYard', 'east base', 0, 0, side='s1', name='UNIT - CNV AI Yard', role='ai yard')
+    yard = 'AlliedConstructionYard'
+    if observe:
+        # Observe on the existing yard: no extra structure, power or AI candidate.
+        # The carrier only appends the passive CNVTeams behavior (see work/re/c_release_eight_report.md).
+        with open(os.path.join(labpaths.SDK3, 'SageXML', 'Allied', 'Structures',
+                               'AlliedConstructionYard.xml'), encoding='utf-8') as f:
+            xml = f.read()
+        assert xml.count('<Behaviors>') == 1
+        yard = 'CNVSkirmTeamsYard'
+        assert xml.count('id="AlliedConstructionYard"') == 1
+        xml = xml.replace('id="AlliedConstructionYard"', f'id="{yard}"')
+        xml = xml.replace('<Behaviors>', '<Behaviors>\n'
+                          '  <DeletionUpdate id="ModuleTag_CNVTeams" MinFrames="15" MaxFrames="4000"/>')
+        m.units.append(Unit(yard, xml, names=dict(unit=yard),
+                            what='原建造厂附带被动队伍日志', params=dict(every=15)))
+        m.ext = True
+        m.name += 'C'  # keep the opt-in carrier's mod separate from the stock bench
+    m.put(yard, 'east base', 0, 0, side='s1', name='UNIT - CNV AI Yard', role='ai yard')
     m.put('AlliedConstructionYard', 'base yard', name='UNIT - CNV AI Player Yard', role='player yard')
     m.put('AlliedWarFactory', 'base factory', angle=3.1416, role='player factory')
     m.put('AlliedPowerPlant', 'base power', angle=0.0, role='player power')
@@ -335,7 +355,8 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
 
 
 # the builds this module makes (cnv/registry.py): build name -> mission factory
-MISSION = {'aiskirm': mission, 'aiskirmlow': lambda: mission('CampAISkLow', money=15000),
+MISSION = {'aiskirm': mission, 'aiskirmc': lambda: mission(observe=True),
+           'aiskirmlow': lambda: mission('CampAISkLow', money=15000),
            'aiskirm20': lambda: mission('CampAISk20', money=20000),    # check d: the first tower's time vs 50000
            'aiskjav': lambda: mission('CampAISkJav', jav=True),
            'aiskirmnl': lambda: mission('CampAISkNoLib', lib=False),

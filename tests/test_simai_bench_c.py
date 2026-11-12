@@ -159,6 +159,83 @@ def test_release_to_priority_transfers_defense_without_a_pool_round_trip():
     assert any(row['池峰'] == 2 for _, row in rows[first:])
 
 
+def test_release_eight_carrier_only_adds_passive_logging_to_existing_yard():
+    import labpaths
+    from missions.aiskirm_bench import mission
+    m = mission(observe=True)
+    carrier, = m.units
+    original = (Path(labpaths.SDK3) / 'SageXML/Allied/Structures/AlliedConstructionYard.xml').read_text(encoding='utf-8')
+    behavior = '\n  <DeletionUpdate id="ModuleTag_CNVTeams" MinFrames="15" MaxFrames="4000"/>'
+    assert carrier.xml.count(behavior) == 1
+    assert carrier.xml.replace(behavior, '').replace('id="CNVSkirmTeamsYard"', 'id="AlliedConstructionYard"') == original
+    assert carrier.id == 'CNVSkirmTeamsYard' and m.ext
+    assert len(m.objects) == 4
+    stock = mission()
+    assert stock.units == [] and not stock.ext
+
+
+def _release_eight_transition():
+    import teamlog
+    source = ROOT / 'tests/fixtures/c_release_teams/aiskirm_m.txt'
+    defense = teamlog._wants('LandDefense_MEDIUM_StaticDefense_0_0')
+    cleanup = teamlog._wants('BalancedCleanup_SimpleAttack_0_0')
+    previous = None
+    for frame, teams in teamlog.samples(source):
+        defenders = [t for t in teams if teamlog._named(t, defense) and t['active'] and t['n']]
+        attackers = [t for t in teams if teamlog._named(t, cleanup) and t['n'] > 0]
+        if attackers:
+            assert previous is not None and len(attackers) == 1
+            return previous, (frame, defenders, attackers[0])
+        previous = frame, defenders
+    pytest.fail('No populated retail Cleanup team in recorded samples')
+
+
+def test_release_eight_carrier_diagnostic_records_partial_transfer():
+    before, after = _release_eight_transition()
+    frame, defenders = before
+    next_frame, remaining, cleanup = after
+    assert (frame, next_frame) == (1951, 1966)
+    assert next_frame - frame == 15
+    assert len(defenders) == 1
+    defense, = defenders
+    assert defense['active'] == 1 and defense['n'] == 9
+    assert cleanup['active'] == 1 and cleanup['n'] == 7
+    original = {m[0] for m in defense['ids']}
+    assert original == set(range(3171, 3180))
+    assert {m[0] for m in cleanup['ids']} == set(range(3173, 3180))
+    assert len(remaining) == 1 and remaining[0]['active'] == 1 and remaining[0]['n'] == 2
+    assert {m[0] for m in remaining[0]['ids']} == {3171, 3172}
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+    'The unique-yard carrier diagnostic measures defense 9 -> 2, Cleanup 0 -> 7; '
+    'stock model predicts an entire eight-member transfer. The original eight-member '
+    'scenario is not validated by this carrier. See work/re/handoff-c.md and '
+    'work/re/c_release_eight_report.md.'))
+def test_release_eight_named_model_replays_carrier_partial_transfer():
+    """Assert the measured carrier result; do not change the stock model or clock."""
+    before, after = _release_eight_transition()
+    w = simai.run('aiskirmc', 'm', until=170, record=True, lib=simai.model()['xmldata'].Library())
+    brain, = w.brains.values()
+    rows = brain.rec['frames']
+    first = next((r for r in rows if r['state_key'] == 'BalancedCleanup' and r['members']), None)
+    assert first is not None
+    defenders = [r for r in rows if r['state_key'] == 'LandDefense_MEDIUM'
+                 and r['frame'] < first['frame'] and r['members']]
+    assert defenders, 'No populated model defense before Cleanup'
+    defense = defenders[-1]
+    original = {m['name'] for m in defense['members']}
+    assert len(original) == before[1][0]['n'] == 9, (first['frame'], sorted(original))
+    transferred = {m['name'] for m in first['members']}
+    assert len(transferred) == after[2]['n'] == 7
+    assert transferred < original
+    retained = [r for r in rows if r['state_key'] == 'LandDefense_MEDIUM'
+                and r['frame'] == first['frame'] and r['phase'] != 'done']
+    assert {m['name'] for r in retained for m in r['members']} == original - transferred
+    activated = next(r for r in rows if r['run'] == first['run'] and r['phase'] == 'go')
+    assert {m['name'] for m in activated['members']} == transferred
+
+
 @pytest.mark.parametrize('build', ['aicr1', 'aicr3'])
 @pytest.mark.xfail(strict=True, reason='CreateUnits slot recruitment/readiness is not consumed by B model; '
                   'retail aicr1:a has 3 owned Guardians, 2 home and 2 Peacekeepers home at s70, '
