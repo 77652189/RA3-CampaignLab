@@ -505,6 +505,8 @@ class Brain:
                            max((w.get('range') or 0.0 for w in b.weapons), default=0.0), b.sight or b.vision,
                            'STRUCTURE' in b.kinds, rate_of(b))
             f.body = b
+            f.can_fire = lambda other: any(s.can_hit(w, other.body) and s.in_range(b, other.body, w)
+                                           for w in b.weapons)
             return f
         return [fighter(b, self.tid(b)) for b in bodies]
 
@@ -922,7 +924,7 @@ class Brain:
             a = {'ratio': ratio, 'kill_time': kill, 'ratio_x_kill': ratio * kill,
                  'AlphaStrikeTargetHealthPct': md.num(name, 'AlphaStrikeTargetHealthPct'),
                  'AlphaStrikeTargetTimeToKill': md.num(name, 'AlphaStrikeTargetTimeToKill'),
-                 'nearest_past_reach': past, 'in_reach': past <= 0}
+                 'nearest_past_reach': past, 'in_reach': tc.alpha_in_reach(mem, foe)}
             a['pass'] = (ratio <= a['AlphaStrikeTargetHealthPct'] and a['in_reach']
                          and a['ratio_x_kill'] < a['AlphaStrikeTargetTimeToKill'])
             out['alpha'] = a
