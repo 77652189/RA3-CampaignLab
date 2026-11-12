@@ -293,22 +293,29 @@ def test_with_a_refinery_and_a_miner_the_share_builds_the_tower(lib):
     assert v[1] == 1 and abs(v[3] - 451) <= 7
 
 
-@pytest.mark.xfail(strict=True, reason='simai: one turret only (the DEFENSE share x money less what it has paid: '
-                                       '50 % x ~1000 < 800 after the first); bench aitowerinc e: 2 from s49, 3 from '
-                                       's69, 4 from s89, 5 at s128 -- one a build time, the bank not the limit')
+@pytest.mark.xfail(strict=True, reason='simai: one turret only (share x money less what it has paid); bench '
+                                       'aitowerinc e: 4 from s89 -- the share also spends an income advance; the '
+                                       'tried model (work/re/b139_income_window.patch) reddens aiskirmlow (B handoff 139)')
 def test_with_income_the_turrets_keep_coming(lib):
-    """checks/engine_aitower.py aitowerinc e: 塔在基地 4 by s121."""
+    """checks/engine_aitower.py aitowerinc e: 塔在基地 4 by s121 (bench 2 from s49, 3 from s69, 4 from s89, 5 at s128)."""
     _, rows = _probe_run('aitowerinc', lib, 121.0, check='e')
     assert _vals(rows)[-1][2] >= 4
 
 
 @pytest.mark.xfail(strict=True, reason='simai: no turret (10 % x 1700 = 170 < 800); bench aitowerinc10 e: one at '
-                                       'frame 451, ordered at the wake -- the share borrows (B handoff 138)')
+                                       'frame 451, ordered at the wake -- the income advance (B handoff 139)')
 def test_a_ten_percent_share_borrows_its_first_turret_at_the_wake(lib):
     """checks/engine_aitower.py aitowerinc10 e (DEFENSE 10 %): 落塔帧 451, 塔在基地 1 from s29 and no second to s466."""
     _, rows = _probe_run('aitowerinc10', lib, 40.0, check='e')
     v = _vals(rows)[-1]
     assert v[2] == 1 and abs(v[3] - 451) <= 7
+
+
+def test_a_ten_percent_share_of_20000_buys_two_turrets_and_no_third(lib):
+    """checks/engine_aitower.py aitowerinc10r f (10 %, 20000 at the wake): 塔在基地 1 from s29, 2 from s49, no third to
+    s174 (AI钱 ~21000): 10 % x the bank, less what the share has paid."""
+    _, rows = _probe_run('aitowerinc10r', lib, 150.0, check='f')
+    assert max(r['塔在基地'] for r in rows) == 2 and rows[60]['塔在基地'] == 2
 
 
 def test_a_five_percent_share_builds_no_turret_however_the_bank_grows(lib):

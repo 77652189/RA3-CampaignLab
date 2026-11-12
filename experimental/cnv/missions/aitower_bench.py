@@ -46,7 +46,8 @@ FOE = 'AlliedAntiVehicleVehicleTech1'       # Guardian tank
 FOES = 4
 FOE_DY = AI_PLANT_DY - 600.0                # 600 south of the AI plant (1050 from the yard)
 HOLD_FIRE = 3
-INC10_WATCH = 420.0                         # aitowerinc10 (DEFENSE 10%): long enough for a second turret
+RICH, RICH_WATCH = 20000, 150.0             # aitowerinc10r: the bank 20000 at the wake
+INC10_WATCH = 420.0                        # aitowerinc10 (DEFENSE 10%): long enough for a second turret
 
 
 def _budget(defense=50):
@@ -105,8 +106,8 @@ def personality_xml(compactness, opener=False, build=True, empty=False, defense=
 
 
 def mission(name, compactness, opener=True, foes=0, build=True, empty=False, refinery=False, defense=50,
-            watch=None):
-    facts = {'wake at': WAKE_AT, 'money': MONEY}
+            watch=None, money=MONEY):
+    facts = {'wake at': WAKE_AT, 'money': money}
     if watch:
         facts['watch'] = watch              # how long checks/engine_aitower.py e watches after the wake
     m = Mission(name=name, map=niagara, facts=facts)
@@ -134,7 +135,7 @@ def mission(name, compactness, opener=True, foes=0, build=True, empty=False, ref
         Script('CNV AI - Wake', [('TIMER_EXPIRED', 'CNV AI Wake')],
                [('UNIT_AI_TRANSFER_ALL', s1, 1), ('SKIRMISH_AI_MAKE_BASE', s1, base),
                 ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', s1, 20), ('SKIRMISH_AI_USE_REPAIRS', s1, 0),
-                ('SKIRMISH_AI_USE_REBUILD_SYSTEM', s1, 0), ('PLAYER_SET_MONEY', s1, MONEY)])]
+                ('SKIRMISH_AI_USE_REBUILD_SYSTEM', s1, 0), ('PLAYER_SET_MONEY', s1, money)])]
     return m
 
 
@@ -149,4 +150,7 @@ MISSION = {'aitower50': lambda: mission('CampAITow50', 0.5),
            'aitowerinc10': lambda: mission('CampAITowInc10', 0.5, opener=False, refinery=True, defense=10,
                                            watch=INC10_WATCH),
            'aitowerinc5': lambda: mission('CampAITowInc5', 0.5, opener=False, refinery=True, defense=5,
-                                          watch=INC10_WATCH)}
+                                          watch=INC10_WATCH),
+           # round 136: as aitowerinc10 with 20000 at the wake -- does the bank count at all (10 % = 2000: 2 turrets)?
+           'aitowerinc10r': lambda: mission('CampAITowRich', 0.5, opener=False, refinery=True, defense=10,
+                                            watch=RICH_WATCH, money=RICH)}

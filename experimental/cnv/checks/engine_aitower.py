@@ -56,6 +56,12 @@ aitowerinc5 f (DEFENSE 5 %): FAIL -- no turret to s454; AI钱 1700 never paid do
   Reading (handoff-b section 138): the money in the bank does not decide; the first turret at 10 % and none at 5 %
   fit "share x income rate x build time x window, less what the share has paid (never paid back)": R(10 %) in
   [800, 1600), so R(5 %) < 800 and R(50 %) in [4000, 8000) (aitowerinc's 5, money-limited). INFERRED.
+Round 136 (bench 2026-11-11, work/logs/b139_bench.log):
+aitowerinc10r f (as aitowerinc10, 20000 at the wake; mod CampAITowRich): PASS -- 塔在基地 1 from s29, 2 from s49, no
+  third to s174 (AI钱 ~19150 after the two, 21600 at s174). So the bank does count: 10 % x 20000 = 2000 buys two
+  (a third needs 2400). With aitowerinc10 / 5: the share spends the larger of share x the bank and share x income
+  rate x build time x W, less what it has paid (handoff-b section 139: tried, not merged -- with the simulator's
+  miners it buys aiskirmlow a tower the bench never built, so the rate there must be smaller: net cash flow?).
 """
 import math
 
@@ -251,4 +257,4 @@ def f(m):
 
 CHECKS = {k: {'a': a, 'b': b, 'c': c, 'd': d, 'e': e, 'f': f}
           for k in ('aitower50', 'aitower75', 'aitower100', 'aitowerstate', 'aitowerfoe',
-                   'aitowerdep', 'aitowerinc', 'aitoweropen', 'aitowerinc10', 'aitowerinc5')}
+                   'aitowerdep', 'aitowerinc', 'aitoweropen', 'aitowerinc10', 'aitowerinc5', 'aitowerinc10r')}
