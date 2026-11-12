@@ -35,3 +35,29 @@ def test_release_to_priority_transfers_defense_without_a_pool_round_trip():
     assert (after['防御型'], after['清扫']) == (0, 8), rows[max(0, first - 2):first + 2]
     assert after['池峰'] == 1
     assert any(row['池峰'] == 2 for _, row in rows[first:])
+
+
+@pytest.mark.parametrize('build', ['aicr1', 'aicr3'])
+@pytest.mark.xfail(strict=True, reason='CreateUnits slot recruitment/readiness is not consumed by B model; '
+                  'retail aicr1:a has 3 owned Guardians, 2 home and 2 Peacekeepers home at s70, '
+                  'while the model sends three Peacekeepers at wake and overproduces Guardians. '
+                  'Named-team counters remain unknown. See work/re/handoff-c.md and work/re/c_create_report.md.')
+def test_create_units_slot_replays_observed_counters(build):
+    """Replay the dedicated CreateUnits check; exact counters, no timing fit.
+
+    The two builds differ only in slot MinUnits. The opener supplies Guardians;
+    this does not assert that CreateUnits manufactures them. Team identity and
+    the exclusive-filter interpretation of UnitName remain unestablished.
+    """
+    w = simai.run(build, 'a', until=71, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    rows = [(t, dict(zip(labels, values))) for t, values in w.sim.series]
+    at70 = next(row for t, row in rows if 70 <= t < 71)
+    expected = (3, 2, 2) if build == 'aicr1' else (3, 0, 4)
+    assert tuple(at70[k] for k in ('坦克总数', '坦克在家', '步兵在家')) == expected, at70
+    if build == 'aicr1':
+        assert any(row['坦克总数'] == 1 and row['坦克在家'] == 0 for _, row in rows)
+    else:
+        partial = [row for _, row in rows if row['坦克总数'] in (1, 2)]
+        assert partial, 'the replay never exposed partial production'
+        assert all(row['坦克总数'] == row['坦克在家'] for row in partial)

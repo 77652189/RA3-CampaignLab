@@ -142,11 +142,12 @@ NOTES = {
         'tests/test_simai_search.py 回放；仅被动建筑搜索，精确边界、敌军目标取得和揭雾未量'),
     '组队招人/TeamTemplate.SortByDistance': (GUESSED, 'AI 模型代码里读了这个名字（台上没单独量：engine_aiskirm 里是推测）'),
     '组队招人/CreateUnits.MinUnits': (GUESSED,
-        '现成engine_ai checks未独立观测现造兵最小数；engine_aiskirm的TeamTemplate.MinUnits不能替代；'
-        '缺CreateUnits专用计数及触发证据，本轮不上台、不晋升；见 work/re/c_recruit_gate_report.md'),
+        '专用engine_aicreate：aicr1首辆s29出门、后两辆留家；aicr3等s41造齐三辆才出门；'
+        '命名队计数均99、tests/test_simai_bench_c.py strict xfail，模型槽位未对上，不晋升；'
+        '见 work/re/c_create_report.md'),
     '组队招人/CreateUnits.UnitName': (GUESSED,
-        'engine_aiskirm:y按单位名计数的是BuildState生产，不是CreateUnits路径；'
-        '现成台缺CreateUnits触发及对应模板计数的独立证据，未晋升；见 work/re/c_recruit_gate_report.md'),
+        '专用engine_aicreate点名守护者，MinUnits=1仍有两名维和离家、=3四名维和均留家；'
+        '不能当作排他兵种过滤；命名队均99、模型strict xfail，保留推断；见 work/re/c_create_report.md'),
     '战术/Tactic.Distance': (GUESSED,
         'engine_aidefense:a的250/450对照用UNIT_SET_TEAM移出AI队，不能独立判定Distance；'
         'b/c保留AI队但只有Distance=250，未量距离边界或独立对照；不晋升；'
