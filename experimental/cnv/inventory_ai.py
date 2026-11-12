@@ -112,6 +112,11 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '造兵/CountAsStructureForBuildPurposesFilter.ExcludeThing': (TODO,
+        'C静态核查：原版过滤器用于建造优先级，排除矿车/勘探车/日本矿厂核心；'
+        '不是现有建筑计数。模型未消费该过滤器，候选分类需接B共享build_units，'
+        '普通建筑BuildState优先级亦缺消费者；按工单接口门禁停止，未上台、未晋升。'
+        '待B给候选分类/优先级接口；见work/re/c_buildfilter_report.md'),
     '造兵/BuildEntry.Upgrade': (TODO,
         'C engine_aiupgrade a：aicupgon常量状态含UPGRADE_TECH/Tech2，s39起持有2；'
         'aicupgoff移除专用状态后恒0，配对均3/3 PASS；见work/re/c_upgrade_report.md。'
