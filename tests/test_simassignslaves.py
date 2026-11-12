@@ -23,3 +23,18 @@ def test_repair_bay_assignment_controls_match_named_bench(mission):
     engine = sim.Sim(m, t).run(28)
     verdicts = build.judge(t, engine.series)
     assert verdicts and all(ok for ok, _ in verdicts), verdicts
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+    'E67: explicit command changes fourth-target healing with three repair '
+    'statuses still set. Slave retargeting/status cleanup remains unresolved; '
+    'do not invent an extra repair stream. See work/re/e_assign_e67.md '
+    'and work/re/handoff-e.md'))
+def test_repair_assignment_competition_matches_named_bench():
+    """Both lanes occupied three targets; only the commanded fourth healed."""
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_assignrace', 'a')
+    engine = sim.Sim(m, t).run(28)
+    verdicts = build.judge(t, engine.series)
+    assert verdicts and all(ok for ok, _ in verdicts), verdicts
