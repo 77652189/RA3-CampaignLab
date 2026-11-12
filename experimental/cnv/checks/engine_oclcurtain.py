@@ -12,6 +12,9 @@ control; enemy fire and the bounded observation window stay identical.
 E64: a new local reference with the identical retail CreateObject payload
 should protect both tanks and dispatch once, just like the positive control.
 This measures protection, not a count of generated objects.
+
+E65: the identical local payload with outer CreateObject Count="0" should
+dispatch once without protection. Keep default-count copy as the positive control.
 """
 from checks.engine_super import super_test
 
@@ -30,6 +33,7 @@ def check(m, valid, casts=None):
 
 CHECKS = {'engine_oclcurtain': {'a': lambda m: check(m, True)},
           'engine_oclcopy': {'a': lambda m: check(m, True)},
+          'engine_oclzero': {'a': lambda m: check(m, False, casts=1)},
           'engine_oclempty': {'a': lambda m: check(m, False, casts=1)},
           'engine_oclnone': {'a': lambda m: check(m, False)},
           'engine_oclwrong': {'a': lambda m: check(m, False)}}

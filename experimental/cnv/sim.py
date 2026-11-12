@@ -3339,7 +3339,9 @@ class Sim:
                                         module['CreateLocation'] == 'CREATE_AT_LOCATION' and
                                         module['CanAffectObjectFilter'] ==
                                         'SovietIronCurtainSpecialPowerObjectFilter')
-                    empty_dispatch = bool(module and simunits.empty_ocl(module['OCL'], self.own) and
+                    empty_dispatch = bool(module and
+                                          (simunits.empty_ocl(module['OCL'], self.own) or
+                                           simunits.iron_curtain_ocl(module['OCL'], self.own, zero_count=True)) and
                                           module['CreateLocation'] == 'CREATE_AT_LOCATION' and
                                           module['CanAffectObjectFilter'] ==
                                           'SovietIronCurtainSpecialPowerObjectFilter')

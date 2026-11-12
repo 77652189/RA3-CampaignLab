@@ -1786,25 +1786,31 @@ def empty_ocl(ocl, own=None):
     return False
 
 
-def iron_curtain_ocl(ocl, own=None):
+def iron_curtain_ocl(ocl, own=None, *, zero_count=False):
     """E64: resolve the reference, accepting only the measured retail payload.
 
     engine_oclcopy replays the same CreateObject/IronCurtainEffect under a
     new local id. This dispatches the existing effect; it does not implement
     general OCL creation. Attribute order/whitespace equivalence is INFERRED.
-    Changed flags, nuggets, counts, options or effects remain explicit gaps.
+    E65 zero_count resolves only that same payload with outer Count="0";
+    callers dispatch the cast but no protection. Other counts/payloads stay gaps.
     A local declaration takes precedence over the familiar retail name.
     """
     def declarations(xml):
         xml = re.sub(r'<!--.*?-->', '', xml, flags=re.S)
         return list(_blocks(xml, 'ObjectCreationList'))
 
-    def signature(head, inner):
+    def signature(head, inner, expected_zero=False):
         try:
             root = ET.fromstring(f'<ObjectCreationList {head}>{inner}</ObjectCreationList>')
         except ET.ParseError:
             return None
         root.attrib.pop('id', None)
+        if expected_zero:
+            children = list(root)
+            if len(children) != 1 or children[0].tag != 'CreateObject':
+                return None
+            children[0].set('Count', '0')
 
         def tree(node):
             return (node.tag, tuple(sorted(node.attrib.items())),
@@ -1815,13 +1821,13 @@ def iron_curtain_ocl(ocl, own=None):
     with open(os.path.join(SAGEXML, 'GlobalData', 'ObjectCreationLists.xml'),
               encoding='utf-8-sig') as f:
         retail = declarations(f.read())
-    expected = next((signature(head, inner) for head, inner in retail
+    expected = next((signature(head, inner, zero_count) for head, inner in retail
                      if _attr(head, 'id') == 'OCL_IronCurtain'), None)
     for xml in (own or {}).values():
         for head, inner in declarations(xml):
             if _attr(head, 'id') == ocl:
                 return expected is not None and signature(head, inner) == expected
-    return ocl == 'OCL_IronCurtain' and expected is not None
+    return not zero_count and ocl == 'OCL_IronCurtain' and expected is not None
 
 
 def power_rules(template, power, own=None):

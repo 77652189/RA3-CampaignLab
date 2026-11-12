@@ -49,6 +49,36 @@ def test_iron_curtain_empty_ocl_reference():
     assert not any('OCLSpecialPower' in gap['what'] for gap in s.unmodeled.values()), s.unmodeled
 
 
+def test_iron_curtain_zero_count_ocl_reference():
+    """E65 named replay: Count=0 casts once but leaves both tanks exposed.
+
+    Protection readings only, not generated-object counts: work/re/e_ocl_e65.md.
+    """
+    import build
+    import sim
+    import simunits
+    m, t, _ = build.resolve('engine_oclzero', 'a')
+    s = sim.Sim(m, t).run(34.0)
+    rows = [row for _, row in s.series if 90 <= row[0] <= 180]
+    assert rows
+    assert all(row[1] < 100 and row[2] < 100 and row[3] == 1 for row in rows), rows
+    assert all(ok for ok, _ in build.judge(t, s.series))
+    assert not any('OCLSpecialPower' in gap['what'] for gap in s.unmodeled.values()), s.unmodeled
+    assert not simunits.iron_curtain_ocl('CNVOclZeroList', s.own)
+    assert simunits.iron_curtain_ocl('CNVOclZeroList', s.own, zero_count=True)
+    # INFERRED conservative boundary: zero only closes the measured payload.
+    for old, new in [('Count="0"', 'Count="2"'),
+                     ('IronCurtainEffect', 'UnknownEffect'),
+                     ('Options="CREATE_AT_TARGET"', 'Options="NONE"')]:
+        changed = {key: xml.replace(old, new) for key, xml in s.own.items()}
+        assert changed != s.own
+        assert not simunits.iron_curtain_ocl('CNVOclZeroList', changed, zero_count=True)
+    assert not simunits.iron_curtain_ocl('MissingList', s.own, zero_count=True)
+    copy_own = {key: xml.replace('CNVOclZeroList', 'CNVOclCopyList').replace(' Count="0"', '')
+                for key, xml in s.own.items()}
+    assert not simunits.iron_curtain_ocl('CNVOclCopyList', copy_own, zero_count=True)
+
+
 def test_iron_curtain_copied_ocl_reference():
     """E64 named replay: identical nonempty payload under a new reference.
 

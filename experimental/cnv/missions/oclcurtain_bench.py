@@ -28,17 +28,20 @@ def mission(mode):
         # AssetTypeObjectCreationList.xsd: every nugget has minOccurs=0.
         xml = xml.replace('</AssetDeclaration>',
                           '<ObjectCreationList id="CNVOclEmptyList" /></AssetDeclaration>')
-    elif mode == 'copy':
+    elif mode in ('copy', 'zero'):
         with open(os.path.join(labpaths.SDK3, 'SageXML', 'GlobalData',
                                'ObjectCreationLists.xml'), encoding='utf-8-sig') as f:
             lists = f.read()
         payload = re.search(r'<ObjectCreationList\s+id="OCL_IronCurtain"\s*>.*?'
                             r'</ObjectCreationList>', lists, re.S)
         assert payload is not None
+        list_id = 'CNVOcl' + mode.title() + 'List'
+        declaration = payload.group(0).replace('id="OCL_IronCurtain"', f'id="{list_id}"', 1)
+        if mode == 'zero':
+            declaration = declaration.replace('<CreateObject', '<CreateObject Count="0"', 1)
         xml = xml.replace(modules[0], modules[0].replace(
-            'OCL="OCL_IronCurtain"', 'OCL="CNVOclCopyList"'))
-        xml = xml.replace('</AssetDeclaration>', payload.group(0).replace(
-            'id="OCL_IronCurtain"', 'id="CNVOclCopyList"', 1) + '</AssetDeclaration>')
+            'OCL="OCL_IronCurtain"', f'OCL="{list_id}"'))
+        xml = xml.replace('</AssetDeclaration>', declaration + '</AssetDeclaration>')
     m.units.append(Unit(ident, xml, what='Iron Curtain module control ' + mode))
     m.role('curtain').template = ident
     for obj in m.objects:
@@ -49,6 +52,7 @@ def mission(mode):
 
 MISSION = {'engine_oclcurtain': lambda: mission('valid'),
            'engine_oclcopy': lambda: mission('copy'),
+           'engine_oclzero': lambda: mission('zero'),
            'engine_oclempty': lambda: mission('empty'),
            'engine_oclnone': lambda: mission('none'),
            'engine_oclwrong': lambda: mission('wrong')}
