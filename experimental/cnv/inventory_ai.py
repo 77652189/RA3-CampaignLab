@@ -105,6 +105,11 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '微操/AIMicroManagerData.PassiveTargetSearchDistance': (TODO,
+        'C接口闸门阻塞：被动目标分类/选择在B的tactics._team_state；'
+        'micro.Team.enemies无被动分类，MicroBlock仅有技能回调，缺候选与距离基准及选敌回写；'
+        'SDK显式600/650/0、默认400，距离基准和零值语义未证实；'
+        '本轮未上台、不实现消费者、不晋升已对拍；见 work/re/c_passive_distance_report.md'),
     '微操/AIMicroManagerData.MinDistanceFromBaseToIgnoreTargets': (TODO,
         'engine_aiignore aiignzero/aiignnear：仅基地距离阈值0/2000不同，'
         '无武装工程师延迟至26秒且两武士造出后；零阈值仍受伤，'
