@@ -134,11 +134,13 @@ NOTES = {
         'Allies在[s55,s60)电厂3/兵营0，Soviet电厂2/兵营1；默认模型均3/0。'
         '保留原始FAIL预测，tests/test_simai_bench_e.py按台上读数strict xfail；'
         '不匹配Side改变开局，回退来源未证实，模型归B，不晋升；见 work/re/e_openside_e82.md'),
-    **{f'人格/SpecificUnitCap.{k}': (GUESSED,
-        'E80 engine_aicap a/b：普通难度维和MEDIUM上限2仍在s54达到3，'
-        '延长到[s150,s200)从5增至9，标枪3至7；HARD掩码和无条目为对照。'
-        '原始上限断言保留FAIL，tests/test_simai_bench_e.py按台上读数strict xfail；'
-        '模型归B，两轮未解释不晋升，见 work/re/e_aicap_e80.md')
+    **{f'人格/SpecificUnitCap.{k}': (BENCHED,
+        'engine_aiskirm aiskcap:y（2026-11-12）：子人格给父人格没写的CNVNewPK四档Cap=2，'
+        '新维和s33到2、停到s149（无上限aisknew2 s44已4），兵营改造标枪/维和；'
+        'tests/test_simai_bench_b.py::test_a_specific_unit_cap_holds_our_unit_at_two按名回放、断言台上读数。'
+        'E80父人格已有维和Cap=20时子人格Cap=2不生效=第一条命中（test_simai_bench_e.py）。'
+        'gap：s150后又造到4、没死人，引擎拿什么数对上限未知（strict xfail '
+        'test_after_s150_the_capped_unit_is_built_again）；见 work/re/handoff-b.md 第145节')
        for k in ('Unit', 'Difficulty', 'Cap')},
     '组队招人/TeamTemplate.ReleaseType=NEVER_RELEASE': (BENCHED,
         'engine_airelease airelnever/airelprio仅ReleaseType不同；CNVTeams两组f166防御激活持3166/3167，'

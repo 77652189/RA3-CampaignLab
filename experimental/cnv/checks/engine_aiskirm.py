@@ -499,7 +499,15 @@ def y(m):
       a factory that builds it is not enough (the UnitBuilder's candidates do not take it either). With one listed it
       takes about half the barracks' output (FEWEST_UNIT among four). So a level's 偏好 / UnitModifier cannot make it
       build our units (aiskmod u: no effect at all); plan.py would need a BuildState line, and the AI a factory of its
-      own that builds the unit (the copies are the player's only)."""
+      own that builds the unit (the copies are the player's only).
+
+    RESULTS y on aiskcap (bench 2026-11-12, PASS; run work/testbench/runs/CampAISkCapY_mcp_1112_043040): aisknew2 +
+      the child personality's SpecificUnitCap CNVNewPK Cap 2 at all four difficulties (no parent lists CNVNewPK; the
+      simulator predicted 2 to s167, work/logs/b145_pred.log). 新维和 1 s27, **2 from s33 to s149** (aisknew2: 3 s38,
+      4 s44) while 标枪 went 1 -> 6 and 维和 0 -> 2; then **3 at s150, 4 from s155** to s168 (维和 5, 标枪 9).
+      Reading: the cap binds (template match, the MEDIUM bit, the value) -- the barracks' other units take the
+      capped one's turns; after ~s150 the capped unit is built again with none lost, so what the engine counts
+      against the cap is not simply the units owned (not known; tests/test_simai_bench_b.py strict xfail)."""
     NEW_PK, NEW_BARRACKS = 'CNVNewPK', 'CNVAIBarracks'      # missions/aiskirm_bench.py's (G5: no content import)
     t = Test()
     PK, JAV = 'AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry'
@@ -853,6 +861,7 @@ CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j
           'aiskpw3': {'x': x},
           'aisknew': {'y': y},
           'aisknew2': {'y': y},
+          'aiskcap': {'y': y},
           'aiskrand': {'s': s},
           'aiskdiff': {'s': s},
           'aiskvinf': {'z': z, 't': t},

@@ -430,6 +430,29 @@ def test_listed_in_a_build_state_our_unit_takes_about_half_the_barracks(lib):
     assert rows[27]['新维和'] >= 1 and r['新维和'] >= 0.4 * (r['新维和'] + r['维和总数'] + r['标枪总数'])
 
 
+@pytest.fixture(scope='module')
+def aiskcap_rows(lib):
+    return _probe_run('aiskcap', lib, 170, 'y')[1]
+
+
+def test_a_specific_unit_cap_holds_our_unit_at_two(aiskcap_rows):
+    """aiskcap: aisknew2 + the child personality's SpecificUnitCap CNVNewPK Cap 2 at all four difficulties (no parent
+    personality caps CNVNewPK) -> bench 2026-11-12: 新维和 2 from s33 to s149 while the barracks went on with
+    Javelins and Peacekeepers (标枪 1 -> 6, 维和 0 -> 2); aisknew2 uncapped had 4 by s44. The simulator: 2 from s46,
+    the others still built. The cap's Unit (matched by template), Difficulty (the mask holds MEDIUM) and Cap."""
+    rows = aiskcap_rows
+    assert max(r['新维和'] for r in rows[:149]) == 2 and rows[60]['新维和'] == 2
+    assert rows[148]['维和总数'] + rows[148]['标枪总数'] >= 3
+
+
+@pytest.mark.xfail(strict=True, reason='bench aiskcap built a 3rd CNVNewPK at s150 and a 4th at s155 (owned 4 to '
+                                       's168, none lost); the simulator keeps 2 -- what the engine counts against '
+                                       'the cap after ~s150 (attack teams leaving?) is not known')
+def test_after_s150_the_capped_unit_is_built_again(aiskcap_rows):
+    """aiskcap (bench 2026-11-12): 新维和 3 at s150, 4 from s155 to s168."""
+    assert aiskcap_rows[166]['新维和'] >= 3
+
+
 # ---- checks/engine_aiskirm.py s (bench 2026-11-11, readings in the check's RESULTS): RANDOM_UNIT and Difficulty
 def test_a_bare_random_percent_is_a_percent(lib):
     """aiskrand: NEW_PK RANDOM_UNIT "0%".."30%", NEW_JAV RANDOM_UNIT "30".."100" (bare, as retail writes them) ->

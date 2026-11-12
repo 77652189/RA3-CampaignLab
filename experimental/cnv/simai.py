@@ -376,6 +376,7 @@ class Brain:
                'has ally': {t.template for t in self.view.things
                             if t.owner and t.owner != self.player and t.owner not in self.view.enemies},
                'has neutral': {t.template for t in self.view.things if not t.owner},
+               'kindof': self.host.kinds,                # an ObjectFilter's KindOf Include / Exclude (D61 3)
                'harvesters': sum('HARVESTER' in b.kinds for b in mine),               # INFERRED category 0x14
                'money': lambda account: self.sim.money.get(self.player, 0),          # one account in the simulator
                'beacons': set(),                                                     # no beacons in the simulator

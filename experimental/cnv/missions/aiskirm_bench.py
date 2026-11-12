@@ -191,10 +191,13 @@ def new_pk():
     return Unit(NEW_PK, x, what='对照：原版维和换了 id（AI 会不会造"我们的"单位）')
 
 
-def new_xml():
+def new_xml(cap=None):
     """1AlliedBalanced plus one build state of its own (CNVNewBuild: ConstantHeuristic, BuildEntry NEW_PK FEWEST_UNIT,
     the shape of SDK States/AlliedBaseStates.xml AlliedBarracksBuildState_FEWEST) -- what a level's personality would
-    need to list for the AI to build a unit of ours (B handoff 126)."""
+    need to list for the AI to build a unit of ours (B handoff 126). cap (aiskcap): + a SpecificUnitCap on NEW_PK at
+    all four difficulties, a unit no parent personality caps (after the BuildState lines, as retail writes them)."""
+    caps = [] if cap is None else [
+        f'    <SpecificUnitCap Unit="{NEW_PK}" Cap="{cap}" Difficulty="EASY MEDIUM HARD BRUTAL"/>']
     return '\n'.join([
         '<?xml version="1.0" encoding="utf-8"?>',
         '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
@@ -211,6 +214,7 @@ def new_xml():
         '  </AIBuildStateDefinition>',
         f'  <AIPersonalityDefinition id="{NEW_PID}" PersonalityType="{NEW_PID}" inheritFrom="1AlliedBalanced">',
         f'    <BuildState id="{NEW_STATE}" State="{NEW_STATE}" Difficulty="EASY MEDIUM HARD BRUTAL"/>',
+        *caps,
         '  </AIPersonalityDefinition>',
         '</AssetDeclaration>', ''])
 
@@ -273,7 +277,7 @@ ARMY_N = 10                            # aiskvinf / aiskvveh (check z): what the
 
 
 def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None, account=None,
-            buffer=None, new=None, army=None, two=None, observe=False):
+            buffer=None, new=None, army=None, two=None, observe=False, cap=None):
     m = Mission(name=name, map=ai_map(resources.measured(niagara), lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
     if expire is not None:               # aiskexp (check q): the same AI with SecondsTillTargetsExpire = expire
@@ -299,7 +303,9 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
         m.facts['own build state'] = int(new)
         if new:                          # aisknew2: the personality lists NEW_PK in a build state of its own
             m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{NEW_PID}'
-            m.assets.append((f'{NEW_PID}.xml', new_xml(), f'AIPersonalityDefinition:{NEW_PID}'))
+            if cap is not None:          # aiskcap (check y): + SpecificUnitCap NEW_PK = cap
+                m.facts['new cap'] = cap
+            m.assets.append((f'{NEW_PID}.xml', new_xml(cap), f'AIPersonalityDefinition:{NEW_PID}'))
         m.put(NEW_BARRACKS, 'east base', NEW_AT[0], NEW_AT[1], side='s1', angle=3.1416, name='UNIT - CNV AI New Barracks',
               role='ai new barracks')
     if two is not None:                  # aiskrand / aiskdiff (check s): a copied barracks building NEW_PK and NEW_JAV
@@ -369,6 +375,7 @@ MISSION = {'aiskirm': mission, 'aiskirmc': lambda: mission(observe=True),
            'aiskpw3': lambda: mission('CampAISkPw300', buffer=300),   # check x: 300
            'aisknew': lambda: mission('CampAISkNew', new=False),      # check y: a barracks of s1's builds our unit too
            'aisknew2': lambda: mission('CampAISkNew2', new=True),     # check y: + a build state listing it
+           'aiskcap': lambda: mission('CampAISkCap', new=True, cap=2),   # check y: + SpecificUnitCap 2 on it
            'aiskrand': lambda: mission('CampAISkRand', two='rand'),   # check s: RANDOM_UNIT 0%-30% / bare 30-100
            'aiskdiff': lambda: mission('CampAISkDiff', two='diff'),   # check s: a HARD-only state at MEDIUM
            'aiskvinf': lambda: mission('CampAISkVInf', army=ARMY_INF),   # check z: the player owns 10 conscripts
