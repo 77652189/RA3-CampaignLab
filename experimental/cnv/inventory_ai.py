@@ -113,6 +113,12 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '人格/EnemyFilter.Include': (TODO,
+        'C按名台子engine_aienemyfilter：近处敌矿车、仅Include由HARVESTER改ENGINEER，'
+        '前者s15全离家、s18目标区4辆，后者s1-65在家4/目标区0；'
+        'tests/test_enemyfilter.py保留原读数及按名回放，ENGINEER回放strict xfail。'
+        '实际消费者为B的状态启发式/数据解析及near接口，非C的targets.py；'
+        '未实现、不晋升；见work/re/c_enemyfilter_report.md'),
     '经济/AccountShare.Account=SLUSH_FUND': (TODO,
         'C按名台子engine_aislush：aislush100/aislush0仅交换SLUSH_FUND与PRODUCTION份额，'
         '两组电厂均s19一座、s29两座，零份额原预测FAIL保留；开局未区分此账户。'
