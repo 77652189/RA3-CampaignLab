@@ -113,6 +113,11 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '目标/AITargetingHeuristic.HighestPriorityEnemyPlayersOnly': (GUESSED,
+        'C按名台子engine_aitoponly：显式s4=30/p1=10，高档仅建造场、低档有兵营；'
+        'true组s40在家4/兵营0，false组在家0/兵营4；把兵营给高档的true阳性对照同false。'
+        'tests/test_top_enemy_only.py断言原计数并按名回放；无同帧实际优先级表/候选资格，'
+        '同档多玩家及动态优先级仍gap，保持推断；见work/re/c_toponly_report.md'),
     '目标/AITargetingHeuristic.MaxDistanceToShore': (GUESSED,
         'C按名台子engine_aishore：同一岸边电厂仅上限2000改1，2000组s14目标区4/s25全离家，'
         '1组s1-65在家4/目标区0；普通EnemyStructure阳性对照同2000组。'
