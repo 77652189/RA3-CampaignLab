@@ -2602,7 +2602,7 @@ class Sim:
             self.used.add('air crash')
             for dmg, typ, reach, after, affects, ally in w['weapons']:
                 self.death_blasts.append((self.frame_now() + frames + simunits._frames(after), end[0], end[1], dmg,
-                                          typ, reach, affects, b.owner, b, ally, True))
+                                          typ, reach, affects, b.owner, b, ally, True, (end[0] - b.x, end[1] - b.y)))
 
     # ---- the engine model's World: what its script engine asks of the objects (the rest it does itself)
     def condition(self, eng, name, args):
@@ -5103,11 +5103,14 @@ class Sim:
         """A death weapon going off by `frame` (destroy, simunits.death_weapons): every living object within its
         radius, centre to centre, whose owner stands to the dead one's as the weapon's RadiusDamageAffects takes
         (ENEMIES / NEUTRALS / ALLIES, its own owner counted an ally), loses the damage through its armor. A death it
-        causes fires that one's weapon in turn (a chain of exploding props)."""
+        causes fires that one's weapon in turn (a chain of exploding props). The armour's side / rear scalar
+        (simunits.flank) by where the blast is from the victim; a crashing wreck resting on its victim's centre
+        counts as coming in along its fall (bench 11-12 engine_crash_face; INFERRED: the wreck's last point a hair
+        short of the landing), a still one as at the same place (front)."""
         for d in [d for d in self.death_blasts if d[0] <= frame]:
             self.death_blasts.remove(d)
             _, x, y, dmg, typ, reach, affects, owner, by, *rest = d
-            ally, ground_only = rest if rest else (1.0, False)
+            ally, ground_only, approach = tuple(rest) + (1.0, False, None)[len(rest):]
             for t in self.living():
                 if math.hypot(t.x - x, t.y - y) > reach or frame < t.immune_until or t.shielded or t.indestructible:
                     continue
@@ -5119,6 +5122,10 @@ class Sim:
                 armor = 1.0 if typ == 'UNRESISTABLE' else simunits.percent(t.armor, typ) / 100.0 * t.taken
                 if rel == 'ALLIES':
                     armor *= ally
+                dx, dy = x - t.x, y - t.y
+                if math.hypot(dx, dy) < 1e-6 and approach:
+                    dx, dy = -approach[0], -approach[1]
+                armor *= simunits.flank(t.armor, t.angle, dx, dy)
                 if dmg * armor <= 0:
                     continue
                 t.damage(dmg * armor)

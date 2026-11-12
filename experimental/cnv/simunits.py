@@ -278,7 +278,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v34.json')    # v34: ai_parts (a weapon's nuggets + warhead for the AI's rate); v33: lift dispatch
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v35.json')    # v35: armours' side / rear scalars; v34: ai_parts (a weapon's nuggets + warhead for the AI's rate); v33: lift dispatch
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -290,6 +290,21 @@ def percent(armor, dtype):
     line, else the Default (CryoBeamFrozenArmor 90000: a frozen unit breaks at a touch; InvulnerableArmor 0), else
     ARMOR_DEFAULT."""
     return armor.get(dtype, armor.get('*', ARMOR_DEFAULT))
+
+
+FLANK_KEYS = {'<side': 'SideDamageScalar', '<rear': 'RearDamageScalar'}    # in an armour dict, beside the types
+
+
+def flank(armor, facing, dx, dy):
+    """The side / rear scalar an armour takes a hit with (docs/engine/weapons.md, bench engine_shot flank 40 / 40 /
+    42 / 44 %; read: the angle from the victim's facing to the direction to its attacker): over 135 degrees its
+    RearDamageScalar, over 45 its SideDamageScalar, else 1 -- and 1 with the attacker at the victim's own place
+    (dx, dy: the attacker less the victim)."""
+    if math.hypot(dx, dy) < 1e-9:
+        return 1.0
+    off = abs((math.atan2(dy, dx) - facing + math.pi) % (2 * math.pi) - math.pi)
+    key = '<rear' if off > math.radians(135) else '<side' if off > math.radians(45) else None
+    return armor.get(key, 100.0) / 100.0 if key else 1.0
 
 
 def _blocks(text, tag):
@@ -1068,6 +1083,9 @@ def _armors():
         own = {_attr(h, 'Damage'): _num(_attr(h, 'Percent'), 100.0) for h, _ in _blocks(body, 'Armor')}
         if _attr(head, 'Default') is not None:          # the types it does not name (percent: '*')
             own['*'] = _num(_attr(head, 'Default'), ARMOR_DEFAULT)
+        for key, att in FLANK_KEYS.items():             # the side / rear scalars (flank), inherited as the percents
+            if _attr(head, att) is not None:
+                own[key] = _num(_attr(head, att), 100.0)
         raw[_attr(head, 'id')] = (_attr(head, 'inheritFrom'), own)
     out = {}
 

@@ -848,8 +848,40 @@ def test_physics_p5_the_flying_apollo_s_wreck_hits_its_last_point_as_on_the_benc
     assert simunits.crash_frames((3000.0, 2000.0, 387.5), (0.1, 0.0, 0.0), 212.5) == (37, (3000, 2000, 212.5))
 
 
-@pytest.mark.xfail(strict=True, reason='bench 11-12 engine_crash_hit: the flying wreck takes the Hammer under it to 70 %, '
-                                       'the hovering one to 72 % -- ~15 more from the moving wreck, not read (collision?)')
-def test_physics_p5_the_flying_wreck_takes_the_same_as_a_hovering_one():
-    from checks.engine_crash_fall import HIT_BENCH
-    assert HIT_BENCH['health']['in'] == HIT_BENCH['health']['H']
+def _face_health():
+    """Sim.air_crash from the bench's kill (x 2885, 15 a frame east) of engine_crash_face's four planes,
+    death_blast_due past the landing: each Hammer's health percent as the counter reads it."""
+    import math
+    import build
+    import sim
+    from checks.engine_crash_fall import FACE_LANES, face_name
+    m, t, name = build.resolve('engine_crash_face', 'face')
+    assert name == 'CampCKFace'
+    s = sim.Sim(m, t)
+    s.eng.frame = 105
+    for k, (y, _) in FACE_LANES.items():
+        b = s.bodies[face_name(k)]
+        b.x, b.y, b.z, b.path, b.speed, b.engaged = 2885.0, y, None, [(4200.0, y)], 15.0 * 15, None
+        s.air_crash(b)
+    s.death_blast_due(105 + 40)
+    tanks = {k: s.bodies[face_name('Tank ' + k)] for k in FACE_LANES}
+    return {k: math.floor(b.hp / b.max_hp * 100 + 1e-9) for k, b in tanks.items()}
+
+
+def test_physics_p5_the_flying_wreck_hits_its_hammer_by_the_side_it_comes_in_from():
+    """Bench 11-12 engine_crash_face (CampCKFace_mcp_1112_120614): hit's 70 against the hover's 72 was the armour's
+    flank scalar (BaseTankArmor Rear 110 / Side 105; simunits.flank), not a collision or the shock -- the Hammers
+    facing east / north under the y < 2048 wrecks take rear / side as from the wreck's way in (west)."""
+    from checks.engine_crash_fall import FACE_BENCH
+    got = _face_health()
+    assert (got['E'], got['N']) == (FACE_BENCH['E'], FACE_BENCH['N']) == (70, 71), got
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+    'bench 11-12 engine_crash_face: the Hammers facing west / south (y 2100 / 2400) take side 71 / rear 70 -- the '
+    "wreck's resting hair off the centre north, not west (INFERRED float32 residue over y 2048); the sim takes the "
+    'way in (west): front 72 / side 71'))
+def test_physics_p5_the_wreck_s_float_residue_over_y_2048_sets_its_side():
+    from checks.engine_crash_fall import FACE_BENCH
+    got = _face_health()
+    assert (got['W'], got['S']) == (FACE_BENCH['W'], FACE_BENCH['S']), got

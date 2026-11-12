@@ -26,6 +26,7 @@ So the wreck's OWN GravityMultiplier sets the fall (8 points against 30), and th
 The numbers come from the free fall (simunits.meta_impact_fall): T = sqrt(2 d / g) (35.08 / 6.40 frames), landing =
 start + 7.5 T rounded up to the 20 grid, n = ceil(distance / 7.5) (37 / 8), b = (7.5 n + 2a + d) / n.
 """
+import math
 import os
 
 import labpaths
@@ -150,7 +151,10 @@ HIT_BENCH = {'frames': {'in': 30, 'H': 38, 'G': 38, 'out': None}, 'health': {'in
 
 
 def hit_plane(lane):
-    uid = HIT_LANES[lane][0]
+    return crash_plane(HIT_LANES[lane][0])
+
+
+def crash_plane(uid):
     x = _probe(_retail('Allied', 'Units', PLANE + '.xml'), PLANE, uid)
     x = x.replace(f'CreationList="{OCL}"', f'CreationList="{uid}OCL"')
     x = x.replace('</AssetDeclaration>', f'''	<ObjectCreationList id="{uid}OCL">
@@ -210,5 +214,67 @@ def hit_check(m):
     return t
 
 
-MISSION = {'engine_crash_fall': mission, 'engine_crash_hit': hit_mission}
-CHECKS = {'engine_crash_fall': {'fall': check}, 'engine_crash_hit': {'hit': hit_check}}
+# ---- face (engine line A round 181): why hit's F tank (70) lost more than H's (72). The Hammer's armour
+# (BaseTankArmor) takes Side 105 / Rear 110 by the angle from its facing to where its attacker is (docs/engine/
+# weapons.md, engine_shot flank; the same place: front). 150 x 1.10 = 165 of 550 -> 70 exactly; 150 -> 72.7; 157.5 ->
+# 71.4. Hypotheses: H1 the moving wreck's collision hurts on the way in, H2 the MetaImpact shock, H3 the flank scalar
+# (F's wreck comes in from the west, behind the east-facing tank; H's rests where it started, no direction).
+# Four F planes as hit's F (flying east, killed at 7 s near x 2885, wrecks land at x 3160) over Hammers facing east /
+# north / west / south (four counter lines: no hovering lane; hit's H is the same-place case). Prediction H3: E 70,
+# N 71, W 72, S 71; H1 / H2: the same whatever their facing (70).
+FACE_LANES = {'E': (1500.0, 0.0), 'N': (1800.0, math.pi / 2), 'W': (2100.0, math.pi), 'S': (2400.0, -math.pi / 2)}
+FACE_LAND_X = 3160.0
+FACE_PREDICT = {'E': 70, 'N': 71, 'W': 72, 'S': 71}
+# Bench 11-12 CampCKFace_mcp_1112_120614 PASS (work/logs/a181_bench.log): 血 E 70, N 71, W 71, S 70 from s8. H1 / H2
+# out (not all 70): the flank scalar it is. All four wrecks logged the same (2885, y + 0.47) v 7.5 -> land (3160, y),
+# last probe (3160.0, y) -- yet W is side, not front, and S rear: no one direction fits E rear and W side. A
+# hypothesis (INFERRED, not read): the wreck rests a float hair off the tank's centre and the residue's main axis
+# follows float32's step -- west under y 2048 (E rear, N side), north over it (W side, S rear). The hovering wrecks
+# (hit's H / G, no move at all) rest exactly on: front (72 / 86).
+FACE_BENCH = {'E': 70, 'N': 71, 'W': 71, 'S': 70}
+
+
+def face_name(k):
+    return f'UNIT - CNV Crash Face {k}'
+
+
+def face_mission():
+    units = [u for k in FACE_LANES for u in crash_plane(f'CNV_CrashK{k}')]
+    m = Mission(name='CampCK', map=probe_air, units=units, facts={})
+    m.ext = True                  # CampCKFace
+    for k, (y, angle) in FACE_LANES.items():
+        m.put(f'CNV_CrashK{k}', 'air flat S', 0.0, y - 1500.0, side='p1', angle=0.0, role=f'plane {k}',
+              name=face_name(k))
+        m.put(TANK, 'air flat S', FACE_LAND_X - 1700.0, y - 1500.0, side='s1', angle=angle, role=f'tank {k}',
+              name=face_name('Tank ' + k))
+    return m
+
+
+def face_check(m):
+    t = Test()
+    keys = list(FACE_LANES)
+    names = [face_name(k) for k in keys] + [face_name('Tank ' + k) for k in keys]
+    t.scripts.append(Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1')),
+                                                 ('SET_MILLISECOND_TIMER', 'Crash Go', GO),
+                                                 ('SET_MILLISECOND_TIMER', 'Crash Kill', KILL)]
+                            + [('UNIT_CHANGE_OBJECT_STATUS', n, 'NO_ATTACK', 1) for n in names]))
+    go = []
+    for k, (y, _) in FACE_LANES.items():
+        t.waypoints[f'Crash Goal {k}'] = (GOAL_X, y)
+        go.append(('MOVE_NAMED_UNIT_TO', face_name(k), f'Crash Goal {k}'))
+    t.scripts.append(Script('Test - go', [('TIMER_EXPIRED', 'Crash Go')], go))
+    t.scripts.append(Script('Test - kill', [('TIMER_EXPIRED', 'Crash Kill')], [('NAMED_KILL', face_name(k))
+                                                                              for k in keys]))
+    for k in keys:
+        c = f'CNV_Crash_Face_{k}'
+        t.counters.append((c, f'血{k}'))
+        t.scripts.append(Script(f'Test - health {k}', [], [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER',
+                                                           face_name('Tank ' + k), c)], once=False))
+    t.expect = [('血E', KILL + 4, '<', 100, RUN)]
+    t.bench = [('bench_watch', dict(seconds=RUN, every=.5, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+MISSION = {'engine_crash_fall': mission, 'engine_crash_hit': hit_mission, 'engine_crash_face': face_mission}
+CHECKS = {'engine_crash_fall': {'fall': check}, 'engine_crash_hit': {'hit': hit_check},
+          'engine_crash_face': {'face': face_check}}
