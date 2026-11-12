@@ -20,6 +20,23 @@ _spec.loader.exec_module(simai)
 pytestmark = pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
 
 
+@pytest.mark.parametrize('build,power,barracks', [
+    ('aiosallies', 3, 0),
+    pytest.param('aiossoviet', 2, 1, marks=pytest.mark.xfail(
+        strict=True, reason='E82 engine_aiopenside a: Allied player with Soviet opening Side '
+        'builds two power plants and one barracks on [s55,s60); default model builds '
+        'three plants and no barracks. B owns Side selection/fallback; '
+        'see work/re/handoff-e.md and work/re/e_openside_e82.md.')),
+])
+def test_opening_side(build, power, barracks):
+    """Replay engine_aiopenside a's measured counters on [s55,s60)."""
+    w = simai.run(build, 'a', 60, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    samples = [(t, dict(zip(labels, values))) for t, values in w.sim.series if 55 <= t < 60]
+    assert [t for t, _ in samples] == list(range(55, 60))
+    assert all(row['电厂数'] == power and row['兵营数'] == barracks for _, row in samples), samples
+
+
 @pytest.mark.parametrize('build,chosen,other', [
     ('aiskvinf', '维和总数', '标枪总数'),
     pytest.param('aiskvveh', '标枪总数', '维和总数', marks=pytest.mark.xfail(

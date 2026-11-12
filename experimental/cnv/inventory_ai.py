@@ -105,6 +105,11 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '开局/SkirmishOpeningMove.Side': (GUESSED,
+        'E82 engine_aiopenside a：固定盟军玩家显式挂载三电厂开局，仅切Side。'
+        'Allies在[s55,s60)电厂3/兵营0，Soviet电厂2/兵营1；默认模型均3/0。'
+        '保留原始FAIL预测，tests/test_simai_bench_e.py按台上读数strict xfail；'
+        '不匹配Side改变开局，回退来源未证实，模型归B，不晋升；见 work/re/e_openside_e82.md'),
     **{f'人格/SpecificUnitCap.{k}': (GUESSED,
         'E80 engine_aicap a/b：普通难度维和MEDIUM上限2仍在s54达到3，'
         '延长到[s150,s200)从5增至9，标枪3至7；HARD掩码和无条目为对照。'
