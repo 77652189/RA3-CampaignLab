@@ -28,8 +28,8 @@ Bench 11-11 (ra3ext.log `build ... land=` lines; work/logs/a163_water_*.log):
        (2490, 3330, 203.1) -- the far bank's slope (rising 156 -> 212 over 2440..2500), 10-unit steps, not the
        20 grid -- and it is gone the frame it lands (178); the target, flung to (2490, 3530, 203.1), likewise (192).
        The dry one at (2830, 3330, 212.5) lives.
-  So: RA3 keeps a knocked body out of water by moving the landing point (0x7957a0 -> 0x6d0700: the end cell tested
-  for the body's locomotor, 0x6c6600; another found by 0x6cc540 when not -- work/re/asm/a163_*.txt); what lands on
+  So: RA3 keeps a knocked body out of water by moving the landing point (the end cell is tested
+  for the body's locomotor; when it fails another cell is searched for -- work/re/asm/a163_*.txt, A handoff); what lands on
   the slope dies (Generals' cliff rule, INFERRED). far tells the two searches apart (along the line / nearest cell).
   far  CampKWFar_mcp_1111_151821: PASS. The wet man's own landing (2400, in the trench, 100 short of the far bank)
        is moved to (2500, 3280, 212.5) -- the FAR bank's flat top, the nearest standable cell, not back along the

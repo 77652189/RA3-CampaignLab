@@ -4158,7 +4158,7 @@ class Sim:
                     b.z = position[2]
                     self.used.add('meta impact')
 
-    KNOCK_SEARCH = 15               # lattice steps the nearest-standable search reaches (INFERRED: 0x6cc540 unread)
+    KNOCK_SEARCH = 15               # lattice steps the nearest-standable search reaches (INFERRED: the search routine is unread, work/re/handoff.md)
 
     def knock_landing(self, b, end):
         """Physics P3 (bench 11-11 engine_knock_water, work/re/a_physics_plan.md): a knocked body's own landing
