@@ -112,6 +112,25 @@ def micro_update_rows(request):
     return build, rows
 
 
+def test_micro_update_time_pair_changes_only_micro_period():
+    """Keep the measured pair independent of tactical clocks and scripted powers."""
+    from missions.aimicro_bench import update_time
+    fast, slow = update_time('CampMicUpFast', 0.5), update_time('CampMicUpSlow', 4)
+    assert len(fast.assets) == len(slow.assets)
+    changed = 0
+    for (path, text, key), (other_path, other_text, other_key) in zip(fast.assets, slow.assets):
+        assert (path, key) == (other_path, other_key)
+        if text != other_text:
+            changed += 1
+            assert text.count('UpdateTime="0.5s"') == 1
+            assert other_text.count('UpdateTime="4s"') == 1
+            assert text == other_text.replace('UpdateTime="4s"', 'UpdateTime="0.5s"')
+    assert changed == 1
+    assert fast.objects == slow.objects
+    assert fast.scripts == slow.scripts
+    assert fast.waypoints == slow.waypoints
+
+
 def test_micro_update_time_charge_and_survival(micro_update_rows):
     """Named micro-period pair; first skill and live units use the map clock."""
     build, rows = micro_update_rows
@@ -123,9 +142,9 @@ def test_micro_update_time_charge_and_survival(micro_update_rows):
 
 
 @pytest.mark.xfail(strict=True, reason='Micro UpdateTime-only pair: retail first-charge latch fast363/slow317, '
-                  'model271/309; eligibility and update phase need B observations. '
-                  'No fixed-delay inference or model fit. See work/re/handoff-c.md '
-                  'and work/re/c_update_time_report.md.')
+                  'model271/309; both model fires use the low-health branch outside charge distance. '
+                  'Health eligibility and micro state/order updates need B observations. '
+                  'See work/re/handoff-c.md and work/re/c_update_model_report.md.')
 def test_micro_update_time_first_clock_replays_bench(micro_update_rows):
     """Assert the measured script latch, independent of capture wall time."""
     build, rows = micro_update_rows
