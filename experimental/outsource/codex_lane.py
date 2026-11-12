@@ -200,6 +200,8 @@ def main():
     stamp = datetime.datetime.now().strftime('%m%d_%H%M')
     events = os.path.join(LOGS, f'codex_{a.lane}_{stamp}.jsonl')
     stale = sync_handoffs()
+    if stale:   # a session that reads an old ticket redoes or skips work: do not start it (11-11 20:45 a C run did)
+        sys.exit(stale)
     before, h0, t0 = origin_main(wt), handoff_rev(a.lane), time.time()
     prompt = PROMPT.format(L=a.lane.upper(), lane=a.lane, wt=wt)
     cmd = [exe, 'exec', '--json', '--dangerously-bypass-approvals-and-sandbox', '-C', wt,
