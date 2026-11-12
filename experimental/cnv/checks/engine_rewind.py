@@ -91,5 +91,28 @@ def fire(m):
     return t
 
 
+def swap(m):
+    """rewind_swap (the show version): ours at 1 s for CONTROL s; our two Multigunners, 100 south of it, ordered at
+    5 s to force-attack it (旧血 falling while 旧归我 1 = they shoot an aircraft of their own); at 24 s NAMED_DAMAGE
+    5200 (whatever is left: the swap comes then at the latest). 新归我 / 新血: the new carrier's owner and health
+    (50 % expected; its owner is whoever held the old one at the swap)."""
+    from missions.rewind_bench import NEW
+    t = Test()
+    t.scripts.append(Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1')),
+                                                 ('SET_MILLISECOND_TIMER', 'Test Go', 0.01)]))
+    t.scripts += control(m, 1.0)
+    _at(t, 'shoot', 5.0, [('NAMED_FORCE_ATTACK_NAMED', m.role(f'gun {k}').name, CARRIER) for k in (1, 2)])
+    _at(t, 'finish', 10.0, [('NAMED_DAMAGE', CARRIER, 99999)])
+    counted('Test Health', '旧血', t, health=CARRIER)
+    counted('Test Ours', '旧归我', t, owner=CARRIER)
+    counted('Test New Ours', '新归我', t, owner=NEW)
+    counted('Test New Health', '新血', t, health=NEW)
+    # bench CampRwSSwap_mcp_1111_163719: 旧血 98 -> 90 while ours (s1-s10: our guns shoot their own aircraft), the
+    # swap at s12 (old deleted, its counters frozen), 新归我 1 and 新血 48-49 to the end (s37)
+    t.expect += [('旧归我', 4, '==', 1, 10), ('旧血', 10, '<', 95), ('新血', 14, '>=', 45), ('新归我', 20, '==', 1)]
+    t.bench = [('bench_watch', dict(seconds=34, every=1, sheet=False, lines=4))]
+    return t
+
+
 _ALL = {'fire': fire,'auto': auto, 'still': still, 'own': own, 'ctrl': ctrl, 'trick': trick}
-CHECKS = {'rewind': _ALL, 'rewind_imm': _ALL}
+CHECKS = {'rewind': _ALL, 'rewind_imm': _ALL, 'rewind_swap': {'swap': swap}}

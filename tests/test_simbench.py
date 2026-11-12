@@ -1767,3 +1767,10 @@ def test_rewind_carrier_wears_the_time_belt():
                    'an ImmortalBody); the simulator has no belt and no immortal body: 0 1 0')
 def test_rewind_auto_as_the_bench():
     assert _sim_run('rewind_imm', 'auto', 25.0).series[-1][1] == [1, 1, 1]
+
+
+def test_rewind_swap_as_the_bench():
+    """Bench CampRwSSwap_mcp_1111_163719 (the show version): at s20 旧血 1 旧归我 0 新归我 1 新血 49 -- the carrier
+    swapped for a new one of ours at ~50 %; the simulator reads the same."""
+    old_hp, old_ours, new_ours, new_hp = _sim_run('rewind_swap', 'swap', 20.0).series[-1][1]
+    assert (old_ours, new_ours) == (0, 1) and 45 <= new_hp <= 50 and old_hp <= 1

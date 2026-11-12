@@ -77,4 +77,43 @@ def mission(name='CampRw', body='HighlanderBody'):
     return m
 
 
-MISSION = {'rewind': lambda: mission(), 'rewind_imm': lambda: mission(name='CampRwI', body='ImmortalBody')}
+NEW = 'UNIT - CNV Liberty Rw New'
+SWAP_AT, NEW_HURT = 15, 3000            # health % that swaps it; damage to the new one (6000 hp: 50 %)
+
+
+def swapped(name='CampRwS'):
+    """The show the user chose instead of a real rewind (11-11): at SWAP_AT % the carrier is killed (its crash plays)
+    and a new one spawned where it was (UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION), playing Tanya's
+    time-warp FX as it is made (FXListBehavior onCreate), on the player's team if the old one was the player's then,
+    else Soviet_1's, and hurt to 50 %. Our Multigunners stand 100 south of it (gun 1 / gun 2)."""
+    u = lib_carrier()
+    m = Mission(name=name, map=island, units=[u])
+    m.put(u.id, 'west field', 0, -60, side='s1', name=CARRIER, role='carrier')
+    for k, dx in ((1, -40), (2, 40)):
+        m.put(GUN, 'west field', dx, 40, name=f'UNIT - CNV Rw Gun {k}', role=f'gun {k}')
+    low = ('UNIT_HEALTH', CARRIER, 1, SWAP_AT)
+    for side, cond in (('p1', [('NAMED_OWNED_BY_PLAYER', m.player('p1'), CARRIER)]), ('s1', [])):
+        m.scripts.append(Script(f'Rw - swap {side}', [low, ('FLAG', 'Rw Swapped', 0)] + cond,
+                                [('UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION', NEW, u.id,
+                                  island.TEAMS[side], CARRIER),
+                                 ('NAMED_DELETE', CARRIER), ('NAMED_DAMAGE', NEW, NEW_HURT), ('SET_FLAG', 'Rw Swapped', 1)]))
+    return m
+
+
+def lib_carrier(id='CNV_LibRwS'):
+    from units import liberty as lib
+    from units.liberty import sub1
+    u = lib.liberty(id, tag='RwS', drone_range=1, drones_home=False, model=None)
+    # bench CampRwSSwap_mcp_1111_163449: with retail's ActiveBody a 5200 blow at 56 % killed it before the swap ran;
+    # ImmortalBody holds it at 1 hp, so the swap always runs (and deletes it: NAMED_KILL cannot kill this body)
+    u.xml = sub1(u.xml, '<ActiveBody\n\t\t\t\tid="ModuleTag_Body"', '<ImmortalBody\n\t\t\t\tid="ModuleTag_Body"')
+    u.xml = sub1(u.xml, '\t\t</Behaviors>', '''			<FXListBehavior id="ModuleTag_CNV_RewindFX">
+				<DieMuxData DeathTypes="ALL"/>
+				<Event Index="onCreate" FX="FX_TanyaTimeWarp"/>
+			</FXListBehavior>
+		</Behaviors>''')
+    u.what = '自由号（演出版回溯）：出生时播谭雅时空腰带的特效'
+    return u
+
+
+MISSION = {'rewind_swap': lambda: swapped(),'rewind': lambda: mission(), 'rewind_imm': lambda: mission(name='CampRwI', body='ImmortalBody')}
