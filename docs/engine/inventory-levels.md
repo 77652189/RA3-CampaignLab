@@ -17,7 +17,7 @@
 | 未做 | AI | `造兵/BuildEntry.MinTime` | 34 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `人格/AIPersonalityDefinition.SkirmishPersonality` | 20 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `战略状态/AIStrategicStateDefinition.CannotAttackTargetReaction` | 16 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 未做 | AI | `造兵/BuildEntry.Upgrade` | 16 | a4 a7 | AI 模型代码里没有这个名字 |
+| 未做 | AI | `造兵/BuildEntry.Upgrade` | 16 | a4 a7 | C engine_aiupgrade a：aicupgon常量状态含UPGRADE_TECH/Tech2，s39起持有2；aicupgoff移除专用状态后恒0，配对均3/3 PASS；见work/re/c_upgrade_report.md。模型丢弃无Build条目且缺升级下单；共享消费者与B的MinTime重叠，待接口。tests/test_simai_upgrade_c.py按名回放，正组strict xfail；不晋升，精确时钟/预算账户/卖家选择/Tech3/日本升级均为gap |
 | 未做 | AI | `微操/AIMicroManagerData.DodgeThreats` | 15 | a4 a5 a7 | engine_aidodge aidodgeon/aidodgeoff 原版精确打击信标开关对照；tests/test_ai_dodge.py 按名回放，开启组 strict xfail：模型无躲避消费者，simai.micro_team 缺威胁视图与移动回调（归B）；见 work/re/c_dodge_report.md；固定0.5秒反应，截图秒窗与游戏帧漂移亦留gap；未量精确时间、圆边界、过滤和多威胁，不晋升已对拍 |
 | 未做 | AI | `目标/AITargetingHeuristic.HeuristicType=Expansion` | 12 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `造兵/CountAsStructureForBuildPurposesFilter.ExcludeThing` | 12 | a4 a5 a7 | AI 模型代码里没有这个名字 |

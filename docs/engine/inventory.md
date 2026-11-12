@@ -923,7 +923,7 @@
 | 已对拍 | `启发条件/TimerHeuristic.CountFrom` | 16 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
 | 未做 | `战略状态/AIStrategicStateDefinition.CannotAttackTargetReaction` | 16 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 已对拍 | `战略状态/AIStrategicStateDefinition.MaxRunningCopies` | 16 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aistate.py |
-| 未做 | `造兵/BuildEntry.Upgrade` | 16 | a4 a7 | AI 模型代码里没有这个名字 |
+| 未做 | `造兵/BuildEntry.Upgrade` | 16 | a4 a7 | C engine_aiupgrade a：aicupgon常量状态含UPGRADE_TECH/Tech2，s39起持有2；aicupgoff移除专用状态后恒0，配对均3/3 PASS；见work/re/c_upgrade_report.md。模型丢弃无Build条目且缺升级下单；共享消费者与B的MinTime重叠，待接口。tests/test_simai_upgrade_c.py按名回放，正组strict xfail；不晋升，精确时钟/预算账户/卖家选择/Tech3/日本升级均为gap |
 | 推断 | `人格/BaseSelection.PreferredBaseTypes` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | `人格/BaseSelection.SortOrder=PREFER_OLDEST` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/ConstantHeuristic.Weight` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字 |
