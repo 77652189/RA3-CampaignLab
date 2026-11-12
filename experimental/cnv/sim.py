@@ -3335,7 +3335,7 @@ class Sim:
                 curtain_host = True
                 if a[1] == 'SpecialPowerIronCurtain' and b and b.alive:
                     module = simunits.ocl_power(b.template, a[1], self.own)
-                    curtain_host = bool(module and module['OCL'] == 'OCL_IronCurtain' and
+                    curtain_host = bool(module and simunits.iron_curtain_ocl(module['OCL'], self.own) and
                                         module['CreateLocation'] == 'CREATE_AT_LOCATION' and
                                         module['CanAffectObjectFilter'] ==
                                         'SovietIronCurtainSpecialPowerObjectFilter')

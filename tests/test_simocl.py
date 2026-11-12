@@ -47,3 +47,41 @@ def test_iron_curtain_empty_ocl_reference():
     assert all(row[1] < 100 and row[2] < 100 and row[3] == 1 for row in rows), rows
     assert all(ok for ok, _ in build.judge(t, s.series))
     assert not any('OCLSpecialPower' in gap['what'] for gap in s.unmodeled.values()), s.unmodeled
+
+
+def test_iron_curtain_copied_ocl_reference():
+    """E64 named replay: identical nonempty payload under a new reference.
+
+    Engine protection/cast readings: see work/re/e_ocl_e64.md.
+    Unknown payloads must retain their gap instead of inheriting protection.
+    """
+    import build
+    import sim
+    import simunits
+    m, t, _ = build.resolve('engine_oclcopy', 'a')
+    s = sim.Sim(m, t).run(34.0)
+    rows = [row for _, row in s.series if 90 <= row[0] <= 180]
+    assert rows
+    assert all(row[1:4] == [100, 100, 1] for row in rows), rows
+    assert s.series[-1][1][1] < 100 and s.series[-1][1][2] < 100
+    assert all(ok for ok, _ in build.judge(t, s.series))
+    assert not any('OCLSpecialPower' in gap['what'] for gap in s.unmodeled.values()), s.unmodeled
+    assert simunits.iron_curtain_ocl('CNVOclCopyList', s.own)
+    assert not simunits.iron_curtain_ocl('MissingList', s.own)
+    assert not simunits.iron_curtain_ocl('CNVOclEmptyList', s.own)
+    # INFERRED conservative boundary: any unmeasured payload change stays a gap.
+    for old, new in [('IronCurtainEffect', 'UnknownEffect'),
+                     ('Options="CREATE_AT_TARGET"', 'Options="NONE"'),
+                     ('<CreateObject\n', '<CreateObject Count="2"\n')]:
+        changed = {key: xml.replace(old, new) for key, xml in s.own.items()}
+        assert changed != s.own
+        assert not simunits.iron_curtain_ocl('CNVOclCopyList', changed)
+    # A familiar reference name must not override a locally changed payload.
+    renamed = {key: xml.replace('CNVOclCopyList', 'OCL_IronCurtain').replace(
+        'IronCurtainEffect', 'UnknownEffect') for key, xml in s.own.items()}
+    assert not simunits.iron_curtain_ocl('OCL_IronCurtain', renamed)
+    for unit in m.units:
+        unit.xml = unit.xml.replace('IronCurtainEffect', 'UnknownEffect')
+    unknown = sim.Sim(m, t).run(20.0)
+    assert any('OCLSpecialPower' in gap['what'] for gap in unknown.unmodeled.values())
+    assert unknown.series[-1][1][1] < 100 and unknown.series[-1][1][2] < 100

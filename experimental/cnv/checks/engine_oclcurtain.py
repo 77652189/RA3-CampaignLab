@@ -8,6 +8,10 @@ protection. This measures the module dispatch boundary, not general OCL behavior
 E63: a matching module bound to a legal empty OCL should still dispatch one
 cast event, but create no protection. The retail reference is the positive
 control; enemy fire and the bounded observation window stay identical.
+
+E64: a new local reference with the identical retail CreateObject payload
+should protect both tanks and dispatch once, just like the positive control.
+This measures protection, not a count of generated objects.
 """
 from checks.engine_super import super_test
 
@@ -25,6 +29,7 @@ def check(m, valid, casts=None):
 
 
 CHECKS = {'engine_oclcurtain': {'a': lambda m: check(m, True)},
+          'engine_oclcopy': {'a': lambda m: check(m, True)},
           'engine_oclempty': {'a': lambda m: check(m, False, casts=1)},
           'engine_oclnone': {'a': lambda m: check(m, False)},
           'engine_oclwrong': {'a': lambda m: check(m, False)}}

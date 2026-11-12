@@ -12,6 +12,7 @@ import os
 import re
 import struct
 import sys
+import xml.etree.ElementTree as ET
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'campaign'))
@@ -1755,7 +1756,7 @@ def _retail_power_heads():
 def ocl_power(template, power, own=None):
     """The matching host OCLSpecialPower attributes, or None (nearest module group).
 
-    Only Iron Curtain's retail reference and a locally declared empty OCL are
+    Only Iron Curtain's retail payload and a locally declared empty OCL are
     replayed; callers must keep other OCL configurations as explicit gaps.
     """
     def read(xml):
@@ -1783,6 +1784,44 @@ def empty_ocl(ocl, own=None):
                 return (not inner.strip() and _attr(head, 'Flags', 'NONE') == 'NONE' and
                         set(re.findall(r'(\w+)\s*=', head)) <= {'id', 'Flags'})
     return False
+
+
+def iron_curtain_ocl(ocl, own=None):
+    """E64: resolve the reference, accepting only the measured retail payload.
+
+    engine_oclcopy replays the same CreateObject/IronCurtainEffect under a
+    new local id. This dispatches the existing effect; it does not implement
+    general OCL creation. Attribute order/whitespace equivalence is INFERRED.
+    Changed flags, nuggets, counts, options or effects remain explicit gaps.
+    A local declaration takes precedence over the familiar retail name.
+    """
+    def declarations(xml):
+        xml = re.sub(r'<!--.*?-->', '', xml, flags=re.S)
+        return list(_blocks(xml, 'ObjectCreationList'))
+
+    def signature(head, inner):
+        try:
+            root = ET.fromstring(f'<ObjectCreationList {head}>{inner}</ObjectCreationList>')
+        except ET.ParseError:
+            return None
+        root.attrib.pop('id', None)
+
+        def tree(node):
+            return (node.tag, tuple(sorted(node.attrib.items())),
+                    (node.text or '').strip(), (node.tail or '').strip(),
+                    tuple(tree(child) for child in node))
+        return tree(root)
+
+    with open(os.path.join(SAGEXML, 'GlobalData', 'ObjectCreationLists.xml'),
+              encoding='utf-8-sig') as f:
+        retail = declarations(f.read())
+    expected = next((signature(head, inner) for head, inner in retail
+                     if _attr(head, 'id') == 'OCL_IronCurtain'), None)
+    for xml in (own or {}).values():
+        for head, inner in declarations(xml):
+            if _attr(head, 'id') == ocl:
+                return expected is not None and signature(head, inner) == expected
+    return ocl == 'OCL_IronCurtain' and expected is not None
 
 
 def power_rules(template, power, own=None):
