@@ -20,6 +20,34 @@ _spec.loader.exec_module(simai)
 pytestmark = pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
 
 
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+    'D78 same-run commands diverge: retail stands west at frame 191, while the model stands east. '
+    'The E96 candidate reaches the measured point only at frame 214 and repeats orders; '
+    'readiness and member destinations remain gaps. See work/re/e97_aesthetics_same_frame.md.'))
+def test_tactic_aesthetics_replays_same_frame_commands():
+    """Replay D78 CampAIAesOnA_mcp_1112_111517 without shifting frame clocks.
+
+    At f166 the last command is f158 to the centre; f196 and f256 retain
+    f191's west stand point. All three samples have state 8 and one member.
+    Command coordinates were logged to one decimal place. This checks the
+    issued point, independently of formation offsets or square occupancy.
+    """
+    w = simai.run('aiaeson', 'a', until=18, lib=simai.model()['xmldata'].Library(), record=True)
+    brain, = w.brains.values()
+    observed = {166: (3850.0, 3400.0), 196: (1859.9, 3201.0), 256: (1859.9, 3201.0)}
+    for frame, point in observed.items():
+        rows = [row for row in brain.rec['frames'] if row['frame'] == frame]
+        assert len(rows) == 1, (frame, rows)
+        row, = rows
+        assert row['state'] == 8, (frame, row)
+        assert len(row['members']) == 1, (frame, row)
+        member, = row['members']
+        assert member['alive'], (frame, member)
+        orders = [o for o in brain.rec['orders'] if o['frame'] <= frame and o['member'] == member['name']]
+        assert orders, frame
+        assert orders[-1]['point'] == pytest.approx(point, abs=0.05), (frame, orders[-1])
+
+
 @pytest.mark.xfail(strict=True, reason='E85 engine_aifriendly a: both types yield zero arrivals with both MCVs alive; '
                   'default model sends four to the selected MCV. StaticDefense/selection boundary unresolved; '
                   'see work/re/handoff-e.md and work/re/e_friendly_e85.md.')

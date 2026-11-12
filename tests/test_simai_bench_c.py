@@ -430,8 +430,10 @@ def test_tactic_aesthetics_displacement_and_survival(build):
 
 @pytest.mark.parametrize('build', [
     pytest.param('aiaeson', marks=pytest.mark.xfail(strict=True, reason=(
-        'Enabled aesthetics stand-point selection remains unresolved; disabled return now replays. '
-        'Exact random stream and stand-point observations are missing. See work/re/e_aesthetics_e89.md.'))),
+        'D78 observes a fixed enabled-aesthetics point; the E96 candidate matches its geometry, '
+        'but first orders at frame 214 instead of 191 and repeats while retail does not. '
+        'Readiness, member destinations and order conditions remain gaps. '
+        'See work/re/e97_aesthetics_same_frame.md.'))),
     'aiaesoff',
 ])
 def test_tactic_aesthetics_replays_named_location_transitions(build):
