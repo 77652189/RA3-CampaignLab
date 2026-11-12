@@ -134,7 +134,7 @@ def test_alpha_close_arrives_with_target_at_seventy_percent(alpha_close_rows):
     'low remains HP64/home3/live3. Exact firing/retreat chronology still needs '
     'same-frame engine target/member/eligibility evidence. No threshold fitting or '
     'inventory promotion. E98 per-frame observer failed baseline qualification '
-    'before target engagement; it cannot close this gap. See work/re/handoff-e.md, '
+    'before the guard/Alpha confrontation; it cannot close this gap. See work/re/handoff-e.md, '
     'work/re/e_alpha_e90.md and work/re/e98_alpha_observer.md.'))
 def test_alpha_close_replays_measured_outcome(alpha_close_rows):
     """Stable s39-55 bench plateaus; no exact dispatch-frame inference."""

@@ -31,7 +31,7 @@ def observe(m):
     """Check observer equivalence against the original measured plateaus.
 
     E98's per-frame carrier failed this qualification: the capture ended before
-    target engagement. Do not use this run to prove Alpha eligibility or shift
+    the guard/Alpha confrontation. Do not use it to prove Alpha eligibility or shift
     its clock to fit the original bench. Evidence and open clock questions:
     work/re/e98_alpha_observer.md.
     """
