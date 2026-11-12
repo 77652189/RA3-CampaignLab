@@ -35,3 +35,25 @@ def test_alpha_threshold_first_cycle_retreats_with_the_target_alive(lib, build):
     assert any(r['到远厂'] >= 1 for r in rows[10:35])
     assert any(r['步兵在家'] >= 1 and r['步兵数'] >= 1 for r in rows[25:40])
     assert all(r['目标血量'] == 70 for r in rows)
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+    'Both engine lanes have 2 at the far plant at s15-16 and all 4 home at s26-41; '
+    'replay has 0 at the plant at s15-16 and 0 home at s26. Alpha applicability '
+    'on the engine remains unknown; see work/re/c_alpha_report.md and work/re/handoff-c.md.'))
+@pytest.mark.parametrize('build', ['aialphalo', 'aialphahi'])
+def test_alpha_first_cycle_matches_measured_arrival_and_return(lib, build):
+    """engine_aialphahp: measured clock windows, without claiming an engine AI state.
+
+    The broad replay above only proves eventual arrival/return. These windows
+    retain the timing gap found by the read-only trace; they are bench readings,
+    not assertions about the simulator's own state or AlphaStrike conditions.
+    """
+    w, rows = _probe_run(build, lib, 40.0)
+    timed = {t: row for (t, _), row in zip(w.sim.series, rows)}
+    assert all(row['目标血量'] == 70 and row['步兵数'] == 4 for row in rows)
+    for second in (15, 16):
+        assert timed[second]['到远厂'] == 2
+    returning = [row for t, row in timed.items() if 26 <= t <= 39]
+    assert len(returning) == 14
+    assert all(row['步兵在家'] == 4 for row in returning)
