@@ -448,6 +448,20 @@ def test_a_build_state_hung_at_hard_does_not_build_at_medium(lib):
     assert rows[166]['新标枪'] >= 1
 
 
+@pytest.mark.xfail(strict=True, reason='B round 139: the model orders a Javelin first (the build states take the new '
+                   'barracks); work/re/b142_first_lookup_zero.patch fixes this replay but its later draws turn '
+                   'test_simai_bench_e aiskvinf / test_against_conscripts red (handoff-b 142)')
+def test_a_new_barracks_first_unit_is_the_unit_builders(lib):
+    """aiskvveh check t (ten Hammers): bench 2026-11-12 -- 警犬 1 at s23, 标枪 1 at s29 .. 6 at s57, 维和 0 and
+    工程师 0 to s143. The barracks' first idle frame goes to the unit builder (the BEST_UNIT_EXPECTED entries score
+    0 on a template's first lookup, FIRST_LOOKUP_ZERO), whose uniform draw gave the dog; the build states then
+    take it for Javelins until the Deposit's 2000 is spent. Which unit the draw gives is luck (seed 1 = the dog)."""
+    _, rows = _probe_run('aiskvveh', lib, 100, 't')
+    assert rows[27]['警犬总数'] == 1 and rows[27]['标枪总数'] == 0
+    assert max(r['维和总数'] for r in rows) == 0
+    assert rows[98]['标枪总数'] == 6 and rows[98]['警犬总数'] == 1
+
+
 def test_a_level_personality_lists_our_units_in_a_build_state_of_its_own():
     """enemy_ai.personality(new_units=...) writes what aisknew2 benched (a ConstantHeuristic state, FEWEST_UNIT,
     the unit's file included): read by the engine model, the personality's build states list it with its

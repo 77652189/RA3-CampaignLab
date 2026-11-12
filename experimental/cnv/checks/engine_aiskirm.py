@@ -577,6 +577,29 @@ def z(m):
 #   aiskvinf run expected a Javelin and FAILed on it; the expectation is now the counter's.)
 
 
+def t(m):
+    """Where does the opening's last 200 go (aiskvveh: six Javelins = 1800 of the PRODUCTION Deposit 2000)? z counts
+    no dogs or engineers; this counts s1's Peacekeepers, Javelins, attack dogs and engineers to 150 s after the wake.
+    The model (unit builder: a uniform draw among the barracks' units, the drawn one bought if it fits the account)
+    spends it on a Peacekeeper or a dog (200 each; 5 of 6 seeds a Peacekeeper) about s58-s85; z's bench had no
+    Peacekeeper. Prediction: one dog, no Peacekeeper -- the draw, not a rule; no dog either = the 200 stays."""
+    tt = Test()
+    s1 = m.player('s1')
+    tt.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    names = (('AlliedAntiInfantryInfantry', 'CNV_AK_TPk', '维和总数'), ('AlliedAntiVehicleInfantry', 'CNV_AK_TJav', '标枪总数'),
+             ('AlliedScoutInfantry', 'CNV_AK_TDog', '警犬总数'), ('AlliedEngineer', 'CNV_AK_TEng', '工程师总数'))
+    for tpl, counter, label in names:
+        m.spawns.add(tpl)
+        counted(counter, label, tt, template=tpl, player=s1, most=16)
+    w = m.facts['wake at']
+    tt.expect += [('警犬总数', w + 140.0, 'ever>=', 1, w + 150.0)]
+    tt.bench = [('bench_watch', dict(seconds=w + 154.0, every=1, sheet=False, lines=len(tt.counters)))]
+    return tt
+# RESULTS t (bench 2026-11-12, work/testbench/runs/CampAISkVVehT_mcp_1112_011517): PASS. 警犬 1 s23 (before the first
+#   Javelin, s29), 标枪 6 s57 .. 11 s166, 维和 0 to s168, 工程师 1 s144. The barracks' first unit is the unit builder's
+#   draw; the build states then take it (B handoff 142).
+
+
 JAV_OUT_AT = 100.0                 # mission second the named Javelin soldier is teleported out (e)
 
 
@@ -832,4 +855,4 @@ CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j
           'aiskrand': {'s': s},
           'aiskdiff': {'s': s},
           'aiskvinf': {'z': z},
-          'aiskvveh': {'z': z}}
+          'aiskvveh': {'z': z, 't': t}}
