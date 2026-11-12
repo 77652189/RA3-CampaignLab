@@ -132,7 +132,7 @@
 | 已对拍 | 脚本动作 | `NAMED_REMOVE_UPGRADE` | 11 | a8 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_invuln.py |
 | 已对拍 | 脚本动作 | `TEAM_GUARD_AREA` | 9 | a1 a4 a5 a6 a7 a8 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts4.py |
 | 已对拍 | 脚本动作 | `MAP_REVEAL_AT_WAYPOINT` | 8 | a1 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_vision.py |
-| 已对拍 | 脚本动作 | `SET_COUNTER_TO_COUNTER` | 8 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 引擎模型核心；台上量过、测试对拍：checks/engine_contained.py |
+| 已对拍 | 脚本动作 | `SET_COUNTER_TO_COUNTER` | 8 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 引擎模型核心；台上量过、测试对拍：checks/engine_aimicro.py |
 | 已对拍 | 脚本动作 | `UNIT_CHANGE_OBJECT_STATUS:UNATTACKABLE` | 7 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attach.py |
 | 已对拍 | 脚本条件 | `FLAG` | 5099 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 引擎模型核心；台上量过、测试对拍：checks/engine_aimicro.py |
 | 已对拍 | 脚本条件 | `TIMER_EXPIRED` | 3917 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 引擎模型核心；台上量过、测试对拍：checks/engine_acquire.py |

@@ -168,7 +168,7 @@
 | 推断 | AI | `启发条件/IsBuildingHeuristic.PassIfBuilding` | 30 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `微操/AIMicroManagerData.AlphaStrikeTargetHealthPct` | 28 | a4 a5 a7 | engine_aialphahp 固定远厂70%血量，仅阈值0.01/0.9不同；有限诊断不等于字段闭环；tests/test_simai_alphahp.py 保留完整回放，AlphaStrike目标可用条件待证实，见 handoff-c |
 | 推断 | AI | `目标/AITargetingHeuristic.HeuristicType=FriendlyUnit` | 27 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `微操/AIMicroManagerData.UpdateTime` | 26 | a4 a5 a7 | 台上量过（engine_aidefense aidefctl4：每圈晚 1～2 s）；模拟器 4 s 与 1 s 逐秒相同（tests/test_simai_bench_b.py strict xfail） |
+| 推断 | AI | `微操/AIMicroManagerData.UpdateTime` | 26 | a4 a5 a7 | engine_aimicro aimicupfast/aimicupslow:a 仅切微操0.5/4s；台内首冲帧363/317、首活均2；tests/test_simai_bench_c.py 按名回放存活通过，精确时钟strict xfail（模型271/309）；资格/更新相位仍gap，不能解释为固定延迟；旧aidefctl4改的是Tactic.UpdateTime，非本字段证据；见work/re/c_update_time_report.md，不晋升 |
 | 推断 | AI | `组队招人/TeamTemplate.ReleaseType=NEVER_RELEASE` | 25 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `战术/Tactic.Tactic=Engineer` | 24 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `微操/AIMicroManagerData.EnterBaseDefensesWhenIdle` | 23 | a4 a5 a7 | engine_aibasedef aibd1 是战斗中总开关开、idle关的正例（s21起1人进炮塔）；aibd0/aibdidle 总开关均关且无人进驻，不是idle分支正例；tests/test_simai_basedef_idle.py 直接计数回放，aibd1仍strict xfail；消费者已调用，到达/炮塔存活差异待A/B接口；见 handoff-c |
