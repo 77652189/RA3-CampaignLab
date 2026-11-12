@@ -64,4 +64,19 @@ def check_soviet(m):
     return check(m)
 
 
-CHECKS = {'engine_infvis': {'a': check, 'b': check_soviet}}
+def check_japan(m):
+    """c: Japan yard shares ordinary VISION; shroud is 1000, vision is 100.
+
+    Predict unchanged a/b stable readings with the same controls and windows.
+    Radar freeze and exact activation timing remain outside this slice.
+    Bench: s1-s10 11100/11100/0; s11-s18 1100/11100/0;
+    s19-s39 1100/11100/1. FAIL at s18; preserve that diagnostic window.
+    """
+    for role in ('enemy', 'ally'):
+        yard = m.role(role)
+        yard.template = 'JapanConstructionYard'
+        m.find(yard.name).template = yard.template
+    return check(m)
+
+
+CHECKS = {'engine_infvis': {'a': check, 'b': check_soviet, 'c': check_japan}}

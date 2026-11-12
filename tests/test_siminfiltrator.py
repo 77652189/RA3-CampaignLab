@@ -109,12 +109,17 @@ def test_unmeasured_infiltration_effect_reports_gap_instead_of_capture():
 
 
 @pytest.mark.parametrize('check, template', [
-    ('a', 'AlliedConstructionYard'), ('b', 'SovietConstructionYard')])
+    ('a', 'AlliedConstructionYard'), ('b', 'SovietConstructionYard'),
+    pytest.param('c', 'JapanConstructionYard', marks=pytest.mark.xfail(
+        strict=True, reason='E76日本宿主s18视野仍0、s19起1，原窗口未通过；'
+        '激活时序未解释且未扩展宿主模型，见 work/re/handoff-e.md 和 e_infvis_e76.md'))])
 def test_spy_ordinary_vision_as_on_the_bench(check, template):
-    """engine_infvis:a/b: actual discovered markers, consumed enemy, refused ally.
+    """engine_infvis:a/b/c: actual discovered markers, consumed enemy, refused ally.
 
     a: s1-s10 11100/11100/0; s11-s15 1100/11100/0; s16-s37 1100/11100/1.
     b: s1-s10 11100/11100/0; s11-s17 1100/11100/0; s18-s38 1100/11100/1.
+    c: s1-s10 11100/11100/0; s11-s18 1100/11100/0; s19-s39 1100/11100/1.
+    c failed the unchanged s18 window; host support remains a strict expected gap.
     Stable windows only; exact arrival/activation mechanism, other templates,
     observer destruction, radar freeze and repeated infiltration remain gaps.
     """
