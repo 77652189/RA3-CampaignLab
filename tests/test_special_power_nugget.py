@@ -399,3 +399,24 @@ def test_special_power_nugget_native_bombing_consumer_bench_replay():
     assert tuple(result.series[-1][1]) == measured
     assert all(tuple(row) == measured for sec, row in result.series if sec >= 22)
     assert (sim.GAP_WEAPON, 'SpecialPowerNugget') not in e.unmodeled
+
+
+@pytest.mark.xfail(strict=True, reason=(
+    'Retail spy SPN disguise consumer and model-condition script interface are '
+    'unsupported. See work/re/c_spndisguise_report.md and handoff-c.md.'))
+def test_special_power_nugget_native_disguise_consumer_bench_replay():
+    """engine_spndisguise a: native consumer, removed SPN/handler, query control.
+
+    The expected values are the independent bench readings, not simulator
+    output. Keep the missing consumer visible until the full replay passes.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_spndisguise', 'a')
+    e = sim.Sim(m, t)
+    e.shot_clock = True
+    result = e.run(14)
+    measured = (1111, 1110, 1110, 1111)
+    assert tuple(result.series[-1][1]) == measured
+    assert all(tuple(row) == measured for sec, row in result.series if sec >= 12)
+    assert (sim.GAP_WEAPON, 'SpecialPowerNugget') not in e.unmodeled
