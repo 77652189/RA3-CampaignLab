@@ -512,7 +512,7 @@ class Body:
     up_since: dict = dataclasses.field(default_factory=dict)   # upgrade -> the frame it was given (a Duration runs)
     level_rank: int = 1                                      # LevelUpUpgrade creation grants; not combat XP
     level_modules: set = dataclasses.field(default_factory=set)  # active creation modules; removal rearms, keeps rank
-    script_status: set = dataclasses.field(default_factory=set)  # UNIT_CHANGE_OBJECT_STATUS's bits; `status` is these
+    script_status: set = dataclasses.field(default_factory=set)  # persistent script/startup bits; `status` is these
                                                                 # + the modifiers' (modify)
     slots: object = None                                        # simunits.weapon_sets: the weapons chosen by status (None: fixed)
     auras_on: dict = dataclasses.field(default_factory=dict)   # modifier id -> (until frame, xml) an aura hung on it
@@ -1136,6 +1136,13 @@ class Sim:
                 b.immortal, immortal_hp = True, proxy_hp
                 b.health_floor = proxy_hp * 0.01
             self.gap('ManagerBody', template, '仅HB_Bridge_02整体代理脚本伤害已量；有效HP/内部下限映射INFERRED，其他配置、桥段生成、共享血量与维修未建模')
+        wall_start = simunits.wall_builder_start(template, self.own)
+        if wall_start:
+            if not by and wall_start['secondary'] and wall_start['status'] == 'WALL_SEGMENT':
+                b.script_status.add('WALL_SEGMENT')
+                b.status.add('WALL_SEGMENT')
+            self.gap('WallBuilderBehavior', template,
+                     '仅预摆墙默认WALL_SEGMENT初始状态已量；运行时生成/建墙/连接/段数上限/生死联动、自定义状态与模型条件未建模；其他继承覆盖默认值INFERRED，脚本改位交互未测')
         b.suppression_rule = simunits.suppression(template, self.own)
         if template not in self._attachment_rules:
             self._attachment_rules[template] = simunits.attach_modules(template, self.own)

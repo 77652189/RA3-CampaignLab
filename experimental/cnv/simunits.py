@@ -1096,6 +1096,23 @@ def manager_proxy_health(template, own=None):
     return _chain(template, own, read)
 
 
+def wall_builder_start(template, own=None):
+    """Startup only: engine_wallinit:a measured the default WALL_SEGMENT bit.
+
+    Construction, connections, limits and nondefault status/model flags are gaps.
+    Nearest declaration supplies StartInSecondaryModel (retail segments write it).
+    INFERRED outside those profiles: defaults on the nearest declaration; arbitrary
+    inherited field overrides have not been compared.
+    """
+    def read(xml):
+        clean = re.sub(r'<!--.*?-->', '', xml or '', flags=re.S)
+        for head, _ in _blocks(clean, 'WallBuilderBehavior'):
+            return {'secondary': _attr(head, 'StartInSecondaryModel', 'false').lower() == 'true',
+                    'status': _attr(head, 'SecondaryObjectStatus', 'WALL_SEGMENT')}
+        return None
+    return _chain(template, own, read)
+
+
 def suppression(template, own=None):
     """Nearest infantry suppression rule; an explicit Remove stops inheritance.
 
