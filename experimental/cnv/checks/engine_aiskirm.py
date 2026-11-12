@@ -932,13 +932,20 @@ def mt(m):
     Second run (with the 3 plants, run CampAISkMTMt_mcp_1112_123106, PASS): **still no tech building to s377**
     (~365 s after the wake, past ForceTime 151); 电厂 3 -> 4 at s29 -> 5 at s80 (the opening's two), money 50000 ->
     8900 on units. Power is not what holds it: some other gate (B handoff 154's table). aiskmto not run yet.
+    aiskmtc (CONSTANT 300 tower, run CampAISkMTCMt_mcp_1112_125012): towers at s148 / s172 / s258; aiskmtt (the same
+    tower TECH MinTime 200 ForceTime 201, run CampAISkMTTMt_mcp_1112_125641): s149 / s169 / s265 -- the same, so the
+    towers are the inherited stock state's, not this entry's: neither run tells (B handoff 155; the yard's gate is
+    asked of D). A rerun needs a building no stock state builds.
     Data's prediction (D59, work/re/d59_b_fields.md 3): aiskmt forced (200) from t > 151 s after the wake -> 科技帧
     stops at ~151 x 15 (plus the yard's queue: the opening may still hold it); aiskmto: if t < MinTime is tested
     first, ~250 s; if ForceTime first, ~151 s as aiskmt. The stock tech state (MinTime 360 s) cannot come first. The
     simulator scores no TECH entry: none in either."""
     t = Test()
     s1 = m.player('s1')
-    _sum(t, m, s1, 'CNV_AK_Tech', '科技楼', ('AlliedTechStructure',))
+    if m.facts['build'] != 'AlliedTechStructure' or m.facts['min time'] is None:   # aiskmtc / aiskmtt: the tower
+        _sum(t, m, s1, 'CNV_AK_Tech', '塔', ('AlliedBaseDefense',))
+    else:
+        _sum(t, m, s1, 'CNV_AK_Tech', '科技楼', ('AlliedTechStructure',))
     _sum(t, m, s1, 'CNV_AK_Pow', '电厂', ('AlliedPowerPlant',))
     t.counters.append(('CNV_AK_Money', 'AI钱'))
     t.counters.append(('CNV_AK_TechF', '科技帧'))
@@ -978,6 +985,8 @@ CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j
           'aiskpti': {'pt': pt},
           'aiskmt': {'mt': mt},
           'aiskmto': {'mt': mt},
+          'aiskmtc': {'mt': mt},
+          'aiskmtt': {'mt': mt},
           'aiskrand': {'s': s},
           'aiskdiff': {'s': s},
           'aiskvinf': {'z': z, 't': t},
