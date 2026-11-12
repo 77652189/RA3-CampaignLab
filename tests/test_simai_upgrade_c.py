@@ -31,13 +31,9 @@ def test_upgrade_entry_pair_setup(upgrade_entry_pair):
     assert all(row['矿厂数'] >= 1 and row['建造厂数'] == 1 for row in rows)
 
 
-def test_upgrade_entry_pair_ownership(upgrade_entry_pair, request):
-    """Compare the bench's Tech2 ownership with the named simulator replay."""
+def test_upgrade_entry_pair_ownership(upgrade_entry_pair):
+    """Compare the bench's Tech2 ownership with the named simulator replay: bench aicupgon:a holds 2 from s39
+    (the yard and the barracks its TechUpgradeReceiver reaches), the model buys it at s20 and holds 2 from s40."""
     build, rows = upgrade_entry_pair
-    if build == 'aicupgon':
-        request.node.add_marker(pytest.mark.xfail(strict=True, reason=(
-            'Bench aicupgon:a Tech2 holders=2 from s39; codexc model=0: Upgrade entries '
-            'are discarded and AI upgrade orders absent. Shared consumer overlaps B MinTime; '
-            'see work/re/handoff-c.md and work/re/c_upgrade_report.md.')))
     holders = [row['二级持有'] for row in rows]
     assert all(n == (2 if build == 'aicupgon' else 0) for n in holders)

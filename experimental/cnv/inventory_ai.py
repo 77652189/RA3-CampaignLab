@@ -123,12 +123,12 @@ NOTES = {
         '不是现有建筑计数。模型未消费该过滤器，候选分类需接B共享build_units，'
         '普通建筑BuildState优先级亦缺消费者；按工单接口门禁停止，未上台、未晋升。'
         '待B给候选分类/优先级接口；见work/re/c_buildfilter_report.md'),
-    '造兵/BuildEntry.Upgrade': (TODO,
-        'C engine_aiupgrade a：aicupgon常量状态含UPGRADE_TECH/Tech2，s39起持有2；'
-        'aicupgoff移除专用状态后恒0，配对均3/3 PASS；见work/re/c_upgrade_report.md。'
-        '模型丢弃无Build条目且缺升级下单；共享消费者与B的MinTime重叠，待接口。'
-        'tests/test_simai_upgrade_c.py按名回放，正组strict xfail；不晋升，'
-        '精确时钟/预算账户/卖家选择/Tech3/日本升级均为gap'),
+    '造兵/BuildEntry.Upgrade': (BENCHED,
+        'C engine_aiupgrade a：aicupgon常量状态含UPGRADE_TECH/Tech2，s39起持有2（建造厂+它够得着的兵营）；'
+        'aicupgoff移除专用状态后恒0；见work/re/c_upgrade_report.md。B第153轮接模型：'
+        '升级条目按状态权重×分（UPGRADE 140；UPGRADE_TECH MinTime前0、ForceTime后200推断、中间140推断）'
+        '挑最高下单，扣PRODUCTION，下了升级这一轮不下兵；模拟器s20下单、s40起持有2。'
+        'tests/test_simai_upgrade_c.py按名回放两组通过。电力门、效率/兵力比两道、开局里的升级单没建模'),
     '目标/AITargetingHeuristic.Location': (BENCHED,
         'E81/E87 engine_ailocation a：同型电厂一陆一水、四架双刃，仅切Land/Water/Water Land；'
         's40到陆厂/到水厂分别4/0、0/4、4/0；'

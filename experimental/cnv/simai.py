@@ -164,6 +164,8 @@ class Brain:
         self.ai.offers = self.offers
         self.ai.build_offers = self.build_offers
         self.ai.near_factory = self.near_factory
+        self.ai.upgrade_offers = self.upgrade_offers
+        self.ai.upgrader = self.upgrade
         # BEST_UNIT_* scores (expected below) with host.efficiency (SimAI.efficiency): the build states then
         # take the idle barracks every second and the unit builder (every 10 s) finds it busy -- the bench (engine_
         # aiskirm z) builds only the counter (B handoff 131); off = the unit builder alone, as before round 129
@@ -652,6 +654,16 @@ class Brain:
             return False
         self.unit_q.append(template)
         return True
+
+    def upgrade_offers(self, ai, frame, upgrades):
+        """AIPlayer.upgrade_offers: {upgrade: cost} of `upgrades` a structure of the AI's buys now (Sim.upgrade_sellers:
+        its GameDependency met, not held, not in a queue)."""
+        s = self.sim
+        return {u: simunits.upgrade_cost(u)[0] for u in upgrades if s.upgrade_sellers(self.player, u)}
+
+    def upgrade(self, upgrade):
+        """AIPlayer.upgrader: queue the upgrade at the structure that buys it (Sim.order_build; paid as it builds)."""
+        return bool(self.sim.upgrade_sellers(self.player, upgrade)) and self.sim.order_build(self.player, upgrade)
 
     def offers(self, ai, frame):
         """AIPlayer.offers: the units the AI's live factories can build now (Sim.offers), as teams.Offer with the unit

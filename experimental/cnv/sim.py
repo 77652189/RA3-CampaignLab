@@ -2817,6 +2817,14 @@ class Sim:
             if b and not b.alive and b.read_until == self.frame_now():     # engine_sell e: a damage kill still reads
                 return st in b.status                                      # its bits in that frame
             return bool(b and b.alive and st in b.status)
+        if name == 'PLAYER_HAS_NUM_UNITS_WITH_UPGRADE':
+            # (player, n, upgrade): the player's living objects holding it -- its own (a bought OBJECT upgrade) or by
+            # a TechUpgradeReceiver near a holder (holds_upgrade's tiers). INFERRED >= n and the receiver counting:
+            # bench 2026-11-12 engine_aiupgrade a aicupgon (C line) reads 2 holders with one yard, its barracks beside
+            low = a[2].lower()
+            n = sum(1 for b in self.living() if b.owner == a[0] and not b.scenery
+                    and (low in {u.lower() for u in b.upgrades} or self._tier_held(a[0], b, low)))
+            return n >= a[1]
         if name == 'PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS':
             # (player, cmp, n, status): the player's living objects with that bit, compared with n (know-how 97; the
             # count probes model.counted(status=), engine_aimicro 冲 / 曾冲). INFERRED: the dying not counted, as
