@@ -717,7 +717,8 @@ def test_one_of_the_four_dies_at_the_house_door(lib):
 
 @pytest.fixture(scope='module')
 def spow():
-    return {b: simai.run(b, 'r', until=60.0) for b in ('aimicspon', 'aimicspoff', 'aimicengoff')}
+    return {b: simai.run(b, 'r', until=60.0, record=True)
+            for b in ('aimicspon', 'aimicspoff', 'aimicengoff')}
 
 
 def _first_fire(b):
@@ -760,22 +761,33 @@ def test_engage_hostile_same_view_has_same_power_decision(has_target):
     assert not fires['aimicspoff']
 
 
+@pytest.mark.xfail(strict=True, raises=AssertionError,
+                   reason="bench aimicengoff: the first two warriors fight at home and charge (~258 frames); "
+                          "the simulator marches that pair away without a target. Its ~457-frame charge comes "
+                          "from a replacement pair and cannot satisfy this observation; "
+                          "see work/re/handoff-c.md and work/re/c_engage_record_report.md (B target/order gap)")
 def test_engage_hostile_off_still_fights_and_charges(spow):
     """checks/engine_aimicro.py aimicengoff (bench B round 115): aimicspon with EngageHostileTargets="false" -- on
     the bench the warriors still fight the conscripts at home (在家 2 to s41) and charge (first ~258 frames after the
-    wake), alive to the end: the field off does not keep the team out of the fight. The sim's warriors fight and
-    want the charge too (by their own fire, not state 2's pick: no 'engage' in the tactics log)."""
+    wake), alive to the end: the field off does not keep the team out of the fight. Check the FIRST pair,
+    not the later scripted control or a replacement team. The simulator's first pair walks away; the
+    replacement pair's charge used to make this assertion pass without replaying the bench observation."""
     (b,) = spow['aimicengoff'].brains.values()
-    assert any('Bonzai' in c for _, _, _, c in b.fired), b.fired[:3]
+    first = next(r for r in b.rec['frames'] if any(m['alive'] for m in r['members']))
+    members = {m['name'] for m in first['members'] if m['alive']}
+    assert len(members) == 2, first
     assert not [e for e in b.tactics.log if e[1] == 'engage'], b.tactics.log[-5:]
+    charged = {name for _, _, name, command in b.fired if 'Bonzai' in command}
+    assert members & charged, {'first_pair': sorted(members), 'charged': sorted(charged)}
 
 
 @pytest.mark.xfail(strict=True, raises=(AssertionError, ValueError),
                    reason="bench (two runs each): EngageHostileTargets off charges ~258 frames after "
                                        "the wake, on ~362 -- off is ~100 frames earlier; the sim has it the other "
-                                       "way historically (off ~457, on ~275). Today the sim's off lane has no target "
-                                       "and no fire record at all (ValueError from _first_fire), the gap in "
-                                       "work/re/handoff-c.md; main stays green, the strict xfail flips when it is fixed")
+                                       "way (current off ~457 from a replacement pair, on ~267). The first off "
+                                       "pair has no target or charge; some earlier model versions had no off fire "
+                                       "record at all (ValueError from _first_fire). See work/re/handoff-c.md "
+                                       "and work/re/c_engage_record_report.md")
 def test_engage_hostile_off_charges_before_on(spow):
     (on,), (off,) = spow['aimicspon'].brains.values(), spow['aimicengoff'].brains.values()
     assert _first_fire(off) < _first_fire(on), (_first_fire(off), _first_fire(on))
