@@ -10,6 +10,42 @@ _module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_module)
 
 
+@pytest.mark.xfail(strict=True, reason='E77 VISION_UNITS进入/揭示未实现，实测车辆可见位间歇1/0，'
+                   '不能当连续30秒揭示；见 work/re/handoff-e.md 和 e_infveh_e77.md')
+def test_spy_vehicle_factory_as_on_the_bench():
+    """engine_infveh:a measured intermittent discovery, not the failed prediction.
+
+    s1-s9=11100/11100/0; s10-s16=1100/11100/1; s18=1100/11100/0;
+    s19-s25=1100/11100/1; s26-s27=1100/11100/0; s28-s29=1100/11100/1;
+    s30=1100/11100/0; s32=1100/11100/1; s33=1100/11100/0;
+    s34-s38=1100/11100/1. Absent samples impose no timing constraint.
+    """
+    import build
+    import sim
+    import siminfiltrator
+    m, t, mod = build.resolve('engine_infveh', 'a')
+    assert len(mod) <= 15 and '_' not in mod
+    rule = siminfiltrator.spec('AlliedWarFactory')
+    assert (rule['Effect'], rule['Duration'], rule['UnitDuration'], rule['ObjectRef']) == (
+        'VISION_UNITS', '30s', '30s', 'UnitVisionObserver')
+    s = sim.Sim(m, t).run(35)
+    for start, end, wanted in ((1, 7, [11100, 11100, 0]),
+                               (10, 16, [1100, 11100, 1]),
+                               (18, 18, [1100, 11100, 0]),
+                               (19, 25, [1100, 11100, 1]),
+                               (26, 27, [1100, 11100, 0]),
+                               (28, 29, [1100, 11100, 1]),
+                               (30, 30, [1100, 11100, 0]),
+                               (32, 32, [1100, 11100, 1]),
+                               (33, 33, [1100, 11100, 0]),
+                               (34, 35, [1100, 11100, 1])):
+        rows = [values for second, values in s.series if start <= second <= end]
+        assert rows and all(row == wanted for row in rows), rows
+    assert not s.body(m.role('enemy spy').name).alive
+    assert s.body(m.role('ally spy').name).alive
+    assert not any(key[0] == 'InfiltratorContain' for key in s.unmodeled)
+
+
 @pytest.mark.parametrize('check, template, plant_template', [
     ('a', 'AlliedInfiltrationInfantry', 'AlliedPowerPlant'),
     ('b', 'JapanInfiltrationInfantry', 'AlliedPowerPlant'),
