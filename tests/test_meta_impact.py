@@ -396,6 +396,46 @@ def test_meta_impact_delay_queue_replays_engine_knock_delay_due_frames(lane, col
     assert not retail[key].get('meta_impacts')
 
 
+@pytest.mark.parametrize('lane,collision,shock,y', [
+    ('rocket', 174, 204, 3750), ('strong', 173, 192, 850),
+])
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+    'Delayed collision dispatch does not consume the expiry queue or advance Physics; '
+    'see work/re/handoff-c.md and work/re/c_meta_dispatch_gap_report.md'))
+def test_meta_impact_delayed_collision_replays_observed_shock_frame(lane, collision, shock, y):
+    """Recorded arrival -> actual dispatch -> observed first delayed sample.
+
+    CampKDA_mcp_1111_005836: counters1174/100/1173/100. Neighbour probes
+    at shock204/192 read (2364.2, y-.7, 215.24), already past the start.
+    D39 establishes phase-1 expiry before Physics modules. Collision inputs
+    from health counters remain INFERRED; curved projectile arrival is supplied.
+    This asserts only that recorded sample, never a physical landing frame or
+    an unobserved Physics pause. Later probe/module ordering remains a gap.
+    """
+    import build
+    import sim
+    import simunits
+    from checks.engine_knock_probe import name
+
+    m, t, _ = build.resolve('engine_knock_delay', 'a')
+    e = sim.Sim(m, t)
+    by, victim, near = (e.bodies[name(lane, part)] for part in ('gun', 'man', 'near'))
+    weapon, = by.weapons
+    effect, = weapon['delayed_meta_impacts']
+    assert collision + simunits.meta_impact_delay_frames(effect['delay_seconds']) + 1 == shock
+    e.firing, e.volleys = [], []
+    e.eng.frame = collision
+    e.queue_projectile_hit(collision, victim, weapon['dmg'], by, weapon, (2300, y, 219))
+    for frame in range(collision, shock + 1):
+        e.eng.frame = frame
+        e.deal(1/15)
+        assert victim.hp == pytest.approx(148.5)
+        assert near.hp == 150
+        got = (near.x, near.y, e.impact_ground_z(near.x, near.y) if near.z is None else near.z)
+        expected = (2360, y, 212.5) if frame < shock else (2364.2, y-.7, 215.24)
+        assert got == pytest.approx(expected, abs=.051), (lane, frame, got)
+
+
 def test_meta_impact_delay_queue_keeps_other_events_and_rejects_unmodeled_variants():
     import simunits
 
