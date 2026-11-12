@@ -24,7 +24,10 @@ corrected build could not start DirectX; unchanged --no-build retry passed.
 Only direct zero-radius, teleport/stick/status subset is replayed. Complex
 retail module handlers remain gaps; this is not whole-item bench promotion.
 """
+import os
+import re
 import xml.etree.ElementTree as ET
+import labpaths
 from maps import probe_range
 from model import status
 from parts import Mission, Script, Test, square
@@ -191,5 +194,77 @@ def check_detach(m):
     return t
 
 
-MISSION={'engine_attach':mission,'engine_attach_detach':mission_detach}
-CHECKS={'engine_attach':{'a':check},'engine_attach_detach':{'a':check_detach}}
+def mission_parent_death():
+    """Simple/native module x live/killed parent; direct dispatch, not retail projectile.
+
+    base/high use the established simple module; order/removed use the complete
+    JapanScoutInfantry AttachUpdate unchanged. All children use its two status
+    bits. Parent kill at10s follows the8s attachment snapshot; late sample14s.
+    PREDICT simple live1023, simple kill992 (survive, clear all bits).
+    Native lanes may detach before8s: then death semantics remain a gap.
+    Before bits: ATTACHED512,parent256,NON_AUTOACQUIRABLE128,NO_COLLISIONS64.
+    Late bits: childAlive32,parentAlive16,ATTACHED8,parent4,NON2,COLL1.
+    No death HP read or delete involved. First run's combined child-bit query
+    was low; independent bits distinguish missing flags from an AND-query gap.
+    MEASURED2026-11-11: 958/928/48/32 (c_attach_parent_split_bench.log).
+    Simple NON_AUTOACQUIRABLE reads high; NO_COLLISIONS reads low at both
+    samples. Do not infer a reason or silently clear it in the model. Native
+    lanes have no8s link, so their death boundary remains unmeasured. See
+    work/re/c_attach_parent_report.md; full replay is a strict xfail.
+    """
+    m=mission();m.name='CampAttachP'
+    path=os.path.join(labpaths.SDK3,'SageXML','Japan','Units','JapanScoutInfantry.xml')
+    with open(path,encoding='utf-8') as f:
+        native=re.findall(r'<AttachUpdate\b.*?</AttachUpdate>',f.read(),re.S)
+    assert len(native)==1, 'native AttachUpdate provider changed'
+    for lane in CASES:
+        u=next(u for u in m.units if u.id=='CNV_Attach'+lane.title())
+        # All four lanes dispatch a valid nugget to a vehicle; no old filters.
+        u.xml=re.sub(r'<AttachNugget\b.*?</AttachNugget>','',u.xml,flags=re.S)
+        u.xml=u.xml.replace('</Nuggets>','<AttachNugget AttachModuleId="ModuleTag_Attach">'
+                            '<SpecialObjectFilter Rule="ANY" Include="VEHICLE"/></AttachNugget></Nuggets>')
+        u.xml=u.xml.replace('AttachedObjectStatus="ENCLOSED UNATTACKABLE"',
+                            'AttachedObjectStatus="NON_AUTOACQUIRABLE NO_COLLISIONS"')
+        if lane in ('order','removed'):
+            u.xml,n=re.subn(r'<AttachUpdate\b[^>]*/>',lambda _:native[0],u.xml)
+            assert n==1, 'simple AttachUpdate provider changed'
+        _module_contract(u)
+    return m
+
+
+def check_parent_death(m):
+    t=Test();start=[('MAP_REVEAL_ALL_PERM',m.player('p1'))]
+    for phase,at in (('Fire',6.),('Stop',6+4/15),('Before',8.),('Kill',10.),('Late',14.)):
+        start.append(('SET_MILLISECOND_TIMER','ParentDeath '+phase,at))
+    fire=[];stop=[]
+    for lane in CASES:
+        child,parent='Attach '+lane+' child','Attach '+lane+' parent'
+        c='CNV_ParentDeath_'+lane;t.counters.append((c,lane+' parent death'))
+        start.extend(('UNIT_CHANGE_OBJECT_STATUS',v,'NO_ATTACK',1) for v in (child,parent))
+        fire.extend((('UNIT_CHANGE_OBJECT_STATUS',child,'NO_ATTACK',0),('NAMED_ATTACK_NAMED',child,parent)))
+        stop.append(('UNIT_CHANGE_OBJECT_STATUS',child,'NO_ATTACK',1))
+        for phase,prefix in (('Before',64),('Late',1)):
+            samples=((8,[('UNIT_HAS_OBJECT_STATUS',child,status('ATTACHED'))]),
+                     (4,[('UNIT_HAS_OBJECT_STATUS',parent,status('VEHICLE_ATTACHED'))]),
+                     (2,[('UNIT_HAS_OBJECT_STATUS',child,status('NON_AUTOACQUIRABLE'))]),
+                     (1,[('UNIT_HAS_OBJECT_STATUS',child,status('NO_COLLISIONS'))]))
+            if phase=='Late':
+                samples+=((32,[('NAMED_NOT_DESTROYED',child)]),(16,[('NAMED_NOT_DESTROYED',parent)]))
+            for weight,conditions in samples:
+                t.scripts.append(Script(f'Test - parent death {lane} {phase}{weight}',
+                    [('TIMER_EXPIRED','ParentDeath '+phase),('FLAG','ParentDeath sampled '+phase,0)]+conditions,
+                    [('INCREMENT_COUNTER',prefix*weight,c)]))
+    for phase in ('Before','Late'):
+        t.scripts.append(Script('Test - parent death close '+phase,[('TIMER_EXPIRED','ParentDeath '+phase)],
+                               [('SET_FLAG','ParentDeath sampled '+phase,1)]))
+    t.scripts.insert(0,Script('Test - start',[],start))
+    for phase,actions in (('Fire',fire),('Stop',stop),('Kill',[
+            ('NAMED_KILL','Attach '+lane+' parent') for lane in ('high','removed')])):
+        t.scripts.append(Script('Test - parent death '+phase,[('TIMER_EXPIRED','ParentDeath '+phase)],actions))
+    t.expect=[(label,16,'==',value,18) for (_,label),value in zip(t.counters,(958,928,48,32))]
+    t.bench=[('bench_watch',dict(seconds=18.,every=.5,sheet=False,lines=4))]
+    return t
+
+
+MISSION={'engine_attach':mission,'engine_attach_detach':mission_detach,'engine_attach_parent':mission_parent_death}
+CHECKS={'engine_attach':{'a':check},'engine_attach_detach':{'a':check_detach},'engine_attach_parent':{'a':check_parent_death}}
