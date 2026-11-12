@@ -105,6 +105,10 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '组队招人/TeamTemplate.ReleaseType': (GUESSED,
+        'engine_aiskirm aiskirm:m 实机s128防御8/清扫99，s129防御0/清扫8，转队时逐帧兵池峰1；'
+        '后续s134峰2，不能宣称全程峰1；tests/test_simai_bench_c.py 按名回放至170秒无非空清扫计数，'
+        'strict xfail，需B区分命名队伍观测与释放消费者；其他释放模式仍gap，未晋升；见 work/re/c_release_report.md'),
     '微操/AIMicroManagerData.PassiveTargetSearchDistance': (TODO,
         'C接口闸门阻塞：被动目标分类/选择在B的tactics._team_state；'
         'micro.Team.enemies无被动分类，MicroBlock仅有技能回调，缺候选与距离基准及选敌回写；'
