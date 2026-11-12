@@ -1750,3 +1750,20 @@ def test_maxhealth_keeps_the_hit_points_unless_full_as_the_bench():
     ratio (甲 50)."""
     run = _sim_run('engine_maxhealth', 'mh', 8.0)
     assert run.series[-1][1] == [25, 100, 95, 50]
+
+
+# checks/engine_rewind.py (engine line D round 45, A8's Liberty rewind)
+def test_rewind_carrier_wears_the_time_belt():
+    """The carrier the A8 rewind bench flies: ImmortalBody (HighlanderBody let NAMED_DAMAGE kill it below full
+    health, bench CampRwStill_mcp_1111_161912) and Tanya's two belt modules, 3 s back."""
+    import build
+    m, _, _ = build.resolve('rewind_imm', 'auto')
+    x = m.units[0].xml
+    assert '<ImmortalBody' in x and 'TimeStepsBack="3s"' in x and '<StoreCurrentStateUpdate' in x
+
+
+@pytest.mark.xfail(strict=True, reason='bench CampRwIAuto_mcp_1111_162156 at s25: 血 1 回溯 1 原处 1 (the fatal blow '
+                   'rewound it home at full health, the one in the cooldown left it at 1 hp: NAMED_KILL does not kill '
+                   'an ImmortalBody); the simulator has no belt and no immortal body: 0 1 0')
+def test_rewind_auto_as_the_bench():
+    assert _sim_run('rewind_imm', 'auto', 25.0).series[-1][1] == [1, 1, 1]
