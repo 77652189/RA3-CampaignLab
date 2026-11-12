@@ -252,10 +252,10 @@ def test_a_script_move_order_never_takes_the_team_out_of_the_circle(lib):
     assert all(r == dict.fromkeys(r, 4) for r in rows[25:])
 
 
-@pytest.mark.xfail(strict=True, reason='simai aidefmv c: 圈100 0 at the end, 圈175 / 圈225 emptied by s30 (圈275 stays '
-                                       '4); bench: 圈100 4 from s57 to the end, 圈175 / 225 / 275 hold 4 throughout')
 def test_a_script_move_is_called_back_before_175(lib):
-    """checks/engine_aidefense.py c aidefmv."""
+    """checks/engine_aidefense.py c aidefmv (bench: 圈100 4 from s57 to the end, 圈175 / 225 / 275 hold 4 throughout).
+    A strict xfail till 11-12; it passes on origin/main 00136ca with or without round 177's refinery collector (engine
+    line A checked both), so the fix came earlier -- its commit not pinned."""
     _, rows = _probe_run('aidefmv', lib, 125.0, check='c')
     assert rows[-1] == dict.fromkeys(rows[-1], 4)
 

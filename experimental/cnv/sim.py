@@ -603,6 +603,8 @@ class Body:
     spawn_parent: object = None
     spawn_module: str = ''
     spawn_refills: list = dataclasses.field(default_factory=list)
+    unpack_parent: object = None                                # the refinery whose SpawnOnUnpack made it (not a
+                                                                # slave: outlives it, never replaced)
 
     def damage(self, amount):
         """The body's health floor (Generals reference: internalChangeHealth). A PropBody takes none (engine_propbody a)."""
@@ -1261,8 +1263,15 @@ class Sim:
         self.bodies[name] = b
         rules = self.__dict__.setdefault('_spawn_rules', {})
         if template not in rules:
-            rules[template] = simunits.spawn_modules(template, self.own)
-        for mid, child_template in rules[template].items():
+            rules[template] = simunits.spawn_modules(template, self.own), simunits.unpack_spawn(template, self.own)
+        for mid, child_template in rules[template][1].items():
+            if by:                      # built (simai gives the AI's its own, put) or a script's: not benched here
+                self.gap('SpawnBehavior', template, '建成或脚本创建的矿场自带矿车（SpawnOnUnpack）出车时机未对拍')
+                continue
+            self.unpack_child(b, child_template, at)
+        for mid, child_template in rules[template][0].items():
+            if mid in rules[template][1]:
+                continue
             self.gap('SpawnBehavior', template,
                      '仅盟军战车工厂配置开局3架、死亡10秒补充、母体清随从及缺电保持3架已量；子体直接删除、真正禁用、占领、缺电时死亡补充、'
                      '展开时机、其他配置未建模；生成位置INFERRED；不含SlavedUpdate/AttachUpdate维修')
@@ -1282,6 +1291,17 @@ class Sim:
         child = self.add(name, template, parent.owner, parent.x, parent.y, by=parent.name, at=at)
         child.spawn_parent, child.spawn_module = parent, mid
         parent.spawned_children.append(child)
+        return child
+
+    def unpack_child(self, parent, template, at):
+        """SpawnOnUnpack (simunits.unpack_spawn): a refinery the map places gives its one collector at the start, on
+        its own spot (bench 2026-11-12 mineturn<k> / mineniag p: the first money by the drive from there; the spot and
+        the 1 s fade INFERRED). Its own unit: it outlives the refinery (no SpawnedRequireSpawner)."""
+        name = f'#unpack {parent.name}'
+        while name in self.bodies:
+            name += '#'
+        child = self.add(name, template, parent.owner, parent.x, parent.y, by=parent.name, at=at)
+        child.unpack_parent = parent                # the owner's default team, as Generals' createSpawn (team '')
         return child
 
     def spawn_due(self, frame):

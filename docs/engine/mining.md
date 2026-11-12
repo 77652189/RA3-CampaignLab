@@ -25,6 +25,7 @@
 - 探针 `engine_mining.py` 的 `mineturn<k> p`：同一块地（矿场 180 远），只把矿井从零售朝向转 k 度。每趟帧数：0° **151**、±45° 186 / 187、±90° 241、135°（老 a 台，矿井 angle 0）269、180° 323。左右对称。
 - niagara 东矿（矿井 angle 0，偏 45°）上 AI 的矿车每趟 185 帧（`engine_aitower.py` aitowerinc5 f）——和地图、和是不是 AI 无关，只看朝向。
 - 对关卡的意思：**同一块矿，朝向放错收入少一半**（151 对 323 帧）。第 175 轮起地图生成器 `resources.objects` 默认把矿井放成零售朝向（`resources.node_angle`），合同 `contract.ore_faces_back` 守着；A7 的 niagara 东矿一趟因此从 185 变 151 帧（模拟器，同 mineturn0 p 的几何）。已经量过的台子钉旧朝向（angle 0，读数不重量）：探针图 probe_range / probe_infmoney / probe_border 写 `NODES = resources.MEASURED`，niagara 上的台子用 `resources.measured(niagara)`。新台子默认零售朝向。
+- 模拟器全流程（第 177 轮起）：地图摆的矿场开局在自己位置送 1 辆矿车（`SpawnOnUnpack`，`simunits.unpack_spawn` / `sim.Sim.unpack_child`，位置推断），mineturn* / mineniag / engine_mining a 的模拟器版直接出钱，周期差 ≤ 2 帧；首笔零售朝向晚 11 帧（122 对 111）、b 里矿场送的那辆先到矿井、两辆都干活（台上是摆的那辆干、送的那辆卡住），两条 strict xfail 记在 `tests/test_simbench.py`。建成或脚本造的矿场不送（缺口；AI 造的由 simai 自己补）。
 - 模拟器：单程 = 直线距离 / 速度 + 按偏角查表（`sim.MINE_TURN_EXTRA`：0° −9、45° 8、90° 36、135° 50、180° 77 帧，中间线性，推断）。
 
 ## 3. 第二辆矿车在同一个矿井上不增加收入（测）

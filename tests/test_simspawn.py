@@ -125,3 +125,33 @@ def test_spawn_power_outage_and_recovery_match_named_bench():
     assert all(c.alive for c in parent.spawned_children)
     assert not parent.spawn_refills
     assert e.power(m.player('p1')) == (100, 50)
+
+
+def test_unpack_spawn_reads_each_refinery_s_one_collector_and_nothing_else():
+    """SpawnOnUnpack (round 177): the three refineries' one-shot collector; the war factory's drones are not it, and a
+    changed attribute is not it either (stays spawn_modules' gap)."""
+    import simunits
+    assert simunits.unpack_spawn('AlliedRefinery') == {'ModuleTag_Spawn': 'AlliedMiner'}
+    assert simunits.unpack_spawn('SovietRefinery') == {'ModuleTag_Spawn': 'SovietMiner'}
+    assert simunits.unpack_spawn('JapanRefinery') == {'ModuleTag_Spawn': 'JapanMiner'}
+    assert simunits.unpack_spawn('AlliedWarFactory') == {}
+    xml = simunits._xml('AlliedRefinery')
+    changed = xml.replace('IsOneShotData="true"', 'IsOneShotData="false"')
+    assert changed != xml and simunits.unpack_spawn('AlliedRefinery', {'AlliedRefinery': changed}) == {}
+
+
+def test_a_placed_refinery_gives_its_collector_a_built_one_does_not():
+    """Placed by the map: its collector at the start, on its spot, outliving it; built (by=...): a gap, none made
+    (simai gives the AI's its own)."""
+    import build
+    import sim
+    m, t, _ = build.resolve('mineniag', 'p')
+    e = sim.Sim(m, t)
+    ref = e.body(m.role('refinery').name)
+    own = [b for b in e.bodies.values() if b.unpack_parent is ref]
+    assert len(own) == 1 and own[0].template == 'AlliedMiner' and own[0].owner == ref.owner
+    assert (own[0].x, own[0].y) == (ref.x, ref.y)
+    e.destroy(ref, 'test')
+    assert own[0].alive
+    late = e.add('late refinery', 'AlliedRefinery', ref.owner, 100, 100, by='builder', at=1.0)
+    assert not [b for b in e.bodies.values() if b.unpack_parent is late]

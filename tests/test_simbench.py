@@ -818,6 +818,8 @@ def test_mining_niagara_at_retail_s_facing_trips_as_mineturn0_did():
     assert m.map.NODES == 'measured' and getattr(niagara, 'NODES', 'retail') == 'retail'
     m.map = niagara
     s = sim.Sim(m, None)
+    for b in [b for b in s.living() if b.unpack_parent is not None]:    # the refinery's own (round 177): the placed
+        s.destroy(b, 'test', delete=True)                               # one's trip alone, as before
     miner = s.bodies[m.cast['ai miner'].name]
     s.money[miner.owner] = 0
     got = []
@@ -831,25 +833,57 @@ def test_mining_niagara_at_retail_s_facing_trips_as_mineturn0_did():
 MINE_NIAGARA_BENCH = (111, 262, 413)    # bench 2026-11-12 checks/engine_mining.py mineniag p: 首笔 / 二笔 / 三笔
 
 
-def test_mining_mineniag_trips_as_the_bench_read():
-    """checks/engine_mining.py mineniag p (bench CampMineNiagP_mcp_1112_045758): the player's refinery on niagara's
-    east pad at retail's facing (the generator's default since round 175) -- a trip of 151, the 二笔 - 首笔 and
-    三笔 - 二笔 the bench read. The full Sim does not make the refinery's own collector (SpawnOnUnpack), so a miner is
-    put at the refinery, as _mining does."""
+def _full_mining(name, check='p', until=75.0):
+    """The full Sim on a mining bench (no miner put by hand): the refinery's own collector (SpawnOnUnpack,
+    sim.Sim.unpack_child) does the work; the check's counters at the end."""
     import build
     import sim
-    m, _, _ = build.resolve('mineniag', None)
-    assert getattr(m.map, 'NODES', 'retail') == 'retail'
-    s = sim.Sim(m, None)
-    ref = s.bodies[m.cast['refinery'].name]
-    s.add('test miner', 'AlliedMiner', ref.owner, ref.x, ref.y)
-    s.money[ref.owner] = 0
-    got = []
-    for fr in range(1200):
-        s.mine_due(fr)
-        got.append(s.money[ref.owner])
-    first, second, third = MINE_NIAGARA_BENCH
-    assert len(_trips(got)) >= 3 and set(_trips(got)) == {second - first} == {third - second}, _trips(got)
+    m, t, _ = build.resolve(name, check)
+    s = sim.Sim(m, t)
+    s.run(until)
+    return dict(zip([lab for _, lab in t.counters], s.series[-1][1]))
+
+
+MINE_TURN_FIRST = {'mineturn0': (111, 262, 413), 'mineturn45': (156, 342, 528), 'mineturnm45': (157, 344, 531),
+                   'mineturn90': (214, 455, 696), 'mineturnm90': (214, 455, 696), 'mineturn180': (296, 619, 942),
+                   'mineniag': MINE_NIAGARA_BENCH}       # the benches' 首笔 / 二笔 / 三笔 (checks/engine_mining.py)
+
+
+@pytest.mark.parametrize('name', sorted(MINE_TURN_FIRST))
+def test_mining_the_refinery_s_own_collector_pays_at_the_bench_s_period(name):
+    """mineturn<k> p / mineniag p in the full Sim (round 177): the placed collector deleted at the start, the
+    refinery the map places gives its own (SpawnOnUnpack) and the money comes at the bench's period (二笔 - 首笔,
+    三笔 - 二笔 within 2 frames)."""
+    r = _full_mining(name)
+    f, s2, s3 = MINE_TURN_FIRST[name]
+    assert abs((r['二笔'] - r['首笔']) - (s2 - f)) <= 2 and abs((r['三笔'] - r['二笔']) - (s3 - s2)) <= 2, r
+
+
+@pytest.mark.parametrize('name', sorted(set(MINE_TURN_FIRST) - {'mineturn0', 'mineniag'}))
+def test_mining_the_refinery_s_own_collector_s_first_money_as_the_bench(name):
+    """The first drive, from the refinery's spot (INFERRED), within 2 frames of the bench's 首笔 off retail's facing."""
+    assert abs(_full_mining(name)['首笔'] - MINE_TURN_FIRST[name][0]) <= 2
+
+
+@pytest.mark.xfail(strict=True, reason='round 177: at retail facing the sim first money is 122, the bench 111; the '
+                                       'first leg from the spawn spot is 11 frames shorter there than the sim leg')
+def test_mining_retail_facing_first_money_as_the_bench():
+    assert abs(_full_mining('mineniag')['首笔'] - MINE_NIAGARA_BENCH[0]) <= 2
+
+
+def test_mining_engine_mining_a_with_the_refinery_s_own_collector():
+    """engine_mining a (bench CampMineA_mcp_1105_201253: 首笔 239, 收满 268, 二笔 508) in the full Sim: 240 / 269 /
+    509, one frame late."""
+    r = _full_mining('engine_mining', 'a')
+    assert (r['首笔'] - 239, r['收满'] - 268, r['二笔'] - 508) == (1, 1, 1)
+
+
+@pytest.mark.xfail(strict=True, reason='round 177: in b the bench has the placed collector working and the '
+                                       'refinery own one stuck (first money 290, period 269); the sim own one '
+                                       'reaches the node first (105 vs 153) and both work (240 / 390 / 540)')
+def test_mining_engine_mining_b_the_refinery_s_own_collector_waits():
+    r = _full_mining('engine_mining', 'b')
+    assert (r['首笔'], r['二笔'] - r['首笔'], r['三笔'] - r['二笔']) == (290, 269, 269), r
 
 
 def test_mining_a_second_miner_on_one_node_adds_nothing():

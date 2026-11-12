@@ -2022,6 +2022,37 @@ def spawn_modules(template, own=None):
     return _chain(template, own, read) or {}
 
 
+UNPACK_SPAWN = dict(SpawnNumberData='1', SpawnReplaceDelayData='9999s', IsOneShotData='true', FadeInTime='1.0s',
+                    SpawnOnUnpack='true', CanReclaimOrphans='false', SetPurchasePrice='true')
+
+
+def unpack_spawn(template, own=None):
+    """{module id: the one unit it makes} for the nearest SpawnBehavior group's refinery configuration (all three
+    nations' refineries: one collector on unpacking, one-shot, never replaced -- UNPACK_SPAWN, exactly, one
+    SpawnTemplate). Anything else (more attributes, more children) is not this and stays spawn_modules' gap.
+    Bench 2026-11-12 checks/engine_mining.py mineturn<k> / mineniag p: a refinery the map places pays without a
+    collector placed (the placed one deleted at the start) -- it gives its own."""
+    import xml.etree.ElementTree as ET
+
+    def read(xml):                          # the nearest level with SpawnBehavior answers, as spawn_modules
+        out, seen = {}, False
+        for head, inner in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'SpawnBehavior'):
+            seen = True
+            try:
+                node = ET.fromstring('<SpawnBehavior ' + head + '>' + inner + '</SpawnBehavior>')
+            except ET.ParseError:
+                continue
+            attrs = dict(node.attrib)
+            mid = attrs.pop('id', '')
+            kids = [(c.tag, dict(c.attrib), (c.text or '').strip(), len(c)) for c in node]
+            if attrs == UNPACK_SPAWN and len(kids) == 1 and kids[0][:2] == ('SpawnTemplate', {}) \
+                    and kids[0][2] and not kids[0][3]:
+                out[mid] = kids[0][2]
+        return out if seen else None
+
+    return _chain(template, own, read) or {}
+
+
 def attach_modules(template, own=None):
     """Nearest AttachUpdate group: direct teleport/stick/status subset (engine_attach a).
 
