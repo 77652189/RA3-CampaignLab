@@ -363,6 +363,29 @@ def ext_summary(path):
     return f'ra3ext: {status}; {creates} create, {updates} update{more} ({path})'
 
 
+def ext_frame(pid):
+    """The logic frame of game `pid` now, from ra3ext's shared clock (Local\\ra3ext_clock_<pid>: u32 'CLK1', the
+    frame, a tick count; written once per logic frame), or None without ra3ext (engine line D round 81). Bench
+    seconds are wall time x the rate asked for; this is what the game's own log lines call frame=."""
+    k32 = ctypes.WinDLL('kernel32', use_last_error=True)
+    k32.OpenFileMappingW.restype = wt.HANDLE
+    k32.MapViewOfFile.restype = ctypes.c_void_p
+    k32.MapViewOfFile.argtypes = [wt.HANDLE, wt.DWORD, wt.DWORD, wt.DWORD, ctypes.c_size_t]
+    k32.UnmapViewOfFile.argtypes = [ctypes.c_void_p]
+    h = k32.OpenFileMappingW(0x0004, False, f'Local\\ra3ext_clock_{pid}')     # FILE_MAP_READ
+    if not h:
+        return None
+    try:
+        p = k32.MapViewOfFile(h, 0x0004, 0, 0, 12)
+        if not p:
+            return None
+        magic, frame = ctypes.c_uint32.from_address(p).value, ctypes.c_int32.from_address(p + 4).value
+        k32.UnmapViewOfFile(p)
+        return frame if magic == 0x314b4c43 else None
+    finally:
+        k32.CloseHandle(h)
+
+
 class GameProcess:
     """The bits of Popen the Session uses (pid, poll, returncode, kill, wait) for a game another program started (the
     ra3ext launcher). A game already gone when opened polls as exited, code -1."""
@@ -757,12 +780,14 @@ class Session:
         # the mission second when the shot was asked for: the shim saves the next frame drawn (ms later), while
         # waiting for the file and reading it back take ~0.3 s -- 2-3 mission seconds at x8 (bench 2026-10-27)
         second = self.second()
+        frame = ext_frame(self.p.pid) if self.ext_log else None     # the same moment, in logic frames (ra3ext)
         img = self._capture('mcp')
         if img is None:
             raise BenchError('no frame from the capture shim within 3 s')
         fid = len(self.frames) + 1
         img.save(os.path.join(self.run_dir, f'{fid:04d}.png'))
-        self.frames.append(dict(id=fid, second=second, note=note, view=self.view))
+        self.frames.append(dict(id=fid, second=second, note=note, view=self.view, **({'frame': frame} if
+                                                                                      frame is not None else {})))
         with open(os.path.join(self.run_dir, 'index.json'), 'w', encoding='utf-8') as f:
             json.dump(dict(mod=self.mod, frames=self.frames), f, ensure_ascii=False, indent=1)
         return fid, img

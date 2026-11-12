@@ -24,7 +24,7 @@ import re
 
 LINE = re.compile(r"^team: frame=(-?\d+) list=(\d+) proto=(\S+) name1='([^']*)' name2='([^']*)' rel=(-?\d+) "
                   r"slot=(\d+) team=(\S+) active=(\d+) n=(\d+)(?: \(no member call\))? ids=(\S*)$")
-END = re.compile(r'^teams: frame=(-?\d+) .* protos=(\d+) teams=(\d+)$')
+END = re.compile(r'^teams: frame=(-?\d+)(?: full=([01]))? .* protos=(\d+) teams=(\d+)$')
 
 
 def _log(run):
@@ -32,9 +32,14 @@ def _log(run):
 
 
 def samples(run):
-    """[(frame, [team dict, ...]), ...] in log order; a team dict has frame, list, proto, names, release, slot, team,
-    active, n, ids ([(id, x, y)])."""
-    out, cur = [], []
+    """[(frame, [team dict, ...]), ...] in log order, each the whole set of teams at that frame; a team dict has frame
+    (the frame its line was written), list, proto, names, release, slot, team, active, n, ids ([(id, x, y)]).
+
+    Since D round 81 CNVTeams looks every frame and writes only the teams that changed (members, active, the tstate
+    fields but secs), all of them every MinFrames frames and whenever the set changes; `teams: ... full=0/1` closes
+    each sample. A full sample replaces the set, a partial one updates it (logs before round 81: always full).
+    Positions and secs of an unchanged team are those of its last line."""
+    out, cur, live = [], [], {}
     with open(_log(run), encoding='utf-8', errors='replace') as f:
         for line in f:
             line = line.rstrip()
@@ -46,7 +51,10 @@ def samples(run):
                 continue
             m = END.match(line)
             if m:
-                out.append((int(m[1]), cur))
+                if m[2] != '0':
+                    live = {}
+                live.update((t['team'], t) for t in cur)
+                out.append((int(m[1]), list(live.values())))
                 cur = []
     return out
 
@@ -172,6 +180,22 @@ def last_command(run, frame, types=(0x214, 0x22c, 0x210)):
             break
         best = c
     return best
+
+
+def bench_frames(run):
+    """[(second, frame), ...] of the run's saved bench frames (index.json; D round 81): `second` is the bench's
+    mission second -- wall time x the rate it asked for, NOT logic time (a slowed game runs fewer frames per bench
+    second) -- and `frame` the logic frame ra3ext's shared clock showed when the frame was saved (the frame= of every
+    ra3ext line; None without ra3ext or in older runs). The common anchor for bench counters and log lines."""
+    import json
+    with open(os.path.join(os.path.dirname(_log(run)), 'index.json'), encoding='utf-8') as f:
+        return [(x['second'], x.get('frame')) for x in json.load(f)['frames'] if x.get('second') is not None]
+
+
+def frame_at_second(run, second):
+    """The logic frame of the bench frame saved at `second` (the nearest one; None when no frame carries one)."""
+    got = [(abs(s - second), f) for s, f in bench_frames(run) if f is not None]
+    return min(got)[1] if got else None
 
 
 def names(run):

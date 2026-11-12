@@ -74,3 +74,30 @@ def test_team_state_and_orders(tmp_path):
     assert teamlog.last_command(p, 361) == (158, 0x22c, [(3850.0, 3400.0, 212.5), -3.042, 2, 0, 0])
     assert teamlog.last_command(p, 400, (0x20d,)) == (362, 0x20d, [3165, (2850.0, 3300.0, 205.0)])
     assert [c[1] for c in teamlog.commands(p, (0x1f5, 0x1fb))] == [0x1fb, 0x1f5]
+
+
+def test_change_only_samples_keep_the_whole_set(tmp_path):
+    """D round 81: CNVTeams writes only the changed teams between beats; `teams: ... full=0/1` closes each sample and
+    samples() keeps the running set (a full sample replaces it)."""
+    a = "team: frame={f} list=0 proto=P1 name1='Soviet_1' name2='teamA' rel=1 slot=0 team=T1 active=1 n={n} ids={ids}"
+    b = "team: frame={f} list=1 proto=P2 name1='Soviet_1' name2='teamB' rel=1 slot=0 team=T2 active=1 n=0 ids="
+    end = 'teams: frame={f} full={full} player=X index=4 ai=Y protos=2 teams={k}'
+    p = tmp_path / 'ra3ext.log'
+    p.write_text('\n'.join([
+        a.format(f=15, n=1, ids='7@1:2'), b.format(f=15), end.format(f=15, full=1, k=2),
+        a.format(f=20, n=2, ids='7@1:2,8@3:4'), end.format(f=20, full=0, k=2),       # only teamA changed
+        a.format(f=30, n=2, ids='7@1:2,8@3:4'), end.format(f=30, full=1, k=1),       # teamB gone: full sample
+    ]) + '\n', encoding='utf-8')
+    assert teamlog.team_size(str(p), 'teamA', 25) == 2
+    assert teamlog.team_sizes(str(p), 'teamB', 25) == [0]             # the unchanged team is still there
+    assert teamlog.team_sizes(str(p), 'teamB', 30) == []              # dropped by the full sample
+
+
+def test_bench_frames_anchor(tmp_path):
+    import json
+    (tmp_path / 'ra3ext.log').write_text('', encoding='utf-8')
+    (tmp_path / 'index.json').write_text(json.dumps(dict(mod='M', frames=[
+        dict(id=1, second=None, note='menu'), dict(id=2, second=1.1, frame=40), dict(id=3, second=3.0, frame=71),
+        dict(id=4, second=5.0)])), encoding='utf-8')
+    assert teamlog.bench_frames(str(tmp_path)) == [(1.1, 40), (3.0, 71), (5.0, None)]
+    assert teamlog.frame_at_second(str(tmp_path), 2.8) == 71
