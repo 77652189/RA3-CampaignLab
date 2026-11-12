@@ -269,17 +269,37 @@ def test_the_openers_tower_goes_up_in_the_build_time_and_in_no_band(lib):
     assert v[-1][:3] == [0, 0, 0] and abs(v[-1][3] - 451) <= 7
 
 
-@pytest.mark.xfail(strict=True, reason='simai (since B round 117 the DEFENSE share x money buys towers): the turret '
-                                       'at frame 458 (50 % x 1700 = 850 >= 800 at the wake); bench: none in 70 s. Not '
-                                       'told apart yet (handoff-b section 125): the share funds nothing without income '
-                                       '(no refinery here) / before an opening is done (no opener here) / under this '
-                                       'own ConstantHeuristic budget state')
 @pytest.mark.parametrize('build', ['aitowerstate', 'aitowerfoe'])
 def test_the_build_state_alone_builds_no_tower(lib, build):
     """checks/engine_aitower.py aitowerstate / aitowerfoe (own budget, only AlliedDefenseBuildState; an enemy army
-    nearby): no turret in 70 s (the stop frame keeps counting)."""
+    nearby): no turret in 70 s (the stop frame keeps counting). No refinery: without income the budget share pays
+    nothing (bench aitowerinc / aitoweropen e, 2026-11-11)."""
     _, rows = _probe_run(build, lib, 75.0)
     assert _vals(rows)[-1][3] >= 70 * 15
+
+
+def test_an_empty_opener_does_not_fund_the_share(lib):
+    """checks/engine_aitower.py aitoweropen e (as aitowerstate + an opener of one Time 0s order, own budget kept):
+    bench no turret to s143 -- the share is not held back by an unfinished opening."""
+    _, rows = _probe_run('aitoweropen', lib, 130.0, check='e')
+    assert _vals(rows)[-1][2] == 0
+
+
+def test_with_a_refinery_and_a_miner_the_share_builds_the_tower(lib):
+    """checks/engine_aitower.py aitowerinc e (as aitowerstate + an AI refinery and miner on the east ore): bench the
+    first turret at frame 451 (ordered at the wake, its 20 s build), round the yard (350 ring 1)."""
+    _, rows = _probe_run('aitowerinc', lib, 40.0, check='e')
+    v = _vals(rows)[-1]
+    assert v[1] == 1 and abs(v[3] - 451) <= 7
+
+
+@pytest.mark.xfail(strict=True, reason='simai: one turret only (the DEFENSE share x money less what it has paid: '
+                                       '50 % x ~1000 < 800 after the first); bench aitowerinc e: 2 from s49, 3 from '
+                                       's69, 4 from s89, 5 at s128 -- one a build time, the bank not the limit')
+def test_with_income_the_turrets_keep_coming(lib):
+    """checks/engine_aitower.py aitowerinc e: 塔在基地 4 by s121."""
+    _, rows = _probe_run('aitowerinc', lib, 121.0, check='e')
+    assert _vals(rows)[-1][2] >= 4
 
 
 def test_the_tower_stands_in_the_350_circle_for_half_compactness(lib):

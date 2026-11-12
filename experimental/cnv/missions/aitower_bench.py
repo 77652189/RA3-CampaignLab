@@ -18,7 +18,10 @@ Builds: aitower50 (0.5, the Allied co-op default), aitower75, aitower100 -- thes
 player's Guardian tanks (HOLD_FIRE) 600 south of the AI plant -- does the build state (BEST_UNIT_EXPECTED) build once
 there is an enemy army, and round which building (the opener's turret stood round the yard). aitowerdep: as
 aitowerfoe, but an opener that only deposits 1000 to DEFENSE (no Build order; retail budgets kept) -- is the script's
-money just never in the accounts? Readings in checks/engine_aitower.py.
+money just never in the accounts? Round 133 (handoff-b section 125's table): aitowerinc -- as aitowerstate, plus an
+AI refinery on the east ore and a miner (does a share need income?); aitoweropen -- as aitowerstate, plus an opener
+of one empty Time 0s order, own budget kept (does a share fund nothing before an opening is done?). Readings in
+checks/engine_aitower.py.
 Facts: wake at, money.
 """
 from maps import niagara
@@ -56,25 +59,27 @@ def _budget():
   </AIBudgetStateDefinition>'''
 
 
-def _opener(build=True):
+def _opener(build=True, empty=False):
     # as retail AIOpener_A08_AlliedSpecialForces: a deposit, then the build; the trailing Time order ends the opening.
     # build=False: the deposit only, to DEFENSE (the build state spends it, if it builds at all)
+    # empty=True: one Time 0s order and nothing else -- an opening that is done at once
     account = 'PRODUCTION' if build else 'DEFENSE'
     order = [f'    <Order Build="{TURRET}" />'] if build else []
-    return '\n'.join([f'  <SkirmishOpeningMove id="{OPENER}" Side="PlayerTemplate:Allies">',
-                      f'    <Order Time="0s" Account="{account}" Deposit="{OPENER_DEPOSIT}" />', *order,
-                      '    <Order Time="90s"/>', '  </SkirmishOpeningMove>'])
+    body = (['    <Order Time="0s"/>'] if empty else
+            [f'    <Order Time="0s" Account="{account}" Deposit="{OPENER_DEPOSIT}" />', *order, '    <Order Time="90s"/>'])
+    return '\n'.join([f'  <SkirmishOpeningMove id="{OPENER}" Side="PlayerTemplate:Allies">', *body,
+                      '  </SkirmishOpeningMove>'])
 
 
-def personality_xml(compactness, opener=False, build=True):
+def personality_xml(compactness, opener=False, build=True, empty=False):
+    # empty=True: the empty opener (_opener) with this probe's own budget, not the retail ones
     removed = [f'    <StrategicState id="{k}" xai:joinAction="Remove"/>' for k in ab.INHERITED]
     removed += ['    <BuildState id="AlliedNeededUnits" xai:joinAction="Remove"/>']
+    first = [f'    <OpeningMove Name="{OPENER}" Weight="100%">', '      <Heuristic>',
+             '        <ConstantHeuristic/>', '      </Heuristic>', '    </OpeningMove>'] if opener or empty else []
     if opener:                              # retail budgets kept; the opening move first (as 1AlliedBalanced's)
-        first = [f'    <OpeningMove Name="{OPENER}" Weight="100%">', '      <Heuristic>',
-                 '        <ConstantHeuristic/>', '      </Heuristic>', '    </OpeningMove>']
         own, budget = [], []
     else:
-        first = []
         removed += [f'    <BudgetState id="{k}" xai:joinAction="Remove"/>' for k in BUDGETS]
         own, budget = [_budget()], [f'    <BudgetState id="{BUDGET_ID}" State="{BUDGET_ID}"/>']
     return '\n'.join([
@@ -86,7 +91,7 @@ def personality_xml(compactness, opener=False, build=True):
         f'    <Include type="instance" source="DATA:SkirmishAI/Personalities/{ab.BASE}.xml" />',
         '  </Includes>',
         *own,
-        *([_opener(build)] if opener else []),
+        *([_opener(build, empty)] if opener or empty else []),
         f'  <AIPersonalityDefinition id="{PID}" PersonalityType="{PID}" inheritFrom="{ab.BASE}"'
         f' BaseCompactness="{compactness}">',
         *first,
@@ -96,18 +101,21 @@ def personality_xml(compactness, opener=False, build=True):
         '</AssetDeclaration>', ''])
 
 
-def mission(name, compactness, opener=True, foes=0, build=True):
+def mission(name, compactness, opener=True, foes=0, build=True, empty=False, refinery=False):
     m = Mission(name=name, map=niagara, facts={'wake at': WAKE_AT, 'money': MONEY})
     m.cnv_compactness = compactness         # the check says the model's radius by it
     m.cnv_turret = TURRET                   # what the check counts (checks ask the mission, not this module)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{PID}'}
-    m.assets.append((f'{PID}.xml', personality_xml(compactness, opener, build), f'AIPersonalityDefinition:{PID}'))
+    m.assets.append((f'{PID}.xml', personality_xml(compactness, opener, build, empty), f'AIPersonalityDefinition:{PID}'))
     s1 = m.player('s1')
     m.put('AlliedConstructionYard', 'east base', 0, 0, side='s1', name='UNIT - CNV AI Yard', role='ai yard')
     m.put(PLANT, 'east base', 0.0, AI_PLANT_DY, side='s1', name='UNIT - CNV AI Plant', role='ai plant')
     m.put(PLANT, 'east base', 0.0, ENEMY_DY, name='UNIT - CNV AI Enemy Plant', role='enemy plant')
     m.put('AlliedConstructionYard', 'base yard', name='UNIT - CNV AI Player Yard', role='player yard')
     m.spawns |= {TURRET}
+    if refinery:                            # income: the AI's refinery on the east ore and a miner by it
+        m.put('AlliedRefinery', 'east refinery', side='s1', name='UNIT - CNV AI Refinery', role='ai refinery')
+        m.put('AlliedMiner', 'east refinery', -150.0, 150.0, side='s1', name='UNIT - CNV AI Miner', role='ai miner')
     base = 'CNV AI Base'
     foe = [f'UNIT - CNV AI Foe {k}' for k in range(foes)]
     for k, n in enumerate(foe):
@@ -128,4 +136,6 @@ MISSION = {'aitower50': lambda: mission('CampAITow50', 0.5),
            'aitower100': lambda: mission('CampAITow100', 1.0),
            'aitowerstate': lambda: mission('CampAITowState', 0.5, opener=False),
            'aitowerfoe': lambda: mission('CampAITowFoe', 0.5, opener=False, foes=FOES),
-           'aitowerdep': lambda: mission('CampAITowDep', 0.5, foes=FOES, build=False)}
+           'aitowerdep': lambda: mission('CampAITowDep', 0.5, foes=FOES, build=False),
+           'aitowerinc': lambda: mission('CampAITowInc', 0.5, opener=False, refinery=True),
+           'aitoweropen': lambda: mission('CampAITowOpen', 0.5, opener=False, empty=True)}

@@ -377,7 +377,9 @@ class Brain:
                'money': lambda account: self.sim.money.get(self.player, 0),          # one account in the simulator
                'beacons': set(),                                                     # no beacons in the simulator
                'power advantage': self.power_advantage,
-               'attacked': self.attacked, 'energy': self.energy}
+               'attacked': self.attacked, 'energy': self.energy,
+               # the private AIPlayer.available: no income -> the budget share pays nothing (bench engine_aitower e)
+               'own income': self.income(self.player)}
         if foes:                                     # INFERRED (work/re/l4_states.md): the engine's enemy = the first of the enemies here
             out['opponent funds'] = self.sim.money.get(foes[0], 0)
             out['income'] = (self.income(self.player), self.income(foes[0]))

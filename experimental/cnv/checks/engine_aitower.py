@@ -38,6 +38,12 @@ aitowerdep e (as aitowerfoe, but an opener that only deposits 1000 to DEFENSE, n
   -- 落塔帧 451 (as the opener's), 塔距场 350 内 1 from s29, 塔在厂南带 0 throughout. So the build state builds once
   the DEFENSE account has money (PLAYER_SET_MONEY never reaches the accounts: aitowerstate / aitowerfoe were broke),
   and its turret stands round the yard just as the opener's, the enemy tanks 600 south of the plant notwithstanding.
+Round 133 (bench 2026-11-11, work/logs/b136_bench.log; which of handoff-b section 125's hypotheses):
+aitowerinc e (as aitowerstate, + an AI refinery on the east ore and a miner): PASS -- 落塔帧 451, 塔距场 350 内 1 from
+  s29, 2 from s49, 3 from s69, 4 from s89, 5 at s128 (塔在厂南带 0 throughout): one turret a build time.
+aitoweropen e (as aitowerstate, + an opener of one empty Time 0s order, own budget kept): FAIL -- no turret to s143.
+  So the share pays nothing without income; an unfinished opening is not the reason. Money at the wake was the same
+  1700 in both.
 """
 import math
 
@@ -220,4 +226,4 @@ def e(m):
 
 CHECKS = {k: {'a': a, 'b': b, 'c': c, 'd': d, 'e': e}
           for k in ('aitower50', 'aitower75', 'aitower100', 'aitowerstate', 'aitowerfoe',
-                   'aitowerdep')}
+                   'aitowerdep', 'aitowerinc', 'aitoweropen')}
