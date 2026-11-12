@@ -125,5 +125,90 @@ def check(m):
     return t
 
 
-MISSION = {'engine_crash_fall': mission}
-CHECKS = {'engine_crash_fall': {'fall': check}}
+# ---- hit (engine line A round 180): where and when the crash hurts. Three Apollo copies whose air death makes only
+# the retail wreck (plain): F flies east as in fall (killed at 7 s near x 2885, its wreck lands at (3160, 1500) 30
+# frames later); H and G hover where they were placed (no order) over (3000, 2000) / (3000, 2900) and are killed at
+# the same frame. Hammers under each landing: s1's at F's landing, s1's 40 east of it (out of the radius 20, centre
+# to centre), s1's under H, the player's own under G (NormalAircraftDeathWeapon's DamageScalarDetails: allies 50 %).
+# Prediction from the data (simunits.air_wrecks / crash_frames, Sim.air_crash): F's hit 30 frames after the kill at
+# (3160, 1500); H / G fall from rest, 35 frames (g n (n + 1) / 2 >= 175, INFERRED); 150 EXPLOSIVE through the
+# Hammer's armour, G's half that; the one 40 off untouched.
+HIT_LANES = {'F': ('CNV_CrashF', (1700.0, 1500.0), True), 'H': ('CNV_CrashH', (3000.0, 2000.0), False),
+             'G': ('CNV_CrashG', (3000.0, 2900.0), False)}         # copy, placed at, flies east
+TANK = 'SovietAntiVehicleVehicleTech1'
+HIT_TARGETS = {'in': ((3160.0, 1500.0), 's1'), 'out': ((3200.0, 1500.0), 's1'), 'H': ((3000.0, 2000.0), 's1'),
+               'G': ((3000.0, 2900.0), 'p1')}
+HIT_STEP = {'in': 1, 'H': 100, 'G': 10000, 'out': 1000000}       # 帧: frames after the kill each one was untouched
+# Bench 11-12 CampCHHit_mcp_1112_111034 PASS (work/logs/a180_bench.log): 帧 150383830 at s15 -- in 30, H 38, G 38,
+# out never hit (150: every frame); 血 in 70, H 72, G 86. ra3ext: F's wreck as fall's plain (2885, 1500.47) v 7.5 land
+# 3160 b 12.2286; H / G's from (3000, y, 387.5) v (0.1, 0, 0) land (3000, y) a 0 b 4.8297 (n 37, 38 points). So a
+# hovering plane drifts 0.2 a frame along its facing, n = ceil(T) + 1, the landing to the nearest 20 (simunits.
+# meta_impact_fall); the hit is the wreck's last point (count = points); G's own tank takes half (86 vs 72).
+# Not explained: F's tank 70, not 72 (H's, the same tank and weapon) -- the moving wreck takes ~15 more off it
+# (a hypothesis: Physics collision damage on the way in; not read).
+HIT_BENCH = {'frames': {'in': 30, 'H': 38, 'G': 38, 'out': None}, 'health': {'in': 70, 'H': 72, 'G': 86}}
+
+
+def hit_plane(lane):
+    uid = HIT_LANES[lane][0]
+    x = _probe(_retail('Allied', 'Units', PLANE + '.xml'), PLANE, uid)
+    x = x.replace(f'CreationList="{OCL}"', f'CreationList="{uid}OCL"')
+    x = x.replace('</AssetDeclaration>', f'''	<ObjectCreationList id="{uid}OCL">
+		<CreateObject Options="IGNORE_ALL_OBJECTS" Disposition="LIKE_EXISTING INHERIT_VELOCITY" Count="1"
+			VelocityScale="0.5">
+			<CreateObject>{uid}Dying</CreateObject>
+		</CreateObject>
+	</ObjectCreationList>
+</AssetDeclaration>''', 1)
+    w = _probe(_retail('Allied', 'Props', WRECK + '.xml'), WRECK, uid + 'Dying')
+    return [Unit(uid, x, link=[f'ObjectCreationList:{uid}OCL'], names=dict(unit=uid),
+                 what='阿波罗的复制（探针）：空中打死只出原版坠机残骸的复制', params=dict(of=PLANE, every=EVERY, lines=LINES)),
+            Unit(uid + 'Dying', w, names=dict(unit=uid + 'Dying'), what='阿波罗坠机残骸的复制（探针，原版数值）',
+                 params=dict(of=WRECK, every=EVERY, lines=LINES))]
+
+
+def hit_name(k):
+    return f'UNIT - CNV Crash Hit {k}'
+
+
+def hit_mission():
+    m = Mission(name='CampCH', map=probe_air, units=[u for k in HIT_LANES for u in hit_plane(k)], facts={})
+    m.ext = True                  # CampCHHit
+    for k, (uid, (x, y), _) in HIT_LANES.items():
+        m.put(uid, 'air flat S', x - 1700.0, y - 1500.0, side='p1', angle=0.0, role=f'plane {k}', name=hit_name(k))
+    for k, ((x, y), side) in HIT_TARGETS.items():
+        m.put(TANK, 'air flat S', x - 1700.0, y - 1500.0, side=side, angle=0.0, role=f'tank {k}',
+              name=hit_name('Tank ' + k))
+    return m
+
+
+def hit_check(m):
+    t = Test()
+    names = [hit_name(k) for k in HIT_LANES] + [hit_name('Tank ' + k) for k in HIT_TARGETS]
+    t.scripts.append(Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1')),
+                                                 ('SET_MILLISECOND_TIMER', 'Crash Go', GO),
+                                                 ('SET_MILLISECOND_TIMER', 'Crash Kill', KILL)]
+                            + [('UNIT_CHANGE_OBJECT_STATUS', n, 'NO_ATTACK', 1) for n in names]
+                            + [('SET_COUNTER', 'CNV_Crash_Frames', 0)]))
+    t.waypoints['Crash Goal F'] = (GOAL_X, 1500.0)
+    t.scripts.append(Script('Test - go', [('TIMER_EXPIRED', 'Crash Go')], [('MOVE_NAMED_UNIT_TO', hit_name('F'),
+                                                                           'Crash Goal F')]))
+    t.scripts.append(Script('Test - kill', [('TIMER_EXPIRED', 'Crash Kill')],
+                            [('NAMED_KILL', hit_name(k)) for k in HIT_LANES] + [('SET_FLAG', 'Crash Killed', 1)]))
+    t.counters.append(('CNV_Crash_Frames', '帧'))
+    for k, step in HIT_STEP.items():
+        t.scripts.append(Script(f'Test - untouched {k}', [('FLAG', 'Crash Killed', 1),
+                                                          ('UNIT_HEALTH', hit_name('Tank ' + k), 3, 100)],
+                                [('INCREMENT_COUNTER', step, 'CNV_Crash_Frames')], once=False))
+    for k in ('in', 'H', 'G'):
+        c = f'CNV_Crash_Health_{k}'
+        t.counters.append((c, f'血{k}'))
+        t.scripts.append(Script(f'Test - health {k}', [], [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER',
+                                                           hit_name('Tank ' + k), c)], once=False))
+    t.expect = [('血in', KILL + 4, '<', 100, RUN)]
+    t.bench = [('bench_watch', dict(seconds=RUN, every=.5, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+MISSION = {'engine_crash_fall': mission, 'engine_crash_hit': hit_mission}
+CHECKS = {'engine_crash_fall': {'fall': check}, 'engine_crash_hit': {'hit': hit_check}}

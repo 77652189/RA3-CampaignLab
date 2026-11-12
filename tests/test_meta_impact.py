@@ -797,3 +797,59 @@ def test_physics_p5_a_shot_down_wreck_falls_the_knock_curve_under_its_own_gravit
     points, end = simunits.meta_impact_fall(start, v, 212.5, gravity=gm)
     assert end == landing and len(points) == n
     assert [round(p[2], 2) for p in points[2:]] == pytest.approx(zs, abs=0.06)
+
+
+def test_physics_p5_the_apollo_s_air_death_reads_its_crash_from_the_data():
+    """Sim.air_crash's data (simunits.air_wrecks / fly_height / crash_frames): an Apollo killed in the air leaves one
+    of Collapse (no weapon) and Dying (x 0.5, falls, 150 EXPLOSIVE radius 20, allies 50 %), 175 up; the wreck's fall
+    from the bench's kill (engine_crash_fall plain) hits 29 frames on, at (3160, 1500)."""
+    import simunits
+    choose, wrecks = simunits.air_wrecks('AlliedFighterAircraft')
+    assert choose and [w['template'] for w in wrecks] == ['AlliedFighterAircraft_Collapse', 'AlliedFighterAircraft_Dying']
+    dying = wrecks[1]
+    assert (dying['scale'], dying['gravity'], dying['falls']) == (0.5, 1.0, True) and not wrecks[0]['weapons']
+    assert [(d[0], d[1], d[2], d[5]) for d in dying['weapons']] == [(150.0, 'EXPLOSIVE', 20.0, 0.5)]
+    assert simunits.fly_height('AlliedFighterAircraft') == simunits.fly_height('SovietFighterAircraft') == 175.0
+    assert simunits.crash_frames((2885.0, 1500.47, 387.44), (7.5, 0.003, 0.0011), 212.5) == (29, (3160, 1500, 212.5))
+
+
+def _crash_digits(v):
+    from checks.engine_crash_fall import HIT_STEP
+    return {k: v // step % 100 if k != 'out' else v // step for k, step in HIT_STEP.items()}
+
+
+def test_physics_p5_a_hovering_apollo_s_crash_hurts_what_is_under_it_as_on_the_bench():
+    """Bench 11-12 engine_crash_hit (CampCHHit_mcp_1112_111034): two Apollo copies hovering 175 over a Hammer each are
+    killed; each wreck (v 0.1 drift, 38 points) hits 38 counted frames after the kill, the enemy Hammer to 72 %, the
+    player's own to 86 % (allies 50 %); the Hammer 40 off the flying plane's landing is never hit. The flying lane's
+    plane is where the sim's coarse flight puts it (no acceleration), so only its untouched neighbour is held here."""
+    import build
+    import sim
+    from checks.engine_crash_fall import HIT_BENCH
+    m, t, name = build.resolve('engine_crash_hit', 'hit')
+    assert name == 'CampCHHit'
+    s = sim.Sim(m, t).run(13.0)                     # the check's RUN: the flying lane's miss counts < 100
+    frames, health_in, health_h, health_g = s.series[-1][1]
+    got = _crash_digits(frames)
+    assert (got['H'], got['G']) == (HIT_BENCH['frames']['H'], HIT_BENCH['frames']['G']), got
+    assert got['out'] >= 85, got                                    # bench: untouched every frame (150 at s15)
+    assert (health_h, health_g) == (HIT_BENCH['health']['H'], HIT_BENCH['health']['G'])
+    assert 'air crash' in s.used
+
+
+def test_physics_p5_the_flying_apollo_s_wreck_hits_its_last_point_as_on_the_bench():
+    """The flying lane from the bench's kill (fall's plain start, logged again in CampCHHit): 30 points, the hit on
+    the last -- counted 30 frames (crash_frames + 1, as the hovering ones' 37 + 1 = 38)."""
+    import simunits
+    from checks.engine_crash_fall import BENCH, HIT_BENCH
+    start, v, landing, n, _ = BENCH['plain']
+    frames, end = simunits.crash_frames(start, v, 212.5)
+    assert end == landing and frames + 1 == HIT_BENCH['frames']['in'] == n
+    assert simunits.crash_frames((3000.0, 2000.0, 387.5), (0.1, 0.0, 0.0), 212.5) == (37, (3000, 2000, 212.5))
+
+
+@pytest.mark.xfail(strict=True, reason='bench 11-12 engine_crash_hit: the flying wreck takes the Hammer under it to 70 %, '
+                                       'the hovering one to 72 % -- ~15 more from the moving wreck, not read (collision?)')
+def test_physics_p5_the_flying_wreck_takes_the_same_as_a_hovering_one():
+    from checks.engine_crash_fall import HIT_BENCH
+    assert HIT_BENCH['health']['in'] == HIT_BENCH['health']['H']

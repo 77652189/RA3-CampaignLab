@@ -2550,14 +2550,59 @@ class Sim:
             b.hp = 0.0
             # FireWeaponWhenDead (simunits.death_weapons; bench 11-05 engine_spawn_refill): its weapon goes off where it
             # died; a deletion fires nothing (INFERRED, as Generals' destroyObject skips the die modules)
-            for dmg, typ, reach, after, affects in simunits.death_weapons(b.template, self.own):
+            for dmg, typ, reach, after, affects, ally in simunits.death_weapons(b.template, self.own, scalars=True):
                 self.used.add('death weapon')
                 self.death_blasts.append((self.frame_now() + simunits._frames(after), b.x, b.y, dmg, typ, reach,
-                                          affects, b.owner, b))
+                                          affects, b.owner, b, ally, False))
+            if b.surface == 'air':
+                self.air_crash(b)
         self.note('删除' if delete else '摧毁', f'{self.label(b)}（{why}）')
         self.change()
         if self.blocks(b):
             self.reblock()
+
+    HOVER_DRIFT = 0.2               # a frame: a hovering plane's velocity (air_crash)
+
+    def air_crash(self, b):
+        """Physics P5 (checks/engine_crash_fall.py): an aircraft killed in the air is gone at once and its airborne
+        CreateObjectDie (simunits.air_wrecks) makes a wreck LIKE_EXISTING with its velocity x the OCL's VelocityScale;
+        a wreck that falls (KillWhenRestingOnGround) dies where it comes to rest (simunits.crash_frames: the fall's
+        curve, its own GravityMultiplier) and its FireWeaponWhenDead goes off there (the Apollo's / MiG's
+        NormalAircraftDeathWeapon: 150 EXPLOSIVE radius 20, allies 50 %), on the ground only. The plane is at its
+        locomotor's PreferredHeight over the ground (simunits.fly_height; bench 174.94), flying at its speed towards
+        its path's next point, else still (a hovering one). Of a CHOOSE_ONE list (the game draws one: the Apollo's
+        Collapse or Dying) the first that falls and has a weapon (INFERRED choice: the crash that can hurt, the run
+        repeatable). INFERRED: level ground (the landing's own height not looked up), the death on the frame it rests,
+        the nugget's MetaImpact (ShockWave 50, radius 50) not dispatched."""
+        got = simunits.air_wrecks(b.template, self.own)
+        if not got:
+            return
+        choose, wrecks = got
+        hits = [w for w in wrecks if w['falls'] and w['weapons']]
+        if choose and len(wrecks) > 1:
+            self.used.add('crash choice')
+            hits = hits[:1]
+        if not hits:
+            return
+        ground = self.impact_ground_z(b.x, b.y)
+        z = b.z if b.z is not None else ground + simunits.fly_height(b.template, self.own)
+        # still (hovering): HOVER_DRIFT along its facing (bench 11-12 engine_crash_hit: both hovering Apollos' wrecks
+        # logged v (0.1, 0, 0) = 0.5 x 0.2 facing east; INFERRED for other planes and facings)
+        vx, vy = self.HOVER_DRIFT * math.cos(b.angle), self.HOVER_DRIFT * math.sin(b.angle)
+        if b.path and b.speed > 0 and not b.engaged:
+            tx, ty = b.path[0]
+            d = math.hypot(tx - b.x, ty - b.y)
+            if d > 0:
+                vx, vy = (tx - b.x) / d * b.speed / simunits.LIFE_FPS, (ty - b.y) / d * b.speed / simunits.LIFE_FPS
+        for w in hits:
+            frames, end = simunits.crash_frames((b.x, b.y, z), (vx * w['scale'], vy * w['scale'], 0.0), ground,
+                                                w['gravity'])
+            if abs(self.impact_ground_z(end[0], end[1]) - ground) > 1e-3:
+                self.gap('Physics', w['template'], '坠机残骸落到不同高度的地面：落点和时刻按起点地面算')
+            self.used.add('air crash')
+            for dmg, typ, reach, after, affects, ally in w['weapons']:
+                self.death_blasts.append((self.frame_now() + frames + simunits._frames(after), end[0], end[1], dmg,
+                                          typ, reach, affects, b.owner, b, ally, True))
 
     # ---- the engine model's World: what its script engine asks of the objects (the rest it does itself)
     def condition(self, eng, name, args):
@@ -5061,14 +5106,19 @@ class Sim:
         causes fires that one's weapon in turn (a chain of exploding props)."""
         for d in [d for d in self.death_blasts if d[0] <= frame]:
             self.death_blasts.remove(d)
-            _, x, y, dmg, typ, reach, affects, owner, by = d
+            _, x, y, dmg, typ, reach, affects, owner, by, *rest = d
+            ally, ground_only = rest if rest else (1.0, False)
             for t in self.living():
                 if math.hypot(t.x - x, t.y - y) > reach or frame < t.immune_until or t.shielded or t.indestructible:
                     continue
+                if ground_only and t.surface == 'air':
+                    continue                    # a crash on the ground; the planes 175 over it are out of its 20
                 rel = self.relation(owner, t.owner)
                 if (rel + 'S' if rel == 'NEUTRAL' else rel) not in affects:
                     continue
                 armor = 1.0 if typ == 'UNRESISTABLE' else simunits.percent(t.armor, typ) / 100.0 * t.taken
+                if rel == 'ALLIES':
+                    armor *= ally
                 if dmg * armor <= 0:
                     continue
                 t.damage(dmg * armor)

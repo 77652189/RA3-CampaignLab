@@ -353,11 +353,14 @@ NOTES = {
                                           '出图不死、默认不反弹（台上读过）；'
                                           '坠机：空中打死的飞机本体立刻没了，下落的是 OCL 生成的残骸，残骸走同一条击飞曲线、'
                                           '重力看残骸自己的 GravityMultiplier（活飞机的 30 不进坠机；默认 1 从 175 高 30 点、'
-                                          '改 30 只 8 点；落点 = 起点 + 水平速度 × 自由落体时间、向上取 20 格，'
+                                          '改 30 只 8 点；n = ⌈自由落体时间⌉ + 1，落点 = 起点 + 速度 × n 取最近的 20 格，'
                                           'engine_crash_fall fall，tests/test_meta_impact.py::'
                                           'test_physics_p5_a_shot_down_wreck_falls_the_knock_curve_under_its_own_gravity，'
-                                          'simunits.meta_impact_fall；向上取整 INFERRED）。模拟器还不在空中死亡时生成残骸'
-                                          '（CreateObjectDie RequiredStatus AIRBORNE_TARGET），坠机砸伤的时刻没接进 Sim'),
+                                          'simunits.meta_impact_fall）。坠机砸伤已接进 Sim（Sim.air_crash：残骸最后一点时'
+                                          '死亡武器在落点炸，友军 50 %，只伤地面；悬停的飞机带 0.2/帧 朝向漂移；CHOOSE_ONE '
+                                          '取会砸的那个，INFERRED），engine_crash_hit hit 台上悬停两架 38 帧、敌 72 % 友 86 %，'
+                                          'test_physics_p5_a_hovering_apollo_s_crash_hurts_what_is_under_it_as_on_the_bench；'
+                                          '飞行中那架多掉约 15 血原因没查（strict xfail），落点高度不同、冲击波没派发'),
     # engine A round 108: read in the SDK data
     (MODULE, 'Behaviors/ObjectDefectionHelper'): (NA, '没人触发：原版只在 BaseObject 挂一个空的（所以每个物体都有），'
                                                       'SageXML 里没有一处 DefectorSpecialPower，脚本动作表里也没有'

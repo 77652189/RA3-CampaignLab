@@ -851,20 +851,20 @@ def meta_impact_fall(position, velocity, ground, gravity=1.0):
     LIKE_EXISTING INHERIT_VELOCITY x 0.5 175 over level ground, ra3ext's `shock` / `build` lines and its probe
     points): the same curve as a knock-back, its numbers from the fall. T = the free fall's frames from the drop d
     under g = 64/225 x the body's OWN GravityMultiplier (the wreck's: the live plane's 30 never comes in, it is gone);
-    the landing = start + horizontal velocity x T, rounded UP to the 20 grid (plain 3148 -> 3160, GM 30 2933 -> 2940;
-    up rather than floor + 20: INFERRED); n = ceil(landing distance / horizontal speed) (37 / 8), a = n vz / 4, the
-    step b = (horizontal speed x n + 2a + d) / n (12.2286 / 29.3680 as logged). Plain lands in 30 points (29 frames),
-    GM 30 in 8 (7 frames). A fall with no horizontal speed was not measured. Returns (points, landing)."""
+    n = ceil(T) + 1 (37 / 8), the landing = start + velocity x n to the nearest 20 (round 180, below), a = n vz / 4,
+    the step b = (horizontal speed x n + 2a + d) / n (12.2286 / 29.3680 as logged). Plain lands in 30 points (29
+    frames), GM 30 in 8 (7 frames), a hovering plane's (v 0.1) in 38. Returns (points, landing)."""
     d = max(0.0, position[2] - ground)
     g = 64 / FPS**2 * gravity
     vz = velocity[2]
     t = (vz + math.sqrt(vz * vz + 2 * g * d)) / g
     h = math.hypot(velocity[0], velocity[1])
-    if h <= 0:
-        return [tuple(position), (position[0], position[1], ground)], (position[0], position[1], ground)
-    end = tuple(math.ceil((position[i] + velocity[i] * t) / 20) * 20 if abs(velocity[i]) > 0.01 else
-                round(position[i] / 20) * 20 for i in (0, 1)) + (ground,)
-    n = math.ceil(math.hypot(end[0] - position[0], end[1] - position[1]) / h)
+    # Round 180 (bench 11-12 engine_crash_hit, CampCHHit_mcp_1112_111034): a hovering plane's wreck, v (0.1, 0, 0),
+    # logged land 3000 and b 4.8297 = (0.1 x 37 + 175) / 37 -- n is not from the landing's distance (0 there) but
+    # ceil(T) + 1 (37 / 37 / 8 for hover / plain / GM 30), and the landing is start + v n to the NEAREST 20 (3003.7 ->
+    # 3000, 3162.5 -> 3160, 2945 -> 2940): all three logged lines, the old rule (start + v T rounded up) missed hover's
+    n = math.ceil(t - 1e-9) + 1
+    end = tuple(round((position[i] + velocity[i] * n) / 20) * 20 for i in (0, 1)) + (ground,)
     a = n * vz / 4
     return _knock_curve(position, end, max(a, 0.5), (h * n + 2 * a + d) / n), end   # a's floor 0.5 as a knock's
 
@@ -1657,7 +1657,7 @@ def max_health(template, own=None):
 _death_memo, _weapon_blocks = {}, None
 
 
-def death_weapons(template, own=None, death='NORMAL'):
+def death_weapons(template, own=None, death='NORMAL', scalars=False):
     """[(damage, damage type, radius, delay s, affects)] -- each DamageNugget of each FireWeaponWhenDead's DeathWeapon
     (InitiallyActive, its DieMuxData taking the death type) from the nearest template up the chain that has the module:
     the weapon goes off where the body died, `delay` after (the nugget's DelayTimeSeconds), hurting what of `affects`
@@ -1669,7 +1669,7 @@ def death_weapons(template, own=None, death='NORMAL'):
     global _weapon_blocks
     key = (template, (own or {}).get(template), death)
     if key in _death_memo:
-        return _death_memo[key]
+        return _death_memo[key] if scalars else [d[:5] for d in _death_memo[key]]
     if _weapon_blocks is None:
         _weapon_blocks = {}
         for text in _weapon_files():
@@ -1691,11 +1691,125 @@ def death_weapons(template, own=None, death='NORMAL'):
             continue
         whead, wbody = mine.get(_attr(head, 'DeathWeapon')) or _weapon_blocks.get(_attr(head, 'DeathWeapon'), ('', ''))
         affects = frozenset((_attr(whead, 'RadiusDamageAffects') or 'ENEMIES NEUTRALS').split())
-        for nh, _ in _blocks(wbody, 'DamageNugget'):
+        for nh, nb in _blocks(wbody, 'DamageNugget'):
             out.append((_num(_attr(nh, 'Damage'), 0.0), _attr(nh, 'DamageType') or '', _num(_attr(nh, 'Radius'), 0.0),
-                        _secs(_attr(nh, 'DelayTimeSeconds') or '0s'), affects))
+                        _secs(_attr(nh, 'DelayTimeSeconds') or '0s'), affects, _ally_scalar(nb)))
     _death_memo[key] = out
-    return out
+    return [d[:5] for d in out] if not scalars else out
+
+
+def _ally_scalar(nugget):
+    """A DamageNugget's DamageScalarDetails for its allies (Filter Rule ALL Relationship ALLIES: the plane's crash,
+    NormalAircraftDeathWeapon 50 %), 1.0 without one; other filters are not read (INFERRED: own units count as allies,
+    as the death blasts' relation does)."""
+    for m in re.finditer(r'<DamageScalarDetails\b([^>]*)>(.*?)</DamageScalarDetails>', nugget or '', re.S):
+        scalar = re.search(r'Scalar\s*=\s*"([^"]*)"', m.group(1))
+        rule, rel = re.search(r'Rule\s*=\s*"([^"]*)"', m.group(2)), re.search(r'Relationship\s*=\s*"([^"]*)"', m.group(2))
+        if scalar and rule and rel and rule.group(1) == 'ALL' and rel.group(1).split() == ['ALLIES']:
+            return _pct(scalar.group(1))
+    return 1.0
+
+
+def _pct(v):
+    return float(v.strip().rstrip('%')) / 100.0 if v.strip().endswith('%') else float(v)
+
+
+_ocl_text = None
+
+
+def _ocl(name, own=None):
+    """(head, body) of an ObjectCreationList: a mission unit's own first, else retail's ObjectCreationLists.xml."""
+    global _ocl_text
+    for text in (own or {}).values():
+        for h, b in _blocks(text or '', 'ObjectCreationList'):
+            if _attr(h, 'id') == name:
+                return h, b
+    if _ocl_text is None:
+        p = os.path.join(SAGEXML, 'GlobalData', 'ObjectCreationLists.xml')
+        _ocl_text = re.sub(r'<!--.*?-->', '', open(p, encoding='utf-8', errors='replace').read(), flags=re.S) \
+            if os.path.exists(p) else ''
+    return next(((h, b) for h, b in _blocks(_ocl_text, 'ObjectCreationList') if _attr(h, 'id') == name), None)
+
+
+def fly_height(template, own=None):
+    """The PreferredHeight of its NORMAL LocomotorSet's locomotor (retail Locomotor.xml), 0.0 without one: the
+    Apollo's / MiG's 175 (bench 11-11 engine_crash_fall: both killed 174.94 over the ground)."""
+    def read(xml):
+        for m in re.finditer(r'<LocomotorSet\b(.*?)/?>', xml or '', re.S):
+            cond = re.search(r'\bCondition="([^"]+)"', m.group(1))
+            lo = re.search(r'\bLocomotor="([^"]+)"', m.group(1))
+            if lo and (not cond or cond.group(1) == 'NORMAL'):
+                return lo.group(1)
+        return None
+    loco = _chain(template, own, read)
+    if not loco or not os.path.exists(LOCOMOTORS):
+        return 0.0
+    text = open(LOCOMOTORS, encoding='utf-8', errors='replace').read()
+    m = re.search(r'<LocomotorTemplate\b[^>]*\bid="' + re.escape(loco) + r'"[^>]*>', text, re.S)
+    h = m and re.search(r'\bPreferredHeight="([\d.]+)"', m.group(0))
+    return float(h.group(1)) if h else 0.0
+
+
+_wreck_memo = {}
+
+
+def air_wrecks(template, own=None):
+    """What an aircraft killed in the air leaves (Physics P5, checks/engine_crash_fall.py): (choose_one, [wreck]) from
+    the CreateObjectDie that takes an airborne death (RequiredStatus AIRBORNE_TARGET, or ExemptStatus
+    PARKED_AT_AIRFIELD, or no status at all), None without one. A wreck: dict(template, scale = the OCL's VelocityScale
+    of the plane's velocity (INHERIT_VELOCITY), gravity = its own Physics GravityMultiplier (default 1), falls =
+    KillWhenRestingOnGround, weapons = its FireWeaponWhenDead (death_weapons with scalars)). The Apollo's: CHOOSE_ONE of
+    AlliedFighterAircraft_Collapse (debris, no weapon) and AlliedFighterAircraft_Dying (x 0.5, falls, 150 EXPLOSIVE
+    radius 20, allies 50 %)."""
+    key = (template, (own or {}).get(template))
+    if key in _wreck_memo:
+        return _wreck_memo[key]
+
+    def read(xml):
+        text = re.sub(r'<!--.*?-->', '', xml or '', flags=re.S)
+        mods = list(_blocks(text, 'CreateObjectDie'))
+        if not mods:
+            return None
+        for head, inner in mods:
+            req = re.search(r'RequiredStatus="([^"]*)"', inner)
+            exempt = re.search(r'ExemptStatus="([^"]*)"', inner)
+            if req and 'AIRBORNE_TARGET' not in req.group(1).split():
+                continue
+            if exempt and 'AIRBORNE_TARGET' in exempt.group(1).split():
+                continue
+            return _attr(head, 'CreationList')
+        return ''
+    name = _chain(template, own, read)
+    got = _ocl(name, own) if name else None
+    if not got:
+        _wreck_memo[key] = None
+        return None
+    head, body = got
+    wrecks = []
+    for ch, cb in re.findall(r'<CreateObject\b(\s[^>]*)>((?:\s*<CreateObject>[^<]*</CreateObject>)+)', body):
+        objs = re.findall(r'<CreateObject>\s*([^<\s]+)\s*</CreateObject>', cb)
+        if not objs or 'INHERIT_VELOCITY' not in (_attr(ch, 'Disposition') or ''):
+            continue
+        scale = _num(expand(_attr(ch, 'VelocityScale') or '1'), 1.0)
+        for w in objs:
+            def physics(xml):
+                p = next(_blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'Physics'), None)
+                return p[0] if p else None
+            ph = _chain(w, own, physics) or ''
+            wrecks.append(dict(template=w, scale=scale, gravity=_num(_attr(ph, 'GravityMultiplier') or '1', 1.0),
+                               falls=(_attr(ph, 'KillWhenRestingOnGround') or '').lower() == 'true',
+                               weapons=death_weapons(w, own, scalars=True)))
+    _wreck_memo[key] = ('CHOOSE_ONE' in (_attr(head, 'Flags') or ''), wrecks)
+    return _wreck_memo[key]
+
+
+def crash_frames(position, velocity, ground, gravity=1.0):
+    """(frames, landing) of a falling wreck made at `position` with `velocity` (a frame) over level `ground`: frames
+    from the kill to its death weapon's hit = its curve's points (meta_impact_fall) - 1. Bench 11-12 engine_crash_hit:
+    the flying plane's wreck (30 points) hits its tank 30 counted frames after the kill, the hovering ones' (38
+    points) 38 -- the script's count runs one frame past the hit (the sim's count of frames + 1)."""
+    points, end = meta_impact_fall(position, velocity, ground, gravity)
+    return len(points) - 1, end
 
 
 _retail_files = None
