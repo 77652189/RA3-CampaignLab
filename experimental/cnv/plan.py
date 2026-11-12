@@ -646,10 +646,12 @@ class Compiler:
                 raise PlanError(f'action {a!r}: 出动 <role> with 打 <site / role / 猎杀> or 守 <site>')
             if a.get('打') in self.devices:
                 raise PlanError(f'action {a!r}: 出动 can not 打 a device (a wave can)')
-            if '齐步' in a:
-                raise PlanError(f'action {a!r}: 齐步 is for 进攻 waves (units the script makes: their template is ours to '
-                                f'choose); placed troops are not copies')
-            return self.orders(a, self.part_names(a['出动']), dict(names=[]), self.m.cast[self.parts(a['出动'])[0]].side)
+            groups = a['出动'] if isinstance(a['出动'], list) else [a['出动']]
+            names = [n for g in groups for n in self.part_names(g)]
+            side = self.m.cast[self.parts(groups[0])[0]].side
+            if a.get('齐步') in (True, '是'):
+                return self.pace_placed(a, groups, names, side)
+            return self.orders(a, names, dict(names=[]), side)
         if '禁造' in a or '准造' in a:              # the player may (not) build it (retail Brighton Beach)
             return self.bans(a['禁造' if '禁造' in a else '准造'], int('准造' in a))
         if '转给我' in a:
@@ -1118,7 +1120,7 @@ class Compiler:
         if extra.get('每隔') is not None and not every:
             raise PlanError(f'进攻 {spec["名字"]}: 加码 每隔 on a wave without 每隔')
         warn = [self.ctx.say(self.text('SCRIPT', spec['预警']), CAPTION)] if spec.get('预警') else []
-        copies, arrive = self.pace_plan(spec, [*troops, *more], f'进攻 {spec["名字"]}') if spec.get('齐步') in (True, '是') else ({}, None)
+        copies, arrive = self.pace_plan(spec, [self.unit(u, 's1') for u in [*troops, *more]], f'进攻 {spec["名字"]}') if spec.get('齐步') in (True, '是') else ({}, None)
         for i in range(1, most + 1):
             for lv, levels in enumerate(ONE):
                 for bonus in ([False, True] if stepped else [False]):
@@ -1158,7 +1160,32 @@ class Compiler:
         if target in self.devices and not spec.get('守'):
             m.scripts += self.devices[target].attack(sorted(set(w['names'])))
 
-    def pace_plan(self, spec, units, what):
+    def pace_placed(self, a, groups, names, side):
+        """齐步 for placed troops sent off (出动): every faster one is placed as its paced copy from the start (the bench
+        placed the copy and granted the upgrade on it: checks/engine_pace.py `pace`, docs/engine/pathing.md 5b), granted
+        the upgrade as it is sent and released inside the area round where it goes, like a wave's."""
+        m = self.m
+        parts = [p for g in groups for p in self.parts(g)]
+        copies, arrive = self.pace_plan(a, [m.cast[p].template for p in parts], f'出动 {groups}')
+        slowed = []
+        for p in parts:
+            r = m.cast[p]
+            made = copies.get(r.template)
+            if not made:
+                continue
+            for o in m.objects:
+                if o.name == r.name and o.template == r.template:
+                    o.template = made.id
+            r.template = made.id
+            slowed.append((r.name, made.names['pace']))
+        k = self.uid()
+        for n, (obj, up) in enumerate(slowed):
+            m.scripts.append(Script(f'CNV {self.tag} - Pace placed {k} {n + 1}',
+                                    [('NAMED_INSIDE_AREA', obj, arrive)], [('NAMED_REMOVE_UPGRADE', up, obj)]))
+        return ([('NAMED_RECEIVE_UPGRADE', up, obj) for obj, up in slowed]
+                + self.orders(a, names, dict(names=[]), side))
+
+    def pace_plan(self, spec, templates, what):
         """齐步 for a force: ({template: the paced copy of it (a Unit, added to the mission)}, the area it is released in).
         The slowest mover of the force keeps its own speed, every faster one gets a copy slowed to it (units/pace.py);
         they are released when one gets inside the area round where the force is sent (打 / 守: a place or a role)."""
@@ -1173,7 +1200,6 @@ class Compiler:
         area = f'CNV {self.tag} Pace {site}'
         self.m.areas.setdefault(area, square(w.x, w.y, max(w.r or 0.0, PACE_ARRIVE)))
         own = {u.id: u.xml for u in self.m.units}
-        templates = [self.unit(u, 's1') for u in units]
         speeds = pace.movers(templates, own)
         copies = {}
         if len(speeds) > 1:

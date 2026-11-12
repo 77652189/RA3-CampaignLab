@@ -81,11 +81,32 @@ def test_a_grant_nobody_takes_away_is_named():
     assert contract.pace_released(m2)
 
 
-def test_pace_needs_a_place_to_go_and_is_not_for_placed_troops():
+def test_pace_needs_a_place_to_go():
     with pytest.raises(PlanError, match='齐步 needs 打 or 守'):
         force(打='猎杀')
-    with pytest.raises(PlanError, match='齐步 is for 进攻 waves'):
-        small(规则=[{'当': '开局', '做': [{'出动': 'camp', '打': 'west field', '齐步': '是'}]}])
+    with pytest.raises(PlanError, match='齐步 needs 打 or 守'):
+        small(规则=[{'当': '开局', '做': [{'出动': 'camp', '打': '猎杀', '齐步': '是'}]}])
+
+
+def test_placed_troops_sent_off_together_are_placed_as_paced_copies_and_released_on_arrival():
+    troops = [{'单位': '兵营', '在': 'north base', '阵营': '敌', '角色': 'camp'},
+              {'单位': '帝国武士', '数量': 2, '在': 'north base', '阵营': '敌', '角色': 'foot'},
+              {'单位': '海啸坦克', '数量': 2, '在': 'north base', '阵营': '敌', '角色': 'tank'}]
+    m = small(开局={'部队': troops},
+              规则=[{'当': '开局 + 0:30', '做': [{'出动': ['foot', 'tank'], '打': 'west field', '齐步': '是'}]}])
+    copy = pace.copy_id(TANK, 67)
+    assert copy in {u.id for u in m.units}
+    tanks = [o for o in m.objects if o.name.startswith('UNIT - CNV ZZ tank')]
+    foot = [o for o in m.objects if o.name.startswith('UNIT - CNV ZZ foot')]
+    assert len(tanks) == 2 and {o.template for o in tanks} == {copy}            # placed as the copy from the start
+    assert {o.template for o in foot} == {WALKER} and m.cast['tank 1'].template == copy
+    send = [s for s in m.scripts if any(a[0] == 'NAMED_RECEIVE_UPGRADE' for a in s.do)]
+    assert len(send) == 1
+    grants = [a for a in send[0].do if a[0] == 'NAMED_RECEIVE_UPGRADE']
+    assert {a[2] for a in grants} == {o.name for o in tanks} and grants[0][1] == 'Upgrade_' + copy
+    free = named(m, 'CNV ZZ - Pace placed')
+    assert len(free) == 2 and all(s.when[0] == ('NAMED_INSIDE_AREA', s.do[0][2], 'CNV ZZ Pace west field') for s in free)
+    assert contract.pace_released(m) == [] and parts.contract(m) == []
 
 
 def test_the_simulator_walks_a_slowed_unit_at_the_slowed_speed_and_back_at_full_when_released():
