@@ -136,7 +136,7 @@ MT_OWNED = (('AlliedAirfield', 'east airfield'), ('AlliedRefinery', 'east refine
 MT_POWER = ((-300.0, -150.0), (-300.0, -350.0), (-500.0, -250.0))   # from the east base (D's aiskcapp spots + one)
 
 
-def mintime_xml(min_time, force_time, build=MT_TECH):
+def mintime_xml(min_time, force_time, build=MT_TECH, const=MT_CONST[0], score=MT_CONST[1]):
     """1AlliedBalanced plus one ConstantHeuristic build state of its own with one entry MT_TECH TECH MinTime /
     ForceTime (retail writes MinTime on TECH / UPGRADE_TECH entries only, SDK States/AlliedBaseStates.xml; ForceTime
     is the XSD's, default 99999s). D59 (work/re/d59_b_fields.md 3): t = seconds since the AI woke; t < MinTime -> 0,
@@ -144,7 +144,9 @@ def mintime_xml(min_time, force_time, build=MT_TECH):
     comes first? The stock tech state (MinTime 360 s at MEDIUM) cannot build it earlier. min_time None (aiskmtc,
     H2 of B handoff 154): the entry is MT_CONST instead -- a building with no prerequisite at a constant 300: does
     a building entry of the AI's own state reach the yard at all? build: aiskmtt puts the TECH entry (MinTime 200 /
-    ForceTime 201) on that same tower -- TECH's own gate without the tech building's prerequisites."""
+    ForceTime 201) on that same tower -- TECH's own gate without the tech building's prerequisites. const: the
+    CONSTANT entry's building (aiskmtk: the tech building itself at CONSTANT 300 -- past TECH's evaluator, does the
+    yard's general gate take it? D round 82)."""
     return '\n'.join([
         '<?xml version="1.0" encoding="utf-8"?>',
         '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
@@ -156,7 +158,7 @@ def mintime_xml(min_time, force_time, build=MT_TECH):
         '    <Heuristic>',
         '      <ConstantHeuristic/>',
         '    </Heuristic>',
-        (f'    <BuildEntry Build="{MT_CONST[0]}" Heuristic="CONSTANT" Score="{MT_CONST[1]}"/>' if min_time is None else
+        (f'    <BuildEntry Build="{const}" Heuristic="CONSTANT" Score="{score}"/>' if min_time is None else
          f'    <BuildEntry Build="{build}" Heuristic="TECH" MinTime="{min_time}s" ForceTime="{force_time}s"/>'),
         '  </AIBuildStateDefinition>',
         f'  <AIPersonalityDefinition id="{MT_PID}" PersonalityType="{MT_PID}" inheritFrom="1AlliedBalanced">',
@@ -393,10 +395,11 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{PT_PID}'
         m.assets.append((f'{PT_PID}.xml', ptype_xml(ptype), f'AIPersonalityDefinition:{PT_PID}'))
     if mintime is not None:              # aiskmt / aiskmto (check mt): a TECH entry with MinTime / ForceTime
-        lo, hi, build = (*mintime, MT_TECH)[:3]
-        m.facts['min time'], m.facts['force time'], m.facts['build'] = lo, hi, build
+        lo, hi, build, const, score = (*mintime, *(MT_TECH, *MT_CONST)[len(mintime) - 2:])
+        m.facts['min time'], m.facts['force time'], m.facts['build'], m.facts['const'] = lo, hi, build, const
+        m.facts['score'] = score
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{MT_PID}'
-        m.assets.append((f'{MT_PID}.xml', mintime_xml(lo, hi, build), f'AIPersonalityDefinition:{MT_PID}'))
+        m.assets.append((f'{MT_PID}.xml', mintime_xml(lo, hi, build, const, score), f'AIPersonalityDefinition:{MT_PID}'))
         for k, (tpl, site) in enumerate(MT_OWNED):
             m.put(tpl, site, side='s1', name=f'UNIT - CNV AI Owned {k}', role=f'ai owned {k}')
         for k, (x, y) in enumerate(MT_POWER):
@@ -509,6 +512,8 @@ MISSION = {'aiskirm': mission, 'aiskirmc': lambda: mission(observe=True),
            'aiskmto': lambda: mission('CampAISkMTO', mintime=MT_TIMES['aiskmto']),   # check mt: MinTime 250 Force 151
            'aiskmtc': lambda: mission('CampAISkMTC', mintime=(None, None)),          # check mt: CONSTANT 300 tower
            'aiskmtt': lambda: mission('CampAISkMTT', mintime=(200, 201, MT_CONST[0])),   # check mt: TECH 200/201 tower
+           'aiskmtk': lambda: mission('CampAISkMTK', mintime=(None, None, MT_TECH, MT_TECH)),   # mt: CONSTANT 300 tech
+           'aiskmtl': lambda: mission('CampAISkMTL', mintime=(None, None, MT_TECH, MT_TECH, 200)),   # mt: CONST 200 tech
            'aiskrand': lambda: mission('CampAISkRand', two='rand'),   # check s: RANDOM_UNIT 0%-30% / bare 30-100
            'aiskdiff': lambda: mission('CampAISkDiff', two='diff'),   # check s: a HARD-only state at MEDIUM
            'aiskvinf': lambda: mission('CampAISkVInf', army=ARMY_INF),   # check z: the player owns 10 conscripts

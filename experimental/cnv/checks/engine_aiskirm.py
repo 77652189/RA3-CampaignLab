@@ -942,7 +942,9 @@ def mt(m):
     simulator scores no TECH entry: none in either."""
     t = Test()
     s1 = m.player('s1')
-    if m.facts['build'] != 'AlliedTechStructure' or m.facts['min time'] is None:   # aiskmtc / aiskmtt: the tower
+    if m.facts['min time'] is None and m.facts.get('const') == 'AlliedTechStructure':   # aiskmtk: CONSTANT tech
+        _sum(t, m, s1, 'CNV_AK_Tech', '科技楼', ('AlliedTechStructure',))
+    elif m.facts['build'] != 'AlliedTechStructure' or m.facts['min time'] is None:   # aiskmtc / aiskmtt: the tower
         _sum(t, m, s1, 'CNV_AK_Tech', '塔', ('AlliedBaseDefense',))
     else:
         _sum(t, m, s1, 'CNV_AK_Tech', '科技楼', ('AlliedTechStructure',))
@@ -1017,6 +1019,8 @@ CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j
           'aiskmto': {'mt': mt},
           'aiskmtc': {'mt': mt},
           'aiskmtt': {'mt': mt},
+          'aiskmtk': {'mt': mt},
+          'aiskmtl': {'mt': mt},
           'aiskrand': {'s': s},
           'aiskdiff': {'s': s},
           'aiskvinf': {'z': z, 't': t},
