@@ -146,10 +146,12 @@ NOTES = {
     '微操/AIMicroManagerData.EnemySearchDistanceVisionMultiplier': (BENCHED,
         'engine_aisearch aisrchhi/aisrchlo 仅倍率1.5/0.25不同：高先打旁厂、到远厂0；低旁厂100且到远厂4；'
         'tests/test_simai_search.py 回放；仅被动建筑搜索，精确边界、敌军目标取得和揭雾未量'),
-    '组队招人/TeamTemplate.SortByDistance': (GUESSED,
+    '组队招人/TeamTemplate.SortByDistance': (BENCHED,
         '专用engine_aisort aisort0/aisort1：容量1，关闭远候选f177先离、开启近候选f178先离，另一名留原位；'
-        '固定到目标距离约985/700、到基地顺序相反；tests/test_simai_bench_c.py按名回放；'
-        '招走仅INFERRED，缺同帧动态队成员ID/实际距离，不晋升；见 work/re/c_sort_report.md'),
+        '固定到目标距离约985/700、到基地顺序相反；tests/test_simai_bench_c.py::'
+        'test_sort_by_distance_replays_named_departure按名断言两组台内计数并回放匹配；'
+        '已对拍限具名候选离开顺序；招走解释仍INFERRED，同帧动态队成员ID/实际距离和等距规则仍gap；'
+        '见 work/re/c_sort_report.md'),
     '组队招人/CreateUnits.MinUnits': (GUESSED,
         '专用engine_aicreate：aicr1首辆s29出门、后两辆留家；aicr3等s41造齐三辆才出门；'
         '命名队计数均99、tests/test_simai_bench_c.py strict xfail，模型槽位未对上，不晋升；'
@@ -172,7 +174,9 @@ NOTES = {
     '微操/AIMicroManagerData.AlphaStrikeTargetHealthPct': (GUESSED,
         'engine_aialphahp 固定远厂70%血量，仅阈值0.01/0.9不同；有限诊断不等于字段闭环；'
         'tests/test_simai_alphahp.py 保留完整回放，AlphaStrike目标可用条件待证实，见 handoff-c'),
-    '微操/AIMicroManagerData.ReverseMove': (GUESSED, '推断（台上未复现）：锤子 airev / airevp / airevt 都不倒车；剩门队员有没有当前攻击目标，量法见 handoff-b 第 73 节'),
+    '微操/AIMicroManagerData.ReverseMove': (GUESSED, '推断（台上未复现）：锤子 airev / airevp / airevt 都不倒车；'
+        '工单入口未发布同帧成员当前攻击目标、位置和车身朝向观测，暂停新台，不把普通后退当倒车；'
+        '所需最小接口及假设表见 work/re/c_reverse_observation_report.md'),
     # B round 108: a test names the probe but only the switch-off case matches; the effect itself is a strict xfail
     '微操/AIMicroManagerData.Crush': (GUESSED, '台上量过（engine_aicrush：开了 s28 前碾光守军）；模拟器已验证派发，'
                                      '碾压 move 终点不再被避让挪开（A 161 Sim.claims）；原场景仍 strict xfail：'
