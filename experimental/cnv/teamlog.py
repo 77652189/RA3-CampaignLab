@@ -1,6 +1,6 @@
 """Read the AI's teams off a bench run's ra3ext.log (engine line D round 68; the game side is ra3ext's CNVTeams module,
 carrier `<DeletionUpdate id="ModuleTag_CNVTeams" MinFrames=EVERY MaxFrames=LINES/>` on an object the AI player owns;
-checks/engine_aiteams.py places one).
+missions/aiteams_bench.py places one).
 
 Every EVERY frames the module writes one `team:` line per team the host's owner has, then one `teams:` line (the end of
 that sample):
