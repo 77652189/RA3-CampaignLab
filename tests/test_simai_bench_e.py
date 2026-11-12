@@ -20,6 +20,46 @@ _spec.loader.exec_module(simai)
 pytestmark = pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
 
 
+@pytest.fixture(scope='module', params=['aimicupft', 'aimicupst'])
+def update_clock_rows(request):
+    w = simai.run(request.param, 'a', until=56, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    return request.param, [dict(zip(labels, values)) for _, values in w.sim.series]
+
+
+def test_micro_update_d81_charge_survival(update_clock_rows):
+    """D81-clock observer pair: AI builds two and charges with two alive.
+
+    No scripted power press; observation uses a 15-frame heartbeat.
+    Exact first-charge timing is checked separately against the retail latch.
+    """
+    build, rows = update_clock_rows
+    charged = [row for row in rows if row['首冲帧'] > 0]
+    assert charged, (build, rows[-1])
+    assert {row['首活'] for row in charged} == {2}
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+    'E102 observer pair retail population peaks at 2; model peaks at 3. '
+    'Observer-carrier population/economy equivalence remains a gap; '
+    'see work/re/handoff-e.md and work/re/e102_update_clock.md.'))
+def test_micro_update_d81_population(update_clock_rows):
+    """Retain the measured population ceiling independently of skill timing."""
+    build, rows = update_clock_rows
+    assert max(row['造出'] for row in rows) == 2
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+    'E102 D81-clock pair: retail first-charge latch fast371/slow317; '
+    'low-health eligibility and preceding state updates remain unresolved. '
+    'See work/re/handoff-e.md and work/re/e102_update_clock.md.'))
+def test_micro_update_d81_first_clock(update_clock_rows):
+    """Replay named observer builds against the new script-clock latches."""
+    build, rows = update_clock_rows
+    expected = 371 if build == 'aimicupft' else 317
+    assert {row['首冲帧'] for row in rows if row['首冲帧']} == {expected}
+
+
 @pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
     'D78 same-run commands diverge: retail stands west at frame 191, while the model stands east. '
     'The E96 candidate reaches the measured point only at frame 214 and repeats orders; '

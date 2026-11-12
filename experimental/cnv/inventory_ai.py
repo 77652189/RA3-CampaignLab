@@ -270,10 +270,11 @@ NOTES = {
     '微操/AIMicroManagerData.CrushPreference': (GUESSED, '同 Crush：派发已验证，碾压 move 终点已不挪；'
                                                'engine_aicrush 原场景 strict xfail 保留（handoff A 161）'),
     '微操/AIMicroManagerData.UpdateTime': (GUESSED,
-        'engine_aimicro aimicupfast/aimicupslow:a 仅切微操0.5/4s；台内首冲帧363/317、首活均2；'
-        'tests/test_simai_bench_c.py 按名回放存活通过，精确时钟strict xfail（模型271/309）；'
-        '资格/更新相位仍gap，不能解释为固定延迟；旧aidefctl4改的是Tactic.UpdateTime，非本字段证据；'
-        '见work/re/c_update_time_report.md，不晋升'),
+        'engine_aimicro aimicupft/aimicupst:a 仅切微操0.5/4s，15帧宿主、D81时钟重量；'
+        '台内首冲帧371/317、首活均2，末图逻辑帧872/876；'
+        'tests/test_simai_bench_e.py 按名回放首活通过，精确首冲及人口峰值strict xfail；'
+        '资格/更新前置状态、观测宿主人口等价仍gap；旧时钟读数不用于晋升，非固定延迟；'
+        '见work/re/e102_update_clock.md，不晋升'),
     '微操/SpecificSpecialPowerDelay.MaximumDelay': (GUESSED,
         '模型按成功施放后同类冷却消费上限；tests/test_simai_delay.py 验证上端点和真实冲锋执行接线；'
         'engine_aidelay 0/999实机PASS，脚本冲峰值2/1且曾冲>0已有回放；'
