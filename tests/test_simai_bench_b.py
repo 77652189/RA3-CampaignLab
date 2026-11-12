@@ -450,3 +450,42 @@ def test_against_conscripts_the_barracks_builds_no_javelin(lib, monkeypatch):
     monkeypatch.setattr(simai.SimAI, 'efficiency', True)
     _, rows = _probe_run('aiskvinf', lib, 170, 'z')
     assert rows[-1]['维和总数'] >= 4 and rows[-1]['标枪总数'] == 0
+
+
+# the war factory (B round 132): an empty IFV held its passenger guns (slots 3-7 of its WeaponSetUpdate, one
+# <Weapon Upgrade="Uprade_IFV_*"> line each: a 750-dps pistol, a 484-dps rifle ...), so the AI's expected efficiency
+# put it at 7.6 vs conscripts (a Riptide 1.37) and the war factory built IFVs only, no Riptide. simunits.weapon_sets
+# now reads Upgrade as a need (pick_weapons' upgrades; passengers granting it are not modelled)
+def test_an_empty_ifv_holds_only_its_missiles():
+    simunits = simai.simunits
+    ws = simunits.weapon_sets('AlliedAntiAirVehicleTech1')
+    held = [w.get('weapon_key') for w in simunits.pick_weapons(ws, set())]
+    assert held == ['AlliedAntiAirVehicleTech1MissileGroundLauncher', 'AlliedAntiAirVehicleTech1MissileLauncher']
+    shot = [w.get('weapon_key') for w in simunits.pick_weapons(ws, {'CONTAINER_OCCUPIED'}, {'Uprade_IFV_Shotgun'})]
+    assert shot == ['AAAVT1_ShotgunWeapon']
+
+
+def test_against_conscripts_the_war_factory_builds_riptides(lib, monkeypatch):
+    """aiskvinf (z, bench 2026-11-11): 激流 1 s111 .. 6 s165. Three Riptides are a team's order (s101 in the
+    simulator, the same in both builds); the other three are the amphibious build state's -- with the IFV fix its
+    Riptide (1.16) outranks the IFV (1.04): 3 more by s169 (before: none, 4 IFVs). The war factory makes the land
+    form AlliedAntiInfantryVehicle_Ground, which the probe's counter (AlliedAntiInfantryVehicle) does not count in
+    the simulator: both forms are counted here."""
+    monkeypatch.setattr(simai.SimAI, 'efficiency', True)
+    w = simai.run('aiskvinf', 'z', 175, lib=lib)
+    assert _riptides(w) >= 5
+
+
+def _riptides(w):
+    b = next(iter(w.brains.values()))
+    return sum(1 for x in b.living() if x.owner == b.player
+               and x.template in ('AlliedAntiInfantryVehicle', 'AlliedAntiInfantryVehicle_Ground'))
+
+
+def test_against_tanks_only_the_teams_riptides(lib, monkeypatch):
+    """aiskvveh (z, bench 2026-11-11): 激流 1 s112 .. 3 s133 against 10 Hammers, no more to s185 -- the team's three
+    only; the build state's war factory pick is not a Riptide (simulator: the IFV 1.041 over the Riptide 1.019; the
+    bench's z does not count IFVs)."""
+    monkeypatch.setattr(simai.SimAI, 'efficiency', True)
+    w = simai.run('aiskvveh', 'z', 175, lib=lib)
+    assert _riptides(w) == 3

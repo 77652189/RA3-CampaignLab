@@ -1167,7 +1167,7 @@ class Sim:
             b.status = set(b.status) | tm['states'][0]['status']      # Sim.modify keeps them; retail first states
                                                                       # have no AttributeModifier)
         if b.slots:                           # the weapon lines name a status: the held one is chosen from it
-            b.weapons = simunits.pick_weapons(b.slots, b.status)
+            b.weapons = simunits.pick_weapons(b.slots, b.status, self.weapon_upgrades(b))
         b.crusher, b.crushable = simunits.crush(template, self.own)
         b.lies = simunits.slow_death(template, self.own)
         b.linger = LINGER
@@ -1883,6 +1883,12 @@ class Sim:
                 cache[template] = ''
         return cache[template]
 
+    def weapon_upgrades(self, b):
+        """The upgrade names a <Weapon Upgrade="X"> line tests (simunits.pick_weapons): the object's and its
+        player's (INFERRED: the engine's object test also takes the player's upgrades, as Generals'). Passenger-granted
+        upgrades (the IFV's Uprade_IFV_*) are not modelled, so an IFV holds only its own missiles."""
+        return set(b.upgrades) | set(getattr(self, 'player_ups', {}).get(b.owner, ()))
+
     def modify(self, b):
         """Sets b's acting values from the attribute modifiers on it (simunits.effect): the upgrades it holds (an
         AttributeModifierUpgrade's modifier, until its Duration runs out from the giving: bench upgrades.md 4; a
@@ -1936,7 +1942,7 @@ class Sim:
         if not mods and not on and not off and b.base is None:
             b.status = set(b.script_status | b.attachment_status | toggle_bits)
             if b.slots:
-                b.weapons = simunits.pick_weapons(b.slots, b.status)
+                b.weapons = simunits.pick_weapons(b.slots, b.status, self.weapon_upgrades(b))
             return
         if b.base is None:
             b.base = {'speed': b.speed, 'vision': b.vision, 'sight': b.sight, 'weapons': b.weapons, 'armor': b.armor}
@@ -1955,7 +1961,7 @@ class Sim:
             # Recompute from retail shroud, never from last frame's scaled value.
             shroud = simunits.stats(b.template, self.own)['shroud'] or 0.0
             b.vision = max(b.vision, shroud * level_shroud)
-        held = simunits.pick_weapons(b.slots, st) if b.slots else b.base['weapons']       # the status picks the guns
+        held = simunits.pick_weapons(b.slots, st, self.weapon_upgrades(b)) if b.slots else b.base['weapons']       # the status picks the guns
         b.weapons = held if e['RANGE'] == 1.0 else [dict(w, range=w['range'] * e['RANGE']) for w in held]
         b.shielded = e['shielded']
         # Suppression ARMOR75%: EXPLOSIVE40 on150HP reads80%; UNRESISTABLE bypasses it.

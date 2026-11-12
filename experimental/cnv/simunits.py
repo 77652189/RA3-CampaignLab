@@ -1326,8 +1326,12 @@ def weapon_sets(template, own=None):
     """The weapon choice a unit makes by its ObjectStatus (engine line C round 11, engine_weaponset a / b, bench 11-09,
     docs/engine/weaponset.md): per WeaponSlot the list of [need, forbid, weapon] of its <Weapon> lines in XML order
     (need = ObjectStatus bits all present, forbid = ForbiddenObjectStatus bits none present, weapon = the resolved
-    template, PRIMARY_WEAPON flagged). None where no weapon line carries a status condition (the unit's weapons are
-    read_fight's, whatever its status). Walks the inheritance like declared_weapons."""
+    template, PRIMARY_WEAPON flagged). A line's Upgrade="X" is one more need, the bit UPGRADE_BIT + X lowercased: the
+    line is held only while the object (or its player) has X (pick_weapons' upgrades) -- the IFV's passenger guns
+    (Uprade_IFV_*, granted by who rides in, not modelled) are not an empty IFV's; before, its slots 3-7 (one
+    upgrade line each) gave it a 750-dps pistol and the AI's expected efficiency 7.6 for it vs conscripts (B round
+    132). None where no weapon line carries a status or upgrade condition (the unit's weapons are read_fight's,
+    whatever its status). Walks the inheritance like declared_weapons."""
     try:
         xml, table = _xml(template, own), weapon_table(own)
     except (OSError, ValueError):
@@ -1336,7 +1340,9 @@ def weapon_sets(template, own=None):
         slots = []
         for head, body in _blocks(xml or '', 'WeaponSetUpdate'):
             for slot in re.finditer(r'<WeaponSlot\w*\b.*?</WeaponSlot\w*>', body, re.S):
-                slots.append([(set((_attr(h, 'ObjectStatus') or '').split()), set((_attr(h, 'ForbiddenObjectStatus') or '').split()),
+                slots.append([(set((_attr(h, 'ObjectStatus') or '').split())
+                               | {UPGRADE_BIT + u.lower() for u in (_attr(h, 'Upgrade') or '').split()},
+                               set((_attr(h, 'ForbiddenObjectStatus') or '').split()),
                                _attr(h, 'Ordering') == 'PRIMARY_WEAPON', _attr(h, 'Template'))
                               for h, _ in _blocks(slot.group(0), 'Weapon')])
         if slots:
@@ -1354,9 +1360,15 @@ def weapon_sets(template, own=None):
     return None
 
 
-def pick_weapons(slots, status):
-    """The weapons a unit holds under `status`: per slot the first line (a PRIMARY_WEAPON one before the rest) whose
-    need bits are all set and forbid bits none set; one that cannot hurt or reach (the target painter) is no gun."""
+UPGRADE_BIT = 'UPGRADE:'            # weapon_sets: a <Weapon Upgrade="X"> line's need
+
+
+def pick_weapons(slots, status, upgrades=()):
+    """The weapons a unit holds under `status` with `upgrades` (the object's and its player's upgrade names): per
+    slot the first line (a PRIMARY_WEAPON one before the rest) whose need bits are all set and forbid bits none set;
+    one that cannot hurt or reach (the target painter) is no gun."""
+    if upgrades:
+        status = set(status) | {UPGRADE_BIT + u.lower() for u in upgrades}
     guns = []
     for s in slots:
         for need, forbid, prim, w in sorted(s, key=lambda e: not e[2]):
