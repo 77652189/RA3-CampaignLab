@@ -54,6 +54,7 @@ import os
 import re
 import struct
 import sys
+import types
 
 import numpy as np
 
@@ -323,7 +324,7 @@ GAP_WEAPON, GAP_UPGRADE, GAP_ACTION, GAP_CONDITION, GAP_COMMAND, GAP_STATUS = \
     '武器', '升级', '脚本动作', '脚本条件', '命令', '状态'
 # the object statuses sim.py acts on (tested with `in b.status`; IN_STASIS = IMMOBILE NO_ATTACK UNATTACKABLE in
 # Sim.modify); tests/test_sim.py checks the list against the source
-ACTED_STATUS = frozenset({'SOLD', 'GENERIC_TOGGLE_STATE', 'IMMOBILE', 'NO_ATTACK', 'UNATTACKABLE', 'NON_AUTOACQUIRABLE', 'IN_STASIS', 'UNDER_FROZEN', 'ATTACHED', 'SPECIAL_ARMOR_ACTIVE'})
+ACTED_STATUS = frozenset({'SOLD', 'GENERIC_TOGGLE_STATE', 'IMMOBILE', 'NO_ATTACK', 'UNATTACKABLE', 'NON_AUTOACQUIRABLE', 'IN_STASIS', 'UNDER_FROZEN', 'ATTACHED'})
 # a script's power or button by itself, as simcoverage.refined names it
 BUTTON_ACTIONS = ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY',
                   'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED')
@@ -938,6 +939,8 @@ class Ground:
 class Sim:
     shot_clock = False                  # opt-in frame clock: discrete shots and movement between script frames;
                                         # default movement retains its benched coarse tick (work/re/handoff-c.md)
+    player_ups = types.MappingProxyType({})     # read-only "nothing granted" for a Sim built without __init__ (the
+                                                # tests' bare worlds); __init__ gives each Sim its own dict
 
     def __init__(self, mission, test=None, level='normal', script='', model=True):
         """model: run the scripts in the engine line's model where it is on this computer (False: the older loop)."""

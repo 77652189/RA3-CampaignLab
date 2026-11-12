@@ -1241,8 +1241,6 @@ def test_scripts1_hunt_without_an_ai_moves_nobody():
     assert all(v == [0, 0, 0] for v in _scripts1('hunt', 60.0).values())
 
 
-@pytest.mark.xfail(strict=True, reason='the Peacekeeper toggle (ToggleStatusSpecialAbilityUpdate) is not simulated: '
-                                       'the button reaches each member, the shield status is not set')
 def test_scripts1_team_button_raises_both_shields():
     """button: TEAM_USE_COMMANDBUTTON_ABILITY(Pk, the riot shield) at 2 s: 举盾 2 from then."""
     assert _scripts1('button', 10.0)[10] == [2]
