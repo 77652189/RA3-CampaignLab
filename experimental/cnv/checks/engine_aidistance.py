@@ -1,7 +1,8 @@
 """Distance 250/2000: retained StaticDefense Guardian displaced 1200 south.
 
-Only Distance differs. Named square occupancy observes location, not dynamic
-team membership or exact radial geometry. The per-frame displacement latch
+Only Distance differs in the original pair. The 2000 build now also carries
+CNVTeams (15-frame samples); named square occupancy alone does not observe
+dynamic team membership or exact radial geometry. The per-frame displacement latch
 proves teleport success independently of screenshot timing. Predictions are
 recorded before bench execution in work/re/c_distance_report.md.
 
@@ -10,6 +11,12 @@ RESULTS: both builds PASS (five endpoint checks each). Small returns to the
 returns inside 900 at s34, then leaves 900 again at s56. Both remain alive.
 The model matches endpoints but misses the large group's excursion: strict
 xfail in test_simai_bench_c.py. No inventory promotion; aesthetics remains gap.
+
+E92: the initial Guardian's ID persists across 68 position samples. Its
+(300, 900) square occupancy changes at frames 166/256/451/541/871:
+11 -> 01 -> 00 -> 01 -> 00. The model only reproduces 11 -> 00.
+One extra member appears only at frame 391; its identity remains a gap.
+Raw log, trajectory assertions and same-frame comparison: work/re/e_distance_e92.md.
 """
 from model import Script, Test, counted, square
 

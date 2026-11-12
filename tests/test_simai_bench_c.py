@@ -382,8 +382,10 @@ def test_tactic_distance_replays_displaced_guardian(build, home):
                  marks=pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
                      'Distance 2000 stand-point selection is unresolved: retail leaves the 300 square '
                      'before displacement, returns to the 900 square, then leaves again. '
-                     'Same-frame stand-point, order source and readiness observations are missing; '
-                     'endpoint agreement does not close Distance. See work/re/e_distance_e91.md.'))),
+                     'CNVTeams confirms the same Guardian at frames 166/256/451/541/871: '
+                     '11->01->00->01->00, while the model only has 11->00. '
+                     'Stand-point, order source and readiness remain unobserved; '
+                     'see work/re/e_distance_e92.md.'))),
 ])
 def test_tactic_distance_replays_observed_excursion(build, expected_before, expected_after):
     """Assert measured location transitions, independent of capture-clock seconds."""
