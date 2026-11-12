@@ -112,6 +112,12 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '造兵/BuildEntry.Upgrade': (TODO,
+        'C engine_aiupgrade a：aicupgon常量状态含UPGRADE_TECH/Tech2，s39起持有2；'
+        'aicupgoff移除专用状态后恒0，配对均3/3 PASS；见work/re/c_upgrade_report.md。'
+        '模型丢弃无Build条目且缺升级下单；共享消费者与B的MinTime重叠，待接口。'
+        'tests/test_simai_upgrade_c.py按名回放，正组strict xfail；不晋升，'
+        '精确时钟/预算账户/卖家选择/Tech3/日本升级均为gap'),
     '目标/AITargetingHeuristic.Location': (BENCHED,
         'E81/E87 engine_ailocation a：同型电厂一陆一水、四架双刃，仅切Land/Water/Water Land；'
         's40到陆厂/到水厂分别4/0、0/4、4/0；'
