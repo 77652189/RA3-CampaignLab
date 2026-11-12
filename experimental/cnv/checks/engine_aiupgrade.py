@@ -10,7 +10,7 @@ budget account, Tech3 and Japanese upgrades remain gaps. Evidence: work/re/c_upg
 RESULTS 2026-11-12: aicupgon archived rows s39..s120 show 2 Tech2 holders;
 yard=1 throughout, refinery=1 then 2/3 as the opening continues. Saved frames rejudged
 after correcting an unsupported expectation operator; no second engine run needed.
-aicupgoff: Tech2 holders=0 throughout s1..118; yard=1, refinery>=1. All three
+aicupgoff: Tech2 holders=0 throughout s1..105; yard=1, refinery>=1. All three
 expectations PASS. This pair establishes upgrade-state effect, not the holder identities.
 """
 from parts import Script, Test, counted
