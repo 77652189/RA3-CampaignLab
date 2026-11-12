@@ -3,8 +3,9 @@
 One retail Allied plant: 20 seconds of zero supply, spy consumed, owner unchanged.
 Travel/entry reach and Amount * eligible energy duration scaling are INFERRED;
 only Amount=.2 and eligible energy=100 have been measured.
-engine_infvis:a measures one Allied yard's local vision, not whole-side sharing.
+engine_infvis:a/b measure Allied/Soviet yards' local vision.
 VISION activation delay of five seconds is INFERRED from second-spaced samples;
+Soviet first discovery is later; only stable windows replay, exact timing is a gap.
 mapping the whole local radius to yard XML and parent-death cleanup are INFERRED.
 Observer lifetime, other templates/players/spies and repeated entry remain gaps.
 """
@@ -53,7 +54,7 @@ class Infiltrators:
         self.observers = []
 
     def vision_rule(self, target, rule):
-        return (target.template == 'AlliedConstructionYard'
+        return (target.template in ('AlliedConstructionYard', 'SovietConstructionYard')
                 and rule.get('Effect') == 'VISION' and rule.get('Duration') == '-1s'
                 and rule.get('ObjectRef') == 'VisionObserver' and not rule.get('ReplaceWith'))
 
@@ -82,7 +83,7 @@ class Infiltrators:
         energy = (rule.get('Effect') == 'ENERGY' and rule.get('ObjectRef') == 'EnergyDisabler'
                   and not rule.get('ReplaceWith'))
         if not energy and not self.vision_rule(target, rule):
-            s.gap('InfiltratorContain', target.template, '仅电厂ENERGY和盟军建造场普通VISION已实现')
+            s.gap('InfiltratorContain', target.template, '仅电厂ENERGY和盟/苏建造场普通VISION已实现')
             return
         if self.vision_rule(target, rule) and (
                 spy.owner != s.human or spy.template != 'AlliedInfiltrationInfantry'

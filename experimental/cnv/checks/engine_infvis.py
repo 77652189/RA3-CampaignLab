@@ -48,4 +48,20 @@ def check(m):
     return t
 
 
-CHECKS = {'engine_infvis': {'a': check}}
+def check_soviet(m):
+    """b: Soviet yard shares the retail ordinary VISION include with Allied yard.
+
+    Predict the same enemy consumption, unchanged HP/owner, friendly refusal,
+    and local-only discovered marker; preserve a's timing windows and controls.
+    Radar freeze, exact timing and observer cleanup remain outside this slice.
+    Bench: s1-s10 11100/11100/0; s11-s17 1100/11100/0;
+    s18-s38 1100/11100/1. First discovery differs from a; no timing fit added.
+    """
+    for role in ('enemy', 'ally'):
+        yard = m.role(role)
+        yard.template = 'SovietConstructionYard'
+        m.find(yard.name).template = yard.template
+    return check(m)
+
+
+CHECKS = {'engine_infvis': {'a': check, 'b': check_soviet}}

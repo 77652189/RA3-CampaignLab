@@ -108,20 +108,23 @@ def test_unmeasured_infiltration_effect_reports_gap_instead_of_capture():
     assert not s.infiltrators.going
 
 
-def test_spy_ordinary_vision_as_on_the_bench():
-    """engine_infvis:a: actual discovered markers, consumed enemy, refused ally.
+@pytest.mark.parametrize('check, template', [
+    ('a', 'AlliedConstructionYard'), ('b', 'SovietConstructionYard')])
+def test_spy_ordinary_vision_as_on_the_bench(check, template):
+    """engine_infvis:a/b: actual discovered markers, consumed enemy, refused ally.
 
-    s1-s10 11100/11100/0; s11-s15 1100/11100/0; s16-s37 1100/11100/1.
+    a: s1-s10 11100/11100/0; s11-s15 1100/11100/0; s16-s37 1100/11100/1.
+    b: s1-s10 11100/11100/0; s11-s17 1100/11100/0; s18-s38 1100/11100/1.
     Stable windows only; exact arrival/activation mechanism, other templates,
     observer destruction, radar freeze and repeated infiltration remain gaps.
     """
     import build
     import sim
     import siminfiltrator
-    m, t, mod = build.resolve('engine_infvis', 'a')
+    m, t, mod = build.resolve('engine_infvis', check)
     assert len(mod) <= 15 and '_' not in mod
-    assert all(m.role(role).template == 'AlliedConstructionYard' for role in ('enemy', 'ally'))
-    rule = siminfiltrator.spec('AlliedConstructionYard')
+    assert all(m.role(role).template == template for role in ('enemy', 'ally'))
+    rule = siminfiltrator.spec(template)
     assert (rule['Effect'], rule['Duration'], rule['ObjectRef']) == ('VISION', '-1s', 'VisionObserver')
     s = sim.Sim(m, t).run(35)
     for start, end, wanted in ((1, 7, [11100, 11100, 0]), (18, 35, [1100, 11100, 1])):
