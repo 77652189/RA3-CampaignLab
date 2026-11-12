@@ -51,6 +51,11 @@ def samples(run):
                 continue
             m = END.match(line)
             if m:
+                if m[2] is None:     # a log before round 81: every sample whole, kept as written (redacted logs
+                    live = {}        # repeat one team token, so keying by it would merge distinct teams)
+                    out.append((int(m[1]), cur))
+                    cur = []
+                    continue
                 if m[2] != '0':
                     live = {}
                 live.update((t['team'], t) for t in cur)
