@@ -160,12 +160,12 @@
 | 推断 | AI | `人格/SpecificUnitCap.Cap` | 60 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/SpecificUnitCap.Difficulty` | 60 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/SpecificUnitCap.Unit` | 60 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `组队招人/CreateUnits.MinUnits` | 60 | a4 a5 a7 | AI 模型代码里读了这个名字（台上量的是 TeamTemplate.MinUnits，不是现造兵） |
-| 推断 | AI | `组队招人/CreateUnits.UnitName` | 60 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 推断 | AI | `组队招人/CreateUnits.MinUnits` | 60 | a4 a5 a7 | 现成engine_ai checks未独立观测现造兵最小数；engine_aiskirm的TeamTemplate.MinUnits不能替代；缺CreateUnits专用计数及触发证据，本轮不上台、不晋升；见 work/re/c_recruit_gate_report.md |
+| 推断 | AI | `组队招人/CreateUnits.UnitName` | 60 | a4 a5 a7 | engine_aiskirm:y按单位名计数的是BuildState生产，不是CreateUnits路径；现成台缺CreateUnits触发及对应模板计数的独立证据，未晋升；见 work/re/c_recruit_gate_report.md |
 | 推断 | AI | `造兵/BuildEntry.PercentHigh` | 54 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `造兵/BuildEntry.PercentLow` | 54 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `启发条件/PathToTargetHeuristic.LocomotorConditionToUseForTest` | 45 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `战术/Tactic.Distance` | 41 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 推断 | AI | `战术/Tactic.Distance` | 41 | a4 a5 a7 | engine_aidefense:a的250/450对照用UNIT_SET_TEAM移出AI队，不能独立判定Distance；b/c保留AI队但只有Distance=250，未量距离边界或独立对照；不晋升；见 work/re/c_recruit_gate_report.md |
 | 推断 | AI | `战术/Tactic.UseAestheticsManager` | 40 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `启发条件/IsBuildingHeuristic` | 30 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `启发条件/IsBuildingHeuristic.KindOf` | 30 | a4 a5 a7 | AI 模型代码里读了这个名字 |

@@ -141,7 +141,16 @@ NOTES = {
         'engine_aisearch aisrchhi/aisrchlo 仅倍率1.5/0.25不同：高先打旁厂、到远厂0；低旁厂100且到远厂4；'
         'tests/test_simai_search.py 回放；仅被动建筑搜索，精确边界、敌军目标取得和揭雾未量'),
     '组队招人/TeamTemplate.SortByDistance': (GUESSED, 'AI 模型代码里读了这个名字（台上没单独量：engine_aiskirm 里是推测）'),
-    '组队招人/CreateUnits.MinUnits': (GUESSED, 'AI 模型代码里读了这个名字（台上量的是 TeamTemplate.MinUnits，不是现造兵）'),
+    '组队招人/CreateUnits.MinUnits': (GUESSED,
+        '现成engine_ai checks未独立观测现造兵最小数；engine_aiskirm的TeamTemplate.MinUnits不能替代；'
+        '缺CreateUnits专用计数及触发证据，本轮不上台、不晋升；见 work/re/c_recruit_gate_report.md'),
+    '组队招人/CreateUnits.UnitName': (GUESSED,
+        'engine_aiskirm:y按单位名计数的是BuildState生产，不是CreateUnits路径；'
+        '现成台缺CreateUnits触发及对应模板计数的独立证据，未晋升；见 work/re/c_recruit_gate_report.md'),
+    '战术/Tactic.Distance': (GUESSED,
+        'engine_aidefense:a的250/450对照用UNIT_SET_TEAM移出AI队，不能独立判定Distance；'
+        'b/c保留AI队但只有Distance=250，未量距离边界或独立对照；不晋升；'
+        '见 work/re/c_recruit_gate_report.md'),
     '微操/AIMicroManagerData.PullbackInjured': (BENCHED,
         'engine_aipullback aipullsov 残血坦克离队回吊车；tests/test_simai_bench_b.py::'
         'test_a_hurt_soviet_tank_team_is_pulled_back_to_the_crane 回放；普通盟军/日本工厂不可进入；'

@@ -864,8 +864,8 @@
 | 推断 | `人格/SpecificUnitCap.Difficulty` | 60 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | `人格/SpecificUnitCap.Unit` | 60 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 已对拍 | `组队招人/CreateUnits.MaxUnits` | 60 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |
-| 推断 | `组队招人/CreateUnits.MinUnits` | 60 | a4 a5 a7 | AI 模型代码里读了这个名字（台上量的是 TeamTemplate.MinUnits，不是现造兵） |
-| 推断 | `组队招人/CreateUnits.UnitName` | 60 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 推断 | `组队招人/CreateUnits.MinUnits` | 60 | a4 a5 a7 | 现成engine_ai checks未独立观测现造兵最小数；engine_aiskirm的TeamTemplate.MinUnits不能替代；缺CreateUnits专用计数及触发证据，本轮不上台、不晋升；见 work/re/c_recruit_gate_report.md |
+| 推断 | `组队招人/CreateUnits.UnitName` | 60 | a4 a5 a7 | engine_aiskirm:y按单位名计数的是BuildState生产，不是CreateUnits路径；现成台缺CreateUnits触发及对应模板计数的独立证据，未晋升；见 work/re/c_recruit_gate_report.md |
 | 已对拍 | `战术/Tactic.Tactic=SimpleAttack` | 59 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aitarget.py |
 | 不涉及 | `表现/FeedbackEntry.Timeout` | 56 |  | 纯表现（语音、视频、画面） |
 | 推断 | `造兵/BuildEntry.PercentHigh` | 54 | a4 a5 a7 | AI 模型代码里读了这个名字 |
@@ -884,7 +884,7 @@
 | 已对拍 | `启发条件/PathToTargetHeuristic.PathExists` | 45 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiopath.py |
 | 已对拍 | `目标/AITargetingHeuristic.HeuristicType=EnemyUnit` | 44 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aitargetpick.py |
 | 已对拍 | `战术/Tactic.Tactic=DefenseAvoidanceAttack` | 43 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |
-| 推断 | `战术/Tactic.Distance` | 41 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 推断 | `战术/Tactic.Distance` | 41 | a4 a5 a7 | engine_aidefense:a的250/450对照用UNIT_SET_TEAM移出AI队，不能独立判定Distance；b/c保留AI队但只有Distance=250，未量距离边界或独立对照；不晋升；见 work/re/c_recruit_gate_report.md |
 | 已对拍 | `微操/AIMicroManagerData.RetreatMinDistanceFromBase` | 40 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_airetreat.py |
 | 推断 | `战术/Tactic.UseAestheticsManager` | 40 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 已对拍 | `目标/AITargetingHeuristic.Relationship` | 40 | a4 a5 a7 | docs/engine/ainamed.md#给关卡线的结论（ainmrel：写了 Relationship 就按关系过滤，玩家的楼当 NEUTRAL 不算，不出门） |
