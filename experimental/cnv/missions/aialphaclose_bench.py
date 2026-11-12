@@ -7,12 +7,15 @@ Only AlphaStrikeTargetHealthPct differs between the builds. Target identity
 and internal AlphaStrike eligibility still require independent observations.
 """
 import math
+from pathlib import Path
+
+import labpaths
 
 from missions import airetreat_bench as ar
-from parts import Script
+from parts import Script, Unit
 
 
-def mission(high):
+def mission(high, observe=False):
     m = ar.mission('CampAlCloseHi' if high else 'CampAlCloseLo',
                    RetreatPowerAdvantage='0.2', AlphaStrikeTargetHealthPct='0.9' if high else '0.01',
                    AlphaStrikeTargetTimeToKill='1000.0', Crush='false')
@@ -33,7 +36,21 @@ def mission(high):
         Script('Alpha - start timer', [], [('SET_MILLISECOND_TIMER', 'Alpha guard timer', 30.0)]),
         Script('Alpha - introduce guards', [('TIMER_EXPIRED', 'Alpha guard timer')],
                [('SET_FLAG', 'Alpha guards', 1), *actions])]
+    if observe:
+        # Use the existing yard: no extra object, economy or recruitment candidate.
+        yard = m.role('ai yard')
+        original = yard.template
+        host = 'CNVAlphaTeamsYard'
+        xml = (Path(labpaths.SDK3) / 'SageXML/Allied/Structures' / (original + '.xml')).read_text(encoding='utf-8')
+        assert xml.count('<Behaviors>') == xml.count(f'id="{original}"') == 1
+        xml = xml.replace(f'id="{original}"', f'id="{host}"').replace(
+            '<Behaviors>', '<Behaviors>\n  <DeletionUpdate id="ModuleTag_CNVTeams" MinFrames="1" MaxFrames="4000"/>')
+        m.units.append(Unit(host, xml, names=dict(unit=host), what='原建造厂附带每帧被动队伍日志', params=dict(every=1)))
+        m.find(yard.name).template = yard.template = host
+        m.name = 'CampAlObsHi' if high else 'CampAlObsLo'
+        m.ext = True
     return m
 
 
-MISSION = {'aialcloselo': lambda: mission(False), 'aialclosehi': lambda: mission(True)}
+MISSION = {'aialcloselo': lambda: mission(False), 'aialclosehi': lambda: mission(True),
+           'aialobslo': lambda: mission(False, observe=True), 'aialobshi': lambda: mission(True, observe=True)}

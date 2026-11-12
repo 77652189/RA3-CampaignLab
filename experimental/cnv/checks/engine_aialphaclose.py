@@ -27,4 +27,21 @@ def probe(m):
     return t
 
 
+def observe(m):
+    """Check observer equivalence against the original measured plateaus.
+
+    E98's per-frame carrier failed this qualification: the capture ended before
+    target engagement. Do not use this run to prove Alpha eligibility or shift
+    its clock to fit the original bench. Evidence and open clock questions:
+    work/re/e98_alpha_observer.md.
+    """
+    t = probe(m)
+    hp, home, live = (34, 0, 0) if m.facts['alpha high'] else (59, 4, 4)
+    t.expect = [('目标血量', 1, '==', 70, 29), ('到远厂', 17, '==', 4, 27)]
+    t.expect += [(label, 39, '==', value, 55) for label, value in
+                 (('目标血量', hp), ('步兵在家', home), ('步兵数', live))]
+    return t
+
+
 CHECKS = {b: {'a': probe} for b in ('aialcloselo', 'aialclosehi')}
+CHECKS.update({b: {'a': observe} for b in ('aialobslo', 'aialobshi')})

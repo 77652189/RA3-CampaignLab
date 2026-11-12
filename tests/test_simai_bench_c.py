@@ -81,6 +81,46 @@ def test_alpha_close_pair_has_only_one_changed_field():
     assert low.scripts == high.scripts
 
 
+@pytest.mark.parametrize('high', [False, True])
+def test_alpha_observer_preserves_the_measured_scenario(high):
+    """Observe on the existing yard without changing any tactical or combat input."""
+    from dataclasses import replace
+    import labpaths
+    from missions.aialphaclose_bench import mission
+    from checks.engine_aialphaclose import observe
+    stock, observed = mission(high), mission(high, observe=True)
+    assert observed.ext and not stock.ext
+    assert len(observed.objects) == len(stock.objects)
+    assert observed.assets == stock.assets
+    assert observed.scripts == stock.scripts
+    assert observed.waypoints == stock.waypoints
+    assert observed.facts == stock.facts
+    yard = stock.role('ai yard')
+    assert [replace(o, template=yard.template) if o.name == yard.name else o
+            for o in observed.objects] == stock.objects
+    host, = observed.units
+    original = (Path(labpaths.SDK3) / 'SageXML/Allied/Structures' / (yard.template + '.xml')).read_text(encoding='utf-8')
+    behavior = '\n  <DeletionUpdate id="ModuleTag_CNVTeams" MinFrames="1" MaxFrames="4000"/>'
+    assert host.xml.count(behavior) == 1
+    assert host.xml.replace(behavior, '').replace(f'id="{host.id}"', f'id="{yard.template}"') == original
+    assert observed.role('ai yard').template == observed.find(yard.name).template == host.id
+    test = observe(observed)
+    assert ('目标血量', 39, '==', 34 if high else 59, 55) in test.expect
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+    'E98 aialobshi observer reports micro state 6 at frame 230; model reports 8. '
+    'The observer did not reproduce the original counters and its clock relation '
+    'to script time is unresolved. This is an upstream observation gap, not an '
+    'Alpha threshold verdict. See work/re/e98_alpha_observer.md and work/re/handoff-e.md.'))
+def test_alpha_observer_replays_measured_same_frame_state():
+    """Assert the actual observer reading without shifting either timeline."""
+    w = simai.run('aialobshi', 'a', until=16, lib=simai.model()['xmldata'].Library(), record=True)
+    brain, = w.brains.values()
+    row, = [r for r in brain.rec['frames'] if r['frame'] == 230]
+    assert row['state'] == 6
+
+
 def test_alpha_close_arrives_with_target_at_seventy_percent(alpha_close_rows):
     """Named delayed-guard bench controls; this alone does not close AlphaStrike."""
     build, rows = alpha_close_rows
@@ -93,7 +133,9 @@ def test_alpha_close_arrives_with_target_at_seventy_percent(alpha_close_rows):
     'E90 shares actual firing geometry with Alpha eligibility: high HP37/home0/live0; '
     'low remains HP64/home3/live3. Exact firing/retreat chronology still needs '
     'same-frame engine target/member/eligibility evidence. No threshold fitting or '
-    'inventory promotion. See work/re/handoff-e.md and work/re/e_alpha_e90.md.'))
+    'inventory promotion. E98 per-frame observer failed baseline qualification '
+    'before target engagement; it cannot close this gap. See work/re/handoff-e.md, '
+    'work/re/e_alpha_e90.md and work/re/e98_alpha_observer.md.'))
 def test_alpha_close_replays_measured_outcome(alpha_close_rows):
     """Stable s39-55 bench plateaus; no exact dispatch-frame inference."""
     build, rows = alpha_close_rows
