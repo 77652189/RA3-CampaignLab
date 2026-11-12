@@ -932,7 +932,7 @@
 | 推断 | `启发条件/TechBuildingShareHeuristic.Above` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/TechBuildingShareHeuristic.PercentOfFairShare` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | `微操/AIMicroManagerData.AlphaStrikeTargetTimeToKill` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 未做 | `微操/AIMicroManagerData.DodgeThreats` | 15 | a4 a5 a7 | AI 模型代码里没有这个名字 |
+| 未做 | `微操/AIMicroManagerData.DodgeThreats` | 15 | a4 a5 a7 | engine_aidodge aidodgeon/aidodgeoff 原版精确打击信标开关对照；tests/test_ai_dodge.py 按名回放，开启组 strict xfail：模型无躲避消费者，simai.micro_team 缺威胁视图与移动回调（归B）；见 work/re/c_dodge_report.md；固定0.5秒反应，截图秒窗与游戏帧漂移亦留gap；未量精确时间、圆边界、过滤和多威胁，不晋升已对拍 |
 | 已对拍 | `微操/IgnoreTargets.IncludeThing` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiteamfilter.py |
 | 推断 | `目标/AITargetingHeuristic.HighestPriorityEnemyPlayersOnly` | 15 |  | AI 模型代码里读了这个名字 |
 | 推断 | `目标/AITargetingHeuristic.MinDistanceFromEnemy` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字 |
