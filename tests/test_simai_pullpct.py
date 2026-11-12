@@ -34,13 +34,18 @@ def test_pullback_threshold_high_returns_before_recycling(returns):
     assert all(r['坦克数'] == 4 for r in rows[14:home + 1])
 
 
-@pytest.mark.xfail(strict=True, reason='Crane entry/deletion scheduling and refund basis lack implementation evidence; '
-                   'bench high0.5 has alive0 from s28, but area counters cannot identify that lifecycle. '
-                   'See work/re/handoff-c.md, Crane recycling evidence gap.')
+@pytest.mark.xfail(strict=True, reason='Crane arrival event/geometry is missing: D43 establishes immediate refund '
+                   'then deletion on actual arrival, but home-area entry cannot supply that event. '
+                   'Bench high0.5 has alive0 from s28; replay leaves four alive. '
+                   'See work/re/c_recycle_arrival_gate_report.md and work/re/handoff-c.md.')
 def test_pullback_threshold_high_is_recycled_after_return(returns):
-    """checks/engine_aipullpct.py: high tanks disappear after reaching the Crane."""
-    _, rows = returns['aipullpcthi']
-    assert any(r['坦克数'] == 0 for r in rows[27:])
+    """checks/engine_aipullpct.py: bench has no high tanks from s28 onward."""
+    w, rows = returns['aipullpcthi']
+    # Use the series clock (which includes t=0), not an assumed row offset.
+    # This checks observed counts only; home-area membership is not arrival.
+    samples = [(t, r['坦克数']) for (t, _), r in zip(w.sim.series, rows) if 28 <= t < 40]
+    assert [t for t, _ in samples] == list(range(28, 40))
+    assert [alive for _, alive in samples] == [0] * 12, samples
 
 
 @pytest.fixture
