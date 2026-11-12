@@ -4367,7 +4367,7 @@ class Sim:
                         self.lift_timers.hit(by.name, t.name, rule['increment'], rule['maximum'])
                         t.lift_status.add('LIFTED_INTO_AIR')
                         self.modify(t)
-                        self.gap(GAP_WEAPON, 'ActivateLiftObjectNugget', '计时释放不清状态；落地清位为INFERRED，垂直运动/落地武器未接通')
+                        self.gap(GAP_WEAPON, 'ActivateLiftObjectNugget', '计时释放不清状态；SoftLanding自击及修正器到期清位缺Lift接地事件，垂直运动/落地武器未接通；见work/re/c_lift_landing_gate_report.md')
                     for effect in w.get('attach', []):
                         if (set(effect['forbidden']) & t.status
                                 or (effect['include'] and not set(effect['include']) & t.kinds)

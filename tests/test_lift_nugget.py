@@ -13,7 +13,7 @@ _spec.loader.exec_module(_harness)
 @pytest.mark.parametrize('check,expected', [
     ('a', (1099, 11001099, 11001099, 1099)),
     pytest.param('landing', (1099, 10001099, 10001099, 1099),
-                 marks=pytest.mark.xfail(strict=True, reason='Landing/SoftLanding clear not modelled; see work/re/handoff-c.md and c_lift_release_report.md')),
+                 marks=pytest.mark.xfail(strict=True, reason='D52 SoftLanding self-hit/expiry requires a Lift ground-contact event; no per-frame height/contact evidence or Lift trajectory exists. See work/re/c_lift_landing_gate_report.md and work/re/handoff-c.md')),
 ])
 def test_lift_historical_bench_counters(check, expected):
     import build
