@@ -129,7 +129,17 @@ def wreck(m):
     t = swap(m)
     counted('Test Wrecks', '残骸数', t, template=m.role("wreck").template)
     t.expect.append(('残骸数', 9, 'ever>=', 1, 14))
+    # round 53, the carrier dressed (280 across): at the default zoom it filled the screen and its white hull behind
+    # the counters misread them (CampRwSWreck_mcp_1111_200658); zoomed out, and frames 4 a second round the swap
+    # (the time-warp ball lives 10-15 frames, a second's frame missed it)
+    t.scripts.append(Script('Test - zoom out', [], [('ZOOM_CAMERA', ZOOM_OUT, 0.1, 0.0, 0.0)]))
+    # one watch through the swap: a second one started 3 s late (_201029: s9.2 then s12.4)
+    t.bench = [('bench_watch', dict(seconds=14, every=0.25, sheet=False, lines=4)),
+               ('bench_watch', dict(seconds=13, every=1, sheet=False, lines=4))]
     return t
+
+
+ZOOM_OUT = 1.4      # ZOOM_CAMERA's first argument: > 1 farther (_201029: 2.0 showed the map's black edge)
 
 
 _ALL = {'fire': fire,'auto': auto, 'still': still, 'own': own, 'ctrl': ctrl, 'trick': trick}

@@ -8,7 +8,12 @@ down to 1 % (missions/rewind_bench.py). Engine line D's bench, checks/engine_rew
 
 Published: abilities rewind = the belt's command (NAMED_USE_COMMANDBUTTON_ABILITY); params back, reload, body.
 """
+import os
+import re
+import types
+
 from units import liberty as lib
+from units.icewall import cut
 from units.liberty import sub1
 
 
@@ -55,13 +60,23 @@ def rewind(id='CNV_LibRw', back='3s', reload='20s', body='HighlanderBody', store
 
 # The show version (user 11-11: no real rewind): the carrier stays on as "the new one" and drops a wreck of the old
 # one on its spot, which plays the belt's time-warp FX as it is made and crashes there.
-WARP_SCALE = 3.0    # bench CampRwSSwap_mcp_1111_163719 s11.5: retail's FX_TanyaTimeWarp covered ~1/3 of the hull
+# Round 53: both wear the carrier's real look (liberty.dress; user: the Kirov's model shows nothing of the real build)
+# and the FX's size follows the model's, not a guess: the lightning mesh FXCHRONOSPHERELIGHTNING.SPHERE03 is 47.1
+# across at StartSize 1 (retail_mesh bounding box; the Kirov SUBOMBERAIRCRAFT_SKN is 73 x 41 x 45); CNLiberty.w3x's
+# platform is 280 x 274 across, its body 0..156 up (the statue to 215). So scale = width / 47.1, the ball centred at
+# half the body's height.
+LIGHTNING_D = 47.1                  # the time-warp lightning's diameter at size 1
+HULL_W, HULL_H = 280.0, 156.3       # CNLiberty: platform width, body height (its origin at the bottom)
+WARP_SCALE = round(HULL_W / LIGHTNING_D, 2)     # 5.94 (round 47-49: 3, on the Kirov)
+WARP_LIFT = round(HULL_H / 2, 1)
 
 
-def warp_fx(id, scale=WARP_SCALE):
+def warp_fx(id, scale=WARP_SCALE, lift=WARP_LIFT):
     """Tanya's time-warp FX made `scale` times larger: retail's particle system Allied_Tanya_Chrono (20 lightning
-    models, FXChronoSphereLightning) with StartSize / SizeRate times scale and its cylinder's lift too -- the FXList
-    nugget has no size of its own (AssetTypeFXList.xsd). Returns (FXList id, {file: text})."""
+    models, FXChronoSphereLightning) with StartSize / SizeRate times scale -- the FXList nugget has no size of its
+    own (AssetTypeFXList.xsd) -- and its cylinder `lift` above the object (None: retail's 15, times scale).
+    Returns (FXList id, {file: text})."""
+    lift = 15 * scale if lift is None else lift
     ps, fx = f'{id}_Chrono', f'FX_{id}_Warp'
     v = lambda a: f'<x High="{a:g}" Low="{a:g}"/>\n\t\t\t\t\t<y High="{a:g}" Low="{a:g}"/>\n\t\t\t\t\t<z High="{a:g}" Low="{a:g}"/>'
     return fx, {f'{ps}.xml': f'''<?xml version="1.0" encoding="UTF-8"?>
@@ -90,7 +105,7 @@ def warp_fx(id, scale=WARP_SCALE):
 		</Draw>
 		<Volume>
 			<Cylinder>
-				<Offset x="0" y="0" z="{15 * scale:g}"/>
+				<Offset x="0" y="0" z="{lift:g}"/>
 			</Cylinder>
 		</Volume>
 		<Velocity>
@@ -135,14 +150,15 @@ def warp_fx(id, scale=WARP_SCALE):
 '''}, [f'FXParticleSystemTemplate:{ps}', f'FXList:{fx}']
 
 
-def swap_carrier(id='CNV_LibRwS', wreck_id='CNV_LibRwW'):
+def swap_carrier(id='CNV_LibRwS', wreck_id='CNV_LibRwW', model=lib.LOOK[0]):
     """The carrier of the show version, which stays on as "the new one" (round 49: its spot, facing and name are
     the old one's by construction; round 47 spawned a new one, which faced east whatever the old one did):
     ImmortalBody (bench CampRwSSwap_mcp_1111_163449: with retail's ActiveBody a 5200 blow at 56 % killed it before
     the mission's swap ran; ImmortalBody holds it at 1 hp, so the swap always runs). Its button `wreck` (an
     OCLSpecialPower, CreateLocation USE_OWNER_OBJECT) drops `wreck_id` on its spot and facing (CreateObject
-    Disposition LIKE_EXISTING): the wreck plays the time-warp FX and crashes (wreck())."""
-    u = lib.liberty(id, tag='RwS', drone_range=1, drones_home=False, model=None)
+    Disposition LIKE_EXISTING): the wreck plays the time-warp FX and crashes (wreck()). model: its look (dress;
+    None: the Kirov's)."""
+    u = lib.liberty(id, tag='RwS', drone_range=1, drones_home=False, model=model)
     u.xml = sub1(u.xml, '<ActiveBody\n\t\t\t\tid="ModuleTag_Body"', '<ImmortalBody\n\t\t\t\tid="ModuleTag_Body"')
     ids = dict(shed=f'SpecialPower_{id}_Wreck', shed_cmd=f'Command_{id}_Wreck', shed_button=f'Button_{id}_Wreck',
                shed_ocl=f'OCL_{id}_Wreck')
@@ -180,15 +196,56 @@ def swap_carrier(id='CNV_LibRwS', wreck_id='CNV_LibRwW'):
 WRECK_LIFE = 1.5    # s: a once-a-second counter sees it alive, then retail's death plays (the crash)
 
 
-def wreck(id='CNV_LibRwW', scale=WARP_SCALE, life=WRECK_LIFE):
-    """The old carrier's wreck: the same Kirov with retail's body and death (it falls and crashes), no drones; the
+KIROV_FALL = 'SUBomberAircraft_Dying_OCL'      # retail Kirov's death: its falling body + its flying parts
+FALL_SRC = os.path.join(lib.SAGE, 'Soviet', 'Props', 'SovietBomberAircraft_Dying.xml')
+
+
+def falling(id, model=lib.LOOK[0]):
+    """The falling body of a dressed carrier: retail's SovietBomberAircraft_Dying (ProjectileUpdate MoveToGround:
+    it sinks at up to 2.5 a frame; its fire / smoke particle systems; on the ground FX_SOV_KirovCrash, the death
+    weapon, ShipSlowDeath 10 s) drawing `model` with statue and rings (liberty.dress) in place of the Kirov's skinned
+    dying mesh and its nose-down animation -- so it falls level. Its ground wreck SovietBomberAircraft_Collapse (a
+    Kirov) is left out. Returns (OCL id, {file: text}, link) -- the OCL replaces the Kirov's death OCL, without its
+    debris (the gondola and engines)."""
+    with open(FALL_SRC, encoding='utf-8') as f:
+        x = f.read()
+    x = sub1(x, 'id="SovietBomberAircraft_Dying"', f'id="{id}"')
+    x = sub1(x, 'EditorName="SovietBomberAircraft_Dying"', f'EditorName="{id}"')
+    fires = ''.join(re.findall(r'\s*<ParticleSysBone.*?/>', x, flags=re.S))
+    x = re.sub(r'<Include\s+type="all"\s+source="ART:SUBomberAircraft_(?:Dying_SKN\.w3x|DYING\.w3x|D\.xml)"\s*/>',
+               '', x)
+    shim = types.SimpleNamespace(xml=x, params={})
+    x = lib.dress(shim, model).xml
+    x = sub1(x, '<WeaponLaunchBone WeaponSlotType="PRIMARY_WEAPON" BoneName="FX_WEAPON" />', fires.strip())
+    x = cut(x, 'CreateObjectDie', 'ModuleTag_CreateObjectDie')
+    assert 'SUBomberAircraft' not in x, re.findall(r'.{40}SUBomberAircraft.{40}', x)
+    ocl = f'OCL_{id}'
+    x = sub1(x, '</AssetDeclaration>', f'''	<ObjectCreationList id="{ocl}">
+		<CreateObject Options="IGNORE_ALL_OBJECTS" Disposition="LIKE_EXISTING INHERIT_VELOCITY" Count="1"
+			VelocityScale="1.0" MinForceMagnitude="1.0" MaxForceMagnitude="1.0" MinForcePitch="90d" MaxForcePitch="75d">
+			<CreateObject>{id}</CreateObject>
+		</CreateObject>
+	</ObjectCreationList>
+</AssetDeclaration>''')
+    return ocl, {f'{id}.xml': x}, [f'GameObject:{id}', f'ObjectCreationList:{ocl}']
+
+
+def wreck(id='CNV_LibRwW', scale=WARP_SCALE, life=WRECK_LIFE, model=lib.LOOK[0]):
+    """The old carrier's wreck: the carrier with retail's body and death (it falls and crashes), no drones; the
     carrier's wreck button drops it on its spot (swap_carrier). It plays the time-warp FX `scale` times larger as it
     is made (FXListBehavior onCreate; scale 1: retail's FX_TanyaTimeWarp) and dies `life` s later (LifetimeUpdate:
-    it has no name, so no NAMED_KILL)."""
-    u = lib.liberty(id, tag='RwW', drone_range=1, drones_home=False, model=None)
+    it has no name, so no NAMED_KILL). model: its look (None: the Kirov's, falling as the Kirov does); dressed, it
+    falls as falling() (the Kirov's way, our model)."""
+    u = lib.liberty(id, tag='RwW', drone_range=1, drones_home=False, model=model)
+    if model:
+        ocl, files, link = falling(f'{id}_Fall', model)
+        u.xml = sub1(u.xml, f'CreationList="{KIROV_FALL}"', f'CreationList="{ocl}"')
+        u.files.update(files)
+        u.also += list(files)
+        u.link += link
     fx = 'FX_TanyaTimeWarp'
     if scale != 1:
-        fx, files, link = warp_fx(id, scale)
+        fx, files, link = warp_fx(id, scale, WARP_LIFT if model else None)
         u.files.update(files)
         u.also += list(files)
         u.link += link
