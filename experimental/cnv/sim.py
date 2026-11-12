@@ -528,6 +528,7 @@ class Body:
     suppressed: bool = False                                    # sampled model condition; may outlive end frame
     suppressed_until: int = -1                                  # model condition, NOT an object status
     suppression_next: int = 0
+    model_conditions: dict = dataclasses.field(default_factory=dict)  # condition -> expiry frame or None
     dealt: float = 1.0                                          # DAMAGE_MULT x RATE_OF_FIRE: damage dealt x (INFERRED)
     level_rate: float = 1.0                                     # measured heroic Mirage clip rate; never per-hit damage
     level_vision: float = 1.0                                   # ENEMY_SIGHTED only; heroic auto-acquire not benched
@@ -2671,6 +2672,10 @@ class Sim:
                 return b.last_hit == a[1]
             by = self.bodies.get(b.last_by)
             return bool(self.present(by) and by.owner == a[1])
+        if name == 'UNIT_HAS_MODELCONDITION':
+            b = self.body(a[0])
+            condition = a[1][2] if isinstance(a[1], tuple) else a[1]
+            return self.has_model_condition(b, condition)
         if name == 'UNIT_HEALTH':
             # whole percent, rounded down (int(health * 100 / max): 99.9 % reads 99, so "< 50" holds at 49.9 %); a dying
             # unit reads 0 (E4)
@@ -3107,6 +3112,14 @@ class Sim:
             if b and b.alive:
                 b.max_hp = float(a[1])
                 b.hp = b.max_hp if a[2] else min(b.hp, b.max_hp)
+        elif name in ('UNIT_SET_MODELCONDITION_GENERIC', 'UNIT_CLEAR_MODELCONDITION'):
+            b = self.body(a[0])
+            condition = a[1][2] if isinstance(a[1], tuple) else a[1]
+            if self.present(b):
+                if name == 'UNIT_CLEAR_MODELCONDITION':
+                    b.model_conditions.pop(condition, None)
+                else:
+                    self.set_model_condition(b, condition, float(a[2]))
         elif name == 'UNIT_CHANGE_OBJECT_STATUS':
             b = self.body(a[0])
             st = a[1][2] if isinstance(a[1], tuple) else a[1]
@@ -4794,6 +4807,25 @@ class Sim:
         now = self.frame_now()
         self.peeks = [q for q in self.peeks if now < q[3]]
         return [q[:3] for q in self.peeks]
+
+    def set_model_condition(self, b, condition, seconds=None):
+        """Shared minimal script/consumer store; separate from ObjectStatus.
+
+        engine_spndisguise measures DISGUISED held for 20s. INFERRED: expiry
+        at the first frame at/after duration, zero duration holds until cleared.
+        Other native producers (including suppression) are not merged here.
+        """
+        b.model_conditions[condition] = (self.frame_now() + math.ceil(seconds * simunits.LIFE_FPS)
+                                         if seconds and seconds > 0 else None)
+
+    def has_model_condition(self, b, condition):
+        if not self.present(b) or condition not in b.model_conditions:
+            return False
+        until = b.model_conditions[condition]
+        if until is not None and self.frame_now() >= until:
+            b.model_conditions.pop(condition, None)
+            return False
+        return True
 
     def frame_now(self):
         return self.eng.frame if self.eng else int(round(self.t * simunits.LIFE_FPS))

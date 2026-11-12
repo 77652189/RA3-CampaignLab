@@ -420,3 +420,26 @@ def test_special_power_nugget_native_disguise_consumer_bench_replay():
     assert tuple(result.series[-1][1]) == measured
     assert all(tuple(row) == measured for sec, row in result.series if sec >= 12)
     assert (sim.GAP_WEAPON, 'SpecialPowerNugget') not in e.unmodeled
+
+
+def test_disguise_model_condition_script_interface():
+    """Synthetic interface guard; expiry boundary remains INFERRED, not bench evidence."""
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_spndisguise', 'a')
+    e = sim.Sim(m, t, model=False)
+    name = 'SPD base caster'
+    b = e.body(name)
+    args = [name, 'DISGUISED']
+    assert not e.cond('UNIT_HAS_MODELCONDITION', args)
+    e.act('UNIT_SET_MODELCONDITION_GENERIC', args + [2.], '')
+    assert e.cond('UNIT_HAS_MODELCONDITION', args)
+    assert 'DISGUISED' not in b.status | b.script_status
+    e.t += 2.
+    assert not e.cond('UNIT_HAS_MODELCONDITION', args)
+    e.act('UNIT_SET_MODELCONDITION_GENERIC', args + [0.], '')
+    e.t += 100.
+    assert e.cond('UNIT_HAS_MODELCONDITION', args)
+    e.act('UNIT_CLEAR_MODELCONDITION', args, '')
+    assert not e.cond('UNIT_HAS_MODELCONDITION', args)
+    assert not e.cond('UNIT_HAS_MODELCONDITION', ['missing', 'DISGUISED'])
