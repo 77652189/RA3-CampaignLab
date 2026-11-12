@@ -81,6 +81,18 @@ def test_repair_closure_retains_three_health_slices_and_unmeasured_gaps():
         assert gap in row['why']
 
 
+def test_production_info_ui_exclusion_preserves_weight_without_claiming_bench():
+    key = inventory.MODULE, 'Behaviors/ProductionUpdateInfo'
+    rows = [i for i in items() if i['part'] == key[0] and i['name'].startswith(key[1])]
+    assert len(rows) == 1
+    row = rows[0]
+    assert (row['state'], row['uses'], row['all']) == (inventory.NA, 9, 9)
+    assert row['levels'] == ['a1', 'a4', 'a5', 'a6', 'a7', 'a9']
+    assert key not in inventory.BENCHED_TESTS
+    assert '没有游戏逻辑读者' in row['why']
+    assert 'work/re/e_production_e56.md' in row['why']
+
+
 def test_spawn_closure_preserves_unmeasured_gaps_and_all_three_named_replays():
     key = inventory.MODULE, 'Behaviors/SpawnBehavior'
     rows = [i for i in items() if i['part'] == key[0] and i['name'].startswith(key[1])]
