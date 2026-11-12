@@ -264,13 +264,21 @@ def built(name, tactic='StaticDefense', foes=None, spow=None, engage=True):
     return m
 
 
-def update_time(name, seconds):
+def update_time(name, seconds, observe=False):
     """Recruited, AI-built charge users; only AIMicroManagerData.UpdateTime differs.
 
     No claim that the period is a fixed first-response delay: qualification and
     the phase of the team's micro update also affect the first observed charge.
+    observe adds the CNVTeams carrier for diagnosis, separately registered from
+    the measured pair; host equivalence is unresolved (work/re/c_update_state_report.md).
     """
     m = built(name, tactic='Hunt', foes=True, spow=True)
+    if observe:
+        from missions.aiteams_bench import host_unit, HOST
+        # Keep D's verified passive carrier and cadence identical in both builds.
+        m.units.append(host_unit())
+        m.put(HOST, 'east base', 250.0, 400.0, side='s1', role='teams host')
+        m.ext = True
     m.assets = [(path, text.replace(f'id="{SPOW_ID}" UpdateTime="0.5s"',
                                    f'id="{SPOW_ID}" UpdateTime="{seconds}s"'), key)
                 for path, text, key in m.assets]
@@ -336,6 +344,8 @@ def ignore_distance(name, distance):
 
 MISSION = {'aimicupfast': lambda: update_time('CampMicUpFast', 0.5),
            'aimicupslow': lambda: update_time('CampMicUpSlow', 4),
+           'aimicupft': lambda: update_time('CampMicObsFast', 0.5, observe=True),
+           'aimicupst': lambda: update_time('CampMicObsSlow', 4, observe=True),
            'aiignzero': lambda: ignore_distance('CampAIIgnZero', 0),
            'aiignnear': lambda: ignore_distance('CampAIIgnNear', 2000),
            'aidodgeon': lambda: dodge('CampAIDodgeOn', True),

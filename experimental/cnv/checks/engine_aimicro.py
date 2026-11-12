@@ -227,6 +227,8 @@ def probe_update_time(m):
 CHECKS = {b: {'r': lambda m, b=b: probe(m, build=b)} for b in FIRES if not b.startswith(('aimicbuilt', 'aimicsp'))}
 CHECKS['aimicupfast'] = {'a': probe_update_time}
 CHECKS['aimicupslow'] = {'a': probe_update_time}
+CHECKS['aimicupft'] = {'a': probe_update_time}
+CHECKS['aimicupst'] = {'a': probe_update_time}
 CHECKS['aimicbuilt'] = {'r': probe_built}
 CHECKS['aimicbuilth'] = {'r': lambda m: probe_built(m, 'aimicbuilth')}
 CHECKS['aimicbuiltf'] = {'r': lambda m: probe_built(m, 'aimicbuiltf')}

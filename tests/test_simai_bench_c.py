@@ -140,6 +140,18 @@ def test_micro_update_time_pair_changes_only_micro_period():
     assert fast.objects == slow.objects
     assert fast.scripts == slow.scripts
     assert fast.waypoints == slow.waypoints
+    observed_fast = update_time('CampMicObsFast', 0.5, observe=True)
+    observed_slow = update_time('CampMicObsSlow', 4, observe=True)
+    assert not fast.ext and not slow.ext
+    assert observed_fast.ext and observed_slow.ext
+    assert observed_fast.units == observed_slow.units
+    assert observed_fast.objects == observed_slow.objects
+    assert observed_fast.scripts == fast.scripts == observed_slow.scripts
+    assert observed_fast.assets == fast.assets
+    assert observed_slow.assets == slow.assets
+    hosts = [u for u in observed_fast.units if 'ModuleTag_CNVTeams' in u.xml]
+    assert len(hosts) == 1
+    assert 'MinFrames="15"' in hosts[0].xml
 
 
 def test_micro_update_time_charge_and_survival(micro_update_rows):
@@ -154,8 +166,8 @@ def test_micro_update_time_charge_and_survival(micro_update_rows):
 
 @pytest.mark.xfail(strict=True, reason='Micro UpdateTime-only pair: retail first-charge latch fast363/slow317, '
                   'model271/309; both model fires use the low-health branch outside charge distance. '
-                  'Health eligibility and micro state/order updates need B observations. '
-                  'See work/re/handoff-c.md and work/re/c_update_model_report.md.')
+                  'Health eligibility remains unresolved; the D78 observer run did not reproduce '
+                  'the scripted wake. See work/re/handoff-c.md and work/re/c_update_state_report.md.')
 def test_micro_update_time_first_clock_replays_bench(micro_update_rows):
     """Assert the measured script latch, independent of capture wall time."""
     build, rows = micro_update_rows
