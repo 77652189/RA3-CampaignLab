@@ -868,6 +868,12 @@ def meta_impact_landing_hold():
     return _frames(SHOCK_STUNNED + SHOCK_STANDING)
 
 
+# An attack order kept through the knock walks later than a move order: first step at landing + 50, not + 38 (bench
+# 11-11 engine_knock_water farfire, the Hammer ~158 degrees round from his flight, and farwalk, straight ahead: both
+# 249 from a landing at 199 -- not a turn). Which engine wait it is (the attack state's own re-think) is INFERRED.
+KNOCK_ATTACK_WAIT = 12
+
+
 def meta_impact_resistance(template, own=None):
     """The object's ShockwaveResistance (GameObject attribute, inherited; schema default 0): BaseVehicle 90,
     BaseRepairDrone 120, JapanMechaKing 101, infantry 0. A shock whose nugget amount is under it launches nothing

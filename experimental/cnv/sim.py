@@ -3896,7 +3896,8 @@ class Sim:
         live = [b for b in self.living() if not b.scenery and self.on_map(b)]     # off the border: out of the fight
         flying = self.__dict__.get('impact_flights', {})
         # a knocked body fires its kept order lying (landing hold: feet only), not in the air (Physics P4, bench 11-11
-        # engine_knock_probe fire: first hit ~300-316, the landing 300; in 2-D reach from 292 -- no air fire INFERRED)
+        # engine_knock_probe fire: first hit ~300-316, the landing 300; bench 11-11 engine_knock_water farfire: ~20 up
+        # and in 2-D reach for frames ~182..196, no fire in the air)
         armed = [b for b in live if b.weapons and 'NO_ATTACK' not in b.status    # NO_ATTACK: holds its fire
                  and id(b) not in flying
                  and not self.emp_disabled(b) and not self.unpowered(b)
@@ -5053,7 +5054,9 @@ class Sim:
                 continue
             if id(b) in self.__dict__.get('impact_flights', {}):
                 continue
-            if self.frame_now() < self.__dict__.get('knock_hold', {}).get(id(b), 0):
+            hold = self.__dict__.get('knock_hold', {}).get(id(b))
+            if hold is not None and self.frame_now() < hold + (simunits.KNOCK_ATTACK_WAIT
+                                                               if isinstance(b.goal, Body) else 0):
                 continue
             if 'ATTACHED' in b.status and b.name in self.attachments:
                 continue

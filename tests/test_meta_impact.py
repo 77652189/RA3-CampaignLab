@@ -686,3 +686,89 @@ def test_physics_p4_a_knocked_man_fires_his_order_while_lying_before_he_stands()
             first = e.eng.frame
     assert (man.x, man.y) == (2300, 3180)
     assert first is not None and 300 <= first <= 316 < 338, first
+
+
+def test_physics_p4b_a_knocked_man_does_not_fire_in_the_air_with_the_target_in_reach():
+    """engine_knock_water farfire (bench 11-11 CampKWFarfire_mcp_1111_212052): far's push flings the dry man low and
+    flat, 1940 -> 1560 (shock 175, N 25, ~20 up), past a Hammer 60 off his line; ordered on it at frame 176, he has it
+    within his 150 (2-D gap) over frames ~182..196 -- and the Hammer stays 100 until s15, its first damage at s16,
+    after he landed (199), lay out of reach and walked in: no fire in the air (Sim.fight skips impact_flights). The
+    curve is the engine's own (probe lines 176, 177, 187, 199)."""
+    import math
+    import sim
+    from checks.engine_knock_water import name
+
+    m, t, _ = build_farfire()
+    e = sim.Sim(m, t)
+    gun = e.bodies[name('man', 'gun')]
+    weapon, = gun.weapons
+    e.meta_impact_detonate(weapon, (2000, 3300.01, 219))
+    man, target = e.bodies[name('man', 'dry')], e.bodies[name('man', 'target')]
+    _, _, points = e.impact_flights[id(man)]
+    assert len(points) == 25
+    for k, want in {1: (1924.3, 3299.2, 216.01), 2: (1908.6, 3298.3, 219.21), 12: (1751.4, 3290.1, 234.46),
+                    24: (1560.0, 3280.0, 212.5)}.items():
+        assert points[k] == pytest.approx(want, abs=0.06), k
+    e.impact_flights[id(man)] = (man, 175, points)
+    for b in e.bodies.values():
+        if b is not man:
+            b.status.add('NO_ATTACK')
+    man.status.discard('NO_ATTACK')
+    man.script_status.discard('NO_ATTACK')
+    weapon, = man.weapons
+    e.eng.frame, full, reach = 175, target.health, []
+    while e.eng.frame < 199:
+        e.eng.frame += 1
+        if e.eng.frame == 176:
+            e.order_attack(man, target.name)
+        e.meta_impact_tick()
+        e.move(1 / 15)
+        e.fight()
+        e.deal(1 / 15)
+        if sim.Sim.in_range(man, target, weapon):
+            reach.append(e.eng.frame)
+        assert target.health == full, e.eng.frame
+    assert reach and reach[0] <= 183 and reach[-1] >= 195, reach
+    assert (man.x, man.y) == (1560, 3280)
+    assert math.hypot(target.x - man.x, target.y - man.y) - man.radius - target.radius > weapon['range']
+
+
+def build_farfire(check='farfire'):
+    import build
+    return build.resolve('engine_knock_water', check)
+
+
+@pytest.mark.parametrize('check', ['farfire', 'farwalk'])
+def test_physics_p4b_an_attack_order_kept_through_the_knock_walks_at_landing_plus_50(check):
+    """engine_knock_water farfire / farwalk (bench 11-11 CampKWFarfire_mcp_1111_212052, CampKWFarwalk_mcp_1111_212626):
+    landed at 199 out of reach of the Hammer he was ordered on in the air (farfire ~158 degrees round from his flight,
+    farwalk straight ahead), he lies to 248 and takes his first step at 249 both times -- landing + 50, a move order's
+    + 38 plus simunits.KNOCK_ATTACK_WAIT 12, not a turn. (Where he stops to fire, centre 171.6 / 164.2 off, gap 140 /
+    133, deeper in than the simulator's range edge, is not modelled.)"""
+    import sim
+    from checks.engine_knock_water import name
+
+    m, t, _ = build_farfire(check)
+    e = sim.Sim(m, t)
+    weapon, = e.bodies[name('man', 'gun')].weapons
+    e.meta_impact_detonate(weapon, (2000, 3300.01, 219))
+    man, target = e.bodies[name('man', 'dry')], e.bodies[name('man', 'target')]
+    _, _, points = e.impact_flights[id(man)]
+    e.impact_flights[id(man)] = (man, 175, points)
+    for b in e.bodies.values():
+        if b is not man:
+            b.status.add('NO_ATTACK')
+    man.status.discard('NO_ATTACK')
+    man.script_status.discard('NO_ATTACK')
+    e.eng.frame, first = 175, None
+    while e.eng.frame < 260 and first is None:
+        e.eng.frame += 1
+        if e.eng.frame == 176:
+            e.order_attack(man, target.name)
+        e.meta_impact_tick()
+        e.move(1 / 15)
+        e.fight()
+        e.deal(1 / 15)
+        if e.eng.frame > 199 and (man.x, man.y) != (1560, 3280):
+            first = e.eng.frame
+    assert first == 249

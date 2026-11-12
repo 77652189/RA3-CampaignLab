@@ -50,9 +50,9 @@ Bench 11-11 (ra3ext.log `build ... land=` lines; work/logs/a163_water_*.log):
        launched nobody, not even the direct hit (v 34 up by the formula): below some shock amount no knock at all.
 """
 from maps import probe_air
-from parts import Mission, Script, Test
+from parts import Mission, Obj, Script, Test
 from checks.engine_clip import ORDER
-from checks.engine_knock_probe import PROBE_TANK, probe_tank, rocket_gun
+from checks.engine_knock_probe import PROBE_TANK, TANK, probe_tank, rocket_gun
 from checks.engine_suppress_probe import PROBE, probe_man
 
 GUN = 'CNV_KnockShore'
@@ -81,6 +81,36 @@ CHECK_LANES.update({f'gate{a}': ('tank', (a, 250, 8.5)) for a in GATES})
 SHIFT = {'edge': 40.0, **{f'gate{a}': 40.0 for a in GATES}}   # the lane's units moved east for that check
 # what dies (bench 11-11): man lane nobody (the wet one lands on his own bank), tank lane the wet one
 DEAD = {'man': 0, 'tank': 1, 'far': 0, 'ramp': 0, 'edge': 0, **{f'gate{a}': 0 for a in GATES}}
+# farfire (Physics P4b): can a knocked man fire IN the air? far's push; the dry man's low flat flight (1940 -> 1560,
+# 27 points, frames 173..199, ~22 over the flat bank) passes a retail Hammer (TANK, p1, NO_ATTACK) at (1730, 3350),
+# 60 off his line: within his 150 (2-D, and 3-D at that height alike) over x 1593..1867, ~frames 177..196; his
+# launch and landing both ~185+ off. He is ordered at ORDER + SHOOT (frame ~176, just after the lift): a hit by s14
+# (his landing ~s13.3, out of range there) = he fires in the air; none until after his hold and a walk (~s17) = he
+# does not (the simulator's INFERRED rule) -- 22 up, the 3-D range cannot be what stops him.
+# Bench 11-11 CampKWFarfire_mcp_1111_212052 (ra3ext.log probe lines): shock at 175, N 25, he passes the Hammer at
+# 20-22 up from frame ~182 to 196 within its 150 (2-D gap) -- the Hammer stays 100 to s15: NO fire in the air. He
+# lies at (1560, 3280) (gap 152, out of reach) to frame 248, first step 249 = landing 199 + 50 (move orders: + 38,
+# engine_knock_probe stand), walks 5 frames to (1575.8, 3274.7), gap 140.2 -- 10 inside his 150 -- and fires from
+# there (first damage s16). farwalk tells the 12 extra frames apart: the same flight, the Hammer straight ahead of
+# him, west of his landing and out of reach (gap ~169 at (1360, 3280)): first step at 237 = his turn to face the
+# Hammer (here ~158 degrees, stand's 90), at 249 = the attack order's own wait. Bench 11-11
+# CampKWFarwalk_mcp_1111_212626 PASS: still 249 (simunits.KNOCK_ATTACK_WAIT); he walks 11 frames west and stops at
+# (1524.0, 3272.8), centre 164.2 off, gap 132.8 (farfire's 140.2: where the approach ends is unexplained).
+CHECK_LANES['farfire'] = CHECK_LANES['farwalk'] = ('man', (285, 250, 8.5))
+DEAD['farfire'] = DEAD['farwalk'] = 0
+FIRE_AT = {'farfire': ('dry', (1730.0, 3350.0)),              # the shooter, the Hammer he is ordered on
+           'farwalk': ('dry', (1360.0, 3280.0))}
+SHOOT = 5.7                                                   # after ORDER: frame ~176 (the lift is 173)
+AIR_BY = 14.0                                                 # his landing ~13.3 s: hit before = in the air
+# climb (Physics, the curve up to higher ground): ramp's layout moved 560 east, so the wet Hammer stands on the flat
+# east of the table's east ramp (3000..3060) and the burst pushes it west, up onto the table. NOT RUN YET (round
+# 171): from the data (burst ~10.7 west of the target, as ramp / edge) its level-ground landing is ~2920, the +10
+# grid 2930 on the table top (268.75, 56 over its launch); man and dry land on the flat east (3450 / 3350). The
+# simulator calls a curve ending higher a gap (Sim.meta_impact_detonate): the run's `build` / `built` / probe lines
+# are what to model it from.
+CHECK_LANES['climb'] = ('ramp', SHOCK)
+SHIFT['climb'] = 560.0
+DEAD['climb'] = 0
 # lane: (target template, its site, target's x on site..E, the wet neighbour's x offset)
 LANES = {'man': (PROBE, 'air sea S', 300.0, 60.0), 'tank': (PROBE_TANK, 'air sea S', 900.0, -80.0),
          'ramp': (PROBE_TANK, 'air ramp S', 900.0, -80.0)}     # sea S (1700, 3300), ramp S (1700, 800)
@@ -128,20 +158,36 @@ def check(m, which):
                              ('NAMED_ATTACK_NAMED', name(lane, 'gun'), name(lane, 'man'))]))
     t.scripts.append(Script('Test - stop', [('TIMER_EXPIRED', 'Shore Stop')],
                             [('UNIT_CHANGE_OBJECT_STATUS', name(lane, 'gun'), 'NO_ATTACK', 1)]))
-    expect = {}
-    for p, hp in (('man', 99), ('dry', 100)):
+    expect, run, healths = {}, RUN, (('man', 99), ('dry', 100))
+    if which in FIRE_AT:            # four counter lines at most: the shooter's health and death give way
+        shooter, (x, y) = FIRE_AT[which]
+        run, healths = ORDER + 18.0, (('man', 99),)
+        m.objects.append(Obj(TANK, x, y, side='p1', name=name(lane, 'target'), site=LANES[lane][1]))
+        t.scripts[0].do += [('UNIT_CHANGE_OBJECT_STATUS', name(lane, 'target'), 'NO_ATTACK', 1),
+                            ('SET_MILLISECOND_TIMER', 'Shore Shoot', ORDER + SHOOT)]
+        t.scripts.append(Script('Test - shoot', [('TIMER_EXPIRED', 'Shore Shoot')],
+                                [('UNIT_CHANGE_OBJECT_STATUS', name(lane, shooter), 'NO_ATTACK', 0),
+                                 ('NAMED_ATTACK_NAMED', name(lane, shooter), name(lane, 'target'))]))
+    for p, hp in healths:
         c = f'CNV_Shore_{p}'
         t.counters.append((c, f'{p} health'))
         t.scripts.append(Script(f'Test - health {p}', [],
                                 [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', name(lane, p), c)], once=False))
         expect[f'{p} health'] = hp
-    for p, dead in (('wet', DEAD[which]), ('dry', 0)):
+    for p, dead in (('wet', DEAD[which]),) + ((('dry', 0),) if which not in FIRE_AT else ()):
         c = f'CNV_Shore_{p}_dead'
         t.counters.append((c, f'{p} dead'))
         t.scripts.append(Script(f'Test - dead {p}', [('NAMED_DESTROYED', name(lane, p))], [('SET_COUNTER', c, 1)]))
         expect[f'{p} dead'] = dead
-    t.expect = [(label, RUN - 2, '==', expect[label], RUN) for _, label in t.counters]
-    t.bench = [('bench_watch', dict(seconds=RUN, every=.5, sheet=False, lines=len(t.counters)))]
+    t.expect = [(label, run - 2, '==', expect[label], run) for _, label in t.counters]
+    if which in FIRE_AT:
+        c = 'CNV_Shore_target'
+        t.counters.append((c, 'target health'))
+        t.scripts.append(Script('Test - health target', [],
+                                [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', name(lane, 'target'), c)], once=False))
+        # untouched while he flies (prediction: no fire in the air), hit by the end (he walks in and fires)
+        t.expect += [('target health', AIR_BY - 2, '==', 100, AIR_BY + 1), ('target health', run - 2, '<', 100, run)]
+    t.bench = [('bench_watch', dict(seconds=run, every=.5, sheet=False, lines=len(t.counters)))]
     return t
 
 

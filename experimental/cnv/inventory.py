@@ -338,9 +338,13 @@ NOTES = {
                                           '（engine_knock_water gate89 / gate90 / gate91，'
                                           'tests/test_meta_impact.py::test_physics_p3_a_shock_under_the_hammers_resistance_90_launches_nothing）；'
                                           '倒地时照样开火、空中下的攻击令保留（engine_knock_probe fire，'
-                                          'tests/test_meta_impact.py::test_physics_p4_a_knocked_man_fires_his_order_while_lying_before_he_stands；'
-                                          '空中不开火 INFERRED）；'
-                                          '出图不死、默认不反弹（台上读过）；未测：落到高处的曲线、空中能否开火、坠机重力'),
+                                          'tests/test_meta_impact.py::test_physics_p4_a_knocked_man_fires_his_order_while_lying_before_he_stands）；'
+                                          '空中不开火：低飞 20 高、靶子在 2D 射程内十几帧也不打（engine_knock_water farfire，'
+                                          'tests/test_meta_impact.py::test_physics_p4b_a_knocked_man_does_not_fire_in_the_air_with_the_target_in_reach）；'
+                                          '空中下的攻击令、落地够不着时落地 + 50 帧才起步（移动令 + 38，不是转身；farfire / farwalk，'
+                                          'tests/test_meta_impact.py::test_physics_p4b_an_attack_order_kept_through_the_knock_walks_at_landing_plus_50；'
+                                          '多等的 12 帧是哪个等待 INFERRED，走进射程多深未建模）；'
+                                          '出图不死、默认不反弹（台上读过）；未测：落到高处的曲线、坠机重力'),
     # engine A round 108: read in the SDK data
     (MODULE, 'Behaviors/ObjectDefectionHelper'): (NA, '没人触发：原版只在 BaseObject 挂一个空的（所以每个物体都有），'
                                                       'SageXML 里没有一处 DefectorSpecialPower，脚本动作表里也没有'
