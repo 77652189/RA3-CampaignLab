@@ -12,9 +12,11 @@ Bench 2026-11-11, aidelay0:a PASS: two warriors from s20, charging one at
 s33 and two at s34-s42; Ever grows from 11 at s33 to 146 at s42.
 aidelay999:a PASS: two warriors from s20, one charging at s33-s42,
 none from s43; Ever 11 at s33 and 142 at s42. Both first-seen clocks
-are frame 362 after wake. This single pair does not measure the RNG distribution.
-The simulator's body-state trace is separate from these script counters:
-PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS is still unmodeled.
+give Frames - Ever = 362 after wake (24 positive samples per build).
+This is the latched script observation clock, not an internal dispatch frame.
+This single pair does not measure the RNG distribution. Sim.cond now supports
+the player status count (A round 164); tests/test_simai_delay.py replays these
+script counters separately from the simulator's body-state trace.
 """
 from checks import engine_aimicro as ac
 

@@ -83,3 +83,26 @@ def test_maximum_delay_replays_bench_script_counters(lib, build, peak):
     _, rows = _probe_run(build, lib, 50)
     assert max(r['冲'] for r in rows) == peak
     assert max(r['曾冲'] for r in rows) > 0
+
+
+@pytest.mark.parametrize('build', ['aidelay0', 'aidelay999'])
+@pytest.mark.xfail(strict=True, reason='engine_aidelay both builds: bench Frames - Ever = 362 '
+    'in 24 positive samples each; current replay gives 270 (92 frames early). '
+    'Do not change B target/movement or fit MaximumDelay to this offset; '
+    'evidence and hypotheses: work/re/c_delay_clock_report.md; work/re/handoff-c.md.')
+def test_maximum_delay_first_seen_clock_replays_bench(lib, build):
+    """engine_aidelay a: wake-relative Frames - Ever is 362, not wall seconds.
+
+    Recorded script samples (wall second, Frames, Ever): both (33, 373, 11),
+    zero (42, 508, 146), long (42, 504, 142). Ever is a latched clock,
+    including after charging stops. This dates script observation, not the
+    engine's internal ability dispatch. Raw evidence: work/re/c_delay_pair_1111_readings.json.
+    """
+    world, rows = _probe_run(build, lib, 50)
+    samples = [(t, r['帧数'], r['曾冲'])
+               for (t, _), r in zip(world.sim.series, rows) if r['曾冲'] > 0]
+    assert samples, 'the script must actually observe a charge'
+    clocks = {frames - ever for _, frames, ever in samples}
+    print(build, 'mission-clock/Frames/Ever samples', samples[:2], samples[-2:],
+          'wake-relative first-seen clocks', sorted(clocks))
+    assert clocks == {362}

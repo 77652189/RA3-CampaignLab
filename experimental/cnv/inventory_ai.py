@@ -140,10 +140,12 @@ NOTES = {
                                           '1 s 逐秒相同（tests/test_simai_bench_b.py strict xfail）'),
     '微操/SpecificSpecialPowerDelay.MaximumDelay': (GUESSED,
         '模型按成功施放后同类冷却消费上限；tests/test_simai_delay.py 验证上端点和真实冲锋执行接线；'
-        'engine_aidelay 0/999配对卡在构建前tasklist，尚无台上读数；'
-        '旧aimicmed全0不能验证延迟，随机分布及原版TOGGLE两种子类未对拍；见handoff-c'),
+        'engine_aidelay 0/999实机PASS，脚本冲峰值2/1且曾冲>0已有回放；'
+        '台上帧数减曾冲恒362、模型270，精确观测时钟strict xfail；'
+        '随机分布及原版TOGGLE两种子类仍gap，不晋升原版用量；见work/re/c_delay_clock_report.md'),
     **{f'微操/SpecificSpecialPowerDelay.{field}': (GUESSED,
-        '模型已读取；engine_aidelay仅预测配方、未取得台上读数，不因探针出现字段名登记已对拍')
+        '模型已读取；engine_aidelay 0/999实机配对仅改变MaximumDelay，'
+        '本字段没有独立变量对照，不因探针出现字段名登记已对拍')
        for field in ('MinimumDelay', 'PowerType')},
     '微操/AIMicroManagerData.EnterBaseDefensesWhenIdle': (GUESSED,
         'engine_aibasedef aibd1 是战斗中总开关开、idle关的正例（s21起1人进炮塔）；'
