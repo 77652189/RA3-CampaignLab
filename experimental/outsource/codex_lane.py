@@ -154,7 +154,19 @@ def sync_handoffs(lane=None):
         # keeping uncommitted edits (--keep refuses rather than overwrite one)
         cherry = subprocess.run(['git', 'cherry', 'origin/main', 'HEAD'], cwd=PRIV, capture_output=True,
                                 text=True).stdout.split('\n')
-        if all(line.startswith('-') for line in cherry if line.strip()):
+        # a commit origin has under the same subject also counts as landed: its patch differs only because a later
+        # commit (the coordinator's ticket edit) moved the same handoff on (11-12 D68 blocked C this way)
+        base = subprocess.run(['git', 'merge-base', 'HEAD', 'origin/main'], cwd=PRIV, capture_output=True,
+                              text=True).stdout.strip()
+        theirs = set(subprocess.run(['git', 'log', '--format=%s', f'{base}..origin/main'], cwd=PRIV,
+                                    capture_output=True, text=True, encoding='utf-8', errors='replace').stdout.split('\n'))
+        def landed(line):
+            if line.startswith('-'):
+                return True
+            subject = subprocess.run(['git', 'log', '-1', '--format=%s', line[2:].strip()], cwd=PRIV, capture_output=True,
+                                     text=True, encoding='utf-8', errors='replace').stdout.strip()
+            return bool(subject) and subject in theirs
+        if base and all(landed(line) for line in cherry if line.strip()):
             r = subprocess.run(['git', 'reset', '-q', '--keep', 'origin/main'], cwd=PRIV, capture_output=True,
                                text=True, encoding='utf-8', errors='replace')
     return '' if r.returncode == 0 else 'work/re 没同步到远端，Codex 可能读到旧交接：' + (r.stderr.strip()[-200:])
