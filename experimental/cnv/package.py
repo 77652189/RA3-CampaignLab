@@ -203,6 +203,8 @@ class ModSpec:
     templates: dict = field(default_factory=dict)       # GameObject id -> make_campnew7.EXTRA_TEMPLATES entry
     extra_all: tuple = ()           # XML files included type="all" (make_campnew7.EXTRA_ALL)
     extra_own: tuple = ()           # names linked though nothing references them (bytes, make_campnew7.EXTRA_OWN)
+    replaces: tuple = ()            # retail instances ('Type:id') recompiled under the same id, linked over retail's
+                                    # (make_campnew7.OVERRIDE; Mission.replaces)
     strings: dict = field(default_factory=dict)         # new labels -> text
     overrides: dict = field(default_factory=dict)       # retail labels rewritten (make_campnew3.OVERRIDES)
     prefix_overrides: dict = field(default_factory=dict)    # retail label prefix -> text (make_campnew3.PREFIX_OVERRIDES)
@@ -248,10 +250,13 @@ def spec_of(mission, test=None, shell=False, name=None, layers=()):
     assert not broken, 'uses what nobody published:\n  ' + '\n  '.join(broken)
     seen = set()
     unit_files, templates, extra_all, extra_own, strings = _unit_parts(mm.units, mm.objects, seen)
+    replaces = tuple(getattr(mm, 'replaces', ()))
     for fname, text, link in mm.assets:         # nothing in the map refers to them by file: included and linked
         unit_files.append((fname, text))
         extra_all.append(f'DATA:CNVUnits/Data/{fname}')
-        extra_own.append(link.encode())
+        if link not in replaces:                # a retail id: linked over retail's by make_campnew7.OVERRIDE instead
+            extra_own.append(link.encode())
+    assert set(replaces) <= {link for _, _, link in mm.assets}, ('replaces names no asset', replaces)
     strings.update(mm.strings)
     # our music: its map into the static stream, its .mus files into the big, then checked in the spliced stream; our
     # voice lines the same way, their subtitles (DIALOGEVENT:CNV_*) into the string table; our movies: the Video
@@ -266,7 +271,8 @@ def spec_of(mission, test=None, shell=False, name=None, layers=()):
     spec = ModSpec(name=name, mission=mm.name, title=str(getattr(mm, 'title', '') or ''),
                    map_name=mm.map.__name__.split('.')[-1], map_edits=(edit,),
                    border_names=tuple(getattr(mm.map, 'BORDERS', {})), unit_files=tuple(unit_files),
-                   templates=templates, extra_all=tuple(extra_all), extra_own=tuple(extra_own), strings=strings,
+                   templates=templates, extra_all=tuple(extra_all), extra_own=tuple(extra_own), replaces=replaces,
+                   strings=strings,
                    packs=packs, goals=goal_points(mm), ext=bool(getattr(mm, 'ext', False)))
     if shell:
         import shell as shell_layer
@@ -530,6 +536,7 @@ def _map_part(spec, c4, c6, c7, sdk):
     c7.EXTRA_TEMPLATES.update(spec.templates)
     c7.EXTRA_ALL += list(spec.extra_all)
     c7.EXTRA_OWN += list(spec.extra_own)
+    c7.OVERRIDE += list(spec.replaces)
     borders, drawn = [], []
 
     def edit(m):

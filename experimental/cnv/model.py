@@ -289,6 +289,9 @@ class Mission(Part):
                                                                 # personality: mapxml.set_player)
     assets: list = dataclasses.field(default_factory=list)      # more XML compiled in: [(file name, text, instance
                                                                 # to link, 'AIPersonalityDefinition:X')]
+    replaces: list = dataclasses.field(default_factory=list)    # links of `assets` that are retail instances under
+                                                                # their retail id ('AIData:AIData'): linked over the
+                                                                # retail one (make_campnew7.OVERRIDE), not as new
     ai_wake: list = dataclasses.field(default_factory=list)     # the scripts that wake its skirmish AI (plan.py
                                                                 # 敌方AI): keep_ai_asleep() drops them
     music: object = None                # our Pathfinder map and tracks (experimental/music/pack.Pack: include,

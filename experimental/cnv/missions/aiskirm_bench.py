@@ -349,15 +349,37 @@ def diff_xml():
                                    ('CNVMedBuild', 'MEDIUM', [f'Build="{NEW_JAV}" Heuristic="FEWEST_UNIT"'])])
 
 
+AIDATA = 'AIData:AIData'              # aiskad / aiskfon / aiskfof (check a / fm): the global AIData under its retail id
+AIDATA_RUNS = {'aiskad': {'TeamSeconds': '100000', 'MaxRecruitDistance': '1.0'},   # canary: no team should form
+               'aiskfon': {'UseFormations': 'true'},     # retail's value, through the same override (the control)
+               'aiskfof': {'UseFormations': 'false'}}
+
+
+def aidata_xml(changes):
+    """The SDK's SkirmishAI/AIData.xml (id AIData, in global.xml) with the attributes of `changes` rewritten: compiled
+    into the map stream and linked over retail's (Mission.replaces -> make_campnew7.OVERRIDE)."""
+    import re
+    with open(os.path.join(labpaths.SDK3, 'SageXML', 'SkirmishAI', 'AIData.xml'), encoding='utf-8') as f:
+        xml = f.read()
+    for k, v in changes.items():
+        xml, n = re.subn(rf'(\s{k}=)"[^"]*"', rf'\1"{v}"', xml)
+        assert n == 1, (k, n)
+    return xml
+
+
 ARMY_INF, ARMY_VEH = 'SovietAntiInfantryInfantry', 'SovietAntiVehicleVehicleTech1'   # conscript / Hammer tank
 ARMY_N = 10                            # aiskvinf / aiskvveh (check z): what the player owns, idle behind its yard
 
 
 def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None, account=None,
             buffer=None, new=None, army=None, two=None, observe=False, cap=None, block=None, off=False,
-            ptype=None, mintime=None):
+            ptype=None, mintime=None, aidata=None):
     m = Mission(name=name, map=ai_map(resources.measured(niagara), lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
+    if aidata is not None:               # aiskad / aiskfon / aiskfof: the global AIData overridden in the map stream
+        m.facts['use formations'] = int(aidata.get('UseFormations', 'true') == 'true')
+        m.assets.append(('CNVAIData.xml', aidata_xml(aidata), AIDATA))
+        m.replaces.append(AIDATA)
     if expire is not None:               # aiskexp (check q): the same AI with SecondsTillTargetsExpire = expire
         m.facts['targets expire'] = expire
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{EXPIRE_PID}'
@@ -490,4 +512,7 @@ MISSION = {'aiskirm': mission, 'aiskirmc': lambda: mission(observe=True),
            'aiskrand': lambda: mission('CampAISkRand', two='rand'),   # check s: RANDOM_UNIT 0%-30% / bare 30-100
            'aiskdiff': lambda: mission('CampAISkDiff', two='diff'),   # check s: a HARD-only state at MEDIUM
            'aiskvinf': lambda: mission('CampAISkVInf', army=ARMY_INF),   # check z: the player owns 10 conscripts
-           'aiskvveh': lambda: mission('CampAISkVVeh', army=ARMY_VEH)}   # check z: 10 Hammer tanks
+           'aiskvveh': lambda: mission('CampAISkVVeh', army=ARMY_VEH),   # check z: 10 Hammer tanks
+           'aiskad': lambda: mission('CampAISkAD', aidata=AIDATA_RUNS['aiskad']),      # check a: AIData canary
+           'aiskfon': lambda: mission('CampAISkFOn', aidata=AIDATA_RUNS['aiskfon']),   # check fm: UseFormations true
+           'aiskfof': lambda: mission('CampAISkFOff', aidata=AIDATA_RUNS['aiskfof'])}  # check fm: false

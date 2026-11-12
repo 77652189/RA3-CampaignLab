@@ -58,8 +58,8 @@
 - **AIData 的队形参数（UseFormations、AttackMoveUsesFormations、FormationColumnWidth 60、FormationRowDepth 55、FormationSquadSpacing 30、FormationEnemyDistance 500，原版值）：还没上台，现有证据都指向"只管玩家的编队移动，不管脚本和 AI 的队伍"。**
   - 原版 `SkirmishAI/AIData.xml` 自己的注释：AttackMoveUsesFormations 是"玩家攻击移动时成队形走"；UseFormations 是"允许单位成队形走（曲折的地图可以关掉）"；FormationEnemyDistance 是"离敌人至少这么远才用队形"。这几个名字《将军》源码里没有（是后来的 SAGE 游戏加的），没法照抄规则。
   - 第 5 节 (a) 的码：脚本的整队命令只有在队员**已经被玩家编了队形**时才走编队那条路；所以脚本部队和（推断）AI 队伍拿不到这套。改这几个值多半只影响玩家的编队移动。
-  - **结论（推断，没上台）：别指望改 AIData 让敌方 AI 的进攻队"按队形、同速"走。** 要敌方混编部队一起到、挤成一团，用齐步（第 5 节 (b)、本节上面）；"密集"靠在同一处出生 / 摆放，再用第 5 节 (c) 的分段集合。
-  - 要坐实的一次运行（下一轮）：遭遇战 AI 台子（`missions/aiskirm_bench.py`），两局只差 mod 里覆盖的 AIData（UseFormations false 对 true，或 FormationColumnWidth 60 对 200），读同一支 AI 进攻队到某个圈的先后时间和最大散开距离。另一个风险也一起量：**地图流里覆盖静态流资产没测过**（`units/production.py` 文件头），AIData 覆盖要是不生效，读数会一模一样。
+  - **结论（队形管不管 AI 仍是推断；mod 改不了 AIData 已上台，见下一条）：别指望改 AIData 让敌方 AI 的进攻队"按队形、同速"走。** 要敌方混编部队一起到、挤成一团，用齐步（第 5 节 (b)、本节上面）；"密集"靠在同一处出生 / 摆放，再用第 5 节 (c) 的分段集合。
+  - **上台结果（2026-11-12，第 184 轮）：mod 改不了 AIData（地图流里的覆盖不生效），所以这组队形值关卡也用不上。** 编译器现在能把任意原版资产按同一个 id 编进地图流（`Mission.replaces` → `make_campnew7.OVERRIDE`，写 `类型:id`，测试 `tests/test_aidata_override.py`）。金丝雀 `aiskad`（`cnv_check aiskad a`，`work/testbench/runs/CampAISkADA_mcp_1112_130959`）：AIData 的 TeamSeconds 10 → 100000、MaxRecruitDistance 400 → 1；构建出的 mod 里地图流确实带着这份 `AIData:AIData`，但台上和原版那局一样：第一辆激流 s113、"出门帧"停在 1992（原版也是 1992）、玩家三座建筑 s209–s231 被拆完（原版 s203–s223）。两种解释分不开：游戏开局就从全局流取定了 AIData、地图流里同 id 的那份不再看（推断，更像）；或者这两个值 RA3 里本来就不读。对关卡来说结论一样：**这几个值没法通过 mod 改**，UseFormations 开 / 关两局就没跑（读数注定一样）。要真分开两种解释，得用注入在运行时读全局 AIData 指针（`work/re/l4_efficiency.md` 里那个）上的值，现在没必要。台子 `aiskfon` / `aiskfof`（检查 `fm`）留着，覆盖哪天能生效再跑。
 - **关卡线该怎么改**：
   - 开局摆好、到点出动的混编部队（A4 港口守军这种），要一起到就写 `齐步: 是`，`出动` 写成角色一串；目的地写地点或角色，不能是 `猎杀`。
   - 别把这类部队摆在目的地圈里面（半径至少 250）。
