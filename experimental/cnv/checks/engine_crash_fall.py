@@ -18,8 +18,8 @@ gm30 ~ 6.4. The live plane's own GravityMultiplier never comes into the crash (i
 Counters: each plane's death (NAMED_DESTROYED) and its wrecks on the map (1 while falling, 0 once it has crashed).
 
 Bench 11-11 CampCFFall_mcp_1111_221320 (ra3ext.log; work/logs/a173_crash.log): both planes killed at frame 105 at
-(2885, y, 387.44), 175 over the ground (212.5), flying east at 15 a frame. Each wreck gets a `shock` line (caller
-0x79a15e, v = (7.5, 0.003, 0.0011): the inherited x 0.5) and a knock-back `build` -- the fall IS the knock curve:
+(2885, y, 387.44), 175 over the ground (212.5), flying east at 15 a frame. Each wreck gets a `shock` line (caller in
+work/re, v =(7.5, 0.003, 0.0011): the inherited x 0.5) and a knock-back `build` -- the fall IS the knock curve:
   plain  land (3160, 1500, 212.5) a 0.0098 b 12.2286, N 30: probe frames 106..135, z 387.50 -> 212.50 (BENCH)
   gm30   land (2940, 2000, 212.5) a 0.0021 b 29.3680, N 8:  probe frames 106..113
 So the wreck's OWN GravityMultiplier sets the fall (8 points against 30), and the live plane's 30 never comes in.
