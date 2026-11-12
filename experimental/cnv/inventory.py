@@ -328,10 +328,14 @@ NOTES = {
                                           'tests/test_meta_impact.py::test_physics_a_knocked_man_keeps_still_38_frames_after_landing_then_walks_his_order）；'
                                           '人的落点站不住（落水）挪到最近能站的格、按新落点重画曲线（engine_knock_water man / far，'
                                           'tests/test_meta_impact.py::test_physics_p3_a_man_knocked_toward_water_lands_on_the_nearest_cell_he_can_stand_on）；'
+                                          '车的落点按 20 取整再加 10、不能落（水）挪到最近的水上格、落点格离水 10 以内落地即死（斜坡本身不致死），'
+                                          '落到低处的曲线（engine_knock_water tank / ramp / edge，'
+                                          'tests/test_meta_impact.py::test_physics_p3_a_hammer_lands_on_the_plus_10_grid_and_drowns_within_10_of_the_water；'
+                                          '门槛 10、搜索格网 INFERRED）；'
                                           '倒地时照样开火、空中下的攻击令保留（engine_knock_probe fire，'
                                           'tests/test_meta_impact.py::test_physics_p4_a_knocked_man_fires_his_order_while_lying_before_he_stands；'
                                           '空中不开火 INFERRED）；'
-                                          '出图不死、默认不反弹（台上读过）；未测：车落斜坡即死（缺口）、空中能否开火、坠机重力'),
+                                          '出图不死、默认不反弹（台上读过）；未测：落到高处的曲线、冲击太小不击飞的门槛（60 不飞、130 飞）、空中能否开火、坠机重力'),
     # engine A round 108: read in the SDK data
     (MODULE, 'Behaviors/ObjectDefectionHelper'): (NA, '没人触发：原版只在 BaseObject 挂一个空的（所以每个物体都有），'
                                                       'SageXML 里没有一处 DefectorSpecialPower，脚本动作表里也没有'

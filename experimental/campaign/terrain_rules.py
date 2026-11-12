@@ -28,6 +28,7 @@ BUILD_VARIATION = 3.0               # world: BuildSystemSettings.AllowedHeightVa
 # Field 1 holds the player's units and not the enemy's (测, checks/engine_bits.py bits); fields 0 + 3 still hold
 # (field 3 does not reopen field 0); field 6 held neither a helicopter nor a tank, so its name is unconfirmed.
 # The water's logic edge is the map's water height (200 world = 320 ours), not newmap.WATERLINE (测, engine_bits water).
+WATER_WORLD = 200.0                                # our maps' standing water (the template's; retail maps' own vary)
 FIELDS = ('impassable', 'impassable_to_players', 'passage_width', 'extra_passable', 'visible', 'buildability',
           'impassable_to_air', 'tiberium_growable')
 IMPASSABLE = FIELDS.index('impassable')

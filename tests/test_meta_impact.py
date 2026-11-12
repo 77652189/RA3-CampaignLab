@@ -289,18 +289,18 @@ def test_meta_impact_dispatch_retains_nondefault_physics_and_outside_radius_gaps
     assert (sim.GAP_WEAPON, 'MetaImpactNugget') in e.unmodeled
 
 
-def _knock_water(check):
+def _knock_water(check, centre=None):
     import build
     import sim
-    from checks.engine_knock_water import LANES, name
+    from checks.engine_knock_water import CHECK_LANES, LANES, name
 
-    lane = 'man' if check == 'far' else check
+    lane = CHECK_LANES[check][0]
     m, t, _ = build.resolve('engine_knock_water', check)
     e = sim.Sim(m, t)
     gun, wet, dry = (e.bodies[name(lane, p)] for p in ('gun', 'wet', 'dry'))
     weapon, = gun.weapons
     # the rocket bursts a hair north of the lane (the engine's landings are at y 3280, its y floored to 20)
-    e.meta_impact_detonate(weapon, (1700 + LANES[lane][2], 3300.01, 219))
+    e.meta_impact_detonate(weapon, centre or (1700 + LANES[lane][2], 3300.01, 219))
     return e, wet, dry
 
 
@@ -328,16 +328,55 @@ def test_physics_p3_a_man_knocked_toward_water_lands_on_the_nearest_cell_he_can_
     assert (sim.GAP_WEAPON, 'MetaImpactNugget') not in e.unmodeled
 
 
-def test_physics_p3_a_hammer_knocked_toward_water_stays_a_gap():
-    """engine_knock_water tank (bench 11-11 CampKWTank_mcp_1111_151445): the wet Hammer's landing 2404 is moved to
-    (2490, 3330) on the far bank's slope -- a grid offset by 10 from the men's -- and it is gone the frame it lands.
-    Which cell and why it dies are not told apart: the simulator flies it nowhere and records the gap; the dry one
-    flies as on level ground."""
+# engine_knock_water tank / ramp / edge (Physics P3, vehicles), the runs' ra3ext.log: the burst centre (`shockinfo`),
+# each Hammer's landing (`build ... land=`), its points (`built N=`), one probe line mid-curve, gone or not
+# (tank CampKWTank_mcp_1111_151445, ramp CampKWRamp_mcp_1111_172522, edge CampKWEdge_mcp_1111_174551)
+KNOCK_WATER_TANK = {
+    'tank': ((2608.471, 3281.000, 218.037),
+             {'man': ((2490, 3530, 203.125), 20, (180, (2559.8, 3384.0, 223.66)), True),
+              'wet': ((2490, 3330, 203.125), 6, (176, (2502.1, 3317.9, 213.26)), True),
+              'dry': ((2830, 3330, 212.5), 16, None, False)}),
+    'ramp': ((2589.330, 781.000, 274.466),
+             {'man': ((2650, 890, 268.75), 13, None, False),
+              'wet': ((2470, 810, 240.625), 11, (178, (2495.2, 805.0, 267.11)), False),
+              'dry': ((2730, 810, 268.75), 10, None, False)}),
+    'edge': ((2629.330, 3281.000, 218.216),
+             {'man': ((2690, 3390, 212.5), 13, None, False),
+              'wet': ((2510, 3310, 212.5), 9, None, False),
+              'dry': ((2770, 3310, 212.5), 10, None, False)})}
+
+
+@pytest.mark.parametrize('check', ['tank', 'ramp', 'edge'])
+def test_physics_p3_a_hammer_lands_on_the_plus_10_grid_and_drowns_within_10_of_the_water(check):
+    """engine_knock_water tank / ramp / edge (bench 11-11): a knocked Hammer lands on the 20 grid + 10 (all nine);
+    tank's wet one, its landing 2410 in the trench, goes to the nearest cell over the water, (2490, 3330) on the
+    far bank's slope (Sim.knock_landing_vehicle, Ground.stand_vehicle); a landing cell within 10 of the water kills
+    the frame it lands -- tank's wet one 178, its direct hit 192 (Ground.drowns) -- while ramp's dry slope (65 over)
+    and edge's bank top (20 over) do not; the curves down to lower ground match the engine's frames
+    (simunits.meta_impact_trajectory)."""
     import sim
-    e, wet, dry = _knock_water('tank')
-    assert id(wet) not in e.impact_flights
-    assert id(dry) in e.impact_flights
-    assert e.unmodeled[(sim.GAP_WEAPON, 'MetaImpactNugget')]['n'] >= 1
+    from checks.engine_knock_water import CHECK_LANES, DEAD, name
+
+    centre, bodies = KNOCK_WATER_TANK[check]
+    lane = CHECK_LANES[check][0]
+    e, _, _ = _knock_water(check, centre)
+    assert (sim.GAP_WEAPON, 'MetaImpactNugget') not in e.unmodeled
+    assert int(bodies['wet'][3]) == DEAD[check]
+    want = {}
+    for p, (land, count, mid, dies) in bodies.items():
+        b = e.bodies[name(lane, p)]
+        _, start, points = e.impact_flights[id(b)]
+        assert len(points) == count, p
+        assert points[-1] == pytest.approx(land, abs=1e-3), p
+        if mid:
+            assert points[mid[0] - 173] == pytest.approx(mid[1], abs=.06), p
+        want[p] = (b, start + count - 1, dies)
+    e.firing, e.volleys = [], []
+    for _ in range(25):
+        e.eng.frame += 1
+        e.deal(1/15)
+        for p, (b, last, dies) in want.items():
+            assert b.alive == (not dies or e.frame_now() < last), (p, e.frame_now())
 
 
 def test_meta_impact_omitted_z_replays_engine_knock_z_tall_neighbour():

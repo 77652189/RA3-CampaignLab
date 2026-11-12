@@ -724,8 +724,12 @@ class Ground:
                 walk &= ~mapmod.impassable()
             bridge = np.zeros_like(walk)
         import newmap
+        import terrain_rules
         waterline = getattr(mapmod, 'WATERLINE', newmap.WATERLINE)
         self.waterline = waterline
+        # the water's logic edge in our height units (terrain_rules: 320 on our maps, not the routing's WATERLINE);
+        # a retail map's (DIMS, retail.Terrain) own water height is not read (INFERRED: its WATERLINE)
+        self.water = waterline if hasattr(mapmod, 'DIMS') else float(terrain_rules.ours(terrain_rules.WATER_WORLD))
         water = e < waterline - 5
         d = int(GRID // platmap.CELL)
         hh, ww = h // d, w // d
@@ -800,13 +804,45 @@ class Ground:
         import platmap
         if surface != 'ground':
             return self.open(surface, x, y)
+        corners, free = self.corners(x, y)
+        return bool(corners is not None and corners.min() > self.waterline + 10 and
+                    corners.max() - corners.min() <= platmap.STEEP and free)
+
+    def corners(self, x, y):
+        """(the four corner heights of the CELL cell [x, x + CELL) x [y, y + CELL) or None off the map, not blocked now)."""
+        import platmap
         j, i = math.floor(y / platmap.CELL + self.b), math.floor(x / platmap.CELL + self.b)
         if not (0 <= j < self.e.shape[0] - 1 and 0 <= i < self.e.shape[1] - 1):
-            return False
-        corners = self.e[j:j + 2, i:i + 2]
+            return None, False
         c = self.cell(x, y)
         free = not (0 <= c[0] < self.blocked.shape[0] and 0 <= c[1] < self.blocked.shape[1]) or not self.blocked[c]
-        return bool(corners.min() > self.waterline + 10 and corners.max() - corners.min() <= platmap.STEEP and free)
+        return self.e[j:j + 2, i:i + 2], free
+
+    def stand_vehicle(self, x, y):
+        """A knocked vehicle may land in the CELL cell at (x, y): its four corners over the water, no slope limit
+        (Physics P3, bench 11-11 engine_knock_water tank: the landing in the trench went to (2490, 3330), the bank's
+        slope cell 325 / 340 ours, 15 a cell -- not 2470 (295 / 310) nor 2480 (310 / 325); the threshold between 310
+        and 325 is INFERRED as the water itself), and not blocked now."""
+        corners, free = self.corners(x, y)
+        return bool(corners is not None and corners.min() > self.water and free)
+
+    def drowns(self, x, y):
+        """A knocked vehicle landing in the CELL cell at (x, y) is gone the frame it lands: a corner within 10 of the
+        water (bench 11-11 engine_knock_water: tank's 2490, 5 over, dies; edge's 2510, 20 over, and ramp's 2470 on a
+        dry slope, 65 over, live -- so not the slope, not a footprint round the cell; the 10 is INFERRED, the men's
+        stand margin)."""
+        corners, _ = self.corners(x, y)
+        return corners is None or bool(corners.min() <= self.water + 10)
+
+    def z_smooth(self, x, y):
+        """The ground's height at a world point, bilinear between the CELL corners (a curve's terrain test)."""
+        import platmap
+        fy, fx = y / platmap.CELL + self.b, x / platmap.CELL + self.b
+        j = min(max(math.floor(fy), 0), self.e.shape[0] - 2)
+        i = min(max(math.floor(fx), 0), self.e.shape[1] - 2)
+        v, u = min(max(fy - j, 0.0), 1.0), min(max(fx - i, 0.0), 1.0)
+        q = self.e[j:j + 2, i:i + 2]
+        return float((q[0, 0] * (1 - u) + q[0, 1] * u) * (1 - v) + (q[1, 0] * (1 - u) + q[1, 1] * u) * v)
 
     def cell(self, x, y):
         import platmap
@@ -4161,12 +4197,14 @@ class Sim:
     def meta_impact_detonate(self, weapon, centre):
         """Dispatch ordinary immediate warhead shocks, separately from damage radius.
 
-        First slice: default Physics, level terrain, grounded bodies. Other cases
+        First slice: default Physics, grounded bodies, landings on level or lower ground (Physics P3: a landing
+        moved off the water, a vehicle's drowning, knock_landing / knock_landing_vehicle). Other cases
         stay explicit gaps; no airborne relaunch. After landing the body keeps still meta_impact_landing_hold frames
         (meta_impact_tick: knock_hold, read by move).
         INFERRED selection: feet-centre sphere, without relation/arc filtering.
         The whole nugget therefore retains its unmodeled registration.
         """
+        import terrain_rules
         flights = self.__dict__.setdefault('impact_flights', {})
         cache = self.__dict__.setdefault('_impact_body', {})
         for effect in weapon.get('meta_impacts', []):
@@ -4186,40 +4224,64 @@ class Sim:
                     continue
                 velocity = simunits.meta_impact_velocity(effect, position, centre, height, detonation=True)
                 end = simunits.meta_impact_ground_launch(position, velocity)['landing']
-                landing = None
-                if not self.ground.stand(b.surface, end[0], end[1]):
+                landing, drowns = None, False
+                if 'INFANTRY' not in b.kinds:
+                    landing = self.knock_landing_vehicle(end)
+                    if landing is None:
+                        continue
+                    drowns = self.ground.drowns(landing[0], landing[1])
+                elif not self.ground.stand(b.surface, end[0], end[1]):
                     landing = self.knock_landing(b, end)
                     if landing is None:
                         continue
                 points = simunits.meta_impact_trajectory(position, velocity, landing)
-                # the curve may cross lower ground (bench 11-11 engine_knock_water far: over the trench to the far
-                # bank); one that ends on other ground or dips into the terrain needs the engine's height queries
-                if (abs(self.impact_ground_z(*points[-1][:2]) - ground) > 1e-5 or
-                        any(z < self.impact_ground_z(x, y) - 1e-5 for x, y, z in points)):
-                    self.gap(GAP_WEAPON, 'MetaImpactNugget', '坡地轨迹和地形查询未建模')
+                if len(points) < 2:
                     continue
-                if len(points) > 1:
-                    flights[id(b)] = (b, self.frame_now(), points)
-                    b.z = position[2]
-                    self.used.add('meta impact')
+                if drowns:
+                    # gone the frame it lands, whatever the curve passes over (tank: the wet one 178, the direct
+                    # hit 192 = 173 + its points - 1; meta_impact_tick)
+                    self.__dict__.setdefault('knock_drowns', set()).add(id(b))
+                    self.used.add('knock landing drowns')
+                else:
+                    # the curve may cross lower ground (far: over the trench to the far bank) and end lower (ramp:
+                    # down the slope, simunits.meta_impact_trajectory); one that ends higher, off its landing's ground
+                    # (a man's own landing on other ground) or dips into the terrain needs the engine's height queries
+                    end_ground = self.impact_ground_z(*points[-1][:2])
+                    if (end_ground > ground + 1e-5 or abs(points[-1][2] - end_ground) > 1e-5 or
+                            any(z < terrain_rules.world(self.ground.z_smooth(x, y)) - 1e-5 for x, y, z in points)):
+                        self.gap(GAP_WEAPON, 'MetaImpactNugget', '坡地轨迹和地形查询未建模')
+                        continue
+                flights[id(b)] = (b, self.frame_now(), points)
+                b.z = position[2]
+                self.used.add('meta impact')
 
     KNOCK_SEARCH = 15               # lattice steps the nearest-standable search reaches (INFERRED: the search routine is unread, work/re/handoff.md)
 
     def knock_landing(self, b, end):
         """Physics P3 (bench 11-11 engine_knock_water, work/re/a_physics_plan.md): a knocked body's own landing
         point that it cannot stand on (water, a cliff) is moved to the nearest one it can -- not back along the
-        line: man 2220 -> 2080 on his bank, far 2420 -> 2500 the far bank's top. Men only, on their 20 landing grid;
-        a vehicle's (the Hammer: 2404 -> 2490 on the slope, on a grid offset by 10, gone the frame it lands) is
-        a gap (its grid and why it dies are not told apart). None: not modelled (gap recorded)."""
-        if 'INFANTRY' not in b.kinds:
-            self.gap(GAP_WEAPON, 'MetaImpactNugget', '车辆击飞落点不能站：挪到哪格、落斜坡即死未建模')
-            return None
+        line: man 2220 -> 2080 on his bank, far 2420 -> 2500 the far bank's top. Men, on their 20 landing grid
+        (a vehicle's: knock_landing_vehicle). None: not modelled (gap recorded)."""
+        return self._knock_nearest(end, lambda x, y: self.ground.stand(b.surface, x, y))
+
+    def knock_landing_vehicle(self, end):
+        """Physics P3 for a vehicle (bench 11-11 engine_knock_water tank / ramp / edge, ra3ext.log `build ... land=`):
+        its landing is the men's 20 grid point + 10 in x and y (2460.5 -> 2470, 3338.5 -> 3330; all nine landings);
+        one it cannot land on (Ground.stand_vehicle: the water) goes to the nearest one it can on that lattice (tank:
+        2410 in the trench -> 2490 on the far bank's slope; the lattice INFERRED -- the 10 grid gives the same).
+        Whether it then drowns is Ground.drowns. None: no cell (gap recorded)."""
+        end = (math.floor(end[0] / 20) * 20 + 10, math.floor(end[1] / 20) * 20 + 10)
+        if self.ground.stand_vehicle(*end):
+            return (end[0], end[1], self.impact_ground_z(*end))
+        return self._knock_nearest(end, self.ground.stand_vehicle)
+
+    def _knock_nearest(self, end, ok):
         step, best = 20.0, None
         for j in range(-self.KNOCK_SEARCH, self.KNOCK_SEARCH + 1):
             for i in range(-self.KNOCK_SEARCH, self.KNOCK_SEARCH + 1):
                 x, y = end[0] + i * step, end[1] + j * step
                 d = math.hypot(x - end[0], y - end[1])
-                if (best is None or d < best[0]) and self.ground.stand(b.surface, x, y):
+                if (best is None or d < best[0]) and ok(x, y):
                     best = (d, x, y)
         if best is None:
             self.gap(GAP_WEAPON, 'MetaImpactNugget', '击飞落点附近没有能站的格')
@@ -4239,6 +4301,11 @@ class Sim:
             if k == len(points)-1:
                 flights.pop(key)
                 b.z = None
+                if key in self.__dict__.get('knock_drowns', ()):
+                    self.knock_drowns.discard(key)
+                    self.destroy(b, '击飞落水')     # Ground.drowns: gone the frame it lands
+                    self.change()
+                    continue
                 # on the ground: lies, then gets up (Physics ShockStunnedTime + ShockStandingTime); a kept move
                 # order resumes after it (bench 11-11 engine_knock_probe stand)
                 self.__dict__.setdefault('knock_hold', {})[key] = self.frame_now() + simunits.meta_impact_landing_hold()
