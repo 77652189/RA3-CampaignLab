@@ -276,7 +276,7 @@ def mission_child_death():
     return m
 
 
-def check_child_death(m):
+def check_child_death(m, *, delete=False):
     """PREDICT127/124: confirm links at8s, kill high child10s, read live parents14s.
 
     Before: child ATTACHED64, parent VEHICLE_ATTACHED32, child ENCLOSED16,
@@ -311,14 +311,37 @@ def check_child_death(m):
         t.scripts.append(Script('Test - child death close '+phase,[('TIMER_EXPIRED','ChildDeath '+phase)],
                                [('SET_FLAG','ChildDeath sampled '+phase,1)]))
     t.scripts.insert(0,Script('Test - start',[],start))
-    for phase,actions in (('Fire',fire),('Stop',stop),('Kill',[('NAMED_KILL','Attach high child')])):
+    removal='NAMED_DELETE' if delete else 'NAMED_KILL'
+    for phase,actions in (('Fire',fire),('Stop',stop),('Kill',[(removal,'Attach high child')])):
         t.scripts.append(Script('Test - child death '+phase,[('TIMER_EXPIRED','ChildDeath '+phase)],actions))
     t.expect=[(label,16,'==',value,18) for (_,label),value in zip(t.counters,(127,124))]
     t.bench=[('bench_watch',dict(seconds=18.,every=.5,sheet=False,lines=2))]
     return t
 
 
+def mission_child_delete():
+    """Same established simple module; delete the linked child, keep its parent alive."""
+    m=mission_child_death();m.name='CampAttachDel'
+    return m
+
+
+def check_child_delete(m):
+    """PREDICT127/124: links8s, NAMED_DELETE high child10s, live-parent status14s.
+
+    Before120/120 independently proves ATTACHED/VEHICLE_ATTACHED/ENCLOSED/
+    UNATTACKABLE. Late parentAlive4 + childAlive2 + parentStatus1 distinguishes
+    removal from loss of the parent. No status read from the deleted child;
+    parent deletion, retail modules and exact cleanup timing remain gaps.
+    MEASURED2026-11-11: before120/120, late127/124, one run PASS;
+    see work/re/c_attach_delete_report.md. No whole-item bench promotion.
+    """
+    t=check_child_death(m,delete=True)
+    t.counters=[(name,label.replace('death','delete')) for name,label in t.counters]
+    t.expect=[(label.replace('death','delete'),*rest) for label,*rest in t.expect]
+    return t
+
+
 MISSION={'engine_attach':mission,'engine_attach_detach':mission_detach,'engine_attach_parent':mission_parent_death,
-         'engine_attach_child':mission_child_death}
+         'engine_attach_child':mission_child_death,'engine_attach_child_delete':mission_child_delete}
 CHECKS={'engine_attach':{'a':check},'engine_attach_detach':{'a':check_detach},'engine_attach_parent':{'a':check_parent_death},
-        'engine_attach_child':{'a':check_child_death}}
+        'engine_attach_child':{'a':check_child_death},'engine_attach_child_delete':{'a':check_child_delete}}
