@@ -1081,6 +1081,24 @@ def test_attach_parent_death_complete_status_reading_matches_bench():
     assert tuple(e.run(18).series[-1][1])==(958,928,48,32)
 
 
+def test_attach_child_death_clears_the_surviving_parents_status():
+    """engine_attach_child a: live127/killed124; see work/re/c_attach_child_report.md."""
+    import build
+    import sim
+    m,t,_=build.resolve('engine_attach_child','a')
+    e=sim.Sim(m,t);e.shot_clock=True
+    rows=e.run(18).series
+    assert tuple(rows[-1][1])==(127,124)
+    assert all(tuple(row)==(127,124) for sec,row in rows if sec>=16)
+    assert all(tuple(row)==(120,120) for sec,row in rows if 9<=sec<10)
+    child,parent=e.body('Attach high child'),e.body('Attach high parent')
+    assert not child.alive and parent.alive
+    assert 'VEHICLE_ATTACHED' not in parent.status
+    assert 'VEHICLE_ATTACHED' in e.body('Attach base parent').status
+    assert set(e.attachments)=={'Attach base child'}
+    assert (sim.GAP_WEAPON,'AttachNugget') not in e.unmodeled
+
+
 def test_attach_probe_rejects_an_unpublished_module_before_building():
     from types import SimpleNamespace
     import pytest

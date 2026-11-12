@@ -47,9 +47,9 @@ def _module_contract(unit):
         raise ValueError(f'{unit.id}: unpublished AttachModuleId {sorted(missing)}')
 
 
-def mission(detach=False):
+def mission(detach=False, lanes=CASES):
     m=Mission(name='CampAttachD' if detach else 'CampAttach',map=probe_range,units=[],facts={})
-    for lane in CASES:
+    for lane in lanes:
         kind='INFANTRY' if lane=='removed' and not detach else 'VEHICLE'
         forbidden=' ForbiddenTargetObjectStatus="NO_ATTACK"' if lane=='order' and not detach else ''
         nugget=(f'<AttachNugget AttachModuleId="ModuleTag_Attach"{forbidden}><SpecialObjectFilter '
@@ -266,5 +266,59 @@ def check_parent_death(m):
     return t
 
 
-MISSION={'engine_attach':mission,'engine_attach_detach':mission_detach,'engine_attach_parent':mission_parent_death}
-CHECKS={'engine_attach':{'a':check},'engine_attach_detach':{'a':check_detach},'engine_attach_parent':{'a':check_parent_death}}
+def mission_child_death():
+    """Established simple ENCLOSED/UNATTACKABLE module, live versus script-killed child."""
+    m=mission(lanes=('base','high'));m.name='CampAttachC'
+    u=next(u for u in m.units if u.id=='CNV_AttachBase')
+    u.xml=u.xml.replace('</Nuggets>','<AttachNugget AttachModuleId="ModuleTag_Attach">'
+                        '<SpecialObjectFilter Rule="ANY" Include="VEHICLE"/></AttachNugget></Nuggets>')
+    _module_contract(u)
+    return m
+
+
+def check_child_death(m):
+    """PREDICT127/124: confirm links at8s, kill high child10s, read live parents14s.
+
+    Before: child ATTACHED64, parent VEHICLE_ATTACHED32, child ENCLOSED16,
+    child UNATTACKABLE8. Late: parentAlive4, childAlive2, parent status1.
+    Dead-child status is deliberately not queried. No direct-delete, lethal
+    damage, original-module or exact cleanup-frame claim.
+    MEASURED2026-11-11: 120/120 before;127/124 late, one run PASS.
+    The killed child's living parent clears VEHICLE_ATTACHED. Evidence:
+    work/re/c_attach_child_report.md; no whole-item bench promotion.
+    """
+    t=Test();start=[('MAP_REVEAL_ALL_PERM',m.player('p1'))];fire=[];stop=[]
+    for phase,at in (('Fire',6.),('Stop',6+4/15),('Before',8.),('Kill',10.),('Late',14.)):
+        start.append(('SET_MILLISECOND_TIMER','ChildDeath '+phase,at))
+    for lane in ('base','high'):
+        child,parent='Attach '+lane+' child','Attach '+lane+' parent'
+        c='CNV_ChildDeath_'+lane;t.counters.append((c,lane+' child death'))
+        start.extend(('UNIT_CHANGE_OBJECT_STATUS',v,'NO_ATTACK',1) for v in (child,parent))
+        fire.extend((('UNIT_CHANGE_OBJECT_STATUS',child,'NO_ATTACK',0),('NAMED_ATTACK_NAMED',child,parent)))
+        stop.append(('UNIT_CHANGE_OBJECT_STATUS',child,'NO_ATTACK',1))
+        for phase,samples in (
+                ('Before',((64,('UNIT_HAS_OBJECT_STATUS',child,status('ATTACHED'))),
+                           (32,('UNIT_HAS_OBJECT_STATUS',parent,status('VEHICLE_ATTACHED'))),
+                           (16,('UNIT_HAS_OBJECT_STATUS',child,status('ENCLOSED'))),
+                           (8,('UNIT_HAS_OBJECT_STATUS',child,status('UNATTACKABLE'))))),
+                ('Late',((4,('NAMED_NOT_DESTROYED',parent)),(2,('NAMED_NOT_DESTROYED',child)),
+                         (1,('UNIT_HAS_OBJECT_STATUS',parent,status('VEHICLE_ATTACHED')))))):
+            for weight,cond in samples:
+                t.scripts.append(Script(f'Test - child death {lane} {phase}{weight}',
+                    [('TIMER_EXPIRED','ChildDeath '+phase),('FLAG','ChildDeath sampled '+phase,0),cond],
+                    [('INCREMENT_COUNTER',weight,c)]))
+    for phase in ('Before','Late'):
+        t.scripts.append(Script('Test - child death close '+phase,[('TIMER_EXPIRED','ChildDeath '+phase)],
+                               [('SET_FLAG','ChildDeath sampled '+phase,1)]))
+    t.scripts.insert(0,Script('Test - start',[],start))
+    for phase,actions in (('Fire',fire),('Stop',stop),('Kill',[('NAMED_KILL','Attach high child')])):
+        t.scripts.append(Script('Test - child death '+phase,[('TIMER_EXPIRED','ChildDeath '+phase)],actions))
+    t.expect=[(label,16,'==',value,18) for (_,label),value in zip(t.counters,(127,124))]
+    t.bench=[('bench_watch',dict(seconds=18.,every=.5,sheet=False,lines=2))]
+    return t
+
+
+MISSION={'engine_attach':mission,'engine_attach_detach':mission_detach,'engine_attach_parent':mission_parent_death,
+         'engine_attach_child':mission_child_death}
+CHECKS={'engine_attach':{'a':check},'engine_attach_detach':{'a':check_detach},'engine_attach_parent':{'a':check_parent_death},
+        'engine_attach_child':{'a':check_child_death}}

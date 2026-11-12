@@ -4527,9 +4527,11 @@ class Sim:
         """engine_attach a: teleport the child and keep it with its moving parent.
 
         engine_attach_parent a confirms a script-killed simple parent leaves
-        its child alive and clears the link. Child death/direct deletion remain
-        INFERRED and report a gap; no detach/leech/repair contract is claimed.
-        Extending the script-kill result to other lethal causes is INFERRED;
+        its child alive and clears the link. engine_attach_child a confirms
+        script-killing the simple child clears VEHICLE_ATTACHED on its living
+        parent (ENCLOSED/UNATTACKABLE fixture). Direct deletion remains a gap;
+        no detach/leech/repair contract is claimed.
+        Extending these script-kill results to other lethal causes is INFERRED;
         a dead parent's queried status does not reveal its internal bits.
         NO_COLLISIONS visibility remains a separate strict-xfail gap.
         Attachment status has its own owner so ordinary
@@ -4541,8 +4543,8 @@ class Sim:
         for key, (child, parent, rule) in list(self.attachments.items()):
             if not child.alive or not parent.alive:
                 del self.attachments[key]
-                if not child.alive or parent.deleted:
-                    self.gap(GAP_WEAPON, 'AttachNugget', '子死/直接删除时的解除规则未对拍；清理链接为INFERRED')
+                if child.deleted or parent.deleted:
+                    self.gap(GAP_WEAPON, 'AttachNugget', '直接删除时的解除规则未对拍；清理链接为INFERRED')
                 continue
             child.x, child.y, child.path = parent.x, parent.y, []
             bits.setdefault(child.name, set()).update(rule['child'])
