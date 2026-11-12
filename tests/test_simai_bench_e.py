@@ -39,3 +39,31 @@ def test_best_unit_expected_infantry_choice(build, chosen, other):
     assert [t for t, _ in samples] == list(range(150, 160))
     assert all(row[chosen] >= 4 for _, row in samples), samples
     assert all(row[other] == 0 for _, row in samples), samples
+
+
+@pytest.mark.parametrize('build,active', [
+    ('aicapctrl', False), ('aicapmed', True), ('aicaphard', False),
+])
+@pytest.mark.xfail(strict=True, reason='E80 engine_aicap a/b: engine makes three Peacekeepers and three '
+    'Javelins on [s70,s100); model makes one and two. MEDIUM cap two also fails on the engine '
+    'after the opening (five to nine Peacekeepers). B owns the model; '
+    'see work/re/handoff-e.md and work/re/e_aicap_e80.md.')
+def test_specific_unit_cap(build, active):
+    """engine_aicap b: replay observed counts, including the violated MEDIUM cap.
+
+    The check keeps its original cap-two prediction and FAIL verdict. These
+    assertions describe engine readings; no model threshold is relaxed.
+    """
+    w = simai.run(build, 'b', 100, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    samples = [(t, dict(zip(labels, values))) for t, values in w.sim.series if 70 <= t < 100]
+    assert [t for t, _ in samples] == list(range(70, 100))
+    assert all(row['维和总数'] == 3 and row['标枪总数'] == 3 for _, row in samples), samples
+    w.advance(100 * simai.FPS)
+    late = [(t, dict(zip(labels, values))) for t, values in w.sim.series if 150 <= t < 200]
+    assert [t for t, _ in late] == list(range(150, 200))
+    assert max(row['维和总数'] for _, row in late) >= 4, late
+    assert max(row['标枪总数'] for _, row in late) >= 4, late
+    if active:
+        assert all(row['维和总数'] >= 5 for _, row in late), late
+        assert max(row['维和总数'] for _, row in late) == 9, late

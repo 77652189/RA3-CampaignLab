@@ -105,6 +105,12 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    **{f'人格/SpecificUnitCap.{k}': (GUESSED,
+        'E80 engine_aicap a/b：普通难度维和MEDIUM上限2仍在s54达到3，'
+        '延长到[s150,s200)从5增至9，标枪3至7；HARD掩码和无条目为对照。'
+        '原始上限断言保留FAIL，tests/test_simai_bench_e.py按台上读数strict xfail；'
+        '模型归B，两轮未解释不晋升，见 work/re/e_aicap_e80.md')
+       for k in ('Unit', 'Difficulty', 'Cap')},
     '组队招人/TeamTemplate.ReleaseType': (GUESSED,
         'engine_aiskirm aiskirm:m 实机s128防御8/清扫99，s129防御0/清扫8，转队时逐帧兵池峰1；'
         '后续s134峰2，不能宣称全程峰1；tests/test_simai_bench_c.py 按名回放至170秒无非空清扫计数，'

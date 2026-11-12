@@ -860,9 +860,9 @@
 | 已对拍 | `组队招人/ObjectFilter.Relationship` | 67 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
 | 推断 | `开局/SkirmishOpeningMove.Side` | 64 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 已对拍 | `组队招人/TeamTemplate.MinPowerAdvantage` | 64 | a4 a5 a7 | docs/engine/aistate.md#两队抢兵和 MinPowerAdvantage（第 82 轮） |
-| 推断 | `人格/SpecificUnitCap.Cap` | 60 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | `人格/SpecificUnitCap.Difficulty` | 60 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | `人格/SpecificUnitCap.Unit` | 60 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 推断 | `人格/SpecificUnitCap.Cap` | 60 | a4 a5 a7 | E80 engine_aicap a/b：普通难度维和MEDIUM上限2仍在s54达到3，延长到[s150,s200)从5增至9，标枪3至7；HARD掩码和无条目为对照。原始上限断言保留FAIL，tests/test_simai_bench_e.py按台上读数strict xfail；模型归B，两轮未解释不晋升，见 work/re/e_aicap_e80.md |
+| 推断 | `人格/SpecificUnitCap.Difficulty` | 60 | a4 a5 a7 | E80 engine_aicap a/b：普通难度维和MEDIUM上限2仍在s54达到3，延长到[s150,s200)从5增至9，标枪3至7；HARD掩码和无条目为对照。原始上限断言保留FAIL，tests/test_simai_bench_e.py按台上读数strict xfail；模型归B，两轮未解释不晋升，见 work/re/e_aicap_e80.md |
+| 推断 | `人格/SpecificUnitCap.Unit` | 60 | a4 a5 a7 | E80 engine_aicap a/b：普通难度维和MEDIUM上限2仍在s54达到3，延长到[s150,s200)从5增至9，标枪3至7；HARD掩码和无条目为对照。原始上限断言保留FAIL，tests/test_simai_bench_e.py按台上读数strict xfail；模型归B，两轮未解释不晋升，见 work/re/e_aicap_e80.md |
 | 已对拍 | `组队招人/CreateUnits.MaxUnits` | 60 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |
 | 推断 | `组队招人/CreateUnits.MinUnits` | 60 | a4 a5 a7 | 专用engine_aicreate：aicr1首辆s29出门、后两辆留家；aicr3等s41造齐三辆才出门；命名队计数均99、tests/test_simai_bench_c.py strict xfail，模型槽位未对上，不晋升；见 work/re/c_create_report.md |
 | 推断 | `组队招人/CreateUnits.UnitName` | 60 | a4 a5 a7 | 专用engine_aicreate点名守护者，MinUnits=1仍有两名维和离家、=3四名维和均留家；不能当作排他兵种过滤；命名队均99、模型strict xfail，保留推断；见 work/re/c_create_report.md |

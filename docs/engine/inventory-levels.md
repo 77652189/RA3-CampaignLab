@@ -156,9 +156,9 @@
 | 推断 | AI | `目标/AITargetingHeuristic.Location` | 74 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `组队招人/TeamTemplate.ReleaseType` | 71 | a4 a5 a7 | engine_aiskirm aiskirm:m 实机s128防御8/清扫99，s129防御0/清扫8，转队时逐帧兵池峰1；后续s134峰2，不能宣称全程峰1；tests/test_simai_bench_c.py 按名回放至170秒无非空清扫计数，strict xfail，需B区分命名队伍观测与释放消费者；其他释放模式仍gap，未晋升；见 work/re/c_release_report.md |
 | 推断 | AI | `开局/SkirmishOpeningMove.Side` | 64 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `人格/SpecificUnitCap.Cap` | 60 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `人格/SpecificUnitCap.Difficulty` | 60 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `人格/SpecificUnitCap.Unit` | 60 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 推断 | AI | `人格/SpecificUnitCap.Cap` | 60 | a4 a5 a7 | E80 engine_aicap a/b：普通难度维和MEDIUM上限2仍在s54达到3，延长到[s150,s200)从5增至9，标枪3至7；HARD掩码和无条目为对照。原始上限断言保留FAIL，tests/test_simai_bench_e.py按台上读数strict xfail；模型归B，两轮未解释不晋升，见 work/re/e_aicap_e80.md |
+| 推断 | AI | `人格/SpecificUnitCap.Difficulty` | 60 | a4 a5 a7 | E80 engine_aicap a/b：普通难度维和MEDIUM上限2仍在s54达到3，延长到[s150,s200)从5增至9，标枪3至7；HARD掩码和无条目为对照。原始上限断言保留FAIL，tests/test_simai_bench_e.py按台上读数strict xfail；模型归B，两轮未解释不晋升，见 work/re/e_aicap_e80.md |
+| 推断 | AI | `人格/SpecificUnitCap.Unit` | 60 | a4 a5 a7 | E80 engine_aicap a/b：普通难度维和MEDIUM上限2仍在s54达到3，延长到[s150,s200)从5增至9，标枪3至7；HARD掩码和无条目为对照。原始上限断言保留FAIL，tests/test_simai_bench_e.py按台上读数strict xfail；模型归B，两轮未解释不晋升，见 work/re/e_aicap_e80.md |
 | 推断 | AI | `组队招人/CreateUnits.MinUnits` | 60 | a4 a5 a7 | 专用engine_aicreate：aicr1首辆s29出门、后两辆留家；aicr3等s41造齐三辆才出门；命名队计数均99、tests/test_simai_bench_c.py strict xfail，模型槽位未对上，不晋升；见 work/re/c_create_report.md |
 | 推断 | AI | `组队招人/CreateUnits.UnitName` | 60 | a4 a5 a7 | 专用engine_aicreate点名守护者，MinUnits=1仍有两名维和离家、=3四名维和均留家；不能当作排他兵种过滤；命名队均99、模型strict xfail，保留推断；见 work/re/c_create_report.md |
 | 推断 | AI | `启发条件/PathToTargetHeuristic.LocomotorConditionToUseForTest` | 45 | a4 a5 a7 | AI 模型代码里读了这个名字 |
