@@ -1,7 +1,7 @@
 """MaximumDelay pair: real probe data and the actual AI execution callback.
 
-Read body status directly: the inherited player-status script condition is
-currently unmodeled, so its zero counters cannot prove execution failure.
+The bodies' status is read directly, and the script counters (PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS,
+counted by Sim.cond since A round 164) are replayed against the bench.
 """
 import collections
 import xml.etree.ElementTree as ET
@@ -77,11 +77,9 @@ def test_specific_maximum_delay_probe_trace(lib, build, monkeypatch):
 
 
 @pytest.mark.parametrize('build, peak', [('aidelay0', 2), ('aidelay999', 1)])
-@pytest.mark.xfail(strict=True, reason='engine_aidelay pair bench 2026-11-11 has charging peaks 2/1; '
-                   'sim.py does not implement PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS, so script '
-                   'counters stay zero despite real body execution. See work/re/handoff-c.md, MaximumDelay gate.')
 def test_maximum_delay_replays_bench_script_counters(lib, build, peak):
-    """Keep both successful engine_aidelay observations as explicit replay gaps."""
+    """engine_aidelay pair bench 2026-11-11: the script counters 冲 peak 2 / 1 and 曾冲 is set (Sim.cond counts
+    PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS since A round 164)."""
     _, rows = _probe_run(build, lib, 50)
     assert max(r['冲'] for r in rows) == peak
     assert max(r['曾冲'] for r in rows) > 0

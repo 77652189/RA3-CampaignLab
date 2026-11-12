@@ -723,6 +723,7 @@ class Ground:
             bridge = np.zeros_like(walk)
         import newmap
         waterline = getattr(mapmod, 'WATERLINE', newmap.WATERLINE)
+        self.waterline = waterline
         water = e < waterline - 5
         d = int(GRID // platmap.CELL)
         hh, ww = h // d, w // d
@@ -788,6 +789,22 @@ class Ground:
             return True
         c, g = self.cell(x, y), self.grids[surface]
         return 0 <= c[0] < g.shape[0] and 0 <= c[1] < g.shape[1] and bool(g[c]) and not self.blocked[c]
+
+    def stand(self, surface, x, y):
+        """A ground unit may stand in the CELL cell [x, x + CELL) x [y, y + CELL): its four corners dry (as 'ground'
+        walk) and within STEEP of each other, and not blocked now -- the engine's own 10-cell test of a knocked
+        body's landing (Physics P3, bench 11-11 engine_knock_water far: (2500, 3280) at the top of the far bank's
+        slope is standable, which the 20 routing cell round it is not). Other surfaces: open()."""
+        import platmap
+        if surface != 'ground':
+            return self.open(surface, x, y)
+        j, i = math.floor(y / platmap.CELL + self.b), math.floor(x / platmap.CELL + self.b)
+        if not (0 <= j < self.e.shape[0] - 1 and 0 <= i < self.e.shape[1] - 1):
+            return False
+        corners = self.e[j:j + 2, i:i + 2]
+        c = self.cell(x, y)
+        free = not (0 <= c[0] < self.blocked.shape[0] and 0 <= c[1] < self.blocked.shape[1]) or not self.blocked[c]
+        return bool(corners.min() > self.waterline + 10 and corners.max() - corners.min() <= platmap.STEEP and free)
 
     def cell(self, x, y):
         import platmap
@@ -2632,6 +2649,16 @@ class Sim:
             if b and not b.alive and b.read_until == self.frame_now():     # engine_sell e: a damage kill still reads
                 return st in b.status                                      # its bits in that frame
             return bool(b and b.alive and st in b.status)
+        if name == 'PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS':
+            # (player, cmp, n, status): the player's living objects with that bit, compared with n (know-how 97; the
+            # count probes model.counted(status=), engine_aimicro 冲 / 曾冲). INFERRED: the dying not counted, as
+            # UNIT_HAS_OBJECT_STATUS reads false from the kill -- no bench separates it
+            st = a[3][2] if isinstance(a[3], tuple) else a[3]
+            mine = [b for b in self.living() if b.owner == a[0]]
+            n = sum(1 for b in mine if st in b.status)
+            if not n and st not in ACTED_STATUS and st not in self.attachment_known_status:
+                self.gap(GAP_CONDITION, name, f'状态位 {st}：模拟器只知道脚本设的和 {"、".join(sorted(ACTED_STATUS))}')
+            return CMP[a[1]](n, a[2])
         if name == 'HAS_FINISHED_AUDIO':        # never played: true (l2_scripts1 2.3; bench 11-08 cond)
             return self.t >= self.audio_end.get(a[0], 0.0)
         if name == 'HAS_FINISHED_VIDEO':        # never played: false (bench 11-08 cond); full screen: never (movie.py)
@@ -4113,15 +4140,47 @@ class Sim:
                     self.gap(GAP_WEAPON, 'MetaImpactNugget', '仅默认Physics的未附着地面起飞已接通；筛选/重入待核')
                     continue
                 velocity = simunits.meta_impact_velocity(effect, position, centre, height, detonation=True)
-                points = simunits.meta_impact_trajectory(position, velocity)
-                # Nonlevel terrain needs the engine's along-line height queries.
-                if any(abs(self.impact_ground_z(x, y) - ground) > 1e-5 for x, y, _ in points):
+                end = simunits.meta_impact_ground_launch(position, velocity)['landing']
+                landing = None
+                if not self.ground.stand(b.surface, end[0], end[1]):
+                    landing = self.knock_landing(b, end)
+                    if landing is None:
+                        continue
+                points = simunits.meta_impact_trajectory(position, velocity, landing)
+                # the curve may cross lower ground (bench 11-11 engine_knock_water far: over the trench to the far
+                # bank); one that ends on other ground or dips into the terrain needs the engine's height queries
+                if (abs(self.impact_ground_z(*points[-1][:2]) - ground) > 1e-5 or
+                        any(z < self.impact_ground_z(x, y) - 1e-5 for x, y, z in points)):
                     self.gap(GAP_WEAPON, 'MetaImpactNugget', '坡地轨迹和地形查询未建模')
                     continue
                 if len(points) > 1:
                     flights[id(b)] = (b, self.frame_now(), points)
                     b.z = position[2]
                     self.used.add('meta impact')
+
+    KNOCK_SEARCH = 15               # lattice steps the nearest-standable search reaches (INFERRED: 0x6cc540 unread)
+
+    def knock_landing(self, b, end):
+        """Physics P3 (bench 11-11 engine_knock_water, work/re/a_physics_plan.md): a knocked body's own landing
+        point that it cannot stand on (water, a cliff) is moved to the nearest one it can -- not back along the
+        line: man 2220 -> 2080 on his bank, far 2420 -> 2500 the far bank's top. Men only, on their 20 landing grid;
+        a vehicle's (the Hammer: 2404 -> 2490 on the slope, on a grid offset by 10, gone the frame it lands) is
+        a gap (its grid and why it dies are not told apart). None: not modelled (gap recorded)."""
+        if 'INFANTRY' not in b.kinds:
+            self.gap(GAP_WEAPON, 'MetaImpactNugget', '车辆击飞落点不能站：挪到哪格、落斜坡即死未建模')
+            return None
+        step, best = 20.0, None
+        for j in range(-self.KNOCK_SEARCH, self.KNOCK_SEARCH + 1):
+            for i in range(-self.KNOCK_SEARCH, self.KNOCK_SEARCH + 1):
+                x, y = end[0] + i * step, end[1] + j * step
+                d = math.hypot(x - end[0], y - end[1])
+                if (best is None or d < best[0]) and self.ground.stand(b.surface, x, y):
+                    best = (d, x, y)
+        if best is None:
+            self.gap(GAP_WEAPON, 'MetaImpactNugget', '击飞落点附近没有能站的格')
+            return None
+        self.used.add('knock landing moved')
+        return (best[1], best[2], self.impact_ground_z(best[1], best[2]))
 
     def meta_impact_tick(self):
         """Advance each active trajectory by one sample per simulation frame."""

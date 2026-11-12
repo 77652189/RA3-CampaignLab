@@ -49,8 +49,8 @@ HOOKS (what this file would rather have from sim.py; for A through the coordinat
   6. simunits' table misses the second GameObject of a file (AlliedAntiInfantryVehicle_Ground, the Riptide the war
      factory makes: speed 0, no KindOf, no weapons); fill() patches the AI's own such units from the model's library.
   8. garrisons: the simulator's (sim.Sim.garrison, simgarrison.Garrisons) -- the AI's 'enter' orders walk its men
-     into houses / turrets through it; sim.py does not count PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS (ENCLOSED),
-     so the tests read Garrisons.log; no fire from inside.
+     into houses / turrets through it; the older tests read Garrisons.log (sim.py counts
+     PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS, ENCLOSED among them, since A round 164); no fire from inside.
 """
 import argparse
 import importlib

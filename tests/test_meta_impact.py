@@ -207,23 +207,52 @@ def test_meta_impact_dispatch_retains_nondefault_physics_and_outside_radius_gaps
     assert (sim.GAP_WEAPON, 'MetaImpactNugget') in e.unmodeled
 
 
-@pytest.mark.parametrize('check', ['man', 'tank'])
-def test_physics_p3_knock_toward_water_stays_a_gap_not_a_level_landing(check):
-    """engine_knock_water (Physics P3, bench 11-11 CampKWMan_mcp_1111_151010 / CampKWTank_mcp_1111_151445): a body
-    whose own landing lies in the trench is not put there -- the engine moves the landing point to a standable cell
-    (man: 2232 -> 2080 on his bank, lives; Hammer: 2404 -> 2490 on the far bank's slope, gone the frame it lands).
-    Not modelled yet (which cell, why the slope kills): the simulator must not fly the wet one onto the level-ground
-    curve into the water, it records the terrain gap; the dry one flies as on level ground."""
+def _knock_water(check):
     import build
     import sim
     from checks.engine_knock_water import LANES, name
 
+    lane = 'man' if check == 'far' else check
     m, t, _ = build.resolve('engine_knock_water', check)
     e = sim.Sim(m, t)
-    gun, wet, dry = (e.bodies[name(check, p)] for p in ('gun', 'wet', 'dry'))
+    gun, wet, dry = (e.bodies[name(lane, p)] for p in ('gun', 'wet', 'dry'))
     weapon, = gun.weapons
-    x = 1700 + LANES[check][1]
-    e.meta_impact_detonate(weapon, (x, 3300, 219))
+    # the rocket bursts a hair north of the lane (the engine's landings are at y 3280, its y floored to 20)
+    e.meta_impact_detonate(weapon, (1700 + LANES[lane][1], 3300.01, 219))
+    return e, wet, dry
+
+
+# engine_knock_water (Physics P3), the wet man's frames from his launch (173) to his landing, run ra3ext.log probe
+# lines: man CampKWMan_mcp_1111_151010 (174-177), far CampKWFar_mcp_1111_151821 (174-176, apex 187, 201)
+KNOCK_WATER = {'man': (5, {1: (2065.0, 3295.0, 220.36), 2: (2069.9, 3290.1, 222.98), 3: (2074.9, 3285.1, 220.36),
+                           4: (2080.0, 3280.0, 212.50)}),
+               'far': (29, {1: (2075.6, 3299.3, 215.52), 2: (2091.1, 3298.6, 218.33), 3: (2106.7, 3297.9, 220.90),
+                            14: (2278.4, 3290.1, 234.46), 28: (2500.0, 3280.0, 212.50)})}
+
+
+@pytest.mark.parametrize('check', ['man', 'far'])
+def test_physics_p3_a_man_knocked_toward_water_lands_on_the_nearest_cell_he_can_stand_on(check):
+    """engine_knock_water man / far (bench 11-11): his own landing in the trench (man 2220, far 2420) is moved to the
+    nearest standable cell -- man back to his bank's 2080, far on to the far bank's top 2500, not back along the line --
+    and the curve is rebuilt to it with the launch's height (Sim.knock_landing, Ground.stand); he lives."""
+    import sim
+    e, wet, dry = _knock_water(check)
+    count, frames = KNOCK_WATER[check]
+    _, _, points = e.impact_flights[id(wet)]
+    assert len(points) == count
+    for k, want in frames.items():
+        assert points[k] == pytest.approx(want, abs=0.12), k
+    assert id(dry) in e.impact_flights
+    assert (sim.GAP_WEAPON, 'MetaImpactNugget') not in e.unmodeled
+
+
+def test_physics_p3_a_hammer_knocked_toward_water_stays_a_gap():
+    """engine_knock_water tank (bench 11-11 CampKWTank_mcp_1111_151445): the wet Hammer's landing 2404 is moved to
+    (2490, 3330) on the far bank's slope -- a grid offset by 10 from the men's -- and it is gone the frame it lands.
+    Which cell and why it dies are not told apart: the simulator flies it nowhere and records the gap; the dry one
+    flies as on level ground."""
+    import sim
+    e, wet, dry = _knock_water('tank')
     assert id(wet) not in e.impact_flights
     assert id(dry) in e.impact_flights
     assert e.unmodeled[(sim.GAP_WEAPON, 'MetaImpactNugget')]['n'] >= 1

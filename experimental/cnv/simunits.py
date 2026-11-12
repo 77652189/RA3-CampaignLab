@@ -757,17 +757,20 @@ def meta_impact_ground_launch(position, velocity):
                          position[2]))
 
 
-def meta_impact_trajectory(position, velocity):
+def meta_impact_trajectory(position, velocity, landing=None):
     """Default Physics on level ground, sampled once per frame (land/late).
 
     Ordinary grounded launch only: no bounce, terrain obstruction or relaunch.
     Length is integrated numerically; ceil(L/b)+1, clamped to 3..128 points.
     The indent percentages are 33/66, not exact thirds.
+    landing: the end the engine moved the body's own landing to (a cell it can stand on, Physics P3, bench 11-11
+    engine_knock_water man / far): the curve is rebuilt to it with the launch's height a and step b unchanged (the
+    engine's `build ... a= b=` line) -- man 2060 -> 2080, 5 points, apex 223.0; far 2060 -> 2500, 28 points.
     """
     plan = meta_impact_ground_launch(position, velocity)
     if not plan['steps']:
         return [tuple(position)]
-    end, a, n = plan['landing'], max(plan['height'], 0.5), plan['steps']
+    end, a, n = plan['landing'] if landing is None else landing, max(plan['height'], 0.5), plan['steps']
     controls = [position,
                 (position[0] + .33 * (end[0] - position[0]),
                  position[1] + .33 * (end[1] - position[1]), position[2] + 1.3 * a),

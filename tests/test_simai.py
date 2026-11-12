@@ -649,7 +649,8 @@ def test_strategic_facts_the_brain_gives(lib):
 
 # ---- EnterBaseDefenses / EnterGarrisons (checks/engine_aibasedef.py, engine_aigarrison.py, bench 11-09; public
 # docs/engine/aiteamstate.md sections 3 / 4). The simulator has no garrisons: simai.Garrisons carries the model's
-# 'enter' orders out; sim.py does not count ENCLOSED, so these read Garrisons.log, not the check's counters.
+# 'enter' orders out; these read Garrisons.log, not the check's counters (written before sim.py counted ENCLOSED
+# through PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS, A round 164).
 def _garrison_run(build, lib, until=60.0):
     w = simai.run(build, 'a', until, lib=lib)
     return w, [e for e in w.garrison.log if not e[3]]          # the AI's own entries (not the script's sitter)

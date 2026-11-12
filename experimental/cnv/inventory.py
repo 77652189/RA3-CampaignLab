@@ -320,7 +320,9 @@ NOTES = {
                                           'Mass/摩擦/推挤），会动的战役模板全是默认字段（仅 6 个改 GravityMultiplier）。'
                                           '已测：落地后锁 38 帧再走移动令（engine_knock_probe stand / standlate，'
                                           'tests/test_meta_impact.py::test_physics_a_knocked_man_keeps_still_38_frames_after_landing_then_walks_his_order）；'
-                                          '未测：落水/悬崖/出图即死、击飞和倒地时能否开火、反弹、坠机重力'),
+                                          '人的落点站不住（落水）挪到最近能站的格、按新落点重画曲线（engine_knock_water man / far，'
+                                          'tests/test_meta_impact.py::test_physics_p3_a_man_knocked_toward_water_lands_on_the_nearest_cell_he_can_stand_on）；'
+                                          '出图不死、默认不反弹（台上读过）；未测：车落斜坡即死（缺口）、击飞和倒地时能否开火、坠机重力'),
     # engine A round 108: read in the SDK data
     (MODULE, 'Behaviors/ObjectDefectionHelper'): (NA, '没人触发：原版只在 BaseObject 挂一个空的（所以每个物体都有），'
                                                       'SageXML 里没有一处 DefectorSpecialPower，脚本动作表里也没有'
