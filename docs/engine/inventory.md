@@ -8,7 +8,7 @@
 | 脚本条件 | **94%** | **100%** | 12 / 12 | 89 | 33 | 6 | 47 | 3 | 95% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **93%** | **95%** | 17 / 22 | 28 | 18 | 3 | 5 | 2 | 96% |
-| AI | **87%** | **87%** | 120 / 357 | 415 | 126 | 128 | 127 | 34 | 97% |
+| AI | **87%** | **87%** | 120 / 357 | 415 | 126 | 129 | 126 | 34 | 97% |
 
 ## 脚本动作
 
@@ -892,7 +892,7 @@
 | 已对拍 | `微操/AIMicroManagerData.RetreatMinDistanceToFallback` | 38 | a4 a5 a7 | engine_aifallback aifbshort100/aifblong500：四人存活回齐、在家约18秒、长组先于短组再出发；tests/test_simai_fallback.py::test_fallback_distance_first_return_and_departure；仅此固定FromBase=300场景的行为回放，未量内部退出位置、精确距离边界或其他基地选择 |
 | 已对拍 | `目标/AITargetingHeuristic.SortType=Distance` | 37 | a4 a5 a7 | docs/engine/aitactics.md#目标挑哪个（aitpnear 挑最近、aitpmt2 第二槽挑次近、aitpvk 显式写 Distance） |
 | 已对拍 | `人格/AIPersonalityDefinition.PersonalityType` | 35 | a4 a5 a7 | tests/test_simai_bench_b.py::test_the_personality_condition_matches_the_id_not_the_personality_type（engine_aiskirm pt aiskpt / aiskpti：脚本条件 PLAYER_IS_HUMAN_OR_AI_PERSONALITY 只认人格 id，PersonalityType 写成别的名字或不写都不影响；AI 行为不读它；B 第 150 轮） |
-| 未做 | `造兵/BuildEntry.MinTime` | 34 | a4 a5 a7 | AI 模型代码里没有这个名字 |
+| 推断 | `造兵/BuildEntry.MinTime` | 34 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过（checks/engine_aiskirm.py:mt），没有测试跑这个台子 |
 | 已对拍 | `启发条件/IsBuildingHeuristic` | 30 | a4 a5 a7 | E83 engine_aibuilding a：STRUCTURE空队列、现成基地1；PassIfBuilding=false时s40到陆厂4/在家0，true时0/4，两组PASS；tests/test_simai_bench_e.py::test_is_building_idle按名回放通过。只验空队列边界，建造中的行为未量；见 work/re/e_building_e83.md |
 | 推断 | `启发条件/IsBuildingHeuristic.KindOf` | 30 | a4 a5 a7 | E83 engine_aibuilding只测STRUCTURE空队列，无法区分KindOf匹配与忽略此字段；有效建造队列、匹配/不匹配、多个token仍gap，不晋升；见 work/re/e_building_e83.md |
 | 已对拍 | `启发条件/IsBuildingHeuristic.PassIfBuilding` | 30 | a4 a5 a7 | E83 engine_aibuilding a：STRUCTURE空队列、现成基地1；PassIfBuilding=false时s40到陆厂4/在家0，true时0/4，两组PASS；tests/test_simai_bench_e.py::test_is_building_idle按名回放通过。只验空队列边界，建造中的行为未量；见 work/re/e_building_e83.md |
@@ -902,7 +902,7 @@
 | 已对拍 | `造兵/BlockIfThingNearFactory.Relationship` | 28 | a4 a5 a7 | tests/test_simai_bench_b.py::test_a_thing_near_the_factory_blocks_the_entry（engine_aiskirm y aiskblkn / aiskblkr：Rule ANY + Relationship NEUTRAL 挡住，aiskblkf 400 外不挡；ENEMIES 走同一段代码没单独上台；B 第 149 轮） |
 | 已对拍 | `造兵/BlockIfThingNearFactory.Rule` | 28 | a4 a5 a7 | tests/test_simai_bench_b.py::test_a_thing_near_the_factory_blocks_the_entry（engine_aiskirm y aiskblkn / aiskblkr：Rule ANY + Relationship NEUTRAL 挡住，aiskblkf 400 外不挡；ENEMIES 走同一段代码没单独上台；B 第 149 轮） |
 | 推断 | `目标/AITargetingHeuristic.HeuristicType=FriendlyUnit` | 27 | a4 a5 a7 | E85 engine_aifriendly a：仅切FriendlyUnit/EnemyUnit、同挂StaticDefense与SAME_PLAYER，两组s40到友车/到敌车均0/0、MCV存活1/1，原始预测均FAIL；tests/test_simai_bench_e.py::test_friendly_unit_target按名回放strict xfail。目标选择与招人/站位边界未分，保持gap不晋升；见 work/re/e_friendly_e85.md |
-| 推断 | `微操/AIMicroManagerData.UpdateTime` | 26 | a4 a5 a7 | engine_aimicro aimicupfast/aimicupslow:a 仅切微操0.5/4s；台内首冲帧363/317、首活均2；tests/test_simai_bench_c.py 按名回放存活通过，精确时钟strict xfail（模型271/309）；资格/更新相位仍gap，不能解释为固定延迟；旧aidefctl4改的是Tactic.UpdateTime，非本字段证据；见work/re/c_update_time_report.md，不晋升 |
+| 推断 | `微操/AIMicroManagerData.UpdateTime` | 26 | a4 a5 a7 | engine_aimicro aimicupft/aimicupst:a 仅切微操0.5/4s，15帧宿主、D81时钟重量；台内首冲帧371/317、首活均2，末图逻辑帧872/876；tests/test_simai_bench_e.py 按名回放首活通过，精确首冲及人口峰值strict xfail；资格/更新前置状态、观测宿主人口等价仍gap；旧时钟读数不用于晋升，非固定延迟；见work/re/e102_update_clock.md，不晋升 |
 | 已对拍 | `启发条件/TimerHeuristic` | 25 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
 | 已对拍 | `启发条件/TimerHeuristic.EndTime` | 25 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
 | 已对拍 | `启发条件/TimerHeuristic.StartTime` | 25 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
