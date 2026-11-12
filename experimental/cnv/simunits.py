@@ -277,7 +277,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v32.json')    # v32: retail scrambler target filter
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v33.json')    # v33: lift dispatch, separate from nugget Lifetime
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -373,11 +373,22 @@ def _weapons(texts, base_table=None):
             # Only the unfiltered, single-target form is explained by round 1.
             # Retain unsupported forms as gaps instead of applying them to everyone.
             mods, unsupported = [], []
-            # engine_lift a/landing: activation needs LiftObjectUpdate, but the
-            # short Lifetime does not explain release. Do not silently drop it
-            # or pretend that independent marker damage models the consumer.
-            # Grappling also needs its caster update; dispatch/pull/release are unresolved.
-            for effect in ('ActivateLiftObjectNugget', 'GrapplingHookNugget'):
+            lifts = []
+            for h, inner in _blocks(bare, 'ActivateLiftObjectNugget'):
+                filters = list(_blocks(inner, 'SpecialObjectFilter'))
+                f, fi = filters[0] if len(filters) == 1 else ('', '')
+                rest = re.sub(r'<SpecialObjectFilter\b.*?(?:/>|>.*?</SpecialObjectFilter>)', '', inner, flags=re.S)
+                if (rest.strip() or fi.strip() or len(filters) > 1
+                        or (filters and _attr(f, 'Rule', 'ANY') != 'ANY')
+                        or set(re.findall(r'(\w+)\s*=', f)) - {'Rule', 'Include', 'Exclude'}
+                        or set(re.findall(r'(\w+)\s*=', h)) - {'id', 'Lifetime'}):
+                    unsupported.append('ActivateLiftObjectNugget')
+                else:
+                    lifts.append(dict(include=_attr(f, 'Include', '').split(), exclude=_attr(f, 'Exclude', '').split()))
+            if lifts:
+                got['lift'] = lifts
+            # Grappling still needs its unresolved caster update.
+            for effect in ('GrapplingHookNugget',):
                 if list(_blocks(bare, effect)):
                     unsupported.append(effect)
             impacts, delayed_impacts = [], []
@@ -671,6 +682,7 @@ def _resolve(w, weapons):
                 sweep=w.get('sweep'), contained=w.get('contained', []), dot=w.get('dot', []),
                 special_powers=w.get('special_powers', weapons.get(w.get('warhead'), {}).get('special_powers', [])),
                 attach=w.get('attach', weapons.get(w.get('warhead'), {}).get('attach', [])),
+                lift=w.get('lift', weapons.get(w.get('warhead'), {}).get('lift', [])),
                 inform=w.get('inform', []), weapon_speed=w.get('weapon_speed', 999999.0),
                 weapon_key=w.get('weapon_key'),
                 meta_impacts=w.get('meta_impacts', weapons.get(w.get('warhead'), {}).get('meta_impacts', [])),
@@ -678,6 +690,49 @@ def _resolve(w, weapons):
                     weapons.get(w.get('warhead'), {}).get('delayed_meta_impacts', [])),
                 unmodeled_effects=list(dict.fromkeys(w.get('unmodeled_effects', []) +
                     weapons.get(w.get('warhead'), {}).get('unmodeled_effects', []))))
+
+
+def lift_module(template, own=None):
+    """D50 timing interface, see work/re/d50_lift_release.md.
+
+    Only explicit timer fields are supported; no guessed XSD defaults.
+    Falling/landing, aircraft and vertical motion remain gaps.
+    """
+    def read(xml):
+        modules = list(_blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'LiftObjectUpdate'))
+        if not modules:
+            return None
+        h, inner = modules[0]
+        if len(modules) != 1 or inner.strip() or any(_attr(h, k) is None for k in ('TimeIncrement', 'MaxTimeLifted')):
+            return False
+        return dict(increment=int(_secs(_attr(h, 'TimeIncrement')) * FPS),
+                    maximum=int(_secs(_attr(h, 'MaxTimeLifted')) * FPS))
+    return _chain(template, own, read)
+
+
+class LiftTimers:
+    """Caster-owned target ledger, D50. Release does not clear object status.
+
+    A positive counter is decremented; a zero counter releases on its next
+    update. New entries use increment directly, only renewal clamps to max.
+    """
+    def __init__(self):
+        self.remaining = {}
+
+    def hit(self, caster, target, increment, maximum):
+        key = (caster, target)
+        self.remaining[key] = (min(maximum, self.remaining[key] + increment)
+                               if key in self.remaining else increment)
+
+    def tick(self):
+        released = []
+        for key, left in list(self.remaining.items()):
+            if left > 0:
+                self.remaining[key] -= 1
+            else:
+                released.append(key)
+                del self.remaining[key]
+        return released
 
 
 def meta_impact_delay_frames(seconds):
@@ -973,7 +1028,7 @@ def read_fight(text, weapons, armors):
             if pick in weapons:
                 guns.append(_resolve(weapons[pick], weapons))
     return dict(hp=number(text, 'MaxHealth'), armor=armors.get(arm.group(1), {}) if arm else {},
-                weapons=[g for g in guns if (g['dps'] > 0 or g.get('sdps', 0) > 0 or g.get('dot')) and g['range'] > 0])
+                weapons=[g for g in guns if (g['dps'] > 0 or g.get('sdps', 0) > 0 or g.get('dot') or g.get('lift')) and g['range'] > 0])
 
 
 def freeze(template, own=None):
@@ -1373,7 +1428,7 @@ def pick_weapons(slots, status, upgrades=()):
     for s in slots:
         for need, forbid, prim, w in sorted(s, key=lambda e: not e[2]):
             if need <= status and not (forbid & status):
-                if w and (w['dps'] > 0 or w.get('sdps', 0) > 0 or w.get('dot')) and w['range'] > 0:
+                if w and (w['dps'] > 0 or w.get('sdps', 0) > 0 or w.get('dot') or w.get('lift')) and w['range'] > 0:
                     guns.append(w)
                 break
     return guns

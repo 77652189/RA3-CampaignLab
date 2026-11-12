@@ -1,4 +1,4 @@
-"""ActivateLiftObjectNugget6: PREDICT1099/10001099/1099/1099.
+"""ActivateLiftObjectNugget: historical four-lane release diagnostics.
 
 One10UNRES marker at6s hits each1000HP passive Hammer (99%, alive).
 base has no lift; high Lifetime2s; order Lifetime.2s; removed Lifetime2s
@@ -20,8 +20,12 @@ original snapshot hypothesis. No expiry model is fitted to the first run.
 Second bench landing:1099/10001099/10001099/1099. Landing clears the
 late bit, but short Lifetime still does not clear by7s. STOP: activation
 and landing prerequisite are observed, lifetime/renewal rule unresolved.
-Expectations below preserve OBSERVATIONS for future diagnostics, not an
-explanatory simulator model; neither run passed the original hypothesis.
+Expectations below preserve OBSERVATIONS; neither run passed the original
+hypothesis. D50 (work/re/d50_lift_release.md) now explains the timer:
+TimeIncrement .5s gives 7 frames per hit, renewal caps at 120 frames;
+Lifetime is not used and release does not clear LIFTED. Thus a replays
+without a landing model. Landing clear remains INFERRED and unimplemented;
+its replay is a strict xfail. These snapshots do not measure timer frames.
 """
 from maps import probe_range
 from model import status

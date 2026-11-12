@@ -506,6 +506,7 @@ class Body:
     status: set = dataclasses.field(default_factory=set)       # IMMOBILE (stays put), UNATTACKABLE (the player
                                                                 # cannot destroy it) ...
     attachment_status: set = dataclasses.field(default_factory=set)  # owned by direct attachment links, not scripts
+    lift_status: set = dataclasses.field(default_factory=set)  # survives timer release; landing is unresolved
     attachment_rules: dict = dataclasses.field(default_factory=dict)
     indestructible: bool = False                                # the Indestructible panel flag: takes no damage
     upgrades: set = dataclasses.field(default_factory=set)     # NAMED_RECEIVE_UPGRADE / _REMOVE_UPGRADE (modify)
@@ -1013,6 +1014,7 @@ class Sim:
         self.infiltrators = siminfiltrator.Infiltrators(self)
         self.bodies = {}                    # name -> Body (named ones), plus unnamed under '#k'
         self.attachments = {}              # child name -> (child, parent, module rule)
+        self.lift_timers = simunits.LiftTimers()
         self._attachment_rules = {}
         self._attachment_marked = set()
         self.attachment_known_status = {'ATTACHED'}
@@ -1938,9 +1940,9 @@ class Sim:
         player_bits = {up for up in self.player_ups.get(b.owner, ())
                        if simunits.upgrade_type(up, self.own) == 'PLAYER'}
         on, off = simunits.status_bits(xml, b.upgrades | player_bits)
-        e = simunits.effect(mods, on | b.script_status | b.attachment_status | toggle_bits, off)
+        e = simunits.effect(mods, on | b.script_status | b.attachment_status | b.lift_status | toggle_bits, off)
         if not mods and not on and not off and b.base is None:
-            b.status = set(b.script_status | b.attachment_status | toggle_bits)
+            b.status = set(b.script_status | b.attachment_status | b.lift_status | toggle_bits)
             if b.slots:
                 b.weapons = simunits.pick_weapons(b.slots, b.status, self.weapon_upgrades(b))
             return
@@ -1971,7 +1973,7 @@ class Sim:
         for m in mods:
             for ty in sorted(set(m['types']) - simunits.ACTING_TYPES) if m else ():
                 self.gap(GAP_UPGRADE, m['id'], f'修正类型 {ty} 没模拟')
-        for bit in sorted(e['status'] - b.script_status - b.attachment_status - ACTED_STATUS - ({'UNDER_IRON_CURTAIN'} if b.shielded else set())):
+        for bit in sorted(e['status'] - b.script_status - b.attachment_status - b.lift_status - ACTED_STATUS - ({'UNDER_IRON_CURTAIN'} if b.shielded else set())):
             self.gap(GAP_STATUS, bit, f'{b.template} 身上的修正 / 升级给的，只记下来')
 
     def relation(self, a, b):
@@ -3825,9 +3827,9 @@ class Sim:
                 for effect in w.get('unmodeled_effects', []):
                     self.gap(GAP_WEAPON, effect, '武器第1轮尚未解释此效果的筛选、几何或时序')
                 if not self.shot_clock and (w.get('hit_modifiers') or w.get('line') or w.get('strip_max_health') or w.get('emp_seconds')
-                                           or w.get('sweep') or w.get('contained') or w.get('dot') or w.get('special_powers') or w.get('attach') or w.get('meta_impacts')):
+                                           or w.get('sweep') or w.get('contained') or w.get('dot') or w.get('special_powers') or w.get('attach') or w.get('lift') or w.get('meta_impacts')):
                     self.gap(GAP_WEAPON, 'weapon effects', '逐发武器效果仅在离散命中时钟中模拟')
-                if w['dps'] or w.get('suppression') or (self.shot_clock and (w.get('sdps') or w.get('dot') or w.get('special_powers') or w.get('attach') or w.get('meta_impacts'))):
+                if w['dps'] or w.get('suppression') or (self.shot_clock and (w.get('sdps') or w.get('dot') or w.get('special_powers') or w.get('attach') or w.get('lift') or w.get('meta_impacts'))):
                     if 'sched' in w and self.shot_clock:
                         self.volleys.append((pick, w, a))
                     else:
@@ -4227,6 +4229,7 @@ class Sim:
         updates): a script's health top-up (UNIT_SET_HEALTH every frame, the a4 checks' trucks) lands before the
         frame's damage, so only a frame's fire of the whole maximum kills (A4 win: bench 2026-11-07 against the 0.5 s
         tick that killed the trucks at 4:23). Bodies at 0 die, the last hit their killer's."""
+        self.lift_timers.tick()
         hurt = {}
         leech_events = {}
         self.meta_impact_tick()
@@ -4262,7 +4265,7 @@ class Sim:
                             except (OSError, ValueError):
                                 speeds[projectile] = 0
                         speed = speeds[projectile]
-                        complex_effect = any(w.get(k) for k in ('suppression', 'hit_modifiers', 'line', 'emp_seconds', 'strip_max_health', 'sd', 'dot', 'contained', 'special_powers', 'attach'))
+                        complex_effect = any(w.get(k) for k in ('suppression', 'hit_modifiers', 'line', 'emp_seconds', 'strip_max_health', 'sd', 'dot', 'contained', 'special_powers', 'attach', 'lift'))
                         if speed > 0 and not complex_effect:
                             # GUESSED collision boundary, rechecked for the two probe distances: full
                             # distance steps before impact. No fitted per-distance delays.
@@ -4344,6 +4347,23 @@ class Sim:
                             scalar = 1.0 if damage_type == 'UNRESISTABLE' else simunits.percent(victim.armor, damage_type) / 100 * victim.taken
                             h[1] += n * victim.max_hp * fraction * by.dealt * scalar
                         h[2] = by
+                    for effect in w.get('lift', []):
+                        if ((effect['include'] and not set(effect['include']) & t.kinds)
+                                or set(effect['exclude']) & t.kinds):
+                            continue
+                        cache = self.__dict__.setdefault('_lift_modules', {})
+                        if by.template not in cache:
+                            cache[by.template] = simunits.lift_module(by.template, self.own)
+                        rule = cache[by.template]
+                        if rule is None:  # missing caster module: native no-op
+                            continue
+                        if rule is False or projectile or n != 1 or t.surface != 'ground':
+                            self.gap(GAP_WEAPON, 'ActivateLiftObjectNugget', '仅直接单发、显式计时字段和地面目标已接通')
+                            continue
+                        self.lift_timers.hit(by.name, t.name, rule['increment'], rule['maximum'])
+                        t.lift_status.add('LIFTED_INTO_AIR')
+                        self.modify(t)
+                        self.gap(GAP_WEAPON, 'ActivateLiftObjectNugget', '计时释放不清状态；落地清位为INFERRED，垂直运动/落地武器未接通')
                     for effect in w.get('attach', []):
                         if (set(effect['forbidden']) & t.status
                                 or (effect['include'] and not set(effect['include']) & t.kinds)

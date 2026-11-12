@@ -6,8 +6,8 @@
 |---|---|---|---|---|---|---|---|---|---|
 | 脚本动作 | **92%** | **100%** | 50 / 50 | 451 | 123 | 20 | 191 | 117 | 93% |
 | 脚本条件 | **94%** | **100%** | 12 / 12 | 89 | 31 | 6 | 49 | 3 | 95% |
-| 物体模块 | **96%** | **96%** | 51 / 113 | 189 | 52 | 10 | 101 | 26 | 97% |
-| 武器效果 | **93%** | **95%** | 17 / 22 | 28 | 18 | 2 | 6 | 2 | 95% |
+| 物体模块 | **96%** | **97%** | 52 / 113 | 189 | 53 | 10 | 100 | 26 | 97% |
+| 武器效果 | **93%** | **95%** | 17 / 22 | 28 | 18 | 3 | 5 | 2 | 96% |
 | AI | **73%** | **72%** | 98 / 357 | 415 | 104 | 138 | 139 | 34 | 96% |
 
 ## 脚本动作
@@ -613,7 +613,7 @@
 | 推断 | `Behaviors/InfiltratorContain` | 30 (32) | a1 a2 a4 a5 a6 a7 a8 | ENERGY已按总控11-11决定拆分登记4用量/6模板；本行剩余10种配置30用量/32模板：KILL 1、STEAL_MONEY 3、VISION 5+港口阻断型1、PARALYZE 3、VISION_UNITS飞机2/步兵3/舰船3/车辆4、RESET 5；普通VISION仅engine_infvis a盟军间谍/建造场最小对照：敌方消耗不换主、友军拒入、近处可见而远处及第三方不可见，tests/test_siminfiltrator.py::test_spy_ordinary_vision_as_on_the_bench；约5秒生效延迟/视野半径映射/宿主死亡清理INFERRED；STEAL_MONEY的engine_infmon a两次量到2000转账和后续矿车收入，匿名矿车清除无效、未闭环且暂停；tests/test_siminfiltrator.py::test_spy_refinery_money_as_on_the_bench为严格xfail，未实现该效果；其他模板/间谍、精确时序、持久性/重复进入及其余效果仍gap，不登记整组或整模块已对拍；例：AlliedAirfield, AlliedBarracks |
 | 已对拍 | `Behaviors/ToggleStatusSpecialAbilityUpdate` | 27 (34) | 全部 | tests/test_simbench_c.py::test_toggle_status_a_press_moves_to_the_next_state_unpack_delays_it_and_a_held_state_takes_no_press；例：AlliedAntiAirShip, AlliedAntiInfantryInfantry |
 | 不涉及 | `Behaviors/SubObjectsUpgrade` | 26 (30) | 全部 | 纯表现（名字规则）；例：AlliedAirfield, AlliedBarracks |
-| 不涉及 | `Behaviors/FreefallUpdate` | 24 (31) | 全部 | 纯表现（总控 11-11 定）：配置只有 InitialVelocity / Acceleration / TerminalVelocity / ModelConditionsToSet=STUNNED_FLAILING，管空中死亡后尸体下落的画面；engine_freefall fall 已核人炮扔出的兵原版 / 改慢 / 改快三份读数一样（AIRBORNE_TARGET 1-125 帧、22 帧到点、降落伞约 96 帧），不归本模块。gap：被举起后落下（ActivateLiftObjectNugget / LiftObjectUpdate，C 线举升暂停）可能用到下落速度，落地时刻会影响逻辑，未上台；同 id 覆盖是否生效未排除；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
+| 不涉及 | `Behaviors/FreefallUpdate` | 24 (31) | 全部 | 纯表现（总控 11-11 定）：配置只有 InitialVelocity / Acceleration / TerminalVelocity / ModelConditionsToSet=STUNNED_FLAILING，管空中死亡后尸体下落的画面；engine_freefall fall 已核人炮扔出的兵原版 / 改慢 / 改快三份读数一样（AIRBORNE_TARGET 1-125 帧、22 帧到点、降落伞约 96 帧），不归本模块。gap：被举起后落下（ActivateLiftObjectNugget / LiftObjectUpdate，C 已接通计时、落地仍 gap）可能用到下落速度，落地时刻会影响逻辑，未上台；同 id 覆盖是否生效未排除；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
 | 已对拍 | `Behaviors/AttributeModifierUpgrade` | 22 (30) | 全部 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_invuln.py；例：AlliedOutpost, AlliedAntiGroundAircraft |
 | 已对拍 | `Behaviors/CrushDie` | 22 (28) | 全部 | tests/test_simbench.py::test_crush_a_tank_drives_over_a_lower_level_and_leaves_an_equal_one；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
 | 已对拍 | `Behaviors/SuppressionUpdate` | 22 (28) | 全部 | tests/test_simbench_c.py::test_suppression_samples_entry_refresh_and_expiry_at_the_four_probe_readings；例：AlliedAntiInfantryInfantry, AlliedAntiNavalScout |
@@ -664,7 +664,7 @@
 | 未做 | `Behaviors/SecondaryObjectListenerModule` | 3 (4) | a1 a2 a3 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedBaseDefense, AlliedAntiAirVehicleTech1 |
 | 未做 | `Behaviors/StructurePlacementBehavior` | 3 (4) | a1 a2 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedRefinery, AlliedRefinery_NoHarvester |
 | 未做 | `Behaviors/HitReactionBehavior` | 3 (3) | a1 a2 a3 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedAntiInfantryInfantry, JapanEmperor |
-| 未做 | `Behaviors/LiftObjectUpdate` | 3 (3) | a1 a2 a4 a6 a7 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_lift.py），可能用别的名字实现了；例：AlliedBaseDefense, AlliedAntiAirVehicleTech1 |
+| 已对拍 | `Behaviors/LiftObjectUpdate` | 3 (3) | a1 a2 a4 a6 a7 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_lift.py；例：AlliedBaseDefense, AlliedAntiAirVehicleTech1 |
 | 未做 | `Behaviors/ReturnToProducerSpecialPower` | 3 (3) | a1 a2 a3 a4 a5 a6 a7 a8 | 模拟器代码里没有这个名字；例：AlliedAntiGroundAircraft, AlliedFighterAircraft |
 | 未做 | `Behaviors/SubStructureBehavior` | 2 (11) |  | 模拟器代码里没有这个名字；例：AlliedConstructionYardRepairBay, AlliedCrane |
 | 未做 | `Behaviors/AttributeCrateCollide` | 2 (3) |  | 模拟器代码里没有这个名字；例：SS_SecretFile1, SS_SecretFile2 |
@@ -771,7 +771,7 @@
 | 已对拍 | `MetaImpactNugget:省略Z默认值` | 11 | 全部 | tests/test_meta_impact.py::test_meta_impact_omitted_z_replays_engine_knock_z_tall_neighbour；仅普通无延迟弹头省略ShockWaveZMult→SDK默认1及默认Physics轨迹；engine_knock_z a高度93邻人14帧落(2420,3740)、目标99%/邻人100%。碰撞时刻/爆心为台上输入；直击噪声方向/网格/选人仍INFERRED，完整曲线弹/坡地/筛选未对拍；例：JapanCommandoTech1AirplaneCrashWeapon, AlliedBomberAircraftBombWarhead |
 | 已对拍 | `ParalyzeNugget` | 11 | a1 a2 a4 a5 a6 a7 | tests/test_simbench_c.py::test_weapon_first_hit_is_observed_one_frame_after_the_order_script；例：JapanAntiVehicleInfantryTech3LockDownGun, AlliedAntiStructureShipEMPCruiseMissleWarhead |
 | 不涉及 | `TintObjectsNugget` | 9 | 全部 | 纯表现：Color及Pre/Sustained/PostColorTime、Frequency/Amplitude仅控制染色动画；engine_tint pair实测2/90/2/90，独立DamageNugget解释全部伤害，test_simbench_c重放；不声称像素已验证；例：SovietCommandoCallBombingRun, AlliedCommandoAttachWeapon |
-| 未做 | `ActivateLiftObjectNugget` | 6 | a1 a2 a4 a6 a7 | engine_lift两轮确认需LiftObjectUpdate且SoftLanding影响清位，但Lifetime/续期释放规则未解释；模拟器显式报告gap，tests/test_lift_nugget.py守卫直接命中/继承/弹头不静默忽略；暂停等模块时序证据，不登记已对拍；例：JapanCommandoTech1PsyonicCrush, JapanCommandoTech1AirborneKiller |
+| 推断 | `ActivateLiftObjectNugget` | 6 | a1 a2 a4 a6 a7 | 部分：按模块证据实现开火者举升表，trunc(TimeIncrement×15)逐发累加、续期封顶MaxTimeLifted、逐帧递减释放；Lifetime不参与，释放不清LIFTED；tests/test_lift_nugget.py按名回放engine_lift a旧读数一致，landing因落地清位未实现strict xfail；落地清位INFERRED，垂直运动/飞机/弹体/复杂筛选仍gap，不登记整项已对拍；例：JapanCommandoTech1PsyonicCrush, JapanCommandoTech1AirborneKiller |
 | 已对拍 | `LineDamageNugget` | 6 | a1 a2 a3 a4 a5 a6 a7 | tests/test_simbench_c.py::test_weaponfx_predictions_and_finite_bursts；例：SovietCommandoSniperRifle, AAAVT1_SovietCommandoSniperRifle |
 | 推断 | `SpecialPowerNugget` | 6 | 全部 | 部分：engine_spn a实测自身ARMOR派发、缺模块/类型过滤；engine_spng a / engine_spngp a实测单个OBJECT/PLAYER升级门槛读取施法者/其玩家；engine_spnret a原版守护者普通/高科技保留与去除此Nugget均74/69%血，增伤由AttributeModifierNugget提供，无活动消费者的PaintTarget模块无附加效果；tests/test_special_power_nugget.py回放；engine_spnscr a原版干扰保留/去除SPN首伤均延后但最终同80%，到期无条件清除脚本同名状态位接口已覆盖；原版筛选最小派发接口已覆盖（类别/气球模板/铁幕排除），攻击订单恢复未解释，未登记完整消费者；仅直接单发，OCL/模块/变装、未知类型/多重升级未接通，不登记整项已对拍；例：SovietCommandoCallBombingRun, AlliedAntiVehicleVehicleTech1TargetPainter |
 | 未做 | `FireOnObjectsNugget` | 5 |  | 未实现：子武器派发条件与空间锚点尚未解释；失败诊断不作为已对拍依据；例：PlayerPowerJapanEmperorsResolveWeapon_L1, PlayerPowerJapanEmperorsResolveWeapon_L2 |
