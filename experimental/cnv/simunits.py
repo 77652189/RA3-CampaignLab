@@ -1984,11 +1984,60 @@ def attach_modules(template, own=None):
     return _chain(template, own, read) or {}
 
 
+def nugget_disguise_power(template, power, own=None):
+    """engine_spndisguise: retail direct-hit DISGUISED bit only.
+
+    Identity, rendering, enemy acquisition, retargeting and cancellation remain
+    gaps. Reject unmeasured handler/power shapes rather than treating them as buffs.
+    """
+    def handler(xml):
+        for h, inner in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'SpecialDisguiseUpdate'):
+            if _attr(h, 'SpecialPowerTemplate') == power:
+                node = ET.fromstring('<SpecialDisguiseUpdate ' + h + '/>')
+                attrs = dict(node.attrib)
+                attrs.pop('id', None)
+                return not inner.strip() and attrs == dict(
+                    SpecialPowerTemplate=power, TriggerInstantlyOnCreate='false',
+                    OpacityTarget='0.5', DisguiseFX='FX_None')
+        return None
+
+    active = _chain(template, own, handler)
+    if active is None:
+        return dict(noop=True, reach=0.)  # measured module-deletion control
+    if not active:
+        return False
+    # Resolve the power's filter from data. Local overrides are not the retail
+    # configuration measured by this check, so keep them explicit gaps.
+    if any(_attr(h, 'id') == power for xml in (own or {}).values()
+           for h, _ in _blocks(xml, 'SpecialPowerTemplate')):
+        return False
+    text = open(os.path.join(SAGEXML, 'GlobalData', 'SpecialPowerTemplates.xml'), encoding='utf-8').read()
+    for h, inner in _blocks(text, 'SpecialPowerTemplate'):
+        if _attr(h, 'id') != power:
+            continue
+        node = ET.fromstring('<SpecialPowerTemplate ' + h + '>' + inner + '</SpecialPowerTemplate>')
+        if (set(node.attrib) - {'id', 'TargetType', 'InitiateSound', 'Flags', 'WaypointModeTerminal'}
+                or node.get('TargetType') != 'OBJECT'
+                or set(node.get('Flags', '').split()) != {
+                    'NEEDS_OBJECT_FILTER', 'DO_NOT_REACQUIRE_TARGET', 'CAN_NOT_BE_SCRAMBLED'}
+                or node.get('WaypointModeTerminal') != 'false' or len(node) != 1):
+            return False
+        f = node[0]
+        if (f.tag != 'ObjectFilter' or dict(f.attrib) != dict(
+                Rule='ANY', Relationship='ALLIES ENEMIES NEUTRAL', Include='INFANTRY')
+                or any(c.tag != 'ExcludeThing' or c.attrib or len(c) for c in f)):
+            return False
+        return dict(disguise=True, reach=0., include=f.get('Include').split(),
+                    exclude_templates=[(c.text or '').strip().lower() for c in f])
+    return False
+
+
 def nugget_self_power(template, power, own=None):
     """engine_spn/spnret: direct zero-reload self modifier or passive retail module.
 
     None: no matching module (native no-op). False: present but its handler
-    is outside this probe. OCL/disguise/beam handlers must not become buffs.
+    is outside this probe. Only the measured retail disguise bit is consumed;
+    other OCL/disguise/beam configurations must not become buffs.
     """
     def companion(xml):
         xml = re.sub(r'<!--.*?-->', '', xml or '', flags=re.S)
@@ -2002,6 +2051,13 @@ def nugget_self_power(template, power, own=None):
             for h, inner in _blocks(xml, tag):
                 if _attr(h, 'SpecialPowerTemplate') != power:
                     continue
+                if power == 'SpecialPower_InfantryDisguise':
+                    if (tag != 'SpecialPower' or inner.strip()
+                            or _attr(h, 'UpdateModuleStartsAttack') != 'true'
+                            or set(re.findall(r'(\w+)\s*=', h)) - {
+                                'id', 'SpecialPowerTemplate', 'UpdateModuleStartsAttack'}):
+                        return False
+                    return nugget_disguise_power(template, power, own)
                 rules = power_rules(template, power, own)
                 # engine_spnret: the retail painter's active module has no effect
                 # consumer; its BeamSpecialAbilityUpdate is commented out. Never

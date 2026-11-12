@@ -12,8 +12,9 @@ This measures dispatch/model condition only, not enemy acquisition or stealth.
 MEASURED corrected marker: s1-4 1100/1100/1100/1100; s5-15
 1111/1110/1110/1111, PASS. The first game used an inverted HP comparator:
 its disguise bit was valid but its prelatched marker was not hit evidence.
-The simulator lacks this consumer and both model-condition script interfaces;
-the strict-xfail replay preserves the measured gap, not whole-item coverage.
+The simulator replays the direct-hit DISGUISED bit and script positive control.
+Identity/rendering/acquisition/retargeting/cancellation remain explicit gaps;
+this is not whole-item coverage.
 See work/re/c_spndisguise_report.md and c_spndisguise_measured.json.
 """
 import re

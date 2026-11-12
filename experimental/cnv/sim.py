@@ -4568,6 +4568,14 @@ class Sim:
                             continue
                         if power.get('noop'):
                             continue
+                        if power.get('disguise'):
+                            if (not set(power['include']) & t.kinds
+                                    or t.template.lower() in power['exclude_templates']):
+                                continue
+                            self.set_model_condition(by, 'DISGUISED')
+                            self.gap(GAP_WEAPON, 'SpecialDisguiseUpdate',
+                                     '仅直接命中DISGUISED位已对拍；身份/外观/索敌/换目标/取消未测')
+                            continue
                         xml = self.xml_of(by.template)
                         modifier = simunits.modifier(xml, power['modifier'])
                         if (modifier and modifier['frames'] is not None and not modifier['status']

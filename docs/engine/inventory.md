@@ -5,8 +5,8 @@
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
 | 脚本动作 | **92%** | **100%** | 50 / 50 | 451 | 123 | 20 | 191 | 117 | 93% |
-| 脚本条件 | **94%** | **100%** | 12 / 12 | 89 | 31 | 6 | 49 | 3 | 95% |
-| 物体模块 | **96%** | **97%** | 52 / 113 | 189 | 53 | 13 | 97 | 26 | 97% |
+| 脚本条件 | **94%** | **100%** | 12 / 12 | 89 | 32 | 6 | 48 | 3 | 95% |
+| 物体模块 | **96%** | **97%** | 53 / 113 | 189 | 54 | 13 | 96 | 26 | 97% |
 | 武器效果 | **93%** | **95%** | 17 / 22 | 28 | 18 | 3 | 5 | 2 | 96% |
 | AI | **73%** | **72%** | 98 / 357 | 415 | 104 | 138 | 139 | 34 | 96% |
 
@@ -491,7 +491,7 @@
 | 未做 | `MISSION_HOT_SPOT_ACTIVE` | 110 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `NAMED_DISCOVERED` | 104 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_infvis.py |
 | 未做 | `TEAM_ATTACKED_BY_PLAYER` | 93 |  | Sim.act / Sim.cond 不认识 |
-| 未做 | `UNIT_HAS_MODELCONDITION` | 88 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `UNIT_HAS_MODELCONDITION` | 88 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_spndisguise.py |
 | 未做 | `TEAM_INSIDE_AREA_PARTIALLY` | 80 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `ENEMY_SIGHTED_BY_TEAM` | 69 |  | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `IS_OBJECT_OF_TYPE` | 69 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
@@ -653,7 +653,7 @@
 | 推断 | `Behaviors/TechUpgradeReceiver` | 4 (5) | a2 a4 a5 a7 a8 | 模拟器代码里有这个名字；例：AlliedAirfield, AlliedBarracks |
 | 未做 | `Behaviors/HealCrateCollide` | 4 (4) |  | 模拟器代码里没有这个名字；例：SS_SecretFile1, SS_SecretFile2 |
 | 未做 | `Behaviors/ParkingPlaceBehavior` | 4 (4) | a4 a5 a7 a8 | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedAntiStructureShip |
-| 未做 | `Behaviors/SpecialDisguiseUpdate` | 4 (4) | a1 a4 a6 a7 | 模拟器代码里没有这个名字；例：AlliedAntiVehicleVehicleTech3, AlliedInfiltrationInfantry |
+| 已对拍 | `Behaviors/SpecialDisguiseUpdate` | 4 (4) | a1 a4 a6 a7 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_spndisguise.py；例：AlliedAntiVehicleVehicleTech3, AlliedInfiltrationInfantry |
 | 推断 | `Behaviors/AttachUpdate` | 3 (24) | a1 a2 a4 a5 a6 a7 a9 | 部分：engine_attach a验证瞬移/跟随/父子状态；engine_attach_parent a验证简单模块脚本杀父后子活/清理链接，NO_COLLISIONS读数差异为严格xfail；原版模块死亡前无稳定链接，不推广死亡规则；子死/直接删除/维修/吸血/解除/自主扫描仍gap；例：ChronoTargetMarker, AlliedAirfieldRepairDrone |
 | 未做 | `Behaviors/StealthDetectorUpdate` | 3 (8) | a2 a6 | 已核（11-08）：模拟器没有这个效果（没有反隐）；例：AlliedScoutInfantry, A08_Dog1 |
 | 未做 | `Behaviors/SlaughterHordeContain` | 3 (6) | a5 a7 a8 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_aipullback.py），可能用别的名字实现了；例：AlliedAntiStructureShip, S08_AlliedAntiStructureShip |
@@ -773,7 +773,7 @@
 | 不涉及 | `TintObjectsNugget` | 9 | 全部 | 纯表现：Color及Pre/Sustained/PostColorTime、Frequency/Amplitude仅控制染色动画；engine_tint pair实测2/90/2/90，独立DamageNugget解释全部伤害，test_simbench_c重放；不声称像素已验证；例：SovietCommandoCallBombingRun, AlliedCommandoAttachWeapon |
 | 推断 | `ActivateLiftObjectNugget` | 6 | a1 a2 a4 a6 a7 | 部分：按模块证据实现开火者举升表，trunc(TimeIncrement×15)逐发累加、续期封顶MaxTimeLifted、逐帧递减释放；Lifetime不参与，释放不清LIFTED；tests/test_lift_nugget.py按名回放engine_lift a旧读数一致，landing因落地清位未实现strict xfail；落地清位INFERRED，垂直运动/死亡/飞机/弹体/复杂筛选仍gap，不登记整项已对拍；例：JapanCommandoTech1PsyonicCrush, JapanCommandoTech1AirborneKiller |
 | 已对拍 | `LineDamageNugget` | 6 | a1 a2 a3 a4 a5 a6 a7 | tests/test_simbench_c.py::test_weaponfx_predictions_and_finite_bursts；例：SovietCommandoSniperRifle, AAAVT1_SovietCommandoSniperRifle |
-| 推断 | `SpecialPowerNugget` | 6 | 全部 | 部分：engine_spn a实测自身ARMOR派发、缺模块/类型过滤；engine_spng a / engine_spngp a实测单个OBJECT/PLAYER升级门槛读取施法者/其玩家；engine_spnret a原版守护者普通/高科技保留与去除此Nugget均74/69%血，增伤由AttributeModifierNugget提供，无活动消费者的PaintTarget模块无附加效果；tests/test_special_power_nugget.py回放；engine_spnscr a原版干扰保留/去除SPN首伤均延后但最终同80%，到期无条件清除脚本同名状态位接口已覆盖；原版筛选最小派发接口已覆盖（类别/气球模板/铁幕排除），攻击订单恢复未解释，未登记完整消费者；仅直接单发，OCL/模块/变装、未知类型/多重升级未接通，不登记整项已对拍；例：SovietCommandoCallBombingRun, AlliedAntiVehicleVehicleTech1TargetPainter |
+| 推断 | `SpecialPowerNugget` | 6 | 全部 | 部分：engine_spn a实测自身ARMOR派发、缺模块/类型过滤；engine_spng a / engine_spngp a实测单个OBJECT/PLAYER升级门槛读取施法者/其玩家；engine_spnret a原版守护者普通/高科技保留与去除此Nugget均74/69%血，增伤由AttributeModifierNugget提供，无活动消费者的PaintTarget模块无附加效果；tests/test_special_power_nugget.py回放；engine_spnscr a原版干扰保留/去除SPN首伤均延后但最终同80%，到期无条件清除脚本同名状态位接口已覆盖；原版筛选最小派发接口已覆盖（类别/气球模板/铁幕排除），攻击订单恢复未解释，未登记完整消费者；engine_spndisguise a原版/删SPN/删变装模块/脚本正对照1111/1110/1110/1111已按名回放，接通直接命中DISGUISED位，身份/外观/索敌/换目标/取消仍gap；仅直接单发，OCL/其他模块、未知类型/多重升级未接通，不登记整项已对拍；例：SovietCommandoCallBombingRun, AlliedAntiVehicleVehicleTech1TargetPainter |
 | 未做 | `FireOnObjectsNugget` | 5 |  | 未实现：子武器派发条件与空间锚点尚未解释；失败诊断不作为已对拍依据；例：PlayerPowerJapanEmperorsResolveWeapon_L1, PlayerPowerJapanEmperorsResolveWeapon_L2 |
 | 已对拍 | `SecondaryDamageNugget` | 5 | a7 | tests/test_simbench_c.py::test_secondary_damage_delivers_one_amount_at_hit_without_damaging_health；例：MountRushmoreHeadEyeWeapon, AlliedCryoSatelliteLvl1 |
 | 推断 | `AttachNugget` | 4 | a1 a2 a4 a5 a6 a7 a9 | 部分：engine_attach a实测直接单发、父子状态、随父移动及目标状态/类型拒绝；仅零半径简单模块，原版复杂筛选/维修/吸血/解除/弹体未接通，不登记整项已对拍；例：AlliedCommandoAttachWeapon, SovietAntiVehicleInfantryMagneticBombAttachWeapon |
