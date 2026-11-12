@@ -101,7 +101,10 @@ def set_aside_copies():
     (deleting is the user's call); a file whose text differs is left where it is and the merge reports it."""
     names = subprocess.run(['git', 'ls-files', '--others', '--exclude-standard'], cwd=PRIV, capture_output=True,
                            text=True, encoding='utf-8', errors='replace').stdout.split('\n')
-    for name in filter(None, names):
+    # only the ones origin tracks (one listing): thousands of untracked decompiler outputs made one `git show` each
+    tracked = set(subprocess.run(['git', 'ls-tree', '-r', '--name-only', 'origin/main'], cwd=PRIV, capture_output=True,
+                                 text=True, encoding='utf-8', errors='replace').stdout.split('\n'))
+    for name in (n for n in names if n and n in tracked):
         theirs = subprocess.run(['git', 'show', f'origin/main:{name}'], cwd=PRIV, capture_output=True)
         if theirs.returncode:
             continue
