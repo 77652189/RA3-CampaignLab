@@ -33,14 +33,15 @@ LOGS = os.path.join(WORK, 'logs')
 SUMMARY = os.path.join(LAB, 'shared', 'outsource', 'lanes.jsonl')
 
 PROMPT = """你是引擎 {L} 线。工作区 {wt}（这是你的独立工作区，推送用 `git push origin HEAD:main`）。
-读 AGENTS.md 和 work/re/handoff-{lane}.md，做交接"下一步"里的**一项**，做完就停，不接下一项。
+开工只读 AGENTS.md 和 work/re/handoff-{lane}.md（存档 handoff-{lane}-archive.md、别的线的交接都不读；要查历史用
+Select-String 按关键词搜，只看命中的几行），做交接"工单"里的**一项**，做完就停，不接下一项。
+工单写了入口和证据位置：先照它去读，别全仓库摸索；工单里缺的才去搜。
 交接没写明下一项、或写着"由总控安排"时，不要停下等：自己按用量从清单（docs/engine/inventory.md 你这一块）
 挑用量最大、没被暂停、不归别的线的一项，在报告里说为什么挑它。只有真被卡住（需要别的线的东西、要用户拍板）才停。
 
 这一项的规矩（总控定的，压过别处）：
-- 测试：干活时只跑你在改的那一条（`pytest tests/<文件> -k <名字>`）。收尾只跑你改到的测试文件、清单测试
-  （tests/test_inventory*.py）和两个守卫（tests/test_architecture.py、tests/test_docs.py，约 3 分钟；新 check
-  不许直接 import 关卡内容层，见 G5）。**不跑全量**（`pytest` 不带文件、`pytest tests/`）：太慢，会拖垮进度；全量由总控跑。
+- 测试：干活时只跑你在改的那一条（`pytest tests/<文件> -k <名字>`）。收尾用 lane_close.py（见下面"收尾"），它按
+  改动挑收尾测试，别自己再跑一遍清单测试和守卫（新 check 不许直接 import 关卡内容层，见 G5）。**不跑全量**（`pytest` 不带文件、`pytest tests/`）：太慢，会拖垮进度；全量由总控跑。
   长输出写 work/logs/，只看末几行。**推到 main 的测试必须是绿的**：台上和模拟器对不上、这轮修不了的，
   写成 `pytest.mark.xfail(strict=True, reason=...)`（原因写清、指向交接），不许把失败的测试推上去。
 - 不重试同一件事：同一个命令或同一次上台失败两次，先想清楚为什么（看画面、读数据、列假设表）再动；
@@ -48,9 +49,14 @@ PROMPT = """你是引擎 {L} 线。工作区 {wt}（这是你的独立工作区�
 - 红线：程序地址（0x8xxxxx 之类）和反编译说明只写 work/re，公开仓库的文件、测试、提交说明里都不许出现；
   公开处写"见 work/re/<笔记>"，用自己的话描述行为。
 - 缺上下文：交接、docs/engine/know-how.md、相关 check 的 docstring 里找；还找不到就写进待答问题，别猜。
-- 收尾：提交推送 main（生成的清单冲突照 AGENTS.md 重跑生成器）→ 交接改写"当前入口"和"下一步"（写明具体下一项，
-  不写"由总控安排"；下一个新会话只读
-  AGENTS.md 和交接就能接上）→ 推私有仓库 work/re → 停。
+- review：不读 skill 文件，按四条自查：① 断言的是台上读数，没为迎合读数改阈值或模型；② 猜的规则都标了
+  INFERRED 或登记成 gap；③ 只改了本线的文件，新 check 不 import 关卡内容层；④ 公开文件和提交说明里没有程序地址。
+- 收尾：提交后跑 `python -I -X utf8 experimental/outsource/lane_close.py {lane} <改到的测试文件...>`（它跑收尾测试、
+  rebase、推 main，只打末几行；红了就修了再跑，生成的清单冲突照 AGENTS.md 重跑生成器）→ 改写交接 → 推私有仓库
+  work/re → 停。
+- 交接限 60 行，只放：**工单**（下一项：做什么、为什么、入口文件和行、已有证据在哪、怎么判、上不上台、验收、
+  什么算卡住）、没答的问题（每条 ≤ 3 行，细节放报告文件）、当前状态（几行）、固定指针。做完的轮次、答过的
+  问题和长证据搬进 handoff-{lane}-archive.md。下一个新会话只读 AGENTS.md 和交接就能接上。
 - 最后一条消息用中文：做了什么、台上读数、提交号、跑了哪些测试和结果、用时、下一步。
 """
 
@@ -76,6 +82,7 @@ def origin_main(wt):
 
 
 PRIV = os.path.join(WORK, 're')
+HANDOFF_LINES = 60
 
 
 def handoff_rev(lane):
@@ -206,11 +213,18 @@ def main():
                             text=True, encoding='utf-8').stdout.split('\n')
     pushed = [p for p in pushed if p.strip()]
     cmds, msgs, usage = analyse(events)
+    size = []
+    try:
+        lines = open(os.path.join(PRIV, f'handoff-{a.lane}.md'), encoding='utf-8').read().splitlines()
+        if len(lines) > HANDOFF_LINES:   # a long handoff is read whole at the start and replayed on every command
+            size = [f'交接 {len(lines)} 行，超过 {HANDOFF_LINES}：做完的、答过的要搬进 handoff-{a.lane}-archive.md']
+    except OSError:
+        pass
     rec = {'time': stamp, 'lane': a.lane, 'minutes': minutes, 'commands': len(cmds),
            'tokens_in': usage.get('input_tokens', 0), 'tokens_cached': usage.get('cached_input_tokens', 0),
            'tokens_out': usage.get('output_tokens', 0), 'pushed': pushed[:10],
            'warnings': ([stale] if stale else []) + warnings(cmds, pushed, handoff_rev(a.lane) != h0, minutes,
-                                                            a.minutes),
+                                                            a.minutes) + size,
            'events': events, 'last': (msgs[-1] if msgs else '')[:1500]}
     os.makedirs(os.path.dirname(SUMMARY), exist_ok=True)
     with open(SUMMARY, 'a', encoding='utf-8') as f:

@@ -182,7 +182,19 @@ def effective_modules(template_id):
     return list(_effective(str(template_id).lower(), st))
 
 
+_camp = None
+
+
 def _campaign_templates():
+    """The template ids the retail campaign maps place (lower case). Read once per process: orphaned() asks for it per
+    module (186 times in one inventory.collect, each reading every map's JSON -- 75 of collect's ~110 s)."""
+    global _camp
+    if _camp is None:
+        _camp = frozenset(_read_campaign_templates())
+    return _camp
+
+
+def _read_campaign_templates():
     out = set()
     for f in os.listdir(RETAILREF):
         if f.endswith('.json') and f != 'index.json':
