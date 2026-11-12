@@ -120,6 +120,10 @@ NOTES = {
         'tests/test_ai_ignore_distance.py 按名回放伤害观测；'
         'Hunt/普通自动攻击与微操过滤入口尚未分离，基地取点和精确边界未量，'
         '不实现消费者、不晋升已对拍；见 work/re/c_ignore_distance_report.md'),
+    '造兵/BuildEntry.Heuristic': (GUESSED,
+        'E78 engine_aiskirm z：BEST_UNIT_EXPECTED 两组台上 PASS；[s150,s160) 征召兵组维和5→6、标枪0，'
+        '锤子组标枪7→8→9、维和0；tests/test_simai_bench_e.py 默认模型回放，征召兵组通过、'
+        '锤子组多造1个维和 strict xfail；只验此枚举的兵种选择，其余未覆盖，见 work/re/e_aiheur_e78.md'),
     '微操/AIMicroManagerData.DodgeThreats': (TODO,
         'engine_aidodge aidodgeon/aidodgeoff 原版精确打击信标开关对照；'
         'tests/test_ai_dodge.py 按名回放，开启组 strict xfail：模型无躲避消费者，'
