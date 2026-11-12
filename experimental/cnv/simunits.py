@@ -868,6 +868,18 @@ def meta_impact_landing_hold():
     return _frames(SHOCK_STUNNED + SHOCK_STANDING)
 
 
+def meta_impact_resistance(template, own=None):
+    """The object's ShockwaveResistance (GameObject attribute, inherited; schema default 0): BaseVehicle 90,
+    BaseRepairDrone 120, JapanMechaKing 101, infantry 0. A shock whose nugget amount is under it launches nothing
+    (Physics P3 gate, bench 11-11 engine_knock_water: 89 and edge's first try at 60 nobody, 90 and 91 all three): the
+    raw ShockWaveAmount, before the distance falloff -- the dry Hammer flew at 90 with 0.63 of it (57)."""
+    def read(xml):
+        head = re.search(r'<GameObject\b[^>]*>', xml)
+        value = _attr(head.group(0), 'ShockwaveResistance') if head else None
+        return None if value is None else _num(value)
+    return _inherited(template, own, read, None) or 0.0
+
+
 def meta_impact_body(template, own=None):
     """Height for an unmodified Physics module, None for unsupported/no Physics.
 

@@ -379,6 +379,35 @@ def test_physics_p3_a_hammer_lands_on_the_plus_10_grid_and_drowns_within_10_of_t
             assert b.alive == (not dies or e.frame_now() < last), (p, e.frame_now())
 
 
+# engine_knock_water gate<A> (Physics P3 gate, bench 11-11): edge's layout, the burst centre of edge's run (the same
+# shockinfo centre in gate91's ra3ext.log); each Hammer's (landing, points) from its `build` / `built` lines, None =
+# no `shock` line at all (CampKWGate91_mcp_1111_205100, CampKWGate90_mcp_1111_205701, CampKWGate89_mcp_1111_205321)
+_GATE_FLY = {'man': ((2670, 3350, 212.5), 11), 'wet': ((2530, 3310, 212.5), 8), 'dry': ((2750, 3310, 212.5), 9)}
+KNOCK_GATE = {'gate91': _GATE_FLY, 'gate90': _GATE_FLY, 'gate89': {'man': None, 'wet': None, 'dry': None}}
+
+
+@pytest.mark.parametrize('check', sorted(KNOCK_GATE))
+def test_physics_p3_a_shock_under_the_hammers_resistance_90_launches_nothing(check):
+    """engine_knock_water gate91 / gate90 / gate89 (bench 11-11): the Hammer's ShockwaveResistance 90 (BaseVehicle)
+    gates the nugget's raw amount -- at 91 and 90 all three fly, the dry one too though its falloff leaves it
+    0.63 x 90 = 57; at 89 none (no ra3ext `shock` line) -- and the ones that fly land as the engine's `build` lines say
+    (simunits.meta_impact_resistance, Sim.meta_impact_detonate)."""
+    import simunits
+    from checks.engine_knock_probe import PROBE_TANK
+    from checks.engine_knock_water import name
+
+    e, _, _ = _knock_water(check, KNOCK_WATER_TANK['edge'][0])
+    assert simunits.meta_impact_resistance(PROBE_TANK, e.own) == 90
+    for p, want in KNOCK_GATE[check].items():
+        flight = e.impact_flights.get(id(e.bodies[name('tank', p)]))
+        if want is None:
+            assert flight is None, p
+        else:
+            land, count = want
+            assert len(flight[2]) == count, p
+            assert flight[2][-1] == pytest.approx(land, abs=1e-3), p
+
+
 def test_meta_impact_omitted_z_replays_engine_knock_z_tall_neighbour():
     """engine_knock_z a: omitted Z=1, height93 makes vertical scaling observable.
 

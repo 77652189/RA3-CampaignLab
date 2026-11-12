@@ -334,10 +334,13 @@ NOTES = {
                                           '落到低处的曲线（engine_knock_water tank / ramp / edge，'
                                           'tests/test_meta_impact.py::test_physics_p3_a_hammer_lands_on_the_plus_10_grid_and_drowns_within_10_of_the_water；'
                                           '门槛 10、搜索格网 INFERRED）；'
+                                          '冲击量（弹头原值，不算距离衰减）小于物体的 ShockwaveResistance（车 90、步兵 0）就完全不击飞，等于照飞'
+                                          '（engine_knock_water gate89 / gate90 / gate91，'
+                                          'tests/test_meta_impact.py::test_physics_p3_a_shock_under_the_hammers_resistance_90_launches_nothing）；'
                                           '倒地时照样开火、空中下的攻击令保留（engine_knock_probe fire，'
                                           'tests/test_meta_impact.py::test_physics_p4_a_knocked_man_fires_his_order_while_lying_before_he_stands；'
                                           '空中不开火 INFERRED）；'
-                                          '出图不死、默认不反弹（台上读过）；未测：落到高处的曲线、冲击太小不击飞的门槛（60 不飞、130 飞）、空中能否开火、坠机重力'),
+                                          '出图不死、默认不反弹（台上读过）；未测：落到高处的曲线、空中能否开火、坠机重力'),
     # engine A round 108: read in the SDK data
     (MODULE, 'Behaviors/ObjectDefectionHelper'): (NA, '没人触发：原版只在 BaseObject 挂一个空的（所以每个物体都有），'
                                                       'SageXML 里没有一处 DefectorSpecialPower，脚本动作表里也没有'

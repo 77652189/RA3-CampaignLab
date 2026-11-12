@@ -4287,8 +4287,14 @@ class Sim:
                 if math.dist(position, centre) > effect['radius']:
                     continue
                 if b.template not in cache:
-                    cache[b.template] = simunits.meta_impact_body(b.template, self.own)
-                height = cache[b.template]
+                    cache[b.template] = (simunits.meta_impact_body(b.template, self.own),
+                                         simunits.meta_impact_resistance(b.template, self.own))
+                height, resistance = cache[b.template]
+                if effect['amount'] < resistance:
+                    # Physics P3 gate (bench 11-11, engine_knock_water gate89/90/91): under the body's
+                    # ShockwaveResistance, no shock at all (no ra3ext `shock` line); equal to it still flies
+                    self.used.add('knock resistance gate')
+                    continue
                 if height is None or b.surface != 'ground' or b.name in self.attachments or id(b) in flights:
                     self.gap(GAP_WEAPON, 'MetaImpactNugget', '仅默认Physics的未附着地面起飞已接通；筛选/重入待核')
                     continue

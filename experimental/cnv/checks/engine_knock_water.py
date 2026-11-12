@@ -71,9 +71,16 @@ SHOCK = (200, 250, 8.5)                                       # amount, radius, 
 # the direct hit: CampKWEdge_mcp_1111_174217, no `build` line, all three at their spots to frame 345.)
 CHECK_LANES = {'man': ('man', SHOCK), 'tank': ('tank', SHOCK), 'far': ('man', (285, 250, 8.5)),
                'ramp': ('ramp', (130, 250, 8.5)), 'edge': ('tank', (130, 250, 8.5))}
-SHIFT = {'edge': 40.0}                                        # the lane's units moved east for that check
+# gate<A> = edge's layout pushed with amount A round the Hammer's ShockwaveResistance 90 (BaseVehicle; round 167's 60
+# launched nobody, 130 all three): does the raw amount gate the knock (A > 90: all three fly, the dry one too though
+# its falloff leaves 0.63 A; A < 90: no `shock` line at all), or the amount after falloff? Bench 11-11 (all PASS,
+# read in ra3ext.log): 91 CampKWGate91_mcp_1111_205100 and 90 CampKWGate90_mcp_1111_205701 all three fly, landing
+# 2750 / 2530 / 2670,3350, N 9 / 8 / 11; 89 CampKWGate89_mcp_1111_205321 no `shock` line. The raw amount, >= 90 flies.
+GATES = (89, 90, 91)
+CHECK_LANES.update({f'gate{a}': ('tank', (a, 250, 8.5)) for a in GATES})
+SHIFT = {'edge': 40.0, **{f'gate{a}': 40.0 for a in GATES}}   # the lane's units moved east for that check
 # what dies (bench 11-11): man lane nobody (the wet one lands on his own bank), tank lane the wet one
-DEAD = {'man': 0, 'tank': 1, 'far': 0, 'ramp': 0, 'edge': 0}
+DEAD = {'man': 0, 'tank': 1, 'far': 0, 'ramp': 0, 'edge': 0, **{f'gate{a}': 0 for a in GATES}}
 # lane: (target template, its site, target's x on site..E, the wet neighbour's x offset)
 LANES = {'man': (PROBE, 'air sea S', 300.0, 60.0), 'tank': (PROBE_TANK, 'air sea S', 900.0, -80.0),
          'ramp': (PROBE_TANK, 'air ramp S', 900.0, -80.0)}     # sea S (1700, 3300), ramp S (1700, 800)
