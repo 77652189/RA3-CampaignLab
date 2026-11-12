@@ -40,6 +40,14 @@ Bench 11-11 (ra3ext.log `build ... land=` lines; work/logs/a163_water_*.log):
        dry one (2730, 810) and the direct hit (2650, 890) on the table live too. So the slope does not kill: the
        tank lane's Hammer died for the water's nearness (its slope cell 5 over the water, the 20 cell round its
        +10 point reaching under it, INFERRED), not Generals' cliff rule.
+  edge CampKWEdge_mcp_1111_174551 (round 167, PASS as written): the tank lane 40 east, amount 130. The wet Hammer's
+       engine landing (`build` line) is (2510, 3310, 212.5) -- the far bank's flat top, right at the slope's edge,
+       its cell [2510, 2520) 20 over the water, the 5-over slope cell 2490 within 20 of its +10 point -- and it LIVES
+       to the end. So it is the landing cell itself that kills (2490: 5 over the water, dead; 2510: 20 over, alive;
+       ramp 2470: 65 over, alive), not a footprint round it: the threshold lies between 5 and 20 (the men's
+       stand test's 10, INFERRED). The landings are on the 20 grid +10 in both x and y (2510, 3310 / 2770, 3310 /
+       the direct hit 2690, 3390). The first try (amount 60, the lane unshifted, CampKWEdge_mcp_1111_174217)
+       launched nobody, not even the direct hit (v 34 up by the formula): below some shock amount no knock at all.
 """
 from maps import probe_air
 from parts import Mission, Script, Test
@@ -56,10 +64,16 @@ SHOCK = (200, 250, 8.5)                                       # amount, radius, 
 # landing 2520 - 5.4 x 9 = 2471 -> the 20 grid's +10 point 2470, on the ramp's slope, z 385 ours, 65 above the
 # water) -- the trench's slope without the water: dies = the slope kills (Generals' cliff rule), lives = the water's
 # nearness killed the tank lane's one
+# edge = the tank lane 40 east (SHIFT: target 2640, the wet Hammer 2560) pushed as ramp (amount 130: ramp's wet one
+# moved 49, so 2560 - 49 = 2511 -> the +10 point 2510): the far bank's flat top, its cell [2510, 2520) 20 over the
+# water, the slope cell 2490 (5 over) 10..20 away -- lives = only the landing cell's own nearness to the water kills,
+# dies = the body's footprint round it does. (Round 167's first try, amount 60 unshifted, launched nobody, not even
+# the direct hit: CampKWEdge_mcp_1111_174217, no `build` line, all three at their spots to frame 345.)
 CHECK_LANES = {'man': ('man', SHOCK), 'tank': ('tank', SHOCK), 'far': ('man', (285, 250, 8.5)),
-               'ramp': ('ramp', (130, 250, 8.5))}
+               'ramp': ('ramp', (130, 250, 8.5)), 'edge': ('tank', (130, 250, 8.5))}
+SHIFT = {'edge': 40.0}                                        # the lane's units moved east for that check
 # what dies (bench 11-11): man lane nobody (the wet one lands on his own bank), tank lane the wet one
-DEAD = {'man': 0, 'tank': 1, 'far': 0, 'ramp': 0}
+DEAD = {'man': 0, 'tank': 1, 'far': 0, 'ramp': 0, 'edge': 0}
 # lane: (target template, its site, target's x on site..E, the wet neighbour's x offset)
 LANES = {'man': (PROBE, 'air sea S', 300.0, 60.0), 'tank': (PROBE_TANK, 'air sea S', 900.0, -80.0),
          'ramp': (PROBE_TANK, 'air ramp S', 900.0, -80.0)}     # sea S (1700, 3300), ramp S (1700, 800)
@@ -91,6 +105,10 @@ def mission():
 def check(m, which):
     lane, shock = CHECK_LANES[which]
     m.units = units(shock)
+    moved = {name(lane, p) for p in ('gun',) + PARTS}
+    for o in m.objects:
+        if o.name in moved:
+            o.x += SHIFT.get(which, 0.0)
     t = Test()
     start = [('MAP_REVEAL_ALL_PERM', m.player('p1'))]
     start += [('UNIT_CHANGE_OBJECT_STATUS', name(k, p), 'NO_ATTACK', 1) for k in LANES for p in ('gun',) + PARTS]

@@ -94,9 +94,20 @@ MOVE_STAND, MOVE_CONTROL = 'Test Knock Stand Away', 'Test Knock Control Away'
 # man lands at (2300, 3180) at 300 (not land's 3060) and stays there; his Hammer first drops ~frame 300-316 (timed
 # by the rocket hit, frame 173), the control's within ~1 s of the order: he fires lying, before he stands (the hold
 # stops his feet only), on the order he got in the air. Whether he can fire in the air is not told (out of range).
-SHOOT = {'fire': 10.0}
+# round 167, `fireup` (CampKPFireup): P4b, can he fire IN the air? `fire` with his Hammer under the middle of his
+# flight -- (2300, 3450): his launch (2300, 3750) 300 off, his landing (2300, 3180) 270 off, both out of his 150 --
+# and the order at ORDER + 6 (frame 180, just after the lift at 174): over the Hammer (2-D within 150) about frames
+# 207..273, up to ~840 above it. Hit before 300 = he fires in the air (and the range is 2-D); after the hold (338) and
+# a walk = he does not fire there (the simulator's INFERRED rule; a 3-D range would look the same).
+# Bench 11-11 CampKPFireup_mcp_1111_174842 (predicted a hit, FAIL = the reading): the same flight (lift 173, landing
+# (2300, 3180) by the `build` line, apex a 377), the control hits from s11, and the target under the flight is never
+# hit to the end (s26): no shot in the air (nor, by the run's end, after he stands 270 off). In the air he does not
+# fire -- or the range is 3-D (840 up); at that height the two look the same. Expected now as read.
+SHOOT = {'fire': 10.0, 'fireup': 6.0}
+UNHIT = {'fireup': {'fire target'}}                           # Hammers left at 100 by the end
 RUNS.update({k: ORDER + 20.0 for k in SHOOT})
 SHOOT_AT = {'target': ('rocket', (2400.0, 3060.0)), 'control': ('mild', (100.0, 450.0))}   # landing + 100 / site offset
+AIR_AT = {'fireup': (2300.0, 3450.0)}                         # the target under the flight instead
 # bench 11-10: ORDER + 1/15 came out two frames late (lift 176 against land's 174); `late1` (+0.03 s) aimed at one
 # frame, retail's hit frame (lift 175), and came out two frames late as well
 HIT = '<DamageNugget Damage="1.5" DamageType="UNRESISTABLE" DeathType="NORMAL" Radius="0"/>'
@@ -180,7 +191,8 @@ def mission():
 
 CHECK_LANES = {'shot': ('mild', 'strong'), 'tank': ('tank',),    # four counter lines at most: two lanes a check
                'retail': ('yuri', 'rocket'), 'land': ('rocket',), 'late': ('rocket',),
-               'late1': ('rocket',), 'stand': ('rocket',), 'standlate': ('rocket',), 'fire': ('rocket',)}
+               'late1': ('rocket',), 'stand': ('rocket',), 'standlate': ('rocket',), 'fire': ('rocket',),
+               'fireup': ('rocket',)}
 # `land` also counts whether the flung man died (a dead man's health counter keeps its last reading). Prediction from
 # the data: no fall damage -- PhysicsBehavior.xsd has no fall / splat damage field and the Peacekeeper's Physics is
 # all defaults -- so alive, 99.
@@ -215,6 +227,8 @@ def check(m, which):
     if which in SHOOT:
         shoot = []
         for part, (lane, at) in SHOOT_AT.items():
+            if lane == 'rocket':
+                at = AIR_AT.get(which, at)
             x, y = at if lane == 'rocket' else m.site(SITE[lane], *at)
             t.objects.append(Obj(TANK, x, y, side='p1', name=name('fire', part), site=SITE[lane]))
             t.scripts[0].do.append(('UNIT_CHANGE_OBJECT_STATUS', name('fire', part), 'NO_ATTACK', 1))
@@ -246,7 +260,8 @@ def check(m, which):
         t.scripts.append(Script(f'Test - health fire {part}', [],
                                 [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', name('fire', part), c)], once=False))
         expect[f'fire {part}'] = 100
-        hit.add(f'fire {part}')
+        if f'fire {part}' not in UNHIT.get(which, ()):
+            hit.add(f'fire {part}')
     t.expect = [(label, run - 2, '<' if label in hit else '==', expect[label], run) for _, label in t.counters]
     t.bench = [('bench_watch', dict(seconds=run, every=.5, sheet=False, lines=len(t.counters)))]
     return t
