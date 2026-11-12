@@ -6,7 +6,7 @@
 
 | 部分 | 已对拍 | 推断 | 未做 |
 |---|---|---|---|
-| AI | 120 | 115 | 122 |
+| AI | 120 | 116 | 121 |
 | 脚本动作 | 11 | 0 | 0 |
 | 脚本条件 | 1 | 0 | 0 |
 
@@ -14,7 +14,6 @@
 
 | 状态 | 部分 | 项 | 原版用量 | 关 | 说明 |
 |---|---|---|---|---|---|
-| 未做 | AI | `造兵/BuildEntry.MinTime` | 34 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `人格/AIPersonalityDefinition.SkirmishPersonality` | 20 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `战略状态/AIStrategicStateDefinition.CannotAttackTargetReaction` | 16 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `微操/AIMicroManagerData.DodgeThreats` | 15 | a4 a5 a7 | engine_aidodge aidodgeon/aidodgeoff 原版精确打击信标开关对照；tests/test_ai_dodge.py 按名回放，开启组 strict xfail：模型无躲避消费者，simai.micro_team 缺威胁视图与移动回调（归B）；见 work/re/c_dodge_report.md；固定0.5秒反应，截图秒窗与游戏帧漂移亦留gap；未量精确时间、圆边界、过滤和多威胁，不晋升已对拍 |
@@ -30,7 +29,7 @@
 | 未做 | AI | `人格/EnemyFilter.Include` | 5 | a4 a5 a7 | C按名台子engine_aienemyfilter：近处敌矿车、仅Include由HARVESTER改ENGINEER，前者s15全离家、s18目标区4辆，后者s1-65在家4/目标区0；tests/test_enemyfilter.py保留原读数及按名回放，ENGINEER回放strict xfail。实际消费者为B的状态启发式/数据解析及near接口，非C的targets.py；未实现、不晋升；见work/re/c_enemyfilter_report.md |
 | 未做 | AI | `人格/EnemyFilter.Relationship` | 5 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `人格/EnemyFilter.Rule` | 5 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 未做 | AI | `微操/AIMicroManagerData.MinDistanceFromBaseToIgnoreTargets` | 5 | a4 a5 a7 | engine_aiignore aiignzero/aiignnear：仅基地距离阈值0/2000不同，无武装工程师延迟至26秒且两武士造出后；零阈值仍受伤，tests/test_ai_ignore_distance.py 按名回放伤害观测；Hunt/普通自动攻击与微操过滤入口尚未分离，基地取点和精确边界未量，不实现消费者、不晋升已对拍；见 work/re/c_ignore_distance_report.md |
+| 未做 | AI | `微操/AIMicroManagerData.MinDistanceFromBaseToIgnoreTargets` | 5 | a4 a5 a7 | E103 engine_aiignore aiignzt/aiignnt：同run逻辑时钟配对，0/2000首伤397/396；f406/421零组状态8无目标、高组状态0有目标。消费者已接被动选敌、敌对可攻击及逐人分配过滤；tests/test_ai_ignore_distance.py 零组精确回放通过，高组资格/分类仍strict xfail；基地取点/精确边界/宿主等价仍gap，不晋升已对拍；见 work/re/e103_ignore_distance.md |
 | 未做 | AI | `微操/AIMicroManagerData.PassiveTargetSearchDistance` | 5 | a4 a5 a7 | C接口闸门阻塞：被动目标分类/选择在B的tactics._team_state；micro.Team.enemies无被动分类，MicroBlock仅有技能回调，缺候选与距离基准及选敌回写；SDK显式600/650/0、默认400，距离基准和零值语义未证实；本轮未上台、不实现消费者、不晋升已对拍；见 work/re/c_passive_distance_report.md |
 | 未做 | AI | `微操/SpecificSpecialPowerDelay.TogglePowerSubType=TOGGLE_LOCKDOWN` | 5 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `战略状态/AIStrategicStateDefinition.PathfindingCheckType=None` | 5 | a4 a5 a7 | AI 模型代码里没有这个名字 |
@@ -143,6 +142,7 @@
 | 推断 | AI | `启发条件/PathToTargetHeuristic.LocomotorConditionToUseForTest` | 45 | a4 a5 a7 | E84 engine_aiopathcond a：同JapanAntiAirShip仅切NORMAL深水/SUPERSONIC空中；两组s22-s24均兵营1/电厂0，水组原始Island预测FAIL、空中PASS。tests/test_simai_bench_e.py按名回放实际计数通过，但不能区分条件生效与路径判定边界；保持gap不晋升，未改B模型；见 work/re/e_pathcond_e84.md |
 | 推断 | AI | `战术/Tactic.Distance` | 41 | a4 a5 a7 | 专用engine_aidistance aidist250/aidist2000保留AI队、同次传送1200，仅Distance不同；s65小组圈300/900=1/1，大组0/0，存活均1；两组各5条PASS、模型末态匹配；大组实机传送前离300、传送后回900再离，模型美学轨迹strict xfail；精确边界/动态队成员仍gap，不晋升；tests/test_simai_bench_c.py；见 work/re/c_distance_report.md |
 | 推断 | AI | `战术/Tactic.UseAestheticsManager` | 40 | a4 a5 a7 | 专用engine_aiaesthetics aiaeson/aiaesoff固定Distance=2000，仅切美学开关；两组各5条PASS：on先离300、传送后回900再离，off回双圈，存活/锁存均1；tests/test_simai_bench_c.py关闭组完整轨迹已回放；探针战术附加属性现传入消费者；开启组站位仍strict xfail，不晋升；见 work/re/c_aesthetics_report.md、work/re/e_aesthetics_e89.md |
+| 推断 | AI | `造兵/BuildEntry.MinTime` | 34 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过（checks/engine_aiskirm.py:mt），没有测试跑这个台子 |
 | 推断 | AI | `启发条件/IsBuildingHeuristic.KindOf` | 30 | a4 a5 a7 | E83 engine_aibuilding只测STRUCTURE空队列，无法区分KindOf匹配与忽略此字段；有效建造队列、匹配/不匹配、多个token仍gap，不晋升；见 work/re/e_building_e83.md |
 | 推断 | AI | `微操/AIMicroManagerData.AlphaStrikeTargetHealthPct` | 28 | a4 a5 a7 | engine_aialphahp 旧固定70%对照；engine_aialphaclose 独立延迟守军、仅阈值0.01/0.9不同；tests/test_simai_bench_c.py 保留读数回放，有限诊断不等于字段闭环；目标适用条件与回放差异仍gap，见 work/re/c_alpha_close_report.md |
 | 推断 | AI | `目标/AITargetingHeuristic.HeuristicType=FriendlyUnit` | 27 | a4 a5 a7 | E85 engine_aifriendly a：仅切FriendlyUnit/EnemyUnit、同挂StaticDefense与SAME_PLAYER，两组s40到友车/到敌车均0/0、MCV存活1/1，原始预测均FAIL；tests/test_simai_bench_e.py::test_friendly_unit_target按名回放strict xfail。目标选择与招人/站位边界未分，保持gap不晋升；见 work/re/e_friendly_e85.md |
