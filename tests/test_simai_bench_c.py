@@ -12,6 +12,45 @@ _spec.loader.exec_module(simai)
 pytestmark = pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
 
 
+@pytest.fixture(scope='module', params=['aialcloselo', 'aialclosehi'])
+def alpha_close_rows(request):
+    w = simai.run(request.param, 'a', until=66, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    return request.param, [(t, dict(zip(labels, values))) for t, values in w.sim.series]
+
+
+def test_alpha_close_pair_has_only_one_changed_field():
+    """Independent pair: the guard schedule, health hold and units are identical."""
+    from missions.aialphaclose_bench import mission
+    low, high = mission(False), mission(True)
+    assert low.assets[0][1] == high.assets[0][1].replace(
+        'AlphaStrikeTargetHealthPct="0.9"', 'AlphaStrikeTargetHealthPct="0.01"')
+    assert low.objects == high.objects
+    assert low.scripts == high.scripts
+
+
+def test_alpha_close_arrives_with_target_at_seventy_percent(alpha_close_rows):
+    """Named delayed-guard bench controls; this alone does not close AlphaStrike."""
+    build, rows = alpha_close_rows
+    assert any(row['到远厂'] == 4 and row['步兵数'] == 4 and row['目标血量'] == 70
+               for t, row in rows if 17 <= t <= 29), build
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+    'Delayed-guard retail pair: low target HP59/home4/live4; high HP34/home0/live0. '
+    'Model both HP64/home3/live3. Alpha target applicability needs B investigation; '
+    'no model fit or inventory promotion. See work/re/handoff-c.md and '
+    'work/re/c_alpha_close_report.md.'))
+def test_alpha_close_replays_measured_outcome(alpha_close_rows):
+    """Stable s39-55 bench plateaus; no exact dispatch-frame inference."""
+    build, rows = alpha_close_rows
+    expected = (59, 4, 4) if build == 'aialcloselo' else (34, 0, 0)
+    plateau = [row for t, row in rows if 39 <= t <= 55]
+    assert plateau
+    assert {tuple(row[k] for k in ('目标血量', '步兵在家', '步兵数'))
+            for row in plateau} == {expected}, (build, plateau)
+
+
 @pytest.fixture(scope='module', params=['aimicupfast', 'aimicupslow'])
 def micro_update_rows(request):
     build = request.param

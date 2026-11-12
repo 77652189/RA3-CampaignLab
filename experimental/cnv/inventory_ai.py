@@ -183,8 +183,9 @@ NOTES = {
         'tests/test_simai_pullpct.py::test_pullback_threshold_high_returns_before_recycling 完整回放四车回家且不到远厂；'
         '同文件 low 对照先到远厂；仅初次回撤阈值，精确边界/晚段/吊车回收未闭环（回收 strict xfail）'),
     '微操/AIMicroManagerData.AlphaStrikeTargetHealthPct': (GUESSED,
-        'engine_aialphahp 固定远厂70%血量，仅阈值0.01/0.9不同；有限诊断不等于字段闭环；'
-        'tests/test_simai_alphahp.py 保留完整回放，AlphaStrike目标可用条件待证实，见 handoff-c'),
+        'engine_aialphahp 旧固定70%对照；engine_aialphaclose 独立延迟守军、仅阈值0.01/0.9不同；'
+        'tests/test_simai_bench_c.py 保留读数回放，有限诊断不等于字段闭环；'
+        '目标适用条件与回放差异仍gap，见 work/re/c_alpha_close_report.md'),
     '微操/AIMicroManagerData.ReverseMove': (GUESSED, '推断（台上未复现）：锤子 airev / airevp / airevt 都不倒车；'
         '工单入口未发布同帧成员当前攻击目标、位置和车身朝向观测，暂停新台，不把普通后退当倒车；'
         '所需最小接口及假设表见 work/re/c_reverse_observation_report.md'),
