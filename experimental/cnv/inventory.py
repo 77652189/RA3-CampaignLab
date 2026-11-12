@@ -240,7 +240,7 @@ BENCHED_TESTS = {
 # (part, name) -> (state, why): where the name rule above is wrong (a module read under another name ...)
 _NOT_IN_SIM = '已核（11-08）：模拟器没有这个效果'
 NOTES = {
-    (MODULE, 'Behaviors/PassiveAreaEffectBehavior'): (GUESSED, 'E70部分：engine_passivearea a按名回放工程师独立范围治疗；状态开启、40距离同属步兵100%，400距离步兵/60距离车辆/未开启源旁步兵50%，关闭再扣血后四路50%。仅单源同属步兵稳定平台，SDK每秒10%逐帧积分和调查时序INFERRED；精确帧/叠加/跨玩家关系/自身受益/附着无人机仍gap，不登记整项已对拍；tests/test_simpassivearea.py；见work/re/e_passive_e70.md'),
+    (MODULE, 'Behaviors/PassiveAreaEffectBehavior'): (GUESSED, 'E70部分：engine_passivearea a按名回放工程师独立范围治疗；状态开启、40距离同属步兵100%，400距离步兵/60距离车辆/未开启源旁步兵50%，关闭再扣血后四路50%。E74按名回放f/g阈值帧11/31/51/71与16/36/56/76，每20帧分批治疗；共用任务帧相位及SDK每秒10%换算跳幅INFERRED，时钟来源/动态创建与重开/调查周期/叠加/跨玩家关系/自身受益/附着无人机仍gap，不登记整项已对拍；tests/test_simpassivearea.py；见work/re/e_passive_e74.md'),
     (MODULE, 'Behaviors/TrackDamage'): (TODO, 'E69静态核实：6个SDK配置均InstantWeaponsOnly=true，TimeToTrack为0/1/2s；现有expected_damage只接来弹，历史伤害仍gap。与C线瞬发历史接口工单重叠，E暂停独立探针；尚无本模块具名实测回放，不登记已对拍、不改分母；见work/re/e_trackdamage_e69.md'),
     (CONDITION, 'ENEMY_SIGHTED'): (GUESSED, '部分：engine_levelvision a普通/英雄幻影在近点移除后对工程师240/310距离四路0/101/0/100，test_simbench_c重放；仅敌对关系范围查询已量，其他关系、隐形与精确边界未对拍，不登记整项'),
     (MODULE, 'Behaviors/InfiltratorContain'): (GUESSED, 'ENERGY已按总控11-11决定拆分登记4用量/6模板；本行剩余10种配置30用量/32模板：KILL 1、STEAL_MONEY 3、VISION 5+港口阻断型1、PARALYZE 3、VISION_UNITS飞机2/步兵3/舰船3/车辆4、RESET 5；普通VISION仅engine_infvis a盟军间谍/建造场最小对照：敌方消耗不换主、友军拒入、近处可见而远处及第三方不可见，tests/test_siminfiltrator.py::test_spy_ordinary_vision_as_on_the_bench；约5秒生效延迟/视野半径映射/宿主死亡清理INFERRED；STEAL_MONEY的engine_infmon a两次量到2000转账和后续矿车收入，匿名矿车清除无效、未闭环且暂停；tests/test_siminfiltrator.py::test_spy_refinery_money_as_on_the_bench为严格xfail，未实现该效果；其他模板/间谍、精确时序、持久性/重复进入及其余效果仍gap，不登记整组或整模块已对拍'),
