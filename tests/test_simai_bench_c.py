@@ -376,24 +376,33 @@ def test_tactic_distance_replays_displaced_guardian(build, home):
     assert (at65['圈300'], at65['圈900']) == (home, home), at65
 
 
-@pytest.mark.xfail(strict=True, reason='Distance 2000 retail leaves the 300 square before the push, '
-                  're-enters the 900 square after displacement, then leaves it again. '
-                  'B aesthetics stand-point selection is not replayed; endpoint agreement alone '
-                  'does not close Distance. See work/re/handoff-c.md and work/re/c_distance_report.md.')
-def test_tactic_distance_large_replays_observed_excursion():
+@pytest.mark.parametrize('build, expected_before, expected_after', [
+    ('aidist250', [(1, 1)], [(0, 0), (0, 1), (1, 1)]),
+    pytest.param('aidist2000', [(1, 1), (0, 1)], [(0, 0), (0, 1), (0, 0)],
+                 marks=pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+                     'Distance 2000 stand-point selection is unresolved: retail leaves the 300 square '
+                     'before displacement, returns to the 900 square, then leaves again. '
+                     'Same-frame stand-point, order source and readiness observations are missing; '
+                     'endpoint agreement does not close Distance. See work/re/e_distance_e91.md.'))),
+])
+def test_tactic_distance_replays_observed_excursion(build, expected_before, expected_after):
     """Assert measured location transitions, independent of capture-clock seconds."""
-    w = simai.run('aidist2000', 'a', until=76, lib=simai.model()['xmldata'].Library())
+    w = simai.run(build, 'a', until=76, lib=simai.model()['xmldata'].Library())
     labels = [label for _, label in w.sim.test.counters]
     rows = [dict(zip(labels, values)) for _, values in w.sim.series]
-    before = [row for row in rows if not row['曾出圈']]
-    assert any((r['圈300'], r['圈900']) == (0, 1) for r in before), before[-3:]
-    after = [row for row in rows if row['曾出圈']]
-    transitions = []
-    for row in after:
-        pos = row['圈300'], row['圈900']
-        if not transitions or pos != transitions[-1]:
-            transitions.append(pos)
-    assert transitions == [(0, 0), (0, 1), (0, 0)], transitions
+    # Original retail sequences: work/re/c_distance_report.md and the two
+    # aidist*__a.json recordings. Keep displacement and survival in every row.
+    assert rows
+    assert all(row['坦克总数'] == 1 for row in rows)
+    for displaced, expected in ((False, expected_before), (True, expected_after)):
+        transitions = []
+        for row in rows:
+            if bool(row['曾出圈']) != displaced:
+                continue
+            pos = row['圈300'], row['圈900']
+            if not transitions or pos != transitions[-1]:
+                transitions.append(pos)
+        assert transitions == expected, (build, displaced, transitions)
 
 
 @pytest.mark.parametrize('build', ['aiaeson', 'aiaesoff'])
