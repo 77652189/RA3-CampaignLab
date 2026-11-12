@@ -34,6 +34,12 @@ Bench 11-11 (ra3ext.log `build ... land=` lines; work/logs/a163_water_*.log):
   far  CampKWFar_mcp_1111_151821: PASS. The wet man's own landing (2400, in the trench, 100 short of the far bank)
        is moved to (2500, 3280, 212.5) -- the FAR bank's flat top, the nearest standable cell, not back along the
        line -- and he lives. (The dry one lands at 1560, not the 1580 predicted: n 26-27, not 25 -- unexplained.)
+  ramp CampKWRamp_mcp_1111_172522 (round 166, PASS as written): the tank lane on probe_air's dry table (y 800,
+       amount 130). The wet Hammer lands where predicted, its own landing not moved: (2470, 810, 240.6) on the
+       ramp's slope (the trench bank's 15 a cell, 65 ours above the water), and LIVES to the end (frame 375); the
+       dry one (2730, 810) and the direct hit (2650, 890) on the table live too. So the slope does not kill: the
+       tank lane's Hammer died for the water's nearness (its slope cell 5 over the water, the 20 cell round its
+       +10 point reaching under it, INFERRED), not Generals' cliff rule.
 """
 from maps import probe_air
 from parts import Mission, Script, Test
@@ -46,12 +52,17 @@ SHOCK = (200, 250, 8.5)                                       # amount, radius, 
 # check -> (its lane, the gun's shock). far = the man lane pushed harder: the wet one's own landing at x 2400 in the
 # trench, 100 short of the far bank (amount 285: v 14.35/frame, n 25, 2060 + 359 = 2419 -> 2400) -- does the engine
 # put him back on his own bank (along the line) or on the nearer far bank (nearest standable cell)?
-CHECK_LANES = {'man': ('man', SHOCK), 'tank': ('tank', SHOCK), 'far': ('man', (285, 250, 8.5))}
+# ramp = the tank lane's layout on probe_air's dry table (y 800), pushed softer (amount 130: the wet Hammer's own
+# landing 2520 - 5.4 x 9 = 2471 -> the 20 grid's +10 point 2470, on the ramp's slope, z 385 ours, 65 above the
+# water) -- the trench's slope without the water: dies = the slope kills (Generals' cliff rule), lives = the water's
+# nearness killed the tank lane's one
+CHECK_LANES = {'man': ('man', SHOCK), 'tank': ('tank', SHOCK), 'far': ('man', (285, 250, 8.5)),
+               'ramp': ('ramp', (130, 250, 8.5))}
 # what dies (bench 11-11): man lane nobody (the wet one lands on his own bank), tank lane the wet one
-DEAD = {'man': 0, 'tank': 1, 'far': 0}
-# lane: (target template, target's x on 'air sea S'..E, the wet neighbour's x offset)
-LANES = {'man': (PROBE, 300.0, 60.0), 'tank': (PROBE_TANK, 900.0, -80.0)}
-SITE = 'air sea S'                                            # (1700, 3300)
+DEAD = {'man': 0, 'tank': 1, 'far': 0, 'ramp': 0}
+# lane: (target template, its site, target's x on site..E, the wet neighbour's x offset)
+LANES = {'man': (PROBE, 'air sea S', 300.0, 60.0), 'tank': (PROBE_TANK, 'air sea S', 900.0, -80.0),
+         'ramp': (PROBE_TANK, 'air ramp S', 900.0, -80.0)}     # sea S (1700, 3300), ramp S (1700, 800)
 RANGE = 450.0                                                 # the gun south of its target
 STOP = 2.0                                                    # retail's 0.5 s pre-attack, reload 4.5 s: one rocket
 RUN = ORDER + 14.0
@@ -69,11 +80,11 @@ def units(shock=SHOCK):
 def mission():
     m = Mission(name='CampKW', map=probe_air, units=units(), facts={})
     m.ext = True                  # + the check's name: CampKWMan (<= 15)
-    for lane, (target, x, wet) in LANES.items():
-        m.put(GUN, SITE, x, -RANGE, side='p1', angle=1.5708, name=name(lane, 'gun'))
-        m.put(target, SITE, x, 0.0, side='s1', role=lane, name=name(lane, 'man'))
-        m.put(target, SITE, x + wet, 0.0, side='s1', name=name(lane, 'wet'))
-        m.put(target, SITE, x - wet, 0.0, side='s1', name=name(lane, 'dry'))
+    for lane, (target, site, x, wet) in LANES.items():
+        m.put(GUN, site, x, -RANGE, side='p1', angle=1.5708, name=name(lane, 'gun'))
+        m.put(target, site, x, 0.0, side='s1', role=lane, name=name(lane, 'man'))
+        m.put(target, site, x + wet, 0.0, side='s1', name=name(lane, 'wet'))
+        m.put(target, site, x - wet, 0.0, side='s1', name=name(lane, 'dry'))
     return m
 
 

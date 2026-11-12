@@ -218,7 +218,7 @@ def _knock_water(check):
     gun, wet, dry = (e.bodies[name(lane, p)] for p in ('gun', 'wet', 'dry'))
     weapon, = gun.weapons
     # the rocket bursts a hair north of the lane (the engine's landings are at y 3280, its y floored to 20)
-    e.meta_impact_detonate(weapon, (1700 + LANES[lane][1], 3300.01, 219))
+    e.meta_impact_detonate(weapon, (1700 + LANES[lane][2], 3300.01, 219))
     return e, wet, dry
 
 

@@ -6,6 +6,10 @@
                        cannot cross it
   y 4100  'air cliff'  from x 2500 east a plateau 115 higher (tier 2), its face two cells wide with field 0 on it:
                        S low, E high
+  y 800   'air ramp'   a dry table 90 higher (ours) across x 2500..3000, ramps 60 wide on either side (x 2440..2500,
+                       3000..3060: the trench's bank slope, 15 a cell, but 20..110 above the water), no field 0
+                       on it -- what a knocked body landing on a slope far from the water does (engine_knock_water
+                       ramp); its band is 550 wide in y, the S anchor on the flat to the west
 
 and two open spots for the weapon tests: 'air B' (4000, 1500) and 'air D' (4000, 900). The player's start (1250, 2500)
 stays clear. Published: SITES (S / E of each lane, the two spots), PLAYERS, TEAMS.
@@ -26,10 +30,13 @@ TRENCH = (2100.0, 2500.0, 3300.0)          # x0, x1, y: the trench's span and la
 TRENCH_DEPTH = GROUND - 250.0
 BANK = 60.0
 CLIFF = (2500.0, 4100.0)                   # the face's x, the lane's y
+RAMP = (2440.0, 3060.0, 800.0)             # x0, x1, y: the table's span with its ramps (BANK wide) and lane
+RAMP_RISE = 90.0
+RAMP_BAND = 550.0
 BAND = 250.0                               # a lane's half width in y that its terrain feature covers
 
 SITES = {k: island.SITES[k] for k in ('island', 'start', 'base factory', 'base power', 'west field')}
-for _n, _y in (('flat', 1500.0), ('sea', 3300.0), ('cliff', 4100.0)):
+for _n, _y in (('flat', 1500.0), ('sea', 3300.0), ('cliff', 4100.0), ('ramp', 800.0)):
     SITES[f'air {_n} S'] = Site(1700.0, _y, 60.0, f'the west end of the {_n} lane')
     SITES[f'air {_n} E'] = Site(2900.0, _y, 60.0, f'the east end of the {_n} lane, 1 200 east of S')
 SITES['air B'] = Site(4000.0, 1500.0, 250.0, 'open flat ground for the anti-air range tests')
@@ -42,7 +49,7 @@ _LAYOUT = Layout(shapes=[poly([(-300, -300), (5300, -300), (5300, 5300), (-300, 
 
 
 def shape(e, border):
-    """The heights with the trench dug and the plateau raised: (e, field 0 cells) on cells (rows j)."""
+    """The heights with the trench dug, the plateau and the ramp table raised: (e, field 0 cells) on cells (rows j)."""
     e = np.array(e, dtype=float)
     h, w = e.shape
     jj, ii = np.mgrid[0:h, 0:w]
@@ -51,6 +58,10 @@ def shape(e, border):
     lane = np.abs(ys - ty) <= BAND
     ramp = np.clip(np.minimum(xs - x0, x1 - xs) / BANK, 0.0, 1.0)
     e[lane] -= (ramp * TRENCH_DEPTH)[lane]
+    x0, x1, ry = RAMP
+    lane = np.abs(ys - ry) <= RAMP_BAND
+    ramp = np.clip(np.minimum(xs - x0, x1 - xs) / BANK, 0.0, 1.0)
+    e[lane] += (ramp * RAMP_RISE)[lane]
     fx, fy = CLIFF
     lane = np.abs(ys - fy) <= BAND
     rise = np.clip((xs - (fx - mapterrain.CELL)) / (2 * mapterrain.CELL), 0.0, 1.0)
