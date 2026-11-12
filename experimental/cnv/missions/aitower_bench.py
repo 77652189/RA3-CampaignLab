@@ -20,7 +20,9 @@ there is an enemy army, and round which building (the opener's turret stood roun
 aitowerfoe, but an opener that only deposits 1000 to DEFENSE (no Build order; retail budgets kept) -- is the script's
 money just never in the accounts? Round 133 (handoff-b section 125's table): aitowerinc -- as aitowerstate, plus an
 AI refinery on the east ore and a miner (does a share need income?); aitoweropen -- as aitowerstate, plus an opener
-of one empty Time 0s order, own budget kept (does a share fund nothing before an opening is done?). Readings in
+of one empty Time 0s order, own budget kept (does a share fund nothing before an opening is done?). Round 135
+(handoff-b section 137's table): aitowerinc10 -- as aitowerinc, but DEFENSE 10% / PRODUCTION 90% (does the share
+borrow against its income -- a turret soon after the wake -- or wait for 10% of the money to reach 800?). Readings in
 checks/engine_aitower.py.
 Facts: wake at, money.
 """
@@ -44,16 +46,17 @@ FOE = 'AlliedAntiVehicleVehicleTech1'       # Guardian tank
 FOES = 4
 FOE_DY = AI_PLANT_DY - 600.0                # 600 south of the AI plant (1050 from the yard)
 HOLD_FIRE = 3
+INC10_WATCH = 420.0                         # aitowerinc10 (DEFENSE 10%): long enough for a second turret
 
 
-def _budget():
+def _budget(defense=50):
     return f'''  <AIBudgetStateDefinition id="{BUDGET_ID}">
     <Heuristic>
       <ConstantHeuristic/>
     </Heuristic>
     <Budget>
-      <AccountShare Account="PRODUCTION" Percent="50%"/>
-      <AccountShare Account="DEFENSE" Percent="50%"/>
+      <AccountShare Account="PRODUCTION" Percent="{100 - defense}%"/>
+      <AccountShare Account="DEFENSE" Percent="{defense}%"/>
       <AccountShare Account="SLUSH_FUND" Percent="0%"/>
     </Budget>
   </AIBudgetStateDefinition>'''
@@ -71,7 +74,7 @@ def _opener(build=True, empty=False):
                       '  </SkirmishOpeningMove>'])
 
 
-def personality_xml(compactness, opener=False, build=True, empty=False):
+def personality_xml(compactness, opener=False, build=True, empty=False, defense=50):
     # empty=True: the empty opener (_opener) with this probe's own budget, not the retail ones
     removed = [f'    <StrategicState id="{k}" xai:joinAction="Remove"/>' for k in ab.INHERITED]
     removed += ['    <BuildState id="AlliedNeededUnits" xai:joinAction="Remove"/>']
@@ -81,7 +84,7 @@ def personality_xml(compactness, opener=False, build=True, empty=False):
         own, budget = [], []
     else:
         removed += [f'    <BudgetState id="{k}" xai:joinAction="Remove"/>' for k in BUDGETS]
-        own, budget = [_budget()], [f'    <BudgetState id="{BUDGET_ID}" State="{BUDGET_ID}"/>']
+        own, budget = [_budget(defense)], [f'    <BudgetState id="{BUDGET_ID}" State="{BUDGET_ID}"/>']
     return '\n'.join([
         '<?xml version="1.0" encoding="utf-8"?>',
         '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
@@ -101,12 +104,16 @@ def personality_xml(compactness, opener=False, build=True, empty=False):
         '</AssetDeclaration>', ''])
 
 
-def mission(name, compactness, opener=True, foes=0, build=True, empty=False, refinery=False):
-    m = Mission(name=name, map=niagara, facts={'wake at': WAKE_AT, 'money': MONEY})
+def mission(name, compactness, opener=True, foes=0, build=True, empty=False, refinery=False, defense=50,
+            watch=None):
+    facts = {'wake at': WAKE_AT, 'money': MONEY}
+    if watch:
+        facts['watch'] = watch              # how long checks/engine_aitower.py e watches after the wake
+    m = Mission(name=name, map=niagara, facts=facts)
     m.cnv_compactness = compactness         # the check says the model's radius by it
     m.cnv_turret = TURRET                   # what the check counts (checks ask the mission, not this module)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{PID}'}
-    m.assets.append((f'{PID}.xml', personality_xml(compactness, opener, build, empty), f'AIPersonalityDefinition:{PID}'))
+    m.assets.append((f'{PID}.xml', personality_xml(compactness, opener, build, empty, defense), f'AIPersonalityDefinition:{PID}'))
     s1 = m.player('s1')
     m.put('AlliedConstructionYard', 'east base', 0, 0, side='s1', name='UNIT - CNV AI Yard', role='ai yard')
     m.put(PLANT, 'east base', 0.0, AI_PLANT_DY, side='s1', name='UNIT - CNV AI Plant', role='ai plant')
@@ -138,4 +145,8 @@ MISSION = {'aitower50': lambda: mission('CampAITow50', 0.5),
            'aitowerfoe': lambda: mission('CampAITowFoe', 0.5, opener=False, foes=FOES),
            'aitowerdep': lambda: mission('CampAITowDep', 0.5, foes=FOES, build=False),
            'aitowerinc': lambda: mission('CampAITowInc', 0.5, opener=False, refinery=True),
-           'aitoweropen': lambda: mission('CampAITowOpen', 0.5, opener=False, empty=True)}
+           'aitoweropen': lambda: mission('CampAITowOpen', 0.5, opener=False, empty=True),
+           'aitowerinc10': lambda: mission('CampAITowInc10', 0.5, opener=False, refinery=True, defense=10,
+                                           watch=INC10_WATCH),
+           'aitowerinc5': lambda: mission('CampAITowInc5', 0.5, opener=False, refinery=True, defense=5,
+                                          watch=INC10_WATCH)}

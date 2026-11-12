@@ -44,6 +44,18 @@ aitowerinc e (as aitowerstate, + an AI refinery on the east ore and a miner): PA
 aitoweropen e (as aitowerstate, + an opener of one empty Time 0s order, own budget kept): FAIL -- no turret to s143.
   So the share pays nothing without income; an unfinished opening is not the reason. Money at the wake was the same
   1700 in both.
+Round 135 (bench 2026-11-11, work/logs/b138_bench.log; handoff-b section 137's table):
+aitowerinc10 e (as aitowerinc, DEFENSE 10 % / PRODUCTION 90 %, watched to s466): PASS -- 落塔帧 451 (ordered at the
+  wake, as at 50 %), 塔距场 350 内 1 from s29, and NO second turret to s466. 10 % x 1700 = 170 < 800 bought the first:
+  "share x the money now" is out (it waits for 8000 in the bank, ~s330); the share borrows against something at once,
+  and then stops for 7+ minutes -- what it owes after the first is not paid back by the income in that time.
+aitowerinc10 f (= e + AI钱, work/logs/b138_bench2.log): PASS, the same -- 落塔帧 451, one turret to s477. AI钱 1700 at
+  the wake, paid down to 1189 by s27 (the turret paid as it builds), then +250 every ~12.3 s (one miner: ~20.4/s;
+  the simulator's miner ~14.7/s): 5400 at s235, 10400 at s477 -- 10 % of it is 1040 and still no second turret.
+aitowerinc5 f (DEFENSE 5 %): FAIL -- no turret to s454; AI钱 1700 never paid down, 10700 at s454.
+  Reading (handoff-b section 138): the money in the bank does not decide; the first turret at 10 % and none at 5 %
+  fit "share x income rate x build time x window, less what the share has paid (never paid back)": R(10 %) in
+  [800, 1600), so R(5 %) < 800 and R(50 %) in [4000, 8000) (aitowerinc's 5, money-limited). INFERRED.
 """
 import math
 
@@ -218,12 +230,25 @@ def e(m):
                                              ANY)], [('SET_FLAG', 'Test Tower', 1)]),
                   Script('Test - no tower yet', [('FLAG', 'Test Tower', 0)],
                          [('INCREMENT_COUNTER', 1, 'CNV_AT_First')], once=False)]
-    end = m.facts['wake at'] + LONG
+    end = m.facts['wake at'] + m.facts.get('watch', LONG)
     t.expect += [('塔在基地', 1, 'ever>=', 1, end)]
     t.bench = [('bench_watch', dict(seconds=end + LAG, every=2, sheet=False, lines=len(t.counters)))]
     return t
 
 
-CHECKS = {k: {'a': a, 'b': b, 'c': c, 'd': d, 'e': e}
+def f(m):
+    """Round 135: e + AI钱 (s1's money each frame) -- the miner's income rate and the money when a second turret is
+    (not) ordered: which of handoff-b section 138's budget models."""
+    t = e(m)
+    t.counters = [c for c in t.counters if c[1] != '塔在厂南带']     # four lines fit (never 1 in e's runs)
+    t.counters.append(('CNV_AT_Money', 'AI钱'))
+    t.scripts.append(Script('Test - money', [], [('SET_PLAYER_MONEY_TO_COUNTER', m.player('s1'), 'CNV_AT_Money')],
+                            once=False))
+    t.bench = [('bench_watch', dict(seconds=m.facts['wake at'] + m.facts.get('watch', LONG) + LAG, every=2,
+                                    sheet=False, lines=len(t.counters)))]
+    return t
+
+
+CHECKS = {k: {'a': a, 'b': b, 'c': c, 'd': d, 'e': e, 'f': f}
           for k in ('aitower50', 'aitower75', 'aitower100', 'aitowerstate', 'aitowerfoe',
-                   'aitowerdep', 'aitowerinc', 'aitoweropen')}
+                   'aitowerdep', 'aitowerinc', 'aitoweropen', 'aitowerinc10', 'aitowerinc5')}

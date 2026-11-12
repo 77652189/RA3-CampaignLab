@@ -302,6 +302,21 @@ def test_with_income_the_turrets_keep_coming(lib):
     assert _vals(rows)[-1][2] >= 4
 
 
+@pytest.mark.xfail(strict=True, reason='simai: no turret (10 % x 1700 = 170 < 800); bench aitowerinc10 e: one at '
+                                       'frame 451, ordered at the wake -- the share borrows (B handoff 138)')
+def test_a_ten_percent_share_borrows_its_first_turret_at_the_wake(lib):
+    """checks/engine_aitower.py aitowerinc10 e (DEFENSE 10 %): 落塔帧 451, 塔在基地 1 from s29 and no second to s466."""
+    _, rows = _probe_run('aitowerinc10', lib, 40.0, check='e')
+    v = _vals(rows)[-1]
+    assert v[2] == 1 and abs(v[3] - 451) <= 7
+
+
+def test_a_five_percent_share_builds_no_turret_however_the_bank_grows(lib):
+    """checks/engine_aitower.py aitowerinc5 f (DEFENSE 5 %): no turret to s454 while AI钱 grows 1700 -> 10700."""
+    _, rows = _probe_run('aitowerinc5', lib, 120.0, check='f')
+    assert all(r['塔在基地'] == 0 for r in rows)
+
+
 def test_the_tower_stands_in_the_350_circle_for_half_compactness(lib):
     """checks/engine_aitower.py aitower50 b: the 350 circle >= 1 (bench from s33)."""
     _, rows = _probe_run('aitower50', lib, 40.0, check='b')
