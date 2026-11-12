@@ -3690,10 +3690,12 @@ class Sim:
     def passive_area_heal(self):
         """E70 single engineer, same-owner infantry, scripted status on/off.
 
-        INFERRED fallback: continuous integration of the SDK's 10%/second.
-        E71/E72 reject this timing (strict xfail); E70 late plateaus still pass.
-        E72 crossing gaps are 20/20/20 frames; initial phase unresolved.
-        See work/re/e_passive_e72.md; no fixed first delay is inferred.
+        E72/E73 crossing gaps are 20/20/20 script frames. Apply the SDK's
+        10%/second in 20-frame batches. INFERRED: a shared mission-frame phase
+        (frame % 20 == 11 after scripts) replays both activation times; this
+        does not establish the clock source or dynamic creation/reset timing.
+        Batch magnitude is inferred from the SDK rate, not an exact HP probe.
+        See work/re/e_passive_e74.md.
         Other relationships, overlapping auras and self-healing remain gaps.
         """
         cache = self.__dict__.setdefault('_passive_area_of', {})
@@ -3711,7 +3713,11 @@ class Sim:
         if not sources:
             return
         self.gap('物体模块', 'PassiveAreaEffectBehavior timing',
-                 'INFERRED fallback: E72中间跨越间隔20/20/20帧否定逐帧积分；首跳相位待解，见work/re/e_passive_e72.md')
+                 'INFERRED: E72/E73支持20帧分批；共用任务帧相位及SDK换算跳幅仅限已有回放，'
+                 '时钟来源、动态创建/重开状态/调查周期仍未测，见work/re/e_passive_e74.md')
+        period, phase = 20, 11
+        if (self.frame_now() - phase) % period:
+            return
         for target in self.bodies.values():
             if not target.alive or target.hp >= target.max_hp or 'INFANTRY' not in target.kinds:
                 continue
@@ -3726,7 +3732,8 @@ class Sim:
                 self.gap('物体模块', 'PassiveAreaEffectBehavior overlap/self', '重叠范围和自身受益未测')
                 continue
             if eligible:
-                target.hp = min(target.max_hp, target.hp + target.max_hp * eligible[0][1][1] / self.fps)
+                target.hp = min(target.max_hp,
+                                target.hp + target.max_hp * eligible[0][1][1] * period / self.fps)
                 self.used.add('passive area heal')
 
     def release(self):

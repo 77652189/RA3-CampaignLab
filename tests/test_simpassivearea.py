@@ -1,7 +1,6 @@
 """Independent engineer area healing: replay the named E70 bench."""
 import importlib.util
 from pathlib import Path
-import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('area_simbench', ROOT / 'experimental/cnv/simbench.py')
@@ -18,15 +17,11 @@ def test_engineer_area_healing_matches_named_bench():
     assert verdicts and all(ok for ok, _ in verdicts), verdicts
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    'E72 engine_passivearea:f reads 11/31/51/71 frames (20/20/20 gaps); '
-    'continuous integration reads 2/21/42/62. Initial survey phase unresolved; '
-    'see work/re/e_passive_e72.md and work/re/handoff-e.md.'))
 def test_engineer_area_frame_thresholds_match_named_bench():
     """E72 engine_passivearea:f: intermediate heal crossings.
 
     Bench readings: 51/64/78/91 cross at 11/31/51/71 script frames,
-    matching the pre-run 20/20/20 gap prediction. First phase remains a gap.
+    matching the pre-run 20/20/20 gap prediction. The replay phase is INFERRED.
     See work/re/e_passive_e72.md.
     """
     import build
@@ -40,15 +35,12 @@ def test_engineer_area_frame_thresholds_match_named_bench():
     assert verdicts and all(ok for ok, _ in verdicts), verdicts
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    'E73 engine_passivearea:g reads 16/36/56/76 frames after a 15-frame start shift; '
-    'continuous integration reads 2/21/42/62. Fixed phase supported, scheduler '
-    'source unresolved; see work/re/e_passive_e73.md and work/re/handoff-e.md.'))
 def test_engineer_area_shifted_frame_thresholds_match_named_bench():
     """E73 engine_passivearea:g shifts activation/damage by 15 script frames.
 
     Bench 16/36/56/76 matches the pre-run fixed-phase prediction;
-    the scheduler source remains unresolved. See work/re/e_passive_e73.md.
+    the shared replay phase is INFERRED; clock source remains a gap.
+    See work/re/e_passive_e74.md.
     """
     import build
     import sim

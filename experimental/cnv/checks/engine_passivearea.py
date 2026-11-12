@@ -60,8 +60,9 @@ def frames(m, start=8.0):
     continuous 10%/s predicts crossing gaps near 19-21 frames. A
     20-frame batch of 13 1/3 percentage points predicts 20/20/20 gaps.
     The absolute first-crossing phase is unknown; never fit it from captures.
-    E72 bench: 11/31/51/71, gaps 20/20/20; first phase remains unresolved.
-    See work/re/e_passive_e72.md; the model replay remains a strict xfail.
+    E72 bench: 11/31/51/71, gaps 20/20/20. E74 replays f/g with one
+    INFERRED mission-frame phase; the clock source remains unresolved.
+    See work/re/e_passive_e74.md.
     E71's earlier 51/55/60/100 readings remain in work/re/e_passive_e71.md.
     """
     t = Test()
