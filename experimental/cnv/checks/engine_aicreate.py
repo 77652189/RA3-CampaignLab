@@ -16,6 +16,16 @@ The original aicr1 all-tanks-out / no-infantry-out expectations are retained
 as a failed prediction, not widened to PASS. Model replay is strict xfail;
 neither field is promoted. INFERRED: slot minimum plus general recruitment
 can explain the mixed departure at minimum 1; exact members are still a gap.
+
+FOLLOW-UP (2026-11-12, aicr1c / aicr3c, passive CNVTeams host):
+minimum 1: f301 empty/inactive -> f316 three members/active, IDs 3176/3166/3167;
+minimum 3: f316 one/inactive -> f481 two/inactive -> f646 three/active,
+IDs 3176/3177/3178. Exact activation is bounded by the previous 15-frame sample.
+Initial-position matching identifies 3166/3167 as placed Peacekeepers; attributing
+new IDs to the isolated Guardian production is INFERRED (no template log field).
+The model still dispatches three Peacekeepers at f152; no field is promoted.
+Selected engine samples and model regressions: tests/test_simai_bench_c.py;
+full evidence: work/re/c_create_teams_report.md.
 """
 from parts import Test, Script, counted, square
 
@@ -42,4 +52,6 @@ def a(m):
     return t
 
 
-CHECKS = {'aicr1': {'a': a}, 'aicr3': {'a': a}}
+# c variants add the passive CNVTeams carrier, retaining the original prediction.
+# Read frame/member/active observations with teamlog; see work/re/c_create_teams_report.md.
+CHECKS = {name: {'a': a} for name in ('aicr1', 'aicr3', 'aicr1c', 'aicr3c')}

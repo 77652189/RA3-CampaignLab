@@ -1,0 +1,14 @@
+# CampAICr1CA_mcp_1112_021711: complete selected samples; pointer fields redacted.
+# Source ra3ext.log SHA256: 078b9db480c3f45afcb1fd5dc27d42b87eca404105ac5af741a7bd6e71a6e29a
+team: frame=31 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=0 n=0 ids=
+team: frame=31 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=1 ids=36@0:0
+team: frame=31 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=11 ids=3163@3850:3400,3166@3650:3240,3167@3650:3190,3168@3650:3140,3169@3650:3090,3170@3850:3150,3171@3850:3800,3172@4100:3800,3173@3870:3039,3174@3870:3055,3175@3870:3115
+teams: frame=31 player=redacted index=4 ai=redacted protos=3 teams=3
+team: frame=301 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=0 n=0 ids=
+team: frame=301 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=12 ids=36@0:0,3163@3850:3400,3166@3650:3240,3167@3650:3190,3168@3650:3140,3169@3650:3090,3170@3850:3150,3171@3850:3800,3172@4100:3800,3173@3870:3115,3174@3819:3171,3175@3849:3116
+team: frame=301 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=301 player=redacted index=4 ai=redacted protos=3 teams=3
+team: frame=316 list=0 proto=redacted name1='Soviet_1' name2='7203be5f_SimpleAttack_0_0' rel=1 slot=0 team=redacted active=1 n=3 ids=3176@3872:3152,3166@3650:3240,3167@3650:3190
+team: frame=316 list=0 proto=redacted name1='Soviet_1' name2='defaultSkirmishTeamSoviet_1' rel=1 slot=0 team=redacted active=1 n=10 ids=36@0:0,3163@3850:3400,3168@3650:3140,3169@3650:3090,3170@3850:3150,3171@3850:3800,3172@4100:3800,3173@3838:3087,3174@3784:3188,3175@3813:3086
+team: frame=316 list=1 proto=redacted name1='Soviet_1' name2='teamSoviet_1' rel=1 slot=0 team=redacted active=1 n=0 ids=
+teams: frame=316 player=redacted index=4 ai=redacted protos=3 teams=3

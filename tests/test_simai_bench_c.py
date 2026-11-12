@@ -1,5 +1,7 @@
 """C-line replays of named AI bench counters; evidence: work/re/c_release_report.md."""
 import importlib.util
+from collections import Counter
+from functools import lru_cache
 from pathlib import Path
 
 import pytest
@@ -161,13 +163,15 @@ def test_release_to_priority_transfers_defense_without_a_pool_round_trip():
 @pytest.mark.xfail(strict=True, reason='CreateUnits slot recruitment/readiness is not consumed by B model; '
                   'retail aicr1:a has 3 owned Guardians, 2 home and 2 Peacekeepers home at s70, '
                   'while the model sends three Peacekeepers at wake and overproduces Guardians. '
-                  'Named-team counters remain unknown. See work/re/handoff-c.md and work/re/c_create_report.md.')
+                  'CNVTeams follow-up confirms the membership/gate gap. '
+                  'See work/re/handoff-c.md and work/re/c_create_teams_report.md.')
 def test_create_units_slot_replays_observed_counters(build):
     """Replay the dedicated CreateUnits check; exact counters, no timing fit.
 
     The two builds differ only in slot MinUnits. The opener supplies Guardians;
     this does not assert that CreateUnits manufactures them. Team identity and
-    the exclusive-filter interpretation of UnitName remain unestablished.
+    the exclusive-filter interpretation of UnitName were unestablished by this
+    original counter probe; the c variants below add direct member observations.
     """
     w = simai.run(build, 'a', until=71, lib=simai.model()['xmldata'].Library())
     labels = [label for _, label in w.sim.test.counters]
@@ -181,6 +185,61 @@ def test_create_units_slot_replays_observed_counters(build):
         partial = [row for _, row in rows if row['坦克总数'] in (1, 2)]
         assert partial, 'the replay never exposed partial production'
         assert all(row['坦克总数'] == row['坦克在家'] for row in partial)
+
+
+def _create_units_observation(build):
+    """Selected complete engine samples; pointer fields removed, values unchanged."""
+    import teamlog
+    rows = teamlog.samples(ROOT / 'tests/fixtures/c_create_teams' / (build + '.txt'))
+    return [(frame, next(t for t in teams if t['names'][1] == '7203be5f_SimpleAttack_0_0'))
+            for frame, teams in rows]
+
+
+@pytest.mark.parametrize('build, expected', [
+    ('aicr1c', [(31, 0, 0), (316, 3, 1)]),
+    ('aicr3c', [(31, 0, 0), (316, 1, 0), (481, 2, 0), (646, 3, 1)]),
+])
+def test_create_units_engine_team_samples(build, expected):
+    """Assert logged counts/active bits; exact conversion lies between samples."""
+    rows = _create_units_observation(build)
+    changes = []
+    for frame, team in rows:
+        assert len(team['ids']) == team['n']
+        state = (team['n'], team['active'])
+        if not changes or state != changes[-1][1:]:
+            changes.append((frame, *state))
+    assert changes == expected
+    assert {i for i, _, _ in rows[-1][1]['ids']} == (
+        {3176, 3166, 3167} if build == 'aicr1c' else {3176, 3177, 3178})
+
+
+@lru_cache(maxsize=2)
+def _create_units_team_go(build):
+    w = simai.run(build, 'a', until=45, lib=simai.model()['xmldata'].Library())
+    brain, = w.brains.values()
+    return next(e for e in brain.ai.teams.log if e[1] == 'go' and e[2][0] == 'CNVStateTF')
+
+
+@pytest.mark.parametrize('build', ['aicr1c', 'aicr3c'])
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason='B model dispatches at f152; engine first active samples are f316/f646 '
+                  'with the preceding sample inactive. See work/re/handoff-c.md and c_create_teams_report.md.')
+def test_create_units_replays_observed_activation_interval(build):
+    rows = _create_units_observation(build)
+    first = next(i for i, (_, team) in enumerate(rows) if team['active'])
+    assert rows[first - 1][0] < _create_units_team_go(build)[0] <= rows[first][0]
+
+
+@pytest.mark.parametrize('build', ['aicr1c', 'aicr3c'])
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason='B model dispatches three Peacekeepers; engine IDs show mixed membership '
+                  'at minimum 1 and three newly produced members at minimum 3. Template attribution from '
+                  'fixed cast/production is INFERRED. See work/re/handoff-c.md and c_create_teams_report.md.')
+def test_create_units_replays_observed_first_members(build):
+    # Initial Peacekeeper IDs are fixed by their placed positions; new Guardian
+    # attribution uses the isolated opener and total counters (INFERRED).
+    expected = ['AlliedAntiVehicleVehicleTech1'] * (1 if build == 'aicr1c' else 3)
+    if build == 'aicr1c':
+        expected += ['AlliedAntiInfantryInfantry'] * 2
+    assert Counter(_create_units_team_go(build)[3]) == Counter(expected)
 
 
 @pytest.mark.parametrize('build, expected', [('aisort0', (0, 1, 1)), ('aisort1', (1, 0, 2))])
