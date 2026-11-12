@@ -13,7 +13,7 @@ Published (the cast): carrier (on the west field), gun 1 / gun 2 (our two Multig
 its sight and theirs: a check sends them in); marks start (the carrier), away (400 east of it).
 """
 from maps import island
-from parts import Mission, Script
+from parts import Mission, Role, Script
 from units import rewind as rw
 
 COOLDOWN, GRACE, CONTROL = 20.0, 3.0, 15.0
@@ -21,11 +21,11 @@ CARRIER = 'UNIT - CNV Liberty Rw'
 GUN = 'AlliedAntiAirVehicleTech1'
 
 
-def control(m, at):
-    """Scripts: at `at` the carrier is the player's for CONTROL s (the launcher), then Soviet_1's unless Rw Perm."""
+def control(m):
+    """Scripts: when timer Rw Control (a check sets it) runs out the carrier is the player's for CONTROL s (the
+    launcher), then Soviet_1's unless Rw Perm."""
     p1, s1 = m.player('p1'), m.player('s1')
-    return [Script('Rw - control timer', [], [('SET_MILLISECOND_TIMER', 'Rw Control', at)]),
-            Script('Rw - control', [('TIMER_EXPIRED', 'Rw Control')],
+    return [Script('Rw - control', [('FLAG', 'Rw Control On', 1), ('TIMER_EXPIRED', 'Rw Control')],
                    [('NAMED_TRANSFER_OWNERSHIP_PLAYER', CARRIER, p1),
                     ('SET_MILLISECOND_TIMER', 'Rw Control End', CONTROL)]),
             Script('Rw - control end', [('TIMER_EXPIRED', 'Rw Control End'), ('FLAG', 'Rw Perm', 0)],
@@ -73,7 +73,7 @@ def mission(name='CampRw', body='HighlanderBody'):
         m.put(GUN, 'west field', -450, dy, name=f'UNIT - CNV Rw Gun {k}', role=f'gun {k}')
     m.waypoint('start', 'CNV Rw Start', 'west field', 0, -60)
     m.waypoint('away', 'CNV Rw Away', 'west field', 400, -60)
-    m.scripts += rules(m)
+    m.scripts += rules(m) + control(m)
     return m
 
 
@@ -97,6 +97,8 @@ def swapped(name='CampRwS'):
                                 [('UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION', NEW, u.id,
                                   island.TEAMS[side], CARRIER),
                                  ('NAMED_DELETE', CARRIER), ('NAMED_DAMAGE', NEW, NEW_HURT), ('SET_FLAG', 'Rw Swapped', 1)]))
+    m.cast['new carrier'] = Role(u.id, name=NEW, side='p1')     # spawned at the swap (on either side)
+    m.scripts += control(m)
     return m
 
 
