@@ -40,3 +40,23 @@ def probe(m):
 
 
 CHECKS = {name: {'r': probe} for name in ('aiignzero', 'aiignnear')}
+
+
+def observe(m):
+    """Separate CNVTeams diagnostics; coverage is checked on the game clock.
+
+    The carrier's equivalence to the original pair is unresolved. Preserve the
+    rejected filtering prediction and do not promote these runs as coverage.
+    Evidence: work/re/c_ignore_state_report.md.
+    """
+    t = probe(m)
+    t.expect = [('帧数', 1, 'ever>=', 600, 240),
+                ('造出', 1, 'ever>=', 2, 240),
+                ('受伤', 1, '==', 0, 24),
+                ('受伤', 28, 'ever>=' if m.facts['ignore base distance'] else '==',
+                 1 if m.facts['ignore base distance'] else 0, 240)]
+    t.bench = [('bench_watch', dict(seconds=242, every=5, sheet=False, lines=4))]
+    return t
+
+
+CHECKS.update({name: {'r': observe} for name in ('aiignzt', 'aiignnt')})

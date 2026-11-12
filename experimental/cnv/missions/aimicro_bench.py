@@ -311,13 +311,18 @@ def dodge(name, enabled):
     return m
 
 
-def ignore_distance(name, distance):
+def ignore_distance(name, distance, observe=False):
     """Only the base-distance gate differs; unarmed engineers cannot provoke retaliation.
 
     INFERRED prediction: IgnoreTargets applies outside the specified base radius.
     This is a gate contrast, not a measurement of the exact retail 700 boundary.
     """
     m = built(name, tactic='Hunt', foes=False, spow=False)
+    if observe:
+        from missions.aiteams_bench import host_unit, HOST
+        m.units.append(host_unit())
+        m.put(HOST, 'east base', 250.0, 400.0, side='s1', role='teams host')
+        m.ext = True
     m.facts.update({'ignore base distance': float(distance), 'target south of base': 500.0,
                     'target earliest at': 26.0})
     m.assets = [(path, text.replace('DodgeThreats="true"', 'DodgeThreats="false"')
@@ -348,6 +353,8 @@ MISSION = {'aimicupfast': lambda: update_time('CampMicUpFast', 0.5),
            'aimicupst': lambda: update_time('CampMicObsSlow', 4, observe=True),
            'aiignzero': lambda: ignore_distance('CampAIIgnZero', 0),
            'aiignnear': lambda: ignore_distance('CampAIIgnNear', 2000),
+           'aiignzt': lambda: ignore_distance('CampIgnObsZero', 0, observe=True),
+           'aiignnt': lambda: ignore_distance('CampIgnObsNear', 2000, observe=True),
            'aidodgeon': lambda: dodge('CampAIDodgeOn', True),
            'aidodgeoff': lambda: dodge('CampAIDodgeOff', False),
            'aimicbuilt': lambda: built('CampAIMicBuilt'),
