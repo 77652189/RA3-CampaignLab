@@ -95,7 +95,7 @@ def handoff_rev(lane):
     return rev, (os.path.getmtime(f) if os.path.exists(f) else 0)
 
 
-def set_aside_copies():
+def set_aside_copies(lane=None):
     """An untracked file in work/re that origin now tracks with the same text (a line wrote its evidence here and
     committed it from a temporary worktree) blocks the merge. Move such copies to backup/sync-aside/ -- never delete
     (deleting is the user's call); one whose text differs is set aside under a time stamp."""
@@ -117,9 +117,12 @@ def set_aside_copies():
         dest = os.path.join(PRIV, 'backup', 'sync-aside', name if same else name + time.strftime('.%m%d_%H%M%S'))
         os.makedirs(os.path.dirname(dest), exist_ok=True)
         os.replace(path, dest)
-    # a tracked file edited here whose text is already what origin has (the edit was pushed from elsewhere): take
-    # origin's copy, nothing is lost; an edit origin does not have stays and the merge reports it
-    names = subprocess.run(['git', 'diff', '--name-only'], cwd=PRIV, capture_output=True, text=True,
+    # a tracked file edited here (staged or not) whose text is already what origin has (the edit was pushed from
+    # elsewhere): back to HEAD, the merge brings origin's, nothing is lost. The lane's own handoff that differs is a
+    # draft it left here before committing the final text from its own worktree (11-11 C did it three times, each
+    # blocking the relaunch): set aside under a stamp, then back to HEAD. Any other edit stays and the merge reports it
+    own = {f'handoff-{lane}.md', f'handoff-{lane}-archive.md'} if lane else set()
+    names = subprocess.run(['git', 'diff', '--name-only', 'HEAD'], cwd=PRIV, capture_output=True, text=True,
                            encoding='utf-8', errors='replace').stdout.split('\n')
     for name in filter(None, names):
         theirs = subprocess.run(['git', 'show', f'origin/main:{name}'], cwd=PRIV, capture_output=True)
@@ -128,16 +131,22 @@ def set_aside_copies():
             continue
         with open(path, 'rb') as f:
             mine = f.read()
-        if mine.replace(b'\r', b'') == theirs.stdout.replace(b'\r', b''):
-            subprocess.run(['git', 'checkout', '-q', 'origin/main', '--', name], cwd=PRIV)
+        same = mine.replace(b'\r', b'') == theirs.stdout.replace(b'\r', b'')
+        if not same and name in own:
+            dest = os.path.join(PRIV, 'backup', 'sync-aside', name + time.strftime('.%m%d_%H%M%S'))
+            os.makedirs(os.path.dirname(dest), exist_ok=True)
+            with open(dest, 'wb') as f:
+                f.write(mine)
+        if same or name in own:
+            subprocess.run(['git', 'checkout', '-q', 'HEAD', '--', name], cwd=PRIV)
 
 
-def sync_handoffs():
+def sync_handoffs(lane=None):
     """Bring the shared private repo (work/re, where the lines' handoffs live) up to origin before Codex reads it: a
     stale copy once sent a fresh session back to an already-answered question. Fast-forward only, keeping other lines'
     uncommitted edits; returns '' or the reason it could not."""
     subprocess.run(['git', 'fetch', '-q', 'origin'], cwd=PRIV)
-    set_aside_copies()
+    set_aside_copies(lane)
     r = subprocess.run(['git', 'merge', '-q', '--ff-only', 'origin/main'], cwd=PRIV, capture_output=True, text=True,
                        encoding='utf-8', errors='replace')
     if r.returncode:
@@ -201,7 +210,7 @@ def main():
         sys.exit(f'no codex.exe ({exe}) or no worktree {wt}')
     stamp = datetime.datetime.now().strftime('%m%d_%H%M')
     events = os.path.join(LOGS, f'codex_{a.lane}_{stamp}.jsonl')
-    stale = sync_handoffs()
+    stale = sync_handoffs(a.lane)
     if stale:   # a session that reads an old ticket redoes or skips work: do not start it (11-11 20:45 a C run did)
         sys.exit(stale)
     before, h0, t0 = origin_main(wt), handoff_rev(a.lane), time.time()
