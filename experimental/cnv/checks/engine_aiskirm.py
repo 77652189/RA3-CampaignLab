@@ -854,5 +854,5 @@ CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j
           'aisknew2': {'y': y},
           'aiskrand': {'s': s},
           'aiskdiff': {'s': s},
-          'aiskvinf': {'z': z},
+          'aiskvinf': {'z': z, 't': t},
           'aiskvveh': {'z': z, 't': t}}
