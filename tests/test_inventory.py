@@ -93,6 +93,17 @@ def test_production_info_ui_exclusion_preserves_weight_without_claiming_bench():
     assert 'work/re/e_production_e56.md' in row['why']
 
 
+def test_substructure_storage_gate_keeps_unmeasured_weight_and_runtime_gap():
+    key = inventory.MODULE, 'Behaviors/SubStructureStorageBehavior'
+    rows = [i for i in items() if (i['part'], i['name']) == key]
+    assert len(rows) == 1
+    assert (rows[0]['state'], rows[0]['uses'], rows[0]['all']) == (inventory.TODO, 6, 6)
+    assert rows[0]['levels'] == ['a1', 'a4', 'a5', 'a6', 'a7', 'a9']
+    assert key not in inventory.BENCHED_TESTS
+    for boundary in ('未上台', '不登记已对拍', '不据此排除运行时用途', 'work/re/e_substorage_e57.md'):
+        assert boundary in rows[0]['why']
+
+
 def test_spawn_closure_preserves_unmeasured_gaps_and_all_three_named_replays():
     key = inventory.MODULE, 'Behaviors/SpawnBehavior'
     rows = [i for i in items() if i['part'] == key[0] and i['name'].startswith(key[1])]
