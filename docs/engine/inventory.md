@@ -1004,7 +1004,7 @@
 | 未做 | `组队招人/TeamTemplate.RequireCanAttackTarget` | 6 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 已对拍 | `经济/AccountShare.Account=DEFENSE` | 6 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |
 | 已对拍 | `经济/AccountShare.Account=PRODUCTION` | 6 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiomove.py |
-| 未做 | `经济/AccountShare.Account=SLUSH_FUND` | 6 | a4 a5 a7 | AI 模型代码里没有这个名字 |
+| 未做 | `经济/AccountShare.Account=SLUSH_FUND` | 6 | a4 a5 a7 | C按名台子engine_aislush：aislush100/aislush0仅交换SLUSH_FUND与PRODUCTION份额，两组电厂均s19一座、s29两座，零份额原预测FAIL保留；开局未区分此账户。tests/test_slush_account.py原读数及模型回放；账户余额/实际支出消费者仍gap，不以开局计数吻合晋升；见work/re/c_slush_report.md |
 | 不涉及 | `表现/SkirmishGameEventFeedback.Event` | 6 | a4 a5 a7 | 纯表现（语音、视频、画面） |
 | 不涉及 | `表现/SkirmishGameEventFeedback.FeedbackKey` | 6 | a4 a5 a7 | 纯表现（语音、视频、画面） |
 | 未做 | `人格/EnemyFilter.Include` | 5 | a4 a5 a7 | AI 模型代码里没有这个名字 |

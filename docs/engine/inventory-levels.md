@@ -26,7 +26,7 @@
 | 未做 | AI | `微操/AIMicroManagerData.DodgeThreatsReactionTimeMin` | 6 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `战略状态/AIStrategicStateDefinition.PathfindingCheckType` | 6 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `组队招人/TeamTemplate.RequireCanAttackTarget` | 6 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 未做 | AI | `经济/AccountShare.Account=SLUSH_FUND` | 6 | a4 a5 a7 | AI 模型代码里没有这个名字 |
+| 未做 | AI | `经济/AccountShare.Account=SLUSH_FUND` | 6 | a4 a5 a7 | C按名台子engine_aislush：aislush100/aislush0仅交换SLUSH_FUND与PRODUCTION份额，两组电厂均s19一座、s29两座，零份额原预测FAIL保留；开局未区分此账户。tests/test_slush_account.py原读数及模型回放；账户余额/实际支出消费者仍gap，不以开局计数吻合晋升；见work/re/c_slush_report.md |
 | 未做 | AI | `人格/EnemyFilter.Include` | 5 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `人格/EnemyFilter.Relationship` | 5 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `人格/EnemyFilter.Rule` | 5 | a4 a5 a7 | AI 模型代码里没有这个名字 |

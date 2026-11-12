@@ -113,6 +113,12 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '经济/AccountShare.Account=SLUSH_FUND': (TODO,
+        'C按名台子engine_aislush：aislush100/aislush0仅交换SLUSH_FUND与PRODUCTION份额，'
+        '两组电厂均s19一座、s29两座，零份额原预测FAIL保留；开局未区分此账户。'
+        '第二轮有收入无开局：aislsdef全程零炮塔，aislddef在s28/48/68造出1/2/3座，s60为2。'
+        'tests/test_slush_account.py原读数及模型回放；账户余额/实际支出消费者仍gap，'
+        '不以开局计数吻合晋升；见work/re/c_slush_report.md'),
     '目标/AITargetingHeuristic.HeuristicType=Expansion': (TODO,
         'C已上台：aiexpc:a东矿区4、崖矿区0、普通实体0，命令指向东矿点；'
         '模型已保留BaseSelection，增加显式候选回调和槽位点，Expansion不再回退普通实体。'
