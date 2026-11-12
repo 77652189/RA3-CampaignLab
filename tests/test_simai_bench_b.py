@@ -432,7 +432,8 @@ def test_the_expected_efficiency_ranks_the_counter_first(lib, build, best, other
     assert ex[best] > ex[other] > 0
 
 
-# the build states order by the expected efficiency (SimAI.efficiency on here only, B round 129): the barracks' counter
+# the build states order by the expected efficiency (SimAI.efficiency, on by default since B round 131; set here so
+# these two keep asserting it if the default is ever turned off): the barracks' counter
 def test_against_tanks_the_barracks_builds_javelins(lib, monkeypatch):
     """aiskvveh (the player owns 10 Hammers): bench 标枪 14 by s185, 维和 0. The simulator (B round 129, the Land
     build state on once ObjectOfTypeExists Rule=ALL reads any enemy object): 标枪 12, 维和 1 (the unit builder's, s68,

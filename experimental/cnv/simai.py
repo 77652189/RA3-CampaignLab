@@ -816,9 +816,11 @@ class Brain:
 class SimAI:
     """sim.Sim with every player the mission hands to the skirmish AI played by the layer-4 model."""
 
-    # Brain: the build states' BEST_UNIT_* entries scored by the expected efficiency. Off by default: on, 8 simai
-    # tests move (cleanup teams, scout dog, barracks mix, aisknew2 -- work/logs/b129_simai.log, B handoff 131)
-    efficiency = False
+    # Brain: the build states' BEST_UNIT_* entries scored by the expected efficiency. On by default since B round 131:
+    # the 8 simai tests it once turned red (B handoff 131) were the player's war factory drones in the AI's count
+    # (SimAI.living, round 130); with them out every simai test passes on (work/logs/b133_on.log). False = the unit
+    # builder alone, as before round 129.
+    efficiency = True
 
     def __init__(self, s, level='normal', seed=1, lib=None, data=None, blocks=BLOCKS):
         mod = model()
