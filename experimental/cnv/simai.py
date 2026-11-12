@@ -516,6 +516,7 @@ class Brain:
                            max((w.get('range') or 0.0 for w in b.weapons), default=0.0), b.sight or b.vision,
                            'STRUCTURE' in b.kinds, rate_of(b))
             f.body = b
+            f.template, f.kinds = b.template, frozenset(b.kinds)
             f.can_fire = lambda other: any(s.can_hit(w, other.body) and s.in_range(b, other.body, w)
                                            for w in b.weapons)
             return f
@@ -955,7 +956,8 @@ class Brain:
         def hurts(f):
             return any(m.dps(f) > 0 for m in mem)
         out = {'centre': c, 'army': [self._name(m.id) for m in army],
-               'engage': {'able': any(hurts(h) for h in hostile),
+               'engage': {'able': any(hurts(h) and self.tactics._ignore_allows(self.ai, name, h)
+                                      for h in hostile),
                           'EngageHostileTargets': md.flag(name, 'EngageHostileTargets'),
                           'EngageTacticalTarget': md.flag(name, 'EngageTacticalTarget'),
                           'EngagePassiveTargets': md.flag(name, 'EngagePassiveTargets'),

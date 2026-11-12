@@ -76,19 +76,24 @@ def test_ignore_distance_replays_named_damage_observation(name):
 @pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
 @pytest.mark.parametrize('name, expected', [
     ('aiignzero', [(391, 8, False), (406, 8, False), (421, 8, False)]),
-    ('aiignnear', [(391, 8, False), (406, 0, True), (421, 0, True)]),
+    pytest.param('aiignnear', [(391, 8, False), (406, 0, True), (421, 0, True)],
+                 marks=pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+                     'Distance filtering is consumed, but passive/engineer eligibility '
+                     'and exact carrier replay remain gaps; see work/re/e103_ignore_distance.md.'))),
+    ('aiignzt', [(391, 8, False), (406, 8, False), (421, 8, False)]),
+    pytest.param('aiignnt', [(391, 8, False), (406, 0, True), (421, 0, True)],
+                 marks=pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+                     'Same-run logic-clock pair confirms state 0/nonempty target at 406/421; '
+                     'model still has state 2/no target. Candidate classification and engineer '
+                     'eligibility remain gaps; see work/re/e103_ignore_distance.md.'))),
 ])
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'CNVTeams diagnostics: distance 0 stays state 8/no target; 2000 selects '
-    'nonempty targets in state 0 at frames 406/421. Model gives state 2/no target '
-    'in both. Target selection belongs to tactics.py; carrier equivalence '
-    'and base-distance input remain gaps. See work/re/handoff-c.md and '
-    'work/re/c_ignore_state_report.md.'))
 def test_ignore_distance_micro_target_state_replays_observed_pair(name, expected):
     """Damage can coincide while the measured team targets differ.
 
     Diagnostic carrier equivalence remains a gap. These exact state readings
     are observations, not a fitted distance rule; work/re/c_ignore_state_report.md.
+    The observer pair was rerun with same-run logic-clock anchors in E103:
+    work/re/e103_ignore_distance.md. No target identity is inferred from IDs.
     """
     w = simai.run(name, 'r', until=29, record=True)
     rows = [row for brain in w.brains.values() for row in brain.rec['frames']
@@ -96,3 +101,82 @@ def test_ignore_distance_micro_target_state_replays_observed_pair(name, expected
     actual = [(frame, row['state'], row['foe_id'] is not None) for frame, _, _ in expected
               for row in rows if row['frame'] == frame]
     assert actual == expected, actual
+
+
+@pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
+@pytest.mark.parametrize('passive, distance, expected_state, has_foe', [
+    (False, 0, 8, False), (False, 2000, 2, False),
+    (True, 0, 8, False), (True, 2000, 6, True),
+])
+def test_ignore_distance_consumer_preserves_lists_and_gates_attacks(
+        passive, distance, expected_state, has_foe):
+    """Regression for consumer dispatch, not an exact measured distance boundary.
+
+    INFERRED home geometry remains open. Keep hostile lists intact: filtering
+    attack eligibility must not erase enemies used by other state decisions.
+    """
+    from types import SimpleNamespace as NS
+
+    tc = simai.model()['tactics']
+    md = tc.MicroData(root='nonexistent')
+    md.add_text(f'''<AssetDeclaration><AIMicroManagerData id="base"
+        MinDistanceFromBaseToIgnoreTargets="{distance}">
+        <IgnoreTargets Rule="ANY"><IncludeThing>AlliedEngineer</IncludeThing></IgnoreTargets>
+        </AIMicroManagerData><AIMicroManagerData id="derived" inheritFrom="base"/>
+        </AssetDeclaration>''')
+    member = tc.Fighter('mine', (500, 0), 100, 100, speed=100,
+                        reach=100, vision=1000, rate=lambda _: 10)
+    target = tc.Fighter('enemy', (500, 0), 100, 100, speed=100,
+                        structure=passive, template='AlliedEngineer')
+    team = NS(members=[member], template=NS(micro='derived'))
+    run = tc.Run(team, None)
+    block = tc.TacticsBlock(None, None, None, lambda _: (0, 0), micro=md,
+                           fight=lambda *_: ([member], [target]))
+    state = block._team_state(None, run, 400, (500, 0), 'derived')
+    assert (state, run.foe is not None) == (expected_state, has_foe)
+    assert run.hostiles == (0 if passive else 1)
+    assert run.hostile == ([] if passive else [target])
+
+
+@pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
+def test_ignore_distance_tactical_target_bypasses_passive_filter():
+    """A tactical object is selected through its own eligibility path."""
+    from types import SimpleNamespace as NS
+
+    tc = simai.model()['tactics']
+    md = tc.MicroData(root='nonexistent')
+    md.add_text('''<AssetDeclaration><AIMicroManagerData id="ignore">
+        <IgnoreTargets Rule="ANY"><IncludeThing>AlliedEngineer</IncludeThing></IgnoreTargets>
+        </AIMicroManagerData></AssetDeclaration>''')
+    member = tc.Fighter('mine', (500, 0), 100, 100, reach=100,
+                        vision=1000, rate=lambda _: 10)
+    target = tc.Fighter('enemy', (500, 0), 100, 100, structure=True,
+                        template='AlliedEngineer')
+    run = tc.Run(NS(members=[member], template=NS(micro='ignore')), None, target='enemy')
+    block = tc.TacticsBlock(None, None, None, lambda _: (0, 0), micro=md,
+                           fight=lambda *_: ([member], [target]))
+    assert block._team_state(None, run, 400, (500, 0), 'ignore') == 6
+    assert run.foe is target
+
+
+@pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
+def test_ignore_distance_assignment_skips_filtered_enemy():
+    """A later state-2 assignment cannot reintroduce the ignored candidate."""
+    from types import SimpleNamespace as NS
+
+    tc = simai.model()['tactics']
+    md = tc.MicroData(root='nonexistent')
+    md.add_text('''<AssetDeclaration><AIMicroManagerData id="ignore">
+        <IgnoreTargets Rule="ANY" Include="INFANTRY"><ExcludeThing>Allowed</ExcludeThing>
+        </IgnoreTargets></AIMicroManagerData></AssetDeclaration>''')
+    unit = NS(pos=(500, 0))
+    member = tc.Fighter('mine', (500, 0), 100, rate=lambda _: 10, unit=unit)
+    ignored = tc.Fighter('ignored', (500, 0), 1, template='Ignored', kinds=frozenset({'INFANTRY'}))
+    allowed = tc.Fighter('allowed', (600, 0), 100, template='Allowed', kinds=frozenset({'INFANTRY'}))
+    run = tc.Run(NS(members=[unit], template=NS(micro='ignore'), tactic='test'), None)
+    run.mem, run.hostile = [member], [ignored, allowed]
+    block = tc.TacticsBlock(None, None, None, lambda _: (0, 0), micro=md)
+    attacks = []
+    block._attack_one = lambda ai, run, unit, fighter, target, frame: attacks.append(target.id)
+    block._assign(None, run, 400)
+    assert attacks == ['allowed']

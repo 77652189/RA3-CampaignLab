@@ -200,11 +200,10 @@ NOTES = {
         'SDK显式600/650/0、默认400，距离基准和零值语义未证实；'
         '本轮未上台、不实现消费者、不晋升已对拍；见 work/re/c_passive_distance_report.md'),
     '微操/AIMicroManagerData.MinDistanceFromBaseToIgnoreTargets': (TODO,
-        'engine_aiignore aiignzero/aiignnear：仅基地距离阈值0/2000不同，'
-        '无武装工程师延迟至26秒且两武士造出后；零阈值仍受伤，'
-        'tests/test_ai_ignore_distance.py 按名回放伤害观测；'
-        'Hunt/普通自动攻击与微操过滤入口尚未分离，基地取点和精确边界未量，'
-        '不实现消费者、不晋升已对拍；见 work/re/c_ignore_distance_report.md'),
+        'E103 engine_aiignore aiignzt/aiignnt：同run逻辑时钟配对，0/2000首伤397/396；'
+        'f406/421零组状态8无目标、高组状态0有目标。消费者已接被动选敌、敌对可攻击及逐人分配过滤；'
+        'tests/test_ai_ignore_distance.py 零组精确回放通过，高组资格/分类仍strict xfail；'
+        '基地取点/精确边界/宿主等价仍gap，不晋升已对拍；见 work/re/e103_ignore_distance.md'),
     '造兵/BuildEntry.Heuristic': (BENCHED,
         'E78 engine_aiskirm z：BEST_UNIT_EXPECTED 两组台上 PASS；[s150,s160) 征召兵组维和5→6、标枪0，'
         '锤子组标枪7→8→9、维和0；tests/test_simai_bench_e.py::test_best_unit_expected_infantry_choice '
