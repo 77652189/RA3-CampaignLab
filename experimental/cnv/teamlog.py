@@ -66,8 +66,9 @@ def _wants(name):
     if not re.match('[0-9a-f]{8}_', want[0]):
         try:
             want.append(_hashed(name))
-        except (ImportError, OSError, AssertionError):
-            pass
+        except (ImportError, OSError, AssertionError) as e:   # e.g. experimental/campaign not on the path
+            import warnings
+            warnings.warn(f'teamlog: state id {name!r} not hashed ({e}); only literal names match')
     return want
 
 
@@ -99,6 +100,78 @@ def team_sizes(run, name, frame):
 def team_size(run, name, frame):
     """The largest member count among the teams named `name` at `frame`; 0 when there is none."""
     return max(team_sizes(run, name, frame), default=0)
+
+
+TSTATE = re.compile(r'^tstate: frame=(-?\d+) team=(\S+) mstate=(-?\d+) prev=(-?\d+) secs=(\S+) tgt=(-?\d+) '
+                    r'chosen=(-?\d+) tact=(-?\d+) idle=(-?\d+) ready=(-?\d+) mem=(\S*)$')
+CMD = re.compile(r'^cmd: frame=(-?\d+) msg=(\S+) type=([0-9a-f]+) player=(\d+) n=(\d+) args=(\S*)$')
+
+
+def _arg(a):
+    k, _, v = a.partition(':')
+    k = int(k)
+    if ':' in v:                                    # kind 7 (or 3): a position x:y:z
+        return tuple(float(x) for x in v.split(':'))
+    return float(v) if k == 1 else int(v)
+
+
+def states(run):
+    """Engine line D round 78: {team pointer: [state dict, ...]} -- one per sample, written right after that team's
+    `team:` line. A state dict: frame, team, mstate (the team's micro state: 8 idle / default, 6 enemy, 1 retreat,
+    2..5 gather, 7, 9), prev, secs (seconds in it), tgt / chosen / tact (object ids: current target, chosen target,
+    tactical target; -1 none), idle (team idle timeout), ready (the game's team-ready test: 1 / 0; -1 = not read),
+    mem [(id, ai state id, unit ready 1/0)]. Join to the team's name with team_states()."""
+    out = {}
+    with open(_log(run), encoding='utf-8', errors='replace') as f:
+        for line in f:
+            m = TSTATE.match(line.rstrip())
+            if m:
+                mem = [tuple(int(v) for v in x.split(':')) for x in m[11].split(',') if x]
+                out.setdefault(m[2], []).append(dict(
+                    frame=int(m[1]), team=m[2], mstate=int(m[3]), prev=int(m[4]), secs=float(m[5]), tgt=int(m[6]),
+                    chosen=int(m[7]), tact=int(m[8]), idle=int(m[9]), ready=int(m[10]), mem=mem))
+    return out
+
+
+def team_states(run, name):
+    """[state dict, ...] in frame order for every team whose template is `name` (as members())."""
+    w = _wants(name)
+    ptrs = {t['team'] for _, teams in samples(run) for t in teams if _named(t, w)}
+    return sorted((s for p, ss in states(run).items() if p in ptrs for s in ss), key=lambda s: s['frame'])
+
+
+def state_at(run, name, frame):
+    """The last state dict of a team named `name` at or before `frame` (None when none)."""
+    best = None
+    for s in team_states(run, name):
+        if s['frame'] > frame:
+            break
+        best = s
+    return best
+
+
+def commands(run, types=None):
+    """[(frame, type, args), ...]: the messages the host owner's player put on the game's command list (AI orders),
+    each once, at the frame it was first seen (the frame it was issued). type is the message number (0x1f5 select by
+    id, 0x1fb select a team, 0x214 move / attack-move to a point, 0x22c formation move, 0x210 target an object, ...);
+    args a list: int, float, or (x, y, z) for a position. `types` keeps only those numbers."""
+    out = []
+    with open(_log(run), encoding='utf-8', errors='replace') as f:
+        for line in f:
+            m = CMD.match(line.rstrip())
+            if m and (types is None or int(m[3], 16) in types):
+                out.append((int(m[1]), int(m[3], 16), [_arg(a) for a in m[6].split(',') if a]))
+    return out
+
+
+def last_command(run, frame, types=(0x214, 0x22c, 0x210)):
+    """The last order (frame, type, args) of the given types issued at or before `frame`; None when none."""
+    best = None
+    for c in commands(run, types):
+        if c[0] > frame:
+            break
+        best = c
+    return best
 
 
 def names(run):
