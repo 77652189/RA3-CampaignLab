@@ -2678,6 +2678,8 @@ class Sim:
             return True
         if any(math.hypot(x - rx, y - ry) <= r for rx, ry, r in list(self.reveals.values()) + self.peeking()):
             return True
+        if self.infiltrators.sees(self.human, x, y, air):
+            return True
         return any(b.owner == self.human and self.looks(b, x, y, air) for b in self.living())
 
     def looks(self, v, x, y, air=False):

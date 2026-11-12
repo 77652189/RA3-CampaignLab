@@ -1,8 +1,12 @@
-"""InfiltratorContain ENERGY slice, engine_infiltrator:a.
+"""InfiltratorContain ENERGY and minimal ordinary VISION slices.
 
 One retail Allied plant: 20 seconds of zero supply, spy consumed, owner unchanged.
 Travel/entry reach and Amount * eligible energy duration scaling are INFERRED;
-only Amount=.2 and eligible energy=100 have been measured. Other effects report gaps.
+only Amount=.2 and eligible energy=100 have been measured.
+engine_infvis:a measures one Allied yard's local vision, not whole-side sharing.
+VISION activation delay of five seconds is INFERRED from second-spaced samples;
+mapping the whole local radius to yard XML and parent-death cleanup are INFERRED.
+Observer lifetime, other templates/players/spies and repeated entry remain gaps.
 """
 import math
 import os
@@ -46,6 +50,18 @@ class Infiltrators:
         self.rules = {}
         self.going = {}
         self.off_until = {}
+        self.observers = []
+
+    def vision_rule(self, target, rule):
+        return (target.template == 'AlliedConstructionYard'
+                and rule.get('Effect') == 'VISION' and rule.get('Duration') == '-1s'
+                and rule.get('ObjectRef') == 'VisionObserver' and not rule.get('ReplaceWith'))
+
+    def sees(self, side, x, y, air=False):
+        """Measured local yard shroud. Parent-death cleanup is INFERRED."""
+        return any(owner == side and target.alive and self.sim.frame_now() >= start
+                   and self.sim.looks(target, x, y, air)
+                   for owner, target, start in self.observers)
 
     def spec(self, target):
         if target.template not in self.rules:
@@ -63,8 +79,15 @@ class Infiltrators:
         things, relations = entry
         if spy.template.lower() not in things or (relations and s.relation(target.owner, spy.owner) not in relations):
             return
-        if rule.get('Effect') != 'ENERGY' or rule.get('ObjectRef') != 'EnergyDisabler' or rule.get('ReplaceWith'):
-            s.gap('InfiltratorContain', target.template, '仅电厂ENERGY效果已实现')
+        energy = (rule.get('Effect') == 'ENERGY' and rule.get('ObjectRef') == 'EnergyDisabler'
+                  and not rule.get('ReplaceWith'))
+        if not energy and not self.vision_rule(target, rule):
+            s.gap('InfiltratorContain', target.template, '仅电厂ENERGY和盟军建造场普通VISION已实现')
+            return
+        if self.vision_rule(target, rule) and (
+                spy.owner != s.human or spy.template != 'AlliedInfiltrationInfantry'
+                or any(parent is target for _, parent, _ in self.observers)):
+            s.gap('InfiltratorContain', target.template, 'VISION其他玩家/间谍或重复渗透未对拍')
             return
         if target.status & set(rule.get('InfiltratedStatusFilter', 'DESTROYED UNDER_CONSTRUCTION SOLD UNPACKING').split()):
             return
@@ -91,6 +114,13 @@ class Infiltrators:
                     or (entry[1] and s.relation(target.owner, spy.owner) not in entry[1])
                     or target.status & set(rule.get('InfiltratedStatusFilter',
                                                    'DESTROYED UNDER_CONSTRUCTION SOLD UNPACKING').split())):
+                continue
+            if self.vision_rule(target, rule):
+                # INFERRED: sampled consumption at s11, first local discovery at s16.
+                # No engine mechanism or exact first-frame claim follows from this fit.
+                self.observers.append((spy.owner, target, s.frame_now() + 5 * simunits.LIFE_FPS))
+                s.destroy(spy, '进楼渗透', delete=True)
+                s.change()
                 continue
             structure = filter_spec(rule.get('StructureFilter', ''))
             if structure is None:

@@ -1,4 +1,4 @@
-"""Replay retail spy power-plant readings; do not claim whole-module coverage."""
+"""Replay retail spy ENERGY/VISION readings; do not claim whole-module coverage."""
 import importlib.util
 from pathlib import Path
 
@@ -55,6 +55,27 @@ def test_spy_power_plant_as_on_the_bench(check, template, plant_template):
     assert 19 <= disabled[-1] - disabled[0] + step <= 21
 
 
+@pytest.mark.parametrize('variant', ['duration', 'spy', 'player', 'repeat'])
+def test_ordinary_vision_unmeasured_variants_report_gap(variant):
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_infvis', 'a')
+    s = sim.Sim(m, t)
+    spy, yard = s.body(m.role('enemy spy').name), s.body(m.role('enemy').name)
+    if variant == 'duration':
+        s.infiltrators.spec(yard)['Duration'] = '10s'
+    elif variant == 'spy':
+        spy.template = 'JapanInfiltrationInfantry'
+    elif variant == 'player':
+        spy.owner = m.player('s3')
+        s.relations[(yard.owner, spy.owner)] = 'Enemy'
+    else:
+        s.infiltrators.observers.append((spy.owner, yard, 0))
+    s.infiltrators.send(spy, yard)
+    assert ('InfiltratorContain', yard.template) in s.unmodeled
+    assert spy.alive and not s.infiltrators.going
+
+
 def test_spy_entry_rechecks_relation_and_building_state_without_capturing():
     import build
     import sim
@@ -85,3 +106,33 @@ def test_unmeasured_infiltration_effect_reports_gap_instead_of_capture():
     assert ('InfiltratorContain', plant.template) in s.unmodeled
     assert spy.alive and plant.owner == m.player('s1')
     assert not s.infiltrators.going
+
+
+def test_spy_ordinary_vision_as_on_the_bench():
+    """engine_infvis:a: actual discovered markers, consumed enemy, refused ally.
+
+    s1-s10 11100/11100/0; s11-s15 1100/11100/0; s16-s37 1100/11100/1.
+    Stable windows only; exact arrival/activation mechanism, other templates,
+    observer destruction, radar freeze and repeated infiltration remain gaps.
+    """
+    import build
+    import sim
+    import siminfiltrator
+    m, t, mod = build.resolve('engine_infvis', 'a')
+    assert len(mod) <= 15 and '_' not in mod
+    assert all(m.role(role).template == 'AlliedConstructionYard' for role in ('enemy', 'ally'))
+    rule = siminfiltrator.spec('AlliedConstructionYard')
+    assert (rule['Effect'], rule['Duration'], rule['ObjectRef']) == ('VISION', '-1s', 'VisionObserver')
+    s = sim.Sim(m, t).run(35)
+    for start, end, wanted in ((1, 7, [11100, 11100, 0]), (18, 35, [1100, 11100, 1])):
+        rows = [values for second, values in s.series if start <= second <= end]
+        assert rows and all(row == wanted for row in rows), rows
+    early = [values[2] for second, values in s.series if 12 <= second <= 14]
+    assert early and all(value == 0 for value in early)
+    assert not s.body(m.role('enemy spy').name).alive
+    assert s.body(m.role('ally spy').name).alive
+    for role, side in (('enemy', 's1'), ('ally', 's2')):
+        yard = s.body(m.role(role).name)
+        assert yard.owner == m.player(side) and yard.hp == yard.max_hp
+    assert not s.infiltrators.off_until
+    assert not any(key[0] == 'InfiltratorContain' for key in s.unmodeled)

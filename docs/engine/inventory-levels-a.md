@@ -77,7 +77,7 @@
 | 未做 | 武器效果 | `ActivateLiftObjectNugget` | 6 | a1 a2 a4 a6 a7 | engine_lift两轮确认需LiftObjectUpdate且SoftLanding影响清位，但Lifetime/续期释放规则未解释；模拟器显式报告gap，tests/test_lift_nugget.py守卫直接命中/继承/弹头不静默忽略；暂停等模块时序证据，不登记已对拍；例：AAAVT1_JapanCommandoTech1PsyonicAntiAirCrush, AAAVT1_JapanCommandoTech1PsyonicCrush |
 | 未做 | 武器效果 | `GrapplingHookNugget` | 1 | a1 a3 a4 a6 a7 a9 | engine_grapple a最小消费者诊断；GrapplingHookUpdate派发/拉拽/释放未解释，显式报告gap；tests/test_grapple_nugget.py守卫直接命中/继承/弹头及原版缓存，不登记已对拍；例：SovietAntiVehicleVehicleTech3Harpoon |
 | 未做 | 武器效果 | `InformTargetNugget` | 0 | a3 a7 a8 a9 | 未覆盖的自制或未知武器写法；原版字段分片另行登记；例：CNV_ChronoLag_Shell, CNV_LibertyDrones |
-| 推断 | 物体模块 | `Behaviors/InfiltratorContain` | 30 | a1 a2 a4 a5 a6 a7 a8 | ENERGY已按总控11-11决定拆分登记4用量/6模板；本行剩余10种配置30用量/32模板：KILL 1、STEAL_MONEY 3、VISION 5+港口阻断型1、PARALYZE 3、VISION_UNITS飞机2/步兵3/舰船3/车辆4、RESET 5，效果均未对拍；不登记整模块已对拍；例：AlliedAirfield, AlliedBarracks |
+| 推断 | 物体模块 | `Behaviors/InfiltratorContain` | 30 | a1 a2 a4 a5 a6 a7 a8 | ENERGY已按总控11-11决定拆分登记4用量/6模板；本行剩余10种配置30用量/32模板：KILL 1、STEAL_MONEY 3、VISION 5+港口阻断型1、PARALYZE 3、VISION_UNITS飞机2/步兵3/舰船3/车辆4、RESET 5；普通VISION仅engine_infvis a盟军间谍/建造场最小对照：敌方消耗不换主、友军拒入、近处可见而远处及第三方不可见，tests/test_siminfiltrator.py::test_spy_ordinary_vision_as_on_the_bench；约5秒生效延迟/视野半径映射/宿主死亡清理INFERRED，其他模板/间谍、精确时序、持久性/重复进入及其余效果仍gap，不登记整组或整模块已对拍；例：AlliedAirfield, AlliedBarracks |
 | 推断 | 物体模块 | `Behaviors/CommandSetUpgrade` | 5 | a1 a4 a5 a7 | 模拟器代码里有这个名字；例：AlliedConstructionYard, CNVA4AlliedConstructionYard |
 | 推断 | 物体模块 | `Behaviors/AutoDepositUpdate` | 4 | a1 a4 a5 a7 | 模拟器代码里有这个名字；例：OilDerrick |
 | 推断 | 物体模块 | `Behaviors/SpecialAbilityUpdate` | 4 | a1 a4 a6 a7 | 模拟器代码里有这个名字；例：JapanAntiInfantryInfantry, JapanAntiVehicleVehicleTech1 |
