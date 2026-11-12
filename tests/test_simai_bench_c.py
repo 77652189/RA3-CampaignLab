@@ -90,9 +90,11 @@ def test_alpha_close_arrives_with_target_at_seventy_percent(alpha_close_rows):
 
 @pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
     'Delayed-guard retail pair: low target HP59/home4/live4; high HP34/home0/live0. '
-    'Model both HP64/home3/live3. Alpha target applicability needs B investigation; '
+    'Model both HP64/home3/live3 even with the unit-power MicroBlock disabled. '
+    'Alpha selection and retreat are owned by tactics.TacticsBlock._team_state; '
+    'micro.py has no legal consumer. Needs B interface/eligibility evidence; '
     'no model fit or inventory promotion. See work/re/handoff-c.md and '
-    'work/re/c_alpha_close_report.md.'))
+    'work/re/c_alpha_ownership_report.md.'))
 def test_alpha_close_replays_measured_outcome(alpha_close_rows):
     """Stable s39-55 bench plateaus; no exact dispatch-frame inference."""
     build, rows = alpha_close_rows
