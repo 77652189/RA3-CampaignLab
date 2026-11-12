@@ -5,7 +5,8 @@ from maps import probe_range
 FIELDS = [*probe_range.FIELDS, resources.Field('enemy', 800.0, 400.0, 45.0, 0),
           resources.Field('ally', 2300.0, 400.0, 45.0, 0)]
 SITES = {**probe_range.SITES, **resources.sites(FIELDS)}
-OBJECTS = resources.objects(FIELDS)
+NODES = resources.MEASURED          # a bench map, read with its nodes at 0 (as probe_range)
+OBJECTS = resources.objects(FIELDS, node_facing=NODES)
 PLAYERS = probe_range.PLAYERS
 TEAMS = probe_range.TEAMS
 terrain = probe_range.terrain

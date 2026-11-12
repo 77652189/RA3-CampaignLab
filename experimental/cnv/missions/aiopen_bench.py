@@ -7,6 +7,7 @@ no limit (aiopenpoor: 3000, the opening short of money). No attack script.
 
 Facts: wake at, money.
 """
+import resources
 from maps import niagara
 from parts import Mission, Script
 
@@ -17,7 +18,7 @@ COUNTED = ('AlliedBarracks', 'AlliedPowerPlant', 'AlliedRefinery', 'AlliedWarFac
 
 
 def mission(name='CampAIOpen', money=MONEY):
-    m = Mission(name=name, map=niagara, facts={'wake at': WAKE_AT, 'money': money})
+    m = Mission(name=name, map=resources.measured(niagara), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
     m.spawns |= set(COUNTED)
     s1 = m.player('s1')

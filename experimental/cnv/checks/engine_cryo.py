@@ -24,6 +24,7 @@ second: the 200 % cap and the 25 a second are right. The simulator (Niagara) rea
 Sim's answer (before the bench): one: 先冻 ~ 165 + the copter's flight (11 s of beam), then it melts (1100 - 550)/25 =
 22 s when the beam ran long enough to fill the cap; two: 先冻 ~ 90 (550 / 125 = 4.4 s of beam).
 """
+import resources
 from maps import niagara
 from model import status
 from parts import Mission, Script, Test
@@ -34,7 +35,7 @@ VARIANTS = {'one': 1, 'two': 2}
 
 
 def mission():
-    m = Mission(name='CampCryo', map=niagara, units=[], facts={})
+    m = Mission(name='CampCryo', map=resources.measured(niagara), units=[], facts={})
     m.put(TANK, 'west field', -120.0, 560.0, side='s1', role='cryo tank', name='UNIT - CNV Cryo Tank')
     for k in range(2):
         m.put(COPTER, 'west field', -180.0 + 120.0 * k, 160.0, side='p1', role=f'cryo copter {k}',

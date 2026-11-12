@@ -48,6 +48,7 @@ Builds:
 Facts: wake at, hand at, distance, health, hunt (1: the Hunt tactic), built (1: the AI builds them), foes (1: built,
 with the conscripts).
 """
+import resources
 from maps import niagara
 from missions import aistate_bench as ab
 from parts import Mission, Script
@@ -158,7 +159,7 @@ def mission(name, dist, micro='StandardMicroManager', health=100.0, hand=True, m
             xfer=False):
     facts = {'wake at': WAKE_AT, 'hand at': HAND_AT if hand or made else 0.0, 'distance': dist, 'health': health,
              'hunt': float(tactic == 'Hunt')}
-    m = Mission(name=name, map=niagara, facts=facts)
+    m = Mission(name=name, map=resources.measured(niagara), facts=facts)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{PID}'}
     m.assets.append((f'{PID}.xml', personality_xml(micro, tactic=tactic), f'AIPersonalityDefinition:{PID}'))
     m.cnv_units = (WARRIOR,)
@@ -239,7 +240,7 @@ def built(name, tactic='StaticDefense', foes=None, spow=None, engage=True):
     foes = not hunt if foes is None else foes
     facts = {'wake at': WAKE_AT, 'hand at': 0.0, 'distance': 0.0, 'health': 100.0, 'hunt': float(hunt), 'built': 1.0,
              'foes': float(foes)}
-    m = Mission(name=name, map=niagara, facts=facts)
+    m = Mission(name=name, map=resources.measured(niagara), facts=facts)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{PID}'}
     micro = 'StandardMicroManager' if spow is None else SPOW_ID
     if spow is not None:

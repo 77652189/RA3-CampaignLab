@@ -5,6 +5,7 @@ the nearer one on the east bank, the farther one in the river. Twinblades can
 reach and attack either. Only Location differs between the three builds.
 Prediction: Land and Water Land -> land; Water -> water. See work/re/e_location_e81.md.
 """
+import resources
 from maps import niagara
 from missions import aitargetpick_bench as tp
 from parts import Mission, Script
@@ -17,7 +18,7 @@ def mission(location, suffix):
     xml = tp.personality_xml(pid, [('CNVHBarracks', None)], 1)
     xml = xml.replace('VitalKindOf="FS_BARRACKS"', f'VitalKindOf="FS_POWER" Location="{location}"')
     xml = xml.replace('AllowedLocomotorTypes="LAND AMPHIBIOUS"', 'AllowedLocomotorTypes="AIR"')
-    m = Mission(name='CampAILoc' + suffix, map=niagara,
+    m = Mission(name='CampAILoc' + suffix, map=resources.measured(niagara),
                 facts={'wake at': 10.0, 'expect land': int(location != 'Water'),
                        'expect water': int(location == 'Water')})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{pid}'}

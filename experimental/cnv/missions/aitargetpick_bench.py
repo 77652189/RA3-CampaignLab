@@ -21,6 +21,7 @@ Builds (the state's TargetHeuristic list):
             the barracks: 4 at the plant, 4 at the barracks
 Facts: wake at, ai tanks, expect plant / barracks / tank / home (the model's guess, Guardians there at the end).
 """
+import resources
 from maps import niagara
 from missions.aistate_bench import BASE, INHERITED
 from parts import Mission, Script
@@ -90,7 +91,7 @@ def mission(name, targets, expect, max_targets=1, tanks=4, priority='STANDARD', 
     """expect = (plant, barracks, tank, home): Guardians there at the end, the model's guess."""
     pid = PID + name[-3:]
     plant, barracks, tank, home = expect
-    m = Mission(name=name, map=niagara, facts={'wake at': WAKE_AT, 'ai tanks': tanks, 'expect plant': plant,
+    m = Mission(name=name, map=resources.measured(niagara), facts={'wake at': WAKE_AT, 'ai tanks': tanks, 'expect plant': plant,
                                                'expect barracks': barracks, 'expect tank': tank,
                                                'expect home': home})
     if kill_at is not None:

@@ -18,6 +18,7 @@ structure, a player power plant ~750 west, as aipoweradv; count the Guardians at
 
 Facts: wake at, money, plants, barracks (what stands at s40), and for aiohc*: ai tanks, home until, out by.
 """
+import resources
 from maps import niagara
 from missions.aistate_bench import BASE, INHERITED
 from missions.aiotime_bench import ORDERS as T_ORDERS
@@ -100,7 +101,7 @@ def mission(name, lines, plants, barracks, gate=None, home_until=None, out_by=No
         facts |= {'ai tanks': tanks, 'out by': out_by}
         if home_until is not None:
             facts['home until'] = home_until
-    m = Mission(name=name, map=niagara, facts=facts)
+    m = Mission(name=name, map=resources.measured(niagara), facts=facts)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{pid}'}
     m.assets.append((f'{pid}.xml', personality_xml(pid, lines, gate), f'AIPersonalityDefinition:{pid}'))
     m.spawns |= {PLANT, BARRACKS, TANK}

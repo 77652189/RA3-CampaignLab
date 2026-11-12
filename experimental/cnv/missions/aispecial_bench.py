@@ -15,6 +15,7 @@ Builds:
   aispecialhid  one pile of 5 AlliedBaseDefense at west field, far from the AI and NOT revealed to s1 (check d)
 Facts: wake at.
 """
+import resources
 from maps import niagara
 from parts import Mission, Script
 
@@ -43,7 +44,7 @@ def mission(name='CampAISpecial', piles=PILES):
     # facts for the check (it may not import this module): the power, which piles (letters, cast 'A 1' ...) with their
     # hit weights, and whether the piles are revealed to the AI
     facts = {'wake at': WAKE_AT, 'power': POWER, 'piles': {p[0]: p[5] for p in piles}, 'reveal to ai': piles is PILES}
-    m = Mission(name=name, map=niagara, facts=facts)
+    m = Mission(name=name, map=resources.measured(niagara), facts=facts)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
     m.spawns |= {SUPER}
     s1 = m.player('s1')

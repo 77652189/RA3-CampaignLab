@@ -18,6 +18,7 @@ Builds:
   aitargetflank aitargetsafe with FlankAttack (the same class as DefenseAvoidanceAttack, a random side).
 Facts: wake at.
 """
+import resources
 from maps import niagara
 from missions import aistate_bench as ab
 from parts import Mission, Script
@@ -89,7 +90,7 @@ def personality_xml(heuristic, tactic, idle=None, unit_idle=10):
 
 
 def mission(name, heuristic, tactic, idle=None, unit_idle=10):
-    m = Mission(name=name, map=niagara, facts={'wake at': WAKE_AT})
+    m = Mission(name=name, map=resources.measured(niagara), facts={'wake at': WAKE_AT})
     m.cnv_heuristic = heuristic             # the check says the model's pick by it
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{PID}'}
     m.assets.append((f'{PID}.xml', personality_xml(heuristic, tactic, idle, unit_idle),

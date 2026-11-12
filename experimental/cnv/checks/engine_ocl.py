@@ -10,6 +10,7 @@ Read 2026-11-08 (`a`, PASS): first loss at frame 49; each round takes ~19 % (750
 effect's 2 s, a hit every frame), rounds start at frames 49 / 125 / 207 / 284 / 360 (~80 frames = ~5.3 s = pre-attack 2
 + firing 2 + reload 1.1). simunits.ocl_round gives 620 a round, the fight 121.6 raw/s (bench ~113).
 """
+import resources
 from maps import niagara
 from parts import Mission, Script, Test
 
@@ -23,7 +24,7 @@ def _n(p):
 
 
 def mission():
-    m = Mission(name='CampOcl', map=niagara, units=[], facts={})
+    m = Mission(name='CampOcl', map=resources.measured(niagara), units=[], facts={})
     m.put(ATHENA, SITE[0], SITE[1], SITE[2], angle=0.0, role='athena', name=_n('Athena'))
     m.put(BARRACKS, SITE[0], SITE[1], SITE[2] + 300.0, side='s1', angle=0.0, role='barracks', name=_n('Barracks'))
     return m

@@ -8,6 +8,7 @@ SpecialPowerIronCurtain), both at 'west field' on their own pads.
           -x side (so their footprints do not touch).
   iron    two player tanks (AlliedAntiVehicleVehicleTech1) at 0 and 150 (+x) from 'Test Curtain Spot'.
 """
+import resources
 from maps import niagara
 from parts import Mission
 
@@ -44,7 +45,7 @@ def _n(part):
 
 
 def mission(name='CampSuper'):
-    m = Mission(name=name, map=niagara, units=[], facts={})
+    m = Mission(name=name, map=resources.measured(niagara), units=[], facts={})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies'}
     m.spawns |= {COLLIDER, CURTAIN, TARGET, TANK, VAC, NANO, PSI}
     m.put('AlliedConstructionYard', 'base yard', angle=0.0, role='yard', name=_n('Yard'))

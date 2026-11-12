@@ -45,7 +45,10 @@ for _k in range(3):
 # collector); far from every lane, the start and the power pads
 FIELDS = [resources.Field('probe', 3000.0, 4200.0, 45.0, 0)]
 SITES.update(resources.sites(FIELDS))
-OBJECTS = resources.objects(FIELDS)
+# a bench map: every reading on its pad (engine_mining a..e, engine_spawn ...) was taken with the node at 0, 135 off
+# retail's facing (resources.MEASURED); mineturn<k> turns it to retail's + k
+NODES = resources.MEASURED
+OBJECTS = resources.objects(FIELDS, node_facing=NODES)
 PLAYERS = island.PLAYERS
 TEAMS = island.TEAMS
 

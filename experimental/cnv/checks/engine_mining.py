@@ -117,8 +117,9 @@ def mining_test(m, which='a'):
 
 
 # Round 174 (the miner's drive by the node's facing): retail stands every node facing its refinery (node angle =
-# the refinery's + 180: heidelberg, gibraltar, north sea, all six pairs), the generator (resources.objects) puts it
-# at 0 -- 135 off on this pad (a's 104-frame leg), 45 off on niagara's east pad (aitowerinc5 f: a trip of 185).
+# the refinery's + 180: heidelberg, gibraltar, north sea, all six pairs), the generator (resources.objects) put it
+# at 0 till round 175 (probe_range keeps that: NODES = resources.MEASURED) -- 135 off on this pad (a's 104-frame
+# leg), 45 off on niagara's east pad (aitowerinc5 f: a trip of 185).
 # mineturn<k>: this pad with its node turned to retail's facing + k degrees (m: minus), nothing else changed; check p
 # = a's start (the refinery's own collector) with b's three counters (the period twice).
 # Bench 2026-11-12 (work/bench_results/mineturn*__p.json, runs CampMineT<k>P_mcp_1112_01*): 首笔 / 二笔 / 三笔

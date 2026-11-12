@@ -11,13 +11,14 @@ through s48. Both retain four infantry. Replay: tests/test_engage_tactical.py.
 Only an object target in range, with passive/hostile dispatch disabled, is
 covered; point targets, competing enemies and the exact scan boundary are not.
 """
+import resources
 from maps import niagara
 from missions import aitarget_bench as ab
 from parts import Mission, Script
 
 
 def mission(enabled):
-    m = Mission(name='CampTacOn' if enabled else 'CampTacOff', map=niagara,
+    m = Mission(name='CampTacOn' if enabled else 'CampTacOff', map=resources.measured(niagara),
                 facts={'wake at': ab.WAKE_AT, 'tactical enabled': float(enabled)})
     xml = ab.personality_xml('ClosestStructureHeuristic', 'SimpleAttack', idle=15)
     xml = xml.replace('EngageHostileTargets="true"', 'EngageHostileTargets="false"')

@@ -14,6 +14,7 @@ so a type that never leaves is not read as a difficulty).
 Facts: wake at, swapped (1: the Guardians' state is the EASY HARD BRUTAL one), expect tanks home, expect infantry home (the
 model's guess: the bench walks the campaign at normal = MEDIUM, only the MEDIUM state runs).
 """
+import resources
 from maps import niagara
 from missions.aistate_bench import BASE, INHERITED
 from missions.aiteamfilter_bench import TANK, INF, objfilter
@@ -61,7 +62,7 @@ def personality_xml(pid, tank_diff, inf_diff):
 def mission(name, swapped=False):
     pid = 'CNVDiff' + ('X' if swapped else 'M')
     tank_diff, inf_diff = (OTHERS, MEDIUM) if swapped else (MEDIUM, OTHERS)
-    m = Mission(name=name, map=niagara, facts={'wake at': WAKE_AT, 'swapped': int(swapped),
+    m = Mission(name=name, map=resources.measured(niagara), facts={'wake at': WAKE_AT, 'swapped': int(swapped),
                                                'expect tanks home': 4 if swapped else 0,
                                                'expect infantry home': 0 if swapped else 4})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{pid}'}

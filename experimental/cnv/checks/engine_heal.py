@@ -31,6 +31,7 @@ Against the model (RA3-EngineModel, tools/objsidebyside.py engine_heal): a, b, c
 (a 219114, b 230 below T2, c 20005, d 64002); e differs: the model's T2 count stops at 45 (the bench 52).
 
 """
+import resources
 from maps import niagara
 from parts import Mission, Script, Test
 
@@ -48,7 +49,7 @@ def _n(part):
 
 
 def mission():
-    m = Mission(name='CampHeal', map=niagara, units=[], facts={})
+    m = Mission(name='CampHeal', map=resources.measured(niagara), units=[], facts={})
     for k, template in enumerate((APOC, TSUNAMI, GI)):         # all three stand; a variant deletes the other two
         m.put(template, SITE[0], SITE[1], SITE[2] + 120.0 * k, angle=0.0, role=f'unit {k}', name=_n(f'Unit {k}'))
     return m

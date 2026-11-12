@@ -44,6 +44,7 @@ Bench 11-11 (round 156, run_queue one at a time, all PASS; rows at frame n, the 
   The two that take no second press are the two whose on state has DisabledType="HELD" (INFERRED the cause; a run
   pressing a HELD-free 3-state toggle, or the engineer after a NAMED_STOP, would tell).
 """
+import resources
 from maps import niagara
 from parts import NOT, Mission, Script, Test, status
 
@@ -66,7 +67,7 @@ def _n(part):
 
 
 def mission():
-    m = Mission(name='CampToggle', map=niagara, units=[], facts={})
+    m = Mission(name='CampToggle', map=resources.measured(niagara), units=[], facts={})
     m.spawns |= {u[0] for u in UNITS.values()}
     m.put('AlliedConstructionYard', 'base yard', angle=0.0, role='yard', name=_n('Yard'))
     for w, u in UNITS.items():

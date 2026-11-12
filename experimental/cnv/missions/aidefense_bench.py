@@ -36,6 +36,7 @@ holds -- but puts them on a script team, out of the AI's (round 61's "nobody pul
 pull-back. Use the far=True builds (no mission order; the check moves them by name), or put AI-run units the mission
 must order on s4..s6 / make them by script (contract G6c refuses a team order that reaches none).
 """
+import resources
 from maps import niagara
 from missions import aistate_bench as ab
 from parts import Mission, Script
@@ -89,7 +90,7 @@ def personality_xml(dist, upd, slack):
 
 
 def mission(name, dist, upd, slack, far=False):
-    m = Mission(name=name, map=niagara, facts={'wake at': WAKE_AT, 'move at': MOVE_AT, 'push at': PUSH_AT})
+    m = Mission(name=name, map=resources.measured(niagara), facts={'wake at': WAKE_AT, 'move at': MOVE_AT, 'push at': PUSH_AT})
     m.cnv_dist = dist
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{PID}'}
     m.assets.append((f'{PID}.xml', personality_xml(dist, upd, slack), f'AIPersonalityDefinition:{PID}'))

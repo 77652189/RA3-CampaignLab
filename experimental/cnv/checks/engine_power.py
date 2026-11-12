@@ -42,6 +42,7 @@ Bench 11-05 (round 47), final readings (帧数 / 就绪帧 / 施放数 / 效果�
 Open: why a countdown > 0 never gave ready (try minutes, or 480 as retail), and whether the power's effect object is
 owned by Player_1 / what it is called in the game (效果帧 0 in every variant, also after the ready fire in a-with-0).
 """
+import resources
 from maps import niagara
 from parts import Mission, Script, Test, square, status
 
@@ -64,7 +65,7 @@ def _n(part):
 
 
 def mission():
-    m = Mission(name='CampPower', map=niagara, units=[], facts={})
+    m = Mission(name='CampPower', map=resources.measured(niagara), units=[], facts={})
     m.spawns |= {SUPER, EFFECT}
     m.put('AlliedConstructionYard', 'base yard', angle=0.0, role='yard', name=_n('Yard'))
     m.put('AlliedPowerPlant', 'base power', angle=0.0, role='power', name=_n('Power'))

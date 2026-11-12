@@ -16,6 +16,7 @@ Peacekeeper; MaxRunningCopies not written / 2. How soon does each next copy star
 
 Facts: wake at, infantry at, tanks at, infantry off at (OFF_AT, or None).
 """
+import resources
 from maps import niagara
 from parts import Mission, Script
 
@@ -113,7 +114,7 @@ def mission(name='CampAIState', near=False, gate='flag', flags=(FLAG_INF, FLAG_T
     structures, both far -- does the infantry state go when there is a second target for it?"""
     facts = {'wake at': WAKE_AT, 'infantry at': INF_AT, 'tanks at': TANK_AT, 'infantry off at': off_at,
              'hunt copies': (copies or 0) if hunt else None}   # 0: not written
-    m = Mission(name=name, map=niagara, facts={k: v for k, v in facts.items() if v is not None})
+    m = Mission(name=name, map=resources.measured(niagara), facts={k: v for k, v in facts.items() if v is not None})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{PID}'}
     m.assets.append((f'{PID}.xml', personality_xml(gate, flags, end, hunt, copies), f'AIPersonalityDefinition:{PID}'))
     if scope is not None:

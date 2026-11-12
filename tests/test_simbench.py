@@ -807,6 +807,27 @@ def test_mining_niagara_east_ore_trips_in_185_as_the_ai_s_miner_did():
     assert len(trips) >= 5 and set(trips) == {185}, trips
 
 
+def test_mining_niagara_at_retail_s_facing_trips_as_mineturn0_did():
+    """Round 175: the generator stands every node facing its refinery (resources.node_angle), so A7's niagara (no
+    longer the benches' MEASURED copy) has the east pad's miner on mineturn0 p's geometry -- the node 180 straight
+    ahead, turned 0 -- and its trip is that bench's 151 (~24.8 a second, not the 185 the benches read)."""
+    import build
+    import sim
+    from maps import niagara
+    m, _, _ = build.resolve('aitowerinc5', None)
+    assert m.map.NODES == 'measured' and getattr(niagara, 'NODES', 'retail') == 'retail'
+    m.map = niagara
+    s = sim.Sim(m, None)
+    miner = s.bodies[m.cast['ai miner'].name]
+    s.money[miner.owner] = 0
+    got = []
+    for fr in range(1500):
+        s.mine_due(fr)
+        got.append(s.money[miner.owner])
+    trips = _trips(got)
+    assert len(trips) >= 5 and set(trips) == {MINE_TURN_BENCH[0][0]}, trips
+
+
 def test_mining_a_second_miner_on_one_node_adds_nothing():
     """bench engine_mining b / d: two miners on one node earn what one does -- the other waits there for good (the
     retail node has no queue place)."""

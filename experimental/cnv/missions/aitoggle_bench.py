@@ -24,6 +24,7 @@ two builds:
                 l4_micro_gate.md: units left on teamSoviet_1 are never recruited)
 Facts: wake at, give at, attack at, stop at, hunt (1: the Hunt tactic).
 """
+import resources
 from maps import niagara
 from missions import aimicro_bench as am
 from parts import Mission, Script
@@ -38,7 +39,7 @@ WEST, APART, STANDOFF = 200.0, 100.0, 250.0
 
 def mission(name, made, tactic='StaticDefense', xfer=False):
     facts = {'wake at': WAKE_AT, 'give at': GIVE_AT, 'attack at': ATTACK_AT, 'stop at': STOP_AT, 'hunt': float(tactic == 'Hunt')}
-    m = Mission(name=name, map=niagara, facts=facts)
+    m = Mission(name=name, map=resources.measured(niagara), facts=facts)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{am.PID}'}
     m.assets.append((f'{am.PID}.xml', am.personality_xml('StandardMicroManager', PK, tactic),
                      f'AIPersonalityDefinition:{am.PID}'))
@@ -100,7 +101,7 @@ def built(name, tactic='StaticDefense'):
     hunt = tactic == 'Hunt'
     facts = {'wake at': WAKE_AT, 'give at': 0.0, 'attack at': BUILT_ATTACK_AT, 'stop at': BUILT_STOP_AT,
              'hunt': float(hunt), 'built': 1.0}
-    m = Mission(name=name, map=niagara, facts=facts)
+    m = Mission(name=name, map=resources.measured(niagara), facts=facts)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{am.PID}'}
     m.assets.append((f'{am.PID}.xml', am.personality_xml('StandardMicroManager', PK, tactic, built=True),
                      f'AIPersonalityDefinition:{am.PID}'))

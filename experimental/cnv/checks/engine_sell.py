@@ -36,6 +36,7 @@ Bench 11-06 (round 49; the counters read from s1 on, the first row already 26-29
 Against the model (RA3-EngineModel sell.py, tests/test_objects_bench.py "selling"): every final reading and the
 frames after the first row the same, d included (the model empties the bunker in the sell's frame).
 """
+import resources
 from maps import niagara
 from parts import Mission, Script, Test, status
 
@@ -49,7 +50,7 @@ def _n(part):
 
 
 def mission():
-    m = Mission(name='CampSell', map=niagara, units=[], facts={})
+    m = Mission(name='CampSell', map=resources.measured(niagara), units=[], facts={})
     m.spawns |= {PLANT}
     m.put('AlliedConstructionYard', 'base yard', angle=0.0, role='yard', name=_n('Yard'))
     m.put(PLANT, 'base power', angle=0.0, role='power', name=_n('Power'))

@@ -24,7 +24,7 @@
 - 零售地图里矿井的朝向 = 它的矿场朝向 + 180°，即矿井面对矿场（heidelberg、gibraltar、north sea 六组全是）。矿车停在矿井正面，矿井转开了就得绕过去。
 - 探针 `engine_mining.py` 的 `mineturn<k> p`：同一块地（矿场 180 远），只把矿井从零售朝向转 k 度。每趟帧数：0° **151**、±45° 186 / 187、±90° 241、135°（老 a 台，矿井 angle 0）269、180° 323。左右对称。
 - niagara 东矿（矿井 angle 0，偏 45°）上 AI 的矿车每趟 185 帧（`engine_aitower.py` aitowerinc5 f）——和地图、和是不是 AI 无关，只看朝向。
-- 对关卡的意思：**同一块矿，朝向放错收入少一半**（151 对 323 帧）。地图生成器 `resources.objects` 现在把矿井一律放 angle 0，不是零售朝向（待改，见引擎线交接）。
+- 对关卡的意思：**同一块矿，朝向放错收入少一半**（151 对 323 帧）。第 175 轮起地图生成器 `resources.objects` 默认把矿井放成零售朝向（`resources.node_angle`），合同 `contract.ore_faces_back` 守着；A7 的 niagara 东矿一趟因此从 185 变 151 帧（模拟器，同 mineturn0 p 的几何）。已经量过的台子钉旧朝向（angle 0，读数不重量）：探针图 probe_range / probe_infmoney / probe_border 写 `NODES = resources.MEASURED`，niagara 上的台子用 `resources.measured(niagara)`。新台子默认零售朝向。
 - 模拟器：单程 = 直线距离 / 速度 + 按偏角查表（`sim.MINE_TURN_EXTRA`：0° −9、45° 8、90° 36、135° 50、180° 77 帧，中间线性，推断）。
 
 ## 3. 第二辆矿车在同一个矿井上不增加收入（测）

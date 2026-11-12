@@ -31,6 +31,7 @@ Bench 2026-11-09 (the ImmortalBody module of CPDummyTarget; lanes a, b, c = the 
   b: 1 / 0 to s10, then 1 / 1 from s11 (the bench clock labels run about a second behind the mission's): the delete
      removes it; the health counter keeps 1 beside gone 1 (it froze), the predicted 0 was wrong.
 """
+import resources
 from maps import niagara
 from parts import Mission, Script, Test
 
@@ -41,7 +42,7 @@ GO, OBSERVE = 1.0, 10.0
 
 
 def mission():
-    m = Mission(name='CampImmortal', map=niagara, units=[], facts={})
+    m = Mission(name='CampImmortal', map=resources.measured(niagara), units=[], facts={})
     m.put(TEMPLATE, 'west field', -120.0, 260.0, side='p1', role='dummy', name=UNIT)
     return m
 

@@ -36,6 +36,7 @@ d 9), status with USER_1, USER_3 with TAKING_OFF, the trigger starting with the 
 all match. Two strict xfails: the trigger lasts 16 frames here, the model's trunc(trunc(s) x 15) gives 15; the model
 toggles one frame late (2002 against 1001, the Mirage field's open question).
 """
+import resources
 from maps import niagara
 from parts import Mission, Script, Test, status
 
@@ -53,7 +54,7 @@ def _n(part):
 
 
 def mission():
-    m = Mission(name='CampTransform', map=niagara, units=[], facts={})
+    m = Mission(name='CampTransform', map=resources.measured(niagara), units=[], facts={})
     m.spawns |= {u for u, _ in UNITS.values()}
     m.put('AlliedConstructionYard', 'base yard', angle=0.0, role='yard', name=_n('Yard'))
     for w, (u, _) in UNITS.items():

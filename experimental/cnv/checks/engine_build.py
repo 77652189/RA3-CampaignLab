@@ -34,6 +34,7 @@ Bench 11-05 (round 45; docs/engine/construction.md):
 Against the model (RA3-EngineModel construction.py, tests/test_objects_bench.py): every reading the same but e's
 health (the Hammer: layers 3-4).
 """
+import resources
 from maps import niagara
 from parts import Mission, Script, Test, square, status
 
@@ -56,7 +57,7 @@ def _n(part):
 
 
 def mission():
-    m = Mission(name='CampBuild', map=niagara, units=[], facts={})
+    m = Mission(name='CampBuild', map=resources.measured(niagara), units=[], facts={})
     m.spawns |= {PLANT, SOVIET}
     m.put(YARD, 'base yard', angle=0.0, role='yard', name=_n('Yard'))
     m.put(PLANT, 'base power', angle=0.0, role='power', name=_n('Power'))

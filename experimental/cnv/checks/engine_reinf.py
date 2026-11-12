@@ -24,6 +24,7 @@ Bench 11-10 (round 137):
 Simulator (sim.Sim.reinforce, tests/test_simbench.py test_reinforcement_teams_as_the_bench): two ends 6 3 3 4, old
 s1 3 3 0 0, s9 3 0 3 0, s14 6 3 3 0, s26 6 3 0 3 -- the same counts, 1-2 s later on the bench's labels.
 """
+import resources
 from maps import niagara
 from parts import Mission, Script, Test, counted, square
 
@@ -36,7 +37,7 @@ VARIANTS = ('two', 'old')
 
 
 def mission(variant='two'):
-    m = Mission(name=f'CampReinf{variant.title()}', map=niagara, units=[], facts={'variant': VARIANTS.index(variant)})
+    m = Mission(name=f'CampReinf{variant.title()}', map=resources.measured(niagara), units=[], facts={'variant': VARIANTS.index(variant)})
     m.reinforcement('Reinf', UNITS, 'p1', instances=1)
     m.waypoint('spawn', 'Test Reinf Spawn', *SPAWN)
     m.waypoint('goal', 'Test Reinf Goal', *GOAL)

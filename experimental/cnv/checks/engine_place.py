@@ -28,6 +28,7 @@ bench_click the map (a at (1100, 2600), b / c at (1300, 2750), near each yard), 
     1500.
 Against the model (RA3-EngineModel production.place, tests/test_objects_bench.py placing): every pair the same.
 """
+import resources
 from maps import niagara
 from parts import Mission, Script, Test, counted, status
 
@@ -46,7 +47,7 @@ def _n(part):
 
 
 def mission():
-    m = Mission(name='CampPlace', map=niagara, units=[], facts={})
+    m = Mission(name='CampPlace', map=resources.measured(niagara), units=[], facts={})
     m.spawns |= {ALLIED, SOVIET}
     m.put('AlliedConstructionYard', 'base yard', angle=0.0, role='allied yard', name=_n('Allied Yard'))
     m.put('SovietConstructionYard', 'base factory', angle=3.1416, role='soviet yard', name=_n('Soviet Yard'))

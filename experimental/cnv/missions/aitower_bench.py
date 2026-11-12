@@ -26,6 +26,7 @@ borrow against its income -- a turret soon after the wake -- or wait for 10% of 
 checks/engine_aitower.py.
 Facts: wake at, money.
 """
+import resources
 from maps import niagara
 from missions import aistate_bench as ab
 from parts import Mission, Script
@@ -110,7 +111,7 @@ def mission(name, compactness, opener=True, foes=0, build=True, empty=False, ref
     facts = {'wake at': WAKE_AT, 'money': money}
     if watch:
         facts['watch'] = watch              # how long checks/engine_aitower.py e watches after the wake
-    m = Mission(name=name, map=niagara, facts=facts)
+    m = Mission(name=name, map=resources.measured(niagara), facts=facts)
     m.cnv_compactness = compactness         # the check says the model's radius by it
     m.cnv_turret = TURRET                   # what the check counts (checks ask the mission, not this module)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{PID}'}

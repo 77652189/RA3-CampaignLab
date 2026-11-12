@@ -29,6 +29,7 @@ Bench 11-06 (B round 4; one run each, rows every second, the first ~25 frames in
   d CampRunoffmapD_mcp_1106_040353: after NAMED_STOP at 15 the man stays to the end, FLEE_OFF_MAP on throughout.
 Against the model (RA3-EngineModel runoffmap.py, tests/test_objects_bench.py "runoffmap"): every row the same.
 """
+import resources
 from maps import niagara
 from parts import Mission, Script, Test, square, status
 
@@ -43,7 +44,7 @@ def _n(part):
 
 
 def mission():
-    m = Mission(name='CampRunoffmap', map=niagara, units=[], facts={})
+    m = Mission(name='CampRunoffmap', map=resources.measured(niagara), units=[], facts={})
     m.spawns |= {PLANT}
     m.put('AlliedConstructionYard', 'base yard', angle=0.0, role='yard', name=_n('Yard'))
     m.put(MAN, *SPOT, angle=0.0, role='man', name=_n('Man'))

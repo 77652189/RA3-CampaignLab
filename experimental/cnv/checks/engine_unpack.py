@@ -27,6 +27,7 @@ simunits.resolve read EditorSorting / KindOf up its chain from BaseEgg -- its ow
 test_nanocore_deploys_at_a_far_waypoint_as_the_bench). The bench's owned count of the defense (场帧's thousands 0)
 is not modelled: the sim counts it owned.
 """
+import resources
 from maps import niagara
 from parts import Mission, Script, Test, square
 
@@ -40,7 +41,7 @@ RUN = 40.0
 
 def mission(variant='mcv'):
     unit, yard, _ = KINDS[variant]
-    m = Mission(name=f'CampUnpack{variant.title()}', map=niagara, units=[],
+    m = Mission(name=f'CampUnpack{variant.title()}', map=resources.measured(niagara), units=[],
                 facts={'variant': VARIANTS.index(variant)})
     m.spawns |= {yard}
     m.put(unit, AT[0], *AT[1:], angle=0.0, role='unit', name=NAME)

@@ -21,6 +21,7 @@ STANDARD.
 Facts: wake at, ai tanks, ai infantry, expect tanks home, expect infantry home (the model's guess before the bench:
 ANY / NONE + Include = only those, ALL + Exclude = all but those; kinds: any of Include, none of Exclude).
 """
+import resources
 from maps import niagara
 from missions.aistate_bench import BASE, INHERITED
 from parts import Mission, Script
@@ -113,7 +114,7 @@ def mission(name, kinds=KINDS, filt='', max_units=8, tanks=4, inf=4, tanks_home=
     if tp_named:    # round 92: placed tank 1 teleported out at each time -- back = still held, stays = released
         facts |= {f'named teleport {k + 1}': at for k, at in enumerate(tp_named)}   # facts are numbers
         facts |= {'check at': tp_named[-1] + 30.0, 'expect named out': named_out}
-    m = Mission(name=name, map=niagara, facts=facts)
+    m = Mission(name=name, map=resources.measured(niagara), facts=facts)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{pid}'}
     xml = personality_xml(pid, kinds, filt, max_units, locos, f' RegisteredObjectSet="{objset}"' if objset else '',
                           always, late, late_unit, static)

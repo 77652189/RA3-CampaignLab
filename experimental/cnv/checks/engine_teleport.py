@@ -40,6 +40,7 @@ import os
 import re
 
 import labpaths
+import resources
 from maps import niagara
 from parts import Mission, Script, Test, Unit, square
 
@@ -97,7 +98,7 @@ def teleporter(w):
 def mission(w='a'):
     """One building per build (the contract lets a power belong to one template): build engine_teleport is a, the
     others engine_teleport_<w> (mod CampTeleport<W>)."""
-    m = Mission(name='CampTeleport', map=niagara, units=[teleporter(w)], facts={})
+    m = Mission(name='CampTeleport', map=resources.measured(niagara), units=[teleporter(w)], facts={})
     m.put('AlliedConstructionYard', 'base yard', angle=0.0, role='yard', name=_n('Yard'))
     m.put(_id(w), HOME, 0.0, 0.0, angle=0.0, role=f'tele {w}', name=_n(f'Tele {w}'))
     m.put(TANK, WEST, *A_AT, angle=0.0, role='tank', name=_n('Tank'))

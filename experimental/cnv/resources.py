@@ -4,6 +4,9 @@ Measured on the 40 retail campaign maps (work/retailref, 2026-11-04; retail_obje
   - A refinery faces its ore: the node it mines stands straight ahead of it, 180 away (138 of 171 refineries exactly
     (180, 0) in the refinery's own frame, the rest 150..240). Every retail refinery's angle is 45 + k*90, so the ore
     lies on a diagonal.
+  - The node faces back: its angle is the refinery's + 180 (heidelberg, gibraltar, north sea: all six pairs). The
+    miner docks at the node's front; a node turned away makes it drive round (bench round 174, engine_mining
+    mineturn<k>: a trip 151 at retail's facing, 186 at 45 off, 241 at 90, 323 at 180) -- a map's income halves.
   - A pair is two nodes 120..200 apart (median 161); the second stands ~150 to the side of the first, ahead of the
     refinery the same 175. Ore is single (153 groups) or paired (75); three or more together is rare (10).
   - Oil is not part of a base: 4% of retail derricks stand within 400 of a construction yard (5th percentile 497,
@@ -79,11 +82,48 @@ def sites(fields):
     return out
 
 
-def objects(fields, derricks=()):
-    """The map's ore and oil: the fields' nodes, the derricks (x, y) as given."""
-    out = [Obj('OreNode', x, y, side='neutral', angle=0.0, site='map') for f in fields for x, y in nodes(f)]
+RETAIL = 'retail'      # nodes face their refinery (angle = its facing + 180): every map's default
+MEASURED = 'measured'  # nodes at angle 0, as the generator put them before round 175: the geometry the benches
+                       # measured on niagara and the probe maps were read on (their readings are not taken again)
+
+
+def node_angle(f, facing=RETAIL):
+    """Radians: the angle of the pad's nodes -- facing back at the refinery (RETAIL), or 0 (MEASURED)."""
+    if facing == MEASURED:
+        return 0.0
+    if facing != RETAIL:
+        raise ValueError(f'node facing is {RETAIL!r} or {MEASURED!r}, not {facing!r}')
+    return math.radians((f.facing + 180.0) % 360.0)
+
+
+def objects(fields, derricks=(), node_facing=RETAIL):
+    """The map's ore and oil: the fields' nodes (facing their refinery; node_facing=MEASURED: at 0, a bench map's
+    old geometry), the derricks (x, y) as given."""
+    out = [Obj('OreNode', x, y, side='neutral', angle=node_angle(f, node_facing), site='map')
+           for f in fields for x, y in nodes(f)]
     out += [Obj('OilDerrick', x, y, side='neutral', angle=0.0, site='map') for x, y in derricks]
     return out
+
+
+_MEASURED = {}
+
+
+def measured(mod):
+    """`mod` (a map module) with its ore nodes at angle 0 and NODES = MEASURED: the geometry a bench was measured on
+    before the generator turned nodes to face their refinery (round 175). A bench mission whose readings depend on it
+    takes its map through here; everything else (the campaign, new benches) gets retail's facing. One copy per map,
+    the module's name kept (builds name files by the mission, model asserts name the map by it)."""
+    import dataclasses
+    import types
+    if getattr(mod, 'NODES', RETAIL) == MEASURED:
+        return mod
+    if id(mod) not in _MEASURED:
+        cp = types.ModuleType(mod.__name__)
+        cp.__dict__.update({k: v for k, v in vars(mod).items() if not k.startswith('__')})
+        cp.OBJECTS = [dataclasses.replace(o, angle=0.0) if o.template == 'OreNode' else o for o in mod.OBJECTS]
+        cp.NODES = MEASURED
+        _MEASURED[id(mod)] = (mod, cp)
+    return _MEASURED[id(mod)][1]
 
 
 def bases(fields):

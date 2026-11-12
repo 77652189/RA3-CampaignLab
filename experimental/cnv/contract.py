@@ -516,6 +516,30 @@ def ore_in_groups(m):
     return out
 
 
+def ore_faces_back(m):
+    """Every node a pad makes faces back at it (angle = the pad's facing + 180, resources.node_angle): retail stands
+    them so, and a node turned away makes the miner drive round it -- 45 off costs a fifth of the income, 180 off half
+    (round 174). A map pinned to the benches' old geometry (NODES = resources.MEASURED, resources.measured) is let be."""
+    import resources
+    from model import facing
+    if getattr(m.map, 'NODES', resources.RETAIL) == resources.MEASURED:
+        return []
+    out = []
+    for x, y, a in _pads(m).values():
+        fx, fy = x + resources.AXIS * math.cos(a), y + resources.AXIS * math.sin(a)
+        spots = [(fx, fy)] + [(fx - s * resources.PAIR_GAP * math.sin(a), fy + s * resources.PAIR_GAP * math.cos(a))
+                              for s in (-1, 1)]
+        want = (a + math.pi) % (2 * math.pi)
+        for o in _placed(m):
+            if o.template != 'OreNode' or min(math.dist((o.x, o.y), p) for p in spots) > 5.0:
+                continue
+            off = abs((facing(o) - want + math.pi) % (2 * math.pi) - math.pi)
+            if off > 1e-3:
+                out.append(f'OreNode at ({o.x:g}, {o.y:g}): turned {math.degrees(off):.0f} off facing its refinery '
+                           f'(angle {math.degrees(want):g}: resources.objects puts it so)')
+    return out
+
+
 def _bases(m):
     """[(site name, owner, x, y)]: the bases the map's fields serve (resources.Field.base)."""
     sites = getattr(m.map, 'SITES', {})
@@ -651,7 +675,8 @@ def contract(mission):
     out += camera_outside_the_view(m) + start_camera_inside_the_view(m) + demo_unframed(m)
     out += music_resumes(m) + ending_line_fits(m)
     out += single_orders(m) + pace_released(m)
-    out += ore_faces_refinery(m) + ore_in_groups(m) + oil_off_the_camps(m) + base_has_ore(m) + cast_points_clear(m) + map_design(m)
+    out += ore_faces_refinery(m) + ore_in_groups(m) + ore_faces_back(m)
+    out += oil_off_the_camps(m) + base_has_ore(m) + cast_points_clear(m) + map_design(m)
     for s in m.scripts:
         for name, *args in s.when + s.do:
             types = cat[name]['args']

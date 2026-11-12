@@ -13,6 +13,7 @@ Facts: wake at, money.
 import os
 
 import labpaths
+import resources
 from maps import niagara
 from parts import Mission, Script, Unit
 
@@ -273,7 +274,7 @@ ARMY_N = 10                            # aiskvinf / aiskvveh (check z): what the
 
 def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None, account=None,
             buffer=None, new=None, army=None, two=None, observe=False):
-    m = Mission(name=name, map=ai_map(niagara, lib), facts={'wake at': WAKE_AT, 'money': money})
+    m = Mission(name=name, map=ai_map(resources.measured(niagara), lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
     if expire is not None:               # aiskexp (check q): the same AI with SecondsTillTargetsExpire = expire
         m.facts['targets expire'] = expire

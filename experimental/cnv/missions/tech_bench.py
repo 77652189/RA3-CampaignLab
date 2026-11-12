@@ -3,6 +3,7 @@ the Niagara map -- one 300 east of the start (inside the yard's TechUpgrade radi
 the yard (outside). The check's variants delete what they do not need. Published (the cast): yard, power, near
 factory, far factory.
 """
+import resources
 from maps import niagara
 from parts import Mission
 
@@ -15,7 +16,7 @@ def _n(part):
 
 
 def mission(name='CampTech'):
-    m = Mission(name=name, map=niagara, units=[], facts={})
+    m = Mission(name=name, map=resources.measured(niagara), units=[], facts={})
     m.spawns |= {GUARDIAN}
     m.put('AlliedConstructionYard', 'base yard', angle=0.0, role='yard', name=_n('Yard'))
     m.put('AlliedPowerPlant', 'base power', angle=0.0, role='power', name=_n('Power'))

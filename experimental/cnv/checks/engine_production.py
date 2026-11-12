@@ -49,6 +49,7 @@ orders): every pair and every 帧数 the same, once the model divides the second
 the progress in float32 (10 s takes 151 updates; b owes 251 at k 75) and opens the door 10 frames (DoorOpeningTime
 0.66 s). The walk to the rally point is not compared (motion).
 """
+import resources
 from maps import niagara
 from parts import Mission, Script, Test, counted, square
 
@@ -84,7 +85,7 @@ def _n(part):
 
 
 def mission():
-    m = Mission(name='CampProd', map=niagara, units=[], facts={})
+    m = Mission(name='CampProd', map=resources.measured(niagara), units=[], facts={})
     m.spawns |= {ENGINEER}
     m.put('AlliedConstructionYard', 'base yard', angle=0.0, role='yard', name=_n('Yard'))
     m.put('AlliedPowerPlant', 'base power', angle=0.0, role='power', name=_n('Power'))

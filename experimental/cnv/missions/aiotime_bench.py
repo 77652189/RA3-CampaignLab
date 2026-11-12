@@ -12,6 +12,7 @@ A power plant takes ~153 frames (aiopen f1-f3). Mission seconds of the three pla
 
 Facts: wake at, money.
 """
+import resources
 from maps import niagara
 from missions.aistate_bench import BASE, INHERITED
 from parts import Mission, Script
@@ -43,7 +44,7 @@ def personality_xml(pid=PID, orders=ORDERS):
 
 
 def mission(name='CampAIOTime'):
-    m = Mission(name=name, map=niagara, facts={'wake at': WAKE_AT, 'money': MONEY})
+    m = Mission(name=name, map=resources.measured(niagara), facts={'wake at': WAKE_AT, 'money': MONEY})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{PID}'}
     m.assets.append((f'{PID}.xml', personality_xml(), f'AIPersonalityDefinition:{PID}'))
     m.spawns |= {PLANT}

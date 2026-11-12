@@ -28,6 +28,7 @@ Bench 11-11 (round 159), 帧数 车帧 名字帧 走帧 at the last reading:
   test_a_yard_packs_into_its_mcv_at_once_and_the_mcv_stands_before_it_drives): a 676 676001 676 547054 at 46 s --
   out at 54, there at 129; the press frame still counts the yard once.
 """
+import resources
 from maps import niagara
 from parts import Mission, Script, Test, square
 
@@ -42,7 +43,7 @@ RUN, GO_AGAIN = 30.0, 4.0
 
 def mission(variant='a'):
     yard, mcv, _ = KINDS[variant]
-    m = Mission(name=f'CampPack{variant.upper()}', map=niagara, units=[], facts={'variant': VARIANTS.index(variant)})
+    m = Mission(name=f'CampPack{variant.upper()}', map=resources.measured(niagara), units=[], facts={'variant': VARIANTS.index(variant)})
     m.spawns |= {mcv}
     m.put(yard, AT[0], *AT[1:], angle=0.0, role='yard', name=NAME)
     m.waypoint('there', 'Test Pack There', *THERE)

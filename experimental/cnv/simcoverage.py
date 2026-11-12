@@ -660,7 +660,6 @@ KNOWN = {
     ('升级', 'CNV_Shikigami:ARMOR'): first('j5', 'CNV_Shikigami:ARMOR', '属性修改器 AttributeModifier_CNV_Shikigami_Guard 的 ARMOR（不是升级给的（光'),
     ('升级', 'CNV_Shikigami:状态 WEAPON_UPGRADED_01'): WEAPON_BITS,
     ('脚本动作', 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT:SpecialPower_CNV_ChronoDeck'): first('a7', 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT:SpecialPower_CNV_ChronoDeck', 'SpecialPower_CNV_ChronoDeck 只记进时间线（special power），没有效果'),
-    ('脚本动作', 'UNIT_SET_MODELCONDITION_GENERIC'): first('a7', 'UNIT_SET_MODELCONDITION_GENERIC', 'Sim.act 不认识：没效果，记进 Sim.unknown'),
     ('脚本动作(忽略)', 'CAMERA_LETTERBOX_BEGIN'): first('a4', 'CAMERA_LETTERBOX_BEGIN', 'sim.IGNORED 明确忽略（不做任何事）'),
     ('脚本动作(忽略)', 'CAMERA_LETTERBOX_END'): first('a4', 'CAMERA_LETTERBOX_END', 'sim.IGNORED 明确忽略（不做任何事）'),
     ('脚本动作(忽略)', 'SET_COOP_AI_COMMAND_UI_ENABLED'): first('a4', 'SET_COOP_AI_COMMAND_UI_ENABLED', 'sim.IGNORED 明确忽略（不做任何事）'),

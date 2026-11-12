@@ -16,6 +16,7 @@ theirs / ours > Value == Above. Same units both sides: theirs / ours = (ours cou
 
 Facts: wake at, ai tanks, player tanks, expect on (1 / 0).
 """
+import resources
 from maps import niagara
 from missions.aistate_bench import BASE, INHERITED
 from parts import Mission, Script
@@ -71,7 +72,7 @@ def mission(name, ai, player, miner=False, gate='power', expect=1, min_power=Non
         facts['home until'] = home_until
     if out_by is not None:
         facts['out by'] = out_by
-    m = Mission(name=name, map=niagara, facts=facts)
+    m = Mission(name=name, map=resources.measured(niagara), facts=facts)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{pid}'}
     m.assets.append((f'{pid}.xml', personality_xml(pid, gate, min_power), f'AIPersonalityDefinition:{pid}'))
     m.cnv_units = (TANK,)

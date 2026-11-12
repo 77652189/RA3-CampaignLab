@@ -17,6 +17,7 @@ with the Riptide CampRallyTank_mcp_1111_044501 (PASS): 2250 paid, the Riptide co
 s13 to s31 -- x 112-127, y 25-34: the fixed push (~(119, 30)), not the scaling. Simulator (sim.RALLY_PUSH 40): the
 same 1000010 (tests/test_simbench.py test_a_new_unit_stops_beyond_the_natural_rally_point_as_the_bench).
 """
+import resources
 from maps import niagara
 from parts import Mission, Script, Test, counted
 
@@ -37,7 +38,7 @@ def _n(part):
 
 
 def mission():
-    m = Mission(name='CampRally', map=niagara, units=[], facts={})
+    m = Mission(name='CampRally', map=resources.measured(niagara), units=[], facts={})
     m.spawns |= {TANK}
     m.put('AlliedConstructionYard', 'base yard', angle=0.0, role='yard', name=_n('Yard'))
     m.put('AlliedPowerPlant', 'base power', angle=0.0, role='power', name=_n('Power'))
