@@ -132,11 +132,18 @@ def test_spy_ordinary_vision_as_on_the_bench(check, template):
     rule = siminfiltrator.spec(template)
     assert (rule['Effect'], rule['Duration'], rule['ObjectRef']) == ('VISION', '-1s', 'VisionObserver')
     s = sim.Sim(m, t).run(35)
-    for start, end, wanted in ((1, 7, [11100, 11100, 0]), (18, 35, [1100, 11100, 1])):
+    # Replay each host's measured readings; the bench check retains its original
+    # s18 diagnostic threshold, which Japan failed. Do not fit the model to it.
+    windows = ((1, 7, [11100, 11100, 0]),
+               (19 if check == 'c' else 18, 35, [1100, 11100, 1]))
+    for start, end, wanted in windows:
         rows = [values for second, values in s.series if start <= second <= end]
         assert rows and all(row == wanted for row in rows), rows
     early = [values[2] for second, values in s.series if 12 <= second <= 14]
     assert early and all(value == 0 for value in early)
+    if check == 'c':
+        at18 = [values for second, values in s.series if second == 18]
+        assert at18 and all(row == [1100, 11100, 0] for row in at18)
     assert not s.body(m.role('enemy spy').name).alive
     assert s.body(m.role('ally spy').name).alive
     for role, side in (('enemy', 's1'), ('ally', 's2')):
