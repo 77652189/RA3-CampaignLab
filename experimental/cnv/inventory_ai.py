@@ -113,6 +113,11 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '目标/AITargetingHeuristic.MaxDistanceToShore': (GUESSED,
+        'C按名台子engine_aishore：同一岸边电厂仅上限2000改1，2000组s14目标区4/s25全离家，'
+        '1组s1-65在家4/目标区0；普通EnemyStructure阳性对照同2000组。'
+        'tests/test_shore_distance.py断言原读数并按名回放；1组strict xfail，世界桥接尚未提供实际岸距。'
+        '复杂海岸/取点算法仍gap，未晋升；见work/re/c_shore_report.md'),
     '人格/EnemyFilter.Include': (TODO,
         'C按名台子engine_aienemyfilter：近处敌矿车、仅Include由HARVESTER改ENGINEER，'
         '前者s15全离家、s18目标区4辆，后者s1-65在家4/目标区0；'
