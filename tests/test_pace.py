@@ -143,3 +143,37 @@ def test_the_simulator_walks_a_slowed_unit_at_the_slowed_speed_and_back_at_full_
     assert free['W'] - free['T'] > 0.2 * straight / 50 * 0.5            # unpaced: the tank is there long before
     assert abs(slow['W'] - slow['T']) <= 3.0                            # paced: together
     assert s.bodies['T'].speed == pytest.approx(75.0)                   # released at the goal
+
+
+def test_a_paced_copy_of_an_amphibious_tank_leaves_its_retail_naval_variant_behind():
+    """Bench 11-12 (paceplaced): the Tsunami's file also holds JapanAntiVehicleVehicleTech1_Naval (its naval-yard build,
+    inheriting the tank); copied along under its retail id it stopped the build (lint retail-id)."""
+    u = pace.paced(TANK, 67)
+    assert '_Naval' not in u.xml and u.xml.count('<GameObject') == 1
+
+
+def _arrivals(build_name):
+    import build
+    m, t, _ = build.resolve(build_name, 'go')
+    s = sim.Sim(m, t).run(150.0)
+    first = lambda k, n: next(sec for sec, v in s.series if v[k] is not None and v[k] >= n)
+    return {'tank': (first(0, 1), first(0, 2)), 'foot': (first(1, 1), first(1, 2))}
+
+
+def test_bench_paceplaced_placed_tanks_and_warriors_sent_off_together_arrive_together():
+    """Bench 11-12 paceplaced (CampPacePlGo_mcp_1112_124725, checks/engine_pace_placed.py): the harbour's Tsunamis
+    placed as their 67 % copies and the warriors, sent off at 30 s with 齐步: the last warrior in 5 s after the first
+    tank (88 / 93). The simulator has them in within the same few seconds."""
+    from checks.engine_pace_placed import BENCH
+    got, bench = _arrivals('paceplaced'), BENCH['paceplaced']
+    assert bench['foot'][1] - bench['tank'][0] <= 5
+    assert got['foot'][1] - got['tank'][0] <= 5, got
+
+
+def test_bench_paceplacedn_without_pace_the_placed_tanks_come_in_well_ahead():
+    """Bench 11-12 paceplacedn (CampPacePlNGo_mcp_1112_125222): the same force sent without 齐步: both tanks in at
+    s74, the warriors at s91 / s93 -- 17-19 s. The simulator's gap is within 3 s of it."""
+    from checks.engine_pace_placed import BENCH
+    got, bench = _arrivals('paceplacedn'), BENCH['paceplacedn']
+    gap = lambda r: r['foot'][1] - r['tank'][1]
+    assert gap(bench) == 19 and abs(gap(got) - gap(bench)) <= 3, got

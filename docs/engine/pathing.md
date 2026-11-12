@@ -52,7 +52,8 @@
 ## 5b. 开局摆好的部队齐步；AI 的"队形"参数（2026-11-12，引擎线第 182 轮）
 
 - **开局摆好的部队也能齐步（编译器已支持；台上只有引擎事实，编出来的关卡没上台）。** 第 5 节说"摆的是原版模板"，其实不是障碍：`engine_pace pace` 那条道本来就是**开局摆好的限速副本**、开局给升级，和工程师同一秒到（s33）。所以做法就是：要齐步出动的那几种快兵，开局直接摆成限速副本（外观、属性和原版一样，只多一个升级模块），`出动` 时给升级、进了目的地的圈就撤掉。写法：`{出动: [foot, tank], 打: <地点或角色>, 齐步: 是}`——`出动` 现在可以写一串角色（一种单位一个角色，混编部队得写多个）。测试 `tests/test_pace.py::test_placed_troops_sent_off_together_are_placed_as_paced_copies_and_released_on_arrival`。
-  - 没上台的两点：① 摆好的物体**开局过一阵才**拿到升级（`engine_pace` 是开局 0 秒给；S5 波次是新造的兵当场给，都测过有效）；② 副本模板和原版模板不同名，按模板数数的条件（"敌方剩几辆海啸坦克"）会数不到副本——关卡里这么写的要改成按角色数。
+  - **上过台（11-12，`cnv_check paceplaced go`，`missions/pace_placed_bench.py`，跑次 `CampPacePlGo_mcp_1112_124725`）**：festival 图港口摆 2 海啸坦克（75）+ 2 帝国武士（50），30 秒出动打西场。限速升级出动时两辆坦克当场拿到（读数 s33–s84 为 2），进西场的圈撤掉；坦克 s88、s90 到，武士 s90、s93 到——**一起到，最后一个武士比第一辆坦克晚 5 秒**。所以"摆好的物体中途才拿升级"也有效。顺手修了一个坑：两栖单位（海啸坦克）原版文件里带一个船坞生产用的 `_Naval` 变体，副本照抄会被 lint 拦住，现在副本不带它。不齐步的对照局（`paceplacedn`，`CampPacePlNGo_mcp_1112_125222`）：坦克 s74 两辆都到，武士 s91、s93——坦克早 17–19 秒。模拟器两局都对得上（`tests/test_pace.py` 的两条 bench 测试）。
+  - 没上台的一点：副本模板和原版模板不同名，按模板数数的条件（"敌方剩几辆海啸坦克"）会数不到副本——关卡里这么写的要改成按角色数。
   - 已知的坑：部队开局就站在目的地圈里时，撤升级的脚本会在出动前先跑掉，出动后就一直慢着（编译器没拦）；同一个 `出动 + 齐步` 写在两处会再套一层副本。
 - **AIData 的队形参数（UseFormations、AttackMoveUsesFormations、FormationColumnWidth 60、FormationRowDepth 55、FormationSquadSpacing 30、FormationEnemyDistance 500，原版值）：还没上台，现有证据都指向"只管玩家的编队移动，不管脚本和 AI 的队伍"。**
   - 原版 `SkirmishAI/AIData.xml` 自己的注释：AttackMoveUsesFormations 是"玩家攻击移动时成队形走"；UseFormations 是"允许单位成队形走（曲折的地图可以关掉）"；FormationEnemyDistance 是"离敌人至少这么远才用队形"。这几个名字《将军》源码里没有（是后来的 SAGE 游戏加的），没法照抄规则。

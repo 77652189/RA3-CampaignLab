@@ -12,6 +12,7 @@ Published: movers, percent, paced (a Unit), is_pace_upgrade.
 """
 import math
 import os
+import re
 
 import labpaths
 from parts import Unit
@@ -63,6 +64,9 @@ def paced(template, pct, xml=None):
     id_ = copy_id(template, pct)
     up, mod = f'Upgrade_{id_}', f'AttributeModifier_{id_}'
     x = xml if xml is not None else retail_xml(template)
+    # retail's inheriting variants in the same file (the Tsunami's _Naval: its naval-yard build, ProductionQueueType
+    # WATERCRAFT) would come along under their retail ids (lint retail-id, bench 11-12): a placed copy needs none
+    x = re.sub(rf'\s*<GameObject\s+id="[^"]+"\s+inheritFrom="{re.escape(template)}".*?</GameObject>', '', x, flags=re.S)
     x = sub1(x, f'id="{template}"', f'id="{id_}"')
     x = x.replace(f'EditorName="{template}"', f'EditorName="{id_}"')
     x = sub1(x, '<Behaviors>', f'''<Behaviors>
