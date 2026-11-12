@@ -105,6 +105,12 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '微操/AIMicroManagerData.MinDistanceFromBaseToIgnoreTargets': (TODO,
+        'engine_aiignore aiignzero/aiignnear：仅基地距离阈值0/2000不同，'
+        '无武装工程师延迟至26秒且两武士造出后；零阈值仍受伤，'
+        'tests/test_ai_ignore_distance.py 按名回放伤害观测；'
+        'Hunt/普通自动攻击与微操过滤入口尚未分离，基地取点和精确边界未量，'
+        '不实现消费者、不晋升已对拍；见 work/re/c_ignore_distance_report.md'),
     '微操/AIMicroManagerData.DodgeThreats': (TODO,
         'engine_aidodge aidodgeon/aidodgeoff 原版精确打击信标开关对照；'
         'tests/test_ai_dodge.py 按名回放，开启组 strict xfail：模型无躲避消费者，'

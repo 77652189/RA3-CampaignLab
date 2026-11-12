@@ -288,7 +288,40 @@ def dodge(name, enabled):
     return m
 
 
-MISSION = {'aidodgeon': lambda: dodge('CampAIDodgeOn', True),
+def ignore_distance(name, distance):
+    """Only the base-distance gate differs; unarmed engineers cannot provoke retaliation.
+
+    INFERRED prediction: IgnoreTargets applies outside the specified base radius.
+    This is a gate contrast, not a measurement of the exact retail 700 boundary.
+    """
+    m = built(name, tactic='Hunt', foes=False, spow=False)
+    m.facts.update({'ignore base distance': float(distance), 'target south of base': 500.0,
+                    'target earliest at': 26.0})
+    m.assets = [(path, text.replace('DodgeThreats="true"', 'DodgeThreats="false"')
+                .replace('PullbackInjured="true"', 'PullbackInjured="false"')
+                .replace('UseSpecialPowers="false"',
+                         f'UseSpecialPowers="false" MinDistanceFromBaseToIgnoreTargets="{distance}"')
+                .replace('<IgnoreTargets Rule="ANY" Include="TIME_BOMB"/>',
+                         '<IgnoreTargets Rule="ANY"><IncludeThing>AlliedEngineer</IncludeThing></IgnoreTargets>'),
+                asset) for path, text, asset in m.assets]
+    m.cnv_named = {}
+    actions = []
+    for k in range(2):
+        role = f'ignore target {k + 1}'
+        target = f'UNIT - CNV Ignore Engineer {k + 1}'
+        m.cnv_named[role] = target
+        m.waypoint(role, f'CNV Ignore Spot {k + 1}', 'east base', APART * (k - 0.5), -500)
+        actions.append(('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', target, ENGINEER, m.team('p1'), m.mark(role)))
+    m.spawns.add(ENGINEER)
+    m.scripts += [Script('Ignore - delay', [], [('SET_MILLISECOND_TIMER', 'CNV Ignore Delay', 26.0)]),
+                  Script('Ignore - targets', [('TIMER_EXPIRED', 'CNV Ignore Delay'),
+                                             ('COUNTER', 'CNV_AI_Owned', 3, 2)], actions)]
+    return m
+
+
+MISSION = {'aiignzero': lambda: ignore_distance('CampAIIgnZero', 0),
+           'aiignnear': lambda: ignore_distance('CampAIIgnNear', 2000),
+           'aidodgeon': lambda: dodge('CampAIDodgeOn', True),
            'aidodgeoff': lambda: dodge('CampAIDodgeOff', False),
            'aimicbuilt': lambda: built('CampAIMicBuilt'),
            'aimicbuilth': lambda: built('CampAIMicBltH', tactic='Hunt'),

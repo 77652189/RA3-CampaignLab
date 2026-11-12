@@ -36,7 +36,7 @@
 | 未做 | AI | `人格/EnemyFilter.Include` | 5 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `人格/EnemyFilter.Relationship` | 5 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `人格/EnemyFilter.Rule` | 5 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 未做 | AI | `微操/AIMicroManagerData.MinDistanceFromBaseToIgnoreTargets` | 5 | a4 a5 a7 | AI 模型代码里没有这个名字 |
+| 未做 | AI | `微操/AIMicroManagerData.MinDistanceFromBaseToIgnoreTargets` | 5 | a4 a5 a7 | engine_aiignore aiignzero/aiignnear：仅基地距离阈值0/2000不同，无武装工程师延迟至26秒且两武士造出后；零阈值仍受伤，tests/test_ai_ignore_distance.py 按名回放伤害观测；Hunt/普通自动攻击与微操过滤入口尚未分离，基地取点和精确边界未量，不实现消费者、不晋升已对拍；见 work/re/c_ignore_distance_report.md |
 | 未做 | AI | `微操/AIMicroManagerData.PassiveTargetSearchDistance` | 5 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `微操/IgnoreTargets.Include` | 5 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `微操/SpecificSpecialPowerDelay.TogglePowerSubType=TOGGLE_LOCKDOWN` | 5 | a4 a5 a7 | AI 模型代码里没有这个名字 |
