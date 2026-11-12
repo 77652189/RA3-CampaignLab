@@ -211,7 +211,7 @@ NOTES = {
     **{k: (BENCHED, '台上量过（engine_aiskirm y aisknew / aisknew2：没列进任何建造状态的我们的兵不造、列成 FEWEST_UNIT '
                     '占兵营约一半；z aiskvinf / aiskvveh：BEST_UNIT_EXPECTED 兵营只造克制兵），测试对拍 '
                     'tests/test_simai_bench_b.py（B 第 126–131 轮）；RANDOM_UNIT（PercentLow/High）、MinTime 没单独量')
-       for k in ('造兵/BuildEntry.Build', '造兵/BuildEntry.Heuristic', '造兵/BuildState.State')},
+       for k in ('造兵/BuildEntry.Build', '造兵/BuildState.State')},
     '组队招人/TeamTemplate.AlwaysRecruit': (BENCHED,'台上量过（engine_aiteamfilter aiar0～3，第 90 轮）、测试对拍 '
                                          'tests/test_simai_bench_b.py：关着新造的车留家、开着出门的队把它招走、'
                                          '满员不招、不预放时第一辆自己组队（模拟器每次晚 3～4 s）；模拟器多造'
