@@ -64,9 +64,10 @@ def test_is_building_idle(build, target, home):
     ('aiosallies', 3, 0),
     pytest.param('aiossoviet', 2, 1, marks=pytest.mark.xfail(
         strict=True, reason='E82 engine_aiopenside a: Allied player with Soviet opening Side '
-        'builds two power plants and one barracks on [s55,s60); default model builds '
-        'three plants and no barracks. B owns Side selection/fallback; '
-        'see work/re/handoff-e.md and work/re/e_openside_e82.md.')),
+        'builds two power plants and one barracks on [s55,s60). The model now skips the other '
+        'side\'s opening and counts the opening complete (B handoff 147, D 66), but builds no '
+        'structures without an opening (the structure build states are not modelled, B handoff '
+        '123/124), so 0/0.')),
 ])
 def test_opening_side(build, power, barracks):
     """Replay engine_aiopenside a's measured counters on [s55,s60)."""
@@ -75,6 +76,19 @@ def test_opening_side(build, power, barracks):
     samples = [(t, dict(zip(labels, values))) for t, values in w.sim.series if 55 <= t < 60]
     assert [t for t, _ in samples] == list(range(55, 60))
     assert all(row['电厂数'] == power and row['兵营数'] == barracks for _, row in samples), samples
+
+
+def test_an_opening_of_another_side_is_not_run():
+    """engine_aiopenside a, aiossoviet (bench E82): the only opening has Side Soviet, the player is Allied. The engine
+    skips it and, no candidate left, counts the opening complete (D 66): on [s19,s29) the bench has no power plant
+    (the opening's first order) but a barracks. The model draws no opening and has no power plant there either."""
+    w = simai.run('aiossoviet', 'a', 29, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    rows = [dict(zip(labels, values)) for t, values in w.sim.series if 19 <= t < 29]
+    assert len(rows) == 10 and all(row['电厂数'] == 0 for row in rows), rows
+    brain, = w.brains.values()
+    assert brain.ai.opening is None and brain.ai.opening_done()
+    assert ('opening', None) in [(k, d) for _, k, d in brain.ai.log]
 
 
 # the barracks' four infantry, engine_aiskirm t's counters (the unit builder's draw is among them on the bench)

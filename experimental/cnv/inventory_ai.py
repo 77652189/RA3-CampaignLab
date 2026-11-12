@@ -129,11 +129,13 @@ NOTES = {
     '启发条件/IsBuildingHeuristic.KindOf': (GUESSED,
         'E83 engine_aibuilding只测STRUCTURE空队列，无法区分KindOf匹配与忽略此字段；'
         '有效建造队列、匹配/不匹配、多个token仍gap，不晋升；见 work/re/e_building_e83.md'),
-    '开局/SkirmishOpeningMove.Side': (GUESSED,
+    '开局/SkirmishOpeningMove.Side': (BENCHED,
         'E82 engine_aiopenside a：固定盟军玩家显式挂载三电厂开局，仅切Side。'
-        'Allies在[s55,s60)电厂3/兵营0，Soviet电厂2/兵营1；默认模型均3/0。'
-        '保留原始FAIL预测，tests/test_simai_bench_e.py按台上读数strict xfail；'
-        '不匹配Side改变开局，回退来源未证实，模型归B，不晋升；见 work/re/e_openside_e82.md'),
+        'Allies在[s55,s60)电厂3/兵营0，Soviet电厂2/兵营1。D66：Side和玩家阵营全等才进候选，'
+        '候选全空=开局直接完成、不下单、不回退；模型照此（B第147节）。'
+        'tests/test_simai_bench_e.py::test_opening_side[aiosallies]、test_an_opening_of_another_side_is_not_run'
+        '按名回放、断言台上读数（Soviet s19-s28 无电厂）。gap：Soviet之后的2电厂1兵营是没开局时的结构建造，'
+        '模型没建（strict xfail，同第123节）；见 work/re/e_openside_e82.md'),
     **{f'人格/SpecificUnitCap.{k}': (BENCHED,
         'engine_aiskirm aiskcap:y（2026-11-12）：子人格给父人格没写的CNVNewPK四档Cap=2，'
         '新维和s33到2、停到s149（无上限aisknew2 s44已4），兵营改造标枪/维和；'

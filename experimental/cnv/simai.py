@@ -149,9 +149,13 @@ class Brain:
     def __init__(self, host, player, side, personality, frame):
         self.host, self.sim, self.player = host, host.sim, player
         m = host.mod
+        import simtech
+        # the player's faction (the map's playerFaction, else by name) for the openings' Side (d66_b_fields.md:
+        # an opening of another faction is skipped; none left = the opening is complete at once)
+        faction = simtech.faction_of(player, (getattr(self.sim.m, 'sides', {}) or {}).get(side))
         self.ai = m['player'].AIPlayer(host.data, personality, DIFFICULTY.get(host.level, 'MEDIUM'),
                                        ctx={'path to target': self.path_to_target}, rng=random.Random(host.seed),
-                                       index=side_index(side))
+                                       index=side_index(side), side=faction and f'PlayerTemplate:{faction}')
         self.paths = {}                 # (surface, template, condition) -> (frame asked, answer)
         self.path_rng = random.Random(host.seed)    # the spot's start angles (the engine: the logic random)
         self.ai.builder = self.build
