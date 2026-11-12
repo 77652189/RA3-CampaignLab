@@ -17,6 +17,8 @@ _spec.loader.exec_module(_paths)
 
 GUARDS = ['tests/test_architecture.py', 'tests/test_docs.py']
 INVENTORY_PATHS = ('experimental/cnv/inventory', 'docs/engine/inventory')
+GENERATORS = [['experimental/cnv/inventory.py'], ['experimental/cnv/inventory_levels.py', '--write'],
+              ['experimental/cnv/inventory_ai.py', 'levels', '--write']]   # AGENTS.md's order
 # the architecture guards that build or walk the levels (each 5-100 s): they judge content, so they run only when the
 # item touched content (a map, a mission -- bench missions too --, a play, a device, the story); the coordinator's
 # full runs cover them otherwise
@@ -60,8 +62,15 @@ def main():
         conflicts = git('diff', '--name-only', '--diff-filter=U').stdout.split()
         print('rebase 冲突（生成的清单取一边重跑三个生成器，其余照 AGENTS.md）：', ' '.join(conflicts) or '?')
         sys.exit(2)
-    tests = list(dict.fromkeys(touched + GUARDS + (inventory_tests() if any(
-        c.startswith(INVENTORY_PATHS) for c in changed) else [])))
+    inv = any(c.startswith(INVENTORY_PATHS) for c in changed)
+    if inv:   # the generated pages go stale whenever main moved under the item: regenerate them, never hand-edit
+        for gen in GENERATORS:
+            subprocess.run([sys.executable, '-I', '-X', 'utf8', *gen], capture_output=True)
+        if git('status', '--porcelain', '--untracked-files=no', '--', 'docs/engine').stdout.strip():
+            git('add', '--', 'docs/engine', check=True)
+            git('commit', '-q', '-m', 'Regenerate the inventory pages on top of main', check=True)
+            print('清单页面已按最新 main 重新生成并提交')
+    tests = list(dict.fromkeys(touched + GUARDS + (inventory_tests() if inv else [])))
     skip = [] if any(c.startswith(CONTENT_PATHS) for c in changed) else [
         a for g in CONTENT_GUARDS for a in ('--deselect', f'tests/test_architecture.py::{g}')]
     stamp = datetime.datetime.now().strftime('%m%d_%H%M')
