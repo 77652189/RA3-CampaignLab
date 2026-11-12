@@ -50,4 +50,25 @@ def on_barracks():
     return m
 
 
-MISSION = {'aiskcapo': on_barracks, 'aiskcapy': on_yard}
+DEFENSE, DEFENSE_AT = 'AlliedBaseDefense', (-300.0, 300.0)   # from the east base: west of the copied barracks
+POWER, POWER_AT = 'AlliedPowerPlant', ((-300.0, -150.0), (-300.0, -350.0))
+
+
+def with_power(defense):
+    """aiskcapp / aiskcapd (D 79, H4): aiskcapo + s1 owns two retail power plants from the start, and (aiskcapd) a
+    retail AlliedBaseDefense. In aiskcapo the AI's first building of that kind comes at ~s150, when CNVNewPK goes past
+    its cap; owned from s0, is the overrun gone? (The plants: the defense alone leaves the AI underpowered -- first
+    try, D 79: the barracks stopped at s112 -- so aiskcapp is the control with the same plants.)"""
+    m = on_barracks()
+    m.name = 'CampAISkCapD' if defense else 'CampAISkCapP'
+    m.facts['owned power'] = len(POWER_AT)
+    for k, (x, y) in enumerate(POWER_AT):
+        m.put(POWER, 'east base', x, y, side='s1', angle=0.0, name=f'UNIT - CNV AI Power {k}', role=f'ai power {k}')
+    if defense:
+        m.facts['owned defense'] = 1
+        m.put(DEFENSE, 'east base', DEFENSE_AT[0], DEFENSE_AT[1], side='s1', angle=3.1416,
+              name='UNIT - CNV AI Defense', role='ai defense')
+    return m
+
+
+MISSION = {'aiskcapo': on_barracks, 'aiskcapd': lambda: with_power(True), 'aiskcapp': lambda: with_power(False), 'aiskcapy': on_yard}
