@@ -295,9 +295,11 @@ NOTES = {
         'engine_aialphahp 旧固定70%对照；engine_aialphaclose 独立延迟守军、仅阈值0.01/0.9不同；'
         'tests/test_simai_bench_c.py 保留读数回放，有限诊断不等于字段闭环；'
         '目标适用条件与回放差异仍gap，见 work/re/c_alpha_close_report.md'),
-    '微操/AIMicroManagerData.ReverseMove': (GUESSED, '推断（台上未复现）：锤子 airev / airevp / airevt 都不倒车；'
-        '工单入口未发布同帧成员当前攻击目标、位置和车身朝向观测，暂停新台，不把普通后退当倒车；'
-        '所需最小接口及假设表见 work/re/c_reverse_observation_report.md'),
+    '微操/AIMicroManagerData.ReverseMove': (GUESSED,
+        'engine_aipullback airev1/0台上s1–10坦克4、s19–22近厂2；tests/test_simai_bench_b.py按名回放，'
+        '存活前置正常断言、近厂计数strict xfail；airevp近厂4不能证明没有倒车；'
+        '缺同帧成员当前目标/位置/车身朝向，暂停新台；不把区域计数当倒车观测，不晋升；'
+        '接口及假设表见work/re/e110_reverse.md'),
     # B round 108: a test names the probe but only the switch-off case matches; the effect itself is a strict xfail
     '微操/AIMicroManagerData.Crush': (GUESSED,
         'engine_aicrush:aicrush1 台上s28–33守军0、坦克4；按名回放存活正常断言，清零strict xfail；'

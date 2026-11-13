@@ -141,13 +141,26 @@ def test_a_hurt_soviet_tank_team_is_pulled_back_to_the_crane(lib):
     assert any(r['回家'] >= 1 for r in rows[14:])
 
 
-@pytest.mark.xfail(strict=True, reason='simai airev1 / airev0: 近厂 (within 150 of the far plant) 0 all along; bench '
-                                       'airev1 / airev0: 近厂 1-2 at s18-s37')
+@pytest.mark.parametrize('build', ['airev1', 'airev0'])
+def test_reverse_move_probe_starts_with_four_live_tanks(lib, build):
+    """engine_aipullback airev1/0: bench s1-s10 has four tanks, independently of the approach gap."""
+    w, rows = _probe_run(build, lib, 11.0)  # replay stops before its upper bound
+    samples = [(t, r) for (t, _), r in zip(w.sim.series, rows) if 1 <= t <= 10]
+    assert [t for t, _ in samples] == list(range(1, 11))
+    assert [r['坦克数'] for _, r in samples] == [4] * 10
+
+
+@pytest.mark.xfail(strict=True, reason='simai airev1/0: 近厂 is zero; bench s19-s22 has two tanks in the near '
+                                       'square. Approach remains a gap, not evidence of reverse travel; same-frame '
+                                       'body heading/current target/position are missing. See work/re/e110_reverse.md '
+                                       'and work/re/handoff-e.md.')
 @pytest.mark.parametrize('build', ['airev1', 'airev0'])
 def test_reverse_move_tanks_close_in_on_the_far_plant(lib, build):
-    """checks/engine_aipullback.py airev1 / airev0."""
-    _, rows = _probe_run(build, lib, 40.0)
-    assert any(r['近厂'] >= 1 for r in rows)
+    """checks/engine_aipullback.py airev1/0: both read 近厂=2 at s19-s22; this is a region count."""
+    w, rows = _probe_run(build, lib, 23.0)
+    samples = [(t, r) for (t, _), r in zip(w.sim.series, rows) if 19 <= t <= 22]
+    assert [t for t, _ in samples] == list(range(19, 23))
+    assert [r['近厂'] for _, r in samples] == [2] * 4
 
 
 @pytest.mark.parametrize('build', ['airevp1', 'airevp0'])
