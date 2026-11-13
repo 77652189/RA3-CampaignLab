@@ -145,6 +145,11 @@ RESULTS g / h (bench 2026-11-10, aiskirm g / h and aiskirmnl g, all PASS (weak);
        eight at once), 9 s138, 10 s139, 11 s149, 12 s155, 13 s159, 14 s161 (MaxUnits 14) and stays.
      l: AlliedScout _0_0 1 from s72 (the defense team drops 8 -> 7 -> 6 then: a dog leaves for it), _1_0 and
        EscortMCV 99; LandDefense _0_0 8 -> 0 at s128 in this run.
+     l again, stock aiskirm and carrier aiskirmc side by side (bench 2026-11-13, same head, both PASS; log
+       a199_l.log): stock AlliedScout _0_0 1 from s72 (defense 8 -> 7 -> 6 at s72-74), as before; **carrier
+       AlliedScout _0_0 0 the whole run, defense 9 from s67 to s127** -- the dogs stay in defense. The carrier yard
+       (CNVSkirmTeamsYard, a renamed copy of the yard) changes the scout teams, so aiskirmc readings say nothing
+       about them (its team log: both scout teams made ~s13, tgt -1 and n 0 throughout, never expire).
   Reading: the first team out is BalancedCleanup (OpeningMove complete, no enemy within 700, income and power
     advantage >= 3: the player has no army and no refinery), not BalancedAttackGround; it takes the LandDefense
     team's members whole the moment it is drawn (~123 s after the wake).
@@ -1058,7 +1063,7 @@ def fm(m):
 
 CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j': j, 'k': k, 'l': l, 'm': m,
                       'n': n, 'o': o, 'p': p, 'q': q, 'r': r, 'u': u, 'x': x},
-          'aiskirmc': {'m': m, 'u': u},  # opt-in carrier diagnostic; stock aiskirm stays unchanged
+          'aiskirmc': {'l': l, 'm': m, 'u': u},  # opt-in carrier diagnostic; stock aiskirm stays unchanged
           'aiskexp': {'q': q},
           'aiskmod': {'u': u},
           'aiskacp': {'v': v},
