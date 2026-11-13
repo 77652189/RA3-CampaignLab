@@ -535,11 +535,25 @@ class Brain:
         return any(u.body.engaged or isinstance(u.body.goal, sim.Body) for u in team.members)
 
     def stand(self, team, p, r, outer):
-        """The aesthetics manager: the team stands round p (INFERRED: evenly on a circle of r)."""
-        n = max(1, len(team.members))
-        for k, u in enumerate(team.members):
-            a = 2 * math.pi * k / n
-            self.order(u, 'move', (p[0] + r * math.cos(a), p[1] + r * math.sin(a)))
+        """Consume the model's aesthetics gates; formation member destinations remain a gap."""
+        # EngineModel is optional and versioned separately from this repository.
+        if not hasattr(self.tactics, 'stand'):
+            n = max(1, len(team.members))
+            for k, u in enumerate(team.members):
+                a = 2 * math.pi * k / n
+                self.order(u, 'move', (p[0] + r * math.cos(a), p[1] + r * math.sin(a)))
+            return
+        members, foes = self.fight(self.ai, team)
+        harvesters = [(b.x, b.y) for b in self.living()
+                      if b.owner == self.player and 'HARVESTER' in b.kinds]
+        run = self.tactics.runs.get(id(team))
+        if run is None:
+            return
+        state = self.tactics.state_of(self.ai, team.state)
+        attrs = self.defense.attrs
+        self.tactics.stand(team, p, r, outer, self.frame, members, foes, harvesters,
+                           round(float(attrs.get(state, run.tactic.id, 'PatrolIdleTime', '10')) * 15),
+                           float(attrs.get(state, run.tactic.id, 'MinDistanceFromHarvester', '300')))
 
     def radius_of(self, tid):
         b = self.body_of(tid)
