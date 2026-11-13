@@ -209,10 +209,11 @@ NOTES = {
         'bsel是基地候选而非矿点候选；矿点资格/排序/占用仍未证，'
         'aiexpc模型按名回放仍strict xfail，不晋升；见 work/re/c_expansion_d98_report.md'),
     '造兵/CountAsStructureForBuildPurposesFilter.ExcludeThing': (TODO,
-        'C静态核查：原版过滤器用于建造优先级，排除矿车/勘探车/日本矿厂核心；'
-        '不是现有建筑计数。模型未消费该过滤器，候选分类需接B共享build_units，'
-        '普通建筑BuildState优先级亦缺消费者；按工单接口门禁停止，未上台、未晋升。'
-        '待B给候选分类/优先级接口；见work/re/c_buildfilter_report.md'),
+        'C engine_aibuildexclude r：aibex/aibin只切CNVDearPK的ExcludeThing；'
+        '两组新维和/贵维和首次持有帧均501/570，s36..40均1/1；'
+        'CNVOrders无这两个模板的订单行，不能据产兵计数认定篮子或重复下单。'
+        '模型已有建筑篮子消费者；直接工厂订单及IncludeThing/ExcludeThing同列优先关系仍gap，'
+        '不改模型、不晋升；见work/re/c_buildexclude_report.md'),
     '造兵/BuildEntry.Upgrade': (BENCHED,
         'C engine_aiupgrade a：aicupgon常量状态含UPGRADE_TECH/Tech2，s39起持有2（建造厂+它够得着的兵营）；'
         'aicupgoff移除专用状态后恒0；见work/re/c_upgrade_report.md。B第153轮接模型：'
