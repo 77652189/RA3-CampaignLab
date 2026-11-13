@@ -121,6 +121,12 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '启发条件/PowerAdvantageHeuristic.Value': (BENCHED,
+        'C engine_aipowervalue aipval1/aipval01:a：同图4对8同型守护者、Above=true，'
+        '仅Value=1.0/0.1；s40在家/AI总数/玩家坦克分别4/4/8与0/4/8，两局各3条PASS。'
+        'tests/test_simai_powervalue_c.py按名回放两组实测；仅验证该固定军队下两阈值的行为差异，'
+        '完整比值公式、精确边界/求值帧、动态伤亡与防御计入仍gap；未改模型或阈值，'
+        '见work/re/c_powervalue_report.md'),
     '启发条件/PowerAdvantageHeuristic.Above': (BENCHED,
         'C engine_aipowerabove aipabtrue/aipabfalse:a：同图4对8同型守护者、Value=1.0，'
         '仅Above=true/false；s40在家/AI总数/玩家坦克分别4/4/8与0/4/8，'
