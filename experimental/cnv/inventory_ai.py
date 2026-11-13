@@ -121,6 +121,12 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '启发条件/IntervalHeuristic.CountFrom': (BENCHED,
+        'C engine_aiintervalfrom aiintmap/aiintai:a：同人格同图s10唤醒，仅MAP_START/AI_START；'
+        'IntervalTime=25s、ActiveTime=30s，s24在家/总数均4/4，s32为0/4与4/4，s42均0/4。'
+        'tests/test_simai_intervalfrom_c.py按名回放两组实测；'
+        '只验证首次开启起点，后续循环、精确求值帧、未唤醒边界仍gap；'
+        '见work/re/c_intervalfrom_report.md'),
     '启发条件/ConstantHeuristic.Weight': (BENCHED,
         'C engine_aiconstweight aicwzero/aicwone:a：同人格单战略状态，仅Weight=0/1；'
         's40步兵在家/总数/未登记坦克在家为4/4/4与0/4/4，'
