@@ -1,9 +1,11 @@
 """ra3voice.refpack.unpack: a whole RefPack stream is decompressed, anything else is returned as it is."""
+import importlib.util
 import os
-import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from ra3voice import refpack  # noqa: E402
+_spec = importlib.util.spec_from_file_location(
+    'refpack', os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'ra3voice', 'refpack.py'))
+refpack = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(refpack)
 
 
 def test_a_refpack_stream_is_decompressed():

@@ -13,8 +13,12 @@ import os
 import sys
 import time
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'campaign'))
-import labpaths  # noqa: E402
+import importlib.util
+
+_spec = importlib.util.spec_from_file_location(
+    'labpaths', os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'campaign', 'labpaths.py'))
+labpaths = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(labpaths)
 
 RUNS = os.path.join(labpaths.WORK, 'testbench', 'runs')
 
