@@ -384,11 +384,12 @@ NOTES = {
                                               'tests/test_simai.py（模拟器读进探针自写的微操数据：开的想冲、关的从不冲；'
                                               '技能本身模拟器没接，只记"想用"）'),
     # B round 114: state 2's per-member pick (tactics._assign); round 115: aimicengoff (off) on the bench
-    '微操/AIMicroManagerData.EngageHostileTargets': (GUESSED, 'E107新时钟 aiegon:a / aiegoff:a：关首冲259帧，开两轮371帧；'
-                                                  '两边首批都入队，关无行军单，开先编队站位。模型两边333帧向西，'
-                                                  '关首批无目标且不冲；补兵冲锋不能顶替首批。命名回放 '
-                                                  'tests/test_ai_engage_clock.py strict xfail；见 work/re/e107_engage_clock.md。'
-                                                  '目标取得/队伍发令仍gap，未晋升'),
+    '微操/AIMicroManagerData.EngageHostileTargets': (GUESSED, 'E114新DLL aiegon:a / aiegoff:a各3/3 PASS：首冲371/259，首活均2；'
+                                                  '首批3170/3171均f345入队，f353均有单兵dest且aim为0。关无玩家级移动命令，'
+                                                  '但f431成员3171已有有效目标，不能解释成没有自主行军/目标；'
+                                                  '开f353模型过早推得目标，关f443模型首批仍无目标；同宿主帧按名回放 '
+                                                  'tests/test_ai_engage_clock.py strict xfail。单兵目标来源/保持契约仍gap，'
+                                                  '见 work/re/e114_engage_aim.md；保持推断，不晋升'),
     # B round 112: airetf / airetfd (the state on a flag, off once the team has its slot) differ only in this field
     '战术/Tactic.DisbandAfterRetreatTeamSize': (BENCHED, '台上量过（engine_airetreat：airetf 0 撤回家后再出门，airetfd '
                                              '999 撤回家后一直在家——撤退结束那轮人数 ≤ 它就结束战术、放人）、测试对拍 '

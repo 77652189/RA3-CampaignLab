@@ -838,7 +838,7 @@
 | 已对拍 | `造兵/BuildState.Difficulty` | 84 | a4 a5 a7 | 台上量过（engine_aiskirm s aiskdiff：只挂 HARD 的建造状态在普通难度一个不造，挂 MEDIUM 的照造），测试对拍 tests/test_simai_bench_b.py |
 | 已对拍 | `造兵/BuildState.State` | 84 | a4 a5 a7 | 台上量过（engine_aiskirm y aisknew / aisknew2：没列进任何建造状态的我们的兵不造、列成 FEWEST_UNIT 占兵营约一半；z aiskvinf / aiskvveh：BEST_UNIT_EXPECTED 兵营只造克制兵），测试对拍 tests/test_simai_bench_b.py（B 第 126–131 轮）；RANDOM_UNIT（PercentLow/High）、MinTime 没单独量 |
 | 已对拍 | `微操/AIMicroManagerData.UseSpecialPowers` | 83 | a4 a5 a7 | 台上量过（engine_aimicro：aimicspon 开 两个武士 s41 冲锋，aimicspoff 关 一直没冲、s51 前被打死，脚本按的对照照样冲）、测试对拍 tests/test_simai.py（模拟器读进探针自写的微操数据：开的想冲、关的从不冲；技能本身模拟器没接，只记"想用"） |
-| 推断 | `微操/AIMicroManagerData.EngageHostileTargets` | 82 | a4 a5 a7 | E107新时钟 aiegon:a / aiegoff:a：关首冲259帧，开两轮371帧；两边首批都入队，关无行军单，开先编队站位。模型两边333帧向西，关首批无目标且不冲；补兵冲锋不能顶替首批。命名回放 tests/test_ai_engage_clock.py strict xfail；见 work/re/e107_engage_clock.md。目标取得/队伍发令仍gap，未晋升 |
+| 推断 | `微操/AIMicroManagerData.EngageHostileTargets` | 82 | a4 a5 a7 | E114新DLL aiegon:a / aiegoff:a各3/3 PASS：首冲371/259，首活均2；首批3170/3171均f345入队，f353均有单兵dest且aim为0。关无玩家级移动命令，但f431成员3171已有有效目标，不能解释成没有自主行军/目标；开f353模型过早推得目标，关f443模型首批仍无目标；同宿主帧按名回放 tests/test_ai_engage_clock.py strict xfail。单兵目标来源/保持契约仍gap，见 work/re/e114_engage_aim.md；保持推断，不晋升 |
 | 已对拍 | `微操/AIMicroManagerData.EngagePassiveTargets` | 82 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_airetreat.py |
 | 已对拍 | `开局/Order.Account` | 81 | a4 a5 a7 | docs/engine/aiopen.md#开局存款进哪个账户（Order Account，第 116 轮）（aiskacp / aiskacd：PRODUCTION 兵营出兵、DEFENSE 兵营不出） |
 | 已对拍 | `开局/Order.Deposit` | 81 | a4 a5 a7 | docs/engine/aiopen.md#开局怎么抽、哪些单子会作废（OpeningMove Weight / Difficulty，第 89～90 轮）（aiom15：带 Deposit 2000 照造、晚 4 秒） |
