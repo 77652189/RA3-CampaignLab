@@ -1064,6 +1064,9 @@ class Sim:
         self.audio_end = {}                 # sound event -> when HAS_FINISHED_AUDIO holds again (Sim.played)
         self.video_end = {}                 # clip -> when HAS_FINISHED_VIDEO holds (None: never, a full-screen one)
         self.money = {}
+        self.kills = []                     # (killer's player, killer's name, template, name) by weapon (cond_retail)
+        self.attacked_by = set()            # (player hit, player hitting): SKIRMISH_PLAYER_HAS_BEEN_ATTACKED_BY_PLAYER
+        self.cond_memory = {}               # a condition's reading the frame before (NAMED_EXITED_AREA)
         self._engineer_rules = {}           # template -> EngineerContain rule (mission XML is fixed)
         self.nodes = {}                     # ore node name -> {'free': frame it takes a miner from, 'gathered', 'at'}
         self.mined_to = None                # the last frame mine_due ran
@@ -2575,6 +2578,8 @@ class Sim:
                 b.toppled, b.topple_end = True, self.frame_now() + b.topple['delay']
             return
         b.alive, b.deleted, b.path, b.died_at = False, delete, [], self.t
+        if not delete and b.last_by is not None and b.last_hit is not None:
+            self.kills.append((b.last_hit, b.last_by, b.template, b.name))     # cond_retail: who killed what
         b.spawn_refills.clear()
         parent = b.spawn_parent
         if parent is not None and parent.alive:
@@ -2894,9 +2899,82 @@ class Sim:
         if name == 'HAS_FINISHED_VIDEO':        # never played: false (bench 11-08 cond); full screen: never (movie.py)
             end = self.video_end.get(a[0])
             return end is not None and self.t >= end
+        got = self.cond_retail(name, a)
+        if got is not None:
+            return got
         self.unknown[name] = self.unknown.get(name, 0) + 1
         self.gap(GAP_CONDITION, name, 'Sim.cond 不认识：当成不成立')
         return False
+
+    def cond_retail(self, name, a):
+        """Retail-campaign conditions, batch 1 (round 207, checks/engine_conds.py; the program read in work/re
+        d115_script_semantics.md where it says 码, the rest INFERRED from Generals until the bench). None: not one."""
+        if name in ('TEAM_HAS_UNITS', 'TEAM_INSIDE_AREA_PARTIALLY', 'TEAM_INSIDE_AREA_ENTIRELY', 'TEAM_CREATED',
+                    'TEAM_SOME_HAVE_OBJECT_STATUS', 'TEAM_ALL_HAS_OBJECT_STATUS', 'TEAM_ATTACKED_BY_PLAYER',
+                    'TEAM_ATTACKED_BY_OBJECTTYPE') and (self.absent_team(a[0]) or not self.team_active(a[0])):
+            return False                        # D 115: looked up without activating -- no instance, no team: false
+        if name == 'TEAM_HAS_UNITS':
+            # 码: any instance of the team's prototype with a living member that is no STRUCTURE / PROJECTILE /
+            # IGNORE_FOR_VICTORY (a dying one is DESTROYED: not counted)
+            named = self.named_team(a[0])
+            crew = named[1] if named is not None else [b for b in self.living() if same_team(b.team, a[0])]
+            return any(not ({'STRUCTURE', 'PROJECTILE', 'IGNORE_FOR_VICTORY'} & set(b.kinds)) for b in crew)
+        if name in ('TEAM_INSIDE_AREA_PARTIALLY', 'TEAM_INSIDE_AREA_ENTIRELY'):
+            # 码: the members considered (living, not INERT / MOVE_ONLY; k a bit of the AI module's set -- INFERRED
+            # every member with an AI passes any k); PARTIALLY = one of them inside, ENTIRELY = all and one at least.
+            # The game reads each object's area record, updated when its whole-number position changes (Generals):
+            # INFERRED the same as where it stands
+            if int(a[2]) != 0:
+                self.used.add('team area k')
+            crew = [b for b in self.members(a[0]) if not ({'INERT', 'MOVE_ONLY'} & set(b.kinds))]
+            ins = [inside(self.areas[a[1]], b.x, b.y) for b in crew]
+            return any(ins) if name.endswith('PARTIALLY') else bool(ins) and all(ins)
+        if name == 'TEAM_CREATED':              # INFERRED: the team has an instance (a map team from the start)
+            return True
+        if name in ('TEAM_SOME_HAVE_OBJECT_STATUS', 'TEAM_ALL_HAS_OBJECT_STATUS'):
+            # INFERRED (Generals evaluateTeamHasObjectStatus): the living members' bit; ALL holds on an empty team
+            st = a[1][2] if isinstance(a[1], tuple) else a[1]
+            has = [st in b.status for b in self.members(a[0])]
+            return any(has) if name.startswith('TEAM_SOME') else all(has)
+        if name == 'PLAYER_HAS_CREDITS':        # (player, comparison, n)
+            return CMP[int(a[1])](int(self.money.get(a[0], 0)), int(a[2]))
+        if name == 'NAMED_EXITED_AREA':         # INFERRED: inside the frame before, outside now (one frame)
+            b = self.body(a[0])
+            now = bool(self.present(b) and inside(self.areas[a[1]], b.x, b.y))
+            key = ('exited', a[0], a[1])
+            was, self.cond_memory[key] = self.cond_memory.get(key, now), now
+            return was and not now
+        if name in ('TEAM_ATTACKED_BY_PLAYER', 'TEAM_ATTACKED_BY_OBJECTTYPE'):
+            # 码 (the player one): a living member's last damage recorded that player (its owner then, the attacker
+            # gone or not). The object type one INFERRED: the attacker's template, read the same way
+            crew = self.members(a[0])
+            if name == 'TEAM_ATTACKED_BY_PLAYER':
+                return any(b.last_by is not None and b.last_hit == a[1] for b in crew)
+            want = self.of_types(a[1])
+            return any(b.last_by is not None and self.bodies.get(b.last_by) is not None
+                       and self.bodies[b.last_by].template.lower() in want for b in crew)
+        if name == 'NAMED_ATTACKED_BY_OBJECTTYPE':
+            b = self.body(a[0])
+            by = self.bodies.get(b.last_by) if self.present(b) and b.last_by is not None else None
+            return bool(by is not None and by.template.lower() in self.of_types(a[1]))
+        if name == 'SKIRMISH_PLAYER_HAS_BEEN_ATTACKED_BY_PLAYER':
+            # INFERRED (Generals Player::getAttackedBy): set by any hit of the second's on the first's, kept for good
+            for b in self.bodies.values():
+                if b.last_by is not None and b.last_hit is not None:
+                    self.attacked_by.add((b.owner, b.last_hit))
+            return (a[0], a[1]) in self.attacked_by
+        if name in ('PLAYER_HAS_KILLED_NAMED_UNIT', 'PLAYER_HAS_KILLED_TYPE_UNITS',
+                    'NAMED_HAS_KILLED_COMPARISON_UNIT_TYPE'):
+            # INFERRED: kills by weapon (self.kills, Sim.destroy); n of a type at least n
+            if name == 'PLAYER_HAS_KILLED_NAMED_UNIT':
+                return any(k[0] == a[0] and k[3] == a[1] for k in self.kills)
+            if name == 'PLAYER_HAS_KILLED_TYPE_UNITS':
+                want = self.of_types(a[2])
+                return sum(1 for k in self.kills if k[0] == a[0] and k[2].lower() in want) >= int(a[1])
+            want = self.of_types(a[3])
+            n = sum(1 for k in self.kills if k[1] == a[0] and k[2].lower() in want)
+            return CMP[int(a[1])](n, int(a[2]))
+        return None
 
     def all_revealed(self):
         """Whether the whole map is open to the player this frame (MAP_REVEAL_ALL_PERM, or a MAP_REVEAL_ALL not lapsed)."""
