@@ -571,7 +571,10 @@ def ycm(m):
     Bench 11-12 (work/bench_results/aiskc[su]__ycm.json, both PASS): AI钱 50000 -> ~41000 by s120 (the opening and
     two new Peacekeepers), then ~36000 paid within s128-s133 and 贵维和 1 at s133 (cs) / s134 (cu), the money ~5300
     after; 新维和 3 at s133 / s134, 4 at s196 (cs) / s172 (cu), 6 at s216 / s184. So the dear one is paid fast at the
-    end, not refused for want of 100000 (K1 / K3); aiskcs did not stall this time (yc's 3-to-the-end not repeated)."""
+    end, not refused for want of 100000 (K1 / K3); aiskcs did not stall this time (yc's 3-to-the-end not repeated).
+    aiskcu3 (the same at 30000, bench 11-12 work/bench_results/aiskcu3__ycm.json, PASS): money 41055 at s127, paid
+    down to 9585 by s132 (~31500 in the same five seconds), 贵维和 1 at s133 -- the same order time as at 100000, so the
+    cost does not gate the order; at 100000 the payment stops ~36000 in (money ~5300 left) and the unit still comes."""
     t = yc(m)
     t.counters = [c for c in t.counters if c[1] != '标枪总数']
     t.counters.append(('CNV_AK_YCMoney', 'AI钱'))
@@ -978,7 +981,10 @@ def mt(m):
     Data's prediction (D59, work/re/d59_b_fields.md 3): aiskmt forced (200) from t > 151 s after the wake -> 科技帧
     stops at ~151 x 15 (plus the yard's queue: the opening may still hold it); aiskmto: if t < MinTime is tested
     first, ~250 s; if ForceTime first, ~151 s as aiskmt. The stock tech state (MinTime 360 s) cannot come first. The
-    simulator scores no TECH entry: none in either."""
+    simulator scores no TECH entry: none in either.
+    aiskmt0 (TECH MinTime 0 ForceTime 1, three more plants = 6, D82 G1 + G2 in one run; bench 11-12
+    work/bench_results/aiskmt0__mt.json, PASS): 科技帧 stops at 2256 (~150 s after the wake), 科技楼 1 by s177, money
+    50000 -> ~9800 by s376 -- the TECH entry does build here. G1 / G2 not yet split (next: 0 / 1 with 3 plants)."""
     t = Test()
     s1 = m.player('s1')
     if m.facts['min time'] is None and m.facts.get('const') == 'AlliedTechStructure':   # aiskmtk: CONSTANT tech
@@ -1054,10 +1060,12 @@ CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j
           'aiskoff': {'y': y},
           'aiskcu': {'yc': yc, 'ycm': ycm},
           'aiskcs': {'yc': yc, 'ycm': ycm},
+          'aiskcu3': {'ycm': ycm},
           'aiskpt': {'pt': pt},
           'aiskpti': {'pt': pt},
           'aiskmt': {'mt': mt},
           'aiskmto': {'mt': mt},
+          'aiskmt0': {'mt': mt},
           'aiskmtc': {'mt': mt},
           'aiskmtt': {'mt': mt},
           'aiskmtk': {'mt': mt},

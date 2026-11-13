@@ -134,6 +134,7 @@ MT_OWNED = (('AlliedAirfield', 'east airfield'), ('AlliedRefinery', 'east refine
 # + three power plants (+300): without them the opening's buildings and these two draw 275 against 250 and the
 # tech building's 75 never passes the power gate (work/re/l4_buildstate.md "电力门"; first aiskmt run, B handoff 154)
 MT_POWER = ((-300.0, -150.0), (-300.0, -350.0), (-500.0, -250.0))   # from the east base (D's aiskcapp spots + one)
+MT_POWER_MORE = ((-500.0, -450.0), (-700.0, -150.0), (-700.0, -350.0))   # aiskmt0 (D82 G1): three more
 
 
 def mintime_xml(min_time, force_time, build=MT_TECH, const=MT_CONST[0], score=MT_CONST[1]):
@@ -397,7 +398,7 @@ ARMY_N = 10                            # aiskvinf / aiskvveh (check z): what the
 
 def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None, account=None,
             buffer=None, new=None, army=None, two=None, observe=False, cap=None, block=None, off=False,
-            ptype=None, mintime=None, aidata=None, dear=None):
+            ptype=None, mintime=None, aidata=None, dear=None, dear_cost=DEAR_COST):
     m = Mission(name=name, map=ai_map(resources.measured(niagara), lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
     if aidata is not None:               # aiskad / aiskfon / aiskfof: the global AIData overridden in the map stream
@@ -424,7 +425,7 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
         m.assets.append((f'{MT_PID}.xml', mintime_xml(lo, hi, build, const, score), f'AIPersonalityDefinition:{MT_PID}'))
         for k, (tpl, site) in enumerate(MT_OWNED):
             m.put(tpl, site, side='s1', name=f'UNIT - CNV AI Owned {k}', role=f'ai owned {k}')
-        for k, (x, y) in enumerate(MT_POWER):
+        for k, (x, y) in enumerate(MT_POWER + (MT_POWER_MORE if lo == 0 else ())):
             m.put('AlliedPowerPlant', 'east base', x, y, side='s1', angle=0.0, name=f'UNIT - CNV AI Power {k}',
                   role=f'ai power {k}')
     if buffer is not None:               # aiskpw0 / aiskpw3 (check x): DesiredExcessPowerBuffer = buffer
@@ -455,7 +456,7 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
                 m.facts['state off'] = 1
             if dear:                     # aiskcu / aiskcs (check yc): the unaffordable unit, a second barracks building it
                 m.facts['dear counts as structure'] = int(dear == 'cs')
-                dpk = new_pk(DEAR_PK, DEAR_COST)
+                dpk = new_pk(DEAR_PK, dear_cost)
                 m.units += [dpk, production.building('AlliedBarracks', [dpk.id], DEAR_BARRACKS)]
                 m.put(DEAR_BARRACKS, 'east base', DEAR_AT[0], DEAR_AT[1], side='s1', angle=3.1416,
                       name='UNIT - CNV AI Dear Barracks', role='ai dear barracks')
@@ -536,10 +537,12 @@ MISSION = {'aiskirm': mission, 'aiskirmc': lambda: mission(observe=True),
            'aiskoff': lambda: mission('CampAISkOff', new=True, off=True),   # check y: the state's heuristic 0
            'aiskcu': lambda: mission('CampAISkCU', new=True, dear='cu'),   # check yc: + a 100000-cost unit, filter retail
            'aiskcs': lambda: mission('CampAISkCS', new=True, dear='cs'),   # check yc: + the filter counts it as structure
+           'aiskcu3': lambda: mission('CampAISkCU3', new=True, dear='cu', dear_cost=30000),   # check ycm: cu at 30000
            'aiskpt': lambda: mission('CampAISkPt', ptype=True),      # check pt: PersonalityType != id
            'aiskpti': lambda: mission('CampAISkPtI', ptype=False),   # check pt: PersonalityType not written
            'aiskmt': lambda: mission('CampAISkMT', mintime=MT_TIMES['aiskmt']),      # check mt: MinTime 150 Force 151
            'aiskmto': lambda: mission('CampAISkMTO', mintime=MT_TIMES['aiskmto']),   # check mt: MinTime 250 Force 151
+           'aiskmt0': lambda: mission('CampAISkMT0', mintime=(0, 1)),   # check mt: TECH 0/1, 6 plants (D82 G1 + G2)
            'aiskmtc': lambda: mission('CampAISkMTC', mintime=(None, None)),          # check mt: CONSTANT 300 tower
            'aiskmtt': lambda: mission('CampAISkMTT', mintime=(200, 201, MT_CONST[0])),   # check mt: TECH 200/201 tower
            'aiskmtk': lambda: mission('CampAISkMTK', mintime=(None, None, MT_TECH, MT_TECH)),   # mt: CONSTANT 300 tech
