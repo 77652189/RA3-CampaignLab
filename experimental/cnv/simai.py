@@ -459,11 +459,11 @@ class Brain:
         return sum('HARVESTER' in b.kinds for b in mine)
 
     def tech_buildings(self):
-        """ctx 'tech buildings' (TechBuildingShareHeuristic, read 0x8ad950, work/re/l4_states.md): (own, all, players).
+        """ctx 'tech buildings' (TechBuildingShareHeuristic, work/re/l4_states.md): (own, all, players).
         own = the player's registered set 0xc, all = the global set 2; by the SetId enum order (SDK xsd
         RegisteredObjectSetId: 0xa STRUCTURES, 0xd UNITS, 0x14 HARVESTERS as read elsewhere) those are
         PLAYER_NEUTRAL_TECH and NEUTRAL_TECH, both KindOf CAPTUREFLAG or NEUTRAL_TECH (GlobalData
-        RegisteredObjectSets.xml; the player's one SAME_PLAYER). players = 0x865450(0), not read: INFERRED the
+        RegisteredObjectSets.xml; the player's one SAME_PLAYER). players: the game's count is not read: INFERRED the
         players owning something alive, the civilians not counted (it only matters once the player owns one)."""
         tech = [b for b in self.living() if {'CAPTUREFLAG', 'NEUTRAL_TECH'} & set(b.kinds)]
         players = {b.owner for b in self.living() if b.owner != sim.CIV and not b.scenery}

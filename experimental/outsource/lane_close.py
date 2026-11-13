@@ -17,7 +17,8 @@ _spec = importlib.util.spec_from_file_location('labpaths', os.path.join(os.path.
 _paths = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_paths)
 
-GUARDS = ['tests/test_architecture.py', 'tests/test_docs.py']
+GUARDS = ['tests/test_architecture.py', 'tests/test_docs.py',
+          'tests/test_no_program_addresses.py']   # 11-13 an address reached simai.py past a Claude line's close
 INVENTORY_PATHS = ('experimental/cnv/inventory', 'docs/engine/inventory')
 GENERATORS = [['experimental/cnv/inventory.py'], ['experimental/cnv/inventory_levels.py', '--write'],
               ['experimental/cnv/inventory_ai.py', 'levels', '--write']]   # AGENTS.md's order
