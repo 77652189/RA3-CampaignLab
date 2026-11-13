@@ -6,7 +6,12 @@ What a mission uses, statically, the way inventory_levels reads our own 9:
                     the inventory's way (simcoverage.refined)
   物体模块 / 武器效果  the effective modules / nugget types of the templates placed on its map or named by its
                     scripts, and what those reach (inventory_levels.reach)
-  AI                not here yet: the cache does not keep the maps' AI personalities (engine B adds it)
+  AI                the maps' computer players (non-human, a personality other than DefaultPersonality -- the
+                    neutral / civilian / scripted players carry that one; INFERRED that it adds nothing): every SDK AI
+                    asset their personality reaches in the game's compiled stream (retailref ai.json), their faction's
+                    ArmyDefinition and AIData, followed the inventory_ai.level_scope way (inventory_ai.reached). The
+                    maps' own personalities and states are compiled only: their own fields are not read (counted
+                    apart as 本关自带、没读)
 
   python -I -X utf8 experimental/cnv/inventory_retail.py            summary + the 30 heaviest gaps, with owners
   python -I -X utf8 experimental/cnv/inventory_retail.py --all      every gap
@@ -26,7 +31,9 @@ import inventory as I                            # noqa: E402
 
 MISSION = re.compile(r'^camp_([asj]0\d)_.*\.txt$')   # Allied / Soviet / Empire 1-9; Uprising (ep01) left out
 PARTS = (I.ACTION, I.CONDITION, I.MODULE, I.NUGGET)
-OWNER = {I.ACTION: 'A', I.CONDITION: 'A', I.MODULE: 'E', I.NUGGET: 'C'}   # AGENTS.md map: script / object / weapon
+ALL = PARTS + (I.AI,)
+OWNER = {I.ACTION: 'A', I.CONDITION: 'A', I.MODULE: 'E', I.NUGGET: 'C', I.AI: 'B'}
+NO_AI = ('', 'DefaultPersonality')   # AGENTS.md map: script / object / weapon
 LINE = re.compile(r'^\s*(IF(?: NOT)?|DO|ELSE)\s+([A-Z0-9_]+)\((.*)\)\s*(?:\+[0-9a-f]+)?\s*$')
 
 
@@ -75,12 +82,49 @@ def scope():
     return expanded, lines
 
 
+def ai_players(stem):
+    """[player] of the map's computer players with a personality of their own (retailref cache 'players')."""
+    d = json.load(open(os.path.join(I.RETAIL_SCRIPTS, stem + '.json'), encoding='utf-8'))
+    if 'players' not in d:
+        raise SystemExit('inventory_retail: the retail cache has no players: python -I -X utf8 experimental/campaign/'
+                         'retailref.py cache')
+    return [p for p in d['players'] if not p['human'] and p['personality'] not in NO_AI]
+
+
+def ai_scope():
+    """({(AI, item name): {mission: set()}}, {mission: {(asset type, name)}} of the maps' own compiled AI assets)."""
+    import inventory_ai as A
+    path = os.path.join(I.RETAIL_SCRIPTS, 'ai.json')
+    I.need(path, 'the retail AI cache (python -I -X utf8 experimental/campaign/retailref.py cache-ai)')
+    reach = json.load(open(path, encoding='utf-8'))
+    index = A.assets()
+    glob = [el for el in index.values() if A._local(el.tag) == 'AIData']
+    out, local, memo = collections.defaultdict(dict), collections.defaultdict(set), {}
+    for short, stem in missions().items():
+        for p in ai_players(stem):
+            refs = reach.get(p['personality'])
+            if refs is None:
+                raise SystemExit(f"inventory_retail: {short} {p['name']}: personality {p['personality']} is not in "
+                                 'the compiled stream')
+            local[short] |= {(t, n) for t, n, _ in refs if n not in index}
+            key = (p['personality'], p['faction'])
+            if key not in memo:
+                roots = [index[n] for _, n, _ in refs if n in index]
+                army = [el for el in index.values() if A._local(el.tag) == 'ArmyDefinition'
+                        and el.get('Side') == 'PlayerTemplate:' + p['faction']]
+                memo[key] = A.reached(roots + army + glob, index)
+            for name in memo[key]:
+                out[(I.AI, name)].setdefault(short, set())
+    return out, local
+
+
 def used_items():
     """[item + 'missions' (sorted short names) + 'lines' (script lines over the 27)] for every inventory item the 27
     use, 不涉及 left out; and the names the inventory does not know."""
-    items = I.collect(PARTS)
+    items = I.collect(ALL)
     by = {(i['part'], i['name']): i for i in items}
     sc, lines = scope()
+    sc.update(ai_scope()[0])
     got, unknown = {}, set()
     for (part, name), ms in sc.items():
         it = by.get((part, name)) or by.get((part, name.split(':')[0]))
@@ -105,7 +149,7 @@ def main(argv):
     items, unknown = used_items()
     print('| 部分 | 27 关用到的按用量已对拍 | 已对拍 / 项 | 推断 | 未做 | 缺的用量 | 归 |')
     print('|---|---|---|---|---|---|---|')
-    for p in PARTS:
+    for p in ALL:
         xs = [i for i in items if i['part'] == p]
         c = collections.Counter(i['state'] for i in xs)
         u = collections.Counter()
@@ -114,7 +158,8 @@ def main(argv):
         tot = sum(u.values())
         print(f"| {p} | {100 * u[I.BENCHED] / tot:.2f}% | {c[I.BENCHED]} / {len(xs)} | {c[I.GUESSED]} | "
               f"{c[I.TODO]} | {tot - u[I.BENCHED]} | {OWNER[p]} |")
-    print('| AI | 见 inventory.py（9 关口径），原版人格待 B 补 | | | | | B |')
+    local = set().union(*ai_scope()[1].values())
+    print(f'\nAI：本关自带的人格 / 状态 {len(local)} 个是编译二进制，自身字段没读，只按它们引用的 SDK 资产计')
     gaps = sorted((i for i in items if i['state'] != I.BENCHED and (part is None or i['part'] == part)
                    and (mission is None or mission in i['missions'])),
                   key=lambda i: (-i['uses'], i['name']))

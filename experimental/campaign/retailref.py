@@ -9,6 +9,8 @@ every map's script text and object list in work/retailref/ (~2 min); later calls
 scripts: every script with a condition / action matching the pattern (regex, case-insensitive), whole, with its map.
 objects: placements of templates matching it: position, angle, flags, owner, name, terrain height under it (world).
 goals: each map's objectives with their English titles, main / bonus.
+The cache also keeps each map's players (SidesList): faction, AI personality, allies / enemies, the AI switches; and
+ai.json, every AI personality's reach in the game's compiled global stream (`cache-ai` rebuilds just that, ~20 s).
 """
 import argparse
 import json
@@ -53,12 +55,65 @@ def build_cache():
         with open(os.path.join(CACHE, short + '.txt'), 'w', encoding='utf-8') as f:
             f.write(m.script_text())
         with open(os.path.join(CACHE, short + '.json'), 'w', encoding='utf-8') as f:
-            json.dump(dict(objects=objs, goals=goals, water=mapstudy.water_height(m)), f, ensure_ascii=False)
+            json.dump(dict(objects=objs, goals=goals, water=mapstudy.water_height(m), players=players(m)), f,
+                      ensure_ascii=False)
         index.append(short)
         print('cached', short, flush=True)
     with open(os.path.join(CACHE, 'index.json'), 'w', encoding='utf-8') as f:
         json.dump(index, f)
+    build_ai()
     return index
+
+
+AI_STREAM = [('GlobalStream.big', 'data\\global.')] + [(f'Core{k}.big', f'data\\global.{k}.') for k in (5, 6, 8, 9, 11, 12)]
+
+
+def build_ai():
+    """work/retailref/ai.json: {personality: [[asset type, name, source file], ...]} for every AIPersonalityDefinition
+    the game's global stream (base + patch layers) holds, with every AI asset it reaches through the compiled
+    references (inheritance is already flattened there). The campaign maps' own personalities and states live only
+    in this compiled form (their xml is not in the SDK); what is inside them is binary and not read here."""
+    import mapxml
+    inst = mapxml.layered(AI_STREAM)
+    name = {k: i.name.decode('latin-1') if isinstance(i.name, bytes) else i.name for k, i in inst.items()}
+    src = {k: (i.source.decode('latin-1') if isinstance(i.source, bytes) else i.source).split('/')[-1]
+           for k, i in inst.items()}
+    out = {}
+    for key, n in name.items():
+        if not n.startswith('AIPersonalityDefinition:'):
+            continue
+        seen, todo = set(), [key]
+        while todo:
+            k = todo.pop()
+            if k in seen or k not in inst:
+                continue
+            seen.add(k)
+            todo += [tuple(r) for r in inst[k].refs]
+        out[n.split(':', 1)[1]] = sorted([*name[k].split(':', 1), src[k]] for k in seen
+                                         if name[k].split(':')[0].startswith(('AI', 'Army')))
+    with open(os.path.join(CACHE, 'ai.json'), 'w', encoding='utf-8') as f:
+        json.dump(out, f)
+    print('cached ai.json:', len(out), 'personalities', flush=True)
+    return out
+
+
+AI_SWITCHES = ('aiBaseBuilder', 'aiUnitBuilder', 'aiTeamBuilder', 'aiEconomyBuilder', 'aiWallBuilder',
+               'aiUnitUpgrader', 'aiScienceUpgrader', 'aiTactical', 'aiOpeningMover')
+
+
+def players(m):
+    """[{name, human, faction, personality, allies, enemies, ai: {switch: value}}] from the map's SidesList, the
+    faction and personality without their asset type ('Allies', 'AIP_A01_SovietHuntMarshall'; '' when unset). The
+    ai switches are kept as the map writes them (255 / 240; what each bit gates is not read)."""
+    import mapstudy
+    out = []
+    for name, p in mapstudy.players(m).items():
+        out.append(dict(name=name, human=bool(p.get('playerIsHuman')),
+                        faction=str(p.get('playerFaction', '')).split(':')[-1],
+                        personality=str(p.get('aiPersonality', '')).split(':')[-1],
+                        allies=str(p.get('playerAllies', '')).split(), enemies=str(p.get('playerEnemies', '')).split(),
+                        ai={k: p[k] for k in AI_SWITCHES if k in p}))
+    return out
 
 
 def maps(only=''):
@@ -120,13 +175,15 @@ def goals(only=''):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('what', choices=('scripts', 'objects', 'goals', 'cache'))
+    ap.add_argument('what', choices=('scripts', 'objects', 'goals', 'cache', 'cache-ai'))
     ap.add_argument('pattern', nargs='?', default='')
     ap.add_argument('--maps', default='')
     ap.add_argument('--limit', type=int, default=0)
     a = ap.parse_args()
     if a.what == 'cache':
         build_cache()
+    elif a.what == 'cache-ai':
+        build_ai()
     elif a.what == 'scripts':
         hits = scripts(a.pattern, a.maps, a.limit or 8)
         print(f'{len(hits)} scripts' + (' (limit reached)' if len(hits) == (a.limit or 8) else ''))
