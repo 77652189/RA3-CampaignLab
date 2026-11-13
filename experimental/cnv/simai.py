@@ -189,6 +189,10 @@ class Brain:
         self._rec_runs, self._rec_mem, self._rec_bodies = {}, {}, {}
         yards = self.yards()
         self.home = (yards[0].x, yards[0].y) if yards else (0.0, 0.0)
+        # Dual-yard probe: the initial AI base exists before the scripted yard.
+        # INFERRED bootstrap for this single-initial-yard fixture only. Later
+        # yards do not register AI bases merely by being physical structures.
+        self.expansion_anchor = yards[0] if len(yards) == 1 else None
         tg = m['targets']
         foes = frozenset(p for p in self.sim.players.values() if p != player and self.sim.enemy(player, p))
         self.view = tg.View(player, [], enemies=foes, waypoints=self.sim.waypoints,
@@ -288,13 +292,14 @@ class Brain:
         return (y.x, y.y) if y else None
 
     def expansion_candidates(self, heuristic, origin):
-        """INFERRED yard/ore hypothesis, enabled only by the dual-yard experiment.
+        """Narrow initial-base/ore hypothesis for the dual-yard experiment.
 
-        Living unpacked yards stand for MAIN_BASE; their actual creation times
-        stand for base ages. Each yard offers its nearest ore node. Discovery,
-        capture flags and occupancy are gaps (work/re/c_basesort_dual_report.md).
-        Other preference flags/sort modes fail closed. This is not general
-        expansion discovery: enemy distance, occupancy and captures are unproved.
+        The bench base table has one base, id 0; the later scripted yard never
+        registers another. INFERRED: bootstrap its anchor from the sole initial
+        yard, and offer that anchor's nearest ore. Ore eligibility/ordering,
+        occupancy and base death remain gaps (work/re/c_expansion_d98_report.md).
+        Unknown preferences and multiple initial yards fail closed. This is
+        not general expansion discovery or a proof of SortOrder semantics.
         """
         selection = heuristic.base_selection
         if (selection is None or selection.preferred - {'MAIN_BASE'}
@@ -304,10 +309,11 @@ class Brain:
         # CAPTURED cannot be resolved from current ownership. Do not claim this
         # provider tests that flag; this hypothesis covers ordinary own yards.
         nodes = [b for b in self.sim.living() if b.template == 'OreNode']
-        yards = [b for b in self.yards() if not b.scenery
-                 and (getattr(b, 'unpack_end', None) or 0) <= self.sim.frame_now()]
-        newest = selection.sort_order == 'PREFER_NEWEST'
-        yards.sort(key=lambda b: (b.made_at, self.tid(b)), reverse=newest)
+        anchor = self.expansion_anchor
+        yards = [anchor] if (anchor is not None and anchor in self.yards()
+                            and not anchor.scenery
+                            and (getattr(anchor, 'unpack_end', None) or 0)
+                            <= self.sim.frame_now()) else []
         candidates = []
         for yard in yards:
             if not nodes:
@@ -317,8 +323,8 @@ class Brain:
             if heuristic.location and ('Water' if water else 'Land') not in heuristic.location:
                 continue
             candidates.append(self.host.mod['targets'].ExpansionCandidate(
-                ('ore', node.name), node.x, node.y, base_id=self.tid(yard),
-                base_types=frozenset({'MAIN_BASE'}), age=self.sim.t - yard.made_at, water=water))
+                ('ore', node.name), node.x, node.y, base_id=0,
+                base_types=frozenset({'MAIN_BASE'}), water=water))
         return candidates
 
     def base_object(self, player):

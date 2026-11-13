@@ -146,10 +146,9 @@ NOTES = {
     '人格/BaseSelection.SortOrder': (TODO,
         'C新增aibs2old/aibs2new：第二建造厂12秒创建、18秒启用，'
         '两组a在s55–65仍东4/崖0/实体0，点命令均指向东矿。'
-        '实验候选提供者按真实物体创建时间预测OLD东、NEW崖；'
-        'NEW按名回放strict xfail。物理建造厂不等于已证合格AI基地，'
-        '仍缺同帧基地ID、类型、年龄和所选基地，不晋升；'
-        '见work/re/c_basesort_dual_report.md'),
+        'D98基地表仅id0，脚本新厂未注册；模型移除伪第二基地后OLD/NEW按名回放均东4/崖0/实体0。'
+        '单基地不能验证排序，仍待真实双基地，不晋升；'
+        '见work/re/c_expansion_d98_report.md'),
     '目标/AITargetingHeuristic.ForbiddenObjectStatus': (GUESSED,
         'C engine_aiforbid a：同近电厂仅切UNDER_IRON_CURTAIN禁用字段；'
         '无过滤有位/有过滤有位/有过滤清位三组原状态与近远家计数分别1/4/0/0、1/0/4/0、0/4/0/0，均PASS。'
@@ -190,8 +189,9 @@ NOTES = {
     '目标/AITargetingHeuristic.HeuristicType=Expansion': (TODO,
         'C已上台：aiexpc:a东矿区4、崖矿区0、普通实体0，命令指向东矿点；'
         '模型已保留BaseSelection，增加显式候选回调和槽位点，Expansion不再回退普通实体。'
-        '自动候选资格/基地发现与排序尚未证实，模型按名回放strict xfail；'
-        '仅接口实现，不晋升；见 work/re/c_expansion_probe_report.md'),
+        'D98新观测确认所选基地id0、合格且偏好分1；双厂实验已移除脚本厂伪基地。'
+        'bsel是基地候选而非矿点候选；矿点资格/排序/占用仍未证，'
+        'aiexpc模型按名回放仍strict xfail，不晋升；见 work/re/c_expansion_d98_report.md'),
     '造兵/CountAsStructureForBuildPurposesFilter.ExcludeThing': (TODO,
         'C静态核查：原版过滤器用于建造优先级，排除矿车/勘探车/日本矿厂核心；'
         '不是现有建筑计数。模型未消费该过滤器，候选分类需接B共享build_units，'

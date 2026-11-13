@@ -86,29 +86,23 @@ def test_base_preferred_not_named_bench_replay(build):
     assert (row['候选东'], row['候选崖'], row['普通实体']) == (4, 0, 0), row
 
 
-def test_dual_base_candidate_lifecycle():
-    """Candidate metadata comes from live bodies, including the timed new yard."""
+def test_dual_base_candidate_registration():
+    """D98 base table: physical scripted yard does not register a second AI base."""
     w = simai.run('aibs2old', 'a', until=19)
     brain = next(iter(w.brains.values()))
     h = brain.targets.tdata.heuristic('CNVExpansion')
     candidates = brain.view.expansion_candidates(h, brain.home)
-    assert len(candidates) == 2
-    assert [c.age for c in candidates] == [19, 7]
-    assert candidates[0].base_id != candidates[1].base_id
-    # Destroying the yard removes its candidate immediately; no cached ghost base.
+    assert len(brain.yards()) == 2
+    assert len(candidates) == 1
+    assert candidates[0].base_id == 0
+    assert (candidates[0].x, candidates[0].y) == pytest.approx((4172.7, 2987.3), abs=0.1)
+    # The unregistered physical yard cannot change the one registered candidate.
     w.sim.bodies['UNIT - CNV BS New Yard'].alive = False
     remaining = brain.view.expansion_candidates(h, brain.home)
     assert [c.base_id for c in remaining] == [candidates[0].base_id]
 
 
-@pytest.mark.parametrize('build', [
-    'aibs2old',
-    pytest.param('aibs2new', marks=pytest.mark.xfail(
-        strict=True, reason='Dual-yard NEW engine a:s55..65 stays east=4/bluff=0/entity=0; '
-        'yard/ore hypothesis selects bluff, team fights the intervening barracks. '
-        'AI base eligibility/types/selection remain unobserved; '
-        'see work/re/c_basesort_dual_report.md and handoff-c.md')),
-])
+@pytest.mark.parametrize('build', ['aibs2old', 'aibs2new'])
 def test_dual_base_sort_named_bench_replay(build):
     """Retain engine counts, without claiming two yards imply two eligible bases."""
     w = simai.run(build, 'a', until=65)
