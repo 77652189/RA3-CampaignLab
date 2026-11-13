@@ -5228,7 +5228,8 @@ class Sim:
                 continue
             if b.frame_move != precise:          # chasing a moving target may have replanned into / out of prop contact
                 continue
-            if not b.path or 'IMMOBILE' in b.status or b.engaged or self.emp_disabled(b):
+            if (not b.path or 'IMMOBILE' in b.status or b.engaged or self.emp_disabled(b)
+                    or self.infiltrators.movement_blocked(b)):
                 continue
             left = b.speed * dt
             if precise and b.jet_motion is not None:

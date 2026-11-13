@@ -1,4 +1,4 @@
-"""InfiltratorContain ENERGY and minimal ordinary VISION slices.
+"""InfiltratorContain ENERGY, ordinary VISION and measured PARALYZE movement slices.
 
 One retail Allied plant: 20 seconds of zero supply, spy consumed, owner unchanged.
 Travel/entry reach and Amount * eligible energy duration scaling are INFERRED;
@@ -52,11 +52,24 @@ class Infiltrators:
         self.going = {}
         self.off_until = {}
         self.observers = []
+        self.paralyzed_until = {}
+        self.paralyzed_hosts = set()
 
     def vision_rule(self, target, rule):
         return (target.template in ('AlliedConstructionYard', 'SovietConstructionYard')
                 and rule.get('Effect') == 'VISION' and rule.get('Duration') == '-1s'
                 and rule.get('ObjectRef') == 'VisionObserver' and not rule.get('ReplaceWith'))
+
+    def paralyze_rule(self, target, rule):
+        """E128 measured host/config only; production, combat and other hosts are gaps."""
+        return (target.template == 'AlliedTechStructure'
+                and rule.get('Effect') == 'PARALYZE' and rule.get('Duration') == '30s'
+                and rule.get('UnitFilter') == 'InfiltrationParalyzeObjectFilter'
+                and not rule.get('ReplaceWith') and not rule.get('ObjectRef'))
+
+    def movement_blocked(self, body):
+        """E128 movement only; no PARALYZED model-condition bit was observed."""
+        return self.sim.frame_now() < self.paralyzed_until.get(id(body), 0)
 
     def sees(self, side, x, y, air=False):
         """Measured local yard shroud. Parent-death cleanup is INFERRED."""
@@ -82,8 +95,13 @@ class Infiltrators:
             return
         energy = (rule.get('Effect') == 'ENERGY' and rule.get('ObjectRef') == 'EnergyDisabler'
                   and not rule.get('ReplaceWith'))
-        if not energy and not self.vision_rule(target, rule):
-            s.gap('InfiltratorContain', target.template, '仅电厂ENERGY和盟/苏建造场普通VISION已实现')
+        if not energy and not self.vision_rule(target, rule) and not self.paralyze_rule(target, rule):
+            s.gap('InfiltratorContain', target.template, '仅已测ENERGY、普通VISION及AlliedTechStructure PARALYZE配置已实现')
+            return
+        if self.paralyze_rule(target, rule) and (
+                spy.owner != s.human or spy.template != 'AlliedInfiltrationInfantry'
+                or id(target) in self.paralyzed_hosts):
+            s.gap('InfiltratorContain', target.template, 'PARALYZE其他间谍/玩家或重复进入未对拍')
             return
         if self.vision_rule(target, rule) and (
                 spy.owner != s.human or spy.template != 'AlliedInfiltrationInfantry'
@@ -120,6 +138,25 @@ class Infiltrators:
                 # INFERRED: sampled consumption at s11, first local discovery at s16.
                 # No engine mechanism or exact first-frame claim follows from this fit.
                 self.observers.append((spy.owner, target, s.frame_now() + 5 * simunits.LIFE_FPS))
+                s.destroy(spy, '进楼渗透', delete=True)
+                s.change()
+                continue
+            if self.paralyze_rule(target, rule):
+                selected = filter_spec(rule['UnitFilter'])
+                if selected is None:
+                    s.gap('InfiltratorContain', target.template, 'PARALYZE复杂目标筛选未对拍')
+                    continue
+                # INFERRED: apply once to existing units at entry, for the XML duration.
+                # E128 b supports stable movement windows, not exact expiry or new units.
+                end = s.frame_now() + simunits._frames(float(rule['Duration'][:-1]))
+                self.paralyzed_hosts.add(id(target))
+                for body in s.living():
+                    if body.owner != target.owner or body.template.lower() not in selected[0]:
+                        continue
+                    if body.template != 'AlliedAntiVehicleVehicleTech3':
+                        s.gap('InfiltratorContain', body.template, 'PARALYZE其他匹配模板未对拍')
+                        continue
+                    self.paralyzed_until[id(body)] = end
                 s.destroy(spy, '进楼渗透', delete=True)
                 s.change()
                 continue
