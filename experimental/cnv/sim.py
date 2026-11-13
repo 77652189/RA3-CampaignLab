@@ -1684,6 +1684,9 @@ class Sim:
         if not miners:
             return
         nodes = [b for b in self.living() if 'orenode' in b.template.lower()]
+        # a refinery's own collector, not yet started, looks for its node after the miners already there (it fades
+        # in after the map's objects are made; round 189: the placed one claims the node first)
+        miners.sort(key=lambda b: b.mine is None and b.unpack_parent is not None)
         for fr in range(start, frame + 1):
             for b in miners:
                 if b.alive:
@@ -1727,11 +1730,15 @@ class Sim:
                 m['due'] = fr + MINE_RETRY
                 return
             m['node'] = node.name
+            n = self.nodes.setdefault(node.name, {'free': 0, 'gathered': 0, 'at': None})
+            if not self._claimed(n, b, node.name):
+                n['claim'] = b.name                 # the first to look for it holds it (round 189)
             self._leg(b, fr, (node.x, node.y), 'to node')
         elif st == 'to node':
             m['leg'] = None
             n = self.nodes.setdefault(m['node'], {'free': 0, 'gathered': 0, 'at': None})
-            if n['at'] is not None and n['at'] != b.name and self._docked(n['at'], m['node']):
+            if (n['at'] is not None and n['at'] != b.name and self._docked(n['at'], m['node'])) \
+                    or self._claimed(n, b, m['node']):
                 m['state'], m['due'] = 'stuck', 10 ** 9     # no queue place: it never gets in
                 return
             n['at'] = b.name
@@ -1744,7 +1751,7 @@ class Sim:
             m['state'], m['due'] = 'loading', fr + MINE_DOCK - 1
         elif st == 'loading':                       # full on its last loading frame: off the frame after (the trip
             n = self.nodes[m['node']]               # 2 x 104 + 61 = 269 of engine_mining a)
-            n['at'], n['free'] = None, fr + MINE_REST + 1
+            n['at'], n['free'], n['claim'] = None, fr + MINE_REST + 1, None
             m['state'], m['due'] = 'find refinery', fr + 1
         elif st == 'find refinery':
             now = self.frame_now()
@@ -1781,6 +1788,14 @@ class Sim:
             m['due'] = fr + 1
             if m['n'] >= MINE_DOCK:
                 m['state'] = 'locate'
+
+    def _claimed(self, n, b, node):
+        """Whether another miner than `b` holds node `n` (named `node`): it looked for it first and is on its way
+        there, docked or loading (bench round 189, checks/engine_mining.py g / mineaway g: the placed collector works,
+        the refinery's own waits for good, whether or not their drives meet)."""
+        o = self.bodies.get(n.get('claim')) if n.get('claim') not in (None, b.name) else None
+        return o is not None and o.alive and o.mine is not None and o.mine['node'] == node \
+            and o.mine['state'] in ('to node', 'docked', 'loading')
 
     def _docked(self, miner, node):
         """Whether `miner` stands docked at (or is being loaded by) `node`."""

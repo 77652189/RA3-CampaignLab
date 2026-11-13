@@ -916,23 +916,43 @@ def test_mining_engine_mining_f_the_placed_collector_comes_as_on_the_bench():
     assert abs(r['名到矿'] - MINE_F_BENCH['名到矿']) <= 6, r
 
 
-@pytest.mark.xfail(strict=True, reason='round 178, bench engine_mining f: the refinery own collector is in the node '
-                                       'square at 121 with the placed one beside the refinery (56 alone, c): held '
-                                       'up ~65 frames by it (collision), it comes second; the sim has no '
-                                       'collisions (49)')
+@pytest.mark.xfail(strict=True, reason='round 189, bench engine_mining g / mineaway g: the refinery own collector, '
+                                       'waiting for good, is first in the node square at 121 / 170 (alone 56, h), '
+                                       'after the placed one (107 / 114) -- where a waiting miner stands is not '
+                                       'modelled: the sim draws it to the node (49)')
 def test_mining_engine_mining_f_the_refinery_s_own_is_held_up():
     r = _full_mining('engine_mining', 'f', until=30.0)
     assert abs(r['自到矿'] - MINE_F_BENCH['自到矿']) <= 6, r
 
 
-@pytest.mark.xfail(strict=True, reason='round 177: in b the bench has the placed collector working and the '
-                                       'refinery own one stuck (first money 290, period 269); the sim own one '
-                                       'reaches the node first (105 vs 153) and both work (240 / 390 / 540). '
-                                       'Round 178 (f): the own one is held up by the placed one (collision), '
-                                       'not a dock rule -- the sim rule (first come works, no queue) stands')
+MINE_G_BENCH = {'engine_mining': {'首笔': 290, '自离场': 19, '自到矿': 121, '名到矿': 107},   # CampMine g
+                'mineaway': {'首笔': 261, '自离场': 19, '自到矿': 170, '名到矿': 114}}       # CampMineAway g
+MINE_H_BENCH = {'首笔': 239, '自离场': 19, '自到矿': 56}                                      # alone (h)
+
+
+def test_mining_the_placed_collector_claims_the_node_whether_or_not_the_drives_meet():
+    """Round 189 (bench 2026-11-12 engine_mining g / h, mineaway g): the refinery's own leaves its pad at 19 either
+    way (not held at its way out), and with the placed one far off any shared way (mineaway) it still comes second
+    and waits: not a collision, the placed one (there before the refinery's own fades in) claims the node when it
+    looks for it (sim.Sim._claimed). The placed one's first money within 15 (290: its drive round the refinery,
+    not modelled, the sim 277), mineaway's within 6; the period one miner's (b: 269)."""
+    for name in MINE_G_BENCH:
+        r = _full_mining(name, 'g', until=30.0)
+        assert abs(r['首笔'] - MINE_G_BENCH[name]['首笔']) <= (15 if name == 'engine_mining' else 6), (name, r)
+    assert abs(_full_mining('engine_mining', 'h', until=30.0)['首笔'] - MINE_H_BENCH['首笔']) <= 2
+
+
 def test_mining_engine_mining_b_the_refinery_s_own_collector_waits():
+    """b (bench 290 / 559 / 828): the placed collector works, the refinery's own waits for good -- one miner's
+    period; the first money 13 early (the placed one's drive round the refinery)."""
     r = _full_mining('engine_mining', 'b')
-    assert (r['首笔'], r['二笔'] - r['首笔'], r['三笔'] - r['二笔']) == (290, 269, 269), r
+    assert (r['二笔'] - r['首笔'], r['三笔'] - r['二笔']) == (269, 269) and abs(r['首笔'] - 290) <= 15, r
+
+
+def test_mining_engine_mining_e_the_waiting_one_never_gets_the_node():
+    """e (bench CampMineE_mcp_1105_203435): the placed one deleted once the first load is in, the money stays 250 to
+    s61 -- the refinery's own, waiting, never docks."""
+    assert _full_mining('engine_mining', 'e', until=60.0)['资金'] == 250
 
 
 def test_mining_a_second_miner_on_one_node_adds_nothing():

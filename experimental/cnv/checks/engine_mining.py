@@ -32,7 +32,16 @@ Bench 11-05 (round 43; docs/engine/mining.md):
 Bench 2026-11-12 (round 178):
   f CampMineF_mcp_1112_095956: 首笔 290 (b's), 名到矿 107, 自到矿 121 -- alone (c) the refinery's own is in the square
     at 56: the placed one, standing by the refinery, holds it up ~65 frames, so it comes second and waits for good.
-    Not who looked for the node first: the order they come in, changed by the drive (no collisions in the sim).
+    (Round 178 read it as a collision; round 189 below shows it is not.)
+  g  as f, plus 自离场 frames until the refinery's own has left the pad square (half side 50) it fades in in
+  h  g with the placed one deleted at the start (the own one alone)
+  mineaway g  g's counters, the placed one AWAY south-east (its drive clear of the refinery and the own one's way)
+Bench 2026-11-12 (round 189, work/bench_results/engine_mining__g / __h / mineaway__g.json): 首笔 / 自离场 / 自到矿 /
+  名到矿 -- g 290 / 19 / 121 / 107, h 239 / 19 / 56 / -, mineaway g 261 / 19 / 170 / 114. The own one leaves its pad at
+  19 every time (not held at its way out), and with the placed one far away it still comes second and waits for
+  good: the placed one, made before the refinery's own fades in, claims the node when it looks for it (H2 of
+  round 177, which round 178 had ruled out on f's arrival frames alone); the waiting one's square entry is where it
+  waits, not an arrival. Sim: sim.Sim._claimed.
 Against the model (RA3-EngineModel mining.py, round 43; tests/test_objects_bench.py mining): a, b, e the same with the
 drives fitted (spawn -> node 101, node <-> refinery 104, placed -> node 153); b's period and the stuck collector are
 predictions. c and d need motion (not compared).
@@ -46,7 +55,7 @@ from parts import Mission, Script, Test, counted, square
 MINER, REFINERY = 'AlliedMiner', 'AlliedRefinery'
 SITE = 'probe refinery'
 LOAD = 250                                  # OreMinerBehavior DeliveryCapacity / OreNodeBehavior DeliveryAmount
-RUN = {'a': 75.0, 'b': 75.0, 'c': 45.0, 'd': 45.0, 'e': 60.0, 'f': 30.0}
+RUN = {'a': 75.0, 'b': 75.0, 'c': 45.0, 'd': 45.0, 'e': 60.0, 'f': 30.0, 'g': 30.0, 'h': 30.0}
 PLACED = (-110.0, 0.0)                      # b, d: the second collector, from the pad
 PAD = (probe_range.SITES[SITE].x, probe_range.SITES[SITE].y)
 NODE = probe_range.OBJECTS[0].x, probe_range.OBJECTS[0].y
@@ -84,7 +93,7 @@ def mining_test(m, which='a'):
     t = Test()
     p1 = m.player('p1')
     start = [('MAP_REVEAL_ALL_PERM', p1), ('PLAYER_SET_MONEY', p1, 0)]
-    if which not in 'bdef':
+    if which not in 'bdefg':
         start.append(('NAMED_DELETE', _n('Miner')))
     t.scripts.append(Script('Test - start', [], start))
     t.counters.append(('CNV_Mine_Money', '资金'))
@@ -105,6 +114,20 @@ def mining_test(m, which='a'):
                ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', 'Player_1', 3, 1, MINER, 'Test Node'))
         t.scripts[-1].when.append(placed_in + ('NOT',))
         _until(t, 'CNV_Mine_PlacedAt', '名到矿', 'Test Placed At', placed_in)
+    elif which in 'gh':                     # round 189: f's two arrivals and when the refinery's own leaves its pad
+        t.areas['Test Node'] = square(*NODE, NODE_R)
+        t.areas['Test Pad'] = square(*PAD, PAD_R)
+        placed_in = ('NAMED_INSIDE_AREA', _n('Miner'), 'Test Node')
+        in_pad = lambda k, op: ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', 'Player_1', op, k,  # noqa: E731
+                                MINER, 'Test Pad')
+        _below(t, 'CNV_Mine_First', '首笔', 1)
+        t.scripts.append(Script('Test - own in pad', [in_pad(1, 3)], [('SET_FLAG', 'Test Own In Pad', 1)]))
+        _until(t, 'CNV_Mine_OwnOut', '自离场', 'Test Own Out', in_pad(0, 2), after='Test Own In Pad')
+        _until(t, 'CNV_Mine_OwnAt', '自到矿', 'Test Own At',
+               ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', 'Player_1', 3, 1, MINER, 'Test Node'))
+        t.scripts[-1].when.append(placed_in + ('NOT',))
+        _until(t, 'CNV_Mine_PlacedAt', '名到矿', 'Test Placed At', placed_in)
+        t.counters = t.counters[1:]             # the money's own counter not shown: four lines
     elif which in 'de':
         if which == 'e':                    # the worker (d: the placed one) goes once the first load is in
             t.scripts.append(Script('Test - worker gone', [('COUNTER', 'CNV_Mine_Money', 3, LOAD)],
@@ -125,7 +148,7 @@ def mining_test(m, which='a'):
         _until(t, 'CNV_Mine_AtNode', '到矿', 'Test At Node', has('Test Node'))
         _until(t, 'CNV_Mine_LeftNode', '离矿', 'Test Left Node', has('Test Node', 0, 2), after='Test At Node')
         _until(t, 'CNV_Mine_AtPad', '到场', 'Test At Pad', has('Test Pad'), after='Test Left Node')
-    t.expect = [('资金', 0, 'ever>=', LOAD, RUN[which])]
+    t.expect = [('首笔', 0, 'ever>=', 1, RUN[which])] if which in 'gh' else [('资金', 0, 'ever>=', LOAD, RUN[which])]
     t.bench = [('bench_watch', dict(every=0.5, sheet=False, lines=len(t.counters), seconds=RUN[which]))]
     return t
 
@@ -232,8 +255,23 @@ def niagara_mission():
     return m
 
 
-MISSION = {'engine_mining': mission, 'mineniag': niagara_mission, 'minefar': far_mission,
+AWAY = (300.0, -200.0)      # mineaway: the placed collector south-east of the pad, its drive to the node clear of the
+                            # refinery (171 off its centre) and of the own one's way out
+
+
+def away_mission():
+    """engine_mining with the placed collector AWAY (round 189): is the refinery's own held up by it only when it
+    stands by the refinery (f)?"""
+    m = Mission(name='CampMineAway', map=probe_range, units=[], facts={})
+    m.put(REFINERY, SITE, role='refinery', name=_n('Refinery'))
+    m.put(MINER, SITE, *AWAY, angle=0.0, role='miner', name=_n('Miner'))
+    m.spawns.add(MINER)
+    return m
+
+
+MISSION = {'engine_mining': mission, 'mineaway': away_mission, 'mineniag': niagara_mission, 'minefar': far_mission,
            **{f'mineturn{_tag(k)}': (lambda k=k: turned_mission(k)) for k in TURNS}}
-CHECKS = {'engine_mining': {w: (lambda m, w=w: mining_test(m, w)) for w in 'abcdef'}, 'mineniag': {'p': turned_test},
+CHECKS = {'engine_mining': {w: (lambda m, w=w: mining_test(m, w)) for w in 'abcdefgh'},
+          'mineaway': {'g': lambda m: mining_test(m, 'g')}, 'mineniag': {'p': turned_test},
           'minefar': {'p': turned_test, 'q': legs_test},
           **{f'mineturn{_tag(k)}': {'p': turned_test, 'q': legs_test} for k in TURNS}}
