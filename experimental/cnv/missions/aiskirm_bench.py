@@ -238,9 +238,16 @@ NEW_PID, NEW_STATE = 'CNVNew', 'CNVNewBuild'
 NEW_AT = (0.0, 300.0)                 # the copied barracks, from the east base (clear of the yard)
 
 
-def new_pk():
+DEAR_PK = 'CNVDearPK'                 # aiskcu / aiskcs (check yc): the Peacekeeper at build cost DEAR_COST, a unit that is
+DEAR_BARRACKS = 'CNVAIBarracks2'      # never affordable, built from a second copied barracks; the personality lists it
+DEAR_COST = 100000                    # in the build state, aiskcs also counts it as a structure for build purposes
+DEAR_AT = (-300.0, 300.0)             # the second copied barracks, from the east base (clear of the first and the yard)
+
+
+def new_pk(uid=NEW_PK, cost=None):
     """The Peacekeeper (SDK Allied/Units/AlliedAntiInfantryInfantry.xml) under NEW_PK, nothing else changed: the way a
-    level's own unit reaches the game (its own template, built from a copied barracks)."""
+    level's own unit reaches the game (its own template, built from a copied barracks). uid / cost (aiskcu, aiskcs):
+    another id, and the build cost's Amount replaced."""
     import os
     import labpaths
     from parts import Unit
@@ -248,8 +255,12 @@ def new_pk():
     x = open(path, encoding='utf-8').read()
     for old in ('id="AlliedAntiInfantryInfantry"', 'EditorName="AlliedAntiInfantryInfantry"'):
         assert x.count(old) == 1, old
-        x = x.replace(old, old.replace('AlliedAntiInfantryInfantry', NEW_PK))
-    return Unit(NEW_PK, x, what='对照：原版维和换了 id（AI 会不会造"我们的"单位）')
+        x = x.replace(old, old.replace('AlliedAntiInfantryInfantry', uid))
+    if cost is not None:
+        old = '<BuildCost Account="=$ACCOUNT_ORE" Amount="200"/>'
+        assert x.count(old) == 1, old
+        x = x.replace(old, old.replace('"200"', f'"{cost}"'))
+    return Unit(uid, x, what='对照：原版维和换了 id（AI 会不会造"我们的"单位）')
 
 
 # aiskblk* (check y): the new state's NEW_PK entry gets a BlockIfThingNearFactory filter (SDK States/AlliedBaseStates.xml
@@ -263,13 +274,16 @@ BLOCK = {'near': ('SovietScoutInfantry', 120.0),      # bear radius 5: inside th
 OFF_FLAG = 'CNVNever'                 # aiskoff (check y): a flag no script sets -> the new state's heuristic is 0
 
 
-def new_xml(cap=None, block=None, off=False):
+def new_xml(cap=None, block=None, off=False, dear=None):
     """1AlliedBalanced plus one build state of its own (CNVNewBuild: ConstantHeuristic, BuildEntry NEW_PK FEWEST_UNIT,
     the shape of SDK States/AlliedBaseStates.xml AlliedBarracksBuildState_FEWEST) -- what a level's personality would
     need to list for the AI to build a unit of ours (B handoff 126). cap (aiskcap): + a SpecificUnitCap on NEW_PK at
     all four difficulties, a unit no parent personality caps (after the BuildState lines, as retail writes them).
     off (aiskoff): the heuristic is a ScriptedFlagHeuristic on a flag nobody sets (0 for good) -- NEW_PK stays listed
-    in a build state that never builds, so a new Peacekeeper can only come from the unit builder (B handoff 151)."""
+    in a build state that never builds, so a new Peacekeeper can only come from the unit builder (B handoff 151).
+    dear (aiskcu / aiskcs): the state has a second entry DEAR_PK CONSTANT 1; dear == 'cs' also writes the personality's
+    CountAsStructureForBuildPurposesFilter as BasePersonality.xml does, plus IncludeThing DEAR_PK (xsd: after the
+    BuildState / SpecificUnitCap lines)."""
     caps = [] if cap is None else [
         f'    <SpecificUnitCap Unit="{NEW_PK}" Cap="{cap}" Difficulty="EASY MEDIUM HARD BRUTAL"/>']
     return '\n'.join([
@@ -279,6 +293,7 @@ def new_xml(cap=None, block=None, off=False):
         '  <Includes>',
         '    <Include type="instance" source="DATA:SkirmishAI/Personalities/AlliedBalanced.xml" />',
         f'    <Include type="all" source="DATA:CNVUnits/Data/{NEW_PK}.xml" />',
+        *([f'    <Include type="all" source="DATA:CNVUnits/Data/{DEAR_PK}.xml" />'] if dear else []),
         '  </Includes>',
         f'  <AIBuildStateDefinition id="{NEW_STATE}">',
         '    <Heuristic>',
@@ -290,10 +305,17 @@ def new_xml(cap=None, block=None, off=False):
             f'        <IncludeThing>{BLOCK[block][0]}</IncludeThing>',
             '      </BlockIfThingNearFactory>',
             '    </BuildEntry>']),
+        *([f'    <BuildEntry Build="{DEAR_PK}" Heuristic="CONSTANT" Score="1"/>'] if dear else []),
         '  </AIBuildStateDefinition>',
         f'  <AIPersonalityDefinition id="{NEW_PID}" PersonalityType="{NEW_PID}" inheritFrom="1AlliedBalanced">',
         f'    <BuildState id="{NEW_STATE}" State="{NEW_STATE}" Difficulty="EASY MEDIUM HARD BRUTAL"/>',
         *caps,
+        *(['    <CountAsStructureForBuildPurposesFilter Rule="ANY" Include="STRUCTURE UNPACKS_INTO_BUILDING">',
+           '      <ExcludeThing>AlliedMiner</ExcludeThing>',
+           '      <ExcludeThing>SovietSurveyor</ExcludeThing>',
+           '      <ExcludeThing>JapanRefineryEgg</ExcludeThing>',
+           f'      <IncludeThing>{DEAR_PK}</IncludeThing>',
+           '    </CountAsStructureForBuildPurposesFilter>'] if dear == 'cs' else []),
         '  </AIPersonalityDefinition>',
         '</AssetDeclaration>', ''])
 
@@ -375,7 +397,7 @@ ARMY_N = 10                            # aiskvinf / aiskvveh (check z): what the
 
 def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None, account=None,
             buffer=None, new=None, army=None, two=None, observe=False, cap=None, block=None, off=False,
-            ptype=None, mintime=None, aidata=None):
+            ptype=None, mintime=None, aidata=None, dear=None):
     m = Mission(name=name, map=ai_map(resources.measured(niagara), lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
     if aidata is not None:               # aiskad / aiskfon / aiskfof: the global AIData overridden in the map stream
@@ -431,7 +453,13 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
                       name='UNIT - CNV AI Blocker', role='ai blocker')
             if off:                      # aiskoff (check y): the state never scores, NEW_PK still listed
                 m.facts['state off'] = 1
-            m.assets.append((f'{NEW_PID}.xml', new_xml(cap, block, off), f'AIPersonalityDefinition:{NEW_PID}'))
+            if dear:                     # aiskcu / aiskcs (check yc): the unaffordable unit, a second barracks building it
+                m.facts['dear counts as structure'] = int(dear == 'cs')
+                dpk = new_pk(DEAR_PK, DEAR_COST)
+                m.units += [dpk, production.building('AlliedBarracks', [dpk.id], DEAR_BARRACKS)]
+                m.put(DEAR_BARRACKS, 'east base', DEAR_AT[0], DEAR_AT[1], side='s1', angle=3.1416,
+                      name='UNIT - CNV AI Dear Barracks', role='ai dear barracks')
+            m.assets.append((f'{NEW_PID}.xml', new_xml(cap, block, off, dear), f'AIPersonalityDefinition:{NEW_PID}'))
         m.put(NEW_BARRACKS, 'east base', NEW_AT[0], NEW_AT[1], side='s1', angle=3.1416, name='UNIT - CNV AI New Barracks',
               role='ai new barracks')
     if two is not None:                  # aiskrand / aiskdiff (check s): a copied barracks building NEW_PK and NEW_JAV
@@ -506,6 +534,8 @@ MISSION = {'aiskirm': mission, 'aiskirmc': lambda: mission(observe=True),
            'aiskblkf': lambda: mission('CampAISkBlkF', new=True, block='far'),     # check y: 400 away
            'aiskblkr': lambda: mission('CampAISkBlkR', new=True, block='radius'),  # check y: a plant at 190
            'aiskoff': lambda: mission('CampAISkOff', new=True, off=True),   # check y: the state's heuristic 0
+           'aiskcu': lambda: mission('CampAISkCU', new=True, dear='cu'),   # check yc: + a 100000-cost unit, filter retail
+           'aiskcs': lambda: mission('CampAISkCS', new=True, dear='cs'),   # check yc: + the filter counts it as structure
            'aiskpt': lambda: mission('CampAISkPt', ptype=True),      # check pt: PersonalityType != id
            'aiskpti': lambda: mission('CampAISkPtI', ptype=False),   # check pt: PersonalityType not written
            'aiskmt': lambda: mission('CampAISkMT', mintime=MT_TIMES['aiskmt']),      # check mt: MinTime 150 Force 151

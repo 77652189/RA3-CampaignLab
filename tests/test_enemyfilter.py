@@ -12,13 +12,8 @@ spec.loader.exec_module(simai)
 
 
 @pytest.mark.skipif(not simai.available(), reason='no private AI model')
-@pytest.mark.parametrize('build, expected_home', [
-    ('aiefharv', 0),
-    pytest.param('aiefeng', 4, marks=pytest.mark.xfail(strict=True, reason=
-        'EnemyFilter.Include not consumed by B state/near path; see work/re/c_enemyfilter_report.md')),
-    pytest.param('aiefself', 4, marks=pytest.mark.xfail(strict=True, reason=
-        'EnemyFilter.Relationship not consumed by B state/near path; see work/re/c_enemyfilter_report.md')),
-])
+@pytest.mark.parametrize('build, expected_home', [('aiefharv', 0), ('aiefeng', 4), ('aiefself', 4)])
+# the model reads EnemyNearby's EnemyFilter (Relationship picks the owners, the filter the templates): B round 155
 def test_enemyfilter_named_bench_replay(build, expected_home):
     w = simai.run(build, 'a', until=61)
     rows = [values[0] for second, values in w.sim.series if 60 <= second <= 61]

@@ -371,9 +371,18 @@ class Brain:
             building |= self.host.kinds(t)
         hx, hy = self.home
 
-        def near(distance, min_value, things=()):
-            v = sum(t.value for t in self.view.things if t.owner in self.view.enemies
-                    and math.hypot(t.x - hx, t.y - hy) <= distance and (not things or t.template in things))
+        def related(owner, relationship):
+            # an ObjectFilter's Relationship (D59 2: the ally bit takes the player itself, SAME_PLAYER only it);
+            # none written: the enemies (INFERRED, EnemyNearby before its EnemyFilter was read)
+            enemy, mine_ = owner in self.view.enemies, owner == self.player
+            return any((r == 'ENEMIES' and enemy) or (r == 'SAME_PLAYER' and mine_) or (r == 'NEUTRAL' and not owner)
+                       or (r == 'ALLIES' and owner and not enemy) for r in relationship) if relationship else enemy
+
+        def near(distance, min_value, things=(), relationship=(), passes=None):
+            # passes: the EnemyFilter's template test (the private model's), None = every template
+            v = sum(t.value for t in self.view.things if related(t.owner, relationship)
+                    and math.hypot(t.x - hx, t.y - hy) <= distance and (not things or t.template in things)
+                    and (passes is None or passes(t.template)))
             return v > 0 and v >= min_value
         foes = sorted(self.view.enemies)
         out = {'flags': self.host.flags(self.player), 'has': {b.template for b in mine}, 'building': building,
@@ -693,13 +702,15 @@ class Brain:
             fs = [f for f in ready if t in self.host.menu(f.template)]
             if not fs:
                 continue
-            idle = any(not s.queues.get(f.name) and not any(q in self.host.menu(f.template) for q in self.unit_q)
-                       for f in fs)
+            idles = tuple(f.name for f in fs if not s.queues.get(f.name)
+                          and not any(q in self.host.menu(f.template) for q in self.unit_q))
+            idle = bool(idles)
             kinds = self.host.kinds(t)
             surface = 'AIR' if 'AIRCRAFT' in kinds else 'AMPHIBIOUS' if 'AMPHIBIOUS' in kinds else \
                 'WATER' if 'SHIP' in kinds else 'LAND'
             out.append(tm.Offer(t, frozenset(kinds), surface, state=0 if idle else 1,
-                                standard=self.host.standard(t), cost=self.host.cost(t)))
+                                standard=self.host.standard(t), cost=self.host.cost(t),
+                                **({'facilities': idles} if 'facilities' in tm.Offer.__dataclass_fields__ else {})))
         return out
 
     def near_factory(self, ai, frame, template, distance):

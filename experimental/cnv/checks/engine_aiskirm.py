@@ -541,6 +541,45 @@ def y(m):
     return t
 
 
+def yc(m):
+    """aiskcu / aiskcs (check yc): does a unit counted as a structure by the personality's
+    CountAsStructureForBuildPurposesFilter block the AI's other unit orders? Both builds: aisknew2 + CNVDearPK (the
+    Peacekeeper at build cost 100000, from a second copied barracks, CONSTANT 1 in the build state); aiskcs also adds
+    CNVDearPK to the filter. Counters: 新维和 (CNVNewPK), 贵维和 (CNVDearPK, expected 0), 维和总数, 标枪总数, per second
+    to 170 s after the wake. Prediction: aiskcu builds CNVNewPK as aisknew2; aiskcs builds none from the state."""
+    NEW_PK, DEAR_PK = 'CNVNewPK', 'CNVDearPK'      # missions/aiskirm_bench.py's (G5: no content import)
+    t = Test()
+    PK, JAV = 'AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry'
+    for tpl in (PK, JAV):
+        m.spawns.add(tpl)
+    s1 = m.player('s1')
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    counted('CNV_AK_YCNew', '新维和', t, template=NEW_PK, player=s1)
+    counted('CNV_AK_YCDear', '贵维和', t, template=DEAR_PK, player=s1)
+    counted('CNV_AK_YCPk', '维和总数', t, template=PK, player=s1)
+    counted('CNV_AK_YCJav', '标枪总数', t, template=JAV, player=s1)
+    w = m.facts['wake at']
+    t.expect += [('贵维和', w + 160.0, 'ever>=', 0, w + 170.0)]
+    t.bench = [('bench_watch', dict(seconds=w + 170.0, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+def ycm(m):
+    """yc with AI钱 (s1's money, each frame) in place of 标枪总数: B handoff 157's K1 / K2 -- when CNVDearPK
+    (100000 against the 50000 the AI holds) is ordered (yc: s134 aiskcu / s138 aiskcs), is the money at some gate,
+    and after it does aiskcs's barracks stay idle while the money sits?
+    Bench 11-12 (work/bench_results/aiskc[su]__ycm.json, both PASS): AI钱 50000 -> ~41000 by s120 (the opening and
+    two new Peacekeepers), then ~36000 paid within s128-s133 and 贵维和 1 at s133 (cs) / s134 (cu), the money ~5300
+    after; 新维和 3 at s133 / s134, 4 at s196 (cs) / s172 (cu), 6 at s216 / s184. So the dear one is paid fast at the
+    end, not refused for want of 100000 (K1 / K3); aiskcs did not stall this time (yc's 3-to-the-end not repeated)."""
+    t = yc(m)
+    t.counters = [c for c in t.counters if c[1] != '标枪总数']
+    t.counters.append(('CNV_AK_YCMoney', 'AI钱'))
+    t.scripts.append(Script('Test - money', [], [('SET_PLAYER_MONEY_TO_COUNTER', m.player('s1'), 'CNV_AK_YCMoney')],
+                            once=False))
+    return t
+
+
 def yb(m):
     """aiskcap diagnosis (B handoff 148): is the SpecificUnitCap overrun at s150 / s155 (check y: 新维和 3, 4) a second
     barracks? Counters, each as owned objects of s1 by template (counted(); whether one under construction counts is
@@ -1013,6 +1052,8 @@ CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j
           'aiskblkf': {'y': y},
           'aiskblkr': {'y': y},
           'aiskoff': {'y': y},
+          'aiskcu': {'yc': yc, 'ycm': ycm},
+          'aiskcs': {'yc': yc, 'ycm': ycm},
           'aiskpt': {'pt': pt},
           'aiskpti': {'pt': pt},
           'aiskmt': {'mt': mt},

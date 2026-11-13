@@ -8,7 +8,7 @@
 | 脚本条件 | **94%** | **100%** | 12 / 12 | 89 | 33 | 6 | 47 | 3 | 95% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **93%** | **95%** | 17 / 22 | 28 | 18 | 3 | 5 | 2 | 96% |
-| AI | **87%** | **87%** | 121 / 357 | 415 | 127 | 130 | 124 | 34 | 97% |
+| AI | **87%** | **87%** | 123 / 357 | 415 | 129 | 129 | 123 | 34 | 97% |
 
 ## 脚本动作
 
@@ -1007,8 +1007,8 @@
 | 未做 | `经济/AccountShare.Account=SLUSH_FUND` | 6 | a4 a5 a7 | C按名台子engine_aislush：aislush100/aislush0仅交换SLUSH_FUND与PRODUCTION份额，两组电厂均s19一座、s29两座，零份额原预测FAIL保留；开局未区分此账户。第二轮有收入无开局：aislsdef全程零炮塔，aislddef在s28/48/68造出1/2/3座，s60为2。tests/test_slush_account.py原读数及模型回放；账户余额/实际支出消费者仍gap，不以开局计数吻合晋升；见work/re/c_slush_report.md |
 | 不涉及 | `表现/SkirmishGameEventFeedback.Event` | 6 | a4 a5 a7 | 纯表现（语音、视频、画面） |
 | 不涉及 | `表现/SkirmishGameEventFeedback.FeedbackKey` | 6 | a4 a5 a7 | 纯表现（语音、视频、画面） |
-| 未做 | `人格/EnemyFilter.Include` | 5 | a4 a5 a7 | C按名台子engine_aienemyfilter：近处敌矿车、仅Include由HARVESTER改ENGINEER，前者s15全离家、s18目标区4辆，后者s1-65在家4/目标区0；tests/test_enemyfilter.py保留原读数及按名回放，ENGINEER回放strict xfail。实际消费者为B的状态启发式/数据解析及near接口，非C的targets.py；未实现、不晋升；见work/re/c_enemyfilter_report.md |
-| 推断 | `人格/EnemyFilter.Relationship` | 5 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 已对拍 | `人格/EnemyFilter.Include` | 5 | a4 a5 a7 | tests/test_enemyfilter.py::test_enemyfilter_named_bench_replay（C 的 engine_aienemyfilter aiefharv / aiefeng / aiefself：Include HARVESTER 近处敌矿车触发、ENGINEER 不触发，SAME_PLAYER 无自家矿车不触发；模型 B 第 155 轮接进 EnemyNearby） |
+| 已对拍 | `人格/EnemyFilter.Relationship` | 5 | a4 a5 a7 | tests/test_enemyfilter.py::test_enemyfilter_named_bench_replay（C 的 engine_aienemyfilter aiefharv / aiefeng / aiefself：Include HARVESTER 近处敌矿车触发、ENGINEER 不触发，SAME_PLAYER 无自家矿车不触发；模型 B 第 155 轮接进 EnemyNearby） |
 | 推断 | `人格/EnemyFilter.Rule` | 5 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 未做 | `微操/AIMicroManagerData.MinDistanceFromBaseToIgnoreTargets` | 5 | a4 a5 a7 | E103 engine_aiignore aiignzt/aiignnt：同run逻辑时钟配对，0/2000首伤397/396；f406/421零组状态8无目标、高组状态0有目标。消费者已接被动选敌、敌对可攻击及逐人分配过滤；tests/test_ai_ignore_distance.py 零组精确回放通过，高组资格/分类仍strict xfail；基地取点/精确边界/宿主等价仍gap，不晋升已对拍；见 work/re/e103_ignore_distance.md |
 | 未做 | `微操/AIMicroManagerData.PassiveTargetSearchDistance` | 5 | a4 a5 a7 | E104 engine_aipassive_distance aipsdz/aipsdt/aipsds/aipsdl：0/1/200/600均f140状态6选四人旁厂，f320状态0；中心距350.3、逐兵至少324.3，微操目标不同于战术目标。两轮未出现距离分离；tests/test_ai_passive_distance.py按台名回放选择/移动/存活，精确首选时钟strict xfail；本入口未显现消费者，零值全局语义/距离基准/其他入口仍gap，暂停、不加猜测消费者、不晋升；见 work/re/e104_passive_distance.md、work/re/handoff-e.md |

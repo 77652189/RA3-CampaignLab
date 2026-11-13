@@ -81,6 +81,10 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               **{f'造兵/BlockIfThingNearFactory.{k}': 'tests/test_simai_bench_b.py::test_a_thing_near_the_factory_'
                  'blocks_the_entry（engine_aiskirm y aiskblkn / aiskblkr：Rule ANY + Relationship NEUTRAL 挡住，'
                  'aiskblkf 400 外不挡；ENEMIES 走同一段代码没单独上台；B 第 149 轮）' for k in ('Relationship', 'Rule')},
+              **{f'人格/EnemyFilter.{k}': 'tests/test_enemyfilter.py::test_enemyfilter_named_bench_replay'
+                 '（C 的 engine_aienemyfilter aiefharv / aiefeng / aiefself：Include HARVESTER 近处敌矿车触发、'
+                 'ENGINEER 不触发，SAME_PLAYER 无自家矿车不触发；模型 B 第 155 轮接进 EnemyNearby）'
+                 for k in ('Include', 'Relationship')},
               '人格/AIPersonalityDefinition.PersonalityType': 'tests/test_simai_bench_b.py::test_the_personality_'
                  'condition_matches_the_id_not_the_personality_type（engine_aiskirm pt aiskpt / aiskpti：脚本条件 '
                  'PLAYER_IS_HUMAN_OR_AI_PERSONALITY 只认人格 id，PersonalityType 写成别的名字或不写都不影响；'
@@ -164,12 +168,11 @@ NOTES = {
         '1组s1-65在家4/目标区0；普通EnemyStructure阳性对照同2000组。'
         'tests/test_shore_distance.py断言原读数并按名回放；1组strict xfail，世界桥接尚未提供实际岸距。'
         '复杂海岸/取点算法仍gap，未晋升；见work/re/c_shore_report.md'),
-    '人格/EnemyFilter.Include': (TODO,
+    '人格/EnemyFilter.Include': (BENCHED,
         'C按名台子engine_aienemyfilter：近处敌矿车、仅Include由HARVESTER改ENGINEER，'
         '前者s15全离家、s18目标区4辆，后者s1-65在家4/目标区0；'
-        'tests/test_enemyfilter.py保留原读数及按名回放，ENGINEER回放strict xfail。'
-        '实际消费者为B的状态启发式/数据解析及near接口，非C的targets.py；'
-        '未实现、不晋升；见work/re/c_enemyfilter_report.md'),
+        'tests/test_enemyfilter.py保留原读数及按名回放，三组回放都过（B第155轮：模型的EnemyNearby读EnemyFilter，'
+        '关系交给near、Include按KindOf过滤）；空Include、ALL规则没上台；见work/re/c_enemyfilter_report.md'),
     '经济/AccountShare.Account=SLUSH_FUND': (TODO,
         'C按名台子engine_aislush：aislush100/aislush0仅交换SLUSH_FUND与PRODUCTION份额，'
         '两组电厂均s19一座、s29两座，零份额原预测FAIL保留；开局未区分此账户。'
