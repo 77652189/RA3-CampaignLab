@@ -164,7 +164,7 @@ NOTES = {
         's55–65东/崖队员/双厂分别0/0/1/1与4/0/1/1；'
         'tests/test_expansion_target.py按名断言类型、分数、选择点和原计数。'
         '仅年龄类型反偏好命中子集；自动注册、死亡清理和矿点资格仍gap，'
-        '旧CAPTURED单基地两strict xfail保留；见work/re/c_bn2_report.md'),
+        '旧CAPTURED单基地只回放计数，不证明类型；见work/re/c_bn2_report.md'),
     '人格/BaseSelection.SortOrder': (BENCHED,
         'C aibs3old/aibs3new:b初始双厂：f274两个合格基地0/1均分1，'
         'OLD pick/model=0/0、NEW=1/1；点命令分别东矿/崖矿。'
@@ -216,12 +216,12 @@ NOTES = {
         '第二轮有收入无开局：aislsdef全程零炮塔，aislddef在s28/48/68造出1/2/3座，s60为2。'
         'tests/test_slush_account.py原读数及模型回放；账户余额/实际支出消费者仍gap，'
         '不以开局计数吻合晋升；见work/re/c_slush_report.md'),
-    '目标/AITargetingHeuristic.HeuristicType=Expansion': (TODO,
-        'C已上台：aiexpc:a东矿区4、崖矿区0、普通实体0，命令指向东矿点；'
-        '模型已保留BaseSelection，增加显式候选回调和槽位点，Expansion不再回退普通实体。'
-        'D98新观测确认所选基地id0、合格且偏好分1；双厂实验已移除脚本厂伪基地。'
-        'bsel是基地候选而非矿点候选；矿点资格/排序/占用仍未证，'
-        'aiexpc模型按名回放仍strict xfail，不晋升；见 work/re/c_expansion_d98_report.md'),
+    '目标/AITargetingHeuristic.HeuristicType=Expansion': (BENCHED,
+        'C aiexpc:a东矿区4、崖矿区0、普通实体0；D104同帧基地中心3850/3400，'
+        '三矿点state2，选44号4173/2987（最近524）；模型先选基地再取最近合格矿点。'
+        'tests/test_expansion_target.py按名回放原计数与候选选择；无距离上限、不读SortType。'
+        '仅state2普通陆矿子集对拍；其他状态/占用/标记/敌距/水域拒绝仍INFERRED，'
+        '动态矿表/基地注册和死亡清理仍gap；见work/re/c_expansion_d104_report.md'),
     '造兵/CountAsStructureForBuildPurposesFilter.ExcludeThing': (BENCHED,
         'C engine_aibuildexclude：旧aibex/aibin直接过滤New/Dear=0/1，IncludeThing优先；'
         '新aibxo/aibxi:x类别Include INFANTRY、无Dear的IncludeThing，仅切Dear的ExcludeThing，'

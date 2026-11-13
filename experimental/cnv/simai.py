@@ -203,7 +203,8 @@ class Brain:
                             # INFERRED at shorelines, bridges and for airborne targets.
                             water_at=lambda x, y: self.sim.ground.z(x, y) < self.sim.ground.water,
                             expansion_candidates=(self.expansion_candidates
-                                                  if self.sim.m.facts.get('dual bases') else None))
+                                                  if (self.sim.m.facts.get('dual bases')
+                                                      or self.sim.m.facts.get('expansion')) else None))
         self.base = self.powers = None
         self.attach(host.blocks)
         self.ai.tell(m['player'].Command('make base'))
@@ -295,15 +296,11 @@ class Brain:
         return (y.x, y.y) if y else None
 
     def expansion_candidates(self, heuristic, origin):
-        """Narrow initial-base/ore hypothesis for the dual-yard experiment.
+        """D104: select a base before choosing its nearest eligible ore.
 
-        The bench base table has one base, id 0; the later scripted yard never
-        registers another. INFERRED: bootstrap its anchor from the sole initial
-        yard, and offer that anchor's nearest ore. Ore eligibility/ordering,
-        occupancy and base death remain gaps (work/re/c_expansion_d98_report.md).
-        The initial-dual fixture additionally registers its initial yards in
-        object order (INFERRED); OLD/NEW ordering uses the model's base-id rule.
-        Other multiple-yard layouts fail closed. This is not general discovery.
+        INFERRED adapter: initial yards supply base centres, map OreNodes are
+        state-2 entries (observed only for the aiexp fixtures). Dynamic table
+        registration, occupancy/flags and death/capture remain gaps.
         """
         selection = heuristic.base_selection
         if (selection is None or selection.preferred - {'MAIN_BASE', 'OLDEST_OF_TYPE',
@@ -314,6 +311,7 @@ class Brain:
             return []
         # CAPTURED cannot be resolved from current ownership. Do not claim this
         # provider tests that flag; this hypothesis covers ordinary own yards.
+        tg = self.host.mod['targets']
         nodes = [b for b in self.sim.living() if b.template == 'OreNode']
         anchor = self.expansion_anchor
         registered = self.expansion_initial_yards or ((anchor,) if anchor is not None else ())
@@ -323,12 +321,6 @@ class Brain:
                      and (getattr(yard, 'unpack_end', None) or 0) <= self.sim.frame_now())]
         candidates = []
         for bid, yard in yards:
-            if not nodes:
-                break
-            node = min(nodes, key=lambda b: math.hypot(b.x - yard.x, b.y - yard.y))
-            water = self.view.water_at(node.x, node.y)
-            if heuristic.location and ('Water' if water else 'Land') not in heuristic.location:
-                continue
             base_types = {'MAIN_BASE'}
             # Intact initial-dual table: first/last MAIN_BASE carries its age
             # flag. Registration and reassignment after death remain INFERRED.
@@ -337,11 +329,20 @@ class Brain:
                 base_types.add('OLDEST_OF_TYPE')
             if bid == max(i for i, _ in yards):
                 base_types.add('MOST_RECENT_OF_TYPE')
-            candidates.append(self.host.mod['targets'].ExpansionCandidate(
-                ('ore', node.name), node.x, node.y, base_id=bid,
-                base_types=frozenset(base_types), water=water))
-        selected = self.host.mod['targets'].select_expansion_base(selection, candidates)
-        return [c for c in candidates if c.base_id == selected]
+            candidates.append(tg.ExpansionCandidate(
+                ('base', bid), yard.x, yard.y, base_id=bid,
+                base_types=frozenset(base_types)))
+        selected = tg.select_expansion_base(selection, candidates)
+        base = next((c for c in candidates if c.base_id == selected), None)
+        if base is None:
+            return []
+        ores = [tg.ExpansionOre(('ore', n.name), n.x, n.y, state=2,
+                               occupied=False, blocked=False,
+                               water=self.view.water_at(n.x, n.y)) for n in nodes]
+        node = tg.select_expansion_ore(heuristic, self.view, (base.x, base.y), ores)
+        return ([tg.ExpansionCandidate(node.id, node.x, node.y, base_id=selected,
+                                       base_types=base.base_types, water=node.water)]
+                if node is not None else [])
 
     def base_object(self, player):
         """states.base_object over a player's living, unpacked structures: preferred = CONSTRUCTION_YARD, rank = cost

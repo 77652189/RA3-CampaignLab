@@ -46,9 +46,6 @@ def test_expansion_interface_preserves_selection_and_slot_points(tmp_path):
     assert calls == [(h.base_selection, (0, 0))] * 2
 
 
-@pytest.mark.xfail(strict=True, reason='Expansion selected the east ore node on the bench; '
-                   'automatic candidate eligibility/base discovery is still absent; '
-                   'see work/re/c_expansion_probe_report.md and handoff-c.md')
 def test_expansion_named_bench_replay():
     w = simai.run('aiexpc', 'a', until=31)
     labels = [label for _, label in w.sim.test.counters]
@@ -65,9 +62,6 @@ def test_expansion_named_entity_control_replay():
 
 
 @pytest.mark.parametrize('build', ['aibsold', 'aibsnew'])
-@pytest.mark.xfail(strict=True, reason='BaseSelection.SortOrder contrast retains the east ore selection; '
-                   'automatic candidate/base discovery is absent and eligible base ages are unobserved; '
-                   'see work/re/c_basesort_report.md and handoff-c.md')
 def test_base_sort_named_bench_replay(build):
     w = simai.run(build, 'a', until=31)
     row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
@@ -76,9 +70,6 @@ def test_base_sort_named_bench_replay(build):
 
 
 @pytest.mark.parametrize('build', ['aibncap', 'aibnnone'])
-@pytest.mark.xfail(strict=True, reason='PreferredNotBaseTypes CAPTURED/empty both select east on the bench; '
-                   'automatic candidate discovery is absent; base type/eligibility/selection is unobserved; '
-                   'see work/re/c_basenot_report.md and handoff-c.md')
 def test_base_preferred_not_named_bench_replay(build):
     w = simai.run(build, 'a', until=31)
     row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
@@ -227,3 +218,29 @@ def test_initial_dual_base_sort_named_bench_replay(build, base_id, point):
     assert (picked.x, picked.y) == pytest.approx(point, abs=0.1)
     row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
     assert (row['东建厂'], row['崖建厂']) == (1, 1), row
+
+
+def test_expansion_d104_candidate_readings_replay(tmp_path):
+    """D104 aiexpc:a f151: three state-2 nodes, centre and final choice."""
+    import sys
+    sys.path.insert(0, str(ROOT / 'experimental/cnv'))
+    import teamlog
+    p = tmp_path / 'ra3ext.log'
+    p.write_text('expc: frame=151 ctr=3850.0:3400.0 mind=0.0 pick=44 n=3 '
+                 'cand=44@4173:2987:2:-1/-1:best524,45@4279:3093:2:-1/-1:far,'
+                 '46@3400:1300:2:-1/-1:far\n', encoding='utf-8')
+    sample, = teamlog.expansion_candidates(str(p))
+    assert sample['frame'] == 151 and sample['pick'] == 44
+    assert [n['state'] for n in sample['candidates']] == [2, 2, 2]
+    tg = simai.model()['targets']
+    nodes = [tg.ExpansionOre(n['id'], *n['point'], state=n['state'],
+                            occupied=False, blocked=False, water=False)
+             for n in sample['candidates']]
+    data = tg.TargetData(str(tmp_path))
+    data.add_text('<AssetDeclaration><AITargetingHeuristic id="exp" '
+                  'HeuristicType="Expansion" SearchRange="1" SortType="ThreatToGround" '
+                  'Location="Land"/></AssetDeclaration>')
+    picked = tg.select_expansion_ore(data.heuristic('exp'), tg.View('ai', []),
+                                    sample['centre'], nodes)
+    assert picked.id == sample['pick']
+    assert (picked.x, picked.y) == (4173, 2987)

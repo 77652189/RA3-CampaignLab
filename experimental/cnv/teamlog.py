@@ -468,3 +468,32 @@ if __name__ == '__main__':
             hit = [t for t in teams if _named(t, w)]
             if hit:
                 print(f, [(t['n'], t['active'], t['release']) for t in hit])
+
+
+def expansion_candidates(run):
+    """D104 ore-table snapshots; reasons are raw observer tokens.
+
+    candidates retain table order, state, used/capacity (-1 means not read),
+    coordinates and rejection/best reason. pick is the final ore id, not the
+    last running-best reason. These are separate from base_choices.
+    """
+    out = []
+    with open(_log(run), encoding='utf-8', errors='replace') as f:
+        for line in f:
+            if not line.startswith('expc: '):
+                continue
+            d = dict(re.findall(r'(\w+)=(\S+)', line))
+            candidates = []
+            for item in d.get('cand', '').split(','):
+                if not item:
+                    continue
+                oid, rest = item.split('@', 1)
+                x, y, state, occupancy, reason = rest.split(':')
+                used, capacity = map(int, occupancy.split('/'))
+                candidates.append(dict(id=int(oid), point=(float(x), float(y)),
+                                       state=int(state), used=used, capacity=capacity,
+                                       reason=reason))
+            out.append(dict(frame=int(d['frame']), centre=tuple(map(float, d['ctr'].split(':'))),
+                            min_distance=float(d['mind']), pick=None if d['pick'] == '-1' else int(d['pick']),
+                            count=int(d['n']), candidates=candidates))
+    return out
