@@ -1,4 +1,4 @@
-"""CannotAttackTargetReaction diagnostic, not promoted until lifecycle is read.
+"""CannotAttackTargetReaction measured lifecycle, replayed by test_ai_cannot_reaction.
 
 SDK predicts Ignore continues, Disband releases, TreatLikeSuccess uses RAMPAGE.
 Counters only validate the scene and its game clock. Team lifecycle/aims must
@@ -11,7 +11,7 @@ two again at 97, repeated clearing/recruitment. TreatLikeSuccess/RAMPAGE:
 air target at 51, ground yard target at 92, enemy micro state 6 at 500.
 All three keep two living Guardians and zero air-target damage. Carrier
 frames are not map-counter frames. Exact dispatch timing, ReturnHomeAndDisband
-and other tactics remain gaps; the E-owned consumer blocks implementation.
+and other tactics remain gaps; consumer boundaries are in work/re/e122_cannot.md.
 """
 from model import Script, Test, counted, square
 

@@ -1,7 +1,7 @@
 """Named replay of the CannotAttackTargetReaction bench lifecycle.
 
-Measured samples and ownership gate: work/re/c_cannot_report.md.
-These probes do not close the field until the missing consumer is implemented.
+Measured samples: work/re/c_cannot_report.md; consumer boundaries: work/re/e122_cannot.md.
+Explicit reactions are covered; exact timing and other reactions remain gaps.
 """
 import importlib.util
 from pathlib import Path
@@ -17,15 +17,7 @@ pytestmark = pytest.mark.skipif(not simai.available(), reason='no private AI mod
 
 
 @pytest.mark.parametrize('name', [
-    'aicantig',
-    pytest.param('aicantdi', marks=pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-        'Bench clears a populated team at frame 95 and recruits again at 97; '
-        'CannotAttackTargetReaction consumer requires the E-owned tactics module; '
-        'see work/re/c_cannot_report.md and handoff-c.md.'))),
-    pytest.param('aicantsu', marks=pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-        'Bench switches tactical target at frame 92 and attacks the ground yard at 500; '
-        'model keeps the air target. Consumer requires E-owned tactics module; '
-        'see work/re/c_cannot_report.md and handoff-c.md.'))),
+    'aicantig', 'aicantdi', 'aicantsu',
 ])
 def test_cannot_reaction_replays_observed_lifecycle(name):
     """Assert the observed retention / clearing / new ground target, not inferred timing.
