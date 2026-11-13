@@ -12,7 +12,7 @@ Parts (the engine A line's share of ADR 0026; AI is the B line's):
   武器效果          every Nugget type of the retail weapons (retailmodules.weapon_census)
 
 States (STATES): 已对拍 -- implemented and a bench comparison test cites it (BENCHED: the register, each entry naming
-the test); 推断 -- the simulator has code for it, no bench comparison yet; 未做 -- nothing; 不涉及 -- presentation only
+the test); 推断 -- the simulator has code for it, no bench comparison yet; 未做 -- nothing; 不涉及 -- presentation / statistics only
 (a rule below, by name or module group: never a list; a presentation action measured on the bench stays 已对拍).
 How "has code" is told:
   script names    simcoverage.name_state: the engine model's core, a Sim.act / Sim.cond branch (probed with a retail
@@ -244,6 +244,7 @@ BENCHED_TESTS = {
 # (part, name) -> (state, why): where the name rule above is wrong (a module read under another name ...)
 _NOT_IN_SIM = '已核（11-08）：模拟器没有这个效果'
 NOTES = {
+    (NUGGET, 'ReportWeaponFiredStatNugget'): (NA, '纯统计（C线工单允许排除）：只记录玩家武器开火次数；原版两份空配置附于SovietVacuumBomb / ParticleCannonWeapon，伤害与创建物体由独立WeaponOCLNugget负责。保留用量2，不登记已对拍；未上台，不模拟战后统计；证据见work/re/c_reportstat_report.md'),
     (MODULE, 'Behaviors/PassiveAreaEffectBehavior'): (GUESSED, 'E70部分：engine_passivearea a按名回放工程师独立范围治疗；状态开启、40距离同属步兵100%，400距离步兵/60距离车辆/未开启源旁步兵50%，关闭再扣血后四路50%。E74按名回放f/g阈值帧11/31/51/71与16/36/56/76，每20帧分批治疗；共用任务帧相位及SDK每秒10%换算跳幅INFERRED，时钟来源/动态创建与重开/调查周期/叠加/跨玩家关系/自身受益/附着无人机仍gap，不登记整项已对拍；tests/test_simpassivearea.py；见work/re/e_passive_e74.md'),
     (MODULE, 'Behaviors/TrackDamage'): (TODO, 'E69静态核实：6个SDK配置均InstantWeaponsOnly=true，TimeToTrack为0/1/2s；现有expected_damage只接来弹，历史伤害仍gap。与C线瞬发历史接口工单重叠，E暂停独立探针；尚无本模块具名实测回放，不登记已对拍、不改分母；见work/re/e_trackdamage_e69.md'),
     (CONDITION, 'ENEMY_SIGHTED'): (GUESSED, '部分：engine_levelvision a普通/英雄幻影在近点移除后对工程师240/310距离四路0/101/0/100，test_simbench_c重放；仅敌对关系范围查询已量，其他关系、隐形与精确边界未对拍，不登记整项'),

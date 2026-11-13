@@ -93,6 +93,36 @@ def test_production_info_ui_exclusion_preserves_weight_without_claiming_bench():
     assert 'work/re/e_production_e56.md' in row['why']
 
 
+def test_weapon_fired_stat_exclusion_keeps_both_empty_retail_forms_without_claiming_bench():
+    """A statistics exclusion must not swallow OCL effects or a future configured form."""
+    import retailmodules as rm
+
+    key = inventory.NUGGET, 'ReportWeaponFiredStatNugget'
+    rows = [i for i in items() if (i['part'], i['name']) == key]
+    assert len(rows) == 1
+    row = rows[0]
+    assert (row['state'], row['uses']) == (inventory.NA, 2)
+    assert rm.weapon_census()[key[1]]['weapons'] == 2
+    assert key not in inventory.BENCHED_TESTS
+    assert '未上台' in row['why'] and 'work/re/c_reportstat_report.md' in row['why']
+    st = rm._load()
+    found = {}
+    for k, (name, _, _) in st['weapons'].items():
+        forms = rm.effective_weapon_forms(k, st)
+        stats = [n for n in forms if rm._tag(n) == key[1]]
+        if stats:
+            assert len(stats) == 1
+            assert not stats[0].attrib and len(stats[0]) == 0
+            assert not (stats[0].text or '').strip()
+            found[name] = {n.get('WeaponOCL') for n in forms if rm._tag(n) == 'WeaponOCLNugget'}
+    assert found == {
+        'SovietVacuumBomb': {'OCL_VacuumBombSeed'},
+        'ParticleCannonWeapon': {'OCL_ParticleCannonProjectiles', 'OCLParticleCannon'},
+    }
+    ocl = next(i for i in items() if (i['part'], i['name']) == (inventory.NUGGET, 'WeaponOCLNugget'))
+    assert ocl['state'] == inventory.BENCHED
+
+
 def test_substructure_storage_gate_keeps_unmeasured_weight_and_runtime_gap():
     key = inventory.MODULE, 'Behaviors/SubStructureStorageBehavior'
     rows = [i for i in items() if (i['part'], i['name']) == key]
