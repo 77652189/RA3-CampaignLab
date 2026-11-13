@@ -100,3 +100,15 @@ def soviet_movement_check(m):
 
 
 CHECKS['engine_infpsov'] = {'a': soviet_movement_check}
+
+
+def japanese_movement_check(m):
+    """E133 Japanese retail host, unchanged E129 movement predictions.
+
+    Same-owner Mirage pauses; Guardian and third-owner Mirage move.
+    Exact entry/expiry and arrival seconds remain INFERRED.
+    """
+    return soviet_movement_check(m)
+
+
+CHECKS['engine_infpjap'] = {'a': japanese_movement_check}

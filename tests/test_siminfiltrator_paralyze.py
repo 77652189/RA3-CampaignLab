@@ -86,3 +86,43 @@ def test_paralyze_soviet_unmeasured_configuration_stays_a_gap():
                        ('CanEnterFilter', 'OtherEntry'), ('ObjectStatusToSet', 'IMMOBILE'),
                        ('InfiltratedStatusFilter', 'DESTROYED'), ('Amount', '1.0')]:
         assert not effect.paralyze_rule(host, dict(rule, **{key: value})), key
+
+
+def test_paralyze_japanese_movement_as_on_the_bench():
+    """E133 Japanese host: stable windows, same existing-unit controls.
+
+    Prediction fixed before the run: entry consumes enemy spy, refuses ally,
+    HP/owner unchanged, only same-owner Mirage delayed. Exact clocks INFERRED.
+    Original observations: work/re/e133_paralyze_japan.md.
+    """
+    import build
+    import sim
+    m, t, mod = build.resolve('engine_infpjap', 'a')
+    assert len(mod) <= 15 and '_' not in mod
+    s = sim.Sim(m, t).run(50)
+    for start, end, wanted in [(1, 7, [11100, 11100, 0, 0]),
+                               (30, 35, [1100, 11100, 0, 110]),
+                               (49, 50, [1100, 11100, 0, 111])]:
+        rows = [values for second, values in s.series if start <= second <= end]
+        assert rows and all(values == wanted for values in rows), rows
+    assert not s.body(m.role('enemy spy').name).alive
+    assert s.body(m.role('ally spy').name).alive
+    assert not any(key[0] == 'InfiltratorContain' for key in s.unmodeled)
+
+
+def test_paralyze_japanese_unmeasured_configuration_stays_a_gap():
+    """Host extension admits only the measured complete retail configuration."""
+    import build
+    import sim
+    import siminfiltrator
+    m, t, _ = build.resolve('engine_infpjap', 'a')
+    s = sim.Sim(m, t)
+    host = s.body(m.role('enemy').name)
+    effect = siminfiltrator.Infiltrators(s)
+    rule = siminfiltrator.spec(host.template)
+    assert effect.paralyze_rule(host, rule)
+    for key, value in [('ImmediatelyEnabled', 'true'), ('BlockedDuration', '0s'),
+                       ('UnitDuration', '5s'), ('StructureFilter', 'OtherFilter'),
+                       ('CanEnterFilter', 'OtherEntry'), ('ObjectStatusToSet', 'IMMOBILE'),
+                       ('InfiltratedStatusFilter', 'DESTROYED'), ('Amount', '1.0')]:
+        assert not effect.paralyze_rule(host, dict(rule, **{key: value})), key
