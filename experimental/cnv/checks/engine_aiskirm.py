@@ -1058,7 +1058,7 @@ def fm(m):
 
 CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j': j, 'k': k, 'l': l, 'm': m,
                       'n': n, 'o': o, 'p': p, 'q': q, 'r': r, 'u': u, 'x': x},
-          'aiskirmc': {'m': m},  # opt-in carrier diagnostic; stock aiskirm stays unchanged
+          'aiskirmc': {'m': m, 'u': u},  # opt-in carrier diagnostic; stock aiskirm stays unchanged
           'aiskexp': {'q': q},
           'aiskmod': {'u': u},
           'aiskacp': {'v': v},
