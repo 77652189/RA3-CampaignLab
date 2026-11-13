@@ -11,7 +11,8 @@ the mission personalities) live there too, so they count. Items, named <组成�
   value     <Tag>.<Attr>=<Value> every value of a selector attribute (SELECTORS: a tactic type, an end behaviour ...)
 Left out: bookkeeping (ids, inheritance, includes). 不涉及: speech / video / greeting feedback and AIData's drawing knobs.
 
-States: 推断 -- the name is a quoted string in the AI model (the private engine model's ra3model/ai/*.py, or the public
+States: 推断 -- the name is a quoted string in the AI model (the private engine model's ra3model/ai/*.py at the commit
+inventory_model.rev pins -- not its working tree, so every workspace renders the same page -- or the public
 simai.py, simtech.py for the protocol lottery): a first cut, "read" is not "acts on" -- NOTES corrects it; 未做 -- not there; 已对拍 -- an implemented item
 whose last word a checks/engine_ai*.py a test runs names (generic words excluded; of a probe of several checks, the
 check that names it, inventory.probe_parts; a line saying it was not measured does not count, inventory.measured), or
@@ -30,6 +31,9 @@ import labpaths                                 # noqa: E402
 AI_DATA = os.path.join(labpaths.SDK3, 'SageXML', 'SkirmishAI')
 AI_CODE = [os.path.join(labpaths.ENGINE_MODEL, 'ra3model', 'ai'), os.path.join(os.path.dirname(__file__), 'simai.py'),
            os.path.join(os.path.dirname(__file__), 'simtech.py')]
+# The private model is read at this committed revision, never at its working tree: every workspace (and every lane's
+# model clone) renders the same pages. Move it with `inventory_ai.py pin` (origin/main), then regenerate the pages.
+MODEL_REV_FILE = os.path.join(HERE, 'inventory_model.rev')
 PART = 'AI'
 BENCHED, GUESSED, TODO, NA = '已对拍', '推断', '未做', '不涉及'
 
@@ -453,11 +457,61 @@ def element_names(el, par):
     return out
 
 
+def model_rev():
+    return open(MODEL_REV_FILE, encoding='utf-8').read().split()[0]
+
+
+def _git(*args, data=None):
+    import subprocess
+    return subprocess.run(['git', '-C', labpaths.ENGINE_MODEL, *args], input=data, capture_output=True,
+                          check=True).stdout
+
+
+def _has_commit(rev):
+    import subprocess
+    try:
+        _git('cat-file', '-e', f'{rev}^{{commit}}')
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+
+def model_ai_files(rev=None):
+    """[(path, text)] of ra3model/ai/*.py in the private model at rev (default the pinned MODEL_REV_FILE), read from
+    git objects: uncommitted or unpushed edits in anyone's model working tree do not count. Fetches once when this
+    clone lacks the revision."""
+    need(labpaths.ENGINE_MODEL, 'the private engine model (labpaths.ENGINE_MODEL)')
+    rev = rev or model_rev()
+    if not _has_commit(rev):
+        _git('fetch', '-q', 'origin')
+        if not _has_commit(rev):
+            raise SystemExit(f'inventory_ai: model revision {rev} ({MODEL_REV_FILE}) not in {labpaths.ENGINE_MODEL}')
+    tree = _git('ls-tree', rev, 'ra3model/ai/').decode('utf-8').splitlines()
+    paths = sorted(line.split('\t', 1)[1] for line in tree if line.split()[1] == 'blob' and line.endswith('.py'))
+    out = _git('cat-file', '--batch', data=''.join(f'{rev}:{p}\n' for p in paths).encode('utf-8'))
+    texts, i = [], 0
+    for p in paths:                          # each object: "<sha> blob <size>\n<bytes>\n"
+        head = out.index(b'\n', i)
+        size = int(out[i:head].split()[2])
+        texts.append((p, out[head + 1:head + 1 + size].decode('utf-8').replace('\r\n', '\n')))
+        i = head + 1 + size + 1
+    return texts
+
+
 def ai_code():
-    for p in AI_CODE:
-        need(p, 'the AI model code (private engine model ra3model/ai, public simai.py)')
-    files = [os.path.join(AI_CODE[0], f) for f in sorted(os.listdir(AI_CODE[0])) if f.endswith('.py')] + AI_CODE[1:]
-    return '\n'.join(open(f, encoding='utf-8').read() for f in files)
+    for p in AI_CODE[1:]:
+        need(p, 'the AI model code (public simai.py, simtech.py)')
+    return '\n'.join([t for _, t in model_ai_files()] + [open(f, encoding='utf-8').read() for f in AI_CODE[1:]])
+
+
+def pin(rev='origin/main'):
+    """Move MODEL_REV_FILE to the model's rev (origin fetched first); regenerate the three pages after it."""
+    _git('fetch', '-q', 'origin')
+    full = _git('rev-parse', f'{rev}^{{commit}}').decode().strip()
+    with open(MODEL_REV_FILE, 'w', encoding='utf-8', newline='\n') as f:
+        f.write(full + '\n')
+    print(f'{MODEL_REV_FILE}: {full}\nnow: inventory.py; inventory_levels.py --write; inventory_ai.py levels --write')
+    return full
 
 
 def last_word(name):
@@ -659,3 +713,5 @@ def main_levels(write=False):
 if __name__ == '__main__':
     if sys.argv[1:2] == ['levels']:
         main_levels(write='--write' in sys.argv)
+    elif sys.argv[1:2] == ['pin']:
+        pin(*sys.argv[2:3])

@@ -213,6 +213,34 @@ def test_the_committed_level_scope_is_current():
     assert open(inventory_ai.LEVELS_OUT, encoding='utf-8').read() == want
 
 
+def test_the_ai_part_reads_the_private_model_at_the_pinned_commit_not_its_working_tree(tmp_path, monkeypatch):
+    """The pages used to follow whatever the shared model working tree held at the moment, so 'committed is current'
+    went red or green by workspace. A model clone with an uncommitted edit and an untracked file still yields the
+    pinned commit's text; pin moves the pin to origin/main."""
+    import subprocess
+
+    def git(cwd, *args):
+        subprocess.run(['git', '-C', str(cwd), '-c', 'user.email=t@t', '-c', 'user.name=t', *args], check=True,
+                       capture_output=True)
+    origin, model = tmp_path / 'origin.git', tmp_path / 'model'
+    git(tmp_path, 'init', '-q', '--bare', str(origin))
+    git(tmp_path, 'clone', '-q', str(origin), str(model))
+    (model / 'ra3model' / 'ai').mkdir(parents=True)
+    (model / 'ra3model' / 'ai' / 'a.py').write_text("X = 'Committed'\n", encoding='utf-8')
+    git(model, 'add', '.')
+    git(model, 'commit', '-q', '-m', 'one')
+    git(model, 'push', '-q', 'origin', 'HEAD:main')
+    (model / 'ra3model' / 'ai' / 'a.py').write_text("X = 'WorkingTree'\n", encoding='utf-8')
+    (model / 'ra3model' / 'ai' / 'b.py').write_text("Y = 'Untracked'\n", encoding='utf-8')
+    monkeypatch.setattr(inventory_ai.labpaths, 'ENGINE_MODEL', str(model))
+    monkeypatch.setattr(inventory_ai, 'MODEL_REV_FILE', str(tmp_path / 'inventory_model.rev'))
+    rev = inventory_ai.pin()
+    assert inventory_ai.model_rev() == rev
+    assert inventory_ai.model_ai_files() == [('ra3model/ai/a.py', "X = 'Committed'\n")]
+    code = inventory_ai.ai_code()
+    assert "'Committed'" in code and 'WorkingTree' not in code and 'Untracked' not in code
+
+
 def test_level_scope_follows_inheritance_overrides_and_campaign_difficulties():
     ET = inventory_ai.ET
     root = ET.fromstring(
