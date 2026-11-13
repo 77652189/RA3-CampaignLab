@@ -897,8 +897,9 @@ def render(items):
 
 
 def gaps(items, k=20, ours=False):
-    """The k most used items not done, across the parts; with ours, only those our 9 levels use."""
-    return sorted((i for i in items if i['state'] == TODO and (i.get('levels') or not ours)),
+    """The k most used items not 已对拍 (未做 and 推断: both are short of the main number), across the parts; with
+    ours, only those our 9 levels use. (11-13 it listed 未做 only and hid the 推断 items that weigh the most.)"""
+    return sorted((i for i in items if i['state'] in (TODO, GUESSED) and (i.get('levels') or not ours)),
                   key=lambda i: (-i['uses'], i['name']))[:k]
 
 
@@ -913,9 +914,14 @@ def main():
     with open(OUT, 'w', encoding='utf-8', newline='\n') as f:
         f.write(text)
     print('\n'.join(text.splitlines()[4:4 + 2 + len(PARTS)]))
-    print('top gaps our 9 levels use:')
+    for part, row in summary(items):
+        if row[LEVEL_MAIN] is not None and row[LEVEL_MAIN] < 90:
+            ours = [i for i in items if i['part'] == part and i['state'] != NA and i.get('levels')]
+            short = 0.9 * sum(i['uses'] for i in ours) - sum(i['uses'] for i in ours if i['state'] == BENCHED)
+            print(f'{part}: {row[LEVEL_MAIN]:.2f}%, {short:.0f} uses short of 90%')
+    print('top gaps our 9 levels use (未做 and 推断):')
     for i in gaps(items, ours=True):
-        print(f"  {i['part']} {i['name']} {i['uses']} ({levels_cell(i['levels'])})")
+        print(f"  {i['part']} {i['name']} {i['uses']} {i['state']} ({levels_cell(i['levels'])})")
     return 0
 
 
