@@ -3958,6 +3958,8 @@ class Sim:
         does not establish the clock source or dynamic creation/reset timing.
         Batch magnitude is inferred from the SDK rate, not an exact HP probe.
         See work/re/e_passive_e74.md.
+        E145 measures one versus unlimited wounded beneficiaries. Candidate
+        order below is INFERRED: the plate counts recipients, not identities.
         Other relationships, overlapping auras and self-healing remain gaps.
         """
         cache = self.__dict__.setdefault('_passive_area_of', {})
@@ -3980,6 +3982,10 @@ class Sim:
         period, phase = 20, 11
         if (self.frame_now() - phase) % period:
             return
+        healed_by = {}
+        if any(rule[2] for _, rule in sources):
+            self.gap('物体模块', 'PassiveAreaEffectBehavior beneficiary order',
+                     'INFERRED: E145只量受益人数；按物体遍历次序选满一人，具体身份顺序未测，见work/re/e145_modulebatch.md')
         for target in self.bodies.values():
             if not target.alive or target.hp >= target.max_hp or 'INFANTRY' not in target.kinds:
                 continue
@@ -3994,8 +4000,13 @@ class Sim:
                 self.gap('物体模块', 'PassiveAreaEffectBehavior overlap/self', '重叠范围和自身受益未测')
                 continue
             if eligible:
+                source, rule = eligible[0]
+                used = healed_by.get(source.name, 0)
+                if rule[2] and used >= rule[2]:
+                    continue
                 target.hp = min(target.max_hp,
-                                target.hp + target.max_hp * eligible[0][1][1] * period / self.fps)
+                                target.hp + target.max_hp * rule[1] * period / self.fps)
+                healed_by[source.name] = used + 1
                 self.used.add('passive area heal')
 
     def release(self):

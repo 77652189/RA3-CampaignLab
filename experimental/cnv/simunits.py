@@ -2127,7 +2127,9 @@ def assigned_repair_rate(template, command, own=None):
 def passive_area(template, own=None):
     """E70 retail engineer aura only; other PassiveAreaEffect configurations are gaps.
 
-    Return (radius, fraction/second) only for the measured complete module shape.
+    Return (radius, fraction/second, beneficiary cap) for the measured shape.
+    E145: explicit default zero and a one-beneficiary cap are measured; larger
+    caps and beneficiary selection order remain gaps.
     Nearest group wins, including unsupported overrides. Attachment/drone healing
     is deliberately outside this independent area-healing slice.
     """
@@ -2146,6 +2148,9 @@ def passive_area(template, own=None):
         attrs = dict(node.attrib)
         attrs.pop('id', None)
         radius = attrs.pop('EffectRadius', None)
+        cap = attrs.pop('MaxBeneficiaries', '0')
+        if cap not in ('0', '1'):
+            return False
         if attrs != dict(HealingPercentPerSecond='10%', AffectWoundedOnly='true',
                          AffectUnderAttack='true', DisabledTypesToProcess='HELD'):
             return False
@@ -2161,7 +2166,7 @@ def passive_area(template, own=None):
                 dict(state.attrib) != dict(RequiredStatus='GENERIC_TOGGLE_STATE')):
             return False
         value = number('EffectRadius="' + (radius or '') + '"', 'EffectRadius')
-        return (value, .1) if value == 100 else False
+        return (value, .1, int(cap)) if value == 100 else False
 
     return _chain(template, own, read)
 
