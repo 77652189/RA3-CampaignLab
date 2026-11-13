@@ -86,7 +86,24 @@ def dual(sort_order):
     return m
 
 
-MISSION = {'aibs2old': lambda: dual('PREFER_OLDEST'),
+def initial_dual(sort_order):
+    """D99 contrast: both AI yards are initial map objects, not script spawns.
+
+    Prediction: two eligible bases; OLD chooses the lower id, NEW the higher.
+    Base registration/order must first be confirmed by the passive base table.
+    """
+    m = dual(sort_order)
+    m.name = 'CampBS3Old' if sort_order == 'PREFER_OLDEST' else 'CampBS3New'
+    m.facts['initial dual bases'] = True
+    m.scripts = [s for s in m.scripts if s.name != 'BS new yard']
+    m.put('AlliedConstructionYard', 'bluff refinery', -300, 0, side='s1',
+          name='UNIT - CNV BS New Yard', role='second ai yard')
+    return m
+
+
+MISSION = {'aibs3old': lambda: initial_dual('PREFER_OLDEST'),
+           'aibs3new': lambda: initial_dual('PREFER_NEWEST'),
+           'aibs2old': lambda: dual('PREFER_OLDEST'),
            'aibs2new': lambda: dual('PREFER_NEWEST'),
            'aiexpc': lambda: mission(True), 'aiexpctl': lambda: mission(False),
            'aibsold': lambda: mission(True, 'PREFER_OLDEST'),

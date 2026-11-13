@@ -116,3 +116,30 @@ def test_dual_base_physical_yards_named_bench_replay(build):
     w = simai.run(build, 'b', until=31)
     row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
     assert (row['东建厂'], row['崖建厂']) == (1, 1), row
+
+
+@pytest.mark.parametrize('build,expected', [('aibs3old', (4, 0, 1, 1)),
+                                            ('aibs3new', (0, 0, 1, 1))])
+def test_initial_dual_base_counts_named_bench_replay(build, expected):
+    """Raw s55..65 counts; NEW's absence at ore is not a base-selection failure."""
+    w = simai.run(build, 'b', until=65)
+    row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
+    assert tuple(row[k] for k in ('候选东', '候选崖', '东建厂', '崖建厂')) == expected, row
+
+
+@pytest.mark.parametrize('build,base_id,point', [
+    ('aibs3old', 0, (4172.7, 2987.3)),
+    ('aibs3new', 1, (3400.3, 1300.3)),
+])
+def test_initial_dual_base_sort_named_bench_replay(build, base_id, point):
+    """Initial-yard base table and OLD/NEW choice; see work/re/c_bs3_report.md."""
+    w = simai.run(build, 'b', until=19)
+    brain = next(iter(w.brains.values()))
+    h = brain.targets.tdata.heuristic('CNVExpansion')
+    assert len(brain.expansion_initial_yards) == 2
+    candidates = brain.view.expansion_candidates(h, brain.home)
+    assert [c.base_id for c in candidates] == [base_id]
+    picked = simai.model()['targets'].find(h, brain.view, brain.home)
+    assert (picked.x, picked.y) == pytest.approx(point, abs=0.1)
+    row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
+    assert (row['东建厂'], row['崖建厂']) == (1, 1), row

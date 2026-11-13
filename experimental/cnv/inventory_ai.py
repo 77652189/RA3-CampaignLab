@@ -143,12 +143,16 @@ NOTES = {
         '缺同帧基地类型、资格和选中基地，不能由同点选择判定偏好无效。'
         '模型仅保留参数，自动基地/候选发现仍缺；两strict xfail，不晋升；'
         '见work/re/c_basenot_report.md'),
-    '人格/BaseSelection.SortOrder': (TODO,
-        'C新增aibs2old/aibs2new：第二建造厂12秒创建、18秒启用，'
-        '两组a在s55–65仍东4/崖0/实体0，点命令均指向东矿。'
-        'D98基地表仅id0，脚本新厂未注册；模型移除伪第二基地后OLD/NEW按名回放均东4/崖0/实体0。'
-        '单基地不能验证排序，仍待真实双基地，不晋升；'
-        '见work/re/c_expansion_d98_report.md'),
+    '人格/BaseSelection.SortOrder': (BENCHED,
+        'C aibs3old/aibs3new:b初始双厂：f274两个合格基地0/1均分1，'
+        'OLD pick/model=0/0、NEW=1/1；点命令分别东矿/崖矿。'
+        's55–65东/崖队员与双厂OLD=4/0/1/1、NEW=0/0/1/1；'
+        'tests/test_expansion_target.py按名回放断言选择点和计数。'
+        '仅OLD/NEW按基地编号排序；其他排序、注册顺序和矿点资格仍gap，见work/re/c_bs3_report.md'),
+    **{f'人格/BaseSelection.SortOrder={order}': (BENCHED,
+        '初始双厂同分候选，OLD选基地0、NEW选基地1；按名选择点/计数回放，'
+        '仅该排序子集，见work/re/c_bs3_report.md')
+       for order in ('PREFER_OLDEST', 'PREFER_NEWEST')},
     '目标/AITargetingHeuristic.ForbiddenObjectStatus': (GUESSED,
         'C engine_aiforbid a：同近电厂仅切UNDER_IRON_CURTAIN禁用字段；'
         '无过滤有位/有过滤有位/有过滤清位三组原状态与近远家计数分别1/4/0/0、1/0/4/0、0/4/0/0，均PASS。'

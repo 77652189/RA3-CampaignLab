@@ -74,3 +74,5 @@ def buildings(m):
 
 CHECKS['aibs2old']['b'] = buildings
 CHECKS['aibs2new']['b'] = buildings
+CHECKS['aibs3old'] = {'b': buildings}
+CHECKS['aibs3new'] = {'b': buildings}

@@ -193,6 +193,9 @@ class Brain:
         # INFERRED bootstrap for this single-initial-yard fixture only. Later
         # yards do not register AI bases merely by being physical structures.
         self.expansion_anchor = yards[0] if len(yards) == 1 else None
+        # Initial-yard registration order is INFERRED from the two-base probe;
+        # retain stable ids when a yard disappears, never enumerate live yards.
+        self.expansion_initial_yards = tuple(yards) if self.sim.m.facts.get('initial dual bases') else ()
         tg = m['targets']
         foes = frozenset(p for p in self.sim.players.values() if p != player and self.sim.enemy(player, p))
         self.view = tg.View(player, [], enemies=foes, waypoints=self.sim.waypoints,
@@ -298,8 +301,9 @@ class Brain:
         registers another. INFERRED: bootstrap its anchor from the sole initial
         yard, and offer that anchor's nearest ore. Ore eligibility/ordering,
         occupancy and base death remain gaps (work/re/c_expansion_d98_report.md).
-        Unknown preferences and multiple initial yards fail closed. This is
-        not general expansion discovery or a proof of SortOrder semantics.
+        The initial-dual fixture additionally registers its initial yards in
+        object order (INFERRED); OLD/NEW ordering uses the model's base-id rule.
+        Other multiple-yard layouts fail closed. This is not general discovery.
         """
         selection = heuristic.base_selection
         if (selection is None or selection.preferred - {'MAIN_BASE'}
@@ -310,12 +314,13 @@ class Brain:
         # provider tests that flag; this hypothesis covers ordinary own yards.
         nodes = [b for b in self.sim.living() if b.template == 'OreNode']
         anchor = self.expansion_anchor
-        yards = [anchor] if (anchor is not None and anchor in self.yards()
-                            and not anchor.scenery
-                            and (getattr(anchor, 'unpack_end', None) or 0)
-                            <= self.sim.frame_now()) else []
+        registered = self.expansion_initial_yards or ((anchor,) if anchor is not None else ())
+        yards = [(bid, yard) for bid, yard in enumerate(registered)
+                 if (yard in self.yards()
+                     and not yard.scenery
+                     and (getattr(yard, 'unpack_end', None) or 0) <= self.sim.frame_now())]
         candidates = []
-        for yard in yards:
+        for bid, yard in yards:
             if not nodes:
                 break
             node = min(nodes, key=lambda b: math.hypot(b.x - yard.x, b.y - yard.y))
@@ -323,9 +328,10 @@ class Brain:
             if heuristic.location and ('Water' if water else 'Land') not in heuristic.location:
                 continue
             candidates.append(self.host.mod['targets'].ExpansionCandidate(
-                ('ore', node.name), node.x, node.y, base_id=0,
+                ('ore', node.name), node.x, node.y, base_id=bid,
                 base_types=frozenset({'MAIN_BASE'}), water=water))
-        return candidates
+        selected = self.host.mod['targets'].select_expansion_base(selection, candidates)
+        return [c for c in candidates if c.base_id == selected]
 
     def base_object(self, player):
         """states.base_object over a player's living, unpacked structures: preferred = CONSTRUCTION_YARD, rank = cost
