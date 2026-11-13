@@ -19,6 +19,35 @@ import teamlog
 OBSERVED = ROOT / 'tests/fixtures/e_engage'
 
 
+def test_engage_command_goal_chain_observations():
+    """Assert D107's ordered observations, including a write and clear in one frame.
+
+    This is evidence validation, not natural mission replay. Command names are
+    descriptive; special-power identity and upstream eligibility remain gaps.
+    See work/re/e131_engage_inputs.md for the raw-source mapping.
+    """
+    evidence = json.loads((OBSERVED / 'aiegoff_commands.json').read_text())
+    assert (evidence['build'], evidence['check'], evidence['run']) == (
+        'aiegoff', 'a', 'CampAIEgOffA_mcp_1113_065607')
+    goals = {3170: 0, 3171: 0}
+    trace = []
+    for event in evidence['goals']:
+        assert goals[event['member']] == event['old']
+        goals[event['member']] = event['new']
+        trace.append((event['frame'], event['member'], event['new']))
+    assert trace == [(320, 3170, 3171), (353, 3170, 0),
+                     (408, 3171, 3168), (408, 3171, 0),
+                     (431, 3171, 3168), (469, 3171, 3167),
+                     (496, 3170, 0), (512, 3171, 0)]
+    clears = [e for e in evidence['goals'] if e['source'] == 'clear_command']
+    assert [(e['command_frame'], e['frame']) for e in clears] == [
+        (352, 353), (408, 408), (511, 512)]
+    reactions = [e for e in evidence['goals'] if e['source'] == 'threat_reaction']
+    assert [(e['frame'], e['member'], e['unit_state'], e['old'], e['new'])
+            for e in reactions] == [(431, 3171, 33, 0, 3168), (469, 3171, 33, 3168, 3167)]
+    assert goals == {3170: 0, 3171: 0}
+
+
 def test_engage_state33_replays_observed_goal_writes():
     """Replay D106's selected-target writes, not its unknown event/selection.
 
@@ -142,7 +171,10 @@ def test_engage_clock_replays_first_cohort_movement(engage_record):
     'E114 exact host-frame member goal validity diverges: on f353 engine has no '
     'goal while model infers enemies; off f443 engine second initial member has '
     'a valid goal while model initial pair has none. Autonomous goal acquisition '
-    'and holding contract missing; see work/re/e114_engage_aim.md and work/re/handoff-e.md.'))
+    'and holding contract missing. D107 identifies skill-write/clear commands but '
+    'not threat events or candidate eligibility; the host still derives aim '
+    'without a persistent member-goal slot. See work/re/e131_engage_inputs.md '
+    'and work/re/handoff-e.md.'))
 def test_engage_clock_replays_member_goal_validity(engage_record):
     """Compare the initial pair at the same host frame, without replacement units.
 
