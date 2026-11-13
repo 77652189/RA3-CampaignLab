@@ -167,8 +167,10 @@ NOTES = {
         'tests/test_forbidden_status.py按名回放并断言原图计数；单位置位过滤吻合，未改模型。'
         '追加原UNATTACKABLE UNDER_IRON_CURTAIN组合，仅IRON置位，原状态掩码1；'
         '空/单IRON/双位过滤s40.1计数为1/4/0/0、1/0/4/0、1/0/4/0，三局PASS支持该子集ANY，模型吻合。'
-        '同帧候选资格、原版铁幕技能、仅UNATTACKABLE/双位置位及AIRBORNE_TARGET/SUBMERGED仍gap，整字段不晋升；'
-        '见work/re/c_forbid_report.md、work/re/c_forbidmask_report.md'),
+        '再测仅UNATTACKABLE置位，空/单UNATTACKABLE/双位过滤s40.1原读数分别2/4/0/0、2/0/4/0、2/0/4/0；'
+        's5..41原状态均2，三局PASS及按名回放支持另一单位置位子集ANY，未改模型。'
+        '同帧候选资格、原版技能、双位同时置位及AIRBORNE_TARGET/SUBMERGED仍gap，整字段不晋升；'
+        '见work/re/c_forbid_report.md、work/re/c_forbidmask_report.md、work/re/c_forbiduna_report.md'),
     '目标/AITargetingHeuristic.SortType=ThreatToWater': (GUESSED,
         'C按名台子engine_aiwater：两电厂/近处守护者/AI两栖矿车，仅切Distance与ThreatToWater，'
         '实机两组采样s14后均近4/远0/家0；模型ThreatToWater选远，按名回放strict xfail。'

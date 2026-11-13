@@ -18,7 +18,7 @@ def a(m):
     if m.facts.get('read unattackable'):
         t.scripts.append(Script('Test - unattackable on',
             [('UNIT_HAS_OBJECT_STATUS', plant, status('UNATTACKABLE'))],
-            [('INCREMENT_COUNTER', 'CNV_Forbid_Status', 2)], once=False))
+            [('INCREMENT_COUNTER', 2, 'CNV_Forbid_Status')], once=False))
     keep = [m.role(r).name for r in ('plant', 'barracks', 'tank')]
     keep += [m.role(f'ai guardian {i}').name for i in range(1, 5)]
     t.scripts.append(Script('Test - forbid keep', [],
@@ -39,4 +39,5 @@ def a(m):
 
 
 CHECKS = {k: {'a': a} for k in ('aiforbidnone', 'aiforbidset', 'aiforbidclear',
-                              'aifmasknone', 'aifmaskiron', 'aifmaskboth')}
+                              'aifmasknone', 'aifmaskiron', 'aifmaskboth',
+                              'aifunanone', 'aifunasingle', 'aifunaboth')}

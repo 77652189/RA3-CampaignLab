@@ -57,3 +57,27 @@ def test_forbidden_mask_original_readings(build, expected):
     status_rows = [r for r in evidence['rows'] if 5 <= r[0] <= 41]
     assert status_rows and all(r[2][0] == 1 for r in status_rows)
     assert evidence['verdict'] == 'PASS', evidence['result']['expectations']
+
+
+@pytest.mark.skipif(not simai.available(), reason='no private AI model')
+@pytest.mark.parametrize('build,expected', [('aifunanone', (2, 4, 0, 0)),
+    ('aifunasingle', (2, 0, 4, 0)), ('aifunaboth', (2, 0, 4, 0))])
+def test_forbidden_unattackable_named_bench_replay(build, expected):
+    """Only UNATTACKABLE is set; test the other direction of the original mask."""
+    w = simai.run(build, 'a', until=41)
+    rows = [tuple(v) for second, v in w.sim.series if 40 <= second <= 41]
+    assert rows and all(row == expected for row in rows), rows
+
+
+@pytest.mark.parametrize('build,expected', [('aifunanone', (2, 4, 0, 0)),
+    ('aifunasingle', (2, 0, 4, 0)), ('aifunaboth', (2, 0, 4, 0))])
+def test_forbidden_unattackable_original_readings(build, expected):
+    path = Path(simai.labpaths.WORK) / 're/c_forbiduna_measured.json'
+    if not path.exists():
+        pytest.skip('private original bench archive unavailable')
+    evidence = json.loads(path.read_text(encoding='utf-8'))[build]
+    rows = [r for r in evidence['rows'] if 40 <= r[0] <= 41]
+    assert rows and all(tuple(r[2]) == expected for r in rows), rows
+    status_rows = [r for r in evidence['rows'] if 5 <= r[0] <= 41]
+    assert status_rows and all(r[2][0] == 2 for r in status_rows)
+    assert evidence['verdict'] == 'PASS', evidence['result']['expectations']
