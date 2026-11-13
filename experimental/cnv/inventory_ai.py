@@ -147,11 +147,11 @@ NOTES = {
         'tests/test_count_modifier.py按名回放s40原人数；精确分值/资格/队列消费未观测，'
         '保留推断，不改B模型；见work/re/c_countmodifier_report.md'),
     '战术/Tactic.Tactic=Engineer': (GUESSED,
-        'aieng/aiengctl原台四读数归属0/近目标0/工程师1/HP100，未证明招募或占领。'
-        'E111 tests/test_simai_engineer_gate.py按名回放；模型状态/目标槽成立，'
-        '工程师IGNORES_SELECT_ALL被候选池排除，空队超时且无战术运行/订单。'
-        '这是模型前置诊断，不推定实机拒绝原因；需B候选资格/D同帧成员契约，'
-        '不改过滤、不晋升，见work/re/e111_engineer.md'),
+        'A第203轮 engine_aiskirm aiskirm:et原版（11-13）：AlliedCaptureTech_MEDIUM_EngineerTactic_0_0'
+        ' s128空队、s144工程师入队、s216到油井、s222油井归AI同秒队消失，矿点旁始终0。'
+        'tests/test_simai_engineer_tactic.py按名回放队伍出现/入队通过；模型（fca219e）目标选了AI基地旁矿点、'
+        'Engineer到达动作空实现不占领（strict xfail）。下一步：TechBuilding候选过滤 + 占领动作；'
+        '另aieng/aiengctl（E111）单独台未招到工程师，见work/re/handoff.md第203轮、e111_engineer.md'),
     '人格/BaseSelection.PreferredBaseTypes': (BENCHED,
         'C aibp1old/aibp1new:b初始双基地固定OLD、反偏好为空，仅切偏好OLDEST/MOST_RECENT；'
         'f274两基地均合格，分数1/0选0与0/1选1；f284点命令东矿/崖矿。'

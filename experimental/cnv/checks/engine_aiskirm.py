@@ -914,6 +914,39 @@ def m(mm):
     return _teams(mm, 'm')
 
 
+ORE_TARGET = (4278.8, 3093.3)       # et: the ore node the model's ClosestTechBuildingHeuristic picks (model fca219e)
+
+
+def et(m):
+    """Where does AlliedCaptureTech_MEDIUM's Engineer tactic take its engineer, and does it capture? (line A round
+    203). 工程队 = the team by its engine name (AlliedCaptureTech_MEDIUM_EngineerTactic_0_0), 油井 = OilDerricks s1 owns (the map's one, neutral, at niagara DERRICKS), 到油井 / 到矿点 =
+    s1's engineers inside 250 of the derrick / 120 of ORE_TARGET. Two predictions: the model (fca219e) sends the engineer
+    to the ore node ~s155 and captures nothing (its act is a no-op); the data (the state's TechBuildingShare reads
+    the derrick, KindOf of the tech buildings) -- to the derrick, which turns s1's and the engineer is gone.
+    MEASURED (bench 2026-11-13, head 7020cbfc, work/bench_results/aiskirm__et.json, PASS): s1-127 99 0 0 0 |
+    s128-143 0 0 0 0 | s144-215 1 0 0 0 | s216-221 1 0 1 0 | s222 0 1 0 0 | s223-284 99 1 0 0 -- the derrick: the
+    engineer reaches it s216, s1 owns it s222 and the team is gone that second; never at the ore node. The model
+    gets the team (s131 / s145), not the target or the capture (tests/test_simai_engineer_tactic.py)."""
+    t = Test()
+    for tpl in ARMY:
+        m.spawns.add(tpl)
+    s1 = m.player('s1')
+    m.spawns |= {'AlliedEngineer', 'OilDerrick'}          # the scripts' contract: templates the counters name
+    team = {k[3:]: v for k, v in m.map.TEAMS.items() if k.startswith('ai ')}['capture tech']
+    (dx, dy), = m.map.DERRICKS
+    t.areas['Test Derrick'] = square(dx, dy, 250)
+    t.areas['Test Ore'] = square(*ORE_TARGET, 120)      # small: the AI's base is ~600 away
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    _members(t, 'CNV_AK_ETeam', '工程队', team)
+    counted('CNV_AK_EOil', '油井', t, template='OilDerrick', player=s1)
+    counted('CNV_AK_EAtD', '到油井', t, template='AlliedEngineer', area='Test Derrick', player=s1)
+    counted('CNV_AK_EAtO', '到矿点', t, template='AlliedEngineer', area='Test Ore', player=s1)
+    w = m.facts['wake at']
+    t.expect += [('工程队', w + 20.0, '>=', 0, w + 21.0)]      # weak: the readings exist
+    t.bench = [('bench_watch', dict(seconds=w + 260.0, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 def n(m):
     """LandDefense _0_0 / BalancedCleanup _0_0 / BalancedCleanup _0_1 / LandDefense _0_1 to s185: where the unit
     after Cleanup's 14th goes (the model: Cleanup _0_1; m saw one in defense at s166)."""
@@ -1069,7 +1102,7 @@ def fm(m):
 
 
 CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j': j, 'k': k, 'l': l, 'm': m,
-                      'n': n, 'o': o, 'p': p, 'q': q, 'r': r, 'u': u, 'x': x},
+                      'n': n, 'o': o, 'p': p, 'q': q, 'r': r, 'u': u, 'x': x, 'et': et},
           'aiskirmc': {'l': l, 'm': m, 'u': u},  # opt-in carrier diagnostic; stock aiskirm stays unchanged
           'aiskxn': {'l': l}, 'aiskxo': {'l': l},  # D 105: which half of the carrier moves the scout team
           'aiskexp': {'q': q},

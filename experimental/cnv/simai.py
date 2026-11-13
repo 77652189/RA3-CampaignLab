@@ -77,6 +77,9 @@ import simunits  # noqa: E402
 import simmicro  # noqa: E402
 
 FPS = 15
+# the engine's word for a tactic type in its team names where it is not the type itself (C's team log
+# tests/fixtures/c_release_teams/aiskirm_m.txt: Tactic="Engineer" -> AlliedCaptureTech_MEDIUM_EngineerTactic_0_0)
+TACTIC_NAME_WORDS = {'Engineer': 'EngineerTactic'}
 PLACE_DELAY = 1                     # bench aiopen f1-f3 (opening.PLACE_DELAY): owned 1 frame after the head is full
 RING = (260.0, 400.0, 540.0, 680.0)     # INFERRED: the rings a yard puts its structures on
 GAP = 20.0                          # INFERRED: room left between two structures' rounds
@@ -406,7 +409,8 @@ class Brain:
                 st = self.host.data.states[c.target]
                 for a, tac in enumerate(st.tactics):
                     for b in range(len(tac.teams)):
-                        self._team_names.setdefault(f'{st.id}_{tac.kind}_{a}_{b}', (c.key, tac.id, b))
+                        word = TACTIC_NAME_WORDS.get(tac.kind, tac.kind)
+                        self._team_names.setdefault(f'{st.id}_{word}_{a}_{b}', (c.key, tac.id, b))
         return self._team_names
 
     def team_named(self, team):

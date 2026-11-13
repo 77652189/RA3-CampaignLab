@@ -42,7 +42,9 @@ OTHER_STATES = {'overwhelm': 'BalancedAttackOverwhelm_MEDIUM_DefenseAvoidanceAtt
                 'emergency': 'LandEmergencyDefense_MEDIUM_SimpleAttack_0_0',
                 'scout': 'AlliedScout_DefenseAvoidanceAttack_0_0',
                 'scout 2': 'AlliedScout_DefenseAvoidanceAttack_1_0',
-                'escort': 'EscortMCV_StaticDefense_0_0'}
+                'escort': 'EscortMCV_StaticDefense_0_0',
+                # Tactic id/type "Engineer"; the engine's name word is EngineerTactic (C's team log, aiskirm_m.txt)
+                'capture tech': 'AlliedCaptureTech_MEDIUM_EngineerTactic_0_0'}
 AI_TEAMS.update({k: 'Soviet_1/' + v for k, v in OTHER_STATES.items()})
 
 
