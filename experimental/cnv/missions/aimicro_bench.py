@@ -365,7 +365,24 @@ def ignore_distance(name, distance, observe=False):
     return m
 
 
-MISSION = {'aiegon': lambda: engage_clock('CampAIEgOn', True),
+def ignore_rule(name, rule):
+    """Retail EASY inclusion mask, with only ANY/ALL varied on the same carrier.
+
+    Engineers have neither NEUTRAL_TECH nor TIME_BOMB. ANY should allow them,
+    ALL should ignore them; ordinary attacks may still bypass micro selection.
+    Keep distance zero fixed; this does not reopen its paused boundary probe.
+    """
+    m = ignore_distance(name, 0, observe=True)
+    m.assets = [(path, text.replace(
+        '<IgnoreTargets Rule="ANY"><IncludeThing>AlliedEngineer</IncludeThing></IgnoreTargets>',
+        f'<IgnoreTargets Rule="{rule}" Include="NEUTRAL_TECH TIME_BOMB"/>'), asset)
+        for path, text, asset in m.assets]
+    return m
+
+
+MISSION = {'aiignrany': lambda: ignore_rule('CampIgnRuleAny', 'ANY'),
+           'aiignrall': lambda: ignore_rule('CampIgnRuleAll', 'ALL'),
+           'aiegon': lambda: engage_clock('CampAIEgOn', True),
            'aiegoff': lambda: engage_clock('CampAIEgOff', False),
            'aimicupfast': lambda: update_time('CampMicUpFast', 0.5),
            'aimicupslow': lambda: update_time('CampMicUpSlow', 4),

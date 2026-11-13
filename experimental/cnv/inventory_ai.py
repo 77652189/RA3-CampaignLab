@@ -121,6 +121,12 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '微操/IgnoreTargets.Rule': (GUESSED,
+        'E118 engine_aiignore_rule aiignrany/aiignrall：原版EASY包含标记不变，仅切ANY/ALL；'
+        '同帧两成员，首伤396/397，前置失配0；f406/421分别状态0有目标与8无目标。'
+        'ALL保留墙钟s22造出1导致的诊断FAIL，游戏帧前置成立；'
+        'tests/test_ai_ignore_rule.py按名回放伤害/前置及ALL状态，ANY候选资格strict xfail；'
+        '目标身份、工程师分类/Alpha资格仍gap，不晋升；见 work/re/e118_ignore_rule.md'),
     '造兵/BuildEntry.CountModifier': (GUESSED,
         'C engine_countmodifier a：同经济/工厂/候选和初始新维和4/新标枪2，仅切0.5/4；'
         '台上低组s27先补标枪、s38–66人数4/5，高组s27先补维和、s39–66人数7/2。'
