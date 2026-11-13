@@ -1,4 +1,4 @@
-"""InfiltratorContain ENERGY, ordinary VISION and measured PARALYZE movement slices.
+"""InfiltratorContain ENERGY, VISION, PARALYZE and crane KILL survival slices.
 
 One retail Allied plant: 20 seconds of zero supply, spy consumed, owner unchanged.
 Travel/entry reach and Amount * eligible energy duration scaling are INFERRED;
@@ -8,6 +8,8 @@ VISION activation delay of five seconds is INFERRED from second-spaced samples;
 Soviet first discovery is later; only stable windows replay, exact timing is a gap.
 mapping the whole local radius to yard XML and parent-death cleanup are INFERRED.
 Observer lifetime, other templates/players/spies and repeated entry remain gaps.
+E138 KILL only removes the hostile Allied spy at a retail Soviet crane;
+fling distance, exact entry clock and death-module dispatch remain gaps.
 """
 import math
 import os
@@ -54,6 +56,7 @@ class Infiltrators:
         self.observers = []
         self.paralyzed_until = {}
         self.paralyzed_hosts = set()
+        self.kill_hosts = set()
 
     def vision_rule(self, target, rule):
         return (target.template in ('AlliedConstructionYard', 'SovietConstructionYard')
@@ -70,6 +73,13 @@ class Infiltrators:
         return (target.template in ('AlliedTechStructure', 'SovietTechStructure', 'JapanTechStructure')
                 and config == {'Effect': 'PARALYZE', 'Duration': '30s',
                                'UnitFilter': 'InfiltrationParalyzeObjectFilter'})
+
+    def kill_rule(self, target, rule):
+        """E138 entry survival only; fling and death effects remain gaps."""
+        config = {key: value for key, value in rule.items() if key not in ('xmlns', 'id')}
+        return (target.template == 'SovietCrane'
+                and config == {'Effect': 'KILL', 'Amount': '1.5',
+                               'EvaEventForInfiltratedPlayer': ''})
 
     def movement_blocked(self, body):
         """E128 movement only; no PARALYZED model-condition bit was observed."""
@@ -99,8 +109,14 @@ class Infiltrators:
             return
         energy = (rule.get('Effect') == 'ENERGY' and rule.get('ObjectRef') == 'EnergyDisabler'
                   and not rule.get('ReplaceWith'))
-        if not energy and not self.vision_rule(target, rule) and not self.paralyze_rule(target, rule):
-            s.gap('InfiltratorContain', target.template, '仅已测ENERGY、普通VISION及三国科技中心原版PARALYZE配置已实现')
+        if not any((energy, self.vision_rule(target, rule), self.paralyze_rule(target, rule),
+                    self.kill_rule(target, rule))):
+            s.gap('InfiltratorContain', target.template, '仅已测ENERGY、普通VISION、原版PARALYZE及起重机KILL进入存活切片已实现')
+            return
+        if self.kill_rule(target, rule) and (
+                spy.owner != s.human or spy.template != 'AlliedInfiltrationInfantry'
+                or id(target) in self.kill_hosts):
+            s.gap('InfiltratorContain', target.template, 'KILL其他间谍/玩家或重复进入未对拍')
             return
         if self.paralyze_rule(target, rule) and (
                 spy.owner != s.human or spy.template != 'AlliedInfiltrationInfantry'
@@ -137,6 +153,13 @@ class Infiltrators:
                     or (entry[1] and s.relation(target.owner, spy.owner) not in entry[1])
                     or target.status & set(rule.get('InfiltratedStatusFilter',
                                                    'DESTROYED UNDER_CONSTRUCTION SOLD UNPACKING').split())):
+                continue
+            if self.kill_rule(target, rule):
+                # INFERRED: ordinary lethal cleanup; E138 only observes survival,
+                # not the fling trajectory, death animation or death-module dispatch.
+                self.kill_hosts.add(id(target))
+                s.destroy(spy, '起重机拒绝渗透')
+                s.change()
                 continue
             if self.vision_rule(target, rule):
                 # INFERRED: sampled consumption at s11, first local discovery at s16.
