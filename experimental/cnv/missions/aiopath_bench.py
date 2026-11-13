@@ -88,7 +88,25 @@ def disconnected(amphibious=False):
     return m
 
 
+def disconnected_ready(amphibious=False):
+    """D108 follow-up: register base and enemy priorities before opening choice.
+
+    Keep the old builds intact for replay. Money still arrives at 10 seconds.
+    INFERRED: start-script registration precedes the engine's opening decision.
+    The read-only path trace must confirm this before interpreting a split.
+    """
+    m = disconnected(amphibious)
+    m.name = 'CampPCAmphY' if amphibious else 'CampPCLandY'
+    m.ext = True
+    s1 = m.player('s1')
+    m.scripts[0].do += [('SKIRMISH_AI_MAKE_BASE', s1, m.mark('ai base')),
+                        ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', s1, 20)]
+    return m
+
+
 MISSION = {
+    'aipclandy': lambda: disconnected_ready(False),
+    'aipcamphy': lambda: disconnected_ready(True),
     'aipcland': lambda: disconnected(False),
     'aipcamph': lambda: disconnected(True),
     # Same tester and land endpoints: deep-water NORMAL versus flying SUPERSONIC.

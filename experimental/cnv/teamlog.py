@@ -31,6 +31,31 @@ def _log(run):
     return run if os.path.isfile(run) else os.path.join(run, 'ra3ext.log')
 
 
+def path_evaluations(run):
+    """D108 PathToTarget evaluations, one row per actual call; no forward fill.
+
+    Keep early-return sentinels (-1) distinct from failed path searches (0).
+    Conditions and path codes are raw observations, not decoded movement rules.
+    Process tokens are deliberately omitted. Evidence: work/re/d108_pathtotarget.md.
+    """
+    out = []
+    with open(_log(run), encoding='utf-8', errors='replace') as f:
+        for line in f:
+            if not line.startswith('ptt: '):
+                continue
+            d = dict(re.findall(r'(\w+)=(\S+)', line))
+            row = {k: int(d[k]) for k in ('frame', 'exists', 'surf', 'cond', 'set14', 'path', 'code')}
+            row.update(key=d['key'], locomotors=int(d['loco'].split(':', 1)[0]),
+                       result=float(d['res']), why=d['why'])
+            for source, target in (('obase', 'own_base'), ('ebase', 'enemy_base')):
+                ident, point = d[source].split('@', 1)
+                row[target] = (int(ident), tuple(map(float, point.split(':'))))
+            for source, target in (('opt', 'own_point'), ('ept', 'enemy_point')):
+                row[target] = tuple(map(float, d[source].split(':')))
+            out.append(row)
+    return out
+
+
 def build_picks(run):
     """D103 factory picks in log order. Factory tokens distinguish facilities;
     object is an unverified observer field, often zero. Template/asset are

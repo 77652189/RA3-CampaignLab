@@ -8,6 +8,8 @@ see work/re/c_pathbanks_report.md. No coverage promotion without a split.
 Bench 2026-11-13: both builds give barracks/power=1/0 at s22-24;
 both physical counters are 1 (alive, not arrived) at s40-44. Both checks
 FAIL their pre-run hypotheses. The amphibious positive control is unproven.
+The early-registration follow-up aipclandy also yields 1/0 and 1/1: its
+opening still returns before bases are available. See work/re/c_pathready_report.md.
 """
 from parts import Script, Test, counted, square
 
@@ -44,4 +46,4 @@ def check(m):
     return t
 
 
-CHECKS = {name: {'a': check} for name in ('aipcland', 'aipcamph')}
+CHECKS = {name: {'a': check} for name in ('aipcland', 'aipcamph', 'aipclandy', 'aipcamphy')}

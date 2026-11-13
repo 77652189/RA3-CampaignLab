@@ -14,17 +14,18 @@ _spec.loader.exec_module(simai)
 pytestmark = pytest.mark.skipif(not simai.available(), reason='no private AI model')
 
 
-@pytest.fixture(scope='module', params=['aipcland', 'aipcamph'])
+@pytest.fixture(scope='module', params=['aipcland', 'aipcamph', 'aipclandy'])
 def path_rows(request):
     w = simai.run(request.param, 'a', 45, lib=simai.model()['xmldata'].Library())
     labels = [label for _, label in w.sim.test.counters]
     return {t: dict(zip(labels, values)) for t, values in w.sim.series}
 
 
-@pytest.mark.xfail(strict=True, reason='Both bank probes choose barracks=1/power=0 at s22-24; '
-                   'model chooses 0/1. Physical amphibious positive control did not arrive, '
-                   'so condition/endpoint semantics remain unresolved; see work/re/handoff-c.md '
-                   'and work/re/c_pathbanks_report.md.')
+@pytest.mark.xfail(strict=True, reason='Bank probes choose barracks=1/power=0 at s22-24; '
+                   'D108 and the early-registration follow-up observe a pre-wake nobase return. '
+                   'The simulator evaluates after registration and chooses 0/1; startup timing '
+                   'is outside this condition probe. See work/re/handoff-c.md and '
+                   'work/re/c_pathready_report.md. Amphibious reachability remains unproven.')
 def test_path_condition_disconnected_banks(path_rows):
     rows = path_rows
     assert all((rows[t]['兵营'], rows[t]['电厂']) == (1, 0)
