@@ -34,12 +34,11 @@ import json
 import os
 import re
 import sys
-sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
-import labpaths  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign')) if p not in sys.path]
+import labpaths  # noqa: E402
 
 CATALOG = os.path.join(ROOT, 'experimental', 'campaign', 'script_catalog.json')
 RETAIL_SCRIPTS = os.path.join(labpaths.WORK, 'retailref')
@@ -279,7 +278,6 @@ NOTES = {
     (MODULE, 'Behaviors/LiftObjectUpdate'): (GUESSED, '部分：显式TimeIncrement/MaxTimeLifted的开火者举升表计时接口；tests/test_lift_nugget.py回放engine_lift a状态计数，逐帧计时来自模块证据、未上台逐帧量表；垂直运动/死亡/飞机/落地武器/清位仍gap，落地清位INFERRED，不登记整模块已对拍'),
     (NUGGET, 'ActivateLiftObjectNugget'): (GUESSED, '部分：按模块证据实现开火者举升表，trunc(TimeIncrement×15)逐发累加、续期封顶MaxTimeLifted、逐帧递减释放；Lifetime不参与，释放不清LIFTED；tests/test_lift_nugget.py按名回放engine_lift a旧读数一致，landing因落地清位未实现strict xfail；落地清位INFERRED，垂直运动/死亡/飞机/弹体/复杂筛选仍gap，不登记整项已对拍'),
     (NUGGET, 'AttachNugget'): (GUESSED, '部分：engine_attach a实测直接单发、父子状态、随父移动及目标状态/类型拒绝；仅零半径简单模块，原版复杂筛选/维修/吸血/解除/弹体未接通，不登记整项已对拍'),
-    (NUGGET, 'SpecialPowerNugget'): (TODO, '未覆盖的字段/自制写法；六个原版武器按消费者分组守恒登记，不借已测位值晋升身份或索敌；见work/re/c_spnclosure_report.md'),
     (NUGGET, 'SpecialPowerNugget:变装消费者'): (GUESSED, '2用量：间谍/迅雷直接命中DISGUISED位及INFANTRY/VEHICLE/恐怖机器人排除已测；engine_spndisguise/spnspyx/spnspyex/spntrans/spntrfilter a均1111/1110/1110/1111，tests/test_special_power_nugget.py按名回放；gap：身份/外观/索敌/换目标/取消，迅雷展开时序strict xfail，即时位应用INFERRED；engine_spnrelations a间谍/迅雷各Friend与Neutral四路s6-15全1111，独立命中且无脚本变装位；身份/时序缺口见work/re/c_spnclosure_report.md，不登记完整消费者'),
     (NUGGET, 'SpecialPowerNugget:轰炸消费者'): (GUESSED, '1用量，暂停：engine_spnbombnative a原版/删SPN/合成/合成删SPN为1010/1110/1110/1110；OCL活动消费者未实现，具名回放strict xfail；需要原版与合成宿主派发观测，work/re/c_spnbomb_report.md'),
     (NUGGET, 'SpecialPowerNugget:干扰消费者'): (GUESSED, '1用量，暂停：engine_spnscr a保留/删除SPN最终同80%，活动消费者未闭合；状态到期与攻击订单恢复已另有具名回放，筛选仅隔离接口；需要活动派发和状态观测，不登记完整消费者，work/re/c_spnclosure_report.md'),
