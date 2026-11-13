@@ -110,3 +110,34 @@ def test_engage_clock_replays_member_goal_validity(engage_record):
     observed = next(r for r in teamlog.states(OBSERVED / (build + '.txt'))['T'] if r['frame'] == frame)
     expected = [bool(observed['aim'][i][0]) and observed['aim'][i][1] is not None for i in (3170, 3171)]
     assert [m['aim'] is not None for m in members] == expected, (frame, members, observed['aim'])
+
+
+@pytest.mark.parametrize('build', ['aiegon', 'aiegoff'])
+def test_engage_target_source_observations(build):
+    """Keep the observed assignment boundary distinct from autonomous aim.
+
+    State-2 assignment is visible on the enabled side. The disabled side's
+    state-8 goal has no team assignment record: its source remains a gap.
+    Raw evidence and the observation request: work/re/e126_engage_sources.md.
+    """
+    source = str(OBSERVED / (build + '_sources.txt'))
+    rows = {r['frame']: r for r in teamlog.states(source)['T']}
+    orders = teamlog.target_orders(source, 'T')
+    passes = teamlog.keep_passes(source, 'T')
+    assert rows[353]['aim'] == {3170: (0, None), 3171: (0, None)}
+    if build == 'aiegon':
+        first = [o for o in orders if o['frame'] == 375]
+        assert len(first) == 2
+        assert {o['mem'] for o in first} == {3170, 3171}
+        assert all((o['mstate'], o['src'], o['tgt'], o['wrote']) ==
+                   (2, 'score', 3168, True) for o in first)
+        assignment_pass = next(p for p in passes if p['frame'] == 375)
+        assert assignment_pass['cand'] == [(3168, True), (3167, True)]
+        assert assignment_pass['keep'] == [(3170, 0, 'go'), (3171, 0, 'go')]
+        assert rows[376]['mstate'] == 2
+        assert rows[376]['aim'] == {i: (3168, (3911., 2706.3)) for i in (3170, 3171)}
+    else:
+        assert orders == [] and passes == []
+        for frame in (431, 443):
+            assert rows[frame]['mstate'] == 8
+            assert rows[frame]['aim'] == {3170: (0, None), 3171: (3168, (3911., 2706.3))}
