@@ -20,7 +20,8 @@ every frame (the simulator moves in DT ticks; the AI is ticked for each frame of
   offers      the unit builder's candidates (Sim.offers) with their state (0 an idle factory, 1 all busy), standard
               combat flag and cost; it orders for no team, beside the opening, on the AI's PRODUCTION account.
   money       the player's money now (Sim.money) = ai.money: an account spends its Deposits + its budget share of it.
-  teams      ai.units = the AI's own movers (not HARVESTER, not IGNORES_SELECT_ALL) as stable Unit wrappers;
+  teams      ai.units = the AI's own movers (not HARVESTER; the IGNORES_SELECT_ALL ones only a CreateUnits slot
+              naming them takes, teams.recruit) as stable Unit wrappers;
               team_point = the closest enemy structure to the AI's yard.
   states      ctx: the mission's flags (ScriptedFlagHeuristic), 'has' (its templates; 'has enemy' / 'has ally' /
               'has neutral' by owner for ObjectOfTypeExists' Relationship), 'building' (the kinds queued),
@@ -778,7 +779,9 @@ class Brain:
         for b in self.living():
             if b.owner != self.player or 'STRUCTURE' in b.kinds or b.speed <= 0:
                 continue
-            if 'HARVESTER' in b.kinds or 'IGNORES_SELECT_ALL' in b.kinds:
+            # IGNORES_SELECT_ALL units are offered too: only a CreateUnits slot naming the template takes them
+            # (teams.recruit; retail aiskirm_m team log, A round 191)
+            if 'HARVESTER' in b.kinds:
                 continue
             if self.host.garrison.busy(b) or self.host.pullback.busy(b):
                 continue

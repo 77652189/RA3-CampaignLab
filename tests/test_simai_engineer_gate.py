@@ -15,8 +15,9 @@ pytestmark = pytest.mark.skipif(not simai.available(), reason='no ra3model.ai')
 def test_engineer_observed_plateau_does_not_establish_dispatch(build):
     """Retail counters agree, but the model never reaches a tactic with members.
 
-    The candidate-pool assertions diagnose the model, not retail recruitment.
-    Do not remove its selection filter without a qualified engine observation.
+    The candidate-pool assertions diagnose the model. Since A round 191 the world offers the engineer
+    (IGNORES_SELECT_ALL) to the pool -- retail aiskirm_m's CaptureTech team commits its CreateUnits engineer -- but
+    this bench's team names no template, so the general path still leaves it out, as retail's plateau says.
     """
     w = simai.run(build, 'a', until=26, lib=simai.model()['xmldata'].Library(), record=True)
     labels = [label for _, label in w.sim.test.counters]
@@ -33,7 +34,8 @@ def test_engineer_observed_plateau_does_not_establish_dispatch(build):
     engineer = w.sim.body(w.sim.m.cnv_named['engineer'])
     assert engineer.alive and engineer.owner == brain.player and engineer.speed > 0
     assert {'ENGINEER', 'IGNORES_SELECT_ALL'} <= engineer.kinds
-    assert brain.units(brain.ai, brain.frame) == []
+    offered, = brain.units(brain.ai, brain.frame)
+    assert offered.body is engineer and offered.team is None
     assert any(event[1] == 'expired' for event in brain.ai.teams.log)
     assert not brain.tactics.runs
     assert not brain.rec['orders']
