@@ -914,8 +914,6 @@ def test_meta_impact_relation_probe_changes_only_relationship():
     assert len(t.counters) == 4
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason='MetaImpact relation/condition dispatch is missing; see work/re/c_meta_relation_report.md')
 @pytest.mark.parametrize('lane,collision,moving,still,samples', [
     ('yuri', 173, 'man', 'near', [(798,3749,212.87), (796,3748,213.15), (794.1,3747,213.35)]),
     ('rocket', 174, 'near', 'man', [(2320,3746.7,213.40), (2320,3743.4,213.40), (2320,3740,212.50)]),
@@ -937,8 +935,14 @@ def test_meta_impact_relation_collision_replays_observed_selection(lane, collisi
     e.eng.frame = collision
     by, victim, near = (e.bodies[name(lane, part)] for part in ('gun', 'man', 'near'))
     weapon, = by.weapons
-    e.queue_projectile_hit(collision, victim, weapon['dmg'], by, weapon,
-                           (victim.x,3750,219 if lane == 'yuri' else 219.001))
+    # Raw shockinfo direction retains sub-millimetre collision residue that
+    # its three-decimal centre print loses. For the centred direct hit that
+    # residue determines direction (not a new shock rule or fitted threshold).
+    direction = (-.00006, -.00024, -.00037) if lane == 'yuri' else (20, -.00024, -.00079)
+    moving_start = e.bodies[name(lane, moving)]
+    centre = (moving_start.x - direction[0], moving_start.y - direction[1],
+              212.5 + 13/2 - direction[2])
+    e.queue_projectile_hit(collision, victim, weapon['dmg'], by, weapon, centre)
     e.deal(1/15)
     assert victim.hp == pytest.approx(148.5)
     assert near.hp == 150
@@ -953,3 +957,44 @@ def test_meta_impact_relation_collision_replays_observed_selection(lane, collisi
             return body.x, body.y, e.impact_ground_z(body.x, body.y) if body.z is None else body.z
         assert position(fixed) == pytest.approx(fixed_start, abs=.051)
         assert position(moving_body) == pytest.approx(xyz, abs=.051)
+
+
+@pytest.mark.parametrize('gate', ['source', 'kind', 'status', 'condition', 'flight', 'hold'])
+def test_meta_impact_relation_rejects_missing_source_and_ineligible_bodies(gate):
+    """Synthetic safety checks; native status timing remains an unmeasured gap."""
+    import build
+    import sim
+    from checks.engine_knock_probe import name
+
+    m, t, _ = build.resolve('engine_knock_relation', 'a')
+    e = sim.Sim(m, t)
+    by, victim = (e.bodies[name('yuri', part)] for part in ('gun', 'man'))
+    weapon, = by.weapons
+    if gate == 'kind':
+        victim.kinds = frozenset()
+    elif gate == 'status':
+        victim.status.add('NO_COLLISIONS')
+    elif gate == 'condition':
+        e.set_model_condition(victim, 'STUNNED', 0)
+    elif gate == 'flight':
+        e.impact_flights = {id(victim): ('sentinel',)}
+    elif gate == 'hold':
+        e.knock_hold = {id(victim): e.frame_now() + 1}
+    before = dict(e.__dict__.get('impact_flights', {}))
+    e.meta_impact_detonate(weapon, (victim.x, victim.y, 219), None if gate == 'source' else by)
+    assert e.__dict__.get('impact_flights', {}) == before
+    if gate == 'source':
+        assert (sim.GAP_WEAPON, 'MetaImpactNugget') in e.unmodeled
+
+
+@pytest.mark.parametrize('extra', ['ShockWaveArc="5d"', 'ShockwaveDelaySeconds="1s"',
+                                  'FutureField="1"'])
+def test_meta_impact_relation_keeps_unmeasured_payload_variants_as_gaps(extra):
+    import simunits
+    from checks.engine_knock_relation import retail_shock
+
+    payload = retail_shock().replace('<MetaImpactNugget', '<MetaImpactNugget ' + extra, 1)
+    w = simunits._weapons(['<WeaponTemplate id="gap"><Nuggets>' + payload +
+                          '</Nuggets></WeaponTemplate>'])['gap']
+    assert not w.get('meta_impacts') and not w.get('delayed_meta_impacts')
+    assert 'MetaImpactNugget' in w['unmodeled_effects']

@@ -278,7 +278,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v35.json')    # v35: armours' side / rear scalars; v34: ai_parts (a weapon's nuggets + warhead for the AI's rate); v33: lift dispatch
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v36.json')    # v36: immediate filtered MetaImpact; v35: armours' side / rear scalars; v34: ai_parts (a weapon's nuggets + warhead for the AI's rate); v33: lift dispatch
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -416,9 +416,26 @@ def _weapons(texts, base_table=None):
                 # landing phases remain unresolved, as do other variants.
                 unsupported.append('MetaImpactNugget')
                 fields = set(re.findall(r'(\w+)\s*=', h))
-                if not (inner or '').strip() and fields <= {
+                # Only the measured Sickle filter spelling is enabled. Other
+                # predicates and delayed filtered shocks remain explicit gaps.
+                target_filter = None
+                forbidden = _attr(h, 'ForbiddenTargetModelCondition', '').split()
+                children = list(_blocks(inner or '', 'SpecialObjectFilter'))
+                if len(children) == 1:
+                    fh, fi = children[0]
+                    attrs = dict(re.findall(r'(\w+)\s*=\s*"([^"]*)"', fh))
+                    relation = attrs.get('Relationship')
+                    if (not fi.strip() and attrs == dict(Rule='ANY', Relationship=relation,
+                            Include='INFANTRY', StatusBitFlagsExclude='NO_COLLISIONS')
+                            and relation in ('ENEMIES', 'ALLIES')
+                            and set(forbidden) == {'STUNNED', 'STUNNED_STANDING_UP', 'STUNNED_FLAILING'}
+                            and not re.sub(r'<SpecialObjectFilter\b[^>]*>.*?</SpecialObjectFilter>',
+                                           '', inner, flags=re.S).strip()
+                            and 'ShockwaveDelaySeconds' not in fields):
+                        target_filter = dict(relation=relation, forbidden=forbidden)
+                if ((not (inner or '').strip() and not forbidden) or target_filter) and fields <= {
                         'id', 'ShockWaveAmount', 'ShockWaveRadius', 'ShockWaveZMult', 'ShockWaveTaperOff',
-                        'ShockwaveDelaySeconds'} and all(
+                        'ShockwaveDelaySeconds', *(['ForbiddenTargetModelCondition'] if target_filter else [])} and all(
                         _attr(h, field) is not None for field in
                         ('ShockWaveAmount', 'ShockWaveRadius')):
                     seconds = _secs(_attr(h, 'ShockwaveDelaySeconds', '0s'))
@@ -428,6 +445,8 @@ def _weapons(texts, base_table=None):
                                   radius=_num(_attr(h, 'ShockWaveRadius')),
                                   zmult=_num(_attr(h, 'ShockWaveZMult', '1')),
                                   taper=_num(_attr(h, 'ShockWaveTaperOff', '0')))
+                    if target_filter:
+                        effect['target_filter'] = target_filter
                     if seconds > 0:
                         delayed_impacts.append(dict(effect, delay_seconds=seconds))
                     else:

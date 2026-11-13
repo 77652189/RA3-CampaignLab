@@ -81,6 +81,8 @@ BENCHED_TESTS = {
     # Field-form coverage only: recorded collision / incoming-event replay, not full retail flight or every consumer.
     (NUGGET, 'MetaImpactNugget:普通无延迟显式Z'):
         'tests/test_meta_impact.py::test_meta_impact_collision_event_replays_engine_knock_probe_neighbour_five_frames',
+    (NUGGET, 'MetaImpactNugget:镰刀敌我筛选'):
+        'tests/test_meta_impact.py::test_meta_impact_relation_collision_replays_observed_selection',
     (NUGGET, 'MetaImpactNugget:省略Z默认值'):
         'tests/test_meta_impact.py::test_meta_impact_omitted_z_replays_engine_knock_z_tall_neighbour',
     (NUGGET, 'InformTargetNugget:默认系数目标通知'):
@@ -548,6 +550,19 @@ def nugget_form_slice(ntype, forms):
         return ''
     if ntype == 'MetaImpactNugget':
         allowed = {'id', 'ShockWaveAmount', 'ShockWaveRadius', 'ShockWaveZMult', 'ShockWaveTaperOff'}
+        def measured_filter(n):
+            children = list(n)
+            return (set(n.attrib) <= allowed | {'ForbiddenTargetModelCondition'}
+                    and {'ShockWaveAmount', 'ShockWaveRadius'} <= set(n.attrib)
+                    and set(n.get('ForbiddenTargetModelCondition', '').split()) == {
+                        'STUNNED', 'STUNNED_STANDING_UP', 'STUNNED_FLAILING'}
+                    and len(children) == 1 and children[0].tag == 'SpecialObjectFilter'
+                    and not list(children[0])
+                    and not (children[0].text or '').strip()
+                    and children[0].attrib == dict(Rule='ANY', Relationship='ENEMIES',
+                        Include='INFANTRY', StatusBitFlagsExclude='NO_COLLISIONS'))
+        if all(measured_filter(n) for n in forms):
+            return ':镰刀敌我筛选'
         if all(not list(n) and set(n.attrib) <= allowed
                and {'ShockWaveAmount', 'ShockWaveRadius'} <= set(n.attrib) for n in forms):
             return ':普通无延迟显式Z' if all('ShockWaveZMult' in n.attrib for n in forms) else ':省略Z默认值'
@@ -566,6 +581,7 @@ def nugget_form_slice(ntype, forms):
 
 NUGGET_SCOPES = {
     'MetaImpactNugget:普通无延迟显式Z': '仅普通弹头碰撞事件→默认Physics轨迹；engine_knock_probe land/late邻人5帧落(2380,3740)、目标99%/邻人100%。到达帧为台上输入，非完整V4曲线弹回放；直击方向/落点网格/选人仍INFERRED',
+    'MetaImpactNugget:镰刀敌我筛选': '仅镰刀无延迟筛选写法的发射者敌我关系→默认Physics；engine_knock_relation a健康99/100/99/100，ENEMIES仅敌/ALLIES仅友，逐帧位置回放。碰撞帧/爆心由台上输入；倒地状态及NO_COLLISIONS/非步兵拒绝未单独上台，Physics状态映射INFERRED；不覆盖原版落地入口、延迟、Arc',
     'MetaImpactNugget:省略Z默认值': '仅普通无延迟弹头省略ShockWaveZMult→SDK默认1及默认Physics轨迹；engine_knock_z a高度93邻人14帧落(2420,3740)、目标99%/邻人100%。碰撞时刻/爆心为台上输入；直击噪声方向/网格/选人仍INFERRED，完整曲线弹/坡地/筛选未对拍',
     'InformTargetNugget:默认系数目标通知': '仅默认Min=.85/Max=1.15的目标通知→来弹表/矿车预计伤害开甲；engine_inform_probe a/off录入302、hit377、exp404、删除389，347帧入窗。半径/历史/海啸/忍者及完整AI调度不在本登记范围，完整脚本仍xfail',
     'InformTargetNugget:Max1.6目标通知': '仅Min=.85/Max=1.6目标通知→来弹表；engine_inform_max a单变量对照录入302、hit377不变、exp444（默认404）、受伤389删除，矿车提前开甲。自然过期清理边界/半径/历史/海啸/忍者/完整AI调度未对拍，完整脚本仍xfail',

@@ -5,7 +5,7 @@ Prediction: retail pushes the enemy only; ALLIES pushes the neighbour only.
 This isolates relationship filtering with identical forbidden conditions and
 NO_COLLISIONS exclusion. No stunned-state or full retail landing coverage.
 Bench 11-13: health99/100/99/100; enemy-only versus friendly-only motion.
-Relation/condition dispatch stays a gap (strict replay xfails).
+Launcher relation replay is implemented; forbidden-state timing remains INFERRED.
 """
 import os
 import re

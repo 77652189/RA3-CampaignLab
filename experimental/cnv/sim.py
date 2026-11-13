@@ -4507,7 +4507,7 @@ class Sim:
         import terrain_rules
         return float(terrain_rules.world(self.ground.z(x, y)))
 
-    def projectile_detonate(self, weapon, target, centre=None):
+    def projectile_detonate(self, weapon, target, centre=None, attacker=None):
         """Dispatch the non-damage payload of a projectile arrival."""
         if not weapon.get('meta_impacts'):
             return
@@ -4518,16 +4518,16 @@ class Sim:
         if centre is None:
             self.gap(GAP_WEAPON, 'MetaImpactNugget', '缺少弹体实际爆心，未派发冲击')
         else:
-            self.meta_impact_detonate(weapon, centre)
+            self.meta_impact_detonate(weapon, centre, attacker)
 
-    def meta_impact_detonate(self, weapon, centre):
+    def meta_impact_detonate(self, weapon, centre, attacker=None):
         """Dispatch ordinary immediate warhead shocks, separately from damage radius.
 
         First slice: default Physics, grounded bodies, landings on level, lower or higher ground (Physics P3: a landing
         moved off the water, a vehicle's drowning, knock_landing / knock_landing_vehicle). Other cases
         stay explicit gaps; no airborne relaunch. After landing the body keeps still meta_impact_landing_hold frames
         (meta_impact_tick: knock_hold, read by move).
-        INFERRED selection: feet-centre sphere, without relation/arc filtering.
+        INFERRED selection: feet-centre sphere. Sickle relation uses the launcher; arc remains a gap.
         The whole nugget therefore retains its unmodeled registration.
         """
         import terrain_rules
@@ -4537,7 +4537,21 @@ class Sim:
             if effect['radius'] <= 0:
                 self.gap(GAP_WEAPON, 'MetaImpactNugget', '非正冲击半径的选人范围未建模')
                 continue
+            target_filter = effect.get('target_filter')
+            if target_filter and attacker is None:
+                self.gap(GAP_WEAPON, 'MetaImpactNugget', '筛选缺少发射者关系，未派发冲击')
+                continue
             for b in self.living():
+                if target_filter:
+                    if (self.relation(attacker.owner, b.owner) != target_filter['relation']
+                            or 'INFANTRY' not in b.kinds or 'NO_COLLISIONS' in b.status):
+                        continue
+                    if any(self.has_model_condition(b, c) for c in target_filter['forbidden']):
+                        continue
+                    # INFERRED: Physics flights / landing hold represent the three
+                    # forbidden knock states; their native bit timing is still a gap.
+                    if id(b) in flights or self.__dict__.get('knock_hold', {}).get(id(b), -1) > self.frame_now():
+                        continue
                 ground = self.impact_ground_z(b.x, b.y)
                 position = (b.x, b.y, ground if b.z is None else b.z)
                 if math.dist(position, centre) > effect['radius']:
@@ -4658,7 +4672,7 @@ class Sim:
         due = [hit for hit in pending if self.frame_now() >= hit[0]]
         pending[:] = [hit for hit in pending if self.frame_now() < hit[0]]
         for when, target, damage, attacker, weapon, centre in due:
-            self.projectile_detonate(weapon, target, centre)
+            self.projectile_detonate(weapon, target, centre, attacker)
             if target.alive:
                 self.incoming_hit(target, id(attacker), weapon.get('weapon_key'))
                 h = hurt.setdefault(id(target), [target, 0.0, attacker])
@@ -4705,7 +4719,7 @@ class Sim:
                             if frames:
                                 self.queue_projectile_hit(self.frame_now() + frames, t, damage, by, w)
                             else:
-                                self.projectile_detonate(w, t)
+                                self.projectile_detonate(w, t, attacker=by)
                                 self.incoming_hit(t, id(by), w.get('weapon_key'))
                                 h = hurt.setdefault(id(t), [t, 0.0, by])
                                 h[1] += damage
