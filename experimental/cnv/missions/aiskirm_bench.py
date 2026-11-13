@@ -398,7 +398,7 @@ ARMY_N = 10                            # aiskvinf / aiskvveh (check z): what the
 
 def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None, account=None,
             buffer=None, new=None, army=None, two=None, observe=False, cap=None, block=None, off=False,
-            ptype=None, mintime=None, aidata=None, dear=None, dear_cost=DEAR_COST, power_more=None):
+            ptype=None, mintime=None, aidata=None, dear=None, dear_cost=DEAR_COST, power_more=None, mt_secs=300.0):
     m = Mission(name=name, map=ai_map(resources.measured(niagara), lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
     if aidata is not None:               # aiskad / aiskfon / aiskfof: the global AIData overridden in the map stream
@@ -420,7 +420,7 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
     if mintime is not None:              # aiskmt / aiskmto (check mt): a TECH entry with MinTime / ForceTime
         lo, hi, build, const, score = (*mintime, *(MT_TECH, *MT_CONST)[len(mintime) - 2:])
         m.facts['min time'], m.facts['force time'], m.facts['build'], m.facts['const'] = lo, hi, build, const
-        m.facts['score'] = score
+        m.facts['score'], m.facts['mt secs'] = score, mt_secs   # aiskmt20: watched 600 s after the wake
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{MT_PID}'
         m.assets.append((f'{MT_PID}.xml', mintime_xml(lo, hi, build, const, score), f'AIPersonalityDefinition:{MT_PID}'))
         for k, (tpl, site) in enumerate(MT_OWNED):
@@ -547,6 +547,10 @@ MISSION = {'aiskirm': mission, 'aiskirmc': lambda: mission(observe=True),
            'aiskmt0': lambda: mission('CampAISkMT0', mintime=(0, 1)),   # check mt: TECH 0/1, 6 plants (D82 G1 + G2)
            'aiskmt03': lambda: mission('CampAISkMT03', mintime=(0, 1), power_more=False),   # mt: TECH 0/1, 3 plants
            'aiskmt2': lambda: mission('CampAISkMT2', mintime=(200, 201), power_more=True),  # mt: TECH 200/201, 6
+           'aiskmt20': lambda: mission('CampAISkMT20', mintime=(20, 22), power_more=True, mt_secs=600.0),  # 20/22
+           # (20 / 21 compiled a map stream whose hash began d1 fb: the game took it for RefPack and crashed)
+           'aiskmt14': lambda: mission('CampAISkMT14', mintime=(140, 142), power_more=True, mt_secs=600.0),
+           'aiskmt16': lambda: mission('CampAISkMT16', mintime=(160, 162), power_more=True, mt_secs=600.0),
            'aiskmtc': lambda: mission('CampAISkMTC', mintime=(None, None)),          # check mt: CONSTANT 300 tower
            'aiskmtt': lambda: mission('CampAISkMTT', mintime=(200, 201, MT_CONST[0])),   # check mt: TECH 200/201 tower
            'aiskmtk': lambda: mission('CampAISkMTK', mintime=(None, None, MT_TECH, MT_TECH)),   # mt: CONSTANT 300 tech

@@ -43,11 +43,25 @@ def decompress(d):
             break
         out += d[p:p + lit]; p += lit
         start = len(out) - off
+        if start < 0:
+            raise ValueError(f'back reference {off} before the start ({len(out)} out)')
         for i in range(n):
             out.append(out[start + i])
     if len(out) != size:
         raise ValueError(f'size mismatch {len(out)} != {size}')
     return bytes(out)
+
+
+def unpack(d):
+    """d decompressed when it is a whole RefPack stream, else d as it is. The two signature bytes alone collide:
+    an uncompressed SAGE stream file starts with a 4-byte hash, and CampAISkMT20Mt's map.bin / relo / imp began
+    d1 fb (is_refpack true, decompress ran off the start)."""
+    if not is_refpack(d):
+        return d
+    try:
+        return decompress(d)
+    except (IndexError, ValueError):
+        return d
 
 
 def compress_literal(d):

@@ -989,7 +989,11 @@ def mt(m):
     stops at 2256 again, 科技楼 1 at s227 (电厂 3 -> 5 by s102) -- the very frame of aiskmt0: power is not the gate
     (G1 no). aiskmt2 (TECH 200 / 201, six plants; aiskmt2__mt.json, PASS): no tech building to s367 (科技帧 4721,
     ~315 s after the wake) -- MinTime 200 is not "200 s after the wake" (G2: the evaluator's clock or MinTime's unit
-    differs; next MinTime 20 / 21: ~150 s -> seconds, ~300 s -> MinTime counted x15)."""
+    differs; next MinTime 20 / 21: ~150 s -> seconds, ~300 s -> MinTime counted x15).
+    aiskmt20 (TECH 20 / 22, six plants, watched 600 s; bench 11-12 aiskmt20__mt.json, PASS; 20 / 21 compiled a map
+    stream the game crashed on, see the build list): 科技帧 stops at 2256 again, 科技楼 1 at s158 -- the very
+    frame of 0 / 1 (MinTime x15 = 300 s is out). MinTime <= 20 all start at f2256, 150 / 200 never: as if the
+    entry were judged once, near f2256, and a t < MinTime then never came back (next: 140 / 142 against 160 / 162)."""
     t = Test()
     s1 = m.player('s1')
     if m.facts['min time'] is None and m.facts.get('const') == 'AlliedTechStructure':   # aiskmtk: CONSTANT tech
@@ -1009,7 +1013,8 @@ def mt(m):
                          [('INCREMENT_COUNTER', 1, 'CNV_AK_TechF')], once=False)]
     w = m.facts['wake at']
     t.expect += [('电厂', w + 5.0, '>=', 3)]
-    t.bench = [('bench_watch', dict(seconds=w + 300.0, every=1, sheet=False, lines=len(t.counters)))]
+    t.bench = [('bench_watch', dict(seconds=w + m.facts.get('mt secs', 300.0), every=1, sheet=False,
+                                    lines=len(t.counters)))]
     return t
 
 
@@ -1073,6 +1078,9 @@ CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j
           'aiskmt0': {'mt': mt},
           'aiskmt03': {'mt': mt},
           'aiskmt2': {'mt': mt},
+          'aiskmt20': {'mt': mt},
+          'aiskmt14': {'mt': mt},
+          'aiskmt16': {'mt': mt},
           'aiskmtc': {'mt': mt},
           'aiskmtt': {'mt': mt},
           'aiskmtk': {'mt': mt},

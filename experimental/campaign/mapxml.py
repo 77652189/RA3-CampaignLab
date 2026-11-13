@@ -280,7 +280,7 @@ def stream_names(stem='static.12', archive=sa.DATA + r'\Core12.big'):
     """Lower-case asset names ('gameobject:foo') in a retail stream's table (the top stream sees the whole chain)."""
     name = f'data\\{stem}.manifest'
     m = big.read_files(archive, [name])[name]
-    m = refpack.decompress(m) if refpack.is_refpack(m) else m
+    m = refpack.unpack(m)
     h = struct.unpack_from(sa.HEADER, m, 0)
     o = 48 + 48 * h[5] + h[10] + h[11]
     return {s.decode('latin-1').lower() for s in m[o:o + h[12]].split(b'\0') if s}
@@ -379,7 +379,7 @@ def read_stream(prefix, get):
     raw = []
     for x in ('manifest', 'bin', 'relo', 'imp'):
         v = get(prefix + x)
-        raw.append(refpack.decompress(v) if refpack.is_refpack(v) else v)
+        raw.append(refpack.unpack(v))
     return sa.parse(*raw), raw
 
 
@@ -469,7 +469,7 @@ def table(layers):
     for arc, prefix in layers:
         name = prefix + 'manifest'
         m = big.read_files(os.path.join(sa.DATA, arc), [name])[name]
-        m = refpack.decompress(m) if refpack.is_refpack(m) else m
+        m = refpack.unpack(m)
         h = struct.unpack_from(sa.HEADER, m, 0)
         for k in range(h[5]):
             e = struct.unpack_from(sa.ENTRY, m, 48 + 48 * k)

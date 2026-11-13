@@ -467,8 +467,11 @@ def test_a_specific_unit_cap_holds_our_unit_at_two(aiskcap_rows):
 
 
 @pytest.mark.xfail(strict=True, reason='bench aiskcap built a 3rd CNVNewPK at s150 and a 4th at s155 (owned 4 to '
-                                       's168, none lost); the simulator keeps 2 -- what the engine counts against '
-                                       'the cap after ~s150 (attack teams leaving?) is not known')
+                                       's168, none lost); the simulator keeps 2. Known since D round 89 (aiskcapt '
+                                       'yl): the cap counts owned units outside a container -- the first wave rode '
+                                       'its attack team\'s transport, the barracks built two more, they got out. '
+                                       'The model counts that way (AIPlayer.owned); the simulator\'s teams board '
+                                       'no transport')
 def test_after_s150_the_capped_unit_is_built_again(aiskcap_rows):
     """aiskcap (bench 2026-11-12): 新维和 3 at s150, 4 from s155 to s168."""
     assert aiskcap_rows[166]['新维和'] >= 3

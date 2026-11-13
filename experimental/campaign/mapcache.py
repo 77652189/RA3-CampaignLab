@@ -80,7 +80,7 @@ def retail():
     out = []
     for path, arc in STREAM:
         v = big.read_files(os.path.join(DATA, arc), [path])[path]
-        out.append((path, refpack.decompress(v) if refpack.is_refpack(v) else v))
+        out.append((path, refpack.unpack(v)))
     return out
 
 

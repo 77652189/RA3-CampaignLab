@@ -214,8 +214,8 @@ def test_against_conscripts_the_dogs_reach_their_cap_of_six():
 
 @pytest.mark.xfail(strict=True, reason='B round 143 bench t: after s145 the engine builds dogs 7-9 (s146-s152) over the '
     'cap of six, and an engineer (s144); the model holds six (and draws a Javelin) -- as aiskcap past s150 '
-    '(test_after_s150_the_capped_unit_is_built_again): what the cap counts. B owns the model; see '
-    'work/re/handoff-b.md 146.')
+    '(test_after_s150_the_capped_unit_is_built_again): units riding a transport leave the cap\'s count (D round '
+    '89); the simulator\'s teams board no transport. B owns the model; see work/re/handoff-b.md 146 / 161.')
 def test_against_conscripts_dogs():
     """engine_aiskirm t, aiskvinf (bench 2026-11-12, B round 140): 维和 5 / 标枪 0 / 警犬 9 / 工程师 1 on [s152,s157)."""
     w = simai.run('aiskvinf', 't', 157, lib=simai.model()['xmldata'].Library())

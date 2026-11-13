@@ -161,6 +161,8 @@ class Brain:
         self.path_rng = random.Random(host.seed)    # the spot's start angles (the engine: the logic random)
         self.ai.builder = self.build
         self.ai.units = self.units
+        if hasattr(self.ai, 'owned'):
+            self.ai.owned = self.owned
         self.ai.team_point = self.team_point
         self.ai.offers = self.offers
         self.ai.build_offers = self.build_offers
@@ -820,6 +822,19 @@ class Brain:
             if b.name not in self.wrappers:
                 self.wrappers[b.name] = Unit(b)
             out.append(self.wrappers[b.name])
+        return out
+
+    def owned(self, ai, frame):
+        """{template: count} the AI owns now, minus those inside a garrison or transport -- what SpecificUnitCap
+        counts (D round 89: boarding takes one off, getting out puts it back; walking to a garrison or pulled back
+        it still counts)."""
+        out = {}
+        for b in self.living():
+            if b.owner != self.player or 'STRUCTURE' in b.kinds or b.speed <= 0:
+                continue
+            if b.name in self.host.garrison.where:
+                continue
+            out[b.template] = out.get(b.template, 0) + 1
         return out
 
     def team_point(self, ai, frame):
