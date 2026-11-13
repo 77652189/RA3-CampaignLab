@@ -8,7 +8,7 @@
 | 脚本条件 | **94%** | **100%** | 12 / 12 | 89 | 34 | 6 | 46 | 3 | 95% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **93%** | **95%** | 17 / 22 | 28 | 18 | 3 | 5 | 2 | 96% |
-| AI | **90%** | **90%** | 140 / 357 | 415 | 147 | 119 | 115 | 34 | 98% |
+| AI | **90%** | **90%** | 141 / 357 | 415 | 148 | 118 | 115 | 34 | 98% |
 
 ## 脚本动作
 
@@ -961,7 +961,7 @@
 | 不涉及 | `人格/AIPersonalityDefinition.CommanderPortrait` | 10 |  | 纯表现（语音、视频、画面） |
 | 未做 | `其他/BuildingPlacementDistance.Distance` | 10 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 已对拍 | `启发条件/PowerAdvantageHeuristic` | 10 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aipoweradv.py |
-| 推断 | `启发条件/PowerAdvantageHeuristic.Above` | 10 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 已对拍 | `启发条件/PowerAdvantageHeuristic.Above` | 10 | a4 a5 a7 | C engine_aipowerabove aipabtrue/aipabfalse:a：同图4对8同型守护者、Value=1.0，仅Above=true/false；s40在家/AI总数/玩家坦克分别4/4/8与0/4/8，两局各3条PASS，tests/test_simai_powerabove_c.py按名回放两组实测。仅验证该固定军队与阈值下Above翻转；精确求值帧、其他比值/动态伤亡/防御计入仍gap；未改模型与阈值，见work/re/c_powerabove_report.md |
 | 推断 | `启发条件/PowerAdvantageHeuristic.IncludeEnemyDefenses` | 10 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/PowerAdvantageHeuristic.IncludeOwnDefenses` | 10 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/PowerAdvantageHeuristic.Value` | 10 | a4 a5 a7 | AI 模型代码里读了这个名字 |
