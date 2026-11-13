@@ -251,9 +251,11 @@ def test_meta_impact_straight_projectile_dispatches_on_arrival_not_launch(monkey
         queue(when, target, damage, attacker, weapon, centre)
         attacker.hp, attacker.alive = 0, False
 
-    def record_arrival(weapon, target, centre=None):
+    def record_arrival(weapon, target, centre=None, attacker=None):
         arrived.append(e.frame_now())
-        detonate(weapon, target, centre)
+        assert attacker is e.bodies[name('rocket', 'gun')]
+        assert not attacker.alive
+        detonate(weapon, target, centre, attacker)
 
     monkeypatch.setattr(e, 'queue_projectile_hit', record_queue)
     monkeypatch.setattr(e, 'projectile_detonate', record_arrival)

@@ -556,7 +556,7 @@ def nugget_form_slice(ntype, forms):
                     and {'ShockWaveAmount', 'ShockWaveRadius'} <= set(n.attrib)
                     and set(n.get('ForbiddenTargetModelCondition', '').split()) == {
                         'STUNNED', 'STUNNED_STANDING_UP', 'STUNNED_FLAILING'}
-                    and len(children) == 1 and children[0].tag == 'SpecialObjectFilter'
+                    and len(children) == 1 and children[0].tag.rsplit('}', 1)[-1] == 'SpecialObjectFilter'
                     and not list(children[0])
                     and not (children[0].text or '').strip()
                     and children[0].attrib == dict(Rule='ANY', Relationship='ENEMIES',
