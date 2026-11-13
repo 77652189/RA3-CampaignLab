@@ -123,6 +123,11 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '启发条件/AllNearbyNodesFullHeuristic': (GUESSED,
+        'C入口门禁：SDK及原版编译状态29处均无参数；模型消费nodes full，'
+        'SimAI.facts未提供该事实，缺矿点资格、占用和nearby范围语义。'
+        '需B提供世界事实接口或总控授权适配；本轮0局，无按名台上对拍，不晋升；'
+        '见work/re/c_nodesfull_gate_report.md'),
     '启发条件/PowerAdvantageHeuristic.IncludeEnemyDefenses': (BENCHED,
         'C engine_aipowerenemy aipenoff/aipenon:a：同图8对4守护者、一座玩家光谱塔及电厂，'
         '固定Value=2.0/Above=true/IncludeOwnDefenses=false，仅IncludeEnemyDefenses=false/true；'
