@@ -57,9 +57,6 @@ def test_expansion_named_bench_replay():
     assert (row['候选东'], row['候选崖'], row['普通实体']) == (4, 0, 0)
 
 
-@pytest.mark.xfail(strict=True, raises=TypeError,
-                   reason='Current main passes MicroBlock(move=...) but the private model does not accept it; '
-                   'see work/re/c_baseselection_gate_report.md and handoff-c.md')
 def test_expansion_named_entity_control_replay():
     w = simai.run('aiexpctl', 'a', until=31)
     labels = [label for _, label in w.sim.test.counters]

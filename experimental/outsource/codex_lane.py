@@ -176,6 +176,24 @@ def sync_handoffs(lane=None):
     return '' if r.returncode == 0 else 'work/re 没同步到远端，Codex 可能读到旧交接：' + (r.stderr.strip()[-200:])
 
 
+def sync_model():
+    """Bring the lane's private model (CNV_ENGINE_MODEL) up to origin before Codex runs: on 11-13 C's model sat behind
+    main, a public test then hit an interface the old model lacked and C quarantined a test that passes on main.
+    Fast-forward only, and only from a clean checkout; returns '' or the reason it could not."""
+    model = os.environ.get('CNV_ENGINE_MODEL')
+    if not model or not os.path.isdir(model):
+        return ''
+    run = lambda *c: subprocess.run(['git', *c], cwd=model, capture_output=True, text=True, encoding='utf-8',
+                                    errors='replace')
+    run('fetch', '-q', 'origin')
+    if run('status', '--porcelain', '--untracked-files=no').stdout.strip():
+        return f'私有模型 {model} 有没提交的改动，没更新到远端'
+    if run('merge-base', '--is-ancestor', 'HEAD', 'origin/main').returncode:
+        return f'私有模型 {model} 有没推的提交，没更新到远端'
+    r = run('checkout', '-q', '--detach', 'origin/main')
+    return '' if r.returncode == 0 else f'私有模型 {model} 没更新到远端：' + r.stderr.strip()[-200:]
+
+
 def analyse(events_path):
     cmds, msgs, usage = [], [], collections.Counter()
     for raw in open(events_path, encoding='utf-8', errors='replace'):
@@ -226,7 +244,7 @@ def main():
         sys.exit(f'no codex.exe ({exe}) or no worktree {wt}')
     stamp = datetime.datetime.now().strftime('%m%d_%H%M')
     events = os.path.join(LOGS, f'codex_{a.lane}_{stamp}.jsonl')
-    stale = sync_handoffs(a.lane)
+    stale = sync_handoffs(a.lane) or sync_model()
     if stale:   # a session that reads an old ticket redoes or skips work: do not start it (11-11 20:45 a C run did)
         sys.exit(stale)
     before, h0, t0 = origin_main(wt), handoff_rev(a.lane), time.time()
