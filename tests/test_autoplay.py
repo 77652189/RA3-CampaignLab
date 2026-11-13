@@ -57,7 +57,8 @@ def test_a_card_player_with_a_steady_hand_plays_the_plan_itself():
 
 def test_the_card_player_on_a4_wins_with_a_steady_hand():
     run, _ = autoplay.play('a4', 'card', 1, style=STEADY)
-    assert run.outcome == 'win' and 888 <= run.t < 889          # plays/a4.txt: 14:48 (handoff-phase4)
+    # plays/a4.txt: 14:48 (handoff-phase4); 888.x -> 889.0 at A round 174's benched ore-point heading (1a745b63)
+    assert run.outcome == 'win' and 889 <= run.t < 890
 
 
 def test_a_seed_is_a_run():
