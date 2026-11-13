@@ -27,13 +27,13 @@ TURRET_AT = (-340.0, 0.0)              # 80-120 from the tanks
 TURRET_PLANT_AT = (-480.0, 0.0)        # the plant behind it, out of the way
 
 
-def mission(mod, factory=False, faction=None, close=False, **fields):
+def mission(mod, factory=False, faction=None, close=False, observe=False, **fields):
     """faction 'Soviet' / 'Japan': s1 that faction's player, its repair place that faction's VehicleRepairFacility
     (REPAIR) -- the pull-back looks the ArmyDefinition up by the player's faction (its Side; work/re handoff-b 71).
     close: no guards, and the team's target (the far plant) stands beside the tanks at the start (CLOSE_AT) -- the
     ReverseMove read (work/re/l4_micro_engage.md 1.4): a member 0 < d < range - 10 from its target backs off to range - 10.
     close='turret': a player's turret beside the tanks instead (TURRET_AT), the plant behind it."""
-    m = ac.mission(mod, Crush='false', **fields)
+    m = ac.mission(mod, observe=observe, Crush='false', **fields)
     if close:
         m.objects = [o for o in m.objects if not o.name.startswith('UNIT - CNV AI Guard')]
         m.cast = {k: r for k, r in m.cast.items() if not k.startswith('guard ')}
@@ -91,6 +91,10 @@ MISSION = {
     'aipulljp': lambda: mission('CampAIPullJp', factory=True, faction='Japan'),
     'airev1': lambda: mission('CampAIRev1'),
     'airev0': lambda: mission('CampAIRev0', ReverseMove='false'),
+    # Identical passive carriers on both sides; body heading and goal object are
+    # observations, while region counts alone cannot identify reverse travel.
+    'airev1t': lambda: mission('CampAIRev1T', observe=True),
+    'airev0t': lambda: mission('CampAIRev0T', observe=True, ReverseMove='false'),
     # airev1 / 0 too alike: the target beside the tanks from the start, no guards (handoff-b 69's measure)
     'airevp1': lambda: mission('CampAIRevP1', close=True),
     'airevp0': lambda: mission('CampAIRevP0', close=True, ReverseMove='false'),

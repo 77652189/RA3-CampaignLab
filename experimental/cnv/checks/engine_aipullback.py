@@ -54,6 +54,13 @@ Readings (11-09; 4 Hammers vs 12 Peacekeepers, Crush false; tanks reach the plan
            2 @ s23-34, 1 @ s35-46, 0 from s47. airevt0 not run (airevt1 already shows no back-up).
   Left (work/re handoff-b 72): the reverse-move routine's first gate -- a byte flag reached through the member's locomotor data
   (read as a locomotor template flag, not named); the weapon flag check skips too.
+
+  E115 observer pair airev1t/airev0t: both PASS the guard prerequisite only. Initial four join at host f21;
+  all acquire the far plant at f230; f260/261 are state 2 with valid goals. Each side has 23 moving-member
+  observations across consecutive frames in states 2/4 with the same valid goal, all positive hull-forward
+  displacement dot products (no reverse candidate in those samples). This does not cover every frame or prove
+  branch eligibility. Near-plant s19-s22 is zero on both observer builds, unlike the old uninstrumented record.
+  Exact goal acquisition replay remains a strict xfail; see work/re/e115_reverse_aim.md.
 """
 from checks import engine_aitarget as at
 from parts import Script, Test, counted, square
@@ -136,4 +143,4 @@ def a(m, build):
 
 
 CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aipull1', 'aipull0', 'aipullh1', 'aipullh0', 'aipullga', 'aipulli1', 'aipullr1', 'aipullp1', 'aipullbig', 'aipullsov', 'aipulljp',
-                                                           'airev1', 'airev0', 'airevp1', 'airevp0', 'airevt1', 'airevt0')}
+                                                           'airev1', 'airev0', 'airev1t', 'airev0t', 'airevp1', 'airevp0', 'airevt1', 'airevt0')}

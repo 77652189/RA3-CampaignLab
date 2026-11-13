@@ -328,8 +328,9 @@ NOTES = {
     '微操/AIMicroManagerData.ReverseMove': (GUESSED,
         'engine_aipullback airev1/0台上s1–10坦克4、s19–22近厂2；tests/test_simai_bench_b.py按名回放，'
         '存活前置正常断言、近厂计数strict xfail；airevp近厂4不能证明没有倒车；'
-        '缺同帧成员当前目标/位置/车身朝向，暂停新台；不把区域计数当倒车观测，不晋升；'
-        '接口及假设表见work/re/e110_reverse.md'),
+        'E115 airev1t/0t各PASS：同帧目标/位置/车身朝向已取得，两侧各23个有效目标相邻帧移动样本无负点积；'
+        'tests/test_ai_reverse_clock.py按名f263目标取得strict xfail；模型朝向/分支前置仍gap，暂停新台、不晋升；'
+        '宿主台近厂读数不同于旧台，不假设等价；见work/re/e115_reverse_aim.md'),
     # B round 108: a test names the probe but only the switch-off case matches; the effect itself is a strict xfail
     '微操/AIMicroManagerData.Crush': (GUESSED,
         'engine_aicrush:aicrush1 台上s28–33守军0、坦克4；按名回放存活正常断言，清零strict xfail；'
