@@ -497,3 +497,22 @@ def test_native_transport_disguise_rejects_unmeasured_configuration(change):
         own[template] = own[template].replace('</AssetDeclaration>',
             '<SpecialPowerTemplate id="' + power + '" MaxCastRange="1"/></AssetDeclaration>')
     assert simunits.nugget_self_power(template, power, own) is False
+
+
+@pytest.mark.xfail(strict=True, reason=(
+    'Native transport has a sampled hit-before-disguise transition; the model '
+    'applies the bit immediately. See work/re/c_spntrans_report.md and handoff-c.md.'))
+def test_native_transport_disguise_unpack_transition_bench_replay():
+    """engine_spntrans a observed 1110/1110/1110/1111 before settling.
+
+    Compare the relative transition, not absolute sample/engine clocks.
+    The native caster has hit but not disguised; the scripted control has both.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_spntrans', 'a')
+    e = sim.Sim(m, t)
+    e.shot_clock = True
+    result = e.run(14)
+    measured_transition = (1110, 1110, 1110, 1111)
+    assert any(tuple(row) == measured_transition for _, row in result.series)
