@@ -13,7 +13,7 @@ _spec.loader.exec_module(_harness)
 @pytest.mark.parametrize('check,expected', [
     ('a', (1099, 11001099, 11001099, 1099)),
     pytest.param('landing', (1099, 10001099, 10001099, 1099),
-                 marks=pytest.mark.xfail(strict=True, reason='D52 SoftLanding self-hit/expiry requires a Lift ground-contact event; no per-frame height/contact evidence or Lift trajectory exists. See work/re/c_lift_landing_gate_report.md and work/re/handoff-c.md')),
+                 marks=pytest.mark.xfail(strict=True, reason='Lift landing remains unmodeled: A169 measured contact but SoftLanding clears at height 28 and not 40/60; the dispatch/clear boundary is unresolved. See work/re/a169_lift_landing.md and work/re/c_liftclosure_report.md')),
 ])
 def test_lift_historical_bench_counters(check, expected):
     import build
@@ -97,6 +97,53 @@ def test_lift_unsupported_filter_stays_a_gap():
         '</ActivateLiftObjectNugget></Nuggets></WeaponTemplate>'])
     assert weapons['Lift']['unmodeled_effects'] == ['ActivateLiftObjectNugget']
     assert not weapons['Lift'].get('lift')
+
+
+def test_lift_retail_closure_keeps_all_six_consumers_unmeasured():
+    """Synthetic VEHICLE snapshots cover no complete native Lift consumer."""
+    import inventory
+    import retailmodules as rm
+
+    if not Path(rm.SAGEXML).is_dir():
+        pytest.skip('requires retail XML')
+    ground = {'JapanCommandoTech1PsyonicCrush',
+              'AAAVT1_JapanCommandoTech1PsyonicCrush',
+              'ABD_JapanCommandoTech1PsyonicCrush'}
+    air = {'JapanCommandoTech1AirborneKiller',
+           'AAAVT1_JapanCommandoTech1PsyonicAntiAirCrush',
+           'ABD_JapanCommandoTech1PsyonicAntiAirCrush'}
+    observed_consumers = set()  # engine_lift uses synthetic guns, not these hosts.
+    residual = ground | air
+    st = rm._load()
+    actual = set()
+    for key, (name, _, _) in st['weapons'].items():
+        forms = [n for n in rm.effective_weapon_forms(key, st)
+                 if rm._tag(n) == 'ActivateLiftObjectNugget']
+        if not forms:
+            continue
+        actual.add(name)
+        assert len(forms) == 1
+        nugget = forms[0]
+        assert nugget.get('Lifetime') == ('0.2s' if name in ground else '5.0s')
+        filt, = list(nugget)
+        assert rm._tag(filt) == 'SpecialObjectFilter'
+        assert filt.get('Rule') == 'ANY'
+        assert set(filt.get('StatusBitFlagsExclude').split()) == {
+            'UNCONTROLLABLY_SCARED', 'UNDER_IRON_CURTAIN'}
+        assert {n.text.strip() for n in filt if rm._tag(n) == 'ExcludeThing'} == {
+            'AlliedWallPiece', 'SovietWallPiece', 'JapanWallPiece'}
+        assert set(filt.get('Include').split()) == {
+            'INFANTRY', 'VEHICLE', 'STRUCTURE', 'VALID_TARGET_FOR_C4',
+            'TIME_BOMB' if name in ground else 'TRANSFORMER'}
+    assert not ground & air
+    assert not observed_consumers & residual
+    assert observed_consumers | residual == actual
+    assert len(observed_consumers) + len(residual) == rm.weapon_census()[
+        'ActivateLiftObjectNugget']['weapons'] == 6
+    rows = [i for i in inventory.apply_registers(inventory.nugget_items())
+            if i['name'].split(':')[0] == 'ActivateLiftObjectNugget']
+    assert sum(i['uses'] for i in rows) == 6
+    assert all(i['state'] in (inventory.GUESSED, inventory.TODO) for i in rows)
 
 
 @pytest.mark.parametrize('excluded', [False, True])
