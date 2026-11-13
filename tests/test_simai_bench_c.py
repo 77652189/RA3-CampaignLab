@@ -311,6 +311,26 @@ def test_release_eight_carrier_diagnostic_records_partial_transfer():
     assert {m[0] for m in remaining[0]['ids']} == {3171, 3172}
 
 
+def test_release_eight_kept_pair_goes_to_the_capture_tech_team_with_its_new_engineer():
+    """Where the two Cleanup left behind go (A round 190): AlliedCaptureTech_MEDIUM (Engineer tactic, CreateUnits
+    AlliedEngineer 1, MaxUnits 4, NEVER_RELEASE) first appears, empty, in the same sample as Cleanup; the two stay
+    in defense, unclaimed by Cleanup, until the team commits three at once -- a new id (the engineer, which carries
+    IGNORES_SELECT_ALL and no CAN_ATTACK) and the kept pair."""
+    import teamlog
+    source = ROOT / 'tests/fixtures/c_release_teams/aiskirm_m.txt'
+    capture = teamlog._wants('AlliedCaptureTech_MEDIUM_EngineerTactic_0_0')
+    defense = teamlog._wants('LandDefense_MEDIUM_StaticDefense_0_0')
+    seen = [(f, t) for f, teams in teamlog.samples(source) for t in teams if teamlog._named(t, capture)]
+    assert seen[0][0] == 1966 and seen[0][1]['n'] == 0
+    frame, first = next((f, t) for f, t in seen if t['n'])
+    assert frame == 2206 and first['active'] == 1
+    assert {m[0] for m in first['ids']} == {3171, 3172, 3181}
+    kept = {f: {m[0] for t in teams if teamlog._named(t, defense) for m in t['ids']}
+            for f, teams in teamlog.samples(source) if 1966 <= f <= 2206}
+    assert all(ids == {3171, 3172} for f, ids in kept.items() if f < 2206), kept
+    assert not kept[2206]
+
+
 @pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
     'The unique-yard carrier diagnostic measures defense 9 -> 2, Cleanup 0 -> 7; '
     'stock model predicts an entire eight-member transfer. The original eight-member '
