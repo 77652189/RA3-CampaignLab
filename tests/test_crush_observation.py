@@ -21,6 +21,46 @@ SOURCE = ROOT / 'tests/fixtures/e_crush/aicrush1t.txt'
 TANKS = {3170, 3171, 3172, 3173}
 
 
+def test_aicrush1t_crush_assignment_sources():
+    """E127: assignment IDs are observable even though crush clears aim.
+
+    Candidate eligibility is the shared hostile filter, not each member's
+    complete crush eligibility or score. See work/re/e127_crush_sources.md.
+    """
+    source = str(SOURCE.with_name('aicrush1t_sources.txt'))
+    orders = teamlog.target_orders(source, 'T')
+    passes = {p['frame']: p for p in teamlog.keep_passes(source, 'T')}
+    rows = {r['frame']: r for r in teamlog.states(source)['T']}
+    approach = [o for o in orders if o['frame'] == 229]
+    assert len(approach) == 4
+    assert {o['mem'] for o in approach} == TANKS
+    assert all((o['mstate'], o['src'], o['tgt'], o['ret'], o['wrote']) ==
+               (6, 'all', 3169, 1, True) for o in approach)
+    assert {i: rows[230]['aim'][i] for i in TANKS} == {
+        i: (3169, (3700., 2400.)) for i in TANKS}
+    assert {i: (until, decision) for i, until, decision in passes[259]['keep']} == {
+        3170: (299, 'hold'), 3171: (295, 'hold'),
+        3172: (298, 'hold'), 3173: (284, 'hold')}
+    expected = {
+        349: {3170: 3183, 3171: 3220, 3172: 3181, 3173: 3176},
+        409: {3170: 3184, 3171: 3178, 3173: 3178},
+        439: {3170: 3182, 3171: 3174, 3172: 3174, 3173: 3183},
+    }
+    for frame, targets in expected.items():
+        assigned = [o for o in orders if o['frame'] == frame]
+        assert len(assigned) == len(targets)
+        assert {o['mem']: o['tgt'] for o in assigned} == targets
+        assert all((o['mstate'], o['src'], o['ret'], o['wrote'], o['until']) ==
+                   (2, 'score', 2, True, 0) for o in assigned)
+        eligible = {i for i, ok in passes[frame]['cand'] if ok}
+        assert set(targets.values()) <= eligible
+        assert passes[frame]['keep'] == [(i, 0, 'go') for i in targets]
+        assert {i: rows[frame + 1]['aim'][i] for i in TANKS} == {
+            i: (0, None) for i in TANKS}
+    # An empty per-member pass does not mean no hostile candidates existed.
+    assert passes[379]['cand'] and passes[379]['keep'] == []
+
+
 def test_aicrush1t_engine_goal_and_destination_readings():
     rows = {s['frame']: s for s in teamlog.states(SOURCE)['T']}
     assert set(rows) == {230, 345, 347, 350, 410, 440}
