@@ -229,6 +229,8 @@ class Part:
                                                                 # (the map's WaypointsList); a loop links back to its first
     labels: dict = dataclasses.field(default_factory=dict)      # {waypoint name: [path label]} at most 3 each (its
                                                                 # waypointPathLabel1..3): *_FOLLOW_WAYPOINTS name the label
+    hotspots: dict = dataclasses.field(default_factory=dict)    # {name: (title label, description label)}: the map's
+                                                                # MissionHotSpots (scripts set and link them)
 
     def path(self, label, *names, loop=False):
         """A waypoint path: the waypoints `names` (in self.waypoints, or the mission's for a check) labelled `label`,
@@ -591,6 +593,7 @@ def side_by_side(a, b, dx, suffix=''):
     out.waypoints = {**a.waypoints, **{k: (x + dx, y) for k, (x, y) in b.waypoints.items()}}
     out.links, out.labels = a.links + b.links, merge_labels(a.labels, b.labels)
     out.areas = {**a.areas, **{k: [(x + dx, y) for x, y in pts] for k, pts in b.areas.items()}}
+    out.hotspots = {**a.hotspots, **b.hotspots}
     out.scripts, out.strings = a.scripts + b.scripts, {**a.strings, **b.strings}
     return out
 
@@ -609,6 +612,7 @@ def merged(mission, test=None):
     m.waypoints = {**mission.waypoints, **test.waypoints}
     m.links, m.labels = mission.links + test.links, merge_labels(mission.labels, test.labels)
     m.areas = {**mission.areas, **test.areas}
+    m.hotspots = {**mission.hotspots, **test.hotspots}
     m.strings = {**mission.strings, **test.strings}
     assert len(test.counters) <= 4, 'only four counter lines fit above the bottom bar (counters.MAX_LINES)'
     keys = [f'SCRIPT:CNVTEST_COUNTER{k}' for k in range(len(test.counters))]

@@ -142,6 +142,7 @@ class RetailMission:
                             angle=o['angle'], props=extra))
         self.links = waypoint_links(m, ids)
         self.areas = m.trigger_areas()
+        self.hotspots = m.hotspots()
         terrain = Terrain(m)
         self.map = terrain
         terrain.PLAYERS, terrain.TEAMS, terrain.OBJECTS, terrain.SCENERY = players, {}, objs, []
@@ -161,8 +162,10 @@ class RetailMission:
         cnv scripts (script_lists runs the map's own), the map's areas and waypoints."""
         assert test is None, 'a retail mission takes no cnv check'
         return dataclasses.make_dataclass('Merged', ['units', 'objects', 'scripts', 'areas', 'waypoints', 'strings',
-                                                     'subtitles', 'templates', 'links', 'labels', 'two_way'])(
-            [], [], [], self.areas, self.waypoints, {}, {}, self.templates, self.links, self.labels, self.two_way)
+                                                     'subtitles', 'templates', 'links', 'labels', 'two_way',
+                                                     'hotspots'])(
+            [], [], [], self.areas, self.waypoints, {}, {}, self.templates, self.links, self.labels, self.two_way,
+            self.hotspots)
 
     def script_lists(self, scripts):
         """The map's scripts for the engine model (scripts = ra3model.scripts), one list per side, every name a

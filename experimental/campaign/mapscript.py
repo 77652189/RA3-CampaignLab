@@ -310,6 +310,35 @@ class MapFile:
             body += _pstr(o['name']) + _pstr(o['title']) + _pstr(o['desc']) + struct.pack('<BI', o['bonus'], o['flags'])
         self._objectives_node().head = body
 
+    # ------------------------------------------------------------- mission hot spots
+    def hotspots(self):
+        """MissionHotSpots (v1, a leaf after FogSettings): u32 count, then per hot spot: name, title label, description
+        label (work/re d115_script_semantics.md 4: no switch / visibility / place in the file -- scripts set and link
+        them). -> {name: (title, desc)}; {} when the map has no such chunk."""
+        node = next((n for _, n in self.walk() if n.name == 'MissionHotSpots'), None)
+        if node is None:
+            return {}
+        d, out, p = node.head, {}, 4
+        for _ in range(struct.unpack_from('<I', d, 0)[0]):
+            name, p = self.string(d, p)
+            title, p = self.string(d, p)
+            desc, p = self.string(d, p)
+            out[name] = (title, desc)
+        assert p == len(d), 'MissionHotSpots: trailing bytes'
+        return out
+
+    def set_hotspots(self, spots):
+        """Replace the map's hot spots with {name: (title, desc)}; a map without the chunk gets one before
+        MissionObjectives (where every retail map has it)."""
+        body = struct.pack('<I', len(spots)) + b''.join(_pstr(n) + _pstr(t) + _pstr(d) for n, (t, d) in spots.items())
+        node = next((n for _, n in self.walk() if n.name == 'MissionHotSpots'), None)
+        if node is None:
+            self.name_id('MissionHotSpots')
+            node = Node('MissionHotSpots', 1, b'', [])
+            i = next(k for k, n in enumerate(self.nodes) if n.name == 'MissionObjectives')
+            self.nodes.insert(i, node)
+        node.head = body
+
     # ------------------------------------------------------------- trigger areas
     def _areas_node(self):
         return next(n for _, n in self.walk() if n.name == 'TriggerAreas')
@@ -463,6 +492,11 @@ def selftest():
             before = m._objectives_node().head
             m.set_objectives(objs)
             enc = enc and m._objectives_node().head == before
+        spot = next((x for _, x in m.walk() if x.name == 'MissionHotSpots'), None)
+        if spot is not None:
+            before = spot.head
+            m.set_hotspots(m.hotspots())
+            enc = enc and spot.head == before
         good = same and again and enc
         print(f'{"OK " if good else "BAD"} {n.split(chr(92))[-1]:45} {scripts:4d} scripts')
         ok += good

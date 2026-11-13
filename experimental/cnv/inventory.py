@@ -141,6 +141,10 @@ BENCHED_TESTS = {
         'TEAM_ATTACKED_BY_PLAYER', 'SKIRMISH_PLAYER_HAS_BEEN_ATTACKED_BY_PLAYER', 'TEAM_ATTACKED_BY_OBJECTTYPE',
         'NAMED_ATTACKED_BY_OBJECTTYPE', 'PLAYER_HAS_KILLED_NAMED_UNIT', 'PLAYER_HAS_KILLED_TYPE_UNITS',
         'NAMED_HAS_KILLED_COMPARISON_UNIT_TYPE')},
+    # engine line A round 210: batch 2 (checks/engine_conds.py sight): sight / discovery, the hot spot switch
+    **{(CONDITION, n): 'tests/test_simbench.py::test_conds_sight_as_the_bench' for n in (
+        'ENEMY_SIGHTED_BY_TEAM', 'TEAM_DISCOVERED', 'MISSION_HOT_SPOT_ACTIVE')},
+    (ACTION, 'SET_MISSION_HOT_SPOT_ACTIVENESS'): 'tests/test_simbench.py::test_conds_sight_as_the_bench',
     # engine line C round 1: modules whose retail data the simulator already follows and a bench-reading test cites
     (MODULE, 'Behaviors/ProductionUpdate'):
         'tests/test_simbench.py::test_production_pays_as_it_builds_and_comes_out_after_the_door',   # engine_production a-g

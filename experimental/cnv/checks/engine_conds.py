@@ -37,6 +37,31 @@ checks/engine_scripts9.py). The enemy crew is on Soviet_4: placed units on a Sov
           dead: the team version reads its living members' last damage, D 115; the player-level flag stays); 53 from
           s44 (foe 2 hit: + 1 + 16 + 32); 4 from s59 (both dead). 击杀 0, 43 from s20 (foe 1: 1 + 2 + 8 + 32), 31 from
           s59 (foe 2: + 4 + 16, == 1 off). 甲 93 at s5 -> 0 at s20; 乙 100 to s43, 0 at s59]
+  sight   (round 210; batch 2, d115_script_semantics.md 4-6, 15) every unit NO_ATTACK. The player's crew Watch (watch,
+          (1000, 4500)); Soviet_4's crews Near (near, 230 east of watch: inside the sight 200 + the two radii 23 only),
+          Spy (spy, 1200 east, sent to 400 east at 1 s) and Navy (a Dreadnought on dry land, (2300, 4850): Surfaces
+          DEEP_WATER only) in the area N. near to 300 east at 4 s, back to 180 at 9 s, NAMED_KILLed at 14 s. Hot spots
+          H1 / H2 (the map's MissionHotSpots): SET_ACTIVENESS(H1, 1) at 2 s, (Nope, 1) at 3 s (not on the map),
+          VISIBILITY(H2, 1) at 4 s, LINK(H2, near, 0) at 5 s, SET(H1, 0) at 6 s, SET(H2, 1) at 16 s (its linked unit dead).
+          视野 = 1 ENEMY_SIGHTED_BY_TEAM(Watch, Enemy, Soviet_4) 2 (Watch, Friend, Soviet_4) 4 (Watch, Friend, Player_1)
+            8 (Near, Enemy, Player_1) 16 (Watch, Neutral, Soviet_4) 32 (Spy, Enemy, Player_1)
+          发现 = 1 TEAM_DISCOVERED(Player_1, Near) 2 (Player_1, Spy) 4 (Soviet_4, Watch) 8 (Player_1, Watch)
+            16 (Soviet_5, Watch)
+          海军 = 1 PARTIALLY(Navy, N, 0) 2 (Navy, N, 1) 4 (Navy, N, 3) 8 (Navy, N, 7) 16 TEAM_HAS_UNITS(Navy)
+            32 PARTIALLY(Watch, W, 1) 64 PARTIALLY(Watch, W, 0)
+          热点 = 1 MISSION_HOT_SPOT_ACTIVE(H1) 2 (H2) 4 (Nope) 8 (h1, lower case)
+          [simulator 11-13 (sim.Sim.cond_retail2): 视野 13 (1 near inside the circles' reach, 4 watch itself, 8 near sees
+          watch; INFERRED the member itself counts) / 4 from s5 (near at 300) / 13 from s10 / 4 from s14 (near dead).
+          发现 13 (Near seen, Soviet_4 sees Watch, the player's own) / 15 from s10 (spy within the player's sight 500) /
+          14 from s14. 海军 88 all along (k 7 + alive + watch k 0: the ship never for k 0, D 119's prediction).
+          热点 0 / 9 s2-s5 (case ignored, INFERRED) / 0 / 2 from s16; Nope, VISIBILITY and LINK never]
+  BENCH 11-13 (round 210, run_queue; tests/test_simbench.py test_conds_sight_as_the_bench): 视野 / 发现 / 海军 / 热点
+    s1-s2 4 13 88 1 | s3 4 12 88 1 | s4 4 13 88 1 | s5-s7 4 13 88 0 | s8 4 12 88 0 | s9 13 12 88 0 | s10-s12 13 15 88 0 |
+    s13 5 14 88 0 | s14-s24 5 14 88 2 | s25 4 14 88 2. Against the prediction: near at 230 unseen (视野&1, &8 off until
+    it stands at 180: centre to centre, not + both radii); its wreck seen ~11 s after the kill (&1 s13-s24); near off
+    for 发现&1 while it moves (s3, s8-s9); the lower-case hot spot name never on (&8). The rest as predicted -- D 119's
+    ship never for k 0. The simulator fixed to the first, third and fourth (sim.Sim.cond_retail2); the wreck's time
+    is the Guardian's SlowDeath (0 s in the simulator), left to the module lines.
 
 BENCH 11-13 (round 208, run_queue; tests/test_simbench.py test_conds_team_as_the_bench / _fight_):
   team (with the 128 bits): 队形 / 状态 s1 4 13 | s2 12 13 | s3-s6 12 15 | s7-s8 5 15 | s9-s10 5 75 | s11-s21 7 75 |
@@ -61,6 +86,11 @@ HOME, F = (1000.0, 1075.0), (1700.0, 1075.0)
 SPAWN = (1000.0, 2000.0)
 SHOT, FOE = (1000.0, 3000.0), {'foe 1': (1400.0, 3000.0), 'foe 2': (2900.0, 3000.0)}
 GE, LT, EQ = 3, 0, 2                            # sim.CMP: 0 <, 1 <=, 2 ==, 3 >=, 4 >, 5 !=
+SHIP = 'SovietAntiStructureShip'                # the Dreadnought: Locomotor Surfaces DEEP_WATER only
+WATCH, NEAR, NEAR_OUT, NEAR_IN = (1000.0, 4500.0), (1230.0, 4500.0), (1300.0, 4500.0), (1180.0, 4500.0)
+SPY, SPY_TO, NAVY = (2200.0, 4500.0), (1400.0, 4500.0), (2300.0, 4850.0)
+RUN['sight'] = 24.0
+H1, H2 = 'Test Cond H1', 'Test Cond H2'
 
 
 def _n(part):
@@ -88,6 +118,14 @@ def mission():
     foe = m.crew('Foe', side='s4')
     for role, (x, y) in FOE.items():
         _put(m, TANK, x, y, side='s4', angle=3.1416, name=_n(role), role=role, props={'originalOwner': foe})
+    # sight (round 210): the player's Watch, Soviet_4's Near / Spy / Navy (a Dreadnought on dry land)
+    for key, role, side, template, (x, y) in (('Watch', 'watch', 'p1', TANK, WATCH), ('Near', 'near', 's4', TANK, NEAR),
+                                              ('Spy', 'spy', 's4', TANK, SPY), ('Navy', 'navy', 's4', SHIP, NAVY)):
+        m.spawns |= {template}
+        _put(m, template, x, y, side=side, angle=0.0 if side == 'p1' else 3.1416,
+             name=_n(role), role=role, props={'originalOwner': m.crew(key, side=side)})
+    for part, (x, y) in (('near out', NEAR_OUT), ('near in', NEAR_IN), ('spy to', SPY_TO)):
+        _mark(m, part, x, y)
     return m
 
 
@@ -157,5 +195,45 @@ def fight(m):
     return t
 
 
+def sight(m):
+    t = Test()
+    p1, s4, s5 = m.player(), m.player('s4'), m.player('s5')
+    watch, near, spy, navy = (m.teams[k] for k in ('Watch', 'Near', 'Spy', 'Navy'))
+    t.hotspots = {H1: ('', ''), H2: ('', '')}
+    t.areas['Test Cond N'] = square(*NAVY, 150.0)
+    t.areas['Test Cond W'] = square(*WATCH, 100.0)
+    t.scripts.append(Script('Test - Cond sight hold', [], [
+        ('UNIT_CHANGE_OBJECT_STATUS', m.role(r).name, status('NO_ATTACK'), 1) for r in ('watch', 'near', 'spy', 'navy')]))
+    s8.at(t, 'spy', 1.0, [('MOVE_NAMED_UNIT_TO', m.role('spy').name, m.mark('spy to'))])
+    s8.at(t, 'h1on', 2.0, [('SET_MISSION_HOT_SPOT_ACTIVENESS', H1, 1)])
+    s8.at(t, 'nope', 3.0, [('SET_MISSION_HOT_SPOT_ACTIVENESS', 'Test Cond Nope', 1)])
+    s8.at(t, 'out', 4.0, [('SET_MISSION_HOT_SPOT_VISIBILITY', H2, 1),
+                          ('MOVE_NAMED_UNIT_TO', m.role('near').name, m.mark('near out'))])
+    s8.at(t, 'link', 5.0, [('LINK_MISSION_HOT_SPOT_TO_OBJECT', H2, m.role('near').name, 0)])
+    s8.at(t, 'h1off', 6.0, [('SET_MISSION_HOT_SPOT_ACTIVENESS', H1, 0)])
+    s8.at(t, 'in', 9.0, [('MOVE_NAMED_UNIT_TO', m.role('near').name, m.mark('near in'))])
+    s8.at(t, 'kill', 14.0, [('NAMED_KILL', m.role('near').name)])
+    s8.at(t, 'h2on', 16.0, [('SET_MISSION_HOT_SPOT_ACTIVENESS', H2, 1)])
+    s8.total(t, 'CNV_Cond_Sight', '视野', [
+        (1, ('ENEMY_SIGHTED_BY_TEAM', watch, 'Enemy', s4)), (2, ('ENEMY_SIGHTED_BY_TEAM', watch, 'Friend', s4)),
+        (4, ('ENEMY_SIGHTED_BY_TEAM', watch, 'Friend', p1)), (8, ('ENEMY_SIGHTED_BY_TEAM', near, 'Enemy', p1)),
+        (16, ('ENEMY_SIGHTED_BY_TEAM', watch, 'Neutral', s4)), (32, ('ENEMY_SIGHTED_BY_TEAM', spy, 'Enemy', p1))])
+    s8.total(t, 'CNV_Cond_Found', '发现', [
+        (1, ('TEAM_DISCOVERED', p1, near)), (2, ('TEAM_DISCOVERED', p1, spy)), (4, ('TEAM_DISCOVERED', s4, watch)),
+        (8, ('TEAM_DISCOVERED', p1, watch)), (16, ('TEAM_DISCOVERED', s5, watch))])
+    s8.total(t, 'CNV_Cond_Navy', '海军', [
+        (1, ('TEAM_INSIDE_AREA_PARTIALLY', navy, 'Test Cond N', 0)),
+        (2, ('TEAM_INSIDE_AREA_PARTIALLY', navy, 'Test Cond N', 1)),
+        (4, ('TEAM_INSIDE_AREA_PARTIALLY', navy, 'Test Cond N', 3)),
+        (8, ('TEAM_INSIDE_AREA_PARTIALLY', navy, 'Test Cond N', 7)), (16, ('TEAM_HAS_UNITS', navy)),
+        (32, ('TEAM_INSIDE_AREA_PARTIALLY', watch, 'Test Cond W', 1)),
+        (64, ('TEAM_INSIDE_AREA_PARTIALLY', watch, 'Test Cond W', 0))])
+    s8.total(t, 'CNV_Cond_Spot', '热点', [
+        (1, ('MISSION_HOT_SPOT_ACTIVE', H1)), (2, ('MISSION_HOT_SPOT_ACTIVE', H2)),
+        (4, ('MISSION_HOT_SPOT_ACTIVE', 'Test Cond Nope')), (8, ('MISSION_HOT_SPOT_ACTIVE', H1.lower()))])
+    s8.watch(t, RUN['sight'])
+    return t
+
+
 MISSION = {'engine_conds': mission}
-CHECKS = {'engine_conds': {'team': team, 'fight': fight}}
+CHECKS = {'engine_conds': {'team': team, 'fight': fight, 'sight': sight}}

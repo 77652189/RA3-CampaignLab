@@ -56,6 +56,7 @@ def write_map(m, mm):
     ours = _script_nodes(m, unnot(mm.scripts))      # before clearing: chunk versions are read off existing nodes
     newmap.clear_scripts(m)[2].kids += ours
     m.set_trigger_areas(mm.areas)           # the base map's areas went with its scripts
+    m.set_hotspots(mm.hotspots)
     m.set_objectives([dict(name=g.name, title=g.title, desc=g.desc, bonus=int(g.bonus), flags=1)
                       for g in mm.objectives])
 
@@ -72,7 +73,7 @@ def set_libraries(m, libraries):
             struct.pack('<H', len(p)) + p for p in paths)
 
 
-def write_more(m, waypoints, objects, scripts, areas, labels=None, links=()):
+def write_more(m, waypoints, objects, scripts, areas, labels=None, links=(), hotspots=None):
     """More written into a map write_map wrote (a check riding on a build as a layer, check_layer): waypoints (their
     path labels) and objects after the mission's, placed like them, path links after the mission's; scripts (already
     unnot) after the mission's in the same list; `areas` the map's trigger areas from now on (the mission's, then the
@@ -84,6 +85,8 @@ def write_more(m, waypoints, objects, scripts, areas, labels=None, links=()):
     psl = next(n for _, n in m.walk() if n.name == 'PlayerScriptsList')
     psl.kids[2].kids += _script_nodes(m, scripts)       # newmap.clear_scripts: index 2 runs our scripts
     m.set_trigger_areas(areas)
+    if hotspots is not None:                            # the map's hot spots from now on (the mission's and the new)
+        m.set_hotspots(hotspots)
 
 
 def _put_waypoints(m, objs, like, waypoints, labels):
@@ -352,7 +355,7 @@ def check_layer(mission, test):
     plain, whole = merged(mission), merged(mission, test)
     broken = contract(whole)
     assert not broken, 'uses what nobody published:\n  ' + '\n  '.join(broken)
-    for f in ('waypoints', 'areas', 'strings'):
+    for f in ('waypoints', 'areas', 'strings', 'hotspots'):
         had, has = getattr(plain, f), getattr(whole, f)
         clash = sorted(key for key in had if has[key] != had[key])
         assert not clash, f'the check rewrites the mission\'s {f}: {clash}'
@@ -374,7 +377,7 @@ def check_layer(mission, test):
     strings.update({key: v for key, v in whole.strings.items() if key not in plain.strings})
 
     def edit(m):
-        write_more(m, waypoints, objects, scripts, whole.areas, whole.labels, links)
+        write_more(m, waypoints, objects, scripts, whole.areas, whole.labels, links, whole.hotspots)
         print(f'check: {len(objects)} objects, {len(waypoints)} waypoints, {len(whole.areas) - len(plain.areas)} '
               f'areas, {len(scripts)} scripts more')
 

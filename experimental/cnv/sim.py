@@ -129,6 +129,10 @@ def hit_at(table, d):
 CIV = 'PlyrCivilian'
 CMP = {0: lambda a, b: a < b, 1: lambda a, b: a <= b, 2: lambda a, b: a == b, 3: lambda a, b: a >= b,
        4: lambda a, b: a > b, 5: lambda a, b: a != b}
+# AssetTypeLocomotorTemplate.xsd's Surface, in order: TEAM_INSIDE_AREA_*'s third argument is an index into it (D 119)
+SURFACES = ('GROUND', 'WATER', 'CLIFF', 'AIR', 'RUBBLE', 'OBSTACLE', 'IMPASSABLE', 'DEEP_WATER')
+# a script's relation argument (its name, or the index retail writes) -> Sim.relation's word (D 115 5, INFERRED order)
+RELATION_OF = {'Enemy': 'ENEMIES', 0: 'ENEMIES', 'Neutral': 'NEUTRAL', 1: 'NEUTRAL', 'Friend': 'ALLIES', 2: 'ALLIES'}
 WON, LOST = 'Mission Won', 'Mission Lost'
 LEVELS = {'easy': 0, 'normal': 1, 'hard': 2}
 NEAR = 800.0                    # an enemy this close to something of the player's is a threat (the tension curve)
@@ -1163,6 +1167,10 @@ class Sim:
         self.events = sorted((e for e in self.script if isinstance(e[0], float)), key=lambda e: e[0])
         self.anchored = [e for e in self.script if isinstance(e[0], tuple)]       # (('@', flag, delta), verb, ...)
         self.areas = Areas(self.mm.areas)
+        # the map's hot spots (MissionHotSpots): name -> on; off at the start, only SET_..._ACTIVENESS (and the player's
+        # popup, not simulated) turns one on or off (d115_script_semantics.md 4). The name as written: bench 11-13
+        # engine_conds sight 热点&8, the lower-case name never on
+        self.hotspots = {str(k): False for k in getattr(self.mm, 'hotspots', {}) or {}}
         self.waypoints = self.mm.waypoints
         self.reblock()
         self.eng = None
@@ -2930,15 +2938,17 @@ class Sim:
         if name in ('TEAM_INSIDE_AREA_PARTIALLY', 'TEAM_INSIDE_AREA_ENTIRELY'):
             # 码: the members considered (living, not INERT / MOVE_ONLY; k a bit of the AI module's set);
             # PARTIALLY = one of them inside, ENTIRELY = all and one at least. Bench 11-13 engine_conds team: a
-            # Guardian passes k 0 only (状态&16 / &32 / &128, k 3 / 7 / 1, never on). The retail maps use k 3 on a
-            # Hind transport team, k 7 on a fleet: INFERRED k 3 = the flying, k 7 = the ships, any other k nobody.
-            # The game reads each object's area record, updated when its whole-number position changes (Generals):
-            # INFERRED the same as where it stands
+            # Guardian passes k 0 only (状态&16 / &32 / &128, k 3 / 7 / 1, never on). D 119 (码 + the retail uses): k is
+            # a Locomotor Surface's index (GROUND 0, WATER 1, CLIFF 2, AIR 3 ... DEEP_WATER 7), a member counted when
+            # its locomotor goes on that surface -- a ship without GROUND never for k 0 (INFERRED until engine_conds
+            # sight). The game reads each object's area record, updated when its whole-number position changes
+            # (Generals): INFERRED the same as where it stands
             k = int(a[2])
             crew = [b for b in self.members(a[0]) if not ({'INERT', 'MOVE_ONLY'} & set(b.kinds))]
             if k != 0:
                 self.used.add('team area k')
-                crew = [b for b in crew if (k == 3 and b.surface == 'air') or (k == 7 and 'SHIP' in b.kinds)]
+            face = SURFACES[k] if 0 <= k < len(SURFACES) else None
+            crew = [b for b in crew if face in self.surfaces(b)]
             ins = [inside(self.areas[a[1]], b.x, b.y) for b in crew]
             return any(ins) if name.endswith('PARTIALLY') else bool(ins) and all(ins)
         if name == 'TEAM_CREATED':
@@ -2989,7 +2999,63 @@ class Sim:
             want = self.of_types(a[3])
             n = sum(1 for k in self.kills if k[1] == a[0] and k[2].lower() in want)
             return CMP[int(a[1])](n, int(a[2]))
+        return self.cond_retail2(name, a)
+
+    def cond_retail2(self, name, a):
+        """Retail-campaign conditions, batch 2 (round 210, checks/engine_conds.py sight; d115_script_semantics.md
+        4-6). None: not one."""
+        if name == 'MISSION_HOT_SPOT_ACTIVE':   # 码: the hot spot's on byte; a name the map lacks: false
+            return self.hotspots.get(str(a[0]), False)
+        if name == 'ENEMY_SIGHTED_BY_TEAM':
+            # 码 (team, relation, player): a member with sight finds an object of the player's, not INERT / MOVE_ONLY,
+            # the member's relation to it the one asked, within its sight. A range query: no fog, no stealth. Bench
+            # 11-13 engine_conds sight 视野: the member itself counts (&4 all along); a Guardian 230 from the member
+            # unseen, 180 seen (sight 200: centre to centre, as ENEMY_SIGHTED -- not D 115's sight + both radii; the
+            # edge between 200 and 223 INFERRED); a killed one seen while it lies (&1 ~11 s after NAMED_KILL; the
+            # simulator's Guardian lies 0 s -- its SlowDeath time is not this condition's). View angle not modelled
+            if self.absent_team(a[0]) or not self.team_active(a[0]):
+                return False
+            rel = a[1][2] or a[1][0] if isinstance(a[1], tuple) else a[1]
+            want = RELATION_OF.get(rel)
+            them = [t for t in self.bodies.values() if t.owner == a[2] and (t.alive or self.dying(t))
+                    and not ({'INERT', 'MOVE_ONLY'} & set(t.kinds))]
+            return any((want is None or self.relation(m.owner, t.owner) == want)
+                       and math.hypot(t.x - m.x, t.y - m.y) <= m.sight * m.level_vision
+                       for m in self.members(a[0]) if m.sight > 0 for t in them)
+        if name == 'TEAM_DISCOVERED':
+            # 码 (player, team): a member the player sees (the fog clear or partly so, INFERRED: as Sim.sees / looks) and
+            # not hidden from it; the player's own members always. Bench 11-13 engine_conds sight 发现&1: a member on
+            # the move is not (near, in plain sight, off the second or two it moved; INFERRED: its fog status is
+            # re-read once it stands, Generals' partition data)
+            if self.absent_team(a[1]) or not self.team_active(a[1]):
+                return False
+            live = list(self.living())
+            hidden = self.cloaked(live)
+            for m in self.members(a[1]):
+                air = m.surface == 'air'
+                if m.owner == a[0]:
+                    return True
+                if id(m) in hidden or (m.path and m.dest):
+                    continue
+                if (self.sees(m.x, m.y, air) if a[0] == self.human else
+                        any(b.owner == a[0] and self.looks(b, m.x, m.y, air) for b in live)):
+                    return True
+            return False
         return None
+
+    def surfaces(self, b):
+        """The Locomotor Surfaces of a body's NORMAL set (TEAM_INSIDE_AREA_*'s k reads their bits, D 119); a body
+        without one (a building) the ground only."""
+        cache = self.__dict__.setdefault('_surfaces', {})
+        if b.template not in cache:
+            try:
+                got = simunits.resolve(b.template, self.own, simunits._surfaces())['surf']
+            except (OSError, ValueError, KeyError, TypeError):
+                got = None
+            # an amphibious one's NORMAL set reads GROUND only (the Bullfrog): its water INFERRED from the KindOf
+            cache[b.template] = (frozenset(got) if got else frozenset({'GROUND'})) | (
+                {'WATER'} if 'AMPHIBIOUS' in b.kinds else set())
+        return cache[b.template]
 
     def all_revealed(self):
         """Whether the whole map is open to the player this frame (MAP_REVEAL_ALL_PERM, or a MAP_REVEAL_ALL not lapsed)."""
@@ -3689,6 +3755,12 @@ class Sim:
                 self.show_caption(text, a[1])
             elif name == 'PLAY_SOUND_EFFECT' and a[0] in self.mm.subtitles:
                 self.show_subtitle(self.text(self.mm.subtitles[a[0]]))
+        elif name == 'SET_MISSION_HOT_SPOT_ACTIVENESS':    # (hot spot, on): one the map has, else nothing (D 116)
+            if str(a[0]) in self.hotspots:
+                self.hotspots[str(a[0])] = bool(a[1])
+        elif name in ('SET_MISSION_HOT_SPOT_VISIBILITY', 'LINK_MISSION_HOT_SPOT_TO_OBJECT',
+                      'LINK_MISSION_HOT_SPOT_TO_WAYPOINT'):
+            pass                                            # the marker only: the on bit stays (D 116, 码)
         elif name in IGNORED or name == 'CAMERA_STOP_FOLLOW':
             pass
         else:

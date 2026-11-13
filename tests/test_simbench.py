@@ -1465,6 +1465,38 @@ def test_conds_fight_as_the_bench():
     assert _conds_states('fight', 71.0, 2) == [(0, 0), (21, 0), (4, 43), (53, 43), (4, 31)]
 
 
+def _conds_column(run, col, before=None):
+    """One counter's values in order, a value held one sample dropped first, then repeats merged."""
+    runs = []
+    for t, vals in run.series[1:]:
+        if before is not None and t >= before:
+            break
+        if runs and runs[-1][0] == vals[col]:
+            runs[-1][1] += 1
+        else:
+            runs.append([vals[col], 1])
+    out = []
+    for v, n in runs:
+        if n >= 2 and (not out or out[-1] != v):
+            out.append(v)
+    return out
+
+
+def test_conds_sight_as_the_bench():
+    """sight, bench 11-13 `run_queue engine_conds:sight` (CampCondsSight, round 210): 视野 / 发现 / 海军 / 热点
+    s1-s2 4 13 88 1 | s3 4 12 88 1 | s4 4 13 88 1 | s5-s7 4 13 88 0 | s8 4 12 88 0 | s9 13 12 88 0 | s10-s12 13 15 88 0
+    | s13 5 14 88 0 | s14-s24 5 14 88 2 | s25 4 14 88 2. ENEMY_SIGHTED_BY_TEAM counts the member itself and a Guardian at
+    180, not at 230 (sight 200 centre to centre); TEAM_DISCOVERED off while the member moves; the Dreadnought (DEEP_WATER
+    only) never for TEAM_INSIDE_AREA k 0, always for k 7; MISSION_HOT_SPOT_ACTIVE only the name as written, only
+    SET_..._ACTIVENESS -- not VISIBILITY, LINK, a name the map lacks; settable after its linked unit died. 视野 compared
+    until the kill: the bench's wreck is seen ~11 s, the simulator's Guardian lies 0 s."""
+    run = _sim_run('engine_conds', 'sight', 25.0)
+    assert _conds_column(run, 0, before=14.0) == [4, 13]
+    assert _conds_column(run, 1) == [13, 12, 15, 14]
+    assert _conds_column(run, 2) == [88]
+    assert _conds_column(run, 3) == [1, 0, 2]
+
+
 def test_video_a_radar_clip_is_done_after_its_length_full_screen_never():
     """movie play (bench, docs/story/handoff.md 1g): CNVTEST01 (95 frames at 23.976) in the radar window done 63 game
     frames after its start; the full-screen clip never reads done."""
