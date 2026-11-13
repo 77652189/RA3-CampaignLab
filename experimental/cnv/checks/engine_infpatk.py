@@ -70,3 +70,5 @@ def check(m):
 
 
 CHECKS = {'engine_infpatk': {'a': check}}
+# E140: same fixed predictions and controls, retail Soviet host configuration.
+CHECKS['engine_infasov'] = {'a': check}

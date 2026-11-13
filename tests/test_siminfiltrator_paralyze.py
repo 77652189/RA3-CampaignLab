@@ -2,6 +2,8 @@
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 
 _spec = importlib.util.spec_from_file_location(
     'paralyze_bootstrap', Path(__file__).resolve().parents[1] / 'experimental/cnv/simbench.py')
@@ -128,8 +130,12 @@ def test_paralyze_japanese_unmeasured_configuration_stays_a_gap():
         assert not effect.paralyze_rule(host, dict(rule, **{key: value})), key
 
 
-def test_paralyze_attack_as_on_the_bench():
-    """E139 isolated attack trials; original readings: work/re/e139_paralyze_attack.md.
+@pytest.mark.parametrize('mission_name', ['engine_infpatk', 'engine_infasov'])
+def test_paralyze_attack_as_on_the_bench(mission_name):
+    """E139/E140 isolated Allied/Soviet host attack trials.
+
+    Original readings: work/re/e139_paralyze_attack.md and
+    work/re/e140_paralyze_soviet_attack.md.
 
     Baseline and recovery must damage all three living targets. During the
     pause only the same-owner Mirage target stays full. Windows and damage
@@ -138,7 +144,7 @@ def test_paralyze_attack_as_on_the_bench():
     """
     import build
     import sim
-    m, t, mod = build.resolve('engine_infpatk', 'a')
+    m, t, mod = build.resolve(mission_name, 'a')
     assert len(mod) <= 15 and '_' not in mod
     s = sim.Sim(m, t).run(55)
     for start, end in [(8, 9), (26, 40), (54, 55)]:

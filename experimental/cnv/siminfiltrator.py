@@ -87,7 +87,7 @@ class Infiltrators:
         return self.sim.frame_now() < self.paralyzed_until.get(id(body), 0)
 
     def attack_blocked(self, body):
-        """E139: existing Mirage fire, retail Allied tech host only.
+        """E139/E140: existing Mirage fire, retail Allied/Soviet tech hosts.
 
         Exact application/expiry phase is INFERRED from the XML duration.
         Other hosts' attack consumers and retained orders remain gaps.
@@ -193,7 +193,7 @@ class Infiltrators:
                         s.gap('InfiltratorContain', body.template, 'PARALYZE其他匹配模板未对拍')
                         continue
                     self.paralyzed_until[id(body)] = end
-                    if target.template == 'AlliedTechStructure':
+                    if target.template in ('AlliedTechStructure', 'SovietTechStructure'):
                         self.attack_until[id(body)] = end
                 s.destroy(spy, '进楼渗透', delete=True)
                 s.change()

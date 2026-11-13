@@ -3,10 +3,10 @@ from maps import probe_range
 from parts import Mission
 
 
-def mission():
-    m = Mission(name='CampInfAtk', map=probe_range, units=[])
+def mission(host='AlliedTechStructure', name='CampInfAtk'):
+    m = Mission(name=name, map=probe_range, units=[])
     for role, site, side in [('enemy', 'base', 's1'), ('ally', 'high', 's2')]:
-        m.put('AlliedTechStructure', site + ' gun', side=side, role=role,
+        m.put(host, site + ' gun', side=side, role=role,
               name='Attack tech ' + role)
         m.put('AlliedInfiltrationInfantry', site + ' gun', 0, -180,
               role=role + ' spy', name='Attack spy ' + role)
@@ -21,4 +21,8 @@ def mission():
     return m
 
 
-MISSION = {'engine_infpatk': mission}
+def soviet_mission():
+    return mission('SovietTechStructure', 'CampInfASov')
+
+
+MISSION = {'engine_infpatk': mission, 'engine_infasov': soviet_mission}
