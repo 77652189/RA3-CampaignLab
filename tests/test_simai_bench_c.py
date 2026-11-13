@@ -238,24 +238,52 @@ def test_micro_update_time_first_clock_replays_bench(micro_update_rows):
     assert seen == {expected}, (build, seen)
 
 
-@pytest.mark.xfail(strict=True, reason='aiskirm:m replay has no populated Cleanup counter through 170s; '
-                  'retail transfers defense 8 -> Cleanup 8. Named-team observation or release consumer '
-                  'needs B investigation; no model change or inventory promotion. '
-                  'See work/re/handoff-c.md and work/re/c_release_report.md.')
-def test_release_to_priority_transfers_defense_without_a_pool_round_trip():
+@pytest.fixture(scope='module')
+def release_m_rows():
+    """aiskirm:m replayed by name to 170 s: [(second, {label: counter})] and the AI's teams log."""
+    lib = simai.model()['xmldata'].Library()
+    w = simai.run('aiskirm', 'm', until=170, lib=lib)
+    labels = [label for _, label in w.sim.test.counters]
+    (brain,) = w.brains.values()
+    return [(t, dict(zip(labels, values))) for t, values in w.sim.series], brain.ai.teams.log
+
+
+def _release_first(rows, log):
+    first = next((i for i, (_, row) in enumerate(rows) if row['清扫'] not in (0, 99)), None)
+    observed = {label: sorted({row[label] for _, row in rows}) for label in rows[0][1]}
+    assert first is not None, (observed, [e for e in log if e[1] == 'go'])
+    return first
+
+
+def test_release_to_priority_named_transfer_skips_the_pool(release_m_rows):
+    """aiskirm:m by name, retail 11-11 (CampAISkirmM_mcp_1111_221811, work/re/c_release_report.md): defense 8 /
+    Cleanup 99 s125-128, 0 / 8 at s129, the pool's CAN_ATTACK members 0 and its per-frame peak 1 -- the DEFENSE team's
+    RELEASE_TO_PRIORITY men go to the STANDARD Cleanup team in one sample, every one Cleanup has out of defense, none
+    through the pool. The team names now read (sim.Sim.team_names, simai.Brain.team_named). The exact numbers (retail
+    8, the model 9 by then) are the strict xfail below; no exact-second fit."""
+    rows, log = release_m_rows
+    first = _release_first(rows, log)
+    (t0, before), (t1, after) = rows[first - 1], rows[first]
+    assert before['清扫'] == 99 and before['防御型'] >= 8, rows[max(0, first - 2):first + 2]
+    assert all(row['防御型'] == before['防御型'] for _, row in rows[first - 4:first]), rows[first - 5:first + 1]
+    assert before['防御型'] - after['防御型'] == after['清扫'], (before, after)
+    assert before['池兵'] == after['池兵'] == 0 and after['池峰'] == 1, (before, after)
+    assert abs(t1 - 129) <= 3, t1
+
+
+@pytest.mark.xfail(strict=True, reason='A round 202 (model fca219e): the names read now -- defense steady, then '
+                  '9 -> 0 and Cleanup 99 -> 9 in one sample at s131, pool 0, peak 1 to 170 s; retail 8 -> 0, '
+                  '99 -> 8 at s129 and the pool peaks 2 at s134. The whole team goes as on the bench; the model has '
+                  'one unit more by then (production, B), not ReleaseType. '
+                  'See work/re/handoff.md 202 and work/re/c_release_report.md.')
+def test_release_to_priority_transfers_defense_without_a_pool_round_trip(release_m_rows):
     """aiskirm:m: defense 8 -> 0, Cleanup 99 -> 8, pool peak 1 at transfer.
 
     This observes the stock DEFENSE -> STANDARD release path only. Other release
     modes and recruitment distance ordering remain gaps; no exact-second fit.
     """
-    lib = simai.model()['xmldata'].Library()
-    w = simai.run('aiskirm', 'm', until=170, lib=lib)
-    labels = [label for _, label in w.sim.test.counters]
-    rows = [(t, dict(zip(labels, values))) for t, values in w.sim.series]
-    first = next((i for i, (_, row) in enumerate(rows) if row['清扫'] not in (0, 99)), None)
-    observed = {label: sorted({row[label] for _, row in rows}) for label in labels}
-    (brain,) = w.brains.values()
-    assert first is not None, (observed, [e for e in brain.ai.teams.log if e[1] == 'go'])
+    rows, log = release_m_rows
+    first = _release_first(rows, log)
     before, after = rows[first - 1][1], rows[first][1]
     assert (before['防御型'], before['清扫']) == (8, 99), rows[max(0, first - 2):first + 2]
     assert (after['防御型'], after['清扫']) == (0, 8), rows[max(0, first - 2):first + 2]

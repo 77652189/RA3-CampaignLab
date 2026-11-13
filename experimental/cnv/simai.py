@@ -187,6 +187,8 @@ class Brain:
         self.fired = []                 # (frame, team key, unit, command): unit powers the micro wanted
         self.rec = {'frames': [], 'orders': [], 'deaths': {}}   # HOOKS 9: filled only with SimAI(record=True)
         self._rec_runs, self._rec_mem, self._rec_bodies = {}, {}, {}
+        self._team_names = None         # engine team name -> the model's team key (state, tactic id, template index)
+        self.sim.team_names.append(self.team_named)
         yards = self.yards()
         self.home = (yards[0].x, yards[0].y) if yards else (0.0, 0.0)
         # Dual-yard probe: the initial AI base exists before the scripted yard.
@@ -390,6 +392,52 @@ class Brain:
     def body_of(self, tid):
         name = next((k for k, v in self.ids.items() if v == tid), None)
         return self.sim.bodies.get(name) if name else None
+
+    def engine_team_names(self):
+        """{engine name: model team key}: the name table the engine builds once when the AI is made -- every strategic
+        state x every tactic (index a) x every TeamTemplate of it (index b) is '<state>_<Tactic=>_<a>_<b>' (read, A
+        round 96 / 99 in work/re: the tactic's TYPE, never its id; bench 11-07..11-11 checks/engine_aiskirm.py g:
+        LandDefense_MEDIUM_StaticDefense_0_0 answers, ..._Defense_0_0 never does). The slot (MaxTargets copy) is not in
+        the name. INFERRED: a counts every tactic of the state, whatever its Difficulty; the state's name is its
+        definition id (the same as the personality's id in every SDK personality the benches run)."""
+        if self._team_names is None:
+            self._team_names = {}
+            for c in self.ai.states.choices:
+                st = self.host.data.states[c.target]
+                for a, tac in enumerate(st.tactics):
+                    for b in range(len(tac.teams)):
+                        self._team_names.setdefault(f'{st.id}_{tac.kind}_{a}_{b}', (c.key, tac.id, b))
+        return self._team_names
+
+    def team_named(self, team):
+        """Sim.team_names for this AI player: (exists, living members) of a team the scripts name, None when the name
+        is not this AI's. The pool 'defaultSkirmishTeam<player>' (read, A round 96) is always there and holds the
+        player's movers on no model team (INFERRED: harvesters and units in a garrison too -- the bench reads the
+        pool's CAN_ATTACK members only). A strategic-state name is there while the model has a team of that key; of
+        several (the state's slots share the name) the OLDEST answers, the lowest copy of those made together
+        (INFERRED, as Sim.members' reinforcement instances; bench 11-11 aiskirm:m: LandDefense_MEDIUM _0_0 reads a
+        steady 8 s125-128 while the model's two other slots' gathering teams expire and are made again every 5 s
+        around the started one). Any other '<...>_<a>_<b>' name of this player no body is on (a
+        tactic id, an index the table lacks) the engine never finds: absent."""
+        owner, _, bare = team.rpartition('/')
+        if owner and owner != self.player:
+            return None
+        if bare == f'defaultSkirmishTeam{self.player}':
+            held = {id(u) for t in self.ai.teams.teams.values() for u in t.members}
+            return True, [b for b in self.living() if b.owner == self.player and 'STRUCTURE' not in b.kinds
+                          and b.speed > 0 and id(self.wrappers.get(b.name)) not in held]
+        key = self.engine_team_names().get(bare)
+        if key is None:
+            parts = bare.rsplit('_', 2)
+            if not (owner and len(parts) == 3 and parts[1].isdigit() and parts[2].isdigit()) or \
+                    any(sim.same_team(b.team, team) for b in self.sim.living()):
+                return None
+            return False, []
+        teams = [t for k, t in self.ai.teams.teams.items() if k[:3] == key]
+        if not teams:
+            return False, []
+        first = min(teams, key=lambda t: (-1 if t.made is None else t.made, t.copy))
+        return True, [u.body for u in first.members if u.body.alive]
 
     def living(self):
         """What the AI perceives: the world's living bodies but SpawnBehavior's slaves (a war factory's repair drones,

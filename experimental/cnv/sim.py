@@ -1119,6 +1119,9 @@ class Sim:
         self.player_ups = {}                # player -> upgrades GIVE_PLAYER_UPGRADE gave (a unit's NeededUpgrade)
         self.templates = getattr(self.mm, 'templates', None) or {}     # team templates (Sim.reinforce)
         self.instances = {}                 # team template -> instances made so far
+        # callables name -> (exists, [Body]) or None (not theirs): teams scripts read by a name no map gives -- the
+        # AI's strategic-state teams and its pool (simai.Brain.team_named); the first that answers is the team
+        self.team_names = []
         teams = getattr(mission.map, 'TEAMS', {})
         self.active = set(teams.values())               # teams with an instance: a whole-team order to any other is lost (E3)
         self.lost_orders = []                           # (t, script, order, team) given to a team nobody had joined
@@ -1366,9 +1369,31 @@ class Sim:
         """A team's living members; a team template's (several instances: CREATE_REINFORCEMENT_TEAM) the OLDEST
         instance's that still has any (bench 11-10 engine_reinf old: the order by the name moved the first instance,
         not the one made since; an emptied instance giving the name to the next is INFERRED)."""
+        named = self.named_team(team)
+        if named is not None:
+            return named[1]
         crew = [b for b in self.living() if same_team(b.team, team)]
         first = min((b.instance for b in crew), default=0)
         return [b for b in crew if b.instance == first]
+
+    def named_team(self, team):
+        """(exists, living members) of a team only a name gives (self.team_names: an AI's), None for any other."""
+        for look in self.team_names:
+            got = look(team)
+            if got is not None:
+                return got
+        return None
+
+    def absent_team(self, team):
+        """A named AI team with no instance now: the game finds no team by that name and the team conditions read
+        false (bench 11-11 aiskirm:m, CampAISkirmM_mcp_1111_221811: BalancedCleanup_SimpleAttack_0_0's
+        TEAM_COMPARE_NUM_MEMBERS == n holds for no n -- the counter stays 99 -- until the team is made; the same
+        name's TEAM_HAS_FEWER_THAN_X_UNITS_WITH_KINDOF likewise, checks/engine_aiskirm.py _kind_members)."""
+        named = self.named_team(team)
+        if named is not None and not named[0]:
+            self.used.add('ai team absent')
+            return True
+        return False
 
     def reinforce(self, team, waypoint, script):
         """CREATE_REINFORCEMENT_TEAM(team, waypoint): a new instance of the team template (mission.templates:
@@ -2765,7 +2790,18 @@ class Sim:
                 return False
             return not any(same_team(b.team, a[0]) and self.present(b) for b in self.bodies.values())
         if name == 'TEAM_COMPARE_NUM_MEMBERS':  # (team, op, n) the living members (bench 11-08 engine_scripts1 xfer
-            return CMP[a[1]](len(self.members(a[0])), a[2])     # 队里几个 2 -> 0 at the hand-over; engine_aixfer 队)
+            if self.absent_team(a[0]):          # 队里几个 2 -> 0 at the hand-over; engine_aixfer 队)
+                return False
+            return CMP[a[1]](len(self.members(a[0])), a[2])
+        if name == 'TEAM_HAS_FEWER_THAN_X_UNITS_WITH_KINDOF':
+            # (team, n, kind): fewer than n living members with the KindOf (bench 11-11 aiskirm:m 池兵: the AI pool's
+            # CAN_ATTACK members 0 while the defense team holds the eight, 2 at s134). INFERRED: the dying are not
+            # counted (as TEAM_COMPARE_NUM_MEMBERS here); a map team nobody is in reads as empty, not absent
+            self.used.add('team kindof')
+            if self.absent_team(a[0]):
+                return False
+            kind = a[2][2] if isinstance(a[2], tuple) else a[2]
+            return sum(1 for b in self.members(a[0]) if kind in b.kinds) < int(a[1])
         if name == 'CURRENT_PLATFORM':          # the game we run is the PC one
             return str(a[0]).upper() == 'PC'
         if name == 'PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA':
