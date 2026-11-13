@@ -50,7 +50,7 @@ def test_engage_command_goal_chain_observations():
 
 
 def test_engage_hunt_command_state_contract():
-    """D112 command/state observations; death return remains INFERRED.
+    """D112 command/state observations; D113 requires arrival before idle.
 
     Named natural replay below remains the acceptance gate for promotion.
     """
@@ -75,7 +75,11 @@ def test_engage_hunt_command_state_contract():
     state.expire(lambda t: t == 'live')
     assert state.state == 33
     state.expire(lambda t: False)
+    assert state.state == 33
+    state.target = 'retained-goal'
+    state.expire(lambda t: False, arrived=True)
     assert state.state == 16
+    assert state.target == 'retained-goal'
     # Regression: a Hunt member must read its persistent goal even when the
     # movement simulator still has an ordered/chased enemy beside it.
     brain = simai.Brain.__new__(simai.Brain)
@@ -89,6 +93,64 @@ def test_engage_hunt_command_state_contract():
     assert brain.aim_of(body, 100) is old
     old.alive = False
     assert brain.aim_of(body, 100) is None
+
+
+def test_engage_dead_pursuit_arrival_observations():
+    """D113 late state changes retain goals; arrival geometry stays INFERRED.
+
+    Arrival is supplied here, not derived from observed frame numbers in the
+    model. Natural on/off replay remains the promotion gate below. The engine's
+    transient state 0 is not separately simulated by the atomic expire call.
+    """
+    if not simai.available():
+        pytest.skip('no ra3model.ai')
+    mc = simai.model()['micro']
+    evidence = json.loads((OBSERVED / 'aiegoff_arrival.json').read_text())
+    events = evidence['events']
+    assert [(e['frame'], e['member'], e['old'], e['new'], e['goal']) for e in events] == [
+        (510, 3171, 33, 0, 3167), (510, 3171, 0, 16, 3167),
+        (515, 3170, 33, 0, 0), (515, 3170, 0, 16, 0)]
+    for event in events[1::2]:
+        state = mc.HuntGoal()
+        pursuit = SimpleNamespace(alive=True)
+        state.command(pursuit)
+        state.target = event['goal'] or None
+        state.expire(lambda t: t.alive, arrived=True)
+        assert state.state == 33  # arrival alone cannot finish a live pursuit
+        pursuit.alive = False
+        state.expire(lambda t: t.alive)
+        assert state.state == 33  # death alone cannot finish it either
+        state.expire(lambda t: t.alive, arrived=True)
+        assert (state.state, state.target or 0) == (event['new'], event['goal'])
+
+
+def test_engage_dead_pursuit_continues_cancelled_path():
+    """Host regression: retain the last-position movement after combat cancels it.
+
+    Positions are synthetic; the body's arrival radius remains INFERRED.
+    """
+    if not simai.available():
+        pytest.skip('no ra3model.ai')
+    state = simai.model()['micro'].HuntGoal()
+    pursuit = SimpleNamespace(alive=False, x=100., y=0.)
+    state.command(pursuit)
+    retained = SimpleNamespace(alive=False)
+    state.target = retained
+    body = SimpleNamespace(name='member', alive=True, x=0., y=0., radius=10.,
+                           path=[], goal=retained)
+    brain = simai.Brain.__new__(simai.Brain)
+    moves = []
+    brain.sim = SimpleNamespace(body=lambda name: body,
+                                order_move=lambda *args: moves.append(args))
+    brain._hunt_goals = {'member': state}
+    brain.hunt_threats(1)  # no partition scan before the first eligible frame
+    assert state.state == 33 and state.target is retained
+    assert moves == [(body, (100., 0.), True)]
+    assert body.goal is None
+    body.x = 100.
+    brain.hunt_threats(2)
+    assert state.state == 16 and state.target is retained
+    assert len(moves) == 1
 
 
 def test_engage_state33_replays_observed_goal_writes():
@@ -196,8 +258,9 @@ def test_engage_clock_replays_first_cohort_movement(engage_record, request):
     build, brain, cohort = engage_record
     if build == 'aiegon':
         request.node.add_marker(pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-            'E135 enabled-side movement emission still diverges before power selection; '
-            'see work/re/e135_engage_host.md and work/re/handoff-e.md.')))
+            'E137 D113 arrival fix leaves enabled-side movement emission divergent '
+            'before power selection; see work/re/e137_engage_arrival.md '
+            'and work/re/handoff-e.md.')))
     expected = {'aiegon': 352}
     orders = [order for order in brain.rec['orders']
               if order['member'] in cohort and order['kind'] in ('move', 'attack-move')]
@@ -212,12 +275,12 @@ def test_engage_clock_replays_first_cohort_movement(engage_record, request):
 
 
 @pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'E135 D112 Hunt states and persistent goals are connected, but natural '
-    'movement/recruitment still diverges before acquisition: on f353 two goals '
+    'E137 D113 death-to-arrival rule is connected, but natural '
+    'movement still diverges before acquisition: on f353 two goals '
     'instead of none; off f443 no goals instead of the second member goal. '
     'Model off members are already west of the observed scan cells. Grid '
     'failure boundaries and command-source timing remain INFERRED. '
-    'See work/re/e135_engage_host.md '
+    'See work/re/e137_engage_arrival.md '
     'and work/re/handoff-e.md.'))
 def test_engage_clock_replays_member_goal_validity(engage_record):
     """Compare the initial pair at the same host frame, without replacement units.

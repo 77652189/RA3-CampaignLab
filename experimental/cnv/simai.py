@@ -602,13 +602,19 @@ class Brain:
                    for hid, _ in st.targets)
 
     # ---- the blocks' outlets
+    def hunt_arrived(self, b, state):
+        """INFERRED arrival radius; D113 establishes arrival, not its tolerance."""
+        t = state.pursuit
+        return t is not None and math.hypot(b.x - t.x, b.y - t.y) <= b.radius
+
     def order(self, u, kind, arg):
         """TacticsBlock / DefenseBlock: 'move' or 'attack-move' to a point -> Sim.order_move."""
         b = u.body
         if kind == 'hunt':
             state = self.__dict__.setdefault('_hunt_goals', {}).setdefault(
                 b.name, self.host.mod['micro'].HuntGoal())
-            state.expire(lambda t: t is not None and t.alive)
+            state.expire(lambda t: t is not None and t.alive,
+                         arrived=self.hunt_arrived(b, state))
             if state.state != 16 or not b.alive:
                 return
             t = self.body_of(arg)
@@ -1129,7 +1135,15 @@ class Brain:
             b = self.sim.body(name)
             if b is None or not b.alive:
                 continue
-            state.expire(lambda t: t is not None and t.alive)
+            arrived = self.hunt_arrived(b, state)
+            state.expire(lambda t: t is not None and t.alive, arrived=arrived)
+            if (state.state == 33 and state.pursuit is not None
+                    and not state.pursuit.alive and not arrived and not b.path):
+                # INFERRED bridge: a dead combat goal can have cancelled the path.
+                # Continue toward the pursuit's last position, without a new
+                # team command or a fabricated current target.
+                b.goal = None
+                self.sim.order_move(b, (state.pursuit.x, state.pursuit.y), True)
             here = cell(b)
             previous = cells.get(name)
             cells[name] = here
