@@ -2,8 +2,9 @@
 
 Retail AlliedBaseStates uses STRUCTURE and FS_TECHNOLOGY SUPER_WEAPON
 to exclude construction periods. Here only KindOf differs: FS_POWER matches
-the opening's eight power plants, FS_BARRACKS does not. Existing yards are
-present from map load; construction begins after the standard s10 wake.
+the opening's eight power plants, FS_BARRACKS does not. Existing yards and
+funds are present from map load; the standard s10 script wake is retained.
+The measured native opening already has its first plant at s9.
 Prediction at s40: matching target/home=4/0, nonmatching=0/4; at least two
 completed plants independently establish that the opening actually builds.
 Multiple tokens and individual queue phases remain unmeasured.
