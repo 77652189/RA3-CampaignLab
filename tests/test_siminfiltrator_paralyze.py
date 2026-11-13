@@ -130,12 +130,13 @@ def test_paralyze_japanese_unmeasured_configuration_stays_a_gap():
         assert not effect.paralyze_rule(host, dict(rule, **{key: value})), key
 
 
-@pytest.mark.parametrize('mission_name', ['engine_infpatk', 'engine_infasov'])
+@pytest.mark.parametrize('mission_name', ['engine_infpatk', 'engine_infasov', 'engine_infajap'])
 def test_paralyze_attack_as_on_the_bench(mission_name):
-    """E139/E140 isolated Allied/Soviet host attack trials.
+    """E139/E140/E141 isolated Allied/Soviet/Japanese host attack trials.
 
     Original readings: work/re/e139_paralyze_attack.md and
-    work/re/e140_paralyze_soviet_attack.md.
+    work/re/e140_paralyze_soviet_attack.md and
+    work/re/e141_paralyze_japan_attack.md.
 
     Baseline and recovery must damage all three living targets. During the
     pause only the same-owner Mirage target stays full. Windows and damage

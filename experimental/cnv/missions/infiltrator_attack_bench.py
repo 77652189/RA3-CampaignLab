@@ -25,4 +25,9 @@ def soviet_mission():
     return mission('SovietTechStructure', 'CampInfASov')
 
 
-MISSION = {'engine_infpatk': mission, 'engine_infasov': soviet_mission}
+def japan_mission():
+    return mission('JapanTechStructure', 'CampInfAJap')
+
+
+MISSION = {'engine_infpatk': mission, 'engine_infasov': soviet_mission,
+           'engine_infajap': japan_mission}
