@@ -3,13 +3,14 @@ r"""Close one item of a Codex engine line in one command: rebase on origin/main,
   python -I -X utf8 experimental/outsource/lane_close.py c|e [tests/test_x.py ...]
 
 Run it from the line's own worktree after committing. The closing tests are the files named on the command line
-(the ones the item touched), the two guards (tests/test_architecture.py, tests/test_docs.py) and -- only when the
+(the ones the item touched -- narrowed to the test functions the item changed in them, the whole file when it
+changed a shared helper), the two guards (tests/test_architecture.py, tests/test_docs.py) and -- only when the
 item changed the inventory or its generated pages -- the inventory tests. The output goes to
 work/logs/<lane>_close_<stamp>.log; the screen gets the last lines only. Exit 0 = pushed; 1 = red tests (fix and run
 again); 2 = uncommitted changes or a rebase conflict (resolve as AGENTS.md says, then run again); 3 = push refused. A refused push (another line landed first) is retried by itself after a rebase, without
 rerunning the tests, unless what landed touched a file the item changed.
 """
-import datetime, glob, importlib.util, os, subprocess, sys
+import ast, datetime, glob, importlib.util, os, re, subprocess, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 _spec = importlib.util.spec_from_file_location('labpaths', os.path.join(os.path.dirname(HERE), 'campaign', 'labpaths.py'))
@@ -81,6 +82,39 @@ def regenerate():
         git('checkout', '--', 'docs/engine')   # nothing but line endings: leave the tree clean
 
 
+def narrow(test_file, base):
+    """The tests of one touched file that this item changed, as node ids -- or the whole file when a change falls
+    outside a test function (a helper or fixture the others share). The heavy replay files run whole for ~40 min
+    (coordinator profile 11-13: a few skirmish replays at 3-5 min each); the coordinator's full run covers the rest."""
+    diff = git('diff', '-U0', base, 'HEAD', '--', test_file).stdout
+    if not diff.strip() or not os.path.exists(test_file):
+        return [test_file]   # named but not changed by this item: the line asked for it, run it whole
+    lines, at = set(), None   # new-side line numbers of the added / changed lines that say something
+    for row in diff.splitlines():
+        m = re.match(r'@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@', row)
+        if m:
+            at = int(m.group(1))
+            if m.group(2) == '0':
+                lines.add(at)    # a pure deletion: blame the line after it
+            continue
+        if at is None or row.startswith(('+++', '---')):
+            continue
+        if row.startswith('+'):
+            if row[1:].strip():
+                lines.add(at)
+            at += 1
+    tree = ast.parse(open(test_file, encoding='utf-8').read())
+    spans = [(f.name, f.decorator_list[0].lineno if f.decorator_list else f.lineno, f.end_lineno)
+             for f in tree.body if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef)) and f.name.startswith('test')]
+    names = set()
+    for ln in lines:
+        hit = [name for name, a, b in spans if a <= ln <= b]
+        if not hit:
+            return [test_file]
+        names.update(hit)
+    return [f'{test_file}::{n}' for n in sorted(names)] or [test_file]
+
+
 def main():
     if len(sys.argv) < 2 or sys.argv[1] not in ('c', 'e', 'a', 'b', 'd'):
         sys.exit(__doc__)
@@ -99,7 +133,8 @@ def main():
     inv = any(c.startswith(INVENTORY_PATHS) for c in changed)
     if inv:
         regenerate()
-    tests = list(dict.fromkeys(touched + GUARDS + (inventory_tests() if inv else [])))
+    picked = [n for f in touched for n in (narrow(f, base) if '::' not in f and f.endswith('.py') else [f])]
+    tests = list(dict.fromkeys(picked + GUARDS + (inventory_tests() if inv else [])))
     # an engine line's own bench mission (missions/*_bench.py) is not level content: the content guards cost ~6 min
     # of an 11-min close (c_close_1112_1634: g3b alone 201 s); the coordinator's full run still covers bench missions
     content = [c for c in changed if c.startswith(CONTENT_PATHS)
