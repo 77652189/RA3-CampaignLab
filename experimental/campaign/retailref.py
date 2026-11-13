@@ -102,7 +102,7 @@ AI_STATES = os.path.join(CACHE, 'ai_states.xml')
 
 
 def build_ai_states(inst=None):
-    """work/retailref/ai_states.xml: every compiled AIStrategicStateDefinition of the stream read back into SDK-shaped
+    """work/retailref/ai_states.xml: every compiled AI personality / strategic, build, budget state of the stream read back into SDK-shaped
     xml (ai_compiled.decode; needs its private layout, else a SystemExit)."""
     import mapxml
     import ai_compiled
@@ -111,7 +111,8 @@ def build_ai_states(inst=None):
     root = ET.Element('AssetDeclaration')
     root.extend(states[k] for k in sorted(states))
     ET.ElementTree(root).write(AI_STATES, encoding='utf-8', xml_declaration=True)
-    print('cached ai_states.xml:', len(states), 'strategic states', flush=True)
+    print('cached ai_states.xml:', len(states), 'AI assets (personalities, strategic / build / budget states)',
+          flush=True)
     return states
 
 

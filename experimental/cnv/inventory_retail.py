@@ -172,8 +172,8 @@ def main(argv):
         print(f"| {p} | {100 * u[I.BENCHED] / tot:.2f}% | {c[I.BENCHED]} / {len(xs)} | {c[I.GUESSED]} | "
               f"{c[I.TODO]} | {tot - u[I.BENCHED]} | {OWNER[p]} |")
     local = set().union(*ai_scope()[1].values())
-    print(f'\nAI：本关自带的战略状态已从编译二进制读回（写成默认值的属性分不出，偏少）；其余本关自带的人格 / 状态 '
-          f'{len(local)} 个自身字段没读，只按它们引用的 SDK 资产计')
+    print(f'\nAI：本关自带的人格 / 战略 / 造兵 / 预算状态已从编译二进制读回（写成默认值的属性分不出，偏少）；'
+          f'还没读回自身字段的 {len(local)} 个，只按它们引用的 SDK 资产计')
     gaps = sorted((i for i in items if i['state'] != I.BENCHED and (part is None or i['part'] == part)
                    and (mission is None or mission in i['missions'])),
                   key=lambda i: (-i['uses'], i['name']))

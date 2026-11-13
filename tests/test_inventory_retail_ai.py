@@ -51,11 +51,21 @@ def test_decoded_sdk_states_write_nothing_their_xml_does_not():
             par = {c: p for p in k.iter() for c in p}
             out |= {n for d in k.iter() for n, _ in A.element_names(d, par.get(d, chain[0]))}
         return out
-    pairs = [(k, el) for k, el in R.compiled_states().items()
-             if k in index and A._local(index[k].tag) == 'AIStrategicStateDefinition']
-    assert len(pairs) > 150
-    extra = {(k, n) for k, el in pairs for n in names(el, {}) - names(index[k], index)}
-    assert not extra
+    states = R.compiled_states()
+    for typ, least in (('AIStrategicStateDefinition', 150), ('AIPersonalityDefinition', 30),
+                       ('AIBuildStateDefinition', 60), ('AIBudgetStateDefinition', 5)):   # b171: the last three
+        pairs = [(k, el) for k, el in states.items() if k in index and A._local(index[k].tag) == typ]
+        assert len(pairs) >= least, typ
+        extra = {(k, n) for k, el in pairs for n in names(el, {}) - names(index[k], index)}
+        assert not extra, typ
+
+
+@needs_states
+def test_the_maps_own_ai_assets_are_all_read_back():
+    """Every personality / state the 27 maps carry themselves (no SDK xml) is decoded from the compiled stream: none
+    is left counted only by the SDK assets it references (engine line B round 171: 92 personalities, 44 build and 5
+    budget states were)."""
+    assert not set().union(*R.ai_scope()[1].values())
 
 
 @needs_states
