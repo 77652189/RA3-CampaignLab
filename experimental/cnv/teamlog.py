@@ -31,6 +31,45 @@ def _log(run):
     return run if os.path.isfile(run) else os.path.join(run, 'ra3ext.log')
 
 
+def build_picks(run):
+    """D103 factory picks in log order. Factory tokens distinguish facilities;
+    object is an unverified observer field, often zero. Template/asset are
+    opaque tokens. filter is bool, or None when not asked (upgrade/defense).
+    """
+    out = []
+    with open(_log(run), encoding='utf-8', errors='replace') as f:
+        for line in f:
+            if not line.startswith('bpick: '):
+                continue
+            d = dict(re.findall(r'(\w+)=(\S+)', line))
+            out.append(dict(frame=int(d['frame']), factory=d['fac'], object=int(d['obj']),
+                            template=d['tmpl'], asset=d['a'], score=float(d['score']),
+                            filter=None if d['flt'] == '-' else d['flt'] == '1'))
+    return out
+
+
+def build_orders(run):
+    """D103 direct factory order attempts (including unsuccessful attempts).
+    site distinguishes the unit and structure/defense paths. picks is the
+    same-pass candidate snapshot, not a reconstructed last-known pick table.
+    """
+    out = []
+    with open(_log(run), encoding='utf-8', errors='replace') as f:
+        for line in f:
+            if not line.startswith('border: '):
+                continue
+            d = dict(re.findall(r'(\w+)=(\S+)', line))
+            picks = []
+            for item in d.get('picks', '').split(','):
+                if item:
+                    obj, template, score, flt = item.split(':')
+                    picks.append(dict(object=int(obj), template=template, score=float(score),
+                                      filter=None if flt in ('-', '-1') else flt == '1'))
+            out.append(dict(frame=int(d['frame']), site=d['site'], factory=d['fac'], object=int(d['obj']),
+                            template=d['tmpl'], asset=d['a'], ok=d['ok'] == '1', picks=picks))
+    return out
+
+
 def samples(run):
     """[(frame, [team dict, ...]), ...] in log order, each the whole set of teams at that frame; a team dict has frame
     (the frame its line was written), list, proto, names, release, slot, team, active, n, ids ([(id, x, y)]).

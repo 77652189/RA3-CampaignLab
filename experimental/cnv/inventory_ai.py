@@ -222,12 +222,13 @@ NOTES = {
         'D98新观测确认所选基地id0、合格且偏好分1；双厂实验已移除脚本厂伪基地。'
         'bsel是基地候选而非矿点候选；矿点资格/排序/占用仍未证，'
         'aiexpc模型按名回放仍strict xfail，不晋升；见 work/re/c_expansion_d98_report.md'),
-    '造兵/CountAsStructureForBuildPurposesFilter.ExcludeThing': (TODO,
-        'C engine_aibuildexclude r：aibex/aibin只切CNVDearPK的ExcludeThing；'
-        '两组新维和/贵维和首次持有帧均501/570，s36..40均1/1；'
-        'CNVOrders无这两个模板的订单行，不能据产兵计数认定篮子或重复下单。'
-        '模型已有建筑篮子消费者；直接工厂订单及IncludeThing/ExcludeThing同列优先关系仍gap，'
-        '不改模型、不晋升；见work/re/c_buildexclude_report.md'),
+    '造兵/CountAsStructureForBuildPurposesFilter.ExcludeThing': (BENCHED,
+        'C engine_aibuildexclude：旧aibex/aibin直接过滤New/Dear=0/1，IncludeThing优先；'
+        '新aibxo/aibxi:x类别Include INFANTRY、无Dear的IncludeThing，仅切Dear的ExcludeThing，'
+        '直接过滤分别1/0和1/1；New首成功f343均走SD，Dear首成功f409分别走U/SD，两局PASS。'
+        'tests/test_build_exclude.py按名加载台子并对拍过滤、同帧工厂候选篮子及请求；'
+        '现有模型吻合，无模型修改。整体产兵资格/时钟仍gap，两旧整局回放保留strict xfail；'
+        '见work/re/c_buildexclude_follow_report.md'),
     '造兵/BuildEntry.Upgrade': (BENCHED,
         'C engine_aiupgrade a：aicupgon常量状态含UPGRADE_TECH/Tech2，s39起持有2（建造厂+它够得着的兵营）；'
         'aicupgoff移除专用状态后恒0；见work/re/c_upgrade_report.md。B第153轮接模型：'
