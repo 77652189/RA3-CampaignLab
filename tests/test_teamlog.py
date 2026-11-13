@@ -172,3 +172,28 @@ def test_base_table_and_choices(tmp_path):
     assert (c['pick'], c['model'], c['ref'], c['cand']) == (0, 0, None, [(0, 0x1d9, '1', 1)])
     d, = teamlog.base_choices(str(p), use='?')         # a line without use= (older probe) counts as '?'
     assert d['crit'] is None and d['pick'] is None and d['ref'] == (10.0, -20.5) and d['cand'] == [(0, 4, 'x', 0)]
+
+
+# D round 102: member target orders and the TimeToKeepTarget clock. Lines from bench CampAIEgOnA_mcp_1113_025227
+# (aiegon:a, PASS; caller field redacted): state 2 scoring orders both warriors onto 3168 at f375 with Min = Max = 0,
+# so the keep ends at once and every 8-frame pass re-assigns; between passes the members are not in the scoring list.
+LOG102 = """kpass: frame=375 team=0AEFE460 cand=3168:1,3167:1 keep=3170:0:go,3171:0:go
+kassign: frame=375 team=0AEFE460 mstate=2 src=score ra=x0 mem=3170 tgt=3168 flag=0 ret=1 w=1 prev=3168:0 start=375 until=375 keep=0 min=0.00 max=0.00 n=0
+kassign: frame=383 team=0AEFE460 mstate=2 src=score ra=x0 mem=3170 tgt=3168 flag=0 ret=0 w=1 prev=3168:375 start=383 until=383 keep=0 min=0.00 max=0.00 n=0
+kpass: frame=399 team=0AEFE460 cand=3168:1,3167:1 keep=
+kassign: frame=495 team=0AEFE460 mstate=2 src=score ra=x0 mem=3170 tgt=3168 flag=0 ret=1 w=1 prev=- start=495 until=495 keep=0 min=0.00 max=0.00 n=1
+"""
+
+
+def test_target_orders_and_keep_passes(tmp_path):
+    p = tmp_path / 'ra3ext.log'
+    p.write_text(LOG102, encoding='utf-8')
+    a, b, c = teamlog.target_orders(str(p))
+    assert (a['frame'], a['src'], a['mem'], a['tgt'], a['ret'], a['wrote']) == (375, 'score', 3170, 3168, 1, True)
+    assert (a['prev'], a['start'], a['until'], a['keep'], a['min'], a['max']) == ((3168, 0), 375, 375, 0, 0.0, 0.0)
+    assert b['prev'] == (3168, 375) and b['ret'] == 0
+    assert c['prev'] is None and c['folded'] == 1
+    assert teamlog.target_orders(str(p), team='other') == []
+    k, e = teamlog.keep_passes(str(p))
+    assert k['cand'] == [(3168, True), (3167, True)] and k['keep'] == [(3170, 0, 'go'), (3171, 0, 'go')]
+    assert e['keep'] == [] and e['frame'] == 399

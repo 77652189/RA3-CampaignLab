@@ -356,6 +356,52 @@ def base_choices(run, use=None):
     return out
 
 
+# D round 102: the micro manager's per-member target orders and their TimeToKeepTarget clock (E121)
+KASSIGN = re.compile(r'^kassign: frame=(-?\d+) team=(\S+) mstate=(-?\d+) src=(\S+) ra=\S+ mem=(\d+) tgt=(\d+) '
+                     r'flag=(\d+) ret=(\d+) w=([01]) prev=(\S+) start=(-?\d+) until=(-?\d+) keep=(-?\d+) '
+                     r'min=(\S+) max=(\S+) n=(\d+)$')
+KPASS = re.compile(r'^kpass: frame=(-?\d+) team=(\S+) cand=(\S*) keep=(\S*)$')
+
+
+def target_orders(run, team=None):
+    """Each "order this member to attack X" the host's AI teams gave (D round 102). A dict: frame, team, mstate (the
+    team's micro state then), src (score = state 2's per-member scoring, all = state 6's whole-team target, siege =
+    state 4, '?' another path), mem, tgt (object ids), flag, ret (the game's result: 0 refused / already on it, 2 crush,
+    3 attack, 5 capture, 1 other), wrote (the call wrote the keep record), prev ((target, until) of the record before
+    the call, None = none), start (the frame the keep started), until (its expiry frame, -1 = no record), keep (until -
+    start frames), min / max (TimeToKeepTargetMin / Max seconds), folded (identical calls since the last line --
+    state 6 re-orders every member each pass; those are counted, not written)."""
+    out = []
+    with open(_log(run), encoding='utf-8', errors='replace') as f:
+        for line in f:
+            m = KASSIGN.match(line.rstrip())
+            if not m or (team is not None and m[2] != team):
+                continue
+            pt, _, pu = m[10].partition(':')
+            out.append(dict(frame=int(m[1]), team=m[2], mstate=int(m[3]), src=m[4], mem=int(m[5]), tgt=int(m[6]),
+                            flag=int(m[7]), ret=int(m[8]), wrote=m[9] == '1',
+                            prev=None if m[10] == '-' else (int(pt), int(pu)), start=int(m[11]), until=int(m[12]),
+                            keep=int(m[13]), min=float(m[14]), max=float(m[15]), folded=int(m[16])))
+    return out
+
+
+def keep_passes(run, team=None):
+    """State 2's scoring passes (D round 102), one dict per written pass (change-only, plus one a beat): frame, team,
+    cand [(target id, eligible)] -- every hostile-list entry and the game's own filter verdict, the candidates the
+    members are scored against -- and keep [(member id, until, 'go'|'hold')]: each member's keep record as the pass read
+    it (until 0 = none / target gone) and whether it was re-assigned (go: frame >= until) or kept its target (hold)."""
+    out = []
+    with open(_log(run), encoding='utf-8', errors='replace') as f:
+        for line in f:
+            m = KPASS.match(line.rstrip())
+            if not m or (team is not None and m[2] != team):
+                continue
+            cand = [(int(i), ok == '1') for i, ok in (c.split(':') for c in m[3].split(',') if c)]
+            keep = [(int(i), int(u), d) for i, u, d in (k.split(':') for k in m[4].split(',') if k)]
+            out.append(dict(frame=int(m[1]), team=m[2], cand=cand, keep=keep))
+    return out
+
+
 def names(run):
     """Every template name seen with a team, and the frames it was seen at (first, last)."""
     seen = {}
