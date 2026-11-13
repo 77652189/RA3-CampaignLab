@@ -701,7 +701,7 @@
 | 未做 | `Behaviors/ActivateSpecialPowerOnCreate` | 1 (1) |  | 模拟器代码里没有这个名字；例：JapanAntiVehicleInfantry_Ambush |
 | 已对拍 | `Behaviors/AssembleStructureSpecialAbilityUpdate` | 1 (1) | a4 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_skill.py；例：SovietEngineer |
 | 未做 | `Behaviors/ChargeWeaponUpdate` | 1 (1) | a4 | 模拟器代码里没有这个名字；例：JapanBaseDefenseAdvanced |
-| 未做 | `Behaviors/CircularDamageUpdate` | 1 (1) |  | 模拟器代码里没有这个名字；例：SovietAntiNavyShipTech1 |
+| 未做 | `Behaviors/CircularDamageUpdate` | 1 (1) |  | E143最小消费诊断：engine_circular a/b/c/d具名回放仅保留负结果，不登记效果已对拍。陆地无ONLY_ON_WATER、MaxRadius175/ArcDistance50、径向50/100/150靶；正常/删激活/删模块/持续开火对照，消费前置仍未解释，未实现接口。Lifetime推进、SweepWeapon实际派发、水面过滤、重复激活和死亡清理均gap；tests/test_simcircular.py；假设表见work/re/e143_circular_gate.md；例：SovietAntiNavyShipTech1 |
 | 未做 | `Behaviors/DieOnProducerDeathUpdate` | 1 (1) |  | 模拟器代码里没有这个名字；例：AlliedAttackDrone |
 | 未做 | `Behaviors/DominateEnemySpecialPower` | 1 (1) |  | 模拟器代码里没有这个名字；例：AlliedInfiltrationInfantry |
 | 未做 | `Behaviors/GrapplingHookUpdate` | 1 (1) | a1 a3 a4 a6 a7 a9 | 仅engine_grapple a最小消费者诊断；模块派发/拉拽/释放未解释，未实现，不作为已对拍证据；例：SovietAntiVehicleVehicleTech3 |
@@ -758,7 +758,7 @@
 
 | 状态 | 名字 | 用量 | 9 关用到 | 说明 |
 |---|---|---|---|---|
-| 已对拍 | `DamageNugget` | 183 | 全部 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_clip.py；例：BaseExplodingPropVehicleWeapon, MountRushmoreHeadEyeWeapon |
+| 已对拍 | `DamageNugget` | 183 | 全部 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_circular.py；例：BaseExplodingPropVehicleWeapon, MountRushmoreHeadEyeWeapon |
 | 已对拍 | `ProjectileNugget` | 88 | 全部 | tests/test_simbench_c.py::test_projectile_nugget_flight_uses_retail_shell_speed_and_resolved_warhead；例：BB_EuropeCoastalGunWeapon, KremlinArtilleryDomeMissle |
 | 已对拍 | `SuppressionNugget` | 64 | 全部 | tests/test_simbench_c.py::test_suppression_samples_entry_refresh_and_expiry_at_the_four_probe_readings；例：BB_EuropeCoastalGunWeapon, KremlinArtilleryDomeMissle |
 | 已对拍 | `InformTargetNugget:默认系数目标通知` | 47 | 全部 | tests/test_inform_ai.py::test_inform_incoming_table_drives_miner_armor_from_engine_inform_probe；仅默认Min=.85/Max=1.15的目标通知→来弹表/矿车预计伤害开甲；engine_inform_probe a/off录入302、hit377、exp404、删除389，347帧入窗。半径/历史/海啸/忍者及完整AI调度不在本登记范围，完整脚本仍xfail；例：BB_EuropeCoastalGunWeapon, AlliedPrecisionBomb |
