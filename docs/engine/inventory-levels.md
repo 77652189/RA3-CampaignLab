@@ -2,11 +2,11 @@
 
 由 `experimental/cnv/inventory_ai.py levels` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）里由遭遇战 AI 带的敌人：它的人格（`enemy_ai.py` 生成）沿继承、战略状态、战术、组队、目标启发、微操、造兵 / 预算状态、开局一路引用到的原版 AI 数据项，加上全局常量 AIData 和本阵营的 ArmyDefinition；再加关卡脚本里点了 AI 玩家名字的脚本动作 / 条件。状态取自 [inventory.md](inventory.md)。"AI 做完"的第一条：下表全部已对拍。
 
-**已对拍 150 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
+**已对拍 151 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
 
 | 部分 | 已对拍 | 推断 | 未做 |
 |---|---|---|---|
-| AI | 138 | 109 | 110 |
+| AI | 139 | 108 | 110 |
 | 脚本动作 | 11 | 0 | 0 |
 | 脚本条件 | 1 | 0 | 0 |
 
@@ -130,7 +130,6 @@
 | 推断 | AI | `启发条件/PathToTargetHeuristic.LocomotorConditionToUseForTest` | 45 | a4 a5 a7 | E84 engine_aiopathcond a：同JapanAntiAirShip仅切NORMAL深水/SUPERSONIC空中；两组s22-s24均兵营1/电厂0，水组原始Island预测FAIL、空中PASS。tests/test_simai_bench_e.py按名回放实际计数通过，但不能区分条件生效与路径判定边界；C复核：旧配方Surface未显式指定，SDK移动器差异不能独立证明实际路径可达性；C断桥两组aipcland/aipcamph同模板切NORMAL地面/SUPERSONIC地面+水面：s22-24仍均兵营1/电厂0，s40-44控制车均存活未到岸，两栖阳性未建立。tests/test_simai_pathbanks_c.py独立断言控制读数，建筑选择两strict xfail；两局后停止，待D提供同帧条件/移动器/选点/路径返回分类。保持gap不晋升，未改模型；见 work/re/c_pathbanks_report.md、c_pathcond_gate_report.md |
 | 推断 | AI | `战术/Tactic.Distance` | 41 | a4 a5 a7 | 专用engine_aidistance aidist250/aidist2000保留AI队、同次传送1200，仅Distance不同；s65小组圈300/900=1/1，大组0/0，存活均1；两组各5条PASS、模型末态匹配；大组实机传送前离300、传送后回900再离，模型美学轨迹strict xfail；精确边界/动态队成员仍gap，不晋升；tests/test_simai_bench_c.py；见 work/re/c_distance_report.md |
 | 推断 | AI | `战术/Tactic.UseAestheticsManager` | 40 | a4 a5 a7 | 专用engine_aiaesthetics aiaeson/aiaesoff固定Distance=2000，仅切美学开关；两组各5条PASS：on先离300、传送后回900再离，off回双圈，存活/锁存均1；tests/test_simai_bench_c.py关闭组完整轨迹已回放；探针战术附加属性现传入消费者；E108按D83实际调用回放：首次遇敌gate=0仍发，后续102次gate=0不发、两次gate=1发；完整模拟首发154对台191且漏461，选敌/成员目的地/ready仍gap、strict xfail，不晋升；tests/test_ai_aesthetics_clock.py；见 work/re/e108_aesthetics_gate.md |
-| 推断 | AI | `造兵/BuildEntry.MinTime` | 34 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过（checks/engine_aiskirm.py:mt），没有测试跑这个台子 |
 | 推断 | AI | `微操/AIMicroManagerData.AlphaStrikeTargetHealthPct` | 28 | a4 a5 a7 | engine_aialphahp 旧固定70%对照；engine_aialphaclose 独立延迟守军、仅阈值0.01/0.9不同；tests/test_simai_bench_c.py 保留读数回放，有限诊断不等于字段闭环；目标适用条件与回放差异仍gap，见 work/re/c_alpha_close_report.md |
 | 推断 | AI | `微操/AIMicroManagerData.UpdateTime` | 26 | a4 a5 a7 | engine_aimicro aimicupft/aimicupst:a 仅切微操0.5/4s，15帧宿主、D81时钟重量；台内首冲帧371/317、首活均2，末图逻辑帧872/876；tests/test_simai_bench_e.py 按名回放首活通过，精确首冲及人口峰值strict xfail；资格/更新前置状态、观测宿主人口等价仍gap；旧时钟读数不用于晋升，非固定延迟；见work/re/e102_update_clock.md，不晋升 |
 | 推断 | AI | `战术/Tactic.Tactic=Engineer` | 24 | a4 a5 a7 | A第203轮 engine_aiskirm aiskirm:et原版（11-13）：AlliedCaptureTech_MEDIUM_EngineerTactic_0_0 s128空队、s144工程师入队、s216到油井、s222油井归AI同秒队消失，矿点旁始终0。tests/test_simai_engineer_tactic.py按名回放队伍出现/入队通过；模型（fca219e）目标选了AI基地旁矿点、Engineer到达动作空实现不占领（strict xfail）。下一步：TechBuilding候选过滤 + 占领动作；另aieng/aiengctl（E111）单独台未招到工程师，见work/re/handoff.md第203轮、e111_engineer.md |
@@ -320,6 +319,7 @@
 | 已对拍 | AI | `微操/AIMicroManagerData.RetreatMinDistanceToFallback` | 38 | a4 a5 a7 | engine_aifallback aifbshort100/aifblong500：四人存活回齐、在家约18秒、长组先于短组再出发；tests/test_simai_fallback.py::test_fallback_distance_first_return_and_departure；仅此固定FromBase=300场景的行为回放，未量内部退出位置、精确距离边界或其他基地选择 |
 | 已对拍 | AI | `目标/AITargetingHeuristic.SortType=Distance` | 37 | a4 a5 a7 | docs/engine/aitactics.md#目标挑哪个（aitpnear 挑最近、aitpmt2 第二槽挑次近、aitpvk 显式写 Distance） |
 | 已对拍 | AI | `人格/AIPersonalityDefinition.PersonalityType` | 35 | a4 a5 a7 | tests/test_simai_bench_b.py::test_the_personality_condition_matches_the_id_not_the_personality_type（engine_aiskirm pt aiskpt / aiskpti：脚本条件 PLAYER_IS_HUMAN_OR_AI_PERSONALITY 只认人格 id，PersonalityType 写成别的名字或不写都不影响；AI 行为不读它；B 第 150 轮） |
+| 已对拍 | AI | `造兵/BuildEntry.MinTime` | 34 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py:mt |
 | 已对拍 | AI | `启发条件/IsBuildingHeuristic` | 30 | a4 a5 a7 | E83 engine_aibuilding a：STRUCTURE空队列、现成基地1；PassIfBuilding=false时s40到陆厂4/在家0，true时0/4，两组PASS；tests/test_simai_bench_e.py::test_is_building_idle按名回放通过。C补充活跃连续电厂队列false反向对照：匹配组s40到陆厂/在家0/4，不匹配4/0，两组电厂4/基地1、各一次PASS；模型匹配组4/0，test_simai_buildkind_c为strict xfail，队列/求值时序未解；取消/挂起/等待仍gap；见 work/re/c_buildkind_false_report.md、e_building_e83.md |
 | 已对拍 | AI | `启发条件/IsBuildingHeuristic.KindOf` | 30 | a4 a5 a7 | C engine_aibuildkind a：同一连续电厂开局，FS_POWER匹配时s40到陆厂4/在家0，FS_BARRACKS不匹配时0/4；两组电厂4/基地1，两局PASS；多token aibkindoryes/aibkindorno各一次PASS：FS_BARRACKS FS_POWER仅第二token匹配时4/0，FS_BARRACKS FS_TECHNOLOGY均不匹配时0/4，两组电厂4/基地1；tests/test_simai_buildkind_c.py按名回放单token和多token四组，验证活跃队列KindOf按OR匹配。false反向两组各一次PASS：匹配0/4、不匹配4/0，均电厂4/基地1；模型匹配false组4/0，strict xfail，见 work/re/c_buildkind_false_report.md。仅连续电厂开局，队列挂起/取消/等待阶段仍gap；见 work/re/c_buildkind_or_report.md、c_buildkind_report.md；空队列边界见 work/re/e_building_e83.md |
 | 已对拍 | AI | `启发条件/IsBuildingHeuristic.PassIfBuilding` | 30 | a4 a5 a7 | E83 engine_aibuilding a：STRUCTURE空队列、现成基地1；PassIfBuilding=false时s40到陆厂4/在家0，true时0/4，两组PASS；tests/test_simai_bench_e.py::test_is_building_idle按名回放通过。C补充活跃连续电厂队列false反向对照：匹配组s40到陆厂/在家0/4，不匹配4/0，两组电厂4/基地1、各一次PASS；模型匹配组4/0，test_simai_buildkind_c为strict xfail，队列/求值时序未解；取消/挂起/等待仍gap；见 work/re/c_buildkind_false_report.md、e_building_e83.md |

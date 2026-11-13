@@ -8,7 +8,7 @@
 | 脚本条件 | **94%** | **100%** | 12 / 12 | 89 | 34 | 6 | 46 | 3 | 95% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **93%** | **95%** | 17 / 22 | 28 | 18 | 3 | 5 | 2 | 96% |
-| AI | **89%** | **89%** | 138 / 357 | 415 | 145 | 121 | 115 | 34 | 98% |
+| AI | **90%** | **90%** | 139 / 357 | 415 | 146 | 120 | 115 | 34 | 98% |
 
 ## 脚本动作
 
@@ -892,7 +892,7 @@
 | 已对拍 | `微操/AIMicroManagerData.RetreatMinDistanceToFallback` | 38 | a4 a5 a7 | engine_aifallback aifbshort100/aifblong500：四人存活回齐、在家约18秒、长组先于短组再出发；tests/test_simai_fallback.py::test_fallback_distance_first_return_and_departure；仅此固定FromBase=300场景的行为回放，未量内部退出位置、精确距离边界或其他基地选择 |
 | 已对拍 | `目标/AITargetingHeuristic.SortType=Distance` | 37 | a4 a5 a7 | docs/engine/aitactics.md#目标挑哪个（aitpnear 挑最近、aitpmt2 第二槽挑次近、aitpvk 显式写 Distance） |
 | 已对拍 | `人格/AIPersonalityDefinition.PersonalityType` | 35 | a4 a5 a7 | tests/test_simai_bench_b.py::test_the_personality_condition_matches_the_id_not_the_personality_type（engine_aiskirm pt aiskpt / aiskpti：脚本条件 PLAYER_IS_HUMAN_OR_AI_PERSONALITY 只认人格 id，PersonalityType 写成别的名字或不写都不影响；AI 行为不读它；B 第 150 轮） |
-| 推断 | `造兵/BuildEntry.MinTime` | 34 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过（checks/engine_aiskirm.py:mt），没有测试跑这个台子 |
+| 已对拍 | `造兵/BuildEntry.MinTime` | 34 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py:mt |
 | 已对拍 | `启发条件/IsBuildingHeuristic` | 30 | a4 a5 a7 | E83 engine_aibuilding a：STRUCTURE空队列、现成基地1；PassIfBuilding=false时s40到陆厂4/在家0，true时0/4，两组PASS；tests/test_simai_bench_e.py::test_is_building_idle按名回放通过。C补充活跃连续电厂队列false反向对照：匹配组s40到陆厂/在家0/4，不匹配4/0，两组电厂4/基地1、各一次PASS；模型匹配组4/0，test_simai_buildkind_c为strict xfail，队列/求值时序未解；取消/挂起/等待仍gap；见 work/re/c_buildkind_false_report.md、e_building_e83.md |
 | 已对拍 | `启发条件/IsBuildingHeuristic.KindOf` | 30 | a4 a5 a7 | C engine_aibuildkind a：同一连续电厂开局，FS_POWER匹配时s40到陆厂4/在家0，FS_BARRACKS不匹配时0/4；两组电厂4/基地1，两局PASS；多token aibkindoryes/aibkindorno各一次PASS：FS_BARRACKS FS_POWER仅第二token匹配时4/0，FS_BARRACKS FS_TECHNOLOGY均不匹配时0/4，两组电厂4/基地1；tests/test_simai_buildkind_c.py按名回放单token和多token四组，验证活跃队列KindOf按OR匹配。false反向两组各一次PASS：匹配0/4、不匹配4/0，均电厂4/基地1；模型匹配false组4/0，strict xfail，见 work/re/c_buildkind_false_report.md。仅连续电厂开局，队列挂起/取消/等待阶段仍gap；见 work/re/c_buildkind_or_report.md、c_buildkind_report.md；空队列边界见 work/re/e_building_e83.md |
 | 已对拍 | `启发条件/IsBuildingHeuristic.PassIfBuilding` | 30 | a4 a5 a7 | E83 engine_aibuilding a：STRUCTURE空队列、现成基地1；PassIfBuilding=false时s40到陆厂4/在家0，true时0/4，两组PASS；tests/test_simai_bench_e.py::test_is_building_idle按名回放通过。C补充活跃连续电厂队列false反向对照：匹配组s40到陆厂/在家0/4，不匹配4/0，两组电厂4/基地1、各一次PASS；模型匹配组4/0，test_simai_buildkind_c为strict xfail，队列/求值时序未解；取消/挂起/等待仍gap；见 work/re/c_buildkind_false_report.md、e_building_e83.md |
