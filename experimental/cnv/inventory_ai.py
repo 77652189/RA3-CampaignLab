@@ -117,6 +117,11 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '造兵/BuildEntry.CountModifier': (GUESSED,
+        'C engine_countmodifier a：同经济/工厂/候选和初始新维和4/新标枪2，仅切0.5/4；'
+        '台上低组s27先补标枪、s38–66人数4/5，高组s27先补维和、s39–66人数7/2。'
+        'tests/test_count_modifier.py按名回放s40原人数；精确分值/资格/队列消费未观测，'
+        '保留推断，不改B模型；见work/re/c_countmodifier_report.md'),
     '战术/Tactic.Tactic=Engineer': (GUESSED,
         'aieng/aiengctl原台四读数归属0/近目标0/工程师1/HP100，未证明招募或占领。'
         'E111 tests/test_simai_engineer_gate.py按名回放；模型状态/目标槽成立，'
