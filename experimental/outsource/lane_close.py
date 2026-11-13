@@ -21,7 +21,7 @@ INVENTORY_PATHS = ('experimental/cnv/inventory', 'docs/engine/inventory')
 GENERATORS = [['experimental/cnv/inventory.py'], ['experimental/cnv/inventory_levels.py', '--write'],
               ['experimental/cnv/inventory_ai.py', 'levels', '--write']]   # AGENTS.md's order
 # the architecture guards that build or walk the levels (each 5-100 s): they judge content, so they run only when the
-# item touched content (a map, a mission -- bench missions too --, a play, a device, the story); the coordinator's
+# item touched content (a map, a level mission, a play, a device, the story); the coordinator's
 # full runs cover them otherwise
 CONTENT_PATHS = ('experimental/cnv/maps/', 'experimental/cnv/missions/', 'experimental/cnv/plays/',
                  'experimental/cnv/devices/', 'docs/story/')
@@ -100,7 +100,11 @@ def main():
     if inv:
         regenerate()
     tests = list(dict.fromkeys(touched + GUARDS + (inventory_tests() if inv else [])))
-    skip = [] if any(c.startswith(CONTENT_PATHS) for c in changed) else [
+    # an engine line's own bench mission (missions/*_bench.py) is not level content: the content guards cost ~6 min
+    # of an 11-min close (c_close_1112_1634: g3b alone 201 s); the coordinator's full run still covers bench missions
+    content = [c for c in changed if c.startswith(CONTENT_PATHS)
+               and not (c.startswith('experimental/cnv/missions/') and c.endswith('_bench.py'))]
+    skip = [] if content else [
         a for g in CONTENT_GUARDS for a in ('--deselect', f'tests/test_architecture.py::{g}')]
     stamp = datetime.datetime.now().strftime('%m%d_%H%M')
     log = os.path.join(_paths.WORK, 'logs', f'{lane}_close_{stamp}.log')
