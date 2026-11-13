@@ -58,6 +58,20 @@ def test_decoded_sdk_states_write_nothing_their_xml_does_not():
     assert not extra
 
 
+@needs_states
+def test_items_only_the_compiled_maps_write_are_in_the_inventory():
+    """原版编译状态 is a census source: what only the maps' own compiled states write is an inventory item, and the 27's
+    AI scope names nothing the inventory does not know."""
+    import inventory_ai as A
+    got = A.census()
+    for name in ('战术/Tactic.UseTransports', '战术/Tactic.GatherWaypoint', '战术/Tactic.UpdateTime',
+                 '战术/Tactic.CombatLeashSlack', '战术/Tactic.Tactic=SimpleDefense',
+                 '启发条件/StructureOrHarvesterUnderAttackHeuristic',
+                 '启发条件/StructureOrHarvesterUnderAttackHeuristic.TimeSinceAttacked'):
+        assert got.get(name, [0])[0] > 0, name
+    assert not [u for u in R.used_items()[1] if u[0] == I.AI]
+
+
 def test_every_retail_computer_player_personality_is_compiled():
     reach = json.load(open(AI_JSON, encoding='utf-8'))
     missing = [(m, p['name'], p['personality']) for m, stem in R.missions().items() for p in R.ai_players(stem)

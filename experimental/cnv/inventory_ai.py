@@ -4,7 +4,9 @@ puts the items into docs/engine/inventory.md as the last part; never written by 
 
 Source: every xml under the SDK's SageXML/SkirmishAI (65 files: personalities, strategic / build / budget states, opening
 moves, target heuristics, micro managers, army definitions, AIData). The retail campaign's own AI states (AITarget_*,
-the mission personalities) live there too, so they count. Items, named <组成项>/<what>:
+the mission personalities) live there too, so they count. Second source (原版编译状态): the retail AI assets only the
+game's compiled stream has (the campaign maps' own), read back by ai_compiled (work/retailref/ai_states.xml; a lower
+bound: an attribute written at its default value is not seen). Items, named <组成项>/<what>:
   field     <Tag>.<Attr>         every attribute the retail data sets (and the text lists <Parent>.IncludeThing ...),
                                  uses = how many elements set it
   kind      <Tag>                every heuristic element type the retail data uses (ConstantHeuristic, EnemyNearby...)
@@ -541,7 +543,7 @@ def _local(tag):
 
 
 def census():
-    """{name: [uses, group]} over the retail SkirmishAI xml."""
+    """{name: [uses, group]} over the retail SkirmishAI xml and the compiled-only retail assets (compiled_own)."""
     need(AI_DATA, 'the SDK SkirmishAI data')
     files = [os.path.join(r, f) for r, _, fs in os.walk(AI_DATA) for f in fs if f.endswith('.xml')]
     if not files:
@@ -551,13 +553,31 @@ def census():
     def add(name, group):
         out.setdefault(name, [0, group])[0] += 1
 
+    ids = set()
     for path in sorted(files):
         tree = ET.parse(path)
+        ids |= {el.get('id') for el in tree.getroot()}
         parent = {c: p for p in tree.iter() for c in p}
         for el in tree.iter():
             for name, group in element_names(el, parent.get(el)):
                 add(name, group)
+    for top in compiled_own(ids):
+        parent = {c: p for p in top.iter() for c in p}
+        for el in top.iter():
+            for name, group in element_names(el, parent.get(el)):
+                add(name, group)
     return out
+
+
+# The second source (原版编译状态): the retail AI assets the SDK xml does not ship (the campaign maps' own), read back
+# from the game's compiled stream (retailref.py cache-ai-states, ai_compiled; written-at-default attributes not seen).
+COMPILED = os.path.join(labpaths.WORK, 'retailref', 'ai_states.xml')
+
+
+def compiled_own(sdk_ids):
+    """[element] of the decoded compiled AI assets whose id the SDK xml does not have."""
+    need(COMPILED, 'the decoded retail AI assets (python -I -X utf8 experimental/campaign/retailref.py cache-ai-states)')
+    return [el for el in ET.parse(COMPILED).getroot() if el.get('id') not in sdk_ids]
 
 
 def element_names(el, par):
