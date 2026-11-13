@@ -138,9 +138,9 @@
 | 推断 | AI | `经济/AccountShare.Account` | 18 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `启发条件/ConstantHeuristic.Weight` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `启发条件/IntervalHeuristic.CountFrom` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `启发条件/TechBuildingShareHeuristic` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `启发条件/TechBuildingShareHeuristic.Above` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `启发条件/TechBuildingShareHeuristic.PercentOfFairShare` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 推断 | AI | `启发条件/TechBuildingShareHeuristic` | 15 | a4 a5 a7 | C engine_aitechshare a：四座开局油井、活跃拥有者两方，aitechlow/high自有1/2；s40低于75/高于75/低于125三组在家人数均4/0/4，原预测0/4/0与4/0/0。地图另有Soviet_2..6空玩家，倾向引擎玩家数包含空槽；tests/test_simai_techshare_c.py按名回放两组实测，门控两strict xfail、所有权控制独立断言；尚缺同帧own/total/player-count和状态权重，保留gap，不按结果倒推公式；见work/re/c_techshare_report.md、handoff-c.md |
+| 推断 | AI | `启发条件/TechBuildingShareHeuristic.Above` | 15 | a4 a5 a7 | C engine_aitechshare a：四座开局油井、活跃拥有者两方，aitechlow/high自有1/2；s40低于75/高于75/低于125三组在家人数均4/0/4，原预测0/4/0与4/0/0。地图另有Soviet_2..6空玩家，倾向引擎玩家数包含空槽；tests/test_simai_techshare_c.py按名回放两组实测，门控两strict xfail、所有权控制独立断言；尚缺同帧own/total/player-count和状态权重，保留gap，不按结果倒推公式；见work/re/c_techshare_report.md、handoff-c.md |
+| 推断 | AI | `启发条件/TechBuildingShareHeuristic.PercentOfFairShare` | 15 | a4 a5 a7 | C engine_aitechshare a：四座开局油井、活跃拥有者两方，aitechlow/high自有1/2；s40低于75/高于75/低于125三组在家人数均4/0/4，原预测0/4/0与4/0/0。地图另有Soviet_2..6空玩家，倾向引擎玩家数包含空槽；tests/test_simai_techshare_c.py按名回放两组实测，门控两strict xfail、所有权控制独立断言；尚缺同帧own/total/player-count和状态权重，保留gap，不按结果倒推公式；见work/re/c_techshare_report.md、handoff-c.md |
 | 推断 | AI | `微操/AIMicroManagerData.AlphaStrikeTargetTimeToKill` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `目标/AITargetingHeuristic.MinDistanceFromEnemy` | 15 | a4 a5 a7 | C按名台子engine_aimindist：同一中立油井，TechBuilding阈值0组采样s6起目标区4，2000组采样s1-55在家4/目标区0；NamedObject阳性对照同0组。tests/test_min_enemy_distance.py断言原计数并按名回放；无同帧实际距离/候选资格，采样时钟未对齐游戏帧，边界与敌人物体资格仍gap，保持推断；见work/re/c_mindist_report.md |
 | 推断 | AI | `目标/AITargetingHeuristic.SortType=ThreatToWater` | 14 | a4 a5 a7 | C按名台子engine_aiwater：两电厂/近处守护者/AI两栖矿车，仅切Distance与ThreatToWater，实机两组采样s14后均近4/远0/家0；模型ThreatToWater选远，按名回放strict xfail。tests/test_water_threat.py独立断言原计数并保留原预测FAIL；近处Named对照因s40-41无采样亦strict xfail。无同帧候选资格/实际water威胁值/水域样本资格，不改模型、不晋升；见work/re/c_water_report.md |
