@@ -589,3 +589,24 @@ def test_capture_tech_opens_with_the_cleanup_on_the_tech_building_share():
     assert 'AlliedCaptureTech_MEDIUM' in made
     assert made['AlliedCaptureTech_MEDIUM'] == made['BalancedCleanup']
     assert 1951 < made['AlliedCaptureTech_MEDIUM'] <= 1966
+
+
+def test_capture_tech_holds_two_escorts_out_of_the_cleanup():
+    """aiskirmc:m (tests/fixtures/c_release_teams/aiskirm_m.txt, A round 193): Cleanup's first commit (f1966) leaves
+    exactly two in defense -- the two lowest ids, held by AlliedCaptureTech_MEDIUM while it has no engineer (model
+    teams.escort_count, INFERRED 2 = MaxUnits 4 - the CreateUnits slot's 1 + 1); the model's Cleanup commits at
+    f1953. Only the hold at that commit is asserted: in the model the capture team expires at f2028 and Cleanup then
+    takes the pair (retail keeps them held to f2206), and nobody builds the named engineer yet."""
+    w = simai.run('aiskirmc', 'm', until=132, record=True, lib=simai.model()['xmldata'].Library())
+    brain, = w.brains.values()
+    rows = brain.rec['frames']
+    first = next(r for r in rows if r['state_key'] == 'BalancedCleanup' and r['members'])
+    left = [m['name'] for r in rows if r['state_key'] == 'LandDefense_MEDIUM' and r['frame'] == first['frame']
+            and r['phase'] != 'done' for m in r['members']]
+    assert len(left) == 2, (first['frame'], left)
+
+    def ids(names):                     # '#made <id> <template>'
+        return sorted(int(n.split()[1]) for n in names)
+    assert ids(left) == ids(left + [m['name'] for m in first['members']])[:2]
+    capture = [t for k, t in brain.ai.teams.teams.items() if k[0] == 'AlliedCaptureTech_MEDIUM']
+    assert capture and all(not t.members and len(t.escorts) == 2 for t in capture)
