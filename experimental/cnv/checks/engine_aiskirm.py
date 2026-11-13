@@ -984,7 +984,12 @@ def mt(m):
     simulator scores no TECH entry: none in either.
     aiskmt0 (TECH MinTime 0 ForceTime 1, three more plants = 6, D82 G1 + G2 in one run; bench 11-12
     work/bench_results/aiskmt0__mt.json, PASS): 科技帧 stops at 2256 (~150 s after the wake), 科技楼 1 by s177, money
-    50000 -> ~9800 by s376 -- the TECH entry does build here. G1 / G2 not yet split (next: 0 / 1 with 3 plants)."""
+    50000 -> ~9800 by s376 -- the TECH entry does build here. G1 / G2 not yet split (next: 0 / 1 with 3 plants).
+    aiskmt03 (TECH 0 / 1, the three plants only; bench 11-12 work/bench_results/aiskmt03__mt.json, PASS): 科技帧
+    stops at 2256 again, 科技楼 1 at s227 (电厂 3 -> 5 by s102) -- the very frame of aiskmt0: power is not the gate
+    (G1 no). aiskmt2 (TECH 200 / 201, six plants; aiskmt2__mt.json, PASS): no tech building to s367 (科技帧 4721,
+    ~315 s after the wake) -- MinTime 200 is not "200 s after the wake" (G2: the evaluator's clock or MinTime's unit
+    differs; next MinTime 20 / 21: ~150 s -> seconds, ~300 s -> MinTime counted x15)."""
     t = Test()
     s1 = m.player('s1')
     if m.facts['min time'] is None and m.facts.get('const') == 'AlliedTechStructure':   # aiskmtk: CONSTANT tech
@@ -1066,6 +1071,8 @@ CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j
           'aiskmt': {'mt': mt},
           'aiskmto': {'mt': mt},
           'aiskmt0': {'mt': mt},
+          'aiskmt03': {'mt': mt},
+          'aiskmt2': {'mt': mt},
           'aiskmtc': {'mt': mt},
           'aiskmtt': {'mt': mt},
           'aiskmtk': {'mt': mt},

@@ -398,7 +398,7 @@ ARMY_N = 10                            # aiskvinf / aiskvveh (check z): what the
 
 def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None, account=None,
             buffer=None, new=None, army=None, two=None, observe=False, cap=None, block=None, off=False,
-            ptype=None, mintime=None, aidata=None, dear=None, dear_cost=DEAR_COST):
+            ptype=None, mintime=None, aidata=None, dear=None, dear_cost=DEAR_COST, power_more=None):
     m = Mission(name=name, map=ai_map(resources.measured(niagara), lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
     if aidata is not None:               # aiskad / aiskfon / aiskfof: the global AIData overridden in the map stream
@@ -425,7 +425,9 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
         m.assets.append((f'{MT_PID}.xml', mintime_xml(lo, hi, build, const, score), f'AIPersonalityDefinition:{MT_PID}'))
         for k, (tpl, site) in enumerate(MT_OWNED):
             m.put(tpl, site, side='s1', name=f'UNIT - CNV AI Owned {k}', role=f'ai owned {k}')
-        for k, (x, y) in enumerate(MT_POWER + (MT_POWER_MORE if lo == 0 else ())):
+        more = lo == 0 if power_more is None else power_more   # aiskmt03: TECH 0/1 with the three plants only
+        m.facts['plants'] = len(MT_POWER) + (len(MT_POWER_MORE) if more else 0)
+        for k, (x, y) in enumerate(MT_POWER + (MT_POWER_MORE if more else ())):
             m.put('AlliedPowerPlant', 'east base', x, y, side='s1', angle=0.0, name=f'UNIT - CNV AI Power {k}',
                   role=f'ai power {k}')
     if buffer is not None:               # aiskpw0 / aiskpw3 (check x): DesiredExcessPowerBuffer = buffer
@@ -543,6 +545,8 @@ MISSION = {'aiskirm': mission, 'aiskirmc': lambda: mission(observe=True),
            'aiskmt': lambda: mission('CampAISkMT', mintime=MT_TIMES['aiskmt']),      # check mt: MinTime 150 Force 151
            'aiskmto': lambda: mission('CampAISkMTO', mintime=MT_TIMES['aiskmto']),   # check mt: MinTime 250 Force 151
            'aiskmt0': lambda: mission('CampAISkMT0', mintime=(0, 1)),   # check mt: TECH 0/1, 6 plants (D82 G1 + G2)
+           'aiskmt03': lambda: mission('CampAISkMT03', mintime=(0, 1), power_more=False),   # mt: TECH 0/1, 3 plants
+           'aiskmt2': lambda: mission('CampAISkMT2', mintime=(200, 201), power_more=True),  # mt: TECH 200/201, 6
            'aiskmtc': lambda: mission('CampAISkMTC', mintime=(None, None)),          # check mt: CONSTANT 300 tower
            'aiskmtt': lambda: mission('CampAISkMTT', mintime=(200, 201, MT_CONST[0])),   # check mt: TECH 200/201 tower
            'aiskmtk': lambda: mission('CampAISkMTK', mintime=(None, None, MT_TECH, MT_TECH)),   # mt: CONSTANT 300 tech
