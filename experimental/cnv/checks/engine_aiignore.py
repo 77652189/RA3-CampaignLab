@@ -14,7 +14,16 @@ MEASURED: delayed targets, radius 0 first hurt frame 397; radius 2000 frame
 396. Both own two warriors and pass the pre-target no-damage check. Radius 0
 keeps its original diagnostic FAIL; radius 2000 PASS. Named replay asserts
 the observed damage in both, not the rejected filtering prediction. The model
-consumer and exact base/distance/dispatch rules remain gaps.
+candidate eligibility, general base selection and exact distance boundary
+remain gaps.
+
+E120 repeats the observed pair with base-selection telemetry: both choose
+the sole base at (3850, 3400), equal to the model home. The selection reference
+is the team centre (3770, 2930); it is not the target position. The high pair's
+member aims locate the two targets at (3800, 2900) and (3900, 2900), each
+502.49 from the selected base. Named input replay covers this single-base
+geometry; candidate eligibility, multiple bases and exact boundaries remain
+gaps. See work/re/e120_ignore_base.md.
 """
 from model import Script, Test, counted
 

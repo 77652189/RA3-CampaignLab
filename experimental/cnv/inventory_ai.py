@@ -266,10 +266,11 @@ NOTES = {
         '本入口未显现消费者，零值全局语义/距离基准/其他入口仍gap，暂停、不加猜测消费者、不晋升；'
         '见 work/re/e104_passive_distance.md、work/re/handoff-e.md'),
     '微操/AIMicroManagerData.MinDistanceFromBaseToIgnoreTargets': (TODO,
-        'E103 engine_aiignore aiignzt/aiignnt：同run逻辑时钟配对，0/2000首伤397/396；'
+        'E120 engine_aiignore aiignzt/aiignnt：同run基地选择与目标位置配对，0/2000首伤397/396；'
         'f406/421零组状态8无目标、高组状态0有目标。消费者已接被动选敌、敌对可攻击及逐人分配过滤；'
-        'tests/test_ai_ignore_distance.py 零组精确回放通过，高组资格/分类仍strict xfail；'
-        '基地取点/精确边界/宿主等价仍gap，不晋升已对拍；见 work/re/e103_ignore_distance.md'),
+        '唯一基地(3850,3400)与home一致，两目标距基地502.49；'
+        'tests/test_ai_ignore_distance.py按名断言基地/目标位置与距离门，零组状态通过，高组资格仍strict xfail；'
+        '多基地选择/精确边界/无基地/候选资格仍gap，不晋升已对拍；见 work/re/e120_ignore_base.md'),
     '造兵/BuildEntry.Heuristic': (BENCHED,
         'E78 engine_aiskirm z：BEST_UNIT_EXPECTED 两组台上 PASS；[s150,s160) 征召兵组维和5→6、标枪0，'
         '锤子组标枪7→8→9、维和0；tests/test_simai_bench_e.py::test_best_unit_expected_infantry_choice '

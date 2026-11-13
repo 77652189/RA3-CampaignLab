@@ -11,6 +11,34 @@ simai = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(simai)
 
 
+@pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
+@pytest.mark.parametrize('name, allowed', [('aiignzt', False), ('aiignnt', True)])
+def test_ignore_distance_named_single_base_inputs(name, allowed):
+    """E120's single-base input replay; not engineer candidate acceptance.
+
+    The observed base is (3850, 3400); target positions are (3800, 2900)
+    and (3900, 2900). See work/re/e120_ignore_base.md. The base-choice
+    reference is the team centre, not a target position. Multiple bases,
+    exact boundary and no-base behavior remain INFERRED/gaps.
+    """
+    import math
+
+    w = simai.run(name, 'r', until=27)
+    assert len(w.brains) == 1
+    brain = next(iter(w.brains.values()))
+    base = brain.tactics.home(brain.ai)
+    assert base == (3850.0, 3400.0)
+    targets = [w.sim.bodies[f'UNIT - CNV Ignore Engineer {i}'] for i in (1, 2)]
+    assert all(t.alive for t in targets)
+    assert [(t.x, t.y) for t in targets] == [(3800.0, 2900.0), (3900.0, 2900.0)]
+    runs = [r for r in brain.tactics.runs.values() if r.team.state == 'CNVStateMicro']
+    assert len(runs) == 1
+    micro = runs[0].team.template.micro
+    for target in brain.fighters(targets):
+        assert math.dist(target.pos, base) == pytest.approx(502.4937810560445)
+        assert brain.tactics._ignore_allows(brain.ai, micro, target) is allowed
+
+
 def test_ignore_distance_fixture_changes_only_distance():
     import build
     from contract import contract
