@@ -52,6 +52,8 @@ PARTS = (ACTION, CONDITION, MODULE, NUGGET, AI)     # AI: engine B's part, its o
 
 # (part, name) -> 'tests/<file>.py::<test>': the bench comparison that backs the item (the guard checks the test exists)
 BENCHED_TESTS = {
+    (NUGGET, 'SpecialPowerNugget:涂靶升级门槛'):
+        'tests/test_special_power_nugget.py::test_special_power_nugget_retail_painter_consumer',
     # E65 coordinator closure after four slices; only measured Iron Curtain dispatch.
     (MODULE, 'Behaviors/OCLSpecialPower'):
         'tests/test_simocl.py::test_iron_curtain_zero_count_ocl_reference',
@@ -277,7 +279,11 @@ NOTES = {
     (MODULE, 'Behaviors/LiftObjectUpdate'): (GUESSED, '部分：显式TimeIncrement/MaxTimeLifted的开火者举升表计时接口；tests/test_lift_nugget.py回放engine_lift a状态计数，逐帧计时来自模块证据、未上台逐帧量表；垂直运动/死亡/飞机/落地武器/清位仍gap，落地清位INFERRED，不登记整模块已对拍'),
     (NUGGET, 'ActivateLiftObjectNugget'): (GUESSED, '部分：按模块证据实现开火者举升表，trunc(TimeIncrement×15)逐发累加、续期封顶MaxTimeLifted、逐帧递减释放；Lifetime不参与，释放不清LIFTED；tests/test_lift_nugget.py按名回放engine_lift a旧读数一致，landing因落地清位未实现strict xfail；落地清位INFERRED，垂直运动/死亡/飞机/弹体/复杂筛选仍gap，不登记整项已对拍'),
     (NUGGET, 'AttachNugget'): (GUESSED, '部分：engine_attach a实测直接单发、父子状态、随父移动及目标状态/类型拒绝；仅零半径简单模块，原版复杂筛选/维修/吸血/解除/弹体未接通，不登记整项已对拍'),
-    (NUGGET, 'SpecialPowerNugget'): (GUESSED, '部分：engine_spn a实测自身ARMOR派发、缺模块/类型过滤；engine_spng a / engine_spngp a实测单个OBJECT/PLAYER升级门槛读取施法者/其玩家；engine_spnret a原版守护者普通/高科技保留与去除此Nugget均74/69%血，增伤由AttributeModifierNugget提供，无活动消费者的PaintTarget模块无附加效果；tests/test_special_power_nugget.py回放；engine_spnscr a原版干扰保留/去除SPN首伤均延后但最终同80%，到期无条件清除脚本同名状态位接口已覆盖；原版筛选最小派发接口已覆盖（类别/气球模板/铁幕排除），攻击订单恢复未解释，未登记完整消费者；engine_spndisguise a原版/删SPN/删变装模块/脚本正对照1111/1110/1110/1111已按名回放，接通直接命中DISGUISED位，身份/外观/索敌/换目标/取消仍gap；engine_spnspyx a间谍对步兵/镰刀/删SPN镰刀/脚本位镰刀均命中，s5-15稳定1111/1110/1110/1111按名回放，闭合原版INFANTRY正负过滤；engine_spnspyex a动员兵/恐怖机器人/删SPN/脚本位四路均命中，s5-15稳定1111/1110/1110/1111按名回放；恐怖机器人具有INFANTRY但被ExcludeThing显式排除，身份/索敌仍gap；engine_spntrans a迅雷运输艇原版/删SPN/删消费者/脚本正对照稳定1111/1110/1110/1111已按名回放，仅稳定DISGUISED位；engine_spntrfilter a镰刀/步兵/删SPN步兵/脚本位步兵四路均命中，稳定1111/1110/1110/1111按名回放，闭合原版VEHICLE正负过滤；精确展开时序为gap，即时应用INFERRED；仅直接单发，OCL/其他模块、未知类型/多重升级未接通，不登记整项已对拍'),
+    (NUGGET, 'SpecialPowerNugget'): (TODO, '未覆盖的字段/自制写法；六个原版武器按消费者分组守恒登记，不借已测位值晋升身份或索敌；见work/re/c_spnclosure_report.md'),
+    (NUGGET, 'SpecialPowerNugget:变装消费者'): (GUESSED, '2用量：间谍/迅雷直接命中DISGUISED位及INFANTRY/VEHICLE/恐怖机器人排除已测；engine_spndisguise/spnspyx/spnspyex/spntrans/spntrfilter a均1111/1110/1110/1111，tests/test_special_power_nugget.py按名回放；gap：身份/外观/索敌/换目标/取消，迅雷展开时序strict xfail，即时位应用INFERRED；engine_spnrelations a间谍/迅雷各Friend与Neutral四路s6-15全1111，独立命中且无脚本变装位；身份/时序缺口见work/re/c_spnclosure_report.md，不登记完整消费者'),
+    (NUGGET, 'SpecialPowerNugget:轰炸消费者'): (GUESSED, '1用量，暂停：engine_spnbombnative a原版/删SPN/合成/合成删SPN为1010/1110/1110/1110；OCL活动消费者未实现，具名回放strict xfail；需要原版与合成宿主派发观测，work/re/c_spnbomb_report.md'),
+    (NUGGET, 'SpecialPowerNugget:干扰消费者'): (GUESSED, '1用量，暂停：engine_spnscr a保留/删除SPN最终同80%，活动消费者未闭合；状态到期与攻击订单恢复已另有具名回放，筛选仅隔离接口；需要活动派发和状态观测，不登记完整消费者，work/re/c_spnclosure_report.md'),
+    (NUGGET, 'SpecialPowerNugget:附着dummy消费者'): (TODO, '1用量，暂停：JapanScoutInfantryAttachWeaponWarhead引用OBJECT dummy模板及原版宿主；缺独立派发/附着读数，不能按Dummy名字推定无操作；需Attach模块观测，work/re/c_spnclosure_report.md'),
     (MODULE, 'Behaviors/OCLSpecialPower'): (BENCHED, '总控第四切片按已测边界收尾：tests/test_simocl.py具名回放engine_oclcurtain/engine_oclnone/engine_oclwrong a，铁幕宿主匹配模块才保护并记事件，删除/改绑模块无保护/事件；engine_oclempty a空声明无保护且事件1；engine_oclcopy a完整原版载荷改名仍保护100/100且事件1；engine_oclzero a仅外层Count=0无保护且事件1。只闭合铁幕派发和零数量不保护边界，未测生成数量/通用生成；其他非零数量/载荷/超武、位置/过滤、按钮/冷却仍gap，继承、等价空声明及格式等价INFERRED，不表示全模块全字段验证；见 work/re/e_ocl_e65.md'),
     (MODULE, 'Behaviors/ActivateModuleSpecialPower'): (TODO, '仅在SpecialPowerNugget处理器中识别并拒绝，未实现模块技能执行'),
     (NUGGET, 'TintObjectsNugget'): (NA, '纯表现：Color及Pre/Sustained/PostColorTime、Frequency/Amplitude仅控制染色动画；engine_tint pair实测2/90/2/90，独立DamageNugget解释全部伤害，test_simbench_c重放；不声称像素已验证'),
@@ -560,6 +566,32 @@ def nugget_form_slice(ntype, forms):
     """
     if not forms:
         return ''
+    if ntype == 'SpecialPowerNugget':
+        # Only the two exact retail upgrade forms have a closed consumer
+        # boundary. Other native consumers keep their own unresolved weight.
+        paint = {
+            'SpecialPower_PaintTargetTrigger': 'ForbiddenUpgrade',
+            'SpecialPower_PaintTargetTrigger_HighTechnology': 'RequiredUpgrade',
+        }
+        def paint_form(n):
+            power = n.get('SpecialPowerTemplate')
+            return (power in paint and set(n.attrib) <= {'id', 'SpecialPowerTemplate'}
+                    and len(n) == 1 and not list(n[0]) and not n[0].attrib
+                    and n[0].tag.rsplit('}', 1)[-1] == paint[power]
+                    and (n[0].text or '').strip() == 'Upgrade_AlliedHighTechnology')
+        if (len(forms) == 2 and all(paint_form(n) for n in forms)
+                and {n.get('SpecialPowerTemplate') for n in forms} == set(paint)):
+            return ':涂靶升级门槛'
+        powers = {n.get('SpecialPowerTemplate') for n in forms}
+        for allowed, suffix in [
+            ({'SpecialPower_InfantryDisguise', 'SpecialPower_JapanLightTransportVehicleDisguise'}, ':变装消费者'),
+            ({'SpecialPowerBombingRun'}, ':轰炸消费者'),
+            ({'SpecialPower_WeaponScrambler'}, ':干扰消费者'),
+            ({'SpecialPower_JapanScoutInfantryAttachWeaponDummy'}, ':附着dummy消费者'),
+        ]:
+            if powers <= allowed:
+                return suffix
+        return ''
     if ntype == 'MetaImpactNugget':
         allowed = {'id', 'ShockWaveAmount', 'ShockWaveRadius', 'ShockWaveZMult', 'ShockWaveTaperOff'}
         def measured_filter(n):
@@ -592,6 +624,7 @@ def nugget_form_slice(ntype, forms):
 
 
 NUGGET_SCOPES = {
+    'SpecialPowerNugget:涂靶升级门槛': '仅原版守护者普通/高科技两种升级门槛与空PaintTarget消费者边界；engine_spnret a保留/删除SPN晚段74/69/74/69%血，增伤来自伴随AttributeModifierNugget。非通用技能执行；原版涂靶开关/持续光束/重复开火未测，其他消费者另列gap',
     'MetaImpactNugget:普通无延迟显式Z': '仅普通弹头碰撞事件→默认Physics轨迹；engine_knock_probe land/late邻人5帧落(2380,3740)、目标99%/邻人100%。到达帧为台上输入，非完整V4曲线弹回放；直击方向/落点网格/选人仍INFERRED',
     'MetaImpactNugget:镰刀敌我筛选': '仅镰刀无延迟筛选写法的发射者敌我关系→默认Physics；engine_knock_relation a健康99/100/99/100，ENEMIES仅敌/ALLIES仅友，逐帧位置回放。碰撞帧/爆心由台上输入；倒地状态及NO_COLLISIONS/非步兵拒绝未单独上台，Physics状态映射INFERRED；不覆盖原版落地入口、延迟、Arc',
     'MetaImpactNugget:省略Z默认值': '仅普通无延迟弹头省略ShockWaveZMult→SDK默认1及默认Physics轨迹；engine_knock_z a高度93邻人14帧落(2420,3740)、目标99%/邻人100%。碰撞时刻/爆心为台上输入；直击噪声方向/网格/选人仍INFERRED，完整曲线弹/坡地/筛选未对拍',
@@ -606,7 +639,7 @@ def nugget_items():
     code = simcoverage.sim_code()
     items = []
     for ntype, v in retailmodules.weapon_census().items():
-        if ntype in ('MetaImpactNugget', 'InformTargetNugget'):
+        if ntype in ('MetaImpactNugget', 'InformTargetNugget', 'SpecialPowerNugget'):
             groups = collections.defaultdict(list)
             st = retailmodules._load()
             for k, (name, _, _) in st['weapons'].items():

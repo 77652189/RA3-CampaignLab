@@ -103,19 +103,65 @@ def test_special_power_nugget_retail_painter_consumer():
     """engine_spnret a: retail modifier gates, SPN kept/removed, early/late HP."""
     import build
     import sim
-    from checks.engine_spnret import VALUES
     m, t, _ = build.resolve('engine_spnret', 'a')
     e = sim.Sim(m, t)
     e.shot_clock = True
     result = e.run(16)
-    assert tuple(result.series[-1][1]) == VALUES
-    assert all(tuple(row) == VALUES for sec, row in result.series if sec >= 14)
+    measured = (1001084074, 1011079069, 1001084074, 1011079069)
+    assert tuple(result.series[-1][1]) == measured
+    assert all(tuple(row) == measured for sec, row in result.series if sec >= 14)
     assert (sim.GAP_WEAPON, 'SpecialPowerNugget') not in e.unmodeled
     assert (sim.GAP_WEAPON, 'AttributeModifierNugget') not in e.unmodeled
     import simunits
     weapon = simunits._fight_data()['weapons']['AlliedAntiVehicleVehicleTech1TargetPainter']
     assert [(p['required_upgrade'], p['forbidden_upgrade']) for p in weapon['hit_modifiers']] == [
         ('', 'Upgrade_AlliedHighTechnology'), ('Upgrade_AlliedHighTechnology', '')]
+
+
+def test_special_power_nugget_closure_conserves_retail_consumers():
+    """Six native weapons are counted once; only the closed painter is benched."""
+    import inventory
+    import retailmodules
+    import xml.etree.ElementTree as ET
+    rows = [r for r in inventory.apply_registers(inventory.nugget_items())
+            if r['name'].split(':')[0] == 'SpecialPowerNugget']
+    names = [w for r in rows for w in r['weapon_ids']]
+    assert len(names) == len(set(names)) == 6
+    assert sum(r['uses'] for r in rows) == retailmodules.weapon_census()['SpecialPowerNugget']['weapons']
+    done = [r for r in rows if r['state'] == inventory.BENCHED]
+    assert len(done) == 1
+    assert done[0]['weapon_ids'] == ['AlliedAntiVehicleVehicleTech1TargetPainter']
+    assert sorted(r['uses'] for r in rows if r['state'] != inventory.BENCHED) == [1, 1, 1, 2]
+    forms = [n for n in retailmodules.effective_weapon_forms(done[0]['weapon_ids'][0])
+             if retailmodules._tag(n) == 'SpecialPowerNugget']
+    assert inventory.nugget_form_slice('SpecialPowerNugget', forms) == ':涂靶升级门槛'
+    # An unknown field, missing gate, or mixed inheritance must lose promotion.
+    for mutation in ('field', 'gate', 'extra'):
+        changed = [ET.fromstring(ET.tostring(n)) for n in forms]
+        if mutation == 'field':
+            changed[0].set('FutureField', '1')
+        elif mutation == 'gate':
+            changed[0].remove(changed[0][0])
+        else:
+            changed.append(ET.fromstring('<SpecialPowerNugget SpecialPowerTemplate="Other"/>'))
+        assert inventory.nugget_form_slice('SpecialPowerNugget', changed) == ''
+
+
+def test_native_disguise_friend_neutral_bench_replay():
+    """engine_spnrelations a: spy/transport x distinct Friend/Neutral targets.
+
+    Every native payload has its own damage latch; no scripted DISGUISED.
+    Raw readings and remaining consumer gaps: work/re/c_spnclosure_report.md.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_spnrelations', 'a')
+    e = sim.Sim(m, t)
+    e.shot_clock = True
+    result = e.run(14)
+    measured = (1111, 1111, 1111, 1111)
+    assert tuple(result.series[-1][1]) == measured
+    assert all(tuple(row) == measured for sec, row in result.series if sec >= 12)
 
 
 def test_special_power_nugget_retail_active_consumer_is_not_silently_ignored():
