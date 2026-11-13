@@ -334,7 +334,9 @@ NOTES = {
     '微操/AIMicroManagerData.Crush': (GUESSED,
         'engine_aicrush:aicrush1 台上s28–33守军0、坦克4；按名回放存活正常断言，清零strict xfail；'
         '模型守军11/9/9/9/8/8，首目标活着即被重选、未接触；首move终点不挪不代表后续均不挪；'
-        '追踪/选敌及移动消费者仍gap，见work/re/e109_crush.md；不晋升'),
+        'D86 aicrush1t碾压段aim全0，dest在f350/410/440变化；模型f230后首世界样本尚无远厂goal，前置已失配；'
+        'tests/test_crush_observation.py按名回放，前置与首目的地strict xfail；'
+        '追踪/选敌及移动仍gap，见work/re/e113_crush.md、e109_crush.md；不晋升'),
     '微操/AIMicroManagerData.CrushPreference': (GUESSED,
         '同Crush，开关/低偏好对照守军至少8的按名回放保留；完整清零strict xfail；'
         '不把活目标重选解释为死亡后等待，见work/re/e109_crush.md；不晋升'),
