@@ -534,3 +534,22 @@ def test_native_transport_disguise_vehicle_filter_bench_replay():
     assert tuple(result.series[-1][1]) == measured
     assert all(tuple(row) == measured for sec, row in result.series if sec >= 12)
     assert (sim.GAP_WEAPON, 'SpecialPowerNugget') not in e.unmodeled
+
+
+def test_native_spy_cross_kind_disguise_bench_replay():
+    """engine_spnspyx a: infantry/vehicle hits, removed SPN, script control.
+
+    Independent measurements: work/re/c_spnspyx_report.md.
+    DISGUISED alone does not establish copied identity or enemy acquisition.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_spnspyx', 'a')
+    e = sim.Sim(m, t)
+    e.shot_clock = True
+    result = e.run(14)
+    measured = (1111, 1110, 1110, 1111)
+    assert tuple(result.series[-1][1]) == measured
+    assert all(tuple(row) == measured for sec, row in result.series if sec >= 12)
+    assert (sim.GAP_WEAPON, 'SpecialPowerNugget') not in e.unmodeled
+    assert (sim.GAP_WEAPON, 'SpecialDisguiseUpdate') in e.unmodeled
