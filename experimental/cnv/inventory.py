@@ -257,6 +257,9 @@ BENCHED_TESTS = {
 # (part, name) -> (state, why): where the name rule above is wrong (a module read under another name ...)
 _NOT_IN_SIM = '已核（11-08）：模拟器没有这个效果'
 NOTES = {
+    (MODULE, 'Behaviors/AutoDepositUpdate'): (GUESSED, 'E146 engine_objectbatch:a/b：原版SwissBank克隆有/无模块的钱包，on逐次+5至60、12秒删除后稳定，off全0；具名测试按实际60/0回放。只量已有归属产钱，不晋升整项；占领奖金/驻军/上限/修理仍gap；见work/re/e146_objectbatch.md'),
+    (MODULE, 'Behaviors/HealCrateCollide'): (TODO, 'E146 engine_objectbatch:a/b有/无模块均未治疗，步兵始终50/50；b中立箱且到位成立，仍无效，两轮后暂停；不把负结果登记成效果已对拍。SecretFile原XML含当前schema不接受的属性，未冒充普通HealCrate等价；碰撞派发前置待查；见work/re/e146_objectbatch.md'),
+    (MODULE, 'Behaviors/LoseHealthUpdate'): (TODO, 'E146 engine_objectbatch:a/b：原船完整模块移植480HP坦克，HealthTrigger=101%/0%均无耗血，两路100/100；b已确认toggle/铁幕状态成立。两轮后暂停，移植激活资格待查，未推猜测实现、不晋升整项；见work/re/e146_objectbatch.md'),
     (MODULE, 'Behaviors/CommandSetUpgrade'): (GUESSED, 'E145单图engine_modulebatch:a：空初始菜单的兵营，授Tech2前产物0/0、授后有/无模块产物1/0。菜单切换解析已有；整链路具名回放strict xfail：生产层factories按未持升级的初始菜单识别工厂，故模型仍0/0，需B接口修复。未晋升整项；见work/re/e145_modulebatch.md'),
     (MODULE, 'Behaviors/MonitorSpecialPowerTimerUpdate'): (TODO, 'E145单图engine_modulebatch:a：原版质子炮宿主有/无模块，设技能就绪后SPECIALPOWER1_READY为1/0，设冷却后0/0。模型倒计时脚本入口和模块就绪输出仍gap；具名回放strict xfail，需A倒计时接口，不按纯表现排除；见work/re/e145_modulebatch.md'),
     (MODULE, 'Behaviors/AttackAssistResponseBehavior'): (TODO, 'E144派发诊断：engine_attackassist a两次准备运行均进关前崩溃，无台上读数；最终原版光谱塔宿主配方已修本地模块引用及结构武器掩码，尚未上台，暂停追加运行直至启动原因解释。tests/test_simattackassist.py严格xfail仅保留待验预测，不作已对拍证据；响应武器派发/原版增伤/时序均gap，模型未改；见work/re/e144_attackassist.md'),
