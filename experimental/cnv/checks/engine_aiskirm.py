@@ -993,7 +993,15 @@ def mt(m):
     aiskmt20 (TECH 20 / 22, six plants, watched 600 s; bench 11-12 aiskmt20__mt.json, PASS; 20 / 21 compiled a map
     stream the game crashed on, see the build list): 科技帧 stops at 2256 again, 科技楼 1 at s158 -- the very
     frame of 0 / 1 (MinTime x15 = 300 s is out). MinTime <= 20 all start at f2256, 150 / 200 never: as if the
-    entry were judged once, near f2256, and a t < MinTime then never came back (next: 140 / 142 against 160 / 162)."""
+    entry were judged once, near f2256, and a t < MinTime then never came back (next: 140 / 142 against 160 / 162).
+    aiskmt14 / aiskmt16 (140 / 142, 160 / 162, six plants, 600 s; aiskmt14__mt.json / aiskmt16__mt.json, PASS): both
+    stop at 科技帧 5857 (3601 frames ~ 240 s after 2256). aiskmt15 (150 / 152) and aiskmt40 (400 / 402), six plants
+    (bench 11-13 aiskmt15__mt.json / aiskmt40__mt.json, PASS): BOTH stop at 5857 too, though 5857 frames after the
+    wake is ~390 s < 400. So the TECH entry starts at one of two frames, 2256 (MinTime <= 20) or 5857 (140 .. 400);
+    a gate "seconds since the wake >= MinTime" fits neither 140 (no at 2256, ~150 s) nor 400 (yes at 5857, ~390 s).
+    aiskmt99 (1000 / 1002, six plants; aiskmt99__mt.json, PASS): 5857 again, 科技楼 1 -- the second look (~240 s
+    after the first) builds whatever MinTime says (INFERRED: MinTime is checked at the first look only, or that
+    later look is a path that does not read it). Between 20 and 140 the first-look threshold is not measured."""
     t = Test()
     s1 = m.player('s1')
     if m.facts['min time'] is None and m.facts.get('const') == 'AlliedTechStructure':   # aiskmtk: CONSTANT tech
@@ -1081,6 +1089,9 @@ CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j
           'aiskmt20': {'mt': mt},
           'aiskmt14': {'mt': mt},
           'aiskmt16': {'mt': mt},
+          'aiskmt15': {'mt': mt},
+          'aiskmt40': {'mt': mt},
+          'aiskmt99': {'mt': mt},
           'aiskmtc': {'mt': mt},
           'aiskmtt': {'mt': mt},
           'aiskmtk': {'mt': mt},

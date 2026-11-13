@@ -551,6 +551,9 @@ MISSION = {'aiskirm': mission, 'aiskirmc': lambda: mission(observe=True),
            # (20 / 21 compiled a map stream whose hash began d1 fb: the game took it for RefPack and crashed)
            'aiskmt14': lambda: mission('CampAISkMT14', mintime=(140, 142), power_more=True, mt_secs=600.0),
            'aiskmt16': lambda: mission('CampAISkMT16', mintime=(160, 162), power_more=True, mt_secs=600.0),
+           'aiskmt15': lambda: mission('CampAISkMT15', mintime=(150, 152), power_more=True, mt_secs=600.0),  # G2e
+           'aiskmt40': lambda: mission('CampAISkMT40', mintime=(400, 402), power_more=True, mt_secs=780.0),  # G2e
+           'aiskmt99': lambda: mission('CampAISkMT99', mintime=(1000, 1002), power_more=True, mt_secs=780.0),
            'aiskmtc': lambda: mission('CampAISkMTC', mintime=(None, None)),          # check mt: CONSTANT 300 tower
            'aiskmtt': lambda: mission('CampAISkMTT', mintime=(200, 201, MT_CONST[0])),   # check mt: TECH 200/201 tower
            'aiskmtk': lambda: mission('CampAISkMTK', mintime=(None, None, MT_TECH, MT_TECH)),   # mt: CONSTANT 300 tech
