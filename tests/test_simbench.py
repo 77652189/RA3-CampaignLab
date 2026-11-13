@@ -626,16 +626,19 @@ def test_power_on_the_coil_kills_one_tank_per_125_frames():
     assert 100 <= lost[1] - lost[0] <= 150
 
 
-def test_shot_clock_the_coil_shoots_every_31_s_two_shots_a_tank(monkeypatch):
+def test_shot_clock_the_coil_shoots_every_31_s_one_shot_a_tank(monkeypatch):
     """Engine line C round 2: with Sim.shot_clock the coil (SovietBaseDefenseAdvancedTeslaGun: PreAttack 2.5 +
-    Firing 0.5 + Reload 0.1 = 3.1 s, Damage 450 against a 480-health tank) loses a tank every 2 x 48 = 96 frames (round 6: the weapon's own frames, engine_clip)
-    (the clock works). The bench's is ~125 (~4.15 s a shot): ~1 s a shot the weapon data does not say, not found --
-    why the clock stays off by default and the xfail above stands. Frames 100-150 when found."""
+    Firing 0.5 + Reload 0.1 = 3.1 s, Damage 450 against a 480-health tank) loses a tank every 48 frames (round 6: the weapon's own frames, engine_clip)
+    (the clock works): the tanks face north with the coil behind them, 450 x Rear 110 % = 495 (engine line A round
+    186, Sim.flank_of) -- one tank a shot, as on the bench (checks/engine_powerdef.py). The bench's interval is ~125
+    (~4.15 s a shot): ~1 s a shot the weapon data does not say, not found -- why the clock stays off by default and
+    the xfail above stands. Frames 100-150 when found."""
     import sim
     monkeypatch.setattr(sim.Sim, 'shot_clock', True)
     s, rows = _powerdef('on')
     lost = [r['帧数'] for i, r in enumerate(rows) if i and r['坦克'] < rows[i - 1]['坦克']]
-    assert len(lost) >= 4 and all(90 <= b - a <= 110 for a, b in zip(lost, lost[1:]))     # rows are 15 frames apart
+    assert all(rows[i - 1]['坦克'] - r['坦克'] == 1 for i, r in enumerate(rows) if i and r['坦克'] < rows[i - 1]['坦克'])
+    assert len(lost) >= 4 and all(45 <= b - a <= 60 for a, b in zip(lost, lost[1:]))      # rows are 15 frames apart
     coil = next(b for b in s.living() if b.template == 'SovietBaseDefenseAdvanced')
     assert coil.weapons[0]['sched'] == [round(38 / 15, 4)] and abs(coil.weapons[0]['cycle'] - 48 / 15) < 1e-9
 

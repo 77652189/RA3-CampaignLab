@@ -4082,7 +4082,8 @@ class Sim:
                             self.gap(GAP_WEAPON, 'SuppressionNugget',
                                      '连续DPS没有逐发命中事件；压制贡献仅在离散命中时钟中模拟')
                         self.firing.append((pick, w['dps'] * a.dealt * (1.0 if w['type'] == 'UNRESISTABLE' else
-                                            simunits.percent(pick.armor, w['type']) / 100.0 * pick.taken), a))
+                                            simunits.percent(pick.armor, w['type']) / 100.0 * pick.taken)
+                                            * self.flank_of(pick, a), a))
                 if w.get('sdps') and not self.shot_clock:
                     self.chilling.append((pick, w['sdps'] * a.dealt, a))
                 fired = True
@@ -4273,6 +4274,12 @@ class Sim:
         if behind:
             self.gap(GAP_WEAPON, 'InformTargetNugget', '历史伤害入口未接；当前只提供来弹预计伤害')
         return sum(r[2] for r in rows if r[3] <= now + math.ceil(ahead * simunits.LIFE_FPS)) if ahead > 0 else 0.0
+
+    def flank_of(self, victim, attacker):
+        """The side / rear scalar of a direct hit (simunits.flank) by where the attacker stands as it fires
+        (docs/engine/weapons.md 4, bench engine_shot flank 40 / 40 / 42 / 44 %), UNRESISTABLE too (bench
+        engine_inform_ai: the side-facing miners at 68 % after a 150 UNRESISTABLE shell of their 500)."""
+        return simunits.flank(victim.armor, victim.angle, attacker.x - victim.x, attacker.y - victim.y)
 
     def inform_launch(self, target, attacker, weapon, count=1):
         """Ordinary launch notification. INFERRED: centre positions, time scale 1.
@@ -4556,7 +4563,9 @@ class Sim:
                             # distance steps before impact. No fitted per-distance delays.
                             frames = int(math.hypot(t.x - by.x, t.y - by.y) / speed)
                             armor = 1.0 if w['type'] == 'UNRESISTABLE' else simunits.percent(t.armor, w['type']) / 100 * t.taken
-                            # GUESSED until dynamic-armor bench: snapshot scalars at launch.
+                            # GUESSED until dynamic-armor bench: snapshot scalars at launch (the flank too:
+                            # bench engine_inform_ai, the side-facing miners' 68 %, from the launch).
+                            armor *= self.flank_of(t, by)
                             damage = n * w['dmg'] * by.dealt * armor
                             if frames:
                                 self.queue_projectile_hit(self.frame_now() + frames, t, damage, by, w)
@@ -4622,14 +4631,17 @@ class Sim:
                                     victims.append(candidate)
                     for victim in victims:
                         h = hurt.setdefault(id(victim), [victim, 0.0, by])
-                        armor = 1.0 if w['type'] == 'UNRESISTABLE' else simunits.percent(victim.armor, w['type']) / 100.0 * victim.taken
+                        side = self.flank_of(victim, by)
+                        armor = (1.0 if w['type'] == 'UNRESISTABLE' else
+                                 simunits.percent(victim.armor, w['type']) / 100.0 * victim.taken) * side
                         h[1] += n * w['dmg'] * by.dealt * armor
                         if w.get('leech_percent'):
                             leech_events.setdefault(id(victim), []).append((by, 'maximum', w['leech_percent'], 0.0))
                         if w.get('leech_health'):
                             leech_events.setdefault(id(victim), []).append((by, 'damage', w['leech_health'], n * w['dmg'] * by.dealt * armor))
                         for fraction, damage_type in w.get('strip_max_health', []):
-                            scalar = 1.0 if damage_type == 'UNRESISTABLE' else simunits.percent(victim.armor, damage_type) / 100 * victim.taken
+                            scalar = (1.0 if damage_type == 'UNRESISTABLE' else       # the flank: INFERRED
+                                      simunits.percent(victim.armor, damage_type) / 100 * victim.taken) * side
                             h[1] += n * victim.max_hp * fraction * by.dealt * scalar
                         h[2] = by
                     for effect in w.get('lift', []):

@@ -382,4 +382,5 @@ def test_inform_normal_fire_records_launch_and_deletes_on_arrival(check_name, mo
     clock[0] = arrival
     e.deal(1/15)
     assert all(not rows for rows in e.incoming.values())
-    assert [e.body('Dispatch ' + lane).hp for lane in ('base', 'high', 'removed')] == [350, 350, 450]
+    # the miners take the shell side-on: x 1.05 (Sim.flank_of), the bench's 68 / 68 / 89 % (checks/engine_inform_ai.py)
+    assert [e.body('Dispatch ' + lane).hp for lane in ('base', 'high', 'removed')] == [342.5, 342.5, 447.5]

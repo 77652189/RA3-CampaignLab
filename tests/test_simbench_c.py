@@ -1188,3 +1188,19 @@ def test_toggle_status_a_press_moves_to_the_next_state_unpack_delays_it_and_a_he
     for which, rows in bench.items():
         n, *got = _sim_run('engine_toggle', which, 12.0).series[-1][1]
         assert n > 150 and tuple(got) == rows(n), (which, n, got)
+
+
+# ---- ArmorTemplate SideDamageScalar / RearDamageScalar on direct fire (engine line A round 186, Sim.flank_of):
+# bench 11-05 (round 33, checks/engine_shot.py docstring; docs/engine/weapons.md 4), percent lost by the first hit.
+@pytest.mark.parametrize('check, bench', [('flank', [40, 40, 42, 44]), ('armor', [10, 5, 15, 1])])
+def test_shot_a_direct_hit_takes_the_victim_s_side_and_rear_scalar_by_where_the_shooter_stands(check, bench):
+    """engine_shot flank: 4000 EXPLOSIVE from 0 / 40 / 90 / 180 degrees off a south-facing Hammer (BaseTankArmor
+    EXPLOSIVE 100, Side 105, Rear 110) -- front, front, side, rear; armor (all front) holds the plain percents."""
+    import build
+    import sim
+    from checks.engine_shot import SHORT
+    m, t, _ = build.resolve('engine_shot', check)
+    s = sim.Sim(m, t)
+    s.shot_clock = True                      # discrete hits: only the first lands within SHORT
+    s.run(SHORT)
+    assert s.series[-1][1] == bench, (check, s.series[-1])
