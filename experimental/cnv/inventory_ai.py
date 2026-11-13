@@ -121,6 +121,15 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    **{f'启发条件/{k}': (GUESSED,
+        'C engine_aitechshare a：四座开局油井、活跃拥有者两方，aitechlow/high自有1/2；'
+        's40低于75/高于75/低于125三组在家人数均4/0/4，原预测0/4/0与4/0/0。'
+        '地图另有Soviet_2..6空玩家，倾向引擎玩家数包含空槽；'
+        'tests/test_simai_techshare_c.py按名回放两组实测，门控两strict xfail、所有权控制独立断言；'
+        '尚缺同帧own/total/player-count和状态权重，保留gap，不按结果倒推公式；'
+        '见work/re/c_techshare_report.md、handoff-c.md')
+       for k in ('TechBuildingShareHeuristic', 'TechBuildingShareHeuristic.Above',
+                 'TechBuildingShareHeuristic.PercentOfFairShare')},
     '微操/AIMicroManagerData.TimeToKeepTargetMin': (BENCHED,
         'E123 aikeeptwo:a：Min=Max=2秒，score分配f495写until525，f503/519 hold，'
         'f527 go重写until557；aiegon:a零保持f375/383均go。'
