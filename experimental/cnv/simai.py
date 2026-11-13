@@ -29,7 +29,7 @@ every frame (the simulator moves in DT ticks; the AI is ticked for each frame of
               the last enemy with a structure, both base objects by states.base_object, spots by states.spot on
               the simulator's grids, a route for the test template's surface; cached PATH_EVERY), 'harvesters',
               'money', 'opponent funds' (the first enemy's), 'income' (each side's harvesters while a refinery
-              stands -- INFERRED), 'beacons' (none), 'power advantage' (tactics'
+              stands -- INFERRED), 'beacons' (none), 'tech buildings' (SimAI.tech_buildings), 'power advantage' (tactics'
               rule over the whole armies -- INFERRED); the other strategic facts stay unmodelled (states.strategic).
   blocks      A's TargetsBlock + TacticsBlock (orders: 'move' / 'attack-move' -> Sim.order_move, 'enter' -> Garrisons;
               houses / defenses = Brain.garrisons, full ones listed too), DefenseBlock (one
@@ -436,6 +436,7 @@ class Brain:
                'money': lambda account: self.sim.money.get(self.player, 0),          # one account in the simulator
                'beacons': set(),                                                     # no beacons in the simulator
                'power advantage': self.power_advantage,
+               'tech buildings': self.tech_buildings(),
                'attacked': self.attacked, 'energy': self.energy,
                # the private AIPlayer.available: no income -> the budget share pays nothing (bench engine_aitower e).
                # A refinery counts: the retail one brings its own miner (SpawnBehavior SpawnOnUnpack), which the
@@ -456,6 +457,17 @@ class Brain:
         if not any('REFINERY' in b.kinds for b in mine):
             return 0
         return sum('HARVESTER' in b.kinds for b in mine)
+
+    def tech_buildings(self):
+        """ctx 'tech buildings' (TechBuildingShareHeuristic, read 0x8ad950, work/re/l4_states.md): (own, all, players).
+        own = the player's registered set 0xc, all = the global set 2; by the SetId enum order (SDK xsd
+        RegisteredObjectSetId: 0xa STRUCTURES, 0xd UNITS, 0x14 HARVESTERS as read elsewhere) those are
+        PLAYER_NEUTRAL_TECH and NEUTRAL_TECH, both KindOf CAPTUREFLAG or NEUTRAL_TECH (GlobalData
+        RegisteredObjectSets.xml; the player's one SAME_PLAYER). players = 0x865450(0), not read: INFERRED the
+        players owning something alive, the civilians not counted (it only matters once the player owns one)."""
+        tech = [b for b in self.living() if {'CAPTUREFLAG', 'NEUTRAL_TECH'} & set(b.kinds)]
+        players = {b.owner for b in self.living() if b.owner != sim.CIV and not b.scenery}
+        return sum(b.owner == self.player for b in tech), len(tech), len(players)
 
     def power_advantage(self, own_kindof, enemy_kindof, own_defenses, enemy_defenses):
         """ctx 'power advantage' (PowerAdvantageHeuristic, read, work/re/l4_states.md): (the enemy's time to kill all of ours,

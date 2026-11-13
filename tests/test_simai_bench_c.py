@@ -570,3 +570,22 @@ def test_never_release_engine_members_and_model_replay(build):
         destination = 'CNVStateTF' if frame == 301 or never else 'CNVReleaseAttack'
         assert observed[destination] == original
         assert observed['CNVReleaseAttack' if destination == 'CNVStateTF' else 'CNVStateTF'] == set()
+
+
+def test_capture_tech_opens_with_the_cleanup_on_the_tech_building_share():
+    """aiskirmc:m (C's live log, tests/fixtures/c_release_teams/aiskirm_m.txt): AlliedCaptureTech_MEDIUM's team is
+    absent at f1951 and present (empty, inactive) at f1966, the same sample as BalancedCleanup's first team. Its
+    TechBuildingShare (100%, Above false) reads simai's 'tech buildings' (own, all, players): the map's one
+    neutral OilDerrick (KindOf NEUTRAL_TECH) owned by nobody -> share 0 -> on. Without the fact the state never
+    opened (A round 191)."""
+    w = simai.run('aiskirmc', 'm', until=132, lib=simai.model()['xmldata'].Library())
+    brain, = w.brains.values()
+    own, total, players = brain.facts()['tech buildings']
+    assert (own, total) == (0, 1) and players >= 2
+    made = {}
+    for frame, what, key, *_ in brain.ai.teams.log:
+        if what == 'team':
+            made.setdefault(key[0], frame)
+    assert 'AlliedCaptureTech_MEDIUM' in made
+    assert made['AlliedCaptureTech_MEDIUM'] == made['BalancedCleanup']
+    assert 1951 < made['AlliedCaptureTech_MEDIUM'] <= 1966
