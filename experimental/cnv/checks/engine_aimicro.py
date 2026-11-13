@@ -238,3 +238,17 @@ CHECKS['aimicengoff'] = {'r': lambda m: probe_built(m, 'aimicengoff'),
                          'w': lambda m: probe_built(m, 'aimicengoff', where=True)}
 CHECKS['aimicspon']['w'] = lambda m: probe_built(m, 'aimicspon', where=True)
 CHECKS['aimicnear']['c'] = lambda m: probe(m, press=True)
+
+
+def probe_engage_clock(m):
+    """No scripted charge: latch first AI power and the live warrior count.
+
+    First charge is a measurement, not an invented prediction threshold. Both
+    sides must produce two warriors and charge before the 55-second deadline.
+    Initial movement replay is tested separately; work/re/e107_engage_clock.md.
+    """
+    return probe_update_time(m)
+
+
+CHECKS['aiegon'] = {'a': probe_engage_clock}
+CHECKS['aiegoff'] = {'a': probe_engage_clock}

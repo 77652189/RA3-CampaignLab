@@ -286,6 +286,22 @@ def update_time(name, seconds, observe=False):
     return m
 
 
+def engage_clock(name, enabled):
+    """Engage pair on the repaired CNVTeams observer clock (MinFrames=15).
+
+    Identical to the observed 0.5s micro-update probe except EngageHostileTargets.
+    The passive carrier is retained in both sides; equivalence to a carrier-free
+    mission remains a gap. Evidence: work/re/e107_engage_clock.md.
+    """
+    m = update_time(name, 0.5, observe=True)
+    if not enabled:
+        m.assets = [(path, text.replace('EngageHostileTargets="true"',
+                                       'EngageHostileTargets="false"'), key)
+                    for path, text, key in m.assets]
+    m.facts['engage hostile'] = float(enabled)
+    return m
+
+
 def dodge(name, enabled):
     """DodgeThreats only: recruited warriors fighting the same immortal conscripts.
 
@@ -347,7 +363,9 @@ def ignore_distance(name, distance, observe=False):
     return m
 
 
-MISSION = {'aimicupfast': lambda: update_time('CampMicUpFast', 0.5),
+MISSION = {'aiegon': lambda: engage_clock('CampAIEgOn', True),
+           'aiegoff': lambda: engage_clock('CampAIEgOff', False),
+           'aimicupfast': lambda: update_time('CampMicUpFast', 0.5),
            'aimicupslow': lambda: update_time('CampMicUpSlow', 4),
            'aimicupft': lambda: update_time('CampMicObsFast', 0.5, observe=True),
            'aimicupst': lambda: update_time('CampMicObsSlow', 4, observe=True),
