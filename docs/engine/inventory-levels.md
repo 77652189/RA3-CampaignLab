@@ -6,7 +6,7 @@
 
 | 部分 | 已对拍 | 推断 | 未做 |
 |---|---|---|---|
-| AI | 121 | 119 | 117 |
+| AI | 121 | 113 | 123 |
 | 脚本动作 | 11 | 0 | 0 |
 | 脚本条件 | 1 | 0 | 0 |
 
@@ -14,7 +14,9 @@
 
 | 状态 | 部分 | 项 | 原版用量 | 关 | 说明 |
 |---|---|---|---|---|---|
+| 未做 | AI | `造兵/BuildEntry.MinTime` | 34 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `人格/AIPersonalityDefinition.SkirmishPersonality` | 20 | a4 a5 a7 | AI 模型代码里没有这个名字 |
+| 未做 | AI | `人格/BaseSelection.SortOrder` | 17 | a4 a5 a7 | C以aibsold/aibsnew仅切PREFER_OLDEST/PREFER_NEWEST，两组s20起东4/崖0/实体0；两个矿区不等于两个合格基地，尚缺同帧基地ID、类型、年龄与选中基地。模型仅解析并传给显式候选提供者，自动基地/候选发现仍缺；不晋升；见work/re/c_basesort_report.md |
 | 未做 | AI | `战略状态/AIStrategicStateDefinition.CannotAttackTargetReaction` | 16 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `微操/AIMicroManagerData.DodgeThreats` | 15 | a4 a5 a7 | engine_aidodge aidodgeon/aidodgeoff 原版精确打击信标开关对照；tests/test_ai_dodge.py 按名回放，开启组 strict xfail：模型无躲避消费者，simai.micro_team 缺威胁视图与移动回调（归B）；见 work/re/c_dodge_report.md；固定0.5秒反应，截图秒窗与游戏帧漂移亦留gap；未量精确时间、圆边界、过滤和多威胁，不晋升已对拍 |
 | 未做 | AI | `目标/AITargetingHeuristic.HeuristicType=Expansion` | 12 | a4 a5 a7 | C已上台：aiexpc:a东矿区4、崖矿区0、普通实体0，命令指向东矿点；模型已保留BaseSelection，增加显式候选回调和槽位点，Expansion不再回退普通实体。自动候选资格/基地发现与排序尚未证实，模型按名回放strict xfail；仅接口实现，不晋升；见 work/re/c_expansion_probe_report.md |
@@ -27,10 +29,14 @@
 | 未做 | AI | `组队招人/TeamTemplate.RequireCanAttackTarget` | 6 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `经济/AccountShare.Account=SLUSH_FUND` | 6 | a4 a5 a7 | C按名台子engine_aislush：aislush100/aislush0仅交换SLUSH_FUND与PRODUCTION份额，两组电厂均s19一座、s29两座，零份额原预测FAIL保留；开局未区分此账户。第二轮有收入无开局：aislsdef全程零炮塔，aislddef在s28/48/68造出1/2/3座，s60为2。tests/test_slush_account.py原读数及模型回放；账户余额/实际支出消费者仍gap，不以开局计数吻合晋升；见work/re/c_slush_report.md |
 | 未做 | AI | `人格/EnemyFilter.Include` | 5 | a4 a5 a7 | C按名台子engine_aienemyfilter：近处敌矿车、仅Include由HARVESTER改ENGINEER，前者s15全离家、s18目标区4辆，后者s1-65在家4/目标区0；tests/test_enemyfilter.py保留原读数及按名回放，ENGINEER回放strict xfail。实际消费者为B的状态启发式/数据解析及near接口，非C的targets.py；未实现、不晋升；见work/re/c_enemyfilter_report.md |
+| 未做 | AI | `人格/EnemyFilter.Relationship` | 5 | a4 a5 a7 | AI 模型代码里没有这个名字 |
+| 未做 | AI | `人格/EnemyFilter.Rule` | 5 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `微操/AIMicroManagerData.MinDistanceFromBaseToIgnoreTargets` | 5 | a4 a5 a7 | E103 engine_aiignore aiignzt/aiignnt：同run逻辑时钟配对，0/2000首伤397/396；f406/421零组状态8无目标、高组状态0有目标。消费者已接被动选敌、敌对可攻击及逐人分配过滤；tests/test_ai_ignore_distance.py 零组精确回放通过，高组资格/分类仍strict xfail；基地取点/精确边界/宿主等价仍gap，不晋升已对拍；见 work/re/e103_ignore_distance.md |
 | 未做 | AI | `微操/AIMicroManagerData.PassiveTargetSearchDistance` | 5 | a4 a5 a7 | E104 engine_aipassive_distance aipsdz/aipsdt/aipsds/aipsdl：0/1/200/600均f140状态6选四人旁厂，f320状态0；中心距350.3、逐兵至少324.3，微操目标不同于战术目标。两轮未出现距离分离；tests/test_ai_passive_distance.py按台名回放选择/移动/存活，精确首选时钟strict xfail；本入口未显现消费者，零值全局语义/距离基准/其他入口仍gap，暂停、不加猜测消费者、不晋升；见 work/re/e104_passive_distance.md、work/re/handoff-e.md |
 | 未做 | AI | `微操/SpecificSpecialPowerDelay.TogglePowerSubType=TOGGLE_LOCKDOWN` | 5 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `战略状态/AIStrategicStateDefinition.PathfindingCheckType=None` | 5 | a4 a5 a7 | AI 模型代码里没有这个名字 |
+| 未做 | AI | `造兵/CountAsStructureForBuildPurposesFilter.Include` | 4 | a4 a5 a7 | AI 模型代码里没有这个名字 |
+| 未做 | AI | `造兵/CountAsStructureForBuildPurposesFilter.Rule` | 4 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `人格/AIPersonalityDefinition.EmergencyManagerHandleConyardInDangerAtDifficulty` | 3 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `战术/Tactic.AestheticsManagerMinDistanceFromHarvester` | 3 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `战术/Tactic.AestheticsManagerPatrolIdleTime` | 3 | a4 a5 a7 | AI 模型代码里没有这个名字 |
@@ -138,7 +144,6 @@
 | 推断 | AI | `启发条件/PathToTargetHeuristic.LocomotorConditionToUseForTest` | 45 | a4 a5 a7 | E84 engine_aiopathcond a：同JapanAntiAirShip仅切NORMAL深水/SUPERSONIC空中；两组s22-s24均兵营1/电厂0，水组原始Island预测FAIL、空中PASS。tests/test_simai_bench_e.py按名回放实际计数通过，但不能区分条件生效与路径判定边界；C复核：旧配方Surface未显式指定，SDK移动器差异不能独立证明实际路径可达性；共享teamlog未提供路径求值或所选移动器读数，暂停重复上台，待可验证无路对照或D接口。保持gap不晋升，未改模型；见 work/re/c_pathcond_gate_report.md、e_pathcond_e84.md |
 | 推断 | AI | `战术/Tactic.Distance` | 41 | a4 a5 a7 | 专用engine_aidistance aidist250/aidist2000保留AI队、同次传送1200，仅Distance不同；s65小组圈300/900=1/1，大组0/0，存活均1；两组各5条PASS、模型末态匹配；大组实机传送前离300、传送后回900再离，模型美学轨迹strict xfail；精确边界/动态队成员仍gap，不晋升；tests/test_simai_bench_c.py；见 work/re/c_distance_report.md |
 | 推断 | AI | `战术/Tactic.UseAestheticsManager` | 40 | a4 a5 a7 | 专用engine_aiaesthetics aiaeson/aiaesoff固定Distance=2000，仅切美学开关；两组各5条PASS：on先离300、传送后回900再离，off回双圈，存活/锁存均1；tests/test_simai_bench_c.py关闭组完整轨迹已回放；探针战术附加属性现传入消费者；E108按D83实际调用回放：首次遇敌gate=0仍发，后续102次gate=0不发、两次gate=1发；完整模拟首发154对台191且漏461，选敌/成员目的地/ready仍gap、strict xfail，不晋升；tests/test_ai_aesthetics_clock.py；见 work/re/e108_aesthetics_gate.md |
-| 推断 | AI | `造兵/BuildEntry.MinTime` | 34 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过（checks/engine_aiskirm.py:mt），没有测试跑这个台子 |
 | 推断 | AI | `启发条件/IsBuildingHeuristic.KindOf` | 30 | a4 a5 a7 | E83 engine_aibuilding只测STRUCTURE空队列，无法区分KindOf匹配与忽略此字段；有效建造队列、匹配/不匹配、多个token仍gap，不晋升；见 work/re/e_building_e83.md |
 | 推断 | AI | `微操/AIMicroManagerData.AlphaStrikeTargetHealthPct` | 28 | a4 a5 a7 | engine_aialphahp 旧固定70%对照；engine_aialphaclose 独立延迟守军、仅阈值0.01/0.9不同；tests/test_simai_bench_c.py 保留读数回放，有限诊断不等于字段闭环；目标适用条件与回放差异仍gap，见 work/re/c_alpha_close_report.md |
 | 推断 | AI | `微操/AIMicroManagerData.UpdateTime` | 26 | a4 a5 a7 | engine_aimicro aimicupft/aimicupst:a 仅切微操0.5/4s，15帧宿主、D81时钟重量；台内首冲帧371/317、首活均2，末图逻辑帧872/876；tests/test_simai_bench_e.py 按名回放首活通过，精确首冲及人口峰值strict xfail；资格/更新前置状态、观测宿主人口等价仍gap；旧时钟读数不用于晋升，非固定延迟；见work/re/e102_update_clock.md，不晋升 |
@@ -146,7 +151,6 @@
 | 推断 | AI | `微操/AIMicroManagerData.EnterBaseDefensesWhenIdle` | 23 | a4 a5 a7 | engine_aibasedef aibd1 是战斗中总开关开、idle关的正例（s21起1人进炮塔）；aibd0/aibdidle 总开关均关且无人进驻，不是idle分支正例；tests/test_simai_basedef_idle.py 直接计数回放，aibd1仍strict xfail；消费者已调用，到达/炮塔存活差异待A/B接口；见 handoff-c |
 | 推断 | AI | `经济/AccountShare.Account` | 18 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/BaseSelection.PreferredNotBaseTypes` | 17 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `人格/BaseSelection.SortOrder` | 17 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/BaseSelection.PreferredBaseTypes` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/BaseSelection.SortOrder=PREFER_OLDEST` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `启发条件/ConstantHeuristic.Weight` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字 |
@@ -196,8 +200,6 @@
 | 推断 | AI | `战术/Tactic.Tactic=ExactExpansion` | 6 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `战术/Tactic.Tactic=GarrisonBuilding` | 6 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `组队招人/TeamTemplate.Priority=DEFENSE_HIGH` | 6 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `人格/EnemyFilter.Relationship` | 5 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `人格/EnemyFilter.Rule` | 5 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `微操/AIMicroManagerData.SiegeWeaponBuffer` | 5 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `微操/AIMicroManagerData.SpecialPowerDelayMaximum` | 5 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `微操/AIMicroManagerData.SpecialPowerDelayMinimum` | 5 | a4 a5 a7 | AI 模型代码里读了这个名字 |
@@ -219,8 +221,6 @@
 | 推断 | AI | `微操/AIMicroManagerData.RetreatTempVisionRangeBonus` | 4 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `微操/IgnoreTargets.Exclude` | 4 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `目标/AITargetingHeuristic.VitalObjectStatus` | 4 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `造兵/CountAsStructureForBuildPurposesFilter.Include` | 4 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `造兵/CountAsStructureForBuildPurposesFilter.Rule` | 4 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `战术/Tactic.Tactic=NullTactic` | 3 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `阵营/ArmyDefinition.Side` | 3 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/BaseSelection.SortOrder=PREFER_NEWEST` | 2 | a4 a5 a7 | AI 模型代码里读了这个名字 |
@@ -237,12 +237,12 @@
 | 推断 | AI | `人格/AIPersonalityDefinition.UnitBuilderEnemyNearbyMultiplier` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/AIPersonalityDefinition.UnitBuilderOverallDefensivePreference` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/DefaultTacticHomeBaseCriteria.PreferredNotBaseTypes` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `人格/DefaultTacticHomeBaseCriteria.SortOrder` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 推断 | AI | `人格/DefaultTacticHomeBaseCriteria.SortOrder` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过（checks/engine_aiexpansion.py），没有测试跑这个台子 |
 | 推断 | AI | `人格/Filter.Exclude` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/Filter.Include` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/Filter.Rule` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/RetreatBaseCriteria.PreferredNotBaseTypes` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `人格/RetreatBaseCriteria.SortOrder` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 推断 | AI | `人格/RetreatBaseCriteria.SortOrder` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过（checks/engine_aiexpansion.py），没有测试跑这个台子 |
 | 推断 | AI | `微操/AIMicroManagerData.IsHarvesterManager` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `微操/AIMicroManagerData.MaxTeamIdleDistanceChange` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `微操/AIMicroManagerData.MinTimeToKeepTempVisionRangeBonus` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字 |
