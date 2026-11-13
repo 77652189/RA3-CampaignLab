@@ -13,8 +13,10 @@ import os
 import sys
 import time
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-RUNS = os.path.join(os.environ.get('CNV_WORK', os.path.join(ROOT, 'work')), 'testbench', 'runs')
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'campaign'))
+import labpaths  # noqa: E402
+
+RUNS = os.path.join(labpaths.WORK, 'testbench', 'runs')
 
 
 def listening(since, prefix):

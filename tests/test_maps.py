@@ -148,7 +148,9 @@ def test_every_refinery_by_its_ore():
 # Benched as placed, on scenery: engine B's EnterBaseDefenses probes (missions/aibasedef_bench.py, round 66c) put two
 # turrets on a fence and a tree; moving them changes which turrets the team reaches (test_simai turret order), and the
 # bench readings were taken there. A new probe goes clear of the scenery instead of joining this list.
-ON_SCENERY_AS_BENCHED = {'aibd0', 'aibd1', 'aibdidle', 'aibdwho', 'aibdpre'}
+ON_SCENERY_AS_BENCHED = {'aibd0', 'aibd1', 'aibdidle', 'aibdwho', 'aibdpre',
+                         # C's ThreatToWater guard stands on a bush as it was benched (c_water_report.md)
+                         'aiwaterdist', 'aiwaterthreat', 'aiwaternear', 'aiwaterfar'}
 
 
 def test_nothing_a_build_places_stands_on_scenery():
