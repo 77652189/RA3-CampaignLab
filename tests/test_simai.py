@@ -251,6 +251,17 @@ def test_mission_personality_both_states_go_at_the_wake(lib):
         assert f is not None and abs((f - b.woke) - 5 * simai.FPS) <= 1.5 * simai.FPS, (tpl, f - b.woke)
 
 
+def test_enemy_targets_wait_for_the_wake(lib):
+    """aistateconstw w (bench 11-13, B round 163): aistateconst with the wake held to pass 450 (~s28) -- the tanks out
+    s33, the infantry s34-35, ~5 s after the wake again, though the states and teams run from the start (aialobsw):
+    an EnemyStructure target is not found before 'make base'."""
+    first, w = _first_out('aistateconstw', lib, until=45)
+    (b,) = w.brains.values()
+    assert abs(b.woke - 450) <= 15, b.woke
+    for tpl, f in first.items():
+        assert f is not None and abs((f - b.woke) - 5 * simai.FPS) <= 1.5 * simai.FPS, (tpl, f - b.woke)
+
+
 def test_slash_flags_switch_the_states(lib):
     """aistateslash a: scripts SET_FLAG '/CNVAIInfantry' at 20 s, '/CNVAITanks' at 60 s -- the infantry out 74 frames
     after its flag, the tanks 77 after theirs."""

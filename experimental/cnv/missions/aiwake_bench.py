@@ -11,6 +11,7 @@ H-a: the team forms and leaves only after ~f450 (步兵在家 4 until ~s30); H-b
 Counters: 帧 (the tick: one per script pass), 唤醒前 (passes before the wake script ran).
 """
 from missions import aialphaclose_bench as ac
+from missions import aistate_bench as st
 from parts import Script
 
 WAKE_AT = 30.0
@@ -20,9 +21,8 @@ PRE = 'CNV_AW_Pre'
 WOKE = 'CNV AW Woke'
 
 
-def mission():
-    m = ac.mission(False, observe=True)
-    m.name = 'CampAlObsW'
+def gate(m):
+    """The mission's wake moved to WAKE_AT and held to script pass WAKE_TICK (it cannot run before), with counters."""
     start = next(s for s in m.scripts if s.name == 'CNV AI - Start')
     start.do = [a if a[0] != 'SET_MILLISECOND_TIMER' else (a[0], a[1], WAKE_AT) for a in start.do]
     wake = next(s for s in m.scripts if s.name == 'CNV AI - Wake')
@@ -34,4 +34,17 @@ def mission():
     return m
 
 
-MISSION = {'aialobsw': mission}
+def mission():
+    m = ac.mission(False, observe=True)
+    m.name = 'CampAlObsW'
+    return gate(m)
+
+
+def const():
+    """B round 163: aistateconst (two always-on states aimed by ClosestStructureHeuristic, EnemyStructure Distance)
+    with the wake gated as aialobsw. H-g (no enemy is searched before 'make base'): both teams leave ~5 s after the
+    wake, ~s33 (步兵在家 4 to ~s30); targets found before the wake: out s14-16 as on the 10 s wake's bench."""
+    return gate(st.mission('CampAIConstW', near=True, gate='const'))
+
+
+MISSION = {'aialobsw': mission, 'aistateconstw': const}

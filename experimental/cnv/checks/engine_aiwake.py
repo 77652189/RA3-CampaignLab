@@ -11,6 +11,7 @@ H-a no (the old wake did not run at f0); H-b yes: a side with a personality runs
 start, before UNIT_AI_TRANSFER_ALL / MAKE_BASE. The simulator's AI starts at the wake (simai.SimAI.attach) -- to fix.
 """
 from checks import engine_airetreat as ar
+from checks import engine_aistate as st
 
 
 def probe(m):
@@ -23,4 +24,16 @@ def probe(m):
     return t
 
 
-CHECKS = {'aialobsw': {'w': probe}}
+def const(m):
+    """aistateconstw: H-g predicts 步兵在家 / 坦克在家 4 to ~s30 and 0 by ~s36; out by s16 = targets found before
+    the wake."""
+    f = m.facts
+    t = st.a(m)
+    t.counters = [c for c in t.counters if c[1] in ('步兵在家', '坦克在家')] + [(f['tick counter'], '帧'),
+                                                                        (f['pre counter'], '唤醒前')]
+    t.expect = [('步兵在家', 1, '==', 4, 26), ('坦克在家', 1, '==', 4, 26), ('步兵在家', 31, 'ever==', 0, 45)]
+    t.bench = [('bench_watch', dict(seconds=50, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+CHECKS = {'aialobsw': {'w': probe}, 'aistateconstw': {'w': const}}
