@@ -171,9 +171,10 @@ def test_engage_clock_replays_first_cohort_movement(engage_record):
     'E114 exact host-frame member goal validity diverges: on f353 engine has no '
     'goal while model infers enemies; off f443 engine second initial member has '
     'a valid goal while model initial pair has none. Autonomous goal acquisition '
-    'and holding contract missing. D107 identifies skill-write/clear commands but '
-    'not threat events or candidate eligibility; the host still derives aim '
-    'without a persistent member-goal slot. See work/re/e131_engage_inputs.md '
+    'and holding contract missing. D109 identifies partition-change events and '
+    'candidate selection, but cell geometry and eligibility are not available '
+    'to the host, which still has no persistent member-goal slot or command '
+    'bridge. See work/re/e132_partition_threats.md '
     'and work/re/handoff-e.md.'))
 def test_engage_clock_replays_member_goal_validity(engage_record):
     """Compare the initial pair at the same host frame, without replacement units.
@@ -220,3 +221,86 @@ def test_engage_target_source_observations(build):
         for frame in (431, 443):
             assert rows[frame]['mstate'] == 8
             assert rows[frame]['aim'] == {3170: (0, None), 3171: (3168, (3911., 2706.3))}
+
+
+def test_engage_partition_scans_replay_observed_candidates():
+    """D109 candidate replay, with observed cell-change events as inputs.
+
+    Cell geometry and candidate eligibility are NOT reconstructed by this test.
+    No claim of natural named-mission replay or Engage promotion is made.
+    See work/re/e132_partition_threats.md for the remaining world-input gap.
+    """
+    if not simai.available():
+        pytest.skip('no ra3model.ai')
+    mc, sp = simai.model()['micro'], simai.model()['specials']
+    evidence = json.loads((OBSERVED / 'aiegoff_scans.json').read_text())
+    assert (evidence['build'], evidence['check'], evidence['run']) == (
+        'aiegoff', 'a', 'CampAIEgOffA_mcp_1113_080446')
+    things = {}
+    def thing(i):
+        return things.setdefault(i, sp.Thing((0, 0), name=str(i))) if i else None
+    units = {i: mc.Unit(str(i)) for i in (3170, 3171)}
+    queue = mc.PartitionThreats()
+    writes = []
+    scans = evidence['scans']
+    for event in scans:
+        # The fixture records AFTER each scan. Earlier state-7/26 reactions
+        # and skill/clear commands are outside this bounded state-33 replay.
+        if event['state'] != 33 or event['frame'] < 353:
+            continue
+        if event['frame'] == 512:
+            units[3171].target = None  # D107's independently observed clear.
+        unit = units[event['member']]
+        def candidates(rows, second):
+            return [mc.ThreatCandidate(thing(row[0]), enemy=row[2] == 0,
+                    excluded=row[1] == -1, requires_current_target=row[1] == 8,
+                    in_range=(row[3] == 1 if second else True)) for row in rows]
+        first = candidates(event['first'], False)
+        second = candidates(event['second'], True)
+        current = thing(event['current'])
+        selected = mc.select_threat(first, second, current)
+        assert (int(selected.name) if selected else 0) == event['selected']
+        # Distinct opaque cells stand for the observed queue events, not a
+        # guessed world grid. Duplicate moves in one frame drain only once.
+        queue.moved(unit, ('observed', event['frame']), event['frame'])
+        queue.moved(unit, ('observed-again', event['frame']), event['frame'])
+        gates = dict(unit_state=33, ai_available=True,
+                     response_disabled=False, can_retaliate=True)
+        calls = []
+        def query(member):
+            calls.append(member.name)
+            return first, second, current, gates
+        written = queue.drain(query)
+        assert calls == [unit.name]
+        assert bool(written) == event['written']
+        assert (int(unit.target.name) if unit.target else 0) == event['goal']
+        if written:
+            writes.append((event['frame'], event['member'], int(unit.target.name)))
+    assert writes == [(431, 3171, 3168), (469, 3171, 3167)]
+
+
+def test_engage_partition_selection_contract():
+    """Boundary checks, not additional engine observations."""
+    if not simai.available():
+        pytest.skip('no ra3model.ai')
+    mc = simai.model()['micro']
+    a, b, c = object(), object(), object()
+    candidate = mc.ThreatCandidate
+    assert mc.select_threat([], [candidate(a, True), candidate(b, True)]) is b
+    assert mc.select_threat([], [candidate(a, True), candidate(b, True)], a) is a
+    assert mc.select_threat([], [candidate(a, False), candidate(b, True, excluded=True)]) is None
+    assert mc.select_threat([], [candidate(a, True, requires_current_target=True)], b) is None
+    assert mc.select_threat([candidate(a, True, in_range=False)], []) is None
+    assert mc.select_threat([], [candidate(a, True, in_range=False)]) is None
+    unit = mc.Unit('member', target=c)
+    queue = mc.PartitionThreats()
+    queue.moved(unit, (0, 0), 3)
+    assert queue.drain(lambda _: pytest.fail('startup frame scanned')) == []
+    queue.moved(unit, (0, 0), 4)
+    assert queue.drain(lambda _: pytest.fail('unchanged cell scanned')) == []
+    queue.moved(unit, (1, 0), 5)
+    with pytest.raises(ValueError, match='drain'):
+        queue.moved(unit, (2, 0), 6)
+    gates = dict(unit_state=33, ai_available=True, response_disabled=False, can_retaliate=True)
+    assert queue.drain(lambda _: ([], [], None, gates)) == []
+    assert unit.target is c
