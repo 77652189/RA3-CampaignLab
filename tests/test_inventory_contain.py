@@ -157,3 +157,40 @@ def test_infiltrator_energy_split_does_not_credit_changed_fields(monkeypatch):
         for module in row['modules']:
             module['xml'] = module['xml'].replace('Amount="0.2"', 'Amount="0.3"')
     assert contain_audit.infiltrator_energy_share() == {'campaign': 0, 'templates': 0}
+
+
+@pytest.mark.parametrize('effect, selector, uses, templates, boundary', [
+    ('KILL', '', 1, 1, 'KILL 1用量/1模板部分已测'),
+    ('PARALYZE', '', 3, 3, 'PARALYZE 3用量/3模板部分已测'),
+    ('VISION', '', 5, 5, '普通VISION 5用量/5模板部分已测且暂停扩宿主'),
+    ('VISION', '9999999s', 1, 1, '港口阻断VISION 1用量/1模板未测'),
+    ('STEAL_MONEY', '', 3, 4, 'STEAL_MONEY 3用量/4模板暂停'),
+    ('VISION_UNITS', 'InfiltrationVehicleObjectFilter', 4, 4, '车辆VISION_UNITS 4用量/4模板暂停'),
+    ('VISION_UNITS', 'InfiltrationAircraftObjectFilter', 2, 2, '飞机VISION_UNITS 2用量/2模板未测'),
+    ('VISION_UNITS', 'InfiltrationInfantryObjectFilter', 3, 3, '步兵VISION_UNITS 3用量/3模板未测'),
+    ('VISION_UNITS', 'InfiltrationShipObjectFilter', 3, 3, '舰船VISION_UNITS 3用量/3模板未测'),
+    ('RESET', '', 5, 6, 'RESET 5用量/6模板暂停'),
+])
+def test_infiltrator_residual_closure_preserves_each_configuration_gap(
+        effect, selector, uses, templates, boundary):
+    """A successful PARALYZE replay cannot grant the other forms bench credit.
+
+    Static counts only: actual readings stay in the named siminfiltrator tests.
+    Match all ten remaining forms against the SDK census and their public scope.
+    """
+    if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
+        pytest.skip('needs SDK and retail placement cache')
+    forms = []
+    for form in contain_audit.audit()['InfiltratorContain']['forms']:
+        attrs = form['rows'][0]['modules'][0]['attributes']
+        discriminator = ('UnitFilter' if effect == 'VISION_UNITS' else
+                         'BlockedDuration' if effect == 'VISION' else None)
+        if attrs['Effect'] == effect and (
+                discriminator is None or attrs.get(discriminator, '') == selector):
+            forms.append(form)
+    assert [(f['campaign'], f['templates']) for f in forms] == [(uses, templates)]
+    key = inventory.MODULE, 'Behaviors/InfiltratorContain'
+    state, why = inventory.NOTES[key]
+    assert state == inventory.GUESSED and key not in inventory.BENCHED_TESTS
+    assert boundary in why
+    assert 'work/re/e142_infiltrator_closure.md' in why
