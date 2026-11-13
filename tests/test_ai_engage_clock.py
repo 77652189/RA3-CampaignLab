@@ -171,10 +171,11 @@ def test_engage_clock_replays_first_cohort_movement(engage_record):
     'E114 exact host-frame member goal validity diverges: on f353 engine has no '
     'goal while model infers enemies; off f443 engine second initial member has '
     'a valid goal while model initial pair has none. Autonomous goal acquisition '
-    'and holding contract missing. D109 identifies partition-change events and '
-    'candidate selection, but cell geometry and eligibility are not available '
-    'to the host, which still has no persistent member-goal slot or command '
-    'bridge. See work/re/e132_partition_threats.md '
+    'and holding contract missing. D110 supplies cell geometry and D111 supports '
+    'death-based candidate exclusion (INFERRED exact death frame). The host '
+    'still lacks natural member-state transitions into state 33 and the '
+    'special-power/clear-command trigger contract; persistent goals and the '
+    'partition bridge remain unconnected. See work/re/e134_engage_host_gate.md '
     'and work/re/handoff-e.md.'))
 def test_engage_clock_replays_member_goal_validity(engage_record):
     """Compare the initial pair at the same host frame, without replacement units.
