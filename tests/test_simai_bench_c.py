@@ -453,8 +453,10 @@ def test_tactic_distance_replays_displaced_guardian(build, home):
 @pytest.mark.parametrize('build, expected_before, expected_after', [
     ('aidist250', [(1, 1)], [(0, 0), (0, 1), (1, 1)]),
     pytest.param('aidist2000', [(1, 1), (0, 1)], [(0, 0), (0, 1), (0, 0)],
-                 marks=pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-                     'Distance 2000 stand-point selection is unresolved: retail leaves the 300 square '
+                 marks=pytest.mark.xfail(
+                     condition=not (simai.available() and hasattr(simai.model()['tactics'].TacticsBlock, 'stand')),
+                     strict=True, raises=AssertionError, reason=(
+                     'Legacy EngineModel lacks the E108 stand consumer: retail leaves the 300 square '
                      'before displacement, returns to the 900 square, then leaves again. '
                      'CNVTeams confirms the same Guardian at frames 166/256/451/541/871: '
                      '11->01->00->01->00, while the model only has 11->00. '
