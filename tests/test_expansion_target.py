@@ -222,9 +222,10 @@ def test_initial_dual_base_sort_named_bench_replay(build, base_id, point):
 
 def test_expansion_d104_candidate_readings_replay(tmp_path):
     """D104 aiexpc:a f151: three state-2 nodes, centre and final choice."""
-    import sys
-    sys.path.insert(0, str(ROOT / 'experimental/cnv'))
-    import teamlog
+    log_spec = importlib.util.spec_from_file_location(
+        'expansion_teamlog', ROOT / 'experimental/cnv/teamlog.py')
+    teamlog = importlib.util.module_from_spec(log_spec)
+    log_spec.loader.exec_module(teamlog)
     p = tmp_path / 'ra3ext.log'
     p.write_text('expc: frame=151 ctr=3850.0:3400.0 mind=0.0 pick=44 n=3 '
                  'cand=44@4173:2987:2:-1/-1:best524,45@4279:3093:2:-1/-1:far,'
