@@ -139,8 +139,27 @@ def count(m):
     return t
 
 
+def unset(m):
+    """Timers not yet set, two ways (docs/engine/production.md and sim.ALIGN 'timer unset' disagreed): 未设计时器 is
+    1 once TIMER_EXPIRED holds for a timer no script names elsewhere; 待设计时器 the same for a timer a script would set
+    but whose condition (a flag nobody sets) never holds -- the bench production b's case. Read every second from
+    the start (帧数 counts the frames). Engine source: a timer never started is not expired."""
+    t = Test()
+    t.counters += [('CNV_Probe_Unset', '未设计时器'), ('CNV_Probe_Pending', '待设计时器'), ('CNV_Probe_Tick', '帧数')]
+    t.scripts += [
+        Script('Test - tick', [], [('INCREMENT_COUNTER', 1, 'CNV_Probe_Tick')], once=False),
+        Script('Test - set never', [('FLAG', 'CNV Probe Nobody', 1)],
+               [('SET_MILLISECOND_TIMER', 'CNV Probe Pending', 5.0)]),
+        Script('Test - unset', [('TIMER_EXPIRED', 'CNV Probe Never')], [('SET_COUNTER', 'CNV_Probe_Unset', 1)]),
+        Script('Test - pending', [('TIMER_EXPIRED', 'CNV Probe Pending')], [('SET_COUNTER', 'CNV_Probe_Pending', 1)])]
+    t.expect += [('未设计时器', 2, '==', 0), ('待设计时器', 2, '==', 0),
+                 ('未设计时器', RUN - 3, '==', 0), ('待设计时器', RUN - 3, '==', 0)]
+    t.bench = [('bench_watch', dict(seconds=RUN, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 # the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
 CHECKS = {
-    'probe': {'engine': engine, 'count': count, 'align': align, 'death': death, 'reveal': reveal, 'both': both, 'both2': lambda m: both(m, 'Mission Lost', 'Mission Won')},
+    'probe': {'engine': engine, 'count': count, 'align': align, 'unset': unset, 'death': death, 'reveal': reveal, 'both': both, 'both2': lambda m: both(m, 'Mission Lost', 'Mission Won')},
     'probe_nosave': {'engine': engine},
 }

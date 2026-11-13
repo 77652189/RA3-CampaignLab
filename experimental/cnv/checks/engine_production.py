@@ -122,7 +122,8 @@ def production_test(m, which='a'):
         # (op 1, meant as <=, held at 250 <= 0 -- bench 11-05; op 0 '<' as 'paying' reads right)
         t.scripts += [Script('Test - broke', [('FLAG', 'Test Paying', 1), ('COUNTER', 'CNV_Prod_Money', 0, 5)],
                              [('SET_MILLISECOND_TIMER', 'Test Give', GIVE), ('SET_FLAG', 'Test Broke', 1)]),
-                      # a timer never set reads expired (bench 11-05: the bonus came at the start)
+                      # gated by the flag too (11-05 the bonus came at the start; not an unset timer, which reads
+                      # not expired: probe align / unset 11-13, docs/engine/production.md 5)
                       Script('Test - give', [('FLAG', 'Test Broke', 1), ('TIMER_EXPIRED', 'Test Give')],
                              [('PLAYER_GIVE_MONEY', p1, BONUS)])]
     t.scripts.append(Script('Test - money', [], [('SET_PLAYER_MONEY_TO_COUNTER', p1, 'CNV_Prod_Money')], once=False))
