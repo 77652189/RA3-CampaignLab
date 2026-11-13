@@ -269,11 +269,16 @@ NOTES = {
         '狗 s23、工程师 s144）；B 第 149 轮模拟器侧排除"一帧多单""队列非空仍下单"；'
         'FEWEST_UNIT 见 aisknew2 y、RANDOM_UNIT 见 aiskrand s；抽签结果属运气不对拍，'
         '"每次评估无条件掷一次随机数"没建模；见 work/re/e_aiheur_e78.md、work/re/handoff-b.md 第 149 节'),
-    '微操/AIMicroManagerData.DodgeThreats': (TODO,
+    '微操/AIMicroManagerData.DodgeThreats': (BENCHED,
         'engine_aidodge aidodgeon/aidodgeoff 原版精确打击信标开关对照；'
-        'tests/test_ai_dodge.py 按名回放，开启组 strict xfail：模型无躲避消费者，'
-        'simai.micro_team 缺威胁视图与移动回调（归B）；见 work/re/c_dodge_report.md；'
-        '固定0.5秒反应，截图秒窗与游戏帧漂移亦留gap；未量精确时间、圆边界、过滤和多威胁，不晋升已对拍'),
+        'tests/test_ai_dodge.py 按名断言两人存活、信标存在时on离开/off保持2，以及到期清理；'
+        'simai micro_team威胁视图/移动回调接私有micro消费者，仅单信标地面成员；'
+        '固定0.5秒反应、径向逃离/目的地保持/首次可见寿命起点为INFERRED；'
+        '精确时钟、安全圆、通用过滤/所属、多威胁仍gap，见 work/re/e116_dodge.md'),
+    '微操/AIMicroManagerData.DodgeThreatsReactionTimeMin': (GUESSED,
+        '消费者读取Min/Max及继承；aidodgeon只测固定0.5秒下的离开行为，未区分反应时钟；见 work/re/e116_dodge.md'),
+    '微操/AIMicroManagerData.DodgeThreatsReactionTimeMax': (GUESSED,
+        '消费者读取Min/Max及继承；未测随机分布/精确反应帧，不登记已对拍；见 work/re/e116_dodge.md'),
     '微操/AIMicroManagerData.EnterGarrisonableStructureDistance': (BENCHED,
         'engine_aigarrison aigar1/aigar0/aigarfar：默认150、旧楼EAST=40，近楼归AI、关闭或远楼不进；'
         'tests/test_simai_garrison_distance.py::test_garrison_distance_replays_recorded_near_far_and_disabled；'

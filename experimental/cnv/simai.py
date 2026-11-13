@@ -233,7 +233,7 @@ class Brain:
             self.ai.blocks.append(self.defense)
         if 'micro' in which:
             self.micro = mc.MicroBlock(self.micro_team, fire=self.fire_unit, data=h.data_of('micro'),
-                                       rng=random.Random(h.seed).uniform)      # MicroManager's rng(lo, hi)
+                                       rng=random.Random(h.seed).uniform, move=self.dodge_move)      # MicroManager's rng(lo, hi)
             self.ai.blocks.append(self.micro)
         if 'specials' in which:
             self.powers = m['specials'].PlayerPowers([], DIFFICULTY.get(h.level, 'MEDIUM'))
@@ -608,7 +608,39 @@ class Brain:
                                  toggles=toggles, toggle_index=int(b.armor_up)))
         enemies = [sp.Thing((t.x, t.y), t.kindof, int(t.value), name=str(t.id)) for t in self.view.things
                    if t.owner in self.view.enemies]
-        return mc.Team(units, enemies=enemies)
+        threats = []
+        for b in self.living():
+            if 'SKIRMISH_AI_ATTEMPT_TO_DODGE' not in b.kinds or b.owner not in self.view.enemies:
+                continue
+            # Bounded native-beacon contract: reject unsupported filters rather than
+            # treating all enemies as threats. Multi-threat selection remains a gap.
+            root = ET.fromstring(self.sim.xml_of(b.template))
+            info = next((e for e in root.iter() if e.tag.endswith('}SkirmishAIInformation')
+                         or e.tag == 'SkirmishAIInformation'), None)
+            if info is None or 'DodgeSafetyDistance' not in info.attrib:
+                continue
+            filt = next((e for e in info if e.tag.endswith('DodgeWithUnits')), None)
+            if filt is None or dict(filt.attrib) != {'Rule': 'ALL', 'StatusBitFlagsExclude': 'AIRBORNE_TARGET'}:
+                continue
+            if b.life_end is None:
+                life = next((e for e in root.iter() if e.tag.endswith('LifetimeUpdate')), None)
+                if life is None or life.get('MinLifetime') != life.get('MaxLifetime'):
+                    continue
+                # Retail fixed lifetime was not loaded by simunits' bounded reader.
+                # INFERRED first-seen birth frame; Sim owns expiry/deletion thereafter.
+                b.life_end = frame + mc.frames(mc.seconds(life.get('MinLifetime')))
+            eligible = frozenset(u.body.name for u in team.members if u.body.alive
+                                 and 'AIRCRAFT' not in u.body.kinds
+                                 and not (getattr(u.body, 'z', None) or 0) > 0)
+            threats.append(mc.DodgeThreat(b.name, (b.x, b.y), float(info.get('DodgeSafetyDistance')),
+                                          b.owner, b.life_end - frame, eligible))
+        return mc.Team(units, enemies=enemies, threats=threats)
+
+    def dodge_move(self, ai, key, unit, point):
+        """E micro threat outlet (coordinator authorization); ordinary movement path."""
+        member = next((u for u in ai.teams.teams[key].members if u.body.name == unit.name), None)
+        if member is not None:
+            self.order(member, 'move', point)
 
     def fire_unit(self, ai, key, u, info):
         """Execute toggles and C's bounded self-power bridge; otherwise record intent."""

@@ -11,7 +11,8 @@ MEASURED: named beacon on/off both present, two living warriors; on leaves
 seconds drift against the frame counter: on's automatic seconds-window verdict
 is FAIL, off PASS. Keep that diagnostic failure visible; replay by game frames
 in tests/test_ai_dodge.py. A clock-stable engine acceptance check remains a gap,
-as does the model consumer (work/re/c_dodge_report.md).
+the bounded single-beacon consumer is replayed there. Exact timing, safety-circle
+boundaries, general filters and multi-threat choice remain gaps (work/re/e116_dodge.md).
 """
 from model import Script, Test, counted, square
 

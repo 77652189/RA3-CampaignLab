@@ -1,4 +1,4 @@
-"""Native-beacon DodgeThreats contrast; unresolved consumers stay explicit gaps."""
+"""Native-beacon DodgeThreats contrast; bounded single-threat consumer; exact timing remains a gap."""
 import importlib.util
 from pathlib import Path
 import xml.etree.ElementTree as ET
@@ -36,12 +36,12 @@ def test_micro_dodge_fixture_changes_only_the_switch():
 def dodge_replay(request):
     if not simai.available():
         pytest.skip('no ra3model.ai (labpaths.ENGINE_MODEL)')
-    return simai.run(request.param, 'r', until=34.0)
+    return simai.run(request.param, 'r', until=36.0)
 
 
 @pytest.mark.parametrize('dodge_replay', ['aidodgeon', 'aidodgeoff'], indirect=True)
 def test_micro_dodge_replay_has_living_members_and_named_threat(dodge_replay):
-    # These prerequisites must fail normally, even when dodge movement is xfailed.
+    # Keep prerequisites separate from the movement observation.
     # Align by the displayed game-frame counter, not capture wall seconds.
     series = dodge_replay.sim.series
     before = [values for _, values in series if 27 * simai.FPS <= values[0] < 29 * simai.FPS]
@@ -52,10 +52,7 @@ def test_micro_dodge_replay_has_living_members_and_named_threat(dodge_replay):
 
 
 @pytest.mark.parametrize('dodge_replay,limit', [
-    pytest.param('aidodgeon', 1, marks=pytest.mark.xfail(strict=True, raises=AssertionError,
-                 reason='native beacon: two living warriors leave the sample square with DodgeThreats on; '
-                        'micro has no dodge consumer and simai.micro_team supplies no threat view/move hook. '
-                        'See work/re/handoff-e.md and work/re/e105_dodge_inputs.md')),
+    ('aidodgeon', 1),
     ('aidodgeoff', 2),
 ], indirect=['dodge_replay'])
 def test_micro_dodge_replays_named_beacon_observation(dodge_replay, limit):
@@ -71,3 +68,13 @@ def test_micro_dodge_replays_named_beacon_observation(dodge_replay, limit):
         assert min(near) <= limit, rows
     else:
         assert set(near) == {limit}, rows
+
+
+@pytest.mark.parametrize('dodge_replay', ['aidodgeon', 'aidodgeoff'], indirect=True)
+def test_micro_dodge_replay_expires_the_native_threat(dodge_replay):
+    # Retail beacon lifetime is 4s. This checks eventual cleanup, not its exact frame.
+    beacon = dodge_replay.sim.body('CNV Dodge Beacon')
+    assert beacon is not None and not beacon.alive
+    managers = [m for b in dodge_replay.brains.values() if hasattr(b, 'micro')
+                for m in b.micro.managers.values()]
+    assert managers and all(not m.dodging for m in managers)
