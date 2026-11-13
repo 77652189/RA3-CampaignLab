@@ -183,12 +183,14 @@ def bench_click(x: float, y: float, world: bool = True, right: bool = False, air
 @server.tool(structured_output=False)
 @guard
 def bench_box(x0: float, y0: float, x1: float, y1: float, world: bool = True, air: bool = False,
-              look: bool = True, right: bool = False) -> list:
+              look: bool = True, right: bool = False, both: bool = False) -> list:
     """Box-select between two corners (world units, or screen pixels with world=false). right=true: a right-button
-    drag instead -- the selected units' formation move, the line from the first point to the second its front."""
+    drag instead (RA3 pans the camera with it; the bench's posted drag pans nothing). both=true: right and left held
+    together while dragging -- a try at the formation preview, the line from the first point to the second its front."""
     (u0, v0), (u1, v1) = ((S.to_screen(x0, y0, air), S.to_screen(x1, y1, air)) if world else ((x0, y0), (x1, y1)))
-    harness.drag(go(), u0, v0, u1, v1, right)
-    return after(f'{"formation drag" if right else "box select"} screen ({u0:.0f}, {v0:.0f})-({u1:.0f}, {v1:.0f})', look)
+    harness.drag(go(), u0, v0, u1, v1, right, both)
+    what = 'two-button drag' if both else 'right drag' if right else 'box select'
+    return after(f'{what} screen ({u0:.0f}, {v0:.0f})-({u1:.0f}, {v1:.0f})', look)
 
 
 @server.tool(structured_output=False)

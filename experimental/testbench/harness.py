@@ -175,15 +175,22 @@ def click(h, x, y, right=False):
     post(h, up, 0, lp(x, y))
 
 
-def drag(h, x1, y1, x2, y2, right=False):
+def drag(h, x1, y1, x2, y2, right=False, both=False):
     """Box selection: button down at (x1, y1), moves with the button held, up at (x2, y2). right=True: the right
-    button, slowly -- the player's formation move (FormationAssistant ActivateTime 0.3 s held before the preview
-    takes; the drag is the formation's front, its length picks the width: FormationSelectionTemplate)."""
-    down, up, mk, steps, pause = (0x0204, 0x0205, 2, 16, 0.05) if right else (0x0201, 0x0202, 1, 8, 0.04)
+    button, slowly (in RA3 that pans the camera: the tutorial's own words; the bench pans nothing, the game reads the
+    real cursor for it -- D 84). both=True: the right button, then the left too, dragged together, the left let go
+    first -- a try at the formation preview (FormationAssistant ActivateTime 0.3 s held before the preview takes)."""
+    slow = right or both
+    down, up, mk, steps, pause = (0x0204, 0x0205, 2, 16, 0.05) if slow else (0x0201, 0x0202, 1, 8, 0.04)
     post(h, 0x0200, 0, lp(x1, y1)); time.sleep(0.06)
-    post(h, down, mk, lp(x1, y1)); time.sleep(0.4 if right else 0.06)
+    post(h, down, mk, lp(x1, y1)); time.sleep(0.06 if both else 0.4 if right else 0.06)
+    if both:
+        mk = 3
+        post(h, 0x0201, mk, lp(x1, y1)); time.sleep(0.4)
     for k in range(1, steps + 1):
         post(h, 0x0200, mk, lp(x1 + (x2 - x1) * k / steps, y1 + (y2 - y1) * k / steps)); time.sleep(pause)
+    if both:
+        post(h, 0x0202, 2, lp(x2, y2)); time.sleep(0.06)
     post(h, up, 0, lp(x2, y2))
 
 

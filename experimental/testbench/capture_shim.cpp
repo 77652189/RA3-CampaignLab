@@ -186,7 +186,8 @@ static HRESULT STDMETHODCALLTYPE h_EndScene(IDirect3DDevice9 *d)
 // ---------------------------------------------------------------- synthetic keys
 // Posted WM_KEYDOWN does not skip movies: the game polls the keyboard. We patch its imports of GetAsyncKeyState /
 // GetKeyState so that, while a request is active, the requested key reads as held down. Request: a file "key.req"
-// in the shot folder holding a virtual-key code (decimal); it is held for 300 ms, then released.
+// in the shot folder holding a virtual-key code (decimal) and optionally how many ms to hold it (default 300), then
+// released. Mouse buttons too: "2 1400" reads VK_RBUTTON as held through a right drag (harness.drag right=True).
 typedef SHORT(WINAPI *GetKeyFn)(int);
 static GetKeyFn o_GetAsyncKeyState, o_GetKeyState;
 static volatile int g_fake_vk;
@@ -525,7 +526,7 @@ static BOOL WINAPI h_GetKeyboardState(PBYTE s)
     return r;
 }
 
-// what key messages the game actually takes out of its queue
+// what key and mouse-button messages the game actually takes out of its queue (the first 300)
 typedef BOOL(WINAPI *PeekMsg_t)(LPMSG, HWND, UINT, UINT, UINT);
 typedef BOOL(WINAPI *GetMsg_t)(LPMSG, HWND, UINT, UINT);
 static PeekMsg_t o_PeekMessageA;
@@ -533,8 +534,9 @@ static GetMsg_t o_GetMessageA;
 static int g_keymsgs;
 static void seen_msg(const MSG *m)
 {
-    if ((m->message >= WM_KEYFIRST && m->message <= WM_KEYLAST) || m->message == WM_INPUT)
-        if (g_keymsgs++ < 40) logf("game took msg 0x%04x wParam %u lParam %08lx\n", m->message, (UINT)m->wParam, (DWORD)m->lParam);
+    if ((m->message >= WM_KEYFIRST && m->message <= WM_KEYLAST) || m->message == WM_INPUT ||
+        (m->message >= WM_LBUTTONDOWN && m->message <= WM_MBUTTONDBLCLK))      // buttons, not moves
+        if (g_keymsgs++ < 300) logf("game took msg 0x%04x wParam %u lParam %08lx\n", m->message, (UINT)m->wParam, (DWORD)m->lParam);
 }
 static BOOL WINAPI h_PeekMessageA(LPMSG m, HWND h, UINT a, UINT b, UINT rm)
 {
@@ -570,13 +572,13 @@ static void poll_key_request()
     wsprintfW(req, L"%s\\key.req", g_dir);
     FILE *f = _wfopen(req, L"r");
     if (!f) return;
-    int vk = 0;
-    fscanf(f, "%d", &vk);
+    int vk = 0, ms = 300;
+    if (fscanf(f, "%d %d", &vk, &ms) < 2 || ms <= 0 || ms > 10000) ms = 300;
     fclose(f);
     DeleteFileW(req);
     g_fake_vk = vk;
-    g_fake_until = GetTickCount() + 300;
-    logf("key request: vk %d held 300 ms\n", vk);
+    g_fake_until = GetTickCount() + ms;
+    logf("key request: vk %d held %d ms\n", vk, ms);
 }
 
 // SAGE-Unlocked swaps the device's vtable pointer for its own copy some time after CreateDevice, which bypasses

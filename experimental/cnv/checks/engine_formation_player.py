@@ -52,7 +52,9 @@ def mission():
     return m
 
 
-def player_moves(m):
+def player_moves(m, both=False):
+    """f: the formation lane right-drags (D 84: that pans the camera in RA3, the units do not move); b: it drags with
+    both buttons held, a longer front -- a try at the formation preview."""
     t = Test()
     t.waypoints['Test Form View'] = VIEW
     t.scripts.append(Script('Test - view', [], [('MAP_REVEAL_ALL_PERM', m.player('p1')),
@@ -72,7 +74,9 @@ def player_moves(m):
         if lane == 'plain':
             steps.append(('bench_click', dict(x=X1, y=y, right=True, look=True)))
         else:
-            steps.append(('bench_box', dict(x0=X1, y0=y - 30, x1=X1, y1=y + 30, right=True, look=True)))
+            half = 60 if both else 30
+            steps.append(('bench_box', dict(x0=X1, y0=y - half, x1=X1, y1=y + half, look=True,
+                                            **(dict(both=True) if both else dict(right=True)))))
     t.expect = []
     steps.append(('bench_watch', dict(seconds=RUN, every=2, sheet=False, lines=3)))
     t.bench = steps
@@ -80,4 +84,4 @@ def player_moves(m):
 
 
 MISSION = {'engine_formation_player': mission}
-CHECKS = {'engine_formation_player': {'f': player_moves}}
+CHECKS = {'engine_formation_player': {'f': player_moves, 'b': lambda m: player_moves(m, both=True)}}
