@@ -173,11 +173,12 @@ NOTES = {
         'tests/test_simai_bench_e.py::test_target_location按名回放三组通过。'
         'Location按位置地形过滤；只验证EnemyStructure/Distance，浅滩、桥面及空中目标仍INFERRED；'
         '见 work/re/e_location_e87.md'),
-    '目标/AITargetingHeuristic.HeuristicType=FriendlyUnit': (GUESSED,
-        'E85 engine_aifriendly a：仅切FriendlyUnit/EnemyUnit、同挂StaticDefense与SAME_PLAYER，'
-        '两组s40到友车/到敌车均0/0、MCV存活1/1，原始预测均FAIL；'
-        'tests/test_simai_bench_e.py::test_friendly_unit_target按名回放strict xfail。'
-        '目标选择与招人/站位边界未分，保持gap不晋升；见 work/re/e_friendly_e85.md'),
+    '目标/AITargetingHeuristic.HeuristicType=FriendlyUnit': (BENCHED,
+        'C engine_aifrdistance a：aifrnear/aifrswap三友军MCV，仅交换近远角色；'
+        's30逻辑帧478/486，tact对应原友车/second，同帧坐标均为距基地650的最近候选；'
+        '友/敌MCV存活3/1。tests/test_simai_friendly_c.py::test_friendly_distance_target按名回放通过。'
+        '仅验SAME_PLAYER、MCV、Distance、单槽StaticDefense；其他排序、默认关系、unique多槽仍INFERRED。'
+        '旧E85远处双车的站位strict xfail保留，不由新配方解释；见work/re/c_friendly_distance_report.md'),
     '启发条件/PathToTargetHeuristic.LocomotorConditionToUseForTest': (GUESSED,
         'E84 engine_aiopathcond a：同JapanAntiAirShip仅切NORMAL深水/SUPERSONIC空中；'
         '两组s22-s24均兵营1/电厂0，水组原始Island预测FAIL、空中PASS。'
