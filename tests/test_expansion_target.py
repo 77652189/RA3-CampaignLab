@@ -62,3 +62,14 @@ def test_expansion_named_entity_control_replay():
     labels = [label for _, label in w.sim.test.counters]
     row = dict(zip(labels, w.sim.series[-1][1]))
     assert (row['候选东'], row['候选崖'], row['普通实体']) == (0, 0, 4)
+
+
+@pytest.mark.parametrize('build', ['aibsold', 'aibsnew'])
+@pytest.mark.xfail(strict=True, reason='BaseSelection.SortOrder contrast retains the east ore selection; '
+                   'automatic candidate/base discovery is absent and eligible base ages are unobserved; '
+                   'see work/re/c_basesort_report.md and handoff-c.md')
+def test_base_sort_named_bench_replay(build):
+    w = simai.run(build, 'a', until=31)
+    row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
+    # Raw engine readings, not a rule for sorting bases; both layouts are identical.
+    assert (row['候选东'], row['候选崖'], row['普通实体']) == (4, 0, 0)

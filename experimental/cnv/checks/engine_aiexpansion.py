@@ -23,7 +23,11 @@ def a(m):
     t.scripts.append(Script('Test - keep targets', [],
                            [('UNIT_SET_HEALTH', m.role(r).name, 100.0)
                             for r in ('plant', 'barracks', 'tank')], once=False))
-    if m.facts['expansion']:
+    if 'base sort order' in m.facts:
+        # BaseSelection.SortOrder contrast: readings only. Two ore fields do
+        # not establish two eligible bases or their ages. See work/re/c_basesort_report.md.
+        pass
+    elif m.facts['expansion']:
         t.expect += [('候选东', 30, '==', 4, 40), ('候选崖', 30, '==', 0, 40),
                      ('普通实体', 30, '==', 0, 40)]
     else:
@@ -34,4 +38,4 @@ def a(m):
     return t
 
 
-CHECKS = {key: {'a': a} for key in ('aiexpc', 'aiexpctl')}
+CHECKS = {key: {'a': a} for key in ('aiexpc', 'aiexpctl', 'aibsold', 'aibsnew')}

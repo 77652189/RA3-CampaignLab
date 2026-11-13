@@ -1,6 +1,7 @@
 """C Expansion: two ore fields as candidate hypotheses and one ordinary named object.
 
 Only HeuristicType differs (Expansion / NamedObject). BaseSelection is identical.
+The aibsold/aibsnew pair instead keeps Expansion and only switches SortOrder.
 The fields are NOT established legal expansion candidates: commands/team state
 must establish selection before any candidate rule can be promoted.
 """
@@ -12,8 +13,10 @@ from missions.aitargetpick_bench import mission as target_mission
 from missions.aiteams_bench import HOST, host_unit
 
 
-def mission(expansion=True):
+def mission(expansion=True, sort_order=None):
     name = 'CampAIExp' if expansion else 'CampAIExpCtl'
+    if sort_order:
+        name = {'PREFER_OLDEST': 'CampAIBSOld', 'PREFER_NEWEST': 'CampAIBSNew'}[sort_order]
     m = target_mission(name, [('ClosestStructureHeuristic', None)], (0, 0, 0, 4))
     cp = types.ModuleType(m.map.__name__)
     cp.__dict__.update(vars(m.map))
@@ -35,6 +38,10 @@ def mission(expansion=True):
     xml = xml.replace('<AIStrategicStateDefinition ', heuristic + '<AIStrategicStateDefinition ', 1)
     xml = xml.replace('TargetHeuristic="ClosestStructureHeuristic"', 'TargetHeuristic="CNVExpansion"')
     m.assets[0] = filename, xml, asset
+    if sort_order:
+        m.assets[0] = filename, xml.replace('SortOrder="PREFER_OLDEST"',
+                                          f'SortOrder="{sort_order}"'), asset
+        m.facts['base sort order'] = sort_order
     m.units.append(host_unit())
     m.put(HOST, 'east base', 250, 400, side='s1', role='teams host')
     m.ext = True
@@ -44,4 +51,6 @@ def mission(expansion=True):
     return m
 
 
-MISSION = {'aiexpc': lambda: mission(True), 'aiexpctl': lambda: mission(False)}
+MISSION = {'aiexpc': lambda: mission(True), 'aiexpctl': lambda: mission(False),
+           'aibsold': lambda: mission(True, 'PREFER_OLDEST'),
+           'aibsnew': lambda: mission(True, 'PREFER_NEWEST')}
