@@ -10,8 +10,9 @@ What a mission uses, statically, the way inventory_levels reads our own 9:
                     neutral / civilian / scripted players carry that one; INFERRED that it adds nothing): every SDK AI
                     asset their personality reaches in the game's compiled stream (retailref ai.json), their faction's
                     ArmyDefinition and AIData, followed the inventory_ai.level_scope way (inventory_ai.reached). The
-                    maps' own personalities and states are compiled only: their own fields are not read (counted
-                    apart as 本关自带、没读)
+                    maps' own strategic states are read back from their compiled form (retailref ai_states.xml,
+                    ai_compiled; an attribute written at its default value is not seen, a lower bound); their own
+                    personalities, build and budget states are not read (counted apart as 本关自带、没读)
 
   python -I -X utf8 experimental/cnv/inventory_retail.py            summary + the 30 heaviest gaps, with owners
   python -I -X utf8 experimental/cnv/inventory_retail.py --all      every gap
@@ -91,12 +92,23 @@ def ai_players(stem):
     return [p for p in d['players'] if not p['human'] and p['personality'] not in NO_AI]
 
 
+def compiled_states():
+    """{name: element} of the stream's strategic states read back from their compiled form (retailref ai_states.xml,
+    ai_compiled: attributes at their default value are not told apart from unwritten ones, a lower bound)."""
+    import retailref
+    I.need(retailref.AI_STATES, 'the decoded retail strategic states (python -I -X utf8 experimental/campaign/'
+                                'retailref.py cache-ai-states; needs the private layout ai_compiled.LAYOUT)')
+    import xml.etree.ElementTree as ET
+    return {el.get('id'): el for el in ET.parse(retailref.AI_STATES).getroot()}
+
+
 def ai_scope():
     """({(AI, item name): {mission: set()}}, {mission: {(asset type, name)}} of the maps' own compiled AI assets)."""
     import inventory_ai as A
     path = os.path.join(I.RETAIL_SCRIPTS, 'ai.json')
     I.need(path, 'the retail AI cache (python -I -X utf8 experimental/campaign/retailref.py cache-ai)')
     reach = json.load(open(path, encoding='utf-8'))
+    states = compiled_states()
     index = A.assets()
     glob = [el for el in index.values() if A._local(el.tag) == 'AIData']
     out, local, memo = collections.defaultdict(dict), collections.defaultdict(set), {}
@@ -106,10 +118,11 @@ def ai_scope():
             if refs is None:
                 raise SystemExit(f"inventory_retail: {short} {p['name']}: personality {p['personality']} is not in "
                                  'the compiled stream')
-            local[short] |= {(t, n) for t, n, _ in refs if n not in index}
+            local[short] |= {(t, n) for t, n, _ in refs if n not in index and n not in states}
             key = (p['personality'], p['faction'])
             if key not in memo:
                 roots = [index[n] for _, n, _ in refs if n in index]
+                roots += [states[n] for t, n, _ in refs if n not in index and n in states]   # the map's own, decoded
                 army = [el for el in index.values() if A._local(el.tag) == 'ArmyDefinition'
                         and el.get('Side') == 'PlayerTemplate:' + p['faction']]
                 memo[key] = A.reached(roots + army + glob, index)
@@ -159,7 +172,8 @@ def main(argv):
         print(f"| {p} | {100 * u[I.BENCHED] / tot:.2f}% | {c[I.BENCHED]} / {len(xs)} | {c[I.GUESSED]} | "
               f"{c[I.TODO]} | {tot - u[I.BENCHED]} | {OWNER[p]} |")
     local = set().union(*ai_scope()[1].values())
-    print(f'\nAI：本关自带的人格 / 状态 {len(local)} 个是编译二进制，自身字段没读，只按它们引用的 SDK 资产计')
+    print(f'\nAI：本关自带的战略状态已从编译二进制读回（写成默认值的属性分不出，偏少）；其余本关自带的人格 / 状态 '
+          f'{len(local)} 个自身字段没读，只按它们引用的 SDK 资产计')
     gaps = sorted((i for i in items if i['state'] != I.BENCHED and (part is None or i['part'] == part)
                    and (mission is None or mission in i['missions'])),
                   key=lambda i: (-i['uses'], i['name']))

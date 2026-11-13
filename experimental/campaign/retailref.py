@@ -94,7 +94,25 @@ def build_ai():
     with open(os.path.join(CACHE, 'ai.json'), 'w', encoding='utf-8') as f:
         json.dump(out, f)
     print('cached ai.json:', len(out), 'personalities', flush=True)
+    build_ai_states(inst)
     return out
+
+
+AI_STATES = os.path.join(CACHE, 'ai_states.xml')
+
+
+def build_ai_states(inst=None):
+    """work/retailref/ai_states.xml: every compiled AIStrategicStateDefinition of the stream read back into SDK-shaped
+    xml (ai_compiled.decode; needs its private layout, else a SystemExit)."""
+    import mapxml
+    import ai_compiled
+    import xml.etree.ElementTree as ET
+    states = ai_compiled.decode_stream(inst if inst is not None else mapxml.layered(AI_STREAM))
+    root = ET.Element('AssetDeclaration')
+    root.extend(states[k] for k in sorted(states))
+    ET.ElementTree(root).write(AI_STATES, encoding='utf-8', xml_declaration=True)
+    print('cached ai_states.xml:', len(states), 'strategic states', flush=True)
+    return states
 
 
 AI_SWITCHES = ('aiBaseBuilder', 'aiUnitBuilder', 'aiTeamBuilder', 'aiEconomyBuilder', 'aiWallBuilder',
@@ -175,7 +193,7 @@ def goals(only=''):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('what', choices=('scripts', 'objects', 'goals', 'cache', 'cache-ai'))
+    ap.add_argument('what', choices=('scripts', 'objects', 'goals', 'cache', 'cache-ai', 'cache-ai-states'))
     ap.add_argument('pattern', nargs='?', default='')
     ap.add_argument('--maps', default='')
     ap.add_argument('--limit', type=int, default=0)
@@ -184,6 +202,8 @@ def main():
         build_cache()
     elif a.what == 'cache-ai':
         build_ai()
+    elif a.what == 'cache-ai-states':
+        build_ai_states()
     elif a.what == 'scripts':
         hits = scripts(a.pattern, a.maps, a.limit or 8)
         print(f'{len(hits)} scripts' + (' (limit reached)' if len(hits) == (a.limit or 8) else ''))
