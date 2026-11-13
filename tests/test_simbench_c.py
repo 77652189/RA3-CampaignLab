@@ -1204,3 +1204,17 @@ def test_shot_a_direct_hit_takes_the_victim_s_side_and_rear_scalar_by_where_the_
     s.shot_clock = True                      # discrete hits: only the first lands within SHORT
     s.run(SHORT)
     assert s.series[-1][1] == bench, (check, s.series[-1])
+
+
+@pytest.mark.parametrize('check, bench', [('turn', [40, 44, 42, 44]), ('rate', [44, 44, 44, 44])])
+def test_hull_a_moving_tank_faces_the_way_it_drives_and_takes_a_hit_by_that_facing(check, bench):
+    """engine_hull (bench 11-12): south-facing Hammers sent north / east / 120 behind take the rear / side / rear
+    scalar from a V4 south of them, a still one the front; sent north, already the rear 0.15 s after the order."""
+    import build
+    import sim
+    from checks.engine_hull import MOVE
+    m, t, _ = build.resolve('engine_hull', check)
+    s = sim.Sim(m, t)
+    s.shot_clock = True                      # discrete hits: only the first lands before MOVE + 5.5
+    s.run(MOVE + 5.5)
+    assert s.series[-1][1] == bench, (check, s.series[-1])

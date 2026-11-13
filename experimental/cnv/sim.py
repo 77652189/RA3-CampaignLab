@@ -5246,6 +5246,11 @@ class Sim:
                     b.x += (tx - b.x) * left / d
                     b.y += (ty - b.y) * left / d
                     left = 0
+            if (b.x, b.y) != (x0, y0):
+                # the hull faces the way it drives, at once (bench engine_hull, round 187: a south-facing Hammer
+                # sent north / east / 120 behind took the rear / side / rear scalar; sent north, a hit 0.15 s after
+                # the order already the rear -- no reversing, a turn faster than the model's tick; INFERRED instant)
+                b.angle = math.atan2(b.y - y0, b.x - x0)
             if b.building:
                 self.at_site(b, walked - left)
             if b.crusher > 0 and b.surface == 'ground' and (b.x, b.y) != (x0, y0):
