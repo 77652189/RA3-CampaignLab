@@ -116,8 +116,21 @@ def team_size(run, name, frame):
 
 
 TSTATE = re.compile(r'^tstate: frame=(-?\d+) team=(\S+) mstate=(-?\d+) prev=(-?\d+) secs=(\S+) tgt=(-?\d+) '
-                    r'chosen=(-?\d+) tact=(-?\d+) idle=(-?\d+) ready=(-?\d+) mem=(\S*)$')
-CMD = re.compile(r'^cmd: frame=(-?\d+) msg=(\S+) type=([0-9a-f]+) player=(\d+) n=(\d+) args=(\S*)$')
+                    r'chosen=(-?\d+) tact=(-?\d+) idle=(-?\d+) ready=(-?\d+) mem=(\S*)'
+                    r'(?: dest=(\S*))?(?: at=(\S+))?$')
+CMD = re.compile(r'^cmd: frame=(-?\d+) msg=(\S+) type=([0-9a-f]+) player=(\d+) n=(\d+) args=(\S*)(?: src=(\S+))?$')
+AES = re.compile(r'^aes: frame=(-?\d+) call=(\d+) team=(\S+) x=(\S+) y=(\S+) r=(\S+) outer=(\S+) mode=(\d+) '
+                 r'since=(-?\d+) gate=(-?\d+)$')
+AESEND = re.compile(r'^aesend: frame=(-?\d+) call=(\d+) mode=(\d+) since=(-?\d+) sent=(\d+)$')
+
+
+def _dest(s):
+    out = {}
+    for x in (s or '').split(','):
+        if '@' in x:
+            i, _, p = x.partition('@')
+            out[int(i)] = tuple(float(v) for v in p.split(':'))
+    return out
 
 
 def _arg(a):
@@ -133,7 +146,9 @@ def states(run):
     `team:` line. A state dict: frame, team, mstate (the team's micro state: 8 idle / default, 6 enemy, 1 retreat,
     2..5 gather, 7, 9), prev, secs (seconds in it), tgt / chosen / tact (object ids: current target, chosen target,
     tactical target; -1 none), idle (team idle timeout), ready (the game's team-ready test: 1 / 0; -1 = not read),
-    mem [(id, ai state id, unit ready 1/0)]. Join to the team's name with team_states()."""
+    mem [(id, ai state id, unit ready 1/0)], dest {id: (x, y)} each member's AI goal position ({} in older logs),
+    at = None for the regular sample, 'aes' for the snapshot taken as the aesthetics manager is entered (the state its
+    decision sees; D round 83). Join to the team's name with team_states()."""
     out = {}
     with open(_log(run), encoding='utf-8', errors='replace') as f:
         for line in f:
@@ -142,8 +157,43 @@ def states(run):
                 mem = [tuple(int(v) for v in x.split(':')) for x in m[11].split(',') if x]
                 out.setdefault(m[2], []).append(dict(
                     frame=int(m[1]), team=m[2], mstate=int(m[3]), prev=int(m[4]), secs=float(m[5]), tgt=int(m[6]),
-                    chosen=int(m[7]), tact=int(m[8]), idle=int(m[9]), ready=int(m[10]), mem=mem))
+                    chosen=int(m[7]), tact=int(m[8]), idle=int(m[9]), ready=int(m[10]), mem=mem,
+                    dest=_dest(m[12]), at=m[13]))
     return out
+
+
+def aesthetics(run):
+    """[call dict, ...] in order, one per call of the engine's aesthetics manager (the StaticDefense /
+    ReactiveDefense station picker; D round 83): frame, call (its number), team, centre (x, y), r (Distance), outer,
+    mode / since before the call (enemy mode 0/1; the idle-timer start frame, 0 = not started), gate (the
+    tactic-ready test it makes: 1/0, -1 not read), mode_after / since_after, sent (messages it queued), state (the
+    team's tstate dict as the call was entered, or None), orders [(frame, type, args)] its messages (src=aes:call)."""
+    calls, by = [], {}
+    with open(_log(run), encoding='utf-8', errors='replace') as f:
+        for line in f:
+            line = line.rstrip()
+            m = AES.match(line)
+            if m:
+                c = dict(frame=int(m[1]), call=int(m[2]), team=m[3], centre=(float(m[4]), float(m[5])),
+                         r=float(m[6]), outer=float(m[7]), mode=int(m[8]), since=int(m[9]), gate=int(m[10]),
+                         mode_after=None, since_after=None, sent=None, state=None, orders=[])
+                calls.append(c)
+                by[c['call']] = c
+                continue
+            m = AESEND.match(line)
+            if m and int(m[2]) in by:
+                by[int(m[2])].update(mode_after=int(m[3]), since_after=int(m[4]), sent=int(m[5]))
+                continue
+            m = CMD.match(line)
+            if m and m[7] and m[7].startswith('aes:') and int(m[7][4:]) in by:
+                by[int(m[7][4:])]['orders'].append((int(m[1]), int(m[3], 16), [_arg(a) for a in m[6].split(',') if a]))
+    for p, ss in states(run).items():
+        for s in ss:
+            if s['at'] == 'aes':
+                hit = [c for c in calls if c['team'] == p and c['frame'] == s['frame'] and c['state'] is None]
+                if hit:
+                    hit[0]['state'] = s
+    return calls
 
 
 def team_states(run, name):

@@ -76,6 +76,33 @@ def test_team_state_and_orders(tmp_path):
     assert [c[1] for c in teamlog.commands(p, (0x1f5, 0x1fb))] == [0x1fb, 0x1f5]
 
 
+def test_aesthetics_calls_with_their_state_and_orders(tmp_path):
+    """D round 83: the aesthetics manager's calls -- the state it saw on entry, its gate, and the orders it queued
+    (tagged src=aes:N on the cmd lines); older lines without dest= / src= still parse."""
+    p = tmp_path / 'ra3ext.log'
+    p.write_text('\n'.join([
+        'tstate: frame=176 team=0A mstate=8 prev=8 secs=1.00 tgt=-1 chosen=-1 tact=3163 idle=0 ready=0 mem=3166:1:0',
+        'aes: frame=190 call=3 team=0A x=3850.0 y=3400.0 r=2000.0 outer=3000.0 mode=0 since=0 gate=1',
+        'tstate: frame=190 team=0A mstate=8 prev=8 secs=2.00 tgt=-1 chosen=-1 tact=3163 idle=0 ready=1 '
+        'mem=3166:16:1 dest=3166@3850.0:3400.0 at=aes',
+        'aesend: frame=190 call=3 mode=1 since=0 sent=2',
+        'cmd: frame=191 msg=0B type=1f5 player=2 n=3 args=2:1,2:0,4:3166 src=aes:3',
+        'cmd: frame=191 msg=0C type=22c player=2 n=5 args=7:1859.9:3201.0:205.0,1:-3.042,0:3,0:0,0:0 src=aes:3',
+        'cmd: frame=192 msg=0D type=214 player=2 n=1 args=7:1.0:2.0:3.0 src=x123456',
+    ]))
+    p = str(p)
+    [c] = teamlog.aesthetics(p)
+    assert (c['frame'], c['call'], c['centre'], c['r'], c['gate'], c['mode'], c['mode_after'], c['sent']) == \
+        (190, 3, (3850.0, 3400.0), 2000.0, 1, 0, 1, 2)
+    assert (c['state']['ready'], c['state']['mem'], c['state']['dest'], c['state']['at']) == \
+        (1, [(3166, 16, 1)], {3166: (3850.0, 3400.0)}, 'aes')
+    assert [o[1] for o in c['orders']] == [0x1f5, 0x22c]
+    assert c['orders'][1][2][0] == (1859.9, 3201.0, 205.0)
+    old = teamlog.states(p)['0A'][0]
+    assert (old['dest'], old['at']) == ({}, None)
+    assert [x[1] for x in teamlog.commands(p)] == [0x1f5, 0x22c, 0x214]
+
+
 def test_change_only_samples_keep_the_whole_set(tmp_path):
     """D round 81: CNVTeams writes only the changed teams between beats; `teams: ... full=0/1` closes each sample and
     samples() keeps the running set (a full sample replaces it)."""
