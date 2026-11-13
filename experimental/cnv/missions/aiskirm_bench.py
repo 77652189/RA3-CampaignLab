@@ -398,7 +398,8 @@ ARMY_N = 10                            # aiskvinf / aiskvveh (check z): what the
 
 def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None, account=None,
             buffer=None, new=None, army=None, two=None, observe=False, cap=None, block=None, off=False,
-            ptype=None, mintime=None, aidata=None, dear=None, dear_cost=DEAR_COST, power_more=None, mt_secs=300.0):
+            ptype=None, mintime=None, aidata=None, dear=None, dear_cost=DEAR_COST, power_more=None, mt_secs=300.0,
+            carrier=None):
     m = Mission(name=name, map=ai_map(resources.measured(niagara), lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
     if aidata is not None:               # aiskad / aiskfon / aiskfof: the global AIData overridden in the map stream
@@ -477,22 +478,32 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
               role='ai new barracks')
     s1 = m.player('s1')
     yard = 'AlliedConstructionYard'
-    if observe:
-        # Observe on the existing yard: no extra structure, power or AI candidate.
-        # The carrier only appends the passive CNVTeams behavior (see work/re/c_release_eight_report.md).
+    if carrier == 'ext':                 # aiskxo (D round 105): the stock yard, ra3ext loaded, no CNVTeams host
+        m.ext = True
+    if observe or carrier == 'name':
         with open(os.path.join(labpaths.SDK3, 'SageXML', 'Allied', 'Structures',
                                'AlliedConstructionYard.xml'), encoding='utf-8') as f:
             xml = f.read()
-        assert xml.count('<Behaviors>') == 1
-        yard = 'CNVSkirmTeamsYard'
-        assert xml.count('id="AlliedConstructionYard"') == 1
-        xml = xml.replace('id="AlliedConstructionYard"', f'id="{yard}"')
+        assert xml.count('<Behaviors>') == 1 and xml.count('id="AlliedConstructionYard"') == 1
+    if observe:
+        # Observe on the existing yard: no extra structure, power or AI candidate. D round 105: the yard keeps its
+        # retail id (recompiled over retail's with the passive CNVTeams behavior added) -- a renamed copy
+        # (CNVSkirmTeamsYard, before) changed the AI: retail data names AlliedConstructionYard (AlliedPowerPlant's
+        # GameDependency, the budget states' ObjectOfTypeExists, ...), and aiskxn (the rename alone, no ra3ext) kept
+        # AlliedScout dogless like the carrier while aiskxo (ra3ext, no host) matched stock. The player's yard gets
+        # the behavior too; ra3ext's CNVTeams skips a host whose owner has no AI.
         xml = xml.replace('<Behaviors>', '<Behaviors>\n'
                           '  <DeletionUpdate id="ModuleTag_CNVTeams" MinFrames="15" MaxFrames="4000"/>')
-        m.units.append(Unit(yard, xml, names=dict(unit=yard),
-                            what='原建造厂附带被动队伍日志', params=dict(every=15)))
+        link = f'GameObject:{yard}'
+        m.assets.append(('CNVSkirmTeamsYard.xml', xml, link))
+        m.replaces.append(link)
         m.ext = True
         m.name += 'C'  # keep the opt-in carrier's mod separate from the stock bench
+    if carrier == 'name':
+        # aiskxn (D round 105): the old carrier's rename alone -- a copy under its own id, no behavior, no ra3ext.
+        yard = 'CNVSkirmTeamsYard'
+        xml = xml.replace('id="AlliedConstructionYard"', f'id="{yard}"')
+        m.units.append(Unit(yard, xml, names=dict(unit=yard), what='原建造厂改名复制（对照）', params=dict(every=15)))
     m.put(yard, 'east base', 0, 0, side='s1', name='UNIT - CNV AI Yard', role='ai yard')
     m.put('AlliedConstructionYard', 'base yard', name='UNIT - CNV AI Player Yard', role='player yard')
     m.put('AlliedWarFactory', 'base factory', angle=3.1416, role='player factory')
@@ -520,6 +531,8 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
 
 # the builds this module makes (cnv/registry.py): build name -> mission factory
 MISSION = {'aiskirm': mission, 'aiskirmc': lambda: mission(observe=True),
+           'aiskxn': lambda: mission('CampAISkXN', carrier='name'),   # D 105: the carrier's rename alone
+           'aiskxo': lambda: mission('CampAISkXO', carrier='ext'),    # D 105: ra3ext loaded, stock yard, no host
            'aiskirmlow': lambda: mission('CampAISkLow', money=15000),
            'aiskirm20': lambda: mission('CampAISk20', money=20000),    # check d: the first tower's time vs 50000
            'aiskjav': lambda: mission('CampAISkJav', jav=True),

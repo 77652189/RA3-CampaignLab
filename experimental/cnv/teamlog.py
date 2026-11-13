@@ -23,7 +23,7 @@ import os
 import re
 
 LINE = re.compile(r"^team: frame=(-?\d+) list=(\d+) proto=(\S+) name1='([^']*)' name2='([^']*)' rel=(-?\d+) "
-                  r"slot=(\d+) team=(\S+) active=(\d+) n=(\d+)(?: \(no member call\))? ids=(\S*)$")
+                  r"(?:pri=-?\d+ )?slot=(\d+) team=(\S+) active=(\d+) n=(\d+)(?: \(no member call\))? ids=(\S*)$")
 END = re.compile(r'^teams: frame=(-?\d+)(?: full=([01]))? .* protos=(\d+) teams=(\d+)$')
 
 

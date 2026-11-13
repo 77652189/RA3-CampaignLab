@@ -150,6 +150,13 @@ RESULTS g / h (bench 2026-11-10, aiskirm g / h and aiskirmnl g, all PASS (weak);
        AlliedScout _0_0 0 the whole run, defense 9 from s67 to s127** -- the dogs stay in defense. The carrier yard
        (CNVSkirmTeamsYard, a renamed copy of the yard) changes the scout teams, so aiskirmc readings say nothing
        about them (its team log: both scout teams made ~s13, tgt -1 and n 0 throughout, never expire).
+     D round 105 (bench 2026-11-13, same head): the rename alone does it -- aiskxn (renamed copy, no behavior, no
+       ra3ext) scout 0 / defense 9 from s68 like the old carrier; aiskxo (stock yard, ra3ext loaded, no host) scout 1
+       from s71, defense 8 -> 7 -> 6 like stock. Retail data names AlliedConstructionYard (AlliedPowerPlant's
+       GameDependency, budget-state filters). The carrier now recompiles the retail yard under its own id with the
+       behavior: aiskirmc l scout 1 from s71, defense 8 -> 7 -> 6 at s71-73, 0 at s129 -- stock aiskirm l beside it
+       s71 / s71-74 / s128 (one-second jitter). Its log (pri= = the team template's stored Priority): DEFAULT 0, DEFENSE 1, LOW 2,
+       STANDARD 3, SCRIPTED 7 -- the xsd order; the scout team (LOW) takes dog 3172 from LandDefense (DEFENSE) at f1101.
   Reading: the first team out is BalancedCleanup (OpeningMove complete, no enemy within 700, income and power
     advantage >= 3: the player has no army and no refinery), not BalancedAttackGround; it takes the LandDefense
     team's members whole the moment it is drawn (~123 s after the wake).
@@ -1064,6 +1071,7 @@ def fm(m):
 CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j': j, 'k': k, 'l': l, 'm': m,
                       'n': n, 'o': o, 'p': p, 'q': q, 'r': r, 'u': u, 'x': x},
           'aiskirmc': {'l': l, 'm': m, 'u': u},  # opt-in carrier diagnostic; stock aiskirm stays unchanged
+          'aiskxn': {'l': l}, 'aiskxo': {'l': l},  # D 105: which half of the carrier moves the scout team
           'aiskexp': {'q': q},
           'aiskmod': {'u': u},
           'aiskacp': {'v': v},

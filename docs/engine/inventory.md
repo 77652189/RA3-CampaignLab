@@ -8,7 +8,7 @@
 | 脚本条件 | **94%** | **100%** | 12 / 12 | 89 | 33 | 6 | 47 | 3 | 95% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **93%** | **95%** | 17 / 22 | 28 | 18 | 3 | 5 | 2 | 96% |
-| AI | **88%** | **88%** | 135 / 357 | 415 | 141 | 125 | 115 | 34 | 98% |
+| AI | **88%** | **88%** | 135 / 357 | 415 | 142 | 124 | 115 | 34 | 98% |
 
 ## 脚本动作
 
@@ -1196,7 +1196,7 @@
 | 未做 | `组队招人/TeamTemplate.BaseDefenseMaxDistance` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 推断 | `组队招人/TeamTemplate.IsBaseDefenseTeam` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | `组队招人/TeamTemplate.Priority=HOTSPOT` | 1 |  | AI 模型代码里读了这个名字 |
-| 推断 | `组队招人/TeamTemplate.Priority=SCRIPTED` | 1 |  | AI 模型代码里读了这个名字 |
+| 已对拍 | `组队招人/TeamTemplate.Priority=SCRIPTED` | 1 |  | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |
 | 不涉及 | `表现/InTroubleSkirmishFeedbackControl.MinPowerAdvantageEnemiesInMyBaseVsAllMyUnits` | 1 | a4 a5 a7 | 纯表现（语音、视频、画面） |
 | 不涉及 | `表现/InTroubleSkirmishFeedbackControl.NumberOfObjectsRecentlyLost` | 1 | a4 a5 a7 | 纯表现（语音、视频、画面） |
 | 不涉及 | `表现/InTroubleSkirmishFeedbackControl.ObjectLostFilter` | 1 | a4 a5 a7 | 纯表现（语音、视频、画面） |

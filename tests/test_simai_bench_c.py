@@ -267,13 +267,16 @@ def test_release_eight_carrier_only_adds_passive_logging_to_existing_yard():
     import labpaths
     from missions.aiskirm_bench import mission
     m = mission(observe=True)
-    carrier, = m.units
+    # D round 105: the yard keeps its retail id (a renamed copy changed the AI: aiskxn vs aiskxo on check l)
+    assert m.units == []
+    (fname, xml, link), = m.assets
+    assert link == 'GameObject:AlliedConstructionYard' and m.replaces == [link]
     original = (Path(labpaths.SDK3) / 'SageXML/Allied/Structures/AlliedConstructionYard.xml').read_text(encoding='utf-8')
     behavior = '\n  <DeletionUpdate id="ModuleTag_CNVTeams" MinFrames="15" MaxFrames="4000"/>'
-    assert carrier.xml.count(behavior) == 1
-    assert carrier.xml.replace(behavior, '').replace('id="CNVSkirmTeamsYard"', 'id="AlliedConstructionYard"') == original
-    assert carrier.id == 'CNVSkirmTeamsYard' and m.ext
+    assert xml.count(behavior) == 1 and xml.replace(behavior, '') == original
+    assert m.ext
     assert len(m.objects) == 4
+    assert {o.template for o in m.objects if 'Yard' in o.template} == {'AlliedConstructionYard'}
     stock = mission()
     assert stock.units == [] and not stock.ext
 
