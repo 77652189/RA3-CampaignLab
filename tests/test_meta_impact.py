@@ -885,3 +885,71 @@ def test_physics_p5_the_wreck_s_float_residue_over_y_2048_sets_its_side():
     from checks.engine_crash_fall import FACE_BENCH
     got = _face_health()
     assert (got['W'], got['S']) == (FACE_BENCH['W'], FACE_BENCH['S']), got
+
+
+def test_meta_impact_relation_probe_changes_only_relationship():
+    """Two identical payloads and mixed allegiance make the filter observable."""
+    import re
+    import xml.etree.ElementTree as ET
+    import build
+    from checks.engine_knock_relation import retail_shock
+    from checks.engine_knock_probe import name
+
+    m, t, _ = build.resolve('engine_knock_relation', 'a')
+    original = ET.fromstring(retail_shock())
+    for lane, uid in (('yuri', 'CNV_KnockYuri'), ('rocket', 'CNV_KnockRocket')):
+        gun = next(u for u in m.units if u.id == uid)
+        payload, = re.findall(r'<MetaImpactNugget\b.*?</MetaImpactNugget>', gun.xml, re.S)
+        actual = ET.fromstring(payload)
+        assert actual.attrib == original.attrib
+        expected = dict(original.find('SpecialObjectFilter').attrib)
+        if lane == 'rocket':
+            expected['Relationship'] = 'ALLIES'
+        assert actual.find('SpecialObjectFilter').attrib == expected
+        victim = next(o for o in m.objects if o.name == name(lane, 'man'))
+        near = next(o for o in m.objects if o.name == name(lane, 'near'))
+        assert (victim.side, near.side) == ('s1', 'p1')
+        assert (near.x - victim.x, near.y - victim.y) == (20, 0)
+        assert gun.names['rocket'] + '.xml' in gun.files
+    assert len(t.counters) == 4
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError,
+                   reason='MetaImpact relation/condition dispatch is missing; see work/re/c_meta_relation_report.md')
+@pytest.mark.parametrize('lane,collision,moving,still,samples', [
+    ('yuri', 173, 'man', 'near', [(798,3749,212.87), (796,3748,213.15), (794.1,3747,213.35)]),
+    ('rocket', 174, 'near', 'man', [(2320,3746.7,213.40), (2320,3743.4,213.40), (2320,3740,212.50)]),
+])
+def test_meta_impact_relation_collision_replays_observed_selection(lane, collision, moving, still, samples):
+    """CampKRelA_mcp_1113_140752: swap relationship, swap the moving body.
+
+    Shock frames173/174 are raw; treating them as collision frames is INFERRED.
+    The engine collision centre is supplied, so this does not claim curved
+    arrival prediction. Negative positions alone cannot establish filtering.
+    """
+    import build
+    import sim
+    from checks.engine_knock_probe import name
+
+    m, t, _ = build.resolve('engine_knock_relation', 'a')
+    e = sim.Sim(m, t)
+    e.firing, e.volleys = [], []
+    e.eng.frame = collision
+    by, victim, near = (e.bodies[name(lane, part)] for part in ('gun', 'man', 'near'))
+    weapon, = by.weapons
+    e.queue_projectile_hit(collision, victim, weapon['dmg'], by, weapon,
+                           (victim.x,3750,219 if lane == 'yuri' else 219.001))
+    e.deal(1/15)
+    assert victim.hp == pytest.approx(148.5)
+    assert near.hp == 150
+    fixed = e.bodies[name(lane, still)]
+    fixed_start = (fixed.x, fixed.y, 212.5)
+    moving_body = e.bodies[name(lane, moving)]
+    for frame, xyz in enumerate(samples, collision + 1):
+        e.eng.frame = frame
+        e.move(1/15)
+        e.deal(1/15)
+        def position(body):
+            return body.x, body.y, e.impact_ground_z(body.x, body.y) if body.z is None else body.z
+        assert position(fixed) == pytest.approx(fixed_start, abs=.051)
+        assert position(moving_body) == pytest.approx(xyz, abs=.051)
