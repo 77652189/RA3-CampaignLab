@@ -45,10 +45,18 @@ def test_without_crush_the_guards_are_not_run_over(lib, build):
     assert all(r['守军数'] >= 8 for r in rows)
 
 
-@pytest.mark.xfail(strict=True, reason='aicrush1 has 11/9/9/9/8/8 guards at s28-s33, bench has zero with '
-                                       '4 tanks alive. First Crush goal now matches the guard spot, but arrival '
-                                       'and target selection timing remain unresolved; hypothesis table and '
-                                       'current replay: work/re/c_crush_revisit_report.md; work/re/handoff-c.md.')
+def test_crush_keeps_all_four_tanks_alive(lib):
+    """engine_aicrush:aicrush1, bench s28-s33: four tanks survive independently of the kill gap."""
+    w, rows = _probe_run('aicrush1', lib, 35.0)
+    samples = [(t, r) for (t, _), r in zip(w.sim.series, rows) if 28 <= t <= 33]
+    assert [t for t, _ in samples] == list(range(28, 34))
+    assert [r['坦克数'] for _, r in samples] == [4] * 6
+
+
+@pytest.mark.xfail(strict=True, reason='aicrush1 has 11/9/9/9/8/8 guards at s28-s33, bench has zero. '
+                                       'The live first target is replaced before contact; later move goals can '
+                                       'still be adjusted. Target pursuit/selection and movement remain gaps; '
+                                       'see work/re/e109_crush.md and work/re/handoff-e.md.')
 def test_crush_runs_the_guards_over_at_once(lib):
     """checks/engine_aicrush.py aicrush1: no guards at s28-s33, all four tanks survive."""
     w, rows = _probe_run('aicrush1', lib, 35.0)

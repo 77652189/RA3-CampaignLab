@@ -298,11 +298,13 @@ NOTES = {
         '工单入口未发布同帧成员当前攻击目标、位置和车身朝向观测，暂停新台，不把普通后退当倒车；'
         '所需最小接口及假设表见 work/re/c_reverse_observation_report.md'),
     # B round 108: a test names the probe but only the switch-off case matches; the effect itself is a strict xfail
-    '微操/AIMicroManagerData.Crush': (GUESSED, '台上量过（engine_aicrush：开了 s28 前碾光守军）；模拟器已验证派发，'
-                                     '碾压 move 终点不再被避让挪开（A 161 Sim.claims）；原场景仍 strict xfail：'
-                                     '到厂晚约 6 s、目标死后等 UpdateTime 才重选（handoff A 161）'),
-    '微操/AIMicroManagerData.CrushPreference': (GUESSED, '同 Crush：派发已验证，碾压 move 终点已不挪；'
-                                               'engine_aicrush 原场景 strict xfail 保留（handoff A 161）'),
+    '微操/AIMicroManagerData.Crush': (GUESSED,
+        'engine_aicrush:aicrush1 台上s28–33守军0、坦克4；按名回放存活正常断言，清零strict xfail；'
+        '模型守军11/9/9/9/8/8，首目标活着即被重选、未接触；首move终点不挪不代表后续均不挪；'
+        '追踪/选敌及移动消费者仍gap，见work/re/e109_crush.md；不晋升'),
+    '微操/AIMicroManagerData.CrushPreference': (GUESSED,
+        '同Crush，开关/低偏好对照守军至少8的按名回放保留；完整清零strict xfail；'
+        '不把活目标重选解释为死亡后等待，见work/re/e109_crush.md；不晋升'),
     '微操/AIMicroManagerData.UpdateTime': (GUESSED,
         'engine_aimicro aimicupft/aimicupst:a 仅切微操0.5/4s，15帧宿主、D81时钟重量；'
         '台内首冲帧371/317、首活均2，末图逻辑帧872/876；'
