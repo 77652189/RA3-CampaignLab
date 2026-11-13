@@ -4,6 +4,7 @@ Exact observations and unresolved acquisition boundary: work/re/e114_engage_aim.
 No scripted special-power press is present in either named check.
 """
 import importlib.util
+import json
 from pathlib import Path
 from unittest.mock import patch
 
@@ -16,6 +17,52 @@ _spec.loader.exec_module(simai)
 import teamlog
 
 OBSERVED = ROOT / 'tests/fixtures/e_engage'
+
+
+def test_engage_state33_replays_observed_goal_writes():
+    """Replay D106's selected-target writes, not its unknown event/selection.
+
+    The event time, candidate and passing gates are observed inputs. Neither
+    first acquisition nor the whole named mission is claimed by this test.
+    """
+    if not simai.available():
+        pytest.skip('no ra3model.ai')
+    mc, sp = simai.model()['micro'], simai.model()['specials']
+    evidence = json.loads((OBSERVED / 'aiegoff_reactions.json').read_text())
+    assert (evidence['build'], evidence['check']) == ('aiegoff', 'a')
+    targets = {i: sp.Thing((0, 0), name=str(i)) for i in (3167, 3168)}
+    units = {i: mc.Unit(str(i)) for i in (3170, 3171)}
+    writes = []
+    for event in evidence['events']:
+        unit = units[event['member']]
+        assert (int(unit.target.name) if unit.target else 0) == event['old_goal']
+        assert mc.react_to_threat(
+            unit, targets[event['new_goal']], unit_state=event['unit_state'],
+            ai_available=True, response_disabled=False, can_retaliate=True)
+        writes.append((event['frame'], int(unit.target.name)))
+        assert units[3170].target is None
+    assert writes == [(431, 3168), (469, 3167)]
+
+
+@pytest.mark.parametrize('gate', ['ai_unavailable', 'dead', 'disabled', 'cannot_retaliate',
+                                'no_candidate', 'unsupported_state'])
+def test_engage_state33_preserves_goal_when_reaction_cannot_apply(gate):
+    """Keep caller-supplied gates and unsupported states outside a successful write."""
+    if not simai.available():
+        pytest.skip('no ra3model.ai')
+    mc, sp = simai.model()['micro'], simai.model()['specials']
+    old, new = sp.Thing((0, 0), name='old'), sp.Thing((1, 0), name='new')
+    unit = mc.Unit('member', target=old, health=0 if gate == 'dead' else 100)
+    args = dict(unit_state=8 if gate == 'unsupported_state' else 33,
+                ai_available=gate != 'ai_unavailable', response_disabled=gate == 'disabled',
+                can_retaliate=gate != 'cannot_retaliate')
+    candidate = None if gate == 'no_candidate' else new
+    if gate == 'unsupported_state':
+        with pytest.raises(NotImplementedError):
+            mc.react_to_threat(unit, candidate, **args)
+    else:
+        assert not mc.react_to_threat(unit, candidate, **args)
+    assert unit.target is old
 
 
 @pytest.mark.parametrize('build', ['aiegon', 'aiegoff'])

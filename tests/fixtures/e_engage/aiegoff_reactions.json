@@ -1,0 +1,10 @@
+{
+  "build": "aiegoff",
+  "check": "a",
+  "run": "CampAIEgOffA_mcp_1113_062523",
+  "source": "work/re/e130_engage_reaction.md",
+  "events": [
+    {"frame": 431, "member": 3171, "unit_state": 33, "old_goal": 0, "new_goal": 3168},
+    {"frame": 469, "member": 3171, "unit_state": 33, "old_goal": 3168, "new_goal": 3167}
+  ]
+}
