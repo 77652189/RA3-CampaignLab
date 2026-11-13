@@ -21,6 +21,27 @@ SOURCE = ROOT / 'tests/fixtures/e_crush/aicrush1t.txt'
 TANKS = {3170, 3171, 3172, 3173}
 
 
+def test_aicrush1t_tactical_target_precedes_member_attack():
+    """E136: a tactical target exists before current enemy/member goals.
+
+    Original D113 transition readings; see work/re/e136_crush_approach.md.
+    No hostile-list contents can be inferred from these state samples alone.
+    """
+    rows = {r['frame']: r for r in teamlog.states(
+        SOURCE.with_name('aicrush1t_approach.txt'))['T']}
+    assert set(rows) == {211, 226, 230}
+    for frame in (211, 226):
+        row = rows[frame]
+        assert (row['mstate'], row['prev'], row['tgt'], row['tact']) == (8, 8, -1, 3169)
+        assert {i: row['aim'][i] for i in TANKS} == {i: (0, None) for i in TANKS}
+        assert row['mem'] == [(i, 1, 0) for i in sorted(TANKS)]
+    row = rows[230]
+    assert (row['mstate'], row['prev'], row['tgt'], row['tact']) == (6, 8, 3169, 3169)
+    assert row['mem'] == [(i, 10, 0) for i in sorted(TANKS)]
+    assert {i: row['aim'][i] for i in TANKS} == {
+        i: (3169, (3700., 2400.)) for i in TANKS}
+
+
 def test_aicrush1t_crush_assignment_sources():
     """E127: assignment IDs are observable even though crush clears aim.
 
@@ -108,15 +129,16 @@ def replay():
 
 
 @pytest.mark.xfail(strict=True, reason='aicrush1t f230: engine four members target the far plant; '
-                   'model first world sample after f230 is state 8 with no member goal. Approach/engagement gap; '
-                   'see work/re/e113_crush.md and work/re/handoff-e.md.')
+                   'E136 model recognizes the plant but already sees hostile infantry and has no member plant goals. '
+                   'Movement/candidate-input gap; see work/re/e136_crush_approach.md and work/re/handoff-e.md.')
 def test_aicrush1t_model_plant_attack_precedes_crush(replay):
     brain, = replay.brains.values()
     # The world advances in coarse ticks. Keep both clocks; do not relabel a tactical frame as a world sample.
     row = next(r for r in brain.rec['frames'] if r['host_frame'] >= 230)
     assert 230 <= row['host_frame'] <= 240
     assert len(row['members']) == 4
-    assert [m['goal'] for m in row['members']] == ['UNIT - CNV AI Far Plant'] * 4, (row['frame'], row['host_frame'])
+    assert (row['state'], row['foe']) == (6, 'UNIT - CNV AI Far Plant'), row
+    assert [m['goal'] for m in row['members']] == ['UNIT - CNV AI Far Plant'] * 4, row
 
 
 @pytest.mark.xfail(strict=True, reason='aicrush1t f350: engine four new crush destinations with no goal object; '
