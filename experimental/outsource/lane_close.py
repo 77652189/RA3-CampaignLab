@@ -105,7 +105,8 @@ def main():
     stamp = datetime.datetime.now().strftime('%m%d_%H%M')
     log = os.path.join(_paths.WORK, 'logs', f'{lane}_close_{stamp}.log')
     with open(log, 'w', encoding='utf-8') as f:
-        r = subprocess.run([sys.executable, '-X', 'utf8', '-m', 'pytest', '-q', '-p', 'no:cacheprovider', *tests, *skip],
+        r = subprocess.run([sys.executable, '-X', 'utf8', '-m', 'pytest', '-q', '-p', 'no:cacheprovider',
+                            '--durations=12', '--durations-min=10', *tests, *skip],   # where a slow close goes
                            stdout=f, stderr=subprocess.STDOUT)
     tail = open(log, encoding='utf-8', errors='replace').read().strip().splitlines()[-6:]
     print(f'收尾测试（{len(tests)} 个文件，日志 {log}）：')
