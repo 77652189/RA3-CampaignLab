@@ -13,7 +13,12 @@ pytestmark = pytest.mark.skipif(not simai.available(), reason='no private AI mod
 
 @pytest.mark.parametrize('build,target,home', [
     ('aibkindyes', 4, 0), ('aibkindno', 0, 4),
-    ('aibkindoryes', 4, 0), ('aibkindorno', 0, 4)])
+    ('aibkindoryes', 4, 0), ('aibkindorno', 0, 4),
+    pytest.param('aibkindfalseyes', 0, 4, marks=pytest.mark.xfail(
+        strict=True, reason='Engine s40 target/home=0/4; model=4/0 during the '
+        'continuous-power opening; queue/evaluation timing unresolved, '
+        'see work/re/c_buildkind_false_report.md and handoff-c.md')),
+    ('aibkindfalseno', 4, 0)])
 def test_building_kind_active(build, target, home):
     """engine_aibuildkind a measured s40: 4/0/4/1 and 0/4/4/1.
 
@@ -21,7 +26,10 @@ def test_building_kind_active(build, target, home):
     production timing is outside this KindOf comparison. The multi-token
     controls measured the same rows: only the second token matches in the
     positive case; neither matches in the negative. Original thresholds and
-    model are unchanged. See work/re/c_buildkind_or_report.md and
+    model are unchanged. The false variants reverse only PassIfBuilding;
+    the matching false case measured 0/4 while the model returns 4/0
+    (strict xfail, unresolved queue/evaluation timing). See
+    work/re/c_buildkind_false_report.md, work/re/c_buildkind_or_report.md and
     work/re/c_buildkind_report.md. Queue cancellation/suspension remain gaps.
     """
     w = simai.run(build, 'a', 41, lib=simai.model()['xmldata'].Library())

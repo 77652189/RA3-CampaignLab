@@ -260,7 +260,9 @@ NOTES = {
     **{f'启发条件/{k}': (BENCHED,
         'E83 engine_aibuilding a：STRUCTURE空队列、现成基地1；PassIfBuilding=false时s40到陆厂4/在家0，'
         'true时0/4，两组PASS；tests/test_simai_bench_e.py::test_is_building_idle按名回放通过。'
-        '只验空队列边界，建造中的行为未量；见 work/re/e_building_e83.md')
+        'C补充活跃连续电厂队列false反向对照：匹配组s40到陆厂/在家0/4，不匹配4/0，'
+        '两组电厂4/基地1、各一次PASS；模型匹配组4/0，test_simai_buildkind_c为strict xfail，'
+        '队列/求值时序未解；取消/挂起/等待仍gap；见 work/re/c_buildkind_false_report.md、e_building_e83.md')
        for k in ('IsBuildingHeuristic', 'IsBuildingHeuristic.PassIfBuilding')},
     '启发条件/IsBuildingHeuristic.KindOf': (BENCHED,
         'C engine_aibuildkind a：同一连续电厂开局，FS_POWER匹配时s40到陆厂4/在家0，'
@@ -268,6 +270,8 @@ NOTES = {
         '多token aibkindoryes/aibkindorno各一次PASS：FS_BARRACKS FS_POWER仅第二token匹配时4/0，'
         'FS_BARRACKS FS_TECHNOLOGY均不匹配时0/4，两组电厂4/基地1；'
         'tests/test_simai_buildkind_c.py按名回放单token和多token四组，验证活跃队列KindOf按OR匹配。'
+        'false反向两组各一次PASS：匹配0/4、不匹配4/0，均电厂4/基地1；'
+        '模型匹配false组4/0，strict xfail，见 work/re/c_buildkind_false_report.md。'
         '仅连续电厂开局，队列挂起/取消/等待阶段仍gap；'
         '见 work/re/c_buildkind_or_report.md、c_buildkind_report.md；空队列边界见 work/re/e_building_e83.md'),
     '开局/SkirmishOpeningMove.Side': (BENCHED,
