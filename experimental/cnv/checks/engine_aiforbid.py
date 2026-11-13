@@ -40,4 +40,5 @@ def a(m):
 
 CHECKS = {k: {'a': a} for k in ('aiforbidnone', 'aiforbidset', 'aiforbidclear',
                               'aifmasknone', 'aifmaskiron', 'aifmaskboth',
-                              'aifunanone', 'aifunasingle', 'aifunaboth')}
+                              'aifunanone', 'aifunasingle', 'aifunaboth',
+                              'aifdualnone', 'aifdualboth')}
