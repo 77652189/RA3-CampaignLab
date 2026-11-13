@@ -101,7 +101,20 @@ def initial_dual(sort_order):
     return m
 
 
-MISSION = {'aibs3old': lambda: initial_dual('PREFER_OLDEST'),
+def initial_dual_not(preferred_not):
+    """Keep OLD sorting fixed; penalize one observed initial-base age type."""
+    m = initial_dual('PREFER_OLDEST')
+    m.name = 'CampBN2Old' if preferred_not == 'OLDEST_OF_TYPE' else 'CampBN2New'
+    filename, xml, asset = m.assets[0]
+    m.assets[0] = filename, xml.replace('PreferredNotBaseTypes="CAPTURED"',
+                                      f'PreferredNotBaseTypes="{preferred_not}"'), asset
+    m.facts['base preferred not'] = preferred_not
+    return m
+
+
+MISSION = {'aibn2old': lambda: initial_dual_not('OLDEST_OF_TYPE'),
+           'aibn2new': lambda: initial_dual_not('MOST_RECENT_OF_TYPE'),
+           'aibs3old': lambda: initial_dual('PREFER_OLDEST'),
            'aibs3new': lambda: initial_dual('PREFER_NEWEST'),
            'aibs2old': lambda: dual('PREFER_OLDEST'),
            'aibs2new': lambda: dual('PREFER_NEWEST'),

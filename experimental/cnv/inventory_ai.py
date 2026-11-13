@@ -138,11 +138,13 @@ NOTES = {
         '工程师IGNORES_SELECT_ALL被候选池排除，空队超时且无战术运行/订单。'
         '这是模型前置诊断，不推定实机拒绝原因；需B候选资格/D同帧成员契约，'
         '不改过滤、不晋升，见work/re/e111_engineer.md'),
-    '人格/BaseSelection.PreferredNotBaseTypes': (TODO,
-        'C以aibncap/aibnnone仅切CAPTURED/空集合，两组s30–40东4/崖0/实体0；'
-        '缺同帧基地类型、资格和选中基地，不能由同点选择判定偏好无效。'
-        '模型仅保留参数，自动基地/候选发现仍缺；两strict xfail，不晋升；'
-        '见work/re/c_basenot_report.md'),
+    '人格/BaseSelection.PreferredNotBaseTypes': (BENCHED,
+        'C aibn2old/aibn2new:b初始双基地固定OLD，仅切反偏好OLDEST/MOST_RECENT；'
+        'f274两基地均合格，分数0/1选1与1/0选0，f284点命令崖矿/东矿。'
+        's55–65东/崖队员/双厂分别0/0/1/1与4/0/1/1；'
+        'tests/test_expansion_target.py按名断言类型、分数、选择点和原计数。'
+        '仅年龄类型反偏好命中子集；自动注册、死亡清理和矿点资格仍gap，'
+        '旧CAPTURED单基地两strict xfail保留；见work/re/c_bn2_report.md'),
     '人格/BaseSelection.SortOrder': (BENCHED,
         'C aibs3old/aibs3new:b初始双厂：f274两个合格基地0/1均分1，'
         'OLD pick/model=0/0、NEW=1/1；点命令分别东矿/崖矿。'

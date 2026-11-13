@@ -307,7 +307,8 @@ class Brain:
         """
         selection = heuristic.base_selection
         if (selection is None or selection.preferred - {'MAIN_BASE'}
-                or selection.preferred_not - {'CAPTURED', 'MAIN_BASE'}
+                or selection.preferred_not - {'CAPTURED', 'MAIN_BASE', 'OLDEST_OF_TYPE',
+                                               'MOST_RECENT_OF_TYPE'}
                 or selection.sort_order not in ('PREFER_OLDEST', 'PREFER_NEWEST')):
             return []
         # CAPTURED cannot be resolved from current ownership. Do not claim this
@@ -327,9 +328,17 @@ class Brain:
             water = self.view.water_at(node.x, node.y)
             if heuristic.location and ('Water' if water else 'Land') not in heuristic.location:
                 continue
+            base_types = {'MAIN_BASE'}
+            # Intact initial-dual table: first/last MAIN_BASE carries its age
+            # flag. Registration and reassignment after death remain INFERRED.
+            # See work/re/c_bn2_report.md for the same-frame preference contrast.
+            if bid == min(i for i, _ in yards):
+                base_types.add('OLDEST_OF_TYPE')
+            if bid == max(i for i, _ in yards):
+                base_types.add('MOST_RECENT_OF_TYPE')
             candidates.append(self.host.mod['targets'].ExpansionCandidate(
                 ('ore', node.name), node.x, node.y, base_id=bid,
-                base_types=frozenset({'MAIN_BASE'}), water=water))
+                base_types=frozenset(base_types), water=water))
         selected = self.host.mod['targets'].select_expansion_base(selection, candidates)
         return [c for c in candidates if c.base_id == selected]
 
