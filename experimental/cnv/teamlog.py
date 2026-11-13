@@ -399,7 +399,7 @@ def base_choices(run, use=None):
 KASSIGN = re.compile(r'^kassign: frame=(-?\d+) team=(\S+) mstate=(-?\d+) src=(\S+) ra=\S+ mem=(\d+) tgt=(\d+) '
                      r'flag=(\d+) ret=(\d+) w=([01]) prev=(\S+) start=(-?\d+) until=(-?\d+) keep=(-?\d+) '
                      r'min=(\S+) max=(\S+) n=(\d+)$')
-KPASS = re.compile(r'^kpass: frame=(-?\d+) team=(\S+) cand=(\S*) keep=(\S*)$')
+KPASS = re.compile(r'^kpass: frame=(-?\d+) team=(\S+) cand=(\S*) keep=(\S*)(?: why=(\S*))?$')
 
 
 def target_orders(run, team=None):
@@ -428,7 +428,11 @@ def keep_passes(run, team=None):
     """State 2's scoring passes (D round 102), one dict per written pass (change-only, plus one a beat): frame, team,
     cand [(target id, eligible)] -- every hostile-list entry and the game's own filter verdict, the candidates the
     members are scored against -- and keep [(member id, until, 'go'|'hold')]: each member's keep record as the pass read
-    it (until 0 = none / target gone) and whether it was re-assigned (go: frame >= until) or kept its target (hold)."""
+    it (until 0 = none / target gone) and whether it was re-assigned (go: frame >= until) or kept its target (hold);
+    why [(member id, recorded target id, reason)] (D round 104, [] in older logs) -- why that read gave what it gave:
+    'ok' (the record's until), 'norec' (no record: cleared), 't0' (record without target), 'gone' (the target id is no
+    longer in the object map), 'dead' (the target is still there but flagged dead). The old target's eligibility this
+    pass is its cand entry (absent = not in the hostile list)."""
     out = []
     with open(_log(run), encoding='utf-8', errors='replace') as f:
         for line in f:
@@ -437,7 +441,8 @@ def keep_passes(run, team=None):
                 continue
             cand = [(int(i), ok == '1') for i, ok in (c.split(':') for c in m[3].split(',') if c)]
             keep = [(int(i), int(u), d) for i, u, d in (k.split(':') for k in m[4].split(',') if k)]
-            out.append(dict(frame=int(m[1]), team=m[2], cand=cand, keep=keep))
+            why = [(int(i), int(t), r) for i, t, r in (k.split(':') for k in (m[5] or '').split(',') if k)]
+            out.append(dict(frame=int(m[1]), team=m[2], cand=cand, keep=keep, why=why))
     return out
 
 

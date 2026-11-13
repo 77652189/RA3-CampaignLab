@@ -197,3 +197,14 @@ def test_target_orders_and_keep_passes(tmp_path):
     k, e = teamlog.keep_passes(str(p))
     assert k['cand'] == [(3168, True), (3167, True)] and k['keep'] == [(3170, 0, 'go'), (3171, 0, 'go')]
     assert e['keep'] == [] and e['frame'] == 399
+    assert k['why'] == [] and e['why'] == []
+
+
+def test_keep_passes_why(tmp_path):
+    # D round 104 shape (made up, not a bench reading): why each keep read gave what it gave
+    p = tmp_path / 'ra3ext.log'
+    p.write_text('kpass: frame=551 team=0A cand=3168:1 keep=3171:0:go,3170:557:hold '
+                 'why=3171:3167:gone,3170:3167:ok\n', encoding='utf-8')
+    (k,) = teamlog.keep_passes(str(p))
+    assert k['keep'] == [(3171, 0, 'go'), (3170, 557, 'hold')]
+    assert k['why'] == [(3171, 3167, 'gone'), (3170, 3167, 'ok')]
