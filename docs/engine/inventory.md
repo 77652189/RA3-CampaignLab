@@ -8,7 +8,7 @@
 | 脚本条件 | **94%** | **100%** | 12 / 12 | 89 | 33 | 6 | 47 | 3 | 95% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **93%** | **95%** | 17 / 22 | 28 | 18 | 3 | 5 | 2 | 96% |
-| AI | **88%** | **88%** | 130 / 357 | 415 | 136 | 127 | 118 | 34 | 98% |
+| AI | **88%** | **88%** | 131 / 357 | 415 | 137 | 126 | 118 | 34 | 98% |
 
 ## 脚本动作
 
@@ -924,7 +924,7 @@
 | 未做 | `战略状态/AIStrategicStateDefinition.CannotAttackTargetReaction` | 16 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 已对拍 | `战略状态/AIStrategicStateDefinition.MaxRunningCopies` | 16 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aistate.py |
 | 已对拍 | `造兵/BuildEntry.Upgrade` | 16 | a4 a7 | C engine_aiupgrade a：aicupgon常量状态含UPGRADE_TECH/Tech2，s39起持有2（建造厂+它够得着的兵营）；aicupgoff移除专用状态后恒0；见work/re/c_upgrade_report.md。B第153轮接模型：升级条目按状态权重×分（UPGRADE 140；UPGRADE_TECH MinTime前0、ForceTime后200推断、中间140推断）挑最高下单，扣PRODUCTION，下了升级这一轮不下兵；模拟器s20下单、s40起持有2。tests/test_simai_upgrade_c.py按名回放两组通过。电力门、效率/兵力比两道、开局里的升级单没建模 |
-| 推断 | `人格/BaseSelection.PreferredBaseTypes` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 已对拍 | `人格/BaseSelection.PreferredBaseTypes` | 15 | a4 a5 a7 | C aibp1old/aibp1new:b初始双基地固定OLD、反偏好为空，仅切偏好OLDEST/MOST_RECENT；f274两基地均合格，分数1/0选0与0/1选1；f284点命令东矿/崖矿。s55–65东/崖队员/双厂分别4/0/1/1与0/0/1/1；tests/test_expansion_target.py按名断言类型、分数、选择点与原计数。仅年龄类型偏好命中子集；自动注册、死亡清理和矿点资格仍gap；见work/re/c_bp1_report.md |
 | 已对拍 | `人格/BaseSelection.SortOrder=PREFER_OLDEST` | 15 | a4 a5 a7 | 初始双厂同分候选，OLD选基地0、NEW选基地1；按名选择点/计数回放，仅该排序子集，见work/re/c_bs3_report.md |
 | 推断 | `启发条件/ConstantHeuristic.Weight` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/IntervalHeuristic.CountFrom` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字 |
