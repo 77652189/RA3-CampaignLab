@@ -112,7 +112,21 @@ def initial_dual_not(preferred_not):
     return m
 
 
-MISSION = {'aibn2old': lambda: initial_dual_not('OLDEST_OF_TYPE'),
+def initial_dual_preferred(preferred):
+    """Keep OLD sorting fixed and no penalty; reward one initial-base age type."""
+    m = initial_dual('PREFER_OLDEST')
+    m.name = 'CampBP1Old' if preferred == 'OLDEST_OF_TYPE' else 'CampBP1New'
+    filename, xml, asset = m.assets[0]
+    xml = xml.replace('PreferredBaseTypes="MAIN_BASE"', f'PreferredBaseTypes="{preferred}"')
+    xml = xml.replace('PreferredNotBaseTypes="CAPTURED"', 'PreferredNotBaseTypes=""')
+    m.assets[0] = filename, xml, asset
+    m.facts['base preferred'] = preferred
+    return m
+
+
+MISSION = {'aibp1old': lambda: initial_dual_preferred('OLDEST_OF_TYPE'),
+           'aibp1new': lambda: initial_dual_preferred('MOST_RECENT_OF_TYPE'),
+           'aibn2old': lambda: initial_dual_not('OLDEST_OF_TYPE'),
            'aibn2new': lambda: initial_dual_not('MOST_RECENT_OF_TYPE'),
            'aibs3old': lambda: initial_dual('PREFER_OLDEST'),
            'aibs3new': lambda: initial_dual('PREFER_NEWEST'),

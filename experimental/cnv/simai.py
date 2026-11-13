@@ -306,7 +306,8 @@ class Brain:
         Other multiple-yard layouts fail closed. This is not general discovery.
         """
         selection = heuristic.base_selection
-        if (selection is None or selection.preferred - {'MAIN_BASE'}
+        if (selection is None or selection.preferred - {'MAIN_BASE', 'OLDEST_OF_TYPE',
+                                                       'MOST_RECENT_OF_TYPE'}
                 or selection.preferred_not - {'CAPTURED', 'MAIN_BASE', 'OLDEST_OF_TYPE',
                                                'MOST_RECENT_OF_TYPE'}
                 or selection.sort_order not in ('PREFER_OLDEST', 'PREFER_NEWEST')):

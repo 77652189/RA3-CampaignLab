@@ -78,3 +78,5 @@ CHECKS['aibs3old'] = {'b': buildings}
 CHECKS['aibs3new'] = {'b': buildings}
 CHECKS['aibn2old'] = {'b': buildings}
 CHECKS['aibn2new'] = {'b': buildings}
+CHECKS['aibp1old'] = {'b': buildings}
+CHECKS['aibp1new'] = {'b': buildings}

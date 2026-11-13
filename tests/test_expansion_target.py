@@ -159,6 +159,49 @@ def test_initial_dual_preferred_not_counts_replay(build, expected):
     assert tuple(row[k] for k in ('候选东', '候选崖', '东建厂', '崖建厂')) == expected, row
 
 
+@pytest.mark.parametrize('build,preferred,scores,base_id,point', [
+    ('aibp1old', 'OLDEST_OF_TYPE', (1, 0), 0, (4172.7, 2987.3)),
+    ('aibp1new', 'MOST_RECENT_OF_TYPE', (0, 1), 1, (3400.3, 1300.3)),
+])
+def test_initial_dual_preferred_selection_replay(build, preferred, scores, base_id, point, monkeypatch):
+    """Same-frame eligible base scores and choice; work/re/c_bp1_report.md."""
+    tg = simai.model()['targets']
+    select = tg.select_expansion_base
+    seen = []
+
+    def observe(selection, candidates):
+        seen.append((selection, list(candidates)))
+        return select(selection, candidates)
+
+    monkeypatch.setattr(tg, 'select_expansion_base', observe)
+    w = simai.run(build, 'b', until=19)
+    brain = next(iter(w.brains.values()))
+    h = brain.targets.tdata.heuristic('CNVExpansion')
+    picked = tg.find(h, brain.view, brain.home)
+    selection, candidates = seen[-1]
+    assert selection.sort_order == 'PREFER_OLDEST'
+    assert selection.preferred == frozenset({preferred})
+    assert selection.preferred_not == frozenset()
+    assert [c.base_id for c in candidates] == [0, 1]
+    assert [c.base_types for c in candidates] == [
+        frozenset({'MAIN_BASE', 'OLDEST_OF_TYPE'}),
+        frozenset({'MAIN_BASE', 'MOST_RECENT_OF_TYPE'}),
+    ]
+    assert tuple(len(selection.preferred & c.base_types)
+                 - len(selection.preferred_not & c.base_types) for c in candidates) == scores
+    assert select(selection, candidates) == base_id
+    assert (picked.x, picked.y) == pytest.approx(point, abs=0.1)
+
+
+@pytest.mark.parametrize('build,expected', [('aibp1old', (4, 0, 1, 1)),
+                                          ('aibp1new', (0, 0, 1, 1))])
+def test_initial_dual_preferred_counts_replay(build, expected):
+    """Four raw s55..65 counts, independent of the base-choice verdict."""
+    w = simai.run(build, 'b', until=65)
+    row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
+    assert tuple(row[k] for k in ('候选东', '候选崖', '东建厂', '崖建厂')) == expected, row
+
+
 @pytest.mark.parametrize('build,expected', [('aibs3old', (4, 0, 1, 1)),
                                             ('aibs3new', (0, 0, 1, 1))])
 def test_initial_dual_base_counts_named_bench_replay(build, expected):
