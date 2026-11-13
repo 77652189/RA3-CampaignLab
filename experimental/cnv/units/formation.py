@@ -42,22 +42,28 @@ def sub1(x, old, new):
     return x.replace(old, new, 1)
 
 
-def _decls():
-    mods = ''.join(f'''	<AttributeModifier id="{i}" Category="NONE">
+def _mods():
+    """The speed tiers. They go in the UI file (EXTRA_ALL, included type="all"): from a type="instance" file such as
+    the placed host's BAB writes out only what something references, and nothing references these (ra3ext finds them
+    by hash at run time) -- d94: compiled, missing from the map stream, `sync: ... tiers found=0` on the bench."""
+    return ''.join(f'''	<AttributeModifier id="{i}" Category="NONE">
 		<Modifier Type="SPEED" Value="{p}%"/>
 	</AttributeModifier>
 ''' for i, p in zip(SPEED_IDS, TIERS))
+
+
+def _decls():
     powers = ''.join(f'''	<SpecialPowerTemplate id="{ids(k)['power']}" TargetType="NONE" Flags="CAN_NOT_BE_SCRAMBLED"
 		WaypointModeTerminal="false" ReloadTime="0.5s"/>
 	<LogicCommand Type="SPECIAL_POWER" id="{ids(k)['command']}">
 		<SpecialPower>{ids(k)['power']}</SpecialPower>
 	</LogicCommand>
 ''' for k in SWITCH)
-    return mods + powers
+    return powers
 
 
 def _ui():
-    out = ''
+    out = _mods()
     for k, s in SWITCH.items():
         i = ids(k)
         out += f'''	<UnitAbilityButtonTemplate id="{i['button']}" LogicCommand="{i['command']}">

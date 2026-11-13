@@ -143,7 +143,10 @@ def sync_moves(m):
     """s: the formation lane's four press 同速 by script at the start (NAMED_USE_COMMANDBUTTON_ABILITY); then both lanes
     get the plain right-click. Expected (D 91): `sync:` lines in ra3ext.log with the tanks at tier ~60-65 % while the
     lane moves, the plain lane absent; 坦克先到帧 (frames a tank is in the goal and no Peacekeeper is) ~0 for the
-    switched lane, ~40 for the plain one (81 vs 51 over 350, bench D 80)."""
+    switched lane, ~40 for the plain one (81 vs 51 over 350, bench D 80).
+    Bench D 94 (CampFormSS_mcp_1112_222330): switched 18, plain 86; tanks at tier 60 (5.33 -> 3.2 a frame), the men
+    at 100 (3.33). The 18 is the layout, not the sync: the men start 45 behind (SPOTS) = 13.5 frames at their pace,
+    and the first look (frame 511, the move from ~505) lets the tanks run 6 frames at full speed, ~3.6 more."""
     t = player_moves(m)
     sync = m.facts['sync command']                  # missions/formation_bench.py (D 92)
     t.scripts.append(Script('Test - sync timer', [], [('SET_MILLISECOND_TIMER', 'Test Sync On', 0.5)]))
@@ -164,10 +167,32 @@ def sync_moves(m):
         for j, c in enumerate(tank_in):          # either tank in, both Peacekeepers out (a tank in twice counts twice)
             t.scripts.append(Script(f'Test - {counter} {j}', [c] + men_out, [('INCREMENT_COUNTER', 1, counter)],
                                     once=False))
+    # all four in on both lanes; the switched tanks lead by the layout's head start only (D 94: 18 vs 86)
+    t.expect = [('plain', 100, '==', 22), ('formation', 100, '==', 22),
+                ('formation 坦克先到帧', 100, '<=', 30), ('plain 坦克先到帧', 100, '>=', 60)]
+    return t
+
+
+def dense_moves(m):
+    """d: as s, but the formation lane's four press 密集 (ra3ext CNVSync, DENSE status bit: a moving group of ours is
+    ordered again to points pulled halfway to its centre). Expected (D 93): `dense:` lines in ra3ext.log for the
+    switched lane only; at the goal its members stand 30-50 apart pairwise, the plain lane's 60-100 (the last
+    `probe` positions; scripts/d94_dense.py in work/re reads them). Both lanes all in."""
+    t = player_moves(m)
+    dense = m.facts['dense command']                # missions/formation_bench.py (D 92)
+    t.scripts.append(Script('Test - dense timer', [], [('SET_MILLISECOND_TIMER', 'Test Dense On', 0.5)]))
+    t.scripts.append(Script('Test - dense on', [('TIMER_EXPIRED', 'Test Dense On')],
+                            [('NAMED_USE_COMMANDBUTTON_ABILITY', m.role(f'formation {k}').name, dense)
+                             for k in range(len(SPOTS))]))
+    lane = [k for k, s in enumerate(t.bench) if s[0] == 'bench_box' and s[1].get('right')]
+    assert len(lane) == 1
+    b = t.bench[lane[0]][1]
+    t.bench[lane[0]] = ('bench_click', dict(x=b['x0'], y=(b['y0'] + b['y1']) / 2, right=True, look=True))
+    t.expect = [('plain', 100, '==', 22), ('formation', 100, '==', 22)]
     return t
 
 
 MISSION = {'engine_formation_player': mission, 'engine_formation_hotkey': hotkey_mission}
 CHECKS = {'engine_formation_player': {'f': player_moves, 'b': lambda m: player_moves(m, both=True)},
           'engine_formation_hotkey': {'h': hotkey_moves},
-          'engine_formation_sync': {'s': sync_moves}}
+          'engine_formation_sync': {'s': sync_moves, 'd': dense_moves}}
