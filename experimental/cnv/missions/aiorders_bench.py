@@ -71,4 +71,19 @@ def with_power(defense):
     return m
 
 
-MISSION = {'aiskcapo': on_barracks, 'aiskcapd': lambda: with_power(True), 'aiskcapp': lambda: with_power(False), 'aiskcapy': on_yard}
+TEAMS = '<DeletionUpdate id="ModuleTag_CNVTeams" MinFrames="15" MaxFrames="20000"/>'
+
+
+def with_teams():
+    """aiskcapt (D 85, H5 / H6 of d79): aiskcapo with the copied barracks also carrying CNVTeams (team / tstate lines of
+    its owner s1 and, while it watches, the AI's command lines `cmd ... src=`): which team, by which command, asks for
+    the overrun Peacekeepers of the second wave (s130-s165), and are the first wave's two in a team by then?"""
+    m = on_barracks()
+    m.name = 'CampAISkCapT'
+    (u,) = [u for u in m.units if u.id == NEW_BARRACKS]
+    u.xml = u.xml.replace('<Behaviors>', f'<Behaviors>\n\t\t\t{TEAMS}', 1)
+    return m
+
+
+MISSION = {'aiskcapo': on_barracks, 'aiskcapd': lambda: with_power(True), 'aiskcapp': lambda: with_power(False),
+           'aiskcapy': on_yard, 'aiskcapt': with_teams}

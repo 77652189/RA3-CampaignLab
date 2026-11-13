@@ -83,5 +83,62 @@ def player_moves(m, both=False):
     return t
 
 
-MISSION = {'engine_formation_player': mission}
-CHECKS = {'engine_formation_player': {'f': player_moves, 'b': lambda m: player_moves(m, both=True)}}
+HOTKEYS = 'UIMouseTacticalMiscHotKeys'
+HOTKEY_SLOT, HOTKEY_VK = 'CycleHarvesters', 0x4E      # KEY_N (DefaultHotKeys); the probe map has no harvester to cycle
+
+
+class HotkeyPack:
+    """D 85 canary: retail leaves the Create Formation hotkey ("keep formation when moving", MiscHotKeys.xsd) unbound.
+    This pack is retail's UIMouseTacticalMiscHotKeys (SDK UI/Mouse/Settings.xml, static stream) with CreateFormation
+    bound to the CycleHarvesters slot (key N), compiled into the static stream where splice_assets puts it over
+    retail's (as a music pack's map). Made on first use: the offline contract never writes the SDK."""
+    FOLDER = 'CNVFormKeys'
+    files = ()
+
+    @property
+    def include(self):
+        with open(os.path.join(labpaths.SDK3, 'SageXML', 'UI', 'Mouse', 'Settings.xml'), encoding='utf-8-sig') as f:
+            x = f.read()
+        head = f'<{HOTKEYS}\n\t\tid="{HOTKEYS}"'
+        body = x[x.index(head):x.index(f'</{HOTKEYS}>') + len(f'</{HOTKEYS}>')]
+        assert 'CreateFormation=' not in body
+        body = body.replace(f'id="{HOTKEYS}"', f'id="{HOTKEYS}"\n\t\tCreateFormation="{HOTKEY_SLOT}"', 1)
+        data = os.path.join(labpaths.SDK3, 'Mods', self.FOLDER, 'Data')
+        os.makedirs(data, exist_ok=True)
+        with open(os.path.join(data, 'hotkeys.xml'), 'w', encoding='utf-8', newline='\r\n') as f:
+            f.write('<?xml version="1.0" encoding="utf-8"?>\n<AssetDeclaration xmlns="uri:ea.com:eala:asset">\n\t'
+                    + body + '\n</AssetDeclaration>\n')
+        return f'DATA:{self.FOLDER}/Data/hotkeys.xml'
+
+    def check(self, files):
+        """The spliced static streams carry our hotkey table (an instance retail has: it replaced retail's)."""
+        from ra3voice import manifest, refpack
+        unpack = lambda b: refpack.decompress(b) if refpack.is_refpack(b) else b
+        where = [n for n, b in files if n.lower().startswith('data\\static') and n.lower().endswith('.manifest')
+                 and any(a.name == f'{HOTKEYS}:{HOTKEYS}' for a in manifest.parse(unpack(b)))]
+        assert where, f'{HOTKEYS} is in no spliced static stream: the binding never reaches the game'
+        print(f'hotkeys: {HOTKEYS} spliced into {where}')
+
+
+def hotkey_mission():
+    m = mission()
+    m.name = 'CampFormH'
+    m.statics = [HotkeyPack()]
+    return m
+
+
+def hotkey_moves(m):
+    """h: the formation lane is box-selected, gets Create Formation (key N, bound by HotkeyPack), then a plain
+    right-click at its goal; the plain lane as in f. Same pace (tanks held to 50) = the hotkey is the same-pace entry."""
+    t = player_moves(m)
+    lane = [k for k, s in enumerate(t.bench) if s[0] == 'bench_box' and s[1].get('right')]
+    assert len(lane) == 1
+    x, y = t.bench[lane[0]][1]['x0'], (t.bench[lane[0]][1]['y0'] + t.bench[lane[0]][1]['y1']) / 2
+    t.bench[lane[0]:lane[0] + 1] = [('bench_key', dict(vk=HOTKEY_VK, look=True)),
+                                    ('bench_click', dict(x=x, y=y, right=True, look=True))]
+    return t
+
+
+MISSION = {'engine_formation_player': mission, 'engine_formation_hotkey': hotkey_mission}
+CHECKS = {'engine_formation_player': {'f': player_moves, 'b': lambda m: player_moves(m, both=True)},
+          'engine_formation_hotkey': {'h': hotkey_moves}}

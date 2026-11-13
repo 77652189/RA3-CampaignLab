@@ -17,4 +17,4 @@ def yl(m):
 
 
 CHECKS = {'aiskcapo': {'y': y, 'yl': yl}, 'aiskcapd': {'y': y, 'yl': yl}, 'aiskcapp': {'y': y, 'yl': yl},
-          'aiskcapy': {'y': y}}
+          'aiskcapy': {'y': y}, 'aiskcapt': {'yl': yl}}

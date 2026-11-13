@@ -261,7 +261,8 @@ def spec_of(mission, test=None, shell=False, name=None, layers=()):
     # our music: its map into the static stream, its .mus files into the big, then checked in the spliced stream; our
     # voice lines the same way, their subtitles (DIALOGEVENT:CNV_*) into the string table; our movies: the Video
     # declarations into the static stream, the clips into the big
-    packs = tuple((kind, p) for kind, p in (('music', mm.music), ('voice', mm.voice), ('video', mm.video)) if p)
+    packs = tuple((kind, p) for kind, p in (('music', mm.music), ('voice', mm.voice), ('video', mm.video)) if p) + \
+        tuple(('static', p) for p in mm.statics)
 
     def edit(m):
         write_map(m, mm)
