@@ -23,7 +23,11 @@ def a(m):
     t.scripts.append(Script('Test - keep targets', [],
                            [('UNIT_SET_HEALTH', m.role(r).name, 100.0)
                             for r in ('plant', 'barracks', 'tank')], once=False))
-    if 'base sort order' in m.facts:
+    if 'base preferred not' in m.facts:
+        # Readings only: captured base type/eligibility is not observed.
+        # See work/re/c_basenot_report.md; ore fields do not establish bases.
+        pass
+    elif 'base sort order' in m.facts:
         # BaseSelection.SortOrder contrast: readings only. Two ore fields do
         # not establish two eligible bases or their ages. See work/re/c_basesort_report.md.
         pass
@@ -38,4 +42,4 @@ def a(m):
     return t
 
 
-CHECKS = {key: {'a': a} for key in ('aiexpc', 'aiexpctl', 'aibsold', 'aibsnew')}
+CHECKS = {key: {'a': a} for key in ('aiexpc', 'aiexpctl', 'aibsold', 'aibsnew', 'aibncap', 'aibnnone')}

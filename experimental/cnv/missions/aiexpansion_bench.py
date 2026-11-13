@@ -2,6 +2,7 @@
 
 Only HeuristicType differs (Expansion / NamedObject). BaseSelection is identical.
 The aibsold/aibsnew pair instead keeps Expansion and only switches SortOrder.
+The aibncap/aibnnone pair only switches PreferredNotBaseTypes.
 The fields are NOT established legal expansion candidates: commands/team state
 must establish selection before any candidate rule can be promoted.
 """
@@ -13,10 +14,12 @@ from missions.aitargetpick_bench import mission as target_mission
 from missions.aiteams_bench import HOST, host_unit
 
 
-def mission(expansion=True, sort_order=None):
+def mission(expansion=True, sort_order=None, preferred_not=None):
     name = 'CampAIExp' if expansion else 'CampAIExpCtl'
     if sort_order:
         name = {'PREFER_OLDEST': 'CampAIBSOld', 'PREFER_NEWEST': 'CampAIBSNew'}[sort_order]
+    if preferred_not is not None:
+        name = {'CAPTURED': 'CampAIBNCap', '': 'CampAIBNNone'}[preferred_not]
     m = target_mission(name, [('ClosestStructureHeuristic', None)], (0, 0, 0, 4))
     cp = types.ModuleType(m.map.__name__)
     cp.__dict__.update(vars(m.map))
@@ -42,6 +45,11 @@ def mission(expansion=True, sort_order=None):
         m.assets[0] = filename, xml.replace('SortOrder="PREFER_OLDEST"',
                                           f'SortOrder="{sort_order}"'), asset
         m.facts['base sort order'] = sort_order
+    if preferred_not is not None:
+        filename, xml, asset = m.assets[0]
+        m.assets[0] = filename, xml.replace('PreferredNotBaseTypes="CAPTURED"',
+                                          f'PreferredNotBaseTypes="{preferred_not}"'), asset
+        m.facts['base preferred not'] = preferred_not
     m.units.append(host_unit())
     m.put(HOST, 'east base', 250, 400, side='s1', role='teams host')
     m.ext = True
@@ -53,4 +61,6 @@ def mission(expansion=True, sort_order=None):
 
 MISSION = {'aiexpc': lambda: mission(True), 'aiexpctl': lambda: mission(False),
            'aibsold': lambda: mission(True, 'PREFER_OLDEST'),
-           'aibsnew': lambda: mission(True, 'PREFER_NEWEST')}
+           'aibsnew': lambda: mission(True, 'PREFER_NEWEST'),
+           'aibncap': lambda: mission(preferred_not='CAPTURED'),
+           'aibnnone': lambda: mission(preferred_not='')}

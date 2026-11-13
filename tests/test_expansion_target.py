@@ -73,3 +73,14 @@ def test_base_sort_named_bench_replay(build):
     row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
     # Raw engine readings, not a rule for sorting bases; both layouts are identical.
     assert (row['候选东'], row['候选崖'], row['普通实体']) == (4, 0, 0)
+
+
+@pytest.mark.parametrize('build', ['aibncap', 'aibnnone'])
+@pytest.mark.xfail(strict=True, reason='PreferredNotBaseTypes CAPTURED/empty both select east on the bench; '
+                   'automatic candidate discovery is absent; base type/eligibility/selection is unobserved; '
+                   'see work/re/c_basenot_report.md and handoff-c.md')
+def test_base_preferred_not_named_bench_replay(build):
+    w = simai.run(build, 'a', until=31)
+    row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
+    # Retain raw bench counts, without inferring base type or preference scores.
+    assert (row['候选东'], row['候选崖'], row['普通实体']) == (4, 0, 0), row

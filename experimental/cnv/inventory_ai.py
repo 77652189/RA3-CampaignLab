@@ -119,6 +119,11 @@ NOTES = {
         '工程师IGNORES_SELECT_ALL被候选池排除，空队超时且无战术运行/订单。'
         '这是模型前置诊断，不推定实机拒绝原因；需B候选资格/D同帧成员契约，'
         '不改过滤、不晋升，见work/re/e111_engineer.md'),
+    '人格/BaseSelection.PreferredNotBaseTypes': (TODO,
+        'C以aibncap/aibnnone仅切CAPTURED/空集合，两组s30–40东4/崖0/实体0；'
+        '缺同帧基地类型、资格和选中基地，不能由同点选择判定偏好无效。'
+        '模型仅保留参数，自动基地/候选发现仍缺；两strict xfail，不晋升；'
+        '见work/re/c_basenot_report.md'),
     '人格/BaseSelection.SortOrder': (TODO,
         'C以aibsold/aibsnew仅切PREFER_OLDEST/PREFER_NEWEST，两组s20起东4/崖0/实体0；'
         '两个矿区不等于两个合格基地，尚缺同帧基地ID、类型、年龄与选中基地。'
