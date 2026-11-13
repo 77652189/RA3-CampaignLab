@@ -637,7 +637,10 @@ def contract(mission):
     out += [f'cast {k}: no object named {r.name!r}' for k, r in m.cast.items()
             if r.name and r.name not in named and r.name not in created]
     out += [f'mark {k}: no waypoint {w!r}' for k, w in m.marks.items() if w not in m.waypoints]
-    powers = {p: u for u in m.units for p in u.abilities.values()}
+    powers = {}                         # {ability: units publishing it} (a shared toggle: several kinds, one command)
+    for u in m.units:
+        for p in u.abilities.values():
+            powers.setdefault(p, []).append(u)
     known = {AREA_ARG: ('area', m.areas), TEAM_ARG: ('team', set(getattr(m.map, 'TEAMS', {}).values()) | set(m.teams.values())),
              WAYPOINT_ARG: ('waypoint', m.waypoints), PLAYER_ARG: ('player', set(getattr(m.map, 'PLAYERS', {}).values()) | {ALL_PLAYERS}),
              OBJECT_ARG: ('object', set(named) | created), STRING_ARG: ('string', m.strings), POWER_ARG: ('power', set(powers) | RETAIL_POWERS),
@@ -688,8 +691,9 @@ def contract(mission):
             own = POWER_ARG if POWER_ARG in types else COMMAND_ARG
             if OBJECT_ARG in types and own in types:                # NAMED_FIRE_SPECIAL_POWER_* / _USE_COMMANDBUTTON_*
                 who, power = args[types.index(OBJECT_ARG)], args[types.index(own)]
-                if who in named and power in powers and powers[power].id != named[who].template:
-                    out.append(f'{s.name}: {who} ({named[who].template}) fired {power}, an ability of {powers[power].id}')
+                if who in named and power in powers and named[who].template not in {u.id for u in powers[power]}:
+                    out.append(f'{s.name}: {who} ({named[who].template}) fired {power}, an ability of '
+                               f'{"/".join(u.id for u in powers[power])}')
     return out
 
 

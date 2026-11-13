@@ -16,7 +16,7 @@ import os
 
 import labpaths
 from maps import probe_range
-from parts import Mission, Script, Test, Unit, square
+from parts import NOT, Mission, Script, Test, Unit, square
 
 TANK, MAN = 'AlliedAntiVehicleVehicleTech1', 'AlliedAntiInfantryInfantry'
 PROBE = {TANK: 'CNV_FormTank', MAN: 'CNV_FormMan'}
@@ -139,6 +139,35 @@ def hotkey_moves(m):
     return t
 
 
+def sync_moves(m):
+    """s: the formation lane's four press 同速 by script at the start (NAMED_USE_COMMANDBUTTON_ABILITY); then both lanes
+    get the plain right-click. Expected (D 91): `sync:` lines in ra3ext.log with the tanks at tier ~60-65 % while the
+    lane moves, the plain lane absent; 坦克先到帧 (frames a tank is in the goal and no Peacekeeper is) ~0 for the
+    switched lane, ~40 for the plain one (81 vs 51 over 350, bench D 80)."""
+    t = player_moves(m)
+    sync = m.facts['sync command']                  # missions/formation_bench.py (D 92)
+    t.scripts.append(Script('Test - sync timer', [], [('SET_MILLISECOND_TIMER', 'Test Sync On', 0.5)]))
+    t.scripts.append(Script('Test - sync on', [('TIMER_EXPIRED', 'Test Sync On')],
+                            [('NAMED_USE_COMMANDBUTTON_ABILITY', m.role(f'formation {k}').name, sync)
+                             for k in range(len(SPOTS))]))
+    lane = [k for k, s in enumerate(t.bench) if s[0] == 'bench_box' and s[1].get('right')]
+    assert len(lane) == 1
+    b = t.bench[lane[0]][1]
+    t.bench[lane[0]] = ('bench_click', dict(x=b['x0'], y=(b['y0'] + b['y1']) / 2, right=True, look=True))
+    for lane_name, y in LANES.items():
+        counter, goal = f'CNV_Form_{lane_name.title()}_Ahead', f'Test Form {lane_name.title()} Goal'
+        t.counters.append((counter, f'{lane_name} 坦克先到帧'))
+        tank_in = [('NAMED_INSIDE_AREA', m.role(f'{lane_name} {k}').name, goal)
+                   for k, s in enumerate(SPOTS) if s[0] == TANK]
+        men_out = [('NAMED_INSIDE_AREA', m.role(f'{lane_name} {k}').name, goal, NOT)
+                   for k, s in enumerate(SPOTS) if s[0] == MAN]
+        for j, c in enumerate(tank_in):          # either tank in, both Peacekeepers out (a tank in twice counts twice)
+            t.scripts.append(Script(f'Test - {counter} {j}', [c] + men_out, [('INCREMENT_COUNTER', 1, counter)],
+                                    once=False))
+    return t
+
+
 MISSION = {'engine_formation_player': mission, 'engine_formation_hotkey': hotkey_mission}
 CHECKS = {'engine_formation_player': {'f': player_moves, 'b': lambda m: player_moves(m, both=True)},
-          'engine_formation_hotkey': {'h': hotkey_moves}}
+          'engine_formation_hotkey': {'h': hotkey_moves},
+          'engine_formation_sync': {'s': sync_moves}}
