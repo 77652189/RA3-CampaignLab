@@ -302,6 +302,22 @@ def engage_clock(name, enabled):
     return m
 
 
+def keep_target(name, seconds=2):
+    """Fixed nonzero keep duration on the existing observed Engage carrier.
+
+    Min equals Max to remove the random interval from this clock measurement.
+    Prediction: assignment at F expires at F + 15 * seconds; intervening
+    state-2 passes hold, and the first pass at/after expiry may assign again.
+    """
+    m = engage_clock(name, True)
+    m.assets = [(path, text.replace('EngageHostileTargets="true"',
+                    f'EngageHostileTargets="true" TimeToKeepTargetMin="{seconds:g}s" '
+                    f'TimeToKeepTargetMax="{seconds:g}s"'), key)
+                for path, text, key in m.assets]
+    m.facts['keep seconds'] = seconds
+    return m
+
+
 def dodge(name, enabled, reaction=0.5):
     """DodgeThreats only: recruited warriors fighting the same immortal conscripts.
 
@@ -380,7 +396,8 @@ def ignore_rule(name, rule):
     return m
 
 
-MISSION = {'aiignrany': lambda: ignore_rule('CampIgnRuleAny', 'ANY'),
+MISSION = {'aikeeptwo': lambda: keep_target('CampAIKeepTwo'),
+           'aiignrany': lambda: ignore_rule('CampIgnRuleAny', 'ANY'),
            'aiignrall': lambda: ignore_rule('CampIgnRuleAll', 'ALL'),
            'aiegon': lambda: engage_clock('CampAIEgOn', True),
            'aiegoff': lambda: engage_clock('CampAIEgOff', False),

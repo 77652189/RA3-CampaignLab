@@ -121,6 +121,15 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '微操/AIMicroManagerData.TimeToKeepTargetMin': (BENCHED,
+        'E123 aikeeptwo:a：Min=Max=2秒，score分配f495写until525，f503/519 hold，'
+        'f527 go重写until557；aiegon:a零保持f375/383均go。'
+        'tests/test_ai_keep_target.py按名回放原台候选资格、分配来源和保持/到期消费者；'
+        '只验固定区间、已发布成员资格；随机区间、打分、死亡清理、其他来源与整局时钟仍gap；'
+        '见work/re/e123_keep_target.md'),
+    '微操/AIMicroManagerData.TimeToKeepTargetMax': (GUESSED,
+        'E123仅作为固定Min=Max=2秒的控制量；未验证非退化随机区间/Max独立消费，不晋升；'
+        '见work/re/e123_keep_target.md'),
     '战略状态/AIStrategicStateDefinition.CannotAttackTargetReaction': (BENCHED,
         'engine_aicannot aicantig/di/su:r：Ignore保留两人和空靶；Disband f95清空/f97重招；'
         'TreatLikeSuccess f92换地面厂/f500进入攻击态。tests/test_ai_cannot_reaction.py按名回放生命周期；'
