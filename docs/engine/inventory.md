@@ -7,7 +7,7 @@
 | 脚本动作 | **92%** | **100%** | 50 / 50 | 451 | 124 | 20 | 190 | 117 | 93% |
 | 脚本条件 | **97%** | **100%** | 12 / 12 | 89 | 51 | 4 | 31 | 3 | 98% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
-| 武器效果 | **94%** | **95%** | 17 / 22 | 29 | 19 | 3 | 4 | 3 | 97% |
+| 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
 | AI | **92%** | **93%** | 144 / 357 | 423 | 154 | 119 | 116 | 34 | 99% |
 
 ## 脚本动作
@@ -773,7 +773,6 @@
 | 不涉及 | `TintObjectsNugget` | 9 | 全部 | 纯表现：Color及Pre/Sustained/PostColorTime、Frequency/Amplitude仅控制染色动画；engine_tint pair实测2/90/2/90，独立DamageNugget解释全部伤害，test_simbench_c重放；不声称像素已验证；例：SovietCommandoCallBombingRun, AlliedCommandoAttachWeapon |
 | 推断 | `ActivateLiftObjectNugget` | 6 | a1 a2 a4 a6 a7 | 部分：按模块证据实现开火者举升表，trunc(TimeIncrement×15)逐发累加、续期封顶MaxTimeLifted、逐帧递减释放；Lifetime不参与，释放不清LIFTED；tests/test_lift_nugget.py按名回放engine_lift a旧读数一致，landing因落地清位未实现strict xfail；落地清位INFERRED，垂直运动/死亡/飞机/弹体/复杂筛选仍gap，不登记整项已对拍；例：JapanCommandoTech1PsyonicCrush, JapanCommandoTech1AirborneKiller |
 | 已对拍 | `LineDamageNugget` | 6 | a1 a2 a3 a4 a5 a6 a7 | tests/test_simbench_c.py::test_weaponfx_predictions_and_finite_bursts；例：SovietCommandoSniperRifle, AAAVT1_SovietCommandoSniperRifle |
-| 推断 | `SpecialPowerNugget` | 6 | 全部 | 部分：engine_spn a实测自身ARMOR派发、缺模块/类型过滤；engine_spng a / engine_spngp a实测单个OBJECT/PLAYER升级门槛读取施法者/其玩家；engine_spnret a原版守护者普通/高科技保留与去除此Nugget均74/69%血，增伤由AttributeModifierNugget提供，无活动消费者的PaintTarget模块无附加效果；tests/test_special_power_nugget.py回放；engine_spnscr a原版干扰保留/去除SPN首伤均延后但最终同80%，到期无条件清除脚本同名状态位接口已覆盖；原版筛选最小派发接口已覆盖（类别/气球模板/铁幕排除），攻击订单恢复未解释，未登记完整消费者；engine_spndisguise a原版/删SPN/删变装模块/脚本正对照1111/1110/1110/1111已按名回放，接通直接命中DISGUISED位，身份/外观/索敌/换目标/取消仍gap；engine_spnspyx a间谍对步兵/镰刀/删SPN镰刀/脚本位镰刀均命中，s5-15稳定1111/1110/1110/1111按名回放，闭合原版INFANTRY正负过滤；engine_spnspyex a动员兵/恐怖机器人/删SPN/脚本位四路均命中，s5-15稳定1111/1110/1110/1111按名回放；恐怖机器人具有INFANTRY但被ExcludeThing显式排除，身份/索敌仍gap；engine_spntrans a迅雷运输艇原版/删SPN/删消费者/脚本正对照稳定1111/1110/1110/1111已按名回放，仅稳定DISGUISED位；engine_spntrfilter a镰刀/步兵/删SPN步兵/脚本位步兵四路均命中，稳定1111/1110/1110/1111按名回放，闭合原版VEHICLE正负过滤；精确展开时序为gap，即时应用INFERRED；仅直接单发，OCL/其他模块、未知类型/多重升级未接通，不登记整项已对拍；例：SovietCommandoCallBombingRun, AlliedAntiVehicleVehicleTech1TargetPainter |
 | 未做 | `FireOnObjectsNugget` | 5 |  | 未实现：子武器派发条件与空间锚点尚未解释；失败诊断不作为已对拍依据；例：PlayerPowerJapanEmperorsResolveWeapon_L1, PlayerPowerJapanEmperorsResolveWeapon_L2 |
 | 已对拍 | `SecondaryDamageNugget` | 5 | a7 | tests/test_simbench_c.py::test_secondary_damage_delivers_one_amount_at_hit_without_damaging_health；例：MountRushmoreHeadEyeWeapon, AlliedCryoSatelliteLvl1 |
 | 推断 | `AttachNugget` | 4 | a1 a2 a4 a5 a6 a7 a9 | 部分：engine_attach a实测直接单发、父子状态、随父移动及目标状态/类型拒绝；仅零半径简单模块，原版复杂筛选/维修/吸血/解除/弹体未接通，不登记整项已对拍；例：AlliedCommandoAttachWeapon, SovietAntiVehicleInfantryMagneticBombAttachWeapon |
@@ -782,11 +781,16 @@
 | 已对拍 | `DamageContainedNugget` | 2 | a1 a2 a3 a5 | tests/test_simbench_c.py::test_damage_contained_limits_eligible_passengers_without_damaging_the_others；例：SovietAntiInfantryInfantryMolotovCocktailWarhead, Weapon_DesolatorBombFieldUpdate |
 | 已对拍 | `LeechPercentMaxHealthDamageNugget` | 2 | a1 a3 a4 a6 a7 a9 | tests/test_simbench_c.py::test_leech_percent_uses_victim_maximum_not_current_health_or_caster_maximum；例：SovietCrushWeapon, SovietHarpoonCrushWeapon |
 | 不涉及 | `ReportWeaponFiredStatNugget` | 2 |  | 纯统计（C线工单允许排除）：只记录玩家武器开火次数；原版两份空配置附于SovietVacuumBomb / ParticleCannonWeapon，伤害与创建物体由独立WeaponOCLNugget负责。保留用量2，不登记已对拍；未上台，不模拟战后统计；证据见work/re/c_reportstat_report.md；例：SovietVacuumBomb, ParticleCannonWeapon |
+| 推断 | `SpecialPowerNugget:变装消费者` | 2 | a4 | 2用量：间谍/迅雷直接命中DISGUISED位及INFANTRY/VEHICLE/恐怖机器人排除已测；engine_spndisguise/spnspyx/spnspyex/spntrans/spntrfilter a均1111/1110/1110/1111，tests/test_special_power_nugget.py按名回放；gap：身份/外观/索敌/换目标/取消，迅雷展开时序strict xfail，即时位应用INFERRED；engine_spnrelations a间谍/迅雷各Friend与Neutral四路s6-15全1111，独立命中且无脚本变装位；身份/时序缺口见work/re/c_spnclosure_report.md，不登记完整消费者；例：AlliedInfiltrationInfantryDisguiser, JapanLightTransportVehicleDisguiser |
 | 未做 | `ActivateCircularDamageNugget` | 1 |  | C线前置门禁：原版TeslaNova的Lifetime决定扩散速度，伤害来自宿主CircularDamageUpdate的SweepWeapon；E线模块消费接口尚缺，不能用直伤或DOT代替。0局、无台上读数，不登记已对拍；接口需求与假设表见work/re/c_circular_gate_report.md；例：SovietAntiNavyShipTech1TeslaNova |
 | 已对拍 | `DOTNugget` | 1 |  | tests/test_simbench_c.py::test_dot_counts_interval_ticks_for_two_durations_and_observes_first_damage_frame；例：PlayerPowerIrradiateTargetWeapon |
 | 未做 | `GrapplingHookNugget` | 1 | a1 a3 a4 a6 a7 a9 | engine_grapple a最小消费者诊断；GrapplingHookUpdate派发/拉拽/释放未解释，显式报告gap；tests/test_grapple_nugget.py守卫直接命中/继承/弹头及原版缓存，不登记已对拍；例：SovietAntiVehicleVehicleTech3Harpoon |
 | 已对拍 | `LeechHealthDamageNugget` | 1 | a1 a2 a3 a4 a5 a6 a7 | tests/test_simbench_c.py::test_leech_health_heals_from_damage_and_respects_the_heal_fraction；例：SovietAntiVehicleVehicleTech1LeechBeamWeapon |
 | 已对拍 | `MetaImpactNugget:镰刀敌我筛选` | 1 |  | tests/test_meta_impact.py::test_meta_impact_relation_collision_replays_observed_selection；仅镰刀无延迟筛选写法的发射者敌我关系→默认Physics；engine_knock_relation a健康99/100/99/100，ENEMIES仅敌/ALLIES仅友，逐帧位置回放。碰撞帧/爆心由台上输入；倒地状态及NO_COLLISIONS/非步兵拒绝未单独上台，Physics状态映射INFERRED；不覆盖原版落地入口、延迟、Arc；例：SovietAntiInfantryVehicleLandWeapon |
+| 推断 | `SpecialPowerNugget:干扰消费者` | 1 |  | 1用量，暂停：engine_spnscr a保留/删除SPN最终同80%，活动消费者未闭合；状态到期与攻击订单恢复已另有具名回放，筛选仅隔离接口；需要活动派发和状态观测，不登记完整消费者，work/re/c_spnclosure_report.md；例：AlliedAntiAirShipWeaponScrambler |
+| 已对拍 | `SpecialPowerNugget:涂靶升级门槛` | 1 | 全部 | tests/test_special_power_nugget.py::test_special_power_nugget_retail_painter_consumer；仅原版守护者普通/高科技两种升级门槛与空PaintTarget消费者边界；engine_spnret a保留/删除SPN晚段74/69/74/69%血，增伤来自伴随AttributeModifierNugget。非通用技能执行；原版涂靶开关/持续光束/重复开火未测，其他消费者另列gap；例：AlliedAntiVehicleVehicleTech1TargetPainter |
+| 推断 | `SpecialPowerNugget:轰炸消费者` | 1 | a1 a2 a4 a6 a7 | 1用量，暂停：engine_spnbombnative a原版/删SPN/合成/合成删SPN为1010/1110/1110/1110；OCL活动消费者未实现，具名回放strict xfail；需要原版与合成宿主派发观测，work/re/c_spnbomb_report.md；例：SovietCommandoCallBombingRun |
+| 未做 | `SpecialPowerNugget:附着dummy消费者` | 1 |  | 1用量，暂停：JapanScoutInfantryAttachWeaponWarhead引用OBJECT dummy模板及原版宿主；缺独立派发/附着读数，不能按Dummy名字推定无操作；需Attach模块观测，work/re/c_spnclosure_report.md；例：JapanScoutInfantryAttachWeaponWarhead |
 
 ## AI
 
