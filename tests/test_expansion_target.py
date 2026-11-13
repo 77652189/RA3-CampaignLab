@@ -84,3 +84,41 @@ def test_base_preferred_not_named_bench_replay(build):
     row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
     # Retain raw bench counts, without inferring base type or preference scores.
     assert (row['候选东'], row['候选崖'], row['普通实体']) == (4, 0, 0), row
+
+
+def test_dual_base_candidate_lifecycle():
+    """Candidate metadata comes from live bodies, including the timed new yard."""
+    w = simai.run('aibs2old', 'a', until=19)
+    brain = next(iter(w.brains.values()))
+    h = brain.targets.tdata.heuristic('CNVExpansion')
+    candidates = brain.view.expansion_candidates(h, brain.home)
+    assert len(candidates) == 2
+    assert [c.age for c in candidates] == [19, 7]
+    assert candidates[0].base_id != candidates[1].base_id
+    # Destroying the yard removes its candidate immediately; no cached ghost base.
+    w.sim.bodies['UNIT - CNV BS New Yard'].alive = False
+    remaining = brain.view.expansion_candidates(h, brain.home)
+    assert [c.base_id for c in remaining] == [candidates[0].base_id]
+
+
+@pytest.mark.parametrize('build', [
+    'aibs2old',
+    pytest.param('aibs2new', marks=pytest.mark.xfail(
+        strict=True, reason='Dual-yard NEW engine a:s55..65 stays east=4/bluff=0/entity=0; '
+        'yard/ore hypothesis selects bluff, team fights the intervening barracks. '
+        'AI base eligibility/types/selection remain unobserved; '
+        'see work/re/c_basesort_dual_report.md and handoff-c.md')),
+])
+def test_dual_base_sort_named_bench_replay(build):
+    """Retain engine counts, without claiming two yards imply two eligible bases."""
+    w = simai.run(build, 'a', until=65)
+    row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
+    assert (row['候选东'], row['候选崖'], row['普通实体']) == (4, 0, 0), row
+
+
+@pytest.mark.parametrize('build', ['aibs2old', 'aibs2new'])
+def test_dual_base_physical_yards_named_bench_replay(build):
+    """The b check distinguishes physical creation from AI base eligibility."""
+    w = simai.run(build, 'b', until=31)
+    row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
+    assert (row['东建厂'], row['崖建厂']) == (1, 1), row

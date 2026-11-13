@@ -194,7 +194,9 @@ class Brain:
         self.view = tg.View(player, [], enemies=foes, waypoints=self.sim.waypoints,
                             # E81/E87: Location uses terrain, including stationary water structures.
                             # INFERRED at shorelines, bridges and for airborne targets.
-                            water_at=lambda x, y: self.sim.ground.z(x, y) < self.sim.ground.water)
+                            water_at=lambda x, y: self.sim.ground.z(x, y) < self.sim.ground.water,
+                            expansion_candidates=(self.expansion_candidates
+                                                  if self.sim.m.facts.get('dual bases') else None))
         self.base = self.powers = None
         self.attach(host.blocks)
         self.ai.tell(m['player'].Command('make base'))
@@ -284,6 +286,40 @@ class Brain:
         ys = [b for b in self.sim.living() if b.owner == player and 'STRUCTURE' in b.kinds and not b.scenery]
         y = next((b for b in ys if 'CONSTRUCTION_YARD' in b.kinds), ys[0] if ys else None)
         return (y.x, y.y) if y else None
+
+    def expansion_candidates(self, heuristic, origin):
+        """INFERRED yard/ore hypothesis, enabled only by the dual-yard experiment.
+
+        Living unpacked yards stand for MAIN_BASE; their actual creation times
+        stand for base ages. Each yard offers its nearest ore node. Discovery,
+        capture flags and occupancy are gaps (work/re/c_basesort_dual_report.md).
+        Other preference flags/sort modes fail closed. This is not general
+        expansion discovery: enemy distance, occupancy and captures are unproved.
+        """
+        selection = heuristic.base_selection
+        if (selection is None or selection.preferred - {'MAIN_BASE'}
+                or selection.preferred_not - {'CAPTURED', 'MAIN_BASE'}
+                or selection.sort_order not in ('PREFER_OLDEST', 'PREFER_NEWEST')):
+            return []
+        # CAPTURED cannot be resolved from current ownership. Do not claim this
+        # provider tests that flag; this hypothesis covers ordinary own yards.
+        nodes = [b for b in self.sim.living() if b.template == 'OreNode']
+        yards = [b for b in self.yards() if not b.scenery
+                 and (getattr(b, 'unpack_end', None) or 0) <= self.sim.frame_now()]
+        newest = selection.sort_order == 'PREFER_NEWEST'
+        yards.sort(key=lambda b: (b.made_at, self.tid(b)), reverse=newest)
+        candidates = []
+        for yard in yards:
+            if not nodes:
+                break
+            node = min(nodes, key=lambda b: math.hypot(b.x - yard.x, b.y - yard.y))
+            water = self.view.water_at(node.x, node.y)
+            if heuristic.location and ('Water' if water else 'Land') not in heuristic.location:
+                continue
+            candidates.append(self.host.mod['targets'].ExpansionCandidate(
+                ('ore', node.name), node.x, node.y, base_id=self.tid(yard),
+                base_types=frozenset({'MAIN_BASE'}), age=self.sim.t - yard.made_at, water=water))
+        return candidates
 
     def base_object(self, player):
         """states.base_object over a player's living, unpacked structures: preferred = CONSTRUCTION_YARD, rank = cost

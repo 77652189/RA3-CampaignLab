@@ -9,6 +9,7 @@ must establish selection before any candidate rule can be promoted.
 import types
 
 import resources
+from parts import Script
 from missions.aiskirm_bench import ai_map
 from missions.aitargetpick_bench import mission as target_mission
 from missions.aiteams_bench import HOST, host_unit
@@ -59,7 +60,35 @@ def mission(expansion=True, sort_order=None, preferred_not=None):
     return m
 
 
-MISSION = {'aiexpc': lambda: mission(True), 'aiexpctl': lambda: mission(False),
+def dual(sort_order):
+    """Two real yards with distinct creation times; only SortOrder differs.
+
+    INFERRED: script-created yards become eligible separate MAIN_BASEs. The
+    contrast tests this hypothesis; two ore fields alone did not establish it.
+    """
+    m = mission(True, sort_order)
+    m.name = 'CampBS2Old' if sort_order == 'PREFER_OLDEST' else 'CampBS2New'
+    m.facts['dual bases'] = True
+    # The second yard stands beside the bluff ore, away from the ore node.
+    m.waypoint('new yard', 'CNV BS New Yard', 'bluff refinery', -300, 0)
+    m.spawns.add('AlliedConstructionYard')
+    filename, xml, asset = m.assets[0]
+    xml = xml.replace('<ConstantHeuristic/>', '<ScriptedFlagHeuristic FlagName="CNV BS Active"/>')
+    m.assets[0] = filename, xml, asset
+    m.scripts += [
+        Script('BS timers', [], [('SET_MILLISECOND_TIMER', 'CNV BS New', 12.0),
+                                 ('SET_MILLISECOND_TIMER', 'CNV BS Start', 18.0)]),
+        Script('BS new yard', [('TIMER_EXPIRED', 'CNV BS New')],
+               [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', 'UNIT - CNV BS New Yard',
+                 'AlliedConstructionYard', m.team('s1'), m.mark('new yard'))]),
+        Script('BS activate', [('TIMER_EXPIRED', 'CNV BS Start')],
+               [('SET_FLAG', '/CNV BS Active', 1)])]
+    return m
+
+
+MISSION = {'aibs2old': lambda: dual('PREFER_OLDEST'),
+           'aibs2new': lambda: dual('PREFER_NEWEST'),
+           'aiexpc': lambda: mission(True), 'aiexpctl': lambda: mission(False),
            'aibsold': lambda: mission(True, 'PREFER_OLDEST'),
            'aibsnew': lambda: mission(True, 'PREFER_NEWEST'),
            'aibncap': lambda: mission(preferred_not='CAPTURED'),

@@ -38,8 +38,39 @@ def a(m):
         # Reach the entity by s30. A one-second terminal window can contain no
         # capture on a busy bench (first run: s14..68 all four, no s30 sample).
         t.expect.append(('普通实体', 1, 'ever>=', 4, 30))
-    t.bench = [('bench_watch', dict(seconds=49, every=1, sheet=False, lines=4))]
+    t.bench = [('bench_watch', dict(seconds=79 if m.facts.get('dual bases') else 49,
+                                  every=1, sheet=False, lines=4))]
     return t
 
 
-CHECKS = {key: {'a': a} for key in ('aiexpc', 'aiexpctl', 'aibsold', 'aibsnew', 'aibncap', 'aibnnone')}
+CHECKS = {key: {'a': a} for key in ('aiexpc', 'aiexpctl', 'aibsold', 'aibsnew', 'aibncap', 'aibnnone',
+                                  'aibs2old', 'aibs2new')}
+
+
+def buildings(m):
+    """Second-round control: confirm both physical yards, beside the team readings.
+
+    Physical yards are not proof of two AI base records or their eligibility.
+    """
+    t = Test()
+    s1 = m.player('s1')
+    tank, = m.cnv_units
+    points = [('east', m.facts['candidate east'], tank, '候选东'),
+              ('bluff', m.facts['candidate bluff'], tank, '候选崖'),
+              ('old yard', m.site('east base'), 'AlliedConstructionYard', '东建厂'),
+              ('new yard', m.point('new yard'), 'AlliedConstructionYard', '崖建厂')]
+    for key, xy, template, label in points:
+        area = 'CNV Dual ' + key
+        t.areas[area] = square(*xy, 350.0)
+        counted('CNV_Dual_' + key.replace(' ', '_'), label, t,
+                template=template, player=s1, area=area)
+    t.scripts.append(Script('Test - keep targets', [],
+                           [('UNIT_SET_HEALTH', m.role(r).name, 100.0)
+                            for r in ('plant', 'barracks', 'tank')], once=False))
+    t.expect = [('东建厂', 30, '==', 1, 40), ('崖建厂', 30, '==', 1, 40)]
+    t.bench = [('bench_watch', dict(seconds=79, every=1, sheet=False, lines=4))]
+    return t
+
+
+CHECKS['aibs2old']['b'] = buildings
+CHECKS['aibs2new']['b'] = buildings

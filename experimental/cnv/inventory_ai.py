@@ -144,10 +144,12 @@ NOTES = {
         '模型仅保留参数，自动基地/候选发现仍缺；两strict xfail，不晋升；'
         '见work/re/c_basenot_report.md'),
     '人格/BaseSelection.SortOrder': (TODO,
-        'C以aibsold/aibsnew仅切PREFER_OLDEST/PREFER_NEWEST，两组s20起东4/崖0/实体0；'
-        '两个矿区不等于两个合格基地，尚缺同帧基地ID、类型、年龄与选中基地。'
-        '模型仅解析并传给显式候选提供者，自动基地/候选发现仍缺；不晋升；'
-        '见work/re/c_basesort_report.md'),
+        'C新增aibs2old/aibs2new：第二建造厂12秒创建、18秒启用，'
+        '两组a在s55–65仍东4/崖0/实体0，点命令均指向东矿。'
+        '实验候选提供者按真实物体创建时间预测OLD东、NEW崖；'
+        'NEW按名回放strict xfail。物理建造厂不等于已证合格AI基地，'
+        '仍缺同帧基地ID、类型、年龄和所选基地，不晋升；'
+        '见work/re/c_basesort_dual_report.md'),
     '目标/AITargetingHeuristic.ForbiddenObjectStatus': (GUESSED,
         'C engine_aiforbid a：同近电厂仅切UNDER_IRON_CURTAIN禁用字段；'
         '无过滤有位/有过滤有位/有过滤清位三组原状态与近远家计数分别1/4/0/0、1/0/4/0、0/4/0/0，均PASS。'
