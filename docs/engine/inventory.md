@@ -919,7 +919,7 @@
 | 推断 | `经济/AccountShare.Account` | 18 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 已对拍 | `经济/AccountShare.Percent` | 18 | a4 a5 a7 | 台上量过（engine_aiskirm d / f：开局后 CoopBudget 防御 5%，存款约 36000 两座塔、约 17000 一座、15000 没有）、测试对拍 tests/test_simai.py——塔数对上；第一座的时刻模拟器早 ~36 s（strict xfail），别的份额 / 状态没单独量 |
 | 未做 | `人格/BaseSelection.PreferredNotBaseTypes` | 17 | a4 a5 a7 | C以aibncap/aibnnone仅切CAPTURED/空集合，两组s30–40东4/崖0/实体0；缺同帧基地类型、资格和选中基地，不能由同点选择判定偏好无效。模型仅保留参数，自动基地/候选发现仍缺；两strict xfail，不晋升；见work/re/c_basenot_report.md |
-| 未做 | `人格/BaseSelection.SortOrder` | 17 | a4 a5 a7 | C以aibsold/aibsnew仅切PREFER_OLDEST/PREFER_NEWEST，两组s20起东4/崖0/实体0；两个矿区不等于两个合格基地，尚缺同帧基地ID、类型、年龄与选中基地。模型仅解析并传给显式候选提供者，自动基地/候选发现仍缺；不晋升；见work/re/c_basesort_report.md |
+| 未做 | `人格/BaseSelection.SortOrder` | 17 | a4 a5 a7 | C新增aibs2old/aibs2new：第二建造厂12秒创建、18秒启用，两组a在s55–65仍东4/崖0/实体0，点命令均指向东矿。实验候选提供者按真实物体创建时间预测OLD东、NEW崖；NEW按名回放strict xfail。物理建造厂不等于已证合格AI基地，仍缺同帧基地ID、类型、年龄和所选基地，不晋升；见work/re/c_basesort_dual_report.md |
 | 已对拍 | `启发条件/TimerHeuristic.CountFrom` | 16 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
 | 未做 | `战略状态/AIStrategicStateDefinition.CannotAttackTargetReaction` | 16 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 已对拍 | `战略状态/AIStrategicStateDefinition.MaxRunningCopies` | 16 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aistate.py |

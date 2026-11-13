@@ -16,7 +16,7 @@
 |---|---|---|---|---|---|
 | 未做 | AI | `人格/AIPersonalityDefinition.SkirmishPersonality` | 20 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `人格/BaseSelection.PreferredNotBaseTypes` | 17 | a4 a5 a7 | C以aibncap/aibnnone仅切CAPTURED/空集合，两组s30–40东4/崖0/实体0；缺同帧基地类型、资格和选中基地，不能由同点选择判定偏好无效。模型仅保留参数，自动基地/候选发现仍缺；两strict xfail，不晋升；见work/re/c_basenot_report.md |
-| 未做 | AI | `人格/BaseSelection.SortOrder` | 17 | a4 a5 a7 | C以aibsold/aibsnew仅切PREFER_OLDEST/PREFER_NEWEST，两组s20起东4/崖0/实体0；两个矿区不等于两个合格基地，尚缺同帧基地ID、类型、年龄与选中基地。模型仅解析并传给显式候选提供者，自动基地/候选发现仍缺；不晋升；见work/re/c_basesort_report.md |
+| 未做 | AI | `人格/BaseSelection.SortOrder` | 17 | a4 a5 a7 | C新增aibs2old/aibs2new：第二建造厂12秒创建、18秒启用，两组a在s55–65仍东4/崖0/实体0，点命令均指向东矿。实验候选提供者按真实物体创建时间预测OLD东、NEW崖；NEW按名回放strict xfail。物理建造厂不等于已证合格AI基地，仍缺同帧基地ID、类型、年龄和所选基地，不晋升；见work/re/c_basesort_dual_report.md |
 | 未做 | AI | `战略状态/AIStrategicStateDefinition.CannotAttackTargetReaction` | 16 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `目标/AITargetingHeuristic.HeuristicType=Expansion` | 12 | a4 a5 a7 | C已上台：aiexpc:a东矿区4、崖矿区0、普通实体0，命令指向东矿点；模型已保留BaseSelection，增加显式候选回调和槽位点，Expansion不再回退普通实体。自动候选资格/基地发现与排序尚未证实，模型按名回放strict xfail；仅接口实现，不晋升；见 work/re/c_expansion_probe_report.md |
 | 未做 | AI | `造兵/CountAsStructureForBuildPurposesFilter.ExcludeThing` | 12 | a4 a5 a7 | C静态核查：原版过滤器用于建造优先级，排除矿车/勘探车/日本矿厂核心；不是现有建筑计数。模型未消费该过滤器，候选分类需接B共享build_units，普通建筑BuildState优先级亦缺消费者；按工单接口门禁停止，未上台、未晋升。待B给候选分类/优先级接口；见work/re/c_buildfilter_report.md |
