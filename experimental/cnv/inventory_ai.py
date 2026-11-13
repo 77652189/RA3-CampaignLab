@@ -480,8 +480,13 @@ NOTES = {
     # B round 109: the gate is on in the model since round 100 (keep_on); aiar0-3 replayed on the simulator
     **{k: (BENCHED, '台上量过（engine_aiskirm y aisknew / aisknew2：没列进任何建造状态的我们的兵不造、列成 FEWEST_UNIT '
                     '占兵营约一半；z aiskvinf / aiskvveh：BEST_UNIT_EXPECTED 兵营只造克制兵），测试对拍 '
-                    'tests/test_simai_bench_b.py（B 第 126–131 轮）；RANDOM_UNIT（PercentLow/High）、MinTime 没单独量')
+                    'tests/test_simai_bench_b.py（B 第 126–131 轮）；RANDOM_UNIT（PercentLow/High）没单独量')
        for k in ('造兵/BuildEntry.Build', '造兵/BuildState.State')},
+    # B round 166: the model's first_tech_order against the eight aiskmt builds by name
+    '造兵/BuildEntry.MinTime': (BENCHED, '台上量过（engine_aiskirm mt aiskmt0/03/20 → 唤醒后第 2256 帧有科技楼，aiskmt14/15/16/40/99 '
+                               '→ 第 5857 帧：分数缓存按模板、排前的原版 AlliedTechBuildState MinTime 360 盖住子人格的条目，D 第 100 轮），'
+                               '测试对拍 tests/test_simai_mintime.py（模型 first_tech_order 按名拿人格，容差一次评估）；'
+                               '模拟器的建造厂只走开局，没接进回放；电力门、效率那半没建模'),
     # B round 138: aiskrand / aiskdiff (check s)
     **{k: (BENCHED, '台上量过（engine_aiskirm s aiskrand：RANDOM_UNIT "0%–30%" 和不带百分号的 "30–100" 两条都造出来'
                     '——不带 % 的数也按百分比读，原版 _RANDOM 状态就这么写），测试对拍 tests/test_simai_bench_b.py；'
