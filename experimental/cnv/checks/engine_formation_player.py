@@ -188,8 +188,30 @@ def dense_moves(m):
     assert len(lane) == 1
     b = t.bench[lane[0]][1]
     t.bench[lane[0]] = ('bench_click', dict(x=b['x0'], y=(b['y0'] + b['y1']) / 2, right=True, look=True))
-    t.expect = [('plain', 100, '==', 22), ('formation', 100, '==', 22)]
+    # 紧凑帧 (D 96): the map has no "distance between two units" condition (script_catalog), so each lane tiles the
+    # goal's north half with candidate squares of side COMPACT; a frame where all four stand in one of them (and in the
+    # goal) counts +1 per such square. Bench D 95 (CampFormSD_mcp_1112_225220): the switched lane ends 31 x 40 around
+    # lane + 31, the plain one 71 x 71 -- and neither crowd centres on the click point (15-30 north), hence the tiling.
+    # Bench D 96 (CampFormSD_mcp_1112_230312) PASS: formation 紧凑帧 from s82, 767 by s118; plain 0 throughout.
+    for lane_name, y in LANES.items():
+        counter, goal = f'CNV_Form_{lane_name.title()}_Tight', f'Test Form {lane_name.title()} Goal'
+        t.counters.append((counter, f'{lane_name} 紧凑帧'))
+        members = [m.role(f'{lane_name} {k}').name for k in range(len(SPOTS))]
+        for cx in TIGHT_X:
+            for dy in TIGHT_DY:
+                box = f'Test Form {lane_name.title()} Tight {cx:.0f} {dy:+.0f}'
+                t.areas[box] = square(cx, y + dy, COMPACT / 2)
+                t.scripts.append(Script(f'Test - {counter} {cx:.0f} {dy:+.0f}',
+                                        [('NAMED_INSIDE_AREA', n, a) for n in members for a in (box, goal)],
+                                        [('INCREMENT_COUNTER', 1, counter)], once=False))
+    t.expect = [('plain', 100, '==', 22), ('formation', 100, '==', 22),
+                ('formation 紧凑帧', 100, '>', 0), ('plain 紧凑帧', 100, '==', 0)]
     return t
+
+
+COMPACT = 55.0
+TIGHT_X = [950.0 + 10 * i for i in range(9)]            # 950 .. 1030
+TIGHT_DY = [-10.0 + 10 * j for j in range(8)]           # lane - 10 .. lane + 60
 
 
 MISSION = {'engine_formation_player': mission, 'engine_formation_hotkey': hotkey_mission}
