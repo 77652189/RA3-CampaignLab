@@ -915,8 +915,11 @@ class Ground:
         got = self.way(surface, p, q, False)
         if got is None and surface == 'both':
             # R7: an amphibian on dry land may take a bridge from its end (the 'both' grid has no decks: from the
-            # water nothing climbs onto one); one starting on land and not reaching q by water goes by land
-            c, g = self.cell(*p), self.grids['ground'] & ~self.blocked
+            # water nothing climbs onto one); one starting on land and not reaching q by water goes by land. "On
+            # land" is the terrain's, not the free cells': a unit just out of a factory stands on its footprint's
+            # edge (way snaps it off); aiskirm:et, line A round 205: the engineer out of the barracks at
+            # (4067,3562) took the 'both' grid's closest way and stood at (2900,3280), the derrick never reached
+            c, g = self.cell(*p), self.grids['ground']
             if 0 <= c[0] < g.shape[0] and 0 <= c[1] < g.shape[1] and g[c]:
                 got = self.way('ground', p, q, False)
         if got is None and closest:

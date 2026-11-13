@@ -42,11 +42,13 @@ def test_the_engineer_team_is_read_by_its_engine_name(rows):
 
 
 @pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'Model fca219e: ClosestTechBuildingHeuristic takes the nearest neutral STRUCTURE (an OreNode by the AI base), '
-    'and the Engineer act is a no-op (TacticsBlock act default), so nothing is captured; the model reads the team '
-    'gone at s156 and the engineer at the ore node from s157. Retail goes to the derrick (s216) and captures it '
-    '(s222). Next: the TechBuilding candidate filter and an Engineer act (line A handoff).'))
+    'Pinned model: ClosestTechBuildingHeuristic takes the nearest neutral STRUCTURE (an OreNode, IMMUNE_TO_CAPTURE), '
+    'nothing is captured. Model branch a204-tech-filter (registered tech set) + Brain.act + the land fallback on the '
+    'terrain (line A round 205): at the derrick s230, the derrick s1\'s s236, the team gone s236 -- 14 s late. The '
+    'simulator walks by land round the north (~3970 long); 72 s at the engineer\'s ~47/s is the straight line '
+    '(3386): the game swims, the \'both\' grid has no way off this shore (INFERRED, line A handoff).'))
 def test_the_engineer_captures_the_derrick(rows):
+    """Bench: at the derrick s216, the derrick s1's s222 and the team gone that second; never at the ore node."""
     assert all(r['到矿点'] == 0 for _, r in rows)
     at = _first(rows, '到油井', 1)
     owned = _first(rows, '油井', 1)

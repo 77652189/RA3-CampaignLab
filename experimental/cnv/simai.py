@@ -231,7 +231,7 @@ class Brain:
         if 'targets' not in which:
             return
         self.tactics = tc.TacticsBlock(None, lambda ai, f: self.view, self.order, lambda ai: self.home,
-                                       micro=h.data_of('tactics micro'), fight=self.fight,
+                                       act=self.act, micro=h.data_of('tactics micro'), fight=self.fight,
                                        houses=lambda ai, u: self.garrisons(u, False),
                                        defenses=lambda ai, u: self.garrisons(u, True),
                                        crush=lambda ai, f, foe: simcrush.eligible(self.sim, f, foe),
@@ -662,6 +662,24 @@ class Brain:
         for f, u in zip(mem, live):
             f.unit = u                          # the member it stands for (state 2's pick, Crush, ReverseMove)
         return mem, self.fighters(foes)
+
+    def act(self, team, kind, thing):
+        """TacticsBlock's act hook (go-and-act family): True once the tactic's thing is done. Engineer: every living
+        member the target's EngineerContain admits is sent to capture it (Sim.order_capture; the capture itself is
+        Sim.capture_due, the engineer consumed); done once the target is the AI's, or once it is gone or no member
+        is left to take it (INFERRED: what the engine does then not read). Bench aiskirm:et 2026-11-13: the engineer
+        at the derrick s216, the derrick s1's and the team gone s222 (line A round 204). The other act kinds keep
+        the block's default (done on arrival)."""
+        if kind != 'Engineer':
+            return True
+        t = self.body_of(thing.id) if thing is not None else None
+        if t is None or not t.alive or t.owner == self.player:
+            return True
+        live = [u.body for u in team.members if u.body.alive and self.sim.engineer_entry(u.body, t)]
+        for b in live:
+            if b.mode != 'capture' or b.goal is not t:
+                self.sim.order_capture(b, t.name)
+        return not live
 
     def fighters(self, bodies):
         """Bodies as tactics.Fighter (fight's rule: rate by Sim.can_hit and the armour, vision = VisionRange)."""
