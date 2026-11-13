@@ -15,6 +15,10 @@ def a(m):
                            [('SET_COUNTER', 'CNV_Forbid_Status', 0)], once=False))
     t.scripts.append(Script('Test - forbid on', [condition],
                            [('SET_COUNTER', 'CNV_Forbid_Status', 1)], once=False))
+    if m.facts.get('read unattackable'):
+        t.scripts.append(Script('Test - unattackable on',
+            [('UNIT_HAS_OBJECT_STATUS', plant, status('UNATTACKABLE'))],
+            [('INCREMENT_COUNTER', 'CNV_Forbid_Status', 2)], once=False))
     keep = [m.role(r).name for r in ('plant', 'barracks', 'tank')]
     keep += [m.role(f'ai guardian {i}').name for i in range(1, 5)]
     t.scripts.append(Script('Test - forbid keep', [],
@@ -30,8 +34,9 @@ def a(m):
     t.areas['CNV Forbid Home'] = [(x-300,y-400),(x+300,y-400),(x+300,y+450),(x-300,y+450)]
     counted('CNV_Forbid_Home', '在家', t, template=m.cnv_units[0], area='CNV Forbid Home', player=m.player('s1'))
     t.expect += [('在家', 40, '==', 0, 41), ('状态', 5, '==', m.facts['status set'], 41)]
-    t.bench = [('bench_watch', dict(seconds=54, every=1, sheet=False, lines=4))]
+    t.bench = [('bench_watch', dict(seconds=54, every=1, sheet=False, lines=len(t.counters)))]
     return t
 
 
-CHECKS = {k: {'a': a} for k in ('aiforbidnone', 'aiforbidset', 'aiforbidclear')}
+CHECKS = {k: {'a': a} for k in ('aiforbidnone', 'aiforbidset', 'aiforbidclear',
+                              'aifmasknone', 'aifmaskiron', 'aifmaskboth')}
