@@ -30,7 +30,7 @@ def mission():
     wake.do = list(wake.do) + [('SET_FLAG', WOKE, 1)]
     m.scripts += [Script('CNV AW - tick', [], [('INCREMENT_COUNTER', 1, TICK)], once=False),
                   Script('CNV AW - before wake', [('FLAG', WOKE, 0)], [('INCREMENT_COUNTER', 1, PRE)], once=False)]
-    m.facts.update({'wake at': WAKE_AT, 'wake tick': WAKE_TICK})
+    m.facts.update({'wake at': WAKE_AT, 'wake tick': WAKE_TICK, 'tick counter': TICK, 'pre counter': PRE})
     return m
 
 

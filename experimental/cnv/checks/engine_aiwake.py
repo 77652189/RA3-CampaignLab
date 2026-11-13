@@ -11,13 +11,14 @@ H-a no (the old wake did not run at f0); H-b yes: a side with a personality runs
 start, before UNIT_AI_TRANSFER_ALL / MAKE_BASE. The simulator's AI starts at the wake (simai.SimAI.attach) -- to fix.
 """
 from checks import engine_airetreat as ar
-from missions import aiwake_bench as aw
 
 
 def probe(m):
+    f = m.facts                         # the mission publishes its counters and wake tick (checks ask the mission)
     t = ar.a(m, 'airet')
-    t.counters = [c for c in t.counters if c[1] in ('步兵在家', '到远厂')] + [(aw.TICK, '帧'), (aw.PRE, '唤醒前')]
-    t.expect = [('步兵在家', 1, '==', 4, 29), ('唤醒前', 31, '>=', aw.WAKE_TICK - 1, 60), ('到远厂', 31, 'ever>=', 1, 70)]
+    t.counters = [c for c in t.counters if c[1] in ('步兵在家', '到远厂')] + [(f['tick counter'], '帧'),
+                                                                     (f['pre counter'], '唤醒前')]
+    t.expect = [('步兵在家', 1, '==', 4, 29), ('唤醒前', 31, '>=', f['wake tick'] - 1, 60), ('到远厂', 31, 'ever>=', 1, 70)]
     t.bench = [('bench_watch', dict(seconds=72, every=1, sheet=False, lines=len(t.counters)))]
     return t
 
