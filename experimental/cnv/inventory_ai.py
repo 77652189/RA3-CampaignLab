@@ -252,8 +252,11 @@ NOTES = {
         '两组s22-s24均兵营1/电厂0，水组原始Island预测FAIL、空中PASS。'
         'tests/test_simai_bench_e.py按名回放实际计数通过，但不能区分条件生效与路径判定边界；'
         'C复核：旧配方Surface未显式指定，SDK移动器差异不能独立证明实际路径可达性；'
-        '共享teamlog未提供路径求值或所选移动器读数，暂停重复上台，待可验证无路对照或D接口。'
-        '保持gap不晋升，未改模型；见 work/re/c_pathcond_gate_report.md、e_pathcond_e84.md'),
+        'C断桥两组aipcland/aipcamph同模板切NORMAL地面/SUPERSONIC地面+水面：'
+        's22-24仍均兵营1/电厂0，s40-44控制车均存活未到岸，两栖阳性未建立。'
+        'tests/test_simai_pathbanks_c.py独立断言控制读数，建筑选择两strict xfail；'
+        '两局后停止，待D提供同帧条件/移动器/选点/路径返回分类。'
+        '保持gap不晋升，未改模型；见 work/re/c_pathbanks_report.md、c_pathcond_gate_report.md'),
     **{f'启发条件/{k}': (BENCHED,
         'E83 engine_aibuilding a：STRUCTURE空队列、现成基地1；PassIfBuilding=false时s40到陆厂4/在家0，'
         'true时0/4，两组PASS；tests/test_simai_bench_e.py::test_is_building_idle按名回放通过。'

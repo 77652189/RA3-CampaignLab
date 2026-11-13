@@ -49,7 +49,48 @@ def mission(name, pid, tester, **kw):
     return m
 
 
+def disconnected(amphibious=False):
+    """C condition probe: no bridges; independent scripted crossing controls.
+
+    INFERRED prediction: NORMAL cannot join the banks; SUPERSONIC can.
+    The tester has ground NORMAL and ground + water SUPERSONIC locomotors.
+    The controls use the very same sets under NORMAL, so physical reachability
+    can be checked independently of the opening heuristic's chosen condition.
+    """
+    import types
+    from parts import Unit
+    from units import convoy
+
+    tester = convoy.truck(id='CNVPathTester', cargo=None, speed=90)
+    extra = ('<LocomotorSet Locomotor="TestReactiveLocomotorTANK" '
+             'Condition="SUPERSONIC" Speed="90" />\n'
+             '<LocomotorSet Locomotor="AlliedMinerWaterLocomotor" '
+             'Condition="SUPERSONIC" Speed="90" />\n')
+    tester.xml = tester.xml.replace('</GameObject>', extra + '</GameObject>')
+    control = Unit('CNVPathSwimmer', tester.xml.replace('CNVPathTester', 'CNVPathSwimmer')
+                   .replace('Condition="SUPERSONIC"', 'Condition="NORMAL"'),
+                   what='Path probe crossing control with ground and water locomotors')
+    # Remove the duplicate ground set from the swimmer, retaining one of each.
+    control.xml = control.xml.replace(
+        '<LocomotorSet Locomotor="TestReactiveLocomotorTANK" Condition="NORMAL" Speed="90" />\n', '', 1)
+    name, pid = ('CampPCAmph', 'CNVPCAmph') if amphibious else ('CampPCLand', 'CNVPCLand')
+    m = mission(name, pid, tester.id, condition='SUPERSONIC' if amphibious else 'NORMAL')
+    cp = types.ModuleType(m.map.__name__)
+    cp.__dict__.update(vars(m.map))
+    cp.BRIDGES = []
+    cp.OBJECTS = [o for o in cp.OBJECTS if o.template != 'HB_Bridge_02']
+    m.map = cp
+    m.units += [tester, control]
+    m.put(tester.id, 'east gate', 0, -100, role='land control', name='UNIT - CNV PC Land')
+    m.put(control.id, 'east gate', 0, 100, role='amphib control', name='UNIT - CNV PC Amph')
+    m.waypoint('crossing goal', 'CNV PC Goal', 'front')
+    m.facts['path amphibious'] = amphibious
+    return m
+
+
 MISSION = {
+    'aipcland': lambda: disconnected(False),
+    'aipcamph': lambda: disconnected(True),
     # Same tester and land endpoints: deep-water NORMAL versus flying SUPERSONIC.
     'aiopwater': lambda: mission('CampPathWater', 'CNVPathWater', 'JapanAntiAirShip'),
     'aiopair': lambda: mission('CampPathAir', 'CNVPathAir', 'JapanAntiAirShip', condition='SUPERSONIC'),
