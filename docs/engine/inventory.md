@@ -8,7 +8,7 @@
 | 脚本条件 | **94%** | **100%** | 12 / 12 | 89 | 34 | 6 | 46 | 3 | 95% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **93%** | **95%** | 17 / 22 | 28 | 18 | 3 | 5 | 2 | 96% |
-| AI | **90%** | **90%** | 142 / 357 | 415 | 149 | 117 | 115 | 34 | 98% |
+| AI | **90%** | **90%** | 143 / 357 | 415 | 150 | 116 | 115 | 34 | 98% |
 
 ## 脚本动作
 
@@ -963,7 +963,7 @@
 | 已对拍 | `启发条件/PowerAdvantageHeuristic` | 10 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aipoweradv.py |
 | 已对拍 | `启发条件/PowerAdvantageHeuristic.Above` | 10 | a4 a5 a7 | C engine_aipowerabove aipabtrue/aipabfalse:a：同图4对8同型守护者、Value=1.0，仅Above=true/false；s40在家/AI总数/玩家坦克分别4/4/8与0/4/8，两局各3条PASS，tests/test_simai_powerabove_c.py按名回放两组实测。仅验证该固定军队与阈值下Above翻转；精确求值帧、其他比值/动态伤亡/防御计入仍gap；未改模型与阈值，见work/re/c_powerabove_report.md |
 | 推断 | `启发条件/PowerAdvantageHeuristic.IncludeEnemyDefenses` | 10 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | `启发条件/PowerAdvantageHeuristic.IncludeOwnDefenses` | 10 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 已对拍 | `启发条件/PowerAdvantageHeuristic.IncludeOwnDefenses` | 10 | a4 a5 a7 | C engine_aipowerown aipownoff/aipownon:a：同图4对8守护者、一座己方光谱塔及电厂，固定Value=0.5/Above=true，仅IncludeOwnDefenses=false/true；s40在家/AI总数/玩家坦克/己方塔为4/4/8/1与0/4/8/1，两局各4条PASS。tests/test_simai_powerown_c.py按名回放原读数；仅验证此塔与军队组合，精确比值公式、求值帧、其他防御类别及敌方防御计入仍gap；未改模型或阈值，见work/re/c_powerown_report.md |
 | 已对拍 | `启发条件/PowerAdvantageHeuristic.Value` | 10 | a4 a5 a7 | C engine_aipowervalue aipval1/aipval01:a：同图4对8同型守护者、Above=true，仅Value=1.0/0.1；s40在家/AI总数/玩家坦克分别4/4/8与0/4/8，两局各3条PASS。tests/test_simai_powervalue_c.py按名回放两组实测；仅验证该固定军队下两阈值的行为差异，完整比值公式、精确边界/求值帧、动态伤亡与防御计入仍gap；未改模型或阈值，见work/re/c_powervalue_report.md |
 | 推断 | `启发条件/TimeSinceLastExpansionHeuristic` | 10 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/TimeSinceLastExpansionHeuristic.Time` | 10 | a4 a5 a7 | AI 模型代码里读了这个名字 |
