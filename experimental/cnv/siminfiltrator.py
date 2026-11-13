@@ -55,6 +55,7 @@ class Infiltrators:
         self.off_until = {}
         self.observers = []
         self.paralyzed_until = {}
+        self.attack_until = {}
         self.paralyzed_hosts = set()
         self.kill_hosts = set()
 
@@ -84,6 +85,14 @@ class Infiltrators:
     def movement_blocked(self, body):
         """E128 movement only; no PARALYZED model-condition bit was observed."""
         return self.sim.frame_now() < self.paralyzed_until.get(id(body), 0)
+
+    def attack_blocked(self, body):
+        """E139: existing Mirage fire, retail Allied tech host only.
+
+        Exact application/expiry phase is INFERRED from the XML duration.
+        Other hosts' attack consumers and retained orders remain gaps.
+        """
+        return self.sim.frame_now() < self.attack_until.get(id(body), 0)
 
     def sees(self, side, x, y, air=False):
         """Measured local yard shroud. Parent-death cleanup is INFERRED."""
@@ -184,6 +193,8 @@ class Infiltrators:
                         s.gap('InfiltratorContain', body.template, 'PARALYZE其他匹配模板未对拍')
                         continue
                     self.paralyzed_until[id(body)] = end
+                    if target.template == 'AlliedTechStructure':
+                        self.attack_until[id(body)] = end
                 s.destroy(spy, '进楼渗透', delete=True)
                 s.change()
                 continue

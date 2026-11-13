@@ -126,3 +126,31 @@ def test_paralyze_japanese_unmeasured_configuration_stays_a_gap():
                        ('CanEnterFilter', 'OtherEntry'), ('ObjectStatusToSet', 'IMMOBILE'),
                        ('InfiltratedStatusFilter', 'DESTROYED'), ('Amount', '1.0')]:
         assert not effect.paralyze_rule(host, dict(rule, **{key: value})), key
+
+
+def test_paralyze_attack_as_on_the_bench():
+    """E139 isolated attack trials; original readings: work/re/e139_paralyze_attack.md.
+
+    Baseline and recovery must damage all three living targets. During the
+    pause only the same-owner Mirage target stays full. Windows and damage
+    bounds were fixed before running; exact damage/entry/expiry remain gaps.
+    New orders in each trial do not establish retained-order behavior.
+    """
+    import build
+    import sim
+    m, t, mod = build.resolve('engine_infpatk', 'a')
+    assert len(mod) <= 15 and '_' not in mod
+    s = sim.Sim(m, t).run(55)
+    for start, end in [(8, 9), (26, 40), (54, 55)]:
+        rows = [values for second, values in s.series if start <= second <= end]
+        assert rows
+        for entry, included, excluded, third in rows:
+            assert entry == (111111 if start == 8 else 111011)
+            if start == 26:
+                assert included == 1100
+            else:
+                assert 1000 < included < 1100
+            assert 1000 < excluded < 1100
+            assert 1000 < third < 1100
+    assert not s.body(m.role('enemy spy').name).alive
+    assert s.body(m.role('ally spy').name).alive

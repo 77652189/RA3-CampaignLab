@@ -4070,6 +4070,7 @@ class Sim:
         armed = [b for b in live if b.weapons and 'NO_ATTACK' not in b.status    # NO_ATTACK: holds its fire
                  and id(b) not in flying
                  and not self.emp_disabled(b) and not self.unpowered(b)
+                 and not self.infiltrators.attack_blocked(b)
                  and not (b.hold_fire and (b.hold_paused or not isinstance(b.goal, Body)))]
         cloaked = self.cloaked(live)
         targets = [b for b in live if 'UNATTACKABLE' not in b.status and id(b) not in cloaked]
@@ -4589,12 +4590,14 @@ class Sim:
         # Existing-order evidence: work/re/d50_scramble_expiry3.md.
         # INFERRED: exact within-tick stop phase; the bench has coarse snapshots.
         for t, rate, by in self.firing:
-            if t.alive and by.alive and 'NO_ATTACK' not in by.status and not self.emp_disabled(by):
+            if (t.alive and by.alive and 'NO_ATTACK' not in by.status and not self.emp_disabled(by)
+                    and not self.infiltrators.attack_blocked(by)):
                 h = hurt.setdefault(id(t), [t, 0.0, by])
                 h[1] += rate * dt
                 h[2] = by
         for t, w, by in self.volleys:           # engine line C round 2: a shot lands when its clock says (shots_due)
-            if t.alive and by.alive and 'NO_ATTACK' not in by.status and not self.emp_disabled(by):
+            if (t.alive and by.alive and 'NO_ATTACK' not in by.status and not self.emp_disabled(by)
+                    and not self.infiltrators.attack_blocked(by)):
                 n = self.shots_due(by, w, dt)
                 if n:
                     self.inform_launch(t, by, w, n)
