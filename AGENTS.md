@@ -19,7 +19,7 @@
 - 生成的文件（`docs/engine/inventory*.md`）冲突不手改：取一边，重跑 `inventory.py`、`inventory_levels.py --write`、`inventory_ai.py levels --write`。
 
 ## 干活
-- 目标（ADR 0026）：清单各部分按用量已对拍 ≥ 90%，再往 100% 推。"已对拍" = 有测试按名字跑那个台子、断言台上读数。
+- 目标（ADR 0026）：清单各部分按用量已对拍 ≥ 90%，再往 100% 推；11-13 用户定：原版 27 关用到的全部补到已对拍（`inventory_retail.py` 列缺口和归属）。"已对拍" = 有测试按名字跑那个台子、断言台上读数。
 - 每项：先从数据预测 → 上台 → 读数不符照数据修模拟器（猜的标 INFERRED）→ 登记 + 测试。每轮只做一件能提交的事。
 - 难题在交接里列一张假设表（假设、能区分它的那次运行、结果）。连续两轮解释不了就停。
 - 卡住不等人：写进自己交接开头的 `## 待答问题`（问题、你倾向的答案、卡住了哪项），转去做下一项。回答的人写在问题下面。
@@ -32,7 +32,7 @@
 |---|---|
 | 引擎线 A 脚本 / B AI / C 武器 / D 注入 / E 物体模块 | `work/re/handoff.md` / `handoff-b.md` / `handoff-c.md` / `handoff-d.md` / `handoff-e.md` |
 | 台子怎么跑、坑 | `docs/engine/know-how.md` |
-| 清单和进度 | `python -I -X utf8 experimental/cnv/inventory.py` |
+| 清单和进度 | `python -I -X utf8 experimental/cnv/inventory.py`；原版 27 关：`experimental/cnv/inventory_retail.py` |
 | 其他各线（shell、units、story、music、render、simui） | `docs/<线>/handoff.md` |
 | 为什么这么定 | `docs/adr/README.md` |
 | 总控 | `work/re/handoff-coord.md` |
