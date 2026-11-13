@@ -78,3 +78,43 @@ def test_micro_dodge_replay_expires_the_native_threat(dodge_replay):
     managers = [m for b in dodge_replay.brains.values() if hasattr(b, 'micro')
                 for m in b.micro.managers.values()]
     assert managers and all(not m.dodging for m in managers)
+
+
+
+def test_micro_dodge_timing_fixture_changes_only_fixed_wait():
+    import build
+    from contract import contract
+    from model import merged
+
+    views = []
+    for name, wait in (('aidodgezero', '0s'), ('aidodgetwo', '2s')):
+        m, t, _ = build.resolve(name, 'r')
+        assert contract(merged(m, t)) == []
+        xml = ET.fromstring(m.assets[0][1])
+        micro = next(e for e in xml.iter() if e.tag.endswith('}AIMicroManagerData'))
+        assert micro.attrib.pop('DodgeThreatsReactionTimeMin') == wait
+        assert micro.attrib.pop('DodgeThreatsReactionTimeMax') == wait
+        assert micro.get('DodgeThreats') == 'true'
+        views.append((ET.tostring(xml), m.objects, m.scripts, m.waypoints, t))
+    assert views[0] == views[1]
+
+
+
+def test_micro_dodge_fixed_wait_replays_latched_order():
+    # Native: both born f451, zero left f454, two left f486, bad always 0.
+    # Evidence and scope: work/re/e117_dodge_clock.md.
+    # Compare first square departures; these include walking, not just reaction.
+    if not simai.available():
+        pytest.skip('no ra3model.ai (labpaths.ENGINE_MODEL)')
+    delays = []
+    births = []
+    for name in ('aidodgezero', 'aidodgetwo'):
+        run = simai.run(name, 'r', until=36.0)
+        rows = [v for _, v in run.sim.series]
+        assert rows and all(v[3] == 0 for v in rows), rows
+        _, born, left, _ = rows[-1]
+        assert 0 < born < left, rows
+        births.append(born)
+        delays.append(left - born)
+    assert births[0] == births[1], births
+    assert delays[0] < delays[1], delays

@@ -302,7 +302,7 @@ def engage_clock(name, enabled):
     return m
 
 
-def dodge(name, enabled):
+def dodge(name, enabled, reaction=0.5):
     """DodgeThreats only: recruited warriors fighting the same immortal conscripts.
 
     Native precision-strike beacon at 30 s, lifetime 4 s, DodgeSafetyDistance 200.
@@ -313,9 +313,11 @@ def dodge(name, enabled):
     m = built(name, tactic='Hunt', foes=True, spow=False)
     m.assets = [(path, text.replace('DodgeThreats="true"',
                                    f'DodgeThreats="{str(enabled).lower()}"')
-                          .replace('PullbackInjured="true"', 'PullbackInjured="false"'), key)
+                          .replace('PullbackInjured="true"', 'PullbackInjured="false"')
+                          .replace('DodgeThreatsReactionTimeMin="0.5s"', f'DodgeThreatsReactionTimeMin="{reaction:g}s"')
+                          .replace('DodgeThreatsReactionTimeMax="0.5s"', f'DodgeThreatsReactionTimeMax="{reaction:g}s"'), key)
                 for path, text, key in m.assets]
-    m.facts.update({'dodge enabled': float(enabled), 'threat at': 30.0, 'threat lifetime': 4.0,
+    m.facts.update({'dodge reaction': reaction, 'dodge enabled': float(enabled), 'threat at': 30.0, 'threat lifetime': 4.0,
                     'sample half size': 150.0})
     m.cnv_named = {'beacon': 'CNV Dodge Beacon'}
     m.waypoint('dodge spot', 'CNV Dodge Spot', 'east base', 0, BARRACKS_DY - 100)
@@ -375,6 +377,8 @@ MISSION = {'aiegon': lambda: engage_clock('CampAIEgOn', True),
            'aiignnt': lambda: ignore_distance('CampIgnObsNear', 2000, observe=True),
            'aidodgeon': lambda: dodge('CampAIDodgeOn', True),
            'aidodgeoff': lambda: dodge('CampAIDodgeOff', False),
+           'aidodgezero': lambda: dodge('CampDodgeZero', True, 0),
+           'aidodgetwo': lambda: dodge('CampDodgeTwo', True, 2),
            'aimicbuilt': lambda: built('CampAIMicBuilt'),
            'aimicbuilth': lambda: built('CampAIMicBltH', tactic='Hunt'),
            'aimicbuiltf': lambda: built('CampAIMicBltF', tactic='Hunt', foes=True),

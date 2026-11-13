@@ -275,10 +275,12 @@ NOTES = {
         'simai micro_team威胁视图/移动回调接私有micro消费者，仅单信标地面成员；'
         '固定0.5秒反应、径向逃离/目的地保持/首次可见寿命起点为INFERRED；'
         '精确时钟、安全圆、通用过滤/所属、多威胁仍gap，见 work/re/e116_dodge.md'),
-    '微操/AIMicroManagerData.DodgeThreatsReactionTimeMin': (GUESSED,
-        '消费者读取Min/Max及继承；aidodgeon只测固定0.5秒下的离开行为，未区分反应时钟；见 work/re/e116_dodge.md'),
-    '微操/AIMicroManagerData.DodgeThreatsReactionTimeMax': (GUESSED,
-        '消费者读取Min/Max及继承；未测随机分布/精确反应帧，不登记已对拍；见 work/re/e116_dodge.md'),
+    '微操/AIMicroManagerData.DodgeThreatsReactionTimeMin': (BENCHED,
+        'engine_aidodge aidodgezero/aidodgetwo固定0/0与2/2秒联合端点对照；台内出生f451，首次离开f454/f486，前置失配0；'
+        'tests/test_ai_dodge.py按名断言快慢顺序；绝对离开帧模型475/505未对齐，单独端点作用/随机范围/精确反应帧仍gap；见 work/re/e117_dodge_clock.md'),
+    '微操/AIMicroManagerData.DodgeThreatsReactionTimeMax': (BENCHED,
+        'engine_aidodge aidodgezero/aidodgetwo固定相等端点联合快慢对照；tests/test_ai_dodge.py按名回放出生/首次离开锁存和前置；'
+        '只验0秒先于2秒，未区分单独Min/Max、随机分布或精确反应帧；见 work/re/e117_dodge_clock.md'),
     '微操/AIMicroManagerData.EnterGarrisonableStructureDistance': (BENCHED,
         'engine_aigarrison aigar1/aigar0/aigarfar：默认150、旧楼EAST=40，近楼归AI、关闭或远楼不进；'
         'tests/test_simai_garrison_distance.py::test_garrison_distance_replays_recorded_near_far_and_disabled；'

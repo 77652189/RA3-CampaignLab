@@ -49,3 +49,43 @@ def probe(m):
 
 
 CHECKS = {name: {'r': probe} for name in ('aidodgeon', 'aidodgeoff')}
+
+
+def timing(m):
+    """Fixed 0/2 second contrast, latched in game frames (work/re/e117_dodge_clock.md).
+
+    Prediction: both start with two living warriors in the same square; zero
+    leaves sooner after the beacon. Leaving includes walking time, so neither
+    latch measures the exact reaction frame. Random ranges remain a gap.
+
+    MEASURED: both born f451; zero first leaves f454, two f486; bad stays 0.
+    Replay asserts their order, not exact departure frames (model: 475/505).
+    """
+    t = probe(m)
+    frame, born, left, bad = ('CNV_Dodge_Frame', 'CNV_Dodge_Born',
+                              'CNV_Dodge_Left', 'CNV_Dodge_Bad')
+    live = [('NAMED_NOT_DESTROYED', m.cnv_named['beacon'])]
+    t.scripts += [
+        Script('Dodge - born latch', live,
+               [('SET_COUNTER_TO_COUNTER', born, frame)]),
+        Script('Dodge - leave latch', live + [('COUNTER', born, 3, 1),
+                                             ('COUNTER', 'CNV_Dodge_Near', 0, 2)],
+               [('SET_COUNTER_TO_COUNTER', left, frame)])]
+    # Keep the same count scripts, but display the latches within the four-line HUD.
+    # Any missing member, or a pre-beacon departure, invalidates this contrast.
+    for counter in ('CNV_Dodge_Own', 'CNV_Dodge_Near'):
+        for op, value in ((0, 2), (4, 2)):
+            t.scripts.append(Script(f'Dodge - prerequisite {counter} {op}',
+                [('COUNTER', frame, 3, 405), ('COUNTER', frame, 0, 450),
+                 ('COUNTER', counter, op, value)], [('SET_COUNTER', bad, 1)]))
+    for op in (0, 4):
+        t.scripts.append(Script(f'Dodge - survival {op}', live +
+            [('COUNTER', 'CNV_Dodge_Own', op, 2)], [('SET_COUNTER', bad, 1)]))
+    t.counters = [(frame, '帧数'), (born, '出现'), (left, '离开'), (bad, '失配')]
+    t.expect = [('出现', 1, 'ever>=', 1, 45), ('离开', 1, 'ever>=', 1, 45),
+                ('失配', 1, '==', 0, 45)]
+    t.bench = [('bench_watch', dict(seconds=45, every=1, sheet=False, lines=4))]
+    return t
+
+
+CHECKS.update({name: {'r': timing} for name in ('aidodgezero', 'aidodgetwo')})
