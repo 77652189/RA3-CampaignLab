@@ -340,7 +340,9 @@ NOTES = {
         'engine_aibasedef aibd1 是战斗中总开关开、idle关的正例（s21起1人进炮塔）；'
         'aibd0/aibdidle 总开关均关且无人进驻，不是idle分支正例；'
         'tests/test_simai_basedef_idle.py 直接计数回放，aibd1仍strict xfail；'
-        '消费者已调用，到达/炮塔存活差异待A/B接口；见 handoff-c'),
+        '独立回放其余三计数：s21台上炮塔3/远厂步兵4，模型1/0，三组strict xfail；'
+        '模型有idle状态但三组均无双开关开启更新；实机idle/成员观测与到达/存活仍gap；'
+        '见work/re/e112_basedef_idle.md'),
     '人格/AIPersonalityDefinition.BaseCompactness': (GUESSED, '台上量过（engine_aitower：0.5 / 0.75 / 1.0 塔落在不同圈）；'
                                                      '模拟器只对上 0.5，0.75 / 1.0 和 0.5 一样（strict xfail）'),
     # B round 110: the A/B pairs of engine_airetreat change one field of the data the team's MicroManager names

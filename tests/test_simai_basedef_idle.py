@@ -13,7 +13,7 @@ from test_simai_bench_b import lib, _probe_run, pytestmark  # noqa: F401
         strict=True, raises=AssertionError,
         reason='engine_aibasedef aibd1 has one enclosed from s21; model has none. '
                'At each dispatch living turrets remain beyond 150; all are dead by frame 451. '
-               'arrival/combat interface gap: work/re/handoff-c.md (Base defense idle).')),
+               'arrival/combat interface gap: work/re/e112_basedef_idle.md.')),
     ('aibd0', 0),
     ('aibdidle', 0),
 ])
@@ -37,3 +37,28 @@ def test_recorded_base_defense_counter_replay(lib, build, expected):
         assert all(e[2] in {f'UNIT - CNV AI Turret {k}' for k in range(1, 5)} for e in entries)
     else:
         assert entries == []
+
+
+@pytest.mark.parametrize('build', ['aibd1', 'aibd0', 'aibdidle'])
+@pytest.mark.xfail(strict=True, raises=AssertionError,
+    reason='engine_aibasedef s21 has 3 turrets and 4 infantry at the far plant; '
+           'model has 1 turret and 0 infantry there. The zero enclosure controls '
+           'alone hide arrival/survival gaps; see work/re/e112_basedef_idle.md.')
+def test_recorded_base_defense_arrival_and_survival(lib, build):
+    """Replay the OTHER three engine counters independently of enclosure.
+
+    engine_aibasedef's recorded s21-s75 windows establish the combat probe's
+    arrival and survival prerequisites, not the team's idle state.
+    """
+    world, rows = _probe_run(build, lib, 76.0)
+    if build == 'aibd1':
+        windows = [(21, 25, (3, 4, 4)), (26, 32, (2, 3, 3)), (33, 75, (2, 2, 2))]
+    else:
+        windows = [(21, 25, (3, 4, 4)), (26, 28, (2, 4, 4)), (29, 29, (2, 3, 3)),
+                   (30, 30, (2, 2, 2)), (31, 32, (2, 1, 1)), (33, 75, (2, 0, 0))]
+    samples = {t: tuple(row[label] for label in ('炮塔数', '步兵数', '到远厂'))
+               for (t, _), row in zip(world.sim.series, rows)}
+    for start, end, expected in windows:
+        assert all(t in samples for t in range(start, end + 1))
+        assert [(t, samples[t]) for t in range(start, end + 1)] == [
+            (t, expected) for t in range(start, end + 1)]
