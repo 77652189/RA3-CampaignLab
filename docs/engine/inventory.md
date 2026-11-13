@@ -7,7 +7,7 @@
 | 脚本动作 | **92%** | **100%** | 50 / 50 | 451 | 124 | 20 | 190 | 117 | 93% |
 | 脚本条件 | **94%** | **100%** | 12 / 12 | 89 | 34 | 21 | 31 | 3 | 98% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
-| 武器效果 | **94%** | **95%** | 17 / 22 | 28 | 18 | 3 | 4 | 3 | 96% |
+| 武器效果 | **94%** | **95%** | 17 / 22 | 29 | 19 | 3 | 4 | 3 | 97% |
 | AI | **90%** | **90%** | 144 / 357 | 415 | 151 | 115 | 115 | 34 | 98% |
 
 ## 脚本动作
@@ -767,7 +767,7 @@
 | 已对拍 | `InformTargetNugget:Max1.6目标通知` | 22 | 全部 | tests/test_inform_ai.py::test_inform_max_launch_matches_engine_inform_max_observed_deadline；仅Min=.85/Max=1.6目标通知→来弹表；engine_inform_max a单变量对照录入302、hit377不变、exp444（默认404）、受伤389删除，矿车提前开甲。自然过期清理边界/半径/历史/海啸/忍者/完整AI调度未对拍，完整脚本仍xfail；例：AlliedBaseDefenseRockets, AlliedBaseDefenseRockets_Aircraft |
 | 已对拍 | `AttributeModifierNugget` | 20 | 全部 | tests/test_simbench_c.py::test_weaponfx_predictions_and_finite_bursts；例：NanoHiveSwarmEffectTrigger, JapanCommandoSoftLanding |
 | 已对拍 | `MetaImpactNugget:普通无延迟显式Z` | 13 | a1 a2 a4 a5 a6 a7 | tests/test_meta_impact.py::test_meta_impact_collision_event_replays_engine_knock_probe_neighbour_five_frames；仅普通弹头碰撞事件→默认Physics轨迹；engine_knock_probe land/late邻人5帧落(2380,3740)、目标99%/邻人100%。到达帧为台上输入，非完整V4曲线弹回放；直击方向/落点网格/选人仍INFERRED；例：KremlinArtilleryDomeMissleWarhead, AlliedTimeBomb_Level1 |
-| 未做 | `MetaImpactNugget` | 12 | a1 a2 a3 a4 a5 a6 a7 a9 | 剩余复杂写法：延迟、筛选、Arc、Invert等；普通延迟仅解析payload及隔离到期队列，engine_knock_delay碰撞输入174/173→到期204/192；Physics观察/落地相位未解，不晋升整项。ShockWaveSpeed/Cyclonic本轮原版用量为0也未建模。非默认Physics、坡地及V4曲线弹到达仍gap；例：JapanCommandoTech1PsyonicBlast, JapanMechaKingKatana |
+| 未做 | `MetaImpactNugget` | 11 | a1 a2 a3 a4 a5 a6 a7 a9 | 剩余复杂写法：延迟、筛选、Arc、Invert等；普通延迟仅解析payload及隔离到期队列，engine_knock_delay碰撞输入174/173→到期204/192；Physics观察/落地相位未解，不晋升整项。ShockWaveSpeed/Cyclonic本轮原版用量为0也未建模。非默认Physics、坡地及V4曲线弹到达仍gap；例：JapanCommandoTech1PsyonicBlast, JapanMechaKingKatana |
 | 已对拍 | `MetaImpactNugget:省略Z默认值` | 11 | 全部 | tests/test_meta_impact.py::test_meta_impact_omitted_z_replays_engine_knock_z_tall_neighbour；仅普通无延迟弹头省略ShockWaveZMult→SDK默认1及默认Physics轨迹；engine_knock_z a高度93邻人14帧落(2420,3740)、目标99%/邻人100%。碰撞时刻/爆心为台上输入；直击噪声方向/网格/选人仍INFERRED，完整曲线弹/坡地/筛选未对拍；例：JapanCommandoTech1AirplaneCrashWeapon, AlliedBomberAircraftBombWarhead |
 | 已对拍 | `ParalyzeNugget` | 11 | a1 a2 a4 a5 a6 a7 | tests/test_simbench_c.py::test_weapon_first_hit_is_observed_one_frame_after_the_order_script；例：JapanAntiVehicleInfantryTech3LockDownGun, AlliedAntiStructureShipEMPCruiseMissleWarhead |
 | 不涉及 | `TintObjectsNugget` | 9 | 全部 | 纯表现：Color及Pre/Sustained/PostColorTime、Frequency/Amplitude仅控制染色动画；engine_tint pair实测2/90/2/90，独立DamageNugget解释全部伤害，test_simbench_c重放；不声称像素已验证；例：SovietCommandoCallBombingRun, AlliedCommandoAttachWeapon |
@@ -786,6 +786,7 @@
 | 已对拍 | `DOTNugget` | 1 |  | tests/test_simbench_c.py::test_dot_counts_interval_ticks_for_two_durations_and_observes_first_damage_frame；例：PlayerPowerIrradiateTargetWeapon |
 | 未做 | `GrapplingHookNugget` | 1 | a1 a3 a4 a6 a7 a9 | engine_grapple a最小消费者诊断；GrapplingHookUpdate派发/拉拽/释放未解释，显式报告gap；tests/test_grapple_nugget.py守卫直接命中/继承/弹头及原版缓存，不登记已对拍；例：SovietAntiVehicleVehicleTech3Harpoon |
 | 已对拍 | `LeechHealthDamageNugget` | 1 | a1 a2 a3 a4 a5 a6 a7 | tests/test_simbench_c.py::test_leech_health_heals_from_damage_and_respects_the_heal_fraction；例：SovietAntiVehicleVehicleTech1LeechBeamWeapon |
+| 已对拍 | `MetaImpactNugget:镰刀敌我筛选` | 1 |  | tests/test_meta_impact.py::test_meta_impact_relation_collision_replays_observed_selection；仅镰刀无延迟筛选写法的发射者敌我关系→默认Physics；engine_knock_relation a健康99/100/99/100，ENEMIES仅敌/ALLIES仅友，逐帧位置回放。碰撞帧/爆心由台上输入；倒地状态及NO_COLLISIONS/非步兵拒绝未单独上台，Physics状态映射INFERRED；不覆盖原版落地入口、延迟、Arc；例：SovietAntiInfantryVehicleLandWeapon |
 
 ## AI
 
