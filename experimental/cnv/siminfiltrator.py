@@ -61,11 +61,15 @@ class Infiltrators:
                 and rule.get('ObjectRef') == 'VisionObserver' and not rule.get('ReplaceWith'))
 
     def paralyze_rule(self, target, rule):
-        """E128 measured host/config only; production, combat and other hosts are gaps."""
-        return (target.template == 'AlliedTechStructure'
-                and rule.get('Effect') == 'PARALYZE' and rule.get('Duration') == '30s'
-                and rule.get('UnitFilter') == 'InfiltrationParalyzeObjectFilter'
-                and not rule.get('ReplaceWith') and not rule.get('ObjectRef'))
+        """E128/E129 retail hosts and complete explicit module configuration.
+
+        Extra attributes remain gaps even on a measured host: matching the
+        host name must not enable unmeasured entry/status/duration variants.
+        """
+        config = {key: value for key, value in rule.items() if key not in ('xmlns', 'id')}
+        return (target.template in ('AlliedTechStructure', 'SovietTechStructure')
+                and config == {'Effect': 'PARALYZE', 'Duration': '30s',
+                               'UnitFilter': 'InfiltrationParalyzeObjectFilter'})
 
     def movement_blocked(self, body):
         """E128 movement only; no PARALYZED model-condition bit was observed."""
@@ -96,7 +100,7 @@ class Infiltrators:
         energy = (rule.get('Effect') == 'ENERGY' and rule.get('ObjectRef') == 'EnergyDisabler'
                   and not rule.get('ReplaceWith'))
         if not energy and not self.vision_rule(target, rule) and not self.paralyze_rule(target, rule):
-            s.gap('InfiltratorContain', target.template, '仅已测ENERGY、普通VISION及AlliedTechStructure PARALYZE配置已实现')
+            s.gap('InfiltratorContain', target.template, '仅已测ENERGY、普通VISION及盟/苏科技中心原版PARALYZE配置已实现')
             return
         if self.paralyze_rule(target, rule) and (
                 spy.owner != s.human or spy.template != 'AlliedInfiltrationInfantry'
@@ -147,7 +151,7 @@ class Infiltrators:
                     s.gap('InfiltratorContain', target.template, 'PARALYZE复杂目标筛选未对拍')
                     continue
                 # INFERRED: apply once to existing units at entry, for the XML duration.
-                # E128 b supports stable movement windows, not exact expiry or new units.
+                # E128 b/E129 a support stable movement windows, not exact expiry or new units.
                 end = s.frame_now() + simunits._frames(float(rule['Duration'][:-1]))
                 self.paralyzed_hosts.add(id(target))
                 for body in s.living():

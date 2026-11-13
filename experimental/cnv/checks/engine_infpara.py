@@ -83,3 +83,20 @@ def movement_check(m):
 
 
 CHECKS['engine_infpara']['b'] = movement_check
+
+
+
+def soviet_movement_check(m):
+    """E129: Soviet retail host, same three-car movement discriminator.
+
+    XML predicts a 30s pause for the existing same-owner Mirage only.
+    Entry/expiry and travel boundaries remain INFERRED; model bits are zero
+    in the Allied control, so this probe does not assume a visible bit.
+    """
+    t = movement_check(m)
+    t.expect = [row for row in t.expect if row[:4] != ('paralyzed', 18, '==', 1)]
+    t.expect.append(('paralyzed', 18, '==', 0, 50))
+    return t
+
+
+CHECKS['engine_infpsov'] = {'a': soviet_movement_check}
