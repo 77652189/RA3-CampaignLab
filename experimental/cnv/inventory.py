@@ -256,6 +256,7 @@ BENCHED_TESTS = {
 # (part, name) -> (state, why): where the name rule above is wrong (a module read under another name ...)
 _NOT_IN_SIM = '已核（11-08）：模拟器没有这个效果'
 NOTES = {
+    (MODULE, 'Behaviors/CircularDamageUpdate'): (TODO, 'E143最小消费诊断：engine_circular a/b/c/d具名回放仅保留负结果，不登记效果已对拍。陆地无ONLY_ON_WATER、MaxRadius175/ArcDistance50、径向50/100/150靶；正常/删激活/删模块/持续开火对照，消费前置仍未解释，未实现接口。Lifetime推进、SweepWeapon实际派发、水面过滤、重复激活和死亡清理均gap；tests/test_simcircular.py；假设表见work/re/e143_circular_gate.md'),
     (NUGGET, 'ActivateCircularDamageNugget'): (TODO, 'C线前置门禁：原版TeslaNova的Lifetime决定扩散速度，伤害来自宿主CircularDamageUpdate的SweepWeapon；E线模块消费接口尚缺，不能用直伤或DOT代替。0局、无台上读数，不登记已对拍；接口需求与假设表见work/re/c_circular_gate_report.md'),
     (NUGGET, 'ReportWeaponFiredStatNugget'): (NA, '纯统计（C线工单允许排除）：只记录玩家武器开火次数；原版两份空配置附于SovietVacuumBomb / ParticleCannonWeapon，伤害与创建物体由独立WeaponOCLNugget负责。保留用量2，不登记已对拍；未上台，不模拟战后统计；证据见work/re/c_reportstat_report.md'),
     (MODULE, 'Behaviors/PassiveAreaEffectBehavior'): (GUESSED, 'E70部分：engine_passivearea a按名回放工程师独立范围治疗；状态开启、40距离同属步兵100%，400距离步兵/60距离车辆/未开启源旁步兵50%，关闭再扣血后四路50%。E74按名回放f/g阈值帧11/31/51/71与16/36/56/76，每20帧分批治疗；共用任务帧相位及SDK每秒10%换算跳幅INFERRED，时钟来源/动态创建与重开/调查周期/叠加/跨玩家关系/自身受益/附着无人机仍gap，不登记整项已对拍；tests/test_simpassivearea.py；见work/re/e_passive_e74.md'),
