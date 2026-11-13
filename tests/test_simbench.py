@@ -1434,6 +1434,37 @@ def test_scripts1_team_button_raises_both_shields():
     assert _scripts1('button', 10.0)[10] == [2]
 
 
+# checks/engine_conds.py (round 208): the retail-campaign conditions, batch 1. The bench's clock runs a second or two
+# ahead of the simulator's here (fire, kills, the scripted seconds), so the tests compare the order of the states each
+# held for two samples or more (one sample: the frame a kill lands in), not the seconds.
+def _conds_states(variant, until, cut):
+    held = []
+    for _, vals in _sim_run('engine_conds', variant, until).series[1:]:
+        key = tuple(vals[:cut])
+        if held and held[-1][0] == key:
+            held[-1][1] += 1
+        else:
+            held.append([key, 1])
+    return [k for k, n in held if n >= 2]
+
+
+def test_conds_team_as_the_bench():
+    """team, bench 11-13 `run_queue engine_conds:team` (CampCondsTeam, a32ba54b + the 128 bits): 队形 / 状态
+    s1 4 13 | s2 12 13 | s3-s6 12 15 | s7-s8 5 15 | s9-s10 5 75 | s11-s21 7 75 | s22-s31 128 74; 离开 1, 建队帧 1.
+    TEAM_CREATED one frame after the reinforcement is made, a map team never; a reinforcement team TEAM_KILLed never
+    reads destroyed, a map team does; PARTIALLY with k 1 / 3 / 7 holds for no Guardian; ALL_HAS on an emptied team."""
+    # the bench's s1 / s2 states hold one sample each: dropped by the same rule
+    assert _conds_states('team', 31.0, 2) == [(12, 15), (5, 15), (5, 75), (7, 75), (128, 74)]
+    assert _sim_run('engine_conds', 'team', 31.0).series[-1][1][2:] == [1, 1]
+
+
+def test_conds_fight_as_the_bench():
+    """fight, bench 11-13 `run_queue engine_conds:fight` (CampCondsFight, a32ba54b): 被打 / 击杀 s1-s2 0 0 | s3-s15
+    21 0 | s16-s38 4 43 | s39-s52 53 43 | s53-s71 4 31. TEAM_ATTACKED_BY_PLAYER reads the living members only (off
+    while foe 2 is unhit), the skirmish flag stays, KILLED_TYPE is at least n, NAMED_HAS_KILLED == 1 goes off at 2."""
+    assert _conds_states('fight', 71.0, 2) == [(0, 0), (21, 0), (4, 43), (53, 43), (4, 31)]
+
+
 def test_video_a_radar_clip_is_done_after_its_length_full_screen_never():
     """movie play (bench, docs/story/handoff.md 1g): CNVTEST01 (95 frames at 23.976) in the radar window done 63 game
     frames after its start; the full-screen clip never reads done."""

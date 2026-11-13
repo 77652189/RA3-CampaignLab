@@ -9,9 +9,10 @@ checks/engine_scripts9.py). The enemy crew is on Soviet_4: placed units on a Sov
           Guardian) made at 3 s, TEAM_KILL(Spawn) at 8 s; TEAM_KILL(Go) at GO_KILL_AT.
           队形 (every frame) = 1 TEAM_INSIDE_AREA_PARTIALLY(Go, F, 0) 2 _ENTIRELY(Go, F, 0) 4 TEAM_HAS_UNITS(Go)
             8 TEAM_HAS_UNITS(Spawn) 16 TEAM_CREATED(Spawn) 32 TEAM_CREATED(Go) 64 TEAM_DESTROYED(Spawn)
+            128 TEAM_DESTROYED(Go)
           状态 (every frame) = 1 TEAM_SOME_HAVE_OBJECT_STATUS(Go, NO_ATTACK) 2 TEAM_ALL_HAS_OBJECT_STATUS(Go, NO_ATTACK)
             4 PLAYER_HAS_CREDITS(Player_1, >=, 5000) 8 CURRENT_PLATFORM(PC) 16 PARTIALLY(Go, F, 3) 32 PARTIALLY(Go, F, 7)
-            64 PLAYER_HAS_CREDITS(Player_1, <, 4500)
+            64 PLAYER_HAS_CREDITS(Player_1, <, 4500) 128 PARTIALLY(Go, F, 1)
           离开 (only added) = frames NAMED_EXITED_AREA(go 1, Home) held; 建队帧 (only added) = frames TEAM_CREATED(Spawn)
           held (1 = an edge; growing = a state)
           [simulator 11-13 (sim.Sim.cond_retail): 队形 36 to s2 (Go has units 4, Go created 32: a map team is active
@@ -36,6 +37,16 @@ checks/engine_scripts9.py). The enemy crew is on Soviet_4: placed units on a Sov
           dead: the team version reads its living members' last damage, D 115; the player-level flag stays); 53 from
           s44 (foe 2 hit: + 1 + 16 + 32); 4 from s59 (both dead). 击杀 0, 43 from s20 (foe 1: 1 + 2 + 8 + 32), 31 from
           s59 (foe 2: + 4 + 16, == 1 off). 甲 93 at s5 -> 0 at s20; 乙 100 to s43, 0 at s59]
+
+BENCH 11-13 (round 208, run_queue; tests/test_simbench.py test_conds_team_as_the_bench / _fight_):
+  team (with the 128 bits): 队形 / 状态 s1 4 13 | s2 12 13 | s3-s6 12 15 | s7-s8 5 15 | s9-s10 5 75 | s11-s21 7 75 |
+    s22-s31 128 74; 离开 1, 建队帧 1. Against the prediction: TEAM_CREATED holds one frame after the making (建队帧
+    1) and never for the map team Go (32 never); TEAM_DESTROYED(Spawn) never after its TEAM_KILL while
+    TEAM_DESTROYED(Go) holds after Go's (128); PARTIALLY with k 3 / 7 / 1 never for the Guardians (16 / 32 / 128).
+    The rest as predicted (ALL_HAS on the emptied Go: 74). The simulator fixed to all three (sim.Sim.cond_retail,
+    TEAM_DESTROYED); the bench's seconds run a second or two before the simulator's.
+  fight: 被打 / 击杀 s1-s2 0 0 | s3-s15 21 0 | s16-s38 4 43 | s39-s52 53 43 | s53-s71 4 31; 甲 87 at s3 .. 12 at s14,
+    kept 12; 乙 87 at s39 .. 12 at s52, kept. Every bit as predicted (the fire sooner than the simulator's).
 """
 from maps import probe_border
 from parts import Mission, Script, Test, square, status
@@ -103,13 +114,15 @@ def team(m):
         (1, ('TEAM_INSIDE_AREA_PARTIALLY', go, 'Test Cond F', 0)),
         (2, ('TEAM_INSIDE_AREA_ENTIRELY', go, 'Test Cond F', 0)),
         (4, ('TEAM_HAS_UNITS', go)), (8, ('TEAM_HAS_UNITS', spawn)),
-        (16, ('TEAM_CREATED', spawn)), (32, ('TEAM_CREATED', go)), (64, ('TEAM_DESTROYED', spawn))])
+        (16, ('TEAM_CREATED', spawn)), (32, ('TEAM_CREATED', go)), (64, ('TEAM_DESTROYED', spawn)),
+        (128, ('TEAM_DESTROYED', go))])
     s8.total(t, 'CNV_Cond_State', '状态', [
         (1, ('TEAM_SOME_HAVE_OBJECT_STATUS', go, na)), (2, ('TEAM_ALL_HAS_OBJECT_STATUS', go, na)),
         (4, ('PLAYER_HAS_CREDITS', p1, GE, 5000)), (8, ('CURRENT_PLATFORM', 'PC')),
         (16, ('TEAM_INSIDE_AREA_PARTIALLY', go, 'Test Cond F', 3)),
         (32, ('TEAM_INSIDE_AREA_PARTIALLY', go, 'Test Cond F', 7)),
-        (64, ('PLAYER_HAS_CREDITS', p1, LT, 4500))])
+        (64, ('PLAYER_HAS_CREDITS', p1, LT, 4500)),
+        (128, ('TEAM_INSIDE_AREA_PARTIALLY', go, 'Test Cond F', 1))])
     _frames(t, 'CNV_Cond_Exit', '离开', ('NAMED_EXITED_AREA', m.role('go 1').name, 'Test Cond Home'))
     _frames(t, 'CNV_Cond_Made', '建队帧', ('TEAM_CREATED', spawn))
     s8.watch(t, RUN['team'])

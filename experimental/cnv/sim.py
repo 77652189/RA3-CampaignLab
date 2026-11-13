@@ -1067,6 +1067,7 @@ class Sim:
         self.kills = []                     # (killer's player, killer's name, template, name) by weapon (cond_retail)
         self.attacked_by = set()            # (player hit, player hitting): SKIRMISH_PLAYER_HAS_BEEN_ATTACKED_BY_PLAYER
         self.cond_memory = {}               # a condition's reading the frame before (NAMED_EXITED_AREA)
+        self.made_frame = {}                # team template -> frame its last instance was made by a script (TEAM_CREATED)
         self._engineer_rules = {}           # template -> EngineerContain rule (mission XML is fixed)
         self.nodes = {}                     # ore node name -> {'free': frame it takes a miner from, 'gathered', 'at'}
         self.mined_to = None                # the last frame mine_due ran
@@ -1414,6 +1415,7 @@ class Sim:
             return
         owner = key.split('/')[0]
         self.instances[key] = k = self.instances.get(key, 0) + 1
+        self.made_frame[key] = self.frame_now()
         made = [t for t, _, hi in self.templates[key]['units'] for _ in range(hi)]
         side = math.ceil(math.sqrt(len(made)))
         for i, t in enumerate(made):
@@ -2796,6 +2798,12 @@ class Sim:
             self.used.add('team destroyed')
             if not self.team_active(a[0]):
                 return False
+            ever = [b for b in self.bodies.values() if same_team(b.team, a[0])]
+            if ever and all(b.instance >= 1 for b in ever):
+                # bench 11-13 engine_conds team: a reinforcement team emptied by TEAM_KILL never reads destroyed
+                # (队形&64), a map team TEAM_KILLed does (&128). INFERRED: an emptied instance made by a script is
+                # gone, and the name finds no team (while one lives it is not destroyed either)
+                return False
             return not any(same_team(b.team, a[0]) and self.present(b) for b in self.bodies.values())
         if name == 'TEAM_COMPARE_NUM_MEMBERS':  # (team, op, n) the living members (bench 11-08 engine_scripts1 xfer
             if self.absent_team(a[0]):          # 队里几个 2 -> 0 at the hand-over; engine_aixfer 队)
@@ -2920,17 +2928,24 @@ class Sim:
             crew = named[1] if named is not None else [b for b in self.living() if same_team(b.team, a[0])]
             return any(not ({'STRUCTURE', 'PROJECTILE', 'IGNORE_FOR_VICTORY'} & set(b.kinds)) for b in crew)
         if name in ('TEAM_INSIDE_AREA_PARTIALLY', 'TEAM_INSIDE_AREA_ENTIRELY'):
-            # 码: the members considered (living, not INERT / MOVE_ONLY; k a bit of the AI module's set -- INFERRED
-            # every member with an AI passes any k); PARTIALLY = one of them inside, ENTIRELY = all and one at least.
+            # 码: the members considered (living, not INERT / MOVE_ONLY; k a bit of the AI module's set);
+            # PARTIALLY = one of them inside, ENTIRELY = all and one at least. Bench 11-13 engine_conds team: a
+            # Guardian passes k 0 only (状态&16 / &32 / &128, k 3 / 7 / 1, never on). The retail maps use k 3 on a
+            # Hind transport team, k 7 on a fleet: INFERRED k 3 = the flying, k 7 = the ships, any other k nobody.
             # The game reads each object's area record, updated when its whole-number position changes (Generals):
             # INFERRED the same as where it stands
-            if int(a[2]) != 0:
-                self.used.add('team area k')
+            k = int(a[2])
             crew = [b for b in self.members(a[0]) if not ({'INERT', 'MOVE_ONLY'} & set(b.kinds))]
+            if k != 0:
+                self.used.add('team area k')
+                crew = [b for b in crew if (k == 3 and b.surface == 'air') or (k == 7 and 'SHIP' in b.kinds)]
             ins = [inside(self.areas[a[1]], b.x, b.y) for b in crew]
             return any(ins) if name.endswith('PARTIALLY') else bool(ins) and all(ins)
-        if name == 'TEAM_CREATED':              # INFERRED: the team has an instance (a map team from the start)
-            return True
+        if name == 'TEAM_CREATED':
+            # bench 11-13 engine_conds team: one frame after a script made it (建队帧 1), a map team never (队形&32
+            # off all along); which frame of the two INFERRED -- the one after the making
+            f = next((v for k, v in self.made_frame.items() if same_team(k, a[0])), None)
+            return f is not None and self.frame_now() == f + 1
         if name in ('TEAM_SOME_HAVE_OBJECT_STATUS', 'TEAM_ALL_HAS_OBJECT_STATUS'):
             # INFERRED (Generals evaluateTeamHasObjectStatus): the living members' bit; ALL holds on an empty team
             st = a[1][2] if isinstance(a[1], tuple) else a[1]

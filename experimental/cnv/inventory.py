@@ -130,6 +130,16 @@ BENCHED_TESTS = {
     (CONDITION, 'PLAYER_HAS_COMPARISON_POWER_POINTS'):
         'tests/test_simbench.py::test_protocol_set_points_follows_the_programs_rule',
     (CONDITION, 'PLAYER_HAS_PLAYER_TECH'): 'tests/test_simbench.py::test_protocol_rank_two_at_frame_5400',
+    # engine line A round 208: retail-campaign conditions batch 1 (checks/engine_conds.py team / fight); the
+    # TEAM_INSIDE_AREA k other than 0 is benched only as "no Guardian passes 1 / 3 / 7" (air / ships INFERRED)
+    **{(CONDITION, n): 'tests/test_simbench.py::test_conds_team_as_the_bench' for n in (
+        'TEAM_HAS_UNITS', 'TEAM_INSIDE_AREA_PARTIALLY', 'TEAM_INSIDE_AREA_ENTIRELY', 'TEAM_CREATED', 'TEAM_DESTROYED',
+        'TEAM_SOME_HAVE_OBJECT_STATUS', 'TEAM_ALL_HAS_OBJECT_STATUS', 'PLAYER_HAS_CREDITS', 'CURRENT_PLATFORM',
+        'NAMED_EXITED_AREA')},
+    **{(CONDITION, n): 'tests/test_simbench.py::test_conds_fight_as_the_bench' for n in (
+        'TEAM_ATTACKED_BY_PLAYER', 'SKIRMISH_PLAYER_HAS_BEEN_ATTACKED_BY_PLAYER', 'TEAM_ATTACKED_BY_OBJECTTYPE',
+        'NAMED_ATTACKED_BY_OBJECTTYPE', 'PLAYER_HAS_KILLED_NAMED_UNIT', 'PLAYER_HAS_KILLED_TYPE_UNITS',
+        'NAMED_HAS_KILLED_COMPARISON_UNIT_TYPE')},
     # engine line C round 1: modules whose retail data the simulator already follows and a bench-reading test cites
     (MODULE, 'Behaviors/ProductionUpdate'):
         'tests/test_simbench.py::test_production_pays_as_it_builds_and_comes_out_after_the_door',   # engine_production a-g

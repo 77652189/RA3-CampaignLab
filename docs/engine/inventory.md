@@ -5,7 +5,7 @@
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
 | 脚本动作 | **92%** | **100%** | 50 / 50 | 451 | 124 | 20 | 190 | 117 | 93% |
-| 脚本条件 | **94%** | **100%** | 12 / 12 | 89 | 34 | 21 | 31 | 3 | 98% |
+| 脚本条件 | **97%** | **100%** | 12 / 12 | 89 | 51 | 4 | 31 | 3 | 98% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 17 / 22 | 29 | 19 | 3 | 4 | 3 | 97% |
 | AI | **90%** | **90%** | 144 / 357 | 415 | 151 | 115 | 115 | 34 | 98% |
@@ -23,7 +23,7 @@
 | 已对拍 | `MOVE_NAMED_UNIT_TO` | 1000 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aidefense.py |
 | 已对拍 | `LINK_MISSION_OBJECTIVE_TO_OBJECT` | 950 | 全部 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts5.py |
 | 已对拍 | `NAMED_DELETE` | 908 | a2 a4 a5 a6 a7 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attach.py |
-| 已对拍 | `CREATE_REINFORCEMENT_TEAM` | 753 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_reinf.py |
+| 已对拍 | `CREATE_REINFORCEMENT_TEAM` | 753 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_conds.py:team |
 | 已对拍 | `SET_MISSION_OBJECTIVE_STATUS` | 732 | 全部 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts5.py |
 | 不涉及 | `PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT` | 640 | a4 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
 | 已对拍 | `CALL_SUBROUTINE` | 533 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_scripts6.py |
@@ -81,7 +81,7 @@
 | 不涉及 | `CAMPAIGN_CREATE_AUTO_SAVE` | 127 | 全部 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
 | 已对拍 | `UNIT_SET_STANCE` | 124 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acquire.py |
 | 已对拍 | `TEAM_DELETE` | 122 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts8.py |
-| 已对拍 | `TEAM_KILL` | 121 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts8.py |
+| 已对拍 | `TEAM_KILL` | 121 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_conds.py |
 | 已对拍 | `SET_TIMER` | 119 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_scripts6.py |
 | 已对拍 | `NAMED_STOP` | 118 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_emp.py |
 | 已对拍 | `UNIT_TELEPORT_TO_WAYPOINT` | 118 | a4 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aidefense.py |
@@ -473,7 +473,7 @@
 | 已对拍 | `FLAG` | 5099 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_aimicro.py |
 | 已对拍 | `TIMER_EXPIRED` | 3917 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_acquire.py |
 | 已对拍 | `CONDITION_TRUE` | 2947 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_scripts6.py |
-| 已对拍 | `NAMED_DESTROYED` | 922 | 全部 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_crash_fall.py |
+| 已对拍 | `NAMED_DESTROYED` | 922 | 全部 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_conds.py:fight |
 | 已对拍 | `PLAYER_HAS_OBJECT_COMPARISON` | 628 | a1 a4 a5 a7 | tests/test_simbench.py::test_scripts2_a_relation_is_one_way_and_turns_back |
 | 已对拍 | `COUNTER` | 577 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_aimicro.py |
 | 已对拍 | `HAS_FINISHED_AUDIO` | 495 |  | tests/test_simbench.py::test_audio_a_dubbed_line_is_done_its_length_after_it_is_heard |
@@ -490,9 +490,9 @@
 | 已对拍 | `UNIT_HEALTH` | 134 | a2 a4 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_air.py |
 | 未做 | `MISSION_HOT_SPOT_ACTIVE` | 110 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `NAMED_DISCOVERED` | 104 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_infveh.py |
-| 推断 | `TEAM_ATTACKED_BY_PLAYER` | 93 |  | Sim.act / Sim.cond 有分支；台上量过（checks/engine_conds.py），没有测试跑这个台子 |
+| 已对拍 | `TEAM_ATTACKED_BY_PLAYER` | 93 |  | tests/test_simbench.py::test_conds_fight_as_the_bench |
 | 已对拍 | `UNIT_HAS_MODELCONDITION` | 88 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_infpara.py |
-| 推断 | `TEAM_INSIDE_AREA_PARTIALLY` | 80 |  | Sim.act / Sim.cond 有分支；台上量过（checks/engine_conds.py），没有测试跑这个台子 |
+| 已对拍 | `TEAM_INSIDE_AREA_PARTIALLY` | 80 |  | tests/test_simbench.py::test_conds_team_as_the_bench |
 | 未做 | `ENEMY_SIGHTED_BY_TEAM` | 69 |  | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `IS_OBJECT_OF_TYPE` | 69 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 推断 | `CAMERA_ENTERED_AREA` | 60 |  | Sim.act / Sim.cond 有分支 |
@@ -500,31 +500,31 @@
 | 已对拍 | `COUNTER_COUNTER` | 55 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_scripts6.py |
 | 未做 | `NAMED_SELECTED` | 50 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_DISCOVERED` | 47 |  | Sim.act / Sim.cond 不认识 |
-| 推断 | `SKIRMISH_PLAYER_HAS_BEEN_ATTACKED_BY_PLAYER` | 44 |  | Sim.act / Sim.cond 有分支；台上量过（checks/engine_conds.py:fight），没有测试跑这个台子 |
-| 推断 | `TEAM_HAS_UNITS` | 39 |  | Sim.act / Sim.cond 有分支；台上量过（checks/engine_conds.py），没有测试跑这个台子 |
+| 已对拍 | `SKIRMISH_PLAYER_HAS_BEEN_ATTACKED_BY_PLAYER` | 44 |  | tests/test_simbench.py::test_conds_fight_as_the_bench |
+| 已对拍 | `TEAM_HAS_UNITS` | 39 |  | tests/test_simbench.py::test_conds_team_as_the_bench |
 | 已对拍 | `NAMED_OUTSIDE_AREA` | 38 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_air.py |
 | 未做 | `TYPE_SELECTED` | 38 |  | Sim.act / Sim.cond 不认识 |
-| 推断 | `TEAM_DESTROYED` | 35 |  | Sim.act / Sim.cond 有分支；台上量过（checks/engine_conds.py），没有测试跑这个台子 |
-| 推断 | `TEAM_INSIDE_AREA_ENTIRELY` | 33 |  | Sim.act / Sim.cond 有分支；台上量过（checks/engine_conds.py:team），没有测试跑这个台子 |
+| 已对拍 | `TEAM_DESTROYED` | 35 |  | tests/test_simbench.py::test_conds_team_as_the_bench |
+| 已对拍 | `TEAM_INSIDE_AREA_ENTIRELY` | 33 |  | tests/test_simbench.py::test_conds_team_as_the_bench |
 | 未做 | `DISTANCE_BETWEEN_TEAM` | 32 |  | Sim.act / Sim.cond 不认识 |
-| 推断 | `PLAYER_HAS_KILLED_TYPE_UNITS` | 29 |  | Sim.act / Sim.cond 有分支；台上量过（checks/engine_conds.py），没有测试跑这个台子 |
+| 已对拍 | `PLAYER_HAS_KILLED_TYPE_UNITS` | 29 |  | tests/test_simbench.py::test_conds_fight_as_the_bench |
 | 已对拍 | `PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA` | 28 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_spawn.py:spawn |
 | 已对拍 | `PLAYER_HAS_PLAYER_TECH` | 26 |  | tests/test_simbench.py::test_protocol_rank_two_at_frame_5400 |
 | 未做 | `DISTANCE_BETWEEN_OBJ` | 25 |  | Sim.act / Sim.cond 不认识 |
-| 推断 | `CURRENT_PLATFORM` | 24 |  | Sim.act / Sim.cond 有分支；台上量过（checks/engine_conds.py），没有测试跑这个台子 |
-| 推断 | `PLAYER_HAS_KILLED_NAMED_UNIT` | 24 |  | Sim.act / Sim.cond 有分支；台上量过（checks/engine_conds.py），没有测试跑这个台子 |
-| 推断 | `NAMED_HAS_KILLED_COMPARISON_UNIT_TYPE` | 21 |  | Sim.act / Sim.cond 有分支；台上量过（checks/engine_conds.py），没有测试跑这个台子 |
-| 推断 | `TEAM_CREATED` | 20 |  | Sim.act / Sim.cond 有分支；台上量过（checks/engine_conds.py），没有测试跑这个台子 |
-| 推断 | `TEAM_ALL_HAS_OBJECT_STATUS` | 18 |  | Sim.act / Sim.cond 有分支；台上量过（checks/engine_conds.py），没有测试跑这个台子 |
+| 已对拍 | `CURRENT_PLATFORM` | 24 |  | tests/test_simbench.py::test_conds_team_as_the_bench |
+| 已对拍 | `PLAYER_HAS_KILLED_NAMED_UNIT` | 24 |  | tests/test_simbench.py::test_conds_fight_as_the_bench |
+| 已对拍 | `NAMED_HAS_KILLED_COMPARISON_UNIT_TYPE` | 21 |  | tests/test_simbench.py::test_conds_fight_as_the_bench |
+| 已对拍 | `TEAM_CREATED` | 20 |  | tests/test_simbench.py::test_conds_team_as_the_bench |
+| 已对拍 | `TEAM_ALL_HAS_OBJECT_STATUS` | 18 |  | tests/test_simbench.py::test_conds_team_as_the_bench |
 | 未做 | `TYPE_SIGHTED` | 17 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `SKIRMISH_SPECIAL_POWER_READY` | 16 |  | Sim.act / Sim.cond 不认识 |
-| 推断 | `TEAM_SOME_HAVE_OBJECT_STATUS` | 15 |  | Sim.act / Sim.cond 有分支；台上量过（checks/engine_conds.py），没有测试跑这个台子 |
+| 已对拍 | `TEAM_SOME_HAVE_OBJECT_STATUS` | 15 |  | tests/test_simbench.py::test_conds_team_as_the_bench |
 | 未做 | `NAMED_BUILDING_IS_EMPTY` | 13 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `TEAM_HAS_FEWER_THAN_X_UNITS_WITH_KINDOF` | 12 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiskirm.py |
-| 推断 | `NAMED_ATTACKED_BY_OBJECTTYPE` | 10 |  | Sim.act / Sim.cond 有分支；台上量过（checks/engine_conds.py），没有测试跑这个台子 |
+| 已对拍 | `NAMED_ATTACKED_BY_OBJECTTYPE` | 10 |  | tests/test_simbench.py::test_conds_fight_as_the_bench |
 | 不涉及 | `OBJECT_IS_DISGUISED_AS_TYPE` | 10 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 已对拍 | `PLAYER_HAS_COMPARISON_POWER_POINTS` | 10 |  | tests/test_simbench.py::test_protocol_set_points_follows_the_programs_rule |
-| 推断 | `TEAM_ATTACKED_BY_OBJECTTYPE` | 10 |  | Sim.act / Sim.cond 有分支；台上量过（checks/engine_conds.py），没有测试跑这个台子 |
+| 已对拍 | `TEAM_ATTACKED_BY_OBJECTTYPE` | 10 |  | tests/test_simbench.py::test_conds_fight_as_the_bench |
 | 已对拍 | `TEAM_COMPARE_NUM_MEMBERS` | 10 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiskirm.py |
 | 不涉及 | `PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA_WITH_MODELCONDITION` | 9 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 已对拍 | `PLAYER_HAS_POWER` | 9 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_infiltrator.py:a |
@@ -532,9 +532,9 @@
 | 未做 | `BUILT_BY_PLAYER` | 8 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `GATE_IS_OPEN` | 8 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `PLAYER_DESTROYED_N_BUILDINGS_PLAYER` | 8 |  | Sim.act / Sim.cond 不认识 |
-| 推断 | `PLAYER_HAS_CREDITS` | 8 |  | Sim.act / Sim.cond 有分支；台上量过（checks/engine_conds.py），没有测试跑这个台子 |
+| 已对拍 | `PLAYER_HAS_CREDITS` | 8 |  | tests/test_simbench.py::test_conds_team_as_the_bench |
 | 未做 | `SKIRMISH_PLAYER_HAS_COMPARISON_GARRISONED` | 8 |  | Sim.act / Sim.cond 不认识 |
-| 推断 | `NAMED_EXITED_AREA` | 7 |  | Sim.act / Sim.cond 有分支；台上量过（checks/engine_conds.py），没有测试跑这个台子 |
+| 已对拍 | `NAMED_EXITED_AREA` | 7 |  | tests/test_simbench.py::test_conds_team_as_the_bench |
 | 未做 | `UNIT_SPECIAL_POWER_READY` | 7 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `PLAYER_HAS_NO_POWER` | 6 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_infiltrator.py:a |
 | 已对拍 | `PLAYER_EXCESS_POWER_COMPARE_VALUE` | 5 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_infiltrator.py:a |
