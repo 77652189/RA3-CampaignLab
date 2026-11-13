@@ -89,7 +89,7 @@
 | 已对拍 | `ATTACK_MOVE_TEAM_TO` | 116 | a1 a3 a5 a6 a7 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_wayatk.py |
 | 已对拍 | `PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT` | 116 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts8b.py |
 | 已对拍 | `TEAM_IDLE_FOR_SECONDS` | 114 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts8.py |
-| 已对拍 | `PLAYER_SET_BASE_POWER` | 112 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts8b.py |
+| 已对拍 | `PLAYER_SET_BASE_POWER` | 112 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attackassist.py |
 | 未做 | `PLAYER_TOGGLE_RESOURCE_SHARING` | 111 |  | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `UNIT_SET_MODELCONDITION_GENERIC` | 111 | a7 | 纯表现：设模型状态只换画法。原版脚本设的是 SUPPRESSED（a01 摆拍枪战的趴下动作），SDK 数据里读 SUPPRESSED 的只有绘制模块的 ConditionsYes；我们 a7 设的 USER_1 只有自由号的充能画法读 |
 | 不涉及 | `PLAY_SOUND_AS_AI_COCOMMANDER_DIALOG` | 109 |  | 纯表现（名字规则） |
@@ -641,7 +641,7 @@
 | 推断 | `Behaviors/PassiveAreaEffectBehavior` | 5 (14) | a3 a4 a7 | E70部分：engine_passivearea a按名回放工程师独立范围治疗；状态开启、40距离同属步兵100%，400距离步兵/60距离车辆/未开启源旁步兵50%，关闭再扣血后四路50%。E74按名回放f/g阈值帧11/31/51/71与16/36/56/76，每20帧分批治疗；共用任务帧相位及SDK每秒10%换算跳幅INFERRED，时钟来源/动态创建与重开/调查周期/叠加/跨玩家关系/自身受益/附着无人机仍gap，不登记整项已对拍；tests/test_simpassivearea.py；见work/re/e_passive_e74.md；例：AlliedAirfieldRepairDrone, AlliedEngineer |
 | 未做 | `Behaviors/EmotionTrackerUpdate` | 5 (7) | a1 a2 a3 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoTech1, AlliedEngineer |
 | 未做 | `Behaviors/MonitorSpecialPowerTimerUpdate` | 5 (6) |  | 模拟器代码里没有这个名字；例：AlliedSuperWeapon, AlliedSuperWeaponAdvanced |
-| 未做 | `Behaviors/AttackAssistResponseBehavior` | 5 (5) | a1 a2 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedBaseDefenseAdvanced, SovietBaseDefenseAdvanced |
+| 未做 | `Behaviors/AttackAssistResponseBehavior` | 5 (5) | a1 a2 a4 a5 a6 a7 a9 | E144派发诊断：engine_attackassist a两次准备运行均进关前崩溃，无台上读数；最终原版光谱塔宿主配方已修本地模块引用及结构武器掩码，尚未上台，暂停追加运行直至启动原因解释。tests/test_simattackassist.py严格xfail仅保留待验预测，不作已对拍证据；响应武器派发/原版增伤/时序均gap，模型未改；见work/re/e144_attackassist.md；例：AlliedBaseDefenseAdvanced, SovietBaseDefenseAdvanced |
 | 未做 | `Behaviors/CaptureSpecialAbilityUpdate` | 5 (5) | a1 a2 a3 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoTech1, AlliedEngineer |
 | 推断 | `Behaviors/CommandSetUpgrade` | 5 (5) | a1 a4 a5 a7 | 模拟器代码里有这个名字；例：AlliedConstructionYard, AlliedOutpost |
 | 未做 | `Behaviors/QueueDockBehavior` | 4 (12) | a1 a2 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedRefinery, AlliedRefinery_NoHarvester |
@@ -672,7 +672,7 @@
 | 未做 | `Behaviors/AimWeapon` | 2 (2) | a1 a4 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAntiVehicleInfantry, SovietAntiVehicleInfantry |
 | 未做 | `Behaviors/GateOpenAndCloseBehavior` | 2 (2) |  | 模拟器代码里没有这个名字；例：RM_AlliedBlastDoor, SS_Door |
 | 已对拍 | `Behaviors/InvisibilityBroadcastUpdate` | 2 (2) | a1 a4 a6 a7 | tests/test_simbench_c.py::test_invisibility_broadcast_the_aura_holds_its_guardian_at_full_health_and_the_control_dies；例：AlliedAntiVehicleVehicleTech3, A08_SpecialMirageTank |
-| 未做 | `Behaviors/NotifyWhenAttackingBehavior` | 2 (2) | a1 a2 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedBaseDefenseAdvanced, SovietBaseDefenseAdvanced |
+| 未做 | `Behaviors/NotifyWhenAttackingBehavior` | 2 (2) | a1 a2 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_attackassist.py），可能用别的名字实现了；例：AlliedBaseDefenseAdvanced, SovietBaseDefenseAdvanced |
 | 未做 | `Behaviors/PowerUpgrade` | 2 (2) | a5 | 模拟器代码里没有这个名字；例：SovietPowerPlantAdvanced, SovietPowerPlant |
 | 未做 | `Behaviors/PrematureDischargeSpecialPower` | 2 (2) | a4 | 模拟器代码里没有这个名字；例：JapanBaseDefenseAdvanced, JapanAntiStructureVehicle |
 | 未做 | `Behaviors/RecallUnitsSpecialPower` | 2 (2) | a4 a7 | 模拟器代码里没有这个名字；例：AlliedAirfield, SovietAirfield |
@@ -758,7 +758,7 @@
 
 | 状态 | 名字 | 用量 | 9 关用到 | 说明 |
 |---|---|---|---|---|
-| 已对拍 | `DamageNugget` | 183 | 全部 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_circular.py；例：BaseExplodingPropVehicleWeapon, MountRushmoreHeadEyeWeapon |
+| 已对拍 | `DamageNugget` | 183 | 全部 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_attackassist.py；例：BaseExplodingPropVehicleWeapon, MountRushmoreHeadEyeWeapon |
 | 已对拍 | `ProjectileNugget` | 88 | 全部 | tests/test_simbench_c.py::test_projectile_nugget_flight_uses_retail_shell_speed_and_resolved_warhead；例：BB_EuropeCoastalGunWeapon, KremlinArtilleryDomeMissle |
 | 已对拍 | `SuppressionNugget` | 64 | 全部 | tests/test_simbench_c.py::test_suppression_samples_entry_refresh_and_expiry_at_the_four_probe_readings；例：BB_EuropeCoastalGunWeapon, KremlinArtilleryDomeMissle |
 | 已对拍 | `InformTargetNugget:默认系数目标通知` | 47 | 全部 | tests/test_inform_ai.py::test_inform_incoming_table_drives_miner_armor_from_engine_inform_probe；仅默认Min=.85/Max=1.15的目标通知→来弹表/矿车预计伤害开甲；engine_inform_probe a/off录入302、hit377、exp404、删除389，347帧入窗。半径/历史/海啸/忍者及完整AI调度不在本登记范围，完整脚本仍xfail；例：BB_EuropeCoastalGunWeapon, AlliedPrecisionBomb |
