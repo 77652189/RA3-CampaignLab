@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **92%** | **100%** | 50 / 50 | 451 | 123 | 20 | 191 | 117 | 93% |
+| 脚本动作 | **92%** | **100%** | 50 / 50 | 451 | 124 | 20 | 190 | 117 | 93% |
 | 脚本条件 | **94%** | **100%** | 12 / 12 | 89 | 34 | 21 | 31 | 3 | 98% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 17 / 22 | 28 | 18 | 3 | 4 | 3 | 96% |
@@ -351,7 +351,7 @@
 | 不涉及 | `TEAM_ENABLE_HOUSE_COLOR` | 4 |  | 纯表现（名字规则） |
 | 未做 | `TEAM_EXECUTE_SEQUENTIAL_SCRIPT` | 4 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `UNIT_ATTACK_MOVE_TOWARDS_NEAREST_OBJECT_TYPE` | 4 |  | Sim.act / Sim.cond 不认识 |
-| 未做 | `UNIT_CHANGE_OBJECT_STATUS:NO_COLLISIONS` | 4 |  | 状态位 NO_COLLISIONS 只记下来 |
+| 已对拍 | `UNIT_CHANGE_OBJECT_STATUS:NO_COLLISIONS` | 4 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attach.py |
 | 已对拍 | `UNIT_GUARD_AREA` | 4 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts4.py |
 | 未做 | `UNIT_GUARD_OBJECT` | 4 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `MAP_REVEAL_ALL` | 3 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_vision.py |
