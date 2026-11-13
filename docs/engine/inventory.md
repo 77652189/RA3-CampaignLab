@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **92%** | **100%** | 50 / 50 | 451 | 124 | 20 | 190 | 117 | 93% |
+| 脚本动作 | **92%** | **100%** | 50 / 50 | 451 | 125 | 19 | 190 | 117 | 93% |
 | 脚本条件 | **97%** | **100%** | 12 / 12 | 89 | 51 | 4 | 31 | 3 | 98% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 17 / 22 | 29 | 19 | 3 | 4 | 3 | 97% |
@@ -209,7 +209,7 @@
 | 未做 | `PLAYER_SET_MONEY_CAP` | 25 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `UNIT_ALLOW_AI_AUTOACQUIRE` | 25 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `UNIT_SET_MODELCONDITION` | 25 |  | Sim.act / Sim.cond 不认识 |
-| 推断 | `DISPLAY_COUNTER` | 24 |  | 引擎模型核心 |
+| 已对拍 | `DISPLAY_COUNTER` | 24 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_modulebatch.py |
 | 不涉及 | `HIDE_COUNTER` | 24 |  | 纯表现（名字规则） |
 | 未做 | `PLAYER_ALLOW_AI_AUTOACQUIRE` | 24 |  | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `PLAY_SOUND_AS_AI_COCOMMANDER_DIALOG_WITH_SUBTITLE` | 24 |  | 纯表现（名字规则） |
@@ -638,12 +638,12 @@
 | 已对拍 | `Behaviors/OCLSpecialPower` | 6 (7) | a1 a2 a4 a6 a7 | tests/test_simocl.py::test_iron_curtain_zero_count_ocl_reference；总控第四切片按已测边界收尾：tests/test_simocl.py具名回放engine_oclcurtain/engine_oclnone/engine_oclwrong a，铁幕宿主匹配模块才保护并记事件，删除/改绑模块无保护/事件；engine_oclempty a空声明无保护且事件1；engine_oclcopy a完整原版载荷改名仍保护100/100且事件1；engine_oclzero a仅外层Count=0无保护且事件1。只闭合铁幕派发和零数量不保护边界，未测生成数量/通用生成；其他非零数量/载荷/超武、位置/过滤、按钮/冷却仍gap，继承、等价空声明及格式等价INFERRED，不表示全模块全字段验证；见 work/re/e_ocl_e65.md；例：AlliedSuperWeaponAdvanced, CAMP_PowerStore_AlliedBomberDrop |
 | 未做 | `Behaviors/SubStructureStorageBehavior` | 6 (6) | a1 a4 a5 a6 a7 a9 | 6用量/6模板为三国MCV及海军继承型，模块无专用字段；有效配置没有SubStructureBuild，未找到可生成待存子结构的原版入口；gap：保存/恢复专属读数及合法触发待接口核实，未上台、不登记已对拍，也不据此排除运行时用途；普通展开及COPY_UPGRADES不能归因；见 work/re/e_substorage_e57.md；例：AlliedMCV, AlliedMCV_Naval |
 | 推断 | `Behaviors/WallBuilderBehavior` | 6 (6) | a1 a2 a4 a6 a7 a9 | 部分：engine_wallinit:a有/无模块对照10/11/10，仅StartInSecondaryModel默认WALL_SEGMENT初始化；6/6权重保留，建墙/连接/段数上限/生死联动及自定义配置仍gap，未登记完整已对拍；见 work/re/e_wallbuilder_e58.md；例：AlliedWallPiece, AlliedWallSegmentPiece |
-| 推断 | `Behaviors/PassiveAreaEffectBehavior` | 5 (14) | a3 a4 a7 | E70部分：engine_passivearea a按名回放工程师独立范围治疗；状态开启、40距离同属步兵100%，400距离步兵/60距离车辆/未开启源旁步兵50%，关闭再扣血后四路50%。E74按名回放f/g阈值帧11/31/51/71与16/36/56/76，每20帧分批治疗；共用任务帧相位及SDK每秒10%换算跳幅INFERRED，时钟来源/动态创建与重开/调查周期/叠加/跨玩家关系/自身受益/附着无人机仍gap，不登记整项已对拍；tests/test_simpassivearea.py；见work/re/e_passive_e74.md；例：AlliedAirfieldRepairDrone, AlliedEngineer |
+| 推断 | `Behaviors/PassiveAreaEffectBehavior` | 5 (14) | a3 a4 a7 | E70范围/兵种/状态开关和E74分批治疗具名回放保留。E145单图engine_modulebatch:a：MaxBeneficiaries=1/0两组，早期受益人数1/3、后期3/3，敌方均50%不回血；已补0/1上限，tests/test_simmodulebatch.py按名断言台上读数。具体受益身份次序、共用任务帧相位和SDK换算跳幅INFERRED；时钟来源/动态创建与重开/调查周期/叠加/友方跨玩家/自身受益/附着无人机/更大上限仍gap，不登记整项已对拍；见work/re/e145_modulebatch.md、e_passive_e74.md；例：AlliedAirfieldRepairDrone, AlliedEngineer |
 | 未做 | `Behaviors/EmotionTrackerUpdate` | 5 (7) | a1 a2 a3 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoTech1, AlliedEngineer |
-| 未做 | `Behaviors/MonitorSpecialPowerTimerUpdate` | 5 (6) |  | 模拟器代码里没有这个名字；例：AlliedSuperWeapon, AlliedSuperWeaponAdvanced |
+| 未做 | `Behaviors/MonitorSpecialPowerTimerUpdate` | 5 (6) |  | E145单图engine_modulebatch:a：原版质子炮宿主有/无模块，设技能就绪后SPECIALPOWER1_READY为1/0，设冷却后0/0。模型倒计时脚本入口和模块就绪输出仍gap；具名回放strict xfail，需A倒计时接口，不按纯表现排除；见work/re/e145_modulebatch.md；例：AlliedSuperWeapon, AlliedSuperWeaponAdvanced |
 | 未做 | `Behaviors/AttackAssistResponseBehavior` | 5 (5) | a1 a2 a4 a5 a6 a7 a9 | E144派发诊断：engine_attackassist a两次准备运行均进关前崩溃，无台上读数；最终原版光谱塔宿主配方已修本地模块引用及结构武器掩码，尚未上台，暂停追加运行直至启动原因解释。tests/test_simattackassist.py严格xfail仅保留待验预测，不作已对拍证据；响应武器派发/原版增伤/时序均gap，模型未改；见work/re/e144_attackassist.md；例：AlliedBaseDefenseAdvanced, SovietBaseDefenseAdvanced |
 | 未做 | `Behaviors/CaptureSpecialAbilityUpdate` | 5 (5) | a1 a2 a3 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoTech1, AlliedEngineer |
-| 推断 | `Behaviors/CommandSetUpgrade` | 5 (5) | a1 a4 a5 a7 | 模拟器代码里有这个名字；例：AlliedConstructionYard, AlliedOutpost |
+| 推断 | `Behaviors/CommandSetUpgrade` | 5 (5) | a1 a4 a5 a7 | E145单图engine_modulebatch:a：空初始菜单的兵营，授Tech2前产物0/0、授后有/无模块产物1/0。菜单切换解析已有；整链路具名回放strict xfail：生产层factories按未持升级的初始菜单识别工厂，故模型仍0/0，需B接口修复。未晋升整项；见work/re/e145_modulebatch.md；例：AlliedConstructionYard, AlliedOutpost |
 | 未做 | `Behaviors/QueueDockBehavior` | 4 (12) | a1 a2 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedRefinery, AlliedRefinery_NoHarvester |
 | 推断 | `Behaviors/AutoDepositUpdate` | 4 (8) | a1 a4 a5 a7 | 模拟器代码里有这个名字；例：GE_SwissBank, NY_NYStockExchange |
 | 已对拍 | `Behaviors/InfiltratorContain:ENERGY` | 4 (6) | a2 a4 a5 a6 a7 a8 | tests/test_siminfiltrator.py::test_spy_power_plant_as_on_the_bench；总控11-11授权按配置组收尾：engine_infiltrator a/b/c/d按名字重放，盟军间谍对盟/苏/帝普通电厂及帝国忍者对盟军电厂，敌方进入者消耗、建筑满血不换主、100电量停电约20秒并恢复，友军拒入且存活；gap：其他电量/苏联超级电厂、重复进入续期、精确时序和默认状态分支仍未对拍，不表示全字段全模板已验证；例：JapanPowerPlant |
