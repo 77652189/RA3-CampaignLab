@@ -516,3 +516,21 @@ def test_native_transport_disguise_unpack_transition_bench_replay():
     result = e.run(14)
     measured_transition = (1110, 1110, 1110, 1111)
     assert any(tuple(row) == measured_transition for _, row in result.series)
+
+
+def test_native_transport_disguise_vehicle_filter_bench_replay():
+    """engine_spntrfilter a: independent hits distinguish VEHICLE filtering.
+
+    Retail Sickle / Peacekeeper / infantry without SPN / scripted bit.
+    Evidence: work/re/c_spntrans_filter_report.md.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_spntrfilter', 'a')
+    e = sim.Sim(m, t)
+    e.shot_clock = True
+    result = e.run(14)
+    measured = (1111, 1110, 1110, 1111)
+    assert tuple(result.series[-1][1]) == measured
+    assert all(tuple(row) == measured for sec, row in result.series if sec >= 12)
+    assert (sim.GAP_WEAPON, 'SpecialPowerNugget') not in e.unmodeled

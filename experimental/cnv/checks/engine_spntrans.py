@@ -24,26 +24,28 @@ POWER = 'SpecialPower_JapanLightTransportVehicleDisguise'
 VALUES = (1111, 1110, 1110, 1111)
 
 
-def mission():
+def mission(target_filter=False):
     root = Path(SAGE)
     transport = (root/'Japan/Units/JapanLightTransportVehicle.xml').read_text(encoding='utf-8')
     weapons = (root/'GlobalData/Weapon.xml').read_text(encoding='utf-8')
     weapon = re.search(r'<WeaponTemplate\s+id="JapanLightTransportVehicleDisguiser".*?</WeaponTemplate>', weapons, re.S).group()
-    m = Mission(name='CampSPNTr', map=spn_mission().map, units=[], facts={})
+    m = Mission(name='CampSPNTrF' if target_filter else 'CampSPNTr',
+                map=spn_mission().map, units=[], facts={})
     for lane in CASES:
         uid, wid = 'CNV_SPTr'+lane.title(), 'CNV_SPTrGun'+lane.title()
         xml = transport.replace('id="JapanLightTransportVehicle"', f'id="{uid}"', 1)
         xml = xml.replace('Template="JapanLightTransportVehicleDisguiser"', f'Template="{wid}"')
         w = weapon.replace('id="JapanLightTransportVehicleDisguiser"', f'id="{wid}"', 1)
-        if lane in ('high', 'removed'):
+        if lane in (('order', 'removed') if target_filter else ('high', 'removed')):
             w = re.sub(r'<SpecialPowerNugget\b[^<>]*/>', '', w)
-        if lane == 'order':
+        if lane == 'order' and not target_filter:
             xml = re.sub(r'<SpecialDisguiseUpdate\b[^<>]*/>', '', xml)
         w = w.replace('</Nuggets>', '<DamageNugget Damage="10" DamageType="UNRESISTABLE" DeathType="NORMAL"/></Nuggets>')
         xml = xml.replace('</AssetDeclaration>', w+'</AssetDeclaration>')
         m.units.append(Unit(uid, xml, link=['WeaponTemplate:'+wid]))
         m.put(uid, lane+' gun', side='p1', angle=1.5708, name='SPT '+lane+' caster')
-        m.put('SovietAntiInfantryVehicle', lane+' gun', 0, 250, side='s1', angle=4.7124, name='SPT '+lane+' victim')
+        victim = 'AlliedAntiInfantryInfantry' if target_filter and lane != 'base' else 'SovietAntiInfantryVehicle'
+        m.put(victim, lane+' gun', 0, 250, side='s1', angle=4.7124, name='SPT '+lane+' victim')
     return m
 
 
@@ -78,5 +80,16 @@ def check(m):
     return t
 
 
-MISSION = {'engine_spntrans': mission}
-CHECKS = {'engine_spntrans': {'a': check}}
+def filter_mission():
+    """Retail VEHICLE filter: Sickle / Peacekeeper / no SPN / scripted bit.
+
+    PREDICT settled 1111/1110/1110/1111, including independent hit markers
+    in all four lanes. An unhit infantry lane cannot prove payload filtering.
+    MEASURED 2026-11-13: s5 1110/1110/1110/1111, s6-15 as predicted.
+    One run PASS, 135.4s, retry=0; work/re/c_spntrans_filter_report.md.
+    """
+    return mission(target_filter=True)
+
+
+MISSION = {'engine_spntrans': mission, 'engine_spntrfilter': filter_mission}
+CHECKS = {'engine_spntrans': {'a': check}, 'engine_spntrfilter': {'a': check}}
