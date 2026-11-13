@@ -113,6 +113,12 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '战术/Tactic.Tactic=Engineer': (GUESSED,
+        'aieng/aiengctl原台四读数归属0/近目标0/工程师1/HP100，未证明招募或占领。'
+        'E111 tests/test_simai_engineer_gate.py按名回放；模型状态/目标槽成立，'
+        '工程师IGNORES_SELECT_ALL被候选池排除，空队超时且无战术运行/订单。'
+        '这是模型前置诊断，不推定实机拒绝原因；需B候选资格/D同帧成员契约，'
+        '不改过滤、不晋升，见work/re/e111_engineer.md'),
     '目标/AITargetingHeuristic.ForbiddenObjectStatus': (GUESSED,
         'C engine_aiforbid a：同近电厂仅切UNDER_IRON_CURTAIN禁用字段；'
         '无过滤有位/有过滤有位/有过滤清位三组原状态与近远家计数分别1/4/0/0、1/0/4/0、0/4/0/0，均PASS。'
