@@ -420,6 +420,26 @@ def test_special_power_nugget_native_disguise_consumer_bench_replay():
     assert (sim.GAP_WEAPON, 'SpecialDisguiseUpdate') in e.unmodeled
 
 
+def test_native_spy_scout_exclusion_bench_replay():
+    """engine_spnspyex a: INFANTRY Terror Drone is explicitly excluded.
+
+    All four lanes must hit; DISGUISED distinguishes the infantry positive,
+    excluded drone, removed SPN, and scripted positive control.
+    Evidence: work/re/c_spnspyex_report.md.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_spnspyex', 'a')
+    e = sim.Sim(m, t)
+    e.shot_clock = True
+    result = e.run(14)
+    measured = (1111, 1110, 1110, 1111)
+    assert tuple(result.series[-1][1]) == measured
+    assert all(tuple(row) == measured for sec, row in result.series if sec >= 12)
+    assert (sim.GAP_WEAPON, 'SpecialPowerNugget') not in e.unmodeled
+    assert (sim.GAP_WEAPON, 'SpecialDisguiseUpdate') in e.unmodeled
+
+
 def test_disguise_model_condition_script_interface():
     """Synthetic interface guard; expiry boundary remains INFERRED, not bench evidence."""
     import build

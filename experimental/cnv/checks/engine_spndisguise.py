@@ -28,12 +28,13 @@ POWER = 'SpecialPower_InfantryDisguise'
 VALUES = (1111, 1110, 1110, 1111)
 
 
-def mission(cross_kind=False):
+def mission(cross_kind=False, exclude_scout=False):
     root = Path(SAGE)
     spy = (root/'Allied/Units/AlliedInfiltrationInfantry.xml').read_text(encoding='utf-8')
     weapons = (root/'GlobalData/Weapon.xml').read_text(encoding='utf-8')
     weapon = re.search(r'<WeaponTemplate\s+id="AlliedInfiltrationInfantryDisguiser".*?</WeaponTemplate>', weapons, re.S).group()
-    m = Mission(name='CampSPNSpyX' if cross_kind else 'CampSPNSpy', map=spn_mission().map, units=[], facts={})
+    name = 'CampSPNSpyEx' if exclude_scout else ('CampSPNSpyX' if cross_kind else 'CampSPNSpy')
+    m = Mission(name=name, map=spn_mission().map, units=[], facts={})
     for lane in CASES:
         uid, wid = 'CNV_SPSpy'+lane.title(), 'CNV_SPSpyGun'+lane.title()
         xml = spy.replace('id="AlliedInfiltrationInfantry"', f'id="{uid}"', 1)
@@ -48,6 +49,8 @@ def mission(cross_kind=False):
         m.units.append(Unit(uid, xml, link=['WeaponTemplate:'+wid]))
         m.put(uid, lane+' gun', side='p1', angle=1.5708, name='SPD '+lane+' caster')
         victim = 'SovietAntiInfantryVehicle' if cross_kind and lane != 'base' else 'SovietAntiInfantryInfantry'
+        if exclude_scout and lane != 'base':
+            victim = 'SovietScoutVehicle'
         m.put(victim, lane+' gun', 0, 250, side='s1', angle=4.7124, name='SPD '+lane+' victim')
     return m
 
@@ -95,7 +98,7 @@ def cross_kind_mission():
     Only DISGUISED is measured; identity and acquisition remain gaps.
     MEASURED 2026-11-13: one run, retry=0, PASS in 132.3s; s1-4 all1100,
     s5-15 1111/1110/1110/1111. All four hit markers latched independently.
-    SovietScoutVehicle exclusion remains unmeasured.
+    SovietScoutVehicle exclusion is measured separately by engine_spnspyex.
     """
     return mission(cross_kind=True)
 
@@ -107,5 +110,21 @@ def cross_kind_check(m):
     return t
 
 
-MISSION = {'engine_spndisguise': mission, 'engine_spnspyx': cross_kind_mission}
-CHECKS = {'engine_spndisguise': {'a': check}, 'engine_spnspyx': {'a': cross_kind_check}}
+def scout_exclusion_mission():
+    """Spy explicit ExcludeThing, with independently latched hits in four lanes.
+
+    Conscripts / retail Terror Drone / drone without SPN / scripted drone.
+    SovietScoutVehicle has INFANTRY, so Include alone would accept it.
+    The complete power template explicitly excludes its exact template name.
+    PREDICT 1111/1110/1110/1111; identity and acquisition remain gaps.
+    MEASURED 2026-11-13: retry=0, one run PASS in 128.1s; s1-4 all1100,
+    s5-15 1111/1110/1110/1111, all four hit markers independently latched.
+    Evidence: work/re/c_spnspyex_report.md.
+    """
+    return mission(cross_kind=True, exclude_scout=True)
+
+
+MISSION = {'engine_spndisguise': mission, 'engine_spnspyx': cross_kind_mission,
+           'engine_spnspyex': scout_exclusion_mission}
+CHECKS = {'engine_spndisguise': {'a': check}, 'engine_spnspyx': {'a': cross_kind_check},
+          'engine_spnspyex': {'a': cross_kind_check}}
