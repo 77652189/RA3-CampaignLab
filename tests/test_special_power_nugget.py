@@ -458,3 +458,42 @@ def test_native_disguise_rejects_unmeasured_configuration(change):
         own[template] = own[template].replace('</AssetDeclaration>',
             '<SpecialPowerTemplate id="' + power + '" MaxCastRange="1"/></AssetDeclaration>')
     assert simunits.nugget_self_power(template, power, own) is False
+
+
+def test_special_power_nugget_native_transport_disguise_bench_replay():
+    """engine_spntrans a: native host, removed SPN/handler, query control.
+
+    Only the directly queried DISGUISED bit is claimed, not identity or
+    acquisition. See work/re/c_spntrans_report.md for independent readings.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_spntrans', 'a')
+    e = sim.Sim(m, t)
+    e.shot_clock = True
+    result = e.run(14)
+    measured = (1111, 1110, 1110, 1111)
+    assert tuple(result.series[-1][1]) == measured
+    assert all(tuple(row) == measured for sec, row in result.series if sec >= 12)
+    assert (sim.GAP_WEAPON, 'SpecialPowerNugget') not in e.unmodeled
+    assert (sim.GAP_WEAPON, 'SpecialDisguiseUpdate') in e.unmodeled
+
+
+@pytest.mark.parametrize('change', ['instant', 'unpack', 'local_power'])
+def test_native_transport_disguise_rejects_unmeasured_configuration(change):
+    """Do not silently extend settled-bit evidence to other handlers/powers."""
+    import build
+    import simunits
+    m, _, _ = build.resolve('engine_spntrans', 'a')
+    own = {u.id: u.xml for u in m.units}
+    template = 'CNV_SPTrBase'
+    power = 'SpecialPower_JapanLightTransportVehicleDisguise'
+    if change == 'instant':
+        own[template] = own[template].replace('TriggerInstantlyOnCreate="false"',
+                                             'TriggerInstantlyOnCreate="true"')
+    elif change == 'unpack':
+        own[template] = own[template].replace('UnpackTime="1s"', 'UnpackTime="2s"')
+    else:
+        own[template] = own[template].replace('</AssetDeclaration>',
+            '<SpecialPowerTemplate id="' + power + '" MaxCastRange="1"/></AssetDeclaration>')
+    assert simunits.nugget_self_power(template, power, own) is False

@@ -2229,10 +2229,12 @@ def attach_modules(template, own=None):
 
 
 def nugget_disguise_power(template, power, own=None):
-    """engine_spndisguise: retail direct-hit DISGUISED bit only.
+    """engine_spndisguise / engine_spntrans: retail direct-hit DISGUISED bit only.
 
     Identity, rendering, enemy acquisition, retargeting and cancellation remain
-    gaps. Reject unmeasured handler/power shapes rather than treating them as buffs.
+    gaps. Transport unpack timing is also a gap: immediate bit application is
+    INFERRED; engine_spntrans only replays the settled s12-14 state.
+    Reject unmeasured handler/power shapes rather than treating them as buffs.
     """
     def handler(xml):
         for h, inner in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'SpecialDisguiseUpdate'):
@@ -2240,9 +2242,13 @@ def nugget_disguise_power(template, power, own=None):
                 node = ET.fromstring('<SpecialDisguiseUpdate ' + h + '/>')
                 attrs = dict(node.attrib)
                 attrs.pop('id', None)
-                return not inner.strip() and attrs == dict(
-                    SpecialPowerTemplate=power, TriggerInstantlyOnCreate='false',
-                    OpacityTarget='0.5', DisguiseFX='FX_None')
+                expected = dict(SpecialPowerTemplate=power, TriggerInstantlyOnCreate='false',
+                                OpacityTarget='0.5', DisguiseFX='FX_None')
+                if power == 'SpecialPower_JapanLightTransportVehicleDisguise':
+                    expected.update(OpacityTarget='0.0', DisguiseFX='FX_JAP_SuddenDisguise',
+                                    UnpackTime='1s', UnpackSound='JAP_SuddenTransport_DisguiseOnMS',
+                                    FaceTarget='false')
+                return not inner.strip() and attrs == expected
         return None
 
     active = _chain(template, own, handler)
@@ -2260,15 +2266,18 @@ def nugget_disguise_power(template, power, own=None):
         if _attr(h, 'id') != power:
             continue
         node = ET.fromstring('<SpecialPowerTemplate ' + h + '>' + inner + '</SpecialPowerTemplate>')
-        if (set(node.attrib) - {'id', 'TargetType', 'InitiateSound', 'Flags', 'WaypointModeTerminal'}
+        if (set(node.attrib) - {'id', 'TargetType', 'InitiateSound', 'Flags', 'WaypointModeTerminal',
+                                       'NameOfVoiceNameToUseAsInitiateIntendToDoVoice'}
                 or node.get('TargetType') != 'OBJECT'
                 or set(node.get('Flags', '').split()) != {
                     'NEEDS_OBJECT_FILTER', 'DO_NOT_REACQUIRE_TARGET', 'CAN_NOT_BE_SCRAMBLED'}
                 or node.get('WaypointModeTerminal') != 'false' or len(node) != 1):
             return False
         f = node[0]
-        if (f.tag != 'ObjectFilter' or dict(f.attrib) != dict(
-                Rule='ANY', Relationship='ALLIES ENEMIES NEUTRAL', Include='INFANTRY')
+        expected_filter = dict(Rule='ANY', Relationship='ALLIES ENEMIES NEUTRAL', Include='INFANTRY')
+        if power == 'SpecialPower_JapanLightTransportVehicleDisguise':
+            expected_filter = dict(Rule='ANY', Include='VEHICLE')
+        if (f.tag != 'ObjectFilter' or dict(f.attrib) != expected_filter
                 or any(c.tag != 'ExcludeThing' or c.attrib or len(c) for c in f)):
             return False
         return dict(disguise=True, reach=0., include=f.get('Include').split(),
@@ -2295,7 +2304,7 @@ def nugget_self_power(template, power, own=None):
             for h, inner in _blocks(xml, tag):
                 if _attr(h, 'SpecialPowerTemplate') != power:
                     continue
-                if power == 'SpecialPower_InfantryDisguise':
+                if power in ('SpecialPower_InfantryDisguise', 'SpecialPower_JapanLightTransportVehicleDisguise'):
                     if (tag != 'SpecialPower' or inner.strip()
                             or _attr(h, 'UpdateModuleStartsAttack') != 'true'
                             or set(re.findall(r'(\w+)\s*=', h)) - {
