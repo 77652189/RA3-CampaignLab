@@ -53,6 +53,8 @@ Select-String 按关键词搜，只看命中的几行），做交接"工单"里�
   INFERRED 或登记成 gap；③ 只改了本线的文件，新 check 不 import 关卡内容层；④ 公开文件和提交说明里没有程序地址。
 - 改了私有模型（CNV_ENGINE_MODEL 指的那个工作区）：在那里提交，`git pull --rebase origin main` 后
   `git push origin HEAD:main`，**要在跑 lane_close 之前推**——公开测试按名回放模型，模型不推，别人 main 上就红。
+  推完模型再跑 `python -I -X utf8 experimental/cnv/inventory_ai.py pin`（清单钉在模型的固定提交上，不 pin 就看不到
+  你的改动），把 `experimental/cnv/inventory_model.rev` 提交进公开仓库，lane_close 会重新生成清单页。
 - 收尾：提交后跑 `python -I -X utf8 experimental/outsource/lane_close.py {lane} <改到的测试文件...>`（它跑收尾测试、
   rebase、推 main，只打末几行；红了就修了再跑，生成的清单冲突照 AGENTS.md 重跑生成器）→ 改写交接 → 推私有仓库
   work/re → 停。
