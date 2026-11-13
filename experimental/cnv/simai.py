@@ -605,8 +605,17 @@ class Brain:
     def order(self, u, kind, arg):
         """TacticsBlock / DefenseBlock: 'move' or 'attack-move' to a point -> Sim.order_move."""
         b = u.body
+        if kind == 'hunt':
+            state = self.__dict__.setdefault('_hunt_goals', {}).setdefault(
+                b.name, self.host.mod['micro'].HuntGoal())
+            state.expire(lambda t: t is not None and t.alive)
+            if state.state != 16 or not b.alive:
+                return
+            t = self.body_of(arg)
+            if t is None:
+                return
         if self.host.record:                    # HOOKS 9: every order the blocks give, as given
-            by_id = kind in ('attack', 'enter')
+            by_id = kind in ('attack', 'enter', 'hunt')
             t = self.body_of(arg) if by_id else None
             self.rec['orders'].append({'frame': self.frame, 'member': b.name, 'alive': b.alive, 'kind': kind,
                                        'target': t.name if t is not None else None,
@@ -614,9 +623,17 @@ class Brain:
                                        'point': None if by_id else (float(arg[0]), float(arg[1]))})
         if not b.alive:
             return
+        if kind == 'hunt':
+            state.command(t)
+            b.goal = None
+            self.sim.order_move(b, (t.x, t.y), True)
+            return
         if kind == 'attack':                    # the team state's 0 / 6: attack the current enemy (a Thing id)
             t = self.body_of(arg)
             if t is not None:
+                state = self.__dict__.get('_hunt_goals', {}).get(b.name)
+                if state is not None:
+                    state.state, state.target = 26, t
                 self.sim.order_attack(b, t.name)
             return
         if kind == 'enter':                     # EnterGarrisons / EnterBaseDefenses: into a building (a Thing id)
@@ -705,8 +722,11 @@ class Brain:
 
     def aim_of(self, b, reach):
         """The unit's current target for the micro (work/re/l4_micro_heur.md; RUSH_ATTACK reads it): its ordered or
-        chased enemy, else the nearest living enemy within its longest weapon range (INFERRED: what the world's
-        fire scan takes; the simulator keeps no per-unit target)."""
+        chased enemy, else the nearest living enemy within its longest weapon range
+        (INFERRED legacy proxy). Hunt members instead keep a persistent object goal."""
+        state = self.__dict__.get('_hunt_goals', {}).get(b.name)
+        if state is not None:
+            return state.target if state.target is not None and state.target.alive else None
         for t in (b.goal, getattr(b, 'chase', None)):
             if isinstance(t, sim.Body) and t.alive and t.owner in self.view.enemies:
                 return t
@@ -783,6 +803,13 @@ class Brain:
             self.sim.note('AI', f'{u.name} 执行 {info.command}')
             return
         if b and b.owner == self.player and simmicro.fire(self.sim, b, info.command):
+            state = self.__dict__.get('_hunt_goals', {}).get(b.name)
+            if (state is not None and state.state == 33
+                    and info.command == simmicro.COMMAND):
+                state.charge_finished()
+                b.goal = None
+                if state.pursuit is not None and state.pursuit.alive:
+                    self.sim.order_move(b, (state.pursuit.x, state.pursuit.y), True)
             return
         self.sim.note('AI', f'{self.sim.who(self.player)} 微操想用 {info.command}（{u.name}；模拟器未接技能）')
 
@@ -1084,8 +1111,51 @@ class Brain:
             self.look(frame)
             self.ai.ctx.update(self.facts())
         self.ai.tick(frame)
+        self.hunt_threats(frame)
         if self.host.record:
             self.snap(frame)
+
+    def hunt_threats(self, frame):
+        """D110/D112 bounded Hunt bridge. No observed frames or IDs drive it.
+
+        INFERRED: inclusive grid boundary, stable world order within cells,
+        health-based death exclusion and current weapon grid reach. These are
+        provisional until the named natural replay agrees; see work/re/e135_engage_host.md.
+        """
+        states = self.__dict__.get('_hunt_goals', {})
+        cells = self.__dict__.setdefault('_hunt_cells', {})
+        cell = lambda b: (int(b.x * .05), int(b.y * .05))
+        for name, state in states.items():
+            b = self.sim.body(name)
+            if b is None or not b.alive:
+                continue
+            state.expire(lambda t: t is not None and t.alive)
+            here = cell(b)
+            previous = cells.get(name)
+            cells[name] = here
+            if state.state != 33 or here == previous or frame <= 3:
+                continue
+            reach = max((w.get('range') or 0. for w in b.weapons), default=0.)
+            radius = b.radius * 2
+            if 20 < radius < 40:
+                radius = 40
+            span = max(1, int(radius * .05 + .3))
+            weapon_cells = max(1, int(reach * .05 + .1))
+            candidates = []
+            for t in self.living():
+                if t.scenery or t.owner not in self.view.enemies:
+                    continue
+                offset = max(abs(a - c) for a, c in zip(cell(t), here))
+                if offset > span:
+                    continue
+                candidates.append(self.host.mod['micro'].ThreatCandidate(
+                    t, True, requires_current_target='STRUCTURE' in t.kinds,
+                    in_range=offset <= weapon_cells))
+            selected = self.host.mod['micro'].select_threat([], candidates, state.pursuit)
+            if selected is not None:
+                state.target = selected
+                # Direct object-goal write, not a fresh team attack order.
+                b.goal = selected
 
     # ---- HOOKS 9: the read-only trail (SimAI(record=True)); nothing below changes the run
     def _name(self, tid):
@@ -1130,11 +1200,14 @@ class Brain:
                 reach = max((w.get('range') or 0.0 for w in b.weapons), default=0.0)
                 aim = self.aim_of(b, reach) if b.alive else None
                 goal, chase = b.goal, getattr(b, 'chase', None)
+                hunt = self.__dict__.get('_hunt_goals', {}).get(b.name)
                 going, inside = g.going.get(b.name), g.where.get(b.name)
                 mem.append({'name': b.name, 'id': self.ids.get(b.name), 'pos': (b.x, b.y), 'hp': b.hp,
                             'alive': b.alive, 'goal': goal.name if isinstance(goal, sim.Body) else goal,
                             'chase': chase.name if isinstance(chase, sim.Body) else chase,
                             'aim': aim.name if aim is not None else None,
+                            'unit_state': hunt.state if hunt is not None else None,
+                            'pursuit': getattr(hunt.pursuit, 'name', None) if hunt is not None else None,
                             'going': getattr(going, 'name', going), 'inside': getattr(inside, 'name', inside)})
             foe = r.foe
             self.rec['frames'].append({

@@ -6,6 +6,7 @@ No scripted special-power press is present in either named check.
 import importlib.util
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -46,6 +47,48 @@ def test_engage_command_goal_chain_observations():
     assert [(e['frame'], e['member'], e['unit_state'], e['old'], e['new'])
             for e in reactions] == [(431, 3171, 33, 0, 3168), (469, 3171, 33, 3168, 3167)]
     assert goals == {3170: 0, 3171: 0}
+
+
+def test_engage_hunt_command_state_contract():
+    """D112 command/state observations; death return remains INFERRED.
+
+    Named natural replay below remains the acceptance gate for promotion.
+    """
+    if not simai.available():
+        pytest.skip('no ra3model.ai')
+    mc = simai.model()['micro']
+    evidence = json.loads((OBSERVED / 'aiegoff_commands.json').read_text())
+    states = {i: mc.HuntGoal() for i in (3170, 3171)}
+    for event in evidence['goals']:
+        state = states[event['member']]
+        if event['source'] == 'clear_command':
+            state.command('pursuit')
+            assert (state.state, state.target) == (33, None)
+        elif event['source'] == 'threat_reaction':
+            assert state.state == event['unit_state']
+            state.target = event['new']
+    state = states[3171]
+    state.command('live')
+    state.target = 'skill-target'
+    state.charge_finished()
+    assert (state.state, state.pursuit, state.target) == (33, 'live', None)
+    state.expire(lambda t: t == 'live')
+    assert state.state == 33
+    state.expire(lambda t: False)
+    assert state.state == 16
+    # Regression: a Hunt member must read its persistent goal even when the
+    # movement simulator still has an ordered/chased enemy beside it.
+    brain = simai.Brain.__new__(simai.Brain)
+    old = SimpleNamespace(alive=True)
+    body = SimpleNamespace(name='member', goal=old, chase=old)
+    brain._hunt_goals = {'member': mc.HuntGoal()}
+    held = brain._hunt_goals['member']
+    held.command(old)
+    assert brain.aim_of(body, 100) is None
+    held.target = old
+    assert brain.aim_of(body, 100) is old
+    old.alive = False
+    assert brain.aim_of(body, 100) is None
 
 
 def test_engage_state33_replays_observed_goal_writes():
@@ -148,13 +191,13 @@ def test_engage_clock_recruits_initial_pair(engage_record):
     assert all(member['alive'] for member in first['members']), (build, first)
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'E107 first-cohort movement diverges before power selection; original '
-    'recruitment/formation and targetless marching remain unresolved. '
-    'See work/re/e107_engage_clock.md and work/re/handoff-e.md.'))
-def test_engage_clock_replays_first_cohort_movement(engage_record):
+def test_engage_clock_replays_first_cohort_movement(engage_record, request):
     """Compare actual bench movement emission; formation offsets stay a gap."""
     build, brain, cohort = engage_record
+    if build == 'aiegon':
+        request.node.add_marker(pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+            'E135 enabled-side movement emission still diverges before power selection; '
+            'see work/re/e135_engage_host.md and work/re/handoff-e.md.')))
     expected = {'aiegon': 352}
     orders = [order for order in brain.rec['orders']
               if order['member'] in cohort and order['kind'] in ('move', 'attack-move')]
@@ -163,24 +206,23 @@ def test_engage_clock_replays_first_cohort_movement(engage_record):
         assert orders == [], orders
         return
     frame = expected[build]
+    assert orders, (build, 'no movement emission')
     first = orders[0]
     assert first['frame'] == frame, (build, first)
 
 
 @pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'E114 exact host-frame member goal validity diverges: on f353 engine has no '
-    'goal while model infers enemies; off f443 engine second initial member has '
-    'a valid goal while model initial pair has none. Autonomous goal acquisition '
-    'and holding contract missing. D110 supplies cell geometry and D111 supports '
-    'death-based candidate exclusion (INFERRED exact death frame). The host '
-    'still lacks natural member-state transitions into state 33 and the '
-    'special-power/clear-command trigger contract; persistent goals and the '
-    'partition bridge remain unconnected. See work/re/e134_engage_host_gate.md '
+    'E135 D112 Hunt states and persistent goals are connected, but natural '
+    'movement/recruitment still diverges before acquisition: on f353 two goals '
+    'instead of none; off f443 no goals instead of the second member goal. '
+    'Model off members are already west of the observed scan cells. Grid '
+    'failure boundaries and command-source timing remain INFERRED. '
+    'See work/re/e135_engage_host.md '
     'and work/re/handoff-e.md.'))
 def test_engage_clock_replays_member_goal_validity(engage_record):
     """Compare the initial pair at the same host frame, without replacement units.
 
-    Model aim is still an INFERRED proxy, not a persistent object-goal field.
+    Hunt members use persistent unit goals; other units retain the old proxy.
     Pair by production order; do not equate runtime object IDs across runs.
     """
     build, brain, cohort = engage_record
