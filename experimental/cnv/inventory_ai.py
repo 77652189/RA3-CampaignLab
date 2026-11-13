@@ -215,7 +215,10 @@ NOTES = {
         'C按名台子engine_aimindist：同一中立油井，TechBuilding阈值0组采样s6起目标区4，'
         '2000组采样s1-55在家4/目标区0；NamedObject阳性对照同0组。'
         'tests/test_min_enemy_distance.py断言原计数并按名回放；无同帧实际距离/候选资格，'
-        '采样时钟未对齐游戏帧，边界与敌人物体资格仍gap，保持推断；见work/re/c_mindist_report.md'),
+        '追加双油井aimindpair0/350:a仅切0/350，近油井距固定敌电厂200、远约1230；'
+        's40近/远/家/总数实机4/0/0/4与0/0/4/4，模型350选远，strict xfail；原预测FAIL独立strict xfail。'
+        '采样时钟未对齐游戏帧，缺远油井同帧资格/最近候选拒绝后的回退次序，保持推断、不晋升；'
+        '见work/re/c_mindist_report.md、work/re/c_mindist_pair_report.md'),
     '目标/AITargetingHeuristic.HighestPriorityEnemyPlayersOnly': (GUESSED,
         'C按名台子engine_aitoponly：显式s4=30/p1=10，高档仅建造场、低档有兵营；'
         'true组s40在家4/兵营0，false组在家0/兵营4；把兵营给高档的true阳性对照同false。'
