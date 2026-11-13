@@ -238,8 +238,10 @@ def units():
     """(template lower case, its index entry with EditorSorting resolved up the chain, its XML file) for every unit
     and building: the index's file, or -- where the index points at a campaign override (Includes/CampaignOverrides:
     an edit, not the unit) -- the SageXML file of the template's own name. A template that does not write its
-    EditorSorting takes its base's (the Nanocore eggs: BaseEgg's UNIT)."""
-    idx = json.load(open(INDEX, encoding='utf-8')) if os.path.exists(INDEX) else {}
+    EditorSorting takes its base's (the Nanocore eggs: BaseEgg's UNIT). The index and the SDK missing is an error,
+    not no units: the tables built from this are cached, and an empty one hid it (line A, 11-13)."""
+    require_data()
+    idx = json.load(open(INDEX, encoding='utf-8'))
     by_name = {}
     for root, _, files in os.walk(SAGEXML):
         for f in files:
@@ -257,6 +259,35 @@ def units():
             yield t, e, path
 
 
+class MissingData(FileNotFoundError):
+    """The retail data the simulator's tables are built from is not where labpaths says (a worktree without work\\,
+    a clean clone): say so instead of building, and caching, empty tables."""
+
+
+def require_data(paths=None):
+    paths = paths or (INDEX, SAGEXML, LOCOMOTORS, ARMOR)
+    missing = [p for p in paths if not os.path.exists(p)]
+    if missing:
+        raise MissingData(f'simulator data missing: {", ".join(missing)} (labpaths.WORK = {labpaths.WORK}, '
+                          f'SDK3 = {labpaths.SDK3}); set CNV_WORK / CNV_SDK to the main checkout\'s')
+
+
+def _cached(path, build, empty):
+    """The cache at `path`, else build() written there. A cache that is `empty` (an earlier run without the data
+    wrote it) is not trusted: it is built again, which raises MissingData if the data is still missing; and an empty
+    build is never written."""
+    if os.path.exists(path):
+        got = json.load(open(path, encoding='utf-8'))
+        if not empty(got):
+            return got
+    got = build()
+    if empty(got):
+        raise MissingData(f'simulator data gave an empty table for {path} (labpaths.WORK = {labpaths.WORK})')
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    json.dump(got, open(path, 'w', encoding='utf-8'), indent=0)
+    return got
+
+
 def _build():
     surfaces = _surfaces()
     return {t: read_xml(t, surfaces=surfaces) for t, _, _ in units()}
@@ -268,12 +299,7 @@ _table = None
 def table():
     global _table
     if _table is None:
-        if os.path.exists(CACHE):
-            _table = json.load(open(CACHE, encoding='utf-8'))
-        else:
-            _table = _build()
-            os.makedirs(os.path.dirname(CACHE), exist_ok=True)
-            json.dump(_table, open(CACHE, 'w', encoding='utf-8'), indent=0)
+        _table = _cached(CACHE, _build, lambda t: not t)
     return _table
 
 
@@ -1427,14 +1453,13 @@ _fight = None
 def _fight_data():
     global _fight
     if _fight is None:
-        if os.path.exists(COMBAT_CACHE):
-            _fight = json.load(open(COMBAT_CACHE, encoding='utf-8'))
-        else:
+        def build():
+            require_data()
             weapons, armors = _weapons(_weapon_files()), _armors()
             got = {t: read_fight(open(path, encoding='utf-8', errors='replace').read(), weapons, armors)
                    for t, _, path in units()}
-            _fight = dict(units=got, weapons=weapons, armors=armors)
-            json.dump(_fight, open(COMBAT_CACHE, 'w', encoding='utf-8'), indent=0)
+            return dict(units=got, weapons=weapons, armors=armors)
+        _fight = _cached(COMBAT_CACHE, build, lambda d: not (d.get('units') and d.get('weapons') and d.get('armors')))
     return _fight
 
 
