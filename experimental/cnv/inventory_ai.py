@@ -113,6 +113,11 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '目标/AITargetingHeuristic.SortType=ThreatToWater': (GUESSED,
+        'C按名台子engine_aiwater：两电厂/近处守护者/AI两栖矿车，仅切Distance与ThreatToWater，'
+        '实机两组采样s14后均近4/远0/家0；模型ThreatToWater选远，按名回放strict xfail。'
+        'tests/test_water_threat.py独立断言原计数并保留原预测FAIL；近处Named对照因s40-41无采样亦strict xfail。'
+        '无同帧候选资格/实际water威胁值/水域样本资格，不改模型、不晋升；见work/re/c_water_report.md'),
     '目标/AITargetingHeuristic.MinDistanceFromEnemy': (GUESSED,
         'C按名台子engine_aimindist：同一中立油井，TechBuilding阈值0组采样s6起目标区4，'
         '2000组采样s1-55在家4/目标区0；NamedObject阳性对照同0组。'

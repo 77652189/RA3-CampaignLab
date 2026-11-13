@@ -939,7 +939,7 @@
 | 已对拍 | `组队招人/TeamTemplate.Priority=LOW` | 15 | a4 a5 a7 | docs/engine/aistate.md#两队抢兵和 MinPowerAdvantage（第 82 轮） |
 | 推断 | `造兵/BuildEntry.CountModifier` | 15 |  | AI 模型代码里读了这个名字 |
 | 不涉及 | `人格/AIPersonalityDefinition.PersonalityUIName` | 14 |  | 纯表现（语音、视频、画面） |
-| 推断 | `目标/AITargetingHeuristic.SortType=ThreatToWater` | 14 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 推断 | `目标/AITargetingHeuristic.SortType=ThreatToWater` | 14 | a4 a5 a7 | C按名台子engine_aiwater：两电厂/近处守护者/AI两栖矿车，仅切Distance与ThreatToWater，实机两组采样s14后均近4/远0/家0；模型ThreatToWater选远，按名回放strict xfail。tests/test_water_threat.py独立断言原计数并保留原预测FAIL；近处Named对照因s40-41无采样亦strict xfail。无同帧候选资格/实际water威胁值/水域样本资格，不改模型、不晋升；见work/re/c_water_report.md |
 | 推断 | `人格/AIPersonalityDefinition.Side` | 13 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | `微操/IgnoreTargets.Rule` | 13 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 已对拍 | `组队招人/TeamTemplate.Priority=DEFENSE` | 13 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |
