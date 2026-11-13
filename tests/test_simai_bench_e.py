@@ -175,12 +175,10 @@ def _orders(w, kind, until):
     # bench t (aiskvinf, 2026-11-12): 9 dogs, 1 engineer -- the dogs are mostly a build state's (B handoff 143),
     # so the bench does not tell how many draws there were: no draw count here (test_against_conscripts_dogs pins it)
     ('aiskvinf', '维和总数', '标枪总数', None),
-    # bench t (aiskvveh, 2026-11-12): dog s23 and engineer s144, the only non-Javelins = the two draws
-    pytest.param('aiskvveh', '标枪总数', '维和总数', 2, marks=pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-        'A round 192: with the tech-building share fact AlliedCaptureTech_MEDIUM opens at s131 (the map has one '
-        'neutral OilDerrick) and shares the AI rng, so the s136 uniform draw is now a war-factory unit; the bench '
-        "engineer at s144 is likely CaptureTech's CreateUnits engineer (aiskirmc:m live: the team at f1966, its "
-        'new engineer at f2206), which the model does not build -- not a uniform draw. work/re/handoff.md 192.'))),
+    # bench t (aiskvveh, 2026-11-12): dog s23 and engineer s144, the only non-Javelins = the two picks. The engineer
+    # is AlliedCaptureTech_MEDIUM's CreateUnits order (A rounds 192 / 199), which the unit builder makes in place of
+    # its own pick (model AIPlayer.order_wanted, INFERRED) and logs as 'produce' -- so it counts here as a draw
+    ('aiskvveh', '标枪总数', '维和总数', 2),
 ])
 def test_best_unit_expected_infantry_choice(build, chosen, other, draws):
     """engine_aiskirm z: on [s150,s160) >=4 counter infantry, zero of the other type from the build states.
@@ -204,17 +202,13 @@ def test_best_unit_expected_infantry_choice(build, chosen, other, draws):
         assert len(drawn) == draws, drawn
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'A round 195 (bisected; model a2898ff and 75bc034 alike): red since lab edd0f6c0 (A round 192, the '
-    "tech-building share) -- the AI states' once-a-second rng draws (states.evaluate) fall from 21 to 19 a second "
-    "from s131, so the unit builder's uniform draw ('produce', never capped) at s136.07 lands on a dog (7 at s140) "
-    'where it drew a Javelin before. Not the CaptureTech hold (round 193 misread it). A rng-stream shift, as the '
-    'aiskvveh param of test_best_unit_expected_infantry_choice. The engine itself goes over the cap at s146 '
-    '(test_against_conscripts_dogs). See work/re/handoff.md round 195.'))
 def test_against_conscripts_the_dogs_reach_their_cap_of_six():
     """engine_aiskirm t, aiskvinf (bench 2026-11-12, B round 140): 警犬 6 by s43, held at 6 to s145 -- the
     AlliedAntiInfantryOnlyBuildState (ENEMIES ANY INFANTRY) dogs, BEST_UNIT_EXPECTED, scored with the dog's whole
-    bite (its Maul's own 1 and its warhead's 200: simunits ai_parts), up to the parent personality's cap of 6."""
+    bite (its Maul's own 1 and its warhead's 200: simunits ai_parts), up to the parent personality's cap of 6.
+
+    Rng-sensitive: red from lab edd0f6c0 to A round 200 (the uniform 'produce' draw at s136 landed on a dog, A round
+    195); green again since A round 200's CreateUnits hold rule moved the stream."""
     w = simai.run('aiskvinf', 't', 146, lib=simai.model()['xmldata'].Library())
     labels = [label for _, label in w.sim.test.counters]
     rows = [(t, dict(zip(labels, values))) for t, values in w.sim.series if 43 <= t < 146]

@@ -599,17 +599,42 @@ def test_capture_tech_holds_two_escorts_out_of_the_cleanup():
     exactly two in defense -- the two lowest ids, held by AlliedCaptureTech_MEDIUM while it has no engineer (model
     teams.escort_count, INFERRED 2 = MaxUnits 4 - the CreateUnits slot's 1 + 1); the model's Cleanup commits at
     f1953. Only the hold at that commit is asserted: in the model the capture team expires at f2028 and Cleanup then
-    takes the pair (retail keeps them held to f2206), and nobody builds the named engineer yet."""
-    w = simai.run('aiskirmc', 'm', until=132, record=True, lib=simai.model()['xmldata'].Library())
+    takes the pair (retail keeps them held to f2206), and nobody builds the named engineer yet.
+    A round 194: the team orders its engineer itself (model AIPlayer.order_wanted, D round 96's read of the team maker's missing-unit order) and,
+    waiting for it, does not expire; at f2206 it has gone with the engineer and the same pair, as retail (3181,
+    3172, 3171). The engineer was ordered once. Retail commits between f2191 and f2206 (its barracks made 3180,
+    f1966-f2041, before the 10 s engineer); the model's barracks is idle at the order and it commits at f2116 -- the
+    unit builder's draw upstream, not asserted. The AlliedScout teams are not asserted (A round 199): on this carrier
+    (CNVSkirmTeamsYard) they never get a dog and defense keeps both, while on the stock yard, same head and hour, one
+    takes a dog from defense at s72 (aiskirmc l / aiskirm l, bench 2026-11-13) -- the carrier changes them.
+    A round 200: the pair held are the two lowest ids wherever they are (model teams.recruit, INFERRED) -- on stock
+    aiskirm m Cleanup takes all of defense (8 -> 0 at s129) with both dogs in the scout teams. The simulator does not
+    model the carrier's scouts, so here its scouts hold the dogs and the hold falls on them: asserted is the rule
+    (the two lowest ids stay out of Cleanup's commit, and whoever of them was in defense stays there), not retail's
+    two left in defense."""
+    w = simai.run('aiskirmc', 'm', until=148, record=True, lib=simai.model()['xmldata'].Library())
     brain, = w.brains.values()
     rows = brain.rec['frames']
     first = next(r for r in rows if r['state_key'] == 'BalancedCleanup' and r['members'])
     left = [m['name'] for r in rows if r['state_key'] == 'LandDefense_MEDIUM' and r['frame'] == first['frame']
             and r['phase'] != 'done' for m in r['members']]
-    assert len(left) == 2, (first['frame'], left)
 
     def ids(names):                     # '#made <id> <template>'
         return sorted(int(n.split()[1]) for n in names)
-    assert ids(left) == ids(left + [m['name'] for m in first['members']])[:2]
-    capture = [t for k, t in brain.ai.teams.teams.items() if k[0] == 'AlliedCaptureTech_MEDIUM']
-    assert capture and all(not t.members and len(t.escorts) == 2 for t in capture)
+    every = {m['name'] for r in rows if r['frame'] == first['frame'] and r['phase'] != 'done' for m in r['members']}
+    low = ids(every)[:2]                # the hold: the two lowest ids wherever they are (A round 200)
+    assert not set(low) & set(ids(m['name'] for m in first['members'])), (low, first['members'])
+    assert set(ids(left)) <= set(low), (first['frame'], left, low)
+    at = [r for r in rows if r['state_key'] == 'AlliedCaptureTech_MEDIUM' and r['frame'] == 2206]
+    assert len(at) == 1 and at[0]['phase'] != 'done', at       # a tactic run's row: the team has gone
+    got = [m['name'] for m in at[0]['members']]
+    # the size is not asserted (A round 199): retail's pool held no free unit at its commit, the model's a Riptide
+    # made the moment before, which the team takes -- whether retail would, that run cannot tell
+    assert set(left) <= set(got) and sum(n.endswith(' AlliedEngineer') for n in got) == 1, (got, left)
+    assert [e[2] for e in brain.ai.log if e[1] == 'team order'].count('AlliedEngineer') == 1
+    gone = next(r['frame'] for r in rows if r['state_key'] == 'AlliedCaptureTech_MEDIUM' and r['members'])
+    home = {}                           # frame -> names in defense
+    for r in rows:
+        if r['state_key'] == 'LandDefense_MEDIUM' and r['phase'] != 'done' and first['frame'] <= r['frame'] < gone:
+            home.setdefault(r['frame'], set()).update(m['name'] for m in r['members'])
+    assert (home or not left) and all(set(left) <= names for names in home.values()), gone
