@@ -103,6 +103,23 @@ def test_aesthetics_calls_with_their_state_and_orders(tmp_path):
     assert [x[1] for x in teamlog.commands(p)] == [0x1f5, 0x22c, 0x214]
 
 
+def test_member_goal_object_and_heading(tmp_path):
+    """D round 86: aim= each member's AI goal object and where it is (`!` = no longer in the object map, 0 = none),
+    hd= the body heading in degrees; an aes snapshot still ends with at=; older lines give {}."""
+    p = tmp_path / 'ra3ext.log'
+    p.write_text('\n'.join([
+        'tstate: frame=300 team=0A mstate=6 prev=8 secs=0.50 tgt=3165 chosen=3165 tact=3163 idle=0 ready=0 '
+        'mem=3166:10:0,3167:10:0,3168:1:0 dest=3166@10.0:20.0 aim=3166>3165@-300.5:12.0,3167>3170!,3168>0 '
+        'hd=3166:180,3167:-90,3168:0',
+        'tstate: frame=301 team=0A mstate=6 prev=8 secs=0.50 tgt=3165 chosen=3165 tact=3163 idle=0 ready=0 '
+        'mem=3166:10:0 dest= aim=3166>3165@-300.5:12.0 hd=3166:179 at=aes',
+    ]))
+    a, b = teamlog.states(str(p))['0A']
+    assert a['aim'] == {3166: (3165, (-300.5, 12.0)), 3167: (3170, None), 3168: (0, None)}
+    assert (a['hd'], a['at']) == ({3166: 180.0, 3167: -90.0, 3168: 0.0}, None)
+    assert (b['hd'], b['at']) == ({3166: 179.0}, 'aes')
+
+
 def test_change_only_samples_keep_the_whole_set(tmp_path):
     """D round 81: CNVTeams writes only the changed teams between beats; `teams: ... full=0/1` closes each sample and
     samples() keeps the running set (a full sample replaces it)."""

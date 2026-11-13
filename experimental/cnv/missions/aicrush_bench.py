@@ -8,6 +8,8 @@ four Peacekeepers swapped for four Hammers (SovietAntiVehicleVehicleTech1, Crush
   aicrush1   Crush true, CrushPreference 1.0 (retail) -> the model: the tanks drive into the guards
   aicrush0   Crush false -> they shoot
   aicrushlo  Crush true, CrushPreference 0.01 -> the drive is never 'worth it': they shoot
+  aicrush1t  aicrush1 plus D's passive CNVTeams carrier (aiteams_bench.host_unit, MinFrames 15): per sample each
+             member's goal object, where it is and the body heading (tstate aim= / hd=, D round 86)
 Facts: wake at.
 """
 from missions import aitarget_bench as at
@@ -16,7 +18,7 @@ from missions import airetreat_bench as ar
 TANK = 'SovietAntiVehicleVehicleTech1'
 
 
-def mission(mod, **fields):
+def mission(mod, observe=False, **fields):
     m = ar.mission(mod, guards=ar.GUARDS, RetreatPowerAdvantage='0.0', **fields)
     (fname, xml, asset), = m.assets
     assert f'<IncludeThing>{at.INF}</IncludeThing>' in xml
@@ -29,6 +31,11 @@ def mission(mod, **fields):
               for k, r in m.cast.items()}
     m.cnv_units = (at.INF, TANK)
     m.spawns |= {TANK}
+    if observe:
+        from missions.aiteams_bench import host_unit, HOST
+        m.units.append(host_unit())
+        m.put(HOST, 'east base', 250.0, 400.0, side='s1', role='teams host')
+        m.ext = True
     return m
 
 
@@ -36,4 +43,5 @@ MISSION = {
     'aicrush1': lambda: mission('CampAICrush1', Crush='true', CrushPreference='1.0'),
     'aicrush0': lambda: mission('CampAICrush0', Crush='false'),
     'aicrushlo': lambda: mission('CampAICrushLo', Crush='true', CrushPreference='0.01'),
+    'aicrush1t': lambda: mission('CampAICrush1T', observe=True, Crush='true', CrushPreference='1.0'),
 }

@@ -7,7 +7,7 @@
 
 Expectations are the model's (l4_micro_engage.md 1.5); a FAIL is a reading too: read the speed the guards die at --
 a crush kills at once on contact, a gun takes many seconds.
-  aicrush1   the guards fall below 8 within 25 s of the wake
+  aicrush1   the guards fall below 8 within 25 s of the wake (aicrush1t too: aicrush1 with the CNVTeams carrier)
   aicrush0 / aicrushlo   the guards are still 8 or more at 25 s of the wake
 
 Readings (11-09, all PASS; counters 守军数 坦克数 到远厂; the AI's 4 Hammers SovietAntiVehicleVehicleTech1, the player's 12
@@ -36,7 +36,7 @@ def a(m, build):
     counted('CNV_CR_Far', '到远厂', t, template=tank, area=at.FAR, player=s1)
     wake = m.facts['wake at']
     end = wake + AFTER
-    if build == 'aicrush1':
+    if build in ('aicrush1', 'aicrush1t'):
         t.expect += [('守军数', wake + SOON, '<', 8)]
     else:
         t.expect += [('守军数', wake + SOON, '>=', 8)]
@@ -44,4 +44,4 @@ def a(m, build):
     return t
 
 
-CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aicrush1', 'aicrush0', 'aicrushlo')}
+CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aicrush1', 'aicrush0', 'aicrushlo', 'aicrush1t')}

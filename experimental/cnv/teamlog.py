@@ -117,7 +117,7 @@ def team_size(run, name, frame):
 
 TSTATE = re.compile(r'^tstate: frame=(-?\d+) team=(\S+) mstate=(-?\d+) prev=(-?\d+) secs=(\S+) tgt=(-?\d+) '
                     r'chosen=(-?\d+) tact=(-?\d+) idle=(-?\d+) ready=(-?\d+) mem=(\S*)'
-                    r'(?: dest=(\S*))?(?: at=(\S+))?$')
+                    r'(?: dest=(\S*))?(?: aim=(\S*) hd=(\S*))?(?: at=(\S+))?$')
 CMD = re.compile(r'^cmd: frame=(-?\d+) msg=(\S+) type=([0-9a-f]+) player=(\d+) n=(\d+) args=(\S*)(?: src=(\S+))?$')
 AES = re.compile(r'^aes: frame=(-?\d+) call=(\d+) team=(\S+) x=(\S+) y=(\S+) r=(\S+) outer=(\S+) mode=(\d+) '
                  r'since=(-?\d+) gate=(-?\d+)$')
@@ -131,6 +131,23 @@ def _dest(s):
             i, _, p = x.partition('@')
             out[int(i)] = tuple(float(v) for v in p.split(':'))
     return out
+
+
+def _aim(s):
+    """`id>target@x:y` / `id>target!` (target id not in the game's object map: gone) / `id>0` (none) ->
+    {member id: (target id, (x, y) or None)}."""
+    out = {}
+    for x in (s or '').split(','):
+        if '>' not in x:
+            continue
+        i, _, rest = x.partition('>')
+        t, _, p = rest.rstrip('!').partition('@')
+        out[int(i)] = (int(t), tuple(float(v) for v in p.split(':')) if p else None)
+    return out
+
+
+def _hd(s):
+    return {int(i): float(d) for i, _, d in (x.partition(':') for x in (s or '').split(',') if ':' in x)}
 
 
 def _arg(a):
@@ -147,7 +164,10 @@ def states(run):
     2..5 gather, 7, 9), prev, secs (seconds in it), tgt / chosen / tact (object ids: current target, chosen target,
     tactical target; -1 none), idle (team idle timeout), ready (the game's team-ready test: 1 / 0; -1 = not read),
     mem [(id, ai state id, unit ready 1/0)], dest {id: (x, y)} each member's AI goal position ({} in older logs),
-    at = None for the regular sample, 'aes' for the snapshot taken as the aesthetics manager is entered (the state its
+    aim {id: (target id, (x, y) or None)} each member's AI goal object (0 = none; None position = the id is no longer
+    in the game's object map) and where it is, hd {id: degrees} the body heading (atan2 of the hull's forward axis,
+    0 = +x, 90 = +y) -- both D round 86, {} in older logs; a new target or a 10-degree turn writes a sample between
+    beats; at = None for the regular sample, 'aes' for the snapshot taken as the aesthetics manager is entered (the state its
     decision sees; D round 83). Join to the team's name with team_states()."""
     out = {}
     with open(_log(run), encoding='utf-8', errors='replace') as f:
@@ -158,7 +178,7 @@ def states(run):
                 out.setdefault(m[2], []).append(dict(
                     frame=int(m[1]), team=m[2], mstate=int(m[3]), prev=int(m[4]), secs=float(m[5]), tgt=int(m[6]),
                     chosen=int(m[7]), tact=int(m[8]), idle=int(m[9]), ready=int(m[10]), mem=mem,
-                    dest=_dest(m[12]), at=m[13]))
+                    dest=_dest(m[12]), aim=_aim(m[13]), hd=_hd(m[14]), at=m[15]))
     return out
 
 
