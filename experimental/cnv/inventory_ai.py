@@ -121,6 +121,12 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '启发条件/ConstantHeuristic.Weight': (BENCHED,
+        'C engine_aiconstweight aicwzero/aicwone:a：同人格单战略状态，仅Weight=0/1；'
+        's40步兵在家/总数/未登记坦克在家为4/4/4与0/4/4，'
+        'tests/test_simai_constweight_c.py按名回放两组实测。'
+        '仅验证零排除及正值可进入；多个正权重的抽样比例、随机分布和预算/造兵消费者仍gap；'
+        '见work/re/c_constweight_report.md'),
     **{f'启发条件/{k}': (GUESSED,
         'C engine_aitechshare a：四座开局油井、活跃拥有者两方，aitechlow/high自有1/2；'
         's40低于75/高于75/低于125三组在家人数均4/0/4，原预测0/4/0与4/0/0。'
