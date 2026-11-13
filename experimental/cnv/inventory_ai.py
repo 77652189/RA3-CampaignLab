@@ -113,6 +113,12 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '目标/AITargetingHeuristic.ForbiddenObjectStatus': (GUESSED,
+        'C engine_aiforbid a：同近电厂仅切UNDER_IRON_CURTAIN禁用字段；'
+        '无过滤有位/有过滤有位/有过滤清位三组原状态与近远家计数分别1/4/0/0、1/0/4/0、0/4/0/0，均PASS。'
+        'tests/test_forbidden_status.py按名回放并断言原图计数；单位置位过滤吻合，未改模型。'
+        '同帧候选资格、原版铁幕技能、多位组合及UNATTACKABLE/AIRBORNE_TARGET/SUBMERGED仍gap，整字段不晋升；'
+        '见work/re/c_forbid_report.md'),
     '目标/AITargetingHeuristic.SortType=ThreatToWater': (GUESSED,
         'C按名台子engine_aiwater：两电厂/近处守护者/AI两栖矿车，仅切Distance与ThreatToWater，'
         '实机两组采样s14后均近4/远0/家0；模型ThreatToWater选远，按名回放strict xfail。'
