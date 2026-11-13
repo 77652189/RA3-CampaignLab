@@ -53,10 +53,8 @@ def test_crush_keeps_all_four_tanks_alive(lib):
     assert [r['坦克数'] for _, r in samples] == [4] * 6
 
 
-@pytest.mark.xfail(strict=True, reason='aicrush1 has 11/9/9/9/8/8 guards at s28-s33, bench has zero. '
-                                       'The live first target is replaced before contact; later move goals can '
-                                       'still be adjusted. Target pursuit/selection and movement remain gaps; '
-                                       'see work/re/e109_crush.md and work/re/handoff-e.md.')
+# was strict xfail (aicrush1 11/9/9/9/8/8 guards at s28-s33, bench 0; work/re/e109_crush.md): passes since the team
+# forms before the wake (B round 164); E's target pursuit / movement notes there may still be open
 def test_crush_runs_the_guards_over_at_once(lib):
     """checks/engine_aicrush.py aicrush1: no guards at s28-s33, all four tanks survive."""
     w, rows = _probe_run('aicrush1', lib, 35.0)
@@ -186,9 +184,7 @@ def test_with_the_main_switch_off_nobody_goes_into_a_turret_idle_or_not(lib):
     assert all(r['进炮塔'] == 0 for r in off) and idle == off
 
 
-@pytest.mark.xfail(strict=True, reason='simai: nobody garrisons a turret (进炮塔 0 all along; the gap '
-                                       'test_the_team_goes_into_the_house is about too); bench aibd1 进炮塔 1 from s21 '
-                                       'to the end, aibdwho too')
+# was strict xfail (nobody garrisoned): the team forms before the wake now (B rounds 161-164)
 @pytest.mark.parametrize('build,key', [('aibd1', '进炮塔'), ('aibdwho', '进炮塔')])
 def test_one_peacekeeper_goes_into_the_first_turret(lib, build, key):
     """checks/engine_aibasedef.py aibd1 / aibdwho. Not 旁1 (Peacekeepers near turret 1): since engine A round 146

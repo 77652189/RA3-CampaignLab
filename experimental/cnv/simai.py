@@ -7,8 +7,9 @@ is not on this computer nothing here runs: available() is False and the tests sk
 
   python -I -X utf8 experimental/cnv/simai.py [build] [--until <seconds>] [--check <check>]
 
-When a player is handed to the AI (the mission's UNIT_AI_TRANSFER_ALL / SKIRMISH_AI_MAKE_BASE: Sim.ai, the second it
-ran) an AIPlayer is made for it with the side's aiPersonality (mission.sides) and told 'make base' that frame. Then
+A side with an aiPersonality (mission.sides) has an AIPlayer from the first frame -- its states and teams run before
+the wake (bench aialobsw) -- and a side handed over without one gets the default personality then; either is told
+'make base' the frame the mission hands it to the AI (UNIT_AI_TRANSFER_ALL / SKIRMISH_AI_MAKE_BASE: Sim.ai). Then
 every frame (the simulator moves in DT ticks; the AI is ticked for each frame of a tick right after it):
   structures  the simulator builds none (a yard's CommandSet has no UNIT_BUILD), so this file is the yard: one queue a
               yard, the float32 progress of Sim.produce_due paid frame by frame from Sim.money, owned PLACE_DELAY (1)
@@ -184,7 +185,8 @@ class Brain:
         self.wrappers = {}              # body name -> Unit
         self.later = []                 # (frame, template, (x, y), team): a refinery's miner
         self.trace = []                 # (frame, 'own' | 'out', template): what came when
-        self.woke = self.frame = frame
+        self.born = self.frame = frame  # the brain thinks from here (its states and teams: before the wake)
+        self.woke = None                # the frame 'make base' was told (the mission's wake): wake()
         self.ids, self.hp, self.hurt_at = {}, {}, {}     # body name -> Thing id; last hp; id -> frame last hurt
         self.seen_t = None              # the sim time the view was last built at
         self.fired = []                 # (frame, team key, unit, command): unit powers the micro wanted
@@ -212,7 +214,13 @@ class Brain:
                                                       or self.sim.m.facts.get('expansion')) else None))
         self.base = self.powers = None
         self.attach(host.blocks)
-        self.ai.tell(m['player'].Command('make base'))
+
+    def wake(self, frame):
+        """The mission handed the player to the AI (Sim.ai): 'make base' that frame -- the opening and the building
+        start from it; the states and teams have run since the brain was made (bench aialobsw, B round 161)."""
+        if self.woke is None:
+            self.woke = frame
+            self.ai.tell(self.host.mod['player'].Command('make base'))
 
     # ---- A's blocks (targets, tactics, defence, micro; the player's superweapons beside them)
     def attach(self, which):
@@ -1059,7 +1067,7 @@ class Brain:
     @property
     def started(self):
         """The frame 'make base' ran (the AI's start; the bench's 'from the wake' frames count from it)."""
-        return self.ai.start if self.ai.start is not None else self.woke
+        return self.ai.start if self.ai.start is not None else self.woke if self.woke is not None else self.born
 
     def earn(self):
         """AIPlayer.money: the player's money now (AIPlayer.available: an account spends its Deposits + its budget
@@ -1341,16 +1349,25 @@ class SimAI:
                     #                                                              rounds too (aimicro_bench _spow_xml)
 
     def attach(self):
-        """Brains for the players the mission has handed to the AI since the last call."""
+        """Brains for the AI's players, each told 'make base' the frame the mission handed it to the AI (Sim.ai). A
+        side with an aiPersonality has its brain from the first frame: its states and teams run before the wake
+        (bench aialobsw, B round 161: the wake held to ~s28, its team still 4 at f21 as with the wake at s10); a side
+        handed over without one gets the default personality then."""
         s = self.sim
         sides = {v: k for k, v in s.players.items()}
+        for side, info in (getattr(s.m, 'sides', None) or {}).items():
+            player = s.players.get(side)
+            pid = ((info or {}).get('aiPersonality') or '').split(':')[-1]
+            if pid and player is not None and player != s.human and player not in self.brains:
+                self.own_personalities()
+                self.brains[player] = Brain(self, player, side, pid, self.frame)
         for player in s.ai:
-            if player in self.brains:
-                continue
-            side = sides.get(player, '')
-            pid = (s.m.sides.get(side) or {}).get('aiPersonality', '').split(':')[-1] or '1AlliedBalanced'
-            self.own_personalities()
-            self.brains[player] = Brain(self, player, side, pid, int(round(s.ai[player] * FPS)))
+            if player not in self.brains:
+                side = sides.get(player, '')
+                pid = (s.m.sides.get(side) or {}).get('aiPersonality', '').split(':')[-1] or '1AlliedBalanced'
+                self.own_personalities()
+                self.brains[player] = Brain(self, player, side, pid, int(round(s.ai[player] * FPS)))
+            self.brains[player].wake(int(round(s.ai[player] * FPS)))
 
     def advance(self, frames):
         """The mission `frames` frames on (Sim.advance a DT tick at a time), the AI ticked for each frame after."""
@@ -1363,7 +1380,7 @@ class SimAI:
             now = self.frame
             for f in range(now if self.done_to is None else self.done_to + 1, now + 1):
                 for b in self.brains.values():
-                    if f >= b.woke:
+                    if f >= b.born:
                         b.tick(f)
             self.done_to = now
         return self

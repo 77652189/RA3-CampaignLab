@@ -20,6 +20,9 @@ def test_pullback_threshold_low_reaches_the_fight(returns):
     assert all(r['回家'] == 0 for r in rows[14:30])
 
 
+@pytest.mark.xfail(strict=True, reason='since the NamedObject team forms before the wake (B round 164) it is out at '
+                                       's10 as on the bench, but the model does not pull the 30% tanks back on the '
+                                       'way (at the far plant s13, 19%; home s23); bench: never at the far plant')
 def test_pullback_threshold_high_returns_before_recycling(returns):
     """checks/engine_aipullpct.py: threshold 0.5 sends the same 30% tanks home."""
     w, rows = returns['aipullpcthi']

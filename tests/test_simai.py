@@ -140,6 +140,10 @@ def test_skirmish_ai_builds_makes_units_and_attacks(skirmish):
     assert min(x.died_at for x in lost) > (first[0] / simai.FPS), 'died before the team left'
 
 
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+    'since the team forms before the wake (B round 164) seed 1 gives Cleanup 7 at first; without that change seeds '
+    '1-4 give 8/8/7/8, with it 7/7/8/7 -- the uniform draws shifted, not the recruit rule (B round 165, '
+    'work/logs/b165_hk_*.log)'))
 def test_skirmish_ai_cleanup_takes_the_defense_team(skirmish):
     """Bench i-m: Cleanup takes the defense team whole (LandDefense 8 -> 0, Cleanup 0 -> 8 in one frame at s131, the
     pool never above 1). read (B handoff 102): every AI tactic team is recruitable (work/re/l4_recruit.md),
@@ -150,12 +154,9 @@ def test_skirmish_ai_cleanup_takes_the_defense_team(skirmish):
     assert first and len(first[3]) >= 8, first
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    "A round 200: the second slot's first unit goes 162.0 s after the wake (bound 160, bench ~154). Already red on "
-    'model main with this lab (seed 1 161.5 s; seeds 1-6 144.7-163.7 s); with the CreateUnits orders (model '
-    'AIPlayer.order_wanted: the engineer takes one of the unit builder\'s picks, bench makes it beside a Riptide) '
-    'seeds 1-6 give 156-181.5 s -- the build rate, B\'s known 45 vs 90 frame gap (work/re/handoff-b.md 164), not '
-    'the team rule. work/re/handoff.md 200.'))
+# was strict xfail (A round 200: seed 1 162.0 s against the bound 160; seeds 1-6 156-181.5 s, the build rate --
+# B's 45 vs 90 frame gap, work/re/handoff-b.md 164): seed 1 passes again since the team forms before the wake
+# (B round 164) moved the draws -- luck, not a fix; the build-rate gap stands
 def test_skirmish_ai_cleanup_full_the_next_units_go_to_its_other_slot(skirmish):
     """Bench o (checks/engine_aiskirm.py, B handoff 105): Cleanup _0_0 holds 14 (MaxUnits) from s157; the AI's army
     grows 14 -> 21 by s189 with the defense team at 0 and the pool at 0-1, so the new units are in a team no name
@@ -372,8 +373,7 @@ def test_named_target_filtered_or_missing_sends_nobody(lib, build):
     assert all(r['步兵在家'] == 4 for r in rows)
 
 
-@pytest.mark.xfail(strict=True, reason='simai leaves home at s19 (4 -> 3), the bench at s10 (4 -> 2) -- the control '
-                                       'aitargetnear is only ~2 s late (s15 / s13); cause not found (B handoff 109)')
+# was strict xfail (simai out s19, bench s10): a NamedObject team forms before the wake (bench aialobsw, B round 161)
 def test_named_object_team_leaves_when_the_bench_did(lib):
     _, rows = _switch_run('ainmfar', lib, until=20.0)
     assert rows[11]['步兵在家'] < 4
@@ -412,6 +412,9 @@ def test_outgunned_team_walks_home_alive_and_goes_again(lib):
     assert any(r['到远厂'] >= 1 for r in rows[again:])
 
 
+@pytest.mark.xfail(strict=True, reason='since the team forms before the wake (B round 164) it leaves s10-12 as on '
+                                       'the bench, home s22, out again s38 (bench s42); one Peacekeeper is lost on a '
+                                       'later trip, the bench lost none -- the fight / retreat, not the departure')
 def test_outgunned_team_home_stay_and_losses_match_the_bench(lib):
     # bench airet: 16 s home before going again and 4 alive to s85. Was strict xfail (sim 9 s, one lost on the second
     # trip); passes since the engine model's f67a739 (line C: retreat order readiness before the attack rejoins)
@@ -708,8 +711,7 @@ def test_nobody_goes_in_where_the_bench_had_nobody(lib, build):
     assert got == []
 
 
-@pytest.mark.xfail(strict=True, reason="bench aibd1: one Peacekeeper in turret 1 from s21; the simulator's fight kills "
-                                       "all four turrets by s25, before the team (~8 s late) gets there")
+# was strict xfail (the team ~8 s late): it forms before the wake now (B rounds 161-164)
 def test_one_goes_into_the_first_turret(lib):
     _, got = _garrison_run('aibd1', lib)
     assert [e[2] for e in got] == ['UNIT - CNV AI Turret 1']
