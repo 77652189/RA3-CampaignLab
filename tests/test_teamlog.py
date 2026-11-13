@@ -145,3 +145,30 @@ def test_bench_frames_anchor(tmp_path):
         dict(id=4, second=5.0)])), encoding='utf-8')
     assert teamlog.bench_frames(str(tmp_path)) == [(1.1, 40), (3.0, 71), (5.0, None)]
     assert teamlog.frame_at_second(str(tmp_path), 2.8) == 71
+
+
+# D round 98: the AI's base table and its base choices. Lines from bench CampBS2NewB_mcp_1113_001802 (aibs2new:b, PASS;
+# the caller field redacted, the use= field as the probe writes it since): one AI base all run -- the second
+# construction yard made by script at s12 never joins the table, so OLD / NEW have one candidate to pick from.
+LOG98 = """base: frame=151 i=0 id=0 own=117198192 flags=0x399 anchor=0 pos=3850.0:3400.0 ctr=-0.8:-0.6 nb=0 bld= hit=0
+bases: frame=151 mgr=08782340 n=1
+base: frame=152 i=0 id=0 own=117198192 flags=0x1d9 anchor=0 pos=3850.0:3400.0 ctr=-0.8:-0.6 nb=2 bld=3157,3166 hit=0
+bases: frame=152 mgr=08782340 n=1
+bsel: frame=274 use=target ra=x0 crit=0:0:1:4:1 ref=- pick=0 model=0 cand=0:1d9:1:1
+bsel: frame=280 ra=x0 crit=default ref=10.0:-20.5 pick=-1 model=-1 cand=0:4:x:0
+"""
+
+
+def test_base_table_and_choices(tmp_path):
+    p = tmp_path / 'ra3ext.log'
+    p.write_text(LOG98, encoding='utf-8')
+    assert teamlog.bases_at(str(p), 100) == []
+    b, = teamlog.bases_at(str(p), 300)
+    assert (b['id'], b['nb'], b['bld'], b['anchor']) == (0, 2, [3157, 3166], None)
+    assert b['types'] == ['MAIN_BASE', 'POINT_CENTERED', 'LAND_CENTERED', 'ENEMIES_IN_BASE', 'OLDEST_OF_TYPE',
+                          'MOST_RECENT_OF_TYPE']
+    c, = teamlog.base_choices(str(p), use='target')
+    assert c['crit'] == dict(required=0, excluded=0, preferred=1, not_preferred=4, sort='PREFER_NEWEST')
+    assert (c['pick'], c['model'], c['ref'], c['cand']) == (0, 0, None, [(0, 0x1d9, '1', 1)])
+    d, = teamlog.base_choices(str(p), use='?')         # a line without use= (older probe) counts as '?'
+    assert d['crit'] is None and d['pick'] is None and d['ref'] == (10.0, -20.5) and d['cand'] == [(0, 4, 'x', 0)]

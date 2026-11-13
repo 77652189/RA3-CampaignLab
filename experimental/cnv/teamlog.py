@@ -273,6 +273,89 @@ def frame_at_second(run, second):
     return min(got)[1] if got else None
 
 
+BASE = re.compile(r'^base: frame=(-?\d+) i=(\d+) id=(\d+) own=(\d+) flags=0x([0-9a-f]+) anchor=(\S+) pos=(\S+):(\S+) '
+                  r'ctr=(\S+):(\S+) nb=(\d+) bld=(\S*) hit=(-?\d+)$')
+BASES = re.compile(r'^bases: frame=(-?\d+) mgr=\S+ n=(\d+)$')
+BSEL = re.compile(r'^bsel: frame=(-?\d+)(?: use=(\S+))? ra=\S+ crit=(\S+) ref=(\S+) pick=(-?\d+) model=(-?\d+) cand=(\S*)$')
+# AIBaseType bits as the game keeps them on a base (D round 98; XSD order), and AIBaseSortingOrder numbers
+BASE_TYPES = ('MAIN_BASE', 'EXPANSION', 'CAPTURED', 'POINT_CENTERED', 'LAND_CENTERED', 'UNDER_ATTACK', 'ENEMIES_IN_BASE',
+              'OLDEST_OF_TYPE', 'MOST_RECENT_OF_TYPE', 'NO_BUILD_RADIUS')
+SORT_ORDERS = ('PREFER_OLDEST', 'PREFER_NEWEST', 'PREFER_SMALLEST', 'PREFER_LARGEST', 'PREFER_MOST_RECENTLY_ATTACKED',
+               'PREFER_LEAST_RECENTLY_ATTACKED', 'PREFER_CLOSEST')
+
+
+def base_types(flags):
+    """The AIBaseType names set in a base's flags."""
+    return [n for i, n in enumerate(BASE_TYPES) if flags >> i & 1]
+
+
+def bases(run):
+    """[(frame, [base dict, ...]), ...]: the host owner's AI base table (D round 98), written by CNVTeams when the table
+    changed and on each beat; `bases:` closes a sample. A base dict: frame, i (table order), id (the base id -- the age
+    SortOrder compares: smaller = older), flags, types, anchor (object id, None when 0), anchor_xy (None when gone),
+    pos (x, y), ctr (x, y; bench 11-13 reads (-0.8, -0.6) -- a direction, not a centre: unknown), nb (buildings), bld
+    (their ids), hit (the under-attack-until frame)."""
+    out, cur = [], []
+    with open(_log(run), encoding='utf-8', errors='replace') as f:
+        for line in f:
+            line = line.rstrip()
+            m = BASE.match(line)
+            if m:
+                a = m[6].rstrip('!')
+                aid, _, axy = a.partition('@')
+                fl = int(m[5], 16)
+                cur.append(dict(frame=int(m[1]), i=int(m[2]), id=int(m[3]), flags=fl, types=base_types(fl),
+                                anchor=int(aid) or None,
+                                anchor_xy=tuple(float(v) for v in axy.split(':')) if axy else None,
+                                pos=(float(m[7]), float(m[8])), ctr=(float(m[9]), float(m[10])), nb=int(m[11]),
+                                bld=[int(v) for v in m[12].split(',') if v], hit=int(m[13])))
+                continue
+            m = BASES.match(line)
+            if m:
+                out.append((int(m[1]), cur))
+                cur = []
+    return out
+
+
+def bases_at(run, frame):
+    """The base table of the last sample at or before `frame` ([] before the first)."""
+    got = [b for f, b in bases(run) if f <= frame]
+    return got[-1] if got else []
+
+
+def base_choices(run, use=None):
+    """The AI's base choices (D round 98: every call of the game's base pick for the host's AI, one line per caller when
+    its criteria / point / pick / table changed, else once a beat). A dict: frame, use (target = the target heuristics'
+    BaseSelection, e.g. Expansion; home, retreat, reactive, nearby, ignore, place; '?' other), crit (None = the default
+    {exclude CAPTURED, PREFER_NEWEST}) else dict required / excluded / preferred / not_preferred (flag ints) and sort
+    (a SORT_ORDERS name), ref ((x, y) or None), pick (base id, None = none chosen), model (the same rules re-done in the
+    probe: equal to pick unless the reading is wrong), cand [(base id, flags, ok, score)] -- ok '1' passes, 'r' misses
+    a required type, 'x' has an excluded one; score = preferred count - not-preferred count."""
+    out = []
+    with open(_log(run), encoding='utf-8', errors='replace') as f:
+        for line in f:
+            m = BSEL.match(line.rstrip())
+            if not m or (use is not None and (m[2] or '?') != use):   # logs before use=: all '?'
+                continue
+            if m[3] == 'default':
+                crit = None
+            else:
+                r, x, p, n, s = m[3].split(':')
+                s = int(s)
+                crit = dict(required=int(r, 16), excluded=int(x, 16), preferred=int(p, 16), not_preferred=int(n, 16),
+                            sort=SORT_ORDERS[s] if s < len(SORT_ORDERS) else str(s))
+            cand = []
+            for c in m[7].split(','):
+                if c:
+                    i, fl, ok, sc = c.split(':')
+                    cand.append((int(i), int(fl, 16), ok, int(sc)))
+            out.append(dict(frame=int(m[1]), use=m[2] or '?', crit=crit,
+                            ref=None if m[4] == '-' else tuple(float(v) for v in m[4].split(':')),
+                            pick=None if m[5] == '-1' else int(m[5]), model=None if m[6] == '-1' else int(m[6]),
+                            cand=cand))
+    return out
+
+
 def names(run):
     """Every template name seen with a team, and the frames it was seen at (first, last)."""
     seen = {}
