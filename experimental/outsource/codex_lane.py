@@ -51,6 +51,8 @@ Select-String 按关键词搜，只看命中的几行），做交接"工单"里�
 - 缺上下文：交接、docs/engine/know-how.md、相关 check 的 docstring 里找；还找不到就写进待答问题，别猜。
 - review：不读 skill 文件，按四条自查：① 断言的是台上读数，没为迎合读数改阈值或模型；② 猜的规则都标了
   INFERRED 或登记成 gap；③ 只改了本线的文件，新 check 不 import 关卡内容层；④ 公开文件和提交说明里没有程序地址。
+- 改了私有模型（CNV_ENGINE_MODEL 指的那个工作区）：在那里提交，`git pull --rebase origin main` 后
+  `git push origin HEAD:main`，**要在跑 lane_close 之前推**——公开测试按名回放模型，模型不推，别人 main 上就红。
 - 收尾：提交后跑 `python -I -X utf8 experimental/outsource/lane_close.py {lane} <改到的测试文件...>`（它跑收尾测试、
   rebase、推 main，只打末几行；红了就修了再跑，生成的清单冲突照 AGENTS.md 重跑生成器）→ 改写交接 → 推私有仓库
   work/re → 停。
