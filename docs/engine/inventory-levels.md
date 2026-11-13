@@ -2,20 +2,19 @@
 
 由 `experimental/cnv/inventory_ai.py levels` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）里由遭遇战 AI 带的敌人：它的人格（`enemy_ai.py` 生成）沿继承、战略状态、战术、组队、目标启发、微操、造兵 / 预算状态、开局一路引用到的原版 AI 数据项，加上全局常量 AIData 和本阵营的 ArmyDefinition；再加关卡脚本里点了 AI 玩家名字的脚本动作 / 条件。状态取自 [inventory.md](inventory.md)。"AI 做完"的第一条：下表全部已对拍。
 
-**已对拍 141 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
+**已对拍 142 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
 
 | 部分 | 已对拍 | 推断 | 未做 |
 |---|---|---|---|
-| AI | 129 | 114 | 114 |
+| AI | 130 | 114 | 113 |
 | 脚本动作 | 11 | 0 | 0 |
 | 脚本条件 | 1 | 0 | 0 |
 
-按原版用量加权：已对拍 92%，已有（已对拍+推断）98%。
+按原版用量加权：已对拍 92%，已有（已对拍+推断）99%。
 
 | 状态 | 部分 | 项 | 原版用量 | 关 | 说明 |
 |---|---|---|---|---|---|
 | 未做 | AI | `人格/AIPersonalityDefinition.SkirmishPersonality` | 20 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 未做 | AI | `人格/BaseSelection.PreferredNotBaseTypes` | 17 | a4 a5 a7 | C以aibncap/aibnnone仅切CAPTURED/空集合，两组s30–40东4/崖0/实体0；缺同帧基地类型、资格和选中基地，不能由同点选择判定偏好无效。模型仅保留参数，自动基地/候选发现仍缺；两strict xfail，不晋升；见work/re/c_basenot_report.md |
 | 未做 | AI | `战略状态/AIStrategicStateDefinition.CannotAttackTargetReaction` | 16 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `目标/AITargetingHeuristic.HeuristicType=Expansion` | 12 | a4 a5 a7 | C已上台：aiexpc:a东矿区4、崖矿区0、普通实体0，命令指向东矿点；模型已保留BaseSelection，增加显式候选回调和槽位点，Expansion不再回退普通实体。D98新观测确认所选基地id0、合格且偏好分1；双厂实验已移除脚本厂伪基地。bsel是基地候选而非矿点候选；矿点资格/排序/占用仍未证，aiexpc模型按名回放仍strict xfail，不晋升；见 work/re/c_expansion_d98_report.md |
 | 未做 | AI | `造兵/CountAsStructureForBuildPurposesFilter.ExcludeThing` | 12 | a4 a5 a7 | C静态核查：原版过滤器用于建造优先级，排除矿车/勘探车/日本矿厂核心；不是现有建筑计数。模型未消费该过滤器，候选分类需接B共享build_units，普通建筑BuildState优先级亦缺消费者；按工单接口门禁停止，未上台、未晋升。待B给候选分类/优先级接口；见work/re/c_buildfilter_report.md |
@@ -346,6 +345,7 @@
 | 已对拍 | AI | `微操/AIMicroManagerData.EnterGarrisonableStructureDistance` | 21 | a4 a5 a7 | engine_aigarrison aigar1/aigar0/aigarfar：默认150、旧楼EAST=40，近楼归AI、关闭或远楼不进；tests/test_simai_garrison_distance.py::test_garrison_distance_replays_recorded_near_far_and_disabled；仅现成近远行为回放，精确边界、其他配置值和进门死亡时序未量；距离0仅模型敏感性守卫 |
 | 已对拍 | AI | `战术/Tactic.EndIfStateTurnsOff` | 19 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aistate.py |
 | 已对拍 | AI | `经济/AccountShare.Percent` | 18 | a4 a5 a7 | 台上量过（engine_aiskirm d / f：开局后 CoopBudget 防御 5%，存款约 36000 两座塔、约 17000 一座、15000 没有）、测试对拍 tests/test_simai.py——塔数对上；第一座的时刻模拟器早 ~36 s（strict xfail），别的份额 / 状态没单独量 |
+| 已对拍 | AI | `人格/BaseSelection.PreferredNotBaseTypes` | 17 | a4 a5 a7 | C aibn2old/aibn2new:b初始双基地固定OLD，仅切反偏好OLDEST/MOST_RECENT；f274两基地均合格，分数0/1选1与1/0选0，f284点命令崖矿/东矿。s55–65东/崖队员/双厂分别0/0/1/1与4/0/1/1；tests/test_expansion_target.py按名断言类型、分数、选择点和原计数。仅年龄类型反偏好命中子集；自动注册、死亡清理和矿点资格仍gap，旧CAPTURED单基地两strict xfail保留；见work/re/c_bn2_report.md |
 | 已对拍 | AI | `人格/BaseSelection.SortOrder` | 17 | a4 a5 a7 | C aibs3old/aibs3new:b初始双厂：f274两个合格基地0/1均分1，OLD pick/model=0/0、NEW=1/1；点命令分别东矿/崖矿。s55–65东/崖队员与双厂OLD=4/0/1/1、NEW=0/0/1/1；tests/test_expansion_target.py按名回放断言选择点和计数。仅OLD/NEW按基地编号排序；其他排序、注册顺序和矿点资格仍gap，见work/re/c_bs3_report.md |
 | 已对拍 | AI | `启发条件/TimerHeuristic.CountFrom` | 16 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
 | 已对拍 | AI | `战略状态/AIStrategicStateDefinition.MaxRunningCopies` | 16 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aistate.py |
