@@ -4,6 +4,8 @@ At s40 matching FS_POWER sends four helicopters to the target; FS_BARRACKS
 keeps four home. Both must complete at least two power plants, and retain
 one yard. See work/re/c_buildkind_report.md for observations and limits.
 Measured: both PASS, s40 target/home/plants/yard=4/0/4/1 and 0/4/4/1.
+The multi-token OR controls reproduce these readings with FS_BARRACKS
+FS_POWER and FS_BARRACKS FS_TECHNOLOGY; see work/re/c_buildkind_or_report.md.
 """
 from parts import Script, Test, counted, square
 
@@ -29,4 +31,5 @@ def check(m):
     return t
 
 
-CHECKS = {name: {'a': check} for name in ('aibkindyes', 'aibkindno')}
+CHECKS = {name: {'a': check} for name in
+          ('aibkindyes', 'aibkindno', 'aibkindoryes', 'aibkindorno')}

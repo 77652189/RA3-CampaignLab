@@ -11,13 +11,18 @@ _spec.loader.exec_module(simai)
 pytestmark = pytest.mark.skipif(not simai.available(), reason='no private AI model')
 
 
-@pytest.mark.parametrize('build,target,home', [('aibkindyes', 4, 0), ('aibkindno', 0, 4)])
+@pytest.mark.parametrize('build,target,home', [
+    ('aibkindyes', 4, 0), ('aibkindno', 0, 4),
+    ('aibkindoryes', 4, 0), ('aibkindorno', 0, 4)])
 def test_building_kind_active(build, target, home):
     """engine_aibuildkind a measured s40: 4/0/4/1 and 0/4/4/1.
 
     The pre-run >=2-plant control checks production participation; exact
-    production timing is outside this KindOf comparison. Original thresholds
-    and model are unchanged. See work/re/c_buildkind_report.md.
+    production timing is outside this KindOf comparison. The multi-token
+    controls measured the same rows: only the second token matches in the
+    positive case; neither matches in the negative. Original thresholds and
+    model are unchanged. See work/re/c_buildkind_or_report.md and
+    work/re/c_buildkind_report.md. Queue cancellation/suspension remain gaps.
     """
     w = simai.run(build, 'a', 41, lib=simai.model()['xmldata'].Library())
     labels = [label for _, label in w.sim.test.counters]

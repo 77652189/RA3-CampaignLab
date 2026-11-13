@@ -262,12 +262,14 @@ NOTES = {
         'true时0/4，两组PASS；tests/test_simai_bench_e.py::test_is_building_idle按名回放通过。'
         '只验空队列边界，建造中的行为未量；见 work/re/e_building_e83.md')
        for k in ('IsBuildingHeuristic', 'IsBuildingHeuristic.PassIfBuilding')},
-    '启发条件/IsBuildingHeuristic.KindOf': (GUESSED,
+    '启发条件/IsBuildingHeuristic.KindOf': (BENCHED,
         'C engine_aibuildkind a：同一连续电厂开局，FS_POWER匹配时s40到陆厂4/在家0，'
         'FS_BARRACKS不匹配时0/4；两组电厂4/基地1，两局PASS；'
-        'tests/test_simai_buildkind_c.py按名回放通过，单token活跃队列筛选已验证。'
-        '原版30处中24处为多个token，多个token和队列挂起/取消仍gap，保持推断不晋升；'
-        '见 work/re/c_buildkind_report.md；空队列边界见 work/re/e_building_e83.md'),
+        '多token aibkindoryes/aibkindorno各一次PASS：FS_BARRACKS FS_POWER仅第二token匹配时4/0，'
+        'FS_BARRACKS FS_TECHNOLOGY均不匹配时0/4，两组电厂4/基地1；'
+        'tests/test_simai_buildkind_c.py按名回放单token和多token四组，验证活跃队列KindOf按OR匹配。'
+        '仅连续电厂开局，队列挂起/取消/等待阶段仍gap；'
+        '见 work/re/c_buildkind_or_report.md、c_buildkind_report.md；空队列边界见 work/re/e_building_e83.md'),
     '开局/SkirmishOpeningMove.Side': (BENCHED,
         'E82 engine_aiopenside a：固定盟军玩家显式挂载三电厂开局，仅切Side。'
         'Allies在[s55,s60)电厂3/兵营0，Soviet电厂2/兵营1。D66：Side和玩家阵营全等才进候选，'

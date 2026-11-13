@@ -7,17 +7,20 @@ funds are present from map load; the standard s10 script wake is retained.
 The measured native opening already has its first plant at s9.
 Prediction at s40: matching target/home=4/0, nonmatching=0/4; at least two
 completed plants independently establish that the opening actually builds.
-Multiple tokens and individual queue phases remain unmeasured.
+The OR variants add FS_BARRACKS before FS_POWER (one match), or use
+FS_BARRACKS FS_TECHNOLOGY (no match). Individual queue phases remain gaps.
 """
 from missions import ailocation_bench as location
 
 
-def mission(matches):
-    suffix = 'Y' if matches else 'N'
+def mission(matches, multi=False):
+    suffix = ('O' if multi else '') + ('Y' if matches else 'N')
     m = location.mission('Land', suffix)
     m.name = 'CampAIBKind' + suffix
     filename, xml, asset = m.assets[0]
     kind = 'FS_POWER' if matches else 'FS_BARRACKS'
+    if multi:
+        kind = 'FS_BARRACKS FS_POWER' if matches else 'FS_BARRACKS FS_TECHNOLOGY'
     xml = xml.replace('<ConstantHeuristic/>',
                       f'<IsBuildingHeuristic KindOf="{kind}" PassIfBuilding="true"/>')
     opening = ('  <SkirmishOpeningMove id="CNVBKindOpen" Side="PlayerTemplate:Allies">\n'
@@ -41,3 +44,5 @@ def mission(matches):
 
 
 MISSION = {'aibkindyes': lambda: mission(True), 'aibkindno': lambda: mission(False)}
+MISSION.update({'aibkindoryes': lambda: mission(True, multi=True),
+                'aibkindorno': lambda: mission(False, multi=True)})
