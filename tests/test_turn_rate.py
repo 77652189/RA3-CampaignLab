@@ -7,13 +7,11 @@ last step whatever is left; a turn over the Locomotor's TurnThresholdHS is done 
 while its heading changes.
 """
 import importlib.util
-import sys
 from pathlib import Path
 
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / 'experimental/cnv'))
 _spec = importlib.util.spec_from_file_location('simunits', ROOT / 'experimental/cnv/simunits.py')
 simunits = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(simunits)
@@ -91,7 +89,7 @@ def test_a_turn_is_made_in_place(build):
     assert len([s for s in turns(build) if not s[3]]) >= 10
 
 
-def test_the_data_rates():
+def test_the_data_rates():                         # the simulator's turn (Sim.turn): tests/test_sim.py test_*turn*
     assert simunits.turning('SovietAntiVehicleVehicleTech1') == (288.0, 90.0)   # 1.25 s: 19.2 a frame (bench 19)
     assert simunits.turning('AlliedAntiVehicleVehicleTech1') == (360.0, 90.0)
     assert simunits.turning('SovietAntiVehicleVehicleTech3') == (120.0, 90.0)
