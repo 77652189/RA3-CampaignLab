@@ -275,7 +275,10 @@ class Brain:
                                        houses=lambda ai, u: self.garrisons(u, False),
                                        defenses=lambda ai, u: self.garrisons(u, True),
                                        crush=lambda ai, f, foe: simcrush.eligible(self.sim, f, foe),
-                                       pullback=lambda ai, u: h.pullback.query(self, u))
+                                       pullback=lambda ai, u: h.pullback.query(self, u),
+                                       # GatherWaypoint: the map's waypoint by name, None when absent (D148)
+                                       gather_point=lambda ai, tac: self.sim.waypoints.get(getattr(tac, 'gather', '')
+                                                                                           or None))
         self.tactics.rng = random.Random(h.seed)    # state 2's RandomTargetScoreModifier / TimeToKeepTarget
         self.targets = tg.TargetsBlock(h.data_of('targets'), self.active, lambda ai, f: self.view,
                                        lambda ai, st: self.home, home=self.home, base_of=self.base_of,
