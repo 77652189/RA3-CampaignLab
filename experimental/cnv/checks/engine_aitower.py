@@ -336,6 +336,8 @@ def i(m):
     if 'opening' in weights:                # aibszero
         done = wake + m.facts['opening']
         t.expect += [('塔在基地', wake + 5, '<=', 0, done), ('塔在基地', done, 'ever>=', 1, end)]
+    elif len(weights) < 2:                  # a build without the budget-state pair: readings only
+        pass
     elif float(weights[1]) > float(weights[0]):     # aibsmax: the second (PRODUCTION) is larger
         t.expect += [('塔在基地', wake + 5, '<=', 0, end)]
     else:                                   # aibstie: the first (DEFENSE) holds the tie

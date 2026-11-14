@@ -694,6 +694,23 @@ def test_after_s110_the_unit_capped_army_grows_again(lib):
     assert max(r['兵数'] for r in rows) >= 8
 
 
+def test_the_unit_cap_counts_the_miners(lib):
+    """checks/engine_aiskirm.py aiskuc7 uc (B round 179, d124_unitcap.md U1; UnitCap 7 MEDIUM): bench 兵数 (miners
+    left out) 6 at s49, the first miner s53, 7 from s55 to s111 -- with the miner the count is 8 > 7 and building
+    stops; the model counting soldiers only had 8."""
+    _, rows = _probe_run('aiskuc7', lib, 110.0, check='uc')
+    assert max(r['兵数'] for r in rows) == 7
+
+
+def test_the_unit_cap_holds_the_build_states_unit_too(lib):
+    """checks/engine_aiskirm.py aiskucn ucn (B round 179, work/re d124_unitcap.md U2; aisknew2 + UnitCap 3 MEDIUM):
+    bench 兵数 5 and 新维和 2 from s33 to s111 (aisknew2 without the cap: 9 新维和 by s167; the model before round 179:
+    兵数 10, 新维和 7) -- the build state's unit order checks UnitCap too. (s112 on 兵数 rose to 11 again, 新维和 stayed
+    2: the late overshoot is not the build states.)"""
+    _, rows = _probe_run('aiskucn', lib, 110.0, check='ucn')
+    assert max(r['新维和'] for r in rows) == 2 and max(r['兵数'] for r in rows) == 5
+
+
 # ---- checks/engine_aitower.py i (B round 178, work/re d122_ai_rules.md 1 R1-R3): one budget state runs, the heaviest
 def test_the_heavier_budget_state_runs_alone_though_listed_second(lib):
     """aibsmax: DEFENSE 100 % at weight 0.4 first, PRODUCTION 100 % at 0.6 -- PRODUCTION runs, no turret with 20000

@@ -171,6 +171,8 @@ class Brain:
         self.ai.units = self.units
         if hasattr(self.ai, 'owned'):
             self.ai.owned = self.owned
+        if hasattr(self.ai, 'army'):
+            self.ai.army = self.army
         self.ai.team_point = self.team_point
         self.ai.offers = self.offers
         self.ai.build_offers = self.build_offers
@@ -1022,6 +1024,13 @@ class Brain:
                 continue
             out[b.template] = out.get(b.template, 0) + 1
         return out
+
+    def army(self, ai, frame):
+        """The AI's unit count UnitCap holds (work/re d124_unitcap.md 2): the UNITS registered set -- every SELECTABLE
+        non-STRUCTURE object it owns, harvesters, garrisoned and pulled-back units included (INFERRED for those inside
+        a garrison or transport)."""
+        return sum(1 for b in self.living()
+                   if b.owner == self.player and 'SELECTABLE' in b.kinds and 'STRUCTURE' not in b.kinds)
 
     def team_point(self, ai, frame):
         hx, hy = self.home

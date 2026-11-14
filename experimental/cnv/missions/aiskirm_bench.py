@@ -277,7 +277,7 @@ BLOCK = {'near': ('SovietScoutInfantry', 120.0),      # bear radius 5: inside th
 OFF_FLAG = 'CNVNever'                 # aiskoff (check y): a flag no script sets -> the new state's heuristic is 0
 
 
-def new_xml(cap=None, block=None, off=False, dear=None):
+def new_xml(cap=None, block=None, off=False, dear=None, unitcap=None):
     """1AlliedBalanced plus one build state of its own (CNVNewBuild: ConstantHeuristic, BuildEntry NEW_PK FEWEST_UNIT,
     the shape of SDK States/AlliedBaseStates.xml AlliedBarracksBuildState_FEWEST) -- what a level's personality would
     need to list for the AI to build a unit of ours (B handoff 126). cap (aiskcap): + a SpecificUnitCap on NEW_PK at
@@ -286,7 +286,8 @@ def new_xml(cap=None, block=None, off=False, dear=None):
     in a build state that never builds, so a new Peacekeeper can only come from the unit builder (B handoff 151).
     dear (aiskcu / aiskcs): the state has a second entry DEAR_PK CONSTANT 1; dear == 'cs' also writes the personality's
     CountAsStructureForBuildPurposesFilter as BasePersonality.xml does, plus IncludeThing DEAR_PK (xsd: after the
-    BuildState / SpecificUnitCap lines)."""
+    BuildState / SpecificUnitCap lines). unitcap (aiskucn): UnitCap lines (Cap, Difficulty), before the BuildState
+    line as the xsd orders them."""
     caps = [] if cap is None else [
         f'    <SpecificUnitCap Unit="{NEW_PK}" Cap="{cap}" Difficulty="EASY MEDIUM HARD BRUTAL"/>']
     return '\n'.join([
@@ -311,6 +312,7 @@ def new_xml(cap=None, block=None, off=False, dear=None):
         *([f'    <BuildEntry Build="{DEAR_PK}" Heuristic="CONSTANT" Score="1"/>'] if dear else []),
         '  </AIBuildStateDefinition>',
         f'  <AIPersonalityDefinition id="{NEW_PID}" PersonalityType="{NEW_PID}" inheritFrom="1AlliedBalanced">',
+        *[f'    <UnitCap Cap="{c}" Difficulty="{d}"/>' for c, d in (unitcap or ())],
         f'    <BuildState id="{NEW_STATE}" State="{NEW_STATE}" Difficulty="EASY MEDIUM HARD BRUTAL"/>',
         *caps,
         *(['    <CountAsStructureForBuildPurposesFilter Rule="ANY" Include="STRUCTURE UNPACKS_INTO_BUILDING">',
@@ -457,8 +459,9 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
                   role=f'ai power {k}')
     if unitcap is not None:              # aiskuc (check uc): UnitCap lines
         m.facts['unit cap'] = min(c for c, d in unitcap if 'MEDIUM' in d.split())
-        m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{UC_PID}'
-        m.assets.append((f'{UC_PID}.xml', unitcap_xml(unitcap), f'AIPersonalityDefinition:{UC_PID}'))
+        if not new:                      # aiskucn: the lines go into CNVNew (new_xml) instead
+            m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{UC_PID}'
+            m.assets.append((f'{UC_PID}.xml', unitcap_xml(unitcap), f'AIPersonalityDefinition:{UC_PID}'))
     if buffer is not None:               # aiskpw0 / aiskpw3 (check x): DesiredExcessPowerBuffer = buffer
         m.facts['power buffer'] = buffer
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{POWER_PID}'
@@ -491,7 +494,8 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
                 m.units += [dpk, production.building('AlliedBarracks', [dpk.id], DEAR_BARRACKS)]
                 m.put(DEAR_BARRACKS, 'east base', DEAR_AT[0], DEAR_AT[1], side='s1', angle=3.1416,
                       name='UNIT - CNV AI Dear Barracks', role='ai dear barracks')
-            m.assets.append((f'{NEW_PID}.xml', new_xml(cap, block, off, dear), f'AIPersonalityDefinition:{NEW_PID}'))
+            m.assets.append((f'{NEW_PID}.xml', new_xml(cap, block, off, dear, unitcap),
+                             f'AIPersonalityDefinition:{NEW_PID}'))
         m.put(NEW_BARRACKS, 'east base', NEW_AT[0], NEW_AT[1], side='s1', angle=3.1416, name='UNIT - CNV AI New Barracks',
               role='ai new barracks')
     if two is not None:                  # aiskrand / aiskdiff (check s): a copied barracks building NEW_PK and NEW_JAV
@@ -567,6 +571,10 @@ MISSION = {'aiskirm': mission, 'aiskirmc': lambda: mission(observe=True),
            'aiskirmnl': lambda: mission('CampAISkNoLib', lib=False),
            'aiskexp': lambda: mission('CampAISkExp', expire=12.0),
            'aiskuc': lambda: mission('CampAISkUC', unitcap=UC_CAPS),   # check uc: UnitCap 3 MEDIUM, 1 others
+           # D 124 U1: Cap 7 -- do the miners count (the army stops 1-2 lower than with miners left out)?
+           'aiskuc7': lambda: mission('CampAISkUC7', unitcap=((7, 'MEDIUM'), (1, 'EASY HARD BRUTAL'))),
+           # D 124 U2 (check ucn): aisknew2 + UnitCap 3 MEDIUM -- does the cap hold the build state's unit too?
+           'aiskucn': lambda: mission('CampAISkUCN', new=True, unitcap=((3, 'MEDIUM'),)),
            'aiskmod': lambda: mission('CampAISkMod', umod=UMOD_ZERO),     # check q: SecondsTillTargetsExpire 12, not 5   # s1 without the container's Lib_Skirmish_Setup
            'aiskacp': lambda: mission('CampAISkAcP', account='PRODUCTION'),    # check v: the rebuilt AI, retail Account
            'aiskacd': lambda: mission('CampAISkAcD', account='DEFENSE'),

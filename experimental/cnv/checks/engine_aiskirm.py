@@ -1121,7 +1121,31 @@ def uc(m):
     _sum(t, m, s1, 'CNV_AK_UcMiner', '矿车', ('AlliedMiner',), cap=8)
     _sum(t, m, s1, 'CNV_AK_UcBlt', '建筑数', BUILDINGS + TOWERS, cap=12)
     w = m.facts['wake at']
-    t.expect += [('兵数', w + 5.0, '<=', 5, w + 200.0), ('建筑数', w + 150.0, 'ever>=', 6, w + 200.0)]
+    cap = m.facts['unit cap']
+    if cap == 3:
+        t.expect += [('兵数', w + 5.0, '<=', 5, w + 200.0), ('建筑数', w + 150.0, 'ever>=', 6, w + 200.0)]
+    else:                                # aiskuc7 (D 124 U1): only to s110, before the late overshoot
+        t.expect += [('兵数', w + 5.0, '<=', cap + 1, w + 100.0), ('兵数', w + 30.0, 'ever>=', 4, w + 100.0)]
+    t.bench = [('bench_watch', dict(seconds=w + 204.0, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+def ucn(m):
+    """UnitCap on the build states' unit entries (aiskucn, D round 124 U2: aisknew2 -- a ConstantHeuristic state
+    listing CNVNewPK FEWEST_UNIT -- plus UnitCap Cap 3 MEDIUM in that personality; no SpecificUnitCap). 兵数 = UC_UNITS
+    + CNVNewPK, 新维和, 矿车, 建筑数, to 200 s after the wake. Engine (work/re d124_unitcap.md 1, read): the build
+    state's order checks UnitCap after the money, units only -> 新维和 stops with the rest at 兵数 + 矿车 = 4; aisknew2
+    (no cap) had 9 新维和 by s167. The model before D 124 let the build state's units through."""
+    NEW_PK = 'CNVNewPK'                  # missions/aiskirm_bench.py's (G5: no content import)
+    t = Test()
+    s1 = m.player('s1')
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    _sum(t, m, s1, 'CNV_AK_UnArmy', '兵数', UC_UNITS + (NEW_PK,), cap=12)
+    counted('CNV_AK_UnNew', '新维和', t, template=NEW_PK, player=s1)
+    _sum(t, m, s1, 'CNV_AK_UnMiner', '矿车', ('AlliedMiner',), cap=8)
+    _sum(t, m, s1, 'CNV_AK_UnBlt', '建筑数', BUILDINGS + TOWERS, cap=12)
+    w = m.facts['wake at']
+    t.expect += [('兵数', w + 5.0, '<=', 5, w + 100.0), ('新维和', w + 30.0, 'ever>=', 1, w + 100.0)]
     t.bench = [('bench_watch', dict(seconds=w + 204.0, every=1, sheet=False, lines=len(t.counters)))]
     return t
 
@@ -1133,6 +1157,8 @@ CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j
           'aiskexp': {'q': q},
           'aiskmod': {'u': u},
           'aiskuc': {'uc': uc},
+          'aiskuc7': {'uc': uc},
+          'aiskucn': {'ucn': ucn},
           'aiskacp': {'v': v},
           'aiskacd': {'v': v},
           'aiskirmnl': {'g': g, 'h': h},
