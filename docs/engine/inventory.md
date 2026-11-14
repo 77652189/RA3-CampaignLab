@@ -8,7 +8,7 @@
 | 脚本条件 | **98%** | **100%** | 12 / 12 | 89 | 55 | 4 | 27 | 3 | 99% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
-| AI | **91%** | **91%** | 160 / 357 | 428 | 174 | 113 | 107 | 34 | 97% |
+| AI | **93%** | **93%** | 168 / 357 | 428 | 182 | 113 | 99 | 34 | 98% |
 
 ## 脚本动作
 
@@ -871,7 +871,7 @@
 | 未做 | `人格/AIPersonalityDefinition.RefineryPlacementIncreaseTickAmount` | 148 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | `人格/AIPersonalityDefinition.RefineryPlacementNumberOfIncreaseTicksBeforeGivingUp` | 148 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | `人格/AIPersonalityDefinition.RefineryPlacementStartDistanceDelta` | 148 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 未做 | `人格/AIPersonalityDefinition.ResourceNodeSearchRadius` | 148 | a4 a5 a7 | AI 模型代码里没有这个名字 |
+| 已对拍 | `人格/AIPersonalityDefinition.ResourceNodeSearchRadius` | 148 | a4 a5 a7 | B185 engine_aiskirm aiskind:ib vs aiskirm:ib（都 PASS）：1AlliedBalanced 子人格只把它从 700 改成 5000，建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s）；tests/test_simai_bench_b.py::test_a_resource_node_search_radius_of_5000_changes_nothing_on_a_plain_skirmish。D125 第 1 节：只给矿点排先后（半径内先试），不排除远处矿点。gap：台上只有基地旁的矿，两个矿点的排序台子（d125 第 1 节）没上 |
 | 已对拍 | `人格/AIPersonalityDefinition.ResourceNodeValueRemainingForExpansion` | 148 | a4 a5 a7 | B181 一局证一批 engine_aiskirm aiskinb:ib vs aiskirm:ib（同一次排队，都 PASS）：七个字段一次改成极端值（ConyardInDanger 三项 1000s / 100% / 5000、HoldObjectBeaconRadius 5000、ResourceNodeValueRemainingForExpansion 1000000、DefaultThreatFindRadius 5000、MaxWallDestroyTimeToCountAsGoThroughWalls 1000s），AI钱 / 建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s 开局相位）；tests/test_simai_bench_b.py::test_seven_inert_personality_fields_change_nothing。为什么不起作用：D125 第 2 节只拷贝不读。gap：台上没有围攻建造厂、没有墙、没有协同信标，只证"27 关的门关着时不起作用" |
 | 已对拍 | `人格/AIPersonalityDefinition.SecondsTillTargetsExpire` | 148 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |
 | 推断 | `人格/AIPersonalityDefinition.UnitBuilderOverallDefensivePreference` | 148 | a4 a5 a7 | AI 模型代码里读了这个名字 |
@@ -891,7 +891,7 @@
 | 已对拍 | `启发条件/IntervalHeuristic.ActiveTime` | 118 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
 | 已对拍 | `组队招人/TeamTemplate.ReleaseType` | 117 | a4 a5 a7 | engine_aiskirm aiskirm:m 实机（11-11 CampAISkirmM_mcp_1111_221811）s125-128防御8/清扫99，s129防御0/清扫8，池兵0、转队时逐帧兵池峰1：DEFENSE队RELEASE_TO_PRIORITY放人给STANDARD清扫队，一个采样内直接转、不经兵池。模拟器按引擎队名读AI队（A第202轮：状态_战术类型_a_b、defaultSkirmishTeam<玩家>、不存在的队条件为假）；tests/test_simai_bench_c.py::test_release_to_priority_named_transfer_skips_the_pool按名回放、断言台上读数（防御稳定、减少数=清扫人数、池兵0、峰1、s129±3）。NEVER_RELEASE见上一行。gap：人数——模型（fca219e）s131防御9→0/清扫99→9，实机8（模型多造1个，造兵归B）；s134池峰2模型没有（strict xfail test_release_to_priority_transfers_defense_without_a_pool_round_trip）；ALWAYS_RELEASE、精确时钟仍gap；见 work/re/handoff.md 第202轮、c_release_report.md |
 | 已对拍 | `战术/Tactic.Tactic=DefenseAvoidanceAttack` | 115 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |
-| 未做 | `人格/AIPersonalityDefinition.CleanupRefineries` | 112 | a4 a5 a7 | AI 模型代码里没有这个名字 |
+| 已对拍 | `人格/AIPersonalityDefinition.CleanupRefineries` | 112 | a4 a5 a7 | B185 一局证一批 engine_aiskirm aiskins:ib vs aiskirm:ib（都 PASS）：七个字段一次改成 27 关敌方人格的值 / 极端值（CleanupRefineries false、CoopPersonality false、Assault / HoldPosition BeaconRadius 5000、EmergencyManagerHandle NoIncome / NoConyard / UnderAttack ""；1AlliedBalanced 继承的是 Coop 那套），建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s）；tests/test_simai_bench_b.py::test_seven_conditional_personality_fields_change_nothing_on_a_plain_skirmish。D126：矿采空后每 45 帧卖矿场。gap：D126 读成"条件满足才起作用"，台上条件都不满足（矿没采空、没有人类盟友和信标、建造厂在、有收入），起作用的那半没上台（d126 第 3 节的对照台子） |
 | 已对拍 | `战术/Tactic.EndIfStateTurnsOff` | 108 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aistate.py |
 | 已对拍 | `开局/OpeningMove.Name` | 107 | a4 a5 a7 | docs/engine/aiopen.md#开局怎么抽、哪些单子会作废（OpeningMove Weight / Difficulty，第 89～90 轮）（每个探针按名字挂自写开局，都照它造） |
 | 已对拍 | `目标/AITargetingHeuristic.ForbiddenKindOf` | 102 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aitargetpick.py |
@@ -904,10 +904,10 @@
 | 已对拍 | `组队招人/TeamTemplate.MinPowerAdvantage` | 86 | a4 a5 a7 | docs/engine/aistate.md#两队抢兵和 MinPowerAdvantage（第 82 轮） |
 | 已对拍 | `微操/AIMicroManagerData.EnterGarrisons` | 84 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aigarrison.py |
 | 已对拍 | `造兵/BuildState.Difficulty` | 84 | a4 a5 a7 | 台上量过（engine_aiskirm s aiskdiff：只挂 HARD 的建造状态在普通难度一个不造，挂 MEDIUM 的照造），测试对拍 tests/test_simai_bench_b.py |
-| 未做 | `人格/AIPersonalityDefinition.AssaultBeaconRadius` | 83 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 未做 | `人格/AIPersonalityDefinition.CoopPersonality` | 83 | a4 a5 a7 | AI 模型代码里没有这个名字 |
+| 已对拍 | `人格/AIPersonalityDefinition.AssaultBeaconRadius` | 83 | a4 a5 a7 | B185 一局证一批 engine_aiskirm aiskins:ib vs aiskirm:ib（都 PASS）：七个字段一次改成 27 关敌方人格的值 / 极端值（CleanupRefineries false、CoopPersonality false、Assault / HoldPosition BeaconRadius 5000、EmergencyManagerHandle NoIncome / NoConyard / UnderAttack ""；1AlliedBalanced 继承的是 Coop 那套），建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s）；tests/test_simai_bench_b.py::test_seven_conditional_personality_fields_change_nothing_on_a_plain_skirmish。D126：协同 AI 扫人类伙伴的进攻信标。gap：D126 读成"条件满足才起作用"，台上条件都不满足（矿没采空、没有人类盟友和信标、建造厂在、有收入），起作用的那半没上台（d126 第 3 节的对照台子） |
+| 已对拍 | `人格/AIPersonalityDefinition.CoopPersonality` | 83 | a4 a5 a7 | B185 一局证一批 engine_aiskirm aiskins:ib vs aiskirm:ib（都 PASS）：七个字段一次改成 27 关敌方人格的值 / 极端值（CleanupRefineries false、CoopPersonality false、Assault / HoldPosition BeaconRadius 5000、EmergencyManagerHandle NoIncome / NoConyard / UnderAttack ""；1AlliedBalanced 继承的是 Coop 那套），建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s）；tests/test_simai_bench_b.py::test_seven_conditional_personality_fields_change_nothing_on_a_plain_skirmish。D126：给人类玩家挑协同 AI，只对友方 AI 有意义。gap：D126 读成"条件满足才起作用"，台上条件都不满足（矿没采空、没有人类盟友和信标、建造厂在、有收入），起作用的那半没上台（d126 第 3 节的对照台子） |
 | 已对拍 | `人格/AIPersonalityDefinition.HoldObjectBeaconRadius` | 83 | a4 a5 a7 | B181 一局证一批 engine_aiskirm aiskinb:ib vs aiskirm:ib（同一次排队，都 PASS）：七个字段一次改成极端值（ConyardInDanger 三项 1000s / 100% / 5000、HoldObjectBeaconRadius 5000、ResourceNodeValueRemainingForExpansion 1000000、DefaultThreatFindRadius 5000、MaxWallDestroyTimeToCountAsGoThroughWalls 1000s），AI钱 / 建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s 开局相位）；tests/test_simai_bench_b.py::test_seven_inert_personality_fields_change_nothing。为什么不起作用：D126 找不到读者，信标半径只认进攻 / 驻守两类。gap：台上没有围攻建造厂、没有墙、没有协同信标，只证"27 关的门关着时不起作用" |
-| 未做 | `人格/AIPersonalityDefinition.HoldPositionBeaconRadius` | 83 | a4 a5 a7 | AI 模型代码里没有这个名字 |
+| 已对拍 | `人格/AIPersonalityDefinition.HoldPositionBeaconRadius` | 83 | a4 a5 a7 | B185 一局证一批 engine_aiskirm aiskins:ib vs aiskirm:ib（都 PASS）：七个字段一次改成 27 关敌方人格的值 / 极端值（CleanupRefineries false、CoopPersonality false、Assault / HoldPosition BeaconRadius 5000、EmergencyManagerHandle NoIncome / NoConyard / UnderAttack ""；1AlliedBalanced 继承的是 Coop 那套），建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s）；tests/test_simai_bench_b.py::test_seven_conditional_personality_fields_change_nothing_on_a_plain_skirmish。D126：协同 AI 扫人类伙伴的驻守信标。gap：D126 读成"条件满足才起作用"，台上条件都不满足（矿没采空、没有人类盟友和信标、建造厂在、有收入），起作用的那半没上台（d126 第 3 节的对照台子） |
 | 不涉及 | `人格/AIPersonalityDefinition.PersonalityUIName` | 83 |  | 纯表现（语音、视频、画面） |
 | 已对拍 | `微操/AIMicroManagerData.UseSpecialPowers` | 83 | a4 a5 a7 | 台上量过（engine_aimicro：aimicspon 开 两个武士 s41 冲锋，aimicspoff 关 一直没冲、s51 前被打死，脚本按的对照照样冲）、测试对拍 tests/test_simai.py（模拟器读进探针自写的微操数据：开的想冲、关的从不冲；技能本身模拟器没接，只记"想用"） |
 | 不涉及 | `表现/InTroubleSkirmishFeedbackControl.MinPowerAdvantageEnemiesInMyBaseVsAllMyUnits` | 83 | a4 a5 a7 | 纯表现（语音、视频、画面） |
@@ -918,9 +918,9 @@
 | 不涉及 | `表现/InTroubleSkirmishFeedbackControl.TimeForNumberOfObjectLost` | 83 | a4 a5 a7 | 纯表现（语音、视频、画面） |
 | 不涉及 | `表现/InTroubleSkirmishFeedbackControl.TimeThatConditionsMustBeMet` | 83 | a4 a5 a7 | 纯表现（语音、视频、画面） |
 | 不涉及 | `表现/InTroubleSkirmishFeedbackControl.TimeoutAfterPlaying` | 83 | a4 a5 a7 | 纯表现（语音、视频、画面） |
-| 未做 | `人格/AIPersonalityDefinition.EmergencyManagerHandleNoConyardAtDifficulty` | 82 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 未做 | `人格/AIPersonalityDefinition.EmergencyManagerHandleNoIncomeAtDifficulty` | 82 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 未做 | `人格/AIPersonalityDefinition.EmergencyManagerHandleUnderAttackAtDifficulty` | 82 | a4 a5 a7 | AI 模型代码里没有这个名字 |
+| 已对拍 | `人格/AIPersonalityDefinition.EmergencyManagerHandleNoConyardAtDifficulty` | 82 | a4 a5 a7 | B185 一局证一批 engine_aiskirm aiskins:ib vs aiskirm:ib（都 PASS）：七个字段一次改成 27 关敌方人格的值 / 极端值（CleanupRefineries false、CoopPersonality false、Assault / HoldPosition BeaconRadius 5000、EmergencyManagerHandle NoIncome / NoConyard / UnderAttack ""；1AlliedBalanced 继承的是 Coop 那套），建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s）；tests/test_simai_bench_b.py::test_seven_conditional_personality_fields_change_nothing_on_a_plain_skirmish。D126：没建造厂也没 MCV 才补 MCV。gap：D126 读成"条件满足才起作用"，台上条件都不满足（矿没采空、没有人类盟友和信标、建造厂在、有收入），起作用的那半没上台（d126 第 3 节的对照台子） |
+| 已对拍 | `人格/AIPersonalityDefinition.EmergencyManagerHandleNoIncomeAtDifficulty` | 82 | a4 a5 a7 | B185 一局证一批 engine_aiskirm aiskins:ib vs aiskirm:ib（都 PASS）：七个字段一次改成 27 关敌方人格的值 / 极端值（CleanupRefineries false、CoopPersonality false、Assault / HoldPosition BeaconRadius 5000、EmergencyManagerHandle NoIncome / NoConyard / UnderAttack ""；1AlliedBalanced 继承的是 Coop 那套），建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s）；tests/test_simai_bench_b.py::test_seven_conditional_personality_fields_change_nothing_on_a_plain_skirmish。D126：无矿经济且钱 < 5000 才置位。gap：D126 读成"条件满足才起作用"，台上条件都不满足（矿没采空、没有人类盟友和信标、建造厂在、有收入），起作用的那半没上台（d126 第 3 节的对照台子） |
+| 已对拍 | `人格/AIPersonalityDefinition.EmergencyManagerHandleUnderAttackAtDifficulty` | 82 | a4 a5 a7 | B185 一局证一批 engine_aiskirm aiskins:ib vs aiskirm:ib（都 PASS）：七个字段一次改成 27 关敌方人格的值 / 极端值（CleanupRefineries false、CoopPersonality false、Assault / HoldPosition BeaconRadius 5000、EmergencyManagerHandle NoIncome / NoConyard / UnderAttack ""；1AlliedBalanced 继承的是 Coop 那套），建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s）；tests/test_simai_bench_b.py::test_seven_conditional_personality_fields_change_nothing_on_a_plain_skirmish。D126 没读（总表无此行），台上 AI 基地没挨打。gap：D126 读成"条件满足才起作用"，台上条件都不满足（矿没采空、没有人类盟友和信标、建造厂在、有收入），起作用的那半没上台（d126 第 3 节的对照台子） |
 | 已对拍 | `启发条件/ObjectOfTypeExistsHeuristic` | 82 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
 | 推断 | `微操/AIMicroManagerData.EngageHostileTargets` | 82 | a4 a5 a7 | E114新DLL aiegon:a / aiegoff:a各3/3 PASS：首冲371/259，首活均2；首批3170/3171均f345入队，f353均有单兵dest且aim为0。关无玩家级移动命令，但f431成员3171已有有效目标，不能解释成没有自主行军/目标；开f353模型过早推得目标，关f443模型首批仍无目标；同宿主帧按名回放 tests/test_ai_engage_clock.py strict xfail。单兵目标来源/保持契约仍gap，见 work/re/e114_engage_aim.md；保持推断，不晋升 |
 | 已对拍 | `微操/AIMicroManagerData.EngagePassiveTargets` | 82 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_airetreat.py |

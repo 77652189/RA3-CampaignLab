@@ -1206,6 +1206,11 @@ def ib(m):
 CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j': j, 'k': k, 'l': l, 'm': m,
                       'n': n, 'o': o, 'p': p, 'q': q, 'r': r, 'u': u, 'x': x, 'et': et, 'ib': ib},
           'aiskinb': {'ib': ib},
+          'aiskinc': {'ib': ib},
+          'aiskind': {'ib': ib},
+          'aiskine': {'ib': ib},
+          'aiskinp': {'ib': ib},
+          'aiskins': {'ib': ib},
           'aiskmtp': {'mt': mt},
           'aiskirmc': {'l': l, 'm': m, 'u': u},  # opt-in carrier diagnostic; stock aiskirm stays unchanged
           'aiskxn': {'l': l}, 'aiskxo': {'l': l},  # D 105: which half of the carrier moves the scout team

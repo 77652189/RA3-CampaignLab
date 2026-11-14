@@ -432,9 +432,26 @@ INERT = (('ConyardInDangerEmergencyUnderAttackTime', '1000s'),     # 5s
          ('MaxWallDestroyTimeToCountAsGoThroughWalls', '1000s'))   # 10s
 
 
-def inert_xml():
-    """1AlliedBalanced with every INERT field at its extreme: if none acts, the run reads as stock aiskirm's."""
-    attrs = ' '.join(f'{k}="{v}"' for k, v in INERT)
+INERT2_PID = 'CNVInert2'              # aiskinc (check ib): the second batch, d126 section 3 (round 185)
+# eleven fields D read as acting only under a condition aiskirm never meets (no beacon, a live yard, income, ore that
+# lasts, the first refinery spot free, no human ally). 1AlliedBalanced's own (CoopBasePersonality / BasePersonality)
+# in the comment; the enemy personalities of the 27 levels write Coop false and the three emergencies empty.
+INERT2 = (('RefineryPlacementStartDistanceDelta', '1000.0'),        # -30.0
+          ('RefineryPlacementIncreaseTickAmount', '1000.0'),        # 30.0
+          ('RefineryPlacementNumberOfIncreaseTicksBeforeGivingUp', '0'),  # 15
+          ('ResourceNodeSearchRadius', '5000.0'),                   # 700
+          ('CleanupRefineries', 'false'),                           # true
+          ('CoopPersonality', 'false'),                             # true
+          ('AssaultBeaconRadius', '5000.0'),                        # 250.0
+          ('HoldPositionBeaconRadius', '5000.0'),                   # 250.0
+          ('EmergencyManagerHandleNoIncomeAtDifficulty', ''),       # EASY MEDIUM HARD BRUTAL
+          ('EmergencyManagerHandleNoConyardAtDifficulty', ''),      # EASY MEDIUM HARD BRUTAL
+          ('EmergencyManagerHandleUnderAttackAtDifficulty', ''))    # EASY MEDIUM HARD BRUTAL
+
+
+def inert_xml(fields=INERT, pid=INERT_PID):
+    """1AlliedBalanced with every field of a batch at its extreme: if none acts, the run reads as stock aiskirm's."""
+    attrs = ' '.join(f'{k}="{v}"' for k, v in fields)
     return '\n'.join([
         '<?xml version="1.0" encoding="utf-8"?>',
         '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
@@ -442,7 +459,7 @@ def inert_xml():
         '  <Includes>',
         '    <Include type="instance" source="DATA:SkirmishAI/Personalities/AlliedBalanced.xml" />',
         '  </Includes>',
-        f'  <AIPersonalityDefinition id="{INERT_PID}" PersonalityType="{INERT_PID}" inheritFrom="1AlliedBalanced"'
+        f'  <AIPersonalityDefinition id="{pid}" PersonalityType="{pid}" inheritFrom="1AlliedBalanced"'
         f' {attrs}/>',
         '</AssetDeclaration>', ''])
 
@@ -476,7 +493,7 @@ ARMY_N = 10                            # aiskvinf / aiskvveh (check z): what the
 def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None, account=None,
             buffer=None, new=None, army=None, two=None, observe=False, cap=None, block=None, off=False,
             ptype=None, mintime=None, aidata=None, dear=None, dear_cost=DEAR_COST, power_more=None, mt_secs=300.0,
-            carrier=None, unitcap=None, inert=False, power_adv=None, side=None):
+            carrier=None, unitcap=None, inert=False, power_adv=None, side=None, inert2=False):
     m = Mission(name=name, map=ai_map(resources.measured(niagara), lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
     if side == 'none':                   # aisksd4 (check sd, d123 S4): s1 with no aiPersonality at all
@@ -526,6 +543,11 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
     if inert:                            # aiskinb (check ib): the seven INERT fields at extremes
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{INERT_PID}'
         m.assets.append((f'{INERT_PID}.xml', inert_xml(), f'AIPersonalityDefinition:{INERT_PID}'))
+    if inert2:                           # aiskinc / aiskind / aiskine (check ib): INERT2 fields at extremes
+        fields = {True: INERT2, 'radius': INERT2[3:4], 'rest': INERT2[:3] + INERT2[4:],
+                  'place': INERT2[:3], 'seven': INERT2[4:]}[inert2]
+        m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{INERT2_PID}'
+        m.assets.append((f'{INERT2_PID}.xml', inert_xml(fields, INERT2_PID), f'AIPersonalityDefinition:{INERT2_PID}'))
     if buffer is not None:               # aiskpw0 / aiskpw3 (check x): DesiredExcessPowerBuffer = buffer
         m.facts['power buffer'] = buffer
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{POWER_PID}'
@@ -640,6 +662,11 @@ MISSION = {'aiskirm': mission, 'aiskirmc': lambda: mission(observe=True),
            # D 124 U2 (check ucn): aisknew2 + UnitCap 3 MEDIUM -- does the cap hold the build state's unit too?
            'aiskucn': lambda: mission('CampAISkUCN', new=True, unitcap=((3, 'MEDIUM'),)),
            'aiskinb': lambda: mission('CampAISkInB', inert=True),   # check ib: seven inert fields vs aiskirm ib
+           'aiskinc': lambda: mission('CampAISkInC', inert2=True),  # check ib: eleven more (round 185) vs aiskirm ib
+           'aiskind': lambda: mission('CampAISkInD', inert2='radius'),  # check ib: ResourceNodeSearchRadius 5000 only
+           'aiskine': lambda: mission('CampAISkInE', inert2='rest'),    # check ib: the other ten of INERT2
+           'aiskinp': lambda: mission('CampAISkInP', inert2='place'),   # check ib: the three RefineryPlacement only
+           'aiskins': lambda: mission('CampAISkInS', inert2='seven'),   # check ib: Cleanup, Coop, beacons, emergencies
            'aiskmod': lambda: mission('CampAISkMod', umod=UMOD_ZERO),     # check q: SecondsTillTargetsExpire 12, not 5   # s1 without the container's Lib_Skirmish_Setup
            'aiskacp': lambda: mission('CampAISkAcP', account='PRODUCTION'),    # check v: the rebuilt AI, retail Account
            'aiskacd': lambda: mission('CampAISkAcD', account='DEFENSE'),

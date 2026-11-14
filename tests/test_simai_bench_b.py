@@ -785,3 +785,36 @@ def test_seven_inert_personality_fields_change_nothing(lib):
     _, base = _probe_run('aiskirm', lib, 160.0, check='ib')
     _, inert = _probe_run('aiskinb', lib, 160.0, check='ib')
     assert inert == base
+
+
+def test_a_resource_node_search_radius_of_5000_changes_nothing_on_a_plain_skirmish(lib):
+    """aiskind = 1AlliedBalanced with ResourceNodeSearchRadius 5000 (700 inherited; D125 section 1: it only orders
+    the ore nodes, near ones first). Bench 11-14 (work/bench_results/aiskind__ib.json vs aiskirm__ib.json, both PASS):
+    建筑码 100 s19, 101 s29, 111 s49, 121 s69, 122 s79, 1122 s99, 1123 s138, 1124 s148 and the player's buildings die
+    s204 / 220 / 222 in both, 兵数 the same steps (+-1 s). The simulator does not read it: the two runs read alike."""
+    _, base = _probe_run('aiskirm', lib, 160.0, check='ib')
+    _, radius = _probe_run('aiskind', lib, 160.0, check='ib')
+    assert radius == base
+
+
+def test_seven_conditional_personality_fields_change_nothing_on_a_plain_skirmish(lib):
+    """aiskins = 1AlliedBalanced with CleanupRefineries false, CoopPersonality false, Assault / HoldPosition
+    BeaconRadius 5000 and the NoIncome / NoConyard / UnderAttack emergencies "" (the 27 levels' enemy personalities'
+    own values; 1AlliedBalanced inherits the Coop ones). Bench 11-14 (work/bench_results/aiskins__ib.json vs
+    aiskirm__ib.json, both PASS): 建筑码 to 1124 s148, the player's buildings die s204 / 220 / 222, 兵数 the same
+    steps (+-1 s). D126 section 3 reads each as acting only when aiskirm's conditions fail (ore runs out, a human ally
+    sends a beacon, the yard dies, income stops, the base is hit). The simulator reads none: the runs read alike."""
+    _, base = _probe_run('aiskirm', lib, 160.0, check='ib')
+    _, seven = _probe_run('aiskins', lib, 160.0, check='ib')
+    assert seven == base
+
+
+@pytest.mark.xfail(strict=True, reason='B185 bench: aiskinp (RefineryPlacement StartDistanceDelta 1000 / '
+                   'IncreaseTickAmount 1000 / NumberOfIncreaseTicksBeforeGivingUp 0) builds a third refinery at s148, '
+                   "4 / 5 by s188 / s223 and razes the player's buildings at s173-196 (stock -30 / 30 / 15: 2 "
+                   'refineries, s204-222); the simulator has no refinery placement search')
+def test_refinery_placement_far_rings_add_refineries(lib):
+    """aiskinp (and aiskine, the same plus seven inert fields) 建筑码 1132 s148 / 1133 s158 / 1134 s168 / 1144 s188 /
+    1154 s223 / 1155 s248 vs aiskirm 1123 s138 / 1124 s148 (work/logs/b185_bench3.log)."""
+    _, rows = _probe_run('aiskinp', lib, 160.0, check='ib')
+    assert rows[150]['建筑码'] // 10 % 10 == 3

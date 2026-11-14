@@ -199,6 +199,27 @@ NOTES = {
            ('ResourceNodeValueRemainingForExpansion', 'D125 第 2 节只拷贝不读'),
            ('DefaultThreatFindRadius', 'D127 只写进目标槽、零读者'),
            ('MaxWallDestroyTimeToCountAsGoThroughWalls', 'D127 读它的循环遍历的列表从不被填'))},
+    '人格/AIPersonalityDefinition.ResourceNodeSearchRadius': (BENCHED,
+        'B185 engine_aiskirm aiskind:ib vs aiskirm:ib（都 PASS）：1AlliedBalanced 子人格只把它从 700 改成 5000，'
+        '建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s）；tests/test_simai_bench_b.py::'
+        'test_a_resource_node_search_radius_of_5000_changes_nothing_on_a_plain_skirmish。D125 第 1 节：只给矿点排先后'
+        '（半径内先试），不排除远处矿点。gap：台上只有基地旁的矿，两个矿点的排序台子（d125 第 1 节）没上'),
+    **{f'人格/AIPersonalityDefinition.{k}': (BENCHED,
+        'B185 一局证一批 engine_aiskirm aiskins:ib vs aiskirm:ib（都 PASS）：七个字段一次改成 27 关敌方人格的值 / 极端值'
+        '（CleanupRefineries false、CoopPersonality false、Assault / HoldPosition BeaconRadius 5000、'
+        'EmergencyManagerHandle NoIncome / NoConyard / UnderAttack ""；1AlliedBalanced 继承的是 Coop 那套），'
+        '建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s）；tests/test_simai_bench_b.py::'
+        f'test_seven_conditional_personality_fields_change_nothing_on_a_plain_skirmish。{why}。'
+        'gap：D126 读成"条件满足才起作用"，台上条件都不满足（矿没采空、没有人类盟友和信标、建造厂在、有收入），'
+        '起作用的那半没上台（d126 第 3 节的对照台子）')
+       for k, why in (
+           ('CleanupRefineries', 'D126：矿采空后每 45 帧卖矿场'),
+           ('CoopPersonality', 'D126：给人类玩家挑协同 AI，只对友方 AI 有意义'),
+           ('AssaultBeaconRadius', 'D126：协同 AI 扫人类伙伴的进攻信标'),
+           ('HoldPositionBeaconRadius', 'D126：协同 AI 扫人类伙伴的驻守信标'),
+           ('EmergencyManagerHandleNoIncomeAtDifficulty', 'D126：无矿经济且钱 < 5000 才置位'),
+           ('EmergencyManagerHandleNoConyardAtDifficulty', 'D126：没建造厂也没 MCV 才补 MCV'),
+           ('EmergencyManagerHandleUnderAttackAtDifficulty', 'D126 没读（总表无此行），台上 AI 基地没挨打'))},
     '人格/AIPersonalityDefinition.UsePlayerPowersAtDifficulty': (BENCHED,
         'B181 engine_aispecial aispecoff / aispechb:t（1AlliedBalanced 子人格只改这个字段，台上 MEDIUM）：'
         '"" 和 "HARD BRUTAL" 两局技能第 2 帧就绪、到第 950 帧放帧 0；对照 aispecial t（XSD 缺省四档全开）第 61 帧放。'
