@@ -65,6 +65,7 @@ import parts  # noqa: E402
 import simgarrison  # noqa: E402
 import siminfiltrator  # noqa: E402
 import simsweep  # noqa: E402
+import simtech  # noqa: E402
 import simunits  # noqa: E402
 import simlevel  # noqa: E402
 from ctx import FUNC_LATE, PANEL_CLEAR  # noqa: E402
@@ -367,7 +368,7 @@ ACTED_STATUS = frozenset({'SOLD', 'GENERIC_TOGGLE_STATE', 'IMMOBILE', 'NO_ATTACK
                           'NO_COLLISIONS'})   # NO_COLLISIONS: the scythe's MetaImpact filter passes it by (line C)
 # bits only a woken skirmish AI's own target choice reads (d115 10: its micro-manager), no gap here: the unit's own
 # take, a script's order, the player's are untouched (bench 11-13 engine_acts flow 旗&2: an idle enemy fires on it)
-AI_ONLY_STATUS = frozenset({'SKIRMISH_AI_DO_NOT_ATTACK'})
+AI_ONLY_STATUS = frozenset({'SKIRMISH_AI_DO_NOT_ATTACK', 'SKIRMISH_AI_DO_NOT_TAKE'})   # DO_NOT_TAKE: an engineer still takes it (bench 11-13 engine_acts_u)
 # a script's power or button by itself, as simcoverage.refined names it
 BUTTON_ACTIONS = ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY',
                   'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED')
@@ -1051,6 +1052,7 @@ class Sim:
         self.markers = {}                   # objective -> {object / waypoint}
         self.done, self.disabled = set(), set()
         self.banned = set()                 # (player, template in lower case): ALLOW_DISALLOW_ONE_BUILDING 0
+        self.buildable = {}                 # template lower -> BuildableStatus 0-3: TECHTREE_MODIFY_BUILDABILITY_OBJECT (all players)
         self.banned_ups = set()             # (player, upgrade in lower case): ALLOW_DISALLOW_ONE_UPGRADE 0
         self.border = 0
         self.reveal_all = False             # the player's MAP_REVEAL_ALL_PERM
@@ -1135,6 +1137,7 @@ class Sim:
         self.blasts = []                    # (frame, x, y, [(distance, damage)], owner, by): a superweapon's hits
         self.wfires = []                    # a WeaponFireSpecialAbilityUpdate press waiting to go off (wfire_due)
         self.casts = []                     # (frame, owner, power, caster, (x, y) or None): PLAYER_TRIGGERED_SPECIAL_POWER
+        self.power_at = {}                  # (player, spellbook power lower) -> the frame it is ready from (spellbook_ready)
         self.queues = {}                    # factory name -> [job]: production (order_build, produce_due)
         self.produced_to = None             # the last frame produce_due ran
         self.energies = {}                  # template -> EnergyProduction (simunits.energy; power)
@@ -1465,6 +1468,25 @@ class Sim:
         names = list(self.books) if player == '<All Players>' else \
             [self.human] if player in ('<All Human Players>', '<1st Human Player>') else [player]
         return [self.books[n] for n in names if n in self.books]
+
+    def book_players(self, player):
+        """The players (with a protocol book) a script's player argument names, as books_of."""
+        names = list(self.books) if player == '<All Players>' else \
+            [self.human] if player in ('<All Human Players>', '<1st Human Player>') else [player]
+        return [n for n in names if n in self.books]
+
+    def spellbook_ready(self, player, power):
+        """SKIRMISH_SPECIAL_POWER_READY for a PlayerSpellBook power (its RequiredPlayerTech, simtech.power_needs): held,
+        its countdown run out, its GameDependency's RequiredObject standing. Bench 11-13 engine_acts_u: ready the
+        frame PLAYER_GRANT_SPECIAL_POWER gives it; false once the player's SovietConstructionYard was deleted (the
+        protocol kept); a countdown of 5 s false for 5 s. A protocol bought or held from the start: ready (INFERRED)."""
+        tech, objs = simtech.power_needs(power)
+        for p in self.book_players(player):
+            have = {b.template.lower() for b in self.living() if b.owner == p}
+            if self.books[p].has(tech) and self.frame_now() >= self.power_at.get((p, power.lower()), 0) and \
+                    all(o in have for o in objs):
+                return True
+        return False
 
     def tech_due(self, frame):
         """Rank experience frame by frame up to `frame` (simtech.Book.frame); the player's rank goes on the timeline
@@ -1907,6 +1929,11 @@ class Sim:
         NeededUpgrade held there (holds_upgrade; all of them is an inference)."""
         if ban and (owner, template.lower()) in self.banned:
             return False
+        status = self.buildable.get(template.lower(), 0)
+        if status == 1:                     # IGNORE_PREREQUISITES (bench 11-13 engine_acts_u: the press built a spy
+            return True                     # without Upgrade_AlliedTech2, the press before it refused)
+        if ban and status in (2, 3):        # NO / ONLY_BY_AI: a script's press builds all the same (bench, same run);
+            return False                    # the player's button refused (INFERRED, not benched)
         objs, ups = simunits.needs(template, self.own)
         have = {b.template.lower() for b in self.living() if b.owner == owner}
         if not all(o.lower() in have for o in objs):
@@ -2811,6 +2838,9 @@ class Sim:
             self.used.add('protocols')
             self.tech_read = True
             return any(b.has(str(a[1])) for b in self.books_of(a[0]))
+        if name == 'SKIRMISH_SPECIAL_POWER_READY' and (simtech.power_needs(str(a[1])) or (None,))[0]:
+            self.used.add('protocols')
+            return self.spellbook_ready(a[0], str(a[1]))
         if name == 'TIMER_EXPIRED':
             if a[0] not in self.timers:
                 self.used.add('timer unset')
@@ -3309,6 +3339,15 @@ class Sim:
             self.order_stop(self.body(a[0]))
         elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED' and a[1] == 'Command_CaptureBuilding':
             self.order_capture(self.body(a[0]), a[2])
+        elif name == 'UNIT_CONTEXT_SENSITIVE_ATTACK':
+            # (unit, target). Bench 11-13 engine_acts_u: an engineer on an enemy plant takes it (SKIRMISH_AI_DO_NOT_TAKE
+            # on it or not, the uncommanded one beside another plant does not); a tank on an enemy plant 210 off never
+            # fired in 30 s, on its own plant neither -- so not "attack". What else it does (repair, enter) INFERRED: nothing
+            b, g = self.body(a[0]), self.body(a[1])
+            if b and g and b.alive and g.alive and self.engineer_entry(b, g):
+                self.order_capture(b, a[1])
+            elif b and g:
+                self.note('无效命令', f'{name} {a[0]} -> {a[1]}：只认工兵占楼（台上坦克对敌楼不开火）')
         elif name == 'SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER':
             self.nearest_ref(*a[:4])
         elif name == 'SET_REF_TO_NEREST_TEAM_OF_TYPE_OWNED_BY_PLAYER':     # INFERRED: the same, named ones too
@@ -3427,6 +3466,25 @@ class Sim:
                 self.act('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', [src.name, power, a[2]], script)
             else:
                 self.gap(GAP_ACTION, refined(name, a), f'{a[0]} 没有带 {a[1]} 的物体（协议类不模拟）')
+        elif name in ('PLAYER_GRANT_SPECIAL_POWER', 'PLAYER_SET_SPECIAL_POWER_COUNTDOWN') and \
+                (simtech.power_needs(str(a[0] if name == 'PLAYER_GRANT_SPECIAL_POWER' else a[1])) or (None,))[0]:
+            # GRANT (power, player): the power's RequiredPlayerTech given, ready at once; COUNTDOWN (player, power, s):
+            # ready s whole seconds on (d115 24: now + s x 15), only where held (not granted: nothing). Bench 11-13
+            # engine_acts_u (spellbook_ready); a building's power (no RequiredPlayerTech) falls to the gap below
+            power, who = (a[0], a[1]) if name == 'PLAYER_GRANT_SPECIAL_POWER' else (a[1], a[0])
+            tech = simtech.power_needs(str(power))[0]
+            for p in self.book_players(who):
+                if name == 'PLAYER_GRANT_SPECIAL_POWER':
+                    self.books[p].owned.add(tech)
+                    self.power_at[(p, str(power).lower())] = self.frame_now()
+                elif self.books[p].has(tech):
+                    self.power_at[(p, str(power).lower())] = self.frame_now() + int(a[2]) * simunits.LIFE_FPS
+            self.used.add('protocols')
+        elif name == 'TECHTREE_MODIFY_BUILDABILITY_OBJECT':
+            # (template, BuildableStatus 0 YES 1 IGNORE_PREREQUISITES 2 NO 3 ONLY_BY_AI): one table for every player
+            # (d115 25); read by can_build
+            self.buildable[str(a[0]).lower()] = int(a[1])
+            self.change()
         elif name == 'PLAYER_SPECIAL_POWER_AVAILABILITY':
             # (player, power, Available / Disabled / Hidden) INFERRED: the player's click refused unless Available
             # (power_refusal); a script's cast goes all the same. engine_scripts8 pdis asks the bench

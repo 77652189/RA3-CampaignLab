@@ -138,6 +138,37 @@ def power_choices(personality, faction=None):
     return [line for k in reversed(chain) for line in table[k][1]]
 
 
+@functools.lru_cache(maxsize=None)
+def power_needs(power):
+    """(its RequiredPlayerTech lower or None, [its GameDependency RequiredObject lower]) of a SpecialPowerTemplate
+    (GlobalData/SpecialPowerTemplates.xml; inheritFrom followed); None for a name that is no template."""
+    blocks = _power_blocks()
+    tech, objs, key, seen = None, [], power.lower(), set()
+    if key not in blocks:
+        return None
+    while key in blocks and key not in seen:
+        seen.add(key)
+        b = blocks[key]
+        head = b.split('>', 1)[0]
+        t = re.search(r'RequiredPlayerTech="([^"]+)"', head)
+        tech = tech or (t.group(1).lower() if t else None)
+        objs = objs or [o.lower() for o in _texts(b, 'RequiredObject')]
+        parent = re.search(r'inheritFrom="([^"]+)"', head)
+        key = parent.group(1).lower() if parent else ''
+    return tech, objs
+
+
+@functools.lru_cache(maxsize=None)
+def _power_blocks():
+    text = _xml('GlobalData', 'SpecialPowerTemplates.xml')
+    out = {}                                # split at each opening tag: some templates close themselves (/>)
+    for part in text.split('<SpecialPowerTemplate')[1:]:
+        m = re.match(r'\s+id="([^"]+)"', part)
+        if m:
+            out[m.group(1).lower()] = part
+    return out
+
+
 def faction_of(name, props=None):
     """A player's faction: its SidesList playerFaction where the map gives it (retail), else by its name (ours:
     Player_1 the Allies, Soviet_N, Japan_N / Empire_N); None for a civilian or neutral one (no book)."""

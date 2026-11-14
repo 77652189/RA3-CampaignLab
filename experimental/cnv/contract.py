@@ -48,6 +48,27 @@ THIS_NAMES = frozenset({'<This Object>', '<This Team>', '<This Player>'})
 # retail buildings' own special powers a script may fire / read (they publish no unit ability here)
 RETAIL_POWERS = {'SpecialPowerIronCurtain', 'SpecialPowerParticleCannon', 'SpecialPowerVacuumBomb',
                  'SpecialPowerNanoSwarmHive', 'SpecialPowerTelekineticProjectorDevice'}            # the Soviet superweapon building's (SovietSuperWeapon, OCLSpecialPower)
+
+
+def spellbook_powers():
+    """The special powers on the PlayerSpellBook (SDK System/PlayerSpellBook.xml): the engine gives every player one,
+    so a script may grant / set / read them (PLAYER_GRANT_SPECIAL_POWER, PLAYER_SET_SPECIAL_POWER_COUNTDOWN,
+    SKIRMISH_SPECIAL_POWER_READY) with no unit of the mission publishing them. No SDK here: none."""
+    global _SPELLBOOK
+    if _SPELLBOOK is None:
+        import os
+        import simunits
+        try:
+            with open(os.path.join(simunits.SAGEXML, 'System', 'PlayerSpellBook.xml'), encoding='utf-8',
+                      errors='replace') as f:
+                found = set(re.findall(r'SpecialPowerTemplate="([^"]+)"', f.read()))
+        except OSError:
+            found = set()
+        _SPELLBOOK = frozenset(found)
+    return _SPELLBOOK
+
+
+_SPELLBOOK = None
 OBJECTIVE_ARG = 91                      # a mission objective's name (SET_MISSION_OBJECTIVE_STATUS ...)
 MUSIC_EVENT_ARG = 96                    # a Pathfinder event's name (PATH_MUSIC_PLAY_EVENT): held to Mission.music
 SOUND_ARG = 12                          # a sound event (PLAY_SOUND_EFFECT, HAS_FINISHED_AUDIO): ours (CNV_*) held to
@@ -648,7 +669,7 @@ def contract(mission):
             powers.setdefault(p, []).append(u)
     known = {AREA_ARG: ('area', m.areas), TEAM_ARG: ('team', set(getattr(m.map, 'TEAMS', {}).values()) | set(m.teams.values())),
              WAYPOINT_ARG: ('waypoint', m.waypoints), PLAYER_ARG: ('player', set(getattr(m.map, 'PLAYERS', {}).values()) | {ALL_PLAYERS}),
-             OBJECT_ARG: ('object', set(named) | created), STRING_ARG: ('string', m.strings), POWER_ARG: ('power', set(powers) | RETAIL_POWERS),
+             OBJECT_ARG: ('object', set(named) | created), STRING_ARG: ('string', m.strings), POWER_ARG: ('power', set(powers) | RETAIL_POWERS | spellbook_powers()),
              COMMAND_ARG: ('command button', set(powers) | RETAIL_COMMANDS), OBJECTIVE_ARG: ('objective', {g.name for g in m.objectives}),
              TEMPLATE_ARG: ('template', {r.template for r in m.cast.values()} | {u.id for u in m.units} | m.spawns
                             | {args[1] for s in m.scripts for name, *args in s.do               # an object list

@@ -4,8 +4,8 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **95%** | **100%** | 50 / 50 | 451 | 145 | 21 | 170 | 115 | 96% |
-| 脚本条件 | **98%** | **100%** | 12 / 12 | 89 | 54 | 4 | 28 | 3 | 99% |
+| 脚本动作 | **95%** | **100%** | 50 / 50 | 451 | 150 | 21 | 165 | 115 | 96% |
+| 脚本条件 | **98%** | **100%** | 12 / 12 | 89 | 55 | 4 | 27 | 3 | 99% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
 | AI | **90%** | **90%** | 156 / 357 | 428 | 170 | 116 | 108 | 34 | 96% |
@@ -161,13 +161,13 @@
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_SovietAntiGroundAircraftEvacuate` | 43 |  | 只记进时间线，没有效果 |
 | 已对拍 | `PLAYER_SET_OVERRIDE_RELATION_TO_TEAM` | 43 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts9.py |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleSpiderHole` | 41 |  | 只记进时间线，没有效果 |
-| 未做 | `PLAYER_SET_SPECIAL_POWER_COUNTDOWN` | 41 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `PLAYER_SET_SPECIAL_POWER_COUNTDOWN` | 41 |  | tests/test_simbench.py::test_acts_u_as_the_bench |
 | 不涉及 | `FOR_EACH_PLAYER_OBJECT_EXECUTE_SCRIPT` | 39 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JAIV_Transform` | 38 |  | 只记进时间线，没有效果 |
-| 未做 | `TECHTREE_MODIFY_BUILDABILITY_OBJECT` | 38 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `TECHTREE_MODIFY_BUILDABILITY_OBJECT` | 38 |  | tests/test_simbench.py::test_acts_u_as_the_bench |
 | 不涉及 | `EVALUATE_SCRIPT` | 35 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 未做 | `SKIRMISH_AI_TRANSFER_ALL` | 35 |  | Sim.act / Sim.cond 不认识 |
-| 未做 | `UNIT_CONTEXT_SENSITIVE_ATTACK` | 35 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `UNIT_CONTEXT_SENSITIVE_ATTACK` | 35 |  | tests/test_simbench.py::test_acts_u_as_the_bench |
 | 不涉及 | `FOR_EACH_TEAM_MEMBER_EXECUTE_SCRIPT` | 34 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `LINK_MISSION_HOT_SPOT_TO_WAYPOINT` | 34 |  | 纯表现（名字规则）；Sim.act / Sim.cond 有分支 |
 | 已对拍 | `NAMED_DAMAGE` | 34 |  | tests/test_simbench.py::test_sell_a_killed_building_stays_paid_and_a_building_unpacking_is_not_sold |
@@ -185,7 +185,7 @@
 | 推断 | `CREATE_REINFORCEMENT_TEAM_AT_UNIT_POSITION` | 31 |  | Sim.act / Sim.cond 有分支 |
 | 未做 | `SKIRMISH_AI_SET_FAVORED_ENEMY` | 31 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `NAMED_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT` | 30 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_waypath.py |
-| 未做 | `UNIT_CHANGE_OBJECT_STATUS:SKIRMISH_AI_DO_NOT_TAKE` | 30 |  | 状态位 SKIRMISH_AI_DO_NOT_TAKE 只记下来 |
+| 已对拍 | `UNIT_CHANGE_OBJECT_STATUS:SKIRMISH_AI_DO_NOT_TAKE` | 30 |  | tests/test_simbench.py::test_acts_u_as_the_bench |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleAlliedArtilleryVehicle` | 29 |  | 只记进时间线，没有效果 |
 | 未做 | `PLAYER_ALLOWED_TOBE_COOPAI` | 29 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER` | 29 | a1 a2 a3 a4 a6 a7 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiopen.py |
@@ -216,7 +216,7 @@
 | 不涉及 | `SETUP_CAMERA` | 24 |  | 纯表现（名字规则） |
 | 不涉及 | `SET_COOP_AI_COMMAND_UI_ENABLED` | 24 | a4 | 纯界面：开关玩家给盟友 AI 下令的按钮；模拟器的玩家没有给盟友下令的命令，开关无从起作用（以后加了这个命令再算） |
 | 不涉及 | `LINK_MISSION_OBJECTIVE_TO_WAYPOINT_WITH_CATEGORY` | 23 |  | 纯表现（名字规则） |
-| 未做 | `PLAYER_GRANT_SPECIAL_POWER` | 23 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `PLAYER_GRANT_SPECIAL_POWER` | 23 |  | tests/test_simbench.py::test_acts_u_as_the_bench |
 | 未做 | `PLAYER_TRANSFER_OWNERSHIP_PLAYER` | 23 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_MOVE_TO_NEAREST_OBJECT_OF_TYPE` | 23 |  | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `HIDE_TUTORIAL_TEXT` | 22 |  | 纯表现（名字规则） |
@@ -517,7 +517,7 @@
 | 已对拍 | `TEAM_CREATED` | 20 |  | tests/test_simbench.py::test_conds_team_as_the_bench |
 | 已对拍 | `TEAM_ALL_HAS_OBJECT_STATUS` | 18 |  | tests/test_simbench.py::test_conds_team_as_the_bench |
 | 未做 | `TYPE_SIGHTED` | 17 |  | Sim.act / Sim.cond 不认识 |
-| 未做 | `SKIRMISH_SPECIAL_POWER_READY` | 16 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `SKIRMISH_SPECIAL_POWER_READY` | 16 |  | tests/test_simbench.py::test_acts_u_as_the_bench |
 | 已对拍 | `TEAM_SOME_HAVE_OBJECT_STATUS` | 15 |  | tests/test_simbench.py::test_conds_team_as_the_bench |
 | 未做 | `NAMED_BUILDING_IS_EMPTY` | 13 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `TEAM_HAS_FEWER_THAN_X_UNITS_WITH_KINDOF` | 12 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiskirm.py |

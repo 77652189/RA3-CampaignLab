@@ -1565,6 +1565,30 @@ def test_acts_tel_as_the_bench():
     assert changes(2) == [7, 15, 14, 12]
 
 
+def test_acts_u_as_the_bench():
+    """acts, bench 11-13 `run_queue engine_acts_u:acts` (CampActsUActs, round 214; the bench's seconds 1-2 ahead):
+    技能 45 63 60 56 60 -- PLAYER_GRANT_SPECIAL_POWER gives the protocol and the power ready at once (both players),
+    a countdown 0 before the grant does nothing, the yard deleted takes READY away (the protocol kept), a 5 s
+    countdown is 5 s not ready; 旗 5 -- UNIT_CONTEXT_SENSITIVE_ATTACK: the engineers take their plants (the one with
+    SKIRMISH_AI_DO_NOT_TAKE too), the tanks fire on neither plant; 造 100 110 111 -- a script's press builds the dog
+    under ONLY_BY_AI and the peacekeeper under NO, the spy only after IGNORE_PREREQUISITES (its first press refused);
+    钱 ends 18400 (dog, two peacekeepers, one spy)."""
+    run = _sim_run('engine_acts_u', 'acts', 32.0)
+
+    def changes(col):
+        out = []
+        for _, v in run.series[1:]:
+            if not out or out[-1] != v[col]:
+                out.append(v[col])
+        return out
+    assert changes(0) == [0, 45, 63, 60, 56, 60]
+    assert changes(1) == [0, 5]
+    assert changes(2) == [0, 100, 110, 111]
+    assert run.series[-1][1][3] == 18400
+    pows = [(t, v[0]) for t, v in run.series if v[0] == 56]
+    assert 4.0 <= pows[-1][0] - pows[0][0] <= 5.5, pows     # the 5 s countdown (bench s15-s19)
+
+
 def test_video_a_radar_clip_is_done_after_its_length_full_screen_never():
     """movie play (bench, docs/story/handoff.md 1g): CNVTEST01 (95 frames at 23.976) in the radar window done 63 game
     frames after its start; the full-screen clip never reads done."""

@@ -159,6 +159,11 @@ BENCHED_TESTS = {
     **{(ACTION, n): 'tests/test_simbench.py::test_acts_tel_as_the_bench' for n in (
         'TEAM_TELEPORT_TO_WAYPOINT', 'TEAM_GARRISON_SPECIFIC_BUILDING',
         'TEAM_SET_PLAYERS_NEAREST_UNIT_OF_TYPE_TO_REFERENCE', 'UNIT_ALLOW_AI_AUTOACQUIRE')},
+    # round 214: batch 4 (checks/engine_acts4.py acts: spellbook powers, the context attack, buildability)
+    **{(ACTION, n): 'tests/test_simbench.py::test_acts_u_as_the_bench' for n in (
+        'PLAYER_GRANT_SPECIAL_POWER', 'PLAYER_SET_SPECIAL_POWER_COUNTDOWN', 'UNIT_CONTEXT_SENSITIVE_ATTACK',
+        'UNIT_CHANGE_OBJECT_STATUS:SKIRMISH_AI_DO_NOT_TAKE', 'TECHTREE_MODIFY_BUILDABILITY_OBJECT')},
+    (CONDITION, 'SKIRMISH_SPECIAL_POWER_READY'): 'tests/test_simbench.py::test_acts_u_as_the_bench',
     # engine line C round 1: modules whose retail data the simulator already follows and a bench-reading test cites
     (MODULE, 'Behaviors/ProductionUpdate'):
         'tests/test_simbench.py::test_production_pays_as_it_builds_and_comes_out_after_the_door',   # engine_production a-g
