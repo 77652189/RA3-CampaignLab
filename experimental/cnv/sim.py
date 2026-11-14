@@ -3385,6 +3385,24 @@ class Sim:
         elif name == 'TEAM_STOP':
             for b in self.members(a[0]):
                 self.order_stop(b)
+        elif name == 'TEAM_MOVE_TO_NEAREST_OBJECT_OF_TYPE':
+            # (team, type): a move to the living object of that type nearest the team's middle. Bench 11-13
+            # engine_acts_v near: the crew walked to the nearer of two of the player's barracks, and after it was
+            # deleted (and the order given again) to the other. Its owner not asked (the bench's were the player's own;
+            # any owner INFERRED); no such object: nothing done (INFERRED)
+            crew = self.members(a[0])
+            if crew:
+                mx, my = sum(b.x for b in crew) / len(crew), sum(b.y for b in crew) / len(crew)
+                want = str(a[1]).split(':')[-1].lower()
+                goal = min((o for o in self.living() if o.template.lower() == want),
+                           key=lambda o: math.hypot(o.x - mx, o.y - my), default=None)
+                if goal is not None:
+                    self.order_group(crew, (goal.x, goal.y), False)
+        elif name == 'TEAM_GUARD_AREA_FROM_POSITION':
+            # (team, area, waypoint): bench 11-13 engine_acts_v guard: the tanks went to the waypoint (inside the area,
+            # 100 in from its edge) and stayed there, the area's middle never reached; an enemy put in the area 600
+            # from them: see the module docstring for what they did. Taken as a group move to the waypoint
+            self.order_group(self.members(a[0]), a[2], False)
         elif name == 'UNIT_TELEPORT_TO_WAYPOINT':
             b, p = self.body(a[0]), self.point(a[1])
             if b and p:
@@ -3402,6 +3420,13 @@ class Sim:
             b = self.body(a[0])
             if b and b.alive:
                 b.ai_acquire = bool(int(a[1]))
+        elif name == 'PLAYER_ALLOW_AI_AUTOACQUIRE':
+            # (player, on): the team version on every unit the player owns now. Bench 11-13 engine_acts_v aaq: the
+            # player's tank fired on the enemy plant 210 off after it. A unit the player gets later not benched (the
+            # bench's hand-over never happened), INFERRED: not reached
+            for b in self.living():
+                if b.owner == a[0]:
+                    b.ai_acquire = bool(int(a[1]))
         elif name == 'NAMED_TRANSFER_OWNERSHIP_PLAYER':
             b = self.body(a[0])
             if b and b.owner != a[1]:
@@ -3655,6 +3680,15 @@ class Sim:
             if b and b.alive:
                 b.max_hp = float(a[1])
                 b.hp = b.max_hp if a[2] else min(b.hp, b.max_hp)
+        elif name == 'UNIT_SET_MODELCONDITION':
+            # (unit, n, on): ModelState USER_<n> set / cleared, held till cleared. Bench 11-13 engine_acts_v mc: 1 -> USER_1,
+            # 2 -> USER_2, 3 -> USER_3 (a08's saluting conscripts: USER_2 is the conscript's STATE_Saluting), 0 clears
+            b = self.body(a[0])
+            if self.present(b):
+                if int(a[2]):
+                    self.set_model_condition(b, f'USER_{int(a[1])}')
+                else:
+                    b.model_conditions.pop(f'USER_{int(a[1])}', None)
         elif name in ('UNIT_SET_MODELCONDITION_GENERIC', 'UNIT_CLEAR_MODELCONDITION'):
             b = self.body(a[0])
             condition = a[1][2] if isinstance(a[1], tuple) else a[1]

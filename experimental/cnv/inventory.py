@@ -164,6 +164,11 @@ BENCHED_TESTS = {
         'PLAYER_GRANT_SPECIAL_POWER', 'PLAYER_SET_SPECIAL_POWER_COUNTDOWN', 'UNIT_CONTEXT_SENSITIVE_ATTACK',
         'UNIT_CHANGE_OBJECT_STATUS:SKIRMISH_AI_DO_NOT_TAKE', 'TECHTREE_MODIFY_BUILDABILITY_OBJECT')},
     (CONDITION, 'SKIRMISH_SPECIAL_POWER_READY'): 'tests/test_simbench.py::test_acts_u_as_the_bench',
+    # round 215: batch 5 (checks/engine_acts5.py acts; PLAYER_TRANSFER_OWNERSHIP_PLAYER changed nothing on the bench:
+    # not simulated, stays 未做)
+    **{(ACTION, n): 'tests/test_simbench.py::test_acts_v_as_the_bench' for n in (
+        'UNIT_SET_MODELCONDITION', 'PLAYER_ALLOW_AI_AUTOACQUIRE', 'TEAM_MOVE_TO_NEAREST_OBJECT_OF_TYPE',
+        'TEAM_GUARD_AREA_FROM_POSITION')},
     # engine line C round 1: modules whose retail data the simulator already follows and a bench-reading test cites
     (MODULE, 'Behaviors/ProductionUpdate'):
         'tests/test_simbench.py::test_production_pays_as_it_builds_and_comes_out_after_the_door',   # engine_production a-g

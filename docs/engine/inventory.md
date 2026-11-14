@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **95%** | **100%** | 50 / 50 | 451 | 150 | 21 | 165 | 115 | 96% |
+| 脚本动作 | **95%** | **100%** | 50 / 50 | 451 | 154 | 21 | 161 | 115 | 97% |
 | 脚本条件 | **98%** | **100%** | 12 / 12 | 89 | 55 | 4 | 27 | 3 | 99% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -201,24 +201,24 @@
 | 已对拍 | `MAP_UNDO_REVEAL_PERMANENTLY_IN_TRIGGER` | 26 |  | tests/test_simbench.py::test_acts_more_as_the_bench |
 | 不涉及 | `NAMED_FLASH_WHITE` | 26 |  | 纯表现（名字规则） |
 | 不涉及 | `RADAR_CREATE_EVENT` | 26 |  | 纯表现（名字规则） |
-| 未做 | `TEAM_GUARD_AREA_FROM_POSITION` | 26 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `TEAM_GUARD_AREA_FROM_POSITION` | 26 |  | tests/test_simbench.py::test_acts_v_as_the_bench |
 | 不涉及 | `TEAM_SET_DISABLED` | 26 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `LINK_MISSION_OBJECTIVE_TO_OBJECT_WITH_CATEGORY` | 25 |  | 纯表现（名字规则） |
 | 已对拍 | `NAMED_GARRISON_SPECIFIC_BUILDING` | 25 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_engineer.py:a |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JapanBaseDefenseToggleBinaryWeapon` | 25 |  | 只记进时间线，没有效果 |
 | 推断 | `PLAYER_SET_MONEY_CAP` | 25 |  | A213 engine_acts_tel:tel：脚本的钱不受上限管（上限 3000 时给 5000 → 6000；上限 500 仍 6000；设 10000 照设）；它管的（推断是采矿收入）没上台、模拟器只记不用 |
 | 已对拍 | `UNIT_ALLOW_AI_AUTOACQUIRE` | 25 |  | tests/test_simbench.py::test_acts_tel_as_the_bench |
-| 未做 | `UNIT_SET_MODELCONDITION` | 25 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `UNIT_SET_MODELCONDITION` | 25 |  | tests/test_simbench.py::test_acts_v_as_the_bench |
 | 已对拍 | `DISPLAY_COUNTER` | 24 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_modulebatch.py |
 | 不涉及 | `HIDE_COUNTER` | 24 |  | 纯表现（名字规则） |
-| 未做 | `PLAYER_ALLOW_AI_AUTOACQUIRE` | 24 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `PLAYER_ALLOW_AI_AUTOACQUIRE` | 24 |  | tests/test_simbench.py::test_acts_v_as_the_bench |
 | 不涉及 | `PLAY_SOUND_AS_AI_COCOMMANDER_DIALOG_WITH_SUBTITLE` | 24 |  | 纯表现（名字规则） |
 | 不涉及 | `SETUP_CAMERA` | 24 |  | 纯表现（名字规则） |
 | 不涉及 | `SET_COOP_AI_COMMAND_UI_ENABLED` | 24 | a4 | 纯界面：开关玩家给盟友 AI 下令的按钮；模拟器的玩家没有给盟友下令的命令，开关无从起作用（以后加了这个命令再算） |
 | 不涉及 | `LINK_MISSION_OBJECTIVE_TO_WAYPOINT_WITH_CATEGORY` | 23 |  | 纯表现（名字规则） |
 | 已对拍 | `PLAYER_GRANT_SPECIAL_POWER` | 23 |  | tests/test_simbench.py::test_acts_u_as_the_bench |
 | 未做 | `PLAYER_TRANSFER_OWNERSHIP_PLAYER` | 23 |  | Sim.act / Sim.cond 不认识 |
-| 未做 | `TEAM_MOVE_TO_NEAREST_OBJECT_OF_TYPE` | 23 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `TEAM_MOVE_TO_NEAREST_OBJECT_OF_TYPE` | 23 |  | tests/test_simbench.py::test_acts_v_as_the_bench |
 | 不涉及 | `HIDE_TUTORIAL_TEXT` | 22 |  | 纯表现（名字规则） |
 | 未做 | `UNIT_CHANGE_OBJECT_STATUS:NO_ATTACK_FROM_AI` | 22 |  | 状态位 NO_ATTACK_FROM_AI 只记下来 |
 | 不涉及 | `MOVE_NAMED_UNIT_TO_UNIT` | 21 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |

@@ -1589,6 +1589,26 @@ def test_acts_u_as_the_bench():
     assert 4.0 <= pows[-1][0] - pows[0][0] <= 5.5, pows     # the 5 s countdown (bench s15-s19)
 
 
+def test_acts_v_as_the_bench():
+    """acts, bench 11-13 `run_queue engine_acts_v:acts` (CampActsVActs, round 215, twice the same; the bench's seconds
+    ~1 behind): 状 5 20 -- UNIT_SET_MODELCONDITION n is USER_n, 0 clears; 旗 20 -- PLAYER_ALLOW_AI_AUTOACQUIRE: the
+    player's tank fires on the enemy plant (the hand-over never happened on the bench: no 1 / 2 / 8); 位 1 2 102 202
+    200 220 -- TEAM_MOVE_TO_NEAREST_OBJECT_OF_TYPE to the nearer barracks, after its delete to the other;
+    TEAM_GUARD_AREA_FROM_POSITION: the tanks at the waypoint, never the area's middle; 守 2 12."""
+    run = _sim_run('engine_acts_v', 'acts', 40.0)
+
+    def changes(col):
+        out = []
+        for _, v in run.series[1:]:
+            if not out or out[-1] != v[col]:
+                out.append(v[col])
+        return out
+    assert changes(0)[-2:] == [5, 20]
+    assert changes(1)[:2] == [16, 20] and set(changes(1)) <= {16, 20}
+    assert changes(2) == [0, 1, 2, 102, 202, 201, 200, 220] or changes(2) == [0, 1, 2, 102, 202, 200, 220]
+    assert changes(3)[-2:] == [2, 12] and run.series[-1][1][3] == 12
+
+
 def test_video_a_radar_clip_is_done_after_its_length_full_screen_never():
     """movie play (bench, docs/story/handoff.md 1g): CNVTEST01 (95 frames at 23.976) in the radar window done 63 game
     frames after its start; the full-screen clip never reads done."""
