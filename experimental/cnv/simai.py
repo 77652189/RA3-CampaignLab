@@ -325,6 +325,9 @@ class Brain:
         # after its SET_ALL (one before it in the same frame is not ordered: INFERRED rare)
         calls = self.sim.ai_priorities.get(self.player, [])
         for enemy, n in calls[getattr(self, '_prio_seen', 0):]:
+            if enemy is None:       # SET_FAVORED_ENEMY's clear (sim.py, A 220 bench engine_aifav: the table emptied)
+                self.ai.tell(Command('enemy priorities', {'n': 0}))
+                continue
             self.ai.tell(Command('enemy priority', {'player': enemy, 'n': n}))
         self._prio_seen = len(calls)
 

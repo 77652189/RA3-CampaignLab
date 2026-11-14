@@ -31,8 +31,6 @@ def test_favored_enemy_queues_a_clear_then_the_enemy_at_ten(run):
     assert w.sim.ai_priorities['Soviet_1'] == [(None, 0), ('Soviet_4', 10)]
 
 
-@pytest.mark.xfail(strict=True, reason='simai tells the clear (None, 0) as a priority of nobody: Player_1 stays at 20 '
-                   'above Soviet_4 10 -- asked of engine line B, work/re a220_favored_enemy.md')
 def test_favored_enemy_alone_in_the_table_goes_for_its_plant(run):
     # bench engine_aifav a (11-14): 到近厂 2 @ s14, 4 s15-s21; 到远厂 0 to s69
     w, rows = run
