@@ -1236,15 +1236,46 @@ def rp(m):
     return t
 
 
+RPX_X = (3100.0, 4900.0)             # rpx: the strips cover the east field and the AI yard's rings
+RPX_Y = (2400.0, 4100.0)
+RPX_STEP = 50.0
+
+
+def rpx(m):
+    """rp plus where each of s1's refineries stands (B round 188: D136 section 5 reads a fixed default spot per ore
+    node, then rings in +-33.75 degrees of the node's facing; the bench had only the +-600 squares). 矿场X / 矿场Y =
+    the sum over s1's refineries of their 50-wide strip's number (strip 1 = x RPX_X[0]..+50, y likewise), so the step
+    a new refinery adds is its strip: x = RPX_X[0] + 50 x (step - 1) .. +50. Refineries come one at a time."""
+    t = rp(m)
+    t.counters = [(c, lab) for c, lab in t.counters if lab in ('建筑码', '矿区码')]   # four lines fit on the bench
+    s1 = m.player('s1')
+    for c, lab, (lo, hi), axis in (('CNV_AK_RpX', '矿场X', RPX_X, 0), ('CNV_AK_RpY', '矿场Y', RPX_Y, 1)):
+        t.counters.append((c, lab))
+        t.scripts.append(Script(f'Test - {c} zero', [], [('SET_COUNTER', c, 0)], once=False))
+        other = RPX_Y if axis == 0 else RPX_X
+        for i in range(1, int((hi - lo) / RPX_STEP) + 1):
+            a0, a1 = lo + RPX_STEP * (i - 1), lo + RPX_STEP * i
+            area = f'Test Strip {c} {i}'
+            t.areas[area] = ([(a0, other[0]), (a1, other[0]), (a1, other[1]), (a0, other[1])] if axis == 0 else
+                             [(other[0], a0), (other[1], a0), (other[1], a1), (other[0], a1)])
+            for n in range(1, 4):
+                t.scripts.append(Script(f'Test - {c} {i} >= {n}', [
+                    ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', s1, 3, n, 'AlliedRefinery', area)],
+                    [('INCREMENT_COUNTER', i, c)], once=False))
+    t.bench = [('bench_watch', dict(seconds=m.facts['wake at'] + 234.0, every=1, sheet=False,
+                                    lines=len(t.counters)))]
+    return t
+
+
 CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j': j, 'k': k, 'l': l, 'm': m,
-                      'n': n, 'o': o, 'p': p, 'q': q, 'r': r, 'u': u, 'x': x, 'et': et, 'ib': ib, 'rp': rp},
+                      'n': n, 'o': o, 'p': p, 'q': q, 'r': r, 'u': u, 'x': x, 'et': et, 'ib': ib, 'rp': rp, 'rpx': rpx},
           'aiskinb': {'ib': ib},
           'aiskinc': {'ib': ib},
           'aiskind': {'ib': ib},
           'aiskine': {'ib': ib},
           'aiskinp': {'ib': ib, 'rp': rp},
-          'aiskin1': {'rp': rp},
-          'aiskin0': {'rp': rp},
+          'aiskin1': {'rp': rp, 'rpx': rpx},
+          'aiskin0': {'rp': rp, 'rpx': rpx},
           'aiskins': {'ib': ib},
           'aiskmtp': {'mt': mt},
           'aiskirmc': {'l': l, 'm': m, 'u': u},  # opt-in carrier diagnostic; stock aiskirm stays unchanged
