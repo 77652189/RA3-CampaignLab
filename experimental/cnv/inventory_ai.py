@@ -204,6 +204,16 @@ NOTES = {
         '建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s）；tests/test_simai_bench_b.py::'
         'test_a_resource_node_search_radius_of_5000_changes_nothing_on_a_plain_skirmish。D125 第 1 节：只给矿点排先后'
         '（半径内先试），不排除远处矿点。gap：台上只有基地旁的矿，两个矿点的排序台子（d125 第 1 节）没上'),
+    **{f'人格/AIPersonalityDefinition.RefineryPlacement{k}': (BENCHED,
+        f'B185 / B186 engine_aiskirm aiskinp:ib、aiskin1:rp、aiskin0:rp vs aiskirm（都 PASS）：{why}；'
+        '1AlliedBalanced 的 -30 / 30 / 15 只两座矿场，改了之后 s148 在东矿出第三座、s188 / s223 再各一座。'
+        '模拟器（B187 simai Brain.refinery_spot + 模型 REFINERY 150 分）照 d125 第 1 节排矿点、先试默认位再转圈；'
+        'tests/test_simai_bench_b.py::test_refinery_placement_far_rings_add_refineries 等。'
+        'gap：圈的几何、"放弃"判定、Ticks 0 = 不限圈数都是 INFERRED（问 D：work/re b187_refinery_questions.md）')
+       for k, why in (
+           ('StartDistanceDelta', 'aiskin1 只改成 1000'),
+           ('IncreaseTickAmount', 'aiskinp 和另两项一起改成 1000（单改没上台）'),
+           ('NumberOfIncreaseTicksBeforeGivingUp', 'aiskin0 只改成 0'))},
     **{f'人格/AIPersonalityDefinition.{k}': (BENCHED,
         'B185 一局证一批 engine_aiskirm aiskins:ib vs aiskirm:ib（都 PASS）：七个字段一次改成 27 关敌方人格的值 / 极端值'
         '（CleanupRefineries false、CoopPersonality false、Assault / HoldPosition BeaconRadius 5000、'

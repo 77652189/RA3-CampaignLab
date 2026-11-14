@@ -809,12 +809,19 @@ def test_seven_conditional_personality_fields_change_nothing_on_a_plain_skirmish
     assert seven == base
 
 
-@pytest.mark.xfail(strict=True, reason='B185 bench: aiskinp (RefineryPlacement StartDistanceDelta 1000 / '
-                   'IncreaseTickAmount 1000 / NumberOfIncreaseTicksBeforeGivingUp 0) builds a third refinery at s148, '
-                   "4 / 5 by s188 / s223 and razes the player's buildings at s173-196 (stock -30 / 30 / 15: 2 "
-                   'refineries, s204-222); the simulator has no refinery placement search')
 def test_refinery_placement_far_rings_add_refineries(lib):
     """aiskinp (and aiskine, the same plus seven inert fields) 建筑码 1132 s148 / 1133 s158 / 1134 s168 / 1144 s188 /
-    1154 s223 / 1155 s248 vs aiskirm 1123 s138 / 1124 s148 (work/logs/b185_bench3.log)."""
+    1154 s223 / 1155 s248 vs aiskirm 1123 s138 / 1124 s148 (work/logs/b185_bench3.log). The simulator (B187:
+    simai Brain.refinery_spot, the model's REFINERY 150): the third ~3 s later than the bench (the AI's DT-tick lag)."""
     _, rows = _probe_run('aiskinp', lib, 160.0, check='ib')
-    assert rows[150]['建筑码'] // 10 % 10 == 3
+    assert rows[155]['建筑码'] // 10 % 10 == 3
+
+
+@pytest.mark.parametrize('build', ['aiskirm', 'aiskin1', 'aiskin0', 'aiskinp'])
+def test_the_third_refinery_goes_to_the_east_field_or_nowhere(lib, build):
+    """engine_aiskirm rp (B186, work/bench_results/<build>__rp.json, all PASS): 矿区码 (refineries in +-600 of the
+    east / north-east / south-west / north fields, x1 / x10 / x100 / x1000) 2 to s147 in all four; stock aiskirm stays
+    2 (no third anywhere), aiskin1 / aiskin0 / aiskinp 3 from s148 (all at the AI's east field)."""
+    _, rows = _probe_run(build, lib, 160.0, check='rp')
+    assert rows[100]['矿区码'] == 2
+    assert rows[158]['矿区码'] == (2 if build == 'aiskirm' else 3)

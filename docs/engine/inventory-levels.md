@@ -2,21 +2,18 @@
 
 由 `experimental/cnv/inventory_ai.py levels` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）里由遭遇战 AI 带的敌人：它的人格（`enemy_ai.py` 生成）沿继承、战略状态、战术、组队、目标启发、微操、造兵 / 预算状态、开局一路引用到的原版 AI 数据项，加上全局常量 AIData 和本阵营的 ArmyDefinition；再加关卡脚本里点了 AI 玩家名字的脚本动作 / 条件。状态取自 [inventory.md](inventory.md)。"AI 做完"的第一条：下表全部已对拍。
 
-**已对拍 180 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
+**已对拍 183 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
 
 | 部分 | 已对拍 | 推断 | 未做 |
 |---|---|---|---|
-| AI | 168 | 99 | 90 |
+| AI | 171 | 99 | 87 |
 | 脚本动作 | 11 | 0 | 0 |
 | 脚本条件 | 1 | 0 | 0 |
 
-按原版用量加权：已对拍 94%，已有（已对拍+推断）99%。
+按原版用量加权：已对拍 95%，已有（已对拍+推断）100%。
 
 | 状态 | 部分 | 项 | 原版用量 | 关 | 说明 |
 |---|---|---|---|---|---|
-| 未做 | AI | `人格/AIPersonalityDefinition.RefineryPlacementIncreaseTickAmount` | 148 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 未做 | AI | `人格/AIPersonalityDefinition.RefineryPlacementNumberOfIncreaseTicksBeforeGivingUp` | 148 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 未做 | AI | `人格/AIPersonalityDefinition.RefineryPlacementStartDistanceDelta` | 148 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `战略状态/AIStrategicStateDefinition.PathfindingCheckType` | 24 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `战略状态/AIStrategicStateDefinition.PathfindingCheckType=None` | 23 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `人格/AIPersonalityDefinition.SkirmishPersonality` | 20 | a4 a5 a7 | AI 模型代码里没有这个名字 |
@@ -257,6 +254,9 @@
 | 已对拍 | AI | `人格/AIPersonalityDefinition.ConyardInDangerEmergencyUnderAttackTime` | 148 | a4 a5 a7 | B181 一局证一批 engine_aiskirm aiskinb:ib vs aiskirm:ib（同一次排队，都 PASS）：七个字段一次改成极端值（ConyardInDanger 三项 1000s / 100% / 5000、HoldObjectBeaconRadius 5000、ResourceNodeValueRemainingForExpansion 1000000、DefaultThreatFindRadius 5000、MaxWallDestroyTimeToCountAsGoThroughWalls 1000s），AI钱 / 建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s 开局相位）；tests/test_simai_bench_b.py::test_seven_inert_personality_fields_change_nothing。为什么不起作用：D126 难度门 EmergencyManagerHandleConyardInDangerAtDifficulty 94 个人格全空。gap：台上没有围攻建造厂、没有墙、没有协同信标，只证"27 关的门关着时不起作用" |
 | 已对拍 | AI | `人格/AIPersonalityDefinition.DefaultThreatFindRadius` | 148 | a4 a5 a7 | B181 一局证一批 engine_aiskirm aiskinb:ib vs aiskirm:ib（同一次排队，都 PASS）：七个字段一次改成极端值（ConyardInDanger 三项 1000s / 100% / 5000、HoldObjectBeaconRadius 5000、ResourceNodeValueRemainingForExpansion 1000000、DefaultThreatFindRadius 5000、MaxWallDestroyTimeToCountAsGoThroughWalls 1000s），AI钱 / 建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s 开局相位）；tests/test_simai_bench_b.py::test_seven_inert_personality_fields_change_nothing。为什么不起作用：D127 只写进目标槽、零读者。gap：台上没有围攻建造厂、没有墙、没有协同信标，只证"27 关的门关着时不起作用" |
 | 已对拍 | AI | `人格/AIPersonalityDefinition.MaxWallDestroyTimeToCountAsGoThroughWalls` | 148 | a4 a5 a7 | B181 一局证一批 engine_aiskirm aiskinb:ib vs aiskirm:ib（同一次排队，都 PASS）：七个字段一次改成极端值（ConyardInDanger 三项 1000s / 100% / 5000、HoldObjectBeaconRadius 5000、ResourceNodeValueRemainingForExpansion 1000000、DefaultThreatFindRadius 5000、MaxWallDestroyTimeToCountAsGoThroughWalls 1000s），AI钱 / 建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s 开局相位）；tests/test_simai_bench_b.py::test_seven_inert_personality_fields_change_nothing。为什么不起作用：D127 读它的循环遍历的列表从不被填。gap：台上没有围攻建造厂、没有墙、没有协同信标，只证"27 关的门关着时不起作用" |
+| 已对拍 | AI | `人格/AIPersonalityDefinition.RefineryPlacementIncreaseTickAmount` | 148 | a4 a5 a7 | B185 / B186 engine_aiskirm aiskinp:ib、aiskin1:rp、aiskin0:rp vs aiskirm（都 PASS）：aiskinp 和另两项一起改成 1000（单改没上台）；1AlliedBalanced 的 -30 / 30 / 15 只两座矿场，改了之后 s148 在东矿出第三座、s188 / s223 再各一座。模拟器（B187 simai Brain.refinery_spot + 模型 REFINERY 150 分）照 d125 第 1 节排矿点、先试默认位再转圈；tests/test_simai_bench_b.py::test_refinery_placement_far_rings_add_refineries 等。gap：圈的几何、"放弃"判定、Ticks 0 = 不限圈数都是 INFERRED（问 D：work/re b187_refinery_questions.md） |
+| 已对拍 | AI | `人格/AIPersonalityDefinition.RefineryPlacementNumberOfIncreaseTicksBeforeGivingUp` | 148 | a4 a5 a7 | B185 / B186 engine_aiskirm aiskinp:ib、aiskin1:rp、aiskin0:rp vs aiskirm（都 PASS）：aiskin0 只改成 0；1AlliedBalanced 的 -30 / 30 / 15 只两座矿场，改了之后 s148 在东矿出第三座、s188 / s223 再各一座。模拟器（B187 simai Brain.refinery_spot + 模型 REFINERY 150 分）照 d125 第 1 节排矿点、先试默认位再转圈；tests/test_simai_bench_b.py::test_refinery_placement_far_rings_add_refineries 等。gap：圈的几何、"放弃"判定、Ticks 0 = 不限圈数都是 INFERRED（问 D：work/re b187_refinery_questions.md） |
+| 已对拍 | AI | `人格/AIPersonalityDefinition.RefineryPlacementStartDistanceDelta` | 148 | a4 a5 a7 | B185 / B186 engine_aiskirm aiskinp:ib、aiskin1:rp、aiskin0:rp vs aiskirm（都 PASS）：aiskin1 只改成 1000；1AlliedBalanced 的 -30 / 30 / 15 只两座矿场，改了之后 s148 在东矿出第三座、s188 / s223 再各一座。模拟器（B187 simai Brain.refinery_spot + 模型 REFINERY 150 分）照 d125 第 1 节排矿点、先试默认位再转圈；tests/test_simai_bench_b.py::test_refinery_placement_far_rings_add_refineries 等。gap：圈的几何、"放弃"判定、Ticks 0 = 不限圈数都是 INFERRED（问 D：work/re b187_refinery_questions.md） |
 | 已对拍 | AI | `人格/AIPersonalityDefinition.ResourceNodeSearchRadius` | 148 | a4 a5 a7 | B185 engine_aiskirm aiskind:ib vs aiskirm:ib（都 PASS）：1AlliedBalanced 子人格只把它从 700 改成 5000，建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s）；tests/test_simai_bench_b.py::test_a_resource_node_search_radius_of_5000_changes_nothing_on_a_plain_skirmish。D125 第 1 节：只给矿点排先后（半径内先试），不排除远处矿点。gap：台上只有基地旁的矿，两个矿点的排序台子（d125 第 1 节）没上 |
 | 已对拍 | AI | `人格/AIPersonalityDefinition.ResourceNodeValueRemainingForExpansion` | 148 | a4 a5 a7 | B181 一局证一批 engine_aiskirm aiskinb:ib vs aiskirm:ib（同一次排队，都 PASS）：七个字段一次改成极端值（ConyardInDanger 三项 1000s / 100% / 5000、HoldObjectBeaconRadius 5000、ResourceNodeValueRemainingForExpansion 1000000、DefaultThreatFindRadius 5000、MaxWallDestroyTimeToCountAsGoThroughWalls 1000s），AI钱 / 建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s 开局相位）；tests/test_simai_bench_b.py::test_seven_inert_personality_fields_change_nothing。为什么不起作用：D125 第 2 节只拷贝不读。gap：台上没有围攻建造厂、没有墙、没有协同信标，只证"27 关的门关着时不起作用" |
 | 已对拍 | AI | `人格/AIPersonalityDefinition.SecondsTillTargetsExpire` | 148 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |

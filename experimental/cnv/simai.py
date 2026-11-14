@@ -84,6 +84,20 @@ TACTIC_NAME_WORDS = {'Engineer': 'EngineerTactic'}
 PLACE_DELAY = 1                     # bench aiopen f1-f3 (opening.PLACE_DELAY): owned 1 frame after the head is full
 RING = (260.0, 400.0, 540.0, 680.0)     # INFERRED: the rings a yard puts its structures on
 GAP = 20.0                          # INFERRED: room left between two structures' rounds
+# the refinery placement search (work/re d125_refinery_units.md 1 / d121 3): the personality's fields and
+# their XSD defaults; ResourceNodeSearchRadius orders the ore nodes, RefineryPlacement* sizes the rings round one
+REFINERY_FIELDS = (('ResourceNodeSearchRadius', 500.0), ('RefineryPlacementStartDistanceDelta', 0.0),
+                   ('RefineryPlacementIncreaseTickAmount', 60.0),
+                   ('RefineryPlacementNumberOfIncreaseTicksBeforeGivingUp', 3))
+REFINERY_NEAR = 200.0               # an own refinery within this of a node: the node's "has a refinery" key
+TICKS_UNBOUNDED = 64                # INFERRED: NumberOfIncreaseTicksBeforeGivingUp 0 = no limit (bench aiskin0 places)
+RING_MAX = 2000.0                   # INFERRED: no ring farther than this from its node is tried (the search's cost)
+# INFERRED (H-r1, fitted to one bench): no ring spot nearer its node than this; 1AlliedBalanced's -30 / 30 / 15 reach
+# 390 + the node's 53 + the refinery's 40 = 483 and give up, the far settings place inside +-600 of the east field
+RING_FLOOR = 500.0
+# INFERRED: ore nodes farther than this from every own yard are not tried (bench aiskind: ResourceNodeSearchRadius
+# 5000 puts every field in range, still no refinery at the fields >= ~1280 away; aiskirm gives up at the east one)
+REFINERY_REACH = 1000.0
 DIFFICULTY = {'easy': 'EASY', 'normal': 'MEDIUM', 'hard': 'HARD', 'brutal': 'BRUTAL'}
 BLOCKS = ('targets', 'defense', 'micro', 'specials')
 PATH_EVERY = 10 * FPS               # INFERRED: a PathToTargetHeuristic answer is kept 10 s (the engine asks every
@@ -182,6 +196,8 @@ class Brain:
         self.ai.near_factory = self.near_factory
         self.ai.upgrade_offers = self.upgrade_offers
         self.ai.upgrader = self.upgrade
+        if hasattr(self.ai, 'refinery_spot'):   # an engine model with REFINERY (B round 187)
+            self.ai.refinery_spot = lambda ai, frame, template: self.refinery_spot(template)
         # BEST_UNIT_* scores (expected below) with host.efficiency (SimAI.efficiency): the build states then
         # take the idle barracks every second and the unit builder (every 10 s) finds it busy -- the bench (engine_
         # aiskirm z) builds only the counter (B handoff 131); off = the unit builder alone, as before round 129
@@ -1089,6 +1105,75 @@ class Brain:
                     return x, y
         return yard.x + RING[-1], yard.y
 
+    def refinery_spot(self, template):
+        """Where the AI's refinery goes (work/re d125_refinery_units.md 1, read; the geometry INFERRED), None =
+        it gives up. The ore nodes in order: within ResourceNodeSearchRadius of the nearest own yard first, then no own
+        refinery within REFINERY_NEAR first, then nearer first. Each node is first tried at its default spot (INFERRED:
+        beside it, towards that yard); failing that it is tried again after the other default spots, round it: the
+        last ring (StartDistanceDelta + (NumberOfIncreaseTicksBeforeGivingUp - 1) x IncreaseTickAmount + the node's
+        and the refinery's radius; Ticks 0 = TICKS_UNBOUNDED) is how far the search goes, the nearest spot from
+        RING_FLOOR out taken (H-r1, INFERRED). Only nodes within REFINERY_REACH of a yard (INFERRED). A spot: dry
+        open ground clear of every structure and node (GAP between rounds, as spot()). Not matched: the bench
+        builds two plants between the third and fourth refinery (s158 / s168, the fourth s188); here the fourth
+        comes first (~s171).
+        bench 2026-11-14 CampaignLab engine_aiskirm rp (B rounds 185 / 186): 1AlliedBalanced's -30 / 30 / 15 -> two
+        refineries at its east ore, no third; StartDistanceDelta 1000 (aiskin1), Ticks 0 (aiskin0) or both with
+        IncreaseTickAmount 1000 (aiskinp) -> a third there at s148, a fourth s188, a fifth s223."""
+        import platprops
+        s = self.sim
+        a = self.ai.personality.attrs
+        near, start, inc, ticks = (float(a.get(k)) if a.get(k) is not None else d for k, d in REFINERY_FIELDS)
+        ticks = int(ticks) or TICKS_UNBOUNDED
+        r = platprops.radius(template) if template in platprops.CATALOG else 40.0
+        yards = self.yards()
+        if not yards:
+            return None
+        bodies = s.living()
+        nodes = [b for b in bodies if 'orenode' in b.template.lower()]
+        mine = [b for b in bodies if b.owner == self.player and 'REFINERY' in b.kinds]
+        taken = [t for t in (s.blocks(b) for b in bodies if 'STRUCTURE' in b.kinds or b in nodes) if t and len(t) == 3]
+        memo = self.__dict__.setdefault('_refinery_spots', {})
+        mk = (template, tuple(taken), tuple((y.x, y.y) for y in yards))
+        if mk not in memo:
+            memo.clear()
+            memo[mk] = self._refinery_search(s, r, near, start, inc, ticks, yards, nodes, mine, taken)
+        return memo[mk]
+
+    def _refinery_search(self, s, r, near, start, inc, ticks, yards, nodes, mine, taken):
+        def fits(x, y):
+            return (s.ground.open('ground', x, y)
+                    and all(math.hypot(x - tx, y - ty) >= r + tr + GAP for tx, ty, tr in taken))
+
+        def key(n):
+            y = min(yards, key=lambda y: math.hypot(n.x - y.x, n.y - y.y))
+            d = math.hypot(n.x - y.x, n.y - y.y)
+            has = any(math.hypot(n.x - b.x, n.y - b.y) < REFINERY_NEAR for b in mine)
+            return d >= near, has, d, y
+        order = sorted(((key(n), n) for n in nodes if key(n)[2] <= REFINERY_REACH), key=lambda e: e[0][:3])
+        for outside in (False, True):
+            group = [(k, n) for k, n in order if k[0] == outside]
+            for (_, _, d, y), n in group:          # the default spots (first pass)
+                gap = (n.radius or 0.0) + r + GAP
+                if d > 0:
+                    x, yy = n.x + (y.x - n.x) * gap / d, n.y + (y.y - n.y) * gap / d
+                    if fits(x, yy):
+                        return x, yy
+            for (_, _, d, y), n in group:          # the rings (second pass)
+                away = math.atan2(y.y - n.y, y.x - n.x)
+                # H-r1 (INFERRED, b187_refinery_questions.md): the last ring is how far the search may go; it takes
+                # the nearest open spot from RING_FLOOR out to it
+                reach = min(RING_MAX, start + (ticks - 1) * inc + (n.radius or 0.0) + r)
+                ring = RING_FLOOR
+                while ring <= reach:
+                    k = max(8, int(2 * math.pi * ring / (2 * r + GAP)))
+                    for j in range(k):
+                        t = away + 2 * math.pi * j / k
+                        x, yy = n.x + ring * math.cos(t), n.y + ring * math.sin(t)
+                        if fits(x, yy):
+                            return x, yy
+                    ring += 2 * r + GAP
+        return None
+
     def yard_due(self, frame):
         s = self.sim
         for name in list(self.yard_q):
@@ -1119,7 +1204,10 @@ class Brain:
 
     def put(self, yard, template, frame):
         s = self.sim
-        x, y = self.spot(yard, template)
+        spot = None
+        if 'REFINERY' in self.host.kinds(template) and hasattr(self.ai, 'refinery_spot'):
+            spot = self.refinery_spot(template)     # INFERRED: given up at the put -> the yard's rings, as before
+        x, y = spot or self.spot(yard, template)
         b = s.add(f'#ai {len(s.bodies)} {template}', template, self.player, x, y, by='skirmish AI', at=s.t)
         b.team = yard.team
         self.made[b.name] = frame
