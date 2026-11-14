@@ -38,7 +38,8 @@ def test_crush_host_dispatch(name, expected):
     assert .01 * kill < travel < kill
     unit = SimpleNamespace(body=tank)
     run = SimpleNamespace(team=SimpleNamespace(template=SimpleNamespace(micro=airetreat_bench.MICRO_ID),
-                                              tactic='isolated'))
+                                              tactic='isolated'),
+                          keep={}, keep_target={})     # the per-member keep record (D round 139)
     orders = []
     original = brain.tactics.order
 
