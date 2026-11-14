@@ -670,6 +670,8 @@ class Brain:
         mem = self.fighters([u.body for u in live])
         for f, u in zip(mem, live):
             f.unit = u                          # the member it stands for (state 2's pick, Crush, ReverseMove)
+            t = self.ordered_aim(u.body)
+            f.aim = None if t is None else (t.x, t.y)
         return mem, self.fighters(foes)
 
     def act(self, team, kind, thing):
@@ -705,8 +707,11 @@ class Brain:
             return rate
 
         def fighter(b, i):
+            # reach = the engine's longest-range read: the weapon's AttackRange less 5, no radii (work/re/d131_triggers.md 1, read; its
+            # height and range-bonus terms not modelled); a member with no weapon 0
             f = tc.Fighter(i, (b.x, b.y), b.hp, b.max_hp, b.speed,
-                           max((w.get('range') or 0.0 for w in b.weapons), default=0.0), b.sight or b.vision,
+                           max((w['range'] - 5.0 for w in b.weapons if w.get('range')), default=0.0),
+                           b.sight or b.vision,
                            'STRUCTURE' in b.kinds, rate_of(b))
             f.body = b
             f.template, f.kinds = b.template, frozenset(b.kinds)
@@ -752,6 +757,18 @@ class Brain:
         b = self.body_of(tid)
         sh = self.sim.blocks(b) if b else None
         return sh[2] if sh and len(sh) == 3 else 40.0
+
+    def ordered_aim(self, b):
+        """Fighter.aim (ReverseMove's gate 3: the target the member is really attacking, work/re/d131 1):
+        its ordered or chased living enemy, else None -- no nearest-in-range fallback (bench airevt1: members
+        standing in a turret's range with no target of their own never backed off)."""
+        if not b.alive:
+            return None
+        state = self.__dict__.get('_hunt_goals', {}).get(b.name)
+        if state is not None:
+            return state.target if state.target is not None and state.target.alive else None
+        return next((t for t in (b.goal, getattr(b, 'chase', None))
+                     if isinstance(t, sim.Body) and t.alive and t.owner in self.view.enemies), None)
 
     def aim_of(self, b, reach):
         """The unit's current target for the micro (work/re/l4_micro_heur.md; RUSH_ATTACK reads it): its ordered or

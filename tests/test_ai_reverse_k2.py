@@ -12,17 +12,21 @@ work/re/d131_triggers.md section 1). The host's samples (fixtures: selected fram
 
 Counters (坦克数, 近敌, 敌坦): on  s1-12 4 4 2 | s13 4 4 1 | s14 4 3 1 | s15-30 4 3 4 | s31-48 4 4 4 | s49-85 4 3 4
                               off s1-12 4 4 2 | s13 4 4 1 | s14-15 4 3 1 | s16-85 4 3 4
-The simulator has no ReverseMove (tests/test_simai_bench_b.py replays the older airev* counters only): the replay is
-a strict xfail below. Evidence: work/re/d133_airevk2.md.
+D round 134: the simulator's ReverseMove (ra3model tactics._reverse) now gets each member's own attack target
+(simai ordered_aim) and reach AttackRange - 5: it backs up on airevk2 after the swap, never on airevk2o (asserted
+below). The counter replay stays a strict xfail for another reason (team recruitment, see its reason).
+Evidence: work/re/d133_airevk2.md.
 """
+import importlib.util
 import math
-import sys
 from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'experimental' / 'cnv'))
-import teamlog  # noqa: E402
+_spec = importlib.util.spec_from_file_location(
+    'teamlog', Path(__file__).resolve().parent.parent / 'experimental' / 'cnv' / 'teamlog.py')
+teamlog = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(teamlog)
 
 OBSERVED = Path(__file__).resolve().parent / 'fixtures' / 'e_reverse'
 R10 = 135.0                                     # AttackRange 150 - 5 - 10
@@ -89,10 +93,31 @@ def test_off_no_back_up_order():
     assert all(rows[f]['dest'].get(m, (0.0, 0.0)) == (0.0, 0.0) for f in rows if f >= 298 for m in (3170, 3171))
 
 
+LATE_FRAME = round(16.7 * 15)                   # checks/engine_aipullback LATE_AT
+
+
+def _model_reverses(build):
+    """The simulator's back-up orders in `build` (D round 134): [(game frame, member, point)]."""
+    from test_simai_bench_b import simai
+    w = simai.run(build, 'a', 40.0, lib=simai.model()['xmldata'].Library(), record=True)
+    b, = w.brains.values()
+    return [(o['frame'] + b.started, o['member'], o['point']) for o in b.rec['orders'] if o['kind'] == 'reverse']
+
+
+def test_model_backs_up_after_the_swap_only_with_the_switch_on():
+    """The bench's host effect on the simulator (Fighter.aim = the member's own attack target, reach = AttackRange
+    - 5): on, members aiming a spawned foe inside R - 10 get back-up orders after the swap (bench first f302); off,
+    none in the whole run."""
+    on = _model_reverses('airevk2')
+    assert any(f > LATE_FRAME for f, _, _ in on), on
+    assert _model_reverses('airevk2o') == []
+
+
 @pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason='the simulator has no ReverseMove: its airevk2 counters are 4 4 2 then 4 4 4 from s18, '
-                          'the same for both builds; bench on 4 3 4 s15-30 / 4 4 4 s31-48 / 4 3 4, off 4 3 4 from '
-                          's16. work/re/d133_airevk2.md')
+                   reason='近敌 counts all four Hammers, so it rests on who joins the team: bench 2 of 4 join at '
+                          'f213 after the near foe died s13 (the other 2 stay out and never back up); the simulator '
+                          'recruits all 4 and they back off the near foes from s14 on (近敌 s31-47 on 1, off 4; '
+                          'bench on 4, off 3). Not ReverseMove: work/re/d132_whenidle.md, d134 in handoff-d')
 def test_model_replays_the_k2_counters():
     from test_simai_bench_b import _probe_run, simai
     lib = simai.model()['xmldata'].Library()

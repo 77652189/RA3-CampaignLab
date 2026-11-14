@@ -510,7 +510,7 @@ NOTES = {
         'engine_aialphahp 旧固定70%对照；engine_aialphaclose 独立延迟守军、仅阈值0.01/0.9不同；'
         'tests/test_simai_bench_c.py 保留读数回放，有限诊断不等于字段闭环；'
         '目标适用条件与回放差异仍gap，见 work/re/c_alpha_close_report.md'),
-    '微操/AIMicroManagerData.ReverseMove': (GUESSED,
+    '微操/AIMicroManagerData.ReverseMove': (BENCHED,
         'engine_aipullback airev1/0台上s1–10坦克4、s19–22近厂2；tests/test_simai_bench_b.py按名回放，'
         '存活前置正常断言、近厂计数strict xfail；airevp近厂4不能证明没有倒车；'
         'E115 airev1t/0t各PASS：同帧目标/位置/车身朝向已取得，两侧各23个有效目标相邻帧移动样本无负点积；'
@@ -520,7 +520,10 @@ NOTES = {
         '入队2辆到目标中心距166–233 > R−10=135，与模型一致不算反例；airevkg1守护者未入队，无效；见work/re/d132_whenidle.md；'
         'D133 airevk2/airevk2o（s16.7删掉远处玩家坦克、在每辆锤子身上生成玩家守护者）：开的那局f302起成员停下、'
         '下移动令到离目标135（R−10）、车头对着目标倒着开（位移与车头点积<0），全局23条；关的那局0条；'
-        'tests/test_ai_reverse_k2.py按名读台上样本正常断言；模拟器没有ReverseMove，计数回放strict xfail，不晋升；'
+        'tests/test_ai_reverse_k2.py按名读台上样本正常断言；'
+        'D134 模拟器接上成员自己的攻击目标（simai ordered_aim）和射程AttackRange−5：'
+        'test_model_backs_up_after_the_swap_only_with_the_switch_on 开的那局换敌后下倒车令、关的那局0条，正常断言，晋升；'
+        '近敌计数回放仍strict xfail（台上只2辆入队、近敌s13先死，模拟器4辆全入队，是招兵不是倒车）；'
         '见work/re/d133_airevk2.md'),
     # B round 108: a test names the probe but only the switch-off case matches; the effect itself is a strict xfail
     '微操/AIMicroManagerData.Crush': (GUESSED,
