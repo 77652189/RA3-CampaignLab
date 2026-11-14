@@ -63,6 +63,13 @@ BSETS = {'aibsmax': ((BS_DEF, '0.4', 100), (BS_PROD, '0.6', 0)),      # R1: the 
          'aibstie': ((BS_DEF, '0.5', 100), (BS_PROD, '0.5', 0)),      # R2: a tie -> the earlier -> turrets
          'aibszero': ((BS_DEF, '0', 100), (BS_PROD, 'opening', 0))}   # R3: PROD until the opening ends, then all 0
 ZERO_OPENING = 40.0                         # aibszero: the opener's one Time order, 40 s after the wake
+# B round 184 (d122 R4): the retail budgets (OpeningMoveBudget, Coop 85/5/10, Defense 80/20 when an enemy worth >= 1000
+# is within 700 of the base, Heavy 65/35 within 400 and >= 2500), an opening done at once, 5000 at the wake: Coop's
+# DEFENSE 5 % (250) buys no turret. RAID_IN s after the wake RAID_N Guardians (the player's, HOLD_FIRE) appear 650
+# west of the yard (790 from the AI plant: inside 700 of the yard only, never inside 400); RAID_OUT they are deleted;
+# RAID_GIVE the AI is given 5000 more: back on Coop (5 %) it buys no second turret, still on Defense (20 %) it would.
+RAID_IN, RAID_OUT, RAID_GIVE, RAID_WATCH = 20.0, 50.0, 65.0, 110.0
+RAID_N, RAID_DX, RAID_MONEY = 4, -650.0, 5000
 
 
 def _budget(defense=50, bid=BUDGET_ID, heuristic=None):
@@ -134,8 +141,10 @@ def personality_xml(compactness, opener=False, build=True, empty=False, defense=
 
 
 def mission(name, compactness, opener=True, foes=0, build=True, empty=False, refinery=False, defense=50,
-            watch=None, money=MONEY, cheat=(), state=BUDGET_ID, bsets=(), wait=0):
+            watch=None, money=MONEY, cheat=(), state=BUDGET_ID, bsets=(), wait=0, raid=False):
     facts = {'wake at': WAKE_AT, 'money': money}
+    if raid:                                # aibsback (engine_aitower r4): the raid's times after the wake
+        facts.update({'raid in': RAID_IN, 'raid out': RAID_OUT, 'raid give': RAID_GIVE})
     if wait:
         facts['opening'] = wait             # engine_aitower i: the opening is done this long after the wake
     if watch:
@@ -165,6 +174,22 @@ def mission(name, compactness, opener=True, foes=0, build=True, empty=False, ref
     for k, n in enumerate(foe):
         m.put(FOE, 'east base', 60.0 * k - 30.0 * (foes - 1), FOE_DY, name=n, role=f'foe {k}')
     m.waypoint('ai base', base, 'east base')
+    if raid:                                # aibsback: the raid comes and goes by script, the AI is given more
+        raiders = [f'UNIT - CNV AI Raid {k}' for k in range(RAID_N)]
+        for k in range(RAID_N):
+            m.waypoint(f'raid {k}', f'CNV AI Raid {k}', 'east base', RAID_DX, 60.0 * k - 30.0 * (RAID_N - 1))
+        m.spawns.add(FOE)
+        m.scripts += [
+            Script('CNV AI - Raid timers', [('TIMER_EXPIRED', 'CNV AI Wake')],
+                   [('SET_MILLISECOND_TIMER', 'CNV AI Raid In', RAID_IN),
+                    ('SET_MILLISECOND_TIMER', 'CNV AI Raid Out', RAID_OUT),
+                    ('SET_MILLISECOND_TIMER', 'CNV AI Raid Give', RAID_GIVE)]),
+            Script('CNV AI - Raid in', [('TIMER_EXPIRED', 'CNV AI Raid In')],
+                   [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', n, FOE, m.team('p1'), m.mark(f'raid {k}'))
+                    for k, n in enumerate(raiders)] + [('UNIT_SET_STANCE', n, HOLD_FIRE) for n in raiders]),
+            Script('CNV AI - Raid out', [('TIMER_EXPIRED', 'CNV AI Raid Out')], [('NAMED_DELETE', n) for n in raiders]),
+            Script('CNV AI - Raid give', [('TIMER_EXPIRED', 'CNV AI Raid Give')],
+                   [('PLAYER_GIVE_MONEY', s1, RAID_MONEY)])]
     m.scripts += [
         Script('CNV AI - Start', [], [('PLAYER_SET_MONEY', s1, 0), ('SET_MILLISECOND_TIMER', 'CNV AI Wake', WAKE_AT)]
                + [('UNIT_SET_STANCE', n, HOLD_FIRE) for n in foe]),
@@ -204,6 +229,9 @@ MISSION = {'aitower50': lambda: mission('CampAITow50', 0.5),
                                       bsets=BSETS['aibstie']),
            'aibszero': lambda: mission('CampAIBSZero', 0.5, opener=False, empty=True, refinery=True,
                                        watch=RICH_WATCH, money=RICH, bsets=BSETS['aibszero'], wait=ZERO_OPENING),
+           # B round 184 (d122 R4): retail budgets, an opening done at once, a raid within 700 that comes and goes
+           'aibsback': lambda: mission('CampAIBSBack', 0.5, opener=True, empty=True, refinery=True,
+                                       watch=RAID_WATCH, money=RAID_MONEY, raid=True),
            'aicheat2': lambda: mission('CampAICheat2', 0.5, opener=False, refinery=True, defense=0,
                                        watch=CHEAT_WATCH, cheat=CHEAT['aicheat2']),
            'aicheat1': lambda: mission('CampAICheat1', 0.5, opener=False, refinery=True, defense=0,

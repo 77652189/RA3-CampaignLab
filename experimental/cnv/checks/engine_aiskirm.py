@@ -1009,6 +1009,33 @@ def pt(m):
     t.bench = [('bench_watch', dict(seconds=w + 30.0, every=1, sheet=False, lines=len(t.counters)))]
     return t
 
+SD_BITS = (('CNVSideX', 1), ('HuntPersonality', 2), ('1AlliedBalanced', 4), ('1JapanBalanced', 16),
+           ('2JapanAmbushDivision', 32), ('3JapanFleetCommand', 64), ('2JapanMechaWarfare', 128))
+
+
+def sd(m):
+    """Which personality s1's AI ends up with (work/re/d123_side.md 3; PLAYER_IS_HUMAN_OR_AI_PERSONALITY matches the
+    asset id, check pt). 人格位 = the sum of 1 CNVSideX, 2 HuntPersonality, 4 1AlliedBalanced, 8 (Player_1, Human),
+    16 / 32 / 64 / 128 the four Japanese skirmish personalities; to 30 s after the wake.
+    Data's prediction (D123): aisksd1 (CNVSideX: Side Soviet, SkirmishPersonality false; s1 Japan) 1 + 8 = 9 -- a
+    closed gate takes the personality whatever its Side; aisksd2 (the same, SkirmishPersonality true) no 1: a random
+    library personality whose Side holds Japan (a Japanese bit, or Hunt); aisksd4 (no aiPersonality, a campaign
+    mode) 2 + 8 = 10 -- HuntPersonality (the simulator's fallback is 1AlliedBalanced: 4 + 8)."""
+    t = Test()
+    s1, p1 = m.player('s1'), m.player('p1')
+    counter = 'CNV_AK_SdBits'
+    t.counters.append((counter, '人格位'))
+    parts = [(wt, ('PLAYER_IS_HUMAN_OR_AI_PERSONALITY', s1, pid)) for pid, wt in SD_BITS]
+    parts.append((8, ('PLAYER_IS_HUMAN_OR_AI_PERSONALITY', p1, 'Human')))
+    t.scripts.append(Script(f'Test - {counter} zero', [], [('SET_COUNTER', counter, 0)], once=False))
+    t.scripts += [Script(f'Test - {counter} {k}', [c], [('INCREMENT_COUNTER', wt, counter)], once=False)
+                  for k, (wt, c) in enumerate(parts)]
+    w = m.facts['wake at']
+    t.expect += [('人格位', w + 5.0, '>=', 8)]
+    t.bench = [('bench_watch', dict(seconds=w + 30.0, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 def mt(m):
     """When does s1 start its first AlliedTechStructure (aiskmt: its own ConstantHeuristic state's one entry, TECH
     MinTime 150 s ForceTime 151 s; aiskmto: MinTime 250 s ForceTime 151 s; s1 owns an airfield and a refinery from
@@ -1207,6 +1234,9 @@ CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j
           'aiskcu3': {'ycm': ycm},
           'aiskpt': {'pt': pt},
           'aiskpti': {'pt': pt},
+          'aisksd1': {'sd': sd},
+          'aisksd2': {'sd': sd},
+          'aisksd4': {'sd': sd},
           'aiskmt': {'mt': mt},
           'aiskmto': {'mt': mt},
           'aiskmt0': {'mt': mt},

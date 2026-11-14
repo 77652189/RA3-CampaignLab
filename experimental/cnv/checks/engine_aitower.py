@@ -346,7 +346,35 @@ def i(m):
     return t
 
 
+def r4(m):
+    """B round 184 (aibsback; work/re d122_ai_rules.md 1, R4): the retail budgets switch back when the enemy leaves.
+    The opening is done at once; 5000 at the wake, Coop 85/5/10 -> DEFENSE 250, no turret. Raid in (4 Guardians,
+    3800, 650 from the yard) -> Defense 80/20, the idle money re-split: DEFENSE ~1000 -> one turret; raid out -> Coop
+    again the next second; +5000 after: Coop's 5 % (~460 with the rest) buys none, Defense's 20 % (~1200) would.
+
+      塔在基地   s1's turrets in the 1500 square round the yard
+      敌在       the raiders standing
+      AI钱       s1's money"""
+    t = Test()
+    s1 = m.player('s1')
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    x, y = m.site('east base')
+    t.areas[ANY] = square(x, y, 1500.0)
+    counted('CNV_AT_Any', '塔在基地', t, template=m.cnv_turret, area=ANY, player=s1)
+    counted('CNV_AT_Raid', '敌在', t, template='AlliedAntiVehicleVehicleTech1', area=ANY, player=m.player('p1'))
+    t.counters.append(('CNV_AT_Money', 'AI钱'))
+    t.scripts.append(Script('Test - money', [], [('SET_PLAYER_MONEY_TO_COUNTER', s1, 'CNV_AT_Money')], once=False))
+    w = m.facts['wake at']
+    t_in, t_out = (w + m.facts[k] for k in ('raid in', 'raid out'))
+    end = w + m.facts['watch']
+    t.expect += [('塔在基地', w + 5, '<=', 0, t_in), ('塔在基地', t_in, 'ever>=', 1, t_out),
+                 ('塔在基地', w + 5, '<=', 1, end)]
+    t.bench = [('bench_watch', dict(seconds=end + LAG, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 CHECKS = {k: {'a': a, 'b': b, 'c': c, 'd': d, 'e': e, 'f': f, 'g': g, 'h': h, 'i': i}
           for k in ('aitower50', 'aitower75', 'aitower100', 'aitowerstate', 'aitowerfoe',
                    'aitowerdep', 'aitowerinc', 'aitoweropen', 'aitowerinc10', 'aitowerinc5', 'aitowerinc10r',
                    'aicheat2', 'aicheat1', 'aibsprod', 'aibsmax', 'aibstie', 'aibszero')}
+CHECKS['aibsback'] = {'r4': r4}

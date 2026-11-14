@@ -447,16 +447,45 @@ def inert_xml():
         '</AssetDeclaration>', ''])
 
 
-ARMY_INF, ARMY_VEH = 'SovietAntiInfantryInfantry', 'SovietAntiVehicleVehicleTech1'   # conscript / Hammer tank
+SIDE_PID = 'CNVSideX'                 # aisksd1 / aisksd2 (check sd): work/re d123_side.md 3, S1 / S2
+SIDE_FACTION = 'PlayerTemplate:Japan'   # s1's faction: neither CNVSideX's own Side (Soviet) nor what it may inherit
+SIDE_JAPAN = ('1JapanBalanced', '2JapanAmbushDivision', '3JapanFleetCommand', '2JapanMechaWarfare')
+
+
+def side_xml(skirmish):
+    """1AlliedBalanced (a SkirmishPersonality) as CNVSideX with Side Soviet only and SkirmishPersonality written
+    false (S1: the gate closed, as all 27 retail missions) or true (S2: the Side is checked against s1's Japan)."""
+    return '\n'.join([
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+        '  <Tags></Tags>',
+        '  <Includes>',
+        '    <Include type="instance" source="DATA:SkirmishAI/Personalities/AlliedBalanced.xml" />',
+        '  </Includes>',
+        f'  <AIPersonalityDefinition id="{SIDE_PID}" PersonalityType="{SIDE_PID}" inheritFrom="1AlliedBalanced"'
+        f' SkirmishPersonality="{str(bool(skirmish)).lower()}">',
+        '    <Side>Soviet</Side>',
+        '  </AIPersonalityDefinition>',
+        '</AssetDeclaration>', ''])
+
+
+ARMY_INF, ARMY_VEH ='SovietAntiInfantryInfantry', 'SovietAntiVehicleVehicleTech1'   # conscript / Hammer tank
 ARMY_N = 10                            # aiskvinf / aiskvveh (check z): what the player owns, idle behind its yard
 
 
 def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None, account=None,
             buffer=None, new=None, army=None, two=None, observe=False, cap=None, block=None, off=False,
             ptype=None, mintime=None, aidata=None, dear=None, dear_cost=DEAR_COST, power_more=None, mt_secs=300.0,
-            carrier=None, unitcap=None, inert=False, power_adv=None):
+            carrier=None, unitcap=None, inert=False, power_adv=None, side=None):
     m = Mission(name=name, map=ai_map(resources.measured(niagara), lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
+    if side == 'none':                   # aisksd4 (check sd, d123 S4): s1 with no aiPersonality at all
+        m.facts['side case'] = 4
+        del m.sides['s1']['aiPersonality']
+    elif side is not None:               # aisksd1 / aisksd2 (check sd, d123 S1 / S2): CNVSideX on a Japanese s1
+        m.facts['side case'] = 2 if side else 1
+        m.sides['s1'] = {'playerFaction': SIDE_FACTION, 'aiPersonality': f'AIPersonalityDefinition:{SIDE_PID}'}
+        m.assets.append((f'{SIDE_PID}.xml', side_xml(side), f'AIPersonalityDefinition:{SIDE_PID}'))
     if aidata is not None:               # aiskad / aiskfon / aiskfof: the global AIData overridden in the map stream
         m.facts['use formations'] = int(aidata.get('UseFormations', 'true') == 'true')
         m.assets.append(('CNVAIData.xml', aidata_xml(aidata), AIDATA))
@@ -628,6 +657,9 @@ MISSION = {'aiskirm': mission, 'aiskirmc': lambda: mission(observe=True),
            'aiskcu3': lambda: mission('CampAISkCU3', new=True, dear='cu', dear_cost=30000),   # check ycm: cu at 30000
            'aiskpt': lambda: mission('CampAISkPt', ptype=True),      # check pt: PersonalityType != id
            'aiskpti': lambda: mission('CampAISkPtI', ptype=False),   # check pt: PersonalityType not written
+           'aisksd1': lambda: mission('CampAISkSd1', side=False),    # check sd: Side Soviet, Japan s1, gate closed
+           'aisksd2': lambda: mission('CampAISkSd2', side=True),     # check sd: the same, SkirmishPersonality true
+           'aisksd4': lambda: mission('CampAISkSd4', side='none'),   # check sd: s1 without an aiPersonality
            'aiskmt': lambda: mission('CampAISkMT', mintime=MT_TIMES['aiskmt']),      # check mt: MinTime 150 Force 151
            'aiskmto': lambda: mission('CampAISkMTO', mintime=MT_TIMES['aiskmto']),   # check mt: MinTime 250 Force 151
            'aiskmt0': lambda: mission('CampAISkMT0', mintime=(0, 1)),   # check mt: TECH 0/1, 6 plants (D82 G1 + G2)

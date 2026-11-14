@@ -735,6 +735,43 @@ def test_when_every_budget_state_weighs_0_the_first_line_runs(lib):
     assert all(r['塔在基地'] == 0 for r in rows[:50]) and max(r['塔在基地'] for r in rows) >= 1
 
 
+def test_the_retail_budgets_switch_to_defense_while_the_raid_is_near_and_back_after(lib):
+    """aibsback (engine_aitower r4, bench 2026-11-14 PASS, d122 R4): retail budgets, the opening done at once, 5000 at
+    the wake s10 -> Coop (DEFENSE 5 %): no turret to s48; the raid (4 Guardians 650 from the yard) s29-s57 -> Defense
+    (20 %): one turret, standing from s49; the raid gone, +5000 at s73 (10450) -> Coop again: no second to s128.
+    The simulator: the turret from s52."""
+    _, rows = _probe_run('aibsback', lib, 125.0, check='r4')
+    raid = [i for i, r in enumerate(rows) if r['敌在'] > 0]
+    first = _first_row(rows, '塔在基地')
+    assert raid and raid[0] <= first <= raid[-1]
+    assert max(r['塔在基地'] for r in rows) == 1
+
+
+# ---- checks/engine_aiskirm.py sd (B round 184, d123_side.md 3): which personality the AI ends up with
+def test_a_personality_whose_skirmish_gate_is_closed_is_used_whatever_its_side(lib):
+    """aisksd1 (bench 2026-11-14 PASS): CNVSideX (Side Soviet, SkirmishPersonality false) on a Japanese s1 -> 人格位 9
+    every second s1-s41: CNVSideX 1 + Human 8. The 27 retail missions' case: Side acts nowhere."""
+    _, rows = _probe_run('aisksd1', lib, 40, 'sd')
+    assert {r['人格位'] for r in rows} == {9}
+
+
+@pytest.mark.xfail(strict=True, reason='simulator takes aiPersonality as given; the SkirmishPersonality Side check '
+                   '(D123 1.2: a random library personality of the side) is not modelled -- no retail mission opens it')
+def test_a_skirmish_personality_of_another_side_is_replaced(lib):
+    """aisksd2 (bench 2026-11-14 PASS): the same with SkirmishPersonality true -> 人格位 136 s1-s41: 2JapanMechaWarfare
+    128 + Human 8 (a random Japanese one: the rule is only "not CNVSideX")."""
+    _, rows = _probe_run('aisksd2', lib, 40, 'sd')
+    assert all(not r['人格位'] & 1 for r in rows)
+
+
+def test_a_computer_player_without_a_personality_is_neither_hunt_nor_allied_balanced(lib):
+    """aisksd4 (bench 2026-11-14 PASS): s1 without aiPersonality -> 人格位 8 s1-s41: none of CNVSideX, HuntPersonality,
+    1AlliedBalanced, the four Japanese skirmish ones (D123's prediction HuntPersonality did not hold; who it is was
+    not read -- B handoff section 184)."""
+    _, rows = _probe_run('aisksd4', lib, 40, 'sd')
+    assert {r['人格位'] for r in rows} == {8}
+
+
 # ---- checks/engine_aiskirm.py ib (B round 181): seven personality fields read as acting nowhere, in one run
 def test_seven_inert_personality_fields_change_nothing(lib):
     """aiskinb = 1AlliedBalanced with ConyardInDangerEmergency UnderAttackTime 1000s / HealthPercent 100% /

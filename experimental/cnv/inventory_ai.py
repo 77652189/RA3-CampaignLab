@@ -412,7 +412,16 @@ NOTES = {
         '按名回放；自建预算那几局（aitowerinc10 / inc5）同一规则。见 work/re/handoff-b.md 第177节。'
         '多行时选哪一个（work/re/d122_ai_rules.md 第1节）：engine_aitower aibsmax / aibstie / aibszero i'
         '（2026-11-13 三局 PASS）——权重最大的一个单独生效、不混合份额，并列取靠前，全 0 取第一条；'
-        'tests/test_simai_bench_b.py 的 test_the_heavier_budget_state_runs_alone_though_listed_second 等三条'),
+        'tests/test_simai_bench_b.py 的 test_the_heavier_budget_state_runs_alone_though_listed_second 等三条。'
+        '敌人进出时切回（d122 R4）：engine_aitower aibsback r4（2026-11-14 PASS，原版四个预算、开局立刻完、5000）：'
+        'Coop 5% 到 s48 无塔；4 辆守护者在 700 内 s29–s57 → s49 一座塔；撤走后 s73 再给 5000 不造第二座（又回 Coop）。'
+        'test_the_retail_budgets_switch_to_defense_while_the_raid_is_near_and_back_after'),
+    '人格/AIPersonalityDefinition.Side': (BENCHED,
+        'B184 engine_aiskirm sd（work/re/d123_side.md 第3节；s1 阵营 Japan，人格 CNVSideX 只写 Side Soviet）：'
+        'aisksd1 SkirmishPersonality=false（27 关全是这样）人格位 9 = 照用 CNVSideX，Side 不符不管；'
+        'aisksd2 =true → 136 = 换成随机的日本人格（2JapanMechaWarfare）。27 关 Side 不起作用；'
+        'test_a_personality_whose_skirmish_gate_is_closed_is_used_whatever_its_side 按名回放。'
+        'gap：门开着时的随机换人格模拟器没建（strict xfail，原版关不走这条）'),
     '组队招人/TeamTemplate.ReleaseType=NEVER_RELEASE': (BENCHED,
         'engine_airelease airelnever/airelprio仅ReleaseType不同；CNVTeams两组f166防御激活持3166/3167，'
         'priority在(526,541]同两ID转进攻，never保留至末样本；'
