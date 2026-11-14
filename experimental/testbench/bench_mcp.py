@@ -740,6 +740,40 @@ def retail_objects(pattern: str, maps: str = '', limit: int = 20) -> str:
     return out.strip() if code == 0 else 'RETAIL: ' + tail(out)
 
 
+def _inject():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        'inject', os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'cnv', 'inject.py'))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+@server.tool(structured_output=False)
+def inject_look(run: str = '', kinds: str = '', unit: str = '', first: int = 0, last: int = 0, cap: int = 200) -> str:
+    """注入看: what the game's insides did in a bench run with ra3ext (a map carrying the CNVTeams host), as text --
+    one line per record: frame, unit (object id or team:<name>), kind, what, and the program piece that did it.
+    run: a run folder name under work/testbench/runs (default: the newest one with a ra3ext.log). kinds:
+    comma-separated, of command (orders entering the queue, with the unit), dispatch, goal, state, team, assign,
+    threat (default all). unit: one object id. first / last: a frame range (0 = open)."""
+    inj = _inject()
+    root = os.path.join(labpaths.WORK, 'testbench', 'runs')
+    if not run:
+        have = [d for d in os.listdir(root) if os.path.isfile(os.path.join(root, d, 'ra3ext.log'))]
+        if not have:
+            return 'no run with a ra3ext.log'
+        run = max(have, key=lambda d: os.path.getmtime(os.path.join(root, d)))
+    path = run if os.path.isabs(run) else os.path.join(root, run)
+    if not os.path.isfile(os.path.join(path, 'ra3ext.log')):
+        return f'{run}: no ra3ext.log'
+    ks = [k.strip() for k in kinds.split(',') if k.strip()] or None
+    try:
+        evs = inj.look(path, kinds=ks, unit=unit or None, frames=(first, last or 10 ** 9) if first or last else None)
+    except AssertionError as e:
+        return str(e)
+    return f'{os.path.basename(path)}: {len(evs)} records\n' + inj.text(evs, cap=cap)
+
+
 @server.tool(structured_output=False)
 def retail_goals(maps: str = '') -> str:
     """The retail campaign maps' objectives (English titles, main / bonus); maps: name parts to show only those."""
