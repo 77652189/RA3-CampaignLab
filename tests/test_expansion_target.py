@@ -39,7 +39,8 @@ def test_expansion_interface_preserves_selection_and_slot_points(tmp_path):
     state = SimpleNamespace(targets=[('derived', 10)], max_targets=2)
     block = tg.TargetsBlock(data, lambda ai, frame: ['s'], lambda ai, frame: view,
                             lambda ai, sid: (0, 0))
-    ai = SimpleNamespace(enemy_table=None, rng=None, data=SimpleNamespace(state=lambda sid: state), log=[])
+    # start: the AI has had 'make base'; before it only targets found by name resolve (model 2b6b95b)
+    ai = SimpleNamespace(enemy_table=None, rng=None, start=0, data=SimpleNamespace(state=lambda sid: state), log=[])
     block.tick(ai, 1)
     assert [block.slot_target('s', n) for n in (0, 1)] == ['exp:a', 'exp:b']
     assert [(block.points[k].x, block.points[k].y) for k in ('exp:a', 'exp:b')] == [(100, 200), (500, 600)]
