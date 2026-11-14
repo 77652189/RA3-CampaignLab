@@ -184,16 +184,36 @@ NOTES = {
     '微操/AIMicroManagerData.TimeToKeepTargetMax': (GUESSED,
         'E123仅作为固定Min=Max=2秒的控制量；未验证非退化随机区间/Max独立消费，不晋升；'
         '见work/re/e123_keep_target.md'),
-    '人格/AIPersonalityDefinition.ResourceNodeValueRemainingForExpansion': (GUESSED,
-        'D125：1.13 里只解析、拷贝，找不到读它的地方（INFERRED）→ 不起作用，模型不建；'
-        '见 work/re/d125_refinery_units.md 第 2 节'),
-    **{f'人格/AIPersonalityDefinition.ConyardInDangerEmergency{k}': (GUESSED,
-        'D126：只在"建造厂危急"应急里读，它的难度门 EmergencyManagerHandleConyardInDangerAtDifficulty '
-        '在 27 关用到的 94 个人格里全空 → 27 关里不起作用，模型不建；见 work/re/d126_personality_census.md 第 2 节')
-       for k in ('UnderAttackTime', 'HealthPercent', 'EngineerDistance')},
-    '人格/AIPersonalityDefinition.HoldObjectBeaconRadius': (GUESSED,
-        'D126：找不到读它的地方；读信标半径的唯一处只认进攻 / 驻守两类信标，挂物体的信标走跟随、不带半径'
-        '（INFERRED）→ 不起作用，模型不建；见 work/re/d126_personality_census.md 第 2 节'),
+    **{f'人格/AIPersonalityDefinition.{k}': (BENCHED,
+        'B181 一局证一批 engine_aiskirm aiskinb:ib vs aiskirm:ib（同一次排队，都 PASS）：七个字段一次改成极端值'
+        '（ConyardInDanger 三项 1000s / 100% / 5000、HoldObjectBeaconRadius 5000、'
+        'ResourceNodeValueRemainingForExpansion 1000000、DefaultThreatFindRadius 5000、'
+        'MaxWallDestroyTimeToCountAsGoThroughWalls 1000s），AI钱 / 建筑码 / 兵数 / 我方建筑逐秒和基准一样'
+        '（±1 s 开局相位）；tests/test_simai_bench_b.py::test_seven_inert_personality_fields_change_nothing。'
+        f'为什么不起作用：{why}。gap：台上没有围攻建造厂、没有墙、没有协同信标，只证"27 关的门关着时不起作用"')
+       for k, why in (
+           ('ConyardInDangerEmergencyUnderAttackTime', 'D126 难度门 EmergencyManagerHandleConyardInDangerAtDifficulty 94 个人格全空'),
+           ('ConyardInDangerEmergencyHealthPercent', 'D126 难度门 EmergencyManagerHandleConyardInDangerAtDifficulty 94 个人格全空'),
+           ('ConyardInDangerEmergencyEngineerDistance', 'D126 难度门 EmergencyManagerHandleConyardInDangerAtDifficulty 94 个人格全空'),
+           ('HoldObjectBeaconRadius', 'D126 找不到读者，信标半径只认进攻 / 驻守两类'),
+           ('ResourceNodeValueRemainingForExpansion', 'D125 第 2 节只拷贝不读'),
+           ('DefaultThreatFindRadius', 'D127 只写进目标槽、零读者'),
+           ('MaxWallDestroyTimeToCountAsGoThroughWalls', 'D127 读它的循环遍历的列表从不被填'))},
+    '人格/AIPersonalityDefinition.UsePlayerPowersAtDifficulty': (BENCHED,
+        'B181 engine_aispecial aispecoff / aispechb:t（1AlliedBalanced 子人格只改这个字段，台上 MEDIUM）：'
+        '"" 和 "HARD BRUTAL" 两局技能第 2 帧就绪、到第 950 帧放帧 0；对照 aispecial t（XSD 缺省四档全开）第 61 帧放。'
+        '模型 RA3-EngineModel tests/test_ai_bench.py::test_special_use_at_difficulty 按名回放（None / "" / HB / MEDIUM）。'
+        'gap：simai 不放超武，只在模型层对拍'),
+    '人格/AIPersonalityDefinition.RepairBuildingsAtDifficulty': (BENCHED,
+        'B181 engine_repair_ai repairoff / repairmed:a（repair_bench 只改这个字段，USE_REPAIRS 开、钱 10000）：'
+        '"" 整局 50 / 50 / 10000 不修；"MEDIUM" 每秒 +1%，s49 起 100 / 50 / 9900（同 repairai 四档全开）。'
+        'tests/test_simrepair_ai.py 按名回放两局'),
+    '人格/AIPersonalityDefinition.BuildTechMinPowerAdvantage': (BENCHED,
+        'B181 engine_aiskirm aiskmtp:mt（aiskmt40 加 BuildTechMinPowerAdvantage=1000）：到 s810（科技帧 12159）'
+        '没造科技楼；aiskmt40（继承 1.25）f5857 造。模型 tech_score 在 MinTime..ForceTime 窗口里加兵力比门'
+        '（RA3-EngineModel tests/test_ai_tech.py），tests/test_simai_mintime.py::'
+        'test_a_power_advantage_of_1000_keeps_the_tech_building_away 按名回放两局。'
+        'gap：兵力比怎么算没读（台上只知道在 [1.25, 1000) 之间），simai 不给比值'),
     '战略状态/AIStrategicStateDefinition.CannotAttackTargetReaction': (BENCHED,
         'engine_aicannot aicantig/di/su:r：Ignore保留两人和空靶；Disband f95清空/f97重招；'
         'TreatLikeSuccess f92换地面厂/f500进入攻击态。tests/test_ai_cannot_reaction.py按名回放生命周期；'

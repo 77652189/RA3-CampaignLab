@@ -730,3 +730,18 @@ def test_when_every_budget_state_weighs_0_the_first_line_runs(lib):
     before s50, then every weight is 0 and the first line (DEFENSE) runs -- turrets."""
     _, rows = _probe_run('aibszero', lib, 150.0, check='i')
     assert all(r['塔在基地'] == 0 for r in rows[:50]) and max(r['塔在基地'] for r in rows) >= 1
+
+
+# ---- checks/engine_aiskirm.py ib (B round 181): seven personality fields read as acting nowhere, in one run
+def test_seven_inert_personality_fields_change_nothing(lib):
+    """aiskinb = 1AlliedBalanced with ConyardInDangerEmergency UnderAttackTime 1000s / HealthPercent 100% /
+    EngineerDistance 5000, HoldObjectBeaconRadius 5000, ResourceNodeValueRemainingForExpansion 1000000,
+    DefaultThreatFindRadius 5000, MaxWallDestroyTimeToCountAsGoThroughWalls 1000s (work/re d126 / d127 section 2).
+    Bench 11-13 (work/bench_results/aiskirm__ib.json / aiskinb__ib.json, one queue, both PASS) read as stock to the
+    second (+-1 s, the wake's phase): 建筑码 100 s19, 101 s29, 111 s49, 121 s69, 122 s79, 1122 s99, 1123 s138,
+    1124 s148/149; 兵数 the same steps (8 at s60, 10 s111, 12 s124, 15 s133 ... 46 by s250); the player's three
+    buildings die s204/220/222 vs s205/221/223; AI钱 within the same second's spend (49960 vs 49963 at s9). The
+    simulator does not read the seven: it must read the two runs alike too."""
+    _, base = _probe_run('aiskirm', lib, 160.0, check='ib')
+    _, inert = _probe_run('aiskinb', lib, 160.0, check='ib')
+    assert inert == base

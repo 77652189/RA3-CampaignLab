@@ -97,4 +97,6 @@ def probe(m, which):
 
 
 CHECKS = {'aispecial': {w: (lambda m, w=w: probe(m, w)) for w in 'abctefgh'},
-          'aispecialhid': {'d': lambda m: probe(m, 'd')}}
+          'aispecialhid': {'d': lambda m: probe(m, 'd')},
+          'aispecoff': {'t': lambda m: probe(m, 't')},   # UsePlayerPowersAtDifficulty "" / "HARD BRUTAL" at MEDIUM
+          'aispechb': {'t': lambda m: probe(m, 't')}}

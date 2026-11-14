@@ -34,11 +34,14 @@ def check(m):
                                   75: (40, 45, 50, 9975)}.get(initial, (75, 80, 80, 9900))
     if not m.facts['funded']:
         money = 0
-    t.expect = [('repair HP', start, '==', 100 if m.facts['funded'] else initial, end),
+    repairs = m.facts['funded'] and m.facts.get('repairs at medium', 1)
+    if not repairs and m.facts['funded']:   # repairoff: no repair -> nothing spent
+        money = 10000
+    t.expect = [('repair HP', start, '==', 100 if repairs else initial, end),
                 ('control HP', 1, '==', 50, end),
                 ('资金', start, '==', money, end)]
     t.bench = [('bench_watch', dict(seconds=seconds, every=1, sheet=False, lines=3))]
     return t
 
 
-CHECKS = {key: {'a': check} for key in ('repairai', 'repairzero', 'repairq', 'repairt')}
+CHECKS = {key: {'a': check} for key in ('repairai', 'repairzero', 'repairq', 'repairt', 'repairoff', 'repairmed')}

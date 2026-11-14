@@ -38,13 +38,13 @@ def probe_plant():
     return Unit(PROBE, xml, names=dict(unit=PROBE), what='原版电厂复制，附只读维修探针', params=dict(of='AlliedPowerPlant'))
 
 
-def personality_xml():
+def personality_xml(repair_at='EASY MEDIUM HARD BRUTAL'):
     removed = '\n'.join(f'    <StrategicState id="{key}" xai:joinAction="Remove"/>' for key in ab.INHERITED)
     return f'''<?xml version="1.0" encoding="utf-8"?>
 <AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xai="uri:ea.com:eala:asset:instance">
   <Includes><Include type="instance" source="DATA:SkirmishAI/Personalities/{ab.BASE}.xml"/></Includes>
   <AIPersonalityDefinition id="{PID}" PersonalityType="{PID}" inheritFrom="{ab.BASE}"
-    RepairBuildingsAtDifficulty="EASY MEDIUM HARD BRUTAL">
+    RepairBuildingsAtDifficulty="{repair_at}">
 {removed}
     <BuildState id="AlliedDefenseBuildState" xai:joinAction="Remove"/>
     <BuildState id="AlliedNeededUnits" xai:joinAction="Remove"/>
@@ -53,13 +53,17 @@ def personality_xml():
 '''
 
 
-def mission(funded, initial_health=50):
+def mission(funded, initial_health=50, repair_at=None):
     name = {25: 'CampRepQ', 75: 'CampRepT'}.get(initial_health, 'CampRepAI' if funded else 'CampRepZero')
-    m = Mission(name=name, map=probe_range,
-                units=[probe_plant()], facts={'funded': funded, 'initial health': initial_health, 'wake at': WAKE}, ext=True)
+    if repair_at is not None:            # repairoff / repairmed: RepairBuildingsAtDifficulty "" / "MEDIUM"
+        name = 'CampRepMed' if repair_at else 'CampRepOff'
+    facts = {'funded': funded, 'initial health': initial_health, 'wake at': WAKE,
+             'repairs at medium': int(repair_at is None or 'MEDIUM' in repair_at.split())}
+    m = Mission(name=name, map=probe_range, units=[probe_plant()], facts=facts, ext=True)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies',
                      'aiPersonality': f'AIPersonalityDefinition:{PID}'}
-    m.assets.append((PID + '.xml', personality_xml(), f'AIPersonalityDefinition:{PID}'))
+    xml = personality_xml() if repair_at is None else personality_xml(repair_at)
+    m.assets.append((PID + '.xml', xml, f'AIPersonalityDefinition:{PID}'))
     m.put('AlliedConstructionYard', 'high gun', side='s1', name='Repair AI Yard', role='ai yard')
     m.put(PROBE, 'high at 450', side='s1', name='Repair AI Plant', role='repair')
     m.put('AlliedPowerPlant', 'base gun', name='Repair Control', role='control')
@@ -77,4 +81,5 @@ def mission(funded, initial_health=50):
 
 
 MISSION = {'repairai': lambda: mission(True), 'repairzero': lambda: mission(False),
-           'repairq': lambda: mission(True, 25), 'repairt': lambda: mission(True, 75)}
+           'repairq': lambda: mission(True, 25), 'repairt': lambda: mission(True, 75),
+           'repairoff': lambda: mission(True, repair_at=''), 'repairmed': lambda: mission(True, repair_at='MEDIUM')}

@@ -40,12 +40,34 @@ def names(pile):
     return [f'UNIT - CNV AS {pile[0]} {k + 1}' for k in range(pile[4])]
 
 
-def mission(name='CampAISpecial', piles=PILES):
+POWERS_PID = 'CNVPowers'              # aispecoff / aispechb: 1AlliedBalanced with UsePlayerPowersAtDifficulty changed
+
+
+def powers_xml(at):
+    """1AlliedBalanced with UsePlayerPowersAtDifficulty=`at` (a difficulty bit set; D126: the AI fires its powers only
+    at a difficulty in it; 1AlliedBalanced inherits the XSD default, all four)."""
+    return '\n'.join([
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+        '  <Tags></Tags>',
+        '  <Includes>',
+        '    <Include type="instance" source="DATA:SkirmishAI/Personalities/AlliedBalanced.xml" />',
+        '  </Includes>',
+        f'  <AIPersonalityDefinition id="{POWERS_PID}" PersonalityType="{POWERS_PID}" inheritFrom="1AlliedBalanced"'
+        f' UsePlayerPowersAtDifficulty="{at}"/>',
+        '</AssetDeclaration>', ''])
+
+
+def mission(name='CampAISpecial', piles=PILES, use_at=None):
     # facts for the check (it may not import this module): the power, which piles (letters, cast 'A 1' ...) with their
     # hit weights, and whether the piles are revealed to the AI
     facts = {'wake at': WAKE_AT, 'power': POWER, 'piles': {p[0]: p[5] for p in piles}, 'reveal to ai': piles is PILES}
     m = Mission(name=name, map=resources.measured(niagara), facts=facts)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
+    if use_at is not None:               # aispecoff / aispechb (check t): the bench plays MEDIUM
+        m.facts['powers at medium'] = int('MEDIUM' in use_at.split())
+        m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{POWERS_PID}'
+        m.assets.append((f'{POWERS_PID}.xml', powers_xml(use_at), f'AIPersonalityDefinition:{POWERS_PID}'))
     m.spawns |= {SUPER}
     s1 = m.player('s1')
     m.put('AlliedConstructionYard', 'east base', 0, 0, side='s1', name='UNIT - CNV AI Yard', role='ai yard')
@@ -68,4 +90,6 @@ def mission(name='CampAISpecial', piles=PILES):
     return m
 
 
-MISSION = {'aispecial': mission, 'aispecialhid': lambda: mission('CampAIHid', HIDDEN)}
+MISSION = {'aispecial': mission, 'aispecialhid': lambda: mission('CampAIHid', HIDDEN),
+           'aispecoff': lambda: mission('CampAISpecOff', use_at=''),           # check t: powers at no difficulty
+           'aispechb': lambda: mission('CampAISpecHB', use_at='HARD BRUTAL')}  # check t: not at MEDIUM

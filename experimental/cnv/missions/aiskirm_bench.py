@@ -139,7 +139,7 @@ MT_POWER = ((-300.0, -150.0), (-300.0, -350.0), (-500.0, -250.0))   # from the e
 MT_POWER_MORE = ((-500.0, -450.0), (-700.0, -150.0), (-700.0, -350.0))   # aiskmt0 (D82 G1): three more
 
 
-def mintime_xml(min_time, force_time, build=MT_TECH, const=MT_CONST[0], score=MT_CONST[1]):
+def mintime_xml(min_time, force_time, build=MT_TECH, const=MT_CONST[0], score=MT_CONST[1], power_adv=None):
     """1AlliedBalanced plus one ConstantHeuristic build state of its own with one entry MT_TECH TECH MinTime /
     ForceTime (retail writes MinTime on TECH / UPGRADE_TECH entries only, SDK States/AlliedBaseStates.xml; ForceTime
     is the XSD's, default 99999s). D59 (work/re/d59_b_fields.md 3): t = seconds since the AI woke; t < MinTime -> 0,
@@ -164,7 +164,8 @@ def mintime_xml(min_time, force_time, build=MT_TECH, const=MT_CONST[0], score=MT
         (f'    <BuildEntry Build="{const}" Heuristic="CONSTANT" Score="{score}"/>' if min_time is None else
          f'    <BuildEntry Build="{build}" Heuristic="TECH" MinTime="{min_time}s" ForceTime="{force_time}s"/>'),
         '  </AIBuildStateDefinition>',
-        f'  <AIPersonalityDefinition id="{MT_PID}" PersonalityType="{MT_PID}" inheritFrom="1AlliedBalanced">',
+        f'  <AIPersonalityDefinition id="{MT_PID}" PersonalityType="{MT_PID}" inheritFrom="1AlliedBalanced"'
+        + ('' if power_adv is None else f' BuildTechMinPowerAdvantage="{power_adv}"') + '>',
         f'    <BuildState id="{MT_STATE}" State="{MT_STATE}" Difficulty="EASY MEDIUM HARD BRUTAL"/>',
         '  </AIPersonalityDefinition>',
         '</AssetDeclaration>', ''])
@@ -418,6 +419,34 @@ def unitcap_xml(caps=UC_CAPS):
         '</AssetDeclaration>', ''])
 
 
+INERT_PID = 'CNVInert'                # aiskinb (check ib): 1AlliedBalanced with seven fields read as acting nowhere
+# the seven personality fields D read as not acting in the 27 levels (work/re d126 section 2, d127 section 2), each at
+# an extreme value; 1AlliedBalanced's own (BasePersonality.xml) in the comment. EmergencyManagerHandleConyardInDanger-
+# AtDifficulty stays unwritten (empty in all 94 personalities: the gate D read as closing the three ConyardInDanger).
+INERT = (('ConyardInDangerEmergencyUnderAttackTime', '1000s'),     # 5s
+         ('ConyardInDangerEmergencyHealthPercent', '100%'),        # 70%
+         ('ConyardInDangerEmergencyEngineerDistance', '5000.0'),   # 175.0
+         ('HoldObjectBeaconRadius', '5000.0'),                     # 300 (XSD default)
+         ('ResourceNodeValueRemainingForExpansion', '1000000'),    # 22000
+         ('DefaultThreatFindRadius', '5000.0'),                    # 300.0
+         ('MaxWallDestroyTimeToCountAsGoThroughWalls', '1000s'))   # 10s
+
+
+def inert_xml():
+    """1AlliedBalanced with every INERT field at its extreme: if none acts, the run reads as stock aiskirm's."""
+    attrs = ' '.join(f'{k}="{v}"' for k, v in INERT)
+    return '\n'.join([
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+        '  <Tags></Tags>',
+        '  <Includes>',
+        '    <Include type="instance" source="DATA:SkirmishAI/Personalities/AlliedBalanced.xml" />',
+        '  </Includes>',
+        f'  <AIPersonalityDefinition id="{INERT_PID}" PersonalityType="{INERT_PID}" inheritFrom="1AlliedBalanced"'
+        f' {attrs}/>',
+        '</AssetDeclaration>', ''])
+
+
 ARMY_INF, ARMY_VEH = 'SovietAntiInfantryInfantry', 'SovietAntiVehicleVehicleTech1'   # conscript / Hammer tank
 ARMY_N = 10                            # aiskvinf / aiskvveh (check z): what the player owns, idle behind its yard
 
@@ -425,7 +454,7 @@ ARMY_N = 10                            # aiskvinf / aiskvveh (check z): what the
 def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None, account=None,
             buffer=None, new=None, army=None, two=None, observe=False, cap=None, block=None, off=False,
             ptype=None, mintime=None, aidata=None, dear=None, dear_cost=DEAR_COST, power_more=None, mt_secs=300.0,
-            carrier=None, unitcap=None):
+            carrier=None, unitcap=None, inert=False, power_adv=None):
     m = Mission(name=name, map=ai_map(resources.measured(niagara), lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
     if aidata is not None:               # aiskad / aiskfon / aiskfof: the global AIData overridden in the map stream
@@ -448,8 +477,11 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
         lo, hi, build, const, score = (*mintime, *(MT_TECH, *MT_CONST)[len(mintime) - 2:])
         m.facts['min time'], m.facts['force time'], m.facts['build'], m.facts['const'] = lo, hi, build, const
         m.facts['score'], m.facts['mt secs'] = score, mt_secs   # aiskmt20: watched 600 s after the wake
+        if power_adv is not None:        # aiskmtp: BuildTechMinPowerAdvantage written on the personality
+            m.facts['power advantage'] = power_adv
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{MT_PID}'
-        m.assets.append((f'{MT_PID}.xml', mintime_xml(lo, hi, build, const, score), f'AIPersonalityDefinition:{MT_PID}'))
+        m.assets.append((f'{MT_PID}.xml', mintime_xml(lo, hi, build, const, score, power_adv),
+                         f'AIPersonalityDefinition:{MT_PID}'))
         for k, (tpl, site) in enumerate(MT_OWNED):
             m.put(tpl, site, side='s1', name=f'UNIT - CNV AI Owned {k}', role=f'ai owned {k}')
         more = lo == 0 if power_more is None else power_more   # aiskmt03: TECH 0/1 with the three plants only
@@ -462,6 +494,9 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
         if not new:                      # aiskucn: the lines go into CNVNew (new_xml) instead
             m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{UC_PID}'
             m.assets.append((f'{UC_PID}.xml', unitcap_xml(unitcap), f'AIPersonalityDefinition:{UC_PID}'))
+    if inert:                            # aiskinb (check ib): the seven INERT fields at extremes
+        m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{INERT_PID}'
+        m.assets.append((f'{INERT_PID}.xml', inert_xml(), f'AIPersonalityDefinition:{INERT_PID}'))
     if buffer is not None:               # aiskpw0 / aiskpw3 (check x): DesiredExcessPowerBuffer = buffer
         m.facts['power buffer'] = buffer
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{POWER_PID}'
@@ -575,6 +610,7 @@ MISSION = {'aiskirm': mission, 'aiskirmc': lambda: mission(observe=True),
            'aiskuc7': lambda: mission('CampAISkUC7', unitcap=((7, 'MEDIUM'), (1, 'EASY HARD BRUTAL'))),
            # D 124 U2 (check ucn): aisknew2 + UnitCap 3 MEDIUM -- does the cap hold the build state's unit too?
            'aiskucn': lambda: mission('CampAISkUCN', new=True, unitcap=((3, 'MEDIUM'),)),
+           'aiskinb': lambda: mission('CampAISkInB', inert=True),   # check ib: seven inert fields vs aiskirm ib
            'aiskmod': lambda: mission('CampAISkMod', umod=UMOD_ZERO),     # check q: SecondsTillTargetsExpire 12, not 5   # s1 without the container's Lib_Skirmish_Setup
            'aiskacp': lambda: mission('CampAISkAcP', account='PRODUCTION'),    # check v: the rebuilt AI, retail Account
            'aiskacd': lambda: mission('CampAISkAcD', account='DEFENSE'),
@@ -603,6 +639,9 @@ MISSION = {'aiskirm': mission, 'aiskirmc': lambda: mission(observe=True),
            'aiskmt16': lambda: mission('CampAISkMT16', mintime=(160, 162), power_more=True, mt_secs=600.0),
            'aiskmt15': lambda: mission('CampAISkMT15', mintime=(150, 152), power_more=True, mt_secs=600.0),  # G2e
            'aiskmt40': lambda: mission('CampAISkMT40', mintime=(400, 402), power_more=True, mt_secs=780.0),  # G2e
+           # aiskmt40 with BuildTechMinPowerAdvantage 1000 (retail 1.25): does the f5857 tech building still come?
+           'aiskmtp': lambda: mission('CampAISkMTP', mintime=(400, 402), power_more=True, mt_secs=780.0,
+                                      power_adv=1000),
            'aiskmt99': lambda: mission('CampAISkMT99', mintime=(1000, 1002), power_more=True, mt_secs=780.0),
            'aiskmtc': lambda: mission('CampAISkMTC', mintime=(None, None)),          # check mt: CONSTANT 300 tower
            'aiskmtt': lambda: mission('CampAISkMTT', mintime=(200, 201, MT_CONST[0])),   # check mt: TECH 200/201 tower

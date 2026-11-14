@@ -8,7 +8,7 @@
 | 脚本条件 | **98%** | **100%** | 12 / 12 | 89 | 54 | 4 | 28 | 3 | 99% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
-| AI | **87%** | **87%** | 147 / 357 | 428 | 160 | 121 | 113 | 34 | 95% |
+| AI | **90%** | **90%** | 156 / 357 | 428 | 170 | 116 | 108 | 34 | 96% |
 
 ## 脚本动作
 
@@ -854,25 +854,25 @@
 | 已对拍 | `组队招人/CreateUnits.UnitName` | 174 | a4 a5 a7 | engine_aicreate aicr1c/aicr3c：最低1是一名新成员加两名已知预摆维和，最低3等三名新成员；tests/test_simai_bench_c.py按名回放首次组成；新成员兵种由固定生产归属仍INFERRED；仅指定最低数优先再普通补位，不是排他过滤；其他兵种/多槽位/替补仍gap；见 work/re/e_create_e88.md |
 | 不涉及 | `表现/FeedbackEntry.Video` | 168 |  | 纯表现（语音、视频、画面） |
 | 推断 | `人格/AIPersonalityDefinition.Side` | 166 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 未做 | `人格/AIPersonalityDefinition.UsePlayerPowersAtDifficulty` | 154 |  | AI 模型代码里没有这个名字 |
+| 已对拍 | `人格/AIPersonalityDefinition.UsePlayerPowersAtDifficulty` | 154 |  | B181 engine_aispecial aispecoff / aispechb:t（1AlliedBalanced 子人格只改这个字段，台上 MEDIUM）："" 和 "HARD BRUTAL" 两局技能第 2 帧就绪、到第 950 帧放帧 0；对照 aispecial t（XSD 缺省四档全开）第 61 帧放。模型 RA3-EngineModel tests/test_ai_bench.py::test_special_use_at_difficulty 按名回放（None / "" / HB / MEDIUM）。gap：simai 不放超武，只在模型层对拍 |
 | 已对拍 | `目标/AITargetingHeuristic.RequireUniqueTarget` | 154 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aistate.py |
-| 未做 | `人格/AIPersonalityDefinition.RepairBuildingsAtDifficulty` | 153 | a4 a5 a7 | AI 模型代码里没有这个名字 |
+| 已对拍 | `人格/AIPersonalityDefinition.RepairBuildingsAtDifficulty` | 153 | a4 a5 a7 | B181 engine_repair_ai repairoff / repairmed:a（repair_bench 只改这个字段，USE_REPAIRS 开、钱 10000）："" 整局 50 / 50 / 10000 不修；"MEDIUM" 每秒 +1%，s49 起 100 / 50 / 9900（同 repairai 四档全开）。tests/test_simrepair_ai.py 按名回放两局 |
 | 推断 | `造兵/CountAsStructureForBuildPurposesFilter.Include` | 153 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | `造兵/CountAsStructureForBuildPurposesFilter.Rule` | 153 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 未做 | `人格/AIPersonalityDefinition.DesiredExcessPowerBuffer` | 150 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 未做 | `人格/AIPersonalityDefinition.BuildTechMinPowerAdvantage` | 149 | a4 a5 a7 | AI 模型代码里没有这个名字 |
+| 已对拍 | `人格/AIPersonalityDefinition.BuildTechMinPowerAdvantage` | 149 | a4 a5 a7 | B181 engine_aiskirm aiskmtp:mt（aiskmt40 加 BuildTechMinPowerAdvantage=1000）：到 s810（科技帧 12159）没造科技楼；aiskmt40（继承 1.25）f5857 造。模型 tech_score 在 MinTime..ForceTime 窗口里加兵力比门（RA3-EngineModel tests/test_ai_tech.py），tests/test_simai_mintime.py::test_a_power_advantage_of_1000_keeps_the_tech_building_away 按名回放两局。gap：兵力比怎么算没读（台上只知道在 [1.25, 1000) 之间），simai 不给比值 |
 | 已对拍 | `战术/Tactic.Tactic=StaticDefense` | 149 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aidefense.py |
-| 推断 | `人格/AIPersonalityDefinition.ConyardInDangerEmergencyEngineerDistance` | 148 | a4 a5 a7 | D126：只在"建造厂危急"应急里读，它的难度门 EmergencyManagerHandleConyardInDangerAtDifficulty 在 27 关用到的 94 个人格里全空 → 27 关里不起作用，模型不建；见 work/re/d126_personality_census.md 第 2 节 |
-| 推断 | `人格/AIPersonalityDefinition.ConyardInDangerEmergencyHealthPercent` | 148 | a4 a5 a7 | D126：只在"建造厂危急"应急里读，它的难度门 EmergencyManagerHandleConyardInDangerAtDifficulty 在 27 关用到的 94 个人格里全空 → 27 关里不起作用，模型不建；见 work/re/d126_personality_census.md 第 2 节 |
-| 推断 | `人格/AIPersonalityDefinition.ConyardInDangerEmergencyUnderAttackTime` | 148 | a4 a5 a7 | D126：只在"建造厂危急"应急里读，它的难度门 EmergencyManagerHandleConyardInDangerAtDifficulty 在 27 关用到的 94 个人格里全空 → 27 关里不起作用，模型不建；见 work/re/d126_personality_census.md 第 2 节 |
-| 未做 | `人格/AIPersonalityDefinition.DefaultThreatFindRadius` | 148 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 未做 | `人格/AIPersonalityDefinition.MaxWallDestroyTimeToCountAsGoThroughWalls` | 148 | a4 a5 a7 | AI 模型代码里没有这个名字 |
+| 已对拍 | `人格/AIPersonalityDefinition.ConyardInDangerEmergencyEngineerDistance` | 148 | a4 a5 a7 | B181 一局证一批 engine_aiskirm aiskinb:ib vs aiskirm:ib（同一次排队，都 PASS）：七个字段一次改成极端值（ConyardInDanger 三项 1000s / 100% / 5000、HoldObjectBeaconRadius 5000、ResourceNodeValueRemainingForExpansion 1000000、DefaultThreatFindRadius 5000、MaxWallDestroyTimeToCountAsGoThroughWalls 1000s），AI钱 / 建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s 开局相位）；tests/test_simai_bench_b.py::test_seven_inert_personality_fields_change_nothing。为什么不起作用：D126 难度门 EmergencyManagerHandleConyardInDangerAtDifficulty 94 个人格全空。gap：台上没有围攻建造厂、没有墙、没有协同信标，只证"27 关的门关着时不起作用" |
+| 已对拍 | `人格/AIPersonalityDefinition.ConyardInDangerEmergencyHealthPercent` | 148 | a4 a5 a7 | B181 一局证一批 engine_aiskirm aiskinb:ib vs aiskirm:ib（同一次排队，都 PASS）：七个字段一次改成极端值（ConyardInDanger 三项 1000s / 100% / 5000、HoldObjectBeaconRadius 5000、ResourceNodeValueRemainingForExpansion 1000000、DefaultThreatFindRadius 5000、MaxWallDestroyTimeToCountAsGoThroughWalls 1000s），AI钱 / 建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s 开局相位）；tests/test_simai_bench_b.py::test_seven_inert_personality_fields_change_nothing。为什么不起作用：D126 难度门 EmergencyManagerHandleConyardInDangerAtDifficulty 94 个人格全空。gap：台上没有围攻建造厂、没有墙、没有协同信标，只证"27 关的门关着时不起作用" |
+| 已对拍 | `人格/AIPersonalityDefinition.ConyardInDangerEmergencyUnderAttackTime` | 148 | a4 a5 a7 | B181 一局证一批 engine_aiskirm aiskinb:ib vs aiskirm:ib（同一次排队，都 PASS）：七个字段一次改成极端值（ConyardInDanger 三项 1000s / 100% / 5000、HoldObjectBeaconRadius 5000、ResourceNodeValueRemainingForExpansion 1000000、DefaultThreatFindRadius 5000、MaxWallDestroyTimeToCountAsGoThroughWalls 1000s），AI钱 / 建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s 开局相位）；tests/test_simai_bench_b.py::test_seven_inert_personality_fields_change_nothing。为什么不起作用：D126 难度门 EmergencyManagerHandleConyardInDangerAtDifficulty 94 个人格全空。gap：台上没有围攻建造厂、没有墙、没有协同信标，只证"27 关的门关着时不起作用" |
+| 已对拍 | `人格/AIPersonalityDefinition.DefaultThreatFindRadius` | 148 | a4 a5 a7 | B181 一局证一批 engine_aiskirm aiskinb:ib vs aiskirm:ib（同一次排队，都 PASS）：七个字段一次改成极端值（ConyardInDanger 三项 1000s / 100% / 5000、HoldObjectBeaconRadius 5000、ResourceNodeValueRemainingForExpansion 1000000、DefaultThreatFindRadius 5000、MaxWallDestroyTimeToCountAsGoThroughWalls 1000s），AI钱 / 建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s 开局相位）；tests/test_simai_bench_b.py::test_seven_inert_personality_fields_change_nothing。为什么不起作用：D127 只写进目标槽、零读者。gap：台上没有围攻建造厂、没有墙、没有协同信标，只证"27 关的门关着时不起作用" |
+| 已对拍 | `人格/AIPersonalityDefinition.MaxWallDestroyTimeToCountAsGoThroughWalls` | 148 | a4 a5 a7 | B181 一局证一批 engine_aiskirm aiskinb:ib vs aiskirm:ib（同一次排队，都 PASS）：七个字段一次改成极端值（ConyardInDanger 三项 1000s / 100% / 5000、HoldObjectBeaconRadius 5000、ResourceNodeValueRemainingForExpansion 1000000、DefaultThreatFindRadius 5000、MaxWallDestroyTimeToCountAsGoThroughWalls 1000s），AI钱 / 建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s 开局相位）；tests/test_simai_bench_b.py::test_seven_inert_personality_fields_change_nothing。为什么不起作用：D127 读它的循环遍历的列表从不被填。gap：台上没有围攻建造厂、没有墙、没有协同信标，只证"27 关的门关着时不起作用" |
 | 推断 | `人格/AIPersonalityDefinition.ReactiveDefenseRadius` | 148 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过（docs/engine/aitactics.md），没有测试跑这个台子 |
 | 未做 | `人格/AIPersonalityDefinition.RefineryPlacementIncreaseTickAmount` | 148 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | `人格/AIPersonalityDefinition.RefineryPlacementNumberOfIncreaseTicksBeforeGivingUp` | 148 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | `人格/AIPersonalityDefinition.RefineryPlacementStartDistanceDelta` | 148 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | `人格/AIPersonalityDefinition.ResourceNodeSearchRadius` | 148 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 推断 | `人格/AIPersonalityDefinition.ResourceNodeValueRemainingForExpansion` | 148 | a4 a5 a7 | D125：1.13 里只解析、拷贝，找不到读它的地方（INFERRED）→ 不起作用，模型不建；见 work/re/d125_refinery_units.md 第 2 节 |
+| 已对拍 | `人格/AIPersonalityDefinition.ResourceNodeValueRemainingForExpansion` | 148 | a4 a5 a7 | B181 一局证一批 engine_aiskirm aiskinb:ib vs aiskirm:ib（同一次排队，都 PASS）：七个字段一次改成极端值（ConyardInDanger 三项 1000s / 100% / 5000、HoldObjectBeaconRadius 5000、ResourceNodeValueRemainingForExpansion 1000000、DefaultThreatFindRadius 5000、MaxWallDestroyTimeToCountAsGoThroughWalls 1000s），AI钱 / 建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s 开局相位）；tests/test_simai_bench_b.py::test_seven_inert_personality_fields_change_nothing。为什么不起作用：D125 第 2 节只拷贝不读。gap：台上没有围攻建造厂、没有墙、没有协同信标，只证"27 关的门关着时不起作用" |
 | 已对拍 | `人格/AIPersonalityDefinition.SecondsTillTargetsExpire` | 148 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |
 | 推断 | `人格/AIPersonalityDefinition.UnitBuilderOverallDefensivePreference` | 148 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | `人格/DefaultTacticHomeBaseCriteria.PreferredNotBaseTypes` | 148 | a4 a5 a7 | AI 模型代码里读了这个名字 |
@@ -906,7 +906,7 @@
 | 已对拍 | `造兵/BuildState.Difficulty` | 84 | a4 a5 a7 | 台上量过（engine_aiskirm s aiskdiff：只挂 HARD 的建造状态在普通难度一个不造，挂 MEDIUM 的照造），测试对拍 tests/test_simai_bench_b.py |
 | 未做 | `人格/AIPersonalityDefinition.AssaultBeaconRadius` | 83 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | `人格/AIPersonalityDefinition.CoopPersonality` | 83 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 推断 | `人格/AIPersonalityDefinition.HoldObjectBeaconRadius` | 83 | a4 a5 a7 | D126：找不到读它的地方；读信标半径的唯一处只认进攻 / 驻守两类信标，挂物体的信标走跟随、不带半径（INFERRED）→ 不起作用，模型不建；见 work/re/d126_personality_census.md 第 2 节 |
+| 已对拍 | `人格/AIPersonalityDefinition.HoldObjectBeaconRadius` | 83 | a4 a5 a7 | B181 一局证一批 engine_aiskirm aiskinb:ib vs aiskirm:ib（同一次排队，都 PASS）：七个字段一次改成极端值（ConyardInDanger 三项 1000s / 100% / 5000、HoldObjectBeaconRadius 5000、ResourceNodeValueRemainingForExpansion 1000000、DefaultThreatFindRadius 5000、MaxWallDestroyTimeToCountAsGoThroughWalls 1000s），AI钱 / 建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s 开局相位）；tests/test_simai_bench_b.py::test_seven_inert_personality_fields_change_nothing。为什么不起作用：D126 找不到读者，信标半径只认进攻 / 驻守两类。gap：台上没有围攻建造厂、没有墙、没有协同信标，只证"27 关的门关着时不起作用" |
 | 未做 | `人格/AIPersonalityDefinition.HoldPositionBeaconRadius` | 83 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 不涉及 | `人格/AIPersonalityDefinition.PersonalityUIName` | 83 |  | 纯表现（语音、视频、画面） |
 | 已对拍 | `微操/AIMicroManagerData.UseSpecialPowers` | 83 | a4 a5 a7 | 台上量过（engine_aimicro：aimicspon 开 两个武士 s41 冲锋，aimicspoff 关 一直没冲、s51 前被打死，脚本按的对照照样冲）、测试对拍 tests/test_simai.py（模拟器读进探针自写的微操数据：开的想冲、关的从不冲；技能本身模拟器没接，只记"想用"） |

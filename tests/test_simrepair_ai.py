@@ -10,7 +10,11 @@ simai = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(simai)
 
 
-@pytest.mark.parametrize('name, expected', [('repairai', [100, 50, 9900]), ('repairzero', [50, 50, 0])])
+@pytest.mark.parametrize('name, expected', [
+    ('repairai', [100, 50, 9900]), ('repairzero', [50, 50, 0]),
+    # B round 181, RepairBuildingsAtDifficulty at MEDIUM (bench 11-13 work/bench_results/repairoff__a.json /
+    # repairmed__a.json, both PASS): "" -> 50 50 10000 the whole run; "MEDIUM" -> +1 HP/s, 100 50 9900 from s49
+    ('repairoff', [50, 50, 10000]), ('repairmed', [100, 50, 9900])])
 def test_ai_repair_funded_and_zero_credit_final_readings(name, expected):
     import build
     from parts import contract, merged

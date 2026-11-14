@@ -1150,8 +1150,36 @@ def ucn(m):
     return t
 
 
+def ib(m):
+    """One run for a batch of fields read as acting nowhere (aiskinb: 1AlliedBalanced with seven of them at extreme
+    values, missions/aiskirm_bench.py INERT) against stock aiskirm: AI钱 every frame, 建筑码 as x, 兵数 as uc, 我方建筑
+    as a (the player's yard / war factory / power plant still alive: the attack's timing and targets), to 230 s after
+    the wake. The same readings to the second as aiskirm ib = none of the seven acts here."""
+    t = Test()
+    s1, p1 = m.player('s1'), m.player('p1')
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', p1)]))
+    t.counters.append(('CNV_AK_Money', 'AI钱'))
+    t.scripts.append(Script('Test - money', [], [('SET_PLAYER_MONEY_TO_COUNTER', s1, 'CNV_AK_Money')], once=False))
+    _sum(t, m, s1, 'CNV_AK_IbKind', '建筑码', KINDS, weights=(1, 10, 100, 1000), cap=9)
+    _sum(t, m, s1, 'CNV_AK_IbArmy', '兵数', UC_UNITS, cap=16)
+    t.counters.append(('CNV_AK_IbYours', '我方建筑'))
+    t.scripts.append(Script('Test - yours zero', [], [('SET_COUNTER', 'CNV_AK_IbYours', 0)], once=False))
+    for i, tpl in enumerate(YOURS):
+        m.spawns.add(tpl)
+        t.scripts += [Script(f'Test - yours own {i}', [],
+                             [('SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER', tpl, p1, f'CNV_AK_IbOwn{i}')], once=False),
+                      Script(f'Test - yours {i}', [('COUNTER', f'CNV_AK_IbOwn{i}', 3, 1)],
+                             [('INCREMENT_COUNTER', 1, 'CNV_AK_IbYours')], once=False)]
+    w = m.facts['wake at']
+    t.expect += [('建筑码', w + 100.0, 'ever>=', 1, w + 230.0)]
+    t.bench = [('bench_watch', dict(seconds=w + 234.0, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j': j, 'k': k, 'l': l, 'm': m,
-                      'n': n, 'o': o, 'p': p, 'q': q, 'r': r, 'u': u, 'x': x, 'et': et},
+                      'n': n, 'o': o, 'p': p, 'q': q, 'r': r, 'u': u, 'x': x, 'et': et, 'ib': ib},
+          'aiskinb': {'ib': ib},
+          'aiskmtp': {'mt': mt},
           'aiskirmc': {'l': l, 'm': m, 'u': u},  # opt-in carrier diagnostic; stock aiskirm stays unchanged
           'aiskxn': {'l': l}, 'aiskxo': {'l': l},  # D 105: which half of the carrier moves the scout team
           'aiskexp': {'q': q},
