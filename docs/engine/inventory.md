@@ -190,7 +190,7 @@
 | 不涉及 | `PLAYER_ALLOWED_TOBE_COOPAI` | 29 |  | A219 读程序：只写 AI 脑的"可当合作 AI"位；读它的只有合作 AI 的界面 / 语音、玩家挑合作伙伴、关掉时取消合作 AI 正执行的玩家指令；模拟器的玩家没有给盟友下令的命令，脚本读不到它（同下一条） |
 | 已对拍 | `SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER` | 29 | a1 a2 a3 a4 a6 a7 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiopen.py |
 | 不涉及 | `DESELECT` | 28 |  | 纯表现（名字规则） |
-| 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_CAMPAlliedBomberDrop2` | 28 |  | A224 engine_acts_mix:all：玩家的 CAMP_PowerStore_AlliedBomberDrop 按了，22 s 内落点 400 内一个美国大兵 / 标枪兵都没有；原因没查（OCL 没出、飞得慢还是计数条件），模拟器不处理 |
+| 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_CAMPAlliedBomberDrop2` | 28 |  | A224/A225 engine_acts_mix:all、engine_acts_drop / _ally:own：五局都没出轰炸机（keep 镜头对落点、小地图都没新单位）；已排除主人（人类/电脑、苏/盟阵营）、时间（3/12 s）、写法（按钮/按名字放技能）、交 AI、倒计时清零；原因未明，模拟器不处理 |
 | 不涉及 | `SOUND_DISABLE_TYPE` | 28 |  | 纯表现（名字规则） |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackAlliedMCV` | 27 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_unpack.py |
 | 不涉及 | `PLAYER_CAMERA_MOVE_TO_NAMED` | 27 |  | 纯表现（名字规则） |
