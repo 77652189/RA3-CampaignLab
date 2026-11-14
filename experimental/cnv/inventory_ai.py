@@ -184,6 +184,9 @@ NOTES = {
     '微操/AIMicroManagerData.TimeToKeepTargetMax': (GUESSED,
         'E123仅作为固定Min=Max=2秒的控制量；未验证非退化随机区间/Max独立消费，不晋升；'
         '见work/re/e123_keep_target.md'),
+    '人格/AIPersonalityDefinition.ResourceNodeValueRemainingForExpansion': (GUESSED,
+        'D125：1.13 里只解析、拷贝，找不到读它的地方（INFERRED）→ 不起作用，模型不建；'
+        '见 work/re/d125_refinery_units.md 第 2 节'),
     '战略状态/AIStrategicStateDefinition.CannotAttackTargetReaction': (BENCHED,
         'engine_aicannot aicantig/di/su:r：Ignore保留两人和空靶；Disband f95清空/f97重招；'
         'TreatLikeSuccess f92换地面厂/f500进入攻击态。tests/test_ai_cannot_reaction.py按名回放生命周期；'

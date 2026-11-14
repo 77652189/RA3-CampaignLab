@@ -1027,8 +1027,8 @@ class Brain:
 
     def army(self, ai, frame):
         """The AI's unit count UnitCap holds (work/re d124_unitcap.md 2): the UNITS registered set -- every SELECTABLE
-        non-STRUCTURE object it owns, harvesters, garrisoned and pulled-back units included (INFERRED for those inside
-        a garrison or transport)."""
+        non-STRUCTURE object it owns, harvesters, garrisoned, carried and pulled-back units included (those inside a
+        garrison or transport stay in the set: d125_refinery_units.md 3, read)."""
         return sum(1 for b in self.living()
                    if b.owner == self.player and 'SELECTABLE' in b.kinds and 'STRUCTURE' not in b.kinds)
 
