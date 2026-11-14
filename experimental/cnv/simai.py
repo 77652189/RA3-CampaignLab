@@ -176,6 +176,9 @@ class Brain:
         self.ai.team_point = self.team_point
         self.ai.offers = self.offers
         self.ai.build_offers = self.build_offers
+        if hasattr(self.ai, 'power'):       # an engine model with the structure build states (POWER / TECH)
+            self.ai.power = self.power_now
+            self.ai.energy_of = lambda t: simunits.energy(t, self.sim.own)
         self.ai.near_factory = self.near_factory
         self.ai.upgrade_offers = self.upgrade_offers
         self.ai.upgrader = self.upgrade
@@ -880,6 +883,15 @@ class Brain:
                 continue
             out.append((t, simunits.production(t, s.own)[0], frozenset(self.host.kinds(t))))
         return out
+
+    def power_now(self, ai, frame):
+        """AIPlayer.power: (supply, demand) as Sim.power (a structure still unpacking on neither side), the energy of
+        everything in the AI's yard queues (built or not, till it is placed), and the structure templates it owns."""
+        s = self.sim
+        sup, dem = s.power(self.player)
+        queued = sum(simunits.energy(j['template'], s.own) for q in self.yard_q.values() for j in q)
+        owned = {b.template for b in s.living() if b.owner == self.player and 'STRUCTURE' in b.kinds}
+        return sup, dem, queued, owned
 
     def build(self, template):
         """AIPlayer.builder: True once the order is taken (queued), False when nothing of the AI's can make it now."""

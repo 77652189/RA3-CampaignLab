@@ -197,9 +197,11 @@ def test_skirmish_ai_builds_again_as_soon_as_the_opening_is_done(skirmish):
     round 43's team / target rules (a uniform draw that lands on a busy candidate skips the round; simai.md
     round 43); bench one run 125 s. Round 49 (teams only for slots with a target, B handoff 47.3) moves the draws:
     seeds 1-6 126-141.5 s (seed 1 141.5); the same workspace without that gate 126-138.5 s (seed 4) -- so the bound
-    is the measured spread again (work/logs/gate_seeds2.log), not a fit."""
+    is the measured spread again (work/logs/gate_seeds2.log), not a fit. B round 182: the two post-opening power
+    plants and the airfield (bench x builds them too) take the yard's share of the bank -> the default seed 142.5 s;
+    the seeds' spread not re-measured (bound 145 until it is)."""
     again = [s for s, t in _barracks_out(skirmish) if s >= 120]
-    assert again and again[0] <= 142, again
+    assert again and again[0] <= 145, again
 
 
 def test_skirmish_ai_scout_dog_stays_out(skirmish):
@@ -922,13 +924,49 @@ def test_after_the_opening_the_towers_come_at_140_and_160_s(skirmish):
     assert len(got) == 2 and 136 <= got[0] <= 145 and 156 <= got[1] <= 165, got
 
 
-@pytest.mark.xfail(strict=True, reason='bench x: after the opening a 3rd and 4th AlliedPowerPlant (~130 / ~140 s) and '
-                   'an AlliedAirfield (~194 s); simai builds no structure after the opening but towers (the '
-                   'NonPathDependentStructure / Tech build states are not modelled; B handoff 123)')
+def _after_opening(world, template):
+    (b,) = world.brains.values()
+    return [(f - b.started) / simai.FPS for f, what, t in b.trace if what == 'own' and t == template
+            and (f - b.started) / simai.FPS > 100]
+
+
 def test_after_the_opening_two_power_plants_and_an_airfield(skirmish):
-    (b,) = skirmish.brains.values()
-    own = [((f - b.started) / simai.FPS, t) for f, what, t in b.trace if what == 'own']
-    power = [s for s, t in own if t == 'AlliedPowerPlant' and s > 100]
-    air = [s for s, t in own if t == 'AlliedAirfield']
-    assert len(power) == 2 and 125 <= power[0] <= 136 and 135 <= power[1] <= 146, own
-    assert air and 185 <= air[0] <= 203, own
+    """bench x (B handoff 123): after the opening a 3rd and 4th AlliedPowerPlant (~130 / ~140 s, the POWER entry with
+    the retail DesiredExcessPowerBuffer 100) and an AlliedAirfield (~194 s, TECH MinTime 180)."""
+    power = _after_opening(skirmish, 'AlliedPowerPlant')
+    air = _after_opening(skirmish, 'AlliedAirfield')
+    assert len(power) == 2 and 125 <= power[0] <= 136 and 135 <= power[1] <= 146, power
+    assert air and 185 <= air[0] <= 203, air
+
+
+@pytest.fixture(scope='module')
+def buffer0(lib):
+    return simai.run('aiskpw0', until=230, lib=lib)
+
+
+@pytest.fixture(scope='module')
+def buffer300(lib):
+    return simai.run('aiskpw3', until=230, lib=lib)
+
+
+def test_desired_excess_power_buffer_0_builds_no_plant_and_no_airfield(buffer0):
+    """bench x aiskpw0 (B handoff 124): DesiredExcessPowerBuffer 0 -> no plant after the opening, no airfield to 220 s
+    (its -50 fails the power gate once the two towers stand)."""
+    assert _after_opening(buffer0, 'AlliedPowerPlant') == []
+    assert _after_opening(buffer0, 'AlliedAirfield') == []
+
+
+def test_desired_excess_power_buffer_300_builds_four_plants(buffer300):
+    """bench x aiskpw3 (B handoff 124): DesiredExcessPowerBuffer 300 -> four plants, bench s138 / 148 / 158 / 168 (wake
+    ~s8), none more to s220."""
+    power = _after_opening(buffer300, 'AlliedPowerPlant')
+    assert len(power) == 4, power
+    assert all(abs(p - e) <= 4 for p, e in zip(power, (130, 140, 150, 160))), power
+
+
+@pytest.mark.xfail(strict=True, reason='bench x aiskpw3: the airfield at s219 (~211 s after the wake), 17 s after the '
+                   'retail run\'s; simai orders it at TECH MinTime 180 either way (195 s) -- what holds it longer with '
+                   'two more plants is not known (B handoff 182)')
+def test_desired_excess_power_buffer_300_airfield_comes_at_211_s(buffer300):
+    air = _after_opening(buffer300, 'AlliedAirfield')
+    assert air and 205 <= air[0] <= 216, air

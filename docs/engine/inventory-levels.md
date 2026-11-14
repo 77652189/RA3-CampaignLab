@@ -2,11 +2,11 @@
 
 由 `experimental/cnv/inventory_ai.py levels` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）里由遭遇战 AI 带的敌人：它的人格（`enemy_ai.py` 生成）沿继承、战略状态、战术、组队、目标启发、微操、造兵 / 预算状态、开局一路引用到的原版 AI 数据项，加上全局常量 AIData 和本阵营的 ArmyDefinition；再加关卡脚本里点了 AI 玩家名字的脚本动作 / 条件。状态取自 [inventory.md](inventory.md)。"AI 做完"的第一条：下表全部已对拍。
 
-**已对拍 169 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
+**已对拍 170 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
 
 | 部分 | 已对拍 | 推断 | 未做 |
 |---|---|---|---|
-| AI | 157 | 101 | 99 |
+| AI | 158 | 101 | 98 |
 | 脚本动作 | 11 | 0 | 0 |
 | 脚本条件 | 1 | 0 | 0 |
 
@@ -14,7 +14,6 @@
 
 | 状态 | 部分 | 项 | 原版用量 | 关 | 说明 |
 |---|---|---|---|---|---|
-| 未做 | AI | `人格/AIPersonalityDefinition.DesiredExcessPowerBuffer` | 150 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `人格/AIPersonalityDefinition.RefineryPlacementIncreaseTickAmount` | 148 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `人格/AIPersonalityDefinition.RefineryPlacementNumberOfIncreaseTicksBeforeGivingUp` | 148 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `人格/AIPersonalityDefinition.RefineryPlacementStartDistanceDelta` | 148 | a4 a5 a7 | AI 模型代码里没有这个名字 |
@@ -259,6 +258,7 @@
 | 已对拍 | AI | `组队招人/CreateUnits.UnitName` | 174 | a4 a5 a7 | engine_aicreate aicr1c/aicr3c：最低1是一名新成员加两名已知预摆维和，最低3等三名新成员；tests/test_simai_bench_c.py按名回放首次组成；新成员兵种由固定生产归属仍INFERRED；仅指定最低数优先再普通补位，不是排他过滤；其他兵种/多槽位/替补仍gap；见 work/re/e_create_e88.md |
 | 已对拍 | AI | `目标/AITargetingHeuristic.RequireUniqueTarget` | 154 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aistate.py |
 | 已对拍 | AI | `人格/AIPersonalityDefinition.RepairBuildingsAtDifficulty` | 153 | a4 a5 a7 | B181 engine_repair_ai repairoff / repairmed:a（repair_bench 只改这个字段，USE_REPAIRS 开、钱 10000）："" 整局 50 / 50 / 10000 不修；"MEDIUM" 每秒 +1%，s49 起 100 / 50 / 9900（同 repairai 四档全开）。tests/test_simrepair_ai.py 按名回放两局 |
+| 已对拍 | AI | `人格/AIPersonalityDefinition.DesiredExcessPowerBuffer` | 150 | a4 a5 a7 | B122 engine_aiskirm x 三局（aiskpw0 / aiskirm / aiskpw3 = 缓冲 0 / 100 / 300）：开局后多造电厂 0 / 2 / 4 座，一座接一座（唤醒后 ~130 / 140 / 150 / 160 s）。B182 模型 POWER 启发照读到的规则（产电 + 在队列里的电量 对 耗电 + 缓冲；建造场算、刚放下还在展开的电厂两边都不算）三局数量和时刻都对上，tests/test_simai.py::test_desired_excess_power_buffer_* 按名回放。gap：敌人压境（500 内价值 ≥1000）那道门没上台；缓冲 300 时空军台上晚 17 s 没解释（strict xfail） |
 | 已对拍 | AI | `人格/AIPersonalityDefinition.BuildTechMinPowerAdvantage` | 149 | a4 a5 a7 | B181 engine_aiskirm aiskmtp:mt（aiskmt40 加 BuildTechMinPowerAdvantage=1000）：到 s810（科技帧 12159）没造科技楼；aiskmt40（继承 1.25）f5857 造。模型 tech_score 在 MinTime..ForceTime 窗口里加兵力比门（RA3-EngineModel tests/test_ai_tech.py），tests/test_simai_mintime.py::test_a_power_advantage_of_1000_keeps_the_tech_building_away 按名回放两局。gap：兵力比怎么算没读（台上只知道在 [1.25, 1000) 之间），simai 不给比值 |
 | 已对拍 | AI | `战术/Tactic.Tactic=StaticDefense` | 149 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aibasedef.py |
 | 已对拍 | AI | `人格/AIPersonalityDefinition.ConyardInDangerEmergencyEngineerDistance` | 148 | a4 a5 a7 | B181 一局证一批 engine_aiskirm aiskinb:ib vs aiskirm:ib（同一次排队，都 PASS）：七个字段一次改成极端值（ConyardInDanger 三项 1000s / 100% / 5000、HoldObjectBeaconRadius 5000、ResourceNodeValueRemainingForExpansion 1000000、DefaultThreatFindRadius 5000、MaxWallDestroyTimeToCountAsGoThroughWalls 1000s），AI钱 / 建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s 开局相位）；tests/test_simai_bench_b.py::test_seven_inert_personality_fields_change_nothing。为什么不起作用：D126 难度门 EmergencyManagerHandleConyardInDangerAtDifficulty 94 个人格全空。gap：台上没有围攻建造厂、没有墙、没有协同信标，只证"27 关的门关着时不起作用" |
