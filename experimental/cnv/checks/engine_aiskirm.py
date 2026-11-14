@@ -1101,12 +1101,38 @@ def fm(m):
     return t
 
 
+UC_UNITS = ('AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry', DOG, 'AlliedEngineer', RIPTIDE,
+            'AlliedAntiInfantryVehicle', 'AlliedAntiVehicleVehicleTech1', 'AlliedAntiAirVehicleTech1',
+            'AlliedAntiStructureVehicle', 'AlliedAntiVehicleVehicleTech3', 'AlliedFighterAircraft',
+            'AlliedAntiGroundAircraft', 'AlliedMCV')
+
+
+def uc(m):
+    """UnitCap (aiskuc: 1AlliedBalanced + UnitCap Cap 3 MEDIUM and Cap 1 EASY HARD BRUTAL; the bench plays MEDIUM):
+    兵数 = s1's units but miners (the barracks' four, Riptides, IFV, Guardian, AA, Athena, Mirage, two jets, MCV), 矿车 =
+    AlliedMiner, 建筑数 (yard, power, barracks, refinery, war factory, towers), to 200 s after the wake. Engine: the
+    unit builder and the build states' unit entries stop while the AI owns strictly more units than the smallest Cap
+    whose difficulty matches (3); stock aiskirm c has 8 infantry ~52 s after the wake. Tells apart: the count takes in
+    structures (no unit ever), miners (兵数 + 矿车 stops at 4), neither (兵数 stops at 4), or the EASY/HARD line (2)."""
+    t = Test()
+    s1 = m.player('s1')
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    _sum(t, m, s1, 'CNV_AK_UcArmy', '兵数', UC_UNITS, cap=12)
+    _sum(t, m, s1, 'CNV_AK_UcMiner', '矿车', ('AlliedMiner',), cap=8)
+    _sum(t, m, s1, 'CNV_AK_UcBlt', '建筑数', BUILDINGS + TOWERS, cap=12)
+    w = m.facts['wake at']
+    t.expect += [('兵数', w + 5.0, '<=', 5, w + 200.0), ('建筑数', w + 150.0, 'ever>=', 6, w + 200.0)]
+    t.bench = [('bench_watch', dict(seconds=w + 204.0, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j': j, 'k': k, 'l': l, 'm': m,
                       'n': n, 'o': o, 'p': p, 'q': q, 'r': r, 'u': u, 'x': x, 'et': et},
           'aiskirmc': {'l': l, 'm': m, 'u': u},  # opt-in carrier diagnostic; stock aiskirm stays unchanged
           'aiskxn': {'l': l}, 'aiskxo': {'l': l},  # D 105: which half of the carrier moves the scout team
           'aiskexp': {'q': q},
           'aiskmod': {'u': u},
+          'aiskuc': {'uc': uc},
           'aiskacp': {'v': v},
           'aiskacd': {'v': v},
           'aiskirmnl': {'g': g, 'h': h},

@@ -394,6 +394,28 @@ def aidata_xml(changes):
     return xml
 
 
+UC_PID = 'CNVUnitCap'                 # aiskuc (check uc): 1AlliedBalanced plus two UnitCap lines
+UC_CAPS = ((3, 'MEDIUM'), (1, 'EASY HARD BRUTAL'))   # the bench plays MEDIUM: 3 counts, 1 must be skipped
+
+
+def unitcap_xml(caps=UC_CAPS):
+    """1AlliedBalanced plus UnitCap lines (no SDK parent of it writes one; AlliedCoopBaseCampaignPersonality writes
+    Cap 100 at all four). Engine (work/re l4_unitbuilder.md 1, l4_buildstate.md): the smallest Cap of the lines whose
+    difficulty bit matches; the unit builder and the build states' unit entries both stop while the AI owns strictly
+    more units than it; structures are not capped."""
+    return '\n'.join([
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+        '  <Tags></Tags>',
+        '  <Includes>',
+        '    <Include type="instance" source="DATA:SkirmishAI/Personalities/AlliedBalanced.xml" />',
+        '  </Includes>',
+        f'  <AIPersonalityDefinition id="{UC_PID}" PersonalityType="{UC_PID}" inheritFrom="1AlliedBalanced">',
+        *[f'    <UnitCap Cap="{c}" Difficulty="{d}"/>' for c, d in caps],
+        '  </AIPersonalityDefinition>',
+        '</AssetDeclaration>', ''])
+
+
 ARMY_INF, ARMY_VEH = 'SovietAntiInfantryInfantry', 'SovietAntiVehicleVehicleTech1'   # conscript / Hammer tank
 ARMY_N = 10                            # aiskvinf / aiskvveh (check z): what the player owns, idle behind its yard
 
@@ -401,7 +423,7 @@ ARMY_N = 10                            # aiskvinf / aiskvveh (check z): what the
 def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None, account=None,
             buffer=None, new=None, army=None, two=None, observe=False, cap=None, block=None, off=False,
             ptype=None, mintime=None, aidata=None, dear=None, dear_cost=DEAR_COST, power_more=None, mt_secs=300.0,
-            carrier=None):
+            carrier=None, unitcap=None):
     m = Mission(name=name, map=ai_map(resources.measured(niagara), lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
     if aidata is not None:               # aiskad / aiskfon / aiskfof: the global AIData overridden in the map stream
@@ -433,6 +455,10 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
         for k, (x, y) in enumerate(MT_POWER + (MT_POWER_MORE if more else ())):
             m.put('AlliedPowerPlant', 'east base', x, y, side='s1', angle=0.0, name=f'UNIT - CNV AI Power {k}',
                   role=f'ai power {k}')
+    if unitcap is not None:              # aiskuc (check uc): UnitCap lines
+        m.facts['unit cap'] = min(c for c, d in unitcap if 'MEDIUM' in d.split())
+        m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{UC_PID}'
+        m.assets.append((f'{UC_PID}.xml', unitcap_xml(unitcap), f'AIPersonalityDefinition:{UC_PID}'))
     if buffer is not None:               # aiskpw0 / aiskpw3 (check x): DesiredExcessPowerBuffer = buffer
         m.facts['power buffer'] = buffer
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{POWER_PID}'
@@ -540,6 +566,7 @@ MISSION = {'aiskirm': mission, 'aiskirmc': lambda: mission(observe=True),
            'aiskjav': lambda: mission('CampAISkJav', jav=True),
            'aiskirmnl': lambda: mission('CampAISkNoLib', lib=False),
            'aiskexp': lambda: mission('CampAISkExp', expire=12.0),
+           'aiskuc': lambda: mission('CampAISkUC', unitcap=UC_CAPS),   # check uc: UnitCap 3 MEDIUM, 1 others
            'aiskmod': lambda: mission('CampAISkMod', umod=UMOD_ZERO),     # check q: SecondsTillTargetsExpire 12, not 5   # s1 without the container's Lib_Skirmish_Setup
            'aiskacp': lambda: mission('CampAISkAcP', account='PRODUCTION'),    # check v: the rebuilt AI, retail Account
            'aiskacd': lambda: mission('CampAISkAcD', account='DEFENSE'),

@@ -665,3 +665,30 @@ def test_against_tanks_only_the_teams_riptides(lib, monkeypatch):
     monkeypatch.setattr(simai.SimAI, 'efficiency', True)
     w = simai.run('aiskvveh', 'z', 175, lib=lib)
     assert _riptides(w) == 3
+
+
+def test_a_budget_state_line_uses_the_budget_its_state_names(lib):
+    """checks/engine_aitower.py aibsprod h (B round 173): the personality declares its own DEFENSE 50 % budget but its
+    one BudgetState line's State names retail ProductionOnlyBudget (DEFENSE 0 %): no turret to s160 with 20000 at
+    the wake (bench: 塔在基地 0 throughout, the money only grows by the miner's trips)."""
+    _, rows = _probe_run('aibsprod', lib, 150.0, check='h')
+    assert all(r['塔在基地'] == 0 for r in rows) and rows[-1]['AI钱'] > rows[15]['AI钱']
+
+
+def test_a_medium_unit_cap_of_3_holds_the_army_at_4(lib):
+    """checks/engine_aiskirm.py aiskuc uc (B round 173; UnitCap Cap 3 MEDIUM + Cap 1 EASY HARD BRUTAL, the bench
+    runs MEDIUM): 兵数 4 at s37 and no more to s110 while the stock AI has 8 infantry by ~s60 -- strictly more than
+    the smallest matching Cap stops building, the line for other difficulties is skipped. (s111 on it rose to 10:
+    see the strict xfail below.)"""
+    _, rows = _probe_run('aiskuc', lib, 100.0, check='uc')
+    army = [r['兵数'] for r in rows]
+    assert max(army) == 4 and army[-1] == 4
+
+
+@pytest.mark.xfail(strict=True, reason='simai holds aiskuc at 4; bench aiskuc uc: 6 at s111, 8 at s124, 10 at s132 '
+                                       '(to s218) -- something builds past UnitCap after ~100 s after the wake, not '
+                                       'known what (B handoff round 173 hypothesis table)')
+def test_after_s110_the_unit_capped_army_grows_again(lib):
+    """checks/engine_aiskirm.py aiskuc uc: 兵数 10 from s132."""
+    _, rows = _probe_run('aiskuc', lib, 140.0, check='uc')
+    assert max(r['兵数'] for r in rows) >= 8

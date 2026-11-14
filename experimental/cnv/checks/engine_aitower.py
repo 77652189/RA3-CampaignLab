@@ -285,7 +285,31 @@ def g(m):
     return t
 
 
-CHECKS = {k: {'a': a, 'b': b, 'c': c, 'd': d, 'e': e, 'f': f, 'g': g}
+def h(m):
+    """B round 173 (aibsprod): BudgetState.State. The personality declares its own budget (DEFENSE 50 %, which buys a
+    turret soon after the wake in aitowerinc) but its one BudgetState line names retail ProductionOnlyBudget
+    (OpeningMoveHeuristic Complete=true -> PRODUCTION 100 %, DEFENSE 0 %); 20000 at the wake, no opening move.
+
+      塔在基地   s1's turrets in the 1500 square round the yard
+      AI钱      s1's money each 2 s
+
+    The expectation: the State is the budget used -- DEFENSE 0 %, so no turret however rich (the own 50 % one, were it
+    used, buys one within ~30 s as aitowerinc)."""
+    t = Test()
+    s1 = m.player('s1')
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    x, y = m.site('east base')
+    t.areas[ANY] = square(x, y, 1500.0)
+    counted('CNV_AT_Any', '塔在基地', t, template=m.cnv_turret, area=ANY, player=s1)
+    t.counters.append(('CNV_AT_Money', 'AI钱'))
+    t.scripts.append(Script('Test - money', [], [('SET_PLAYER_MONEY_TO_COUNTER', s1, 'CNV_AT_Money')], once=False))
+    wake, end = m.facts['wake at'], m.facts['wake at'] + m.facts.get('watch', LONG)
+    t.expect += [('塔在基地', wake + 5, '<=', 0, end)]
+    t.bench = [('bench_watch', dict(seconds=end + LAG, every=2, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+CHECKS = {k: {'a': a, 'b': b, 'c': c, 'd': d, 'e': e, 'f': f, 'g': g, 'h': h}
           for k in ('aitower50', 'aitower75', 'aitower100', 'aitowerstate', 'aitowerfoe',
                    'aitowerdep', 'aitowerinc', 'aitoweropen', 'aitowerinc10', 'aitowerinc5', 'aitowerinc10r',
-                   'aicheat2', 'aicheat1')}
+                   'aicheat2', 'aicheat1', 'aibsprod')}

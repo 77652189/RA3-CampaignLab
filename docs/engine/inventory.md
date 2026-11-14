@@ -8,7 +8,7 @@
 | 脚本条件 | **98%** | **100%** | 12 / 12 | 89 | 54 | 4 | 28 | 3 | 99% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
-| AI | **85%** | **86%** | 146 / 357 | 428 | 157 | 119 | 118 | 34 | 93% |
+| AI | **87%** | **87%** | 147 / 357 | 428 | 160 | 116 | 118 | 34 | 93% |
 
 ## 脚本动作
 
@@ -829,7 +829,7 @@
 | 已对拍 | `战术/Tactic.EndBehavior` | 454 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aistate.py |
 | 已对拍 | `战略状态/AIStrategicStateDefinition.MaxTargets` | 430 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |
 | 已对拍 | `组队招人/ObjectFilter.ExcludeThing` | 425 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiteamfilter.py |
-| 推断 | `经济/BudgetState.State` | 410 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 已对拍 | `经济/BudgetState.State` | 410 | a4 a5 a7 | engine_aitower aibsprod h（2026-11-13）：人格自己声明 DEFENSE 50% 的预算，唯一一行 BudgetState 的 State 指原版 ProductionOnlyBudget（DEFENSE 0%）：开局 2 万、到 s160 一座塔也不造，钱只随矿车涨——State 指哪个预算定义就用哪个的份额。tests/test_simai_bench_b.py::test_a_budget_state_line_uses_the_budget_its_state_names按名回放；自建预算那几局（aitowerinc10 / inc5）同一规则。见 work/re/handoff-b.md 第177节 |
 | 已对拍 | `经济/ResourceMultiplierCheat.Difficulty` | 398 | a4 a5 a7 | engine_aitower aicheat2 / aicheat1 g（2026-11-13，台上 MEDIUM，矿车每趟 250）：MEDIUM 200% → 每趟 500；EASY HARD BRUTAL 300% + MEDIUM 100% → 每趟 250（与没写的 aitowerinc5 同）——Percentage 就是倍率本身，难度不含当前难度的行跳过；原版 EASY 100% / BRUTAL 200% 两种取值都在内。tests/test_simai_bench_b.py::test_a_medium_cheat_line_of_200_percent_doubles_each_trip、test_a_100_percent_line_and_lines_for_other_difficulties_change_nothing按名回放。gap：多行同难度取哪条（取第一条，INFERRED）、卖楼等其他入账也乘（l2_mining 读到，没上台）；见 work/re/handoff-b.md 第176节 |
 | 已对拍 | `目标/AITargetingHeuristic.HeuristicType` | 392 | a4 a5 a7 | docs/engine/aitactics.md#读数（ClosestStructure / SafestToGroundStructure 是 EnemyStructure，FriendlyLandStructure 是 FriendlyStructure，都上台） |
 | 已对拍 | `组队招人/TeamTemplate.Priority` | 374 | a4 a5 a7 | docs/engine/aistate.md#两队抢兵和 MinPowerAdvantage（第 82 轮） |
@@ -839,10 +839,10 @@
 | 已对拍 | `人格/SpecificUnitCap.Difficulty` | 317 | a4 a5 a7 | engine_aiskirm aiskcap:y（2026-11-12）：子人格给父人格没写的CNVNewPK四档Cap=2，新维和s33到2、停到s149（无上限aisknew2 s44已4），兵营改造标枪/维和；tests/test_simai_bench_b.py::test_a_specific_unit_cap_holds_our_unit_at_two按名回放、断言台上读数。E80父人格已有维和Cap=20时子人格Cap=2不生效=第一条命中（test_simai_bench_e.py）。gap：s150后又造到4、没死人，引擎拿什么数对上限未知（strict xfail test_after_s150_the_capped_unit_is_built_again）；见 work/re/handoff-b.md 第145节 |
 | 已对拍 | `战术/Tactic.Tactic=SimpleAttack` | 315 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aitarget.py |
 | 已对拍 | `启发条件/ConstantHeuristic` | 298 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aipoweradv.py |
-| 推断 | `人格/UnitCap.Cap` | 295 |  | AI 模型代码里读了这个名字 |
+| 已对拍 | `人格/UnitCap.Cap` | 295 |  | engine_aiskirm aiskuc uc（2026-11-13，台上 MEDIUM）：子人格写 Cap 3 MEDIUM + Cap 1 EASY HARD BRUTAL，兵数（矿车以外）s37 到 4、停到 s110（原版 aiskirm c 约 s60 已 8 个步兵）——严格大于最小匹配上限才停，别的难度那行跳过；建筑照造。tests/test_simai_bench_b.py::test_a_medium_unit_cap_of_3_holds_the_army_at_4按名回放。原版只有 Cap 100 一种取值（够不着，规则同一条）。gap：s111 后又涨到 10（strict xfail test_after_s110_the_unit_capped_army_grows_again）；矿车算不算进单位数没分出；见 work/re/handoff-b.md 第177节 |
 | 已对拍 | `启发条件/ScriptedFlagHeuristic` | 289 |  | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py:y |
 | 已对拍 | `启发条件/ScriptedFlagHeuristic.FlagName` | 289 |  | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aistate.py |
-| 推断 | `人格/UnitCap.Difficulty` | 283 |  | AI 模型代码里读了这个名字 |
+| 已对拍 | `人格/UnitCap.Difficulty` | 283 |  | engine_aiskirm aiskuc uc（2026-11-13，台上 MEDIUM）：子人格写 Cap 3 MEDIUM + Cap 1 EASY HARD BRUTAL，兵数（矿车以外）s37 到 4、停到 s110（原版 aiskirm c 约 s60 已 8 个步兵）——严格大于最小匹配上限才停，别的难度那行跳过；建筑照造。tests/test_simai_bench_b.py::test_a_medium_unit_cap_of_3_holds_the_army_at_4按名回放。原版只有 Cap 100 一种取值（够不着，规则同一条）。gap：s111 后又涨到 10（strict xfail test_after_s110_the_unit_capped_army_grows_again）；矿车算不算进单位数没分出；见 work/re/handoff-b.md 第177节 |
 | 已对拍 | `经济/ResourceMultiplierCheat.Percentage` | 280 | a4 a5 a7 | engine_aitower aicheat2 / aicheat1 g（2026-11-13，台上 MEDIUM，矿车每趟 250）：MEDIUM 200% → 每趟 500；EASY HARD BRUTAL 300% + MEDIUM 100% → 每趟 250（与没写的 aitowerinc5 同）——Percentage 就是倍率本身，难度不含当前难度的行跳过；原版 EASY 100% / BRUTAL 200% 两种取值都在内。tests/test_simai_bench_b.py::test_a_medium_cheat_line_of_200_percent_doubles_each_trip、test_a_100_percent_line_and_lines_for_other_difficulties_change_nothing按名回放。gap：多行同难度取哪条（取第一条，INFERRED）、卖楼等其他入账也乘（l2_mining 读到，没上台）；见 work/re/handoff-b.md 第176节 |
 | 已对拍 | `组队招人/ObjectFilter.Rule` | 263 | a4 a5 a7 | docs/engine/aistate.md#队伍招谁（aitfany / aitfnone / aitfall：ANY、NONE + 名单只要名单，ALL + 排除名单） |
 | 已对拍 | `目标/AITargetingHeuristic.Name` | 241 |  | docs/engine/ainamed.md#给关卡线的结论（ainmfar 点名物件不管远近、ainmwp 走到路点守着、ainmnone 名字查不到不派队，全 PASS） |

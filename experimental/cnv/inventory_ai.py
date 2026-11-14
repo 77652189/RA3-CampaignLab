@@ -358,6 +358,18 @@ NOTES = {
         'gap：多行同难度取哪条（取第一条，INFERRED）、卖楼等其他入账也乘（l2_mining 读到，没上台）；'
         '见 work/re/handoff-b.md 第176节')
        for k in ('Percentage', 'Difficulty')},
+    **{f'人格/UnitCap.{k}': (BENCHED,
+        'engine_aiskirm aiskuc uc（2026-11-13，台上 MEDIUM）：子人格写 Cap 3 MEDIUM + Cap 1 EASY HARD BRUTAL，'
+        '兵数（矿车以外）s37 到 4、停到 s110（原版 aiskirm c 约 s60 已 8 个步兵）——严格大于最小匹配上限才停，'
+        '别的难度那行跳过；建筑照造。tests/test_simai_bench_b.py::test_a_medium_unit_cap_of_3_holds_the_army_at_4'
+        '按名回放。原版只有 Cap 100 一种取值（够不着，规则同一条）。gap：s111 后又涨到 10（strict xfail '
+        'test_after_s110_the_unit_capped_army_grows_again）；矿车算不算进单位数没分出；见 work/re/handoff-b.md 第177节')
+       for k in ('Cap', 'Difficulty')},
+    '经济/BudgetState.State': (BENCHED,
+        'engine_aitower aibsprod h（2026-11-13）：人格自己声明 DEFENSE 50% 的预算，唯一一行 BudgetState 的 State 指'
+        '原版 ProductionOnlyBudget（DEFENSE 0%）：开局 2 万、到 s160 一座塔也不造，钱只随矿车涨——State 指哪个预算'
+        '定义就用哪个的份额。tests/test_simai_bench_b.py::test_a_budget_state_line_uses_the_budget_its_state_names'
+        '按名回放；自建预算那几局（aitowerinc10 / inc5）同一规则。见 work/re/handoff-b.md 第177节'),
     '组队招人/TeamTemplate.ReleaseType=NEVER_RELEASE': (BENCHED,
         'engine_airelease airelnever/airelprio仅ReleaseType不同；CNVTeams两组f166防御激活持3166/3167，'
         'priority在(526,541]同两ID转进攻，never保留至末样本；'

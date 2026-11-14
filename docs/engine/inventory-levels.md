@@ -2,15 +2,15 @@
 
 由 `experimental/cnv/inventory_ai.py levels` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）里由遭遇战 AI 带的敌人：它的人格（`enemy_ai.py` 生成）沿继承、战略状态、战术、组队、目标启发、微操、造兵 / 预算状态、开局一路引用到的原版 AI 数据项，加上全局常量 AIData 和本阵营的 ArmyDefinition；再加关卡脚本里点了 AI 玩家名字的脚本动作 / 条件。状态取自 [inventory.md](inventory.md)。"AI 做完"的第一条：下表全部已对拍。
 
-**已对拍 158 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
+**已对拍 159 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
 
 | 部分 | 已对拍 | 推断 | 未做 |
 |---|---|---|---|
-| AI | 146 | 103 | 108 |
+| AI | 147 | 102 | 108 |
 | 脚本动作 | 11 | 0 | 0 |
 | 脚本条件 | 1 | 0 | 0 |
 
-按原版用量加权：已对拍 88%，已有（已对拍+推断）94%。
+按原版用量加权：已对拍 89%，已有（已对拍+推断）94%。
 
 | 状态 | 部分 | 项 | 原版用量 | 关 | 说明 |
 |---|---|---|---|---|---|
@@ -122,7 +122,6 @@
 | 未做 | AI | `微操/IgnoreTargets.StatusBitFlags` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `战略状态/AIStrategicStateDefinition.PathfindingCheckType=QuickDoesAttackPathExist` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `组队招人/TeamTemplate.BaseDefenseMaxDistance` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 推断 | AI | `经济/BudgetState.State` | 410 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/AIPersonalityDefinition.Side` | 166 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `造兵/CountAsStructureForBuildPurposesFilter.Include` | 153 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `造兵/CountAsStructureForBuildPurposesFilter.Rule` | 153 | a4 a5 a7 | AI 模型代码里读了这个名字 |
@@ -250,6 +249,7 @@
 | 已对拍 | AI | `战术/Tactic.EndBehavior` | 454 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aistate.py |
 | 已对拍 | AI | `战略状态/AIStrategicStateDefinition.MaxTargets` | 430 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |
 | 已对拍 | AI | `组队招人/ObjectFilter.ExcludeThing` | 425 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiteamfilter.py |
+| 已对拍 | AI | `经济/BudgetState.State` | 410 | a4 a5 a7 | engine_aitower aibsprod h（2026-11-13）：人格自己声明 DEFENSE 50% 的预算，唯一一行 BudgetState 的 State 指原版 ProductionOnlyBudget（DEFENSE 0%）：开局 2 万、到 s160 一座塔也不造，钱只随矿车涨——State 指哪个预算定义就用哪个的份额。tests/test_simai_bench_b.py::test_a_budget_state_line_uses_the_budget_its_state_names按名回放；自建预算那几局（aitowerinc10 / inc5）同一规则。见 work/re/handoff-b.md 第177节 |
 | 已对拍 | AI | `经济/ResourceMultiplierCheat.Difficulty` | 398 | a4 a5 a7 | engine_aitower aicheat2 / aicheat1 g（2026-11-13，台上 MEDIUM，矿车每趟 250）：MEDIUM 200% → 每趟 500；EASY HARD BRUTAL 300% + MEDIUM 100% → 每趟 250（与没写的 aitowerinc5 同）——Percentage 就是倍率本身，难度不含当前难度的行跳过；原版 EASY 100% / BRUTAL 200% 两种取值都在内。tests/test_simai_bench_b.py::test_a_medium_cheat_line_of_200_percent_doubles_each_trip、test_a_100_percent_line_and_lines_for_other_difficulties_change_nothing按名回放。gap：多行同难度取哪条（取第一条，INFERRED）、卖楼等其他入账也乘（l2_mining 读到，没上台）；见 work/re/handoff-b.md 第176节 |
 | 已对拍 | AI | `目标/AITargetingHeuristic.HeuristicType` | 392 | a4 a5 a7 | docs/engine/aitactics.md#读数（ClosestStructure / SafestToGroundStructure 是 EnemyStructure，FriendlyLandStructure 是 FriendlyStructure，都上台） |
 | 已对拍 | AI | `组队招人/TeamTemplate.Priority` | 374 | a4 a5 a7 | docs/engine/aistate.md#两队抢兵和 MinPowerAdvantage（第 82 轮） |
