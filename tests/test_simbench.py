@@ -1695,6 +1695,34 @@ def test_acts_btn_all_as_the_bench():
     assert first[1] < first[100] <= first[10] < first[1000]
 
 
+def test_acts_tgl_all_as_the_bench():
+    """all, bench 11-14 `run_queue engine_acts_tgl:all` (CampActsTglAll, round 223; bench row s_k = mission k + 2):
+    门 303 -> 3030 at s2 -- the Sudden transport's DisguisedEvacuate and the civilian block's evacuate let all out
+    within a second (no landing); 态 x100 / 幻 111 from s2 to s13 -- the Apocalypse's harpoon, the Kirov's afterburners
+    (GENERIC_TOGGLE_STATE, SHROUD_REVEAL_TO_ALL), both mirage fields on, off again by the second press; 血 the Kirov
+    100 -> 60 at 200 a second while the afterburners are on (LoseHealthUpdate), held after; both Kirovs there at the
+    same time (s13-s14: no faster on afterburners)."""
+    run = _sim_run('engine_acts_tgl', 'all', 24.0)
+    at = dict(run.series)
+    hp = {2: 97, 3: 93, 4: 90, 5: 87, 6: 83, 7: 80, 8: 77, 9: 73, 10: 70, 11: 67, 12: 63, 13: 60}
+    for k in range(2, 23):
+        v = at[k + 2]
+        state, more = ((1100, 111) if k <= 12 else (0, 3000))
+        assert (v[0], v[1], v[2]) == (3030, state, more), (k, v)     # JB 0: its owner has no plant
+        assert abs(v[3] - hp.get(k, 60)) <= 1, (k, v)
+    assert at[2][0] == 303
+
+
+def test_acts_twr_t_as_the_bench():
+    """t, bench 11-14 `run_queue engine_acts_twr:t` (CampActsTwrT, round 223): 塔 1 from s1, 11 from s34 -- with a
+    SovietPowerPlant the Japanese tower's own button toggles it at 3 s and at 35 s alike (so all's JB, its owner with
+    no plant, took no press for want of power, not for unpacking); Command_ToggleBinaryWeapon (a04 presses it on the
+    tower too) never does anything there."""
+    at = dict(_sim_run('engine_acts_twr', 't', 40.0).series)
+    assert all(at[k] == [1] for k in range(4, 35)), at
+    assert all(at[k] == [11] for k in range(36, 41)), at
+
+
 def test_share_all_as_the_bench():
     """all, bench 11-14 `run_queue engine_share:all` (CampShareAll, round 222; the bench's seconds 1-2 ahead): 甲 / 乙 /
     丙钱 125 125 0 after the first load (Player_1 and Soviet_5 sharing), 249 188 63 after the second (Soviet_6 sharing

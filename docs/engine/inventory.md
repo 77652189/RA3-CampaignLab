@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **97%** | **100%** | 50 / 50 | 451 | 167 | 18 | 151 | 115 | 98% |
+| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 176 | 18 | 142 | 115 | 98% |
 | 脚本条件 | **98%** | **100%** | 12 / 12 | 89 | 56 | 5 | 25 | 3 | 99% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -174,7 +174,7 @@
 | 不涉及 | `FLASH_MOUSE_HUD_FIXED_ELEMENT` | 33 |  | 纯表现（名字规则） |
 | 未做 | `GATE_OPEN` | 33 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `MAP_REVEAL_PERMANENTLY_IN_TRIGGER` | 33 |  | tests/test_simbench.py::test_acts_more_as_the_bench |
-| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_DisguisedEvacuate` | 33 |  | 只记进时间线，没有效果 |
+| 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_DisguisedEvacuate` | 33 |  | tests/test_simbench.py::test_acts_tgl_all_as_the_bench |
 | 已对拍 | `STOP_TIMER` | 33 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_timer.py |
 | 已对拍 | `TEAM_SET_OVERRIDE_RELATION_TO_TEAM` | 33 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts9.py |
 | 已对拍 | `UNIT_CHANGE_OBJECT_STATUS:NO_ATTACK` | 33 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acquire.py |
@@ -205,7 +205,7 @@
 | 不涉及 | `TEAM_SET_DISABLED` | 26 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `LINK_MISSION_OBJECTIVE_TO_OBJECT_WITH_CATEGORY` | 25 |  | 纯表现（名字规则） |
 | 已对拍 | `NAMED_GARRISON_SPECIFIC_BUILDING` | 25 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_engineer.py:a |
-| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JapanBaseDefenseToggleBinaryWeapon` | 25 |  | 只记进时间线，没有效果 |
+| 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JapanBaseDefenseToggleBinaryWeapon` | 25 |  | tests/test_simbench.py::test_acts_twr_t_as_the_bench |
 | 推断 | `PLAYER_SET_MONEY_CAP` | 25 |  | A213 engine_acts_tel:tel：脚本的钱不受上限管（上限 3000 时给 5000 → 6000；上限 500 仍 6000；设 10000 照设）；它管的（推断是采矿收入）没上台、模拟器只记不用 |
 | 已对拍 | `UNIT_ALLOW_AI_AUTOACQUIRE` | 25 |  | tests/test_simbench.py::test_acts_tel_as_the_bench |
 | 已对拍 | `UNIT_SET_MODELCONDITION` | 25 |  | tests/test_simbench.py::test_acts_v_as_the_bench |
@@ -256,7 +256,7 @@
 | 未做 | `GATE_CLOSE` | 12 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_GARRISON_NEAREST_BUILDING` | 12 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_SET_SPECIAL_POWER_COUNTDOWN` | 12 |  | Sim.act / Sim.cond 不认识 |
-| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleAfterburners` | 12 |  | 只记进时间线，没有效果 |
+| 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleAfterburners` | 12 |  | tests/test_simbench.py::test_acts_tgl_all_as_the_bench |
 | 不涉及 | `OPTIONS_SET_OCCLUSION_MODE` | 12 |  | 纯表现（名字规则） |
 | 未做 | `PLAYER_SELL_EVERYTHING` | 12 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER` | 12 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acts.py |
@@ -275,7 +275,7 @@
 | 未做 | `SKIRMISH_AI_CONSIDER_ALL_ENEMIES_WHEN_BUILDING` | 10 |  | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `ZOOM_CAMERA` | 10 |  | 纯表现（名字规则） |
 | 已对拍 | `MAP_SHROUD_SET_RESHROUD_TIME` | 9 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_vision.py |
-| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleHarpoonSpecialPower` | 9 |  | 只记进时间线，没有效果 |
+| 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleHarpoonSpecialPower` | 9 |  | tests/test_simbench.py::test_acts_tgl_all_as_the_bench |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateLaserGlaiveBlastSpecialPower` | 9 |  | Sim.act / Sim.cond 不认识 |
 | 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackAlliedMiner` | 9 |  | Sim.act / Sim.cond 有分支 |
 | 未做 | `PLAYER_DISABLE_UNIT_CONSTRUCTION` | 9 |  | Sim.act / Sim.cond 不认识 |
@@ -291,7 +291,7 @@
 | 未做 | `EXIT_SPECIFIC_BUILDING` | 8 |  | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `FLASH_UI_PLAYER_POWER_BUTTON` | 8 |  | 纯表现（名字规则） |
 | 已对拍 | `MAP_REVEAL_AT_WAYPOINT` | 8 | a1 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_vision.py |
-| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_CivilianStructureEvacuate` | 8 |  | 只记进时间线，没有效果 |
+| 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_CivilianStructureEvacuate` | 8 |  | tests/test_simbench.py::test_acts_tgl_all_as_the_bench |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleAlliedEngineerHeal` | 8 |  | 只记进时间线，没有效果 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_UnPackJapanBaseDefenseEgg` | 8 |  | 只记进时间线，没有效果 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateJumpSpecialPower` | 8 |  | Sim.act / Sim.cond 不认识 |
@@ -304,7 +304,7 @@
 | 未做 | `NAMED_FACE_NAMED` | 7 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ActivateRoarSpecialPower` | 7 |  | 只记进时间线，没有效果 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JAAS_Transform` | 7 |  | 只记进时间线，没有效果 |
-| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleMirageField` | 7 |  | 只记进时间线，没有效果 |
+| 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleMirageField` | 7 |  | tests/test_simbench.py::test_acts_tgl_all_as_the_bench |
 | 不涉及 | `PATH_MUSIC_ENABLE_DYNAMIC_SYSTEM` | 7 |  | 纯表现（名字规则） |
 | 推断 | `TEAM_DELETE_LIVING` | 7 |  | Sim.act / Sim.cond 有分支 |
 | 已对拍 | `UNIT_CHANGE_OBJECT_STATUS:NON_AUTOACQUIRABLE` | 7 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attach.py |
@@ -312,7 +312,7 @@
 | 未做 | `ATTACK_MOVE_TEAM_TO_NEAREST_OBJECT_OF_TYPE_OF_PLAYER` | 6 |  | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `DISABLE_COUNTDOWN_TIMER_DISPLAY` | 6 |  | 纯表现（名字规则） |
 | 未做 | `NAMED_FACE_WAYPOINT` | 6 |  | Sim.act / Sim.cond 不认识 |
-| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleBinaryWeapon` | 6 |  | 只记进时间线，没有效果 |
+| 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleBinaryWeapon` | 6 |  | tests/test_simbench.py::test_acts_twr_t_as_the_bench |
 | 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanPowerPlantEgg` | 6 |  | Sim.act / Sim.cond 有分支 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_ActivateRoarSpecialPower` | 6 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_TriggerRushAttackSpecialPower` | 6 |  | Sim.act / Sim.cond 不认识 |
@@ -325,7 +325,7 @@
 | 未做 | `FIRE_SPECIAL_POWER_ON_TEAM` | 5 |  | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `HIDE_UI` | 5 |  | 纯表现（名字规则） |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleDeployWeapon` | 5 |  | 只记进时间线，没有效果 |
-| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleRiotShieldSpecialPower` | 5 |  | 只记进时间线，没有效果 |
+| 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleRiotShieldSpecialPower` | 5 |  | tests/test_simbench_c.py::test_toggle_status_a_press_moves_to_the_next_state_unpack_delays_it_and_a_held_state_takes_no_press |
 | 未做 | `TEAM_SET_HEALTH` | 5 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_SET_MODELCONDITION_FOR_DURATION` | 5 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_SET_SLEEP_STATUS` | 5 |  | Sim.act / Sim.cond 不认识 |
@@ -335,7 +335,7 @@
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ConstructSovietAntiVehicleVehicleTech2` | 4 |  | 只记进时间线，没有效果 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleJapanFortressShipTransformMode` | 4 |  | 只记进时间线，没有效果 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleMagneticArmor` | 4 |  | 只记进时间线，没有效果 |
-| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleShortCircuit` | 4 |  | 只记进时间线，没有效果 |
+| 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleShortCircuit` | 4 |  | tests/test_simbench_c.py::test_toggle_status_a_press_moves_to_the_next_state_unpack_delays_it_and_a_held_state_takes_no_press |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_TriggerRushAttackSpecialPower` | 4 |  | Sim.act / Sim.cond 不认识 |
 | 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanBarracksEgg` | 4 |  | Sim.act / Sim.cond 有分支 |
 | 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanRefineryEgg` | 4 |  | Sim.act / Sim.cond 有分支 |
@@ -694,7 +694,7 @@
 | 未做 | `Behaviors/ObjectCreationUpgrade` | 1 (2) | a1 a2 a3 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：SovietAntiVehicleVehicleTech1, Tutorial_SovietTech1Tank |
 | 未做 | `Behaviors/SlaveWatcherBehavior` | 1 (2) | a1 a2 a3 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：SovietAntiVehicleVehicleTech1, Tutorial_SovietTech1Tank |
 | 未做 | `Behaviors/StoreObjectsSpecialPower` | 1 (2) | a7 a8 | 已核（11-08）：模拟器没有这个效果（没有存放单位）；例：AlliedSuperWeapon, PlayerSpellBook |
-| 未做 | `Behaviors/SwitchLocomotorUpdate` | 1 (2) | 全部 | 模拟器代码里没有这个名字；例：SovietBomberAircraft, SovietBomberAircraft_Special |
+| 未做 | `Behaviors/SwitchLocomotorUpdate` | 1 (2) | 全部 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_acts11.py），可能用别的名字实现了；例：SovietBomberAircraft, SovietBomberAircraft_Special |
 | 未做 | `Behaviors/TeleportStoredObjectsSpecialPower` | 1 (2) | a7 a8 | 已核（11-08）：模拟器没有这个效果（没有传送存放的单位）；例：AlliedSuperWeapon, PlayerSpellBook |
 | 未做 | `Behaviors/TeleportStoredObjectsUpdate` | 1 (2) | a7 a8 | 已核（11-08）：模拟器没有这个效果（UNIT_TELEPORT_TO_WAYPOINT 另算）；例：AlliedSuperWeapon, PlayerSpellBook |
 | 未做 | `Behaviors/VeterancyCrateCollide` | 1 (2) |  | 模拟器代码里没有这个名字；例：VeterancyCrate, VeterancyCrateMP |

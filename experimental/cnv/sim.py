@@ -4306,6 +4306,7 @@ class Sim:
             if self.handed:                     # the container's Lib_Skirmish_Setup, after the first frame's scripts
                 self.off_teams(self.handed)
                 self.handed = ()
+            self.lose_health(eng.frame)
             self.autoheal(eng.frame)
             self.passive_area_heal()
             self.repairs.due(eng.frame)
@@ -4412,6 +4413,20 @@ class Sim:
                 self.destroy(b, '逃出地图', delete=True)
             else:
                 self.change()
+
+    def lose_health(self, frame):
+        """LoseHealthUpdate gated by an ObjectStatusValidation (simunits.lose_health): DamagePerSecond / fps a frame
+        while the body carries every RequiredStatus (engine_acts_tgl KV: the Kirov's afterburners)."""
+        cache = self.__dict__.setdefault('_lose_of', {})
+        for b in self.bodies.values():
+            if not b.alive:
+                continue
+            if b.template not in cache:
+                cache[b.template] = simunits.lose_health(b.template, self.own)
+            rule = cache[b.template]
+            if rule and rule[0] and rule[1] <= set(b.status):
+                b.damage(rule[0] / self.fps)
+                self.used.add('lose health')
 
     def autoheal(self, frame):
         """AutoHealBehavior (simunits.autoheal; engine line C round 7, engine_heal a / b): a hurt body (health below
@@ -4975,6 +4990,11 @@ class Sim:
         if not b.alive or i is None:
             return False
         tm = self.toggles_of(b)[i]
+        if 'POWERED' in b.kinds and self.short_of_power(b.owner):
+            # engine_acts_tgl JB / engine_acts_twr (round 223): a Japanese tower of a player with no plant took
+            # neither press (3 s, 15 s); with a SovietPowerPlant the same press at 3 s toggled it
+            self.note('技能', f'{self.label(b)} 按 {command}：缺电，不切换')
+            return True
         if tm['states'][b.toggle_at.get(i, 0) % len(tm['states'])]['disabled'] or (b.name, i) in self.toggles_due:
             self.note('技能', f'{self.label(b)} 按 {command}：当前状态不接受（DisabledType / 正在展开）')
             return True

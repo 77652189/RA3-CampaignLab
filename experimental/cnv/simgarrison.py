@@ -298,7 +298,10 @@ class Garrisons:
         INFERRED: the landing's time, 1-2 s, taken as 1.5). False when g carries nobody."""
         if g is None or not g.alive or not [u for u in self.inside.get(g.name, []) if u.alive]:
             return False
-        self.ejecting[g.name] = [(g.x, g.y), 0.0, 0.0, self.sim.t + EVACUATE_DELAY]
+        # only an aircraft lands first: the Sudden transport's DisguisedEvacuate and a civilian building's evacuate
+        # had all out within a second of the press (engine_acts_tgl DE / CV, round 223)
+        delay = EVACUATE_DELAY if 'AIRCRAFT' in g.kinds else 0.0
+        self.ejecting[g.name] = [(g.x, g.y), 0.0, 0.0, self.sim.t + delay]
         self.sim.note('驻军', f'{self.sim.label(g)} 落地放下乘员')
         return True
 

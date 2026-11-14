@@ -187,6 +187,14 @@ BENCHED_TESTS = {
         'NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleSpiderHole',
         'NAMED_USE_COMMANDBUTTON_ABILITY:Command_JAIV_Transform',
         'TEAM_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT')},
+    # round 223 (checks/engine_acts11.py all): EVACUATE on a ground transport / a civilian block (out at once), the
+    # Apocalypse's harpoon, both mirage fields, the Kirov's afterburners (its LoseHealthUpdate while on)
+    **{(ACTION, f'NAMED_USE_COMMANDBUTTON_ABILITY:{n}'): 'tests/test_simbench.py::test_acts_tgl_all_as_the_bench'
+       for n in ('Command_DisguisedEvacuate', 'Command_CivilianStructureEvacuate', 'Command_ToggleHarpoonSpecialPower',
+                 'Command_ToggleMirageField', 'Command_ToggleAfterburners')},
+    # (engine_acts11.py t): the Japanese tower's toggle takes a press only with power; the Sickle's button on it: none
+    **{(ACTION, f'NAMED_USE_COMMANDBUTTON_ABILITY:{n}'): 'tests/test_simbench.py::test_acts_twr_t_as_the_bench'
+       for n in ('Command_JapanBaseDefenseToggleBinaryWeapon', 'Command_ToggleBinaryWeapon')},
     # round 222 (checks/engine_share.py all): mining income split among sharing Friends (the earner keeps the rest);
     # NAMED_SELECTED after SELECT_OBJECT (TYPE_SELECTED in NOTES: never true there)
     (ACTION, 'PLAYER_TOGGLE_RESOURCE_SHARING'): 'tests/test_simbench.py::test_share_all_as_the_bench',
@@ -296,6 +304,10 @@ BENCHED_TESTS = {
     # ModelConditions, ArmorSet / LocomotorSet (the VX's / Tengu's jet form), TriggerAttributeModifier
     (MODULE, 'Behaviors/ToggleStatusSpecialAbilityUpdate'):
         'tests/test_simbench_c.py::test_toggle_status_a_press_moves_to_the_next_state_unpack_delays_it_and_a_held_state_takes_no_press',
+    # round 223: the same bench's a / f are the retail presses' own units (s09's Peacekeepers, a08's Tesla troopers)
+    **{(ACTION, f'NAMED_USE_COMMANDBUTTON_ABILITY:{n}'):
+       'tests/test_simbench_c.py::test_toggle_status_a_press_moves_to_the_next_state_unpack_delays_it_and_a_held_state_takes_no_press'
+       for n in ('Command_ToggleRiotShieldSpecialPower', 'Command_ToggleShortCircuit')},
     # engine line C round 5: selling (checks/engine_sell.py, docs/engine/sell.md, bench 11-06)
     (MODULE, 'Behaviors/BuildingBehavior'):
         'tests/test_simbench.py::test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames',

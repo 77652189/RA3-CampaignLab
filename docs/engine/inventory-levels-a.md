@@ -60,7 +60,7 @@
 | 未做 | 物体模块 | `Behaviors/StoreCurrentStateUpdate` | 1 | a1 a2 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoTech1 |
 | 未做 | 物体模块 | `Behaviors/StoreObjectsSpecialPower` | 1 | a7 a8 | 已核（11-08）：模拟器没有这个效果（没有存放单位）；例：CNV_Liberty |
 | 未做 | 物体模块 | `Behaviors/SweepingLaserState` | 1 | a1 a2 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：SovietScoutVehicle |
-| 未做 | 物体模块 | `Behaviors/SwitchLocomotorUpdate` | 1 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；例：CNV_Liberty, SovietBomberAircraft |
+| 未做 | 物体模块 | `Behaviors/SwitchLocomotorUpdate` | 1 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_acts11.py），可能用别的名字实现了；例：CNV_Liberty, SovietBomberAircraft |
 | 未做 | 物体模块 | `Behaviors/TeleportStoredObjectsSpecialPower` | 1 | a7 a8 | 已核（11-08）：模拟器没有这个效果（没有传送存放的单位）；例：CNV_Liberty |
 | 未做 | 物体模块 | `Behaviors/TeleportStoredObjectsUpdate` | 1 | a7 a8 | 已核（11-08）：模拟器没有这个效果（UNIT_TELEPORT_TO_WAYPOINT 另算）；例：CNV_Liberty |
 | 未做 | 物体模块 | `Behaviors/HeightDieUpdate` | 0 | a1 a2 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：JapanBalloonBomb |
