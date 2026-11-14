@@ -670,6 +670,11 @@ class Brain:
                 state = self.__dict__.get('_hunt_goals', {}).get(b.name)
                 if state is not None:
                     state.state, state.target = 26, t
+                if t.owner == self.player and t in self.host.garrison.places(b, True):
+                    # "attacking" one's own base defense = entering it (d133_airevk2.md 1: the team state 6's 0x210
+                    # at the AI's own turret, bench aibdi0 / aibdi2)
+                    self.host.garrison.send(b, t)
+                    return
                 self.sim.order_attack(b, t.name)
             return
         if kind == 'enter':                     # EnterGarrisons / EnterBaseDefenses: into a building (a Thing id)
@@ -754,7 +759,12 @@ class Brain:
         return any(u.body.engaged or isinstance(u.body.goal, sim.Body) for u in team.members)
 
     def stand(self, team, p, r, outer):
-        """Consume the model's aesthetics gates; formation member destinations remain a gap."""
+        """Consume the model's aesthetics gates; formation member destinations remain a gap.
+        INFERRED (D round 137): no aesthetics before 'make base' -- its idle clock starts at the AI's start. A
+        FriendlyStructure team forms before the wake (bench aibdi*, f21), yet aidist2000's guardian (wake s10, 10 s
+        PatrolIdleTime) is still in the 900 circle at s20 on the bench."""
+        if self.ai.start is None:
+            return
         # EngineModel is optional and versioned separately from this repository.
         if not hasattr(self.tactics, 'stand'):
             n = max(1, len(team.members))
@@ -1617,7 +1627,10 @@ class SimAI:
             pid = ((info or {}).get('aiPersonality') or '').split(':')[-1]
             if pid and player is not None and player != s.human and player not in self.brains:
                 self.own_personalities()
-                self.brains[player] = Brain(self, player, side, pid, self.frame)
+                # INFERRED (D round 137): a side in the map with its personality thinks from frame 0, though the
+                # first DT tick lands at frame 8 (bench aibdi0 / aibdi2: the team's rounds at f50 / f80 = mission
+                # s2 / s4, the man inside from s4)
+                self.brains[player] = Brain(self, player, side, pid, 0 if self.done_to is None else self.frame)
         for player in s.ai:
             if player not in self.brains:
                 side = sides.get(player, '')
@@ -1635,7 +1648,8 @@ class SimAI:
             for b in self.brains.values():
                 b.switches()
             now = self.frame
-            for f in range(now if self.done_to is None else self.done_to + 1, now + 1):
+            for f in range(min([now] + [b.born for b in self.brains.values()]) if self.done_to is None
+                           else self.done_to + 1, now + 1):
                 for b in self.brains.values():
                     if f >= b.born:
                         b.tick(f)

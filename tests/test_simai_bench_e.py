@@ -266,10 +266,6 @@ def test_specific_unit_cap(build, active):
         assert max(row['维和总数'] for _, row in late) == 9, late
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'since the team forms before the wake (B round 164) the model makes 1-2 Peacekeepers by s150 on seeds 1-4 '
-    '(without that change 1-4), the bench 5 -- the build rate (B handoff 164, 45 vs 90 frames), not the cap: '
-    'aicapmed == aicapctrl on every seed both ways (work/logs/b166_seeds_*.log)'))
 def test_a_child_cap_under_the_parents_line_does_not_bind():
     """engine_aicap b (E80): a MEDIUM Peacekeeper Cap 2 in a personality inheriting 1AlliedBalanced does not hold --
     the bench's MEDIUM run made 5 Peacekeepers by s150 (9 by s199), on the control's track (5 -> 9). SpecificUnitCap
