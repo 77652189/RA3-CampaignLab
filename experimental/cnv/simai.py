@@ -90,16 +90,20 @@ REFINERY_FIELDS = (('ResourceNodeSearchRadius', 500.0), ('RefineryPlacementStart
                    ('RefineryPlacementIncreaseTickAmount', 60.0),
                    ('RefineryPlacementNumberOfIncreaseTicksBeforeGivingUp', 3))
 REFINERY_NEAR = 200.0               # an own refinery within this of a node: the node's "has a refinery" key
-# INFERRED (B189, fitted to rpx; work/re b189_refinery_questions.md 1): the search's pre-check rejects a spot with an ore
-# node nearer than this -- aiskirm's two refineries stand on ring 5 (r 248) of their node, rings 0-4 (r <= 218) fail
-NODE_CLEAR = 233.0
-# INFERRED (B189, b189 2; the REFINERY evaluator's scan is unread): the AI wants another refinery while a
-# node within REFINERY_REACH of an own yard is no own refinery's nearest node within SERVED. aiskirm: both have one at
-# ~250 -> two only; aiskin0 / aiskin1: the yard-placed ones stand 366 and more from the west east node -> more keep
-# coming; aiskind (ResourceNodeSearchRadius 5000): the far fields (>= ~1280 from the yard) never want one, and
-# aiskin1's rings round them are not tried (_refinery_search)
+# the search's pre-check (D138, work/re d138_refinery_answers.md 1, read): every ore node has a default spot S (its
+# AssistedPlacementInfoBehavior SuggestedOffset ahead, facing the node); a spot c fails when (a) it is within the two
+# rounds of S and the refinery's shape at c (facing its node) meets the one at S (facing S's node), or (b) it is within
+# PASSAGE_CLEAR of the passage point P = S + (R + PASSAGE_GAP) toward the node (R the refinery's round). Every node's
+# S is in the table, its own too, so a node's default spot always fails (read). 300 instead of 150 under an unread
+# condition; bench rpx's ring 5 at k -3 (~183 from P) stands, so the AI's is 150.
+PASSAGE_GAP = 20.0
+PASSAGE_CLEAR = 150.0
+# when the AI wants a refinery (D138 2, read): some node not yet served has, R + its own radius ahead of it, a point
+# within an own build-radius structure's ProjectedBuildabilityInfo Radius + R. Served (INFERRED: the node wrapper's
+# state is unread): an own refinery within SERVED of the node, the node its nearest. aiskirm: both east nodes served
+# -> no third; aiskin0 / aiskin1: the yard-placed ones stand 366+ from the west east node -> more keep coming;
+# aiskind: the far fields (>= ~1280 from the yard) are beyond 600 + 75 of it -> never wanted.
 SERVED = 300.0
-REFINERY_REACH = 1000.0
 DIFFICULTY = {'easy': 'EASY', 'normal': 'MEDIUM', 'hard': 'HARD', 'brutal': 'BRUTAL'}
 BLOCKS = ('targets', 'defense', 'micro', 'specials')
 PATH_EVERY = 10 * FPS               # INFERRED: a PathToTargetHeuristic answer is kept 10 s (the engine asks every
@@ -1121,16 +1125,16 @@ class Brain:
         return yard.x + RING[-1], yard.y
 
     def refinery_spot(self, template):
-        """Where the AI's next refinery goes, None = it wants none now. Wanted (INFERRED, b189 2): some ore node within
-        REFINERY_REACH of an own yard is not the nearest node, within SERVED, of an own refinery. The search (d125 1 +
-        D136 5, read): the nodes in order -- within ResourceNodeSearchRadius of the nearest own yard first, a node's default spot
-        before any ring, no own refinery within REFINERY_NEAR first, nearer first. A node's default spot (INFERRED,
-        hypothesis F2: straight ahead of its facing, the node's and the refinery's radius out); its rings: ring i < Ticks
-        (Ticks <= 0: none, D136 read) at StartDistanceDelta + i x IncreaseTickAmount + the node's + the refinery's
-        radius, in the node's facing + k x pi/16 (read: seven ways, k -3 .. 3; the order -3 first INFERRED, F3: both
-        of aiskirm's refineries took k -3 on ring 5). A spot: open ground, clear of every structure (spot()'s rounds)
-        and of every ore node by NODE_CLEAR (INFERRED pre-check). Every node fails: the general placement by the yard
-        (INFERRED, F1: aiskin0 / aiskin1's refineries stand 430-630 from the yard, none in a node's ring fan).
+        """Where the AI's next refinery goes, None = it wants none now. Wanted (D138 2, read; 'served' INFERRED): a node
+        no own refinery serves has its point R + its radius ahead within an own structure's build radius + R. The
+        search (d125 1 + D136 5 + D138, read): the nodes in order -- within ResourceNodeSearchRadius of the nearest own
+        yard first, a node's default spot before any ring, no own refinery within REFINERY_NEAR first, nearer first. A
+        node's default spot: SuggestedOffset ahead (read; always fails the pre-check); its rings: ring i < Ticks
+        (Ticks <= 0: none) at StartDistanceDelta + i x IncreaseTickAmount + the node's + the refinery's radius R
+        (R INFERRED: the first shape's round, 75), in the node's facing + k x pi/16, k 0, -1, +1, -2, +2, -3, +3
+        (read). A spot: open ground, clear of every structure (spot()'s rounds) and passing the pre-check (PASSAGE_*,
+        read). Every node fails: the general placement by the yard (D138 4 read that it falls through to it; the
+        simulator's yard rings are INFERRED, F1: aiskin0 / aiskin1's stand 430-630 from the yard).
         bench 2026-11-14 CampaignLab engine_aiskirm rpx (B188, work/bench_results/<build>__rpx.json): aiskirm's two at
         strips x26 y9 / x28 y11 (k -3, r ~250 of the east nodes 4173,2987 / 4279,3093, facing 0), no third; aiskin0
         (Ticks 0) = aiskin1 (StartDistanceDelta 1000): x27 y18, x16 y8, x27 y25, then two more by the yard."""
@@ -1153,13 +1157,19 @@ class Brain:
         nodes = [b for b in bodies if 'orenode' in b.template.lower()]
         mine = [b for b in bodies if b.owner == self.player and 'REFINERY' in b.kinds]
 
-        served = set()                          # each own refinery serves its nearest node within SERVED
+        served = set()                          # each own refinery serves its nearest node within SERVED (INFERRED)
         for b in mine:
             n = min(nodes, key=lambda n: math.hypot(n.x - b.x, n.y - b.y), default=None)
             if n is not None and math.hypot(n.x - b.x, n.y - b.y) <= SERVED:
                 served.add(n.name)
-        if not any(n.name not in served and min(math.hypot(n.x - y.x, n.y - y.y) for y in yards) <= REFINERY_REACH
-                   for n in nodes):
+        builders = [(b, self._build_radius(b.template)) for b in bodies
+                    if b.owner == self.player and 'STRUCTURE' in b.kinds]
+        builders = [(b, br) for b, br in builders if br > 0]
+
+        def wanted(n):                          # D138 2: the point ahead of the node within a build radius + R
+            qx, qy = n.x + ((n.radius or 0.0) + reach) * math.cos(n.angle), n.y + ((n.radius or 0.0) + reach) * math.sin(n.angle)
+            return any(math.hypot(b.x - qx, b.y - qy) < br + reach for b, br in builders)
+        if not any(n.name not in served and wanted(n) for n in nodes):
             return None
         taken = [t for t in (s.blocks(b) for b in bodies if 'STRUCTURE' in b.kinds and b not in nodes)
                  if t and len(t) == 3]
@@ -1168,41 +1178,85 @@ class Brain:
         if mk not in memo:
             memo.clear()
             yard = min(yards, key=lambda y: min((math.hypot(n.x - y.x, n.y - y.y) for n in nodes), default=0.0))
-            memo[mk] = (self._refinery_search(s, r, reach, near, start, inc, int(ticks), yards, nodes, mine, taken)
+            memo[mk] = (self._refinery_search(s, r, reach, near, start, inc, int(ticks), yards, nodes, mine, taken,
+                                              shape, [n for n in nodes if wanted(n)])
                         or self.spot(yard, template))
         return memo[mk]
 
-    def _refinery_search(self, s, r, reach, near, start, inc, ticks, yards, nodes, mine, taken):
+    def _build_radius(self, template):
+        """A structure's build radius: its ProjectedBuildabilityInfo Radius (the largest), 0 = none (retail Allied:
+        the yard and the outpost, 600; D138 2 reads the AI's 'wants a refinery' scan over these)."""
+        memo = self.__dict__.setdefault('_build_radii', {})
+        if template not in memo:
+            t = self.host.lib.template(template)
+            memo[template] = max((float(m.attrs.get('Radius', 0)) for m in (t.find('ProjectedBuildabilityInfo')
+                                                                           if t is not None else ())), default=0.0)
+        return memo[template]
+
+    def _node_offset(self, n):
+        """The node's default refinery spot distance: its AssistedPlacementInfoBehavior SuggestedOffset x (OreNode 180)."""
+        memo = self.__dict__.setdefault('_node_offsets', {})
+        if n.template not in memo:
+            t = self.host.lib.template(n.template)
+            m = t.first('AssistedPlacementInfoBehavior') if t is not None else None
+            off = next((c.attrs for c in (m.children if m else ()) if c.tag == 'SuggestedOffset'), {})
+            memo[n.template] = float(off.get('x', 180.0))
+        return memo[n.template]
+
+    def _refinery_search(self, s, r, reach, near, start, inc, ticks, yards, nodes, mine, taken, shape, tried):
         rects = list(getattr(s.m.map, 'BORDERS', {}).values())
         x0, y0, x1, y1 = rects[s.border] if s.border < len(rects) else (-1e9, -1e9, 1e9, 1e9)
+        hx, hy = ((float(shape.get('MajorRadius', reach)), float(shape.get('MinorRadius', reach)))
+                  if shape else (reach, reach))
+        # every node's default spot S, facing its node, and its passage point P (D138 1, read)
+        table = []
+        for n in nodes:
+            off, c, d = self._node_offset(n), math.cos(n.angle), math.sin(n.angle)
+            sx, sy = n.x + off * c, n.y + off * d
+            table.append((sx, sy, n.angle + math.pi, sx - (reach + PASSAGE_GAP) * c, sy - (reach + PASSAGE_GAP) * d))
 
-        def fits(x, y):                             # the footprint inside the active border (INFERRED)
-            return (x0 + reach <= x <= x1 - reach and y0 + reach <= y <= y1 - reach
+        def meet(ax, ay, aa, bx, by, ba):          # two hx x hy boxes overlap (separating axes)
+            dx, dy = bx - ax, by - ay
+            for t in (aa, aa + math.pi / 2, ba, ba + math.pi / 2):
+                span = sum(hx * abs(math.cos(t - q)) + hy * abs(math.sin(t - q)) for q in (aa, ba))
+                if abs(dx * math.cos(t) + dy * math.sin(t)) >= span:
+                    return False
+            return True
+
+        def fits(x, y, n):                          # the footprint inside the active border (INFERRED)
+            if not (x0 + reach <= x <= x1 - reach and y0 + reach <= y <= y1 - reach
                     and s.ground.open('ground', x, y)
-                    and all(math.hypot(x - tx, y - ty) >= r + tr + GAP for tx, ty, tr in taken)
-                    and all(math.hypot(x - n.x, y - n.y) >= NODE_CLEAR for n in nodes))
+                    and all(math.hypot(x - tx, y - ty) >= r + tr + GAP for tx, ty, tr in taken)):
+                return False
+            face = math.atan2(n.y - y, n.x - x)     # the candidate faces its node (FACING_TOWARDS; INFERRED)
+            for sx, sy, sa, px, py in table:        # the pre-check (D138 1, read; the shape test INFERRED)
+                if math.hypot(x - sx, y - sy) < 2 * reach and meet(x, y, face, sx, sy, sa):
+                    return False
+                if math.hypot(x - px, y - py) < PASSAGE_CLEAR:
+                    return False
+            return True
 
         def key(n):
             d = min(math.hypot(n.x - y.x, n.y - y.y) for y in yards)
             has = any(math.hypot(n.x - b.x, n.y - b.y) < REFINERY_NEAR for b in mine)
             return d >= near, has, d
-        # INFERRED (b189 2, perhaps the build radius): nodes beyond REFINERY_REACH of every own yard are not tried
-        # (aiskin1: their rings, 1100+ out, would stand far from the base; the bench put its refineries by the yard)
-        order = sorted((n for n in nodes if key(n)[2] <= REFINERY_REACH), key=key)
+        # D138 2 reads no distance gate in the sort; INFERRED: only the nodes the 'wants a refinery' scan passes are
+        # tried (aiskin1 = aiskin0 on the bench: without a limit its 1100+ rings round far nodes would stand far off)
+        order = sorted(tried, key=key)
         for outside in (False, True):
             group = [n for n in order if key(n)[0] == outside]
-            for n in group:                         # the default spots (tried first)
-                gap = (n.radius or 0.0) + reach
-                x, y = n.x + gap * math.cos(n.angle), n.y + gap * math.sin(n.angle)
-                if fits(x, y):
+            for n in group:                         # the default spots (tried first; the pre-check always fails them)
+                off = self._node_offset(n)
+                x, y = n.x + off * math.cos(n.angle), n.y + off * math.sin(n.angle)
+                if fits(x, y, n):
                     return x, y
             for n in group:                         # the rings (after every default spot)
                 for i in range(max(0, ticks)):
                     ring = start + i * inc + (n.radius or 0.0) + reach
-                    for k in range(-3, 4):
+                    for k in (0, -1, 1, -2, 2, -3, 3):   # D138 3, read: 0 (twice), -1, +1, -2, +2, -3, +3
                         t = n.angle + k * math.pi / 16
                         x, y = n.x + ring * math.cos(t), n.y + ring * math.sin(t)
-                        if fits(x, y):
+                        if fits(x, y, n):
                             return x, y
         return None
 

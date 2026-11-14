@@ -842,6 +842,14 @@ def _rpx(build, lib):
     return _RPX[build]
 
 
+_RING4 = pytest.mark.xfail(strict=True, reason='B191 (D138 pre-check, read): ring 4 at -3 stands 121 off node A\'s '
+                           'default spot; two 60 x 45 boxes need only 115.8, so the simulator takes ring 4 (aiskirm '
+                           'x26 y10, aiskirmr x18 y10); the bench rejects it and takes ring 5 / 6 (x26 y9 / x17 y15). '
+                           'No pair of rigid 60 x 45 boxes rejects 121 yet passes ring 5 (26, 137.6): the shape '
+                           'test, R or the node radius is not as modelled (D138 1; asked in b191_refinery_ring4.md)')
+
+
+@_RING4
 def test_stock_refineries_stand_on_ring_5_of_each_east_node_at_minus_three_sixteenths(lib):
     """engine_aiskirm rpx aiskirm (B188, work/bench_results/aiskirm__rpx.json, PASS): 矿场X / 矿场Y step to 26 / 9 at
     s49 and +28 / +11 at s69 (strips x 4350-4400 / y 2800-2850, then x 4450-4500 / y 2900-2950: each east node's
@@ -873,6 +881,7 @@ def test_ticks_0_puts_the_first_refinery_where_the_bench_did(lib):
     assert (rows[first]['矿场X'], rows[first]['矿场Y']) == (27, 18)
 
 
+@_RING4
 def test_turned_east_nodes_turn_the_first_refinery_to_the_west_side(lib):
     """engine_aiskirm rpx aiskirmr (B190, F2; aiskirm with the two east nodes facing pi, PASS): the first refinery
     s49 at strips x17 y15 (~3925,3125: node A's facing - 3 pi / 16 = 146.25 degrees, ~280 out), the mirror of

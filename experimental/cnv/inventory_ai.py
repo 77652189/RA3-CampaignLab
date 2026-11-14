@@ -211,8 +211,10 @@ NOTES = {
         '矿点朝向 ±k·π/16 七个方向、Ticks ≤ 0 不转圈（读到）；B188 rpx 坐标：aiskirm 两座落各东矿点第 5 圈 −3 档'
         '（条带 x26 y9 / x28 y11，模拟器逐条对上）、不造第三座；'
         'tests/test_simai_bench_b.py::test_stock_refineries_stand_on_ring_5_of_each_east_node_at_minus_three_sixteenths 等。'
-        'gap：找位失败退到建造厂旁的摆放（F1）模拟器位置不对（strict xfail）；方向先试 −3、离矿点 233 的预检、'
-        '"还要不要矿场"的门都是 INFERRED（问 D：work/re b189_refinery_questions.md）')
+        'B191 照 D138 换成读到的：预检（各矿点默认位 S 的外形相交 + 通道点 150）、方向顺序 0/−1/+1/−2/+2/−3/+3、'
+        '"还要不要矿场" = 矿点前方点在建造半径 600 + 75 内。'
+        'gap：第 4 圈 −3 档模拟器放得下、台上放不下（aiskirm 差一条带，strict xfail，外形没读）；'
+        '找位失败退到建造厂旁的摆放（F1）位置不对；"已服务"300、只试要矿场的矿点仍 INFERRED')
        for k, why in (
            ('StartDistanceDelta', 'aiskin1 只改成 1000'),
            ('IncreaseTickAmount', 'aiskinp 和另两项一起改成 1000（单改没上台）'),
