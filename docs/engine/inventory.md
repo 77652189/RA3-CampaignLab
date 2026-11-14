@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **96%** | **100%** | 50 / 50 | 451 | 156 | 19 | 161 | 115 | 97% |
+| 脚本动作 | **96%** | **100%** | 50 / 50 | 451 | 157 | 19 | 160 | 115 | 97% |
 | 脚本条件 | **98%** | **100%** | 12 / 12 | 89 | 55 | 4 | 27 | 3 | 99% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -217,7 +217,7 @@
 | 不涉及 | `SET_COOP_AI_COMMAND_UI_ENABLED` | 24 | a4 | 纯界面：开关玩家给盟友 AI 下令的按钮；模拟器的玩家没有给盟友下令的命令，开关无从起作用（以后加了这个命令再算） |
 | 不涉及 | `LINK_MISSION_OBJECTIVE_TO_WAYPOINT_WITH_CATEGORY` | 23 |  | 纯表现（名字规则） |
 | 已对拍 | `PLAYER_GRANT_SPECIAL_POWER` | 23 |  | tests/test_simbench.py::test_acts_u_as_the_bench |
-| 未做 | `PLAYER_TRANSFER_OWNERSHIP_PLAYER` | 23 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `PLAYER_TRANSFER_OWNERSHIP_PLAYER` | 23 |  | tests/test_simbench.py::test_acts_x_own_as_the_bench |
 | 已对拍 | `TEAM_MOVE_TO_NEAREST_OBJECT_OF_TYPE` | 23 |  | tests/test_simbench.py::test_acts_v_as_the_bench |
 | 不涉及 | `HIDE_TUTORIAL_TEXT` | 22 |  | 纯表现（名字规则） |
 | 未做 | `UNIT_CHANGE_OBJECT_STATUS:NO_ATTACK_FROM_AI` | 22 |  | 状态位 NO_ATTACK_FROM_AI 只记下来 |

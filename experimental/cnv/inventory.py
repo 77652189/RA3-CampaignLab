@@ -172,6 +172,9 @@ BENCHED_TESTS = {
     # round 216: TEAM_HUNT / NAMED_HUNT (checks/engine_acts6.py hunt: an aiTactical-255 owner's crew attack-moves to
     # the nearest enemy; the 240 one's, and NAMED_HUNT on an AI not woken: nothing)
     **{(ACTION, n): 'tests/test_simbench.py::test_acts_w_hunt_as_the_bench' for n in ('TEAM_HUNT', 'NAMED_HUNT')},
+    # round 217: PLAYER_TRANSFER_OWNERSHIP_PLAYER (checks/engine_acts7.py own: the giver's units on no team and its
+    # money go to the receiver; ones on a team stay)
+    (ACTION, 'PLAYER_TRANSFER_OWNERSHIP_PLAYER'): 'tests/test_simbench.py::test_acts_x_own_as_the_bench',
     # engine line C round 1: modules whose retail data the simulator already follows and a bench-reading test cites
     (MODULE, 'Behaviors/ProductionUpdate'):
         'tests/test_simbench.py::test_production_pays_as_it_builds_and_comes_out_after_the_door',   # engine_production a-g

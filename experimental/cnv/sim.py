@@ -1155,7 +1155,9 @@ class Sim:
         self.lost_orders = []                           # (t, script, order, team) given to a team nobody had joined
         for k, o in enumerate(list(getattr(mission.map, 'OBJECTS', [])) + self.mm.objects):
             b = self.add(o.name or f'#{k}', o.template, self.owner_of(o.side), o.x, o.y)
-            b.team = teams.get(o.side, '')
+            # a bare object is on its player's default team (island.like writes 'Soviet_5/teamSoviet_5'; the container
+            # has teamSoviet_2 .. 6 too): bench 11-14 engine_acts_x own, PLAYER_TRANSFER_OWNERSHIP_PLAYER leaves it
+            b.team = teams.get(o.side) or (self.mm.team(o.side) if o.side in getattr(mission.map, 'PLAYERS', {}) else '')
             health = (getattr(o, 'props', None) or {}).get('objectInitialHealth')
             if isinstance(health, (int, float)) and 0 < health < 100:     # the map's starting health, in percent
                 b.hp = b.max_hp * health / 100.0                            # (a7 win: the carrier placed at 1 %)
@@ -3442,6 +3444,20 @@ class Sim:
             for b in self.living():
                 if b.owner == a[0]:
                     b.ai_acquire = bool(int(a[1]))
+        elif name == 'PLAYER_TRANSFER_OWNERSHIP_PLAYER':
+            # (from, to) the program (work/re/a217_transfer.md) calls the receiver's method with the giver. Bench 11-14
+            # engine_acts_x own (round 217, twice): only the giver's units on no team a script names change hands --
+            # Soviet_2's (off their teams since the container's start-up hand-over, skirmish_setup) and a Soviet_5
+            # conscript UNIT_AI_TRANSFER took off its crew; ones on a team stay (teamSoviet_5's tank, Soviet_6's
+            # conscript, a crew's, a Soviet_2 conscript put back on a crew). The giver's money goes whole to the
+            # receiver (Player_1 1000 -> ~6000, Soviet_5 5000 -> < 100). Structures alike (INFERRED: only units placed)
+            for b in self.living():
+                if b.owner == a[0] and not b.team:
+                    b.owner = a[1]
+                    self.note('易主', f'{self.label(b)} 归 {self.who(a[1])}')
+            self.money[a[1]] = self.money.get(a[1], 0) + self.money.get(a[0], 0)
+            self.money[a[0]] = 0
+            self.change()
         elif name == 'NAMED_TRANSFER_OWNERSHIP_PLAYER':
             b = self.body(a[0])
             if b and b.owner != a[1]:

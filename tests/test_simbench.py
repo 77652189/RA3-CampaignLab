@@ -1623,6 +1623,22 @@ def test_acts_w_hunt_as_the_bench():
     assert 13.0 <= first(2, 62) <= 19.0 and 29.0 <= first(2, 52) <= 36.0 and 46.0 <= first(2, 42) <= 53.0
 
 
+def test_acts_x_own_as_the_bench():
+    """own, bench 11-14 `run_queue engine_acts_x:own` (CampActsXOwn, round 217; the bench's seconds ~1-2 behind):
+    主 1365 -> 1369 at s2 -> 1433 at s10 -- PLAYER_TRANSFER_OWNERSHIP_PLAYER moves only the giver's units on no team
+    (Soviet_5's conscript UNIT_AI_TRANSFER took off its crew; Soviet_2's, off their team since the start), not ones on
+    a team (teamSoviet_5's tank, Soviet_6's, a Soviet_2 conscript put on a crew); 钱 74 -> 29 -- the giver's money
+    whole to the receiver (Player_1 1000 -> 6000, Soviet_5 0). The 12 s money (Soviet_2's start) is not asserted."""
+    run = _sim_run('engine_acts_x', 'own', 30.0)
+
+    def first(col, value):
+        return next(t for t, v in run.series if v[col] == value)
+    assert [v[0] for _, v in run.series if _ >= 1.0][:1] == [1365] and run.series[-1][1][0] == 1433
+    assert {v[0] for _, v in run.series} == {1365, 1369, 1433}
+    assert 2.0 <= first(0, 1369) <= 5.0 and 10.0 <= first(0, 1433) <= 13.0
+    assert 2.0 <= first(1, 29) <= 5.0 and {v[1] for t, v in run.series if 1.0 <= t < 12.0} <= {74, 29}
+
+
 def test_video_a_radar_clip_is_done_after_its_length_full_screen_never():
     """movie play (bench, docs/story/handoff.md 1g): CNVTEST01 (95 frames at 23.976) in the radar window done 63 game
     frames after its start; the full-screen clip never reads done."""
