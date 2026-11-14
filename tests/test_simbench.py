@@ -1497,6 +1497,21 @@ def test_conds_sight_as_the_bench():
     assert _conds_column(run, 3) == [1, 0, 2]
 
 
+def test_acts_flow_as_the_bench():
+    """flow, bench 11-13 `run_queue engine_acts:flow` (CampActsFlow, round 211): 甲钱 / 乙钱 1001 / 0 -> 1001 / 1000 ->
+    2001 / 1000 (script money never shared); 友血 100 until the FORCE attack (the plain NAMED_ATTACK_NAMED on its own
+    side fires nothing); 旗 134 143 175 495 361 41: SKIRMISH_AI_DO_NOT_ATTACK stops no idle enemy (&2 as &4),
+    SHROUD_REVEAL_TO_ALL discovers the far unit (&1, not &512), TEAM_ALLOW_AI_AUTOACQUIRE takes the plant (&8, not &16),
+    the EMP'd unit's move goes on once cleared (&32), TEAM_SET_STANCE 3 holds fire and 0 frees it as UNIT_SET_STANCE
+    (&64 with &256; the stance-less &128 from the start)."""
+    run = _sim_run('engine_acts', 'flow', 30.0)
+    assert [v for v in _conds_column(run, 0) if v] == [1001, 2001]
+    assert _conds_column(run, 1) == [0, 1000]
+    hp = [(t, v[2]) for t, v in run.series[1:]]
+    assert all(v == 100 for t, v in hp if t < 8.0) and min(v for _, v in hp) <= 3
+    assert _conds_column(run, 3) == [134, 143, 175, 495, 361, 41]
+
+
 def test_video_a_radar_clip_is_done_after_its_length_full_screen_never():
     """movie play (bench, docs/story/handoff.md 1g): CNVTEST01 (95 frames at 23.976) in the radar window done 63 game
     frames after its start; the full-screen clip never reads done."""

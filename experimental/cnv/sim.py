@@ -363,7 +363,10 @@ GAP_WEAPON, GAP_UPGRADE, GAP_ACTION, GAP_CONDITION, GAP_COMMAND, GAP_STATUS = \
     '武器', '升级', '脚本动作', '脚本条件', '命令', '状态'
 # the object statuses sim.py acts on (tested with `in b.status`; IN_STASIS = IMMOBILE NO_ATTACK UNATTACKABLE in
 # Sim.modify); tests/test_sim.py checks the list against the source
-ACTED_STATUS = frozenset({'SOLD', 'GENERIC_TOGGLE_STATE', 'IMMOBILE', 'NO_ATTACK', 'UNATTACKABLE', 'NON_AUTOACQUIRABLE', 'IN_STASIS', 'UNDER_FROZEN', 'ATTACHED'})
+ACTED_STATUS = frozenset({'SOLD', 'GENERIC_TOGGLE_STATE', 'IMMOBILE', 'NO_ATTACK', 'UNATTACKABLE', 'NON_AUTOACQUIRABLE', 'IN_STASIS', 'UNDER_FROZEN', 'ATTACHED', 'SHROUD_REVEAL_TO_ALL'})
+# bits only a woken skirmish AI's own target choice reads (d115 10: its micro-manager), no gap here: the unit's own
+# take, a script's order, the player's are untouched (bench 11-13 engine_acts flow 旗&2: an idle enemy fires on it)
+AI_ONLY_STATUS = frozenset({'SKIRMISH_AI_DO_NOT_ATTACK'})
 # a script's power or button by itself, as simcoverage.refined names it
 BUTTON_ACTIONS = ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY',
                   'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED')
@@ -618,6 +621,7 @@ class Body:
                                                                 # fired; back to another stance it fires again (a / f)
     stance: int = 0                                             # UNIT_SET_STANCE: GUARD 0, AGGRESSIVE 1, HOLD_POSITION
                                                                 # 2, HOLD_FIRE 3 (idle_chase reads 1 / 2)
+    ai_acquire: bool = False                                    # TEAM_ALLOW_AI_AUTOACQUIRE (takes_by_itself)
     z: float = None                                         # None: on terrain; airborne MetaImpact sets world z
     spawned_children: list = dataclasses.field(default_factory=list)
     spawn_parent: object = None
@@ -1069,7 +1073,9 @@ class Sim:
         self.video_end = {}                 # clip -> when HAS_FINISHED_VIDEO holds (None: never, a full-screen one)
         self.money = {}
         self.income = {}                    # player -> (AI income multiplier, fraction carried) (simai: ResourceMultiplierCheat)
-        self.kills = []                  # (killer's player, killer's name, template, name) by weapon (cond_retail)
+        self.sharing = set()                # players sharing income (PLAYER_TOGGLE_RESOURCE_SHARING)
+        self.script_disabled = {}           # id(body) -> NAMED_SET_DISABLED types on (emp_disabled)
+        self.kills = []                     # (killer's player, killer's name, template, name) by weapon (cond_retail)
         self.attacked_by = set()            # (player hit, player hitting): SKIRMISH_PLAYER_HAS_BEEN_ATTACKED_BY_PLAYER
         self.cond_memory = {}               # a condition's reading the frame before (NAMED_EXITED_AREA)
         self.made_frame = {}                # team template -> frame its last instance was made by a script (TEAM_CREATED)
@@ -1621,9 +1627,12 @@ class Sim:
         return b.mode == 'move' and not b.path and b.goal is None and b.move_to is not None and \
             b.dest == b.move_to and math.hypot(b.dest[0] - b.x, b.dest[1] - b.y) > ARRIVE
 
-    def order_attack(self, b, target_name):
+    def order_attack(self, b, target_name, force=False):
         self.used.add('attack')
         target = self.body(target_name)
+        if b and target and not force and self.relation(b.owner, target.owner) == 'ALLIES':
+            return      # bench 11-13 engine_acts flow 友血: NAMED_ATTACK_NAMED on one of its own side, no shot (d115 13:
+                        # FORCE_ATTACK_NAMED is the order that takes any relation); a neutral one not benched, kept
         if b and target and target.alive and b.alive:
             b.hold_paused = False               # an order given under HOLD_FIRE fires (stance.md b)
         if b and target and target.alive and b.alive and b.goal is not target:
@@ -3041,6 +3050,8 @@ class Sim:
                 air = m.surface == 'air'
                 if m.owner == a[0]:
                     return True
+                if 'SHROUD_REVEAL_TO_ALL' in m.status:  # bench 11-13 engine_acts flow 旗&1: the bit set on a standing
+                    return True                          # unit far from all the player's, discovered from that second
                 if id(m) in hidden or (m.path and m.dest):
                     continue
                 if (self.sees(m.x, m.y, air) if a[0] == self.human else
@@ -3397,6 +3408,31 @@ class Sim:
                 self.gap(GAP_ACTION, name, '收回（开关 0）没上台量过，不模拟')
             if any(b.owner in self.ai for b in theirs):
                 self.gap(GAP_ACTION, name, '交给 AI 后的行为不模拟（引擎 B 的 AI）')
+        elif name == 'TEAM_SET_STANCE':
+            # (team, stance) d115 23: each member now (a member's, not the team's: one joining later keeps its own),
+            # as UNIT_SET_STANCE; bench 11-13 engine_acts flow (stance)
+            for b in self.members(a[0]):
+                self.act('UNIT_SET_STANCE', [b.name, a[1]], script)
+        elif name == 'TEAM_ALLOW_AI_AUTOACQUIRE':
+            # (team, on) d115 11: each member now takes what only a computer's units take by themselves (the
+            # NOT_AUTOACQUIRABLE + AUTO_ACQUIRABLE_BY_AI ones: structures); takes_by_itself reads it
+            for b in self.members(a[0]):
+                b.ai_acquire = bool(int(a[1]))
+        elif name == 'NAMED_SET_DISABLED':
+            # (object, type, on) d115 20: on = disabled for ever by that type, off = that type cleared. Every type
+            # holds a unit as EMP does (emp_disabled; benched for EMP only, the others INFERRED)
+            b = self.body(a[0])
+            if b:
+                kinds = self.script_disabled.setdefault(id(b), set())
+                (kinds.add if int(a[2]) else kinds.discard)(str(a[1]))
+                if not kinds:
+                    self.script_disabled.pop(id(b))
+        elif name == 'NAMED_FORCE_ATTACK_NAMED':
+            # (attacker, target) d115 13: the attack order that takes any relation (command 0xc); bench 11-13
+            # engine_acts flow (force): on one of its own side
+            self.order_attack(self.body(a[0]), a[1], force=True)
+        elif name == 'PLAYER_TOGGLE_RESOURCE_SHARING':     # (player, on) d115 19: read when money comes in (earn)
+            (self.sharing.add if int(a[1]) else self.sharing.discard)(a[0])
         elif name == 'TEAM_USE_COMMANDBUTTON_ABILITY':
             # (team, button) l2_scripts1 8: the button on every living member, no target. Bench 11-08 button: both
             # Peacekeepers of the crew raised their shields
@@ -3460,7 +3496,7 @@ class Sim:
             if b:
                 (b.script_status.add if a[2] else b.script_status.discard)(st)
                 self.modify(b)
-            if st not in ACTED_STATUS:
+            if st not in ACTED_STATUS | AI_ONLY_STATUS:
                 self.gap(GAP_ACTION, refined(name, a), f'状态位 {st} 只记下来；模拟器只认 {"、".join(sorted(ACTED_STATUS))}')
         elif name in ('UNIT_AFFECT_OBJECT_PANEL_FLAGS', 'TEAM_AFFECT_OBJECT_PANEL_FLAGS'):
             # (unit or team, flag, on). Indestructible: the body takes no damage at all (Generals ScriptActions
@@ -4152,9 +4188,9 @@ class Sim:
         target (`a.goal`) is not filtered here. A side run by the skirmish AI (`self.ai`, woken) keeps Generals'
         exception and takes buildings (INFERRED: the bench's s1 had no AI; a skirmish AI's attack does pull down
         buildings -- tests/test_simai)."""
-        if 'NOT_AUTOACQUIRABLE' in t.kinds:
+        if 'NOT_AUTOACQUIRABLE' in t.kinds and not ('AUTO_ACQUIRABLE_BY_AI' in t.kinds and a.ai_acquire):
             return False
-        if 'STRUCTURE' in t.kinds:
+        if 'STRUCTURE' in t.kinds and not a.ai_acquire:
             return ('ATTACK_BUILDINGS' in a.acquire or 'FS_BASE_DEFENSE' in t.kinds
                     or a.owner in getattr(self, 'ai', ()))
         return True
@@ -5240,7 +5276,8 @@ class Sim:
         Recheck at each damage frame too: fight's cached aim may predate the hit.
         Already launched projectiles and DOTs keep their own delivery events.
         """
-        return self.frame_now() < self.__dict__.get('emp_until', {}).get(id(b), 0)
+        return (self.frame_now() < self.__dict__.get('emp_until', {}).get(id(b), 0)
+                or id(b) in self.__dict__.get('script_disabled', {}))
 
     def at_site(self, b, walked):
         """R5: a builder within his stand of the spot he was told to build at stops; the structure is made there the

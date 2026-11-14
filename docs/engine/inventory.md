@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **92%** | **100%** | 50 / 50 | 451 | 128 | 19 | 189 | 115 | 93% |
+| 脚本动作 | **94%** | **100%** | 50 / 50 | 451 | 134 | 20 | 182 | 115 | 95% |
 | 脚本条件 | **98%** | **100%** | 12 / 12 | 89 | 54 | 4 | 28 | 3 | 99% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -20,7 +20,7 @@
 | 已对拍 | `ALLOW_DISALLOW_ONE_BUILDING` | 3466 | a4 a5 a7 | tests/test_simbench.py::test_a_ban_holds_the_queue_and_does_not_cancel |
 | 已对拍 | `PLAYER_LOCK_PLAYER_TECH` | 1887 |  | tests/test_simbench.py::test_protocol_a_computer_player_spends_unless_locked |
 | 已对拍 | `DISABLE_SCRIPT` | 1099 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_scripts6.py |
-| 已对拍 | `MOVE_NAMED_UNIT_TO` | 1000 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aidefense.py |
+| 已对拍 | `MOVE_NAMED_UNIT_TO` | 1000 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acts.py |
 | 已对拍 | `LINK_MISSION_OBJECTIVE_TO_OBJECT` | 950 | 全部 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts5.py |
 | 已对拍 | `NAMED_DELETE` | 908 | a2 a4 a5 a6 a7 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attach.py |
 | 已对拍 | `CREATE_REINFORCEMENT_TEAM` | 753 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_conds.py:team |
@@ -32,14 +32,14 @@
 | 不涉及 | `MOVIE_PLAY_RADAR` | 433 | a4 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
 | 已对拍 | `CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION` | 399 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts7.py |
 | 已对拍 | `OBJECTLIST_ADDOBJECTTYPE` | 383 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts7.py |
-| 已对拍 | `PLAYER_SET_MONEY` | 345 | 全部 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aitower.py |
+| 已对拍 | `PLAYER_SET_MONEY` | 345 | 全部 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acts.py |
 | 已对拍 | `SKIRMISH_AI_SET_ENEMY_PLAYER_PRIORITY` | 343 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiprio.py |
 | 已对拍 | `PLAYER_RELATES_PLAYER` | 319 | a2 a4 a5 a7 a9 | tests/test_simbench.py::test_scripts2_a_relation_is_one_way_and_turns_back |
 | 已对拍 | `UNIT_AFFECT_OBJECT_PANEL_FLAGS` | 317 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts7.py |
 | 已对拍 | `SET_MISSION_HOT_SPOT_VISIBILITY` | 300 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_conds.py:sight |
 | 已对拍 | `MOVE_TEAM_TO` | 298 | a4 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aixfer.py |
 | 已对拍 | `CREATE_NAMED_ON_TEAM_AT_WAYPOINT` | 291 | 全部 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acquire.py |
-| 已对拍 | `NAMED_ATTACK_NAMED` | 271 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attach.py |
+| 已对拍 | `NAMED_ATTACK_NAMED` | 271 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acts.py |
 | 已对拍 | `CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION` | 259 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts7.py:face |
 | 已对拍 | `MOVE_CAMERA_TO` | 255 | a1 a2 a4 a6 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_camera.py |
 | 不涉及 | `OBJECT_CREATE_RADAR_EVENT` | 254 | a4 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
@@ -47,7 +47,7 @@
 | 已对拍 | `TEAM_TRANSFER_TO_PLAYER` | 235 |  | tests/test_simbench.py::test_scripts1_a_team_handed_over_drops_its_move |
 | 已对拍 | `NAMED_TRANSFER_OWNERSHIP_PLAYER` | 231 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_invuln.py |
 | 已对拍 | `INCREMENT_COUNTER` | 229 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_aimicro.py |
-| 未做 | `UNIT_CHANGE_OBJECT_STATUS:SHROUD_REVEAL_TO_ALL` | 218 |  | 状态位 SHROUD_REVEAL_TO_ALL 只记下来 |
+| 已对拍 | `UNIT_CHANGE_OBJECT_STATUS:SHROUD_REVEAL_TO_ALL` | 218 |  | tests/test_simbench.py::test_acts_flow_as_the_bench |
 | 已对拍 | `PLAYER_SET_MAX_PLAYER_POWER_POINTS` | 206 | a4 a5 a7 | tests/test_simbench.py::test_protocol_set_points_follows_the_programs_rule |
 | 已对拍 | `NAMED_KILL` | 204 | a4 a5 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aitargetpick.py |
 | 推断 | `TEAM_HUNT` | 203 |  | 没交给 AI 的玩家（含玩家自己）：不动，台上量过（engine_scripts1 hunt 60 s）；AI 玩家的 HuntTactic 不模拟（引擎 B），碰到记 Sim.unmodeled |
@@ -60,7 +60,7 @@
 | 不涉及 | `FADE_IN_FROM_BLACK` | 176 |  | 纯表现（名字规则） |
 | 不涉及 | `NAMED_FLASH` | 173 | a9 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
 | 已对拍 | `SET_COUNTER` | 171 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_aidiff.py |
-| 未做 | `UNIT_CHANGE_OBJECT_STATUS:SKIRMISH_AI_DO_NOT_ATTACK` | 171 |  | 状态位 SKIRMISH_AI_DO_NOT_ATTACK 只记下来 |
+| 已对拍 | `UNIT_CHANGE_OBJECT_STATUS:SKIRMISH_AI_DO_NOT_ATTACK` | 171 |  | tests/test_simbench.py::test_acts_flow_as_the_bench |
 | 不涉及 | `NAMED_SHOW_INFOBOX` | 166 | a4 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
 | 已对拍 | `TEAM_USE_COMMANDBUTTON_ABILITY` | 162 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts1.py |
 | 已对拍 | `PLAYER_SPECIAL_POWER_AVAILABILITY` | 158 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts8b.py |
@@ -90,14 +90,14 @@
 | 已对拍 | `PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT` | 116 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts8b.py |
 | 已对拍 | `TEAM_IDLE_FOR_SECONDS` | 114 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts8.py |
 | 已对拍 | `PLAYER_SET_BASE_POWER` | 112 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attackassist.py |
-| 未做 | `PLAYER_TOGGLE_RESOURCE_SHARING` | 111 |  | Sim.act / Sim.cond 不认识 |
+| 推断 | `PLAYER_TOGGLE_RESOURCE_SHARING` | 111 |  | A211 engine_acts:flow：两边都开共享的盟友之间，脚本给钱（PLAYER_GIVE_MONEY）不分（1001 / 1000 / 2001 原样）；D 119 读的码是采矿等收入平分给共享盟友，模拟器没做、没上台（要采矿台子） |
 | 不涉及 | `UNIT_SET_MODELCONDITION_GENERIC` | 111 | a7 | 纯表现：设模型状态只换画法。原版脚本设的是 SUPPRESSED（a01 摆拍枪战的趴下动作），SDK 数据里读 SUPPRESSED 的只有绘制模块的 ConditionsYes；我们 a7 设的 USER_1 只有自由号的充能画法读 |
 | 不涉及 | `PLAY_SOUND_AS_AI_COCOMMANDER_DIALOG` | 109 |  | 纯表现（名字规则） |
 | 不涉及 | `TEAM_CREATE_RADAR_EVENT` | 107 |  | 纯表现（名字规则） |
 | 已对拍 | `MAP_REVEAL_PERMANENTLY_AT_WAYPOINT` | 105 | a4 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_vision.py |
 | 不涉及 | `CAMERA_LETTERBOX_BEGIN` | 104 | a4 | 纯表现（名字规则） |
 | 已对拍 | `NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY` | 103 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aibasedef.py |
-| 未做 | `TEAM_ALLOW_AI_AUTOACQUIRE` | 103 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `TEAM_ALLOW_AI_AUTOACQUIRE` | 103 |  | tests/test_simbench.py::test_acts_flow_as_the_bench |
 | 已对拍 | `SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER` | 101 | a4 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_ref.py |
 | 不涉及 | `RESET_CAMERA` | 100 |  | 纯表现（名字规则） |
 | 不涉及 | `CAMERA_LETTERBOX_BEGIN_WITH_RADAR` | 98 |  | 纯表现（名字规则） |
@@ -106,7 +106,7 @@
 | 已对拍 | `SET_REF_TO_NEREST_TEAM_OF_TYPE_OWNED_BY_PLAYER` | 94 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts7.py |
 | 已对拍 | `MAP_REVEAL_ALL_PERM` | 89 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acquire.py |
 | 已对拍 | `MAP_SWITCH_BORDER` | 87 | a1 a2 a3 a4 a5 a6 a7 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts4.py |
-| 未做 | `NAMED_SET_DISABLED` | 86 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `NAMED_SET_DISABLED` | 86 |  | tests/test_simbench.py::test_acts_flow_as_the_bench |
 | 不涉及 | `NAMED_REMOVE_INFOBOX` | 83 |  | 纯表现（名字规则） |
 | 已对拍 | `TEAM_FOLLOW_WAYPOINTS` | 83 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_waypath.py |
 | 已对拍 | `SKIRMISH_AI_MAKE_BASE` | 82 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiomove.py |
@@ -117,7 +117,7 @@
 | 不涉及 | `NAMED_OUTLINE` | 74 |  | 纯表现（名字规则） |
 | 不涉及 | `FLASH_UI_UNIT_ABILITY_BUTTON` | 72 |  | 纯表现（名字规则） |
 | 已对拍 | `MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT` | 72 | a4 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_vision.py |
-| 已对拍 | `PLAYER_GIVE_MONEY` | 72 | a4 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiskirm.py |
+| 已对拍 | `PLAYER_GIVE_MONEY` | 72 | a4 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acts.py |
 | 已对拍 | `UNIT_SET_TEAM` | 72 | 全部 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acquire.py |
 | 已对拍 | `TEAM_CHANGE_OBJECT_STATUS` | 71 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts8b.py |
 | 未做 | `TEAM_GARRISON_TEAM_INSTANTLY` | 68 |  | Sim.act / Sim.cond 不认识 |
@@ -131,7 +131,7 @@
 | 已对拍 | `TEAM_SET_OVERRIDE_RELATION_TO_PLAYER` | 64 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts9.py |
 | 已对拍 | `SET_MISSION_HOT_SPOT_ACTIVENESS` | 61 |  | tests/test_simbench.py::test_conds_sight_as_the_bench |
 | 已对拍 | `UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION` | 60 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts8.py |
-| 未做 | `NAMED_FORCE_ATTACK_NAMED` | 59 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `NAMED_FORCE_ATTACK_NAMED` | 59 |  | tests/test_simbench.py::test_acts_flow_as_the_bench |
 | 未做 | `NAMED_FORCE_ATTACK_WAYPOINT` | 59 |  | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM` | 59 | a4 | 纯表现（名字规则）；只记进时间线（sim.SHOWN）；台上量过（docs/engine/inventory-levels-a.md），没有测试跑这个台子 |
 | 不涉及 | `SET_REFERENCE_TO_RANDOM_TEAM_MEMBER` | 59 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
@@ -155,7 +155,7 @@
 | 已对拍 | `NAMED_ATTACK_FOLLOW_WAYPOINTS` | 47 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_wayatk.py |
 | 已对拍 | `NAMED_RECEIVE_UPGRADE` | 47 | a8 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_invuln.py |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanBaseDefenseEgg` | 46 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_unpack.py |
-| 未做 | `TEAM_SET_STANCE` | 45 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `TEAM_SET_STANCE` | 45 |  | tests/test_simbench.py::test_acts_flow_as_the_bench |
 | 不涉及 | `NAMED_CUSTOM_COLOR` | 44 |  | 纯表现（名字规则） |
 | 已对拍 | `HIDE_COUNTDOWN_TIMER` | 43 | a4 a7 a8 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts4.py |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_SovietAntiGroundAircraftEvacuate` | 43 |  | 只记进时间线，没有效果 |
@@ -259,7 +259,7 @@
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleAfterburners` | 12 |  | 只记进时间线，没有效果 |
 | 不涉及 | `OPTIONS_SET_OCCLUSION_MODE` | 12 |  | 纯表现（名字规则） |
 | 未做 | `PLAYER_SELL_EVERYTHING` | 12 |  | Sim.act / Sim.cond 不认识 |
-| 已对拍 | `SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER` | 12 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aipullback.py |
+| 已对拍 | `SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER` | 12 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acts.py |
 | 未做 | `TEAM_GARRISON_NEAREST_BUILDING` | 12 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_MOVE_TO_NEAREST_OBJECT_OF_KINDOF_OWNED_BY_PLAYER` | 12 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `DISABLE_JOYPAD_COMMANDBAR_BUTTON` | 11 |  | Sim.act / Sim.cond 不认识 |
@@ -393,7 +393,7 @@
 | 不涉及 | `PLAYER_CAMERA_TETHER_NAMED` | 2 |  | 纯表现（名字规则） |
 | 未做 | `PLAYER_DISABLE_FACTORIES` | 2 |  | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `SCREEN_SHAKE` | 2 |  | 纯表现（名字规则） |
-| 已对拍 | `SET_PLAYER_MONEY_TO_COUNTER` | 2 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiskirm.py |
+| 已对拍 | `SET_PLAYER_MONEY_TO_COUNTER` | 2 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acts.py |
 | 推断 | `SET_RANDOM_TIMER` | 2 |  | 引擎模型核心 |
 | 不涉及 | `SHOW_MISSION_OBJECTIVE` | 2 |  | 纯表现（名字规则） |
 | 未做 | `SKIRMISH_AI_CONSIDER_ENEMY_WHEN_BUILDING` | 2 |  | Sim.act / Sim.cond 不认识 |

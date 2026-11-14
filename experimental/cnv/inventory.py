@@ -145,6 +145,11 @@ BENCHED_TESTS = {
     **{(CONDITION, n): 'tests/test_simbench.py::test_conds_sight_as_the_bench' for n in (
         'ENEMY_SIGHTED_BY_TEAM', 'TEAM_DISCOVERED', 'MISSION_HOT_SPOT_ACTIVE')},
     (ACTION, 'SET_MISSION_HOT_SPOT_ACTIVENESS'): 'tests/test_simbench.py::test_conds_sight_as_the_bench',
+    # engine line A round 211: retail-campaign actions batch 1 (checks/engine_acts.py flow; NAMED_SET_DISABLED benched
+    # for EMP only, the other types INFERRED the same hold)
+    **{(ACTION, n): 'tests/test_simbench.py::test_acts_flow_as_the_bench' for n in (
+        'UNIT_CHANGE_OBJECT_STATUS:SHROUD_REVEAL_TO_ALL', 'UNIT_CHANGE_OBJECT_STATUS:SKIRMISH_AI_DO_NOT_ATTACK',
+        'TEAM_ALLOW_AI_AUTOACQUIRE', 'NAMED_SET_DISABLED', 'NAMED_FORCE_ATTACK_NAMED', 'TEAM_SET_STANCE')},
     # engine line C round 1: modules whose retail data the simulator already follows and a bench-reading test cites
     (MODULE, 'Behaviors/ProductionUpdate'):
         'tests/test_simbench.py::test_production_pays_as_it_builds_and_comes_out_after_the_door',   # engine_production a-g
@@ -261,6 +266,7 @@ BENCHED_TESTS = {
 # (part, name) -> (state, why): where the name rule above is wrong (a module read under another name ...)
 _NOT_IN_SIM = '已核（11-08）：模拟器没有这个效果'
 NOTES = {
+    (ACTION, 'PLAYER_TOGGLE_RESOURCE_SHARING'): (GUESSED, 'A211 engine_acts:flow：两边都开共享的盟友之间，脚本给钱（PLAYER_GIVE_MONEY）不分（1001 / 1000 / 2001 原样）；D 119 读的码是采矿等收入平分给共享盟友，模拟器没做、没上台（要采矿台子）'),
     (MODULE, 'Behaviors/AutoDepositUpdate'): (GUESSED, 'E146 engine_objectbatch:a/b：原版SwissBank克隆有/无模块的钱包，on逐次+5至60、12秒删除后稳定，off全0；具名测试按实际60/0回放。只量已有归属产钱，不晋升整项；占领奖金/驻军/上限/修理仍gap；见work/re/e146_objectbatch.md'),
     (MODULE, 'Behaviors/HealCrateCollide'): (TODO, 'E146 engine_objectbatch:a/b有/无模块均未治疗，步兵始终50/50；b中立箱且到位成立，仍无效，两轮后暂停；不把负结果登记成效果已对拍。SecretFile原XML含当前schema不接受的属性，未冒充普通HealCrate等价；碰撞派发前置待查；见work/re/e146_objectbatch.md'),
     (MODULE, 'Behaviors/LoseHealthUpdate'): (TODO, 'E146 engine_objectbatch:a/b：原船完整模块移植480HP坦克，HealthTrigger=101%/0%均无耗血，两路100/100；b已确认toggle/铁幕状态成立。两轮后暂停，移植激活资格待查，未推猜测实现、不晋升整项；见work/re/e146_objectbatch.md'),
