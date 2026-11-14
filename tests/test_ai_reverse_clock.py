@@ -77,15 +77,19 @@ def test_reverse_named_replay_has_four_initial_members(reverse_record):
 
 
 @pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'E115 observer pair: engine initial four have valid far-plant object goals at '
-    'host f263, model has none. Persistent member goal acquisition and body heading '
-    'remain gaps; see work/re/e115_reverse_aim.md and work/re/handoff-e.md.'))
+    'E115 observer pair: at host f263 the engine initial four all aim at the far '
+    'plant (object 3169, (3700, 2400)); the model aims them at CNV AI Guard units '
+    'instead (D136: ordered_aim gives a target, not the right one). Persistent '
+    'member goal acquisition and body heading remain gaps; see work/re/e115_reverse_aim.md.'))
 def test_reverse_named_replay_member_goal_at_engine_frame(reverse_record):
     """INFERRED model aim proxy cannot replace the engine persistent goal contract."""
     build, brain = reverse_record
     row = next(r for r in brain.rec['frames'] if r['frame'] == r['host_frame'] == 263)
     observed = next(r for r in teamlog.states(OBSERVED / (build + '.txt'))['T'] if r['frame'] == 263)
     assert len(row['members']) == 4
-    expected = [bool(observed['aim'][i][0]) and observed['aim'][i][1] is not None
-                for i in (3170, 3171, 3172, 3173)]
-    assert [m['aim'] is not None for m in row['members']] == expected
+    # Bench object ids are not the model's; 3169 is the far plant the team
+    # attack-moves to (work/re/e115_reverse_aim.md), so compare by name.
+    names = {3169: 'UNIT - CNV AI Far Plant'}
+    expected = sorted((names.get(observed['aim'][i][0]) for i in (3170, 3171, 3172, 3173)),
+                      key=str)
+    assert sorted((m['aim'] for m in row['members']), key=str) == expected
