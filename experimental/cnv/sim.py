@@ -552,6 +552,9 @@ class Body:
     guessed: list = dataclasses.field(default_factory=list)    # what of its numbers simunits only guessed
     clear_height: float = HIGH_STEP                             # its ShroudClearingHeight (simunits: 50 unless written)
     angle: float = 0.0
+    carry: float = 0.0                                          # seconds of the last tick left when its leg ended on a
+                                                                # waypoint path (follow_due gives the next leg after
+                                                                # the tick): driven on the next tick, none lost
     dest: object = None                                         # where it was sent (rerouted when the way changes)
     status: set = dataclasses.field(default_factory=set)       # IMMOBILE (stays put), UNATTACKABLE (the player
                                                                 # cannot destroy it) ...
@@ -5992,8 +5995,10 @@ class Sim:
                 continue
             if (not b.path or 'IMMOBILE' in b.status or b.engaged or self.emp_disabled(b)
                     or self.infiltrators.movement_blocked(b)):
+                b.carry = 0.0
                 continue
-            left = b.speed * dt
+            extra, b.carry = (b.carry if not precise else 0.0), 0.0
+            left = b.speed * (dt + extra)
             if precise and b.jet_motion is not None:
                 import simjet
                 left = simjet.distance(self, b)
@@ -6029,6 +6034,8 @@ class Sim:
                 # sent north / east / 120 behind took the rear / side / rear scalar; sent north, a hit 0.15 s after
                 # the order already the rear -- no reversing, a turn faster than the model's tick; INFERRED instant)
                 b.angle = math.atan2(b.y - y0, b.x - x0)
+            if not b.path and b.follow is not None and not precise and b.speed > 0:
+                b.carry = min(left / b.speed, dt)
             if b.building:
                 self.at_site(b, walked - left)
             if b.crusher > 0 and b.surface == 'ground' and (b.x, b.y) != (x0, y0):

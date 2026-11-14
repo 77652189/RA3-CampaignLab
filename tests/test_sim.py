@@ -447,3 +447,31 @@ def test_a_team_follows_a_path_as_one_with_group_moves():
     assert len({id(u.follow) for u in crew}) == 3
     s.act('TEAM_FOLLOW_WAYPOINTS', ['Nobody/teamNobody', 'Road', 1, 0], Script('go', [], []))
     assert s.lost_orders[-1][2] == 'TEAM_FOLLOW_WAYPOINTS'
+
+
+def test_a_path_follower_loses_no_time_at_its_waypoints():
+    """Sim.move / Body.carry (A round 228): a leg ending mid-tick hands the rest of that tick to the next leg (follow_due
+    gives it only after the tick) -- along the path the unit is speed x time from where it started, every tick but the
+    one ending on the waypoint, until the end; before, each waypoint cost up to a tick (bench engine_waypath near / start went red once turning added a
+    frame)."""
+    import math
+    s = _road()
+    x, y = s.waypoints['R1']
+    a = s.add('a', 'JapanAntiInfantryInfantry', s.foe, x - 10, y)    # 610 to R2: the leg ends mid-tick (25 a tick)
+    s.act('NAMED_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT', ['a', 'Road', 'R2'], None)
+    pts = [(x - 10, y), s.waypoints['R2'], s.waypoints['R3']]
+    legs = [math.dist(p, q) for p, q in zip(pts, pts[1:])]
+
+    def along():
+        for k, (p, q) in enumerate(zip(pts, pts[1:])):
+            if abs(math.dist(p, (a.x, a.y)) + math.dist((a.x, a.y), q) - legs[k]) < 1e-6 and \
+                    (k == len(legs) - 1 or math.dist((a.x, a.y), q) > 1e-9):
+                return sum(legs[:k]) + math.dist(p, (a.x, a.y))
+        raise AssertionError((a.x, a.y))
+    t0, ticks = s.t, 0
+    while a.follow is not None or a.path:
+        s.run(s.t)
+        ticks += 1
+        if math.dist((a.x, a.y), pts[1]) > 1e-9:      # at R2 the tick's rest waits for the next leg (carry)
+            assert abs(along() - min(sum(legs), a.speed * sim.DT * ticks)) < 1e-6, (ticks, along())
+    assert math.dist((a.x, a.y), pts[-1]) < 1e-6 and ticks == math.ceil(sum(legs) / (a.speed * sim.DT))
