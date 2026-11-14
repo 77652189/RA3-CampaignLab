@@ -1068,7 +1068,8 @@ class Sim:
         self.audio_end = {}                 # sound event -> when HAS_FINISHED_AUDIO holds again (Sim.played)
         self.video_end = {}                 # clip -> when HAS_FINISHED_VIDEO holds (None: never, a full-screen one)
         self.money = {}
-        self.kills = []                     # (killer's player, killer's name, template, name) by weapon (cond_retail)
+        self.income = {}                    # player -> (AI income multiplier, fraction carried) (simai: ResourceMultiplierCheat)
+        self.kills = []                  # (killer's player, killer's name, template, name) by weapon (cond_retail)
         self.attacked_by = set()            # (player hit, player hitting): SKIRMISH_PLAYER_HAS_BEEN_ATTACKED_BY_PLAYER
         self.cond_memory = {}               # a condition's reading the frame before (NAMED_EXITED_AREA)
         self.made_frame = {}                # team template -> frame its last instance was made by a script (TEAM_CREATED)
@@ -1825,6 +1826,11 @@ class Sim:
             m['n'] += 1
             step = m['load'] // MINE_DOCK
             give = step if m['n'] < MINE_DOCK else m['load'] - step * (MINE_DOCK - 1)
+            if b.owner in self.income:      # an AI's multiplier: x it, whole units paid, the fraction kept (l2_mining 4)
+                mult, frac = self.income[b.owner]
+                frac += give * mult
+                give = int(frac)
+                self.income[b.owner] = (mult, frac - give)
             self.money[b.owner] = self.money.get(b.owner, 0) + give
             m['due'] = fr + 1
             if m['n'] >= MINE_DOCK:

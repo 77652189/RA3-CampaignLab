@@ -48,7 +48,10 @@ FOES = 4
 FOE_DY = AI_PLANT_DY - 600.0                # 600 south of the AI plant (1050 from the yard)
 HOLD_FIRE = 3
 RICH, RICH_WATCH = 20000, 150.0             # aitowerinc10r: the bank 20000 at the wake
-INC10_WATCH = 420.0                        # aitowerinc10 (DEFENSE 10%): long enough for a second turret
+CHEAT_WATCH = 90.0                          # aicheat*: ~7 miner trips after the wake
+CHEAT = {'aicheat2': (('200%', 'MEDIUM'),),
+         'aicheat1': (('300%', 'EASY HARD BRUTAL'), ('100%', 'MEDIUM'))}
+INC10_WATCH = 420.0                       # aitowerinc10 (DEFENSE 10%): long enough for a second turret
 
 
 def _budget(defense=50):
@@ -76,8 +79,9 @@ def _opener(build=True, empty=False):
                       '  </SkirmishOpeningMove>'])
 
 
-def personality_xml(compactness, opener=False, build=True, empty=False, defense=50):
+def personality_xml(compactness, opener=False, build=True, empty=False, defense=50, cheat=()):
     # empty=True: the empty opener (_opener) with this probe's own budget, not the retail ones
+    # cheat: ((Percentage, Difficulty), ...) -- the personality's own ResourceMultiplierCheat lines (aicheat*)
     removed = [f'    <StrategicState id="{k}" xai:joinAction="Remove"/>' for k in ab.INHERITED]
     removed += ['    <BuildState id="AlliedNeededUnits" xai:joinAction="Remove"/>']
     first = [f'    <OpeningMove Name="{OPENER}" Weight="100%">', '      <Heuristic>',
@@ -102,20 +106,23 @@ def personality_xml(compactness, opener=False, build=True, empty=False, defense=
         *first,
         *removed,
         *budget,
+        *[f'    <ResourceMultiplierCheat Percentage="{p}" Difficulty="{d}"/>' for p, d in cheat],
         '  </AIPersonalityDefinition>',
         '</AssetDeclaration>', ''])
 
 
 def mission(name, compactness, opener=True, foes=0, build=True, empty=False, refinery=False, defense=50,
-            watch=None, money=MONEY):
+            watch=None, money=MONEY, cheat=()):
     facts = {'wake at': WAKE_AT, 'money': money}
     if watch:
         facts['watch'] = watch              # how long checks/engine_aitower.py e watches after the wake
     m = Mission(name=name, map=resources.measured(niagara), facts=facts)
     m.cnv_compactness = compactness         # the check says the model's radius by it
     m.cnv_turret = TURRET                   # what the check counts (checks ask the mission, not this module)
+    # the income multiplier predicted at the bench's MEDIUM: the MEDIUM line's Percentage (engine_aitower g)
+    m.cnv_cheat = next((float(p.rstrip('%')) / 100 for p, d in cheat if 'MEDIUM' in d.split()), 1.0)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{PID}'}
-    m.assets.append((f'{PID}.xml', personality_xml(compactness, opener, build, empty, defense), f'AIPersonalityDefinition:{PID}'))
+    m.assets.append((f'{PID}.xml', personality_xml(compactness, opener, build, empty, defense, cheat), f'AIPersonalityDefinition:{PID}'))
     s1 = m.player('s1')
     m.put('AlliedConstructionYard', 'east base', 0, 0, side='s1', name='UNIT - CNV AI Yard', role='ai yard')
     m.put(PLANT, 'east base', 0.0, AI_PLANT_DY, side='s1', name='UNIT - CNV AI Plant', role='ai plant')
@@ -154,4 +161,11 @@ MISSION = {'aitower50': lambda: mission('CampAITow50', 0.5),
                                           watch=INC10_WATCH),
            # round 136: as aitowerinc10 with 20000 at the wake -- does the bank count at all (10 % = 2000: 2 turrets)?
            'aitowerinc10r': lambda: mission('CampAITowRich', 0.5, opener=False, refinery=True, defense=10,
-                                            watch=RICH_WATCH, money=RICH)}
+                                            watch=RICH_WATCH, money=RICH),
+           # B round 172: ResourceMultiplierCheat on the miner's income (DEFENSE 0 %: nothing is bought, the money
+           # only grows). The bench runs MEDIUM (engine_aidiff). aicheat2: a MEDIUM 200 % line; aicheat1: the retail
+           # values' other side -- a 300 % line for EASY HARD BRUTAL (not MEDIUM: skipped) and a MEDIUM 100 % one
+           'aicheat2': lambda: mission('CampAICheat2', 0.5, opener=False, refinery=True, defense=0,
+                                       watch=CHEAT_WATCH, cheat=CHEAT['aicheat2']),
+           'aicheat1': lambda: mission('CampAICheat1', 0.5, opener=False, refinery=True, defense=0,
+                                       watch=CHEAT_WATCH, cheat=CHEAT['aicheat1'])}

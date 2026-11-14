@@ -341,6 +341,25 @@ def test_a_five_percent_share_builds_no_turret_however_the_bank_grows(lib):
     assert all(r['塔在基地'] == 0 for r in rows)
 
 
+def _money(build, lib, until=100.0):
+    _, rows = _probe_run(build, lib, until, check='g')
+    return [r['AI钱'] for r in rows]
+
+
+def test_a_medium_cheat_line_of_200_percent_doubles_each_trip(lib):
+    """checks/engine_aitower.py aicheat2 g (ResourceMultiplierCheat Percentage 200% Difficulty MEDIUM; the bench runs
+    MEDIUM): each miner trip pays 500, not 250 -- the Percentage is the factor itself."""
+    two, one = _money('aicheat2', lib), _money('aicheat1', lib)
+    assert two[-1] - two[15] == 2 * (one[-1] - one[15]) > 0
+
+
+def test_a_100_percent_line_and_lines_for_other_difficulties_change_nothing(lib):
+    """checks/engine_aitower.py aicheat1 g (a 300% line for EASY HARD BRUTAL, then 100% for MEDIUM): 250 a trip, as
+    aitowerinc5 with no line of its own (the parents' EASY 100% / BRUTAL 200% lines skipped at MEDIUM too)."""
+    one, none = _money('aicheat1', lib), _money('aitowerinc5', lib)
+    assert one == none and one[-1] > one[15]
+
+
 def test_the_tower_stands_in_the_350_circle_for_half_compactness(lib):
     """checks/engine_aitower.py aitower50 b: the 350 circle >= 1 (bench from s33)."""
     _, rows = _probe_run('aitower50', lib, 40.0, check='b')

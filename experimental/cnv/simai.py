@@ -161,6 +161,10 @@ class Brain:
         self.ai = m['player'].AIPlayer(host.data, personality, DIFFICULTY.get(host.level, 'MEDIUM'),
                                        ctx={'path to target': self.path_to_target}, rng=random.Random(host.seed),
                                        index=side_index(side), side=faction and f'PlayerTemplate:{faction}')
+        # ResourceMultiplierCheat: the AI's deposits x the line for its difficulty (Sim.mine_due; data.resource_multiplier)
+        mult = getattr(host.data, 'resource_multiplier', lambda *a: 1.0)(personality, self.ai.difficulty)
+        if mult != 1.0:
+            self.sim.income[player] = (mult, 0.0)
         self.paths = {}                 # (surface, template, condition) -> (frame asked, answer)
         self.path_rng = random.Random(host.seed)    # the spot's start angles (the engine: the logic random)
         self.ai.builder = self.build

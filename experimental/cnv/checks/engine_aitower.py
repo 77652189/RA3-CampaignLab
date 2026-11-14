@@ -255,6 +255,37 @@ def f(m):
     return t
 
 
-CHECKS = {k: {'a': a, 'b': b, 'c': c, 'd': d, 'e': e, 'f': f}
+TRIP = 250                                  # a miner's load (aitowerinc10 f: +250 every ~12.3 s at x1)
+
+
+def g(m):
+    """B round 172 (aicheat2 / aicheat1): ResourceMultiplierCheat. DEFENSE 0 %, so nothing is bought and AI钱 only
+    grows by the miner's trips. Read (work/re/l2_mining.md 4): a deposit is the load x the AI's cheat multiplier.
+
+      AI钱    s1's money each second (a step = one trip: 250 x the multiplier)
+
+    The expectation: the MEDIUM line's Percentage is the multiplier (200 % -> 500 a trip; 100 % -> 250, and a line
+    for EASY HARD BRUTAL is skipped at MEDIUM). In the 90 s watched ~7 trips: x1 stays under the wake money + 2500,
+    x2 passes the wake money + 5 x 500.
+
+    读数 (bench 2026-11-13, B round 172, work/logs/b172_bench.log, one run each, both PASS):
+    aicheat1 g (EASY HARD BRUTAL 300 %, MEDIUM 100 %): 1700 at the wake, +250 a trip (1950 s18, 2200 s30, ...
+      3450 s92, 3700 s104) -- the 300 % line is skipped at MEDIUM, 100 % = x1.
+    aicheat2 g (MEDIUM 200 %): +500 a trip (2200 s18, 2700 s31, ... 5200 s92) -- the Percentage is the factor."""
+    t = Test()
+    t.counters.append(('CNV_AT_Money', 'AI钱'))
+    t.scripts.append(Script('Test - money', [], [('SET_PLAYER_MONEY_TO_COUNTER', m.player('s1'), 'CNV_AT_Money')],
+                            once=False))
+    wake, end = m.facts['wake at'], m.facts['wake at'] + m.facts.get('watch', LONG)
+    if m.cnv_cheat == 1.0:
+        t.expect += [('AI钱', wake + 5, '<', m.facts['money'] + 10 * TRIP, end)]
+    else:
+        t.expect += [('AI钱', wake + 5, 'ever>=', m.facts['money'] + 5 * round(TRIP * m.cnv_cheat), end)]
+    t.bench = [('bench_watch', dict(seconds=end + LAG, every=1, sheet=False, lines=1))]
+    return t
+
+
+CHECKS = {k: {'a': a, 'b': b, 'c': c, 'd': d, 'e': e, 'f': f, 'g': g}
           for k in ('aitower50', 'aitower75', 'aitower100', 'aitowerstate', 'aitowerfoe',
-                   'aitowerdep', 'aitowerinc', 'aitoweropen', 'aitowerinc10', 'aitowerinc5', 'aitowerinc10r')}
+                   'aitowerdep', 'aitowerinc', 'aitoweropen', 'aitowerinc10', 'aitowerinc5', 'aitowerinc10r',
+                   'aicheat2', 'aicheat1')}

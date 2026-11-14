@@ -349,6 +349,15 @@ NOTES = {
         'gap：s150后又造到4、没死人，引擎拿什么数对上限未知（strict xfail '
         'test_after_s150_the_capped_unit_is_built_again）；见 work/re/handoff-b.md 第145节')
        for k in ('Unit', 'Difficulty', 'Cap')},
+    **{f'经济/ResourceMultiplierCheat.{k}': (BENCHED,
+        'engine_aitower aicheat2 / aicheat1 g（2026-11-13，台上 MEDIUM，矿车每趟 250）：MEDIUM 200% → 每趟 500；'
+        'EASY HARD BRUTAL 300% + MEDIUM 100% → 每趟 250（与没写的 aitowerinc5 同）——Percentage 就是倍率本身，'
+        '难度不含当前难度的行跳过；原版 EASY 100% / BRUTAL 200% 两种取值都在内。'
+        'tests/test_simai_bench_b.py::test_a_medium_cheat_line_of_200_percent_doubles_each_trip、'
+        'test_a_100_percent_line_and_lines_for_other_difficulties_change_nothing按名回放。'
+        'gap：多行同难度取哪条（取第一条，INFERRED）、卖楼等其他入账也乘（l2_mining 读到，没上台）；'
+        '见 work/re/handoff-b.md 第176节')
+       for k in ('Percentage', 'Difficulty')},
     '组队招人/TeamTemplate.ReleaseType=NEVER_RELEASE': (BENCHED,
         'engine_airelease airelnever/airelprio仅ReleaseType不同；CNVTeams两组f166防御激活持3166/3167，'
         'priority在(526,541]同两ID转进攻，never保留至末样本；'
