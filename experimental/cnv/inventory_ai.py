@@ -554,7 +554,10 @@ NOTES = {
         'engine_aipullpct 固定30%血量、苏联吊车，仅阈值0.2/0.5不同；'
         'tests/test_simai_pullpct.py::test_pullback_threshold_high_returns_before_recycling 完整回放四车回家且不到远厂；'
         '同文件 low 对照先到远厂；仅初次回撤阈值，精确边界/晚段/吊车回收未闭环（回收 strict xfail）'),
-    '微操/AIMicroManagerData.AlphaStrikeTargetHealthPct': (GUESSED,
+    '微操/AIMicroManagerData.AlphaStrikeTargetHealthPct': (BENCHED,
+        'D146晋升：tests/test_ai_alpha_switch.py 按名跑 aialobshi/aialobslo（只差阈值0.9/0.01，CNVTeams宿主，E99两局都PASS）：'
+        '台上高的8→6 f230→0（集火）f290，低的8→6 f230→1（撤退）f470、从不进0；模型高的6 f240→0 f270、'
+        '低的6 f240→1 f480、从不进0，正常断言；精确帧和低的一侧后段8/6/1循环、血量/存活结局仍strict xfail。旧记录：'
         'engine_aialphahp 旧固定70%对照；engine_aialphaclose 独立延迟守军、仅阈值0.01/0.9不同；'
         'tests/test_simai_bench_c.py 保留读数回放，有限诊断不等于字段闭环；'
         '目标适用条件与回放差异仍gap，见 work/re/c_alpha_close_report.md'),

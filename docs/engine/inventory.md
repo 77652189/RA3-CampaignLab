@@ -8,7 +8,7 @@
 | 脚本条件 | **98%** | **100%** | 12 / 12 | 89 | 56 | 5 | 25 | 3 | 99% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
-| AI | **95%** | **95%** | 174 / 357 | 428 | 188 | 110 | 96 | 34 | 99% |
+| AI | **95%** | **95%** | 175 / 357 | 428 | 189 | 109 | 96 | 34 | 99% |
 
 ## 脚本动作
 
@@ -978,7 +978,7 @@
 | 已对拍 | `启发条件/IsBuildingHeuristic.PassIfBuilding` | 30 | a4 a5 a7 | E83 engine_aibuilding a：STRUCTURE空队列、现成基地1；PassIfBuilding=false时s40到陆厂4/在家0，true时0/4，两组PASS；tests/test_simai_bench_e.py::test_is_building_idle按名回放通过。C补充活跃连续电厂队列false反向对照：匹配组s40到陆厂/在家0/4，不匹配4/0，两组电厂4/基地1、各一次PASS；模型匹配组4/0，test_simai_buildkind_c为strict xfail，队列/求值时序未解；取消/挂起/等待仍gap；见 work/re/c_buildkind_false_report.md、e_building_e83.md |
 | 已对拍 | `微操/AIMicroManagerData.PullbackInjuredHealthPct` | 30 | a4 a5 a7 | engine_aipullpct 固定30%血量、苏联吊车，仅阈值0.2/0.5不同；tests/test_simai_pullpct.py::test_pullback_threshold_high_returns_before_recycling 完整回放四车回家且不到远厂；同文件 low 对照先到远厂；仅初次回撤阈值，精确边界/晚段/吊车回收未闭环（回收 strict xfail） |
 | 已对拍 | `组队招人/TeamTemplate.Priority=DEFENSE` | 29 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |
-| 推断 | `微操/AIMicroManagerData.AlphaStrikeTargetHealthPct` | 28 | a4 a5 a7 | engine_aialphahp 旧固定70%对照；engine_aialphaclose 独立延迟守军、仅阈值0.01/0.9不同；tests/test_simai_bench_c.py 保留读数回放，有限诊断不等于字段闭环；目标适用条件与回放差异仍gap，见 work/re/c_alpha_close_report.md |
+| 已对拍 | `微操/AIMicroManagerData.AlphaStrikeTargetHealthPct` | 28 | a4 a5 a7 | D146晋升：tests/test_ai_alpha_switch.py 按名跑 aialobshi/aialobslo（只差阈值0.9/0.01，CNVTeams宿主，E99两局都PASS）：台上高的8→6 f230→0（集火）f290，低的8→6 f230→1（撤退）f470、从不进0；模型高的6 f240→0 f270、低的6 f240→1 f480、从不进0，正常断言；精确帧和低的一侧后段8/6/1循环、血量/存活结局仍strict xfail。旧记录：engine_aialphahp 旧固定70%对照；engine_aialphaclose 独立延迟守军、仅阈值0.01/0.9不同；tests/test_simai_bench_c.py 保留读数回放，有限诊断不等于字段闭环；目标适用条件与回放差异仍gap，见 work/re/c_alpha_close_report.md |
 | 已对拍 | `造兵/BlockIfThingNearFactory.Relationship` | 28 | a4 a5 a7 | tests/test_simai_bench_b.py::test_a_thing_near_the_factory_blocks_the_entry（engine_aiskirm y aiskblkn / aiskblkr：Rule ANY + Relationship NEUTRAL 挡住，aiskblkf 400 外不挡；ENEMIES 走同一段代码没单独上台；B 第 149 轮） |
 | 已对拍 | `造兵/BlockIfThingNearFactory.Rule` | 28 | a4 a5 a7 | tests/test_simai_bench_b.py::test_a_thing_near_the_factory_blocks_the_entry（engine_aiskirm y aiskblkn / aiskblkr：Rule ANY + Relationship NEUTRAL 挡住，aiskblkf 400 外不挡；ENEMIES 走同一段代码没单独上台；B 第 149 轮） |
 | 已对拍 | `目标/AITargetingHeuristic.HeuristicType=FriendlyUnit` | 27 | a4 a5 a7 | C engine_aifrdistance a：aifrnear/aifrswap三友军MCV，仅交换近远角色；s30逻辑帧478/486，tact对应原友车/second，同帧坐标均为距基地650的最近候选；友/敌MCV存活3/1。tests/test_simai_friendly_c.py::test_friendly_distance_target按名回放通过。仅验SAME_PLAYER、MCV、Distance、单槽StaticDefense；其他排序、默认关系、unique多槽仍INFERRED。旧E85远处双车的站位strict xfail保留，不由新配方解释；见work/re/c_friendly_distance_report.md |
