@@ -169,6 +169,9 @@ BENCHED_TESTS = {
     **{(ACTION, n): 'tests/test_simbench.py::test_acts_v_as_the_bench' for n in (
         'UNIT_SET_MODELCONDITION', 'PLAYER_ALLOW_AI_AUTOACQUIRE', 'TEAM_MOVE_TO_NEAREST_OBJECT_OF_TYPE',
         'TEAM_GUARD_AREA_FROM_POSITION')},
+    # round 216: TEAM_HUNT / NAMED_HUNT (checks/engine_acts6.py hunt: an aiTactical-255 owner's crew attack-moves to
+    # the nearest enemy; the 240 one's, and NAMED_HUNT on an AI not woken: nothing)
+    **{(ACTION, n): 'tests/test_simbench.py::test_acts_w_hunt_as_the_bench' for n in ('TEAM_HUNT', 'NAMED_HUNT')},
     # engine line C round 1: modules whose retail data the simulator already follows and a bench-reading test cites
     (MODULE, 'Behaviors/ProductionUpdate'):
         'tests/test_simbench.py::test_production_pays_as_it_builds_and_comes_out_after_the_door',   # engine_production a-g

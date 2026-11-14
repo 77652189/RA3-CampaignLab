@@ -128,6 +128,9 @@ def hit_at(table, d):
             return v0 + (v1 - v0) * (d - d0) / (d1 - d0) if d1 > d0 else v1
     return table[-1][1]
 CIV = 'PlyrCivilian'
+# The container's (Heidelberg, retail a03's SidesList) sides with aiTactical 255 (aiTeamBuilder alike); StartingUnits
+# and Soviet_5 are 240 (retail data read 11-14, round 216): Sim.tactical
+TACTICAL_SIDES = {'Player_1', 'Player_2', 'Soviet_1', 'Soviet_2', 'Soviet_3', 'Soviet_4', 'Soviet_6'}
 CMP = {0: lambda a, b: a < b, 1: lambda a, b: a <= b, 2: lambda a, b: a == b, 3: lambda a, b: a >= b,
        4: lambda a, b: a > b, 5: lambda a, b: a != b}
 # AssetTypeLocomotorTemplate.xsd's Surface, in order: TEAM_INSIDE_AREA_*'s third argument is an index into it (D 119)
@@ -1458,6 +1461,18 @@ class Sim:
         for b in self.living():
             if b.owner in players:
                 b.team = ''
+
+    def tactical(self, player):
+        """The player's SidesList aiTactical switch is on (255): its TEAM_HUNT hunts (bench 11-14 engine_acts_w). A
+        retail map's own sides; ours: the mission's side props (Mission.sides) over the container's (TACTICAL_SIDES)."""
+        if player == self.human:            # bench 11-08 engine_scripts1 hunt: the player's own team stayed
+            return False
+        sides = getattr(self.m, 'sides', None) or {}
+        key = player if self.retail else next((s for s, p in self.players.items() if p == player), None)
+        got = (sides.get(key) or {}).get('aiTactical')
+        if got is not None:
+            return int(got) == 255
+        return not self.retail and player in TACTICAL_SIDES
 
     def team_active(self, team):
         return any(same_team(t, team) for t in self.active)
@@ -3531,9 +3546,24 @@ class Sim:
         elif name in ('TEAM_HUNT', 'NAMED_HUNT'):
             # l2_scripts1 4: a flag bit on each unit and its AI woken; only an AI player's HuntTactic (TEAM_HUNT) and
             # its AI (NAMED_HUNT) read it. Bench 11-08 hunt: a computer player's team / unit (AI not woken) and the
-            # player's own team stayed where they were for 60 s
+            # player's own team stayed where they were for 60 s (that team was emptied by the container, see below).
+            # Bench 11-14 engine_acts_w hunt (round 216; retail a01's wave 2: Soviet_1 has a personality, never handed
+            # to the AI, aiTeamBuilder / aiTactical 255): Soviet_4's crew (DefaultPersonality, both switches 255, not
+            # woken) left home ~4 s after TEAM_ALLOW_AI_AUTOACQUIRE + TEAM_HUNT and went for the player's tank ~870
+            # away, not the barracks ~1650 (the nearest structure, never reached); Soviet_5's (both 240) stayed, and
+            # NAMED_HUNT moved neither side's lone conscript in 60 s. So: an attack-move of the crew to the nearest
+            # hostile object when its owner's aiTactical is 255 (which of the two switches gates it: INFERRED, the
+            # bench had both alike); one order, no re-pick when that target dies (INFERRED, HuntTactic's choice and
+            # its later updates are engine line B's: work/re/a216_hunt_interface.md)
             crew = self.members(a[0]) if name == 'TEAM_HUNT' else [b for b in [self.body(a[0])] if b and b.alive]
-            if any(b.owner in self.ai for b in crew):
+            movers = [b for b in crew if b.speed > 0]
+            if name == 'TEAM_HUNT' and movers and self.tactical(movers[0].owner):
+                mx, my = sum(b.x for b in movers) / len(movers), sum(b.y for b in movers) / len(movers)
+                goal = min((o for o in self.living() if o.owner != CIV and self.hostile(movers[0], o)),
+                           key=lambda o: (math.hypot(o.x - mx, o.y - my), o.name), default=None)
+                if goal is not None:
+                    self.order_group(movers, (goal.x, goal.y), True)
+            elif any(b.owner in self.ai for b in crew):
                 self.gap(GAP_ACTION, name, 'AI 玩家的猎杀战术（HuntTactic）不模拟（引擎 B 的 AI）')
         elif name in ('UNIT_AI_TRANSFER', 'TEAM_AI_TRANSFER'):
             # (unit / team, on) l2_scripts1 7: a computer player's units into / out of its AI's hands; a human

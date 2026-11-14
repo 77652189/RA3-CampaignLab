@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **95%** | **100%** | 50 / 50 | 451 | 154 | 21 | 161 | 115 | 97% |
+| 脚本动作 | **96%** | **100%** | 50 / 50 | 451 | 156 | 19 | 161 | 115 | 97% |
 | 脚本条件 | **98%** | **100%** | 12 / 12 | 89 | 55 | 4 | 27 | 3 | 99% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -50,7 +50,7 @@
 | 已对拍 | `UNIT_CHANGE_OBJECT_STATUS:SHROUD_REVEAL_TO_ALL` | 218 |  | tests/test_simbench.py::test_acts_flow_as_the_bench |
 | 已对拍 | `PLAYER_SET_MAX_PLAYER_POWER_POINTS` | 206 | a4 a5 a7 | tests/test_simbench.py::test_protocol_set_points_follows_the_programs_rule |
 | 已对拍 | `NAMED_KILL` | 204 | a4 a5 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aitargetpick.py |
-| 推断 | `TEAM_HUNT` | 203 |  | 没交给 AI 的玩家（含玩家自己）：不动，台上量过（engine_scripts1 hunt 60 s）；AI 玩家的 HuntTactic 不模拟（引擎 B），碰到记 Sim.unmodeled |
+| 已对拍 | `TEAM_HUNT` | 203 |  | tests/test_simbench.py::test_acts_w_hunt_as_the_bench |
 | 已对拍 | `CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT` | 196 | a4 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_ref.py |
 | 已对拍 | `LINK_MISSION_OBJECTIVE_TO_WAYPOINT` | 194 | a1 a3 a4 a5 a6 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts5.py |
 | 已对拍 | `NAMED_FOLLOW_WAYPOINTS` | 192 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_wayatk.py |
@@ -126,7 +126,7 @@
 | 已对拍 | `LINK_MISSION_HOT_SPOT_TO_OBJECT` | 67 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_conds.py:sight |
 | 已对拍 | `SKIRMISH_AI_USE_REBUILD_SYSTEM` | 67 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiswitch.py |
 | 已对拍 | `TEAM_MERGE_INTO_TEAM` | 67 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts8.py |
-| 推断 | `NAMED_HUNT` | 66 |  | 同 TEAM_HUNT：没交给 AI 不动（台上量过）；AI 玩家的猎杀不模拟（引擎 B） |
+| 已对拍 | `NAMED_HUNT` | 66 |  | tests/test_simbench.py::test_acts_w_hunt_as_the_bench |
 | 不涉及 | `TEAM_FLASH` | 66 |  | 纯表现（名字规则） |
 | 已对拍 | `TEAM_SET_OVERRIDE_RELATION_TO_PLAYER` | 64 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts9.py |
 | 已对拍 | `SET_MISSION_HOT_SPOT_ACTIVENESS` | 61 |  | tests/test_simbench.py::test_conds_sight_as_the_bench |

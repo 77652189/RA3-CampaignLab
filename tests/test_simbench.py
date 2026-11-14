@@ -1609,6 +1609,20 @@ def test_acts_v_as_the_bench():
     assert changes(3)[-2:] == [2, 12] and run.series[-1][1][3] == 12
 
 
+def test_acts_w_hunt_as_the_bench():
+    """hunt, bench 11-14 `run_queue engine_acts_w:hunt` (CampActsWHunt, round 216; the bench's seconds ~1 behind):
+    家 1122 -> 1120 at s7 -- TEAM_HUNT moves Soviet_4's crew (aiTactical 255, not woken), not Soviet_5's (240), and
+    NAMED_HUNT neither lone conscript; 到 0 throughout -- not to the nearest structure; 打 60 -> 62 at s15 -- the
+    player's tank (the nearest enemy) attacked, then the crew killed by it (52 at s31, 42 at s49)."""
+    run = _sim_run('engine_acts_w', 'hunt', 60.0)
+
+    def first(col, value):
+        return next(t for t, v in run.series if v[col] == value)
+    assert {v[0] for _, v in run.series} == {1122, 1120} and 5.0 <= first(0, 1120) <= 10.0
+    assert {v[1] for _, v in run.series} == {0}
+    assert 13.0 <= first(2, 62) <= 19.0 and 29.0 <= first(2, 52) <= 36.0 and 46.0 <= first(2, 42) <= 53.0
+
+
 def test_video_a_radar_clip_is_done_after_its_length_full_screen_never():
     """movie play (bench, docs/story/handoff.md 1g): CNVTEST01 (95 frames at 23.976) in the radar window done 63 game
     frames after its start; the full-screen clip never reads done."""
