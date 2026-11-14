@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 180 | 20 | 136 | 115 | 98% |
+| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 182 | 19 | 135 | 115 | 98% |
 | 脚本条件 | **98%** | **100%** | 12 / 12 | 89 | 56 | 5 | 25 | 3 | 99% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -190,7 +190,7 @@
 | 不涉及 | `PLAYER_ALLOWED_TOBE_COOPAI` | 29 |  | A219 读程序：只写 AI 脑的"可当合作 AI"位；读它的只有合作 AI 的界面 / 语音、玩家挑合作伙伴、关掉时取消合作 AI 正执行的玩家指令；模拟器的玩家没有给盟友下令的命令，脚本读不到它（同下一条） |
 | 已对拍 | `SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER` | 29 | a1 a2 a3 a4 a6 a7 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiopen.py |
 | 不涉及 | `DESELECT` | 28 |  | 纯表现（名字规则） |
-| 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_CAMPAlliedBomberDrop2` | 28 |  | A224/A225 engine_acts_mix:all、engine_acts_drop / _ally:own：五局都没出轰炸机（keep 镜头对落点、小地图都没新单位）；已排除主人（人类/电脑、苏/盟阵营）、时间（3/12 s）、写法（按钮/按名字放技能）、交 AI、倒计时清零；原因未明，模拟器不处理 |
+| 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_CAMPAlliedBomberDrop2` | 28 |  | A224-A226 engine_acts_mix:all、engine_acts_drop / _ally:own、engine_acts_wet:all：六局都没出轰炸机；A226 PLAYER_TRIGGERED_SPECIAL_POWER 看到按钮和按名字放都算放了（人类、电脑的 store 都是），所以卡在 OCL 生成那步（CREATE_AT_EDGE_NEAR_SOURCE），原因未明；模拟器只记施放、不出东西 |
 | 不涉及 | `SOUND_DISABLE_TYPE` | 28 |  | 纯表现（名字规则） |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackAlliedMCV` | 27 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_unpack.py |
 | 不涉及 | `PLAYER_CAMERA_MOVE_TO_NAMED` | 27 |  | 纯表现（名字规则） |
@@ -294,7 +294,7 @@
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_CivilianStructureEvacuate` | 8 |  | tests/test_simbench.py::test_acts_tgl_all_as_the_bench |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleAlliedEngineerHeal` | 8 |  | 只记进时间线，没有效果 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_UnPackJapanBaseDefenseEgg` | 8 |  | 只记进时间线，没有效果 |
-| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateJumpSpecialPower` | 8 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateJumpSpecialPower` | 8 |  | tests/test_simbench.py::test_acts_wet_all_as_the_bench |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateLeapSpecialPower` | 8 |  | tests/test_simbench.py::test_acts_mix_all_as_the_bench |
 | 已对拍 | `RESTART_TIMER` | 8 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_timer.py |
 | 已对拍 | `SET_COUNTER_TO_COUNTER` | 8 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_aimicro.py |
@@ -314,7 +314,7 @@
 | 未做 | `NAMED_FACE_WAYPOINT` | 6 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleBinaryWeapon` | 6 |  | tests/test_simbench.py::test_acts_twr_t_as_the_bench |
 | 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanPowerPlantEgg` | 6 |  | Sim.act / Sim.cond 有分支 |
-| 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_ActivateRoarSpecialPower` | 6 |  | A224 engine_acts_mix:all：熊吼（TargetType NONE）用 _ON_NAMED 按在 60 外的敌兵上，谁也没瘫（同一吼直接按瘫 10 s）；模拟器当作不放出，熊之后会不会追过去没看到 |
+| 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_ActivateRoarSpecialPower` | 6 |  | tests/test_simbench.py::test_acts_wet_all_as_the_bench |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_TriggerRushAttackSpecialPower` | 6 |  | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `PLAYER_FIRE_MULTI_TARGET_SPECIAL_POWER_AT_WAYPOINTS` | 6 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 未做 | `TEAM_LOAD_TRANSPORTS` | 6 |  | Sim.act / Sim.cond 不认识 |

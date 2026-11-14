@@ -205,6 +205,9 @@ RALLY_PUSH = 40.0              # a new unit stops this far beyond its factory's 
 PACK_POWER = 'SpecialPower_PackReplaceSelf'         # a construction yard's pack button (Command_Pack...MCV)
 PACK_FRAMES = 0                # the yard is its MCV from the press frame on (engine_pack a / s / j)
 WFIRE_LAG = 0                  # frames between a weapon-fire ability's UnpackTime and its weapon (engine_wfire)
+# a TargetType NONE ability (the bear's roar) pressed _ON_NAMED: it goes off this much later once the caster is up to
+# the target (engine_acts_wet RN 60 off / RF 300 off both a reading or so behind the plain roar: INFERRED, fitted)
+NONE_TARGET_LAG = 15
 BUILD_STEP = 5.0               # a builder on his way (R5) moves in steps this long, to see where he gets within range
 HIGH_STEP = 50.0                # ShroudClearingHeight's default: a viewer does not discover a cell this much above its own
                                 # (bench, docs/engine/vision.md; a unit's own value is Body.clear_height). Cell by cell,
@@ -4050,13 +4053,16 @@ class Sim:
                 self.body(a[0]) and self.body(a[0]).alive and \
                 self.assignments.press(self.body(a[0]), a[1], self.body(a[2])):
             self.note('技能', f'{a[0]} 显式派发维修到 {a[2]}')
-        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED' and self.body(a[0]) and \
-                simunits.weapon_fire_ability(self.body(a[0]).template, a[1], self.own) and \
-                simunits.power_target_type(simunits.command_power(a[1], self.own)) == 'NONE':
-            # engine_acts_mix RN (round 224): the bear's roar (TargetType NONE) pressed _ON_NAMED its conscript 60 off
-            # held nobody, the same roar pressed plainly held its 60 one 10 s (INFERRED: the object order is refused;
-            # whether the bear walks to the target after was not seen)
-            self.note('技能', f'{a[0]} 按 {a[1]} 对 {a[2]}：这个技能不接受目标，没放出')
+        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and self.body(a[0]) and self.body(a[0]).alive and \
+                self.point(a[2]) is not None and simunits.ocl_power(
+                    self.body(a[0]).template, simunits.command_power(a[1], self.own) or '', self.own):
+            # engine_acts_wet DP / DS (round 226): the campaign bomber drop store's button is seen cast
+            # (PLAYER_TRIGGERED_SPECIAL_POWER) the player's and the computer's alike -- and nobody comes, in six
+            # runs (its OCL's CREATE_AT_EDGE_NEAR_SOURCE not explained: inventory NOTES)
+            b = self.body(a[0])
+            self.casts.append((self.frame_now(), b.owner, simunits.command_power(a[1], self.own).lower(), b.name,
+                               self.point(a[2])))
+            self.note('技能', f'{self.label(b)} 按 {a[1]}：算放了，没出东西（推断）')
         elif name in ('NAMED_USE_COMMANDBUTTON_ABILITY', 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED') and \
                 self.body(a[0]) and self.body(a[0]).alive and \
                 simunits.weapon_fire_ability(self.body(a[0]).template, a[1], self.own):
@@ -5821,6 +5827,8 @@ class Sim:
         self.used.add('weapon fire ability')
         job = dict(by=b, ab=ab, eff=simunits.special_weapon(ab['weapon'], self.own), target=t, button=button,
                    fire_at=None)
+        if t and simunits.power_target_type(simunits.command_power(button, self.own)) == 'NONE':
+            job['lag'] = NONE_TARGET_LAG
         self.wfires.append(job)
         self.note('技能', f'{self.label(b)} 按 {button}' + (f' 对 {self.label(t)}' if t else ''))
         if t and math.hypot(t.x - b.x, t.y - b.y) - t.radius > ab['range']:
@@ -5832,7 +5840,7 @@ class Sim:
     def wfire_start(self, job):
         b, ab = job['by'], job['ab']
         now = self.frame_now()
-        job['fire_at'] = now + ab['unpack'] + WFIRE_LAG
+        job['fire_at'] = now + ab['unpack'] + WFIRE_LAG + job.get('lag', 0)
         b.path, b.dest = [], None
         hold = job['fire_at'] + max(ab['freeze'], ab['pack'] if ab['busy_pack'] else 0)
         deadlines = self.__dict__.setdefault('emp_until', {})       # stands still (INFERRED: as EMP'd)
@@ -5858,6 +5866,9 @@ class Sim:
             if frame < job['fire_at']:
                 continue
             self.wfires.remove(job)
+            # engine_acts_wet (round 226): each bear's roar seen cast once by PLAYER_TRIGGERED_SPECIAL_POWER, the
+            # ones pressed _ON_NAMED when the bear has walked up to its target
+            self.casts.append((frame, b.owner, ab['power'].lower(), b.name, None))
             eff = job['eff']
             for dmg, typ, reach, after in eff['damage']:
                 self.death_blasts.append((frame + simunits._frames(after), b.x, b.y, dmg, typ, reach,

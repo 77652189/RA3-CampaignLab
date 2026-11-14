@@ -202,6 +202,11 @@ BENCHED_TESTS = {
         'NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleEnergizedArmorSpecialPower',
         'NAMED_USE_COMMANDBUTTON_ABILITY:Command_ActivateRoarSpecialPower',
         'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateLeapSpecialPower')},
+    # round 226 (checks/engine_acts13.py all): the dolphin's jump to a spot (water); the roar _ON_NAMED (the bear walks
+    # up to the target, then roars)
+    **{(ACTION, n): 'tests/test_simbench.py::test_acts_wet_all_as_the_bench' for n in (
+        'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateJumpSpecialPower',
+        'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_ActivateRoarSpecialPower')},
     # round 222 (checks/engine_share.py all): mining income split among sharing Friends (the earner keeps the rest);
     # NAMED_SELECTED after SELECT_OBJECT (TYPE_SELECTED in NOTES: never true there)
     (ACTION, 'PLAYER_TOGGLE_RESOURCE_SHARING'): 'tests/test_simbench.py::test_share_all_as_the_bench',
@@ -329,8 +334,7 @@ BENCHED_TESTS = {
 # (part, name) -> (state, why): where the name rule above is wrong (a module read under another name ...)
 _NOT_IN_SIM = '已核（11-08）：模拟器没有这个效果'
 NOTES = {
-    (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_ActivateRoarSpecialPower'): (GUESSED, 'A224 engine_acts_mix:all：熊吼（TargetType NONE）用 _ON_NAMED 按在 60 外的敌兵上，谁也没瘫（同一吼直接按瘫 10 s）；模拟器当作不放出，熊之后会不会追过去没看到'),
-    (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_CAMPAlliedBomberDrop2'): (GUESSED, 'A224/A225 engine_acts_mix:all、engine_acts_drop / _ally:own：五局都没出轰炸机（keep 镜头对落点、小地图都没新单位）；已排除主人（人类/电脑、苏/盟阵营）、时间（3/12 s）、写法（按钮/按名字放技能）、交 AI、倒计时清零；原因未明，模拟器不处理'),
+    (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_CAMPAlliedBomberDrop2'): (GUESSED, 'A224-A226 engine_acts_mix:all、engine_acts_drop / _ally:own、engine_acts_wet:all：六局都没出轰炸机；A226 PLAYER_TRIGGERED_SPECIAL_POWER 看到按钮和按名字放都算放了（人类、电脑的 store 都是），所以卡在 OCL 生成那步（CREATE_AT_EDGE_NEAR_SOURCE），原因未明；模拟器只记施放、不出东西'),
     (ACTION, 'PLAYER_SET_MONEY_CAP'): (GUESSED, 'A213 engine_acts_tel:tel：脚本的钱不受上限管（上限 3000 时给 5000 → 6000；上限 500 仍 6000；设 10000 照设）；它管的（推断是采矿收入）没上台、模拟器只记不用'),
     (CONDITION, 'TYPE_SELECTED'): (GUESSED, 'A222 engine_share:all：脚本 SELECT_OBJECT 选中护卫者 / 矿场 / 敌方锤子坦克后都读不到真（模拟器恒假）；原版是等玩家自己点选（a06），玩家点选没上台'),
     (MODULE, 'Behaviors/AutoDepositUpdate'): (GUESSED, 'E146 engine_objectbatch:a/b：原版SwissBank克隆有/无模块的钱包，on逐次+5至60、12秒删除后稳定，off全0；具名测试按实际60/0回放。只量已有归属产钱，不晋升整项；占领奖金/驻军/上限/修理仍gap；见work/re/e146_objectbatch.md'),

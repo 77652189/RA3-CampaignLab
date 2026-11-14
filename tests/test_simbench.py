@@ -1739,6 +1739,24 @@ def test_acts_mix_all_as_the_bench():
     assert all(v[3] == 0 for v in at.values())
 
 
+def test_acts_wet_all_as_the_bench():
+    """all, bench 11-14 `run_queue engine_acts_wet:all` (CampActsWetAll_mcp_1114_091622, round 226; bench row s_k =
+    simulator k + 1): 跳 11 from s4 -- the dolphin's jump 250 off and its swimming twin both there (not telling apart);
+    吼 1111 s5-s12 -- the bear pressed _ON_NAMED 300 off walked up to its conscript (1000), both conscripts pressed
+    _ON_NAMED were held as the plain roar's (C1 out s13, C2 s14, C4 s17); 放 10101 s3 -> 20101 s4 -> 30101 s7 ->
+    30202 s12: both stores' drop button seen cast (1 / 100), each roar once (10 000), the by-name casts at 12 s once
+    more; 机 0: no bomber ever (NOTES). The _ON_NAMED roars go off NONE_TARGET_LAG after the bear is up (fitted to
+    the cast readings); C2 / C4 come out of their hold a reading after the bench's (s15 / s18 for s14 / s17)."""
+    at = dict(_sim_run('engine_acts_wet', 'all', 26.0).series)
+    assert at[3] == [0, 111, 0, 0], at[3]
+    assert all(at[k][0] == 11 for k in range(7, 27)), at
+    assert all(at[k][1] == 1111 for k in range(6, 14)) and at[14][1] == 1110, at
+    assert all(at[k][1] == 1100 for k in range(16, 19)) and all(at[k][1] == 1000 for k in range(19, 27)), at
+    assert [at[k][2] for k in (4, 5)] == [10101, 20101], at
+    assert all(at[k][2] == 30101 for k in range(8, 13)) and all(at[k][2] == 30202 for k in range(13, 27)), at
+    assert all(v[3] == 0 for v in at.values())
+
+
 def test_share_all_as_the_bench():
     """all, bench 11-14 `run_queue engine_share:all` (CampShareAll, round 222; the bench's seconds 1-2 ahead): 甲 / 乙 /
     丙钱 125 125 0 after the first load (Player_1 and Soviet_5 sharing), 249 188 63 after the second (Soviet_6 sharing
