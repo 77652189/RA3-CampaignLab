@@ -562,9 +562,9 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{INERT_PID}'
         m.assets.append((f'{INERT_PID}.xml', inert_xml(), f'AIPersonalityDefinition:{INERT_PID}'))
     if inert2:                           # aiskinc / aiskind / aiskine (check ib): INERT2 fields at extremes
-        fields = {True: INERT2, 'radius': INERT2[3:4], 'rest': INERT2[:3] + INERT2[4:],
-                  'place': INERT2[:3], 'seven': INERT2[4:],
-                  'start': INERT2[:1], 'ticks': INERT2[2:3]}[inert2]
+        fields = inert2 if isinstance(inert2, tuple) else {
+            True: INERT2, 'radius': INERT2[3:4], 'rest': INERT2[:3] + INERT2[4:], 'place': INERT2[:3],
+            'seven': INERT2[4:], 'start': INERT2[:1], 'ticks': INERT2[2:3]}[inert2]
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{INERT2_PID}'
         m.assets.append((f'{INERT2_PID}.xml', inert_xml(fields, INERT2_PID), f'AIPersonalityDefinition:{INERT2_PID}'))
     if buffer is not None:               # aiskpw0 / aiskpw3 (check x): DesiredExcessPowerBuffer = buffer
@@ -690,6 +690,11 @@ MISSION = {'aiskirm': mission, 'aiskirmc': lambda: mission(observe=True),
            'aiskin0': lambda: mission('CampAISkIn0', inert2='ticks'),   # check rp: ...IncreaseTicksBeforeGivingUp 0 only
            'aiskirmr': lambda: mission('CampAISkIrmR', flip=True),   # check rpx: aiskirm, east nodes facing pi (F2)
            'aiskin0r': lambda: mission('CampAISkIn0R', inert2='ticks', flip=True),   # rpx / rpb: aiskin0 the same (F1)
+           # rpx (B192, D138 1): StartDistanceDelta -40 / -20 (retail -30) -- where the ring 4 / ring 5 line moves.
+           # bench 2026-11-14 (both PASS): -40 first s49 x27 y10 (node A ring 6 or 7 at k -2), second +28 +11;
+           # -20 first s49 x26 y9 (ring 5, k -3), second +28 +12. The simulator (60 x 45 boxes): x26 y10 both.
+           'aiskst40': lambda: mission('CampAISkSt40', inert2=(('RefineryPlacementStartDistanceDelta', '-40.0'),)),
+           'aiskst20': lambda: mission('CampAISkSt20', inert2=(('RefineryPlacementStartDistanceDelta', '-20.0'),)),
            'aiskmod': lambda: mission('CampAISkMod', umod=UMOD_ZERO),     # check q: SecondsTillTargetsExpire 12, not 5   # s1 without the container's Lib_Skirmish_Setup
            'aiskacp': lambda: mission('CampAISkAcP', account='PRODUCTION'),    # check v: the rebuilt AI, retail Account
            'aiskacd': lambda: mission('CampAISkAcD', account='DEFENSE'),

@@ -1301,6 +1301,7 @@ CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j
           'aiskin0': {'rp': rp, 'rpx': rpx, 'rpb': rpb},
           'aiskin0r': {'rpx': rpx, 'rpb': rpb},
           'aiskirmr': {'rpx': rpx},
+          'aiskst40': {'rpx': rpx}, 'aiskst20': {'rpx': rpx},   # B192: StartDistanceDelta -40 / -20
           'aiskins': {'ib': ib},
           'aiskmtp': {'mt': mt},
           'aiskirmc': {'l': l, 'm': m, 'u': u},  # opt-in carrier diagnostic; stock aiskirm stays unchanged
