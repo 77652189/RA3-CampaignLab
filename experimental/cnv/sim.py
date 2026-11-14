@@ -3691,6 +3691,11 @@ class Sim:
             # Peacekeepers of the crew raised their shields
             for b in self.members(a[0]):
                 self.act('NAMED_USE_COMMANDBUTTON_ABILITY', [b.name, a[1]], script)
+        elif name == 'TEAM_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT':
+            # (team, button, waypoint): the button at the spot on every living member (engine_acts_btn TB: the crew's
+            # Bullfrog threw its passengers at the waypoint, as NAMED_..._AT_WAYPOINT did in round 152)
+            for b in self.members(a[0]):
+                self.act('NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT', [b.name, a[1], a[2]], script)
         elif name == 'SELL_OBJECT':              # (object) engine_sell: sell(), refused while unpacking
             self.sell(self.body(a[0]))
         elif name == 'NAMED_DAMAGE':             # (object, amount) health points off, no armour; engine_sell b / e
@@ -3985,6 +3990,16 @@ class Sim:
             b, p = self.body(a[0]), self.point(a[2])
             if not (b and p is not None and self.garrison.eject(b, a[1], p)):
                 self.note('技能', f'{a[0]} 按 {a[1]}：没有能弹出乘员的载具或路点')
+        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and simgarrison.ejects(a[1], self.own):
+            # the untargeted eject (a01's intro bombers, SovietSupportBomber_S07): out where it is (engine_acts_btn EJ)
+            b = self.body(a[0])
+            if not (b and self.garrison.eject(b, a[1], (b.x, b.y))):
+                self.note('技能', f'{a[0]} 按 {a[1]}：没有能弹出乘员的载具')
+        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and \
+                (simunits._commands(self.own)[1].get(a[1]) or ('',))[0] == 'EVACUATE':
+            # the Twinblade's evacuate (s09's Hinds): lands, all out together where it is (engine_acts_btn EV)
+            if not self.garrison.evacuate(self.body(a[0])):
+                self.note('技能', f'{a[0]} 按 {a[1]}：没有载着人的载具')
         elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and \
                 simunits.command_power(a[1], self.own) == UNPACK_POWER:
             # an MCV / a Japanese egg deploys at the point: drives there, then turns into its replacement (bench
@@ -4971,6 +4986,12 @@ class Sim:
             b.armor_up = b.toggle_at[i] == 1
             self.used.add('miner armor')
         self.modify(b)
+        loc = tm['states'][b.toggle_at[i]].get('locomotor')
+        speed = simunits.locomotor_speed(b.template, self.own, loc) if loc else None
+        if speed:           # the state's LocomotorSet (engine_acts_btn TT / VT: the Tengu's jet, the VX's flight)
+            if b.base is not None:
+                b.base['speed'] = speed
+            b.speed = speed
         self.used.add('toggle')
         self.change()
 

@@ -178,6 +178,15 @@ BENCHED_TESTS = {
     # round 219 (checks/engine_acts9.py all): on -- off every team; off -- back onto the map default team, with a
     # hidden member (the AI wake UNIT_AI_TRANSFER_ALL adds is not in it: program, not benched)
     (ACTION, 'SKIRMISH_AI_TRANSFER_ALL'): 'tests/test_simbench.py::test_acts_z_all_as_the_bench',
+    # round 221 (checks/engine_acts10.py all): ability buttons in one run -- the bomber's untargeted eject, the
+    # Twinblade's evacuate, the spider hole, the two transforms (with their locomotors), the team's button at a spot
+    **{(ACTION, n): 'tests/test_simbench.py::test_acts_btn_all_as_the_bench' for n in (
+        'NAMED_USE_COMMANDBUTTON_ABILITY:Command_ActivateEjectPassengersSpecialPowerUntargeted',
+        'NAMED_USE_COMMANDBUTTON_ABILITY:Command_JAAVT1_Transform',
+        'NAMED_USE_COMMANDBUTTON_ABILITY:Command_SovietAntiGroundAircraftEvacuate',
+        'NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleSpiderHole',
+        'NAMED_USE_COMMANDBUTTON_ABILITY:Command_JAIV_Transform',
+        'TEAM_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT')},
     # round 217: PLAYER_TRANSFER_OWNERSHIP_PLAYER (checks/engine_acts7.py own: the giver's units on no team and its
     # money go to the receiver; ones on a team stay)
     (ACTION, 'PLAYER_TRANSFER_OWNERSHIP_PLAYER'): 'tests/test_simbench.py::test_acts_x_own_as_the_bench',

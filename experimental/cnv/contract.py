@@ -26,6 +26,8 @@ RETAIL_COMMANDS = {'Command_CaptureBuilding',           # an engineer takes a bu
                    'Command_UnPackJapanBaseDefenseEgg', # a Japanese egg unfolds (engine_unpack egg)
                    'Command_JAIV_Transform',            # the Tengu transforms (JapanAntiInfantryVehicle)
                    'Command_JAAVT1_Transform',          # the VX transforms (JapanAntiAirVehicleTech1)
+                   'Command_ToggleSpiderHole',          # the Tankbuster digs in (engine_acts_btn SH)
+                   'Command_SovietAntiGroundAircraftEvacuate',  # the Twinblade lands its passengers (EVACUATE)
                    'Command_ToggleMirageField',         # the Mirage tank's field on / off (AlliedAntiVehicleVehicleTech3CommandSet)
                    'Command_JapanAntiInfantryInfantryBonzai',   # the Imperial Warrior's Bonzai charge (engine_aimicro)
                    'Command_ToggleMolotovCocktailSpecialPower', 'Command_ToggleLeechBeam',     # engine_toggle b / c

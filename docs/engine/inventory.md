@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **96%** | **100%** | 50 / 50 | 451 | 159 | 19 | 157 | 116 | 97% |
+| 脚本动作 | **97%** | **100%** | 50 / 50 | 451 | 165 | 19 | 151 | 116 | 98% |
 | 脚本条件 | **98%** | **100%** | 12 / 12 | 89 | 55 | 4 | 27 | 3 | 99% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -112,7 +112,7 @@
 | 已对拍 | `SKIRMISH_AI_MAKE_BASE` | 82 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiomove.py |
 | 已对拍 | `SET_RANDOM_MSEC_TIMER` | 77 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_scripts6.py |
 | 已对拍 | `TEAM_ATTACK_NAMED` | 76 | a2 a4 a7 a8 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_reorder.py |
-| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ActivateEjectPassengersSpecialPowerUntargeted` | 75 |  | 只记进时间线，没有效果 |
+| 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ActivateEjectPassengersSpecialPowerUntargeted` | 75 |  | tests/test_simbench.py::test_acts_btn_all_as_the_bench |
 | 已对拍 | `SKIRMISH_AI_USE_REPAIRS` | 75 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aipullback.py |
 | 不涉及 | `NAMED_OUTLINE` | 74 |  | 纯表现（名字规则） |
 | 不涉及 | `FLASH_UI_UNIT_ABILITY_BUTTON` | 72 |  | 纯表现（名字规则） |
@@ -143,14 +143,14 @@
 | 不涉及 | `TOGGLE_RADAR_UI` | 53 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `DISPLAY_TUTORIAL_TEXT` | 52 |  | 纯表现（名字规则） |
 | 已对拍 | `PLAY_SOUND_EFFECT` | 51 | a4 | 只记进时间线（sim.SHOWN）；台上量过、测试对拍：checks/engine_dialog.py |
-| 未做 | `TEAM_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT` | 51 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `TEAM_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT` | 51 |  | tests/test_simbench.py::test_acts_btn_all_as_the_bench |
 | 已对拍 | `DECREMENT_COUNTER` | 50 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_scripts3.py |
 | 已对拍 | `DISPLAY_COUNTDOWN_TIMER` | 50 | a4 a7 a8 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts4.py |
 | 已对拍 | `SELL_OBJECT` | 50 |  | tests/test_simbench.py::test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames |
 | 已对拍 | `TEAM_ATTACK_TEAM` | 50 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts9.py |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateEjectPassengersSpecialPower` | 49 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_transport.py |
 | 不涉及 | `FLASH_UI_BUILD_BUTTON` | 48 |  | 纯表现（名字规则） |
-| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JAAVT1_Transform` | 48 |  | 只记进时间线，没有效果 |
+| 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JAAVT1_Transform` | 48 |  | tests/test_simbench.py::test_acts_btn_all_as_the_bench |
 | 未做 | `SET_UNIT_REFERENCE` | 48 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `NAMED_ATTACK_FOLLOW_WAYPOINTS` | 47 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_wayatk.py |
 | 已对拍 | `NAMED_RECEIVE_UPGRADE` | 47 | a8 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_invuln.py |
@@ -158,12 +158,12 @@
 | 已对拍 | `TEAM_SET_STANCE` | 45 |  | tests/test_simbench.py::test_acts_flow_as_the_bench |
 | 不涉及 | `NAMED_CUSTOM_COLOR` | 44 |  | 纯表现（名字规则） |
 | 已对拍 | `HIDE_COUNTDOWN_TIMER` | 43 | a4 a7 a8 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts4.py |
-| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_SovietAntiGroundAircraftEvacuate` | 43 |  | 只记进时间线，没有效果 |
+| 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_SovietAntiGroundAircraftEvacuate` | 43 |  | tests/test_simbench.py::test_acts_btn_all_as_the_bench |
 | 已对拍 | `PLAYER_SET_OVERRIDE_RELATION_TO_TEAM` | 43 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts9.py |
-| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleSpiderHole` | 41 |  | 只记进时间线，没有效果 |
+| 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleSpiderHole` | 41 |  | tests/test_simbench.py::test_acts_btn_all_as_the_bench |
 | 已对拍 | `PLAYER_SET_SPECIAL_POWER_COUNTDOWN` | 41 |  | tests/test_simbench.py::test_acts_u_as_the_bench |
 | 不涉及 | `FOR_EACH_PLAYER_OBJECT_EXECUTE_SCRIPT` | 39 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
-| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JAIV_Transform` | 38 |  | 只记进时间线，没有效果 |
+| 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JAIV_Transform` | 38 |  | tests/test_simbench.py::test_acts_btn_all_as_the_bench |
 | 已对拍 | `TECHTREE_MODIFY_BUILDABILITY_OBJECT` | 38 |  | tests/test_simbench.py::test_acts_u_as_the_bench |
 | 不涉及 | `EVALUATE_SCRIPT` | 35 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 已对拍 | `SKIRMISH_AI_TRANSFER_ALL` | 35 |  | tests/test_simbench.py::test_acts_z_all_as_the_bench |

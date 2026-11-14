@@ -2449,17 +2449,33 @@ def toggle_modules(xml):
     [{status: set, modifier: id or None}]}]. A press moves a module to its next state, modulo the count (work/re
     l2_ability.md 3: the old state's ObjectStatus / AttributeModifier off, the new one's on); the first state holds
     from the start; disabled: the state's DisabledType (engine_toggle d / f: a script press then does nothing).
-    ModelConditions / ArmorSet / LocomotorSet are not read here."""
+    locomotor: the state's LocomotorSet condition (locomotor_speed); ModelConditions / ArmorSet are not read here."""
     out = []
     xml = re.sub(r'<!--.*?-->', '', xml or '', flags=re.S)        # retail keeps old ToggleStates in comments
     for head, inner in _blocks(xml, 'ToggleStatusSpecialAbilityUpdate'):
         states = [dict(status=set((_attr(h, 'ObjectStatus') or '').split()), modifier=_attr(h, 'AttributeModifier'),
-                       disabled=_attr(h, 'DisabledType'))
+                       disabled=_attr(h, 'DisabledType'), locomotor=_attr(h, 'LocomotorSet'))
                   for h, _ in _blocks(inner, 'ToggleState')]
         if states:
             out.append(dict(power=_attr(head, 'SpecialPowerTemplate'), pack=_secs(_attr(head, 'PackTime') or '0s'),
                             unpack=_secs(_attr(head, 'UnpackTime') or '0s'), states=states))
     return out
+
+
+def locomotor_speed(template, own, condition):
+    """The Speed of the template's LocomotorSet for that Condition (NORMAL, SUPERSONIC ...), up its chain; None when
+    it has none (a toggle's state switches it: the Tengu's jet 200 against 100 on the ground)."""
+    def first(xml):
+        for m in re.finditer(r'<LocomotorSet\b(.*?)/?>', xml or '', re.S):
+            a = m.group(1)
+            cond, sp = re.search(r'\bCondition="([^"]+)"', a), re.search(r'\bSpeed="([\d.]+)"', a)
+            if cond and cond.group(1) == condition and sp:
+                return float(sp.group(1))
+        return None
+    try:
+        return _chain(template, own, first)
+    except (OSError, ValueError):
+        return None
 
 
 def template_toggles(template, own=None, depth=0):

@@ -41,7 +41,8 @@ import simunits
 
 TAGS = ('GarrisonContain', 'ContestableGarrisonContain')
 TRANSPORT = ('TransportContain',)
-EJECT_FLIGHT = 2.0              # INFERRED from bench 11-10 engine_transport load 跳 (ENCLOSED 3 1 0 at s2-s4, inside
+EVACUATE_DELAY = 1.5            # INFERRED from engine_acts_btn EV (round 221): all in 1 s after the press, all out at 2 s
+EJECT_FLIGHT = 2.0             # INFERRED from bench 11-10 engine_transport load 跳 (ENCLOSED 3 1 0 at s2-s4, inside
                                 # the far square 0 2 3 at s4-s6: out 0.5 s apart, down ~2 s later, 500 away)
 REALLY_DAMAGED = 33.333333      # ActiveBody.xsd MaxHealthReallyDamagedPercentage's default (percent)
 ENTER_REACH = 20.0              # INFERRED: in at the building's side (its round + this; as Sim.capture_due's)
@@ -104,7 +105,10 @@ def spec(template, own=None, tags=TAGS):
                   'ALLIES': _yes(a.get('AllowAlliesInside'), True)},
         'own': _yes(a.get('AllowOwnPlayerInsideOverride'), False),
         'kill': _yes(a.get('KillPassengersOnDeath'), False),
-        'status': frozenset(a.get('ObjectStatusOfContained', '').split()),
+        # a TransportContain's passengers are ENCLOSED even when its ObjectStatusOfContained leaves it out (the
+        # Twinblade's "UNSELECTABLE NO_ATTACK": engine_acts_btn EV read ENCLOSED on all three; INFERRED for the rest)
+        'status': frozenset(a.get('ObjectStatusOfContained', '').split()) | (
+            {'ENCLOSED'} if tag == 'TransportContain' else set()),
         'clearing': frozenset(a.get('RequiredClearingObjectStatus', '').split())
         if tag == 'ContestableGarrisonContain' else frozenset(),
         'rule': (simunits._attr(fh, 'Rule') or 'ANY').upper(),
@@ -286,6 +290,16 @@ class Garrisons:
         if reach and math.hypot(where[0] - g.x, where[1] - g.y) > reach:
             self.sim.send(g, where)                     # INFERRED: drives in, then throws
         self.sim.note('驻军', f'{self.sim.label(g)} 往外弹乘员')
+        return True
+
+    def evacuate(self, g):
+        """An EVACUATE button (LogicCommand Type EVACUATE: the Twinblade's): every passenger out where g is, together,
+        EVACUATE_DELAY after the press (engine_acts_btn EV: all three in a second after the press, all out the next;
+        INFERRED: the landing's time, 1-2 s, taken as 1.5). False when g carries nobody."""
+        if g is None or not g.alive or not [u for u in self.inside.get(g.name, []) if u.alive]:
+            return False
+        self.ejecting[g.name] = [(g.x, g.y), 0.0, 0.0, self.sim.t + EVACUATE_DELAY]
+        self.sim.note('驻军', f'{self.sim.label(g)} 落地放下乘员')
         return True
 
     def _throw(self):

@@ -1673,6 +1673,28 @@ def test_acts_z_all_as_the_bench():
     assert after and all(v == [4, 0, 3, 2] for v in after)
 
 
+def test_acts_btn_all_as_the_bench():
+    """all, bench 11-14 `run_queue engine_acts_btn:all` (CampActsBtnAll, round 221; bench row s_k = mission k + 2):
+    弹 312 -> 3021 -> 3030 at s2-s4 -- the bomber's untargeted eject one man every 1.25 s from the press, the Twinblade's
+    evacuate all three out together 1-2 s after it (in: ENCLOSED, not in its XML); 队 1 0 20 30 -- the team's Bullfrog
+    threw its men at the waypoint; 态 111 -> 11 (s7) -> 1011 (s12) -- the transforms' toggle state, the Tankbuster in
+    its hole and not moved by the order given there, out by the second press, there after the second order;
+    到 TT s9, VT s11, TP s12, VP s15 -- the transformed Tengu / VX on their SUPERSONIC locomotors (200 / 120 against
+    100 / 85)."""
+    run = _sim_run('engine_acts_btn', 'all', 24.0)
+    at = dict(run.series)
+    bench = {2: (312, 1, 111), 3: (3021, 0, 111), 4: (3030, 20, 111), 5: (3030, 30, 111), 6: (3030, 30, 111),
+             7: (3030, 30, 11), 8: (3030, 30, 11), 9: (3030, 30, 11), 10: (3030, 30, 11), 11: (3030, 30, 11)}
+    bench.update({k: (3030, 30, 1011) for k in range(12, 23)})
+    for k, (out, team, state) in bench.items():
+        v = at[k + 2]
+        assert (v[0], v[1], v[3]) == (out, team, state), (k, v)
+    first = {w: min(t for t, v in run.series if v[2] // w % 10) for w in (1, 10, 100, 1000)}
+    for w, s in ((1, 9), (100, 11), (10, 12), (1000, 15)):      # TT, VT, TP, VP
+        assert abs(first[w] - (s + 2)) <= 1, (w, first)
+    assert first[1] < first[100] <= first[10] < first[1000]
+
+
 def test_video_a_radar_clip_is_done_after_its_length_full_screen_never():
     """movie play (bench, docs/story/handoff.md 1g): CNVTEST01 (95 frames at 23.976) in the radar window done 63 game
     frames after its start; the full-screen clip never reads done."""
