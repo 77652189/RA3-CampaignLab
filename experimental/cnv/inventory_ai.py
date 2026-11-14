@@ -361,6 +361,12 @@ NOTES = {
         'tests/test_build_exclude.py按名加载台子并对拍过滤、同帧工厂候选篮子及请求；'
         '现有模型吻合，无模型修改。整体产兵资格/时钟仍gap，两旧整局回放保留strict xfail；'
         '见work/re/c_buildexclude_follow_report.md'),
+    **{f'造兵/CountAsStructureForBuildPurposesFilter.{k}': (BENCHED,
+        'B第198轮 engine_aibuildexclude x：原版过滤（Rule ANY、Include STRUCTURE UNPACKS_INTO_BUILDING）去掉 IncludeThing，'
+        '只改 Rule：aibxall（ALL）五种兵的候选 flt 全 1、下单走 SD 篮；aibxany（ANY）全 0、走 U 篮；'
+        'aibxi（Include 加 INFANTRY）两种维和都过——Include 按 KindOf 认、ALL 不看 Include。'
+        'tests/test_build_exclude.py 按名加载三台子、断言模型过滤和篮子；模型没改。Rule NONE、Exclude 类别没上台')
+      for k in ('Include', 'Rule')},
     '造兵/BuildEntry.Upgrade': (BENCHED,
         'C engine_aiupgrade a：aicupgon常量状态含UPGRADE_TECH/Tech2，s39起持有2（建造厂+它够得着的兵营）；'
         'aicupgoff移除专用状态后恒0；见work/re/c_upgrade_report.md。B第153轮接模型：'
@@ -617,8 +623,11 @@ NOTES = {
         '独立回放其余三计数：s21台上炮塔3/远厂步兵4，模型1/0，三组strict xfail；'
         '模型有idle状态但三组均无双开关开启更新；实机idle/成员观测与到达/存活仍gap；'
         '见work/re/e112_basedef_idle.md'),
-    '人格/AIPersonalityDefinition.BaseCompactness': (GUESSED, '台上量过（engine_aitower：0.5 / 0.75 / 1.0 塔落在不同圈）；'
-                                                     '模拟器只对上 0.5，0.75 / 1.0 和 0.5 一样（strict xfail）'),
+    '人格/AIPersonalityDefinition.BaseCompactness': (BENCHED, '台上量过（engine_aitower b / c：0.5 / 0.75 / 1.0 的基地防御塔'
+                                                     '离建造场 ~296 / 420–442 / 590–620）、测试对拍 tests/test_simai_bench_b.py'
+                                                     '（B 第 198 轮：模拟器的基地防御塔改用模型的 tower_spots，半径 = '
+                                                     '(BaseCompactness ± 0.05) × ~600）；只量了防御塔，其他建筑的摆放'
+                                                     '（模拟器的建造场圈）不读它'),
     # B round 110: the A/B pairs of engine_airetreat change one field of the data the team's MicroManager names
     '组队招人/TeamTemplate.MicroManager': (BENCHED, '台上量过（engine_airetreat：airet / airet0 只差 MicroManager 指名的'
                                         '那份数据里的 RetreatPowerAdvantage，一个撤一个不撤；aipas1 / aipas0 只差 '

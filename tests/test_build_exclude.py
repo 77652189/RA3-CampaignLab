@@ -159,3 +159,35 @@ def test_build_exclude_named_first_wave_replay(name):
     # Original engine counters: s32..35 = 1/0, s36..40 = 1/1 in both
     # variants. Compare production, not model request logs, with that fact.
     assert rows and rows[0][1] == [1, 0], rows[:8]
+
+
+# B round 198 (bench 2026-11-14, CampaignLab work/testbench/runs/CampBXAllX_mcp_1114_112435 / CampBXAnyX_mcp_1114_112750,
+# ra3ext.log bpick / border): the retail filter without the IncludeThing, only Rule changed. Rule ALL: every unit pick
+# flt=1 (five templates, 215 picks), every order in basket SD; Rule ANY with the retail Include (STRUCTURE
+# UNPACKS_INTO_BUILDING): every pick flt=0 (197), the unit orders in basket U. aibxi (Include + INFANTRY, Rule ANY):
+# both PKs pass -- so Include is read by KindOf and Rule ALL ignores it.
+BENCH_RULE = {'aibxall': (True, 'S'), 'aibxany': (False, 'U'), 'aibxi': (True, 'S')}
+
+
+@pytest.mark.skipif(not simai.available(), reason='private AI model unavailable')
+@pytest.mark.parametrize('name', sorted(BENCH_RULE))
+def test_count_as_structure_rule_and_include(name):
+    """checks/engine_aibuildexclude.py x on aibxall / aibxany / aibxi: the model's filter and basket as the bench."""
+    import build
+    passed, basket = BENCH_RULE[name]
+    mod = simai.model()
+    m, _, build_name = build.resolve(name, 'x')
+    assert len(build_name) <= 15 and '_' not in build_name
+    data = mod['data'].AIData()
+    data.add_text(m.assets[-1][1])
+    root = ET.fromstring(m.assets[-1][1])
+    pid = next(e.get('id') for e in root if e.tag.endswith('}AIPersonalityDefinition'))
+    ai = mod['player'].AIPlayer(data, pid, rng=None)
+    kinds = frozenset({'INFANTRY'})
+    filt = ai.personality.structure_filter
+    for t in ('CNVDearPK', 'CNVNewPK'):
+        assert mod['states']._filter_passes(t, filt, {'kindof': lambda _: kinds}) == passed
+    ai.offers = lambda _, frame: [mod['teams'].Offer('CNVNewPK', kindof=kinds, cost=200, facilities=('f',))]
+    ai.builder = lambda t: False
+    ai.accounts['PRODUCTION'] = ai.money = 2000
+    assert ai.build_units(4, []) == basket

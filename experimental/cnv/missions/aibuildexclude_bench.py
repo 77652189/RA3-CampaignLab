@@ -31,5 +31,21 @@ def mission(exclude, category=False):
     return m
 
 
+def rule(name, value):
+    """B round 198: the retail filter (Rule ANY, Include STRUCTURE UNPACKS_INTO_BUILDING) without the IncludeThing,
+    only Rule changed -- aibxall Rule ALL, aibxany Rule ANY. With aibxi (Include + INFANTRY, Rule ANY) they split
+    Rule (aibxall / aibxany) and Include (aibxany / aibxi). The model (_filter_passes): ALL passes both PKs, ANY
+    passes neither (infantry has no STRUCTURE / UNPACKS_INTO_BUILDING)."""
+    m = mission(False, category=True)
+    path, xml, asset = m.assets[-1]
+    xml = xml.replace('Include="STRUCTURE UNPACKS_INTO_BUILDING INFANTRY"', 'Include="STRUCTURE UNPACKS_INTO_BUILDING"')
+    old = '<CountAsStructureForBuildPurposesFilter Rule="ANY"'
+    assert xml.count(old) == 1 and 'INFANTRY"' not in xml.split(old)[1].split('>')[0]
+    m.assets[-1] = path, xml.replace(old, f'<CountAsStructureForBuildPurposesFilter Rule="{value}"'), asset
+    m.name = name
+    return m
+
+
 MISSION = {'aibex': lambda: mission(True), 'aibin': lambda: mission(False),
-           'aibxo': lambda: mission(True, category=True), 'aibxi': lambda: mission(False, category=True)}
+           'aibxo': lambda: mission(True, category=True), 'aibxi': lambda: mission(False, category=True),
+           'aibxall': lambda: rule('CampBXAll', 'ALL'), 'aibxany': lambda: rule('CampBXAny', 'ANY')}

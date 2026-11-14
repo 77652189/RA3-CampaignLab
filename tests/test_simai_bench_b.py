@@ -372,18 +372,15 @@ def test_the_tower_stands_in_the_350_circle_for_half_compactness(lib):
     assert _vals(rows)[-1][0] >= 1
 
 
-@pytest.mark.xfail(strict=True, reason='simai: BaseCompactness 0.75 / 1.0 build the same turret as 0.5 (350 ring 1); '
-                                       'bench aitower75 / aitower100 b: 350 ring 0, 560 / 700 ring 1 -- the radius '
-                                       'follows BaseCompactness x ~600 (0.5 -> ~296)')
 @pytest.mark.parametrize('build', ['aitower75', 'aitower100'])
 def test_a_wider_base_compactness_puts_the_tower_outside_the_350_circle(lib, build):
-    """checks/engine_aitower.py b."""
+    """checks/engine_aitower.py b (bench aitower75 / aitower100 b: 350 ring 0, 700 ring 1 -- the radius follows
+    BaseCompactness x ~600; B round 198 placed the simulator's base defence by the model's tower_spots)."""
     _, rows = _probe_run(build, lib, 40.0, check='b')
     assert _vals(rows)[-1][0] == 0
+    assert rows[-1]['塔距场 700 内'] == 1
 
 
-@pytest.mark.xfail(strict=True, reason='simai aitower100 c: the 560 / 590 rings are 1 already (all four rings 1); '
-                                       'bench: 560 / 590 ring 0, 620 / 650 ring 1 -> r in (590, 620]')
 def test_compactness_one_radius_is_between_590_and_620(lib):
     """checks/engine_aitower.py aitower100 c."""
     _, rows = _probe_run('aitower100', lib, 40.0, check='c')

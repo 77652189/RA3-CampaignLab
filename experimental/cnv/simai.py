@@ -195,6 +195,7 @@ class Brain:
             self.sim.income[player] = (mult, 0.0)
         self.paths = {}                 # (surface, template, condition) -> (frame asked, answer)
         self.path_rng = random.Random(host.seed)    # the spot's start angles (the engine: the logic random)
+        self.tower_rng = random.Random(host.seed)   # a base defence's angle and radius jitter (its own: no other draw moves)
         self.ai.builder = self.build
         self.ai.units = self.units
         if hasattr(self.ai, 'owned'):
@@ -1132,6 +1133,25 @@ class Brain:
                     return x, y
         return yard.x + RING[-1], yard.y
 
+    def tower_spot(self, yard, template):
+        """Where a base defence (KindOf FS_BASE_DEFENSE) goes: the model's tower_spots (BaseCompactness x ~600 with a
+        +-0.05 jitter, five tries 36 deg apart) round the own structure nearest the yard (the yard itself), the
+        first angle k x 36 deg (bench engine_aitower 11-07: round the yard, not toward the enemy -- the model's
+        "no enemy found" branch); the first try clear of every structure, None = the yard's rings."""
+        import platprops
+        s = self.sim
+        df = (model() or {}).get('defense')
+        if df is None:
+            return None
+        r = platprops.radius(template) if template in platprops.CATALOG else 40.0
+        taken = [t for t in (s.blocks(b) for b in s.living() if 'STRUCTURE' in b.kinds) if t and len(t) == 3]
+        angle = df.SPREAD_STEP * self.tower_rng.randint(0, 9)
+        block = self.defense or df.DefenseBlock(None, lambda ai, f: None)
+        for x, y in block.tower_spots(self.ai, (yard.x, yard.y), angle, rng=self.tower_rng):
+            if all(math.hypot(x - tx, y - ty) >= r + tr + GAP for tx, ty, tr in taken):
+                return x, y
+        return None
+
     def refinery_spot(self, template):
         """Where the AI's next refinery goes, None = it wants none now. Wanted (D138 2, read; 'served' INFERRED): a node
         no own refinery serves has its point R + its radius ahead within an own structure's build radius + R. The
@@ -1301,6 +1321,8 @@ class Brain:
         spot = None
         if 'REFINERY' in self.host.kinds(template) and hasattr(self.ai, 'refinery_spot'):
             spot = self.refinery_spot(template)     # the search's spot, or the yard's (F1)
+        elif 'FS_BASE_DEFENSE' in self.host.kinds(template):
+            spot = self.tower_spot(yard, template)
         x, y = spot or self.spot(yard, template)
         b = s.add(f'#ai {len(s.bodies)} {template}', template, self.player, x, y, by='skirmish AI', at=s.t)
         b.team = yard.team

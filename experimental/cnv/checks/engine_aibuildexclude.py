@@ -33,4 +33,5 @@ def x(m):
     return t
 
 
-CHECKS = {'aibex': {'r': r}, 'aibin': {'r': r}, 'aibxo': {'x': x}, 'aibxi': {'x': x}}
+CHECKS = {'aibex': {'r': r}, 'aibin': {'r': r}, 'aibxo': {'x': x}, 'aibxi': {'x': x},
+          'aibxall': {'x': x}, 'aibxany': {'x': x}}
