@@ -595,12 +595,15 @@ NOTES = {
     '微操/AIMicroManagerData.CrushPreference': (GUESSED,
         '同Crush，开关/低偏好对照守军至少8的按名回放保留；完整清零strict xfail；'
         '不把活目标重选解释为死亡后等待，见work/re/e109_crush.md；不晋升'),
-    '微操/AIMicroManagerData.UpdateTime': (GUESSED,
+    '微操/AIMicroManagerData.UpdateTime': (BENCHED,
+        'D147晋升：tests/test_ai_micro_clock.py 按名跑 aimicupft/aimicupst（只差微操UpdateTime 0.5/4s，E102两局）：'
+        '台上微操逐个选中成员的帧快的376/384/392/400…（间隔8的倍数、最小8），慢的405/466/527（间隔61=float32累加1/15到4.0，'
+        '不是60）；模型同周期（快8、慢61），正常断言；相位（台上首拍376/405、模型394/391）和首冲帧仍strict xfail。旧记录：'
         'engine_aimicro aimicupft/aimicupst:a 仅切微操0.5/4s，15帧宿主、D81时钟重量；'
         '台内首冲帧371/317、首活均2，末图逻辑帧872/876；'
         'tests/test_simai_bench_e.py 按名回放首活通过，精确首冲及人口峰值strict xfail；'
         '资格/更新前置状态、观测宿主人口等价仍gap；旧时钟读数不用于晋升，非固定延迟；'
-        '见work/re/e102_update_clock.md，不晋升'),
+        '见work/re/e102_update_clock.md'),
     '微操/SpecificSpecialPowerDelay.MaximumDelay': (GUESSED,
         '模型按成功施放后同类冷却消费上限；tests/test_simai_delay.py 验证上端点和真实冲锋执行接线；'
         'engine_aidelay 0/999实机PASS，脚本冲峰值2/1且曾冲>0已有回放；'
