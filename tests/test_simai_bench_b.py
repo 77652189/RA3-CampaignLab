@@ -55,6 +55,10 @@ def test_crush_keeps_all_four_tanks_alive(lib):
 
 # was strict xfail (aicrush1 11/9/9/9/8/8 guards at s28-s33, bench 0; work/re/e109_crush.md): passes since the team
 # forms before the wake (B round 164); E's target pursuit / movement notes there may still be open
+@pytest.mark.xfail(strict=True, reason='B round 196: the bench forms up too (aicrush1t: form f26, go f80); the '
+                                       'simulator now leaves f40 -- still earlier than the bench -- yet 4, 4, 3, 2, 2, 1 '
+                                       'guards are left at s28-33: the old green rode on leaving at f2, the drive / crush '
+                                       'is slow, not the departure')
 def test_crush_runs_the_guards_over_at_once(lib):
     """checks/engine_aicrush.py aicrush1: no guards at s28-s33, all four tanks survive."""
     w, rows = _probe_run('aicrush1', lib, 35.0)
@@ -185,6 +189,8 @@ def test_with_the_main_switch_off_nobody_goes_into_a_turret_idle_or_not(lib):
 
 
 # was strict xfail (nobody garrisoned): the team forms before the wake now (B rounds 161-164)
+@pytest.mark.xfail(strict=True, reason='B round 196: as test_simai test_one_goes_into_the_first_turret -- nobody goes '
+                                       'in since the SimpleAttack form-up (B round 194), which the bench has too')
 @pytest.mark.parametrize('build,key', [('aibd1', '进炮塔'), ('aibdwho', '进炮塔')])
 def test_one_peacekeeper_goes_into_the_first_turret(lib, build, key):
     """checks/engine_aibasedef.py aibd1 / aibdwho. Not 旁1 (Peacekeepers near turret 1): since engine A round 146

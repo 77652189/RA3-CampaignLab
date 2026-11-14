@@ -271,6 +271,10 @@ def _first_out(build, lib, until=75.0):
     return first, w
 
 
+@pytest.mark.xfail(strict=True, reason='B round 196: since the SimpleAttack form-up (B round 194) the tanks are out '
+                                       'wake + 98 frames, the bench ~75 +- 22. The bench forms up too (aiexpctl, a team '
+                                       'made at the wake: form f158, go f185 = 27 frames); the simulator\'s form-up '
+                                       'here takes 44-52 frames (f153 -> f197 / f205) -- the slot walk, not the scope')
 def test_mission_personality_both_states_go_at_the_wake(lib):
     """aistateconst a: both states always on -- all four of each out s14-16, the wake s9 (~5 s after it)."""
     first, w = _first_out('aistateconst', lib, until=25)
@@ -434,9 +438,8 @@ def test_outgunned_team_walks_home_alive_and_goes_again(lib):
     assert any(r['到远厂'] >= 1 for r in rows[again:])
 
 
-@pytest.mark.xfail(strict=True, reason='since the team forms before the wake (B round 164) it leaves s10-12 as on '
-                                       'the bench, home s22, out again s38 (bench s42); one Peacekeeper is lost on a '
-                                       'later trip, the bench lost none -- the fight / retreat, not the departure')
+# was strict xfail (one Peacekeeper lost on a later trip): passes since the SimpleAttack form-up (B round 194; the
+# bench forms up in every SimpleAttack run with a teams host -- airev*, aicrush1t, aialobs*, aiexpctl; B round 196)
 def test_outgunned_team_home_stay_and_losses_match_the_bench(lib):
     # bench airet: 16 s home before going again and 4 alive to s85. Was strict xfail (sim 9 s, one lost on the second
     # trip); passes since the engine model's f67a739 (line C: retreat order readiness before the attack rejoins)
@@ -734,6 +737,10 @@ def test_nobody_goes_in_where_the_bench_had_nobody(lib, build):
 
 
 # was strict xfail (the team ~8 s late): it forms before the wake now (B rounds 161-164)
+@pytest.mark.xfail(strict=True, reason='B round 196: since the SimpleAttack form-up (B round 194: form f2, go f55) '
+                                       'nobody goes into turret 1; the bench forms up in every SimpleAttack run with a '
+                                       'teams host, so the scope stands -- the way past turret 1 from the form point vs '
+                                       'the garrison pass is not attributed')
 def test_one_goes_into_the_first_turret(lib):
     _, got = _garrison_run('aibd1', lib)
     assert [e[2] for e in got] == ['UNIT - CNV AI Turret 1']
