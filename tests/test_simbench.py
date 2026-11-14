@@ -1623,6 +1623,28 @@ def test_acts_w_hunt_as_the_bench():
     assert 13.0 <= first(2, 62) <= 19.0 and 29.0 <= first(2, 52) <= 36.0 and 46.0 <= first(2, 42) <= 53.0
 
 
+def test_acts_y_hunt_as_the_bench():
+    """hunt, bench 11-14 `run_queue engine_acts_y:hunt` (CampActsYHunt, round 218; the bench's seconds ~1 behind):
+    家 11222 -> 11200 at s6 -- TEAM_HUNT moves the aiTactical-255 crews (Soviet_4's, Soviet_5's at aiTeamBuilder 240),
+    not Soviet_6's (aiTactical 240); NAMED_HUNT not the woken Soviet_3's conscript. 到 20 at s9 (by the engineer 700
+    east, not the barracks 1000 west), 220 at s21 (re-picked: by the next engineer), 0 at s39, home again at s49-s59
+    (on to the barracks). 活's alive bits: e1 dead s15, e2 attacked s26, dead s29; 饵: b5 dead s13, b6 attacked s29.
+    A dead engineer's 'attacked' bit (7 s on the bench) is not asserted."""
+    run = _sim_run('engine_acts_y', 'hunt', 61.0)
+
+    def first(col, test):
+        return next(t for t, v in run.series if test(v[col]))
+    assert {v[0] for _, v in run.series} == {11222, 11221, 11200, 11201, 11202} and 5.0 <= first(0, lambda v: v == 11200) <= 9.0
+    assert {v[0] for _, v in run.series if v[0] < 11210} <= {11200, 11201, 11202}
+    assert 8.0 <= first(1, lambda v: v == 20) <= 12.0 and 20.0 <= first(1, lambda v: v >= 200) <= 24.0
+    assert 37.0 <= next(t for t, v in run.series if t > 30 and v[1] == 0) <= 41.0
+    assert 47.0 <= first(0, lambda v: v == 11202) - 1.0 <= 53.0
+    assert 14.0 <= first(2, lambda v: v & 1 == 0) <= 17.0 and 25.0 <= first(2, lambda v: v & 16) <= 28.0
+    assert 28.0 <= first(2, lambda v: v & 2 == 0) <= 31.0
+    assert 12.0 <= first(3, lambda v: v & 1 == 0) <= 15.0 and 28.0 <= first(3, lambda v: v & 8) <= 31.0
+    assert {v[3] & 48 for _, v in run.series} == {48}
+
+
 def test_acts_x_own_as_the_bench():
     """own, bench 11-14 `run_queue engine_acts_x:own` (CampActsXOwn, round 217; the bench's seconds ~1-2 behind):
     主 1365 -> 1369 at s2 -> 1433 at s10 -- PLAYER_TRANSFER_OWNERSHIP_PLAYER moves only the giver's units on no team

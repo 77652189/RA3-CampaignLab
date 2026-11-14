@@ -1112,6 +1112,7 @@ class Sim:
         self.repairs = simrepair.Repairs(self)
         import simassign
         self.assignments = simassign.Assignments(self)
+        self.hunts = []                     # TEAM_HUNT's crews: [movers, target, frame to re-pick at] (Sim.hunt_due)
         self.garrison = simgarrison.Garrisons(self)    # GarrisonContain / ContestableGarrisonContain
         self.infiltrators = siminfiltrator.Infiltrators(self)
         self.bodies = {}                    # name -> Body (named ones), plus unnamed under '#k'
@@ -3567,18 +3568,19 @@ class Sim:
             # to the AI, aiTeamBuilder / aiTactical 255): Soviet_4's crew (DefaultPersonality, both switches 255, not
             # woken) left home ~4 s after TEAM_ALLOW_AI_AUTOACQUIRE + TEAM_HUNT and went for the player's tank ~870
             # away, not the barracks ~1650 (the nearest structure, never reached); Soviet_5's (both 240) stayed, and
-            # NAMED_HUNT moved neither side's lone conscript in 60 s. So: an attack-move of the crew to the nearest
-            # hostile object when its owner's aiTactical is 255 (which of the two switches gates it: INFERRED, the
-            # bench had both alike); one order, no re-pick when that target dies (INFERRED, HuntTactic's choice and
-            # its later updates are engine line B's: work/re/a216_hunt_interface.md)
+            # NAMED_HUNT moved neither side's lone conscript in 60 s. Bench 11-14 engine_acts_y hunt (round 218,
+            # unarmed engineers as targets): aiTactical is the gate (Soviet_5 240 / 255 hunted, Soviet_6 255 / 240
+            # stayed); the crew went for the engineer 700 east, not the barracks 1000 west -- the nearest hostile
+            # object, a unit too; when it died the crew went on to the next nearest (another engineer, then the
+            # barracks), and NAMED_HUNT moved a woken AI's (Soviet_3's) conscript neither. So: an attack-move of the
+            # crew to the nearest hostile object, again after each target dies (Sim.hunt_due; the AI's own HuntTactic
+            # in the model is engine line B's: work/re/a216_hunt_interface.md)
             crew = self.members(a[0]) if name == 'TEAM_HUNT' else [b for b in [self.body(a[0])] if b and b.alive]
             movers = [b for b in crew if b.speed > 0]
             if name == 'TEAM_HUNT' and movers and self.tactical(movers[0].owner):
-                mx, my = sum(b.x for b in movers) / len(movers), sum(b.y for b in movers) / len(movers)
-                goal = min((o for o in self.living() if o.owner != CIV and self.hostile(movers[0], o)),
-                           key=lambda o: (math.hypot(o.x - mx, o.y - my), o.name), default=None)
-                if goal is not None:
-                    self.order_group(movers, (goal.x, goal.y), True)
+                self.hunts = [h for h in self.hunts if not any(b in movers for b in h[0])]
+                self.hunts.append([movers, None, self.frame_now()])
+                self.hunt_due(self.frame_now())
             elif any(b.owner in self.ai for b in crew):
                 self.gap(GAP_ACTION, name, 'AI 玩家的猎杀战术（HuntTactic）不模拟（引擎 B 的 AI）')
         elif name in ('UNIT_AI_TRANSFER', 'TEAM_AI_TRANSFER'):
@@ -4246,6 +4248,8 @@ class Sim:
             self.assignments.due(eng.frame)
             self.suppression_tick()
             self.flee_due(eng.frame)
+            if self.hunts:
+                self.hunt_due(eng.frame)
             self.toggles_run(eng.frame)
             self.expire(eng.frame)
             self.garrison.due()
@@ -4299,6 +4303,35 @@ class Sim:
         self.modify(b)
         self.used.add('flee off map')
         self.change()
+
+    HUNT_REPICK = 45                    # frames from a hunted target's death to the crew's next pick (fit, below)
+
+    def hunt_due(self, frame):
+        """TEAM_HUNT's crews (Sim.act): one with no living target, its re-pick frame come, attack-moves to the
+        hostile object (unit or structure, not civilian) nearest its middle. Bench 11-14 engine_acts_y hunt: an
+        engineer died at s15, the crew by the next one (566 on) at s21; that one died at s29, the crew out of its
+        spot at s39 and back past home (s49) for the barracks; another crew's bait died at s13, the next attacked at
+        s29 -- HUNT_REPICK 45 frames (3 s) has each a second later, the bench's usual lag (0: the same but the
+        second bait 2 s early; 75: 2-3 s late). INFERRED: a fit, the program's re-pick rule not read. A crew's members dying, joining other teams: not followed (the crew as ordered)."""
+        for h in list(self.hunts):
+            movers = [b for b in h[0] if b.alive]
+            if not movers:
+                self.hunts.remove(h)
+                continue
+            if h[1] is not None and h[1].alive:
+                continue
+            if h[1] is not None:                # its target just died: the re-pick waits
+                h[1], h[2] = None, frame + self.HUNT_REPICK
+            if frame < h[2]:
+                continue
+            mx, my = sum(b.x for b in movers) / len(movers), sum(b.y for b in movers) / len(movers)
+            goal = min((o for o in self.living() if o.owner != CIV and self.hostile(movers[0], o)),
+                       key=lambda o: (math.hypot(o.x - mx, o.y - my), o.name), default=None)
+            if goal is None:
+                self.hunts.remove(h)
+                continue
+            h[1] = goal
+            self.order_group(movers, (goal.x, goal.y), True)
 
     def flee_due(self, frame):
         """One frame of every runner: its place on the straight line, the removal when its time comes."""
@@ -4428,6 +4461,8 @@ class Sim:
         self.spawn_due(self.frame_now())
         self.garrison.due()
         self.suppression_tick()
+        if self.hunts:
+            self.hunt_due(self.frame_now())
         self.build_due(self.frame_now())
         self.deposit_due(self.frame_now())
         self.mine_due(self.frame_now())

@@ -50,7 +50,7 @@
 | 已对拍 | `UNIT_CHANGE_OBJECT_STATUS:SHROUD_REVEAL_TO_ALL` | 218 |  | tests/test_simbench.py::test_acts_flow_as_the_bench |
 | 已对拍 | `PLAYER_SET_MAX_PLAYER_POWER_POINTS` | 206 | a4 a5 a7 | tests/test_simbench.py::test_protocol_set_points_follows_the_programs_rule |
 | 已对拍 | `NAMED_KILL` | 204 | a4 a5 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aitargetpick.py |
-| 已对拍 | `TEAM_HUNT` | 203 |  | tests/test_simbench.py::test_acts_w_hunt_as_the_bench |
+| 已对拍 | `TEAM_HUNT` | 203 |  | tests/test_simbench.py::test_acts_y_hunt_as_the_bench |
 | 已对拍 | `CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT` | 196 | a4 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_ref.py |
 | 已对拍 | `LINK_MISSION_OBJECTIVE_TO_WAYPOINT` | 194 | a1 a3 a4 a5 a6 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts5.py |
 | 已对拍 | `NAMED_FOLLOW_WAYPOINTS` | 192 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_wayatk.py |

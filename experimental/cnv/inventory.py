@@ -171,7 +171,10 @@ BENCHED_TESTS = {
         'TEAM_GUARD_AREA_FROM_POSITION')},
     # round 216: TEAM_HUNT / NAMED_HUNT (checks/engine_acts6.py hunt: an aiTactical-255 owner's crew attack-moves to
     # the nearest enemy; the 240 one's, and NAMED_HUNT on an AI not woken: nothing)
-    **{(ACTION, n): 'tests/test_simbench.py::test_acts_w_hunt_as_the_bench' for n in ('TEAM_HUNT', 'NAMED_HUNT')},
+    # round 218 (checks/engine_acts8.py hunt): the gate is aiTactical, the target the nearest hostile object (units
+    # too), re-picked after each one dies; NAMED_HUNT moves a woken AI's unit neither
+    (ACTION, 'TEAM_HUNT'): 'tests/test_simbench.py::test_acts_y_hunt_as_the_bench',
+    (ACTION, 'NAMED_HUNT'): 'tests/test_simbench.py::test_acts_w_hunt_as_the_bench',
     # round 217: PLAYER_TRANSFER_OWNERSHIP_PLAYER (checks/engine_acts7.py own: the giver's units on no team and its
     # money go to the receiver; ones on a team stay)
     (ACTION, 'PLAYER_TRANSFER_OWNERSHIP_PLAYER'): 'tests/test_simbench.py::test_acts_x_own_as_the_bench',
@@ -366,12 +369,13 @@ NOTES = {
     (MODULE, 'Behaviors/LaserState'): (NA, '纯表现：LaserId关联光束，起止粒子/骨骼/EndOffset与ObjectStatusValidation只控制光束表现；LaserStateModule.xsd无伤害字段；engine_laser pair匹配LaserDraw/State 201，伤害由独立DamageNugget给出，test_simbench_c重放2/90/2/90'),
     (MODULE, 'Behaviors/LUAEventList'): (NA, '纯表现：EventListName连接原版ScriptEvents.xml与Scripts.lua；RA3声明可达的事件处理函数只调用模型部件显隐（及tostring），含继承；未定义的AlliedInfantryFightingFunctions无可达处理函数；C&C3升级/状态函数不可达。tests/test_inventory_lua.py静态核对游戏包与SDK声明，非上台对拍'),
     # batch 1 (work/re/l2_scripts1.md, checks/engine_scripts1.py, bench 11-08)
-    (ACTION, 'TEAM_HUNT'): (GUESSED, '没交给 AI 的玩家（含玩家自己）：不动，台上量过（engine_scripts1 hunt 60 s）；'
-                                     'AI 玩家的 HuntTactic 不模拟（引擎 B），碰到记 Sim.unmodeled'),
+    (ACTION, 'TEAM_HUNT'): (GUESSED, '主人 aiTactical 255（人类除外）：攻击移动到最近敌对物体（单位也算），目标死后'
+                                     '3 s 重选（engine_acts_y 台上量过）；240 不动。重选间隔是拟合值（INFERRED）'),
     (MODULE, 'Behaviors/ModelConditionUpgrade'): (NA, '纯表现：只加模型状态（民房/步兵按阵营换画法、支援技能画法），'
                                                      '同模板的非画法模块和原版脚本 UNIT_HAS_MODELCONDITION 都不读'
                                                      '（E 线 work/re/e_na_physics_mcu.md）'),
-    (ACTION, 'NAMED_HUNT'): (GUESSED,'同 TEAM_HUNT：没交给 AI 不动（台上量过）；AI 玩家的猎杀不模拟（引擎 B）'),
+    (ACTION, 'NAMED_HUNT'): (GUESSED, '60 s 不动：没交 AI 的（engine_acts_w）和容器已交 AI 的 Soviet_3（engine_acts_y）'
+                                      '都量过；醒着的 AI 后来会不会用这一位（引擎 B）没量'),
     # engine A round 106: judged by what reads them
     (ACTION, 'UNIT_SET_MODELCONDITION_GENERIC'): (NA, '纯表现：设模型状态只换画法。原版脚本设的是 SUPPRESSED（a01 '
                                                       '摆拍枪战的趴下动作），SDK 数据里读 SUPPRESSED 的只有绘制模块的 '

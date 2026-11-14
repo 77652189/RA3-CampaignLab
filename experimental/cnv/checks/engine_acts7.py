@@ -7,7 +7,7 @@ the container's Teams has teamSoviet_5 and teamSoviet_6 (read 11-14 off the cont
 bare object placed for s5 is on teamSoviet_5 (island.like). Round 215 never asked whether its units were Soviet_5's
 before the order. The program (work/re/a217_transfer.md): the handler calls the second player's method with the first
 (retail a05 ('Japan_04_Scripted', 'Japan_03') then wakes Japan_03: from, to); it returns at once when the receiver has
-no default team, else walks a list of the giver's (+0xb0: read as its teams, members of one kind skipped), moves
+no default team, else walks a list of the giver's (read as its teams, members of one kind skipped), moves
 them onto the receiver and adds one of the giver's counters to it. Predicted: units on teams move, ones on no team --
 Soviet_2's, the container's start-up UNIT_AI_TRANSFER_ALL takes them off every team (sim.skirmish_setup) -- stay.
 The bench read the opposite (below): the list is not the map's teams (which list it is: not read further).
