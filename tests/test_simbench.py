@@ -1512,6 +1512,38 @@ def test_acts_flow_as_the_bench():
     assert _conds_column(run, 3) == [134, 143, 175, 495, 361, 41]
 
 
+def test_acts_seq_as_the_bench():
+    """seq, bench 11-13 `run_queue engine_acts_seq:seq` (CampActsSSeq, round 212): UNIT_EXECUTE_SEQUENTIAL_SCRIPT runs
+    the subroutine once, each step after the move before it is done -- 跑 1 11 111 and no more; a second one given to
+    the same unit waits for the first -- 排 0 then 11 (never 10); UNIT_IDLE_FOR_SECONDS in it holds nothing back --
+    等 11 from the first second."""
+    run = _sim_run('engine_acts_seq', 'seq', 40.0)
+
+    def column(k):
+        vals = [v[k] for _, v in run.series[1:]]
+        return [v for j, v in enumerate(vals) if not j or v != vals[j - 1]]
+    assert column(0) == [1, 11, 111]
+    assert column(1) == [0, 11]
+    assert column(2)[-1] == 11 and all(v[2] == 11 for t, v in run.series if t >= 2)    # the bench 1-2 s ahead
+
+
+def test_acts_more_as_the_bench():
+    """more, bench 11-13 `run_queue engine_acts_more:more` (CampActsMMore, round 212; the bench's seconds 1-2 ahead):
+    驻 767 -> 363 -- TEAM_GARRISON_TEAM_INSTANTLY asks no room (G2's six into one five-place Bullfrog) and deals G1's
+    seven out 4 + 3 (the first Bullfrog's kill took 4); 诱血 100 till NAMED_STOP, then falling -- the gunner at the
+    ground takes nothing by itself; 旗 61 125 361 (UNIT_KILL_ALL_IN_AREA: the player's tank and plant in K, not the
+    enemy's nor the one outside; the Mover at the post's place at the order, never its second; the area reveal
+    discovers Hide) 363 (the lure hit after the stop) 107 / 106 (the undo). Bit 1 (lure b, dead) and 2 after the
+    lure's death left out: a dying unit's attacked flag outlasts it on the bench (round 210's 11 s)."""
+    run = _sim_run('engine_acts_more', 'more', 30.0)
+    assert _conds_column(run, 0) == [767, 363]
+    hp = [(t, v[1]) for t, v in run.series[1:]]
+    assert all(v == 100 for t, v in hp if t < 12.0) and min(v for _, v in hp) == 0
+    flags = [v[2] & ~1 for _, v in run.series[1:]]
+    flags = [v for k, v in enumerate(flags) if not k or v != flags[k - 1]]
+    assert flags[:5] == [60, 124, 360, 362, 106], flags     # bench 61 125 361 363 107 with bit 1 kept
+
+
 def test_video_a_radar_clip_is_done_after_its_length_full_screen_never():
     """movie play (bench, docs/story/handoff.md 1g): CNVTEST01 (95 frames at 23.976) in the radar window done 63 game
     frames after its start; the full-screen clip never reads done."""

@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **94%** | **100%** | 50 / 50 | 451 | 134 | 20 | 182 | 115 | 95% |
+| 脚本动作 | **94%** | **100%** | 50 / 50 | 451 | 141 | 20 | 175 | 115 | 96% |
 | 脚本条件 | **98%** | **100%** | 12 / 12 | 89 | 54 | 4 | 28 | 3 | 99% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -120,7 +120,7 @@
 | 已对拍 | `PLAYER_GIVE_MONEY` | 72 | a4 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acts.py |
 | 已对拍 | `UNIT_SET_TEAM` | 72 | 全部 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acquire.py |
 | 已对拍 | `TEAM_CHANGE_OBJECT_STATUS` | 71 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts8b.py |
-| 未做 | `TEAM_GARRISON_TEAM_INSTANTLY` | 68 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `TEAM_GARRISON_TEAM_INSTANTLY` | 68 |  | tests/test_simbench.py::test_acts_more_as_the_bench |
 | 不涉及 | `UNIT_CLEAR_MODELCONDITION` | 68 |  | 纯表现：同 UNIT_SET_MODELCONDITION_GENERIC，清掉画法状态 |
 | 不涉及 | `CREATE_UNNAMED_ON_TEAM_AT_NAMED_OBJECT_LOCATION` | 67 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 已对拍 | `LINK_MISSION_HOT_SPOT_TO_OBJECT` | 67 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_conds.py:sight |
@@ -132,13 +132,13 @@
 | 已对拍 | `SET_MISSION_HOT_SPOT_ACTIVENESS` | 61 |  | tests/test_simbench.py::test_conds_sight_as_the_bench |
 | 已对拍 | `UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION` | 60 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts8.py |
 | 已对拍 | `NAMED_FORCE_ATTACK_NAMED` | 59 |  | tests/test_simbench.py::test_acts_flow_as_the_bench |
-| 未做 | `NAMED_FORCE_ATTACK_WAYPOINT` | 59 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `NAMED_FORCE_ATTACK_WAYPOINT` | 59 |  | tests/test_simbench.py::test_acts_more_as_the_bench |
 | 不涉及 | `PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM` | 59 | a4 | 纯表现（名字规则）；只记进时间线（sim.SHOWN）；台上量过（docs/engine/inventory-levels-a.md），没有测试跑这个台子 |
 | 不涉及 | `SET_REFERENCE_TO_RANDOM_TEAM_MEMBER` | 59 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 已对拍 | `MAP_REVEAL_ALL_UNDO_PERM` | 58 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_vision.py |
 | 不涉及 | `SHOW_MILITARY_CAPTION` | 58 | 全部 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
 | 已对拍 | `NAMED_FOLLOW_WAYPOINTS_EXACT` | 56 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_waypath.py |
-| 未做 | `UNIT_EXECUTE_SEQUENTIAL_SCRIPT` | 56 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `UNIT_EXECUTE_SEQUENTIAL_SCRIPT` | 56 |  | tests/test_simbench.py::test_acts_seq_as_the_bench |
 | 已对拍 | `NAMED_SET_MAX_HEALTH` | 53 | a4 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_maxhealth.py |
 | 不涉及 | `TOGGLE_RADAR_UI` | 53 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `DISPLAY_TUTORIAL_TEXT` | 52 |  | 纯表现（名字规则） |
@@ -173,15 +173,15 @@
 | 已对拍 | `NAMED_DAMAGE` | 34 |  | tests/test_simbench.py::test_sell_a_killed_building_stays_paid_and_a_building_unpacking_is_not_sold |
 | 不涉及 | `FLASH_MOUSE_HUD_FIXED_ELEMENT` | 33 |  | 纯表现（名字规则） |
 | 未做 | `GATE_OPEN` | 33 |  | Sim.act / Sim.cond 不认识 |
-| 未做 | `MAP_REVEAL_PERMANENTLY_IN_TRIGGER` | 33 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `MAP_REVEAL_PERMANENTLY_IN_TRIGGER` | 33 |  | tests/test_simbench.py::test_acts_more_as_the_bench |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_DisguisedEvacuate` | 33 |  | 只记进时间线，没有效果 |
 | 已对拍 | `STOP_TIMER` | 33 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_timer.py |
 | 已对拍 | `TEAM_SET_OVERRIDE_RELATION_TO_TEAM` | 33 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts9.py |
 | 已对拍 | `UNIT_CHANGE_OBJECT_STATUS:NO_ATTACK` | 33 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acquire.py |
 | 推断 | `ALLOW_DISALLOW_ONE_UPGRADE` | 32 |  | Sim.act / Sim.cond 有分支 |
 | 已对拍 | `NAMED_ATTACK_TEAM` | 32 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts9.py |
-| 未做 | `UNIT_KILL_ALL_IN_AREA` | 32 |  | Sim.act / Sim.cond 不认识 |
-| 未做 | `ATTACK_MOVE_TEAM_TO_NAMED_OBJECT` | 31 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `UNIT_KILL_ALL_IN_AREA` | 32 |  | tests/test_simbench.py::test_acts_more_as_the_bench |
+| 已对拍 | `ATTACK_MOVE_TEAM_TO_NAMED_OBJECT` | 31 |  | tests/test_simbench.py::test_acts_more_as_the_bench |
 | 推断 | `CREATE_REINFORCEMENT_TEAM_AT_UNIT_POSITION` | 31 |  | Sim.act / Sim.cond 有分支 |
 | 未做 | `SKIRMISH_AI_SET_FAVORED_ENEMY` | 31 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `NAMED_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT` | 30 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_waypath.py |
@@ -198,7 +198,7 @@
 | 未做 | `TEAM_SET_PLAYERS_NEAREST_UNIT_OF_TYPE_TO_REFERENCE` | 27 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `TEAM_STOP` | 27 | a4 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts4.py |
 | 未做 | `TEAM_TELEPORT_TO_WAYPOINT` | 27 |  | Sim.act / Sim.cond 不认识 |
-| 未做 | `MAP_UNDO_REVEAL_PERMANENTLY_IN_TRIGGER` | 26 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `MAP_UNDO_REVEAL_PERMANENTLY_IN_TRIGGER` | 26 |  | tests/test_simbench.py::test_acts_more_as_the_bench |
 | 不涉及 | `NAMED_FLASH_WHITE` | 26 |  | 纯表现（名字规则） |
 | 不涉及 | `RADAR_CREATE_EVENT` | 26 |  | 纯表现（名字规则） |
 | 未做 | `TEAM_GUARD_AREA_FROM_POSITION` | 26 |  | Sim.act / Sim.cond 不认识 |

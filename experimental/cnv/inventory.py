@@ -150,6 +150,11 @@ BENCHED_TESTS = {
     **{(ACTION, n): 'tests/test_simbench.py::test_acts_flow_as_the_bench' for n in (
         'UNIT_CHANGE_OBJECT_STATUS:SHROUD_REVEAL_TO_ALL', 'UNIT_CHANGE_OBJECT_STATUS:SKIRMISH_AI_DO_NOT_ATTACK',
         'TEAM_ALLOW_AI_AUTOACQUIRE', 'NAMED_SET_DISABLED', 'NAMED_FORCE_ATTACK_NAMED', 'TEAM_SET_STANCE')},
+    # round 212: batch 2 (checks/engine_acts2.py seq / more; the ground fire's own damage not benched, none simulated)
+    (ACTION, 'UNIT_EXECUTE_SEQUENTIAL_SCRIPT'): 'tests/test_simbench.py::test_acts_seq_as_the_bench',
+    **{(ACTION, n): 'tests/test_simbench.py::test_acts_more_as_the_bench' for n in (
+        'TEAM_GARRISON_TEAM_INSTANTLY', 'NAMED_FORCE_ATTACK_WAYPOINT', 'UNIT_KILL_ALL_IN_AREA',
+        'ATTACK_MOVE_TEAM_TO_NAMED_OBJECT', 'MAP_REVEAL_PERMANENTLY_IN_TRIGGER', 'MAP_UNDO_REVEAL_PERMANENTLY_IN_TRIGGER')},
     # engine line C round 1: modules whose retail data the simulator already follows and a bench-reading test cites
     (MODULE, 'Behaviors/ProductionUpdate'):
         'tests/test_simbench.py::test_production_pays_as_it_builds_and_comes_out_after_the_door',   # engine_production a-g

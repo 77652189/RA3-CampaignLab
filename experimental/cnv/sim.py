@@ -363,7 +363,8 @@ GAP_WEAPON, GAP_UPGRADE, GAP_ACTION, GAP_CONDITION, GAP_COMMAND, GAP_STATUS = \
     '武器', '升级', '脚本动作', '脚本条件', '命令', '状态'
 # the object statuses sim.py acts on (tested with `in b.status`; IN_STASIS = IMMOBILE NO_ATTACK UNATTACKABLE in
 # Sim.modify); tests/test_sim.py checks the list against the source
-ACTED_STATUS = frozenset({'SOLD', 'GENERIC_TOGGLE_STATE', 'IMMOBILE', 'NO_ATTACK', 'UNATTACKABLE', 'NON_AUTOACQUIRABLE', 'IN_STASIS', 'UNDER_FROZEN', 'ATTACHED', 'SHROUD_REVEAL_TO_ALL'})
+ACTED_STATUS = frozenset({'SOLD', 'GENERIC_TOGGLE_STATE', 'IMMOBILE', 'NO_ATTACK', 'UNATTACKABLE', 'NON_AUTOACQUIRABLE', 'IN_STASIS', 'UNDER_FROZEN', 'ATTACHED', 'SHROUD_REVEAL_TO_ALL',
+                          'NO_COLLISIONS'})   # NO_COLLISIONS: the scythe's MetaImpact filter passes it by (line C)
 # bits only a woken skirmish AI's own target choice reads (d115 10: its micro-manager), no gap here: the unit's own
 # take, a script's order, the player's are untouched (bench 11-13 engine_acts flow 旗&2: an idle enemy fires on it)
 AI_ONLY_STATUS = frozenset({'SKIRMISH_AI_DO_NOT_ATTACK'})
@@ -1057,6 +1058,8 @@ class Sim:
         self.revealed_to = set()            # other players given MAP_REVEAL_ALL (side_sees: they see everything)
         self.reveals = {}                   # name -> (x, y, r)
         self.peeks = []                     # (x, y, r, until frame): MAP_REVEAL_AT_WAYPOINT, back to fog at `until`
+        self.reveal_areas = {}              # reveal name -> area: the player's MAP_REVEAL_PERMANENTLY_IN_TRIGGER
+        self.seq = []                       # UNIT_EXECUTE_SEQUENTIAL_SCRIPT records, in queue order (seq_due)
         self.reshroud = 10.0                # MAP_SHROUD_SET_RESHROUD_TIME seconds (retail default holds as 10)
         self.camera = None
         self.input = True
@@ -1483,6 +1486,7 @@ class Sim:
         if b:
             b.flee = None                       # INFERRED: any move order takes the run over, as STOP does
             b.follow = None                     # ... and a waypoint path (order_follow sets it again after its legs)
+            b.ground_fire = None                # ... and a fire at the ground
             b.mode = 'attack' if attacking else 'move'
             p = self.point(where) if isinstance(where, str) else where
             if p is not None and b.alive and b.speed > 0:
@@ -1636,7 +1640,7 @@ class Sim:
         if b and target and target.alive and b.alive:
             b.hold_paused = False               # an order given under HOLD_FIRE fires (stance.md b)
         if b and target and target.alive and b.alive and b.goal is not target:
-            b.goal, b.mode, b.follow = target, 'attack', None
+            b.goal, b.mode, b.follow, b.ground_fire = target, 'attack', None, None
             self.send(b, (target.x, target.y), reach=self.reach(b, target))
 
     def order_capture(self, b, target_name):
@@ -2297,12 +2301,54 @@ class Sim:
 
     def order_stop(self, b):
         if b:
-            b.path, b.goal, b.follow = [], None, None
+            b.path, b.goal, b.follow, b.ground_fire = [], None, None, None
             b.flee = None                       # a later order takes the run over (engine_runoffmap d; the status stays)
 
     def stand(self, b):
         """Its order dropped, nothing new: idle where it is (the AI's command 5: l2_scripts1 3, 6)."""
         b.path, b.goal, b.mode, b.move_to, b.follow = [], None, 'idle', None, None
+        b.ground_fire = None
+
+    def idle(self, b):
+        """The unit's AI has nothing to do (a sequential script's next step waits for it, d115 14): no way to walk,
+        no living target, no path, not firing at the ground, not running off."""
+        return not b.path and not (isinstance(b.goal, Body) and b.goal.alive) and not b.follow \
+            and not getattr(b, 'ground_fire', None) and not getattr(b, 'flee', None) \
+            and b.name not in self.garrison.going
+
+    def seq_due(self):
+        """UNIT_EXECUTE_SEQUENTIAL_SCRIPT's frame (d115 14, the engine's "Advancing SeqScript"): of each unit's queue
+        only the head moves -- the unit idle, its next action run (with <This Object> = the unit); past the last one
+        it is done (loops 0), or goes to the back of the unit's queue to run again (loops - 1; -1 for ever). A dead
+        unit's records go. Bench 11-13 engine_acts_seq: 跑 1 -> 11 at P -> 111 back and no more (one run, each step
+        after the move before it), 排 0 -> 11 (the second script after the first's move). d115 14's wait frames
+        (IDLE_FOR_* writing them) are not kept: 等 11 from the first second -- UNIT_IDLE_FOR_SECONDS 5 on the standing
+        unit held the next step back not at all (what writes the wait: not known)."""
+        heads = set()
+        for r in list(self.seq):
+            b = r['b']
+            if id(b) in heads:
+                continue
+            heads.add(id(b))
+            if not b.alive:
+                self.seq.remove(r)
+                continue
+            if not self.idle(b):
+                continue
+            r['step'] += 1
+            acts = [x for x in r['script'].actions if x.enabled]
+            if r['step'] >= len(acts):
+                self.seq.remove(r)
+                if r['loops']:
+                    r['loops'] -= r['loops'] != -1
+                    r['step'] = -1
+                    self.seq.append(r)
+                continue
+            act = acts[r['step']]
+            args = [b.name if x == '<This Object>' else (b.team if x == '<This Team>' else x) for x in act.args]
+            self.eng.action(act.name, args, r['script'])
+            if not b.alive and r in self.seq:
+                self.seq.remove(r)
 
     def path_start(self, label, at):
         """The waypoint a path is joined at: of the waypoints carrying `label`, the nearest to `at` (2D; strictly
@@ -3084,6 +3130,8 @@ class Sim:
             return True
         if any(math.hypot(x - rx, y - ry) <= r for rx, ry, r in list(self.reveals.values()) + self.peeking()):
             return True
+        if any(inside(self.areas[k], x, y) for k in self.reveal_areas.values() if k in self.areas):
+            return True
         if self.infiltrators.sees(self.human, x, y, air):
             return True
         return any(b.owner == self.human and self.looks(b, x, y, air) for b in self.living())
@@ -3431,6 +3479,60 @@ class Sim:
             # (attacker, target) d115 13: the attack order that takes any relation (command 0xc); bench 11-13
             # engine_acts flow (force): on one of its own side
             self.order_attack(self.body(a[0]), a[1], force=True)
+        elif name == 'NAMED_FORCE_ATTACK_WAYPOINT':
+            # (attacker, waypoint) d115 13: command 0xe, fire at that spot of ground with no limit till another order
+            # replaces it (retail a01: NAMED_STOP 6 s later). It takes nothing by itself meanwhile (fight: ground_fire);
+            # the shots' own damage there is not simulated (INFERRED: none without a blast radius)
+            b, p = self.body(a[0]), self.point(a[1])
+            if b and b.alive and p and b.weapons:
+                self.stand(b)
+                b.ground_fire = p
+        elif name == 'ATTACK_MOVE_TEAM_TO_NAMED_OBJECT':
+            # (team, object) INFERRED: ATTACK_MOVE_TEAM_TO the object's place at the order (it is not followed)
+            o = self.body(a[1])
+            if o and self.present(o):
+                self.order_group(self.members(a[0]), (o.x, o.y), True)
+        elif name == 'UNIT_KILL_ALL_IN_AREA':
+            # (player, area) d115 27: every object of the player's inside the area killed (death type 6, INFERRED a
+            # plain death); a drone is passed by (engine_spawn), modelled as no other kind is
+            if a[1] in self.areas:
+                for b in [b for b in self.living() if b.owner == a[0] and inside(self.areas[a[1]], b.x, b.y)
+                          and 'DRONE' not in b.kinds and a[0] != '']:
+                    b.last_hit = b.last_by = None
+                    self.destroy(b, '脚本')
+        elif name == 'TEAM_GARRISON_TEAM_INSTANTLY':
+            # (passengers, containers[, c]) d115 12: each passenger not inside yet into the next container of B that
+            # may hold it, one cursor going round B (shared between passengers: they are dealt out, not one filled
+            # first). The room is not asked: bench 11-13 engine_acts_more 驻 767 (six into the five-place Bullfrog, as
+            # TEAM_GARRISON_SPECIFIC_BUILDING_INSTANTLY; d115's c true for retail's two-argument form) -> 363 (seven
+            # dealt 4 + 3, the first Bullfrog 4: its kill took 4)
+            boxes = [g for g in self.members(a[1]) if self.garrison.box(g) is not None]
+            free = not (len(a) > 2 and not int(a[2]))
+            k = 0
+            for m in self.members(a[0]):
+                if m.name in self.garrison.where or not boxes:
+                    continue
+                for _ in range(len(boxes)):
+                    g = boxes[k % len(boxes)]
+                    k += 1
+                    if g is m:
+                        continue
+                    sp = self.garrison.box(g)
+                    if (free or len(self.garrison.inside.get(g.name, [])) < sp['max']) and \
+                            self.garrison.put(m, g, script=True):
+                        self.stand(m)
+                        break
+        elif name == 'UNIT_EXECUTE_SEQUENTIAL_SCRIPT':
+            # (unit, script) d115 14: queued on the unit (behind its others), one action a frame once it is idle
+            # (seq_due); the script becomes a subroutine. The record's loop count is 0 here (one run; the catalog's
+            # action has no third argument)
+            b = self.body(a[0])
+            sc = getattr(self.eng, '_scripts', {}).get(a[1]) if self.eng is not None else None
+            if b and b.alive and sc is not None:
+                sc.subroutine = True
+                self.seq.append({'b': b, 'script': sc, 'step': -1, 'loops': int(a[2]) if len(a) > 2 else 0})
+            elif b and self.eng is None:
+                self.gap(GAP_ACTION, name, '没有引擎模型的运行不模拟顺序脚本')
         elif name == 'PLAYER_TOGGLE_RESOURCE_SHARING':     # (player, on) d115 19: read when money comes in (earn)
             (self.sharing.add if int(a[1]) else self.sharing.discard)(a[0])
         elif name == 'TEAM_USE_COMMANDBUTTON_ABILITY':
@@ -3643,6 +3745,16 @@ class Sim:
         elif name == 'MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT':
             # bench 11-09 engine_vision undo: back to fog at once (no reshroud delay), by the reveal's name
             self.reveals.pop(a[0], None)
+        elif name == 'MAP_REVEAL_PERMANENTLY_IN_TRIGGER':
+            # (area, player, reveal name) INFERRED as the waypoint one: the area open to the player till the undo;
+            # another side's not simulated (its sight)
+            if a[1] == self.human:
+                self.reveal_areas[a[2]] = a[0]
+                self.note('揭图', f'{a[0]}（区域）')
+            else:
+                self.gap(GAP_ACTION, name, '给其他玩家揭区域不模拟')
+        elif name == 'MAP_UNDO_REVEAL_PERMANENTLY_IN_TRIGGER':    # (reveal name) INFERRED: back to fog at once
+            self.reveal_areas.pop(a[0], None)
         elif name == 'MAP_SHROUD_SET_RESHROUD_TIME':
             self.reshroud = float(a[0])
         elif name in ('MOVE_CAMERA_TO', 'MOVE_CAMERA_TO_NAMED', 'CAMERA_FOLLOW_NAMED'):
@@ -3956,6 +4068,8 @@ class Sim:
                 self.happen(self.events.pop(0))
             self.tech_due(eng.frame + 1)        # before the frame's scripts (bench 11-08 engine_protocol rank: rank
             eng.step()                          # 2 read by the scripts of frame 5400 = 360 s x 15)
+            if self.seq:
+                self.seq_due()
             if self.handed:                     # the container's Lib_Skirmish_Setup, after the first frame's scripts
                 self.off_teams(self.handed)
                 self.handed = ()
@@ -4287,6 +4401,7 @@ class Sim:
         # and in 2-D reach for frames ~182..196, no fire in the air)
         armed = [b for b in live if b.weapons and 'NO_ATTACK' not in b.status    # NO_ATTACK: holds its fire
                  and id(b) not in flying
+                 and not getattr(b, 'ground_fire', None)     # NAMED_FORCE_ATTACK_WAYPOINT: busy at the ground
                  and not self.emp_disabled(b) and not self.unpowered(b)
                  and not self.infiltrators.attack_blocked(b)
                  and not (b.hold_fire and (b.hold_paused or not isinstance(b.goal, Body)))]
