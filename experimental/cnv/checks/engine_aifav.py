@@ -1,6 +1,6 @@
 """Engine probe: SKIRMISH_AI_SET_FAVORED_ENEMY(ai player, enemy) (retail: a04 Japan01 / Japan02 -> Player_1 right
-after the AI's setup, ...). Engine line A round 220; the mission is engine line B's missions/aiprio_bench.py
-aipriodef (made here, that file untouched) plus the favored enemy; the counters are checks/engine_aiprio.py's.
+after the AI's setup, ...). Engine line A round 220; the mission is engine line B's build aipriodef
+(from the registry, its module untouched) plus the favored enemy; the counters are checks/engine_aiprio.py's.
 
 The program (work/re a219_skirmish_transfer.md section 2): with both players, the AI brain, its strategy manager
 and its enemy manager there, the enemy table is emptied (the re-sort off) and the one enemy is put back at score 10
@@ -16,14 +16,15 @@ and its enemy manager there, the enemy table is emptied (the re-sort off) and th
     Soviet_4 alone in the table, at 10 (aipriodef, without it: the far plant s25). Simulator after (sim.py records
     the clear, simai not yet): Player_1 20 / Soviet_4 10 -- tests/test_simai_favored.py strict xfail.
 """
+import registry
 from checks import engine_aiprio as ap
-from missions import aiprio_bench as pb
 
 FAVORED = 'SKIRMISH_AI_SET_FAVORED_ENEMY'
 
 
 def mission():
-    m = pb.mission('CampAIPrioFav')
+    m = registry.get().builds['aipriodef']()      # engine line B's build, through the registry (not its module)
+    m.name = 'CampAIPrioFav'
     wake = next(s for s in m.scripts if s.name == 'CNV AI - Wake')
     wake.do = list(wake.do) + [(FAVORED, m.player('s1'), m.player('s4'))]
     return m
