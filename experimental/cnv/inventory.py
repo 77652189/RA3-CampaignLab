@@ -187,6 +187,10 @@ BENCHED_TESTS = {
         'NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleSpiderHole',
         'NAMED_USE_COMMANDBUTTON_ABILITY:Command_JAIV_Transform',
         'TEAM_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT')},
+    # round 222 (checks/engine_share.py all): mining income split among sharing Friends (the earner keeps the rest);
+    # NAMED_SELECTED after SELECT_OBJECT (TYPE_SELECTED in NOTES: never true there)
+    (ACTION, 'PLAYER_TOGGLE_RESOURCE_SHARING'): 'tests/test_simbench.py::test_share_all_as_the_bench',
+    (CONDITION, 'NAMED_SELECTED'): 'tests/test_simbench.py::test_share_all_as_the_bench',
     # round 217: PLAYER_TRANSFER_OWNERSHIP_PLAYER (checks/engine_acts7.py own: the giver's units on no team and its
     # money go to the receiver; ones on a team stay)
     (ACTION, 'PLAYER_TRANSFER_OWNERSHIP_PLAYER'): 'tests/test_simbench.py::test_acts_x_own_as_the_bench',
@@ -307,7 +311,7 @@ BENCHED_TESTS = {
 _NOT_IN_SIM = '已核（11-08）：模拟器没有这个效果'
 NOTES = {
     (ACTION, 'PLAYER_SET_MONEY_CAP'): (GUESSED, 'A213 engine_acts_tel:tel：脚本的钱不受上限管（上限 3000 时给 5000 → 6000；上限 500 仍 6000；设 10000 照设）；它管的（推断是采矿收入）没上台、模拟器只记不用'),
-    (ACTION, 'PLAYER_TOGGLE_RESOURCE_SHARING'): (GUESSED, 'A211 engine_acts:flow：两边都开共享的盟友之间，脚本给钱（PLAYER_GIVE_MONEY）不分（1001 / 1000 / 2001 原样）；D 119 读的码是采矿等收入平分给共享盟友，模拟器没做、没上台（要采矿台子）'),
+    (CONDITION, 'TYPE_SELECTED'): (GUESSED, 'A222 engine_share:all：脚本 SELECT_OBJECT 选中护卫者 / 矿场 / 敌方锤子坦克后都读不到真（模拟器恒假）；原版是等玩家自己点选（a06），玩家点选没上台'),
     (MODULE, 'Behaviors/AutoDepositUpdate'): (GUESSED, 'E146 engine_objectbatch:a/b：原版SwissBank克隆有/无模块的钱包，on逐次+5至60、12秒删除后稳定，off全0；具名测试按实际60/0回放。只量已有归属产钱，不晋升整项；占领奖金/驻军/上限/修理仍gap；见work/re/e146_objectbatch.md'),
     (MODULE, 'Behaviors/HealCrateCollide'): (TODO, 'E146 engine_objectbatch:a/b有/无模块均未治疗，步兵始终50/50；b中立箱且到位成立，仍无效，两轮后暂停；不把负结果登记成效果已对拍。SecretFile原XML含当前schema不接受的属性，未冒充普通HealCrate等价；碰撞派发前置待查；见work/re/e146_objectbatch.md'),
     (MODULE, 'Behaviors/LoseHealthUpdate'): (TODO, 'E146 engine_objectbatch:a/b：原船完整模块移植480HP坦克，HealthTrigger=101%/0%均无耗血，两路100/100；b已确认toggle/铁幕状态成立。两轮后暂停，移植激活资格待查，未推猜测实现、不晋升整项；见work/re/e146_objectbatch.md'),

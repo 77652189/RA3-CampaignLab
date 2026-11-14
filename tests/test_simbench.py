@@ -1695,6 +1695,22 @@ def test_acts_btn_all_as_the_bench():
     assert first[1] < first[100] <= first[10] < first[1000]
 
 
+def test_share_all_as_the_bench():
+    """all, bench 11-14 `run_queue engine_share:all` (CampShareAll, round 222; the bench's seconds 1-2 ahead): 甲 / 乙 /
+    丙钱 125 125 0 after the first load (Player_1 and Soviet_5 sharing), 249 188 63 after the second (Soviet_6 sharing
+    too: each sharing Friend amount // 3 of every deposit, the earner the rest), 374 188 188 after the third (Soviet_5
+    off). 选 1 / 2 / 16 / 1 / 0: SELECT_OBJECT replaces the selection, an enemy's object too; DESELECT changes nothing;
+    TYPE_SELECTED never true; the killed pick ~3 s still selected on the bench (not modelled). The second load's split
+    within 2: the bench unloads 30 deposits of 8 and a last of 10, the simulator 29 and 18 (MINE_DOCK, timing fitted)."""
+    at = dict(_sim_run('engine_share', 'all', 66.0).series)
+    assert at[30][:3] == [125, 125, 0], at[30]
+    for k, want in ((45, (249, 188, 63)), (66, (374, 188, 188))):
+        assert all(abs(v - w) <= 2 for v, w in zip(at[k][:3], want)), (k, at[k])
+    assert at[45][0] + at[45][1] + at[45][2] == 500, at[45]
+    for k, sel in ((4, 1), (8, 2), (10, 2), (14, 16), (16, 16), (19, 1), (25, 0), (60, 0)):
+        assert at[k][3] == sel, (k, at[k])
+
+
 def test_video_a_radar_clip_is_done_after_its_length_full_screen_never():
     """movie play (bench, docs/story/handoff.md 1g): CNVTEST01 (95 frames at 23.976) in the radar window done 63 game
     frames after its start; the full-screen clip never reads done."""

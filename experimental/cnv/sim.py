@@ -1084,6 +1084,7 @@ class Sim:
         self.money = {}
         self.income = {}                    # player -> (AI income multiplier, fraction carried) (simai: ResourceMultiplierCheat)
         self.sharing = set()                # players sharing income (PLAYER_TOGGLE_RESOURCE_SHARING)
+        self.selected = None                # the object SELECT_OBJECT selected last (NAMED_SELECTED)
         self.script_disabled = {}           # id(body) -> NAMED_SET_DISABLED types on (emp_disabled)
         self.kills = []                     # (killer's player, killer's name, template, name) by weapon (cond_retail)
         self.attacked_by = set()            # (player hit, player hitting): SKIRMISH_PLAYER_HAS_BEEN_ATTACKED_BY_PLAYER
@@ -1769,6 +1770,17 @@ class Sim:
                 if b.owner != CIV and b.deposit[1] > 0:
                     self.money[b.owner] = self.money.get(b.owner, 0) + b.deposit[1]
 
+    def earn(self, owner, amount):
+        """Income (a collector's deposit) with PLAYER_TOGGLE_RESOURCE_SHARING (d115 19, bench 11-14 engine_share all):
+        a sharing earner gives each Friend that shares too amount // (k + 1) of every deposit and keeps the rest (one
+        sharer: 125 / 125 a load; two: 124 / 63 / 63). Scripts' money is never split (engine_acts flow)."""
+        mates = [p for p in sorted(self.sharing) if p != owner and self.relations.get((owner, p)) == 'Friend'] \
+            if owner in self.sharing else []
+        cut = amount // (len(mates) + 1)
+        for p in mates:
+            self.money[p] = self.money.get(p, 0) + cut
+        self.money[owner] = self.money.get(owner, 0) + amount - cut * len(mates)
+
     # ---- mining: HOOKS 7 (simai: after the opening the AI lives on its miners' income)
     def mine_due(self, frame):
         """Every player's harvester (KindOf HARVESTER, not the neutral side's) up to `frame`, a frame at a time, the
@@ -1892,7 +1904,7 @@ class Sim:
                 frac += give * mult
                 give = int(frac)
                 self.income[b.owner] = (mult, frac - give)
-            self.money[b.owner] = self.money.get(b.owner, 0) + give
+            self.earn(b.owner, give)
             m['due'] = fr + 1
             if m['n'] >= MINE_DOCK:
                 m['state'] = 'locate'
@@ -3123,6 +3135,11 @@ class Sim:
         4-6). None: not one."""
         if name == 'MISSION_HOT_SPOT_ACTIVE':   # 码: the hot spot's on byte; a name the map lacks: false
             return self.hotspots.get(str(a[0]), False)
+        if name == 'NAMED_SELECTED':            # bench 11-14 engine_share all: the object SELECT_OBJECT picked, while
+            b = self.body(a[0])                 # it lives (the bench: ~3 s more after NAMED_KILL, not modelled)
+            return bool(b and b.alive and self.selected == a[0])
+        if name == 'TYPE_SELECTED':             # the same bench: never true after SELECT_OBJECT of a Guardian, a
+            return False                        # refinery, an enemy Hammer (a player's own click: not benched)
         if name == 'ENEMY_SIGHTED_BY_TEAM':
             # 码 (team, relation, player): a member with sight finds an object of the player's, not INERT / MOVE_ONLY,
             # the member's relation to it the one asked, within its sight. A range query: no fog, no stealth. Bench
@@ -3686,6 +3703,8 @@ class Sim:
                 self.gap(GAP_ACTION, name, '没有引擎模型的运行不模拟顺序脚本')
         elif name == 'PLAYER_TOGGLE_RESOURCE_SHARING':     # (player, on) d115 19: read when money comes in (earn)
             (self.sharing.add if int(a[1]) else self.sharing.discard)(a[0])
+        elif name == 'SELECT_OBJECT':           # (player, object): bench 11-14 engine_share all -- replaces the
+            self.selected = a[1]                # selection, an enemy's object too; DESELECT changed nothing there
         elif name == 'TEAM_USE_COMMANDBUTTON_ABILITY':
             # (team, button) l2_scripts1 8: the button on every living member, no target. Bench 11-08 button: both
             # Peacekeepers of the crew raised their shields
