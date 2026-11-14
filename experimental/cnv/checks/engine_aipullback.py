@@ -67,6 +67,11 @@ Readings (11-09; 4 Hammers vs 12 Peacekeepers, Crush false; tanks reach the plan
            far foe (the near one died s13, before the team), centre distance 166 / 190-233 > R - 10 = 135 -- the
            reverse gate not reached, no back-up point in either (agrees with the model; not a test of the switch)
   airevkg1 FAIL (invalid): the attack team never takes a Guardian (n=0 all run); 4 4 2 all along
+  (11-13, D round 133; at 16.7 s the two foes deleted, a player's Guardian spawned on each Hammer)
+  airevk2  PASS: s1-12 4 4 2 | s13 4 4 1 | s14 4 3 1 | s15-30 4 3 4 | s31-48 4 4 4 | s49-85 4 3 4. Host: both members
+           aim a spawned foe (f272); f302 member 3171 is stopped and sent to a point 135 (R - 10) from its target,
+           along target -> member, and drives there hull-first at the target (reversing); 23 such orders in the run
+  airevk2o PASS: s1-12 4 4 2 | s13 4 4 1 | s14-15 4 3 1 | s16-85 4 3 4; no back-up order (tests/test_ai_reverse_k2.py)
 """
 from checks import engine_aitarget as at
 from parts import Script, Test, counted, square
@@ -77,6 +82,8 @@ HURT_AT = 12.0                           # aipullh*: the tanks are on the road (
 IDLE = ('aipulli1', 'aipullr1', 'aipullp1', 'aipullbig', 'aipullsov', 'aipulljp')   # hurt at the wake, ~1000 from any enemy (p1: before it)
 IDLE_HURT = {'aipulli1': 0.5, 'aipullr1': 0.5, 'aipullp1': -9.0, 'aipullbig': -9.0, 'aipullsov': 0.5, 'aipulljp': 0.5}   # s after the wake
 HURT = 30.0                              # % -- under PullbackInjuredHealthPct 0.35
+LATE_AT = 16.7                           # airevk2*: s after the start (f250: the team formed f213, state 2 f242 in airevk1)
+LATE_NAME = 'UNIT - CNV AI Rev Late'     # + ' k': the Guardian spawned on Hammer k
 NEAR_FOE = 100.0                         # airevk*: half side of the square round the player's two Guardians
 
 
@@ -132,8 +139,21 @@ def a(m, build):
         counted('CNV_PB_NearF', '近敌', t, template=tank, area='CNV_PB_NearFoe', player=s1)
         counted('CNV_PB_Foes', '敌坦', t, template=m.find(foes[0]).template, player=p1)
         # d131 1: on, a member with the foe as its own target backs off to R - 10 at its next micro pass; off, stays
-        t.expect += ([('近敌', wake, 'ever<', 4, wake + 20.0)] if build.endswith('1')
-                     else [('近敌', wake + 2.0, '>=', 3, wake + 20.0)])
+        if build.startswith('airevk2'):
+            # D round 133: the two foes deleted, one Guardian spawned on each Hammer (every member's only foe a few
+            # tens off); kept alive too. 敌坦 4 from LATE_AT says the spawn took; the result is the host's aim / dest
+            late = [f'{LATE_NAME} {k + 1}' for k in range(len(tanks))]
+            timer = 'Test - late timer'
+            t.scripts += [Script('Test - late set', [], [('SET_MILLISECOND_TIMER', timer, LATE_AT)]),
+                          Script('Test - late swap', [('TIMER_EXPIRED', timer)],
+                                 [('NAMED_DELETE', n) for n in foes]
+                                 + [('UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION', n,
+                                     m.find(foes[0]).template, m.team(), k) for n, k in zip(late, tanks)]),
+                          Script('Test - late keep', [], [('UNIT_SET_HEALTH', n, 100.0) for n in late], once=False)]
+            t.expect += [('敌坦', LATE_AT + 2.0, 'ever>=', 3, LATE_AT + 10.0)]
+        else:
+            t.expect += ([('近敌', wake, 'ever<', 4, wake + 20.0)] if build.endswith('1')
+                         else [('近敌', wake + 2.0, '>=', 3, wake + 20.0)])
     elif build.startswith('airevp') or build.startswith('airevt'):
         # airevp: the far plant beside the tanks, no guards (missions CLOSE_AT); airevt: a player's turret there instead
         turret = build.startswith('airevt')
@@ -165,4 +185,4 @@ def a(m, build):
 
 CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aipull1', 'aipull0', 'aipullh1', 'aipullh0', 'aipullga', 'aipulli1', 'aipullr1', 'aipullp1', 'aipullbig', 'aipullsov', 'aipulljp',
                                                            'airev1', 'airev0', 'airev1t', 'airev0t', 'airevp1', 'airevp0', 'airevt1', 'airevt0',
-                                                           'airevk1', 'airevk0', 'airevkg1')}
+                                                           'airevk1', 'airevk0', 'airevkg1', 'airevk2', 'airevk2o')}

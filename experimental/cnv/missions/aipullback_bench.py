@@ -121,4 +121,11 @@ MISSION = {
     # the same with the AI's own Guardians (another weapon template: d131 1 gate 4, the weapon field not read)
     'airevkg1': lambda: guardians(mission('CampAIRevKG1', close='unit', observe=True,
                                           CleanupPowerAdvantage='1000.0', UseGatherState='false')),
+    # D round 133: airevk1's start (the team forms f213, state 2 f242 with aim = a far foe 166+ off), then at LATE_AT
+    # the check deletes the two foes and spawns one of the player's Guardians on each Hammer (checks/engine_aipullback
+    # LATE_*): every member's nearest -- and only -- foe a few tens off, far inside d < R - 10 = 135
+    'airevk2': lambda: mission('CampAIRevK2', close='unit', observe=True, CleanupPowerAdvantage='1000.0',
+                               UseGatherState='false'),
+    'airevk2o': lambda: mission('CampAIRevK2Off', close='unit', observe=True, CleanupPowerAdvantage='1000.0',
+                                UseGatherState='false', ReverseMove='false'),
 }
