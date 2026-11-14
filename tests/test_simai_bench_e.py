@@ -178,10 +178,10 @@ def _orders(w, kind, until):
     # bench t (aiskvveh, 2026-11-12): dog s23 and engineer s144, the only non-Javelins = the two picks. The engineer
     # is AlliedCaptureTech_MEDIUM's CreateUnits order (A rounds 192 / 199), which the unit builder makes in place of
     # its own pick (model AIPlayer.order_wanted, INFERRED) and logs as 'produce' -- so it counts here as a draw
-    pytest.param('aiskvveh', '标枪总数', '维和总数', 2, marks=pytest.mark.xfail(strict=True, raises=AssertionError,
-        reason='since the team forms before the wake (B round 164) seed 1 draws three (dogs s22 / s136, engineer '
-               's158), the bench two; the rule (Javelins >= 4, no Peacekeeper from a build state) holds on seeds '
-               '1-4 with and without that change -- the uniform draws moved (work/logs/b166_seeds_*.log)')),
+    # How many uniform picks land before s160 is the draw's luck, not a rule (B handoff: do not assert luck): seed 1
+    # drew three after B round 164, two again since (an XPASS on the model's 12dfca8 and after B round 194) -- so
+    # the bench's two or the one more seen, never a strict xfail that flips whenever the draws move
+    ('aiskvveh', '标枪总数', '维和总数', (2, 3)),
 ])
 def test_best_unit_expected_infantry_choice(build, chosen, other, draws):
     """engine_aiskirm z: on [s150,s160) >=4 counter infantry, zero of the other type from the build states.
@@ -202,7 +202,7 @@ def test_best_unit_expected_infantry_choice(build, chosen, other, draws):
     drawn = [(s, t) for s, t in every if t in BARRACKS_INFANTRY]
     assert all(row[other] == sum(1 for _, t in drawn if t == COUNTED[other]) for _, row in samples), (samples, drawn)
     if draws is not None:
-        assert len(drawn) == draws, drawn
+        assert draws[0] <= len(drawn) <= draws[1], drawn
 
 
 @pytest.mark.xfail(strict=True, raises=AssertionError, reason=(

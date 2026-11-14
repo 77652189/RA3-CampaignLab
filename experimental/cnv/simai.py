@@ -164,6 +164,14 @@ class Unit:
     def pos(self, p):                   # a block that "walks" a unit itself: the simulator moves it, not this
         pass
 
+    @property
+    def facing(self):                   # radians; the aesthetics form-up faces the lead member's heading
+        return getattr(self.body, 'angle', None)
+
+    @property
+    def moving(self):                   # still on a path (the form-up waits for every member to stop)
+        return bool(self.body.alive and getattr(self.body, 'path', None))
+
     def __repr__(self):
         return f'Unit({self.template} {self.body.name})'
 
