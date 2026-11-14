@@ -10,6 +10,7 @@ scripts beyond the wake. Not run on the bench yet (no check): the readings it wo
 
 Facts: wake at, money.
 """
+import math
 import os
 
 import labpaths
@@ -68,6 +69,22 @@ def ai_map(base, library=True, player='Soviet_1'):
             libs[names.index(player)].head = bytes(4)
         mod.terrain = terrain
     return mod
+
+
+EAST_ORE = (4225.0, 3040.0)           # aiskirmr: the east field's two nodes (niagara, measured: 4173,2987 / 4279,3093)
+FLIP_NEAR = 300.0
+
+
+def flipped(mod, centre=EAST_ORE, near=FLIP_NEAR, angle=math.pi):
+    """`mod` with the ore nodes within `near` of `centre` turned to `angle` (aiskirmr, B190 F2: is a node's default
+    refinery spot straight ahead of its facing? measured has every node at 0)."""
+    import dataclasses
+    import types
+    cp = types.ModuleType(mod.__name__)
+    cp.__dict__.update({k: v for k, v in vars(mod).items() if not k.startswith('__')})
+    cp.OBJECTS = [dataclasses.replace(o, angle=angle) if o.template == 'OreNode'
+                  and math.hypot(o.x - centre[0], o.y - centre[1]) <= near else o for o in mod.OBJECTS]
+    return cp
 
 
 EXPIRE_PID = 'CNVExpire'              # aiskexp: 1AlliedBalanced with SecondsTillTargetsExpire changed (Base writes 5)
@@ -493,8 +510,9 @@ ARMY_N = 10                            # aiskvinf / aiskvveh (check z): what the
 def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None, account=None,
             buffer=None, new=None, army=None, two=None, observe=False, cap=None, block=None, off=False,
             ptype=None, mintime=None, aidata=None, dear=None, dear_cost=DEAR_COST, power_more=None, mt_secs=300.0,
-            carrier=None, unitcap=None, inert=False, power_adv=None, side=None, inert2=False):
-    m = Mission(name=name, map=ai_map(resources.measured(niagara), lib), facts={'wake at': WAKE_AT, 'money': money})
+            carrier=None, unitcap=None, inert=False, power_adv=None, side=None, inert2=False, flip=False):
+    base = resources.measured(niagara)
+    m = Mission(name=name, map=ai_map(flipped(base) if flip else base, lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
     if side == 'none':                   # aisksd4 (check sd, d123 S4): s1 with no aiPersonality at all
         m.facts['side case'] = 4
@@ -670,6 +688,8 @@ MISSION = {'aiskirm': mission, 'aiskirmc': lambda: mission(observe=True),
            'aiskins': lambda: mission('CampAISkInS', inert2='seven'),   # check ib: Cleanup, Coop, beacons, emergencies
            'aiskin1': lambda: mission('CampAISkIn1', inert2='start'),   # check rp: StartDistanceDelta 1000 only
            'aiskin0': lambda: mission('CampAISkIn0', inert2='ticks'),   # check rp: ...IncreaseTicksBeforeGivingUp 0 only
+           'aiskirmr': lambda: mission('CampAISkIrmR', flip=True),   # check rpx: aiskirm, east nodes facing pi (F2)
+           'aiskin0r': lambda: mission('CampAISkIn0R', inert2='ticks', flip=True),   # rpx / rpb: aiskin0 the same (F1)
            'aiskmod': lambda: mission('CampAISkMod', umod=UMOD_ZERO),     # check q: SecondsTillTargetsExpire 12, not 5   # s1 without the container's Lib_Skirmish_Setup
            'aiskacp': lambda: mission('CampAISkAcP', account='PRODUCTION'),    # check v: the rebuilt AI, retail Account
            'aiskacd': lambda: mission('CampAISkAcD', account='DEFENSE'),

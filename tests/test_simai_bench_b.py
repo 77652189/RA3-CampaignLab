@@ -871,3 +871,36 @@ def test_ticks_0_puts_the_first_refinery_where_the_bench_did(lib):
     rows = _rpx('aiskin0', lib)
     first = _first_row(rows, '矿场X')
     assert (rows[first]['矿场X'], rows[first]['矿场Y']) == (27, 18)
+
+
+def test_turned_east_nodes_turn_the_first_refinery_to_the_west_side(lib):
+    """engine_aiskirm rpx aiskirmr (B190, F2; aiskirm with the two east nodes facing pi, PASS): the first refinery
+    s49 at strips x17 y15 (~3925,3125: node A's facing - 3 pi / 16 = 146.25 degrees, ~280 out), the mirror of
+    aiskirm's x26 y9 -- the seven ways follow the node's facing (D136 5). Not at A's due west ~128 out (x19 y12): a
+    default spot straight ahead is not where it went."""
+    rows = _rpx('aiskirmr', lib)
+    first = _first_row(rows, '矿场X')
+    x, y = rows[first]['矿场X'], rows[first]['矿场Y']
+    assert 17 <= x <= 18 and y == 15 and (x, y) != (19, 12)
+
+
+@pytest.mark.xfail(strict=True, reason='B190: the bench puts aiskirmr\'s first on strip x17 (sim x18: ring 6, not 5?) '
+                                       'and its second on node B (x19 y17, 146.25 degrees, ~285), no third; the '
+                                       'simulator takes A again (180 degrees) and keeps building (B unserved); unread')
+def test_turned_east_nodes_give_one_refinery_each_and_no_third(lib):
+    """aiskirmr rpx (B190): 矿场X / 矿场Y 17 / 15 at s49, 36 / 32 at s68 (second +19 / +17), the same to s264."""
+    rows = _rpx('aiskirmr', lib)
+    first = _first_row(rows, '矿场X')
+    assert (rows[first]['矿场X'], rows[first]['矿场Y']) == (17, 15)
+    assert (rows[100]['矿场X'], rows[100]['矿场Y']) == (36, 32)
+    assert (rows[158]['矿场X'], rows[158]['矿场Y']) == (36, 32)
+
+
+def test_ticks_0_falls_back_alike_whichever_way_the_nodes_face(lib):
+    """engine_aiskirm rpx aiskin0r (B190, F1; aiskin0 with the east nodes facing pi, PASS): the same rows to the
+    second as aiskin0 (x27 y18, x16 y8, x27 y25, x9 y10, x16 y12 at s49 / s69 / s148 / s189 / s223) -- where a refinery
+    goes once every node fails does not follow the nodes' facing, and the default spot (tried even at Ticks 0)
+    found no room on the turned side either. (Other structures, rpb: aiskin0 / aiskin0r's barracks x17 / x13,
+    so the fallback is not the draw they are placed by, or they follow the facing.)"""
+    a, b = _rpx('aiskin0', lib), _rpx('aiskin0r', lib)
+    assert [(r['矿场X'], r['矿场Y']) for r in a] == [(r['矿场X'], r['矿场Y']) for r in b]

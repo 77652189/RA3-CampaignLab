@@ -1248,8 +1248,14 @@ def rpx(m):
     a new refinery adds is its strip: x = RPX_X[0] + 50 x (step - 1) .. +50. Refineries come one at a time."""
     t = rp(m)
     t.counters = [(c, lab) for c, lab in t.counters if lab in ('建筑码', '矿区码')]   # four lines fit on the bench
+    _strips(t, m, ('AlliedRefinery',), (('CNV_AK_RpX', '矿场X'), ('CNV_AK_RpY', '矿场Y')))
+    return t
+
+
+def _strips(t, m, templates, counters):
+    """矿场X / 矿场Y-style strip sums of s1's `templates` (rpx's 50-wide strips; up to 3 of a template a strip)."""
     s1 = m.player('s1')
-    for c, lab, (lo, hi), axis in (('CNV_AK_RpX', '矿场X', RPX_X, 0), ('CNV_AK_RpY', '矿场Y', RPX_Y, 1)):
+    for (c, lab), (lo, hi), axis in zip(counters, (RPX_X, RPX_Y), (0, 1)):
         t.counters.append((c, lab))
         t.scripts.append(Script(f'Test - {c} zero', [], [('SET_COUNTER', c, 0)], once=False))
         other = RPX_Y if axis == 0 else RPX_X
@@ -1258,12 +1264,29 @@ def rpx(m):
             area = f'Test Strip {c} {i}'
             t.areas[area] = ([(a0, other[0]), (a1, other[0]), (a1, other[1]), (a0, other[1])] if axis == 0 else
                              [(other[0], a0), (other[1], a0), (other[1], a1), (other[0], a1)])
-            for n in range(1, 4):
-                t.scripts.append(Script(f'Test - {c} {i} >= {n}', [
-                    ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', s1, 3, n, 'AlliedRefinery', area)],
-                    [('INCREMENT_COUNTER', i, c)], once=False))
+            for tpl in templates:
+                m.spawns.add(tpl)
+                for n in range(1, 4):
+                    t.scripts.append(Script(f'Test - {c} {i} {tpl} >= {n}', [
+                        ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', s1, 3, n, tpl, area)],
+                        [('INCREMENT_COUNTER', i, c)], once=False))
     t.bench = [('bench_watch', dict(seconds=m.facts['wake at'] + 234.0, every=1, sheet=False,
                                     lines=len(t.counters)))]
+
+
+def rpb(m):
+    """Where s1's other structures stand (B190, F1: is a refinery that finds no spot by its node put where the yard
+    puts everything else?): 建筑码 as rp, 矿区码, 其他X / 其他Y = rpx's strip sums over s1's power plants, barracks and
+    war factories (建筑码 says which kind each step is). Read beside rpx of the same build.
+    RESULTS (bench 2026-11-14, B190, all PASS; work/bench_results/<build>__rpx.json / __rpb.json):
+      aiskirmr rpx (east nodes facing pi): refineries s49 x17 y15, s68 x19 y17, no third to s264 (aiskirm: x26 y9,
+        x28 y11) -- the mirror: each node's facing - 3 pi / 16.
+      aiskin0r rpx = aiskin0 rpx to the second: x27 y18, x16 y8, x27 y25, x9 y10, x16 y12 (s49/69/148/189/223).
+      rpb steps (power s19, barracks s28, power s79, war factory s99, power s159/169, ...): aiskin0 x11 y17, x17 y15,
+        x14 y26, x13 y15, x18 y26, x19 y17; aiskin0r x11 y17, x13 y15, x21 y20, x9 y21, x19 y17, x11 y24."""
+    t = rp(m)
+    t.counters = [(c, lab) for c, lab in t.counters if lab in ('建筑码', '矿区码')]
+    _strips(t, m, KINDS[:1] + KINDS[2:], (('CNV_AK_RbX', '其他X'), ('CNV_AK_RbY', '其他Y')))
     return t
 
 
@@ -1275,7 +1298,9 @@ CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j
           'aiskine': {'ib': ib},
           'aiskinp': {'ib': ib, 'rp': rp},
           'aiskin1': {'rp': rp, 'rpx': rpx},
-          'aiskin0': {'rp': rp, 'rpx': rpx},
+          'aiskin0': {'rp': rp, 'rpx': rpx, 'rpb': rpb},
+          'aiskin0r': {'rpx': rpx, 'rpb': rpb},
+          'aiskirmr': {'rpx': rpx},
           'aiskins': {'ib': ib},
           'aiskmtp': {'mt': mt},
           'aiskirmc': {'l': l, 'm': m, 'u': u},  # opt-in carrier diagnostic; stock aiskirm stays unchanged
