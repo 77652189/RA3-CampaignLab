@@ -169,8 +169,9 @@ class Unit:
         return getattr(self.body, 'angle', None)
 
     @property
-    def moving(self):                   # still on a path (the form-up waits for every member to stop)
-        return bool(self.body.alive and getattr(self.body, 'path', None))
+    def moving(self):                   # still on a path, or turning to the facing it was sent with (Sim.turn; the
+        b = self.body                   # form-up waits for every member to stop: bench airev1t, A round 227)
+        return bool(b.alive and (getattr(b, 'path', None) or getattr(b, 'face', None) is not None))
 
     def __repr__(self):
         return f'Unit({self.template} {self.body.name})'
@@ -654,7 +655,8 @@ class Brain:
         return t is not None and math.hypot(b.x - t.x, b.y - t.y) <= b.radius
 
     def order(self, u, kind, arg):
-        """TacticsBlock / DefenseBlock: 'move' or 'attack-move' to a point -> Sim.order_move."""
+        """TacticsBlock / DefenseBlock: 'move' or 'attack-move' to a point -> Sim.order_move; the point may carry a
+        facing, (x, y, radians): the unit turns to it once there (the form-up slots)."""
         b = u.body
         if kind == 'hunt':
             state = self.__dict__.setdefault('_hunt_goals', {}).setdefault(
@@ -700,7 +702,8 @@ class Brain:
                     self.host.garrison.send(b, t)
             return
         b.goal = None
-        self.sim.order_move(b, (float(arg[0]), float(arg[1])), kind == 'attack-move')
+        face = float(arg[2]) if len(arg) > 2 and arg[2] is not None else None
+        self.sim.order_move(b, (float(arg[0]), float(arg[1])), kind == 'attack-move', face=face)
 
     def fight(self, ai, team):
         """TacticsBlock's fight hook (the team state, work/re/l4_gather.md): the members and every living enemy body as

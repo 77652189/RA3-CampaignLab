@@ -475,3 +475,48 @@ def test_a_path_follower_loses_no_time_at_its_waypoints():
         if math.dist((a.x, a.y), pts[1]) > 1e-9:      # at R2 the tick's rest waits for the next leg (carry)
             assert abs(along() - min(sum(legs), a.speed * sim.DT * ticks)) < 1e-6, (ticks, along())
     assert math.dist((a.x, a.y), pts[-1]) < 1e-6 and ticks == math.ceil(sum(legs) / (a.speed * sim.DT))
+
+
+def _hammer_facing_south():
+    import math
+    s = sim.Sim(mission([]))
+    a = festival.SITES['west field']
+    tank = s.add('tank', 'SovietAntiVehicleVehicleTech1', s.human, a.x, a.y)
+    tank.angle = -math.pi / 2
+    return s, tank, (a.x, a.y)
+
+
+def test_a_unit_ordered_from_standing_turns_in_place_then_drives_and_turns_to_its_facing():
+    """Sim.move / Sim.turn (A round 228; the rates and the bench: tests/test_turn_rate.py): a Hammer facing south sent
+    300 north turns 180 deg in place at 19.2 a frame -- 9 frames to within DRIVE_WITHIN, more than the first 0.5 s tick
+    (7.5 frames): it stands that tick, then drives the rest of the second (60 a second); at the end it turns to the
+    facing it was sent with (east, 90 deg: 5 frames) and only then has stopped moving (simai's Unit.moving, the AI
+    form-up's gate)."""
+    import math
+    import simai
+    s, tank, (x, y) = _hammer_facing_south()
+    assert sim.DRIVE_WITHIN == 9.0 and tank.turn_rate == 288.0
+    s.send(tank, (x, y + 300), face=0.0)
+    s.run(0.0)
+    assert (tank.x, tank.y) == (x, y) and abs(math.degrees(tank.angle) - (-90 + 7.5 * 19.2)) < 1e-6
+    s.run(0.5)
+    assert tank.x == x and 15 < tank.y - y < 30 and abs(tank.angle - math.pi / 2) < 1e-9
+    unit = simai.Unit.__new__(simai.Unit)
+    unit.body = tank
+    while tank.path:
+        s.run(s.t)
+        assert unit.moving
+    assert tank.face is not None and unit.moving        # arrived, not yet turned to its facing
+    s.run(s.t)
+    assert tank.face is None and tank.angle == 0.0 and not unit.moving
+
+
+def test_a_driving_unit_takes_a_new_way_without_stopping_to_turn():
+    """Bench airevgt f170 (the attack order given while the Guardians drove): turned on moving frames, no stop."""
+    s, tank, (x, y) = _hammer_facing_south()
+    s.send(tank, (x, y - 300))                          # the way it faces: drives at once
+    s.run(0.0)
+    assert tank.rolling and abs(tank.y - (y - 30)) < 1e-6
+    s.send(tank, (x + 300, y - 30))
+    s.run(0.5)
+    assert abs(tank.x - (x + 30)) < 1e-6

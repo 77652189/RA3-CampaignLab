@@ -79,6 +79,8 @@ SHOW_FLAG = re.compile(r'CNV_\w+_Show_\d+')       # ctx.Talk.show: a 功能 line
 SCENE_FLAG = re.compile(r'CNV_\w+_InScene')       # ctx.Talk.scening
 
 DT = 0.5                        # seconds a tick
+DRIVE_WITHIN = 9.0              # ordered from standing, a unit drives on the frame that starts this near its way (deg;
+                                # bench airev1t / airevgt / airevat, A round 227: 8 drove, 10 / 15 did not; INFERRED 9)
 UNTIL = 1800.0                  # a run stops here at the latest (30 minutes)
 QUIET = 120.0                   # nothing pending this long and no ending: stuck
 
@@ -552,6 +554,9 @@ class Body:
     guessed: list = dataclasses.field(default_factory=list)    # what of its numbers simunits only guessed
     clear_height: float = HIGH_STEP                             # its ShroudClearingHeight (simunits: 50 unless written)
     angle: float = 0.0
+    turn_rate: float = None                                     # deg a second it turns (simunits.turning; None: at once)
+    face: float = None                                          # the facing (radians) to turn to once it arrives
+    rolling: bool = False                                       # it drove the last tick (a new way: no turn in place)
     carry: float = 0.0                                          # seconds of the last tick left when its leg ended on a
                                                                 # waypoint path (follow_due gives the next leg after
                                                                 # the tick): driven on the next tick, none lost
@@ -1253,6 +1258,8 @@ class Sim:
         b.clear_height = st['clear_height']
         b.radius = st.get('radius') or 0.0
         b.sight = st['vision'] or 0.0
+        if b.speed > 0 and b.surface != 'air':      # aircraft bank as they fly: not benched, they turn at once
+            b.turn_rate = simunits.turning(template, self.own)[0]
         f = simunits.fight(template, self.own)
         b.immortal, immortal_hp = simunits.immortal_body(template, self.own)
         if simunits.manager_body(template, self.own):
@@ -1534,10 +1541,11 @@ class Sim:
                         self.note('协议', f'玩家：{what}')
         self.tech_to = max(self.tech_to, frame)
 
-    def order_move(self, b, where, attacking, given=(), skip=()):
+    def order_move(self, b, where, attacking, given=(), skip=(), face=None):
         """A plain move (attacking: an attack-move). The spot is adjusted first (free_spot: Generals'
         AIInternalMoveToState::onEnter adjusts every move's goal off the spots other units hold); `given` are spots
-        already handed out to a group being ordered, `skip` that group (its members' old goals are dropped first)."""
+        already handed out to a group being ordered, `skip` that group (its members' old goals are dropped first).
+        face: the facing (radians) it turns to once there (the AI's form-up slots; send)."""
         if b:
             b.flee = None                       # INFERRED: any move order takes the run over, as STOP does
             b.follow = None                     # ... and a waypoint path (order_follow sets it again after its legs)
@@ -1547,7 +1555,7 @@ class Sim:
             if p is not None and b.alive and b.speed > 0:
                 spot = self.free_spot(b, p, self.claims(b, skip) + list(given))
                 where = where if spot == p else spot
-            self.send(b, where)
+            self.send(b, where, face=face)
             b.move_to = b.dest if not attacking else None
 
     def claims(self, b, skip=()):
@@ -2622,11 +2630,15 @@ class Sim:
             d = math.hypot(t.x - a.x, t.y - a.y)
         return d - a.radius - t.radius <= w['range']
 
-    def send(self, b, target, by='', reach=0.0):
+    def send(self, b, target, by='', reach=0.0, face=None):
+        """Put b on a way to target (a point, or a waypoint / area name); face: the facing (radians) to turn to at the
+        way's end (move), None for none -- a new way drops an old one's. From standing it first turns in place toward
+        its way (move, Sim.turn), whoever gave the order."""
         if b.guessed:                               # its speed matters now: say when it is only a guess
             self.guessed.add(f'{b.template}: {", ".join(b.guessed)}')
         if not b.alive or b.speed <= 0:
             return
+        b.face = face
         p = self.point(target) if isinstance(target, str) else target
         if p is None:
             self.note('卡住', f'{self.label(b)} 找不到要去的地方 {target}')
@@ -2662,6 +2674,37 @@ class Sim:
             self.frame_movers.pop(b.name, None)
         b.path = path
         self.change()
+
+    def turn(self, b, want, dt, within=0.0):
+        """Turn b in place toward the facing `want` (radians) for up to dt seconds, at its turn_rate a frame (bench
+        airev1t / airevgt / airevat, A round 227, tests/test_turn_rate.py: 360 / the Locomotor's TurnTimeSeconds a
+        second from the order frame; TurnThresholdHS is not seen -- a 51 deg turn is made in place too). Stops
+        `within` degrees short (DRIVE_WITHIN: the rest is made as it drives). Returns the seconds it took (dt: not
+        there yet). Turning to its face (within 0) drops the face once it is reached: Unit.moving is false from then.
+        turn_rate None (aircraft, no locomotor): at once."""
+        off = math.degrees(math.atan2(math.sin(want - b.angle), math.cos(want - b.angle)))
+        need = abs(off) - within
+        if need <= 1e-9 or b.turn_rate is None:
+            if within <= 0:
+                b.angle, b.face = want, None
+            return 0.0
+        per_frame = b.turn_rate / simunits.LIFE_FPS
+        frames = math.ceil(need / per_frame - 1e-9)
+        took = frames / simunits.LIFE_FPS
+        if dt <= 0:
+            return dt
+        if took <= dt + 1e-9:
+            if within <= 0:
+                b.angle, b.face = want, None
+            else:
+                a = b.angle + math.radians(math.copysign(min(abs(off), frames * per_frame), off))
+                b.angle = math.atan2(math.sin(a), math.cos(a))
+            self.change()
+            return took
+        a = b.angle + math.radians(math.copysign(b.turn_rate * dt, off))
+        b.angle = math.atan2(math.sin(a), math.cos(a))
+        self.change()
+        return dt
 
     def label(self, b):
         role = next((k for k, r in self.m.cast.items() if r.name == b.name and b.name), '')
@@ -5997,12 +6040,23 @@ class Sim:
                 continue
             if b.frame_move != precise:          # chasing a moving target may have replanned into / out of prop contact
                 continue
-            if (not b.path or 'IMMOBILE' in b.status or b.engaged or self.emp_disabled(b)
+            if ('IMMOBILE' in b.status or b.engaged or self.emp_disabled(b)
                     or self.infiltrators.movement_blocked(b)):
-                b.carry = 0.0
+                b.rolling, b.carry = False, 0.0
                 continue
-            extra, b.carry = (b.carry if not precise else 0.0), 0.0
-            left = b.speed * (dt + extra)
+            if not b.path:
+                b.rolling, b.carry = False, 0.0
+                if b.face is not None:                  # arrived: turns in place to the facing it was given
+                    self.turn(b, b.face, dt)
+                continue
+            spent, extra, b.carry = 0.0, (b.carry if not precise else 0.0), 0.0
+            if not b.rolling and b.jet_motion is None:  # from standing: turns in place until near its way
+                way = next(((tx, ty) for tx, ty in b.path if (tx, ty) != (b.x, b.y)), None)
+                if way is not None:
+                    spent = self.turn(b, math.atan2(way[1] - b.y, way[0] - b.x), dt, DRIVE_WITHIN)
+                if spent >= dt:
+                    continue
+            left = b.speed * (dt - spent + extra)
             if precise and b.jet_motion is not None:
                 import simjet
                 left = simjet.distance(self, b)
@@ -6012,7 +6066,7 @@ class Sim:
                 base = simunits.stats(b.template, self.own)['speed']
                 speed = speed * b.speed / base if speed is not None and base else b.speed
                 b.drive_speed = min(speed, b.drive_speed + speed * dt / acceleration) if acceleration else speed
-                left = b.drive_speed * dt
+                left = b.drive_speed * (dt - spent)
             walked = left
             x0, y0 = b.x, b.y
             while left > 0 and b.path:
@@ -6033,13 +6087,18 @@ class Sim:
                     b.x += (tx - b.x) * left / d
                     b.y += (ty - b.y) * left / d
                     left = 0
+            b.rolling = True        # it drove this tick: a next leg given at once (follow_due) is driven on, no stop
+                                    # (bench engine_waypath line / exact: no time lost at the 90 deg corners)
             if (b.x, b.y) != (x0, y0):
-                # the hull faces the way it drives, at once (bench engine_hull, round 187: a south-facing Hammer
-                # sent north / east / 120 behind took the rear / side / rear scalar; sent north, a hit 0.15 s after
-                # the order already the rear -- no reversing, a turn faster than the model's tick; INFERRED instant)
+                # once it drives, the hull faces its way: the last DRIVE_WITHIN of a turn from standing, a turn on a
+                # new way while it drives (bench airevgt f170: no stop, 24 deg a frame on moving frames) and the
+                # bends taken at once (INFERRED; bench engine_hull, round 187: no reversing)
                 b.angle = math.atan2(b.y - y0, b.x - x0)
             if not b.path and b.follow is not None and not precise and b.speed > 0:
                 b.carry = min(left / b.speed, dt)
+            if not b.path and b.face is not None:      # arrived this tick: from the next frame on it turns
+                rate = b.drive_speed if precise and b.jet_motion is None else b.speed
+                self.turn(b, b.face, (left / rate if rate > 0 else 0.0) - 1.0 / simunits.LIFE_FPS)
             if b.building:
                 self.at_site(b, walked - left)
             if b.crusher > 0 and b.surface == 'ground' and (b.x, b.y) != (x0, y0):
