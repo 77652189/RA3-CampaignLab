@@ -23,10 +23,17 @@ EAST = 0.0                               # towards the team's line from its base
 # tests/test_maps.py test_nothing_a_build_places_stands_on_scenery). The round-66 bench readings were at EAST 40.
 
 
-def mission(mod, north, enter):
+def mission(mod, north, enter, observe=False):
     m = ar.mission(mod, guards=ar.GUARDS, RetreatPowerAdvantage='0.0', EnterGarrisons=enter)
     m.put(HOUSE, 'carrier home', EAST, north, side='civ', name=HOUSE_NAME, role='house')
     m.facts['house'] = HOUSE_NAME
+    if observe:
+        # Engine line D round 144: aigar1 plus D's passive CNVTeams carrier (as aimicro_bench.update_time), for the
+        # team's micro state sequence (tstate lines in ra3ext.log; experimental/cnv/teamlog.py).
+        from missions.aiteams_bench import host_unit, HOST
+        m.units.append(host_unit())
+        m.put(HOST, 'east base', 250.0, 400.0, side='s1', role='teams host')
+        m.ext = True
     return m
 
 
@@ -34,4 +41,5 @@ MISSION = {
     'aigar1': lambda: mission('CampAIGar1', NEAR, 'true'),
     'aigar0': lambda: mission('CampAIGar0', NEAR, 'false'),
     'aigarfar': lambda: mission('CampAIGarFar', FAR, 'true'),
+    'aigar1t': lambda: mission('CampAIGar1T', NEAR, 'true', observe=True),
 }

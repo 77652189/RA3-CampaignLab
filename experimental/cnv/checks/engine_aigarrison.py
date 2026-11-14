@@ -41,7 +41,7 @@ def a(m, build):
     wake = m.facts['wake at']
     end = wake + AFTER
     t.expect += [('步兵在家', wake + 5, 'ever==', 0, end)]              # it left
-    if build == 'aigar1':
+    if build in ('aigar1', 'aigar1t'):
         t.expect += [('楼归AI', 1, 'ever>=', 1, end)]
     else:
         t.expect += [('楼归AI', 1, '==', 0, end)]
@@ -49,4 +49,4 @@ def a(m, build):
     return t
 
 
-CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aigar1', 'aigar0', 'aigarfar')}
+CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aigar1', 'aigar0', 'aigarfar', 'aigar1t')}
