@@ -175,6 +175,9 @@ BENCHED_TESTS = {
     # too), re-picked after each one dies; NAMED_HUNT moves a woken AI's unit neither
     (ACTION, 'TEAM_HUNT'): 'tests/test_simbench.py::test_acts_y_hunt_as_the_bench',
     (ACTION, 'NAMED_HUNT'): 'tests/test_simbench.py::test_acts_w_hunt_as_the_bench',
+    # round 219 (checks/engine_acts9.py all): on -- off every team; off -- back onto the map default team, with a
+    # hidden member (the AI wake UNIT_AI_TRANSFER_ALL adds is not in it: program, not benched)
+    (ACTION, 'SKIRMISH_AI_TRANSFER_ALL'): 'tests/test_simbench.py::test_acts_z_all_as_the_bench',
     # round 217: PLAYER_TRANSFER_OWNERSHIP_PLAYER (checks/engine_acts7.py own: the giver's units on no team and its
     # money go to the receiver; ones on a team stay)
     (ACTION, 'PLAYER_TRANSFER_OWNERSHIP_PLAYER'): 'tests/test_simbench.py::test_acts_x_own_as_the_bench',
@@ -386,6 +389,9 @@ NOTES = {
     (MODULE, 'Behaviors/AttributeModifierPoolUpdate'): (GUESSED, 'Sim.modify：属性修正挂在这个池里，到期规则'
                                                                  '（到期帧 >= 即失效、再挂覆盖不叠加）读自程序，'
                                                                  'work/re/l2_ability.md 第 51 轮'),
+    (ACTION, 'PLAYER_ALLOWED_TOBE_COOPAI'): (NA, 'A219 读程序：只写 AI 脑的"可当合作 AI"位；读它的只有合作 AI 的'
+                                              '界面 / 语音、玩家挑合作伙伴、关掉时取消合作 AI 正执行的玩家指令；'
+                                              '模拟器的玩家没有给盟友下令的命令，脚本读不到它（同下一条）'),
     (ACTION, 'SET_COOP_AI_COMMAND_UI_ENABLED'): (NA,'纯界面：开关玩家给盟友 AI 下令的按钮；模拟器的玩家没有给盟友'
                                                      '下令的命令，开关无从起作用（以后加了这个命令再算）'),
     # engine A round 107: the freeze; what the front modules are, read in the SDK data

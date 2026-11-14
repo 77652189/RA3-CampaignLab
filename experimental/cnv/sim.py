@@ -1077,6 +1077,8 @@ class Sim:
         self.handed = ()                    # skirmish_setup: players taken off their teams after the first frame
         self.ai_switches = {}               # player -> {AI_SWITCHES name: value} (simai.Brain reads them)
         self.ai_priorities = {}             # player -> [(enemy, n)] SET_ENEMY_PLAYER_PRIORITY calls (simai.Brain)
+        self.hidden_home = set()            # players whose hidden object SKIRMISH_AI_TRANSFER_ALL(p, 0) put on the
+                                            # map default team (one more member there; engine_acts_z all)
         self.audio_end = {}                 # sound event -> when HAS_FINISHED_AUDIO holds again (Sim.played)
         self.video_end = {}                 # clip -> when HAS_FINISHED_VIDEO holds (None: never, a full-screen one)
         self.money = {}
@@ -1464,6 +1466,11 @@ class Sim:
         for b in self.living():
             if b.owner in players:
                 b.team = ''
+        self.hidden_home -= set(players)
+
+    def hidden_members(self, team):
+        """The hidden objects on a map default team (Sim.hidden_home), for the member counts."""
+        return sum(1 for s, p in self.players.items() if p in self.hidden_home and same_team(self.mm.team(s), team))
 
     def tactical(self, player):
         """The player's SidesList aiTactical switch is on (255): its TEAM_HUNT hunts (bench 11-14 engine_acts_w). A
@@ -2926,7 +2933,7 @@ class Sim:
         if name == 'TEAM_COMPARE_NUM_MEMBERS':  # (team, op, n) the living members (bench 11-08 engine_scripts1 xfer
             if self.absent_team(a[0]):          # 队里几个 2 -> 0 at the hand-over; engine_aixfer 队)
                 return False
-            return CMP[a[1]](len(self.members(a[0])), a[2])
+            return CMP[a[1]](len(self.members(a[0])) + self.hidden_members(a[0]), a[2])
         if name == 'TEAM_HAS_FEWER_THAN_X_UNITS_WITH_KINDOF':
             # (team, n, kind): fewer than n living members with the KindOf (bench 11-11 aiskirm:m 池兵: the AI pool's
             # CAN_ATTACK members 0 while the defense team holds the eight, 2 at s134). INFERRED: the dying are not
@@ -3868,6 +3875,24 @@ class Sim:
             self.ai_switches.setdefault(a[0], {})[name] = int(a[1])     # they do is simai's (engine line B)
         elif name == 'SKIRMISH_AI_SET_ENEMY_PLAYER_PRIORITY':   # (player, enemy, n): one entry of the AI's enemy
             self.ai_priorities.setdefault(a[0], []).append((a[1], int(a[2])))     # table, in order (simai)
+        elif name == 'SKIRMISH_AI_TRANSFER_ALL':
+            # (player, on): UNIT_AI_TRANSFER_ALL's team step without its AI wake (program, work/re
+            # a219_skirmish_transfer.md; the wake left out is INFERRED, not benched). Bench 11-14 engine_acts_z all:
+            # on -- off every team; off -- every unit on no team back onto the map's default team (teamSoviet_N,
+            # not the crew it came from); a player never handed keeps its own -- and each default team counts one
+            # member more than its units (Soviet_6's too, never handed: 1 -> 2): a hidden object every player has
+            # on defaultSkirmishTeam from the start (its PlayerSpellBook: INFERRED, which object is not read)
+            if int(a[1]):
+                self.off_teams((a[0],))
+                self.hidden_home.discard(a[0])
+            else:
+                self.hidden_home.add(a[0])
+                side = next((s for s, p in self.players.items() if p == a[0]), None)
+                home = self.mm.team(side) if side else ''
+                for b in self.living():
+                    if b.owner == a[0] and not b.team and home:
+                        b.team = home
+                        self.active.add(home)
         elif name in ('UNIT_AI_TRANSFER_ALL', 'SKIRMISH_AI_MAKE_BASE'):
             self.used.add('ai')
             if name == 'UNIT_AI_TRANSFER_ALL' and int(a[1]):

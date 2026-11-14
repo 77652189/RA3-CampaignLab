@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **96%** | **100%** | 50 / 50 | 451 | 157 | 19 | 160 | 115 | 97% |
+| 脚本动作 | **96%** | **100%** | 50 / 50 | 451 | 158 | 19 | 158 | 116 | 97% |
 | 脚本条件 | **98%** | **100%** | 12 / 12 | 89 | 55 | 4 | 27 | 3 | 99% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -166,7 +166,7 @@
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JAIV_Transform` | 38 |  | 只记进时间线，没有效果 |
 | 已对拍 | `TECHTREE_MODIFY_BUILDABILITY_OBJECT` | 38 |  | tests/test_simbench.py::test_acts_u_as_the_bench |
 | 不涉及 | `EVALUATE_SCRIPT` | 35 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
-| 未做 | `SKIRMISH_AI_TRANSFER_ALL` | 35 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `SKIRMISH_AI_TRANSFER_ALL` | 35 |  | tests/test_simbench.py::test_acts_z_all_as_the_bench |
 | 已对拍 | `UNIT_CONTEXT_SENSITIVE_ATTACK` | 35 |  | tests/test_simbench.py::test_acts_u_as_the_bench |
 | 不涉及 | `FOR_EACH_TEAM_MEMBER_EXECUTE_SCRIPT` | 34 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `LINK_MISSION_HOT_SPOT_TO_WAYPOINT` | 34 |  | 纯表现（名字规则）；Sim.act / Sim.cond 有分支 |
@@ -187,7 +187,7 @@
 | 已对拍 | `NAMED_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT` | 30 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_waypath.py |
 | 已对拍 | `UNIT_CHANGE_OBJECT_STATUS:SKIRMISH_AI_DO_NOT_TAKE` | 30 |  | tests/test_simbench.py::test_acts_u_as_the_bench |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleAlliedArtilleryVehicle` | 29 |  | 只记进时间线，没有效果 |
-| 未做 | `PLAYER_ALLOWED_TOBE_COOPAI` | 29 |  | Sim.act / Sim.cond 不认识 |
+| 不涉及 | `PLAYER_ALLOWED_TOBE_COOPAI` | 29 |  | A219 读程序：只写 AI 脑的"可当合作 AI"位；读它的只有合作 AI 的界面 / 语音、玩家挑合作伙伴、关掉时取消合作 AI 正执行的玩家指令；模拟器的玩家没有给盟友下令的命令，脚本读不到它（同下一条） |
 | 已对拍 | `SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER` | 29 | a1 a2 a3 a4 a6 a7 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiopen.py |
 | 不涉及 | `DESELECT` | 28 |  | 纯表现（名字规则） |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_CAMPAlliedBomberDrop2` | 28 |  | Sim.act / Sim.cond 不认识 |

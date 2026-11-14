@@ -1661,6 +1661,18 @@ def test_acts_x_own_as_the_bench():
     assert 2.0 <= first(1, 29) <= 5.0 and {v[1] for t, v in run.series if 1.0 <= t < 12.0} <= {74, 29}
 
 
+def test_acts_z_all_as_the_bench():
+    """all, bench 11-14 `run_queue engine_acts_z:all` (CampActsZ, round 219; the bench's seconds ~1 ahead of the
+    timers): 队5 / 队C5 / 队2 / 队6 0 0 0 1 after SKIRMISH_AI_TRANSFER_ALL(Soviet_5, 1) at 2 s (off every team), then
+    4 0 3 2 after (Soviet_5 / 2 / 6, 0) at 6 s -- all back on the default team, not the crew, plus one hidden member
+    each (Soviet_6's too, never handed)."""
+    run = _sim_run('engine_acts_z', 'all', 12.0)
+    seen = [v for t, v in run.series if t >= 2.0 and t < 6.0]
+    assert seen and all(v == [0, 0, 0, 1] for v in seen)
+    after = [v for t, v in run.series if t >= 6.5]
+    assert after and all(v == [4, 0, 3, 2] for v in after)
+
+
 def test_video_a_radar_clip_is_done_after_its_length_full_screen_never():
     """movie play (bench, docs/story/handoff.md 1g): CNVTEST01 (95 frames at 23.976) in the radar window done 63 game
     frames after its start; the full-screen clip never reads done."""
