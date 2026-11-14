@@ -43,7 +43,7 @@ def a(m):
     return t
 
 
-CHECKS = {key: {'a': a} for key in ('aiexpc', 'aiexpctl', 'aibsold', 'aibsnew', 'aibncap', 'aibnnone',
+CHECKS = {key: {'a': a} for key in ('aiexpc', 'aiexpw', 'aiexpctl', 'aibsold', 'aibsnew', 'aibncap', 'aibnnone',
                                   'aibs2old', 'aibs2new')}
 
 

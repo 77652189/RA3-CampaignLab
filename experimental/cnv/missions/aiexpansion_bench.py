@@ -124,6 +124,23 @@ def initial_dual_preferred(preferred):
     return m
 
 
+OFF_GRID_WAKE = 10.5                    # B round 197: wake f158/159 -- off the f1 + 15k grid (f151 = 1 + 150 is on it)
+
+
+def off_grid(wake=OFF_GRID_WAKE):
+    """B round 197 (handoff-b 196 C1 / C2): aiexpc with the wake moved off the 15-frame grid. The slot team's target
+    is the AI's own base, which only exists from the wake (MAKE_BASE): aiexpc's wake f151 -> team f152, airev1t's
+    named target from f1 -> team f17 (draw f16). A draw pass on a fixed f1 + 15k grid puts this team at f167 (draw
+    f166); a draw as soon as the target exists puts it at the wake + 1."""
+    m = mission(True)
+    m.name = 'CampAIExpW'
+    s, = [s for s in m.scripts if s.name == 'CNV AI - Start']
+    s.do = [(a[0], a[1], wake) if a[:2] == ('SET_MILLISECOND_TIMER', 'CNV AI Wake') else a for a in s.do]
+    assert any(a[:2] == ('SET_MILLISECOND_TIMER', 'CNV AI Wake') and a[2] == wake for a in s.do)
+    m.facts['wake at'] = wake
+    return m
+
+
 MISSION = {'aibp1old': lambda: initial_dual_preferred('OLDEST_OF_TYPE'),
            'aibp1new': lambda: initial_dual_preferred('MOST_RECENT_OF_TYPE'),
            'aibn2old': lambda: initial_dual_not('OLDEST_OF_TYPE'),
@@ -132,7 +149,7 @@ MISSION = {'aibp1old': lambda: initial_dual_preferred('OLDEST_OF_TYPE'),
            'aibs3new': lambda: initial_dual('PREFER_NEWEST'),
            'aibs2old': lambda: dual('PREFER_OLDEST'),
            'aibs2new': lambda: dual('PREFER_NEWEST'),
-           'aiexpc': lambda: mission(True), 'aiexpctl': lambda: mission(False),
+           'aiexpc': lambda: mission(True), 'aiexpw': off_grid, 'aiexpctl': lambda: mission(False),
            'aibsold': lambda: mission(True, 'PREFER_OLDEST'),
            'aibsnew': lambda: mission(True, 'PREFER_NEWEST'),
            'aibncap': lambda: mission(preferred_not='CAPTURED'),
