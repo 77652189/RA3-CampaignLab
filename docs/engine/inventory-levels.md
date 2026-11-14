@@ -2,15 +2,15 @@
 
 由 `experimental/cnv/inventory_ai.py levels` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）里由遭遇战 AI 带的敌人：它的人格（`enemy_ai.py` 生成）沿继承、战略状态、战术、组队、目标启发、微操、造兵 / 预算状态、开局一路引用到的原版 AI 数据项，加上全局常量 AIData 和本阵营的 ArmyDefinition；再加关卡脚本里点了 AI 玩家名字的脚本动作 / 条件。状态取自 [inventory.md](inventory.md)。"AI 做完"的第一条：下表全部已对拍。
 
-**已对拍 187 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
+**已对拍 190 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
 
 | 部分 | 已对拍 | 推断 | 未做 |
 |---|---|---|---|
-| AI | 175 | 95 | 87 |
+| AI | 178 | 92 | 87 |
 | 脚本动作 | 11 | 0 | 0 |
 | 脚本条件 | 1 | 0 | 0 |
 
-按原版用量加权：已对拍 95%，已有（已对拍+推断）100%。
+按原版用量加权：已对拍 96%，已有（已对拍+推断）100%。
 
 | 状态 | 部分 | 项 | 原版用量 | 关 | 说明 |
 |---|---|---|---|---|---|
@@ -101,14 +101,11 @@
 | 未做 | AI | `微操/IgnoreTargets.StatusBitFlags` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `战略状态/AIStrategicStateDefinition.PathfindingCheckType=QuickDoesAttackPathExist` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `组队招人/TeamTemplate.BaseDefenseMaxDistance` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 推断 | AI | `造兵/CountAsStructureForBuildPurposesFilter.Include` | 153 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `造兵/CountAsStructureForBuildPurposesFilter.Rule` | 153 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/AIPersonalityDefinition.ReactiveDefenseRadius` | 148 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过（docs/engine/aitactics.md），没有测试跑这个台子 |
 | 推断 | AI | `人格/AIPersonalityDefinition.UnitBuilderOverallDefensivePreference` | 148 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/DefaultTacticHomeBaseCriteria.PreferredNotBaseTypes` | 148 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/DefaultTacticHomeBaseCriteria.SortOrder` | 148 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过（checks/engine_aiexpansion.py），没有测试跑这个台子 |
 | 推断 | AI | `战术/Tactic.Distance` | 144 | a4 a5 a7 | 专用engine_aidistance aidist250/aidist2000保留AI队、同次传送1200，仅Distance不同；s65小组圈300/900=1/1，大组0/0，存活均1；两组各5条PASS、模型末态匹配；大组实机传送前离300、传送后回900再离，模型美学轨迹strict xfail；精确边界/动态队成员仍gap，不晋升；tests/test_simai_bench_c.py；见 work/re/c_distance_report.md |
-| 推断 | AI | `人格/AIPersonalityDefinition.BaseCompactness` | 122 | a4 a5 a7 | 台上量过（engine_aitower：0.5 / 0.75 / 1.0 塔落在不同圈）；模拟器只对上 0.5，0.75 / 1.0 和 0.5 一样（strict xfail） |
 | 推断 | AI | `战术/Tactic.Tactic=Engineer` | 63 | a4 a5 a7 | A第203轮 engine_aiskirm aiskirm:et原版（11-13）：AlliedCaptureTech_MEDIUM_EngineerTactic_0_0 s128空队、s144工程师入队、s216到油井、s222油井归AI同秒队消失，矿点旁始终0。tests/test_simai_engineer_tactic.py按名回放队伍出现/入队通过；模型（fca219e）目标选了AI基地旁矿点、Engineer到达动作空实现不占领（strict xfail）。A第205轮：模型分支a204-tech-filter + Brain.act占领 + 陆路回退看地形，模拟器s230到、s236占（晚14 s，台上像游水走近直线，both网格下不了这岸）；另aieng/aiengctl（E111）单独台未招到工程师，见work/re/handoff.md第203轮、e111_engineer.md |
 | 推断 | AI | `组队招人/TeamTemplate.MaxTypesOfUnits` | 58 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `启发条件/PathToTargetHeuristic.LocomotorConditionToUseForTest` | 45 | a4 a5 a7 | E84 engine_aiopathcond a：同JapanAntiAirShip仅切NORMAL深水/SUPERSONIC空中；两组s22-s24均兵营1/电厂0，水组原始Island预测FAIL、空中PASS。tests/test_simai_bench_e.py按名回放实际计数通过，但不能区分条件生效与路径判定边界；C复核：旧配方Surface未显式指定，SDK移动器差异不能独立证明实际路径可达性；C断桥两组aipcland/aipcamph同模板切NORMAL地面/SUPERSONIC地面+水面：s22-24仍均兵营1/电厂0，s40-44控制车均存活未到岸，两栖阳性未建立。tests/test_simai_pathbanks_c.py独立断言控制读数，建筑选择两strict xfail；两局后停止，待D提供同帧条件/移动器/选点/路径返回分类。保持gap不晋升，未改模型；见 work/re/c_pathbanks_report.md、c_pathcond_gate_report.md |
@@ -220,7 +217,7 @@
 | 已对拍 | AI | `造兵/CountAsStructureForBuildPurposesFilter.ExcludeThing` | 459 | a4 a5 a7 | C engine_aibuildexclude：旧aibex/aibin直接过滤New/Dear=0/1，IncludeThing优先；新aibxo/aibxi:x类别Include INFANTRY、无Dear的IncludeThing，仅切Dear的ExcludeThing，直接过滤分别1/0和1/1；New首成功f343均走SD，Dear首成功f409分别走U/SD，两局PASS。tests/test_build_exclude.py按名加载台子并对拍过滤、同帧工厂候选篮子及请求；现有模型吻合，无模型修改。整体产兵资格/时钟仍gap，两旧整局回放保留strict xfail；见work/re/c_buildexclude_follow_report.md |
 | 已对拍 | AI | `战术/Tactic.EndBehavior` | 454 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aistate.py |
 | 已对拍 | AI | `战略状态/AIStrategicStateDefinition.MaxTargets` | 430 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |
-| 已对拍 | AI | `组队招人/ObjectFilter.ExcludeThing` | 425 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiteamfilter.py |
+| 已对拍 | AI | `组队招人/ObjectFilter.ExcludeThing` | 425 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aibuildexclude.py |
 | 已对拍 | AI | `经济/BudgetState.State` | 410 | a4 a5 a7 | engine_aitower aibsprod h（2026-11-13）：人格自己声明 DEFENSE 50% 的预算，唯一一行 BudgetState 的 State 指原版 ProductionOnlyBudget（DEFENSE 0%）：开局 2 万、到 s160 一座塔也不造，钱只随矿车涨——State 指哪个预算定义就用哪个的份额。tests/test_simai_bench_b.py::test_a_budget_state_line_uses_the_budget_its_state_names按名回放；自建预算那几局（aitowerinc10 / inc5）同一规则。见 work/re/handoff-b.md 第177节。多行时选哪一个（work/re/d122_ai_rules.md 第1节）：engine_aitower aibsmax / aibstie / aibszero i（2026-11-13 三局 PASS）——权重最大的一个单独生效、不混合份额，并列取靠前，全 0 取第一条；tests/test_simai_bench_b.py 的 test_the_heavier_budget_state_runs_alone_though_listed_second 等三条。敌人进出时切回（d122 R4）：engine_aitower aibsback r4（2026-11-14 PASS，原版四个预算、开局立刻完、5000）：Coop 5% 到 s48 无塔；4 辆守护者在 700 内 s29–s57 → s49 一座塔；撤走后 s73 再给 5000 不造第二座（又回 Coop）。test_the_retail_budgets_switch_to_defense_while_the_raid_is_near_and_back_after |
 | 已对拍 | AI | `经济/ResourceMultiplierCheat.Difficulty` | 398 | a4 a5 a7 | engine_aitower aicheat2 / aicheat1 g（2026-11-13，台上 MEDIUM，矿车每趟 250）：MEDIUM 200% → 每趟 500；EASY HARD BRUTAL 300% + MEDIUM 100% → 每趟 250（与没写的 aitowerinc5 同）——Percentage 就是倍率本身，难度不含当前难度的行跳过；原版 EASY 100% / BRUTAL 200% 两种取值都在内。tests/test_simai_bench_b.py::test_a_medium_cheat_line_of_200_percent_doubles_each_trip、test_a_100_percent_line_and_lines_for_other_difficulties_change_nothing按名回放。gap：多行同难度取哪条（取第一条，INFERRED）、卖楼等其他入账也乘（l2_mining 读到，没上台）；见 work/re/handoff-b.md 第176节 |
 | 已对拍 | AI | `目标/AITargetingHeuristic.HeuristicType` | 392 | a4 a5 a7 | docs/engine/aitactics.md#读数（ClosestStructure / SafestToGroundStructure 是 EnemyStructure，FriendlyLandStructure 是 FriendlyStructure，都上台） |
@@ -233,7 +230,7 @@
 | 已对拍 | AI | `启发条件/ConstantHeuristic` | 298 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aipoweradv.py |
 | 已对拍 | AI | `经济/ResourceMultiplierCheat.Percentage` | 280 | a4 a5 a7 | engine_aitower aicheat2 / aicheat1 g（2026-11-13，台上 MEDIUM，矿车每趟 250）：MEDIUM 200% → 每趟 500；EASY HARD BRUTAL 300% + MEDIUM 100% → 每趟 250（与没写的 aitowerinc5 同）——Percentage 就是倍率本身，难度不含当前难度的行跳过；原版 EASY 100% / BRUTAL 200% 两种取值都在内。tests/test_simai_bench_b.py::test_a_medium_cheat_line_of_200_percent_doubles_each_trip、test_a_100_percent_line_and_lines_for_other_difficulties_change_nothing按名回放。gap：多行同难度取哪条（取第一条，INFERRED）、卖楼等其他入账也乘（l2_mining 读到，没上台）；见 work/re/handoff-b.md 第176节 |
 | 已对拍 | AI | `组队招人/ObjectFilter.Rule` | 263 | a4 a5 a7 | docs/engine/aistate.md#队伍招谁（aitfany / aitfnone / aitfall：ANY、NONE + 名单只要名单，ALL + 排除名单） |
-| 已对拍 | AI | `组队招人/ObjectFilter.IncludeThing` | 239 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py:y |
+| 已对拍 | AI | `组队招人/ObjectFilter.IncludeThing` | 239 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aibuildexclude.py |
 | 已对拍 | AI | `开局/Order.Time` | 237 | a4 a5 a7 | docs/engine/aiopen.md#开局里的 Time 从什么时候算（aiotime：从唤醒起的绝对时刻） |
 | 已对拍 | AI | `战术/Tactic.DisbandAfterRetreatTeamSize` | 205 | a4 a5 a7 | 台上量过（engine_airetreat：airetf 0 撤回家后再出门，airetfd 999 撤回家后一直在家——撤退结束那轮人数 ≤ 它就结束战术、放人）、测试对拍 tests/test_simai.py；1 / 4 / 5 这种"剩几人才散"的中间值没量 |
 | 已对拍 | AI | `人格/AIPersonalityDefinition.PersonalityType` | 184 | a4 a5 a7 | tests/test_simai_bench_b.py::test_the_personality_condition_matches_the_id_not_the_personality_type（engine_aiskirm pt aiskpt / aiskpti：脚本条件 PLAYER_IS_HUMAN_OR_AI_PERSONALITY 只认人格 id，PersonalityType 写成别的名字或不写都不影响；AI 行为不读它；B 第 150 轮） |
@@ -242,6 +239,8 @@
 | 已对拍 | AI | `人格/AIPersonalityDefinition.Side` | 166 | a4 a5 a7 | B184 engine_aiskirm sd（work/re/d123_side.md 第3节；s1 阵营 Japan，人格 CNVSideX 只写 Side Soviet）：aisksd1 SkirmishPersonality=false（27 关全是这样）人格位 9 = 照用 CNVSideX，Side 不符不管；aisksd2 =true → 136 = 换成随机的日本人格（2JapanMechaWarfare）。27 关 Side 不起作用；test_a_personality_whose_skirmish_gate_is_closed_is_used_whatever_its_side 按名回放。gap：门开着时的随机换人格模拟器没建（strict xfail，原版关不走这条） |
 | 已对拍 | AI | `目标/AITargetingHeuristic.RequireUniqueTarget` | 154 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aistate.py |
 | 已对拍 | AI | `人格/AIPersonalityDefinition.RepairBuildingsAtDifficulty` | 153 | a4 a5 a7 | B181 engine_repair_ai repairoff / repairmed:a（repair_bench 只改这个字段，USE_REPAIRS 开、钱 10000）："" 整局 50 / 50 / 10000 不修；"MEDIUM" 每秒 +1%，s49 起 100 / 50 / 9900（同 repairai 四档全开）。tests/test_simrepair_ai.py 按名回放两局 |
+| 已对拍 | AI | `造兵/CountAsStructureForBuildPurposesFilter.Include` | 153 | a4 a5 a7 | B第198轮 engine_aibuildexclude x：原版过滤（Rule ANY、Include STRUCTURE UNPACKS_INTO_BUILDING）去掉 IncludeThing，只改 Rule：aibxall（ALL）五种兵的候选 flt 全 1、下单走 SD 篮；aibxany（ANY）全 0、走 U 篮；aibxi（Include 加 INFANTRY）两种维和都过——Include 按 KindOf 认、ALL 不看 Include。tests/test_build_exclude.py 按名加载三台子、断言模型过滤和篮子；模型没改。Rule NONE、Exclude 类别没上台 |
+| 已对拍 | AI | `造兵/CountAsStructureForBuildPurposesFilter.Rule` | 153 | a4 a5 a7 | B第198轮 engine_aibuildexclude x：原版过滤（Rule ANY、Include STRUCTURE UNPACKS_INTO_BUILDING）去掉 IncludeThing，只改 Rule：aibxall（ALL）五种兵的候选 flt 全 1、下单走 SD 篮；aibxany（ANY）全 0、走 U 篮；aibxi（Include 加 INFANTRY）两种维和都过——Include 按 KindOf 认、ALL 不看 Include。tests/test_build_exclude.py 按名加载三台子、断言模型过滤和篮子；模型没改。Rule NONE、Exclude 类别没上台 |
 | 已对拍 | AI | `人格/AIPersonalityDefinition.DesiredExcessPowerBuffer` | 150 | a4 a5 a7 | B122 engine_aiskirm x 三局（aiskpw0 / aiskirm / aiskpw3 = 缓冲 0 / 100 / 300）：开局后多造电厂 0 / 2 / 4 座，一座接一座（唤醒后 ~130 / 140 / 150 / 160 s）。B182 模型 POWER 启发照读到的规则（产电 + 在队列里的电量 对 耗电 + 缓冲；建造场算、刚放下还在展开的电厂两边都不算）三局数量和时刻都对上，tests/test_simai.py::test_desired_excess_power_buffer_* 按名回放。gap：敌人压境（500 内价值 ≥1000）那道门没上台；缓冲 300 时空军台上晚 17 s 没解释（strict xfail） |
 | 已对拍 | AI | `人格/AIPersonalityDefinition.BuildTechMinPowerAdvantage` | 149 | a4 a5 a7 | B181 engine_aiskirm aiskmtp:mt（aiskmt40 加 BuildTechMinPowerAdvantage=1000）：到 s810（科技帧 12159）没造科技楼；aiskmt40（继承 1.25）f5857 造。模型 tech_score 在 MinTime..ForceTime 窗口里加兵力比门（RA3-EngineModel tests/test_ai_tech.py），tests/test_simai_mintime.py::test_a_power_advantage_of_1000_keeps_the_tech_building_away 按名回放两局。gap：兵力比怎么算没读（台上只知道在 [1.25, 1000) 之间），simai 不给比值 |
 | 已对拍 | AI | `战术/Tactic.Tactic=StaticDefense` | 149 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aibasedef.py |
@@ -264,6 +263,7 @@
 | 已对拍 | AI | `组队招人/TeamTemplate.Priority=HIGH` | 126 | a4 a5 a7 | docs/engine/aistate.md#两队抢兵和 MinPowerAdvantage（第 82 轮） |
 | 已对拍 | AI | `组队招人/TeamTemplate.Priority=STANDARD` | 126 | a4 a5 a7 | docs/engine/aistate.md#两队抢兵和 MinPowerAdvantage（第 82 轮） |
 | 已对拍 | AI | `启发条件/IntervalHeuristic.IntervalTime` | 125 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
+| 已对拍 | AI | `人格/AIPersonalityDefinition.BaseCompactness` | 122 | a4 a5 a7 | 台上量过（engine_aitower b / c：0.5 / 0.75 / 1.0 的基地防御塔离建造场 ~296 / 420–442 / 590–620）、测试对拍 tests/test_simai_bench_b.py（B 第 198 轮：模拟器的基地防御塔改用模型的 tower_spots，半径 = (BaseCompactness ± 0.05) × ~600）；只量了防御塔，其他建筑的摆放（模拟器的建造场圈）不读它 |
 | 已对拍 | AI | `启发条件/IntervalHeuristic.ActiveTime` | 118 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
 | 已对拍 | AI | `组队招人/TeamTemplate.ReleaseType` | 117 | a4 a5 a7 | engine_aiskirm aiskirm:m 实机（11-11 CampAISkirmM_mcp_1111_221811）s125-128防御8/清扫99，s129防御0/清扫8，池兵0、转队时逐帧兵池峰1：DEFENSE队RELEASE_TO_PRIORITY放人给STANDARD清扫队，一个采样内直接转、不经兵池。模拟器按引擎队名读AI队（A第202轮：状态_战术类型_a_b、defaultSkirmishTeam<玩家>、不存在的队条件为假）；tests/test_simai_bench_c.py::test_release_to_priority_named_transfer_skips_the_pool按名回放、断言台上读数（防御稳定、减少数=清扫人数、池兵0、峰1、s129±3）。NEVER_RELEASE见上一行。gap：人数——模型（fca219e）s131防御9→0/清扫99→9，实机8（模型多造1个，造兵归B）；s134池峰2模型没有（strict xfail test_release_to_priority_transfers_defense_without_a_pool_round_trip）；ALWAYS_RELEASE、精确时钟仍gap；见 work/re/handoff.md 第202轮、c_release_report.md |
 | 已对拍 | AI | `战术/Tactic.Tactic=DefenseAvoidanceAttack` | 115 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |
@@ -325,7 +325,7 @@
 | 已对拍 | AI | `启发条件/TimerHeuristic.EndTime` | 41 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
 | 已对拍 | AI | `微操/AIMicroManagerData.RetreatMinDistanceFromBase` | 40 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_airetreat.py |
 | 已对拍 | AI | `目标/AITargetingHeuristic.Relationship` | 40 | a4 a5 a7 | docs/engine/ainamed.md#给关卡线的结论（ainmrel：写了 Relationship 就按关系过滤，玩家的楼当 NEUTRAL 不算，不出门） |
-| 已对拍 | AI | `造兵/BlockIfThingNearFactory.IncludeThing` | 40 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py:y |
+| 已对拍 | AI | `造兵/BlockIfThingNearFactory.IncludeThing` | 40 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aibuildexclude.py |
 | 已对拍 | AI | `微操/AIMicroManagerData.RetreatMinDistanceToFallback` | 38 | a4 a5 a7 | engine_aifallback aifbshort100/aifblong500：四人存活回齐、在家约18秒、长组先于短组再出发；tests/test_simai_fallback.py::test_fallback_distance_first_return_and_departure；仅此固定FromBase=300场景的行为回放，未量内部退出位置、精确距离边界或其他基地选择 |
 | 已对拍 | AI | `目标/AITargetingHeuristic.SortType=Distance` | 37 | a4 a5 a7 | docs/engine/aitactics.md#目标挑哪个（aitpnear 挑最近、aitpmt2 第二槽挑次近、aitpvk 显式写 Distance） |
 | 已对拍 | AI | `启发条件/IsBuildingHeuristic` | 30 | a4 a5 a7 | E83 engine_aibuilding a：STRUCTURE空队列、现成基地1；PassIfBuilding=false时s40到陆厂4/在家0，true时0/4，两组PASS；tests/test_simai_bench_e.py::test_is_building_idle按名回放通过。C补充活跃连续电厂队列false反向对照：匹配组s40到陆厂/在家0/4，不匹配4/0，两组电厂4/基地1、各一次PASS；模型匹配组4/0，test_simai_buildkind_c为strict xfail，队列/求值时序未解；取消/挂起/等待仍gap；见 work/re/c_buildkind_false_report.md、e_building_e83.md |
@@ -350,7 +350,7 @@
 | 已对拍 | AI | `人格/BaseSelection.PreferredBaseTypes` | 15 | a4 a5 a7 | C aibp1old/aibp1new:b初始双基地固定OLD、反偏好为空，仅切偏好OLDEST/MOST_RECENT；f274两基地均合格，分数1/0选0与0/1选1；f284点命令东矿/崖矿。s55–65东/崖队员/双厂分别4/0/1/1与0/0/1/1；tests/test_expansion_target.py按名断言类型、分数、选择点与原计数。仅年龄类型偏好命中子集；自动注册、死亡清理和矿点资格仍gap；见work/re/c_bp1_report.md |
 | 已对拍 | AI | `人格/BaseSelection.SortOrder=PREFER_OLDEST` | 15 | a4 a5 a7 | 初始双厂同分候选，OLD选基地0、NEW选基地1；按名选择点/计数回放，仅该排序子集，见work/re/c_bs3_report.md |
 | 已对拍 | AI | `微操/AIMicroManagerData.DodgeThreats` | 15 | a4 a5 a7 | engine_aidodge aidodgeon/aidodgeoff 原版精确打击信标开关对照；tests/test_ai_dodge.py 按名断言两人存活、信标存在时on离开/off保持2，以及到期清理；simai micro_team威胁视图/移动回调接私有micro消费者，仅单信标地面成员；固定0.5秒反应、径向逃离/目的地保持/首次可见寿命起点为INFERRED；精确时钟、安全圆、通用过滤/所属、多威胁仍gap，见 work/re/e116_dodge.md |
-| 已对拍 | AI | `微操/IgnoreTargets.IncludeThing` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py:y |
+| 已对拍 | AI | `微操/IgnoreTargets.IncludeThing` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aibuildexclude.py |
 | 已对拍 | AI | `微操/AIMicroManagerData.TimeToKeepTargetMin` | 12 | a4 a5 a7 | E123 aikeeptwo:a：Min=Max=2秒，score分配f495写until525，f503/519 hold，f527 go重写until557；aiegon:a零保持f375/383均go。tests/test_ai_keep_target.py按名回放原台候选资格、分配来源和保持/到期消费者；只验固定区间、已发布成员资格；随机区间、打分、死亡清理、其他来源与整局时钟仍gap；见work/re/e123_keep_target.md |
 | 已对拍 | AI | `目标/AITargetingHeuristic.HeuristicType=Expansion` | 12 | a4 a5 a7 | C aiexpc:a东矿区4、崖矿区0、普通实体0；D104同帧基地中心3850/3400，三矿点state2，选44号4173/2987（最近524）；模型先选基地再取最近合格矿点。tests/test_expansion_target.py按名回放原计数与候选选择；无距离上限、不读SortType。仅state2普通陆矿子集对拍；其他状态/占用/标记/敌距/水域拒绝仍INFERRED，动态矿表/基地注册和死亡清理仍gap；见work/re/c_expansion_d104_report.md |
 | 已对拍 | AI | `目标/AITargetingHeuristic.SortType=ThreatToGround` | 12 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aitarget.py |
