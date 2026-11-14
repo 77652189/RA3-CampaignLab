@@ -43,7 +43,41 @@ def mission(mod, sitter=False, **fields):
     return m
 
 
+IDLE_TURRETS = (-180.0, (-120.0, -40.0, 40.0, 120.0))   # aibdi*: x and the ys off 'east base' (the AI's yard): the
+# four Peacekeepers stand at (-100, -90..90), each 85-90 from its nearest turret (< EnterGarrisonableStructureDistance 150)
+
+
+def idle_mission(mod, **fields):
+    """D round 132 (work/re/d131_triggers.md 2): EnterBaseDefensesWhenIdle acts only in the team's micro state 8 (idle /
+    default) and only with EnterBaseDefenses on too. aidefense_bench's StaticDefense team (4 Peacekeepers beside the
+    AI's yard, no enemy near: the team stays in state 8) without its move order, with the micro manager's two fields
+    set (airetreat_bench.micro_xml) and four of the AI's AlliedBaseDefense 80-90 west of the men; the teams host
+    (tstate: the team's state when they go in)."""
+    from missions import aidefense_bench as ad
+    from missions import airetreat_bench as ar
+    from missions.aiteams_bench import host_unit, HOST
+    m = ad.mission(mod, 250, 1, 1.5)
+    m.scripts = [s for s in m.scripts if s.name != 'CNV AI - Move']
+    (fname, xml, asset), = m.assets
+    head = '  <AIStrategicStateDefinition'
+    xml = xml.replace(head, ar.micro_xml(**fields) + '\n' + head, 1)
+    assert xml.count('MicroManager="StandardMicroManager_MEDIUM"') == 1
+    xml = xml.replace('MicroManager="StandardMicroManager_MEDIUM"', f'MicroManager="{ar.MICRO_ID}"', 1)
+    m.assets = [(fname, xml, asset)]
+    m.facts['micro'] = dict(fields)
+    x, ys = IDLE_TURRETS
+    for k, y in enumerate(ys):
+        m.put(TURRET, 'east base', x, y, side='s1', name=f'UNIT - CNV AI Turret {k + 1}', role=f'turret {k + 1}')
+    m.units.append(host_unit())
+    m.put(HOST, 'east base', 250.0, 400.0, side='s1', role='teams host')
+    m.ext = True
+    return m
+
+
 MISSION = {
+    'aibdi1': lambda: idle_mission('CampAIBdI1', EnterBaseDefenses='true', EnterBaseDefensesWhenIdle='true'),
+    'aibdi0': lambda: idle_mission('CampAIBdI0', EnterBaseDefenses='true', EnterBaseDefensesWhenIdle='false'),
+    'aibdi2': lambda: idle_mission('CampAIBdI2', EnterBaseDefenses='false', EnterBaseDefensesWhenIdle='true'),
     'aibd1': lambda: mission('CampAIBd1', EnterBaseDefenses='true', EnterBaseDefensesWhenIdle='false'),
     'aibd0': lambda: mission('CampAIBd0', EnterBaseDefenses='false', EnterBaseDefensesWhenIdle='false'),
     'aibdidle': lambda: mission('CampAIBdIdle', EnterBaseDefenses='false', EnterBaseDefensesWhenIdle='true'),

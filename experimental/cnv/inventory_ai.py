@@ -508,7 +508,9 @@ NOTES = {
         '存活前置正常断言、近厂计数strict xfail；airevp近厂4不能证明没有倒车；'
         'E115 airev1t/0t各PASS：同帧目标/位置/车身朝向已取得，两侧各23个有效目标相邻帧移动样本无负点积；'
         'tests/test_ai_reverse_clock.py按名f263目标取得strict xfail；模型朝向/分支前置仍gap，暂停新台、不晋升；'
-        '宿主台近厂读数不同于旧台，不假设等价；见work/re/e115_reverse_aim.md'),
+        '宿主台近厂读数不同于旧台，不假设等价；见work/re/e115_reverse_aim.md；'
+        'D132 airevk1/0（玩家坦克目标）逐帧相同、无退后目的点，但前置未达：近的玩家坦克s13组队前被打死，'
+        '入队2辆到目标中心距166–233 > R−10=135，与模型一致不算反例；airevkg1守护者未入队，无效；见work/re/d132_whenidle.md'),
     # B round 108: a test names the probe but only the switch-off case matches; the effect itself is a strict xfail
     '微操/AIMicroManagerData.Crush': (GUESSED,
         'engine_aicrush:aicrush1 台上s28–33守军0、坦克4；按名回放存活正常断言，清零strict xfail；'
@@ -534,7 +536,13 @@ NOTES = {
         '模型已读取；engine_aidelay 0/999实机配对仅改变MaximumDelay，'
         '本字段没有独立变量对照，不因探针出现字段名登记已对拍')
        for field in ('MinimumDelay', 'PowerType')},
-    '微操/AIMicroManagerData.EnterBaseDefensesWhenIdle': (GUESSED,
+    # D round 132: the idle StaticDefense bench (aibdi1/0/2) with the host's order log
+    '微操/AIMicroManagerData.EnterBaseDefensesWhenIdle': (BENCHED,
+        'D132 engine_aibasedef aibdi1/0/2（守点队状态8、无敌人、己方4座炮塔）：两开关都开时进基地防御那段程序发进驻令'
+        '（f50四条、f98三条），s2起进炮塔、s6起2人；只开一个时该程序不发令；'
+        'tests/test_simai_basedef_whenidle.py 按名回放：都开进炮塔、关一个时该程序不送人，正常断言；'
+        '台上f50开局即发令、2人，模型s12.5、1人，strict xfail；两对照各有1人经另一段不受开关管的程序进炮塔'
+        '（f80），模型没有这条路，strict xfail；见work/re/d132_whenidle.md。旧读数：'
         'engine_aibasedef aibd1 是战斗中总开关开、idle关的正例（s21起1人进炮塔）；'
         'aibd0/aibdidle 总开关均关且无人进驻，不是idle分支正例；'
         'tests/test_simai_basedef_idle.py 直接计数回放，aibd1仍strict xfail；'

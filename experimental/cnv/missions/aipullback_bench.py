@@ -25,6 +25,9 @@ TURRET = 'AlliedBaseDefense'           # airevt*: a hostile target -- the plant 
 TURRET_NAME = 'UNIT - CNV AI Rev Turret'   # the reverse-move routine runs in states 2 and 4 only (work/re l4_micro_engage 1.4)
 TURRET_AT = (-340.0, 0.0)              # 80-120 from the tanks
 TURRET_PLANT_AT = (-480.0, 0.0)        # the plant behind it, out of the way
+FOE = 'AlliedAntiVehicleVehicleTech1'  # airevk*: the player's Guardian tanks, a moving unit target (work/re/d131 1)
+FOE_AT = ((-305.0, -60.0), (-305.0, 60.0))   # ~54 centre to centre from each of the column's tanks (-260, -90..90),
+                                       # far inside the reverse gate d < R - 10 (cannon AttackRange 150: R 145)
 
 
 def mission(mod, factory=False, faction=None, close=False, observe=False, **fields):
@@ -32,11 +35,17 @@ def mission(mod, factory=False, faction=None, close=False, observe=False, **fiel
     (REPAIR) -- the pull-back looks the ArmyDefinition up by the player's faction (its Side; work/re handoff-b 71).
     close: no guards, and the team's target (the far plant) stands beside the tanks at the start (CLOSE_AT) -- the
     ReverseMove read (work/re/l4_micro_engage.md 1.4): a member 0 < d < range - 10 from its target backs off to range - 10.
-    close='turret': a player's turret beside the tanks instead (TURRET_AT), the plant behind it."""
+    close='turret': a player's turret beside the tanks instead (TURRET_AT), the plant behind it.
+    close='unit': two of the player's Guardian tanks beside the tanks (FOE_AT), the far plant where it was."""
     m = ac.mission(mod, observe=observe, Crush='false', **fields)
     if close:
         m.objects = [o for o in m.objects if not o.name.startswith('UNIT - CNV AI Guard')]
         m.cast = {k: r for k, r in m.cast.items() if not k.startswith('guard ')}
+    if close == 'unit':
+        m.spawns |= {FOE}
+        for k, (dx, dy) in enumerate(FOE_AT):
+            m.put(FOE, 'east base', dx, dy, angle=0.0, name=f'UNIT - CNV AI Rev Foe {k + 1}', role=f'rev foe {k + 1}')
+    elif close:
         o = m.find(m.role('far plant').name)
         o.x, o.y = m.site('east base', *(TURRET_PLANT_AT if close == 'turret' else CLOSE_AT))[:2]
         if close == 'turret':
@@ -103,4 +112,13 @@ MISSION = {
     'airevt1': lambda: mission('CampAIRevT1', close='turret', CleanupPowerAdvantage='1000.0', UseGatherState='false'),
     'airevt0': lambda: mission('CampAIRevT0', close='turret', CleanupPowerAdvantage='1000.0', UseGatherState='false',
                                ReverseMove='false'),
+    # D round 132 (work/re/d131_triggers.md 1): airevt's state 2 with a MOVING target of the player's, ~54 centre to
+    # centre (a structure's radius kept the centre distance outside d < R - 10), the host observed (aim / dest / hd)
+    'airevk1': lambda: mission('CampAIRevK1', close='unit', observe=True, CleanupPowerAdvantage='1000.0',
+                               UseGatherState='false'),
+    'airevk0': lambda: mission('CampAIRevK0', close='unit', observe=True, CleanupPowerAdvantage='1000.0',
+                               UseGatherState='false', ReverseMove='false'),
+    # the same with the AI's own Guardians (another weapon template: d131 1 gate 4, the weapon field not read)
+    'airevkg1': lambda: guardians(mission('CampAIRevKG1', close='unit', observe=True,
+                                          CleanupPowerAdvantage='1000.0', UseGatherState='false')),
 }

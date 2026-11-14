@@ -31,18 +31,27 @@ Readings (11-09, all PASS; counters 进炮塔 炮塔数 步兵数 到远厂; the
             pass still takes the list's first turret (the turret-order routine's 'can the order be done' check, work/re/l4_micro_engage.md 1.7, does not look at
             room, INFERRED), the men leave the team for it and stay out. Not a 'one per pass' rule: then one would have
             gone into turret 2.
+  (11-13, D round 132; the idle StaticDefense team, missions idle_mission; counters 进炮塔 炮塔数 步兵数)
+  aibdi1    PASS: s1 0 4 4 | s2-s5 1 4 4 | s6-s55 2 4 4 -- enter orders from the base-defense routine only (the host's
+            order log: 4 at frame 50, all to turret 1; 3 at frame 98, turret 2)
+  aibdi0    FAIL: s1-s3 0 | s4-s55 1 -- no order from the base-defense routine; the one man inside from 4 enter
+  aibdi2    FAIL: the same       orders at frame 80 of another routine, which neither switch gates (work/re/d132_whenidle.md)
 """
 from checks import engine_aitarget as at
 from parts import Script, Test, counted, square, status
 
 AFTER = 60.0
-NEXT = 40.0                              # the turrets stand 80 apart: the squares do not overlap
+IDLE_BUILDS = ('aibdi1', 'aibdi0', 'aibdi2')   # not aibdidle (the fighting team's idle-only control)
+IDLE_AFTER = 40.0                       # aibdi*: the team forms by ~wake + 2 s and stands there
+NEXT = 40.0                             # the turrets stand 80 apart: the squares do not overlap
 
 
 def a(m, build):
     t = Test()
     s1 = m.player('s1')
     t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    if build in IDLE_BUILDS:
+        return idle(m, build, t, s1)
     o = m.find(m.role('far plant').name)
     t.areas[at.FAR] = square(o.x, o.y, 300.0)
     (inf,) = m.cnv_units
@@ -72,4 +81,19 @@ def a(m, build):
     return t
 
 
-CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aibd1', 'aibd0', 'aibdidle', 'aibdwho', 'aibdpre')}
+def idle(m, build, t, s1):
+    """aibdi*: the StaticDefense team at the AI's yard, no enemy (missions idle_mission). 进炮塔 as above, 炮塔数,
+    步兵数 (Peacekeepers s1 owns, in a turret too). d131 2: aibdi1 (both switches on) -> someone goes in (state 8);
+    aibdi0 (WhenIdle off) / aibdi2 (EnterBaseDefenses off) -> nobody."""
+    (inf,) = m.cnv_units
+    counted('CNV_BD_In', '进炮塔', t, status=status('ENCLOSED'), player=s1)
+    counted('CNV_BD_Turrets', '炮塔数', t, template=m.role('turret 1').template, player=s1)
+    counted('CNV_BD_Count', '步兵数', t, template=inf, player=s1)
+    end = m.facts['wake at'] + IDLE_AFTER
+    t.expect += [('进炮塔', 1, 'ever>=' if build == 'aibdi1' else '==', 1 if build == 'aibdi1' else 0, end)]
+    t.bench = [('bench_watch', dict(seconds=end + at.LAG, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aibd1', 'aibd0', 'aibdidle', 'aibdwho', 'aibdpre',
+                                                           'aibdi1', 'aibdi0', 'aibdi2')}

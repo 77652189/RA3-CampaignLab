@@ -61,6 +61,12 @@ Readings (11-09; 4 Hammers vs 12 Peacekeepers, Crush false; tanks reach the plan
   displacement dot products (no reverse candidate in those samples). This does not cover every frame or prove
   branch eligibility. Near-plant s19-s22 is zero on both observer builds, unlike the old uninstrumented record.
   Exact goal acquisition replay remains a strict xfail; see work/re/e115_reverse_aim.md.
+  (11-13, D round 132; two of the player's Guardians ~54 off the column, host observed; 坦克数 近敌 敌坦)
+  airevk1  PASS, airevk0 PASS -- the same second for second: s1-12 4 4 2 | s13 4 4 1 | s14-85 4 3 1, and the host's
+           samples the same frame for frame: only 2 tanks join the team (f213), go state 2 at f242 with aim = the
+           far foe (the near one died s13, before the team), centre distance 166 / 190-233 > R - 10 = 135 -- the
+           reverse gate not reached, no back-up point in either (agrees with the model; not a test of the switch)
+  airevkg1 FAIL (invalid): the attack team never takes a Guardian (n=0 all run); 4 4 2 all along
 """
 from checks import engine_aitarget as at
 from parts import Script, Test, counted, square
@@ -71,6 +77,7 @@ HURT_AT = 12.0                           # aipullh*: the tanks are on the road (
 IDLE = ('aipulli1', 'aipullr1', 'aipullp1', 'aipullbig', 'aipullsov', 'aipulljp')   # hurt at the wake, ~1000 from any enemy (p1: before it)
 IDLE_HURT = {'aipulli1': 0.5, 'aipullr1': 0.5, 'aipullp1': -9.0, 'aipullbig': -9.0, 'aipullsov': 0.5, 'aipulljp': 0.5}   # s after the wake
 HURT = 30.0                              # % -- under PullbackInjuredHealthPct 0.35
+NEAR_FOE = 100.0                         # airevk*: half side of the square round the player's two Guardians
 
 
 def a(m, build):
@@ -87,7 +94,7 @@ def a(m, build):
         t.counters.append(('CNV_PB_Health', '血量'))
         t.scripts.append(Script('Test - health', [], [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', tanks[0],
                                                        'CNV_PB_Health')], once=False))
-    elif not build.startswith(('airevp', 'airevt')):  # no guards
+    elif not build.startswith(('airevp', 'airevt', 'airevk')):  # no guards
         counted('CNV_PB_Guards', '守军数', t, template=inf, player=p1, most=13)
     counted('CNV_PB_Tanks', '坦克数', t, template=tank, player=s1)
     if build.startswith('aipull'):
@@ -113,6 +120,20 @@ def a(m, build):
             t.expect += [('回家', wake + (5.0 if build in IDLE else LATE), 'ever>=', 1, end)]
         else:
             t.expect += [('回家', wake + LATE, '==', 0, end)]
+    elif build.startswith('airevk'):
+        # D round 132: two of the player's Guardians ~54 from the column (missions FOE_AT); both sides healed every
+        # frame so the target stays; 近敌 = s1 tanks within NEAR_FOE of the foes' midpoint (start: all 4 inside;
+        # backed off to R - 10 = 135 from a foe: outside)
+        foes = [m.role(f'rev foe {k}').name for k in (1, 2)]
+        t.scripts.append(Script('Test - keep', [], [('UNIT_SET_HEALTH', n, 100.0) for n in foes + tanks], once=False))
+        fx = sum(m.find(n).x for n in foes) / 2
+        fy = sum(m.find(n).y for n in foes) / 2
+        t.areas['CNV_PB_NearFoe'] = square(fx, fy, NEAR_FOE)
+        counted('CNV_PB_NearF', '近敌', t, template=tank, area='CNV_PB_NearFoe', player=s1)
+        counted('CNV_PB_Foes', '敌坦', t, template=m.find(foes[0]).template, player=p1)
+        # d131 1: on, a member with the foe as its own target backs off to R - 10 at its next micro pass; off, stays
+        t.expect += ([('近敌', wake, 'ever<', 4, wake + 20.0)] if build.endswith('1')
+                     else [('近敌', wake + 2.0, '>=', 3, wake + 20.0)])
     elif build.startswith('airevp') or build.startswith('airevt'):
         # airevp: the far plant beside the tanks, no guards (missions CLOSE_AT); airevt: a player's turret there instead
         turret = build.startswith('airevt')
@@ -143,4 +164,5 @@ def a(m, build):
 
 
 CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aipull1', 'aipull0', 'aipullh1', 'aipullh0', 'aipullga', 'aipulli1', 'aipullr1', 'aipullp1', 'aipullbig', 'aipullsov', 'aipulljp',
-                                                           'airev1', 'airev0', 'airev1t', 'airev0t', 'airevp1', 'airevp0', 'airevt1', 'airevt0')}
+                                                           'airev1', 'airev0', 'airev1t', 'airev0t', 'airevp1', 'airevp0', 'airevt1', 'airevt0',
+                                                           'airevk1', 'airevk0', 'airevkg1')}
