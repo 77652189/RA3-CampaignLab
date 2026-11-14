@@ -63,3 +63,56 @@ def test_unknown_kind_is_refused(tmp_path):
         assert 'unknown kinds' in str(e)
     else:
         raise AssertionError('no refusal')
+
+
+# "注入摆" (round 135b): plan lines, the build's plan file, the bench's hand-over, the dll's poke lines read back
+POKES = """cmd: at 250 queued 'pos UNIT - CNV AI Rev Foe 1 3530.0 3230.0' frame=0
+poke: frame=250 op=pos id=-1 name='UNIT - CNV AI Rev Foe 1'
+poke: frame=250 op=pos id=3177 was=3505.0:3420.0 now=3553.0:3304.0 name='UNIT - CNV AI Rev Foe 2'
+"""
+
+
+def test_a_plan_line_names_the_frame_the_object_and_the_place():
+    assert inject.pos(250, 'UNIT - CNV AI Rev Foe 2', 3553, 3304) == 'at 250 pos UNIT - CNV AI Rev Foe 2 3553.0 3304.0'
+    for bad in ((-1, 'A', 0, 0), (2.5, 'A', 0, 0), (1, ' A', 0, 0), (1, "A'B", 0, 0), (1, '', 0, 0)):
+        try:
+            inject.pos(*bad)
+        except AssertionError:
+            continue
+        raise AssertionError(f'accepted {bad}')
+
+
+def test_poke_lines_read_back_as_records(tmp_path):
+    (tmp_path / 'ra3ext.log').write_text(POKES, encoding='utf-8')
+    evs = inject.look(str(tmp_path), kinds=('poke',))
+    assert [(e.frame, e.unit, e.what) for e in evs] == [
+        (250, '-1', '摆 UNIT - CNV AI Rev Foe 1 没找到'),
+        (250, '3177', '摆 UNIT - CNV AI Rev Foe 2 3505.0,3420.0 -> 3553.0,3304.0')]
+    assert inject.look(str(tmp_path), kinds=('command',)) == []        # the dll's own 'cmd: at' line is no order
+
+
+def test_the_build_writes_the_plan_only_with_lines_and_the_bench_hands_it_over(tmp_path):
+    import package
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'experimental',
+                                    'testbench'))
+    import harness
+    mod, run = tmp_path / 'mod', tmp_path / 'run'
+    mod.mkdir()
+    run.mkdir()
+    args = ['game.exe', '-modConfig', str(mod / 'x.skudef')]
+    line = inject.pos(250, 'UNIT - CNV AI Rev Foe 2', 3553, 3304)
+    package.mark_plan(str(mod), [line])
+    assert (mod / package.PLAN).read_text(encoding='ascii') == line + '\n'
+    assert harness.hand_plan(args, str(run))
+    assert (run / 'ra3ext_cmd.txt').read_text(encoding='ascii') == line + '\n'
+    package.mark_plan(str(mod), ())
+    assert not (mod / package.PLAN).exists()
+    assert not harness.hand_plan(args, str(tmp_path / 'other'))
+    assert not package.ra3ext_plan_ok(['x' * 200]) and not package.ra3ext_plan_ok(['a\nb'])
+
+
+def test_a_test_parts_plan_lines_join_the_missions():
+    import model
+    m = model.Mission(inject=['at 1 pos A 0.0 0.0'])
+    t = model.Test(inject=['at 2 pos B 0.0 0.0'])
+    assert model.merged(m, t).inject == ['at 1 pos A 0.0 0.0', 'at 2 pos B 0.0 0.0']

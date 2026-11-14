@@ -33,7 +33,7 @@ def mission(mod, observe=False, **fields):
     m.spawns |= {TANK}
     if observe:
         from missions.aiteams_bench import host_unit, HOST
-        m.units.append(host_unit())
+        m.units.append(host_unit(cmd=observe == 'cmd'))     # 'cmd': the host carries out plan lines too
         m.put(HOST, 'east base', 250.0, 400.0, side='s1', role='teams host')
         m.ext = True
     return m

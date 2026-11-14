@@ -223,6 +223,7 @@ class ModSpec:
     launcher: bool = True           # Play_<name>.bat next to the skudef (the shell has its own: launcher.py)
     ext: bool = False               # ra3ext.allow next to the skudef (Mission.ext; ADR 0028): only then is ra3ext.dll
                                     # injected; every other build removes the file
+    inject: tuple = ()              # ra3ext plan lines (Mission.inject): ra3ext_plan.txt next to ra3ext.allow, only with ext
     bench: dict = field(default_factory=dict)           # more for the bench in the sidecar (a check on the shell: the
                                                         # slot to walk into); a release build has none
     goals: tuple = ()               # the mission's objectives where the player is sent, as published ((x, y) world
@@ -277,7 +278,8 @@ def spec_of(mission, test=None, shell=False, name=None, layers=()):
                    border_names=tuple(getattr(mm.map, 'BORDERS', {})), unit_files=tuple(unit_files),
                    templates=templates, extra_all=tuple(extra_all), extra_own=tuple(extra_own), replaces=replaces,
                    strings=strings,
-                   packs=packs, goals=goal_points(mm), ext=bool(getattr(mm, 'ext', False)))
+                   packs=packs, goals=goal_points(mm), ext=bool(getattr(mm, 'ext', False)),
+                   inject=tuple(getattr(mm, 'inject', ())))
     if shell:
         import shell as shell_layer
         spec = shell_layer.contribute(spec, shell if isinstance(shell, str) else 'zh')
@@ -506,6 +508,7 @@ def build_mod(spec, out):
     if not spec.launcher and os.path.isfile(os.path.join(out, f'Play_{name}.bat')):
         os.remove(os.path.join(out, f'Play_{name}.bat'))
     mark_ext(out, spec.ext)
+    mark_plan(out, spec.inject if spec.ext else ())
     more = dict(spec.bench)
     if spec.slot:                               # a shell build: the bench walks its chapter list (I18), not the faction menu
         more.setdefault('slot', spec.slot['slot'])
@@ -526,6 +529,27 @@ def mark_ext(out, on):
         open(path, 'w').close()
     elif os.path.isfile(path):
         os.remove(path)
+
+
+PLAN = 'ra3ext_plan.txt'
+
+
+def mark_plan(out, lines):
+    """ra3ext_plan.txt in the mod folder `out` exactly when there are plan lines ("注入摆", inject.py): the bench copies
+    it into the run folder as ra3ext_cmd.txt before the game starts (harness.hand_plan)."""
+    assert not lines or ra3ext_plan_ok(lines), lines
+    path = os.path.join(out, PLAN)
+    if lines:
+        with open(path, 'w', encoding='ascii', newline='\n') as f:
+            f.write(''.join(f'{x}\n' for x in lines))
+    elif os.path.isfile(path):
+        os.remove(path)
+
+
+def ra3ext_plan_ok(lines):
+    """Every plan line one line of ASCII that fits the dll's buffers (a line under 160, the file under 1024 bytes)."""
+    return (all(isinstance(x, str) and x.isascii() and '\n' not in x and len(x) < 150 for x in lines)
+            and sum(len(x) + 1 for x in lines) < 1000)
 
 
 def _map_part(spec, c4, c6, c7, sdk):

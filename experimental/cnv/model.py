@@ -231,6 +231,9 @@ class Part:
                                                                 # waypointPathLabel1..3): *_FOLLOW_WAYPOINTS name the label
     hotspots: dict = dataclasses.field(default_factory=dict)    # {name: (title label, description label)}: the map's
                                                                 # MissionHotSpots (scripts set and link them)
+    inject: list = dataclasses.field(default_factory=list)      # ra3ext plan lines ("注入摆", inject.py pos()): the
+                                                                # build writes them next to ra3ext.allow, the bench
+                                                                # hands them to the map's CNVCmd host at the start
 
     def path(self, label, *names, loop=False):
         """A waypoint path: the waypoints `names` (in self.waypoints, or the mission's for a check) labelled `label`,
@@ -613,6 +616,7 @@ def merged(mission, test=None):
     m.links, m.labels = mission.links + test.links, merge_labels(mission.labels, test.labels)
     m.areas = {**mission.areas, **test.areas}
     m.hotspots = {**mission.hotspots, **test.hotspots}
+    m.inject = mission.inject + test.inject
     m.strings = {**mission.strings, **test.strings}
     assert len(test.counters) <= 4, 'only four counter lines fit above the bottom bar (counters.MAX_LINES)'
     keys = [f'SCRIPT:CNVTEST_COUNTER{k}' for k in range(len(test.counters))]

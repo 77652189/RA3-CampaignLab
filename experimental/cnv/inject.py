@@ -18,7 +18,11 @@ Program names: a line carries the raw place in the program it came from; the pla
 the table shows as itself, only on screen. Kinds a map wants recorded are declared by name (KINDS); ra3ext logs them
 whenever the map carries its host (missions/aiteams_bench.py host_unit, Mission.ext).
 
-The "注入摆" half (set an inside value at frame N) is the next round: handoff-d round 135.
+"注入摆" (round 135b): set something at frame N. A mission / check lists plan lines in Part.inject (built with pos());
+the build writes them next to ra3ext.allow (package.mark_plan), the bench copies them into the run folder before the
+start (harness.hand_plan), and the map's CNVCmd host (missions/aiteams_bench.py host_unit(cmd=True)) runs each at its
+frame and logs a 'poke:' line, read back here as kind 'poke'. Ops so far: pos (an object by its map script name moved
+to x, y, its height kept). A result that needed a poke rests on a placed start, not the mission's own: say so.
 """
 import json
 import os
@@ -34,7 +38,15 @@ KINDS = {
     'team': ('tstate:', "the team's micro state, target or tactical target changing"),
     'assign': ('kassign:', 'the team assigning a member a target'),
     'threat': ('thr:', 'a member picking a threat'),
+    'poke': ('poke:', 'a plan line carried out ("注入摆", pos())'),
 }
+
+
+def pos(frame, name, x, y):
+    """The plan line: at logic frame `frame` move the object with map script name `name` to (x, y), height kept."""
+    assert int(frame) == frame >= 0, frame
+    assert name and name.isascii() and name == name.strip() and '\n' not in name and "'" not in name, name
+    return f'at {int(frame)} pos {name} {float(x):.1f} {float(y):.1f}'
 
 # message numbers (protocol words, teamlog.commands) in words; an unknown one shows as its number
 ORDERS = {0x1f5: '选中', 0x1fb: '选整队', 0x214: '移到', 0x22c: '编队移到', 0x20d: '对象加点', 0x210: '对目标（攻击 / 进驻）',
@@ -130,6 +142,8 @@ def look(run, kinds=None, unit=None, frames=None):
             kind = picked.get(prefix)
             ev = None
             if prefix == 'cmd:':
+                if 'type' not in d:         # CNVCmd's own lines (listening, at ... queued, set ...): no order
+                    continue
                 t, args, pl = int(d['type'], 16), _args(d.get('args', '')), d.get('player', '?')
                 if t == 0x1f5:      # select by id: first bool = a new selection
                     ids = [v[0] for k, v in args if k == 4]
@@ -152,6 +166,12 @@ def look(run, kinds=None, unit=None, frames=None):
             elif kind == 'assign':
                 ev = Event(fr, kind, d.get('mem', '?'), f"分配目标 {d.get('tgt')} (队伍状态 {d.get('mstate')})",
                            _source(d))
+            elif kind == 'poke':
+                nm = re.search(r"name='([^']*)'", line)
+                nm = nm.group(1) if nm else '?'
+                what = (f"摆 {nm} 没找到" if d.get('id') == '-1'
+                        else f"摆 {nm} {d.get('was', '?').replace(':', ',')} -> {d.get('now', '?').replace(':', ',')}")
+                ev = Event(fr, kind, d.get('id', '?'), what, '?')
             elif kind == 'threat':
                 ev = Event(fr, kind, d.get('mem', '?'), f"挑威胁 {d.get('pick')}", _source(d))
             elif kind == 'team':

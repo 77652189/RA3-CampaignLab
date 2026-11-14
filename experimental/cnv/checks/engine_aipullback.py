@@ -72,7 +72,13 @@ Readings (11-09; 4 Hammers vs 12 Peacekeepers, Crush false; tanks reach the plan
            aim a spawned foe (f272); f302 member 3171 is stopped and sent to a point 135 (R - 10) from its target,
            along target -> member, and drives there hull-first at the target (reversing); 23 such orders in the run
   airevk2o PASS: s1-12 4 4 2 | s13 4 4 1 | s14-15 4 3 1 | s16-85 4 3 4; no back-up order (tests/test_ai_reverse_k2.py)
+  (11-14, D round 135b, "注入摆" -- PREMISE: THE START IS PLACED (前提是摆出来的), not the mission's own: at f250 the
+  plan moves foe 1 / 2 50 west of members 3170 / 3171; foe 1 already dead (poke not found), foe 2 placed)
+  airevkp1 PASS: s1-12 4 4 2 | s13 4 4 1 | s14-17 4 3 1 | s18-85 4 2 1; f272 both members back up to 135 (R - 10)
+           from foe 2 <- ReverseMove, 19 back-up orders in the run = d133's airevk2
+  airevkp0 PASS: s1-12 4 4 2 | s13 4 4 1 | s14-85 4 3 1; the same poke, no back-up order (tests/test_ai_reverse_poke.py)
 """
+import inject
 from checks import engine_aitarget as at
 from parts import Script, Test, counted, square
 
@@ -85,6 +91,9 @@ HURT = 30.0                              # % -- under PullbackInjuredHealthPct 0
 LATE_AT = 16.7                           # airevk2*: s after the start (f250: the team formed f213, state 2 f242 in airevk1)
 LATE_NAME = 'UNIT - CNV AI Rev Late'     # + ' k': the Guardian spawned on Hammer k
 NEAR_FOE = 100.0                         # airevk*: half side of the square round the player's two Guardians
+POKE_AT = 250                            # airevkp*: logic frame of the plan (airevk1: team f213, state 2 f242)
+POKE_XY = ((3530.0, 3230.0), (3553.0, 3304.0))   # 50 west of members 3170 / 3171 as they stood f242-248 (airevk1
+                                                 # run 11-13, ra3ext.log team lines); foe k beside member k
 
 
 def a(m, build):
@@ -139,7 +148,13 @@ def a(m, build):
         counted('CNV_PB_NearF', '近敌', t, template=tank, area='CNV_PB_NearFoe', player=s1)
         counted('CNV_PB_Foes', '敌坦', t, template=m.find(foes[0]).template, player=p1)
         # d131 1: on, a member with the foe as its own target backs off to R - 10 at its next micro pass; off, stays
-        if build.startswith('airevk2'):
+        if build.startswith('airevkp'):
+            # D round 135b: no script swap -- the plan moves the two foes beside the team's two members at POKE_AT
+            # (the bench's ra3ext_cmd.txt, inject.pos); a dead foe logs id=-1. The result is inject.look's poke and
+            # command records, not a counter: 坦克数 here only says the run went on
+            t.inject = [inject.pos(POKE_AT, n, x, y) for n, (x, y) in zip(foes, POKE_XY)]
+            t.expect += [('坦克数', 1.0, '>=', 2, end)]
+        elif build.startswith('airevk2'):
             # D round 133: the two foes deleted, one Guardian spawned on each Hammer (every member's only foe a few
             # tens off); kept alive too. 敌坦 4 from LATE_AT says the spawn took; the result is the host's aim / dest
             late = [f'{LATE_NAME} {k + 1}' for k in range(len(tanks))]
@@ -185,4 +200,4 @@ def a(m, build):
 
 CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aipull1', 'aipull0', 'aipullh1', 'aipullh0', 'aipullga', 'aipulli1', 'aipullr1', 'aipullp1', 'aipullbig', 'aipullsov', 'aipulljp',
                                                            'airev1', 'airev0', 'airev1t', 'airev0t', 'airevp1', 'airevp0', 'airevt1', 'airevt0',
-                                                           'airevk1', 'airevk0', 'airevkg1', 'airevk2', 'airevk2o')}
+                                                           'airevk1', 'airevk0', 'airevkg1', 'airevk2', 'airevk2o', 'airevkp1', 'airevkp0')}

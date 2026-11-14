@@ -22,6 +22,7 @@ import datetime
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -346,6 +347,16 @@ def ext_wanted(args):
     return os.path.isfile(os.path.join(os.path.dirname(args[args.index('-modConfig') + 1]), 'ra3ext.allow'))
 
 
+def hand_plan(args, run_dir):
+    """The mod's ra3ext plan ("注入摆": ra3ext_plan.txt next to the skudef, written by the build) copied into the run
+    folder as ra3ext_cmd.txt, where the map's CNVCmd host reads it on its first update. True when there was one."""
+    plan = os.path.join(os.path.dirname(args[args.index('-modConfig') + 1]), 'ra3ext_plan.txt')
+    if not os.path.isfile(plan):
+        return False
+    shutil.copyfile(plan, os.path.join(run_dir, 'ra3ext_cmd.txt'))
+    return True
+
+
 def ext_command(args, log):
     """The launcher's command line for the game command `args`: ra3ext_launch [opts] -- <game> <args...>."""
     return [EXT_LAUNCH, '--log', log, '--cwd', BENCH, '--verify-ms', '15000', '--'] + list(args)
@@ -552,6 +563,8 @@ class Session:
             raise BenchError(f'the mod asks for ra3ext (ra3ext.allow) but {EXT_LAUNCH} is missing: build.bat in '
                              'work/re/ext/ra3ext')
         self.ext_log = os.path.join(self.run_dir, 'ra3ext.log')
+        if hand_plan(args, self.run_dir):
+            self._say('ra3ext plan handed to CNVCmd (ra3ext_plan.txt -> ra3ext_cmd.txt)')
         r = subprocess.run(ext_command(args, self.ext_log), capture_output=True, text=True, errors='replace', env=env,
                            timeout=60)
         got = parse_launch(r.stdout)

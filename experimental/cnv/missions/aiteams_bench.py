@@ -12,15 +12,18 @@ from parts import Unit
 PLANT, HOST, EVERY, LINES = 'AlliedPowerPlant', 'CNVTeamsHost', 15, 4000
 
 
-def host_unit():
+def host_unit(cmd=False):
+    """cmd: also ra3ext's CNVCmd module, which carries out the build's plan lines ("注入摆", inject.py pos())."""
     x = open(os.path.join(labpaths.SDK3, 'SageXML', 'Allied', 'Structures', PLANT + '.xml'), encoding='utf-8').read()
     assert x.count(f'id="{PLANT}"') == 1 and x.count('<Behaviors>') == 1
     x = x.replace(f'id="{PLANT}"', f'id="{HOST}"').replace(f'EditorName="{PLANT}"', f'EditorName="{HOST}"')
+    more = '\n\t\t\t<DeletionUpdate id="ModuleTag_CNVCmd" MinFrames="1" MaxFrames="1"/>' if cmd else ''
     x = x.replace('<Behaviors>', f'''<Behaviors>
-			<DeletionUpdate id="ModuleTag_CNVTeams" MinFrames="{EVERY}" MaxFrames="{LINES}"/>''')
+			<DeletionUpdate id="ModuleTag_CNVTeams" MinFrames="{EVERY}" MaxFrames="{LINES}"/>{more}''')
     return Unit(HOST, x, names=dict(unit=HOST),
-                what=f'盟军电厂的复制（探针）：多一个 ra3ext 的 CNVTeams 模块，每 {EVERY} 帧记所属玩家的队伍和成员',
-                params=dict(of=PLANT, every=EVERY))
+                what=f'盟军电厂的复制（探针）：多一个 ra3ext 的 CNVTeams 模块，每 {EVERY} 帧记所属玩家的队伍和成员'
+                     + ('；加 CNVCmd（按计划在指定帧摆物体）' if cmd else ''),
+                params=dict(of=PLANT, every=EVERY, cmd=cmd))
 
 
 def mission():

@@ -128,4 +128,10 @@ MISSION = {
                                UseGatherState='false'),
     'airevk2o': lambda: mission('CampAIRevK2Off', close='unit', observe=True, CleanupPowerAdvantage='1000.0',
                                 UseGatherState='false', ReverseMove='false'),
+    # D round 135b ("注入摆"): airevk1 / 0 as they are (nothing deleted or spawned), plus the host's CNVCmd; the check's
+    # plan moves the two foes beside the two team members at f250 (checks/engine_aipullback POKE_*)
+    'airevkp1': lambda: mission('CampAIRevKP1', close='unit', observe='cmd', CleanupPowerAdvantage='1000.0',
+                                UseGatherState='false'),
+    'airevkp0': lambda: mission('CampAIRevKP0', close='unit', observe='cmd', CleanupPowerAdvantage='1000.0',
+                                UseGatherState='false', ReverseMove='false'),
 }
