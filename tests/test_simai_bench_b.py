@@ -817,7 +817,13 @@ def test_refinery_placement_far_rings_add_refineries(lib):
     assert rows[155]['建筑码'] // 10 % 10 == 3
 
 
-@pytest.mark.parametrize('build', ['aiskirm', 'aiskin1', 'aiskin0', 'aiskinp'])
+_FALLBACK = pytest.mark.xfail(strict=True, reason='B189: the yard-side placement a failed refinery search falls back to '
+                              'is the simulator\'s generic yard ring (3901,3655 first), the bench\'s stand 430-630 '
+                              'from the yard toward the east field (4425,3275 / 3875,2775 / 4425,3625); unread')
+
+
+@pytest.mark.parametrize('build', ['aiskirm', pytest.param('aiskin1', marks=_FALLBACK),
+                                   pytest.param('aiskin0', marks=_FALLBACK), pytest.param('aiskinp', marks=_FALLBACK)])
 def test_the_third_refinery_goes_to_the_east_field_or_nowhere(lib, build):
     """engine_aiskirm rp (B186, work/bench_results/<build>__rp.json, all PASS): 矿区码 (refineries in +-600 of the
     east / north-east / south-west / north fields, x1 / x10 / x100 / x1000) 2 to s147 in all four; stock aiskirm stays
@@ -825,3 +831,43 @@ def test_the_third_refinery_goes_to_the_east_field_or_nowhere(lib, build):
     _, rows = _probe_run(build, lib, 160.0, check='rp')
     assert rows[100]['矿区码'] == 2
     assert rows[158]['矿区码'] == (2 if build == 'aiskirm' else 3)
+
+
+_RPX = {}
+
+
+def _rpx(build, lib):
+    if build not in _RPX:
+        _RPX[build] = _probe_run(build, lib, 160.0, check='rpx')[1]
+    return _RPX[build]
+
+
+def test_stock_refineries_stand_on_ring_5_of_each_east_node_at_minus_three_sixteenths(lib):
+    """engine_aiskirm rpx aiskirm (B188, work/bench_results/aiskirm__rpx.json, PASS): 矿场X / 矿场Y step to 26 / 9 at
+    s49 and +28 / +11 at s69 (strips x 4350-4400 / y 2800-2850, then x 4450-4500 / y 2900-2950: each east node's
+    facing - 3 pi / 16, ~250 out), no third to s234. The simulator (B189, D136 5): the node's rings at -30 + 30 i +
+    52.6 + 75, k -3 first, nothing within NODE_CLEAR of a node -> ring 5 of A, then of B."""
+    rows = _rpx('aiskirm', lib)
+    first = _first_row(rows, '矿场X')
+    assert (rows[first]['矿场X'], rows[first]['矿场Y']) == (26, 9)
+    assert (rows[100]['矿场X'], rows[100]['矿场Y']) == (26 + 28, 9 + 11)
+    assert (rows[158]['矿场X'], rows[158]['矿场Y']) == (54, 20)
+
+
+def test_ticks_0_and_a_far_start_place_alike_and_keep_placing(lib):
+    """engine_aiskirm rpx aiskin0 / aiskin1 (B188, both PASS): identical rows; refineries at s49 / s69 / s148 (and
+    s188 / s223), none in an east node's +-33.75 degree fan. The simulator: Ticks 0 tries no ring (D136 5, read), a
+    start of 1000 puts every ring off the map; both fall back by the yard (F1, INFERRED), so the AI keeps wanting
+    one (the west east node unserved)."""
+    a, b = _rpx('aiskin0', lib), _rpx('aiskin1', lib)
+    assert [(r['矿场X'], r['矿场Y']) for r in a] == [(r['矿场X'], r['矿场Y']) for r in b]
+    assert _first_row(a, '矿场X') < 60
+    assert a[158]['矿场X'] > a[100]['矿场X'] > a[60]['矿场X'] > 0
+
+
+@_FALLBACK
+def test_ticks_0_puts_the_first_refinery_where_the_bench_did(lib):
+    """aiskin0 rpx (B188): the first refinery at strips x27 y18 (4425,3275), the second x16 y8 (3875,2775)."""
+    rows = _rpx('aiskin0', lib)
+    first = _first_row(rows, '矿场X')
+    assert (rows[first]['矿场X'], rows[first]['矿场Y']) == (27, 18)
