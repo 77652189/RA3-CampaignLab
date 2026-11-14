@@ -369,7 +369,10 @@ NOTES = {
         'engine_aitower aibsprod h（2026-11-13）：人格自己声明 DEFENSE 50% 的预算，唯一一行 BudgetState 的 State 指'
         '原版 ProductionOnlyBudget（DEFENSE 0%）：开局 2 万、到 s160 一座塔也不造，钱只随矿车涨——State 指哪个预算'
         '定义就用哪个的份额。tests/test_simai_bench_b.py::test_a_budget_state_line_uses_the_budget_its_state_names'
-        '按名回放；自建预算那几局（aitowerinc10 / inc5）同一规则。见 work/re/handoff-b.md 第177节'),
+        '按名回放；自建预算那几局（aitowerinc10 / inc5）同一规则。见 work/re/handoff-b.md 第177节。'
+        '多行时选哪一个（work/re/d122_ai_rules.md 第1节）：engine_aitower aibsmax / aibstie / aibszero i'
+        '（2026-11-13 三局 PASS）——权重最大的一个单独生效、不混合份额，并列取靠前，全 0 取第一条；'
+        'tests/test_simai_bench_b.py 的 test_the_heavier_budget_state_runs_alone_though_listed_second 等三条'),
     '组队招人/TeamTemplate.ReleaseType=NEVER_RELEASE': (BENCHED,
         'engine_airelease airelnever/airelprio仅ReleaseType不同；CNVTeams两组f166防御激活持3166/3167，'
         'priority在(526,541]同两ID转进攻，never保留至末样本；'

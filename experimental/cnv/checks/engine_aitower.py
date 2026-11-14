@@ -309,7 +309,42 @@ def h(m):
     return t
 
 
-CHECKS = {k: {'a': a, 'b': b, 'c': c, 'd': d, 'e': e, 'f': f, 'g': g, 'h': h}
+def i(m):
+    """B round 178 (aibsmax / aibstie / aibszero; work/re d122_ai_rules.md 1, R1-R3): which of two budget states runs.
+    The personality's two own states, in list order: DEFENSE 100 % (turrets from the 20000 bank) and PRODUCTION 100 %
+    (buys nothing -- no unit build state left). Read: each state's weight is the product of its heuristics; the one
+    with the largest weight runs, its shares alone (not mixed); ties go to the earlier line; all 0 -> the first line.
+
+      塔在基地   s1's turrets in the 1500 square round the yard
+
+    aibsmax  DEFENSE 0.4 first, PRODUCTION 0.6: PRODUCTION runs -> no turret (mixed shares or "the first line": turrets)
+    aibstie  0.5 and 0.5: the earlier (DEFENSE) runs -> turrets
+    aibszero DEFENSE weight 0 first, PRODUCTION while the opening is not done (done 40 s after the wake): no turret
+             before, then every weight 0 -> the first line (DEFENSE) -> turrets ("keep the budget it had": none)
+
+    RESULTS i (bench 2026-11-13, B round 178, work/logs/b178_bench.log in the B worktree, all three PASS):
+      aibsmax 塔在基地 0 s1-s171; aibstie 0 to s27, 1 from s29, then one every ~20 s (5 from s109);
+      aibszero 0 to s67 (the opening done at s50), 1 from s69, 5 from s149. The simulator: none / s32 / s71."""
+    t = Test()
+    s1 = m.player('s1')
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    x, y = m.site('east base')
+    t.areas[ANY] = square(x, y, 1500.0)
+    counted('CNV_AT_Any', '塔在基地', t, template=m.cnv_turret, area=ANY, player=s1)
+    wake, end = m.facts['wake at'], m.facts['wake at'] + m.facts.get('watch', LONG)
+    weights = [w for _, w, _ in m.cnv_bsets]
+    if 'opening' in weights:                # aibszero
+        done = wake + m.facts['opening']
+        t.expect += [('塔在基地', wake + 5, '<=', 0, done), ('塔在基地', done, 'ever>=', 1, end)]
+    elif float(weights[1]) > float(weights[0]):     # aibsmax: the second (PRODUCTION) is larger
+        t.expect += [('塔在基地', wake + 5, '<=', 0, end)]
+    else:                                   # aibstie: the first (DEFENSE) holds the tie
+        t.expect += [('塔在基地', wake + 5, 'ever>=', 1, end)]
+    t.bench = [('bench_watch', dict(seconds=end + LAG, every=2, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+CHECKS = {k: {'a': a, 'b': b, 'c': c, 'd': d, 'e': e, 'f': f, 'g': g, 'h': h, 'i': i}
           for k in ('aitower50', 'aitower75', 'aitower100', 'aitowerstate', 'aitowerfoe',
                    'aitowerdep', 'aitowerinc', 'aitoweropen', 'aitowerinc10', 'aitowerinc5', 'aitowerinc10r',
-                   'aicheat2', 'aicheat1', 'aibsprod')}
+                   'aicheat2', 'aicheat1', 'aibsprod', 'aibsmax', 'aibstie', 'aibszero')}

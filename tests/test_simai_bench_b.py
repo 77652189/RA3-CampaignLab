@@ -692,3 +692,24 @@ def test_after_s110_the_unit_capped_army_grows_again(lib):
     """checks/engine_aiskirm.py aiskuc uc: 兵数 10 from s132."""
     _, rows = _probe_run('aiskuc', lib, 140.0, check='uc')
     assert max(r['兵数'] for r in rows) >= 8
+
+
+# ---- checks/engine_aitower.py i (B round 178, work/re d122_ai_rules.md 1 R1-R3): one budget state runs, the heaviest
+def test_the_heavier_budget_state_runs_alone_though_listed_second(lib):
+    """aibsmax: DEFENSE 100 % at weight 0.4 first, PRODUCTION 100 % at 0.6 -- PRODUCTION runs, no turret with 20000
+    (mixed shares would give DEFENSE 40 %; "the first line" all of it)."""
+    _, rows = _probe_run('aibsmax', lib, 150.0, check='i')
+    assert all(r['塔在基地'] == 0 for r in rows)
+
+
+def test_a_tie_between_budget_states_goes_to_the_earlier_line(lib):
+    """aibstie: both 0.5, DEFENSE first -- turrets."""
+    _, rows = _probe_run('aibstie', lib, 150.0, check='i')
+    assert max(r['塔在基地'] for r in rows) >= 1
+
+
+def test_when_every_budget_state_weighs_0_the_first_line_runs(lib):
+    """aibszero: DEFENSE weight 0 first, PRODUCTION while the opening runs (done 40 s after the wake at 10 s): no turret
+    before s50, then every weight is 0 and the first line (DEFENSE) runs -- turrets."""
+    _, rows = _probe_run('aibszero', lib, 150.0, check='i')
+    assert all(r['塔在基地'] == 0 for r in rows[:50]) and max(r['塔在基地'] for r in rows) >= 1

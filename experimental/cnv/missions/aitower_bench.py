@@ -51,13 +51,28 @@ RICH, RICH_WATCH = 20000, 150.0             # aitowerinc10r: the bank 20000 at t
 CHEAT_WATCH = 90.0                          # aicheat*: ~7 miner trips after the wake
 CHEAT = {'aicheat2': (('200%', 'MEDIUM'),),
          'aicheat1': (('300%', 'EASY HARD BRUTAL'), ('100%', 'MEDIUM'))}
-INC10_WATCH = 420.0                       # aitowerinc10 (DEFENSE 10%): long enough for a second turret
 
 
-def _budget(defense=50):
-    return f'''  <AIBudgetStateDefinition id="{BUDGET_ID}">
+INC10_WATCH = 420.0                         # aitowerinc10 (DEFENSE 10%): long enough for a second turret
+# B round 178 (work/re d122_ai_rules.md 1, R1-R3): two budget states of the probe's own, in this list order:
+# (id, heuristic, DEFENSE %); heuristic = a ConstantHeuristic Weight, or 'opening' (OpeningMoveHeuristic
+# Complete=false: holds until the opening is done). DEFENSE 100 % buys turrets with the bank; PRODUCTION 100 % buys
+# nothing (no unit build state left), so a turret says which state runs.
+BS_DEF, BS_PROD = 'CNVBsDef', 'CNVBsProd'
+BSETS = {'aibsmax': ((BS_DEF, '0.4', 100), (BS_PROD, '0.6', 0)),      # R1: the larger, though second -> 0 turrets
+         'aibstie': ((BS_DEF, '0.5', 100), (BS_PROD, '0.5', 0)),      # R2: a tie -> the earlier -> turrets
+         'aibszero': ((BS_DEF, '0', 100), (BS_PROD, 'opening', 0))}   # R3: PROD until the opening ends, then all 0
+ZERO_OPENING = 40.0                         # aibszero: the opener's one Time order, 40 s after the wake
+
+
+def _budget(defense=50, bid=BUDGET_ID, heuristic=None):
+    if heuristic == 'opening':
+        h = '<OpeningMoveHeuristic Complete="false"/>'
+    else:
+        h = '<ConstantHeuristic/>' if heuristic is None else f'<ConstantHeuristic Weight="{heuristic}"/>'
+    return f'''  <AIBudgetStateDefinition id="{bid}">
     <Heuristic>
-      <ConstantHeuristic/>
+      {h}
     </Heuristic>
     <Budget>
       <AccountShare Account="PRODUCTION" Percent="{100 - defense}%"/>
@@ -67,19 +82,22 @@ def _budget(defense=50):
   </AIBudgetStateDefinition>'''
 
 
-def _opener(build=True, empty=False):
+def _opener(build=True, empty=False, wait=0):
     # as retail AIOpener_A08_AlliedSpecialForces: a deposit, then the build; the trailing Time order ends the opening.
     # build=False: the deposit only, to DEFENSE (the build state spends it, if it builds at all)
     # empty=True: one Time 0s order and nothing else -- an opening that is done at once
     account = 'PRODUCTION' if build else 'DEFENSE'
     order = [f'    <Order Build="{TURRET}" />'] if build else []
-    body = (['    <Order Time="0s"/>'] if empty else
+    # wait (aibszero): the empty opener's one Time order -- the opening is done that many seconds after the wake
+    body = ([f'    <Order Time="{wait:g}s"/>'] if empty else
             [f'    <Order Time="0s" Account="{account}" Deposit="{OPENER_DEPOSIT}" />', *order, '    <Order Time="90s"/>'])
     return '\n'.join([f'  <SkirmishOpeningMove id="{OPENER}" Side="PlayerTemplate:Allies">', *body,
                       '  </SkirmishOpeningMove>'])
 
 
-def personality_xml(compactness, opener=False, build=True, empty=False, defense=50, cheat=(), state=BUDGET_ID):
+def personality_xml(compactness, opener=False, build=True, empty=False, defense=50, cheat=(), state=BUDGET_ID,
+                    bsets=(), wait=0):
+    # bsets (aibs*): ((id, heuristic, DEFENSE %), ...) -- several own budget states, their BudgetState lines in order
     # empty=True: the empty opener (_opener) with this probe's own budget, not the retail ones
     # cheat: ((Percentage, Difficulty), ...) -- the personality's own ResourceMultiplierCheat lines (aicheat*)
     removed = [f'    <StrategicState id="{k}" xai:joinAction="Remove"/>' for k in ab.INHERITED]
@@ -92,6 +110,9 @@ def personality_xml(compactness, opener=False, build=True, empty=False, defense=
         removed += [f'    <BudgetState id="{k}" xai:joinAction="Remove"/>' for k in BUDGETS]
         # state (aibsprod): the line's State names another budget definition than the own one (still declared)
         own, budget = [_budget(defense)], [f'    <BudgetState id="{BUDGET_ID}" State="{state}"/>']
+        if bsets:
+            own = [_budget(d, b, h) for b, h, d in bsets]
+            budget = [f'    <BudgetState id="{b}" State="{b}"/>' for b, _, _ in bsets]
     return '\n'.join([
         '<?xml version="1.0" encoding="utf-8"?>',
         '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
@@ -101,7 +122,7 @@ def personality_xml(compactness, opener=False, build=True, empty=False, defense=
         f'    <Include type="instance" source="DATA:SkirmishAI/Personalities/{ab.BASE}.xml" />',
         '  </Includes>',
         *own,
-        *([_opener(build, empty)] if opener or empty else []),
+        *([_opener(build, empty, wait)] if opener or empty else []),
         f'  <AIPersonalityDefinition id="{PID}" PersonalityType="{PID}" inheritFrom="{ab.BASE}"'
         f' BaseCompactness="{compactness}">',
         *first,
@@ -113,8 +134,10 @@ def personality_xml(compactness, opener=False, build=True, empty=False, defense=
 
 
 def mission(name, compactness, opener=True, foes=0, build=True, empty=False, refinery=False, defense=50,
-            watch=None, money=MONEY, cheat=(), state=BUDGET_ID):
+            watch=None, money=MONEY, cheat=(), state=BUDGET_ID, bsets=(), wait=0):
     facts = {'wake at': WAKE_AT, 'money': money}
+    if wait:
+        facts['opening'] = wait             # engine_aitower i: the opening is done this long after the wake
     if watch:
         facts['watch'] = watch              # how long checks/engine_aitower.py e watches after the wake
     m = Mission(name=name, map=resources.measured(niagara), facts=facts)
@@ -122,9 +145,11 @@ def mission(name, compactness, opener=True, foes=0, build=True, empty=False, ref
     m.cnv_turret = TURRET                   # what the check counts (checks ask the mission, not this module)
     # the income multiplier predicted at the bench's MEDIUM: the MEDIUM line's Percentage (engine_aitower g)
     m.cnv_state = state                     # engine_aitower h: which budget definition the one BudgetState names
+    m.cnv_bsets = bsets                     # engine_aitower i: the budget states, in list order
     m.cnv_cheat = next((float(p.rstrip('%')) / 100 for p, d in cheat if 'MEDIUM' in d.split()), 1.0)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{PID}'}
-    m.assets.append((f'{PID}.xml', personality_xml(compactness, opener, build, empty, defense, cheat, state),
+    m.assets.append((f'{PID}.xml', personality_xml(compactness, opener, build, empty, defense, cheat, state,
+                                                   bsets, wait),
                       f'AIPersonalityDefinition:{PID}'))
     s1 = m.player('s1')
     m.put('AlliedConstructionYard', 'east base', 0, 0, side='s1', name='UNIT - CNV AI Yard', role='ai yard')
@@ -172,6 +197,13 @@ MISSION = {'aitower50': lambda: mission('CampAITow50', 0.5),
            # BudgetState line naming retail ProductionOnlyBudget (opening done -> PRODUCTION 100 %, DEFENSE 0 %)
            'aibsprod': lambda: mission('CampAIBSProd', 0.5, opener=False, refinery=True, watch=RICH_WATCH,
                                        money=RICH, state='ProductionOnlyBudget'),
+           # B round 178: which budget state runs (d122 R1-R3) -- as aibsprod (refinery, 20000), two own states
+           'aibsmax': lambda: mission('CampAIBSMax', 0.5, opener=False, refinery=True, watch=RICH_WATCH, money=RICH,
+                                      bsets=BSETS['aibsmax']),
+           'aibstie': lambda: mission('CampAIBSTie', 0.5, opener=False, refinery=True, watch=RICH_WATCH, money=RICH,
+                                      bsets=BSETS['aibstie']),
+           'aibszero': lambda: mission('CampAIBSZero', 0.5, opener=False, empty=True, refinery=True,
+                                       watch=RICH_WATCH, money=RICH, bsets=BSETS['aibszero'], wait=ZERO_OPENING),
            'aicheat2': lambda: mission('CampAICheat2', 0.5, opener=False, refinery=True, defense=0,
                                        watch=CHEAT_WATCH, cheat=CHEAT['aicheat2']),
            'aicheat1': lambda: mission('CampAICheat1', 0.5, opener=False, refinery=True, defense=0,
