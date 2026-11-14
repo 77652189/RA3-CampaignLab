@@ -1203,13 +1203,48 @@ def ib(m):
     return t
 
 
+ORE = (('东矿', (4225.0, 3040.0)), ('东北矿', (3400.0, 1300.0)), ('西南矿', (1177.0, 3797.0)),
+       ('北矿', (2127.0, 1113.0)), ('西矿', (950.0, 1985.0)))   # the map's five ore groups (niagara, measured)
+ORE_HALF = 600.0                      # half the square counted around a group (the groups are >= ~1280 apart)
+
+
+def rp(m):
+    """Where s1's refineries stand (B round 186: RefineryPlacement's far rings gave a third refinery, aiskinp ib --
+    which of StartDistanceDelta 1000 / NumberOfIncreaseTicksBeforeGivingUp 0 does it, and at which ore). 建筑码 as
+    ib; 矿区码 = refineries in a square around each ore group, 东 x1 + 东北 x10 + 西南 x100 + 北 x1000 (each to 3);
+    西矿 = the player's own group; AI钱 every frame. To 230 s after the wake."""
+    t = Test()
+    s1, p1 = m.player('s1'), m.player('p1')
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', p1)]))
+    _sum(t, m, s1, 'CNV_AK_RpKind', '建筑码', KINDS, weights=(1, 10, 100, 1000), cap=9)
+    m.spawns.add('AlliedRefinery')
+    for c, lab, groups in (('CNV_AK_RpOre', '矿区码', ORE[:4]), ('CNV_AK_RpWest', '西矿', ORE[4:])):
+        t.counters.append((c, lab))
+        t.scripts.append(Script(f'Test - {c} zero', [], [('SET_COUNTER', c, 0)], once=False))
+        for i, (name, (x, y)) in enumerate(groups):
+            area = f'Test Ore {c} {i}'
+            t.areas[area] = square(x, y, ORE_HALF)
+            for n in range(1, 4):
+                t.scripts.append(Script(f'Test - {c} {i} >= {n}', [
+                    ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', s1, 3, n, 'AlliedRefinery', area)],
+                    [('INCREMENT_COUNTER', 10 ** i, c)], once=False))
+    t.counters.append(('CNV_AK_Money', 'AI钱'))
+    t.scripts.append(Script('Test - money', [], [('SET_PLAYER_MONEY_TO_COUNTER', s1, 'CNV_AK_Money')], once=False))
+    w = m.facts['wake at']
+    t.expect += [('建筑码', w + 100.0, 'ever>=', 1, w + 230.0)]
+    t.bench = [('bench_watch', dict(seconds=w + 234.0, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j': j, 'k': k, 'l': l, 'm': m,
-                      'n': n, 'o': o, 'p': p, 'q': q, 'r': r, 'u': u, 'x': x, 'et': et, 'ib': ib},
+                      'n': n, 'o': o, 'p': p, 'q': q, 'r': r, 'u': u, 'x': x, 'et': et, 'ib': ib, 'rp': rp},
           'aiskinb': {'ib': ib},
           'aiskinc': {'ib': ib},
           'aiskind': {'ib': ib},
           'aiskine': {'ib': ib},
-          'aiskinp': {'ib': ib},
+          'aiskinp': {'ib': ib, 'rp': rp},
+          'aiskin1': {'rp': rp},
+          'aiskin0': {'rp': rp},
           'aiskins': {'ib': ib},
           'aiskmtp': {'mt': mt},
           'aiskirmc': {'l': l, 'm': m, 'u': u},  # opt-in carrier diagnostic; stock aiskirm stays unchanged

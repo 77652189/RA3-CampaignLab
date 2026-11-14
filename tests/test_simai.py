@@ -25,6 +25,19 @@ RIPTIDE_SLACK = 7       # simai HOOKS 1: the AI is ticked after a DT tick (7-8 f
                         # left the door starts up to a tick late; known difference, not a fit
 
 
+def test_the_model_checkout_holds_the_pinned_commit():
+    """simai runs the model's working tree (labpaths.ENGINE_MODEL), not the commit inventory_model.rev pins: a model
+    pushed from another worktree and never pulled into this one left B round 182's POWER / TECH entries out, and two
+    power-plant tests went red on main with no change of ours (B round 186). Behind the pin -> say so, not a red."""
+    import subprocess
+    root = simai.labpaths.ENGINE_MODEL
+    pin = (ROOT / 'experimental' / 'cnv' / 'inventory_model.rev').read_text().strip()
+    got = subprocess.run(['git', '-C', root, 'merge-base', '--is-ancestor', pin, 'HEAD'], capture_output=True)
+    if got.returncode not in (0, 1):
+        pytest.skip(f'the pinned commit is not in {root} (not fetched, or not a git checkout)')
+    assert got.returncode == 0, f'{root} is behind the pinned model {pin[:7]}: git -C {root} pull --ff-only'
+
+
 @pytest.fixture(scope='module')
 def lib():
     return simai.model()['xmldata'].Library()

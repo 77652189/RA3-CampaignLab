@@ -545,7 +545,8 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
         m.assets.append((f'{INERT_PID}.xml', inert_xml(), f'AIPersonalityDefinition:{INERT_PID}'))
     if inert2:                           # aiskinc / aiskind / aiskine (check ib): INERT2 fields at extremes
         fields = {True: INERT2, 'radius': INERT2[3:4], 'rest': INERT2[:3] + INERT2[4:],
-                  'place': INERT2[:3], 'seven': INERT2[4:]}[inert2]
+                  'place': INERT2[:3], 'seven': INERT2[4:],
+                  'start': INERT2[:1], 'ticks': INERT2[2:3]}[inert2]
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{INERT2_PID}'
         m.assets.append((f'{INERT2_PID}.xml', inert_xml(fields, INERT2_PID), f'AIPersonalityDefinition:{INERT2_PID}'))
     if buffer is not None:               # aiskpw0 / aiskpw3 (check x): DesiredExcessPowerBuffer = buffer
@@ -667,6 +668,8 @@ MISSION = {'aiskirm': mission, 'aiskirmc': lambda: mission(observe=True),
            'aiskine': lambda: mission('CampAISkInE', inert2='rest'),    # check ib: the other ten of INERT2
            'aiskinp': lambda: mission('CampAISkInP', inert2='place'),   # check ib: the three RefineryPlacement only
            'aiskins': lambda: mission('CampAISkInS', inert2='seven'),   # check ib: Cleanup, Coop, beacons, emergencies
+           'aiskin1': lambda: mission('CampAISkIn1', inert2='start'),   # check rp: StartDistanceDelta 1000 only
+           'aiskin0': lambda: mission('CampAISkIn0', inert2='ticks'),   # check rp: ...IncreaseTicksBeforeGivingUp 0 only
            'aiskmod': lambda: mission('CampAISkMod', umod=UMOD_ZERO),     # check q: SecondsTillTargetsExpire 12, not 5   # s1 without the container's Lib_Skirmish_Setup
            'aiskacp': lambda: mission('CampAISkAcP', account='PRODUCTION'),    # check v: the rebuilt AI, retail Account
            'aiskacd': lambda: mission('CampAISkAcD', account='DEFENSE'),
