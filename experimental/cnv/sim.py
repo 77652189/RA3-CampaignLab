@@ -1195,6 +1195,8 @@ class Sim:
         self.unshot = {u.id for u in self.mm.units if 'lifetime' in (getattr(u, 'params', None) or {})}
         self.seen = {}                      # this tick: (side, id(body)) -> whether that side sees it
         self.firing = []                    # this tick's aimed fire: (target, damage per second, shooter) (fight, deal)
+        self.mid_aims = {}                  # id -> (second, body): an attack-mover that got in range mid-tick (move)
+        self._field = ((), (), ())          # this tick's fight_field (fight)
         self.first_death = None             # (t, body, killer): the fight's first death
         self.death_blasts = []              # (frame, x, y, damage, type, radius, affects, owner, by): FireWeaponWhenDead
         self.sweeps = simsweep.Sweeps(self)  # ActivateLinearDamageNugget + LinearDamageUpdate: the lines walking
@@ -4414,6 +4416,8 @@ class Sim:
                     self.move()
             if self.shot_clock:
                 self.move(1.0 / self.fps)
+            if self.mid_aims and self.combat and self.ending is None:
+                self.aim_due()
             if self.combat and self.ending is None:
                 self.deal(1.0 / self.fps)       # R6: the aimed fire frame by frame, after the frame's scripts
         self.t = t0
@@ -4746,20 +4750,10 @@ class Sim:
         self.firing = []
         self.volleys = []
         self.chilling = []
+        self.mid_aims = {}
         self._fire_obstacles = None             # `shot_blocked`'s footprints, taken once a tick when first asked
-        live = [b for b in self.living() if not b.scenery and self.on_map(b)]     # off the border: out of the fight
-        flying = self.__dict__.get('impact_flights', {})
-        # a knocked body fires its kept order lying (landing hold: feet only), not in the air (Physics P4, bench 11-11
-        # engine_knock_probe fire: first hit ~300-316, the landing 300; bench 11-11 engine_knock_water farfire: ~20 up
-        # and in 2-D reach for frames ~182..196, no fire in the air)
-        armed = [b for b in live if b.weapons and 'NO_ATTACK' not in b.status    # NO_ATTACK: holds its fire
-                 and id(b) not in flying
-                 and not getattr(b, 'ground_fire', None)     # NAMED_FORCE_ATTACK_WAYPOINT: busy at the ground
-                 and not self.emp_disabled(b) and not self.unpowered(b)
-                 and not self.infiltrators.attack_blocked(b)
-                 and not (b.hold_fire and (b.hold_paused or not isinstance(b.goal, Body)))]
-        cloaked = self.cloaked(live)
-        targets = [b for b in live if 'UNATTACKABLE' not in b.status and id(b) not in cloaked]
+        live, armed, targets = self.fight_field()
+        self._field = (live, armed, targets)
         if not armed or not targets:
             return
         aimable = {id(t) for t in targets}
@@ -4776,60 +4770,11 @@ class Sim:
             a.engaged = False
             if self.held_up(a):                 # stopped short on a plain move: still moving (DEMO_KILL)
                 continue
-            foes =[k for k, t in enumerate(targets) if t is not a and self.hostile(a, t)]
-            if not foes:
+            got = self.aim(a, targets, aimable, tx, ty)
+            if got is None:
                 self.chase_step(a, False, [])
                 continue
-            idx = np.array(foes)
-            d = np.hypot(tx[idx] - a.x, ty[idx] - a.y)
-            pad = max(targets[k].radius for k in foes)          # the biggest foe's radius: the scan's cut-off (R8)
-            fired = False
-            for w in a.weapons:
-                order = np.argsort(d, kind='stable')    # ties (two foes made on one point) by list order: the
-                pick = None                              # default quicksort broke them by the array's length (a4 r121)
-                if isinstance(a.goal, Body) and a.goal.alive and id(a.goal) in aimable and \
-                        self.in_range(a, a.goal, w) and self.can_hit(w, a.goal) and \
-                        self.side_sees(a.owner, a.goal) and not self.shot_blocked(a, a.goal, w):
-                    pick = a.goal
-                elif self.auto_acquires(a):
-                    for j in order:
-                        if d[j] - a.radius - pad > w['range']:      # sorted by centre: nobody nearer after this
-                            break
-                        t = targets[idx[j]]
-                        if not self.in_range(a, t, w, d[j]):
-                            continue
-                        if t.template in self.unshot or not self.takes_by_itself(a, t) or \
-                                'NON_AUTOACQUIRABLE' in t.status:
-                            continue                # a building / our ice: only when ordered (takes_by_itself)
-                        if self.can_hit(w, t) and self.side_sees(a.owner, t) and not self.shot_blocked(a, t, w):
-                            pick = t
-                            break
-                if pick is None:
-                    continue
-                if a.vision and w['range'] > a.vision:
-                    a.fired_at = self.t                 # a bombarder firing shows itself
-                for effect in w.get('unmodeled_effects', []):
-                    self.gap(GAP_WEAPON, effect, '武器第1轮尚未解释此效果的筛选、几何或时序')
-                if not self.shot_clock and (w.get('hit_modifiers') or w.get('line') or w.get('strip_max_health') or w.get('emp_seconds')
-                                           or w.get('sweep') or w.get('contained') or w.get('dot') or w.get('special_powers') or w.get('attach') or w.get('lift') or w.get('meta_impacts')):
-                    self.gap(GAP_WEAPON, 'weapon effects', '逐发武器效果仅在离散命中时钟中模拟')
-                if w['dps'] or w.get('suppression') or (self.shot_clock and (w.get('sdps') or w.get('dot') or w.get('special_powers') or w.get('attach') or w.get('lift') or w.get('meta_impacts'))):
-                    if 'sched' in w and self.shot_clock:
-                        self.volleys.append((pick, w, a))
-                    else:
-                        # Continuous DPS has no individual hit events. Do not run a second
-                        # clip clock just for pressure (A4 guardians falsely suppressed at F1980).
-                        if w.get('suppression'):
-                            self.gap(GAP_WEAPON, 'SuppressionNugget',
-                                     '连续DPS没有逐发命中事件；压制贡献仅在离散命中时钟中模拟')
-                        self.firing.append((pick, w['dps'] * a.dealt * (1.0 if w['type'] == 'UNRESISTABLE' else
-                                            simunits.percent(pick.armor, w['type']) / 100.0 * pick.taken)
-                                            * self.flank_of(pick, a), a))
-                if w.get('sdps') and not self.shot_clock:
-                    self.chilling.append((pick, w['sdps'] * a.dealt, a))
-                fired = True
-                if a.mode == 'attack':
-                    a.engaged = True
+            fired, d, idx = got
             g = a.goal
             if not fired and isinstance(g, Body) and g.alive and not a.path and id(g) in aimable and \
                     (a.spot is None or a.spot[0] != id(g) or math.hypot(g.x - a.spot[1], g.y - a.spot[2]) > 150) and \
@@ -4848,6 +4793,148 @@ class Sim:
             self.used.add('freeze')
         if self.eng is None:                    # no frames: the tick's damage at once
             self.deal(DT)
+
+    def fight_field(self):
+        """(live, armed, targets) for this moment's fight: who is in it, who can fire, who can be shot."""
+        live = [b for b in self.living() if not b.scenery and self.on_map(b)]     # off the border: out of the fight
+        flying = self.__dict__.get('impact_flights', {})
+        # a knocked body fires its kept order lying (landing hold: feet only), not in the air (Physics P4, bench 11-11
+        # engine_knock_probe fire: first hit ~300-316, the landing 300; bench 11-11 engine_knock_water farfire: ~20 up
+        # and in 2-D reach for frames ~182..196, no fire in the air)
+        armed = [b for b in live if b.weapons and 'NO_ATTACK' not in b.status    # NO_ATTACK: holds its fire
+                 and id(b) not in flying
+                 and not getattr(b, 'ground_fire', None)     # NAMED_FORCE_ATTACK_WAYPOINT: busy at the ground
+                 and not self.emp_disabled(b) and not self.unpowered(b)
+                 and not self.infiltrators.attack_blocked(b)
+                 and not (b.hold_fire and (b.hold_paused or not isinstance(b.goal, Body)))]
+        cloaked = self.cloaked(live)
+        targets = [b for b in live if 'UNATTACKABLE' not in b.status and id(b) not in cloaked]
+        return live, armed, targets
+
+    def aim(self, a, targets, aimable, tx, ty):
+        """`a`'s pick for each of its weapons where it stands (fight): the aimed fire into self.firing / volleys /
+        chilling, engaged when it is attack-moving. None: no foe at all; else (fired, the foes' centre distances,
+        their indexes in targets)."""
+        foes = [k for k, t in enumerate(targets) if t is not a and self.hostile(a, t)]
+        if not foes:
+            return None
+        idx = np.array(foes)
+        d = np.hypot(tx[idx] - a.x, ty[idx] - a.y)
+        pad = max(targets[k].radius for k in foes)          # the biggest foe's radius: the scan's cut-off (R8)
+        fired = False
+        for w in a.weapons:
+            order = np.argsort(d, kind='stable')    # ties (two foes made on one point) by list order: the
+            pick = None                              # default quicksort broke them by the array's length (a4 r121)
+            if isinstance(a.goal, Body) and a.goal.alive and id(a.goal) in aimable and \
+                    self.in_range(a, a.goal, w) and self.can_hit(w, a.goal) and \
+                    self.side_sees(a.owner, a.goal) and not self.shot_blocked(a, a.goal, w):
+                pick = a.goal
+            elif self.auto_acquires(a):
+                for j in order:
+                    if d[j] - a.radius - pad > w['range']:      # sorted by centre: nobody nearer after this
+                        break
+                    t = targets[idx[j]]
+                    if not self.in_range(a, t, w, d[j]):
+                        continue
+                    if t.template in self.unshot or not self.takes_by_itself(a, t) or \
+                            'NON_AUTOACQUIRABLE' in t.status:
+                        continue                # a building / our ice: only when ordered (takes_by_itself)
+                    if self.can_hit(w, t) and self.side_sees(a.owner, t) and not self.shot_blocked(a, t, w):
+                        pick = t
+                        break
+            if pick is None:
+                continue
+            if a.vision and w['range'] > a.vision:
+                a.fired_at = self.t                 # a bombarder firing shows itself
+            for effect in w.get('unmodeled_effects', []):
+                self.gap(GAP_WEAPON, effect, '武器第1轮尚未解释此效果的筛选、几何或时序')
+            if not self.shot_clock and (w.get('hit_modifiers') or w.get('line') or w.get('strip_max_health') or w.get('emp_seconds')
+                                       or w.get('sweep') or w.get('contained') or w.get('dot') or w.get('special_powers') or w.get('attach') or w.get('lift') or w.get('meta_impacts')):
+                self.gap(GAP_WEAPON, 'weapon effects', '逐发武器效果仅在离散命中时钟中模拟')
+            if w['dps'] or w.get('suppression') or (self.shot_clock and (w.get('sdps') or w.get('dot') or w.get('special_powers') or w.get('attach') or w.get('lift') or w.get('meta_impacts'))):
+                if 'sched' in w and self.shot_clock:
+                    self.volleys.append((pick, w, a))
+                else:
+                    # Continuous DPS has no individual hit events. Do not run a second
+                    # clip clock just for pressure (A4 guardians falsely suppressed at F1980).
+                    if w.get('suppression'):
+                        self.gap(GAP_WEAPON, 'SuppressionNugget',
+                                 '连续DPS没有逐发命中事件；压制贡献仅在离散命中时钟中模拟')
+                    self.firing.append((pick, w['dps'] * a.dealt * (1.0 if w['type'] == 'UNRESISTABLE' else
+                                        simunits.percent(pick.armor, w['type']) / 100.0 * pick.taken)
+                                        * self.flank_of(pick, a), a))
+            if w.get('sdps') and not self.shot_clock:
+                self.chilling.append((pick, w['sdps'] * a.dealt, a))
+            fired = True
+            if a.mode == 'attack':
+                a.engaged = True
+        return fired, d, idx
+
+    def range_targets(self, b):
+        """For move: the foes an attack-mover on its way would stop for, [(foe, the centre distance it fires
+        from)], out of reach where it stands (the tick's fight found nothing for it); None when it does not stop
+        for any (not attack-moving, not in the tick's fight, no frames). Bench 2026-11-10 engine_wayatk team (A
+        round 230): the tanks get in range mid-tick; held for the next tick's fight they hit a tick late (s7, the
+        bench s4: LAG 2). Generals AIAttackMoveToState looks for a target every frame its attack machine is idle.
+        The same picks as aim's (the order's target, or one it takes by itself); INFERRED: the foe stands still for
+        the tick, the line of fire is taken where it would stop."""
+        if (self.eng is None or not self.combat or b.mode != 'attack' or b.engaged or b.speed <= 0
+                or not any(a is b for a in self._field[1])):
+            return None
+        out = []
+        for t in self._field[2]:
+            if t is b or not t.alive or not self.hostile(b, t) or not self.side_sees(b.owner, t):
+                continue
+            ordered = isinstance(b.goal, Body) and b.goal is t
+            if not ordered and (t.template in self.unshot or not self.takes_by_itself(b, t)
+                                or 'NON_AUTOACQUIRABLE' in t.status):
+                continue
+            for w in b.weapons:
+                if self.can_hit(w, t) and not self.in_range(b, t, w):
+                    out.append((t, w, w['range'] + b.radius + t.radius))
+        return out
+
+    def range_entry(self, b, reach, tx, ty, length):
+        """How far b goes toward (tx, ty), at most `length`, before a foe of range_targets is in range and its line
+        of fire is clear from there; None: none on this stretch. It stops a hair inside (fight's in_range holds)."""
+        dx, dy = (tx - b.x) / math.hypot(tx - b.x, ty - b.y), (ty - b.y) / math.hypot(tx - b.x, ty - b.y)
+        hits = []
+        for t, w, r in reach:
+            r -= 1e-6
+            fx, fy = b.x - t.x, b.y - t.y
+            half = fx * dx + fy * dy                    # |f + s u| = r: s^2 + 2 half s + (|f|^2 - r^2) = 0
+            c = fx * fx + fy * fy - r * r
+            disc = half * half - c
+            if c <= 0 or disc < 0:
+                continue
+            s = -half - math.sqrt(disc)
+            if 0 <= s <= length:
+                hits.append((s, t, w))
+        x, y = b.x, b.y
+        try:
+            for s, t, w in sorted(hits, key=lambda h: h[0]):
+                b.x, b.y = x + dx * s, y + dy * s
+                if not self.shot_blocked(b, t, w):
+                    return s
+        finally:
+            b.x, b.y = x, y
+        return None
+
+    def aim_due(self):
+        """The attack-movers move stopped in range mid-tick aim from their frame (aim), not the next tick's."""
+        for key, (at, b) in list(self.mid_aims.items()):
+            if self.t < at - 1e-9:
+                continue
+            del self.mid_aims[key]
+            if not b.alive or b.engaged:
+                continue
+            targets = [t for t in self._field[2] if t.alive]
+            if not targets:
+                continue
+            self.aim(b, targets, {id(t) for t in targets},
+                     np.array([t.x for t in targets]), np.array([t.y for t in targets]))
+            if self.firing or self.volleys:
+                self.used.add('combat')
 
     def cloaked(self, live):
         """ids of the bodies an InvisibilityBroadcastUpdate hides this tick (simunits.invis_broadcast; engine line C
@@ -6069,6 +6156,7 @@ class Sim:
                 left = b.drive_speed * (dt - spent)
             walked = left
             x0, y0 = b.x, b.y
+            reach = None if precise else self.range_targets(b)
             while left > 0 and b.path:
                 tx, ty = b.path[0]
                 d = math.hypot(tx - b.x, ty - b.y)
@@ -6080,6 +6168,14 @@ class Sim:
                     if self.at_site(b, walked - left):
                         break
                     continue
+                if reach and d > 0:                         # an attack-mover stops where it gets a foe in range
+                    s = self.range_entry(b, reach, tx, ty, min(d, left))
+                    if s is not None:
+                        b.x += (tx - b.x) * s / d
+                        b.y += (ty - b.y) * s / d
+                        left -= s
+                        self.mid_aims[id(b)] = (self.t + max(spent + (walked - left) / b.speed - extra, 0.0), b)
+                        break
                 if d <= left:
                     b.x, b.y, left = tx, ty, left - d
                     b.path.pop(0)
