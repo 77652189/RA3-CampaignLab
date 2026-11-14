@@ -119,5 +119,72 @@ def all_(m):
     return t
 
 
-MISSION = {'engine_acts_mix': mission}
-CHECKS = {'engine_acts_mix': {'all': all_}}
+BOMBER = 'CAMP_AlliedBomberAircraft_Infantry_1'
+# the drop (round 225): store -> (x, y, side, its spot); the retail stores are all a computer player's (j04 Allied01,
+# j05 Allied04, j07 Allies01, s08 Allies02, s09 Allies01 / 03, ep01 Allied03), round 224's was the human player's
+DROPS = {'DP': (2400.0, 4300.0, 'p1', (2400.0, 4700.0)), 'DS': (3600.0, 4000.0, 's4', (3600.0, 4700.0)),
+         'DA': (1200.0, 4000.0, 's5', (1200.0, 4700.0))}
+LATE = 12.0
+
+
+def drop_mission(allied=False):
+    """engine_acts_drop: s4 / s5 as the map has them (Soviet); engine_acts_ally: both PlayerTemplate:Allies (the
+    retail stores' owners are all Allied players)."""
+    m = Mission(name='CampActsAlly' if allied else 'CampActsDrop', map=probe_border, units=[], facts={})
+    if allied:
+        for side in ('s4', 's5'):
+            m.sides[side] = dict(m.sides.get(side, {}), playerFaction='PlayerTemplate:Allies')
+    m.spawns |= {'CAMP_PowerStore_AlliedBomberDrop', BOMBER, GI, JAV}
+    for row, (x, y, side, (sx, sy)) in DROPS.items():
+        m.put('CAMP_PowerStore_AlliedBomberDrop', 'stop row', x - O[0], y - O[1], side=side, angle=0.0, name=_n(row),
+              role=row.lower())
+        m.waypoint(f'spot {row}', f'CNV A12 Spot {row}', 'stop row', sx - O[0], sy - O[1])
+    return m
+
+
+def own(m):
+    """Three stores, each its own owner and spot (400-700 north), one hypothesis each:
+      DP (p1)  Command_CAMPAlliedBomberDrop2 at 3 s and again at 12 s (ReloadTime 0) -- a start-of-game gate?
+      DS (s4)  NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT specialpowercampalliedbomberdrop2 at 12 s (j04's other way)
+      DA (s5)  UNIT_AI_TRANSFER 1 at 0.1 s (j04's setup), the button at 12 s
+    Counters:
+      机 = the player's bombers anywhere (0-2) + 10 x s4's + 100 x s5's
+      兵 / 敌 / 援 = GIs round DP's / DS's / DA's spot (0-6) + 10 x Javelins (0-4)
+    BENCH 11-14 (round 225, run_queue), every counter 0 every second, in all five runs -- nothing came:
+      1 engine_acts_mix:all keep (MCP): the camera on the spot and the store at 29-35 s: the store drawn (the player's
+        colour), no bomber, no GI, the minimap's units unchanged s3-s12; the store cannot be selected (no hand press)
+      2 engine_acts_drop (first form: DP p1 / DS s4, the button at 3 s): 0 0 0
+      3 engine_acts_drop:own as here (3 s + 12 s, by name, AI-transferred): 0 0 0 0
+      4 engine_acts_ally:own (s4 / s5 PlayerTemplate:Allies): 0 0 0 0
+      5 engine_acts_drop:own + DP's NAMED_SET_SPECIAL_POWER_COUNTDOWN 0 at 0.1 s (engine_super's "0 makes it ready"):
+        0 0 0 0
+    Ruled out: the owner (human / computer, Soviet / Allied), the time (3 s / 12 s), the action (button / by name),
+    the AI transfer, the countdown. Not explained (work/re/handoff.md round 225's table)."""
+    t = Test()
+    s8.at(t, 'reveal', 0.1, [('MAP_REVEAL_ALL_PERM', m.player('p1')), ('UNIT_AI_TRANSFER', _n('DA'), 1),
+                             ('NAMED_SET_SPECIAL_POWER_COUNTDOWN', _n('DP'), 'SpecialPowerCAMPAlliedBomberDrop2', 0)])
+    button = lambda r: ('NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT', _n(r), 'Command_CAMPAlliedBomberDrop2',  # noqa
+                        m.mark(f'spot {r}'))
+    s8.at(t, 'press', PRESS, [button('DP')])
+    s8.at(t, 'late', LATE, [button('DP'), button('DA'),
+                            ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', _n('DS'), 'SpecialPowerCAMPAlliedBomberDrop2',
+                             m.mark('spot DS'))])
+    t.areas['Test A12 Whole'] = square(2500.0, 2500.0, 2500.0)
+    for r, (_x, _y, _side, spot) in DROPS.items():
+        t.areas[f'Test A12 Spot {r}'] = square(*spot, 400.0)
+    has = lambda side, tmpl, k, area: ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', m.player(side), 3, k,  # noqa
+                                       tmpl, area)
+    s8.total(t, 'CNV_A12_Bomb', '机', [(w, has(side, BOMBER, k, 'Test A12 Whole'))
+                                       for side, w in (('p1', 1), ('s4', 10), ('s5', 100)) for k in (1, 2)])
+    for r, counter, label in (('DP', 'CNV_A12_DropP', '兵'), ('DS', 'CNV_A12_DropS', '敌'),
+                              ('DA', 'CNV_A12_DropA', '援')):
+        side = DROPS[r][2]
+        s8.total(t, counter, label, [(w, has(side, tmpl, k, f'Test A12 Spot {r}'))
+                                     for tmpl, w, top in ((GI, 1, 6), (JAV, 10, 4)) for k in range(1, top + 1)])
+    s8.watch(t, 30.0)
+    return t
+
+
+MISSION = {'engine_acts_mix': mission, 'engine_acts_drop': drop_mission,
+           'engine_acts_ally': lambda: drop_mission(allied=True)}
+CHECKS = {'engine_acts_mix': {'all': all_}, 'engine_acts_drop': {'own': own}, 'engine_acts_ally': {'own': own}}

@@ -55,7 +55,8 @@ RETAIL_BUILD = re.compile(r'Command_Construct\w+$')
 THIS_NAMES = frozenset({'<This Object>', '<This Team>', '<This Player>'})
 # retail buildings' own special powers a script may fire / read (they publish no unit ability here)
 RETAIL_POWERS = {'SpecialPowerIronCurtain', 'SpecialPowerParticleCannon', 'SpecialPowerVacuumBomb',
-                 'SpecialPowerNanoSwarmHive', 'SpecialPowerTelekineticProjectorDevice'}            # the Soviet superweapon building's (SovietSuperWeapon, OCLSpecialPower)
+                 'SpecialPowerNanoSwarmHive', 'SpecialPowerTelekineticProjectorDevice',            # the Soviet superweapon building's (SovietSuperWeapon, OCLSpecialPower)
+                 'SpecialPowerCAMPAlliedBomberDrop2'}   # the campaign's bomber drop store (j04 fires it by name)
 
 
 def spellbook_powers():
