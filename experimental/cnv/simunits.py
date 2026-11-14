@@ -2976,6 +2976,45 @@ def weapon_fire_ability(template, button, own=None):
     return _chain(template, own, read)
 
 
+def self_module_power(template, button, own=None):
+    """The template's ActivateModuleSpecialPower the button fires with AttributeModifierAffectsSelf="true": dict(
+    modifier (its AttributeModifier id), trigger (the SpecialAbilityUpdate of that power: SetObjectStatusOnTrigger
+    bits), pack (its PackTime frames)), else None. The shinobi's smoke bomb (NON_AUTOACQUIRABLE 10 s, UNATTACKABLE
+    through the 0.5 s pack), the Tsunami's energized armor (GENERIC_TOGGLE_STATE, SPEED 125 % 10 s): engine_acts_mix."""
+    power = command_power(button, own)
+    if not power:
+        return None
+
+    def read(xml):
+        xml = re.sub(r'<!--.*?-->', '', xml or '', flags=re.S)
+        for head, _ in _blocks(xml, 'ActivateModuleSpecialPower'):
+            if _attr(head, 'SpecialPowerTemplate') != power or not _attr(head, 'AttributeModifier') or \
+                    _attr(head, 'AttributeModifierAffectsSelf', 'false') != 'true':
+                continue
+            trig, pack = set(), 0
+            for h, _ in _blocks(xml, 'SpecialAbilityUpdate'):
+                if _attr(h, 'SpecialPowerTemplate') == power:
+                    trig = set((_attr(h, 'SetObjectStatusOnTrigger') or '').split())
+                    pack = _frames(_secs(expand(_attr(h, 'PackTime', '0s'))))
+            return dict(modifier=_attr(head, 'AttributeModifier'), power=power, trigger=trig, pack=pack)
+        return None
+    return _chain(template, own, read)
+
+
+def power_target_type(power):
+    """The retail SpecialPowerTemplate's TargetType (NONE / LOCATION / OBJECT ...), '' when not found."""
+    return _attr(_retail_power_heads().get(power, ''), 'TargetType') or ''
+
+
+def self_projectile_speed(weapon, own=None):
+    """WeaponSpeed of a ProjectileSelf="true" weapon (the unit itself flies: the Sickle's leap 300), else None."""
+    special_weapon(weapon, own)                 # fills _weapon_blocks
+    head = (_weapon_blocks.get(weapon) or ('', ''))[0]
+    if (_attr(head, 'ProjectileSelf') or '').lower() != 'true':
+        return None
+    return _num(_attr(head, 'WeaponSpeed'), 0.0) or None
+
+
 def special_weapon(weapon, own=None):
     """What a special ability's weapon does where it goes off (weapon_fire_ability): dict(affects (RadiusDamageAffects),
     damage [(damage, type, radius, delay s)] from its DamageNuggets, paralyze [dict(kind (ParalyzeType), radius,

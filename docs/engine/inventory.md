@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 176 | 18 | 142 | 115 | 98% |
+| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 180 | 20 | 136 | 115 | 98% |
 | 脚本条件 | **98%** | **100%** | 12 / 12 | 89 | 56 | 5 | 25 | 3 | 99% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -190,7 +190,7 @@
 | 不涉及 | `PLAYER_ALLOWED_TOBE_COOPAI` | 29 |  | A219 读程序：只写 AI 脑的"可当合作 AI"位；读它的只有合作 AI 的界面 / 语音、玩家挑合作伙伴、关掉时取消合作 AI 正执行的玩家指令；模拟器的玩家没有给盟友下令的命令，脚本读不到它（同下一条） |
 | 已对拍 | `SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER` | 29 | a1 a2 a3 a4 a6 a7 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiopen.py |
 | 不涉及 | `DESELECT` | 28 |  | 纯表现（名字规则） |
-| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_CAMPAlliedBomberDrop2` | 28 |  | Sim.act / Sim.cond 不认识 |
+| 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_CAMPAlliedBomberDrop2` | 28 |  | A224 engine_acts_mix:all：玩家的 CAMP_PowerStore_AlliedBomberDrop 按了，22 s 内落点 400 内一个美国大兵 / 标枪兵都没有；原因没查（OCL 没出、飞得慢还是计数条件），模拟器不处理 |
 | 不涉及 | `SOUND_DISABLE_TYPE` | 28 |  | 纯表现（名字规则） |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackAlliedMCV` | 27 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_unpack.py |
 | 不涉及 | `PLAYER_CAMERA_MOVE_TO_NAMED` | 27 |  | 纯表现（名字规则） |
@@ -230,7 +230,7 @@
 | 不涉及 | `UNIT_EXECUTE_SEQUENTIAL_SCRIPT_COPY` | 20 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `CAMERA_FOLLOW_NAMED` | 19 |  | 纯表现（名字规则）；Sim.act / Sim.cond 有分支 |
 | 已对拍 | `COUNTER_MATH_COUNTER` | 19 | a1 a2 a3 a6 a7 a9 | 引擎模型核心；台上量过、测试对拍：checks/engine_attach.py |
-| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_SmokeBombSpecialPower` | 19 |  | 只记进时间线，没有效果 |
+| 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_SmokeBombSpecialPower` | 19 |  | tests/test_simbench.py::test_acts_mix_all_as_the_bench |
 | 未做 | `PLAYER_DISABLE_BASE_CONSTRUCTION` | 16 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `PLAYER_ENABLE_UNIT_CONSTRUCTION` | 16 |  | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `PLAY_SOUND_EFFECT_AT_TEAM` | 16 |  | 纯表现（名字规则） |
@@ -243,7 +243,7 @@
 | 已对拍 | `GIVE_PLAYER_UPGRADE` | 14 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_spngp.py |
 | 推断 | `MARK_MISSION_OBJECTIVE_COMPLETED` | 14 |  | 引擎模型核心 |
 | 不涉及 | `MOVIE_PLAY_FULLSCREEN` | 14 |  | 纯表现（名字规则） |
-| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleEnergizedArmorSpecialPower` | 14 |  | 只记进时间线，没有效果 |
+| 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleEnergizedArmorSpecialPower` | 14 |  | tests/test_simbench.py::test_acts_mix_all_as_the_bench |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanEgg` | 14 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `PLAYER_KILL` | 14 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `PLAYER_SET_ALL_UNITS_TO_FLEE` | 14 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_runoffmap.py |
@@ -295,14 +295,14 @@
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleAlliedEngineerHeal` | 8 |  | 只记进时间线，没有效果 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_UnPackJapanBaseDefenseEgg` | 8 |  | 只记进时间线，没有效果 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateJumpSpecialPower` | 8 |  | Sim.act / Sim.cond 不认识 |
-| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateLeapSpecialPower` | 8 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateLeapSpecialPower` | 8 |  | tests/test_simbench.py::test_acts_mix_all_as_the_bench |
 | 已对拍 | `RESTART_TIMER` | 8 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_timer.py |
 | 已对拍 | `SET_COUNTER_TO_COUNTER` | 8 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_aimicro.py |
 | 未做 | `SET_PLAYER_KILLS_OF_TYPE_TO_COUNTER` | 8 |  | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `CAMERA_STOP_FOLLOW` | 7 |  | 纯表现（名字规则） |
 | 不涉及 | `FIRE_SPECIAL_POWER_ON_UNIT` | 7 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 未做 | `NAMED_FACE_NAMED` | 7 |  | Sim.act / Sim.cond 不认识 |
-| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ActivateRoarSpecialPower` | 7 |  | 只记进时间线，没有效果 |
+| 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ActivateRoarSpecialPower` | 7 |  | tests/test_simbench.py::test_acts_mix_all_as_the_bench |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JAAS_Transform` | 7 |  | 只记进时间线，没有效果 |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleMirageField` | 7 |  | tests/test_simbench.py::test_acts_tgl_all_as_the_bench |
 | 不涉及 | `PATH_MUSIC_ENABLE_DYNAMIC_SYSTEM` | 7 |  | 纯表现（名字规则） |
@@ -314,7 +314,7 @@
 | 未做 | `NAMED_FACE_WAYPOINT` | 6 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleBinaryWeapon` | 6 |  | tests/test_simbench.py::test_acts_twr_t_as_the_bench |
 | 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanPowerPlantEgg` | 6 |  | Sim.act / Sim.cond 有分支 |
-| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_ActivateRoarSpecialPower` | 6 |  | Sim.act / Sim.cond 不认识 |
+| 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_ActivateRoarSpecialPower` | 6 |  | A224 engine_acts_mix:all：熊吼（TargetType NONE）用 _ON_NAMED 按在 60 外的敌兵上，谁也没瘫（同一吼直接按瘫 10 s）；模拟器当作不放出，熊之后会不会追过去没看到 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_TriggerRushAttackSpecialPower` | 6 |  | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `PLAYER_FIRE_MULTI_TARGET_SPECIAL_POWER_AT_WAYPOINTS` | 6 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 未做 | `TEAM_LOAD_TRANSPORTS` | 6 |  | Sim.act / Sim.cond 不认识 |
@@ -649,7 +649,7 @@
 | 已对拍 | `Behaviors/InfiltratorContain:ENERGY` | 4 (6) | a2 a4 a5 a6 a7 a8 | tests/test_siminfiltrator.py::test_spy_power_plant_as_on_the_bench；总控11-11授权按配置组收尾：engine_infiltrator a/b/c/d按名字重放，盟军间谍对盟/苏/帝普通电厂及帝国忍者对盟军电厂，敌方进入者消耗、建筑满血不换主、100电量停电约20秒并恢复，友军拒入且存活；gap：其他电量/苏联超级电厂、重复进入续期、精确时序和默认状态分支仍未对拍，不表示全字段全模板已验证；例：JapanPowerPlant |
 | 未做 | `Behaviors/ActivateModuleSpecialPower` | 4 (5) | a1 a2 a4 a6 a7 | 仅在SpecialPowerNugget处理器中识别并拒绝，未实现模块技能执行；例：AlliedAntiStructureVehicle, JapanAntiVehicleVehicleTech1 |
 | 未做 | `Behaviors/RadarBehavior` | 4 (5) | a4 | 模拟器代码里没有这个名字；例：AlliedRadarDish, PlayerSpellBook |
-| 推断 | `Behaviors/SpecialAbilityUpdate` | 4 (5) | a1 a4 a6 a7 | 模拟器代码里有这个名字；例：JapanAntiInfantryInfantry, JapanAntiVehicleVehicleTech1 |
+| 推断 | `Behaviors/SpecialAbilityUpdate` | 4 (5) | a1 a4 a6 a7 | 模拟器代码里有这个名字；台上量过（checks/engine_acts12.py），没有测试跑这个台子；例：JapanAntiInfantryInfantry, JapanAntiVehicleVehicleTech1 |
 | 推断 | `Behaviors/TechUpgradeReceiver` | 4 (5) | a2 a4 a5 a7 a8 | 模拟器代码里有这个名字；例：AlliedAirfield, AlliedBarracks |
 | 未做 | `Behaviors/HealCrateCollide` | 4 (4) |  | E146 engine_objectbatch:a/b有/无模块均未治疗，步兵始终50/50；b中立箱且到位成立，仍无效，两轮后暂停；不把负结果登记成效果已对拍。SecretFile原XML含当前schema不接受的属性，未冒充普通HealCrate等价；碰撞派发前置待查；见work/re/e146_objectbatch.md；例：SS_SecretFile1, SS_SecretFile2 |
 | 未做 | `Behaviors/ParkingPlaceBehavior` | 4 (4) | a4 a5 a7 a8 | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedAntiStructureShip |

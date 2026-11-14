@@ -1723,6 +1723,22 @@ def test_acts_twr_t_as_the_bench():
     assert all(at[k] == [11] for k in range(36, 41)), at
 
 
+def test_acts_mix_all_as_the_bench():
+    """all, bench 11-14 `run_queue engine_acts_mix:all` (CampActsMixAll, round 224; bench row s_k = mission k + 2):
+    技 101 s2-s6, 1101 s7, 3101 s8-s10, 3000 s11 on -- the smoke bomb's NON_AUTOACQUIRABLE and the energized armor's
+    GENERIC_TOGGLE_STATE about 10 s from the press, the armored Tsunami at its square a reading before its twin (SPEED
+    125 %); 吼 1 s2-s11, 0 s12 on -- the plain roar held its conscript 10 s, the one pressed _ON_NAMED nobody; 跳 11 from
+    s3 -- the Sickle's leap 250 off landed within two readings. 兵 0 all along: the bomber drop brought nobody (NOTES).
+    Off by one reading at the modifiers' end (bench s11 off, the simulator's a reading later): rows 11 / 12 skipped."""
+    at = dict(_sim_run('engine_acts_mix', 'all', 24.0).series)
+    bench = {**{k: (101, 1, 11) for k in range(3, 7)}, 7: (1101, 1, 11), **{k: (3101, 1, 11) for k in (8, 9, 10)},
+             **{k: (3000, 0, 11) for k in range(13, 23)}}
+    for k, want in bench.items():
+        assert tuple(at[k + 2][:3]) == want, (k, at[k + 2])
+    assert at[4][0] == 101 and at[4][2] == 0, at[4]               # bench s2: on, the Sickle not yet down
+    assert all(v[3] == 0 for v in at.values())
+
+
 def test_share_all_as_the_bench():
     """all, bench 11-14 `run_queue engine_share:all` (CampShareAll, round 222; the bench's seconds 1-2 ahead): 甲 / 乙 /
     丙钱 125 125 0 after the first load (Player_1 and Soviet_5 sharing), 249 188 63 after the second (Soviet_6 sharing

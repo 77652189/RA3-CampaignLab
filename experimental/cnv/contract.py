@@ -41,7 +41,10 @@ RETAIL_COMMANDS = {'Command_CaptureBuilding',           # an engineer takes a bu
                    'Command_ActivateBarkSpecialPower',          # the dog's bark
                    'Command_DisguisedEvacuate', 'Command_CivilianStructureEvacuate',  # EVACUATE (engine_acts_tgl)
                    'Command_JapanBaseDefenseToggleBinaryWeapon',   # the Japanese tower's air / ground toggle
-                   'Command_ToggleHarpoonSpecialPower', 'Command_ToggleAfterburners'}  # Apocalypse / Kirov toggles
+                   'Command_ToggleHarpoonSpecialPower', 'Command_ToggleAfterburners',  # Apocalypse / Kirov toggles
+                   'Command_SmokeBombSpecialPower', 'Command_ToggleEnergizedArmorSpecialPower',  # engine_acts_mix:
+                   'Command_ActivateRoarSpecialPower', 'Command_ActivateLeapSpecialPower',       # shinobi, Tsunami,
+                   'Command_CAMPAlliedBomberDrop2'}     # bear, Sickle, the campaign's bomber drop store
 # a factory's build button (a UNIT_BUILD command: Command_ConstructAlliedEngineer, retail j07's
 # Command_ConstructJapanMinerFromRefinery): a script's press builds as the player's click does -- paid, the build time
 # (bench 2026-11-08 engine_production e / f); the simulator and playcheck take the button from the factory's CommandSet

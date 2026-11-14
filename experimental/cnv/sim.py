@@ -4050,10 +4050,25 @@ class Sim:
                 self.body(a[0]) and self.body(a[0]).alive and \
                 self.assignments.press(self.body(a[0]), a[1], self.body(a[2])):
             self.note('技能', f'{a[0]} 显式派发维修到 {a[2]}')
+        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED' and self.body(a[0]) and \
+                simunits.weapon_fire_ability(self.body(a[0]).template, a[1], self.own) and \
+                simunits.power_target_type(simunits.command_power(a[1], self.own)) == 'NONE':
+            # engine_acts_mix RN (round 224): the bear's roar (TargetType NONE) pressed _ON_NAMED its conscript 60 off
+            # held nobody, the same roar pressed plainly held its 60 one 10 s (INFERRED: the object order is refused;
+            # whether the bear walks to the target after was not seen)
+            self.note('技能', f'{a[0]} 按 {a[1]} 对 {a[2]}：这个技能不接受目标，没放出')
         elif name in ('NAMED_USE_COMMANDBUTTON_ABILITY', 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED') and \
                 self.body(a[0]) and self.body(a[0]).alive and \
                 simunits.weapon_fire_ability(self.body(a[0]).template, a[1], self.own):
             self.wfire_press(self.body(a[0]), a[1], a[2] if len(a) > 2 else None)
+        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and self.body(a[0]) and self.body(a[0]).alive and \
+                self.point(a[2]) is not None and simunits.weapon_fire_ability(self.body(a[0]).template, a[1], self.own) \
+                and simunits.self_projectile_speed(
+                    simunits.weapon_fire_ability(self.body(a[0]).template, a[1], self.own)['weapon'], self.own):
+            self.leap_press(self.body(a[0]), a[1], self.point(a[2]))
+        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and self.body(a[0]) and self.body(a[0]).alive and \
+                simunits.self_module_power(self.body(a[0]).template, a[1], self.own):
+            self.self_power_press(self.body(a[0]), a[1])
         elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and self.body(a[0]) and self.toggle_press(self.body(a[0]), a[1]):
             self.note('技能', f'{a[0]} 按 {a[1]} 切换状态')
         elif name in ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY'):
@@ -4316,6 +4331,7 @@ class Sim:
             if self.hunts:
                 self.hunt_due(eng.frame)
             self.toggles_run(eng.frame)
+            self.self_power_due(eng.frame)
             self.expire(eng.frame)
             self.garrison.due()
             if self.frame_movers:
@@ -5738,6 +5754,59 @@ class Sim:
                     if self.first_death is None:
                         self.first_death = (self.t, t, by)
                     self.destroy(t, f'被 {self.label(by)} 的超武打掉')
+
+    def self_power_press(self, b, button):
+        """An ActivateModuleSpecialPower on self (simunits.self_module_power): its AttributeModifier hangs on b for its
+        Duration from the press (b.auras_on, so modify() takes its bits and SPEED and drops them when it runs out); the
+        power's SpecialAbilityUpdate SetObjectStatusOnTrigger bits through its PackTime (engine_acts_mix SB / EA)."""
+        sp = simunits.self_module_power(b.template, button, self.own)
+        xml = self.xml_of(b.template)
+        mod = simunits.modifier(xml, sp['modifier'])
+        now = self.frame_now()
+        self.used.add('self power')
+        if mod and mod['frames']:
+            b.auras_on[sp['modifier']] = (now + mod['frames'], xml)
+        if sp['trigger'] and sp['pack']:
+            new = sp['trigger'] - b.script_status
+            b.script_status |= new
+            self.__dict__.setdefault('_self_bits_due', []).append((now + sp['pack'], b, new))
+        self.modify(b)
+        self.note('技能', f'{self.label(b)} 按 {button}：{sp["modifier"]}')
+
+    def leap_press(self, b, button, p):
+        """A WeaponFireSpecialAbilityUpdate whose weapon is ProjectileSelf (the Sickle's leap, AT_WAYPOINT): b stands
+        its UnpackTime, then flies to the point at the WeaponSpeed and lands there (engine_acts_mix LP: 250 off, in its
+        square by the second reading after the press). Beyond StartAbilityRange: drives there instead (INFERRED, not
+        measured: FAIL_WITH_INVALID_APPROACH)."""
+        ab = simunits.weapon_fire_ability(b.template, button, self.own)
+        speed = simunits.self_projectile_speed(ab['weapon'], self.own)
+        d = math.hypot(p[0] - b.x, p[1] - b.y)
+        self.used.add('weapon fire ability')
+        if d > ab['range']:
+            self.note('技能', f'{self.label(b)} 按 {button}：超出 {ab["range"]:.0f}，开过去')
+            b.goal, b.mode = None, 'move'
+            self.send(b, p)
+            return
+        land = self.frame_now() + ab['unpack'] + int(math.ceil(d / speed * simunits.LIFE_FPS))
+        b.path, b.dest = [], None
+        deadlines = self.__dict__.setdefault('emp_until', {})       # holds still till it lands (INFERRED)
+        deadlines[id(b)] = max(deadlines.get(id(b), 0), land)
+        self.__dict__.setdefault('_leaps_due', []).append((land, b, p))
+        self.note('技能', f'{self.label(b)} 按 {button} 跳到 ({p[0]:.0f}, {p[1]:.0f})')
+
+    def self_power_due(self, frame):
+        for job in list(self.__dict__.get('_leaps_due') or ()):
+            if frame >= job[0]:
+                self._leaps_due.remove(job)
+                if job[1].alive:
+                    job[1].x, job[1].y = job[2]
+                    self.change()
+        due = self.__dict__.get('_self_bits_due')
+        for job in list(due or ()):
+            if frame >= job[0]:
+                due.remove(job)
+                job[1].script_status.difference_update(job[2])
+                self.modify(job[1])
 
     def wfire_press(self, b, button, target=None):
         """A WeaponFireSpecialAbilityUpdate's button (simunits.weapon_fire_ability; bench 11-11 engine_wfire): the

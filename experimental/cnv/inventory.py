@@ -195,6 +195,13 @@ BENCHED_TESTS = {
     # (engine_acts11.py t): the Japanese tower's toggle takes a press only with power; the Sickle's button on it: none
     **{(ACTION, f'NAMED_USE_COMMANDBUTTON_ABILITY:{n}'): 'tests/test_simbench.py::test_acts_twr_t_as_the_bench'
        for n in ('Command_JapanBaseDefenseToggleBinaryWeapon', 'Command_ToggleBinaryWeapon')},
+    # round 224 (checks/engine_acts12.py all): the shinobi's smoke bomb and the Tsunami's energized armor (a self
+    # AttributeModifier for its Duration), the bear's roar (the bark's EMP), the Sickle's leap to a spot
+    **{(ACTION, n): 'tests/test_simbench.py::test_acts_mix_all_as_the_bench' for n in (
+        'NAMED_USE_COMMANDBUTTON_ABILITY:Command_SmokeBombSpecialPower',
+        'NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleEnergizedArmorSpecialPower',
+        'NAMED_USE_COMMANDBUTTON_ABILITY:Command_ActivateRoarSpecialPower',
+        'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateLeapSpecialPower')},
     # round 222 (checks/engine_share.py all): mining income split among sharing Friends (the earner keeps the rest);
     # NAMED_SELECTED after SELECT_OBJECT (TYPE_SELECTED in NOTES: never true there)
     (ACTION, 'PLAYER_TOGGLE_RESOURCE_SHARING'): 'tests/test_simbench.py::test_share_all_as_the_bench',
@@ -322,6 +329,8 @@ BENCHED_TESTS = {
 # (part, name) -> (state, why): where the name rule above is wrong (a module read under another name ...)
 _NOT_IN_SIM = '已核（11-08）：模拟器没有这个效果'
 NOTES = {
+    (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_ActivateRoarSpecialPower'): (GUESSED, 'A224 engine_acts_mix:all：熊吼（TargetType NONE）用 _ON_NAMED 按在 60 外的敌兵上，谁也没瘫（同一吼直接按瘫 10 s）；模拟器当作不放出，熊之后会不会追过去没看到'),
+    (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_CAMPAlliedBomberDrop2'): (GUESSED, 'A224 engine_acts_mix:all：玩家的 CAMP_PowerStore_AlliedBomberDrop 按了，22 s 内落点 400 内一个美国大兵 / 标枪兵都没有；原因没查（OCL 没出、飞得慢还是计数条件），模拟器不处理'),
     (ACTION, 'PLAYER_SET_MONEY_CAP'): (GUESSED, 'A213 engine_acts_tel:tel：脚本的钱不受上限管（上限 3000 时给 5000 → 6000；上限 500 仍 6000；设 10000 照设）；它管的（推断是采矿收入）没上台、模拟器只记不用'),
     (CONDITION, 'TYPE_SELECTED'): (GUESSED, 'A222 engine_share:all：脚本 SELECT_OBJECT 选中护卫者 / 矿场 / 敌方锤子坦克后都读不到真（模拟器恒假）；原版是等玩家自己点选（a06），玩家点选没上台'),
     (MODULE, 'Behaviors/AutoDepositUpdate'): (GUESSED, 'E146 engine_objectbatch:a/b：原版SwissBank克隆有/无模块的钱包，on逐次+5至60、12秒删除后稳定，off全0；具名测试按实际60/0回放。只量已有归属产钱，不晋升整项；占领奖金/驻军/上限/修理仍gap；见work/re/e146_objectbatch.md'),
