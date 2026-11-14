@@ -292,6 +292,16 @@ NOTES = {
         'tests/test_expansion_target.py按名断言类型、分数、选择点和原计数。'
         '仅年龄类型反偏好命中子集；自动注册、死亡清理和矿点资格仍gap，'
         '旧CAPTURED单基地只回放计数，不证明类型；见work/re/c_bn2_report.md'),
+    '人格/AIPersonalityDefinition.ReactiveDefenseRadius': (BENCHED,
+        'B199 engine_aireactive aireact750/aireact1200：ReactiveDefense 单状态、敌人在基地正南 1000，仅半径不同；'
+        '750 全程不动（家300 4、敌存活 1 到 s80），1200 s8 全员出门、s20 敌人死；'
+        'tests/test_simai_bench_b.py::test_reactive_defense_radius_gates_the_chase 按名回放（模拟器 s10 出门、s23 打死）。'
+        '原版 27 关没有状态用 ReactiveDefense（只有 PCG 演示状态），只证半径门；精确边界、R×1.25 到位、美学站位没量'),
+    '人格/AIPersonalityDefinition.UnitBuilderOverallDefensivePreference': (GUESSED,
+        'B199 engine_aiskirm z aiskvd9（aiskvveh 布局，仅此项 1000%）：维和 s30 起到 s196 共 14、标枪 s151 才有、s222 共 7；'
+        '原版 25% 的 aiskvveh 和 aiskvd0（0%）都只造标枪（0%：s29 起到 s169 共 11、维和 0）。'
+        '模型把它当候选血量的线性系数（排序不变、0% 全零分）——台上不符，待读它怎么进打分；'
+        '见 work/re/handoff-b.md 第 199 节'),
     '人格/BaseSelection.SortOrder': (BENCHED,
         'C aibs3old/aibs3new:b初始双厂：f274两个合格基地0/1均分1，'
         'OLD pick/model=0/0、NEW=1/1；点命令分别东矿/崖矿。'

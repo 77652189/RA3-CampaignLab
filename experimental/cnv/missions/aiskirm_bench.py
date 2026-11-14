@@ -210,6 +210,24 @@ def umod_xml(zero):
         '</AssetDeclaration>', ''])
 
 
+DEFPREF_PID = 'CNVDefPref'            # aiskvd0 / aiskvd9 (check z): 1AlliedBalanced plus UnitBuilderOverallDefensivePreference
+
+
+def defpref_xml(value):
+    """1AlliedBalanced, nothing else changed, with UnitBuilderOverallDefensivePreference=value on the definition."""
+    return '\n'.join([
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+        '  <Tags></Tags>',
+        '  <Includes>',
+        '    <Include type="instance" source="DATA:SkirmishAI/Personalities/AlliedBalanced.xml" />',
+        '  </Includes>',
+        f'  <AIPersonalityDefinition id="{DEFPREF_PID}" PersonalityType="{DEFPREF_PID}" inheritFrom="1AlliedBalanced"'
+        f' UnitBuilderOverallDefensivePreference="{value}">',
+        '  </AIPersonalityDefinition>',
+        '</AssetDeclaration>', ''])
+
+
 ACCT_PID = 'CNVAcct'                  # aiskacp / aiskacd: 1AlliedBalanced rebuilt with its opening's Account changed
 # 1AlliedBalanced's own strategic-state lines (SDK Personalities/AlliedBalanced.xml lines 46-68, copied as written)
 BALANCED_STATES = (
@@ -510,7 +528,7 @@ ARMY_N = 10                            # aiskvinf / aiskvveh (check z): what the
 def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None, account=None,
             buffer=None, new=None, army=None, two=None, observe=False, cap=None, block=None, off=False,
             ptype=None, mintime=None, aidata=None, dear=None, dear_cost=DEAR_COST, power_more=None, mt_secs=300.0,
-            carrier=None, unitcap=None, inert=False, power_adv=None, side=None, inert2=False, flip=False):
+            carrier=None, unitcap=None, inert=False, power_adv=None, side=None, inert2=False, flip=False, defpref=None):
     base = resources.measured(niagara)
     m = Mission(name=name, map=ai_map(flipped(base) if flip else base, lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
@@ -533,6 +551,10 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
         m.facts['zeroed'] = len(umod)
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{UMOD_PID}'
         m.assets.append((f'{UMOD_PID}.xml', umod_xml(umod), f'AIPersonalityDefinition:{UMOD_PID}'))
+    if defpref is not None:              # aiskvd0 / aiskvd9 (check z): UnitBuilderOverallDefensivePreference written
+        m.facts['defensive preference'] = defpref
+        m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{DEFPREF_PID}'
+        m.assets.append((f'{DEFPREF_PID}.xml', defpref_xml(defpref), f'AIPersonalityDefinition:{DEFPREF_PID}'))
     if ptype is not None:                # aiskpt / aiskpti (check pt): id CNVPtId, PersonalityType CNVPtType / unwritten
         m.facts['type written'] = int(ptype)
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{PT_PID}'
@@ -738,6 +760,13 @@ MISSION = {'aiskirm': mission, 'aiskirmc': lambda: mission(observe=True),
            'aiskdiff': lambda: mission('CampAISkDiff', two='diff'),   # check s: a HARD-only state at MEDIUM
            'aiskvinf': lambda: mission('CampAISkVInf', army=ARMY_INF),   # check z: the player owns 10 conscripts
            'aiskvveh': lambda: mission('CampAISkVVeh', army=ARMY_VEH),   # check z: 10 Hammer tanks
+           # UnitBuilderOverallDefensivePreference A/B on the aiskvveh layout. Model: BEST_UNIT_EXPECTED scores the
+           # candidate's expected efficiency, linear in this preference, so 1000% ranks the barracks' candidates like the
+           # stock 25% (aiskvveh bench 2026-11-11: Javelin 1 at s29 .. 14 by s185, Peacekeeper 0) -> Javelins only again;
+           # 0% scores every BEST_UNIT_EXPECTED entry 0, the build states order nothing, the barracks gets only the unit
+           # builder's uniform draws -> Peacekeepers appear, far fewer Javelins.
+           'aiskvd0': lambda: mission('CampAISkVD0', army=ARMY_VEH, defpref='0%'),
+           'aiskvd9': lambda: mission('CampAISkVD9', army=ARMY_VEH, defpref='1000%'),
            'aiskad': lambda: mission('CampAISkAD', aidata=AIDATA_RUNS['aiskad']),      # check a: AIData canary
            'aiskfon': lambda: mission('CampAISkFOn', aidata=AIDATA_RUNS['aiskfon']),   # check fm: UseFormations true
            'aiskfof': lambda: mission('CampAISkFOff', aidata=AIDATA_RUNS['aiskfof'])}  # check fm: false

@@ -682,6 +682,14 @@ def z(m):
 #   Reading: the barracks builds only the counter -- no draw among its units (the unit builder's uniform pick would
 #   give ~1/3 Peacekeepers vs the tanks): BEST_UNIT_EXPECTED decides the barracks (l4_efficiency.md). (The first
 #   aiskvinf run expected a Javelin and FAILed on it; the expectation is now the counter's.)
+# RESULTS z, UnitBuilderOverallDefensivePreference (bench 2026-11-14, work/logs/b199_defpref*.log, aiskvd*__z.json):
+#   aiskvd9 (1000%) FAIL on the Javelin expectation: 维和 1 s30, 5 s52, 9 s75, 10 s134, 14 s196 (13 at s235);
+#     **标枪 0 to s150**, 1 s151, 3 s161, 5 s179, 7 s222; 守护者 0; 激流 1 s112, 4 s144, 10 s228.
+#     Prediction ("Javelins only, like the stock 25%") was WRONG: 1000% gives Peacekeepers first, Javelins only after s150.
+#   aiskvd0 (0%) PASS (third try; the first two builds died of a MemoryError while unpacking, not the personality):
+#     维和 0 to s169; 标枪 1 s29, 2 s35, 3 s40, 4 s46, 5 s52, 6 s58, 7 s134 .. 11 s167; 守护者 0; 激流 1 s112, 3 s133.
+#     So 0% builds like the stock 25% (Javelins only) and 1000% turns the barracks to Peacekeepers: the preference is
+#     not the candidate-health scale the model has (that keeps the ranking and makes 0% score nothing).
 
 
 def t(m):
@@ -1353,6 +1361,8 @@ CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j
           'aiskdiff': {'s': s},
           'aiskvinf': {'z': z, 't': t},
           'aiskvveh': {'z': z, 't': t},
+          'aiskvd0': {'z': z},
+          'aiskvd9': {'z': z},
           'aiskad': {'a': a},
           'aiskfon': {'fm': fm},
           'aiskfof': {'fm': fm}}

@@ -2,15 +2,15 @@
 
 由 `experimental/cnv/inventory_ai.py levels` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）里由遭遇战 AI 带的敌人：它的人格（`enemy_ai.py` 生成）沿继承、战略状态、战术、组队、目标启发、微操、造兵 / 预算状态、开局一路引用到的原版 AI 数据项，加上全局常量 AIData 和本阵营的 ArmyDefinition；再加关卡脚本里点了 AI 玩家名字的脚本动作 / 条件。状态取自 [inventory.md](inventory.md)。"AI 做完"的第一条：下表全部已对拍。
 
-**已对拍 191 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
+**已对拍 192 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
 
 | 部分 | 已对拍 | 推断 | 未做 |
 |---|---|---|---|
-| AI | 179 | 91 | 87 |
+| AI | 180 | 90 | 87 |
 | 脚本动作 | 11 | 0 | 0 |
 | 脚本条件 | 1 | 0 | 0 |
 
-按原版用量加权：已对拍 96%，已有（已对拍+推断）100%。
+按原版用量加权：已对拍 97%，已有（已对拍+推断）100%。
 
 | 状态 | 部分 | 项 | 原版用量 | 关 | 说明 |
 |---|---|---|---|---|---|
@@ -101,8 +101,7 @@
 | 未做 | AI | `微操/IgnoreTargets.StatusBitFlags` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `战略状态/AIStrategicStateDefinition.PathfindingCheckType=QuickDoesAttackPathExist` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | AI | `组队招人/TeamTemplate.BaseDefenseMaxDistance` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 推断 | AI | `人格/AIPersonalityDefinition.ReactiveDefenseRadius` | 148 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过（docs/engine/aitactics.md），没有测试跑这个台子 |
-| 推断 | AI | `人格/AIPersonalityDefinition.UnitBuilderOverallDefensivePreference` | 148 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 推断 | AI | `人格/AIPersonalityDefinition.UnitBuilderOverallDefensivePreference` | 148 | a4 a5 a7 | B199 engine_aiskirm z aiskvd9（aiskvveh 布局，仅此项 1000%）：维和 s30 起到 s196 共 14、标枪 s151 才有、s222 共 7；原版 25% 的 aiskvveh 和 aiskvd0（0%）都只造标枪（0%：s29 起到 s169 共 11、维和 0）。模型把它当候选血量的线性系数（排序不变、0% 全零分）——台上不符，待读它怎么进打分；见 work/re/handoff-b.md 第 199 节 |
 | 推断 | AI | `人格/DefaultTacticHomeBaseCriteria.PreferredNotBaseTypes` | 148 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/DefaultTacticHomeBaseCriteria.SortOrder` | 148 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过（checks/engine_aiexpansion.py），没有测试跑这个台子 |
 | 推断 | AI | `战术/Tactic.Distance` | 144 | a4 a5 a7 | 专用engine_aidistance aidist250/aidist2000保留AI队、同次传送1200，仅Distance不同；s65小组圈300/900=1/1，大组0/0，存活均1；两组各5条PASS、模型末态匹配；大组实机传送前离300、传送后回900再离，模型美学轨迹strict xfail；精确边界/动态队成员仍gap，不晋升；tests/test_simai_bench_c.py；见 work/re/c_distance_report.md |
@@ -214,7 +213,7 @@
 | 已对拍 | AI | `组队招人/TeamTemplate.MinUnits` | 482 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |
 | 已对拍 | AI | `造兵/BuildEntry.Build` | 481 | a4 a5 a7 | 台上量过（engine_aiskirm y aisknew / aisknew2：没列进任何建造状态的我们的兵不造、列成 FEWEST_UNIT 占兵营约一半；z aiskvinf / aiskvveh：BEST_UNIT_EXPECTED 兵营只造克制兵），测试对拍 tests/test_simai_bench_b.py（B 第 126–131 轮）；RANDOM_UNIT（PercentLow/High）没单独量 |
 | 已对拍 | AI | `造兵/CountAsStructureForBuildPurposesFilter.ExcludeThing` | 459 | a4 a5 a7 | C engine_aibuildexclude：旧aibex/aibin直接过滤New/Dear=0/1，IncludeThing优先；新aibxo/aibxi:x类别Include INFANTRY、无Dear的IncludeThing，仅切Dear的ExcludeThing，直接过滤分别1/0和1/1；New首成功f343均走SD，Dear首成功f409分别走U/SD，两局PASS。tests/test_build_exclude.py按名加载台子并对拍过滤、同帧工厂候选篮子及请求；现有模型吻合，无模型修改。整体产兵资格/时钟仍gap，两旧整局回放保留strict xfail；见work/re/c_buildexclude_follow_report.md |
-| 已对拍 | AI | `战术/Tactic.EndBehavior` | 454 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aistate.py |
+| 已对拍 | AI | `战术/Tactic.EndBehavior` | 454 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aireactive.py |
 | 已对拍 | AI | `战略状态/AIStrategicStateDefinition.MaxTargets` | 430 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |
 | 已对拍 | AI | `组队招人/ObjectFilter.ExcludeThing` | 425 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aibuildexclude.py |
 | 已对拍 | AI | `经济/BudgetState.State` | 410 | a4 a5 a7 | engine_aitower aibsprod h（2026-11-13）：人格自己声明 DEFENSE 50% 的预算，唯一一行 BudgetState 的 State 指原版 ProductionOnlyBudget（DEFENSE 0%）：开局 2 万、到 s160 一座塔也不造，钱只随矿车涨——State 指哪个预算定义就用哪个的份额。tests/test_simai_bench_b.py::test_a_budget_state_line_uses_the_budget_its_state_names按名回放；自建预算那几局（aitowerinc10 / inc5）同一规则。见 work/re/handoff-b.md 第177节。多行时选哪一个（work/re/d122_ai_rules.md 第1节）：engine_aitower aibsmax / aibstie / aibszero i（2026-11-13 三局 PASS）——权重最大的一个单独生效、不混合份额，并列取靠前，全 0 取第一条；tests/test_simai_bench_b.py 的 test_the_heavier_budget_state_runs_alone_though_listed_second 等三条。敌人进出时切回（d122 R4）：engine_aitower aibsback r4（2026-11-14 PASS，原版四个预算、开局立刻完、5000）：Coop 5% 到 s48 无塔；4 辆守护者在 700 内 s29–s57 → s49 一座塔；撤走后 s73 再给 5000 不造第二座（又回 Coop）。test_the_retail_budgets_switch_to_defense_while_the_raid_is_near_and_back_after |
@@ -248,6 +247,7 @@
 | 已对拍 | AI | `人格/AIPersonalityDefinition.ConyardInDangerEmergencyUnderAttackTime` | 148 | a4 a5 a7 | B181 一局证一批 engine_aiskirm aiskinb:ib vs aiskirm:ib（同一次排队，都 PASS）：七个字段一次改成极端值（ConyardInDanger 三项 1000s / 100% / 5000、HoldObjectBeaconRadius 5000、ResourceNodeValueRemainingForExpansion 1000000、DefaultThreatFindRadius 5000、MaxWallDestroyTimeToCountAsGoThroughWalls 1000s），AI钱 / 建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s 开局相位）；tests/test_simai_bench_b.py::test_seven_inert_personality_fields_change_nothing。为什么不起作用：D126 难度门 EmergencyManagerHandleConyardInDangerAtDifficulty 94 个人格全空。gap：台上没有围攻建造厂、没有墙、没有协同信标，只证"27 关的门关着时不起作用" |
 | 已对拍 | AI | `人格/AIPersonalityDefinition.DefaultThreatFindRadius` | 148 | a4 a5 a7 | B181 一局证一批 engine_aiskirm aiskinb:ib vs aiskirm:ib（同一次排队，都 PASS）：七个字段一次改成极端值（ConyardInDanger 三项 1000s / 100% / 5000、HoldObjectBeaconRadius 5000、ResourceNodeValueRemainingForExpansion 1000000、DefaultThreatFindRadius 5000、MaxWallDestroyTimeToCountAsGoThroughWalls 1000s），AI钱 / 建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s 开局相位）；tests/test_simai_bench_b.py::test_seven_inert_personality_fields_change_nothing。为什么不起作用：D127 只写进目标槽、零读者。gap：台上没有围攻建造厂、没有墙、没有协同信标，只证"27 关的门关着时不起作用" |
 | 已对拍 | AI | `人格/AIPersonalityDefinition.MaxWallDestroyTimeToCountAsGoThroughWalls` | 148 | a4 a5 a7 | B181 一局证一批 engine_aiskirm aiskinb:ib vs aiskirm:ib（同一次排队，都 PASS）：七个字段一次改成极端值（ConyardInDanger 三项 1000s / 100% / 5000、HoldObjectBeaconRadius 5000、ResourceNodeValueRemainingForExpansion 1000000、DefaultThreatFindRadius 5000、MaxWallDestroyTimeToCountAsGoThroughWalls 1000s），AI钱 / 建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s 开局相位）；tests/test_simai_bench_b.py::test_seven_inert_personality_fields_change_nothing。为什么不起作用：D127 读它的循环遍历的列表从不被填。gap：台上没有围攻建造厂、没有墙、没有协同信标，只证"27 关的门关着时不起作用" |
+| 已对拍 | AI | `人格/AIPersonalityDefinition.ReactiveDefenseRadius` | 148 | a4 a5 a7 | B199 engine_aireactive aireact750/aireact1200：ReactiveDefense 单状态、敌人在基地正南 1000，仅半径不同；750 全程不动（家300 4、敌存活 1 到 s80），1200 s8 全员出门、s20 敌人死；tests/test_simai_bench_b.py::test_reactive_defense_radius_gates_the_chase 按名回放（模拟器 s10 出门、s23 打死）。原版 27 关没有状态用 ReactiveDefense（只有 PCG 演示状态），只证半径门；精确边界、R×1.25 到位、美学站位没量 |
 | 已对拍 | AI | `人格/AIPersonalityDefinition.RefineryPlacementIncreaseTickAmount` | 148 | a4 a5 a7 | B185 / B186 engine_aiskirm aiskinp:ib、aiskin1:rp、aiskin0:rp vs aiskirm（都 PASS）：aiskinp 和另两项一起改成 1000（单改没上台）；1AlliedBalanced 的 -30 / 30 / 15 只两座矿场，改了之后 s148 在东矿出第三座、s188 / s223 再各一座。模拟器（B189 simai Brain.refinery_spot + 模型 REFINERY 150 分）照 d125 第 1 节排矿点、D136 第 5 节固定圈 + 矿点朝向 ±k·π/16 七个方向、Ticks ≤ 0 不转圈（读到）；B188 rpx 坐标：aiskirm 两座落各东矿点第 5 圈 −3 档（条带 x26 y9 / x28 y11，模拟器逐条对上）、不造第三座；tests/test_simai_bench_b.py::test_stock_refineries_stand_on_ring_5_of_each_east_node_at_minus_three_sixteenths 等。B191 照 D138 换成读到的：预检（各矿点默认位 S 的外形相交 + 通道点 150）、方向顺序 0/−1/+1/−2/+2/−3/+3、"还要不要矿场" = 矿点前方点在建造半径 600 + 75 内。gap：第 4 圈 −3 档模拟器放得下、台上放不下（aiskirm 差一条带，strict xfail，外形没读）；找位失败退到建造厂旁的摆放（F1）位置不对；"已服务"300、只试要矿场的矿点仍 INFERRED |
 | 已对拍 | AI | `人格/AIPersonalityDefinition.RefineryPlacementNumberOfIncreaseTicksBeforeGivingUp` | 148 | a4 a5 a7 | B185 / B186 engine_aiskirm aiskinp:ib、aiskin1:rp、aiskin0:rp vs aiskirm（都 PASS）：aiskin0 只改成 0；1AlliedBalanced 的 -30 / 30 / 15 只两座矿场，改了之后 s148 在东矿出第三座、s188 / s223 再各一座。模拟器（B189 simai Brain.refinery_spot + 模型 REFINERY 150 分）照 d125 第 1 节排矿点、D136 第 5 节固定圈 + 矿点朝向 ±k·π/16 七个方向、Ticks ≤ 0 不转圈（读到）；B188 rpx 坐标：aiskirm 两座落各东矿点第 5 圈 −3 档（条带 x26 y9 / x28 y11，模拟器逐条对上）、不造第三座；tests/test_simai_bench_b.py::test_stock_refineries_stand_on_ring_5_of_each_east_node_at_minus_three_sixteenths 等。B191 照 D138 换成读到的：预检（各矿点默认位 S 的外形相交 + 通道点 150）、方向顺序 0/−1/+1/−2/+2/−3/+3、"还要不要矿场" = 矿点前方点在建造半径 600 + 75 内。gap：第 4 圈 −3 档模拟器放得下、台上放不下（aiskirm 差一条带，strict xfail，外形没读）；找位失败退到建造厂旁的摆放（F1）位置不对；"已服务"300、只试要矿场的矿点仍 INFERRED |
 | 已对拍 | AI | `人格/AIPersonalityDefinition.RefineryPlacementStartDistanceDelta` | 148 | a4 a5 a7 | B185 / B186 engine_aiskirm aiskinp:ib、aiskin1:rp、aiskin0:rp vs aiskirm（都 PASS）：aiskin1 只改成 1000；1AlliedBalanced 的 -30 / 30 / 15 只两座矿场，改了之后 s148 在东矿出第三座、s188 / s223 再各一座。模拟器（B189 simai Brain.refinery_spot + 模型 REFINERY 150 分）照 d125 第 1 节排矿点、D136 第 5 节固定圈 + 矿点朝向 ±k·π/16 七个方向、Ticks ≤ 0 不转圈（读到）；B188 rpx 坐标：aiskirm 两座落各东矿点第 5 圈 −3 档（条带 x26 y9 / x28 y11，模拟器逐条对上）、不造第三座；tests/test_simai_bench_b.py::test_stock_refineries_stand_on_ring_5_of_each_east_node_at_minus_three_sixteenths 等。B191 照 D138 换成读到的：预检（各矿点默认位 S 的外形相交 + 通道点 150）、方向顺序 0/−1/+1/−2/+2/−3/+3、"还要不要矿场" = 矿点前方点在建造半径 600 + 75 内。gap：第 4 圈 −3 档模拟器放得下、台上放不下（aiskirm 差一条带，strict xfail，外形没读）；找位失败退到建造厂旁的摆放（F1）位置不对；"已服务"300、只试要矿场的矿点仍 INFERRED |

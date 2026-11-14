@@ -916,3 +916,18 @@ def test_ticks_0_falls_back_alike_whichever_way_the_nodes_face(lib):
     so the fallback is not the draw they are placed by, or they follow the facing.)"""
     a, b = _rpx('aiskin0', lib), _rpx('aiskin0r', lib)
     assert [(r['矿场X'], r['矿场Y']) for r in a] == [(r['矿场X'], r['矿场Y']) for r in b]
+
+
+# ---- checks/engine_aireactive.py a (bench 2026-11-14, readings in its docstring): ReactiveDefenseRadius gates the chase
+@pytest.mark.parametrize('build, chased', [('aireact750', False), ('aireact1200', True)])
+def test_reactive_defense_radius_gates_the_chase(lib, build, chased):
+    """A foe 1000 straight south of the AI yard. Bench: R 750 -- 家300 4, 敌300 0, 敌存活 1 to s80 (never chased);
+    R 1200 -- 家300 0 from s8, 敌300 4 s17-s27, the foe dead by s20 (the state runs before the s10 wake). The
+    simulator (B round 199): R 1200 out s10, 敌300 4 s18, the foe dead s23; R 750 never moves."""
+    _, rows = _probe_run(build, lib, 30)
+    if chased:
+        assert _first_row(rows, '家300', lambda v: v == 0) <= 12
+        assert _first_row(rows, '敌300', lambda v: v == 4) <= 20
+        assert rows[-1]['敌存活'] == 0
+    else:
+        assert all(r['家300'] == 4 and r['敌300'] == 0 and r['敌存活'] == 1 for r in rows)
