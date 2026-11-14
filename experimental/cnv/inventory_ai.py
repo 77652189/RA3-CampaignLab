@@ -187,6 +187,13 @@ NOTES = {
     '人格/AIPersonalityDefinition.ResourceNodeValueRemainingForExpansion': (GUESSED,
         'D125：1.13 里只解析、拷贝，找不到读它的地方（INFERRED）→ 不起作用，模型不建；'
         '见 work/re/d125_refinery_units.md 第 2 节'),
+    **{f'人格/AIPersonalityDefinition.ConyardInDangerEmergency{k}': (GUESSED,
+        'D126：只在"建造厂危急"应急里读，它的难度门 EmergencyManagerHandleConyardInDangerAtDifficulty '
+        '在 27 关用到的 94 个人格里全空 → 27 关里不起作用，模型不建；见 work/re/d126_personality_census.md 第 2 节')
+       for k in ('UnderAttackTime', 'HealthPercent', 'EngineerDistance')},
+    '人格/AIPersonalityDefinition.HoldObjectBeaconRadius': (GUESSED,
+        'D126：找不到读它的地方；读信标半径的唯一处只认进攻 / 驻守两类信标，挂物体的信标走跟随、不带半径'
+        '（INFERRED）→ 不起作用，模型不建；见 work/re/d126_personality_census.md 第 2 节'),
     '战略状态/AIStrategicStateDefinition.CannotAttackTargetReaction': (BENCHED,
         'engine_aicannot aicantig/di/su:r：Ignore保留两人和空靶；Disband f95清空/f97重招；'
         'TreatLikeSuccess f92换地面厂/f500进入攻击态。tests/test_ai_cannot_reaction.py按名回放生命周期；'

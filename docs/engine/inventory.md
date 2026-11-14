@@ -8,7 +8,7 @@
 | 脚本条件 | **98%** | **100%** | 12 / 12 | 89 | 54 | 4 | 28 | 3 | 99% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
-| AI | **87%** | **87%** | 147 / 357 | 428 | 160 | 117 | 117 | 34 | 93% |
+| AI | **87%** | **87%** | 147 / 357 | 428 | 160 | 121 | 113 | 34 | 95% |
 
 ## 脚本动作
 
@@ -862,9 +862,9 @@
 | 未做 | `人格/AIPersonalityDefinition.DesiredExcessPowerBuffer` | 150 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | `人格/AIPersonalityDefinition.BuildTechMinPowerAdvantage` | 149 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 已对拍 | `战术/Tactic.Tactic=StaticDefense` | 149 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aidefense.py |
-| 未做 | `人格/AIPersonalityDefinition.ConyardInDangerEmergencyEngineerDistance` | 148 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 未做 | `人格/AIPersonalityDefinition.ConyardInDangerEmergencyHealthPercent` | 148 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 未做 | `人格/AIPersonalityDefinition.ConyardInDangerEmergencyUnderAttackTime` | 148 | a4 a5 a7 | AI 模型代码里没有这个名字 |
+| 推断 | `人格/AIPersonalityDefinition.ConyardInDangerEmergencyEngineerDistance` | 148 | a4 a5 a7 | D126：只在"建造厂危急"应急里读，它的难度门 EmergencyManagerHandleConyardInDangerAtDifficulty 在 27 关用到的 94 个人格里全空 → 27 关里不起作用，模型不建；见 work/re/d126_personality_census.md 第 2 节 |
+| 推断 | `人格/AIPersonalityDefinition.ConyardInDangerEmergencyHealthPercent` | 148 | a4 a5 a7 | D126：只在"建造厂危急"应急里读，它的难度门 EmergencyManagerHandleConyardInDangerAtDifficulty 在 27 关用到的 94 个人格里全空 → 27 关里不起作用，模型不建；见 work/re/d126_personality_census.md 第 2 节 |
+| 推断 | `人格/AIPersonalityDefinition.ConyardInDangerEmergencyUnderAttackTime` | 148 | a4 a5 a7 | D126：只在"建造厂危急"应急里读，它的难度门 EmergencyManagerHandleConyardInDangerAtDifficulty 在 27 关用到的 94 个人格里全空 → 27 关里不起作用，模型不建；见 work/re/d126_personality_census.md 第 2 节 |
 | 未做 | `人格/AIPersonalityDefinition.DefaultThreatFindRadius` | 148 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | `人格/AIPersonalityDefinition.MaxWallDestroyTimeToCountAsGoThroughWalls` | 148 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 推断 | `人格/AIPersonalityDefinition.ReactiveDefenseRadius` | 148 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过（docs/engine/aitactics.md），没有测试跑这个台子 |
@@ -906,7 +906,7 @@
 | 已对拍 | `造兵/BuildState.Difficulty` | 84 | a4 a5 a7 | 台上量过（engine_aiskirm s aiskdiff：只挂 HARD 的建造状态在普通难度一个不造，挂 MEDIUM 的照造），测试对拍 tests/test_simai_bench_b.py |
 | 未做 | `人格/AIPersonalityDefinition.AssaultBeaconRadius` | 83 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | `人格/AIPersonalityDefinition.CoopPersonality` | 83 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 未做 | `人格/AIPersonalityDefinition.HoldObjectBeaconRadius` | 83 | a4 a5 a7 | AI 模型代码里没有这个名字 |
+| 推断 | `人格/AIPersonalityDefinition.HoldObjectBeaconRadius` | 83 | a4 a5 a7 | D126：找不到读它的地方；读信标半径的唯一处只认进攻 / 驻守两类信标，挂物体的信标走跟随、不带半径（INFERRED）→ 不起作用，模型不建；见 work/re/d126_personality_census.md 第 2 节 |
 | 未做 | `人格/AIPersonalityDefinition.HoldPositionBeaconRadius` | 83 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 不涉及 | `人格/AIPersonalityDefinition.PersonalityUIName` | 83 |  | 纯表现（语音、视频、画面） |
 | 已对拍 | `微操/AIMicroManagerData.UseSpecialPowers` | 83 | a4 a5 a7 | 台上量过（engine_aimicro：aimicspon 开 两个武士 s41 冲锋，aimicspoff 关 一直没冲、s51 前被打死，脚本按的对照照样冲）、测试对拍 tests/test_simai.py（模拟器读进探针自写的微操数据：开的想冲、关的从不冲；技能本身模拟器没接，只记"想用"） |
