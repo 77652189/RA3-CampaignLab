@@ -2,11 +2,13 @@
 what, program piece). The log here is made up in the bench's line shapes (work/re/d133_airevk2.md, d132_whenidle.md:
 the airevk2 reverse order and the aibdi1 garrison order); the program places are fake tokens and the names table is
 passed in, so nothing private is spelled here."""
-import os
-import sys
+import importlib.util
+from pathlib import Path
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'experimental', 'cnv'))
-import inject  # noqa: E402
+_spec = importlib.util.spec_from_file_location(
+    'inject', Path(__file__).resolve().parent.parent / 'experimental' / 'cnv' / 'inject.py')
+inject = importlib.util.module_from_spec(_spec)     # by its path, as test_ai_reverse_k2.py: no sys.path edit
+_spec.loader.exec_module(inject)
 
 LOG = """\
 team: frame=241 list=1 proto=P1 name1='Soviet_1' name2='c2bd8cee_SimpleAttack_0_0' rel=1 pri=7 slot=0 team=T1 active=1 n=2 ids=3170@0:0,3171@0:0
@@ -90,29 +92,3 @@ def test_poke_lines_read_back_as_records(tmp_path):
         (250, '3177', '摆 UNIT - CNV AI Rev Foe 2 3505.0,3420.0 -> 3553.0,3304.0')]
     assert inject.look(str(tmp_path), kinds=('command',)) == []        # the dll's own 'cmd: at' line is no order
 
-
-def test_the_build_writes_the_plan_only_with_lines_and_the_bench_hands_it_over(tmp_path):
-    import package
-    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'experimental',
-                                    'testbench'))
-    import harness
-    mod, run = tmp_path / 'mod', tmp_path / 'run'
-    mod.mkdir()
-    run.mkdir()
-    args = ['game.exe', '-modConfig', str(mod / 'x.skudef')]
-    line = inject.pos(250, 'UNIT - CNV AI Rev Foe 2', 3553, 3304)
-    package.mark_plan(str(mod), [line])
-    assert (mod / package.PLAN).read_text(encoding='ascii') == line + '\n'
-    assert harness.hand_plan(args, str(run))
-    assert (run / 'ra3ext_cmd.txt').read_text(encoding='ascii') == line + '\n'
-    package.mark_plan(str(mod), ())
-    assert not (mod / package.PLAN).exists()
-    assert not harness.hand_plan(args, str(tmp_path / 'other'))
-    assert not package.ra3ext_plan_ok(['x' * 200]) and not package.ra3ext_plan_ok(['a\nb'])
-
-
-def test_a_test_parts_plan_lines_join_the_missions():
-    import model
-    m = model.Mission(inject=['at 1 pos A 0.0 0.0'])
-    t = model.Test(inject=['at 2 pos B 0.0 0.0'])
-    assert model.merged(m, t).inject == ['at 1 pos A 0.0 0.0', 'at 2 pos B 0.0 0.0']

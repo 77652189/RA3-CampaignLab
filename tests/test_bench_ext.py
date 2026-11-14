@@ -183,3 +183,29 @@ def test_the_sweep_check_carries_one_tagged_linear_damage_and_a_laser():
         assert u.xml.count(f'<LinearDamageUpdate id="{engine_sweep.TAG}"') == 1
         assert u.xml.count('<LaserState id=') == 1 and u.xml.count('LaserStateID="1"') == 1
         assert 'ActivateLinearDamageNugget' in u.xml and 'ActivateLaserNugget' in u.xml
+
+
+def test_the_build_writes_the_plan_only_with_lines_and_the_bench_hands_it_over(tmp_path):
+    """D round 135b ("注入摆"): package.mark_plan writes ra3ext_plan.txt next to ra3ext.allow; harness.hand_plan copies
+    it into the run folder as ra3ext_cmd.txt before the start (CNVCmd reads it there)."""
+    import package
+    mod, run = tmp_path / 'mod', tmp_path / 'run'
+    mod.mkdir()
+    run.mkdir()
+    args = ['game.exe', '-modConfig', str(mod / 'x.skudef')]
+    line = 'at 250 pos UNIT - CNV AI Rev Foe 2 3553.0 3304.0'
+    package.mark_plan(str(mod), [line])
+    assert (mod / package.PLAN).read_text(encoding='ascii') == line + '\n'
+    assert harness.hand_plan(args, str(run))
+    assert (run / 'ra3ext_cmd.txt').read_text(encoding='ascii') == line + '\n'
+    package.mark_plan(str(mod), ())
+    assert not (mod / package.PLAN).exists()
+    assert not harness.hand_plan(args, str(tmp_path / 'other'))
+    assert not package.ra3ext_plan_ok(['x' * 200]) and not package.ra3ext_plan_ok(['a\nb'])
+
+
+def test_a_test_parts_plan_lines_join_the_missions():
+    import model
+    m = model.Mission(inject=['at 1 pos A 0.0 0.0'])
+    t = model.Test(inject=['at 2 pos B 0.0 0.0'])
+    assert model.merged(m, t).inject == ['at 1 pos A 0.0 0.0', 'at 2 pos B 0.0 0.0']
