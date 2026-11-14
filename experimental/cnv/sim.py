@@ -3666,14 +3666,20 @@ class Sim:
                 self.infiltrators.send(b, g)
             elif b and g and simunits.engineer_contain(g.template, self.own) is not None:
                 self.order_capture(b, a[1])
-            elif b and g and self.garrison.box(g) is not None:       # walks to it, in if it may (simgarrison; a
-                                                                     # transport too: engine_acts_tel)
+            elif b and g and self.garrison.spec(g) is not None:      # walks to it, in if it may (simgarrison; INFERRED)
                 self.garrison.send(b, g)
             elif b and g:
+                # a transport: walked to only. The team's version goes in (bench engine_acts_tel); this one too in the
+                # game, but s01's intro then needs CONTAINER_OCCUPIED, the eject and the flyby's relation, not modelled
+                # (Natasha would ride a Bullfrog the simulator lets die) -- round 213 handoff
                 self.send(b, a[1])
-        elif name == 'TEAM_GARRISON_SPECIFIC_BUILDING':   # (team, building) INFERRED: the unit version on each member
+        elif name == 'TEAM_GARRISON_SPECIFIC_BUILDING':
+            # (team, building or transport) each member walks there and goes in, the room asked (bench 11-13
+            # engine_acts_tel: five of six into the five-place Bullfrog, one a second; unlike _INSTANTLY)
+            g = self.body(a[1])
             for b in self.members(a[0]):
-                self.act('NAMED_GARRISON_SPECIFIC_BUILDING', [b.name, a[1]], script)
+                if g and self.garrison.box(g) is not None:
+                    self.garrison.send(b, g)
         elif name == 'NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY':      # (unit, building) engine_garrison: no
             self.garrison.put(self.body(a[0]), self.body(a[1]), script=True)    # relation, no room (garrison.md 1)
         elif name == 'TEAM_GARRISON_SPECIFIC_BUILDING_INSTANTLY':     # (team, building or transport) each member as

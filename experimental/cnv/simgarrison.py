@@ -23,9 +23,9 @@ RA3 1.13), held to the bench (checks/engine_garrison.py in / hp, bench 11-05; do
 Transports (TransportContain: the Bullfrog, the Riptide, the bomber; bench 11-10 checks/engine_transport.py load):
   in           the script's TEAM_ / NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY as into a house -- no room, no relation
                (six into the five-place Bullfrog, Soviet_4's two into the player's); the AI never picks one (places)
-  walk in      the script's TEAM_ / NAMED_GARRISON_SPECIFIC_BUILDING (not instantly): walks to it and goes in as into a
-               house, the room asked (bench 11-13 engine_acts_tel: five of six into the five-place Bullfrog, one a
-               second); the relation as a house's (INFERRED)
+  walk in      the script's TEAM_GARRISON_SPECIFIC_BUILDING (not instantly): walks to it and goes in as into a house,
+               the room asked (bench 11-13 engine_acts_tel: five of six into the five-place Bullfrog, one a second);
+               the relation as a house's (INFERRED). The NAMED_ one still only walks to a transport (sim.py: s01)
   ride         a passenger stands where its transport is, every frame (inside an area with it, ENCLOSED all along)
   eject        a button whose power an EjectPassengersSpecialAbilityUpdate serves, at a waypoint: one out every
                TimePerPassenger from the moment it is pressed (within StartAbilityRange; farther, the transport drives
