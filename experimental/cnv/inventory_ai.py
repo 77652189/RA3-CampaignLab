@@ -536,7 +536,10 @@ NOTES = {
         's65小组圈300/900=1/1，大组0/0，存活均1；两组各5条PASS、模型末态匹配；'
         '大组实机传送前离300、传送后回900再离，模型美学轨迹strict xfail；'
         '精确边界/动态队成员仍gap，不晋升；tests/test_simai_bench_c.py；见 work/re/c_distance_report.md'),
-    '战术/Tactic.UseAestheticsManager': (GUESSED,
+    '战术/Tactic.UseAestheticsManager': (BENCHED,
+        'D145晋升：tests/test_simai_bench_c.py::test_tactic_aesthetics_switch_after_displacement 按名跑 aiaeson/aiaesoff，'
+        '传送出圈后开的一侧回900再离开（s65 圈300/900=0/0）、关的一侧回双圈（1/1），模型两边都对上，正常断言；'
+        '传送前模型开的一侧也离900（台上不离）仍strict xfail。旧记录：'
         '专用engine_aiaesthetics aiaeson/aiaesoff固定Distance=2000，仅切美学开关；'
         '两组各5条PASS：on先离300、传送后回900再离，off回双圈，存活/锁存均1；'
         'tests/test_simai_bench_c.py关闭组完整轨迹已回放；探针战术附加属性现传入消费者；'
@@ -571,7 +574,10 @@ NOTES = {
         '近敌计数回放仍strict xfail（台上只2辆入队、近敌s13先死，模拟器4辆全入队，是招兵不是倒车）；'
         '见work/re/d133_airevk2.md'),
     # B round 108: a test names the probe but only the switch-off case matches; the effect itself is a strict xfail
-    '微操/AIMicroManagerData.Crush': (GUESSED,
+    '微操/AIMicroManagerData.Crush': (BENCHED,
+        'D145晋升：tests/test_crush_observation.py::test_crush_switch_runs_the_guards_over_only_when_on 按名跑 '
+        'aicrush1/aicrush0（只差Crush）：台上开的s27守军1、坦克4，关的守军12、坦克被打掉；模型开的s27守军5、坦克4、'
+        '18次碾压派令，关的守军10、0次碾压，正常断言；碾得多快（台上s28清零）仍strict xfail。旧记录：'
         'engine_aicrush:aicrush1 台上s28–33守军0、坦克4；按名回放存活正常断言，清零strict xfail；'
         '模型守军11/9/9/9/8/8，首目标活着即被重选、未接触；首move终点不挪不代表后续均不挪；'
         'D86 aicrush1t碾压段aim全0，dest在f350/410/440变化；模型f230后首世界样本尚无远厂goal，前置已失配；'
@@ -630,7 +636,11 @@ NOTES = {
                                               'tests/test_simai.py（模拟器读进探针自写的微操数据：开的想冲、关的从不冲；'
                                               '技能本身模拟器没接，只记"想用"）'),
     # B round 114: state 2's per-member pick (tactics._assign); round 115: aimicengoff (off) on the bench
-    '微操/AIMicroManagerData.EngageHostileTargets': (GUESSED, 'E114新DLL aiegon:a / aiegoff:a各3/3 PASS：首冲371/259，首活均2；'
+    '微操/AIMicroManagerData.EngageHostileTargets': (BENCHED, 'D145晋升：'
+        'tests/test_ai_engage_clock.py::test_engage_switch_gates_the_state2_pick_on_bench_and_in_model 按名跑 '
+        'aiegon/aiegoff：台上开的f376进状态2、f375两人按打分派目标，关的一直状态8、没有派目标；模型开的进状态2、'
+        'f394起逐人派目标，关的从不进2/3/5、0次派目标，正常断言；首派帧（375对394）和关的一侧自主目标仍strict xfail。'
+        '旧记录：E114新DLL aiegon:a / aiegoff:a各3/3 PASS：首冲371/259，首活均2；'
                                                   '首批3170/3171均f345入队，f353均有单兵dest且aim为0。关无玩家级移动命令，'
                                                   '但f431成员3171已有有效目标，不能解释成没有自主行军/目标；'
                                                   '开f353模型过早推得目标，关f443模型首批仍无目标；同宿主帧按名回放 '

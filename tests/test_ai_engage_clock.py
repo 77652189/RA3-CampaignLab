@@ -274,21 +274,21 @@ def test_engage_clock_replays_first_cohort_movement(engage_record, request):
     assert first['frame'] == frame, (build, first)
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'E137 D113 death-to-arrival rule is connected, but natural '
-    'movement still diverges before acquisition: on f353 two goals '
-    'instead of none; off f443 no goals instead of the second member goal. '
-    'Model off members are already west of the observed scan cells. Grid '
-    'failure boundaries and command-source timing remain INFERRED. '
-    'See work/re/e137_engage_arrival.md '
-    'and work/re/handoff-e.md.'))
-def test_engage_clock_replays_member_goal_validity(engage_record):
+def test_engage_clock_replays_member_goal_validity(engage_record, request):
     """Compare the initial pair at the same host frame, without replacement units.
 
     Hunt members use persistent unit goals; other units retain the old proxy.
     Pair by production order; do not equate runtime object IDs across runs.
+    D round 145: the enabled side passes since the attackable-hostile gate (D round 140 / 144):
+    no goals on f353, as on the bench.
     """
     build, brain, cohort = engage_record
+    if build == 'aiegoff':
+        request.node.add_marker(pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+            'E137: off f443 no goals instead of the second member goal. '
+            'Model off members are already west of the observed scan cells. Grid '
+            'failure boundaries and command-source timing remain INFERRED. '
+            'See work/re/e137_engage_arrival.md and work/re/handoff-e.md.')))
     frame = {'aiegon': 353, 'aiegoff': 443}[build]
     row = next(r for r in brain.rec['frames'] if r['frame'] == r['host_frame'] == frame)
     members = sorted((m for m in row['members'] if m['name'] in cohort), key=lambda m: m['name'])
@@ -296,6 +296,27 @@ def test_engage_clock_replays_member_goal_validity(engage_record):
     observed = next(r for r in teamlog.states(OBSERVED / (build + '.txt'))['T'] if r['frame'] == frame)
     expected = [bool(observed['aim'][i][0]) and observed['aim'][i][1] is not None for i in (3170, 3171)]
     assert [m['aim'] is not None for m in members] == expected, (frame, members, observed['aim'])
+
+
+def test_engage_switch_gates_the_state2_pick_on_bench_and_in_model(engage_record):
+    """EngageHostileTargets (D round 145): the switch decides whether the team enters state 2 (attack the
+    hostiles, each member scored onto one). Bench aiegon / aiegoff (fixtures e_engage
+    *_sources.txt, E126): on -> state 2 from f376, both members assigned src=score on f375; off -> state 8,
+    no assignment at all. The model does the same: on -> state 2 and per-member engage assignments; off ->
+    never state 2 / 3 / 5, no engage assignment. The first frame (bench 375, model 394) stays INFERRED
+    (the movement gap above)."""
+    build, brain, cohort = engage_record
+    source = str(OBSERVED / (build + '_sources.txt'))
+    bench_states = {r['mstate'] for r in teamlog.states(source)['T']}
+    bench_scores = [o for o in teamlog.target_orders(source, 'T') if o['src'] == 'score']
+    model_states = {r['state'] for r in brain.rec['frames']}
+    engage = [e for e in brain.tactics.log if e[1] == 'engage']
+    if build == 'aiegon':
+        assert 2 in bench_states and bench_scores
+        assert 2 in model_states and engage
+    else:
+        assert not bench_states & {2, 3, 5} and bench_scores == []
+        assert not model_states & {2, 3, 5} and engage == []
 
 
 @pytest.mark.parametrize('build', ['aiegon', 'aiegoff'])

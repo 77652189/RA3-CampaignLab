@@ -535,9 +535,9 @@ def test_tactic_aesthetics_displacement_and_survival(build):
 
 @pytest.mark.parametrize('build', [
     pytest.param('aiaeson', marks=pytest.mark.xfail(strict=True, reason=(
-        'D78 observes a fixed enabled-aesthetics point; the E96 candidate matches its geometry, '
-        'but first orders at frame 214 instead of 191 and repeats while retail does not. '
-        'Readiness, member destinations and order conditions remain gaps. '
+        'D145: after the push the enabled side matches (test_tactic_aesthetics_switch_after_displacement); '
+        'before it the model leaves 900 too (s24, 0 / 0; bench stays inside 900). D78 / E96: first orders '
+        'at frame 214 instead of 191. Readiness, member destinations and order conditions remain gaps. '
         'See work/re/e97_aesthetics_same_frame.md.'))),
     'aiaesoff',
 ])
@@ -559,6 +559,29 @@ def test_tactic_aesthetics_replays_named_location_transitions(build):
             transitions.append(pos)
     expected = [(0, 0), (0, 1), (0, 0)] if build == 'aiaeson' else [(0, 0), (0, 1), (1, 1)]
     assert transitions == expected, transitions
+
+
+@pytest.mark.parametrize('build', ['aiaeson', 'aiaesoff'])
+def test_tactic_aesthetics_switch_after_displacement(build):
+    """UseAestheticsManager (D round 145), the part after the push out of 900 (engine_aiaesthetics a, both PASS,
+    work/re/c_aesthetics_report.md): on -> back into 900, then away to the aesthetics stand point (300 / 900 = 0 / 0
+    at s65); off -> back into both squares (1 / 1). The model does the same since B194's form-up. Before the push
+    the model also leaves 900 on the enabled side (bench stays inside it): the strict xfail above."""
+    w = simai.run(build, 'a', until=76, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    rows = [dict(zip(labels, values)) for _, values in w.sim.series]
+    transitions = []
+    for row in rows:
+        if not row['传送出圈']:
+            continue
+        pos = row['圈300'], row['圈900']
+        if not transitions or pos != transitions[-1]:
+            transitions.append(pos)
+    expected = [(0, 0), (0, 1), (0, 0)] if build == 'aiaeson' else [(0, 0), (0, 1), (1, 1)]
+    assert transitions == expected, transitions
+    at65 = next(r for (t, _), r in zip(w.sim.series, rows) if 65 <= t < 66)
+    home = int(build == 'aiaesoff')
+    assert (at65['圈300'], at65['圈900'], at65['坦克总数']) == (home, home, 1), at65
 
 
 @pytest.mark.parametrize('build', ['airelnever', 'airelprio'])

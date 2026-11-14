@@ -156,3 +156,35 @@ def test_aicrush1t_model_first_crush_destinations(replay):
     actual = Counter(tuple(round(c, 1) for c in o['point']) for o in latest.values())
     observed = next(s for s in teamlog.states(SOURCE)['T'] if s['frame'] == 350)
     assert actual == Counter(observed['dest'][i] for i in TANKS)
+
+
+# D round 145: the switch's effect, the check's own expectation (checks/engine_aicrush.py, wake + 25 s), on both sides.
+BENCH_CRUSH = {   # engine_aicrush a, 11-09 (docstring): guards / tanks at s27, the model run's last sample
+    'aicrush1': (1, 4),     # s26-27 1 guard, s28-s33 0; 4 tanks (model s27: 5 guards, 4 tanks, 18 crush picks)
+    'aicrush0': (12, 3),    # s23-s30 12 3 | s31 11 2: shot down, the guards win (model s27: 10, 4, no crush pick)
+}
+
+
+@pytest.mark.parametrize('build', sorted(BENCH_CRUSH))
+def test_crush_switch_runs_the_guards_over_only_when_on(build):
+    """Crush on (aicrush1) -> the Hammers drive over the Peacekeepers: bench guards 12 -> 0 in 9 s, below 8 by
+    s28 with all 4 tanks alive; off (aicrush0, only Crush differs) -> the tanks shoot, the guards stay 11-12 and
+    the tanks die. The model: on -> crush orders and the guards below 8 by s28, 4 tanks; off -> no crush order,
+    the guards 8 or more. How fast they fall (bench 0 at s28, model a few left) is the strict xfail
+    test_simai_bench_b.py::test_crush_runs_the_guards_over_at_once."""
+    if not simai.available():
+        pytest.skip('no ra3model.ai')
+    lib = simai.model()['xmldata'].Library()
+    w = simai.run(build, 'a', 28.0, lib=lib)
+    labels = [lab for _, lab in w.sim.test.counters]
+    row = dict(zip(labels, w.sim.series[-1][1]))
+    brain, = w.brains.values()
+    crushes = [e for e in brain.tactics.log if e[1] == 'crush']
+    guards, tanks = BENCH_CRUSH[build]
+    if build == 'aicrush1':
+        assert guards < 8 and row['守军数'] < 8, row
+        assert row['坦克数'] == tanks, row
+        assert crushes
+    else:
+        assert guards >= 8 and row['守军数'] >= 8, row
+        assert crushes == []

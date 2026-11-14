@@ -8,7 +8,7 @@
 | 脚本条件 | **98%** | **100%** | 12 / 12 | 89 | 56 | 5 | 25 | 3 | 99% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
-| AI | **94%** | **94%** | 171 / 357 | 428 | 185 | 113 | 96 | 34 | 99% |
+| AI | **95%** | **95%** | 174 / 357 | 428 | 188 | 110 | 96 | 34 | 99% |
 
 ## 脚本动作
 
@@ -59,7 +59,7 @@
 | 不涉及 | `FADE_OUT_TO_BLACK` | 177 |  | 纯表现（名字规则） |
 | 不涉及 | `FADE_IN_FROM_BLACK` | 176 |  | 纯表现（名字规则） |
 | 不涉及 | `NAMED_FLASH` | 173 | a9 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
-| 已对拍 | `SET_COUNTER` | 171 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_aidiff.py |
+| 已对拍 | `SET_COUNTER` | 171 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_aiaesthetics.py |
 | 已对拍 | `UNIT_CHANGE_OBJECT_STATUS:SKIRMISH_AI_DO_NOT_ATTACK` | 171 |  | tests/test_simbench.py::test_acts_flow_as_the_bench |
 | 不涉及 | `NAMED_SHOW_INFOBOX` | 166 | a4 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
 | 已对拍 | `TEAM_USE_COMMANDBUTTON_ABILITY` | 162 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts1.py |
@@ -502,7 +502,7 @@
 | 已对拍 | `TEAM_DISCOVERED` | 47 |  | tests/test_simbench.py::test_conds_sight_as_the_bench |
 | 已对拍 | `SKIRMISH_PLAYER_HAS_BEEN_ATTACKED_BY_PLAYER` | 44 |  | tests/test_simbench.py::test_conds_fight_as_the_bench |
 | 已对拍 | `TEAM_HAS_UNITS` | 39 |  | tests/test_simbench.py::test_conds_team_as_the_bench |
-| 已对拍 | `NAMED_OUTSIDE_AREA` | 38 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_air.py |
+| 已对拍 | `NAMED_OUTSIDE_AREA` | 38 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiaesthetics.py |
 | 推断 | `TYPE_SELECTED` | 38 |  | A222 engine_share:all：脚本 SELECT_OBJECT 选中护卫者 / 矿场 / 敌方锤子坦克后都读不到真（模拟器恒假）；原版是等玩家自己点选（a06），玩家点选没上台 |
 | 已对拍 | `TEAM_DESTROYED` | 35 |  | tests/test_simbench.py::test_conds_team_as_the_bench |
 | 已对拍 | `TEAM_INSIDE_AREA_ENTIRELY` | 33 |  | tests/test_simbench.py::test_conds_team_as_the_bench |
@@ -922,7 +922,7 @@
 | 已对拍 | `人格/AIPersonalityDefinition.EmergencyManagerHandleNoIncomeAtDifficulty` | 82 | a4 a5 a7 | B185 一局证一批 engine_aiskirm aiskins:ib vs aiskirm:ib（都 PASS）：七个字段一次改成 27 关敌方人格的值 / 极端值（CleanupRefineries false、CoopPersonality false、Assault / HoldPosition BeaconRadius 5000、EmergencyManagerHandle NoIncome / NoConyard / UnderAttack ""；1AlliedBalanced 继承的是 Coop 那套），建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s）；tests/test_simai_bench_b.py::test_seven_conditional_personality_fields_change_nothing_on_a_plain_skirmish。D126：无矿经济且钱 < 5000 才置位。gap：D126 读成"条件满足才起作用"，台上条件都不满足（矿没采空、没有人类盟友和信标、建造厂在、有收入），起作用的那半没上台（d126 第 3 节的对照台子） |
 | 已对拍 | `人格/AIPersonalityDefinition.EmergencyManagerHandleUnderAttackAtDifficulty` | 82 | a4 a5 a7 | B185 一局证一批 engine_aiskirm aiskins:ib vs aiskirm:ib（都 PASS）：七个字段一次改成 27 关敌方人格的值 / 极端值（CleanupRefineries false、CoopPersonality false、Assault / HoldPosition BeaconRadius 5000、EmergencyManagerHandle NoIncome / NoConyard / UnderAttack ""；1AlliedBalanced 继承的是 Coop 那套），建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s）；tests/test_simai_bench_b.py::test_seven_conditional_personality_fields_change_nothing_on_a_plain_skirmish。D126 没读（总表无此行），台上 AI 基地没挨打。gap：D126 读成"条件满足才起作用"，台上条件都不满足（矿没采空、没有人类盟友和信标、建造厂在、有收入），起作用的那半没上台（d126 第 3 节的对照台子） |
 | 已对拍 | `启发条件/ObjectOfTypeExistsHeuristic` | 82 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
-| 推断 | `微操/AIMicroManagerData.EngageHostileTargets` | 82 | a4 a5 a7 | E114新DLL aiegon:a / aiegoff:a各3/3 PASS：首冲371/259，首活均2；首批3170/3171均f345入队，f353均有单兵dest且aim为0。关无玩家级移动命令，但f431成员3171已有有效目标，不能解释成没有自主行军/目标；开f353模型过早推得目标，关f443模型首批仍无目标；同宿主帧按名回放 tests/test_ai_engage_clock.py strict xfail。单兵目标来源/保持契约仍gap，见 work/re/e114_engage_aim.md；保持推断，不晋升 |
+| 已对拍 | `微操/AIMicroManagerData.EngageHostileTargets` | 82 | a4 a5 a7 | D145晋升：tests/test_ai_engage_clock.py::test_engage_switch_gates_the_state2_pick_on_bench_and_in_model 按名跑 aiegon/aiegoff：台上开的f376进状态2、f375两人按打分派目标，关的一直状态8、没有派目标；模型开的进状态2、f394起逐人派目标，关的从不进2/3/5、0次派目标，正常断言；首派帧（375对394）和关的一侧自主目标仍strict xfail。旧记录：E114新DLL aiegon:a / aiegoff:a各3/3 PASS：首冲371/259，首活均2；首批3170/3171均f345入队，f353均有单兵dest且aim为0。关无玩家级移动命令，但f431成员3171已有有效目标，不能解释成没有自主行军/目标；开f353模型过早推得目标，关f443模型首批仍无目标；同宿主帧按名回放 tests/test_ai_engage_clock.py strict xfail。单兵目标来源/保持契约仍gap，见 work/re/e114_engage_aim.md；保持推断，不晋升 |
 | 已对拍 | `微操/AIMicroManagerData.EngagePassiveTargets` | 82 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_airetreat.py |
 | 已对拍 | `组队招人/ObjectFilter.Relationship` | 82 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
 | 已对拍 | `开局/Order.Account` | 81 | a4 a5 a7 | docs/engine/aiopen.md#开局存款进哪个账户（Order Account，第 116 轮）（aiskacp / aiskacd：PRODUCTION 兵营出兵、DEFENSE 兵营不出） |
@@ -932,11 +932,11 @@
 | 已对拍 | `启发条件/EnemyNearbyHeuristic.EnemyNearby` | 79 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
 | 已对拍 | `微操/AIMicroManagerData.EngageTacticalTarget` | 79 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aitactical.py |
 | 已对拍 | `微操/AIMicroManagerData.PullbackInjured` | 78 | a4 a5 a7 | engine_aipullback aipullsov 残血坦克离队回吊车；tests/test_simai_bench_b.py::test_a_hurt_soviet_tank_team_is_pulled_back_to_the_crane 回放；普通盟军/日本工厂不可进入；仅地面车辆回撤，吊车回收仍 strict xfail，未验证空海军/精确时间 |
-| 推断 | `微操/AIMicroManagerData.Crush` | 77 | a4 a5 a7 | engine_aicrush:aicrush1 台上s28–33守军0、坦克4；按名回放存活正常断言，清零strict xfail；模型守军11/9/9/9/8/8，首目标活着即被重选、未接触；首move终点不挪不代表后续均不挪；D86 aicrush1t碾压段aim全0，dest在f350/410/440变化；模型f230后首世界样本尚无远厂goal，前置已失配；tests/test_crush_observation.py按名回放，前置与首目的地strict xfail；追踪/选敌及移动仍gap，见work/re/e113_crush.md、e109_crush.md；不晋升 |
+| 已对拍 | `微操/AIMicroManagerData.Crush` | 77 | a4 a5 a7 | D145晋升：tests/test_crush_observation.py::test_crush_switch_runs_the_guards_over_only_when_on 按名跑 aicrush1/aicrush0（只差Crush）：台上开的s27守军1、坦克4，关的守军12、坦克被打掉；模型开的s27守军5、坦克4、18次碾压派令，关的守军10、0次碾压，正常断言；碾得多快（台上s28清零）仍strict xfail。旧记录：engine_aicrush:aicrush1 台上s28–33守军0、坦克4；按名回放存活正常断言，清零strict xfail；模型守军11/9/9/9/8/8，首目标活着即被重选、未接触；首move终点不挪不代表后续均不挪；D86 aicrush1t碾压段aim全0，dest在f350/410/440变化；模型f230后首世界样本尚无远厂goal，前置已失配；tests/test_crush_observation.py按名回放，前置与首目的地strict xfail；追踪/选敌及移动仍gap，见work/re/e113_crush.md、e109_crush.md；不晋升 |
 | 已对拍 | `目标/AITargetingHeuristic.SortType` | 76 | a4 a5 a7 | docs/engine/aitactics.md#目标挑哪个（Distance：aitpnear / aitpmt2 最近、次近；ThreatToGround：aitargetsafe） |
 | 已对拍 | `微操/AIMicroManagerData.ReverseMove` | 74 | a4 a5 a7 | engine_aipullback airev1/0台上s1–10坦克4、s19–22近厂2；tests/test_simai_bench_b.py按名回放，存活前置正常断言、近厂计数strict xfail；airevp近厂4不能证明没有倒车；E115 airev1t/0t各PASS：同帧目标/位置/车身朝向已取得，两侧各23个有效目标相邻帧移动样本无负点积；tests/test_ai_reverse_clock.py按名f263目标取得strict xfail；模型朝向/分支前置仍gap，暂停新台、不晋升；宿主台近厂读数不同于旧台，不假设等价；见work/re/e115_reverse_aim.md；D132 airevk1/0（玩家坦克目标）逐帧相同、无退后目的点，但前置未达：近的玩家坦克s13组队前被打死，入队2辆到目标中心距166–233 > R−10=135，与模型一致不算反例；airevkg1守护者未入队，无效；见work/re/d132_whenidle.md；D133 airevk2/airevk2o（s16.7删掉远处玩家坦克、在每辆锤子身上生成玩家守护者）：开的那局f302起成员停下、下移动令到离目标135（R−10）、车头对着目标倒着开（位移与车头点积<0），全局23条；关的那局0条；tests/test_ai_reverse_k2.py按名读台上样本正常断言；D134 模拟器接上成员自己的攻击目标（simai ordered_aim）和射程AttackRange−5：test_model_backs_up_after_the_swap_only_with_the_switch_on 开的那局换敌后下倒车令、关的那局0条，正常断言，晋升；近敌计数回放仍strict xfail（台上只2辆入队、近敌s13先死，模拟器4辆全入队，是招兵不是倒车）；见work/re/d133_airevk2.md |
 | 已对拍 | `目标/AITargetingHeuristic.Location` | 74 | a4 a5 a7 | E81/E87 engine_ailocation a：同型电厂一陆一水、四架双刃，仅切Land/Water/Water Land；s40到陆厂/到水厂分别4/0、0/4、4/0；tests/test_simai_bench_e.py::test_target_location按名回放三组通过。Location按位置地形过滤；只验证EnemyStructure/Distance，浅滩、桥面及空中目标仍INFERRED；见 work/re/e_location_e87.md |
-| 推断 | `战术/Tactic.UseAestheticsManager` | 73 | a4 a5 a7 | 专用engine_aiaesthetics aiaeson/aiaesoff固定Distance=2000，仅切美学开关；两组各5条PASS：on先离300、传送后回900再离，off回双圈，存活/锁存均1；tests/test_simai_bench_c.py关闭组完整轨迹已回放；探针战术附加属性现传入消费者；E108按D83实际调用回放：首次遇敌gate=0仍发，后续102次gate=0不发、两次gate=1发；完整模拟首发154对台191且漏461，选敌/成员目的地/ready仍gap、strict xfail，不晋升；tests/test_ai_aesthetics_clock.py；见 work/re/e108_aesthetics_gate.md |
+| 已对拍 | `战术/Tactic.UseAestheticsManager` | 73 | a4 a5 a7 | D145晋升：tests/test_simai_bench_c.py::test_tactic_aesthetics_switch_after_displacement 按名跑 aiaeson/aiaesoff，传送出圈后开的一侧回900再离开（s65 圈300/900=0/0）、关的一侧回双圈（1/1），模型两边都对上，正常断言；传送前模型开的一侧也离900（台上不离）仍strict xfail。旧记录：专用engine_aiaesthetics aiaeson/aiaesoff固定Distance=2000，仅切美学开关；两组各5条PASS：on先离300、传送后回900再离，off回双圈，存活/锁存均1；tests/test_simai_bench_c.py关闭组完整轨迹已回放；探针战术附加属性现传入消费者；E108按D83实际调用回放：首次遇敌gate=0仍发，后续102次gate=0不发、两次gate=1发；完整模拟首发154对台191且漏461，选敌/成员目的地/ready仍gap、strict xfail，不晋升；tests/test_ai_aesthetics_clock.py；见 work/re/e108_aesthetics_gate.md |
 | 已对拍 | `组队招人/TeamTemplate.ReleaseType=NEVER_RELEASE` | 71 | a4 a5 a7 | engine_airelease airelnever/airelprio仅ReleaseType不同；CNVTeams两组f166防御激活持3166/3167，priority在(526,541]同两ID转进攻，never保留至末样本；tests/test_simai_bench_c.py::test_never_release_engine_members_and_model_replay按名跑两台、断言实机ID/n/active及模型f301/601/976成员归属；仅固定两辆车的保留/转队，精确激活/转队时钟、priority后段短暂第三ID及其他释放模式仍gap；见 work/re/c_release_teams_report.md |
 | 已对拍 | `微操/AIMicroManagerData.EnemySearchDistanceVisionMultiplier` | 70 | a4 a5 a7 | engine_aisearch aisrchhi/aisrchlo 仅倍率1.5/0.25不同：高先打旁厂、到远厂0；低旁厂100且到远厂4；tests/test_simai_search.py 回放；仅被动建筑搜索，精确边界、敌军目标取得和揭雾未量 |
 | 已对拍 | `启发条件/OpeningMoveHeuristic` | 69 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiomove.py |
