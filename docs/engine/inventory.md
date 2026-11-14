@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **96%** | **100%** | 50 / 50 | 451 | 158 | 19 | 158 | 116 | 97% |
+| 脚本动作 | **96%** | **100%** | 50 / 50 | 451 | 158 | 20 | 157 | 116 | 97% |
 | 脚本条件 | **98%** | **100%** | 12 / 12 | 89 | 55 | 4 | 27 | 3 | 99% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -183,7 +183,7 @@
 | 已对拍 | `UNIT_KILL_ALL_IN_AREA` | 32 |  | tests/test_simbench.py::test_acts_more_as_the_bench |
 | 已对拍 | `ATTACK_MOVE_TEAM_TO_NAMED_OBJECT` | 31 |  | tests/test_simbench.py::test_acts_more_as_the_bench |
 | 推断 | `CREATE_REINFORCEMENT_TEAM_AT_UNIT_POSITION` | 31 |  | Sim.act / Sim.cond 有分支 |
-| 未做 | `SKIRMISH_AI_SET_FAVORED_ENEMY` | 31 |  | Sim.act / Sim.cond 不认识 |
+| 推断 | `SKIRMISH_AI_SET_FAVORED_ENEMY` | 31 |  | A220 engine_aifav:a 台上：清空敌人表、只留这一个（aipriodef 之后设 Soviet_4 → s14 到近厂、从不到远厂）。模拟器记了清表 (None, 0)，simai 还没发清表命令（请 B 接，work/re a220_favored_enemy.md），对拍测试 strict xfail；B 接上后去掉这条 |
 | 已对拍 | `NAMED_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT` | 30 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_waypath.py |
 | 已对拍 | `UNIT_CHANGE_OBJECT_STATUS:SKIRMISH_AI_DO_NOT_TAKE` | 30 |  | tests/test_simbench.py::test_acts_u_as_the_bench |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleAlliedArtilleryVehicle` | 29 |  | 只记进时间线，没有效果 |

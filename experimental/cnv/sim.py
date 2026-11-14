@@ -3875,6 +3875,11 @@ class Sim:
             self.ai_switches.setdefault(a[0], {})[name] = int(a[1])     # they do is simai's (engine line B)
         elif name == 'SKIRMISH_AI_SET_ENEMY_PLAYER_PRIORITY':   # (player, enemy, n): one entry of the AI's enemy
             self.ai_priorities.setdefault(a[0], []).append((a[1], int(a[2])))     # table, in order (simai)
+        elif name == 'SKIRMISH_AI_SET_FAVORED_ENEMY':
+            # (player, enemy): the enemy table emptied, then that enemy alone at score 10 (program, work/re
+            # a219_skirmish_transfer.md 2; bench checks/engine_aifav.py). (None, 0) = the clear: simai tells the
+            # model 'enemy priorities' 0 (asked of engine line B, work/re a220_favored_enemy.md)
+            self.ai_priorities.setdefault(a[0], []).extend([(None, 0), (a[1], 10)])
         elif name == 'SKIRMISH_AI_TRANSFER_ALL':
             # (player, on): UNIT_AI_TRANSFER_ALL's team step without its AI wake (program, work/re
             # a219_skirmish_transfer.md; the wake left out is INFERRED, not benched). Bench 11-14 engine_acts_z all:
