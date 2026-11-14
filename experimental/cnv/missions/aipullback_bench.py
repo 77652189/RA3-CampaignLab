@@ -74,8 +74,44 @@ def guardians(m):
     return m
 
 
+SECOND = 's6'                          # airevidx: a second AI side, a player index of its own (s1 logs index=4)
+SECOND_AT = (450.0, -500.0)            # its yard off 'east base' (4300, 2900), its four tanks 260 west of it
+
+
+def second_ai(m, side=SECOND, at=SECOND_AT):
+    """B round 196 (handoff-b 195 C3): a second AI side with s1's faction and personality, its yard, four tanks and a
+    teams host laid out as s1's are (`at` off 'east base'), woken with s1 -- do the slot team's first draw (s1 f16) and
+    its fill (s1 f21 = draw + 5) move with the player index?"""
+    from parts import Script
+    from missions.aiteams_bench import HOST
+    m.sides[side] = dict(m.sides['s1'])
+    ox, oy = at
+    k = 0
+    for o in list(m.objects):
+        if o.side != 's1':
+            continue
+        dx, dy = o.x - 3850.0, o.y - 3400.0           # off 'east base', as mission() placed them
+        k += 1
+        kw = {} if getattr(o, 'angle', None) is None else {'angle': o.angle}
+        m.put(o.template, 'east base', ox + dx, oy + dy, side=side, name=f'UNIT - CNV AI2 {k}' if o.name else '',
+              role=f'second ai {k}' if o.name else '', **kw)
+    p = m.player(side)
+    base = 'CNV AI Base 2'
+    m.waypoint('ai base 2', base, 'east base', ox, oy)
+    m.scripts += [
+        # run 1 (B196): s6's units stayed in the map's teamSoviet_6 (s1's are in defaultSkirmishTeamSoviet_1 from f1),
+        # so nothing was recruited before the wake's transfer (f151 -> full f152): hand them over at the start
+        Script('CNV AI2 - Start', [], [('PLAYER_SET_MONEY', p, 0), ('UNIT_AI_TRANSFER_ALL', p, 1)]),
+        Script('CNV AI2 - Wake', [('TIMER_EXPIRED', 'CNV AI Wake')],
+               [('UNIT_AI_TRANSFER_ALL', p, 1), ('SKIRMISH_AI_MAKE_BASE', p, base),
+                ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', p, 20), ('SKIRMISH_AI_USE_REPAIRS', p, 0),
+                ('SKIRMISH_AI_USE_REBUILD_SYSTEM', p, 0), ('PLAYER_SET_MONEY', p, 0)])]
+    assert any(o.template == HOST and o.side == side for o in m.objects)
+    return m
+
+
 MISSION = {
-    'aipull1': lambda: mission('CampAIPull1', factory=True),
+    'aipull1':lambda: mission('CampAIPull1', factory=True),
     'aipull0': lambda: mission('CampAIPull0', factory=True, PullbackInjured='false'),
     # the first aipull1 run: no tank went home (a tank shot down from 35 % in under one 2 s micro update?) -- so the
     # check's script sets the tanks to HURT % at HURT_AT, on the road, before the fight (checks/engine_aipullback.py)
@@ -104,6 +140,8 @@ MISSION = {
     # observations, while region counts alone cannot identify reverse travel.
     'airev1t': lambda: mission('CampAIRev1T', observe=True),
     'airev0t': lambda: mission('CampAIRev0T', observe=True, ReverseMove='false'),
+    # B round 196: airev1t with a second AI side (s6, its own index) laid out the same -- the recruit delay by index
+    'airevidx': lambda: second_ai(mission('CampAIRevIdx', observe=True)),
     # airev1 / 0 too alike: the target beside the tanks from the start, no guards (handoff-b 69's measure)
     'airevp1': lambda: mission('CampAIRevP1', close=True),
     'airevp0': lambda: mission('CampAIRevP0', close=True, ReverseMove='false'),

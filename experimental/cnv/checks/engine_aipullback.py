@@ -55,6 +55,11 @@ Readings (11-09; 4 Hammers vs 12 Peacekeepers, Crush false; tanks reach the plan
   Left (work/re handoff-b 72): the reverse-move routine's first gate -- a byte flag reached through the member's locomotor data
   (read as a locomotor template flag, not named); the weapon flag check skips too.
 
+  (11-14, B round 196) airevidx: airev1t plus a second AI side s6 (index 11; s1 is index 4), laid out the same, its
+           units handed to the AI at the start (run 1 without that: they sat in the map's teamSoviet_6 and the team
+           filled only at the wake's transfer, f151 -> f152). Run 2, the slot team made / full: s1 f17 / f21, s6 f18 /
+           f20. Neither follows the index (+7 would put s6 at f24): the first slot draw is ~start + 15 for both, the
+           fill +4 / +2 is not an index stagger (left INFERRED). PASS (guards only).
   E115 observer pair airev1t/airev0t: both PASS the guard prerequisite only. Initial four join at host f21;
   all acquire the far plant at f230; f260/261 are state 2 with valid goals. Each side has 23 moving-member
   observations across consecutive frames in states 2/4 with the same valid goal, all positive hull-forward
@@ -199,5 +204,5 @@ def a(m, build):
 
 
 CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aipull1', 'aipull0', 'aipullh1', 'aipullh0', 'aipullga', 'aipulli1', 'aipullr1', 'aipullp1', 'aipullbig', 'aipullsov', 'aipulljp',
-                                                           'airev1', 'airev0', 'airev1t', 'airev0t', 'airevp1', 'airevp0', 'airevt1', 'airevt0',
+                                                           'airev1', 'airev0', 'airev1t', 'airev0t', 'airevidx', 'airevp1', 'airevp0', 'airevt1', 'airevt0',
                                                            'airevk1', 'airevk0', 'airevkg1', 'airevk2', 'airevk2o', 'airevkp1', 'airevkp0')}
