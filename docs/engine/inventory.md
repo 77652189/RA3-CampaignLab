@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **94%** | **100%** | 50 / 50 | 451 | 141 | 20 | 175 | 115 | 96% |
+| 脚本动作 | **95%** | **100%** | 50 / 50 | 451 | 145 | 21 | 170 | 115 | 96% |
 | 脚本条件 | **98%** | **100%** | 12 / 12 | 89 | 54 | 4 | 28 | 3 | 99% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -194,10 +194,10 @@
 | 不涉及 | `SOUND_DISABLE_TYPE` | 28 |  | 纯表现（名字规则） |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackAlliedMCV` | 27 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_unpack.py |
 | 不涉及 | `PLAYER_CAMERA_MOVE_TO_NAMED` | 27 |  | 纯表现（名字规则） |
-| 未做 | `TEAM_GARRISON_SPECIFIC_BUILDING` | 27 |  | Sim.act / Sim.cond 不认识 |
-| 未做 | `TEAM_SET_PLAYERS_NEAREST_UNIT_OF_TYPE_TO_REFERENCE` | 27 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `TEAM_GARRISON_SPECIFIC_BUILDING` | 27 |  | tests/test_simbench.py::test_acts_tel_as_the_bench |
+| 已对拍 | `TEAM_SET_PLAYERS_NEAREST_UNIT_OF_TYPE_TO_REFERENCE` | 27 |  | tests/test_simbench.py::test_acts_tel_as_the_bench |
 | 已对拍 | `TEAM_STOP` | 27 | a4 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts4.py |
-| 未做 | `TEAM_TELEPORT_TO_WAYPOINT` | 27 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `TEAM_TELEPORT_TO_WAYPOINT` | 27 |  | tests/test_simbench.py::test_acts_tel_as_the_bench |
 | 已对拍 | `MAP_UNDO_REVEAL_PERMANENTLY_IN_TRIGGER` | 26 |  | tests/test_simbench.py::test_acts_more_as_the_bench |
 | 不涉及 | `NAMED_FLASH_WHITE` | 26 |  | 纯表现（名字规则） |
 | 不涉及 | `RADAR_CREATE_EVENT` | 26 |  | 纯表现（名字规则） |
@@ -206,8 +206,8 @@
 | 不涉及 | `LINK_MISSION_OBJECTIVE_TO_OBJECT_WITH_CATEGORY` | 25 |  | 纯表现（名字规则） |
 | 已对拍 | `NAMED_GARRISON_SPECIFIC_BUILDING` | 25 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_engineer.py:a |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JapanBaseDefenseToggleBinaryWeapon` | 25 |  | 只记进时间线，没有效果 |
-| 未做 | `PLAYER_SET_MONEY_CAP` | 25 |  | Sim.act / Sim.cond 不认识 |
-| 未做 | `UNIT_ALLOW_AI_AUTOACQUIRE` | 25 |  | Sim.act / Sim.cond 不认识 |
+| 推断 | `PLAYER_SET_MONEY_CAP` | 25 |  | A213 engine_acts_tel:tel：脚本的钱不受上限管（上限 3000 时给 5000 → 6000；上限 500 仍 6000；设 10000 照设）；它管的（推断是采矿收入）没上台、模拟器只记不用 |
+| 已对拍 | `UNIT_ALLOW_AI_AUTOACQUIRE` | 25 |  | tests/test_simbench.py::test_acts_tel_as_the_bench |
 | 未做 | `UNIT_SET_MODELCONDITION` | 25 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `DISPLAY_COUNTER` | 24 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_modulebatch.py |
 | 不涉及 | `HIDE_COUNTER` | 24 |  | 纯表现（名字规则） |

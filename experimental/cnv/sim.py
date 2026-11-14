@@ -1118,6 +1118,7 @@ class Sim:
         self.suppression_fields = []        # (end, value, x, y, radius): stationary hit contributions
         self.topples = []                   # ToppleUpdate objects; neutral props can be knocked over too
         self.frame_movers = {}              # topple contact paths and measured Jet startup
+        self.money_cap = {}                 # PLAYER_SET_MONEY_CAP: player -> cap (scripts' money not held to it)
         self.refs = {}                      # reference name (UNITRef - ...) -> the Body a SET_REF_TO_... pointed it at
         self.object_lists = {}              # OBJECTLIST_ADDOBJECTTYPE: list name -> {template}, both lower case
         self.base_power = {}                # PLAYER_SET_BASE_POWER: player -> supply added to its objects' (INFERRED)
@@ -3350,6 +3351,18 @@ class Sim:
             if b and p:
                 b.x, b.y, b.path = p[0], p[1], []
                 self.change()
+        elif name == 'TEAM_TELEPORT_TO_WAYPOINT':     # (team, waypoint) INFERRED: the unit version on every member
+            for b in self.members(a[0]):
+                self.act('UNIT_TELEPORT_TO_WAYPOINT', [b.name, a[1]], script)
+        elif name == 'TEAM_SET_PLAYERS_NEAREST_UNIT_OF_TYPE_TO_REFERENCE':
+            # (type, team, ref) INFERRED: SET_REF_TO_NEREST_TEAM_OF_TYPE_OWNED_BY_PLAYER with the team's player
+            crew = self.members(a[1])
+            if crew:
+                self.nearest_ref(a[0], crew[0].owner, a[1], a[2], unnamed=False)
+        elif name == 'UNIT_ALLOW_AI_AUTOACQUIRE':     # (unit, on): TEAM_ALLOW_AI_AUTOACQUIRE's for one unit
+            b = self.body(a[0])
+            if b and b.alive:
+                b.ai_acquire = bool(int(a[1]))
         elif name == 'NAMED_TRANSFER_OWNERSHIP_PLAYER':
             b = self.body(a[0])
             if b and b.owner != a[1]:
@@ -3643,16 +3656,24 @@ class Sim:
             self.money[a[0]] = a[1]
         elif name == 'PLAYER_GIVE_MONEY':
             self.money[a[0]] = self.money.get(a[0], 0) + a[1]
+        elif name == 'PLAYER_SET_MONEY_CAP':
+            # (player, cap): bench 11-13 engine_acts_tel -- no script's money is held to it (give 5000 over a 3000 cap,
+            # a 500 cap under 6000, set 10000 over it: all kept); what it caps (harvest income, INFERRED) not modelled
+            self.money_cap[a[0]] = int(a[1])
         elif name == 'NAMED_GARRISON_SPECIFIC_BUILDING':
             b, g = self.body(a[0]), self.body(a[1])
             if b and g and 'INFILTRATOR' in b.kinds and self.infiltrators.spec(g) is not None:
                 self.infiltrators.send(b, g)
             elif b and g and simunits.engineer_contain(g.template, self.own) is not None:
                 self.order_capture(b, a[1])
-            elif b and g and self.garrison.spec(g) is not None:      # walks to it, in if it may (simgarrison; INFERRED)
+            elif b and g and self.garrison.box(g) is not None:       # walks to it, in if it may (simgarrison; a
+                                                                     # transport too: engine_acts_tel)
                 self.garrison.send(b, g)
             elif b and g:
                 self.send(b, a[1])
+        elif name == 'TEAM_GARRISON_SPECIFIC_BUILDING':   # (team, building) INFERRED: the unit version on each member
+            for b in self.members(a[0]):
+                self.act('NAMED_GARRISON_SPECIFIC_BUILDING', [b.name, a[1]], script)
         elif name == 'NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY':      # (unit, building) engine_garrison: no
             self.garrison.put(self.body(a[0]), self.body(a[1]), script=True)    # relation, no room (garrison.md 1)
         elif name == 'TEAM_GARRISON_SPECIFIC_BUILDING_INSTANTLY':     # (team, building or transport) each member as

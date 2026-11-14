@@ -1544,6 +1544,27 @@ def test_acts_more_as_the_bench():
     assert flags[:5] == [60, 124, 360, 362, 106], flags     # bench 61 125 361 363 107 with bit 1 kept
 
 
+def test_acts_tel_as_the_bench():
+    """tel, bench 11-13 `run_queue engine_acts_tel:tel` (CampActsTTel, round 213; the bench's seconds 1-2 ahead):
+    钱 1000 6000 10000 10100 20000 -- PLAYER_SET_MONEY_CAP holds no script's money; 位 3 from the start (the team
+    teleported, its move dropped, never in 'tel go') and Gar walking into the five-place Bullfrog one by one to 503
+    (TEAM_GARRISON_SPECIFIC_BUILDING asks the room, unlike _INSTANTLY); 旗 15 14 12 -- the reference on refb (named,
+    nearest RefT's middle), then on CA's; aaq's plant hit after UNIT_ALLOW_AI_AUTOACQUIRE, aaq0's never."""
+    run = _sim_run('engine_acts_tel', 'tel', 30.0)
+
+    def changes(col):
+        out = []
+        for _, v in run.series[1:]:
+            if not out or out[-1] != v[col]:
+                out.append(v[col])
+        return out
+    assert changes(0) == [1000, 6000, 10000, 10100, 20000]
+    where = changes(1)
+    assert where[-1] == 503 and all(v % 100 in (0, 3) for v in where) and len(where) >= 4, where
+    assert all(v[1] % 100 == 3 for t, v in run.series[1:] if t >= 2.5)
+    assert changes(2) == [7, 15, 14, 12]
+
+
 def test_video_a_radar_clip_is_done_after_its_length_full_screen_never():
     """movie play (bench, docs/story/handoff.md 1g): CNVTEST01 (95 frames at 23.976) in the radar window done 63 game
     frames after its start; the full-screen clip never reads done."""

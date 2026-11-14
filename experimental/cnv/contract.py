@@ -58,6 +58,7 @@ CREATES_NAMED = ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', 'CREATE_NAMED_ON_TEAM_AT_WA
 
 POINTS_AT_UNNAMED = 'SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER'    # (kind, player, team, name)
 POINTS_AT_ANY = 'SET_REF_TO_NEREST_TEAM_OF_TYPE_OWNED_BY_PLAYER'               # the same, named objects too
+POINTS_AT_TEAMS = 'TEAM_SET_PLAYERS_NEAREST_UNIT_OF_TYPE_TO_REFERENCE'         # (kind, team, name)
 
 
 OUTLET_SCRIPTS = re.compile(r'CNV \w+ - (Say \d+( chat)?|Now \d+|Phase \d+ line \d+)')    # ctx.talk's: a queued line, a scene's
@@ -637,6 +638,7 @@ def contract(mission):
     created = {args[0] for s in m.scripts for name, *args in s.do if name in CREATES_NAMED}
     # ... and so is a name a script points at an unnamed unit of a kind (the retail campaign names a building so)
     created |= {args[3] for s in m.scripts for name, *args in s.do if name in (POINTS_AT_UNNAMED, POINTS_AT_ANY)}
+    created |= {args[2] for s in m.scripts for name, *args in s.do if name == POINTS_AT_TEAMS}
     out += [f'cast {k}: no object named {r.name!r}' for k, r in m.cast.items()
             if r.name and r.name not in named and r.name not in created]
     out += [f'mark {k}: no waypoint {w!r}' for k, w in m.marks.items() if w not in m.waypoints]

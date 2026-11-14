@@ -155,6 +155,10 @@ BENCHED_TESTS = {
     **{(ACTION, n): 'tests/test_simbench.py::test_acts_more_as_the_bench' for n in (
         'TEAM_GARRISON_TEAM_INSTANTLY', 'NAMED_FORCE_ATTACK_WAYPOINT', 'UNIT_KILL_ALL_IN_AREA',
         'ATTACK_MOVE_TEAM_TO_NAMED_OBJECT', 'MAP_REVEAL_PERMANENTLY_IN_TRIGGER', 'MAP_UNDO_REVEAL_PERMANENTLY_IN_TRIGGER')},
+    # round 213: batch 3 (checks/engine_acts3.py tel; PLAYER_SET_MONEY_CAP in NOTES: only "scripts' money not capped")
+    **{(ACTION, n): 'tests/test_simbench.py::test_acts_tel_as_the_bench' for n in (
+        'TEAM_TELEPORT_TO_WAYPOINT', 'TEAM_GARRISON_SPECIFIC_BUILDING',
+        'TEAM_SET_PLAYERS_NEAREST_UNIT_OF_TYPE_TO_REFERENCE', 'UNIT_ALLOW_AI_AUTOACQUIRE')},
     # engine line C round 1: modules whose retail data the simulator already follows and a bench-reading test cites
     (MODULE, 'Behaviors/ProductionUpdate'):
         'tests/test_simbench.py::test_production_pays_as_it_builds_and_comes_out_after_the_door',   # engine_production a-g
@@ -271,6 +275,7 @@ BENCHED_TESTS = {
 # (part, name) -> (state, why): where the name rule above is wrong (a module read under another name ...)
 _NOT_IN_SIM = '已核（11-08）：模拟器没有这个效果'
 NOTES = {
+    (ACTION, 'PLAYER_SET_MONEY_CAP'): (GUESSED, 'A213 engine_acts_tel:tel：脚本的钱不受上限管（上限 3000 时给 5000 → 6000；上限 500 仍 6000；设 10000 照设）；它管的（推断是采矿收入）没上台、模拟器只记不用'),
     (ACTION, 'PLAYER_TOGGLE_RESOURCE_SHARING'): (GUESSED, 'A211 engine_acts:flow：两边都开共享的盟友之间，脚本给钱（PLAYER_GIVE_MONEY）不分（1001 / 1000 / 2001 原样）；D 119 读的码是采矿等收入平分给共享盟友，模拟器没做、没上台（要采矿台子）'),
     (MODULE, 'Behaviors/AutoDepositUpdate'): (GUESSED, 'E146 engine_objectbatch:a/b：原版SwissBank克隆有/无模块的钱包，on逐次+5至60、12秒删除后稳定，off全0；具名测试按实际60/0回放。只量已有归属产钱，不晋升整项；占领奖金/驻军/上限/修理仍gap；见work/re/e146_objectbatch.md'),
     (MODULE, 'Behaviors/HealCrateCollide'): (TODO, 'E146 engine_objectbatch:a/b有/无模块均未治疗，步兵始终50/50；b中立箱且到位成立，仍无效，两轮后暂停；不把负结果登记成效果已对拍。SecretFile原XML含当前schema不接受的属性，未冒充普通HealCrate等价；碰撞派发前置待查；见work/re/e146_objectbatch.md'),

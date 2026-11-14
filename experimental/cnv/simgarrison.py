@@ -23,6 +23,9 @@ RA3 1.13), held to the bench (checks/engine_garrison.py in / hp, bench 11-05; do
 Transports (TransportContain: the Bullfrog, the Riptide, the bomber; bench 11-10 checks/engine_transport.py load):
   in           the script's TEAM_ / NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY as into a house -- no room, no relation
                (six into the five-place Bullfrog, Soviet_4's two into the player's); the AI never picks one (places)
+  walk in      the script's TEAM_ / NAMED_GARRISON_SPECIFIC_BUILDING (not instantly): walks to it and goes in as into a
+               house, the room asked (bench 11-13 engine_acts_tel: five of six into the five-place Bullfrog, one a
+               second); the relation as a house's (INFERRED)
   ride         a passenger stands where its transport is, every frame (inside an area with it, ENCLOSED all along)
   eject        a button whose power an EjectPassengersSpecialAbilityUpdate serves, at a waypoint: one out every
                TimePerPassenger from the moment it is pressed (within StartAbilityRange; farther, the transport drives
@@ -155,7 +158,7 @@ class Garrisons:
 
     def may(self, u, g):
         """u may go into g by the filter and the relation (not the room: the AI's pass does not look at it, aibdpre)."""
-        sp = self.spec(g) if g is not None and g.alive else None
+        sp = self.box(g) if g is not None and g.alive else None
         if sp is None or u.name in self.where or not self.fits(u, sp):
             return False
         if self.clears(u, sp):
@@ -191,7 +194,7 @@ class Garrisons:
     def put(self, u, g, script=False):
         """u into g now; True when it is inside. script: the script's ..._INSTANTLY (no relation, no room)."""
         s = self.sim
-        sp = (self.box(g) if script else self.spec(g)) if g is not None and g.alive else None
+        sp = self.box(g) if g is not None and g.alive else None     # walked in: a transport asks the room too
         if sp is None or u is None or not u.alive or u is g or u.name in self.where or not self.fits(u, sp):
             return False
         held = self.inside.setdefault(g.name, [])
