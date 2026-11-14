@@ -3740,8 +3740,10 @@ class Sim:
                 # value read (bench 11-09 pend_scripts9 rel: 12 to the end, the tank gone on the minimap; engine_float,
                 # engine_spawn, engine_super saw the same freeze)
         elif name == 'SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER':
+            # a template's EquivalentTo counts under that name too (simunits.equivalent_to; bench engine_aiopen b)
+            name = a[0].lower()
             self.counters[a[2]] = sum(1 for b in self.living() if b.owner == a[1] and
-                                      b.template.lower() == a[0].lower())
+                                      (b.template.lower() == name or simunits.equivalent_to(b.template, self.own) == name))
         elif name == 'SET_PLAYER_MONEY_TO_COUNTER':
             self.counters[a[1]] = int(self.money.get(a[0], 0))
         elif name == 'PLAYER_SET_MONEY':

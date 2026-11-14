@@ -679,19 +679,22 @@ def test_a_medium_unit_cap_of_3_holds_the_army_at_4(lib):
     """checks/engine_aiskirm.py aiskuc uc (B round 173; UnitCap Cap 3 MEDIUM + Cap 1 EASY HARD BRUTAL, the bench
     runs MEDIUM): 兵数 4 at s37 and no more to s110 while the stock AI has 8 infantry by ~s60 -- strictly more than
     the smallest matching Cap stops building, the line for other difficulties is skipped. (s111 on it rose to 10:
-    see the strict xfail below.)"""
+    the opening's Riptides, below.)"""
     _, rows = _probe_run('aiskuc', lib, 100.0, check='uc')
     army = [r['兵数'] for r in rows]
     assert max(army) == 4 and army[-1] == 4
 
 
-@pytest.mark.xfail(strict=True, reason='simai holds aiskuc at 4; bench aiskuc uc: 6 at s111, 8 at s124, 10 at s132 '
-                                       '(to s218) -- something builds past UnitCap after ~100 s after the wake, not '
-                                       'known what (B handoff round 173 hypothesis table)')
-def test_after_s110_the_unit_capped_army_grows_again(lib):
-    """checks/engine_aiskirm.py aiskuc uc: 兵数 10 from s132."""
-    _, rows = _probe_run('aiskuc', lib, 140.0, check='uc')
-    assert max(r['兵数'] for r in rows) >= 8
+def test_after_s110_the_opening_riptides_pass_the_unit_cap(lib):
+    """checks/engine_aiskirm.py aiskuc uc (B round 183): bench 兵数 4 to s110, then 6 at s111, 8 at s124, 10 from s132
+    to s218 -- the three Riptides that close 1AlliedBalanced's AlliedStandard opening (after the war factory, s99).
+    The opening's orders do not ask UnitCap (work/re d124_unitcap.md 4, read), and the sum lists both
+    AlliedAntiInfantryVehicle and its _Ground (EquivalentTo the first), so each Riptide counts twice. simai: 6 / 8 / 10
+    at s115 / s126 / s137 (the 3 s wake phase its buildings show too)."""
+    _, rows = _probe_run('aiskuc', lib, 145.0, check='uc')
+    army = [r['兵数'] for r in rows]
+    assert max(army[:110]) == 4 and army[-1] == 10
+    assert sorted(set(army[100:])) == [4, 6, 8, 10]
 
 
 def test_the_unit_cap_counts_the_miners(lib):

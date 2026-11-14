@@ -2689,6 +2689,24 @@ def _inherited(template, own, read, empty):
     return empty
 
 
+_equivalent = {}
+
+
+def equivalent_to(template, own=None):
+    """The template's <EquivalentTo> (up its inheritFrom chain), lower case, else None. The engine's ownership count
+    of a name counts these too: the opening's Riptide is AlliedAntiInfantryVehicle_Ground (EquivalentTo AlliedAnti-
+    InfantryVehicle) and SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER counted it under both names (bench 2026-11-06
+    engine_aiopen b; 2026-11-13 aiskuc / aiskuc7 / aiskucn: each opening Riptide +2 to a sum listing both). Whether
+    the base name's own units count under the _Ground name was not seen (INFERRED: no)."""
+    key = (template.lower(), bool((own or {}).get(template)))
+    if key not in _equivalent:
+        def read(xml):
+            m = re.search(r'<EquivalentTo>\s*([^<\s]+)', xml or '')
+            return m.group(1).lower() if m else None
+        _equivalent[key] = _inherited(template, own, read, None)
+    return _equivalent[key]
+
+
 def command_set(structure, upgrades=(), own=None):
     """The structure's CommandSet: its own, or the last CommandSetUpgrade's whose TriggeredBy it holds (AlliedConstruction
     Yard: ...Level2 once it holds Upgrade_AlliedTech2, its button then buys Tech3)."""

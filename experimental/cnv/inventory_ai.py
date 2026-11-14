@@ -398,8 +398,9 @@ NOTES = {
         'engine_aiskirm aiskuc uc（2026-11-13，台上 MEDIUM）：子人格写 Cap 3 MEDIUM + Cap 1 EASY HARD BRUTAL，'
         '兵数（矿车以外）s37 到 4、停到 s110（原版 aiskirm c 约 s60 已 8 个步兵）——严格大于最小匹配上限才停，'
         '别的难度那行跳过；建筑照造。tests/test_simai_bench_b.py::test_a_medium_unit_cap_of_3_holds_the_army_at_4'
-        '按名回放。原版只有 Cap 100 一种取值（够不着，规则同一条）。gap：s111 后又涨到 10（strict xfail '
-        'test_after_s110_the_unit_capped_army_grows_again）；见 work/re/handoff-b.md 第177节。'
+        '按名回放。原版只有 Cap 100 一种取值（够不着，规则同一条）。s111 后涨到 10 = 开局表末尾 3 辆激流'
+        '（开局下单不过 UnitCap 门；计数同时列了激流两个模板名，_Ground 等同于前者，每辆算两次），'
+        '第183轮转正 test_after_s110_the_opening_riptides_pass_the_unit_cap。'
         '第179轮：aiskuc7 uc（Cap 7）兵数 s55–s111 停在 7、第一辆矿车 s53 → 矿车算进单位数'
         '（test_the_unit_cap_counts_the_miners）；aiskucn ucn（建造状态列新维和 + Cap 3）兵数 5、新维和 2 停到 s111 → '
         '建造状态的单位单也过这道门（test_the_unit_cap_holds_the_build_states_unit_too）')
