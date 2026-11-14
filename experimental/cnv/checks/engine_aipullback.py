@@ -60,6 +60,13 @@ Readings (11-09; 4 Hammers vs 12 Peacekeepers, Crush false; tanks reach the plan
            filled only at the wake's transfer, f151 -> f152). Run 2, the slot team made / full: s1 f17 / f21, s6 f18 /
            f20. Neither follows the index (+7 would put s6 at f24): the first slot draw is ~start + 15 for both, the
            fill +4 / +2 is not an index stagger (left INFERRED). PASS (guards only).
+  (11-14, A round 227) the turn in place (tests/test_turn_rate.py, fixtures a_turn/): airevgt (Guardians facing
+           north-west) PASS -- 24 deg a frame (360 / TurnTimeSeconds 1.0), the 51 deg form-up turn in place f26-27,
+           driving from f28 (start 3 off), arrived f44-48, turned to the facing, go order f56 (96 deg: f56-59, drive
+           f60). airevat (Apocalypses) PASS -- 8 a frame (3 s): 96 deg f26-37, drive f38; the facing turns f67-97, go
+           order f98. With airev1t's Hammers (19 a frame): a unit drives on a frame that starts within ~9 deg of its
+           way (8 drove; 10 and 15 did not), the rest of the turn made driving; under TurnThresholdHS 90 alike.
+           A turn ordered while driving (airevgt f170, attack) is made driving (24 deg on a moving frame).
   E115 observer pair airev1t/airev0t: both PASS the guard prerequisite only. Initial four join at host f21;
   all acquire the far plant at f230; f260/261 are state 2 with valid goals. Each side has 23 moving-member
   observations across consecutive frames in states 2/4 with the same valid goal, all positive hull-forward
@@ -204,5 +211,5 @@ def a(m, build):
 
 
 CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aipull1', 'aipull0', 'aipullh1', 'aipullh0', 'aipullga', 'aipulli1', 'aipullr1', 'aipullp1', 'aipullbig', 'aipullsov', 'aipulljp',
-                                                           'airev1', 'airev0', 'airev1t', 'airev0t', 'airevidx', 'airevp1', 'airevp0', 'airevt1', 'airevt0',
+                                                           'airev1', 'airev0', 'airev1t', 'airev0t', 'airevidx', 'airevgt', 'airevat', 'airevp1', 'airevp0', 'airevt1', 'airevt0',
                                                            'airevk1', 'airevk0', 'airevkg1', 'airevk2', 'airevk2o', 'airevkp1', 'airevkp0')}

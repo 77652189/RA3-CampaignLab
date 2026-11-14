@@ -60,18 +60,24 @@ def mission(mod, factory=False, faction=None, close=False, observe=False, **fiel
 GUARDIAN = 'AlliedAntiVehicleVehicleTech1'
 
 
-def guardians(m):
-    """The AI's Hammers swapped for Allied Guardian tanks (as aicrush_bench swaps Peacekeepers for Hammers)."""
+def guardians(m, tank=GUARDIAN, angle=None):
+    """The AI's Hammers swapped for Allied Guardian tanks (as aicrush_bench swaps Peacekeepers for Hammers), or for
+    `tank`; angle (radians): the tanks' starting facing instead of west."""
     (fname, xml, asset), = m.assets
     m.assets = [(fname, xml.replace(f'<IncludeThing>{ac.TANK}</IncludeThing>',
-                                    f'<IncludeThing>{GUARDIAN}</IncludeThing>'), asset)]
+                                    f'<IncludeThing>{tank}</IncludeThing>'), asset)]
     for o in m.objects:
         if o.template == ac.TANK:
-            o.template = GUARDIAN
-    m.cast = {k: (r.__class__(GUARDIAN, r.name, r.side) if r.template == ac.TANK else r) for k, r in m.cast.items()}
-    m.cnv_units = (m.cnv_units[0], GUARDIAN)
-    m.spawns |= {GUARDIAN}
+            o.template = tank
+            if angle is not None:
+                o.angle = angle
+    m.cast = {k: (r.__class__(tank, r.name, r.side) if r.template == ac.TANK else r) for k, r in m.cast.items()}
+    m.cnv_units = (m.cnv_units[0], tank)
+    m.spawns |= {tank}
     return m
+
+
+APOCALYPSE = 'SovietAntiVehicleVehicleTech3'
 
 
 SECOND = 's6'                          # airevidx: a second AI side, a player index of its own (s1 logs index=4)
@@ -142,6 +148,11 @@ MISSION = {
     'airev0t': lambda: mission('CampAIRev0T', observe=True, ReverseMove='false'),
     # B round 196: airev1t with a second AI side (s6, its own index) laid out the same -- the recruit delay by index
     'airevidx': lambda: second_ai(mission('CampAIRevIdx', observe=True)),
+    # A round 227: airev1t's form-up with another locomotor -- the turn in place (Hammer TurnTimeSeconds 1.25 s:
+    # 19 deg / frame on the bench). Guardians (1.0 s) start facing north-west, so the go order turns them < 90 deg
+    # (TurnThresholdHS 90: do they drive while turning?); Apocalypses (3 s) as airev1t, facing west
+    'airevgt': lambda: guardians(mission('CampAIRevGT', observe=True), angle=-2.3562),
+    'airevat': lambda: guardians(mission('CampAIRevAT', observe=True), tank=APOCALYPSE),
     # airev1 / 0 too alike: the target beside the tanks from the start, no guards (handoff-b 69's measure)
     'airevp1': lambda: mission('CampAIRevP1', close=True),
     'airevp0': lambda: mission('CampAIRevP0', close=True, ReverseMove='false'),

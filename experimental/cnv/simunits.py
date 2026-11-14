@@ -2496,6 +2496,39 @@ def locomotor_speed(template, own, condition):
         return None
 
 
+_turning_memo = {}
+
+
+def turning(template, own=None):
+    """(degrees per second, threshold degrees or None): how fast the template turns -- 360 / TurnTimeSeconds of the
+    Locomotor its NORMAL LocomotorSet names -- and that Locomotor's TurnThresholdHS. Bench airev1t (B round 195, A
+    round 227, tests/test_turn_rate.py): Hammers (1.25 s), Guardians (1.0 s) and Apocalypses (3 s) turn 19 / 24 / 8
+    deg a frame in place from the order frame on, drive on the frame that starts within ~9 deg of their way, and
+    turn to the form-up facing the frame after they arrive; a 51 deg turn (under the threshold) in place too.
+    Infantry (TestReactiveLocomotorHUMAN, 0.5 s, no threshold) not benched. None when the template has no
+    locomotor (a building)."""
+    key = (template, (own or {}).get(template))
+    if key not in _turning_memo:
+        def read(xml):
+            for h, _ in _blocks(xml or '', 'LocomotorSet'):
+                if _attr(h, 'Condition', 'NORMAL') == 'NORMAL' and _attr(h, 'Locomotor'):
+                    return _attr(h, 'Locomotor')
+            return None
+        try:
+            locomotor = _chain(template, own, read)
+        except (OSError, ValueError):
+            locomotor = None
+        h = ''
+        if locomotor:
+            text = open(LOCOMOTORS, encoding='utf-8').read()
+            h = next((h for h, _ in _blocks(text, 'LocomotorTemplate') if _attr(h, 'id') == locomotor), '')
+        secs = _secs(_attr(h, 'TurnTimeSeconds')) if h else 0.0
+        limit = _attr(h, 'TurnThresholdHS') if h else None
+        _turning_memo[key] = (360.0 / secs if secs > 0 else None,
+                              _num(limit.rstrip('d')) if limit else None)
+    return _turning_memo[key]
+
+
 def template_toggles(template, own=None, depth=0):
     """toggle_modules of the template, else of what it inherits from (retail's CampaignOverrides.xml redefines the
     Hammer as inheriting from itself: its parent is then the retail file)."""
