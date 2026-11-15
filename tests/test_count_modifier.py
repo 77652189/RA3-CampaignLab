@@ -37,3 +37,17 @@ def test_count_modifier_named_bench_replay(build):
     w = simai.run(build, 'a', until=41)
     samples = [values for second, values in w.sim.series if 40 <= second <= 41]
     assert samples and all(values == before[2] for values in samples), (samples, before, after)
+
+
+@pytest.mark.skipif(not simai.available(), reason='no private AI model')
+@pytest.mark.xfail(strict=True, reason='D151: bench aicmfour stays 7/2 s39-s66 (three builds, like aicmhalf 4/5); '
+                   'the model keeps scoring Peacekeepers 100/(n/4+1) above Javelins and reaches 8/2 s45, 9/2 s51 -- '
+                   'what stops the bench after three builds (money, queue, a score floor) is not read')
+def test_count_modifier_high_group_stops_after_three_builds():
+    rows = measured()['aicmfour']['rows']
+    bench = {int(s): v for s, _, v in rows if 45 <= s <= 64}
+    w = simai.run('aicmfour', 'a', until=65)
+    model = {}
+    for s, v in w.sim.series:
+        model.setdefault(int(s), v)
+    assert bench and all(model.get(s) == v for s, v in bench.items()), (bench, model)

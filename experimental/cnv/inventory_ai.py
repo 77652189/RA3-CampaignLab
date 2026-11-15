@@ -108,7 +108,11 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
                               ('OpeningMove.Name', '每个探针按名字挂自写开局，都照它造'),
                               ('Order.Deposit', 'aiom15：带 Deposit 2000 照造、晚 4 秒'))},
               '开局/Order.Account': 'docs/engine/aiopen.md#开局存款进哪个账户（Order Account，第 116 轮）（aiskacp / aiskacd：PRODUCTION 兵营出兵、DEFENSE 兵营不出）',
-              '战略状态/StrategicState.State': 'docs/engine/aistate.md#读数（人格只留台上写的状态，AI 只跑这些：aistateconst / aistateslash 等）',
+              '经济/AccountShare.Account': 'tests/test_slush_account.py::test_slush_defense_named_bench_replay'
+                 '（C 的 engine_aislush aislddef / aislsdef：同一预算只把 100% 从 DEFENSE 挪到 SLUSH_FUND，'
+                 '台上炮塔 s28/48/68 1/2/3 座 vs 全程 0 座，模拟器按名回放 s60 2 / 0——Account 决定份额进哪个池、'
+                 '造防御只花 DEFENSE 池；PRODUCTION / DEFENSE 两值另有台子；SLUSH_FUND 自己花在哪单列未做；D 第 151 轮）',
+              '战略状态/StrategicState.State':'docs/engine/aistate.md#读数（人格只留台上写的状态，AI 只跑这些：aistateconst / aistateslash 等）',
               '战略状态/TargetHeuristic.TargetHeuristic': 'docs/engine/aitactics.md#读数（aitargetnear / aitargetsafe：按状态写的目标启发挑楼）',
               '战术/Tactic.Tactic': 'docs/engine/aitactics.md#读数（SimpleAttack / DefenseAvoidanceAttack / FlankAttack / StaticDefense 上台）',
               '目标/AITargetingHeuristic.HeuristicType': 'docs/engine/aitactics.md#读数（ClosestStructure / SafestToGroundStructure 是 EnemyStructure，FriendlyLandStructure 是 FriendlyStructure，都上台）',
