@@ -538,8 +538,10 @@ def target_picks(run, brain=None):
     """D158 strategic target picks: one row per call of a target heuristic's find (ra3ext `tgt:` lines).
 
     Row: frame, brain (which AI player; every AI on the map is logged), slot (the AI target manager's slot index),
-    state (an opaque per-run token of the strategic state -- not its id; tell states apart by their heuristic's
-    filters, e.g. which candidates are 'forbid'), heuristic (class token), sort (SortType name), found, target (object
+    state (an opaque per-run token of the run's strategic state), state_id (D159: the state's id as 8 lower-case hex,
+    the same FastHash of the lower-case state name the AI's team names start with -- match with state_hash(name);
+    None in logs from before round 159), index (which of the state's TargetHeuristics, by its place in the state's
+    list; None when not found / old logs), heuristic (class token), sort (SortType name), found, target (object
     id or None), point (x, y), and candidates in the order the game filtered them: id, point, ok (the game's own
     filter verdict), why (the checks the candidate fails, computed by the observer apart from the game: [] none;
     tokens uniq stat dead x471 hide vital forbid area other -- see docs/engine/know-how.md), enemy / distance
@@ -570,10 +572,43 @@ def target_picks(run, brain=None):
                                   threat=float(e['t']) if 't' in e else None))
             tid, tpt = d['target'].split('@', 1)
             sort = int(d['sort'])
-            out.append(dict(frame=int(d['frame']), brain=d['brain'], slot=int(d['slot']), state=sid, heuristic=d['vt'],
+            hi = int(d['hi']) if 'hi' in d else -1
+            out.append(dict(frame=int(d['frame']), brain=d['brain'], slot=int(d['slot']), state=sid,
+                            state_id=f"{int(d['sid'], 16):08x}" if 'sid' in d else None,
+                            index=None if hi < 0 else hi, heuristic=d['vt'],
                             sort=SORTS[sort] if 0 <= sort < len(SORTS) else sort, found=d['found'] == '1',
                             target=None if tid == '-1' else int(tid),
                             point=tuple(map(float, tpt.split(':'))), count=int(d['n']),
                             more=int(re.search(r' more=(\d+)', line).group(1)) if ' more=' in line else 0,
                             candidates=cands))
+    return out
+
+
+def state_hash(name):
+    """D159: a strategic state's id as target_picks gives it (8 lower-case hex): FastHash of the lower-case name."""
+    import sagehash
+    return f'{sagehash.fast_hash_many([name.lower()])[name.lower()]:08x}'
+
+
+def income_evals(run, brain=None):
+    """D159 IncomeAdvantageHeuristic evaluations, the same frame (ra3ext `inc:` lines): one row per evaluation.
+
+    Row: frame, brain, own / enemy (player index; enemy None when the game found none), own_in / enemy_in (each
+    side's raw input, the float the heuristic reads before its x 1/90 on both sides), value / above (the asset's
+    Value and Above), result (the heuristic's 0.0 / 1.0), why ('early' = no priority module / enemy, 'zero' = both
+    inputs 0 -> 1, else 'ratio=R' = own / enemy, 9999 when the enemy's input is not above 0).
+    Lines are change-only (same content again only after a 450-frame beat).
+    """
+    out = []
+    with open(_log(run), encoding='utf-8', errors='replace') as f:
+        for line in f:
+            if not line.startswith('inc: '):
+                continue
+            d = dict(re.findall(r'(\w+)=(\S+)', line))
+            if brain is not None and d['brain'] != brain:
+                continue
+            own, eny = (int(d[k].split('@')[0]) for k in ('own', 'eny'))
+            out.append(dict(frame=int(d['frame']), brain=d['brain'], own=None if own < 0 else own,
+                            enemy=None if eny < 0 else eny, own_in=float(d['oin']), enemy_in=float(d['eni']),
+                            value=float(d['value']), above=d['above'] == '1', result=float(d['res']), why=d['why']))
     return out

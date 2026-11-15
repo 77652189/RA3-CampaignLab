@@ -232,3 +232,32 @@ def test_target_picks_reads_candidates_and_verdicts(tmp_path):
     assert (c2['ok'], c2['why'], c2['enemy']) == (False, ['forbid'], None)
     assert (b['found'], b['target'], b['candidates'], b['sort']) == (False, None, [], 'ThreatToGround')
     assert [r['slot'] for r in teamlog.target_picks(str(p), brain='08C13F80')] == [1]
+
+
+# D round 159: copied from bench CampClosestA_mcp_1115_141948 (aiclosest:a). sid = the strategic state's id; the same
+# AI's teams on that run are named '2ee151d8_StaticDefense_0_0' / '19dcc78_...' (FastHash of 'cnvclosest1' /
+# 'cnvclosest0'). Slot 1 (cnvclosest2, the NonDefense one) rejects the turret and takes the plant.
+TGT159 = """tgt: frame=16 brain=08F81198 slot=0 state=08B864E0 sid=2ee151d8 hi=0 vt=c68298 sort=5 uniq=0 found=1 kind=3 target=3182@3700:2400 n=4 cand=3163@3850:3400:1:-:e=3183:d=1544,3181@4000:3000:1:-:e=3183:d=1118,3182@3700:2400:1:-:e=3183:d=894,3184@4100:3800:1:-:e=3183:d=1844
+tgt: frame=16 brain=08F81198 slot=1 state=08B86860 sid=d2df3ca3 hi=0 vt=c68298 sort=5 uniq=0 found=1 kind=3 target=3181@4000:3000 n=4 cand=3163@3850:3400:1:-:e=3183:d=1544,3181@4000:3000:1:-:e=3183:d=1118,3182@3700:2400:0:forbid,3184@4100:3800:1:-:e=3183:d=1844
+tgt: frame=16 brain=08F81198 slot=2 state=08B86130 sid=19dcc78 hi=0 vt=c68298 sort=5 uniq=0 found=1 kind=3 target=3182@3700:2400 n=4 cand=-
+inc: frame=0 brain=08A47AD0 own=8@0701CAF0 eny=2@070156B0 oin=0.0000 eni=0.0000 oq=0.0000:0.0000:0.0000 eq=0.0000:0.0000:0.0000 value=4.000 above=1 res=1.0 why=zero
+inc: frame=0 brain=0841C038 own=9@0701DE50 eny=-1@00000000 oin=0.0000 eni=0.0000 oq=0.0000:0.0000:0.0000 eq=0.0000:0.0000:0.0000 value=4.000 above=1 res=0.0 why=early
+"""
+
+
+def test_target_picks_state_id_and_income_evals(tmp_path):
+    """D159: tgt: sid / hi (state id as the team names' prefix, heuristic index) and the inc: line."""
+    p = tmp_path / 'ra3ext.log'
+    p.write_text(TGT159)
+    rows = teamlog.target_picks(str(p))
+    assert [(r['slot'], r['state_id'], r['index'], r['target']) for r in rows] == [
+        (0, '2ee151d8', 0, 3182), (1, 'd2df3ca3', 0, 3181), (2, '019dcc78', 0, 3182)]
+    assert rows[0]['state'] == '08B864E0'
+    old = tmp_path / 'old.log'
+    old.write_text(TGT)
+    assert {(r['state_id'], r['index']) for r in teamlog.target_picks(str(old))} == {(None, None)}
+    a, b = teamlog.income_evals(str(p))
+    assert (a['own'], a['enemy'], a['own_in'], a['enemy_in'], a['value'], a['above'], a['result'], a['why']) == \
+        (8, 2, 0.0, 0.0, 4.0, True, 1.0, 'zero')
+    assert (b['own'], b['enemy'], b['result'], b['why']) == (9, None, 0.0, 'early')
+    assert [r['brain'] for r in teamlog.income_evals(str(p), brain='0841C038')] == ['0841C038']
