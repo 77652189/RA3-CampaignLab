@@ -1120,7 +1120,7 @@
 | 推断 | `微操/AIMicroManagerData.MaxUnitIdleDistanceChange` | 2 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | `战术/Tactic.Tactic=Hunt` | 2 |  | AI 模型代码里读了这个名字 |
 | 推断 | `战术/Tactic.Tactic=SimpleDefense` | 2 |  | AI 模型代码里读了这个名字；台上量过（docs/engine/aitactics.md），没有测试跑这个台子 |
-| 推断 | `目标/AITargetingHeuristic.HeuristicType=Husk` | 2 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 推断 | `目标/AITargetingHeuristic.HeuristicType=Husk` | 2 | a4 a5 a7 | C aihusknone/aihusknamed:a同位普通中立油井，LandHusk阴性与NamedObject阳性；两局f16分别found=0/1，阳性选(2900,3300)，s20两组总数4，均PASS。tests/test_husk_target_c.py按名回放并断言原选择记录及存活计数。模型移除Husk通用中立物回退；缺真实残骸候选提供者时不选目标，不以KindOf或模板名字猜登记。原版残骸创建/候选资格/水域阳性仍gap，不晋升整项；见work/re/c_husk_report.md |
 | 未做 | `目标/AITargetingHeuristic.HeuristicType=Team` | 2 |  | AI 模型代码里没有这个名字 |
 | 推断 | `目标/AITargetingHeuristic.HeuristicType=UnderAttackBy` | 2 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过（docs/engine/aitactics.md），没有测试跑这个台子 |
 | 未做 | `目标/AITargetingHeuristic.IgnoreMinDistanceFromConyardEntranceForTime` | 2 | a4 a5 a7 | AI 模型代码里没有这个名字 |
