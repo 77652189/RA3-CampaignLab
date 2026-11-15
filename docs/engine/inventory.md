@@ -538,9 +538,9 @@
 | 未做 | `UNIT_SPECIAL_POWER_READY` | 7 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `PLAYER_HAS_NO_POWER` | 6 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_infiltrator.py:a |
 | 已对拍 | `PLAYER_EXCESS_POWER_COMPARE_VALUE` | 5 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_infiltrator.py:a |
-| 推断 | `PLAYER_TRIGGERED_SPECIAL_POWER_FROM_NAMED` | 5 |  | Sim.act / Sim.cond 有分支 |
+| 推断 | `PLAYER_TRIGGERED_SPECIAL_POWER_FROM_NAMED` | 5 |  | Sim.act / Sim.cond 有分支；台上量过（checks/engine_cast.py），没有测试跑这个台子 |
 | 已对拍 | `PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS` | 4 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aimicro.py |
-| 推断 | `PLAYER_TRIGGERED_SPECIAL_POWER_IN_AREA` | 4 |  | Sim.act / Sim.cond 有分支 |
+| 推断 | `PLAYER_TRIGGERED_SPECIAL_POWER_IN_AREA` | 4 |  | Sim.act / Sim.cond 有分支；台上量过（checks/engine_cast.py），没有测试跑这个台子 |
 | 未做 | `TEAM_CAN_PATH_TO_WAYPOINT` | 4 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `PLAYER_HAS_COMPARISON_UNIT_KIND` | 3 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `SKIRMISH_COMMAND_BUTTON_READY_PARTIAL` | 3 |  | Sim.act / Sim.cond 不认识 |
@@ -642,7 +642,7 @@
 | 未做 | `Behaviors/EmotionTrackerUpdate` | 5 (7) | a1 a2 a3 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoTech1, AlliedEngineer |
 | 未做 | `Behaviors/MonitorSpecialPowerTimerUpdate` | 5 (6) |  | E145单图engine_modulebatch:a：原版质子炮宿主有/无模块，设技能就绪后SPECIALPOWER1_READY为1/0，设冷却后0/0。模型倒计时脚本入口和模块就绪输出仍gap；具名回放strict xfail，需A倒计时接口，不按纯表现排除；见work/re/e145_modulebatch.md；例：AlliedSuperWeapon, AlliedSuperWeaponAdvanced |
 | 未做 | `Behaviors/AttackAssistResponseBehavior` | 5 (5) | a1 a2 a4 a5 a6 a7 a9 | E144派发诊断：engine_attackassist a两次准备运行均进关前崩溃，无台上读数；最终原版光谱塔宿主配方已修本地模块引用及结构武器掩码，尚未上台，暂停追加运行直至启动原因解释。tests/test_simattackassist.py严格xfail仅保留待验预测，不作已对拍证据；响应武器派发/原版增伤/时序均gap，模型未改；见work/re/e144_attackassist.md；例：AlliedBaseDefenseAdvanced, SovietBaseDefenseAdvanced |
-| 未做 | `Behaviors/CaptureSpecialAbilityUpdate` | 5 (5) | a1 a2 a3 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoTech1, AlliedEngineer |
+| 未做 | `Behaviors/CaptureSpecialAbilityUpdate` | 5 (5) | a1 a2 a3 a4 a6 a7 a9 | E151 engine_capture:a原版工程师对CaptureFlag中立/敌方/己方和删模块中立四路：归属100、存活1111、前置1，f45..575未换主。原预测111保留；具名测试仅回放负基线，不登记模块效果已对拍。缺命令被模块接受及同帧阶段证据（INFERRED），暂停同输入重跑；见work/re/e151_capture.md；例：AlliedCommandoTech1, AlliedEngineer |
 | 推断 | `Behaviors/CommandSetUpgrade` | 5 (5) | a1 a4 a5 a7 | E145单图engine_modulebatch:a：空初始菜单的兵营，授Tech2前产物0/0、授后有/无模块产物1/0。菜单切换解析已有；整链路具名回放strict xfail：生产层factories按未持升级的初始菜单识别工厂，故模型仍0/0，需B接口修复。未晋升整项；见work/re/e145_modulebatch.md；例：AlliedConstructionYard, AlliedOutpost |
 | 未做 | `Behaviors/QueueDockBehavior` | 4 (12) | a1 a2 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedRefinery, AlliedRefinery_NoHarvester |
 | 推断 | `Behaviors/AutoDepositUpdate` | 4 (8) | a1 a4 a5 a7 | E147 engine_bankcapture:a：中立SwissBank有/无模块两路普通工程师占领，换主并消耗工程师；on奖金750、随后每15游戏帧+5至770，off全0，帧锁定证据1023；具名测试test_simbankcapture按实际读数回放。E146已有归属产钱60/0仍有效；再占领/驻军/上限/修理仍gap，不晋升整项；见work/re/e147_bankcapture.md；例：GE_SwissBank, NY_NYStockExchange |
