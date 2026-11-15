@@ -375,8 +375,10 @@ NOTES = {
         's5..41原状态均2，三局PASS及按名回放支持另一单位置位子集ANY，未改模型。'
         '双位同时置位追加空过滤/原双位过滤两局均PASS，s40.1原计数3/4/0/0与3/0/4/0，s5..41状态均3；'
         'tests/test_forbidden_status.py按名回放及原图复读均吻合，未改模型。'
+        '复核旧双位及单UNATTACKABLE共五局：run均无ra3ext.log，图像index无逻辑帧；'
+        '当前target_picks不输出两位原状态，why.stat不能代替状态位，缺同帧事实暂停、0次重跑。'
         '同帧候选资格、原版技能及AIRBORNE_TARGET/SUBMERGED仍gap，整字段不晋升；'
-        '见work/re/c_forbid_report.md、work/re/c_forbidmask_report.md、work/re/c_forbiduna_report.md、work/re/c_forbiddual_report.md'),
+        '见work/re/c_forbid_report.md、work/re/c_forbidmask_report.md、work/re/c_forbiduna_report.md、work/re/c_forbiddual_report.md、work/re/c_forbidframe_report.md'),
     '目标/AITargetingHeuristic.SortType=ThreatToWater': (GUESSED,
         'C按名台子engine_aiwater：两电厂/近处守护者/AI两栖矿车，仅切Distance与ThreatToWater，'
         '实机两组采样s14后均近4/远0/家0；模型ThreatToWater选远，按名回放strict xfail。'
