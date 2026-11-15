@@ -280,6 +280,8 @@ BENCHED_TESTS = {
         'tests/test_simbench_c.py::test_invisibility_broadcast_the_aura_holds_its_guardian_at_full_health_and_the_control_dies',
     (MODULE, 'Behaviors/InvisibilityBehavior'):
         'tests/test_simbench_c.py::test_invisibility_behavior_a_house_given_garrison_can_stealth_by_script_is_shot_like_a_plain_one',
+    (MODULE, 'Behaviors/StealthDetectorUpdate'):
+        'tests/test_detector_bench_e.py::test_detector_named_object_model_observations',
     # engine line C round 11: weapon choice by ObjectStatus (simunits.weapon_sets, checks/engine_weaponset.py,
     # engine_statusbits.py, bench 11-09)
     (MODULE, 'Behaviors/WeaponSetUpdate'):
@@ -417,7 +419,7 @@ NOTES = {
     # the 26 the bench measured but the name rule called 未做 (checked 11-08 against sim.py / simunits.py)
     (MODULE, 'Behaviors/FireWeaponUpdate'): (GUESSED, '部分：simunits.ocl_round 把召出物的 FireWeaponNugget + '
                                                       'LifetimeUpdate 折成伤害，不模拟召出物本身'),
-    (MODULE, 'Behaviors/StealthDetectorUpdate'): (TODO, f'{_NOT_IN_SIM}（没有反隐）'),
+    (MODULE, 'Behaviors/StealthDetectorUpdate'): (BENCHED, '已测范围：engine_detector:a原版军犬/仅删模块/超半径三路，距离150/150/450；目标INVISIBLE_DETECTED在f151为1/0/0，删除军犬后f310均0，目标始终存活；tests/test_detector_bench_e.py按名用私有物体模型回放同帧读数，原有实现无需修改；gap：公开Sim未接反隐（strict xfail），精确首扫/清除帧、半径边界、移动/驻军/多探测器/其他宿主及过滤配置未对拍；见work/re/e156_detector.md'),
     (MODULE, 'Behaviors/GarrisonContain'): (GUESSED, 'simgarrison 同一套规则（不可争夺）；没单独上台对拍'),
     (MODULE, 'Behaviors/ReplaceSelfSpecialAbility'): (BENCHED, '三类用法都上台：基地车 / 帝国蛋到点展开（engine_unpack mcv / egg，'
                                                      '名字和血量比例跟过去）、三国建造场收起（engine_pack a/s/j，按下当帧就是基地车，'
