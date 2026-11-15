@@ -1336,8 +1336,38 @@ class Brain:
             yard = min(yards, key=lambda y: min((math.hypot(n.x - y.x, n.y - y.y) for n in nodes), default=0.0))
             memo[mk] = (self._refinery_search(s, r, reach, near, start, inc, int(ticks), yards, nodes, mine, taken,
                                               shape, [n for n in nodes if wanted(n)])
+                        or self.node_side_spot(yard, template, nodes)
                         or self.spot(yard, template))
         return memo[mk]
+
+    def node_side_spot(self, yard, template, nodes):
+        """Where a refinery goes when the node search finds nothing: the general placement's NEAR_RESOURCE_NODE
+        branch (work/re l4_defense2.md 2.2, l4_defense.md 3, read): round the base's anchor (the yard), the angle A
+        toward a resource node (the pick unread; INFERRED the node nearest the yard), r = R x (N - n) / N with no
+        BaseCompactness and no draw, five tries A, +36, -36, +72, -72 deg (read). R INFERRED the towers' TOWER_LIST_R
+        (600) and N = 1 (the radius list unread); a try must be open ground clear of every structure and ore node
+        (GAP as spot). bench 2026-11-14 engine_aiskirm rpx aiskin0 / aiskin1 / aiskinp (B188, the search fails every
+        node): x27 y18 / x16 y8 / x27 y25 = 588 at -12 / 625 at -88 / 617 at +21 deg from the yard; the nearest
+        node is -52 deg (its try stands on the node) -- the tries A + 36, A - 36, A + 72 (B204; the first one strip
+        off, A ~ -50 would fit). None = all five fail (the engine's nudges and area scan not modelled: the yard's
+        rings)."""
+        df = (model() or {}).get('defense')
+        if df is None or not nodes:
+            return None
+        import platprops
+        s = self.sim
+        r = platprops.radius(template) if template in platprops.CATALOG else 40.0
+        taken = [q for q in (s.blocks(b) for b in s.living() if 'STRUCTURE' in b.kinds or b in nodes)
+                 if q and len(q) == 3]
+        n = min(nodes, key=lambda n: math.hypot(n.x - yard.x, n.y - yard.y))
+        a, step = math.atan2(n.y - yard.y, n.x - yard.x), df.SPREAD_STEP
+        rr = df.TOWER_LIST_R
+        for k in (0, 1, -1, 2, -2):
+            x, y = yard.x + rr * math.cos(a + k * step), yard.y + rr * math.sin(a + k * step)
+            if s.ground.open('ground', x, y) and all(math.hypot(x - tx, y - ty) >= r + tr + GAP
+                                                     for tx, ty, tr in taken):
+                return x, y
+        return None
 
     def _build_radius(self, template):
         """A structure's build radius: its ProjectedBuildabilityInfo Radius (the largest), 0 = none (retail Allied:

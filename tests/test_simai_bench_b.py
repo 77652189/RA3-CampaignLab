@@ -825,13 +825,9 @@ def test_refinery_placement_far_rings_add_refineries(lib):
     assert rows[155]['建筑码'] // 10 % 10 == 3
 
 
-_FALLBACK = pytest.mark.xfail(strict=True, reason='B189: the yard-side placement a failed refinery search falls back to '
-                              'is the simulator\'s generic yard ring (3901,3655 first), the bench\'s stand 430-630 '
-                              'from the yard toward the east field (4425,3275 / 3875,2775 / 4425,3625); unread')
-
-
-@pytest.mark.parametrize('build', ['aiskirm', pytest.param('aiskin1', marks=_FALLBACK),
-                                   pytest.param('aiskin0', marks=_FALLBACK), pytest.param('aiskinp', marks=_FALLBACK)])
+# a failed node search falls back to the NEAR_RESOURCE_NODE general placement (simai.Brain.node_side_spot, B204):
+# round the yard ~600 out toward the nearest node, tries A, +36, -36, +72, -72 deg
+@pytest.mark.parametrize('build', ['aiskirm', 'aiskin1', 'aiskin0', 'aiskinp'])
 def test_the_third_refinery_goes_to_the_east_field_or_nowhere(lib, build):
     """engine_aiskirm rp (B186, work/bench_results/<build>__rp.json, all PASS): 矿区码 (refineries in +-600 of the
     east / north-east / south-west / north fields, x1 / x10 / x100 / x1000) 2 to s147 in all four; stock aiskirm stays
@@ -881,9 +877,12 @@ def test_ticks_0_and_a_far_start_place_alike_and_keep_placing(lib):
     assert a[158]['矿场X'] > a[100]['矿场X'] > a[60]['矿场X'] > 0
 
 
-@_FALLBACK
+@pytest.mark.xfail(strict=True, reason='B204: node_side_spot puts it at A + 36 = -16 deg, r 600 = (4427,3235), strip '
+                                       'x27 y17; the bench x27 y18 (y >= 3250) needs about -14 deg: A ~ -50, not the '
+                                       'nearest node\'s -52 (or another anchor / R; the node pick unread). One strip off')
 def test_ticks_0_puts_the_first_refinery_where_the_bench_did(lib):
-    """aiskin0 rpx (B188): the first refinery at strips x27 y18 (4425,3275), the second x16 y8 (3875,2775)."""
+    """aiskin0 rpx (B188): the first refinery at strips x27 y18 (4425,3275), the second x16 y8 (3875,2775): the
+    yard's NEAR_RESOURCE_NODE tries A + 36 and A - 36 (A = the nearest node, -52 deg; its own try stands on it)."""
     rows = _rpx('aiskin0', lib)
     first = _first_row(rows, '矿场X')
     assert (rows[first]['矿场X'], rows[first]['矿场Y']) == (27, 18)
