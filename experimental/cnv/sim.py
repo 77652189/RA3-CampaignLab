@@ -564,6 +564,8 @@ class Body:
                                                                 # waypoint path (follow_due gives the next leg after
                                                                 # the tick): driven on the next tick, none lost
     dest: object = None                                         # where it was sent (rerouted when the way changes)
+    set_off: int = -1                                           # the frame it was sent from standing (Sim.on_the_move)
+    stops_at: float = -1.0                                      # mission seconds its last way ended, within the tick
     status: set = dataclasses.field(default_factory=set)       # IMMOBILE (stays put), UNATTACKABLE (the player
                                                                 # cannot destroy it) ...
     attachment_status: set = dataclasses.field(default_factory=set)  # owned by direct attachment links, not scripts
@@ -2654,6 +2656,8 @@ class Sim:
         if path is None:
             path = self.ground.route(b.surface, (b.x, b.y), p, closest=True)
             stands = path == []
+        if not b.path:
+            b.set_off = self.frame_now()
         b.dest = p
         if path is None:
             self.note('卡住', f'{self.label(b)} 到不了 {target if isinstance(target, str) else "目标"}'
@@ -3226,7 +3230,7 @@ class Sim:
                     return True
                 if 'SHROUD_REVEAL_TO_ALL' in m.status:  # bench 11-13 engine_acts flow 旗&1: the bit set on a standing
                     return True                          # unit far from all the player's, discovered from that second
-                if id(m) in hidden or (m.path and m.dest):
+                if id(m) in hidden or self.on_the_move(m):
                     continue
                 if (self.sees(m.x, m.y, air) if a[0] == self.human else
                         any(b.owner == a[0] and self.looks(b, m.x, m.y, air) for b in live)):
@@ -5840,6 +5844,19 @@ class Sim:
     def frame_now(self):
         return self.eng.frame if self.eng else int(round(self.t * simunits.LIFE_FPS))
 
+    def on_the_move(self, b):
+        """b physically moves this frame, as the program's own clock has it (TEAM_DISCOVERED): from the frame after
+        the order that set it off from standing (its locomotor's first update) until one frame after the moment
+        within the tick its way ended -- the simulator moves a whole tick at the tick's first frame, so its path is
+        empty up to a tick early. Bench 11-13 engine_conds sight 发现&1 (A round 232; the bench's sN is the
+        simulator's s(N+2) sample, as its hot spot / kill / sight readings line up): near off at one sample after its
+        180 deg turn + 70 (order 60, off 75, on 90; 13 at the order's own frame) and at two after the turn + 120 (off
+        150 and 165 -- the turn 0.5 s, 1.5 s driving: its way ends at 11.0, the frame of 165 still moving)."""
+        if b.path and b.dest:
+            return self.frame_now() > b.set_off
+        fps = self.fps if self.eng is not None else simunits.LIFE_FPS
+        return self.t < b.stops_at + 1.0 / fps - 1e-9
+
     def emp_disabled(self, b):
         """EMP pauses movement and new fire (engine_emp phase / engine_empfire a).
 
@@ -6190,6 +6207,8 @@ class Sim:
                     b.x += (tx - b.x) * left / d
                     b.y += (ty - b.y) * left / d
                     left = 0
+            if not b.path and not precise and b.speed > 0:      # where in the tick its way ended (Sim.on_the_move)
+                b.stops_at = math.floor(self.t / DT + 1e-6) * DT + max(spent + (walked - left) / b.speed - extra, 0.0)
             if not b.path and not precise and self.eng is not None and self.combat and id(b) not in self.mid_aims \
                     and any(a is b for a in self._field[1]):
                 # its way ended mid-tick (an idle chase's walk to reach, an order's end): it aims from that frame,
