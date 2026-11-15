@@ -48,7 +48,9 @@ def test_the_engineer_team_is_read_by_its_engine_name(rows):
     'Benched (line A round 236, aiskirm eb / es): the game walks the same way round the north at ~37/s, but its '
     'engineer starts at x ~3600, y < 3200 (s145), by the barracks aiskin0 rpb finds SW of the yard (3600-3650, '
     '3200-3250); the simulator\'s yard rings (simai.spot, INFERRED) put the barracks at (4067, 3544), ~590 further '
-    'along: the late is the barracks\' place, not the walk.'))
+    'along: the late is the barracks\' place, not the walk. B round 202 (simai general_spot, FRONT towards the map '
+    'centre): the barracks at (3614, 3243) and, with model 11ac6fc+, the engineer at the derrick s218 (bench s216) -- '
+    'but the team is gone (99) at s165, mid-walk, and the derrick is never taken (work/logs/b202_eng_trace.log).'))
 def test_the_engineer_captures_the_derrick(rows):
     """Bench: at the derrick s216, the derrick s1's s222 and the team gone that second; never at the ore node."""
     assert all(r['到矿点'] == 0 for _, r in rows)

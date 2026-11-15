@@ -197,6 +197,7 @@ class Brain:
         self.paths = {}                 # (surface, template, condition) -> (frame asked, answer)
         self.path_rng = random.Random(host.seed)    # the spot's start angles (the engine: the logic random)
         self.tower_rng = random.Random(host.seed)   # a base defence's angle and radius jitter (its own: no other draw moves)
+        self.place_rng = random.Random(host.seed + 7)   # the general placement's angle and radius draws (its own too)
         self.ai.builder = self.build
         self.ai.units = self.units
         if hasattr(self.ai, 'owned'):
@@ -1208,6 +1209,58 @@ class Brain:
                     return x, y
         return yard.x + RING[-1], yard.y
 
+    def general_spot(self, yard, template):
+        """Where a structure with a SkirmishAIInformation BaseBuildingLocation FRONT / SIDE / BACK / SPREAD / CENTER
+        goes (the build slot's general placement, work/re l4_queue.md 2, l4_defense.md 3, l4_defense2.md 2.2, read):
+        the angle by the location -- FRONT the base's facing A, SIDE A + 90 deg + {0, 180}, BACK A + 180, SPREAD /
+        CENTER A + 0..9 x 36 deg -- round the own structure nearest the yard (try i = 0: the yard) by the model's
+        tower_spots (angles +0, +36, -36, +72, -72; r = (BaseCompactness + rand(-0.05, 0.05)) x R, x 0.5 for CENTER);
+        tries i = 1..4 move the probe out along the angle (as tower_centre). A (INFERRED, the unread point taken as the
+        map's middle): the yard towards the centre of the whole map. R INFERRED: the towers' TOWER_LIST_R (600).
+        bench 2026-11-14 engine_aiskirm rpb (aiskin0 / aiskin0r, B190): the barracks (FRONT) at strips x11 y17 in both
+        = A ~213.7 deg, r ~285; the war factory (FRONT) A + 36 (aiskin0) / A - 36 (aiskin0r, where A + 36 had a
+        plant); every plant (SPREAD) at A + k x 36. None = no such location (refinery, tower, a modded template) or
+        nothing placeable: the yard's rings (spot)."""
+        df = (model() or {}).get('defense')
+        t = self.host.lib.template(template)
+        info = t.first('SkirmishAIInformation') if t is not None else None
+        where = (info.attrs.get('BaseBuildingLocation') or '').upper() if info is not None else ''
+        if df is None or where not in ('FRONT', 'SIDE', 'BACK', 'SPREAD', 'CENTER'):
+            return None
+        import platprops
+        s = self.sim
+        rects = list(getattr(s.m.map, 'BORDERS', {}).values())
+        if rects:
+            x0, y0, x1, y1 = max(rects, key=lambda q: (q[2] - q[0]) * (q[3] - q[1]))
+        else:
+            xs, ys = [b.x for b in s.living()] or [yard.x], [b.y for b in s.living()] or [yard.y]
+            x0, y0, x1, y1 = min(xs), min(ys), max(xs), max(ys)
+        facing = math.atan2((y0 + y1) / 2 - yard.y, (x0 + x1) / 2 - yard.x)
+        r = platprops.radius(template) if template in platprops.CATALOG else 40.0
+        mine = [b for b in s.living() if b.owner == self.player and 'STRUCTURE' in b.kinds]
+        taken = [q for q in (s.blocks(b) for b in s.living() if 'STRUCTURE' in b.kinds) if q and len(q) == 3]
+        block = self.defense or df.DefenseBlock(None, lambda ai, f: None)
+        rng = self.place_rng
+        comp = float(df.personality_attr(self.ai, 'BaseCompactness', df.COMPACTNESS))
+        for i in range(df.TOWER_TRIES):
+            if where == 'FRONT':
+                angle = facing
+            elif where == 'SIDE':
+                angle = facing + math.pi / 2 + math.pi * rng.randint(0, 1)
+            elif where == 'BACK':
+                angle = facing + math.pi
+            else:
+                angle = facing + df.SPREAD_STEP * rng.randint(0, 9)
+            cx, cy = yard.x, yard.y
+            if i > 0:
+                far = df.PROBE_FAR if i >= df.TOWER_TRIES - 1 else comp * df.PROBE_STEP * i
+                cx, cy = cx + far * math.cos(angle), cy + far * math.sin(angle)
+            c = min(mine, key=lambda b: math.hypot(b.x - cx, b.y - cy), default=yard)
+            for x, y in block.tower_spots(self.ai, (c.x, c.y), angle, centre_location=where == 'CENTER', rng=rng):
+                if all(math.hypot(x - tx, y - ty) >= r + tr + GAP for tx, ty, tr in taken):
+                    return x, y
+        return None
+
     def tower_spot(self, yard, template):
         """Where a base defence (KindOf FS_BASE_DEFENSE) goes: the model's tower_spots (BaseCompactness x ~600 with a
         +-0.05 jitter, five tries 36 deg apart) round the own structure nearest the yard (the yard itself), the
@@ -1398,6 +1451,8 @@ class Brain:
             spot = self.refinery_spot(template)     # the search's spot, or the yard's (F1)
         elif 'FS_BASE_DEFENSE' in self.host.kinds(template):
             spot = self.tower_spot(yard, template)
+        else:
+            spot = self.general_spot(yard, template)
         x, y = spot or self.spot(yard, template)
         b = s.add(f'#ai {len(s.bodies)} {template}', template, self.player, x, y, by='skirmish AI', at=s.t)
         b.team = yard.team

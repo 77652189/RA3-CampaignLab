@@ -917,10 +917,27 @@ def test_ticks_0_falls_back_alike_whichever_way_the_nodes_face(lib):
     """engine_aiskirm rpx aiskin0r (B190, F1; aiskin0 with the east nodes facing pi, PASS): the same rows to the
     second as aiskin0 (x27 y18, x16 y8, x27 y25, x9 y10, x16 y12 at s49 / s69 / s148 / s189 / s223) -- where a refinery
     goes once every node fails does not follow the nodes' facing, and the default spot (tried even at Ticks 0)
-    found no room on the turned side either. (Other structures, rpb: aiskin0 / aiskin0r's barracks x17 / x13,
-    so the fallback is not the draw they are placed by, or they follow the facing.)"""
+    found no room on the turned side either. (Other structures, rpb: the barracks x11 y17 in both, the first plant
+    x17 / x13 -- SPREAD draws its angle, B202 simai.Brain.general_spot.)"""
     a, b = _rpx('aiskin0', lib), _rpx('aiskin0r', lib)
     assert [(r['矿场X'], r['矿场Y']) for r in a] == [(r['矿场X'], r['矿场Y']) for r in b]
+
+
+@pytest.mark.parametrize('build', ['aiskin0', 'aiskin0r'])
+def test_front_structures_face_the_map_centre_from_the_yard(lib, build):
+    """engine_aiskirm rpb (B190, work/bench_results/<build>__rpb.json, both PASS): the opening's first structure, the
+    barracks (BaseBuildingLocation FRONT), s19 at strips x11 y17 in both (3600-3650, 3200-3250: from the yard
+    (3850, 3400) towards the map's centre, A ~213.7 degrees, ~285 out = (BaseCompactness 0.5 +- 0.05) x 600); the war
+    factory (FRONT, s99) at A + 36 (aiskin0 x13 y15) or A - 36 (aiskin0r x9 y21, a plant had taken A + 36) -- the
+    general placement's tries A, +36, -36 (B202 simai.Brain.general_spot). Plants (SPREAD) draw their angle: not
+    asserted."""
+    _, rows = _probe_run(build, lib, 110.0, check='rpb')
+    first = _first_row(rows, '其他X')
+    assert rows[first]['建筑码'] == 100 and (rows[first]['其他X'], rows[first]['其他Y']) == (11, 17)
+    wf = _first_row(rows, '建筑码', lambda v: v >= 1000)
+    assert wf is not None
+    step = (rows[wf]['其他X'] - rows[wf - 1]['其他X'], rows[wf]['其他Y'] - rows[wf - 1]['其他Y'])
+    assert step in ((13, 15), (14, 15), (9, 21)), step
 
 
 # ---- checks/engine_aireactive.py a (bench 2026-11-14, readings in its docstring): ReactiveDefenseRadius gates the chase
