@@ -955,6 +955,42 @@ def et(m):
     return t
 
 
+EP_X = [4400.0 - 200.0 * k for k in range(19)]      # ep: 4400 .. 800, west-of lines
+EP_Y = [3800.0 - 150.0 * k for k in range(10)]      # ep: 3800 .. 2450, north-of lines
+
+
+def ep(m):
+    """Which way does the Engineer tactic's engineer go to the derrick, and from where? (line A round 235). The
+    simulator (model 11ac6fc) walks it from the barracks (4067, 3562) north round the river's steep banks (y ~2840)
+    and reaches 'Test Derrick' at s230; et's bench did it in 72 s (s144 -> s216), less than the straight line at 40.
+    工程X = how many EP_X lines s1's westmost engineer stands west of (x ~ 4400 - 200 n), 工程Y = how many EP_Y
+    lines its northmost stands north of (y ~ 3800 - 150 n), 到油井 / 油井 as et.
+    PREDICTED (simulator, model 11ac6fc): X 2 s146, 3 s148, 4 s154, 5 s159 .. 18 s229, 19 s234; Y 2 -> 7 (north
+    round the banks) -> 5; 到油井 s231, 油井 s237.
+    MEASURED (bench 2026-11-14, CampAISkirmEp_mcp_1114_225826, readings read off the archived frames): 油井 到油井
+    X Y = 0 0 0 0 to s143 | 0 0 4 3 s144-s222 | 1 0 0 0 from s223 -- the strips never move and 到油井 never
+    lights, though the derrick turns s1's (et's bench: 到油井 s216). UNEXPLAINED: the leading guess is that 31
+    trigger areas exceed what an object's area-entry record holds (D115: the area conditions read entry records),
+    so the readings froze at the engineer's first update; to tell, a run with the same strips on 6-8 areas."""
+    t = et(m)
+    t.counters = [(c, lab) for c, lab in t.counters if lab in ('油井', '到油井')]
+    t.expect = []                                                   # readings only (et's expectation reads 工程队)
+    s1 = m.player('s1')
+    for c, lab, lines, axis in (('CNV_AK_EpX', '工程X', EP_X, 0), ('CNV_AK_EpY', '工程Y', EP_Y, 1)):
+        t.counters.append((c, lab))
+        t.scripts.append(Script(f'Test - {c} zero', [], [('SET_COUNTER', c, 0)], once=False))
+        for i, v in enumerate(lines, 1):
+            area = f'Test Ep {c} {i}'
+            t.areas[area] = ([(0.0, 0.0), (v, 0.0), (v, 5000.0), (0.0, 5000.0)] if axis == 0 else
+                             [(0.0, 0.0), (5000.0, 0.0), (5000.0, v), (0.0, v)])
+            t.scripts.append(Script(f'Test - {c} {i}', [
+                ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', s1, 3, 1, 'AlliedEngineer', area)],
+                [('INCREMENT_COUNTER', 1, c)], once=False))
+    t.bench = [('bench_watch', dict(seconds=m.facts['wake at'] + 240.0, every=1, sheet=False,
+                                    lines=len(t.counters)))]
+    return t
+
+
 def n(m):
     """LandDefense _0_0 / BalancedCleanup _0_0 / BalancedCleanup _0_1 / LandDefense _0_1 to s185: where the unit
     after Cleanup's 14th goes (the model: Cleanup _0_1; m saw one in defense at s166)."""
@@ -1299,7 +1335,7 @@ def rpb(m):
 
 
 CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j': j, 'k': k, 'l': l, 'm': m,
-                      'n': n, 'o': o, 'p': p, 'q': q, 'r': r, 'u': u, 'x': x, 'et': et, 'ib': ib, 'rp': rp, 'rpx': rpx},
+                      'n': n, 'o': o, 'p': p, 'q': q, 'r': r, 'u': u, 'x': x, 'et': et, 'ep': ep, 'ib': ib, 'rp': rp, 'rpx': rpx},
           'aiskinb': {'ib': ib},
           'aiskinc': {'ib': ib},
           'aiskind': {'ib': ib},
