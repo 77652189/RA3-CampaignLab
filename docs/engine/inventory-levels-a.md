@@ -100,7 +100,7 @@
 | 已对拍 | 脚本动作 | `NAMED_TRANSFER_OWNERSHIP_PLAYER` | 231 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_invuln.py |
 | 已对拍 | 脚本动作 | `INCREMENT_COUNTER` | 229 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 引擎模型核心；台上量过、测试对拍：checks/engine_aimicro.py |
 | 已对拍 | 脚本动作 | `PLAYER_SET_MAX_PLAYER_POWER_POINTS` | 206 | a4 a5 a7 | tests/test_simbench.py::test_protocol_set_points_follows_the_programs_rule |
-| 已对拍 | 脚本动作 | `NAMED_KILL` | 204 | a4 a5 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aitargetpick.py |
+| 已对拍 | 脚本动作 | `NAMED_KILL` | 204 | a4 a5 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aihome.py |
 | 已对拍 | 脚本动作 | `CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT` | 196 | a4 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_ref.py |
 | 已对拍 | 脚本动作 | `LINK_MISSION_OBJECTIVE_TO_WAYPOINT` | 194 | a1 a3 a4 a5 a6 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts5.py |
 | 已对拍 | 脚本动作 | `SET_COUNTER` | 171 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 引擎模型核心；台上量过、测试对拍：checks/engine_aiaesthetics.py |
