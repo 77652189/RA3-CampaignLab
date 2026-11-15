@@ -208,3 +208,27 @@ def test_keep_passes_why(tmp_path):
     (k,) = teamlog.keep_passes(str(p))
     assert k['keep'] == [(3171, 0, 'go'), (3170, 557, 'hold')]
     assert k['why'] == [(3171, 3167, 'gone'), (3170, 3167, 'ok')]
+
+
+# D round 158: the first line is copied from bench CampClosestA_mcp_1115_094417 (aiclosest:a; the field sid=, dropped
+# since, removed): the NonDefense-type slot rejects the turret 3182 (forbid) and takes the plant 3181, nearest the
+# enemy 3183 among the rest. The second line is made up (a ThreatToGround find with no candidates, another AI).
+TGT = """tgt: frame=16 brain=08C13F80 slot=1 state=088B8CB0 vt=c68298 sort=5 uniq=0 found=1 kind=3 target=3181@4000:3000 n=4 cand=3163@3850:3400:1:-:e=3183:d=1544,3181@4000:3000:1:-:e=3183:d=1118,3182@3700:2400:0:forbid,3184@4100:3800:1:-:e=3183:d=1844
+tgt: frame=231 brain=0A000000 slot=3 state=0B000001 vt=c6822c sort=1 uniq=0 found=0 kind=0 target=-1@0:0 n=0 cand=-
+"""
+
+
+def test_target_picks_reads_candidates_and_verdicts(tmp_path):
+    """D158: the tgt: line of ra3ext's target-heuristic log (format in work/re/ext/ra3ext/ra3ext.cpp)."""
+    p = tmp_path / 'ra3ext.log'
+    p.write_text(TGT)
+    rows = teamlog.target_picks(str(p))
+    assert [r['slot'] for r in rows] == [1, 3]
+    a, b = rows
+    assert (a['sort'], a['found'], a['target'], a['point']) == ('ClosestToEnemy', True, 3181, (4000.0, 3000.0))
+    assert [c['id'] for c in a['candidates']] == [3163, 3181, 3182, 3184]
+    c1, c2 = a['candidates'][1:3]
+    assert (c1['ok'], c1['why'], c1['enemy'], c1['distance']) == (True, [], 3183, 1118.0)
+    assert (c2['ok'], c2['why'], c2['enemy']) == (False, ['forbid'], None)
+    assert (b['found'], b['target'], b['candidates'], b['sort']) == (False, None, [], 'ThreatToGround')
+    assert [r['slot'] for r in teamlog.target_picks(str(p), brain='08C13F80')] == [1]

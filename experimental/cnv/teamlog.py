@@ -529,3 +529,51 @@ def expansion_candidates(run):
                             min_distance=float(d['mind']), pick=None if d['pick'] == '-1' else int(d['pick']),
                             count=int(d['n']), candidates=candidates))
     return out
+
+
+SORTS = ('Distance', 'ThreatToGround', 'ThreatToAir', 'ThreatToWater', 'Random', 'ClosestToEnemy')
+
+
+def target_picks(run, brain=None):
+    """D158 strategic target picks: one row per call of a target heuristic's find (ra3ext `tgt:` lines).
+
+    Row: frame, brain (which AI player; every AI on the map is logged), slot (the AI target manager's slot index),
+    state (an opaque per-run token of the strategic state -- not its id; tell states apart by their heuristic's
+    filters, e.g. which candidates are 'forbid'), heuristic (class token), sort (SortType name), found, target (object
+    id or None), point (x, y), and candidates in the order the game filtered them: id, point, ok (the game's own
+    filter verdict), why (the checks the candidate fails, computed by the observer apart from the game: [] none;
+    tokens uniq stat dead x471 hide vital forbid area other -- see docs/engine/know-how.md), enemy / distance
+    (ClosestToEnemy: the nearest enemy object found for it and the 2D distance), threat (ThreatTo* sorts).
+    Lines are change-only (same content again only after a 450-frame beat): a missing frame is not a missing call.
+    """
+    out = []
+    with open(_log(run), encoding='utf-8', errors='replace') as f:
+        for line in f:
+            if not line.startswith('tgt: '):
+                continue
+            d = dict(re.findall(r'(\w+)=(\S+)', line.split(' cand=')[0]))
+            sid = d['state']
+            if brain is not None and d['brain'] != brain:
+                continue
+            cands = []
+            tail = line.rstrip('\n').split(' cand=', 1)
+            for item in (tail[1].split(' ')[0].split(',') if len(tail) > 1 else []):
+                if not item or item == '-':
+                    continue
+                oid, rest = item.split('@', 1)
+                x, y, ok, why, *extra = rest.split(':')
+                e = dict(kv.split('=', 1) for kv in extra if '=' in kv)
+                cands.append(dict(id=int(oid), point=(float(x), float(y)), ok=ok == '1',
+                                  why=[] if why == '-' else why.split('+'),
+                                  enemy=int(e['e']) if 'e' in e else None,
+                                  distance=float(e['d']) if 'd' in e else None,
+                                  threat=float(e['t']) if 't' in e else None))
+            tid, tpt = d['target'].split('@', 1)
+            sort = int(d['sort'])
+            out.append(dict(frame=int(d['frame']), brain=d['brain'], slot=int(d['slot']), state=sid, heuristic=d['vt'],
+                            sort=SORTS[sort] if 0 <= sort < len(SORTS) else sort, found=d['found'] == '1',
+                            target=None if tid == '-1' else int(tid),
+                            point=tuple(map(float, tpt.split(':'))), count=int(d['n']),
+                            more=int(re.search(r' more=(\d+)', line).group(1)) if ' more=' in line else 0,
+                            candidates=cands))
+    return out
