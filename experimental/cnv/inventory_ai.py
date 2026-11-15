@@ -127,6 +127,11 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '启发条件/EnemyNearbyHeuristic.MinEnemyValue': (BENCHED,
+        'C engine_aiminvalue aiminvalue/aiminvaluehi:a：27关依赖显式取值1000/2500；'
+        '单盟军矿车1000、合计2400/3800对照；tests/test_min_enemy_value_c.py按名回放台上前三路。'
+        '低值反向组台上留家1、模型0，strict xfail；招募/个人移动原因及其他对象价值算法保持gap；'
+        '见work/re/c_minvalue_report.md'),
     '启发条件/TimeSinceLastExpansionHeuristic.Time': (BENCHED,
         'C engine_ailastexp ailastexp:a：原版27关有效依赖仅60s/240s，另设常量阳性组；'
         '同图一局12条预写断言PASS，在家人数s19-62为4/4/0、s64-242为0/4/0、s244-345为0/0/0。'
