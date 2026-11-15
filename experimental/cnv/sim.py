@@ -6160,6 +6160,15 @@ class Sim:
             new = sp['trigger'] - b.script_status
             b.script_status |= new
             self.__dict__.setdefault('_self_bits_due', []).append((now + sp['pack'], b, new))
+        for bits, duration in sp.get('shields', ()):
+            # E153 engine_activate: only the linked consumer's status lifetime.
+            # Projectile interception, damage cap and early termination remain gaps.
+            # INFERRED: overlapping/repeated activations use the same bit ownership
+            # convention as the existing pack phase; only a single press is measured.
+            self.guessed.add('ShieldSphereUpdate: projectile absorption and early termination unmodelled')
+            new = bits - b.script_status
+            b.script_status |= new
+            self.__dict__.setdefault('_self_bits_due', []).append((now + duration, b, new))
         self.modify(b)
         self.note('技能', f'{self.label(b)} 按 {button}：{sp["modifier"]}')
 

@@ -3013,23 +3013,39 @@ def self_module_power(template, button, own=None):
     """The template's ActivateModuleSpecialPower the button fires with AttributeModifierAffectsSelf="true": dict(
     modifier (its AttributeModifier id), trigger (the SpecialAbilityUpdate of that power: SetObjectStatusOnTrigger
     bits), pack (its PackTime frames)), else None. The shinobi's smoke bomb (NON_AUTOACQUIRABLE 10 s, UNATTACKABLE
-    through the 0.5 s pack), the Tsunami's energized armor (GENERIC_TOGGLE_STATE, SPEED 125 % 10 s): engine_acts_mix."""
+    through the 0.5 s pack), the Tsunami's energized armor (GENERIC_TOGGLE_STATE, SPEED 125 % 10 s): engine_acts_mix.
+    E153 engine_activate also reads SELF_POSITION links to an initially inactive
+    ShieldSphereUpdate: shields contains its ObjectStatus bits and Duration frames.
+    This covers status lifetime only; absorption, caps and early termination are gaps."""
     power = command_power(button, own)
     if not power:
         return None
 
     def read(xml):
         xml = re.sub(r'<!--.*?-->', '', xml or '', flags=re.S)
-        for head, _ in _blocks(xml, 'ActivateModuleSpecialPower'):
-            if _attr(head, 'SpecialPowerTemplate') != power or not _attr(head, 'AttributeModifier') or \
-                    _attr(head, 'AttributeModifierAffectsSelf', 'false') != 'true':
+        for head, inner in _blocks(xml, 'ActivateModuleSpecialPower'):
+            if _attr(head, 'SpecialPowerTemplate') != power:
+                continue
+            modifier = (_attr(head, 'AttributeModifier') or '') if \
+                _attr(head, 'AttributeModifierAffectsSelf', 'false') == 'true' else ''
+            shields = []
+            for link, _ in _blocks(inner, 'Modules'):
+                if _attr(link, 'TriggerType') != 'SELF_POSITION' or \
+                        _attr(link, 'TriggerAtTargetPosition', 'false') != 'false':
+                    continue
+                for shield, _ in _blocks(xml, 'ShieldSphereUpdate'):
+                    if _attr(shield, 'id') == _attr(link, 'ModuleId') and \
+                            _attr(shield, 'InitiallyActive', 'false') == 'false':
+                        shields.append((set((_attr(shield, 'ObjectStatus') or '').split()),
+                                        _frames(_secs(expand(_attr(shield, 'Duration', '0s'))))))
+            if not modifier and not shields:
                 continue
             trig, pack = set(), 0
             for h, _ in _blocks(xml, 'SpecialAbilityUpdate'):
                 if _attr(h, 'SpecialPowerTemplate') == power:
                     trig = set((_attr(h, 'SetObjectStatusOnTrigger') or '').split())
                     pack = _frames(_secs(expand(_attr(h, 'PackTime', '0s'))))
-            return dict(modifier=_attr(head, 'AttributeModifier'), power=power, trigger=trig, pack=pack)
+            return dict(modifier=modifier, power=power, trigger=trig, pack=pack, shields=shields)
         return None
     return _chain(template, own, read)
 
