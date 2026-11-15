@@ -1,7 +1,8 @@
 """Native status and target-area counters; work/re/c_forbid_report.md.
 
 Read the named plant's original status every frame alongside area counts.
-No candidate-eligibility interface: any ambiguous outcome remains a gap.
+The mission's observer records candidate eligibility and selection by state/index.
+Raw status bits and the runtime filter mask remain unobserved gaps.
 """
 from model import Test, Script, counted, square, status
 
