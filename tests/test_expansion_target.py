@@ -246,3 +246,12 @@ def test_expansion_d104_candidate_readings_replay(tmp_path):
                                     sample['centre'], nodes)
     assert picked.id == sample['pick']
     assert (picked.x, picked.y) == (4173, 2987)
+
+
+@pytest.mark.parametrize('build', ['aiexpse', 'aiexpd50', 'aiexpd400'])
+def test_simple_expansion_placed_miner_named_bench_replay(build):
+    w = simai.run(build, 'a', until=31)
+    row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
+    # Bench D round 154, all three: the placed miner harvests on its own to the field, the SimpleExpansion team
+    # stays empty (miner and escorts never taken), no outpost.
+    assert (row['前哨'], row['矿车近'], row['坦克东']) == (0, 1, 0), row

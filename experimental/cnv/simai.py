@@ -446,6 +446,8 @@ class Brain:
         """TeamMaker's reach hook: reach() to the target id's point (a thing in view or a Waypoint target's point);
         a target not found is not judged (True)."""
         p = self.targets.points.get(target)
+        if p is not None and hasattr(p, 'x'):       # an Expansion candidate's point is a Thing (aiexpse)
+            p = (p.x, p.y)
         if p is None:
             t = next((t for t in self.view.things if t.id == target), None)
             p = None if t is None else (t.x, t.y)
@@ -764,7 +766,14 @@ class Brain:
         Sim.capture_due, the engineer consumed); done once the target is the AI's, or once it is gone or no member
         is left to take it (INFERRED: what the engine does then not read). Bench aiskirm:et 2026-11-13: the engineer
         at the derrick s216, the derrick s1's and the team gone s222 (line A round 204). The other act kinds keep
-        the block's default (done on arrival)."""
+        the block's default (done on arrival).
+        SimpleExpansion: each living member with an unpack button (the AlliedMiner, the state's CreateUnits) is sent
+        to unpack on the target's point (Sim.order_unpack, the script's NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT
+        path); done once none is left with that order (unpacked, dead or none in the team). INFERRED: the point (the
+        candidate itself, not within Tactic.Distance of it) and the done rule -- bench aiexpse / aiexpd50 /
+        aiexpd400 (missions/aisimpleexp_bench.py)."""
+        if kind == 'SimpleExpansion':
+            return self.unpack(team, thing)
         if kind != 'Engineer':
             return True
         t = self.body_of(thing.id) if thing is not None else None
@@ -775,6 +784,23 @@ class Brain:
             if b.mode != 'capture' or b.goal is not t:
                 self.sim.order_capture(b, t.name)
         return not live
+
+    def unpack(self, team, thing):
+        """act's SimpleExpansion: order every member that can unpack (once), True when none is still on its way."""
+        if thing is None:
+            return True
+        p = (float(thing.x), float(thing.y))
+        going = False
+        for u in team.members:
+            b = u.body
+            if not b.alive:
+                continue
+            if b.building is not None:
+                going = True
+            elif not getattr(b, 'unpack_ordered', False) and self.sim.order_unpack(b, p):
+                b.unpack_ordered = True
+                going = b.building is not None or going
+        return not going
 
     def fighters(self, bodies):
         """Bodies as tactics.Fighter (fight's rule: rate by Sim.can_hit and the armour, vision = VisionRange)."""
@@ -1122,6 +1148,9 @@ class Brain:
                 continue
             # IGNORES_SELECT_ALL units are offered too: only a CreateUnits slot naming the template takes them
             # (teams.recruit; retail aiskirm_m team log, A round 191)
+            # no HARVESTER, not even for a CreateUnits slot naming it: bench aiexpse (D round 154) -- the
+            # SimpleExpansion team (CreateUnits AlliedMiner) stays empty at f152 / f230 beside a placed miner
+            # harvesting on the default team, and holds its escorts back too
             if 'HARVESTER' in b.kinds:
                 continue
             if self.host.garrison.busy(b) or self.host.pullback.busy(b):

@@ -4139,16 +4139,8 @@ class Sim:
             # an MCV / a Japanese egg deploys at the point: drives there, then turns into its replacement (bench
             # engine_unpack mcv / egg: the yard stands on the point, the name passes on)
             b, p = self.body(a[0]), self.point(a[2])
-            got = b and b.alive and p is not None and simunits.replace_self(b.template, a[1], self.own)
-            if not got:
+            if not (b and p is not None and self.order_unpack(b, p, a[1], a[2])):
                 self.note('技能', f'{a[0]} 按 {a[1]}：没有能展开的单位或路点')
-            else:
-                stand, into = got
-                self.used.add('unpack')
-                b.building, b.replace, b.goal, b.mode = (into, p, stand), True, None, 'move'
-                self.note('技能', f'{self.label(b)} 去 {a[2]} 展开成 {into}')
-                if not self.at_site(b, 0.0):
-                    self.send(b, p)
         elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and self.body(a[0]) and self.body(a[0]).alive and \
                 simunits.command_power(a[1], self.own) == PACK_POWER and \
                 simunits.replace_self(self.body(a[0]).template, a[1], self.own):
@@ -5937,6 +5929,30 @@ class Sim:
         """
         return (self.frame_now() < self.__dict__.get('emp_until', {}).get(id(b), 0)
                 or id(b) in self.__dict__.get('script_disabled', {}))
+
+    def order_unpack(self, b, p, button=None, where=None):
+        """b drives to point p and turns into its ReplaceSelfSpecialAbility's replacement there (the script's
+        NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT with an unpack button; the AI's SimpleExpansion, simai act).
+        button None = the first unpack button of b's CommandSet (AlliedMiner: Command_UnPackAlliedMiner). False when
+        b is dead or has no such button."""
+        if not b.alive:
+            return False
+        if button is None:
+            sets, _ = simunits._commands(self.own)
+            button = next((c for c in sets.get(simunits.command_set(b.template, (), self.own), [])
+                           if simunits.command_power(c, self.own) == UNPACK_POWER
+                           and simunits.replace_self(b.template, c, self.own)), None)
+        got = button is not None and simunits.command_power(button, self.own) == UNPACK_POWER and \
+            simunits.replace_self(b.template, button, self.own)
+        if not got:
+            return False
+        stand, into = got
+        self.used.add('unpack')
+        b.building, b.replace, b.goal, b.mode = (into, p, stand), True, None, 'move'
+        self.note('技能', f'{self.label(b)} 去 {where or "(%.0f, %.0f)" % tuple(p)} 展开成 {into}')
+        if not self.at_site(b, 0.0):
+            self.send(b, p)
+        return True
 
     def at_site(self, b, walked):
         """R5: a builder within his stand of the spot he was told to build at stops; the structure is made there the
