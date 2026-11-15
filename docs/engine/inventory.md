@@ -1090,7 +1090,7 @@
 | 推断 | `微操/AIMicroManagerData.GatherTempVisionRangeBonus` | 4 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | `微操/AIMicroManagerData.RetreatTempVisionRangeBonus` | 4 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | `微操/IgnoreTargets.Exclude` | 4 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | `目标/AITargetingHeuristic.VitalObjectStatus` | 4 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 推断 | `目标/AITargetingHeuristic.VitalObjectStatus` | 4 | a4 a5 a7 | C engine_aivital aivitalon/off:a：四原名宿主、脚本状态置/清对照；s55-60原打包状态*100+目标区*10+家中计数分别24/4/4/140与24/4/4/4。ATTACHED置位到目标4、清位留家4，按名回放吻合；仅脚本位子集。三地面样本的AIRBORNE_TARGET始终读0，模型却保留；路0区域重叠且位置差异未解。tests/test_vital_status_c.py断言原图读数，四strict xfail保留状态/位置差异；缺真实飞行/落地状态入口、同帧候选资格及原附着生命周期，整字段不晋升。见work/re/c_vital_report.md |
 | 未做 | `人格/AIPersonalityDefinition.EmergencyManagerHandleConyardInDangerAtDifficulty` | 3 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | `人格/PersonalityMap.Personality` | 3 |  | AI 模型代码里没有这个名字 |
 | 未做 | `人格/PersonalityMap.Side` | 3 |  | AI 模型代码里没有这个名字 |
