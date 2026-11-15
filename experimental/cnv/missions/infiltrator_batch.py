@@ -6,9 +6,9 @@ from parts import Mission
 def mission():
     m = Mission(name='CampInfBatch', map=infiltrator_batch, units=[])
     for lane, host, marker, side in (
-            ('air', 'AlliedAirfield', 'AlliedAntiInfantryAircraft', 's1'),
+            ('air', 'AlliedAirfield', 'AlliedSupportAircraft', 's1'),
             ('infantry', 'AlliedBarracks', 'AlliedEngineer', 's2'),
-            ('ship', 'AlliedNavalYard', 'AlliedAntiVehicleShip', 's3'),
+            ('ship', 'AlliedNavalYard', 'AlliedAntiAirShip', 's3'),
             ('port', 'CA_PortStructure', 'AlliedEngineer', 's4')):
         for suffix, owner in (('', side), (' friend', 's5')):
             role = lane + suffix
@@ -19,11 +19,16 @@ def mission():
         m.put(marker, lane + ' marker', 300, 0, side='s6',
               role=lane + ' third', name=lane + ' third')
         wrong_site = 'ship wrong' if lane == 'ship' else lane + ' marker'
-        wrong = 'AlliedAntiVehicleVehicleTech1' if lane != 'port' else 'JapanAntiInfantryShip'
+        wrong = 'AlliedAntiVehicleVehicleTech1' if lane != 'port' else 'JapanAntiVehicleShip'
         m.put(wrong, 'port far' if lane == 'port' else wrong_site, 0, -250,
               side=side, role=lane + ' wrong', name=lane + ' wrong')
     m.put('AlliedInfiltrationInfantry', 'port', -180, 0,
           role='port second', name='port second')
+    for role, cast in m.cast.items():
+        obj = next(obj for obj in m.objects if obj.name == cast.name)
+        mark = 'Identity ' + role
+        m.marks[role] = mark
+        m.waypoints[mark] = (obj.x, obj.y)
     return m
 
 

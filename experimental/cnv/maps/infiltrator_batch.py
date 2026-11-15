@@ -13,7 +13,7 @@ for name, x, y in (('air', 800, 400), ('infantry', 2300, 400),
     SITES[name + ' friend'] = Site(x + 500, y, 100, 'friendly refusal control')
 for name, x, y in (('air marker', 2300, 1800), ('infantry marker', 2300, 2700),
                    ('ship marker', 3800, 4700), ('ship wrong', 3800, 2200),
-                   ('port marker', 800, 2500), ('port far', 800, 4400)):
+                   ('port marker', 800, 2300), ('port far', 800, 4400)):
     SITES[name] = Site(x, y, 50, 'discovery control outside the entry spy vision')
 PLAYERS, TEAMS = island.PLAYERS, island.TEAMS
 _LAYOUT = Layout(shapes=[

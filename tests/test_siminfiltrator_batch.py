@@ -27,33 +27,34 @@ def test_infiltrator_batch_retail_configuration():
         'VISION', '-1s', '9999999s', 'VisionObserver')
 
 
-@pytest.mark.xfail(strict=True, reason='E148标记模板不存在，台上前置不等价；'
-                   '见work/re/handoff-e.md、work/re/e148_infiltrator.md；修复后须重新上台')
 def test_infiltrator_batch_requires_real_retail_markers():
     import build
     import simunits
     m, _, _ = build.resolve('engine_infbatch', 'a')
     missing = [obj.template for obj in m.objects if not simunits.retail_xml(obj.template)]
     assert not missing, missing
+    import re
+    for lane, kind in (('air', 'AIRCRAFT'), ('infantry', 'INFANTRY'), ('ship', 'SHIP')):
+        xml = simunits.retail_xml(m.role(lane + ' match').template)
+        kinds = re.search(r'KindOf="([^"]+)"', xml).group(1).split()
+        assert kind in kinds
+    port, near, far = (m.point(role) for role in ('port', 'port match', 'port wrong'))
+    assert (near[0] - port[0])**2 + (near[1] - port[1])**2 < 600**2
+    assert (far[0] - port[0])**2 + (far[1] - port[1])**2 > 600**2
+    _, t, _ = build.resolve('engine_infbatch', 'a')
+    assert [item[3] for item in t.expect] == [200111, 200111, 200111, 1200111]
 
 
-@pytest.mark.xfail(strict=True, reason='E148诊断台前置不等价且VISION_UNITS/港口未实现，'
-                   '不登记效果已对拍；见work/re/handoff-e.md和work/re/e148_infiltrator.md')
+@pytest.mark.xfail(strict=True, reason='E149步兵/舰船身份位置门未过、港口首入前已发现标记；'
+                   '前置不等价且效果未闭合，不登记覆盖；见work/re/handoff-e.md和work/re/e149_infiltrator.md')
 def test_infiltrator_batch_diagnostic_as_on_the_bench():
-    """Raw first-run counters only, not evidence of valid unit-filter behavior.
-
-    Port second spy stays alive; no claim about correct blocking mechanism.
-    Missing marker templates and the port radius error invalidate promotion.
-    """
+    """Replay actual E149 diagnostic readings; failed gates forbid effect claims."""
     import build
     import sim
     m, t, _ = build.resolve('engine_infbatch', 'a')
     s = sim.Sim(m, t).run(45)
-    for start, end, wanted in (
-            (1, 10, [111, 111, 111, 1000111]),
-            (11, 11, [110, 111, 110, 1000110]),
-            (12, 24, [110, 110, 110, 1000110]),
-            (25, 42, [10110, 110, 110, 1000110]),
-            (43, 45, [110, 110, 110, 1000110])):
-        rows = [values for second, values in s.series if start <= second <= end]
-        assert rows and all(row == wanted for row in rows), (start, end, rows)
+    # Keep the failed real prerequisites, rather than changing their expectations.
+    rows = [values for second, values in s.series if 1 <= second <= 7]
+    assert rows and all(row == [200111, 111, 111, 1001111] for row in rows), rows
+    rows = [values for second, values in s.series if 39 <= second <= 45]
+    assert rows and all(row == [111110, 110, 1110, 1101110] for row in rows), rows

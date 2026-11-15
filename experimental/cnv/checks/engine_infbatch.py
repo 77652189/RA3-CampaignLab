@@ -1,9 +1,12 @@
 """E148: three VISION_UNITS filters and blocked port VISION, one map.
 
-PAUSED diagnostic: first run used nonexistent air/ship marker templates and
-the port marker lies outside its inherited vision. Do not infer effect rules
-or coverage from this scene. Correct these prerequisites in a new item before
-another bench run. See work/re/e148_infiltrator.md and handoff-e.md.
+E149 prerequisite repair: valid AIRCRAFT/SHIP markers and port near point at
+500 within inherited 600 vision. Before entry, an extra 200000 means all seven
+lane objects are alive with their declared owner/template at their placed
+locations, and all three discovery controls are hidden. This bit ends at entry.
+PAUSED after E149: only air passed; infantry/ship identity gates failed and
+port match was already discovered before entry. No effect coverage is claimed.
+See work/re/e149_infiltrator.md and handoff-e.md before another run.
 
 Prediction before bench: enemy spies consumed, friendly spies refused, owners
 unchanged. Existing matching same-owner units may be revealed (INFERRED);
@@ -12,9 +15,9 @@ VISION may also expose nearby third-owner units. No continuous window or exact
 observer clock is assumed. Port second entry at 25s should be blocked.
 Each row encodes enemy spy=1, friendly spy=10, unchanged owner=100,
 matching discovery=1000, wrong kind/far discovery=10000, third owner=100000;
-port second spy alive=1000000. Raw observations: work/re/e148_infiltrator.md.
+port second spy alive=1000000. Raw observations: work/re/e149_infiltrator.md.
 """
-from parts import Script, Test
+from parts import NOT, Script, Test, square
 
 
 def check(m):
@@ -46,7 +49,23 @@ def check(m):
             conditions.append(('second', ('NAMED_NOT_DESTROYED', m.role('port second').name), 1000000))
         for label, cond, bit in conditions:
             t.scripts.append(Script('Test - ' + lane + label, [cond], [('INCREMENT_COUNTER', bit, c)], once=False))
-        baseline = 1000111 if lane == 'port' else 111
+        roles = [lane, lane + ' friend', lane + ' spy', lane + ' friend spy',
+                 lane + ' match', lane + ' wrong', lane + ' third']
+        prerequisites = [('TIMER_EXPIRED', 'Entry', NOT)]
+        for role in roles:
+            obj = m.role(role)
+            area = 'Test identity ' + role
+            t.areas[area] = square(*m.point(role), 40)
+            prerequisites += [
+                ('NAMED_NOT_DESTROYED', obj.name),
+                ('NAMED_OWNED_BY_PLAYER', m.player(obj.side), obj.name),
+                ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA',
+                 m.player(obj.side), 3, 1, obj.template, area)]
+        prerequisites += [('NAMED_DISCOVERED', p, m.role(lane + ' ' + role).name, NOT)
+                          for role in ('match', 'wrong', 'third')]
+        t.scripts.append(Script('Test - prerequisites ' + lane, prerequisites,
+                                [('INCREMENT_COUNTER', 200000, c)], once=False))
+        baseline = 1200111 if lane == 'port' else 200111
         t.expect.append((lane, 1, '==', baseline, 7))
     t.bench = [('bench_watch', dict(seconds=45, every=1, sheet=False, lines=4))]
     return t
