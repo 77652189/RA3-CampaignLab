@@ -85,7 +85,8 @@ def test_threat_to_ground_sends_the_team_to_the_far_plant_first(lib, build):
     '(Sim.range_targets): the peacekeepers stop on the plant at (3299,3439), 325 from turret 1 -- just outside its '
     'reach -- and two live to the end (near 2). Before, they overshot ~27 a tick into turret 1 and died (the old '
     'green was luck: s14-s29 neither version looks like the bench, where both turrets fire from the start). '
-    'Pending a bench reading of where units really stop (H1, work/re/handoff.md rounds 246-247).')
+    'Pending a bench reading of where units really stop on a structure (H1; the infantry-on-infantry stop on '
+    'aidelay0:p matched the sim, work/re/handoff.md round 249).')
 def test_closest_structure_sends_the_team_to_the_near_plant_and_never_the_far_one(lib):
     """checks/engine_aitarget.py aitargetnear (ClosestStructure, Distance): 到近厂 4 from s14, shot down to 0 by
     s35; 到远厂 0 all 76 s."""

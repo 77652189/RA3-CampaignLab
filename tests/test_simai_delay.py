@@ -50,7 +50,10 @@ _PEAK_XFAIL = pytest.mark.xfail(strict=True, reason='aidelay0 peak 2 -> 1 has tw
     '1 (centre 162, was ~152 by a tick overshoot), so conscript 2 shoots the same warrior and the other drops under '
     'HealthFraction 0.8 only after the first dies (fires f410 / f530); (2) model ca13b7c (D round 140, the hostile '
     'gate) sends the team in by a move instead of the attack order, fires f426 / f546 even without (1). Bench: '
-    'charges s33 and s34, both alive to s42. Pending where units really stop (H1, work/re/handoff.md round 247).')
+    'charges s33 and s34, both alive to s42. Not a deeper stop (H1 not supported, aidelay0:p bench, A round 249): '
+    'the sides first meet at the sim gap (conscript 2 pauses at y 2700, warriors at 2850), then on the bench the '
+    'warriors withdraw north s27-s30 and the conscripts follow to the attack-move end -- the sim has no withdrawal '
+    '(INFERRED; y only). Not chased further (coordinator).')
 
 
 @pytest.mark.parametrize('build', [pytest.param('aidelay0', marks=_PEAK_XFAIL), 'aidelay999'])
