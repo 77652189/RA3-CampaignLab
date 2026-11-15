@@ -127,6 +127,13 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '目标/AITargetingHeuristic.HeuristicType=TechBuilding': (GUESSED,
+        'C aitechkind/aitechnon:a 原名ClosestTechBuildingHeuristic、敌距0、空VitalKindOf，'
+        '同位中立油井/普通电厂；f16油井ok并选中，普通电厂不在科技候选集合，'
+        '阴性组反选地图原有远油井(700,3200)。s40四区域计数4/0/0/0与0/0/0/0；'
+        'tests/test_tech_building_c.py按名回放选择/计数，阴性模型留家、两strict xfail，'
+        '原预测FAIL另strict xfail。资格对照已测，实时基地/搜索范围参考仍gap，不晋升；'
+        '见work/re/c_techkind_report.md、handoff-c.md'),
     '目标/AITargetingHeuristic.UnderAttack': (GUESSED,
         'C 静态核对27关：SDK五宿主，仅a08 Player_2可达ClosestAllyUnitUnderAttackHeuristic；'
         '未上台。simai以最近两秒掉血代替逐对象受攻击状态，真实置位/撤销语义未证；'

@@ -49,10 +49,38 @@ def two_candidates(name, limit):
     return m
 
 
+def tech_kind(name, tech=True):
+    """Same neutral structure/site: oil qualifies, ordinary plant does not.
+
+    The retail ClosestTechBuildingHeuristic host has no VitalKindOf filter.
+    Enemy distance is disabled to isolate the registered tech-building set;
+    this does not reopen the minimum-distance or fallback probes.
+    Native negative control selects the inherited far oil instead of staying
+    home; preserve the original prediction. See work/re/c_techkind_report.md.
+    """
+    from missions.aiteams_bench import host_unit, HOST
+    m = minimum(name, 0)
+    asset, xml, ref = m.assets[0]
+    xml = xml.replace('CNVMinEnemy', 'ClosestTechBuildingHeuristic')
+    xml = xml.replace('VitalKindOf="SUPPLY_SOURCE"', 'VitalKindOf=""')
+    m.assets[0] = asset, xml, ref
+    if not tech:
+        obj = m.find(m.role('plant').name)
+        obj.template = 'AlliedPowerPlant'
+        m.cast['plant'] = dataclasses.replace(m.cast['plant'], template=obj.template)
+        m.facts.update({'expect plant': 0, 'expect home': 4})
+    m.ext = True
+    m.units.append(host_unit())
+    m.put(HOST, 'east base', 250, 400, side='s1', role='teams host')
+    return m
+
+
 MISSION = {
     'aimind0': lambda: minimum('CampMinZero', 0),
     'aimindhi': lambda: minimum('CampMinHigh', 2000),
     'aimindctl': lambda: minimum('CampMinCtl', 2000, named=True),
     'aimindpair0': lambda: two_candidates('CampMinPair0', 0),
     'aimindpair350': lambda: two_candidates('CampMinPair350', 350),
+    'aitechkind': lambda: tech_kind('CampTechKind'),
+    'aitechnon': lambda: tech_kind('CampTechNon', False),
 }

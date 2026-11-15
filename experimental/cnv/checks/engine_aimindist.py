@@ -6,6 +6,10 @@ Original evidence: work/re/c_mindist_report.md.
 Two-oil contrast: minimum 0 selects near oil (4/0/0/4), 350 stays home
 (0/0/4/4), contradicting the model's far-oil prediction. Qualification and
 fallback remain gaps; see work/re/c_mindist_pair_report.md.
+TechBuilding type contrast: aitechkind oil / aitechnon ordinary neutral plant.
+Native f16 includes/selects the oil but never includes the ordinary plant;
+the negative instead selects an inherited far oil. Its original home=4
+prediction remains FAIL; see work/re/c_techkind_report.md.
 """
 from checks.engine_aitargetpick import a
 from parts import Script, Test, counted, square
@@ -40,3 +44,4 @@ def pair(m):
 
 CHECKS = {build: {'a': a} for build in ('aimind0', 'aimindhi', 'aimindctl')}
 CHECKS.update({build: {'a': pair} for build in ('aimindpair0', 'aimindpair350')})
+CHECKS.update({build: {'a': a} for build in ('aitechkind', 'aitechnon')})
