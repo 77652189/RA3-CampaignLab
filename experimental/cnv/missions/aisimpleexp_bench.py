@@ -59,12 +59,13 @@ OPENER = 'CNVSExpOpener'
 PLANT_DY = 400.0
 
 
-def built(distance=200):
+def built(distance=200, build=False):
     m = mission(distance, placed=False)
-    m.name = f'CampAIExpH{distance}'
+    m.name = f'CampAIExp{"B" if build else "H"}{distance}'
     filename, xml, asset = m.assets[0]
     opener = '\n'.join([f'  <SkirmishOpeningMove id="{OPENER}" Side="PlayerTemplate:Allies">',
                         f'    <Order Time="0s" Account="PRODUCTION" Deposit="{BUILT_DEPOSIT}" />',
+                        *([f'    <Order Build="{MINER}" />'] if build else []),
                         '    <Order Time="5s"/>', '  </SkirmishOpeningMove>', ''])
     first = '\n'.join([f'    <OpeningMove Name="{OPENER}" Weight="100%">', '      <Heuristic>',
                        '        <ConstantHeuristic/>', '      </Heuristic>', '    </OpeningMove>',
@@ -79,8 +80,13 @@ def built(distance=200):
     wake.do = [(a[0], a[1], BUILT_MONEY) if a[0] == 'PLAYER_SET_MONEY' else a for a in wake.do]
     assert ('PLAYER_SET_MONEY', s1, BUILT_MONEY) in wake.do
     m.facts['ai builds miner'] = True
+    m.facts['opener builds miner'] = build
     return m
 
 
+# D round 156 (d155's H4): the same probe, its opener also orders one AlliedMiner (aiteamfilter_bench's aiar* form)
+# -- is a miner built after the SimpleExpansion team exists taken into it? One build, retail Distance 200.
 MISSION = {'aiexpse': lambda: mission(200), 'aiexpd50': lambda: mission(50), 'aiexpd400': lambda: mission(400),
-           'aiexph200': lambda: built(200), 'aiexph50': lambda: built(50), 'aiexph400': lambda: built(400)}
+           'aiexph200': lambda: built(200), 'aiexph50': lambda: built(50), 'aiexph400': lambda: built(400),
+           'aiexpb200': lambda: built(200, build=True), 'aiexpb50': lambda: built(50, build=True),
+           'aiexpb400': lambda: built(400, build=True)}

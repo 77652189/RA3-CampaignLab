@@ -264,3 +264,20 @@ def test_simple_expansion_built_miner_named_bench_replay(build):
     # Bench D round 155, all three: refinery + money + a PRODUCTION deposit, no placed miner -- only the refinery's
     # free miner (harvesting the bluff); the SimpleExpansion team stays empty f152..f1741, no build order, no outpost.
     assert (row['前哨'], row['前哨近'], row['矿车']) == (0, 0, 1), row
+
+
+# Bench D round 156 (aiexpb*: aiexph + the opener's `Build AlliedMiner`), counters at s130 (前哨, 前哨近, 矿车近):
+# 400 -> outpost (3885, 2733) s95; 200 -> outpost (4012, 2903) s106; 50 -> no outpost, the miner idles 98 from the node.
+OPENER_MINER_BENCH = {'aiexpb400': (1, 0, 0), 'aiexpb200': (1, 0, 0), 'aiexpb50': (0, 0, 1)}
+
+
+@pytest.mark.xfail(strict=True, reason='simulator gaps (D round 156): (1) the opener Build AlliedMiner is not built '
+                   '(simai shows one miner throughout, cause not read); (2) simai.units offers no HARVESTER at all, '
+                   'the bench takes a miner the AI built (not a placed one nor a refinery\'s free one); (3) '
+                   'simai.unpack drives to the node and unpacks there, the bench unpacks where the miner first '
+                   'comes within Tactic.Distance of the node and never when it cannot (Distance 50)')
+@pytest.mark.parametrize('build', sorted(OPENER_MINER_BENCH))
+def test_simple_expansion_unpacks_within_distance_named_bench_replay(build):
+    w = simai.run(build, 'a', until=130)
+    row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
+    assert (row['前哨'], row['前哨近'], row['矿车近']) == OPENER_MINER_BENCH[build], row

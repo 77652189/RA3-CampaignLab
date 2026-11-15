@@ -48,10 +48,20 @@ def h(m):
     # bench round 155, all three alike (s1-s102..s126): one miner throughout (the refinery's free one, harvesting
     # the bluff), no outpost; the teams host: the SimpleExpansion team made f152 with n=0 and still n=0 at f1741,
     # no build order logged -- the CreateUnits slot orders no miner by itself (d154's H1 refuted).
-    t.expect += [('前哨', 30, '==', 0, 90), ('矿车', 30, '==', 1, 90), ('前哨近', 30, '==', 0, 90)]
-    t.bench = [('bench_watch', dict(seconds=90, every=1, sheet=False, lines=4))]
+    if not m.facts.get('opener builds miner'):
+        t.expect += [('前哨', 30, '==', 0, 90), ('矿车', 30, '==', 1, 90), ('前哨近', 30, '==', 0, 90)]
+    # bench round 156 (aiexpb*, the opener builds one miner): the SimpleExpansion team takes it at f465 with the four
+    # Guardians; the miner unpacks the first frame it is within Distance of the Expansion node (400: f995 at
+    # (3887, 2717), outpost (3885, 2733) counted s95; 200: f1061 at (3998, 2903), outpost (4012, 2903) s106); with
+    # 50 the team's destination is 98 from the node, the miner never gets within 50 and never unpacks (to f1936).
+    elif m.facts['tactic distance'] == 50:
+        t.expect += [('前哨', 30, '==', 0, 130), ('矿车近', 80, '==', 1, 130)]
+    else:
+        t.expect += [('前哨', 112, '==', 1, 130), ('前哨近', 30, '==', 0, 130)]
+    t.bench = [('bench_watch', dict(seconds=130 if m.facts.get('opener builds miner') else 90, every=1,
+                                    sheet=False, lines=4))]
     return t
 
 
 CHECKS = {key: {'a': a} for key in ('aiexpse', 'aiexpd50', 'aiexpd400')}
-CHECKS |= {key: {'a': h} for key in ('aiexph200', 'aiexph50', 'aiexph400')}
+CHECKS |= {key: {'a': h} for key in ('aiexph200', 'aiexph50', 'aiexph400', 'aiexpb200', 'aiexpb50', 'aiexpb400')}
