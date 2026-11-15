@@ -1098,7 +1098,7 @@
 | 未做 | `战术/Tactic.AestheticsManagerPatrolIdleTime` | 3 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 已对拍 | `战术/Tactic.CombatLeashSlack` | 3 |  | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aidefense.py |
 | 推断 | `战术/Tactic.Tactic=NullTactic` | 3 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 未做 | `目标/AITargetingHeuristic.HeuristicType=Point` | 3 | a5 a7 | AI 模型代码里没有这个名字 |
+| 未做 | `目标/AITargetingHeuristic.HeuristicType=Point` | 3 | a5 a7 | C engine_aipoint aipointwater/aipointtiny:a 原名NearbyWaterPointHeuristic仅切范围1500/1；两局f16均found=1、target id=0，s25总数/在家均4/0，存活控制PASS。tests/test_point_target_c.py复读原记录并按名回放，模型两组均无目标、两strict xfail，原范围1无点预测另strict xfail；现观测按对象ID取坐标，Point的0:0不是实际选点。缺槽内真实点/搜索原点/候选生成与威胁输入，模型未实现，不晋升；27关静态14关45条玩家宿主引用，见work/re/c_point_report.md及c_point_scope.json |
 | 未做 | `目标/AITargetingHeuristic.HeuristicType=UnpackBuildingPlacement` | 3 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | `阵营/ArmyDefinition.AircraftRepairFacility` | 3 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | `阵营/ArmyDefinition.EnergyProducer` | 3 | a4 a5 a7 | AI 模型代码里没有这个名字 |
