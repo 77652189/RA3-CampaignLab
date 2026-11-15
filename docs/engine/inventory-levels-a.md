@@ -2,13 +2,13 @@
 
 由 `experimental/cnv/inventory_levels.py --write` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）编出的全部脚本（`parts.merged`，含目标显示脚本）里的动作和条件；地图和任务摆的物体、我们自己的单位、脚本点名的模板，连同模块点名的武器、武器点名的物体（抛射体）和武器，取生效的模块（继承、include、同 id 覆盖）和武器效果。没跟：模块点名的别的物体（多是能变成 / 能装的东西：多功能步兵车的乘客、锤子坦克吸来的车）、物体生成表（死亡碎片、OCL 技能）和命令表（工厂能造什么）。AI 部分（引擎 B）在 [inventory-levels.md](inventory-levels.md)。状态和原版用量取自 [inventory.md](inventory.md)。停止条件①：下表全部已对拍。
 
-**已对拍 134 / 201**（不涉及的不算）。
+**已对拍 135 / 201**（不涉及的不算）。
 
 | 部分 | 已对拍 | 推断 | 未做 | 不涉及 |
 |---|---|---|---|---|
 | 脚本动作 | 50 | 0 | 0 | 14 |
 | 脚本条件 | 12 | 0 | 0 | 0 |
-| 物体模块 | 54 | 13 | 46 | 20 |
+| 物体模块 | 55 | 13 | 45 | 20 |
 | 武器效果 | 18 | 4 | 4 | 2 |
 
 按原版用量加权：已对拍 100%，已有（已对拍+推断）100%。
@@ -54,7 +54,6 @@
 | 未做 | 物体模块 | `Behaviors/MonitorConditionUpdate` | 1 | a1 a2 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：JapanMiner |
 | 未做 | 物体模块 | `Behaviors/OCLMonitorUpdate` | 1 | a1 a2 a4 a6 a7 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_spnbomb.py），可能用别的名字实现了；例：SovietCommandoTech1 |
 | 未做 | 物体模块 | `Behaviors/ObjectCreationUpgrade` | 1 | a1 a2 a3 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：SovietAntiVehicleVehicleTech1 |
-| 未做 | 物体模块 | `Behaviors/ReconstituteStateSpecialAbility` | 1 | a1 a2 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoTech1 |
 | 未做 | 物体模块 | `Behaviors/ShieldSphereUpdate` | 1 | a2 a6 | 模拟器代码里没有这个名字；例：AlliedAntiStructureVehicle |
 | 未做 | 物体模块 | `Behaviors/SlaveWatcherBehavior` | 1 | a1 a2 a3 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：SovietAntiVehicleVehicleTech1 |
 | 未做 | 物体模块 | `Behaviors/StoreCurrentStateUpdate` | 1 | a1 a2 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoTech1 |
@@ -202,6 +201,7 @@
 | 已对拍 | 物体模块 | `Behaviors/LinearDamageUpdate` | 1 | a1 a2 a4 a6 a7 | tests/test_simsweep.py::test_sweep_the_line_walks_out_and_a_stop_does_not_cut_it_at_the_bench_frames；例：AlliedAntiNavalScout |
 | 已对拍 | 物体模块 | `Behaviors/OreMinerBehavior` | 1 | a1 a2 a4 a5 a6 a7 | tests/test_simbench.py::test_mining_pays_8_a_frame_and_a_trip_takes_269；例：AlliedMiner, JapanMiner |
 | 已对拍 | 物体模块 | `Behaviors/OreNodeBehavior` | 1 | a1 a2 a4 a5 a6 a7 a9 | tests/test_simbench.py::test_mining_a_second_miner_on_one_node_adds_nothing；例：OreNode |
+| 已对拍 | 物体模块 | `Behaviors/ReconstituteStateSpecialAbility` | 1 | a1 a2 a4 a6 a7 a9 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_cast.py；例：AlliedCommandoTech1 |
 | 已对拍 | 武器效果 | `DamageNugget` | 183 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_attackassist.py；例：AAAVT1_CommandoPistolWeapon, AAAVT1_JapanAntiVehicleInfantryPlasmaBazooka |
 | 已对拍 | 武器效果 | `ProjectileNugget` | 88 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | tests/test_simbench_c.py::test_projectile_nugget_flight_uses_retail_shell_speed_and_resolved_warhead；例：AAAVT1_AlliedAntiVehicleInfantryMissileLauncher, AAAVT1_JapanInfiltrationShiruken |
 | 已对拍 | 武器效果 | `SuppressionNugget` | 64 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | tests/test_simbench_c.py::test_suppression_samples_entry_refresh_and_expiry_at_the_four_probe_readings；例：AAAVT1_AlliedAntiVehicleInfantryMissileLauncher, AAAVT1_CommandoPistolWeapon |

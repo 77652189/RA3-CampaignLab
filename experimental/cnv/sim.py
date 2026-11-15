@@ -2961,18 +2961,26 @@ class Sim:
             return CMP[a[1]](self.counters.get(a[0], 0), a[2])
         if name in ('PLAYER_TRIGGERED_SPECIAL_POWER', 'PLAYER_TRIGGERED_SPECIAL_POWER_FROM_NAMED',
                     'PLAYER_TRIGGERED_SPECIAL_POWER_IN_AREA'):
-            # (player, power[, named / area]): a cast of the player's in the frame before (bench 11-09 engine_scripts8b
-            # pfire: 施放数 1 -- seen for one frame; pdis: 2, the second cast hurt nobody). Which frame sees it is
-            # INFERRED (the next frame's scripts, so a script after the caster's sees it once too); _FROM_NAMED /
-            # _IN_AREA (the caster, the cast's point inside the area) are INFERRED, not on the bench
+            # (player, power[, named / area]): the player's casts wait in a list until a reader TAKES one -- the
+            # first condition that matches erases the entry (Generals' ScriptEngine::isSpecialPowerTriggered,
+            # removeFromList TRUE); one no one reads stays. engine_cast all (round 242, bench 11-15
+            # CampCastAll_mcp_1115_040813): 名 1 / 3 -- each shockwave read by its own FROM_NAMED reader only, the
+            # same-named reader after it and PLAYER_TRIGGERED never; the belt read by a reader enabled 3 s after it
+            # (+16: two entries, simunits.press_records); 区 1 / 5 -- IN_AREA looks at the cast's point (the hive's
+            # own zone never), the cast outside both zones taken by PLAYER_TRIGGERED, FROM_NAMED(hive) never.
+            # Seen from the next frame's scripts (bench 11-09 engine_scripts8b pfire 施放数 1, pdis 2). INFERRED:
+            # FROM_NAMED with the named unit dead is false (Generals looks the object up)
             now = self.frame_now()
-            for f, owner, power, who, q in self.casts:
-                if f != now - 1 or owner != a[0] or power != str(a[1]).lower():
+            for k, (f, owner, power, who, q) in enumerate(self.casts):
+                if f >= now or owner != a[0] or power != str(a[1]).lower():
                     continue
-                if name.endswith('_FROM_NAMED') and who != a[2]:
-                    continue
+                if name.endswith('_FROM_NAMED'):
+                    src = self.body(a[2])
+                    if src is None or not src.alive or who != a[2]:
+                        continue
                 if name.endswith('_IN_AREA') and not (q and inside(self.areas[a[2]], *q)):
                     continue
+                del self.casts[k]
                 return True
             return False
         if name in ('NAMED_DESTROYED', 'NAMED_NOT_DESTROYED'):
@@ -3297,6 +3305,16 @@ class Sim:
             held = sum(1 for g in self.living() if self.garrison.spec(g) is not None
                        for u in self.garrison.inside.get(g.name, []) if u.alive and u.owner == a[0])
             return CMP[int(a[1])](held, int(a[2]))
+        if name == 'TEAM_CAN_PATH_TO_WAYPOINT':
+            # (team, waypoint): every living member has a way to the waypoint itself -- engine_cast all (round 242,
+            # bench 11-15 CampCastAll_mcp_1115_040813) 路 21 -> 5: two Guardians to land yes, to the trench's water
+            # no (no snap to the bank), a lone Bullfrog to the water yes, a Guardian + a Bullfrog to the water no, an
+            # emptied team no. INFERRED: all members (a leader-only check -- the Guardian -- reads the same here)
+            crew, q = self.members(a[0]), self.point(a[1])
+            g = self.ground
+            return bool(crew) and q is not None and all(
+                b.surface == 'air' or (g.open(b.surface, *q) and g.route(b.surface, (b.x, b.y), q) is not None)
+                for b in crew)
         return None
 
     def surfaces(self, b):
@@ -4197,6 +4215,15 @@ class Sim:
             self.self_power_press(self.body(a[0]), a[1])
         elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and self.body(a[0]) and self.toggle_press(self.body(a[0]), a[1]):
             self.note('技能', f'{a[0]} 按 {a[1]} 切换状态')
+        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and self.body(a[0]) and self.body(a[0]).alive and \
+                simunits.press_records(self.body(a[0]).template, a[1], self.own):
+            # engine_cast (round 242): Tanya's time belt seen cast twice (simunits.press_records); her jump back in
+            # time is not simulated
+            b = self.body(a[0])
+            power, n = simunits.press_records(b.template, a[1], self.own)
+            self.used.add('special power')
+            self.casts += [(self.frame_now(), b.owner, power.lower(), b.name, None)] * n
+            self.note('技能', f'{self.label(b)} 按 {a[1]}：记 {n} 次施放')
         elif name in ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY'):
             b = self.body(a[0])
             # engine_oclnone / engine_oclwrong: no matching host module means

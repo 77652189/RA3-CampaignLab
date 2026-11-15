@@ -1,4 +1,4 @@
-"""Retail-campaign conditions, batch 6 (round 241, written; NOT YET ON THE BENCH): PLAYER_TRIGGERED_SPECIAL_POWER_FROM_
+"""Retail-campaign conditions, batch 6 (round 241 written, round 242 benched): PLAYER_TRIGGERED_SPECIAL_POWER_FROM_
 NAMED (5 uses: a02 (Player_1, specialpower_timebelt, the commando), j03 (Player_1, specialpower_mechakingshockwave,
 o_executioner), s03 (Player_1, specialpower_ejectpassengers, three transports)), PLAYER_TRIGGERED_SPECIAL_POWER_IN_AREA
 (4, j07: (Player_1 / Player_2, specialpowernanoswarmhive, area_relay_01 / _02)) and TEAM_CAN_PATH_TO_WAYPOINT (4, j07:
@@ -31,6 +31,11 @@ and the lanes' S ends (x 1700) clear. No enemies.
    4 + 8 = 15 to 8 s, 15 after K dies (16 never: an empty team has no one to path), 7 once M's Bullfrog dies if any
    member counts (W snaps to the bank for a Guardian, so 2 / 8 hold); without the snap (the water cell is no Guardian's)
    1 + 4 + 8 = 13, 5 after 16 s.]
+  [bench 11-15 CampCastAll_mcp_1115_040813, PASS: 名 1 / 3 / 19 at ~13 s -- H2 (taken), the belt two entries (+8 x 2:
+   her SpecialPower module UpdateModuleStartsAttack="false" records at the press, the ReconstituteStateSpecialAbility
+   again; the King's "true": once, at the fire); 区 1 / 5 = H2T; 路 21 -> 5 after K: no snap, M (Guardian + Bullfrog)
+   false -- every member must reach the waypoint (the 16 held while K had its Guardian). The bench's steps come
+   ~1-2 s before the timers.]
 """
 from maps import probe_air
 from parts import Mission, Script, Test

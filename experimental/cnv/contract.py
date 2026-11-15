@@ -45,7 +45,9 @@ RETAIL_COMMANDS = {'Command_CaptureBuilding',           # an engineer takes a bu
                    'Command_SmokeBombSpecialPower', 'Command_ToggleEnergizedArmorSpecialPower',  # engine_acts_mix:
                    'Command_ActivateRoarSpecialPower', 'Command_ActivateLeapSpecialPower',       # shinobi, Tsunami,
                    'Command_CAMPAlliedBomberDrop2',     # bear, Sickle, the campaign's bomber drop store
-                   'Command_ActivateJumpSpecialPower'}  # the dolphin's jump (engine_acts_wet)
+                   'Command_ActivateJumpSpecialPower',  # the dolphin's jump (engine_acts_wet)
+                   'Command_ActivateMechaKingShockwave',  # King Oni's shockwave, Tanya's time belt (retail j03 /
+                   'Command_TimeBeltSpecialPower'}        # a02 read them cast: engine_cast)
 # a factory's build button (a UNIT_BUILD command: Command_ConstructAlliedEngineer, retail j07's
 # Command_ConstructJapanMinerFromRefinery): a script's press builds as the player's click does -- paid, the build time
 # (bench 2026-11-08 engine_production e / f); the simulator and playcheck take the button from the factory's CommandSet
@@ -58,7 +60,8 @@ THIS_NAMES = frozenset({'<This Object>', '<This Team>', '<This Player>'})
 RETAIL_POWERS = {'SpecialPowerIronCurtain', 'SpecialPowerParticleCannon', 'SpecialPowerVacuumBomb',
                  'SpecialPowerNanoSwarmHive', 'SpecialPowerTelekineticProjectorDevice',            # the Soviet superweapon building's (SovietSuperWeapon, OCLSpecialPower)
                  'SpecialPowerCAMPAlliedBomberDrop2',   # the campaign's bomber drop store (j04 fires it by name)
-                 'SpecialPower_Roar'}   # the bear's roar: engine_acts_wet reads it cast (PLAYER_TRIGGERED_SPECIAL_POWER)
+                 'SpecialPower_Roar',   # the bear's roar: engine_acts_wet reads it cast (PLAYER_TRIGGERED_SPECIAL_POWER)
+                 'SpecialPower_MechaKingShockwave', 'SpecialPower_TimeBelt'}    # read cast (engine_cast)
 
 
 def spellbook_powers():

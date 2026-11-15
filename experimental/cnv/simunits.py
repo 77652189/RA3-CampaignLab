@@ -3034,6 +3034,28 @@ def self_module_power(template, button, own=None):
     return _chain(template, own, read)
 
 
+def press_records(template, button, own=None):
+    """(power, n): the PLAYER_TRIGGERED_SPECIAL_POWER entries a script's press of the button records at once, else None.
+    engine_cast all (round 242, bench 11-15 CampCastAll_mcp_1115_040813): Tanya's time belt read twice by one reader
+    (名 +16 = 8 x 2) -- her SpecialPower module has UpdateModuleStartsAttack="false" (it records at the press) and a
+    ReconstituteStateSpecialAbility of the same power records again (INFERRED: at the press too). King Oni's
+    shockwave and the bear's roar (UpdateModuleStartsAttack="true") record once, when their weapon fires (wfire)."""
+    power = command_power(button, own)
+    if not power:
+        return None
+
+    def read(xml):
+        xml = re.sub(r'<!--.*?-->', '', xml or '', flags=re.S)
+        starts = [h for h, _ in _blocks(xml, 'SpecialPower') if _attr(h, 'SpecialPowerTemplate') == power
+                  and _attr(h, 'UpdateModuleStartsAttack', 'false') == 'false']
+        if not starts:
+            return None
+        again = [h for h, _ in _blocks(xml, 'ReconstituteStateSpecialAbility')
+                 if _attr(h, 'SpecialPowerTemplate') == power]
+        return (power, 1 + bool(again))
+    return _chain(template, own, read)
+
+
 def power_target_type(power):
     """The retail SpecialPowerTemplate's TargetType (NONE / LOCATION / OBJECT ...), '' when not found."""
     return _attr(_retail_power_heads().get(power, ''), 'TargetType') or ''

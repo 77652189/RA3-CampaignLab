@@ -225,6 +225,11 @@ BENCHED_TESTS = {
     # too); SKIRMISH_PLAYER_HAS_COMPARISON_GARRISONED counts the player's men inside garrisons, not the buildings
     **{(CONDITION, n): 'tests/test_simbench.py::test_razed_all_as_the_bench' for n in (
         'PLAYER_DESTROYED_N_BUILDINGS_PLAYER', 'SKIRMISH_PLAYER_HAS_COMPARISON_GARRISONED')},
+    # round 242 (checks/engine_cast.py all): a cast waits until the first matching reader takes it; IN_AREA by the
+    # cast's point; TEAM_CAN_PATH_TO_WAYPOINT every member to the waypoint itself (no snap)
+    **{(CONDITION, n): 'tests/test_simbench.py::test_cast_all_as_the_bench' for n in (
+        'PLAYER_TRIGGERED_SPECIAL_POWER_FROM_NAMED', 'PLAYER_TRIGGERED_SPECIAL_POWER_IN_AREA',
+        'TEAM_CAN_PATH_TO_WAYPOINT')},
     # round 217: PLAYER_TRANSFER_OWNERSHIP_PLAYER (checks/engine_acts7.py own: the giver's units on no team and its
     # money go to the receiver; ones on a team stay)
     (ACTION, 'PLAYER_TRANSFER_OWNERSHIP_PLAYER'): 'tests/test_simbench.py::test_acts_x_own_as_the_bench',

@@ -2359,3 +2359,15 @@ def test_rewind_swap_as_the_bench():
 def test_rewind_wreck_as_the_bench():
     run = _sim_run('rewind_swap', 'wreck', 12.0)
     assert any(v[3] >= 1 for _, v in run.series)
+
+
+def test_cast_all_as_the_bench():
+    """engine_cast all (round 242, bench 11-15 CampCastAll_mcp_1115_040813): 名 1 (A's shockwave) / 3 (B's) / 19 (the
+    belt read twice by the reader enabled at 13 s) -- a cast is TAKEN by the first reader that matches; 区 1 (the hive
+    at Q1: IN_AREA by the cast's point) / 5 (at Q2: taken by PLAYER_TRIGGERED); 路 21 -> 5 once K is killed at 8 s --
+    TEAM_CAN_PATH_TO_WAYPOINT needs every member to reach the waypoint itself. The bench steps come ~1-2 s before the
+    script timers (the simulator's on them): only the plateaus are asserted."""
+    at = dict(_sim_run('engine_cast', 'all', 30.0).series)
+    assert at[4][0] == 1 and at[9][0] == 3 and at[29][0] == 19, at
+    assert at[13][1] == 0 and at[17][1] == 1 and at[29][1] == 5, at
+    assert at[6][2] == 21 and at[10][2] == 5 and at[29][2] == 5, at

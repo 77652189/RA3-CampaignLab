@@ -5,8 +5,8 @@
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
 | 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 182 | 19 | 135 | 115 | 98% |
-| 脚本条件 | **99%** | **100%** | 12 / 12 | 89 | 64 | 2 | 20 | 3 | 99% |
-| 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
+| 脚本条件 | **99%** | **100%** | 12 / 12 | 89 | 67 | 0 | 19 | 3 | 99% |
+| 物体模块 | **98%** | **98%** | 55 / 113 | 189 | 56 | 13 | 94 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
 | AI | **97%** | **97%** | 191 / 357 | 428 | 208 | 93 | 93 | 34 | 100% |
 
@@ -14,7 +14,7 @@
 
 | 状态 | 名字 | 用量 | 9 关用到 | 说明 |
 |---|---|---|---|---|
-| 已对拍 | `ENABLE_SCRIPT` | 5727 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_script.py |
+| 已对拍 | `ENABLE_SCRIPT` | 5727 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_cast.py |
 | 已对拍 | `SET_MILLISECOND_TIMER` | 4153 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_acquire.py |
 | 已对拍 | `SET_FLAG` | 4105 | 全部 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aimicro.py |
 | 已对拍 | `ALLOW_DISALLOW_ONE_BUILDING` | 3466 | a4 a5 a7 | tests/test_simbench.py::test_a_ban_holds_the_queue_and_does_not_cancel |
@@ -528,7 +528,7 @@
 | 已对拍 | `TEAM_COMPARE_NUM_MEMBERS` | 10 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiskirm.py |
 | 不涉及 | `PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA_WITH_MODELCONDITION` | 9 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 已对拍 | `PLAYER_HAS_POWER` | 9 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_infiltrator.py:a |
-| 已对拍 | `PLAYER_TRIGGERED_SPECIAL_POWER` | 9 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts8b.py |
+| 已对拍 | `PLAYER_TRIGGERED_SPECIAL_POWER` | 9 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_cast.py |
 | 已对拍 | `BUILT_BY_PLAYER` | 8 |  | tests/test_simbench.py::test_sighted_all_as_the_bench |
 | 未做 | `GATE_IS_OPEN` | 8 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `PLAYER_DESTROYED_N_BUILDINGS_PLAYER` | 8 |  | tests/test_simbench.py::test_razed_all_as_the_bench |
@@ -538,10 +538,10 @@
 | 未做 | `UNIT_SPECIAL_POWER_READY` | 7 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `PLAYER_HAS_NO_POWER` | 6 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_infiltrator.py:a |
 | 已对拍 | `PLAYER_EXCESS_POWER_COMPARE_VALUE` | 5 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_infiltrator.py:a |
-| 推断 | `PLAYER_TRIGGERED_SPECIAL_POWER_FROM_NAMED` | 5 |  | Sim.act / Sim.cond 有分支；台上量过（checks/engine_cast.py），没有测试跑这个台子 |
+| 已对拍 | `PLAYER_TRIGGERED_SPECIAL_POWER_FROM_NAMED` | 5 |  | tests/test_simbench.py::test_cast_all_as_the_bench |
 | 已对拍 | `PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS` | 4 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aimicro.py |
-| 推断 | `PLAYER_TRIGGERED_SPECIAL_POWER_IN_AREA` | 4 |  | Sim.act / Sim.cond 有分支；台上量过（checks/engine_cast.py），没有测试跑这个台子 |
-| 未做 | `TEAM_CAN_PATH_TO_WAYPOINT` | 4 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `PLAYER_TRIGGERED_SPECIAL_POWER_IN_AREA` | 4 |  | tests/test_simbench.py::test_cast_all_as_the_bench |
+| 已对拍 | `TEAM_CAN_PATH_TO_WAYPOINT` | 4 |  | tests/test_simbench.py::test_cast_all_as_the_bench |
 | 未做 | `PLAYER_HAS_COMPARISON_UNIT_KIND` | 3 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `SKIRMISH_COMMAND_BUTTON_READY_PARTIAL` | 3 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_DESTROYED_BY_OBJECTTYPE` | 2 |  | Sim.act / Sim.cond 不认识 |
@@ -707,7 +707,7 @@
 | 未做 | `Behaviors/GrapplingHookUpdate` | 1 (1) | a1 a3 a4 a6 a7 a9 | 仅engine_grapple a最小消费者诊断；模块派发/拉拽/释放未解释，未实现，不作为已对拍证据；例：SovietAntiVehicleVehicleTech3 |
 | 已对拍 | `Behaviors/LinearDamageUpdate` | 1 (1) | a1 a2 a4 a6 a7 | tests/test_simsweep.py::test_sweep_the_line_walks_out_and_a_stop_does_not_cut_it_at_the_bench_frames；例：AlliedAntiNavalScout |
 | 未做 | `Behaviors/MagneticEffectUpdate` | 1 (1) | a1 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedAntiNavyShipTech1 |
-| 未做 | `Behaviors/ReconstituteStateSpecialAbility` | 1 (1) | a1 a2 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoTech1 |
+| 已对拍 | `Behaviors/ReconstituteStateSpecialAbility` | 1 (1) | a1 a2 a4 a6 a7 a9 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_cast.py；例：AlliedCommandoTech1 |
 | 未做 | `Behaviors/ShieldSphereUpdate` | 1 (1) | a2 a6 | 模拟器代码里没有这个名字；例：AlliedAntiStructureVehicle |
 | 未做 | `Behaviors/StoreCurrentStateUpdate` | 1 (1) | a1 a2 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoTech1 |
 | 未做 | `Behaviors/SweepingLaserState` | 1 (1) | a1 a2 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：SovietScoutVehicle |
