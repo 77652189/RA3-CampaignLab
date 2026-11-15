@@ -141,10 +141,10 @@
 | 已对拍 | 脚本条件 | `NAMED_DESTROYED` | 922 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_conds.py:fight |
 | 已对拍 | 脚本条件 | `PLAYER_HAS_OBJECT_COMPARISON` | 628 | a1 a4 a5 a7 | tests/test_simbench.py::test_scripts2_a_relation_is_one_way_and_turns_back |
 | 已对拍 | 脚本条件 | `COUNTER` | 577 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 引擎模型核心；台上量过、测试对拍：checks/engine_aimicro.py |
-| 已对拍 | 脚本条件 | `NAMED_INSIDE_AREA` | 413 | a3 a4 a5 a6 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aixfer.py |
+| 已对拍 | 脚本条件 | `NAMED_INSIDE_AREA` | 413 | a3 a4 a5 a6 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acts8.py |
 | 已对拍 | 脚本条件 | `SKIRMISH_PLAYER_HAS_UNITS_IN_AREA` | 410 | a1 a3 a4 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_area.py |
 | 已对拍 | 脚本条件 | `NAMED_OWNED_BY_PLAYER` | 397 | a4 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_engineer.py:a |
-| 已对拍 | 脚本条件 | `NAMED_NOT_DESTROYED` | 374 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attach.py |
+| 已对拍 | 脚本条件 | `NAMED_NOT_DESTROYED` | 374 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acts8.py |
 | 已对拍 | 脚本条件 | `PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA` | 278 | a4 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiskirm.py |
 | 已对拍 | 脚本条件 | `NAMED_ATTACKED_BY_PLAYER` | 150 | a4 a5 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attack.py |
 | 已对拍 | 脚本条件 | `UNIT_HEALTH` | 134 | a2 a4 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_air.py |

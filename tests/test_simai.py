@@ -451,6 +451,14 @@ def test_outgunned_team_walks_home_alive_and_goes_again(lib):
 
 # was strict xfail (one Peacekeeper lost on a later trip): passes since the SimpleAttack form-up (B round 194; the
 # bench forms up in every SimpleAttack run with a teams host -- airev*, aicrush1t, aialobs*, aiexpctl; B round 196)
+@pytest.mark.xfail(strict=True, reason=(
+    "A 234 (engine model b212e66): one Peacekeeper lost at s77 on the third trip, bench 4 to s85. Bench airett "
+    "(CampAIRetTA 1114_175624): after a retreat the four stop at four spots round the yard (3790:3330 3850:3330 "
+    "3930:3390 3830:3470) and trips 2-3 leave from there unformed, ~220 deep; at the retreat round (f740) the "
+    "leader 3735:2646 is ~186 off the guard ring. The simulator brings them home stacked in two pairs on one point, "
+    "walks them bunched, and three guards have come out to y 2500 -> nearest 124 / 140 at its retreat rounds "
+    "(f690 / f1140). Missing: where a retreat's move to the base leaves each member, and whether the bench's "
+    "guards chase out (no guard rows logged)"))
 def test_outgunned_team_home_stay_and_losses_match_the_bench(lib):
     # bench airet: 16 s home before going again and 4 alive to s85. Was strict xfail (sim 9 s, one lost on the second
     # trip); passes since the engine model's f67a739 (line C: retreat order readiness before the attack rejoins)

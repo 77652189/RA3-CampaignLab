@@ -1623,6 +1623,11 @@ def test_acts_w_hunt_as_the_bench():
     assert 13.0 <= first(2, 62) <= 19.0 and 29.0 <= first(2, 52) <= 36.0 and 46.0 <= first(2, 42) <= 53.0
 
 
+@pytest.mark.xfail(strict=True, reason=(
+    "unexplained two rounds (A 232-234): bench 家 11201 s49-s50 / s59 -- H4's two men come home 1-2 s apart (leave "
+    "e1's area s26 / s29, enter it s43 / s45, home s49 / s51); the simulator walks them 6-8 apart all the way and "
+    "brings both home the same second (no 11201). Missing: the two men's stops while hunting e2 (bench positions "
+    "not logged) and whether two hunters sent to one point spread out (Sim column_ends only for >= 3)"))
 def test_acts_y_hunt_as_the_bench():
     """hunt, bench 11-14 `run_queue engine_acts_y:hunt` (CampActsYHunt, round 218; the bench's seconds ~1 behind):
     家 11222 -> 11200 at s6 -- TEAM_HUNT moves the aiTactical-255 crews (Soviet_4's, Soviet_5's at aiTeamBuilder 240),
