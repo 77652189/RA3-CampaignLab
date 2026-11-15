@@ -5,7 +5,7 @@
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
 | 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 182 | 19 | 135 | 115 | 98% |
-| 脚本条件 | **99%** | **100%** | 12 / 12 | 89 | 67 | 0 | 19 | 3 | 99% |
+| 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 70 | 0 | 16 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 55 / 113 | 189 | 56 | 13 | 94 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
 | AI | **97%** | **97%** | 191 / 357 | 428 | 208 | 93 | 93 | 34 | 100% |
@@ -31,7 +31,7 @@
 | 不涉及 | `PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT_WITH_SUBTITLE` | 445 |  | 纯表现（名字规则） |
 | 不涉及 | `MOVIE_PLAY_RADAR` | 433 | a4 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
 | 已对拍 | `CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION` | 399 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts7.py |
-| 已对拍 | `OBJECTLIST_ADDOBJECTTYPE` | 383 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts7.py |
+| 已对拍 | `OBJECTLIST_ADDOBJECTTYPE` | 383 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_kind.py:all |
 | 已对拍 | `PLAYER_SET_MONEY` | 345 | 全部 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acts.py |
 | 已对拍 | `SKIRMISH_AI_SET_ENEMY_PLAYER_PRIORITY` | 343 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiprio.py |
 | 已对拍 | `PLAYER_RELATES_PLAYER` | 319 | a2 a4 a5 a7 a9 | tests/test_simbench.py::test_scripts2_a_relation_is_one_way_and_turns_back |
@@ -542,12 +542,12 @@
 | 已对拍 | `PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS` | 4 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aimicro.py |
 | 已对拍 | `PLAYER_TRIGGERED_SPECIAL_POWER_IN_AREA` | 4 |  | tests/test_simbench.py::test_cast_all_as_the_bench |
 | 已对拍 | `TEAM_CAN_PATH_TO_WAYPOINT` | 4 |  | tests/test_simbench.py::test_cast_all_as_the_bench |
-| 未做 | `PLAYER_HAS_COMPARISON_UNIT_KIND` | 3 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `PLAYER_HAS_COMPARISON_UNIT_KIND` | 3 |  | tests/test_simbench.py::test_kind_all_as_the_bench |
 | 未做 | `SKIRMISH_COMMAND_BUTTON_READY_PARTIAL` | 3 |  | Sim.act / Sim.cond 不认识 |
-| 未做 | `NAMED_DESTROYED_BY_OBJECTTYPE` | 2 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `NAMED_DESTROYED_BY_OBJECTTYPE` | 2 |  | tests/test_simbench.py::test_kind_by_as_the_bench |
 | 已对拍 | `NAMED_DYING` | 2 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_crush.py:all |
 | 未做 | `PLAYER_HAS_NUMBER_OBJECTS_WITH_MODELCONDITION` | 2 |  | Sim.act / Sim.cond 不认识 |
-| 未做 | `PLAYER_LOST_OBJECT_TYPE` | 2 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `PLAYER_LOST_OBJECT_TYPE` | 2 |  | tests/test_simbench.py::test_kind_all_as_the_bench |
 | 未做 | `TEAM_ENTERED_AREA_PARTIALLY` | 2 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_IS_ATTACKED_AND_CANNOT_RETALIATE_ANY` | 2 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_OUTSIDE_AREA_ENTIRELY` | 2 |  | Sim.act / Sim.cond 不认识 |

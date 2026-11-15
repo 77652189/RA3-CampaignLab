@@ -2371,3 +2371,24 @@ def test_cast_all_as_the_bench():
     assert at[4][0] == 1 and at[9][0] == 3 and at[29][0] == 19, at
     assert at[13][1] == 0 and at[17][1] == 1 and at[29][1] == 5, at
     assert at[6][2] == 21 and at[10][2] == 5 and at[29][2] == 5, at
+
+
+def test_kind_all_as_the_bench():
+    """engine_kind all (round 244, bench 11-15 CampKindAll_mcp_1115_045506): 种 11 -> 15 -> 6 -> 22 --
+    PLAYER_HAS_COMPARISON_UNIT_KIND counts every player's objects of the KindOf; 失 1 / 25 / 29 / 30 / 62 --
+    PLAYER_LOST_OBJECT_TYPE keeps one count per (player, type string) and a drop is the first reader's only; 毁 0.
+    Only the plateaus are asserted (the bench steps 1-2 s before the timers; eng e dies when Tanya gets there)."""
+    at = dict(_sim_run('engine_kind', 'all', 30.0).series)
+    assert [at[s][0] for s in (2, 10, 14, 17, 29)] == [11, 11, 15, 6, 22], at
+    assert [at[s][1] for s in (2, 10, 29)] == [0, 1, 62], at
+    assert at[13][1] in (25, 29) and at[17][1] == 30, at
+    assert all(v[2] == 0 for v in at.values()), at
+
+
+def test_kind_by_as_the_bench():
+    """engine_kind by (round 244, bench 11-15 CampKindBy_mcp_1115_045838): NAMED_DESTROYED_BY_OBJECTTYPE never true
+    (毁 坦 王 add every evaluation, 0 all run) while NAMED_DESTROYED (死) saw eng p, truck w and eng e die (King Oni
+    to Tanya's charge at s20 on the bench: the simulator's Tanya does not kill it, not asserted)."""
+    at = dict(_sim_run('engine_kind', 'by', 30.0).series)
+    assert all(v[:3] == [0, 0, 0] for v in at.values()), at
+    assert at[29][3] & 11 == 11, at

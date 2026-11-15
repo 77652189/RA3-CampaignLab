@@ -3315,6 +3315,33 @@ class Sim:
             return bool(crew) and q is not None and all(
                 b.surface == 'air' or (g.open(b.surface, *q) and g.route(b.surface, (b.x, b.y), q) is not None)
                 for b in crew)
+        if name == 'PLAYER_HAS_COMPARISON_UNIT_KIND':
+            # (player, comparison, n, KindOf): n against EVERY player's living objects of the KindOf, as the
+            # _IN_TRIGGER_AREA one reads -- engine_kind all (round 244, bench 11-15 CampKindAll_mcp_1115_045506) 种
+            # 11 -> 15 -> 6 -> 22: four FS_FACTORY (two each) fail Player_1 == 2 and Soviet_4 <= 3, Soviet_4 >= 1
+            # ENGINEER holds on Player_1's engineer once its own died, off with the last one
+            self.used.add('kind all players')
+            kind = a[3][2] if isinstance(a[3], tuple) else a[3]
+            return CMP[a[1]](sum(1 for b in self.living() if kind in b.kinds), a[2])
+        if name == 'PLAYER_LOST_OBJECT_TYPE':
+            # (player, type or object list): Generals' evaluatePlayerLostObjectType -- ONE stored count per (player,
+            # type string), the player's living objects of the type(s); every reader stores the count it finds and is
+            # true when it is below the one stored, so a drop is one frame's truth for the first reader only (engine_kind
+            # all 失 1 / 25 / 29 / 30 / 62: the second reader of the same string never; the object list its own string)
+            store = self.__dict__.setdefault('lost_counts', {})
+            key = (a[0], str(a[1]).lower())
+            want = self.of_types(a[1])
+            n = sum(1 for b in self.living() if b.owner == a[0] and b.template.lower() in want)
+            before = store.get(key, 0)
+            store[key] = n
+            return n < before
+        if name == 'NAMED_DESTROYED_BY_OBJECTTYPE':
+            # (object, killer's type): false, always -- engine_kind all / by (round 244, bench 11-15
+            # CampKindAll_mcp_1115_045506, CampKindBy_mcp_1115_045838): 毁 / 坦 / 王 0 all run on counters that add
+            # every evaluation (one frame would show) while NAMED_DESTROYED saw all four die -- Tanya's pistols on an engineer, a
+            # Guardian's gun on a truck, Tanya's charge on King Oni, a script's kill; the type in either case.
+            # INFERRED why: the dead object's name no longer finds it, so retail a04's bonus crate never comes
+            return False
         return None
 
     def surfaces(self, b):

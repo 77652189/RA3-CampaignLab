@@ -35,6 +35,13 @@ No trigger areas.
    per-reader memory would read 3 / 7 / 31 / 34 / 66. NAMED_DESTROYED_BY_OBJECTTYPE (RA3 only, no source): dead,
    and its killer's template that type; a script's kill has no killer. 毁 8 from ~3 s, 9 from ~7 s, 11 from ~13 s
    if her charge's kill is credited to Tanya (9 if to the charge object).]
+  [bench 11-15 CampKindAll_mcp_1115_045506 (round 244): 种 11 / s11 15 / s15 6 / s18 22 -- every player's (H-all);
+   失 s3 1 / s11 25 / s13 29 (eng e died late: Tanya walked) / s15 30 / s18 62 -- one shared count (the second
+   reader never); 毁 0 all run. The steps ~1-2 s before the script timers.]
+
+  by   all's units and timers, 毁 split into counters that add every evaluation (see by()). [bench 11-15
+       CampKindBy_mcp_1115_045838: 死 s2 8 (eng p), s6 10 (truck w), s13 11 (eng e), s20 15 (King Oni); 毁 坦 王 0
+       all run -- NAMED_DESTROYED_BY_OBJECTTYPE never true, not one evaluation, either case, any killer.]
 """
 from maps import probe_border
 from parts import Mission, Script, Test, kindof, status
@@ -113,5 +120,27 @@ def all_(m):
     return t
 
 
+def by(m):
+    """all's 毁 read 0 all run (bench 11-15 CampKindAll_mcp_1115_045506) while eng e died (种 &8 off, 失 &4 at s13):
+    tells a one-frame truth (a counter that never resets: its weight every evaluation a reader holds) from never
+    true, the killer's template's case, and whether the victims died at all. 毁 = 1 (eng e, alliedcommandotech1) +
+    1000 (eng e, AlliedCommandoTech1); 坦 = 1 (truck w, alliedantivehiclevehicletech1) + 1000 (eng p,
+    alliedcommandotech1: a script's kill); 王 = 1 (King Oni, alliedcommandotech1) + 1000 (King Oni,
+    sovietcommandotech1); 死 (every frame) = 1 NAMED_DESTROYED eng e, 2 truck w, 4 King Oni, 8 eng p."""
+    t = all_(m)
+    t.scripts = [s for s in t.scripts if s.name.startswith(('Test - Kind start', 'Test - S8'))]
+    t.counters = []
+    n = {r: m.role(r).name for r in list(UNITS) + list(BUILDINGS)}
+    d = 'NAMED_DESTROYED_BY_OBJECTTYPE'
+    _seen(t, 'CNV_Kind_By', '毁', [(1, (d, n['eng e'], TANYA.lower())), (1000, (d, n['eng e'], TANYA))])
+    _seen(t, 'CNV_Kind_Tank', '坦', [(1, (d, n['truck w'], TANK.lower())), (1000, (d, n['eng p'], TANYA.lower()))])
+    _seen(t, 'CNV_Kind_Oni', '王', [(1, (d, n['oni'], TANYA.lower())), (1000, (d, n['oni'], NATASHA.lower()))])
+    s8.total(t, 'CNV_Kind_Dead', '死', [(w, ('NAMED_DESTROYED', n[r])) for w, r in
+                                        ((1, 'eng e'), (2, 'truck w'), (4, 'oni'), (8, 'eng p'))])
+    t.expect = [('死', RUN - 1, '>=', 1)]
+    s8.watch(t, RUN)
+    return t
+
+
 MISSION = {'engine_kind': mission}
-CHECKS = {'engine_kind': {'all': all_}}
+CHECKS = {'engine_kind': {'all': all_, 'by': by}}

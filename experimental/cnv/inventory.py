@@ -230,6 +230,12 @@ BENCHED_TESTS = {
     **{(CONDITION, n): 'tests/test_simbench.py::test_cast_all_as_the_bench' for n in (
         'PLAYER_TRIGGERED_SPECIAL_POWER_FROM_NAMED', 'PLAYER_TRIGGERED_SPECIAL_POWER_IN_AREA',
         'TEAM_CAN_PATH_TO_WAYPOINT')},
+    # round 244 (checks/engine_kind.py all / by): PLAYER_HAS_COMPARISON_UNIT_KIND counts every player's objects;
+    # PLAYER_LOST_OBJECT_TYPE one stored count per (player, type string), the first reader takes a drop;
+    # NAMED_DESTROYED_BY_OBJECTTYPE false always (four kills, either case)
+    **{(CONDITION, n): 'tests/test_simbench.py::test_kind_all_as_the_bench' for n in (
+        'PLAYER_HAS_COMPARISON_UNIT_KIND', 'PLAYER_LOST_OBJECT_TYPE')},
+    (CONDITION, 'NAMED_DESTROYED_BY_OBJECTTYPE'): 'tests/test_simbench.py::test_kind_by_as_the_bench',
     # round 217: PLAYER_TRANSFER_OWNERSHIP_PLAYER (checks/engine_acts7.py own: the giver's units on no team and its
     # money go to the receiver; ones on a team stay)
     (ACTION, 'PLAYER_TRANSFER_OWNERSHIP_PLAYER'): 'tests/test_simbench.py::test_acts_x_own_as_the_bench',
