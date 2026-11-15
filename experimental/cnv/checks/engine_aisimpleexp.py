@@ -29,4 +29,29 @@ def a(m):
     return t
 
 
+def h(m):
+    """D round 155 (aiexph200 / aiexph50 / aiexph400): the AI builds the miner (refinery, money, a PRODUCTION
+    deposit, no AlliedNeededUnits). Counters: outposts on the map, outposts within 150 of the pick, miners on the
+    map, miners within 150 of the pick. The unpack point itself: the teams host's cmd log."""
+    t = Test()
+    MINER, OUTPOST = m.facts['miner'], m.facts['outpost']
+    s1 = m.player('s1')
+    near = 'CNV SExp near'
+    t.areas[near] = square(*m.facts['expansion pick'], 150.0)
+    counted('CNV_SExp_out', '前哨', t, template=OUTPOST, player=s1)
+    counted('CNV_SExp_outnear', '前哨近', t, template=OUTPOST, player=s1, area=near, most=2)
+    counted('CNV_SExp_miners', '矿车', t, template=MINER, player=s1, most=5)
+    counted('CNV_SExp_minernear', '矿车近', t, template=MINER, player=s1, area=near, most=2)
+    t.scripts.append(Script('Test - keep targets', [],
+                           [('UNIT_SET_HEALTH', m.role(r).name, 100.0)
+                            for r in ('plant', 'barracks', 'tank')], once=False))
+    # bench round 155, all three alike (s1-s102..s126): one miner throughout (the refinery's free one, harvesting
+    # the bluff), no outpost; the teams host: the SimpleExpansion team made f152 with n=0 and still n=0 at f1741,
+    # no build order logged -- the CreateUnits slot orders no miner by itself (d154's H1 refuted).
+    t.expect += [('前哨', 30, '==', 0, 90), ('矿车', 30, '==', 1, 90), ('前哨近', 30, '==', 0, 90)]
+    t.bench = [('bench_watch', dict(seconds=90, every=1, sheet=False, lines=4))]
+    return t
+
+
 CHECKS = {key: {'a': a} for key in ('aiexpse', 'aiexpd50', 'aiexpd400')}
+CHECKS |= {key: {'a': h} for key in ('aiexph200', 'aiexph50', 'aiexph400')}

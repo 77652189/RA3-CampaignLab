@@ -32,14 +32,16 @@ def tactic_xml(distance):
     </Tactic>'''
 
 
-def mission(distance=200):
+def mission(distance=200, placed=True):
     m = expansion_mission(True)
     m.name = {200: 'CampAIExpSE', 50: 'CampAIExpD50', 400: 'CampAIExpD400'}[distance]
     filename, xml, asset = m.assets[0]
     xml, n = re.subn(r'<Tactic id="Attack".*?</Tactic>', tactic_xml(distance), xml, count=1, flags=re.S)
     assert n == 1 and 'SimpleAttack' not in xml
     m.assets[0] = filename, xml, asset
-    m.put(MINER, 'east base', -200.0, -150.0, side='s1', angle=3.1416, name='UNIT - CNV AI Miner', role='ai miner')
+    if placed:
+        m.put(MINER, 'east base', -200.0, -150.0, side='s1', angle=3.1416, name='UNIT - CNV AI Miner',
+              role='ai miner')
     m.spawns |= {MINER, OUTPOST}
     m.facts['tactic distance'] = distance
     m.facts['expansion pick'] = PICK
@@ -47,4 +49,38 @@ def mission(distance=200):
     return m
 
 
-MISSION = {'aiexpse': lambda: mission(200), 'aiexpd50': lambda: mission(50), 'aiexpd400': lambda: mission(400)}
+# D round 155 (d154's H1): the AI builds its miner itself. No placed miner; s1 owns a refinery (it makes the
+# AlliedMiner) by the bluff ore (the map's lint wants a refinery within 250 of a node; the bluff is the candidate
+# the Expansion pick passes over, so its free miner harvests far from the east pick) and a power plant north, gets BUILT_MONEY at the wake and an opener of this probe's
+# own that only deposits BUILT_DEPOSIT to PRODUCTION (aiteamfilter_bench's aiar* opener without its Builds); the
+# build state AlliedNeededUnits (retail's miner top-up) removed, so a miner made comes from the team's CreateUnits.
+BUILT_MONEY, BUILT_DEPOSIT = 10000, 5000
+OPENER = 'CNVSExpOpener'
+PLANT_DY = 400.0
+
+
+def built(distance=200):
+    m = mission(distance, placed=False)
+    m.name = f'CampAIExpH{distance}'
+    filename, xml, asset = m.assets[0]
+    opener = '\n'.join([f'  <SkirmishOpeningMove id="{OPENER}" Side="PlayerTemplate:Allies">',
+                        f'    <Order Time="0s" Account="PRODUCTION" Deposit="{BUILT_DEPOSIT}" />',
+                        '    <Order Time="5s"/>', '  </SkirmishOpeningMove>', ''])
+    first = '\n'.join([f'    <OpeningMove Name="{OPENER}" Weight="100%">', '      <Heuristic>',
+                       '        <ConstantHeuristic/>', '      </Heuristic>', '    </OpeningMove>',
+                       '    <BuildState id="AlliedNeededUnits" xai:joinAction="Remove"/>', ''])
+    xml, n = re.subn(r'(  <AIPersonalityDefinition [^>]*>\n)', lambda g: opener + g.group(1) + first, xml, count=1)
+    assert n == 1
+    m.assets[0] = filename, xml, asset
+    m.put('AlliedRefinery', 'bluff refinery', side='s1', name='UNIT - CNV AI Refinery', role='ai refinery')
+    m.put('AlliedPowerPlant', 'east base', 0.0, PLANT_DY, side='s1', name='UNIT - CNV AI Plant', role='ai plant')
+    s1 = m.player('s1')
+    wake, = [s for s in m.scripts if s.name == 'CNV AI - Wake']
+    wake.do = [(a[0], a[1], BUILT_MONEY) if a[0] == 'PLAYER_SET_MONEY' else a for a in wake.do]
+    assert ('PLAYER_SET_MONEY', s1, BUILT_MONEY) in wake.do
+    m.facts['ai builds miner'] = True
+    return m
+
+
+MISSION = {'aiexpse': lambda: mission(200), 'aiexpd50': lambda: mission(50), 'aiexpd400': lambda: mission(400),
+           'aiexph200': lambda: built(200), 'aiexph50': lambda: built(50), 'aiexph400': lambda: built(400)}

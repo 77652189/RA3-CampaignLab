@@ -255,3 +255,12 @@ def test_simple_expansion_placed_miner_named_bench_replay(build):
     # Bench D round 154, all three: the placed miner harvests on its own to the field, the SimpleExpansion team
     # stays empty (miner and escorts never taken), no outpost.
     assert (row['前哨'], row['矿车近'], row['坦克东']) == (0, 1, 0), row
+
+
+@pytest.mark.parametrize('build', ['aiexph200', 'aiexph50', 'aiexph400'])
+def test_simple_expansion_built_miner_named_bench_replay(build):
+    w = simai.run(build, 'a', until=31)
+    row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
+    # Bench D round 155, all three: refinery + money + a PRODUCTION deposit, no placed miner -- only the refinery's
+    # free miner (harvesting the bluff); the SimpleExpansion team stays empty f152..f1741, no build order, no outpost.
+    assert (row['前哨'], row['前哨近'], row['矿车']) == (0, 0, 1), row
