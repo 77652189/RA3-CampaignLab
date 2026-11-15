@@ -2,11 +2,11 @@
 
 由 `experimental/cnv/inventory_ai.py levels` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）里由遭遇战 AI 带的敌人：它的人格（`enemy_ai.py` 生成）沿继承、战略状态、战术、组队、目标启发、微操、造兵 / 预算状态、开局一路引用到的原版 AI 数据项，加上全局常量 AIData 和本阵营的 ArmyDefinition；再加关卡脚本里点了 AI 玩家名字的脚本动作 / 条件。状态取自 [inventory.md](inventory.md)。"AI 做完"的第一条：下表全部已对拍。
 
-**已对拍 202 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
+**已对拍 203 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
 
 | 部分 | 已对拍 | 推断 | 未做 |
 |---|---|---|---|
-| AI | 190 | 83 | 84 |
+| AI | 191 | 82 | 84 |
 | 脚本动作 | 11 | 0 | 0 |
 | 脚本条件 | 1 | 0 | 0 |
 
@@ -121,7 +121,6 @@
 | 推断 | AI | `组队招人/TeamTemplate.Priority=COOP` | 12 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `组队招人/TeamTemplate.Priority=DEFENSE_HIGH` | 10 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `战术/Tactic.Tactic=ExactExpansion` | 9 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `启发条件/EnemyNearbyHeuristic.MinEnemyValue` | 8 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `启发条件/ObjectOfTypeExistsHeuristic.Location` | 8 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `目标/AITargetingHeuristic.ForbiddenObjectStatus` | 8 | a4 a5 a7 | C engine_aiforbid a：同近电厂仅切UNDER_IRON_CURTAIN禁用字段；无过滤有位/有过滤有位/有过滤清位三组原状态与近远家计数分别1/4/0/0、1/0/4/0、0/4/0/0，均PASS。tests/test_forbidden_status.py按名回放并断言原图计数；单位置位过滤吻合，未改模型。追加原UNATTACKABLE UNDER_IRON_CURTAIN组合，仅IRON置位，原状态掩码1；空/单IRON/双位过滤s40.1计数为1/4/0/0、1/0/4/0、1/0/4/0，三局PASS支持该子集ANY，模型吻合。再测仅UNATTACKABLE置位，空/单UNATTACKABLE/双位过滤s40.1原读数分别2/4/0/0、2/0/4/0、2/0/4/0；s5..41原状态均2，三局PASS及按名回放支持另一单位置位子集ANY，未改模型。双位同时置位追加空过滤/原双位过滤两局均PASS，s40.1原计数3/4/0/0与3/0/4/0，s5..41状态均3；tests/test_forbidden_status.py按名回放及原图复读均吻合，未改模型。同帧候选资格、原版技能及AIRBORNE_TARGET/SUBMERGED仍gap，整字段不晋升；见work/re/c_forbid_report.md、work/re/c_forbidmask_report.md、work/re/c_forbiduna_report.md、work/re/c_forbiddual_report.md |
 | 推断 | AI | `目标/AITargetingHeuristic.SortType=ThreatToAir` | 8 | a4 a5 a7 | AI 模型代码里读了这个名字 |
@@ -361,6 +360,7 @@
 | 已对拍 | AI | `启发条件/PowerAdvantageHeuristic.IncludeOwnDefenses` | 10 | a4 a5 a7 | C engine_aipowerown aipownoff/aipownon:a：同图4对8守护者、一座己方光谱塔及电厂，固定Value=0.5/Above=true，仅IncludeOwnDefenses=false/true；s40在家/AI总数/玩家坦克/己方塔为4/4/8/1与0/4/8/1，两局各4条PASS。tests/test_simai_powerown_c.py按名回放原读数；仅验证此塔与军队组合，精确比值公式、求值帧、其他防御类别及敌方防御计入仍gap；未改模型或阈值，见work/re/c_powerown_report.md |
 | 已对拍 | AI | `启发条件/PowerAdvantageHeuristic.Value` | 10 | a4 a5 a7 | C engine_aipowervalue aipval1/aipval01:a：同图4对8同型守护者、Above=true，仅Value=1.0/0.1；s40在家/AI总数/玩家坦克分别4/4/8与0/4/8，两局各3条PASS。tests/test_simai_powervalue_c.py按名回放两组实测；仅验证该固定军队下两阈值的行为差异，完整比值公式、精确边界/求值帧、动态伤亡与防御计入仍gap；未改模型或阈值，见work/re/c_powervalue_report.md |
 | 已对拍 | AI | `目标/AITargetingHeuristic.SearchRange` | 10 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aistate.py |
+| 已对拍 | AI | `启发条件/EnemyNearbyHeuristic.MinEnemyValue` | 8 | a4 a5 a7 | C engine_aiminvalue aiminvalue/aiminvaluehi:a：27关依赖显式取值1000/2500；单盟军矿车1000、合计2400/3800对照；tests/test_min_enemy_value_c.py按名回放台上前三路。低值反向组台上留家1、模型0，strict xfail；招募/个人移动原因及其他对象价值算法保持gap；见work/re/c_minvalue_report.md |
 | 已对拍 | AI | `微操/AIMicroManagerData.DodgeThreatsReactionTimeMax` | 6 | a4 a5 a7 | engine_aidodge aidodgezero/aidodgetwo固定相等端点联合快慢对照；tests/test_ai_dodge.py按名回放出生/首次离开锁存和前置；只验0秒先于2秒，未区分单独Min/Max、随机分布或精确反应帧；见 work/re/e117_dodge_clock.md |
 | 已对拍 | AI | `微操/AIMicroManagerData.DodgeThreatsReactionTimeMin` | 6 | a4 a5 a7 | engine_aidodge aidodgezero/aidodgetwo固定0/0与2/2秒联合端点对照；台内出生f451，首次离开f454/f486，前置失配0；tests/test_ai_dodge.py按名断言快慢顺序；绝对离开帧模型475/505未对齐，单独端点作用/随机范围/精确反应帧仍gap；见 work/re/e117_dodge_clock.md |
 | 已对拍 | AI | `人格/EnemyFilter.Include` | 5 | a4 a5 a7 | tests/test_enemyfilter.py::test_enemyfilter_named_bench_replay（C 的 engine_aienemyfilter aiefharv / aiefeng / aiefself：Include HARVESTER 近处敌矿车触发、ENGINEER 不触发，SAME_PLAYER 无自家矿车不触发；模型 B 第 155 轮接进 EnemyNearby） |
