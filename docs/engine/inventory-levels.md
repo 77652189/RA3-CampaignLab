@@ -2,11 +2,11 @@
 
 由 `experimental/cnv/inventory_ai.py levels` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）里由遭遇战 AI 带的敌人：它的人格（`enemy_ai.py` 生成）沿继承、战略状态、战术、组队、目标启发、微操、造兵 / 预算状态、开局一路引用到的原版 AI 数据项，加上全局常量 AIData 和本阵营的 ArmyDefinition；再加关卡脚本里点了 AI 玩家名字的脚本动作 / 条件。状态取自 [inventory.md](inventory.md)。"AI 做完"的第一条：下表全部已对拍。
 
-**已对拍 201 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
+**已对拍 202 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
 
 | 部分 | 已对拍 | 推断 | 未做 |
 |---|---|---|---|
-| AI | 189 | 84 | 84 |
+| AI | 190 | 83 | 84 |
 | 脚本动作 | 11 | 0 | 0 |
 | 脚本条件 | 1 | 0 | 0 |
 
@@ -113,8 +113,7 @@
 | 推断 | AI | `目标/AITargetingHeuristic.SortType=ThreatToWater` | 14 | a4 a5 a7 | C按名台子engine_aiwater：两电厂/近处守护者/AI两栖矿车，仅切Distance与ThreatToWater，实机两组采样s14后均近4/远0/家0；模型ThreatToWater选远，按名回放strict xfail。tests/test_water_threat.py独立断言原计数并保留原预测FAIL；近处Named对照因s40-41无采样亦strict xfail。无同帧候选资格/实际water威胁值/水域样本资格，不改模型、不晋升；见work/re/c_water_report.md |
 | 推断 | AI | `微操/IgnoreTargets.Rule` | 13 | a4 a5 a7 | E118 engine_aiignore_rule aiignrany/aiignrall：原版EASY包含标记不变，仅切ANY/ALL；同帧两成员，首伤396/397，前置失配0；f406/421分别状态0有目标与8无目标。ALL保留墙钟s22造出1导致的诊断FAIL，游戏帧前置成立；tests/test_ai_ignore_rule.py按名回放伤害/前置及ALL状态，ANY候选资格strict xfail；目标身份、工程师分类/Alpha资格仍gap，不晋升；见 work/re/e118_ignore_rule.md |
 | 推断 | AI | `战术/Tactic.Tactic=GarrisonBuilding` | 13 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `启发条件/TimeSinceLastExpansionHeuristic` | 12 | a4 a5 a7 | AI 模型代码里读了这个名字 |
-| 推断 | AI | `启发条件/TimeSinceLastExpansionHeuristic.Time` | 12 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 推断 | AI | `启发条件/TimeSinceLastExpansionHeuristic` | 12 | a4 a5 a7 | C engine_ailastexp的60s/240s首次计时已对拍，Time字段单独登记；真实扩张后时间戳来源/重置消费者未测，初始时间戳0保持INFERRED，整条件保持推断；见work/re/c_lastexp_report.md |
 | 推断 | AI | `微操/AIMicroManagerData.CrushPreference` | 12 | a4 a5 a7 | 同Crush，开关/低偏好对照守军至少8的按名回放保留；完整清零strict xfail；不把活目标重选解释为死亡后等待，见work/re/e109_crush.md；不晋升 |
 | 推断 | AI | `微操/AIMicroManagerData.RandomTargetScoreModifier` | 12 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `微操/AIMicroManagerData.TimeToKeepTargetMax` | 12 | a4 a5 a7 | E123仅作为固定Min=Max=2秒的控制量；未验证非退化随机区间/Max独立消费，不晋升；见work/re/e123_keep_target.md |
@@ -348,6 +347,7 @@
 | 已对拍 | AI | `人格/BaseSelection.SortOrder=PREFER_OLDEST` | 15 | a4 a5 a7 | 初始双厂同分候选，OLD选基地0、NEW选基地1；按名选择点/计数回放，仅该排序子集，见work/re/c_bs3_report.md |
 | 已对拍 | AI | `微操/AIMicroManagerData.DodgeThreats` | 15 | a4 a5 a7 | engine_aidodge aidodgeon/aidodgeoff 原版精确打击信标开关对照；tests/test_ai_dodge.py 按名断言两人存活、信标存在时on离开/off保持2，以及到期清理；simai micro_team威胁视图/移动回调接私有micro消费者，仅单信标地面成员；固定0.5秒反应、径向逃离/目的地保持/首次可见寿命起点为INFERRED；精确时钟、安全圆、通用过滤/所属、多威胁仍gap，见 work/re/e116_dodge.md |
 | 已对拍 | AI | `微操/IgnoreTargets.IncludeThing` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aibuildexclude.py |
+| 已对拍 | AI | `启发条件/TimeSinceLastExpansionHeuristic.Time` | 12 | a4 a5 a7 | C engine_ailastexp ailastexp:a：原版27关有效依赖仅60s/240s，另设常量阳性组；同图一局12条预写断言PASS，在家人数s19-62为4/4/0、s64-242为0/4/0、s244-345为0/0/0。tests/test_last_expansion_c.py按名回放四个窗口一致，无模型修改。仅首次扩张前计时；SDK其他Time取值、初始时刻精确值、真实扩张后重置/Past=false/逐帧边界仍gap；见work/re/c_lastexp_report.md |
 | 已对拍 | AI | `微操/AIMicroManagerData.TimeToKeepTargetMin` | 12 | a4 a5 a7 | E123 aikeeptwo:a：Min=Max=2秒，score分配f495写until525，f503/519 hold，f527 go重写until557；aiegon:a零保持f375/383均go。tests/test_ai_keep_target.py按名回放原台候选资格、分配来源和保持/到期消费者；只验固定区间、已发布成员资格；随机区间、打分、死亡清理、其他来源与整局时钟仍gap；见work/re/e123_keep_target.md |
 | 已对拍 | AI | `目标/AITargetingHeuristic.HeuristicType=Expansion` | 12 | a4 a5 a7 | C aiexpc:a东矿区4、崖矿区0、普通实体0；D104同帧基地中心3850/3400，三矿点state2，选44号4173/2987（最近524）；模型先选基地再取最近合格矿点。tests/test_expansion_target.py按名回放原计数与候选选择；无距离上限、不读SortType。仅state2普通陆矿子集对拍；其他状态/占用/标记/敌距/水域拒绝仍INFERRED，动态矿表/基地注册和死亡清理仍gap；见work/re/c_expansion_d104_report.md |
 | 已对拍 | AI | `目标/AITargetingHeuristic.SortType=ThreatToGround` | 12 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aitarget.py |
