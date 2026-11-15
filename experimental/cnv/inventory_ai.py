@@ -260,6 +260,13 @@ NOTES = {
         '（RA3-EngineModel tests/test_ai_tech.py），tests/test_simai_mintime.py::'
         'test_a_power_advantage_of_1000_keeps_the_tech_building_away 按名回放两局。'
         'gap：兵力比怎么算没读（台上只知道在 [1.25, 1000) 之间），simai 不给比值'),
+    **{f'战略状态/AIStrategicStateDefinition.PathfindingCheckType{v}': (BENCHED,
+        'D152 engine_aipathcheck aipfdef/aipfatk/aipfpath/aipfnone:a（去桥尼亚加拉，SimpleAttack 打对岸玩家基地，'
+        '四局只差这个字段）：不写 / QuickDoesAttackPathExist / QuickDoesPathExist 三局 4 个维和从不出门，'
+        'CNVTeams 每 90 帧建一支空队、约 75 帧后过期；None 一局 f21 招满 4 人、s6 出门。走不到的单位招人时就不招'
+        '（模型 TeamMaker.reach，缺省按战术类 data.PATH_CHECK）；tests/test_ai_pathcheck.py 按名断言台上读数并回放。'
+        'gap：AttackPath 与 Path 在"岸边射程内"时的区别没测；出门后路断的周期踢人读到没上台；见 work/re/d152_pathcheck.md')
+       for v in ('', '=None', '=QuickDoesAttackPathExist')},
     '战略状态/AIStrategicStateDefinition.CannotAttackTargetReaction': (BENCHED,
         'engine_aicannot aicantig/di/su:r：Ignore保留两人和空靶；Disband f95清空/f97重招；'
         'TreatLikeSuccess f92换地面厂/f500进入攻击态。tests/test_ai_cannot_reaction.py按名回放生命周期；'

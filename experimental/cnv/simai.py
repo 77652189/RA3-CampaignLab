@@ -281,6 +281,7 @@ class Brain:
                                        gather_point=lambda ai, tac: self.sim.waypoints.get(getattr(tac, 'gather', '')
                                                                                            or None))
         self.tactics.rng = random.Random(h.seed)    # state 2's RandomTargetScoreModifier / TimeToKeepTarget
+        self.tactics.reach = self.reach             # PathfindingCheckType's kick (a model that has it; D152)
         self.targets = tg.TargetsBlock(h.data_of('targets'), self.active, lambda ai, f: self.view,
                                        lambda ai, st: self.home, home=self.home, base_of=self.base_of,
                                        held=self.tactics.held)
@@ -293,6 +294,8 @@ class Brain:
         # a gathering team whose slot's target is gone ends (teams.TeamMaker._slots, work/re/l4_states.md)
         self.ai.teams.target_of = lambda ai, key, n: self.targets.slot_target(self.tactics.state_of(ai, key), n)
         self.ai.teams.alive = lambda ai, i: i in self.targets.points or any(t.id == i for t in self.view.things)
+        # PathfindingCheckType at recruiting (a model that has it, D152): the slot's target as a point
+        self.ai.teams.reach = self.reach_target
         if 'defense' in which:
             self.base = df.Base(1, self.home, (), frozenset({'MAIN_BASE'}))
             self.defense = df.DefenseBlock(self.tactics, lambda ai, f: self.view, bases=lambda ai, f: [self.base],
@@ -411,6 +414,37 @@ class Brain:
         ys = [b for b in self.sim.living() if b.owner == player and 'STRUCTURE' in b.kinds and not b.scenery
               and (getattr(b, 'unpack_end', None) or 0) <= now]
         return st.base_object(ys, lambda b: 'CONSTRUCTION_YARD' in b.kinds, lambda b: self.host.cost(b.template))
+
+    def reach(self, ai, u, point, check):
+        """TacticsBlock's reach hook (PathfindingCheckType, work/re d62_b_fields.md 1): aircraft always; else
+        QuickDoesPathExist = the simulator's grid of the member's surface joins it to the point (its nearest open
+        cell, Ground.snap); QuickDoesAttackPathExist = to some open spot within its longest weapon's range of the
+        point (INFERRED: sixteen bearings at half and nine tenths of the range stand for the engine's search)."""
+        b, g = u.body, self.sim.ground
+        if b.surface == 'air' or not b.alive:
+            return True
+        here = (b.x, b.y)
+        if g.route(b.surface, here, point) is not None:
+            return True
+        if check != 'QuickDoesAttackPathExist':
+            return False
+        r = max((w['range'] for w in b.weapons if w.get('range')), default=0.0)
+        for f in (0.5, 0.9):
+            for k in range(16):
+                a = 2 * math.pi * k / 16
+                q = (point[0] + f * r * math.cos(a), point[1] + f * r * math.sin(a))
+                if g.open(b.surface, *q) and g.route(b.surface, here, q) is not None:
+                    return True
+        return False
+
+    def reach_target(self, ai, u, target, check):
+        """TeamMaker's reach hook: reach() to the target id's point (a thing in view or a Waypoint target's point);
+        a target not found is not judged (True)."""
+        p = self.targets.points.get(target)
+        if p is None:
+            t = next((t for t in self.view.things if t.id == target), None)
+            p = None if t is None else (t.x, t.y)
+        return True if p is None else self.reach(ai, u, (float(p[0]), float(p[1])), check)
 
     def path_to_target(self, surface, template, cond):
         """ctx 'path to target' (read, work/re/l4_states.md 3): None when it cannot judge (no base of ours, no enemy

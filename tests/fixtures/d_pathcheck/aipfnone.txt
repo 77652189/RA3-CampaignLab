@@ -1,0 +1,7 @@
+# aipfnone: bench CampAIPfNoneA_mcp_1114_215511 (D round 152). s<t> live home across: the counters from that second;
+# f<frame> team <n>: the CNVStateGo team members off the CNVTeams log from that frame (-1: no team)
+s1 4 4 0
+s6 4 0 0
+f1 team -1
+f17 team 0
+f21 team 4
