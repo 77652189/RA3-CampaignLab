@@ -26,7 +26,7 @@
 | 未做 | 物体模块 | `Behaviors/AttackAssistResponseBehavior` | 5 | a1 a2 a4 a5 a6 a7 a9 | E144派发诊断：engine_attackassist a两次准备运行均进关前崩溃，无台上读数；最终原版光谱塔宿主配方已修本地模块引用及结构武器掩码，尚未上台，暂停追加运行直至启动原因解释。tests/test_simattackassist.py严格xfail仅保留待验预测，不作已对拍证据；响应武器派发/原版增伤/时序均gap，模型未改；见work/re/e144_attackassist.md；例：AlliedBaseDefenseAdvanced, SovietBaseDefenseAdvanced |
 | 未做 | 物体模块 | `Behaviors/CaptureSpecialAbilityUpdate` | 5 | a1 a2 a3 a4 a6 a7 a9 | E151 engine_capture:a原版工程师对CaptureFlag中立/敌方/己方和删模块中立四路：归属100、存活1111、前置1，f45..575未换主。原预测111保留；具名测试仅回放负基线，不登记模块效果已对拍。缺命令被模块接受及同帧阶段证据（INFERRED），暂停同输入重跑；见work/re/e151_capture.md；例：AlliedCommandoTech1, AlliedEngineer |
 | 未做 | 物体模块 | `Behaviors/EmotionTrackerUpdate` | 5 | a1 a2 a3 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoTech1, AlliedEngineer |
-| 未做 | 物体模块 | `Behaviors/ParkingPlaceBehavior` | 4 | a4 a5 a7 a8 | E155静态核实4用量/4模板：原机场2x2机位、生产机位上限4；阿波罗有ReturnToProducer按钮且飞行时保留机位。航母还耦合SlaughterHordeContain，不用伤害或无人机消失代替停放读数。现有公开接口未找到机位归属/预留/占用/释放独立读数，合法输入仍需生产者绑定资格；0次上台、不登记已对拍。倾向生产绑定后返航预约（INFERRED），需D/总控补同帧接受/拒因及机位状态，暂停同类组台；见work/re/e155_parking.md；例：AlliedAirfield, AlliedAntiStructureShip |
+| 未做 | 物体模块 | `Behaviors/ParkingPlaceBehavior` | 4 | a4 a5 a7 a8 | E157两局实测生产差异：engine_parking:a五次原版阿波罗生产请求后原机场4/仅删Parking机场0；交换玩家engine_parkingswap:a为1/0，排除该玩家归属混淆。场区数量仅测位置，不冒充机位占用；队伍飞离预测失败，返航未成立，原预测保留。tests/test_parking_bench_e.py按名回放f194、f982、交换侧f196，物体模型生产按钮入口产出0/0，strict xfail；生产绑定/配额、返航预约/占用/释放、航母Contain仍gap，不登记已对拍、不改猜测模型。两局已用完，暂停同类台，详work/re/e157_parking.md；例：AlliedAirfield, AlliedAntiStructureShip |
 | 未做 | 物体模块 | `Behaviors/QueueDockBehavior` | 4 | a1 a2 a4 a5 a6 a7 a9 | E152 engine_queuedock:a具名原版矿车对矿场，双方删自动生成避免争矿：on f329收250、f351离pad、f597累计500，两者存活；车/场DOCKING及HARVESTING状态始终0。queuedockoff:a仅到f197即截帧停止、钱包0，早于on首笔，不能证明删模块效果；已加750逻辑帧完整性门拒绝该短记录。on f786实测快照回放strict xfail；缺内部阶段接口和完整off对照，暂停，不登记已对拍、不调路径时序；见work/re/e152_queuedock.md；例：AlliedRefinery, JapanRefinery |
 | 未做 | 物体模块 | `Behaviors/RadarBehavior` | 4 | a4 | E154静态核实：原版RadarDish及PlayerSpellBook均为无专用字段模块，战役覆盖继承PlayerSpellBook；4用量/5模板保留。现有脚本目录及注入接口未找到独立雷达可用读数，未上台、不登记效果已对拍；倾向玩家雷达可用性注册（INFERRED），不能据此排除运行时用途。需D/总控提供合法启用资格和有/无模块同帧读数，暂停同类组台；见work/re/e154_radar.md；例：JapanConstructionYard |
 | 未做 | 物体模块 | `Behaviors/AssistedPlacementBehavior` | 3 | a1 a2 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedRefinery, JapanRefinery |
@@ -143,7 +143,7 @@
 | 已对拍 | 脚本条件 | `SKIRMISH_PLAYER_HAS_UNITS_IN_AREA` | 410 | a1 a3 a4 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_area.py |
 | 已对拍 | 脚本条件 | `NAMED_OWNED_BY_PLAYER` | 397 | a4 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_bankcapture.py |
 | 已对拍 | 脚本条件 | `NAMED_NOT_DESTROYED` | 374 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_activate.py |
-| 已对拍 | 脚本条件 | `PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA` | 278 | a4 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiskirm.py |
+| 已对拍 | 脚本条件 | `PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA` | 278 | a4 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aidelay.py |
 | 已对拍 | 脚本条件 | `NAMED_ATTACKED_BY_PLAYER` | 150 | a4 a5 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attack.py |
 | 已对拍 | 脚本条件 | `UNIT_HEALTH` | 134 | a2 a4 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_air.py |
 | 已对拍 | 物体模块 | `Body/PropBody` | 1443 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | tests/test_simbench_c.py::test_prop_body_no_health_a_kill_leaves_the_street_and_topples_the_tree_and_lantern_at_the_bench_frames；例：AlliedAntiGroundAircraftMissileProjectile_Veteran, AlliedAntiInfantryVehicleTorpedoProjectile |
