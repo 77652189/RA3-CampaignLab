@@ -5,7 +5,7 @@
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
 | 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 182 | 19 | 135 | 115 | 98% |
-| 脚本条件 | **99%** | **100%** | 12 / 12 | 89 | 62 | 2 | 22 | 3 | 99% |
+| 脚本条件 | **99%** | **100%** | 12 / 12 | 89 | 64 | 2 | 20 | 3 | 99% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
 | AI | **97%** | **97%** | 191 / 357 | 428 | 208 | 93 | 93 | 34 | 100% |
@@ -531,9 +531,9 @@
 | 已对拍 | `PLAYER_TRIGGERED_SPECIAL_POWER` | 9 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts8b.py |
 | 已对拍 | `BUILT_BY_PLAYER` | 8 |  | tests/test_simbench.py::test_sighted_all_as_the_bench |
 | 未做 | `GATE_IS_OPEN` | 8 |  | Sim.act / Sim.cond 不认识 |
-| 未做 | `PLAYER_DESTROYED_N_BUILDINGS_PLAYER` | 8 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `PLAYER_DESTROYED_N_BUILDINGS_PLAYER` | 8 |  | tests/test_simbench.py::test_razed_all_as_the_bench |
 | 已对拍 | `PLAYER_HAS_CREDITS` | 8 |  | tests/test_simbench.py::test_conds_team_as_the_bench |
-| 未做 | `SKIRMISH_PLAYER_HAS_COMPARISON_GARRISONED` | 8 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `SKIRMISH_PLAYER_HAS_COMPARISON_GARRISONED` | 8 |  | tests/test_simbench.py::test_razed_all_as_the_bench |
 | 已对拍 | `NAMED_EXITED_AREA` | 7 |  | tests/test_simbench.py::test_conds_team_as_the_bench |
 | 未做 | `UNIT_SPECIAL_POWER_READY` | 7 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `PLAYER_HAS_NO_POWER` | 6 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_infiltrator.py:a |

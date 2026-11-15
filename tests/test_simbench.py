@@ -1795,6 +1795,19 @@ def test_eyes_all_as_the_bench():
     assert all(at[k][3] == 1 for k in range(4, 21)), at
 
 
+def test_razed_all_as_the_bench():
+    """engine_razed all (round 240, bench 11-15 CampRazedAll_mcp_1115_030516): 摧毁 0 all run -- PLAYER_DESTROYED_N_
+    BUILDINGS_PLAYER false always (N 0 too, two of Soviet_4's plants razed by the player's tanks, one of the player's
+    by Soviet_4's; Generals' stub); 驻军 42 / 50 / 42 / 38 / 33 -- SKIRMISH_PLAYER_HAS_COMPARISON_GARRISONED counts the
+    men inside (2, 3, 2, 1, 0 for the player; Soviet_4's man for Soviet_4). The bench drops a man ~3.5 s after
+    NAMED_EXIT_BUILDING (the entry counts at once); the simulator at once: the edges are not asserted."""
+    at = dict(_sim_run('engine_razed', 'all', 32.0).series)
+    assert all(at[k][0] == 0 for k in range(0, 32)), at
+    for (lo, hi), want in (((3, 6), 42), ((7, 10), 50), ((11, 14), 42), ((15, 18), 38), ((19, 32), 33)):
+        assert all(at[k][2] == want for k in range(lo, hi)), (want, at)
+    assert at[31][1] == 31, at
+
+
 def test_sighted_all_as_the_bench():
     """all, bench 11-15 (round 238, CampSightedAll_mcp_1115_001541; the bench's seconds ~1.5 behind the timers): 看见
     37 to s11, 39 after (TYPE_SIGHTED: the scout's Peacekeeper once in watch's sight; the viewer itself counts; lower

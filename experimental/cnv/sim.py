@@ -3285,6 +3285,18 @@ class Sim:
             want = self.of_types(a[0])
             return any(b.owner == a[1] and b.template.lower() in want and (self.present(b) or self.dying(b))
                        for b in self.bodies.values())
+        if name == 'PLAYER_DESTROYED_N_BUILDINGS_PLAYER':
+            # (player, n, opponent): false, always -- 摧毁 0 all run (round 240, checks/engine_razed.py all, bench 11-15
+            # CampRazedAll_mcp_1115_030516), n 0 too, while the player's tanks razed two of the opponent's plants and
+            # the opponent one of the player's. Generals' evaluatePlayerDestroyedNOrMoreBuildings is the same stub
+            return False
+        if name == 'SKIRMISH_PLAYER_HAS_COMPARISON_GARRISONED':
+            # (player, comparison, n): n against the player's men inside garrisons -- the men, not the buildings
+            # (驻军, same run: two men in one building read == 2, a third in another >= 3, then 2 / 1 / 0 as they
+            # leave; another player's man counts for his own). Men in a transport INFERRED not counted
+            held = sum(1 for g in self.living() if self.garrison.spec(g) is not None
+                       for u in self.garrison.inside.get(g.name, []) if u.alive and u.owner == a[0])
+            return CMP[int(a[1])](held, int(a[2]))
         return None
 
     def surfaces(self, b):

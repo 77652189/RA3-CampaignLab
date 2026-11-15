@@ -221,6 +221,10 @@ BENCHED_TESTS = {
     # the player owns one, placed ones too (a killed one ~7 s while it lies: not modelled)
     **{(CONDITION, n): 'tests/test_simbench.py::test_sighted_all_as_the_bench' for n in (
         'TYPE_SIGHTED', 'NAMED_BUILDING_IS_EMPTY', 'BUILT_BY_PLAYER')},
+    # round 240 (checks/engine_razed.py all): PLAYER_DESTROYED_N_BUILDINGS_PLAYER false always (Generals' stub, n 0
+    # too); SKIRMISH_PLAYER_HAS_COMPARISON_GARRISONED counts the player's men inside garrisons, not the buildings
+    **{(CONDITION, n): 'tests/test_simbench.py::test_razed_all_as_the_bench' for n in (
+        'PLAYER_DESTROYED_N_BUILDINGS_PLAYER', 'SKIRMISH_PLAYER_HAS_COMPARISON_GARRISONED')},
     # round 217: PLAYER_TRANSFER_OWNERSHIP_PLAYER (checks/engine_acts7.py own: the giver's units on no team and its
     # money go to the receiver; ones on a team stay)
     (ACTION, 'PLAYER_TRANSFER_OWNERSHIP_PLAYER'): 'tests/test_simbench.py::test_acts_x_own_as_the_bench',
