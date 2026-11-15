@@ -127,6 +127,13 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '目标/AITargetingHeuristic.HeuristicType=Husk': (GUESSED,
+        'C aihusknone/aihusknamed:a同位普通中立油井，LandHusk阴性与NamedObject阳性；'
+        '两局f16分别found=0/1，阳性选(2900,3300)，s20两组总数4，均PASS。'
+        'tests/test_husk_target_c.py按名回放并断言原选择记录及存活计数。'
+        '模型移除Husk通用中立物回退；缺真实残骸候选提供者时不选目标，'
+        '不以KindOf或模板名字猜登记。原版残骸创建/候选资格/水域阳性仍gap，'
+        '不晋升整项；见work/re/c_husk_report.md'),
     '目标/AITargetingHeuristic.HeuristicType=Point': (TODO,
         'C engine_aipoint aipointwater/aipointtiny:a 原名NearbyWaterPointHeuristic仅切范围1500/1；'
         '两局f16均found=1、target id=0，s25总数/在家均4/0，存活控制PASS。'
