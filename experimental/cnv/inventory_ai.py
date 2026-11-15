@@ -135,11 +135,11 @@ NOTES = {
         'tests/test_vital_status_c.py断言原图读数，四strict xfail保留状态/位置差异；'
         '缺真实飞行/落地状态入口、同帧候选资格及原附着生命周期，整字段不晋升。'
         '见work/re/c_vital_report.md'),
-    '目标/AITargetingHeuristic.SortType=ClosestToEnemy': (GUESSED,
-        'C engine_aiclosestenemy aiclosest:a：四原名陆地启发，s16-80台上目标区域人数4/4/0/0，'
-        '模型4/4/4/4；tests/test_closest_enemy_c.py按名回放，后两路strict xfail。'
-        '未观测同帧战略候选/资格/槽位选中目标，战术攻击目标不能替代；水域/矿厂过滤未测，整项保持推断。'
-        '见work/re/c_closest_report.md'),
+    '目标/AITargetingHeuristic.SortType=ClosestToEnemy': (BENCHED,
+        'C aiclosest:a：D158 target_picks同帧f16四槽按过滤分组选择塔/塔/电厂/电厂，'
+        'tests/test_closest_enemy_c.py按名回放目标选择并断言实机候选/forbid/最近敌距；'
+        '仅陆地选择切片已对拍，水域/矿厂过滤仍gap。选后战术/微操转攻导致区域人数4/4/0/0，'
+        '后两路整局strict xfail保留交E；见work/re/c_closest_recheck_report.md'),
     '启发条件/EnemyNearbyHeuristic.MinEnemyValue': (BENCHED,
         'C engine_aiminvalue aiminvalue/aiminvaluehi:a：27关依赖显式取值1000/2500；'
         '单盟军矿车1000、合计2400/3800对照；tests/test_min_enemy_value_c.py按名回放台上前三路。'
