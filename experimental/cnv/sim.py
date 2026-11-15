@@ -948,8 +948,12 @@ class Ground:
             # land" is the terrain's, not the free cells': a unit just out of a factory stands on its footprint's
             # edge (way snaps it off); aiskirm:et, line A round 205: the engineer out of the barracks at
             # (4067,3562) took the 'both' grid's closest way and stood at (2900,3280), the derrick never reached
+            # A bridge's deck is land too: aiskirm:et, line A round 239: the engineer crossing the bridge at
+            # (2929, 2952) stood on a deck cell neither grid holds (ground False, both False) and its team's
+            # periodic path check (QuickDoesPathExist) found no way and kicked it, s165; the bench walks it on to
+            # the derrick and captures it s222
             c, g = self.cell(*p), self.grids['ground']
-            if 0 <= c[0] < g.shape[0] and 0 <= c[1] < g.shape[1] and g[c]:
+            if 0 <= c[0] < g.shape[0] and 0 <= c[1] < g.shape[1] and (g[c] or self.deck[c]):
                 got = self.way('ground', p, q, False)
         if got is None and closest:
             got = self.way(surface, p, q, True)
