@@ -19,7 +19,7 @@ KEEP = ("CampShell", "CampA4Demo")  # prefixes the player launches by hand
 
 HOME = os.path.expanduser("~")
 MODS = os.path.join(HOME, "Documents", "Red Alert 3", "Mods")
-RUNS = os.path.joinlabpaths.WORK
+RUNS = os.path.join(labpaths.WORK, 'testbench', 'runs')
 
 
 def newest_and_size(path):
