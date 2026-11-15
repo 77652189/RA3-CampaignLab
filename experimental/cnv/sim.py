@@ -1201,6 +1201,9 @@ class Sim:
         self.seen = {}                      # this tick: (side, id(body)) -> whether that side sees it
         self.firing = []                    # this tick's aimed fire: (target, damage per second, shooter) (fight, deal)
         self.mid_aims = {}                  # id -> (second, body): an attack-mover that got in range mid-tick (move)
+        self.locks = {}                     # (id(shooter), weapon key) -> (target, second): a PER_TARGET weapon's
+                                            # last target and when its first shot at it is due (first_shot)
+        self.fire_gate = {}                 # (id(shooter), id(target)) -> no fire dealt before this second (deal)
         self._field = ((), (), ())          # this tick's fight_field (fight)
         self.first_death = None             # (t, body, killer): the fight's first death
         self.death_blasts = []              # (frame, x, y, damage, type, radius, affects, owner, by): FireWeaponWhenDead
@@ -4859,6 +4862,7 @@ class Sim:
             if not self.shot_clock and (w.get('hit_modifiers') or w.get('line') or w.get('strip_max_health') or w.get('emp_seconds')
                                        or w.get('sweep') or w.get('contained') or w.get('dot') or w.get('special_powers') or w.get('attach') or w.get('lift') or w.get('meta_impacts')):
                 self.gap(GAP_WEAPON, 'weapon effects', '逐发武器效果仅在离散命中时钟中模拟')
+            self.first_shot(a, w, pick)
             if w['dps'] or w.get('suppression') or (self.shot_clock and (w.get('sdps') or w.get('dot') or w.get('special_powers') or w.get('attach') or w.get('lift') or w.get('meta_impacts'))):
                 if 'sched' in w and self.shot_clock:
                     self.volleys.append((pick, w, a))
@@ -4877,6 +4881,23 @@ class Sim:
             if a.mode == 'attack':
                 a.engaged = True
         return fired, d, idx
+
+    def first_shot(self, a, w, pick):
+        """A PreAttackType PER_TARGET weapon waits its PreAttackDelay (whole frames, simunits._frames) before its first
+        shot at a new target, not before every shot (simunits._pre_per_clip keeps it out of the cycle; Generals
+        Weapon::getPreAttackDelay). Bench 2026-11-07 `cnv_check a4 smash`: the King Oni's beam (PER_TARGET 0.75 s,
+        a 175 shot every 1.8 s, 11.7 % of the wall) took it 100 -> 76 -> 53 -> 41 -> 18 -> 6 at s67 / 70 / 73 / 76 /
+        79 / 82: its first shot falls in s67.0-67.6, more than the delay after it had the wall in range (A round 233).
+        INFERRED: the gate is per shooter and target (deal), a shooter's other weapons on that target wait with it."""
+        wt = simunits.weapon_table(self.own).get(w.get('weapon_key'), {})
+        if wt.get('pretype') != 'PER_TARGET' or not wt.get('pre'):
+            return
+        key = (id(a), w.get('weapon_key'))
+        held = self.locks.get(key)
+        if held is None or held[0] is not pick:
+            ready = self.t + simunits._frames(wt['pre']) / simunits.FPS
+            self.locks[key] = (pick, ready)
+            self.fire_gate[(id(a), id(pick))] = ready
 
     def range_targets(self, b):
         """For move: the foes an attack-mover on its way would stop for, [(foe, the centre distance it fires
@@ -5397,13 +5418,15 @@ class Sim:
         # INFERRED: exact within-tick stop phase; the bench has coarse snapshots.
         for t, rate, by in self.firing:
             if (t.alive and by.alive and 'NO_ATTACK' not in by.status and not self.emp_disabled(by)
-                    and not self.infiltrators.attack_blocked(by)):
+                    and not self.infiltrators.attack_blocked(by)
+                    and self.t >= self.fire_gate.get((id(by), id(t)), 0.0) - 1e-9):
                 h = hurt.setdefault(id(t), [t, 0.0, by])
                 h[1] += rate * dt
                 h[2] = by
         for t, w, by in self.volleys:           # engine line C round 2: a shot lands when its clock says (shots_due)
             if (t.alive and by.alive and 'NO_ATTACK' not in by.status and not self.emp_disabled(by)
-                    and not self.infiltrators.attack_blocked(by)):
+                    and not self.infiltrators.attack_blocked(by)
+                    and self.t >= self.fire_gate.get((id(by), id(t)), 0.0) - 1e-9):
                 n = self.shots_due(by, w, dt)
                 if n:
                     self.inform_launch(t, by, w, n)
