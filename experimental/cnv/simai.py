@@ -273,6 +273,7 @@ class Brain:
 
         h, m = self.host, self.host.mod
         tg, tc, df, mc = m['targets'], m['tactics'], m['defense'], m['micro']
+        self.defense = None             # no defense block (blocks=()): general_spot / node_side_spot make their own
         if 'targets' not in which:
             return
         self.tactics = tc.TacticsBlock(None, lambda ai, f: self.view, self.order, lambda ai: self.home,
@@ -1225,6 +1226,14 @@ class Brain:
                     return x, y
         return yard.x + RING[-1], yard.y
 
+    def placer(self, df):
+        """The defence block whose tower_spots place a structure: the brain's own, or (blocks without 'defense', the
+        opening tests' blocks=()) a bare one -- its tactics a placeholder, since the block registers itself there."""
+        if self.defense is not None:
+            return self.defense
+        import types
+        return df.DefenseBlock(types.SimpleNamespace(kinds={}), lambda ai, f: None)
+
     def general_spot(self, yard, template):
         """Where a structure with a SkirmishAIInformation BaseBuildingLocation FRONT / SIDE / BACK / SPREAD / CENTER
         goes (the build slot's general placement, work/re l4_queue.md 2, l4_defense.md 3, l4_defense2.md 2.2, read):
@@ -1255,7 +1264,7 @@ class Brain:
         r = platprops.radius(template) if template in platprops.CATALOG else 40.0
         mine = [b for b in s.living() if b.owner == self.player and 'STRUCTURE' in b.kinds]
         taken = [q for q in (s.blocks(b) for b in s.living() if 'STRUCTURE' in b.kinds) if q and len(q) == 3]
-        block = self.defense or df.DefenseBlock(None, lambda ai, f: None)
+        block = self.placer(df)
         rng = self.place_rng
         comp = float(df.personality_attr(self.ai, 'BaseCompactness', df.COMPACTNESS))
         for i in range(df.TOWER_TRIES):
@@ -1290,7 +1299,7 @@ class Brain:
         r = platprops.radius(template) if template in platprops.CATALOG else 40.0
         taken = [t for t in (s.blocks(b) for b in s.living() if 'STRUCTURE' in b.kinds) if t and len(t) == 3]
         angle = df.SPREAD_STEP * self.tower_rng.randint(0, 9)
-        block = self.defense or df.DefenseBlock(None, lambda ai, f: None)
+        block = self.placer(df)
         for x, y in block.tower_spots(self.ai, (yard.x, yard.y), angle, rng=self.tower_rng):
             if all(math.hypot(x - tx, y - ty) >= r + tr + GAP for tx, ty, tr in taken):
                 return x, y

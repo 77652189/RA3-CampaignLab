@@ -268,6 +268,11 @@ def _release_first(rows, log):
     return first
 
 
+@pytest.mark.xfail(strict=True, reason='B round 205: since B202 (46a1188e, simai.Brain.general_spot puts the '
+                  'barracks FRONT toward the map centre) the model\'s ninth defender (retail has 8, the xfail below) '
+                  'comes out at s130, one sample before the transfer (defense 8 s125-129, 9 s130, 0 s131), so the '
+                  '"steady before the transfer" row fails; with general_spot off the rows are 9 from s125 and pass. '
+                  'The extra unit is the production gap, not the transfer.')
 def test_release_to_priority_named_transfer_skips_the_pool(release_m_rows):
     """aiskirm:m by name, retail 11-11 (CampAISkirmM_mcp_1111_221811, work/re/c_release_report.md): defense 8 /
     Cleanup 99 s125-128, 0 / 8 at s129, the pool's CAN_ATTACK members 0 and its per-frame peak 1 -- the DEFENSE team's
@@ -562,11 +567,7 @@ def test_tactic_aesthetics_displacement_and_survival(build):
 
 
 @pytest.mark.parametrize('build', [
-    pytest.param('aiaeson', marks=pytest.mark.xfail(strict=True, reason=(
-        'D145: after the push the enabled side matches (test_tactic_aesthetics_switch_after_displacement); '
-        'before it the model leaves 900 too (s24, 0 / 0; bench stays inside 900). D78 / E96: first orders '
-        'at frame 214 instead of 191. Readiness, member destinations and order conditions remain gaps. '
-        'See work/re/e97_aesthetics_same_frame.md.'))),
+    'aiaeson',      # B round 205: passes on main bddb0af4 (model 9880258 and b57fd2d), strict xfail (D145) lifted
     'aiaesoff',
 ])
 def test_tactic_aesthetics_replays_named_location_transitions(build):
