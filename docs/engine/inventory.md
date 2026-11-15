@@ -204,7 +204,7 @@
 | 已对拍 | `TEAM_GUARD_AREA_FROM_POSITION` | 26 |  | tests/test_simbench.py::test_acts_v_as_the_bench |
 | 不涉及 | `TEAM_SET_DISABLED` | 26 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `LINK_MISSION_OBJECTIVE_TO_OBJECT_WITH_CATEGORY` | 25 |  | 纯表现（名字规则） |
-| 已对拍 | `NAMED_GARRISON_SPECIFIC_BUILDING` | 25 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_engineer.py:a |
+| 已对拍 | `NAMED_GARRISON_SPECIFIC_BUILDING` | 25 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_bankcapture.py |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_JapanBaseDefenseToggleBinaryWeapon` | 25 |  | tests/test_simbench.py::test_acts_twr_t_as_the_bench |
 | 推断 | `PLAYER_SET_MONEY_CAP` | 25 |  | A213 engine_acts_tel:tel：脚本的钱不受上限管（上限 3000 时给 5000 → 6000；上限 500 仍 6000；设 10000 照设）；它管的（推断是采矿收入）没上台、模拟器只记不用 |
 | 已对拍 | `UNIT_ALLOW_AI_AUTOACQUIRE` | 25 |  | tests/test_simbench.py::test_acts_tel_as_the_bench |
@@ -473,7 +473,7 @@
 | 已对拍 | `FLAG` | 5099 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_aimicro.py |
 | 已对拍 | `TIMER_EXPIRED` | 3917 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_acquire.py |
 | 已对拍 | `CONDITION_TRUE` | 2947 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_scripts6.py |
-| 已对拍 | `NAMED_DESTROYED` | 922 | 全部 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_conds.py:fight |
+| 已对拍 | `NAMED_DESTROYED` | 922 | 全部 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_bankcapture.py |
 | 已对拍 | `PLAYER_HAS_OBJECT_COMPARISON` | 628 | a1 a4 a5 a7 | tests/test_simbench.py::test_scripts2_a_relation_is_one_way_and_turns_back |
 | 已对拍 | `COUNTER` | 577 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_aimicro.py |
 | 已对拍 | `HAS_FINISHED_AUDIO` | 495 |  | tests/test_simbench.py::test_audio_a_dubbed_line_is_done_its_length_after_it_is_heard |
@@ -481,7 +481,7 @@
 | 已对拍 | `HAS_FINISHED_VIDEO` | 422 |  | tests/test_simbench.py::test_video_a_radar_clip_is_done_after_its_length_full_screen_never |
 | 已对拍 | `NAMED_INSIDE_AREA` | 413 | a3 a4 a5 a6 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acts8.py |
 | 已对拍 | `SKIRMISH_PLAYER_HAS_UNITS_IN_AREA` | 410 | a1 a3 a4 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_area.py |
-| 已对拍 | `NAMED_OWNED_BY_PLAYER` | 397 | a4 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_engineer.py:a |
+| 已对拍 | `NAMED_OWNED_BY_PLAYER` | 397 | a4 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_bankcapture.py |
 | 已对拍 | `NAMED_NOT_DESTROYED` | 374 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acts8.py |
 | 已对拍 | `PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA` | 278 | a4 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiskirm.py |
 | 已对拍 | `NAMED_ATTACKED_BY_PLAYER` | 150 | a4 a5 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attack.py |
@@ -645,7 +645,7 @@
 | 未做 | `Behaviors/CaptureSpecialAbilityUpdate` | 5 (5) | a1 a2 a3 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoTech1, AlliedEngineer |
 | 推断 | `Behaviors/CommandSetUpgrade` | 5 (5) | a1 a4 a5 a7 | E145单图engine_modulebatch:a：空初始菜单的兵营，授Tech2前产物0/0、授后有/无模块产物1/0。菜单切换解析已有；整链路具名回放strict xfail：生产层factories按未持升级的初始菜单识别工厂，故模型仍0/0，需B接口修复。未晋升整项；见work/re/e145_modulebatch.md；例：AlliedConstructionYard, AlliedOutpost |
 | 未做 | `Behaviors/QueueDockBehavior` | 4 (12) | a1 a2 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedRefinery, AlliedRefinery_NoHarvester |
-| 推断 | `Behaviors/AutoDepositUpdate` | 4 (8) | a1 a4 a5 a7 | E146 engine_objectbatch:a/b：原版SwissBank克隆有/无模块的钱包，on逐次+5至60、12秒删除后稳定，off全0；具名测试按实际60/0回放。只量已有归属产钱，不晋升整项；占领奖金/驻军/上限/修理仍gap；见work/re/e146_objectbatch.md；例：GE_SwissBank, NY_NYStockExchange |
+| 推断 | `Behaviors/AutoDepositUpdate` | 4 (8) | a1 a4 a5 a7 | E147 engine_bankcapture:a：中立SwissBank有/无模块两路普通工程师占领，换主并消耗工程师；on奖金750、随后每15游戏帧+5至770，off全0，帧锁定证据1023；具名测试test_simbankcapture按实际读数回放。E146已有归属产钱60/0仍有效；再占领/驻军/上限/修理仍gap，不晋升整项；见work/re/e147_bankcapture.md；例：GE_SwissBank, NY_NYStockExchange |
 | 已对拍 | `Behaviors/InfiltratorContain:ENERGY` | 4 (6) | a2 a4 a5 a6 a7 a8 | tests/test_siminfiltrator.py::test_spy_power_plant_as_on_the_bench；总控11-11授权按配置组收尾：engine_infiltrator a/b/c/d按名字重放，盟军间谍对盟/苏/帝普通电厂及帝国忍者对盟军电厂，敌方进入者消耗、建筑满血不换主、100电量停电约20秒并恢复，友军拒入且存活；gap：其他电量/苏联超级电厂、重复进入续期、精确时序和默认状态分支仍未对拍，不表示全字段全模板已验证；例：JapanPowerPlant |
 | 未做 | `Behaviors/ActivateModuleSpecialPower` | 4 (5) | a1 a2 a4 a6 a7 | 仅在SpecialPowerNugget处理器中识别并拒绝，未实现模块技能执行；例：AlliedAntiStructureVehicle, JapanAntiVehicleVehicleTech1 |
 | 未做 | `Behaviors/RadarBehavior` | 4 (5) | a4 | 模拟器代码里没有这个名字；例：AlliedRadarDish, PlayerSpellBook |
