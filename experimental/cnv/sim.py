@@ -555,6 +555,9 @@ class Body:
     clear_height: float = HIGH_STEP                             # its ShroudClearingHeight (simunits: 50 unless written)
     angle: float = 0.0
     turn_rate: float = None                                     # deg a second it turns (simunits.turning; None: at once)
+    turn_first: bool = False                                    # turns in place before it drives off (its Locomotor
+                                                                # has a TurnThresholdHS: bench airev1t / gt / at; the
+                                                                # infantry's has none and walks off turning, airevit)
     face: float = None                                          # the facing (radians) to turn to once it arrives
     rolling: bool = False                                       # it drove the last tick (a new way: no turn in place)
     carry: float = 0.0                                          # seconds of the last tick left when its leg ended on a
@@ -1261,7 +1264,8 @@ class Sim:
         b.radius = st.get('radius') or 0.0
         b.sight = st['vision'] or 0.0
         if b.speed > 0 and b.surface != 'air':      # aircraft bank as they fly: not benched, they turn at once
-            b.turn_rate = simunits.turning(template, self.own)[0]
+            b.turn_rate, limit = simunits.turning(template, self.own)
+            b.turn_first = limit is not None
         f = simunits.fight(template, self.own)
         b.immortal, immortal_hp = simunits.immortal_body(template, self.own)
         if simunits.manager_body(template, self.own):
@@ -4926,8 +4930,8 @@ class Sim:
             if self.t < at - 1e-9:
                 continue
             del self.mid_aims[key]
-            if not b.alive or b.engaged:
-                continue
+            if not b.alive or b.engaged or any(a is b for _, _, a in self.firing + self.volleys):
+                continue                        # already firing this tick (a plain mover fires on its way)
             targets = [t for t in self._field[2] if t.alive]
             if not targets:
                 continue
@@ -6137,7 +6141,10 @@ class Sim:
                     self.turn(b, b.face, dt)
                 continue
             spent, extra, b.carry = 0.0, (b.carry if not precise else 0.0), 0.0
-            if not b.rolling and b.jet_motion is None:  # from standing: turns in place until near its way
+            if not b.rolling and b.jet_motion is None and b.turn_first:     # from standing: turns in place until
+                # near its way. Infantry (TestReactiveLocomotorHUMAN, no TurnThresholdHS) walk off at once, turning as
+                # they go: bench airevit (A round 231) -- Conscripts' form-up order f26, each moved ~3.2 a frame from
+                # f26 on (full speed) while the heading went -180 -135 -90 -72 (45 a frame)
                 way = next(((tx, ty) for tx, ty in b.path if (tx, ty) != (b.x, b.y)), None)
                 if way is not None:
                     spent = self.turn(b, math.atan2(way[1] - b.y, way[0] - b.x), dt, DRIVE_WITHIN)
@@ -6183,7 +6190,12 @@ class Sim:
                     b.x += (tx - b.x) * left / d
                     b.y += (ty - b.y) * left / d
                     left = 0
-            b.rolling = True        # it drove this tick: a next leg given at once (follow_due) is driven on, no stop
+            if not b.path and not precise and self.eng is not None and self.combat and id(b) not in self.mid_aims \
+                    and any(a is b for a in self._field[1]):
+                # its way ended mid-tick (an idle chase's walk to reach, an order's end): it aims from that frame,
+                # not the next tick's fight (bench engine_acquire idle220, A round 231)
+                self.mid_aims[id(b)] = (self.t + max(spent + (walked - left) / b.speed - extra, 0.0), b)
+            b.rolling = True       # it drove this tick: a next leg given at once (follow_due) is driven on, no stop
                                     # (bench engine_waypath line / exact: no time lost at the 90 deg corners)
             if (b.x, b.y) != (x0, y0):
                 # once it drives, the hull faces its way: the last DRIVE_WITHIN of a turn from standing, a turn on a

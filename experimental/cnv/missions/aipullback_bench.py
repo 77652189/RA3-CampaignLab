@@ -78,6 +78,7 @@ def guardians(m, tank=GUARDIAN, angle=None):
 
 
 APOCALYPSE = 'SovietAntiVehicleVehicleTech3'
+CONSCRIPT = 'SovietAntiInfantryInfantry'
 
 
 SECOND = 's6'                          # airevidx: a second AI side, a player index of its own (s1 logs index=4)
@@ -153,6 +154,10 @@ MISSION = {
     # (TurnThresholdHS 90: do they drive while turning?); Apocalypses (3 s) as airev1t, facing west
     'airevgt': lambda: guardians(mission('CampAIRevGT', observe=True), angle=-2.3562),
     'airevat': lambda: guardians(mission('CampAIRevAT', observe=True), tank=APOCALYPSE),
+    # A round 231: airev1t's form-up with infantry -- Conscripts (TestReactiveLocomotorHUMAN, TurnTimeSeconds 0.5 s,
+    # no TurnThresholdHS; Peacekeepers and every engineer walk on it too), facing west as airev1t (the form-up turn
+    # ~150 deg): do they turn in place before they walk, as the tanks do, and at 48 deg a frame?
+    'airevit': lambda: guardians(mission('CampAIRevIT', observe=True), tank=CONSCRIPT),
     # airev1 / 0 too alike: the target beside the tanks from the start, no guards (handoff-b 69's measure)
     'airevp1': lambda: mission('CampAIRevP1', close=True),
     'airevp0': lambda: mission('CampAIRevP0', close=True, ReverseMove='false'),

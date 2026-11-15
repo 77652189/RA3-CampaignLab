@@ -511,6 +511,20 @@ def test_a_unit_ordered_from_standing_turns_in_place_then_drives_and_turns_to_it
     assert tank.face is None and tank.angle == 0.0 and not unit.moving
 
 
+def test_infantry_ordered_from_standing_walk_off_at_once():
+    """Bench airevit (A round 231, tests/test_turn_rate.py test_infantry_walk_off_turning): a Conscript (its
+    Locomotor has no TurnThresholdHS) facing south sent 300 north walks the whole first tick, no turn in place."""
+    import math
+    s = sim.Sim(mission([]))
+    a = festival.SITES['west field']
+    man = s.add('man', 'SovietAntiInfantryInfantry', s.human, a.x, a.y)
+    man.angle = -math.pi / 2
+    assert man.turn_rate == 720.0 and not man.turn_first
+    s.send(man, (a.x, a.y + 300))
+    s.run(0.0)
+    assert man.x == a.x and abs(man.y - a.y - man.speed * sim.DT) < 1e-6
+
+
 def test_a_driving_unit_takes_a_new_way_without_stopping_to_turn():
     """Bench airevgt f170 (the attack order given while the Guardians drove): turned on moving frames, no stop."""
     s, tank, (x, y) = _hammer_facing_south()

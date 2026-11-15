@@ -67,6 +67,10 @@ Readings (11-09; 4 Hammers vs 12 Peacekeepers, Crush false; tanks reach the plan
            order f98. With airev1t's Hammers (19 a frame): a unit drives on a frame that starts within ~9 deg of its
            way (8 drove; 10 and 15 did not), the rest of the turn made driving; under TurnThresholdHS 90 alike.
            A turn ordered while driving (airevgt f170, attack) is made driving (24 deg on a moving frame).
+  (11-14, A round 231) airevit (Conscripts, TestReactiveLocomotorHUMAN: no TurnThresholdHS) PASS (s15 到远厂 1 -> s17
+           4): the form-up order f26 -- every member moves ~3.2 a frame from f26 on while its heading goes -180 -135
+           -90 -72..-82: no turn in place (fixtures a_turn/airevit.txt); 45 a frame (not 720 / 15 = 48); standing,
+           3170 turns to the facing in place (f45-47); the go order f74-76 alike.
   E115 observer pair airev1t/airev0t: both PASS the guard prerequisite only. Initial four join at host f21;
   all acquire the far plant at f230; f260/261 are state 2 with valid goals. Each side has 23 moving-member
   observations across consecutive frames in states 2/4 with the same valid goal, all positive hull-forward
@@ -211,5 +215,5 @@ def a(m, build):
 
 
 CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aipull1', 'aipull0', 'aipullh1', 'aipullh0', 'aipullga', 'aipulli1', 'aipullr1', 'aipullp1', 'aipullbig', 'aipullsov', 'aipulljp',
-                                                           'airev1', 'airev0', 'airev1t', 'airev0t', 'airevidx', 'airevgt', 'airevat', 'airevp1', 'airevp0', 'airevt1', 'airevt0',
+                                                           'airev1', 'airev0', 'airev1t', 'airev0t', 'airevidx', 'airevgt', 'airevat', 'airevit', 'airevp1', 'airevp0', 'airevt1', 'airevt0',
                                                            'airevk1', 'airevk0', 'airevkg1', 'airevk2', 'airevk2o', 'airevkp1', 'airevkp0')}

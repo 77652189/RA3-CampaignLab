@@ -89,6 +89,26 @@ def test_a_turn_is_made_in_place(build):
     assert len([s for s in turns(build) if not s[3]]) >= 10
 
 
+def test_infantry_walk_off_turning():
+    """Bench airevit (A round 231): airev1t's form-up with Conscripts (TestReactiveLocomotorHUMAN, TurnTimeSeconds 0.5,
+    no TurnThresholdHS). Ordered from standing (f26, a ~110 deg turn) every member moves on the turn's first frame,
+    at the walking pace it keeps after it (~3.2 a frame): no turn in place (sim.Body.turn_first False). Turning to
+    the form-up facing once it stands (3170 f45-47) it does not move. The step is 45 a frame, not 720 / 15 = 48
+    (not modelled: the simulator turns infantry at the data's rate)."""
+    assert simunits.turning('SovietAntiInfantryInfantry')[1] is None
+    rows = frames('airevit')
+    steps = turns('airevit')
+    assert 22 not in rows and 25 not in rows                # nothing changed f22-25 (the log writes changes)
+    for member, (h0, x0, y0) in rows[21].items():           # standing until the order: f26 one step on
+        h1, x1, y1 = rows[26][member]
+        assert abs(abs(wrap(h1 - h0)) - 45.0) <= 1.0 and 2.5 < ((x1 - x0) ** 2 + (y1 - y0) ** 2) ** 0.5 < 4.5, member
+    for member, frame, step, moved, last in steps:
+        if not last:
+            assert abs(step - 45.0) <= 1.0, (member, frame, step)
+    assert [s for s in steps if s[0] == '3170' and s[1] in (45, 46, 47) and not s[3]] and \
+        not [s for s in steps if s[0] == '3170' and s[1] in (45, 46, 47) and s[3]]
+
+
 def test_the_data_rates():                         # the simulator's turn (Sim.turn): tests/test_sim.py test_*turn*
     assert simunits.turning('SovietAntiVehicleVehicleTech1') == (288.0, 90.0)   # 1.25 s: 19.2 a frame (bench 19)
     assert simunits.turning('AlliedAntiVehicleVehicleTech1') == (360.0, 90.0)
