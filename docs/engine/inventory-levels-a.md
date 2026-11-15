@@ -28,7 +28,7 @@
 | 未做 | 物体模块 | `Behaviors/EmotionTrackerUpdate` | 5 | a1 a2 a3 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoTech1, AlliedEngineer |
 | 未做 | 物体模块 | `Behaviors/ActivateModuleSpecialPower` | 4 | a1 a2 a4 a6 a7 | 仅在SpecialPowerNugget处理器中识别并拒绝，未实现模块技能执行；例：AlliedAntiStructureVehicle, JapanAntiVehicleVehicleTech1 |
 | 未做 | 物体模块 | `Behaviors/ParkingPlaceBehavior` | 4 | a4 a5 a7 a8 | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedAntiStructureShip |
-| 未做 | 物体模块 | `Behaviors/QueueDockBehavior` | 4 | a1 a2 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedRefinery, JapanRefinery |
+| 未做 | 物体模块 | `Behaviors/QueueDockBehavior` | 4 | a1 a2 a4 a5 a6 a7 a9 | E152 engine_queuedock:a具名原版矿车对矿场，双方删自动生成避免争矿：on f329收250、f351离pad、f597累计500，两者存活；车/场DOCKING及HARVESTING状态始终0。queuedockoff:a仅到f197即截帧停止、钱包0，早于on首笔，不能证明删模块效果；已加750逻辑帧完整性门拒绝该短记录。on f786实测快照回放strict xfail；缺内部阶段接口和完整off对照，暂停，不登记已对拍、不调路径时序；见work/re/e152_queuedock.md；例：AlliedRefinery, JapanRefinery |
 | 未做 | 物体模块 | `Behaviors/RadarBehavior` | 4 | a4 | 模拟器代码里没有这个名字；例：JapanConstructionYard |
 | 未做 | 物体模块 | `Behaviors/AssistedPlacementBehavior` | 3 | a1 a2 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedRefinery, JapanRefinery |
 | 未做 | 物体模块 | `Behaviors/HitReactionBehavior` | 3 | a1 a2 a3 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedAntiInfantryInfantry, CNV_Beacon |
