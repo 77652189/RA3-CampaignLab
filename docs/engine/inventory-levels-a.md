@@ -28,7 +28,7 @@
 | 未做 | 物体模块 | `Behaviors/EmotionTrackerUpdate` | 5 | a1 a2 a3 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoTech1, AlliedEngineer |
 | 未做 | 物体模块 | `Behaviors/ParkingPlaceBehavior` | 4 | a4 a5 a7 a8 | 模拟器代码里没有这个名字；例：AlliedAirfield, AlliedAntiStructureShip |
 | 未做 | 物体模块 | `Behaviors/QueueDockBehavior` | 4 | a1 a2 a4 a5 a6 a7 a9 | E152 engine_queuedock:a具名原版矿车对矿场，双方删自动生成避免争矿：on f329收250、f351离pad、f597累计500，两者存活；车/场DOCKING及HARVESTING状态始终0。queuedockoff:a仅到f197即截帧停止、钱包0，早于on首笔，不能证明删模块效果；已加750逻辑帧完整性门拒绝该短记录。on f786实测快照回放strict xfail；缺内部阶段接口和完整off对照，暂停，不登记已对拍、不调路径时序；见work/re/e152_queuedock.md；例：AlliedRefinery, JapanRefinery |
-| 未做 | 物体模块 | `Behaviors/RadarBehavior` | 4 | a4 | 模拟器代码里没有这个名字；例：JapanConstructionYard |
+| 未做 | 物体模块 | `Behaviors/RadarBehavior` | 4 | a4 | E154静态核实：原版RadarDish及PlayerSpellBook均为无专用字段模块，战役覆盖继承PlayerSpellBook；4用量/5模板保留。现有脚本目录及注入接口未找到独立雷达可用读数，未上台、不登记效果已对拍；倾向玩家雷达可用性注册（INFERRED），不能据此排除运行时用途。需D/总控提供合法启用资格和有/无模块同帧读数，暂停同类组台；见work/re/e154_radar.md；例：JapanConstructionYard |
 | 未做 | 物体模块 | `Behaviors/AssistedPlacementBehavior` | 3 | a1 a2 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedRefinery, JapanRefinery |
 | 未做 | 物体模块 | `Behaviors/HitReactionBehavior` | 3 | a1 a2 a3 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedAntiInfantryInfantry, CNV_Beacon |
 | 未做 | 物体模块 | `Behaviors/LoseHealthUpdate` | 3 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | E146 engine_objectbatch:a/b：原船完整模块移植480HP坦克，HealthTrigger=101%/0%均无耗血，两路100/100；b已确认toggle/铁幕状态成立。两轮后暂停，移植激活资格待查，未推猜测实现、不晋升整项；见work/re/e146_objectbatch.md；例：CNV_Liberty, SovietBomberAircraft |
