@@ -25,7 +25,7 @@ def _model(build, until=72):
 
 def _bench(build):
     path = OBSERVED / (build + '.txt')
-    if not path.exists():       # D148: aimaxty3 / aihot* hit a full C: drive (OSError 28), not benched yet
+    if not path.exists():       # a build of a pair not benched yet
         pytest.skip(f'{build} not benched yet')
     lines = [x for x in path.read_text(encoding='utf-8').splitlines() if x and not x.startswith('#')]
     labels = lines[0].split()

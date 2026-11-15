@@ -574,6 +574,13 @@ NOTES = {
         'D148：tests/test_ai_team_fields.py 按名跑 aigathwp/aigathno/aigathbad（只差 GatherWaypoint：路点名 / 不写 / '
         '写错名，SimpleAttack 打远厂）：台上写路点的先到路点（s9-s21 四人）再去远厂（s44），不写和写错名直接去（s15/s17）；'
         '模型（simai 本轮接上 gather_point）同形，路点 s11、远厂 s38；精确等待时长（台上全队停稳判据，见 work/re d130）INFERRED'),
+    '组队招人/TeamTemplate.MaxTypesOfUnits': (BENCHED,
+        'D150：tests/test_ai_team_fields.py 按名跑 aimaxty1/aimaxty3（只差 MaxTypesOfUnits 1/3，家里坦克/步兵/标枪各 2）：'
+        '台上 1 只收维和（s16 起 2/0/2），3 三种都收（s20-s22 全走）；模型同形；收兵顺序与时刻 INFERRED'),
+    '组队招人/TeamTemplate.Priority=HOTSPOT': (BENCHED,
+        'D150：tests/test_ai_team_fields.py 按名跑 aihotstd/aihotscr/aihotdef（防守队 STANDARD/SCRIPTED 对 进攻队 '
+        'HOTSPOT/DEFAULT，只差一处）：台上 HOTSPOT 两局 s40 放人、s43 到目标，DEFAULT 到 s70 不放；模型同形（s47/s50，'
+        '晚约 7 s，时刻 INFERRED）'),
     '微操/AIMicroManagerData.AlphaStrikeTargetHealthPct': (BENCHED,
         'D146晋升：tests/test_ai_alpha_switch.py 按名跑 aialobshi/aialobslo（只差阈值0.9/0.01，CNVTeams宿主，E99两局都PASS）：'
         '台上高的8→6 f230→0（集火）f290，低的8→6 f230→1（撤退）f470、从不进0；模型高的6 f240→0 f270、'

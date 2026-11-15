@@ -3454,7 +3454,11 @@ class Sim:
         elif name == 'UNIT_TELEPORT_TO_WAYPOINT':
             b, p = self.body(a[0]), self.point(a[1])
             if b and p:
-                b.x, b.y, b.path = p[0], p[1], []
+                # the unit's orders go too: bench aiaeson (work/re d150) member 3166 attacking (AI state 10, not
+                # ready) is idle and ready (16:1) the frame after the teleport, its team still in state 6
+                b.x, b.y = p[0], p[1]
+                self.stand(b)
+                b.chase = b.resume = b.auto_to = None
                 self.change()
         elif name == 'TEAM_TELEPORT_TO_WAYPOINT':     # (team, waypoint) INFERRED: the unit version on every member
             for b in self.members(a[0]):
