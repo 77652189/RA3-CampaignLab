@@ -13,6 +13,9 @@ MEASURED 2026-11-15: both prerequisites PASS. On: f151=1/1/1,
 minimap terrain; f303=0/1/1, Allied emblem. Off: f149=1/1/1,
 f308=0/1/1, emblem both times. Named model provider replay passes;
 PLAYER_HAS_POWER script replay is a separate strict xfail.
+E159 engine_radarlow:a: f147=1/1/1, f302=1/1/0; minimap terrain
+in both frames. Supply/demand 150/75 -> 50/75 after plant deletion.
+Only this retail dish's low-power case is measured; other hosts remain gaps.
 """
 import re
 from pathlib import Path
@@ -69,5 +72,35 @@ def check(m):
     return t
 
 
-MISSION = {'engine_radar': mission, 'engine_radaroff': lambda: mission(False)}
-CHECKS = {name: {'a': check} for name in MISSION}
+def low_power_mission():
+    """E159: retail supply 150 -> 50, demand 75; only the plant is deleted.
+
+    INFERRED prediction: the dish lacks POWERED KindOf, so radar may remain
+    available even when PLAYER_HAS_POWER becomes false. HUD decides the rule.
+    SpellBook isolation is identical to E158. See work/re/e159_radar_power.md.
+    """
+    m = mission()
+    m.name = 'CampRadarLowE'
+    for i in range(3):
+        m.put('AlliedBarracks', 'base gun', 650 + i * 250, 650,
+              role=f'load{i}', name=f'E159 load{i}')
+    return m
+
+
+def low_power_check(m):
+    t = check(m)
+    # Preserve dish and all consumers; change only the supply at 12 seconds.
+    t.scripts[-1] = Script('Test - E159 remove supply', [('TIMER_EXPIRED', 'E158 delete')],
+                           [('NAMED_DELETE', m.role('power').name)])
+    t.scripts[4] = Script('Test - E159 consumers',
+                         [('NAMED_NOT_DESTROYED', m.role(r).name)
+                          for r in ('yard', 'load0', 'load1', 'load2')],
+                         [('SET_COUNTER', 'E158Support', 1)], once=False)
+    t.expect = [('宿主量', 5, '==', 1, 20), ('前置量', 5, '==', 1, 20),
+                ('供电量', 5, '==', 1, 10), ('供电量', 16, '==', 0, 20)]
+    return t
+
+
+MISSION = {'engine_radar': mission, 'engine_radaroff': lambda: mission(False),
+           'engine_radarlow': low_power_mission}
+CHECKS = {name: {'a': low_power_check if name == 'engine_radarlow' else check} for name in MISSION}

@@ -67,6 +67,43 @@ def test_radar_named_hud_observations(name, before, after, visible):
     assert radar.available(world.logic, m.player('p1')) is False
 
 
+def test_radar_low_power_named_supply_and_lifetime():
+    engine, world, m = replay('engine_radarlow')
+    from ra3model.objects.rules import power_of
+    world.logic.power = 'objects'
+    engine.run(frames=147)
+    assert power_of(world.logic, m.player('p1')) == (150, 75)
+    assert tuple(engine.value(c) for c in ('E158Dish', 'E158Support')) == (1, 1)
+    engine.run(frames=302 - 147)
+    assert power_of(world.logic, m.player('p1')) == (50, 75)
+    assert tuple(engine.value(c) for c in ('E158Dish', 'E158Support')) == (1, 1)
+
+
+def test_radar_low_power_named_hud_observations():
+    # CampRadarLowEA_mcp_1115_155053/0008.png and 0018.png:
+    # minimap terrain at f147 and f302, independent power reading 1 -> 0.
+    engine, world, m = replay('engine_radarlow')
+    from ra3model.objects import radar
+    world.logic.power = 'objects'
+    engine.run(frames=147)
+    assert radar.available(world.logic, m.player('p1')) is True
+    engine.run(frames=302 - 147)
+    assert radar.available(world.logic, m.player('p1')) is True
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+    'E159 measured PLAYER_HAS_POWER=1 at f147 then 0 at f302; '
+    'object-world condition is unimplemented. See work/re/e159_radar_power.md '
+    'and work/re/handoff-e.md.'))
+def test_radar_low_power_named_script_prerequisite():
+    engine, world, m = replay('engine_radarlow')
+    world.logic.power = 'objects'
+    engine.run(frames=147)
+    assert engine.value('E158Power') == 1
+    engine.run(frames=302 - 147)
+    assert engine.value('E158Power') == 0
+
+
 def replay(name):
     import build
     import labpaths
