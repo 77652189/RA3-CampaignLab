@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|---|---|---|---|
 | 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 182 | 19 | 135 | 115 | 98% |
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
-| 物体模块 | **98%** | **98%** | 55 / 113 | 189 | 56 | 15 | 92 | 26 | 99% |
+| 物体模块 | **98%** | **98%** | 56 / 113 | 189 | 57 | 15 | 91 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
 | AI | **97%** | **97%** | 192 / 357 | 428 | 209 | 92 | 93 | 34 | 100% |
 
@@ -655,7 +655,7 @@
 | 未做 | `Behaviors/ParkingPlaceBehavior` | 4 (4) | a4 a5 a7 a8 | E155静态核实4用量/4模板：原机场2x2机位、生产机位上限4；阿波罗有ReturnToProducer按钮且飞行时保留机位。航母还耦合SlaughterHordeContain，不用伤害或无人机消失代替停放读数。现有公开接口未找到机位归属/预留/占用/释放独立读数，合法输入仍需生产者绑定资格；0次上台、不登记已对拍。倾向生产绑定后返航预约（INFERRED），需D/总控补同帧接受/拒因及机位状态，暂停同类组台；见work/re/e155_parking.md；例：AlliedAirfield, AlliedAntiStructureShip |
 | 已对拍 | `Behaviors/SpecialDisguiseUpdate` | 4 (4) | a1 a4 a6 a7 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_spndisguise.py；例：AlliedAntiVehicleVehicleTech3, AlliedInfiltrationInfantry |
 | 推断 | `Behaviors/AttachUpdate` | 3 (24) | a1 a2 a4 a5 a6 a7 a9 | 部分：engine_attach a验证瞬移/跟随/父子状态；engine_attach_parent a验证简单模块脚本杀父后子活/清理链接，NO_COLLISIONS读数差异为严格xfail；原版模块死亡前无稳定链接，不推广死亡规则；子死/直接删除/维修/吸血/解除/自主扫描仍gap；例：ChronoTargetMarker, AlliedAirfieldRepairDrone |
-| 未做 | `Behaviors/StealthDetectorUpdate` | 3 (8) | a2 a6 | 已核（11-08）：模拟器没有这个效果（没有反隐）；例：AlliedScoutInfantry, A08_Dog1 |
+| 已对拍 | `Behaviors/StealthDetectorUpdate` | 3 (8) | a2 a6 | tests/test_detector_bench_e.py::test_detector_named_object_model_observations；已测范围：engine_detector:a原版军犬/仅删模块/超半径三路，距离150/150/450；目标INVISIBLE_DETECTED在f151为1/0/0，删除军犬后f310均0，目标始终存活；tests/test_detector_bench_e.py按名用私有物体模型回放同帧读数，原有实现无需修改；gap：公开Sim未接反隐（strict xfail），精确首扫/清除帧、半径边界、移动/驻军/多探测器/其他宿主及过滤配置未对拍；见work/re/e156_detector.md；例：AlliedScoutInfantry, A08_Dog1 |
 | 未做 | `Behaviors/SlaughterHordeContain` | 3 (6) | a5 a7 a8 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_aipullback.py），可能用别的名字实现了；例：AlliedAntiStructureShip, S08_AlliedAntiStructureShip |
 | 未做 | `AI/AnimalAIUpdate` | 3 (4) |  | 模拟器代码里没有这个名字；例：BaseCivilian, CivilianFemale1 |
 | 未做 | `Behaviors/AssistedPlacementBehavior` | 3 (4) | a1 a2 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedRefinery, AlliedRefinery_NoHarvester |

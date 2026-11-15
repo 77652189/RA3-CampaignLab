@@ -2,13 +2,13 @@
 
 由 `experimental/cnv/inventory_levels.py --write` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）编出的全部脚本（`parts.merged`，含目标显示脚本）里的动作和条件；地图和任务摆的物体、我们自己的单位、脚本点名的模板，连同模块点名的武器、武器点名的物体（抛射体）和武器，取生效的模块（继承、include、同 id 覆盖）和武器效果。没跟：模块点名的别的物体（多是能变成 / 能装的东西：多功能步兵车的乘客、锤子坦克吸来的车）、物体生成表（死亡碎片、OCL 技能）和命令表（工厂能造什么）。AI 部分（引擎 B）在 [inventory-levels.md](inventory-levels.md)。状态和原版用量取自 [inventory.md](inventory.md)。停止条件①：下表全部已对拍。
 
-**已对拍 135 / 201**（不涉及的不算）。
+**已对拍 136 / 201**（不涉及的不算）。
 
 | 部分 | 已对拍 | 推断 | 未做 | 不涉及 |
 |---|---|---|---|---|
 | 脚本动作 | 50 | 0 | 0 | 14 |
 | 脚本条件 | 12 | 0 | 0 | 0 |
-| 物体模块 | 55 | 15 | 43 | 20 |
+| 物体模块 | 56 | 15 | 42 | 20 |
 | 武器效果 | 18 | 4 | 4 | 2 |
 
 按原版用量加权：已对拍 100%，已有（已对拍+推断）100%。
@@ -36,7 +36,6 @@
 | 未做 | 物体模块 | `Behaviors/ReturnToProducerSpecialPower` | 3 | a1 a2 a3 a4 a5 a6 a7 a8 | 模拟器代码里没有这个名字；例：AlliedFighterAircraft, SovietFighterAircraft |
 | 未做 | 物体模块 | `Behaviors/SecondaryObjectListenerModule` | 3 | a1 a2 a3 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedAntiAirVehicleTech1, AlliedBaseDefense |
 | 未做 | 物体模块 | `Behaviors/SlaughterHordeContain` | 3 | a5 a7 a8 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_aipullback.py），可能用别的名字实现了；例：AlliedAntiStructureShip, CNV_Liberty |
-| 未做 | 物体模块 | `Behaviors/StealthDetectorUpdate` | 3 | a2 a6 | 已核（11-08）：模拟器没有这个效果（没有反隐）；例：AlliedScoutInfantry |
 | 未做 | 物体模块 | `Behaviors/StructurePlacementBehavior` | 3 | a1 a2 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedRefinery, JapanRefinery |
 | 未做 | 物体模块 | `Behaviors/AimWeapon` | 2 | a1 a4 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAntiVehicleInfantry, SovietAntiVehicleInfantry |
 | 未做 | 物体模块 | `Behaviors/ConvergingLaserState` | 2 | a1 a2 a3 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedAntiStructureVehicle, SovietAntiVehicleVehicleTech1 |
@@ -194,6 +193,7 @@
 | 已对拍 | 物体模块 | `Behaviors/OCLSpecialPower` | 6 | a1 a2 a4 a6 a7 | tests/test_simocl.py::test_iron_curtain_zero_count_ocl_reference；总控第四切片按已测边界收尾：tests/test_simocl.py具名回放engine_oclcurtain/engine_oclnone/engine_oclwrong a，铁幕宿主匹配模块才保护并记事件，删除/改绑模块无保护/事件；engine_oclempty a空声明无保护且事件1；engine_oclcopy a完整原版载荷改名仍保护100/100且事件1；engine_oclzero a仅外层Count=0无保护且事件1。只闭合铁幕派发和零数量不保护边界，未测生成数量/通用生成；其他非零数量/载荷/超武、位置/过滤、按钮/冷却仍gap，继承、等价空声明及格式等价INFERRED，不表示全模块全字段验证；见 work/re/e_ocl_e65.md；例：SovietCommandoTech1 |
 | 已对拍 | 物体模块 | `Behaviors/InfiltratorContain:ENERGY` | 4 | a2 a4 a5 a6 a7 a8 | tests/test_siminfiltrator.py::test_spy_power_plant_as_on_the_bench；总控11-11授权按配置组收尾：engine_infiltrator a/b/c/d按名字重放，盟军间谍对盟/苏/帝普通电厂及帝国忍者对盟军电厂，敌方进入者消耗、建筑满血不换主、100电量停电约20秒并恢复，友军拒入且存活；gap：其他电量/苏联超级电厂、重复进入续期、精确时序和默认状态分支仍未对拍，不表示全字段全模板已验证；例：AlliedPowerPlant, JapanPowerPlant |
 | 已对拍 | 物体模块 | `Behaviors/SpecialDisguiseUpdate` | 4 | a1 a4 a6 a7 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_spndisguise.py；例：AlliedAntiVehicleVehicleTech3, JapanLightTransportVehicle |
+| 已对拍 | 物体模块 | `Behaviors/StealthDetectorUpdate` | 3 | a2 a6 | tests/test_detector_bench_e.py::test_detector_named_object_model_observations；已测范围：engine_detector:a原版军犬/仅删模块/超半径三路，距离150/150/450；目标INVISIBLE_DETECTED在f151为1/0/0，删除军犬后f310均0，目标始终存活；tests/test_detector_bench_e.py按名用私有物体模型回放同帧读数，原有实现无需修改；gap：公开Sim未接反隐（strict xfail），精确首扫/清除帧、半径边界、移动/驻军/多探测器/其他宿主及过滤配置未对拍；见work/re/e156_detector.md；例：AlliedScoutInfantry |
 | 已对拍 | 物体模块 | `Behaviors/InvisibilityBroadcastUpdate` | 2 | a1 a4 a6 a7 | tests/test_simbench_c.py::test_invisibility_broadcast_the_aura_holds_its_guardian_at_full_health_and_the_control_dies；例：AlliedAntiVehicleVehicleTech3 |
 | 已对拍 | 物体模块 | `Behaviors/TechUpgrade` | 2 | a1 a4 a5 a7 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_tech.py；例：AlliedConstructionYard, CNVA4AlliedConstructionYard |
 | 已对拍 | 物体模块 | `Behaviors/AssembleStructureSpecialAbilityUpdate` | 1 | a4 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_skill.py；例：CNV_IceEngineer |
