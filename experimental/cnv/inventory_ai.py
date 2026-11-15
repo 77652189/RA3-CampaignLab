@@ -127,6 +127,11 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '目标/AITargetingHeuristic.SortType=ClosestToEnemy': (GUESSED,
+        'C engine_aiclosestenemy aiclosest:a：四原名陆地启发，s16-80台上目标区域人数4/4/0/0，'
+        '模型4/4/4/4；tests/test_closest_enemy_c.py按名回放，后两路strict xfail。'
+        '未观测同帧战略候选/资格/槽位选中目标，战术攻击目标不能替代；水域/矿厂过滤未测，整项保持推断。'
+        '见work/re/c_closest_report.md'),
     '启发条件/EnemyNearbyHeuristic.MinEnemyValue': (BENCHED,
         'C engine_aiminvalue aiminvalue/aiminvaluehi:a：27关依赖显式取值1000/2500；'
         '单盟军矿车1000、合计2400/3800对照；tests/test_min_enemy_value_c.py按名回放台上前三路。'

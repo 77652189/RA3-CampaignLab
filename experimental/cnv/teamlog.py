@@ -142,7 +142,14 @@ def _wants(name):
     want = [name.lower()]
     if not re.match('[0-9a-f]{8}_', want[0]):
         try:
-            want.append(_hashed(name))
+            hashed = _hashed(name)
+            want.append(hashed)
+            # The engine prints the state hash without leading zeroes.
+            # Keep padded names readable too (older fixtures and callers).
+            head, sep, rest = hashed.partition('_')
+            short = (head.lstrip('0') or '0') + sep + rest
+            if short != hashed:
+                want.append(short + ('' if sep else '_'))
         except (ImportError, OSError, AssertionError) as e:   # e.g. experimental/campaign not on the path
             import warnings
             warnings.warn(f'teamlog: state id {name!r} not hashed ({e}); only literal names match')
