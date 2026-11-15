@@ -216,6 +216,11 @@ BENCHED_TESTS = {
     # and box selection too
     **{(CONDITION, n): 'tests/test_simbench.py::test_eyes_all_as_the_bench' for n in (
         'ENEMY_SIGHTED', 'CAMERA_ENTERED_AREA', 'TYPE_SELECTED')},
+    # round 238 (checks/engine_sighted.py all): TYPE_SIGHTED = ENEMY_SIGHTED's query with a type (the viewer itself
+    # counts, a script's object list never); NAMED_BUILDING_IS_EMPTY a living garrison with nobody in; BUILT_BY_PLAYER
+    # the player owns one, placed ones too (a killed one ~7 s while it lies: not modelled)
+    **{(CONDITION, n): 'tests/test_simbench.py::test_sighted_all_as_the_bench' for n in (
+        'TYPE_SIGHTED', 'NAMED_BUILDING_IS_EMPTY', 'BUILT_BY_PLAYER')},
     # round 217: PLAYER_TRANSFER_OWNERSHIP_PLAYER (checks/engine_acts7.py own: the giver's units on no team and its
     # money go to the receiver; ones on a team stay)
     (ACTION, 'PLAYER_TRANSFER_OWNERSHIP_PLAYER'): 'tests/test_simbench.py::test_acts_x_own_as_the_bench',

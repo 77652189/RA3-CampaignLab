@@ -1795,6 +1795,21 @@ def test_eyes_all_as_the_bench():
     assert all(at[k][3] == 1 for k in range(4, 21)), at
 
 
+def test_sighted_all_as_the_bench():
+    """all, bench 11-15 (round 238, CampSightedAll_mcp_1115_001541; the bench's seconds ~1.5 behind the timers): 看见
+    37 to s11, 39 after (TYPE_SIGHTED: the scout's Peacekeeper once in watch's sight; the viewer itself counts; lower
+    case too; a script's object list never); 驻军 1 then 3 from s6 (NAMED_BUILDING_IS_EMPTY: H2 empty again once its
+    man is out, H3 dead false, a barracks / a tank false); 建造 6 from the start, 23 once the engineer is out (s11), 6
+    again at the end (BUILT_BY_PLAYER: owns one, placed ones too, a state: 帧 +15 a second). The bench's engineer
+    still counted ~7 s after the kill at 22 s (it lies; the simulator's LINGER 0 drops it at once): not asserted."""
+    at = dict(_sim_run('engine_sighted', 'all', 32.0).series)
+    assert all(at[k][0] == 37 for k in range(1, 11)) and all(at[k][0] == 39 for k in range(14, 32)), at
+    assert all(at[k][1] == 1 for k in range(3, 7)) and all(at[k][1] == 3 for k in range(9, 32)), at
+    assert all(at[k][2] == 6 for k in range(1, 11)) and all(at[k][2] == 23 for k in range(14, 22)), at
+    assert at[31][2] == 6 and at[31][3] == at[30][3], at
+    assert all(14 <= at[k + 1][3] - at[k][3] <= 16 for k in range(14, 21)), at
+
+
 def test_video_a_radar_clip_is_done_after_its_length_full_screen_never():
     """movie play (bench, docs/story/handoff.md 1g): CNVTEST01 (95 frames at 23.976) in the radar window done 63 game
     frames after its start; the full-screen clip never reads done."""

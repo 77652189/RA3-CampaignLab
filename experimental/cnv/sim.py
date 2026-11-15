@@ -1202,8 +1202,9 @@ class Sim:
         self.seen = {}                      # this tick: (side, id(body)) -> whether that side sees it
         self.firing = []                    # this tick's aimed fire: (target, damage per second, shooter) (fight, deal)
         self.mid_aims = {}                  # id -> (second, body): an attack-mover that got in range mid-tick (move)
-        self.locks = {}                     # (id(shooter), weapon key) -> (target, second): a PER_TARGET weapon's
-                                            # last target and when its first shot at it is due (first_shot)
+        self.pre_locks = {}                 # (id(shooter), weapon key) -> (target, second): a PER_TARGET weapon's
+                                            # last target and when its first shot at it is due (first_shot); not
+                                            # `locks`: simshow.ShowSim keeps its input locks under that name
         self.fire_gate = {}                 # (id(shooter), id(target)) -> no fire dealt before this second (deal)
         self._field = ((), (), ())          # this tick's fight_field (fight)
         self.first_death = None             # (t, body, killer): the fight's first death
@@ -3249,6 +3250,37 @@ class Sim:
                         any(b.owner == a[0] and self.looks(b, m.x, m.y, air) for b in live)):
                     return True
             return False
+        return self.cond_retail4(name, a)
+
+    def cond_retail4(self, name, a):
+        """Retail-campaign conditions, batch 4 (round 238, checks/engine_sighted.py all, bench 11-15
+        CampSightedAll_mcp_1115_001541). None: not one."""
+        if name == 'TYPE_SIGHTED':
+            # (viewer, type, player): ENEMY_SIGHTED's range query with a type in place of the relation -- 看见 37 -> 39:
+            # the Peacekeeper only once it came within watch's sight, the viewer itself counts (lone, alone: on), the
+            # type in any case. A list made by OBJECTLIST_ADDOBJECTTYPE never matched (&16 off all run, the same list
+            # PLAYER_HAS_OBJECT_COMPARISON reads); a map's own object list (retail ep01) INFERRED to match
+            viewer = self.body(a[0])
+            want = str(a[1]).lower()
+            live = list(self.living())
+            hidden = self.cloaked(live)
+            return bool(viewer and viewer.alive and any(
+                target.owner == a[2] and target.template.lower() == want and id(target) not in hidden
+                and math.hypot(target.x - viewer.x, target.y - viewer.y) <= viewer.sight * viewer.level_vision
+                for target in live))
+        if name == 'NAMED_BUILDING_IS_EMPTY':
+            # (object): a living garrison holding nobody -- 驻军 1 -> 3: H2 empty again once its man was ordered out;
+            # H3 killed reads false (gone), as do a barracks and a tank (no garrison). A transport INFERRED as these
+            b = self.body(a[0])
+            return bool(b and b.alive and self.garrison.spec(b) is not None
+                        and not [u for u in self.garrison.inside.get(b.name, []) if u.alive])
+        if name == 'BUILT_BY_PLAYER':
+            # (type, player): the player owns one, however it came (建造 6 from the start: a placed Guardian and
+            # barracks count; 23 once the engineer is out, a state -- 帧 +15 a second); a killed one still counts
+            # while it lies (the engineer ~7 s after UNIT_KILL_ALL_IN_AREA; its linger INFERRED from the template)
+            want = self.of_types(a[0])
+            return any(b.owner == a[1] and b.template.lower() in want and (self.present(b) or self.dying(b))
+                       for b in self.bodies.values())
         return None
 
     def surfaces(self, b):
@@ -4910,10 +4942,10 @@ class Sim:
         if wt.get('pretype') != 'PER_TARGET' or not wt.get('pre'):
             return
         key = (id(a), w.get('weapon_key'))
-        held = self.locks.get(key)
+        held = self.pre_locks.get(key)
         if held is None or held[0] is not pick:
             ready = self.t + simunits._frames(wt['pre']) / simunits.FPS
-            self.locks[key] = (pick, ready)
+            self.pre_locks[key] = (pick, ready)
             self.fire_gate[(id(a), id(pick))] = ready
 
     def range_targets(self, b):
