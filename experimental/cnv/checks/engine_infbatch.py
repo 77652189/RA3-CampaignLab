@@ -8,6 +8,15 @@ PAUSED after E149: only air passed; infantry/ship identity gates failed and
 port match was already discovered before entry. No effect coverage is claimed.
 See work/re/e149_infiltrator.md and handoff-e.md before another run.
 
+E150 variant b is an unrun prerequisite diagnostic, not effect coverage. Each
+row independently publishes the 25 original conditions as a binary pass mask:
+bit 0 = before Entry; bits 1..21 = alive/owner/template-in-40 for host,
+friendly host, spy, friendly spy, match, wrong, third (in that order);
+bits 22..24 = match/wrong/third hidden. All pass = 33554431. A missing
+bit identifies the failed predicate without changing its radius or threshold.
+The original aggregate readings cannot reconstruct these bits retroactively.
+Port second is outside the original 25 predicates. See work/re/e150_infbatch.md.
+
 Prediction before bench: enemy spies consumed, friendly spies refused, owners
 unchanged. Existing matching same-owner units may be revealed (INFERRED);
 wrong-kind and third-owner controls stay hidden for VISION_UNITS. Port local
@@ -18,6 +27,25 @@ matching discovery=1000, wrong kind/far discovery=10000, third owner=100000;
 port second spy alive=1000000. Raw observations: work/re/e149_infiltrator.md.
 """
 from parts import NOT, Script, Test, square
+
+
+def prerequisites(m, t, lane):
+    """The original gate, in the documented diagnostic bit order."""
+    roles = [lane, lane + ' friend', lane + ' spy', lane + ' friend spy',
+             lane + ' match', lane + ' wrong', lane + ' third']
+    conditions = [('TIMER_EXPIRED', 'Entry', NOT)]
+    for role in roles:
+        obj = m.role(role)
+        area = 'Test identity ' + role
+        t.areas[area] = square(*m.point(role), 40)
+        conditions += [
+            ('NAMED_NOT_DESTROYED', obj.name),
+            ('NAMED_OWNED_BY_PLAYER', m.player(obj.side), obj.name),
+            ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA',
+             m.player(obj.side), 3, 1, obj.template, area)]
+    conditions += [('NAMED_DISCOVERED', m.player('p1'), m.role(lane + ' ' + role).name, NOT)
+                   for role in ('match', 'wrong', 'third')]
+    return conditions
 
 
 def check(m):
@@ -49,21 +77,7 @@ def check(m):
             conditions.append(('second', ('NAMED_NOT_DESTROYED', m.role('port second').name), 1000000))
         for label, cond, bit in conditions:
             t.scripts.append(Script('Test - ' + lane + label, [cond], [('INCREMENT_COUNTER', bit, c)], once=False))
-        roles = [lane, lane + ' friend', lane + ' spy', lane + ' friend spy',
-                 lane + ' match', lane + ' wrong', lane + ' third']
-        prerequisites = [('TIMER_EXPIRED', 'Entry', NOT)]
-        for role in roles:
-            obj = m.role(role)
-            area = 'Test identity ' + role
-            t.areas[area] = square(*m.point(role), 40)
-            prerequisites += [
-                ('NAMED_NOT_DESTROYED', obj.name),
-                ('NAMED_OWNED_BY_PLAYER', m.player(obj.side), obj.name),
-                ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA',
-                 m.player(obj.side), 3, 1, obj.template, area)]
-        prerequisites += [('NAMED_DISCOVERED', p, m.role(lane + ' ' + role).name, NOT)
-                          for role in ('match', 'wrong', 'third')]
-        t.scripts.append(Script('Test - prerequisites ' + lane, prerequisites,
+        t.scripts.append(Script('Test - prerequisites ' + lane, prerequisites(m, t, lane),
                                 [('INCREMENT_COUNTER', 200000, c)], once=False))
         baseline = 1200111 if lane == 'port' else 200111
         t.expect.append((lane, 1, '==', baseline, 7))
@@ -71,4 +85,24 @@ def check(m):
     return t
 
 
-CHECKS = {'engine_infbatch': {'a': check}}
+def diagnostic(m):
+    """Publish independent predicates; no infiltration effect assertion."""
+    t = check(m)
+    # Keep the same setup and entry orders, without the old aggregate counters.
+    t.scripts = t.scripts[:3]
+    t.counters = []
+    t.expect = []
+    for lane in ('air', 'infantry', 'ship', 'port'):
+        counter = 'Prerequisites ' + lane
+        t.counters.append((counter, lane))
+        t.scripts.append(Script('Test - reset bits ' + lane, [],
+                                [('SET_COUNTER', counter, 0)], once=False))
+        for bit, condition in enumerate(prerequisites(m, t, lane)):
+            t.scripts.append(Script(f'Test - {lane} bit {bit}', [condition],
+                                    [('INCREMENT_COUNTER', 1 << bit, counter)], once=False))
+        t.expect.append((lane, 1, '==', 33554431, 7))
+    t.bench = [('bench_watch', dict(seconds=8, every=1, sheet=False, lines=4))]
+    return t
+
+
+CHECKS = {'engine_infbatch': {'a': check, 'b': diagnostic}}

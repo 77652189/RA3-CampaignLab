@@ -45,6 +45,47 @@ def test_infiltrator_batch_requires_real_retail_markers():
     assert [item[3] for item in t.expect] == [200111, 200111, 200111, 1200111]
 
 
+def test_infiltrator_batch_independent_prerequisite_bits():
+    """Every single failed original predicate remains identifiable in variant b."""
+    import build
+    from parts import NOT, square
+    m, original, _ = build.resolve('engine_infbatch', 'a')
+    _, diagnostic, mod = build.resolve('engine_infbatch', 'b')
+    assert len(mod) <= 15 and '_' not in mod
+    assert 'contract: ok' in build.show('engine_infbatch', 'b').lower()
+    assert diagnostic.scripts[:3] == original.scripts[:3]
+    assert diagnostic.areas == original.areas
+    assert [item[3] for item in original.expect] == [200111, 200111, 200111, 1200111]
+    assert [item[3] for item in diagnostic.expect] == [33554431] * 4
+    for lane in ('air', 'infantry', 'ship', 'port'):
+        gate = next(s.when for s in original.scripts if s.name == 'Test - prerequisites ' + lane)
+        bits = [s for s in diagnostic.scripts if s.name.startswith('Test - ' + lane + ' bit ')]
+        assert len(bits) == len(gate) == 25
+        assert [s.when for s in bits] == [[condition] for condition in gate]
+        assert gate[0] == ('TIMER_EXPIRED', 'Entry', NOT)
+        for index, suffix in enumerate(('', ' friend', ' spy', ' friend spy', ' match', ' wrong', ' third')):
+            role = lane + suffix
+            obj = m.role(role)
+            area = 'Test identity ' + role
+            assert gate[1 + 3*index:4 + 3*index] == [
+                ('NAMED_NOT_DESTROYED', obj.name),
+                ('NAMED_OWNED_BY_PLAYER', m.player(obj.side), obj.name),
+                ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA',
+                 m.player(obj.side), 3, 1, obj.template, area)]
+            assert diagnostic.areas[area] == square(*m.point(role), 40)
+        assert gate[-3:] == [('NAMED_DISCOVERED', m.player('p1'),
+                             m.role(lane + ' ' + role).name, NOT)
+                            for role in ('match', 'wrong', 'third')]
+        weights = [s.do[0][1] for s in bits]
+        assert weights == [2**i for i in range(25)]
+        assert all(not s.once and s.do[0][2] == 'Prerequisites ' + lane for s in bits)
+        # Exercise the compiled single-condition counter actions under each
+        # possible one-predicate failure, independent of simulated unit rules.
+        for failed in range(25):
+            reading = sum(s.do[0][1] for i, s in enumerate(bits) if i != failed)
+            assert 33554431 ^ reading == 2**failed
+
+
 @pytest.mark.xfail(strict=True, reason='E149步兵/舰船身份位置门未过、港口首入前已发现标记；'
                    '前置不等价且效果未闭合，不登记覆盖；见work/re/handoff-e.md和work/re/e149_infiltrator.md')
 def test_infiltrator_batch_diagnostic_as_on_the_bench():
