@@ -8,7 +8,7 @@
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 56 / 113 | 189 | 57 | 15 | 91 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
-| AI | **97%** | **97%** | 192 / 357 | 428 | 209 | 92 | 93 | 34 | 100% |
+| AI | **97%** | **97%** | 192 / 357 | 428 | 210 | 91 | 93 | 34 | 100% |
 
 ## 脚本动作
 
@@ -965,7 +965,7 @@
 | 已对拍 | `启发条件/PathToTargetHeuristic.PathExists` | 45 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiopath.py |
 | 已对拍 | `目标/AITargetingHeuristic.HeuristicType=EnemyUnit` | 44 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aitargetpick.py |
 | 已对拍 | `启发条件/TimerHeuristic.EndTime` | 41 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
-| 推断 | `造兵/BuildEntry.CountModifier` | 41 |  | C engine_countmodifier a：同经济/工厂/候选和初始新维和4/新标枪2，仅切0.5/4；台上低组s27先补标枪、s38–66人数4/5，高组s27先补维和、s39–66人数7/2。tests/test_count_modifier.py按名回放s40原人数；精确分值/资格/队列消费未观测，保留推断，不改B模型；见work/re/c_countmodifier_report.md |
+| 已对拍 | `造兵/BuildEntry.CountModifier` | 41 |  | C engine_countmodifier a：同经济/工厂/候选和初始新维和4/新标枪2，仅切0.5/4；台上低组s27先补标枪、s38–66人数4/5，高组s27先补维和、s39–66人数7/2。tests/test_count_modifier.py按名回放s40原人数。B206 b：两组都在开局存款2000花到剩100时停（原版兵营2狗+2/3标枪），模型加开局只有存款时按价格挡；gap：原版兵营兵种搭配（模型3狗+1标枪+1维和）使高组模型停在8/2（strict xfail）；见work/re/c_countmodifier_report.md |
 | 已对拍 | `微操/AIMicroManagerData.RetreatMinDistanceFromBase` | 40 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_airetreat.py |
 | 已对拍 | `目标/AITargetingHeuristic.Relationship` | 40 | a4 a5 a7 | docs/engine/ainamed.md#给关卡线的结论（ainmrel：写了 Relationship 就按关系过滤，玩家的楼当 NEUTRAL 不算，不出门） |
 | 已对拍 | `造兵/BlockIfThingNearFactory.IncludeThing` | 40 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aibuildexclude.py |

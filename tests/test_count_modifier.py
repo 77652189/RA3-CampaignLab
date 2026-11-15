@@ -39,10 +39,37 @@ def test_count_modifier_named_bench_replay(build):
     assert samples and all(values == before[2] for values in samples), (samples, before, after)
 
 
+# bench 2026-11-15 engine_countmodifier b (B round 206; CampCMHalfB_mcp_1115_143321 / CampCMFourB_mcp_1115_143201):
+# (the copied unit, retail dogs, retail Javelins, retail Peacekeepers) at s66 -- with 1 Javelin placed at the start
+BENCH_B = {'aicmhalf': ((2, 0, 1, 0), (5, 2, 3, 0)), 'aicmfour': ((4, 0, 1, 0), (7, 2, 4, 0))}
+COST = {'aicmhalf': (300, 200, 300, 200), 'aicmfour': (200, 200, 300, 200)}
+DEPOSIT = 2000                      # AlliedStandard's PRODUCTION Deposit, the only money PRODUCTION has in the opening
+
+
+@pytest.mark.parametrize('build', sorted(BENCH_B))
+def test_both_groups_stop_with_100_of_the_deposit_left(build):
+    """The three-builds stop is the money: both spend 1900 of the Deposit and leave 100 with 200-cost units on offer
+    (bench readings, no model)."""
+    start, end = BENCH_B[build]
+    spent = sum((e - s) * c for s, e, c in zip(start, end, COST[build]))
+    assert spent == DEPOSIT - 100
+
+
 @pytest.mark.skipif(not simai.available(), reason='no private AI model')
-@pytest.mark.xfail(strict=True, reason='D151: bench aicmfour stays 7/2 s39-s66 (three builds, like aicmhalf 4/5); '
-                   'the model keeps scoring Peacekeepers 100/(n/4+1) above Javelins and reaches 8/2 s45, 9/2 s51 -- '
-                   'what stops the bench after three builds (money, queue, a score floor) is not read')
+def test_the_opening_deposit_never_pays_part_of_a_unit():
+    """aicmfour: the model's Deposit stops at 100 as the bench's (DEPOSIT_ONLY_PRICE_GATE) -- before, the fifth
+    copied Peacekeeper took the last 100 (9/2 by s51)."""
+    w = simai.run('aicmfour', 'b', until=60)
+    ai = next(iter(w.brains.values())).ai
+    assert ai.accounts.get('PRODUCTION') == 100.0
+    assert max(v[0] for _, v in w.sim.series) == 8
+
+
+@pytest.mark.skipif(not simai.available(), reason='no private AI model')
+@pytest.mark.xfail(strict=True, reason='B206: bench aicmfour stays 7/2 s39-s66 -- the Deposit 2000 spent to 100 '
+                   '(engine_countmodifier b: retail barracks 2 dogs + 3 Javelins = 1300, copied 3 Peacekeepers); the '
+                   'model (price gate in) stops at 8/2 s45 with 100 left too, but its retail barracks buys 3 dogs + '
+                   '1 Javelin + 1 Peacekeeper = 1100 -- the unit builder\'s mix, not CountModifier')
 def test_count_modifier_high_group_stops_after_three_builds():
     rows = measured()['aicmfour']['rows']
     bench = {int(s): v for s, _, v in rows if 45 <= s <= 64}

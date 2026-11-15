@@ -318,11 +318,12 @@ NOTES = {
         'ALL保留墙钟s22造出1导致的诊断FAIL，游戏帧前置成立；'
         'tests/test_ai_ignore_rule.py按名回放伤害/前置及ALL状态，ANY候选资格strict xfail；'
         '目标身份、工程师分类/Alpha资格仍gap，不晋升；见 work/re/e118_ignore_rule.md'),
-    '造兵/BuildEntry.CountModifier': (GUESSED,
+    '造兵/BuildEntry.CountModifier': (BENCHED,
         'C engine_countmodifier a：同经济/工厂/候选和初始新维和4/新标枪2，仅切0.5/4；'
         '台上低组s27先补标枪、s38–66人数4/5，高组s27先补维和、s39–66人数7/2。'
-        'tests/test_count_modifier.py按名回放s40原人数；精确分值/资格/队列消费未观测，'
-        '保留推断，不改B模型；见work/re/c_countmodifier_report.md'),
+        'tests/test_count_modifier.py按名回放s40原人数。B206 b：两组都在开局存款2000花到剩100时停'
+        '（原版兵营2狗+2/3标枪），模型加开局只有存款时按价格挡；'
+        'gap：原版兵营兵种搭配（模型3狗+1标枪+1维和）使高组模型停在8/2（strict xfail）；见work/re/c_countmodifier_report.md'),
     '战术/Tactic.Tactic=Engineer': (GUESSED,
         'A第203轮 engine_aiskirm aiskirm:et原版（11-13）：AlliedCaptureTech_MEDIUM_EngineerTactic_0_0'
         ' s128空队、s144工程师入队、s216到油井、s222油井归AI同秒队消失，矿点旁始终0。'
