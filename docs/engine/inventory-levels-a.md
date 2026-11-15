@@ -8,7 +8,7 @@
 |---|---|---|---|---|
 | 脚本动作 | 50 | 0 | 0 | 14 |
 | 脚本条件 | 12 | 0 | 0 | 0 |
-| 物体模块 | 56 | 15 | 42 | 20 |
+| 物体模块 | 56 | 16 | 41 | 20 |
 | 武器效果 | 18 | 4 | 4 | 2 |
 
 按原版用量加权：已对拍 100%，已有（已对拍+推断）100%。
@@ -28,7 +28,6 @@
 | 未做 | 物体模块 | `Behaviors/EmotionTrackerUpdate` | 5 | a1 a2 a3 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoTech1, AlliedEngineer |
 | 未做 | 物体模块 | `Behaviors/ParkingPlaceBehavior` | 4 | a4 a5 a7 a8 | E157两局实测生产差异：engine_parking:a五次原版阿波罗生产请求后原机场4/仅删Parking机场0；交换玩家engine_parkingswap:a为1/0，排除该玩家归属混淆。场区数量仅测位置，不冒充机位占用；队伍飞离预测失败，返航未成立，原预测保留。tests/test_parking_bench_e.py按名回放f194、f982、交换侧f196，物体模型生产按钮入口产出0/0，strict xfail；生产绑定/配额、返航预约/占用/释放、航母Contain仍gap，不登记已对拍、不改猜测模型。两局已用完，暂停同类台，详work/re/e157_parking.md；例：AlliedAirfield, AlliedAntiStructureShip |
 | 未做 | 物体模块 | `Behaviors/QueueDockBehavior` | 4 | a1 a2 a4 a5 a6 a7 a9 | E152 engine_queuedock:a具名原版矿车对矿场，双方删自动生成避免争矿：on f329收250、f351离pad、f597累计500，两者存活；车/场DOCKING及HARVESTING状态始终0。queuedockoff:a仅到f197即截帧停止、钱包0，早于on首笔，不能证明删模块效果；已加750逻辑帧完整性门拒绝该短记录。on f786实测快照回放strict xfail；缺内部阶段接口和完整off对照，暂停，不登记已对拍、不调路径时序；见work/re/e152_queuedock.md；例：AlliedRefinery, JapanRefinery |
-| 未做 | 物体模块 | `Behaviors/RadarBehavior` | 4 | a4 | E154静态核实：原版RadarDish及PlayerSpellBook均为无专用字段模块，战役覆盖继承PlayerSpellBook；4用量/5模板保留。现有脚本目录及注入接口未找到独立雷达可用读数，未上台、不登记效果已对拍；倾向玩家雷达可用性注册（INFERRED），不能据此排除运行时用途。需D/总控提供合法启用资格和有/无模块同帧读数，暂停同类组台；见work/re/e154_radar.md；例：JapanConstructionYard |
 | 未做 | 物体模块 | `Behaviors/AssistedPlacementBehavior` | 3 | a1 a2 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedRefinery, JapanRefinery |
 | 未做 | 物体模块 | `Behaviors/HitReactionBehavior` | 3 | a1 a2 a3 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedAntiInfantryInfantry, CNV_Beacon |
 | 未做 | 物体模块 | `Behaviors/LoseHealthUpdate` | 3 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | E146 engine_objectbatch:a/b：原船完整模块移植480HP坦克，HealthTrigger=101%/0%均无耗血，两路100/100；b已确认toggle/铁幕状态成立。两轮后暂停，移植激活资格待查，未推猜测实现、不晋升整项；见work/re/e146_objectbatch.md；例：CNV_Liberty, SovietBomberAircraft |
@@ -72,6 +71,7 @@
 | 推断 | 物体模块 | `Behaviors/PassiveAreaEffectBehavior` | 5 | a3 a4 a7 | E70范围/兵种/状态开关和E74分批治疗具名回放保留。E145单图engine_modulebatch:a：MaxBeneficiaries=1/0两组，早期受益人数1/3、后期3/3，敌方均50%不回血；已补0/1上限，tests/test_simmodulebatch.py按名断言台上读数。具体受益身份次序、共用任务帧相位和SDK换算跳幅INFERRED；时钟来源/动态创建与重开/调查周期/叠加/友方跨玩家/自身受益/附着无人机/更大上限仍gap，不登记整项已对拍；见work/re/e145_modulebatch.md、e_passive_e74.md；例：AlliedEngineer, CNV_IceEngineer |
 | 推断 | 物体模块 | `Behaviors/ActivateModuleSpecialPower` | 4 | a1 a2 a4 a6 a7 | E153 engine_activate:a 原版雅典娜宿主/仅删本模块对照，合法按钮激活链接ShieldSphereUpdate；f76..371状态111/100，f379消退100/100，证据7。tests/test_simactivate.py按名回放并断言实测f152/f379；仅实现SELF_POSITION、InitiallyActive=false链接的ObjectStatus/Duration。吸收伤害、上限、提前终止、重复激活及其他链接仍gap；不晋升整项，不表示C的SpecialPowerNugget派发覆盖；见work/re/e153_activate.md；例：AlliedAntiStructureVehicle, JapanAntiVehicleVehicleTech1 |
 | 推断 | 物体模块 | `Behaviors/AutoDepositUpdate` | 4 | a1 a4 a5 a7 | E147 engine_bankcapture:a：中立SwissBank有/无模块两路普通工程师占领，换主并消耗工程师；on奖金750、随后每15游戏帧+5至770，off全0，帧锁定证据1023；具名测试test_simbankcapture按实际读数回放。E146已有归属产钱60/0仍有效；再占领/驻军/上限/修理仍gap，不晋升整项；见work/re/e147_bankcapture.md；例：OilDerrick |
+| 推断 | 物体模块 | `Behaviors/RadarBehavior` | 4 | a4 | E158重开原版雷达宿主/仅删模块对照，两构建均替换原生PlayerSpellBook去除雷达来源，不强开地图或UI。engine_radar:a宿主删除前后小地图显示/阵营徽标，存活与供电计数独立核前置；tests/test_radar_bench_e.py按名回放物体模型雷达可用性。仅覆盖已建成、正常供电盟军雷达宿主及脚本删除；注册内部实现INFERRED，低电量、建造、死亡延迟、换主、多来源和其他宿主仍gap，不晋升整项。PLAYER_HAS_POWER物体模型条件缺口strict xfail；见work/re/e158_radar.md；例：JapanConstructionYard |
 | 推断 | 物体模块 | `Behaviors/SpecialAbilityUpdate` | 4 | a1 a4 a6 a7 | 模拟器代码里有这个名字；台上量过（checks/engine_acts12.py），没有测试跑这个台子；例：JapanAntiInfantryInfantry, JapanAntiVehicleVehicleTech1 |
 | 推断 | 物体模块 | `Behaviors/TechUpgradeReceiver` | 4 | a2 a4 a5 a7 a8 | 模拟器代码里有这个名字；例：AlliedAirfield, AlliedBarracks |
 | 推断 | 物体模块 | `Behaviors/AttachUpdate` | 3 | a1 a2 a4 a5 a6 a7 a9 | 部分：engine_attach a验证瞬移/跟随/父子状态；engine_attach_parent a验证简单模块脚本杀父后子活/清理链接，NO_COLLISIONS读数差异为严格xfail；原版模块死亡前无稳定链接，不推广死亡规则；子死/直接删除/维修/吸血/解除/自主扫描仍gap；例：AlliedCommandoTech1, SovietScoutVehicle |
