@@ -346,7 +346,7 @@ _NOT_IN_SIM = '已核（11-08）：模拟器没有这个效果'
 NOTES = {
     (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_CAMPAlliedBomberDrop2'): (GUESSED, 'A224-A226 engine_acts_mix:all、engine_acts_drop / _ally:own、engine_acts_wet:all：六局都没出轰炸机；A226 PLAYER_TRIGGERED_SPECIAL_POWER 看到按钮和按名字放都算放了（人类、电脑的 store 都是），所以卡在 OCL 生成那步（CREATE_AT_EDGE_NEAR_SOURCE），原因未明；模拟器只记施放、不出东西'),
     (ACTION, 'PLAYER_SET_MONEY_CAP'): (GUESSED, 'A213 engine_acts_tel:tel：脚本的钱不受上限管（上限 3000 时给 5000 → 6000；上限 500 仍 6000；设 10000 照设）；它管的（推断是采矿收入）没上台、模拟器只记不用'),
-    (MODULE, 'Behaviors/AutoDepositUpdate'): (GUESSED, 'E146 engine_objectbatch:a/b：原版SwissBank克隆有/无模块的钱包，on逐次+5至60、12秒删除后稳定，off全0；具名测试按实际60/0回放。只量已有归属产钱，不晋升整项；占领奖金/驻军/上限/修理仍gap；见work/re/e146_objectbatch.md'),
+    (MODULE, 'Behaviors/AutoDepositUpdate'): (GUESSED, 'E147 engine_bankcapture:a：中立SwissBank有/无模块两路普通工程师占领，换主并消耗工程师；on奖金750、随后每15游戏帧+5至770，off全0，帧锁定证据1023；具名测试test_simbankcapture按实际读数回放。E146已有归属产钱60/0仍有效；再占领/驻军/上限/修理仍gap，不晋升整项；见work/re/e147_bankcapture.md'),
     (MODULE, 'Behaviors/HealCrateCollide'): (TODO, 'E146 engine_objectbatch:a/b有/无模块均未治疗，步兵始终50/50；b中立箱且到位成立，仍无效，两轮后暂停；不把负结果登记成效果已对拍。SecretFile原XML含当前schema不接受的属性，未冒充普通HealCrate等价；碰撞派发前置待查；见work/re/e146_objectbatch.md'),
     (MODULE, 'Behaviors/LoseHealthUpdate'): (TODO, 'E146 engine_objectbatch:a/b：原船完整模块移植480HP坦克，HealthTrigger=101%/0%均无耗血，两路100/100；b已确认toggle/铁幕状态成立。两轮后暂停，移植激活资格待查，未推猜测实现、不晋升整项；见work/re/e146_objectbatch.md'),
     (MODULE, 'Behaviors/CommandSetUpgrade'): (GUESSED, 'E145单图engine_modulebatch:a：空初始菜单的兵营，授Tech2前产物0/0、授后有/无模块产物1/0。菜单切换解析已有；整链路具名回放strict xfail：生产层factories按未持升级的初始菜单识别工厂，故模型仍0/0，需B接口修复。未晋升整项；见work/re/e145_modulebatch.md'),
