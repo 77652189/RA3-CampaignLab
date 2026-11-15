@@ -43,6 +43,7 @@ def mission(distance=200):
     m.spawns |= {MINER, OUTPOST}
     m.facts['tactic distance'] = distance
     m.facts['expansion pick'] = PICK
+    m.facts['miner'], m.facts['outpost'] = MINER, OUTPOST
     return m
 
 

@@ -4,12 +4,12 @@ Tactic.Distance only). Counters (four fit): the AI's outposts on the whole map, 
 and frame come from the CNVTeams host's cmd log (ra3ext.log). Expectations: the simulator's prediction (round 154).
 """
 from parts import Test, Script, counted, square
-from missions.aisimpleexp_bench import MINER, OUTPOST
 
 
 def a(m):
     t = Test()
     s1 = m.player('s1')
+    MINER, OUTPOST = m.facts['miner'], m.facts['outpost']
     tank, = m.cnv_units
     near, east = 'CNV SExp near', 'CNV SExp east'
     t.areas[near] = square(*m.facts['expansion pick'], 150.0)
