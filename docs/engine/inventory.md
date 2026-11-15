@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|---|---|---|---|
 | 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 182 | 19 | 135 | 115 | 98% |
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
-| 物体模块 | **98%** | **98%** | 55 / 113 | 189 | 56 | 13 | 94 | 26 | 99% |
+| 物体模块 | **98%** | **98%** | 55 / 113 | 189 | 56 | 15 | 92 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
 | AI | **97%** | **97%** | 192 / 357 | 428 | 209 | 92 | 93 | 34 | 100% |
 
@@ -16,7 +16,7 @@
 |---|---|---|---|---|
 | 已对拍 | `ENABLE_SCRIPT` | 5727 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_cast.py |
 | 已对拍 | `SET_MILLISECOND_TIMER` | 4153 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_acquire.py |
-| 已对拍 | `SET_FLAG` | 4105 | 全部 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aimicro.py |
+| 已对拍 | `SET_FLAG` | 4105 | 全部 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_activate.py |
 | 已对拍 | `ALLOW_DISALLOW_ONE_BUILDING` | 3466 | a4 a5 a7 | tests/test_simbench.py::test_a_ban_holds_the_queue_and_does_not_cancel |
 | 已对拍 | `PLAYER_LOCK_PLAYER_TECH` | 1887 |  | tests/test_simbench.py::test_protocol_a_computer_player_spends_unless_locked |
 | 已对拍 | `DISABLE_SCRIPT` | 1099 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_scripts6.py |
@@ -46,7 +46,7 @@
 | 已对拍 | `UNIT_IDLE_FOR_SECONDS` | 237 |  | tests/test_simbench.py::test_scripts1_idle_for_seconds_drops_the_move |
 | 已对拍 | `TEAM_TRANSFER_TO_PLAYER` | 235 |  | tests/test_simbench.py::test_scripts1_a_team_handed_over_drops_its_move |
 | 已对拍 | `NAMED_TRANSFER_OWNERSHIP_PLAYER` | 231 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_invuln.py |
-| 已对拍 | `INCREMENT_COUNTER` | 229 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_aimicro.py |
+| 已对拍 | `INCREMENT_COUNTER` | 229 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_activate.py |
 | 已对拍 | `UNIT_CHANGE_OBJECT_STATUS:SHROUD_REVEAL_TO_ALL` | 218 |  | tests/test_simbench.py::test_acts_flow_as_the_bench |
 | 已对拍 | `PLAYER_SET_MAX_PLAYER_POWER_POINTS` | 206 | a4 a5 a7 | tests/test_simbench.py::test_protocol_set_points_follows_the_programs_rule |
 | 已对拍 | `NAMED_KILL` | 204 | a4 a5 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aihome.py |
@@ -59,7 +59,7 @@
 | 不涉及 | `FADE_OUT_TO_BLACK` | 177 |  | 纯表现（名字规则） |
 | 不涉及 | `FADE_IN_FROM_BLACK` | 176 |  | 纯表现（名字规则） |
 | 不涉及 | `NAMED_FLASH` | 173 | a9 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
-| 已对拍 | `SET_COUNTER` | 171 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_aiaesthetics.py |
+| 已对拍 | `SET_COUNTER` | 171 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_activate.py |
 | 已对拍 | `UNIT_CHANGE_OBJECT_STATUS:SKIRMISH_AI_DO_NOT_ATTACK` | 171 |  | tests/test_simbench.py::test_acts_flow_as_the_bench |
 | 不涉及 | `NAMED_SHOW_INFOBOX` | 166 | a4 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
 | 已对拍 | `TEAM_USE_COMMANDBUTTON_ABILITY` | 162 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts1.py |
@@ -470,19 +470,19 @@
 
 | 状态 | 名字 | 用量 | 9 关用到 | 说明 |
 |---|---|---|---|---|
-| 已对拍 | `FLAG` | 5099 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_aimicro.py |
+| 已对拍 | `FLAG` | 5099 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_activate.py |
 | 已对拍 | `TIMER_EXPIRED` | 3917 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_acquire.py |
 | 已对拍 | `CONDITION_TRUE` | 2947 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_scripts6.py |
 | 已对拍 | `NAMED_DESTROYED` | 922 | 全部 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_bankcapture.py |
 | 已对拍 | `PLAYER_HAS_OBJECT_COMPARISON` | 628 | a1 a4 a5 a7 | tests/test_simbench.py::test_scripts2_a_relation_is_one_way_and_turns_back |
-| 已对拍 | `COUNTER` | 577 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_aimicro.py |
+| 已对拍 | `COUNTER` | 577 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_activate.py |
 | 已对拍 | `HAS_FINISHED_AUDIO` | 495 |  | tests/test_simbench.py::test_audio_a_dubbed_line_is_done_its_length_after_it_is_heard |
 | 已对拍 | `PLAYER_IS_HUMAN_OR_AI_PERSONALITY` | 470 |  | tests/test_simbench.py::test_scripts1_conditions_as_the_bench |
 | 已对拍 | `HAS_FINISHED_VIDEO` | 422 |  | tests/test_simbench.py::test_video_a_radar_clip_is_done_after_its_length_full_screen_never |
 | 已对拍 | `NAMED_INSIDE_AREA` | 413 | a3 a4 a5 a6 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acts8.py |
 | 已对拍 | `SKIRMISH_PLAYER_HAS_UNITS_IN_AREA` | 410 | a1 a3 a4 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_area.py |
 | 已对拍 | `NAMED_OWNED_BY_PLAYER` | 397 | a4 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_bankcapture.py |
-| 已对拍 | `NAMED_NOT_DESTROYED` | 374 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acts8.py |
+| 已对拍 | `NAMED_NOT_DESTROYED` | 374 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_activate.py |
 | 已对拍 | `PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA` | 278 | a4 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiskirm.py |
 | 已对拍 | `NAMED_ATTACKED_BY_PLAYER` | 150 | a4 a5 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attack.py |
 | 已对拍 | `UNIT_HAS_OBJECT_STATUS` | 142 |  | tests/test_simbench.py::test_scripts1_conditions_as_the_bench |
@@ -647,7 +647,7 @@
 | 未做 | `Behaviors/QueueDockBehavior` | 4 (12) | a1 a2 a4 a5 a6 a7 a9 | E152 engine_queuedock:a具名原版矿车对矿场，双方删自动生成避免争矿：on f329收250、f351离pad、f597累计500，两者存活；车/场DOCKING及HARVESTING状态始终0。queuedockoff:a仅到f197即截帧停止、钱包0，早于on首笔，不能证明删模块效果；已加750逻辑帧完整性门拒绝该短记录。on f786实测快照回放strict xfail；缺内部阶段接口和完整off对照，暂停，不登记已对拍、不调路径时序；见work/re/e152_queuedock.md；例：AlliedRefinery, AlliedRefinery_NoHarvester |
 | 推断 | `Behaviors/AutoDepositUpdate` | 4 (8) | a1 a4 a5 a7 | E147 engine_bankcapture:a：中立SwissBank有/无模块两路普通工程师占领，换主并消耗工程师；on奖金750、随后每15游戏帧+5至770，off全0，帧锁定证据1023；具名测试test_simbankcapture按实际读数回放。E146已有归属产钱60/0仍有效；再占领/驻军/上限/修理仍gap，不晋升整项；见work/re/e147_bankcapture.md；例：GE_SwissBank, NY_NYStockExchange |
 | 已对拍 | `Behaviors/InfiltratorContain:ENERGY` | 4 (6) | a2 a4 a5 a6 a7 a8 | tests/test_siminfiltrator.py::test_spy_power_plant_as_on_the_bench；总控11-11授权按配置组收尾：engine_infiltrator a/b/c/d按名字重放，盟军间谍对盟/苏/帝普通电厂及帝国忍者对盟军电厂，敌方进入者消耗、建筑满血不换主、100电量停电约20秒并恢复，友军拒入且存活；gap：其他电量/苏联超级电厂、重复进入续期、精确时序和默认状态分支仍未对拍，不表示全字段全模板已验证；例：JapanPowerPlant |
-| 未做 | `Behaviors/ActivateModuleSpecialPower` | 4 (5) | a1 a2 a4 a6 a7 | 仅在SpecialPowerNugget处理器中识别并拒绝，未实现模块技能执行；例：AlliedAntiStructureVehicle, JapanAntiVehicleVehicleTech1 |
+| 推断 | `Behaviors/ActivateModuleSpecialPower` | 4 (5) | a1 a2 a4 a6 a7 | E153 engine_activate:a 原版雅典娜宿主/仅删本模块对照，合法按钮激活链接ShieldSphereUpdate；f76..371状态111/100，f379消退100/100，证据7。tests/test_simactivate.py按名回放并断言实测f152/f379；仅实现SELF_POSITION、InitiallyActive=false链接的ObjectStatus/Duration。吸收伤害、上限、提前终止、重复激活及其他链接仍gap；不晋升整项，不表示C的SpecialPowerNugget派发覆盖；见work/re/e153_activate.md；例：AlliedAntiStructureVehicle, JapanAntiVehicleVehicleTech1 |
 | 未做 | `Behaviors/RadarBehavior` | 4 (5) | a4 | 模拟器代码里没有这个名字；例：AlliedRadarDish, PlayerSpellBook |
 | 推断 | `Behaviors/SpecialAbilityUpdate` | 4 (5) | a1 a4 a6 a7 | 模拟器代码里有这个名字；台上量过（checks/engine_acts12.py），没有测试跑这个台子；例：JapanAntiInfantryInfantry, JapanAntiVehicleVehicleTech1 |
 | 推断 | `Behaviors/TechUpgradeReceiver` | 4 (5) | a2 a4 a5 a7 a8 | 模拟器代码里有这个名字；例：AlliedAirfield, AlliedBarracks |
@@ -708,7 +708,7 @@
 | 已对拍 | `Behaviors/LinearDamageUpdate` | 1 (1) | a1 a2 a4 a6 a7 | tests/test_simsweep.py::test_sweep_the_line_walks_out_and_a_stop_does_not_cut_it_at_the_bench_frames；例：AlliedAntiNavalScout |
 | 未做 | `Behaviors/MagneticEffectUpdate` | 1 (1) | a1 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedAntiNavyShipTech1 |
 | 已对拍 | `Behaviors/ReconstituteStateSpecialAbility` | 1 (1) | a1 a2 a4 a6 a7 a9 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_cast.py；例：AlliedCommandoTech1 |
-| 未做 | `Behaviors/ShieldSphereUpdate` | 1 (1) | a2 a6 | 模拟器代码里没有这个名字；例：AlliedAntiStructureVehicle |
+| 推断 | `Behaviors/ShieldSphereUpdate` | 1 (1) | a2 a6 | 模拟器代码里有这个名字；台上量过（docs/engine/inventory-levels-a.md），没有测试跑这个台子；例：AlliedAntiStructureVehicle |
 | 未做 | `Behaviors/StoreCurrentStateUpdate` | 1 (1) | a1 a2 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoTech1 |
 | 未做 | `Behaviors/SweepingLaserState` | 1 (1) | a1 a2 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：SovietScoutVehicle |
 | 不涉及 | `Behaviors/TimedOpacityUpdate` | 1 (1) |  | 纯表现（名字规则）；例：JapanInfiltrationInfantry |
