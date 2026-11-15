@@ -62,6 +62,7 @@
   - `NAMED_EXIT_BUILDING` 不会让运兵车卸兵。用单位指令集里的 `Command_Evacuate`（`NAMED_USE_COMMANDBUTTON_ABILITY`）。
   - 单位死后，血量计数器停在最后一次读数，不会归零。
 - **跃迁后，按模板数的区域计数不会把它减掉**：`PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA` 在它离开的区域里还算着它（A7 自由号跳走后 35 秒不变），到达的区域则马上算进去。要知道跃迁单位在哪，用 `counted(named=..., area=...)`（`NAMED_INSIDE_AREA` / `NAMED_OUTSIDE_AREA`）。
+- **一个单位同时站进太多重叠的触发区，区域计数就冻住**（2026-11-14，engine_aiskirm ep / eb / es）：用"x < 某线"这种互相套着的半平面数位置，工程师一出生就在 7 个区里，此后往西只会进更多区——`PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA` 的读数整整 78 秒停在出生那一刻，连到油井那个小区也没亮（单位其实走到了、占了油井）。同一张图同样 31 个区、改成互不重叠的窄条（同时最多 3 个），读数一路正常。所以是"同时在几个区"有上限（< 7，确切数没量），不是地图区总数。量位置用不重叠的条带（`engine_aiskirm.es`：每条 SET_COUNTER 成条号）。
 - **落点 / 突击点**：别放在对方建筑上（A7 第一次把突击点放在我方战车工厂上，跳来的自由号压在工厂上、防空车够不着）。
 - **心灵控制 / 换主人**（克隆体，2026-10-22）：
   - 能用的只有间谍收买 `DominateEnemySpecialPower` 的 `PermanentlyConvert="true"`：按下几秒内就换主人，克隆体死了也不还。`false` 什么都收不走；schema 里的 `TemporaryOwnerSpecialPower`（C&C3 留下的）会在 4 秒内弄死带着它的单位。

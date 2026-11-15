@@ -969,9 +969,9 @@ def ep(m):
     round the banks) -> 5; 到油井 s231, 油井 s237.
     MEASURED (bench 2026-11-14, CampAISkirmEp_mcp_1114_225826, readings read off the archived frames): 油井 到油井
     X Y = 0 0 0 0 to s143 | 0 0 4 3 s144-s222 | 1 0 0 0 from s223 -- the strips never move and 到油井 never
-    lights, though the derrick turns s1's (et's bench: 到油井 s216). UNEXPLAINED: the leading guess is that 31
-    trigger areas exceed what an object's area-entry record holds (D115: the area conditions read entry records),
-    so the readings froze at the engineer's first update; to tell, a run with the same strips on 6-8 areas."""
+    lights, though the derrick turns s1's (et's bench: 到油井 s216). EXPLAINED (round 236, eb / es): the readings
+    froze -- the engineer stands in 7 of these nested half-planes at once from the start; the same 31 areas as strips
+    that do not overlap (es) read live. Kept as the record of that pitfall; read positions with es."""
     t = et(m)
     t.counters = [(c, lab) for c, lab in t.counters if lab in ('油井', '到油井')]
     t.expect = []                                                   # readings only (et's expectation reads 工程队)
@@ -986,6 +986,75 @@ def ep(m):
             t.scripts.append(Script(f'Test - {c} {i}', [
                 ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', s1, 3, 1, 'AlliedEngineer', area)],
                 [('INCREMENT_COUNTER', 1, c)], once=False))
+    t.bench = [('bench_watch', dict(seconds=m.facts['wake at'] + 240.0, every=1, sheet=False,
+                                    lines=len(t.counters)))]
+    return t
+
+
+EB_X = [(3900.0, 5000.0), (3500.0, 3900.0), (2350.0, 3500.0), (0.0, 2350.0)]   # eb: bands 1-4, east to west
+EB_Y = [(3300.0, 5000.0), (2950.0, 3300.0), (0.0, 2950.0)]                     # eb: bands 1-3, south to north
+
+
+def eb(m):
+    """ep on 8 trigger areas (line A round 236): did ep's readings freeze because of its 31 areas, or did the engineer
+    not move? The derrick's square + 4 X bands + 3 Y bands, none overlapping on its axis: an engineer stands in at
+    most 3 at once (ep's half-planes put it in 7 at the start). 工程X = the band (1 x >= 3900, 2 3500-3900, 3
+    2350-3500 east of the river, 4 west of x 2350) of s1's westmost engineer, 工程Y = the band (1 y >= 3300, 2
+    2950-3300, 3 north of y 2950) of its northmost, 0 if none; 到油井 / 油井 as et.
+    PREDICTED (simulator, model 11ac6fc): X 1 s146, 2 s151, 3 s162, 4 s194; Y 1 -> 2 s160 -> 3 s178 -> 2 s218;
+    到油井 s231, 油井 s237.
+    MEASURED (bench 2026-11-14, work/logs/a236_eb_bench.keep.log, NOEXPECT): X 2 s145, 3 s149, 4 s180; Y 2 s145,
+    3 s163-170, 2, 3 s183-205, 2; 到油井 s217-222, 油井 s223 -- the readings move: ep froze on its areas, the
+    engineer walked. Same way round the north as the simulator, ~12 s ahead from s145 on (es has it finer)."""
+    t = et(m)
+    t.counters = [(c, lab) for c, lab in t.counters if lab in ('油井', '到油井')]
+    del t.areas['Test Ore']
+    t.scripts = [s for s in t.scripts if 'CNV_AK_EAtO' not in s.name and 'CNV_AK_ETeam' not in s.name]
+    t.expect = []
+    s1 = m.player('s1')
+    for c, lab, bands, axis in (('CNV_AK_EbX', '工程X', EB_X, 0), ('CNV_AK_EbY', '工程Y', EB_Y, 1)):
+        t.counters.append((c, lab))
+        t.scripts.append(Script(f'Test - {c} zero', [], [('SET_COUNTER', c, 0)], once=False))
+        for i, (lo, hi) in enumerate(bands, 1):       # in order: the last band that holds one wins
+            area = f'Test Eb {c} {i}'
+            t.areas[area] = ([(lo, 0.0), (hi, 0.0), (hi, 5000.0), (lo, 5000.0)] if axis == 0 else
+                             [(0.0, lo), (5000.0, lo), (5000.0, hi), (0.0, hi)])
+            t.scripts.append(Script(f'Test - {c} {i}', [
+                ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', s1, 3, 1, 'AlliedEngineer', area)],
+                [('SET_COUNTER', c, i)], once=False))
+    t.bench = [('bench_watch', dict(seconds=m.facts['wake at'] + 240.0, every=1, sheet=False,
+                                    lines=len(t.counters)))]
+    return t
+
+
+def es(m):
+    """ep's 31 trigger areas, but as strips that do not overlap (line A round 236): is it how many areas the map has,
+    or how many one engineer stands in at once (ep: 7 at the start, eb: 3), that froze ep? The derrick's and the ore
+    node's squares as et, 19 X strips (工程X = n: s1's westmost engineer in x 4400 - 200 n .. +200, 0 east of 4400)
+    and 10 Y strips (工程Y = n: its northmost in y 3800 - 150 n .. +150, 0 south of 3800) -- the same numbers as
+    ep's counts of lines, at most 3 areas at once.
+    MEASURED (bench 2026-11-14, work/logs/a236_es_bench.log, NOEXPECT): live, so it is the areas one unit stands in
+    at once, not the map's count (docs/engine/know-how.md). X 4 s144, 5 s145, 6 s150, 7 s155, 8 s162, 9 s167, 10 s172,
+    11 s177, 12 s182, 13 s188, 14 s194, 15 s199, 16 s204, 17 s209, 18 s215, 19 s220 (~37/s west); Y 5 s145, 6 s159,
+    7 s185-201, 6 s202, 5 s211; 到油井 s216-221, 油井 s222. So at s145 the engineer is at x ~3600, y < 3200 -- by
+    aiskin0's barracks (rpb: the opening's first structure, s19, strips x11 y17 = 3600-3650, 3200-3250, south-west
+    of the yard 3850,3400); the simulator's yard rings put the barracks at (4067, 3544), ~590 further along the
+    same northern way: its 14 s late is the start, not the route or the speed (line A round 236)."""
+    t = et(m)
+    t.counters = [(c, lab) for c, lab in t.counters if lab in ('油井', '到油井')]
+    t.expect = []
+    s1 = m.player('s1')
+    for c, lab, lines, axis, step in (('CNV_AK_EsX', '工程X', EP_X, 0, 200.0), ('CNV_AK_EsY', '工程Y', EP_Y, 1, 150.0)):
+        t.counters.append((c, lab))
+        t.scripts.append(Script(f'Test - {c} zero', [], [('SET_COUNTER', c, 0)], once=False))
+        for i, v in enumerate(lines, 1):
+            lo, hi, area = v - step, v, f'Test Es {c} {i}'
+            t.areas[area] = ([(lo, 0.0), (hi, 0.0), (hi, 5000.0), (lo, 5000.0)] if axis == 0 else
+                             [(0.0, lo), (5000.0, lo), (5000.0, hi), (0.0, hi)])
+            t.scripts.append(Script(f'Test - {c} {i}', [
+                ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', s1, 3, 1, 'AlliedEngineer', area)],
+                [('SET_COUNTER', c, i)], once=False))
+    assert len(t.areas) == 31
     t.bench = [('bench_watch', dict(seconds=m.facts['wake at'] + 240.0, every=1, sheet=False,
                                     lines=len(t.counters)))]
     return t
@@ -1335,7 +1404,7 @@ def rpb(m):
 
 
 CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j': j, 'k': k, 'l': l, 'm': m,
-                      'n': n, 'o': o, 'p': p, 'q': q, 'r': r, 'u': u, 'x': x, 'et': et, 'ep': ep, 'ib': ib, 'rp': rp, 'rpx': rpx},
+                      'n': n, 'o': o, 'p': p, 'q': q, 'r': r, 'u': u, 'x': x, 'et': et, 'ep': ep, 'eb': eb, 'es': es, 'ib': ib, 'rp': rp, 'rpx': rpx},
           'aiskinb': {'ib': ib},
           'aiskinc': {'ib': ib},
           'aiskind': {'ib': ib},

@@ -44,9 +44,11 @@ def test_the_engineer_team_is_read_by_its_engine_name(rows):
 @pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
     'Pinned model: ClosestTechBuildingHeuristic takes the nearest neutral STRUCTURE (an OreNode, IMMUNE_TO_CAPTURE), '
     'nothing is captured. Model branch a204-tech-filter (registered tech set) + Brain.act + the land fallback on the '
-    'terrain (line A round 205): at the derrick s230, the derrick s1\'s s236, the team gone s236 -- 14 s late. The '
-    'simulator walks by land round the north (~3970 long); 72 s at the engineer\'s ~47/s is the straight line '
-    '(3386): the game swims, the \'both\' grid has no way off this shore (INFERRED, line A handoff).'))
+    'terrain (line A round 205): at the derrick s230, the derrick s1\'s s236, the team gone s236 -- 14 s late. '
+    'Benched (line A round 236, aiskirm eb / es): the game walks the same way round the north at ~37/s, but its '
+    'engineer starts at x ~3600, y < 3200 (s145), by the barracks aiskin0 rpb finds SW of the yard (3600-3650, '
+    '3200-3250); the simulator\'s yard rings (simai.spot, INFERRED) put the barracks at (4067, 3544), ~590 further '
+    'along: the late is the barracks\' place, not the walk.'))
 def test_the_engineer_captures_the_derrick(rows):
     """Bench: at the derrick s216, the derrick s1's s222 and the team gone that second; never at the ore node."""
     assert all(r['到矿点'] == 0 for _, r in rows)
