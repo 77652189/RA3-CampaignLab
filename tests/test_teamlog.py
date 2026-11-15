@@ -261,3 +261,25 @@ def test_target_picks_state_id_and_income_evals(tmp_path):
         (8, 2, 0.0, 0.0, 4.0, True, 1.0, 'zero')
     assert (b['own'], b['enemy'], b['result'], b['why']) == (9, None, 0.0, 'early')
     assert [r['brain'] for r in teamlog.income_evals(str(p), brain='0841C038')] == ['0841C038']
+
+
+# D160 bench CampAISkXOL_mcp_1115_145806 (aiskxo, a harvesting skirmish AI): non-zero inputs, own player 4, the
+# enemy (player 2) not harvesting; the input climbs in deposit steps, then falls while the third tracker float holds.
+INC160 = """inc: frame=1954 brain=0875C138 own=4@06F18D70 eny=2@06F166B0 oin=2250.0000 eni=0.0000 oq=0.0000:2250.0000:2250.0000 eq=0.0000:0.0000:0.0000 value=3.000 above=1 res=1.0 why=ratio=9999.0000
+inc: frame=1999 brain=0875C138 own=4@06F18D70 eny=2@06F166B0 oin=2362.0000 eni=0.0000 oq=0.0000:2362.0000:2362.0000 eq=0.0000:0.0000:0.0000 value=3.000 above=1 res=1.0 why=ratio=9999.0000
+inc: frame=2258 brain=08335040 own=8@06F1DAF0 eny=2@06F166B0 oin=0.0000 eni=0.0000 oq=0.0000:0.0000:0.0000 eq=0.0000:0.0000:0.0000 value=4.000 above=1 res=1.0 why=zero
+inc: frame=2359 brain=0875C138 own=4@06F18D70 eny=2@06F166B0 oin=3074.0000 eni=0.0000 oq=0.0000:3074.0000:3250.0000 eq=0.0000:0.0000:0.0000 value=3.000 above=1 res=1.0 why=ratio=9999.0000
+"""
+
+
+def test_income_evals_nonzero_bench_rows(tmp_path):
+    """D160: real non-zero rows -- the input is the tracker's middle float, the third kept apart; AIs interleave per brain."""
+    p = tmp_path / 'ra3ext.log'
+    p.write_text(INC160)
+    rows = teamlog.income_evals(str(p), brain='0875C138')
+    assert [(r['frame'], r['own_in'], r['own_q']) for r in rows] == [
+        (1954, 2250.0, (0.0, 2250.0, 2250.0)), (1999, 2362.0, (0.0, 2362.0, 2362.0)),
+        (2359, 3074.0, (0.0, 3074.0, 3250.0))]
+    assert all((r['own'], r['enemy'], r['enemy_in'], r['value'], r['result'], r['why']) ==
+               (4, 2, 0.0, 3.0, 1.0, 'ratio=9999.0000') for r in rows)
+    assert [r['frame'] for r in teamlog.income_evals(str(p))] == [1954, 1999, 2258, 2359]

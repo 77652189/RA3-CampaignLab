@@ -597,7 +597,11 @@ def income_evals(run, brain=None):
     side's raw input, the float the heuristic reads before its x 1/90 on both sides), value / above (the asset's
     Value and Above), result (the heuristic's 0.0 / 1.0), why ('early' = no priority module / enemy, 'zero' = both
     inputs 0 -> 1, else 'ratio=R' = own / enemy, 9999 when the enemy's input is not above 0).
-    Lines are change-only (same content again only after a 450-frame beat).
+    own_q / enemy_q: the side's tracker, three neighbouring floats (own_in = own_q[1]).
+    Lines are change-only per AI (same content again only after a 450-frame beat).
+    D160 bench (aiskxo: a harvesting skirmish AI, money 50000): own_in moved in ore-deposit steps (+112 / +120 / +114
+    / +16 / +18) and also fell (-120); own_q[2] never fell; own_q[0] stayed 0; neither is the balance. What the input
+    is (a windowed income, INFERRED) is still open: work/re/d160_income.md.
     """
     out = []
     with open(_log(run), encoding='utf-8', errors='replace') as f:
@@ -610,5 +614,7 @@ def income_evals(run, brain=None):
             own, eny = (int(d[k].split('@')[0]) for k in ('own', 'eny'))
             out.append(dict(frame=int(d['frame']), brain=d['brain'], own=None if own < 0 else own,
                             enemy=None if eny < 0 else eny, own_in=float(d['oin']), enemy_in=float(d['eni']),
-                            value=float(d['value']), above=d['above'] == '1', result=float(d['res']), why=d['why']))
+                            value=float(d['value']), above=d['above'] == '1', result=float(d['res']), why=d['why'],
+                            own_q=tuple(float(x) for x in d['oq'].split(':')),
+                            enemy_q=tuple(float(x) for x in d['eq'].split(':'))))
     return out
