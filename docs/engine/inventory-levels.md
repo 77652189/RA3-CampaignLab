@@ -2,11 +2,11 @@
 
 由 `experimental/cnv/inventory_ai.py levels` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）里由遭遇战 AI 带的敌人：它的人格（`enemy_ai.py` 生成）沿继承、战略状态、战术、组队、目标启发、微操、造兵 / 预算状态、开局一路引用到的原版 AI 数据项，加上全局常量 AIData 和本阵营的 ArmyDefinition；再加关卡脚本里点了 AI 玩家名字的脚本动作 / 条件。状态取自 [inventory.md](inventory.md)。"AI 做完"的第一条：下表全部已对拍。
 
-**已对拍 203 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
+**已对拍 204 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
 
 | 部分 | 已对拍 | 推断 | 未做 |
 |---|---|---|---|
-| AI | 191 | 82 | 84 |
+| AI | 192 | 81 | 84 |
 | 脚本动作 | 11 | 0 | 0 |
 | 脚本条件 | 1 | 0 | 0 |
 
@@ -146,7 +146,6 @@
 | 推断 | AI | `目标/AITargetingHeuristic.HeuristicType=EnemyStructureCloseToShore` | 5 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `目标/AITargetingHeuristic.HeuristicType=TechBuilding` | 5 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `目标/AITargetingHeuristic.MaxDistanceToShore` | 5 | a4 a5 a7 | C按名台子engine_aishore：同一岸边电厂仅上限2000改1，2000组s14目标区4/s25全离家，1组s1-65在家4/目标区0；普通EnemyStructure阳性对照同2000组。tests/test_shore_distance.py断言原读数并按名回放；1组strict xfail，世界桥接尚未提供实际岸距。复杂海岸/取点算法仍gap，未晋升；见work/re/c_shore_report.md |
-| 推断 | AI | `目标/AITargetingHeuristic.SortType=ClosestToEnemy` | 5 | a4 a5 a7 | C engine_aiclosestenemy aiclosest:a：四原名陆地启发，s16-80台上目标区域人数4/4/0/0，模型4/4/4/4；tests/test_closest_enemy_c.py按名回放，后两路strict xfail。未观测同帧战略候选/资格/槽位选中目标，战术攻击目标不能替代；水域/矿厂过滤未测，整项保持推断。见work/re/c_closest_report.md |
 | 推断 | AI | `经济/BudgetState.Difficulty` | 5 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `启发条件/IncomeAdvantageHeuristic` | 4 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `启发条件/IncomeAdvantageHeuristic.Above` | 4 | a4 a5 a7 | AI 模型代码里读了这个名字 |
@@ -365,6 +364,7 @@
 | 已对拍 | AI | `微操/AIMicroManagerData.DodgeThreatsReactionTimeMin` | 6 | a4 a5 a7 | engine_aidodge aidodgezero/aidodgetwo固定0/0与2/2秒联合端点对照；台内出生f451，首次离开f454/f486，前置失配0；tests/test_ai_dodge.py按名断言快慢顺序；绝对离开帧模型475/505未对齐，单独端点作用/随机范围/精确反应帧仍gap；见 work/re/e117_dodge_clock.md |
 | 已对拍 | AI | `人格/EnemyFilter.Include` | 5 | a4 a5 a7 | tests/test_enemyfilter.py::test_enemyfilter_named_bench_replay（C 的 engine_aienemyfilter aiefharv / aiefeng / aiefself：Include HARVESTER 近处敌矿车触发、ENGINEER 不触发，SAME_PLAYER 无自家矿车不触发；模型 B 第 155 轮接进 EnemyNearby） |
 | 已对拍 | AI | `人格/EnemyFilter.Relationship` | 5 | a4 a5 a7 | tests/test_enemyfilter.py::test_enemyfilter_named_bench_replay（C 的 engine_aienemyfilter aiefharv / aiefeng / aiefself：Include HARVESTER 近处敌矿车触发、ENGINEER 不触发，SAME_PLAYER 无自家矿车不触发；模型 B 第 155 轮接进 EnemyNearby） |
+| 已对拍 | AI | `目标/AITargetingHeuristic.SortType=ClosestToEnemy` | 5 | a4 a5 a7 | C aiclosest:a：D158 target_picks同帧f16四槽按过滤分组选择塔/塔/电厂/电厂，tests/test_closest_enemy_c.py按名回放目标选择并断言实机候选/forbid/最近敌距；仅陆地选择切片已对拍，水域/矿厂过滤仍gap。选后战术/微操转攻导致区域人数4/4/0/0，后两路整局strict xfail保留交E；见work/re/c_closest_recheck_report.md |
 | 已对拍 | AI | `人格/BaseSelection.SortOrder=PREFER_NEWEST` | 2 | a4 a5 a7 | 初始双厂同分候选，OLD选基地0、NEW选基地1；按名选择点/计数回放，仅该排序子集，见work/re/c_bs3_report.md |
 | 已对拍 | AI | `人格/RetreatBaseCriteria.PreferredNotBaseTypes` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aihome.py |
 | 已对拍 | AI | `人格/RetreatBaseCriteria.SortOrder` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aihome.py |

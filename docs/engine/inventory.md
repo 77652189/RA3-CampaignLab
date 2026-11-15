@@ -8,7 +8,7 @@
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 55 / 113 | 189 | 56 | 13 | 94 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
-| AI | **97%** | **97%** | 191 / 357 | 428 | 208 | 93 | 93 | 34 | 100% |
+| AI | **97%** | **97%** | 192 / 357 | 428 | 209 | 92 | 93 | 34 | 100% |
 
 ## 脚本动作
 
@@ -1078,7 +1078,7 @@
 | 推断 | `目标/AITargetingHeuristic.HeuristicType=EnemyStructureCloseToShore` | 5 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | `目标/AITargetingHeuristic.HeuristicType=TechBuilding` | 5 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | `目标/AITargetingHeuristic.MaxDistanceToShore` | 5 | a4 a5 a7 | C按名台子engine_aishore：同一岸边电厂仅上限2000改1，2000组s14目标区4/s25全离家，1组s1-65在家4/目标区0；普通EnemyStructure阳性对照同2000组。tests/test_shore_distance.py断言原读数并按名回放；1组strict xfail，世界桥接尚未提供实际岸距。复杂海岸/取点算法仍gap，未晋升；见work/re/c_shore_report.md |
-| 推断 | `目标/AITargetingHeuristic.SortType=ClosestToEnemy` | 5 | a4 a5 a7 | C engine_aiclosestenemy aiclosest:a：四原名陆地启发，s16-80台上目标区域人数4/4/0/0，模型4/4/4/4；tests/test_closest_enemy_c.py按名回放，后两路strict xfail。未观测同帧战略候选/资格/槽位选中目标，战术攻击目标不能替代；水域/矿厂过滤未测，整项保持推断。见work/re/c_closest_report.md |
+| 已对拍 | `目标/AITargetingHeuristic.SortType=ClosestToEnemy` | 5 | a4 a5 a7 | C aiclosest:a：D158 target_picks同帧f16四槽按过滤分组选择塔/塔/电厂/电厂，tests/test_closest_enemy_c.py按名回放目标选择并断言实机候选/forbid/最近敌距；仅陆地选择切片已对拍，水域/矿厂过滤仍gap。选后战术/微操转攻导致区域人数4/4/0/0，后两路整局strict xfail保留交E；见work/re/c_closest_recheck_report.md |
 | 推断 | `目标/AITargetingHeuristic.UnderAttack` | 5 |  | AI 模型代码里读了这个名字 |
 | 推断 | `经济/BudgetState.Difficulty` | 5 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | `启发条件/IncomeAdvantageHeuristic` | 4 | a4 a5 a7 | AI 模型代码里读了这个名字 |
