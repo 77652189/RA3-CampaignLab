@@ -271,13 +271,16 @@ def test_simple_expansion_built_miner_named_bench_replay(build):
 OPENER_MINER_BENCH = {'aiexpb400': (1, 0, 0), 'aiexpb200': (1, 0, 0), 'aiexpb50': (0, 0, 1)}
 
 
-@pytest.mark.xfail(strict=True, reason='simulator gaps (D round 156): (1) the opener Build AlliedMiner is not built '
-                   '(simai shows one miner throughout, cause not read); (2) simai.units offers no HARVESTER at all, '
-                   'the bench takes a miner the AI built (not a placed one nor a refinery\'s free one); (3) '
-                   'simai.unpack drives to the node and unpacks there, the bench unpacks where the miner first '
-                   'comes within Tactic.Distance of the node and never when it cannot (Distance 50)')
-@pytest.mark.parametrize('build', sorted(OPENER_MINER_BENCH))
+@pytest.mark.parametrize('build', [
+    'aiexpb200', 'aiexpb400',
+    pytest.param('aiexpb50', marks=pytest.mark.xfail(strict=True, reason=(
+        'D round 157: the simulator team walks to the Expansion node itself and gets within 50; the bench team is '
+        'sent to (4215, 3039), 67 from node 44, and stops 98 away -- how that destination is chosen is not read'))),
+])
 def test_simple_expansion_unpacks_within_distance_named_bench_replay(build):
+    # D round 157: the opener's unit Build kept (opening.kept_orders, structures only), a HARVESTER the AI's
+    # production made offered to teams, and the miner armed to unpack where it stands within Tactic.Distance
+    # (TacticsBlock.approach, Sim.order_unpack here=True): simulator 400 unpacks s64, 200 s68 (bench s66 / s71).
     w = simai.run(build, 'a', until=130)
     row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
     assert (row['前哨'], row['前哨近'], row['矿车近']) == OPENER_MINER_BENCH[build], row

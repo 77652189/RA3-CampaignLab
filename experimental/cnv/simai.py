@@ -190,6 +190,9 @@ class Brain:
         self.ai = m['player'].AIPlayer(host.data, personality, DIFFICULTY.get(host.level, 'MEDIUM'),
                                        ctx={'path to target': self.path_to_target}, rng=random.Random(host.seed),
                                        index=side_index(side), side=faction and f'PlayerTemplate:{faction}')
+        # the short-opening rule (opening.kept_orders) covers structure Builds only: a unit Build is kept (D157,
+        # INFERRED -- bench aiexpb*: Time 0s Deposit, Build AlliedMiner, Time 5s made its miner)
+        self.ai.structure_of = self.is_structure
         # ResourceMultiplierCheat: the AI's deposits x the line for its difficulty (Sim.mine_due; data.resource_multiplier)
         mult = getattr(host.data, 'resource_multiplier', lambda *a: 1.0)(personality, self.ai.difficulty)
         if mult != 1.0:
@@ -283,6 +286,7 @@ class Brain:
                                                                                            or None))
         self.tactics.rng = random.Random(h.seed)    # state 2's RandomTargetScoreModifier / TimeToKeepTarget
         self.tactics.reach = self.reach             # PathfindingCheckType's kick (a model that has it; D152)
+        self.tactics.approach = self.approach       # SimpleExpansion unpacks within Distance on the way (D157)
         self.targets = tg.TargetsBlock(h.data_of('targets'), self.active, lambda ai, f: self.view,
                                        lambda ai, st: self.home, home=self.home, base_of=self.base_of,
                                        held=self.tactics.held)
@@ -725,6 +729,8 @@ class Brain:
             self.sim.order_move(b, (t.x, t.y), True)
             return
         if kind == 'attack':                    # the team state's 0 / 6: attack the current enemy (a Thing id)
+            if getattr(b, 'unpack_here', False) and b.building is not None:
+                return      # a SimpleExpansion miner armed to unpack walks on (bench aiexpb*, D157; INFERRED)
             t = self.body_of(arg)
             if t is not None:
                 state = self.__dict__.get('_hunt_goals', {}).get(b.name)
@@ -768,13 +774,10 @@ class Brain:
         is left to take it (INFERRED: what the engine does then not read). Bench aiskirm:et 2026-11-13: the engineer
         at the derrick s216, the derrick s1's and the team gone s222 (line A round 204). The other act kinds keep
         the block's default (done on arrival).
-        SimpleExpansion: each living member with an unpack button (the AlliedMiner, the state's CreateUnits) is sent
-        to unpack on the target's point (Sim.order_unpack, the script's NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT
-        path); done once none is left with that order (unpacked, dead or none in the team). INFERRED: the point (the
-        candidate itself, not within Tactic.Distance of it) and the done rule -- bench aiexpse / aiexpd50 /
-        aiexpd400 (missions/aisimpleexp_bench.py)."""
+        SimpleExpansion is approach's (TacticsBlock.EN_ROUTE); a model without that hook falls back to it here with
+        no Distance (driven to the node and unpacked there, the script's path)."""
         if kind == 'SimpleExpansion':
-            return self.unpack(team, thing)
+            return self.approach(team, kind, thing, None)
         if kind != 'Engineer':
             return True
         t = self.body_of(thing.id) if thing is not None else None
@@ -786,22 +789,33 @@ class Brain:
                 self.sim.order_capture(b, t.name)
         return not live
 
-    def unpack(self, team, thing):
-        """act's SimpleExpansion: order every member that can unpack (once), True when none is still on its way."""
-        if thing is None:
+    def approach(self, team, kind, thing, distance):
+        """TacticsBlock's approach hook (EN_ROUTE kinds, every think from the go order on). SimpleExpansion: each
+        living member with an unpack button (the AlliedMiner, the state's CreateUnits) is armed once to unpack where
+        it stands the first frame it is within `distance` (Tactic.Distance) of the Expansion node, while the team's
+        move order walks it on (Sim.order_unpack here=True, send=False); a walk that never brings it that close
+        never unpacks. Done once an armed member is no longer armed (unpacked or dead) and none is left armed, or
+        when no member can unpack. Bench D round 156 (missions/aisimpleexp_bench.py aiexpb*): 400 -> unpack f995 at
+        397 from the node, 200 -> f1061 at 194, 50 -> the walk ends 98 away, no unpack to f1936. INFERRED: the done
+        rule (the team is empty from f1070 on the bench, the miner replaced itself)."""
+        if kind != 'SimpleExpansion' or thing is None:
             return True
         p = (float(thing.x), float(thing.y))
-        going = False
+        armed = was = False
         for u in team.members:
             b = u.body
+            if getattr(b, 'unpack_ordered', False):
+                was = True
             if not b.alive:
                 continue
-            if b.building is not None:
-                going = True
-            elif not getattr(b, 'unpack_ordered', False) and self.sim.order_unpack(b, p):
-                b.unpack_ordered = True
-                going = b.building is not None or going
-        return not going
+            if b.building is not None and getattr(b, 'unpack_ordered', False):
+                armed = True
+            elif not getattr(b, 'unpack_ordered', False) and \
+                    self.sim.order_unpack(b, p, stand=distance, here=distance is not None,
+                                            send=distance is None):
+                b.unpack_ordered = was = True
+                armed = b.building is not None or armed
+        return not armed if was else True
 
     def fighters(self, bodies):
         """Bodies as tactics.Fighter (fight's rule: rate by Sim.can_hit and the armour, vision = VisionRange)."""
@@ -1149,10 +1163,12 @@ class Brain:
                 continue
             # IGNORES_SELECT_ALL units are offered too: only a CreateUnits slot naming the template takes them
             # (teams.recruit; retail aiskirm_m team log, A round 191)
-            # no HARVESTER, not even for a CreateUnits slot naming it: bench aiexpse (D round 154) -- the
-            # SimpleExpansion team (CreateUnits AlliedMiner) stays empty at f152 / f230 beside a placed miner
-            # harvesting on the default team, and holds its escorts back too
-            if 'HARVESTER' in b.kinds:
+            # a HARVESTER only if the AI's own production made it (a factory's '#made' body): bench aiexpb* (D
+            # round 156) -- the opener's AlliedMiner is taken by the SimpleExpansion team (CreateUnits AlliedMiner)
+            # at f465 with its escorts; a placed miner (aiexpse, D154) and a refinery's free miner (aiexph*, D155)
+            # never are, and the team holds its escorts back meanwhile. INFERRED: the rule's mechanism (what marks
+            # the free and placed ones as not the AI's to take) is not read, only these three fit it
+            if 'HARVESTER' in b.kinds and not b.name.startswith('#made'):
                 continue
             if self.host.garrison.busy(b) or self.host.pullback.busy(b):
                 continue

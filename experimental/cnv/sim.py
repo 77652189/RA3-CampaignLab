@@ -6000,11 +6000,13 @@ class Sim:
         return (self.frame_now() < self.__dict__.get('emp_until', {}).get(id(b), 0)
                 or id(b) in self.__dict__.get('script_disabled', {}))
 
-    def order_unpack(self, b, p, button=None, where=None):
+    def order_unpack(self, b, p, button=None, where=None, stand=None, here=False, send=True):
         """b drives to point p and turns into its ReplaceSelfSpecialAbility's replacement there (the script's
-        NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT with an unpack button; the AI's SimpleExpansion, simai act).
+        NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT with an unpack button).
         button None = the first unpack button of b's CommandSet (AlliedMiner: Command_UnPackAlliedMiner). False when
-        b is dead or has no such button."""
+        b is dead or has no such button. The AI's SimpleExpansion (simai approach) arms it instead: stand = the
+        Tactic's Distance (in place of the replacement's stand), here = the structure goes where b stands when it
+        first comes within stand of p (at_site), send=False = b is not driven to p (its team's orders walk it)."""
         if not b.alive:
             return False
         if button is None:
@@ -6016,11 +6018,15 @@ class Sim:
             simunits.replace_self(b.template, button, self.own)
         if not got:
             return False
-        stand, into = got
+        own_stand, into = got
         self.used.add('unpack')
-        b.building, b.replace, b.goal, b.mode = (into, p, stand), True, None, 'move'
-        self.note('技能', f'{self.label(b)} 去 {where or "(%.0f, %.0f)" % tuple(p)} 展开成 {into}')
-        if not self.at_site(b, 0.0):
+        b.building, b.replace = (into, p, own_stand if stand is None else stand), True
+        b.unpack_here = here
+        if send:
+            b.goal, b.mode = None, 'move'
+        self.note('技能', f'{self.label(b)} 去 {where or "(%.0f, %.0f)" % tuple(p)} 展开成 {into}'
+                  + (f'（{stand:g} 内原地）' if here else ''))
+        if not self.at_site(b, 0.0) and send:
             self.send(b, p)
         return True
 
@@ -6031,6 +6037,8 @@ class Sim:
         structure, (x, y), stand = b.building
         if math.hypot(b.x - x, b.y - y) > stand + 1e-6:
             return False
+        if getattr(b, 'unpack_here', False):    # order_unpack here=True: the structure where b stands (D157)
+            x, y = b.x, b.y
         got = self.frame_now() + (math.ceil(round(walked / b.speed * simunits.LIFE_FPS, 6)) if walked else 0)
         self.due.append((got + (REPLACE_FRAMES if b.replace else 1), structure, b.owner, b.team, x, y, b.name))
         b.building, b.path, b.dest = None, [], None
