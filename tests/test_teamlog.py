@@ -283,3 +283,23 @@ def test_income_evals_nonzero_bench_rows(tmp_path):
     assert all((r['own'], r['enemy'], r['enemy_in'], r['value'], r['result'], r['why']) ==
                (4, 2, 0.0, 3.0, 1.0, 'ratio=9999.0000') for r in rows)
     assert [r['frame'] for r in teamlog.income_evals(str(p))] == [1954, 1999, 2258, 2359]
+
+
+UA161 = """\
+ua: frame=5 ev=set obj=3181 own=4 last=5 prev=-1 src=0 hp=1000.0/1000.0 win=75
+ua: frame=16 ev=gate obj=3163 secs=5 win=75 last=-1 src=0 alive=0 path=a res=0 qvt=c418f8 c=0A7423F0 cvt=c3a8b8
+ua: frame=16 ev=gate obj=3181 secs=5 win=75 last=5 src=0 alive=0 path=a res=1 qvt=c418f8 c=0A85C178 cvt=c3a8b8
+ua: frame=81 ev=clr obj=3181 at=81 last=5 src=0 alive=0 hits=1
+"""
+
+
+def test_under_attack_bench_rows(tmp_path):
+    """D161 bench rows (aiunderatk:a): one hit at f5 sets, clears at last + 75 + 1; the game's gate agrees at f16."""
+    p = tmp_path / 'ra3ext.log'
+    p.write_text(UA161)
+    ua = teamlog.under_attack(str(p))
+    [e] = ua['episodes']
+    assert (e['obj'], e['own'], e['set'], e['prev'], e['last'], e['clear'], e['hits'], e['src_alive']) == \
+        (3181, 4, 5, -1, 5, 81, 1, False)
+    assert [(g['obj'], g['result'], g['expect']) for g in ua['gates']] == [(3163, False, False), (3181, True, True)]
+    assert teamlog.under_attack(str(p), obj=3163)['episodes'] == []

@@ -618,3 +618,49 @@ def income_evals(run, brain=None):
                             own_q=tuple(float(x) for x in d['oq'].split(':')),
                             enemy_q=tuple(float(x) for x in d['eq'].split(':'))))
     return out
+
+
+def under_attack(run, obj=None):
+    """D161 "under attack" per object (ra3ext `ua:` lines) -- AITargetingHeuristic UnderAttack's facts.
+
+    The game's rule (read, work/re/d161_underattack.md): an object is under attack while frame <= last hit frame +
+    5 s x 15 (x game speed) = `win`; the hit's source does NOT have to exist any more. Only friendly heuristics
+    (FriendlyStructure / FriendlyUnit) apply UnderAttack.
+    Returns {'episodes': [...], 'gates': [...]}.
+    episode: obj, own (player index), set (first hit frame), prev (the hit before it, -1 = never), last (last hit
+      frame), clear (first frame no longer under attack = last + win + 1; None if the log ends inside the window),
+      src (last hit's source object id), src_alive (it still resolved when the clear was written), hits, win, srcs
+      (every source in order).
+    gate: one row per change of the game's own UnderAttack test on a candidate (change-only per object, beat 450):
+      frame, obj, secs, win, last, src, alive, path ('b' = body record; 'a' = the container path, not read),
+      result (the game's answer) and expect (last != -1 and frame <= last + win).
+    """
+    episodes, gates, open_ = [], [], {}
+    with open(_log(run), encoding='utf-8', errors='replace') as f:
+        for line in f:
+            if not line.startswith('ua: '):
+                continue
+            d = dict(re.findall(r'(\w+)=(\S+)', line))
+            o = int(d['obj'])
+            if obj is not None and o != obj:
+                continue
+            ev, frame = d['ev'], int(d['frame'])
+            if ev == 'set':
+                e = dict(obj=o, own=int(d['own']), set=int(d['last']), prev=int(d['prev']), last=int(d['last']),
+                         clear=None, src=int(d['src']), src_alive=None, hits=None, win=int(d['win']),
+                         srcs=[int(d['src'])])
+                episodes.append(e)
+                open_[o] = e
+            elif ev == 'src' and o in open_:
+                open_[o]['last'], open_[o]['src'] = int(d['last']), int(d['src'])
+                open_[o]['srcs'].append(int(d['src']))
+            elif ev == 'clr' and o in open_:
+                e = open_.pop(o)
+                e.update(last=int(d['last']), clear=int(d['at']), src=int(d['src']), src_alive=d['alive'] == '1',
+                         hits=int(d['hits']))
+            elif ev == 'gate':
+                last, win = int(d['last']), int(d['win'])
+                gates.append(dict(frame=frame, obj=o, secs=int(d['secs']), win=win, last=last, src=int(d['src']),
+                                  alive=d['alive'] == '1', path=d['path'], result=d['res'] == '1',
+                                  expect=last != -1 and frame <= last + win))
+    return dict(episodes=episodes, gates=gates)
