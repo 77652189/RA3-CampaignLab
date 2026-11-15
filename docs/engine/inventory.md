@@ -5,7 +5,7 @@
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
 | 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 182 | 19 | 135 | 115 | 98% |
-| 脚本条件 | **98%** | **100%** | 12 / 12 | 89 | 56 | 5 | 25 | 3 | 99% |
+| 脚本条件 | **99%** | **100%** | 12 / 12 | 89 | 59 | 2 | 25 | 3 | 99% |
 | 物体模块 | **98%** | **98%** | 54 / 113 | 189 | 55 | 13 | 95 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
 | AI | **97%** | **97%** | 189 / 357 | 428 | 206 | 95 | 93 | 34 | 100% |
@@ -223,7 +223,7 @@
 | 未做 | `UNIT_CHANGE_OBJECT_STATUS:NO_ATTACK_FROM_AI` | 22 |  | 状态位 NO_ATTACK_FROM_AI 只记下来 |
 | 不涉及 | `MOVE_NAMED_UNIT_TO_UNIT` | 21 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `NAMED_USE_LOGIC_COMMAND_ABILITY_ON_NAMED_POSITION` | 21 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
-| 已对拍 | `SELECT_OBJECT` | 21 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_share.py |
+| 已对拍 | `SELECT_OBJECT` | 21 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_eyes.py |
 | 已对拍 | `TEAM_FOLLOW_WAYPOINTS_EXACT` | 21 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_waypath.py |
 | 不涉及 | `MOVE_CAMERA_TO_NAMED` | 20 | a5 a7 | 纯表现（名字规则）；Sim.act / Sim.cond 有分支 |
 | 未做 | `REDALERT_DISABLE_THREAT_LEVEL_BONUS` | 20 |  | Sim.act / Sim.cond 不认识 |
@@ -489,21 +489,21 @@
 | 已对拍 | `COUNTER_SECONDS` | 141 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_scripts6.py |
 | 已对拍 | `UNIT_HEALTH` | 134 | a2 a4 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_air.py |
 | 已对拍 | `MISSION_HOT_SPOT_ACTIVE` | 110 |  | tests/test_simbench.py::test_conds_sight_as_the_bench |
-| 已对拍 | `NAMED_DISCOVERED` | 104 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_infveh.py |
+| 已对拍 | `NAMED_DISCOVERED` | 104 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_eyes.py |
 | 已对拍 | `TEAM_ATTACKED_BY_PLAYER` | 93 |  | tests/test_simbench.py::test_conds_fight_as_the_bench |
 | 已对拍 | `UNIT_HAS_MODELCONDITION` | 88 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_infpara.py |
 | 已对拍 | `TEAM_INSIDE_AREA_PARTIALLY` | 80 |  | tests/test_simbench.py::test_conds_team_as_the_bench |
 | 已对拍 | `ENEMY_SIGHTED_BY_TEAM` | 69 |  | tests/test_simbench.py::test_conds_sight_as_the_bench |
 | 不涉及 | `IS_OBJECT_OF_TYPE` | 69 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
-| 推断 | `CAMERA_ENTERED_AREA` | 60 |  | Sim.act / Sim.cond 有分支 |
-| 推断 | `ENEMY_SIGHTED` | 59 |  | 部分：engine_levelvision a普通/英雄幻影在近点移除后对工程师240/310距离四路0/101/0/100，test_simbench_c重放；仅敌对关系范围查询已量，其他关系、隐形与精确边界未对拍，不登记整项 |
+| 已对拍 | `CAMERA_ENTERED_AREA` | 60 |  | tests/test_simbench.py::test_eyes_all_as_the_bench |
+| 已对拍 | `ENEMY_SIGHTED` | 59 |  | tests/test_simbench.py::test_eyes_all_as_the_bench |
 | 已对拍 | `COUNTER_COUNTER` | 55 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_scripts6.py |
 | 已对拍 | `NAMED_SELECTED` | 50 |  | tests/test_simbench.py::test_share_all_as_the_bench |
 | 已对拍 | `TEAM_DISCOVERED` | 47 |  | tests/test_simbench.py::test_conds_sight_as_the_bench |
 | 已对拍 | `SKIRMISH_PLAYER_HAS_BEEN_ATTACKED_BY_PLAYER` | 44 |  | tests/test_simbench.py::test_conds_fight_as_the_bench |
 | 已对拍 | `TEAM_HAS_UNITS` | 39 |  | tests/test_simbench.py::test_conds_team_as_the_bench |
 | 已对拍 | `NAMED_OUTSIDE_AREA` | 38 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiaesthetics.py |
-| 推断 | `TYPE_SELECTED` | 38 |  | A222 engine_share:all：脚本 SELECT_OBJECT 选中护卫者 / 矿场 / 敌方锤子坦克后都读不到真（模拟器恒假）；原版是等玩家自己点选（a06），玩家点选没上台 |
+| 已对拍 | `TYPE_SELECTED` | 38 |  | tests/test_simbench.py::test_eyes_all_as_the_bench |
 | 已对拍 | `TEAM_DESTROYED` | 35 |  | tests/test_simbench.py::test_conds_team_as_the_bench |
 | 已对拍 | `TEAM_INSIDE_AREA_ENTIRELY` | 33 |  | tests/test_simbench.py::test_conds_team_as_the_bench |
 | 未做 | `DISTANCE_BETWEEN_TEAM` | 32 |  | Sim.act / Sim.cond 不认识 |

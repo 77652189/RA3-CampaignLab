@@ -169,7 +169,7 @@ def test_levelup_closure_registers_measured_effects_without_hiding_shared_templa
     for gap in ('gap：', '自动索敌', '精确射程/揭雾/视野边界', '其他武器', '经验成长', '上限', 'Permanent=true'):
         assert gap in row['why']
     sight = next(i for i in items() if (i['part'], i['name']) == (inventory.CONDITION, 'ENEMY_SIGHTED'))
-    assert sight['state'] == inventory.GUESSED
+    assert sight['state'] == inventory.BENCHED          # round 237: checks/engine_eyes.py all, the relations and owner
 
 
 def test_bridge_closure_registers_replays_without_hiding_unmeasured_gaps():

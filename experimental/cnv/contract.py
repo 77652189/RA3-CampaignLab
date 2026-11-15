@@ -722,7 +722,10 @@ def contract(mission):
             types = cat[name]['args']
             for t, v in zip(types, args):
                 if t in known and v not in known[t][1] and v not in THIS_NAMES \
-                        and not (t == COMMAND_ARG and RETAIL_BUILD.match(str(v))):
+                        and not (t == COMMAND_ARG and RETAIL_BUILD.match(str(v))) \
+                        and not (known[t][0] == 'template' and str(v).lower() in {str(k).lower() for k in known[t][1]}):
+                    # a template in another case passes: retail a06 / j01 write TYPE_SELECTED's in lower case
+                    # (checks/engine_eyes.py all asks whether the game takes it)
                     out.append(f'{s.name}: {name} {known[t][0]} {v!r} not published')
                 if t == SOUND_ARG and str(v).startswith('CNV_') and v not in (m.voice.events if m.voice else ()):
                     out.append(f'{s.name}: {name} voice line {v!r} not in the voice pack')

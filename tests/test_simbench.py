@@ -1780,6 +1780,21 @@ def test_share_all_as_the_bench():
         assert at[k][3] == sel, (k, at[k])
 
 
+def test_eyes_all_as_the_bench():
+    """all, bench 11-14 (round 237, CampSeeAll_mcp_1114_234139 / _234250; the bench's seconds ~1 ahead): 看见 45 to s8,
+    47 after (ENEMY_SIGHTED's player = the sighted object's owner; Friend takes the viewer itself); 镜头 129 from s1 to
+    the end (CAMERA_ENTERED_AREA latches A and M, M crossed on the way there; the strips never), 帧 growing ~15 a
+    second (a state); 选中 1 from s3 (NAMED_SELECTED), TYPE_SELECTED never -- nor after the player's own click or box
+    on pick / other (by hand: 选中 8 / 1, 帧 never +10000; the player's camera to N2 latched 133, not modelled)."""
+    at = dict(_sim_run('engine_eyes', 'all', 20.0).series)
+    for k in range(1, 9):
+        assert at[k][0] == 45 and at[k][1] == 129, (k, at[k])
+    for k in range(11, 21):
+        assert at[k][0] == 47 and at[k][1] == 129, (k, at[k])
+    assert at[20][2] > 15 * 15 and at[20][2] < 10000, at[20]
+    assert all(at[k][3] == 1 for k in range(4, 21)), at
+
+
 def test_video_a_radar_clip_is_done_after_its_length_full_screen_never():
     """movie play (bench, docs/story/handoff.md 1g): CNVTEST01 (95 frames at 23.976) in the radar window done 63 game
     frames after its start; the full-screen clip never reads done."""

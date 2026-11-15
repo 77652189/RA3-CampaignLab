@@ -211,6 +211,11 @@ BENCHED_TESTS = {
     # NAMED_SELECTED after SELECT_OBJECT (TYPE_SELECTED in NOTES: never true there)
     (ACTION, 'PLAYER_TOGGLE_RESOURCE_SHARING'): 'tests/test_simbench.py::test_share_all_as_the_bench',
     (CONDITION, 'NAMED_SELECTED'): 'tests/test_simbench.py::test_share_all_as_the_bench',
+    # round 237 (checks/engine_eyes.py all): ENEMY_SIGHTED's player = the sighted object's owner, Friend takes the
+    # viewer itself; CAMERA_ENTERED_AREA latches (the way there counts); TYPE_SELECTED never, the player's own click
+    # and box selection too
+    **{(CONDITION, n): 'tests/test_simbench.py::test_eyes_all_as_the_bench' for n in (
+        'ENEMY_SIGHTED', 'CAMERA_ENTERED_AREA', 'TYPE_SELECTED')},
     # round 217: PLAYER_TRANSFER_OWNERSHIP_PLAYER (checks/engine_acts7.py own: the giver's units on no team and its
     # money go to the receiver; ones on a team stay)
     (ACTION, 'PLAYER_TRANSFER_OWNERSHIP_PLAYER'): 'tests/test_simbench.py::test_acts_x_own_as_the_bench',
@@ -336,7 +341,6 @@ _NOT_IN_SIM = '已核（11-08）：模拟器没有这个效果'
 NOTES = {
     (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_CAMPAlliedBomberDrop2'): (GUESSED, 'A224-A226 engine_acts_mix:all、engine_acts_drop / _ally:own、engine_acts_wet:all：六局都没出轰炸机；A226 PLAYER_TRIGGERED_SPECIAL_POWER 看到按钮和按名字放都算放了（人类、电脑的 store 都是），所以卡在 OCL 生成那步（CREATE_AT_EDGE_NEAR_SOURCE），原因未明；模拟器只记施放、不出东西'),
     (ACTION, 'PLAYER_SET_MONEY_CAP'): (GUESSED, 'A213 engine_acts_tel:tel：脚本的钱不受上限管（上限 3000 时给 5000 → 6000；上限 500 仍 6000；设 10000 照设）；它管的（推断是采矿收入）没上台、模拟器只记不用'),
-    (CONDITION, 'TYPE_SELECTED'): (GUESSED, 'A222 engine_share:all：脚本 SELECT_OBJECT 选中护卫者 / 矿场 / 敌方锤子坦克后都读不到真（模拟器恒假）；原版是等玩家自己点选（a06），玩家点选没上台'),
     (MODULE, 'Behaviors/AutoDepositUpdate'): (GUESSED, 'E146 engine_objectbatch:a/b：原版SwissBank克隆有/无模块的钱包，on逐次+5至60、12秒删除后稳定，off全0；具名测试按实际60/0回放。只量已有归属产钱，不晋升整项；占领奖金/驻军/上限/修理仍gap；见work/re/e146_objectbatch.md'),
     (MODULE, 'Behaviors/HealCrateCollide'): (TODO, 'E146 engine_objectbatch:a/b有/无模块均未治疗，步兵始终50/50；b中立箱且到位成立，仍无效，两轮后暂停；不把负结果登记成效果已对拍。SecretFile原XML含当前schema不接受的属性，未冒充普通HealCrate等价；碰撞派发前置待查；见work/re/e146_objectbatch.md'),
     (MODULE, 'Behaviors/LoseHealthUpdate'): (TODO, 'E146 engine_objectbatch:a/b：原船完整模块移植480HP坦克，HealthTrigger=101%/0%均无耗血，两路100/100；b已确认toggle/铁幕状态成立。两轮后暂停，移植激活资格待查，未推猜测实现、不晋升整项；见work/re/e146_objectbatch.md'),
@@ -348,7 +352,6 @@ NOTES = {
     (NUGGET, 'ReportWeaponFiredStatNugget'): (NA, '纯统计（C线工单允许排除）：只记录玩家武器开火次数；原版两份空配置附于SovietVacuumBomb / ParticleCannonWeapon，伤害与创建物体由独立WeaponOCLNugget负责。保留用量2，不登记已对拍；未上台，不模拟战后统计；证据见work/re/c_reportstat_report.md'),
     (MODULE, 'Behaviors/PassiveAreaEffectBehavior'): (GUESSED, 'E70范围/兵种/状态开关和E74分批治疗具名回放保留。E145单图engine_modulebatch:a：MaxBeneficiaries=1/0两组，早期受益人数1/3、后期3/3，敌方均50%不回血；已补0/1上限，tests/test_simmodulebatch.py按名断言台上读数。具体受益身份次序、共用任务帧相位和SDK换算跳幅INFERRED；时钟来源/动态创建与重开/调查周期/叠加/友方跨玩家/自身受益/附着无人机/更大上限仍gap，不登记整项已对拍；见work/re/e145_modulebatch.md、e_passive_e74.md'),
     (MODULE, 'Behaviors/TrackDamage'): (TODO, 'E69静态核实：6个SDK配置均InstantWeaponsOnly=true，TimeToTrack为0/1/2s；现有expected_damage只接来弹，历史伤害仍gap。与C线瞬发历史接口工单重叠，E暂停独立探针；尚无本模块具名实测回放，不登记已对拍、不改分母；见work/re/e_trackdamage_e69.md'),
-    (CONDITION, 'ENEMY_SIGHTED'): (GUESSED, '部分：engine_levelvision a普通/英雄幻影在近点移除后对工程师240/310距离四路0/101/0/100，test_simbench_c重放；仅敌对关系范围查询已量，其他关系、隐形与精确边界未对拍，不登记整项'),
     (MODULE, 'Behaviors/InfiltratorContain'): (GUESSED, 'E142整项收束，不再细切宿主；ENERGY独立已对拍4用量/6模板，本行10配置30用量/32模板仍待闭合，不登记整组或整模块已对拍。逐配置边界：KILL 1用量/1模板部分已测（engine_infkill a，敌消耗/友拒入、满血不换主；tests/test_siminfiltrator_kill.py）；PARALYZE 3用量/3模板部分已测（三国engine_infpara a/b、engine_infpsov a、engine_infpjap a移动及engine_infpatk/engine_infasov/engine_infajap a攻击，tests/test_siminfiltrator_paralyze.py）；普通VISION 5用量/5模板部分已测且暂停扩宿主（engine_infvis a/b稳定窗通过，c实测s18=0/s19起1但模型未支持，严格xfail）；港口阻断VISION 1用量/1模板未测；STEAL_MONEY 3用量/4模板暂停（engine_infmon a量到2000转账后有矿车收入，未实现、严格xfail）；车辆VISION_UNITS 4用量/4模板暂停（engine_infveh a量到可见位间歇1/0，未实现、严格xfail）；飞机VISION_UNITS 2用量/2模板未测；步兵VISION_UNITS 3用量/3模板未测；舰船VISION_UNITS 3用量/3模板未测；RESET 5用量/6模板暂停（engine_infreset a/b就绪与真实冷却未闭环、严格xfail）。VISION/STEAL_MONEY/VISION_UNITS/RESET具名回放见tests/test_siminfiltrator.py。INFERRED：进入距离/生效和精确到期、VISION约5秒延迟/半径映射/宿主死亡清理、KILL致死清理；gap：其他间谍/模板、PARALYZE生产/重复进入/旧攻击订单、KILL抛飞/死亡效果、VISION持久性/重复进入及未测配置。已测PARALYZE不代表其余配置已测；完整逐配置证据与原始读数指针见work/re/e142_infiltrator_closure.md'),
     (MODULE, 'Behaviors/InfiltratorContain:ENERGY'): (BENCHED, '总控11-11授权按配置组收尾：engine_infiltrator a/b/c/d按名字重放，盟军间谍对盟/苏/帝普通电厂及帝国忍者对盟军电厂，敌方进入者消耗、建筑满血不换主、100电量停电约20秒并恢复，友军拒入且存活；gap：其他电量/苏联超级电厂、重复进入续期、精确时序和默认状态分支仍未对拍，不表示全字段全模板已验证'),
     (MODULE, 'Behaviors/TrackIncomingWeaponFireBehavior'): (TODO, '部分：engine_inform_probe a/off通知记录回放验证录入、30帧窗口、来源与武器匹配删除和过期清理；精确过期边界INFERRED，原版完整调度/历史伤害仍gap，不靠名字命中晋升整项'),

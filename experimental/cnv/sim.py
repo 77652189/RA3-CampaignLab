@@ -1083,6 +1083,7 @@ class Sim:
         self.seq = []                       # UNIT_EXECUTE_SEQUENTIAL_SCRIPT records, in queue order (seq_due)
         self.reshroud = 10.0                # MAP_SHROUD_SET_RESHROUD_TIME seconds (retail default holds as 10)
         self.camera = None
+        self.camera_been = set()            # areas the camera's point has been in (CAMERA_ENTERED_AREA latches)
         self.input = True
         self.countdowns = set()
         self.ending = None
@@ -2561,6 +2562,11 @@ class Sim:
                     return r == 'Enemy'
         return self.enemy(a.owner, t.owner)
 
+    def start_camera(self):
+        """Where the camera looks before a script moves it: the map's start site (contract K5), else the middle."""
+        start = (getattr(self.m.map, 'SITES', None) or {}).get('start')
+        return (start.x, start.y) if start is not None else (2500.0, 2500.0)
+
     def point(self, name):
         """A waypoint, a trigger area's middle, a site, a mark, a named object, map coordinates '@x,y' (model.coord)."""
         c = coord(name)
@@ -2913,17 +2919,18 @@ class Sim:
 
     def cond(self, name, a):
         if name == 'ENEMY_SIGHTED':
-            # engine_levelvision a: named viewer's range query, any enemy;
-            # neither shared shroud nor a named target. Other relations and
-            # stealth interactions remain unmeasured.
+            # (viewer, relation, player): the viewer finds an object of the player's that stands to it as asked, within
+            # its sight (engine_levelvision a: a range query, no shroud). Bench 11-14 engine_eyes all 看见 45 -> 47: the
+            # third argument is the sighted object's owner (watch's Enemy Soviet_5 only once far came in); Friend
+            # takes the viewer's own side and the viewer itself (lone, nobody near: on); Enemy of its own player and
+            # Neutral of an enemy never. Stealth and the exact edge INFERRED
             viewer = self.body(a[0])
-            if a[1] not in ('Enemy', 0):
-                self.gap(GAP_CONDITION, name, '非敌对关系的视野查询未对拍')
-                return False
+            want = RELATION_OF.get(a[1])
             live = list(self.living())
             hidden = self.cloaked(live)
-            return bool(viewer and viewer.alive and any(
-                self.enemy(viewer.owner, target.owner) and id(target) not in hidden
+            return bool(viewer and viewer.alive and want and any(
+                target.owner == a[2] and self.relation(viewer.owner, target.owner) == want
+                and id(target) not in hidden
                 # Centre-distance boundary/combined modifiers remain INFERRED.
                 and math.hypot(target.x - viewer.x, target.y - viewer.y) <= viewer.sight * viewer.level_vision
                 for target in live))
@@ -3060,7 +3067,10 @@ class Sim:
             b = self.body(a[1])
             return bool(b and self.sees(b.x, b.y, b.surface == 'air'))
         if name == 'CAMERA_ENTERED_AREA':
-            return bool(self.camera and inside(self.areas[a[0]], *self.camera))
+            # bench 11-14 engine_eyes all 镜头: holds for good once the camera's point (where it looks) has been in the
+            # area -- A and M on from s1 to the end though the camera left; the player's own camera (a minimap click)
+            # latches too; strips 110-1900 round the point never (not the eye, not the view)
+            return a[0] in self.camera_been
         if name == 'PLAYER_IS_HUMAN_OR_AI_PERSONALITY':
             # (player, personality) l2_scripts1 2.1: "Human" = the player has no AI; else its AI's personality is the
             # name. Bench 11-08 engine_scripts1 cond: Player_1 Human holds, Soviet_1 (a campaign computer player, its
@@ -3201,7 +3211,7 @@ class Sim:
             b = self.body(a[0])                 # it lives (the bench: ~3 s more after NAMED_KILL, not modelled)
             return bool(b and b.alive and self.selected == a[0])
         if name == 'TYPE_SELECTED':             # the same bench: never true after SELECT_OBJECT of a Guardian, a
-            return False                        # refinery, an enemy Hammer (a player's own click: not benched)
+            return False                        # refinery, an enemy Hammer; engine_eyes all: nor the player's own click / box
         if name == 'ENEMY_SIGHTED_BY_TEAM':
             # 码 (team, relation, player): a member with sight finds an object of the player's, not INERT / MOVE_ONLY,
             # the member's relation to it the one asked, within its sight. A range query: no fog, no stealth. Bench
@@ -4049,6 +4059,13 @@ class Sim:
         elif name in ('MOVE_CAMERA_TO', 'MOVE_CAMERA_TO_NAMED', 'CAMERA_FOLLOW_NAMED'):
             p = self.point(a[0])
             if p:
+                # the way there counts (engine_eyes all: a 0.1 s move from the start across M latched M; INFERRED:
+                # the straight line, sampled every 20)
+                was = self.camera or self.start_camera()
+                steps = max(1, int(math.hypot(p[0] - was[0], p[1] - was[1]) // 20))
+                for k in range(steps + 1):
+                    x, y = was[0] + (p[0] - was[0]) * k / steps, was[1] + (p[1] - was[1]) * k / steps
+                    self.camera_been |= {n for n, pts in self.areas.items() if inside(pts, x, y)}
                 self.camera = p
                 self.note('镜头', f'到 {a[0]}')
         elif name in ('DISABLE_INPUT', 'ENABLE_INPUT'):
