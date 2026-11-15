@@ -2392,3 +2392,18 @@ def test_kind_by_as_the_bench():
     at = dict(_sim_run('engine_kind', 'by', 30.0).series)
     assert all(v[:3] == [0, 0, 0] for v in at.values()), at
     assert at[29][3] & 11 == 11, at
+
+
+def test_area_all_as_the_bench():
+    """engine_enter all (round 245, bench 11-15 CampAreaAll_mcp_1115_093807; the bench's seconds ~1.5 behind the
+    timers): 进入 10000 -> 20000 -> 30001 -> 30002 -> 30003 (TEAM_ENTERED_AREA_PARTIALLY: Home on the first frame and
+    on each Guardian's leaving it, F on each entry, k 1 never); 区外 11 / 30 / 15 (TEAM_OUTSIDE_AREA_ENTIRELY: not
+    inside, an absent team outside); 驻类 13 -> 4 (BUILDING_GARRISONNED_BY_OBJECT_TYPE: type in either case and the
+    owner, dropped on the exit order); 建成 21 -> 31 (..._COMPLETELY_BUILT: the player's own, a script's plant at once)."""
+    at = dict(_sim_run('engine_enter', 'all', 30.0).series)
+    assert at[1] == [10000, 11, 0, 21] and at[30] == [30003, 15, 4, 31], at
+    seen = [at[0][0]] + [at[k][0] for k in range(1, 31) if at[k][0] != at[k - 1][0]]
+    assert seen == [10000, 20000, 30001, 30002, 30003], at
+    assert all(at[k][1] == 30 for k in range(9, 23)) and all(at[k][1] == 15 for k in range(25, 31)), at
+    assert all(at[k][2] == 13 for k in range(3, 10)) and all(at[k][2] == 4 for k in range(11, 31)), at
+    assert all(at[k][3] == 31 for k in range(4, 31)), at

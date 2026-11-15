@@ -5,7 +5,7 @@
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
 | 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 182 | 19 | 135 | 115 | 98% |
-| 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 70 | 0 | 16 | 3 | 100% |
+| 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 55 / 113 | 189 | 56 | 13 | 94 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
 | AI | **97%** | **97%** | 191 / 357 | 428 | 208 | 93 | 93 | 34 | 100% |
@@ -237,7 +237,7 @@
 | 不涉及 | `TOGGLE_LOCK_CURRENT_SELECTION` | 16 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 未做 | `UNIT_SET_MODELCONDITION_FOR_DURATION` | 16 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `UNIT_STOP_SEQUENTIAL_SCRIPT` | 16 |  | Sim.act / Sim.cond 不认识 |
-| 已对拍 | `NAMED_EXIT_BUILDING` | 15 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_garrison.py |
+| 已对拍 | `NAMED_EXIT_BUILDING` | 15 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_enter.py |
 | 未做 | `TEAM_UPGRADE` | 15 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `UNIT_SET_HEALTH` | 15 | a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aibuilding.py |
 | 已对拍 | `GIVE_PLAYER_UPGRADE` | 14 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_spngp.py |
@@ -548,13 +548,13 @@
 | 已对拍 | `NAMED_DYING` | 2 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_crush.py:all |
 | 未做 | `PLAYER_HAS_NUMBER_OBJECTS_WITH_MODELCONDITION` | 2 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `PLAYER_LOST_OBJECT_TYPE` | 2 |  | tests/test_simbench.py::test_kind_all_as_the_bench |
-| 未做 | `TEAM_ENTERED_AREA_PARTIALLY` | 2 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `TEAM_ENTERED_AREA_PARTIALLY` | 2 |  | tests/test_simbench.py::test_area_all_as_the_bench |
 | 未做 | `TEAM_IS_ATTACKED_AND_CANNOT_RETALIATE_ANY` | 2 |  | Sim.act / Sim.cond 不认识 |
-| 未做 | `TEAM_OUTSIDE_AREA_ENTIRELY` | 2 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `TEAM_OUTSIDE_AREA_ENTIRELY` | 2 |  | tests/test_simbench.py::test_area_all_as_the_bench |
 | 未做 | `UNIT_HAS_UPGRADE` | 2 |  | Sim.act / Sim.cond 不认识 |
-| 未做 | `BUILDING_GARRISONNED_BY_OBJECT_TYPE` | 1 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `BUILDING_GARRISONNED_BY_OBJECT_TYPE` | 1 |  | tests/test_simbench.py::test_area_all_as_the_bench |
 | 未做 | `EVAL_TEAM_HEALTH` | 1 |  | Sim.act / Sim.cond 不认识 |
-| 未做 | `PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA_COMPLETELY_BUILT` | 1 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA_COMPLETELY_BUILT` | 1 |  | tests/test_simbench.py::test_area_all_as_the_bench |
 | 已对拍 | `PLAYER_HAS_NUM_UNITS_WITH_UPGRADE` | 1 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiupgrade.py |
 | 未做 | `PLAYER_TRIGGERED_SCRIPT_EVENT` | 1 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_EXITED_AREA_PARTIALLY` | 1 |  | Sim.act / Sim.cond 不认识 |

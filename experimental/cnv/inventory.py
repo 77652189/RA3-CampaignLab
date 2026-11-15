@@ -230,6 +230,12 @@ BENCHED_TESTS = {
     **{(CONDITION, n): 'tests/test_simbench.py::test_cast_all_as_the_bench' for n in (
         'PLAYER_TRIGGERED_SPECIAL_POWER_FROM_NAMED', 'PLAYER_TRIGGERED_SPECIAL_POWER_IN_AREA',
         'TEAM_CAN_PATH_TO_WAYPOINT')},
+    # round 245 (checks/engine_enter.py all): TEAM_OUTSIDE_AREA_ENTIRELY = not inside (an absent team outside);
+    # TEAM_ENTERED_AREA_PARTIALLY one frame a member comes in (a start inside also on leaving); GARRISONNED by type
+    # and owner; COMPLETELY_BUILT the player's own, a script's unpacking one at once
+    **{(CONDITION, n): 'tests/test_simbench.py::test_area_all_as_the_bench' for n in (
+        'TEAM_OUTSIDE_AREA_ENTIRELY', 'TEAM_ENTERED_AREA_PARTIALLY', 'BUILDING_GARRISONNED_BY_OBJECT_TYPE',
+        'PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA_COMPLETELY_BUILT')},
     # round 244 (checks/engine_kind.py all / by): PLAYER_HAS_COMPARISON_UNIT_KIND counts every player's objects;
     # PLAYER_LOST_OBJECT_TYPE one stored count per (player, type string), the first reader takes a drop;
     # NAMED_DESTROYED_BY_OBJECTTYPE false always (four kills, either case)

@@ -3342,7 +3342,67 @@ class Sim:
             # Guardian's gun on a truck, Tanya's charge on King Oni, a script's kill; the type in either case.
             # INFERRED why: the dead object's name no longer finds it, so retail a04's bonus crate never comes
             return False
+        return self.cond_retail5(name, a)
+
+    def cond_retail5(self, name, a):
+        """Retail-campaign conditions, batch 6 (round 245, checks/engine_enter.py all, bench 11-15 run_queue
+        engine_area:all at bddb0af4, the build since renamed engine_enter). None: not one."""
+        if name == 'TEAM_OUTSIDE_AREA_ENTIRELY':
+            # (team, area, k): not (INSIDE_ENTIRELY or INSIDE_PARTIALLY), Generals evaluateTeamOutsideAreaEntirely --
+            # 区外 11 / 30 / 15: a team never made (absent) reads outside, k 1 (a Guardian has no WATER) outside all
+            # along, the emptied team outside everything
+            return not (self.cond_retail('TEAM_INSIDE_AREA_ENTIRELY', a) or self.cond_retail('TEAM_INSIDE_AREA_PARTIALLY', a))
+        if name == 'TEAM_ENTERED_AREA_PARTIALLY':
+            return self.team_entered(a)
+        if name == 'BUILDING_GARRISONNED_BY_OBJECT_TYPE':
+            # (building, type, player): the building holds a living one of that type (case ignored) owned by that
+            # player -- 驻类 13 -> 4: the conscript's own player only, dropped the moment NAMED_EXIT_BUILDING runs
+            g = self.body(a[0])
+            if not self.present(g):
+                return False
+            want = self.of_types(a[1])
+            return any(u.alive and u.owner == a[2] and u.template.lower() in want
+                       for u in self.garrison.inside.get(g.name, []))
+        if name == 'PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA_COMPLETELY_BUILT':
+            # (player, comparison, n, type, area): the _IN_TRIGGER_AREA count of the player's own (建成 21 -> 31:
+            # Soviet_4's plant counts for Soviet_4 only; lower case too); a plant made by script counts at once,
+            # while it unpacks. One under construction (a player's placed one) would be left out: INFERRED, not
+            # benched, and the simulator builds nothing that way
+            n = sum(1 for b in self.living() if b.owner == a[0] and b.template.lower() == str(a[3]).lower()
+                    and inside(self.areas[a[4]], b.x, b.y))
+            return CMP[int(a[1])](n, int(a[2]))
         return None
+
+    def team_entered(self, a):
+        """TEAM_ENTERED_AREA_PARTIALLY (team, area, k): one frame as a member (living, not INERT / MOVE_ONLY, on
+        surface k) comes into the area (Generals Team::didPartialEnter). engine_enter all, 进入 10000 / 20000 / 30001 /
+        30002 / 30003: the Guardians count on the first frame (placed inside Home), AGAIN on the frame each leaves Home
+        -- but not on leaving F, entered later. INFERRED: an entry seen on the first frame stays marked until the
+        member leaves (the program's area record of a placed unit; a 'stale mark' rule, every exit counting once after an
+        entry, needs go 1's exit from F and go 2's entry to share a frame: the hypothesis table, round 245)."""
+        key = ('entered', a[0], a[1], int(a[2]))
+        st = self.cond_memory.setdefault(key, {'frame': None, 'val': False, 'was': {}, 'start': set()})
+        now = self.frame_now()
+        if st['frame'] == now:
+            return st['val']
+        face = SURFACES[int(a[2])] if 0 <= int(a[2]) < len(SURFACES) else None
+        crew = [b for b in self.members(a[0]) if not ({'INERT', 'MOVE_ONLY'} & set(b.kinds)) and face in self.surfaces(b)]
+        val = False
+        for b in crew:
+            ins = inside(self.areas[a[1]], b.x, b.y)
+            was = st['was'].get(id(b))
+            if was is None:
+                hit = ins
+                if ins:
+                    st['start'].add(id(b))
+            else:
+                hit = (ins and not was) or (was and not ins and id(b) in st['start'])
+                if was and not ins:
+                    st['start'].discard(id(b))
+            st['was'][id(b)] = ins
+            val = val or hit
+        st['frame'], st['val'] = now, val
+        return val
 
     def surfaces(self, b):
         """The Locomotor Surfaces of a body's NORMAL set (TEAM_INSIDE_AREA_*'s k reads their bits, D 119); a body
