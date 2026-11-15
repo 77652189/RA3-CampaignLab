@@ -127,6 +127,14 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '目标/AITargetingHeuristic.VitalObjectStatus': (GUESSED,
+        'C engine_aivital aivitalon/off:a：四原名宿主、脚本状态置/清对照；'
+        's55-60原打包状态*100+目标区*10+家中计数分别24/4/4/140与24/4/4/4。'
+        'ATTACHED置位到目标4、清位留家4，按名回放吻合；仅脚本位子集。'
+        '三地面样本的AIRBORNE_TARGET始终读0，模型却保留；路0区域重叠且位置差异未解。'
+        'tests/test_vital_status_c.py断言原图读数，四strict xfail保留状态/位置差异；'
+        '缺真实飞行/落地状态入口、同帧候选资格及原附着生命周期，整字段不晋升。'
+        '见work/re/c_vital_report.md'),
     '目标/AITargetingHeuristic.SortType=ClosestToEnemy': (GUESSED,
         'C engine_aiclosestenemy aiclosest:a：四原名陆地启发，s16-80台上目标区域人数4/4/0/0，'
         '模型4/4/4/4；tests/test_closest_enemy_c.py按名回放，后两路strict xfail。'
