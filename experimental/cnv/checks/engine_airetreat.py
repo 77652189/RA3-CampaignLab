@@ -63,7 +63,7 @@ def a(m, build):
     if build.startswith('airet'):
         counted('CNV_AR_Count', '步兵数', t, template=inf, player=s1)
         t.expect += [('步兵在家', wake + 5, 'ever==', 0, end)]          # it left
-        if build in ('airet', 'airetd'):
+        if build in ('airet', 'airetd', 'airett'):
             t.expect += [('步兵在家', wake + 15, 'ever>=', 1, end)]     # and some came back
         elif build == 'airetf':                                         # back, then out again (the tactic goes on)
             t.expect += [('步兵在家', wake + 15, 'ever==', 4, end), ('步兵在家', wake + 35, 'ever==', 0, end)]
@@ -85,4 +85,4 @@ def a(m, build):
     return t
 
 
-CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('airet', 'airetd', 'airetf', 'airetfd', 'airet0', 'aipas1', 'aipas0')}
+CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('airet', 'airett', 'airetd', 'airetf', 'airetfd', 'airet0', 'aipas1', 'aipas0')}

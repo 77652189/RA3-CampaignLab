@@ -23,13 +23,19 @@ the far plant is too near the base for a retreat by the retail number) and:
            true -> the model: the side plant (a structure: the passive list) comes within a member's vision x 1.5,
            the team attacks it first (state 6)
   aipas0   the same, EngagePassiveTargets false -> straight on to the far plant
+  airett   airet with the AI's yard observed (DeletionUpdate CNVTeams: the team state each micro round and a 1 s
+           heartbeat) -- which state the team is in when the guards first come in its search circle (6 or 2: the
+           work/re d140 gate) and where its members stand when it turns home (D round 149)
 Facts: wake at, side plant (name; aipas*).
 """
 import math
+from pathlib import Path
+
+import labpaths
 
 from missions import ainamed_bench as an
 from missions import aitarget_bench as at
-from parts import Script
+from parts import Script, Unit
 
 MICRO_ID = 'CNVMicroRetreat'
 GUARDS = 12
@@ -88,8 +94,25 @@ def mission(mod, guards=0, side=False, disband=None, flag=False, **fields):
     return m
 
 
+def observe(m, name):
+    """The AI's yard swapped for a copy carrying the CNVTeams log (team state changes and a 1 s heartbeat, ra3ext):
+    no extra object, economy or recruit (as aialphaclose_bench's observed pair)."""
+    yard = m.role('ai yard')
+    original, host = yard.template, 'CNVRetTeamsYard'
+    xml = (Path(labpaths.SDK3) / 'SageXML/Allied/Structures' / (original + '.xml')).read_text(encoding='utf-8')
+    assert xml.count('<Behaviors>') == xml.count(f'id="{original}"') == 1
+    xml = xml.replace(f'id="{original}"', f'id="{host}"').replace(
+        '<Behaviors>', '<Behaviors>\n  <DeletionUpdate id="ModuleTag_CNVTeams" MinFrames="15" MaxFrames="4000"/>')
+    m.units.append(Unit(host, xml, names=dict(unit=host), what='原建造厂附带变化日志与每秒心跳', params=dict(every=15)))
+    m.find(yard.name).template = yard.template = host
+    m.name = name
+    m.ext = True
+    return m
+
+
 MISSION = {
     'airet': lambda: mission('CampAIRet', guards=GUARDS, RetreatPowerAdvantage='0.2'),
+    'airett': lambda: observe(mission('CampAIRet', guards=GUARDS, RetreatPowerAdvantage='0.2'), 'CampAIRetT'),
     'airetd': lambda: mission('CampAIRetD', guards=GUARDS, disband=999, RetreatPowerAdvantage='0.2'),
     'airetf': lambda: mission('CampAIRetF', guards=GUARDS, flag=True, RetreatPowerAdvantage='0.2'),
     'airetfd': lambda: mission('CampAIRetFD', guards=GUARDS, flag=True, disband=999, RetreatPowerAdvantage='0.2'),

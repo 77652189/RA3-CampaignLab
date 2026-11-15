@@ -757,6 +757,7 @@ class Brain:
                            'STRUCTURE' in b.kinds, rate_of(b))
             f.body = b
             f.template, f.kinds = b.template, frozenset(b.kinds)
+            f.radius = b.radius                     # the search circle reaches its edge (work/re d149, bench airett)
             f.can_fire = lambda other: any(s.can_hit(w, other.body) and s.in_range(b, other.body, w)
                                            for w in b.weapons)
             return f
