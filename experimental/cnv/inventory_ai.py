@@ -127,6 +127,13 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '目标/AITargetingHeuristic.HeuristicType=Point': (TODO,
+        'C engine_aipoint aipointwater/aipointtiny:a 原名NearbyWaterPointHeuristic仅切范围1500/1；'
+        '两局f16均found=1、target id=0，s25总数/在家均4/0，存活控制PASS。'
+        'tests/test_point_target_c.py复读原记录并按名回放，模型两组均无目标、两strict xfail，'
+        '原范围1无点预测另strict xfail；现观测按对象ID取坐标，Point的0:0不是实际选点。'
+        '缺槽内真实点/搜索原点/候选生成与威胁输入，模型未实现，不晋升；'
+        '27关静态14关45条玩家宿主引用，见work/re/c_point_report.md及c_point_scope.json'),
     '目标/AITargetingHeuristic.HeuristicType=TechBuilding': (GUESSED,
         'C aitechkind/aitechnon:a 原名ClosestTechBuildingHeuristic、敌距0、空VitalKindOf，'
         '同位中立油井/普通电厂；f16油井ok并选中，普通电厂不在科技候选集合，'
