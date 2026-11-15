@@ -313,6 +313,15 @@ NOTES = {
         '原版 25% 的 aiskvveh 和 aiskvd0（0%）都只造标枪（0%：s29 起到 s169 共 11、维和 0）。'
         '模型把它当候选血量的线性系数（排序不变、0% 全零分）——台上不符，待读它怎么进打分；'
         '见 work/re/handoff-b.md 第 199 节'),
+    '人格/DefaultTacticHomeBaseCriteria.SortOrder': (BENCHED,
+        'B201 engine_aihome aihmgcl/aihmgnw：两座初始建造厂（A 先放、B 在北 1350），SimpleAttack 打 A 西 ~700 的具名电厂、'
+        'RETURN_HOME_AND_DISBAND，仅人格这条不同；PREFER_NEWEST 电厂没后全员回 B（s36 起家B 4），'
+        'PREFER_CLOSEST 选 A、队伍中心已在 600 内 → 原地解散不走（到电厂 4 到 s88）；'
+        'tests/test_simai_bench_b.py::test_return_home_picks_the_base_by_the_personality_criteria 按名回放。'
+        'CLOSEST 的量点（队伍中心）是推断，OLDEST/SMALLEST 等其余排序没量'),
+    '人格/DefaultTacticHomeBaseCriteria.PreferredNotBaseTypes': (BENCHED,
+        'B201 engine_aihome aihmgno：同上，PREFER_CLOSEST + PreferredNotBaseTypes OLDEST_OF_TYPE → 不回近的 A、回 B'
+        '（s30 起家B 4），反偏好压过排序；同一测试按名回放。原版写的 CAPTURED 要占领来的基地才分得出，没量'),
     '人格/BaseSelection.SortOrder': (BENCHED,
         'C aibs3old/aibs3new:b初始双厂：f274两个合格基地0/1均分1，'
         'OLD pick/model=0/0、NEW=1/1；点命令分别东矿/崖矿。'

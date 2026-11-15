@@ -936,3 +936,27 @@ def test_reactive_defense_radius_gates_the_chase(lib, build, chased):
         assert rows[-1]['敌存活'] == 0
     else:
         assert all(r['家300'] == 4 and r['敌300'] == 0 and r['敌存活'] == 1 for r in rows)
+
+
+# ---- checks/engine_aihome.py a (bench 2026-11-14, readings in its docstring): DefaultTacticHomeBaseCriteria
+@pytest.mark.parametrize('build, home', [('aihmgcl', None), ('aihmgnw', '家B'), ('aihmgno', '家B')])
+def test_return_home_picks_the_base_by_the_personality_criteria(lib, build, home):
+    """Two AI yards (A first, B 1350 north); a SimpleAttack team (RETURN_HOME_AND_DISBAND) loses its named plant
+    ~700 west of A. Bench: PREFER_NEWEST -> 家B 4 from s36; PreferredNotBaseTypes OLDEST_OF_TYPE (PREFER_CLOSEST) ->
+    家B 4 from s30; PREFER_CLOSEST alone -> the closest base is A and the team's centre is already within 600 of it, so
+    it disbands where it stands (the go-home check, work/re l4_tactics.md 4):到电厂 4 to s88, never 家A. The simulator's tanks kill the plant at s18
+    (bench s23-s27), so only where they end up is asserted."""
+    _, rows = _probe_run(build, lib, 60)
+    if home is None:
+        assert all(r['家B'] == 0 for r in rows) and rows[-1]['到电厂'] == 4 and rows[-1]['家A'] == 0
+    else:
+        assert rows[-1][home] == 4 and rows[-1]['到电厂'] == 0
+
+
+def test_reactive_defense_without_criteria_guards_the_newer_base(lib):
+    """aihomecl: aireact1200 with a second AI yard 1350 north of the first and no TargetBaseCriteria. Bench: the
+    Peacekeepers leave A s8-s11 and are all at B from s14 (simulator s15); the foe 1000 south of A is never chased
+    (the xsd default sort PREFER_NEWEST picks B)."""
+    _, rows = _probe_run('aihomecl', lib, 30)
+    assert _first_row(rows, '家B', lambda v: v == 4) <= 16
+    assert all(r['敌存活'] == 1 for r in rows)

@@ -298,7 +298,12 @@ class Brain:
         self.ai.teams.reach = self.reach_target
         if 'defense' in which:
             self.base = df.Base(1, self.home, (), frozenset({'MAIN_BASE'}))
-            self.defense = df.DefenseBlock(self.tactics, lambda ai, f: self.view, bases=lambda ai, f: [self.base],
+            self.bases = [self.base]
+            if len(self.expansion_initial_yards) >= 2:      # two initial yards: two MAIN_BASEs, ids in placement
+                a, b = self.expansion_initial_yards[:2]     # order (C's aibs3 / aibn2 base ids; INFERRED adapter)
+                self.base = df.Base(0, (a.x, a.y), (), frozenset({'MAIN_BASE', 'OLDEST_OF_TYPE'}))
+                self.bases = [self.base, df.Base(1, (b.x, b.y), (), frozenset({'MAIN_BASE', 'MOST_RECENT_OF_TYPE'}))]
+            self.defense = df.DefenseBlock(self.tactics, lambda ai, f: self.view, bases=lambda ai, f: self.bases,
                                            busy=self.busy, aesthetics=self.stand, radius=self.radius_of,
                                            attrs=h.data_of('tactic attrs'), rng=random.Random(h.seed),
                                            last_hurt=lambda ai, i: self.hurt_at.get(i))
