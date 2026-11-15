@@ -348,6 +348,7 @@ BENCHED_TESTS = {
 # (part, name) -> (state, why): where the name rule above is wrong (a module read under another name ...)
 _NOT_IN_SIM = '已核（11-08）：模拟器没有这个效果'
 NOTES = {
+    (MODULE, 'Behaviors/QueueDockBehavior'): (TODO, 'E152 engine_queuedock:a具名原版矿车对矿场，双方删自动生成避免争矿：on f329收250、f351离pad、f597累计500，两者存活；车/场DOCKING及HARVESTING状态始终0。queuedockoff:a仅到f197即截帧停止、钱包0，早于on首笔，不能证明删模块效果；已加750逻辑帧完整性门拒绝该短记录。on f786实测快照回放strict xfail；缺内部阶段接口和完整off对照，暂停，不登记已对拍、不调路径时序；见work/re/e152_queuedock.md'),
     (MODULE, 'Behaviors/CaptureSpecialAbilityUpdate'): (TODO, 'E151 engine_capture:a原版工程师对CaptureFlag中立/敌方/己方和删模块中立四路：归属100、存活1111、前置1，f45..575未换主。原预测111保留；具名测试仅回放负基线，不登记模块效果已对拍。缺命令被模块接受及同帧阶段证据（INFERRED），暂停同输入重跑；见work/re/e151_capture.md'),
     (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_CAMPAlliedBomberDrop2'): (GUESSED, 'A224-A226 engine_acts_mix:all、engine_acts_drop / _ally:own、engine_acts_wet:all：六局都没出轰炸机；A226 PLAYER_TRIGGERED_SPECIAL_POWER 看到按钮和按名字放都算放了（人类、电脑的 store 都是），所以卡在 OCL 生成那步（CREATE_AT_EDGE_NEAR_SOURCE），原因未明；模拟器只记施放、不出东西'),
     (ACTION, 'PLAYER_SET_MONEY_CAP'): (GUESSED, 'A213 engine_acts_tel:tel：脚本的钱不受上限管（上限 3000 时给 5000 → 6000；上限 500 仍 6000；设 10000 照设）；它管的（推断是采矿收入）没上台、模拟器只记不用'),
