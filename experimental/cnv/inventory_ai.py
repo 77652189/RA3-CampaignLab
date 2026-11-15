@@ -127,6 +127,11 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '目标/AITargetingHeuristic.UnderAttack': (GUESSED,
+        'C 静态核对27关：SDK五宿主，仅a08 Player_2可达ClosestAllyUnitUnderAttackHeuristic；'
+        '未上台。simai以最近两秒掉血代替逐对象受攻击状态，真实置位/撤销语义未证；'
+        'target_picks有候选资格，但缺同帧逐对象受攻击事实，基地hit不能替代对象状态。'
+        '门禁暂停，保持推断；见work/re/c_underattack_gate_report.md及c_underattack_scope.json'),
     '目标/AITargetingHeuristic.VitalObjectStatus': (GUESSED,
         'C engine_aivital aivitalon/off:a：四原名宿主、脚本状态置/清对照；'
         's55-60原打包状态*100+目标区*10+家中计数分别24/4/4/140与24/4/4/4。'
