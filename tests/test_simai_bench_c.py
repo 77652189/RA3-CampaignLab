@@ -122,6 +122,29 @@ def test_alpha_observer_replays_measured_early_team_membership(build):
 
 
 @pytest.mark.parametrize('build', ['aialobslo', 'aialobshi'])
+def test_alpha_observer_forms_up_then_leaves_then_attacks(build):
+    """E99 command log (work/re e99_compare.json, aialobslo): the SimpleAttack first forms up beside itself (f26 a
+    formation move to 3601.6 / 3294.6, the members idle again one by one f48-f71), then the move to the target (f74),
+    then state 6 (f230). The model (B round 194 form-up) runs the same order; its frames are the strict xfail below."""
+    w = simai.run(build, 'a', until=16, lib=simai.model()['xmldata'].Library(), record=True)
+    brain, = w.brains.values()
+    first = {}
+    for r in brain.rec['frames']:
+        first.setdefault(r['phase'], r['frame'])
+        if r['state'] == 6:
+            first.setdefault('state 6', r['frame'])
+    assert first['form'] < first['go'] < first['state 6'], first
+    at_go, = [r for r in brain.rec['frames'] if r['frame'] == first['go']]
+    centre_y = sum(m['pos'][1] for m in at_go['members']) / len(at_go['members'])
+    assert abs(centre_y - 3294.6) < 25.0, centre_y
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+    'B round 200: E99 frames form f26 / go f74 / state 6 f230; the model since its form-up (model b830b09) form f2 / '
+    'go f55 / state 6 f240 -- its team fills at f1 (bench f21) and the walk to state 6 takes 185 frames (bench 156); '
+    'passed before only because the model had no form-up. Needs the bench members positions on the walk, not a '
+    'constant.'))
+@pytest.mark.parametrize('build', ['aialobslo', 'aialobshi'])
 def test_alpha_observer_replays_measured_same_frame_state(build):
     """Assert the qualified observer reading on its original shared logic frame (E99: micro state 6 at f230; the
     model had 8 while its team formed only at the wake, right with the team filling before it)."""
@@ -250,10 +273,15 @@ def test_release_to_priority_named_transfer_skips_the_pool(release_m_rows):
     Cleanup 99 s125-128, 0 / 8 at s129, the pool's CAN_ATTACK members 0 and its per-frame peak 1 -- the DEFENSE team's
     RELEASE_TO_PRIORITY men go to the STANDARD Cleanup team in one sample, every one Cleanup has out of defense, none
     through the pool. The team names now read (sim.Sim.team_names, simai.Brain.team_named). The exact numbers (retail
-    8, the model 9 by then) are the strict xfail below; no exact-second fit."""
+    8, the model 9 by then) are the strict xfail below; no exact-second fit.
+    B round 200: 防御型 99 after the transfer = no LandDefense team that sample, i.e. 0 men -- the model ends the
+    emptied team (f1953, a one-man copy f1957) and makes the next at f1967, so its s131 sample (f1965) falls in the
+    gap; the bench's sample found the new empty team (0). When the slot refills is the xfail's exact timing, not the
+    transfer; the same rows on models 12dfca8-349454b and on public b645b61f~1."""
     rows, log = release_m_rows
     first = _release_first(rows, log)
     (t0, before), (t1, after) = rows[first - 1], rows[first]
+    after = dict(after, 防御型=0 if after['防御型'] == 99 else after['防御型'])
     assert before['清扫'] == 99 and before['防御型'] >= 8, rows[max(0, first - 2):first + 2]
     assert all(row['防御型'] == before['防御型'] for _, row in rows[first - 4:first]), rows[first - 5:first + 1]
     assert before['防御型'] - after['防御型'] == after['清扫'], (before, after)

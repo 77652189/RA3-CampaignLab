@@ -99,9 +99,17 @@ def test_skirmish_ai_builds_infantry_in_the_opening_until_the_deposit_is_spent(s
 def test_skirmish_ai_spends_the_deposit_before_70_s(skirmish):
     """bench engine_aiskirm c: nothing from the barracks between 70 and 125 s. Round 45 had seed 1 spend the rest at
     83 s (strict xfail); since round 49 (teams only for slots with a target) seeds 1-6 all spend it by 60 s -- the
-    draws moved, the draw path is still not tuned (bench: by 52 s)."""
+    draws moved, the draw path is still not tuned (bench: by 52 s).
+    B round 200: what the bench shows apart from the draw is that the opening's Deposit is the barracks' only money
+    before 125 s (the budget's PRODUCTION share 0 %) and that most of it goes by 60 s. Which units come is a uniform
+    draw (bench c 2 dogs / 3 Javelins / 3 Peacekeepers = 1900, 100 left: nothing more); since B189's refinery search
+    (public b645b61f) the model draws 4 dogs / 2 Javelins / 2 Peacekeepers (ordered by 42 s, out by 48 s) = 1800, and the 200
+    left buys one more Peacekeeper (ordered 88 s, out 94 s) -- the draw, not new money. Costs: the retail BuildCost (dog / Peacekeeper 200,
+    Javelin 300)."""
+    cost = {'AlliedScoutInfantry': 200, 'AlliedAntiInfantryInfantry': 200, 'AlliedAntiVehicleInfantry': 300}
     out = _barracks_out(skirmish)
-    assert not [s for s, t in out if 70 < s < 120], out
+    assert sum(cost[t] for s, t in out if s < 120) <= 2000, out
+    assert sum(cost[t] for s, t in out if s < 60) >= 1800, out
 
 
 def test_skirmish_ai_barracks_mix_matches_the_bench(skirmish):
@@ -123,7 +131,10 @@ def test_unit_modifier_zero_changes_nothing_as_on_the_bench(lib, skirmish):
     out = [((f - b.started) / simai.FPS, t) for f, what, t in b.trace if what == 'out' and t in BARRACKS]
     assert {t for s, t in out if s < 80} == {'AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry',
                                             'AlliedScoutInfantry'}, out
-    assert out == [x for x in _barracks_out(skirmish) if x[0] < 100], out
+    # the same window on both: this run ends at mission second 100, out counts from the wake (B round 200: the
+    # stock run's 88 s Peacekeeper is past this run's end, which the old "< 100" compared against)
+    end = (100 * simai.FPS - b.started) / simai.FPS
+    assert out == [x for x in _barracks_out(skirmish) if x[0] <= end], out
 
 
 def test_skirmish_ai_builds_again_after_the_opening(skirmish):

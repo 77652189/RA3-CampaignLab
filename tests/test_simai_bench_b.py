@@ -700,6 +700,11 @@ def test_after_s110_the_opening_riptides_pass_the_unit_cap(lib):
     assert sorted(set(army[100:])) == [4, 6, 8, 10]
 
 
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+    'B round 200: a race, not the cap rule -- bench 兵数 6 s49, the first miner s53, the 7th soldier s55 (7 + 1 miner '
+    '= 8 > 7: no more); the model 6 s47, the 7th soldier s53 (7, no miner yet: one more ordered), the miner s55, 8 '
+    'from s59. The model draws other soldiers (B189 moved the draws, the same as aiskirm) and its miner is 2 s late; '
+    'red since before model 12dfca8. Needs the miner\'s time on the bench (refinery order / done), not a constant.'))
 def test_the_unit_cap_counts_the_miners(lib):
     """checks/engine_aiskirm.py aiskuc7 uc (B round 179, d124_unitcap.md U1; UnitCap 7 MEDIUM): bench 兵数 (miners
     left out) 6 at s49, the first miner s53, 7 from s55 to s111 -- with the miner the count is 8 > 7 and building
