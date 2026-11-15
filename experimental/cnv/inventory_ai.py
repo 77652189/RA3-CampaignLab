@@ -127,6 +127,16 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '启发条件/TimeSinceLastExpansionHeuristic.Time': (BENCHED,
+        'C engine_ailastexp ailastexp:a：原版27关有效依赖仅60s/240s，另设常量阳性组；'
+        '同图一局12条预写断言PASS，在家人数s19-62为4/4/0、s64-242为0/4/0、s244-345为0/0/0。'
+        'tests/test_last_expansion_c.py按名回放四个窗口一致，无模型修改。'
+        '仅首次扩张前计时；SDK其他Time取值、初始时刻精确值、真实扩张后重置/Past=false/逐帧边界仍gap；'
+        '见work/re/c_lastexp_report.md'),
+    '启发条件/TimeSinceLastExpansionHeuristic': (GUESSED,
+        'C engine_ailastexp的60s/240s首次计时已对拍，Time字段单独登记；'
+        '真实扩张后时间戳来源/重置消费者未测，初始时间戳0保持INFERRED，整条件保持推断；'
+        '见work/re/c_lastexp_report.md'),
     '启发条件/AllNearbyNodesFullHeuristic': (GUESSED,
         'C入口门禁：SDK及原版编译状态29处均无参数；模型消费nodes full，'
         'SimAI.facts未提供该事实，缺矿点资格、占用和nearby范围语义。'
