@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 195 | 15 | 126 | 115 | 98% |
+| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 196 | 15 | 125 | 115 | 99% |
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 58 / 113 | 189 | 59 | 21 | 83 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -260,7 +260,7 @@
 | 不涉及 | `OPTIONS_SET_OCCLUSION_MODE` | 12 |  | 纯表现（名字规则） |
 | 已对拍 | `PLAYER_SELL_EVERYTHING` | 12 |  | tests/test_sellall_bench_c.py::test_sellall_owner_refund_and_repeat_match_bench；C engine_sellall:a/b显式玩家交换对照：所属普通盟军电厂退款400一次、SOLD后消失，三方守护者及异玩家电厂保留；空玩家与重复调用无额外退款。tests/test_sellall_bench_c.py按名逐实读逻辑帧回放资金码/存活位/出售位/逻辑帧。仅显式玩家单电厂切片已量，多建筑枚举和其他模板推广INFERRED；不可售/受损/展开中/队列/驻军及This Player、All Players仍gap；见work/re/c_sellall_report.md |
 | 已对拍 | `SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER` | 12 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acts.py |
-| 未做 | `TEAM_GARRISON_NEAREST_BUILDING` | 12 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `TEAM_GARRISON_NEAREST_BUILDING` | 12 |  | tests/test_teamgarr_bench_c.py::test_teamgarr_nearest_and_team_scope_match_bench；C engine_teamgarr:a/b两栋空公寓最近选择：建筑摆放顺序不变，仅步兵东移；本队两名征召兵进最近楼，同玩家异队留外，空队伍/重复调用无误伤。最终进驻位/楼归属/存活位分别3/1/31与3/2/31；tests/test_teamgarr_bench_c.py按名回放实读逻辑帧的动作前及稳定窗口。仅显式普通步兵与空楼选择切片；逐成员距离及其他模板推广INFERRED，队伍中心/等距/搜索范围、容量/敌属/损坏楼/AI实例和入门时序仍gap；见work/re/c_teamgarr_report.md |
 | 未做 | `TEAM_MOVE_TO_NEAREST_OBJECT_OF_KINDOF_OWNED_BY_PLAYER` | 12 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `DISABLE_JOYPAD_COMMANDBAR_BUTTON` | 11 |  | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `FLASH_JOYPAD_COMMANDBAR_BUTTON` | 11 |  | 纯表现（名字规则） |
