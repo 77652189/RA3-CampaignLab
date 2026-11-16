@@ -407,6 +407,7 @@ BENCHED_TESTS = {
 # (part, name) -> (state, why): where the name rule above is wrong (a module read under another name ...)
 _NOT_IN_SIM = '已核（11-08）：模拟器没有这个效果'
 NOTES = {
+    (ACTION, 'SKIRMISH_AI_CONSIDER_ALL_ENEMIES_WHEN_BUILDING'): (TODO, 'C aiallbuildon/off:a两局原生候选/订单对照：共同窗口前6次成功订单同帧同种（两警犬后四标枪），非空候选31/16条、订单307/156条。捕获末逻辑帧598/459，均未到70秒转友闸门；不能比较捕获秒数的存量差。tests/test_allbuild_bench_c.py只锚定具名原生读数，不声称模型等价。bpick/border缺同帧敌方玩家集合、动作开关及参与评分的兵力/资格输入，无法区分默认全敌或消费者未触发；倾向先补观测（INFERRED）。两局耗完，保持未做；见work/re/c_allbuild_report.md'),
     (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanMCV'): (BENCHED, 'C engine_jpndeploy:a一局：两辆普通日本MCV到东400路径点展开，未下令第三车留家；f256..501目标区建造场/名称存活/原处MCV位码3/7/4。tests/test_jpndeploy_bench_c.py按名回放动作前及事前预测f300之后稳定窗口实读逻辑帧四计数器；现有order_unpack匹配，无模型或阈值修改。仅普通活宿主空地切片；精确到达/展开时序、地形阻挡、伤害继承、重复/死亡/缺失宿主仍gap，其他宿主推广INFERRED；见work/re/c_jpndeploy_report.md'),
     (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackSovietMCV'): (BENCHED, 'C engine_sovdeploy:a一局：两辆普通苏联MCV到东400路径点展开，未下令第三车留家；f220..468目标区建造场/名称存活/原处MCV位码3/7/4。tests/test_sovdeploy_bench_c.py按名回放34个动作前及稳定窗口实读逻辑帧四计数器；现有order_unpack即可匹配，未调模型或阈值。仅普通活宿主空地切片；精确到达/展开时序、地形阻挡、伤害继承、重复/死亡/缺失宿主仍gap，其他宿主推广INFERRED；见work/re/c_sovdeploy_report.md'),
     (ACTION, 'TEAM_GARRISON_NEAREST_BUILDING'): (BENCHED, 'C engine_teamgarr:a/b两栋空公寓最近选择：建筑摆放顺序不变，仅步兵东移；本队两名征召兵进最近楼，同玩家异队留外，空队伍/重复调用无误伤。最终进驻位/楼归属/存活位分别3/1/31与3/2/31；tests/test_teamgarr_bench_c.py按名回放实读逻辑帧的动作前及稳定窗口。仅显式普通步兵与空楼选择切片；逐成员距离及其他模板推广INFERRED，队伍中心/等距/搜索范围、容量/敌属/损坏楼/AI实例和入门时序仍gap；见work/re/c_teamgarr_report.md'),
