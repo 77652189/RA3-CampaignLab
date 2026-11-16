@@ -1124,7 +1124,7 @@
 | 未做 | `目标/AITargetingHeuristic.HeuristicType=Team` | 2 |  | C核对SDK两原名宿主AITarget_S01_Warriors/Attackers，编译状态AIState_S01_KillWarriors01引用两者；按真实队伍全名选择，不能以单对象或NamedObject替代。当前目标View没有队伍候选提供者，target_picks公开接口未提供队伍目标身份/同帧成员资格；缺B/D事实入口，0局，暂停且不晋升；见work/re/c_team_gate_report.md |
 | 推断 | `目标/AITargetingHeuristic.HeuristicType=UnderAttackBy` | 2 | a4 a5 a7 | C核对SDK陆地/水面两原名启发及编译EmergencyDefense六状态引用；仅静态范围核验。D161受击日志已有来源字段，但旧台仅出生来源0，未证真实交战；UnderAttack布尔门不等于来源目标选择。simai未供attacking_us，simproxy按当前攻击目标推测，缺同帧来源候选/资格/置清事实；0局，暂停且不晋升；见work/re/c_underattackby_gate_report.md |
 | 未做 | `目标/AITargetingHeuristic.IgnoreMinDistanceFromConyardEntranceForTime` | 2 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 未做 | `目标/AITargetingHeuristic.MinDistanceFromConyardEntrance` | 2 | a4 a5 a7 | AI 模型代码里没有这个名字 |
+| 未做 | `目标/AITargetingHeuristic.MinDistanceFromConyardEntrance` | 2 | a4 a5 a7 | C engine_aiconyard aicyard0/300:a仅切出口距离0/300、保留原15s豁免，两局核心/电厂/近处电厂/宿主均1/0/0/1。CNVStateTP队伍均无成员、目标-1，tgt未发布该状态记录；不能以无行推断未调用或以基地锚点代出口。tests/test_conyard_target.py仅断言诊断读数和具名回放，缺同帧真实出口/候选资格/选址点/起算帧；两局预算耗完，暂停且整字段未做，不晋升；见work/re/c_conyard_report.md |
 | 推断 | `组队招人/ObjectFilter.Exclude` | 2 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 未做 | `经济/AccountShare.Account=SPECIAL_OPERATIONS` | 2 |  | AI 模型代码里没有这个名字 |
 | 未做 | `经济/AccountShare.Account=TECHNOLOGY` | 2 |  | AI 模型代码里没有这个名字 |
