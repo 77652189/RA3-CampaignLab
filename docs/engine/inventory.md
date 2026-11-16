@@ -178,7 +178,7 @@
 | 已对拍 | `STOP_TIMER` | 33 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_timer.py |
 | 已对拍 | `TEAM_SET_OVERRIDE_RELATION_TO_TEAM` | 33 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts9.py |
 | 已对拍 | `UNIT_CHANGE_OBJECT_STATUS:NO_ATTACK` | 33 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acquire.py |
-| 推断 | `ALLOW_DISALLOW_ONE_UPGRADE` | 32 |  | Sim.act / Sim.cond 有分支 |
+| 推断 | `ALLOW_DISALLOW_ONE_UPGRADE` | 32 |  | A257：台图 checks/engine_aiupgrade.py aicupgon:ban 写好、模拟器预测 0 到解禁（40 s）、s40.5 买、s56 起持有 2；还没上台（文件里的 a 被测试跑过，benched() 会自动转正，压回推断） |
 | 已对拍 | `NAMED_ATTACK_TEAM` | 32 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts9.py |
 | 已对拍 | `UNIT_KILL_ALL_IN_AREA` | 32 |  | tests/test_simbench.py::test_acts_more_as_the_bench |
 | 已对拍 | `ATTACK_MOVE_TEAM_TO_NAMED_OBJECT` | 31 |  | tests/test_simbench.py::test_acts_more_as_the_bench |

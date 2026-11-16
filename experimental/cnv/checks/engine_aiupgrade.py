@@ -40,4 +40,31 @@ def a(m):
     return t
 
 
+BAN_UNTIL = 40.0
+
+
+def ban(m):
+    """ALLOW_DISALLOW_ONE_UPGRADE (engine A, round 257): aicupgon:a with s1's Upgrade_AlliedTech2 banned at the start
+    (allow 0) and allowed again (1) at 40 s. Simulator prediction (Sim.upgrade_sellers skips a banned upgrade; the
+    unbanned run buys at s20.5 and holds 2 from s36, bench s39): holders 0 to the allow, then the yard sells it again
+    -- bought s40.5, 15 s to research, 2 holders from s56. Ignored ban: holders by ~s39 as aicupgon:a (the first
+    expectation runs to s50 to catch that); a ban outliving the allow, or the AI giving the entry up after a refusal:
+    0 to the end. (Not 60 s: by then the model's AI has spent its PRODUCTION account to 0 on units and buys nothing,
+    which would not tell the allow.)"""
+    t = a(m)
+    player = m.player('s1')
+    t.counters = [c for c in t.counters if c[0] != 'CNVCUpMoney']
+    t.scripts = [s for s in t.scripts if s.name != 'Test - money']
+    t.scripts.append(Script('Test - ban Tech2', [], [('ALLOW_DISALLOW_ONE_UPGRADE', player, 'Upgrade_AlliedTech2', 0),
+                                                     ('SET_MILLISECOND_TIMER', 'CNVCUpBan', BAN_UNTIL)]))
+    t.scripts.append(Script('Test - allow Tech2', [('TIMER_EXPIRED', 'CNVCUpBan')],
+                            [('ALLOW_DISALLOW_ONE_UPGRADE', player, 'Upgrade_AlliedTech2', 1)]))
+    end = m.facts['wake at'] + 92
+    t.expect = [('二级持有', 0, '==', 0, BAN_UNTIL + 10),
+                ('二级持有', BAN_UNTIL + 12, 'ever>=', 1, end - 2)]
+    t.bench = [('bench_watch', dict(seconds=end, every=1, sheet=False, lines=4))]
+    return t
+
+
 CHECKS = {build: {'a': a} for build in ('aicupgon', 'aicupgoff')}
+CHECKS['aicupgon']['ban'] = ban
