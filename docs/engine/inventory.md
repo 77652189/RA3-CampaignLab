@@ -231,7 +231,7 @@
 | 不涉及 | `CAMERA_FOLLOW_NAMED` | 19 |  | 纯表现（名字规则）；Sim.act / Sim.cond 有分支 |
 | 已对拍 | `COUNTER_MATH_COUNTER` | 19 | a1 a2 a3 a6 a7 a9 | 引擎模型核心；台上量过、测试对拍：checks/engine_attach.py |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_SmokeBombSpecialPower` | 19 |  | tests/test_simbench.py::test_acts_mix_all_as_the_bench |
-| 未做 | `PLAYER_DISABLE_BASE_CONSTRUCTION` | 16 |  | Sim.act / Sim.cond 不认识 |
+| 未做 | `PLAYER_DISABLE_BASE_CONSTRUCTION` | 16 |  | C两局engine_baseban交换禁用玩家，对照日本基地的原生核心按钮和脚本按键；禁用人类仍扣800并出核心。UNIT_BUILD核心不能代表盟军/苏联建筑队列或AI基地建造；不写无操作分支、不晋升。tests/test_baseban_bench_c.py按名回放最终读数，核心逐帧扣款差异strict xfail；缺实际基地队列的开关消费/资格/拒绝字段及This Player、All Players范围证据，见work/re/c_baseban_report.md |
 | 未做 | `PLAYER_ENABLE_UNIT_CONSTRUCTION` | 16 |  | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `PLAY_SOUND_EFFECT_AT_TEAM` | 16 |  | 纯表现（名字规则） |
 | 不涉及 | `TOGGLE_LOCK_CURRENT_SELECTION` | 16 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
