@@ -250,7 +250,7 @@
 | 不涉及 | `SET_REFERENCE_TO_FIRST_TEAM_MEMBER_IN_AREA` | 14 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 已对拍 | `SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES` | 14 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiswitch.py |
 | 未做 | `UNIT_EXECUTE_SEQUENTIAL_SCRIPT_LOOPING` | 14 |  | Sim.act / Sim.cond 不认识 |
-| 未做 | `DISABLE_MOUSE_HUD_FIXED_ELEMENT` | 13 |  | Sim.act / Sim.cond 不认识 |
+| 未做 | `DISABLE_MOUSE_HUD_FIXED_ELEMENT` | 13 |  | C engine_mousehud:a/b两局SellButton禁用/开场禁用后恢复对照：末f356/f414均存活位5、资金2400；脚本出售位2消失、原生点击位1和未操作位4保留。B原生出售阳性预测4/2800未成立，tests/test_mousehud_bench_c.py保留一strict xfail；具名全三计数器负基线回放不能证明UI门。存档画面A按钮灰/B按钮亮且目标被选中；每次bench_click间Esc可能取消卖出模式（INFERRED）。cnv_result只有点击坐标及三计数器，没有SellButton enabled、卖出模式接受或拒绝字段；其他固定元素未量，不据余额或负基线登记纯表现。两局耗完，保持未做；见work/re/c_mousehud_report.md |
 | 不涉及 | `SET_LAST_CREATED_UNIT_TO_REFERENCE` | 13 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 已对拍 | `TEAM_EXIT_ALL_BUILDINGS` | 13 |  | tests/test_teamexit_bench_c.py::test_teamexit_mixed_building_and_transport_match_bench；C engine_teamexit:a混装建筑/运输车一局：本队征召兵退出公寓和牛蛙，同容器异队保留；队外成员/两宿主均存活，空队伍与重复调用无误伤。f44..74本队驻/异队驻/存活位3/3/127，f82..287为0/3/127；tests/test_teamexit_bench_c.py按名逐33个实读逻辑帧回放四计数器。仅显式存活队伍普通退出切片；精确出门位置/时序、运输抛射、取消进驻中订单、死/缺队伍及AI实例仍gap，其他模板推广INFERRED；见work/re/c_teamexit_report.md |
 | 未做 | `GATE_CLOSE` | 12 |  | Sim.act / Sim.cond 不认识 |
