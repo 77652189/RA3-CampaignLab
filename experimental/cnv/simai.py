@@ -160,8 +160,8 @@ class Unit:
     """One of the AI's movers as teams.py wants it: template, kindof, surface, pos, team (TeamMaker writes it).
     One object a body for the whole run (teams test membership by identity)."""
 
-    def __init__(self, body):
-        self.body = body
+    def __init__(self, body, sim=None):
+        self.body, self.sim = body, sim
         self.template = body.template
         self.kindof = set(body.kinds)
         self.surface = 'AIR' if 'AIRCRAFT' in body.kinds else 'AMPHIBIOUS' if 'AMPHIBIOUS' in body.kinds else \
@@ -184,6 +184,14 @@ class Unit:
     def moving(self):                   # still on a path, or turning to the facing it was sent with (Sim.turn; the
         b = self.body                   # form-up waits for every member to stop: bench airev1t, A round 227)
         return bool(b.alive and (getattr(b, 'path', None) or getattr(b, 'face', None) is not None))
+
+    @property
+    def in_combat(self):
+        """What TeamTemplate.AllowRecruitUnitsInCombat false keeps out (teams.recruit, work/re b220): a live target
+        within the current weapon's range. Here: the body aimed at someone last tick (Sim.aim picks only targets in
+        range) -- INFERRED: the engine keeps the target between shots; this sees it only on the ticks it fires."""
+        s = self.sim
+        return s is not None and any(a is self.body for _, _, a in s.firing + s.volleys)
 
     def __repr__(self):
         return f'Unit({self.template} {self.body.name})'
@@ -1236,7 +1244,7 @@ class Brain:
             if self.host.garrison.busy(b) or self.host.pullback.busy(b):
                 continue
             if b.name not in self.wrappers:
-                self.wrappers[b.name] = Unit(b)
+                self.wrappers[b.name] = Unit(b, self.sim)
             out.append(self.wrappers[b.name])
         return out
 

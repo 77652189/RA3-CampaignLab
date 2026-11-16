@@ -2,11 +2,11 @@
 
 由 `experimental/cnv/inventory_ai.py levels` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）里由遭遇战 AI 带的敌人：它的人格（`enemy_ai.py` 生成）沿继承、战略状态、战术、组队、目标启发、微操、造兵 / 预算状态、开局一路引用到的原版 AI 数据项，加上全局常量 AIData 和本阵营的 ArmyDefinition；再加关卡脚本里点了 AI 玩家名字的脚本动作 / 条件。状态取自 [inventory.md](inventory.md)。"AI 做完"的第一条：下表全部已对拍。
 
-**已对拍 211 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
+**已对拍 212 / 369**（不涉及的不算）。用到敌方 AI 的关：a4、a5、a7。
 
 | 部分 | 已对拍 | 推断 | 未做 |
 |---|---|---|---|
-| AI | 199 | 75 | 83 |
+| AI | 200 | 74 | 83 |
 | 脚本动作 | 11 | 0 | 0 |
 | 脚本条件 | 1 | 0 | 0 |
 
@@ -104,7 +104,6 @@
 | 推断 | AI | `启发条件/TechBuildingShareHeuristic.Above` | 15 | a4 a5 a7 | C engine_aitechshare a：四座开局油井、活跃拥有者两方，aitechlow/high自有1/2；s40低于75/高于75/低于125三组在家人数均4/0/4，原预测0/4/0与4/0/0。地图另有Soviet_2..6空玩家，倾向引擎玩家数包含空槽；tests/test_simai_techshare_c.py按名回放两组实测，门控两strict xfail、所有权控制独立断言；尚缺同帧own/total/player-count和状态权重，保留gap，不按结果倒推公式；见work/re/c_techshare_report.md、handoff-c.md |
 | 推断 | AI | `启发条件/TechBuildingShareHeuristic.PercentOfFairShare` | 15 | a4 a5 a7 | C engine_aitechshare a：四座开局油井、活跃拥有者两方，aitechlow/high自有1/2；s40低于75/高于75/低于125三组在家人数均4/0/4，原预测0/4/0与4/0/0。地图另有Soviet_2..6空玩家，倾向引擎玩家数包含空槽；tests/test_simai_techshare_c.py按名回放两组实测，门控两strict xfail、所有权控制独立断言；尚缺同帧own/total/player-count和状态权重，保留gap，不按结果倒推公式；见work/re/c_techshare_report.md、handoff-c.md |
 | 推断 | AI | `目标/AITargetingHeuristic.MinDistanceFromEnemy` | 15 | a4 a5 a7 | C按名台子engine_aimindist：同一中立油井，TechBuilding阈值0组采样s6起目标区4，2000组采样s1-55在家4/目标区0；NamedObject阳性对照同0组。tests/test_min_enemy_distance.py断言原计数并按名回放；无同帧实际距离/候选资格，追加双油井aimindpair0/350:a仅切0/350，近油井距固定敌电厂200、远约1230；s40近/远/家/总数实机4/0/0/4与0/0/4/4，模型350选远，strict xfail；原预测FAIL独立strict xfail。采样时钟未对齐游戏帧，缺远油井同帧资格/最近候选拒绝后的回退次序，保持推断、不晋升；见work/re/c_mindist_report.md、work/re/c_mindist_pair_report.md |
-| 推断 | AI | `组队招人/TeamTemplate.AllowRecruitUnitsInCombat` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `目标/AITargetingHeuristic.SortType=ThreatToWater` | 14 | a4 a5 a7 | C按名台子engine_aiwater：两电厂/近处守护者/AI两栖矿车，仅切Distance与ThreatToWater，实机两组采样s14后均近4/远0/家0；模型ThreatToWater选远，按名回放strict xfail。tests/test_water_threat.py独立断言原计数并保留原预测FAIL；近处Named对照因s40-41无采样亦strict xfail。无同帧候选资格/实际water威胁值/水域样本资格，不改模型、不晋升；见work/re/c_water_report.md |
 | 推断 | AI | `微操/IgnoreTargets.Rule` | 13 | a4 a5 a7 | E118 engine_aiignore_rule aiignrany/aiignrall：原版EASY包含标记不变，仅切ANY/ALL；同帧两成员，首伤396/397，前置失配0；f406/421分别状态0有目标与8无目标。ALL保留墙钟s22造出1导致的诊断FAIL，游戏帧前置成立；tests/test_ai_ignore_rule.py按名回放伤害/前置及ALL状态，ANY候选资格strict xfail；目标身份、工程师分类/Alpha资格仍gap，不晋升；见 work/re/e118_ignore_rule.md |
 | 推断 | AI | `战术/Tactic.Tactic=GarrisonBuilding` | 13 | a4 a5 a7 | AI 模型代码里读了这个名字 |
@@ -343,6 +342,7 @@
 | 已对拍 | AI | `微操/AIMicroManagerData.AlphaStrikeTargetTimeToKill` | 15 | a4 a5 a7 | B219：tests/test_ai_alpha_switch.py 按名跑 aialobttk（= aialobshi 只把 TimeToKill 1000 改 0.01，CNVTeams宿主，台上 PASS）：上台前模型预测"血量比×击杀时间 < 0.01 不成立→不集火"，台上 8→6 f230→1 f470、从不进0，与低阈值 aialobslo 逐帧相同；模型 6 f240→1 f480、从不进0，正常断言；击杀时间本身的算法（中间值）没上台 |
 | 已对拍 | AI | `微操/AIMicroManagerData.DodgeThreats` | 15 | a4 a5 a7 | engine_aidodge aidodgeon/aidodgeoff 原版精确打击信标开关对照；tests/test_ai_dodge.py 按名断言两人存活、信标存在时on离开/off保持2，以及到期清理；simai micro_team威胁视图/移动回调接私有micro消费者，仅单信标地面成员；固定0.5秒反应、径向逃离/目的地保持/首次可见寿命起点为INFERRED；精确时钟、安全圆、通用过滤/所属、多威胁仍gap，见 work/re/e116_dodge.md |
 | 已对拍 | AI | `微操/IgnoreTargets.IncludeThing` | 15 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aibuildexclude.py |
+| 已对拍 | AI | `组队招人/TeamTemplate.AllowRecruitUnitsInCombat` | 15 | a4 a5 a7 | 专用engine_aicombat aicombat0/aicombat1：容量1、先放守护者与玩家坦克对射、后放一辆闲着；关闭时闲车f184先离、战者留原位到s55，开启时战者被招走（打到敌人s30消失才f462离开）、闲车留原位；tests/test_ai_recruit_combat.py 回放招谁；"入队后先打完再走"模拟器不符（strict xfail）；模拟器以"上一拍在开火"代替"目标在射程内"（INFERRED），CreateUnits具名槽不查此门（INFERRED）；见 work/re/b220_recruit_combat.md |
 | 已对拍 | AI | `启发条件/TimeSinceLastExpansionHeuristic.Time` | 12 | a4 a5 a7 | C engine_ailastexp ailastexp:a：原版27关有效依赖仅60s/240s，另设常量阳性组；同图一局12条预写断言PASS，在家人数s19-62为4/4/0、s64-242为0/4/0、s244-345为0/0/0。tests/test_last_expansion_c.py按名回放四个窗口一致，无模型修改。仅首次扩张前计时；SDK其他Time取值、初始时刻精确值、真实扩张后重置/Past=false/逐帧边界仍gap；见work/re/c_lastexp_report.md |
 | 已对拍 | AI | `微操/AIMicroManagerData.TimeToKeepTargetMin` | 12 | a4 a5 a7 | E123 aikeeptwo:a：Min=Max=2秒，score分配f495写until525，f503/519 hold，f527 go重写until557；aiegon:a零保持f375/383均go。tests/test_ai_keep_target.py按名回放原台候选资格、分配来源和保持/到期消费者；只验固定区间、已发布成员资格；随机区间、打分、死亡清理、其他来源与整局时钟仍gap；见work/re/e123_keep_target.md |
 | 已对拍 | AI | `目标/AITargetingHeuristic.HeuristicType=Expansion` | 12 | a4 a5 a7 | C aiexpc:a东矿区4、崖矿区0、普通实体0；D104同帧基地中心3850/3400，三矿点state2，选44号4173/2987（最近524）；模型先选基地再取最近合格矿点。tests/test_expansion_target.py按名回放原计数与候选选择；无距离上限、不读SortType。仅state2普通陆矿子集对拍；其他状态/占用/标记/敌距/水域拒绝仍INFERRED，动态矿表/基地注册和死亡清理仍gap；见work/re/c_expansion_d104_report.md |
