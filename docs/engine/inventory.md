@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 189 | 17 | 130 | 115 | 98% |
+| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 189 | 18 | 129 | 115 | 98% |
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 57 / 113 | 189 | 58 | 21 | 84 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -154,7 +154,7 @@
 | 未做 | `SET_UNIT_REFERENCE` | 48 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `NAMED_ATTACK_FOLLOW_WAYPOINTS` | 47 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_wayatk.py |
 | 已对拍 | `NAMED_RECEIVE_UPGRADE` | 47 | a8 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_invuln.py |
-| 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanBaseDefenseEgg` | 46 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_unpack.py |
+| 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanBaseDefenseEgg` | 46 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_eggcmd.py |
 | 已对拍 | `TEAM_SET_STANCE` | 45 |  | tests/test_simbench.py::test_acts_flow_as_the_bench |
 | 不涉及 | `NAMED_CUSTOM_COLOR` | 44 |  | 纯表现（名字规则） |
 | 已对拍 | `HIDE_COUNTDOWN_TIMER` | 43 | a4 a7 a8 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts4.py |
@@ -244,7 +244,7 @@
 | 推断 | `MARK_MISSION_OBJECTIVE_COMPLETED` | 14 |  | 引擎模型核心 |
 | 不涉及 | `MOVIE_PLAY_FULLSCREEN` | 14 |  | 纯表现（名字规则） |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleEnergizedArmorSpecialPower` | 14 |  | tests/test_simbench.py::test_acts_mix_all_as_the_bench |
-| 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanEgg` | 14 |  | Sim.act / Sim.cond 不认识 |
+| 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanEgg` | 14 |  | C engine_eggcmd:a一局四路对照：旧通用按钮的防御/电厂核心留原处，专用防御按钮到点展开，未下令防御核心留原处；f249/393/560建筑位/存活位/原处位均4/15/11，tests/test_eggcmd_bench_c.py按名逐实读帧回放。SDK无该旧通用按钮定义，Sim.act只对两种实测模板显式无操作，不映射成专用展开按钮；原关卡船厂核心、水域、地图局部按钮定义和缺失/死亡宿主仍gap，其他宿主无操作仅INFERRED，整项不晋升；见work/re/c_eggcmd_report.md |
 | 未做 | `PLAYER_KILL` | 14 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `PLAYER_SET_ALL_UNITS_TO_FLEE` | 14 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_runoffmap.py |
 | 不涉及 | `SET_REFERENCE_TO_FIRST_TEAM_MEMBER_IN_AREA` | 14 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
