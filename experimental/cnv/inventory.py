@@ -369,6 +369,7 @@ BENCHED_TESTS = {
 # (part, name) -> (state, why): where the name rule above is wrong (a module read under another name ...)
 _NOT_IN_SIM = '已核（11-08）：模拟器没有这个效果'
 NOTES = {
+    (MODULE, 'Behaviors/SlaughterHordeContain'): (TODO, 'E170 engine_slaughter_e:a/b航母原版/仅删模块两局完成f600、宿主存活11，f180攻击期/f600返航后数量编码均0；a误用DRONE分类，b改AIRCRAFT后仍0。tests/test_slaughter_bench_e.py按名字回放负基线；快照未定位出机/吞入，不能以0判模块无效或借起重机AI撤退晋升。缺同帧命令接受、子机父体/存活轨迹及enterAccepted/停车阶段；同输入暂停，原数量预测FAIL保留，不推猜测模型，不登记已对拍；见work/re/e170_slaughter.md'),
     (MODULE, 'Behaviors/AssistedPlacementBehavior'): (TODO, 'E169 assistpon:a / assistpoff:a原版与删模块两局均资金8000、矿场总数0、提示位数量0、采样完成0；红色预览未落地，原吸附预测保留。当前计数器无放置接受/拒因字段，不能归因于模块；同输入暂停。tests/test_assistplace_bench_e.py具名回放资金负基线strict xfail：Sim未消费侧栏排队/放置点击；吸附、朝向、迷雾资格和精确距离均gap，不登记已对拍；见work/re/e169_assistplace.md'),
     (MODULE, 'Behaviors/QueueDockBehavior'): (GUESSED, 'E164消费D165 dockphase:a/off阶段证据：on装货f156..186、卸货f289..319各30帧，货量250→0；off首次交矿f200同帧异常，不是无效果对照。公开Sim已按继承读取码头模块，矿车选中缺码头矿场时明确报错、禁止模拟成功交矿；卸货结束清空货量。具名tests/test_simqueuedock.py回放拒绝边界、30帧卸250及清货；整模块不晋升，骨骼/队列/绝对路径时钟仍gap，E152 f786快照保留strict xfail；见work/re/e164_queuedock.md'),
     (MODULE, 'Behaviors/CaptureSpecialAbilityUpdate'): (TODO, 'E151 engine_capture:a原版工程师对CaptureFlag中立/敌方/己方和删模块中立四路：归属100、存活1111、前置1，f45..575未换主。原预测111保留；具名测试仅回放负基线，不登记模块效果已对拍。缺命令被模块接受及同帧阶段证据（INFERRED），暂停同输入重跑；见work/re/e151_capture.md'),
