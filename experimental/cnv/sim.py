@@ -1140,6 +1140,11 @@ class Sim:
         self.tech_read = False              # a script has read the points or the protocols (pending: a rank to come)
         self.ground = Ground(mission.map)
         self.own = {u.id: u.xml for u in self.mm.units}
+        # Retail objects replaced by linked assets must use the same XML as
+        # the built mod (E167 removes only the factory's Tech2 receiver).
+        for _, xml, link in self.mm.assets:
+            if link.startswith('GameObject:'):
+                self.own[link.split(':', 1)[1]] = xml
         import simrepair
         self.repairs = simrepair.Repairs(self)
         import simassign
