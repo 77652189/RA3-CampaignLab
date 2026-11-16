@@ -309,7 +309,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v40.json')    # v40: isolated forbidden object-status gate; v39: Sickle XML status exclusions
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v41.json')    # v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -483,12 +483,21 @@ def _weapons(texts, base_table=None):
                             and 'ShockwaveDelaySeconds' not in fields
                             and _num(_attr(h, 'ShockWaveZMult', '1')) == 0):
                         target_filter = dict(magnetic_ground=True, include_templates=things)
-                # CampKOG a/b isolates this one scripted status, with Arc,
-                # model conditions and the retail infantry filter removed.
-                # Their combinations and native leech lifecycle remain gaps.
+                    # CampKKG: exact retail Rush infantry selector with its
+                    # scripted status gate; Arc/model conditions remain gaps.
+                    if (attrs == dict(Rule='ANY', Include='INFANTRY') and not fi.strip()
+                            and not forbidden
+                            and not re.sub(r'<SpecialObjectFilter\b[^>]*>.*?</SpecialObjectFilter>',
+                                           '', inner, flags=re.S).strip()
+                            and _attr(h, 'ForbiddenTargetObjectStatus') == 'LEECHED_TARGET_ACTIVE'
+                            and not fields & {'ShockwaveDelaySeconds', 'InvertShockWave'}):
+                        target_filter = dict(rush_infantry=True)
+                # CampKOG isolates this status, CampKKG adds only infantry.
+                # Native leech lifecycle and other combinations remain gaps.
                 object_gate = (_attr(h, 'ForbiddenTargetObjectStatus') == 'LEECHED_TARGET_ACTIVE'
-                               and not target_filter and not forbidden
-                               and not (inner or '').strip()
+                               and not forbidden
+                               and ((not target_filter and not (inner or '').strip())
+                                    or target_filter == dict(rush_infantry=True))
                                and 'ShockwaveDelaySeconds' not in fields
                                and 'InvertShockWave' not in fields)
                 if ((not (inner or '').strip() and not forbidden) or target_filter) and fields <= {

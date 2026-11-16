@@ -5574,6 +5574,10 @@ class Sim:
                     if ('UNDER_IRON_CURTAIN' in b.status or ('INFANTRY' in b.kinds
                             and b.template not in target_filter['include_templates'])):
                         continue
+                elif target_filter and target_filter.get('rush_infantry'):
+                    # CampKKG a/b: independently measured kind/status gates.
+                    if 'INFANTRY' not in b.kinds:
+                        continue
                 elif target_filter:
                     # CampKSG a/b: NO_COLLISIONS rejects only when the XML
                     # excludes it; no independent status gate in this slice.
