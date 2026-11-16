@@ -466,6 +466,70 @@ def test_special_power_nugget_native_disguise_consumer_bench_replay():
     assert (sim.GAP_WEAPON, 'SpecialDisguiseUpdate') in e.unmodeled
 
 
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+    'Native disguise blocks autonomous conscript acquisition, while the model '
+    'applies only DISGUISED; empty EVACUATE does not cancel on the bench. '
+    'See work/re/c_spncancel_report.md and handoff-c.md.'))
+def test_native_transport_disguise_cancel_acquisition_bench_replay():
+    """engine_spncancel a: enemy damage is independent of the disguise bit.
+
+    Evidence: work/re/c_spncancel_report.md. Compare actual consumer readings,
+    including native EVACUATE, removed SPN and the script-bit-only control.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_spncancel', 'a')
+    e = sim.Sim(m, t)
+    e.shot_clock = True
+    result = e.run(24)
+    measured = (1101, 1101, 1110, 1111)
+    assert tuple(result.series[-1][1]) == measured
+    assert all(tuple(row) == measured for sec, row in result.series if sec >= 22)
+
+
+def test_native_transport_disguise_script_bit_acquisition_controls_bench_replay():
+    """engine_spncancel a: no-SPN and bit-only controls both take enemy damage.
+
+    This independently green boundary must remain covered while native
+    disguise acquisition is tracked by the strict xfail above.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_spncancel', 'a')
+    e = sim.Sim(m, t)
+    e.shot_clock = True
+    result = e.run(24)
+    measured_controls = (1110, 1111)
+    assert tuple(result.series[-1][1][2:]) == measured_controls
+    assert all(tuple(row[2:]) == measured_controls for sec, row in result.series if sec >= 22)
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+    'Loaded native EVACUATE clears real disguise before autonomous enemy damage; '
+    'the model has only the bit, without native identity/acquisition/cancellation. '
+    'See work/re/c_spncancel_report.md and handoff-c.md.'))
+def test_native_transport_loaded_disguise_cancellation_bench_replay():
+    """engine_spncargo a: measured loaded -> exit/clear -> damaged ordering.
+
+    Compare observed states rather than equating capture seconds to mission
+    seconds; the check keeps its disproved absolute-window prediction.
+    Passenger UNATTACKABLE is a deliberate premise of this bench only.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_spncargo', 'a')
+    e = sim.Sim(m, t)
+    e.shot_clock = True
+    result = e.run(24)
+    rows = [tuple(row) for _, row in result.series]
+    held = [i for i, row in enumerate(rows) if row[1] == 111101]
+    cleared = [i for i, row in enumerate(rows) if row[1] == 101100]
+    damaged = [i for i, row in enumerate(rows) if row[1] == 101110]
+    assert held and cleared and damaged
+    assert held[0] < cleared[0] < damaged[0]
+    assert rows[-1] == (1101, 101110, 1110, 1111)
+
+
 def test_native_spy_scout_exclusion_bench_replay():
     """engine_spnspyex a: INFANTRY Terror Drone is explicitly excluded.
 
