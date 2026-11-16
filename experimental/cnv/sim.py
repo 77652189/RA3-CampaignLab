@@ -6374,6 +6374,13 @@ class Sim:
         self.note('技能', f'{self.label(b)} 按 {button} 跳到 ({p[0]:.0f}, {p[1]:.0f})')
 
     def self_power_due(self, frame):
+        for job in list(self.__dict__.get('_leap_ground_hits') or ()):
+            due, b, weapon, centre = job
+            if frame >= due:
+                self._leap_ground_hits.remove(job)
+                if b.alive:
+                    self.projectile_detonate(weapon, b, centre, b)
+                    self.used.add('leap ground hit')
         movement = self.__dict__.get('_movement_powers_due', {})
         for key, (due, b, bits, old_speed) in list(movement.items()):
             if frame >= due:
@@ -6387,7 +6394,21 @@ class Sim:
             if frame >= job[0]:
                 self._leaps_due.remove(job)
                 if job[1].alive:
-                    job[1].x, job[1].y = job[2]
+                    b = job[1]
+                    b.x, b.y = job[2]
+                    ground_weapon = simunits.self_projectile_ground_weapon(b.template, self.own)
+                    if ground_weapon:
+                        # CampKSickle a/b: first grounded probe f114, shock f115.
+                        # Position/time of the leap itself remain INFERRED.
+                        weapon = simunits.weapon_table(self.own).get(ground_weapon)
+                        if weapon is None:
+                            self.gap(GAP_WEAPON, ground_weapon, '跳跃落地武器未解析')
+                        else:
+                            centre = (b.x, b.y, self.impact_ground_z(b.x, b.y))
+                            self.__dict__.setdefault('_leap_ground_hits', []).append(
+                                (frame + 1, b, weapon, centre))
+                            if weapon.get('dmg') or weapon.get('damage'):
+                                self.gap(GAP_WEAPON, ground_weapon, '落地伤害筛选及衰减未对拍，仅派发冲击')
                     self.change()
         due = self.__dict__.get('_self_bits_due')
         for job in list(due or ()):

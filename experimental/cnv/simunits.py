@@ -3181,6 +3181,18 @@ def power_target_type(power):
     return _attr(_retail_power_heads().get(power, ''), 'TargetType') or ''
 
 
+def self_projectile_ground_weapon(template, own=None):
+    """Ground-hit payload of the real Sickle's BezierProjectile (knock_sickle).
+
+    Only dispatch after landing is measured here; curved flight and landing
+    coordinates are still supplied by the existing INFERRED leap scheduler.
+    """
+    def read(xml):
+        head, _ = next(_blocks(xml, 'BezierProjectile'), ('', ''))
+        return _attr(head, 'GroundHitWeapon') or None
+    return _inherited(template, own, read, None)
+
+
 def self_projectile_speed(weapon, own=None):
     """WeaponSpeed of a ProjectileSelf="true" weapon (the unit itself flies: the Sickle's leap 300), else None."""
     special_weapon(weapon, own)                 # fills _weapon_blocks
