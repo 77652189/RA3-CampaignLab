@@ -4719,7 +4719,7 @@ class Sim:
             self.used.add('autoheal')
 
     def passive_area_heal(self):
-        """E70 single engineer, same-owner infantry, scripted status on/off.
+        """E70/E163 single engineer, own/allied infantry, scripted status on/off.
 
         E72/E73 crossing gaps are 20/20/20 script frames. Apply the SDK's
         10%/second in 20-frame batches. INFERRED: a shared mission-frame phase
@@ -4729,7 +4729,10 @@ class Sim:
         See work/re/e_passive_e74.md.
         E145 measures one versus unlimited wounded beneficiaries. Candidate
         order below is INFERRED: the plate counts recipients, not identities.
-        Other relationships, overlapping auras and self-healing remain gaps.
+        E163 adds explicit bilateral cross-player Friend eligibility. Enemy
+        exclusion is retained; the changed-relation snapshot was not reached.
+        Implicit alliances, neutral/asymmetric relations, overlapping auras and
+        self-healing remain gaps. See work/re/e163_areaally.md.
         """
         cache = self.__dict__.setdefault('_passive_area_of', {})
         sources = []
@@ -4762,9 +4765,16 @@ class Sim:
                 continue
             eligible = [(source, rule) for source, rule in sources
                         if math.hypot(target.x - source.x, target.y - source.y) <= rule[0]]
-            if any(source.owner != target.owner for source, _ in eligible):
-                self.gap('物体模块', 'PassiveAreaEffectBehavior relationship', '跨玩家关系过滤未测')
-            eligible = [(source, rule) for source, rule in eligible if source.owner == target.owner]
+            if any(source.owner != target.owner and
+                   (self.relations.get((source.owner, target.owner)),
+                    self.relations.get((target.owner, source.owner))) not in
+                   (('Friend', 'Friend'), ('Enemy', 'Enemy')) for source, _ in eligible):
+                self.gap('物体模块', 'PassiveAreaEffectBehavior relationship',
+                         'E163仅测显式双向友军/敌对；隐式联盟、中立和单向关系仍未测')
+            eligible = [(source, rule) for source, rule in eligible
+                        if source.owner == target.owner or
+                        (self.relations.get((source.owner, target.owner)),
+                         self.relations.get((target.owner, source.owner))) == ('Friend', 'Friend')]
             if len(eligible) > 1 or any(source is target for source, _ in eligible):
                 self.gap('物体模块', 'PassiveAreaEffectBehavior overlap/self', '重叠范围和自身受益未测')
                 continue
