@@ -10,11 +10,13 @@ mapping the whole local radius to yard XML and parent-death cleanup are INFERRED
 Observer lifetime, other templates/players/spies and repeated entry remain gaps.
 E138 KILL only removes the hostile Allied spy at a retail Soviet crane;
 fling distance, exact entry clock and death-module dispatch remain gaps.
-E194 vehicle VISION_UNITS only consumes the hostile spy; discovery scheduling
-is not implemented. The measured intermittent 1/0 sequence remains a gap.
+E199 VISION_UNITS: existing measured vehicle/aircraft/infantry markers have
+a five-pass discovery cycle, 0/1/1/1/1 from first observed spy disappearance.
+Only the first 300 passes and stationary measured templates are implemented;
+expiry, new units, movement and observer internals remain explicit gaps.
 E195 RESET only consumes the hostile spy at a Soviet Iron Curtain; readiness
 and actual cooldown remain unresolved. Entry reach/clock remain INFERRED.
-E197 aircraft and E198 infantry VISION_UNITS entry only; observer/filter scheduling remains a gap.
+Entry reach/clock remain INFERRED; the discovery trace uses an entry-relative clock.
 """
 import math
 import os
@@ -59,6 +61,7 @@ class Infiltrators:
         self.going = {}
         self.off_until = {}
         self.observers = []
+        self.unit_observers = []
         self.paralyzed_until = {}
         self.attack_until = {}
         self.paralyzed_hosts = set()
@@ -172,6 +175,55 @@ class Infiltrators:
                    and self.sim.looks(target, x, y, air)
                    for owner, target, start in self.observers)
 
+    def unit_discovered(self, side, body):
+        """E199 named-object readout, not a general fog or observer simulation.
+
+        Three independent 300-pass traces share 0/1/1/1/1 starting at the
+        first script pass observing spy disappearance. In the simulator the
+        spy is consumed after scripts, hence that first pass is entry + 1.
+        INFERRED: using that anchor outside the measured entry frames. The
+        three entries differ by five, so a global modulo-five phase is not
+        distinguished by E199. See work/re/e199_vision_clock.md.
+        No observer birth/death rule follows from this measured readout.
+        """
+        now = self.sim.frame_now()
+        for owner, target, start, position in self.unit_observers:
+            if owner != side or target is not body:
+                continue
+            age = now - start
+            if not body.alive or (body.x, body.y) != position or age >= 300:
+                self.sim.gap('InfiltratorContain', body.template,
+                             'VISION_UNITS移动/死亡/300帧后到期未对拍，见 work/re/e199_vision_clock.md')
+                continue
+            if age >= 0 and age % 5 != 0:
+                return True
+        return False
+
+    def unit_vision(self, spy, target, rule):
+        """Select only the existing same-owner templates measured by E199.
+
+        Filtering beyond these templates and later production remain gaps;
+        do not turn a complete retail filter into unmeasured reveal coverage.
+        """
+        measured = {'AlliedWarFactory': 'AlliedAntiVehicleVehicleTech1',
+                    'AlliedAirfield': 'AlliedSupportAircraft',
+                    'AlliedBarracks': 'AlliedEngineer'}
+        # These three complete configurations use a KindOf Include, not the
+        # IncludeThing-only helper above. Do not broaden that helper's contract.
+        kind = {'AlliedWarFactory': 'VEHICLE', 'AlliedAirfield': 'AIRCRAFT',
+                'AlliedBarracks': 'INFANTRY'}[target.template]
+        for body in self.sim.living():
+            if body.owner != target.owner:
+                continue
+            if kind not in body.kinds:
+                continue
+            if body.template != measured[target.template]:
+                self.sim.gap('InfiltratorContain', body.template,
+                             'VISION_UNITS其他匹配模板未对拍，见 work/re/e199_vision_clock.md')
+                continue
+            self.unit_observers.append((spy.owner, body, self.sim.frame_now() + 1,
+                                        (body.x, body.y)))
+
     def spec(self, target):
         if target.template not in self.rules:
             self.rules[target.template] = spec(target.template, self.sim.own)
@@ -257,8 +309,9 @@ class Infiltrators:
                     s.gap('InfiltratorContain', target.template, '飞机VISION_UNITS入楼时资格变化未对拍')
                     continue
                 self.aircraft_hosts.add(id(target))
+                self.unit_vision(spy, target, rule)
                 s.gap('InfiltratorContain', target.template,
-                      '飞机VISION_UNITS观察者/筛选/到期未闭合，见 work/re/e197_aircraft.md')
+                      '飞机VISION_UNITS观察者内部/完整筛选/到期未闭合，见 work/re/e199_vision_clock.md')
                 s.destroy(spy, '进楼渗透', delete=True)
                 s.change()
                 continue
@@ -267,8 +320,9 @@ class Infiltrators:
                     s.gap('InfiltratorContain', target.template, '步兵VISION_UNITS入楼时资格变化未对拍')
                     continue
                 self.infantry_hosts.add(id(target))
+                self.unit_vision(spy, target, rule)
                 s.gap('InfiltratorContain', target.template,
-                      '步兵VISION_UNITS观察者/筛选/到期未闭合，见 work/re/e198_infantry.md')
+                      '步兵VISION_UNITS观察者内部/完整筛选/到期未闭合，见 work/re/e199_vision_clock.md')
                 s.destroy(spy, '进楼渗透', delete=True)
                 s.change()
                 continue
@@ -289,10 +343,9 @@ class Infiltrators:
                     s.gap('InfiltratorContain', target.template, '车辆VISION_UNITS入楼时资格变化未对拍')
                     continue
                 self.vehicle_hosts.add(id(target))
-                # E77 measures consumption/refusal, but not a continuous reveal.
-                # Do not turn Duration/UnitDuration into an invented sight clock.
+                self.unit_vision(spy, target, rule)
                 s.gap('InfiltratorContain', target.template,
-                      '车辆VISION_UNITS间歇可见的观察者调度/到期未闭合，见 work/re/e194_vehicle.md')
+                      '车辆VISION_UNITS观察者内部/完整筛选/到期未闭合，见 work/re/e199_vision_clock.md')
                 s.destroy(spy, '进楼渗透', delete=True)
                 s.change()
                 continue

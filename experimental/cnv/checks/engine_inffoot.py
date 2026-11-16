@@ -74,4 +74,9 @@ def no_hostile_entry(m):
     return t
 
 
-CHECKS = {'engine_inffoot': {'a': check, 'b': no_hostile_entry}}
+def clock(m):
+    from checks.engine_infclock import trace
+    return trace(m, check)
+
+
+CHECKS = {'engine_inffoot': {'a': check, 'b': no_hostile_entry, 'c': clock}}

@@ -3198,7 +3198,8 @@ class Sim:
         if name == 'NAMED_DISCOVERED':
             self.used.add('discovered')
             b = self.body(a[1])
-            return bool(b and self.sees(b.x, b.y, b.surface == 'air'))
+            return bool(b and (self.infiltrators.unit_discovered(a[0], b)
+                               or self.sees(b.x, b.y, b.surface == 'air')))
         if name == 'CAMERA_ENTERED_AREA':
             # bench 11-14 engine_eyes all 镜头: holds for good once the camera's point (where it looks) has been in the
             # area -- A and M on from s1 to the end though the camera left; the player's own camera (a minimap click)
