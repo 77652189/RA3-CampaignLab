@@ -182,8 +182,11 @@ def measure(ref_dir):
 
 def main(argv):
     if argv[:1] == ['measure']:
-        sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
-        import labpaths
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('labpaths', os.path.normpath(os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), '..', 'campaign', 'labpaths.py')))
+        labpaths = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(labpaths)
         for faction, v in measure(os.path.join(labpaths.WORK, 'reference')).items():
             print(f'    {faction!r}: {v!r},')
         return 0

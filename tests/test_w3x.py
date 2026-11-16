@@ -1,11 +1,13 @@
 """w3x.rig_model: our units are click-selectable only through a W3DCollisionBox sub-object of the container (without
 one they could be box-selected but not clicked, CampNew30 bench); the box must cover every part, pivots included."""
+import importlib.util
 import re
-import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'experimental' / 'campaign'))
-import w3x  # noqa: E402
+_spec = importlib.util.spec_from_file_location(
+    'w3x', Path(__file__).resolve().parent.parent / 'experimental' / 'campaign' / 'w3x.py')
+w3x = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(w3x)
 
 TRI = ([(0.0, 0.0, 0.0), (2.0, 0.0, 0.0), (0.0, 1.0, 3.0)], [(0.0, 0.0, 1.0)] * 3, [(0.0, 0.0)] * 3, [(0, 1, 2)])
 

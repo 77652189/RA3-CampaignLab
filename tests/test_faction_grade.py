@@ -1,14 +1,15 @@
 """faction_grade.py: a bake painted like the faction's retail vehicles passes check(), each kind of off-style bake is
 caught, and grade() brings the off-style ones back into range (a checker that has never caught anything proves
 nothing -- test_check_model.py's rule)."""
-import sys
+import importlib.util
 from pathlib import Path
 
 import numpy as np
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / 'experimental' / 'units'))
-import faction_grade  # noqa: E402
+_spec = importlib.util.spec_from_file_location('faction_grade', ROOT / 'experimental' / 'units' / 'faction_grade.py')
+faction_grade = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(faction_grade)
 
 SIZE = 128
 
