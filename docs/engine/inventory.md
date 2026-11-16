@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 188 | 17 | 131 | 115 | 98% |
+| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 189 | 17 | 130 | 115 | 98% |
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 56 / 113 | 189 | 57 | 21 | 85 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -238,7 +238,7 @@
 | 已对拍 | `UNIT_SET_MODELCONDITION_FOR_DURATION` | 16 |  | tests/test_modeldur_bench_c.py::test_modeldur_real_bits_expire_after_measured_frames；C engine_modeldur:a真实UNIT_HAS_MODELCONDITION查询：3/7秒USER_1分别为真46/106逻辑帧，b的1/2秒为真16/31帧，均含到期边界；空白阴性始终无位，永久阳性保持，状态码11→10→8。tests/test_modeldur_bench_c.py按名回放同帧四计数器。仅正持续时间、第四参数1.0、独立USER_1写入/到期切片；其他位推广INFERRED，重复/覆盖、零时长、第四参数其他值及原生生产者均gap；见work/re/c_modeldur_report.md |
 | 已对拍 | `UNIT_STOP_SEQUENTIAL_SCRIPT` | 16 |  | tests/test_seqstop_bench_c.py::test_seqstop_clears_pending_scripts_keeps_move_and_accepts_fresh_script；C engine_seqstop:a真实继续/停止对照：f282步骤111/1、到达码3，f308新排脚本后111/1001/3，f360保持。停止清当前及后排脚本，不取消已发移动，新脚本可再执行；tests/test_seqstop_bench_c.py按名回放四计数器。仅存活具名单车移动切片；精确移动/idle时序、自停、循环、死亡/缺失单位及其他订单仍gap；其他宿主推广INFERRED；见work/re/c_seqstop_report.md |
 | 已对拍 | `NAMED_EXIT_BUILDING` | 15 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_enter.py |
-| 未做 | `TEAM_UPGRADE` | 15 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `TEAM_UPGRADE` | 15 |  | tests/test_teamup_bench_c.py::test_teamup_real_query_and_consumer_apply_only_to_current_team；C engine_teamup:a真实玩家升级查询+守护者状态位：f150本队/异队/查询0/0/0，f157授予后3/0/3，f248移除一人后2/0/1，f332再授予3/0/3；同玩家异队和敌方异队均无位。tests/test_teamup_bench_c.py按名逐实读帧回放；仅当前存活显式队伍OBJECT升级派发/消费者切片，j05地图私有升级效果、未来成员、死/缺队伍和AI队伍实例仍gap；其他宿主推广INFERRED；见work/re/c_teamup_report.md |
 | 已对拍 | `UNIT_SET_HEALTH` | 15 | a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aibuilding.py |
 | 已对拍 | `GIVE_PLAYER_UPGRADE` | 14 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_spngp.py |
 | 推断 | `MARK_MISSION_OBJECTIVE_COMPLETED` | 14 |  | 引擎模型核心 |
