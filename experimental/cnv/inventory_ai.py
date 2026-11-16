@@ -127,6 +127,13 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '目标/AITargetingHeuristic.HeuristicType=EnemyGarrison': (TODO,
+        'C engine_aienemygarr aiegarron/off:a真进驻敌方排屋/同位敌电厂，'
+        'tests/test_enemy_garrison_target_c.py具名回放；归属和ENCLOSED已独立观测，'
+        '但原生EnemyGarrison两组候选为空，NamedObject能选控制物。'
+        '未取得有效阳性，不据空候选修改模型；两组模型选普通电厂而原生无目标，strict xfail；'
+        '缺登记后有效重求值/敌方搜索资格及驻军候选登记事实，'
+        '不晋升，见work/re/c_enemygarr_report.md'),
     '目标/AITargetingHeuristic.HeuristicType=NeutralGarrison': (BENCHED,
         'C engine_aineutralgarr aigarron/off:a原版排屋/油井同位对照；'
         'tests/test_garrison_target_c.py按名回放并断言原生选择、对象与坐标：'
