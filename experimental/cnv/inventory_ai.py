@@ -127,6 +127,11 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '目标/AITargetingHeuristic.HeuristicType=Team': (TODO,
+        'C核对SDK两原名宿主AITarget_S01_Warriors/Attackers，编译状态AIState_S01_KillWarriors01引用两者；'
+        '按真实队伍全名选择，不能以单对象或NamedObject替代。'
+        '当前目标View没有队伍候选提供者，target_picks公开接口未提供队伍目标身份/同帧成员资格；'
+        '缺B/D事实入口，0局，暂停且不晋升；见work/re/c_team_gate_report.md'),
     '目标/AITargetingHeuristic.HeuristicType=Husk': (GUESSED,
         'C aihusknone/aihusknamed:a同位普通中立油井，LandHusk阴性与NamedObject阳性；'
         '两局f16分别found=0/1，阳性选(2900,3300)，s20两组总数4，均PASS。'
