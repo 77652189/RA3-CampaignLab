@@ -96,20 +96,26 @@ def test_skirmish_ai_builds_infantry_in_the_opening_until_the_deposit_is_spent(s
     assert 1800 <= spent <= 2000, (spent, out)
 
 
-def test_skirmish_ai_spends_the_deposit_before_70_s(skirmish):
-    """bench engine_aiskirm c: nothing from the barracks between 70 and 125 s. Round 45 had seed 1 spend the rest at
-    83 s (strict xfail); since round 49 (teams only for slots with a target) seeds 1-6 all spend it by 60 s -- the
-    draws moved, the draw path is still not tuned (bench: by 52 s).
-    B round 200: what the bench shows apart from the draw is that the opening's Deposit is the barracks' only money
-    before 125 s (the budget's PRODUCTION share 0 %) and that most of it goes by 60 s. Which units come is a uniform
-    draw (bench c 2 dogs / 3 Javelins / 3 Peacekeepers = 1900, 100 left: nothing more); since B189's refinery search
-    (public b645b61f) the model draws 4 dogs / 2 Javelins / 2 Peacekeepers (ordered by 42 s, out by 48 s) = 1800, and the 200
-    left buys one more Peacekeeper (ordered 88 s, out 94 s) -- the draw, not new money. Costs: the retail BuildCost (dog / Peacekeeper 200,
-    Javelin 300)."""
-    cost = {'AlliedScoutInfantry': 200, 'AlliedAntiInfantryInfantry': 200, 'AlliedAntiVehicleInfantry': 300}
+BARRACKS_COST = {'AlliedScoutInfantry': 200, 'AlliedAntiInfantryInfantry': 200, 'AlliedAntiVehicleInfantry': 300}
+
+
+def test_skirmish_ai_barracks_spends_only_the_deposit_and_most_of_it_by_60_s(skirmish):
+    """The budget rule apart from the draw (B round 200): the opening's Deposit 2000 is the barracks' only money before
+    125 s (the budget's PRODUCTION share 0 %) and at least 1800 of it goes by 60 s (bench engine_aiskirm c: 2 dogs /
+    3 Javelins / 3 Peacekeepers = 1900 by 52 s). Costs: the retail BuildCost (dog / Peacekeeper 200, Javelin 300)."""
     out = _barracks_out(skirmish)
-    assert sum(cost[t] for s, t in out if s < 120) <= 2000, out
-    assert sum(cost[t] for s, t in out if s < 60) >= 1800, out
+    assert sum(BARRACKS_COST[t] for s, t in out if s < 120) <= 2000, out
+    assert sum(BARRACKS_COST[t] for s, t in out if s < 60) >= 1800, out
+
+
+def test_skirmish_ai_barracks_builds_nothing_between_70_and_120_s(skirmish):
+    """bench engine_aiskirm c: nothing from the barracks between 70 and 125 s (its draw spent 1900, 100 left). This
+    rides on the uniform unit draw, which is not aligned with the bench (B handoff 103 / 104): round 45 had seed 1
+    spend the rest at 83 s (strict xfail); round 49 seeds 1-6 spent it by 60 s; B189 (b645b61f) to B200 (565619fa)
+    the draw left 200 for a Peacekeeper at 88 s; on main 077642ea it passes again (B round 206, split from the budget
+    rule above at the coordinator's request). If it goes red with only the draws moved, strict xfail it with the reading."""
+    out = _barracks_out(skirmish)
+    assert not [s for s, t in out if 70 < s < 120], out
 
 
 def test_skirmish_ai_barracks_mix_matches_the_bench(skirmish):
