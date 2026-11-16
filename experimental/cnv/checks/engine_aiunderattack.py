@@ -10,8 +10,8 @@ def a(m):
     t = Test()
     tank, plant = m.role('ua tank').name, m.role('closest plant').name
     attack, stop = m.facts['attack at'], m.facts['stop at']
-    t.scripts.append(Script('Test - start', [], [('SET_MILLISECOND_TIMER', 'UA Attack', int(attack * 1000)),
-                                                 ('SET_MILLISECOND_TIMER', 'UA Stop', int(stop * 1000)),
+    t.scripts.append(Script('Test - start', [], [('SET_MILLISECOND_TIMER', 'UA Attack', attack),
+                                                 ('SET_MILLISECOND_TIMER', 'UA Stop', stop),
                                                  ('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
     t.scripts.append(Script('Test - attack', [('TIMER_EXPIRED', 'UA Attack')], [('NAMED_ATTACK_NAMED', tank, plant)]))
     t.scripts.append(Script('Test - stop', [('TIMER_EXPIRED', 'UA Stop')], [('NAMED_DELETE', tank)]))

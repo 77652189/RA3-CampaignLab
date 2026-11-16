@@ -21,7 +21,7 @@ def mission():
     xml = xml.replace('<AIStrategicStateDefinition ', heuristic + '\n  <AIStrategicStateDefinition ', 1)
     xml = xml.replace('"FriendlyLandStructureHeuristic"', '"CNVUnderAttack"', 1)
     m.assets[0] = asset, xml, ref
-    m.put(TANK, 'carrier home', 300, 1000, name='UNIT - UA Tank', role='ua tank')
+    m.put(TANK, 'carrier home', 650, 600, name='UNIT - UA Tank', role='ua tank')
     m.spawns.add(TANK)
     m.facts.update({'attack at': ATTACK_AT, 'stop at': STOP_AT})
     return m
