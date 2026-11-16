@@ -1087,6 +1087,7 @@ class Sim:
         self.markers = {}                   # objective -> {object / waypoint}
         self.done, self.disabled = set(), set()
         self.banned = set()                 # (player, template in lower case): ALLOW_DISALLOW_ONE_BUILDING 0
+        self.unit_construction_disabled = set()  # named players; engine_unitban a/b native engineer queues
         self.buildable = {}                 # template lower -> BuildableStatus 0-3: TECHTREE_MODIFY_BUILDABILITY_OBJECT (all players)
         self.banned_ups = set()             # (player, upgrade in lower case): ALLOW_DISALLOW_ONE_UPGRADE 0
         self.border = 0
@@ -2163,7 +2164,11 @@ class Sim:
                     else:
                         self.produce_out(f, job, create, rally)
                 job = next((j for j in q if j['full'] is None), None)
-                if job is None or 'upgrade' not in job and (job['owner'], job['template'].lower()) in self.banned:
+                # Global unit gate measured with AlliedEngineer only; applying it to other unit templates
+                # is INFERRED. Upgrade queues and UI request eligibility have not been measured here.
+                if job is None or 'upgrade' not in job and (
+                        (job['owner'], job['template'].lower()) in self.banned or
+                        job['owner'] in self.unit_construction_disabled):
                     continue                # banned: the first job stands, paid so far kept, the queue behind it too
                 step = f32(100.0 / self.build_frames(job['secs'], job['owner']))
                 nxt = f32(job['progress'] + step)
@@ -4173,6 +4178,15 @@ class Sim:
         elif name in ('LINK_MISSION_OBJECTIVE_TO_OBJECT', 'LINK_MISSION_OBJECTIVE_TO_WAYPOINT'):
             s = self.markers.setdefault(a[0], set())
             (s.add if a[2] else s.discard)(a[1])
+        elif name in ('PLAYER_DISABLE_UNIT_CONSTRUCTION', 'PLAYER_ENABLE_UNIT_CONSTRUCTION'):
+            # engine_unitban: the native scripted button still queues; payment/progress wait until enabled.
+            # Only named players and engineer unit queues measured. UI rejection, upgrades, other production
+            # categories and player masks remain gaps; do not infer a ban on all construction.
+            if a[0] in self.players.values():
+                (self.unit_construction_disabled.add if name == 'PLAYER_DISABLE_UNIT_CONSTRUCTION'
+                 else self.unit_construction_disabled.discard)(a[0])
+            else:
+                self.gap('ScriptAction', name, '单位生产开关仅具名玩家原生工程师队列已量；玩家范围未量')
         elif name == 'ALLOW_DISALLOW_ONE_BUILDING':     # the AI's production is not simulated; the player's 造 is
             (self.banned.discard if a[2] else self.banned.add)((a[0], str(a[1]).lower()))
         elif name == 'GIVE_PLAYER_UPGRADE':             # (player, upgrade): a PLAYER upgrade; an OBJECT one (the tiers)
