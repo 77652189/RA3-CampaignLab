@@ -1771,6 +1771,12 @@ class SimAI:
         import simpullback
         self.pullback = simpullback.Pullbacks(s)
         self.record = record            # HOOKS 9: each Brain.rec gets the read-only trail (Brain.snap); off: none
+        self._assigned = {}             # player -> its personality, settled before the first frame (the engine does
+        for side, info in (getattr(s.m, 'sides', None) or {}).items():   # it as it makes the player; bench aisksd2
+            player, pid = s.players.get(side), ((info or {}).get('aiPersonality') or '').split(':')[-1]   # 136 at s1)
+            if pid and player is not None and player != s.human:
+                self.own_personalities()
+                self._assigned[player] = self.assigned(player, side, pid)
 
     @property
     def frame(self):
@@ -1884,6 +1890,21 @@ class SimAI:
                     self.data_of('micro').update(self.mod['micro'].load_micro(texts=[a[1]]))   # its unit powers'
                     #                                                              rounds too (aimicro_bench _spow_xml)
 
+    def assigned(self, player, side, pid):
+        """The personality a side the map names `pid` ends up with (the model's AIData.assigned_personality, work/re
+        d123_side.md 1.2): kept unless its SkirmishPersonality gate is open and its Side lacks the player's faction
+        (bench aisksd2: a random Japanese skirmish one). The sim's PLAYER_IS_HUMAN_OR_AI_PERSONALITY reads the
+        result (Sim.personality_of). None from the model (no library personality of the faction) keeps pid."""
+        pick = getattr(self.data, 'assigned_personality', None)
+        if pick is None:
+            return pid
+        import simtech
+        faction = simtech.faction_of(player, (getattr(self.sim.m, 'sides', {}) or {}).get(side))
+        got = pick(pid, faction and f'PlayerTemplate:{faction}', random.Random(self.seed + 11)) or pid
+        if got != pid:
+            self.sim.personality_of[player] = got
+        return got
+
     def attach(self):
         """Brains for the AI's players, each told 'make base' the frame the mission handed it to the AI (Sim.ai). A
         side with an aiPersonality has its brain from the first frame: its states and teams run before the wake
@@ -1896,6 +1917,7 @@ class SimAI:
             pid = ((info or {}).get('aiPersonality') or '').split(':')[-1]
             if pid and player is not None and player != s.human and player not in self.brains:
                 self.own_personalities()
+                pid = self._assigned.get(player) or self.assigned(player, side, pid)
                 # INFERRED (D round 137): a side in the map with its personality thinks from frame 0, though the
                 # first DT tick lands at frame 8 (bench aibdi0 / aibdi2: the team's rounds at f50 / f80 = mission
                 # s2 / s4, the man inside from s4)

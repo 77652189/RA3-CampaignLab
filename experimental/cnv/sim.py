@@ -1088,6 +1088,8 @@ class Sim:
         self.reshroud = 10.0                # MAP_SHROUD_SET_RESHROUD_TIME seconds (retail default holds as 10)
         self.camera = None
         self.camera_been = set()            # areas the camera's point has been in (CAMERA_ENTERED_AREA latches)
+        self.personality_of = {}            # player -> the personality its AI took when not the map's aiPersonality
+        #                                     (simai SimAI.assigned, work/re d123 1.2: an open skirmish gate)
         self.input = True
         self.countdowns = set()
         self.ending = None
@@ -3093,6 +3095,8 @@ class Sim:
             if a[1] == 'Human':
                 return a[0] == self.human
             want = str(a[1]).split(':')[-1].lower()
+            if a[0] in self.personality_of:     # its AI took another one than the map named (bench aisksd2)
+                return self.personality_of[a[0]].lower() == want
             return a[0] != self.human and any(self.players.get(s) == a[0] and
                                               str(p.get('aiPersonality', '')).split(':')[-1].lower() == want
                                               for s, p in getattr(self.m, 'sides', {}).items())

@@ -562,8 +562,15 @@ NOTES = {
         'B184 engine_aiskirm sd（work/re/d123_side.md 第3节；s1 阵营 Japan，人格 CNVSideX 只写 Side Soviet）：'
         'aisksd1 SkirmishPersonality=false（27 关全是这样）人格位 9 = 照用 CNVSideX，Side 不符不管；'
         'aisksd2 =true → 136 = 换成随机的日本人格（2JapanMechaWarfare）。27 关 Side 不起作用；'
-        'test_a_personality_whose_skirmish_gate_is_closed_is_used_whatever_its_side 按名回放。'
-        'gap：门开着时的随机换人格模拟器没建（strict xfail，原版关不走这条）'),
+        'test_a_personality_whose_skirmish_gate_is_closed_is_used_whatever_its_side 按名回放；'
+        '门开着换人格 B207 进模拟器（模型 AIData.assigned_personality，随机抽签对不齐，只断言"不是 CNVSideX、是日本人格"）'
+        '：test_a_skirmish_personality_of_another_side_is_replaced'),
+    '人格/AIPersonalityDefinition.SkirmishPersonality': (BENCHED,
+        'B207：aisksd1 / aisksd2 只差这一项（engine_aiskirm sd，2026-11-14 两局 PASS，work/re/d123_side.md 1.2）：'
+        'false（27 关全是默认 false）人格位 9 = 照用地图写的 CNVSideX；true 且 Side 不含玩家阵营 → 136 = 换成随机的'
+        '本阵营遭遇战人格。模拟器 simai SimAI.assigned → 模型 AIData.assigned_personality（库 = SkirmishPersonality '
+        '的人格、Side 随继承，INFERRED）；按名回放 test_a_personality_whose_skirmish_gate_is_closed_is_used_whatever_'
+        'its_side、test_a_skirmish_personality_of_another_side_is_replaced'),
     '组队招人/TeamTemplate.ReleaseType=NEVER_RELEASE': (BENCHED,
         'engine_airelease airelnever/airelprio仅ReleaseType不同；CNVTeams两组f166防御激活持3166/3167，'
         'priority在(526,541]同两ID转进攻，never保留至末样本；'

@@ -769,13 +769,12 @@ def test_a_personality_whose_skirmish_gate_is_closed_is_used_whatever_its_side(l
     assert {r['人格位'] for r in rows} == {9}
 
 
-@pytest.mark.xfail(strict=True, reason='simulator takes aiPersonality as given; the SkirmishPersonality Side check '
-                   '(D123 1.2: a random library personality of the side) is not modelled -- no retail mission opens it')
 def test_a_skirmish_personality_of_another_side_is_replaced(lib):
     """aisksd2 (bench 2026-11-14 PASS): the same with SkirmishPersonality true -> 人格位 136 s1-s41: 2JapanMechaWarfare
-    128 + Human 8 (a random Japanese one: the rule is only "not CNVSideX")."""
+    128 + Human 8 (a random Japanese one: the rule is only "not CNVSideX"). aisksd1 / aisksd2 differ only in
+    SkirmishPersonality: the pair is that field's bench (B round 207; the simulator draws its own Japanese one)."""
     _, rows = _probe_run('aisksd2', lib, 40, 'sd')
-    assert all(not r['人格位'] & 1 for r in rows)
+    assert all(not r['人格位'] & 1 and r['人格位'] & 8 for r in rows)
 
 
 def test_a_computer_player_without_a_personality_is_neither_hunt_nor_allied_balanced(lib):
