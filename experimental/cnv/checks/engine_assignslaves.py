@@ -139,3 +139,43 @@ def competition_check(m):
 
 MISSION['engine_assignrace'] = competition
 CHECKS['engine_assignrace'] = {'a': competition_check}
+
+
+def frame_check(m):
+    """E181: freeze competition readings on script frames, not capture seconds.
+
+    Prediction: three occupied targets in each lane at f150 (code 33).
+    Damage/cast at f180, snapshot at f360: SDK 480 HP and 20 HP/s predict
+    fourth-target HP 70/20 after 12 seconds. Acquisition phase is unmeasured;
+    this prediction must not be used to fit the rate or shift the snapshot.
+    """
+    t = Test()
+    t.counters = [('E181Frame', '脚本帧'), ('E181Occupied', '前置占用'),
+                  ('E181On', '指定目标血量'), ('E181Off', '对照目标血量')]
+    t.scripts = [Script('Test - frame', [('COUNTER', 'E181Frame', 0, 360)],
+                        [('INCREMENT_COUNTER', 1, 'E181Frame')], once=False),
+                 Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))])]
+    snapshots = []
+    for tag, weight in [('on', 1), ('off', 10)]:
+        targets = [m.role(f'{tag}{i}').name for i in range(4)]
+        t.scripts.append(Script('Test - occupy ' + tag, [('COUNTER', 'E181Frame', 2, 120)],
+                               [('UNIT_SET_HEALTH', name, 20.0) for name in targets[:3]]))
+        for i, name in enumerate(targets[:3]):
+            t.scripts.append(Script(f'Test - occupied {tag}{i}', [
+                ('COUNTER', 'E181Frame', 2, 150),
+                ('UNIT_HAS_OBJECT_STATUS', name, 'UNDERGOING_REPAIR')],
+                [('INCREMENT_COUNTER', weight, 'E181Occupied')]))
+        actions = [('UNIT_SET_HEALTH', targets[3], 20.0)]
+        if tag == 'on':
+            actions.append(('NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED', m.role('onbay').name,
+                            m.ability('onbay', 'repair'), targets[3]))
+        t.scripts.append(Script('Test - fourth ' + tag, [('COUNTER', 'E181Frame', 2, 180)], actions))
+        snapshots.append(('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', targets[3], 'E181' + tag.title()))
+    t.scripts.append(Script('Test - snapshot', [('COUNTER', 'E181Frame', 2, 360)], snapshots))
+    t.expect = [('脚本帧', 0, 'ever==', 360), ('前置占用', 0, 'ever==', 33),
+                ('指定目标血量', 0, 'ever==', 70), ('对照目标血量', 0, 'ever==', 20)]
+    t.bench = [('bench_watch', dict(seconds=45, every=1, sheet=False, lines=4))]
+    return t
+
+
+CHECKS['engine_assignrace']['b'] = frame_check

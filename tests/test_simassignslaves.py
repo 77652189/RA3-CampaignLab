@@ -67,3 +67,21 @@ def test_repair_assignment_competition_only_explicit_target_heals():
     assert on.hp > on.max_hp * .2
     assert int(off.hp * 100 / off.max_hp) == 20
     assert any('AssignSlaves' in str(g) for g in engine.unmodeled)
+
+
+@pytest.mark.parametrize('reading', [
+    '脚本帧',
+    pytest.param('前置占用', marks=pytest.mark.xfail(strict=True, raises=AssertionError,
+        reason='E181: bench f150 occupied=33, Sim=0; autonomous acquisition/status not modeled. '
+               'See work/re/e181_assignframes.md and work/re/handoff-e.md')),
+    '指定目标血量', '对照目标血量',
+])
+def test_repair_assignment_frame_snapshot_matches_named_bench(reading):
+    """E181: replay fixed script-frame readings, independent of capture speed."""
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_assignrace', 'b')
+    t.expect = [expect for expect in t.expect if expect[0] == reading]
+    engine = sim.Sim(m, t).run(25)
+    verdicts = build.judge(t, engine.series)
+    assert verdicts and all(ok for ok, _ in verdicts), verdicts
