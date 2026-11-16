@@ -50,7 +50,11 @@ def ban(m):
     -- bought s40.5, 15 s to research, 2 holders from s56. Ignored ban: holders by ~s39 as aicupgon:a (the first
     expectation runs to s50 to catch that); a ban outliving the allow, or the AI giving the entry up after a refusal:
     0 to the end. (Not 60 s: by then the model's AI has spent its PRODUCTION account to 0 on units and buys nothing,
-    which would not tell the allow.)"""
+    which would not tell the allow.)
+    RESULTS A264 (PASS, CampCUpOnBan_mcp_1116_065219): holders 0 s1-s62, 2 from s63 (refinery 1 then 2 at s115, yard 1).
+    The ban holds and the allow gives the entry back; the bench holds 7 s after the simulator (s56) -- the AI's
+    rebuy after the allow is later than the model's immediate s40.5 (INFERRED: the build list is re-tried on its own
+    clock; not measured)."""
     t = a(m)
     player = m.player('s1')
     t.counters = [c for c in t.counters if c[0] != 'CNVCUpMoney']

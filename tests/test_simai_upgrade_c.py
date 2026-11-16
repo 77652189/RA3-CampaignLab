@@ -37,3 +37,15 @@ def test_upgrade_entry_pair_ownership(upgrade_entry_pair):
     build, rows = upgrade_entry_pair
     holders = [row['二级持有'] for row in rows]
     assert all(n == (2 if build == 'aicupgon' else 0) for n in holders)
+
+
+def test_upgrade_ban_holds_until_the_allow_as_the_bench():
+    """ALLOW_DISALLOW_ONE_UPGRADE (A264, bench aicupgon:ban): s1's Upgrade_AlliedTech2 banned at the start, allowed at
+    40 s. Bench: 0 holders s1-s62, 2 from s63. The model holds none to the allow and 2 from s56 (its rebuy right at
+    the allow is 7 s before the bench's, an INFERRED gap in the check's docstring); asserted: none until 10 s after
+    the allow, and 2 from the bench's s63 on."""
+    w = simai.run('aicupgon', 'ban', 66.0)
+    labels = [label for _, label in w.sim.test.counters]
+    rows = [(second, dict(zip(labels, values))['二级持有']) for second, values in w.sim.series]
+    assert all(n == 0 for second, n in rows if second <= 50), rows
+    assert [n for second, n in rows if second >= 63] and all(n == 2 for second, n in rows if second >= 63), rows

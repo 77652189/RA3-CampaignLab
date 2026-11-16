@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 193 | 16 | 127 | 115 | 98% |
+| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 194 | 15 | 127 | 115 | 98% |
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 58 / 113 | 189 | 59 | 21 | 83 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -178,7 +178,7 @@
 | 已对拍 | `STOP_TIMER` | 33 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_timer.py |
 | 已对拍 | `TEAM_SET_OVERRIDE_RELATION_TO_TEAM` | 33 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts9.py |
 | 已对拍 | `UNIT_CHANGE_OBJECT_STATUS:NO_ATTACK` | 33 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acquire.py |
-| 推断 | `ALLOW_DISALLOW_ONE_UPGRADE` | 32 |  | A257：台图 checks/engine_aiupgrade.py aicupgon:ban 写好、模拟器预测 0 到解禁（40 s）、s40.5 买、s56 起持有 2；还没上台（文件里的 a 被测试跑过，benched() 会自动转正，压回推断） |
+| 已对拍 | `ALLOW_DISALLOW_ONE_UPGRADE` | 32 |  | tests/test_simai_upgrade_c.py::test_upgrade_ban_holds_until_the_allow_as_the_bench |
 | 已对拍 | `NAMED_ATTACK_TEAM` | 32 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts9.py |
 | 已对拍 | `UNIT_KILL_ALL_IN_AREA` | 32 |  | tests/test_simbench.py::test_acts_more_as_the_bench |
 | 已对拍 | `ATTACK_MOVE_TEAM_TO_NAMED_OBJECT` | 31 |  | tests/test_simbench.py::test_acts_more_as_the_bench |
