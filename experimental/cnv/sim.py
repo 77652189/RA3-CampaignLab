@@ -4360,6 +4360,12 @@ class Sim:
             # the Twinblade's evacuate (s09's Hinds): lands, all out together where it is (engine_acts_btn EV)
             if not self.garrison.evacuate(self.body(a[0])):
                 self.note('技能', f'{a[0]} 按 {a[1]}：没有载着人的载具')
+        elif (name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and a[1] == 'Command_UnPackJapanEgg'
+              and simunits.command_power(a[1], self.own) is None
+              and self.body(a[0]) and self.body(a[0]).template in ('JapanBaseDefenseEgg', 'JapanPowerPlantEgg')):
+            # engine_eggcmd:a: legacy retail id leaves both cores at home; the concrete button deploys.
+            # Other hosts and map-local command definitions remain gaps, not aliases for UnpackReplaceSelf.
+            pass
         elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and \
                 simunits.command_power(a[1], self.own) == UNPACK_POWER:
             # an MCV / a Japanese egg deploys at the point: drives there, then turns into its replacement (bench
